@@ -4,6 +4,8 @@ import { ReportTable } from './ReportTable.jsx';   /* v2.3.5125: the smoothness 
 import { EconCard } from './EconCard.jsx';   /* v2.3.5093: the owner's card, the economy (card E) */
 import { SetSwitchRow } from './SetSwitchRow.jsx';   /* v2.3.5602: set a switch, no terminal (card OPS) */
 import { FeedbackOwnerRows } from './FeedbackOwnerRows.jsx';   /* v2.3.5603: the feedback board's takedown and sweep (card OPS) */
+import { SilenceButtons } from './SilenceButtons.jsx';   /* v2.3.5605: silence from a chat report (card OPS) */
+import { SILENCE_PATH, silenceMap } from '../../game/silenceOwner.js';
 import { COL, getState } from '../mobile/dash/common.js';
 import { BT_API_BASE } from '../../networking/index.js';
 import { runSpeedTest } from '../../game/speedTest.js';   /* v2.3.3339: the speed test, measured on this phone */
@@ -499,11 +501,16 @@ export const DevPanel = ({ onClose }) => {
      means "this worker has no such route, or no key" and the row says which
      (it asks `call('/overview')` quietly).  Not act(): act() carries a
      player's session token, never the owner's key. */
-  const callOwner = useCallback(async (path, method) => {
+  /* v2.3.5605: and a JSON body, for the silence's POST (SilenceButtons.jsx) */
+  const callOwner = useCallback(async (path, method, body) => {
     if (!key) { setMsg('Enter your admin key first.'); return null; }
     setBusy(true);
     try {
-      const res = await fetchWithTimeout(BT_API_BASE + path, { method: method || 'GET', headers: { Authorization: 'Bearer ' + key } });
+      const res = await fetchWithTimeout(BT_API_BASE + path, {
+        method: method || 'GET',
+        headers: Object.assign({ Authorization: 'Bearer ' + key }, body ? { 'Content-Type': 'application/json' } : {}),
+        body: body ? JSON.stringify(body) : undefined,
+      });
       const j = await res.json().catch(() => ({}));
       return { status: res.status, j };
     } catch (e) {
@@ -686,10 +693,18 @@ export const DevPanel = ({ onClose }) => {
      is written to the admin log by the worker.  On demand, like the flags. */
   const [reports, setReports] = useState(null);
   const [sure, setSure] = useState('');   /* the Freeze waiting for its second tap */
+  /* v2.3.5605: the silences running, read with the reports (card MOD's
+     GET /api/admin/silence): a report's buttons say Lift while one runs.  A
+     worker without the route answers 404: no list, the buttons say why. */
+  const [silences, setSilences] = useState(null);
+  const loadSilences = useCallback(async () => {
+    const r = await callOwner(SILENCE_PATH, 'GET');
+    setSilences(r && r.status === 200 && r.j && r.j.ok ? silenceMap(r.j) : null);
+  }, [callOwner]);
   const loadReports = useCallback(async (keepMsg) => {
     const j = await call('/reports?limit=50');
-    if (j) { setReports(Array.isArray(j.reports) ? j.reports : []); if (!keepMsg) setMsg(''); }
-  }, [call]);
+    if (j) { setReports(Array.isArray(j.reports) ? j.reports : []); if (!keepMsg) setMsg(''); await loadSilences(); }
+  }, [call, loadSilences]);
   const reportAct = useCallback(async (r, act) => {
     const who = r.targetName || r.target;
     if (act === 'freeze' && sure !== 'freeze:' + r.key) { setSure('freeze:' + r.key); return; }
@@ -1634,6 +1649,9 @@ export const DevPanel = ({ onClose }) => {
                       <button type="button" data-report-act="dismiss" style={{ ...chip, minHeight: 34, flex: 'none' }}
                         disabled={busy} onClick={() => reportAct(r, 'dismiss')}>Dismiss</button>
                     </div>
+                    {/* v2.3.5605: silence (card MOD's route), beside the Freeze (SilenceButtons.jsx, card OPS PR 6) */}
+                    <SilenceButtons r={r} until={silences ? silences[r.target] : undefined} call={call} callOwner={callOwner}
+                      busy={busy} setMsg={setMsg} chip={chip} COL={COL} onChanged={loadSilences} />
                   </div>
                 ))}
               </>

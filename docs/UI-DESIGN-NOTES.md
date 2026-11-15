@@ -2007,6 +2007,22 @@ Screens: dev-feedback-owner
 
 Sources: src/ui/panels/FeedbackOwnerRows.jsx, src/game/feedbackOwner.js, src/ui/panels/DevPanel.jsx (callOwner), tools/guards/feedback-owner.test.mjs, tools/qa/mp/mp-feedbackowner.mjs.
 
+## The Test panel silences from a chat report
+Screens: dev-feedback-owner
+
+**What it is for:** Silencing a player from the report on them, without a terminal: their chat reaches nobody, and they still play. Between Kick (back at once) and Freeze (kept out). Card MOD's #1897 route, the admin key (v2.3.5605, card OPS PR 6).
+
+**Decisions, and why:**
+- **Under each chat report, beside its Freeze**: the report is where the owner meets the trouble; a silence is answered there, with the same two taps as Freeze.
+- **Four lengths, never a typed number**: a minute, an hour, a day, until lifted. The first tap says, in the message line, who and for how long, and that they still play.
+- **The running silences are read with the reports** (one more request on "Show chat reports"): a silenced player's report reads "Silenced until 14:32 UTC" (a day and a time when it is not today's) with a Lift, in place of the four.
+- **Times in UTC**, as the silenced player is told them (card MOD's spec): one clock for both.
+- **A 404 is told apart**, as the feedback rows do: "this server can't silence anyone yet" (a worker without the route) or the key.
+
+(Its screenshot rides the Test panel's own screens: the report needs a second player, which the UI review's single page has not.)
+
+Sources: src/ui/panels/SilenceButtons.jsx, src/game/silenceOwner.js, src/ui/panels/DevPanel.jsx (chat reports, callOwner), tools/guards/silence-owner.test.mjs, tools/qa/mp/mp-silenceowner.mjs.
+
 ## The login wheel (free daily spin)
 Screens: login-spin
 

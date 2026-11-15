@@ -1,6 +1,6 @@
 card: OPS
-branch: claude/plan-ops-4-feedback (one branch a PR: claude/plan-ops-<n>-<word>)
-prs: #1867 (findings, draft), #1871 (5587), #1872 (5588), #1874 (5600), #1880 (5601), #1886 (5604), #1891 (5602); PR 4 (5603): all ready
+branch: claude/plan-ops-6-silence (one branch a PR: claude/plan-ops-<n>-<word>)
+prs: #1867 (findings, draft), #1871 (5587), #1872 (5588), #1874 (5600), #1880 (5601), #1886 (5604), #1891 (5602), #1893 (5603), PR 6 (5605): all ready
 state: ready
 
 ## Done
@@ -14,10 +14,13 @@ state: ready
 - PR 4 (5603): the feedback rows (take down, sweep; `callOwner`); page
   only; `mp-feedbackowner` 5/5 on main's worker and with #1878's object.
   Carries #1891's head.
+- PR 6 (5605): silence from a chat report (`SilenceButtons.jsx`); page
+  only; `mp-silenceowner` 4/4 on main's worker, 5/5 with MOD's #1897.
 
 ## Next
 
-- PR 6 (5605): `seathold`, built OFF.
+- PR 7 (5606): `seathold` (was #1901 under 5605: retagged). Then PR 8
+  (5607) once card R's PR 7 is in.
 
 ## Found
 

@@ -90,7 +90,17 @@ the way `tools/qa/load/load.mjs` makes one; the probes in
    - **Done when:** the suite holds 5000 under 40 a second, the scale above
      it, the 30 s ceiling, the switch; `rt2-probes/refusalstorm.mjs` shows
      fewer knocks a second at the same crowd.
-6. **(tag 5605) A seat held for the player who had it** (F1).
+6. **(tag 5605) The Test panel silences from a chat report** (card MOD's
+   #1897 route).
+   - Files: new `src/ui/panels/SilenceButtons.jsx`, new
+     `src/game/silenceOwner.js`, `src/ui/panels/DevPanel.jsx` (the chat
+     reports: the running silences read with them; `callOwner` carries a
+     JSON body), a guard, a phone scenario.
+   - Under each report, beside its Freeze: Silence 1 min / 1 h / 1 day /
+     until lifted, and Lift while one runs; two taps; the reply in words
+     (until when, in UTC); a 404 reads "this server can't silence anyone
+     yet". Page only.
+7. **(tag 5606) A seat held for the player who had it** (F1).
    - Files: `server/src/index.js` (the gate in `fetch()`), `server/src/join.js`
      (the refusal at the join), `server/src/leave.js` (a JOINED session's
      id held on leaving), new `server/src/seathold.js`,
@@ -102,16 +112,17 @@ the way `tools/qa/load/load.mjs` makes one; the probes in
      are gone, with the same `room_full` and 4009 the phone already reads
      on an open socket.
    - Across a restart: the room keeps who is in as one key, `seats` (at
-     most 120 ids), written at most once a minute and only when it changed;
+     most 120 ids), written at most every 15 s and only when it changed (at a
+     minute, a deploy missed everyone who joined in the minute before it);
      a room that starts reads it once and holds those seats for 30 s.
    - **Built OFF**: `seathold` is on only when `true` (it adds up to one
-     small write a minute: a pace that writes more is the owner's word).
+     small write every 15 s: a pace that writes more is the owner's word).
      Its cost goes under Needs.
    - **Done when:** `rt2-probes/seatrace.mjs` with the switch on keeps every
      seated player through a restart and a 2 s blip, against 30 waiting;
      off, today's numbers; the suite holds the cap, the expiry, the restart,
      the switch.
-7. **(tag 5606) The owner's reads, a page at a time** (F9).
+8. **(tag 5607) The owner's reads, a page at a time** (F9).
    - Files: `server/src/botfp.js` (`_botfpFlaggedList`, `?flagged=1`),
      `server/src/charwatch.js` (`/dev/looks`), `server/src/devtools.js`
      (`/dev/apinfo`), `server/src/admin.js` and `server/src/liveops.js` (the
@@ -124,7 +135,7 @@ the way `tools/qa/load/load.mjs` makes one; the probes in
      this PR starts after it is merged.
    - **Done when:** each suite puts 1,000 rows and reads them in pages; no
      read lists more than 200.
-8. **(tag 5607) The boards: kept a minute, swept, and saying less** (F8,
+9. **(tag 5608) The boards: kept a minute, swept, and saying less** (F8,
    RT-3's P1).
    - Files: `server/src/leaderboard.js`, its suite (or a new one).
    - Each board's answer kept in the object's memory for 60 s (one list a
@@ -138,7 +149,7 @@ the way `tools/qa/load/load.mjs` makes one; the probes in
    - **Done when:** `rt2-probes/boardtop.mjs` at 20,000 rows reads once a
      minute, not once a request; the suite holds the minute, the sweep, the
      fields gone, the Time board still filled, the switch.
-9. **(tag 5608) The room's public reads, kept and paced** (RT-1's N8; plan
+10. **(tag 5609) The room's public reads, kept and paced** (RT-1's N8; plan
    step 11.5).
    - Files: `server/src/market.js` (`/api/market/orders`),
      `server/src/store.js` (`/api/store/browse`), `server/src/gladiator.js`
@@ -152,7 +163,7 @@ the way `tools/qa/load/load.mjs` makes one; the probes in
    - **Done when:** the suite holds the kept answer, its expiry, the pace,
      the switch; RT-1's flood (400 reads from one client) wakes the room's
      read at most once each 3 s.
-10. **(tag 5609) A guest's join writes only what is worth keeping** (RT-1's
+11. **(tag 5610) A guest's join writes only what is worth keeping** (RT-1's
    N6).
    - Files: `server/src/join.js`, `server/src/persistence.js`,
      `server/src/petbook.js`, `server/src/cadence.js`,
@@ -172,19 +183,19 @@ the way `tools/qa/load/load.mjs` makes one; the probes in
   row in its PR); every new behaviour a lower-case kill switch with its
   switch-table row (`on` its merge day); writes cost money (`seathold`'s
   write is OFF until the owner's word; nothing else here writes more, and
-  PR 10 writes less); one write (a payment and its stamp: PR 10 writes a
+  PR 11 writes less); one write (a payment and its stamp: PR 11 writes a
   guest's first record in the same synchronous run as the thing worth
   keeping).
 - **No caps.** Nothing here is a new path the phone takes: `/health/room`
   is for monitors, `retryMs` is already obeyed, the seat hold answers with
   the `room_full` every phone reads, the paging is the owner's panel, the
   boards and public reads keep their shapes. If a reply's shape changes for
-  the Test panel (PR 7), the panel reads both shapes.
-- **Every `server/test/` file deploys** (TRAPS §277): PRs 2, 5, 6, 8, 9 and
-  10 go in a sitting's batch; PRs 3 and 4 are page only. A check that only reads source goes in
+  the Test panel (PR 8), the panel reads both shapes.
+- **Every `server/test/` file deploys** (TRAPS §277): PRs 2, 5, 7, 9, 10 and
+  11 go in a sitting's batch; PRs 3, 4 and 6 are page only. A check that only reads source goes in
   `tools/guards/` instead.
-- **What a player sees:** PR 6 (who gets in after a restart) and PR 8 (the
-  Time board) change what a player meets. PR 6 is built OFF; PR 8 keeps the
+- **What a player sees:** PR 7 (who gets in after a restart) and PR 9 (the
+  Time board) change what a player meets. PR 7 is built OFF; PR 9 keeps the
   Time board as it is. Anything more is the owner's (TRAPS §305).
 - **The owner's own lists** (no code, the findings' "Only the owner can
   do"): an uptime monitor with a phone alert (on `/health/room` once PR 2
