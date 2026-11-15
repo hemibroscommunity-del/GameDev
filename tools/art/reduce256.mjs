@@ -84,6 +84,14 @@ SCOPE.push({ dir: 'sprites/pets', only: /^pet-sheet\.png$/, always: true });
    nothing in the code changes; the drawing sits half a texel left (0.1 world
    px at tier 1). */
 SCOPE.push({ dir: 'sprites/world', only: /^fish-spot-627\.webp$/, always: true, pad4: true });
+/* v2.3.5566 (card P's backlog, hud-bars): the bars over heads
+   (entityRenderer.js _HUD_BAR_FILES): the mana and stamina pills and the HP
+   pill (1444 px wide, 5.6k-7.9k colours), and the owner's health bar, its
+   empty frame, its red fill and the harvest bar's green (363 px, 2.3k-3.5k
+   colours: padded to 364 as the fish spot's pond, their drawing spanning
+   columns 7-356).  Not the duel ask's small icon (SMALL_TEX, 0.02 MB). */
+SCOPE.push({ dir: 'icons/ui', only: /^bar-(hp|mp|stam)\.webp$/, always: true });
+SCOPE.push({ dir: 'ui/bars', only: /^(hp-frame|hp-full|node-full-green)\.png$/, always: true, pad4: true });
 /* v2.3.5564 (card P's backlog, cape-hood): a cape's hood, cut from its
    facings (tools/cape/split-cape-hood.py): the hood halves (1.3k-1.9k
    colours, cut to 256) and their hair masks (two colours, exact). */

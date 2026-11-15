@@ -1,6 +1,6 @@
 card: P
-branch: claude/plan-p-24-fish-spot (cape-hood's head, stacked)
-prs: #1713, #1715, #1716, #1718, #1719, #1736, #1743, #1745, #1757, #1749, #1763, #1766, #1805, #1806, #1810, #1840, #1846, #1853, #1859, #1868 (5241-5259, 5560, merged); #1881 (5561), #1906 (5562), #1918 (5563) ready; cape-hood (5564), world-fish-spot (5565) ready
+branch: claude/plan-p-25-hud-bars (the fish spot's head, stacked)
+prs: #1713, #1715, #1716, #1718, #1719, #1736, #1743, #1745, #1757, #1749, #1763, #1766, #1805, #1806, #1810, #1840, #1846, #1853, #1859, #1868 (5241-5259, 5560, merged); #1881 (5561), #1906 (5562), #1918 (5563) ready; cape-hood (5564), world-fish-spot (5565), hud-bars (5566) ready
 state: working
 
 ## Done
@@ -14,11 +14,10 @@ state: working
 
 ## Next
 
-- #1881 (5561) for sitting 19; #1906 (5562) on it, #1918 (5563 `pets`)
-  on that; 5564 `cape-hood` (measuring), 5565 `world-fish-spot` (its twin
-  padded to 628 by one see-through column, `?fishspot=0`; to measure).
-- Then `hud-bars`, `player-death`, one a PR, stacked; `state: done` once
-  every family left is under 1 MB.
+- #1881 (5561), #1906 (5562), #1918 (5563 `pets`) for sitting 20; 5564
+  `cape-hood`, 5565 `world-fish-spot` (its twin padded to 628), 5566
+  `hud-bars` (the bars over heads from twins, `?hudbars=0`) stacked on it.
+- Then `player-death`; `state: done` once every family left is under 1 MB.
 
 ## Found
 
