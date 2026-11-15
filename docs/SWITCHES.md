@@ -544,6 +544,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `emotemoves` | worker | switch | v2.3.3392 | 2026-10-18 | false | logic | `emotes` | no | No emote move is relayed and no pose kept; the plain emotes go on. |
 | `emotes` | worker | switch | v2.3.3391 | 2026-10-18 | false | logic |  | no | No emote is relayed, and caps.emotes false shuts the picker at the next join. |
 | `freezedevice` | worker | switch | v2.3.5621 | 2026-11-15 | false | logic |  | no | A freeze holds the frozen character only again: a new character on its phone is let in. |
+| `invitepace` | worker | switch | v2.3.5624 | 2026-11-15 | false | logic |  | no | A trade invite card and a friend request card go every time again (no 5-second pace a target). |
 | `leaderidleat` | worker | switch | v2.3.4378 | 2026-11-10 | false | logic |  | no | The party leader's idle clock counts only a `seen` above 0, as before. |
 | `partydoor` | worker | switch | v2.3.5212 | 2026-11-14 | false | logic |  | no | A player can be put in a party that does not list them, as the lines before the party door could have (nothing does today). |
 | `partykeep` | worker | switch | v2.3.3276 | 2026-10-17 | false | logic |  | no | Parties are not kept: the old cap and the away window remove a dropped member. |
