@@ -1,6 +1,6 @@
 card: P
-branch: claude/plan-p-17-elem-icons (main, sitting 17, merged in)
-prs: #1713, #1715, #1716, #1718, #1719, #1736, #1743, #1745, #1757, #1749, #1763, #1766, #1805, #1806, #1810, #1840, #1846, #1859 (5241-5257, 5259, merged); #1853 (5258), #1868 (5560) ready
+branch: claude/plan-p-19-worn-gear (#1853's head merged in for sitting 18)
+prs: #1713, #1715, #1716, #1718, #1719, #1736, #1743, #1745, #1757, #1749, #1763, #1766, #1805, #1806, #1810, #1840, #1846, #1859 (5241-5257, 5259, merged); #1853 (5258), #1868 (5560), #1881 (5561) ready
 state: working
 
 ## Done
@@ -14,12 +14,12 @@ state: working
 
 ## Next
 
-- #1853 (5258) for sitting 18: main (sitting 17) merged in, `artCache`
-  90.6 -> 88.6, three runs again at the merged head.
-- #1868 (5560), the owner's gear item: the belt's idle frame held while
-  its jog sheets pack (`beltHold.js`, `?beltstandin=0`).
-- Then the backlog by the census: `traits-hairmasks` (2.13 MB) next; the
-  gatekeeper's z16 low (a whole strip unpacked after a lost context).
+- #1853 (5258) then #1868 (5560) for sitting 18, stacked (#1868 carries
+  #1853's head and card T's #1863); #1881 (5561) for sitting 19, on #1868.
+- 5562 `traits-hairmasks` (the hats' hair masks from their twins as colour
+  numbers, `?hairmasks=0`): built, three runs under way.
+- The gatekeeper's low on #1846: the still's sweep reloads the strip each
+  second (`keepPageCopy`).
 
 ## Found
 

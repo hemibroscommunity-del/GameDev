@@ -58,6 +58,7 @@ const FORMS = {
   'bandbeat': '0|off|false',
   'banners': 'all',
   'barretry': '0',
+  'beltstandin': '0|off|false',
   'bigtown': '',
   'bindfix': '0',
   'bladesoft': '*',
