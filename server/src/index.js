@@ -114,6 +114,7 @@ import { accuracyMethods } from './accuracy.js';   /* v2.3.4545: how many of you
 import { reportMethods, rttWaverNext, reportSiteOf } from './report.js';   /* v2.3.5123: the field report, the worker's side */
 import { roomRowMethods } from './roomrow.js';   /* v2.3.5124: the room's own row in the day's book */
 import { healthMethods, routeRoomHealth } from './health.js';   /* v2.3.5601: the room's own health (card OPS PR 2) */
+import { seatHoldMethods } from './seathold.js';   /* v2.3.5605: a seat held for the player who had it (card OPS PR 6) */
 import { charWatchMethods } from './charwatch.js';   /* v2.3.4545: what players drew, for the owner to look at (the Test panel) */
 import { achievementMethods } from './achievements.js';   /* v2.3.3527 */
 import { killRollMethods } from './killroll.js';   /* v2.3.3209: one roll a kill, each drop its own numbers */
@@ -4638,7 +4639,11 @@ export class GameRoom {
     /* v2.3.3723: the hidden settings, read once a worker's life before its
        first socket, so the first harvest already reads the owner's values */
     await this._hiddenEnsure();
-    if (this.sessions.size >= this._roomCap()) {
+    /* v2.3.5605: with `seathold: true`, a deploy's roster read once (its
+       seats held 30 s), and a socket let in for each seat held: the join
+       decides who it is for (seathold.js); off, both are nothing */
+    await this._seatHoldLoad(Date.now());
+    if (this.sessions.size >= this._roomCap() + this._seatHeldCount(Date.now())) {
       return this._roomFullRefusal(url);
     }
     /* v2.3.3274: one address holds at most `ip_sockets` places and opens at
@@ -6433,6 +6438,7 @@ Object.assign(GameRoom.prototype, accuracyMethods); /* v2.3.4545 */
 Object.assign(GameRoom.prototype, reportMethods); /* v2.3.5123 */
 Object.assign(GameRoom.prototype, roomRowMethods); /* v2.3.5124 */
 Object.assign(GameRoom.prototype, healthMethods); /* v2.3.5601: the room's own health (health.js) */
+Object.assign(GameRoom.prototype, seatHoldMethods); /* v2.3.5605: a seat held (seathold.js) */
 Object.assign(GameRoom.prototype, charWatchMethods); /* v2.3.4545 */
 Object.assign(GameRoom.prototype, riseChestMethods); /* v2.3.4453 */
 Object.assign(GameRoom.prototype, achievementMethods); /* v2.3.3527 */
