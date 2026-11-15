@@ -64,7 +64,7 @@ function readPage() {
   return {
     st, rep, lt,
     one: one ? { on: one.on, ok: one.ok, linkError: one.linkError, warmMs: one.warmMs } : null,
-    pal: pal ? { on: pal.on, ok: pal.ok, linkError: pal.linkError, warmMs: pal.warmMs } : null,
+    pal: pal ? { on: pal.on, ok: pal.ok, linkError: pal.linkError, warmMs: pal.warmMs, live: pal.live } : null,
     on: {
       one: !!(one && one.on),
       palette: !!(pal && pal.on),
@@ -138,6 +138,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const fb = othersFine(b.got, TESTED_ONE, 'one');
   rec.ok('2b. ...the one program falls back ALONE: the three programs draw; the others passed and are on',
     rb.one && rb.one.result === 'forced' && b.got.one.on === false && b.got.one.ok === false && fb.ok, { rb, on: b.got.on, bad: fb.bad });
+  rec.ok('2b2. ...and the sharp batcher, which the three draw the figures with, is tested at once (the same read the one program had: the gatekeeper\'s sitting 20) and passes here',
+    rb.sharp && rb.sharp.result === 'pass' && b.got.on.sharp === true, { sharp: rb.sharp });
   rec.ok('2c. ...and the report\'s `self` names `one`', selfIs(b.got, ['one']), b.got.rep);
 
   /* 3. the colour numbers made to fail */
@@ -148,6 +150,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('3b. ...the colour numbers fall back ALONE to whole colours; the others passed and are on',
     rc.palette && rc.palette.result === 'forced' && c.got.pal.on === false && fc.ok, { rc, on: c.got.on, bad: fc.bad });
   rec.ok('3c. ...and the report\'s `self` names `palette`', selfIs(c.got, ['palette']), c.got.rep);
+  rec.ok('3b2. ...and no colour-number picture is alive after it (as it ships, page 1, many are): nothing that loaded while the verdict was pending kept the program it found wrong (paletteDecided: the gatekeeper\'s sitting 20)',
+    c.got.pal && c.got.pal.live === 0 && a.got.pal && a.got.pal.live > 0, { after: c.got.pal && c.got.pal.live, ships: a.got.pal && a.got.pal.live });
 
   /* 4. no self-test (the off-ramp) */
   const d = await onePage(browser, wsPort, webPort, rec, 'selftest-off', 'onebatch=1&selftest=0', []);

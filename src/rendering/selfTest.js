@@ -459,7 +459,9 @@ function _poll() {
     _draws.push([p.name, Math.round(p.drawMs * 10) / 10, Math.round(p.readMs * 10) / 10, p.tries]);
     if (!selfCheck(p.name, got, p.wants[at], p.drawMs + p.readMs, p.tols[at])) { try { p.onFail(); } catch (e) { /* falls back as it can */ } }
   }
-  if (_pending.length) { _queued = true; beforeDraw(_poll); return; }
+  /* (a fallback above may have queued a test of its own -- the one
+     program's queues the sharp batcher's -- and with it this poll) */
+  if (_pending.length) { if (!_queued) { _queued = true; beforeDraw(_poll); } return; }
   if (_resolveAll) { const r = _resolveAll; _resolveAll = null; _allDone = null; r(selfResults()); }
 }
 /** A program's drawn pictures (selfDraw's textures, each held to `want`):
@@ -482,8 +484,11 @@ export function selfQueue(name, renderer, rts, want, onFail, drawMs = 0) {
     drawMs: drawMs + (performance.now() - t0), readMs: 0, tries: 0 });
   if (!_queued) { _queued = true; beforeDraw(_poll); }
 }
-/** v2.3.5236: this program's pictures wait for their verdict (the look's
- *  choices wait with them: lookPalette.js lookSheenState, TRAPS §340). */
+
+/** v2.3.5234 (the gatekeeper's sitting 20): this program's pictures wait for
+ *  their verdict (paletteTex.js paletteDecided: what loads in that window
+ *  waits with them; v2.3.5236: the look's choices too, lookPalette.js
+ *  lookSheenState, TRAPS §340). */
 export function selfPending(name) {
   for (const p of _pending) if (p.name === name) return true;
   return false;
