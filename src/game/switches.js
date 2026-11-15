@@ -89,6 +89,7 @@ const FORMS = {
   'dmgwords': '0',
   'droplines': '0',
   'dtsmooth': '0|off|false',
+  'elemicons': '0',
   'equipredraw': '0',
   'figround': '1',
   'fill': '0',
