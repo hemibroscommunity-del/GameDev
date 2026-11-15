@@ -163,7 +163,7 @@ Gold, the bag, the bank, the market and shops, trades, drops, chests and daily r
 The life skills: gathering, cooking, smithing, the farm, fishing, trapping.
 
 - **Files**: `server/src/`: gathering, cooking, smelting, armorforge, forgeladder, farm, farmorders, fishlog, trapping, hardening, hardenedwood, drawgather, firetrail, gscopper, shardcrack, gems
-- **Files**: `src/game/`: smithing, forgeTabs, farmFeedback, farmTrip, farmWalk, farmWork, fishWeigh, trapping, tierOre, tierTrees, drawGather, lifeSkillRewards, quickEat, fightFood, mastery, shardCrack, fireRefuse
+- **Files**: `src/game/`: smithing, forgeTabs, farmFeedback, farmTrip, farmWalk, farmWork, fishWeigh, trapping, tierOre, tierTrees, drawGather, lifeSkillRewards, harvestDoor, quickEat, fightFood, mastery, shardCrack, fireRefuse
 - **Doors**: none named yet
 - **Switches**: [its rows in the switch table](SWITCHES.md#skills)
 - **Words**: `gather`, `cook`, `smelt`, `smith`, `forge`, `farm`, `fish`, `trap`, `harden`, `firemaking`, `skill`, `gem`, `ore`, `tree`, `shard`

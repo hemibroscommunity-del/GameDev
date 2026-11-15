@@ -29,7 +29,8 @@
  *      (`zone`, `rejoin`; `death` has no one door on the page yet) is reset
  *      there: by a resetOn(edge, fn) whose named fn writes it (the script's
  *      `resets`), or by the edge's door's own list (changeZone and
- *      clearZoneLocalFx; rejoinClear); and every reset writes only rows whose
+ *      clearZoneLocalFx; rejoinClear: a write there, or, v2.3.5219, a call
+ *      there of the field's page door); and every reset writes only rows whose
  *      lifetime names its edge.  `lifetime` is `sitting` or edges joined by
  *      `+`; `reset` is `value <v>` or `fn <name>` beside an edge, `kept:
  *      <why>` beside `sitting` (src/state/README.md);
@@ -306,7 +307,8 @@ if (census) {
    resetOn(edge, fn) whose fn writes it (the script's `resets`: its file is
    then one of the row's writers; v2.3.5218, or asks the field's own page
    door, a phase-table row turned `door`), or by the edge's door's own list (the
-   zone's changeZone and clearZoneLocalFx; the rejoin's rejoinClear).  And
+   zone's changeZone and clearZoneLocalFx; the rejoin's rejoinClear: a write
+   there, or, v2.3.5219, a call there of the field's page door).  And
    every reset writes only rows whose lifetime names its edge.  The death
    has no one door on the page yet (docs/specs/state-resets.md): nothing
    may be reset at it. */
@@ -331,6 +333,8 @@ if (census) {
   const doorCovers = new Map();
   for (const r of census.json.fields) for (const e of Object.keys(DOOR_LISTS)) if (doorWrites([...r.sets, ...r.inside], e)) { const k = 'S ' + r.name; if (!doorCovers.has(k)) doorCovers.set(k, new Set()); doorCovers.get(k).add(e); }
   for (const v of census.json.variables) for (const e of Object.keys(DOOR_LISTS)) if (doorWrites(v.writes, e)) { const k = 'src/' + v.file + ' ' + v.name; if (!doorCovers.has(k)) doorCovers.set(k, new Set()); doorCovers.get(k).add(e); }
+  /* v2.3.5219: a door list's own call of a field's page door clears it there too (clearZoneLocalFx asks the harvest's door) */
+  for (const d of census.json.doorCalls || []) for (const e of Object.keys(DOOR_LISTS)) if (doorWrites([d.at], e)) { const k = 'S ' + d.field; if (!doorCovers.has(k)) doorCovers.set(k, new Set()); doorCovers.get(k).add(e); }
   const life = new Map();
   for (const [sys, rows] of ledgers) for (const row of rows) life.set(keyOf(row), { sys, edges: row.lifetime === 'sitting' ? [] : row.lifetime.split('+') });
   for (const [k, { sys, edges }] of life) {

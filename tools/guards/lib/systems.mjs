@@ -154,7 +154,7 @@ export const SYSTEMS = Object.freeze({
     what: 'the life skills: gathering, cooking, smithing, the farm, fishing, trapping',
     files: [
       f('server/src', 'gathering|cooking|smelting|armorforge|forgeladder|farm|farmorders|fishlog|trapping|hardening|hardenedwood|drawgather|firetrail|gscopper|shardcrack|gems'),
-      f('src/game', 'smithing|forgeTabs|farmFeedback|farmTrip|farmWalk|farmWork|fishWeigh|trapping|tierOre|tierTrees|drawGather|lifeSkillRewards|quickEat|fightFood|mastery|shardCrack|fireRefuse'),
+      f('src/game', 'smithing|forgeTabs|farmFeedback|farmTrip|farmWalk|farmWork|fishWeigh|trapping|tierOre|tierTrees|drawGather|lifeSkillRewards|harvestDoor|quickEat|fightFood|mastery|shardCrack|fireRefuse'),
     ],
     words: ['gather', 'cook', 'smelt', 'smith', 'forge', 'farm', 'fish', 'trap', 'harden', 'firemaking', 'skill', 'gem', 'ore', 'tree', 'shard'],
     traps: ['skills'],

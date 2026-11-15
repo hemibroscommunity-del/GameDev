@@ -40,6 +40,11 @@ so a reset clears it by calling that door (`forgetRace`:
 `raceTo(S, null, 'forget')`). The census counts that call, and only that
 kind, as the reset's write (`state-census.mjs resetsFound`), and
 `state-resets.test` gives a rebuilt reset the real door, not a no-op.
+**v2.3.5219: and an edge's own door list may ask it too.** `clearZoneLocalFx`
+clears the harvest by `harvestTo(S, null, 'zone')`. The census reports every
+call of a page door (`doorCalls`), and the state ledger's guard (check 6)
+counts one in an edge's door list (`changeZone`, `clearZoneLocalFx`,
+`rejoinClear`) as that edge's clear of the door's field.
 
 ## The doors
 

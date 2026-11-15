@@ -33,6 +33,7 @@ import { syncWorldTrial, trialZoneFor, takeWheelArrival, setWheelArrival, wheelI
 import { leaveWheelDungeon } from '@/game/wheelDungeons.js'; /* v2.3.3016: a Wheel dungeon's door leads back to its mouth */
 import { wheelSpawnTick, wheelSpawnPass, wheelCommonsGate, wheelTripVeiled, wantWheelSpawn } from '@/game/wheelHome.js'; /* v2.3.2990: you start in the Wheel's Brotown; v2.3.3025: under one veil */
 import { isWorldViewZone } from '@/data/zones.js'; /* v2.3.2978: 'worldview', or the Wheel's 'wheel' */
+import { harvestTo } from '@/game/harvestDoor.js'; /* v2.3.5219: the harvest's page door, the one writer of S._extraction (card L PR 5) */
 import { freeZoneMap, isZoneMapResident, preloadStartZoneMap } from '@/rendering/tiledMaps.js'; /* v2.3.1405: map eviction + sync residency check; v2.3.2859: + town's own map */
 import { loadTownScenery, freeTownScenery, townSceneryReady, townSceneryLoading } from '@/rendering/npcSprites.js'; /* v2.3.2859: town's NPCs + buildings load and free with town */
 import { playerGroundDy } from '@/rendering/systems/entityRenderer.js'; /* v2.3.2999: the Wheel's grid is read at your boots */
@@ -404,7 +405,7 @@ export function clearZoneLocalFx(S) {
   if (S._peerGatherNode && S._peerGatherNode.clear) S._peerGatherNode.clear();
   S._firemaking = null;
   S._farmWork = null;   /* v2.3.3136: a step at a bed ends with the farm (it sends nothing unfinished) */
-  S._extraction = null;
+  harvestTo(S, null, 'zone');   /* v2.3.5219: the harvest ends with the zone, through its page door (game/harvestDoor.js) */
   S._remoteProjectiles = [];
   /* v2.3.2841: a staff crash queued on the frame you left would flash at the
      old zone's coordinates on the new map. */
