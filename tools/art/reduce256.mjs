@@ -71,6 +71,10 @@ const SCOPE = [
      fewer already, so their twins are exact. */
   { dir: 'icons/ui', only: /^elem-(flame|frost|water|venom|flora|stone|storm|wind)\.webp$/, always: true },
 ];
+/* v2.3.5563 (card P's backlog, pets): the pet sheet every pet is drawn from
+   (petSprites.js, tools/make_pet_sheet.py), on the loading screen for
+   everyone: 80k colours, cut to 256. */
+SCOPE.push({ dir: 'sprites/pets', only: /^pet-sheet\.png$/, always: true });
 /* v2.3.5562 (card P's backlog, traits-hairmasks): the hats' hair masks,
    the white silhouettes the hair is clipped to (entityRenderer.js
    _loadHairMaskDir, hairClip.js's stencil): two colours each, so twinned

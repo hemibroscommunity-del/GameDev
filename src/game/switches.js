@@ -195,6 +195,7 @@ const FORMS = {
   'packworker': '0',
   'pagebases': '0|off|false',
   'perf': '1',
+  'petsheet': '0',
   'pickwood': '0',
   'picsretry': '0',
   'pixbudget': '*',

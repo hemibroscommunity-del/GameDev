@@ -239,8 +239,10 @@ export const ASSET_FAMILIES = Object.freeze([
     { draw: 'none', note: 'townsfolk load the .webp bakes; mayor-bro.png is the art from before the hat fix' }),
 
   /* ── pets, shields, projectiles, gathering tools, weapons ── */
-  fam('pets', 'made', 'public/sprites/pets/*.png',
-    { tool: 'tools/make_pet_sheet.py', sources: 'public/sprites/monsters/** walk strips', draw: 'file', loader: 'src/rendering/petSprites.js', px: 'art law' }),
+  fam('pets', 'made', 'public/sprites/pets/pet-sheet.png',
+    { tool: 'tools/make_pet_sheet.py', sources: 'public/sprites/monsters/** walk strips', draw: 'file', loader: 'src/rendering/petSprites.js', px: 'art law', note: 'v2.3.5563: drawn from its twin where colour numbers are drawn (pets-twins); this with ?petsheet=0, and the portrait\'s <img>' }),
+  fam('pets-twins', 'made', 'public/sprites/pets/pet-sheet.p256.png',
+    { tool: 'tools/art/reduce256.mjs', sources: 'beside', draw: 'numbers', loader: 'src/rendering/p256.js', px: 'art law', note: 'v2.3.5563, card P\'s backlog: the pet sheet read from its 256-colour twin by default (79k colours cut to 256, moved 0.021 OKLab); listed in src/data/p256Files.js; ?petsheet=0' }),
   fam('shields', 'made', 'public/sprites/shields/*.png',
     { tool: 'tools/gear/make-pine-wood.mjs', sources: 'tools/gear/src-art/shields/*.webp', draw: 'file', loader: 'src/rendering/shieldSprites.js' }),
   fam('weapons-wood', 'made', 'public/sprites/weapons/{bows,staffs}/*.png',
