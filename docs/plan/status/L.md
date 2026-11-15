@@ -1,6 +1,6 @@
 card: L
 branch: claude/plan-l-22-arena-door (each PR on main, main merged in)
-prs: #1746 to #1855 (merged), #1864 (5216), #1866 (5217), #1876 (5218), #1894 (5219), #1903 (5520), #1910 (5521), PR 5 tag 5522: working
+prs: #1746 to #1866 (merged), #1876 (5218), #1894 (5219), #1903 (5520), #1910 (5521), PR 5 tag 5522: working
 state: working
 
 ## Done

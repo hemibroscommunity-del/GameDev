@@ -38,7 +38,9 @@ in three places; now only `guardTo` does, by a way of `GUARD_PAGE_WAYS`:
   of the state for a posed picture: the guard's `besides`.
 - **The door writes the two values as such** (`true`, `false`), so the
   state census still reads a flag (the ledger's `flag` mark).
-- **A module of no imports**, so a node test reads its rules. The suite also
+- **One import**, the page's switch reader (`game/switches.js`, itself of
+  no imports; card T's), by a relative path, so a node test reads its rules
+  (`?guarddoor=0` is read through it). The suite also
   loads `shieldToggle.js` itself and plays a raise, a toggle down, the
   cooldown, no shield, the water, each with its word to the worker read off
   the action door's transport. `playerActions.js` pulls in a `.jsx` node
