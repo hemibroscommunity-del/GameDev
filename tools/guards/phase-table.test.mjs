@@ -119,6 +119,8 @@
  *      times: the three rows)
  * v2.3.5520 (the pose's page door):
  *  34. `S._pose = null;` back in rejoinSlots.js rejoinClear -> FAIL 2
+ * v2.3.5521 (the guard's page door):
+ *  35. `S._shieldUp = false;` back in shieldToggle.js dropShield -> FAIL 2
  *
  * Run from the repository's root: node tools/guards/phase-table.test.mjs
  * (cd server && npm test runs it with every other guard and suite).
@@ -338,6 +340,13 @@ const DOOR_SUITES = Object.freeze({
   /* v2.3.5218: the race's page door (the page half of the race row) */
   'server/test/race-page-door.test.mjs': { field: 'S._race', fn: 'raceTo', holds: '§2: no write of ._race in src/ outside raceTo, nor of the race record\'s .phase in race.js',
     prop: '_race', besides: [] },
+  /* v2.3.5521: the guard's page door */
+  'server/test/guard-page-door.test.mjs': { field: 'S._shieldUp', fn: 'guardTo', holds: '§2: no write of S._shieldUp in src/ outside guardTo',
+    prop: '_shieldUp', besides: [
+      { file: 'src/game/shieldCopies.js', text: 'other._shieldUp = up', why: 'a peer\'s copy of their guard (player_shield), not yours' },
+      { file: fileNamed('entityRenderer.js'), text: '_shieldUp: false, _shieldAngle: null', fn: 'poseFrame', why: 'a copy of the state made for a posed picture (Object.assign({}, real, ...)), never S' },
+      { file: fileNamed('effectsRenderer.js'), text: '_shieldUp: false, _bashPose: false', why: 'a copy of the state made for a posed picture, never S' },
+    ] },
   /* v2.3.5520: the pose's page door */
   'server/test/pose-page-door.test.mjs': { field: 'S._pose', fn: 'poseTo', holds: '§2: no write of ._pose in src/ outside poseTo',
     prop: '_pose', besides: [] },

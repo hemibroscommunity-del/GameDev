@@ -67,6 +67,7 @@ why: a QA tag, a direction, an input's source, a setting.
 | `race` | worker | a player's race, `ps._race` (on, or none; the countdown and the running are times on it) | `_raceTo` (`race.js`, v2.3.5217) | `race-door.test` §2, and the guard's tree |
 | `race` | page | the phone's race, `S._race` (none; asked, count, run, done: its record's own `phase`) | `raceTo` (`raceDoor.js`, v2.3.5218) | `race-page-door.test` §2, and the guard's tree |
 | `pose` | page | the phone's own held pose, `S._pose` (standing, or its record: posing) | `poseTo` (`poseDoor.js`, v2.3.5520) | `pose-page-door.test` §2, and the guard's tree |
+| `guard` | page | your shield on the phone, `S._shieldUp` (down, up) | `guardTo` (`guardDoor.js`, v2.3.5521) | `guard-page-door.test` §2, and the guard's tree (a peer's copy and the renderers' posed copies are `besides`) |
 | `harvest`, `cook`, `fishing` | page | the phone's harvest, `S._extraction` (none; waiting, ready: its record's own `status`; mining, woodcutting, fishing and a cook are its `skill`) | `harvestTo` (`harvestDoor.js`, v2.3.5219) | `harvest-page-door.test` §2, and the guard's tree |
 
 **How a door is held.** What holds a door is a closed list in the guard
