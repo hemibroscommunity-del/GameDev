@@ -1,16 +1,20 @@
 card: OPS
-branch: claude/plan-ops-1-card (one branch a PR: claude/plan-ops-<n>-<word>)
-prs: #1867 (findings, draft), #1871 (5587), #1872 (5588); PR 1 (5600, working)
-state: working
+branch: claude/plan-ops-2-health (one branch a PR: claude/plan-ops-<n>-<word>)
+prs: #1867 (findings, draft), #1871 (5587), #1872 (5588), #1874 (5600, ready); PR 2 (5601, ready)
+state: ready
 
 ## Done
 
 - RT-2's findings (#1867, kept as the record); its two small fixes: #1871
   (the migrations guard) and #1872 (OPERATIONS: rolling back).
+- #1874 (5600): this card.
+- PR 2 (5601): `/health/room` (`health.js`), `roomhealth`; the newer-save
+  refusals were already counted (`roomrow.js`): now shown. Carries #1874's
+  head: it lands right after it.
 
 ## Next
 
-- PR 1 (5600): this card. Then PR 2 (5601): `/health/room`.
+- PR 3 (5602): `rf_spread`.
 
 ## Found
 

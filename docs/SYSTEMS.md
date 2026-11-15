@@ -118,7 +118,7 @@ The live flags, the admin and dev levers, test mode, feedback.
 
 The worker's spine: saving, migrations, the tick, its pace, hidden settings, the room's own row.
 
-- **Files**: `server/src/`: persistence, migrations, tick, tickpace, cadence, data, grids, heapburn, hidden, daybook, storagemarks, roomrow
+- **Files**: `server/src/`: persistence, migrations, tick, tickpace, cadence, data, grids, heapburn, hidden, daybook, storagemarks, roomrow, health
 - **Doors**: `HIDDEN_SPEC` in `server/src/hidden.js` (a server-only number a copier would value); `bookAdd` in `server/src/daybook.js` (the day's book (`daybook:`): every part adds through it (v2.3.5080, card E))
 - **Switches**: [its rows in the switch table](SWITCHES.md#server-core)
 - **Words**: `persistence`, `migration`, `tick`, `storage`, `save`, `hidden`, `cost-guard`, `costguard`, `daybook`, `roomrow`

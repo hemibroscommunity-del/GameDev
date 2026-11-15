@@ -108,7 +108,7 @@ export const SYSTEMS = Object.freeze({
   },
   'server-core': {
     what: 'the worker\'s spine: saving, migrations, the tick, its pace, hidden settings, the room\'s own row',
-    files: [f('server/src', 'persistence|migrations|tick|tickpace|cadence|data|grids|heapburn|hidden|daybook|storagemarks|roomrow')],
+    files: [f('server/src', 'persistence|migrations|tick|tickpace|cadence|data|grids|heapburn|hidden|daybook|storagemarks|roomrow|health')],   /* v2.3.5601: health (card OPS) */
     words: ['persistence', 'migration', 'tick', 'storage', 'save', 'hidden', 'cost-guard', 'costguard', 'daybook', 'roomrow'],
     traps: ['server-core'],
     doors: [
