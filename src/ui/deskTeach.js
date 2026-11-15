@@ -22,6 +22,7 @@ import { onComputer } from '../game/deskWords.js';
 import { mcSwipes } from '../game/manualCombat.js';   /* v2.3.4396: the right click ARMS a sword's or a bow's special */
 import { worldReady } from './loadingGate.js';
 import { questRoutePoint } from '../game/questRoute.js';
+import { sw } from '../game/switches.js';   /* v2.3.5306: the page's one reader (card T) */
 import { HARVEST_TIMES, ATTACK_TIMES, loadTeach, saveTeach, harvestCoachWanted, gestureWanted, killedAny, edgeArrowSpot, overAny } from '../game/deskTeachState.js';
 
 const TICK_MS = 200;
@@ -40,7 +41,7 @@ let _toastUntil = 0, _tipsUntil = 0, _encUntil = 0, _nextEnc = 0, _lastMouse = n
 const qa = { key: false, toast: '', tips: false, label: '', rings: 0, edge: false, cursor: false, harvest: 0, attack: 0, node: null };
 
 function offByUrl() {
-  try { return new URLSearchParams(window.location.search).get('guidearrow') === '0'; } catch (e) { return false; }
+  return sw('guidearrow');   /* v2.3.5306: the one reader (was URLSearchParams .get('guidearrow') === '0') */
 }
 function calm() {
   try { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) { return false; }
