@@ -317,6 +317,27 @@ If one is not acceptable:
 
 Names are shown here too, but this page does not change a name.
 
+## The feedback board: taking a post down, and the crash feed (v2.3.5593)
+
+Anyone could post to the Feedback board (More → Feedback → Browse)
+under any name, and nobody could take a post down (the red team, 2026-11-14:
+`docs/specs/feedback-guard.md`). A post's name is now cleaned like a chat line
+and cut to 24 letters, and you can remove a post. A button for it in the Test
+panel is still to come; until then, a post's id is in the board's list
+(`/api/feedback/list?sort=new`, each ticket's `id`), and:
+```
+curl -X DELETE -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/feedback/ticket?id=THE_ID"
+```
+It answers `{"ok":true,"removed":"THE_ID"}`; without your key, a plain 404.
+
+The crash feed (what players' phones report when the game breaks) is yours
+only now: it held each phone's browser name and lines naming characters.
+```
+curl -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/feedback/crashes?limit=50"
+```
+On your own machine the QA tools send the harness's key for you
+(`tools/qa/qa-telemetry.mjs` reads `BT_ADMIN_KEY`, else the harness's).
+
 ## Accuracy: how often each weapon hits (v2.3.4545)
 
 The game counts every basic attack (a sword swing, an arrow, a staff bolt)

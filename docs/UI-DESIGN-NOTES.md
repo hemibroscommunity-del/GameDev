@@ -1218,8 +1218,9 @@ Screens: lazy-cantopen
 - **Close puts the window away too** (its own close, so the game is not left "busy" behind a window with no ✕). Opened again, it tries again.
 - **One try more first, unseen.** A dropped connection is the other way a window's code can fail; it is tried once more, a moment later, before the card shows.
 - **The middle of the play column**, in the game's dark-and-gold card, with Reload (`data-enter`) and Close (`data-esc`) for a computer's keys.
+- **A window that breaks while it is open uses the same card** (v2.3.5593, the red team's RT-3 S3): "This window hit a problem" over "Close it and open it again, or reload the game." Before it, one bad value in one window (a feedback post whose name was not words) blanked every screen of the game, because nothing caught the error. Now the window's guard catches it, the card shows (`data-lazy-cantopen="threw"`), the game plays on, and the error goes to the crash feed. Opened again, the window is drawn afresh. The words differ from the update card's because the fix differs: here closing and opening again is usually enough.
 
-Sources: src/ui/lazyPanel.js, src/ui/lazyPanels.js, docs/specs/worker-code-diet.md, tools/qa/mp/mp-lazyfail.mjs
+Sources: src/ui/lazyPanel.js, src/ui/lazyPanels.js, docs/specs/worker-code-diet.md, docs/specs/feedback-guard.md, tools/qa/mp/mp-lazyfail.mjs, tools/qa/mp/mp-panelguard.mjs
 
 ## The Town Hall's board and the map pins
 Screens: building-townhall, building-townhall-page, building-townhall-action

@@ -9,8 +9,53 @@
 //  Topics: arena, guild, combat, pets, crafting, marketplace, etc.
 // ═══════════════════════════════════════
 
+import { cleanChatText } from './chatguard.js';   /* v2.3.5593: the chat lanes' own cleaning, for a name */
+
 /* v2.3.2820: the longest report the board keeps (see submit). */
 const FEEDBACK_TEXT_MAX = 500;
+
+/* ═══ v2.3.5593: THE BOARD'S WORDS ARE WORDS, AND ITS OWNER CAN TAKE ONE DOWN ═══
+ * The red team (2026-11-14, RT-3 S3 and P1, docs/security/rt3-findings.md):
+ * /api/feedback reaches this object straight from the worker's router --
+ * before the origin lock, outside the room's wire door -- and every field was
+ * kept as it came.  Proven on the node room: a name of 5,000 characters, and
+ * a name that was an OBJECT, were kept and served back by /list; the panel
+ * prints the name as React text, React THROWS on an object, and the page had
+ * no error boundary, so one post blanked the game for whoever opened
+ * Feedback, and nobody could take it down.  And /crashes handed every crash
+ * report (a browser's User-Agent, log lines naming a character) to anyone.
+ * Now:
+ *   - a name and a topic are strings, cleaned as a chat line is
+ *     (chatguard.js cleanChatText: no hidden or direction characters, spaces
+ *     collapsed) and cut to FEEDBACK_NAME_MAX / FEEDBACK_TOPIC_MAX; anything
+ *     else, or nothing left, is refused;
+ *   - what the board SERVES is cleaned the same way (sanitize), so a ticket
+ *     kept before this version reads as words too;
+ *   - DELETE /ticket?id= removes one, and GET /crashes reads the crash feed,
+ *     both behind the owner's key (ADMIN_KEY, `Authorization: Bearer`, as
+ *     admin.js), a plain 404 without it (fail closed, as every admin route).
+ * No live flag: this object cannot read the room's flags, and each change
+ * only refuses a bad value or closes a door to strangers; a switch would
+ * reopen the hole.  The page's half: FeedbackPanel prints String(), and
+ * lazyPanel.js's guard catches a window that throws. */
+export const FEEDBACK_NAME_MAX = 24;
+export const FEEDBACK_TOPIC_MAX = 32;
+/* the line's control characters, which the lanes strip before
+   cleanChatText; a name keeps none, a line break least of all */
+const CONTROL = /[\x00-\x1f\x7f]/g;
+/** A name or a topic as the board keeps it: a string, cleaned and cut to
+ *  `max` characters (whole ones), or '' when nothing is left. */
+export function feedbackWords(v, max) {
+  if (typeof v !== 'string') return '';
+  const s = cleanChatText(v.replace(CONTROL, ' '));
+  return Array.from(s).slice(0, max).join('').trim();
+}
+/* SHA-256 of a key, hex: the owner's key compared by its hash, as admin.js's
+   _adminAuth compares it */
+async function keyHash(k) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('btv1|' + k));
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
 
 export class Feedback {
   constructor(state, env) { this.state = state; this.env = env; }
@@ -58,10 +103,18 @@ export class Feedback {
       }
 
       // GET /crashes?limit=50 — recent crash reports, newest first
+      // v2.3.5593: the owner's (and the QA tools') only: a plain 404 without the key
       if (request.method === 'GET' && path.startsWith('/crashes')) {
+        if (!(await this._ownerKey(request))) return new Response(JSON.stringify({ ok: false, error: 'Not found' }), { status: 404, headers: H });
         const limit = Math.min(200, parseInt(url.searchParams.get('limit')) || 50);
         const all = JSON.parse(await this.state.storage.get('_crashlog') || '[]');
         return new Response(JSON.stringify({ ok: true, count: all.length, reports: all.slice(-limit).reverse() }), { headers: H });
+      }
+
+      // DELETE /ticket?id= — v2.3.5593: the owner takes a ticket down (a plain 404 without the key)
+      if (request.method === 'DELETE' && path.startsWith('/ticket')) {
+        if (!(await this._ownerKey(request))) return new Response(JSON.stringify({ ok: false, error: 'Not found' }), { status: 404, headers: H });
+        return new Response(JSON.stringify(await this.removeTicket(url.searchParams.get('id'))), { headers: H });
       }
 
       return new Response(JSON.stringify({ ok: false, error: 'Not found' }), { status: 404, headers: H });
@@ -104,8 +157,12 @@ export class Feedback {
   }
 
   async submit(data) {
-    const { playerId, playerName, category, topic, text } = data;
-    if (!playerId || !playerName || !category || !topic || !text) return { ok: false, error: 'Missing fields' };
+    const { playerId, category, text } = data || {};
+    /* v2.3.5593: the name and the topic are words, cleaned and cut; an object,
+       a number or a name of nothing but hidden characters is refused */
+    const playerName = feedbackWords(data && data.playerName, FEEDBACK_NAME_MAX);
+    const topic = feedbackWords(data && data.topic, FEEDBACK_TOPIC_MAX);
+    if (typeof playerId !== 'string' || !playerId || !playerName || !category || !topic || !text) return { ok: false, error: 'Missing fields' };
     /* v2.3.2820: 100 -> 500.  The mobile panel -- the only one a player can
        reach -- has offered a 500-character box since v2.3.1232, and a real
        bug report ("I was in the dunes, tapped X, and Y happened") does not
@@ -217,7 +274,43 @@ export class Feedback {
     return { ok: true, stats };
   }
 
+  /* v2.3.5593: what the board serves is words, whatever was kept: a ticket
+     from before this version may hold an object for a name (a page prints
+     it as React text, and React throws on one) */
   sanitize(t) {
-    return { id: t.id, playerName: t.playerName, category: t.category, topic: t.topic, text: t.text, up: t.up, down: t.down, ts: t.ts };
+    return { id: t.id, playerName: feedbackWords(t.playerName, FEEDBACK_NAME_MAX) || 'Bro',
+      category: typeof t.category === 'string' ? t.category : 'bug', topic: feedbackWords(t.topic, FEEDBACK_TOPIC_MAX),
+      text: typeof t.text === 'string' ? t.text.slice(0, FEEDBACK_TEXT_MAX) : '',
+      up: Number(t.up) || 0, down: Number(t.down) || 0, ts: Number(t.ts) || 0 };
+  }
+
+  /* v2.3.5593: the owner's key, as admin.js _adminAuth reads it: no secret
+     set, no key, or the wrong one is false (the route answers a plain 404) */
+  async _ownerKey(request) {
+    const key = this.env && this.env.ADMIN_KEY;
+    if (!key || typeof key !== 'string') return false;
+    const auth = request.headers.get('Authorization') || '';
+    const supplied = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+    if (!supplied) return false;
+    const [a, b] = await Promise.all([keyHash(supplied), keyHash(key)]);
+    return a === b;
+  }
+
+  /* v2.3.5593: one ticket taken down by the owner, and its topic's count with it */
+  async removeTicket(id) {
+    if (typeof id !== 'string' || !id || id.length > 64) return { ok: false, error: 'No such ticket' };
+    const raw = await this.state.storage.get('ticket:' + id);
+    if (!raw) return { ok: false, error: 'No such ticket' };
+    let t = null;
+    try { t = JSON.parse(raw); } catch { t = null; }
+    await this.state.storage.delete('ticket:' + id);
+    if (t) {
+      const stats = JSON.parse(await this.state.storage.get('_stats') || '{}');
+      const topicKey = t.topic + ':' + t.category;
+      if (Object.prototype.hasOwnProperty.call(stats, topicKey)) stats[topicKey] = Math.max(0, (stats[topicKey] || 0) - 1);
+      stats._total = Math.max(0, (stats._total || 0) - 1);
+      await this.state.storage.put('_stats', JSON.stringify(stats));
+    }
+    return { ok: true, removed: id };
   }
 }
