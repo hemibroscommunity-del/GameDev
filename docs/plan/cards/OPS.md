@@ -23,15 +23,17 @@ the way `tools/qa/load/load.mjs` makes one; the probes in
 ## PRs, in order
 
 1. **(tag 5600) This card.** Files: `docs/plan/cards/OPS.md`,
-   `docs/plan/status/OPS.md`, `tools/dev/tag-blocks.json` (the block
-   `"OPS"`, 5600 to 5619; `nextBlock` 5620).
+   `docs/plan/status/OPS.md`. (Card P's #1868 writes the block `"OPS"` in
+   `tools/dev/tag-blocks.json`, with RT's and MOD's.)
 2. **(tag 5601) The room's own health, and who a rollback shut out** (F3,
    F4).
    - Files: `server/src/index.js` (the outer worker's route; the room's
      internal answer beside `/_room_count`), new `server/src/health.js`,
-     `server/src/persistence.js` (one count where the join refuses a newer
-     save), `server/src/wire/http.js` (two rows: a shared list, card R's PR 7
-     adds one too), the switch table, new `server/test/room-health.test.mjs`.
+     `server/src/roomrow.js` (each kind of refused save's last time: the
+     counts were already kept), `server/src/wire/http.js` (two rows: a
+     shared list, card R's PR 7 adds one too), the switch table, the system
+     map and budgets table (the `ops` system), new
+     `server/test/room-health.test.mjs`. **#1880.**
    - `GET /health/room`: the outer worker asks the room (3 s timeout) for
      its player count, the age of its last tick, whether its last save went
      through, and the newer-save refusals since it started. 200 with those
@@ -50,7 +52,33 @@ the way `tools/qa/load/load.mjs` makes one; the probes in
    - **Done when:** the suite covers 200, a stalled tick (503), a failed
      save (503), a refusal counted, the switch; on the local worker a probe
      reads 200 with a player in, and 503 once the tick is stopped.
-3. **(tag 5602) A waiting crowd knocks more slowly** (F2).
+3. **(tag 5602) The Test panel sets a switch** (the owner never runs a
+   terminal command: CLAUDE.md §1; F4, F6).
+   - Files: `src/ui/panels/DevPanel.jsx` (its flags section only), a
+     panel file of its own if the row is long, `docs/OPERATIONS.md` (the
+     rollback's step 2 uses the row), `docs/UI-DESIGN-NOTES.md` if the
+     Test panel has a section.
+   - A row under "Live flags": a switch's name (lower case; the owner's
+     usual ones offered with their words: `newersave`, `max_players`,
+     `ip_sockets`, `ip_joins_min`, `roomrewind`, ...), a value (on, off, or
+     a number), a confirm that names what it does, then the same
+     `call('/flags', { name, value })` the panel's taps already make; the
+     list shown again after. A name the server refuses is shown in words.
+   - Page only: no server change, no deploy. Card R's #1873 (a save-shape
+     bump) waits for it.
+   - **Done when:** a local worker and the built page: `newersave` set off
+     and cleared, `max_players` set to 2 and cleared, a bad name refused
+     in words; precheck green.
+4. **(tag 5603) The Test panel looks after the feedback board** (RT-3's
+   #1878 routes).
+   - Files: the same panel file.
+   - "Take down a feedback post" (a ticket id, a confirm, `DELETE
+     /api/feedback/ticket?id=`), and "Sweep the feedback board" (a confirm,
+     `DELETE /api/feedback/sweep`, the reply's numbers in words), each with
+     the owner's admin key as `Authorization: Bearer`, the way the panel's
+     admin calls already send it. A 404 reads "this server can't yet".
+   - Page only.
+5. **(tag 5604) A waiting crowd knocks more slowly** (F2).
    - Files: `server/src/join.js` (`_roomFullRefusal`), new
      `server/src/rfspread.js`, the switch table, new
      `server/test/rf-spread.test.mjs`.
@@ -62,7 +90,7 @@ the way `tools/qa/load/load.mjs` makes one; the probes in
    - **Done when:** the suite holds 5000 under 40 a second, the scale above
      it, the 30 s ceiling, the switch; `rt2-probes/refusalstorm.mjs` shows
      fewer knocks a second at the same crowd.
-4. **(tag 5603) A seat held for the player who had it** (F1).
+6. **(tag 5605) A seat held for the player who had it** (F1).
    - Files: `server/src/index.js` (the gate in `fetch()`), `server/src/join.js`
      (the refusal at the join), `server/src/leave.js` (a JOINED session's
      id held on leaving), new `server/src/seathold.js`,
@@ -83,7 +111,7 @@ the way `tools/qa/load/load.mjs` makes one; the probes in
      seated player through a restart and a 2 s blip, against 30 waiting;
      off, today's numbers; the suite holds the cap, the expiry, the restart,
      the switch.
-5. **(tag 5604) The owner's reads, a page at a time** (F9).
+7. **(tag 5606) The owner's reads, a page at a time** (F9).
    - Files: `server/src/botfp.js` (`_botfpFlaggedList`, `?flagged=1`),
      `server/src/charwatch.js` (`/dev/looks`), `server/src/devtools.js`
      (`/dev/apinfo`), `server/src/admin.js` and `server/src/liveops.js` (the
@@ -96,7 +124,7 @@ the way `tools/qa/load/load.mjs` makes one; the probes in
      this PR starts after it is merged.
    - **Done when:** each suite puts 1,000 rows and reads them in pages; no
      read lists more than 200.
-6. **(tag 5605) The boards: kept a minute, swept, and saying less** (F8,
+8. **(tag 5607) The boards: kept a minute, swept, and saying less** (F8,
    RT-3's P1).
    - Files: `server/src/leaderboard.js`, its suite (or a new one).
    - Each board's answer kept in the object's memory for 60 s (one list a
@@ -110,7 +138,7 @@ the way `tools/qa/load/load.mjs` makes one; the probes in
    - **Done when:** `rt2-probes/boardtop.mjs` at 20,000 rows reads once a
      minute, not once a request; the suite holds the minute, the sweep, the
      fields gone, the Time board still filled, the switch.
-7. **(tag 5606) The room's public reads, kept and paced** (RT-1's N8; plan
+9. **(tag 5608) The room's public reads, kept and paced** (RT-1's N8; plan
    step 11.5).
    - Files: `server/src/market.js` (`/api/market/orders`),
      `server/src/store.js` (`/api/store/browse`), `server/src/gladiator.js`
@@ -124,7 +152,7 @@ the way `tools/qa/load/load.mjs` makes one; the probes in
    - **Done when:** the suite holds the kept answer, its expiry, the pace,
      the switch; RT-1's flood (400 reads from one client) wakes the room's
      read at most once each 3 s.
-8. **(tag 5607) A guest's join writes only what is worth keeping** (RT-1's
+10. **(tag 5609) A guest's join writes only what is worth keeping** (RT-1's
    N6).
    - Files: `server/src/join.js`, `server/src/persistence.js`,
      `server/src/petbook.js`, `server/src/cadence.js`,
@@ -144,19 +172,19 @@ the way `tools/qa/load/load.mjs` makes one; the probes in
   row in its PR); every new behaviour a lower-case kill switch with its
   switch-table row (`on` its merge day); writes cost money (`seathold`'s
   write is OFF until the owner's word; nothing else here writes more, and
-  PR 8 writes less); one write (a payment and its stamp: PR 8 writes a
+  PR 10 writes less); one write (a payment and its stamp: PR 10 writes a
   guest's first record in the same synchronous run as the thing worth
   keeping).
 - **No caps.** Nothing here is a new path the phone takes: `/health/room`
   is for monitors, `retryMs` is already obeyed, the seat hold answers with
   the `room_full` every phone reads, the paging is the owner's panel, the
   boards and public reads keep their shapes. If a reply's shape changes for
-  the Test panel (PR 5), the panel reads both shapes.
-- **Every `server/test/` file deploys** (TRAPS §277): PRs 2, 3, 4, 6, 7 and
-  8 go in a sitting's batch. A check that only reads source goes in
+  the Test panel (PR 7), the panel reads both shapes.
+- **Every `server/test/` file deploys** (TRAPS §277): PRs 2, 5, 6, 8, 9 and
+  10 go in a sitting's batch; PRs 3 and 4 are page only. A check that only reads source goes in
   `tools/guards/` instead.
-- **What a player sees:** PR 4 (who gets in after a restart) and PR 6 (the
-  Time board) change what a player meets. PR 4 is built OFF; PR 6 keeps the
+- **What a player sees:** PR 6 (who gets in after a restart) and PR 8 (the
+  Time board) change what a player meets. PR 6 is built OFF; PR 8 keeps the
   Time board as it is. Anything more is the owner's (TRAPS §305).
 - **The owner's own lists** (no code, the findings' "Only the owner can
   do"): an uptime monitor with a phone alert (on `/health/room` once PR 2

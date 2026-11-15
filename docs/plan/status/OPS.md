@@ -14,7 +14,7 @@ state: ready
 
 ## Next
 
-- PR 3 (5602): `rf_spread`.
+- PR 3 (5602): the Test panel sets a switch (page only).
 
 ## Found
 
@@ -29,6 +29,6 @@ state: ready
 
 ## Needs
 
-- PR 4 (`seathold`): built OFF; on, at most one small write a minute while
+- PR 6 (`seathold`): built OFF; on, at most one small write a minute while
   the roster changes (~1,440 a day at most): the owner's word to turn it on.
-- PR 5 starts after card R's PR 7 (`admin.js`, `liveops.js`) is merged.
+- PR 7 starts after card R's PR 7 (`admin.js`, `liveops.js`) is merged.
