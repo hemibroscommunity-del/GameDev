@@ -1,5 +1,5 @@
 card: OPS
-branch: claude/plan-ops-3-setswitch (one line: #1874 > #1880 > #1886 > #1908 > #1891 > #1872 > #1893 > #1905)
+branch: claude/red-team-rt2-rollback-docs (one line: #1874 > #1880 > #1886 > #1908 > #1891 > #1872 > #1893 > #1905)
 prs: #1874 (5600), #1880 (5601), #1886 (5604), #1908 (5606), #1891 (5602), #1872 (5588), #1893 (5603), #1905 (5605): ready, in that order; #1871 (5587) ready
 state: ready
 
