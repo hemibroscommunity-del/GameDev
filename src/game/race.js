@@ -29,6 +29,7 @@
 import { cue } from '@/game/eventSounds.js';
 import { noteRaceLost } from '@/data/raceTally.js';   /* v2.3.3583: his next line knows he beat you (no imports of its own) */
 import { resetOn } from '@/game/resetOn.js';   /* v2.3.5204: a race the worker forgot at a join ends here too (card L) */
+import { act } from '@/game/actions.js';   /* v2.3.5188: the page's requests leave through the action door (card K PR 7) */
 
 const LIL = 'Lil Bro';
 /* how long the phone waits for the worker to answer race_start before it
@@ -74,7 +75,7 @@ export function raceHeld(S, now) {
 export function requestRace(S) {
   if (!S || !S.channel || raceLive(S)) return false;
   S._race = { phase: 'asked', at: Date.now() };
-  try { S.channel.send({ type: 'race_start', payload: {} }); } catch (e) { S._race = null; return false; }
+  try { act('race_start', {}); } catch (e) { S._race = null; return false; }   /* v2.3.5188: through the action door (actions.js) */
   raceBus.emit();
   return true;
 }
