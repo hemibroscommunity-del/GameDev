@@ -19,7 +19,8 @@ state: ready
 
 ## Next
 
-- PR 3 (5602): the Test panel sets a switch (page only).
+- PR 7 (5606): the owner's reads, a page at a time (after card R's PR 7);
+  else PR 8 (5607): the boards.
 
 ## Found
 
