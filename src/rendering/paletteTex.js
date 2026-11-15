@@ -375,12 +375,13 @@ const FRAG_CLIP = FRAG.replace('    finalColor = outColor * vColor;', '    if (o
 export const PAL_HAIR_CLIP_BATCHER = 'bt-palette-hairclip';
 const FRAG_HAIR_CLIP = FRAG.replace('    finalColor = outColor * vColor;', '    if (outColor.a * outColor.r < 0.5) discard;\n    finalColor = outColor * vColor;');
 const _clipShaders = {};
-function clipBatchShader(frag = FRAG_CLIP, name = 'bt-palette-clip') {
+function clipBatchShader(prog = { fragment: FRAG_CLIP, name: 'bt-palette-clip' }) {
+  const name = prog.name;
   if (_clipShaders[name]) return _clipShaders[name];
   const units = new Int32Array(SLOTS);
   for (let i = 0; i < SLOTS; i++) units[i] = i;
   _clipShaders[name] = new Shader({
-    glProgram: GlProgram.from({ vertex: VERT, fragment: frag, name }),
+    glProgram: GlProgram.from({ vertex: VERT, fragment: prog.fragment, name }),
     resources: {
       paletteSamplers: new UniformGroup({
         uTextures: { value: units, type: 'i32', size: SLOTS },
@@ -403,7 +404,7 @@ class PaletteHairClipBatcher extends PaletteBatcher {
   constructor() {
     super();
     this.name = PAL_HAIR_CLIP_BATCHER;
-    this.shader = clipBatchShader(FRAG_HAIR_CLIP, 'bt-palette-hairclip');
+    this.shader = clipBatchShader({ fragment: FRAG_HAIR_CLIP, name: 'bt-palette-hairclip' });
   }
 }
 PaletteHairClipBatcher.extension = { type: [ExtensionType.Batcher], name: PAL_HAIR_CLIP_BATCHER };
