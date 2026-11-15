@@ -11,6 +11,7 @@
 
 import { cleanChatText } from './chatguard.js';   /* v2.3.5593: the chat lanes' own cleaning, for a name */
 import { requestIp, ROOMS } from './flood.js';    /* v2.3.5593: the caller's address (Cloudflare's edge), and the room the flags live in */
+import { nameReadsAsStaff } from './reservednames.js';   /* v2.3.5594: a name that reads as the game or its staff */
 
 /* v2.3.2820: the longest report the board keeps (see submit). */
 const FEEDBACK_TEXT_MAX = 500;
@@ -92,6 +93,7 @@ const FEEDBACK_WORDS = Object.freeze({
   paced: 'Too many reports from here for now. Try again in a while.',
   closed: 'The feedback board is closed for now.',
   oneVote: 'One vote from here for this report.',
+  staffName: 'That name reads as the game or its team. Post under your own.',
 });
 /* the line's control characters, which the lanes strip before
    cleanChatText; a name keeps none, a line break least of all */
@@ -248,6 +250,10 @@ export class Feedback {
     const playerName = feedbackWords(data && data.playerName, FEEDBACK_NAME_MAX);
     const topic = feedbackWords(data && data.topic, FEEDBACK_TOPIC_MAX);
     if (typeof playerId !== 'string' || !playerId || !playerName || !category || !topic || !text) return { ok: false, error: 'Missing fields' };
+    /* v2.3.5594: a name that reads as the game, its team or its staff is
+       refused, never rewritten (RT-3 S2/S3: 20 of 20 posts as "BroTown Team
+       (official) ... whisper your Login Key" were taken) */
+    if (nameReadsAsStaff(playerName)) return { ok: false, error: FEEDBACK_WORDS.staffName };
     /* v2.3.2820: 100 -> 500.  The mobile panel -- the only one a player can
        reach -- has offered a 500-character box since v2.3.1232, and a real
        bug report ("I was in the dunes, tapped X, and Y happened") does not

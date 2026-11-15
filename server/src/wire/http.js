@@ -203,7 +203,7 @@ export const WIRE_HTTP = [
     trust: { playerId: 'claim', playerName: 'words', category: 'request', topic: 'words', text: 'words' },
     absent: 'refused: any of the five missing is \'Missing fields\'; refused: a body that is not JSON is a 500',
     bad: ['refused', 'clamped', 'taken'], answer: 'http', flag: 'feedback',
-    note: ['v2.3.5593: a name and a topic that are not strings, or nothing once cleaned, are refused as missing; each is cut to 24 and 32 (feedback.js feedbackWords); paced in memory by address, claimed id and the whole game (FEEDBACK_PACE)'] },
+    note: ['v2.3.5593: a name and a topic that are not strings, or nothing once cleaned, are refused as missing; each is cut to 24 and 32 (feedback.js feedbackWords); paced in memory by address, claimed id and the whole game (FEEDBACK_PACE)', 'v2.3.5594: a name that reads as the game, its team or its staff is refused (reservednames.js nameReadsAsStaff)'] },
   { name: 'http:/api/feedback/list', dir: 'in', at: 'feedback.js list', wayIn: 'http', envelope: 'http',
     phase: ['none checked'], mayStart: 'anyone', doesWhat: ['reads'], reqId: 'harmless',
     trust: { sort: 'request', topic: 'request', category: 'request', limit: 'request', offset: 'request' },
