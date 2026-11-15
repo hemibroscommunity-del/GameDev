@@ -158,7 +158,9 @@ the way `tools/qa/load/load.mjs` makes one; the probes in
      never wakes the room: nothing to do.)
    - An answer to the same read kept for 3 s; past 10 reads a second from
      one address, a 429 with `Retry-After`. Nothing a player owns changes
-     because of it (reads only).
+     because of it (reads only). (As built: the reads counted are those
+     that wake the room; a kept answer is never refused, and a write on the
+     surface drops what was kept for it.)
    - Kill switch `publicreads: false`.
    - **Done when:** the suite holds the kept answer, its expiry, the pace,
      the switch; RT-1's flood (400 reads from one client) wakes the room's
