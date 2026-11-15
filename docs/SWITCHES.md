@@ -225,6 +225,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `bagonesum` | worker | switch | v2.3.4900 | 2026-11-12 | false | logic |  | no | The bag door's one sum is off: every bag road back on its own sum. |
 | `daybook` | worker | switch | v2.3.5080 | 2026-11-14 | false | logic |  | no | The day's book adds, writes and prunes nothing; what is stored stays and its reader says it is off. |
 | `disable_bigbags` | worker | switch | v2.3.4224 | 2026-11-04 | true | logic |  | no | Thrown, the weapon and gear stashes go back to 8 and 32. |
+| `feedback` | worker | switch | v2.3.5593 | 2026-11-15 | false | logic |  | no | The feedback board takes no posts, votes or crash reports (reading stays): the owner's lever in a flood (read by the Feedback object from the room's flags, once a minute). |
 | `report` | worker | switch | v2.3.5122 | 2026-11-14 | false | logic |  | no | Un-advertises the field report, so no phone sends its smoothness, and drops any that still comes. |
 | `reportlanes` | worker | switch | v2.3.5221 | 2026-11-14 | false | logic | `report`, `reportspeed` | no | The field report no longer takes a lane but full, the governor's rung or the self-test (caps.report back to 2). |
 | `reportspeed` | worker | switch | v2.3.5127 | 2026-11-14 | false | logic | `report` | no | The Speed test's card is no longer taken (caps.report back to 1); the smoothness reports carry on. |
@@ -402,7 +403,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?groundbg` | page | switch | v2.3.3452 | 2026-10-18 | =1 | chip |  | no | The black under the world's ground is drawn every frame, as it was. |
 | `groundkeep` | both | switch | v2.3.3775 | 2026-10-29 | off_groundkeep: true; ?groundkeep=0, off, false | chip |  | no | The world's ground is rebuilt on a return, not kept, as before. |
 | `?iconretry` | page | switch | v2.3.4431 | 2026-11-10 | =0 | logic | `?retrylooks` | no | Icons that failed are not asked for again. |
-| `?ladderpass` | page | switch | v2.3.5229 | 2026-11-15 | =0, off, false | chip | `govern` | no | The passes' rungs are off: the metal shines, the shadows are drawn and the sea moves, whatever the rung. |
+| `?ladderpass` | page | switch | v2.3.5229 | 2026-11-14 | =0, off, false | chip | `govern` | no | The passes' rungs are off: the metal shines, the shadows are drawn and the sea moves, whatever the rung. |
 | `?layerpush` | page | switch | v2.3.3449 | 2026-10-18 | present | chip |  | no | Every layer's uniforms are pushed as Pixi does, to compare. |
 | `?legslook` | page | switch | v2.3.4450 | 2026-11-10 | =0, off, false | chip | `lookpalette` | no | Legs under greaves are baked the old way. |
 | `?lightfx` | page | switch | v2.3.2710 | 2026-09-23 (v2.3.2711) | =1, =0, on or off | chip |  | no | Turns the light effects on or off. |
@@ -507,7 +508,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `hardenkeep` | worker | switch | v2.3.3529 | 2026-10-20 | false | logic |  | no | A failed hardening loses its level again (the old band). |
 | `hardenmats` | worker | switch | v2.3.3139 | 2026-10-07 | false | logic |  | no | Hardening asks no material and charges the old x4 gold. |
 | `hardenwoodskill` | worker | switch | v2.3.3481 | 2026-10-19 | false | logic |  | no | Bows and staffs are gated on Blacksmithing again for hardening. |
-| `harvestdoor` | worker | switch | v2.3.5214 | 2026-11-15 | false | logic |  | no | A gather record without its start time is written again, as the line before the harvest door did (no start builds one today); the sweep could never end such a record. |
+| `harvestdoor` | worker | switch | v2.3.5214 | 2026-11-14 | false | logic |  | no | A gather record without its start time is written again, as the line before the harvest door did (no start builds one today); the sweep could never end such a record. |
 | `harvestproof` | worker | switch | v2.3.3322 | 2026-10-17 | false | logic |  | no | The old permissive strike and the old perfect, at once. |
 | `hitladder` | worker | switch | v2.3.3229 | 2026-10-14 | false | logic |  | no | The harvest's hit dice go back to 1..level, cap un-advertised. |
 | `meals` | worker | switch | v2.3.3130 | 2026-10-07 | false | logic |  | no | Only the old instant recipes cook; dishes in bags still eat. |
@@ -610,7 +611,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `clearxp` | worker | switch | v2.3.3565 | 2026-10-22 | false | logic |  | no | A dungeon clear's XP goes to the old counter only. |
 | `disable_dungeons` | worker | switch | v2.3.1150 | 2026-07-03 | true | logic |  | no | Thrown, every dungeon start is refused with a message. |
 | `dungeonbag` | worker | switch | v2.3.3556 | 2026-10-22 | false | logic |  | no | A dungeon death drops its pile and empties the bag, as before. |
-| `dungeondoor` | worker | switch | v2.3.5215 | 2026-11-15 | false | logic |  | no | A dungeon run's end and its boss can be written again, as the lines before the dungeon door could have (the tick asks neither twice today). |
+| `dungeondoor` | worker | switch | v2.3.5215 | 2026-11-14 | false | logic |  | no | A dungeon run's end and its boss can be written again, as the lines before the dungeon door could have (the tick asks neither twice today). |
 | `dungeonlive` | worker | switch | v2.3.4423 | 2026-11-10 | false | logic |  | no | Any `dungeon:` id on its shape is taken again, live run or not. |
 | `eventplace` | worker | switch | v2.3.3245 | 2026-10-14 | false | logic |  | no | Every event goes to everyone again, from the next tick. |
 | `fightlock` | worker | switch | v2.3.3183 | 2026-10-12 | false | logic |  | no | The bag is no longer locked in a fight on the roads the fight lock's table names `fightlock`. |

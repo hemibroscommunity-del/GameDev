@@ -317,6 +317,35 @@ If one is not acceptable:
 
 Names are shown here too, but this page does not change a name.
 
+## The feedback board: taking a post down, and the crash feed (v2.3.5593)
+
+Anyone could post to the Feedback board (More → Feedback → Browse) under any
+name, flood it, and nobody could take a post down (the red team, 2026-11-14:
+`docs/specs/feedback-guard.md`). Now a post's name is cleaned like a chat
+line and cut to 24 letters, posts are limited per internet line and for the
+whole game, and you have three levers:
+
+- **Take one post down**, **clear out oversized posts**, and **read the crash
+  feed**: your way is the Test panel's buttons (coming from card OPS, beside
+  the drawings' Remove). Nothing to type.
+- **Close the board in a flood**: the live switch `feedback` set to `false`
+  (the Test panel's live switches) stops new posts, votes and crash reports
+  within a minute; the board can still be read. Set it back to `true` to open
+  it.
+
+For a session that holds the admin key (never the owner by hand), the same
+three by command:
+```
+curl -X DELETE -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/feedback/ticket?id=THE_ID"
+curl -X DELETE -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/feedback/sweep"
+curl -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/feedback/crashes?limit=50"
+```
+A post's id is each ticket's `id` in `/api/feedback/list?sort=new`. Without
+the key each answers a plain 404. The sweep takes every post over 4 KB and
+the old pace rows the board no longer reads. On a local machine the QA tools
+send the harness's key for the crash feed (`tools/qa/qa-telemetry.mjs` reads
+`BT_ADMIN_KEY`, else the harness's).
+
 ## Accuracy: how often each weapon hits (v2.3.4545)
 
 The game counts every basic attack (a sword swing, an arrow, a staff bolt)

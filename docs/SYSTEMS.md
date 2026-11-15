@@ -107,7 +107,7 @@ Telling a person from a script: bot signals, fingerprints, claims that are bound
 The live flags, the admin and dev levers, test mode, feedback.
 
 - **Files**: `server/src/`: liveops, admin, devtools, testmode, feedback
-- **Files**: `src/game/`: testMode
+- **Files**: `src/game/`: testMode, switches
 - **Files**: `server/src/`: restore
 - **Doors**: `flagNameOk` in `server/src/liveops.js` (the names a live flag (a kill switch) may take); `_testMode` in `server/src/testmode.js` (the one question an honesty check asks)
 - **Switches**: [its rows in the switch table](SWITCHES.md#liveops)
@@ -185,7 +185,7 @@ Quests, achievements, the codex, pets' book, points.
 
 Parties, clans, guilds, friends, chat, emotes, duels, the arena, races, boards.
 
-- **Files**: `server/src/`: party, clanparty, clans, guilds, alliance, friends, chatlanes, chatmod, chatguard, silence, emotes, boards, arena, gladiator, duel, spar, race, leaderboard, power, statboards
+- **Files**: `server/src/`: party, clanparty, clans, guilds, alliance, friends, chatlanes, chatmod, chatguard, reservednames, silence, emotes, boards, arena, gladiator, duel, spar, race, leaderboard, power, statboards
 - **Files**: `src/game/`: alliance, chat, chatChannel, chatColor, chatMute, emotes, emoteMoves, gesturePose, friendErrors, duelLock, duelPending, partyChip, partyEq, partyMarks, partyRows, peerDot, race, spar, sparTargets, bubbleSkins, boardBumps, dictation
 - **Doors**: none named yet
 - **Switches**: [its rows in the switch table](SWITCHES.md#social)

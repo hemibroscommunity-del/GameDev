@@ -96,7 +96,7 @@ export const SYSTEMS = Object.freeze({
   },
   liveops: {
     what: 'the live flags, the admin and dev levers, test mode, feedback',
-    files: [f('server/src', 'liveops|admin|devtools|testmode|feedback'), f('src/game', 'testMode'),
+    files: [f('server/src', 'liveops|admin|devtools|testmode|feedback'), f('src/game', 'testMode|switches'),
       f('server/src', 'restore'),   /* v2.3.5288 (card R): the room's way back, the owner's lever */
     ],
     words: ['liveops', 'admin', 'devtools', 'test-mode', 'testmode', 'feedback', 'flags'],
@@ -176,8 +176,8 @@ export const SYSTEMS = Object.freeze({
   social: {
     what: 'parties, clans, guilds, friends, chat, emotes, duels, the arena, races, boards',
     files: [
-      /* v2.3.5480 (card PW): + power, the boards' power index; v2.3.5484: + statboards; v2.3.5621: + silence (card MOD) */
-      f('server/src', 'party|clanparty|clans|guilds|alliance|friends|chatlanes|chatmod|chatguard|silence|emotes|boards|arena|gladiator|duel|spar|race|leaderboard|power|statboards'),
+      /* v2.3.5480 (card PW): + power, the boards' power index; v2.3.5484: + statboards; v2.3.5594: + reservednames (a name that reads as staff); v2.3.5621: + silence (card MOD) */
+      f('server/src', 'party|clanparty|clans|guilds|alliance|friends|chatlanes|chatmod|chatguard|reservednames|silence|emotes|boards|arena|gladiator|duel|spar|race|leaderboard|power|statboards'),
       f('src/game', 'alliance|chat|chatChannel|chatColor|chatMute|emotes|emoteMoves|gesturePose|friendErrors|duelLock|duelPending|partyChip|partyEq|partyMarks|partyRows|peerDot|race|spar|sparTargets|bubbleSkins|boardBumps|dictation'),
     ],
     words: ['party', 'clan', 'guild', 'alliance', 'friend', 'chat', 'emote', 'duel', 'arena', 'gladiator', 'spar', 'race', 'board', 'leaderboard', 'social'],
