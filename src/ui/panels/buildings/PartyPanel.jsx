@@ -1,12 +1,12 @@
 import { coinArtFor } from '@/game/coinArt.js';   /* v2.3.3734: the owner's coin piles */
 import React from 'react';
 import { ARENA_BET_MAX, ARENA_BET_MIN, ARENA_CHAMPION_REWARD, ARENA_ENTRY_FEE, ARENA_POLL_INTERVAL, BT_AUDIO } from '@/data/index.js';
-import { BT_API_BASE } from '@/networking/index.js';
 import { _asyncToGenerator, _objectSpread, _regenerator, _toConsumableArray } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { cue } from '@/game/eventSounds.js';   /* v2.3.3434: signing up heard */
 import { OWNER_ICON } from '@/data/ownerIcons.js';   /* v2.3.3481: the arena's helmet */
+import { act } from '@/game/actions.js';   /* v2.3.5191: the page's requests leave through the action door (card K PR 7) */
 /* === PartyPanel — buildingPanel === 'party' sub-panel === */
 /* v2.3.881: extracted verbatim from the buildingPanel === 'party'
    clause in BroTown.jsx (the Arena: live tournament bracket, betting
@@ -195,7 +195,7 @@ export function PartyPanel(props) {
     /* Poll arena status periodically */
     if (!S._arenaLastPoll || Date.now() - S._arenaLastPoll > ARENA_POLL_INTERVAL) {
       S._arenaLastPoll = Date.now();
-      fetch(BT_API_BASE + '/api/arena/status?playerId=' + encodeURIComponent(S.myId)).then(function (r) {
+      act('http:/api/arena/status', {}, { query: 'playerId=' + encodeURIComponent(S.myId) }).then(function (r) {   /* v2.3.5191: through the action door (actions.js) */
         return r.json();
       }).then(function (d) {
         if (d.ok) {
@@ -213,7 +213,7 @@ export function PartyPanel(props) {
              when /status came back without one. Modern worker pays zero,
              legacy worker behaves exactly as before. */
           if (!d.tournament) {
-            fetch(BT_API_BASE + '/api/arena/tournament').then(function (r2) {
+            act('http:/api/arena/tournament', {}).then(function (r2) {   /* v2.3.5191: through the action door (actions.js) */
               return r2.json();
             }).then(function (d2) {
               if (d2.ok && d2.tournament) setArenaTournament(d2.tournament);
@@ -282,24 +282,12 @@ export function PartyPanel(props) {
                and gold is the worker's (CLAUDE.md §5). */
             _context8.p = 2;
             _context8.n = 3;
-            return fetch(BT_API_BASE + '/api/arena/join', {
-              method: 'POST',
-              /* v2.3.1178: session token — the worker rejects economy
-                 calls whose playerId isn't backed by the caller's own
-                 state_sync token (forged entry-fee debit fix). Absent
-                 against old workers (no token in state_sync). */
-              headers: (function () {
-                var _h = { 'Content-Type': 'application/json' };
-                if (S._httpToken) _h['x-bt-auth'] = S._httpToken;
-                return _h;
-              })(),
-              body: JSON.stringify({
+            return act('http:/api/arena/join', {   /* v2.3.5191: through the action door (actions.js) */
                 playerId: S.myId,
                 name: S.myName,
                 level: R.level,
                 color: S.myColor
-              })
-            });
+              });
           case 3:
             res = _context8.v;
             _context8.n = 4;
@@ -423,18 +411,9 @@ export function PartyPanel(props) {
             S = stateRef.current;
             _context9.p = 1;
             _context9.n = 2;
-            return fetch(BT_API_BASE + '/api/arena/leave', {
-              method: 'POST',
-              /* v2.3.1178: session token (see /join above). */
-              headers: (function () {
-                var _h = { 'Content-Type': 'application/json' };
-                if (S._httpToken) _h['x-bt-auth'] = S._httpToken;
-                return _h;
-              })(),
-              body: JSON.stringify({
+            return act('http:/api/arena/leave', {   /* v2.3.5191: through the action door (actions.js) */
                 playerId: S.myId
-              })
-            });
+              });
           case 2:
             setArenaStatus({
               ok: true,
@@ -961,7 +940,7 @@ export function PartyPanel(props) {
     var S = stateRef.current;
     if (!S._arenaHistoryLoaded) {
       S._arenaHistoryLoaded = true;
-      fetch(BT_API_BASE + '/api/arena/history').then(function (r) {
+      act('http:/api/arena/*', {}).then(function (r) {   /* v2.3.5191: through the action door (actions.js) */
         return r.json();
       }).then(function (d) {
         if (d.ok) setArenaHistory(d.champions || []);

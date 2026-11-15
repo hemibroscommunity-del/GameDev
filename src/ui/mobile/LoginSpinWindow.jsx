@@ -13,6 +13,7 @@ import {
   LOGIN_SPIN_UNSAFE_WORDS, loginDoubleTarget, LOGIN_DOUBLE_MS, loginSpinSegAt, loginSpinParty,
   LOGIN_SPIN_WINDUP_MS, LOGIN_SPIN_WINDUP_DEG, LOGIN_SPIN_OVER_DEG, LOGIN_SPIN_SETTLE_MS,
 } from '@/game/loginSpinWheel.js';
+import { act } from '@/game/actions.js';   /* v2.3.5191: the page's requests leave through the action door (card K PR 7) */
 
 /* ═══ v2.3.4295: THE LOGIN WHEEL'S WINDOW ═══
  *
@@ -116,7 +117,7 @@ export const spinSafeNow = () => {
 };
 const send = (type, payload) => {
   const S = getState();
-  try { if (S && S.channel) { S.channel.send({ type, payload: payload || {} }); return true; } } catch (e) { /* the timeout tells */ }
+  try { if (S && S.channel) { act(type, payload || {}); return true; } } catch (e) { /* the timeout tells */ }   /* v2.3.5191: through the action door (actions.js) */
   return false;
 };
 
