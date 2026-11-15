@@ -409,7 +409,7 @@ export const partyMethods = {
        sent and hidden (chatmod.js).  Remember it first: the report path
        quotes the SERVER's copy of what was said, and party chat is a lane
        harassment can hide in precisely because the room never sees it. */
-    this._chatModRemember(session.id, text, this.playerState[session.id] && this.playerState[session.id].z, 'party');
+    this._chatModRemember(session.id, text, this.playerState[session.id] && this.playerState[session.id].z, 'party', p && p.id);   /* v2.3.5623: whom it was for */
     // Deliver to every online member (the sender's own client already
     // echoed optimistically and drops from === myId, mirroring room chat).
     for (const pid of p.members) {

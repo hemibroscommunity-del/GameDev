@@ -235,7 +235,7 @@ export const friendsMethods = {
        (chatmod.js).  Remembered first, because a DM is the lane where the
        nastiest things get said and the report path can only quote lines
        the server actually saw. */
-    this._chatModRemember(from, text, this.playerState[from] && this.playerState[from].z, 'dm');
+    this._chatModRemember(from, text, this.playerState[from] && this.playerState[from].z, 'dm', to);   /* v2.3.5623: whom it was for */
     if (this._chatModMuted(to, from)) return;
     if (!this._friendsSend(to, 'friend_dm', wire)) {
       const box = (await this.state.storage.get('friend_msg:' + to)) || [];

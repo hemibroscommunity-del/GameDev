@@ -69,7 +69,9 @@ export const CHATMOD = {
   MUTE_MAX: 200,             // muted ids one player may hold
   NAME_MAX: 24,              // stored display-name clamp (matches FRIENDS)
   ID_MAX: 64,                // a bp_ id is ~20 chars; this is the sanity bound
-  CONTEXT_LINES: 3,          // server-seen lines attached to a report
+  CONTEXT_LINES: 20,         // server-seen lines a speaker's ring holds (v2.3.5623: 3 -> 20, card MOD PR 3)
+  REPORT_LINES: 10,          // v2.3.5623: lines a report quotes: the speaker's that the reporter could have received
+  LEGACY_LINES: 3,           // v2.3.5623: what a report quoted before (`reportring: false`): the speaker's last 3, any lane
   CONTEXT_AGE_MS: 15 * 60 * 1000, // older lines are not evidence of THIS report
   SEEN_MAX: 240,             // speakers held in the line ring (2x MAX_PLAYERS; v2.3.3205: the cap 60 -> 120)
   REPORT_PER_HOUR: 5,        // per reporter
@@ -193,14 +195,23 @@ export const chatModMethods = {
   /* Remember a line AS THE SERVER SAW IT (already clamped + stripped by
      the caller).  LRU-bounded: re-inserting moves the speaker to the end
      of the Map's insertion order, so evicting the first key evicts the
-     least recently heard speaker. */
-  _chatModRemember(pid, text, zone, lane) {
+     least recently heard speaker.
+     v2.3.5623 (card MOD PR 3; the red team's RT-3 S4, card K's design): and
+     WHOM it was for -- `to` the target's id for a whisper, a friend's message
+     or a shop thread, the party's id for party chat, null for the room or an
+     area (everyone there).  A report quotes the speaker's lines the REPORTER
+     could have received (_chatModRecentLines), so a harasser's two whispers
+     are not flushed out of the evidence by three harmless lines to someone
+     else (RT-3's t5-evidence.mjs: the report held "nice weather / lol /
+     gg").  The ring holds CONTEXT_LINES (20) a speaker, still per speaker and
+     still under SEEN_MAX speakers. */
+  _chatModRemember(pid, text, zone, lane, to) {
     if (!pid || !text) return;
     this._chatModMaps();
     const prev = this.chatSeen.get(pid);
     if (prev) this.chatSeen.delete(pid);
     const arr = prev || [];
-    arr.push({ text, ts: Date.now(), zone: zone || null, lane: lane || 'room' });
+    arr.push({ text, ts: Date.now(), zone: zone || null, lane: lane || 'room', to: typeof to === 'string' && to ? to : null });
     if (arr.length > CHATMOD.CONTEXT_LINES) arr.splice(0, arr.length - CHATMOD.CONTEXT_LINES);
     this.chatSeen.set(pid, arr);
     if (this.chatSeen.size > CHATMOD.SEEN_MAX) {
@@ -209,13 +220,31 @@ export const chatModMethods = {
     }
   },
 
-  _chatModRecentLines(pid) {
+  /* The speaker's recent lines a report quotes.  v2.3.5623: with a
+     reporter, only the lines that reporter could have received -- addressed
+     to them, to their party, or said to the room, or to an area in the zone
+     the reporter stands in -- the last REPORT_LINES of them.  KILL SWITCH
+     `reportring: false` in the live flags: the last LEGACY_LINES, any lane,
+     as before. */
+  _chatModRecentLines(pid, reporter) {
     if (!this.chatSeen) return [];
     const arr = this.chatSeen.get(pid);
     if (!arr) return [];
     const cutoff = Date.now() - CHATMOD.CONTEXT_AGE_MS;
-    return arr.filter((l) => l.ts >= cutoff)
-      .map((l) => ({ text: l.text, ts: l.ts, zone: l.zone, lane: l.lane }));
+    const recent = arr.filter((l) => l.ts >= cutoff);
+    const f = this._liveFlags;
+    const ringOn = !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'reportring') && !f.reportring);
+    let picked;
+    if (ringOn && reporter) {
+      const party = this._partyOf ? this._partyOf(reporter) : null;
+      const partyId = party && party.id ? party.id : null;
+      const myZone = this.playerState[reporter] ? this.playerState[reporter].z : null;
+      picked = recent.filter((l) => l.to === reporter || (partyId && l.lane === 'party' && l.to === partyId)
+        || (l.lane === 'room' && !l.to) || (l.lane === 'area' && !l.to && l.zone && l.zone === myZone)).slice(-CHATMOD.REPORT_LINES);
+    } else {
+      picked = recent.slice(-CHATMOD.LEGACY_LINES);
+    }
+    return picked.map((l) => ({ text: l.text, ts: l.ts, zone: l.zone, lane: l.lane }));
   },
 
   _chatModNameOf(pid, claimed) {
@@ -364,7 +393,7 @@ export const chatModMethods = {
       zone: (targetPs && targetPs.z) || (myPs && myPs.z) || null,
       targetOnline: !!targetPs,
       /* Server's copy of what was actually said (see the header). */
-      lines: this._chatModRecentLines(target),
+      lines: this._chatModRecentLines(target, me),   /* v2.3.5623: what the reporter could have received */
     };
     await this.state.storage.put('chat_report:' + id, rec);
     this._chatModSend(me, 'chat_report_ack', { ok: true, id, lines: rec.lines.length, settled: true });

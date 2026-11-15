@@ -185,3 +185,21 @@ Tests: `chatmod.test.mjs` §7 (online now, frozen, unfrozen), `mp-reports` (a
 report filed from the player's card, listed with what was said, Kick,
 Freeze in two taps, Unfreeze, Dismiss, on a phone).
 
+## v2.3.5623: a report quotes what the reporter received (card MOD PR 3)
+
+The red team (RT-3 S4, `t5-evidence.mjs`): a report quoted the speaker's last
+3 lines in any lane, so two abusive whispers followed by three harmless lines
+to someone else left the report holding "nice weather / lol / gg". Card K's
+design, built here:
+
+- `_chatModRemember(pid, text, zone, lane, to)`: each line keeps whom it was
+  for (the target for a whisper, a friend's message or a shop thread; the
+  party's id for party chat; null for the room or an area).
+- The ring holds `CONTEXT_LINES` (20) a speaker, still per speaker and still
+  under `SEEN_MAX` speakers (the LRU; the memory stays bounded).
+- A report by R about X quotes X's lines R could have received: addressed to
+  R, to R's party, said to the room, or to an area in R's zone; the last
+  `REPORT_LINES` (10) of them.
+- KILL SWITCH `reportring: false`: the last 3 lines, any lane, as before.
+- `server/test/report-ring.test.mjs` (t5-evidence.mjs's proof as a check).
+
