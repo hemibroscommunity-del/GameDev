@@ -24,8 +24,6 @@ state: ready
 
 ## Found
 
-- The Test panel shows and clears live switches but cannot set one: a
-  "set a switch" row would spare the owner a curl (card R's panel work).
 
 - Card T: under `switches-thrown`'s preload, `cold-flags.test` (liveops)
   and `tick-pace.test` (server-core) fail even with a no-op flag (the
