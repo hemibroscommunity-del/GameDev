@@ -89,6 +89,7 @@ import { drawLane, rungDepth } from '../game/drawLanes.js';   /* v2.3.5221: card
 import { CLIENT_SAVERS, clientOff } from '../game/clientOff.js';
 import { PACE_BREAK_MS, lateOver } from '../game/framePacer.js';   /* v2.3.5222: the pacer's one rule of a late frame */
 import { wheelHere } from '../game/wheelTrial.js';
+import { act } from '../game/actions.js';   /* v2.3.5189: the page's requests leave through the action door (card K PR 7) */
 
 export const REPORT = Object.freeze({
   V: 1,
@@ -482,7 +483,7 @@ function _due(now) {
   _last = r;
   /* v2.3.5127: a report of under MIN_SECS SEEN is not worth a message (a hidden tab's) */
   const ok = r.seen >= REPORT.MIN_SECS && takesReports(S) && S.channel && typeof S.channel.send === 'function';
-  if (ok && S.channel.send(r) !== false) {
+  if (ok && act('report', r) !== false) {   /* v2.3.5189: through the action door (actions.js) */
     _sent++;
     _lastSentAt = now;
     if (_died) { _died = null; _diedOwed = false; }   /* once */

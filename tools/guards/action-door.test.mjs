@@ -178,7 +178,7 @@ const EXCEPT = (x) => x.f === 'src/debug/crashTrap.js' || x.f === 'src/networkin
    PR 7's first, v2.3.5187: from here the rows are the ways, held by §1 to §5) ── */
 
 /* ── 7. the census: sends and fetches outside the door ── */
-const LINE = { sends: 146, fetches: 25 };   /* v2.3.5187: 203 less PR 7.1's 57 */
+const LINE = { sends: 129, fetches: 25 };   /* v2.3.5187: 203 less PR 7.1's 57; v2.3.5189: less PR 7.3's 17 */
 {
   let sends = 0; const byFile = new Map();
   for (const [f, s] of SRC) {
