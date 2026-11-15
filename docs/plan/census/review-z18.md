@@ -60,4 +60,49 @@ stamp by that exact id). room-export §6b holds it.
   whatever its limit; no byte cap); sitting 17's low (a new value-holding
   `between` or `room` mark left off the list silently, failing safe).
 
+## Card L: #1864 (PR 5's seventh, tag 5216): reviewed, listed
+
+**The pose door (`_poseTo`, `POSE_WAYS`, `posedoor` ON): lows and nits
+only.** Read at 7171908; its head d37e37a (`main` abff2ef in) changes the
+same twelve files, byte for byte the same code.
+
+- With it ON nothing changes (each caller traced): `_handlePose` still
+  filters what is no pose, the dead, the dying and the `emotes` /
+  `emotemoves` switches before it asks the door, so the door refuses
+  nothing today; it writes, marks dirty and saves as `main` did;
+  movement.js ~860 and bodytake.js ~94 write `null` as before. Nothing
+  on the wire changes (v1 and v2). `posedoor: false` is `main`.
+- Low, VERIFIED, on `main` already: spar.js ~374 (`ps[k] = v`, the Test
+  panel's spar clone) is a second writer of `.po`: `po` is not in
+  `SPAR_NOT_COPIED` (~219; `ex` is). A probe: the owner sits, a spar
+  clone is born `po: 'sit'` and fights sitting (the tick sends it). The
+  door, its suite and the guard miss it; the spec's "one writer" is so
+  but for it. The cure, one word: `'po'` in `SPAR_NOT_COPIED`.
+- Low, VERIFIED: a pose carried into a new body in an object literal
+  (`...{po: old.po}` planted in join.js ~918's player) passes the suite
+  (26), the guard and eight neighbours, and the probe shows the pose
+  crossing a plain rejoin. pose-door ~178 proves nothing: ~172's
+  takeover had already stood the body up; it should pose before the
+  second join.
+- Low/nit, VERIFIED, on `main`: "never by the dead or the dying" holds a
+  new hold only: after `_handlePlayerDeath` (index.js ~3046) the body
+  dies, and respawns, still `po: 'sit'`. The spec's "a death" under
+  `move` is the phone's `msg.dead` alone.
+- Nit: the body says the guard reads destructuring and reflective writes
+  "on every door's line"; it reads them only where no literal value is
+  asked (phase-table.test ~405, ~429): on the monsters' rows
+  (`alive: true`) `[m.alive] = [true]` passes (its comment says so).
+- The guard, planted (a finder's): caught `||=`, `??=`, `&&=`,
+  `Object.assign(ps, {po})`, `{['po']: ...}`, destructuring, a for-of
+  target, a template key, `Reflect.set`, `Object.defineProperty`, an
+  alias of the object; missed (none claimed): a key in a variable, an
+  object literal or spread, `Object.assign(ps, msg)`,
+  `Object.defineProperties`, `Reflect.set.call`, an alias of `Reflect`.
+- Break proofs 25 to 30 fail as claimed; the guard before the PR stays
+  green on 26 to 30's forms. Suites: pose-door 26, emotes 124, ride 96,
+  join-stands-up 30, linger 41, takeover-linger 40, move-claims 45,
+  body-take 49, refusal-door 46, liveops 110, rejoin-resend 65,
+  silent-refusals 31, tick-share 23, mirror-audit 399; the phase guard
+  (14 doors, 23 `todo`); the switches guard (487 rows).
+
 @@REST
