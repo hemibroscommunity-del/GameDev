@@ -21,6 +21,12 @@ state: ready
 - The Test panel shows and clears live switches but cannot set one: a
   "set a switch" row would spare the owner a curl (card R's panel work).
 
+- Card T: under `switches-thrown`'s preload, `cold-flags.test` (liveops)
+  and `tick-pace.test` (server-core) fail even with a no-op flag (the
+  `--baseline` sets them aside; the PR run has none), so a new switch in
+  either system fails every PR. OPS's switches go in a system of their own,
+  `ops` (`tools/guards/lib/systems.mjs`), which runs only OPS's suites.
+
 ## Needs
 
 - PR 4 (`seathold`): built OFF; on, at most one small write a minute while

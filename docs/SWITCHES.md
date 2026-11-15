@@ -327,6 +327,12 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `steadymovers` | worker | switch | v2.3.3203 | 2026-10-13 | false | logic |  | no | Every move goes out again, from the next tick. |
 | `?tapms` | page | lever | v2.3.3105 |  | a number of ms | none |  | no | A test's own longest tap that still counts as free. |
 
+## ops
+
+| name | side | kind | born | on | thrown | risk | needs | fallback | off |
+|---|---|---|---|---|---|---|---|---|---|
+| `roomhealth` | worker | switch | v2.3.5601 | 2026-11-15 | false | logic |  | no | GET /health/room answers 404 (the room answers its own 404 and the route passes it on); /health is unchanged and nothing in the game changes. |
+
 ## page-thread
 
 | name | side | kind | born | on | thrown | risk | needs | fallback | off |
@@ -460,7 +466,6 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `heapburn` | worker | switch | v2.3.3748 | 2026-10-28 | false | logic |  | no | Un-advertises the burning heap: the phone sends nothing and nobody burns. |
 | `hidden_off` | worker | switch | v2.3.3723 | 2026-10-28 | true | logic |  | no | Thrown, the hidden settings are not read: the public placeholders are used. |
 | `newersave` | worker | switch | v2.3.3303 | 2026-10-17 | false | logic |  | no | A save from a newer worker is let through the join, the newer `_v` kept. |
-| `roomhealth` | worker | switch | v2.3.5601 | 2026-11-15 | false | logic |  | no | GET /health/room answers 404 (the room answers its own 404 and the route passes it on); /health is unchanged and nothing in the game changes. |
 | `roundpos` | worker | switch | v2.3.3197 | 2026-10-13 | false | logic |  | no | Positions go out as the phones sent them, not rounded. |
 | `skillfreeze` | worker | switch | v2.3.4380 | 2026-11-10 | false | logic |  | no | A prog3 character's reported skill tracks are stored and restored again. |
 | `slimroster` | worker | switch | v2.3.3246 | 2026-10-14 | false | logic |  | no | Sends everyone the whole roster again. |

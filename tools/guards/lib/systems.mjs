@@ -108,13 +108,24 @@ export const SYSTEMS = Object.freeze({
   },
   'server-core': {
     what: 'the worker\'s spine: saving, migrations, the tick, its pace, hidden settings, the room\'s own row',
-    files: [f('server/src', 'persistence|migrations|tick|tickpace|cadence|data|grids|heapburn|hidden|daybook|storagemarks|roomrow|health')],   /* v2.3.5601: health (card OPS) */
+    files: [f('server/src', 'persistence|migrations|tick|tickpace|cadence|data|grids|heapburn|hidden|daybook|storagemarks|roomrow')],
     words: ['persistence', 'migration', 'tick', 'storage', 'save', 'hidden', 'cost-guard', 'costguard', 'daybook', 'roomrow'],
     traps: ['server-core'],
     doors: [
       { name: 'HIDDEN_SPEC', file: 'server/src/hidden.js', what: 'a server-only number a copier would value' },
       { name: 'bookAdd', file: 'server/src/daybook.js', what: 'the day\'s book (`daybook:`): every part adds through it (v2.3.5080, card E)' },
     ],
+  },
+  /* v2.3.5601 (card OPS): the room under a crowd and the watch on it.  Its
+     own system so a switch of it runs its own suites in the switches-thrown
+     guard: server-core's and liveops' include suites that fail under the
+     guard's preload with any flag (tick-pace, cold-flags; card T's Found). */
+  ops: {
+    what: 'the room under a crowd and the watch on it: its health for a monitor',
+    files: [f('server/src', 'health')],
+    words: ['room-health'],
+    traps: [],
+    doors: [],
   },
   combat: {
     what: 'hitting and being hit: weapons, abilities, the bow, shields, damage, PvP',

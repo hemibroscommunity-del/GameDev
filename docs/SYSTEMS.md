@@ -27,6 +27,7 @@ line), every door is in its system's files, and this page is what the table make
 | [bots](#bots) | telling a person from a script: bot signals, fingerprints, claims that are bounded |
 | [liveops](#liveops) | the live flags, the admin and dev levers, test mode, feedback |
 | [server-core](#server-core) | the worker's spine: saving, migrations, the tick, its pace, hidden settings, the room's own row |
+| [ops](#ops) | the room under a crowd and the watch on it: its health for a monitor |
 | [combat](#combat) | hitting and being hit: weapons, abilities, the bow, shields, damage, PvP |
 | [monsters](#monsters) | the monsters' lives, moves, status, spawns and the boss |
 | [economy](#economy) | gold, the bag, the bank, the market and shops, trades, drops, chests and daily rewards |
@@ -118,11 +119,21 @@ The live flags, the admin and dev levers, test mode, feedback.
 
 The worker's spine: saving, migrations, the tick, its pace, hidden settings, the room's own row.
 
-- **Files**: `server/src/`: persistence, migrations, tick, tickpace, cadence, data, grids, heapburn, hidden, daybook, storagemarks, roomrow, health
+- **Files**: `server/src/`: persistence, migrations, tick, tickpace, cadence, data, grids, heapburn, hidden, daybook, storagemarks, roomrow
 - **Doors**: `HIDDEN_SPEC` in `server/src/hidden.js` (a server-only number a copier would value); `bookAdd` in `server/src/daybook.js` (the day's book (`daybook:`): every part adds through it (v2.3.5080, card E))
 - **Switches**: [its rows in the switch table](SWITCHES.md#server-core)
 - **Words**: `persistence`, `migration`, `tick`, `storage`, `save`, `hidden`, `cost-guard`, `costguard`, `daybook`, `roomrow`
 - **Traps**: `server-core`
+
+## ops
+
+The room under a crowd and the watch on it: its health for a monitor.
+
+- **Files**: `server/src/`: health
+- **Doors**: none named yet
+- **Switches**: [its rows in the switch table](SWITCHES.md#ops)
+- **Words**: `room-health`
+- **Traps**: none
 
 ## combat
 
