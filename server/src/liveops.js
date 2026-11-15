@@ -236,6 +236,15 @@ export const liveopsMethods = {
     return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'roomrow') && !f.roomrow);
   },
 
+  /* v2.3.5286 (card R PR 7): the owner's paged export (admin.js
+     exportPage), ON (the owner, 2026-11-14: "Just go recommended": it costs
+     only when the owner runs it, behind the admin key); `roomexport: false`
+     turns it off, the same way */
+  _roomExportOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'roomexport') && !f.roomexport);
+  },
+
   /* v2.3.5422: a cape taken off kept on its ledger (eventcapes.js
      _capeOffNow); `capeoffkept: false`: the old way, in memory only */
   _capeOffKeptOff() {

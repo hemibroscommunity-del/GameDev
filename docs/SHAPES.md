@@ -1009,6 +1009,8 @@ writes them, never identifiers: `dungeon`, `connection`, `loading` and
 | `_exTo`, `_exDoorOff`, `EX_WAYS`, `EX_MAX`, live flag `exdoor` (v2.3.5213) | the cook door: the phone's claim on its moves (`ps.ex`), its one writer, its ways and its longest claim (`server/src/movement.js`), and its kill switch; free at the commit (no hit in `src`, `server`, `tools` or `docs`) | 5 (step 5.3b) |
 | `_harvestTo`, `_harvestDoorOff`, `HARVEST_WAYS`, live flag `harvestdoor` (v2.3.5214) | the harvest door (fishing's too): a player's gather record, its one writer and its ways (`server/src/gathering.js`), and its kill switch; free at the commit (no hit in `src`, `server`, `tools` or `docs`) | 5 (step 5.3b) |
 | `_dungeonTo`, `_dungeonPhase`, `_dungeonDoorOff`, `DUNGEON_WAYS`, `DUNGEON_PHASES`, a run's `runPhase`, live flag `dungeondoor` (v2.3.5215) | the dungeon door: a run's phase in one field, its one writer, its ways and phases (`server/src/dungeon.js`), and its kill switch; free at the commit (no hit in `src`, `server`, `tools` or `docs`) | 5 (step 5.3b) |
+| `_poseTo`, `_poseDoorOff`, `POSE_WAYS`, live flag `posedoor` (v2.3.5216) | the pose door: a held pose's one writer and its ways (`server/src/poses.js`), and its kill switch; free at the commit (no hit in `src`, `server`, `tools` or `docs`) | 5 (step 5.3b) |
+| `_raceTo`, `_raceDoorOff`, `RACE_WAYS`, live flag `racedoor` (v2.3.5217) | the race door: a player's race, its one writer and its ways (`server/src/race.js`), and its kill switch; free at the commit (no hit in `src`, `server`, `tools` or `docs`) | 5 (step 5.3b) |
 
 **Chosen by card R (step 10.5, tag 5280), free at its commit** (the same
 search, with `docs`): `playerroads`, `PLAYER_ROADS`, `OWN_ROADS`,
