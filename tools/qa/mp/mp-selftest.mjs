@@ -31,7 +31,10 @@
  *      sharp batcher's own test runs, and fails: the plain read, `self`
  *      `sharp`, the others on -- but the shine in the frame, which rides the
  *      sharp read (sheenBatch.js: it reads its pieces with it, and draws only
- *      what the sharp batcher would), goes to its own pass with it, untested.
+ *      what the sharp batcher would), goes to its own pass with it, untested;
+ *   11-12. v2.3.5237 (14c): `fail:fill`, `fail:glint`: neither has a way
+ *      back (drawLanes.js PROGRAMS `back: null`), so each is NAMED in `self`
+ *      and drawn as today -- still on, the others passed and on.
  *
  * Every page reaches BroTown and draws with no page error: a failed test
  * never stops the load.
@@ -43,8 +46,8 @@ export const lane = 'full';
 const PHONE = { width: 390, height: 844 };
 /* the programs each page tests (the one program's route: its sharp read in
    its own test; the three's: the sharp batcher's) */
-const TESTED_ONE = ['one', 'palette', 'look', 'sheen', 'shadow', 'water'];
-const TESTED_THREE = ['sharp', 'palette', 'look', 'sheen', 'shadow', 'water'];
+const TESTED_ONE = ['one', 'palette', 'look', 'sheen', 'shadow', 'water', 'fill', 'glint'];
+const TESTED_THREE = ['sharp', 'palette', 'look', 'sheen', 'shadow', 'water', 'fill', 'glint'];
 
 /* what the page says about every program: its verdict, and whether it is used */
 function readPage() {
@@ -56,6 +59,8 @@ function readPage() {
   const sp = window.__btShadowPrepass || null;
   const water = window.__btWaves && window.__btWaves.probe ? window.__btWaves.probe() : null;
   const sharp = window.__btSharp ? window.__btSharp() : null;
+  const fill = window.__btFill ? window.__btFill() : null;
+  const glint = window.__btGlintWarm ? window.__btGlintWarm() : null;
   let rep = null;
   try { const r = window.__btReport ? window.__btReport() : null; rep = r ? { lanesCap: r.lanesCap, self: r.open ? r.open.self || null : null } : null; } catch (e) { rep = null; }
   let lt = null;
@@ -73,6 +78,8 @@ function readPage() {
       shadow: !!(sp && !sp.selfOff() && shadows.length && shadows.every((x) => x.home === 'cast')),
       water: !!(water && water.ok === true),
       sharp: !!(sharp && sharp.enabled && !sharp.selfOff),
+      fill: !!(fill && fill.on && fill.built),   /* v2.3.5237: no way back: on whatever its verdict */
+      glint: !!(glint && glint.ok > 0),
     },
     lookDrawn: look ? look.drawn : null,
     shadowHomes: shadows.map((x) => x.home),
@@ -126,7 +133,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   console.log(`   as it ships: ${JSON.stringify(ra)}; the tests took ${a.got.st && a.got.st.ms} ms (each draw [made and drawn, read back, polls] ms: ${JSON.stringify(a.got.st && a.got.st.draws)})`);
   rec.ok('1a. as it ships: the page reaches BroTown, no page error', a.inWorld && a.errors.length === 0, a.errors);
   const fa = othersFine(a.got, TESTED_ONE, null);
-  rec.ok('1b. ...every program passes its self-test on this box\'s software renderer (one, palette, look, sheen, shadow, water) and is used; the sharp read is the one program\'s here',
+  rec.ok('1b. ...every program passes its self-test on this box\'s software renderer (one, palette, look, sheen, shadow, water, fill, glint) and is used; the sharp read is the one program\'s here',
     fa.ok && ra.sharp && ra.sharp.result === 'skipped', { bad: fa.bad, ra, on: a.got.on });
   rec.ok('1c. ...the report\'s `self` names nothing, and the look program draws (its count rises: page 6\'s check means something)',
     (!a.got.rep || !a.got.rep.self) && a.got.lookDrawnDelta > 0, { rep: a.got.rep, lookDrawnDelta: a.got.lookDrawnDelta });
@@ -198,4 +205,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('10b2. ...and the shine in the frame, which rides the sharp read, goes to its own pass with it (skipped, saying why)',
     s.got.on.sheen === false && rs.sheen && rs.sheen.result === 'skipped' && /sharp read fell back/.test(rs.sheen.why || ''), { sheen: rs.sheen });
   rec.ok('10c. ...and the report\'s `self` names `sharp`', selfIs(s.got, ['sharp']), s.got.rep);
+
+  /* 11-12. v2.3.5237 (14c): no way back -- named, and drawn as today */
+  n = 11;
+  for (const name of ['fill', 'glint']) {
+    const p = await onePage(browser, wsPort, webPort, rec, 'selftest-' + name, 'onebatch=1&selftest=fail:' + name, TESTED_ONE);
+    const r = res(p.got);
+    const f = othersFine(p.got, TESTED_ONE, name);
+    rec.ok(`${n}a. \`selftest=fail:${name}\`: the page reaches BroTown and draws, no page error`, p.inWorld && p.errors.length === 0, p.errors);
+    rec.ok(`${n}b. ...${name} has no way back: it is drawn as today (still on); the others passed and are on`,
+      r[name] && r[name].result === 'forced' && p.got.on[name] === true && f.ok, { r: r[name], on: p.got.on, bad: f.bad });
+    rec.ok(`${n}c. ...and the report's \`self\` names \`${name}\``, selfIs(p.got, [name]), p.got.rep);
+    n++;
+  }
 }
