@@ -47,6 +47,7 @@
  * daily smelt quest follow).  The worker settles from _hardenedWoodRecipe. */
 
 import { bagGive, bagTake } from './bag.js'; /* v2.3.4810: the bag door */
+import { xpMake } from './xp.js';   /* v2.3.5289: experience and levels' door (card R PR 10) */
 
 export const HARDENED_WOOD = {
   /* hardened invKey -> recipe.  `log` is the exact key gathering.js
@@ -126,7 +127,7 @@ export const hardenedWoodMethods = {
     let leveled = false, newLevel = lvl;
     try {
       if (!ps.lifeSkills || typeof ps.lifeSkills !== 'object') ps.lifeSkills = {};
-      if (!ps.lifeSkills.woodworking || typeof ps.lifeSkills.woodworking !== 'object') ps.lifeSkills.woodworking = { level: 1, xp: 0 };
+      if (!ps.lifeSkills.woodworking || typeof ps.lifeSkills.woodworking !== 'object') xpMake(ps.lifeSkills, 'woodworking', 1, 'wood_ready');   /* v2.3.5289: the experience door */
       for (let i = 0; i < count; i++) {
         const res = this._addLifeSkillXp(ps, 'woodworking', r.xp);
         if (res && res.leveled) leveled = true;
