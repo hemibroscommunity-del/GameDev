@@ -105,6 +105,13 @@ function queryOf(url) {
   return q < 0 ? '' : s.slice(q);
 }
 
+/* v2.3.5562: the picture's bundle of rows on the colour atlas: a file's own,
+   but the hats' hair masks one bundle together -- each is the same two
+   colours (see-through and white), so they share one row, where a bundle
+   each took a row each (30 rows for the hats in view at the memory check's
+   fight).  Neither is ever let go (these pictures are kept for the game). */
+function bundleOf(url) { return HAIRMASKS.test(pathOf(url)) ? 'p256:hairmasks' : 'p256:' + pathOf(url); }
+
 /* a picture with a twin, wanted */
 function listed(url) {
   if (!WANTED || !wantedPath(pathOf(url))) return null;
@@ -160,7 +167,7 @@ export function p256Twin(url) {
 /** gearSheets.js loadCroppedStrip, once packed: the strip as colour numbers on
  *  its own row, or null (the canvas stays, as before). */
 export function packedTwinAsNumbers(url, canvas) {
-  const src = stripAsNumbers('p256:' + pathOf(url), canvas, String(url));
+  const src = stripAsNumbers(bundleOf(url), canvas, String(url));
   if (src) { _stats.strips++; _toPack.add(src); }
   else _stats.asOriginal++;
   return src;
@@ -205,7 +212,7 @@ export const p256LoadParser = {
       const cv = document.createElement('canvas');
       cv.width = w; cv.height = h;
       cv.getContext('2d', { willReadFrequently: true }).drawImage(img, 0, 0);
-      src = stripAsNumbers('p256:' + pathOf(url), cv, String(url));
+      src = stripAsNumbers(bundleOf(url), cv, String(url));
       /* (kept only for QA's comparison: picsNumbers.js __btPicNumVerify) */
       if (!(src && src.__btOrigCanvas === cv)) { cv.width = 0; cv.height = 0; }
     } catch (e) { src = null; }
