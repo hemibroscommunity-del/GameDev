@@ -241,18 +241,18 @@ export const PHASES = [
     note: 'ps.blocking has nine writers in nine files (and five more for the sparring clone in spar.js); a death touches none of it.',
   },
   {
-    name: 'pose', side: 'worker', status: 'todo',
+    name: 'pose', side: 'worker', status: 'door',
     what: 'A held pose: standing, or one of POSE.IDS.',
-    field: null, states: ['standing', 'posing'], fn: null, file: null,
+    field: 'ps.po', states: ['standing', 'posing'],
+    fn: '_poseTo', file: 'server/src/poses.js',
     clears: [
       { edge: 'end', at: 'server/src/poses.js _handlePose' },
       { edge: 'end', at: 'server/src/movement.js _handleMove' },
+      { edge: 'leave', at: 'server/src/bodytake.js _bodyTakeStart' },
     ],
     rejoin: 'none: every join makes the body afresh with no po (the pose slot\'s why: the phone stands up too)',
-    today: [
-      { field: 'ps.po', file: 'server/src/poses.js', writers: ['server/src/poses.js _handlePose', 'server/src/movement.js _handleMove', 'server/src/bodytake.js _bodyTakeStart'] },
-    ],
-    note: 'Memory only ("a deploy stands everyone up"); the join makes the body afresh with none.',
+    held: { suite: 'server/test/pose-door.test.mjs' },
+    note: 'v2.3.5216: the door (POSE_WAYS hold, stand, move, take; a pose held is one of POSE.IDS and never by the dead or the dying; live flag posedoor). posing: one of POSE.IDS. The spacing (POSE.MIN_GAP_MS) and the switches (emotes, emotemoves) stay the handler\'s. Memory only ("a deploy stands everyone up").',
   },
   {
     name: 'race', side: 'worker', status: 'todo',

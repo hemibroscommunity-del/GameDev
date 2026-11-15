@@ -99,6 +99,16 @@
  *                                                         -> FAIL 2
  *  24. `inst.state = 'done';` back in _dungeonComplete (the trade line's
  *      besides is the door's own, `fn`)                   -> FAIL 2
+ * v2.3.5216 (the pose door):
+ *  25. `ps.po = id;` back in _handlePose                  -> FAIL 2
+ * v2.3.5216 (the gatekeeper's low, sitting 16: destructuring, template keys
+ * and reflective writes, read off the tree):
+ *  26. `({ ex: ps.ex } = msg);` in a new function of movement.js -> FAIL 2
+ *  27. `[ps.po] = ['sit'];` in a new function of ride.js  -> FAIL 2
+ *  28. ``ps[`po`] = 'robot';`` in the same                 -> FAIL 2
+ *  29. `Reflect.set(ps, 'po', 'sit');` in admin.js        -> FAIL 2
+ *  30. `Reflect.deleteProperty(room.extractions, id);` in admin.js
+ *      (a keyed field's key)                              -> FAIL 2
  *
  * Run from the repository's root: node tools/guards/phase-table.test.mjs
  * (cd server && npm test runs it with every other guard and suite).
@@ -301,6 +311,9 @@ const DOOR_SUITES = Object.freeze({
      suite holds those) */
   'server/test/dungeon-door.test.mjs': { field: 'inst.runPhase', fn: '_dungeonTo', holds: '§2: no write of .runPhase or .bossSpawned in server/src, nor of a run\'s .state, outside _dungeonTo',
     prop: 'runPhase', besides: [] },
+  /* v2.3.5216: the pose door */
+  'server/test/pose-door.test.mjs': { field: 'ps.po', fn: '_poseTo', holds: '§2: no write of .po in server/src outside _poseTo',
+    prop: 'po', besides: [] },
 });
 const SCAN_DOORS = Object.freeze({
   'session (worker)': 'session-door.test plays the phases but fails no second writer of session.phase',
@@ -331,10 +344,15 @@ function fnName(path) {
   }
   return null;
 }
+/* a key written out: `x.k`, `x['k']`, and (v2.3.5216, the gatekeeper's low,
+   sitting 16) a template with nothing in it, ``x[`k`]``.  A key held in a
+   variable (`x[k]`) cannot be read here: no rule can, short of running it */
+const keyText = (n) => (!n ? null : n.type === 'StringLiteral' ? n.value
+  : (n.type === 'TemplateLiteral' && n.expressions.length === 0 && n.quasis.length === 1 ? n.quasis[0].value.cooked : null));
 const propOf = (m) => (m && m.type === 'MemberExpression'
-  ? (!m.computed && m.property.type === 'Identifier' ? m.property.name : (m.property.type === 'StringLiteral' ? m.property.value : null))
+  ? (!m.computed && m.property.type === 'Identifier' ? m.property.name : keyText(m.property))
   : null);
-const keyName = (pr) => (pr && pr.type === 'ObjectProperty' ? (pr.key.type === 'Identifier' ? pr.key.name : pr.key.type === 'StringLiteral' ? pr.key.value : null) : null);
+const keyName = (pr) => (pr && pr.type === 'ObjectProperty' ? (pr.key.type === 'Identifier' && !pr.computed ? pr.key.name : keyText(pr.key)) : null);
 /* every write of `.prop` in a file: [{ line, fn, text }]; with `value`, only
    a write of that literal (alive = true); with `keyed` (v2.3.5214, a door's
    field that is a record keyed by id, the harvest's this.extractions), a
@@ -371,8 +389,33 @@ function writesIn(rel, prop, value, keyed) {
     return t.type === 'UnaryExpression' && t.operator === '!' && same(t.argument, path.node.left);
   };
   const at = (m) => propOf(m) === prop || (!!keyed && !!m && m.type === 'MemberExpression' && propOf(m.object) === prop);
+  /* v2.3.5216 (the gatekeeper's low, sitting 16): a destructuring target is a
+     write too -- `({ ex: ps.ex } = msg)`, `[ps.po] = list`, a default
+     (`{ po: ps.po = 'sit' }`), a rest (`[...ps.po]`), nested -- its value
+     unknown, so only when no literal is asked for */
+  const targets = (n, outT) => {
+    if (!n) return outT;
+    if (n.type === 'MemberExpression') outT.push(n);
+    else if (n.type === 'ObjectPattern') for (const pr of n.properties) targets(pr.type === 'RestElement' ? pr.argument : pr.value, outT);
+    else if (n.type === 'ArrayPattern') for (const el of n.elements) targets(el, outT);
+    else if (n.type === 'AssignmentPattern') targets(n.left, outT);
+    else if (n.type === 'RestElement') targets(n.argument, outT);
+    return outT;
+  };
+  const patternHits = (path, left) => {
+    if (value !== undefined || !left || (left.type !== 'ObjectPattern' && left.type !== 'ArrayPattern')) return;
+    if (targets(left, []).some(at)) hit(path, path.node);
+  };
   babel.traverse(ast, {
-    AssignmentExpression(path) { if (at(path.node.left) && val(path.node.right)) hit(path, path.node, ifMissing(path)); },
+    AssignmentExpression(path) {
+      if (at(path.node.left) && val(path.node.right)) hit(path, path.node, ifMissing(path));
+      else patternHits(path, path.node.left);
+    },
+    'ForOfStatement|ForInStatement'(path) {
+      const left = path.node.left;
+      if (value === undefined && left && left.type === 'MemberExpression' && at(left)) hit(path, path.node);
+      else patternHits(path, left);
+    },
     UpdateExpression(path) { if (value === undefined && at(path.node.argument)) hit(path, path.node); },
     UnaryExpression(path) { if (value === undefined && path.node.operator === 'delete' && at(path.node.argument)) hit(path, path.node); },
     CallExpression(path) {
@@ -380,6 +423,16 @@ function writesIn(rel, prop, value, keyed) {
       /* v2.3.5212: a door's field that is a Map (the party's
          this._partyByPlayer) is written by its own set, delete and clear */
       if (value === undefined && c.type === 'MemberExpression' && ['set', 'delete', 'clear'].includes(propOf(c)) && propOf(c.object) === prop) { hit(path, path.node); return; }
+      /* v2.3.5216 (sitting 16's low): the reflective writes,
+         Object.defineProperty(x, 'prop', ...), Reflect.set / defineProperty /
+         deleteProperty (x, 'prop', ...), and on a keyed field any key of it */
+      if (value === undefined && c.type === 'MemberExpression' && c.object.type === 'Identifier') {
+        const who = c.object.name, how = propOf(c);
+        if ((who === 'Object' && how === 'defineProperty') || (who === 'Reflect' && ['set', 'defineProperty', 'deleteProperty'].includes(how))) {
+          const [obj, key] = path.node.arguments;
+          if (keyText(key) === prop || (keyed && propOf(obj) === prop)) { hit(path, path.node); return; }
+        }
+      }
       if (!(c.type === 'MemberExpression' && c.object.type === 'Identifier' && c.object.name === 'Object' && propOf(c) === 'assign')) return;
       if (keyed && value === undefined && propOf(path.node.arguments[0]) === prop) { hit(path, path.node); return; }
       for (const a of path.node.arguments.slice(1)) {
