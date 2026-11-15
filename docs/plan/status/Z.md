@@ -6,7 +6,7 @@ state: ready
 ## Done
 - Sitting 18, `main` abff2ef: the list rehearsed in its order (tree
   f9d37ca3, this branch aside): precheck 0 FAIL (8 WARN, named), build,
-  questline @@Q5; each base `main`, ONE merge base step by step. Review:
+  questline 187 of 187 (499 s); each base `main`, ONE merge base step by step. Review:
   `census/review-z18.md`. Notes on 2.3, 3.1, 4.3, 5.3b, 5.8, 8.1, 9.5;
   `TODO_LINE` 27 -> 24; monsterCombat.js 1792 -> 1785 and its
   `updateMonsterCombat` 1732 -> 1724.

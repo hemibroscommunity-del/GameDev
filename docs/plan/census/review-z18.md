@@ -422,7 +422,7 @@ Rehearsed with `tools/dev/gatekeeper.mjs` from `main` abff2ef:
    (2 WARN), build, questline 187 of 187.
 5. **The list in its order**, eight PRs at the heads above (#1872 held;
    tree f9d37ca3): precheck 0 FAIL (8 WARN, below), build, questline
-   @@Q5. ONE merge base each, step by step (counted by hand, the same
+   187 of 187 (499 s). ONE merge base each, step by step (counted by hand, the same
    tree). The container restarted during its first questline; precheck
    and the build had passed, and the questline ran again on the same
    merged commit.
