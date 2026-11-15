@@ -228,6 +228,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `report` | worker | switch | v2.3.5122 | 2026-11-14 | false | logic |  | no | Un-advertises the field report, so no phone sends its smoothness, and drops any that still comes. |
 | `reportlanes` | worker | switch | v2.3.5221 | 2026-11-14 | false | logic | `report`, `reportspeed` | no | The field report no longer takes a lane but full, the governor's rung or the self-test (caps.report back to 2). |
 | `reportspeed` | worker | switch | v2.3.5127 | 2026-11-14 | false | logic | `report` | no | The Speed test's card is no longer taken (caps.report back to 1); the smoothness reports carry on. |
+| `roomexport` | worker | switch | v2.3.5286 | 2026-11-15 | false | logic |  | no | The owner's paged export of the room's records answers "off" and reads nothing. |
 | `roomrewind` | worker | lever | v2.3.5288 |  | true | none |  | no | Thrown (true), the owner's lever that puts the whole room back to an earlier time works (its dry run, then its do); unset or false, the default, both its steps answer "off". |
 | `roomrow` | worker | switch | v2.3.5124 | 2026-11-14 | false | logic | `daybook` | no | Nothing of the room's own row is added into the day's book. |
 | `storesize` | worker | switch | v2.3.5287 | 2026-11-14 | false | logic | `daybook` | no | The storage's size is not read into the day's book (its owner's card says "not read that day"); nothing else changes. |
