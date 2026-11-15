@@ -69,6 +69,9 @@
  *                                        -> FAIL 12 (its row is gone)
  *   - SOFTWARE_GL renamed away in that file, the list kept
  *                                        -> FAIL 12 (its trigger is gone)
+ *   (v2.3.5307, tried by hand once, 2026-11-15:)
+ *   - a `cold-flags.test.mjs: FAIL 1. x` line in `farm`'s thrownFails
+ *                                        -> FAIL 4 (a canary suite named)
  *   Rehearsed: two branches from one table, one adding `?aardvark`, the
  *   other `?minnow`, each in its place: merged in both orders, clean, and
  *   the merged page is what --write makes.
@@ -388,6 +391,11 @@ async function checks() {
       if (r.kind === 'switch') {
         if (!(DAY.test(r.on) || r.on === 'off' || (r.on === 'unknown' && r.born === 'unknown'))) why.push('on (a day YYYY-MM-DD, \'off\', or \'unknown\' where born is)');
       } else if (r.on !== undefined) why.push('on is a switch row\'s alone');
+      /* v2.3.5307: a check the thrown run's preload once broke by itself (a
+         cold start, a global set before a module loads) is never a switch's
+         own fail: the preload no longer touches them (switches-thrown's
+         canaries), so such a line only ever recorded the old artifact */
+      if (Array.isArray(r.thrownFails) && r.thrownFails.some((w) => /^(?:cold-flags|tick-pace)\.test\.mjs\b/.test(String(w)))) why.push('thrownFails names a canary suite (cold-flags, tick-pace): the v2.3.5304 preload\'s artifact, never the switch\'s own');
       if (r.onBy !== undefined && !(Number.isInteger(r.onBy) && DAY.test(r.on) && Number.isInteger(r.born) && r.onBy > r.born)) why.push('onBy (the later tag that turned it on, with its day in on)');
       if (why.length) bad.push(`${r.name || '?'}: ${why.join(', ')}`);
     }

@@ -26,8 +26,8 @@ state: ready
 - The table is now the one list of switch names for card A's `sw` (the
   report) and card K's `flag` (the wire table): each is to read it.
 - New switch rows need `on`; a page row also `--write` (the reader's forms).
-- RT-3's #1878 skips cold-flags.test in the thrown run as a stopgap: once it
-  is on main, the skip comes out (this PR's canary holds the suite).
+- The preload's artifact carried by others (RT-3's #1878 skip, RT-1's #1885
+  adminlock thrownFails, RT-3's `feedback`): out once both are on main.
 - Card B's map files src/game/crowdCap.js under `monsters`; `?crowd` caps players.
 - Rule 4's sample: `ahonewrite` thrown beside store-heal-wait.test's own
   `storehealwait: false` fails its check 2 (two switches off, not one).
