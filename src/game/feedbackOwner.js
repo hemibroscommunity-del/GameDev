@@ -31,11 +31,12 @@ export function postLine(t) {
   return who + (topic ? ' on ' + topic : '') + ': ' + clip(t.text || '', 80);
 }
 
-/** A number's name in the sweep's reply, in a player's words. */
+/** A number's name in the sweep's reply, in a player's words: the
+ *  Feedback object's sweep answers { ok, big, paces, tickets } (#1878,
+ *  feedback.js sweep: the oversized posts and the old pace rows it took
+ *  away, and the posts left that its counts were made from). */
 const NAMES = Object.freeze({
-  removed: 'posts removed', tickets: 'posts removed', ticketsRemoved: 'posts removed',
-  paces: 'old pace rows removed', paceRows: 'old pace rows removed', paceRemoved: 'old pace rows removed',
-  kept: 'posts kept', total: 'posts on the board now',
+  big: 'oversized posts removed', paces: 'old pace rows removed', tickets: 'posts left on the board',
 });
 
 /** The sweep's reply, its numbers in words ("Swept the feedback board: 3

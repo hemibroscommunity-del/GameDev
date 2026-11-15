@@ -20,6 +20,7 @@
  *   1. TICKET '/api/feedback/tickets?id='              -> FAIL 1 (with #1878's object)
  *   2. postLine without its clip of the text            -> FAIL 2
  *   3. sweepWords skipping a number it does not know     -> FAIL 3
+ *      (and its names: `tickets` as removed, not left      -> FAIL 3)
  *   4. the `<FeedbackOwnerRows` line out of DevPanel.jsx  -> FAIL 5
  *
  * Run from the repository's root: node tools/guards/feedback-owner.test.mjs
@@ -61,8 +62,10 @@ const check = (name, ok, detail) => {
 
 /* ── 3. the sweep in words ── */
 {
-  const w = sweepWords({ ok: true, removed: 3, paceRows: 12, rebuilt: 1 });
-  check('3: every number said, known ones by name, an unknown one by its own', w === 'Swept the feedback board: 3 posts removed, 12 old pace rows removed, 1 rebuilt.', w);
+  const w = sweepWords({ ok: true, big: 3, paces: 12, tickets: 40 });
+  check('3: the sweep\'s own reply ({ ok, big, paces, tickets }: #1878) in words', w === 'Swept the feedback board: 3 oversized posts removed, 12 old pace rows removed, 40 posts left on the board.', w);
+  const u = sweepWords({ ok: true, big: 0, rebuilt: 1 });
+  check('3: an unknown number is said by its own name, never dropped', u === 'Swept the feedback board: 0 oversized posts removed, 1 rebuilt.', u);
   check('3: no numbers, still a sentence', sweepWords({ ok: true }) === 'Swept the feedback board.' && sweepWords(null) === 'Swept the feedback board.');
 }
 
