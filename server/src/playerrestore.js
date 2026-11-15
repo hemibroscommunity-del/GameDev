@@ -27,7 +27,8 @@
  *
  *   ONE RUN OF WRITES (handoff rule 5).  The `prerestore-` copy covers every
  *   record the restore overwrites (the character at its top, or `_norpg:
- *   true` when there was none; each other under `_with`), and it is written
+ *   true` when there was none; each other under `_with`, null for one the
+ *   restore creates, so its way back deletes it), and it is written
  *   with the restore itself, nothing awaited between: a restart can never
  *   keep the restore without its way back.
  *
@@ -200,6 +201,10 @@ export async function playerRestore(room, body, now = Date.now()) {
   const b = body && typeof body === 'object' ? body : {};
   const pid = typeof b.playerId === 'string' ? b.playerId : '';
   const snapKey = typeof b.snapKey === 'string' ? b.snapKey : '';
+  /* the sitting 20 review (low): a `dry` that is not a boolean ("true", 1)
+     is refused, never read as "not dry" -- a dry run asked as text must not
+     restore for real */
+  if (Object.prototype.hasOwnProperty.call(b, 'dry') && typeof b.dry !== 'boolean') return { status: 400, ok: false, error: 'dry is true or false' };
   const dry = b.dry === true;
   if (!pid || !snapKey || !snapKey.startsWith('rpgsnap:' + pid + ':')) return { status: 400, ok: false, error: 'playerId + a matching snapKey required' };
   // A live session's next _saveRpg would clobber the restore -- kick first,
@@ -256,12 +261,19 @@ export async function playerRestore(room, body, now = Date.now()) {
   }
 
   /* the way back: every record overwritten that is there now */
-  const over = prefixes.filter((p) => (own(puts, p + pid) || dels.includes(p + pid)) && cur(p) !== undefined);
+  /* the way back: every record the restore writes or deletes.  One there
+     now is copied; one the restore CREATES (no vault now, one in the copy)
+     is copied as null, so restoring the way back deletes it again (the
+     sitting 20 review).  The character itself: none now, `_norpg` (the way
+     back leaves the character the restore put; a restart's own copy is the
+     way back to none). */
+  const touchedNow = prefixes.filter((p) => own(puts, p + pid) || dels.includes(p + pid));
+  const holdsNow = (p) => cur(p) !== undefined;
   let copyKey = null;
-  if (over.length) {
-    const copy = over.includes('rpg:') ? rpgOf(cur('rpg:')) : { _norpg: true };
+  if (touchedNow.some((p) => holdsNow(p) || p !== 'rpg:')) {
+    const copy = touchedNow.includes('rpg:') && holdsNow('rpg:') ? rpgOf(cur('rpg:')) : { _norpg: true };
     const w = {};
-    for (const p of over) if (p !== 'rpg:') w[p] = cur(p);
+    for (const p of touchedNow) if (p !== 'rpg:') w[p] = holdsNow(p) ? cur(p) : null;
     if (Object.keys(w).length) copy._with = w;
     copyKey = 'rpgsnap:' + pid + ':prerestore-' + now;
     puts[copyKey] = copy;
