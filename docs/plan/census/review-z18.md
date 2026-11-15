@@ -46,8 +46,8 @@ Each with its switch, for the planning session to read to the owner:
   memory saver ON by default (the memory law), `?elemicons=0`; the red
   team's #1871 is a guard that reads `server/wrangler.toml` and never
   writes it, #1872 words in OPERATIONS.md.
-- Held, not landing: K's #1848 (`sprintmark`, OFF by the owner's choice;
-  @@KHOLD).
+- K's #1848 (`sprintmark`) lands OFF by the owner's choice (not decided
+  while away); `sprintmark: true` turns it on, the owner's to give.
 - For the owner, costs (never decided this way): none on this list adds
   a write, a message or a pace. #1847 reads records only when the owner
   runs it (its body: a whole copy of 100 characters about 5,000 reads,
@@ -184,7 +184,7 @@ same twelve files, byte for byte the same code.
   `npm test` 430, one red, dailychest, its run crossing UTC midnight
   (green alone, twice): the box's.
 
-## Card K: #1848 (tag 5541): @@K
+## Card K: #1848 (tag 5541): reviewed, mended, listed
 
 **The sprint mark (`sprintmark`, OFF by the owner's choice), its ON
 path re-read at 29a9ab5 (the mend 7481d01) as new code.**
@@ -213,6 +213,14 @@ path re-read at 29a9ab5 (the mend 7481d01) as new code.**
   for 0 stamina over 60 s, about 2.37M px an hour against the PR's ON
   line 1,498,368. A cure tried in a scratch copy: judge such a move at
   the walk (`!(_d > 0.5)` at ~701): 528 px/s, the rest unchanged.
+  **Mended during the sitting** at 621cf17 (head c87ec1b, `main`
+  abff2ef in), read by the gatekeeper: that cure, inside the
+  `_sprintMarkOn()` branch only (OFF untouched); sprint.test §11 plays it
+  (on: 543 px/s and it pays). Break proof (the gatekeeper's): the cure
+  taken out fails §11 ("643 px a second for 0 stamina"); with it, every
+  sprint check passes. The ON section renumbered §11 (the nit), its
+  switch row's `thrownFails` with it. The first step's glide left
+  (cosmetic).
 - Low, on `main`, not closed by it: a step is billed at most 1 s
   (`STEP_MAX_MS`) while the budget refills at sprint speed for the whole
   gap: one marked move every 3 s claiming 1,995 px runs at 665 px/s,
