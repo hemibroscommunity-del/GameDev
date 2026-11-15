@@ -325,8 +325,8 @@ Drafts: the planning session marks each ready before it merges.
   65c5a8b; then card OPS pushed 051dbbd on it (a fast-forward, words
   only: the rollback's step 2 by the Test panel's new "Set a switch"
   row, OPS's #1891, not on `main`). **Held for sitting 19**, beside
-  #1891: its new line writes "(v2.3.5602)" in full, and 5602 is #1891's
-  own tag; precheck's version-tag counts every tag written in full in
+  #1891: its new line writes tag 5602 in full (with its version
+  prefix), and 5602 is #1891's own tag; precheck's version-tag counts every tag written in full in
   `main`'s files as used (precheck.mjs ~353-362), so with #1872 landed
   first #1891's diff adds only a "used" tag and its precheck fails (the
   plan README's Tags, v2.3.5055). The cure: #1872 after #1891 (its words
@@ -409,4 +409,35 @@ planning session's carry).
 
 ## The whole
 
-@@WHOLE
+Rehearsed with `tools/dev/gatekeeper.mjs` from `main` abff2ef:
+
+1. #1863 and #1847 (tree 3bb9928b): precheck 0 FAIL, build. (A first
+   pass, before the other heads were in.)
+2. #1863, #1847, #1864, #1866, #1848 (K's first head, tree add455d0):
+   build green; precheck's server suites timed out at five minutes with
+   three finders' suites beside them (load 12): the box's.
+3. #1863, #1847, #1864, #1866, #1871, #1872 at 65c5a8b (tree fafcd4b1):
+   precheck 0 FAIL, build, questline 187 of 187.
+4. The same with K's mended head c87ec1b (tree 7afb3eb1): precheck 0 FAIL
+   (2 WARN), build, questline 187 of 187.
+5. **The list in its order**, eight PRs at the heads above (#1872 held;
+   tree f9d37ca3): precheck 0 FAIL (8 WARN, below), build, questline
+   @@Q5. ONE merge base each, step by step (counted by hand, the same
+   tree). The container restarted during its first questline; precheck
+   and the build had passed, and the questline ran again on the same
+   merged commit.
+6. **The list with this branch last**: one merge base, a clean merge;
+   the four lines', phase table's, switches' and switch reader's guards
+   green on the whole. Its precheck and its tree are in the list sent to
+   the planning session (the file cannot carry its own tree).
+
+The eight WARNs on 5: six version-tag notices from branches that carry
+this list's own commits (L's plan-l-18 and plan-l-19 carry 5216 and
+5217; rt3-feedback-names, rt3-feedback-board, rt1-adminlock and
+plan-t-7-cold carry #1863's 5306), the 48 hours' branch count, and
+look-shirt (gearSheets.js changed in #1868): `node
+tools/art/shirt-bake.mjs --check` on that tree says "the shirt numbers
+on disk are a fresh bake".
+
+Each listed head's base is `main`, and each `test` check is green on
+it (#1868's every check green at a3a30d0, P's word and GitHub's).
