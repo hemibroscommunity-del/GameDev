@@ -81,6 +81,7 @@ async function fresh(st, zone) {
   ps.maxStamina = 100; ps.stamina = st == null ? 100 : st;
   ps.blocking = false; ps._guardBrokenUntil = 0; ps.dead = false; ps.dying = false; ps.disconnected = false;
   ps._sprintAt = 0; ps._sprintOwed = 0; ps._sprintStep = false; ps._sprintLastPaid = false; ps._sprintPrevPaid = false;
+  ps._sprintBilledAt = 0; ps._mvWalk = { b: 0, at: T };   /* v2.3.5541: the walk's own budget empty, as the move's is */
   room._liveFlags = {};
   ps.lastMoveAt = T;
   ps._mvBudget = 0; ps._mvBudgetAt = T;
@@ -412,6 +413,100 @@ async function run(n, step, gapMs, extra) {
   const turns = [1, 2, 3, 4, 5].map(() => C.sprintOutBreathTurn(ran));
   check('client: running dry takes turns -- the grunt first, then the tired breath, then the grunt again',
     turns.join() === 'false,true,false,true,false' && ran._sprintRunOuts === 5, { turns, n: ran._sprintRunOuts });
+}
+
+// ── 11. v2.3.5541: THE SPRINT MARK, ON (`sprintmark: true`, an opt-in) ─────
+/* review-z16 (sitting 16): the ON path, played.  A step of 60 px every 100 ms
+   is 600 px a second: over the walk's 500, inside the sprint's 665; the
+   walk's budget starts empty (fresh), so each such move needs the sprint. */
+{
+  const on = () => { room._liveFlags = { sprintmark: true }; };
+  /* the cheat: every other move marked, all at sprint speed, 2 s */
+  await fresh(100); on();
+  for (let i = 0; i < 20; i++) { wait(100); await move(ps.x + 60, ps.y, i % 2 ? { sp: 1 } : undefined); }
+  const alt = 100 - ps.stamina;
+  await fresh(100); on();
+  for (let i = 0; i < 20; i++) { wait(100); await move(ps.x + 60, ps.y, { sp: 1 }); }
+  const full = 100 - ps.stamina;
+  check(`11: on, every other move marked pays as a sprint marked on every move (${alt} of ${full})`, full >= 15 && Math.abs(alt - full) <= 2, { alt, full });
+  /* off (as it lands), the cheat ran free */
+  await fresh(100);
+  for (let i = 0; i < 20; i++) { wait(100); await move(ps.x + 60, ps.y, i % 2 ? { sp: 1 } : undefined); }
+  check('11: off, every other move marked spent nothing (the hole, as today)', ps.stamina >= 99, { st: ps.stamina });
+  /* the review's variant: one mark every 1.5 s, the rest unmarked at sprint speed */
+  await fresh(100); on();
+  for (let i = 0; i < 40; i++) { wait(100); await move(ps.x + 60, ps.y, i % 15 === 0 ? { sp: 1 } : undefined); }
+  check('11: on, one mark every 1.5 s and the rest at sprint speed still pays for the run', 100 - ps.stamina >= 20, { st: ps.stamina });
+  /* honest: a sprint, the rest packet, a pause under a second, the keepalive, a sprint again */
+  await fresh(100); on();
+  await run(10, 6, 33, { sp: 1 });
+  const before = ps.stamina;
+  wait(40); await move(ps.x + 2, ps.y);   /* the rest packet */
+  wait(600);                                /* standing */
+  await run(1, 6, 33, { sp: 1 });           /* pressed again */
+  check('11: on, an honest pause under a second, after the rest packet, bills nothing', ps.stamina === before, { before, after: ps.stamina });
+  /* honest: let go and walk on (unmarked, at a walk) inside the grace */
+  await fresh(100); on();
+  await run(10, 6, 33, { sp: 1 });
+  const b2 = ps.stamina;
+  await run(30, 5, 33);                     /* 150 px a second: no sprint needed */
+  check('11: on, the walk after letting go is never billed', ps.stamina === b2, { b2, after: ps.stamina });
+  /* v2.3.5541 (the claims' bench: the move liar took as much ground with the
+     mark on as off, its stamina run out every 3 s): THE SPRINT'S BOUND ONLY
+     FOR WHAT IS BILLED (movement.js).  At zero, inside the grace, a move
+     past the walk's own budget is judged at the walk -- off, the grace gives
+     it the sprint's bound free */
+  const atZero = async () => {
+    let n = 0;
+    while (ps.stamina > 0 && n++ < 30) { wait(100); await move(ps.x + 60, ps.y, n % 2 ? { sp: 1 } : undefined); }
+    ps._mvBudget = 0; ps._mvBudgetAt = T; ps._mvFollow = undefined;
+    const z0 = ps.x;
+    wait(100); await move(ps.x + 60, ps.y, { sp: 1 });
+    return { px: ps.x - z0, grace: T - ps._sprintAt < SPRINT.GRACE_MS, st: ps.stamina };
+  };
+  await fresh(6); on();
+  const zOn = await atZero();
+  await fresh(6); ps.stamina = 0; ps._sprintAt = T;
+  const zOff = await atZero();
+  check(`11: on, at zero inside the grace a move past the walk's budget is judged at the walk (${zOn.px} px of 60)`,
+    zOn.grace && zOn.st === 0 && Math.abs(zOn.px - 50) < 1e-6, zOn);
+  check(`11: off, ...the grace gives it the sprint's bound (${zOff.px} px of 60: the hole, as today)`, zOff.grace && zOff.px === 60, zOff);
+  /* a liar marking only the steps the walk cannot cover, the move between
+     each at the walk (so each marked one is a run's first, which bills
+     nothing): billed for those steps' own gaps with the mark, free without */
+  const fastSlow = async () => { for (let i = 0; i < 20; i++) { wait(100); await move(ps.x + (i % 2 ? 60 : 49), ps.y, i % 2 ? { sp: 1 } : undefined); } return 100 - ps.stamina; };
+  await fresh(100); on();
+  const fsOn = await fastSlow();
+  await fresh(100);
+  const fsOff = await fastSlow();
+  check(`11: on, a sprint step the walk cannot cover is billed its own gap though its run is new (${fsOn} spent)`, fsOn >= 5, { fsOn });
+  check(`11: off, ...each such step ran free (${fsOff} spent: the hole, as today)`, fsOff === 0, { fsOff });
+  /* review-z18 (the gatekeeper, sitting 18): a marked move that goes nowhere
+     (under 0.5 px) inside a run bills nothing and ends the run (sprint.js
+     _sprintPay), so it must not get the sprint's bound either: else the move
+     budget refills at the sprint's rate over its gap, and the next marked
+     move spends that bank free (658 px a second for no stamina) */
+  const zeroBank = async () => {
+    await run(10, 6, 33, { sp: 1 });   /* a run under way */
+    const x0 = ps.x, t0 = T, s0 = ps.stamina;
+    for (let i = 0; i < 20; i++) { wait(200); await move(ps.x, ps.y, { sp: 1 }); wait(10); await move(ps.x + 135, ps.y, { sp: 1 }); }
+    return { pxs: Math.round((ps.x - x0) / ((T - t0) / 1000)), spent: s0 - ps.stamina };
+  };
+  await fresh(100); on();
+  const zb = await zeroBank();
+  check(`11: on, a marked move that goes nowhere banks nothing for the next (${zb.pxs} px a second for ${zb.spent} stamina)`, zb.spent > 0 || zb.pxs <= 540, zb);
+  /* honest: a sprint marked on every move, the rest packet, a walk, a sprint
+     again -- billed and placed exactly as with the mark off */
+  const honest = async () => {
+    await run(20, 20, 100, { sp: 1 }); wait(40); await move(ps.x + 2, ps.y);
+    await run(10, 15, 100); await run(10, 20, 100, { sp: 1 });
+    return { st: ps.stamina, x: ps.x };
+  };
+  await fresh(100);
+  const hOff = await honest();
+  await fresh(100); on();
+  const hOn = await honest();
+  check(`11: on, an honest sprint is billed and placed exactly as with it off (${100 - hOn.st} spent, at ${hOn.x})`, hOn.st === hOff.st && hOn.x === hOff.x && hOn.st < 100, { hOn, hOff });
 }
 
 Date.now = realNow;
