@@ -1534,4 +1534,49 @@ export const STATES = [
     },
     after: async ({ P }) => { await tapSel(P, '[data-dev-close]').catch(() => {}); await wait(P, 400); },
   },
+  /* v2.3.5602: the Test panel's "Set a switch" row (card OPS PR 3), opened
+     and keyed as the economy box above, then newersave picked, off, and the
+     first tap of Set: the confirm in the message line, nothing sent */
+  {
+    id: 'dev-set-switch', group: 'The owner\'s Test panel', title: 'The Test panel sets a switch',
+    about: 'The owner\'s Test panel, its "Set a switch" row: the usual switches as chips, a name, on/off or a number, and Set, which asks once with what it will do before it sends.',
+    run: async ({ P }) => {
+      const up = () => evalIn(P, () => !!Array.from(document.querySelectorAll('strong')).find((n) => n.textContent === 'Test panel'));
+      if (!(await up())) {
+        await evalIn(P, async () => {
+          const el = document.querySelector('.bt-zone-header__title');
+          if (!el) return;
+          const r = el.getBoundingClientRect();
+          const o = { bubbles: true, cancelable: true, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, pointerId: 1, pointerType: 'touch' };
+          el.dispatchEvent(new PointerEvent('pointerdown', o));
+          await new Promise((res) => setTimeout(res, 1500));
+          el.dispatchEvent(new PointerEvent('pointerup', o));
+        });
+        for (let i = 0; i < 40 && !(await up()); i++) await wait(P, 250);
+        if (!(await up())) return 'the Test panel did not open';
+      }
+      await evalIn(P, (k) => {
+        const inp = document.querySelector('input[type="password"]');
+        if (!inp) return;
+        Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set.call(inp, k);
+        inp.dispatchEvent(new Event('input', { bubbles: true }));
+        const b = Array.from(document.querySelectorAll('button')).find((n) => (n.textContent || '').indexOf('Save key on this device') >= 0);
+        if (b) b.click();
+      }, H.ADMIN_KEY);
+      await wait(P, 1200);
+      const there = await evalIn(P, () => { const b = document.querySelector('[data-setswitch]'); if (b) b.scrollIntoView({ block: 'center' }); return !!b; });
+      if (!there) return 'the Test panel has no Set a switch row (the key not taken?)';
+      await wait(P, 300);
+      let e = await tapSel(P, '[data-setswitch-pick="newersave"]');
+      if (e) return 'no newersave chip (' + e + ')';
+      await wait(P, 200);
+      e = await tapSel(P, '[data-setswitch-value="off"]');
+      if (e) return 'no off choice (' + e + ')';
+      await wait(P, 200);
+      e = await tapSel(P, '[data-setswitch-set]');
+      if (e) return 'no Set button (' + e + ')';
+      await wait(P, 400);
+    },
+    after: async ({ P }) => { await tapSel(P, '[data-dev-close]').catch(() => {}); await wait(P, 400); },
+  },
 ];
