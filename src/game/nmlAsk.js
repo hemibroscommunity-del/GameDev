@@ -128,6 +128,7 @@
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { nmlLive, nmlCanAttack, nmlHere, nmlLockedOut, nmlLockedIn, nmlLockAsk, nmlLockAllow } from '@/game/noMansLand.js';   /* v2.3.3770: + the lock */
 import { NML } from '@/data/noMansLandRings.js'; /* v2.3.3530: SKULL_MS -- an attacker's right in `bys` dates their choice or blow */
+import { sw } from '@/game/switches.js';   /* v2.3.5306: the page's one reader (card T) */
 import { chooseFoe, isLiveFighter, pvpBoutAt, isLiveFoe, liveFoes, hitMeAt, attackersNow, FIGHT_QUIET_MS } from '@/game/sparTargets.js'; /* v2.3.3268: Attack is a choice that lasts; v2.3.3316: + who a swing already hits; v2.3.3528: + when a bout began; v2.3.3530: + who attacks you (a group joins your fight) */
 
 /* how long an unanswered window stays */
@@ -145,7 +146,7 @@ function emit() {
 }
 
 function urlOff() {
-  try { return typeof location !== 'undefined' && /[?&]nmlask=0(?:&|$)/.test(location.search || ''); } catch (e) { return false; }
+  return sw('nmlask');   /* v2.3.5306: the one reader (was /[?&]nmlask=0(?:&|$)/) */
 }
 const OFF = urlOff();
 

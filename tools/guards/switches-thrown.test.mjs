@@ -23,6 +23,9 @@
  *   node tools/guards/switches-thrown.test.mjs --only farm  one row
  *   ...and --baseline: each suite run unthrown first, its FAIL lines set
  *   aside (on by itself with --all, --sample and --only; v2.3.5305)
+ *   node tools/guards/switches-thrown.test.mjs --none      every server suite
+ *                                                          with a flag nothing
+ *                                                          reads (v2.3.5307)
  * (`--all` is hours on a 4-core box: CLAUDE.md §6, the sample, and the full
  * run offered to the owner.)
  *
@@ -125,7 +128,10 @@ function run(suite, thrown) {
     const t = setTimeout(() => { p.kill('SIGKILL'); out += '\nFAIL (the suite ran past ' + SUITE_MS + ' ms)'; }, SUITE_MS);
     p.on('close', (code) => {
       clearTimeout(t);
-      const fails = out.split('\n').map((l) => l.trim()).filter((l) => /\bFAIL\b/.test(l) && !/^\d+ FAIL|FAILURE\(S\)|FAILED\b|^\s*$/.test(l)).map((l) => l.slice(0, 200));
+      /* a line that says FAIL, but never one that PASSes or is `ok`
+         (picture-door's `PASS 2g. ... are each a FAIL`: v2.3.5307, found by
+         --none) */
+      const fails = out.split('\n').map((l) => l.trim()).filter((l) => /\bFAIL\b/.test(l) && !/^(?:PASS|ok)\b/.test(l) && !/^\d+ FAIL|FAILURE\(S\)|FAILED\b|^\s*$/.test(l)).map((l) => l.slice(0, 200));
       resolve({ code, fails });
     });
   });
@@ -153,6 +159,26 @@ function playsOfPage() {
     out.set(r.name, text.filter(([, s]) => re.test(s)).map(([f]) => f));
   }
   return out;
+}
+
+/* v2.3.5307: THE PRELOAD CHANGES NOTHING BY ITSELF.  With a flag nothing
+   reads (`__bt_none__`) a suite must run as it does plain: the run's whole
+   claim is that the one flag is the only difference.  On every PR the
+   canaries run so (the suites the v2.3.5304 preload broke: a room's cold
+   start, cold-flags.test; a global set before a module loads,
+   tick-pace.test); `--none` runs every server suite so, by hand (the
+   planning session's finding, 2026-11-15). */
+const CANARIES = Object.freeze(['cold-flags.test.mjs', 'tick-pace.test.mjs']);
+const NONE = argv.includes('--none');
+if (NONE) {
+  const { readdirSync: rd } = await import('node:fs');
+  const all = rd(join(SERVER, 'test')).filter((f) => f.endsWith('.test.mjs')).sort();
+  const t1 = Date.now();
+  const res = await pool(all.map((f) => async () => ({ f, r: await run(f, null) })));
+  const red = res.filter((x) => x.r.fails.length || x.r.code !== 0).map((x) => `${x.f}: ${x.r.fails[0] || 'exit ' + x.r.code}`);
+  check(`--none: every server suite runs as it does plain with a flag nothing reads thrown (${all.length} suites, ${Math.round((Date.now() - t1) / 1000)} s)`, red.length === 0, red);
+  console.log(failed ? `\n${failed} FAILED` : '\nall green');
+  process.exit(failed ? 1 : 0);
 }
 
 const rows = pick();
@@ -205,6 +231,12 @@ if (rows.length) check('every listed fail still fails (a mended one comes off it
 if (argv.includes('--verbose')) for (const l of ownFound) console.log('     own: ' + l);
 const di = argv.indexOf('--dump');
 if (di >= 0) (await import('node:fs')).writeFileSync(argv[di + 1], JSON.stringify({ unexpected, stale, own: ownFound }, null, 1));
+
+{
+  const res = await pool(CANARIES.map((f) => async () => ({ f, r: await run(f, null) })));
+  const red = res.filter((x) => x.r.fails.length || x.r.code !== 0).map((x) => `${x.f}: ${x.r.fails[0] || 'exit ' + x.r.code}`);
+  check(`the preload alone changes nothing: ${CANARIES.join(', ')} pass with a flag nothing reads (--none: every suite, by hand)`, red.length === 0, red);
+}
 
 const plays = playsOfPage();
 const none = [...plays].filter(([, f]) => !f.length).map(([n]) => n);
