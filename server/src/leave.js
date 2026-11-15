@@ -128,6 +128,13 @@ export const leaveMethods = {
       const s = this.sessions.get(ws);
       if (s && s.phase === 'joined') row = FULL;
     }
+    /* v2.3.5606: a JOINED player's drop (the socket closed or failed, never a
+       kick, the AFK sweep, a flood or a reset) holds their seat a minute
+       (seathold.js; `seathold: true` only) */
+    if (why === 'close' || why === 'error') {
+      const _s = this.sessions.get(ws);
+      if (_s && _s.phase === 'joined' && _s.id) this._seatHoldLeave(_s.id, Date.now());
+    }
     const p = this._leaveRun(ws, row, opts || null);
     if (row.dropNow) this.sessions.delete(ws);
     const done = () => { this.sessions.delete(ws); };

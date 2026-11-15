@@ -327,6 +327,14 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `steadymovers` | worker | switch | v2.3.3203 | 2026-10-13 | false | logic |  | no | Every move goes out again, from the next tick. |
 | `?tapms` | page | lever | v2.3.3105 |  | a number of ms | none |  | no | A test's own longest tap that still counts as free. |
 
+## ops
+
+| name | side | kind | born | on | thrown | risk | needs | fallback | off |
+|---|---|---|---|---|---|---|---|---|---|
+| `rf_spread` | worker | switch | v2.3.5604 | 2026-11-15 | false | logic |  | no | A full room asks every waiting phone to try again in 5 s, however many are knocking (the cadence before); the count is still kept. |
+| `roomhealth` | worker | switch | v2.3.5601 | 2026-11-15 | false | logic |  | no | GET /health/room answers 404 (the room answers its own 404 and the route passes it on); /health is unchanged and nothing in the game changes. |
+| `seathold` | worker | lever | v2.3.5606 |  | true | none |  | no | Thrown (true), a joined player whose socket drops holds their seat a minute and a deploy's players theirs for 30 s, so a waiting crowd cannot take them; at most one small write every 15 s while who is in changes. Unset or false, the default: the gate counts sockets as before, nothing held, nothing written. |
+
 ## page-thread
 
 | name | side | kind | born | on | thrown | risk | needs | fallback | off |

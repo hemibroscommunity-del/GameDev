@@ -485,6 +485,61 @@ curl -X POST -H "Authorization: Bearer YOUR_KEY" -H "Content-Type: application/j
 - It can be tried on Cloudflare in the lab first, never on the game: see
   "The restore try" in `docs/specs/cloudflare-lab.md`.
 
+## Rolling back a bad server update (v2.3.5588)
+
+For when an update to the server broke the game and you want the version
+before it back while the fix is made. This puts back the server's CODE only:
+every player's things stay exactly as they are (for putting the things back,
+see the two sections above).
+
+1. **Roll back**: the Cloudflare dashboard, Workers & Pages,
+   `brotown-server`, Deployments: pick the last version that worked and roll
+   back to it. Players are disconnected for a moment and reconnect by
+   themselves, as after any update.
+2. **Right after, let in the players the newer version saved.** When an
+   update changes how a character is stored, a player who played under it
+   has a save the older version does not know. The older version refuses
+   that player rather than damage the save, so they sit at "connecting" for
+   ever, with no word on screen. One switch lets them in (`newersave` set to
+   off); it is harmless when nobody needs it, so set it after EVERY
+   rollback. **From your phone:** the Test panel, Live flags, **Set a
+   switch**: tap `newersave`, tap off, tap Set, then Set again (v2.3.5602).
+   (Before that version is out, or from a computer, the same thing:)
+```
+curl -X POST -H "Authorization: Bearer YOUR_KEY" -H "Content-Type: application/json" \
+  -d '{"name":"newersave","value":false}' "https://WORKER/api/admin/flags"
+```
+   Their saves keep the newer version's mark, so nothing is changed twice
+   when the fix arrives. A few parts the newer version saved for a player
+   (the farm, pets, the codex, the order board, the daily rewards) stay shut
+   for that player until the fix is deployed; nothing is lost.
+3. **Hold every merge that touches the server until the fix is in.** The
+   next one deploys today's `main` again, bug and all, and undoes the
+   rollback without a word.
+4. **When the fix is deployed, clear the switch**: the Test panel, Live
+   flags, "Show live flags", then clear `newersave`. No terminal needed for
+   this step.
+
+The game's pages (Cloudflare Pages) do not roll back with the server, and
+that is safe: a page asks the server what it can do and keeps to it.
+
+### When GitHub cannot deploy and the game is broken
+
+Every server update goes out through GitHub Actions. If Actions cannot run
+(the account's spending limit was reached: jobs fail in about 2 seconds with
+"The job was not started because ... spending limit"; or GitHub itself is
+down), no fix can be deployed. **Never deploy from a computer instead** (a
+stale copy deployed that way rolled back three weeks of work on 2026-06-10).
+What still works without GitHub:
+
+1. the rollback above (steps 1 to 4);
+2. the live switch for the broken system (the "Live switches (flags)"
+   section below lists them): it turns that one system off without a
+   deploy;
+3. for the spending limit: GitHub, Settings, Billing, raise the limit;
+   then re-run the waiting deploy from the Actions tab (Deploy worker, Run
+   workflow).
+
 ## Talking to your players (announcements)
 
 Send a message every online player sees instantly (a gold "📢" banner):

@@ -221,6 +221,10 @@ export const roomRowMethods = {
     m.c.refused[i]++;
     m.refused[why === 'newer' ? 'newer' : 'put']++;
     m.refused.lastAt = typeof now === 'number' ? now : Date.now();
+    /* v2.3.5601: and each kind's own last time, for the room's health
+       (health.js: a put refused, or a rollback shutting players out, in the
+       last minute is a problem now) */
+    m.refused[why === 'newer' ? 'newerAt' : 'putAt'] = m.refused.lastAt;
     /* v2.3.5124 (sitting 6's review): something new for the book at the last
        one out -- a character refused as `newer` is refused AT the join,
        before any state_sync, so no join is ever counted to owe it */
