@@ -69,6 +69,8 @@ really downloads"). Since #885 the room is smooth to about 110 in the sandbox.
 - `retryMs` (5000) is the cadence the worker asks for; the client clamps it
   to [2s, 30s] and jitters it. It exists so a future worker can slow a herd
   down without a client deploy.
+  v2.3.5602: that worker -- it asks for longer once the crowd knocks over 40
+  a second (`docs/specs/rf-spread.md`, live flag `rf_spread`).
 - `room_full` is in `PRIVILEGED_EVENTS` (handoff rule 13). A forged one would
   put "the world is full" in front of everyone in the room — a one-message
   denial of service on demo day.

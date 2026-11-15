@@ -26,6 +26,7 @@ import { cleanWheelSizes } from './wheeltables.js'; /* v2.3.3315: the Wheel size
 import { DEVICE_LOCK, cleanDevice } from './devicelock.js'; /* v2.3.3344: a key on its character's devices */
 import { LOGIN_KEYS, newKeyOf } from './loginkeys.js'; /* v2.3.3355: new Login Keys, made by the worker */
 import { stashGive, stashTake, stashSet } from './stash.js';   /* v2.3.5281: the stashes' door (card R PR 2) */
+import { rfNote, rfRetryMs } from './rfspread.js';   /* v2.3.5602: a waiting crowd knocks more slowly (card OPS PR 3) */
 
 /* ═══ v2.3.1627: the JOIN DATA ALLOWLIST ═══
  *
@@ -349,6 +350,10 @@ export const joinMethods = {
      bookkeeping entirely. */
   _roomFullRefusal(url, why) {
     const cap = this._roomCap();
+    /* v2.3.5602: every refusal is a knock on the thread, counted (rfspread.js),
+       the old client's 503 too; the answer's `retryMs` follows the count */
+    const _now = Date.now();
+    rfNote(this, _now);
     /* Old clients (and anything that isn't our client) keep the exact
        refusal they have always had. */
     if (!url || url.searchParams.get('rf') !== '1') {
@@ -367,7 +372,7 @@ export const joinMethods = {
          reads as a bug in the refusal rather than as a full world. */
       count: this.sessions.size,
       cap,
-      retryMs: ROOM_FULL.RETRY_MS,
+      retryMs: rfRetryMs(this, _now),   /* v2.3.5602: ROOM_FULL.RETRY_MS (5 s) until the crowd knocks over 40 a second (rfspread.js); `rf_spread: false` keeps it */
     };
     const [client, server] = Object.values(new WebSocketPair());
     try {

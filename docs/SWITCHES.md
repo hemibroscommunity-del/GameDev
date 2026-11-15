@@ -331,6 +331,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 
 | name | side | kind | born | on | thrown | risk | needs | fallback | off |
 |---|---|---|---|---|---|---|---|---|---|
+| `rf_spread` | worker | switch | v2.3.5602 | 2026-11-15 | false | logic |  | no | A full room asks every waiting phone to try again in 5 s, however many are knocking (the cadence before); the count is still kept. |
 | `roomhealth` | worker | switch | v2.3.5601 | 2026-11-15 | false | logic |  | no | GET /health/room answers 404 (the room answers its own 404 and the route passes it on); /health is unchanged and nothing in the game changes. |
 
 ## page-thread
