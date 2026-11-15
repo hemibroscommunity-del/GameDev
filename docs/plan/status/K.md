@@ -16,7 +16,8 @@ state: ready
 - Claims 5541 (#1848): the sprint mark, OFF (the owner: off for now).
   review-z16's two MEDIUMs mended on its ON path: a carried move billed as
   it moves if it needed the sprint; the sprint's bound only for what is
-  billed; sprint.test §9. With it on, the move 4.35 -> 2.56.
+  billed; sprint.test §11. With it on, the move 4.35 -> 2.56. review-z18's
+  MEDIUM (a marked move that goes nowhere banked the sprint) mended.
 - PR 7.1 (5187, #1861, merged): combat and moving through act(), 57 of 58 sends (census
   203 -> 146); precheck reads an event through the door as a broadcast.
   Scenarios: jump, shieldgem, deathzones fail on main too (not this PR).
