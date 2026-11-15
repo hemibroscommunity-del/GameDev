@@ -1,6 +1,6 @@
 card: T
 branch: claude/plan-t-7-cold (one branch a PR, each begun from main once the one before merged)
-prs: #1754, #1768, #1816, #1817, #1837 (5301-5305, merged); #1863 (5306, ready); #1889 (5307, ready: on #1863)
+prs: #1754, #1768, #1816, #1817, #1837, #1863 (5301-5306, merged); #1889 (5307, ready)
 state: ready
 
 ## Done
@@ -12,11 +12,11 @@ state: ready
 - PR 4 (5304, #1817, for #1804): a row's place by its name (check 10);
   needs and readers (check 11); the thrown run (thrown.mjs, a preload).
 - PR 5 (5305, #1837): the end date (`on`, `--due`, the fallback hold).
+- PR 6 (5306, #1863): the page's one reader, src/game/switches.js; its guard.
 
 ## Next
 
-- #1863 (5306): the page's one reader, src/game/switches.js; its guard.
-- #1889 (5307, on #1863): the thrown run's preload changes nothing by itself (a module
+- #1889 (5307): the thrown run's preload changes nothing by itself (a module
   hook; no early load, no game function replaced): every server suite
   passes with a flag nothing reads (`--none`), two canaries on every PR.
   The planning session's finding. Then the reads moved (5308 on).
@@ -37,4 +37,4 @@ state: ready
 
 ## Needs
 
-- The gatekeeper: #1863 (sitting 18), then #1889 (first in sitting 19).
+- The gatekeeper: #1889 (first in sitting 19).
