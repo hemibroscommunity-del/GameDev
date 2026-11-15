@@ -313,9 +313,13 @@
  * twins' numbers, 0.5 MB, held there until the pack: its line 24.2 holds
  * them); `gpu` 72.1-78.1 (0.50 MB of marks on the chip; its line 115).  By
  * the census's own ruler the family is 2.16 -> 0.64 MB at the fight (the
- * 64 px plate icons, 0.14, are loaded their own way). */
+ * 64 px plate icons, 0.14, are loaded their own way).  With main (sitting
+ * 17, the slimes' walk) merged in, three runs at 31a8e6120: `artCache` 25.5
+ * at the fight (27.5 on main), its line 90.6 -> 88.6; `buffers` 19.5-20.9
+ * at the fight, 23.6-23.8 at its highest, at home; `gpu` 78.0-80.0; atlas
+ * 125-144 rows, never full. */
 export const MEMORY_BUDGET = {
-  artCache: { name: 'art loaded from files', mb: 88.6, measured: 27.5,   /* v2.3.3702: 156 -> 112; v2.3.5246: 112 -> 109.1, LOWERED by the portraits let go of (2.9 MB); v2.3.5247: 109.1 -> 107.0, Ace's coin strips (2.1 MB); v2.3.5248: 107.0 -> 101.4, the trees as numbers (5.6 MB); v2.3.5249: 101.4 -> 98.3, the made effects as numbers (3.1 MB); v2.3.5250: 98.3 -> 97.1, the world's icons (1.2 MB); v2.3.5252: 97.1 -> 95.1, the whirlwind as numbers (2.0 MB); v2.3.5256: 95.1 -> 90.6, the slimes' strips loaded as you walk (4.5 MB), see the header; v2.3.5258: 90.6 -> 88.6, the element marks as numbers (2.0 MB, measured on its own at 95.1 -> 93.1), see the header */
+  artCache: { name: 'art loaded from files', mb: 88.6, measured: 25.5,   /* v2.3.3702: 156 -> 112; v2.3.5246: 112 -> 109.1, LOWERED by the portraits let go of (2.9 MB); v2.3.5247: 109.1 -> 107.0, Ace's coin strips (2.1 MB); v2.3.5248: 107.0 -> 101.4, the trees as numbers (5.6 MB); v2.3.5249: 101.4 -> 98.3, the made effects as numbers (3.1 MB); v2.3.5250: 98.3 -> 97.1, the world's icons (1.2 MB); v2.3.5252: 97.1 -> 95.1, the whirlwind as numbers (2.0 MB); v2.3.5256: 95.1 -> 90.6, the slimes' strips loaded as you walk (4.5 MB), see the header; v2.3.5258: 90.6 -> 88.6, the element marks as numbers (2.0 MB, measured on its own at 95.1 -> 93.1), see the header */
     what: 'pictures loaded from files, decoded (the asset cache, window.__btTex) -- its highest at the fight, the monsters\' looks loaded' },
   gpu: { name: 'textures on the graphics chip', mb: 115, measured: 95.0,   /* v2.3.4058: 105 -> 115, approved by the owner 2026-11-03, see the header */
     what: 'textures on the graphics chip (window.__btGpuTex) -- including what was drawn in the last minute, which Pixi unloads after 60 s unused' },
