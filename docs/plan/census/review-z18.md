@@ -144,4 +144,47 @@ same twelve files, byte for byte the same code.
   `npm test` 430, one red, dailychest, its run crossing UTC midnight
   (green alone, twice): the box's.
 
+## Card K: #1848 (tag 5541): @@K
+
+**The sprint mark (`sprintmark`, OFF by the owner's choice), its ON
+path re-read at 29a9ab5 (the mend 7481d01) as new code.**
+
+- OFF is exactly `main`, VERIFIED: 640,000 seeded random steps through
+  `main` 6f1e6e2's server/src and the PR's (flags `{}`, null, undefined,
+  false, `'true'`, 1, `[true]`, inherited true, `movebudget: false`,
+  `sprint: false`; gaps 0 to 3000 ms, speeds 0 to 2000 px/s, every `sp`,
+  dodges, zone changes, blocks, rides; 207,059 paid sprint steps): 0
+  differences in place, stamina, every sprint and budget field, the regen
+  hold and every message sent. The same probe with it ON differs on
+  4,990 of 5,000 steps (it sees).
+- Sitting 16's two MEDIUMs are closed, VERIFIED: one mark every 14 to 16
+  moves at 665 px/s runs at 531 px/s (the walk and its burst) and bills
+  15 to 16 s a minute; pauses of 300, 600, 690 and 900 ms and a roll of
+  250 to 700 ms bill the same on or off. No honest refusal in 28 honest
+  traces (walks 150 to 499 px/s, frames 16 to 400 ms, stalls, bursts,
+  rolls, keepalives).
+- **Medium, VERIFIED (ON only; read by the gatekeeper too):** a marked
+  move that goes nowhere (0 to 0.5 px) inside a run is still given the
+  sprint's bound (`_sprintBilled`, sprint.js ~164-167; movement.js ~701),
+  so the budget refills at sprint speed over the gap, while `_sprintPay`
+  bills nothing under 0.5 px and ends the run (~200); the next marked
+  move, 1 ms later, is a run's first (billed 0) and spends what was
+  banked. A still marked move, 100 ms, a 66.5 px marked move: 658 px/s
+  for 0 stamina over 60 s, about 2.37M px an hour against the PR's ON
+  line 1,498,368. A cure tried in a scratch copy: judge such a move at
+  the walk (`!(_d > 0.5)` at ~701): 528 px/s, the rest unchanged.
+- Low, on `main`, not closed by it: a step is billed at most 1 s
+  (`STEP_MAX_MS`) while the budget refills at sprint speed for the whole
+  gap: one marked move every 3 s claiming 1,995 px runs at 665 px/s,
+  stamina holding at 89, on or off (the PR's body names it). Lows
+  carried: a flag flipped ON then OFF mid-run bills one gap once; the
+  census `move` row (2.56) is measured ON while live is OFF.
+- Nits: sprint.test ~418 numbers its new section "9." after "10."; a
+  run's first step glides at the walk for one interval (movement.js
+  ~917, cosmetic). Nothing on the wire changes OFF; ON adds no message;
+  no write (the two new fields are memory only, never saved or sent).
+- Suites: sprint 69, move-budget 62, move-diet 27, move-path 31, potions
+  31, ride 96, safe-heal 36, liveops 110, claims-gain 15;
+  traps-server-word; switches.
+
 @@REST
