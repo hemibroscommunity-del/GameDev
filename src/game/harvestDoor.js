@@ -37,8 +37,11 @@
  * fire you cook at (`S._campfire`, `S._firemaking`) and the node you stand
  * by (`S._nearNode`, `S._proxNode`), fields of their own.
  *
- * No imports (the harvest's rules are read by a node test without the game).
+ * One import, the page's switch reader (game/switches.js, itself of no
+ * imports; card T's), by a relative path: the harvest's rules are read by a
+ * node test without the game (zone-leftovers.test imports this file bare).
  */
+import { sw } from './switches.js';
 
 export const HARVEST_PAGE_WAYS = Object.freeze({
   start: 'waiting', try: 'waiting', open: 'ready',
@@ -46,12 +49,10 @@ export const HARVEST_PAGE_WAYS = Object.freeze({
 });
 const has = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);
 
-/* `?harvestdoor=0` -- read at each write (a few a harvest), so a test can set it */
+/* `?harvestdoor=0` -- through the page's one reader (switches.js reads the
+   address at each ask), so a test can set it */
 export function harvestDoorOff() {
-  try {
-    const s = (typeof location !== 'undefined' && location && location.search) || '';
-    return new URLSearchParams(s).get('harvestdoor') === '0';
-  } catch (e) { return false; }
+  return sw('harvestdoor');
 }
 
 /* the harvest's phase on this phone: its record's status, or none */
