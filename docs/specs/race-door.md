@@ -79,8 +79,10 @@ it in eight places; now only `raceTo` does, by a way of `RACE_PAGE_WAYS`:
 - **Not folded**: Lil Bro's run (`S._raceLil`, `raceDriveNpc`'s drawing of
   him), which outlives the race until he is home; the flags touched and the
   countdown's beat, counts on the record.
-- **A module of no imports**, so a node test reads its rules; `race.js`
-  imports it. The suite also loads `race.js` itself, its `@/` imports
+- **One import**, the page's switch reader (`game/switches.js`, itself of
+  no imports; card T's), by a relative path, so a node test reads its
+  rules; `?racedoor=0` is read through it (v2.3.5218, after sitting 18).
+  `race.js` imports the door. The suite also loads `race.js` itself, its `@/` imports
   resolved to `src/` by a resolve hook, and plays every way through it.
 - **The rejoin's reset asks the door.** `forgetRace` clears the race by
   `raceTo(S, null, 'forget')`. The state census counts a reset's call of a
