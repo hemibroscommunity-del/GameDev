@@ -225,6 +225,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `bagonesum` | worker | switch | v2.3.4900 | 2026-11-12 | false | logic |  | no | The bag door's one sum is off: every bag road back on its own sum. |
 | `daybook` | worker | switch | v2.3.5080 | 2026-11-14 | false | logic |  | no | The day's book adds, writes and prunes nothing; what is stored stays and its reader says it is off. |
 | `disable_bigbags` | worker | switch | v2.3.4224 | 2026-11-04 | true | logic |  | no | Thrown, the weapon and gear stashes go back to 8 and 32. |
+| `feedback` | worker | switch | v2.3.5593 | 2026-11-15 | false | logic |  | no | The feedback board takes no posts, votes or crash reports (reading stays): the owner's lever in a flood (read by the Feedback object from the room's flags, once a minute). |
 | `report` | worker | switch | v2.3.5122 | 2026-11-14 | false | logic |  | no | Un-advertises the field report, so no phone sends its smoothness, and drops any that still comes. |
 | `reportlanes` | worker | switch | v2.3.5221 | 2026-11-14 | false | logic | `report`, `reportspeed` | no | The field report no longer takes a lane but full, the governor's rung or the self-test (caps.report back to 2). |
 | `reportspeed` | worker | switch | v2.3.5127 | 2026-11-14 | false | logic | `report` | no | The Speed test's card is no longer taken (caps.report back to 1); the smoothness reports carry on. |

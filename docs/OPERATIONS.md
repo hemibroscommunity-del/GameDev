@@ -330,6 +330,17 @@ curl -X DELETE -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/feedback/
 ```
 It answers `{"ok":true,"removed":"THE_ID"}`; without your key, a plain 404.
 
+To clear out every oversized post at once (a flood of huge names: each over
+4 KB goes) and the old rows the board no longer reads:
+```
+curl -X DELETE -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/feedback/sweep"
+```
+
+If the board is being flooded, close it: the live switch `feedback` set to
+`false` (the Test panel's live switches, or `"name":"feedback","value":false`
+on `/api/admin/flags`) stops new posts, votes and crash reports within a
+minute; the board can still be read. Set it back to `true` to open it.
+
 The crash feed (what players' phones report when the game breaks) is yours
 only now: it held each phone's browser name and lines naming characters.
 ```

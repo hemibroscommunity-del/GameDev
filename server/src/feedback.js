@@ -10,6 +10,7 @@
 // ═══════════════════════════════════════
 
 import { cleanChatText } from './chatguard.js';   /* v2.3.5593: the chat lanes' own cleaning, for a name */
+import { requestIp, ROOMS } from './flood.js';    /* v2.3.5593: the caller's address (Cloudflare's edge), and the room the flags live in */
 
 /* v2.3.2820: the longest report the board keeps (see submit). */
 const FEEDBACK_TEXT_MAX = 500;
@@ -34,12 +35,52 @@ const FEEDBACK_TEXT_MAX = 500;
  *   - DELETE /ticket?id= removes one, and GET /crashes reads the crash feed,
  *     both behind the owner's key (ADMIN_KEY, `Authorization: Bearer`, as
  *     admin.js), a plain 404 without it (fail closed, as every admin route).
- * No live flag: this object cannot read the room's flags, and each change
- * only refuses a bad value or closes a door to strangers; a switch would
- * reopen the hole.  The page's half: FeedbackPanel prints String(), and
- * lazyPanel.js's guard catches a window that throws. */
+ * And the red team's RT-1 (N2, N3), folded in: every write here was paced
+ * only by an id the caller makes up (`rate:<playerId>`, `crashrate:<sid>`),
+ * each pace a ROW never deleted -- 200 of 200 submits with fresh ids taken in
+ * one second, 3 rows each, so one laptop could spend the account's day of
+ * writes (100,000 on the free plan, then every save in the game fails until
+ * midnight) in under 3 minutes; and a name of 1.9 MB was a row (50 of them
+ * black-screen a phone opening the board), and `_stats`, one key a topic ever
+ * posted, reached SQLite's 2 MB.  Now:
+ *   - the paces are in MEMORY (FEEDBACK_PACE), by the caller's ADDRESS
+ *     (flood.js requestIp: Cloudflare's edge sets it; none locally, which is
+ *     not counted) and the id it claims, under a ceiling for the whole game
+ *     an hour; a deploy resets them, which is right for a flood's limit
+ *     (ARCHITECTURE-HANDOFF rule 11); no `rate:` row is written again;
+ *   - `_stats` keeps at most FEEDBACK_PACE.STATS_KEYS topics;
+ *   - DELETE /sweep (the owner's key) takes away every ticket row over
+ *     FEEDBACK_PACE.BIG_ROW characters, the old pace rows, and rebuilds
+ *     `_stats` from the tickets left;
+ *   - KILL SWITCH `feedback: false` in the live flags closes the board to
+ *     writes (posts, votes, crash reports); reading stays.  This object has
+ *     no flags of its own: it reads the room's (liveops.js GET
+ *     /api/admin/flags, with the owner's key, over the binding) at most once a
+ *     FLAG_TTL_MS, and only when someone writes.  No key or no answer: open,
+ *     as before.
+ * The page's half: FeedbackPanel prints String(), and lazyPanel.js's guard
+ * catches a window that throws. */
 export const FEEDBACK_NAME_MAX = 24;
+export const FEEDBACK_PACE = Object.freeze({
+  /* an address, an hour: the old per-id limits (5 posts, 12 crash reports), and votes */
+  POSTS_ADDR: 5, CRASH_ADDR: 12, VOTES_ADDR: 60,
+  /* the same per claimed id (a phone behind a shared address keeps its own five) */
+  POSTS_ID: 5, CRASH_ID: 12, VOTES_ID: 60,
+  /* the whole game, an hour: far above a real day's reports, far below a flood's rows */
+  POSTS_ALL: 200, CRASH_ALL: 200, VOTES_ALL: 2000,
+  HOUR_MS: 3600000,
+  /* the memory a pace may hold: past it the expired go, then the oldest */
+  KEYS_MAX: 5000,
+  STATS_KEYS: 100,
+  BIG_ROW: 4096,
+  FLAG_TTL_MS: 60000,
+});
 export const FEEDBACK_TOPIC_MAX = 32;
+/* v2.3.5593: what a refused post says (the panel prints the error as it comes) */
+const FEEDBACK_WORDS = Object.freeze({
+  paced: 'Too many reports from here for now. Try again in a while.',
+  closed: 'The feedback board is closed for now.',
+});
 /* the line's control characters, which the lanes strip before
    cleanChatText; a name keeps none, a line break least of all */
 const CONTROL = /[\x00-\x1f\x7f]/g;
@@ -69,7 +110,9 @@ export class Feedback {
       // POST /submit — create a new feedback ticket
       if (request.method === 'POST' && path.startsWith('/submit')) {
         const body = await request.json();
-        return new Response(JSON.stringify(await this.submit(body)), { headers: H });
+        /* v2.3.5593: closed by the owner's switch, or paced by address (RT-1 N2) */
+        if (!(await this._boardOpen())) return new Response(JSON.stringify({ ok: false, error: FEEDBACK_WORDS.closed }), { headers: H });
+        return new Response(JSON.stringify(await this.submit(body, requestIp(request))), { headers: H });
       }
 
       // GET /list?sort=top|trending|new&topic=&category=&limit=&offset=
@@ -85,7 +128,8 @@ export class Feedback {
       // POST /vote — thumbs up or down
       if (request.method === 'POST' && path.startsWith('/vote')) {
         const body = await request.json();
-        return new Response(JSON.stringify(await this.vote(body)), { headers: H });
+        if (!(await this._boardOpen())) return new Response(JSON.stringify({ ok: false, error: FEEDBACK_WORDS.closed }), { headers: H });
+        return new Response(JSON.stringify(await this.vote(body, requestIp(request))), { headers: H });
       }
 
       // GET /stats — aggregate counts per topic/category
@@ -99,7 +143,8 @@ export class Feedback {
       if (request.method === 'POST' && path.startsWith('/crash')) {
         let body = null;
         try { body = JSON.parse(await request.text()); } catch (e) { /* fall through */ }
-        return new Response(JSON.stringify(await this.crashReport(body)), { headers: H });
+        if (!(await this._boardOpen())) return new Response(JSON.stringify({ ok: false, error: FEEDBACK_WORDS.closed }), { headers: H });
+        return new Response(JSON.stringify(await this.crashReport(body, requestIp(request))), { headers: H });
       }
 
       // GET /crashes?limit=50 — recent crash reports, newest first
@@ -117,6 +162,12 @@ export class Feedback {
         return new Response(JSON.stringify(await this.removeTicket(url.searchParams.get('id'))), { headers: H });
       }
 
+      // DELETE /sweep — v2.3.5593: the owner takes away every oversized ticket and the old pace rows (RT-1 N3)
+      if (request.method === 'DELETE' && path.startsWith('/sweep')) {
+        if (!(await this._ownerKey(request))) return new Response(JSON.stringify({ ok: false, error: 'Not found' }), { status: 404, headers: H });
+        return new Response(JSON.stringify(await this.sweep()), { headers: H });
+      }
+
       return new Response(JSON.stringify({ ok: false, error: 'Not found' }), { status: 404, headers: H });
     } catch (err) {
       return new Response(JSON.stringify({ ok: false, error: err.message }), { status: 500, headers: H });
@@ -128,15 +179,11 @@ export class Feedback {
      ?dev=1 banner before iOS evicts the page.  Prototype-grade by design:
      one storage key, 200-report ring, soft per-session rate limit.  Every
      field is length-clamped -- the endpoint is public. */
-  async crashReport(data) {
+  async crashReport(data, addr) {
     const { sid, v, ua, zone, log } = data || {};
     if (!sid || !Array.isArray(log) || !log.length) return { ok: false, error: 'Missing fields' };
-    const rateKey = 'crashrate:' + String(sid).slice(0, 32);
-    const rate = JSON.parse(await this.state.storage.get(rateKey) || '{"count":0,"resetAt":0}');
-    if (Date.now() < rate.resetAt && rate.count >= 12) return { ok: false, error: 'Rate limited' };
-    if (Date.now() >= rate.resetAt) { rate.count = 0; rate.resetAt = Date.now() + 3600000; }
-    rate.count++;
-    await this.state.storage.put(rateKey, JSON.stringify(rate));
+    /* v2.3.5593: paced in memory by address, id and the whole game; no `crashrate:` row (RT-1 N2) */
+    if (!this._paced('crash', addr, String(sid).slice(0, 32))) return { ok: false, error: 'Rate limited' };
     const report = {
       ts: Date.now(),
       sid: String(sid).slice(0, 32),
@@ -156,7 +203,7 @@ export class Feedback {
     return { ok: true };
   }
 
-  async submit(data) {
+  async submit(data, addr) {
     const { playerId, category, text } = data || {};
     /* v2.3.5593: the name and the topic are words, cleaned and cut; an object,
        a number or a name of nothing but hidden characters is refused */
@@ -174,12 +221,9 @@ export class Feedback {
     if (!VALID_CATEGORIES.includes(category)) return { ok: false, error: 'Invalid category' };
 
     // Rate limit: max 5 submissions per player per hour
-    const playerKey = 'rate:' + playerId;
-    const rateData = JSON.parse(await this.state.storage.get(playerKey) || '{"count":0,"resetAt":0}');
-    if (Date.now() < rateData.resetAt && rateData.count >= 5) return { ok: false, error: 'Rate limited — max 5/hour' };
-    if (Date.now() >= rateData.resetAt) { rateData.count = 0; rateData.resetAt = Date.now() + 3600000; }
-    rateData.count++;
-    await this.state.storage.put(playerKey, JSON.stringify(rateData));
+    /* v2.3.5593: ...and per address, under a ceiling for the whole game, in
+       memory: the `rate:` row it wrote each time was the flood (RT-1 N2) */
+    if (!this._paced('posts', addr, playerId.slice(0, 64))) return { ok: false, error: FEEDBACK_WORDS.paced };
 
     const ticket = {
       id: crypto.randomUUID(),
@@ -195,16 +239,20 @@ export class Feedback {
     // Update topic count index
     const stats = JSON.parse(await this.state.storage.get('_stats') || '{}');
     const topicKey = topic + ':' + category;
-    stats[topicKey] = (stats[topicKey] || 0) + 1;
+    /* v2.3.5593: at most STATS_KEYS topics kept (a new topic each post grew this
+       one row to SQLite's 2 MB, and then every new topic's post failed: RT-1 N3) */
+    if (Object.prototype.hasOwnProperty.call(stats, topicKey) || Object.keys(stats).length < FEEDBACK_PACE.STATS_KEYS) stats[topicKey] = (stats[topicKey] || 0) + 1;
     stats._total = (stats._total || 0) + 1;
     await this.state.storage.put('_stats', JSON.stringify(stats));
 
     return { ok: true, ticket: this.sanitize(ticket) };
   }
 
-  async vote(data) {
-    const { ticketId, playerId, vote } = data;
+  async vote(data, addr) {
+    const { ticketId, playerId, vote } = data || {};
     if (!ticketId || !playerId || !['up', 'down'].includes(vote)) return { ok: false, error: 'Invalid vote' };
+    /* v2.3.5593: a vote is a row too: paced as a post is (RT-1 N2) */
+    if (!this._paced('votes', addr, String(playerId).slice(0, 64))) return { ok: false, error: FEEDBACK_WORDS.paced };
 
     const raw = await this.state.storage.get('ticket:' + ticketId);
     if (!raw) return { ok: false, error: 'Ticket not found' };
@@ -312,5 +360,77 @@ export class Feedback {
       await this.state.storage.put('_stats', JSON.stringify(stats));
     }
     return { ok: true, removed: id };
+  }
+
+  /* v2.3.5593: the paces, in memory (RT-1 N2).  `kind` posts, crash or votes;
+     an hour's window each for the address, the claimed id and the whole game.
+     No address (a local worker, a test) is not counted by address, as
+     flood.js does.  True: taken, and counted. */
+  _paced(kind, addr, id) {
+    const now = Date.now();
+    if (!this._paces) this._paces = new Map();
+    const M = this._paces;
+    const lim = kind === 'posts' ? [FEEDBACK_PACE.POSTS_ADDR, FEEDBACK_PACE.POSTS_ID, FEEDBACK_PACE.POSTS_ALL]
+      : kind === 'crash' ? [FEEDBACK_PACE.CRASH_ADDR, FEEDBACK_PACE.CRASH_ID, FEEDBACK_PACE.CRASH_ALL]
+        : [FEEDBACK_PACE.VOTES_ADDR, FEEDBACK_PACE.VOTES_ID, FEEDBACK_PACE.VOTES_ALL];
+    const keys = [addr ? kind + '|a|' + addr : null, id ? kind + '|i|' + id : null, kind + '|all'];
+    const at = (k) => { const b = M.get(k); return b && b.until > now ? b : null; };
+    for (let i = 0; i < 3; i++) { if (!keys[i]) continue; const b = at(keys[i]); if (b && b.n >= lim[i]) return false; }
+    for (const k of keys) {
+      if (!k) continue;
+      const b = at(k);
+      if (b) b.n++; else M.set(k, { n: 1, until: now + FEEDBACK_PACE.HOUR_MS });
+    }
+    if (M.size > FEEDBACK_PACE.KEYS_MAX) {
+      for (const [k, b] of M) if (b.until <= now) M.delete(k);
+      /* still full: the oldest go (a Map keeps its order), never the game's own ceiling */
+      for (const k of M.keys()) { if (M.size <= FEEDBACK_PACE.KEYS_MAX) break; if (!k.endsWith('|all')) M.delete(k); }
+    }
+    return true;
+  }
+
+  /* v2.3.5593: the KILL SWITCH `feedback: false` in the live flags (the room's:
+     this object keeps none), read with the owner's key over the binding at
+     most once a FLAG_TTL_MS, and only when someone writes.  No binding, no
+     key, or no answer: the last word read, open at first. */
+  async _boardOpen() {
+    const now = Date.now();
+    if (this._flagAt && now - this._flagAt < FEEDBACK_PACE.FLAG_TTL_MS) return this._flagOpen !== false;
+    this._flagAt = now;
+    const env = this.env || {};
+    if (!env.GAME_ROOM || !env.ADMIN_KEY) return this._flagOpen !== false;
+    try {
+      const stub = env.GAME_ROOM.get(env.GAME_ROOM.idFromName(ROOMS.MAIN));
+      const res = await stub.fetch(new Request('https://internal/api/admin/flags', { headers: { Authorization: 'Bearer ' + env.ADMIN_KEY } }));
+      const j = await res.json();
+      if (j && j.ok && j.flags && typeof j.flags === 'object') this._flagOpen = j.flags.feedback !== false;
+    } catch (e) { /* the last word stands */ }
+    return this._flagOpen !== false;
+  }
+
+  /* v2.3.5593: the owner's sweep (RT-1 N3): every ticket row over BIG_ROW
+     characters, and the pace rows no version reads now (`rate:`,
+     `crashrate:`), taken away; `_stats` rebuilt from the tickets left, so a
+     row grown to SQLite's limit is small again. */
+  async sweep() {
+    let big = 0, paces = 0;
+    const counts = Object.create(null);
+    let total = 0;
+    const entries = await this.state.storage.list({ prefix: 'ticket:' });
+    for (const [k, raw] of entries) {
+      if (typeof raw !== 'string' || raw.length > FEEDBACK_PACE.BIG_ROW) { await this.state.storage.delete(k); big++; continue; }
+      let t = null;
+      try { t = JSON.parse(raw); } catch { t = null; }
+      if (!t) continue;
+      total++;
+      const key = feedbackWords(t.topic, FEEDBACK_TOPIC_MAX) + ':' + (typeof t.category === 'string' ? t.category : '');
+      if (counts[key] !== undefined || Object.keys(counts).length < FEEDBACK_PACE.STATS_KEYS) counts[key] = (counts[key] || 0) + 1;
+    }
+    for (const prefix of ['rate:', 'crashrate:']) {
+      const rows = await this.state.storage.list({ prefix });
+      for (const k of rows.keys()) { await this.state.storage.delete(k); paces++; }
+    }
+    await this.state.storage.put('_stats', JSON.stringify({ ...counts, _total: total }));
+    return { ok: true, big, paces, tickets: total };
   }
 }
