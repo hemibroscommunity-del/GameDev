@@ -22,6 +22,7 @@
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import * as W from '../../src/game/weaponSlots.js';
+import { act, setActionTransport } from '../../src/game/actions.js';   /* v2.3.5192: BroTown's sends leave through the action door (act) */
 
 let passed = 0, failed = 0;
 function check(name, cond, detail) {
@@ -102,11 +103,13 @@ const selSrc = (/var _desktopSelectSlot = useCallback\((function \(slot\) \{[\s\
 function select(rpg, slot) {
   const sent = [], floated = [], played = [];
   const S = { rpg, player: { x: 0, y: 0 }, channel: { send: (m) => sent.push(m) } };
+  setActionTransport({ send: (m) => S.channel.send(m) });   /* v2.3.5192: the door's transport is this phone's channel */
   try {
     const fn = vm.runInNewContext('(' + selSrc + ')', {
       stateRef: { current: S }, setRpgState() {}, _objectSpread: (a, b) => Object.assign({}, a, b),
       pushDmgPopup: (_s, _x, _y, text) => floated.push(String(text)), cue: (n) => played.push(n),
       pickSlot: W.pickSlot,
+      act,   /* v2.3.5192: the pick tells the worker through the action door */
     });
     fn(slot);
   } catch (e) { return { error: String(e).slice(0, 200) }; }

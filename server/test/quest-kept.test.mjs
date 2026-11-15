@@ -107,8 +107,9 @@ if (Q1 && K.sendQuestMsg) {
   const at = W.indexOf("case 'state_sync':");
   check('6b wsClient\'s state_sync sends what is kept', at > 0 && W.indexOf('resendKeptQuests(S)', at) > at && W.indexOf('resendKeptQuests(S)', at) - at < 20000);
   const B = src('src/ui/BroTown.jsx');
-  check('6c stats_update keeps its signature only when the channel took it', /const _went = S\.channel\.send\(\{\s*type: 'stats_update'/.test(B) && /if \(_went !== false\) S\._lastStatsUpdateSig = _sig;/.test(B)
-    && !/S\._lastStatsUpdateSig = _sig;\s*try \{\s*\S*\s*S\.channel\.send\(\{\s*type: 'stats_update'/.test(B));
+  /* v2.3.5192: the send goes through the action door (act), which answers as the channel did */
+  check('6c stats_update keeps its signature only when the channel took it', /const _went = act\('stats_update', \{/.test(B) && /if \(_went !== false\) S\._lastStatsUpdateSig = _sig;/.test(B)
+    && !/S\._lastStatsUpdateSig = _sig;\s*try \{\s*\S*\s*act\('stats_update'/.test(B));
 }
 console.log(`\nquest-kept: ${passed} passed, ${failed} failed`);
 if (failed) process.exit(1);
