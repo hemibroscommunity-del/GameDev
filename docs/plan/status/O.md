@@ -1,6 +1,6 @@
 card: O
 branch: claude/plan-o-14b-selftest (one branch a PR; begun from #1896's head, the planning session's word)
-prs: #1787, #1792, #1794, #1800, #1814, #1815, #1832, #1841, #1836, #1850, #1854 (merged); #1896 (5234, 14a), PR 14b (5236): ready
+prs: #1787, #1792, #1794, #1800, #1814, #1815, #1832, #1841, #1836, #1850, #1854 (merged); #1896 (5234, 14a), #1915 (5236, 14b): ready
 state: ready
 
 ## Done
@@ -15,7 +15,7 @@ state: ready
 - #1854 (5230): the strip slice the lanes' `queue` knob (4 ms; `thirty` 8).
 - #1896 (5234, 14a, ready): the self-test at the door; the one program and
   the colour numbers; `self`; `?selftest=fail:<name>`, `?selftest=0`.
-- PR 14b (5236, ready, on #1896): look, sharp (the one program's read where
+- #1915 (5236, 14b, ready, on #1896): look, sharp (the one program's read where
   it draws), sheen, shadow, water: each its picture and its way back.
 
 ## Next
