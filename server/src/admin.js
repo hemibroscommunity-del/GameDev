@@ -458,6 +458,9 @@ export const adminMethods = {
          paths it doesn't own */
       const dl = await this._deviceLockAdminRoute(request, url, path, json);
       if (dl) return dl;
+      /* v2.3.5621: the owner's silence (silence.js, card MOD) -- same contract */
+      const sl = await this._silenceAdminRoute(request, url, path, json);
+      if (sl) return sl;
 
       const lo = await this._liveopsRoutes(request, url, path, json);
       if (lo) return lo;

@@ -383,6 +383,25 @@ Note: players running an old cached version of the game may end up on a
 fresh blank character instead of seeing the freeze message. If that happens,
 just freeze the new id too — their real character stays locked either way.
 
+## Silencing a player, and a freeze that holds their phone (v2.3.5621)
+
+A silence stops one character's chat reaching anyone (room, area, whispers,
+party, friend messages, shop threads) for as long as you choose; they can
+still play, and are told, once a minute, until when. A freeze now also
+refuses any character made on the frozen character's phone (never your own
+phone: a phone one of your test-mode characters has played on is never
+held). Your way is the Test panel's buttons beside Chat reports' Freeze
+(coming: the planning session routes them). For a session that holds the
+admin key (never the owner by hand):
+```
+curl -X POST -H "Authorization: Bearer YOUR_KEY" -H "Content-Type: application/json" \
+  -d '{"playerId":"bp_...","minutes":60,"note":"why"}' "https://WORKER/api/admin/silence"
+curl -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/admin/silence"
+curl -X DELETE -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/admin/silence?id=bp_..."
+```
+`minutes` 0 is until lifted. The live switches `silence` and `freezedevice`
+(set to `false`) turn each off. `docs/specs/silence.md`.
+
 ## Fixing a broken save (restore from backup)
 
 The server now automatically keeps ~7 daily backups per player (taken at

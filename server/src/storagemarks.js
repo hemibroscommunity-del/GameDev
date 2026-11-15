@@ -50,6 +50,7 @@ export const STORAGE_MARKS = Object.freeze({
   'harden_ledger:':   M('none', 'player', 'hardening tries'),
   'botstat:':         M('none', 'player', 'anti-bot evidence'),
   'frozen:':          M('none', 'player', 'an operator freeze'),
+  'silenced:':        M('none', 'player', 'the owner\'s silence (v2.3.5621, silence.js)'),
   'testmode:':        M('none', 'player', 'test mode'),
   'rpgsnap:':         M('none', 'player', 'a COPY of the record (daily, and before a restart or a restore)'),
   'rpgsnap_at:':      M('none', 'player', 'the snapshot\'s clock'),
