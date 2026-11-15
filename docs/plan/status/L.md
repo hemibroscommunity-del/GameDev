@@ -1,7 +1,7 @@
 card: L
 branch: claude/plan-l-20-pose-page (each PR on main, main merged in)
-prs: #1746 to #1855 (merged), #1864 (5216), #1866 (5217), #1876 (5218), #1894 (5219), PR 5 tag 5520: working
-state: working
+prs: #1746 to #1855 (merged), #1864 (5216), #1866 (5217), #1876 (5218), #1894 (5219), #1903 (5520)
+state: ready
 
 ## Done
 
