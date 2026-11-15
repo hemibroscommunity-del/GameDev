@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "724b1c2abfa4d75ec29de87368196a86774ab1c3",
+  "tree": "3bb9928b3c965d6185487db52269957f28b79b4a",
+  "committedAt": "2026-11-14T18:17:23-08:00",
+  "subject": "Merge pull request #1847 from hemibroscommunity-del/claude/plan-r-7-export",
+  "files": 7736,
+  "bytes": 957070311,
+  "listingSha256": "336517b6faeaaa2e8b8c67f8c5bde68ebe06977f249d84bd0efd5df3deb5e411",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

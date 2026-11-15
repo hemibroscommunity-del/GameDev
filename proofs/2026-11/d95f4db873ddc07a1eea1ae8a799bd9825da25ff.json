@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "d95f4db873ddc07a1eea1ae8a799bd9825da25ff",
+  "tree": "f4c2a283b94c07db7437f391c1371c21ea856d95",
+  "committedAt": "2026-11-14T18:17:16-08:00",
+  "subject": "Merge pull request #1863 from hemibroscommunity-del/claude/plan-t-6-reader",
+  "files": 7734,
+  "bytes": 957031452,
+  "listingSha256": "5739c8f8dbd0bfec230f23c5591d654e5a9f22f5caa6ae0d7171e274340e5ebb",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
