@@ -205,7 +205,7 @@ const EXCEPT = (x) => x.f === 'src/debug/crashTrap.js' || x.f === 'src/networkin
    PR 7's first, v2.3.5187: from here the rows are the ways, held by §1 to §5) ── */
 
 /* ── 7. the census: sends and fetches outside the door ── */
-const LINE = { sends: 123, fetches: 1 };   /* v2.3.5187: 203 less PR 7.1's 57; v2.3.5191: less PR 7.5's 23 sends and 24 fetches (the one left: BroTown's, 7.6) */
+const LINE = { sends: 124, fetches: 1 };   /* v2.3.5187: 203 less PR 7.1's 57; v2.3.5191: less PR 7.5's 22 sends and 24 fetches (the fetch left: BroTown's, 7.6; LoginSpinWindow.jsx waits for card T's #1863) */
 {
   let sends = 0; const byFile = new Map();
   for (const [f, s] of SRC) {

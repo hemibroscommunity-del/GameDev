@@ -9,12 +9,12 @@ state: working
   act(), 203 -> 146): merged.
 - Claims 5540 (#1842, merged): the archer's lane (`arrowlane`, ON).
 - Claims 5541 (#1848): the sprint mark, OFF; review-z16's MEDIUMs mended.
-- PR 7.2 (5188): life skills, the economy and the social game, 41 sends
-  (146 -> 105); `nmlAsk.js` (3) waits for card T's #1863.
+- PR 7.2 (5188): life skills, the economy and the social game (146 -> 105).
 - PR 7.3 (5189): the networking files, 17 sends (146 -> 129).
 - PR 7.4 (5190): the panels, 44 sends in 25 files (146 -> 102).
-- PR 7.5 (5191): the sheets' 23 sends and 24 of 25 fetches; the route
+- PR 7.5 (5191): the sheets' 22 sends and 24 of 25 fetches; the route
   way sends today's bytes (a GET plain, the token only where read: `auth`).
+  `LoginSpinWindow.jsx` (1) waits, with `nmlAsk.js`, for card T's #1863.
   7.2 to 7.5 each lower the line from main's, taking main in as each merges.
 
 ## Next
