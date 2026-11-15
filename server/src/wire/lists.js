@@ -104,7 +104,7 @@ export const WIRE_DOOR_ROWS = wireDoorRows();
    the invites, emote...): a check on what a player SAYS reads this, so a new
    lane with a `text` words field is covered by its row.  Keyed by `msg.type`,
    as the router and the wire door are: the page's shim sends a relayed event
-   as `{ type: <event> }`, never `type: 'broadcast'` (wire-door.test §7). */
+   as `{ type: <event> }`, never in the broadcast envelope (wire-door.test §7). */
 export function chatLanes({ inn = WIRE_IN, relay = WIRE_RELAY } = {}) {
   return new Set([...inn, ...relay].filter((r) => r.trust && r.trust.text === 'words').map((r) => r.name));
 }
