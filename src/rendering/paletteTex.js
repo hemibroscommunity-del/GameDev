@@ -80,7 +80,7 @@ import { setWheelPalette } from '../game/wheelTrial.js';
 import { isPaletteSource } from './paletteDraw.js';
 import { deviceProfile, rendererName, devAsk } from '../game/deviceProfile.js';   /* v2.3.5016: a Windows or Mac computer keeps the three programs; v2.3.5227: the chip's name asked there too; v2.3.5228: the fallbacks' questions too */
 import { laneKnob, pinOf, askingAs } from '../game/drawLanes.js';   /* v2.3.5228: one program or three is the lanes' `program` knob (card O PR 8) */
-import { selfDraw, selfDrop, selfQueue, selfSkip, selfIdx, selfPalBytes, selfRgba, selfSharpWant, selfTestOn, SELF_SIZE } from './selfTest.js';   /* v2.3.5234: the self-test at the door (card O PR 14a); v2.3.5236 the sharp read's answer (14b) */
+import { selfDraw, selfDrop, selfQueue, selfSkip, selfPending, selfIdx, selfPalBytes, selfRgba, selfSharpWant, selfTestOn, SELF_SIZE } from './selfTest.js';   /* v2.3.5234: the self-test at the door (card O PR 14a); v2.3.5236 the sharp read's answer (14b) */
 export { isPaletteSource, drawSourceRect, paletteRegionRGBA } from './paletteDraw.js';
 
 export const PAL_BATCHER = 'bt-palette';
@@ -1073,6 +1073,13 @@ export function setOneBatchRenderer(r) {
       _oneOk = false;
       _oneStats.linkError = 'the one program drew the wrong picture (the self-test): the three programs';
       setOneBatchLive(false);
+      /* v2.3.5236 (the gatekeeper's sitting 20, a medium): the three draw
+         now, and the figures' sharp read is the sharp batcher's -- the SAME
+         read (SHARP_SAMPLE_GLSL) the one program may just have drawn wrong,
+         which the shine in the frame reads with too.  Its own test, drawn
+         now with the one program's route off: wrong, the plain read, and the
+         shine to its pass (sheenBatchOn asks sharpSelfOff) */
+      try { sharpSelfTest(r); } catch (e) { /* not tested: drawn as today */ }
     }, tMs);
     if (sharp) selfSkip('sharp', 'the sharp read is the one program\'s here: in its test');
   } else { selfDrop([plain, nums, sharp]); selfSkip('one', 'not built on this device'); }
@@ -1212,5 +1219,12 @@ export function paletteProgramLinked(r, program) { return programLinked(r, progr
 
 /** v2.3.3728: has the renderer said yet whether pictures are drawn as colour
  *  numbers here (setPaletteRenderer ran)?  p256.js waits on it: the effects
- *  load as their modules are read, before the renderer is made. */
-export function paletteDecided() { return _ok !== null; }
+ *  load as their modules are read, before the renderer is made.
+ *  v2.3.5234 (the gatekeeper's sitting 20, a medium): and has the palette's
+ *  self-test given its verdict?  Linked is `_ok` true before it: an effect's
+ *  twin or a tree loaded in that window (p256.js whenPaletteDecided,
+ *  paletteLoad.js treesWhenReady) stayed colour numbers for the sitting,
+ *  drawn by a program the verdict then found wrong.  They wait for it now (a
+ *  few frames, behind the loading screen; whenPaletteDecided's own cap
+ *  holds). */
+export function paletteDecided() { return _ok !== null && !selfPending('palette'); }

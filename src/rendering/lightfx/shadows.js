@@ -285,13 +285,20 @@ function shadeProgram() {
    so each of its five reads is a texel's middle: held to the CPU's blend
    (selfTest.js selfShadeWant).  Drawn as a shadow system is made with its
    renderer -- behind the loading screen, which also builds the program
-   there, where until now the first frame with a shadow in play did.  Wrong,
+   there, where until now the first frame with a shadow in play did (where
+   the light is on: LightFx asks it, lightFx.js).  Wrong,
    and every system draws its shadows through the filter in the middle of
    the frame, as `?shadowpass` (its own flag: the Speed test's step sets
    _prepassOn and would put it back), each moved over at once (_rehome). */
 let _selfOff = false;
 const _selfTested = new WeakSet();
-function shadeSelfTest(renderer) {
+/** The shade's self-test, once a renderer: LightFx asks it as it makes its
+ *  shadow system, where the light is on (lightFx.js: v2.3.5236, the
+ *  gatekeeper's sitting 20, a low -- with `?lightfx=0` no shadow is drawn,
+ *  and its program is not built for nothing). */
+export function shadeSelfTest(renderer) {
+  if (!renderer || !_prepassOn || _selfTested.has(renderer)) return;
+  _selfTested.add(renderer);
   if (!selfTestOn()) { selfSkip('shadow', 'no self-test on this page (?selftest=0)'); return; }
   const t0 = performance.now();
   const N = SELF_SIZE;
@@ -500,9 +507,6 @@ export class ShadowSystem {
     this.stats = { casters: 0, pieces: 0, held: 0, self: null, list: [], keys: [], lifePieces: 0, lock: null, prepass: false };   /* v2.3.3149: + lock, the fraction the layer is drawn back by; v2.3.3458: + prepass, drawn before the frame */
     for (const g of this._grp) this.home.addChild(g);   /* v2.3.4991: where the pieces start (_rehome moves them) */
     this._rehome();
-    /* v2.3.5236 (card O PR 14b): the shade's self-test, once a renderer (made
-       here, as the renderer is, behind the loading screen) */
-    if (renderer && _prepassOn && !_selfTested.has(renderer)) { _selfTested.add(renderer); shadeSelfTest(renderer); }
   }
 
   /* v2.3.3458: drawn before the frame (the cast), or through the filter (the

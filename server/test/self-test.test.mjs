@@ -31,6 +31,7 @@
  *   - _poll taking the pixels while the fence still waits          -> FAIL 3 (a verdict at the first poll, no pixels)
  *   - paletteTex.js: the palette's onFail without setWheelPalette(false) -> FAIL 4
  *   - selfCheck judging nothing read back a failure (the `unread` branch gone) -> FAIL 2 and 3
+ *   - paletteDecided without `!selfPending('palette')` (sitting 20)  -> FAIL 4
  *
  * v2.3.5236 (card O PR 14b): the look program, the sharp read, the shine in
  * the frame, the shadows' shade and the moving water, each tested where it
@@ -51,6 +52,8 @@
  *   - selfSheenWant without the lift                                  -> FAIL 5
  *   - wheelWater.js: stillNow without `_ok === false`                 -> FAIL 7
  *   - shadows.js: the shade's 0.36 made 0.30, its copy here unchanged  -> FAIL 5 (the mirror)
+ *   - paletteTex.js: the one's fallback without sharpSelfTest (sitting 20) -> FAIL 7
+ *   - lightFx.js: the shade's test without lightFxOn() (sitting 20)  -> FAIL 7
  * AND ON THE REAL GPU PATH (a scratch scenario, each program broken in the
  * built page, 2026-11-15): the sharp read made plain -> `one` fails (252 of
  * 256 px), and with `onebatch=0` `sharp` (252); the shade's 0.36 -> 0.30:
@@ -133,6 +136,7 @@ const code = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`\\])\/\
   S.selfQueue('q-unread', renderer, [mkRt('e', want), null], want, () => fails.push('q-unread'), 2);   /* a picture not made */
   const ready = S.selfTestReady();
   let settled = false; ready.then(() => { settled = true; });
+  const waiting = S.selfPending('q-right') && S.selfPending('q-wrong') && !S.selfPending('nothing');
   check('3. the textures are destroyed as the copies are made (nothing kept for the verdict)', destroyed.join() === 'a,b,c,d,e', destroyed);
   runBeforeDraw();   /* the top of a frame: the fences still waiting */
   await Promise.resolve();
@@ -146,6 +150,7 @@ const code = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`\\])\/\
     late['q-right'] && late['q-right'].result === 'pass' && late['q-wrong'] && late['q-wrong'].result === 'fail' && late['q-unread'] && late['q-unread'].result === 'unread'
     && JSON.stringify(fails) === '["q-wrong"]' && !S.selfFailures().includes('q-unread'), { late, fails });
   check('3. ...and the loading screen\'s group waited for every verdict', settled);
+  check('3. each program says it waits while its verdict is pending (selfPending), and not after', waiting && !S.selfPending('q-right') && !S.selfPending('q-wrong'));
 }
 
 /* ── 4. the wiring ── */
@@ -159,10 +164,12 @@ const code = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`\\])\/\
   check('4. the one program: both pictures (plain and colour numbers) drawn before its prewarm, and on a wrong one the three programs at once',
     one.indexOf('selfDraw(r, sp') > 0 && one.indexOf('selfDraw(r, sp') < one.indexOf('r.render({ container: box })')
     && /const rts = \[plain\], wants = \[want\];\s*if \(tps\) \{ rts\.push\(nums\); wants\.push\(want\); \}/.test(one)
-    && /selfQueue\('one', r, rts, wants, \(\) => \{\s*_oneOk = false;[\s\S]*?setOneBatchLive\(false\);\s*\}/.test(one));
+    && /selfQueue\('one', r, rts, wants, \(\) => \{\s*_oneOk = false;[\s\S]*?setOneBatchLive\(false\);[\s\S]*?\}, tMs\);/.test(one));
   const rep = code(src('src/debug/report.js'));
   check('4. the report says each failed program in `self` once a sitting (v2.3.5236: by name, so a verdict after the first report is said too), to a worker that takes lanes',
     /if \(takesLanes\(_S\)\) \{ try \{ const sf = selfFailures\(\)\.filter\(\(n\) => !_selfSaid\.has\(n\)\); if \(sf\.length\) r\.self = sf;/.test(rep) && /if \(r\.self\) for \(const n of r\.self\) _selfSaid\.add\(n\);/.test(rep));
+  check('4. the palette is not "decided" while its verdict is pending: an effect\'s twin or a tree waits for it (p256.js whenPaletteDecided; the gatekeeper\'s sitting 20)',
+    /export function paletteDecided\(\) \{ return _ok !== null && !selfPending\('palette'\); \}/.test(pt));
   check('4. the loading screen registers the group (the preloading law)', /selfTest: selfTestReady\(\),/.test(code(src('src/rendering/preloadAnimations.js'))));
   check('4. the lever has its switch row', /name: '\?selftest', side: 'page'/.test(src('tools/guards/lib/switches.mjs')));
 }
@@ -287,7 +294,9 @@ const code = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`\\])\/\
   const one = pt.slice(pt.indexOf('export function setOneBatchRenderer('), pt.indexOf('window.__btOneBatch ='));
   check('7. sharp: tested by the one program where it draws (its picture in the one\'s test), by its own batcher where the three draw (not chosen; not built)',
     /sharp = sharpSelfPicture\(r\);/.test(one) && /if \(sharp\) \{ rts\.push\(sharp\); wants\.push\(selfSharpWant\(\)\); \}/.test(one)
-    && (one.match(/sharpSelfTest\(r\)/g) || []).length === 2 && /if \(!_oneOk\) \{ try \{ sharpSelfTest\(r\);/.test(one));
+    && (one.match(/sharpSelfTest\(r\)/g) || []).length === 3 && /if \(!_oneOk\) \{ try \{ sharpSelfTest\(r\);/.test(one));
+  check('7. sharp: the one program falling back by its test queues the sharp batcher\'s own (the same read; the gatekeeper\'s sitting 20)',
+    /selfQueue\('one', r, rts, wants, \(\) => \{\s*_oneOk = false;[^}]*?setOneBatchLive\(false\);\s*try \{ sharpSelfTest\(r\); \}/.test(one));
   const sb = code(src('src/rendering/lightfx/sheenBatch.js'));
   check('7. sheen: tested where it is built; wrong, every shine in its pass (`_selfOff` in sheenBatchOn), and so with the sharp read found wrong',
     /return !_urlOff && !_passAll && !_selfOff && sharpMaxTextures\(\) > 0[\s\S]{0,120}&& !sharpSelfOff\(\);/.test(sb) && /if \(_built\) sheenSelfTest\(renderer\);/.test(sb)
@@ -297,8 +306,9 @@ const code = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`\\])\/\
     /if \(_ok\) lookSelfTest\(r\);/.test(lp) && /selfQueue\('look', r, rts, wants, \(\) => \{\s*_ok = false;\s*_okSheen = false;/.test(lp)
     && /if \(selfPending\('look'\)\) return null;\s*return _ok === false \? false : _okSheen;/.test(lp));
   const sh = code(src('src/rendering/lightfx/shadows.js'));
-  check('7. shadow: tested once a renderer as its system is made; wrong, the filter (`_selfOff` in _wantsCast), every system moved over',
-    /if \(renderer && _prepassOn && !_selfTested\.has\(renderer\)\) \{ _selfTested\.add\(renderer\); shadeSelfTest\(renderer\); \}/.test(sh)
+  check('7. shadow: tested once a renderer as its system is made, where the light is on (lightFx.js; sitting 20\'s low); wrong, the filter (`_selfOff` in _wantsCast), every system moved over',
+    /if \(!renderer \|\| !_prepassOn \|\| _selfTested\.has\(renderer\)\) return;\s*_selfTested\.add\(renderer\);/.test(sh)
+    && /if \(this\.shadows && renderer && lightFxOn\(\)\) \{ try \{ shadeSelfTest\(renderer\);/.test(code(src('src/rendering/lightfx/lightFx.js')))
     && /_wantsCast\(\) \{ return _prepassOn && !_selfOff && /.test(sh) && /selfQueue\('shadow', renderer, rt, selfShadeWant\(\), \(\) => \{\s*_selfOff = true;\s*for \(const sys of _systems\) \{ try \{ sys\._rehome\(\);/.test(sh));
   const ww = code(src('src/rendering/wheelWater.js'));
   check('7. water: tested once built; wrong, the sea still (`_ok` false: stillNow), the ground worker told',
