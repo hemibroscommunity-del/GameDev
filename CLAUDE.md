@@ -352,9 +352,10 @@ spec. Add a line here only for a new RULE every session must follow.
     a filter pass in the middle of the frame (TRAPS §221);
   - the camera sits on whole device pixels, and a renderer never writes the
     player's place (TRAPS §231);
-  - three sprite programs on every chip; the one program (`ONE_BATCHER`) only
-    with `?onebatch=1` (it lost a bro's legs on the owner's iPhone; TRAPS §225,
-    §260).
+  - one sprite program (`ONE_BATCHER`) on phones and tablets; the three on a
+    software renderer and a Windows or Mac computer (the lanes' `program`
+    overrides); `?onebatch=0|1` either anywhere; a program that draws its
+    self-test picture wrong falls back alone (`selfTest.js`; TRAPS §225, §260).
 - **Desktop** (the judges play on computers): a click on something you use is
   not a swing (`_deskPressTarget`); an overlay `position: fixed` inside `#root`
   is placed with `fixedBox(layer)`; sizes come from the play column, never the
