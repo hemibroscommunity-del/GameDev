@@ -97,3 +97,15 @@ export function wireDoorRows({ inn = WIRE_IN, relay = WIRE_RELAY, http = WIRE_HT
   return { SOCKET, ROUTES };
 }
 export const WIRE_DOOR_ROWS = wireDoorRows();
+
+/* v2.3.5542 (card K, for card MOD's silence): THE CHAT LANES -- every socket
+   row (`in` or `relay`) whose `text` is a `words` field: a line another player
+   reads.  Not the table's `speaks` (39 rows: join, track, dice, the trades,
+   the invites, emote...): a check on what a player SAYS reads this, so a new
+   lane with a `text` words field is covered by its row.  Keyed by `msg.type`,
+   as the router and the wire door are: the page's shim sends a relayed event
+   as `{ type: <event> }`, never `type: 'broadcast'` (wire-door.test §7). */
+export function chatLanes({ inn = WIRE_IN, relay = WIRE_RELAY } = {}) {
+  return new Set([...inn, ...relay].filter((r) => r.trust && r.trust.text === 'words').map((r) => r.name));
+}
+export const CHAT_LANES = chatLanes();
