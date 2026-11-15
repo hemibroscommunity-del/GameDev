@@ -94,7 +94,7 @@ const SCRATCH = {
     '_apOnceFailed', '_arenaMatch', '_race', '_raceStartedAt', '_ride', '_rideAt', '_ridePid', '_restAt',
     '_dg', '_dgXp', '_cookHits'],
   /* a sprint's metering (sprint.js) */
-  sprint: ['_sprintAt', '_sprintLastPaid', '_sprintOwed', '_sprintPrevPaid', '_sprintStep', '_sprintTally'],
+  sprint: ['_mvWalk', '_sprintAt', '_sprintBilledAt', '_sprintLastPaid', '_sprintOwed', '_sprintPrevPaid', '_sprintStep', '_sprintTally'],
   /* No man's land's choice and its last hit (nomansland.js) */
   nml: ['_nml', '_nmlAllowAt', '_nmlChoiceAt', '_nmlLastHitAt', '_nmlLastHitBy', '_nmlLockAskAt'],
   /* a rate limit of the session (a room Map keeps the ones that must

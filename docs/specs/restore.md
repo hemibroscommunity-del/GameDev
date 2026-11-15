@@ -7,7 +7,7 @@ How the game's saved data can be put back when something goes wrong. Step
 |---|---|---|
 | The room's way back to an earlier time | 9 (tag 5288) | `server/src/restore.js`, below |
 | A player's restore made from the registry | 6 (tag 5285) | `server/src/playerrestore.js`, below |
-| The paged export | 7 (tag 5286) | not built yet |
+| The paged export | 7 (tag 5286) | `server/src/admin.js` `exportPage`; its own spec, `docs/specs/room-export.md` |
 | The storage's size in the day's book | 8 (tag 5287) | `server/src/daybook.js` (its header) |
 
 ## The room's way back (v2.3.5288)
@@ -126,6 +126,15 @@ rewind through the lever to the middle of the play leaves unexplained gold 0.
 
 `roomrewind: true` in the live flags turns the lever on; unset or `false`
 (the default), both steps answer `off`.
+
+## The paged export (v2.3.5286)
+
+The owner's copy of the room's records, a page at a time, behind the admin
+key: `GET /api/admin/export` by a registry prefix or by one character's id,
+never a login key or the hidden settings. Read only. ON (the owner,
+2026-11-14: *"Just go recommended"*); `roomexport: false` turns it off. Its
+whole spec is its own file, `docs/specs/room-export.md` (written while this
+one was still on #1844's branch).
 
 ## One player's restore (v2.3.5285)
 

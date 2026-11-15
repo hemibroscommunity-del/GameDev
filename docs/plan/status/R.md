@@ -1,13 +1,13 @@
 card: R
 branch: claude/plan-r-10-xp-door (stacked on #1895's head, the planning session's word)
-prs: #1819 (5280), #1823 (5283), #1825 (5287), #1844 (5288), #1862 (5281): merged; #1847 (5286), #1873 (5282), #1877 (5284), #1887 (5285), #1895 (5290), PR 10 (5289): ready
+prs: #1819 (5280), #1823 (5283), #1825 (5287), #1844 (5288), #1862 (5281), #1847 (5286): merged; #1873 (5282), #1877 (5284), #1887 (5285), #1895 (5290), PR 10 (5289): ready
 state: ready
 
 ## Done
 
 - Merged: PR 1 (5280, #1819), PR 4 (5283, #1823), PR 8 (5287, #1825),
   PR 9 (5288, #1844), PR 2 (5281, #1862).
-- PR 7 (5286, #1847, ready, sitting 18): the paged export (allow list; ON).
+- PR 7 (5286, #1847, merged): the paged export (allow list; ON).
 - PR 3 (5282, #1873, ready): a weapon's own id (schema 22; waits for
   card OPS's first PR and RT-2's rollback guide, #1872).
 - PR 5 (5284, #1877, ready, sitting 19): quest state's door.
