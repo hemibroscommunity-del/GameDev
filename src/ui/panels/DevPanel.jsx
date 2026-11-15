@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { PlayerDrawings, AccuracyDays } from './DevWatch.jsx';   /* v2.3.4545: what players drew, and every player's accuracy a day */
 import { ReportTable } from './ReportTable.jsx';   /* v2.3.5125: the smoothness table, copied (card A) */
 import { EconCard } from './EconCard.jsx';   /* v2.3.5093: the owner's card, the economy (card E) */
+import { SetSwitchRow } from './SetSwitchRow.jsx';   /* v2.3.5602: set a switch, no terminal (card OPS) */
 import { COL, getState } from '../mobile/dash/common.js';
 import { BT_API_BASE } from '../../networking/index.js';
 import { runSpeedTest } from '../../game/speedTest.js';   /* v2.3.3339: the speed test, measured on this phone */
@@ -1366,6 +1367,9 @@ export const DevPanel = ({ onClose }) => {
                 </>
               );
             })()}
+
+            {/* v2.3.5602: any switch set to a value from here, never a terminal (SetSwitchRow.jsx, card OPS PR 3) */}
+            <SetSwitchRow call={call} busy={busy} setMsg={setMsg} COL={COL} btn={btn} chip={chip} label={label} onFlags={setFlags} />
 
             {/* ═══ v2.3.3344: PLAYER LOGINS ═══  See the note by letDeviceIn. */}
             <div style={label}>Player logins</div>

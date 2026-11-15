@@ -1976,6 +1976,23 @@ Screens: dev-econ-card
 
 Sources: src/ui/panels/EconCard.jsx, src/game/econCard.js, server/src/econcard.js, server/src/worldsum.js, server/test/econ-card.test.mjs, server/src/daybook.js, docs/plan/cards/E.md (PR 12).
 
+## The Test panel sets a switch
+Screens: dev-set-switch
+
+**What it is for:** Setting any live switch to a value from the owner's phone, with no terminal: the owner is never asked to run a command (CLAUDE.md §1). The two that matter most: `newersave` off right after a dashboard rollback (OPERATIONS, "Rolling back"), and `max_players` to hold the world to fewer seats (v2.3.5602, card OPS PR 3).
+
+**Decisions, and why:**
+- **A row under Live flags, not a window**: the list above already shows each switch and its Clear, so setting one sits beside where it then appears. The list is shown again after a set.
+- **The usual switches as chips, each with its words** (`src/game/ownerSwitches.js`); any other lower-case name may be typed, and the server judges it (its refusal shows in the panel's message line). A guard holds every chip to a row of the switch table, so a chip never names a switch that is gone.
+- **On/off as two choices, a number as a number**: an on/off switch offers no number field, a number switch a whole number in its range; anything else is not sent.
+- **Two taps, the panel's own pattern** (as Forget and New key): the first shows, in the message line, what setting it will do, in plain words; only the second sends. A typo cannot change the live game on its own.
+- **The same POST as the panel's other switch taps**, with the admin key: no second way in.
+
+**Still open:**
+- The worker's four old camelCase switches are not offered (they keep the lower-case rule's exception on the server); none is an owner's recovery.
+
+Sources: src/ui/panels/SetSwitchRow.jsx, src/game/ownerSwitches.js, src/ui/panels/DevPanel.jsx (its flags section), tools/guards/owner-switches.test.mjs, docs/plan/cards/OPS.md (PR 3).
+
 ## The login wheel (free daily spin)
 Screens: login-spin
 
