@@ -18,7 +18,8 @@
  *   6. botfp.js's surface: both headers through the same door, by digest,
  *      counted toward the same time-out (a held address reads "not found");
  *   7. the overview's line; the map's cap;
- *   8. an IPv6 /64 is one address once the /64 change's ipKey (PR #1875) is on this worker.
+ *   8. the address the time-out keys by (adminAddress): one /64 shares a key
+ *      once the /64 change's ipKey (PR #1875) is on this worker;
  *
  * BREAK PROOF (rule 8), tried by hand, 2026-11-15:
  *   - `if (at && this._adminHeldFor(at, now) > 0)` made `if (false)` -> FAIL 3
@@ -27,7 +28,7 @@
  *   - botfp's `_adminAuth(request, true)` made `(request)`           -> FAIL 6
  */
 import { GameRoom } from '../src/index.js';
-import { ADMIN_LOCK } from '../src/admin.js';
+import { ADMIN_LOCK, adminAddress } from '../src/admin.js';
 import * as FLOOD_NS from '../src/flood.js';
 
 let failures = 0, passes = 0;
@@ -147,12 +148,20 @@ check('1. ten wrong keys within ten minutes, a fifteen-minute time-out', ADMIN_L
 }
 
 // ── 8. an IPv6 /64 once ipKey is here (PR #1875) ──
+/* The address the time-out keys by, read straight from adminAddress (the
+   same function _adminAuth asks): section 3 proves a held key is refused, so
+   this proves which key one /64 shares -- and it holds whether `adminlock` is
+   thrown or not, so the merge order of #1875 and this PR changes no
+   switch-table line (a check through the lockout would fail with it thrown
+   once ipKey is here) */
 {
-  const room = newRoom({ ADMIN_KEY: KEY });
-  for (let i = 0; i < ADMIN_LOCK.MISSES; i++) await ask(room, 'v6-' + i, '2001:db8:4:4::' + (i + 1).toString(16));
-  const r = (await ask(room, KEY, '2001:db8:4:4::ffff')).status;
-  if (typeof FLOOD_NS.ipKey === 'function') check('8. ipKey here: ten wrong keys from ten addresses of one /64 hold the /64', r === 429, r);
-  else check('8. no ipKey on this worker yet: each IPv6 address counts apart (PR #1875 brings the /64)', r === 200, r);
+  const req = (ip) => new Request('https://x/api/admin/overview', { headers: { 'CF-Connecting-IP': ip } });
+  const a = adminAddress(req('2001:db8:4:4::1'), true), b = adminAddress(req('2001:db8:4:4::ffff'), true);
+  if (typeof FLOOD_NS.ipKey === 'function') check('8. ipKey here: two addresses of one /64 share one key', a === b && a === FLOOD_NS.ipKey('2001:db8:4:4::1'), { a, b });
+  else check('8. no ipKey on this worker yet: each IPv6 address its own key (PR #1875 brings the /64)', a === '2001:db8:4:4::1' && b === '2001:db8:4:4::ffff', { a, b });
+  check('8. the /64 switched off (ip64 false): each address its own key', adminAddress(req('2001:db8:4:4::1'), false) === '2001:db8:4:4::1');
+  check('8. IPv4 is itself; no address (a local test) is none', adminAddress(req('203.0.113.9'), true) === '203.0.113.9'
+    && adminAddress(new Request('https://x/api/admin/overview'), true) === null);
 }
 
 Date.now = realNow;
