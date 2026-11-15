@@ -222,7 +222,7 @@ let _timer = null;
 let _joinedAt = 0;        /* the page's first join */
 let _dueAt = 0;
 let _died = null;         /* the first report's `died` (null: sent, or not yet decided) */
-let _selfOwed = true;     /* v2.3.5234: the self-test's failures, said once a sitting (until a report carrying them is sent) */
+const _selfSaid = new Set();   /* v2.3.5234: the self-test's failures, each said once a sitting (v2.3.5236: by name -- 14b's verdicts can come after the first report: the shine's at the loading screen's end, the water's behind the Wheel's, a rebuilt renderer's later still) */
 let _diedOwed = false;
 let _lastFrameT = -Infinity, _lastHoldT = -Infinity;
 let _a = null;            /* the bins */
@@ -449,7 +449,7 @@ export function buildReport(now) {
   if (takesLanes(_S)) r.rung = [_w(a.rungMax), Math.min(secs, _w(a.belowMs / 1000))];
   /* v2.3.5234 (card O PR 14a): the programs that failed their self-test at the
      door (rendering/selfTest.js), once a sitting, to a worker that takes lanes */
-  if (_selfOwed && takesLanes(_S)) { try { const sf = selfFailures(); if (sf.length) r.self = sf; } catch (e) { /* none said */ } }
+  if (takesLanes(_S)) { try { const sf = selfFailures().filter((n) => !_selfSaid.has(n)); if (sf.length) r.self = sf; } catch (e) { /* none said */ } }
   /* v2.3.5127 (sitting 4): the card goes only to a worker that takes it;
      to one that does not, it waits (and is not cleared by the send) */
   if (_speed && takesSpeed(_S)) r.speed = { model: _speed.model, rows: _speed.rows.map((x) => x.slice()) };
@@ -491,7 +491,7 @@ function _due(now) {
     _sent++;
     _lastSentAt = now;
     if (_died) { _died = null; _diedOwed = false; }   /* once */
-    if (r.self) _selfOwed = false;   /* v2.3.5234: once a sitting */
+    if (r.self) for (const n of r.self) _selfSaid.add(n);   /* v2.3.5234: once a sitting (v2.3.5236: each name) */
     if (r.speed) _speed = null;   /* v2.3.5125: the card went with it */
   } else _dropped++;
   _reset(now);

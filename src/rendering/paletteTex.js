@@ -75,12 +75,12 @@
  * Probe: window.__btPalette().
  */
 import { BatcherPipe, DefaultBatcher, ExtensionType, extensions, BufferImageSource, Texture, Sprite, RenderTexture, MeshSimple, GlProgram, Shader, UniformGroup, SpritePipe, MeshPipe, GlMeshAdaptor, GlBatchAdaptor, Container, Matrix, glUploadBufferImageResource } from 'pixi.js';
-import { SHARP_SAMPLE_GLSL } from './sharpPixels.js';   /* v2.3.3447: the sharp read, for ONE_BATCHER's program */
+import { SHARP_SAMPLE_GLSL, sharpSelfPicture, sharpSelfTest } from './sharpPixels.js';   /* v2.3.3447: the sharp read, for ONE_BATCHER's program; v2.3.5236: its self-test picture */
 import { setWheelPalette } from '../game/wheelTrial.js';
 import { isPaletteSource } from './paletteDraw.js';
 import { deviceProfile, rendererName, devAsk } from '../game/deviceProfile.js';   /* v2.3.5016: a Windows or Mac computer keeps the three programs; v2.3.5227: the chip's name asked there too; v2.3.5228: the fallbacks' questions too */
 import { laneKnob, pinOf, askingAs } from '../game/drawLanes.js';   /* v2.3.5228: one program or three is the lanes' `program` knob (card O PR 8) */
-import { selfDraw, selfDrop, selfQueue, selfSkip, selfIdx, selfPalBytes, selfRgba, selfTestOn, SELF_SIZE } from './selfTest.js';   /* v2.3.5234: the self-test at the door (card O PR 14a) */
+import { selfDraw, selfDrop, selfQueue, selfSkip, selfIdx, selfPalBytes, selfRgba, selfSharpWant, selfTestOn, SELF_SIZE } from './selfTest.js';   /* v2.3.5234: the self-test at the door (card O PR 14a); v2.3.5236 the sharp read's answer (14b) */
 export { isPaletteSource, drawSourceRect, paletteRegionRGBA } from './paletteDraw.js';
 
 export const PAL_BATCHER = 'bt-palette';
@@ -999,7 +999,14 @@ export function setOneBatchRenderer(r) {
   _oneWanted = choice.on;
   _oneStats.why = choice.why;
   _oneStats.renderer = name;
-  if (!_oneWanted || !webgl2(r)) { _oneOk = false; selfSkip('one', !_oneWanted ? 'the three programs chosen (' + choice.why + ')' : 'no WebGL 2'); return false; }
+  if (!_oneWanted || !webgl2(r)) {
+    _oneOk = false;
+    selfSkip('one', !_oneWanted ? 'the three programs chosen (' + choice.why + ')' : 'no WebGL 2');
+    /* v2.3.5236 (14b): the three programs draw here, the figures' sharp
+       read the sharp batcher's: its own self-test (sharpPixels.js) */
+    try { sharpSelfTest(r); } catch (e) { /* not tested: drawn as today */ }
+    return false;
+  }
   let box = null, src = null;
   _oneRoute = true;
   /* v2.3.5234: the self-test's pictures drawn here, first, before the
@@ -1008,7 +1015,7 @@ export function setOneBatchRenderer(r) {
   const tT0 = performance.now();
   const wT0 = tT0;   /* v2.3.5234: the whole warm-up's ms */
   const want = selfRgba();
-  let plain = null, nums = null, tps = null;
+  let plain = null, nums = null, tps = null, sharp = null;
   if (selfTestOn()) {
     let sp = null, sn = null;
     try {
@@ -1019,7 +1026,11 @@ export function setOneBatchRenderer(r) {
         tps = makePaletteSource({ idx: selfIdx(), w: SELF_SIZE, h: SELF_SIZE, stride: SELF_SIZE, rgba: selfPalBytes(), alphaMode: 'premultiplied-alpha', label: 'bt-one-selftest' });
         if (tps) { sn = new Sprite(new Texture({ source: tps })); nums = selfDraw(r, sn, RenderTexture); }
       }
-    } catch (e) { selfDrop([plain, nums]); plain = nums = null; }   /* not drawn: unread, kept as today */
+      /* v2.3.5236 (14b): and a figure's piece drawn twice its size: on this
+         route the sharp read is this program's (`_btSharp`), so it is tested
+         here (none where the sharp read is switched off) */
+      sharp = sharpSelfPicture(r);
+    } catch (e) { selfDrop([plain, nums, sharp]); plain = nums = sharp = null; }   /* not drawn: unread, kept as today */
     try { if (sp) sp.destroy({ texture: true, textureSource: true }); } catch (e) { /* gone */ }
     try { if (sn) sn.destroy(); } catch (e) { /* gone */ }
     try { if (tps) tps.destroy(); } catch (e) { /* gone */ }
@@ -1055,13 +1066,20 @@ export function setOneBatchRenderer(r) {
      at all: kept as today (selfCheck). */
   if (!selfTestOn()) selfSkip('one', 'no self-test on this page (?selftest=0)');
   else if (_oneOk) {
-    selfQueue('one', r, tps ? [plain, nums] : [plain], want, () => {
+    const rts = [plain], wants = [want];
+    if (tps) { rts.push(nums); wants.push(want); }
+    if (sharp) { rts.push(sharp); wants.push(selfSharpWant()); }
+    selfQueue('one', r, rts, wants, () => {
       _oneOk = false;
       _oneStats.linkError = 'the one program drew the wrong picture (the self-test): the three programs';
       setOneBatchLive(false);
     }, tMs);
-  } else { selfDrop([plain, nums]); selfSkip('one', 'not built on this device'); }
+    if (sharp) selfSkip('sharp', 'the sharp read is the one program\'s here: in its test');
+  } else { selfDrop([plain, nums, sharp]); selfSkip('one', 'not built on this device'); }
   _oneRoute = _oneOk === true;
+  /* v2.3.5236 (14b): not built, the three programs draw: the sharp batcher's
+     own test (drawn now, with the one program's route off) */
+  if (!_oneOk) { try { sharpSelfTest(r); } catch (e) { /* not tested: drawn as today */ } }
   try { if (box) box.destroy({ children: true }); } catch (e) { /* gone */ }
   try { if (src) src.destroy(); } catch (e) { /* gone */ }
   _oneStats.prewarmed = true;

@@ -1,8 +1,13 @@
-# The self-test at the door (v2.3.5234)
+# The self-test at the door (v2.3.5234, v2.3.5236)
 
-Card O's PR 14 (grand plan step 1.7). The code: `src/rendering/selfTest.js`;
-the programs' hooks in `src/rendering/paletteTex.js`; the checks:
-`server/test/self-test.test.mjs` and `tools/qa/mp/mp-selftest.mjs`.
+Card O's PR 14 (grand plan step 1.7), in three parts: 14a (v2.3.5234) the
+frame, the one program and the colour numbers; 14b (v2.3.5236) the look
+program, the sharp read, the shine in the frame, the shadows' shade and the
+moving water; 14c the clip, the fill and the glint. The code:
+`src/rendering/selfTest.js` (the frame, every picture and every answer);
+each program's own file for where its picture is drawn and its one way
+back. The checks: `server/test/self-test.test.mjs` and
+`tools/qa/mp/mp-selftest.mjs`.
 
 ## Why
 
@@ -51,7 +56,11 @@ loading screen, and put that one program back to its way of today.
   - the colour numbers: whole colours (`setWheelPalette(false)`), the
     Wheel's ground worker told.
   Until its verdict a program is used as it was. The loading screen's group
-  `selfTest` (`preloadAnimations.js`) waits for every verdict.
+  `selfTest` (`preloadAnimations.js`) waits for every verdict queued by
+  then (the colour numbers, the one program, the shadows' shade); the look's
+  comes once its sheets are in, the shine's at the end of the loading
+  screen's chain and the water's behind the Wheel's own loading screen,
+  each within a few frames.
 - **The report** (`src/debug/report.js`) names each program that failed in
   `self`, once a sitting, to a worker that takes the lanes (the worker has
   known `self` since card O's PR 1).
@@ -60,7 +69,8 @@ loading screen, and put that one program back to its way of today.
 
 - `?selftest=fail:<name>[,<name>...]` (a lever, for QA): the named program
   fails its test (`forced`), to see its fallback drawn and the others
-  untouched. Names: `one`, `palette`.
+  untouched. Names: `one`, `palette`, `look`, `sharp`, `sheen`, `shadow`,
+  `water`.
 - `?selftest=0` (or `off`, `false`): no self-test (the off-ramp, and how its
   time is measured).
 
@@ -69,10 +79,10 @@ loading screen, and put that one program back to its way of today.
 `window.__btSelfTest()`: `{ results, failed, ms, draws }`. Each result is
 `pass`, `fail` (with `off`, the pixels wrong), `forced`, `unread` (kept as
 today) or `skipped` (with why: switched off, no WebGL 2, not built on this
-device). A program not yet
-tested has no row and is never in `self`.
+device, drawn by another program here). A program not yet tested has no
+row and is never in `self`.
 
-## What it costs (measured 2026-11-15, `mp-selftest`)
+## What it costs: 14a (measured 2026-11-15, `mp-selftest`)
 
 Pages 4 (`?selftest=0`) and 5 (as it ships) are compared: both load after the
 same programs were built once in that browser (this box's software renderer
@@ -98,11 +108,55 @@ would charge the self-test for the cold build).
 - The loading screen's runs differ by a second or two from run to run;
   either way it is no longer with the self-test.
 
-## In 14b and 14c (to come)
+## 14b: five more programs (v2.3.5236)
 
-- 14b (5236): the look palette (to the bake), the sharp pixels (to plain),
-  the sheen batch (to its pass), the shadows' pre-pass (to the old pass), and
-  water (to still: moved from 14a, as its shader is not a pure recolour of
-  the picture and its answer needs working out).
+Each is tested where it is warmed, at inputs where every term the CPU cannot
+follow to the bit is multiplied away (so its answer is exact), and falls
+back alone to the way it is drawn when its switch is off.
+
+| program | where its picture is drawn | the picture, and its answer | its way back |
+|---|---|---|---|
+| **look** (`lookPalette.js`) | `prewarmProgram`, once its sheets are in | a sheet of its own: 16 x 16 numbers at 8 bits, a table of four colours, two of them a role recoloured by a row of the colours' atlas (`recol`); and, where the shine reaches it, the same sheet with the shine | every look baked (`_ok` false: as a computer, or the Test panel's switch) |
+| **sharp** (`sharpPixels.js`) | where the three programs draw (`setOneBatchRenderer`: not chosen, or not built) | an 8 x 8 picture drawn 2x: the sharp read gives every pixel a texel's own colour; the plain read blends a quarter of the neighbour in | the plain read (as `?sharp=0`), every draw list rebuilt |
+| ...the one program's sharp read | in the one program's test, where it draws (phones, tablets) | the same picture, through the one program (`_btSharp`) | the one program's: the three programs |
+| **sheen** (`sheenBatch.js`) | `warmSheenBatch`, at the end of the loading screen's chain | four colours as a shining piece, the sun's side 0, no figure frame, a white tint: the lift is a function of each pixel's colour | every shine in a pass of its own (as `?sheenpass`) |
+| **shadow** (`shadows.js`) | as a shadow system is made with its renderer (once a renderer) | a pieces' picture of four alphas, read by the shade at a soft step of one texel, no slide: the five reads blended | the filter in the middle of the frame (as `?shadowpass`), every system moved over |
+| **water** (`wheelWater.js`) | `prewarmWheelWater`, behind the Wheel's loading screen (and its colour-numbers twin) | a piece under a field at strength 0: the piece read at the texel's middle times the field's wetness | still water (as `?nowaves`, the live switch, the lanes' last rung), the ground worker told |
+
+- **Each way back is its own flag**, never the Speed test's switch
+  (`setSheenPass`, `setShadowPrepass`), which its next step would put back.
+- **The sharp read takes the shine with it.** The sheen batcher reads its
+  pieces with the sharp read and draws only what the sharp batcher would
+  (`sheenBatch.js`), so a sharp read found wrong puts every shine in its own
+  pass too (`sheenBatchOn` asks `sharpSelfOff`), and the shine is then not
+  tested (`skipped`, saying why).
+- **The look's choices wait for its verdict.** `lookSheenState` says "not
+  known" while the look's pictures wait (`selfPending`), so the armour's
+  choice (`whenLookKnown`) never builds on numbers that are taken away a few
+  frames on (TRAPS §340).
+- **The shine is allowed 4 a channel**, not 2: a phone works its exp and
+  smoothstep at half precision. Its four colours sit where the lift is still
+  steep (near the ceiling it saturates): the highlight's start, its end and
+  the ceiling each move a colour past the allowance. The sun-side weight
+  cannot show with the sun at 0.
+- **The shadows' shade is built behind the loading screen now.** Until 14b
+  its program was built on the first frame with a shadow, in play; its
+  picture builds it as the renderer is made (the most the self-test costs
+  there: below).
+- **Each CPU copy is held to its program's own text** (`self-test.test.mjs`
+  §5: the shine's lines, the shade's five reads, the water's wetness, the
+  look's recolour). A shader's number changed without its copy would make
+  every phone fail its test and quietly fall that program back: the suite
+  fails first.
+- **Tried on the real GPU path** (a scratch scenario, each program broken in
+  the built page): the sharp read made plain fails `one` (252 of 256 px),
+  and `sharp` with `onebatch=0`; the shade's 0.36 made 0.30 fails `shadow`
+  (192); the look's 0.299 made 0.399 fails `look` (128); the water's
+  smoothstep(0.3 to 0.2) fails `water` (128); the shine's highlight start
+  0.55 made 0.50 fails `sheen` and `look` (64 each: the look's shine
+  picture runs the same lines). Every other program passed each time.
+
+## 14c (to come)
+
 - 14c (5237): the clip, the fill and the glint: tested and named in `self`;
   where a program has no way back, it is drawn as today and named.

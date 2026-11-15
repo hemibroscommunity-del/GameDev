@@ -112,7 +112,8 @@
  * its own (setShadowPrepass), and mp-shadowprepass draws one held frame both
  * ways.
  */
-import { BatcherPipe, Container, Filter, GlProgram, Matrix, Mesh, MeshGeometry, MeshSimple, RenderTexture, Shader, Sprite, Texture, UniformGroup } from 'pixi.js';
+import { BatcherPipe, BufferImageSource, Container, Filter, GlProgram, Matrix, Mesh, MeshGeometry, MeshSimple, RenderTexture, Shader, Sprite, Texture, UniformGroup } from 'pixi.js';
+import { selfDraw, selfQueue, selfSkip, selfTestOn, selfShadeRgba, selfShadeWant, SELF_SHADE, SELF_SIZE } from '../selfTest.js';   /* v2.3.5236: the self-test at the door (card O PR 14b) */
 import { profileAtU } from '../propGround.js';
 import { healAfterRenderThrow } from '../renderHeal.js';   /* v2.3.3458: a pre-pass that throws leaves nothing open */
 
@@ -278,6 +279,48 @@ function shadeProgram() {
   return _shadeProgram;
 }
 
+/* ═══ v2.3.5236: THE SELF-TEST AT THE DOOR (card O PR 14b; selfTest.js) ═══
+   The pre-pass's shade (its quad's program, bt-shadow-shade) reads a known
+   pieces' picture of four alphas, at a soft step of one texel and no slide,
+   so each of its five reads is a texel's middle: held to the CPU's blend
+   (selfTest.js selfShadeWant).  Drawn as a shadow system is made with its
+   renderer -- behind the loading screen, which also builds the program
+   there, where until now the first frame with a shadow in play did.  Wrong,
+   and every system draws its shadows through the filter in the middle of
+   the frame, as `?shadowpass` (its own flag: the Speed test's step sets
+   _prepassOn and would put it back), each moved over at once (_rehome). */
+let _selfOff = false;
+const _selfTested = new WeakSet();
+function shadeSelfTest(renderer) {
+  if (!selfTestOn()) { selfSkip('shadow', 'no self-test on this page (?selftest=0)'); return; }
+  const t0 = performance.now();
+  const N = SELF_SIZE;
+  let src = null, mesh = null, geometry = null, shader = null, rt = null;
+  try {
+    src = new BufferImageSource({ resource: selfShadeRgba(), width: N, height: N, alphaMode: 'premultiplied-alpha', scaleMode: 'linear', label: 'bt-shadow-selftest' });
+    const uni = new UniformGroup({
+      uInputSize: { value: new Float32Array([N, N, 1 / N, 1 / N]), type: 'vec4<f32>' },
+      uAlpha: { value: SELF_SHADE.alpha, type: 'f32' },
+      uColor: { value: new Float32Array(SELF_SHADE.color), type: 'vec3<f32>' },
+      uSoft: { value: SELF_SHADE.soft, type: 'f32' },
+      uShift: { value: new Float32Array([0, 0]), type: 'vec2<f32>' },
+    });
+    geometry = new MeshGeometry({ positions: new Float32Array([0, 0, N, 0, N, N, 0, N]), uvs: new Float32Array([0, 0, 1, 0, 1, 1, 0, 1]), indices: new Uint32Array([0, 1, 2, 0, 2, 3]) });
+    shader = new Shader({ glProgram: shadeProgram(), resources: { uTexture: src, shadeUniforms: uni } });
+    mesh = new Mesh({ geometry, shader });
+    rt = selfDraw(renderer, mesh, RenderTexture);
+  } catch (e) { rt = null; }
+  /* let go whole (the program is shared, and stays: wheelWater.js unmake) */
+  try { if (mesh) mesh.destroy(); } catch (e) { /* gone */ }
+  try { if (geometry) geometry.destroy(true); } catch (e) { /* gone */ }
+  try { if (shader) shader.destroy(false); } catch (e) { /* gone */ }
+  try { if (src) src.destroy(); } catch (e) { /* gone */ }
+  selfQueue('shadow', renderer, rt, selfShadeWant(), () => {
+    _selfOff = true;
+    for (const sys of _systems) { try { sys._rehome(); } catch (e) { /* that system's next update */ } }
+  }, performance.now() - t0);
+}
+
 /* How long a figure's last shadow is held when the figure has vanished but
    its owner has not -- a stand-in this module does not know about yet (a new
    cast pose, say) hides the body for a moment, and a shadow that blinks off
@@ -374,6 +417,7 @@ export function setShadowPrepass(on) {
 if (typeof window !== 'undefined') {
   window.__btShadowPrepass = {
     on: () => _prepassOn,
+    selfOff: () => _selfOff,   /* v2.3.5236: the self-test found the shade drawn wrong: the filter */
     set: (on) => setShadowPrepass(on),
     /* QA (mp-palette, mp-shadowprepass): the pieces' picture drawn again for
        the world where it stands NOW -- a test that moves the camera and
@@ -456,11 +500,14 @@ export class ShadowSystem {
     this.stats = { casters: 0, pieces: 0, held: 0, self: null, list: [], keys: [], lifePieces: 0, lock: null, prepass: false };   /* v2.3.3149: + lock, the fraction the layer is drawn back by; v2.3.3458: + prepass, drawn before the frame */
     for (const g of this._grp) this.home.addChild(g);   /* v2.3.4991: where the pieces start (_rehome moves them) */
     this._rehome();
+    /* v2.3.5236 (card O PR 14b): the shade's self-test, once a renderer (made
+       here, as the renderer is, behind the loading screen) */
+    if (renderer && _prepassOn && !_selfTested.has(renderer)) { _selfTested.add(renderer); shadeSelfTest(renderer); }
   }
 
   /* v2.3.3458: drawn before the frame (the cast), or through the filter (the
      layer) */
-  _wantsCast() { return _prepassOn && this._preOk && !!this.renderer && !this.renderer.destroyed; }
+  _wantsCast() { return _prepassOn && !_selfOff && this._preOk && !!this.renderer && !this.renderer.destroyed; }
   get home() { return this._homeIsCast ? this.castIn : this.layer; }
 
   /* every pooled piece to the container it is drawn from (the switch, or the
