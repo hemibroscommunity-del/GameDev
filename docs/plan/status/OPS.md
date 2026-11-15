@@ -1,6 +1,6 @@
 card: OPS
-branch: claude/plan-ops-2-health (one branch a PR: claude/plan-ops-<n>-<word>)
-prs: #1867 (findings, draft), #1871 (5587), #1872 (5588), #1874 (5600, ready); PR 2 (5601, ready)
+branch: claude/plan-ops-5-rfspread (one branch a PR: claude/plan-ops-<n>-<word>)
+prs: #1867 (findings, draft), #1871 (5587), #1872 (5588), #1874 (5600), #1880 (5601), PR 5 (5604): ready
 state: ready
 
 ## Done
@@ -11,6 +11,9 @@ state: ready
 - PR 2 (5601): `/health/room` (`health.js`), `roomhealth`; the newer-save
   refusals were already counted (`roomrow.js`): now shown. Carries #1874's
   head: it lands right after it.
+- PR 5 (5604): `rf_spread`: 800 waiting knock 81/s, not 159 (thread 21%,
+  not 38%; local). Carries #1880's head. (First opened as #1884 under
+  5602, before the panel rows took 5602 and 5603.)
 
 ## Next
 
