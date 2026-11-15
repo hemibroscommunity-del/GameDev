@@ -325,6 +325,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `safeheal` | worker | switch | v2.3.3569 | 2026-10-22 | false | logic |  | no | The safe ground's heal is the wilds' trickle again. |
 | `serverdead` | worker | switch | v2.3.4373 | 2026-11-10 | false | logic |  | no | A phone's move may write `dead` again (the move's write back). |
 | `sprint` | worker | switch | v2.3.3003 | 2026-10-03 | false | logic |  | no | No sprint step is allowed. |
+| `sprintmark` | worker | switch | v2.3.5541 | off | true | logic |  | no | An opt-in, off (the owner: off for now): thrown (`sprintmark: true`), a move between two sprint-marked ones keeps the run, so a sprint marked on every other move pays its stamina, and only a move the sprint bills is judged at its bound (the rest at the walk). |
 | `steadymovers` | worker | switch | v2.3.3203 | 2026-10-13 | false | logic |  | no | Every move goes out again, from the next tick. |
 | `?tapms` | page | lever | v2.3.3105 |  | a number of ms | none |  | no | A test's own longest tap that still counts as free. |
 
@@ -375,6 +376,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 |---|---|---|---|---|---|---|---|---|---|
 | `?bakeurl` | page | switch | v2.3.5043 | 2026-11-14 | =0 | logic |  | no | Every armour bake input is cut on the page again, not sent to the worker as its sheet's address. |
 | `?barretry` | page | switch | v2.3.4415 | 2026-11-10 | =0 | logic | `?retrylooks` | no | HUD bar pictures that failed are not asked for again. |
+| `?beltstandin` | page | switch | v2.3.5560 | 2026-11-15 | =0, off, false | logic |  | no | A figure in both armour pieces jogs, as before, while its chain belt's jog sheet is on its way: the plain body under the armour on the facings its bake draws, not its idle frame. |
 | `?bindfix` | page | switch | v2.3.3152 | 2026-10-12 | =0 | chip |  | no | The graphics bind-group fix is not installed. |
 | `?bladesoft` | page | value | v2.3.2927 |  | a number, off or on | logic |  | no | Sets how soft a blade's edge is drawn. |
 | `?boardroll` | page | switch | v2.3.3855 | 2026-10-29 | =0, off, false | logic |  | no | The board rolls as it was: no spots, dip or bumps. |
@@ -388,6 +390,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?depthbuf` | page | switch | v2.3.3072 | 2026-10-06 | present | chip |  | no | The depth buffer is kept, to compare. |
 | `?dmgscale` | page | value | v2.3.3033 |  | a number | logic |  | no | Scales the damage numbers. |
 | `?dmgwords` | page | switch | v2.3.5008 | 2026-11-13 | =0 | logic |  | no | Damage numbers are not shortened to words (K, M). |
+| `?elemicons` | page | switch | v2.3.5258 | 2026-11-15 | =0 | memory |  | no | The eight element marks drawn after a hit's number are drawn from their full-colour pictures, as before, not from their 256-colour twins. |
 | `?fill` | page | switch | v2.3.3577 | 2026-10-23 | =0 | chip |  | no | The fill batch is off: fills drawn as Pixi does. |
 | `?firelegless` | page | switch | v2.3.3684 | 2026-10-28 | =0 | logic |  | no | The fire armour keeps the legs under its greaves, as before. |
 | `?firelit` | page | switch | v2.3.3684 | 2026-10-28 | =0 | logic |  | no | The fire log's lit key pixels stay pink, as before. |
