@@ -116,6 +116,17 @@ export const SYSTEMS = Object.freeze({
       { name: 'bookAdd', file: 'server/src/daybook.js', what: 'the day\'s book (`daybook:`): every part adds through it (v2.3.5080, card E)' },
     ],
   },
+  /* v2.3.5601 (card OPS): the room under a crowd and the watch on it.  Its
+     own system so a switch of it runs its own suites in the switches-thrown
+     guard: server-core's and liveops' include suites that fail under the
+     guard's preload with any flag (tick-pace, cold-flags; card T's Found). */
+  ops: {
+    what: 'the room under a crowd and the watch on it: its health for a monitor, the waiting crowd\'s pace, a seat held',
+    files: [f('server/src', 'health|rfspread|seathold')],
+    words: ['room-health', 'rf-spread', 'seat-hold'],
+    traps: [],
+    doors: [],
+  },
   combat: {
     what: 'hitting and being hit: weapons, abilities, the bow, shields, damage, PvP',
     files: [
