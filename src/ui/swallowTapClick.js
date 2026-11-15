@@ -55,6 +55,7 @@
  * (mp-tapthrough shows the bug with it).
  */
 
+import { swHas } from '../game/switches.js';   /* v2.3.5306: the page's one reader (card T) */
 const KEEP_MS = 700;
 const NEAR_PX = 32;
 
@@ -116,7 +117,7 @@ try { if (typeof window !== 'undefined') window.__btTapClicks = _qa; } catch (_e
  */
 export function swallowTapClick(e) {
   if (_off === null) {
-    try { _off = /[?&]tapthrough(=|&|$)/.test((typeof location !== 'undefined' && location.search) || ''); } catch (_e) { _off = false; }
+    _off = swHas('tapthrough');   /* v2.3.5306: the one reader (was /[?&]tapthrough(=|&|$)/) */
     _qa.off = _off;
   }
   if (_off) return;

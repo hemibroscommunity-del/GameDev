@@ -79,11 +79,10 @@ look-alikes, no joined reading, and a substring match, which refuses "Modest").
   running cards hold); the planning session gave them to card OPS. Until
   then a session with the key has the commands (`docs/OPERATIONS.md`, "The
   feedback board").
-- **`guards/switches-thrown` skips `cold-flags.test.mjs`** (a stopgap the
-  planning session approved, outside this card's files): that suite tests
-  the cold flag cache, which the guard's preload warms by design, so it
-  failed under the preload with any switch thrown; `feedback` was the first
-  new liveops switch to draw it in. Card T owns the lasting mend.
+- **`guards/switches-thrown`**: `feedback` was the first new liveops switch
+  to draw `cold-flags.test.mjs` into its run, which the guard's old preload
+  failed with any switch thrown. Card T's #1889 (5307) mended the preload;
+  this PR carries it (no skip of its own).
 
 ## Not done here (the red team's list routes them)
 
