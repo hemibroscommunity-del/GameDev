@@ -28,6 +28,7 @@
  * visits never zoom.  `?nomapdetail` draws the map as before.
  */
 import { wheelMapDetail } from '../game/wheelTrial.js';
+import { swHas } from '../game/switches.js';   /* v2.3.5306: the page's one reader (card T) */
 
 /* a coarse pixel this many CSS px on screen or more: the tiles */
 export const COARSE_PX = 6;
@@ -41,7 +42,7 @@ let _loading = 0;
 let _gen = 0;               /* bumped by freeMapDetail: a load from before it is let go on arrival */
 let _frame = 0;             /* the last draw's clock: a tile it drew is never let go */
 const _stats = { loads: 0, failed: 0, freed: 0, drawn: 0 };
-const OFF = (() => { try { return /[?&]nomapdetail(?:[=&]|$)/.test(location.search); } catch (e) { return false; } })();
+const OFF = swHas('nomapdetail');   /* v2.3.5306: the one reader (was /[?&]nomapdetail(?:[=&]|$)/) */
 
 function load(D, key) {
   const t = _tiles.get(key) || { bm: null, used: 0, loading: false, failedAt: 0 };
