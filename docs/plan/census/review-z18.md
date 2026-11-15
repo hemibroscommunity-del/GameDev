@@ -235,10 +235,15 @@ path re-read at 29a9ab5 (the mend 7481d01) as new code.**
   31, ride 96, safe-heal 36, liveops 110, claims-gain 15;
   traps-server-word; switches.
 
-## Card P: #1868 (tag 5560, the owner's gear item): reviewed, @@P1868
+## Card P: #1868 (tag 5560, the owner's gear item): reviewed, listed
 
 **The chain belt's stand-in (`?beltstandin=0`; option B, the owner's own
-answer): lows and nits only.** Read at 2b920a7 (`main` abff2ef in).
+answer): lows and nits only.** Read at 2b920a7 (`main` abff2ef in). Its
+head a3a30d0 merges #1853's (so carries #1863), writes the blocks below
+and the reader's forms (`--write`), and moves its own read into the
+reader (`sw('beltstandin')`, form `0|off|false`, read once at the
+module's load as before: the same answer; switch-reader check 3 counted
+it as a 222nd outside read). Read by the gatekeeper.
 
 - What a player sees, VERIFIED by node probes: only a figure in BOTH
   armour pieces stands, and only while it runs and its belt's jog sheet
@@ -284,7 +289,7 @@ answer): lows and nits only.** Read at 2b920a7 (`main` abff2ef in).
   The phone test passes `world: 'wheel'`, lane `full`, and reads probes
   that exist. Its phone run is P's (not run by the finder).
 
-## Card P: #1853 (tag 5258, the element marks): @@P1853
+## Card P: #1853 (tag 5258, the element marks): listed
 
 Sitting 17 read it clean (its lows stand: the pixel readers' guard reads
 only a file's own text, so the marks' paths from elemHits.js are
@@ -294,6 +299,9 @@ held it for `main`. Its head e960377 took `main` abff2ef: its code is
 byte for byte what sitting 17 read; `artCache` measured again with the
 slimes in, 25.5 at the fight, its line 90.6 -> 88.6 (both savings, as
 sitting 17 asked); its `?elemicons` row carries `on: '2026-11-15'`.
+Its head 015c581 carries #1863 (403ea57) and writes `?elemicons`'s form
+into the reader (`--write`); nothing under `server/` of its own, so,
+landing after #1863, it deploys nothing.
 
 ## The red team: #1871 (tag 5587): step 3, listed; #1872 (tag 5588): held
 
@@ -374,11 +382,30 @@ PR lowers `TODO_LINE` 27 -> 24 (break proof: 23 fails check 7). L's
 lower it again. The four lines' guard on `main` printed the room K's
 #1861 earned: monsterCombat.js 1785 (its line 1792) and its
 `updateMonsterCombat` 1724 (1732): this PR lowers both (break proof:
-`updateMonsterCombat` 1723 fails check 2). @@LINES
+`updateMonsterCombat` 1723 fails check 2). On the whole list's tip,
+with this branch last, the four lines', the phase table's, the switches'
+(494 rows) and the switch reader's guards are green, and print room for
+the next sitting, once its PRs have landed: entityRenderer.js 8941 (its
+line 8953; P's #1868 moved the full set's test into beltHold.js) and
+the `todo` count 22 (L's #1864 and #1866). The memory lines move only by
+#1853's own (`artCache` 90.6 -> 88.6, measured, in its PR).
 
 ## The list
 
-@@LIST
+1 #1863 (T) · 2 #1847 (R) · 3 #1864 (L) · 4 #1866 (L) · 5 #1848 (K) ·
+6 #1853 (P) · 7 #1868 (P) · 8 #1871 (the red team) · 9 this PR; each
+"Create a merge commit", in one sitting. Five deploy the worker (#1863 by
+`server/test/`; #1847, #1864, #1866, #1848 by `server/src/`): back to
+back. P's two carry #1863's `server/test/` edits, so each deploys
+nothing once #1863 has landed (the list's order). #1871 is a guard under
+`tools/`: no deploy. Four add a live flag (`roomexport` ON, `posedoor`
+ON, `racedoor` ON, `sprintmark` OFF); they meet on no line (each row in
+its place by name; the whole merges clean, step by step). Two add a
+page switch (`?elemicons`, `?beltstandin`), each carrying #1863 and its
+forms. No stored record changes its shape. #1871 is a draft: the
+planning session marks it ready before it merges. Stacked within a card:
+#1866 on #1864 (L), #1868 on #1853 (P); P's two on #1863's head (the
+planning session's carry).
 
 ## The whole
 
