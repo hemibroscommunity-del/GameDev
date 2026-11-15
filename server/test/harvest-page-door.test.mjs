@@ -80,6 +80,7 @@ console.warn = quiet(warn); console.error = quiet(error);
 
 const { harvestTo, harvestPhase, HARVEST_PAGE_WAYS } = await import(new URL('game/harvestDoor.js', SRC).href);
 const L = await import(new URL('game/lifeSkillRewards.js', SRC).href);
+const { setActionTransport } = await import(new URL('game/actions.js', SRC).href);
 
 let clock = 1_900_000_000_000;
 Date.now = () => clock;
@@ -180,6 +181,9 @@ const setSearch = (s) => { globalThis.location = { search: s }; };
 {
   const sent = [];
   const deps = { setRpgState: () => {} };
+  /* a send leaves by the bro's channel or, as card K moves them, the action
+     door's transport (actions.js act): both are this list */
+  setActionTransport({ send: (m) => { sent.push(m); return true; } });
   const S = {
     _extraction: null, currentZone: 'wheel', dmgNumbers: [],
     player: { x: 500, y: 500, vx: 0, vy: 0 },
