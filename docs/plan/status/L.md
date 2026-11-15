@@ -1,7 +1,7 @@
 card: L
 branch: claude/plan-l-21-guard-page (each PR on main, main merged in)
-prs: #1746 to #1855 (merged), #1864 (5216), #1866 (5217), #1876 (5218), #1894 (5219), #1903 (5520), PR 5 tag 5521: working
-state: working
+prs: #1746 to #1855 (merged), #1864 (5216), #1866 (5217), #1876 (5218), #1894 (5219), #1903 (5520), PR 5 tag 5521: ready
+state: ready
 
 ## Done
 
@@ -28,13 +28,13 @@ state: working
   alliance (16, 14, 9 of 16 by run: the typed name or the war's tap lost),
   fishvariants (4a-5: no Inspect on the card; 6c by run: healed before Eat),
   moresounds (setup and 10 every run; 8b, 9a by run: other cues heard),
-  deskharvest 5 (a phone's first-harvest hint, v2.3.4196, read as a computer's).
-- bodytake.js ~94 cites a pose row that is none; session.phase: the scan's. Dead:
-  S._shieldStamina, S.shieldActive, S._iceAttack, monsterCombat's respawn.
+  deskharvest 5 (a phone's first-harvest hint, read as a computer's: to J2),
+  blockface 2 (the block icon's disc: 13 of 560 px blue, on main too).
+- bodytake.js ~94 cites a pose row that is none. Dead: S._shieldStamina,
+  S.shieldActive, S._iceAttack, monsterCombat's respawn, playerActions' raiseShield.
 
 ## Needs
 
 - The owner: wheelMusic `_m` (a return to the Wheel's music at once) and
   deskTeach `_armed` (no "Almost!" after a change of place): `sitting`.
-- Card SK's ride.js (S._ride); S._spar (the takeover's leave, unread); card
-  A's perfTracker.js. The page's death door (its 8 rows) leads the page.
+- SK's ride.js (S._ride); S._spar (unread); A's perfTracker.js; death door leads.
