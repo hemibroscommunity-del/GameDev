@@ -284,4 +284,93 @@ answer): lows and nits only.** Read at 2b920a7 (`main` abff2ef in).
   The phone test passes `world: 'wheel'`, lane `full`, and reads probes
   that exist. Its phone run is P's (not run by the finder).
 
-@@REST
+## Card P: #1853 (tag 5258, the element marks): @@P1853
+
+Sitting 17 read it clean (its lows stand: the pixel readers' guard reads
+only a file's own text, so the marks' paths from elemHits.js are
+invisible to it; `buffers` at home 23.6 to 23.8 against its line 24.2,
+measured alone; `src/state/art.js` gains an unrelated ledger row) and
+held it for `main`. Its head e960377 took `main` abff2ef: its code is
+byte for byte what sitting 17 read; `artCache` measured again with the
+slimes in, 25.5 at the fight, its line 90.6 -> 88.6 (both savings, as
+sitting 17 asked); its `?elemicons` row carries `on: '2026-11-15'`.
+
+## The red team: #1871 (tag 5587) and #1872 (tag 5588): step 3, listed
+
+At the planning session's word (the red team opens no PRs to the
+gatekeeper's card; these two come through the planning session).
+Drafts: the planning session marks each ready before it merges.
+
+- **#1871**: one file, `tools/guards/do-migrations.test.mjs`: it READS
+  `server/wrangler.toml` (never writes it) and fails unless its
+  `[[migrations]]` are exactly the known list (one block, `v1`, the five
+  classes) and no `deleted_classes`, `renamed_classes` or
+  `transferred_classes` stands anywhere outside a comment. Green on
+  `main`; it runs in server's `npm test` (server/test/run.mjs runs
+  tools/guards/*.test.mjs), so a bad line fails the deploy's own `test`;
+  a guard, not a suite under `server/`: it deploys nothing. A new Durable
+  Object class is a block added to KNOWN in the same PR as its block in
+  wrangler.toml (the owner's word, CLAUDE.md §4). Its four break proofs
+  are in its header.
+- **#1872**: words in `docs/OPERATIONS.md`, rolling back a bad server
+  update and what to do when GitHub cannot deploy.
+- Their tags (5587, 5588) and the red team's others (5586, 5592) are in
+  no block on `main` yet: P's #1868 writes RT 5580 to 5599, at the
+  planning session's word. Precheck asks only that a tag be unused on
+  `main`.
+
+## Not listed
+
+- R's #1873 (5282, a weapon's own id: schema 21 -> 22, a stored record's
+  shape; its own line, merged by itself when it comes): the planning
+  session's word: after card OPS's Test panel "set a switch" row and
+  #1872 are on `main`, so the owner can set `newersave` without a
+  terminal if a rollback is ever needed.
+- For sitting 19, at the planning session's word: R's #1877 (5284), L's
+  #1876 (5218, carries #1864 and #1866), the red team's #1878 (5593,
+  with its 5594).
+- Card O's PR 14a and J2's next: not opened this sitting.
+- Drafts left alone: the red team's #1867, #1869, #1870 (findings
+  documents); #1415 and #1211 (storage, never to merge).
+
+## Stalled
+
+None: only P's status says `working`, on branches pushed within the hour.
+
+## Found (no card's, or another card's)
+
+- L's #1864's finder: spar.js ~374 writes `.po` on a spar clone (`po` not
+  in `SPAR_NOT_COPIED`): a fighting clone drawn sitting (the Test panel's
+  lever only). Card L's (the pose door's one writer).
+- L's #1866's finder: `dailychest.test` red once in a full run that
+  crossed UTC midnight (streak 2), green alone twice: a suite that reads
+  the day mid-run. Card J2's (8.1).
+- The box: precheck's server suites (a five-minute limit) timed out once
+  with three finders' suites running beside it (load 12 on four
+  processors); green when run alone. A sample, the box's.
+- Card OPS's branch claude/plan-ops-1-card (83c0f42, no PR) writes
+  tools/dev/tag-blocks.json's OPS block and `nextBlock` 5620 on the
+  lines P's #1868 writes (RT, OPS, MOD, `nextBlock` 5640): whichever
+  lands second conflicts; OPS's should drop its edit (the planning
+  session's word: OPS and MOD write no blocks).
+- P's #1868's finder: its blocks' `nextBlock` 5580 (its first head)
+  would have handed the next card the red team's 5580 to 5599: mended
+  by its new head, at the planning session's word.
+
+## The lines
+
+On `main` abff2ef the phase table's `todo` is 24 at its line 27: this
+PR lowers `TODO_LINE` 27 -> 24 (break proof: 23 fails check 7). L's
+#1864 and #1866 bring it to 22 on the list's tip; the next sitting may
+lower it again. The four lines' guard on `main` printed the room K's
+#1861 earned: monsterCombat.js 1785 (its line 1792) and its
+`updateMonsterCombat` 1724 (1732): this PR lowers both (break proof:
+`updateMonsterCombat` 1723 fails check 2). @@LINES
+
+## The list
+
+@@LIST
+
+## The whole
+
+@@WHOLE
