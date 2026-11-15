@@ -1,22 +1,22 @@
 card: L
-branch: claude/plan-l-21-guard-page (each PR on main, main merged in)
-prs: #1746 to #1855 (merged), #1864 (5216), #1866 (5217), #1876 (5218), #1894 (5219), #1903 (5520), #1910 (5521)
-state: ready
+branch: claude/plan-l-22-arena-door (each PR on main, main merged in)
+prs: #1746 to #1855 (merged), #1864 (5216), #1866 (5217), #1876 (5218), #1894 (5219), #1903 (5520), #1910 (5521), PR 5 tag 5522: working
+state: working
 
 ## Done
 
 - PR 1, 2 (#1746, #1748): the ledger's guard; the phase table and guard.
 - PR 3, 4 (5203 to 5209, #1767 to #1803): `resetOn` at the zone and rejoin
   doors; the resets, 484 -> 233 rows.
-- PR 5 tags 5210 to 5213 (merged), 5214 to 5217: the worker's trade, duel,
-  party, cook, harvest+fishing, dungeon, pose, race doors; the page's: 5218
+- PR 5 tags 5210 to 5213 (merged), 5214 to 5217, 5522: the worker's trade, duel,
+  party, cook, harvest+fishing, dungeon, pose, race, arena doors; the page's: 5218
   race (`raceTo`), 5219 harvest+cook+fishing (`harvestTo`), 5520 pose (`poseTo`),
   5521 guard (`guardTo`).
 
 ## Next
 
-- PR 5: free page halves (5522 on); the worker's guard waits for K (combat.js,
-  index.js), ride SK, arena E's e-14, death door K's k-7, `connection` K.
+- PR 5: free page halves (5523 on; arena's, trade's and duel's need gameEvents.js:
+  K's 7.3); worker guard waits for K, ride SK, death door K's k-7, `connection` K.
 - Backlog (J2's find): a rejoin (a stall past 5 s) clears the party and the
   Saloon's alliance forms (what was typed is lost): a REJOIN_SLOTS row.
 

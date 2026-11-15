@@ -121,6 +121,10 @@
  *  34. `S._pose = null;` back in rejoinSlots.js rejoinClear -> FAIL 2
  * v2.3.5521 (the guard's page door):
  *  35. `S._shieldUp = false;` back in shieldToggle.js dropShield -> FAIL 2
+ * v2.3.5522 (the arena door):
+ *  36. `this._arena = null;` back in gladiator.js _tickArena -> FAIL 2
+ *  37. `t.status = 'running';` back in _arenaStart -> FAIL 2 (the duel
+ *      line's besides is the arena door's own, `fn`)
  *
  * Run from the repository's root: node tools/guards/phase-table.test.mjs
  * (cd server && npm test runs it with every other guard and suite).
@@ -305,7 +309,7 @@ const DOOR_SUITES = Object.freeze({
     prop: 'status', besides: [
       { file: 'server/src/alliance.js', text: 'w.status = ', why: 'an alliance war\'s end, its own record' },
       { file: 'server/src/clans.js', text: 'war.status = ', why: 'a clan war\'s end, its own record' },
-      { file: 'server/src/gladiator.js', text: ' t.status = ', why: 'an arena tournament: the `arena` row (the space before `t` keeps out `mt.status =`, the gatekeeper\'s low)' },
+      { file: 'server/src/gladiator.js', text: ' t.status = ', fn: '_arenaTo', why: 'an arena tournament: the `arena` row\'s own door (v2.3.5522; the space before `t` keeps out `mt.status =`, the gatekeeper\'s low)' },
       { file: 'server/src/arena.js', text: 'tournament.status = ', why: 'the old Arena object\'s tournament (kept for its binding)' },
     ] },
   /* v2.3.5212: the party door -- a Map, so its set / delete / clear are
@@ -340,6 +344,9 @@ const DOOR_SUITES = Object.freeze({
   /* v2.3.5218: the race's page door (the page half of the race row) */
   'server/test/race-page-door.test.mjs': { field: 'S._race', fn: 'raceTo', holds: '§2: no write of ._race in src/ outside raceTo, nor of the race record\'s .phase in race.js',
     prop: '_race', besides: [] },
+  /* v2.3.5522: the arena door (its status writes are the duel line's besides, in _arenaTo) */
+  'server/test/arena-door.test.mjs': { field: 'this._arena', fn: '_arenaTo', holds: '§2: no write of this._arena in server/src outside _arenaTo, nor of a tournament\'s status',
+    prop: '_arena', besides: [] },
   /* v2.3.5521: the guard's page door */
   'server/test/guard-page-door.test.mjs': { field: 'S._shieldUp', fn: 'guardTo', holds: '§2: no write of S._shieldUp in src/ outside guardTo',
     prop: '_shieldUp', besides: [
