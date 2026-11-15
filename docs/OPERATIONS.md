@@ -501,8 +501,10 @@ see the two sections above).
    has a save the older version does not know. The older version refuses
    that player rather than damage the save, so they sit at "connecting" for
    ever, with no word on screen. One switch lets them in (`newersave` set to
-   `false`); it is harmless when nobody needs it, so set it after EVERY
-   rollback:
+   off); it is harmless when nobody needs it, so set it after EVERY
+   rollback. **From your phone:** the Test panel, Live flags, **Set a
+   switch**: tap `newersave`, tap off, tap Set, then Set again (v2.3.5602).
+   (Before that version is out, or from a computer, the same thing:)
 ```
 curl -X POST -H "Authorization: Bearer YOUR_KEY" -H "Content-Type: application/json" \
   -d '{"name":"newersave","value":false}' "https://WORKER/api/admin/flags"
