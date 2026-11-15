@@ -252,6 +252,7 @@ export const tickMethods = {
       const _now = Date.now();
       this._tickPaceStart(_now);
       this._roomRowTick(_now);   /* v2.3.5124: the gap between ticks, and the room's row into the day's book (roomrow.js) */
+      this._seatRosterTick(_now);   /* v2.3.5606: who is in, for a restart's held seats, at most every 15 s (seathold.js; `seathold: true` only) */
       /* v2.3.4653: a throw that still escapes the guards below (the snapshot
          before them) is counted like theirs, once in the log, instead of an
          uncaught error every 22 ms (state-machine sweep VA, S3-1) */
