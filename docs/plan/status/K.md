@@ -16,7 +16,7 @@ state: working
   way sends today's bytes (a GET plain, the token only where read: `auth`).
 - PR 7.6 (5192): BroTown.jsx's 17 sends and its fetch, and the ride key's
   send 7.1 left. 7.2 to 7.6 each lower the line from main's, taking main
-  in as each merges; all in, the census is 3 sends (nmlAsk.js), 0 fetches.
+  in as each merges; all in, 4 sends left (#1863's two files), 0 fetches.
 
 ## Next
 
