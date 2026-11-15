@@ -1,6 +1,6 @@
 card: OPS
-branch: claude/plan-ops-12-rename (one line: #1874 > #1880 > #1886 > #1908 > #1891 > #1872 > #1893 > #1905 > #1913)
-prs: #1874 (5600), #1880 (5601), #1886 (5604), #1908 (5606), #1891 (5602), #1872 (5588), #1893 (5603), #1905 (5605), #1913 (5608): ready, in that order; #1871 (5587) ready
+branch: claude/plan-ops-12-rename (one line: #1874 > #1880 > #1886 > #1908 > #1891 > #1872 > #1893 > #1905 > #1913 > #1917)
+prs: #1874 (5600), #1880 (5601), #1886 (5604), #1908 (5606), #1891 (5602), #1872 (5588), #1893 (5603), #1905 (5605), #1913 (5608), #1917 (5611): ready, in that order; #1871 (5587) ready
 state: ready
 
 ## Done
@@ -19,7 +19,7 @@ state: ready
 - #1913 (5608) the boards: kept a minute, swept, `playtime` on its own
   board, `lastSeen` by the hour (`boardcache`; `exactseen` the exact time).
 
-- PR 12 (5611) rename from the Test panel (MOD's #1907); `mp-renameowner`.
+- #1917 (5611) rename from the Test panel (MOD's #1907); `mp-renameowner`.
 
 ## Next
 
