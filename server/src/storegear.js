@@ -235,6 +235,7 @@ import { GEAR_STASH_FIELDS, gearStashCap, stashSig, sanitizeGearPiece, sanitizeC
    are methods on the room (gearProvMethods), so they are called through
    `this` rather than imported. */
 import { slotForGearField } from './gearprov.js';
+import { stashGive, stashTake, stashSet } from './stash.js';   /* v2.3.5281: the stashes' door (card R PR 2) */
 
 export const STORE_GEAR = {
   /* v2.3.2552: `STRICT_FLAG` and `PROV` are GONE -- see section 5 of the
@@ -489,8 +490,6 @@ export const storeGearMethods = {
     if (!isGearField(field)) return true;
     const piece = this._stGearSanitize(field, payload.piece, false);
     if (!piece) return true;
-    if (!Array.isArray(ps[field])) ps[field] = [];
-    if (ps[field].length >= gearStashCap()) return false;
     /* v2.3.2552: this used to stamp `_sv: true` here -- "the server is the
        one writing it, so it is corroborated by construction".  The mark is
        retired.  What corroborates a delivered piece now is its ledger ROW,
@@ -498,7 +497,7 @@ export const storeGearMethods = {
        runs, and which `_gearProvMarkDelivered` reads back to set `gid` and
        `prov` on what lands here -- DERIVED from the ledger rather than
        asserted by whoever pushed it. */
-    ps[field].push(piece);
-    return true;
+    /* v2.3.5281: the stashes' door refuses a full list (false: the mail keeps it) */
+    return stashGive(ps, field, piece, 'gear_mail', this);
   },
 };

@@ -127,7 +127,7 @@ export const dailyChestMethods = {
          is (index.js loot pickup, src 'drop'). */
       prize.piece = this._gearProvRecord(session.id, prize.piece.slot, { ...prize.piece }, 'chest');
       /* v2.3.4840: the worker's armour stash too (gearstash.js _gearStashLiveAdd) */
-      if (this._gearStashLiveAdd) this._gearStashLiveAdd(ps, prize.piece.slot, prize.piece);
+      if (this._gearStashLiveAdd) this._gearStashLiveAdd(ps, prize.piece.slot, prize.piece, 'gear_chest');   /* v2.3.5281: its road */
     }
     if (opId && typeof opId === 'string') await this._opStamp('chestop:' + opId);
     /* v2.3.3527: an Elite or Godly piece is an achievement (achievements.js),

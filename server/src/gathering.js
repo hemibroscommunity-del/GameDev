@@ -367,9 +367,51 @@ export function harvestBaseXp(tierLvl, table) {
  * LIFE_SKILL_XP_BASE in src/data/items.js (mirror-audit pins the pair). */
 export const LIFE_SKILL_XP_BASE = 1000;
 
+/* ═══ v2.3.5214: THE HARVEST DOOR -- THE GATHER RECORD'S ONE WRITER (card L PR 5) ═══
+   (docs/specs/harvest-door.md; held by server/test/harvest-door.test.mjs and
+   the phase table's guard, tools/guards/phase-table.test.mjs)
+   A harvest's phase on the worker is its record, `this.extractions[pid]`:
+   none, or started (mining, woodcutting, fishing alike: fishing's row is the
+   same door).  Its window opening is a time on the record (openDelayBase, or
+   the hits' plan), not a phase; a strike ends it.  ONE writer, _harvestTo, by
+   a way of HARVEST_WAYS -- `start` (_handleExtractionStart), and the ways to
+   none: `strike` (_handleNodeStrike, paid or not), `end` (_endExtraction:
+   the gatherer attacks or casts) and `sweep` (_sweepStaleExtractions, past
+   EXTRACTION_TIMEOUT_MS).  The record outlives the socket on purpose
+   (leave.js, v2.3.3322), so there is no leave way.
+   The door's one rule: a started record carries its start (a finite
+   `startedAt`), so the sweep can always end it -- `e.startedAt < cutoff` is
+   false for a record without one, which would then stand forever.  Every
+   record the start builds has it, so nothing a player sees changes;
+   `harvestdoor: false` in the live flags writes any record, as the old line
+   did.  A cook keeps no record (gathering.js _planCookHits): its phase is
+   the claim, the cook door (movement.js _exTo). */
+export const HARVEST_WAYS = Object.freeze({ start: 'started', strike: 'none', end: 'none', sweep: 'none' });
+
 export const gatheringMethods = {
   // ═══ Gather nodes (trees / fish spots / ore veins) ═══
   //
+
+  /* v2.3.5214: the harvest door's kill switch (live flag `harvestdoor: false`) */
+  _harvestDoorOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'harvestdoor') && !f.harvestdoor);
+  },
+
+  /* v2.3.5214: THE ONE WRITER of a player's gather record.  `rec` is the
+     record for `start`, null for the ways to none.  True when it wrote. */
+  _harvestTo(pid, rec, way) {
+    if (typeof pid !== 'string' || !pid || !Object.prototype.hasOwnProperty.call(HARVEST_WAYS, way) || !this.extractions) return false;
+    if (HARVEST_WAYS[way] === 'none') {
+      if (rec !== null || !Object.prototype.hasOwnProperty.call(this.extractions, pid)) return false;
+      delete this.extractions[pid];
+      return true;
+    }
+    if (!rec || typeof rec !== 'object') return false;
+    if (!Number.isFinite(rec.startedAt) && !this._harvestDoorOff()) return false;
+    this.extractions[pid] = rec;
+    return true;
+  },
   // The client owns the tier/name/flavor data tables (WOODCUTTING_TIERS
   // / FISHING_TIERS / MINING_TIERS in src/data/lifeSkills.js).  The
   // server only needs to know: how many of each type per zone, their
@@ -751,7 +793,7 @@ export const gatheringMethods = {
     const cutoff = (nowMs || Date.now()) - this.EXTRACTION_TIMEOUT_MS;
     for (const sid of Object.keys(this.extractions)) {
       const e = this.extractions[sid];
-      if (!e || e.startedAt < cutoff) delete this.extractions[sid];
+      if (!e || e.startedAt < cutoff) this._harvestTo(sid, null, 'sweep');   /* v2.3.5214: the harvest door */
     }
     /* v2.3.3322: a recovery clock that has run out holds nothing (HARVEST_PROOF) */
     if (this._harvestRecoverAt && this._harvestRecoverAt.size) {
@@ -984,7 +1026,7 @@ export const gatheringMethods = {
     /* v2.3.4385: `keepRecord` -- a stuck arrow's late chip (_volleyChipKeeps,
        below) leaves the node's record standing; the cook stamp under it is
        zeroed as ever */
-    if (!keepRecord && this.extractions[playerId]) delete this.extractions[playerId];
+    if (!keepRecord && this.extractions[playerId]) this._harvestTo(playerId, null, 'end');   /* v2.3.5214: the harvest door */
     /* v2.3.1765: the cook/fire branch of _extractionShielded reads ps._exAt,
        not this.extractions, so clearing the record alone would leave a swinging
        cook still shielded — the exact hole this method exists to close, just on
@@ -1111,7 +1153,7 @@ export const gatheringMethods = {
        would refuse its harvests as too early. */
     const seq = this._hitSeqOf(hitSeq);
     if (seq) this._planGatherHits(session, ps, n, rec, seq);
-    this.extractions[session.id] = rec;
+    this._harvestTo(session.id, rec, 'start');   /* v2.3.5214: the harvest door */
   },
 
   /** v2.3.2956: a client's hitSeq, or 0 for none (absent, not an integer,
@@ -1490,7 +1532,7 @@ export const gatheringMethods = {
     }
     // Extraction resolved (success or timeout) -- clear the state so a
     // fresh tap doesn't reuse stale timing.
-    delete this.extractions[session.id];
+    this._harvestTo(session.id, null, 'strike');   /* v2.3.5214: the harvest door */
 
     // swipeFp telemetry -- ring-buffered per session for offline
     // anomaly review.  v2.3.1146: now retains the FULL fingerprint

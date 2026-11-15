@@ -44,7 +44,8 @@ import { preloadNodeLabelIcons } from './nodeLabels.js'; /* v2.3.3040 */
 import { loadPetSheet } from './petSprites.js'; /* v2.3.3120: every pet's frames, one small sheet */
 import { preloadDailyChest } from './chestPreload.js'; /* v2.3.2820: the daily chest's claim window */
 import { variantSpritesFor, unloadVariantSprites } from './monsterVariantSprites.js';
-import { loadSlimeSprites } from './slimeSprites.js';
+import { loadSlimeSprites, loadSlimeSingles, unloadSlimeSprites, SLIME_WALK } from './slimeSprites.js';   /* v2.3.5256: + whether they load as you walk, the singles that do not, and the letting go */
+import { zoneWearsSlime } from './wheelMonsterArt.js';   /* v2.3.5256: the slimes' strips go with the zones that wear them */
 import { loadSnowmanSprites, unloadSnowmanSprites } from './snowmanSprites.js';
 import { loadPlayerDeathSprites } from './playerDeathSprites.js';
 import { mintWorldFxTextures } from './worldFxTextures.js';   /* v2.3.2712 */
@@ -292,6 +293,12 @@ export async function freeZoneAssets(fromZoneId, toZoneId) {
        variant free had returned every other zone to its exact baseline. */
     tasks.push(Promise.resolve(freeFrostImpactTex()).catch(() => {}));
   }
+  /* v2.3.5256: the slimes' strips, loaded as you walk (wheelMonsterArt.js),
+     go with a zone that wears them and stay for one that wears them too (a
+     land's dungeon); wheelArtReset leaves the letting go to this */
+  if (SLIME_WALK && zoneWearsSlime(fromZoneId) && !zoneWearsSlime(toZoneId)) {
+    tasks.push(Promise.resolve(unloadSlimeSprites()).catch(() => []));
+  }
   /* And the retinted copies the departing zone's variants asked for.  Same
      subtraction as the sheets: a colour the destination also uses stays.
      Resolved through MONSTER_VARIANTS because the cache is keyed by (family,
@@ -351,7 +358,8 @@ export async function freeZoneAssets(fromZoneId, toZoneId) {
 
 export async function preloadWorldAnimations() {
   const groups = {
-    slime: loadSlimeSprites(),
+    /* v2.3.5256: the slimes' strips load as you walk (wheelMonsterArt.js), not here: only their splat and orb; `?slimewalk=0` as before */
+    slime: SLIME_WALK ? loadSlimeSingles() : loadSlimeSprites(),
     playerDeath: loadPlayerDeathSprites(),
     /* v2.3.2712: the textures time of day, dust, blood and the crumbling
        corpse draw from -- minted in a canvas, not downloaded, but a first-use

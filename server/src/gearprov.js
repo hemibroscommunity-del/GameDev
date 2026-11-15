@@ -69,6 +69,8 @@
    convention.  ONE key per player, read on join and written on mint —
    never a prefix scan, so this can never become the v2.3.2438
    unbounded-list-on-the-join-path stall. */
+import { stashTake } from './stash.js';   /* v2.3.5281: the stashes' door (card R PR 2) */
+
 export const GEAR_PROV_KEY = (playerId) => 'gear_prov:' + playerId;
 
 /* The ledger's own schema stamp, so a future shape change has somewhere
@@ -896,7 +898,7 @@ export const gearProvMethods = {
       const list = psTake[field];
       const at = list.findIndex((g) => g && g.gid === verdict.gid);
       if (at >= 0) {
-        list.splice(at, 1);
+        stashTake(psTake, field, at, 'gear_list');   /* v2.3.5281: the stashes' door */
         /* v2.3.2539: and PERSIST it.  The splice used to live only in
            memory until some unrelated path happened to save, so a room
            restart in between left the stored blob still holding the piece
