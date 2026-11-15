@@ -193,6 +193,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `tradeonewrite` | worker | switch | v2.3.4795 | 2026-11-11 | false | logic |  | no | The trade's swap goes back to its old order of writes. |
 | `valuepause` | worker | switch | v2.3.5090 | 2026-11-14 | false | logic |  | no | An action that hands gold or goods on runs even in the minute after the storage refused a save (nothing pauses). |
 | `xfer` | worker | switch | v2.3.5092 | 2026-11-14 | false | logic |  | no | No transfer ledger row (`xfer:`) is written; trades run exactly as before. |
+| `xferescrow` | worker | switch | v2.3.5290 | off | true | logic | `xfer` | no | Thrown (true), a wagered duel's pot writes its transfer-ledger row (`xfer:`) in the pot's own run: one row a wagered duel; unset or false, the default, the pot pays as before and writes none. |
 
 ## identity
 
