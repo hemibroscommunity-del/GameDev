@@ -1,6 +1,6 @@
 card: OPS
-branch: claude/plan-ops-5-rfspread (one branch a PR: claude/plan-ops-<n>-<word>)
-prs: #1867 (findings, draft), #1871 (5587), #1872 (5588), #1874 (5600), #1880 (5601), PR 5 (5604): ready
+branch: claude/plan-ops-7-seathold (one branch a PR: claude/plan-ops-<n>-<word>)
+prs: #1867 (findings, draft), #1871 (5587), #1872 (5588), #1874 (5600), #1880 (5601), #1886 (5604), PR 7 (5606): ready
 state: ready
 
 ## Done
@@ -14,10 +14,13 @@ state: ready
 - PR 5 (5604): `rf_spread`: 800 waiting knock 81/s, not 159 (thread 21%,
   not 38%; local). Carries #1880's head. (First opened as #1884 under
   5602, before the panel rows took 5602 and 5603.)
+- PR 7 (5606): `seathold`, OFF: a restart keeps 6 of 6 seated (off: 1),
+  a blip 6 of 6 (off: 3); local, 30 waiting. Carries #1886's head.
 
 ## Next
 
-- PR 3 (5602): the Test panel sets a switch (page only).
+- PR 8 (5607): the owner's reads, a page at a time (after card R's PR 7);
+  else PR 9 (5608): the boards.
 
 ## Found
 
@@ -32,6 +35,7 @@ state: ready
 
 ## Needs
 
-- PR 6 (`seathold`): built OFF; on, at most one small write a minute while
-  the roster changes (~1,440 a day at most): the owner's word to turn it on.
-- PR 7 starts after card R's PR 7 (`admin.js`, `liveops.js`) is merged.
+- PR 7 (`seathold`): built OFF; on, at most one small write every 15 s
+  while the roster changes (5,760 a day at most, ~17 cents a month): the
+  owner's word to turn it on.
+- PR 8 starts after card R's PR 7 (`admin.js`, `liveops.js`) is merged.

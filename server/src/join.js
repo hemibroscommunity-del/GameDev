@@ -661,6 +661,10 @@ export const joinMethods = {
       this._playerLeaves(ws, 'refused');   /* v2.3.4830: the session door (leave.js) */
       return;
     }
+    /* v2.3.5606: A SEAT HELD (seathold.js, `seathold: true`): once the free
+       seats are gone, a join naming no held seat is refused with room_full,
+       before the account, the device or any record is read or written */
+    if (this._seatJoinRefused(ws, msg)) return;
     // v2.3.1116: identity auth gate.  Runs BEFORE the eviction loop
     // below on purpose -- player ids are broadcast to the whole room
     // (player_join / state_sync), so before this gate existed anyone
