@@ -240,7 +240,15 @@ vault's deletes (the vault's delete moves into that run: not a row more).
 A new row for the room, and a read and a write a restart (`cost-guard` §19:
 15 rows written a restart off, 16 on; 6 keys read off, 8 on): built **off**,
 behind `resetbook: true` in the live flags, a cost question for the owner.
-Off, a restart is exactly as before, and the census's line stays.
+Off, a restart is exactly as before.
+
+**What reads it** (the sitting 20 review): the world's sum as the tests take
+it (`count()` over the whole store: `restore.test`, `world-sum.test`).
+Nothing live reads it yet: the day's walk (`liveops.js`, `WORLD.PREFIXES`)
+reads only the records that hold value, and the owner's economy card already
+counts restarts on its own (`econcard.js econResetBook`, the day's book's `r`
+part). Card K's hostile census runs on the default flags, so its line does
+not fall with this switch: it would only with `resetbook` on for the census.
 
 ### Their switches
 

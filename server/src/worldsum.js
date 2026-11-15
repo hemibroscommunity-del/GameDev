@@ -26,7 +26,10 @@
  * `character_reset`, gold -5000).  With `resetbook: true` in the live flags
  * the restart books it into `econ_gone` (goneAdd, in the deletes' own run):
  * what it held as burned, its own minted and burned kept.  That record holds
- * nothing; NET_READERS reads its count, so the sum stays balanced.
+ * nothing; NET_READERS reads its count, so the sum over the whole store
+ * (count(): the suites) stays balanced.  Nothing live reads it yet: the
+ * day's walk (liveops.js WORLD.PREFIXES) reads the value records only, and
+ * the owner's card counts restarts by econResetBook (the sitting 20 review).
  */
 import { STORAGE_MARKS, marksOf } from './storagemarks.js';
 import { mailMinted, wholeGold } from './gold.js';

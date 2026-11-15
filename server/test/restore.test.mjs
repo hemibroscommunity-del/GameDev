@@ -26,6 +26,8 @@
  *   - restoredCharacter's `room._goldSet(...)` line deleted           -> FAIL 2 (the purse not the copy's), FAIL 5
  *   - the copy put on its own, awaited, before the restore's put       -> FAIL 2 (one run: 2 batches)
  *   - goneAdd's `g.g.b = ...` line deleted                            -> FAIL 4 (unexplained gold)
+ *   - (sitting 20) the `dry` type check deleted                        -> FAIL 2 (a "true" restored for real)
+ *   - (sitting 20) the copy's null for a created record dropped         -> FAIL 2 (its way back kept the vault)
  */
 import { GameRoom } from '../src/index.js';
 import { STORAGE_MARKS, RESTORE_WAYS, RESTORE_WAY_NAMES, restoredPrefixes } from '../src/storagemarks.js';
@@ -164,6 +166,35 @@ const sumNow = (r, st) => count(r, st);
   const u = unexplained(start, sumNow(r, st));
   check('2. ...the sum 0 too', u.gold === 0 && Object.keys(u.goods).length === 0, u);
   check('2. wrong asks: no player, a copy of another\'s, none such', (await playerRestore(r, {})).status === 400 && (await playerRestore(r, { playerId: P, snapKey: 'rpgsnap:' + Q + ':1' })).status === 400 && (await playerRestore(r, { playerId: P, snapKey: 'rpgsnap:' + P + ':nope' })).status === 404);
+}
+
+{
+  /* the sitting 20 review (low): a `dry` that is not a boolean is refused,
+     never read as "not dry" */
+  const st = makeStorage(seed());
+  const r = await room(st);
+  const b0 = st.batches();
+  const asText = await playerRestore(r, { playerId: P, snapKey: SNAP, dry: 'true' });
+  const asOne = await playerRestore(r, { playerId: P, snapKey: SNAP, dry: 1 });
+  await settle();
+  check('2. a `dry` that is not true or false ("true", 1) is refused (400), nothing written', asText.status === 400 && asOne.status === 400 && st.batches() === b0 && st._store.get('rpg:' + P).coins === 1000, { asText, asOne });
+}
+{
+  /* the sitting 20 review (low): a restore that CREATES a record (no vault
+     now, one in the copy) -- its way back deletes it again */
+  const m = seed();
+  m.delete('bank:' + P);
+  const st = makeStorage(m);
+  const r = await room(st);
+  const start = sumNow(r, st);
+  const r1 = await playerRestore(r, { playerId: P, snapKey: SNAP }, 1_800_000_000_000);
+  await settle();
+  const copy = st._store.get(r1.copy);
+  check('2. a restore that creates the vault: the copy names it null (it was not there)', r1.ok && st._store.has('bank:' + P) && copy && copy._with && copy._with['bank:'] === null, copy && copy._with);
+  const r2 = await playerRestore(r, { playerId: P, snapKey: r1.copy }, 1_800_000_001_000);
+  await settle();
+  const u = unexplained(start, sumNow(r, st));
+  check('2. ...and its way back deletes it again; the sum still 0', r2.ok && !st._store.has('bank:' + P) && st._store.get('rpg:' + P).coins === 1000 && u.gold === 0 && Object.keys(u.goods).length === 0, { r2, u });
 }
 
 /* ══════════ 3. THE SNAPSHOT ══════════ */

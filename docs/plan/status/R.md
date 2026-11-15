@@ -10,15 +10,16 @@ state: ready
 - PR 7 (5286, #1847, merged): the paged export (allow list; ON).
 - PR 3 (5282, #1873, ready): a weapon's own id (schema 22; waits for
   card OPS's first PR and RT-2's rollback guide, #1872).
-- PR 5 (5284, #1877, ready, sitting 19): quest state's door.
-- PR 6 (5285, #1887, ready, sitting 19): a player's restore from the
-  registry and the restart booked; `fullsnap`, `resetbook` OFF (Needs).
-- PR 11 (5290, `claude/plan-r-11-escrow-ledger`, ready): the escrow ledger,
-  the DUEL POT only (`xferescrow` OFF, Needs).
+- PR 5 (5284, #1877, ready, sitting 20): quest state's door.
+- PR 6 (5285, #1887, ready, sitting 20): a player's restore and the restart
+  booked; `fullsnap`, `resetbook` OFF (Needs); sitting 20's three mended.
+- PR 11 (5290, #1895, ready, sitting 20): the duel pot's ledger row.
 
 ## Next
 
-- Waiting (no side work). PR 10 (XP door) after L's doors. THE ESCROW
+- NEXT PR (sitting 20): the credit guards read `_creditWith(` too (first:
+  a double-pay risk); quest-door's scanner `||=`, `??=`, Object.assign.
+- Then WAITING on K and L. THE ESCROW
   LEDGER'S ORDER (the planning session's (b)): the market, the auction
   house and the arena's stakes join in later R PRs, AFTER K's 5194, 5196,
   5197 (`market.js`, `store.js`) and L's arena door (`gladiator.js`).
@@ -27,14 +28,13 @@ state: ready
 
 - `grids.js` `_tryLevelUpFromBuildPoints` has no caller (dead).
 - Local workerd: no point-in-time recovery (`getBookmarkForTime` throws).
-- The stash cuts that remain after PR 2: for later (stash-door.md).
 - `_isGearNotWeapon` told gear by a gid alone; PR 3 reads `prov` instead.
 - The join's quest maps are plain copies: prototype-free ones, later.
 
 ## Needs
 
 - The owner's costs, OFF: `fullsnap` (PR 6: 2 keys more read a player a
-  day), `resetbook` (PR 6: one room row, a read and a write a restart; K's
-  census line falls with it), `xferescrow` (PR 11: a row a wagered duel).
+  day), `resetbook` (PR 6: one room row, a write a restart; nothing live
+  reads it, the census unmoved), `xferescrow` (PR 11: a row a wagered duel).
 - LATER (PR 9, "Just go recommended"): the lab's restore try (lab.yml).
 - Live flags: `storesize`, `roomexport` on; `roomrewind` off (the owner).
