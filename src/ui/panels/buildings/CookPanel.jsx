@@ -8,6 +8,7 @@ import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: the Cookhouse heard *
 import { pvpHealWaitMs, pvpHealWaitText, noteInstantHeal } from '@/game/fightFood.js'; /* v2.3.3133: one bite at a time in a fight with a player */
 import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.2591: a crafting level gets the same celebration as a gathering one */
 import { thumbFor } from '@/ui/mobile/dash/InventoryPanel.jsx'; /* v2.3.3281: a recipe row's picture is the bag's */
+import { act } from '@/game/actions.js';   /* v2.3.5190: the page's requests leave through the action door (card K PR 7) */
 /* === CookPanel — buildingPanel === 'cook' sub-panel === */
 /* v2.3.879: extracted verbatim from the buildingPanel === 'cook'
    clause in BroTown.jsx (the cooking station: pick a fish, hit the
@@ -254,7 +255,7 @@ export function CookPanel(props) {
              fired there -- see the long note at the eatBus handler in
              BroTown.jsx. Presence on the channel is the real precondition. */
           if (S.channel) {
-            try { S.channel.send({ type: 'eat_request', payload: { invKey: key } }); } catch (e) {}
+            try { act('eat_request', { invKey: key }); } catch (e) {}   /* v2.3.5190: through the action door (actions.js) */
           }
           setRpgState(_objectSpread({}, R));
           try {
@@ -470,7 +471,7 @@ export function CookPanel(props) {
            bag instead.  The worker echoes the bag either way. */
         var carryCook = _mealsOn();
         if (S.channel) {
-          try { S.channel.send({ type: 'cook_recipe', payload: carryCook ? { recipeIdx: ri, carry: true } : { recipeIdx: ri } }); } catch (e) {}
+          try { act('cook_recipe', carryCook ? { recipeIdx: ri, carry: true } : { recipeIdx: ri }); } catch (e) {}   /* v2.3.5190: through the action door (actions.js) */
         }
         /* Consume ingredients */
         Object.entries(recipe.ingredients).forEach(function (_ref113) {
