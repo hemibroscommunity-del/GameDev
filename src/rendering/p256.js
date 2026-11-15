@@ -135,8 +135,8 @@ const FISH_SPOT_ON = !NO_TWINS && !/[?&]fishspot=0(&|$)/.test(_q);
    see-through column more than the pictures, as the fish spot's pond (their
    drawing spans columns 7-356; each is drawn to a width the code sets, so
    the art is 363/364 as wide, a fifth of a screen pixel at a phone's bar).
-   The windows' own bars (SpriteHpBar.jsx, the dashboard) are <img>s of the
-   pictures, unchanged.  `?hudbars=0` keeps them pictures. */
+   No window draws them (SpriteHpBar.jsx, the desktop row's, is imported
+   by BroTown.jsx and never rendered).  `?hudbars=0` keeps them pictures. */
 const HUD_BARS = /^\/(?:icons\/ui\/bar-(?:hp|mp|stam)\.webp|ui\/bars\/(?:hp-frame|hp-full|node-full-green)\.png)$/;
 const HUD_BARS_ON = !NO_TWINS && !/[?&]hudbars=0(&|$)/.test(_q);
 /** whether the picture at `path` (no host, no query) is read from its twin here */
