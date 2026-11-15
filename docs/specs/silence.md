@@ -11,7 +11,8 @@ let in (the account check, Turnstile, is off). The About panel promises
 
 - `silenced:<pid>` `{until, note, at}`: the character's words reach nobody
   until `until` (`0`: until lifted). Not a mute (`chatmod.js`, one player's
-  own list): the owner's, for everyone.
+  own list): the owner's, for everyone. The room's export gives it with the
+  character's other records, beside `frozen:` (`admin.js` `EXPORT.ALLOW`).
 - **Which words**: the chat lanes, the wire table's rows whose trust has
   `text: 'words'`: room chat, area, whisper, party, a friend's message, a
   shop thread (`SILENCE_LANES`, made from the table, so a new lane is
