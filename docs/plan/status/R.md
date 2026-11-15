@@ -1,6 +1,6 @@
 card: R
 branch: claude/plan-r-5-quest-door (one branch a PR, each begun from main)
-prs: #1819 (5280), #1823 (5283), #1825 (5287), #1844 (5288), #1862 (5281): merged; #1847 (5286), #1873 (5282), PR 5 (5284): ready
+prs: #1819 (5280), #1823 (5283), #1825 (5287), #1844 (5288), #1862 (5281), #1847 (5286): merged; #1873 (5282), PR 5 (5284): ready
 state: ready
 
 ## Done
@@ -10,7 +10,7 @@ state: ready
 - PR 8 (5287, #1825, merged): the storage's size in the day's book (ON).
 - PR 9 (5288, #1844, merged): the room's way back (`restore.js`, OFF).
 - PR 2 (5281, #1862, merged): the stashes' door (`stash.js`, 35 roads).
-- PR 7 (5286, #1847, ready, sitting 18): the paged export (allow list; ON).
+- PR 7 (5286, #1847, merged): the paged export (allow list; ON).
 - PR 3 (5282, #1873, ready): a weapon's own id (schema 22; waits for
   card OPS's first PR and RT-2's rollback guide, #1872).
 - PR 5 (5284, `claude/plan-r-5-quest-door`, ready): quest state's door
