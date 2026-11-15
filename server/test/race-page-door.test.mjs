@@ -42,6 +42,7 @@ register('data:text/javascript,' + encodeURIComponent(hook));
 const { raceTo, racePhase, RACE_PAGE_WAYS } = await import(SRC + 'game/raceDoor.js');
 const R = await import(SRC + 'game/race.js');
 const { runResets } = await import(SRC + 'game/resetOn.js');
+const { setActionTransport } = await import(SRC + 'game/actions.js');
 
 let clock = 1_900_000_000_000;
 Date.now = () => clock;
@@ -120,6 +121,9 @@ const setSearch = (s) => { globalThis.location = { search: s }; };
 {
   setSearch('');
   const sent = [];
+  /* a send leaves by the bro's channel or, as card K moves them, the action
+     door's transport (actions.js act): both are this list */
+  setActionTransport({ send: (m) => { sent.push(m); return true; } });
   const S = { channel: { send(m) { sent.push(m); } }, npcs: [] };
   check('3. requestRace: the ask, and race_start sent', R.requestRace(S) === true && racePhase(S) === 'asked' && sent.some((m) => m.type === 'race_start'));
   check('4. ...a second while it is on: no (raceLive, as before)', R.requestRace(S) === false && racePhase(S) === 'asked');
@@ -156,7 +160,9 @@ const setSearch = (s) => { globalThis.location = { search: s }; };
   R.dismissRace(T);
   check('4. ...and closes', T._race === null);
   const U = { channel: { send() { throw new Error('closed'); } } };
+  setActionTransport({ send() { throw new Error('closed'); } });
   check('3. an ask that cannot be sent: none (fail)', R.requestRace(U) === false && U._race === null);
+  setActionTransport(null);
 }
 
 console.log(`\n${passes} passed, ${failures} failed`);
