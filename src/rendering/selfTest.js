@@ -272,6 +272,14 @@ export function selfQueue(name, renderer, rts, want, onFail, drawMs = 0) {
   if (!_queued) { _queued = true; beforeDraw(_poll); }
 }
 
+/** v2.3.5234 (the gatekeeper's sitting 20): this program's pictures wait for
+ *  their verdict (paletteTex.js paletteDecided: what loads in that window
+ *  waits with them). */
+export function selfPending(name) {
+  for (const p of _pending) if (p.name === name) return true;
+  return false;
+}
+
 /** The loading screen's group (preloadAnimations.js): every verdict in
  *  (the reads at the top of a frame), for loadTimes and QA. */
 export function selfTestReady() {

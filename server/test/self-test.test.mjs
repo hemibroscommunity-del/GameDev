@@ -31,6 +31,7 @@
  *   - _poll taking the pixels while the fence still waits          -> FAIL 3 (a verdict at the first poll, no pixels)
  *   - paletteTex.js: the palette's onFail without setWheelPalette(false) -> FAIL 4
  *   - selfCheck judging nothing read back a failure (the `unread` branch gone) -> FAIL 2 and 3
+ *   - paletteDecided without `!selfPending('palette')` (sitting 20)  -> FAIL 4
  */
 import { readFileSync } from 'node:fs';
 import * as S from '../../src/rendering/selfTest.js';
@@ -105,6 +106,7 @@ const code = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`\\])\/\
   S.selfQueue('q-unread', renderer, [mkRt('e', want), null], want, () => fails.push('q-unread'), 2);   /* a picture not made */
   const ready = S.selfTestReady();
   let settled = false; ready.then(() => { settled = true; });
+  const waiting = S.selfPending('q-right') && S.selfPending('q-wrong') && !S.selfPending('nothing');
   check('3. the textures are destroyed as the copies are made (nothing kept for the verdict)', destroyed.join() === 'a,b,c,d,e', destroyed);
   runBeforeDraw();   /* the top of a frame: the fences still waiting */
   await Promise.resolve();
@@ -118,6 +120,7 @@ const code = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`\\])\/\
     late['q-right'] && late['q-right'].result === 'pass' && late['q-wrong'] && late['q-wrong'].result === 'fail' && late['q-unread'] && late['q-unread'].result === 'unread'
     && JSON.stringify(fails) === '["q-wrong"]' && !S.selfFailures().includes('q-unread'), { late, fails });
   check('3. ...and the loading screen\'s group waited for every verdict', settled);
+  check('3. each program says it waits while its verdict is pending (selfPending), and not after', waiting && !S.selfPending('q-right') && !S.selfPending('q-wrong'));
 }
 
 /* ── 4. the wiring ── */
@@ -133,6 +136,8 @@ const code = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`\\])\/\
     && /selfQueue\('one', r, tps \? \[plain, nums\] : \[plain\], want, \(\) => \{\s*_oneOk = false;[\s\S]*?setOneBatchLive\(false\);\s*\}/.test(one));
   const rep = code(src('src/debug/report.js'));
   check('4. the report says `self` once a sitting, to a worker that takes lanes', /if \(_selfOwed && takesLanes\(_S\)\) \{ try \{ const sf = selfFailures\(\); if \(sf\.length\) r\.self = sf;/.test(rep) && /if \(r\.self\) _selfOwed = false;/.test(rep));
+  check('4. the palette is not "decided" while its verdict is pending: an effect\'s twin or a tree waits for it (p256.js whenPaletteDecided; the gatekeeper\'s sitting 20)',
+    /export function paletteDecided\(\) \{ return _ok !== null && !selfPending\('palette'\); \}/.test(pt));
   check('4. the loading screen registers the group (the preloading law)', /selfTest: selfTestReady\(\),/.test(code(src('src/rendering/preloadAnimations.js'))));
   check('4. the lever has its switch row', /name: '\?selftest', side: 'page'/.test(src('tools/guards/lib/switches.mjs')));
 }
