@@ -98,7 +98,9 @@ in ten places; now only `harvestTo` does, by a way of `HARVEST_PAGE_WAYS`:
   fire (`S._campfire`, `S._firemaking`) and the node you stand by
   (`S._nearNode`, `S._proxNode`), fields of their own, notes beside the
   rows.
-- **A module of no imports**, so a node test reads its rules. The suite
+- **One import**, the page's switch reader (`game/switches.js`, itself of
+  no imports; card T's), by a relative path, so a node test reads its rules
+  (`?harvestdoor=0` is read through it). The suite
   also loads `lifeSkillRewards.js` itself (its `@/` imports resolved to
   `src/`, `pixi.js` stubbed and its `.json` read, as `ladder-passes.test`
   does): a mining start and its ask for hits, a new tap, the worker's plan

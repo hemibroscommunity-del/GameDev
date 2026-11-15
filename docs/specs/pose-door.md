@@ -77,6 +77,8 @@ does, by a way of `POSE_PAGE_WAYS`:
   rejoin's is `rejoinClear`: both ask the door. The census counts the first
   as a reset through a page door (v2.3.5218) and the second as an edge's own
   clear asking one (v2.3.5219).
-- **A module of no imports**, so a node test reads its rules. The suite also
+- **One import**, the page's switch reader (`game/switches.js`, itself of
+  no imports; card T's), by a relative path, so a node test reads its rules
+  (`?posedoor=0` is read through it). The suite also
   loads `interactions.js` and `rejoinSlots.js` themselves and plays each way
   through them, the word to the worker read off the action door's transport.

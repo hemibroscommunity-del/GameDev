@@ -24,18 +24,19 @@
  * Not folded here: its emoji's beat (`popAt`), a count on the record; a
  * moment's move (`S._emoteMove`), which is no pose.
  *
- * No imports (the pose's rules are read by a node test without the game).
+ * One import, the page's switch reader (game/switches.js, itself of no
+ * imports; card T's), by a relative path: the pose's rules are read by a
+ * node test without the game (rejoin-resend.test loads rejoinSlots.js bare).
  */
+import { sw } from './switches.js';
 
 export const POSE_PAGE_WAYS = Object.freeze({ hold: 'posing', stand: 'standing', forget: 'standing' });
 const has = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);
 
-/* `?posedoor=0` -- read at each write (a few a pose), so a test can set it */
+/* `?posedoor=0` -- through the page's one reader (switches.js reads the
+   address at each ask), so a test can set it */
 export function poseDoorOff() {
-  try {
-    const s = (typeof location !== 'undefined' && location && location.search) || '';
-    return new URLSearchParams(s).get('posedoor') === '0';
-  } catch (e) { return false; }
+  return sw('posedoor');
 }
 
 /* the pose's phase on this phone (the phase table's words): posing, or standing */

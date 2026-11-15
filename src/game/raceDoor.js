@@ -26,8 +26,11 @@
  * him), which outlives the race's end until he is home; the flags touched
  * (`next`) and the countdown's beat (`count`), counts on the record.
  *
- * No imports (the race's rules are read by a node test without the game).
+ * One import, the page's switch reader (game/switches.js, itself of no
+ * imports; card T's, v2.3.5306), by a relative path: the race's rules are
+ * read by a node test without the game.
  */
+import { sw } from './switches.js';
 
 export const RACE_PAGE_WAYS = Object.freeze({
   ask: 'asked', fail: 'none', state: 'count', gun: 'run', end: 'done',
@@ -36,12 +39,10 @@ export const RACE_PAGE_WAYS = Object.freeze({
 const has = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);
 const LIVE = ['asked', 'count', 'run'];
 
-/* `?racedoor=0` -- read at each write (rare), so a test can set it */
+/* `?racedoor=0` -- through the page's one reader (switches.js reads the
+   address at each ask), so a test can set it */
 export function raceDoorOff() {
-  try {
-    const s = (typeof location !== 'undefined' && location && location.search) || '';
-    return new URLSearchParams(s).get('racedoor') === '0';
-  } catch (e) { return false; }
+  return sw('racedoor');
 }
 
 /* the race's phase on this phone: its record's, or none */

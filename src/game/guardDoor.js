@@ -29,18 +29,19 @@
  * ring's own state (ui/mobile/blockRingBus.js).  A peer's copy (`other.
  * _shieldUp`, game/shieldCopies.js) is theirs, not yours.
  *
- * No imports (the guard's rules are read by a node test without the game).
+ * One import, the page's switch reader (game/switches.js, itself of no
+ * imports; card T's), by a relative path: the guard's rules are read by a
+ * node test without the game.
  */
+import { sw } from './switches.js';
 
 export const GUARD_PAGE_WAYS = Object.freeze({ raise: 'up', drop: 'down' });
 const has = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);
 
-/* `?guarddoor=0` -- read at each write (a few a fight), so a test can set it */
+/* `?guarddoor=0` -- through the page's one reader (switches.js reads the
+   address at each ask), so a test can set it */
 export function guardDoorOff() {
-  try {
-    const s = (typeof location !== 'undefined' && location && location.search) || '';
-    return new URLSearchParams(s).get('guarddoor') === '0';
-  } catch (e) { return false; }
+  return sw('guarddoor');
 }
 
 /* the guard's phase on this phone (the phase table's words): up, or down */
