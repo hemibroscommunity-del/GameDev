@@ -319,35 +319,32 @@ Names are shown here too, but this page does not change a name.
 
 ## The feedback board: taking a post down, and the crash feed (v2.3.5593)
 
-Anyone could post to the Feedback board (More → Feedback → Browse)
-under any name, and nobody could take a post down (the red team, 2026-11-14:
-`docs/specs/feedback-guard.md`). A post's name is now cleaned like a chat line
-and cut to 24 letters, and you can remove a post. A button for it in the Test
-panel is still to come; until then, a post's id is in the board's list
-(`/api/feedback/list?sort=new`, each ticket's `id`), and:
+Anyone could post to the Feedback board (More → Feedback → Browse) under any
+name, flood it, and nobody could take a post down (the red team, 2026-11-14:
+`docs/specs/feedback-guard.md`). Now a post's name is cleaned like a chat
+line and cut to 24 letters, posts are limited per internet line and for the
+whole game, and you have three levers:
+
+- **Take one post down**, **clear out oversized posts**, and **read the crash
+  feed**: your way is the Test panel's buttons (coming from card OPS, beside
+  the drawings' Remove). Nothing to type.
+- **Close the board in a flood**: the live switch `feedback` set to `false`
+  (the Test panel's live switches) stops new posts, votes and crash reports
+  within a minute; the board can still be read. Set it back to `true` to open
+  it.
+
+For a session that holds the admin key (never the owner by hand), the same
+three by command:
 ```
 curl -X DELETE -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/feedback/ticket?id=THE_ID"
-```
-It answers `{"ok":true,"removed":"THE_ID"}`; without your key, a plain 404.
-
-To clear out every oversized post at once (a flood of huge names: each over
-4 KB goes) and the old rows the board no longer reads:
-```
 curl -X DELETE -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/feedback/sweep"
-```
-
-If the board is being flooded, close it: the live switch `feedback` set to
-`false` (the Test panel's live switches, or `"name":"feedback","value":false`
-on `/api/admin/flags`) stops new posts, votes and crash reports within a
-minute; the board can still be read. Set it back to `true` to open it.
-
-The crash feed (what players' phones report when the game breaks) is yours
-only now: it held each phone's browser name and lines naming characters.
-```
 curl -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/feedback/crashes?limit=50"
 ```
-On your own machine the QA tools send the harness's key for you
-(`tools/qa/qa-telemetry.mjs` reads `BT_ADMIN_KEY`, else the harness's).
+A post's id is each ticket's `id` in `/api/feedback/list?sort=new`. Without
+the key each answers a plain 404. The sweep takes every post over 4 KB and
+the old pace rows the board no longer reads. On a local machine the QA tools
+send the harness's key for the crash feed (`tools/qa/qa-telemetry.mjs` reads
+`BT_ADMIN_KEY`, else the harness's).
 
 ## Accuracy: how often each weapon hits (v2.3.4545)
 

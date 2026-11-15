@@ -45,9 +45,12 @@ const FEEDBACK_TEXT_MAX = 500;
  * posted, reached SQLite's 2 MB.  Now:
  *   - the paces are in MEMORY (FEEDBACK_PACE), by the caller's ADDRESS
  *     (flood.js requestIp: Cloudflare's edge sets it; none locally, which is
- *     not counted) and the id it claims, under a ceiling for the whole game
- *     an hour; a deploy resets them, which is right for a flood's limit
- *     (ARCHITECTURE-HANDOFF rule 11); no `rate:` row is written again;
+ *     not counted; an IPv6 line by its /64, feedbackAddr) and the id it
+ *     claims, under a ceiling for the whole game an hour, and a budget of
+ *     ROWS_HOUR rows an hour for the whole object; a refusal writes nothing;
+ *     a deploy resets them, which is right for a flood's limit
+ *     (ARCHITECTURE-HANDOFF rule 11); no `rate:` row is written again; one
+ *     claimed id an address a ticket for a vote;
  *   - `_stats` keeps at most FEEDBACK_PACE.STATS_KEYS topics;
  *   - DELETE /sweep (the owner's key) takes away every ticket row over
  *     FEEDBACK_PACE.BIG_ROW characters, the old pace rows, and rebuilds
@@ -56,18 +59,26 @@ const FEEDBACK_TEXT_MAX = 500;
  *     writes (posts, votes, crash reports); reading stays.  This object has
  *     no flags of its own: it reads the room's (liveops.js GET
  *     /api/admin/flags, with the owner's key, over the binding) at most once a
- *     FLAG_TTL_MS, and only when someone writes.  No key or no answer: open,
- *     as before.
+ *     FLAG_TTL_MS, and only for a write the paces took: a refused write never
+ *     asks the room, and a burst shares one read (`_flagAt` is set before the
+ *     request goes).  No key or no answer: open, as before.
  * The page's half: FeedbackPanel prints String(), and lazyPanel.js's guard
  * catches a window that throws. */
 export const FEEDBACK_NAME_MAX = 24;
 export const FEEDBACK_PACE = Object.freeze({
-  /* an address, an hour: the old per-id limits (5 posts, 12 crash reports), and votes */
+  /* an address (an IPv6 line by its /64), an hour: the old per-id limits (5
+     posts, 12 crash reports), and votes */
   POSTS_ADDR: 5, CRASH_ADDR: 12, VOTES_ADDR: 60,
   /* the same per claimed id (a phone behind a shared address keeps its own five) */
   POSTS_ID: 5, CRASH_ID: 12, VOTES_ID: 60,
-  /* the whole game, an hour: far above a real day's reports, far below a flood's rows */
-  POSTS_ALL: 200, CRASH_ALL: 200, VOTES_ALL: 2000,
+  /* the whole game, an hour, each kind: the board holds a few hundred posts
+     in all its life, so a real crowd never meets these */
+  POSTS_ALL: 60, CRASH_ALL: 120, VOTES_ALL: 150,
+  /* ...and the WHOLE OBJECT's rows an hour (a post 2: its ticket and
+     `_stats`; a crash report 1; a vote 1), past which every write is refused
+     and the refusal writes nothing: at most 7,200 rows a day, 7% of the free
+     plan's 100,000 (the game's busiest day so far wrote 747 in all) */
+  ROWS_HOUR: 300,
   HOUR_MS: 3600000,
   /* the memory a pace may hold: past it the expired go, then the oldest */
   KEYS_MAX: 5000,
@@ -80,6 +91,7 @@ export const FEEDBACK_TOPIC_MAX = 32;
 const FEEDBACK_WORDS = Object.freeze({
   paced: 'Too many reports from here for now. Try again in a while.',
   closed: 'The feedback board is closed for now.',
+  oneVote: 'One vote from here for this report.',
 });
 /* the line's control characters, which the lanes strip before
    cleanChatText; a name keeps none, a line break least of all */
@@ -91,6 +103,34 @@ export function feedbackWords(v, max) {
   const s = cleanChatText(v.replace(CONTROL, ' '));
   return Array.from(s).slice(0, max).join('').trim();
 }
+/* v2.3.5593: the address a pace counts.  An IPv6 line is given a whole /64,
+   and a script takes a new address of it for every request (the red team,
+   RT-1 N4), so an IPv6 address counts as its /64; IPv4, and IPv4 written as
+   IPv6, as itself.  The same rule as RT-1's flood.js ipKey (v2.3.5581, not
+   yet on main as this is written): this local copy goes once that lands. */
+const HEX4 = /^[0-9a-f]{1,4}$/;
+export function feedbackAddr(ip) {
+  if (typeof ip !== 'string' || ip.indexOf(':') < 0) return ip || null;
+  let s = ip.trim().toLowerCase();
+  const pct = s.indexOf('%');
+  if (pct >= 0) s = s.slice(0, pct);
+  const mapped = /^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/.exec(s);
+  if (mapped) return mapped[1];
+  const halves = s.split('::');
+  if (halves.length > 2) return ip;
+  const head = halves[0] ? halves[0].split(':') : [];
+  const tail = halves.length === 2 && halves[1] ? halves[1].split(':') : [];
+  let groups;
+  if (halves.length === 1) groups = head;
+  else {
+    const fill = 8 - head.length - tail.length;
+    if (fill < 1) return ip;
+    groups = head.concat(new Array(fill).fill('0'), tail);
+  }
+  if (groups.length !== 8 || !groups.every((g) => HEX4.test(g))) return ip;
+  return groups.slice(0, 4).map((g) => g.replace(/^0+(?=.)/, '')).join(':') + '::/64';
+}
+
 /* SHA-256 of a key, hex: the owner's key compared by its hash, as admin.js's
    _adminAuth compares it */
 async function keyHash(k) {
@@ -110,9 +150,8 @@ export class Feedback {
       // POST /submit — create a new feedback ticket
       if (request.method === 'POST' && path.startsWith('/submit')) {
         const body = await request.json();
-        /* v2.3.5593: closed by the owner's switch, or paced by address (RT-1 N2) */
-        if (!(await this._boardOpen())) return new Response(JSON.stringify({ ok: false, error: FEEDBACK_WORDS.closed }), { headers: H });
-        return new Response(JSON.stringify(await this.submit(body, requestIp(request))), { headers: H });
+        /* v2.3.5593: paced by address (RT-1 N2), then the owner's switch (submit) */
+        return new Response(JSON.stringify(await this.submit(body, feedbackAddr(requestIp(request)))), { headers: H });
       }
 
       // GET /list?sort=top|trending|new&topic=&category=&limit=&offset=
@@ -128,8 +167,7 @@ export class Feedback {
       // POST /vote — thumbs up or down
       if (request.method === 'POST' && path.startsWith('/vote')) {
         const body = await request.json();
-        if (!(await this._boardOpen())) return new Response(JSON.stringify({ ok: false, error: FEEDBACK_WORDS.closed }), { headers: H });
-        return new Response(JSON.stringify(await this.vote(body, requestIp(request))), { headers: H });
+        return new Response(JSON.stringify(await this.vote(body, feedbackAddr(requestIp(request)))), { headers: H });
       }
 
       // GET /stats — aggregate counts per topic/category
@@ -143,8 +181,7 @@ export class Feedback {
       if (request.method === 'POST' && path.startsWith('/crash')) {
         let body = null;
         try { body = JSON.parse(await request.text()); } catch (e) { /* fall through */ }
-        if (!(await this._boardOpen())) return new Response(JSON.stringify({ ok: false, error: FEEDBACK_WORDS.closed }), { headers: H });
-        return new Response(JSON.stringify(await this.crashReport(body, requestIp(request))), { headers: H });
+        return new Response(JSON.stringify(await this.crashReport(body, feedbackAddr(requestIp(request)))), { headers: H });
       }
 
       // GET /crashes?limit=50 — recent crash reports, newest first
@@ -184,6 +221,7 @@ export class Feedback {
     if (!sid || !Array.isArray(log) || !log.length) return { ok: false, error: 'Missing fields' };
     /* v2.3.5593: paced in memory by address, id and the whole game; no `crashrate:` row (RT-1 N2) */
     if (!this._paced('crash', addr, String(sid).slice(0, 32))) return { ok: false, error: 'Rate limited' };
+    if (!(await this._boardOpen())) return { ok: false, error: FEEDBACK_WORDS.closed };
     const report = {
       ts: Date.now(),
       sid: String(sid).slice(0, 32),
@@ -224,6 +262,8 @@ export class Feedback {
     /* v2.3.5593: ...and per address, under a ceiling for the whole game, in
        memory: the `rate:` row it wrote each time was the flood (RT-1 N2) */
     if (!this._paced('posts', addr, playerId.slice(0, 64))) return { ok: false, error: FEEDBACK_WORDS.paced };
+    /* the owner's switch, asked only for a write the paces took (a refused one never asks the room) */
+    if (!(await this._boardOpen())) return { ok: false, error: FEEDBACK_WORDS.closed };
 
     const ticket = {
       id: crypto.randomUUID(),
@@ -251,8 +291,21 @@ export class Feedback {
   async vote(data, addr) {
     const { ticketId, playerId, vote } = data || {};
     if (!ticketId || !playerId || !['up', 'down'].includes(vote)) return { ok: false, error: 'Invalid vote' };
-    /* v2.3.5593: a vote is a row too: paced as a post is (RT-1 N2) */
+    /* v2.3.5593: a vote is a row too: paced as a post is (RT-1 N2); and one
+       claimed id an address a ticket, so made-up ids buy no votes (the same id
+       may still take its vote back) */
+    if (addr) {
+      if (!this._votesBy) this._votesBy = new Map();
+      const k = String(ticketId).slice(0, 64) + '|' + addr;
+      const was = this._votesBy.get(k);
+      if (was && was.id !== String(playerId) && was.until > Date.now()) return { ok: false, error: FEEDBACK_WORDS.oneVote };
+    }
     if (!this._paced('votes', addr, String(playerId).slice(0, 64))) return { ok: false, error: FEEDBACK_WORDS.paced };
+    if (!(await this._boardOpen())) return { ok: false, error: FEEDBACK_WORDS.closed };
+    if (addr) {
+      this._votesBy.set(String(ticketId).slice(0, 64) + '|' + addr, { id: String(playerId), until: Date.now() + FEEDBACK_PACE.HOUR_MS });
+      if (this._votesBy.size > FEEDBACK_PACE.KEYS_MAX) { const now = Date.now(); for (const [k2, b] of this._votesBy) if (b.until <= now || this._votesBy.size > FEEDBACK_PACE.KEYS_MAX) this._votesBy.delete(k2); }
+    }
 
     const raw = await this.state.storage.get('ticket:' + ticketId);
     if (!raw) return { ok: false, error: 'Ticket not found' };
@@ -376,11 +429,16 @@ export class Feedback {
     const keys = [addr ? kind + '|a|' + addr : null, id ? kind + '|i|' + id : null, kind + '|all'];
     const at = (k) => { const b = M.get(k); return b && b.until > now ? b : null; };
     for (let i = 0; i < 3; i++) { if (!keys[i]) continue; const b = at(keys[i]); if (b && b.n >= lim[i]) return false; }
+    /* the whole object's rows an hour (ROWS_HOUR): a post writes 2 */
+    const rows = kind === 'posts' ? 2 : 1;
+    const budget = at('rows|all');
+    if (budget && budget.n + rows > FEEDBACK_PACE.ROWS_HOUR) return false;
     for (const k of keys) {
       if (!k) continue;
       const b = at(k);
       if (b) b.n++; else M.set(k, { n: 1, until: now + FEEDBACK_PACE.HOUR_MS });
     }
+    if (budget) budget.n += rows; else M.set('rows|all', { n: rows, until: now + FEEDBACK_PACE.HOUR_MS });
     if (M.size > FEEDBACK_PACE.KEYS_MAX) {
       for (const [k, b] of M) if (b.until <= now) M.delete(k);
       /* still full: the oldest go (a Map keeps its order), never the game's own ceiling */

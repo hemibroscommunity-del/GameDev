@@ -35,10 +35,10 @@ and N3), folded in at the planning session's word:
 | `feedback.js` `sanitize` | What the board serves is cleaned the same way, so a ticket kept before this version (an object for a name) reads as words: its name `Bro`. |
 | `feedback.js` `DELETE /ticket?id=` | The owner takes a post down, and its topic's count with it. Behind `ADMIN_KEY` (`Authorization: Bearer`, compared by hash as `admin.js _adminAuth`); a plain 404 without it. |
 | `feedback.js` `GET /crashes` | Behind the same key; a plain 404 without it. |
-| `feedback.js` `_paced` | Posts, votes and crash reports paced in MEMORY by the caller's address (`flood.js requestIp`, set by Cloudflare's edge; none locally, not counted), by the id it claims, and for the whole game, an hour each (`FEEDBACK_PACE`: 5 / 5 / 200 posts, 12 / 12 / 200 crash reports, 60 / 60 / 2,000 votes). No `rate:` or `crashrate:` row is written. A deploy resets them (rule 11: right for a flood's limit). |
+| `feedback.js` `_paced` | Posts, votes and crash reports paced in MEMORY by the caller's address (`flood.js requestIp`, set by Cloudflare's edge; none locally, not counted; an IPv6 line by its /64, `feedbackAddr`, the same rule as RT-1's `flood.js ipKey`, 5581, a local copy until that lands), by the id it claims, and for the whole game, an hour each (`FEEDBACK_PACE`: 5 / 5 / 60 posts, 12 / 12 / 120 crash reports, 60 / 60 / 150 votes), under a budget of 300 ROWS an hour for the whole object (a post 2, the rest 1): at most 7,200 rows a day, 7% of the free plan's 100,000; the game's busiest day so far wrote 747. A refusal writes nothing; no `rate:` or `crashrate:` row is written. One claimed id an address a ticket for a vote. A deploy resets them (rule 11: right for a flood's limit). |
 | `feedback.js` `_stats` | At most `FEEDBACK_PACE.STATS_KEYS` (100) topics kept. |
 | `feedback.js` `DELETE /sweep` | The owner's key: every ticket row over 4 KB and the old pace rows taken away, `_stats` rebuilt from the tickets left. |
-| `feedback.js` `_boardOpen` | **KILL SWITCH `feedback: false`** in the live flags: no posts, votes or crash reports; reading stays. The Feedback object keeps no flags: it reads the room's (`GET /api/admin/flags` with the owner's key, over the binding) at most once a minute, and only when someone writes. No key or no answer: open. Its row in the switch table. |
+| `feedback.js` `_boardOpen` | **KILL SWITCH `feedback: false`** in the live flags: no posts, votes or crash reports; reading stays. The Feedback object keeps no flags: it reads the room's (`GET /api/admin/flags` with the owner's key, over the binding) at most once a minute, and only for a write the paces took: a refused write never asks the room, and a burst shares one read. No key or no answer: open. Its row in the switch table. |
 | `server/src/wire/http.js` | `/api/feedback/crashes` is an `admin` row now; a new row, `http:/api/feedback/ticket DELETE`; the submit row says what is refused and cut. |
 | `src/ui/lazyPanel.js` `PanelGuard` | Every window made by `lazyPanel` (the rare windows, the dashboard's pages) draws inside an error boundary. A window that throws shows the "Couldn't open this" card in its own words ("This window hit a problem", `data-lazy-cantopen="threw"`), with Reload and Close; the game plays on; the error goes to the crash feed (`recordCrash('panel', ...)`); `window.__btLazyCode.cards.caught` counts them. Opened again, the window is drawn afresh. |
 | `src/ui/mobile/dash/FeedbackPanel.jsx`, `src/ui/panels/FeedbackPanel.jsx` | Every field of a ticket printed as a string (`Bro` for a name that is not one), whatever a worker serves. |
@@ -51,15 +51,22 @@ and N3), folded in at the planning session's word:
   The name rules, the owner's key on the crash feed and the paces have no
   switch: turning one off would only bring a hole back. The window guard
   changes nothing while no window throws.
-- **The paces' numbers** (5 posts an hour an address, 200 for the game): the
-  old per-id 5 kept, and a game-wide line far above a real day's reports
-  (the board has a few hundred in all) and far below a flood's rows.
-- **No button yet for taking a post down.** The Test panel is the place
-  (`src/ui/panels/DevPanel.jsx`), and six running cards hold that file; the
-  page's requests also leave only through the action door
-  (`src/game/actions.js`, card K), whose `act()` carries the session's token,
-  not the owner's key. Until a card adds it: `docs/OPERATIONS.md`, "The
-  feedback board".
+- **The paces' numbers** (5 posts an hour an address, 60 for the game, 300
+  rows an hour for the object): the old per-id 5 kept, and game-wide lines
+  far above a real day's reports (the board holds a few hundred posts in all
+  its life) and far below a flood's rows. If one ever refuses a real player,
+  the owner's lever is the numbers in `FEEDBACK_PACE` (a one-line PR); the
+  switch `feedback` closes the board, it does not lift the limits.
+- **No button yet for taking a post down, the sweep or the crash feed.**
+  The Test panel is the place (`src/ui/panels/DevPanel.jsx`, which six
+  running cards hold); the planning session gave them to card OPS. Until
+  then a session with the key has the commands (`docs/OPERATIONS.md`, "The
+  feedback board").
+- **`guards/switches-thrown` skips `cold-flags.test.mjs`** (a stopgap the
+  planning session approved, outside this card's files): that suite tests
+  the cold flag cache, which the guard's preload warms by design, so it
+  failed under the preload with any switch thrown; `feedback` was the first
+  new liveops switch to draw it in. Card T owns the lasting mend.
 
 ## Not done here (the red team's list routes them)
 
@@ -69,9 +76,14 @@ and N3), folded in at the planning session's word:
 
 ## Tests
 
-- `server/test/feedback.test.mjs` §3-6: RT-3's proofs as checks; §7-10:
+- `server/test/feedback.test.mjs` §3-6: RT-3's proofs as checks; §7-11:
   RT-1's (the paces by address and for the game, no pace rows, the topics'
-  cap, the sweep, the switch read once a minute).
+  cap, the sweep, the switch read once a minute, the /64, the rows' budget,
+  one vote an address a ticket, a refused write asks nothing). Each rule's
+  break proof, tried by hand 2026-11-15: the address not counted, the budget
+  taken out, the /64 taken out, the vote rule off, the switch asked before
+  the paces, the name not cleaned, the crash feed public, `_stats` uncapped:
+  each turns its checks red.
 - `tools/qa/mp/mp-panelguard.mjs`: a window whose script throws (the card,
   the game playing on, Close, drawn afresh), and a board served with objects
   in it by an older worker (the rows, no card, no page error).

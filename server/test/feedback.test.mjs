@@ -30,8 +30,11 @@
  *      and the old pace rows and rebuilds `_stats`; nobody else can.
  *  10. The kill switch `feedback: false` in the room's live flags closes the
  *      board to writes (reading stays), read at most once a minute.
+ *  11. An IPv6 line counts as its /64; the whole object's rows an hour stop at
+ *      ROWS_HOUR across every kind; one claimed id an address a ticket for a
+ *      vote; and a write the paces refuse never asks the room for the switch.
  */
-import { Feedback, FEEDBACK_NAME_MAX, FEEDBACK_PACE } from '../src/feedback.js';
+import { Feedback, FEEDBACK_NAME_MAX, FEEDBACK_PACE, feedbackAddr } from '../src/feedback.js';
 import { GameRoom } from '../src/index.js';
 
 let failures = 0;
@@ -240,6 +243,63 @@ function makeState() {
   const noRoom = await new Feedback(makeState(), { ADMIN_KEY: 'k10' }).fetch(new Request('https://x/api/feedback/submit', { method: 'POST',
     body: JSON.stringify({ playerId: 'bp_n', playerName: 'N', category: 'bug', topic: 'ui', text: 'x' }) })).then((r) => r.json());
   check('10: no room to ask (a local test, no binding): open, as before', noRoom.ok === true, noRoom);
+}
+
+// ── 11. v2.3.5593: the /64, the rows' budget, one vote an address, a refusal asks nothing ──
+{
+  check('11: an IPv6 address counts as its /64; IPv4 and IPv4-in-IPv6 as themselves',
+    feedbackAddr('2001:db8:1:2:aaaa::1') === '2001:db8:1:2::/64' && feedbackAddr('2001:0db8:0001:0002:ffff:ffff:ffff:ffff') === '2001:db8:1:2::/64'
+      && feedbackAddr('203.0.113.5') === '203.0.113.5' && feedbackAddr('::ffff:203.0.113.5') === '203.0.113.5' && feedbackAddr(null) === null,
+    [feedbackAddr('2001:db8:1:2:aaaa::1'), feedbackAddr('::ffff:203.0.113.5')]);
+  const st = makeState();
+  const fb = new Feedback(st, {});
+  const H = (ip) => ({ 'Content-Type': 'application/json', 'CF-Connecting-IP': ip });
+  const post = (body, ip) => fb.fetch(new Request('https://x/api/feedback/submit', { method: 'POST', headers: H(ip), body: JSON.stringify(body) })).then((r) => r.json());
+  const line = [];
+  for (let i = 0; i < 8; i++) line.push(await post({ playerId: 'bp_v6_' + i, playerName: 'Six', category: 'bug', topic: 'ui', text: 'x' }, '2001:db8:aa:bb:' + (i + 1).toString(16) + '::' + (i + 7).toString(16)));
+  check('11: a new address of one IPv6 line for every post (a /64 is 2^64 of them) is held as one address: ' + FEEDBACK_PACE.POSTS_ADDR + ' an hour',
+    line.filter((r) => r.ok).length === FEEDBACK_PACE.POSTS_ADDR, line.map((r) => r.ok));
+  const ticketId = line[0].ticket.id;
+  /* one claimed id an address a ticket for a vote */
+  const vote = (playerId, ip) => fb.fetch(new Request('https://x/api/feedback/vote', { method: 'POST', headers: H(ip), body: JSON.stringify({ ticketId, playerId, vote: 'up' }) })).then((r) => r.json());
+  const v1 = await vote('bp_voter_a', '198.51.100.20');
+  const v2 = await vote('bp_voter_b', '198.51.100.20');
+  const v3 = await vote('bp_voter_a', '198.51.100.20');
+  check('11: one address votes once a ticket: a second made-up id is refused, the same id takes its vote back',
+    v1.ok === true && v1.up === 1 && v2.ok === false && v3.ok === true && v3.up === 0, { v1, v2, v3 });
+  /* the rows' budget across every kind: posts and crash reports to their own
+     ceilings, then votes until the whole object's budget stops them */
+  const st2 = makeState();
+  const fb2 = new Feedback(st2, {});
+  const ip2 = (i) => '192.0.2.' + (i % 250) + '.' + i;
+  let rows = 0, first = null;
+  for (let i = 0; i < FEEDBACK_PACE.POSTS_ALL + 5; i++) {
+    const r = await fb2.fetch(new Request('https://x/api/feedback/submit', { method: 'POST', headers: H(ip2(i)), body: JSON.stringify({ playerId: 'bp_b' + i, playerName: 'B', category: 'bug', topic: 'ui', text: 'x' }) })).then((x) => x.json());
+    if (r.ok) { rows += 2; if (!first) first = r.ticket.id; }
+  }
+  for (let i = 0; i < FEEDBACK_PACE.CRASH_ALL + 5; i++) {
+    const r = await fb2.fetch(new Request('https://x/api/feedback/crash', { method: 'POST', headers: H(ip2(1000 + i)), body: JSON.stringify({ sid: 's' + i, log: [{ kind: 'x' }] }) })).then((x) => x.json());
+    if (r.ok) rows += 1;
+  }
+  let votes = 0, stopped = false;
+  for (let i = 0; i < FEEDBACK_PACE.VOTES_ALL; i++) {
+    const r = await fb2.fetch(new Request('https://x/api/feedback/vote', { method: 'POST', headers: H(ip2(5000 + i)), body: JSON.stringify({ ticketId: first, playerId: 'bp_vv' + i, vote: 'up' }) })).then((x) => x.json());
+    if (r.ok) { rows += 1; votes++; } else { stopped = true; break; }
+  }
+  check('11: the whole object writes at most ' + FEEDBACK_PACE.ROWS_HOUR + ' rows an hour, every kind together: votes stop at the budget (' + votes + '), under their own ceiling (' + FEEDBACK_PACE.VOTES_ALL + ')',
+    rows === FEEDBACK_PACE.ROWS_HOUR && stopped && votes < FEEDBACK_PACE.VOTES_ALL, { rows, votes, stopped });
+  /* a write the paces refuse never asks the room */
+  let asked = 0;
+  const env = { ADMIN_KEY: 'k11', GAME_ROOM: { idFromName: (x) => x, get: () => ({ fetch: async () => { asked++; return new Response(JSON.stringify({ ok: true, flags: {} })); } }) } };
+  const fb3 = new Feedback(makeState(), env);
+  const post3 = (i) => fb3.fetch(new Request('https://x/api/feedback/submit', { method: 'POST', headers: H('203.0.113.99'), body: JSON.stringify({ playerId: 'bp_r' + i, playerName: 'R', category: 'bug', topic: 'ui', text: 'x' }) })).then((x) => x.json());
+  for (let i = 0; i < FEEDBACK_PACE.POSTS_ADDR; i++) await post3(i);
+  const askedAfterTaken = asked;
+  fb3._flagAt -= FEEDBACK_PACE.FLAG_TTL_MS + 1;
+  const refused = [];
+  for (let i = 0; i < 50; i++) refused.push(await post3(100 + i));
+  check('11: a write the paces refuse never asks the room for the switch (50 refused posts, ' + (asked - askedAfterTaken) + ' asks)',
+    askedAfterTaken === 1 && asked === askedAfterTaken && refused.every((r) => r.ok === false), { askedAfterTaken, asked });
 }
 
 console.log(failures ? `\n${failures} FAILURE(S)` : '\nall feedback checks passed');

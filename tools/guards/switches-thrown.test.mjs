@@ -95,9 +95,19 @@ function pick() {
   }
   return worker.filter((r) => typeof r.born === 'number' && r.born >= BORN_FROM);
 }
+/* v2.3.5593 (a stopgap, the planning session's word; card T owns the lasting
+   mend): cold-flags.test.mjs tests the COLD flag cache -- a room that has
+   loaded nothing -- and this guard's preload (lib/thrown.mjs) warms the flags
+   as a room is made, by design, so it fails under the preload with ANY switch
+   thrown (`__bt_none__` too).  The PR run takes no baseline, so the first
+   liveops switch born after BORN_FROM (`feedback`, RT-3's #1878) drew it in
+   and read the preload's own fault as the switch's.  npm test still runs
+   cold-flags plain. */
+const NOT_UNDER_PRELOAD = new Set(['cold-flags.test.mjs']);
 function suitesFor(row) {
   const set = new Set(suitesOf(row.system));
   for (const r of SWITCHES) if (r.needs.includes(row.name)) for (const s of suitesOf(r.system)) set.add(s);
+  for (const s of NOT_UNDER_PRELOAD) set.delete(s);
   return [...set].sort();
 }
 
