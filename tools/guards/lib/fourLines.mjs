@@ -487,33 +487,40 @@ export function stateWritesFromRendering({ live = false } = {}) {
    drawn from the `skills` set).  v2.3.5373 (the gatekeeper, sitting 16, main
    64bb498): wsClient.js 3296 -> 3039 and its setupWebSocket 3097 -> 2839
    (card K's #1829, the action door: the send lists became the door's rows
-   in src/game/actions.js). */
+   in src/game/actions.js).  v2.3.5374 (the gatekeeper, sitting 17, main
+   59469b2): BroTown.jsx 8371 -> 8370, its BroTown 7801 -> 7800, its
+   (anonymous) 2133 -> 2132 and its gameLoop 1584 -> 1583 (card SK's #1782,
+   the board's roll-off: the ride's per-frame rules moved into
+   src/game/ride.js); entityRenderer.js 8955 -> 8953 (SK's #1782 and card
+   O's #1836, the crowd's rung).  v2.3.5375 (the gatekeeper, sitting 18, main
+   abff2ef): monsterCombat.js 1792 -> 1785 and its updateMonsterCombat
+   1732 -> 1724 (card K's #1861: the combat and moving sends through act()). */
 export const LINES = Object.freeze({
   /* a file's code lines.  These files have a line of their own, at their
      count on the day; every other file under src/ stays at or under
      OTHER_FILE (a new file too) */
   FILE: Object.freeze({
     'src/rendering/systems/effectsRenderer.js': 9870,
-    'src/rendering/systems/entityRenderer.js': 8955,
-    'src/ui/BroTown.jsx': 8371,
+    'src/rendering/systems/entityRenderer.js': 8953,
+    'src/ui/BroTown.jsx': 8370,
     'src/data/gameSystems.js': 5622,
     'src/data/gameDisplay.js': 4268,
     'src/networking/wsClient.js': 3039,
     'src/networking/gameEvents.js': 2639,
-    'src/game/monsterCombat.js': 1792,
+    'src/game/monsterCombat.js': 1785,
   }),
   OTHER_FILE: 1500,
   /* a function's code lines, by `file#name` (the largest of a name, where a
      file has two: `(anonymous)` is every unnamed one); every other function
      stays at or under OTHER_FUNCTION */
   FUNCTION: Object.freeze({
-    'src/ui/BroTown.jsx#BroTown': 7801,
+    'src/ui/BroTown.jsx#BroTown': 7800,
     'src/networking/wsClient.js#setupWebSocket': 2839,
     'src/networking/gameEvents.js#processGameEvent': 2500,
-    'src/ui/BroTown.jsx#(anonymous)': 2133,
+    'src/ui/BroTown.jsx#(anonymous)': 2132,
     'src/networking/wsClient.js#connect': 2055,
-    'src/game/monsterCombat.js#updateMonsterCombat': 1732,
-    'src/ui/BroTown.jsx#gameLoop': 1584,
+    'src/game/monsterCombat.js#updateMonsterCombat': 1724,
+    'src/ui/BroTown.jsx#gameLoop': 1583,
     'src/networking/wsClient.js#onmessage': 1466,
     'src/rendering/systems/entityRenderer.js#_updatePlayer': 1369,
     'src/ui/mobile/sheet/HeroExpanded.jsx#HeroExpanded': 1266,

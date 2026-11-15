@@ -35,10 +35,12 @@
  * the clip, the fill and the glint.  A program not yet tested has no row
  * in the probe and is never in `self`.  Spec: docs/specs/self-test.md.
  */
-/* Imports only the pacer's top-of-a-frame queue (node tests it, and the
-   field report reads its failures); the render texture's class is handed in
-   by the program's file (selfDraw). */
+/* Imports only the pacer's top-of-a-frame queue and the page's reader of its
+   switches, neither reaching pixi.js (node tests it, and the field report
+   reads its failures); the render texture's class is handed in by the
+   program's file (selfDraw). */
 import { beforeDraw } from '../game/framePacer.js';
+import { swValue } from '../game/switches.js';   /* v2.3.5234: `?selftest`, through the page's one reader (card T, v2.3.5306) */
 
 /* the known picture: 16 x 16 colour numbers 0..3 in a pattern that tells a
    row from a column and a half from a half (a sampler reading the wrong
@@ -269,8 +271,11 @@ export function selfLookRow() {
 
 /* ── the lever: ?selftest=fail:<name>[,<name>...] ── */
 let _forced = null;
+/* the address's `selftest`, as the search string the two readers below take:
+   read through the page's one reader of its switches (src/game/switches.js,
+   card T's v2.3.5306; tools/guards/switch-reader.test.mjs) */
 function _search() {
-  try { return (typeof location !== 'undefined' && location.search) || ''; } catch (e) { return ''; }
+  try { const v = swValue('selftest'); return v == null ? '' : '?selftest=' + v; } catch (e) { return ''; }
 }
 /** The programs the address makes fail (QA), from a search string. */
 export function selfForcedFrom(search) {
