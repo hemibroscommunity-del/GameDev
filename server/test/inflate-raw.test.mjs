@@ -237,6 +237,26 @@ const enc = (s) => new TextEncoder().encode(s);
   const rr = restorers[0]();
   check('the rebuild\'s restorer unpacks every strip, a slice at a time (it is waited for)', typeof (rr && rr.then) === 'function' && (await rr) === 0 && same(A.src.resource, A.idx) && !A.src.__btFP);
   while (Date.now() - t1 < 30000 && !A.src.__btFP) await new Promise((r) => setTimeout(r, 100));
+  /* v2.3.5561 (the gatekeeper's sitting-16 low): a lost chip rebuilt while a
+     strip is being packed.  A pack that finished after the rebuild's restorer
+     would leave the strip empty for the new chip, whose first draw unpacks
+     it whole in the upload; the pack is let go instead */
+  const D = strip([[256, 256], [256, 256], [200, 240], [256, 256], [256, 250]], 5);
+  FP.wantFramePack(D.src, D.cells);   /* not drawn yet: the line leaves it */
+  const lost0 = FP.framePackStats().lostMidPack;
+  const pd = FP.packStrip(D.src);
+  await nextTask();
+  await restorers[0]();
+  await pd;
+  check('a lost chip rebuilt while a strip was being packed: the pack is let go, the strip\'s numbers kept whole (the new chip\'s first draw has nothing to unpack)',
+    !D.src.__btFP && same(D.src.resource, D.idx) && !!D.src._btNumbers && FP.framePackStats().lostMidPack === lost0 + 1, { fp: !!D.src.__btFP, lost: FP.framePackStats().lostMidPack - lost0 });
+  D.src._gpuData[1] = {};
+  const t2 = Date.now();
+  while (Date.now() - t2 < 15000 && !D.src.__btFP) await new Promise((r) => setTimeout(r, 100));
+  check('...and it is packed again once the new chip has drawn it', !!D.src.__btFP && D.src.resource.length === 0);
+  for (const fn of D.ends) fn();   /* D's end: the checks below count A and B only */
+  /* (the restorer unpacked A too: packed again before the checks below) */
+  while (Date.now() - t2 < 30000 && !A.src.__btFP) await new Promise((r) => setTimeout(r, 100));
   /* a frame that will not unpack: nothing to read, never a throw */
   const c5 = A.src.__btFP.cells.find((c) => c.x === A.cells[6].x);
   c5.z = c5.z.subarray(0, c5.z.length >> 1);

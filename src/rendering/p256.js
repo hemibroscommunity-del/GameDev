@@ -73,6 +73,15 @@ const WORLD_ICONS_ON = !NO_TWINS && !/[?&]worldicons=0(&|$)/.test(_q);
    such a twin as numbers whole).  `?fxsheets=0` keeps them pictures. */
 const FX_SHEETS = /^\/sprites\/(?:fx\/(?:stun-stars-v1|whirl-vortex-v1)\.png|effects\/(?:grease|woodchips|rocks|splash)-burst-v1\.webp)$/;
 const FX_SHEETS_ON = !NO_TWINS && !/[?&]fxsheets=0(&|$)/.test(_q);
+/* v2.3.5258, `icons-elements`: the eight elements' marks drawn after a hit's
+   number (effectsRenderer.js POPUP_ICON_SRC: 2.1 MB held as pictures in the
+   page at the fight), cut to their own box as they load (_tightPopupIcon,
+   through readSourceRect, before the chip ever has them), as the heart is.
+   On 256 colours or fewer already: their twins are exact.  Not the 64 px
+   plate icons (entityRenderer.js loads those its own way) nor the gems'
+   dark and light (<img>s).  `?elemicons=0` keeps them pictures. */
+const ELEM_ICONS = /^\/icons\/ui\/elem-(?:flame|frost|water|venom|flora|stone|storm|wind)\.webp$/;
+const ELEM_ICONS_ON = !NO_TWINS && !/[?&]elemicons=0(&|$)/.test(_q);
 /* v2.3.5562, `traits-hairmasks`: the hats' hair masks, the white silhouettes
    the hair is clipped to under a hat (entityRenderer.js _loadHairMaskDir,
    hairClip.js's stencil): 128 px, two colours, so their twins are exact.
@@ -86,8 +95,8 @@ const HAIRMASKS = /^\/sprites\/traits\/headwear\/[a-z0-9-]+\/hairmask\/(?:east|n
    silhouette as a picture, which a colour numbers' cannot be) */
 const HAIRMASKS_ON = !NO_TWINS && !/[?&]hairmasks=0(&|$)/.test(_q) && !/[?&]alphaclip\b/.test(_q);
 /** whether the picture at `path` (no host, no query) is read from its twin here */
-function wantedPath(path) { return !NO_TWINS && (ALL_TWINS || (FX_MADE_ON && FX_MADE.test(path)) || (WORLD_ICONS_ON && WORLD_ICONS.test(path)) || (FX_SHEETS_ON && FX_SHEETS.test(path)) || (HAIRMASKS_ON && HAIRMASKS.test(path))); }
-const WANTED = !NO_TWINS && (ALL_TWINS || FX_MADE_ON || WORLD_ICONS_ON || FX_SHEETS_ON || HAIRMASKS_ON);
+function wantedPath(path) { return !NO_TWINS && (ALL_TWINS || (FX_MADE_ON && FX_MADE.test(path)) || (WORLD_ICONS_ON && WORLD_ICONS.test(path)) || (FX_SHEETS_ON && FX_SHEETS.test(path)) || (ELEM_ICONS_ON && ELEM_ICONS.test(path)) || (HAIRMASKS_ON && HAIRMASKS.test(path))); }
+const WANTED = !NO_TWINS && (ALL_TWINS || FX_MADE_ON || WORLD_ICONS_ON || FX_SHEETS_ON || ELEM_ICONS_ON || HAIRMASKS_ON);
 /* (never while QA compares cropped strips against their files: __btTrimVerify) */
 export function p256On() { return WANTED && picNumbersOn(); }
 
@@ -351,6 +360,6 @@ export function startP256Pack(renderer, canvas) {
 }
 
 if (typeof window !== 'undefined') {
-  window.__btP256 = () => ({ wanted: WANTED, on: p256On(), all: ALL_TWINS, fxMade: FX_MADE_ON, worldIcons: WORLD_ICONS_ON, fxSheets: FX_SHEETS_ON, hairMasks: HAIRMASKS_ON, twins: Object.keys(P256_FILES).length, ..._stats,
+  window.__btP256 = () => ({ wanted: WANTED, on: p256On(), all: ALL_TWINS, fxMade: FX_MADE_ON, worldIcons: WORLD_ICONS_ON, fxSheets: FX_SHEETS_ON, elemIcons: ELEM_ICONS_ON, hairMasks: HAIRMASKS_ON, twins: Object.keys(P256_FILES).length, ..._stats,
     pack: { ..._pk, packedNow: _packed.size, waiting: _toPack.size } });
 }

@@ -466,6 +466,8 @@ export const ASSET_FAMILIES = Object.freeze([
     { tool: 'tools/process_icon_sheets.py', sources: 'assets/icons-source/sheet-{b,c,g,i}.png', draw: 'none' }),
   fam('icons-elements', 'made', ['public/icons/ui/elem-{flame,frost,water,venom,flora,stone,storm,wind}.webp', 'public/icons/ui/elem-*-64.webp'],
     { tool: ['tools/ui/cut-element-sheet.mjs', 'tools/ui/make-elem-small.py'], sources: 'assets/icons-source/owner-2026-11-02/element-icons-sheet.png', draw: 'file', loader: ['src/rendering/systems/effectsRenderer.js', 'src/rendering/systems/entityRenderer.js'], note: 'the hits\' element marks and the name plates\' 64 px; also <img> in the codex and the dailies' }),
+  fam('icons-elements-twins', 'made', 'public/icons/ui/elem-{flame,frost,water,venom,flora,stone,storm,wind}.p256.png',
+    { tool: 'tools/art/reduce256.mjs', sources: 'beside', draw: 'numbers', loader: 'src/rendering/p256.js', note: 'v2.3.5258, card P\'s backlog: the element marks after a hit\'s number read from their 256-colour twins by default (exact: on 256 colours already); listed in src/data/p256Files.js; ?elemicons=0' }),
   fam('icons-elements-gems', 'made', 'public/icons/ui/elem-{dark,light}.webp',
     { tool: 'tools/ui/cut-element-sheet.mjs', sources: 'assets/icons-source/owner-2026-11-02/element-icons-sheet.png', draw: 'dom', loader: 'src/data/gems.js' }),
   fam('icons-hero', 'made', ['public/icons/ui/hero/{hp,stamina,mana,xp,melee,bow,magic,vitality,defense,endurance,damage,dps,move-speed}.webp', 'public/icons/ui/hero/{rec-deaths,rec-duels,rec-kills,rec-xp,rec-zone,tab-overview}.webp'],
