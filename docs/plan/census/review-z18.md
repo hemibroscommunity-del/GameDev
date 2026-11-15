@@ -105,4 +105,43 @@ same twelve files, byte for byte the same code.
   silent-refusals 31, tick-share 23, mirror-audit 399; the phase guard
   (14 doors, 23 `todo`); the switches guard (487 rows).
 
+## Card L: #1866 (PR 5's eighth, tag 5217): reviewed, listed
+
+**The race door (`_raceTo`, `RACE_WAYS`, `racedoor` ON), stacked on
+#1864: lows and nits only.** Read at 6f3df84, its own change from
+7171908; its head ffc9bd0 (`main` abff2ef in) holds the same code.
+
+- VERIFIED by a probe in a real room: a start, the whole lap and a win
+  with the flags `{}`, `racedoor: false` and `racedoor: true`, against
+  this race.js and `main`'s: the records, `race_state`, the four
+  `race_cp` and `race_end` the same. Every start writes a finite `t0`
+  and `endBy` after it, so the door's rule always passes; the end writes
+  `null` as before; a win credits the quest and saves in `main`'s order,
+  no await added (a race pays no gold or bag). `racedoor: false` skips
+  only the rule.
+- Low, VERIFIED: the rule is checked only when the record is written; the
+  record stays changeable (race.js ~203 and ~212 change `off` and `next`
+  on purpose), so a planted `ps._race.endBy = Infinity` passes the suite
+  and the guard.
+- Low, VERIFIED: the guard reads `defineProperty`, not
+  `defineProperties` (phase-table.test ~434): open on every door's line;
+  and a new body built with the field (`{...ps, _race: null}`) passes.
+- Low, PLAUSIBLE: `_handleRaceStart` ignores the door's answer (race.js
+  ~179): were it ever to refuse, the start's stamp and `race_state` would
+  still go and an old race stay on. No path reaches it today (sitting
+  17's shape).
+- Low, VERIFIED by tracing: "no join way: the join makes the body afresh"
+  is false for a body kept by a takeover (join.js ~916, bodytake,
+  v2.3.4455 keeps the live state, `_race` included). The claim was in
+  `main`'s phases.js already; the spec repeats it.
+- Nits: the switch's words ("the next move could then never end it")
+  overstate (the finish or a leave still ends it); the `racedoor` row's
+  system is `quests`, the `race` row's `social`; the door's suite plays
+  no finish (tour.test does).
+- Break proof 31 fails as claimed. Suites: race-door 25, move-claims 45,
+  sound-cues 165, tour, ride, safe-heal, refusal-door, inbox, liveops; the
+  phase guard; switches (488 rows). With `main` merged: the full
+  `npm test` 430, one red, dailychest, its run crossing UTC midnight
+  (green alone, twice): the box's.
+
 @@REST
