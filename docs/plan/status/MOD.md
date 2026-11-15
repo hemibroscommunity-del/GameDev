@@ -1,23 +1,26 @@
 card: MOD
-branch: claude/plan-mod-card (this card's words; each PR its own branch from main)
-prs: the card (5620, working); RT-3's #1869 (findings, draft) and #1878 (5593, the feedback board) before it
-state: working
+branch: claude/plan-mod-<n>-<topic> (one line: #1878 > #1890 > #1897 > #1907, each carrying the one before)
+prs: #1883 (5620, the card), #1897 (5621, silence), #1907 (5622, names): ready; RT-3's #1878 (5593), #1890 (5594): ready; #1869 (findings): draft
+state: ready
 
 ## Done
 
-- RT-3's red team: findings #1869 (draft, the planning session folds it); the feedback board #1878.
+- RT-3 red team: findings #1869 (draft); the feedback board #1878 (5593) and its staff names #1890 (5594).
+- PR 1 (5621, #1897): the owner's silence (the chat lanes, its own router step after the wire door) and a freeze that holds the device.
+- PR 2 (5622, #1907): the name rules: a new name by the rule (the box says why first), `track` never renames, the owner's rename.
 
 ## Next
 
-- This card's PR (5620), then PR 1 (5621): the silence lever and a freeze that holds the device.
+- PR 3 (5623, a report carries what the reporter received): asked card K first (chatmod.js is K's).
+- PR 4 (5624, invite pace): waits for the planning session's word on who takes trade2.js's lines (E, K, R hold it).
 
 ## Found
 
-- `mp-lazyfail` is red on main: it cannot find the More page's "achievements" tile on a local worker (checked on main without any change): a question about the test (tools/qa/mp/mp-lazyfail.mjs).
-- `guards/switches-thrown` (card T): its preload warms the flags as a room is made, so `cold-flags.test.mjs` fails under it with ANY switch thrown (`__bt_none__` too); the PR run skips the baseline, so the first liveops-system switch born after 5301 trips it (#1878's `feedback`).
+- `mp-lazyfail` is red on main: it cannot find the More page's "achievements" tile on a local worker (routed to J2).
+- `boards.test` and others join with one-letter names ("T"): the name rule's minimum is 1 (the box keeps its 2) so honest tests and names pass.
 
 ## Needs
 
-- The owner (through the planning session): the slur list's words; new-player protection in No man's land; whispers from friends only for a new character; a hold on a new character's trades. None is built until their word.
-- Card K: where the silence check goes (the wire door for every `speaks` row, or each lane); PR 3 is in K's `chatmod.js`.
-- Which card may add the Test panel's Silence buttons (`DevPanel.jsx`: A, E, K, L, T, V).
+- The owner (through the planning session): the slur list's words; new-player protection in No man's land; friends-only whispers for a new character; a hold on a new character's trades; names unique across characters (a migration: every name on file read once).
+- Card OPS: the Test panel's buttons for silence, lift, rename (after its feedback rows).
+- Switch `silence.js`'s SILENCE_LANES to K's CHAT_LANES import in whichever of #1897 and #1899 lands second.
