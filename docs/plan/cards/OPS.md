@@ -39,8 +39,14 @@ the way `tools/qa/load/load.mjs` makes one; the probes in
      503 with the same numbers otherwise; 503 `{ room: 'no answer' }` on the
      timeout. Numbers only: no id, no name, no address.
    - `/health` stays as it is (the worker alone).
-   - Kill switch `roomhealth: false`: the route answers 404 and the room is
-     not asked.
+   - Kill switch `roomhealth: false`: the room answers 404 and the route
+     passes it on (the outer worker cannot read the room's switches without
+     asking it).
+   - OPS's switches sit in a system of their own, `ops`
+     (`tools/guards/lib/systems.mjs`, and its row in `budgets.mjs`), whose
+     words name only OPS's suites: under `switches-thrown`'s preload,
+     `liveops`' and `server-core`'s suites include two that fail with any
+     flag (card T's to mend).
    - **Done when:** the suite covers 200, a stalled tick (503), a failed
      save (503), a refusal counted, the switch; on the local worker a probe
      reads 200 with a player in, and 503 once the tick is stopped.
