@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "68d9d9b25a8c71a506f01c900dcc021c153875b8",
+  "tree": "b3aa113d61a6a88aa48f621437b64e7151e91212",
+  "committedAt": "2026-11-14T18:17:43-08:00",
+  "subject": "Merge pull request #1848 from hemibroscommunity-del/claude/plan-k-15-sprint",
+  "files": 7740,
+  "bytes": 957125381,
+  "listingSha256": "732aeb3c83ae3dde98d9e44179e27c7efb2490f6500ab56106df5cdc7b8ad70a",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

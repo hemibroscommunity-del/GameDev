@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "21fce83bd924755c9aa027dbc123601b4cffd074",
+  "tree": "cb512304a5586f10abfbe7964982551190f3b57a",
+  "committedAt": "2026-11-14T18:17:59-08:00",
+  "subject": "Merge pull request #1868 from hemibroscommunity-del/claude/plan-p-19-worn-gear",
+  "files": 7750,
+  "bytes": 957276310,
+  "listingSha256": "0c1344ed7a411ea6a498b2c498999003f7f0b1ba81cf6f7e58c73a24f7bea8b8",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

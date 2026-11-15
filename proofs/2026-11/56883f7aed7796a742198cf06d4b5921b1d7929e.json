@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "56883f7aed7796a742198cf06d4b5921b1d7929e",
+  "tree": "9ab9c057b25442253b1e4d9ca327ea49291bf6e9",
+  "committedAt": "2026-11-14T18:17:35-08:00",
+  "subject": "Merge pull request #1866 from hemibroscommunity-del/claude/plan-l-17-race-door",
+  "files": 7740,
+  "bytes": 957107289,
+  "listingSha256": "251c540c50fd7dcbef640c570596b6824517ffc0dfd7cf7ff9aad70749f95370",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
