@@ -5,10 +5,8 @@ state: working
 
 ## Done
 
-- PR 1 (5181, #1822), PR 3 (5183, #1820), PR 6 (5186, #1826), PR 5 (5185,
-  #1829: the action door), PR 2 (5182, #1831: six lists made from the
-  table), PR 4 (5184, #1838: the wire door, `wiredoor`; hostile 19 -> 1),
-  PR 7.1 (5187, #1861: combat and moving through act(), 203 -> 146): merged.
+- PRs 1 to 6 (5181-5186) and 7.1 (5187, #1861: combat and moving through
+  act(), 203 -> 146): merged.
 - Claims 5540 (#1842, merged): the archer's lane (`arrowlane`, ON).
 - Claims 5541 (#1848): the sprint mark, OFF (the owner: off for now);
   review-z16's two MEDIUMs mended on its ON path; with it on the move's
@@ -16,11 +14,9 @@ state: working
 - PR 7.2 (5188, branch claude/plan-k-7-2-life-act): life skills, the
   economy and the social game, 41 sends in 24 files (146 -> 105).
   `nmlAsk.js` (3) waits for card T's #1863, which changes it.
-- PR 7.3 (5189): the networking files, 17 sends (gameEvents 9, broWallet
-  2, nodeSync 1, wsClient's own 4, report.js 1; 146 -> 129): no send is
-  left in src/networking/ but the door's transport. 7.2 and 7.3 each lower
-  the census from main's line: the second to merge takes main in, and the
-  line is 88.
+- PR 7.3 (5189): the networking files, 17 sends (146 -> 129); none left
+  in src/networking/ but the door's transport. The second of 7.2 and 7.3
+  to merge takes main in: the line is then 88.
 
 ## Next
 
