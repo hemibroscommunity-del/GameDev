@@ -1,6 +1,6 @@
 card: P
 branch: claude/plan-p-21-hairmasks (#1881's head, with #1868's and #1853's, merged in)
-prs: #1713, #1715, #1716, #1718, #1719, #1736, #1743, #1745, #1757, #1749, #1763, #1766, #1805, #1806, #1810, #1840, #1846, #1859 (5241-5257, 5259, merged); #1853 (5258), #1868 (5560), #1881 (5561) ready; traits-hairmasks (5562) ready
+prs: #1713, #1715, #1716, #1718, #1719, #1736, #1743, #1745, #1757, #1749, #1763, #1766, #1805, #1806, #1810, #1840, #1846, #1859 (5241-5257, 5259, merged); #1853 (5258), #1868 (5560), #1881 (5561), #1906 (5562) ready
 state: working
 
 ## Done
@@ -14,12 +14,10 @@ state: working
 
 ## Next
 
-- #1853 (5258) then #1868 (5560) for sitting 18, stacked; #1881 (5561)
-  for sitting 19, on #1868; 5562 `traits-hairmasks` on #1881: the hats'
-  hair masks from their twins as colour numbers (`?hairmasks=0`), one row.
-- The gatekeeper's low on #1846: the still's sweep reloads the strip each
-  second (`keepPageCopy`).
-- Then the backlog by the census: `world-objects` (1.78 MB) next.
+- #1853 (5258), #1868 (5560) for sitting 18; #1881 (5561: both
+  gatekeeper lows, the pack's lost chip and the slime's still) for sitting
+  19; #1906 (5562, `traits-hairmasks`) on #1881.
+- The backlog's next: the question below.
 
 ## Found
 
@@ -29,6 +27,12 @@ state: working
 
 ## Needs
 
+- Asked of the planning session (2026-11-15): `world-objects` (1.78 MB at
+  the fight) is colour numbers on the chip already; its page copy (0.89,
+  read on the CPU by the burn, the shatter, the shadow bases) is all it
+  could save, under the 1 MB bar. (a) framePack's road for 0.89; (b) skip
+  it for `world-fish-spot`, `pets`, `cape-hood` (1.50 each, pictures held
+  whole); (c) stop the backlog here.
 - Answered (2026-11-14), the owner's gear item: option B, the belt's last
   baked frame (or the idle frame) held while its jog sheets pack, no new
   memory; `?beltstandin=0`; the PR body says what a player sees.
