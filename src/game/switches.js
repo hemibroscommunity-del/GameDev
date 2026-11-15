@@ -81,6 +81,7 @@ const FORMS = {
   'dbltap': '0',
   'deathbig': '*',
   'deathkind': '*',
+  'deathstrip': '0',
   'deathzones': '0',
   'debug': '1',
   'depthbuf': '',

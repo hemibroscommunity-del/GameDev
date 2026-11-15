@@ -384,6 +384,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?coinflip` | page | switch | v2.3.5247 | 2026-11-14 | =0 | memory |  | no | Ace's coin strips keep their decoded copies, as before. |
 | `?deathbig` | page | lever | v2.3.3954 |  | =1 or =0 | none |  | no | QA: every kill's death is the big one (=1) or the ordinary one (=0). |
 | `?deathkind` | page | lever | v2.3.3954 |  | own, normal, slice, decap, leg or topple | none |  | no | QA: every monster dies this way on this phone. |
+| `?deathstrip` | page | switch | v2.3.5567 | 2026-11-15 | =0 | memory |  | no | The death strip (drawn when the bones' explosion has no corpse) is drawn from its full-colour picture, as before, not from its 256-colour twin. |
 | `?deathzones` | page | switch | v2.3.3954 | 2026-11-03 | =0 | logic |  | no | No death zones' effects. |
 | `?depthbuf` | page | switch | v2.3.3072 | 2026-10-06 | present | chip |  | no | The depth buffer is kept, to compare. |
 | `?dmgscale` | page | value | v2.3.3033 |  | a number | logic |  | no | Scales the damage numbers. |

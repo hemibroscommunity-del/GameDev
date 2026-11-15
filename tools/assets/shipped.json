@@ -1397,6 +1397,7 @@
     {"path":"public/sprites/player/sword-south-weapon.png","bytes":37891,"sha256":"eacb0167793862655ec2fa5149fe4f4bae96d6b4e7b192900241a23fe8559797","family":"player-sword-weapon","kind":"supplied"},
     {"path":"public/sprites/player/sword-south.png","bytes":123039,"sha256":"8fadad68869029922e2344e876b35fd26ecd2f6c3b7d42ca339b9629b57b46bd","family":"player-retired","kind":"supplied"},
     {"path":"public/sprites/player/welcome-bro.png","bytes":46643,"sha256":"cc47b794ce7377864b1631f0bd13146ac660bf9143657b02b567ebee65f0c055","family":"player-retired","kind":"supplied"},
+    {"path":"public/sprites/players/death-v1.p256.png","bytes":104573,"sha256":"88031fb1091776d2ff84fac41c5ae3cacb00becb671edc056962fb4ea515db2d","family":"player-death-twins","kind":"made"},
     {"path":"public/sprites/players/death-v1.png","bytes":359430,"sha256":"cf57a5b962f53c72d390ec8d5f967508eb6ce1c140123b351c73bc7034df9ae2","family":"player-death","kind":"supplied"},
     {"path":"public/sprites/projectiles/arrow-pine.png","bytes":5314,"sha256":"7f80e21dfbf253b3b37d238c5ae76b9182cd94cac60d1d1db43fb52632698296","family":"projectile-arrow","kind":"made"},
     {"path":"public/sprites/projectiles/arrow-special-v1.webp","bytes":78098,"sha256":"8406f1e3bc0c4362ec2c96113d3bf78624a4fc587c41326b1f7d64af63a0360d","family":"projectile-arrow-special","kind":"made"},
