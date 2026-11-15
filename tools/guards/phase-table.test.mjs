@@ -109,6 +109,8 @@
  *  29. `Reflect.set(ps, 'po', 'sit');` in admin.js        -> FAIL 2
  *  30. `Reflect.deleteProperty(room.extractions, id);` in admin.js
  *      (a keyed field's key)                              -> FAIL 2
+ * v2.3.5217 (the race door):
+ *  31. `ps._race = null;` back in _raceEnd                -> FAIL 2
  *
  * Run from the repository's root: node tools/guards/phase-table.test.mjs
  * (cd server && npm test runs it with every other guard and suite).
@@ -314,6 +316,9 @@ const DOOR_SUITES = Object.freeze({
   /* v2.3.5216: the pose door */
   'server/test/pose-door.test.mjs': { field: 'ps.po', fn: '_poseTo', holds: '§2: no write of .po in server/src outside _poseTo',
     prop: 'po', besides: [] },
+  /* v2.3.5217: the race door */
+  'server/test/race-door.test.mjs': { field: 'ps._race', fn: '_raceTo', holds: '§2: no write of ._race in server/src outside _raceTo',
+    prop: '_race', besides: [] },
 });
 const SCAN_DOORS = Object.freeze({
   'session (worker)': 'session-door.test plays the phases but fails no second writer of session.phase',

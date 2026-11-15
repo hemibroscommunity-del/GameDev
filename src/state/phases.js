@@ -255,15 +255,14 @@ export const PHASES = [
     note: 'v2.3.5216: the door (POSE_WAYS hold, stand, move, take; a pose held is one of POSE.IDS and never by the dead or the dying; live flag posedoor). posing: one of POSE.IDS. The spacing (POSE.MIN_GAP_MS) and the switches (emotes, emotemoves) stay the handler\'s. Memory only ("a deploy stands everyone up").',
   },
   {
-    name: 'race', side: 'worker', status: 'todo',
-    what: 'Lil Bro\'s race round the square: the countdown, running, ended.',
-    field: null, states: ['none', 'countdown', 'running', 'ended'], fn: null, file: null,
+    name: 'race', side: 'worker', status: 'door',
+    what: 'Lil Bro\'s race round the square: on (its countdown and its running, times on the record), or none.',
+    field: 'ps._race', states: ['none', 'on'],
+    fn: '_raceTo', file: 'server/src/race.js',
     clears: [{ edge: 'end', at: 'server/src/race.js _raceEnd' }],
     rejoin: 'none: "a race lost to a reconnect is a race run again" (race.js); the join makes the body afresh',
-    today: [
-      { field: 'ps._race', file: 'server/src/race.js', writers: ['server/src/race.js _handleRaceStart', 'server/src/race.js _raceEnd'] },
-    ],
-    note: 'Nearly a door: two writers, one file. A death or a leave of the Wheel ends it at the next move (_raceOnMove, \'left\').',
+    held: { suite: 'server/test/race-door.test.mjs' },
+    note: 'v2.3.5217: the door (RACE_WAYS start, end; a race on carries its gun t0 and its deadline endBy after it, so the next move can always end it; live flag racedoor). The countdown (now < t0) and the running are times, not phases. A death or a leave of the Wheel ends it at the next move (_raceOnMove, \'left\').',
   },
   {
     name: 'arena', side: 'worker', status: 'todo',

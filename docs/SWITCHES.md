@@ -367,6 +367,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `pointsreset` | worker | switch | v2.3.3541 | 2026-10-21 | false | logic |  | no | Every points reset refused, and its cap off at the next join. |
 | `pointsresetroom` | worker | switch | v2.3.4372 | 2026-11-10 | false | logic |  | no | The points reset's minute is the socket's alone, not kept by the room. |
 | `?questpath` | page | switch | v2.3.2992 | 2026-10-03 | present | logic |  | no | The quest's road on the ground comes back, with its Settings row. |
+| `racedoor` | worker | switch | v2.3.5217 | 2026-11-15 | false | logic |  | no | A race can be put on without its gun or its deadline, as the line before the race door could have (no start builds one today); the next move could then never end it. |
 
 ## render
 
