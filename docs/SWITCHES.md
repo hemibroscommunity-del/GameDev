@@ -230,6 +230,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `report` | worker | switch | v2.3.5122 | 2026-11-14 | false | logic |  | no | Un-advertises the field report, so no phone sends its smoothness, and drops any that still comes. |
 | `reportlanes` | worker | switch | v2.3.5221 | 2026-11-14 | false | logic | `report`, `reportspeed` | no | The field report no longer takes a lane but full, the governor's rung or the self-test (caps.report back to 2). |
 | `reportspeed` | worker | switch | v2.3.5127 | 2026-11-14 | false | logic | `report` | no | The Speed test's card is no longer taken (caps.report back to 1); the smoothness reports carry on. |
+| `roomexport` | worker | switch | v2.3.5286 | 2026-11-15 | false | logic |  | no | The owner's paged export of the room's records answers "off" and reads nothing. |
 | `roomrewind` | worker | lever | v2.3.5288 |  | true | none |  | no | Thrown (true), the owner's lever that puts the whole room back to an earlier time works (its dry run, then its do); unset or false, the default, both its steps answer "off". |
 | `roomrow` | worker | switch | v2.3.5124 | 2026-11-14 | false | logic | `daybook` | no | Nothing of the room's own row is added into the day's book. |
 | `storesize` | worker | switch | v2.3.5287 | 2026-11-14 | false | logic | `daybook` | no | The storage's size is not read into the day's book (its owner's card says "not read that day"); nothing else changes. |
@@ -326,6 +327,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `safeheal` | worker | switch | v2.3.3569 | 2026-10-22 | false | logic |  | no | The safe ground's heal is the wilds' trickle again. |
 | `serverdead` | worker | switch | v2.3.4373 | 2026-11-10 | false | logic |  | no | A phone's move may write `dead` again (the move's write back). |
 | `sprint` | worker | switch | v2.3.3003 | 2026-10-03 | false | logic |  | no | No sprint step is allowed. |
+| `sprintmark` | worker | switch | v2.3.5541 | off | true | logic |  | no | An opt-in, off (the owner: off for now): thrown (`sprintmark: true`), a move between two sprint-marked ones keeps the run, so a sprint marked on every other move pays its stamina, and only a move the sprint bills is judged at its bound (the rest at the walk). |
 | `steadymovers` | worker | switch | v2.3.3203 | 2026-10-13 | false | logic |  | no | Every move goes out again, from the next tick. |
 | `?tapms` | page | lever | v2.3.3105 |  | a number of ms | none |  | no | A test's own longest tap that still counts as free. |
 
@@ -368,6 +370,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `pointsreset` | worker | switch | v2.3.3541 | 2026-10-21 | false | logic |  | no | Every points reset refused, and its cap off at the next join. |
 | `pointsresetroom` | worker | switch | v2.3.4372 | 2026-11-10 | false | logic |  | no | The points reset's minute is the socket's alone, not kept by the room. |
 | `?questpath` | page | switch | v2.3.2992 | 2026-10-03 | present | logic |  | no | The quest's road on the ground comes back, with its Settings row. |
+| `racedoor` | worker | switch | v2.3.5217 | 2026-11-15 | false | logic |  | no | A race can be put on without its gun or its deadline, as the line before the race door could have (no start builds one today); the next move could then never end it. |
 
 ## render
 
@@ -375,6 +378,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 |---|---|---|---|---|---|---|---|---|---|
 | `?bakeurl` | page | switch | v2.3.5043 | 2026-11-14 | =0 | logic |  | no | Every armour bake input is cut on the page again, not sent to the worker as its sheet's address. |
 | `?barretry` | page | switch | v2.3.4415 | 2026-11-10 | =0 | logic | `?retrylooks` | no | HUD bar pictures that failed are not asked for again. |
+| `?beltstandin` | page | switch | v2.3.5560 | 2026-11-15 | =0, off, false | logic |  | no | A figure in both armour pieces jogs, as before, while its chain belt's jog sheet is on its way: the plain body under the armour on the facings its bake draws, not its idle frame. |
 | `?bindfix` | page | switch | v2.3.3152 | 2026-10-12 | =0 | chip |  | no | The graphics bind-group fix is not installed. |
 | `?bladesoft` | page | value | v2.3.2927 |  | a number, off or on | logic |  | no | Sets how soft a blade's edge is drawn. |
 | `?boardroll` | page | switch | v2.3.3855 | 2026-10-29 | =0, off, false | logic |  | no | The board rolls as it was: no spots, dip or bumps. |
@@ -388,6 +392,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?depthbuf` | page | switch | v2.3.3072 | 2026-10-06 | present | chip |  | no | The depth buffer is kept, to compare. |
 | `?dmgscale` | page | value | v2.3.3033 |  | a number | logic |  | no | Scales the damage numbers. |
 | `?dmgwords` | page | switch | v2.3.5008 | 2026-11-13 | =0 | logic |  | no | Damage numbers are not shortened to words (K, M). |
+| `?elemicons` | page | switch | v2.3.5258 | 2026-11-15 | =0 | memory |  | no | The eight element marks drawn after a hit's number are drawn from their full-colour pictures, as before, not from their 256-colour twins. |
 | `?fill` | page | switch | v2.3.3577 | 2026-10-23 | =0 | chip |  | no | The fill batch is off: fills drawn as Pixi does. |
 | `?firelegless` | page | switch | v2.3.3684 | 2026-10-28 | =0 | logic |  | no | The fire armour keeps the legs under its greaves, as before. |
 | `?firelit` | page | switch | v2.3.3684 | 2026-10-28 | =0 | logic |  | no | The fire log's lit key pixels stay pink, as before. |
@@ -548,6 +553,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `leaderidleat` | worker | switch | v2.3.4378 | 2026-11-10 | false | logic |  | no | The party leader's idle clock counts only a `seen` above 0, as before. |
 | `partydoor` | worker | switch | v2.3.5212 | 2026-11-14 | false | logic |  | no | A player can be put in a party that does not list them, as the lines before the party door could have (nothing does today). |
 | `partykeep` | worker | switch | v2.3.3276 | 2026-10-17 | false | logic |  | no | Parties are not kept: the old cap and the away window remove a dropped member. |
+| `posedoor` | worker | switch | v2.3.5216 | 2026-11-15 | false | logic |  | no | A held pose takes any id a caller asks, and the dead can be written posing, as the line before the pose door could have (the phone's pose handler still checks both first). |
 | `power` | worker | switch | v2.3.5481 | 2026-11-14 | false | logic |  | no | Un-advertises the power index: no board report carries one, so the Power board empties as players report and the other boards are as they were. |
 | `race` | worker | switch | v2.3.3525 | 2026-10-20 | false | logic |  | no | Lil Bro's race un-advertised and none started. |
 | `reportring` | worker | switch | v2.3.5623 | 2026-11-15 | false | logic |  | no | A chat report quotes the speaker's last 3 lines in any lane again, not the lines the reporter could have received. |

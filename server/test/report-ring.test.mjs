@@ -13,6 +13,15 @@
  *      else is not, and is in that one's own report; an area line in the
  *      reporter's zone is.
  *   3. `reportring: false`: the last 3 lines, any lane, as before.
+ *   4. (card K's review) The flush with more lines: two whispers to the
+ *      victim, then 21 to someone else, and the report still holds the two
+ *      (the fair trim drops the oldest of whoever holds the most).
+ *   5. (card K's review) A party line said while the victim was in the party
+ *      is quoted after they leave it (the natural order); someone never in
+ *      the party does not get it.
+ * Break proofs (2026-11-15, each turned its check red): the plain trim
+ * (`chatModTrimAt` returning 0) -> FAIL 4; matching a party line by the
+ * reporter's party now (no `tos`) -> FAIL 5.
  */
 import { makeStorage, openRoom, fakeWs, join, settle, seededClock } from './testroom.mjs';
 import { CHATMOD } from '../src/chatmod.js';
@@ -64,7 +73,7 @@ const lastReport = () => reports().sort((a, b) => a.at - b.at).pop();
   clock.advance(CHATMOD.REPORT_DUP_MS + 1);
   await send(F, 'chat_report', { target: 'bp_rr_harasser', reason: 'harassment' });
   const fred = lastReport().lines.map((l) => l.text);
-  check('2: the friend who received the private line has it in his own report', fred.includes('a private line to Fred') && !fred.includes('ABUSIVE LINE 1'), fred);
+  check('2: the friend who received the private line has it in their own report', fred.includes('a private line to Fred') && !fred.includes('ABUSIVE LINE 1'), fred);
 }
 
 /* ── 3. the kill switch ── */
@@ -76,6 +85,38 @@ const lastReport = () => reports().sort((a, b) => a.at - b.at).pop();
   const texts = lastReport().lines.map((l) => l.text);
   check('3: `reportring: false`: the last 3 lines, any lane, as before', JSON.stringify(texts) === JSON.stringify(['one', 'two', 'three']), texts);
   delete room._liveFlags.reportring;
+}
+
+/* ── 4. the flush with more lines (card K's review) ── */
+{
+  clock.advance(CHATMOD.REPORT_DUP_MS + 1);
+  await send(A, 'whisper', { to: 'Vicky', text: 'FAIR LINE 1' });
+  await send(A, 'whisper', { to: 'Vicky', text: 'FAIR LINE 2' });
+  for (let i = 0; i < CHATMOD.CONTEXT_LINES + 1; i++) await send(A, 'whisper', { to: 'Fred', text: 'filler ' + i });
+  clock.advance(CHATMOD.REPORT_DUP_MS + 1);
+  await send(V, 'chat_report', { target: 'bp_rr_harasser', reason: 'harassment' });
+  const texts = lastReport().lines.map((l) => l.text);
+  check('4: two whispers, then ' + (CHATMOD.CONTEXT_LINES + 1) + ' lines to someone else: the victim\'s report still holds the two',
+    texts.includes('FAIR LINE 1') && texts.includes('FAIR LINE 2'), texts);
+  const ring = room.chatSeen.get('bp_rr_harasser') || [];
+  check('4: ...and the ring stays at CONTEXT_LINES', ring.length === CHATMOD.CONTEXT_LINES, ring.length);
+}
+
+/* ── 5. a party line, after the victim leaves the party (card K's review) ── */
+{
+  await send(A, 'party_invite', { target: 'bp_rr_victim01' });
+  await send(V, 'party_accept', { target: 'bp_rr_harasser' });
+  const inParty = room._partyOf('bp_rr_victim01');
+  await send(A, 'party_chat', { text: 'PARTY ABUSE' });
+  await send(V, 'party_leave');
+  clock.advance(CHATMOD.REPORT_DUP_MS + 1);
+  await send(V, 'chat_report', { target: 'bp_rr_harasser', reason: 'harassment' });
+  const texts = lastReport().lines.map((l) => l.text);
+  check('5: a party line is quoted after the victim left the party', !!inParty && !room._partyOf('bp_rr_victim01') && texts.includes('PARTY ABUSE'), { inParty: !!inParty, texts });
+  clock.advance(CHATMOD.REPORT_DUP_MS + 1);
+  await send(F, 'chat_report', { target: 'bp_rr_harasser', reason: 'harassment' });
+  const fred = lastReport().lines.map((l) => l.text);
+  check('5: ...and someone never in the party does not get it', !fred.includes('PARTY ABUSE'), fred);
 }
 
 clock.restore();
