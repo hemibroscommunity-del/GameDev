@@ -11,8 +11,9 @@
  *      map made with no prototype; a wrong road, verb, state or list throws,
  *      the state untouched;
  *   2. ONE DOOR: no quest state is written in server/src but queststate.js,
- *      by its name or through a name that holds it; each shape planted and
- *      found;
+ *      by its name or through a name that holds it (v2.3.5291: `||=`, `??=`,
+ *      `&&=`, `+=` and Object.assign too, the sitting 20 review); each shape
+ *      planted and found;
  *   3. ONE ROW, ONE PLACE: every call names a road the table has, with its
  *      verb, from its row's file; every road has exactly one caller;
  *   4. THE GAME: a quest accepted, its signal counted, handed in, and the
@@ -22,6 +23,9 @@
  *   - `ps._quests[questId] = 'active';` put back in quests.js     -> FAIL 2 (a second writer)
  *   - `Math.min(QUEST_COUNT_MAX, ...)` made the plain sum            -> FAIL 1 (past the cap)
  *   - a second `questStateSet(ps, q, 'turnedIn', 'turn_in')` in devtools.js -> FAIL 3
+ *   - (v2.3.5291) `ps._quests ||= Object.create(null);` in quests.js     -> FAIL 2
+ *   - (v2.3.5291) `Object.assign(this.playerState[playerId]._questKills, body.x);`
+ *     in devtools.js                                                     -> FAIL 2
  */
 import { readFileSync } from 'node:fs';
 import { SRC_DIR, srcFiles } from './src-walk.mjs';
@@ -78,18 +82,24 @@ const code = Object.create(null);
 for (const f of files) code[f] = strip(readFileSync(new URL(f, SRC_DIR), 'utf8'));
 const lineOf = (s, i) => s.slice(0, i).split('\n').length;
 const NAMES = ['_quests', '_questKills', '_questFlags', ...QUEST_KEPT].join('|');
-const W = '(?:=(?![=>])|\\.(?:push|splice|pop|shift|unshift|sort|reverse|fill)\\s*\\(|\\.length\\s*=(?!=)|\\[[^\\]\\n]*\\]\\s*=(?![=>])|\\[[^\\]\\n]*\\]\\s*(?:\\+\\+|--|[-+*/]=))';
+/* v2.3.5291 (the sitting 20 review): the logical and arithmetic assigns too
+   (`||=`, `??=`, `&&=`, `+=`...), on the map and on a key of it */
+const OP = '(?:\\|\\||&&|\\?\\?|[-+*/%])?=(?![=>])';
+const W = '(?:' + OP + '|\\.(?:push|splice|pop|shift|unshift|sort|reverse|fill)\\s*\\(|\\.length\\s*=(?!=)|\\[[^\\]\\n]*\\]\\s*' + OP + '|\\[[^\\]\\n]*\\]\\s*(?:\\+\\+|--))';
 const A = new RegExp('(?:\\.(?:' + NAMES + ')|\\[\\s*[\'"](?:' + NAMES + ')[\'"]\\s*\\])\\s*' + W, 'g');
 const DEL = new RegExp('delete\\s+[\\w$.]*\\.(?:' + NAMES + ')\\s*\\[', 'g');
+/* v2.3.5291: a map filled in place by Object.assign (by its name, or an alias's below) */
+const ASSIGN = new RegExp('Object\\.assign\\(\\s*[^,()\\n]*\\.(?:' + NAMES + ')\\s*[,)]', 'g');   /* any receiver: \`this.playerState[id]._quests\` */
 const C = new RegExp('(?:const|let|var)\\s+([A-Za-z_$][\\w$]*)\\s*=\\s*[^;\\n]*?\\.(?:' + NAMES + ')\\b[^;\\n]*;', 'g');
 function writesIn(s) {
   const out = [];
   for (const m of s.matchAll(A)) out.push(m.index);
   for (const m of s.matchAll(DEL)) out.push(m.index);
+  for (const m of s.matchAll(ASSIGN)) out.push(m.index);
   for (const m of s.matchAll(C)) {
     const v = m[1].replace(/\$/g, '\\$');
     const after = s.slice(m.index + m[0].length, m.index + m[0].length + 4000);
-    const re = new RegExp('(?<![\\w$.])(?<!(?:const|let|var)\\s+)' + v + '\\s*' + W + '|delete\\s+' + v + '\\s*\\[', 'g');
+    const re = new RegExp('(?<![\\w$.])(?<!(?:const|let|var)\\s+)' + v + '\\s*' + W + '|delete\\s+' + v + '\\s*\\[|Object\\.assign\\(\\s*' + v + '\\s*[,)]', 'g');
     for (const w of after.matchAll(re)) out.push(m.index + m[0].length + w.index);
   }
   return out;
@@ -110,6 +120,9 @@ function writesIn(s) {
     'ps._quests[id] = \'active\';', 'ps._questKills = Object.create(null);', 'ps._questKills[q] += 1;', 'ps._questKills[q]++;',
     'delete ps._quests[q];', 'ps._questGrantOverflow.push(x);', 'ps._questWeaponUnfit = null;', 'ps[\'_questFlags\'] = {};',
     'const q = ps._quests || {};\nq[id] = \'turnedIn\';', 'const k = ps._questKills;\ndelete k[id];',
+    /* v2.3.5291 (the sitting 20 review): the shapes it missed */
+    'ps._quests ||= {};', 'ps._questKills ??= Object.create(null);', 'ps._quests[id] ||= \'available\';', 'ps._questKills[q] += 2;',
+    'ps._questFlags &&= null;', 'Object.assign(ps._quests, claimed);', 'Object.assign(this.playerState[pid]._questKills, x);', 'const q = ps._quests;\nObject.assign(q, { a: 1 });',
   ];
   const missed = mustFind.filter((t) => plant(t) === 0);
   check('2. ...the scanner finds each shape of a second writer (' + mustFind.length + ' planted)', missed.length === 0, missed);

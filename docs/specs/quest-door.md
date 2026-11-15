@@ -68,9 +68,10 @@ behind when a request is REFUSED, never in what a player gets:
    made with no prototype; a wrong road, verb, state or list throws, the state
    untouched.
 2. **One door**: nothing in `server/src` but `queststate.js` writes the five
-   fields, by their names or through a name that holds one (an alias); ten
-   planted shapes (a set, a delete, a push, an `Object.assign`, an alias...)
-   each found.
+   fields, by their names or through a name that holds one (an alias);
+   eighteen planted shapes (a set, a delete, a push, an alias; since
+   v2.3.5291, the sitting 20 review: `||=`, `??=`, `&&=`, `+=` on a key, and
+   `Object.assign` on the map by any receiver or an alias) each found.
 3. **One row, one place**: every call names a road the table has, with its
    verb, from its row's file; every road has exactly one caller; none uncalled.
 4. **The game**: on a GameRoom, a quest accepted, its signal counted through

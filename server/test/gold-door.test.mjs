@@ -466,7 +466,10 @@ function callsIn(s) {
   /* every credit in server/src, by its opId's first word: a _creditPlayer
      call, and each `entry: {...}` a _creditLiveTogether is handed (the call
      itself takes a list built above it).  A credit whose opId is not a
-     literal is listed here with the word it builds, and why. */
+     literal is listed here with the word it builds, and why.
+     v2.3.5291 (card R, the sitting 20 review): a _creditWith call too (the
+     credit with its caller's own writes: storeoffer.js, duel.js's pot) --
+     unread, its opId could change unseen */
   const NOT_LITERAL = [
     { file: 'admin.js', word: 'admin', why: 'the operator\'s grant: `opId` is built a line above (\'admin:\' + a uuid, or the one the operator passes back to retry)' },
   ];
@@ -486,10 +489,10 @@ function callsIn(s) {
   let calls = 0;
   for (const f of files) {
     const s = code[f];
-    for (const re of [/\b_creditPlayer\s*\(/g, /\bentry\s*:\s*\{/g]) {
+    for (const re of [/\b_creditPlayer\s*\(/g, /\b_creditWith\s*\(/g, /\bentry\s*:\s*\{/g]) {
       for (const m of s.matchAll(re)) {
         const t = argText(s, m.index + m[0].length - 1);
-        if (/^\(playerId, entry\)/.test(t)) continue;   /* the definition (inbox.js) */
+        if (/^\(playerId, entry(, also)?\)/.test(t)) continue;   /* the definitions (inbox.js) */
         calls++;
         const ws = [...t.matchAll(/opId\s*:\s*['`]([A-Za-z0-9_]+):/g)].map((x) => x[1]);
         const where = f + ':' + lineOf(s, m.index);
