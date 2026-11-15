@@ -218,7 +218,7 @@ Moving: steps, sprinting, jumping, climbing, riding, swimming, resting.
 
 The townspeople: their days, walks, talk and reactions.
 
-- **Files**: `src/game/`: townsfolkDay, townsfolkReact, townsfolkWalk, townChatter, mayorTalk, interactions
+- **Files**: `src/game/`: townsfolkDay, townsfolkReact, townsfolkWalk, townChatter, mayorTalk, interactions, poseDoor
 - **Doors**: none named yet
 - **Switches**: [its rows in the switch table](SWITCHES.md#townsfolk)
 - **Words**: `townsfolk`, `npc`, `mayor`, `folk`

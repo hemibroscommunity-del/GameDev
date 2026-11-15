@@ -1,7 +1,7 @@
 card: L
-branch: claude/plan-l-19-harvest-page (each PR on main, main merged in)
-prs: #1746 to #1855 (merged), #1864 (5216), #1866 (5217), #1876 (5218), #1894 (5219)
-state: ready
+branch: claude/plan-l-20-pose-page (each PR on main, main merged in)
+prs: #1746 to #1855 (merged), #1864 (5216), #1866 (5217), #1876 (5218), #1894 (5219), PR 5 tag 5520: working
+state: working
 
 ## Done
 
@@ -9,14 +9,13 @@ state: ready
 - PR 3, 4 (5203 to 5209, #1767 to #1803): `resetOn` at the zone and rejoin
   doors; the resets, 484 -> 233 rows.
 - PR 5 tags 5210 to 5213 (merged), 5214 to 5217: the worker's trade, duel,
-  party, cook, harvest+fishing, dungeon, pose, race doors (`_t2To` ...
-  `_raceTo`); 5218 the race's page door (`raceTo`, `?racedoor=0`); 5219
-  the harvest's (`harvestTo`: harvest, cook, fishing; `?harvestdoor=0`).
+  party, cook, harvest+fishing, dungeon, pose, race doors; the page's: 5218
+  race (`raceTo`), 5219 harvest+cook+fishing (`harvestTo`), 5520 pose (`poseTo`).
 
 ## Next
 
-- PR 5: free page halves (5520 on); guard waits for K (combat.js,
-  index.js), ride SK, arena E's e-14, death door K's k-7, `connection` K.
+- PR 5: free page halves (5521 on); guard waits for K (combat.js, index.js),
+  ride SK, arena E's e-14, death door K's k-7, `connection` K.
 - Backlog (J2's find): a rejoin (a stall past 5 s) clears the party and the
   Saloon's alliance forms (what was typed is lost): a REJOIN_SLOTS row.
 
