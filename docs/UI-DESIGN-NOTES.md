@@ -1993,6 +1993,20 @@ Screens: dev-set-switch
 
 Sources: src/ui/panels/SetSwitchRow.jsx, src/game/ownerSwitches.js, src/ui/panels/DevPanel.jsx (its flags section), tools/guards/owner-switches.test.mjs, docs/plan/cards/OPS.md (PR 3).
 
+## The Test panel looks after the feedback board
+Screens: dev-feedback-owner
+
+**What it is for:** Taking down a post anyone can read on the feedback board, and sweeping the board (posts too big for it and old pace rows out, its counts made again), from the owner's phone, never a terminal (red team RT-3's #1878 routes; v2.3.5603, card OPS PR 4).
+
+**Decisions, and why:**
+- **The board's newest 20, each with its own Take down**, not a box for a post's id: the owner sees the post on the board, never its id. The list is the board's public one, read only when "Show the newest posts" is tapped.
+- **Two taps, the panel's own pattern**: the first says, in the message line, which post (who, about what, its start) or what a sweep removes; only the second acts. Take down's chip turns red while it waits.
+- **A 404 is told apart in words**: the Feedback object answers a plain 404 both to a worker without these routes and to a key it does not take, so the row asks the panel's own admin route quietly and says which ("this server can't take a post down yet" or "your admin key does not work on this server"). Either side can ship first.
+- **The sweep's numbers in words**, every number the reply carries: one the row does not know by name is said by its own, never dropped.
+- **The admin key outside /api/admin goes through the panel's `callOwner`**, the same key and timeout as its `call`: one way the owner's key leaves the page.
+
+Sources: src/ui/panels/FeedbackOwnerRows.jsx, src/game/feedbackOwner.js, src/ui/panels/DevPanel.jsx (callOwner), tools/guards/feedback-owner.test.mjs, tools/qa/mp/mp-feedbackowner.mjs.
+
 ## The login wheel (free daily spin)
 Screens: login-spin
 
