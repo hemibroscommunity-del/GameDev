@@ -376,6 +376,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 |---|---|---|---|---|---|---|---|---|---|
 | `?bakeurl` | page | switch | v2.3.5043 | 2026-11-14 | =0 | logic |  | no | Every armour bake input is cut on the page again, not sent to the worker as its sheet's address. |
 | `?barretry` | page | switch | v2.3.4415 | 2026-11-10 | =0 | logic | `?retrylooks` | no | HUD bar pictures that failed are not asked for again. |
+| `?beltstandin` | page | switch | v2.3.5560 | 2026-11-15 | =0, off, false | logic |  | no | A figure in both armour pieces jogs, as before, while its chain belt's jog sheet is on its way: the plain body under the armour on the facings its bake draws, not its idle frame. |
 | `?bindfix` | page | switch | v2.3.3152 | 2026-10-12 | =0 | chip |  | no | The graphics bind-group fix is not installed. |
 | `?bladesoft` | page | value | v2.3.2927 |  | a number, off or on | logic |  | no | Sets how soft a blade's edge is drawn. |
 | `?boardroll` | page | switch | v2.3.3855 | 2026-10-29 | =0, off, false | logic |  | no | The board rolls as it was: no spots, dip or bumps. |
@@ -389,6 +390,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?depthbuf` | page | switch | v2.3.3072 | 2026-10-06 | present | chip |  | no | The depth buffer is kept, to compare. |
 | `?dmgscale` | page | value | v2.3.3033 |  | a number | logic |  | no | Scales the damage numbers. |
 | `?dmgwords` | page | switch | v2.3.5008 | 2026-11-13 | =0 | logic |  | no | Damage numbers are not shortened to words (K, M). |
+| `?elemicons` | page | switch | v2.3.5258 | 2026-11-15 | =0 | memory |  | no | The eight element marks drawn after a hit's number are drawn from their full-colour pictures, as before, not from their 256-colour twins. |
 | `?fill` | page | switch | v2.3.3577 | 2026-10-23 | =0 | chip |  | no | The fill batch is off: fills drawn as Pixi does. |
 | `?firelegless` | page | switch | v2.3.3684 | 2026-10-28 | =0 | logic |  | no | The fire armour keeps the legs under its greaves, as before. |
 | `?firelit` | page | switch | v2.3.3684 | 2026-10-28 | =0 | logic |  | no | The fire log's lit key pixels stay pink, as before. |

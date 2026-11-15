@@ -492,7 +492,9 @@ export function stateWritesFromRendering({ live = false } = {}) {
    (anonymous) 2133 -> 2132 and its gameLoop 1584 -> 1583 (card SK's #1782,
    the board's roll-off: the ride's per-frame rules moved into
    src/game/ride.js); entityRenderer.js 8955 -> 8953 (SK's #1782 and card
-   O's #1836, the crowd's rung). */
+   O's #1836, the crowd's rung).  v2.3.5375 (the gatekeeper, sitting 18, main
+   abff2ef): monsterCombat.js 1792 -> 1785 and its updateMonsterCombat
+   1732 -> 1724 (card K's #1861: the combat and moving sends through act()). */
 export const LINES = Object.freeze({
   /* a file's code lines.  These files have a line of their own, at their
      count on the day; every other file under src/ stays at or under
@@ -505,7 +507,7 @@ export const LINES = Object.freeze({
     'src/data/gameDisplay.js': 4268,
     'src/networking/wsClient.js': 3039,
     'src/networking/gameEvents.js': 2639,
-    'src/game/monsterCombat.js': 1792,
+    'src/game/monsterCombat.js': 1785,
   }),
   OTHER_FILE: 1500,
   /* a function's code lines, by `file#name` (the largest of a name, where a
@@ -517,7 +519,7 @@ export const LINES = Object.freeze({
     'src/networking/gameEvents.js#processGameEvent': 2500,
     'src/ui/BroTown.jsx#(anonymous)': 2132,
     'src/networking/wsClient.js#connect': 2055,
-    'src/game/monsterCombat.js#updateMonsterCombat': 1732,
+    'src/game/monsterCombat.js#updateMonsterCombat': 1724,
     'src/ui/BroTown.jsx#gameLoop': 1583,
     'src/networking/wsClient.js#onmessage': 1466,
     'src/rendering/systems/entityRenderer.js#_updatePlayer': 1369,
