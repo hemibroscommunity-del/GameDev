@@ -134,10 +134,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     /* ── 2. a tap opens it, a tap on its head folds it ── */
     await tapAt(A, '[data-party-chip="folded"]');
-    let h2 = await hud(A);
+    /* v2.3.5431: read once the chip is drawn: a rejoin in one of this box's stalls clears the party until the worker
+       sends it again, and a read in that gap found no chip at all (the tap had worked: "open" stored) */
+    const hudBack = async (P) => { let h = await hud(P); for (let i = 0; i < 16 && h.state === null; i++) { await P.page.waitForTimeout(500); h = await hud(P); } return h; };
+    let h2 = await hudBack(A);
     /* v2.3.5431 (card J2): a tap inside one of this box's stalls (the page held for seconds) can come to nothing:
        still folded and nothing stored, it is made once more (1 run in 4 here; the open itself unchanged) */
-    if (h2.state === 'folded' && h2.stored === null) { await A.page.waitForTimeout(1500); await tapAt(A, '[data-party-chip="folded"]'); h2 = await hud(A); }
+    if (h2.state === 'folded' && h2.stored === null) { await A.page.waitForTimeout(1500); await tapAt(A, '[data-party-chip="folded"]'); h2 = await hudBack(A); }
     await shot(A, 'upright-open');
     rec.ok(`2. a tap opens the list: ${h2.rows} rows and the ✖, kept on the device (${h2.stored})`, h2.state === 'open' && h2.why === 'you' && h2.rows === 3 && h2.leave && h2.stored === 'open', h2);
     await A.page.waitForTimeout(5000);
