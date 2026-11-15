@@ -266,6 +266,7 @@ const FORMS = {
   'treenumbers': '0',
   'trial': '',
   'trialhud': '',
+  'uploadicons': '0',
   'warmonce': '0',
   'waves': '*',
   'wayback': '',

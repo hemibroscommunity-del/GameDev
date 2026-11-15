@@ -96,6 +96,12 @@ SCOPE.push({ dir: 'ui/bars', only: /^(hp-frame|hp-full|node-full-green)\.png$/, 
    (playerDeathSprites.js, 21 frames of 128 px), the fallback drawn when the
    bones' explosion (deathCrumble.js) has no corpse: 38k colours, cut to 256. */
 SCOPE.push({ dir: 'sprites/players', only: /^death-v1\.png$/, always: true });
+/* v2.3.5569 (card P's backlog, icons-from-uploads-world): the owner's
+   five-block stamina and mana strips (fxStrips.js BLOCK_BARS, six frames of
+   273 px each) and the verified Bro badge over a name (entityRenderer.js
+   BRO_BADGE_URL), 2.5k-28k colours, cut to 256.  The stamina strip is 1638
+   px wide: its twin is padded to 1640 (`pad4`), past its last frame. */
+SCOPE.push({ dir: 'icons/ui', only: /^(blocks-(mp|stam)|verified-bro-small)\.webp$/, always: true, pad4: true });
 /* v2.3.5564 (card P's backlog, cape-hood): a cape's hood, cut from its
    facings (tools/cape/split-cape-hood.py): the hood halves (1.3k-1.9k
    colours, cut to 256) and their hair masks (two colours, exact). */

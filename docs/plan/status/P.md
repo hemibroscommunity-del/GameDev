@@ -1,6 +1,6 @@
 card: P
-branch: claude/plan-p-26-player-death (the hud bars' head, stacked)
-prs: #1713, #1715, #1716, #1718, #1719, #1736, #1743, #1745, #1757, #1749, #1763, #1766, #1805, #1806, #1810, #1840, #1846, #1853, #1859, #1868 (5241-5259, 5560, merged); #1881 (5561), #1906 (5562), #1918 (5563) ready; cape-hood (5564), world-fish-spot (5565), hud-bars (5566), player-death (5567) ready
+branch: claude/plan-p-28-upload-icons (the death strip's head, stacked)
+prs: #1713, #1715, #1716, #1718, #1719, #1736, #1743, #1745, #1757, #1749, #1763, #1766, #1805, #1806, #1810, #1840, #1846, #1853, #1859, #1868 (5241-5259, 5560, merged); #1881 (5561), #1906 (5562), #1918 (5563) ready; cape-hood (5564), world-fish-spot (5565), hud-bars (5566), player-death (5567), icons-from-uploads-world (5569) ready
 state: working
 
 ## Done
@@ -16,10 +16,9 @@ state: working
 
 - #1881 (5561), #1906 (5562), #1918 (5563 `pets`) for sitting 20; 5564
   `cape-hood`, 5565 `world-fish-spot`, 5566 `hud-bars`, 5567
-  `player-death` (the death strip from its twin, `?deathstrip=0`) on it.
-- By the card (stop at the first under 1 MB): `cape`, `player-naked`,
-  `traits-nft`, `icons-from-uploads-world`, `ore-tiers`, `props-parts`,
-  `projectile-sheets` (1.06-1.25 MB each); then `state: done`.
+  `player-death`, 5569 `icons-from-uploads-world` (5568 `cape` dropped).
+- By the card (stop at the first under 1 MB): `ore-tiers`, `props-parts`,
+  `projectile-sheets` (1.06-1.15 MB each); then `state: done`.
 
 ## Found
 
@@ -33,6 +32,9 @@ state: working
 
 ## Needs
 
+- Asked of the planning session (2026-11-15): `player-naked` and
+  `traits-nft` (1.25 MB each) are loaded and never read (`_mannequinTex`,
+  `_traitTex`): twin them, or drop their load (the owner's)? Skipped till then.
 - Answered (2026-11-15): `world-objects` skipped (above); `world-fish-spot`
   by a twin padded offline to 628 px (p256's rule kept); the families one
   a PR, stacked; the gear item by option B (#1868).
