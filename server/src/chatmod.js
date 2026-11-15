@@ -72,6 +72,7 @@ export const CHATMOD = {
   CONTEXT_LINES: 20,         // server-seen lines a speaker's ring holds (v2.3.5623: 3 -> 20, card MOD PR 3)
   REPORT_LINES: 10,          // v2.3.5623: lines a report quotes: the speaker's that the reporter could have received
   LEGACY_LINES: 3,           // v2.3.5623: what a report quoted before (`reportring: false`): the speaker's last 3, any lane
+  TOS_MAX: 50,               // v2.3.5623: a party line's hearers kept (PARTY.KEEP_MAX)
   CONTEXT_AGE_MS: 15 * 60 * 1000, // older lines are not evidence of THIS report
   SEEN_MAX: 240,             // speakers held in the line ring (2x MAX_PLAYERS; v2.3.3205: the cap 60 -> 120)
   REPORT_PER_HOUR: 5,        // per reporter
@@ -107,6 +108,19 @@ const cleanName = (v, fallback) => {
 };
 const validId = (v, notMe) => (typeof v === 'string' && !!v && v.length <= CHATMOD.ID_MAX && v !== notMe);
 
+
+/* v2.3.5623 (card K's review): the fair trim's choice -- the index of the
+   oldest line of the hearer holding the most lines (`to`, or one hearer for
+   the room and the areas); a tie, the oldest of the tied.  The newest line
+   is never the one dropped (its hearer's oldest goes first). */
+export function chatModTrimAt(arr) {
+  const count = new Map();
+  for (const l of arr) { const k = l.to || '*'; count.set(k, (count.get(k) || 0) + 1); }
+  let most = 0;
+  for (const n of count.values()) if (n > most) most = n;
+  for (let i = 0; i < arr.length; i++) if (count.get(arr[i].to || '*') === most) return i;
+  return 0;
+}
 export const chatModMethods = {
   /* Lazily built so the constructor stays untouched and a DO restart
      rebuilds them empty (which is correct — join reloads the mutes). */
@@ -204,15 +218,30 @@ export const chatModMethods = {
      are not flushed out of the evidence by three harmless lines to someone
      else (RT-3's t5-evidence.mjs: the report held "nice weather / lol /
      gg").  The ring holds CONTEXT_LINES (20) a speaker, still per speaker and
-     still under SEEN_MAX speakers. */
-  _chatModRemember(pid, text, zone, lane, to) {
+     still under SEEN_MAX speakers.
+     v2.3.5623 (card K's review): and a FAIR trim.  One ring of 20 still let
+     21 harmless lines to anyone else push two whispers out (the same flush,
+     7 times the typing, instant for a script), so past CONTEXT_LINES the
+     line dropped is the oldest of whoever holds the most lines (the room and
+     the areas count as one hearer; a tie drops the oldest of the tied): a
+     victim's few lines stay while the spam to Bob eats Bob's own.  Bounded
+     still: a speaker who whispers 20 OTHER people once each, then, pushes the
+     oldest out (each of those whispers is its own evidence).  `tos`: a party
+     line's hearers when it was said (the members online), so a victim who
+     leaves or is kicked before reporting -- the natural order -- keeps it. */
+  _chatModRemember(pid, text, zone, lane, to, tos) {
     if (!pid || !text) return;
     this._chatModMaps();
     const prev = this.chatSeen.get(pid);
     if (prev) this.chatSeen.delete(pid);
     const arr = prev || [];
-    arr.push({ text, ts: Date.now(), zone: zone || null, lane: lane || 'room', to: typeof to === 'string' && to ? to : null });
-    if (arr.length > CHATMOD.CONTEXT_LINES) arr.splice(0, arr.length - CHATMOD.CONTEXT_LINES);
+    const line = { text, ts: Date.now(), zone: zone || null, lane: lane || 'room', to: typeof to === 'string' && to ? to : null };
+    if (Array.isArray(tos) && tos.length) line.tos = tos.slice(0, CHATMOD.TOS_MAX);
+    arr.push(line);
+    while (arr.length > CHATMOD.CONTEXT_LINES) {
+      if (!this._reportRingOn()) { arr.splice(0, arr.length - CHATMOD.CONTEXT_LINES); break; }
+      arr.splice(chatModTrimAt(arr), 1);
+    }
     this.chatSeen.set(pid, arr);
     if (this.chatSeen.size > CHATMOD.SEEN_MAX) {
       const oldest = this.chatSeen.keys().next().value;
@@ -226,20 +255,30 @@ export const chatModMethods = {
      the reporter stands in -- the last REPORT_LINES of them.  KILL SWITCH
      `reportring: false` in the live flags: the last LEGACY_LINES, any lane,
      as before. */
+  /* the kill switch `reportring: false` (live flags): the report's filter
+     and the fair trim both off */
+  _reportRingOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'reportring') && !f.reportring);
+  },
+
   _chatModRecentLines(pid, reporter) {
     if (!this.chatSeen) return [];
     const arr = this.chatSeen.get(pid);
     if (!arr) return [];
     const cutoff = Date.now() - CHATMOD.CONTEXT_AGE_MS;
     const recent = arr.filter((l) => l.ts >= cutoff);
-    const f = this._liveFlags;
-    const ringOn = !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'reportring') && !f.reportring);
     let picked;
-    if (ringOn && reporter) {
+    if (this._reportRingOn() && reporter) {
       const party = this._partyOf ? this._partyOf(reporter) : null;
       const partyId = party && party.id ? party.id : null;
+      /* v2.3.5623 (card K's review): an area line matches the zone the
+         reporter stands in NOW (where they were then is not kept): a victim
+         who has walked on loses those; a party line, its hearers when said
+         (`tos`), so leaving the party first keeps it */
       const myZone = this.playerState[reporter] ? this.playerState[reporter].z : null;
-      picked = recent.filter((l) => l.to === reporter || (partyId && l.lane === 'party' && l.to === partyId)
+      picked = recent.filter((l) => l.to === reporter
+        || (l.lane === 'party' && (l.tos ? l.tos.includes(reporter) : !!partyId && l.to === partyId))
         || (l.lane === 'room' && !l.to) || (l.lane === 'area' && !l.to && l.zone && l.zone === myZone)).slice(-CHATMOD.REPORT_LINES);
     } else {
       picked = recent.slice(-CHATMOD.LEGACY_LINES);

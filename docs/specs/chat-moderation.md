@@ -192,14 +192,32 @@ The red team (RT-3 S4, `t5-evidence.mjs`): a report quoted the speaker's last
 to someone else left the report holding "nice weather / lol / gg". Card K's
 design, built here:
 
-- `_chatModRemember(pid, text, zone, lane, to)`: each line keeps whom it was
+- `_chatModRemember(pid, text, zone, lane, to, tos)`: each line keeps whom it was
   for (the target for a whisper, a friend's message or a shop thread; the
   party's id for party chat; null for the room or an area).
 - The ring holds `CONTEXT_LINES` (20) a speaker, still per speaker and still
-  under `SEEN_MAX` speakers (the LRU; the memory stays bounded).
+  under `SEEN_MAX` speakers (the LRU; the memory stays bounded: about 1 MB at
+  the very worst, 240 speakers of 20 lines of 200 characters).
+- **A fair trim** (card K's review): one plain ring of 20 let 21 harmless
+  lines to anyone else push two whispers out (the same flush, seven times the
+  typing, instant for a script). Past 20, the line dropped is the oldest of
+  whoever holds the most lines (`chatModTrimAt`; the room and the areas count
+  as one hearer; a tie drops the oldest of the tied), so a victim's few lines
+  stay while spam to Bob eats Bob's own. What it cannot hold: a speaker who
+  whispers 20 OTHER people once each, then, pushes the oldest out; each of
+  those whispers is its own evidence in its own hearer's report.
 - A report by R about X quotes X's lines R could have received: addressed to
-  R, to R's party, said to the room, or to an area in R's zone; the last
-  `REPORT_LINES` (10) of them.
-- KILL SWITCH `reportring: false`: the last 3 lines, any lane, as before.
-- `server/test/report-ring.test.mjs` (t5-evidence.mjs's proof as a check).
+  R, a party line R heard, said to the room, or to an area in R's zone; the
+  last `REPORT_LINES` (10) of them.
+- **A party line keeps its hearers** (`tos`: the members online who had not
+  muted the speaker, at most `TOS_MAX`), so a victim who leaves the party, or
+  is kicked, before reporting (the natural order) still has its lines.
+- **An area line matches the zone R stands in NOW** (where R was when it was
+  said is not kept): a victim who has walked on to another zone before
+  reporting loses the area lines. Left as it is (card K: fine); the room and
+  the private lanes never depend on where R stands.
+- KILL SWITCH `reportring: false`: the last 3 lines, any lane, and the plain
+  trim, as before.
+- `server/test/report-ring.test.mjs` (t5-evidence.mjs's proof as a check;
+  the flush with 21 lines; a party line after leaving).
 
