@@ -36,8 +36,10 @@
 import { resolveDirection } from './playerSprites.js';
 import { gearArt, gearMaterial } from './gearVariants.js';
 import { gearSheetState, gearSheetWaiting } from './gearSheets.js';
+import { sw } from '../game/switches.js';
 
-const BELT_HOLD = (() => { try { return !/(^|[?&])beltstandin=(0|off|false)(&|$)/.test(window.location.search || ''); } catch (e) { return true; } })();
+/* the page's one reader of its switches (src/game/switches.js, card T's #1863) */
+const BELT_HOLD = !sw('beltstandin');
 const _stats = { held: 0, peers: 0, firstAt: 0, lastAt: 0 };   /* QA: frames held (yours, others'), and when yours were */
 
 /** The painted full-set figure draws this jog (pose, facing), so no masked
