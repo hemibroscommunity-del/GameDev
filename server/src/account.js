@@ -22,6 +22,7 @@
 
 import { cleanDevice } from './devicelock.js'; /* v2.3.3344: the device a key is used from */
 import { newKeyOf } from './loginkeys.js';   /* v2.3.3355: new Login Keys, made by the worker */
+import { ipKey } from './flood.js';   /* v2.3.5581: an IPv6 address counted by its /64 */
 
 // Exact port of the client's passphraseToId (src/networking/index.js).
 // 32-bit rolling hash with |0 truncation, Math.abs, base36, then the
@@ -126,6 +127,10 @@ export const accountMethods = {
     // sweep across many ids can't sidestep the per-id lockout.
     const now = Date.now();
     if (!this._acctIp) this._acctIp = new Map();
+    /* v2.3.5581: an IPv6 line is one address here too (flood.js ipKey):
+       a new address of its /64 for every try was a fresh 20 a minute
+       (red team RT-1, N4).  `ip64: false` counts each address apart. */
+    if (typeof this._ip64On !== 'function' || this._ip64On()) ip = ipKey(ip);
     const ipRec = this._acctIp.get(ip);
     if (!ipRec || now - ipRec.windowStart > ACCOUNT.IP_WINDOW_MS) {
       // Lazy prune: reuse the reset moment to drop other expired
