@@ -100,6 +100,7 @@ const FORMS = {
   'firelog': '0',
   'fishgrip': '1',
   'fishgriptrousers': '1',
+  'fishspot': '0',
   'flipbake': '0',
   'foldgentle': '0|off|false',
   'folkbake': '0',
