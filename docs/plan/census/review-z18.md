@@ -295,7 +295,7 @@ byte for byte what sitting 17 read; `artCache` measured again with the
 slimes in, 25.5 at the fight, its line 90.6 -> 88.6 (both savings, as
 sitting 17 asked); its `?elemicons` row carries `on: '2026-11-15'`.
 
-## The red team: #1871 (tag 5587) and #1872 (tag 5588): step 3, listed
+## The red team: #1871 (tag 5587): step 3, listed; #1872 (tag 5588): held
 
 At the planning session's word (the red team opens no PRs to the
 gatekeeper's card; these two come through the planning session).
@@ -313,7 +313,16 @@ Drafts: the planning session marks each ready before it merges.
   wrangler.toml (the owner's word, CLAUDE.md §4). Its four break proofs
   are in its header.
 - **#1872**: words in `docs/OPERATIONS.md`, rolling back a bad server
-  update and what to do when GitHub cannot deploy.
+  update and what to do when GitHub cannot deploy. Rehearsed green at
+  65c5a8b; then card OPS pushed 051dbbd on it (a fast-forward, words
+  only: the rollback's step 2 by the Test panel's new "Set a switch"
+  row, OPS's #1891, not on `main`). **Held for sitting 19**, beside
+  #1891: its new line writes "(v2.3.5602)" in full, and 5602 is #1891's
+  own tag; precheck's version-tag counts every tag written in full in
+  `main`'s files as used (precheck.mjs ~353-362), so with #1872 landed
+  first #1891's diff adds only a "used" tag and its precheck fails (the
+  plan README's Tags, v2.3.5055). The cure: #1872 after #1891 (its words
+  then name a row that exists), or the tag written bare.
 - Their tags (5587, 5588) and the red team's others (5586, 5592) are in
   no block on `main` yet: P's #1868 writes RT 5580 to 5599, at the
   planning session's word. Precheck asks only that a tag be unused on
