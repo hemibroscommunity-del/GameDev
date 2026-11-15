@@ -11,7 +11,47 @@ VERIFIED: the story runs, on the code path named (a finder's node probe
 in a throwaway copy, or a reading end to end). PLAUSIBLE: the code does
 it, what sets it off is unproven. The probes are not in the repository.
 
-@@HOW
+## How this sitting ran
+
+Each session merged `main` abff2ef and sent its heads through the
+planning session. Card T's #1863 leads: from it on, a PR adding a PAGE
+switch row must write the reader's forms (switches check 13), so P's two
+page-row PRs carry #1863's head 403ea57 (a cross-card carry the planning
+session allowed: #1863 leads and is reviewed; held with it if it is
+held), verified necessary (P's #1868 on 403ea57 fails check 13,
+"stale"). Within a card each PR carries the one before (L's #1866 on
+#1864; P's #1868 on #1853, which collide in P's status file). Every
+listed head holds `main` abff2ef or, for K's, 6f1e6e2 (the `main` before
+sitting 17's own PR): one merge base each, step by step. The red team's
+#1871 and #1872 came at the planning session's word (drafts, marked
+ready by it before they merge; neither deploys). R's #1873 (a weapon's
+own id, a stored record's shape) is not for this sitting, by the
+planning session's word: it waits for card OPS's Test panel row and
+#1872, so the owner can set `newersave` without a terminal.
+
+## Decided for the owner while away
+
+Each with its switch, for the planning session to read to the owner:
+
+- **#1847** (card R, from its words): what the export gives, one by one
+  (`EXPORT.ALLOW`: a character's own records a copy needs, and every
+  record holding the world's value), what it keeps out and why
+  (`EXPORT.KEPT_OUT`), its spec its own file, a page 50 records by
+  default (1 to 200). Switch `roomexport: false`. That it is ON is the
+  owner's own yes ("Just go recommended").
+- Not under the heading, the nearest: L's #1864 and #1866 say nothing a
+  player sees changes (`posedoor`, `racedoor`, ON; `false` turns each
+  off); T's #1863 changes no switch's meaning (no switch); P's #1868 is
+  the owner's own answer (option B), `?beltstandin=0`; P's #1853 is a
+  memory saver ON by default (the memory law), `?elemicons=0`; the red
+  team's #1871 is a guard that reads `server/wrangler.toml` and never
+  writes it, #1872 words in OPERATIONS.md.
+- Held, not landing: K's #1848 (`sprintmark`, OFF by the owner's choice;
+  @@KHOLD).
+- For the owner, costs (never decided this way): none on this list adds
+  a write, a message or a pace. #1847 reads records only when the owner
+  runs it (its body: a whole copy of 100 characters about 5,000 reads,
+  0.1% of a free day), the owner's yes.
 
 ## Card T: #1863 (PR 6, tag 5306): mended, listed first
 
