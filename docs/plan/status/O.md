@@ -1,6 +1,6 @@
 card: O
 branch: claude/plan-o-14-selftest (one branch a PR: claude/plan-o-<n>-<word>; begun from main 3876051)
-prs: #1787, #1792, #1794, #1800, #1814, #1815, #1832, #1841, #1836, #1850, #1854 (merged); PR 14a (5234): ready
+prs: #1787, #1792, #1794, #1800, #1814, #1815, #1832, #1841, #1836, #1850, #1854 (merged); #1896 (5234, PR 14a): ready
 state: ready
 
 ## Done
@@ -13,7 +13,7 @@ state: ready
   knobs, their fallbacks `OVERRIDES` asked of `deviceProfile.js` alone.
 - #1850 (5229) the passes knobs; (A) revised: a kept rung keeps the rate.
 - #1854 (5230): the strip slice the lanes' `queue` knob (4 ms; `thirty` 8).
-- PR 14a (5234, ready): the self-test at the door, its frame; the one
+- #1896 (5234, PR 14a, ready): the self-test at the door, its frame; the one
   program and the colour numbers each draw a known picture and fall back
   alone; `self` in the report; `?selftest=fail:<name>`, `?selftest=0`.
 
