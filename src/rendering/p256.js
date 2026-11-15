@@ -102,9 +102,18 @@ const HAIRMASKS_ON = !NO_TWINS && !/[?&]hairmasks=0(&|$)/.test(_q) && !/[?&]alph
    the sheet itself, unchanged.  `?petsheet=0` keeps it a picture. */
 const PET_SHEET_P = /^\/sprites\/pets\/pet-sheet\.png$/;
 const PET_SHEET_ON = !NO_TWINS && !/[?&]petsheet=0(&|$)/.test(_q);
+/* v2.3.5564, `cape-hood`: a cape's hood (capeSprites.js, the crimson cape's
+   three cut facings, behind the loading screen with the capes): the hood
+   halves drawn over the hair, and their hair masks, the silhouettes the hair
+   is clipped to under a hood (hairClip.js, as a hat's).  1.5 MB held as
+   pictures in the page at the memory check's fight.  The halves cut to 256
+   colours; the masks exact, and on the hats' masks' row (bundleOf).
+   `?capehood=0` keeps them pictures; and with `?alphaclip`, as the hats'. */
+const CAPE_HOOD = /^\/sprites\/traits\/cape\/[a-z0-9-]+\/hood\/(?:hairmask-)?(?:east|south|southwest)\.png$/;
+const CAPE_HOOD_ON = !NO_TWINS && !/[?&]capehood=0(&|$)/.test(_q) && !/[?&]alphaclip\b/.test(_q);
 /** whether the picture at `path` (no host, no query) is read from its twin here */
-function wantedPath(path) { return !NO_TWINS && (ALL_TWINS || (FX_MADE_ON && FX_MADE.test(path)) || (WORLD_ICONS_ON && WORLD_ICONS.test(path)) || (FX_SHEETS_ON && FX_SHEETS.test(path)) || (ELEM_ICONS_ON && ELEM_ICONS.test(path)) || (HAIRMASKS_ON && HAIRMASKS.test(path)) || (PET_SHEET_ON && PET_SHEET_P.test(path))); }
-const WANTED = !NO_TWINS && (ALL_TWINS || FX_MADE_ON || WORLD_ICONS_ON || FX_SHEETS_ON || ELEM_ICONS_ON || HAIRMASKS_ON || PET_SHEET_ON);
+function wantedPath(path) { return !NO_TWINS && (ALL_TWINS || (FX_MADE_ON && FX_MADE.test(path)) || (WORLD_ICONS_ON && WORLD_ICONS.test(path)) || (FX_SHEETS_ON && FX_SHEETS.test(path)) || (ELEM_ICONS_ON && ELEM_ICONS.test(path)) || (HAIRMASKS_ON && HAIRMASKS.test(path)) || (PET_SHEET_ON && PET_SHEET_P.test(path)) || (CAPE_HOOD_ON && CAPE_HOOD.test(path))); }
+const WANTED = !NO_TWINS && (ALL_TWINS || FX_MADE_ON || WORLD_ICONS_ON || FX_SHEETS_ON || ELEM_ICONS_ON || HAIRMASKS_ON || PET_SHEET_ON || CAPE_HOOD_ON);
 /* (never while QA compares cropped strips against their files: __btTrimVerify) */
 export function p256On() { return WANTED && picNumbersOn(); }
 
@@ -127,7 +136,9 @@ function queryOf(url) {
    colours (see-through and white), so they share one row, where a bundle
    each took a row each (30 rows for the hats in view at the memory check's
    fight).  Neither is ever let go (these pictures are kept for the game). */
-function bundleOf(url) { return HAIRMASKS.test(pathOf(url)) ? 'p256:hairmasks' : 'p256:' + pathOf(url); }
+/* v2.3.5564: a hood's hair masks are the same two colours: the same row */
+const HOOD_MASK = /^\/sprites\/traits\/cape\/[a-z0-9-]+\/hood\/hairmask-/;
+function bundleOf(url) { const p = pathOf(url); return (HAIRMASKS.test(p) || HOOD_MASK.test(p)) ? 'p256:hairmasks' : 'p256:' + p; }
 
 /* a picture with a twin, wanted */
 function listed(url) {
@@ -368,6 +379,6 @@ export function startP256Pack(renderer, canvas) {
 }
 
 if (typeof window !== 'undefined') {
-  window.__btP256 = () => ({ wanted: WANTED, on: p256On(), all: ALL_TWINS, fxMade: FX_MADE_ON, worldIcons: WORLD_ICONS_ON, fxSheets: FX_SHEETS_ON, elemIcons: ELEM_ICONS_ON, hairMasks: HAIRMASKS_ON, petSheet: PET_SHEET_ON, twins: Object.keys(P256_FILES).length, ..._stats,
+  window.__btP256 = () => ({ wanted: WANTED, on: p256On(), all: ALL_TWINS, fxMade: FX_MADE_ON, worldIcons: WORLD_ICONS_ON, fxSheets: FX_SHEETS_ON, elemIcons: ELEM_ICONS_ON, hairMasks: HAIRMASKS_ON, petSheet: PET_SHEET_ON, capeHood: CAPE_HOOD_ON, twins: Object.keys(P256_FILES).length, ..._stats,
     pack: { ..._pk, packedNow: _packed.size, waiting: _toPack.size } });
 }

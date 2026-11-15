@@ -75,6 +75,15 @@ const SCOPE = [
    (petSprites.js, tools/make_pet_sheet.py), on the loading screen for
    everyone: 80k colours, cut to 256. */
 SCOPE.push({ dir: 'sprites/pets', only: /^pet-sheet\.png$/, always: true });
+/* v2.3.5564 (card P's backlog, cape-hood): a cape's hood, cut from its
+   facings (tools/cape/split-cape-hood.py): the hood halves (1.3k-1.9k
+   colours, cut to 256) and their hair masks (two colours, exact). */
+{
+  const cp = path.join(PUB, 'sprites/traits/cape');
+  if (fs.existsSync(cp)) for (const id of fs.readdirSync(cp).sort()) {
+    if (fs.existsSync(path.join(cp, id, 'hood'))) SCOPE.push({ dir: `sprites/traits/cape/${id}/hood`, skip: null, always: true });
+  }
+}
 /* v2.3.5562 (card P's backlog, traits-hairmasks): the hats' hair masks,
    the white silhouettes the hair is clipped to (entityRenderer.js
    _loadHairMaskDir, hairClip.js's stencil): two colours each, so twinned
