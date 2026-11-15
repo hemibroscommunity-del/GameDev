@@ -5,6 +5,7 @@ import { EconCard } from './EconCard.jsx';   /* v2.3.5093: the owner's card, the
 import { SetSwitchRow } from './SetSwitchRow.jsx';   /* v2.3.5602: set a switch, no terminal (card OPS) */
 import { FeedbackOwnerRows } from './FeedbackOwnerRows.jsx';   /* v2.3.5603: the feedback board's takedown and sweep (card OPS) */
 import { SilenceButtons } from './SilenceButtons.jsx';   /* v2.3.5605: silence from a chat report (card OPS) */
+import { RenameRow } from './RenameRow.jsx';   /* v2.3.5611: rename, from a chat report and your own (card OPS) */
 import { SILENCE_PATH, silenceMap } from '../../game/silenceOwner.js';
 import { COL, getState } from '../mobile/dash/common.js';
 import { BT_API_BASE } from '../../networking/index.js';
@@ -1042,6 +1043,10 @@ export const DevPanel = ({ onClose }) => {
               ))}
             </div>
 
+            {/* v2.3.5611: your own character's name (a staff word allowed: `force`; RenameRow.jsx, card OPS PR 12) */}
+            <RenameRow targetId={myId} who="your character" mine call={call} callOwner={callOwner}
+              busy={busy} setMsg={setMsg} chip={chip} COL={COL} />
+
             {/* ═══ v2.3.3527: ACHIEVEMENTS ═══
                 The owner's lever (server devtools.js /dev/achv ->
                 achievements.js _achvDev): every row lit to see the page whole,
@@ -1652,6 +1657,9 @@ export const DevPanel = ({ onClose }) => {
                     {/* v2.3.5605: silence (card MOD's route), beside the Freeze (SilenceButtons.jsx, card OPS PR 6) */}
                     <SilenceButtons r={r} until={silences ? silences[r.target] : undefined} call={call} callOwner={callOwner}
                       busy={busy} setMsg={setMsg} chip={chip} COL={COL} onChanged={loadSilences} />
+                    {/* v2.3.5611: and a rename (card MOD's #1907 route; RenameRow.jsx, card OPS PR 12) */}
+                    <RenameRow targetId={r.target} who={r.targetName || r.target} call={call} callOwner={callOwner}
+                      busy={busy} setMsg={setMsg} chip={chip} COL={COL} />
                   </div>
                 ))}
               </>
