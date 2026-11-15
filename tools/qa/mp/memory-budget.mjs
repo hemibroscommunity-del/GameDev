@@ -329,8 +329,17 @@
  * highest 78.5-80.5; atlas 135-146 rows, never full (the masks one row, where
  * a row each took up to 30).  By the census, traits-hairmasks 2.13 -> 0.60 MB
  * at the fight. */
+/* v2.3.5563, the backlog's `pets`: the pet sheet every pet is drawn from
+ * (petSprites.js, loaded behind the loading screen for everyone and kept)
+ * read from its 256-colour twin as colour numbers (p256.js PET_SHEET_P,
+ * `?petsheet=0` the picture; 79k colours cut to 256, moved 0.021 OKLab).
+ * Three runs stacked on #1906 at 5657c1c77: `artCache` at the fight
+ * 23.6 -> 22.1, so its line 86.7 -> 85.2, LOWERED by the 1.5 MB saved;
+ * `buffers` 19.6-20.9 at the fight, 23.5-23.8 at its highest, at home (line
+ * 24.2); `gpu` at its highest 78.3-82.0; atlas 130-147 rows, never full.
+ * By the census, pets 1.50 -> 0.38 MB at the fight. */
 export const MEMORY_BUDGET = {
-  artCache: { name: 'art loaded from files', mb: 86.7, measured: 23.6,   /* v2.3.3702: 156 -> 112; v2.3.5246: 112 -> 109.1, LOWERED by the portraits let go of (2.9 MB); v2.3.5247: 109.1 -> 107.0, Ace's coin strips (2.1 MB); v2.3.5248: 107.0 -> 101.4, the trees as numbers (5.6 MB); v2.3.5249: 101.4 -> 98.3, the made effects as numbers (3.1 MB); v2.3.5250: 98.3 -> 97.1, the world's icons (1.2 MB); v2.3.5252: 97.1 -> 95.1, the whirlwind as numbers (2.0 MB); v2.3.5256: 95.1 -> 90.6, the slimes' strips loaded as you walk (4.5 MB), see the header; v2.3.5258: 90.6 -> 88.6, the element marks as numbers (2.0 MB, measured on its own at 95.1 -> 93.1), see the header; v2.3.5562: 88.6 -> 86.7, the hats' hair masks as numbers (1.9 MB), see the header */
+  artCache: { name: 'art loaded from files', mb: 85.2, measured: 22.1,   /* v2.3.3702: 156 -> 112; v2.3.5246: 112 -> 109.1, LOWERED by the portraits let go of (2.9 MB); v2.3.5247: 109.1 -> 107.0, Ace's coin strips (2.1 MB); v2.3.5248: 107.0 -> 101.4, the trees as numbers (5.6 MB); v2.3.5249: 101.4 -> 98.3, the made effects as numbers (3.1 MB); v2.3.5250: 98.3 -> 97.1, the world's icons (1.2 MB); v2.3.5252: 97.1 -> 95.1, the whirlwind as numbers (2.0 MB); v2.3.5256: 95.1 -> 90.6, the slimes' strips loaded as you walk (4.5 MB), see the header; v2.3.5258: 90.6 -> 88.6, the element marks as numbers (2.0 MB, measured on its own at 95.1 -> 93.1), see the header; v2.3.5562: 88.6 -> 86.7, the hats' hair masks as numbers (1.9 MB), see the header; v2.3.5563: 86.7 -> 85.2, the pet sheet as numbers (1.5 MB), see the header */
     what: 'pictures loaded from files, decoded (the asset cache, window.__btTex) -- its highest at the fight, the monsters\' looks loaded' },
   gpu: { name: 'textures on the graphics chip', mb: 115, measured: 95.0,   /* v2.3.4058: 105 -> 115, approved by the owner 2026-11-03, see the header */
     what: 'textures on the graphics chip (window.__btGpuTex) -- including what was drawn in the last minute, which Pixi unloads after 60 s unused' },

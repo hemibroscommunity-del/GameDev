@@ -63,6 +63,8 @@ why: a QA tag, a direction, an input's source, a setting.
 | `cook` | worker | the phone's claim on its moves, `ps.ex` (cook, fire, mine, chop, fish, a farm step) | `_exTo` (`movement.js`, v2.3.5213) | `cook-door.test` §2, and the guard's tree |
 | `harvest`, `fishing` | worker | a player's gather record, `this.extractions[pid]` (mining, woodcutting, fishing) | `_harvestTo` (`gathering.js`, v2.3.5214) | `harvest-door.test` §2, and the guard's tree (a record's keys too) |
 | `dungeon` | worker | a run's `inst.runPhase` (active, boss, done); the old `state` and `bossSpawned` written by the door | `_dungeonTo` (`dungeon.js`, v2.3.5215) | `dungeon-door.test` §2, and the guard's tree |
+| `pose` | worker | a held pose, `ps.po` (none, or one of `POSE.IDS`) | `_poseTo` (`poses.js`, v2.3.5216) | `pose-door.test` §2, and the guard's tree |
+| `race` | worker | a player's race, `ps._race` (on, or none; the countdown and the running are times on it) | `_raceTo` (`race.js`, v2.3.5217) | `race-door.test` §2, and the guard's tree |
 
 **How a door is held.** What holds a door is a closed list in the guard
 (v2.3.5203, after the gatekeeper's sitting 8 found that a suite which merely

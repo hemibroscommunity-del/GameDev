@@ -1,6 +1,6 @@
 card: P
-branch: claude/plan-p-23-cape-hood (the pets' head, stacked)
-prs: #1713, #1715, #1716, #1718, #1719, #1736, #1743, #1745, #1757, #1749, #1763, #1766, #1805, #1806, #1810, #1840, #1846, #1859 (5241-5257, 5259, merged); #1853 (5258), #1868 (5560), #1881 (5561), #1906 (5562) ready; pets (5563), cape-hood (5564) ready
+branch: claude/plan-p-23-cape-hood (#1918's head, stacked)
+prs: #1713, #1715, #1716, #1718, #1719, #1736, #1743, #1745, #1757, #1749, #1763, #1766, #1805, #1806, #1810, #1840, #1846, #1853, #1859, #1868 (5241-5259, 5560, merged); #1881 (5561), #1906 (5562), #1918 (5563) ready; cape-hood (5564) ready
 state: working
 
 ## Done
@@ -14,11 +14,12 @@ state: working
 
 ## Next
 
-- #1853 (5258), #1868 (5560) for sitting 18; #1881 (5561) for 19; #1906
-  (5562), 5563 `pets` and 5564 `cape-hood` (the crimson hood's halves and
-  masks from twins, `?capehood=0`) stacked on it.
+- #1881 (5561), #1906 (5562), #1918 (5563 `pets`) for sitting 20; 5564
+  `cape-hood` (the crimson hood's halves and masks from twins,
+  `?capehood=0`) on it.
 - Then `world-fish-spot` (the twin padded to 628), `hud-bars`,
-  `player-death`; `state: done` once every family left is under 1 MB.
+  `player-death` and the families after, one a PR, stacked; `state: done`
+  once every family left is under 1 MB.
 
 ## Found
 
