@@ -52,6 +52,14 @@
  *      writes the old order's puts and ONE more, its plan (and deletes it
  *      once paid: two rows a match): 6 puts in a 1 v 1; off (the default
  *      until the owner's yes, v2.3.5095) the old order's 5;
+ *  18. v2.3.5285 (card R PR 6): a player's daily copy (admin.js
+ *      _rpgSnapshotMaybe): `fullsnap` off (the default), the rows read and
+ *      written as before; on, TWO keys more read (the vault, the pets), no
+ *      row more written, the copy's bytes grown by theirs;
+ *  19. v2.3.5285: a restart (`character_reset`): `resetbook` off (the
+ *      default), the rows as before; on, ONE row more written (`econ_gone`)
+ *      and one key more read (the vault's delete moves into the character's
+ *      run: not a row more);
  * A line here may move when a feature really needs the rows: say so in the
  * PR, in plain words, as the memory budget asks (CLAUDE.md).
  */
@@ -712,6 +720,61 @@ const FAST = 110;
   state.storage.put = real;
   const line = 6;
   check(`17. a 1 v 1 match's settlement writes ${puts.length} puts, at most ${line} (the old order's 5 and its plan)`, puts.length <= line && puts.filter((k) => k.startsWith('arena_settle:')).length === 1 && !puts.some((k) => k.startsWith('arena_stake:')), byPrefix(puts));
+}
+
+/* ── 18. a player's daily copy, `fullsnap` off and on (v2.3.5285) ─────────
+   The numbers card R's Needs carries for the owner: keys read, rows written
+   and bytes a copy, a player with a vault and a pet. */
+{
+  const measure = async (flags) => {
+    const { room, state } = await makeRoom();
+    room._liveFlags = Object.assign({}, room._liveFlags, flags || {});
+    const pid = 'cg_snap';
+    const blob = { _v: 21, coins: 1200, level: 14, inventory: { copper_ore: 12, wood_oak: 30, fish_minnow: 8 }, weaponStash: [{ name: 'Blade', tier: 'iron' }] };
+    state.store.set('rpg:' + pid, blob);
+    state.store.set('bank:' + pid, { _v: 1, gold: 400, items: [{ key: 'iron_bar', n: 6 }, { key: 'fish_minnow', n: 20 }] });
+    state.store.set('pets:' + pid, { v: 1, cap: 30, active: 'p_1', list: [{ id: 'p_1', kind: 'slime', lv: 3 }] });
+    let reads = 0, bytes = 0;
+    const g = state.storage.get, l = state.storage.list, pu = state.storage.put;
+    state.storage.get = function (k) { reads += Array.isArray(k) ? k.length : 1; return g.call(this, k); };
+    state.storage.list = async function (o) { const r = await l.call(this, o); reads += Math.max(1, r.size); return r; };
+    state.storage.put = function (k, v) { if (typeof k === 'string' && k.startsWith('rpgsnap:')) bytes += JSON.stringify(v).length; return pu.call(this, k, v); };
+    const w0 = state.writes.length;
+    await room._rpgSnapshotMaybe(pid, blob);
+    Object.assign(state.storage, { get: g, list: l, put: pu });
+    return { reads, writes: state.writes.length - w0, bytes };
+  };
+  const off = await measure(null);
+  const on = await measure({ fullsnap: true });
+  console.log('     18. a daily copy: off ' + JSON.stringify(off) + ', on ' + JSON.stringify(on));
+  check(`18. fullsnap off (the default): a daily copy reads ${off.reads} keys and writes ${off.writes} rows, as before (at most 3 and 2)`, off.reads <= 3 && off.writes === 2, off);
+  check(`18. fullsnap on: two keys more read (${on.reads}), no row more written (${on.writes}), the copy ${on.bytes - off.bytes} bytes bigger`, on.reads === off.reads + 2 && on.writes === off.writes && on.bytes > off.bytes, { off, on });
+}
+
+/* ── 19. a restart, `resetbook` off and on (v2.3.5285) ───────────────────── */
+{
+  const measure = async (flags) => {
+    const { room, state } = await makeRoom();
+    room._liveFlags = Object.assign({}, room._liveFlags, flags || {});
+    const pid = 'cg_reset';
+    state.store.set('rpg:' + pid, { _v: 21, coins: 900, level: 5, inventory: { copper_ore: 3 } });
+    state.store.set('bank:' + pid, { _v: 1, gold: 50, items: [] });
+    const p = await join(room, pid);
+    let reads = 0;
+    const g = state.storage.get;
+    state.storage.get = function (k) { reads += Array.isArray(k) ? k.length : 1; return g.call(this, k); };
+    const w0 = state.writes.length;
+    await send(room, p, { type: 'character_reset', payload: { confirm: true } });
+    state.storage.get = g;
+    const w = state.writes.slice(w0);
+    return { reads, writes: w.length, gone: w.filter((k) => k === 'econ_gone').length, bank: w.filter((k) => k === 'bank:' + pid).length };
+  };
+  const off = await measure(null);
+  const on = await measure({ resetbook: true });
+  console.log('     19. a restart: off ' + JSON.stringify(off) + ', on ' + JSON.stringify(on));
+  check('19. resetbook off (the default): a restart writes no econ_gone', off.gone === 0 && off.bank === 1, off);
+  check(`19. resetbook on: ONE row more written (${off.writes} -> ${on.writes}: econ_gone; the vault deleted once), at most two keys more read (${off.reads} -> ${on.reads})`,
+    on.writes === off.writes + 1 && on.gone === 1 && on.bank === 1 && on.reads <= off.reads + 2, { off, on });
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);

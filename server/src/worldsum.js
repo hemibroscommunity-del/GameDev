@@ -19,6 +19,14 @@
  *                            `_store`), with what could not be counted;
  *   unexplained(start, now)  how far held and net moved apart since `start`
  *                            (0 everywhere when nothing went unexplained).
+ *
+ * v2.3.5285 (card R PR 6): A RECORD'S END.  A character a restart deletes
+ * took what it held with it, and its own count (`_econ`) went too: the sum
+ * read it as value gone with no burn written (card K's hostile census:
+ * `character_reset`, gold -5000).  With `resetbook: true` in the live flags
+ * the restart books it into `econ_gone` (goneAdd, in the deletes' own run):
+ * what it held as burned, its own minted and burned kept.  That record holds
+ * nothing; NET_READERS reads its count, so the sum stays balanced.
  */
 import { STORAGE_MARKS, marksOf } from './storagemarks.js';
 import { mailMinted, wholeGold } from './gold.js';
@@ -96,6 +104,43 @@ export const READERS = {
   'shop_stock': (ctx, key, v) => { for (const k of Object.keys(v || {})) add(ctx.goods, k, Math.max(0, Math.floor(Number(v[k]) || 0))); },
 };
 
+/* v2.3.5285: the records that hold no value but a count the sum reads as
+   net (one key each; their marks say `none`) */
+export const GONE_KEY = 'econ_gone';
+export const GONE_V = 1;   /* its shape number: a newer one is never written over */
+export const NET_READERS = Object.freeze({
+  [GONE_KEY]: (ctx, key, v) => netOf(ctx, v),
+});
+/* `econ_gone`'s shape, made or healed: `_econ`'s, and `n` the characters booked */
+function goneShape(v) {
+  const g = v && typeof v === 'object' ? v : {};
+  if (!g.g || typeof g.g !== 'object') g.g = { m: 0, b: 0 };
+  if (!g.i || typeof g.i !== 'object') g.i = Object.create(null);
+  if (typeof g.v !== 'number') g.v = GONE_V;
+  if (!Number.isFinite(g.n)) g.n = 0;
+  return g;
+}
+/** A deleted character into `econ_gone` (pure: returns the record to put).
+ *  `records`: [[key, value]] of what the restart deletes that holds value
+ *  (its `rpg:` -- the live state when it is in the room -- and its `bank:`).
+ *  What each HELD is booked burned (`b`), less what its own count already
+ *  says it made (its net): so the world's net falls by what it held. */
+export function goneAdd(gone, records) {
+  const g = goneShape(gone);
+  const ctx = worldCtx();
+  for (const [key, v] of records || []) if (v && typeof v === 'object') worldAdd(ctx, key, v);
+  g.g.b = (Number(g.g.b) || 0) + (ctx.gold - ctx.net.gold);
+  const keys = new Set([...Object.keys(ctx.goods), ...Object.keys(ctx.net.goods)]);
+  for (const k of keys) {
+    const d = (ctx.goods[k] || 0) - (ctx.net.goods[k] || 0);
+    if (!d || k === '__proto__' || k === 'constructor' || k === 'prototype') continue;
+    const p = Object.prototype.hasOwnProperty.call(g.i, k) ? g.i[k] : (g.i[k] = { m: 0, b: 0 });
+    p.b = (Number(p.b) || 0) + d;
+  }
+  g.n += 1;
+  return g;
+}
+
 /** Every marked value prefix with no reader, and every stored key with no
  *  marks: what the sum cannot count. */
 export function coverage(readers, keys) {
@@ -119,6 +164,7 @@ function readerOf(readers, key) {
 }
 /** One stored record into `ctx` (nothing when it holds no value or has no reader). */
 export function worldAdd(ctx, key, value, readers = READERS) {
+  if (Object.prototype.hasOwnProperty.call(NET_READERS, key)) { NET_READERS[key](ctx, key, value); return true; }   /* v2.3.5285 */
   const m = marksOf(key);
   if (!m || m.value === 'none') return false;
   const r = readerOf(readers, key);

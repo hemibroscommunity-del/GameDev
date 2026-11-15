@@ -224,7 +224,9 @@ const NOT_A_PURSE = [
    the call's own closing bracket (strings skipped). */
 function callsIn(s) {
   const out = [];
-  const re = /this\._gold(Give|Take|Set)\(/g;
+  /* v2.3.5285: by any name, not only `this` (playerrestore.js is plain
+     functions handed the room: `room._goldSet(...)`) */
+  const re = /\b[A-Za-z_$][\w$]*\._gold(Give|Take|Set)\(/g;
   for (const m of s.matchAll(re)) {
     let i = m.index + m[0].length, depth = 1, q = null;
     for (; i < s.length && depth > 0; i++) {
@@ -442,7 +444,8 @@ function callsIn(s) {
   check('8. every GOLD_ROADS row has a class, a move or an escrow its other side', gf.length === 0, gf);
   const counts = {};
   for (const r of Object.values(GOLD_ROADS)) counts[r.class] = (counts[r.class] || 0) + 1;
-  check('8. at v2.3.5084: 14 mints, 15 burns (+ nml_lost), 13 escrows, 3 moves (a change of class is a change here)', counts.mint === 14 && counts.burn === 15 && counts.escrow === 13 && counts.move === 3, counts);
+  /* v2.3.5285: + the restore's two (restore, restore_vault: mints judged by their difference) */
+  check('8. at v2.3.5285: 16 mints, 15 burns (+ nml_lost), 13 escrows, 3 moves (a change of class is a change here)', counts.mint === 16 && counts.burn === 15 && counts.escrow === 13 && counts.move === 3, counts);
   /* a move lands on the other player by the mail; the mail is the escrow
      every credit passes */
   const moves = Object.entries(GOLD_ROADS).filter(([, r]) => r.class === 'move');
