@@ -156,6 +156,28 @@ back alone to the way it is drawn when its switch is off.
   0.55 made 0.50 fails `sheen` and `look` (64 each: the look's shine
   picture runs the same lines). Every other program passed each time.
 
+### What 14b costs (measured 2026-11-15, `mp-selftest`, pages 4 and 5)
+
+| | unthrottled | `BT_QA_CPU_THROTTLE=4` |
+|---|--:|--:|
+| the tests' own clock, every program (draws, copies, polls) | 51.8 ms | 164.4 ms |
+| the shade: drawn (its program's first build), read | 31.9 + 0.7 ms | 38.0 + 2.8 ms |
+| the look: drawn (two pictures), read | 2.4 + 0.5 ms | 40.9 + 4.0 ms |
+| the one program, now with the sharp picture: drawn, read | 3.7 + 0.9 ms | 26.9 + 2.7 ms |
+| the shine (end of the loading screen's chain): drawn, read | 1.1 + 0.3 ms | 6.1 + 2.1 ms |
+| the water (the Wheel's loading screen): drawn, read | 1.7 + 0.5 ms | 6.5 + 1.8 ms |
+| the two warm-ups whole (colour numbers + one), with / without | 32.0 + 4.8 / 30.3 + 3.9 ms | 82.4 + 31.0 / 72.1 + 12.4 ms |
+| the loading screen, with / without | 26.3 / 24.1 s | 55.9 / 62.0 s |
+
+- **Added behind the loading screens on a slowed page**: about 120 ms of the
+  page's work, the biggest single piece the look's 41 ms; 38 of it is the
+  shade's program built, which play paid on its first shadow before. The
+  loading screen's own length varies by more than that from run to run.
+- **In play**: only the shine's verdict, read at the top of the first frames
+  (2.1 ms over 2 polls at throttle 4), and the water's, if its warm-up was
+  not reached behind the Wheel's loading screen (6.5 ms): both under the
+  held-page line (12 ms).
+
 ## 14c (to come)
 
 - 14c (5237): the clip, the fill and the glint: tested and named in `self`;
