@@ -97,6 +97,7 @@ export const STORAGE_MARKS = Object.freeze({
   'device:':          M('none', 'room', 'a device\'s characters'),
   'admin_log':        M('none', 'room', 'the operator\'s log'),
   'liveflags':        M('none', 'room', 'the live flags'),
+  'seats':            M('none', 'room', 'who was in, for a restart\'s held seats (v2.3.5605, seathold.js)'),
   'hidden_settings':  M('none', 'room', 'the hidden settings'),
   'ace_board':        M('none', 'room', 'a board'),
   'fish_board':       M('none', 'room', 'a board'),
