@@ -187,4 +187,53 @@ path re-read at 29a9ab5 (the mend 7481d01) as new code.**
   31, ride 96, safe-heal 36, liveops 110, claims-gain 15;
   traps-server-word; switches.
 
+## Card P: #1868 (tag 5560, the owner's gear item): reviewed, @@P1868
+
+**The chain belt's stand-in (`?beltstandin=0`; option B, the owner's own
+answer): lows and nits only.** Read at 2b920a7 (`main` abff2ef in).
+
+- What a player sees, VERIFIED by node probes: only a figure in BOTH
+  armour pieces stands, and only while it runs and its belt's jog sheet
+  packs (a matched copper, iron or steel pair facing north-east or
+  north-west; a mixed pair in all eight); yours and other players'
+  (townsfolk wear none); never the hit, dodge, ride or jump poses, nor
+  your own climb. Its facing and mirror are the body's. Never invisible
+  (the stand frame is preloaded; one not yet baked draws the plain
+  standing body). It cannot stick: the belt's key does not hang on the
+  look, belt sheets are never let go, a silent worker is let go at 20 s
+  and the page packs. After the sheet: the plain jog's flash until each
+  frame bakes (27 on this box), as its body says.
+- `?beltstandin=0`: the test answers false before it loads or counts
+  anything: both pose lines are `main`'s; `_fullsetCoversBake` moved byte
+  for byte. No new texture, canvas or read back ("no MB" holds).
+- Low, VERIFIED: a belt file that keeps failing makes the figure stand
+  again on each retry round (gearSheets.js ~990 puts the sheet back to
+  loading): stand 0 to 8 s, jog to 13, stand to 21, jog to 31, stand to
+  39, up to ten rounds; against beltHold.js ~32-34 and its body ("a sheet
+  given up on is never waited for").
+- Low, VERIFIED: `beltHoldsJog` (beltHold.js ~72-74) makes about 500
+  bytes of garbage and 0.4 to 1.1 µs a call, every frame, for every
+  running figure in both pieces (the full-set test builds an array,
+  objects and strings before the cheap sheet test), against v2.3.4878's
+  "an armoured crowd makes no garbage". The cure: a per-facing "belt in"
+  latch first.
+- Low, VERIFIED: the chest and legs ids are not held to the art that
+  ships: a peer sending unknown ids stands in all eight facings and
+  starts belt loads `main` never makes for them (bounded).
+- Nits: mp-beltstandin's "no plain jog frame" reads `__btLocalMisses`,
+  which only the old masked path records (on the look-armour path it
+  cannot fail; on this box it measured 11 all the same), and a wall can
+  make its "stood" count; a line in run.mjs ~307, which a scenario needs
+  none of (CLAUDE.md §6); your own jump or climb jogs plain (no
+  stand-in; entityRenderer.js ~14772) where a peer's climb stands.
+- Its blocks (tag-blocks.json): P's second block 5560 to 5579; at the
+  planning session's word its new head writes RT 5580 to 5599 (the red
+  team's 5586 to 5592), OPS 5600 to 5619, MOD 5620 to 5639, `nextBlock`
+  5640.
+- Guards: switches 20, switches-thrown, four-lines, state-ledger,
+  pixel-readers, scenario-lanes, systems, tests-by-system, hold-names,
+  budgets, asset-door, draw-lanes; 41 server suites that read its files.
+  The phone test passes `world: 'wheel'`, lane `full`, and reads probes
+  that exist. Its phone run is P's (not run by the finder).
+
 @@REST
