@@ -194,6 +194,19 @@ r = await room._accountLogin('knack-lava-mystic-nova-0', '3.3.3.3');
 check('21st attempt from one IP -> rate', r.ok === false && r.reason === 'rate', r);
 r = await room._accountLogin(ALICE_PHRASE, '4.4.4.4');
 check('other IP unaffected by throttle', r.ok === true && r.exists === true, r);
+/* v2.3.5581: an IPv6 line is one address (flood.js ipKey; red team RT-1,
+   N4): a new address of the same /64 for every try is the same 20 a minute */
+for (let i = 0; i < ACCOUNT.IP_MAX_ATTEMPTS; i++) {
+  await room._accountLogin('knack-lava-mystic-nova-' + (i % 10), '2001:db8:7:9::' + (i + 1).toString(16));
+}
+r = await room._accountLogin('knack-lava-mystic-nova-0', '2001:db8:7:9:ffff::1');
+check('5581: 21st attempt from one IPv6 /64, each from its own address -> rate', r.ok === false && r.reason === 'rate', r);
+r = await room._accountLogin(ALICE_PHRASE, '2001:db8:7:a::1');
+check('5581: the next /64 is another line', r.ok === true && r.exists === true, r);
+room._liveFlags = Object.assign({}, room._liveFlags || {}, { ip64: false });
+r = await room._accountLogin(ALICE_PHRASE, '2001:db8:7:9::abcd');
+check('5581: ip64 false counts each IPv6 address apart again', r.ok === true && r.exists === true, r);
+delete room._liveFlags.ip64;
 
 // ── 7. fetch surface ──
 const resBad = await room._accountFetch(new Request('https://x/api/account/login', { method: 'POST', body: 'not json' }));
