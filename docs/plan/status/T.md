@@ -1,6 +1,6 @@
 card: T
 branch: claude/plan-t-7-cold (one branch a PR, each begun from main once the one before merged)
-prs: #1754, #1768, #1816, #1817, #1837 (5301-5305, merged); #1863 (5306, ready); PR 7 (5307, ready)
+prs: #1754, #1768, #1816, #1817, #1837 (5301-5305, merged); #1863 (5306, ready); #1889 (5307, ready: on #1863)
 state: ready
 
 ## Done
@@ -16,7 +16,7 @@ state: ready
 ## Next
 
 - #1863 (5306): the page's one reader, src/game/switches.js; its guard.
-- PR 7 (5307): the thrown run's preload changes nothing by itself (a module
+- #1889 (5307, on #1863): the thrown run's preload changes nothing by itself (a module
   hook; no early load, no game function replaced): every server suite
   passes with a flag nothing reads (`--none`), two canaries on every PR.
   The planning session's finding. Then the reads moved (5308 on).
@@ -26,8 +26,8 @@ state: ready
 - The table is now the one list of switch names for card A's `sw` (the
   report) and card K's `flag` (the wire table): each is to read it.
 - New switch rows need `on`; a page row also `--write` (the reader's forms).
-- The preload's artifact carried by others (RT-3's #1878 skip, RT-1's #1885
-  adminlock thrownFails, RT-3's `feedback`): out once both are on main.
+- The preload's artifact: RT-1 (#1885) and RT-3 (#1878) drop their lines and
+  skip in their own PRs; OPS's own `ops` system stays (harmless).
 - Card B's map files src/game/crowdCap.js under `monsters`; `?crowd` caps players.
 - Rule 4's sample: `ahonewrite` thrown beside store-heal-wait.test's own
   `storehealwait: false` fails its check 2 (two switches off, not one).
@@ -37,4 +37,4 @@ state: ready
 
 ## Needs
 
-- The gatekeeper: #1863, then PR 7.
+- The gatekeeper: #1863 (sitting 18), then #1889 (first in sitting 19).
