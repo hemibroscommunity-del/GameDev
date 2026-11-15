@@ -248,6 +248,7 @@ import { drawGatherMethods } from './drawgather.js'; /* v2.3.4801: the bow's dra
 import { testModeMethods } from './testmode.js'; /* v2.3.3430: test mode -- the owner's own characters without the honesty checks */
 import { deviceLockMethods } from './devicelock.js'; /* v2.3.3344: a character's login key works on the devices it is played on */
 import { silenceMethods } from './silence.js'; /* v2.3.5621: the owner's silence, and a freeze that holds the device (card MOD) */
+import { charNameMethods } from './charname.js'; /* v2.3.5622: the name rules (card MOD) */
 import { loginKeyMethods } from './loginkeys.js'; /* v2.3.3355: new Login Keys, made by the worker */
 import { pvpLungeMethods } from './pvplunge.js'; /* v2.3.3262: the sword's opening lunge, at a player too */
 import { oneFormulaMethods } from './oneformula.js'; /* v2.3.3260: one formula for every fight -- health, monsters' hits, the hit cap, two specials */
@@ -5060,6 +5061,8 @@ export class GameRoom {
              face tattoo or species, from a device that holds several, is
              stamped back to this character's own, or to none. */
           this._stampRecordLook(session, clean);
+          /* v2.3.5622: ...and the NAME is the record's too: `track` never renames (charname.js, card MOD; RT-3 S2) */
+          this._stampRecordName(session, clean);
           session.data = { ...session.data, ...clean };
           const _trackPs = this.playerState[session.id];
           if (_trackPs) {
@@ -6531,6 +6534,7 @@ Object.assign(GameRoom.prototype, drawGatherMethods); /* v2.3.4801: the bow's dr
 Object.assign(GameRoom.prototype, testModeMethods); /* v2.3.3430: test mode (testmode.js) */
 Object.assign(GameRoom.prototype, deviceLockMethods); /* v2.3.3344: a character's login key works on the devices it is played on */
 Object.assign(GameRoom.prototype, silenceMethods); /* v2.3.5621: the owner's silence, and a freeze that holds the device (card MOD) */
+Object.assign(GameRoom.prototype, charNameMethods); /* v2.3.5622: the name rules (card MOD) */
 Object.assign(GameRoom.prototype, loginKeyMethods); /* v2.3.3355: new Login Keys, made by the worker */
 Object.assign(GameRoom.prototype, pvpLungeMethods); /* v2.3.3262: the sword's opening lunge at a player (pvplunge.js) */
 Object.assign(GameRoom.prototype, oneFormulaMethods); /* v2.3.3260: one formula for every fight */

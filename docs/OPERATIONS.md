@@ -431,6 +431,22 @@ curl -X DELETE -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/admin/sil
 `minutes` 0 is until lifted. The live switches `silence` and `freezedevice`
 (set to `false`) turn each off. `docs/specs/silence.md`.
 
+## Renaming a character (v2.3.5622)
+
+A character's name can no longer be changed by its phone after it is made,
+and a new name follows the rule (no emoji or hidden marks, nothing that reads
+as the game or its staff: `docs/specs/name-rules.md`). You can rename any
+character, for example one whose old name breaks the rules. Your way is the
+Test panel's button (coming: the planning session routes it). For a session
+that holds the admin key (never the owner by hand):
+```
+curl -X POST -H "Authorization: Bearer YOUR_KEY" -H "Content-Type: application/json" \
+  -d '{"playerId":"bp_...","name":"New Name"}' "https://WORKER/api/admin/rename"
+```
+`"force": true` lets a name the staff list holds through (your own
+character's "Owner"). The live switch `namerules` set to `false` takes new
+names as before.
+
 ## Fixing a broken save (restore from backup)
 
 The server now automatically keeps ~7 daily backups per player (taken at

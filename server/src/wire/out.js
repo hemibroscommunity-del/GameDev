@@ -36,7 +36,8 @@ export const WIRE_OUT = [
     at: 'join.js _handleJoin, verify.js _verifyRefuse, devicelock.js _authPutOut, and 1 more; phone: wsClient direct',
     wayIn: ['socket', 'http', 'admin'], envelope: 'direct', phase: ['none checked'], mayStart: 'system',
     doesWhat: ['reads'], reqId: 'none', trust: {}, absent: 'default: no reason reads as \'auth\'',
-    bad: ['clamped'], answer: 'none' },
+    bad: ['clamped'], answer: 'none',
+    note: ['v2.3.5621: `frozen` from silence.js _frozenDeviceRefuse (a frozen character\'s phone); v2.3.5622: `name` {why} from charname.js _charNameRefuse (a new name the rule refuses: the page\'s name box says why first; an older phone reads an unknown reason as fail-safe, no new character)'] },
   /* v2.3.1982: the room-full refusal (join.js _roomFullRefusal).  Server-
      emitted only -- a forged one would put "the world is full" in front of
      every other player in the room, which is a one-message denial of

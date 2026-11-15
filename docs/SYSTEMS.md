@@ -84,8 +84,8 @@ A sitting: the join, leaving, lingering, the rejoin and what it re-sends.
 
 Who a player is: ids, accounts, the device lock, login keys, the account check, the sites that may open a socket.
 
-- **Files**: `server/src/`: account, devicelock, loginkeys, verify, broverify, origin, httpauth
-- **Files**: `src/game/`: tabIdentity, characterRecord
+- **Files**: `server/src/`: account, devicelock, loginkeys, verify, broverify, origin, httpauth, charname
+- **Files**: `src/game/`: tabIdentity, characterRecord, charName
 - **Files**: everything under `src/ui/account/`
 - **Doors**: none named yet
 - **Switches**: [its rows in the switch table](SWITCHES.md#identity)

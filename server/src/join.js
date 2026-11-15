@@ -736,6 +736,8 @@ export const joinMethods = {
         this._playerLeaves(ws, 'refused');   /* v2.3.4830: the session door (leave.js) */
         return;
       }
+      /* v2.3.5622: a NEW character's name by the rule (charname.js, card MOD), before it is made */
+      if (await this._charNameRefuse(ws, msg.id, msg.data)) return;
     }
     /* ═══ v2.3.3260: YOUR BODY IS STILL IN THE FIGHT ═══
        A player who left within 10 s of a hit between players leaves their

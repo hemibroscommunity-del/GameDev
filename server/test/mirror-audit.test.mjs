@@ -2844,5 +2844,23 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     Number.isInteger(SR.RUNG.MAX) && DL.ladderDepth() <= SR.RUNG.MAX, { worker: SR.RUNG.MAX, page: DL.ladderDepth() });
 }
 
+/* ═══ v2.3.5622: THE NAME RULES (card MOD PR 2): the page's name box runs the
+   worker's rule (src/game/charName.js; server/src/charname.js and
+   reservednames.js), so an honest player is told why before the join and
+   never meets the worker's refusal.  The same names allowed and refused, for
+   the same reason, and the same words on the staff list. */
+{
+  const SC = await import('../src/charname.js');
+  const SR = await import('../src/reservednames.js');
+  const PC = await import('../../src/game/charName.js');
+  const names = ['Scribe', 'Bro Man', 'D\'Arcy', 'Jean-Luc', 'Zo\u00eb', 'Al', 'A', 'xxxxxxxxxxxxxxxxxxxxx', 'Bro\u202eHi', 'Bro\u200bMan', 'Bro\nMan', 'Bro \ud83d\ude00', '<b>Bro</b>', 'BroTown Team', 'Admin', '0wner', 'Adm1n', 'A d m i n', '\u0410dmin', 'xX_Bro_Town_Xx', 'Modest', 'Devin', 'Teammate', 'System', 'GM', 'Support'];
+  const off = names.filter((n) => JSON.stringify(SC.checkCharName(n)) !== JSON.stringify(PC.checkCharName(n)));
+  check('names: the page\'s name box and the worker allow and refuse the same names, for the same reason', off.length === 0, off.map((n) => [n, SC.checkCharName(n), PC.checkCharName(n)]));
+  check('names: the same words on the staff list', JSON.stringify(SR.RESERVED_NAME_WORDS) === JSON.stringify(PC.RESERVED_NAME_WORDS), { worker: SR.RESERVED_NAME_WORDS, page: PC.RESERVED_NAME_WORDS });
+  check('names: the same lengths', SC.CHAR_NAME.MIN === PC.CHAR_NAME.MIN && SC.CHAR_NAME.MAX === PC.CHAR_NAME.MAX, { worker: SC.CHAR_NAME, page: PC.CHAR_NAME });
+  const whys = ['short', 'long', 'chars', 'staff'].filter((w) => typeof PC.CHAR_NAME_WORDS[w] !== 'string' || !PC.CHAR_NAME_WORDS[w]);
+  check('names: every reason the worker gives has words on the page', whys.length === 0, whys);
+}
+
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);
