@@ -106,7 +106,7 @@ export function feedbackWords(v, max) {
 /* v2.3.5593: the address a pace counts.  An IPv6 line is given a whole /64,
    and a script takes a new address of it for every request (the red team,
    RT-1 N4), so an IPv6 address counts as its /64; IPv4, and IPv4 written as
-   IPv6, as itself.  The same rule as RT-1's flood.js ipKey (v2.3.5581, not
+   IPv6, as itself.  The same rule as RT-1's flood.js ipKey (its claude/rt1-ip64 branch, not
    yet on main as this is written): this local copy goes once that lands. */
 const HEX4 = /^[0-9a-f]{1,4}$/;
 export function feedbackAddr(ip) {
