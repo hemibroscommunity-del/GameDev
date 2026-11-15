@@ -26,6 +26,7 @@ import { cleanWheelSizes } from './wheeltables.js'; /* v2.3.3315: the Wheel size
 import { DEVICE_LOCK, cleanDevice } from './devicelock.js'; /* v2.3.3344: a key on its character's devices */
 import { LOGIN_KEYS, newKeyOf } from './loginkeys.js'; /* v2.3.3355: new Login Keys, made by the worker */
 import { stashGive, stashTake, stashSet } from './stash.js';   /* v2.3.5281: the stashes' door (card R PR 2) */
+import { questLoad } from './queststate.js';   /* v2.3.5284: quest state's door (card R PR 5) */
 
 /* ═══ v2.3.1627: the JOIN DATA ALLOWLIST ═══
  *
@@ -1106,9 +1107,12 @@ export const joinMethods = {
         this.playerState[msg.id].goldBars = (typeof stored.goldBars === 'number')
           ? Math.max(0, Math.floor(stored.goldBars))
           : this._amuletClampBars(msg.data && msg.data.rpgGoldBars);
-        this.playerState[msg.id]._quests = (stored._quests && typeof stored._quests === 'object') ? { ...stored._quests } : {};
-        this.playerState[msg.id]._questFlags = (stored._questFlags && typeof stored._questFlags === 'object') ? { ...stored._questFlags } : {};
-        this.playerState[msg.id]._questKills = (stored._questKills && typeof stored._questKills === 'object') ? { ...stored._questKills } : {};
+        /* v2.3.5284: the quest door (queststate.js), each map the caller's own copy as before */
+        questLoad(this.playerState[msg.id], {
+          _quests: (stored._quests && typeof stored._quests === 'object') ? { ...stored._quests } : {},
+          _questFlags: (stored._questFlags && typeof stored._questFlags === 'object') ? { ...stored._questFlags } : {},
+          _questKills: (stored._questKills && typeof stored._questKills === 'object') ? { ...stored._questKills } : {},
+        }, 'join_stored');
         this.playerState[msg.id].achievementPoints = stored.achievementPoints || 0;
         /* v2.3.1664: server-verified kills.  MUST be restored here or a
            reconnect resets the counter to 0 and the next on-chain
@@ -1295,9 +1299,12 @@ export const joinMethods = {
           }
           return out;
         };
-        this.playerState[msg.id]._quests = _capObjKeys((msg.data && msg.data.rpgQuests) || null);
-        this.playerState[msg.id]._questFlags = _capObjKeys((msg.data && msg.data.rpgQuestFlags) || null);
-        this.playerState[msg.id]._questKills = _qKclean;
+        /* v2.3.5284: the quest door (queststate.js) */
+        questLoad(this.playerState[msg.id], {
+          _quests: _capObjKeys((msg.data && msg.data.rpgQuests) || null),
+          _questFlags: _capObjKeys((msg.data && msg.data.rpgQuestFlags) || null),
+          _questKills: _qKclean,
+        }, 'join_new');
         this.playerState[msg.id].achievementPoints = Math.max(0, Math.min(99999,
           (msg.data && typeof msg.data.rpgAchievementPoints === 'number') ? Math.floor(msg.data.rpgAchievementPoints) : 0));
         this.playerState[msg.id]._perfectHistory = [];

@@ -85,10 +85,12 @@ const SCRATCH = {
   /* the life phase (life.js _lifeTo) and the death's own; a death across a
      join is its note, `life:<pid>` */
   life: ['life', 'dead', 'dying', 'respawnAt', '_deathKeepsBag', '_lifeResumed', '_lootRecovered'],
-  /* the session: a socket's, gone with it */
+  /* the session: a socket's, gone with it.  v2.3.5284: the quest door's
+     kept lists (`_questGrantOverflow`, `_questWeaponUnfit`) came off: they
+     are written by queststate.js by a computed name, memory only still */
   session: ['disconnected', 'lingering', '_lingerUntil', '_lingerZ', '_bodyWait', '_testMode', '_regenDirty',
     '_regenSaveAt', '_spar', 'name', '_lookWholeSeq', '_petWire', '_shieldKnown', '_gearLockNotifAt',
-    '_gearLockUntil', '_p3FreshRespec', '_questGrantOverflow', '_questWeaponUnfit', '_apOnceDirty',
+    '_gearLockUntil', '_p3FreshRespec', '_apOnceDirty',
     '_apOnceFailed', '_arenaMatch', '_race', '_raceStartedAt', '_ride', '_rideAt', '_ridePid', '_restAt',
     '_dg', '_dgXp', '_cookHits'],
   /* a sprint's metering (sprint.js) */
