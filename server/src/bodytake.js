@@ -91,7 +91,7 @@ export const bodyTakeMethods = {
     ps.vx = 0; ps.vy = 0; ps._mvFollow = undefined;
     ps.blocking = false; ps.blockStartT = 0; ps.dodging = false;
     this._exTo(ps, null, 'take'); ps._sprintStep = false;   /* v2.3.5213: the cook door */
-    ps.po = null;   /* and stands up: no pose crosses a join (the phone clears its own: rejoinresend's pose row) */
+    this._poseTo(ps, null, 'take');   /* and stands up: no pose crosses a join (the phone clears its own: rejoinresend's pose row); v2.3.5216: the pose door */
     this.dirtyPlayers.add(id);
     if (!this._bodyTakes) this._bodyTakes = new Set();
     this._bodyTakes.add(id);
