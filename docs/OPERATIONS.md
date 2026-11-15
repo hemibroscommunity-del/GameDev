@@ -473,11 +473,14 @@ curl -X POST -H "Authorization: Bearer YOUR_KEY" -H "Content-Type: application/j
   -d '{"name":"fullsnap","value":true}' "https://WORKER/api/admin/flags"
 ```
 
-**Counting a character restart in the books** (off by default, because it
-adds one record for the whole game and one more write each time a player
-restarts their character): with `resetbook` on, the gold and items a
-restarted character had are counted as gone in the economy numbers, rather
-than read as missing.
+**Counting a character restart in the economy check** (off by default,
+because it adds one record for the whole game and one more write each time
+a player restarts their character): with `resetbook` on, the gold and items
+a restarted character had are written down as gone, so the game's balance
+check (run by the tests) does not read them as missing. Nothing you see
+changes with it: the daily economy numbers do not read that record yet, and
+your economy card already counts restarts on its own. Leave it off unless a
+later change starts reading it.
 ```
 curl -X POST -H "Authorization: Bearer YOUR_KEY" -H "Content-Type: application/json" \
   -d '{"name":"resetbook","value":true}' "https://WORKER/api/admin/flags"

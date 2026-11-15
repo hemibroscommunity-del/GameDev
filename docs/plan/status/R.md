@@ -8,18 +8,18 @@ state: ready
 - Merged: PR 1 (5280, #1819), PR 4 (5283, #1823), PR 8 (5287, #1825),
   PR 9 (5288, #1844), PR 2 (5281, #1862).
 - PR 7 (5286, #1847, merged): the paged export (allow list; ON).
-- PR 3 (5282, #1873, ready): a weapon's own id (schema 22; waits for
-  card OPS's first PR and RT-2's rollback guide, #1872).
-- PR 5 (5284, #1877, ready, sitting 19): quest state's door.
-- PR 6 (5285, #1887, ready, sitting 19): a player's restore from the
-  registry and the restart booked; `fullsnap`, `resetbook` OFF (Needs).
-- PR 11 (5290, #1895, ready, sitting 19): the duel pot's ledger row.
-- PR 10 (5289, `claude/plan-r-10-xp-door`, ready): experience and levels'
-  door (`xp.js`, 22 roads; nothing a player sees changes).
+- PR 3 (5282, #1873, ready): a weapon's own id (waits for OPS's #1891).
+- PR 5 (5284, #1877, ready, sitting 20): quest state's door.
+- PR 6 (5285, #1887, ready, sitting 20): a player's restore and the restart
+  booked; `fullsnap`, `resetbook` OFF (Needs); sitting 20's three mended.
+- PR 11 (5290, #1895, ready, sitting 20): the duel pot's ledger row.
+- PR 10 (5289, #1898, ready, sitting 20): experience and levels' door.
 
 ## Next
 
-- WAITING on K and L (no side work). THE ESCROW
+- NEXT PR (sitting 20): the credit guards read `_creditWith(` too (first:
+  a double-pay risk); quest-door's scanner `||=`, `??=`, Object.assign.
+- Then WAITING on K and L. THE ESCROW
   LEDGER'S ORDER (the planning session's (b)): the market, the auction
   house and the arena's stakes join in later R PRs, AFTER K's 5194, 5196,
   5197 (`market.js`, `store.js`) and L's arena door (`gladiator.js`).
@@ -34,7 +34,7 @@ state: ready
 ## Needs
 
 - The owner's costs, OFF: `fullsnap` (PR 6: 2 keys more read a player a
-  day), `resetbook` (PR 6: one room row, a read and a write a restart; K's
-  census line falls with it), `xferescrow` (PR 11: a row a wagered duel).
+  day), `resetbook` (PR 6: one room row, a write a restart; nothing live
+  reads it, the census unmoved), `xferescrow` (PR 11: a row a wagered duel).
 - LATER (PR 9, "Just go recommended"): the lab's restore try (lab.yml).
 - Live flags: `storesize`, `roomexport` on; `roomrewind` off (the owner).
