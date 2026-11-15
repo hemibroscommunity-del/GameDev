@@ -187,7 +187,7 @@ export const sprintMethods = {
        stops, a keepalive, a pause, a roll -- ends the run as before and bills
        nothing, so an honest sprint is billed exactly as with it off (the
        review of sitting 16: the old carry billed a pause up to ~10, and one
-       mark every 1.5 s still ran free; both closed here, sprint.test §9). */
+       mark every 1.5 s still ran free; both closed here, sprint.test §11). */
     if (ps._sprintStep === 'grace') {
       ps._sprintStep = false;
       if (!(needed && dist > 0.5 && ps._sprintPrevPaid)) return;

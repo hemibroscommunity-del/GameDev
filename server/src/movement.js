@@ -698,7 +698,13 @@ export const movementMethods = {
           && _d > (_budgetOn ? this._moveBudgetNow(ps, _wr, _now) : _wr * dt + MOVE_BUDGET.SLACK_PX) + _gust) {
           ps._sprintPrevPaid = 'first'; ps._sprintBilledAt = ps.lastMoveAt;
         }
-        if (!this._sprintBilled(ps, _needSprint)) {
+        /* review-z18 (the gatekeeper, sitting 18): ...and a move that goes
+           nowhere (0.5 px or less) is judged at the walk too.  _sprintPay
+           bills nothing under 0.5 px and ends the run, so with the sprint's
+           bound its gap refilled the budget at the sprint's rate, and the
+           next marked move spent that bank free (658 px a second, no
+           stamina; sprint.test §11) */
+        if (!(_d > 0.5) || !this._sprintBilled(ps, _needSprint)) {
           _k = 1;
           _needSprint = false;   /* not carried: the run ends (sprint.js _sprintPay) */
         }
