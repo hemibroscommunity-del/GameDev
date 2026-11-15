@@ -1,6 +1,6 @@
 card: L
 branch: claude/plan-l-18-race-page (each PR on main, main merged in)
-prs: #1746 to #1855 (merged), #1864 (5216), #1866 (5217), #1876 (5218)
+prs: #1746 to #1866 (merged), #1876 (5218)
 state: ready
 
 ## Done
