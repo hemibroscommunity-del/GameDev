@@ -45,12 +45,17 @@
  * freeze holds the character only, as before).
  */
 
+import { WIRE_IN } from './wire/in.js';
+import { WIRE_RELAY } from './wire/relays.js';
+
 /* THE CHAT LANES a silence closes: the wire table's rows whose trust has
    `text: 'words'` (card K's word, 2026-11-15: never every `speaks` row --
-   that is 39, `join`, `track`, a trade and a duel among them).  A stopgap
-   copy: card K's `CHAT_LANES` (wire/lists.js, the one reader of the table)
-   replaces it when it lands, with `wireRowOf` for the row a frame names. */
-export const SILENCE_LANES = Object.freeze(new Set(['chat', 'party_chat', 'area_chat', 'whisper', 'friend_dm', 'store_dm']));
+   that is 39, `join`, `track`, a trade and a duel among them): today chat,
+   area_chat, whisper, party_chat, friend_dm and store_dm, and a new lane by
+   its row.  Made here from the table, as card K offered, until K's
+   `CHAT_LANES` (wire/lists.js, the one reader of the table) takes it in. */
+export const SILENCE_LANES = Object.freeze(new Set([...WIRE_IN, ...WIRE_RELAY]
+  .filter((r) => r && r.trust && r.trust.text === 'words').map((r) => r.name)));
 
 export const SILENCE = Object.freeze({
   KEY: 'silenced:',
@@ -125,12 +130,12 @@ export const silenceMethods = {
   /** THE SILENCE'S DOOR (index.js `_onMessage`, its own step right after the
    *  wire door: card K's word -- never inside it, which refuses only what no
    *  page sends and sits behind `wiredoor`).  True: this frame is a chat lane
-   *  (SILENCE_LANES; a relayed frame names its row by `event`) from a
-   *  silenced character, and is dropped. */
+   *  (SILENCE_LANES, by its `type`: the page's shim sends a relayed event as
+   *  its own type, card K measured) from a silenced character, and is
+   *  dropped. */
   _silenceDoor(session, msg) {
     if (!msg || !this._silenceOn() || !this._silences || !this._silences.size) return false;
-    const row = msg.type === 'broadcast' ? msg.event : msg.type;
-    if (!SILENCE_LANES.has(row)) return false;
+    if (!SILENCE_LANES.has(msg.type)) return false;
     return !this._silenceSpeakOk(session);
   },
 

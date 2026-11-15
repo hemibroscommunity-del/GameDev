@@ -5,8 +5,8 @@
  *   1. The owner's routes: a silence set, listed and lifted with the key; a
  *      plain refusal without it.
  *   2. A silenced character's words reach nobody on any chat lane (room chat,
- *      area, whisper, party, a friend's message, a shop thread, and a relayed
- *      frame by its `event`); the speaker is told once a minute, in the game's
+ *      area, whisper, party, a friend's message, a shop thread: the wire
+ *      table's rows whose `text` is words); the speaker is told once a minute, in the game's
  *      voice, to its own socket only; another character still speaks.
  *   3. It plays on: a silenced character moves and is not put out.
  *   4. Lifted, or its minutes run out: it speaks again.  A deploy keeps it.
@@ -74,14 +74,15 @@ const wb = await join('bp_mod_kind', 'devkind001');
   check('2: another character still speaks (control)', chatsFrom('bp_mod_kind').length === 1 || room.eventBuffer.some((e) => e && e.type === 'chat'), room.eventBuffer.map((e) => e.type));
   const sess = room.sessions.get(wa);
   const lanes = [
-    { type: 'chat', payload: { text: 'x' } }, { type: 'broadcast', event: 'chat', payload: { text: 'x' } },
-    { type: 'area_chat', payload: { text: 'x' } }, { type: 'broadcast', event: 'area_chat', payload: { text: 'x' } },
+    { type: 'chat', payload: { text: 'x' } }, { type: 'area_chat', payload: { text: 'x' } },
     { type: 'whisper', payload: { to: 'kind', text: 'x' } }, { type: 'party_chat', payload: { text: 'x' } },
     { type: 'friend_dm', payload: { to: 'bp_mod_kind', text: 'x' } }, { type: 'store_dm', payload: { text: 'x' } },
   ];
-  const open = lanes.filter((m) => !room._silenceDoor(sess, m)).map((m) => m.event || m.type);
-  check('2: every chat lane (' + [...SILENCE_LANES].join(', ') + ') is closed to the silenced, a relayed frame by its event', open.length === 0, open);
-  const kindOpen = lanes.filter((m) => room._silenceDoor(room.sessions.get(wb), m)).map((m) => m.event || m.type);
+  check('2: the lanes are the wire table\'s rows whose `text` is words (made from the table, not typed)',
+    ['chat', 'area_chat', 'whisper', 'party_chat', 'friend_dm', 'store_dm'].every((t) => SILENCE_LANES.has(t)) && !SILENCE_LANES.has('join') && !SILENCE_LANES.has('trade2_open'), [...SILENCE_LANES]);
+  const open = lanes.filter((m) => !room._silenceDoor(sess, m)).map((m) => m.type);
+  check('2: every chat lane (' + [...SILENCE_LANES].join(', ') + ') is closed to the silenced', open.length === 0, open);
+  const kindOpen = lanes.filter((m) => room._silenceDoor(room.sessions.get(wb), m)).map((m) => m.type);
   check('2: ...and open to everyone else', kindOpen.length === 0, kindOpen);
   /* a whisper end to end */
   wb.sent.length = 0;

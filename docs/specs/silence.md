@@ -14,11 +14,12 @@ let in (the account check, Turnstile, is off). The About panel promises
   own list): the owner's, for everyone.
 - **Which words**: the chat lanes, the wire table's rows whose trust has
   `text: 'words'`: room chat, area, whisper, party, a friend's message, a
-  shop thread (`SILENCE_LANES`). A relayed frame names its row by `event`.
+  shop thread (`SILENCE_LANES`, made from the table, so a new lane is
+  covered by its row; the page's shim sends a relayed event as its own type).
   Never every `speaks` row (card K, 2026-11-15: that is 39, `join`, `track`,
   a trade and a duel among them): a silenced character still logs in, moves,
-  trades, invites, duels and emotes. A stopgap copy of card K's coming
-  `CHAT_LANES` (`wire/lists.js`), which replaces it when it lands.
+  trades, invites, duels and emotes. Card K's coming `CHAT_LANES`
+  (`wire/lists.js`, the one reader of the table) takes it in.
 - **Where**: `_silenceDoor`, one step in the router (`index.js _onMessage`)
   right after the wire door, never inside it (card K's word: the door
   refuses only what no page sends and sits behind `wiredoor`).
@@ -77,7 +78,7 @@ told once, others speak; it plays on; lifted, run out, kept across a deploy;
 the switch; a new character on a frozen phone refused (t4-ban.mjs's proof),
 another phone let in, the owner's phone spared, `freezedevice: false`,
 unfreeze. Break proofs (by hand, 2026-11-15): the router line removed, the
-join hook removed, the owner's phone not spared, a relay read by its type,
-the switch ignored: each turns its checks red; the first build's one-minute
+join hook removed, the owner's phone not spared, the switch ignored: each
+turns its checks red; the first build's one-minute
 cache of the frozen devices let a new character in for a minute (check 6
 failed, mended by listing the freezes at each join).
