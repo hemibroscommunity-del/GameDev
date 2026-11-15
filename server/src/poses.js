@@ -42,7 +42,43 @@ export function poseListed(id) {
   return typeof id === 'string' && POSE_SET.has(id);
 }
 
+/* ═══ v2.3.5216: THE POSE DOOR -- A HELD POSE'S ONE WRITER (card L PR 5) ═══
+   (docs/specs/pose-door.md; held by server/test/pose-door.test.mjs and the
+   phase table's guard, tools/guards/phase-table.test.mjs)
+   A pose's phase is ONE field, `ps.po`: none (standing), or one of
+   POSE.IDS.  Written only by _poseTo, by a way of POSE_WAYS -- `hold` and
+   `stand` (the phone's `pose {id}`, _handlePose), `move` (the worker ends it
+   on a real move, movement.js _handleMove + _poseEndsOn) and `take` (a body a
+   second tab takes over stands up, bodytake.js).  The door's rule: a pose
+   held is one of POSE.IDS, and never by the dead or the dying -- the
+   handler's own two checks, so nothing a player sees changes;
+   `posedoor: false` in the live flags writes any pose a caller asks, as the
+   old line would have.  The spacing (POSE.MIN_GAP_MS, the session's
+   `_poseAt`) and the kill switches (`emotes`, `emotemoves`) stay the
+   handler's: they say whether to ask, not what a pose is.  No join way: a
+   join makes the body afresh with none. */
+export const POSE_WAYS = Object.freeze({ hold: 'pose', stand: 'none', move: 'none', take: 'none' });
+
 export const poseMethods = {
+  /* v2.3.5216: the pose door's kill switch (live flag `posedoor: false`) */
+  _poseDoorOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'posedoor') && !f.posedoor);
+  },
+
+  /* v2.3.5216: THE ONE WRITER of a held pose.  `id` is the pose for
+     `hold`, ignored for the ways to none.  True when it wrote. */
+  _poseTo(ps, id, way) {
+    if (!ps || typeof ps !== 'object' || !Object.prototype.hasOwnProperty.call(POSE_WAYS, way)) return false;
+    let next = null;
+    if (POSE_WAYS[way] === 'pose') {
+      if (!this._poseDoorOff() && (!poseListed(id) || ps.dead || ps.dying)) return false;
+      next = id;
+    }
+    ps.po = next;
+    return true;
+  },
+
   /* `pose {id}`: hold a pose, or stand up (id null).  Answers nothing: the
      tick's `po` is the answer, to the poser's own phone as well */
   _handlePose(session, msg) {
@@ -62,8 +98,10 @@ export const poseMethods = {
       session._poseAt = now;
     }
     if ((ps.po || null) === id) return;
-    ps.po = id;
-    this.dirtyPlayers.add(sid);
+    /* v2.3.5216: the pose door.  Dirty only when it wrote: a refusal there
+       (unreachable today, the checks above are its own) changes nothing,
+       and the tick's `po` stays the answer -- no new exit (refusal-door) */
+    if (this._poseTo(ps, id, id ? 'hold' : 'stand')) this.dirtyPlayers.add(sid);
   },
 
   /* movement.js, on an accepted move: whether this move ends the pose */

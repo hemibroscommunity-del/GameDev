@@ -19,6 +19,7 @@
  * `?starcue=0` turns it off for one tab.  QA: window.__btStarCue.
  */
 import { worldReady } from './loadingGate.js';   /* v2.3.4136 */
+import { sw } from '../game/switches.js';   /* v2.3.5306: the page's one reader (card T) */
 const TARGET_PX = 96;          /* game px: a target that moves less is the same target */
 const SHRINK_BASE = 1000;
 const BIG_BASE = 64;             /* the minimap's star is 17 px */
@@ -32,7 +33,7 @@ const qa = { n: 0, last: null, live: 0, off: false,
   forget() { lastKey = null; } };
 
 function offByUrl() {
-  try { return new URLSearchParams(window.location.search).get('starcue') === '0'; } catch (e) { return false; }
+  return sw('starcue');   /* v2.3.5306: the one reader (was URLSearchParams .get('starcue') === '0') */
 }
 function calm() {
   try { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) { return false; }
