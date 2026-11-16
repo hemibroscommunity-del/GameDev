@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "98c151fcb48abb8526c3379892cf9e58859ca95c",
+  "tree": "b7fc2392312c06b8191d856627badaa565604db8",
+  "committedAt": "2026-11-16T15:19:54-08:00",
+  "subject": "Merge pull request #1880 from hemibroscommunity-del/claude/plan-ops-2-health",
+  "files": 7956,
+  "bytes": 958214493,
+  "listingSha256": "37e4b93df929de3d98b36f8e9d5c4f39b68d6bb10af97eac3c9df593d949ce10",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

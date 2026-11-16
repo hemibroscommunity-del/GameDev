@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "7310d415cce061aec593ac3e26df296371c2daf8",
+  "tree": "8949f9a362051c376690f0f19b81818fbaa1eb69",
+  "committedAt": "2026-11-16T15:20:29-08:00",
+  "subject": "Merge pull request #1891 from hemibroscommunity-del/claude/plan-ops-3-setswitch",
+  "files": 7966,
+  "bytes": 958285343,
+  "listingSha256": "d603236be09f38b817b88d6b7a772e6aafd963508ef165df95fac4e4738e32c5",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

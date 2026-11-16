@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "93f4dfc0e48e36c261ef92f96ac0b827c9e2073c",
+  "tree": "946d7f478ee3433daee6093e471b122a05ece5e4",
+  "committedAt": "2026-11-16T15:20:19-08:00",
+  "subject": "Merge pull request #1908 from hemibroscommunity-del/claude/plan-ops-7-seathold",
+  "files": 7962,
+  "bytes": 958253370,
+  "listingSha256": "9ca2b877027caf0032681cca443794257c211ba784b110b812ea2aed9170828d",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
