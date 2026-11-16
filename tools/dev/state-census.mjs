@@ -2502,6 +2502,29 @@ async function pageDoors() {
       .map((r) => ({ field: r.field.slice(2), fn: r.fn, file: r.file }));
   } catch (e) { return []; }
 }
+/* v2.3.5219 (card L PR 5, the harvest's page door): every call of a page
+   door, as "<file>:<line> <function>" (the sites' own form), for the edges'
+   door lists (the zone's clearZoneLocalFx clears the harvest by asking its
+   door).  The state ledger's guard reads them beside the rows' own writes. */
+function doorCallsFound(doors = []) {
+  const out = [];
+  if (!doors.length) return out;
+  for (const f of FILES.values()) {
+    traverse(f.ast, {
+      CallExpression(path) {
+        const c = path.node.callee;
+        if (c.type !== 'Identifier') return;
+        const imp = f.imports.get(c.name);
+        for (const d of doors) {
+          if ((imp && imp.from === d.file && imp.name === d.fn) || (!imp && f.path === d.file && c.name === d.fn)) {
+            out.push({ field: d.field, at: short(f.path) + ':' + lineOf(path) + ' ' + whereOf(path) });
+          }
+        }
+      },
+    });
+  }
+  return out.sort((a, b) => cmp(a.at, b.at));
+}
 function resetsFound(doors = []) {
   const resets = [], bad = [];
   for (const f of FILES.values()) {
@@ -2568,11 +2591,14 @@ if (process.argv[1] && pathResolve(process.argv[1]) === fileURLToPath(import.met
     const { placeFiles, systemOf: mapSystemOf } = await import(pathToFileURL(join(ROOT, 'tools', 'guards', 'lib', 'systems.mjs')).href);
     const placed = placeFiles();
     const made = ledgerFound((file) => mapSystemOf(file, placed) || 'unsorted');
-    const R = resetsFound(await pageDoors());   /* v2.3.5218: and a reset through a page door */
+    const DOORS = await pageDoors();
+    const R = resetsFound(DOORS);   /* v2.3.5218: and a reset through a page door */
     process.stdout.write(JSON.stringify({
       ledger: [...made.values()].map((x) => x.made),
       /* v2.3.5203 (card L PR 3): the resets, and any call not in their form */
       resets: R.resets, resetsBad: R.bad,
+      /* v2.3.5219: every call of a page door, for the edges' door lists */
+      doorCalls: doorCallsFound(DOORS),
       fields: fieldRows.map((r) => ({
         name: r.name, system: short(r.system), born: r.born.how === 'never' ? null : { how: r.born.how, at: short(r.born.file) + ':' + r.born.line },
         marks: r.marks, states: r.states, writtenAt: r.at, shouldReset: r.reset,

@@ -120,6 +120,7 @@ const FORMS = {
   'guest': '1',
   'guidearrow': '0',
   'halloween': '*',
+  'harvestdoor': '0',
   'headframes': '',
   'headlook': '0|off|false',
   'healms': '*',
