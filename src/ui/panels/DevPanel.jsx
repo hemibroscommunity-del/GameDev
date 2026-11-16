@@ -3,6 +3,7 @@ import { PlayerDrawings, AccuracyDays } from './DevWatch.jsx';   /* v2.3.4545: w
 import { ReportTable } from './ReportTable.jsx';   /* v2.3.5125: the smoothness table, copied (card A) */
 import { EconCard } from './EconCard.jsx';   /* v2.3.5093: the owner's card, the economy (card E) */
 import { SetSwitchRow } from './SetSwitchRow.jsx';   /* v2.3.5602: set a switch, no terminal (card OPS) */
+import { FeedbackOwnerRows } from './FeedbackOwnerRows.jsx';   /* v2.3.5603: the feedback board's takedown and sweep (card OPS) */
 import { COL, getState } from '../mobile/dash/common.js';
 import { BT_API_BASE } from '../../networking/index.js';
 import { runSpeedTest } from '../../game/speedTest.js';   /* v2.3.3339: the speed test, measured on this phone */
@@ -493,6 +494,34 @@ export const DevPanel = ({ onClose }) => {
       say(isAbort(e) ? TIMEOUT_MSG : 'Network error: ' + String(e).slice(0, 80));
       return null;
     } finally { if (!quiet) setBusy(false); }
+  }, [key]);
+
+  /* v2.3.5603: the owner's calls OUTSIDE /api/admin -- the feedback board's
+     takedown and sweep (FeedbackOwnerRows.jsx; red team RT-3's #1878: the
+     Feedback object reads the same admin key).  The same key and timeout as
+     `call`; it answers { status, j } and judges nothing, because there a 404
+     means "this worker has no such route, or no key" and the row says which
+     (it asks `call('/overview')` quietly).  Not act(): act() carries a
+     player's session token, never the owner's key. */
+  /* v2.3.5603 (mend, sitting 19b): `body` (JSON) and `opts.say`, a row's own
+     line under its button, told what went wrong too */
+  const callOwner = useCallback(async (path, method, body, opts) => {
+    const own = opts && typeof opts.say === 'function' ? opts.say : null;
+    const say = (t) => { setMsg(t); if (own) own(t); };
+    if (!key) { say('Enter your admin key first.'); return null; }
+    setBusy(true);
+    try {
+      const res = await fetchWithTimeout(BT_API_BASE + path, {
+        method: method || 'GET',
+        headers: Object.assign({ Authorization: 'Bearer ' + key }, body ? { 'Content-Type': 'application/json' } : {}),
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      const j = await res.json().catch(() => ({}));
+      return { status: res.status, j };
+    } catch (e) {
+      say(isAbort(e) ? TIMEOUT_MSG : 'Network error: ' + String(e).slice(0, 80));
+      return null;
+    } finally { setBusy(false); }
   }, [key]);
 
   const refresh = useCallback(async (quiet) => {
@@ -1374,6 +1403,8 @@ export const DevPanel = ({ onClose }) => {
 
             {/* v2.3.5602: any switch set to a value from here, never a terminal (SetSwitchRow.jsx, card OPS PR 3) */}
             <SetSwitchRow call={call} busy={busy} setMsg={setMsg} COL={COL} btn={btn} chip={chip} label={label} onFlags={setFlags} />
+            {/* v2.3.5603: take a feedback post down, sweep the board (FeedbackOwnerRows.jsx, card OPS PR 4) */}
+            <FeedbackOwnerRows call={call} callOwner={callOwner} busy={busy} setMsg={setMsg} COL={COL} btn={btn} chip={chip} label={label} />
 
             {/* ═══ v2.3.3344: PLAYER LOGINS ═══  See the note by letDeviceIn. */}
             <div style={label}>Player logins</div>
