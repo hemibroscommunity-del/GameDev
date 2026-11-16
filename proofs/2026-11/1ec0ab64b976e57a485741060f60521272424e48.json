@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "1ec0ab64b976e57a485741060f60521272424e48",
+  "tree": "55f4d05cf0cc87addd8865c141c49cae3032b8c4",
+  "committedAt": "2026-11-16T13:29:23-08:00",
+  "subject": "Merge pull request #1889 from hemibroscommunity-del/claude/plan-t-7-cold",
+  "files": 7754,
+  "bytes": 957316061,
+  "listingSha256": "3b0fef34fc4791d77e944f667ab9db4ee66af29a6988e974c2ea202025d79cab",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
