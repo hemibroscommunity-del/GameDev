@@ -221,11 +221,28 @@ export const liveopsMethods = {
     return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'wiredoor') && !f.wiredoor);
   },
 
+  /* v2.3.5543 (RT-1 N10): the relay's byte bounds (relay.js
+     _relayBytesDrop), the same way: `relaybytes: false` lets every relay
+     into the queue whatever its size, as before */
+  _relayBytesOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'relaybytes') && !f.relaybytes);
+  },
+
   /* v2.3.5124: the room's own row's (roomrow.js), the same way: `roomrow:
      false` adds nothing of the room's into the day's book */
   _roomRowOff() {
     const f = this._liveFlags;
     return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'roomrow') && !f.roomrow);
+  },
+
+  /* v2.3.5286 (card R PR 7): the owner's paged export (admin.js
+     exportPage), ON (the owner, 2026-11-14: "Just go recommended": it costs
+     only when the owner runs it, behind the admin key); `roomexport: false`
+     turns it off, the same way */
+  _roomExportOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'roomexport') && !f.roomexport);
   },
 
   /* v2.3.5422: a cape taken off kept on its ledger (eventcapes.js

@@ -23,18 +23,25 @@
  *   6. THE SWITCH THROWN (the plan's rule 4): `wiredoor: false` and every
  *      frame of §1 and §2 reaches its handler as before, every route of §3
  *      its route, and nothing is counted.
+ *   7. (v2.3.5542) A RELAYED EVENT ON THE WIRE: the page's shim sends it
+ *      as `{ type: <event> }` (wsClient.js), so it meets its row by type (a
+ *      `move` with x 1e999, a 2,001-character `area_chat` refused; honest
+ *      ones pass); a frame typed `broadcast` (only a script sends one)
+ *      reaches no handler and queues nothing; the chat lanes are made from
+ *      the table (card MOD's silence).
  *
  * BREAK PROOF (rule 8), tried by hand 2026-11-14:
  *   1. door.js: BAD_KEYS without 'constructor'                 -> FAIL 3
  *   2. index.js: the router's `if (this._wireDoor(session, msg)) return;` removed -> FAIL 2
  *   3. liveops.js: `_wireDoorOff` returning false always        -> FAIL 6
  *   4. door.js: `_wireDoorCount` keyed by the type that came (the old way) -> FAIL 2b
+ *   5. lists.js: chatLanes reading `trust.name` for `text` (2026-11-15)  -> FAIL 7
  *      (v2.3.5184, sitting 15's review)
  *
  * Not a phone test: node, card E's test room (testroom.mjs).  Under a
  * second. */
 import { WIRE_DOOR, wireDoorJudge, wireDoorRouteJudge, wireDoorRouteRow } from '../src/wire/door.js';
-import { wireDoorRows } from '../src/wire/lists.js';
+import { wireDoorRows, chatLanes, CHAT_LANE_TYPES } from '../src/wire/lists.js';   /* v2.3.5542: + the chat lanes */
 import { WIRE_IN } from '../src/wire/in.js';
 import { makeStorage, openRoom, fakeWs, join, settle } from './testroom.mjs';
 
@@ -190,6 +197,33 @@ async function routeCases(flags) {
   check('6: ...every route request reaches its route, none answered by the door', h.seen.length === 3 && h.bad1 !== 400 && h.bad2 !== 400 && !h.w.room._wireDoorCounts, [h.seen.length, h.bad1, h.bad2]);
   /* the judge itself is unchanged: the switch is read by the room's doors */
   check('6: ...the hostile frames of §1 are still judged when the switch is on again', REFUSED.every(([, msg, want]) => wireDoorJudge(msg) === want));
+}
+
+/* ── 7. v2.3.5542: a relayed event as the page sends it.  The shim turns
+   `{ type: 'broadcast', event }` into `{ type: <event> }` before the wire
+   (wsClient.js), so a relay meets its row by type.  Measured 2026-11-15, when
+   card MOD asked where a silence check goes: a frame that really says
+   `broadcast` reaches no handler; the wire's own form is judged. ── */
+{
+  check('7: the wire\'s form of a relayed event meets its row: a `move` with x 1e999 is refused (number x), a 2,001-character `area_chat` (words text), a `chat` whose text is no string',
+    wireDoorJudge(JSON.parse('{"type":"move","x":1e999,"y":5,"z":"wheel"}')) === 'number x'
+    && wireDoorJudge({ type: 'area_chat', payload: { text: 'x'.repeat(WIRE_DOOR.WORDS_MAX + 1) } }) === 'words text'
+    && wireDoorJudge({ type: 'chat', payload: { text: 5 } }) === 'words text');
+  check('7: ...the page\'s own pass: a move, a chat line, a party line, an emote',
+    wireDoorJudge({ type: 'move', x: 1, y: 2, z: 'wheel', vx: 0, vy: 0 }) === '' && wireDoorJudge({ type: 'chat', payload: { id: 'bp_x', name: 'Ada', text: 'hi', color: '#fff' } }) === ''
+    && wireDoorJudge({ type: 'party_chat', payload: { text: 'hi' } }) === '' && wireDoorJudge({ type: 'emote', payload: { emoji: 1 } }) === '');
+  const w = await newRoom();
+  const s = w.room.sessions.get(w.ws);
+  const sendOne = async (msg) => { s.relayTokens = w.room.RELAY_BURST; s.relayAt = Date.now(); s.chatGuard = null; w.room.eventBuffer.length = 0; await w.room.webSocketMessage(w.ws, JSON.stringify(msg)); await settle(); return w.room.eventBuffer.length; };
+  const bChat = await sendOne({ type: 'broadcast', event: 'area_chat', payload: { text: 'x'.repeat(5000) } });
+  const bStun = await sendOne({ type: 'broadcast', event: 'stunned', payload: { target: 'bp_wd_zzz', duration: 2000 } });
+  check('7: a frame typed `broadcast` (only a script sends one) reaches no handler: nothing queued, nothing counted', bChat === 0 && bStun === 0 && !w.room._wireDoorCounts, { bChat, bStun, counts: w.room._wireDoorCounts });
+  const wChat = await sendOne({ type: 'area_chat', payload: { text: 'x'.repeat(5000) } });
+  check('7: ...the same line in the wire\'s form is refused by the door and counted by its row', wChat === 0 && w.room._wireDoorCounts && w.room._wireDoorCounts['area_chat words'] === 1, w.room._wireDoorCounts);
+  const want = ['chat', 'party_chat', 'area_chat', 'whisper', 'friend_dm', 'store_dm'];
+  check(`7: the chat lanes are the table's rows whose text is words (${[...CHAT_LANE_TYPES].join(', ')}), never join, track, dice or emote`,
+    want.every((n) => CHAT_LANE_TYPES.has(n)) && !['join', 'track', 'dice', 'emote', 'trade2_open'].some((n) => CHAT_LANE_TYPES.has(n)), [...CHAT_LANE_TYPES]);
+  check('7: ...a lane added to the table is one with no other edit', chatLanes({ inn: [{ name: 'zz_lane', trust: { text: 'words' } }], relay: [] }).has('zz_lane'));
 }
 
 console.log(failures ? `\n${failures} FAILED` : '\nALL PASS');

@@ -64,6 +64,12 @@ const SCOPE = [
   { dir: 'icons/items', only: /^(ore-iron|ore-black-steel|ore-obsidian)\.webp$/, always: true },   /* not the trap's box: its pieces are cut from its pixels (p256.js) */
   { dir: 'icons/shards', only: /^shard_[a-z]+\.webp$/, always: true },
   { dir: 'icons/popups', only: /^(heart-256|sword)\.webp$/, always: true },
+  /* v2.3.5258 (card P's backlog, icons-elements): the eight elements' marks
+     drawn after a hit's number (effectsRenderer.js POPUP_ICON_SRC), by name:
+     the 64 px plate icons and the gems' dark and light are not twinned (the
+     plates load their own way, the gems are <img>s).  On 256 colours or
+     fewer already, so their twins are exact. */
+  { dir: 'icons/ui', only: /^elem-(flame|frost|water|venom|flora|stone|storm|wind)\.webp$/, always: true },
 ];
 
 function colourCount(d) {
