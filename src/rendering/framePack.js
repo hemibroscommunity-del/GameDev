@@ -60,6 +60,9 @@ let _budget = UNPACK_MS;
 /** QA (server/test/inflate-raw.test.mjs, v2.3.5561): one strip's pack, as
  *  the line runs it, so a test can lose the chip while it is on its way. */
 export function packStrip(src) { return _pack(src); }
+/** QA (server/test/inflate-raw.test.mjs, v2.3.5561): strips put in the line
+ *  as the chip's drawing puts them, the first packing, the rest waiting. */
+export function queueStrips(list) { for (const s of list) _queue(s); }
 /** QA (server/test/inflate-raw.test.mjs): the spread tried at another budget. */
 export function setUnpackBudget(ms) { _budget = ms > 0 ? ms : UNPACK_MS; }
 
@@ -392,6 +395,10 @@ export function packedFrame(src, sx, sy, sw, sh, who) {
  *  (paletteTex.js's upload). */
 export async function unpackAllFrames() {
   _restores++;   /* v2.3.5561: a pack on its way now is let go (_rebuiltSince) */
+  /* v2.3.5561 (sitting 20's low): and a strip still waiting in the line
+     would begin its pack after this, before the new chip has it: it goes
+     back to waiting for the chip */
+  for (const s of _line.splice(0)) _want.add(s);
   for (const s of [..._packed]) await _unpackSliced(s);
   return 0;
 }

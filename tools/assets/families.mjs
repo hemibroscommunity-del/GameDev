@@ -227,9 +227,9 @@ export const ASSET_FAMILIES = Object.freeze([
   fam('cape', 'supplied', 'public/sprites/traits/cape/*/{east,north,northeast,south,southwest}.png',
     { draw: 'file', loader: 'src/rendering/capeSprites.js', px: 'frame 256x256', note: 'tools/import_cape_green.py from an AI sheet not kept' }),
   fam('cape-hood', 'made', 'public/sprites/traits/cape/*/hood/{east,south,southwest,hairmask-east,hairmask-south,hairmask-southwest}.png',
-    { tool: 'tools/cape/split-cape-hood.py', sources: 'public/sprites/traits/cape/<id>/<dir>.png', draw: 'file', loader: 'src/rendering/capeSprites.js', px: 'frame 256x256', note: 'v2.3.5564: drawn from their twins where colour numbers are drawn (cape-hood-twins); these with ?capehood=0 or ?alphaclip' }),
-  fam('cape-hood-twins', 'made', 'public/sprites/traits/cape/*/hood/*.p256.png',
-    { tool: 'tools/art/reduce256.mjs', sources: 'beside', draw: 'numbers', loader: 'src/rendering/p256.js', px: 'frame 256x256', note: 'v2.3.5564, card P\'s backlog: a cape\'s hood halves (cut to 256 colours) and hair masks (exact) read from their twins by default; listed in src/data/p256Files.js; ?capehood=0' }),
+    { tool: 'tools/cape/split-cape-hood.py', sources: 'public/sprites/traits/cape/<id>/<dir>.png', draw: 'file', loader: 'src/rendering/capeSprites.js', px: 'frame 256x256', note: 'v2.3.5564: the hair masks drawn from their twins where colour numbers are drawn (cape-hood-twins), these with ?capehood=0 or ?alphaclip; the halves, pixel art drawn crisp, stay pictures' }),
+  fam('cape-hood-twins', 'made', 'public/sprites/traits/cape/*/hood/hairmask-*.p256.png',
+    { tool: 'tools/art/reduce256.mjs', sources: 'beside', draw: 'numbers', loader: 'src/rendering/p256.js', px: 'frame 256x256', note: 'v2.3.5564, card P\'s backlog: a cape hood\'s hair masks (exact) read from their twins by default, not the halves (drawn crisp); listed in src/data/p256Files.js; ?capehood=0' }),
   fam('cape-meta', 'data', 'public/sprites/traits/cape/*/meta.json', { tool: 'tools/import_cape_green.py', draw: 'none' }),
 
   /* ── townsfolk: public/sprites/npc/ ── */

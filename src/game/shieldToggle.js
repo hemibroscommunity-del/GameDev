@@ -23,6 +23,7 @@ import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: the shield heard goin
 import { blockRingBus } from '@/ui/mobile/blockRingBus.js';
 import { lockAimPoint, swimRefused /* v2.3.3003 */, dazeRefused /* v2.3.3014 */, airRefused /* v2.3.3017 */ } from '@/game/combatHelpers.js';
 import { isWheelSwimming } from '@/game/wheelSwim.js'; /* v2.3.3003: no button in the water */
+import { guardTo } from '@/game/guardDoor.js'; /* v2.3.5521: the one writer of S._shieldUp (card L PR 5) */
 import { targetCandidates } from '@/game/targeting.js'; /* v2.3.2472: the nearest-monster fallback below */
 import { fightersNear, fightOn, FIGHT_R } from '@/game/sparTargets.js'; /* v2.3.3267: your sparring clones are a fight too; v2.3.3268: and a foe you chose, or the one who attacked you */
 import { act } from '@/game/actions.js';   /* v2.3.5187: the page's requests leave through the action door (card K PR 7) */
@@ -150,7 +151,7 @@ export function raiseShieldToggle(S) {
   S.isSwinging = false;
   S._swingSfxPending = false;
   S._aiming = false;
-  S._shieldUp = true;
+  if (!guardTo(S, 'raise', now)) return false;   /* v2.3.5521: the guard's page door; never refused here (the checks above are its rules) */
   S._shieldAngle = shieldAimAngle(S);
   S.shieldActive = now;
   S._shieldAutoReleased = false;
@@ -169,7 +170,7 @@ export function raiseShieldToggle(S) {
    one guard here does it for all of them. */
 export function dropShield(S, why) {
   if (!S || !S._shieldUp) return false;
-  S._shieldUp = false;
+  guardTo(S, 'drop');   /* v2.3.5521: through the guard's page door */
   S._shieldKb = false;   /* v2.3.1726's desktop mouse-steer stops with it */
   S._shieldMouse = false;   /* v2.3.3847: ...and the right button's toggle: its next press raises it again */
   S.shieldEnd = 0;

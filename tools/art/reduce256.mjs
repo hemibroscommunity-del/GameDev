@@ -96,13 +96,16 @@ SCOPE.push({ dir: 'ui/bars', only: /^(hp-frame|hp-full|node-full-green)\.png$/, 
    (playerDeathSprites.js, 21 frames of 128 px), the fallback drawn when the
    bones' explosion (deathCrumble.js) has no corpse: 38k colours, cut to 256. */
 SCOPE.push({ dir: 'sprites/players', only: /^death-v1\.png$/, always: true });
-/* v2.3.5564 (card P's backlog, cape-hood): a cape's hood, cut from its
-   facings (tools/cape/split-cape-hood.py): the hood halves (1.3k-1.9k
-   colours, cut to 256) and their hair masks (two colours, exact). */
+/* v2.3.5564 (card P's backlog, cape-hood): a cape's hood's hair masks, cut
+   from its facings (tools/cape/split-cape-hood.py): two colours, exact.  Not
+   the hood halves (sitting 20, the planning session's answer (a)): a cape is
+   pixel art drawn crisp (capeSprites.js `nearest`, and sharpPixels.js's read
+   as a piece of the figure), and colour numbers are drawn by a read that
+   blends four texels, which honours neither. */
 {
   const cp = path.join(PUB, 'sprites/traits/cape');
   if (fs.existsSync(cp)) for (const id of fs.readdirSync(cp).sort()) {
-    if (fs.existsSync(path.join(cp, id, 'hood'))) SCOPE.push({ dir: `sprites/traits/cape/${id}/hood`, skip: null, always: true });
+    if (fs.existsSync(path.join(cp, id, 'hood'))) SCOPE.push({ dir: `sprites/traits/cape/${id}/hood`, only: /^hairmask-[a-z]+\.png$/, always: true });
   }
 }
 /* v2.3.5562 (card P's backlog, traits-hairmasks): the hats' hair masks,

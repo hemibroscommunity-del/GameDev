@@ -56,6 +56,7 @@
  */
 import { WHEEL_ZONE } from './wheelzone.js';
 import { bagGive, bagSet, bagTake } from './bag.js'; /* v2.3.4810: the bag door */
+import { xpMake } from './xp.js';   /* v2.3.5289: experience and levels' door (card R PR 10) */
 
 export const TRAPPING = Object.freeze({
   /* The box trap, an ordinary bag item: traded, sold, mailed and dropped like
@@ -204,7 +205,7 @@ export function trapBootstrapGuard(ps) {
   if (!ls || typeof ls !== 'object') return;
   delete ls.pets;
   delete ls.activePet;
-  if (has(ls, 'trapping')) ls.trapping = { level: 1, xp: 0 };
+  if (has(ls, 'trapping')) xpMake(ls, 'trapping', 1, 'trap_bootstrap');   /* v2.3.5289: the experience door */
 }
 
 export const trappingMethods = {
@@ -240,7 +241,7 @@ export const trappingMethods = {
     if (!ps.lifeSkills || typeof ps.lifeSkills !== 'object') ps.lifeSkills = {};
     const s = has(ps.lifeSkills, skill) ? ps.lifeSkills[skill] : undefined;
     if (s !== undefined && (s === null || typeof s !== 'object' || Array.isArray(s))) {
-      ps.lifeSkills[skill] = { level: 1, xp: 0 };
+      xpMake(ps.lifeSkills, skill, 1, 'trap_ready');   /* v2.3.5289: the experience door */
     }
   },
 

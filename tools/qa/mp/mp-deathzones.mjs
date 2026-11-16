@@ -50,8 +50,8 @@
  *      deaths - doesn't match the art aesthetic."): sections 1-11 run with
  *      the splat off (window.__btSlimeSplat = false, as ?slimesplat=0), so
  *      the slime's zone death they check is still the off-ramp's; here it
- *      is on, and every slime-sheet body -- the slime, the blue, moss and
- *      mire-wisp looks, unforced, forced `own`, `slice` or `normal`, a crit,
+ *      is on, and every slime-sheet body -- the slime, the blue and moss
+ *      looks (v2.3.5436: the mire wisp is the rotcap now), unforced, forced `own`, `slice` or `normal`, a crit,
  *      and a blue slime's burst -- squashes flat and fades in about half a
  *      second: kind `splat`, no pieces, no material bursts, then let go; a
  *      skeleton killed beside it still dies in its pieces.  The before and
@@ -490,7 +490,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
         ['slime', null, 'normal', { hit: { isCrit: true } }, 'a slime, the strip forced, by a crit'],
         ['blueslime', 'blueSlime', null, {}, 'a blue slime'],
         ['mossslime', 'mossSlime', null, {}, 'a moss slime'],
-        ['mirewisp', 'mireWisp', null, {}, 'a mire wisp'],
+        /* v2.3.5436 (card J2): no `mireWisp` -- since v2.3.4357 it is the rotcap, no longer a slime, and dies its own strip on
+           every kill (`deathStripOnly`), never a splat or a cut one: mp-rotcap 5 asks that (red here on main each run, no
+           death of the kinds this one reads; as v2.3.4355 took out the fishman, above) */
         ['burst', 'blueSlime', null, { burst: true }, 'a blue slime going off (its burst)'],
       ];
       for (const [key, variant, kind, o, label] of CASES) {

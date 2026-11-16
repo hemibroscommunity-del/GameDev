@@ -30,6 +30,38 @@
  * input gate stays closed between validation and commit (rule 9). */
 
 import { rewindPlan, rewindDo } from './restore.js';   /* v2.3.5288: the room's way back (card R PR 9) */
+import { playerRestore, snapshotCopy } from './playerrestore.js';   /* v2.3.5285: a player's restore from the registry (card R PR 6) */
+import * as FLOOD_NS from './flood.js';   /* v2.3.5583: the address (requestIp), and its /64 (ipKey) once the /64 change (PR #1875) is in */
+
+/* ═══ v2.3.5583: THE ADMIN KEY'S TIME-OUT (red team RT-1, finding N7) ═══
+ * The red team's local run: 5,000 wrong keys in half a second, every one a
+ * plain 401, no lockout, no log -- then the right key.  A key of 30 random
+ * characters (OPERATIONS.md) is not guessed that way; a word or a short
+ * password is, and one key does everything (gold, any character's login,
+ * every switch, the room's rewind).  So an address that sends MISSES wrong
+ * keys within WINDOW_MS is TIMED OUT for HOLD_MS: its asks are answered 429
+ * with the minutes left, the key not even checked (a held address learns
+ * nothing).  A TIME-OUT, NEVER A BAN: it lifts by itself after HOLD_MS, a
+ * deploy or a restart clears it (memory only, nothing stored), another
+ * address -- the owner's phone on its own line -- is never held by this one's
+ * misses, and the right key clears its address's count.  The compare stays
+ * by digest (_phraseHash).  An IPv6 address counts by its /64 once
+ * the /64 change's ipKey (PR #1875) is on this worker.  An ask with no address (a local
+ * test) is never held.  Kill switch `adminlock: false`. */
+export const ADMIN_LOCK = Object.freeze({
+  MISSES: 10,
+  WINDOW_MS: 10 * 60000,
+  HOLD_MS: 15 * 60000,
+  /* addresses kept at once; past it the quietest goes first */
+  MAP_CAP: 1024,
+});
+
+/** The address an admin ask came from, as the time-out counts it, or null. */
+export function adminAddress(request, by64) {
+  const ip = FLOOD_NS.requestIp(request);
+  if (!ip) return null;
+  return by64 && typeof FLOOD_NS.ipKey === 'function' ? FLOOD_NS.ipKey(ip) : ip;
+}
 
 /* v2.3.1617: every non-dated `rpgsnap:<pid>:` suffix in the repo.  These are
    "parachute" snapshots -- taken immediately before something destructive --
@@ -52,15 +84,256 @@ export const SNAPSHOT = {
                                  // real daily snapshots first)
 };
 
+/* ═══ v2.3.5286: THE PAGED EXPORT (card R PR 7; grand plan step 4.7) ═══
+ * The owner's copy of the room's records, a page at a time, behind the admin
+ * key: GET /api/admin/export?prefix=<a registry prefix>, or ?player=<an id>
+ * for one character's own records, with `cursor` (the last key of the page
+ * before: its answer's `next`) and `limit` (EXPORT.LIMIT, at most
+ * EXPORT.MAX).  Read only: it writes nothing, not even its own log line.
+ *
+ *   - AN ALLOW LIST (the gatekeeper's medium, sitting 16: a list of what it
+ *     never gives, written by hand, would give a new secret record by
+ *     default, and gave the device ids in `device:`, `lspin:` and
+ *     `botstat:`).  It gives only the registry's prefixes in EXPORT.ALLOW,
+ *     chosen one by one: a character's own records a copy of them needs, and
+ *     every record that holds the world's value.  Anything else -- a prefix
+ *     marked since, a record no mark owns, the logins (`auth:`, `keyidx:`),
+ *     the device ids and anti-bot evidence (`device:`, `lspin:`,
+ *     `botstat:`), the words players send each other, a wallet's address,
+ *     the hidden settings, the live flags, the owner's log -- is refused
+ *     when asked for by name (a 400), and left out of a page that meets it
+ *     (counted in `skipped`).  EXPORT.KEPT_OUT says why for each of a
+ *     character's records left out.
+ *   - A VALUE IT MUST NOT GIVE inside a record it gives is masked on the
+ *     page's copy (EXPORT_MASKS: a login-wheel pot's opId in the mail holds
+ *     a device id), never in storage.
+ *   - A READ THE OWNER PAYS FOR each time it runs: a page reads up to its
+ *     `limit` rows (`read` in the answer), and the whole room once over is
+ *     every row it holds.  It costs only when the owner runs it, behind the
+ *     admin key, so it is ON (the owner, 2026-11-14, on the planning
+ *     session's recommendation: "Just go recommended"); `roomexport: false`
+ *     in the live flags turns it off (liveops.js _roomExportOff).
+ *
+ * Held by server/test/room-export.test.mjs.  The restore that would read
+ * such a copy back is not built (a page is the owner's to keep). */
+import { STORAGE_MARKS, marksOf } from './storagemarks.js';
+
+export const EXPORT = Object.freeze({
+  LIMIT: 50,
+  MAX: 200,
+  /* WHAT IT GIVES, one by one (a registry prefix, as STORAGE_MARKS spells it).
+     A new mark is not given until it is added here. */
+  ALLOW: Object.freeze([
+    /* a character's own: what a copy of them needs */
+    'rpg:', 'bank:', 'inbox:', 'pets:', 'gear_prov:', 'char:', 'rpgsnap:', 'rpgsnap_at:',
+    'codex:', 'fishlog:', 'achv:', 'life:', 'aponce:', 'guild_claims:', 'gearlock:', 'nml_state:',
+    'farm:', 'farmorders:', 'harden_ledger:', 'frozen:', 'testmode:', 'cadence:', 'daily_rewards:',
+    'acc:', 'friends:', 'chat_mute:', 'chain_score:', 'clan_by_player:', 'party_by_player:',
+    /* the world's value held between players, or by the room */
+    'mkt_order:', 'store_listing:', 'duelEscrow:', 'arena_entry:', 'arena_stake:', 'bounty:',
+    'jackpot:draw', 'trade2wpn:', 'death_pile:', 'shop_stock',
+  ]),
+  /* a character's records it keeps out, and why (the suite holds that every
+     character's record is in one list or the other) */
+  KEPT_OUT: Object.freeze({
+    'auth:': 'the login: the phrase\'s fingerprint, the keys\' and the devices\'',
+    'keyidx:': 'a login key\'s fingerprint, to its character',
+    'botstat:': 'anti-bot evidence: device fingerprints and the signals\' numbers',
+    'lspin:': 'keyed by a device\'s id',
+    'friend_msg:': 'the words one player sent another',
+    'bro_link:': 'a wallet\'s address',
+  }),
+  ID_RE: /^[A-Za-z0-9_.-]{1,120}$/,
+  CURSOR_MAX: 400,
+});
+
+/* v2.3.5286 (the gatekeeper's second medium, sitting 17, verified by a node
+   probe): a record the list gives may still hold a value it must not give.
+   One today: a mail entry's opId from the login wheel's pot is
+   'loginspin:d:<device id>:<day>' (loginspin.js _loginSpinAcct: the wheel
+   counts a DEVICE as one account), so a device id rode out in `inbox:`.  The
+   export masks it on its copy; the stored opId is never changed (a pot
+   retried after a deploy finds its stamp by that exact id: changed, it
+   would pay twice).  Each mask: the prefix of the records it reads, and a
+   function from a record to its copy for the page. */
+const DEVICE_OPID = /^(loginspin:d:)[^:]*(:.*)?$/;
+export const EXPORT_MASKS = Object.freeze({
+  'inbox:': (v) => (Array.isArray(v) ? v.map((e) => (e && typeof e === 'object' && typeof e.opId === 'string' && DEVICE_OPID.test(e.opId)
+    ? { ...e, opId: e.opId.replace(DEVICE_OPID, (m, a, b) => a + 'masked' + (b || '')) } : e)) : v),
+});
+
+/** A record as a page gives it: masked by EXPORT_MASKS where its prefix has one. */
+export function exportMasked(key, v) {
+  for (const p of Object.keys(EXPORT_MASKS)) if (typeof key === 'string' && key.startsWith(p)) return EXPORT_MASKS[p](v);
+  return v;
+}
+
+/* the marks the list allows: a key is given only when the mark that owns it
+   (the longest marked prefix it starts with, storagemarks.js marksOf) is one */
+const ALLOWED_MARKS = new Set(EXPORT.ALLOW.map((p) => STORAGE_MARKS[p]).filter(Boolean));
+
+/* a character's records keyed other than `<prefix><id>`: the snapshots'
+   ring (`rpgsnap:<id>:<day>`) and the login streak (`cadence:login:<id>`,
+   the one scope today) */
+const PLAYER_KEY_WAYS = Object.freeze({
+  'rpgsnap:': (id) => ({ list: 'rpgsnap:' + id + ':' }),
+  'cadence:': (id) => ({ key: 'cadence:login:' + id }),
+});
+
+/** True only for a key the allow list gives (EXPORT.ALLOW, by the mark that
+ *  owns it): an unmarked key, or one a mark off the list owns, is false. */
+export function exportAllowed(key) {
+  return typeof key === 'string' && ALLOWED_MARKS.has(marksOf(key));
+}
+
+/** What a page reads: `{sources: [{key} | {list}], prefix?, player?}`, in key
+ *  order, or `{error, words}`. */
+export function exportSources(q) {
+  const prefix = q && typeof q.prefix === 'string' && q.prefix !== '' ? q.prefix : null;
+  const player = q && typeof q.player === 'string' && q.player !== '' ? q.player : null;
+  if (!prefix === !player) return { error: 'ask', words: 'Say one of prefix (a registry prefix, as `rpg:`) or player (a character\'s id).' };
+  if (prefix) {
+    if (!Object.prototype.hasOwnProperty.call(STORAGE_MARKS, prefix)) return { error: 'prefix', words: 'Not a prefix the registry marks (storagemarks.js STORAGE_MARKS).' };
+    if (!EXPORT.ALLOW.includes(prefix)) return { error: 'never', words: 'The export gives only the records on its list (admin.js EXPORT.ALLOW): never the logins, device ids, anti-bot evidence, players\' words, the hidden settings or the room\'s own books.' };
+    return { prefix, sources: [prefix.endsWith(':') ? { list: prefix } : { key: prefix }] };
+  }
+  if (!EXPORT.ID_RE.test(player)) return { error: 'player', words: 'A character\'s id: letters, digits, `_`, `.` or `-`.' };
+  const sources = [];
+  for (const p of EXPORT.ALLOW) {
+    if (!STORAGE_MARKS[p] || STORAGE_MARKS[p].whose !== 'player') continue;
+    sources.push(PLAYER_KEY_WAYS[p] ? PLAYER_KEY_WAYS[p](player) : { key: p + player });
+  }
+  const at = (s) => s.key || s.list;
+  sources.sort((a, b) => (at(a) < at(b) ? -1 : at(a) > at(b) ? 1 : 0));
+  return { player, sources };
+}
+
+/** One page: `{ok, rows: [{k, v}], read, skipped, next}`.  `next` is the
+ *  last key read when the page is full (ask again with it as `cursor`; the
+ *  last page may come back empty), null when nothing is left. */
+export async function exportPage(storage, q) {
+  const s = exportSources(q);
+  if (s.error) return { ok: false, error: s.error, words: s.words };
+  let limit = q.limit === undefined || q.limit === null || q.limit === '' ? EXPORT.LIMIT : Math.floor(Number(q.limit));
+  if (!Number.isFinite(limit)) return { ok: false, error: 'limit', words: 'limit: a number.' };
+  limit = Math.max(1, Math.min(EXPORT.MAX, limit));
+  const cursor = q.cursor === undefined || q.cursor === null || q.cursor === '' ? null : q.cursor;
+  if (cursor !== null && (typeof cursor !== 'string' || cursor.length > EXPORT.CURSOR_MAX
+    || !s.sources.some((x) => (x.key ? x.key === cursor : cursor.startsWith(x.list))))) {
+    return { ok: false, error: 'cursor', words: 'cursor: the `next` an earlier page of this same ask gave.' };
+  }
+  const got = [];
+  let i = 0;
+  while (i < s.sources.length && got.length < limit) {
+    const x = s.sources[i];
+    if (x.list) {
+      i++;
+      /* a cursor inside this range starts after it; one past the range skips it */
+      if (cursor !== null && !cursor.startsWith(x.list) && cursor > x.list) continue;
+      const opt = { prefix: x.list, limit: limit - got.length };
+      if (cursor !== null && cursor.startsWith(x.list)) opt.startAfter = cursor;
+      for (const [k, v] of await storage.list(opt)) got.push([k, v]);
+    } else {
+      /* a run of single keys, one read for the run */
+      const run = [];
+      while (i < s.sources.length && s.sources[i].key && run.length < limit - got.length) {
+        const k = s.sources[i++].key;
+        if (cursor === null || k > cursor) run.push(k);
+      }
+      if (run.length) {
+        const m = await storage.get(run);
+        for (const k of run) if (m && m.has(k)) got.push([k, m.get(k)]);
+      }
+    }
+  }
+  const own = s.prefix ? STORAGE_MARKS[s.prefix] : null;
+  const rows = [];
+  let skipped = 0;
+  for (const [k, v] of got) {
+    if (!exportAllowed(k) || (own && marksOf(k) !== own)) { skipped++; continue; }
+    rows.push({ k, v: exportMasked(k, v) });
+  }
+  return {
+    ok: true, ...(s.prefix ? { prefix: s.prefix, marks: { value: own.value, whose: own.whose } } : { player: s.player }),
+    rows, read: got.length, skipped, limit, next: got.length >= limit ? got[got.length - 1][0] : null,
+  };
+}
+
 export const adminMethods = {
-  async _adminAuth(request) {
+  /* 'ok', 'denied', 'unconfigured', or (v2.3.5583) 'held': this address is
+     in its time-out (ADMIN_LOCK above).  `xKey`: botfp.js's surface also
+     takes the key in `x-admin-key` (v2.3.3323), through this same door. */
+  async _adminAuth(request, xKey) {
     const key = this.env && this.env.ADMIN_KEY;
     if (!key) return 'unconfigured';
     const auth = request.headers.get('Authorization') || '';
-    const supplied = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+    const supplied = auth.startsWith('Bearer ') ? auth.slice(7) : (xKey ? (request.headers.get('x-admin-key') || '') : '');
     if (!supplied) return 'denied';
+    const now = Date.now();
+    const at = this._adminLockOn() ? adminAddress(request, typeof this._ip64On !== 'function' || this._ip64On()) : null;
+    if (at && this._adminHeldFor(at, now) > 0) { this._adminLockTally('refused'); return 'held'; }
     const [a, b] = await Promise.all([this._phraseHash(supplied), this._phraseHash(key)]);
-    return a === b ? 'ok' : 'denied';
+    if (a === b) { if (at && this._adminMisses) this._adminMisses.delete(at); return 'ok'; }
+    this._adminLockTally('wrong');
+    if (at) this._adminMiss(at, now);
+    return 'denied';
+  },
+
+  /* v2.3.5583: the kill switch, read the lower-case way (TRAPS §117) */
+  _adminLockOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'adminlock') && !f.adminlock);
+  },
+
+  /* ms left of this address's time-out (0: not held).  A time-out past is
+     forgotten here. */
+  _adminHeldFor(at, now) {
+    const m = this._adminMisses;
+    const e = m && m.get(at);
+    if (!e || !e.until) return 0;
+    if (e.until > now) return e.until - now;
+    m.delete(at);
+    return 0;
+  },
+
+  /* one wrong key from `at`: counted in its window; the MISSES-th within
+     WINDOW_MS starts its time-out */
+  _adminMiss(at, now) {
+    if (!this._adminMisses) this._adminMisses = new Map();
+    const m = this._adminMisses;
+    let e = m.get(at);
+    if (!e || now - e.first > ADMIN_LOCK.WINDOW_MS) {
+      if (!e && m.size >= ADMIN_LOCK.MAP_CAP) {
+        /* the quietest goes: one not held and longest since its first miss */
+        let quiet = null, qAt = Infinity;
+        for (const [k, v] of m) if (!(v.until > now) && v.first < qAt) { quiet = k; qAt = v.first; }
+        m.delete(quiet !== null ? quiet : m.keys().next().value);
+      }
+      e = { n: 0, first: now, until: 0 };
+    }
+    e.n += 1;
+    if (e.n >= ADMIN_LOCK.MISSES) {
+      e.until = now + ADMIN_LOCK.HOLD_MS;
+      e.n = 0; e.first = now;
+      this._adminLockTally('held');
+      try { console.warn('[admin] an address sent ' + ADMIN_LOCK.MISSES + ' wrong keys: timed out for ' + (ADMIN_LOCK.HOLD_MS / 60000) + ' min'); } catch (er) { /* no console */ }
+    }
+    m.set(at, e);
+  },
+
+  _adminLockTally(k) {
+    const c = this._adminLockCount || (this._adminLockCount = { wrong: 0, held: 0, refused: 0 });
+    c[k] = (c[k] || 0) + 1;
+  },
+
+  /* the overview's line: wrong keys, time-outs started and asks refused
+     since this worker started, and the addresses in a time-out now */
+  _adminLockInfo() {
+    const c = this._adminLockCount || { wrong: 0, held: 0, refused: 0 };
+    const now = Date.now();
+    let heldNow = 0;
+    if (this._adminMisses) for (const [, e] of this._adminMisses) if (e.until > now) heldNow++;
+    return { on: this._adminLockOn(), wrong: c.wrong, held: c.held, refused: c.refused, heldNow, misses: ADMIN_LOCK.MISSES, windowMin: ADMIN_LOCK.WINDOW_MS / 60000, holdMin: ADMIN_LOCK.HOLD_MS / 60000 };
   },
 
   /* ═══ v2.3.3356: PUT OUT, AND OUT OF THE WORLD ═══
@@ -95,7 +368,10 @@ export const adminMethods = {
       if (typeof last === 'number' && now - last < SNAPSHOT.INTERVAL_MS) return;
       const d = new Date(now);
       const ymd = d.getUTCFullYear() * 10000 + (d.getUTCMonth() + 1) * 100 + d.getUTCDate();
-      await this.state.storage.put('rpgsnap:' + playerId + ':' + ymd, storedBlob);
+      /* v2.3.5285: with `fullsnap: true` the copy carries the player's other
+         restored records too (playerrestore.js snapshotCopy: the vault and
+         the pets under `_with`; two rows more read, OFF by default) */
+      await this.state.storage.put('rpgsnap:' + playerId + ':' + ymd, await snapshotCopy(this, playerId, storedBlob));
       await this.state.storage.put('rpgsnap_at:' + playerId, now);
       // Prune the ring.  v2.3.1179: the two key classes prune
       // SEPARATELY.  The old single sorted list was wrong: 'prerestore-'
@@ -142,6 +418,13 @@ export const adminMethods = {
       // Unconfigured key -> the surface doesn't exist.  Wrong/missing
       // key -> 401 so the owner can tell a typo from a bad URL.
       if (auth === 'unconfigured') return json({ ok: false, error: 'Not found' }, 404);
+      /* v2.3.5583: an address in its time-out is told how long, and nothing
+         else (the key was not checked) */
+      if (auth === 'held') {
+        const mins = Math.max(1, Math.ceil(this._adminHeldFor(adminAddress(request, typeof this._ip64On !== 'function' || this._ip64On()), Date.now()) / 60000));
+        return new Response(JSON.stringify({ ok: false, error: 'held', words: 'Too many wrong keys from this address: try again in ' + mins + ' minute(s), or from another connection.' }),
+          { status: 429, headers: { ...H, 'Retry-After': String(mins * 60) } });
+      }
       if (auth !== 'ok') return json({ ok: false, error: 'Unauthorized' }, 401);
 
       if (request.method === 'GET' && path === '/overview') {
@@ -183,6 +466,9 @@ export const adminMethods = {
           deviceLock: this._deviceLockInfo(),
           /* v2.3.3355: new Login Keys (loginkeys.js) */
           loginKeys: this._keysInfo ? this._keysInfo() : null,
+          /* v2.3.5583: the admin key's time-out -- wrong keys, time-outs
+             started, asks refused, addresses held now (ADMIN_LOCK above) */
+          adminLock: this._adminLockInfo(),
           /* v2.3.3240: the 2 s look relay -- tracks in, and how many went out
              whole, as only what changed, or not at all (lookrelay.js) */
           lookRelay: this._lookInfo(),
@@ -352,6 +638,18 @@ export const adminMethods = {
         });
       }
 
+      /* v2.3.5286: THE PAGED EXPORT (exportPage above; card R PR 7): a page
+         of records by a registry prefix or by one character, never a login
+         key or the hidden settings.  On; `roomexport: false` turns it off
+         (a read the owner pays for each time it runs). */
+      if (request.method === 'GET' && path === '/export') {
+        if (this._roomExportOff()) return json({ ok: false, error: 'off', words: 'The export is off: `roomexport: false` is in the live flags (clear it to use the export).' }, 409);
+        const q = {};
+        for (const n of ['prefix', 'player', 'cursor', 'limit']) { const v = url.searchParams.get(n); if (v !== null) q[n] = v; }
+        const r = await exportPage(this.state.storage, q);
+        return json(r, r.ok ? 200 : 400);
+      }
+
       /* v2.3.2240: the owner's test kit.  Routed FIRST so it inherits the
          auth and fail-closed 404 above; returns null when the path is not
          its own, and falls through to the routes below. */
@@ -401,32 +699,21 @@ export const adminMethods = {
         return json({ ok: true });
       }
 
+      /* v2.3.5285 (card R PR 6): THE PLAYER'S RESTORE, MADE FROM THE REGISTRY
+         (playerrestore.js): every record of theirs the copy holds, through
+         the doors (the difference booked: the world's sum stays balanced),
+         the `prerestore-` copy of all it overwrites in the same run of
+         writes, a newer worker's record refused, and what of theirs is held
+         between players named in the answer.  `dry: true` writes nothing.
+         The refusals are the same words as before (player online, still in
+         the world, no snapshot). */
       if (request.method === 'POST' && path === '/restore') {
-        const body = await request.json();
-        const { playerId, snapKey } = body || {};
-        if (!playerId || !snapKey || !snapKey.startsWith('rpgsnap:' + playerId + ':')) {
-          return json({ ok: false, error: 'playerId + a matching snapKey required' }, 400);
-        }
-        // A live session's next _saveRpg would clobber the restore --
-        // kick first, deliberately manual (the operator should know
-        // the player is being reverted).
-        if (this._wsBySessionId(playerId)) return json({ ok: false, error: 'player online -- kick first' }, 409);
-        /* v2.3.4413: ...and while the player is still IN THE ROOM.  A kick
-           during a fight with another player leaves the body standing for
-           20 s (linger.js), and its end saves that body over the restore --
-           which had answered ok, the prerestore copy holding the broken
-           record (state-machine sweep V3, S2-21).  Refused in plain words;
-           the owner waits and presses Restore again (OPERATIONS.md). */
-        if (this.playerState[playerId]) return json({ ok: false, error: 'player still in the world (a body left in a fight stays up to 20 seconds) -- wait 20 seconds, then restore again' }, 409);
-        const snap = await this.state.storage.get(snapKey);
-        if (!snap) return json({ ok: false, error: 'snapshot not found' }, 404);
-        // NEVER destroy data during recovery: current blob is saved as
-        // a prerestore snapshot before being overwritten.
-        const current = await this.state.storage.get('rpg:' + playerId);
-        if (current) await this.state.storage.put('rpgsnap:' + playerId + ':prerestore-' + Date.now(), current);
-        await this.state.storage.put('rpg:' + playerId, snap);
-        await this._adminLog({ op: 'restore', playerId, snapKey });
-        return json({ ok: true, restoredFrom: snapKey });
+        let body = null;
+        try { body = await request.json(); } catch (e) { body = null; }
+        const r = await playerRestore(this, body);
+        const { status, ...out } = r;
+        if (r.ok && !r.dry) await this._adminLog({ op: 'restore', playerId: body.playerId, snapKey: body.snapKey, restored: r.restored, copy: r.copy });
+        return json(out, status || 200);
       }
 
       /* v2.3.5288: THE ROOM'S WAY BACK (restore.js; card R PR 9): the whole

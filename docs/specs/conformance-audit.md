@@ -163,6 +163,15 @@ carries a literal-prefix opId or its file is allowlisted; no stale
 allowlist entries (each excused file still contains a non-literal
 site).
 
+**v2.3.5291 (card R, the sitting 20 review): `this._creditWith(` too.**
+The credit that carries its caller's own writes in the same run
+(`inbox.js`; called by `storeoffer.js`'s offer and, with `xferescrow` on,
+`duel.js`'s pot) is the same idempotency wall, and this audit read
+`_creditPlayer(` only: a later edit of its opId would have passed unseen.
+Both are read now, a floor of ≥2 `_creditWith` sites keeps it from rotting,
+and `gold-door.test` §8 reads it too (each credit classed by its opId's
+first word). Break proof: `duel.js`'s pot opId made a variable fails both.
+
 **OPID_ALLOWLIST:**
 
 | File | Why |
