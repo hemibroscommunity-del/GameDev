@@ -35,6 +35,15 @@
  *   - holds the stamina regen off for REGEN_PAUSE_MS (index.js
  *     _tickPlayerRegen, both arms), as a held shield does -- a sprint that
  *     refilled as it drained would never end.
+ * v2.3.5541, THE SPRINT MARK (`sprintmark: true`, an opt-in the owner keeps
+ * off for now): a move on the grace's wide bound below that NEEDED it (more
+ * than the walk's own budget held: movement.js) is billed as it moves and
+ * keeps the run, so marking only some moves buys no free sprint; a move
+ * that did not need it ends the run as described here (_sprintPay).  And
+ * the sprint's bound is given only to a move this worker bills
+ * (_sprintBilled): the rest, a run's first step among them unless the walk
+ * cannot cover it, are judged at the walk (movement.js), so the grace's
+ * wide bound at zero, and the budget it refilled, buy nothing unpaid.
  * At zero the sprint is over: the next marked move is an ordinary one.  The
  * client stops on its own bar (its prediction, then this worker's
  * player_state), and for GRACE_MS after the last paid step the bound stays
@@ -114,7 +123,7 @@ export const sprintMethods = {
     /* Was the move before this one a paid sprint step?  Asked of EVERY move,
        so any other move in between -- a rest packet, a keepalive, a walk, a
        refused move -- ends the run and the gap before it is not billed. */
-    ps._sprintPrevPaid = !!ps._sprintLastPaid;
+    ps._sprintPrevPaid = ps._sprintLastPaid || false;   /* v2.3.5541: true, or 'carry' (a grace move kept the run); movement.js sets 'first' */
     ps._sprintLastPaid = false;
     /* what happened to the moves, for the admin view (QA: mp-sprint) */
     const d = ps._sprintTally || (ps._sprintTally = { moves: 0, marked: 0, steps: 0, paid: 0, still: 0, ms: 0 });
@@ -125,25 +134,86 @@ export const sprintMethods = {
       d.steps++;
       return SPRINT.MULT;
     }
-    if (ps._sprintAt && now - ps._sprintAt < SPRINT.GRACE_MS && !this._sprintOff() && !ps._ride) return SPRINT.MULT;
+    if (ps._sprintAt && now - ps._sprintAt < SPRINT.GRACE_MS && !this._sprintOff() && !ps._ride) {
+      /* v2.3.5541: a move on the grace's wide bound is paid for too, if it
+         moves (_sprintPay: it bills nothing itself, and keeps the run going) */
+      if (this._sprintMarkOn()) ps._sprintStep = 'grace';
+      return SPRINT.MULT;
+    }
     return 1;
+  },
+
+  /* v2.3.5541: the sprint mark's switch, OFF until the owner says yes (an
+     honest re-press inside the grace pays for the gap: something a player
+     can feel, so the owner's call -- the planning session, 2026-11-14):
+     only `sprintmark: true` in the live flags turns it on.  Off, a move on
+     the grace's wide bound ends the run, as before (the hole open) */
+  _sprintMarkOn() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && own(f, 'sprintmark') && f.sprintmark === true);
+  },
+
+  /* v2.3.5541: with the sprint mark, is this move one the worker bills, and
+     so judged at the sprint's bound (movement.js)?  A sprint step in a run
+     under way (the move before it billed or carried), or a grace move that
+     needed the wide bound, in a run under way, with stamina to take (a
+     carry).  A run's first step bills nothing (standing still is never
+     billed), so it is judged at the walk -- the budget's burst covers an
+     honest one -- unless the walk cannot cover it (movement.js: then its
+     run is 'first', and it is billed its own gap). */
+  _sprintBilled(ps, needed) {
+    if (!ps || !ps._sprintStep || !ps._sprintPrevPaid) return false;
+    if (ps._sprintStep === true) return true;
+    return !!needed && typeof ps.stamina === 'number' && ps.stamina > 0;
   },
 
   /* The move was accepted and moved the player `dist` px: pay for the step.
      Whole points come off the pool (the client's bar shows whole numbers and
      player_state carries what changed); the fraction is carried over. */
-  _sprintPay(ps, dist, now, pid) {
+  _sprintPay(ps, dist, now, pid, needed) {
     if (!ps || !ps._sprintStep) return;
+    /* ═══ v2.3.5541 (card K, step 4.2: the claims' bench found it): THE RUN
+       GOES ON THROUGH THE GRACE -- an opt-in, `sprintmark: true` (the owner:
+       off for now) ═══
+       With it off (as it lands), a move between two marked ones rides the
+       grace's wide bound (GRACE_MS after the last paid step) and ENDS the run,
+       so the next marked one bills nothing: a sprint marked on every other
+       move keeps the sprint's speed and spends no stamina (the bench's move
+       liar).  With it on, a move on the grace's bound that NEEDED it (it
+       covered more than the walk's own budget would hold: movement.js's
+       `needed`) is billed its own gap as it moves, and keeps the run, as if it
+       had been marked; it does not re-arm the grace.  A move that did not
+       need it -- the walk after letting go, the rest packet as a player
+       stops, a keepalive, a pause, a roll -- ends the run as before and bills
+       nothing, so an honest sprint is billed exactly as with it off (the
+       review of sitting 16: the old carry billed a pause up to ~10, and one
+       mark every 1.5 s still ran free; both closed here, sprint.test §11). */
+    if (ps._sprintStep === 'grace') {
+      ps._sprintStep = false;
+      if (!(needed && dist > 0.5 && ps._sprintPrevPaid)) return;
+      ps._sprintLastPaid = 'carry';
+      this._sprintBill(ps, now, pid);
+      return;
+    }
     ps._sprintStep = false;
     const d = ps._sprintTally;
     if (!(dist > 0.5)) { if (d) d.still++; return; }
-    /* the time since the move before, if that one was a paid sprint step:
-       he ran through it.  The first step of a run bills nothing. */
-    const last = ps._sprintAt || 0;
-    const ms = ps._sprintPrevPaid && last ? Math.max(0, Math.min(now - last, SPRINT.STEP_MAX_MS)) : 0;
     ps._sprintAt = now;
     ps._sprintLastPaid = true;
-    if (d) { d.paid++; d.ms += ms; }
+    if (d) d.paid++;
+    this._sprintBill(ps, now, pid);
+  },
+
+  /* The time since the last billed move, if the move before this one was in
+     the run (a paid step, or with the sprint mark on a carried one): he ran
+     through it.  The first step of a run bills nothing.  Whole points come
+     off the pool; the fraction is carried over. */
+  _sprintBill(ps, now, pid) {
+    const last = ps._sprintBilledAt || 0;
+    const ms = ps._sprintPrevPaid && last ? Math.max(0, Math.min(now - last, SPRINT.STEP_MAX_MS)) : 0;
+    ps._sprintBilledAt = now;
+    const d = ps._sprintTally;
+    if (d) d.ms += ms;
     ps._sprintOwed = (ps._sprintOwed || 0) + (ms / 1000) * SPRINT.DRAIN_PER_S;
     const whole = Math.floor(ps._sprintOwed);
     if (whole < 1) return;
@@ -168,8 +238,14 @@ export const sprintMethods = {
     return !!(ps && ps._sprintAt && now - ps._sprintAt < SPRINT.WIRE_MS);
   },
 
-  /* Is the regen held off for a sprint (index.js _tickPlayerRegen)? */
+  /* Is the regen held off for a sprint (index.js _tickPlayerRegen)?
+     v2.3.5541: ...or within it of a carried move's bill (the sprint mark:
+     _sprintBilledAt is the last billed move's, a carry's too; without the
+     mark only a paid step bills, so it is _sprintAt's).  A run carried
+     between sparse marks refilled as it was billed: a mark every 1.4 s left
+     0.4 s of each unheld (the claims' bench at the worker's 22 ms tick). */
   _sprintHoldsRegen(ps, now) {
-    return !!(ps && ps._sprintAt && now - ps._sprintAt < SPRINT.REGEN_PAUSE_MS);
+    return !!(ps && ((ps._sprintAt && now - ps._sprintAt < SPRINT.REGEN_PAUSE_MS)
+      || (ps._sprintBilledAt && now - ps._sprintBilledAt < SPRINT.REGEN_PAUSE_MS)));
   },
 };

@@ -82,7 +82,7 @@ check('8a forge: wanted while smith_2 is active and unforged, not after', G.forg
 check('8b forge: points at the Forge tab, nothing when it is the open tab', G.guideTargets('forge', {}, () => false)[0] === '[data-smithy-tab="forge"]' && G.guideTargets('forge', {}, (s) => /data-on/.test(s)).length === 0);
 check('6a body-level, no pointer events, no CSS filter, ?guidearrow=0, the per-character key in try/catch',
   /document\.body\.appendChild\(el\)/.test(src) && /pointerEvents = 'none'/.test(src) && !/\.filter\s*=/.test(src)
-    && /get\('guidearrow'\) === '0'/.test(src) && /'bt_guideArrow:'/.test(src) && /try \{ const v = JSON\.parse\(localStorage\.getItem/.test(src));
+    && /sw\('guidearrow'\)/.test(src) && /'bt_guideArrow:'/.test(src) && /try \{ const v = JSON\.parse\(localStorage\.getItem/.test(src));
 check('6b QuestCoach mounts it', /return startGuideArrow\(/.test(coach));
 
 if (failures) { console.log(failures + ' FAILED'); process.exit(1); }

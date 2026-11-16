@@ -609,8 +609,11 @@ export const botfpMethods = {
        teaches.  The anti-bot review found the odd header out was why nobody
        could read these. */
     if (!key) return notFound();
-    const viaHeader = request.headers.get('x-admin-key') === key;
-    if (!viaHeader && !(typeof this._adminAuth === 'function' && (await this._adminAuth(request)) === 'ok')) return notFound();
+    /* v2.3.5583: both headers through the admin door (admin.js _adminAuth):
+       compared by digest, and counted toward its time-out -- `x-admin-key`
+       was a plain compare with no count, a guess a request (red team RT-1,
+       N7).  A held address reads as not found here, as anything else does. */
+    if (!(typeof this._adminAuth === 'function' && (await this._adminAuth(request, true)) === 'ok')) return notFound();
     const url = new URL(request.url);
     const headers = { 'Content-Type': 'application/json' };
     const id = url.searchParams.get('id');
