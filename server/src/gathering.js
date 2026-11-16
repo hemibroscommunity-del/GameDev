@@ -80,6 +80,7 @@ import { HIT_PROOF } from './hitproof.js'; /* v2.3.4385: a paid volley's window 
 import { xpDecayMult, xpAfterDecay } from './xpdecay.js'; /* v2.3.3251: XP fades 5+ levels below you */
 import { parseGemKey } from './gems.js';   /* v2.3.3516: gems are kept through a death (_keptThroughDeath) */
 import { bagGive } from './bag.js'; /* v2.3.4810: the bag door */
+import { xpGive, xpLevelUp, xpMake } from './xp.js';   /* v2.3.5289: experience and levels' door (card R PR 10) */
 
 export const GATHER_HITS = {
   MS: { mining: 650, woodcutting: 540, fishing: 650, cooking: 650 },
@@ -751,13 +752,12 @@ export const gatheringMethods = {
        message (farm.js).  The join heals such entries now
        (migrations.js healLifeSkillLevels); this is the last line. */
     const cur = ps.lifeSkills[skill];
-    if (!cur || typeof cur !== 'object' || Array.isArray(cur)) ps.lifeSkills[skill] = { level: 1, xp: 0 };
+    if (!cur || typeof cur !== 'object' || Array.isArray(cur)) xpMake(ps.lifeSkills, skill, 1, 'life_make');   /* v2.3.5289: the experience door */
     const s = ps.lifeSkills[skill];
-    s.xp = (s.xp || 0) + xpAmt;
+    xpGive(s, xpAmt, 'life_xp');
     let leveled = false;
     while (s.xp >= this._lifeSkillXpThreshold(s.level || 1)) {
-      s.xp -= this._lifeSkillXpThreshold(s.level || 1);
-      s.level = (s.level || 1) + 1;
+      xpLevelUp(s, this._lifeSkillXpThreshold(s.level || 1), 'life_level');   /* v2.3.5289: a level-up is the door's */
       leveled = true;
     }
     return { leveled, newLevel: s.level };

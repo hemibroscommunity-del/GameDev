@@ -56,6 +56,8 @@ import { bagGive, bagSet } from './bag.js'; /* v2.3.4810: the bag door */
 import { GOLD_LOG, goldLogOf } from './gold.js'; /* v2.3.4903: the gold log (/dev/goldlog) */
 import { bookRead } from './daybook.js'; /* v2.3.5125: the day's book's one reader (/dev/daybook) */
 import { econCardRead } from './econcard.js'; /* v2.3.5093: the owner's card's other read (/dev/econcard) */
+import { questStateSet, questCountSet, questForget, questKeptTake } from './queststate.js';   /* v2.3.5284: quest state's door (card R PR 5) */
+import { xpMake } from './xp.js';   /* v2.3.5289: experience and levels' door (card R PR 10) */
 
 export const DEVKIT = {
   /* The tutorial's own starter weapons -- copper/pine/pine.  Deliberately
@@ -136,7 +138,7 @@ export const devToolsMethods = {
          is this kit's existing contract, an operator can simply ask again
          after freeing a slot, and a debug affordance has no business writing
          to the idempotency journal that real payouts converge on. */
-      ps._questWeaponUnfit = null;
+      questKeptTake(ps, '_questWeaponUnfit', 'dev_kit_weapons');   /* v2.3.5284: the quest door */
     }
     if (want === 'all' || want === 'armor') {
       /* v2.3.2875: through _grantQuestItem, the path a quest's armour reward
@@ -147,7 +149,7 @@ export const devToolsMethods = {
          The scratch is DRAINED here and cleared, for the v2.3.2421 reason:
          left on it, the player's next quest turn-in would announce these
          pieces again as that quest's reward. */
-      ps._questGrantOverflow = null;
+      questKeptTake(ps, '_questGrantOverflow', 'dev_kit_armor_clear');   /* v2.3.5284 */
       /* v2.3.3142: `quality` -- the kit's armour in a grade, so the owner can
          wear and see each one's look (glint.js GRADE_LOOK).  Admin-only, like
          every /dev/ op, and minted into the ledger like the plain kit, so a
@@ -156,8 +158,7 @@ export const devToolsMethods = {
       for (const a of DEVKIT.ARMOR) {
         try { this._grantQuestItem(ps, q ? { ...a, quality: q } : a, playerId); } catch (e) { /* one bad piece must not stop the rest */ }
       }
-      const over = Array.isArray(ps._questGrantOverflow) ? ps._questGrantOverflow : [];
-      ps._questGrantOverflow = null;
+      const over = questKeptTake(ps, '_questGrantOverflow', 'dev_kit_armor') || [];   /* v2.3.5284: read and emptied in one */
       const ws = t.ws || this._wsBySessionId(playerId);
       for (const piece of over) {
         if (!ws) break;
@@ -250,7 +251,6 @@ export const devToolsMethods = {
     const t = this._devTarget(playerId);
     if (!t) return { ok: false, error: 'player not online' };
     const ps = t.ps;
-    if (!ps._quests) ps._quests = Object.create(null);   /* rule 4 */
     const table = this._QUEST_REWARDS_DATA();
     const finished = [];
     /* v2.3.3121: `except`, a quest-id prefix left as it is -- 'beast_' keeps
@@ -258,8 +258,8 @@ export const devToolsMethods = {
     const except = body && typeof body.except === 'string' && body.except ? body.except : null;
     for (const qid of Object.keys(table)) {
       if (except && qid.startsWith(except)) continue;
-      if (ps._quests[qid] === 'turnedIn') continue;
-      ps._quests[qid] = 'turnedIn';
+      if (ps._quests && ps._quests[qid] === 'turnedIn') continue;
+      questStateSet(ps, qid, 'turnedIn', 'dev_finish_all');   /* v2.3.5284: the quest door */
       finished.push(qid);
     }
     this._devPush(playerId, ps);
@@ -287,8 +287,7 @@ export const devToolsMethods = {
     if (!quest || !Object.prototype.hasOwnProperty.call(table, quest)) return { ok: false, error: 'no such quest' };
     if (!ps._quests || ps._quests[quest] !== 'active') return { ok: false, error: 'quest not active' };
     const n = Math.max(0, Math.min(999, Math.floor(Number(body.n) || 0)));
-    if (!ps._questKills || typeof ps._questKills !== 'object') ps._questKills = Object.create(null);   /* rule 4 */
-    ps._questKills[quest] = n;
+    questCountSet(ps, quest, n, 'dev_count');   /* v2.3.5284: the quest door */
     this._devPush(playerId, ps);
     return { ok: true, quest, n };
   },
@@ -312,19 +311,17 @@ export const devToolsMethods = {
     const at = body && typeof body.at === 'string' ? body.at : '';
     const i = tour.indexOf(at);
     if (i < 0) return { ok: false, error: 'not a step of the tour', tour };
-    if (!ps._quests) ps._quests = Object.create(null);   /* rule 4 */
-    if (!ps._questKills || typeof ps._questKills !== 'object') ps._questKills = Object.create(null);
     const tools = [];
     tour.forEach((q, k) => {
       if (k < i) {
-        ps._quests[q] = 'turnedIn';
+        questStateSet(ps, q, 'turnedIn', 'dev_tour_done');   /* v2.3.5284: the quest door */
         for (const g of (Array.isArray(table[q].grantOnAccept) ? table[q].grantOnAccept : [])) {
           if (g && g.kind === 'inv' && g.max === 1 && this._grantQuestItem(ps, g, playerId)) tools.push(g.key);
         }
       } else {
-        if (k === i) ps._quests[q] = 'available';
-        else delete ps._quests[q];
-        delete ps._questKills[q];
+        /* v2.3.5284: the quest door: state and progress gone, the chosen step opened */
+        questForget(ps, q, 'dev_tour_reset');
+        if (k === i) questStateSet(ps, q, 'available', 'dev_tour_open');
       }
     });
     this._devPush(playerId, ps);
@@ -519,7 +516,7 @@ export const devToolsMethods = {
     }
     const level = Math.max(1, Math.min(120, Math.floor(Number(b.level) || 1)));
     if (!ps.lifeSkills || typeof ps.lifeSkills !== 'object') ps.lifeSkills = {};
-    for (const k of names) ps.lifeSkills[k] = { level, xp: 0 };
+    for (const k of names) xpMake(ps.lifeSkills, k, level, 'dev_life');   /* v2.3.5289: the experience door */
     this._devPush(playerId, ps);
     return { ok: true, skills: names, level };
   },
@@ -543,7 +540,7 @@ export const devToolsMethods = {
     }
     if (!ps.prog3 || !ps.prog3.sk || typeof ps.prog3.sk !== 'object') return { ok: false, error: 'no combat skills' };
     const level = Math.max(1, Math.min(PROG3.LEVEL_CAP, Math.floor(Number(b.level) || 1)));
-    for (const k of names) ps.prog3.sk[k] = { level, xp: 0 };
+    for (const k of names) xpMake(ps.prog3.sk, k, level, 'dev_skill');   /* v2.3.5289: the experience door */
     /* v2.3.3541: `deal: true` -- and the points those levels give, every
        placed one back (the free points reset's own deal, prog3RespecPoints):
        a level set by this lever alone left the pools where they were, so the
@@ -575,7 +572,7 @@ export const devToolsMethods = {
     const clampInt = (v, lo, hi) => Math.max(lo, Math.min(hi, Math.floor(Number(v) || 0)));
     if (!ps.lifeSkills || typeof ps.lifeSkills !== 'object') ps.lifeSkills = {};
     if (!ps.inventory || typeof ps.inventory !== 'object') ps.inventory = {};
-    if (b.level != null) { const L = clampInt(b.level, 1, 120); ps.lifeSkills.trapping = { level: L, xp: 0 }; out.level = L; }
+    if (b.level != null) { const L = clampInt(b.level, 1, 120); xpMake(ps.lifeSkills, 'trapping', L, 'dev_trapping'); out.level = L; }   /* v2.3.5289: the experience door */
     if (b.traps != null) { const n = clampInt(b.traps, 0, 999); bagSet(ps.inventory, 'trap_box', n, 'dev_traps'); out.traps = n; }
     if (b.logs != null) { const n = clampInt(b.logs, 0, 999); bagSet(ps.inventory, 'wood_pine_log', n, 'dev_logs'); /* v2.3.4810: the bag door (both lines) */ out.logs = n; }
     /* v2.3.3123: `look: {gold, size}` -- the NEXT pet made (a catch, or the

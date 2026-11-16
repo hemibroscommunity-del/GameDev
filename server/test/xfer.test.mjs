@@ -19,12 +19,19 @@
  *      write, once a day; the kept days untouched.
  *   6. THE KILL SWITCH `xfer: false`: no row, and the trade settles as before.
  *   7. THE READ: a day's rows; a newer worker's row returned whole, marked.
+ *   8. v2.3.5290 (card R PR 11): A DUEL'S POT, the first escrow road with a
+ *      row.  `xferescrow` off (the default): the pot pays as before and
+ *      writes no row; on: ONE row, the loser's wager to the winner, `by` the
+ *      winner's blow, in the pot's own run (a restart at any of its writes:
+ *      the pot and its row both, or neither).
  *
  * BREAK PROOF (rule 8), tried by hand: the row's line in trade2.js moved
  * after `await together` (a run of its own) -> FAIL 3 ("a restart at any
  * write of the confirm: the swap and its row both, or neither": paid, no row).
  * And (sitting 10) the empty side's check taken out of xferRow -> FAIL 3
- * (an empty window wrote a row).
+ * (an empty window wrote a row).  And (v2.3.5290) duel.js's row written
+ * after the credit's await, not in _creditWith's run -> FAIL 8 (a restart
+ * between: paid, no row).
  */
 import { makeStorage, openRoom, join, fakeWs, settle, seededClock } from './testroom.mjs';
 import { XFER, xferRow, xferKey, xferDay, xferList, xferPrunePage, xferOff } from '../src/xfer.js';
@@ -216,6 +223,58 @@ async function giftWorld() {
   const list = await xferList(room, DAY);
   check('7. a day\'s rows, and only that day\'s', list.length === 2 && list.every((x) => x.key.startsWith(XFER.PREFIX + DAY + ':')), list);
   check('7. ...a newer worker\'s row returned whole and marked, never rewritten', list.find((x) => x.newer) && list.find((x) => x.newer).row.future === true && st._store.get(xferKey(DAY, 'two')).v === 9);
+}
+
+/* ══════════ 8. A DUEL'S POT (v2.3.5290) ══════════ */
+async function duelTo(flags) {
+  const m = seed([A], 500, {});
+  for (const [k, v] of seed([B], 300, {})) m.set(k, v);
+  const st = makeStorage(m);
+  const room = await openRoom(st, flags);
+  const wa = fakeWs('a'), wb = fakeWs('b');
+  await join(room, wa, A, { loginTaken: true });
+  await join(room, wb, B, { loginTaken: true });
+  await room._interceptDuel(A, { type: 'duel_wager_request', payload: { target: B, fromName: 'A', wager: 40 } });
+  await room._interceptDuel(B, { type: 'duel_accept', payload: { target: A, wager: 40 } });
+  await settle();
+  const duel = [...room._duels.values()][0];
+  return { st, room, duel };
+}
+{
+  const off = await duelTo(null);
+  check('8. a wagered duel is under way (both wagers held)', !!off.duel && off.duel.wager === 40 && off.st._store.has('duelEscrow:' + off.duel.id) && off.room.playerState[A].coins === 460);
+  off.room._duelOnDeath(B, 'pvp:' + A);
+  await settle(); await settle();
+  check('8. xferescrow off (the default): the pot pays the winner as before, and no row', off.room.playerState[A].coins === 540 && rows(off.st).length === 0 && !off.st._store.has('duelEscrow:' + off.duel.id), { coins: off.room.playerState[A].coins, rows: rows(off.st) });
+  const on = await duelTo({ xferescrow: true });
+  on.room._duelOnDeath(B, 'pvp:' + A);
+  await settle(); await settle();
+  const ks = rows(on.st);
+  const row = ks.length === 1 ? on.st._store.get(ks[0]) : null;
+  check('8. xferescrow on: the pot pays as before, and ONE row', on.room.playerState[A].coins === 540 && ks.length === 1, { coins: on.room.playerState[A].coins, rows: ks });
+  check('8. ...the loser\'s wager to the winner, nothing back, `by` the winner\'s blow, keyed by the duel',
+    row && row.road === 'duel_pot' && row.from === B && row.to === A && row.gold === 40 && row.price.gold === 0 && row.by === A && ks[0].endsWith(':duel-' + on.duel.id), row);
+  /* the forfeit: nobody's blow */
+  const ff = await duelTo({ xferescrow: true });
+  ff.room._resolveDuel(ff.duel, A, B, 'forfeit');
+  await settle(); await settle();
+  const fr = rows(ff.st).map((k) => ff.st._store.get(k));
+  check('8. a forfeit\'s row has no `by` (nobody\'s tap settled it)', fr.length === 1 && fr[0].by === null, fr);
+}
+{
+  /* a restart before each batch of the pot: the pot and its row both, or neither */
+  const bad = [];
+  for (let k = 0; k <= 3; k++) {
+    const { st, room } = await duelTo({ xferescrow: true });
+    st.crashAt(st.batches() + k);
+    room._duelOnDeath(B, 'pvp:' + A);
+    await settle(); await settle();
+    const recA = st._store.get('rpg:' + A) || {};
+    const paid = Math.floor(recA.coins || 0) === 540;
+    const n = rows(st).length;
+    if (paid !== (n === 1) || n > 1) bad.push({ crashAt: k, paid, rows: n, coinsA: recA.coins });
+  }
+  check('8. a restart at any write of the pot: the pot and its row both, or neither', bad.length === 0, bad);
 }
 
 clock.restore();
