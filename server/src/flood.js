@@ -132,6 +132,40 @@ export function roomNameFor(url, env) {
   return listed.includes(name) ? name : null;
 }
 
+/* ═══ v2.3.5581: AN IPv6 LINE IS ONE ADDRESS (red team RT-1, finding N4) ═══
+ * The limits below counted each address apart.  An IPv6 home or phone line is
+ * handed a whole /64 -- 2^64 addresses -- and a script takes a new one for
+ * every socket: in the red team's local run one /64 put 104 guests in after
+ * the 16 an IPv4 address may hold, the room was full, and an honest player
+ * was refused `full` (docs/security/rt1-findings.md).  So a limit counts an
+ * IPv6 address by its /64, the block one line is given; an IPv4 address, and
+ * an IPv4 one written as IPv6 (`::ffff:1.2.3.4`), as itself.  Anything it
+ * cannot read is counted as written, as before.  The session keeps its whole
+ * address (`session.ip`: the account check sends it to Turnstile).  Kill
+ * switch `ip64: false`: each IPv6 address counted apart again. */
+const HEX4_RE = /^[0-9a-f]{1,4}$/;
+export function ipKey(ip) {
+  if (typeof ip !== 'string' || ip.indexOf(':') < 0) return ip;
+  let s = ip.trim().toLowerCase();
+  const pct = s.indexOf('%');
+  if (pct >= 0) s = s.slice(0, pct);
+  const mapped = /^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/.exec(s);
+  if (mapped) return mapped[1];
+  const halves = s.split('::');
+  if (halves.length > 2) return ip;
+  const head = halves[0] ? halves[0].split(':') : [];
+  const tail = halves.length === 2 && halves[1] ? halves[1].split(':') : [];
+  let groups;
+  if (halves.length === 1) groups = head;
+  else {
+    const fill = 8 - head.length - tail.length;
+    if (fill < 1) return ip;
+    groups = head.concat(new Array(fill).fill('0'), tail);
+  }
+  if (groups.length !== 8 || !groups.every((g) => HEX4_RE.test(g))) return ip;
+  return groups.slice(0, 4).map((g) => g.replace(/^0+(?=.)/, '')).join(':') + '::/64';
+}
+
 /** The address Cloudflare's edge stamped on the request, or null: absent
  *  locally (wrangler dev adds none), and loopback is never counted. */
 export function requestIp(request) {
@@ -144,6 +178,13 @@ export function requestIp(request) {
 }
 
 export const floodMethods = {
+  /* v2.3.5581: the kill switch, read the lower-case way (TRAPS §117):
+     `ip64: false` counts each IPv6 address apart, as before */
+  _ip64On() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'ip64') && !f.ip64);
+  },
+
   /* ── 3. the budget per socket ── */
   /** 'ok' to take the message, 'drop' to ignore it, 'close' to end the socket. */
   _floodMsgOk(session, now) {
@@ -175,12 +216,16 @@ export const floodMethods = {
    *  holds and the ones it opened in the last minute. */
   _floodIpOk(ip, now) {
     if (!ip) return true;
+    /* v2.3.5581: an IPv6 address counted by its /64 (ipKey above) */
+    const by = (typeof this._ip64On !== 'function' || this._ip64On()) ? ipKey : (a) => a;
+    const key = by(ip);
     const maxSockets = this._flagNum ? this._flagNum('ip_sockets', FLOOD.IP_SOCKETS, 0, 1000) : FLOOD.IP_SOCKETS;
     if (maxSockets > 0) {
       let held = 0;
-      for (const [, s] of this.sessions) if (s.ip === ip) held++;
+      for (const [, s] of this.sessions) if (s.ip && by(s.ip) === key) held++;
       if (held >= maxSockets) return false;
     }
+    ip = key;   /* the opens a minute below are kept by the same key */
     const maxJoins = this._flagNum ? this._flagNum('ip_joins_min', FLOOD.IP_JOINS_PER_MIN, 0, 10000) : FLOOD.IP_JOINS_PER_MIN;
     if (maxJoins > 0) {
       if (!this._ipOpens) this._ipOpens = new Map();
