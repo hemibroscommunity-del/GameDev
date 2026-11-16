@@ -153,6 +153,15 @@ The plan's rule 4: all new, or exactly one switch thrown.
   - Anything else is a second configuration that breaks: listed as known in
     the guard (`KNOWN`, a census) and written under Found in card T's status
     file. Card T fixes none.
+  - **The preload changes nothing by itself** (v2.3.5307). It imports no
+    game code: a module hook patches `GameRoom` as the suite itself imports
+    `server/src/index.js` (`thrown-hooks.mjs`, `thrown-patch.mjs`), so a
+    suite's own setup runs first. It loads nothing early and replaces no game
+    function, so a room's cold start stays cold. Every server suite (400)
+    passes with a flag nothing reads (`--none`, by hand); on every PR the two
+    canaries do (`cold-flags.test`, `tick-pace.test`). The planning session
+    found the v2.3.5304 preload breaking both (it imported `index.js` before
+    the suite set `WebSocketPair`, and loaded the flags as a room was made).
   - On every PR only the rows born from tag 5301 on run, with no baseline
     (`npm test` runs the same suites plain in that job, so a check red
     unthrown is red there already): 17 s for 97 suite runs (v2.3.5305; 30 s
