@@ -413,10 +413,16 @@ function ownerRoom(key) {
   owner.asks.length = 0;
   let wrong = 0;
   for (let i = 0; i < 25; i++) if ((await fb.fetch(new Request('https://x/api/feedback/crashes', { headers: { Authorization: 'Bearer guess' + i, 'CF-Connecting-IP': '198.51.100.66' } }))).status === 404) wrong++;
-  const right = await fb.fetch(new Request('https://x/api/feedback/crashes', { headers: { Authorization: 'Bearer ' + KEY, 'CF-Connecting-IP': '198.51.100.66' } }));
+  /* the room's door (RT-1's #1885, on main) counts the misses by address and
+     holds it: the right key from that address is refused too, from another
+     it is the owner's */
+  const held = await fb.fetch(new Request('https://x/api/feedback/crashes', { headers: { Authorization: 'Bearer ' + KEY, 'CF-Connecting-IP': '198.51.100.66' } }));
+  const right = await fb.fetch(new Request('https://x/api/feedback/crashes', { headers: { Authorization: 'Bearer ' + KEY, 'CF-Connecting-IP': '198.51.100.68' } }));
   const bare = await fb.fetch(new Request('https://x/api/feedback/crashes', { headers: { 'CF-Connecting-IP': '198.51.100.67' } }));
-  check('13: every key the owner\'s routes are sent is judged by the room\'s admin door, with the caller\'s address (its count sees every miss: 2,000 wrong keys went uncounted here)',
-    wrong === 25 && right.status === 200 && bare.status === 404 && owner.asks.length === 26 && owner.asks.every((a) => a.path === '/api/admin/flags' && a.ip === '198.51.100.66'), { wrong, right: right.status, asks: owner.asks.length });
+  check('13: every key the owner\'s routes are sent is judged by the room\'s admin door, with the caller\'s address (2,000 wrong keys went uncounted here); the right key from another address is the owner\'s',
+    wrong === 25 && right.status === 200 && bare.status === 404 && owner.asks.length === 27
+      && owner.asks.every((a) => a.path === '/api/admin/flags') && owner.asks.slice(0, 26).every((a) => a.ip === '198.51.100.66'), { wrong, right: right.status, asks: owner.asks.length });
+  check('13: ...and the door\'s count holds that address: its right key is refused too (RT-1\'s time-out, switch `adminlock`)', held.status === 404, held.status);
 }
 
 console.log(failures ? `\n${failures} FAILURE(S)` : '\nall feedback checks passed');

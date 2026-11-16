@@ -30,6 +30,37 @@
  * input gate stays closed between validation and commit (rule 9). */
 
 import { rewindPlan, rewindDo } from './restore.js';   /* v2.3.5288: the room's way back (card R PR 9) */
+import * as FLOOD_NS from './flood.js';   /* v2.3.5583: the address (requestIp), and its /64 (ipKey) once the /64 change (PR #1875) is in */
+
+/* ═══ v2.3.5583: THE ADMIN KEY'S TIME-OUT (red team RT-1, finding N7) ═══
+ * The red team's local run: 5,000 wrong keys in half a second, every one a
+ * plain 401, no lockout, no log -- then the right key.  A key of 30 random
+ * characters (OPERATIONS.md) is not guessed that way; a word or a short
+ * password is, and one key does everything (gold, any character's login,
+ * every switch, the room's rewind).  So an address that sends MISSES wrong
+ * keys within WINDOW_MS is TIMED OUT for HOLD_MS: its asks are answered 429
+ * with the minutes left, the key not even checked (a held address learns
+ * nothing).  A TIME-OUT, NEVER A BAN: it lifts by itself after HOLD_MS, a
+ * deploy or a restart clears it (memory only, nothing stored), another
+ * address -- the owner's phone on its own line -- is never held by this one's
+ * misses, and the right key clears its address's count.  The compare stays
+ * by digest (_phraseHash).  An IPv6 address counts by its /64 once
+ * the /64 change's ipKey (PR #1875) is on this worker.  An ask with no address (a local
+ * test) is never held.  Kill switch `adminlock: false`. */
+export const ADMIN_LOCK = Object.freeze({
+  MISSES: 10,
+  WINDOW_MS: 10 * 60000,
+  HOLD_MS: 15 * 60000,
+  /* addresses kept at once; past it the quietest goes first */
+  MAP_CAP: 1024,
+});
+
+/** The address an admin ask came from, as the time-out counts it, or null. */
+export function adminAddress(request, by64) {
+  const ip = FLOOD_NS.requestIp(request);
+  if (!ip) return null;
+  return by64 && typeof FLOOD_NS.ipKey === 'function' ? FLOOD_NS.ipKey(ip) : ip;
+}
 
 /* v2.3.1617: every non-dated `rpgsnap:<pid>:` suffix in the repo.  These are
    "parachute" snapshots -- taken immediately before something destructive --
@@ -231,14 +262,80 @@ export async function exportPage(storage, q) {
 }
 
 export const adminMethods = {
-  async _adminAuth(request) {
+  /* 'ok', 'denied', 'unconfigured', or (v2.3.5583) 'held': this address is
+     in its time-out (ADMIN_LOCK above).  `xKey`: botfp.js's surface also
+     takes the key in `x-admin-key` (v2.3.3323), through this same door. */
+  async _adminAuth(request, xKey) {
     const key = this.env && this.env.ADMIN_KEY;
     if (!key) return 'unconfigured';
     const auth = request.headers.get('Authorization') || '';
-    const supplied = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+    const supplied = auth.startsWith('Bearer ') ? auth.slice(7) : (xKey ? (request.headers.get('x-admin-key') || '') : '');
     if (!supplied) return 'denied';
+    const now = Date.now();
+    const at = this._adminLockOn() ? adminAddress(request, typeof this._ip64On !== 'function' || this._ip64On()) : null;
+    if (at && this._adminHeldFor(at, now) > 0) { this._adminLockTally('refused'); return 'held'; }
     const [a, b] = await Promise.all([this._phraseHash(supplied), this._phraseHash(key)]);
-    return a === b ? 'ok' : 'denied';
+    if (a === b) { if (at && this._adminMisses) this._adminMisses.delete(at); return 'ok'; }
+    this._adminLockTally('wrong');
+    if (at) this._adminMiss(at, now);
+    return 'denied';
+  },
+
+  /* v2.3.5583: the kill switch, read the lower-case way (TRAPS §117) */
+  _adminLockOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'adminlock') && !f.adminlock);
+  },
+
+  /* ms left of this address's time-out (0: not held).  A time-out past is
+     forgotten here. */
+  _adminHeldFor(at, now) {
+    const m = this._adminMisses;
+    const e = m && m.get(at);
+    if (!e || !e.until) return 0;
+    if (e.until > now) return e.until - now;
+    m.delete(at);
+    return 0;
+  },
+
+  /* one wrong key from `at`: counted in its window; the MISSES-th within
+     WINDOW_MS starts its time-out */
+  _adminMiss(at, now) {
+    if (!this._adminMisses) this._adminMisses = new Map();
+    const m = this._adminMisses;
+    let e = m.get(at);
+    if (!e || now - e.first > ADMIN_LOCK.WINDOW_MS) {
+      if (!e && m.size >= ADMIN_LOCK.MAP_CAP) {
+        /* the quietest goes: one not held and longest since its first miss */
+        let quiet = null, qAt = Infinity;
+        for (const [k, v] of m) if (!(v.until > now) && v.first < qAt) { quiet = k; qAt = v.first; }
+        m.delete(quiet !== null ? quiet : m.keys().next().value);
+      }
+      e = { n: 0, first: now, until: 0 };
+    }
+    e.n += 1;
+    if (e.n >= ADMIN_LOCK.MISSES) {
+      e.until = now + ADMIN_LOCK.HOLD_MS;
+      e.n = 0; e.first = now;
+      this._adminLockTally('held');
+      try { console.warn('[admin] an address sent ' + ADMIN_LOCK.MISSES + ' wrong keys: timed out for ' + (ADMIN_LOCK.HOLD_MS / 60000) + ' min'); } catch (er) { /* no console */ }
+    }
+    m.set(at, e);
+  },
+
+  _adminLockTally(k) {
+    const c = this._adminLockCount || (this._adminLockCount = { wrong: 0, held: 0, refused: 0 });
+    c[k] = (c[k] || 0) + 1;
+  },
+
+  /* the overview's line: wrong keys, time-outs started and asks refused
+     since this worker started, and the addresses in a time-out now */
+  _adminLockInfo() {
+    const c = this._adminLockCount || { wrong: 0, held: 0, refused: 0 };
+    const now = Date.now();
+    let heldNow = 0;
+    if (this._adminMisses) for (const [, e] of this._adminMisses) if (e.until > now) heldNow++;
+    return { on: this._adminLockOn(), wrong: c.wrong, held: c.held, refused: c.refused, heldNow, misses: ADMIN_LOCK.MISSES, windowMin: ADMIN_LOCK.WINDOW_MS / 60000, holdMin: ADMIN_LOCK.HOLD_MS / 60000 };
   },
 
   /* ═══ v2.3.3356: PUT OUT, AND OUT OF THE WORLD ═══
@@ -320,6 +417,13 @@ export const adminMethods = {
       // Unconfigured key -> the surface doesn't exist.  Wrong/missing
       // key -> 401 so the owner can tell a typo from a bad URL.
       if (auth === 'unconfigured') return json({ ok: false, error: 'Not found' }, 404);
+      /* v2.3.5583: an address in its time-out is told how long, and nothing
+         else (the key was not checked) */
+      if (auth === 'held') {
+        const mins = Math.max(1, Math.ceil(this._adminHeldFor(adminAddress(request, typeof this._ip64On !== 'function' || this._ip64On()), Date.now()) / 60000));
+        return new Response(JSON.stringify({ ok: false, error: 'held', words: 'Too many wrong keys from this address: try again in ' + mins + ' minute(s), or from another connection.' }),
+          { status: 429, headers: { ...H, 'Retry-After': String(mins * 60) } });
+      }
       if (auth !== 'ok') return json({ ok: false, error: 'Unauthorized' }, 401);
 
       if (request.method === 'GET' && path === '/overview') {
@@ -361,6 +465,9 @@ export const adminMethods = {
           deviceLock: this._deviceLockInfo(),
           /* v2.3.3355: new Login Keys (loginkeys.js) */
           loginKeys: this._keysInfo ? this._keysInfo() : null,
+          /* v2.3.5583: the admin key's time-out -- wrong keys, time-outs
+             started, asks refused, addresses held now (ADMIN_LOCK above) */
+          adminLock: this._adminLockInfo(),
           /* v2.3.3240: the 2 s look relay -- tracks in, and how many went out
              whole, as only what changed, or not at all (lookrelay.js) */
           lookRelay: this._lookInfo(),
