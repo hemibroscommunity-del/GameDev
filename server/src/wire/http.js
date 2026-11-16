@@ -319,7 +319,7 @@ export const WIRE_HTTP = [
     trust: { id: 'request' }, absent: 'refused: no id is a 400', bad: ['taken'], answer: 'http' },
   { name: 'http:/api/admin/restore', dir: 'in', at: 'admin.js _adminFetch', wayIn: 'admin', envelope: 'http',
     phase: ['none checked'], mayStart: 'owner', doesWhat: ['others'], reqId: 'harmless',
-    trust: { playerId: 'request', snapKey: 'request' }, absent: 'refused: no playerId or no snapKey is a 400',
+    trust: { playerId: 'request', snapKey: 'request', dry: 'request' }, absent: 'refused: no playerId or no snapKey is a 400',   /* v2.3.5285: `dry: true` writes nothing (playerrestore.js) */
     bad: ['refused'], answer: 'http',
     note: ['doesWhat: cannot be undone by any route but another restore from that prerestore copy (so not final)',
          'phase, of the player the route names (not the owner who calls): session:!joined'] },

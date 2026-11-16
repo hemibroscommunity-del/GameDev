@@ -28,6 +28,7 @@ import { QUEST_REWARDS, QUEST_DORMANT, QUEST_FIRST, QUEST_RETIRED, WOODWORKING_T
 import { PROG3 } from './prog3.js';
 import { bagGive, bagTake } from './bag.js'; /* v2.3.4810: the bag door */
 import { stashGive, stashTake, stashSet } from './stash.js';   /* v2.3.5281: the stashes' door (card R PR 2) */
+import { questStateSet, questCountAdd, questKeep, questKeptTake } from './queststate.js';   /* v2.3.5284: quest state's door (card R PR 5) */
 
 /* ═══ v2.3.3525: THE KINDS A QUEST COUNTS ═══
    One list for the credit and the check: each is a counter in _questKills,
@@ -148,8 +149,7 @@ export const questMethods = {
     if (!Object.prototype.hasOwnProperty.call(rewards, questId)) return;
     const reward = rewards[questId];
     if (!reward) return; // unknown quest
-    if (!ps._quests) ps._quests = Object.create(null); // rule 4: client-id-keyed map
-    const cur = ps._quests[questId];
+    const cur = ps._quests ? ps._quests[questId] : undefined;   /* v2.3.5284: read here; the quest door makes the map */
     // Allow accepting from 'available' (chain entry granted) or
     // from missing (first quest in chain).  Reject if already
     // active / turnedIn.
@@ -157,7 +157,7 @@ export const questMethods = {
     /* v2.3.3179: a quest nobody can give, an unchecked one before the first
        quest, or a step taken ahead of the checked step before it */
     if (this._questBarred(ps, questId, reward, true)) { this._questRefusedEcho(session.id); return; }
-    ps._quests[questId] = 'active';
+    questStateSet(ps, questId, 'active', 'accept');   /* v2.3.5284: the quest door */
     /* v2.3.1676 (owner: "He'll give you the sword and shield (with
        instructions on how to use)").  A reward paid on ACCEPT, not turn-in —
        the whole point of the starter kit is that you cannot do the quest
@@ -216,8 +216,7 @@ export const questMethods = {
       if (obj.act && obj.act !== arch) continue;    /* v2.3.3525: farm */
       if (obj.what && obj.what !== arch) continue;  /* v2.3.3525: craft, cook */
       if (obj.zone && obj.zone !== zone) continue;
-      if (!ps._questKills) ps._questKills = Object.create(null); // rule 4: quest-id-keyed map
-      ps._questKills[qid] = Math.min(99999, (ps._questKills[qid] || 0) + n);
+      questCountAdd(ps, qid, n, 'progress');   /* v2.3.5284: the quest door (the map made with no prototype, capped as before) */
       changed = true;
     }
     if (changed) this._queuePlayerStateFlush(playerId);
@@ -381,11 +380,10 @@ export const questMethods = {
        unpaid and no way to retry. */
     const _needsCat = !!(ps.prog3 && reward.xp > 0);
     if (_needsCat && (typeof xpCat !== 'string' || PROG3.SKILLS.indexOf(xpCat) < 0)) { this._questSilentEcho(session.id); return; }   /* v2.3.4401 */
-    if (!ps._quests) ps._quests = Object.create(null); // rule 4: client-id-keyed map
     // Must be 'active' to turn in.  This is the spam-defeat:
     // a cheater can't reclaim the reward by spamming the event,
     // and can't claim a quest they never accepted.
-    if (ps._quests[questId] !== 'active') { this._questSilentEcho(session.id); return; }   /* v2.3.4401 */
+    if (!ps._quests || ps._quests[questId] !== 'active') { this._questSilentEcho(session.id); return; }   /* v2.3.4401; v2.3.5284: no map, nothing active */
     /* v2.3.3179: the accept's rules hold at the hand-in too, for a quest
        accepted before they did (_questBarred) */
     if (this._questBarred(ps, questId, reward, false)) { this._questRefusedEcho(session.id); return; }
@@ -423,7 +421,7 @@ export const questMethods = {
     if (_obj && _obj.type === 'collect' && _obj.consume && ps.inventory) {
       this._collectConsume(ps, _obj, _obj.count || 1);
     }
-    ps._quests[questId] = 'turnedIn';
+    questStateSet(ps, questId, 'turnedIn', 'turn_in');   /* v2.3.5284: the quest door */
     this._goldGive(ps, reward.gold || 0, 'quest_reward'); /* v2.3.4670: the gold door */
     if (_trade) this._questTradeApply(ps, _trade, reward.trade);   /* v2.3.3525 */
     // XP via _addCombatXp so level-up logic runs (including
@@ -465,14 +463,14 @@ export const questMethods = {
        `_questGrantOverflow` is in-memory scratch — not in _saveRpg's field
        list, so it never persists — read once here and cleared. */
     if (reward.item) {
-      ps._questGrantOverflow = null;
+      questKeptTake(ps, '_questGrantOverflow', 'turn_in_clear');   /* v2.3.5284: the quest door */
       /* v2.3.1692: `item` may be an ARRAY (tut_1 pays the bow AND the staff).
          Granted one at a time so each keeps its own slot rules. */
       const _items = Array.isArray(reward.item) ? reward.item : [reward.item];
       for (const _it of _items) { this._grantQuestItem(ps, _it, session.id); }
       /* v2.3.1695: every armour piece that overflowed to the bag is announced,
          not just the last one (armorSet pays two). */
-      const _over = Array.isArray(ps._questGrantOverflow) ? ps._questGrantOverflow : null;
+      const _over = questKeptTake(ps, '_questGrantOverflow', 'turn_in_announce');   /* v2.3.5284: read and emptied in one */
       if (_over && _over.length) {
         const ws0 = this._wsBySessionId(session.id);
         if (ws0) {
@@ -485,7 +483,6 @@ export const questMethods = {
           } catch (e) { /* best effort — the turn-in itself still stands */ }
         }
       }
-      ps._questGrantOverflow = null;
       /* v2.3.2420: and the weapons that did not fit go to the inbox rather
          than the floor. AFTER the armour announcement so the ordering of
          what the player sees is unchanged. */
@@ -493,7 +490,7 @@ export const questMethods = {
     }
     // Unlock next quest in chain.
     if (reward.next && !ps._quests[reward.next]) {
-      ps._quests[reward.next] = 'available';
+      questStateSet(ps, reward.next, 'available', 'chain_next');   /* v2.3.5284: the quest door */
     }
     /* v2.3.3527: Storyteller (achievements.js: every chain's last quest handed
        in), here and not beside the AP above: the weapons' drain awaits between
@@ -611,8 +608,7 @@ export const questMethods = {
   },
 
   async _questDrainUnfitWeapons(playerId, ps, tag) {
-    const unfit = Array.isArray(ps._questWeaponUnfit) ? ps._questWeaponUnfit : null;
-    ps._questWeaponUnfit = null;
+    const unfit = questKeptTake(ps, '_questWeaponUnfit', 'unfit_drain');   /* v2.3.5284: read and emptied in one */
     if (!unfit || !unfit.length) return 0;
     let n = 0;
     const seen = Object.create(null);   /* rule 4: never a plain {} for a keyed map */
@@ -660,7 +656,6 @@ export const questMethods = {
            An ARRAY because kind:'armorSet' recurses through here — a two-piece
            set must not report only its last piece. */
         const slot = item.kind === 'legs' ? 'legsArmor' : 'armor';
-        if (!Array.isArray(ps._questGrantOverflow)) ps._questGrantOverflow = [];
         const _minted = {
           name: String(item.name || 'Quest Armor'),
           tierMult: Math.max(0, Math.min(8, Number(item.tierMult) || 1)),
@@ -685,7 +680,7 @@ export const questMethods = {
         this._gearProvRecord(playerId, slot, _minted, 'quest');
         /* v2.3.4840: the worker's armour stash too (gearstash.js _gearStashLiveAdd) */
         if (this._gearStashLiveAdd) this._gearStashLiveAdd(ps, slot, _minted, 'gear_quest');   /* v2.3.5281: its road */
-        ps._questGrantOverflow.push(_minted);
+        questKeep(ps, '_questGrantOverflow', _minted, 'grant_overflow');   /* v2.3.5284: the quest door */
         return false;
       }
       if (item.kind === 'shield') {
@@ -775,8 +770,7 @@ export const questMethods = {
            handler and rule 5's opId is what survives a crash, not this. */
         /* v2.3.5281: the stashes' door refuses a full bag (false) */
         if (!stashGive(ps, 'weaponStash', minted, 'quest_reward', this)) {
-          if (!Array.isArray(ps._questWeaponUnfit)) ps._questWeaponUnfit = [];
-          ps._questWeaponUnfit.push(minted);
+          questKeep(ps, '_questWeaponUnfit', minted, 'weapon_unfit');   /* v2.3.5284: the quest door */
           return false;
         }
         return true;
