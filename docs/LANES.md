@@ -112,7 +112,7 @@ game's.
 | Name | File | Programs built | Its way back |
 |---|---|---|---|
 | `one` | `src/rendering/paletteTex.js` | `bt-one-batch` | the three programs |
-| `palette` | `src/rendering/paletteTex.js` | `bt-palette-batch`, `bt-palette-clip`, `bt-palette-mesh`, `bt-palette-fill` | whole colours |
+| `palette` | `src/rendering/paletteTex.js` | `bt-palette-batch`, `bt-palette-clip`, `bt-palette-hairclip`, `bt-palette-mesh`, `bt-palette-fill` | whole colours |
 | `look` | `src/rendering/lookPalette.js` | `bt-look-batch`, `bt-look-sheen-batch` | each look baked |
 | `sharp` | `src/rendering/sharpPixels.js` | `batch-sharp` | plain pixels |
 | `clip` | `src/rendering/hairClip.js` | `batch-clip`, `batch-clip-alpha` | none: drawn as today |

@@ -134,6 +134,10 @@ const EXPECT = {
   trap_legacy_out:   (b, k) => { delete b[k]; },                                  // delete inv[LEGACY_TRAP] (the door: set 0, gtZero)
   dev_traps:         (b, k, v) => { if (v > 0) b[k] = v; else delete b[k]; },
   dev_logs:          (b, k, v) => { if (v > 0) b[k] = v; else delete b[k]; },
+  /* v2.3.5285: the restore's two are new places (playerrestore.js), with
+     no line before the door: the set's step-1 form, as the Test panel's */
+  restore:           (b, k, v) => { if (v > 0) b[k] = v; else delete b[k]; },
+  restore_vault:     (b, k, v) => { if (v > 0) b[k] = v; else delete b[k]; },
 };
 
 const MISSING = Symbol('missing');
@@ -425,7 +429,8 @@ setBagOneSum(true);
   check('8. every BAG_ROADS row has a class, a move or an escrow its other side', bf.length === 0, bf);
   const counts = {};
   for (const r of Object.values(BAG_ROADS)) counts[r.class] = (counts[r.class] || 0) + 1;
-  check('8. at v2.3.5081: 32 mints, 25 burns, 10 escrows, 2 moves (a change of class is a change here)', counts.mint === 32 && counts.burn === 25 && counts.escrow === 10 && counts.move === 2, counts);
+  /* v2.3.5285: + the restore's two (restore, restore_vault: mints judged by their difference) */
+  check('8. at v2.3.5285: 34 mints, 25 burns, 10 escrows, 2 moves (a change of class is a change here)', counts.mint === 34 && counts.burn === 25 && counts.escrow === 10 && counts.move === 2, counts);
   const moves = Object.entries(BAG_ROADS).filter(([, r]) => r.class === 'move');
   check('8. every goods move lands by mail_item, the mail paid on (an escrow of inbox:)',
     moves.every(([, r]) => r.other === 'mail_item') && BAG_ROADS.mail_item.class === 'escrow' && BAG_ROADS.mail_item.other === 'inbox:', moves.map(([n, r]) => n + '>' + r.other));

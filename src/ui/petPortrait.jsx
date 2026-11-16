@@ -1,6 +1,7 @@
 import React from 'react';
 import { PET_SHEET } from '@/data/petSheet.js';
 import { PET_ART, petTint, petKindOfOld } from '@/data/trapping.js';
+import { p256Twin } from '@/rendering/p256.js';   /* v2.3.5563: the sheet the world loaded */
 
 /* ═══ v2.3.3120: A PET'S PORTRAIT, FOR THE PAGES ═══
  * The catch card and the Pets page show a pet as the world draws it: the first
@@ -19,7 +20,12 @@ function sheet() {
     const im = new Image();
     im.onload = () => { _img = im; resolve(im); };
     im.onerror = () => { _imgReady = null; resolve(null); };
-    im.src = URL;
+    /* v2.3.5563 (sitting 20's low): the world reads the sheet from its
+       256-colour twin (p256.js PET_SHEET_P); the portrait reads the same file,
+       so it is the loading screen's (a cache hit, not 365 KB fetched while
+       the card is blank) and in the world's colours.  The original where the
+       world draws the original (`?petsheet=0`, no colour numbers here). */
+    im.src = p256Twin(URL) || URL;
   });
   return _imgReady;
 }
