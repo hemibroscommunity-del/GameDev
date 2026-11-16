@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "04abd28a2158db614a1aa3fc762593a96337ec46",
+  "tree": "b206071c5ee4a332e1df22a5dbff942db77d4475",
+  "committedAt": "2026-11-16T14:11:04-08:00",
+  "subject": "Merge pull request #1876 from hemibroscommunity-del/claude/plan-l-18-race-page",
+  "files": 7768,
+  "bytes": 957571255,
+  "listingSha256": "fcf681955ef9f574b05eb499db4c9bb074d1d3133d901da6dc68c3a451efa44b",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

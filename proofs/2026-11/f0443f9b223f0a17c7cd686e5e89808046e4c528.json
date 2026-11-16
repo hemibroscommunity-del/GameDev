@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "f0443f9b223f0a17c7cd686e5e89808046e4c528",
+  "tree": "f67490c86c748885778d41b24263cb9985042c44",
+  "committedAt": "2026-11-16T14:12:03-08:00",
+  "subject": "Merge pull request #1918 from hemibroscommunity-del/claude/plan-p-22-pets",
+  "files": 7935,
+  "bytes": 957950901,
+  "listingSha256": "22f2d4b2f9587597f8edf5f27b2f5a83bc48c054a7fba9db1194d0d9cfffa167",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

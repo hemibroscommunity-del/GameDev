@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "ae9ffe22a8fb1ac924620a7182e84031e0b731e6",
+  "tree": "80e93bc54cca86516e3f3e0d1301763e78ba2bcb",
+  "committedAt": "2026-11-16T14:11:12-08:00",
+  "subject": "Merge pull request #1894 from hemibroscommunity-del/claude/plan-l-19-harvest-page",
+  "files": 7770,
+  "bytes": 957605343,
+  "listingSha256": "95d1175e0b61624f07c4b0c5df7bc921df66fa39f3a459d9186debd8609ef2ca",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

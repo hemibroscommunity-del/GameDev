@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "4caade3b0c80b9d2789f88788ddf7f94731a73b8",
+  "tree": "c6581b80a0fa454f82d7b0b6b3ef78e4c060f023",
+  "committedAt": "2026-11-16T14:11:47-08:00",
+  "subject": "Merge pull request #1881 from hemibroscommunity-del/claude/plan-p-20-pack-loss",
+  "files": 7779,
+  "bytes": 957761133,
+  "listingSha256": "c1c2bbabc4bd6dc3aed768a7b9acc7ea4d63867cc45a8ee39c71661a4a329c88",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

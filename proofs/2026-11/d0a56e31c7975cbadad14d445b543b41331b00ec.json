@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "d0a56e31c7975cbadad14d445b543b41331b00ec",
+  "tree": "863f86ee2491471937e567e2ae1250b2307cf258",
+  "committedAt": "2026-11-16T14:11:40-08:00",
+  "subject": "Merge pull request #1915 from hemibroscommunity-del/claude/plan-o-14b-selftest",
+  "files": 7779,
+  "bytes": 957755611,
+  "listingSha256": "f4dad7ae12bf8f75c3de6c5629d0a4ab9ef41d14133026530c89b0daac4e4e69",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

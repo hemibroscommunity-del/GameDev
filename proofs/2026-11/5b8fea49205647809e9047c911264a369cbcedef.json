@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "5b8fea49205647809e9047c911264a369cbcedef",
+  "tree": "ae8a6637fbfb08f3b325b661ea62d3498d91c2e1",
+  "committedAt": "2026-11-16T14:11:19-08:00",
+  "subject": "Merge pull request #1903 from hemibroscommunity-del/claude/plan-l-20-pose-page",
+  "files": 7772,
+  "bytes": 957625438,
+  "listingSha256": "bbf1c36bbae7365fe91dc3855af9cfd5e8cf7e10ad62b896cd3c8ad235eb217a",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

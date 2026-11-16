@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "1aebe0c61740c1c6e0836365faed224dd79f5f5d",
+  "tree": "1d7b826b1a3516d9685d44281651e63b4edfaae1",
+  "committedAt": "2026-11-16T14:12:09-08:00",
+  "subject": "Merge pull request #1925 from hemibroscommunity-del/claude/plan-p-23-cape-hood",
+  "files": 7938,
+  "bytes": 957958464,
+  "listingSha256": "e385311caaccf3184a89055baba6ff36b70ec0f4682a9c03e666ae43bc0a96eb",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "84426b1db67c1d72aacb5f1facf77c1aafd4ae46",
+  "tree": "14cebbdab1f327eec28ecc9ba8469952d21e1435",
+  "committedAt": "2026-11-16T14:11:26-08:00",
+  "subject": "Merge pull request #1910 from hemibroscommunity-del/claude/plan-l-21-guard-page",
+  "files": 7775,
+  "bytes": 957645775,
+  "listingSha256": "b3415aa2f069800bd5edfad0df8a9ac836e536148eceb6fbd0d9b2de4bae4fed",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "58c780ff9f4de63efa697abbbc3f7ff86d20469e",
+  "tree": "06a70586bccb0346b150fc2243e760b045bf4254",
+  "committedAt": "2026-11-16T14:11:55-08:00",
+  "subject": "Merge pull request #1906 from hemibroscommunity-del/claude/plan-p-21-hairmasks",
+  "files": 7934,
+  "bytes": 957865430,
+  "listingSha256": "986f147f442b85b54713b781a61446eb693290f62a5e6e0c8cd445f3aed9fae5",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
