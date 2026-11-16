@@ -220,6 +220,9 @@ spec. Add a line here only for a new RULE every session must follow.
 - **A player's build points too**: `skillpoints.js` `pointsGive` /
   `pointsTake` / `pointsSet` / `pointsDeal`, each call naming its row in
   `POINT_ROADS` (`skillpoints-door.test` fails a second writer).
+- **A quest's state too**: `queststate.js`'s seven verbs (`questStateSet`,
+  `questCountAdd`, ...), each call naming its row in `QUEST_ROADS`
+  (`quest-door.test` fails a second writer).
 - **Identity**: stable `bp_` ids; two tabs share one (test with `?guest=1`). A
   new character starts from the SERVER's defaults: a join with no record reads
   no `rpg*` claim, so a test seeds a character by putting a record on file
@@ -403,6 +406,7 @@ spec. Add a line here only for a new RULE every session must follow.
 | a way to change a player's gold | its row in `GOLD_ROADS` (`gold.js`) and its line in `gold-door.test`'s `EXPECT` |
 | a way to change a bag count, a stash, a player's hp, or to leave | its row in `BAG_ROADS`, `STASH_ROADS`, `HP_ROADS` or `LEAVE_WAYS`, and its line in that door's test |
 | a way to change a player's build points | its row in `POINT_ROADS` (`skillpoints.js`), and its line in `skillpoints-door.test`'s `EXPECT` |
+| a way to change a quest's state, progress or kept lists | its row in `QUEST_ROADS` (`queststate.js`) and one call that names it |
 | an honesty check | `_testMode(ps)` and its three lists |
 | a refusal in the hit test | the same in the bow's sight gate (TRAPS §236) |
 | a field on the tick | both tick builders (`tick-share.test`) |
