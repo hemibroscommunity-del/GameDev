@@ -35,6 +35,8 @@
  *      row's fallback goes to 'no') in that PR; the list only shrinks
  *      (FALLBACK_LINE, the gatekeeper's).  Check 4 holds each switch row's
  *      `on` (the end date: a day, 'off', or 'unknown' with its born).
+ *  13. the page's one reader (src/game/switches.js) holds the table's forms
+ *      and needs between its markers (v2.3.5306; --write writes them).
  *
  * BREAK PROOF (rule 8), each tried by hand once, 2026-11-14:
  *   - a method `_zzz() { if (this._flagOn('zzz')) return; }` in
@@ -69,6 +71,9 @@
  *                                        -> FAIL 12 (its row is gone)
  *   - SOFTWARE_GL renamed away in that file, the list kept
  *                                        -> FAIL 12 (its trigger is gone)
+ *   (v2.3.5307, tried by hand once, 2026-11-15:)
+ *   - a `cold-flags.test.mjs: FAIL 1. x` line in `farm`'s thrownFails
+ *                                        -> FAIL 4 (a canary suite named)
  *   Rehearsed: two branches from one table, one adding `?aardvark`, the
  *   other `?minnow`, each in its place: merged in both orders, clean, and
  *   the merged page is what --write makes.
@@ -87,7 +92,7 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { SWITCHES, SIDES, KINDS, RISKS, COLUMNS, OPTIONAL, FALLBACKS } from './lib/switches.mjs';
-import { census, scanWorker, scanPage, readsOf, blankComments, DYNAMIC, NOT_ADDRESS, NOT_A_FLAG, ROOT } from './lib/switchScan.mjs';
+import { census, scanWorker, scanPage, readsOf, blankComments, pageForm, DYNAMIC, NOT_ADDRESS, NOT_A_FLAG, ROOT } from './lib/switchScan.mjs';
 import { SYSTEMS } from './lib/systems.mjs';
 
 /* the census lines: each only falls, and only the gatekeeper lowers one */
@@ -124,6 +129,27 @@ function fallbackHold(found) {
   }
   for (const r of SWITCHES) if (r.fallback !== 'no' && !Object.hasOwn(FALLBACKS, r.name)) added.push(`${r.name}: ${r.fallback}`);
   return { held, stale, added };
+}
+
+/* ── v2.3.5306: the page's one reader (src/game/switches.js).  Its forms and
+   needs are the table's, written between its markers by --write and held
+   equal (check 13): one source (the plan's rule 2) ── */
+const READER = join(ROOT, 'src/game/switches.js');
+const READER_OPEN = '/* @@switch-forms */';
+const READER_CLOSE = '/* @@end */';
+function readerBlockText() {
+  const pageRows = SWITCHES.filter((r) => r.side !== 'worker');
+  const seen = new Set(pageRows.map((r) => r.name.replace(/^\?/, '')));
+  const q = (s) => "'" + s + "'";
+  const forms = pageRows.map((r) => `  ${q(r.name.replace(/^\?/, ''))}: ${q(pageForm(r))},`);
+  const needs = pageRows.map((r) => [r.name.replace(/^\?/, ''), r.needs.map((n) => n.replace(/^\?/, '')).filter((n) => seen.has(n))])
+    .filter(([, n]) => n.length).map(([k, n]) => `  ${q(k)}: [${n.map(q).join(', ')}],`);
+  return [READER_OPEN, 'const FORMS = {', ...forms, '};', 'const NEEDS = {', ...needs, '};', READER_CLOSE].join('\n');
+}
+function readerWith(src) {
+  const a = src.indexOf(READER_OPEN), b = src.indexOf(READER_CLOSE);
+  if (a < 0 || b < a) return null;
+  return src.slice(0, a) + readerBlockText() + src.slice(b + READER_CLOSE.length);
 }
 
 /* ── --due: the rows the end date's rule would let go, and why.  It runs in
@@ -250,6 +276,7 @@ export const SHAPES = [
   { id: 'P4 .includes(\'x=1\')', side: 'p', code: "const a = location.search.includes('pe=1');", names: ['pe'] },
   { id: 'P5 every name of a group', side: 'p', code: 'const a = /[?&](pf|pg)=0/.test(location.search);', names: ['pf', 'pg'] },
   { id: 'P6 clientOff(\'x\')', side: 'p', code: "const a = clientOff('ph');", names: [], off: ['ph'] },
+  { id: 'P8 the one reader\'s calls', side: 'p', code: "import { sw, swHas, swValue } from './game/switches.js';\nconst a = sw('pi'); const b = swHas('?pj'); const c = swValue(\"pk\");", names: ['pi', 'pj', 'pk'] },
   { id: 'P7 .get(a variable)', side: 'p', code: 'const q = new URLSearchParams(location.search);\nfor (const k of K) q.get(k);', names: [], unknown: 1 },
 ];
 function shapeCheck(sh) {
@@ -291,7 +318,10 @@ await main();
 async function main() {
   if (argv.includes('--write')) {
     writeFileSync(PAGE, makePage());
-    console.log('wrote docs/SWITCHES.md');
+    const r = readerWith(readFileSync(READER, 'utf8'));
+    if (r === null) { console.error('src/game/switches.js has no markers'); process.exit(2); }
+    writeFileSync(READER, r);
+    console.log('wrote docs/SWITCHES.md and src/game/switches.js\'s forms');
     process.exit(0);
   }
   const li = argv.indexOf('--list');
@@ -351,7 +381,7 @@ async function checks() {
     check(`2: reads in a shape the scanner does not know: ${unknown.length}, the line ${UNKNOWN_LINE}`, unknown.length <= UNKNOWN_LINE,
       unknown.map((u) => `${u.file}:${u.line} ${u.text}`));
     const stale = [...worker.staleDynamic.map((d) => `DYNAMIC ${d.file} ${d.fn}`), ...page.staleNotAddress.map((x) => `NOT_ADDRESS ${x.name} ${x.file}`),
-      ...worker.staleNotAFlag.map((x) => `NOT_A_FLAG ${x.name}`), ...(page.staleOwnEntries ? ['keepSwitches.js\'s own entries'] : [])];
+      ...worker.staleNotAFlag.map((x) => `NOT_A_FLAG ${x.name}`), ...(page.staleOwnEntries ? ['keepSwitches.js\'s own entries'] : []), ...(page.staleReader ? ['the one reader, src/game/switches.js'] : [])];
     check(`2: every excuse the scanner keeps is still used (${DYNAMIC.length} functions, ${NOT_ADDRESS.length} not the address, ${NOT_A_FLAG.length} not a flag, keepSwitches.js's own entries)`, stale.length === 0, stale);
   }
 
@@ -388,6 +418,11 @@ async function checks() {
       if (r.kind === 'switch') {
         if (!(DAY.test(r.on) || r.on === 'off' || (r.on === 'unknown' && r.born === 'unknown'))) why.push('on (a day YYYY-MM-DD, \'off\', or \'unknown\' where born is)');
       } else if (r.on !== undefined) why.push('on is a switch row\'s alone');
+      /* v2.3.5307: a check the thrown run's preload once broke by itself (a
+         cold start, a global set before a module loads) is never a switch's
+         own fail: the preload no longer touches them (switches-thrown's
+         canaries), so such a line only ever recorded the old artifact */
+      if (Array.isArray(r.thrownFails) && r.thrownFails.some((w) => /^(?:cold-flags|tick-pace)\.test\.mjs\b/.test(String(w)))) why.push('thrownFails names a canary suite (cold-flags, tick-pace): the v2.3.5304 preload\'s artifact, never the switch\'s own');
       if (r.onBy !== undefined && !(Number.isInteger(r.onBy) && DAY.test(r.on) && Number.isInteger(r.born) && r.onBy > r.born)) why.push('onBy (the later tag that turned it on, with its day in on)');
       if (why.length) bad.push(`${r.name || '?'}: ${why.join(', ')}`);
     }
@@ -474,6 +509,13 @@ async function checks() {
     check(`12: a fallback's read stays while its trigger lives (${Object.keys(FALLBACKS).length} fallbacks, the line ${FALLBACK_LINE})`, held.length === 0, held);
     check('12: every fallback in the list still has its trigger (one whose trigger is gone leaves the list, with its row\'s fallback, in that PR)', stale.length === 0, stale);
     check(`12: the list of fallbacks only shrinks (a new fallback is the gatekeeper's to add: FALLBACKS in tools/guards/lib/switches.mjs)`, added.length === 0 && Object.keys(FALLBACKS).length <= FALLBACK_LINE, added);
+  }
+
+  /* 13. the page's one reader holds the table's forms and needs (v2.3.5306) */
+  {
+    const have = existsSync(READER) ? readFileSync(READER, 'utf8') : '';
+    const want = have ? readerWith(have) : null;
+    check('13: src/game/switches.js holds the table\'s forms and needs (node tools/guards/switches.test.mjs --write)', !!have && want === have, !have ? 'missing' : want === null ? 'no markers' : 'stale');
   }
 
   const sw = SWITCHES.filter((r) => r.kind === 'switch').length;

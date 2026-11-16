@@ -390,7 +390,7 @@ export async function liarCookShield(W, ph, take) {
    other step a sprint (`sp: 1`): a sprint step is billed only when the step
    before was one too (sprint.js), so the bound stays at the sprint's 1.33
    and no stamina is spent */
-export async function mover(W, ph, take, { speed, sprintHole = false }) {
+export async function mover(W, ph, take, { speed, sprintHole = false, sprinter = false }) {
   const pts = W.room._ensureZoneNodes(WHEEL_ZONE).filter((n) => n.tierLvl === 1).slice(0, 40);
   ph.x = pts[0].x; ph.y = pts[0].y;
   await W.join(PID, ph.where(), ph);
@@ -401,6 +401,19 @@ export async function mover(W, ph, take, { speed, sprintHole = false }) {
     const t = pts[i % pts.length];
     const honest = speed <= WALK;
     let k = 0;
+    if (sprinter) {
+      /* v2.3.5541: the honest sprinter -- half a second at a time it sprints
+         (every move marked, the walk x 1.33) while the worker's stamina
+         lasts (its bar), for 3 s, then lets go and walks 0.8 s, and presses
+         again: inside the grace, so its run goes on (sprint.js) */
+      const ps0 = W.ps(PID), st = ps0 && typeof ps0.stamina === 'number' ? ps0.stamina : 0;
+      ph._spT = ph._spT || 0;
+      const run = st >= 5 && ph._spT < 3000;
+      const sp = run ? ph.walk * 1.33 : ph.walk, ms = run ? 500 : 800;   /* v2.3.5541 (review-z16): the walk is 0.8 s, one piece */
+      const d = Math.hypot(t.x - ph.x, t.y - ph.y), step = Math.min(d, (sp * ms) / 1000);
+      if (d > 1) { const sx = ph.x + ((t.x - ph.x) / d) * step, sy = ph.y + ((t.y - ph.y) / d) * step; await ph.walkTo(() => sx, () => sy, { speed: sp, honest: true, extra: run ? () => ({ sp: 1 }) : undefined }); }
+      ph._spT = run ? ph._spT + ms : 0;
+    } else
     await ph.walkTo(() => t.x, () => t.y, { speed: honest ? ph.walk : speed, honest, extra: sprintHole ? () => ({ sp: (k++ % 2) ? 1 : 0 }) : undefined });
     count();
     if (Math.hypot(t.x - ph.x, t.y - ph.y) < 1) { take.points++; i++; }
