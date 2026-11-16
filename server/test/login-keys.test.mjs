@@ -222,7 +222,9 @@ let room2, key2, key2First, h2First;
   const roomL = newRoom();
   await join(roomL, 'bp_lk_l', OLD, D1, KV);
   for (let i = 0; i < 5; i++) await join(roomL, 'bp_lk_l', makeLoginKey(), D1, KV);
-  const wL = await join(roomL, 'bp_lk_l', OLD, D1, KV);
+  /* v2.3.5582: from a device that is not the character's -- its rightful
+     holder on its own device goes through the lock (device-lock §4b) */
+  const wL = await join(roomL, 'bp_lk_l', OLD, { id: 'strangerdev' }, KV);
   check('4. five wrong new keys lock the id out like five wrong old ones', rejected(wL) && rejected(wL).reason === 'locked', rejected(wL));
 }
 
@@ -287,10 +289,15 @@ let room2, key2, key2First, h2First;
   const w0 = await join(room, 'bp_lk_lock', OLD, D1, KV);
   const k = keyOf(w0);
   for (let i = 0; i < 5; i++) await join(room, 'bp_lk_lock', 'wrong-guess-key-' + i, D2);
-  const w1 = await join(room, 'bp_lk_lock', OLD, D1, KV);
+  /* v2.3.5582: the old key from a device that is not the character's (the
+     red team's thief) -- its rightful holder on D1 goes through, below */
+  const w1 = await join(room, 'bp_lk_lock', OLD, { id: 'strangerdev' }, KV);
   const r1 = rejected(w1);
   check('7. five wrong keys from anyone: the next old-key join is \'locked\', close 4018 -- never \'auth\'',
     r1 && r1.reason === 'locked' && w1.closed && w1.closed.code === 4018, { r1, c: w1.closed });
+  const w1h = await join(room, 'bp_lk_lock', OLD, D1, KV);
+  check('7. ...but the rightful holder -- the old key from the character\'s own device -- goes through (v2.3.5582, RT-1 N9)', joined(w1h), rejected(w1h));
+  for (let i = 0; i < 5; i++) await join(room, 'bp_lk_lock', 'wrong-guess-key-' + i, D2);
   const w2 = await join(room, 'bp_lk_lock', k, D1, KV);
   check('7. ...and a matching NEW key goes through the lockout', joined(w2), rejected(w2));
   T += 61000;
