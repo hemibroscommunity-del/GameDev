@@ -338,19 +338,21 @@
  * `buffers` 19.6-20.9 at the fight, 23.5-23.8 at its highest, at home (line
  * 24.2); `gpu` at its highest 78.3-82.0; atlas 130-147 rows, never full.
  * By the census, pets 1.50 -> 0.38 MB at the fight. */
-/* v2.3.5564, the backlog's `cape-hood`: the crimson cape's hood (capeSprites.js,
- * behind the loading screen with the capes, for everyone, and kept): its
- * three halves drawn over the hair and their hair masks, read from their
- * 256-colour twins as colour numbers (p256.js CAPE_HOOD, `?capehood=0` the
- * pictures; the halves moved 0.003-0.005 OKLab, the masks exact and on the
- * hats' masks' row).  Three runs stacked on the pets at ec24846a5:
- * `artCache` at the fight 22.1 -> 20.6, so its line 85.2 -> 83.7, LOWERED by
- * the 1.5 MB saved; `buffers` 19.5-20.8 at the fight, 23.7-23.8 at its
- * highest, at home (line 24.2); `gpu` at its highest 76.0-78.3; atlas
- * 135-150 rows, never full.  By the census, cape-hood 1.50 -> 0.36 MB at
- * the fight. */
+/* v2.3.5564, the backlog's `cape-hood`: the crimson cape's hood's hair masks
+ * (capeSprites.js, behind the loading screen with the capes, for everyone,
+ * and kept; the silhouettes the hair is clipped to under a hood) read from
+ * their exact 256-colour twins as colour numbers, on the hats' masks' row
+ * (p256.js CAPE_HOOD, `?capehood=0` the pictures).  Not the hood's halves
+ * (sitting 20, answer (a)): a cape is drawn crisp, which colour numbers are
+ * not.  Three runs on the pets' line with sitting 20's mends at 3916af40b:
+ * `artCache` at the fight 22.1 -> 21.4, so its line 85.2 -> 84.5, LOWERED
+ * by the 0.7 MB saved (the first runs, halves too, set 83.7: 1.5 MB);
+ * `buffers` 19.5-20.3 at the fight, 23.8-24.0 at its highest, at home (line
+ * 24.2); `gpu` at its highest 77.8-77.9; atlas 143-150 rows, never full.
+ * By the census, cape-hood 1.50 -> 0.93 MB at the fight (the masks 0.18 on
+ * the chip, the halves 0.75 in the page). */
 export const MEMORY_BUDGET = {
-  artCache: { name: 'art loaded from files', mb: 83.7, measured: 20.6,   /* v2.3.3702: 156 -> 112; v2.3.5246: 112 -> 109.1, LOWERED by the portraits let go of (2.9 MB); v2.3.5247: 109.1 -> 107.0, Ace's coin strips (2.1 MB); v2.3.5248: 107.0 -> 101.4, the trees as numbers (5.6 MB); v2.3.5249: 101.4 -> 98.3, the made effects as numbers (3.1 MB); v2.3.5250: 98.3 -> 97.1, the world's icons (1.2 MB); v2.3.5252: 97.1 -> 95.1, the whirlwind as numbers (2.0 MB); v2.3.5256: 95.1 -> 90.6, the slimes' strips loaded as you walk (4.5 MB), see the header; v2.3.5258: 90.6 -> 88.6, the element marks as numbers (2.0 MB, measured on its own at 95.1 -> 93.1), see the header; v2.3.5562: 88.6 -> 86.7, the hats' hair masks as numbers (1.9 MB), see the header; v2.3.5563: 86.7 -> 85.2, the pet sheet as numbers (1.5 MB), see the header; v2.3.5564: 85.2 -> 83.7, the hood as numbers (1.5 MB), see the header */
+  artCache: { name: 'art loaded from files', mb: 84.5, measured: 21.4,   /* v2.3.3702: 156 -> 112; v2.3.5246: 112 -> 109.1, LOWERED by the portraits let go of (2.9 MB); v2.3.5247: 109.1 -> 107.0, Ace's coin strips (2.1 MB); v2.3.5248: 107.0 -> 101.4, the trees as numbers (5.6 MB); v2.3.5249: 101.4 -> 98.3, the made effects as numbers (3.1 MB); v2.3.5250: 98.3 -> 97.1, the world's icons (1.2 MB); v2.3.5252: 97.1 -> 95.1, the whirlwind as numbers (2.0 MB); v2.3.5256: 95.1 -> 90.6, the slimes' strips loaded as you walk (4.5 MB), see the header; v2.3.5258: 90.6 -> 88.6, the element marks as numbers (2.0 MB, measured on its own at 95.1 -> 93.1), see the header; v2.3.5562: 88.6 -> 86.7, the hats' hair masks as numbers (1.9 MB), see the header; v2.3.5563: 86.7 -> 85.2, the pet sheet as numbers (1.5 MB), see the header; v2.3.5564: 85.2 -> 84.5, the hood's hair masks as numbers (0.7 MB), see the header */
     what: 'pictures loaded from files, decoded (the asset cache, window.__btTex) -- its highest at the fight, the monsters\' looks loaded' },
   gpu: { name: 'textures on the graphics chip', mb: 115, measured: 95.0,   /* v2.3.4058: 105 -> 115, approved by the owner 2026-11-03, see the header */
     what: 'textures on the graphics chip (window.__btGpuTex) -- including what was drawn in the last minute, which Pixi unloads after 60 s unused' },
