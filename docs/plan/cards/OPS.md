@@ -14,7 +14,7 @@ either side ships first, writes cost money); `docs/ARCHITECTURE-HANDOFF.md`
 `server/src/wire/README.md` (the wire table's columns); the switch table
 (`tools/guards/lib/switches.mjs`, `node tools/guards/switches.test.mjs
 --write`).
-**Tags:** 5600 to 5619, one a PR, in the order below.
+**Tags:** 5600 to 5619, one a PR, in the order below (PR 12, 5611, was added after 11).
 **Browser:** none but the local worker (`wrangler dev --local` on a copy,
 the way `tools/qa/load/load.mjs` makes one; the probes in
 `docs/security/rt2-probes/`). Never the live game.
@@ -176,6 +176,17 @@ the way `tools/qa/load/load.mjs` makes one; the probes in
    - **Done when:** the suite's guest join writes 0 rows; a guest that
      earns gold writes its record, and comes back with it; a keyed
      character's join is unchanged; `cost-guard.test` holds the new line.
+
+12. **(tag 5611) The Test panel renames a character** (card MOD's #1907
+   route; added 2026-11-15 by the planning session).
+   - Files: new `src/ui/panels/RenameRow.jsx`, new
+     `src/game/renameOwner.js`, `src/ui/panels/DevPanel.jsx` (a row under
+     each chat report, after its Silence; "Rename my character" in the
+     Character section), a guard, a phone scenario.
+   - A new name, two taps, the reply in words (old and new, or the rule's
+     why); the Staff word chip (`force`) on the owner's own row only; a 404
+     told apart (no such character, or "this server can't rename anyone
+     yet"). Page only.
 
 ## Readings chosen for you
 
