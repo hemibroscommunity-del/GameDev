@@ -122,9 +122,9 @@ export const SYSTEMS = Object.freeze({
      guard: server-core's and liveops' include suites that fail under the
      guard's preload with any flag (tick-pace, cold-flags; card T's Found). */
   ops: {
-    what: 'the room under a crowd and the watch on it: its health for a monitor, the waiting crowd\'s pace',
-    files: [f('server/src', 'health|rfspread')],
-    words: ['room-health', 'rf-spread'],
+    what: 'the room under a crowd and the watch on it: its health for a monitor, the waiting crowd\'s pace, a seat held',
+    files: [f('server/src', 'health|rfspread|seathold')],
+    words: ['room-health', 'rf-spread', 'seat-hold'],
     traps: [],
     doors: [],
   },
