@@ -1,6 +1,6 @@
 card: L
 branch: claude/plan-l-22-arena-door (each PR on main, main merged in)
-prs: #1746 to #1866 (merged), #1876 (5218), #1894 (5219), #1903 (5520), #1910 (5521), PR 5 tag 5522: built, paused
+prs: #1746 to #1910 (merged), #PENDING (5522, ready)
 state: ready
 
 ## Done
@@ -15,10 +15,10 @@ state: ready
 
 ## Next
 
-- Paused till sittings 19, 19b, 20 merge: the arena door (5522, no PR yet);
-  first, mp-arena's "leave the duel" check: 27/28 here, 28/28 on main 29b1a0d.
-- Backlog (J2's find): a rejoin (a stall past 5 s) clears the party and the
-  Saloon's alliance forms (what was typed is lost): a REJOIN_SLOTS row.
+- Arena door (5522) at the gatekeeper: main b2d763a9 in, mp-arena 28/28 (27/28
+  was timing: no duel_end path touched), questline 187/187. On merge: card R
+  may take the escrow ledger's other rows.
+- Backlog (J2): a rejoin past 5 s clears the party and alliance forms: REJOIN_SLOTS.
 
 ## Found
 
