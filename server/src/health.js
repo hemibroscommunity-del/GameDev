@@ -24,9 +24,17 @@
  *                  rollback is shutting players out -- OPERATIONS "Rolling
  *                  back": `newersave` false)
  *
- * 200 when there is no problem, 503 with the same numbers when there is, 503
+ * 200 when there is no problem, 503 when there is, 503
  * `{ ok: false, room: 'no answer' }` when the room does not answer in
- * TIMEOUT_MS.  An empty room with no tick loop is healthy: the loop stops
+ * TIMEOUT_MS.
+ *
+ * v2.3.5601 (mended for sitting 19b, its gatekeeper's review): THE PUBLIC
+ * ANSWER IS UP OR DOWN ONLY, `{ ok }` with its 200 or 503 -- all a monitor
+ * reads.  The numbers above (players, sockets, savesRefused, and above all
+ * "newer saves refused", which told a stranger a rollback had happened) only
+ * with the owner's key (`Authorization: Bearer`, the room's own admin check
+ * and its lockout: admin.js _adminAuth).  The outer route passes the room
+ * only that header and the address, nothing else of the request.  An empty room with no tick loop is healthy: the loop stops
  * when the last socket goes (leave.js) and starts with the first.
  *
  * The room's answer is the internal `/_room_health` (index.js
@@ -83,17 +91,25 @@ export function roomHealth(room, now) {
 }
 
 export const healthMethods = {
-  /** GameRoom.fetch's `/_room_health`: the numbers, or 404 with the switch thrown. */
-  _roomHealthFetch() {
+  /** GameRoom.fetch's `/_room_health`: up or down, the numbers with the
+   *  owner's key, or 404 with the switch thrown. */
+  async _roomHealthFetch(request) {
     const headers = { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' };
     if (roomHealthOff(this)) return new Response(JSON.stringify({ ok: false, error: 'off' }), { status: 404, headers });
     const h = roomHealth(this, Date.now());
-    return new Response(JSON.stringify(h), { status: h.ok ? 200 : 503, headers });
+    /* v2.3.5601 (mend): the numbers only for the owner's key; a monitor reads up or down */
+    let owner = false;
+    try {
+      owner = !!(request && request.headers && request.headers.get('Authorization') && typeof this._adminAuth === 'function'
+        && (await this._adminAuth(request)) === 'ok');
+    } catch (e) { owner = false; }
+    return new Response(JSON.stringify(owner ? h : { ok: h.ok }), { status: h.ok ? 200 : 503, headers });
   },
 };
 
-/** The outer worker's `GET /health/room`: asks the room, TIMEOUT_MS at most. */
-export async function routeRoomHealth(env, roomName, corsHeaders) {
+/** The outer worker's `GET /health/room`: asks the room, TIMEOUT_MS at most.
+ *  `request`: the caller's, whose key and address alone go on to the room. */
+export async function routeRoomHealth(env, roomName, corsHeaders, request) {
   const headers = Object.assign({}, corsHeaders, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
   const say = (status, body) => new Response(JSON.stringify(body), { status, headers });
   let timer = null;
@@ -101,7 +117,14 @@ export async function routeRoomHealth(env, roomName, corsHeaders) {
   let res = null;
   try {
     const stub = env.GAME_ROOM.get(env.GAME_ROOM.idFromName(roomName));
-    res = await Promise.race([stub.fetch('https://room' + HEALTH.ROOM_PATH), late]);
+    /* v2.3.5601 (mend): the key (the owner's numbers) and the address (the
+       key's lockout; the pace of public reads) -- nothing else of the request */
+    const fwd = {};
+    for (const k of ['Authorization', 'CF-Connecting-IP']) {
+      const v = request && request.headers ? request.headers.get(k) : null;
+      if (v) fwd[k] = v;
+    }
+    res = await Promise.race([stub.fetch(new Request('https://room' + HEALTH.ROOM_PATH, { headers: fwd })), late]);
   } catch (e) {
     res = null;
   } finally {

@@ -14,6 +14,31 @@ nonexistent route. Both strings are SHA-256 hashed before comparison (the
 Routing: `/api/admin/*` → the GameRoom DO, honoring `?room=` (default
 `brotown-1`), same as `/api/market`. Auth is checked inside the DO.
 
+### The time-out (v2.3.5583)
+
+The red team (RT-1, N7) sent 5,000 wrong keys in half a second, each a plain
+401, then the right one. Now an address (Cloudflare's `CF-Connecting-IP`; an
+IPv6 address by its /64 once the /64 change's `ipKey`, PR #1875, is on the worker) that sends
+**10 wrong keys within 10 minutes is timed out for 15 minutes**
+(`ADMIN_LOCK` in `server/src/admin.js`):
+
+- its asks are answered `429 {error: 'held', words}` with `Retry-After`, and
+  the key is not checked (a held address learns nothing);
+- **a time-out, never a ban**: it lifts by itself after 15 minutes; a deploy
+  or a restart clears it (memory only, nothing stored); another address (the
+  owner's phone on its own line) is never held by this one's misses; the
+  right key clears its address's count;
+- an ask with no address (a local test) is never held; with no key set the
+  surface 404s and nothing is counted;
+- `/api/botstat` (botfp.js) takes the key in `x-admin-key` too, now through
+  the same door: compared by digest and counted (it was a plain compare with
+  no count);
+- the overview's `adminLock`: wrong keys, time-outs started, asks refused,
+  addresses held now, and the three numbers;
+- kill switch `adminlock: false`: nobody is held.
+
+Suite: `server/test/admin-lock.test.mjs`.
+
 ## Endpoints
 
 | Method + path | Body / params | Effect |

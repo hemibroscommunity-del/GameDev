@@ -432,7 +432,11 @@ export const DevPanel = ({ onClose }) => {
        because a background probe that disables buttons or writes errors is
        reporting on a request nobody asked for. */
     const quiet = !!(opts && opts.quiet);
-    const say = quiet ? () => {} : setMsg;
+    /* v2.3.5602 (mend, sitting 19b): `say` -- a row's own line, under its
+       button, told too (the panel's line is ~1,300 px away on a phone, so a
+       refused tap looked dead) */
+    const own = opts && typeof opts.say === 'function' ? opts.say : null;
+    const say = quiet ? () => {} : (own ? (t) => { setMsg(t); own(t); } : setMsg);
     if (!key) { say('Enter your admin key first.'); return null; }
     if (!quiet) setBusy(true);
     try {

@@ -108,7 +108,7 @@ Telling a person from a script: bot signals, fingerprints, claims that are bound
 The live flags, the admin and dev levers, test mode, feedback.
 
 - **Files**: `server/src/`: liveops, admin, devtools, testmode, feedback
-- **Files**: `src/game/`: testMode, ownerSwitches
+- **Files**: `src/game/`: testMode, switches, ownerSwitches
 - **Files**: `server/src/`: restore
 - **Doors**: `flagNameOk` in `server/src/liveops.js` (the names a live flag (a kill switch) may take); `_testMode` in `server/src/testmode.js` (the one question an honesty check asks)
 - **Switches**: [its rows in the switch table](SWITCHES.md#liveops)
