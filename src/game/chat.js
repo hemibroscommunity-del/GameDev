@@ -21,6 +21,7 @@ import { isBlockedId } from '@/game/chatMute.js'; /* v2.3.3391: both shapes of t
 import { stripLaneMarks } from '@/data/smallIcons.js'; /* v2.3.3391 */
 import { peerMoveSound } from '@/game/moveSounds.js'; /* v2.3.3434: an emote heard, as far as a hit carries (was earVol and two silent beep()s, v2.3.3391) */
 import { _toConsumableArray } from '@/lib/babelHelpers.js';
+import { act } from '@/game/actions.js';   /* v2.3.5188: the page's requests leave through the action door (card K PR 7) */
 
 /* ═══ v2.3.1970: A RECEIVED LINE IS UNTRUSTED TEXT ═══
    The worker clamps room chat at CHAT_RELAY.TEXT_MAX = 200 and stamps the
@@ -82,7 +83,7 @@ export function sendChatMessage(S, text, deps) {
       return;
     }
     S._diceAskAt = Date.now();
-    if (S.channel) S.channel.send(_dice.kind === 'flip' ? { type: 'dice', kind: 'flip' } : { type: 'dice', kind: 'roll', max: _dice.max });
+    if (S.channel) act('dice', _dice.kind === 'flip' ? { kind: 'flip' } : { kind: 'roll', max: _dice.max });   /* v2.3.5188: through the action door (actions.js) */
     return;
   }
   var _slash = slashMove(text);
@@ -143,7 +144,7 @@ export function sendChatMessage(S, text, deps) {
       _sysHint("You're not in a party.");
       return;
     }
-    if (S.channel) S.channel.send({ type: 'broadcast', event: 'party_chat', payload: { text: _ptext } });
+    if (S.channel) act('party_chat', { text: _ptext });   /* v2.3.5188: through the action door (actions.js) */
     cue('chatSent');   /* v2.3.3462: your line out, softer (chatSend was a beep()) */
     if (S.stats) S.stats.msgsSent++;
     S.chatBubbles[S.myId] = { text: _ptext, ts: Date.now() };
@@ -182,7 +183,7 @@ export function sendChatMessage(S, text, deps) {
       _laneHint('📍 Area', 'Area chat needs a server update — not sent.');
       return;
     }
-    if (S.channel) S.channel.send({ type: 'broadcast', event: 'area_chat', payload: { text: _atext } });
+    if (S.channel) act('area_chat', { text: _atext });   /* v2.3.5188: through the action door (actions.js) */
     cue('chatSent');   /* v2.3.3462: your line out, softer (chatSend was a beep()) */
     if (S.stats) S.stats.msgsSent++;
     S.chatBubbles[S.myId] = { text: _atext, ts: Date.now() };
@@ -203,7 +204,7 @@ export function sendChatMessage(S, text, deps) {
       _laneHint('✉ Whisper', 'Whispers need a server update — not sent.');
       return;
     }
-    if (S.channel) S.channel.send({ type: 'broadcast', event: 'whisper', payload: { to: _wto, text: _wtext } });
+    if (S.channel) act('whisper', { to: _wto, text: _wtext });   /* v2.3.5188: through the action door (actions.js) */
     cue('chatSent');   /* v2.3.3462: your line out, softer (chatSend was a beep()) */
     if (S.stats) S.stats.msgsSent++;
     /* NO overhead bubble for a whisper.  The bubble is drawn over your head
@@ -216,15 +217,11 @@ export function sendChatMessage(S, text, deps) {
     return;
   }
 
-  if (S.channel) S.channel.send({
-    type: 'broadcast',
-    event: 'chat',
-    payload: {
-      id: S.myId,
-      name: S.myName,
-      text: text,
-      color: S.myColor
-    }
+  if (S.channel) act('chat', {   /* v2.3.5188: through the action door (actions.js) */
+    id: S.myId,
+    name: S.myName,
+    text: text,
+    color: S.myColor
   });
   cue('chatSent');   /* v2.3.3462: your line out, softer (chatSend was a beep()) */
   if (S.stats) S.stats.msgsSent++;

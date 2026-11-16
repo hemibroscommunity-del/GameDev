@@ -288,6 +288,72 @@ console.log('draw-page:');
   await ctx.close();
 }
 
+/* ── 1d. BY THE HOUR (v2.3.5608, card OPS PR 9) ──
+ * The public board says when a player was last seen to the hour
+ * (leaderboard.js) and says so (`seen: 'hour'`).  Then a row counts when the
+ * hour it was seen in is between the hour the window starts in and the hour
+ * it ends in: rounded OUTWARD, so nobody who played inside the window is
+ * left out.  A board without the word (a worker from before, or `exactseen`
+ * on) is read to the millisecond, exactly as before: the checks above. */
+{
+  const H_ = 3600e3;
+  const A0 = Date.UTC(2026, 7, 27, 12, 30, 0);   // the window: 12:30
+  const A1 = Date.UTC(2026, 7, 27, 17, 15, 0);   //   to 17:15
+  const hour = (h) => Date.UTC(2026, 7, 27, h, 0, 0);
+  /* as the board serves them: each lastSeen floored to its hour */
+  const HROWS = [
+    { id: 'bp_h11', name: 'SeenAt11', level: 9, lastSeen: hour(11), series: { kills: 1 } },
+    { id: 'bp_h12', name: 'SeenAt12', level: 9, lastSeen: hour(12), series: { kills: 1 } },   /* maybe 12:30-12:59 */
+    { id: 'bp_h15', name: 'SeenAt15', level: 9, lastSeen: hour(15), series: { kills: 1 } },
+    { id: 'bp_h17', name: 'SeenAt17', level: 9, lastSeen: hour(17), series: { kills: 1 } },   /* maybe 17:00-17:15 */
+    { id: 'bp_h18', name: 'SeenAt18', level: 9, lastSeen: hour(18), series: { kills: 1 } },
+    { id: 'bp_hlo', name: 'LowLevel', level: 2, lastSeen: hour(14), series: { kills: 1 } },
+  ];
+  const { ctx, page } = await newPage();
+  const byH = await page.evaluate(([rows, a, b]) =>
+    window.__draw.entrantsFrom(rows, a, b, 5, true).map((e) => e.name), [HROWS, A0, A1]);
+  ok('by the hour: the start\'s hour, the end\'s hour and those between are in',
+    JSON.stringify(byH) === JSON.stringify(['SeenAt12', 'SeenAt15', 'SeenAt17']), byH);
+  const exact = await page.evaluate(([rows, a, b]) =>
+    window.__draw.entrantsFrom(rows, a, b, 5, false).map((e) => e.name), [HROWS, A0, A1]);
+  ok('...where read to the millisecond the start\'s hour (12:00 < 12:30) would be left out',
+    !exact.includes('SeenAt12'), exact);
+  const exH = await page.evaluate(([rows, a, b]) =>
+    window.__draw.excludedBy(rows, a, b, 5, true).map((e) => e.name), [HROWS, A0, A1]);
+  ok('...and the level floor reads the same window', JSON.stringify(exH) === '["LowLevel"]', exH);
+  const rw = await page.evaluate(([a, b]) => window.__draw.readWindow(a, b, true), [A0, A1]);
+  ok('the window read is 12:00 to 17:59:59.999',
+    rw.from === hour(12) && rw.to === hour(18) - 1, rw);
+  /* an exact time anywhere in the window's hours: always in (outward, never inward) */
+  const every = await page.evaluate(([a, b]) => {
+    const out = [];
+    for (let t = a; t <= b; t += 7 * 60e3) out.push(window.__draw.inWindow(Math.floor(t / 3600e3) * 3600e3, a, b, true));
+    return out.every(Boolean);
+  }, [A0, A1]);
+  ok('every minute inside the window, floored to its hour, is in', every);
+
+  /* the page itself, against a board that says it is by the hour */
+  await page.unroute('**/api/leaderboard/top*');
+  await page.route('**/api/leaderboard/top*', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json',
+      body: JSON.stringify({ ok: true, category: 'level', seen: 'hour', results: HROWS }) }));
+  await page.goto(ORIGIN, { waitUntil: 'load' });
+  await setWindow(page, A0, A1);
+  await page.click('#load');
+  await page.waitForSelector('#out1 table');
+  const read = await page.locator('#out1 [data-read-window]').getAttribute('data-read-window');
+  const said = await page.locator('#out1 [data-read-window]').textContent();
+  ok('the list says it read by the hour, and which hours',
+    read === 'hour' && /by the hour/.test(said) && /12:00 to 17:59 UTC/.test(said), said);
+  ok('...and lists the three', (await page.locator('#out1 tbody tr').count()) === 3);
+  await page.click('#lock');
+  await page.waitForSelector('#ann');
+  const locked = await page.evaluate(() => { try { return JSON.parse(localStorage.getItem('brotown_draw_lock_v1') || 'null'); } catch (e) { return null; } });
+  ok('the lock records how the window was read', !!locked && locked.seenRead === 'hour', locked && locked.seenRead);
+  await page.evaluate(() => { try { localStorage.clear(); } catch (e) {} });
+  await ctx.close();
+}
+
 /* ── 2. the real flow in the page, and the guard that matters ── */
 {
   TIP = 900000; MINED = false;

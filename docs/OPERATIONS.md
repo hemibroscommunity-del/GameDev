@@ -11,6 +11,11 @@ key, and without the key the endpoints don't even appear to exist.
 1. Think of a long random password (a password manager's 30+ character
    generate button is perfect). This is your ADMIN KEY — treat it like a
    bank password. Anyone who has it can grant gold and freeze players.
+   **Ten wrong keys within ten minutes** from one internet connection put
+   that connection in a **15-minute time-out** (v2.3.5583): every admin
+   command from it answers "Too many wrong keys from this address: try
+   again in N minutes". It lifts by itself; your phone on its own data
+   connection is not affected, and the next deploy clears it too.
 2. Cloudflare dashboard → **Workers & Pages** → **brotown-server** →
    **Settings** → **Variables and Secrets** → **Add** →
    Type: **Secret**, Name: `ADMIN_KEY`, Value: *your password* → **Deploy**.
@@ -317,6 +322,37 @@ If one is not acceptable:
 
 Names are shown here too, but this page does not change a name.
 
+## The feedback board: taking a post down, and the crash feed (v2.3.5593)
+
+Anyone could post to the Feedback board (More → Feedback → Browse) under any
+name, flood it, and nobody could take a post down (the red team, 2026-11-14:
+`docs/specs/feedback-guard.md`). Now a post's name is cleaned like a chat
+line and cut to 24 letters, posts are limited per internet line and for the
+whole game, and you have three levers:
+
+- **Take one post down**, **clear out oversized posts**, and **read the crash
+  feed**: your way is the Test panel's buttons (coming from card OPS, beside
+  the drawings' Remove). Nothing to type.
+- **Close the board in a flood**: the live switch `feedback` set to `false`
+  (the Test panel's live switches) stops new posts, votes and crash reports
+  within a minute; the board can still be read. Set it back to `true` to open
+  it.
+
+For a session that holds the admin key (never the owner by hand), the same
+three by command:
+```
+curl -X DELETE -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/feedback/ticket?id=THE_ID"
+curl -X DELETE -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/feedback/sweep"
+curl -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/feedback/crashes?limit=50"
+```
+A post's id is each ticket's `id` in `/api/feedback/list?sort=new`. Without
+the key each answers a plain 404 (the key is checked by the game room's admin
+door, the same one that times out an address sending wrong keys). The sweep
+takes every post whose own words are over 4 KB and the old pace rows the
+board no longer reads, and mends a post a bad vote grew (that vote taken out). On a local machine the QA tools
+send the harness's key for the crash feed (`tools/qa/qa-telemetry.mjs` reads
+`BT_ADMIN_KEY`, else the harness's).
+
 ## Accuracy: how often each weapon hits (v2.3.4545)
 
 The game counts every basic attack (a sword swing, an arrow, a staff bolt)
@@ -383,6 +419,81 @@ Note: players running an old cached version of the game may end up on a
 fresh blank character instead of seeing the freeze message. If that happens,
 just freeze the new id too — their real character stays locked either way.
 
+## Silencing a player, and a freeze that holds their phone (v2.3.5621)
+
+A silence stops one character's chat reaching anyone (room, area, whispers,
+party, friend messages, shop threads) for as long as you choose; they can
+still play, and are told, once a minute, until when. A freeze now also
+refuses any character made on the frozen character's phone (never your own
+phone: a phone one of your test-mode characters has played on is never
+held). Your way is the Test panel's buttons beside Chat reports' Freeze
+(coming: the planning session routes them). For a session that holds the
+admin key (never the owner by hand):
+```
+curl -X POST -H "Authorization: Bearer YOUR_KEY" -H "Content-Type: application/json" \
+  -d '{"playerId":"bp_...","minutes":60,"note":"why"}' "https://WORKER/api/admin/silence"
+curl -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/admin/silence"
+curl -X DELETE -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/admin/silence?id=bp_..."
+```
+Leave `minutes` out for until lifted (otherwise a whole number of minutes,
+1 to a year). The live switch `silence` (set to `false`) turns silences off.
+The phone half of a freeze is OFF until you turn it on: the live switch
+`freezedevice` set to `true` (it can hold out a phone your own other
+character has used, so it waits for your word). `docs/specs/silence.md`.
+
+## Renaming a character (v2.3.5622)
+
+A character's name can no longer be changed by its phone after it is made,
+and a new name follows the rule (no emoji or hidden marks, nothing that reads
+as the game or its staff: `docs/specs/name-rules.md`). You can rename any
+character, for example one whose old name breaks the rules. Your way is the
+Test panel's button (coming: the planning session routes it). For a session
+that holds the admin key (never the owner by hand):
+```
+curl -X POST -H "Authorization: Bearer YOUR_KEY" -H "Content-Type: application/json" \
+  -d '{"playerId":"bp_...","name":"New Name"}' "https://WORKER/api/admin/rename"
+```
+`"force": true` lets a name the staff list holds through (your own
+character's "Owner"). The live switch `namerules` set to `false` takes new
+names as before.
+
+## A copy of the room's records, a page at a time (v2.3.5286)
+
+For keeping your own copy of the game's saved records, or reading exactly
+what one character has on file. It only reads: nothing changes. It gives
+only the kinds of record on its list: the characters' own and everything
+that holds gold or goods. Never a login, a device's id, the anti-bot
+evidence, the words players sent each other, or the hidden settings.
+
+**Each run costs a little**: Cloudflare counts every record it reads (a page
+reads up to 50 by default, 200 at most, and the whole room once over is every
+record it holds). It costs nothing when you do not use it, so it is on.
+
+Ask for one kind of record by its prefix (the names in the registry,
+`docs/ARCHITECTURE-HANDOFF.md` rule 2: `rpg:` the characters, `bank:` the
+vaults, `store_listing:` the auction house, `shop_stock` Diego's pile...):
+```
+curl -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/admin/export?prefix=rpg:"
+```
+or everything one character has on file (their save, bank, mail, pets,
+farm, backups...):
+```
+curl -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/admin/export?player=bp_XXXX"
+```
+The answer is a page: `rows` (each record's name `k` and what it holds `v`),
+`read` (how many records it read) and `next`. While `next` is not null, ask
+again with `&cursor=` and that value for the next page; the last page may be
+empty. `&limit=` sets a page's size (1 to 200).
+
+- Its switch is `roomexport` in the live flags (below): on unless it is
+  `false`; off, it answers "off" and reads nothing. To turn it off:
+```
+curl -X POST -H "Authorization: Bearer YOUR_KEY" -H "Content-Type: application/json" \
+  -d '{"name":"roomexport","value":false}' "https://WORKER/api/admin/flags"
+```
+- Asked for a kind of record not on its list (a login's `auth:`, a
+  device's `device:`, the hidden settings...), it says no.
+
 ## Fixing a broken save (restore from backup)
 
 The server now automatically keeps ~7 daily backups per player (taken at
@@ -398,14 +509,56 @@ someone:
    Until it has gone the restore answers "player still in the world ... wait
    20 seconds, then restore again" and changes nothing: just run it again
    (v2.3.4413).
-3. Restore:
+3. See what it would do first (nothing changes): add `"dry":true`.
+```
+curl -X POST -H "Authorization: Bearer YOUR_KEY" \
+  -d '{"playerId":"bp_XXXX","snapKey":"rpgsnap:bp_XXXX:20260703","dry":true}' \
+  "https://WORKER/api/admin/restore"
+```
+   The answer says what it would put back (`restored`), what it leaves as it
+   is (`left`), how much gold and how many of each item the player gains or
+   loses (`booked`: a minus is a loss), and which auction listings, orders,
+   fines or piles on the ground still hold something of theirs (`between`).
+   Those are never put back: they are another player's too. A piece they
+   listed after the backup comes back to them AND stays in its listing, so
+   look there and take the listing down if you need to.
+4. Restore (the same, without `dry`):
 ```
 curl -X POST -H "Authorization: Bearer YOUR_KEY" \
   -d '{"playerId":"bp_XXXX","snapKey":"rpgsnap:bp_XXXX:20260703"}' \
   "https://WORKER/api/admin/restore"
 ```
-Restores are themselves safe: the current (broken) save is stashed as a
-`prerestore-` backup first, so you can always restore the restore.
+Restores are themselves safe: everything the restore replaces is stashed as
+a `prerestore-` backup first, in the same moment, so you can always restore
+the restore (its name is the answer's `copy`).
+
+What comes back (v2.3.5285): the character (gold, items, gear, levels,
+quests), and, from backups taken while `fullsnap` is on, their bank vault and
+their pets too. Never their login key, your freezes or test mode, their mail,
+achievements or the day's prizes (those would pay twice). The gold and items
+it adds or takes are counted in the game's books, so the economy numbers stay
+true. A backup saved by a newer version of the game is refused, never
+written over: wait for that version to be back.
+
+**Turning on the fuller backups** (off by default, because each backup then
+reads two more records: about 2 extra reads a player a day):
+```
+curl -X POST -H "Authorization: Bearer YOUR_KEY" -H "Content-Type: application/json" \
+  -d '{"name":"fullsnap","value":true}' "https://WORKER/api/admin/flags"
+```
+
+**Counting a character restart in the economy check** (off by default,
+because it adds one record for the whole game and one more write each time
+a player restarts their character): with `resetbook` on, the gold and items
+a restarted character had are written down as gone, so the game's balance
+check (run by the tests) does not read them as missing. Nothing you see
+changes with it: the daily economy numbers do not read that record yet, and
+your economy card already counts restarts on its own. Leave it off unless a
+later change starts reading it.
+```
+curl -X POST -H "Authorization: Bearer YOUR_KEY" -H "Content-Type: application/json" \
+  -d '{"name":"resetbook","value":true}' "https://WORKER/api/admin/flags"
+```
 
 ## Taking the whole room back to an earlier time (v2.3.5288)
 
@@ -484,6 +637,65 @@ curl -X POST -H "Authorization: Bearer YOUR_KEY" -H "Content-Type: application/j
   `true`; off, both steps answer "off".
 - It can be tried on Cloudflare in the lab first, never on the game: see
   "The restore try" in `docs/specs/cloudflare-lab.md`.
+
+## Rolling back a bad server update (v2.3.5588)
+
+For when an update to the server broke the game and you want the version
+before it back while the fix is made. This puts back the server's CODE only:
+every player's things stay exactly as they are (for putting the things back,
+see the two sections above).
+
+1. **Roll back**: the Cloudflare dashboard, Workers & Pages,
+   `brotown-server`, Deployments: pick the last version that worked and roll
+   back to it. Players are disconnected for a moment and reconnect by
+   themselves, as after any update.
+2. **Right after, let in the players the newer version saved.** When an
+   update changes how a character is stored, a player who played under it
+   has a save the older version does not know. The older version refuses
+   that player rather than damage the save, so they sit at "connecting" for
+   ever, with no word on screen. One switch lets them in (`newersave` set to
+   off); it is harmless when nobody needs it, so set it after EVERY
+   rollback. **From your phone:** the Test panel, Live flags, **Set a
+   switch**: tap `newersave`, tap off, tap Set, then Set again (v2.3.5602).
+   Your own character is likely one of those shut out, and the Test panel
+   opens only from inside the world: **open the game with `?guest=1` at the
+   end of its address** (or with another character) to reach the Test
+   panel, then reopen it normally once the switch is off.
+   (Before that version is out, or from a computer, the same thing:)
+```
+curl -X POST -H "Authorization: Bearer YOUR_KEY" -H "Content-Type: application/json" \
+  -d '{"name":"newersave","value":false}' "https://WORKER/api/admin/flags"
+```
+   Their saves keep the newer version's mark, so nothing is changed twice
+   when the fix arrives. A few parts the newer version saved for a player
+   (the farm, pets, the codex, the order board, the daily rewards) stay shut
+   for that player until the fix is deployed; nothing is lost.
+3. **Hold every merge that touches the server until the fix is in.** The
+   next one deploys today's `main` again, bug and all, and undoes the
+   rollback without a word.
+4. **When the fix is deployed, clear the switch**: the Test panel, Live
+   flags, "Show live flags", then clear `newersave`. No terminal needed for
+   this step.
+
+The game's pages (Cloudflare Pages) do not roll back with the server, and
+that is safe: a page asks the server what it can do and keeps to it.
+
+### When GitHub cannot deploy and the game is broken
+
+Every server update goes out through GitHub Actions. If Actions cannot run
+(the account's spending limit was reached: jobs fail in about 2 seconds with
+"The job was not started because ... spending limit"; or GitHub itself is
+down), no fix can be deployed. **Never deploy from a computer instead** (a
+stale copy deployed that way rolled back three weeks of work on 2026-06-10).
+What still works without GitHub:
+
+1. the rollback above (steps 1 to 4);
+2. the live switch for the broken system (the "Live switches (flags)"
+   section below lists them): it turns that one system off without a
+   deploy;
+3. for the spending limit: GitHub, Settings, Billing, raise the limit;
+   then re-run the waiting deploy from the Actions tab (Deploy worker, Run
+   workflow).
 
 ## Talking to your players (announcements)
 
@@ -586,7 +798,24 @@ Message diet has its own row, with **Off for everyone** as its switch.)
 ## Live switches (flags) — change the game without a deploy
 
 Flags take effect immediately for everyone, survive deploys, and are
-yours to flip on and off. See what's currently set:
+yours to flip on and off.
+
+**From your phone, no terminal (v2.3.5602):** open the Test panel (hold
+the top bar's middle), then Live flags: "Show live flags" lists what is
+set, with a Clear on each; under it, **Set a switch**: tap one of the usual
+switches (or type a name), pick on or off or type a number, and tap Set.
+The first tap only says what it will do; tap Set again to do it. What it
+says shows right under the Set button. The commands below do the same from
+a computer.
+
+**If your own character cannot get in** (right after a dashboard rollback,
+it is refused at the door until `newersave` is off, and the Test panel
+opens only from inside the world): open the game with `?guest=1` at the end
+of its address (a fresh throwaway character on the same phone, which keeps
+your admin key), or with another character, and use its Test panel. Then
+reopen the game normally.
+
+See what's currently set:
 ```
 curl -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/admin/flags"
 ```
@@ -794,6 +1023,22 @@ Three things worth knowing so nothing surprises you mid-event:
   on rather than being eaten.
 * **One cape per account.** A player who has already redeemed cannot win a
   second ticket, so the three winners are three different people.
+
+**The prize draw page reads the contest's window by the hour (v2.3.5608).**
+The public boards say when each player was last seen to the hour, not to the
+minute (a minute-by-minute time for every player was a live "who plays, and
+when" anyone could read). So the draw page (`/tools/draw.html`) counts everyone
+last seen in the hour the event started in, the hour it ended in, and every hour
+between, and its list says so ("Read by the hour: ... UTC"). It rounds outward:
+nobody who played during the event is left out; at most someone who played in
+the first or last hour just outside the event is let in. Set the event's start
+and end on the hour and nobody extra can be.
+
+To run an OLD draw again exactly as it was first run (to the minute): in the
+Test panel, Live flags, **Set a switch**, type `exactseen`, value `on`, tap Set
+twice. The boards learn it the next time the game writes a player's row: open
+the game yourself and they have it. Run the draw, then the switch's Clear puts
+the boards back to the hour.
 
 ## Testing safely
 

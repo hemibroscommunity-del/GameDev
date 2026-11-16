@@ -99,7 +99,14 @@ gatekeeper makes it strict once it reaches nothing.
 
 - `src/debug/crashTrap.js` and `src/networking/index.js`: they run before a
   session;
-- `wsClient.js`'s fetch of `/api/lobby`: the connection's own.
+- `wsClient.js`'s fetch of `/api/lobby`: the connection's own;
+- (v2.3.5603, named for sitting 19b's gatekeeper) **the owner's key**: the
+  Test panel's `call` and `callOwner` (`src/ui/panels/DevPanel.jsx`) go out
+  through `fetchWithTimeout` with the owner's admin key, never a session's
+  token, so the census never sees them. They stay outside the door on
+  purpose: the door carries a session's token, and the owner's key must
+  never ride it. The guard's §7b holds that only that file calls
+  `fetchWithTimeout` with the API's base.
 
 `tools/dev/precheck.mjs` reads the rows too:
 

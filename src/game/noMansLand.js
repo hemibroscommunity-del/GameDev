@@ -40,6 +40,7 @@ import { cue } from '@/game/eventSounds.js';   /* v2.3.3343: No man's land heard
 import { NML, NML_CENTRE, NML_CENTRES, nmlTierAt, nmlLevelAt, nmlStepLevelAt } from '@/data/noMansLandRings.js';   /* v2.3.3767: + a step a monster level */
 import { wheelLong } from '@/game/wheelSize.js';   /* v2.3.3315: the rings of the Wheel the room plays */
 import { setFoeRule } from '@/game/sparTargets.js'; /* v2.3.3268: a player you chose to attack is yours to hit while this rule allows it */
+import { act } from '@/game/actions.js';   /* v2.3.5188: the page's requests leave through the action door (card K PR 7) */
 export { NML, NML_CENTRE, nmlTierAt, nmlLevelAt, nmlStepLevelAt };
 /* v2.3.3315: the middle of the Wheel the room plays (game px) */
 export function nmlCentre() { return NML_CENTRES[wheelLong()] || NML_CENTRE; }
@@ -143,13 +144,13 @@ export function nmlLockAsk(S, id) {
   const now = Date.now();
   if (now - (S._nmlLockAskAt.get(key) || 0) < 60000) return false;
   S._nmlLockAskAt.set(key, now);
-  try { S.channel.send({ type: 'nml_lock_ask', payload: { target: key } }); } catch (e) { return false; }
+  try { act('nml_lock_ask', { target: key }); } catch (e) { return false; }   /* v2.3.5188: through the action door (actions.js) */
   return true;
 }
 /** Their window's "Let <name> attack you again" */
 export function nmlLockAllow(S, id) {
   if (!nmlLockOn(S) || !S.channel || id == null || !nmlLockedIn(S, id)) return false;
-  try { S.channel.send({ type: 'nml_lock_allow', payload: { target: String(id) } }); } catch (e) { return false; }
+  try { act('nml_lock_allow', { target: String(id) }); } catch (e) { return false; }   /* v2.3.5188: through the action door (actions.js) */
   /* the worker's nml_lock answers; until then, the button goes */
   if (S._nmlLocks && S._nmlLocks.in instanceof Map) S._nmlLocks.in.delete(String(id));
   return true;

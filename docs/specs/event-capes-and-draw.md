@@ -276,6 +276,9 @@ cannot be enumerated from this data.
    and you're entered."* Pick the number so it takes ~15–20 min.
 2. After the session, pull the level board; keep rows with `lastSeen` inside
    the event window and `level >= threshold`. That is the entry list.
+   (v2.3.5608: the board says `lastSeen` to the hour, `seen: 'hour'`, and the
+   page then reads the window by the hour, rounded outward:
+   `docs/specs/board-cache.md`.)
 3. **Publish the numbered list** (bro names, 1..N). This is the commitment —
    it locks before any randomness exists.
 4. Name a **future Bitcoin block height**, ~30–60 min out.

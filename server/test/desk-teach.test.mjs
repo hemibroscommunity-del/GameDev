@@ -58,7 +58,7 @@ check('5c a character with no kills is owed the combat lesson again', G.guideOwe
 /* the pieces are wired */
 const dt = rd('../../src/ui/deskTeach.js'), coach = rd('../../src/ui/mobile/QuestCoach.jsx'), mini = rd('../../src/rendering/systems/wheelMinimap.js'), rew = rd('../../src/game/lifeSkillRewards.js');
 check('6a QuestCoach mounts it; body-level, no pointer events, no CSS filter, ?guidearrow=0, per-character in try/catch',
-  /startDeskTeach\(/.test(coach) && /document\.body\.appendChild\(el\)/.test(dt) && /pointer-events:none/.test(dt) && !/filter\s*[:=]/.test(dt) && /get\('guidearrow'\) === '0'/.test(dt) && /try \{ const v = JSON\.parse/.test(rd('../../src/game/deskTeachState.js')));
+  /startDeskTeach\(/.test(coach) && /document\.body\.appendChild\(el\)/.test(dt) && /pointer-events:none/.test(dt) && !/filter\s*[:=]/.test(dt) && /sw\('guidearrow'\)/.test(dt) && /try \{ const v = JSON\.parse/.test(rd('../../src/game/deskTeachState.js')));
 check('6b the toast says the owner\'s words; the harvest\'s success is stamped; the minimap reads the pulse',
   /Almost! Press E \(or drag\) when the bar empties to collect\./.test(dt) && /_lastHarvestOkAt = Date\.now\(\)/.test(rew) && /_teachNode/.test(mini));
 check('6c the tips card names the right click and Q; the monster line is the owner\'s',

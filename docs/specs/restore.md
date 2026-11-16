@@ -6,8 +6,8 @@ How the game's saved data can be put back when something goes wrong. Step
 | Part | Card R PR | Where |
 |---|---|---|
 | The room's way back to an earlier time | 9 (tag 5288) | `server/src/restore.js`, below |
-| A player's restore made from the registry | 6 (tag 5285) | not built yet |
-| The paged export | 7 (tag 5286) | not built yet |
+| A player's restore made from the registry | 6 (tag 5285) | `server/src/playerrestore.js`, below |
+| The paged export | 7 (tag 5286) | `server/src/admin.js` `exportPage`; its own spec, `docs/specs/room-export.md` |
 | The storage's size in the day's book | 8 (tag 5287) | `server/src/daybook.js` (its header) |
 
 ## The room's way back (v2.3.5288)
@@ -126,3 +126,132 @@ rewind through the lever to the middle of the play leaves unexplained gold 0.
 
 `roomrewind: true` in the live flags turns the lever on; unset or `false`
 (the default), both steps answer `off`.
+
+## The paged export (v2.3.5286)
+
+The owner's copy of the room's records, a page at a time, behind the admin
+key: `GET /api/admin/export` by a registry prefix or by one character's id,
+never a login key or the hidden settings. Read only. ON (the owner,
+2026-11-14: *"Just go recommended"*); `roomexport: false` turns it off. Its
+whole spec is its own file, `docs/specs/room-export.md` (written while this
+one was still on #1844's branch).
+
+## One player's restore (v2.3.5285)
+
+`server/src/playerrestore.js` (`playerRestore`, `snapshotCopy`); its table
+`RESTORE_WAYS` in `server/src/storagemarks.js`, beside the marks; the route
+`POST /api/admin/restore` (`admin.js`, behind the owner's key); held by
+`server/test/restore.test.mjs`; the owner's steps in `docs/OPERATIONS.md`
+("Fixing a broken save").
+
+### Why
+
+The owner's restore put back one record, the character (`rpg:`), from a
+daily copy, and it put it back by hand: the purse, the bag and the stashes
+changed with no door and nothing booked, so the world's sum (step 4.4) read
+every restore as gold and goods made or lost from nowhere. A character's
+vault and pets were not in the copy at all.
+
+### What is put back: the registry's table
+
+Every record the marks call a player's (`whose: 'player'`, 35 of them) is
+placed in `RESTORE_WAYS`: **restored** or **left**, with why. The suite fails
+a player's record the table does not place, and a place for a record that is
+not a player's.
+
+| Way | Records | Why |
+|---|---|---|
+| restored | `rpg:` (the character), `bank:` (the vault), `pets:` | what holds a character's value, theirs alone |
+| left | `auth:`, `keyidx:` | the login: an old key must never come back |
+| left | `frozen:`, `testmode:` | the owner's levers |
+| left | `rpgsnap:`, `rpgsnap_at:` | the snapshots themselves |
+| left | `botstat:` | the anti-bot evidence: never rewound |
+| left | `inbox:` | mail: credits others sent, each stamped once (rewound, one claimed since would pay again, one sent since be lost) |
+| left | `gear_prov:` | the ownership ledger: a restored piece whose row is gone loads as `legacy` (kept, not sellable), never sellable twice |
+| left | `achv:`, `aponce:`, `guild_claims:`, `lspin:`, `daily_rewards:`, `farmorders:` | a claim: rewound, it would pay twice |
+| left | the rest (counts, notes, links, the name and look) | rewinding them fixes no broken save |
+
+Records held **between** players (an order, a listing, a pot, a pile) are
+never rewound: they are the other side's too. The answer names those that
+name the player (`between`): one page of each value-holding between prefix
+(`PLAYER_RESTORE.BETWEEN_PAGE`, 200 rows) read when the owner presses it,
+`betweenFull` the prefixes whose page was full. A piece listed since the copy
+comes back in the character AND stays in its listing: the owner sees it
+there.
+
+### The copy: the reading chosen
+
+A daily copy (`rpgsnap:<pid>:<yyyymmdd>`, the first login of a day) is the
+stored character, one put. **The fuller copy** carries the player's other
+restored records at the same moment under `_with` (`{'bank:': vault or null,
+'pets:': pets or null}`), in that same one put: no new row, more bytes, and
+two keys more read at that moment. Measured (`cost-guard` §18, a player with
+a vault and a pet): off, 2 keys read and 2 rows written; on, 4 keys read, 2
+rows written, the copy 186 bytes bigger. It costs more than today, so it is
+built **off**, behind `fullsnap: true` in the live flags, a cost question
+for the owner. The restore restores what the copy holds: today's copies (and
+every copy while `fullsnap` is off) put back the character alone.
+
+### Through the doors: nothing unexplained
+
+The restored character starts from the record as it is NOW (its purse, its
+bag, its count `_econ`) and is made the copy's by the doors: the gold door's
+`restore` road (a `set`, judged by its difference: SHAPES part 3, edge 1;
+signed, so a restore that lowers books a negative mint), the bag door's
+`restore` for each key, the stash door's `restore` for each stash. The
+vault's difference books on the character too (`restore_vault`, gold and
+bag). Every other field is the copy's. So the sum's held and net move
+together: `restore.test` holds the world's sum to 0 after a restore and
+after restoring its way back. The copy's own `_econ` is never put back: a
+count is the record's history, not a value.
+
+### One run of writes, and its way back
+
+The `prerestore-` copy covers every record the restore overwrites or deletes
+that exists now: the character at its top (none: `_norpg: true`), each other
+under `_with`. It is written in the same run as the restore and its deletes,
+nothing awaited between (handoff rule 5): a restart at that run keeps
+neither. Restoring the `prerestore-` copy puts every record back (the
+suite).
+
+### A newer worker's record
+
+A copy, or a record now, whose shape number is past this worker's (the
+character's `_v` or its count's `v`, the vault's `_v`, the pets' `v`) is
+refused (`409`, `newer`), never rewritten (`docs/specs/migrations.md`).
+
+### A dry run
+
+`dry: true` answers everything (what it would restore, leave and book, what
+is held between) and writes nothing.
+
+## A restart, booked (v2.3.5285)
+
+Card K's hostile census found it: an honest `character_reset` deletes the
+character and its vault, and the character's own count goes with them, so
+the world's sum read every restart as value gone with no burn written (gold
+-5000 in the census). The mend is a record of the end: `econ_gone`, one key
+for the room, `_econ`'s shape and `n`. The restart books into it what the
+character and its vault HELD, as burned, less what the character's own count
+already says it made (`worldsum.js goneAdd`), and the sum reads its net
+(`NET_READERS`). It is written in the same run as the character's and the
+vault's deletes (the vault's delete moves into that run: not a row more).
+
+A new row for the room, and a read and a write a restart (`cost-guard` §19:
+15 rows written a restart off, 16 on; 6 keys read off, 8 on): built **off**,
+behind `resetbook: true` in the live flags, a cost question for the owner.
+Off, a restart is exactly as before.
+
+**What reads it** (the sitting 20 review): the world's sum as the tests take
+it (`count()` over the whole store: `restore.test`, `world-sum.test`).
+Nothing live reads it yet: the day's walk (`liveops.js`, `WORLD.PREFIXES`)
+reads only the records that hold value, and the owner's economy card already
+counts restarts on its own (`econcard.js econResetBook`, the day's book's `r`
+part). Card K's hostile census runs on the default flags, so its line does
+not fall with this switch: it would only with `resetbook` on for the census.
+
+### Their switches
+
+`fullsnap: true` and `resetbook: true` in the live flags, each off by
+default (`docs/SWITCHES.md`).
+

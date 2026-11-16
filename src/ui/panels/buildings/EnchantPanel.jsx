@@ -11,6 +11,7 @@ import { askWeaponGem, askWeaponGemOut, monsterHoldOn, weaponGemBus, weaponGemOn
 import { FUSION_BASES, SECOND_SLOT_LVL, isVolatilePair, isWeaponGem, weaponGemEffect, weaponGemEdge, weaponGemSlots } from '@/data/weaponGems.js'; /* v2.3.3513; v2.3.3518: + the matchup */
 import { gemExtractCost } from '@/data/items.js'; /* v2.3.3513: Take out's price, the Blacksmith's own */
 import { gemCount, gemTakeLocal, gemXpOwedTotal } from '@/data/gems.js'; /* v2.3.3516: gems are bag items; the XP is for gems you made */
+import { act } from '@/game/actions.js';   /* v2.3.5190: the page's requests leave through the action door (card K PR 7) */
 /* === EnchantPanel — buildingPanel === 'enchant' sub-panel === */
 /* v2.3.874: extracted verbatim from the buildingPanel === 'enchant' clause
    in BroTown.jsx (UI decomposition; behavior-frozen). 3 props; data +
@@ -498,7 +499,7 @@ export function EnchantPanel(props) {
             {
               var _Sag = stateRef.current;
               if (_Sag._serverCaps && _Sag._serverCaps.amuletForge && _Sag.channel) {
-                try { _Sag.channel.send({ type: 'amulet_forge_request', payload: { op: 'gem', gem: elem } }); } catch (e) {}
+                try { act('amulet_forge_request', { op: 'gem', gem: elem }); } catch (e) {}   /* v2.3.5190: through the action door (actions.js) */
               }
             }
             gemTakeLocal(R, elem, false, 1);   /* v2.3.3516: the bag first, as the worker */

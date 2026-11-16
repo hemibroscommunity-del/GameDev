@@ -70,8 +70,9 @@ export const FeedbackPanel = () => {
         background: COL.well, borderRadius: 10, padding: 2,
         border: `1px solid ${COL.border}`,
       }}>
-        <button onClick={() => setTab('submit')} style={tabBtn(tab === 'submit')}>Submit</button>
-        <button onClick={() => setTab('browse')} style={tabBtn(tab === 'browse')}>Browse</button>
+        {/* v2.3.5593: data-fb-tab, the QA hook (mp-panelguard) */}
+        <button onClick={() => setTab('submit')} style={tabBtn(tab === 'submit')} data-fb-tab="submit">Submit</button>
+        <button onClick={() => setTab('browse')} style={tabBtn(tab === 'browse')} data-fb-tab="browse">Browse</button>
       </div>
       {tab === 'submit' ? (
         <>
@@ -179,7 +180,12 @@ const FeedbackBoard = () => {
     }).catch(() => {});
   };
 
-  const catLabel = (id) => { const c = FEEDBACK_CATEGORIES.find((x) => x.id === id); return c ? plain(c.label) : id; };
+  /* v2.3.5593: every field the board serves is printed as a string (the red
+     team, RT-3 S3: a name kept as an object made React throw, and the whole
+     game's screens went with it; feedback.js serves words now, and this holds
+     whatever an older worker serves) */
+  const catLabel = (id) => { const c = FEEDBACK_CATEGORIES.find((x) => x.id === id); return c ? plain(c.label) : String(id || ''); };
+  const words = (v, none) => String(typeof v === 'string' && v ? v : none);
   const catColor = (id) => { const c = FEEDBACK_CATEGORIES.find((x) => x.id === id); return (c && c.color) || COL.text2; };
 
   return (
@@ -204,9 +210,9 @@ const FeedbackBoard = () => {
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: catColor(t.category), marginBottom: 2 }}>
                   {catLabel(t.category)}
-                  <span style={{ color: COL.muted, fontWeight: 600 }}> · {t.playerName || 'Bro'}</span>
+                  <span style={{ color: COL.muted, fontWeight: 600 }}> · {words(t.playerName, 'Bro')}</span>
                 </div>
-                <div style={{ fontSize: 13, color: COL.text, lineHeight: 1.35, overflowWrap: 'anywhere' }}>{t.text}</div>
+                <div style={{ fontSize: 13, color: COL.text, lineHeight: 1.35, overflowWrap: 'anywhere' }}>{words(t.text, '')}</div>
               </div>
               <button onClick={() => vote(t.id)} aria-label="Up-vote" style={{
                 minWidth: 44, minHeight: 44, borderRadius: 8, cursor: 'pointer', touchAction: 'manipulation',

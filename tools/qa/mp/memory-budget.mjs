@@ -304,8 +304,55 @@
  * the census's own ruler, chip and page counted, the fire goblin is 8.10 ->
  * 6.65 MB at the fight (its numbers 5.54 -> 4.09): its strips not yet drawn
  * keep their numbers whole. */
+/* v2.3.5258, the backlog's `icons-elements`: the eight element marks drawn
+ * after a hit's number read from their 256-colour twins as colour numbers
+ * (p256.js ELEM_ICONS, `?elemicons=0` the pictures), sent to the chip at a
+ * byte a pixel and kept packed in the page.  Three runs: `artCache` at the
+ * fight 31.9 -> 29.9 and its line 95.1 -> 93.1, LOWERED by the 2.0 MB saved;
+ * `buffers` 21.1-22.2 at the fight and 23.8 at its highest, at home (the
+ * twins' numbers, 0.5 MB, held there until the pack: its line 24.2 holds
+ * them); `gpu` 72.1-78.1 (0.50 MB of marks on the chip; its line 115).  By
+ * the census's own ruler the family is 2.16 -> 0.64 MB at the fight (the
+ * 64 px plate icons, 0.14, are loaded their own way).  With main (sitting
+ * 17, the slimes' walk) merged in, three runs at 31a8e6120: `artCache` 25.5
+ * at the fight (27.5 on main), its line 90.6 -> 88.6; `buffers` 19.5-20.9
+ * at the fight, 23.6-23.8 at its highest, at home; `gpu` 78.0-80.0; atlas
+ * 125-144 rows, never full. */
+/* v2.3.5562, the backlog's `traits-hairmasks`: the hats' hair masks (the
+ * white silhouettes the hair is clipped to under a hat, loaded for every
+ * clipping hat drawn and kept) read from their exact 256-colour twins as
+ * colour numbers (p256.js HAIRMASKS, `?hairmasks=0` the pictures), all on
+ * one row of the colour atlas.  Three runs on main at 07ffcfc2e: `artCache`
+ * at the fight 27.5 -> 25.6; three with #1853 at be959897b: 25.5 -> 23.6,
+ * so its line 88.6 -> 86.7, LOWERED by the 1.9 MB saved; `buffers` 19.3-20.6
+ * at the fight, 23.6-23.8 at its highest, at home (line 24.2); `gpu` at its
+ * highest 78.5-80.5; atlas 135-146 rows, never full (the masks one row, where
+ * a row each took up to 30).  By the census, traits-hairmasks 2.13 -> 0.60 MB
+ * at the fight. */
+/* v2.3.5563, the backlog's `pets`: the pet sheet every pet is drawn from
+ * (petSprites.js, loaded behind the loading screen for everyone and kept)
+ * read from its 256-colour twin as colour numbers (p256.js PET_SHEET_P,
+ * `?petsheet=0` the picture; 79k colours cut to 256, moved 0.021 OKLab).
+ * Three runs stacked on #1906 at 5657c1c77: `artCache` at the fight
+ * 23.6 -> 22.1, so its line 86.7 -> 85.2, LOWERED by the 1.5 MB saved;
+ * `buffers` 19.6-20.9 at the fight, 23.5-23.8 at its highest, at home (line
+ * 24.2); `gpu` at its highest 78.3-82.0; atlas 130-147 rows, never full.
+ * By the census, pets 1.50 -> 0.38 MB at the fight. */
+/* v2.3.5564, the backlog's `cape-hood`: the crimson cape's hood's hair masks
+ * (capeSprites.js, behind the loading screen with the capes, for everyone,
+ * and kept; the silhouettes the hair is clipped to under a hood) read from
+ * their exact 256-colour twins as colour numbers, on the hats' masks' row
+ * (p256.js CAPE_HOOD, `?capehood=0` the pictures).  Not the hood's halves
+ * (sitting 20, answer (a)): a cape is drawn crisp, which colour numbers are
+ * not.  Three runs on the pets' line with sitting 20's mends at 3916af40b:
+ * `artCache` at the fight 22.1 -> 21.4, so its line 85.2 -> 84.5, LOWERED
+ * by the 0.7 MB saved (the first runs, halves too, set 83.7: 1.5 MB);
+ * `buffers` 19.5-20.3 at the fight, 23.8-24.0 at its highest, at home (line
+ * 24.2); `gpu` at its highest 77.8-77.9; atlas 143-150 rows, never full.
+ * By the census, cape-hood 1.50 -> 0.93 MB at the fight (the masks 0.18 on
+ * the chip, the halves 0.75 in the page). */
 export const MEMORY_BUDGET = {
-  artCache: { name: 'art loaded from files', mb: 90.6, measured: 27.5,   /* v2.3.3702: 156 -> 112; v2.3.5246: 112 -> 109.1, LOWERED by the portraits let go of (2.9 MB); v2.3.5247: 109.1 -> 107.0, Ace's coin strips (2.1 MB); v2.3.5248: 107.0 -> 101.4, the trees as numbers (5.6 MB); v2.3.5249: 101.4 -> 98.3, the made effects as numbers (3.1 MB); v2.3.5250: 98.3 -> 97.1, the world's icons (1.2 MB); v2.3.5252: 97.1 -> 95.1, the whirlwind as numbers (2.0 MB); v2.3.5256: 95.1 -> 90.6, the slimes' strips loaded as you walk (4.5 MB), see the header */
+  artCache: { name: 'art loaded from files', mb: 84.5, measured: 21.4,   /* v2.3.3702: 156 -> 112; v2.3.5246: 112 -> 109.1, LOWERED by the portraits let go of (2.9 MB); v2.3.5247: 109.1 -> 107.0, Ace's coin strips (2.1 MB); v2.3.5248: 107.0 -> 101.4, the trees as numbers (5.6 MB); v2.3.5249: 101.4 -> 98.3, the made effects as numbers (3.1 MB); v2.3.5250: 98.3 -> 97.1, the world's icons (1.2 MB); v2.3.5252: 97.1 -> 95.1, the whirlwind as numbers (2.0 MB); v2.3.5256: 95.1 -> 90.6, the slimes' strips loaded as you walk (4.5 MB), see the header; v2.3.5258: 90.6 -> 88.6, the element marks as numbers (2.0 MB, measured on its own at 95.1 -> 93.1), see the header; v2.3.5562: 88.6 -> 86.7, the hats' hair masks as numbers (1.9 MB), see the header; v2.3.5563: 86.7 -> 85.2, the pet sheet as numbers (1.5 MB), see the header; v2.3.5564: 85.2 -> 84.5, the hood's hair masks as numbers (0.7 MB), see the header */
     what: 'pictures loaded from files, decoded (the asset cache, window.__btTex) -- its highest at the fight, the monsters\' looks loaded' },
   gpu: { name: 'textures on the graphics chip', mb: 115, measured: 95.0,   /* v2.3.4058: 105 -> 115, approved by the owner 2026-11-03, see the header */
     what: 'textures on the graphics chip (window.__btGpuTex) -- including what was drawn in the last minute, which Pixi unloads after 60 s unused' },

@@ -7,6 +7,7 @@
  * you is the old one, lifeSkills.pets[activePet], as before -- deploy-order
  * safety, rule 19. */
 import { cleanPetName } from '@/data/trapping.js';
+import { act } from '@/game/actions.js';   /* v2.3.5188: the page's requests leave through the action door (card K PR 7) */
 
 export function petbookOn(S) { return !!(S && S._serverCaps && S._serverCaps.petbook); }
 
@@ -38,7 +39,7 @@ export function activePet(S) {
 
 function ask(S, type, payload) {
   if (!S || !S.channel || !petbookOn(S)) return false;
-  try { S.channel.send({ type, payload }); return true; } catch (e) { return false; }
+  try { act(type, payload); return true; } catch (e) { return false; }   /* v2.3.5188: through the action door (actions.js) */
 }
 /** This pet follows you (null: put yours away). */
 export function sendPetActive(S, id) { return ask(S, 'pet_active', { id: id || null }); }
