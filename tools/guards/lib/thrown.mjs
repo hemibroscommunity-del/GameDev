@@ -10,68 +10,35 @@
  * (tools/guards/switches-thrown.test.mjs runs it, the row's system's suites
  * and those of every row that needs it.)
  *
- * HOW.  The room's flags live in `this._liveFlags` (liveops.js).  Here it is
- * an accessor on GameRoom.prototype: whatever is set into it -- the cache's
- * load from storage, a suite's own `room._liveFlags = {...}` -- is kept, and
- * every read finds the one flag at its thrown value.  `_liveFlagsEnsure`
- * loads the stored map into the same object, once, as liveops.js does.  A
- * suite that never makes a GameRoom (one that tests a module on a hand-made
- * `this`) runs as it is: the flag reaches rooms only.
- *
- * The flags read absent until they are loaded or set (as liveops.js's cache
- * does), and they load as the room is made (the constructor's first call,
- * _roomRowStart), as a fetch warms them first in play.  The guard's baseline
- * runs through this same preload with a flag no code reads
- * (`__bt_none__`), so the only difference between its two runs is the one
- * flag.
+ * HOW (v2.3.5307).  The room's flags live in `this._liveFlags`
+ * (liveops.js).  A module hook (thrown-hooks.mjs) patches GameRoom as the
+ * suite imports server/src/index.js (thrown-patch.mjs): `_liveFlags`
+ * becomes an accessor that keeps whatever the room sets into it (its own
+ * `_liveFlagsEnsure` load, a suite's `room._liveFlags = {...}`) and finds
+ * the one flag in it at its thrown value.  Nothing is loaded early and no
+ * game function is replaced: a room's cold start stays cold, and a suite's
+ * own setup (its globals) runs before any game module loads.  A suite that
+ * never makes a GameRoom (one that tests a module on a hand-made `this`)
+ * runs as it is: the flag reaches rooms only.  With a flag nothing reads
+ * (`__bt_none__`) every suite runs as it does plain (the guard holds it).
  *
  * The value: `false`, `true`, or a number.
  */
 import { pathToFileURL } from 'node:url';
+import { register } from 'node:module';
 import { join } from 'node:path';
 import { ROOT } from './switchScan.mjs';
-
-const spec = process.env.BT_THROWN || '';
-const at = spec.lastIndexOf('=');
-if (at > 0) {
-  const name = spec.slice(0, at);
-  const raw = spec.slice(at + 1);
-  const value = raw === 'true' ? true : raw === 'false' ? false : Number(raw);
-  const { GameRoom } = await import(pathToFileURL(join(ROOT, 'server/src/index.js')).href);
-  const P = GameRoom.prototype;
-  Object.defineProperty(P, '_liveFlags', {
-    configurable: true,
-    get() {
-      /* not loaded and not set: absent, as liveops.js's cache is (code that
-         asks `if (this._liveFlags)` to know whether the flags are in must
-         still be told no: clanparty.js _clanPartyFlagsLoaded) */
-      if (!this.__btThrownLoaded) return undefined;
-      const f = this.__btThrownFlags || (this.__btThrownFlags = {});
-      f[name] = value;
-      return f;
-    },
-    set(v) {
-      this.__btThrownFlags = v && typeof v === 'object' ? v : {};
-      this.__btThrownLoaded = true;
+/* v2.3.5307: no game code is imported here.  A hook appends the patch to
+   server/src/index.js as the suite itself imports it (thrown-hooks.mjs,
+   thrown-patch.mjs): the suite's own setup runs first, and a room's cold
+   start stays cold.  The planning session's finding, 2026-11-15: v2.3.5304
+   imported index.js here and loaded the flags as a room was made, so
+   cold-flags.test and tick-pace.test failed with a flag nothing reads. */
+if ((process.env.BT_THROWN || '').lastIndexOf('=') > 0) {
+  register(pathToFileURL(join(ROOT, 'tools/guards/lib/thrown-hooks.mjs')).href, {
+    data: {
+      target: pathToFileURL(join(ROOT, 'server/src/index.js')).href,
+      patch: pathToFileURL(join(ROOT, 'tools/guards/lib/thrown-patch.mjs')).href,
     },
   });
-  P._liveFlagsEnsure = async function () {
-    if (!this.__btThrownLoaded) {
-      this.__btThrownLoaded = true;
-      let stored = null;
-      try { stored = await this.state.storage.get('liveflags'); } catch (e) { stored = null; }
-      if (stored && typeof stored === 'object') this.__btThrownFlags = stored;
-      if (typeof this._syncBagCaps === 'function') this._syncBagCaps();
-    }
-    return this._liveFlags;
-  };
-  /* the flags load as the room is made, as a fetch warms them first in
-     play (index.js fetch): the constructor's first call is _roomRowStart */
-  const start = P._roomRowStart;
-  P._roomRowStart = function (...a) {
-    const r = typeof start === 'function' ? start.apply(this, a) : undefined;
-    try { if (this.state && this.state.storage) this._liveFlagsEnsure().catch(() => {}); } catch (e) { /* a test's bare room */ }
-    return r;
-  };
-  globalThis.__btThrown = { name, value };
 }

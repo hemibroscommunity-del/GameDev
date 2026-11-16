@@ -21,6 +21,11 @@ import { OWNER_SWITCHES, ownerSwitch, parseValue, whyNot, confirmWords } from '.
  * not offered here: the row checks the lower-case rule the server gives every
  * switch since v2.3.3295.)
  *
+ * v2.3.5602 (mended for sitting 19b, its gatekeeper's review): what it says
+ * (the confirm, a refusal, the result, the server's error) is shown right
+ * under its own Set button, as well as in the panel's message line, which
+ * on a phone is ~1,300 px above it: a refused tap looked dead.
+ *
  * A box of the Test panel, not a window of its own.  Notes:
  * docs/UI-DESIGN-NOTES.md, "The Test panel sets a switch".
  */
@@ -28,6 +33,8 @@ export function SetSwitchRow({ call, busy, setMsg, COL, btn, chip, label, onFlag
   const [name, setName] = useState('');
   const [valueText, setValueText] = useState('');
   const [armed, setArmed] = useState(false);
+  const [note, setNote] = useState('');   /* v2.3.5602 (mend): said under its own button */
+  const say = useCallback((t) => { setNote(t); setMsg(t); }, [setMsg]);
   const field = {
     width: '100%', boxSizing: 'border-box', background: COL.well, color: COL.text,
     border: '1px solid ' + COL.border, borderRadius: 8, padding: '11px 10px', marginBottom: 8, minHeight: 44,
@@ -40,15 +47,15 @@ export function SetSwitchRow({ call, busy, setMsg, COL, btn, chip, label, onFlag
     const n = name.trim();
     const v = parseValue(valueText);
     const why = whyNot(n, v);
-    if (why) { setArmed(false); setMsg(why); return; }
-    if (!armed) { setArmed(true); setMsg(confirmWords(n, v) + ' Tap Set again to do it.'); return; }
+    if (why) { setArmed(false); say(why); return; }
+    if (!armed) { setArmed(true); say(confirmWords(n, v) + ' Tap Set again to do it.'); return; }
     setArmed(false);
-    const j = await call('/flags', { name: n, value: v });
-    if (!j) return;   /* the panel's call has said what went wrong */
+    const j = await call('/flags', { name: n, value: v }, undefined, { say: setNote });
+    if (!j) return;   /* the panel's call has said what went wrong, here too */
     if (onFlags) onFlags(j.flags || {});
-    setMsg('Set ' + n + ' to ' + (typeof v === 'boolean' ? (v ? 'on' : 'off') : v)
+    say('Set ' + n + ' to ' + (typeof v === 'boolean' ? (v ? 'on' : 'off') : v)
       + '. It is in the Live flags list above; its Clear puts back what the server does by itself.');
-  }, [armed, call, name, onFlags, setMsg, valueText]);
+  }, [armed, call, name, onFlags, say, valueText]);
   return (
     <div data-setswitch="1">
       <div style={label}>Set a switch</div>
@@ -86,6 +93,9 @@ export function SetSwitchRow({ call, busy, setMsg, COL, btn, chip, label, onFlag
         disabled={busy || !name.trim() || value === null} onClick={set}>
         {armed ? 'Sure? Set ' + name.trim() : 'Set'}
       </button>
+      {note ? (
+        <div data-setswitch-note="1" role="status" style={{ color: COL.text, fontSize: 12.5, lineHeight: 1.4, marginTop: 6 }}>{note}</div>
+      ) : null}
     </div>
   );
 }

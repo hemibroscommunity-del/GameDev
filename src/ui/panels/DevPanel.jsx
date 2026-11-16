@@ -433,7 +433,11 @@ export const DevPanel = ({ onClose }) => {
        because a background probe that disables buttons or writes errors is
        reporting on a request nobody asked for. */
     const quiet = !!(opts && opts.quiet);
-    const say = quiet ? () => {} : setMsg;
+    /* v2.3.5602 (mend, sitting 19b): `say` -- a row's own line, under its
+       button, told too (the panel's line is ~1,300 px away on a phone, so a
+       refused tap looked dead) */
+    const own = opts && typeof opts.say === 'function' ? opts.say : null;
+    const say = quiet ? () => {} : (own ? (t) => { setMsg(t); own(t); } : setMsg);
     if (!key) { say('Enter your admin key first.'); return null; }
     if (!quiet) setBusy(true);
     try {
@@ -499,15 +503,23 @@ export const DevPanel = ({ onClose }) => {
      means "this worker has no such route, or no key" and the row says which
      (it asks `call('/overview')` quietly).  Not act(): act() carries a
      player's session token, never the owner's key. */
-  const callOwner = useCallback(async (path, method) => {
-    if (!key) { setMsg('Enter your admin key first.'); return null; }
+  /* v2.3.5603 (mend, sitting 19b): `body` (JSON) and `opts.say`, a row's own
+     line under its button, told what went wrong too */
+  const callOwner = useCallback(async (path, method, body, opts) => {
+    const own = opts && typeof opts.say === 'function' ? opts.say : null;
+    const say = (t) => { setMsg(t); if (own) own(t); };
+    if (!key) { say('Enter your admin key first.'); return null; }
     setBusy(true);
     try {
-      const res = await fetchWithTimeout(BT_API_BASE + path, { method: method || 'GET', headers: { Authorization: 'Bearer ' + key } });
+      const res = await fetchWithTimeout(BT_API_BASE + path, {
+        method: method || 'GET',
+        headers: Object.assign({ Authorization: 'Bearer ' + key }, body ? { 'Content-Type': 'application/json' } : {}),
+        body: body ? JSON.stringify(body) : undefined,
+      });
       const j = await res.json().catch(() => ({}));
       return { status: res.status, j };
     } catch (e) {
-      setMsg(isAbort(e) ? TIMEOUT_MSG : 'Network error: ' + String(e).slice(0, 80));
+      say(isAbort(e) ? TIMEOUT_MSG : 'Network error: ' + String(e).slice(0, 80));
       return null;
     } finally { setBusy(false); }
   }, [key]);

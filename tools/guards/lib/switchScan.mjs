@@ -467,6 +467,31 @@ export function scanWorker(files = workerFiles(), { source = null } = {}) {
 }
 
 /* ═══ the page ═══ */
+/* v2.3.5306: the page's one reader, and how a file asks it */
+export const READER_FILE = 'src/game/switches.js';
+const READER_IMPORT = /from\s+['"](?:@|\.{1,2})?(?:\/[\w-]+)*\/switches(?:\.js)?['"]/;
+
+/* v2.3.5306: a page row's form, from its `thrown` on the page: the words that throw it
+   ('0|off|false'), '' its presence, '*' a value (no words: swValue reads it) */
+export function pageForm(r) {
+  let t = r.thrown;
+  if (r.side === 'both') {
+    const m = new RegExp('\\?' + r.name.replace(/^\?/, '') + '(.*)$').exec(t);
+    t = m ? m[1] : '';
+  }
+  t = t.replace(/\([^)]*\)/g, '').trim();
+  if (/^present\b/.test(t)) return '';
+  if (!t.startsWith('=')) return '*';
+  const parts = t.split(/,|\bor\b/).map((x) => x.trim()).filter(Boolean);
+  const words = [];
+  for (let i = 0; i < parts.length; i++) {
+    const w = i === 0 ? parts[i].slice(1) : parts[i];
+    if (i > 0 && w.startsWith('=')) return '*';
+    if (!/^[a-z0-9]+$/.test(w)) return '*';
+    words.push(w);
+  }
+  return words.join('|');
+}
 export function pageFiles() {
   const out = [];
   (function walk(d) {
@@ -497,9 +522,17 @@ export function scanPage(files = pageFiles(), { source = null } = {}) {
     if (na) { notAddressSeen.add(na); return; }
     add(names, name, where);
   };
+  let readerSeen = false;
   for (const [file, src] of code) {
+    /* v2.3.5306: the page's one reader (src/game/switches.js) reads every
+       name it is asked by: its own reads take the name as a parameter and
+       are no census line (held used, as every excuse is).  Its callers are
+       a shape of their own: `sw('x')`, `swHas('x')`, `swValue('x')` in a
+       file that imports it. */
+    if (file === READER_FILE) { readerSeen = true; continue; }
     const lines = src.split('\n');
     const usp = new Set();
+    const asksReader = READER_IMPORT.test(src);
     lines.forEach((line, i) => {
       /* a helper: a function that builds the read from a parameter */
       if (/new RegExp\(/.test(line) && /\[\?&\]|\(\?:\^\|&\)|\(\^\|&\)/.test(line)) {
@@ -509,6 +542,7 @@ export function scanPage(files = pageFiles(), { source = null } = {}) {
       }
       if (line.indexOf('[?&]') >= 0 || line.indexOf('[&?]') >= 0 || line.indexOf('|&)') >= 0) for (const m of line.matchAll(PAGE_REGEX)) for (const n of m[1].split('|')) note(n, { file, line: i + 1, shape: 'regex' });
       if (line.indexOf('clientOff') >= 0) for (const m of line.matchAll(/(?<![\w$.])clientOff(?:AtLoad)?\(\s*(['"])([a-z0-9_]+)\1/g)) add(offNames, m[2], { file, line: i + 1, shape: 'saver' });
+      if (asksReader && /\bsw(?:Has|Value)?\(/.test(line)) for (const m of line.matchAll(/(?<![\w$.])sw(?:Has|Value)?\(\s*(['"])\??([A-Za-z][\w-]*)\1/g)) note(m[2], { file, line: i + 1, shape: 'reader' });
       /* `.includes('x=1')`, `.indexOf('?x')`: a string that reads as an address's */
       if (/\.(?:includes|indexOf|startsWith)\(\s*['"]/.test(line)) for (const m of line.matchAll(/\.(?:includes|indexOf|startsWith)\(\s*(['"])(?:[?&]([A-Za-z][\w-]*)(?:=[^'"]*)?|([A-Za-z][\w-]*)=[^'"]*)\1\s*\)/g)) note(m[2] || m[3], { file, line: i + 1, shape: 'string' });
       if (line.indexOf('URLSearchParams') < 0 && line.indexOf('searchParams') < 0 && !usp.size) return;
@@ -532,7 +566,7 @@ export function scanPage(files = pageFiles(), { source = null } = {}) {
   }
   const resolved = resolveHelpers(code, raws, helpers, note, unknown);
   const staleNotAddress = source ? [] : NOT_ADDRESS.filter((x) => !notAddressSeen.has(x));
-  return { names, offNames, unknown, helpers: resolved, staleNotAddress, staleOwnEntries: !source && !ownEntriesSeen };
+  return { names, offNames, unknown, helpers: resolved, staleNotAddress, staleOwnEntries: !source && !ownEntriesSeen, staleReader: !source && !readerSeen };
 }
 /* keepSwitches.js copies the address's own entries into a new one
    (`out.has(k)` over `for (const [k, v] of q)`): it writes, reads no

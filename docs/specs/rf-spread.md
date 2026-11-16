@@ -22,9 +22,13 @@ phone tries again after it (`wsClient.js` `_rfDelay`: clamped 2-30 s,
   the phone's 30 s ceiling holds them at W / 30.
 - Who gets in when a seat frees is as fair as before: every waiter is asked
   the same at the same moment, and the jitter spreads them.
-- Counted: the `?rf=1` refusal, an old client's 503 and the address limit's
-  (`reason: 'ip'`). No client change: the phone has obeyed `retryMs` since
-  v2.3.1982.
+- Counted (mended for sitting 19b, its gatekeeper's review): only the
+  refusals the game's phones obey, `?rf=1` (the full room's and the address
+  limit's, `reason: 'ip'`), and an address at most once a second. It counted
+  an old client's 503 too, before the address limit: one client sending 240
+  upgrade requests a second (no socket needed) set every waiter's wait to
+  30 s. An old client's 503 is answered as before and counted nowhere. No
+  client change: the phone has obeyed `retryMs` since v2.3.1982.
 
 ## Measured (local runtime, cap 1, 800 phones obeying `retryMs`)
 
