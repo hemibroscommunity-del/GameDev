@@ -220,6 +220,12 @@ spec. Add a line here only for a new RULE every session must follow.
 - **A player's build points too**: `skillpoints.js` `pointsGive` /
   `pointsTake` / `pointsSet` / `pointsDeal`, each call naming its row in
   `POINT_ROADS` (`skillpoints-door.test` fails a second writer).
+- **A quest's state too**: `queststate.js`'s seven verbs (`questStateSet`,
+  `questCountAdd`, ...), each call naming its row in `QUEST_ROADS`
+  (`quest-door.test` fails a second writer).
+- **Experience and levels too**: `xp.js` `xpGive` / `xpLevelUp` / `xpSet` /
+  `xpMake`, each call naming its row in `XP_ROADS`; a level-up is the
+  door's (`xp-door.test` fails a second writer).
 - **Identity**: stable `bp_` ids; two tabs share one (test with `?guest=1`). A
   new character starts from the SERVER's defaults: a join with no record reads
   no `rpg*` claim, so a test seeds a character by putting a record on file
@@ -352,9 +358,10 @@ spec. Add a line here only for a new RULE every session must follow.
     a filter pass in the middle of the frame (TRAPS §221);
   - the camera sits on whole device pixels, and a renderer never writes the
     player's place (TRAPS §231);
-  - three sprite programs on every chip; the one program (`ONE_BATCHER`) only
-    with `?onebatch=1` (it lost a bro's legs on the owner's iPhone; TRAPS §225,
-    §260).
+  - one sprite program (`ONE_BATCHER`) on phones and tablets; the three on a
+    software renderer and a Windows or Mac computer (the lanes' `program`
+    overrides); `?onebatch=0|1` either anywhere; a program that draws its
+    self-test picture wrong falls back alone (`selfTest.js`; TRAPS §225, §260).
 - **Desktop** (the judges play on computers): a click on something you use is
   not a swing (`_deskPressTarget`); an overlay `position: fixed` inside `#root`
   is placed with `fixedBox(layer)`; sizes come from the play column, never the
@@ -398,11 +405,13 @@ spec. Add a line here only for a new RULE every session must follow.
 | a request the page makes | its row in `src/game/actions.js` (the action door) |
 | a server behaviour | a cap the client gates on (`CAP_GATES`) and a lower-case kill switch |
 | a `?name=` or a live flag | its row in the switch table (`tools/guards/lib/switches.mjs`; `node tools/guards/switches.test.mjs --write`) |
-| a storage key | ARCHITECTURE-HANDOFF's rule-2 registry table (precheck `storage-keys`) |
+| a storage key | ARCHITECTURE-HANDOFF's rule-2 registry table (precheck `storage-keys`); its marks; a player's key, its place in `RESTORE_WAYS` (`storagemarks.js`; `restore.test`) |
 | a monster hit on players | its row in `MONSTER_HITS` (`hits.js`) |
 | a way to change a player's gold | its row in `GOLD_ROADS` (`gold.js`) and its line in `gold-door.test`'s `EXPECT` |
 | a way to change a bag count, a stash, a player's hp, or to leave | its row in `BAG_ROADS`, `STASH_ROADS`, `HP_ROADS` or `LEAVE_WAYS`, and its line in that door's test |
 | a way to change a player's build points | its row in `POINT_ROADS` (`skillpoints.js`), and its line in `skillpoints-door.test`'s `EXPECT` |
+| a way to change a quest's state, progress or kept lists | its row in `QUEST_ROADS` (`queststate.js`) and one call that names it |
+| a way to change experience or a level | its row in `XP_ROADS` (`xp.js`) and one call that names it |
 | an honesty check | `_testMode(ps)` and its three lists |
 | a refusal in the hit test | the same in the bow's sight gate (TRAPS §236) |
 | a field on the tick | both tick builders (`tick-share.test`) |

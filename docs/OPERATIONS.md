@@ -11,6 +11,11 @@ key, and without the key the endpoints don't even appear to exist.
 1. Think of a long random password (a password manager's 30+ character
    generate button is perfect). This is your ADMIN KEY — treat it like a
    bank password. Anyone who has it can grant gold and freeze players.
+   **Ten wrong keys within ten minutes** from one internet connection put
+   that connection in a **15-minute time-out** (v2.3.5583): every admin
+   command from it answers "Too many wrong keys from this address: try
+   again in N minutes". It lifts by itself; your phone on its own data
+   connection is not affected, and the next deploy clears it too.
 2. Cloudflare dashboard → **Workers & Pages** → **brotown-server** →
    **Settings** → **Variables and Secrets** → **Add** →
    Type: **Secret**, Name: `ADMIN_KEY`, Value: *your password* → **Deploy**.
@@ -383,6 +388,43 @@ Note: players running an old cached version of the game may end up on a
 fresh blank character instead of seeing the freeze message. If that happens,
 just freeze the new id too — their real character stays locked either way.
 
+## A copy of the room's records, a page at a time (v2.3.5286)
+
+For keeping your own copy of the game's saved records, or reading exactly
+what one character has on file. It only reads: nothing changes. It gives
+only the kinds of record on its list: the characters' own and everything
+that holds gold or goods. Never a login, a device's id, the anti-bot
+evidence, the words players sent each other, or the hidden settings.
+
+**Each run costs a little**: Cloudflare counts every record it reads (a page
+reads up to 50 by default, 200 at most, and the whole room once over is every
+record it holds). It costs nothing when you do not use it, so it is on.
+
+Ask for one kind of record by its prefix (the names in the registry,
+`docs/ARCHITECTURE-HANDOFF.md` rule 2: `rpg:` the characters, `bank:` the
+vaults, `store_listing:` the auction house, `shop_stock` Diego's pile...):
+```
+curl -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/admin/export?prefix=rpg:"
+```
+or everything one character has on file (their save, bank, mail, pets,
+farm, backups...):
+```
+curl -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/admin/export?player=bp_XXXX"
+```
+The answer is a page: `rows` (each record's name `k` and what it holds `v`),
+`read` (how many records it read) and `next`. While `next` is not null, ask
+again with `&cursor=` and that value for the next page; the last page may be
+empty. `&limit=` sets a page's size (1 to 200).
+
+- Its switch is `roomexport` in the live flags (below): on unless it is
+  `false`; off, it answers "off" and reads nothing. To turn it off:
+```
+curl -X POST -H "Authorization: Bearer YOUR_KEY" -H "Content-Type: application/json" \
+  -d '{"name":"roomexport","value":false}' "https://WORKER/api/admin/flags"
+```
+- Asked for a kind of record not on its list (a login's `auth:`, a
+  device's `device:`, the hidden settings...), it says no.
+
 ## Fixing a broken save (restore from backup)
 
 The server now automatically keeps ~7 daily backups per player (taken at
@@ -398,14 +440,56 @@ someone:
    Until it has gone the restore answers "player still in the world ... wait
    20 seconds, then restore again" and changes nothing: just run it again
    (v2.3.4413).
-3. Restore:
+3. See what it would do first (nothing changes): add `"dry":true`.
+```
+curl -X POST -H "Authorization: Bearer YOUR_KEY" \
+  -d '{"playerId":"bp_XXXX","snapKey":"rpgsnap:bp_XXXX:20260703","dry":true}' \
+  "https://WORKER/api/admin/restore"
+```
+   The answer says what it would put back (`restored`), what it leaves as it
+   is (`left`), how much gold and how many of each item the player gains or
+   loses (`booked`: a minus is a loss), and which auction listings, orders,
+   fines or piles on the ground still hold something of theirs (`between`).
+   Those are never put back: they are another player's too. A piece they
+   listed after the backup comes back to them AND stays in its listing, so
+   look there and take the listing down if you need to.
+4. Restore (the same, without `dry`):
 ```
 curl -X POST -H "Authorization: Bearer YOUR_KEY" \
   -d '{"playerId":"bp_XXXX","snapKey":"rpgsnap:bp_XXXX:20260703"}' \
   "https://WORKER/api/admin/restore"
 ```
-Restores are themselves safe: the current (broken) save is stashed as a
-`prerestore-` backup first, so you can always restore the restore.
+Restores are themselves safe: everything the restore replaces is stashed as
+a `prerestore-` backup first, in the same moment, so you can always restore
+the restore (its name is the answer's `copy`).
+
+What comes back (v2.3.5285): the character (gold, items, gear, levels,
+quests), and, from backups taken while `fullsnap` is on, their bank vault and
+their pets too. Never their login key, your freezes or test mode, their mail,
+achievements or the day's prizes (those would pay twice). The gold and items
+it adds or takes are counted in the game's books, so the economy numbers stay
+true. A backup saved by a newer version of the game is refused, never
+written over: wait for that version to be back.
+
+**Turning on the fuller backups** (off by default, because each backup then
+reads two more records: about 2 extra reads a player a day):
+```
+curl -X POST -H "Authorization: Bearer YOUR_KEY" -H "Content-Type: application/json" \
+  -d '{"name":"fullsnap","value":true}' "https://WORKER/api/admin/flags"
+```
+
+**Counting a character restart in the economy check** (off by default,
+because it adds one record for the whole game and one more write each time
+a player restarts their character): with `resetbook` on, the gold and items
+a restarted character had are written down as gone, so the game's balance
+check (run by the tests) does not read them as missing. Nothing you see
+changes with it: the daily economy numbers do not read that record yet, and
+your economy card already counts restarts on its own. Leave it off unless a
+later change starts reading it.
+```
+curl -X POST -H "Authorization: Bearer YOUR_KEY" -H "Content-Type: application/json" \
+  -d '{"name":"resetbook","value":true}' "https://WORKER/api/admin/flags"
+```
 
 ## Taking the whole room back to an earlier time (v2.3.5288)
 

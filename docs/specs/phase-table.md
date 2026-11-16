@@ -63,6 +63,12 @@ why: a QA tag, a direction, an input's source, a setting.
 | `cook` | worker | the phone's claim on its moves, `ps.ex` (cook, fire, mine, chop, fish, a farm step) | `_exTo` (`movement.js`, v2.3.5213) | `cook-door.test` §2, and the guard's tree |
 | `harvest`, `fishing` | worker | a player's gather record, `this.extractions[pid]` (mining, woodcutting, fishing) | `_harvestTo` (`gathering.js`, v2.3.5214) | `harvest-door.test` §2, and the guard's tree (a record's keys too) |
 | `dungeon` | worker | a run's `inst.runPhase` (active, boss, done); the old `state` and `bossSpawned` written by the door | `_dungeonTo` (`dungeon.js`, v2.3.5215) | `dungeon-door.test` §2, and the guard's tree |
+| `pose` | worker | a held pose, `ps.po` (none, or one of `POSE.IDS`) | `_poseTo` (`poses.js`, v2.3.5216) | `pose-door.test` §2, and the guard's tree |
+| `race` | worker | a player's race, `ps._race` (on, or none; the countdown and the running are times on it) | `_raceTo` (`race.js`, v2.3.5217) | `race-door.test` §2, and the guard's tree |
+| `race` | page | the phone's race, `S._race` (none; asked, count, run, done: its record's own `phase`) | `raceTo` (`raceDoor.js`, v2.3.5218) | `race-page-door.test` §2, and the guard's tree |
+| `pose` | page | the phone's own held pose, `S._pose` (standing, or its record: posing) | `poseTo` (`poseDoor.js`, v2.3.5520) | `pose-page-door.test` §2, and the guard's tree |
+| `guard` | page | your shield on the phone, `S._shieldUp` (down, up) | `guardTo` (`guardDoor.js`, v2.3.5521) | `guard-page-door.test` §2, and the guard's tree (a peer's copy and the renderers' posed copies are `besides`) |
+| `harvest`, `cook`, `fishing` | page | the phone's harvest, `S._extraction` (none; waiting, ready: its record's own `status`; mining, woodcutting, fishing and a cook are its `skill`) | `harvestTo` (`harvestDoor.js`, v2.3.5219) | `harvest-page-door.test` §2, and the guard's tree |
 
 **How a door is held.** What holds a door is a closed list in the guard
 (v2.3.5203, after the gatekeeper's sitting 8 found that a suite which merely
@@ -91,6 +97,11 @@ named the field let a `todo` row turn `door` with nothing built):
   in (a Durable Object's `this.state = state`, the room's
   `this.extractions`: the `constructor`), and `ifMissing`, a birth only
   (the write is the consequent of `if (!<the same field>)`).
+  **v2.3.5219:** the harvest's page door has one `besides`: the renderer's
+  posed picture (`entityRenderer.js poseFrame`) makes a copy of the state,
+  `Object.assign({}, real, { _extraction: null, ... })`, never `S` itself.
+  Three rows (the page's `harvest`, `cook` and `fishing`) name the one
+  field and the one suite, as the worker's `harvest` and `fishing` do.
 - `SCAN_DOORS`: the rows no suite holds. The guard runs the row's `scan`
   itself. It reads every write of the field off the syntax tree (@babel):
   `x.phase =`, `x['phase'] =`, `++`, `delete`, `Object.assign(x, { phase })`.

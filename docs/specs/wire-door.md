@@ -52,7 +52,10 @@ read (asked of the planning session, 2026-11-14).
 The wire table's `trust` column (`server/src/wire/`), made by `lists.js`
 into `WIRE_DOOR_ROWS`:
 
-- `SOCKET`: a message by its type (every `in` and `relay` row);
+- `SOCKET`: a message by its type (every `in` and `relay` row). A relayed
+  event is no exception: the page's shim sends it as `{ type: <event> }`
+  (wsClient.js), never `type: 'broadcast'`; a frame typed `broadcast` (only
+  a script sends one) reaches no handler (`wire-door.test` §7, v2.3.5542);
 - `ROUTES`: a route by `http:<path> <METHOD>`, else `http:<path>`.
 
 A field's path reads `a.b` and `a[].b`. On a socket message it is read both
@@ -62,6 +65,14 @@ checks that need no row (`key`, `body`, `reqId`).
 
 A row added to the table, or a field's trust changed, reaches the door with
 no other edit (`wire-door.test` §4).
+
+## The chat lanes (v2.3.5542)
+
+`lists.js` makes **`CHAT_LANE_TYPES`** (v2.3.5543: renamed from `CHAT_LANES`, a name chatlanes.js already exports), the socket rows whose `text` is a `words`
+field (a line another player reads: `chat`, `party_chat`, `area_chat`,
+`whisper`, `friend_dm`, `store_dm`), for a check on what a player says (card
+MOD's silence, its own step after the door). Not the table's `speaks`, which
+also holds `join`, `track`, `dice`, the trades, the invites and `emote`.
 
 ## Counted
 

@@ -127,9 +127,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const enterSetGems = async () => {
       const cut = await enter('gemcutter', 'gemcut');
       if (cut !== 'gemcut') return cut;
-      await P.page.evaluate(() => { const b = document.querySelector('[data-gem-works] button[data-gem-tab="enchant"]'); if (b) b.click(); });
+      /* v2.3.5435 (card J2): the window's panels are lazy (lazyPanels.js): the card says 'gemcut' before the Gem Works'
+         tabs are drawn, so a single click found no tab and the window stayed on Cut gems (red on main each run, "gemcut").
+         The tab is pressed once it is there, and again while the window has not turned */
       let opened = null;
-      for (let i = 0; i < 16 && opened !== 'enchant'; i++) { await P.page.waitForTimeout(250); opened = await panelKey(); }
+      for (let i = 0; i < 40 && opened !== 'enchant'; i++) {
+        await P.page.evaluate(() => { const b = document.querySelector('[data-gem-works] button[data-gem-tab="enchant"]'); if (b) b.click(); });
+        await P.page.waitForTimeout(250);
+        opened = await panelKey();
+      }
       return opened;
     };
 
