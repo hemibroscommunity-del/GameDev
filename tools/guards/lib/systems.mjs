@@ -212,7 +212,7 @@ export const SYSTEMS = Object.freeze({
   },
   townsfolk: {
     what: 'the townspeople: their days, walks, talk and reactions',
-    files: [f('src/game', 'townsfolkDay|townsfolkReact|townsfolkWalk|townChatter|mayorTalk|interactions')],
+    files: [f('src/game', 'townsfolkDay|townsfolkReact|townsfolkWalk|townChatter|mayorTalk|interactions|poseDoor')],
     words: ['townsfolk', 'npc', 'mayor', 'folk'],
     traps: [],
     doors: [],

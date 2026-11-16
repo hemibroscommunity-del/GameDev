@@ -117,6 +117,8 @@
  * rows, one field):
  *  33. `S._extraction = null;` back in succeedExtraction -> FAIL 2 (three
  *      times: the three rows)
+ * v2.3.5520 (the pose's page door):
+ *  34. `S._pose = null;` back in rejoinSlots.js rejoinClear -> FAIL 2
  *
  * Run from the repository's root: node tools/guards/phase-table.test.mjs
  * (cd server && npm test runs it with every other guard and suite).
@@ -340,6 +342,9 @@ const DOOR_SUITES = Object.freeze({
   /* v2.3.5218: the race's page door (the page half of the race row) */
   'server/test/race-page-door.test.mjs': { field: 'S._race', fn: 'raceTo', holds: '§2: no write of ._race in src/ outside raceTo, nor of the race record\'s .phase in race.js',
     prop: '_race', besides: [] },
+  /* v2.3.5520: the pose's page door */
+  'server/test/pose-page-door.test.mjs': { field: 'S._pose', fn: 'poseTo', holds: '§2: no write of ._pose in src/ outside poseTo',
+    prop: '_pose', besides: [] },
   /* v2.3.5219: the harvest's page door (the page's harvest, cook and fishing rows: one field) */
   'server/test/harvest-page-door.test.mjs': { field: 'S._extraction', fn: 'harvestTo', holds: '§2: no write of ._extraction in src/ outside harvestTo, nor of a harvest record\'s .status',
     prop: '_extraction', besides: [

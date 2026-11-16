@@ -208,6 +208,7 @@ const FORMS = {
   'poolkeep': '',
   'popupworld': '',
   'portraitgentle': '0|off|false',
+  'posedoor': '0',
   'questpath': '',
   'racedoor': '0',
   'repairms': '*',

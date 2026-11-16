@@ -1013,6 +1013,7 @@ writes them, never identifiers: `dungeon`, `connection`, `loading` and
 | `_raceTo`, `_raceDoorOff`, `RACE_WAYS`, live flag `racedoor` (v2.3.5217) | the race door: a player's race, its one writer and its ways (`server/src/race.js`), and its kill switch; free at the commit (no hit in `src`, `server`, `tools` or `docs`) | 5 (step 5.3b) |
 | `raceTo`, `racePhase`, `raceDoorOff`, `RACE_PAGE_WAYS`, `src/game/raceDoor.js`, page switch `?racedoor` (v2.3.5218) | the race's page door: the phone's race, its one writer, its ways and its switch; free at the commit (no hit in `src`, `server`, `tools` or `docs`) | 5 (step 5.3b) |
 | `harvestTo`, `harvestPhase`, `harvestDoorOff`, `HARVEST_PAGE_WAYS`, `src/game/harvestDoor.js`, page switch `?harvestdoor` (v2.3.5219) | the harvest's page door: the phone's harvest (and its cook and its fishing), its one writer, its ways and its switch; free at the commit (no hit in `src`, `server`, `tools` or `docs` as a whole word: the worker's are `_harvestTo` and `_harvestDoorOff`) | 5 (step 5.3b) |
+| `poseTo`, `posePhase`, `poseDoorOff`, `POSE_PAGE_WAYS`, `src/game/poseDoor.js`, page switch `?posedoor` (v2.3.5520) | the pose's page door: the phone's own held pose, its one writer, its ways and its switch; free at the commit as whole words (the worker's are `_poseTo` and `_poseDoorOff`) | 5 (step 5.3b) |
 
 **Chosen by card R (step 10.5, tag 5280), free at its commit** (the same
 search, with `docs`): `playerroads`, `PLAYER_ROADS`, `OWN_ROADS`,

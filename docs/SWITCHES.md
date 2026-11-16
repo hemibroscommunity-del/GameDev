@@ -568,6 +568,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | name | side | kind | born | on | thrown | risk | needs | fallback | off |
 |---|---|---|---|---|---|---|---|---|---|
 | `?folkwalk` | page | switch | v2.3.3949 | 2026-11-03 | =0 | logic |  | no | The townsfolk stand at their spots, not walk their day. |
+| `?posedoor` | page | switch | v2.3.5520 | 2026-11-15 | =0 | logic |  | no | The phone's held pose takes any write its own code asks again (a pose by the dead, one with no place, a stand-up of none), as the lines before the page door could have; sendMove and endOwnPose still check each first. |
 | `tour` | worker | switch | v2.3.3525 | 2026-10-20 | false | logic |  | no | Un-advertises the tour's two givers. |
 | `?townchat` | page | switch | v2.3.3901 | 2026-11-03 | =0 | logic |  | no | The townsfolk do not chat to each other. |
 | `?townsfolkreset` | page | switch | v2.3.5203 | 2026-11-14 | =0 | logic |  | no | A held pose ends a frame after a change of place again, on its own check, not at the zone door. |

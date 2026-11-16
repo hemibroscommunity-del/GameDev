@@ -406,15 +406,17 @@ export const PHASES = [
     ],
   },
   {
-    name: 'pose', side: 'page', status: 'todo',
+    name: 'pose', side: 'page', status: 'door',
     what: 'Your own held pose on the phone.',
-    field: null, states: ['standing', 'posing'], fn: null, file: null,
+    field: 'S._pose', states: ['standing', 'posing'],
+    fn: 'poseTo', file: 'src/game/poseDoor.js',
     clears: [
       { edge: 'rejoin', at: 'src/game/rejoinSlots.js rejoinClear' },
       { edge: 'end', at: 'src/game/interactions.js endOwnPose' },
     ],
     rejoin: ['pose'],
-    today: [{ field: 'S._pose' }],
+    held: { suite: 'server/test/pose-page-door.test.mjs' },
+    note: 'v2.3.5520: the page door (POSE_PAGE_WAYS hold, stand, forget; the rules are sendMove\'s and endOwnPose\'s own checks; ?posedoor=0). The zone\'s reset is endOwnPose (resetOn), the rejoin\'s rejoinClear, both asking the door. Its emoji\'s beat (popAt) is a count on the record; a moment\'s move (S._emoteMove) is no pose.',
   },
   {
     name: 'race', side: 'page', status: 'door',
