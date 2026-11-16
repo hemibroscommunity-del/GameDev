@@ -1,7 +1,7 @@
 card: O
 branch: claude/plan-o-14c-selftest (one branch a PR; begun from 14b's head, main merged in)
-prs: #1787, #1792, #1794, #1800, #1814, #1815, #1832, #1841, #1836, #1850, #1854, #1896, #1915 (merged); 14c (5237): open
-state: working
+prs: #1787, #1792, #1794, #1800, #1814, #1815, #1832, #1841, #1836, #1850, #1854, #1896, #1915 (merged); #1929 (5237, 14c): ready
+state: ready
 
 ## Done
 
@@ -20,7 +20,7 @@ state: working
 
 ## Next
 
-- 14c (5237, open): the fill and the glint, named in `self`; then 14d, the clip.
+- #1929 (5237, 14c, ready): the fill and the glint, named in `self`; then 14d, the clip.
 - PR 11 (caches) waits for card P; 12 for card T's PR 6; 13 for card SK.
 
 ## Found
