@@ -219,6 +219,7 @@ const FORMS = {
   'ridecoast': '0|off|false',
   'room': '*',
   'seacover': '0',
+  'selftest': '*',
   'sfxahead': '0|off',
   'shade': '0',
   'shadowhp': '0',

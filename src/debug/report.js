@@ -86,6 +86,7 @@ import { holdOf } from './holdNames.js';
 import { lastDeath, glLostCount, setMarkWhere } from './crashTrap.js';
 import { devClass } from '../game/deviceProfile.js';
 import { drawLane, rungDepth } from '../game/drawLanes.js';   /* v2.3.5221: card O's lanes; v2.3.5222 the rung */
+import { selfFailures } from '../rendering/selfTest.js';   /* v2.3.5234: the self-test's failures, the report's `self` (card O PR 14a) */
 import { CLIENT_SAVERS, clientOff } from '../game/clientOff.js';
 import { PACE_BREAK_MS, lateOver } from '../game/framePacer.js';   /* v2.3.5222: the pacer's one rule of a late frame */
 import { wheelHere } from '../game/wheelTrial.js';
@@ -221,6 +222,7 @@ let _timer = null;
 let _joinedAt = 0;        /* the page's first join */
 let _dueAt = 0;
 let _died = null;         /* the first report's `died` (null: sent, or not yet decided) */
+let _selfOwed = true;     /* v2.3.5234: the self-test's failures, said once a sitting (until a report carrying them is sent) */
 let _diedOwed = false;
 let _lastFrameT = -Infinity, _lastHoldT = -Infinity;
 let _a = null;            /* the bins */
@@ -445,6 +447,9 @@ export function buildReport(now) {
   if (_died) r.died = _died;
   /* v2.3.5222: the governor's rung, to a worker that takes lanes (caps.report 3) */
   if (takesLanes(_S)) r.rung = [_w(a.rungMax), Math.min(secs, _w(a.belowMs / 1000))];
+  /* v2.3.5234 (card O PR 14a): the programs that failed their self-test at the
+     door (rendering/selfTest.js), once a sitting, to a worker that takes lanes */
+  if (_selfOwed && takesLanes(_S)) { try { const sf = selfFailures(); if (sf.length) r.self = sf; } catch (e) { /* none said */ } }
   /* v2.3.5127 (sitting 4): the card goes only to a worker that takes it;
      to one that does not, it waits (and is not cleared by the send) */
   if (_speed && takesSpeed(_S)) r.speed = { model: _speed.model, rows: _speed.rows.map((x) => x.slice()) };
@@ -486,6 +491,7 @@ function _due(now) {
     _sent++;
     _lastSentAt = now;
     if (_died) { _died = null; _diedOwed = false; }   /* once */
+    if (r.self) _selfOwed = false;   /* v2.3.5234: once a sitting */
     if (r.speed) _speed = null;   /* v2.3.5125: the card went with it */
   } else _dropped++;
   _reset(now);
