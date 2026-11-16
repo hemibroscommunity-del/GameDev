@@ -166,6 +166,7 @@ export const SYSTEMS = Object.freeze({
     files: [
       f('server/src', 'quests|achievements|codex|petbook|pets|pointsreset|prog3'),
       f('server/src', 'skillpoints'),   /* v2.3.5283 (card R): the skill points' door */
+      f('server/src', 'xp'),   /* v2.3.5289 (card R): experience and levels' door */
       f('server/src', 'queststate'),   /* v2.3.5284 (card R): quest state's door */
       f('src/game', 'quests|questCard|questComplete|questFly|questHandIn|questJournal|questKept|questPins|questRoute|questTrailStyle|questWays|trackedQuest|achievements|petBook|petFetch|pointsBubbles|pointsReset|pointsTips|tour|levelCelebration|xpBar|xpPop|welcomeBanner'),
     ],
@@ -173,6 +174,7 @@ export const SYSTEMS = Object.freeze({
     traps: ['quests'],
     doors: [
       { name: 'pointsGive', file: 'server/src/skillpoints.js', what: 'POINT_ROADS: every change to a player\'s build points (pointsGive, pointsTake, pointsSet, pointsDeal; v2.3.5283, card R)' },
+      { name: 'xpGive', file: 'server/src/xp.js', what: 'XP_ROADS: every change to a character\'s experience and levels (xpGive, xpLevelUp, xpSet, xpMake; v2.3.5289, card R)' },
       { name: 'questStateSet', file: 'server/src/queststate.js', what: 'QUEST_ROADS: every change to a quest\'s state, progress, flags and kept lists (seven verbs; v2.3.5284, card R)' },
     ],
   },

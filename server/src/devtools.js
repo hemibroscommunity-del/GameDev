@@ -57,6 +57,7 @@ import { GOLD_LOG, goldLogOf } from './gold.js'; /* v2.3.4903: the gold log (/de
 import { bookRead } from './daybook.js'; /* v2.3.5125: the day's book's one reader (/dev/daybook) */
 import { econCardRead } from './econcard.js'; /* v2.3.5093: the owner's card's other read (/dev/econcard) */
 import { questStateSet, questCountSet, questForget, questKeptTake } from './queststate.js';   /* v2.3.5284: quest state's door (card R PR 5) */
+import { xpMake } from './xp.js';   /* v2.3.5289: experience and levels' door (card R PR 10) */
 
 export const DEVKIT = {
   /* The tutorial's own starter weapons -- copper/pine/pine.  Deliberately
@@ -515,7 +516,7 @@ export const devToolsMethods = {
     }
     const level = Math.max(1, Math.min(120, Math.floor(Number(b.level) || 1)));
     if (!ps.lifeSkills || typeof ps.lifeSkills !== 'object') ps.lifeSkills = {};
-    for (const k of names) ps.lifeSkills[k] = { level, xp: 0 };
+    for (const k of names) xpMake(ps.lifeSkills, k, level, 'dev_life');   /* v2.3.5289: the experience door */
     this._devPush(playerId, ps);
     return { ok: true, skills: names, level };
   },
@@ -539,7 +540,7 @@ export const devToolsMethods = {
     }
     if (!ps.prog3 || !ps.prog3.sk || typeof ps.prog3.sk !== 'object') return { ok: false, error: 'no combat skills' };
     const level = Math.max(1, Math.min(PROG3.LEVEL_CAP, Math.floor(Number(b.level) || 1)));
-    for (const k of names) ps.prog3.sk[k] = { level, xp: 0 };
+    for (const k of names) xpMake(ps.prog3.sk, k, level, 'dev_skill');   /* v2.3.5289: the experience door */
     /* v2.3.3541: `deal: true` -- and the points those levels give, every
        placed one back (the free points reset's own deal, prog3RespecPoints):
        a level set by this lever alone left the pools where they were, so the
@@ -571,7 +572,7 @@ export const devToolsMethods = {
     const clampInt = (v, lo, hi) => Math.max(lo, Math.min(hi, Math.floor(Number(v) || 0)));
     if (!ps.lifeSkills || typeof ps.lifeSkills !== 'object') ps.lifeSkills = {};
     if (!ps.inventory || typeof ps.inventory !== 'object') ps.inventory = {};
-    if (b.level != null) { const L = clampInt(b.level, 1, 120); ps.lifeSkills.trapping = { level: L, xp: 0 }; out.level = L; }
+    if (b.level != null) { const L = clampInt(b.level, 1, 120); xpMake(ps.lifeSkills, 'trapping', L, 'dev_trapping'); out.level = L; }   /* v2.3.5289: the experience door */
     if (b.traps != null) { const n = clampInt(b.traps, 0, 999); bagSet(ps.inventory, 'trap_box', n, 'dev_traps'); out.traps = n; }
     if (b.logs != null) { const n = clampInt(b.logs, 0, 999); bagSet(ps.inventory, 'wood_pine_log', n, 'dev_logs'); /* v2.3.4810: the bag door (both lines) */ out.logs = n; }
     /* v2.3.3123: `look: {gold, size}` -- the NEXT pet made (a catch, or the
