@@ -15,7 +15,7 @@
  *      is closed after its window (and only one that came through fetch);
  *      a second join on a socket closes it, leaving no ghost;
  *   5. addresses: so many sockets, so many opens a minute, each a live flag,
- *      none locally;
+ *      none locally; 5b (v2.3.5581) an IPv6 address counted by its /64;
  *   6. writes: a mute that changes nothing writes nothing; toggles are paced
  *      and the held change is written at the flush; a stat flood writes the
  *      burst and then rides the regen window; the same slot again writes
@@ -25,7 +25,7 @@
  *      frozen, full, reset or a linger.
  */
 import worker, { GameRoom } from '../src/index.js';
-import { FLOOD, PACE, ROOMS, roomNameFor, requestIp } from '../src/flood.js';
+import { FLOOD, PACE, ROOMS, roomNameFor, requestIp, ipKey } from '../src/flood.js';
 import { CHAT_LANES } from '../src/chatlanes.js';
 
 let passed = 0, failed = 0;
@@ -297,6 +297,56 @@ const sessionOf = (room, ws) => room.sessions.get(ws);
   check('5. an accepted session carries its address and its opening time',
     [...room.sessions.values()].some((s) => s.ip === IP && typeof s.openedAt === 'number'));
   void state;
+}
+
+/* ═══ 5b. v2.3.5581: an IPv6 line is one address (red team RT-1, N4) ═══
+   One /64 is one home or phone line; a script that takes a new address of it
+   for every socket filled the room in the red team's local run. */
+{
+  const eq = (a, b, name) => check('5b. ipKey ' + name, ipKey(a) === b, { got: ipKey(a), want: b });
+  eq('2001:db8:1:2::1', '2001:db8:1:2::/64', 'keeps the first four groups');
+  eq('2001:0DB8:0001:0002:aaaa:bbbb:cccc:dddd', '2001:db8:1:2::/64', 'reads a full address, any case, leading zeros');
+  eq('2001:db8::1', '2001:db8:0:0::/64', 'fills the gap of ::');
+  eq('::1', '0:0:0:0::/64', 'reads loopback');
+  eq('fe80::1%eth0', 'fe80:0:0:0::/64', 'drops a zone');
+  eq('::ffff:203.0.113.9', '203.0.113.9', 'an IPv4 address written as IPv6 is that IPv4 address');
+  eq('203.0.113.9', '203.0.113.9', 'leaves IPv4 alone');
+  eq('2001:db8::1::2', '2001:db8::1::2', 'leaves what it cannot read as written');
+  eq('64:ff9b::192.0.2.1', '64:ff9b::192.0.2.1', 'leaves an embedded IPv4 as written');
+  check('5b. ipKey leaves a non-string alone', ipKey(null) === null && ipKey(undefined) === undefined);
+  check('5b. requestIp still hands back the whole address (the account check sends it to Turnstile)',
+    requestIp({ headers: new Headers({ 'CF-Connecting-IP': '2001:db8:1:2::77' }) }) === '2001:db8:1:2::77');
+
+  const { room } = makeRoom();
+  const open = async (ip) => {
+    lastPair = null;
+    const res = await room.fetch(wsRequest('?rf=1', { 'CF-Connecting-IP': ip }));
+    const ok = res.status === 101 && lastPair && !lastPair[1].closed;
+    return { ok, srv: lastPair && lastPair[1] };
+  };
+  let inV6 = 0, refused = null;
+  for (let i = 0; i < FLOOD.IP_SOCKETS + 4; i++) {
+    const r = await open('2001:db8:1:2::' + (i + 1).toString(16));
+    if (r.ok) inV6++; else if (!refused) refused = r.srv && r.srv.sent[0];
+  }
+  check('5b. one /64, a new address a socket: IP_SOCKETS let in, the rest refused "ip"',
+    inV6 === FLOOD.IP_SOCKETS && refused && refused.type === 'room_full' && refused.reason === 'ip', { inV6, refused });
+  check('5b. the session keeps its whole address', [...room.sessions.values()].some((s) => s.ip === '2001:db8:1:2::1'));
+  check('5b. the next /64 is another line', (await open('2001:db8:1:3::1')).ok);
+  check('5b. an IPv4 address is counted as before', (await open('203.0.113.200')).ok);
+  room._liveFlags = { ip64: false, ip_joins_min: 0 };
+  check('5b. ip64 false counts each IPv6 address apart again', (await open('2001:db8:1:2::ff')).ok);
+
+  /* the opens a minute are kept by the /64 too (socket limit off) */
+  const { room: r2 } = makeRoom();
+  r2._liveFlags = { ip_sockets: 0 };
+  let opens = 0;
+  for (let i = 0; i < FLOOD.IP_JOINS_PER_MIN + 5; i++) {
+    lastPair = null;
+    const res = await r2.fetch(wsRequest('?rf=1', { 'CF-Connecting-IP': '2001:db8:5:6::' + (i + 1).toString(16) }));
+    if (res.status === 101 && lastPair && !lastPair[1].closed) { opens++; r2.sessions.delete(lastPair[1]); }
+  }
+  check('5b. IP_JOINS_PER_MIN opens a minute from one /64, the rest refused', opens === FLOOD.IP_JOINS_PER_MIN, opens);
 }
 
 /* ═══ 6. writes ═══ */
