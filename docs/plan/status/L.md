@@ -15,9 +15,8 @@ state: ready
 
 ## Next
 
-- Paused (planner, 2026-11-16: nothing new till sittings 19, 19b, 20 merge):
-  the arena door (5522, this branch, no PR yet); before its PR, mp-arena's
-  "both phones leave the duel" check: 27/28 here, 28/28 on main 29b1a0d.
+- Paused till sittings 19, 19b, 20 merge: the arena door (5522, no PR yet);
+  first, mp-arena's "leave the duel" check: 27/28 here, 28/28 on main 29b1a0d.
 - Backlog (J2's find): a rejoin (a stall past 5 s) clears the party and the
   Saloon's alliance forms (what was typed is lost): a REJOIN_SLOTS row.
 
