@@ -524,6 +524,7 @@ import { castAbility, abilityStatus, resolveCastAngle, BASH_POSE_MS, maybeSwordD
   applyAbilityStrike, tickWhirlWindup /* v2.3.2824 */, DASH_STEP_PX, DASH_MAX_STEP_PX, DASH_STOP_PX, DASH_MAX_REACH_PX } from '@/game/abilities.js'; /* v2.3.2258: the sword's opening lunge; v2.3.2260: it strikes on arrival */
 /* v2.3.841: extraction + fishing/cooking/wood/mining reward bodies extracted; component keeps thin useCallback wrappers. */
 import { startExtraction, succeedExtraction, applyCookingResult, tickGatherHits } from '@/game/lifeSkillRewards.js'; /* tickGatherHits v2.3.2956 */
+import { harvestTo } from '@/game/harvestDoor.js';   /* v2.3.5219: the one writer of S._extraction (card L PR 5) */
 /* v2.3.842: emote + building-entry interaction bodies extracted; component keeps thin useCallback wrappers. */
 import { cue, cueLater } from '@/game/eventSounds.js';   /* v2.3.3343: the missing sounds, from recordings already in the game */
 import '@/game/soundStudio.js';   /* v2.3.3523: the sound studio's "heard just now" and its way in (the Test panel, ?sounds) */
@@ -6899,7 +6900,7 @@ export var BroTown = function BroTown(_ref0) {
                           : null);
           if (!_exNode || !_exNode.alive) {
             /* Node disappeared (server depleted, zone changed) — silent cancel. */
-            S._extraction = null;
+            harvestTo(S, null, 'lost');   /* v2.3.5219: through the harvest's page door */
           } else {
             /* v2.3.843: the walk-away cancel radius must be at least the
                range the prompt let you START from, or chopping/fishing
@@ -6922,10 +6923,10 @@ export var BroTown = function BroTown(_ref0) {
                movement, the radius one for anything else that displaces you
                (knockback, a dodge roll, a server correction). */
             if (Math.abs(dx) > 0.2 || Math.abs(dy) > 0.2) {
-              S._extraction = null;
+              harvestTo(S, null, 'walk');   /* v2.3.5219: through the harvest's page door */
             } else if (nodeReachDist(S, _exNode, EXTRACT_CANCEL_R) == null) {
               /* Walk-away cancel — no XP, no node damage, no popup. */
-              S._extraction = null;
+              harvestTo(S, null, 'walk');   /* v2.3.5219: through the harvest's page door */
             } else {
               /* v2.3.2956: the gathering hits land first (each on its swing's
                  blow), so the node always reads 0 by the time the cue appears.
@@ -6933,8 +6934,8 @@ export var BroTown = function BroTown(_ref0) {
                  (applyGatherHits, GATHER_HIT_SETTLE_MS); before the plan lands
                  it is Infinity, so nothing below fires early. */
               if (_ex.hits) tickGatherHits(S, _ex, _exNode, _exNow);
-              if (_ex.status === 'waiting' && _exNow >= _ex.windowOpensAt) {
-                _ex.status = 'ready';
+              /* v2.3.5219: the window opens through the harvest's page door (waiting -> ready, in place) */
+              if (_ex.status === 'waiting' && _exNow >= _ex.windowOpensAt && harvestTo(S, null, 'open')) {
                 _ex.readyAt = _exNow;   /* v2.3.2956: when the window really opened -- mp-gatherhits holds it against the last hit */
                 /* v2.3.2761 (owner: sounds for the specific actions): for fishing
                    the window opening IS the bite -- a fish on the hook, now reel. */

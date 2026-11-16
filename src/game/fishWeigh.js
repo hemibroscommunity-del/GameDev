@@ -11,6 +11,7 @@
  * Node-tested where it can be (fish-variants.test.mjs); the one import is the
  * import-free words table.  Spec: docs/specs/fish-variants.md. */
 import { fishKeyInfo, fishWeighWords } from '../data/fishVariants.js';
+import { act } from './actions.js';   /* v2.3.5188: the page's requests leave through the action door (card K PR 7) */
 
 const listeners = new Set();
 const st = { card: null, pending: null, want: null };
@@ -36,7 +37,7 @@ export function canInspectFish(S, key) {
  *  and fills when the answer comes. */
 export function askFishWeigh(S, key) {
   if (!canInspectFish(S, key) || !S.channel) return false;
-  try { S.channel.send({ type: 'fish_inspect', payload: { key } }); } catch (_e) { return false; }
+  try { act('fish_inspect', { key }); } catch (_e) { return false; }   /* v2.3.5188: through the action door (actions.js) */
   st.pending = key;
   st.card = { key, pending: true, at: Date.now() };
   emit();
@@ -63,7 +64,7 @@ export function closeFishWeighCard() { st.card = null; st.pending = null; emit()
 /** Ask for the boards (the Biggest fish tab). */
 export function askFishBoard(S) {
   if (!fishWeighLive(S) || !S.channel) return false;
-  try { S.channel.send({ type: 'fish_board_request', payload: {} }); } catch (_e) { return false; }
+  try { act('fish_board_request', {}); } catch (_e) { return false; }   /* v2.3.5188: through the action door (actions.js) */
   return true;
 }
 

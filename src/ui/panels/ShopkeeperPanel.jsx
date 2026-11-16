@@ -7,6 +7,7 @@ import { thumbFor, iconFor, ITEM_NAMES } from '../mobile/dash/InventoryPanel.jsx
 import { playIsLandscape } from '../mobile/playViewport.js';         /* v2.3.3407: sideways */
 import { npcArtUrl } from '@/rendering/npcSprites.js';   /* v2.3.3580: his head, a Hemi Bros portrait now, at the townsfolk's cache-bust */
 import { dashboardPanelBus } from '../mobile/dashboardPanelBus.js';   /* v2.3.3407: the bag's column */
+import { act } from '@/game/actions.js';   /* v2.3.5190: the page's requests leave through the action door (card K PR 7) */
 
 /* ═══ v2.3.2059: THE MERCHANT DRAWER ═══
  *
@@ -83,7 +84,7 @@ function prettyKey(k) {
 const send = (type, payload) => {
   try {
     const S = window._gameState && window._gameState.current;
-    if (S && S.channel) S.channel.send({ type, payload });
+    if (S && S.channel) act(type, payload);   /* v2.3.5190: through the action door (actions.js) */
   } catch (e) { /* offline: the panel simply will not update */ }
 };
 
@@ -306,7 +307,7 @@ export function ShopkeeperPanel() {
     ? (quote.why || 'off') : null;
   const canAct = !!liveQuote && selMax >= 1 && !tooPoor && !wontBuy && !toolWhy && !shopBus.busy;
 
-  const act = () => {
+  const buyOrSell = () => {   /* v2.3.5190: was `act`, a name the action door's act() now has in this file */
     if (!canAct) return;
     shopBus.setBusy(true);
     send(selSide === 'bro' ? 'shop_buy' : 'shop_sell', { key: selKey, qty: clamped });
@@ -530,7 +531,7 @@ export function ShopkeeperPanel() {
             <button
               type="button" data-shop-act={selSide}
               data-shop-total={liveQuote ? liveQuote.total : ''}
-              disabled={!canAct} onClick={act}
+              disabled={!canAct} onClick={buyOrSell}
               style={{
                 flex: 'none', minWidth: 96, minHeight: 40, borderRadius: 9,
                 padding: '0 10px', fontSize: 12.5, fontWeight: 800,

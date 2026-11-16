@@ -19,6 +19,7 @@ import { BT_AUDIO, EXTRACT_WINDOW_MS, MINIGAME_REWARDS, addLifeSkillXp, computeO
 import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.1915 */
 import { rollHarvestShard, shardByKey } from '@/data/shards.js';
 import { _objectSpread } from '@/lib/babelHelpers.js';
+import { harvestTo } from '@/game/harvestDoor.js';   /* v2.3.5219: the one writer of S._extraction (card L PR 5) */
 
 import { pushDmgPopup, swimRefused /* v2.3.3012 */, offlineRefused /* v2.3.3034 */ } from '@/game/combatHelpers.js';
 import { climbOut } from '@/game/wheelSwim.js';   /* v2.3.3012: a seat on the bank ends a swim */
@@ -26,6 +27,7 @@ import { jumpAirborne } from '@/game/jump.js';     /* v2.3.3017 */
 import { MINE_SEAT_DX, MINE_SEAT_DY, FISH_SEAT_DX, FISH_SEAT_DY } from '@/data/constants.js';   /* v2.3.2915 */
 import { gatherNeed } from '@/data/lifeSkills.js';   /* v2.3.3038: a resource's level is a real requirement */
 import { cue } from '@/game/eventSounds.js';   /* v2.3.3434: the prize heard landing in the bag */
+import { act } from '@/game/actions.js';   /* v2.3.5188: the page's requests leave through the action door (card K PR 7) */
 /* v2.3.849: fly a harvested-resource icon from its world node into the
    bottom-left inventory.  DOM-only (appended to document.body, like the
    resume spinner) so it floats above the canvas/HUD and animates on the
@@ -215,7 +217,7 @@ export function startExtraction(S, node, skill, extra) {
       try { if (BT_AUDIO.swimSplash) BT_AUDIO.swimSplash('out'); } catch (e) {}
     }
     /* One extraction at a time -- tapping a new node cancels the old. */
-    if (S._extraction) S._extraction = null;
+    if (S._extraction) harvestTo(S, null, 'again');   /* v2.3.5219: through the harvest's page door */
     if (_locked) { _startLockedTry(S, node, skill, _locked); return; }
     var R = S.rpg;
     var skillLvl = (R && R.lifeSkills && R.lifeSkills[skill] && R.lifeSkills[skill].level) || 0;
@@ -236,7 +238,10 @@ export function startExtraction(S, node, skill, extra) {
        theirs (rule 19: gated on the cap, not on hope). */
     var _hitMode = !!(S._serverCaps && S._serverCaps.gatherhits) && !!S.channel
       && Object.prototype.hasOwnProperty.call(GATHER_SWING, skill);
-    S._extraction = {
+    /* v2.3.5219: the record is made whole (its hits, a cook's fish), then
+       handed to the harvest's page door (game/harvestDoor.js), the one
+       writer of S._extraction */
+    var _rec = {
       nodeId: node.id,
       /* v2.3.253: keep the node reference too so the tick can find it
          even when nodes lack ids (SP locally-spawned nodes were
@@ -251,7 +256,7 @@ export function startExtraction(S, node, skill, extra) {
     };
     if (_hitMode) {
       S._gatherHitSeq = (S._gatherHitSeq || 0) + 1;
-      S._extraction.hits = {
+      _rec.hits = {
         seq: S._gatherHitSeq,
         plan: null,                       /* the worker's dice, once they land */
         times: null,                      /* when each one lands (Date.now() ms) */
@@ -264,7 +269,8 @@ export function startExtraction(S, node, skill, extra) {
     }
     /* v2.3.853: cooking carries the chosen raw fish key so succeed/burn can
        apply the cook outcome (the "node" is the campfire, not a gather node). */
-    if (extra) { for (var _k in extra) S._extraction[_k] = extra[_k]; }
+    if (extra) { for (var _k in extra) _rec[_k] = extra[_k]; }
+    if (!harvestTo(S, _rec, 'start')) return;   /* v2.3.5219: never refused today (none, after 'again' above) */
     /* v2.3.230: tell the server we started so it can validate the
        eventual node_strike's timing against the same computeOpenDelay
        window we just rolled.  Server treats missing extraction_start
@@ -284,7 +290,7 @@ export function startExtraction(S, node, skill, extra) {
         /* v2.3.2956: asking for hits, and naming this attempt so a plan for
            an abandoned one can be told apart (applyGatherHits). */
         if (S._extraction.hits) _esPayload.hitSeq = S._extraction.hits.seq;
-        S.channel.send({ type: 'extraction_start', payload: _esPayload });
+        act('extraction_start', _esPayload);   /* v2.3.5188: through the action door (actions.js) */
       } catch (e) {}
     }
     try { BT_AUDIO.beep(440, 0.03, 0.04, 'sine'); } catch (e) {}
@@ -324,7 +330,7 @@ function _startLockedTry(S, node, skill, need) {
     } catch (e) { /* the three */ }
     var plan = [];
     for (var i = 0; i < n; i++) plan.push(0);
-    S._extraction = {
+    var _try = {   /* v2.3.5219: handed whole to the harvest's page door (its `try`) */
       nodeId: node.id,
       nodeRef: node,
       skill: skill,
@@ -346,6 +352,7 @@ function _startLockedTry(S, node, skill, need) {
         planAt: now,
       },
     };
+    if (!harvestTo(S, _try, 'try')) return;   /* v2.3.5219: never refused today (none: startExtraction ended the old one) */
     var label = need.skill.charAt(0).toUpperCase() + need.skill.slice(1);
     var at = _gatherHitAt(S, skill, node, 0);
     var said = 'Requires ' + label + ' Lv ' + need.need;
@@ -454,7 +461,7 @@ export function tickGatherHits(S, ex, node, now) {
        beat after its last 0 (_startLockedTry) -- the window never opens */
     if (ex.locked && h.shown >= h.plan.length && now >= h.times[h.times.length - 1] + LOCKED_END_MS) {
       if (ex._probe) ex._probe.endedAt = now;
-      if (S._extraction === ex) S._extraction = null;
+      if (S._extraction === ex) harvestTo(S, null, 'tried');   /* v2.3.5219: through the harvest's page door */
     }
 }
 /* = entityRenderer SELF_DEATH_HOLD_MS, the corpse hold selfCorpseUp bounds
@@ -480,7 +487,7 @@ function _gatherHitsToTimer(S, ex, resend) {
     ex.windowClosesAt = now + openDelay + EXTRACT_WINDOW_MS;
     if (resend && S.channel && ex.skill !== 'cooking') {
       try {
-        S.channel.send({ type: 'extraction_start', payload: { nodeId: ex.nodeId, zone: S.currentZone, skill: ex.skill } });
+        act('extraction_start', { nodeId: ex.nodeId, zone: S.currentZone, skill: ex.skill });   /* v2.3.5188: through the action door (actions.js) */
       } catch (e) {}
     }
 }
@@ -535,7 +542,7 @@ export function succeedExtraction(S, accuracy, deps) {
               : (S.gatherNodes && _ex.nodeId
                  ? S.gatherNodes.find(function (n) { return n.id === _ex.nodeId; })
                  : null);
-    if (!node) { S._extraction = null; return false; }
+    if (!node) { harvestTo(S, null, 'lost'); return false; }   /* v2.3.5219: through the harvest's page door */
     /* accuracy comes from the phase-2 gesture grade (ExtractionSwipeLayer);
        defaults to 'good' for any legacy caller. Keyed into MINIGAME_REWARDS. */
     var result = { accuracy: (accuracy === 'perfect' || accuracy === 'ok') ? accuracy : 'good' };
@@ -544,7 +551,7 @@ export function succeedExtraction(S, accuracy, deps) {
     else if (_ex.skill === 'woodcutting') applyWoodReward(S, node, result, deps);
     else if (_ex.skill === 'mining')      applyMiningReward(S, node, result, deps);
     S._lastHarvestOkAt = Date.now();   /* v2.3.4343: the first-harvest teaching (ui/deskTeach.js) tells a done harvest from a missed window */
-    S._extraction = null;
+    harvestTo(S, null, 'strike');   /* v2.3.5219: through the harvest's page door */
     return true;
 }
 
@@ -575,7 +582,7 @@ function applyFishingReward(S, node, result, deps) {
         var _swipeFp = (S._extraction && S._extraction.swipeFp) || null;
         var _np = { id: node.id, zone: S.currentZone, accuracy: accuracy };
         if (_swipeFp) _np.swipeFp = _swipeFp;
-        S.channel.send({ type: 'node_strike', payload: _np });
+        act('node_strike', _np);   /* v2.3.5188: through the action door (actions.js) */
       } catch (e) {}
     }
     /* Inventory grant for the resource itself (fish_clownfish, etc.).
@@ -692,7 +699,7 @@ function applyWoodReward(S, node, result, deps) {
         var _swipeFp = (S._extraction && S._extraction.swipeFp) || null;
         var _np = { id: node.id, zone: S.currentZone, accuracy: accuracy };
         if (_swipeFp) _np.swipeFp = _swipeFp;
-        S.channel.send({ type: 'node_strike', payload: _np });
+        act('node_strike', _np);   /* v2.3.5188: through the action door (actions.js) */
       } catch (e) {}
     }
     /* Resource inventory grant on the worker when authoritative;
@@ -789,7 +796,7 @@ function applyMiningReward(S, node, result, deps) {
         var _swipeFp = (S._extraction && S._extraction.swipeFp) || null;
         var _np = { id: node.id, zone: S.currentZone, accuracy: accuracy };
         if (_swipeFp) _np.swipeFp = _swipeFp;
-        S.channel.send({ type: 'node_strike', payload: _np });
+        act('node_strike', _np);   /* v2.3.5188: through the action door (actions.js) */
       } catch (e) {}
     }
     /* Resource inventory grant on the worker when authoritative;
@@ -896,7 +903,7 @@ export function applyCookingResult(S, fishKey, kind, taps, deps) {
           && S._extraction.skill === 'cooking' && S._extraction.swipeFp) {
         _cookPayload.swipeFp = S._extraction.swipeFp;
       }
-      try { S.channel.send({ type: 'cook_request', payload: _cookPayload }); } catch (e) {}
+      try { act('cook_request', _cookPayload); } catch (e) {}   /* v2.3.5188: through the action door (actions.js) */
       return;
     }
     /* Fallback: no channel (SP / dungeon offline). */

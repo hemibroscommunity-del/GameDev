@@ -54,7 +54,7 @@
  *      NOT_A_MACHINE                                       -> FAIL 5
  *   5. the `race` worker row deleted -> FAIL 1 (4 stays green: the page's
  *      `race` row still carries the wire's name)
- *   6. TODO_LINE one under the count (26; v2.3.5374)         -> FAIL 7
+ *   6. TODO_LINE one under the count (21; v2.3.5376)         -> FAIL 7
  * v2.3.5203 (the gatekeeper's sitting 8, its two holes), each tried by hand:
  *   7. `_sneakJoin(ws,\n msg) { ... s.phase = 'joined' }` at the end of
  *      join.js's joinMethods (its parameters over two lines)  -> FAIL 2
@@ -99,6 +99,28 @@
  *                                                         -> FAIL 2
  *  24. `inst.state = 'done';` back in _dungeonComplete (the trade line's
  *      besides is the door's own, `fn`)                   -> FAIL 2
+ * v2.3.5216 (the pose door):
+ *  25. `ps.po = id;` back in _handlePose                  -> FAIL 2
+ * v2.3.5216 (the gatekeeper's low, sitting 16: destructuring, template keys
+ * and reflective writes, read off the tree):
+ *  26. `({ ex: ps.ex } = msg);` in a new function of movement.js -> FAIL 2
+ *  27. `[ps.po] = ['sit'];` in a new function of ride.js  -> FAIL 2
+ *  28. ``ps[`po`] = 'robot';`` in the same                 -> FAIL 2
+ *  29. `Reflect.set(ps, 'po', 'sit');` in admin.js        -> FAIL 2
+ *  30. `Reflect.deleteProperty(room.extractions, id);` in admin.js
+ *      (a keyed field's key)                              -> FAIL 2
+ * v2.3.5217 (the race door):
+ *  31. `ps._race = null;` back in _raceEnd                -> FAIL 2
+ * v2.3.5218 (the race's page door):
+ *  32. `S._race = null;` back in race.js dismissRace      -> FAIL 2
+ * v2.3.5219 (the harvest's page door: the page's harvest, cook and fishing
+ * rows, one field):
+ *  33. `S._extraction = null;` back in succeedExtraction -> FAIL 2 (three
+ *      times: the three rows)
+ * v2.3.5520 (the pose's page door):
+ *  34. `S._pose = null;` back in rejoinSlots.js rejoinClear -> FAIL 2
+ * v2.3.5521 (the guard's page door):
+ *  35. `S._shieldUp = false;` back in shieldToggle.js dropShield -> FAIL 2
  *
  * Run from the repository's root: node tools/guards/phase-table.test.mjs
  * (cd server && npm test runs it with every other guard and suite).
@@ -108,6 +130,14 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createRequire } from 'node:module';
 import { ROOT } from './lib/systems.mjs';
+import { filesOf, systemNames } from './lib/filesOf.mjs';
+/* v2.3.5219: a big file named by its file name, found through the system
+   map (tests-by-system: a guard names no big file by its folder and name,
+   which breaks the day it moves) */
+const fileNamed = (name) => {
+  for (const s of systemNames()) { const f = filesOf(s).find((x) => x.endsWith('/' + name)); if (f) return f; }
+  return '(no file ' + name + ')';
+};
 
 /* Set 2026-11-14 at its first count.  Only the gatekeeper lowers it.
    v2.3.5371 (the gatekeeper, sitting 14, main 1cce0b2): 31 -> 30, the
@@ -115,8 +145,12 @@ import { ROOT } from './lib/systems.mjs';
    v2.3.5373 (the gatekeeper, sitting 16, main 64bb498): 30 -> 28, the count
    since card L's duel and party doors (#1824, #1835).
    v2.3.5374 (the gatekeeper, sitting 17, main 59469b2): 28 -> 27, the count
-   since card L's cook door (#1839). */
-export const TODO_LINE = 27;
+   since card L's cook door (#1839).
+   v2.3.5375 (the gatekeeper, sitting 18, main abff2ef): 27 -> 24, the count
+   since card L's harvest and dungeon doors (#1851, #1855).
+   v2.3.5376 (the gatekeeper, sitting 19, main 29b1a0d): 24 -> 22, the count
+   since card L's pose and race doors (#1864, #1866). */
+export const TODO_LINE = 22;
 
 /* the machines every side must have a row for: SHAPES part 5's names and
    step 5.3b's list (the plan's own `dungeon`, `connection`, `loading`,
@@ -301,6 +335,30 @@ const DOOR_SUITES = Object.freeze({
      suite holds those) */
   'server/test/dungeon-door.test.mjs': { field: 'inst.runPhase', fn: '_dungeonTo', holds: '§2: no write of .runPhase or .bossSpawned in server/src, nor of a run\'s .state, outside _dungeonTo',
     prop: 'runPhase', besides: [] },
+  /* v2.3.5216: the pose door */
+  'server/test/pose-door.test.mjs': { field: 'ps.po', fn: '_poseTo', holds: '§2: no write of .po in server/src outside _poseTo',
+    prop: 'po', besides: [] },
+  /* v2.3.5217: the race door */
+  'server/test/race-door.test.mjs': { field: 'ps._race', fn: '_raceTo', holds: '§2: no write of ._race in server/src outside _raceTo',
+    prop: '_race', besides: [] },
+  /* v2.3.5218: the race's page door (the page half of the race row) */
+  'server/test/race-page-door.test.mjs': { field: 'S._race', fn: 'raceTo', holds: '§2: no write of ._race in src/ outside raceTo, nor of the race record\'s .phase in race.js',
+    prop: '_race', besides: [] },
+  /* v2.3.5521: the guard's page door */
+  'server/test/guard-page-door.test.mjs': { field: 'S._shieldUp', fn: 'guardTo', holds: '§2: no write of S._shieldUp in src/ outside guardTo',
+    prop: '_shieldUp', besides: [
+      { file: 'src/game/shieldCopies.js', text: 'other._shieldUp = up', why: 'a peer\'s copy of their guard (player_shield), not yours' },
+      { file: fileNamed('entityRenderer.js'), text: '_shieldUp: false, _shieldAngle: null', fn: 'poseFrame', why: 'a copy of the state made for a posed picture (Object.assign({}, real, ...)), never S' },
+      { file: fileNamed('effectsRenderer.js'), text: '_shieldUp: false, _bashPose: false', why: 'a copy of the state made for a posed picture, never S' },
+    ] },
+  /* v2.3.5520: the pose's page door */
+  'server/test/pose-page-door.test.mjs': { field: 'S._pose', fn: 'poseTo', holds: '§2: no write of ._pose in src/ outside poseTo',
+    prop: '_pose', besides: [] },
+  /* v2.3.5219: the harvest's page door (the page's harvest, cook and fishing rows: one field) */
+  'server/test/harvest-page-door.test.mjs': { field: 'S._extraction', fn: 'harvestTo', holds: '§2: no write of ._extraction in src/ outside harvestTo, nor of a harvest record\'s .status',
+    prop: '_extraction', besides: [
+      { file: fileNamed('entityRenderer.js'), text: '_extraction: null, _firemaking: null', fn: 'poseFrame', why: 'a copy of the state made for a posed picture (Object.assign({}, real, ...)), never S' },
+    ] },
 });
 const SCAN_DOORS = Object.freeze({
   'session (worker)': 'session-door.test plays the phases but fails no second writer of session.phase',
@@ -331,10 +389,15 @@ function fnName(path) {
   }
   return null;
 }
+/* a key written out: `x.k`, `x['k']`, and (v2.3.5216, the gatekeeper's low,
+   sitting 16) a template with nothing in it, ``x[`k`]``.  A key held in a
+   variable (`x[k]`) cannot be read here: no rule can, short of running it */
+const keyText = (n) => (!n ? null : n.type === 'StringLiteral' ? n.value
+  : (n.type === 'TemplateLiteral' && n.expressions.length === 0 && n.quasis.length === 1 ? n.quasis[0].value.cooked : null));
 const propOf = (m) => (m && m.type === 'MemberExpression'
-  ? (!m.computed && m.property.type === 'Identifier' ? m.property.name : (m.property.type === 'StringLiteral' ? m.property.value : null))
+  ? (!m.computed && m.property.type === 'Identifier' ? m.property.name : keyText(m.property))
   : null);
-const keyName = (pr) => (pr && pr.type === 'ObjectProperty' ? (pr.key.type === 'Identifier' ? pr.key.name : pr.key.type === 'StringLiteral' ? pr.key.value : null) : null);
+const keyName = (pr) => (pr && pr.type === 'ObjectProperty' ? (pr.key.type === 'Identifier' && !pr.computed ? pr.key.name : keyText(pr.key)) : null);
 /* every write of `.prop` in a file: [{ line, fn, text }]; with `value`, only
    a write of that literal (alive = true); with `keyed` (v2.3.5214, a door's
    field that is a record keyed by id, the harvest's this.extractions), a
@@ -371,8 +434,33 @@ function writesIn(rel, prop, value, keyed) {
     return t.type === 'UnaryExpression' && t.operator === '!' && same(t.argument, path.node.left);
   };
   const at = (m) => propOf(m) === prop || (!!keyed && !!m && m.type === 'MemberExpression' && propOf(m.object) === prop);
+  /* v2.3.5216 (the gatekeeper's low, sitting 16): a destructuring target is a
+     write too -- `({ ex: ps.ex } = msg)`, `[ps.po] = list`, a default
+     (`{ po: ps.po = 'sit' }`), a rest (`[...ps.po]`), nested -- its value
+     unknown, so only when no literal is asked for */
+  const targets = (n, outT) => {
+    if (!n) return outT;
+    if (n.type === 'MemberExpression') outT.push(n);
+    else if (n.type === 'ObjectPattern') for (const pr of n.properties) targets(pr.type === 'RestElement' ? pr.argument : pr.value, outT);
+    else if (n.type === 'ArrayPattern') for (const el of n.elements) targets(el, outT);
+    else if (n.type === 'AssignmentPattern') targets(n.left, outT);
+    else if (n.type === 'RestElement') targets(n.argument, outT);
+    return outT;
+  };
+  const patternHits = (path, left) => {
+    if (value !== undefined || !left || (left.type !== 'ObjectPattern' && left.type !== 'ArrayPattern')) return;
+    if (targets(left, []).some(at)) hit(path, path.node);
+  };
   babel.traverse(ast, {
-    AssignmentExpression(path) { if (at(path.node.left) && val(path.node.right)) hit(path, path.node, ifMissing(path)); },
+    AssignmentExpression(path) {
+      if (at(path.node.left) && val(path.node.right)) hit(path, path.node, ifMissing(path));
+      else patternHits(path, path.node.left);
+    },
+    'ForOfStatement|ForInStatement'(path) {
+      const left = path.node.left;
+      if (value === undefined && left && left.type === 'MemberExpression' && at(left)) hit(path, path.node);
+      else patternHits(path, left);
+    },
     UpdateExpression(path) { if (value === undefined && at(path.node.argument)) hit(path, path.node); },
     UnaryExpression(path) { if (value === undefined && path.node.operator === 'delete' && at(path.node.argument)) hit(path, path.node); },
     CallExpression(path) {
@@ -380,6 +468,16 @@ function writesIn(rel, prop, value, keyed) {
       /* v2.3.5212: a door's field that is a Map (the party's
          this._partyByPlayer) is written by its own set, delete and clear */
       if (value === undefined && c.type === 'MemberExpression' && ['set', 'delete', 'clear'].includes(propOf(c)) && propOf(c.object) === prop) { hit(path, path.node); return; }
+      /* v2.3.5216 (sitting 16's low): the reflective writes,
+         Object.defineProperty(x, 'prop', ...), Reflect.set / defineProperty /
+         deleteProperty (x, 'prop', ...), and on a keyed field any key of it */
+      if (value === undefined && c.type === 'MemberExpression' && c.object.type === 'Identifier') {
+        const who = c.object.name, how = propOf(c);
+        if ((who === 'Object' && how === 'defineProperty') || (who === 'Reflect' && ['set', 'defineProperty', 'deleteProperty'].includes(how))) {
+          const [obj, key] = path.node.arguments;
+          if (keyText(key) === prop || (keyed && propOf(obj) === prop)) { hit(path, path.node); return; }
+        }
+      }
       if (!(c.type === 'MemberExpression' && c.object.type === 'Identifier' && c.object.name === 'Object' && propOf(c) === 'assign')) return;
       if (keyed && value === undefined && propOf(path.node.arguments[0]) === prop) { hit(path, path.node); return; }
       for (const a of path.node.arguments.slice(1)) {

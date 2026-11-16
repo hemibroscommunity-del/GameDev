@@ -86,9 +86,11 @@ import { holdOf } from './holdNames.js';
 import { lastDeath, glLostCount, setMarkWhere } from './crashTrap.js';
 import { devClass } from '../game/deviceProfile.js';
 import { drawLane, rungDepth } from '../game/drawLanes.js';   /* v2.3.5221: card O's lanes; v2.3.5222 the rung */
+import { selfFailures } from '../rendering/selfTest.js';   /* v2.3.5234: the self-test's failures, the report's `self` (card O PR 14a) */
 import { CLIENT_SAVERS, clientOff } from '../game/clientOff.js';
 import { PACE_BREAK_MS, lateOver } from '../game/framePacer.js';   /* v2.3.5222: the pacer's one rule of a late frame */
 import { wheelHere } from '../game/wheelTrial.js';
+import { act } from '../game/actions.js';   /* v2.3.5189: the page's requests leave through the action door (card K PR 7) */
 
 export const REPORT = Object.freeze({
   V: 1,
@@ -221,6 +223,7 @@ let _timer = null;
 let _joinedAt = 0;        /* the page's first join */
 let _dueAt = 0;
 let _died = null;         /* the first report's `died` (null: sent, or not yet decided) */
+const _selfSaid = new Set();   /* v2.3.5234: the self-test's failures, each said once a sitting (v2.3.5236: by name -- 14b's verdicts can come after the first report: the shine's at the loading screen's end, the water's behind the Wheel's, a rebuilt renderer's later still) */
 let _diedOwed = false;
 let _lastFrameT = -Infinity, _lastHoldT = -Infinity;
 let _a = null;            /* the bins */
@@ -445,6 +448,9 @@ export function buildReport(now) {
   if (_died) r.died = _died;
   /* v2.3.5222: the governor's rung, to a worker that takes lanes (caps.report 3) */
   if (takesLanes(_S)) r.rung = [_w(a.rungMax), Math.min(secs, _w(a.belowMs / 1000))];
+  /* v2.3.5234 (card O PR 14a): the programs that failed their self-test at the
+     door (rendering/selfTest.js), once a sitting, to a worker that takes lanes */
+  if (takesLanes(_S)) { try { const sf = selfFailures().filter((n) => !_selfSaid.has(n)); if (sf.length) r.self = sf; } catch (e) { /* none said */ } }
   /* v2.3.5127 (sitting 4): the card goes only to a worker that takes it;
      to one that does not, it waits (and is not cleared by the send) */
   if (_speed && takesSpeed(_S)) r.speed = { model: _speed.model, rows: _speed.rows.map((x) => x.slice()) };
@@ -482,10 +488,11 @@ function _due(now) {
   _last = r;
   /* v2.3.5127: a report of under MIN_SECS SEEN is not worth a message (a hidden tab's) */
   const ok = r.seen >= REPORT.MIN_SECS && takesReports(S) && S.channel && typeof S.channel.send === 'function';
-  if (ok && S.channel.send(r) !== false) {
+  if (ok && act('report', r) !== false) {   /* v2.3.5189: through the action door (actions.js) */
     _sent++;
     _lastSentAt = now;
     if (_died) { _died = null; _diedOwed = false; }   /* once */
+    if (r.self) for (const n of r.self) _selfSaid.add(n);   /* v2.3.5234: once a sitting (v2.3.5236: each name) */
     if (r.speed) _speed = null;   /* v2.3.5125: the card went with it */
   } else _dropped++;
   _reset(now);

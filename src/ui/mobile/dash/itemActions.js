@@ -31,6 +31,7 @@ import {
   equipArmorFromStash, equipLegsFromStash, equipStashWeapon, equipStashShield, equipStashGear,
   revealFromBag, targetUnrevealed,   /* v2.3.4012's Reveal, joined to the list at v2.3.4151 */
 } from './equipActions.js';
+import { act } from '@/game/actions.js';   /* v2.3.5191: the page's requests leave through the action door (card K PR 7) */
 
 /** A bag entry (bagModel) as the item card's target -- the same shapes
  *  InventoryPanel's tiles open the card with. */
@@ -90,7 +91,7 @@ export function itemActionList(target, card) {
 function sendCapeWorn(worn) {
   const S = getState();
   if (!S || !S.channel) return;
-  try { S.channel.send({ type: 'cape_equip', payload: { worn } }); } catch (e) { /* socket gone */ }
+  try { act('cape_equip', { worn }); } catch (e) { /* socket gone */ }   /* v2.3.5191: through the action door (actions.js) */
 }
 
 /** Run one of the list's actions on `target`.  `ui`: { close(), sell(),
@@ -111,7 +112,7 @@ export function runItemAction(id, target, card, ui, opts) {
       const S = getState();
       if (!S || !S.channel) return;
       const opId = target.key + ':' + (S.playerId || 'me') + ':' + Date.now();
-      try { S.channel.send({ type: 'cape_redeem', payload: { invKey: target.key, opId } }); } catch (e) { /* still in the bag */ }
+      try { act('cape_redeem', { invKey: target.key, opId }); } catch (e) { /* still in the bag */ }   /* v2.3.5191: through the action door (actions.js) */
       close(); return;
     }
     /* v2.3.2820: Claim opens the chest's claim window straight into the claim */
@@ -130,7 +131,7 @@ export function runItemAction(id, target, card, ui, opts) {
         }
         noteInstantHeal(S);
       }
-      try { S.channel.send({ type: 'potion_drink', payload: { invKey: target.key } }); } catch (e) { /* no socket */ }
+      try { act('potion_drink', { invKey: target.key }); } catch (e) { /* no socket */ }   /* v2.3.5191: through the action door (actions.js) */
       cue('gulp');   /* v2.3.3462 */
       close(); return;
     }

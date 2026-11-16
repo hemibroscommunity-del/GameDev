@@ -260,8 +260,6 @@ const LIST = {
   'src/game/slimeAudio.js': { '*': ['notpic', 1, "the slime's idle sound"] },
   'src/ui/GameApp.jsx': { '*': ['notpic', 1, 'the NFT list (a CSV)'] },
   'src/ui/panels/DevPanel.jsx': { '*': ['notpic', 1, "the Test panel's admin levers (fetchWithTimeout)"] },
-  'src/ui/panels/buildings/ExchangePanel.jsx': { '*': ['notpic', 1, "the market's API"] },
-  'src/ui/storeApi.js': { '*': ['notpic', 1, "the General Store's API (postWithin)"] },
 
   /* -- their own time limit and retry, by hand -- */
   'public/tools/world/core/ground-worker.js': { fetchFile: ['own', 1, 'a ground picture: cut after DL_STALL_MS without a byte (DL_MAX_MS in all), asked again by chase()'] },

@@ -19,6 +19,8 @@
  *   3. a row whose `req` is not its table row's: a request that moves value
  *      out or cannot be undone (`doesWhat` holds `value-out` or `final`) gets
  *      a request id, and no other does;
+ *   3b. (v2.3.5191) a route row whose `auth` is not its table row's: the
+ *      session's token goes exactly to a route whose `trust` reads x-bt-auth;
  *   4. a list of the shim's kept by hand again (a `msg.type === '<name>'`
  *      pass-through, a literal PRIORITY_EVENTS or SETTLED_SENDS);
  *   5. act() not taking each way as the shim does: a direct type in its
@@ -32,7 +34,14 @@
  *      It only falls: card K's PR 7 moves the page's sends to act(), a
  *      family a PR.  The exceptions, named: src/debug/crashTrap.js and
  *      src/networking/index.js (they run before a session), and wsClient.js's
- *      fetch of /api/lobby (the connection's own).
+ *      fetch of /api/lobby (the connection's own).  And (v2.3.5603, named
+ *      for sitting 19b's gatekeeper) THE OWNER'S KEY: the Test panel's
+ *      `call` and `callOwner` (src/ui/panels/DevPanel.jsx) go out through
+ *      `fetchWithTimeout` with the owner's admin key, never a session's
+ *      token, so the census's fetch pattern never sees them; they stay
+ *      outside the door on purpose (the door carries a session's token, and
+ *      the owner's key must never ride it).  §7b holds that only that file
+ *      calls `fetchWithTimeout` with the API's base.
  *      v2.3.5187 (PR 7.1, combat and moving): 57 moved
  *
  * BREAK PROOF (rule 8), each tried by hand 2026-11-14:
@@ -41,6 +50,8 @@
  *   3. the shim (wsClient.js): `if (msg.type === 'zz_probe') { wsOut(msg); return; }` in the shim -> FAIL 4
  *   4. (retired with §6, v2.3.5187: the ways are the rows' now)
  *   5. src/game/actions.js: `item_drop`'s `body: 'top'` taken off      -> FAIL 2b (v2.3.5185, sitting 14)
+ *   6. src/game/actions.js: `auth` taken off http:/api/market/place    -> FAIL 3b (v2.3.5191, 2026-11-15)
+ *   7. act(): a JSON header and a body on every route, a GET's too      -> FAIL 5 (v2.3.5191, 2026-11-15)
  *
  * Run from the repository's root: node tools/guards/action-door.test.mjs
  * (cd server && npm test runs it with every other guard).
@@ -109,11 +120,26 @@ for (const [f, s] of SRC) {
    by its path (tests-by-system: a big file is read by system) */
 const SHIM_FILE = filesOf('wire').find((f) => SRC.has(f) && SRC.get(f).includes('var channelShim = {'));
 const EXCEPT = (x) => x.f === 'src/debug/crashTrap.js' || x.f === 'src/networking/index.js' || (x.f === SHIM_FILE && x.path === '/api/lobby');
+/* v2.3.5603: the owner's key's way out (the header's exceptions): the Test panel alone */
+const OWNER_KEY_FILE = 'src/ui/panels/DevPanel.jsx';
 {
   const missing = [...sent].filter(([n]) => !Object.prototype.hasOwnProperty.call(ACTIONS, n)).map(([n, w]) => n + ' (' + w + ')');
   check(`2: every type and event the page sends by name (${sent.size}) has a row`, missing.length === 0, missing);
   const routeless = fetches.filter((x) => !EXCEPT(x) && x.path && x.path !== '/api/store' && !routeRows.some((n) => ACTIONS[n].path === x.path.replace(/\/$/, '') || ACTIONS[n].path.startsWith(x.path.replace(/\/$/, '') + '/')));
   check(`2: every route the page fetches (${fetches.length}, less the exceptions) has a row`, routeless.length === 0, routeless.map((x) => x.path + ' (' + x.f + ':' + x.line + ')'));
+}
+
+/* ── 7b (v2.3.5603, sitting 19b's gatekeeper): the owner's key's way out,
+   named: `fetchWithTimeout` with the API's base only in the Test panel, whose
+   `call` and `callOwner` carry the owner's admin key, never a session */
+{
+  const outside = [];
+  for (const [f, src] of SRC) {
+    if (f === OWNER_KEY_FILE) continue;
+    for (const m of src.matchAll(/fetchWithTimeout\(\s*BT_API_BASE/g)) outside.push(f + ':' + lineOf(src, m.index));
+  }
+  const inPanel = (SRC.get(OWNER_KEY_FILE) || '').match(/fetchWithTimeout\(\s*BT_API_BASE/g) || [];
+  check(`7b: the owner's key goes out only from the Test panel (${inPanel.length} there; ${OWNER_KEY_FILE})`, outside.length === 0 && inPanel.length > 0, outside);
 }
 
 /* ── 2b (v2.3.5185, the gatekeeper's note, sitting 14). a direct send the
@@ -145,6 +171,14 @@ const EXCEPT = (x) => x.f === 'src/debug/crashTrap.js' || x.f === 'src/networkin
     return !!r.req !== want;
   });
   check(`3: every row's req is its table row's (value-out or final): ${names.filter((n) => ACTIONS[n].req).length} rows`, wrong.length === 0, wrong);
+  /* v2.3.5191 (card K PR 7.5): the token, exactly where the route reads it */
+  const authWrong = names.filter((n) => {
+    const r = ACTIONS[n];
+    if (r.way !== 'http') return !!r.auth;
+    const t = TAKES.get(n);
+    return !!r.auth !== !!(t && t.trust && Object.prototype.hasOwnProperty.call(t.trust, 'x-bt-auth'));
+  });
+  check(`3b: every route row's auth is its table row's (its trust reads x-bt-auth): ${names.filter((n) => ACTIONS[n].auth).length} rows`, authWrong.length === 0, authWrong);
 }
 
 /* ── 4. the shim keeps no list by hand ── */
@@ -171,14 +205,29 @@ const EXCEPT = (x) => x.f === 'src/debug/crashTrap.js' || x.f === 'src/networkin
   ok.push(h.path === '/api/store/buy?room=brotown-1' && h.init.method === 'POST' && h.init.headers['x-bt-auth'] === 'tok' && REQ_ID_RE.test(JSON.parse(h.init.body).reqId));
   ok.push(D.act('join', {}) === false && D.act('zz_no_row', {}) === false && sentOut.length === 0 && D.doorCounts().total === before + 2);
   ok.push([1, 2, 3].map(() => D.makeReqId()).every((r, i, a) => REQ_ID_RE.test(r) && a.indexOf(r) === i));
+  /* v2.3.5191: a route's bytes are the page's own of before: a GET plain (no headers, no body: no
+     preflight), a DELETE with its token and no body, a POST that reads no token sends none */
+  D.act('http:/api/market/orders', {}, { query: 'room=r' }); const g = sentOut.pop();
+  ok.push(g.path === '/api/market/orders?room=r' && g.init.method === 'GET' && g.init.headers === undefined && g.init.body === undefined);
+  D.act('http:/api/store/cancel', {}, { query: 'id=1' }); const dl = sentOut.pop();
+  ok.push(dl.init.method === 'DELETE' && dl.init.body === undefined && JSON.stringify(dl.init.headers) === JSON.stringify({ 'x-bt-auth': 'tok' }));
+  D.act('http:/api/feedback/vote', { vote: 'up' }); const fv = sentOut.pop();
+  ok.push(fv.init.method === 'POST' && JSON.stringify(fv.init.headers) === JSON.stringify({ 'Content-Type': 'application/json' }) && JSON.parse(fv.init.body).vote === 'up');
   check('5: act() sends each way as the shim does, makes a request id in SHAPES\' form on a req row, and refuses (counts) a name with no row', ok.every(Boolean), ok);
+  /* v2.3.5191: with no transport a route answers a rejected promise (its caller's catch, as a
+     fetch that could not leave), a socket's send false */
+  D.setActionTransport(null);
+  const off = D.act('http:/api/market/orders', {});
+  let rejected = false;
+  await (off && typeof off.then === 'function' ? off.then(() => {}, () => { rejected = true; }) : null);
+  check('5b: with no transport a route answers a rejected promise, and a socket\'s send false', rejected && D.act('cape_equip', {}) === false);
 }
 
 /* ── 6. (v2.3.5185's copy of the shim's ways, card K PR 5's only, taken out by
    PR 7's first, v2.3.5187: from here the rows are the ways, held by §1 to §5) ── */
 
 /* ── 7. the census: sends and fetches outside the door ── */
-const LINE = { sends: 128, fetches: 24 };   /* v2.3.5187: 203 less PR 7.1's 57; v2.3.5192: less PR 7.6's 18 sends (BroTown.jsx's 17, the ride key's) and 1 fetch */
+const LINE = { sends: 4, fetches: 0 };   /* v2.3.5187: 203 less PR 7.1's 57; v2.3.5188: less PR 7.2's 41; v2.3.5189: less PR 7.3's 17; v2.3.5190: less PR 7.4's 44; v2.3.5191: less PR 7.5's 22 sends and 24 fetches (the fetch left: BroTown's, 7.6; LoginSpinWindow.jsx waits for card T's #1863); v2.3.5192: less PR 7.6's 18 sends (BroTown.jsx's 17, the ride key's) and 1 fetch; the 4 left: nmlAsk.js and LoginSpinWindow.jsx, after card T's #1863 */
 {
   let sends = 0; const byFile = new Map();
   for (const [f, s] of SRC) {

@@ -29,6 +29,9 @@ import { PROG3 } from '../src/prog3.js';
 import * as LONG from '../src/wheelspawns.js';
 import * as SHORT from '../src/wheelspawns1.js';
 import * as RS from '../../src/game/rest.js';
+import { setActionTransport } from '../../src/game/actions.js';   /* v2.3.5188: the page's sends leave through the action door (card K PR 7.2): its transport is the stand-in phone's channel */
+/* v2.3.5188: the door's transport is this phone's channel (none: nothing leaves, as with no connection) */
+const via = (S) => { setActionTransport(S && S.channel ? { send: (m) => S.channel.send(m) } : null); return S; };
 
 function makeState() {
   const store = new Map();
@@ -274,6 +277,7 @@ room._pvpHealClock('bp_rest_b').pvpAt = 0;
 {
   const sent = [];
   const S = { channel: { send: (m) => sent.push(m) }, _serverCaps: { rest: true }, rpg: {} };
+  via(S);
   check('7: the page asks a worker that rests, for the Hotel', RS.requestRest(S, 'hotel', 1000) === true && sent.length === 1
     && sent[0].type === 'rest_request' && sent[0].payload.where === 'hotel', sent);
   check('7: ...one ask at a time (a second within 4 s waits for the answer)', RS.requestRest(S, 'hotel', 2000) === false && sent.length === 1);

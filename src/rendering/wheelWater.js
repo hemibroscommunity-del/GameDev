@@ -74,10 +74,11 @@
  * half as bright (0 to 2; 0 none), `window.__btWaves.off()` live.  Probe: `window.__btWaves.probe()`; the
  * trial readout (`?trialhud`) says "water moving" or why it is still.
  */
-import { Container, Mesh, MeshGeometry, Shader, GlProgram, UniformGroup, Texture, BufferImageSource, Rectangle } from 'pixi.js';
+import { Container, Mesh, MeshGeometry, Shader, GlProgram, UniformGroup, Texture, BufferImageSource, Rectangle, RenderTexture } from 'pixi.js';
 import { setWheelWaterMoves } from '../game/wheelTrial.js';
 import { isPaletteSource, paletteAtlasSource, paletteOn, makePaletteSource } from './paletteTex.js';   /* v2.3.3190 */
 import { laneKnob, onKnob, seeKnob } from '../game/drawLanes.js';   /* v2.3.5229: the moving sea is a knob of the lanes (card O PR 9) */
+import { selfDraw, selfQueue, selfSkip, selfTestOn, selfRgba, selfIdx, selfPalBytes, selfWaterField, selfWaterWant, SELF_SIZE } from './selfTest.js';   /* v2.3.5236: the self-test at the door (card O PR 14b) */
 
 const VERT = `
 in vec2 aPosition;
@@ -558,8 +559,9 @@ export function waterKnobStill() {
   }
   return _stillKnob;
 }
-/* the sea drawn still now: the live switch (QA, the Speed test) or the knob */
-function stillNow() { return _liveOff || waterKnobStill(); }
+/* the sea drawn still now: the live switch (QA, the Speed test) or the knob;
+   v2.3.5236: or the program found drawing wrong by its self-test (below) */
+function stillNow() { return _liveOff || _ok === false || waterKnobStill(); }
 /* v2.3.5229 (the gatekeeper's sitting 17, a low): a sea that cannot move
    here -- `?nowaves`, WebGL 1, a program that did not link, the live switch
    off, or no sea laid near you -- draws the same moving or still, so its
@@ -696,7 +698,7 @@ function meshFor(tex, pic, geometry) {
  *  preloadWheel).  Says whether this device can draw moving water. */
 export function prewarmWheelWater() {
   if (_ok != null) return _ok;
-  if (!wavesOn() || !webgl2()) { _ok = false; return false; }
+  if (!wavesOn() || !webgl2()) { _ok = false; selfSkip('water', !wavesOn() ? 'switched off (?nowaves)' : 'no WebGL 2'); return false; }
   let mesh = null, pmesh = null, psrc = null;
   try {
     const sea = uniformTexture([240, 255, 128, 128]);
@@ -722,7 +724,65 @@ export function prewarmWheelWater() {
   unmake(pmesh);
   try { if (psrc) psrc.destroy(); } catch (e) { /* gone */ }
   _stats.prewarmed = true;
+  if (_ok) waterSelfTest();
+  else selfSkip('water', 'not built on this device');
   return _ok;
+}
+
+/* ═══ v2.3.5236: THE SELF-TEST AT THE DOOR (card O PR 14b; selfTest.js) ═══
+   Built, the water's program (and its colour-numbers twin, where the ground
+   is drawn so) draws a known piece under a known field at strength 0 --
+   every moving part multiplied away, so what is left is the piece read at
+   the texel's middle times the field's wetness there (selfTest.js
+   selfWaterWant): the program's reads of both textures and its blend, not
+   its motion.  Its own clock and strength (not the sea's).  Wrong, and the
+   sea is drawn still, as `?nowaves`, the live switch and the lanes' last rung
+   draw it: `_ok` false (no quad laid; any laid hidden, the ground under open
+   sea shown: stillNow), and the Wheel's ground worker told the water does
+   not move (a worker started later keeps the pictures' own web of light). */
+function waterSelfTest() {
+  if (!selfTestOn()) { selfSkip('water', 'no self-test on this page (?selftest=0)'); return; }
+  const t0 = performance.now();
+  const N = SELF_SIZE;
+  const made = [], rts = [], wants = [];
+  const want = selfWaterWant(selfRgba());
+  let field = null, piece = null, psrc = null;
+  try {
+    const uni = new UniformGroup({
+      uTime: { value: 0, type: 'f32' },
+      uStrength: { value: 0, type: 'f32' },
+      uUvPerPx: { value: 1 / N, type: 'f32' },
+      uCaustics: { value: 0, type: 'f32' },
+    });
+    field = new BufferImageSource({ resource: selfWaterField(), width: N, height: N, format: 'rgba8unorm', scaleMode: 'linear', alphaMode: 'no-premultiply-alpha', label: 'bt-water-selftest-field' });
+    piece = new BufferImageSource({ resource: selfRgba(), width: N, height: N, format: 'rgba8unorm', scaleMode: 'linear', alphaMode: 'premultiplied-alpha', label: 'bt-water-selftest' });
+    const m1 = new Mesh({ geometry: quad(0, 0, N, N, 0, 0, 1, 1), shader: new Shader({ glProgram: program(), resources: { uField: field, uPiece: piece, waterUniforms: uni } }) });
+    made.push(m1);
+    rts.push(selfDraw(_renderer, m1, RenderTexture)); wants.push(want);
+    if (paletteOn()) {
+      psrc = makePaletteSource({ idx: selfIdx(), w: N, h: N, stride: N, rgba: selfPalBytes(), alphaMode: 'premultiplied-alpha', label: 'bt-water-selftest-pal' });
+      if (psrc) {
+        const P = psrc._btPal;
+        const m2 = new Mesh({ geometry: quad(0, 0, N, N, 0, 0, 1, 1), shader: new Shader({ glProgram: palProgram(), resources: {
+          uField: field, uPieceIdx: psrc, uPal: paletteAtlasSource(), waterUniforms: uni,
+          pieceUniforms: new UniformGroup({
+            uPalRow: { value: P.row, type: 'f32' },
+            uPieceSize: { value: new Float32Array([P.w, P.h]), type: 'vec2<f32>' },
+          }),
+        } }) });
+        made.push(m2);
+        rts.push(selfDraw(_renderer, m2, RenderTexture)); wants.push(want);
+      }
+    }
+  } catch (e) { /* what was drawn is judged; the rest unread */ }
+  for (const m of made) unmake(m);
+  for (const x of [field, piece, psrc]) { try { if (x) x.destroy(); } catch (e) { /* gone */ } }
+  if (!rts.length) { rts.push(null); wants.push(want); }   /* not drawn: unread, kept as today */
+  selfQueue('water', _renderer, rts, wants, () => {
+    _ok = false;
+    _stats.linkError = 'the water program drew the wrong picture (the self-test): still water';
+    setWheelWaterMoves(false);
+  }, performance.now() - t0);
 }
 
 /** The moving water over the Wheel's ground: one quad a piece that has
