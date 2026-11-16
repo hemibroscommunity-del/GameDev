@@ -19,7 +19,8 @@ Nine deploy (#1878, #1890, #1897, #1907, #1880, #1886, #1908, #1913,
 (ON); levers `freezedevice`, `seathold`, `exactseen` (OFF).
 
 ## Held (expires at sitting 21)
-- Sitting 20's holds stand as its status said (review-z20.md).
+- None. (Sitting 20's one hold was sitting 19's held line: it is this
+  list's 1 to 5.)
 
 ## Stalled
 - Card K: as sitting 20 said (#1900 waits for a fresh K session).
