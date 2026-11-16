@@ -401,7 +401,7 @@ spec. Add a line here only for a new RULE every session must follow.
 | a request the page makes | its row in `src/game/actions.js` (the action door) |
 | a server behaviour | a cap the client gates on (`CAP_GATES`) and a lower-case kill switch |
 | a `?name=` or a live flag | its row in the switch table (`tools/guards/lib/switches.mjs`; `node tools/guards/switches.test.mjs --write`) |
-| a storage key | ARCHITECTURE-HANDOFF's rule-2 registry table (precheck `storage-keys`) |
+| a storage key | ARCHITECTURE-HANDOFF's rule-2 registry table (precheck `storage-keys`); its marks; a player's key, its place in `RESTORE_WAYS` (`storagemarks.js`; `restore.test`) |
 | a monster hit on players | its row in `MONSTER_HITS` (`hits.js`) |
 | a way to change a player's gold | its row in `GOLD_ROADS` (`gold.js`) and its line in `gold-door.test`'s `EXPECT` |
 | a way to change a bag count, a stash, a player's hp, or to leave | its row in `BAG_ROADS`, `STASH_ROADS`, `HP_ROADS` or `LEAVE_WAYS`, and its line in that door's test |

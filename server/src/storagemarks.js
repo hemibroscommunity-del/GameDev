@@ -109,6 +109,10 @@ export const STORAGE_MARKS = Object.freeze({
   'capegrant:':       M('none', 'room', 'a cape\'s tickets (the cape itself is a bag item)'),
   'cape_start_id':    M('none', 'room', 'a contest\'s start'),
   'chat_report:':     M('none', 'room', 'a report'),
+  /* v2.3.5285 (card R PR 6): a character deleted by its restart is booked
+     here, what it held burned and its own count kept; the world's sum reads
+     its net (worldsum.js NET_READERS).  It holds no value itself */
+  'econ_gone':        M('none', 'room', 'the count of every character a restart deleted (what each held, booked burned)'),
 });
 
 /** The marks of a storage key (`rpg:bp_x`, `shop_stock`), or null: the
@@ -119,4 +123,64 @@ export function marksOf(key) {
   let best = null;
   for (const p of Object.keys(STORAGE_MARKS)) if (p.endsWith(':') && key.startsWith(p) && (!best || p.length > best.length)) best = p;
   return best ? STORAGE_MARKS[best] : null;
+}
+
+/* ═══ v2.3.5285: A PLAYER'S RESTORE, MADE FROM THE REGISTRY (grand plan step 4.7, card R PR 6) ═══
+ * (spec docs/specs/restore.md, "One player's restore"; restore.js playerRestore)
+ *
+ * Every record the marks call `whose: 'player'` is placed here: RESTORED (a
+ * restore puts it back from the snapshot, when the snapshot holds it) or LEFT
+ * (a restore never touches it), with why.  restore.test fails a player
+ * record this table does not place, a place for a record that is not a
+ * player's, and a restored one that is not one key a player (`<prefix><pid>`).
+ * Records held between players (`whose: 'between'`) are never rewound: they
+ * are the other side's too; the restore says what of theirs it found there.
+ *
+ * What is restored is what holds a character's VALUE, theirs alone: the
+ * character, the vault, the pets.  Everything else is a count, a claim, a
+ * login, a lever or a copy: rewinding it fixes no broken save, and for a
+ * claim (a prize paid once, a day's spin) rewinding it would pay twice. */
+const W = (way, why) => Object.freeze({ way, why });
+export const RESTORE_WAYS = Object.freeze({
+  'rpg:':             W('restored', 'the character: purse, bag, gear, levels, quests (its gold, bag and stashes through their doors, the difference booked)'),
+  'bank:':            W('restored', 'the vault, theirs alone (its difference booked on the character\'s count)'),
+  'pets:':            W('restored', 'the pets: their only proof'),
+  'inbox:':           W('left', 'mail waiting: credits others\' roads sent, each stamped once -- rewound, one claimed since would be paid again, one sent since lost'),
+  'gear_prov:':       W('left', 'the ownership ledger: it grows with each mint and gives a row to a listing; a restored piece whose row is gone loads as `legacy` (kept, not sellable), never sellable twice'),
+  'auth:':            W('left', 'the login: an old key must never come back'),
+  'keyidx:':          W('left', 'a login key\'s character: the same'),
+  'codex:':           W('left', 'kills counted: a count, not value'),
+  'fishlog:':         W('left', 'catches to weigh: a count (the fish are in the bag)'),
+  'achv:':            W('left', 'achievements earned stay earned: one is never paid twice'),
+  'life:':            W('left', 'a death\'s notes: that moment\'s'),
+  'aponce:':          W('left', 'points paid once stay paid'),
+  'char:':            W('left', 'the name and look: theirs now'),
+  'guild_claims:':    W('left', 'quest-ladder claims stay made: a rung is never paid twice'),
+  'gearlock:':        W('left', 'a guard\'s gear lock: that moment\'s'),
+  'nml_state:':       W('left', 'skulls and locks: No man\'s land\'s justice is not undone by a restore'),
+  'farm:':            W('left', 'beds and what grows: time, not value the sum counts'),
+  'farmorders:':      W('left', 'the day\'s orders: the day\'s limit'),
+  'harden_ledger:':   W('left', 'hardening tries: a count'),
+  'botstat:':         W('left', 'anti-bot evidence: never rewound'),
+  'frozen:':          W('left', 'the owner\'s lever'),
+  'testmode:':        W('left', 'the owner\'s lever'),
+  'rpgsnap:':         W('left', 'the snapshots themselves'),
+  'rpgsnap_at:':      W('left', 'the snapshot\'s clock'),
+  'lspin:':           W('left', 'the login wheel\'s stamp: a day\'s spin is never paid twice'),
+  'cadence:':         W('left', 'the login streak: days logged in stay logged'),
+  'daily_rewards:':   W('left', 'the spin\'s open pot and the day\'s quests: the day\'s limit'),
+  'acc:':             W('left', 'accuracy: a count'),
+  'friends:':         W('left', 'friends: the other side\'s too'),
+  'friend_msg:':      W('left', 'messages waiting: others\' words'),
+  'chat_mute:':       W('left', 'a mute list: theirs now'),
+  'bro_link:':        W('left', 'a wallet link: theirs now'),
+  'chain_score:':     W('left', 'a score written on the chain: the chain is not rewound'),
+  'clan_by_player:':  W('left', 'which clan: the clan\'s record is between players'),
+  'party_by_player:': W('left', 'which party: the party\'s record is between players'),
+});
+export const RESTORE_WAY_NAMES = Object.freeze(['restored', 'left']);
+
+/** The prefixes a player's restore puts back, `rpg:` first. */
+export function restoredPrefixes() {
+  return Object.keys(RESTORE_WAYS).filter((p) => RESTORE_WAYS[p].way === 'restored');
 }
