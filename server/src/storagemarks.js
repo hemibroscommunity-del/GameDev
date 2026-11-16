@@ -164,6 +164,7 @@ export const RESTORE_WAYS = Object.freeze({
   'harden_ledger:':   W('left', 'hardening tries: a count'),
   'botstat:':         W('left', 'anti-bot evidence: never rewound'),
   'frozen:':          W('left', 'the owner\'s lever'),
+  'silenced:':        W('left', 'the owner\'s silence (v2.3.5621): a restore never lifts one'),
   'testmode:':        W('left', 'the owner\'s lever'),
   'rpgsnap:':         W('left', 'the snapshots themselves'),
   'rpgsnap_at:':      W('left', 'the snapshot\'s clock'),
