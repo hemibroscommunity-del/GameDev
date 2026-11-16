@@ -38,6 +38,19 @@
  *      for case, spaces, punctuation and look-alikes ("BroTown Team
  *      (official)", "A d m i n", "Adm1n", a Cyrillic A); a name that only
  *      contains a short word ("Modest", "Devin") is not.
+ * v2.3.5593, the sitting 19 review (each verified on this suite first):
+ *  13. A player id over ID_MAX is refused on a post and a vote, before
+ *      anything is kept; a vote under `__proto__` is recorded; the hour's
+ *      rows are kept in storage, so a new object (a wake, a deploy) does not
+ *      refill them; the sweep mends a real report a bad vote grew (it took it
+ *      away), and pages; the owner's key is asked of the room's admin door,
+ *      with the caller's address, so the room's count sees every miss.
+ * Break proofs (2026-11-15, each turned its check red): the id check taken
+ * out of submit -> FAIL 13 (a 1.9 MB id kept); the budget read from memory
+ * only -> FAIL 13 (a new object takes a fresh 300); the voters left a plain
+ * {} -> FAIL 13 (`__proto__` not kept); the sweep judging the whole row ->
+ * FAIL 13 (the real report taken away); the caller's address not sent with
+ * the ask -> FAIL 13 (the room's count could not see whose miss it was).
  */
 import { Feedback, FEEDBACK_NAME_MAX, FEEDBACK_PACE, feedbackAddr } from '../src/feedback.js';
 import { GameRoom } from '../src/index.js';
@@ -53,9 +66,11 @@ function makeState() {
     storage: {
       get: async (k) => store.get(k),
       put: async (k, v) => { store.set(k, v); },
+      /* v2.3.5593: in key order, with `startAfter` and `limit`, as the runtime's */
       list: async (opts) => {
         const out = new Map();
-        for (const [k, v] of store) if (!opts?.prefix || k.startsWith(opts.prefix)) out.set(k, v);
+        const keys = [...store.keys()].filter((k) => (!opts?.prefix || k.startsWith(opts.prefix)) && (opts?.startAfter === undefined || k > opts.startAfter)).sort();
+        for (const k of keys) { if (opts?.limit && out.size >= opts.limit) break; out.set(k, store.get(k)); }
         return out;
       },
       delete: async (k) => { store.delete(k); },
@@ -63,6 +78,23 @@ function makeState() {
     getWebSockets: () => [],
     acceptWebSocket: () => {},
   };
+}
+
+/* v2.3.5593 (the sitting 19 review): the owner's key is the ROOM's to judge
+   (its admin door, admin.js _adminAuth): a real GameRoom as the binding, and
+   every ask it is sent kept, with the address it came with.  The door's
+   answer is passed on as it is when it refuses; when it lets the key in, the
+   flags it carries are none (the board's own switch is §10's: with the
+   room's flags passed on, guards/switches-thrown's `feedback` thrown would
+   close these sections' board too) */
+function ownerRoom(key) {
+  const room = new GameRoom(makeState(), { ADMIN_KEY: key, LEADERBOARD: { idFromName: () => 'x', get: () => ({ fetch: async () => new Response('{}') }) } });
+  const asks = [];
+  return { asks, binding: { idFromName: (n) => n, get: () => ({ fetch: async (r) => {
+    asks.push({ path: new URL(r.url).pathname, ip: r.headers.get('CF-Connecting-IP') });
+    const res = await room.fetch(r);
+    return res.status === 200 ? new Response(JSON.stringify({ ok: true, flags: {} }), { status: 200 }) : res;
+  } }) } };
 }
 
 // ── 1. The board ──
@@ -109,7 +141,7 @@ function makeState() {
 {
   const KEY = 'owner-key-for-tests';
   const st = makeState();
-  const fb = new Feedback(st, { ADMIN_KEY: KEY });
+  const fb = new Feedback(st, { ADMIN_KEY: KEY, GAME_ROOM: ownerRoom(KEY).binding });
   const req = (path, init) => fb.fetch(new Request('https://x/api/feedback' + path, init));
   const post = (body) => req('/submit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then((r) => r.json());
   let n = 0;
@@ -150,6 +182,8 @@ function makeState() {
   check('5: ...with the owner\'s key, the reports', owner.ok === true && owner.count === 1, owner);
   const noSecret = await new Feedback(st, {}).fetch(new Request('https://x/api/feedback/crashes', { headers: { Authorization: 'Bearer ' + KEY } }));
   check('5: ...and with no secret set, 404 whatever is sent (fail closed)', noSecret.status === 404, noSecret.status);
+  const noRoom = await new Feedback(st, { ADMIN_KEY: KEY }).fetch(new Request('https://x/api/feedback/crashes', { headers: { Authorization: 'Bearer ' + KEY } }));
+  check('5: ...and with no room to ask (the key is the room\'s to judge), 404 (fail closed)', noRoom.status === 404, noRoom.status);
 
   /* 6. the owner takes a ticket down */
   const victim = await post({ ...base(), playerName: 'Helpful Bro', text: 'whisper your Login Key to claim' });   /* (a staff name is refused outright since v2.3.5594) */
@@ -191,7 +225,7 @@ function makeState() {
   for (let i = 0; i < FEEDBACK_PACE.POSTS_ALL + 20; i++) { const r = await post(fresh(), '198.51.100.' + (i % 250) + ':' + i); if (r.ok) taken++; }
   check('7: the whole game takes at most ' + FEEDBACK_PACE.POSTS_ALL + ' posts an hour, from any number of addresses', taken + one.filter((r) => r.ok).length + 1 === FEEDBACK_PACE.POSTS_ALL, taken);
   const crash = [];
-  for (let i = 0; i < 15; i++) crash.push(await req('/crash', { method: 'POST', headers: from('203.0.113.9'), body: JSON.stringify({ sid: 'sid' + i, log: [{ kind: 'x' }] }) }).then((r) => r.json()));
+  for (let i = 0; i < FEEDBACK_PACE.CRASH_ADDR + 5; i++) crash.push(await req('/crash', { method: 'POST', headers: from('203.0.113.9'), body: JSON.stringify({ sid: 'sid' + i, log: [{ kind: 'x' }] }) }).then((r) => r.json()));
   check('7: crash reports from one address with fresh sids stop at ' + FEEDBACK_PACE.CRASH_ADDR + ' an hour', crash.filter((r) => r.ok).length === FEEDBACK_PACE.CRASH_ADDR, crash.map((r) => r.ok));
   const crashAgain = await req('/crash', { method: 'POST', headers: from(), body: JSON.stringify({ sid: 'local', log: [{ kind: 'x' }] }) }).then((r) => r.json());
   check('7: ...a local caller (no address) is not counted by address (flood.js\'s rule)', crashAgain.ok === true, crashAgain);
@@ -204,13 +238,14 @@ function makeState() {
     await fb.fetch(new Request('https://x/api/feedback/submit', { method: 'POST', headers: { 'Content-Type': 'application/json', 'CF-Connecting-IP': '192.0.2.' + i },
       body: JSON.stringify({ playerId: 'bp_t' + i, playerName: 'T', category: 'bug', topic: 'topic' + i, text: 'x' }) }));
     fb._paces.clear();   /* (the paces are 7's; this is the row's cap) */
+    if (fb._rowsHour) fb._rowsHour.n = 0;   /* (and the rows' budget, 11's and 13's) */
   }
   const stats = JSON.parse(await st.storage.get('_stats'));
   check('8: `_stats` keeps at most ' + FEEDBACK_PACE.STATS_KEYS + ' topics (+ the total), however many are posted', Object.keys(stats).length <= FEEDBACK_PACE.STATS_KEYS + 1 && stats._total === FEEDBACK_PACE.STATS_KEYS + 40, Object.keys(stats).length);
 
   /* 9. the sweep */
   const KEY = 'k9';
-  const fb9 = new Feedback(st, { ADMIN_KEY: KEY });
+  const fb9 = new Feedback(st, { ADMIN_KEY: KEY, GAME_ROOM: ownerRoom(KEY).binding });
   await st.storage.put('ticket:huge', JSON.stringify({ id: 'huge', playerName: 'N'.repeat(1900000), category: 'bug', topic: 'ui', text: 'x', up: 0, down: 0, voters: {}, ts: 1 }));
   await st.storage.put('rate:bp_old', '{"count":5,"resetAt":0}');
   await st.storage.put('crashrate:old', '{"count":1,"resetAt":0}');
@@ -220,7 +255,7 @@ function makeState() {
   const sw = await sweep(KEY).then((r) => r.json());
   const left = await st.storage.list({});
   const stats9 = JSON.parse(await st.storage.get('_stats'));
-  check('9: the owner\'s sweep takes away the 1.9 MB ticket and the old pace rows, and rebuilds `_stats` small',
+  check('9: the owner\'s sweep takes away the ticket with a 1.9 MB name and the old pace rows, and rebuilds `_stats` small',
     sw.ok && sw.big === 1 && sw.paces === 2 && !left.has('ticket:huge') && !left.has('rate:bp_old') && !left.has('crashrate:old')
       && stats9._total === FEEDBACK_PACE.STATS_KEYS + 40 && Object.keys(stats9).length <= FEEDBACK_PACE.STATS_KEYS + 1, { sw, keys: Object.keys(stats9).length });
 }
@@ -273,27 +308,29 @@ function makeState() {
   const v3 = await vote('bp_voter_a', '198.51.100.20');
   check('11: one address votes once a ticket: a second made-up id is refused, the same id takes its vote back',
     v1.ok === true && v1.up === 1 && v2.ok === false && v3.ok === true && v3.up === 0, { v1, v2, v3 });
-  /* the rows' budget across every kind: posts and crash reports to their own
-     ceilings, then votes until the whole object's budget stops them */
+  /* the rows' budget across every kind: posts to their own ceiling, then
+     votes until the whole object's budget stops them (a post writes 3 rows:
+     its ticket, `_stats` and the budget's own row; a vote 2), and then a
+     crash report is refused too; the rows counted are the rows written */
   const st2 = makeState();
+  let puts = 0;
+  const put0 = st2.storage.put;
+  st2.storage.put = async (k, v) => { puts++; return put0(k, v); };
   const fb2 = new Feedback(st2, {});
   const ip2 = (i) => '192.0.2.' + (i % 250) + '.' + i;
   let rows = 0, first = null;
   for (let i = 0; i < FEEDBACK_PACE.POSTS_ALL + 5; i++) {
     const r = await fb2.fetch(new Request('https://x/api/feedback/submit', { method: 'POST', headers: H(ip2(i)), body: JSON.stringify({ playerId: 'bp_b' + i, playerName: 'B', category: 'bug', topic: 'ui', text: 'x' }) })).then((x) => x.json());
-    if (r.ok) { rows += 2; if (!first) first = r.ticket.id; }
-  }
-  for (let i = 0; i < FEEDBACK_PACE.CRASH_ALL + 5; i++) {
-    const r = await fb2.fetch(new Request('https://x/api/feedback/crash', { method: 'POST', headers: H(ip2(1000 + i)), body: JSON.stringify({ sid: 's' + i, log: [{ kind: 'x' }] }) })).then((x) => x.json());
-    if (r.ok) rows += 1;
+    if (r.ok) { rows += 3; if (!first) first = r.ticket.id; }
   }
   let votes = 0, stopped = false;
   for (let i = 0; i < FEEDBACK_PACE.VOTES_ALL; i++) {
     const r = await fb2.fetch(new Request('https://x/api/feedback/vote', { method: 'POST', headers: H(ip2(5000 + i)), body: JSON.stringify({ ticketId: first, playerId: 'bp_vv' + i, vote: 'up' }) })).then((x) => x.json());
-    if (r.ok) { rows += 1; votes++; } else { stopped = true; break; }
+    if (r.ok) { rows += 2; votes++; } else { stopped = true; break; }
   }
-  check('11: the whole object writes at most ' + FEEDBACK_PACE.ROWS_HOUR + ' rows an hour, every kind together: votes stop at the budget (' + votes + '), under their own ceiling (' + FEEDBACK_PACE.VOTES_ALL + ')',
-    rows === FEEDBACK_PACE.ROWS_HOUR && stopped && votes < FEEDBACK_PACE.VOTES_ALL, { rows, votes, stopped });
+  const lateCrash = await fb2.fetch(new Request('https://x/api/feedback/crash', { method: 'POST', headers: H(ip2(9000)), body: JSON.stringify({ sid: 'late', log: [{ kind: 'x' }] }) })).then((x) => x.json());
+  check('11: the whole object writes at most ' + FEEDBACK_PACE.ROWS_HOUR + ' rows an hour, every kind together: votes stop at the budget (' + votes + '), under their own ceiling (' + FEEDBACK_PACE.VOTES_ALL + '), and a crash report after them is refused',
+    rows === FEEDBACK_PACE.ROWS_HOUR && puts === rows && stopped && votes < FEEDBACK_PACE.VOTES_ALL && lateCrash.ok === false, { rows, puts, votes, stopped, lateCrash });
   /* a write the paces refuse never asks the room */
   let asked = 0;
   const env = { ADMIN_KEY: 'k11', GAME_ROOM: { idFromName: (x) => x, get: () => ({ fetch: async () => { asked++; return new Response(JSON.stringify({ ok: true, flags: {} })); } }) } };
@@ -323,6 +360,62 @@ function makeState() {
   const refused = [];
   for (const nm of own) { const r = await post(nm); if (!r.ok) refused.push(nm + ' (' + r.error + ')'); }
   check('12: ...and a player\'s own name that only contains a short word is not', refused.length === 0, refused);
+}
+
+// ── 13. v2.3.5593, the sitting 19 review ──
+{
+  const KEY = 'k13';
+  const owner = ownerRoom(KEY);
+  const st = makeState();
+  const fb = new Feedback(st, { ADMIN_KEY: KEY, GAME_ROOM: owner.binding });
+  const H = (ip) => ({ 'Content-Type': 'application/json', 'CF-Connecting-IP': ip });
+  const req = (path, init) => fb.fetch(new Request('https://x/api/feedback' + path, init)).then((r) => r.json());
+  const BIG = 'p'.repeat(1900000);
+  /* the id, on a post and a vote */
+  const bigPost = await req('/submit', { method: 'POST', headers: H('203.0.113.30'), body: JSON.stringify({ playerId: BIG, playerName: 'Big', category: 'bug', topic: 'ui', text: 'x' }) });
+  const real = await req('/submit', { method: 'POST', headers: H('203.0.113.31'), body: JSON.stringify({ playerId: 'bp_real', playerName: 'Real', category: 'bug', topic: 'ui', text: 'a real report' }) });
+  const tid = real.ticket.id;
+  const bigVote = await req('/vote', { method: 'POST', headers: H('203.0.113.32'), body: JSON.stringify({ ticketId: tid, playerId: BIG, vote: 'up' }) });
+  const bigTicketId = await req('/vote', { method: 'POST', headers: H('203.0.113.33'), body: JSON.stringify({ ticketId: 'x'.repeat(5000), playerId: 'bp_v', vote: 'up' }) });
+  const rows = [...(await st.storage.list({})).values()];
+  check('13: a player id over ' + FEEDBACK_PACE.ID_MAX + ' characters is refused on a post and a vote, before anything is kept (a 1.9 MB id was kept, and voted into a real report)',
+    bigPost.ok === false && bigVote.ok === false && bigTicketId.ok === false && rows.every((v) => String(typeof v === 'string' ? v : JSON.stringify(v)).length < 4096), { bigPost, bigVote, bigTicketId });
+  /* __proto__ */
+  const pv = await req('/vote', { method: 'POST', headers: H('203.0.113.34'), body: JSON.stringify({ ticketId: tid, playerId: '__proto__', vote: 'up' }) });
+  const back = await req('/vote', { method: 'POST', headers: H('203.0.113.34'), body: JSON.stringify({ ticketId: tid, playerId: '__proto__', vote: 'up' }) });
+  const kept = JSON.parse(await st.storage.get('ticket:' + tid));
+  check('13: a vote under `__proto__` is recorded, and taken back as any other (on a plain {} it was never kept)',
+    pv.ok === true && pv.up === 1 && pv.myVote === 'up' && back.ok === true && back.up === 0 && kept.up === 0, { pv, back, up: kept.up });
+  /* the budget survives a new object over the same storage */
+  const budget = await st.storage.get(FEEDBACK_PACE.ROWS_KEY);
+  await st.storage.put(FEEDBACK_PACE.ROWS_KEY, { n: FEEDBACK_PACE.ROWS_HOUR - 1, until: Date.now() + 60000 });
+  const woken = new Feedback(st, {});
+  const afterWake = await woken.fetch(new Request('https://x/api/feedback/submit', { method: 'POST', headers: H('203.0.113.35'), body: JSON.stringify({ playerId: 'bp_wake', playerName: 'W', category: 'bug', topic: 'ui', text: 'x' }) })).then((r) => r.json());
+  check('13: the hour\'s rows are kept in storage: a new object (a wake, a deploy) does not refill them (a probe took a fresh 300 on each wake)',
+    budget && budget.n > 0 && afterWake.ok === false, { budget, afterWake });
+  await st.storage.put(FEEDBACK_PACE.ROWS_KEY, { n: 0, until: 0 });
+  /* the sweep mends a real report a bad vote grew, and pages */
+  const grown = JSON.parse(await st.storage.get('ticket:' + tid));
+  grown.voters = { bp_good: 'up', [BIG]: 'up', bp_odd: 'sideways' };
+  grown.up = 2;
+  await st.storage.put('ticket:' + tid, JSON.stringify(grown));
+  for (let i = 0; i < FEEDBACK_PACE.PAGE + 30; i++) await st.storage.put('ticket:pg' + String(i).padStart(4, '0'), JSON.stringify({ id: 'pg' + i, playerId: 'bp_p', playerName: 'P', category: 'qol', topic: 'paging', text: 'x', up: 0, down: 0, voters: {}, ts: i }));
+  for (let i = 0; i < FEEDBACK_PACE.PAGE + 30; i++) await st.storage.put('rate:old' + i, '{}');
+  const sw = await fb.fetch(new Request('https://x/api/feedback/sweep', { method: 'DELETE', headers: { Authorization: 'Bearer ' + KEY } })).then((r) => r.json());
+  const mended = JSON.parse(await st.storage.get('ticket:' + tid) || 'null');
+  check('13: the sweep MENDS a real report a bad vote grew (it took the report away): the bad voters out, the counts follow',
+    sw.ok && sw.mended === 1 && mended && mended.text === 'a real report' && Object.keys(mended.voters).join() === 'bp_good' && mended.up === 1, { sw, mended: mended && { up: mended.up, voters: Object.keys(mended.voters).map((k) => k.slice(0, 12)) } });
+  const listed = await req('/list?sort=new&limit=50&topic=paging');
+  check('13: the sweep and the list read a page at a time, and miss nothing (' + (FEEDBACK_PACE.PAGE + 30) + ' tickets, as many old pace rows)',
+    sw.paces === FEEDBACK_PACE.PAGE + 30 && sw.tickets >= FEEDBACK_PACE.PAGE + 30 && listed.total === FEEDBACK_PACE.PAGE + 30, { paces: sw.paces, tickets: sw.tickets, total: listed.total });
+  /* the owner's key: the room's door judges it, with the caller's address */
+  owner.asks.length = 0;
+  let wrong = 0;
+  for (let i = 0; i < 25; i++) if ((await fb.fetch(new Request('https://x/api/feedback/crashes', { headers: { Authorization: 'Bearer guess' + i, 'CF-Connecting-IP': '198.51.100.66' } }))).status === 404) wrong++;
+  const right = await fb.fetch(new Request('https://x/api/feedback/crashes', { headers: { Authorization: 'Bearer ' + KEY, 'CF-Connecting-IP': '198.51.100.66' } }));
+  const bare = await fb.fetch(new Request('https://x/api/feedback/crashes', { headers: { 'CF-Connecting-IP': '198.51.100.67' } }));
+  check('13: every key the owner\'s routes are sent is judged by the room\'s admin door, with the caller\'s address (its count sees every miss: 2,000 wrong keys went uncounted here)',
+    wrong === 25 && right.status === 200 && bare.status === 404 && owner.asks.length === 26 && owner.asks.every((a) => a.path === '/api/admin/flags' && a.ip === '198.51.100.66'), { wrong, right: right.status, asks: owner.asks.length });
 }
 
 console.log(failures ? `\n${failures} FAILURE(S)` : '\nall feedback checks passed');
