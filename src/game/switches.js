@@ -117,6 +117,7 @@ const FORMS = {
   'gripguess': '0',
   'groundbg': '1',
   'groundwait': '0',
+  'guarddoor': '0',
   'guest': '1',
   'guidearrow': '0',
   'halloween': '*',

@@ -1014,6 +1014,7 @@ writes them, never identifiers: `dungeon`, `connection`, `loading` and
 | `raceTo`, `racePhase`, `raceDoorOff`, `RACE_PAGE_WAYS`, `src/game/raceDoor.js`, page switch `?racedoor` (v2.3.5218) | the race's page door: the phone's race, its one writer, its ways and its switch; free at the commit (no hit in `src`, `server`, `tools` or `docs`) | 5 (step 5.3b) |
 | `harvestTo`, `harvestPhase`, `harvestDoorOff`, `HARVEST_PAGE_WAYS`, `src/game/harvestDoor.js`, page switch `?harvestdoor` (v2.3.5219) | the harvest's page door: the phone's harvest (and its cook and its fishing), its one writer, its ways and its switch; free at the commit (no hit in `src`, `server`, `tools` or `docs` as a whole word: the worker's are `_harvestTo` and `_harvestDoorOff`) | 5 (step 5.3b) |
 | `poseTo`, `posePhase`, `poseDoorOff`, `POSE_PAGE_WAYS`, `src/game/poseDoor.js`, page switch `?posedoor` (v2.3.5520) | the pose's page door: the phone's own held pose, its one writer, its ways and its switch; free at the commit as whole words (the worker's are `_poseTo` and `_poseDoorOff`) | 5 (step 5.3b) |
+| `guardTo`, `guardPhase`, `guardDoorOff`, `GUARD_PAGE_WAYS`, `src/game/guardDoor.js`, `docs/specs/guard-door.md`, page switch `?guarddoor` (v2.3.5521) | the guard's page door: your raised shield on the phone, its one writer, its ways and its switch; free at the commit (no hit in `src`, `server`, `tools` or `docs`) | 5 (step 5.3b) |
 
 **Chosen by card R (step 10.5, tag 5280), free at its commit** (the same
 search, with `docs`): `playerroads`, `PLAYER_ROADS`, `OWN_ROADS`,

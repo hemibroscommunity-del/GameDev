@@ -394,16 +394,14 @@ export const PHASES = [
     note: 'v2.3.5219: harvest\'s record with skill \'fishing\', through harvest\'s page door. S.fishTimer is made in the state\'s first object and never read (the ledger\'s noRead): a leftover, a note beside it.',
   },
   {
-    name: 'guard', side: 'page', status: 'todo',
+    name: 'guard', side: 'page', status: 'door',
     what: 'Your shield on the phone: raised, by key, mouse or button, dropped.',
-    field: null, states: ['down', 'up'], fn: null, file: null,
+    field: 'S._shieldUp', states: ['down', 'up'],
+    fn: 'guardTo', file: 'src/game/guardDoor.js',
     clears: [{ edge: 'end', at: 'src/game/shieldToggle.js dropShield' }],
     rejoin: 'none: the phone sends its guard on every move; the worker keeps none across a join',
-    today: [
-      { field: 'S._shieldUp' }, { field: 'S._shieldKb' }, { field: 'S._shieldMouse' }, { field: 'S._shieldAutoReleased' },
-      { field: 'S._shieldCdUntil' }, { field: 'S.shieldActive' }, { field: 'S.shieldEnd' }, { field: 'S._blockPose' },
-      { variable: 'state', file: 'src/ui/mobile/blockRingBus.js' },
-    ],
+    held: { suite: 'server/test/guard-page-door.test.mjs' },
+    note: 'v2.3.5521: the page door (GUARD_PAGE_WAYS raise, drop; the rules are raiseShieldToggle\'s and dropShield\'s own checks: up only from down, with a shield in hand and out of the cooldown, down only from up; ?guarddoor=0). The phase is the boolean every reader reads. Notes beside it: which input holds it (S._shieldKb, S._shieldMouse), the cooldown (S._shieldCdUntil, S._shieldAutoReleased, S.shieldEnd), the raise\'s stamp (S.shieldActive), the renderer\'s pose (S._blockPose) and blockRingBus.js\'s state. The worker\'s half waits for card K.',
   },
   {
     name: 'pose', side: 'page', status: 'door',
