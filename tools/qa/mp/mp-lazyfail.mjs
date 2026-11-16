@@ -54,6 +54,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await t.waitFor({ state: 'visible', timeout: 8000 });
       await t.click({ force: true });
     };
+    /* v2.3.5439 (card J2): Achievements left the More page in v2.3.4172 (the owner's More: a page under Bro now), so
+       its door is the Bro card's row, as mp-achievements opens it (no More tile: red on main each run) */
+    const openAchv = async () => {
+      await H.unfoldBand(P).catch(() => {});
+      await H.openDest(P, 'Bro');
+      const t = P.page.locator('[data-bro-row="achievements"]').first();
+      await t.waitFor({ state: 'visible', timeout: 8000 });
+      await t.click({ force: true });
+    };
     const cantOpen = () => P.page.locator('[data-lazy-cantopen]').count();
 
     /* 2. a dropped connection: tried again, and in */
@@ -64,7 +73,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       settingsIn && settingsAsked >= 2 && (await cantOpen()) === 0, { settingsAsked, settingsIn });
 
     /* 3. a stale tab: the card, and the game plays on */
-    await openMore('achievements');
+    await openAchv();
     const card = await P.page.locator('[data-lazy-cantopen]').first().waitFor({ state: 'visible', timeout: 12000 }).then(() => true).catch(() => false);
     const words = card ? await P.page.locator('[data-lazy-cantopen]').first().innerText() : '';
     rec.ok(`a stale tab: the Achievements window says it couldn't open, in plain words, with Reload and Close, after its one retry (${achvAsked} asks): "${words.replace(/\s+/g, ' ').trim()}"`,
@@ -90,7 +99,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     /* 4. the script back: opened again, it tries again */
     stale = false;
-    await openMore('achievements');
+    await openAchv();
     const achvIn = await P.page.locator('[data-achv-panel]').first().waitFor({ state: 'visible', timeout: 12000 }).then(() => true).catch(() => false);
     rec.ok('opened again with its script back, the Achievements window tries again and opens', achvIn && (await cantOpen()) === 0, { achvAsked });
   } finally {

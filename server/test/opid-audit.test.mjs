@@ -26,7 +26,15 @@
  *
  * If extraction ever collapses (helper renamed, calls wrapped), the
  * >=20 floor fails loudly instead of the audit rotting into a vacuous
- * pass (24 call sites at ship time).                                  */
+ * pass (24 call sites at ship time).
+ *
+ * v2.3.5291 (card R, the sitting 20 review): `this._creditWith(` too --
+ * the credit that carries its caller's own writes in one run (inbox.js,
+ * storeoffer.js's offer, duel.js's pot with `xferescrow` on).  It is the
+ * same idempotency wall, and a later edit of its opId passed this audit
+ * unseen: a double-pay the audit exists to stop.  BREAK PROOF, tried by
+ * hand 2026-11-15: duel.js's `_creditWith(winnerId, { opId: potId, ...`
+ * (the opId a variable) -> FAIL 2, and gold-door.test FAIL 8.          */
 import { readFileSync } from 'node:fs';
 import { srcFiles } from './src-walk.mjs';
 import { fileURLToPath } from 'node:url';
@@ -54,19 +62,22 @@ const files = srcFiles();   /* v2.3.5060: in depth, a folder's files too (src-wa
 const RE_OPID_OK = /\bopId:\s*'[a-z0-9_]+:/;
 const CALL_WINDOW = 8; // lines: covers the multi-line entry-object style
 
-const sites = []; // { file, line, ok, snippet }
+const sites = []; // { file, line, ok, snippet, via }
+/* v2.3.5291: both credits, _creditPlayer and _creditWith */
+const RE_CALL = /\bthis\._credit(Player|With)\(/;
 for (const f of files) {
   const lines = readFileSync(join(srcDir, f), 'utf8').split('\n');
   lines.forEach((line, i) => {
-    if (!/\bthis\._creditPlayer\(/.test(line)) return;
+    const m = RE_CALL.exec(line);
+    if (!m) return;
     const windowText = lines.slice(i, i + CALL_WINDOW).join('\n');
     // Judge only up to the NEXT call site so back-to-back credits
     // (market.js settle pair) can't lend each other their opId.
-    const rest = windowText.slice(line.indexOf('this._creditPlayer(') + 'this._creditPlayer('.length);
-    const nextCall = rest.indexOf('this._creditPlayer(');
-    const scope = nextCall === -1 ? rest : rest.slice(0, nextCall);
+    const rest = windowText.slice(m.index + m[0].length);
+    const next = RE_CALL.exec(rest);
+    const scope = next ? rest.slice(0, next.index) : rest;
     sites.push({
-      file: f, line: i + 1,
+      file: f, line: i + 1, via: '_credit' + m[1],
       ok: RE_OPID_OK.test(scope),
       snippet: line.trim().slice(0, 120),
     });
@@ -75,12 +86,14 @@ for (const f of files) {
 
 // ── 1. regex-rot floor ──
 check('extraction found a plausible _creditPlayer call-site population (>=20)', sites.length >= 20, sites.length);
+/* v2.3.5291: and the _creditWith ones (storeoffer.js's offer, duel.js's pot) */
+check('extraction found the _creditWith call sites (>=2)', sites.filter((s) => s.via === '_creditWith').length >= 2, sites.filter((s) => s.via === '_creditWith').map((s) => s.file + ':' + s.line));
 
 // ── 2. THE audit: every credit carries a deterministic literal-prefix opId ──
 {
   const bad = sites.filter((s) => !s.ok && !OPID_ALLOWLIST.has(s.file))
     .map((s) => ({ site: s.file + ':' + s.line, snippet: s.snippet }));
-  check('every _creditPlayer call site carries opId: \'<namespace>:\'... (a deterministic literal prefix) — a missing/random opId DOUBLE-PAYS on the first deploy-restart retry; derive it from the operation\'s own ids',
+  check('every _creditPlayer and _creditWith call site carries opId: \'<namespace>:\'... (a deterministic literal prefix) — a missing/random opId DOUBLE-PAYS on the first deploy-restart retry; derive it from the operation\'s own ids',
     bad.length === 0, bad);
 }
 

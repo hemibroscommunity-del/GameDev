@@ -19,6 +19,7 @@
 import { Assets, Rectangle, Texture } from 'pixi.js';
 import { loadTrackedStrip, unloadBundle } from './zoneTextures.js';   /* v2.3.5256 */
 import { loadSetLater } from './loadSetLater.js';   /* v2.3.5256: the hit's still, through the picture door */
+import { keepPageCopy } from './picsOnce.js';   /* v2.3.5561: the still never swapped for its strip's file */
 
 /* ═══ v2.3.5256: THE SLIMES LOAD AS YOU WALK (card P's backlog, monster-slime) ═══
    The owner, 2026-11-14 ("Go recommended"): the slimes load as you walk in
@@ -174,6 +175,11 @@ function loadHitStill() {
     if (!r.ok || typeof createImageBitmap !== 'function') return null;
     const tex = Texture.from(await createImageBitmap(await r.blob(), 0, 0, FRAME_W, FRAME_H));
     tex.source.label = SHEETS.hit.url + '#still';
+    /* v2.3.5561 (the gatekeeper's sitting-17 low): kept as it is.  Labelled
+       with the strip's file, an ImageBitmap off the chip is what picsOnce.js's
+       sweep swaps for its file as an <img> -- the whole 3072 x 128 strip, never
+       this frame's size, so asked for again every sweep (about a second) */
+    keepPageCopy(tex.source);
     return tex;
   } });
   /* none in: the demo's films go without the slime, as before it loaded */
