@@ -751,6 +751,9 @@ export const adminMethods = {
       /* v2.3.5621: the owner's silence (silence.js, card MOD) -- same contract */
       const sl = await this._silenceAdminRoute(request, url, path, json);
       if (sl) return sl;
+      /* v2.3.5622: the owner's rename (charname.js, card MOD) -- same contract */
+      const rn = await this._charNameAdminRoute(request, url, path, json);
+      if (rn) return rn;
 
       const lo = await this._liveopsRoutes(request, url, path, json);
       if (lo) return lo;

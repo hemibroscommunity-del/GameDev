@@ -299,6 +299,12 @@ export const WIRE_HTTP = [
   { name: 'http:/api/admin/freeze DELETE', dir: 'in', at: 'admin.js _adminFetch', wayIn: 'admin',
     envelope: 'http', phase: ['none checked'], mayStart: 'owner', doesWhat: ['others'], reqId: 'state',
     trust: { id: 'request' }, absent: 'refused: no id is a 400', bad: ['taken'], answer: 'http' },
+  /* v2.3.5622: the owner's rename (charname.js, card MOD) */
+  { name: 'http:/api/admin/rename', dir: 'in', at: 'charname.js _charNameAdminRoute', wayIn: 'admin',
+    envelope: 'http', phase: ['none checked'], mayStart: 'owner', doesWhat: ['others'], reqId: 'state',
+    trust: { playerId: 'request', name: 'words', force: 'request' },
+    absent: 'refused: no playerId is a 400; refused: a name the rule refuses is a 400 (force lets a staff word through); refused: no such character is a 404',
+    bad: ['refused'], answer: 'http' },
   /* v2.3.5621: the owner's silence (silence.js, card MOD) */
   { name: 'http:/api/admin/silence GET', dir: 'in', at: 'silence.js _silenceAdminRoute', wayIn: 'admin',
     envelope: 'http', phase: ['none checked'], mayStart: 'owner', doesWhat: ['reads'], reqId: 'harmless',

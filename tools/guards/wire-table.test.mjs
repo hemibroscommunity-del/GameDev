@@ -277,6 +277,7 @@ const MOUNTS = {
   'server/src/eventcapes.js': '/api/admin', 'server/src/chainscore.js': '/api/admin', 'server/src/chatmod.js': '/api/admin',
   'server/src/devtools.js': '/api/admin', 'server/src/hidden.js': '/api/admin',
   'server/src/silence.js': '/api/admin',   /* v2.3.5621: the owner's silence (card MOD) */
+  'server/src/charname.js': '/api/admin',   /* v2.3.5622: the owner's rename (card MOD) */
 };
 const tested = new Map();   // path -> where
 for (const [file, mount] of Object.entries(MOUNTS)) {

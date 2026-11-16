@@ -82,7 +82,7 @@ export const SYSTEMS = Object.freeze({
   },
   identity: {
     what: 'who a player is: ids, accounts, the device lock, login keys, the account check, the sites that may open a socket',
-    files: [f('server/src', 'account|devicelock|loginkeys|verify|broverify|origin|httpauth'), f('src/game', 'tabIdentity|characterRecord'), re('^src/ui/account/')],
+    files: [f('server/src', 'account|devicelock|loginkeys|verify|broverify|origin|httpauth|charname'), f('src/game', 'tabIdentity|characterRecord|charName'), re('^src/ui/account/')],   /* v2.3.5622: + charname, charName (card MOD) */
     words: ['account', 'login', 'devicelock', 'device-lock', 'identity', 'origin', 'verify', 'turnstile'],
     traps: ['identity'],
     doors: [],
