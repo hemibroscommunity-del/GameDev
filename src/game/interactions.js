@@ -14,6 +14,7 @@ import { swimRefused, airRefused } from '@/game/combatHelpers.js'; /* v2.3.3392 
 import { seasonOn } from '@/game/season.js'; /* v2.3.3395 */
 import { ownEmoteSound, ownMoveSound } from '@/game/moveSounds.js'; /* v2.3.3434: the emotes and moves heard */
 import { resetOn } from '@/game/resetOn.js'; /* v2.3.5203: a held pose ends at the zone edge's one door (card L) */
+import { poseTo } from '@/game/poseDoor.js'; /* v2.3.5520: the one writer of S._pose (card L PR 5) */
 import { act } from '@/game/actions.js';   /* v2.3.5187: the page's requests leave through the action door (card K PR 7) */
 
 export function sendEmote(S, emoji, deps) {
@@ -89,7 +90,9 @@ export function sendMove(S, id, deps) {
     /* where and in which zone it began: anything that moves you -- a step,
        a shove, a door -- stands you up (updateOwnEmote), as the worker's
        movement.js stands up its copy */
-    S._pose = { id: id, at: now, popAt: now, x: S.player.x, y: S.player.y, zone: S.currentZone };
+    /* v2.3.5520: through the pose's page door (game/poseDoor.js); never
+       refused today, the checks above being its rules */
+    if (!poseTo(S, { id: id, at: now, popAt: now, x: S.player.x, y: S.player.y, zone: S.currentZone }, 'hold')) return false;
     act('pose', { id: id });
   }
   return true;
@@ -100,7 +103,7 @@ export function sendMove(S, id, deps) {
    a bro drawn sitting on the others' screens and standing on his own */
 export function endOwnPose(S) {
   if (!S || !S._pose) return;
-  S._pose = null;
+  poseTo(S, null, 'stand');   /* v2.3.5520: through the pose's page door */
   act('pose', { id: null });   /* v2.3.5187: through the action door (actions.js) */
 }
 /* v2.3.5203 (grand plan step 5.3, card L): a held pose belongs to its place

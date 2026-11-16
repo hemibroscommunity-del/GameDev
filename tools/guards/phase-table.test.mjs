@@ -111,6 +111,16 @@
  *      (a keyed field's key)                              -> FAIL 2
  * v2.3.5217 (the race door):
  *  31. `ps._race = null;` back in _raceEnd                -> FAIL 2
+ * v2.3.5218 (the race's page door):
+ *  32. `S._race = null;` back in race.js dismissRace      -> FAIL 2
+ * v2.3.5219 (the harvest's page door: the page's harvest, cook and fishing
+ * rows, one field):
+ *  33. `S._extraction = null;` back in succeedExtraction -> FAIL 2 (three
+ *      times: the three rows)
+ * v2.3.5520 (the pose's page door):
+ *  34. `S._pose = null;` back in rejoinSlots.js rejoinClear -> FAIL 2
+ * v2.3.5521 (the guard's page door):
+ *  35. `S._shieldUp = false;` back in shieldToggle.js dropShield -> FAIL 2
  *
  * Run from the repository's root: node tools/guards/phase-table.test.mjs
  * (cd server && npm test runs it with every other guard and suite).
@@ -120,6 +130,14 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createRequire } from 'node:module';
 import { ROOT } from './lib/systems.mjs';
+import { filesOf, systemNames } from './lib/filesOf.mjs';
+/* v2.3.5219: a big file named by its file name, found through the system
+   map (tests-by-system: a guard names no big file by its folder and name,
+   which breaks the day it moves) */
+const fileNamed = (name) => {
+  for (const s of systemNames()) { const f = filesOf(s).find((x) => x.endsWith('/' + name)); if (f) return f; }
+  return '(no file ' + name + ')';
+};
 
 /* Set 2026-11-14 at its first count.  Only the gatekeeper lowers it.
    v2.3.5371 (the gatekeeper, sitting 14, main 1cce0b2): 31 -> 30, the
@@ -323,6 +341,24 @@ const DOOR_SUITES = Object.freeze({
   /* v2.3.5217: the race door */
   'server/test/race-door.test.mjs': { field: 'ps._race', fn: '_raceTo', holds: '§2: no write of ._race in server/src outside _raceTo',
     prop: '_race', besides: [] },
+  /* v2.3.5218: the race's page door (the page half of the race row) */
+  'server/test/race-page-door.test.mjs': { field: 'S._race', fn: 'raceTo', holds: '§2: no write of ._race in src/ outside raceTo, nor of the race record\'s .phase in race.js',
+    prop: '_race', besides: [] },
+  /* v2.3.5521: the guard's page door */
+  'server/test/guard-page-door.test.mjs': { field: 'S._shieldUp', fn: 'guardTo', holds: '§2: no write of S._shieldUp in src/ outside guardTo',
+    prop: '_shieldUp', besides: [
+      { file: 'src/game/shieldCopies.js', text: 'other._shieldUp = up', why: 'a peer\'s copy of their guard (player_shield), not yours' },
+      { file: fileNamed('entityRenderer.js'), text: '_shieldUp: false, _shieldAngle: null', fn: 'poseFrame', why: 'a copy of the state made for a posed picture (Object.assign({}, real, ...)), never S' },
+      { file: fileNamed('effectsRenderer.js'), text: '_shieldUp: false, _bashPose: false', why: 'a copy of the state made for a posed picture, never S' },
+    ] },
+  /* v2.3.5520: the pose's page door */
+  'server/test/pose-page-door.test.mjs': { field: 'S._pose', fn: 'poseTo', holds: '§2: no write of ._pose in src/ outside poseTo',
+    prop: '_pose', besides: [] },
+  /* v2.3.5219: the harvest's page door (the page's harvest, cook and fishing rows: one field) */
+  'server/test/harvest-page-door.test.mjs': { field: 'S._extraction', fn: 'harvestTo', holds: '§2: no write of ._extraction in src/ outside harvestTo, nor of a harvest record\'s .status',
+    prop: '_extraction', besides: [
+      { file: fileNamed('entityRenderer.js'), text: '_extraction: null, _firemaking: null', fn: 'poseFrame', why: 'a copy of the state made for a posed picture (Object.assign({}, real, ...)), never S' },
+    ] },
 });
 const SCAN_DOORS = Object.freeze({
   'session (worker)': 'session-door.test plays the phases but fails no second writer of session.phase',
