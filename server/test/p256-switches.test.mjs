@@ -34,23 +34,26 @@ const section = src.slice(a, b);
 /* the section reads only `_q` (location.search) */
 const at = (q) => new Function('_q', section + '\nreturn { wantedPath, WANTED };')(q);
 
-/* [switch, a picture of its family (no host, no query)] */
+/* [the switch thrown, as an address carries it; a picture of its family
+   (no host, no query)].  Written whole (`?name=0`): switches-thrown finds a
+   suite that plays a switch by that text. */
 const ROWS = [
-  ['fishspot', '/sprites/world/fish-spot-627.webp'],   /* v2.3.5565 */
-  ['hudbars', '/ui/bars/hp-frame.png'],                /* v2.3.5566 (and the pills, /icons/ui/bar-*.webp) */
-  ['deathstrip', '/sprites/players/death-v1.png'],     /* v2.3.5567 */
-  ['uploadicons', '/icons/ui/blocks-stam.webp'],       /* v2.3.5569 (and the mana strip, the Bro badge) */
+  ['?fishspot=0', '/sprites/world/fish-spot-627.webp'],   /* v2.3.5565 */
+  ['?hudbars=0', '/ui/bars/hp-frame.png'],                /* v2.3.5566 (and the pills, /icons/ui/bar-*.webp) */
+  ['?deathstrip=0', '/sprites/players/death-v1.png'],     /* v2.3.5567 */
+  ['?uploadicons=0', '/icons/ui/blocks-stam.webp'],       /* v2.3.5569 (and the mana strip, the Bro badge) */
 ];
 const OTHER = '/sprites/pets/pet-sheet.png';   /* another family's, read from its twin by default */
 
 const plain = at('');
 check('unthrown, another family\'s picture is read from its twin (the control)', plain.wantedPath(OTHER) === true);
-for (const [name, pic] of ROWS) {
+for (const [q, pic] of ROWS) {
+  const name = q.slice(1, -2);
   check(`?${name}: unthrown, ${pic} is read from its twin`, plain.wantedPath(pic) === true);
-  const thrown = at(`?${name}=0`);
-  check(`?${name}=0: ${pic} is its picture, as before`, thrown.wantedPath(pic) === false);
-  check(`?${name}=0: another family's picture is still read from its twin`, thrown.wantedPath(OTHER) === true && thrown.WANTED === true);
-  check(`?${name}=0 after another switch (&${name}=0): the same`, at(`?sharp=1&${name}=0`).wantedPath(pic) === false);
+  const thrown = at(q);
+  check(`${q}: ${pic} is its picture, as before`, thrown.wantedPath(pic) === false);
+  check(`${q}: another family's picture is still read from its twin`, thrown.wantedPath(OTHER) === true && thrown.WANTED === true);
+  check(`${q} after another switch (&${name}=0): the same`, at('?sharp=1&' + q.slice(1)).wantedPath(pic) === false);
   check(`?p256=0: ${pic} is its picture`, at('?p256=0').wantedPath(pic) === false);
 }
 
