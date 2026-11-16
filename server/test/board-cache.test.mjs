@@ -11,6 +11,7 @@
  *      as before; the next post without it keeps again;
  *   3. the read sweeps the `player:` rows past 7 days it met, at most
  *      SWEEP_MAX a pass; a fresh row and a `gone:` stand-in are never swept;
+ *      `boardsweep: false` (bs: 0) deletes nothing (3b);
  *   4. a row says `playtime` only on the playtime board, which still ranks
  *      by it;
  *   5. a character gone (markGone) is never served from a kept board;
@@ -89,6 +90,23 @@ const row = (i, extra) => ({ playerId: 'bp_bc_' + String(i).padStart(4, '0'), na
   const left = [...store.keys()].filter((k) => k.startsWith('player:'));
   check('3. ...the rest at the next', st.deleted === 200 && left.length === 10, { deleted: st.deleted, left: left.length });
   check('3. a gone: stand-in is never swept here', store.has('gone:bp_old#1'));
+}
+
+/* ── 3b. the sweep's own switch (sitting 19b's gatekeeper) ── */
+{
+  const { lb, st, store } = makeLb();
+  for (let i = 0; i < 20; i++) await lb.updatePlayer(row(i, { ts: NOW - 8 * DAY }));
+  await lb.updatePlayer(row(50, { bs: 0 }));
+  const t = await lb.getTop('level', 50);
+  const left = [...store.keys()].filter((k) => k.startsWith('player:')).length;
+  check('3b. `boardsweep: false` (bs: 0 on the room\'s post): nothing deleted, the stale rows still off the board', st.deleted === 0 && left === 21 && t.length === 1, { deleted: st.deleted, left, shown: t.length });
+  NOW += 60001;
+  await lb.updatePlayer(row(51));
+  await lb.getTop('level', 50);
+  check('3b. ...the next post without it sweeps again', st.deleted === 20, st.deleted);
+  NOW -= 60001;
+  const src = readFileSync(new URL('../src/index.js', import.meta.url), 'utf8');
+  check('3b. the room\'s post says bs: 0 when boardsweep is false, and nothing otherwise', /this\._liveFlags\?\.boardsweep === false \? \{ bs: 0 \} : \{\}/.test(src));
 }
 
 /* ── 4. playtime ── */
