@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { PlayerDrawings, AccuracyDays } from './DevWatch.jsx';   /* v2.3.4545: what players drew, and every player's accuracy a day */
 import { ReportTable } from './ReportTable.jsx';   /* v2.3.5125: the smoothness table, copied (card A) */
 import { EconCard } from './EconCard.jsx';   /* v2.3.5093: the owner's card, the economy (card E) */
+import { SetSwitchRow } from './SetSwitchRow.jsx';   /* v2.3.5602: set a switch, no terminal (card OPS) */
 import { COL, getState } from '../mobile/dash/common.js';
 import { BT_API_BASE } from '../../networking/index.js';
 import { runSpeedTest } from '../../game/speedTest.js';   /* v2.3.3339: the speed test, measured on this phone */
@@ -431,7 +432,11 @@ export const DevPanel = ({ onClose }) => {
        because a background probe that disables buttons or writes errors is
        reporting on a request nobody asked for. */
     const quiet = !!(opts && opts.quiet);
-    const say = quiet ? () => {} : setMsg;
+    /* v2.3.5602 (mend, sitting 19b): `say` -- a row's own line, under its
+       button, told too (the panel's line is ~1,300 px away on a phone, so a
+       refused tap looked dead) */
+    const own = opts && typeof opts.say === 'function' ? opts.say : null;
+    const say = quiet ? () => {} : (own ? (t) => { setMsg(t); own(t); } : setMsg);
     if (!key) { say('Enter your admin key first.'); return null; }
     if (!quiet) setBusy(true);
     try {
@@ -1366,6 +1371,9 @@ export const DevPanel = ({ onClose }) => {
                 </>
               );
             })()}
+
+            {/* v2.3.5602: any switch set to a value from here, never a terminal (SetSwitchRow.jsx, card OPS PR 3) */}
+            <SetSwitchRow call={call} busy={busy} setMsg={setMsg} COL={COL} btn={btn} chip={chip} label={label} onFlags={setFlags} />
 
             {/* ═══ v2.3.3344: PLAYER LOGINS ═══  See the note by letDeviceIn. */}
             <div style={label}>Player logins</div>

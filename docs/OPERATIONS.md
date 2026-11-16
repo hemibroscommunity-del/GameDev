@@ -739,7 +739,24 @@ Message diet has its own row, with **Off for everyone** as its switch.)
 ## Live switches (flags) — change the game without a deploy
 
 Flags take effect immediately for everyone, survive deploys, and are
-yours to flip on and off. See what's currently set:
+yours to flip on and off.
+
+**From your phone, no terminal (v2.3.5602):** open the Test panel (hold
+the top bar's middle), then Live flags: "Show live flags" lists what is
+set, with a Clear on each; under it, **Set a switch**: tap one of the usual
+switches (or type a name), pick on or off or type a number, and tap Set.
+The first tap only says what it will do; tap Set again to do it. What it
+says shows right under the Set button. The commands below do the same from
+a computer.
+
+**If your own character cannot get in** (right after a dashboard rollback,
+it is refused at the door until `newersave` is off, and the Test panel
+opens only from inside the world): open the game with `?guest=1` at the end
+of its address (a fresh throwaway character on the same phone, which keeps
+your admin key), or with another character, and use its Test panel. Then
+reopen the game normally.
+
+See what's currently set:
 ```
 curl -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/admin/flags"
 ```
