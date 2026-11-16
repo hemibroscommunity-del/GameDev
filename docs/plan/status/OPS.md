@@ -21,7 +21,7 @@ state: ready
 
 ## Next
 
-- PR 11 (5610) a guest's join writes only what is worth keeping.
+- PR 11 (5610) parked on `claude/plan-ops-11-guestlazy` (no PR); then PR 8.
 
 ## Found
 
@@ -30,8 +30,8 @@ state: ready
 
 ## Needs
 
-- `seathold` stays OFF until the owner's word: at most 5,760 writes a day
-  (~17 cents a month), a quiet room none.
-- PR 8 (5607) waits for card R's PR 7 (`admin.js`, `liveops.js`).
+- `seathold` stays OFF: not to be turned on until mended (sitting 19b's
+  review, docs/specs/seat-hold.md); ON, at most 5,760 writes a day.
+- PR 8 (5607) is free (card R's #1847 merged); after the restack.
 - The owner: the draw page reads a contest's window by the hour, outward
   (decided for the owner; `exactseen` re-runs an old draw exactly).

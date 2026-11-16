@@ -32,7 +32,14 @@
  *      It only falls: card K's PR 7 moves the page's sends to act(), a
  *      family a PR.  The exceptions, named: src/debug/crashTrap.js and
  *      src/networking/index.js (they run before a session), and wsClient.js's
- *      fetch of /api/lobby (the connection's own).
+ *      fetch of /api/lobby (the connection's own).  And (v2.3.5603, named
+ *      for sitting 19b's gatekeeper) THE OWNER'S KEY: the Test panel's
+ *      `call` and `callOwner` (src/ui/panels/DevPanel.jsx) go out through
+ *      `fetchWithTimeout` with the owner's admin key, never a session's
+ *      token, so the census's fetch pattern never sees them; they stay
+ *      outside the door on purpose (the door carries a session's token, and
+ *      the owner's key must never ride it).  §7b holds that only that file
+ *      calls `fetchWithTimeout` with the API's base.
  *      v2.3.5187 (PR 7.1, combat and moving): 57 moved
  *
  * BREAK PROOF (rule 8), each tried by hand 2026-11-14:
@@ -109,11 +116,26 @@ for (const [f, s] of SRC) {
    by its path (tests-by-system: a big file is read by system) */
 const SHIM_FILE = filesOf('wire').find((f) => SRC.has(f) && SRC.get(f).includes('var channelShim = {'));
 const EXCEPT = (x) => x.f === 'src/debug/crashTrap.js' || x.f === 'src/networking/index.js' || (x.f === SHIM_FILE && x.path === '/api/lobby');
+/* v2.3.5603: the owner's key's way out (the header's exceptions): the Test panel alone */
+const OWNER_KEY_FILE = 'src/ui/panels/DevPanel.jsx';
 {
   const missing = [...sent].filter(([n]) => !Object.prototype.hasOwnProperty.call(ACTIONS, n)).map(([n, w]) => n + ' (' + w + ')');
   check(`2: every type and event the page sends by name (${sent.size}) has a row`, missing.length === 0, missing);
   const routeless = fetches.filter((x) => !EXCEPT(x) && x.path && x.path !== '/api/store' && !routeRows.some((n) => ACTIONS[n].path === x.path.replace(/\/$/, '') || ACTIONS[n].path.startsWith(x.path.replace(/\/$/, '') + '/')));
   check(`2: every route the page fetches (${fetches.length}, less the exceptions) has a row`, routeless.length === 0, routeless.map((x) => x.path + ' (' + x.f + ':' + x.line + ')'));
+}
+
+/* ── 7b (v2.3.5603, sitting 19b's gatekeeper): the owner's key's way out,
+   named: `fetchWithTimeout` with the API's base only in the Test panel, whose
+   `call` and `callOwner` carry the owner's admin key, never a session */
+{
+  const outside = [];
+  for (const [f, src] of SRC) {
+    if (f === OWNER_KEY_FILE) continue;
+    for (const m of src.matchAll(/fetchWithTimeout\(\s*BT_API_BASE/g)) outside.push(f + ':' + lineOf(src, m.index));
+  }
+  const inPanel = (SRC.get(OWNER_KEY_FILE) || '').match(/fetchWithTimeout\(\s*BT_API_BASE/g) || [];
+  check(`7b: the owner's key goes out only from the Test panel (${inPanel.length} there; ${OWNER_KEY_FILE})`, outside.length === 0 && inPanel.length > 0, outside);
 }
 
 /* ── 2b (v2.3.5185, the gatekeeper's note, sitting 14). a direct send the

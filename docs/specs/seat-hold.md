@@ -13,6 +13,22 @@ inside. When the world is full and people are waiting:
 - **one phone's blip** (iPhone Safari drops the socket whenever the app goes
   to the background) is the same race for that one seat.
 
+## Not to be turned on until mended (sitting 19b, its gatekeeper's review)
+
+`seathold` lands OFF, and OFF it changes nothing. It is not to be turned on
+until these are mended (a later PR):
+
+- **MEDIUM. The gate cannot tell a holder from a stranger** (index.js
+  fetch, `cap + _seatHeldCount`; seathold.js). At a full room, strangers'
+  sockets fill the held slots while their joins are in flight, so with
+  2,000 waiting about 2 in 3 blipped players still lose the seat.
+- **MEDIUM-LOW. Two strangers at once can pass the cap by the held seats**:
+  `_seatJoinRefused` counts only phase `joined`, not a join in flight.
+- **LOW.** The `seats` roster is never emptied; a second restart within
+  30 s drops the holds; a voluntary leave holds 60 s, so an empty room
+  refuses with "1 / 3 inside"; its row is a lever, so switches-thrown never
+  throws it; ON, cost-guard's check 8 fails (its write).
+
 ## What (`server/src/seathold.js`), with `seathold: true`
 
 - A JOINED player whose socket closes or fails (a drop: never a kick, the

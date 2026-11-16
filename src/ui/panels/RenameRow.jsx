@@ -26,6 +26,10 @@ export function RenameRow({ targetId, who, mine, call, callOwner, busy, setMsg, 
   const [name, setName] = useState('');
   const [force, setForce] = useState(false);
   const [armed, setArmed] = useState(false);
+  /* v2.3.5611 (with sitting 19b's mend of the other rows): its words shown
+     right under it too, open or closed (the panel's line is far above) */
+  const [note, setNote] = useState('');
+  const say = useCallback((t) => { setNote(t); setMsg(t); }, [setMsg]);
   const small = { ...chip, minHeight: 34, flex: 'none', touchAction: 'manipulation' };
   const field = {
     flex: '1 1 140px', minWidth: 0, boxSizing: 'border-box', background: COL.well, color: COL.text,
@@ -34,27 +38,28 @@ export function RenameRow({ targetId, who, mine, call, callOwner, busy, setMsg, 
   };
   const why404 = useCallback(async () => {
     const probe = await call('/overview', null, null, { quiet: true });
-    setMsg(notYetWords(!!probe, 'rename anyone'));
-  }, [call, setMsg]);
+    say(notYetWords(!!probe, 'rename anyone'));
+  }, [call, say]);
   const go = useCallback(async () => {
     const n = name.trim();
     if (!n || !targetId) return;
     const f = !!(mine && force);
-    if (!armed) { setArmed(true); setMsg(askRenameWords(who, n, f)); return; }
+    if (!armed) { setArmed(true); say(askRenameWords(who, n, f)); return; }
     setArmed(false);
-    const res = await callOwner(RENAME_PATH, 'POST', renameBody(targetId, n, f));
+    const res = await callOwner(RENAME_PATH, 'POST', renameBody(targetId, n, f), { say: setNote });
     if (!res || !res.status) return;   /* the panel has said what went wrong */
-    if (res.j && res.j.ok) { setMsg(renamedWords(who, res.j)); setName(''); setOpen(false); return; }
+    if (res.j && res.j.ok) { say(renamedWords(who, res.j)); setName(''); setOpen(false); return; }
     const words = refusedWords(res.status, res.j);
-    if (words) { setMsg(words); return; }
+    if (words) { say(words); return; }
     if (res.status === 404) { await why404(); return; }
-    setMsg('The rename did not go through' + (res.j && res.j.error ? ': ' + res.j.error : ' (' + res.status + ')') + '.');
-  }, [armed, callOwner, force, mine, name, setMsg, targetId, who, why404]);
+    say('The rename did not go through' + (res.j && res.j.error ? ': ' + res.j.error : ' (' + res.status + ')') + '.');
+  }, [armed, callOwner, force, mine, name, say, targetId, who, why404]);
   if (!open) {
     return (
       <div data-rename={targetId || ''} style={{ display: 'flex', gap: 6, marginTop: 6, alignItems: 'center' }}>
         <button type="button" data-rename-open="1" style={small} disabled={busy || !targetId}
           onClick={() => { setOpen(true); setArmed(false); }}>{mine ? 'Rename my character' : 'Rename'}</button>
+        {note ? <span data-rename-note="1" role="status" style={{ color: COL.text, fontSize: 12.5, lineHeight: 1.4 }}>{note}</span> : null}
       </div>
     );
   }
@@ -73,7 +78,8 @@ export function RenameRow({ targetId, who, mine, call, callOwner, busy, setMsg, 
         style={{ ...small, borderColor: armed ? COL.danger : COL.border, color: armed ? COL.danger : COL.text }}
         disabled={busy || !name.trim()} onClick={go}>{armed ? 'Sure? Rename' : 'Rename'}</button>
       <button type="button" data-rename-close="1" style={small} disabled={busy}
-        onClick={() => { setOpen(false); setArmed(false); setName(''); }}>Cancel</button>
+        onClick={() => { setOpen(false); setArmed(false); setName(''); setNote(''); }}>Cancel</button>
+      {note ? <div data-rename-note="1" role="status" style={{ flexBasis: '100%', color: COL.text, fontSize: 12.5, lineHeight: 1.4 }}>{note}</div> : null}
     </div>
   );
 }

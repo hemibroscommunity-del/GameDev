@@ -37,7 +37,12 @@ room.)
   `Retry-After: 1`. A kept answer is never refused: a phone polling the same
   read is served the kept one, however often it asks. The game's own phones
   add no query of their own to these reads, so they are kept for each other.
-- Only the three reads are kept. `/api/market/my`, `/history`, the store's
+- (Sitting 19b's gatekeeper) **`/health/room`'s public up-or-down** (the
+  room's `/_room_health`, `health.js`) is kept and paced the same; a request
+  with the owner's key (the numbers) passes through, never kept or paced
+  here (the key has its own lockout). The outer route passes the room the
+  caller's address, so the pace sees it.
+- Only the three reads (and the health) are kept. `/api/market/my`, `/history`, the store's
   `/mine` and the arena's `/tournament` are unchanged.
 
 Reads only: nothing a player owns changes because of it; every answer's shape

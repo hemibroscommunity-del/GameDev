@@ -54,9 +54,13 @@ export function liftedWords(name, reply) {
   return reply && reply.was === false ? name + ' was not silenced.' : 'Lifted ' + name + '\'s silence: they can chat again.';
 }
 
-/** The running silences (GET's reply) as a map: playerId -> until. */
+/** The running silences (GET's reply) as a map: playerId -> until.
+ *  v2.3.5605 (mended for sitting 19b): GET's `on` read -- with the switch
+ *  thrown (`silence: false`) no silence holds, so none is shown as running
+ *  (the row offers its four buttons, which the route then refuses). */
 export function silenceMap(reply) {
   const out = Object.create(null);
+  if (reply && reply.on === false) return out;
   const list = reply && Array.isArray(reply.silenced) ? reply.silenced : [];
   for (const s of list) if (s && typeof s.playerId === 'string') out[s.playerId] = Number(s.until) || 0;
   return out;

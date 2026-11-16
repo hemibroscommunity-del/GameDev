@@ -164,11 +164,31 @@ async function read(R, path, ip, serve) {
   check('7. at most 256 answers kept, the oldest out', R._pr.kept.size === PUBLIC_READS.MAX_KEPT && !R._pr.kept.has('/api/arena/status?playerId=bp_0') && R._pr.kept.has('/api/arena/status?playerId=bp_299'), R._pr.kept.size);
 }
 
+/* ── 7b. /health/room (v2.3.5609, sitting 19b's gatekeeper) ── */
+{
+  const R = room(); served = 0;
+  NOW = Math.ceil(NOW / 1000) * 1000 + 10;
+  await read(R, '/_room_health', '4.4.4.4'); await read(R, '/_room_health', '4.4.4.4');
+  check('7b. the room\'s health (its public up-or-down) is kept like the rest', served === 1, served);
+  const keyed = async () => {
+    const r = new Request('https://room/_room_health', { headers: { 'CF-Connecting-IP': '4.4.4.4', Authorization: 'Bearer k' } });
+    const res = await R._publicReadDo(r, new URL(r.url), serveOk({ ok: true, players: 3 }));
+    return res.json();
+  };
+  const k1 = await keyed(); const k2 = await keyed();
+  check('7b. ...a request with a key passes through: never kept, never the kept public answer', served === 3 && k1.players === 3 && k2.players === 3, { served, k1 });
+  served = 0;
+  const st = [];
+  for (let i = 0; i < 12; i++) st.push((await read(R, '/_room_health?x=' + i, '4.4.4.5')).status);
+  check('7b. ...and paced by address', st.slice(0, 10).every((x) => x === 200) && st[10] === 429, st);
+}
+
 /* ── 8. the room ── */
 {
   const src = readFileSync(new URL('../src/index.js', import.meta.url), 'utf8');
   const ok = ['_marketFetch', '_storeFetch', '_arenaFetch'].every((f) => new RegExp('return this\\._publicReadDo\\(request, url, \\(\\) => this\\.' + f + '\\(request\\)\\);').test(src));
   check('8. index.js sends the three surfaces through it', ok && /Object\.assign\(GameRoom\.prototype, publicReadMethods\)/.test(src));
+  check('8. ...and the room\'s health', /return this\._publicReadDo\(request, url, \(\) => this\._roomHealthFetch\(request\)\);/.test(src));
 }
 
 Date.now = realNow;

@@ -1,5 +1,8 @@
 /* ═══ v2.3.5609: THE ROOM'S PUBLIC READS, KEPT AND PACED (card OPS PR 10; red team RT-1 N8) ═══
  *
+ * (v2.3.5609, sitting 19b: and `/health/room`'s public up-or-down, the room's
+ * `/_room_health`, kept and paced the same; a keyed request passes through.)
+ *
  * Three reads anyone may make wake the room's one thread and walk a whole
  * book every time: the market's orders (`/api/market/orders`, market.js
  * _mktQueryOrders over every bucket, after its sweep), the store's browse
@@ -41,6 +44,9 @@ export const PUBLIC_READS = Object.freeze({
     '/api/market': '/api/market/orders',
     '/api/store': '/api/store/browse',
     '/api/arena': '/api/arena/status',
+    /* v2.3.5609 (sitting 19b's gatekeeper): the room's health, `/health/room`'s
+       answer (health.js): its public up-or-down kept and paced like the rest */
+    '/_room_health': '/_room_health',
   }),
 });
 
@@ -97,12 +103,16 @@ export const publicReadMethods = {
     }
     const read = PUBLIC_READS.SURFACES[surface];
     if (!url.pathname.startsWith(read)) return serve();
+    /* a request with a key (the owner's numbers: health.js) is never kept,
+       never served a kept public answer, and never paced here (the key's
+       own lockout, admin.js) */
+    if (request.headers.get('Authorization')) return serve();
     const now = Date.now();
     const m = this._prMem();
     const key = url.pathname + url.search;
     const kept = m.kept.get(key);
     if (kept && now - kept.at < PUBLIC_READS.KEEP_MS) {
-      return new Response(kept.body, { status: kept.status, headers: H });
+      return new Response(kept.body, { status: kept.status, headers: kept.headers || H });
     }
     if (this._prOver(request, now)) {
       return new Response(JSON.stringify({ ok: false, error: 'Too many requests' }), {
@@ -115,9 +125,12 @@ export const publicReadMethods = {
     const body = await res.text();
     if ((m.gen[surface] || 0) === gen) {   /* no write on the surface while it was read */
       m.kept.delete(key);
-      m.kept.set(key, { at: now, status: res.status, body });
+      /* its own headers kept (the health's `no-store`), else the surfaces' */
+      const cc = res.headers && typeof res.headers.get === 'function' ? res.headers.get('Cache-Control') : null;
+      m.kept.set(key, { at: now, status: res.status, body, headers: cc ? { ...H, 'Cache-Control': cc } : H });
     }
     while (m.kept.size > PUBLIC_READS.MAX_KEPT) m.kept.delete(m.kept.keys().next().value);
-    return new Response(body, { status: res.status, headers: H });
+    const cc = res.headers && typeof res.headers.get === 'function' ? res.headers.get('Cache-Control') : null;
+    return new Response(body, { status: res.status, headers: cc ? { ...H, 'Cache-Control': cc } : H });
   },
 };

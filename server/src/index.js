@@ -430,7 +430,7 @@ async function routeHttp(request, env) {
        stuck room read "ok" there.  For an uptime monitor. */
     if (url.pathname === '/health/room') {   /* HEALTH.PATH: the wire table's lister reads the literal */
       if (!roomName) return noSuchRoom();
-      return routeRoomHealth(env, roomName, corsHeaders);
+      return routeRoomHealth(env, roomName, corsHeaders, request);
     }
 
     if (url.pathname === '/health') {
@@ -4573,7 +4573,7 @@ export class GameRoom {
        (health.js), after the switches load (its own, `roomhealth`, among
        them); internal like `/_room_count`: no outside path is forwarded here */
     if (url.pathname === '/_room_health') {   /* HEALTH.ROOM_PATH */
-      return this._roomHealthFetch();
+      return this._publicReadDo(request, url, () => this._roomHealthFetch(request));   /* v2.3.5609: kept and paced (publicreads.js) */
     }
     /* v2.3.5184: THE WIRE DOOR for the room's routes (wire/door.js), after
        the switches load and before the first route: a key named like the
@@ -4648,7 +4648,7 @@ export class GameRoom {
        decides who it is for (seathold.js); off, both are nothing */
     await this._seatHoldLoad(Date.now());
     if (this.sessions.size >= this._roomCap() + this._seatHeldCount(Date.now())) {
-      return this._roomFullRefusal(url);
+      return this._roomFullRefusal(url, undefined, request);
     }
     /* v2.3.3274: one address holds at most `ip_sockets` places and opens at
        most `ip_joins_min` sockets a minute (flood.js): the room's places were
@@ -4656,7 +4656,7 @@ export class GameRoom {
        own word (`reason: 'ip'`). */
     const _ip = requestIp(request);
     if (!this._floodIpOk(_ip, Date.now())) {
-      return this._roomFullRefusal(url, 'ip');
+      return this._roomFullRefusal(url, 'ip', request);
     }
     const [client, server] = Object.values(new WebSocketPair());
     this.state.acceptWebSocket(server);
@@ -6159,6 +6159,10 @@ export class GameRoom {
           msg.from = session.id;
           /* v2.3.3265: your sparring clones see your specials coming (spar.js) */
           if (this._spars && this._spars.size) this._sparSeen(session.id, msg);
+          /* v2.3.5543 (RT-1 N10): a relay's bytes -- one too big, a socket past
+             its byte budget, the queue past its cap: dropped, counted
+             (relay.js _relayBytesDrop; `relaybytes: false` lets all in) */
+          if (this._relayBytesDrop(session, msg, Date.now())) break;
           this.eventBuffer.push(msg);
         }
         break;
