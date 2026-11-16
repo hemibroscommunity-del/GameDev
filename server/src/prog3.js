@@ -585,6 +585,7 @@ import { blocksAt, blockSize } from './abilities.js';
 /* v2.3.3260: the max-HP formula (no imports of its own, so no cycle) */
 import { healthAt } from './oneformula.js';
 import { pointsGive, pointsTake, pointsSet, pointsDeal } from './skillpoints.js';   /* v2.3.5283: the skill points' door */
+import { xpGive, xpLevelUp, xpSet } from './xp.js';   /* v2.3.5289: experience and levels' door (card R PR 10) */
 
 /* XP to go from trained level L to L+1.  The legacy weaponXpRequired
  * curve (280 × 1.16^L, gameSystems.js) reused verbatim (§3-A), shifted
@@ -1150,7 +1151,7 @@ export const prog3Methods = {
   // version.  Armor's ONLY combat effect is now the damage reduction.
   _prog3Recompute(ps) {
     if (!ps || !ps.prog3) return;
-    ps.level = this._prog3CharLevel(ps);
+    xpSet(ps, 'level', this._prog3CharLevel(ps), 'char_level');   /* v2.3.5289: the experience door */
     /* v2.3.3260: ONE FORMULA (oneformula.js) -- 100 + 50 a level + 40 a
        point, so a fight between two players lasts long enough without a
        PvP-only cut on their hits; `oneformula: false` is the old
@@ -1305,11 +1306,10 @@ export const prog3Methods = {
        an hour after a rest at the Hotel or on your farm's bed.  It ADDS to the
        pie's (both: +20%), and never touches the flat awards either. */
     const rested = (!(opts && opts.flat) && typeof this._restXpBonus === 'function') ? this._restXpBonus(ps) : 0;
-    sk.xp += (opts && opts.flat) ? amount : amount * PROG3.XP_PER_DMG * (pie + rested);
+    xpGive(sk, (opts && opts.flat) ? amount : amount * PROG3.XP_PER_DMG * (pie + rested), 'skill_xp');   /* v2.3.5289: the experience door */
     let gained = 0;
     while (sk.level < PROG3.LEVEL_CAP && sk.xp >= prog3XpRequired(sk.level)) {
-      sk.xp -= prog3XpRequired(sk.level);
-      sk.level++;
+      xpLevelUp(sk, prog3XpRequired(sk.level), 'skill_level');   /* v2.3.5289: a level-up is the door's */
       /* v2.3.2199: 3 per level (POINTS_PER_LEVEL), was 1. */
       pointsGive(p3, PROG3.POINTS_PER_LEVEL, 'level_lane');   /* v2.3.5283: the skill points' door */
       /* v2.3.2176: and the points remember WHICH skill earned them. */
@@ -1317,7 +1317,7 @@ export const prog3Methods = {
       pointsGive(p3, PROG3.POINTS_PER_LEVEL, 'level_lane_by', cat);
       gained++;
     }
-    if (sk.level >= PROG3.LEVEL_CAP) sk.xp = 0;
+    if (sk.level >= PROG3.LEVEL_CAP) xpSet(sk, 'xp', 0, 'skill_cap');   /* v2.3.5289 */
     /* v2.3.2592: and the SHARED points beside them, one per lane point
        (owner: "you earn one 'shared' point too").
        v2.3.3538: 3 a CHARACTER level -- under the sum every skill level-up

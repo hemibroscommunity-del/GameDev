@@ -49,6 +49,11 @@ a player).
 
 - `boardcache: false` (a kill switch, said `bc: 0`): every board read from
   storage at every request, as before. The sweep, `playtime` and the hour stay.
+- `boardsweep: false` (a kill switch, said `bs: 0`; sitting 19b's
+  gatekeeper: a delete is not undone, so it stops in one tap): no row is
+  deleted, and the stale rows stay off every board. The rows are a derived
+  cache (rebuilt whole at the player's next report), already hidden after
+  7 days, so nothing shown is lost by the sweep.
 - `exactseen: true` (the owner's lever, said `xs: 1`): the exact `lastSeen`
   back and no `seen` word, to run an old draw again exactly (OPERATIONS,
   "Running the cape contest"). Kept answers are kept apart by it: never one

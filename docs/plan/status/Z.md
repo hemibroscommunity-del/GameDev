@@ -1,33 +1,36 @@
 card: Z
-branch: claude/plan-z-sitting-19
-prs: (this PR), tag 5376, the last line of the list (ready)
+branch: claude/plan-z-sitting-20
+prs: (this PR), tag 5377, the last line of the list (ready)
 state: ready
 
 ## Done
-- Sitting 19, `main` 29b1a0d: the red team's fixes. Review:
-  `census/review-z19.md`. Notes on 4.2, 4.7, 5.3b, 7.1, 9.5;
-  `TODO_LINE` 24 -> 22; entityRenderer.js 8953 -> 8941.
+- Sitting 20, reviewed on `main` 29b1a0d, rehearsed on 481bac2 (sitting
+  19 in): the list's tree 1d7b826b: precheck 0 FAIL (2
+  WARN), build, questline 187 of 187; each base `main`, ONE merge base
+  step by step. Review: `census/review-z20.md`. Notes on 4.1, 7.1
+  (sitting 19's merges); no line earned room.
 
 ## The list: merge in this order, in one sitting, each "Create a merge commit"
-1 #1889 (T) · 2 #1875 · 3 #1882 · 4 #1885 (RT-1, drafts: ready first) ·
-5 #1899 · 6 #1923 (K) · 7 #1883 (MOD's card) · 8 this PR. Five deploy
-(#1875, #1882, #1885, #1899, #1923): back to back. New live flags `ip64`,
-`oldkeylock`, `adminlock`, `relaybytes` (ON). No stored record changes.
+J2: 1 #1879 · 2 #1888 · 3 #1892 · 4 #1902 · 5 #1904 · 6 #1912 · 7 #1916 ·
+8 #1919 · 9 #1921 · 10 #1924 · R: 11 #1877 · 12 #1887 · 13 #1895 ·
+14 #1898 · 15 #1922 · L: 16 #1876 · 17 #1894 · 18 #1903 · 19 #1910 ·
+O: 20 #1896 · 21 #1915 · P: 22 #1881 · 23 #1906 · 24 #1918 · 25 #1925 ·
+26 this PR. Twelve deploy (11 to 22): back to back. New live flags
+`fullsnap`, `resetbook`, `xferescrow` (all OFF: the owner's costs). New
+page switches `?racedoor`, `?harvestdoor`, `?posedoor`, `?guarddoor`,
+`?selftest`, `?hairmasks`, `?petsheet`, `?capehood`. No stored record of
+a player changes its shape.
 
-## Held (expires at sitting 20)
-- #1878 (RT-3): three MEDIUMs (the player id's big rows; the paces refill
-  at each wake; an uncounted admin-key check). #1890, #1897, #1907 carry
-  it; #1897's `freezedevice` can lock the owner out (MEDIUM); #1907's
-  join name is unchecked (HIGH). Mends asked 2026-11-15, not come.
+## Held (expires at sitting 21)
+- Sitting 19's holds stated again (not read here): #1878 (RT-3), #1890,
+  #1897, #1907 (MOD), until a sitting reads their mends.
 
 ## Stalled
-- RT-3 and MOD: no commit since 2026-11-15 02:31 (the allowance).
+- Card K: its session stopped with the allowance; #1900 (7.2) waits for
+  a fresh K session's restack, carrying #1876 (race.js resolved).
 
 ## Found
-- The four new switch rows say `on` 2026-11-15 and merge 2026-11-16:
-  the next switch table PR (card T) sets each to its merge day.
-- RT-1: an old key's derivation spelled out in devicelock.js ~160 and the
-  device-lock spec: cut before the repo goes public.
-- OPS (19b): reviewed here, findings sent; `/health/room` on PR 9's list.
-- The owner: `.github/workflows/crash-report.yml` needs a key once #1878
-  lands.
+- J2: reds on `main` the cards report (`mp-hairstencil`, `mp-palette`,
+  L's list); L, P, O, R: next-PR lows (the review's Found).
+- MOD's #1883 was on sitting 19's list, not merged: still open.
+- T: eight new page rows say `on` 2026-11-15: set each to its merge day.

@@ -123,14 +123,26 @@ export async function run({ browser, wsPort, webPort, rec }) {
        (game/ride.js rideFeel; card SK), so "stopped" is its own speed at 0 by
        the game's state, never a fixed wait (TRAPS §177) */
     await H.waitFor(P, (S) => (S._ride && S._ride.spd) || 0, (v) => !(v > 0), { timeout: 30000, label: 'the board rolled to a stop' }).catch(() => null);
-    await P.page.waitForTimeout(1200);
-    const s0 = await fx(P);
+    /* v2.3.5427 (card J2): ...and the FIGURE at rest where it is drawn.  The wheels turn by the ground the figure is
+       drawn covering each frame, a step under ROLL_MIN_PX (0.3 px) being the settle after a stop (rideFx.js); this
+       box draws a few frames a second, so the same settle comes in steps over that, and the turn crept after the
+       board's speed was 0 (6.813 -> 6.821, the figure 1 px on: red on main, word for word each run).  Waited for:
+       the drawn place still across two reads 0.6 s apart */
+    const drawnX = () => P.page.evaluate(() => (window.__btPlayerDrawn ? window.__btPlayerDrawn().x : null));
+    let px0 = await drawnX();
+    for (let i = 0; i < 25; i++) {
+      await P.page.waitForTimeout(600);
+      const px1 = await drawnX();
+      if (px0 != null && px1 != null && Math.abs(px1 - px0) < 0.05) break;
+      px0 = px1;
+    }
+    const s0 = await fx(P), x0 = await drawnX();
     await P.page.waitForTimeout(800);
-    const s1 = await fx(P);
+    const s1 = await fx(P), x1 = await drawnX();
     /* (the spots ride on the board, which follows the boots as the figure
        breathes: the turn is what holds still) */
-    rec.ok(`2. stopped, the wheels hold still (turn ${s0 && s0.turn} -> ${s1 && s1.turn})`,
-      !!s0 && !!s1 && s0.turn === s1.turn, { s0, s1 });
+    rec.ok(`2. stopped, the wheels hold still (turn ${s0 && s0.turn} -> ${s1 && s1.turn}, the figure at ${x0 != null ? x0.toFixed(2) : '?'} -> ${x1 != null ? x1.toFixed(2) : '?'})`,
+      !!s0 && !!s1 && s0.turn === s1.turn, { s0, s1, x0, x1 });   /* (the place reported: hundredths of a px of settle go on, under ROLL_MIN_PX, by design) */
 
     /* 3. off: the spots go with the board */
     /* (the worker answers a toggle too soon after the last with 'soon':

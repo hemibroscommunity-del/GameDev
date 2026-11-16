@@ -1,0 +1,205 @@
+/* ═══ v2.3.5284: QUEST STATE'S DOOR (grand plan step 4.3, card R PR 5) ═══
+ * (the door: server/src/queststate.js; the spec: docs/specs/quest-door.md)
+ *
+ * Every change to a quest's state -- its state (the hand-in), its progress
+ * (the track), its flags, and the kept lists of a reward that did not fit --
+ * goes through the door's seven verbs, each call naming its road in
+ * QUEST_ROADS.  This suite holds it, as stash-door.test holds the stashes:
+ *
+ *   1. THE DOOR: a state from the closed list, progress capped, a quest
+ *      forgotten, the maps loaded, a piece kept and the list taken whole; a
+ *      map made with no prototype; a wrong road, verb, state or list throws,
+ *      the state untouched;
+ *   2. ONE DOOR: no quest state is written in server/src but queststate.js,
+ *      by its name or through a name that holds it (v2.3.5291: `||=`, `??=`,
+ *      `&&=`, `+=` and Object.assign too, the sitting 20 review); each shape
+ *      planted and found;
+ *   3. ONE ROW, ONE PLACE: every call names a road the table has, with its
+ *      verb, from its row's file; every road has exactly one caller;
+ *   4. THE GAME: a quest accepted, its signal counted, handed in, and the
+ *      chain's next step opened, all through a room's own handlers.
+ *
+ * BREAK PROOF (rule 8), tried by hand, 2026-11-15:
+ *   - `ps._quests[questId] = 'active';` put back in quests.js     -> FAIL 2 (a second writer)
+ *   - `Math.min(QUEST_COUNT_MAX, ...)` made the plain sum            -> FAIL 1 (past the cap)
+ *   - a second `questStateSet(ps, q, 'turnedIn', 'turn_in')` in devtools.js -> FAIL 3
+ *   - (v2.3.5291) `ps._quests ||= Object.create(null);` in quests.js     -> FAIL 2
+ *   - (v2.3.5291) `Object.assign(this.playerState[playerId]._questKills, body.x);`
+ *     in devtools.js                                                     -> FAIL 2
+ */
+import { readFileSync } from 'node:fs';
+import { SRC_DIR, srcFiles } from './src-walk.mjs';
+import { QUEST_ROADS, QUEST_STATES, QUEST_KEPT, QUEST_COUNT_MAX, questStateSet, questCountAdd, questCountSet, questForget, questLoad, questKeep, questKeptTake } from '../src/queststate.js';
+import { makeStorage, openRoom, join, fakeWs, settle } from './testroom.mjs';
+
+let failures = 0, passes = 0;
+function check(name, cond, detail) {
+  if (cond) { passes++; console.log('PASS', name); }
+  else { failures++; console.log('FAIL', name, detail !== undefined ? JSON.stringify(detail).slice(0, 900) : ''); }
+}
+const throws = (fn) => { try { fn(); return false; } catch (e) { return true; } };
+
+/* ══════════ 1. THE DOOR ══════════ */
+{
+  const ps = {};
+  questStateSet(ps, 'q1', 'active', 'accept');
+  check('1. a state set makes the map, with no prototype (rule 4)', ps._quests && Object.getPrototypeOf(ps._quests) === null && ps._quests.q1 === 'active');
+  questStateSet(ps, 'q1', 'turnedIn', 'turn_in');
+  check('1. ...only a state on the list: anything else throws, the state untouched', QUEST_STATES.join() === 'available,active,turnedIn' && throws(() => questStateSet(ps, 'q1', 'done', 'turn_in')) && ps._quests.q1 === 'turnedIn');
+  check('1. progress added, made with no prototype, and capped at ' + QUEST_COUNT_MAX, questCountAdd(ps, 'q2', 5, 'progress') === 5 && Object.getPrototypeOf(ps._questKills) === null && questCountAdd(ps, 'q2', QUEST_COUNT_MAX, 'progress') === QUEST_COUNT_MAX);
+  questCountSet(ps, 'q3', 7, 'dev_count');
+  check('1. progress set', ps._questKills.q3 === 7);
+  questForget(ps, 'q3', 'dev_tour_reset');
+  questStateSet(ps, 'q3', 'available', 'chain_next');
+  questForget(ps, 'q3', 'dev_tour_reset');
+  check('1. a quest forgotten: its state and progress gone', !('q3' in ps._quests) && !('q3' in ps._questKills));
+  const parts = { _quests: { a: 'active' }, _questFlags: { f: true }, _questKills: { a: 2 } };
+  questLoad(ps, parts, 'join_stored');
+  check('1. a load sets the maps as given (the caller\'s own copies)', ps._quests === parts._quests && ps._questFlags === parts._questFlags && ps._questKills === parts._questKills);
+  questKeep(ps, '_questWeaponUnfit', { n: 1 }, 'weapon_unfit');
+  questKeep(ps, '_questWeaponUnfit', { n: 2 }, 'weapon_unfit');
+  const took = questKeptTake(ps, '_questWeaponUnfit', 'unfit_drain');
+  check('1. a piece kept, the list taken whole and emptied', took.length === 2 && ps._questWeaponUnfit === null && questKeptTake(ps, '_questWeaponUnfit', 'unfit_drain') === null);
+  const before = JSON.stringify([ps._quests, ps._questKills]);
+  const wrong = [
+    () => questStateSet(ps, 'x', 'active', 'nope'),
+    () => questStateSet(ps, 'x', 'active', 'progress'),               /* a count road, set */
+    () => questCountAdd(ps, 'x', 1, 'accept'),                         /* a state road, counted */
+    () => questKeep(ps, '_questGrantOverflow', {}, 'weapon_unfit'),    /* the other list */
+    () => questKeptTake(ps, '_questWeaponUnfit', 'turn_in_clear'),
+    () => questStateSet(ps, 'x', 'active', 'constructor'),
+    () => questStateSet(ps, '', 'active', 'accept'),
+  ];
+  check('1. a wrong road, verb, list or id throws, the state untouched', wrong.every(throws) && JSON.stringify([ps._quests, ps._questKills]) === before);
+  check('1. every keep or take road names a kept list', Object.values(QUEST_ROADS).every((r) => (r.verb === 'keep' || r.verb === 'kept') === QUEST_KEPT.includes(r.list)));
+}
+
+/* ══════════ 2. ONE DOOR ══════════ */
+const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '))
+  .replace(/(^|[^:'"`\\])\/\/[^\n]*/g, (m, p1) => p1 + ' '.repeat(m.length - p1.length));
+const files = srcFiles();
+const code = Object.create(null);
+for (const f of files) code[f] = strip(readFileSync(new URL(f, SRC_DIR), 'utf8'));
+const lineOf = (s, i) => s.slice(0, i).split('\n').length;
+const NAMES = ['_quests', '_questKills', '_questFlags', ...QUEST_KEPT].join('|');
+/* v2.3.5291 (the sitting 20 review): the logical and arithmetic assigns too
+   (`||=`, `??=`, `&&=`, `+=`...), on the map and on a key of it */
+const OP = '(?:\\|\\||&&|\\?\\?|[-+*/%])?=(?![=>])';
+const W = '(?:' + OP + '|\\.(?:push|splice|pop|shift|unshift|sort|reverse|fill)\\s*\\(|\\.length\\s*=(?!=)|\\[[^\\]\\n]*\\]\\s*' + OP + '|\\[[^\\]\\n]*\\]\\s*(?:\\+\\+|--))';
+const A = new RegExp('(?:\\.(?:' + NAMES + ')|\\[\\s*[\'"](?:' + NAMES + ')[\'"]\\s*\\])\\s*' + W, 'g');
+const DEL = new RegExp('delete\\s+[\\w$.]*\\.(?:' + NAMES + ')\\s*\\[', 'g');
+/* v2.3.5291: a map filled in place by Object.assign (by its name, or an alias's below) */
+const ASSIGN = new RegExp('Object\\.assign\\(\\s*[^,()\\n]*\\.(?:' + NAMES + ')\\s*[,)]', 'g');   /* any receiver: \`this.playerState[id]._quests\` */
+const C = new RegExp('(?:const|let|var)\\s+([A-Za-z_$][\\w$]*)\\s*=\\s*[^;\\n]*?\\.(?:' + NAMES + ')\\b[^;\\n]*;', 'g');
+function writesIn(s) {
+  const out = [];
+  for (const m of s.matchAll(A)) out.push(m.index);
+  for (const m of s.matchAll(DEL)) out.push(m.index);
+  for (const m of s.matchAll(ASSIGN)) out.push(m.index);
+  for (const m of s.matchAll(C)) {
+    const v = m[1].replace(/\$/g, '\\$');
+    const after = s.slice(m.index + m[0].length, m.index + m[0].length + 4000);
+    const re = new RegExp('(?<![\\w$.])(?<!(?:const|let|var)\\s+)' + v + '\\s*' + W + '|delete\\s+' + v + '\\s*\\[|Object\\.assign\\(\\s*' + v + '\\s*[,)]', 'g');
+    for (const w of after.matchAll(re)) out.push(m.index + m[0].length + w.index);
+  }
+  return out;
+}
+{
+  const found = [];
+  for (const f of files) {
+    if (f === 'queststate.js') continue;
+    const s = code[f];
+    for (const i of writesIn(s)) {
+      const ls = s.lastIndexOf('\n', i) + 1, le = s.indexOf('\n', i);
+      found.push(f + ':' + lineOf(s, i) + ' ' + s.slice(ls, le < 0 ? s.length : le).trim().slice(0, 110));
+    }
+  }
+  check('2. no quest state is written in server/src but through the door (queststate.js)', found.length === 0, found);
+  const plant = (t) => writesIn(strip(t)).length;
+  const mustFind = [
+    'ps._quests[id] = \'active\';', 'ps._questKills = Object.create(null);', 'ps._questKills[q] += 1;', 'ps._questKills[q]++;',
+    'delete ps._quests[q];', 'ps._questGrantOverflow.push(x);', 'ps._questWeaponUnfit = null;', 'ps[\'_questFlags\'] = {};',
+    'const q = ps._quests || {};\nq[id] = \'turnedIn\';', 'const k = ps._questKills;\ndelete k[id];',
+    /* v2.3.5291 (the sitting 20 review): the shapes it missed */
+    'ps._quests ||= {};', 'ps._questKills ??= Object.create(null);', 'ps._quests[id] ||= \'available\';', 'ps._questKills[q] += 2;',
+    'ps._questFlags &&= null;', 'Object.assign(ps._quests, claimed);', 'Object.assign(this.playerState[pid]._questKills, x);', 'const q = ps._quests;\nObject.assign(q, { a: 1 });',
+  ];
+  const missed = mustFind.filter((t) => plant(t) === 0);
+  check('2. ...the scanner finds each shape of a second writer (' + mustFind.length + ' planted)', missed.length === 0, missed);
+  check('2. ...and reads a read as no write', plant('if (ps._quests[id] === \'active\') return;\nconst q = ps._quests || {};\nreturn q[id] !== \'turnedIn\';\nconst x = { _quests: ps._quests || {} };') === 0);
+}
+
+/* ══════════ 3. ONE ROW, ONE PLACE ══════════ */
+const DOOR = { questStateSet: 'state', questCountAdd: 'count', questCountSet: 'countSet', questForget: 'forget', questLoad: 'load', questKeep: 'keep', questKeptTake: 'kept' };
+function callsIn(s, name) {
+  const out = [];
+  for (const m of s.matchAll(new RegExp('(?<![\\w$.])' + name + '\\(', 'g'))) {
+    let i = m.index + m[0].length, depth = 1, q = null;
+    for (; i < s.length && depth > 0; i++) {
+      const ch = s[i];
+      if (q) { if (ch === '\\') i++; else if (ch === q) q = null; continue; }
+      if (ch === '\'' || ch === '"' || ch === '`') q = ch;
+      else if (ch === '(') depth++;
+      else if (ch === ')') depth--;
+    }
+    const args = s.slice(m.index + m[0].length, i - 1);
+    const road = /,\s*'([A-Za-z0-9_]+)'\s*\)?\s*$/.exec(args);
+    out.push({ road: road ? road[1] : null, line: lineOf(s, m.index) });
+  }
+  return out;
+}
+{
+  const byRoad = Object.create(null);
+  const bad = [];
+  for (const f of files) {
+    if (f === 'queststate.js') continue;
+    for (const [name, verb] of Object.entries(DOOR)) {
+      for (const c of callsIn(code[f], name)) {
+        const where = f + ':' + c.line;
+        if (!c.road) { bad.push(where + ' ' + name + ' names no road as a plain string'); continue; }
+        if (!Object.prototype.hasOwnProperty.call(QUEST_ROADS, c.road)) { bad.push(where + ' names "' + c.road + '", which QUEST_ROADS has not got'); continue; }
+        const row = QUEST_ROADS[c.road];
+        if (row.verb !== verb) bad.push(where + ' ' + c.road + ' is a ' + row.verb + ', called by ' + name);
+        if (row.at.split(' ')[0] !== f) bad.push(where + ' ' + c.road + '\'s row says it is in ' + row.at.split(' ')[0]);
+        (byRoad[c.road] = byRoad[c.road] || []).push(where);
+      }
+    }
+  }
+  check('3. every call names a road the table has, with its verb, from its row\'s file', bad.length === 0, bad);
+  const none = Object.keys(QUEST_ROADS).filter((r) => !byRoad[r]);
+  const twice = Object.keys(byRoad).filter((r) => byRoad[r].length > 1).map((r) => r + ': ' + byRoad[r].join(', '));
+  check('3. every road has a caller (a row nobody calls is deleted with its feature)', none.length === 0, none);
+  check('3. no road has two callers (a second place is a second row)', twice.length === 0, twice);
+}
+
+/* ══════════ 4. THE GAME ══════════ */
+{
+  const room = await openRoom(makeStorage());
+  const ws = fakeWs('q');
+  await join(room, ws, 'bp_qd_a', { loginTaken: true });
+  const ps = room.playerState.bp_qd_a;
+  const table = room._QUEST_REWARDS_DATA();
+  /* a quest that opens a next step and whose objective is a counted kind */
+  const qid = Object.keys(table).find((k) => table[k] && table[k].next && table[k].objective && table[k].objective.type === 'kill' && !table[k].objective.zone && !(table[k].gate));
+  check('4. a kill quest with a next step exists to play', !!qid, qid);
+  if (qid) {
+    const obj = table[qid].objective;
+    questLoad(ps, { _quests: Object.assign(Object.create(null), ps._quests || {}), _questKills: Object.assign(Object.create(null), ps._questKills || {}) }, 'join_stored');
+    ps._qdTry = true;
+    await room._handleQuestAccept(room.sessions.get(ws) || { id: 'bp_qd_a' }, { questId: qid });
+    const accepted = ps._quests && ps._quests[qid] === 'active';
+    for (let i = 0; i < (obj.count || 1); i++) room._creditQuestObjective('bp_qd_a', 'kill', obj.arch || 'x', null, 1);
+    const counted = ps._questKills && ps._questKills[qid] >= (obj.count || 1);
+    check('4. accepted and counted through the room\'s handlers (the door underneath)', accepted && counted, { state: ps._quests && ps._quests[qid], kills: ps._questKills && ps._questKills[qid] });
+    const sess = room.sessions.get(ws) || { id: 'bp_qd_a' };
+    await room._handleQuestTurnIn(sess, { questId: qid, xpCat: 'sword' });   /* a prog3 player names its skill (prog3.js SKILLS) */
+    await settle();
+    const next = table[qid].next;
+    check('4. ...handed in, and the chain\'s next step opened', ps._quests[qid] === 'turnedIn' && (ps._quests[next] === 'available' || ps._quests[next] === 'active' || ps._quests[next] === 'turnedIn'), { state: ps._quests[qid], next: ps._quests[next] });
+  }
+}
+
+await settle();
+console.log('\n' + passes + ' passed, ' + failures + ' failed');
+if (failures) { console.log('quest-door: FAILED'); process.exit(1); }
+console.log('all quest-door checks passed');
