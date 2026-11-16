@@ -16,8 +16,13 @@
  * with `=`, `+=`, `||=`... or `++`, `this.playerState[id].field = `, the keys
  * of `Object.assign(ps, {...})` and of the join's `this.playerState[id] =
  * {...}`.  Not read: a write by a computed name (`ps[field] = `: the gear
- * slots and stashes, all saved) and the join's allowlisted copy of the
- * phone's own data (`...cleanJoinData`: the wire's again at every join).
+ * slots and stashes, all saved; and, v2.3.5291 (the sitting 20 review), the
+ * doors' own writes by a field handed in -- queststate.js's two kept lists,
+ * `_questGrantOverflow` and `_questWeaponUnfit`, which are NOT saved (memory
+ * only, on purpose: quest-door.test holds who writes them) -- so a field a
+ * door writes is in neither list here and the census cannot see it) and the
+ * join's allowlisted copy of the phone's own data (`...cleanJoinData`: the
+ * wire's again at every join).
  * The saved list is read off the `put('rpg:' + playerId, {...})` itself.
  * v2.3.5327 (card V PR 8): the files are card N's walker's
  * (server/test/src-walk.mjs `srcFiles`: every .js and .mjs file in depth,

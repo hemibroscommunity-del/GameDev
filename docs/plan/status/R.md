@@ -1,6 +1,6 @@
 card: R
-branch: claude/plan-r-10-xp-door (stacked on #1895's head, the planning session's word)
-prs: #1819 (5280), #1823 (5283), #1825 (5287), #1844 (5288), #1862 (5281), #1847 (5286): merged; #1873 (5282), #1877 (5284), #1887 (5285), #1895 (5290), PR 10 (5289): ready
+branch: claude/plan-r-12-credit-guards (stacked on #1898's head, the planning session's word)
+prs: #1819 (5280), #1823 (5283), #1825 (5287), #1844 (5288), #1862 (5281), #1847 (5286): merged; #1873 (5282), #1877 (5284), #1887 (5285), #1895 (5290), #1898 (5289), PR 12 (5291): ready
 state: ready
 
 ## Done
@@ -14,12 +14,12 @@ state: ready
   booked; `fullsnap`, `resetbook` OFF (Needs); sitting 20's three mended.
 - PR 11 (5290, #1895, ready, sitting 20): the duel pot's ledger row.
 - PR 10 (5289, #1898, ready, sitting 20): experience and levels' door.
+- PR 12 (5291, this branch, ready): the credit guards read `_creditWith(`;
+  quest-door's scanner `||=`, `??=`, `&&=`, Object.assign (sitting 20's).
 
 ## Next
 
-- NEXT PR (sitting 20): the credit guards read `_creditWith(` too (first:
-  a double-pay risk); quest-door's scanner `||=`, `??=`, Object.assign.
-- Then WAITING on K and L. THE ESCROW
+- WAITING on K and L (no side work). THE ESCROW
   LEDGER'S ORDER (the planning session's (b)): the market, the auction
   house and the arena's stakes join in later R PRs, AFTER K's 5194, 5196,
   5197 (`market.js`, `store.js`) and L's arena door (`gladiator.js`).
