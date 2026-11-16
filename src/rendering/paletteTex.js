@@ -74,12 +74,13 @@
  *
  * Probe: window.__btPalette().
  */
-import { BatcherPipe, DefaultBatcher, ExtensionType, extensions, BufferImageSource, Texture, Sprite, MeshSimple, GlProgram, Shader, UniformGroup, SpritePipe, MeshPipe, GlMeshAdaptor, GlBatchAdaptor, Container, Matrix, glUploadBufferImageResource } from 'pixi.js';
-import { SHARP_SAMPLE_GLSL } from './sharpPixels.js';   /* v2.3.3447: the sharp read, for ONE_BATCHER's program */
+import { BatcherPipe, DefaultBatcher, ExtensionType, extensions, BufferImageSource, Texture, Sprite, RenderTexture, MeshSimple, GlProgram, Shader, UniformGroup, SpritePipe, MeshPipe, GlMeshAdaptor, GlBatchAdaptor, Container, Matrix, glUploadBufferImageResource } from 'pixi.js';
+import { SHARP_SAMPLE_GLSL, sharpSelfPicture, sharpSelfTest } from './sharpPixels.js';   /* v2.3.3447: the sharp read, for ONE_BATCHER's program; v2.3.5236: its self-test picture */
 import { setWheelPalette } from '../game/wheelTrial.js';
 import { isPaletteSource } from './paletteDraw.js';
 import { deviceProfile, rendererName, devAsk } from '../game/deviceProfile.js';   /* v2.3.5016: a Windows or Mac computer keeps the three programs; v2.3.5227: the chip's name asked there too; v2.3.5228: the fallbacks' questions too */
 import { laneKnob, pinOf, askingAs } from '../game/drawLanes.js';   /* v2.3.5228: one program or three is the lanes' `program` knob (card O PR 8) */
+import { selfDraw, selfDrop, selfQueue, selfSkip, selfPending, selfIdx, selfPalBytes, selfRgba, selfSharpWant, selfTestOn, SELF_SIZE } from './selfTest.js';   /* v2.3.5234: the self-test at the door (card O PR 14a); v2.3.5236 the sharp read's answer (14b) */
 export { isPaletteSource, drawSourceRect, paletteRegionRGBA } from './paletteDraw.js';
 
 export const PAL_BATCHER = 'bt-palette';
@@ -924,7 +925,23 @@ export function setPaletteRenderer(r) {
      setOneBatchRenderer has tried it on this renderer */
   _oneRoute = false;
   _oneOk = null;
-  if (!_wanted || !webgl2(_renderer)) { _ok = false; setWheelPalette(false); return false; }
+  if (!_wanted || !webgl2(_renderer)) { _ok = false; setWheelPalette(false); selfSkip('palette', !_wanted ? 'switched off' : 'no WebGL 2'); return false; }
+  /* v2.3.5234: the self-test's picture drawn here, first, before the
+     prewarm's full screen (copied behind a fence once the programs are known
+     to link, below; taken at the top of a later frame) */
+  const tT0 = performance.now();
+  const wT0 = tT0;   /* the whole warm-up's ms (the self-test's added time: against ?selftest=0) */
+  let testRt = null;
+  if (selfTestOn()) {
+    let ts = null, sp = null;
+    try {
+      ts = makePaletteSource({ idx: selfIdx(), w: SELF_SIZE, h: SELF_SIZE, stride: SELF_SIZE, rgba: selfPalBytes(), alphaMode: 'premultiplied-alpha', label: 'bt-palette-selftest' });
+      if (ts) { sp = new Sprite(new Texture({ source: ts })); testRt = selfDraw(_renderer, sp, RenderTexture); }
+    } catch (e) { testRt = null; }
+    try { if (sp) sp.destroy(); } catch (e) { /* gone */ }
+    try { if (ts) ts.destroy(); } catch (e) { /* gone */ }
+  }
+  const tMs = performance.now() - tT0;
   let box = null, src = null, mesh = null;
   try {
     src = makePaletteSource({
@@ -952,6 +969,22 @@ export function setPaletteRenderer(r) {
     _stats.linkError = String((e && e.message) || e);
   }
   if (!_ok && !_stats.linkError) _stats.linkError = 'the palette programs did not build on this device';
+  /* ═══ v2.3.5234: THE SELF-TEST (card O PR 14a; rendering/selfTest.js) ═══
+     Linked is not enough: the palette's program drew a known 16 x 16
+     picture of colour numbers (above), copied now behind a fence, taken at
+     the top of a later frame and held to the same numbers recoloured on the
+     CPU.  Wrong, and the colour numbers fall back alone to whole colours:
+     paletteOn false from then on, the Wheel's ground worker told so (the
+     verdict comes within a few frames, behind the loading screen, whose
+     group waits for it).  Not read back at all: kept as today (selfCheck). */
+  if (!selfTestOn()) selfSkip('palette', 'no self-test on this page (?selftest=0)');
+  else if (_ok) {
+    selfQueue('palette', _renderer, testRt, selfRgba(), () => {
+      _ok = false;
+      _stats.linkError = 'the palette program drew the wrong picture (the self-test): whole colours';
+      setWheelPalette(false);
+    }, tMs);
+  } else { selfDrop(testRt); selfSkip('palette', 'not built on this device'); }
   /* the Wheel's ground worker, started later, sends pieces as numbers only
      where they are drawn so (a worker already running keeps what it was told:
      a piece it sends as numbers that this cannot draw is turned back into
@@ -962,6 +995,7 @@ export function setPaletteRenderer(r) {
   try { if (geo) geo.destroy(true); } catch (e) { /* gone */ }
   try { if (src) src.destroy(); } catch (e) { /* gone */ }
   _stats.prewarmed = true;
+  _stats.warmMs = Math.round((performance.now() - wT0) * 10) / 10;   /* v2.3.5234 */
   return _ok;
 }
 
@@ -982,9 +1016,43 @@ export function setOneBatchRenderer(r) {
   _oneWanted = choice.on;
   _oneStats.why = choice.why;
   _oneStats.renderer = name;
-  if (!_oneWanted || !webgl2(r)) { _oneOk = false; return false; }
+  if (!_oneWanted || !webgl2(r)) {
+    _oneOk = false;
+    selfSkip('one', !_oneWanted ? 'the three programs chosen (' + choice.why + ')' : 'no WebGL 2');
+    /* v2.3.5236 (14b): the three programs draw here, the figures' sharp
+       read the sharp batcher's: its own self-test (sharpPixels.js) */
+    try { sharpSelfTest(r); } catch (e) { /* not tested: drawn as today */ }
+    return false;
+  }
   let box = null, src = null;
   _oneRoute = true;
+  /* v2.3.5234: the self-test's pictures drawn here, first, before the
+     prewarm's full screen (copied behind a fence once the program is known
+     to link, below; taken at the top of a later frame) */
+  const tT0 = performance.now();
+  const wT0 = tT0;   /* v2.3.5234: the whole warm-up's ms */
+  const want = selfRgba();
+  let plain = null, nums = null, tps = null, sharp = null;
+  if (selfTestOn()) {
+    let sp = null, sn = null;
+    try {
+      const bs = new BufferImageSource({ resource: want, width: SELF_SIZE, height: SELF_SIZE, alphaMode: 'premultiplied-alpha' });
+      sp = new Sprite(new Texture({ source: bs }));
+      plain = selfDraw(r, sp, RenderTexture);
+      if (paletteOn()) {
+        tps = makePaletteSource({ idx: selfIdx(), w: SELF_SIZE, h: SELF_SIZE, stride: SELF_SIZE, rgba: selfPalBytes(), alphaMode: 'premultiplied-alpha', label: 'bt-one-selftest' });
+        if (tps) { sn = new Sprite(new Texture({ source: tps })); nums = selfDraw(r, sn, RenderTexture); }
+      }
+      /* v2.3.5236 (14b): and a figure's piece drawn twice its size: on this
+         route the sharp read is this program's (`_btSharp`), so it is tested
+         here (none where the sharp read is switched off) */
+      sharp = sharpSelfPicture(r);
+    } catch (e) { selfDrop([plain, nums, sharp]); plain = nums = sharp = null; }   /* not drawn: unread, kept as today */
+    try { if (sp) sp.destroy({ texture: true, textureSource: true }); } catch (e) { /* gone */ }
+    try { if (sn) sn.destroy(); } catch (e) { /* gone */ }
+    try { if (tps) tps.destroy(); } catch (e) { /* gone */ }
+  }
+  const tMs = performance.now() - tT0;
   try {
     box = new Container();
     const s = new Sprite(Texture.WHITE);
@@ -1005,10 +1073,41 @@ export function setOneBatchRenderer(r) {
     _oneStats.linkError = String((e && e.message) || e);
   }
   if (!_oneOk && !_oneStats.linkError) _oneStats.linkError = 'the one program did not build on this device';
+  /* ═══ v2.3.5234: THE SELF-TEST (card O PR 14a; rendering/selfTest.js) ═══
+     The one program drew the known 16 x 16 picture as a plain texture and,
+     where pictures are colour numbers, as numbers too (above): both copied
+     now behind a fence, taken at the top of a later frame and held to the
+     CPU's answer.  Wrong either way, and it falls back alone to the three
+     programs (the way of the owner's iPhone in TRAPS §225), at once: every
+     draw list is marked to be built again (setOneBatchLive).  Not read back
+     at all: kept as today (selfCheck). */
+  if (!selfTestOn()) selfSkip('one', 'no self-test on this page (?selftest=0)');
+  else if (_oneOk) {
+    const rts = [plain], wants = [want];
+    if (tps) { rts.push(nums); wants.push(want); }
+    if (sharp) { rts.push(sharp); wants.push(selfSharpWant()); }
+    selfQueue('one', r, rts, wants, () => {
+      _oneOk = false;
+      _oneStats.linkError = 'the one program drew the wrong picture (the self-test): the three programs';
+      setOneBatchLive(false);
+      /* v2.3.5236 (the gatekeeper's sitting 20, a medium): the three draw
+         now, and the figures' sharp read is the sharp batcher's -- the SAME
+         read (SHARP_SAMPLE_GLSL) the one program may just have drawn wrong,
+         which the shine in the frame reads with too.  Its own test, drawn
+         now with the one program's route off: wrong, the plain read, and the
+         shine to its pass (sheenBatchOn asks sharpSelfOff) */
+      try { sharpSelfTest(r); } catch (e) { /* not tested: drawn as today */ }
+    }, tMs);
+    if (sharp) selfSkip('sharp', 'the sharp read is the one program\'s here: in its test');
+  } else { selfDrop([plain, nums, sharp]); selfSkip('one', 'not built on this device'); }
   _oneRoute = _oneOk === true;
+  /* v2.3.5236 (14b): not built, the three programs draw: the sharp batcher's
+     own test (drawn now, with the one program's route off) */
+  if (!_oneOk) { try { sharpSelfTest(r); } catch (e) { /* not tested: drawn as today */ } }
   try { if (box) box.destroy({ children: true }); } catch (e) { /* gone */ }
   try { if (src) src.destroy(); } catch (e) { /* gone */ }
   _oneStats.prewarmed = true;
+  _oneStats.warmMs = Math.round((performance.now() - wT0) * 10) / 10;   /* v2.3.5234 */
   return _oneOk;
 }
 
@@ -1137,5 +1236,12 @@ export function paletteProgramLinked(r, program) { return programLinked(r, progr
 
 /** v2.3.3728: has the renderer said yet whether pictures are drawn as colour
  *  numbers here (setPaletteRenderer ran)?  p256.js waits on it: the effects
- *  load as their modules are read, before the renderer is made. */
-export function paletteDecided() { return _ok !== null; }
+ *  load as their modules are read, before the renderer is made.
+ *  v2.3.5234 (the gatekeeper's sitting 20, a medium): and has the palette's
+ *  self-test given its verdict?  Linked is `_ok` true before it: an effect's
+ *  twin or a tree loaded in that window (p256.js whenPaletteDecided,
+ *  paletteLoad.js treesWhenReady) stayed colour numbers for the sitting,
+ *  drawn by a program the verdict then found wrong.  They wait for it now (a
+ *  few frames, behind the loading screen; whenPaletteDecided's own cap
+ *  holds). */
+export function paletteDecided() { return _ok !== null && !selfPending('palette'); }

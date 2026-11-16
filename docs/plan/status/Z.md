@@ -1,40 +1,36 @@
 card: Z
-branch: claude/plan-z-sitting-17
-prs: (this PR), tag 5374, the last line of the list (ready)
+branch: claude/plan-z-sitting-20
+prs: (this PR), tag 5377, the last line of the list (ready)
 state: ready
 
 ## Done
-- Sitting 17, `main` 59469b2: the list rehearsed in its order (tree
-  d7a02deb, this branch aside): precheck 0 FAIL (2 WARN), build, questline
-  187 of 187; each base `main`, ONE merge base step by step (each card's
-  PRs stacked at its session's hand). Review: `census/review-z17.md`.
-  4.1 and 7.2 ticked; notes on 2.3, 4.2, 4.5, 4.7, 5.3b, 8.1, 9.5;
-  `TODO_LINE` 28 -> 27; BroTown.jsx's four lines and entityRenderer.js
-  8955 -> 8953.
+- Sitting 20, reviewed on `main` 29b1a0d, rehearsed on 481bac2 (sitting
+  19 in): the list's tree 1d7b826b: precheck 0 FAIL (2
+  WARN), build, questline 187 of 187; each base `main`, ONE merge base
+  step by step. Review: `census/review-z20.md`. Notes on 4.1, 7.1
+  (sitting 19's merges); no line earned room.
 
 ## The list: merge in this order, in one sitting, each "Create a merge commit"
-1 #1862 (R) · 2 #1851 (L) · 3 #1855 (L) · 4 #1861 (K) · 5 #1850 (O) ·
-6 #1854 (O) · 7 #1846 (P) · 8 #1859 (P) · 9 #1849 (J2) · 10 #1858 (J2) ·
-11 #1860 (J2) · 12 this PR. Eight deploy (1 to 7 and 10): back to back.
-New live flags `harvestdoor`, `dungeondoor` (ON, L's, stacked); new page
-switches `?ladderpass` (O), `?slimewalk` (P); no stored record changes
-its shape.
+J2: 1 #1879 · 2 #1888 · 3 #1892 · 4 #1902 · 5 #1904 · 6 #1912 · 7 #1916 ·
+8 #1919 · 9 #1921 · 10 #1924 · R: 11 #1877 · 12 #1887 · 13 #1895 ·
+14 #1898 · 15 #1922 · L: 16 #1876 · 17 #1894 · 18 #1903 · 19 #1910 ·
+O: 20 #1896 · 21 #1915 · P: 22 #1881 · 23 #1906 · 24 #1918 · 25 #1925 ·
+26 this PR. Twelve deploy (11 to 22): back to back. New live flags
+`fullsnap`, `resetbook`, `xferescrow` (all OFF: the owner's costs). New
+page switches `?racedoor`, `?harvestdoor`, `?posedoor`, `?guarddoor`,
+`?selftest`, `?hairmasks`, `?petsheet`, `?capehood`. No stored record of
+a player changes its shape.
 
-## Held (expires at sitting 18)
-- #1847 R: its MEDIUM (a device id in `inbox:` rows) mended at f72a19a
-  after the list was set: read it first at sitting 18.
-- #1863 T: leads sitting 18 at the head of `main` (check 13: every PR
-  adding a page switch row must write switches.js's block), and its
-  MEDIUM (the reader keeps one copy of an address the page rewrites).
-- #1848 K: `sprintmark` OFF stands; its ON path's two MEDIUMs not mended.
-- #1853 P: clean, but its head never took `main` 59469b2 (seven files
-  conflict); `artCache` 88.6 when it lands after #1846.
+## Held (expires at sitting 21)
+- Sitting 19's holds stated again (not read here): #1878 (RT-3), #1890,
+  #1897, #1907 (MOD), until a sitting reads their mends.
 
 ## Stalled
-- None.
+- Card K: its session stopped with the allowance; #1900 (7.2) waits for
+  a fresh K session's restack, carrying #1876 (race.js resolved).
 
 ## Found
-- K: nothing holds the `pose` row's `body: 'top'` now (#1861's reviewer).
-- O: the Speed test does not put the ladder back before it measures.
-- `power.test` red once in a full run under load (64/0 alone).
-- Not reviewed, opened during the sitting: L's #1864 (5216).
+- J2: reds on `main` the cards report (`mp-hairstencil`, `mp-palette`,
+  L's list); L, P, O, R: next-PR lows (the review's Found).
+- MOD's #1883 was on sitting 19's list, not merged: still open.
+- T: eight new page rows say `on` 2026-11-15: set each to its merge day.

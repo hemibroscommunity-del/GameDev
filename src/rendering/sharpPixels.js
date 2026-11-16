@@ -42,8 +42,10 @@ import {
   compileHighShaderGl, compileHighShaderGpuProgram, vertexGlTemplate, fragmentGlTemplate,
   globalUniformsBitGl, colorBitGl, colorBit, roundPixelsBitGl, roundPixelsBit, generateTextureBatchBit,
   getBatchSamplersUniformGroup, getMaxTexturesPerBatch,
+  BufferImageSource, Texture, Sprite, RenderTexture,
 } from 'pixi.js';
-import { liveSwitch } from './drawLists.js';
+import { liveSwitch, rebuildDrawLists } from './drawLists.js';
+import { selfDraw, selfQueue, selfSkip, selfTestOn, selfSharpRgba, selfSharpWant, SHARP_SRC, SELF_SIZE } from './selfTest.js';   /* v2.3.5236: the self-test at the door (card O PR 14b) */
 
 let _enabled = false;
 /* v2.3.3449: window.__btSharpOff, read below as a plain field */
@@ -247,7 +249,7 @@ export function installSharpPixels(app, figureSpec) {
     const orig = BatcherPipe.prototype.addToBatch;
     BatcherPipe.prototype.addToBatch = function (obj, instructionSet) {
       if (obj && obj.packAsQuad) {
-        const on = !_liveOff.on && wantsSharp(obj.renderable);
+        const on = !_liveOff.on && !_selfOff && wantsSharp(obj.renderable);
         const sh = on && _sheenName && obj.renderable ? obj.renderable._btSheen : null;
         obj.batcherName = on ? (sh && sh.on ? _sheenName : 'sharp') : 'default';
         if (on) _routed++;
@@ -267,6 +269,54 @@ export function installSharpPixels(app, figureSpec) {
   }
 }
 
+/* ═══ v2.3.5236: THE SELF-TEST AT THE DOOR (card O PR 14b; selfTest.js) ═══
+   The sharp read drawn on a known picture: 8 x 8 texels drawn twice their
+   size, where the sharp read gives every pixel a texel's own colour and the
+   plain read blends a quarter of the neighbour in (selfTest.js
+   selfSharpWant).  Where the one program draws (phones, tablets), the sharp
+   read is ITS (paletteTex.js `_btSharp`), and this picture is part of the
+   one program's test; where the three programs draw (a computer, a software
+   renderer, or the one program not built), it is this batcher's, tested
+   here (paletteTex.js setOneBatchRenderer calls this).  Wrong, and the
+   figures' pieces are drawn with the plain read, as `?sharp=0` and the live
+   switch draw them: every draw list rebuilt at once, and the shine drawn in
+   its own pass (sheenBatch.js sheenBatchOn asks sharpSelfOff). */
+let _selfOff = false;
+/** The self-test found the sharp read wrong here: the plain read (as off). */
+export function sharpSelfOff() { return _selfOff; }
+/** Pieces are routed to the sharp read now (installed, not switched off). */
+export function sharpRoutes() { return _enabled && !_liveOff.on && !_selfOff; }
+/** The known picture drawn twice its size as a figure's piece: the texture
+ *  (selfTest.js selfDraw), or null.  Whoever routes `_sharp` pieces now
+ *  draws it: the one program, or this batcher. */
+export function sharpSelfPicture(renderer) {
+  if (!sharpRoutes()) return null;
+  let sp = null, rt = null;
+  try {
+    const src = new BufferImageSource({ resource: selfSharpRgba(), width: SHARP_SRC, height: SHARP_SRC, alphaMode: 'premultiplied-alpha', scaleMode: 'linear', label: 'bt-sharp-selftest' });
+    sp = new Sprite(new Texture({ source: src }));
+    sp.width = SELF_SIZE; sp.height = SELF_SIZE;
+    sp._sharp = true;
+    rt = selfDraw(renderer, sp, RenderTexture);
+  } catch (e) { rt = null; }
+  try { if (sp) sp.destroy({ texture: true, textureSource: true }); } catch (e) { /* gone */ }
+  return rt;
+}
+/** The three programs draw here: this batcher's sharp read tested (and its
+ *  program built behind the loading screen, as it was not before). */
+export function sharpSelfTest(renderer) {
+  if (!_enabled) { selfSkip('sharp', _urlOff ? 'switched off (?sharp=0)' : 'not installed (WebGL 2 only)'); return false; }
+  if (!selfTestOn()) { selfSkip('sharp', 'no self-test on this page (?selftest=0)'); return false; }
+  const t0 = performance.now();
+  const rt = sharpSelfPicture(renderer);
+  if (!rt) { selfSkip('sharp', 'switched off live'); return false; }
+  selfQueue('sharp', renderer, rt, selfSharpWant(), () => {
+    _selfOff = true;
+    rebuildDrawLists();
+  }, performance.now() - t0);
+  return true;
+}
+
 if (typeof window !== 'undefined') {
-  window.__btSharp = () => ({ enabled: _enabled, off: _liveOff.on, urlOff: _urlOff, routedTotal: _routed, maxTextures: _maxTex, figRound: figRoundOn() });
+  window.__btSharp = () => ({ enabled: _enabled, off: _liveOff.on, urlOff: _urlOff, selfOff: _selfOff /* v2.3.5236 */, routedTotal: _routed, maxTextures: _maxTex, figRound: figRoundOn() });
 }

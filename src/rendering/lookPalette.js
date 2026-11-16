@@ -51,7 +51,7 @@
  *
  * Probe: window.__btLookPalette().
  */
-import { BatcherPipe, DefaultBatcher, ExtensionType, extensions, BufferImageSource, Texture, Rectangle, Sprite, Container, GlProgram, Shader, UniformGroup, SpritePipe, glUploadBufferImageResource } from 'pixi.js';
+import { BatcherPipe, DefaultBatcher, ExtensionType, extensions, BufferImageSource, Texture, Rectangle, Sprite, Container, GlProgram, Shader, UniformGroup, SpritePipe, glUploadBufferImageResource, RenderTexture } from 'pixi.js';
 import { paletteAtlasSource, takePaletteRow, givePaletteRow, paletteRendererOf } from './paletteTex.js';
 import { timeLimit } from './retryLooks.js';   /* v2.3.4452: a set's file that never answers has failed */
 import { unpackLookSheet, lookHeadRows, lookSheetSpec, lookSheetRows, LOOK_KIND_IDS, LOOK_MAX_ROLES } from './lookUnpack.js';   /* v2.3.5015: the picture's pixels to the sheet's bytes, on either thread; v2.3.5244: and a sheet's shape from its manifest (one copy, which node's gate reads too) */
@@ -59,7 +59,8 @@ import { destroyTextures } from './bulkTexDestroy.js';   /* v2.3.5011: the sweep
 import { clientOff } from '../game/clientOff.js';   /* v2.3.3716: the Test panel's live off switch (lane D's clientOff.js) */
 import { heapTrimOn } from './heapTrim.js';   /* v2.3.5007: the heap trim's switch (a sheet's frames made when first drawn) */
 import { lookPaletteChoice } from '../game/lookPaletteChoice.js';   /* v2.3.3838: not built on Windows */
-import { SheenGeometry, SHEEN_VS, sheenBitGl, packSheenQuad, SHEEN_BATCHER } from './lightfx/sheenBatch.js';   /* v2.3.4998: the shine on a numbers picture */
+import { SheenGeometry, SHEEN_VS, sheenBitGl, packSheenQuad, SHEEN_BATCHER, sheenParams, sheenBatchOn } from './lightfx/sheenBatch.js';   /* v2.3.4998: the shine on a numbers picture; v2.3.5236: its self-test's */
+import { selfDraw, selfQueue, selfSkip, selfPending, selfTestOn, selfLookManifest, selfLookPicture, selfLookWant, selfLookRow, sheenLiftCpu, SELF_SHEEN, SELF_SIZE } from './selfTest.js';   /* v2.3.5236: the self-test at the door (card O PR 14b) */
 
 export const LOOK_BATCHER = 'bt-look';
 /* ═══ v2.3.4998: THE LOOK PROGRAM WITH THE METAL'S SHINE ═══
@@ -1206,6 +1207,11 @@ export function lookSheenState() {
   if (!r || !_stats.sheets) return null;
   if (!webgl2(r)) return false;
   if (_okSheen === null) prewarmProgram();
+  /* v2.3.5236 (card O PR 14b): the program's self-test still waiting for its
+     verdict is "not known" too, so a choice made now (the armour's warm)
+     waits for it (whenLookKnown) rather than build on numbers that may be
+     taken away a few frames on */
+  if (selfPending('look')) return null;
   return _ok === false ? false : _okSheen;
 }
 /** v2.3.5000: resolves once the look program's answer is known (lookSheenState
@@ -1477,6 +1483,65 @@ function prewarmProgram() {
     }
     try { if (box) box.destroy({ children: true }); } catch (e) { /* gone */ }
   }
+  if (_ok) lookSelfTest(r);
+  else selfSkip('look', 'not built on this device');
+}
+
+/* ═══ v2.3.5236: THE SELF-TEST AT THE DOOR (card O PR 14b; selfTest.js) ═══
+   Built, the look program draws a sheet of its own (selfTest.js SELF_LOOK:
+   16 x 16 numbers at 8 bits, a table of four colours, two of them a role
+   recoloured by a row of the colours' atlas) at its size, held to the CPU's
+   answer (its header, table, roles and row all read); and, where its shine
+   form is built, the same sheet as a figure's piece with a shine (the
+   sheen's own answer over the look's, a channel allowed 4).  Wrong, and
+   every look is baked, as on a computer (or as the Test panel's switch
+   draws it): `_ok` false, which lookPaletteOn and lookSheenState read, and
+   each caller asks again as it draws.  Until the verdict, lookSheenState
+   says "not known", so the armour's choice waits (TRAPS §340). */
+function lookSelfTest(r) {
+  if (!selfTestOn()) { selfSkip('look', 'no self-test on this page (?selftest=0)'); return; }
+  const t0 = performance.now();
+  let src = null, row = -1;
+  const sprites = [], rts = [], wants = [];
+  try {
+    const { m, roles } = selfLookManifest();
+    const spec = lookSheetSpec(m, roles, 0);
+    const bytes = unpackLookSheet(selfLookPicture(), spec);
+    src = new BufferImageSource({
+      resource: bytes, width: m.w, height: spec.rows, resolution: 1, format: 'r8unorm', scaleMode: 'nearest', alphaMode: 'premultiplied-alpha',
+      autoGenerateMipmaps: false, autoGarbageCollect: false, label: 'bt-look-selftest',
+    });
+    src._btLook = { ds: 1, w: m.w, rows: spec.rows, bits: 8, n: m.h, spec: () => spec, make: () => unpackLookSheet(selfLookPicture(), spec), url: null };
+    row = takePaletteRow(selfLookRow());
+    const look = { row };
+    const piece = (shine) => {
+      const t = new Texture({ source: src, frame: new Rectangle(0, 0, SELF_SIZE, SELF_SIZE) });
+      t._btLook = look;
+      t._btLookDir = -1;
+      const sp = new Sprite(t);
+      if (shine) {
+        sp._sharp = true;
+        sp._btSheen = sheenParams(null);
+        Object.assign(sp._btSheen, { on: true, r: SELF_SHEEN.r, g: SELF_SHEEN.g, b: SELF_SHEEN.b, k: SELF_SHEEN.k, sx: 0, sy: 0 });
+      }
+      sprites.push(sp);
+      return sp;
+    };
+    const want = selfLookWant(row >= 0);
+    rts.push(selfDraw(r, piece(false), RenderTexture)); wants.push(want);
+    /* the shine form only where a shining piece reaches it in play (glint.js
+       marks pieces for the shine in the frame only while sheenBatchOn) */
+    if (_okSheen === true && sheenBatchOn()) { rts.push(selfDraw(r, piece(true), RenderTexture)); wants.push({ want: sheenLiftCpu(want, SELF_SHEEN), tol: 4 }); }
+  } catch (e) { /* what was drawn is judged; the rest unread */ }
+  for (const sp of sprites) { try { sp.destroy({ texture: true }); } catch (e) { /* gone */ } }
+  try { if (src) src.destroy(); } catch (e) { /* gone */ }
+  if (row >= 0) givePaletteRow(row);
+  if (!rts.length) { rts.push(null); wants.push(selfLookWant(false)); }   /* not drawn: unread, kept as today */
+  selfQueue('look', r, rts, wants, () => {
+    _ok = false;
+    _okSheen = false;
+    _stats.linkError = 'the look program drew the wrong picture (the self-test): each look baked';
+  }, performance.now() - t0);
 }
 /** v2.3.3883: a new renderer (initPixiRenderer: the first, and a black
  *  screen's rebuild) -- the look program built and the sheets sent to it

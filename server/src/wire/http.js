@@ -259,6 +259,14 @@ export const WIRE_HTTP = [
   { name: 'http:/api/admin/player', dir: 'in', at: 'admin.js _adminFetch', wayIn: 'admin', envelope: 'http',
     phase: ['none checked'], mayStart: 'owner', doesWhat: ['reads'], reqId: 'harmless',
     trust: { id: 'request' }, absent: 'refused: no id is a 400', bad: ['taken'], answer: 'http' },
+  /* v2.3.5286 (card R PR 7): the paged export (admin.js exportPage).  On;
+     `roomexport: false` turns it off; never a login key or the hidden settings */
+  { name: 'http:/api/admin/export', dir: 'in', at: 'admin.js _adminFetch', wayIn: 'admin', envelope: 'http',
+    phase: ['none checked'], mayStart: 'owner', doesWhat: ['reads'], reqId: 'harmless',
+    trust: { prefix: 'request', player: 'request', cursor: 'request', limit: 'request' },
+    absent: 'refused: no prefix and no player, or both, is a 400; default: no cursor is the first page; default: no limit is 50',
+    bad: ['refused', 'clamped'], answer: 'http', flag: 'roomexport',
+    note: ['bad: a prefix the registry does not mark or the export\'s allow list (EXPORT.ALLOW) does not give, a cursor from another ask is refused; a limit past 200 is clamped'] },
   { name: 'http:/api/admin/grant', dir: 'in', at: 'admin.js _adminFetch', wayIn: 'admin', envelope: 'http',
     phase: ['none checked'], mayStart: 'owner', doesWhat: ['speaks', 'others'], reqId: 'opId',
     trust: { playerId: 'request', kind: 'request', 'payload.amount': 'request', 'payload.invKey': 'request',
@@ -278,7 +286,7 @@ export const WIRE_HTTP = [
     trust: { id: 'request' }, absent: 'refused: no id is a 400', bad: ['taken'], answer: 'http' },
   { name: 'http:/api/admin/restore', dir: 'in', at: 'admin.js _adminFetch', wayIn: 'admin', envelope: 'http',
     phase: ['none checked'], mayStart: 'owner', doesWhat: ['others'], reqId: 'harmless',
-    trust: { playerId: 'request', snapKey: 'request' }, absent: 'refused: no playerId or no snapKey is a 400',
+    trust: { playerId: 'request', snapKey: 'request', dry: 'request' }, absent: 'refused: no playerId or no snapKey is a 400',   /* v2.3.5285: `dry: true` writes nothing (playerrestore.js) */
     bad: ['refused'], answer: 'http',
     note: ['doesWhat: cannot be undone by any route but another restore from that prerestore copy (so not final)',
          'phase, of the player the route names (not the owner who calls): session:!joined'] },
