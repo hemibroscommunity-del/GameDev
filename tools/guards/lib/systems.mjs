@@ -121,9 +121,9 @@ export const SYSTEMS = Object.freeze({
      guard: server-core's and liveops' include suites that fail under the
      guard's preload with any flag (tick-pace, cold-flags; card T's Found). */
   ops: {
-    what: 'the room under a crowd and the watch on it: its health for a monitor, the waiting crowd\'s pace, a seat held, the public boards\' and the room\'s public reads',
-    files: [f('server/src', 'health|rfspread|seathold|publicreads')],   /* v2.3.5609: publicreads */
-    words: ['room-health', 'rf-spread', 'seat-hold', 'board-cache', 'public-reads'],   /* v2.3.5608: board-cache (leaderboard.js stays social's file) */
+    what: 'the room under a crowd and the watch on it: its health for a monitor, the waiting crowd\'s pace, a seat held, the public boards\' and the room\'s public reads, a guest\'s join',
+    files: [f('server/src', 'health|rfspread|seathold|publicreads|guestlazy')],   /* v2.3.5609: publicreads; v2.3.5610: guestlazy */
+    words: ['room-health', 'rf-spread', 'seat-hold', 'board-cache', 'public-reads', 'guest-lazy'],   /* v2.3.5608: board-cache (leaderboard.js stays social's file) */
     traps: [],
     doors: [],
   },

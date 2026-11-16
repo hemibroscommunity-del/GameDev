@@ -127,10 +127,11 @@ async function makeRoom() {
 const ARRIVAL = { x: 21504, y: 21792 };
 const mv = (x, y, vx = 0, vy = 0, z = 'wheel') => ({ type: 'move', x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10, d: 'down', f: 'south',
   eqc: 'none', eql: 'none', eqs: 'none', ex: null, z, vx: Math.round(vx), vy: Math.round(vy), dodging: false, blocking: false, ba: null, dead: false });
-async function join(room, id) {
+async function join(room, id, phrase) {
   const ws = fakeWs();
   room.sessions.set(ws, baseSession());
-  await room.webSocketMessage(ws, JSON.stringify({ type: 'join', id, name: id, protocolVersion: 2, data: { x: 1000, y: 1000, z: 'town' } }));
+  /* v2.3.5610: `phrase`: a join with a key (a real phone's); without one, a guest's (guestlazy.js) */
+  await room.webSocketMessage(ws, JSON.stringify({ type: 'join', id, name: id, ...(phrase ? { phrase } : {}), protocolVersion: 2, data: { x: 1000, y: 1000, z: 'town' } }));
   await room.webSocketMessage(ws, JSON.stringify(mv(ARRIVAL.x, ARRIVAL.y)));   /* down the stairs, into the Wheel */
   return { ws, id };
 }
@@ -346,17 +347,28 @@ const FAST = 110;
 {
   const { room, state } = await makeRoom();
   const w0 = state.writes.length;
-  const p = await join(room, 'cg_new');
+  /* v2.3.5610: with its key, as every phone of the game joins (a keyless join is a guest's: 7c) */
+  const p = await join(room, 'cg_new', 'p-cg_new');
   const fresh = mine(state, 'cg_new', w0);
   check(`7. a new character's join and arrival in the Wheel: ${fresh.length} rows (${Object.entries(byPrefix(fresh)).map((e) => e.join(' ')).join(', ')}), at most 6`,
     fresh.length <= 6, fresh);
   await room.webSocketClose(p.ws, 1000, 'bye', true);
   NOW += 60000;
   const w1 = state.writes.length;
-  await join(room, 'cg_new');
+  await join(room, 'cg_new', 'p-cg_new');
   const again = mine(state, 'cg_new', w1);
   check(`7b. coming back the same day: ${again.length} rows (${Object.entries(byPrefix(again)).map((e) => e.join(' ')).join(', ') || 'none'}), at most 4`,
     again.length <= 4, again);
+  /* v2.3.5610: a guest's (no key, nothing on file): its join and arrival write
+     nothing of its own; a guest that left having done nothing, only the bot
+     signals' botstat (guestlazy.js; red team RT-1 N6: it was 5 rows, 4 for good) */
+  const w2 = state.writes.length;
+  const g = await join(room, 'cg_guest');
+  const gj = mine(state, 'cg_guest', w2);
+  await room.webSocketClose(g.ws, 1000, 'bye', true);
+  const gl = mine(state, 'cg_guest', w2).filter((k) => k.indexOf('botstat:') !== 0);
+  check(`7c. a guest's join and arrival: ${gj.length} rows (${Object.entries(byPrefix(gj)).map((e) => e.join(' ')).join(', ') || 'none'}), and leaving having done nothing ${gl.length} more but its botstat, at most 0`,
+    gj.length === 0 && gl.length === 0, { gj, gl });
 }
 
 /* ── 8. the room's own ─────────────────────────────────────────────────── */
