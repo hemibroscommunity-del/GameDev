@@ -107,12 +107,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (!A.ctx) { try { A.unlock(); } catch (e) { /* reported below */ } }
     if (A.ctx && A.ctx.state !== 'running') { try { await A.ctx.resume(); } catch (e) { /* reported below */ } }
     const keys = C.keys();
+    /* v2.3.5438 (card J2): the sound cache is on by default since v2.3.3735 (data/sfxCache.js, mp-sfxcache): only the
+       pinned are decoded on the loading screen, every other file's BYTES held and decoded on its first play -- so a
+       sample is in when it is decoded or its file is held (every key "missing" on main each run).  Whether each new cue
+       starts is `silent` below, as before */
+    const inHand = (k) => !!((A._samples && A._samples[k]) || (A.SFX_MANIFEST && A._sfxBytes && A._sfxBytes[A.SFX_MANIFEST[k]]));
     const t0 = Date.now();
-    while (Date.now() - t0 < 25000 && !keys.every((k) => A._samples && A._samples[k])) await new Promise((r) => setTimeout(r, 250));
+    while (Date.now() - t0 < 25000 && !keys.every(inHand)) await new Promise((r) => setTimeout(r, 250));
     const names = C.names();
     C.reset();
     const silent = NEW.filter((n) => names.indexOf(n) < 0 || !C.play(n, 0.05));
-    return { probe: true, ctx: !!A.ctx, state: A.ctx && A.ctx.state, muted: !!A.muted, missing: keys.filter((k) => !(A._samples && A._samples[k])),
+    return { probe: true, ctx: !!A.ctx, state: A.ctx && A.ctx.state, muted: !!A.muted, missing: keys.filter((k) => !inHand(k)),
       silent, forge: !!window.__btForge, trap: typeof window.__btTrap === 'function', ws: typeof window.__btWsEvent === 'function', dispatch: typeof window.__btDispatch === 'function' };
   }, NEW);
   rec.ok(`setup: in the Wheel (${zone}), the sound up (${audio.state}), and every one of the ${NEW.length} new cues starts (its samples decoded on the loading screen)`,
@@ -249,7 +254,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await new Promise((r) => setTimeout(r, 2500));
       return { played: F.st.played - n0 };
     });
-    rec.ok(`8b. ${R + 400} px away it is not heard (${names(far)})`, far.out.played === 0 && far.cues.length === 0, far);
+    /* v2.3.5438 (card J2): the ANVIL is not heard: a townsperson's own move near you in the same 2.5 s (a cheer at
+       0.6, a pop and laugh at 0.102) is not the forge's (red by run) */
+    rec.ok(`8b. ${R + 400} px away it is not heard (${names(far)})`, far.out.played === 0 && !far.cues.some((c) => c.name === 'anvil'), far);
   }
 
   /* ═══ the third look ═══ */
@@ -302,6 +309,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return { at, cues: r, clicked: c1 > c0 };
   };
   const heard = (r, name) => r.cues.filter((c) => c.name === name && c.played);
+  /* v2.3.5438 (card J2): YOUR move's sounds are the ones at full (k 1); the townsfolk's own moves are heard too, softer
+     by how far (townsfolkReact.js: Lil Bro copies the nearest player within REACT.NEAR, and the townsfolk walk), so a
+     faint pop of someone's further off came in the same window (0.049, 0.031; a pop and slap at 0.311 after a facepalm:
+     9a and 10 red by run).  Yours are counted as yours; Lil Bro's copy is the softer pop after it */
+  const mine = (r, name) => heard(r, name).filter((c) => c.k === 1);
 
   const cleared = await closeCards();
   rec.ok(`9. setup: nothing lies over the screen (${cleared ? 'clear' : 'a card would not close'})`, cleared, null);
@@ -314,7 +326,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── 9. your moves on the picker ── */
   const palm = await tapMove('facepalm');
   rec.ok(`9a. a facepalm, tapped: its pop and its slap (${palm.cues.map((c) => c.name).join('+') || 'nothing'}), and the tile's menu click stood down (${palm.clicked ? 'it clicked too' : 'it did'})`,
-    !!palm.at && !palm.at.err && heard(palm, 'emotePop').length === 1 && heard(palm, 'slap').length === 1 && !palm.clicked, palm);
+    !!palm.at && !palm.at.err && mine(palm, 'emotePop').length === 1 && mine(palm, 'slap').length === 1 && !palm.clicked, palm);
   await P.page.waitForTimeout(1300);   /* the emotes' one-a-second */
   const sat = await tapMove('sit');
   rec.ok(`9b. sitting down: its bump (${sat.cues.map((c) => c.name).join('+') || 'nothing'})`, heard(sat, 'sitDown').length === 1 && !sat.clicked, sat);
@@ -328,9 +340,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await H.hopTo(P, lil.x + 110, lil.y + 40);
     await P.page.waitForTimeout(1000);
     const wave = await tapMove('wave', 1500);
-    const pops = heard(wave, 'emotePop');
+    const all = heard(wave, 'emotePop'), at = all.findIndex((c) => c.k === 1);
+    /* yours (the one at full), then his: the next pop after it, softer */
+    const pops = at < 0 ? [] : [all[at], all.slice(at + 1).find((c) => c.k > 0 && c.k < 1)].filter(Boolean);
     rec.ok(`10. Lil Bro copies your wave: your pop (${pops[0] ? pops[0].k : 'none'}), then his, softer (${pops[1] ? pops[1].k : 'none'})`,
-      pops.length === 2 && pops[0].k === 1 && pops[1].k > 0 && pops[1].k <= 0.6, wave);
+      pops.length === 2 && mine(wave, 'emotePop').length === 1 && pops[1].k > 0 && pops[1].k <= 0.6, wave);
     await P.page.evaluate(() => { const b = document.querySelector('[data-emote-close], .bt-inspect-close'); if (b) b.click(); });
   } else rec.ok('10. Lil Bro is in the town (guard)', false, null);
 
@@ -374,19 +388,25 @@ export async function run({ browser, wsPort, webPort, rec }) {
   if (ace) {
     await H.hopTo(P, ace.x + 36, ace.y + 30);
     await P.page.waitForTimeout(900);
-    let a = null;
-    for (let i = 0; i < 20; i++) {
-      const n = await npcAt('Ace');
-      const cur = n ? await screenOf(n.x, n.y - 26) : null;
-      if (cur && a && Math.abs(cur.x - a.x) < 1.5 && Math.abs(cur.y - a.y) < 1.5) break;
-      a = cur;
-      await P.page.waitForTimeout(80);
+    /* v2.3.5438 (card J2): the townsfolk walk (townsfolkWalk.js), and a stall on this box can let Ace step on between
+       the read of his place and the finger (no tap on him at all: red 1 run of 3).  A tap that met nobody opened
+       nothing, so he is found and tapped again, 3 tries at the most; what is judged is unchanged */
+    let a = null, tap = null, c0 = 0;
+    for (let tryN = 0; tryN < 3 && !tap; tryN++) {
+      a = null;
+      for (let i = 0; i < 20; i++) {
+        const n = await npcAt('Ace');
+        const cur = n ? await screenOf(n.x, n.y - 26) : null;
+        if (cur && a && Math.abs(cur.x - a.x) < 1.5 && Math.abs(cur.y - a.y) < 1.5) break;
+        a = cur;
+        await P.page.waitForTimeout(80);
+      }
+      c0 = await clickAt();
+      const t0 = await P.page.evaluate(() => Date.now());
+      if (a) await P.page.touchscreen.tap(a.x, a.y);
+      await P.page.waitForTimeout(900);
+      tap = await P.page.evaluate((t0) => { const r = window.__btNpcTap; return r && r.ts >= t0 - 50 ? r : null; }, t0);
     }
-    const c0 = await clickAt();
-    const t0 = await P.page.evaluate(() => Date.now());
-    if (a) await P.page.touchscreen.tap(a.x, a.y);
-    await P.page.waitForTimeout(900);
-    const tap = await P.page.evaluate((t0) => { const r = window.__btNpcTap; return r && r.ts >= t0 - 50 ? r : null; }, t0);
     const c1 = await clickAt();
     rec.ok(`12a. a tap on Ace opens his coin flip with the menu click (${tap ? tap.result : 'no tap'}, ${c1 > c0 ? 'clicked' : 'silent'})`, !!tap && tap.result === 'flip' && c1 > c0, { a, tap });
     await closeCards();

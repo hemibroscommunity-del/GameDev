@@ -608,6 +608,8 @@ export const movementMethods = {
       this._rideEnd(ps, 'edge', session.id);
     }
     const _sprintK = typeof this._sprintK === 'function' ? this._sprintK(ps, msg, _now) : 1;
+    let _needSprint = false;   /* v2.3.5541: the move needed the sprint's wide bound (set where it is judged; sprint.js _sprintPay) */
+    let _k = _sprintK;         /* v2.3.5541: the multiplier the move is judged at: with the sprint mark, MULT only for a move it bills (below) */
     /* v2.3.3325: where this move is judged from -- the worker's own place in
        this zone, or, coming back into the Wheel, where the player left it
        (MOVE_BUDGET above, "THE BYPASSES") -- and where it puts them */
@@ -658,13 +660,62 @@ export const movementMethods = {
          else on the wire can raise it. */
       const dx = msg.x - _fromX;
       const dy = msg.y - _fromY;
+      /* v2.3.5541: THE SPRINT MARK (`sprintmark: true`, an opt-in): a budget
+         of the WALK's own, refilled at the walk's rate and spent by every
+         move, so a move on the sprint's wide bound knows whether it needed
+         it -- a run past the walk's speed for longer than the walk's burst
+         (sprint.js _sprintPay).  Its own: the budget below refills at the
+         sprint's rate inside the grace, and the per-message bound's slack
+         hides a step.  Kept only while the mark is on. */
+      if (typeof this._sprintMarkOn === 'function' && this._sprintMarkOn()) {
+        const _d = Math.sqrt(dx * dx + dy * dy);
+        const _wr = MOVE_BUDGET.SPEED_PX * _spdCap * _moveMult, _wcap = _wr * MOVE_BUDGET.BURST_S + MOVE_BUDGET.SLACK_PX;
+        const _w = ps._mvWalk || (ps._mvWalk = { b: _wcap, at: _now });
+        _w.b = Math.min(_wcap, _w.b + _wr * Math.max(0, (_now - _w.at) / 1000)); _w.at = _now;
+        _needSprint = _sprintK > 1 && _d > _w.b + _gust;
+        _w.b = Math.max(0, _w.b - _d);
+        /* v2.3.5541 (the claims' bench: the move liar took 156,205 px in 4
+           minutes with the mark on, exactly what it took with it off, though
+           billed for 197 s of it): ...AND THE SPRINT'S BOUND ONLY FOR WHAT IS
+           BILLED.  The bill alone never slowed it.  Its stamina ran out every
+           3 s, but the grace's wide bound held on for 1.5 s after the last
+           paid step, the regen put MIN_START back before the grace ran out,
+           and the few moves at the walk were paid for by the budget below,
+           which had refilled at the sprint's rate all through the grace.  So
+           with the mark the budget refills at the sprint's rate only over a
+           gap the worker bills (sprint.js _sprintBilled): a sprint step in a
+           run under way, or a carried move.  A run's first step, a move on
+           the grace's bound that is not carried, one with no stamina to pay:
+           all are judged at the walk.  An honest phone's budget is never the
+           worse for it: it walks under the walk's rate and sprints under the
+           sprint's, both refilling, so its budget sits full.
+           A run's first step bills nothing (standing still is never billed)
+           and is judged at the walk -- unless the walk's own bound cannot
+           cover it: then it is billed its own gap, since the move before, as
+           if its run were under way (a liar marking only the steps the walk
+           cannot cover, each one a run's first, paid for none). */
+        if (ps._sprintStep === true && !ps._sprintPrevPaid && typeof ps.lastMoveAt === 'number'
+          && _d > (_budgetOn ? this._moveBudgetNow(ps, _wr, _now) : _wr * dt + MOVE_BUDGET.SLACK_PX) + _gust) {
+          ps._sprintPrevPaid = 'first'; ps._sprintBilledAt = ps.lastMoveAt;
+        }
+        /* review-z18 (the gatekeeper, sitting 18): ...and a move that goes
+           nowhere (0.5 px or less) is judged at the walk too.  _sprintPay
+           bills nothing under 0.5 px and ends the run, so with the sprint's
+           bound its gap refilled the budget at the sprint's rate, and the
+           next marked move spent that bank free (658 px a second, no
+           stamina; sprint.test §11) */
+        if (!(_d > 0.5) || !this._sprintBilled(ps, _needSprint)) {
+          _k = 1;
+          _needSprint = false;   /* not carried: the run ends (sprint.js _sprintPay) */
+        }
+      }
       if (_budgetOn) {
         /* v2.3.3325: the budget (MOVE_BUDGET above), refilled since the last
            judged move at this move's own bound and spent by what it covers;
            past it, the move is taken as far as it reaches, toward where the
            phone says it is, and the worker's copy catches up on the moves
            after */
-        const rate = MOVE_BUDGET.SPEED_PX * _spdCap * _moveMult * _sprintK;
+        const rate = MOVE_BUDGET.SPEED_PX * _spdCap * _moveMult * _k;
         const budget = this._moveBudgetNow(ps, rate, _now);
         const dist = Math.sqrt(dx * dx + dy * dy);
         const reach = budget + _gust;
@@ -688,7 +739,7 @@ export const movementMethods = {
         }
         ps._mvBudgetAt = _now;
       } else {
-        const maxDist = 500 * _spdCap * _moveMult * _sprintK * dt + 80 + _gust;
+        const maxDist = 500 * _spdCap * _moveMult * _k * dt + 80 + _gust;
         if (dx * dx + dy * dy > maxDist * maxDist) {
           // Reject: do not update ps.x/y.  Still update lastMoveAt
           // so spam-bursts don't compound dt.  dropped silently --
@@ -769,7 +820,7 @@ export const movementMethods = {
       /* v2.3.3325: where the bound put them -- the phone's place, or as far
          toward it as the budget reached */
       ps.x = _toX; ps.y = _toY;
-      if (ps._sprintStep && typeof this._sprintPay === 'function') this._sprintPay(ps, _stepPx, _now, session.id);
+      if (ps._sprintStep && typeof this._sprintPay === 'function') this._sprintPay(ps, _stepPx, _now, session.id, _needSprint);
       /* v2.3.1107: accept any DEFINED d/f, not just truthy -- today
          both are non-empty strings so `||` worked, but a future
          numeric encoding (0 = north) would silently stop relaying.
@@ -857,7 +908,7 @@ export const movementMethods = {
       if (msg.dead !== undefined && this._serverDeadOff()) this._lifeDeadClaim(ps, msg.dead);   /* v2.3.4820: the life door's one claim road */
       /* v2.3.3392: a held pose ends when the player really moves (poses.js):
          the worker's own word, so a walker is never drawn sitting */
-      if (ps.po && this._poseEndsOn(ps, _stepPx, zoneChanged, msg)) ps.po = null;
+      if (ps.po && this._poseEndsOn(ps, _stepPx, zoneChanged, msg)) this._poseTo(ps, null, 'move');   /* v2.3.5216: the pose door */
       /* v2.3.3525: a race under way judges the step the worker just took
          (race.js) -- one property read when there is none */
       /* v2.3.3776: off the board past the safe ground's edge, out of the
@@ -869,7 +920,7 @@ export const movementMethods = {
       this.dirtyPlayers.add(session.id);
       /* v2.3.3732: and moved on along its speed until the next move, if its
          phone asks (movepath.js) */
-      this._movePathNote(session.id, ps, msg, _now, _sprintK);
+      this._movePathNote(session.id, ps, msg, _now, _k);   /* v2.3.5541: _k, so a move judged at the walk glides at it */
     }
 
     // Zone change handling.

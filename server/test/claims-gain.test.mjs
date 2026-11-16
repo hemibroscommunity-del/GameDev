@@ -41,8 +41,8 @@ import * as B from './claimbots.mjs';
 const BAR = 1.5;
 /* today's gains (main 82fb78d, the default seed): a line only falls */
 const LINES = {
-  reach: 2.96, bowlabel: 3.76, guard: 1.37, cookshield: 0.67, move: 4.35, harvest: 1.86, cook: 1.59, quest: 1, sale: 1, local: 1,
-};
+  reach: 2.96, bowlabel: 3.76, guard: 1.37, cookshield: 0.67, move: 2.56, harvest: 1.86, cook: 1.59, quest: 1, sale: 1, local: 1,
+};   /* v2.3.5541: move 4.35 -> 2.56 (the sprint mark, ON: the run goes on through the grace, and the sprint's bound only for what is billed; review-z16) */
 /* each gain's spread over five other seeds (CLAIMS_SEED=a..e, --gains:
    the highest less the lowest, rounded up), measured 2026-11-14.  A gain
    fails only past its line by more than its spread, so a change elsewhere in
@@ -92,8 +92,11 @@ const CLAIMS = [
     honest: [['the honest sword, its guard down while it swings', B.honestSword]],
     liar: ['its own fire by the field; after each kill `ex: \'cook\'` with no fish, the 3 s re-arm waited out', B.liarCookShield] },
   { id: 'move', what: 'the move', judge: '`MOVE_BUDGET`: 500 px a second and a 3 s burst (movement.js), the sprint mark (sprint.js), and no walls on the worker',
-    take: 'px', world: { tickMs: 200 },
-    honest: [['the honest walker: 150 px a second, point to point', B.mover, { speed: B.WALK }]],
+    /* v2.3.5541: measured with the sprint mark ON (`sprintmark: true`), which lands OFF until the owner's yes: the line is what the yes gives */
+    take: 'px', world: { tickMs: 200, flags: { sprintmark: true } },
+    honest: [['the honest walker: 150 px a second, point to point', B.mover, { speed: B.WALK }],
+      /* v2.3.5541: the sprint mark's honest bot (sprint.js, `sprintmark`) */
+      ['the honest sprinter: 3 s sprinting (every move marked), 0.8 s walking, again', B.mover, { speed: B.WALK, sprinter: true }]],
     liar: ['point to point at 660 px a second, every other step marked a sprint', B.mover, { speed: 660, sprintHole: true }] },
   { id: 'harvest', what: 'the harvest\'s grade', judge: 'the phone\'s `accuracy` on `node_strike` (gathering.js), believed when its swipe looks a person\'s (botfp.js); a perfect pays 2 ore',
     take: 'ore', world: { tickMs: 200, recs: () => ({ bp_bench_h: B.harvestRec() }) },
@@ -128,7 +131,7 @@ async function runBot(c, [who, bot, opts], { d = null, ms, plant = null, flags =
   try { return await runIn(clock, c, w, bot, opts, { d, ms, plant, flags }); } finally { clock.restore(); }
 }
 async function runIn(clock, c, w, bot, opts, { d, ms, plant, flags }) {
-  const W = await B.makeWorld(clock, { tickMs: w.tickMs || 200, prep: w.prep || null, recs: w.recs ? w.recs() : {}, plant, ...(flags ? { flags } : {}) });
+  const W = await B.makeWorld(clock, { tickMs: w.tickMs || 200, prep: w.prep || null, recs: w.recs ? w.recs() : {}, plant, ...((flags || w.flags) ? { flags: flags || w.flags } : {}) });
   const ph = new B.Phone(W, null, d, ms);
   const take = blank();
   const quiet = { l: console.log, w: console.warn, e: console.error };
@@ -185,6 +188,20 @@ check('2: ...nor on the gain runs', gainRuns.length === 0, gainRuns);
    some to the plain 210 ms floor: what the mend gives back. */
 const stepOff = GAINS_ONLY ? null : await runBot(CLAIMS.find((c) => c.id === 'bowlabel'), [STEPPER, B.honestBow, { stepIn: true }], { ms: GAIN_MIN * B.MIN, flags: { arrowlane: false } });
 if (stepOff) check(`2b: the stepping archer keeps every arrow; with \`arrowlane: false\` it loses ${stepOff.refusals.length} in ${GAIN_MIN} minutes`, stepOff.refusals.length > 0 && stepOff.refusals.every((x) => /arrow in reach did not land/.test(x)), stepOff.refusals.slice(0, 3));
+/* v2.3.5541 (card K, step 4.2): THE SPRINT MARK.  The move's liar marks
+   every other step a sprint; with the run going on through the grace
+   (sprint.js, `sprintmark: true`: the move's world above) it pays for its
+   sprint and takes less ground; with the switch as it lands, OFF (the
+   owner's yes waits), it takes what it took. */
+{
+  const mc = CLAIMS.find((c) => c.id === 'move');
+  const on = rows.find((r) => r.c.id === 'move');
+  const off = GAINS_ONLY ? null : await runBot(mc, mc.liar, { ms: GAIN_MIN * B.MIN, flags: {} });
+  if (off && on) {
+    const offV = perHour(mc, valueOf(mc, off.take), off.ms);
+    check(`2c: the sprint mark: the move's liar takes ${Math.round(on.liar.v)} px an hour with \`sprintmark: true\`, and ${Math.round(offV)} as it lands (off)`, offV > on.liar.v * 1.1, { on: on.liar.v, off: offV });
+  }
+}
 for (const r of rows) {
   const line = LINES[r.c.id];
   check(`3: ${r.c.id}: its gain ${r.gain} is within its line ${line} and its spread ${SPREAD[r.c.id]} (${r.gain <= BAR ? 'under' : 'over'} the bar ${BAR})`, r.gain <= line + SPREAD[r.c.id] + 1e-9, { honest: Math.round(r.best.v), liar: Math.round(r.liar.v) });

@@ -105,14 +105,16 @@ const HAIRMASKS_ON = !NO_TWINS && !/[?&]hairmasks=0(&|$)/.test(_q) && !/[?&]alph
    the sheet itself, unchanged.  `?petsheet=0` keeps it a picture. */
 const PET_SHEET_P = /^\/sprites\/pets\/pet-sheet\.png$/;
 const PET_SHEET_ON = !NO_TWINS && !/[?&]petsheet=0(&|$)/.test(_q);
-/* v2.3.5564, `cape-hood`: a cape's hood (capeSprites.js, the crimson cape's
-   three cut facings, behind the loading screen with the capes): the hood
-   halves drawn over the hair, and their hair masks, the silhouettes the hair
-   is clipped to under a hood (hairClip.js, as a hat's).  1.5 MB held as
-   pictures in the page at the memory check's fight.  The halves cut to 256
-   colours; the masks exact, and on the hats' masks' row (bundleOf).
-   `?capehood=0` keeps them pictures; and with `?alphaclip`, as the hats'. */
-const CAPE_HOOD = /^\/sprites\/traits\/cape\/[a-z0-9-]+\/hood\/(?:hairmask-)?(?:east|south|southwest)\.png$/;
+/* v2.3.5564, `cape-hood`: a cape's hood's hair masks, the silhouettes the
+   hair is clipped to under a hood (hairClip.js, as a hat's; capeSprites.js,
+   the crimson cape's three cut facings, behind the loading screen with the
+   capes): exact, and on the hats' masks' row (bundleOf).  NOT the hood's
+   halves (sitting 20, answer (a)): a cape is pixel art drawn crisp (its
+   source `nearest`, and sharpPixels.js's read as a piece of the figure), and
+   colour numbers are drawn by a read that blends four texels, honouring
+   neither; they stay pictures.  `?capehood=0` keeps the masks pictures; and
+   with `?alphaclip`, as the hats'. */
+const CAPE_HOOD = /^\/sprites\/traits\/cape\/[a-z0-9-]+\/hood\/hairmask-(?:east|south|southwest)\.png$/;
 const CAPE_HOOD_ON = !NO_TWINS && !/[?&]capehood=0(&|$)/.test(_q) && !/[?&]alphaclip\b/.test(_q);
 /* v2.3.5565, `world-fish-spot`: the pond under a fishing spot
    (effectsRenderer.js NODE_SPRITE_SOURCES, behind the loading screen for

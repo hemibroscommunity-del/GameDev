@@ -26,6 +26,8 @@ import { cleanApOnce } from './inbox.js';   /* v2.3.3488: the once-a-character p
 import { revealPublic, revealPublicList } from './revealbag.js';   /* v2.3.4012: a piece waiting in the bag goes out without its grade */
 import { bagEconOwn } from './bag.js';   /* v2.3.5084: the bag door's counts reach the record they belong on */
 import { econResetBook } from './econcard.js';   /* v2.3.5093: a restart booked for the owner's economy card */
+import { GONE_KEY, GONE_V, goneAdd } from './worldsum.js';   /* v2.3.5285: a restart's character booked for the world's sum */
+import { resetBookOn } from './playerrestore.js';   /* v2.3.5285: its switch, `resetbook` (OFF by default) */
 
 /* v2.3.2523: one bound for the five gear stashes, applied at BOTH the
    save and the echo below.  Handoff rule 3's warning is why it is a
@@ -483,6 +485,23 @@ export const persistenceMethods = {
     await this._resetCharacterData(pid);
   },
 
+  /* v2.3.5285: `econ_gone` with this restart's character and vault booked
+     in (worldsum.js goneAdd), or null: `resetbook` off, a newer worker's
+     record (never rewritten), or anything that throws (a count must never
+     stop a restart).  The character as the sum reads it: live when here. */
+  async _resetGone(pid) {
+    try {
+      if (!resetBookOn(this)) return null;
+      const live = this.playerState && this.playerState[pid];
+      const rec = live && !live._spar ? live : await this.state.storage.get('rpg:' + pid);
+      const cached = typeof this._bankMap === 'function' ? this._bankMap().get(pid) : null;
+      const vault = cached || await this.state.storage.get('bank:' + pid);
+      const was = await this.state.storage.get(GONE_KEY);
+      if (was && typeof was === 'object' && typeof was.v === 'number' && was.v > GONE_V) return null;
+      return goneAdd(was, [['rpg:' + pid, rec], ['bank:' + pid, vault]]);
+    } catch (e) { return null; }
+  },
+
   /* ═══ v2.3.2194: THE WIPE ITSELF, SHARED ═══
    * Split out of the handler above so a SECOND road can reach it: the
    * character picker restarts a bro the device is NOT currently playing, and
@@ -500,7 +519,22 @@ export const persistenceMethods = {
       if (current) await this.state.storage.put('rpgsnap:' + pid + ':prereset-' + Date.now(), current);
     } catch (e) { /* snapshot is best-effort; the reset itself proceeds */ }
     const booked = await econResetBook(this, pid);   /* v2.3.5093: what goes with the character, booked for the owner's card (econcard.js; never throws) */
-    try { booked.put(); await this.state.storage.delete('rpg:' + pid); } catch (e) {}   /* v2.3.5094: an empty room's book in the delete's own run (`econresetput`) */
+    /* ═══ v2.3.5285: AND THE WORLD'S SUM IS TOLD (card R PR 6; card K's hostile census) ═══
+       The character and its vault leave the world with what they held, and
+       the character's own count (`_econ`) goes with them: the world's sum
+       read a restart as value gone with no burn written (gold -5000 in the
+       census).  With `resetbook: true` in the live flags (OFF by default: a
+       new row and a read and a write a restart, the owner's call) both are
+       booked into `econ_gone` (worldsum.js goneAdd: what they held, burned;
+       the character's own count kept) and written in the SAME run as their
+       deletes, nothing awaited between (handoff rule 5): a restart between
+       can never book one without the other.  Off, everything is as before. */
+    const gone = await this._resetGone(pid);
+    try {
+      booked.put();
+      if (gone) { this.state.storage.put(GONE_KEY, gone); this.state.storage.delete('bank:' + pid); }
+      await this.state.storage.delete('rpg:' + pid);
+    } catch (e) {}   /* v2.3.5094: an empty room's book in the delete's own run (`econresetput`) */
     /* ═══ v2.3.2421: AND THE QUEST-REWARD STAMPS GO WITH THE CHARACTER ═══
        v2.3.2420 made an unfittable quest weapon ride _creditPlayer into
        inbox:<pid> under a deterministic opId stamped in oplog: (rule 5), so a
@@ -552,7 +586,7 @@ export const persistenceMethods = {
     this._gearProvForget(pid);
     /* v2.3.3785: and the vault goes with the character (bank.js): a restart
        is a new character, and "deleted forever" means its bank too */
-    try { await this.state.storage.delete('bank:' + pid); } catch (e) { /* best-effort, as above */ }
+    if (!gone) { try { await this.state.storage.delete('bank:' + pid); } catch (e) { /* best-effort, as above */ } }   /* v2.3.5285: booked, it went with the character's run */
     if (this._bankForget) this._bankForget(pid);
     /* ═══ v2.3.3127: AND THE FARM GOES WITH THE CHARACTER ═══
        `farm:<pid>` (farm.js) is keyed by player id too, so without this a

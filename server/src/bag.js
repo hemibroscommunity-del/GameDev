@@ -198,6 +198,11 @@ export const BAG_ROADS = Object.freeze({
   escrow_item:        R('take', 'ownNumber', 'leZero', 'inbox.js _escrowTakeItem: a live player', 'escrow', ['store_listing:']),
   escrow_item_stored: R('take', 'ownNumber', 'leZero', 'inbox.js _escrowTakeItem: the stored record of one who is away', 'escrow', ['store_listing:']),
 
+  /* ── the owner's restore of one player (v2.3.5285, card R PR 6:
+     playerrestore.js): each key made the copy's, judged by its difference ── */
+  restore:            R('set', null, 'gtZero', 'playerrestore.js restoredCharacter: each bag key made the copy\'s', 'mint'),
+  restore_vault:      R('set', null, 'gtZero', 'playerrestore.js bookVault: each vault key made the copy\'s, booked on the character', 'mint'),
+
   /* ── the owner's Test panel ── */
   dev_shards:         R('give', 'wholeFloor', 'none', 'devtools.js _devKit: shards', 'mint'),
   dev_traps:          R('set', null, 'gtZero', 'devtools.js _devTrapping: traps', 'mint'),
