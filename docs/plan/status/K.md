@@ -1,31 +1,29 @@
 card: K
 branch: claude/plan-k-<n>-<topic> (one branch a PR, each begun from main)
-prs: #1822, #1820, #1826, #1829, #1831, #1838, #1842, #1861 merged; ready: #1848 (5541, mended); 7.2 (5188); 7.3 (5189) this branch
+prs: #1822, #1820, #1826, #1829, #1831, #1838, #1842, #1861, #1848, #1899, #1923 merged; ready: #1900 (5188); 7.3 (5189) this branch, on #1900
 state: working
 
 ## Done
 
-- PRs 1 to 6 (5181-5186) and 7.1 (5187, #1861: combat and moving through
-  act(), 203 -> 146): merged.
+- PRs 1 to 6 (5181-5186) and 7.1 (5187, #1861, 203 -> 146): merged.
 - Claims 5540 (#1842, merged): the archer's lane (`arrowlane`, ON).
-- Claims 5541 (#1848): the sprint mark, OFF (the owner: off for now);
-  review-z16's two MEDIUMs mended on its ON path; with it on the move's
-  gain 4.35 -> 2.56, the honest sprinter unchanged.
-- PR 7.2 (5188, branch claude/plan-k-7-2-life-act): life skills, the
-  economy and the social game, 41 sends in 24 files (146 -> 105).
-  `nmlAsk.js` (3) waits for card T's #1863, which changes it.
-- PR 7.3 (5189): the networking files, 17 sends (146 -> 129); none left
-  in src/networking/ but the door's transport. The second of 7.2 and 7.3
-  to merge takes main in: the line is then 88.
+- Claims 5541 (#1848, merged): the sprint mark, OFF (review-z16, z18 mended).
+- PR 7.2 (#1900, 146 -> 105) restacked on main b2d763a9.
+- PR 7.3 (5189): the networking files, 17 sends (105 -> 88); none left in
+  src/networking/ but the door's transport. 7.4-7.6 follow, each on the
+  last. `nmlAsk.js` and `LoginSpinWindow.jsx` wait for card T's #1863.
+- 5542 (#1899): the chat lanes for MOD; wire-door.test §7's pin.
+- N10 (5543, `relaybytes`, ON): a relay's bytes bounded three ways (one
+  4 KB, a socket 2 KB/s, the queue 256 KB): the flood 2,417 -> 4 KB/s;
+  honest census (questline, taptrade, firestart): no relay dropped.
+  CHAT_LANES renamed CHAT_LANE_TYPES (sitting 19's LOW).
 
 ## Next
 
-- 7.2's and 7.3's scenarios (a sample, one a kind of send), then the PRs.
-- PR 7.4 (5190, the panels), 7.5 (5191); `nmlAsk.js` once #1863 merges.
+- 7.4-7.6 (5190-5192) in order, each on the last; then N11, N5.
 - The move's walls (movement.js); the sword's reach (index.js, after card
   R's 5281); the bow claim (bowlabel 3.91, the aimbot +12%).
-- Lows: wire-table §7's cure in K's next list PR; door.js "by type".
-- `rideEnds` (ride.js) its own small PR when card SK says done.
+- Lows: wire-table §7's cure; door.js "by type"; `rideEnds` (SK is done).
 
 ## Found
 
@@ -33,6 +31,8 @@ state: working
   one drops both (`legacy` door rows).
 - A kept quest hand-in gets a fresh request id on its rejoin send.
 - One sprint step's bill is capped at 1 s (STEP_MAX_MS), on or off.
+- The guard reads literal names: sendFriend's had no row, and a fetch of
+  a URL in a variable went uncounted (both moved in 7.5).
 
 ## Needs
 

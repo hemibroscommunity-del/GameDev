@@ -64,7 +64,40 @@ const SCOPE = [
   { dir: 'icons/items', only: /^(ore-iron|ore-black-steel|ore-obsidian)\.webp$/, always: true },   /* not the trap's box: its pieces are cut from its pixels (p256.js) */
   { dir: 'icons/shards', only: /^shard_[a-z]+\.webp$/, always: true },
   { dir: 'icons/popups', only: /^(heart-256|sword)\.webp$/, always: true },
+  /* v2.3.5258 (card P's backlog, icons-elements): the eight elements' marks
+     drawn after a hit's number (effectsRenderer.js POPUP_ICON_SRC), by name:
+     the 64 px plate icons and the gems' dark and light are not twinned (the
+     plates load their own way, the gems are <img>s).  On 256 colours or
+     fewer already, so their twins are exact. */
+  { dir: 'icons/ui', only: /^elem-(flame|frost|water|venom|flora|stone|storm|wind)\.webp$/, always: true },
 ];
+/* v2.3.5563 (card P's backlog, pets): the pet sheet every pet is drawn from
+   (petSprites.js, tools/make_pet_sheet.py), on the loading screen for
+   everyone: 80k colours, cut to 256. */
+SCOPE.push({ dir: 'sprites/pets', only: /^pet-sheet\.png$/, always: true });
+/* v2.3.5564 (card P's backlog, cape-hood): a cape's hood's hair masks, cut
+   from its facings (tools/cape/split-cape-hood.py): two colours, exact.  Not
+   the hood halves (sitting 20, the planning session's answer (a)): a cape is
+   pixel art drawn crisp (capeSprites.js `nearest`, and sharpPixels.js's read
+   as a piece of the figure), and colour numbers are drawn by a read that
+   blends four texels, which honours neither. */
+{
+  const cp = path.join(PUB, 'sprites/traits/cape');
+  if (fs.existsSync(cp)) for (const id of fs.readdirSync(cp).sort()) {
+    if (fs.existsSync(path.join(cp, id, 'hood'))) SCOPE.push({ dir: `sprites/traits/cape/${id}/hood`, only: /^hairmask-[a-z]+\.png$/, always: true });
+  }
+}
+/* v2.3.5562 (card P's backlog, traits-hairmasks): the hats' hair masks,
+   the white silhouettes the hair is clipped to (entityRenderer.js
+   _loadHairMaskDir, hairClip.js's stencil): two colours each, so twinned
+   exactly (`always`: they are RGBA PNGs, and only a palette PNG is read as
+   colour numbers).  Every hat that ships a hairmask/ folder. */
+{
+  const hw = path.join(PUB, 'sprites/traits/headwear');
+  if (fs.existsSync(hw)) for (const hat of fs.readdirSync(hw).sort()) {
+    if (fs.existsSync(path.join(hw, hat, 'hairmask'))) SCOPE.push({ dir: `sprites/traits/headwear/${hat}/hairmask`, skip: null, always: true });
+  }
+}
 
 function colourCount(d) {
   const s = new Set();

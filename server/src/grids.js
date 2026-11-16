@@ -20,6 +20,7 @@
 import { computeCanonicalPools, computeBuildTotal } from './migrations.js';
 import { wornGradeLetter } from './gearprov.js';   /* v2.3.3142: the worn grade everyone else sees */
 import { pointsGive, pointsTake, pointsSet } from './skillpoints.js';   /* v2.3.5283: the skill points' door (the old grid's two counts) */
+import { xpGive, xpSet } from './xp.js';   /* v2.3.5289: experience and levels' door (card R PR 10) */
 import {
   t2CounterRate,
   // v2.3.1451: bench-locked T2 pricing (see the data.js block).
@@ -172,8 +173,8 @@ export const gridMethods = {
   // or analytics without losing the running total.
   _addCombatXp(ps, xpAmt) {
     if (!ps) return { leveled: false, levelsGained: 0, newLevel: 1 };
-    ps.level = ps.level || 1;
-    ps.xp = (ps.xp || 0) + (xpAmt || 0);
+    xpSet(ps, 'level', ps.level || 1, 'grid_level_heal');   /* v2.3.5289: the experience door */
+    xpGive(ps, xpAmt, 'grid_xp');
     return { leveled: false, levelsGained: 0, newLevel: ps.level };
   },
 
@@ -184,14 +185,14 @@ export const gridMethods = {
   // working unchanged.
   _tryLevelUpFromBuildPoints(ps) {
     if (!ps) return { leveled: false, levelsGained: 0, newLevel: 1 };
-    ps.level = ps.level || 1;
+    xpSet(ps, 'level', ps.level || 1, 'bp_level_heal');   /* v2.3.5289: the experience door */
     pointsSet(ps, ps.unspentT2 || 0, 'bp_level_heal_t2');   /* v2.3.5283: the skill points' door */
     pointsSet(ps, ps.buildPointsThisLvl || 0, 'bp_level_heal_bp');
     let levelsGained = 0;
     const LEVEL_CAP = 100;
     while (ps.level < LEVEL_CAP && ps.buildPointsThisLvl >= 5) {
       pointsTake(ps, 5, 'bp_level_bp');   /* v2.3.5283: the skill points' door */
-      ps.level += 1;
+      xpSet(ps, 'level', ps.level + 1, 'bp_level');   /* v2.3.5289 */
       pointsGive(ps, 5, 'bp_level_t2');
       levelsGained += 1;
     }
@@ -691,7 +692,7 @@ export const gridMethods = {
     // alone made point #1 a dud (1 -> 1), caught by the QA rig.  The
     // cap instead lands on point #1000 (build complete, level already
     // maxed) — the far lesser dud.
-    ps.level = Math.min(1000, 1 + computeBuildTotal(ps));
+    xpSet(ps, 'level', Math.min(1000, 1 + computeBuildTotal(ps)), 'build_level');   /* v2.3.5289: the experience door */
     const lvl = ps.level;
     const oldMaxHp = ps.maxHp || 100;
     const oldMaxStam = ps.maxStamina || 100;

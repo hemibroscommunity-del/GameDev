@@ -16,8 +16,13 @@
  * with `=`, `+=`, `||=`... or `++`, `this.playerState[id].field = `, the keys
  * of `Object.assign(ps, {...})` and of the join's `this.playerState[id] =
  * {...}`.  Not read: a write by a computed name (`ps[field] = `: the gear
- * slots and stashes, all saved) and the join's allowlisted copy of the
- * phone's own data (`...cleanJoinData`: the wire's again at every join).
+ * slots and stashes, all saved; and, v2.3.5291 (the sitting 20 review), the
+ * doors' own writes by a field handed in -- queststate.js's two kept lists,
+ * `_questGrantOverflow` and `_questWeaponUnfit`, which are NOT saved (memory
+ * only, on purpose: quest-door.test holds who writes them) -- so a field a
+ * door writes is in neither list here and the census cannot see it) and the
+ * join's allowlisted copy of the phone's own data (`...cleanJoinData`: the
+ * wire's again at every join).
  * The saved list is read off the `put('rpg:' + playerId, {...})` itself.
  * v2.3.5327 (card V PR 8): the files are card N's walker's
  * (server/test/src-walk.mjs `srcFiles`: every .js and .mjs file in depth,
@@ -85,14 +90,16 @@ const SCRATCH = {
   /* the life phase (life.js _lifeTo) and the death's own; a death across a
      join is its note, `life:<pid>` */
   life: ['life', 'dead', 'dying', 'respawnAt', '_deathKeepsBag', '_lifeResumed', '_lootRecovered'],
-  /* the session: a socket's, gone with it */
+  /* the session: a socket's, gone with it.  v2.3.5284: the quest door's
+     kept lists (`_questGrantOverflow`, `_questWeaponUnfit`) came off: they
+     are written by queststate.js by a computed name, memory only still */
   session: ['disconnected', 'lingering', '_lingerUntil', '_lingerZ', '_bodyWait', '_testMode', '_regenDirty',
     '_regenSaveAt', '_spar', 'name', '_lookWholeSeq', '_petWire', '_shieldKnown', '_gearLockNotifAt',
-    '_gearLockUntil', '_p3FreshRespec', '_questGrantOverflow', '_questWeaponUnfit', '_apOnceDirty',
+    '_gearLockUntil', '_p3FreshRespec', '_apOnceDirty',
     '_apOnceFailed', '_arenaMatch', '_race', '_raceStartedAt', '_ride', '_rideAt', '_ridePid', '_restAt',
     '_dg', '_dgXp', '_cookHits'],
   /* a sprint's metering (sprint.js) */
-  sprint: ['_sprintAt', '_sprintLastPaid', '_sprintOwed', '_sprintPrevPaid', '_sprintStep', '_sprintTally'],
+  sprint: ['_mvWalk', '_sprintAt', '_sprintBilledAt', '_sprintLastPaid', '_sprintOwed', '_sprintPrevPaid', '_sprintStep', '_sprintTally'],
   /* No man's land's choice and its last hit (nomansland.js) */
   nml: ['_nml', '_nmlAllowAt', '_nmlChoiceAt', '_nmlLastHitAt', '_nmlLastHitBy', '_nmlLockAskAt'],
   /* a rate limit of the session (a room Map keeps the ones that must

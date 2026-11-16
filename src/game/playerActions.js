@@ -21,6 +21,7 @@ import { addBuildUse, clearSwingHitFlags, pushDmgPopup, isPlayerDead, lockShotPo
 import { swordFeelSwing } from '@/game/swordFeel.js';   /* v2.3.4800: the sword's feel */
 import { accShot } from './accuracy.js';   /* v2.3.4545: a basic swing is a shot (accuracy) */
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2248: attacking breaks the hold */
+import { guardTo } from '@/game/guardDoor.js'; /* v2.3.5521: the one writer of S._shieldUp (card L PR 5) */
 import { cue, cueLater } from '@/game/eventSounds.js'; /* v2.3.3343: the specials' and the burst's own sounds; v2.3.3523: + cueLater, the volley's arrows */
 import { brewMulNow } from '@/game/fightFood.js'; /* v2.3.3133: a special carries the damage brew too */
 import { mcSwingGapMs, mcNoteSwing } from '@/game/manualCombat.js'; /* v2.3.4520: the free-swing trial's gap and share */
@@ -694,7 +695,7 @@ export function raiseShield(S, deps) {
     if (!S.rpg || !S.rpg.shield) return;
     if (swimRefused(S) || dazeRefused(S)) return;   /* v2.3.3003 */
     if (airRefused(S)) return;    /* v2.3.3017 */
-    S._shieldUp = true;
+    if (!guardTo(S, 'raise', now)) return;   /* v2.3.5521: the guard's page door (this raise is unused since v2.3.2242) */
     setShieldUp(true);
     S.shieldActive = now;
     act('player_shield', { id: S.myId, up: true });   /* v2.3.5187: through the action door (actions.js) */
