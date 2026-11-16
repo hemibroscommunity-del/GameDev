@@ -351,12 +351,13 @@ function ownerRoom(key) {
   let i = 0;
   const post = (playerName) => fb.fetch(new Request('https://x/api/feedback/submit', { method: 'POST', headers: { 'Content-Type': 'application/json', 'CF-Connecting-IP': '198.51.100.' + (i++) },
     body: JSON.stringify({ playerId: 'bp_n' + i, playerName, category: 'bug', topic: 'ui', text: 'x' }) })).then((r) => r.json());
-  const staff = ['BroTown', 'BroTown Team (official)', 'Team', 'Admin', 'Mod', 'Moderator', 'Staff', 'Owner', 'Dev', 'Official', 'System',
-    'A d m i n', 'B.r.o.T.o.w.n', 'Adm1n', 'M0D', '0wner', '\u0410dmin', 'xX_Bro_Town_Xx'];
+  /* v2.3.5594 (the sitting 19 review): with digits beside the letters, accents, a dotless i, small capitals, CamelCase, two words, a plural */
+  const staff = ['BroTown', 'BroTown Team (official)', 'Team', 'Admin', 'Mod', 'Moderator', 'Staff', 'Owner', 'Official', 'System', 'A d m i n', 'B.r.o.T.o.w.n', 'Adm1n', 'M0D', '0wner', '\u0410dmin', 'xX_Bro_Town_Xx', 'Admin2', 'Owner1', 'Mod7', '\u00c1dmin', 'Own\u00e9r', 'M\u00f8d', 'Adm\u0131n', '\u1d00\u1d05\u1d0d\u026a\u0274', 'AdminTeam', 'RealOwner', 'Game Master', 'Owners', 'GMs', 'GM', 'GM7', 'Bro Town', 'BroTownTeam', 'BroTown Staff', 'Devs', 'Developer'];
   const taken = [];
   for (const nm of staff) { const r = await post(nm); if (r.ok) taken.push(nm); else if (!/your own/.test(r.error)) taken.push(nm + ' (' + r.error + ')'); }
   check('12: every name that reads as the game, its team or its staff is refused, in words (' + staff.length + ' tried)', taken.length === 0, taken);
-  const own = ['Scribe', 'Modest', 'Devin', 'Teammate', 'Systema', 'Bro', 'Townie'];
+  /* v2.3.5594 (the sitting 19 review): "Dev" is a common real name; GM inside a longer name; brotown only as its own word */
+  const own = ['Scribe', 'Modest', 'Devin', 'Teammate', 'Systema', 'Bro', 'Townie', 'Dev', 'Dev Patel', 'Bro Townsend', 'GM Bob', 'Landowner', 'Gemma'];
   const refused = [];
   for (const nm of own) { const r = await post(nm); if (!r.ok) refused.push(nm + ' (' + r.error + ')'); }
   check('12: ...and a player\'s own name that only contains a short word is not', refused.length === 0, refused);

@@ -53,13 +53,22 @@ name rules use the same function for a character's name): a post's name that
 reads as the game, its team or its staff is REFUSED ("That name reads as the
 game or its team. Post under your own."), never rewritten. The words (the
 planning session's list, each with its plural and long form): BroTown,
-BroTown Team, Team, Admin, Administrator, Mod, Moderator, Staff, Owner, Dev,
-Developer, Official, System, Support, GM. A name is folded first (NFKC, lower
-case; 0 o, 1 i or l, 3 e, 4 a, 5 s, 7 t, 8 b, @ a, $ s, ! i, | l; the
-Cyrillic and Greek letters that look Latin) and read two ways: its words
-("Team Rocket", "M0d"), and the whole with nothing between the letters ("A d m
-i n"; `brotown` anywhere: "xX_Bro_Town_Xx"). A word that only contains a short
-one ("Modest", "Devin", "Teammate") passes. Tickets kept before are served as
+BroTown Team, Team, Admin, Administrator, Mod, Moderator, Staff, Owner,
+Devs, Developer, Official, System, Support, Game Master; and GM as the whole
+name or with digits or a plural ("GM", "GM7", "GMs"). A name is folded first
+(NFKD with its accents taken off, lower case; a dotless i, an o with a
+stroke and the small capitals; the Cyrillic and Greek letters that look
+Latin; 0 o, 1 i or l, 3 e, 4 a, 5 s, 7 t, 8 b, @ a, $ s, ! i, | l; a
+CamelCase word as two) and read four ways: its words ("Team Rocket", "M0d",
+"AdminTeam"), its words with the digits off ("Admin2", "Owner1"), two words
+side by side ("Game Master", "Bro Town"), and the whole with nothing between
+the letters ("A d m i n", "B.r.o.T.o.w.n"). A word that only contains a
+short one ("Modest", "Devin", "Teammate", "Bro Townsend") passes.
+The sitting 19 review (the planning session's calls, 2026-11-15): "Dev" is
+off the list (a common real name: "Dev", "Dev Patel" pass); GM inside a
+longer name passes; `brotown` is refused only as a word of its own (it was
+refused anywhere in the letters, which took "Bro Townsend"). Both lists, the
+refused and the passed, are checks in `feedback.test` §12. Tickets kept before are served as
 they are. `feedback.test` 12, and four break proofs (the check off, no
 look-alikes, no joined reading, and a substring match, which refuses "Modest").
 
