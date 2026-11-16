@@ -15,6 +15,14 @@
  *      phone is refused `frozen` (t4-ban.mjs let it in); another phone is let
  *      in; the owner's own phone (a test-mode character's) is never held;
  *      `freezedevice: false` lets it in; an unfreeze lifts it.
+ * v2.3.5621, the sitting 19 review: the device half is the owner's LEVER,
+ * OFF until `freezedevice: true` (unset, a new character on a frozen phone
+ * is let in); 129 freezes and more are read 128 a get (one get threw, and
+ * it failed open); `minutes` is a positive whole number or left out (-60,
+ * 0.5, 0 and a string are refused).  Break proofs (2026-11-16, each turned
+ * its check red): the lever read as before (on unless false) -> FAIL 6 (OFF
+ * by default); one get for every frozen record -> FAIL 6 (the 128 a get);
+ * the old Math.max/floor parse -> FAIL 4 (`minutes`).
  */
 import { makeStorage, openRoom, fakeWs, baseSession, settle, seededClock, mockEnv } from './testroom.mjs';
 import { SILENCE, SILENCE_LANES } from '../src/silence.js';
@@ -108,7 +116,11 @@ const wb = await join('bp_mod_kind', 'devkind001');
   check('4: a 10-minute silence holds...', room._silenceDoor(room.sessions.get(wa), { type: 'chat' }) === true);
   clock.advance(10 * 60000 + 1);
   check('4: ...and ends by itself when its minutes run out', room._silenceDoor(room.sessions.get(wa), { type: 'chat' }) === false);
-  await admin('POST', '/silence', { playerId: 'bp_mod_troll', minutes: 0 }, KEY);
+  /* v2.3.5621 (the sitting 19 review): minutes a positive whole number, or left out for until lifted */
+  const badMinutes = [];
+  for (const m of [-60, 0.5, 0, '10', 600000]) { const r = await admin('POST', '/silence', { playerId: 'bp_mod_troll', minutes: m }, KEY); if (r.status !== 400) badMinutes.push([m, r.status]); }
+  check('4: `minutes` -60, 0.5, 0, a string or past a year is refused (400): they were "until lifted"', badMinutes.length === 0, badMinutes);
+  await admin('POST', '/silence', { playerId: 'bp_mod_troll' }, KEY);
   /* a deploy: a new room on the same storage, the troll joins again */
   const room2 = await openRoom(S);
   room2.env = { ...mockEnv, ADMIN_KEY: KEY };
@@ -126,8 +138,16 @@ const wb = await join('bp_mod_kind', 'devkind001');
   check('5: ...put back, the silence holds again', room._silenceDoor(room.sessions.get(wa3), { type: 'chat' }) === true);
 }
 
-/* ── 6. a freeze holds the device (t4-ban.mjs's proof) ── */
+/* ── 6. a freeze holds the device (t4-ban.mjs's proof): the owner's lever ── */
 {
+  /* v2.3.5621 (the sitting 19 review): OFF until the owner turns it on */
+  const wpre = await join('bp_mod_pre', 'devpre', room);
+  await admin('POST', '/freeze', { playerId: 'bp_mod_pre', note: 'x' }, KEY);
+  const preAlt = await join('bp_mod_pre_alt', 'devpre', room);
+  check('6: the device half lands OFF: unset, a new character on a frozen character\'s phone is let in', !preAlt.sent.some((m) => m.type === 'join_rejected'), preAlt.sent.map((m) => m.type).slice(0, 4));
+  await admin('DELETE', '/freeze?id=bp_mod_pre', null, KEY);
+  void wpre;
+  room._liveFlags.freezedevice = true;
   const wv = await join('bp_mod_villain', 'devvillain', room);
   check('6: (the villain plays on its phone)', room.sessions.has(wv) && !wv.closed);
   const fr = await (await admin('POST', '/freeze', { playerId: 'bp_mod_villain', note: 'harassment' }, KEY)).json();
@@ -152,10 +172,28 @@ const wb = await join('bp_mod_kind', 'devkind001');
   room._liveFlags.freezedevice = false;
   const off = await join('bp_mod_villain_alt3', 'devvillain', room);
   check('6: `freezedevice: false`: a new character on the phone is let in, as before', !off.sent.some((m) => m.type === 'join_rejected'), off.sent.map((m) => m.type).slice(0, 4));
+  room._liveFlags.freezedevice = true;
+  /* v2.3.5621 (the sitting 19 review): 129 freezes and more are read 128 a get (one get of them threw, and it failed open) */
+  for (let i = 0; i < SILENCE.GET_MAX + 5; i++) {
+    const pid = 'bp_mod_many' + String(i).padStart(4, '0');
+    await room.state.storage.put('frozen:' + pid, { at: Date.now(), note: 'many' });
+    await room.state.storage.put('auth:' + pid, { id: pid, devs: [{ d: 'devmany' + i, at: Date.now() }] });
+  }
+  clock.advance(SILENCE.FROZEN_TTL_MS + 1);
+  const gets = [];
+  const get0 = room.state.storage.get.bind(room.state.storage);
+  room.state.storage.get = async (k) => { if (Array.isArray(k)) gets.push(k.length); return get0(k); };
+  const lastAlt = await join('bp_mod_many_alt', 'devmany' + (SILENCE.GET_MAX + 4), room);
+  room.state.storage.get = get0;
+  check('6: ' + (SILENCE.GET_MAX + 6) + ' frozen characters: read ' + SILENCE.GET_MAX + ' a get at most, and the last one\'s phone is still held',
+    lastAlt.sent.some((m) => m.type === 'join_rejected' && m.reason === 'frozen') && gets.length >= 2 && gets.every((n) => n <= SILENCE.GET_MAX), { gets, sent: lastAlt.sent.map((m) => m.type).slice(0, 3) });
+  for (let i = 0; i < SILENCE.GET_MAX + 5; i++) await room.state.storage.delete('frozen:bp_mod_many' + String(i).padStart(4, '0'));
   delete room._liveFlags.freezedevice;
   await admin('DELETE', '/freeze?id=bp_mod_villain', null, KEY);
   clock.advance(SILENCE.FROZEN_TTL_MS + 1);
+  room._liveFlags.freezedevice = true;
   const after = await join('bp_mod_villain_alt4', 'devvillain', room);
+  delete room._liveFlags.freezedevice;
   check('6: unfrozen, the phone is free again at once', !after.sent.some((m) => m.type === 'join_rejected'), after.sent.map((m) => m.type).slice(0, 4));
 }
 
