@@ -207,7 +207,12 @@ async function body({ P, Q, wsPort, rec, shot, errors }) {
          should be positioned orbiting southwest of the large contextual
          button"): its centre 45 deg +-20 below west of the disc's upright
          (sideways between west and south), its circle 8-14 px off the disc's */
-      ok: L.btn.w >= 44 && L.btn.h >= 44 && (upright ? ang >= 25 && ang <= 65 : ang > 0 && ang < 90) && ring >= 8 && ring <= 14
+      /* v2.3.5434 (card J2): upright, v2.3.4130 turned it west on the same ring
+         until its foot stands over the weapon pill the owner put at the bottom
+         (ShieldButton jumpAnchor: "about 15 degrees below west; it was 45"), so
+         5-65 below west -- still south-west, still on the ring, still on no
+         other control (the hits below); 25-65 was red on main each run (12) */
+      ok: L.btn.w >= 44 && L.btn.h >= 44 && (upright ? ang >= 5 && ang <= 65 : ang > 0 && ang < 90) && ring >= 8 && ring <= 14
         && L.btn.b <= bandTop - 8 && hits.length === 0 && inside,
       size: Math.round(L.btn.w), ang, ring, aboveBand: Math.round(bandTop - L.btn.b),
       hits, inside, pic: L.label ? { w: Math.round(L.label.w), face: Math.round(face), off: +picOff.toFixed(1) } : null,
@@ -376,13 +381,22 @@ async function body({ P, Q, wsPort, rec, shot, errors }) {
 
   /* ── 2b. v2.3.3499: a running jump leans into the run ── */
   for (const [key, sign, name] of [['d', 1, 'east'], ['a', -1, 'west']]) {
-    await P.page.evaluate(() => { window.__qaLean = []; window.__qaLeanOn = true;
-      const f = () => { if (!window.__qaLeanOn) return; const fx = window.__btJumpFx(); if (fx.self && fx.self.air) window.__qaLean.push({ ...fx.self, liftDust: window.__btWorldFx ? window.__btWorldFx().liftDust : null }); requestAnimationFrame(f); };
-      requestAnimationFrame(f); });
-    let jumped = false;
-    await walk(P, key, AIR_MS + 3000, (o) => jumped && o.length > 6 && !o[o.length - 1].air && o.slice(-4).some((s) => s.air),
-      async (o) => { if (!jumped && o.length >= 6) { jumped = true; await press(P); } });
-    const ls = await P.page.evaluate(() => { window.__qaLeanOn = false; return window.__qaLean || []; });
+    /* v2.3.5434 (card J2): the lean is read on the frames DRAWN in the air;
+       this box draws a few a second and a stall can leave 2 of a 0.5 s jump
+       (red by run, the lean on them right: 0.0002 off).  Too few to judge is
+       the box's, so the run is jumped again, 3 tries at the most (TRAPS §200);
+       what is judged is unchanged */
+    let ls = [];
+    for (let tryN = 0; tryN < 3 && ls.length < 3; tryN++) {
+      if (tryN) await H.waitFor(P, () => window.__btJumpBtn().air, (v) => v === false, { timeout: AIR_MS + 3000, label: 'down again' }).catch(() => null);
+      await P.page.evaluate(() => { window.__qaLean = []; window.__qaLeanOn = true;
+        const f = () => { if (!window.__qaLeanOn) return; const fx = window.__btJumpFx(); if (fx.self && fx.self.air) window.__qaLean.push({ ...fx.self, liftDust: window.__btWorldFx ? window.__btWorldFx().liftDust : null }); requestAnimationFrame(f); };
+        requestAnimationFrame(f); });
+      let jumped = false;
+      await walk(P, key, AIR_MS + 3000, (o) => jumped && o.length > 6 && !o[o.length - 1].air && o.slice(-4).some((s) => s.air),
+        async (o) => { if (!jumped && o.length >= 6) { jumped = true; await press(P); } });
+      ls = await P.page.evaluate(() => { window.__qaLeanOn = false; return window.__qaLean || []; });
+    }
     /* the lean the rules give for the speed he really went across, and its sign */
     const want = (r) => JUMP_LEAN * jumpLeanAt(r.t) * Math.max(-1, Math.min(1, r.across / JUMP_LEAN_PX_MS));
     const off = Math.max(0, ...ls.map((r) => Math.abs(r.rot - want(r))));

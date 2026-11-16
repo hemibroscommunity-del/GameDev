@@ -10186,3 +10186,26 @@ of a 2,000-listener source took 34.6 ms one by one and 1.6 ms in one pass.
 `src/rendering/bulkTexDestroy.js destroyTextures(list)`: each source's list
 rebuilt once (server/test/bulk-tex-destroy.test.mjs). A single Texture now and
 then is fine as it is.
+
+## 342. "The test can't find the button: the game lost it" (v2.3.5439)
+
+**The plausible move.** A phone test that waits for a door (a More tile, a
+button on an item's card, a tab) and times out reads as the game having lost
+that door, and the fix looks like putting it back.
+
+**Why it is wrong.** The owner moves doors on purpose, and the test is the
+one that did not hear: card J2 found five in one sitting, each red on main
+word for word. Achievements left More for a page under Bro (v2.3.4172; the
+More tile `achievements` gone, `mp-lazyfail`). Inspect went behind the item
+card's "⋯" (v2.3.4191, GearTab `GEAR_MORE_ONLY`; `mp-fishvariants`). Jump
+turned west on its ring to stand over the weapon pill (v2.3.4130; `mp-jump`).
+Sideways, the attack disc is drawn at 0.85 from its foot while its box keeps
+its place (`html.bt-band-side`; `mp-sprint`). A lazy window's tabs come a
+moment after its card says it is open (`lazyPanels.js`; `mp-shieldgem`).
+Putting a door back undoes the owner's decision.
+
+**The rule.** Before a "missing" door is a game red, grep the code for its
+hook (`data-more-tile`, `data-bro-row`, ...) and the version comment where it
+went: if it moved, the test goes the new way, as another test that already
+does (`mp-achievements` opens Achievements through Bro). A door that is truly
+gone with no new way is the owner's question (TRAPS §305), not a fix.
