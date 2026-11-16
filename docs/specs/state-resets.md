@@ -34,6 +34,13 @@ A reset is a named function that writes its state itself. The census reads
 each `resetOn` call and sees which rows the function writes, so a reset done
 through another call is invisible to it.
 
+**v2.3.5218 (card L PR 5): or asks the field's own page door.** A field with
+a door (a phase-table row on the page turned `door`) is written only by it,
+so a reset clears it by calling that door (`forgetRace`:
+`raceTo(S, null, 'forget')`). The census counts that call, and only that
+kind, as the reset's write (`state-census.mjs resetsFound`), and
+`state-resets.test` gives a rebuilt reset the real door, not a no-op.
+
 ## The doors
 
 | Edge | Its one door | Called |

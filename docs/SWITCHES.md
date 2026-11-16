@@ -374,6 +374,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `pointsresetroom` | worker | switch | v2.3.4372 | 2026-11-10 | false | logic |  | no | The points reset's minute is the socket's alone, not kept by the room. |
 | `?questpath` | page | switch | v2.3.2992 | 2026-10-03 | present | logic |  | no | The quest's road on the ground comes back, with its Settings row. |
 | `racedoor` | worker | switch | v2.3.5217 | 2026-11-15 | false | logic |  | no | A race can be put on without its gun or its deadline, as the line before the race door could have (no start builds one today); the next move could then never end it. |
+| `?racedoor` | page | switch | v2.3.5218 | 2026-11-15 | =0 | logic |  | no | The phone's race takes any write its own code asks again (an ask over a live race, the gun from an ask, a dismiss of a run), as the lines before the page door could have; race.js still checks each first. |
 
 ## render
 

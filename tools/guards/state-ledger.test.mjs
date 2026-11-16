@@ -304,7 +304,8 @@ if (census) {
 /* ── 6. a row's lifetime and the resets (v2.3.5203, card L PR 3) ──
    Every listed row whose lifetime names an edge is reset there: by a
    resetOn(edge, fn) whose fn writes it (the script's `resets`: its file is
-   then one of the row's writers), or by the edge's door's own list (the
+   then one of the row's writers; v2.3.5218, or asks the field's own page
+   door, a phase-table row turned `door`), or by the edge's door's own list (the
    zone's changeZone and clearZoneLocalFx; the rejoin's rejoinClear).  And
    every reset writes only rows whose lifetime names its edge.  The death
    has no one door on the page yet (docs/specs/state-resets.md): nothing
@@ -343,7 +344,7 @@ if (census) {
       const l = life.get(k);
       if (!l || !l.edges.includes(r.edge)) bad.push(`${r.file}:${r.line} resetOn('${r.edge}', ${r.fn}) writes ${k}, whose ledger row's lifetime is ${l ? (l.edges.join('+') || 'sitting') : 'not listed'}`);
     }
-    if (!r.fields.length && !r.variables.length) bad.push(`${r.file}:${r.line} resetOn('${r.edge}', ${r.fn}) writes no row (a reset writes its state itself, not through a call)`);
+    if (!r.fields.length && !r.variables.length) bad.push(`${r.file}:${r.line} resetOn('${r.edge}', ${r.fn}) writes no row (a reset writes its state itself, or through its field's page door, never through another call)`);
   }
   check(`6: every row reset at an edge has its reset there, and every reset a row (${R.length} resets)`, bad.length === 0, bad);
 } else {

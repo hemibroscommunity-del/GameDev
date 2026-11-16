@@ -111,6 +111,8 @@
  *      (a keyed field's key)                              -> FAIL 2
  * v2.3.5217 (the race door):
  *  31. `ps._race = null;` back in _raceEnd                -> FAIL 2
+ * v2.3.5218 (the race's page door):
+ *  32. `S._race = null;` back in race.js dismissRace      -> FAIL 2
  *
  * Run from the repository's root: node tools/guards/phase-table.test.mjs
  * (cd server && npm test runs it with every other guard and suite).
@@ -322,6 +324,9 @@ const DOOR_SUITES = Object.freeze({
     prop: 'po', besides: [] },
   /* v2.3.5217: the race door */
   'server/test/race-door.test.mjs': { field: 'ps._race', fn: '_raceTo', holds: '§2: no write of ._race in server/src outside _raceTo',
+    prop: '_race', besides: [] },
+  /* v2.3.5218: the race's page door (the page half of the race row) */
+  'server/test/race-page-door.test.mjs': { field: 'S._race', fn: 'raceTo', holds: '§2: no write of ._race in src/ outside raceTo, nor of the race record\'s .phase in race.js',
     prop: '_race', besides: [] },
 });
 const SCAN_DOORS = Object.freeze({
