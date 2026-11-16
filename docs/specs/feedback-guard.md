@@ -33,11 +33,13 @@ and N3), folded in at the planning session's word:
 |---|---|
 | `server/src/feedback.js` `submit` | A name and a topic must be strings; each is cleaned as a chat line is (`chatguard.js cleanChatText`: hidden and direction characters out, spaces collapsed, a run of one letter at most 6) and cut to `FEEDBACK_NAME_MAX` (24) and `FEEDBACK_TOPIC_MAX` (32). Not a string, or nothing left: refused (`Missing fields`). |
 | `feedback.js` `sanitize` | What the board serves is cleaned the same way, so a ticket kept before this version (an object for a name) reads as words: its name `Bro`. |
-| `feedback.js` `DELETE /ticket?id=` | The owner takes a post down, and its topic's count with it. Behind `ADMIN_KEY` (`Authorization: Bearer`, compared by hash as `admin.js _adminAuth`); a plain 404 without it. |
+| `feedback.js` `DELETE /ticket?id=` | The owner takes a post down, and its topic's count with it. Behind `ADMIN_KEY` (`Authorization: Bearer`); a plain 404 without it. The key is judged by the ROOM's admin door (`_ownerKey` asks `GET /api/admin/flags` of the room with the caller's key and address, `CF-Connecting-IP`), so the door that counts wrong keys (RT-1's time-out, #1885) sees every miss here too; no room to ask: 404 (the sitting 19 review: compared here, 2,000 wrong keys went uncounted). |
 | `feedback.js` `GET /crashes` | Behind the same key; a plain 404 without it. |
-| `feedback.js` `_paced` | Posts, votes and crash reports paced in MEMORY by the caller's address (`flood.js requestIp`, set by Cloudflare's edge; none locally, not counted; an IPv6 line by its /64, `feedbackAddr`, the same rule as RT-1's `flood.js ipKey`, 5581, a local copy until that lands), by the id it claims, and for the whole game, an hour each (`FEEDBACK_PACE`: 5 / 5 / 60 posts, 12 / 12 / 120 crash reports, 60 / 60 / 150 votes), under a budget of 300 ROWS an hour for the whole object (a post 2, the rest 1): at most 7,200 rows a day, 7% of the free plan's 100,000; the game's busiest day so far wrote 747. A refusal writes nothing; no `rate:` or `crashrate:` row is written. One claimed id an address a ticket for a vote. A deploy resets them (rule 11: right for a flood's limit). |
+| `feedback.js` `_paced` | Posts, votes and crash reports paced in MEMORY by the caller's address (`flood.js requestIp`, set by Cloudflare's edge; none locally, not counted; an IPv6 line by its /64, `feedbackAddr`, the same rule as RT-1's `flood.js ipKey`, 5581, a local copy until that lands), by the id it claims, and for the whole game, an hour each (`FEEDBACK_PACE`: 5 / 5 / 60 posts, 30 / 12 / 120 crash reports, 60 / 60 / 150 votes), under a budget of 300 ROWS an hour for the whole object (a post 3: its ticket, `_stats` and the budget's own row; the rest 2). The budget is kept in ONE storage row, `_rows_hour` `{n, until}`, read once a wake and written with every write it counts, so a wake or a deploy never refills it (the sitting 19 review: in memory, a burst, a 2.5-minute wait and a fresh 300 gave about 170,000 rows a day): at most 7,200 rows a day, 7% of the free plan's 100,000; the game's busiest day so far wrote 747. A refusal writes nothing; no `rate:` or `crashrate:` row is written. One claimed id an address a ticket for a vote. The per-address and per-id paces are in memory, and a deploy resets them (rule 11: right for a flood's limit; the rows' budget is what holds the bill). |
+| `feedback.js` `submit`, `vote` | A player id (and a vote's ticket id) is a string of at most `ID_MAX` (64) characters, refused before anything is kept (the sitting 19 review: a 1.9 MB id was a 1.9 MB ticket, and one vote under one grew a real report to 1.9 MB). A ticket's voters are a map with no prototype, so a vote under `__proto__` is kept like any other. |
+| `feedback.js` `list` | The tickets read a page of 100 at a time (TRAPS §76), each kept as the fields the board serves; a row over 64 KB (one grown before this version) is skipped until the sweep mends it. |
 | `feedback.js` `_stats` | At most `FEEDBACK_PACE.STATS_KEYS` (100) topics kept. |
-| `feedback.js` `DELETE /sweep` | The owner's key: every ticket row over 4 KB and the old pace rows taken away, `_stats` rebuilt from the tickets left. |
+| `feedback.js` `DELETE /sweep` | The owner's key: a ticket whose OWN words are over 4 KB (or whose player id is over 64) and the old pace rows taken away, `_stats` rebuilt from the tickets left, a page at a time. A ticket a bad vote grew is MENDED, not taken away: a voter whose id is over 64 or whose vote is not up or down is taken out and the counts follow (`mended`). |
 | `feedback.js` `_boardOpen` | **KILL SWITCH `feedback: false`** in the live flags: no posts, votes or crash reports; reading stays. The Feedback object keeps no flags: it reads the room's (`GET /api/admin/flags` with the owner's key, over the binding) at most once a minute, and only for a write the paces took: a refused write never asks the room, and a burst shares one read. No key or no answer: open. Its row in the switch table. |
 | `server/src/wire/http.js` | `/api/feedback/crashes` is an `admin` row now; a new row, `http:/api/feedback/ticket DELETE`; the submit row says what is refused and cut. |
 | `src/ui/lazyPanel.js` `PanelGuard` | Every window made by `lazyPanel` (the rare windows, the dashboard's pages) draws inside an error boundary. A window that throws shows the "Couldn't open this" card in its own words ("This window hit a problem", `data-lazy-cantopen="threw"`), with Reload and Close; the game plays on; the error goes to the crash feed (`recordCrash('panel', ...)`); `window.__btLazyCode.cards.caught` counts them. Opened again, the window is drawn afresh. |
@@ -51,13 +53,22 @@ name rules use the same function for a character's name): a post's name that
 reads as the game, its team or its staff is REFUSED ("That name reads as the
 game or its team. Post under your own."), never rewritten. The words (the
 planning session's list, each with its plural and long form): BroTown,
-BroTown Team, Team, Admin, Administrator, Mod, Moderator, Staff, Owner, Dev,
-Developer, Official, System, Support, GM. A name is folded first (NFKC, lower
-case; 0 o, 1 i or l, 3 e, 4 a, 5 s, 7 t, 8 b, @ a, $ s, ! i, | l; the
-Cyrillic and Greek letters that look Latin) and read two ways: its words
-("Team Rocket", "M0d"), and the whole with nothing between the letters ("A d m
-i n"; `brotown` anywhere: "xX_Bro_Town_Xx"). A word that only contains a short
-one ("Modest", "Devin", "Teammate") passes. Tickets kept before are served as
+BroTown Team, Team, Admin, Administrator, Mod, Moderator, Staff, Owner,
+Devs, Developer, Official, System, Support, Game Master; and GM as the whole
+name or with digits or a plural ("GM", "GM7", "GMs"). A name is folded first
+(NFKD with its accents taken off, lower case; a dotless i, an o with a
+stroke and the small capitals; the Cyrillic and Greek letters that look
+Latin; 0 o, 1 i or l, 3 e, 4 a, 5 s, 7 t, 8 b, @ a, $ s, ! i, | l; a
+CamelCase word as two) and read four ways: its words ("Team Rocket", "M0d",
+"AdminTeam"), its words with the digits off ("Admin2", "Owner1"), two words
+side by side ("Game Master", "Bro Town"), and the whole with nothing between
+the letters ("A d m i n", "B.r.o.T.o.w.n"). A word that only contains a
+short one ("Modest", "Devin", "Teammate", "Bro Townsend") passes.
+The sitting 19 review (the planning session's calls, 2026-11-15): "Dev" is
+off the list (a common real name: "Dev", "Dev Patel" pass); GM inside a
+longer name passes; `brotown` is refused only as a word of its own (it was
+refused anywhere in the letters, which took "Bro Townsend"). Both lists, the
+refused and the passed, are checks in `feedback.test` §12. Tickets kept before are served as
 they are. `feedback.test` 12, and four break proofs (the check off, no
 look-alikes, no joined reading, and a substring match, which refuses "Modest").
 
@@ -74,6 +85,13 @@ look-alikes, no joined reading, and a substring match, which refuses "Modest").
   its life) and far below a flood's rows. If one ever refuses a real player,
   the owner's lever is the numbers in `FEEDBACK_PACE` (a one-line PR); the
   switch `feedback` closes the board, it does not lift the limits.
+- **Crash reports: 30 an hour an address** (was 12, the old per-id number;
+  the sitting 19 review): the owner's phones and computers on one home line
+  share an address, and a crash loop on one of them should not hide another's.
+  Each phone's own id still stops at 12.
+- **The rows' budget costs a row with each write** (`_rows_hour`): exact
+  across wakes and deploys, and the board's real writes are a few a day. The
+  other way (writing it every 25 rows) lets a few rows a wake go uncounted.
 - **No button yet for taking a post down, the sweep or the crash feed.**
   The Test panel is the place (`src/ui/panels/DevPanel.jsx`, which six
   running cards hold); the planning session gave them to card OPS. Until
@@ -99,7 +117,10 @@ look-alikes, no joined reading, and a substring match, which refuses "Modest").
   break proof, tried by hand 2026-11-15: the address not counted, the budget
   taken out, the /64 taken out, the vote rule off, the switch asked before
   the paces, the name not cleaned, the crash feed public, `_stats` uncapped:
-  each turns its checks red.
+  each turns its checks red. §13, the sitting 19 review's mends (the id
+  cut, `__proto__`, the budget kept across a wake, the sweep's mending and
+  paging, the key judged by the room with the caller's address), each with
+  its break proof in the suite's header.
 - `tools/qa/mp/mp-panelguard.mjs`: a window whose script throws (the card,
   the game playing on, Close, drawn afresh), and a board served with objects
   in it by an older worker (the rows, no card, no page error).

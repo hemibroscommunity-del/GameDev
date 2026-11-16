@@ -341,8 +341,10 @@ curl -X DELETE -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/feedback/
 curl -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/feedback/crashes?limit=50"
 ```
 A post's id is each ticket's `id` in `/api/feedback/list?sort=new`. Without
-the key each answers a plain 404. The sweep takes every post over 4 KB and
-the old pace rows the board no longer reads. On a local machine the QA tools
+the key each answers a plain 404 (the key is checked by the game room's admin
+door, the same one that times out an address sending wrong keys). The sweep
+takes every post whose own words are over 4 KB and the old pace rows the
+board no longer reads, and mends a post a bad vote grew (that vote taken out). On a local machine the QA tools
 send the harness's key for the crash feed (`tools/qa/qa-telemetry.mjs` reads
 `BT_ADMIN_KEY`, else the harness's).
 
