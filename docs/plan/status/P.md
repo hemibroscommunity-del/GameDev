@@ -28,8 +28,8 @@ state: working
 - Capes are pixel art drawn crisp; colour numbers blend four texels: the
   hood's halves and the facings (5568, dropped) stay pictures (1.5 MB; a
   road later: the colour-numbers program given the figure's reads).
-- `mp-hairstencil` 7/13 at #1906 with the twins and `?hairmasks=0` alike
-  (its probe finds no hair); main's run to tell.
+- `mp-hairstencil` is red on main (7/13 at 29b1a0de2: its probe finds no
+  hair), the same in this line; it runs with the masks as pictures now.
 - `tools/make_pet_sheet.py` runs no reduce256: a new pet, an empty twin.
 
 ## Needs
