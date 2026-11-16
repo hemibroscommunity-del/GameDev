@@ -2488,11 +2488,71 @@ async function ledgerMain() {
  * and a reset writes only rows whose lifetime names its edge.  A call that is
  * not ('<edge>', <a named function>, '<system>') is `bad`. */
 const RESET_DOOR = 'src/game/resetOn.js';
-function resetsFound() {
+/* v2.3.5218 (card L PR 5, the page doors): a field with a door is written
+   only by it, so a reset clears it by ASKING its door: a call, in the
+   reset's function, of a page row's door -- a phase-table row on the page
+   turned `door` (src/state/phases.js, plain data), its `fn` imported from
+   its `file` -- writes that row's field.  Read nowhere else: the rows' own
+   writers stay what the code writes. */
+async function pageDoors() {
+  try {
+    const P = await import(pathToFileURL(join(ROOT, 'src', 'state', 'phases.js')).href);
+    return (P.PHASES || []).filter((r) => r && r.side === 'page' && r.status === 'door' && typeof r.field === 'string'
+      && r.field.startsWith('S.') && typeof r.fn === 'string' && typeof r.file === 'string')
+      .map((r) => ({ field: r.field.slice(2), fn: r.fn, file: r.file }));
+  } catch (e) { return []; }
+}
+/* v2.3.5219 (card L PR 5, the harvest's page door): every call of a page
+   door, as "<file>:<line> <function>" (the sites' own form), for the edges'
+   door lists (the zone's clearZoneLocalFx clears the harvest by asking its
+   door).  The state ledger's guard reads them beside the rows' own writes. */
+function doorCallsFound(doors = []) {
+  const out = [];
+  if (!doors.length) return out;
+  for (const f of FILES.values()) {
+    traverse(f.ast, {
+      CallExpression(path) {
+        const c = path.node.callee;
+        if (c.type !== 'Identifier') return;
+        const imp = f.imports.get(c.name);
+        for (const d of doors) {
+          if ((imp && imp.from === d.file && imp.name === d.fn) || (!imp && f.path === d.file && c.name === d.fn)) {
+            out.push({ field: d.field, at: short(f.path) + ':' + lineOf(path) + ' ' + whereOf(path) });
+          }
+        }
+      },
+    });
+  }
+  return out.sort((a, b) => cmp(a.at, b.at));
+}
+function resetsFound(doors = []) {
   const resets = [], bad = [];
   for (const f of FILES.values()) {
     const names = [...f.imports].filter(([, v]) => v.from === RESET_DOOR && v.name === 'resetOn').map(([local]) => local);
     if (!names.length) continue;
+    /* the file's named functions, for a reset that asks a door */
+    const fnPaths = new Map();
+    traverse(f.ast, {
+      FunctionDeclaration(p) { if (p.node.id) fnPaths.set(p.node.id.name, p); },
+      VariableDeclarator(p) {
+        const i = p.node.init;
+        if (p.node.id.type === 'Identifier' && i && (i.type === 'FunctionExpression' || i.type === 'ArrowFunctionExpression')) fnPaths.set(p.node.id.name, p.get('init'));
+      },
+    });
+    const viaDoors = (name) => {
+      const p = fnPaths.get(name);
+      const out = new Set();
+      if (!p || !doors.length) return out;
+      p.traverse({
+        CallExpression(cp) {
+          const c = cp.node.callee;
+          if (c.type !== 'Identifier') return;
+          const imp = f.imports.get(c.name);
+          for (const d of doors) if ((imp && imp.from === d.file && imp.name === d.fn) || (!imp && f.path === d.file && c.name === d.fn)) out.add(d.field);
+        },
+      });
+      return out;
+    };
     traverse(f.ast, {
       CallExpression(path) {
         const c = path.node.callee;
@@ -2506,7 +2566,7 @@ function resetsFound() {
         const mine = (st) => st.file === f.path && (st.where === fn.name || st.where.startsWith(fn.name + ' case '));
         resets.push({
           file: f.path, line, edge: e.value, fn: fn.name, system: sys.value,
-          fields: fieldRows.filter((r) => [...r.sets, ...r.ins, ...r.vias].some(mine)).map((r) => r.name).sort(),
+          fields: [...new Set([...fieldRows.filter((r) => [...r.sets, ...r.ins, ...r.vias].some(mine)).map((r) => r.name), ...viaDoors(fn.name)])].sort(),
           variables: varRows.filter((v) => v.writes.some(mine)).map((v) => v.file + ' ' + v.name).sort(),
         });
       },
@@ -2531,11 +2591,14 @@ if (process.argv[1] && pathResolve(process.argv[1]) === fileURLToPath(import.met
     const { placeFiles, systemOf: mapSystemOf } = await import(pathToFileURL(join(ROOT, 'tools', 'guards', 'lib', 'systems.mjs')).href);
     const placed = placeFiles();
     const made = ledgerFound((file) => mapSystemOf(file, placed) || 'unsorted');
-    const R = resetsFound();
+    const DOORS = await pageDoors();
+    const R = resetsFound(DOORS);   /* v2.3.5218: and a reset through a page door */
     process.stdout.write(JSON.stringify({
       ledger: [...made.values()].map((x) => x.made),
       /* v2.3.5203 (card L PR 3): the resets, and any call not in their form */
       resets: R.resets, resetsBad: R.bad,
+      /* v2.3.5219: every call of a page door, for the edges' door lists */
+      doorCalls: doorCallsFound(DOORS),
       fields: fieldRows.map((r) => ({
         name: r.name, system: short(r.system), born: r.born.how === 'never' ? null : { how: r.born.how, at: short(r.born.file) + ':' + r.born.line },
         marks: r.marks, states: r.states, writtenAt: r.at, shouldReset: r.reset,

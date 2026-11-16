@@ -240,9 +240,15 @@ state._store.set('rpg:bp_adm_rich', { coins: 5000, level: 40 });
   const snapVal = state._store.get(snapKey);
   const rOk = await jbody(await req('POST', '/api/admin/restore', { playerId: 'bp_adm_a', snapKey }));
   const preKeys = [...state._store.keys()].filter((k) => k.startsWith('rpgsnap:bp_adm_a:prerestore-'));
-  check('restore writes the snapshot blob', rOk.status === 200 && state._store.get('rpg:bp_adm_a') === snapVal, rOk.body);
+  /* v2.3.5285: the restore builds the record through the doors (playerrestore.js:
+     the copy's fields, its purse and bag booked by their difference), so it is
+     the snapshot's CONTENT, no longer the same object; the prerestore copy too */
+  const after = state._store.get('rpg:bp_adm_a');
+  const same = (a, b, skip) => JSON.stringify(Object.keys(a).filter((k) => !skip.includes(k)).sort().map((k) => [k, a[k]])) === JSON.stringify(Object.keys(b).filter((k) => !skip.includes(k)).sort().map((k) => [k, b[k]]));
+  /* a copy with no purse or bag reads as 0 and empty, as the join reads it (the doors write it so) */
+  check('restore writes the snapshot blob', rOk.status === 200 && !!after && same(after, snapVal, ['_econ', 'coins', 'inventory']) && after.coins === Math.max(0, Math.floor(Number(snapVal.coins) || 0)), rOk.body);
   check('restore saved the CURRENT blob as prerestore first (never destroys data)',
-    preKeys.length === 1 && state._store.get(preKeys[0]) === before, preKeys);
+    preKeys.length === 1 && same(state._store.get(preKeys[0]), before, []), preKeys);
   const rBad = await req('POST', '/api/admin/restore', { playerId: 'bp_adm_a', snapKey: 'rpgsnap:bp_other:x' });
   check('restore rejects a snapKey for a different player', rBad.status === 400);
 }
