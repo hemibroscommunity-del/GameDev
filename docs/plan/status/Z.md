@@ -5,7 +5,9 @@ state: ready
 
 ## Done
 - Sitting 20, reviewed on `main` 29b1a0d, rehearsed on 481bac2 (sitting
-  19 in): TREE_LINE. Review: `census/review-z20.md`. Notes on 4.1, 7.1
+  19 in): the list's tree 1d7b826b: precheck 0 FAIL (2
+  WARN), build, questline 187 of 187; each base `main`, ONE merge base
+  step by step. Review: `census/review-z20.md`. Notes on 4.1, 7.1
   (sitting 19's merges); no line earned room.
 
 ## The list: merge in this order, in one sitting, each "Create a merge commit"

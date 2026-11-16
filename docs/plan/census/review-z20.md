@@ -610,3 +610,48 @@ hours writes a block past 5640) and takes its first number.
   table PR sets each to its merge day (R's three live flags are `off`,
   rightly; `?selftest` is a lever).
 
+## The lines
+
+On `main` 481bac2 the four lines' guard and the phase table's print no
+room sitting 19's merges earned (the `todo` count 22 at its line 22;
+each file at or under its line): no line is lowered. L's four page doors
+on this list bring the `todo` count to 16 (21, 18, 17, 16): the next
+sitting lowers `TODO_LINE` once they are merged. The memory line moves
+only by P's own, each measured in its PR: `artCache` 88.6 -> 86.7
+(#1906) -> 85.2 (#1918) -> 84.5 (#1925).
+
+## The list
+
+J2: 1 #1879 · 2 #1888 · 3 #1892 · 4 #1902 · 5 #1904 · 6 #1912 · 7 #1916 ·
+8 #1919 · 9 #1921 · 10 #1924 · R: 11 #1877 · 12 #1887 · 13 #1895 ·
+14 #1898 · 15 #1922 · L: 16 #1876 · 17 #1894 · 18 #1903 · 19 #1910 ·
+O: 20 #1896 · 21 #1915 · P: 22 #1881 · 23 #1906 · 24 #1918 · 25 #1925 ·
+26 this PR; each "Create a merge commit", in one sitting, in this order.
+Twelve deploy the worker (11 to 22: R's five by `server/src`, L's four,
+O's two and P's #1881 by `server/test`): back to back. J2's ten and P's
+last three touch no `server/` file. Three add a live flag, each OFF (the
+owner's costs: `fullsnap`, `resetbook` on #1887, `xferescrow` on #1895,
+one after another in R's stack); eight add a page switch (each row in its
+place by name; the whole merges clean step by step). No stored record of
+a player changes its shape (#1887's safety copy and its new room record
+`econ_gone`, read on a rolled-back worker: above). Each card stacks its
+own: every PR above a card's first merges the one below it; `main`
+481bac2 is in each card's first.
+
+## The whole
+
+Rehearsed with `tools/dev/gatekeeper.mjs` from `main` 481bac2, the
+twenty-five heads in the list's order (tree 1d7b826b): precheck 0 FAIL
+(2 WARN), build, questline 187 of 187 (467 s). Each listed PR's base is
+`main` (its `base.ref`), none a draft; ONE merge base each, step by step
+(counted with `git merge-base --all` against `main` with every PR above
+it merged, the same tree). With this branch last: one merge base, a clean
+merge (tree eb3ff29d), its precheck 0 FAIL, 2 WARN: the version-tag
+notice that L's next branch (`plan-l-22-arena-door`, stacked on L's line)
+carries L's four tags, and the 48 hours' branch count.
+
+Card J2's ten, R's five, L's four, O's two and P's four heads, each the
+one its card sent on 2026-11-16 (`main` 481bac2 in), compared with the
+head reviewed: J2's and L's change nothing but the merge; R's the
+admin.js imports (both kept); O's and P's their mends (read above).
+
