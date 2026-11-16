@@ -1,39 +1,37 @@
 card: K
 branch: claude/plan-k-<n>-<topic> (one branch a PR, each begun from main)
-prs: #1822, #1820, #1826, #1829, #1831, #1838, #1842, #1861 merged; ready: #1848 (5541, mended) this branch
+prs: #1822, #1820, #1826, #1829, #1831, #1838, #1842, #1861, #1848 merged; ready: #1899 (5542) this branch, #1900 (5188); N10 (5543) stacks on this
 state: ready
 
 ## Done
 
-- PR 1 (5181, #1822), PR 3 (5183, #1820), PR 6 (5186, #1826), PR 5 (5185,
-  #1829: the action door), PR 2 (5182, #1831: six lists made from the
-  table): merged.
-- PR 4 (5184, #1838, merged): the wire door (`wiredoor`); hostile 19 -> 1.
-- Claims 5540 (#1842, merged): the archer's lane (`arrowlane`, ON); the stepping
-  archer keeps every arrow. The bow cheats' rise (bowlabel 3.91, the bot
-  lab's aimbot +12%) is for the bow claim's PR to bound, without costing
-  the stepping archer an arrow (the planning session).
-- Claims 5541 (#1848): the sprint mark, OFF (the owner: off for now).
-  review-z16's two MEDIUMs mended on its ON path: a carried move billed as
-  it moves if it needed the sprint; the sprint's bound only for what is
-  billed; sprint.test §11. With it on, the move 4.35 -> 2.56. review-z18's
-  MEDIUM (a marked move that goes nowhere banked the sprint) mended.
-- PR 7.1 (5187, #1861, merged): combat and moving through act(), 57 of 58 sends (census
-  203 -> 146); precheck reads an event through the door as a broadcast.
-  Scenarios: jump, shieldgem, deathzones fail on main too (not this PR).
+- PRs 1 to 6 (5181-5186) and 7.1 (5187, #1861, 203 -> 146): merged.
+- Claims 5540 (#1842, merged): the archer's lane (`arrowlane`, ON).
+- Claims 5541 (#1848, merged): the sprint mark, OFF (review-z16, z18 mended).
+- PR 7.2 (5188, 41 sends), 7.3 (5189, 17): pushed. 7.4 (5190, the panels),
+  7.5 (5191, the sheets and 24 fetches), 7.6 (5192, BroTown.jsx): committed,
+  after N10 (the planning session's order). `nmlAsk.js` and
+  `LoginSpinWindow.jsx` wait for card T's #1863.
+- 5542: CHAT_LANES for card MOD's silence; wire-door.test §7 pins that a
+  relayed event meets its row by type (a `broadcast` frame reaches nothing:
+  my reported door gap was a false alarm, measured on main).
 
 ## Next
 
-- PR 7.2 to 7.5 (5188-5191): the rest of the page's sends, a family a PR.
+- N10 next (the relay copies only its row's fields; a queue byte cap), then
+  7.4-7.6's PRs, then N11, N5.
 - The move's walls (movement.js); the sword's reach (index.js, after card
   R's 5281); the bow claim (bowlabel 3.91, the aimbot +12%).
-- Lows: wire-table §7's cure in K's next list PR; door.js "by type".
-- `rideEnds` (ride.js) its own small PR when card SK says done.
+- Lows: wire-table §7's cure; door.js "by type"; `rideEnds` (SK is done).
 
 ## Found
 
 - The page sends `clan_war_kill`/`clan_war_end` for an older worker; this
   one drops both (`legacy` door rows).
+- A kept quest hand-in gets a fresh request id on its rejoin send.
+- One sprint step's bill is capped at 1 s (STEP_MAX_MS), on or off.
+- The guard reads literal names: sendFriend's had no row, and a fetch of
+  a URL in a variable went uncounted (both moved in 7.5).
 
 ## Needs
 
