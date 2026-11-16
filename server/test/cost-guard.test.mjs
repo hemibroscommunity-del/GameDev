@@ -60,6 +60,9 @@
  *      default), the rows as before; on, ONE row more written (`econ_gone`)
  *      and one key more read (the vault's delete moves into the character's
  *      run: not a row more);
+ *  20. v2.3.5290 (card R PR 11): a wagered duel's pot: `xferescrow` off
+ *      (the default), the rows as before and no `xfer:` row; on, ONE row
+ *      more (its `xfer:` row; its delete 90 days on: two over its life);
  * A line here may move when a feature really needs the rows: say so in the
  * PR, in plain words, as the memory budget asks (CLAUDE.md).
  */
@@ -775,6 +778,29 @@ const FAST = 110;
   check('19. resetbook off (the default): a restart writes no econ_gone', off.gone === 0 && off.bank === 1, off);
   check(`19. resetbook on: ONE row more written (${off.writes} -> ${on.writes}: econ_gone; the vault deleted once), at most two keys more read (${off.reads} -> ${on.reads})`,
     on.writes === off.writes + 1 && on.gone === 1 && on.bank === 1 && on.reads <= off.reads + 2, { off, on });
+}
+
+/* ── 20. a duel's pot, `xferescrow` off and on (v2.3.5290) ───────────────── */
+{
+  const measure = async (flags) => {
+    const { room, state } = await makeRoom();
+    room._liveFlags = Object.assign({}, room._liveFlags, flags || {});
+    const a = 'cg_duel_a', b = 'cg_duel_b';
+    for (const id of [a, b]) state.store.set('rpg:' + id, { _v: 21, coins: 500, level: 5, inventory: {} });
+    await join(room, a); await join(room, b);
+    await room._interceptDuel(a, { type: 'duel_wager_request', payload: { target: b, fromName: 'A', wager: 40 } });
+    await room._interceptDuel(b, { type: 'duel_accept', payload: { target: a, wager: 40 } });
+    const w0 = state.writes.length;
+    room._duelOnDeath(b, 'pvp:' + a);
+    for (let i = 0; i < 4; i++) await new Promise((r) => setTimeout(r, 2));
+    const w = state.writes.slice(w0);
+    return { writes: w.length, xfer: w.filter((k) => k.startsWith('xfer:')).length, byPrefix: byPrefix(w) };
+  };
+  const off = await measure(null);
+  const on = await measure({ xferescrow: true });
+  console.log('     20. a duel\'s pot: off ' + JSON.stringify(off) + ', on ' + JSON.stringify(on));
+  check('20. xferescrow off (the default): a duel\'s pot writes no xfer: row', off.xfer === 0 && off.writes > 0, off);
+  check(`20. xferescrow on: ONE row more (${off.writes} -> ${on.writes}), its xfer: row`, on.xfer === 1 && on.writes === off.writes + 1, { off, on });
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);

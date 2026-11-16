@@ -1,6 +1,6 @@
 card: R
-branch: claude/plan-r-6-player-restore (stacked on #1877's head, the planning session's word)
-prs: #1819 (5280), #1823 (5283), #1825 (5287), #1844 (5288), #1862 (5281), #1847 (5286): merged; #1873 (5282), #1877 (5284), PR 6 (5285): ready
+branch: claude/plan-r-11-escrow-ledger (stacked on #1887's head, the planning session's word)
+prs: #1819 (5280), #1823 (5283), #1825 (5287), #1844 (5288), #1862 (5281), #1847 (5286): merged; #1873 (5282), #1877 (5284), #1887 (5285), PR 11 (5290): ready
 state: ready
 
 ## Done
@@ -13,26 +13,28 @@ state: ready
 - PR 5 (5284, #1877, ready, sitting 20): quest state's door.
 - PR 6 (5285, #1887, ready, sitting 20): a player's restore and the restart
   booked; `fullsnap`, `resetbook` OFF (Needs); sitting 20's three mended.
+- PR 11 (5290, #1895, ready, sitting 20): the duel pot's ledger row.
 
 ## Next
 
 - NEXT PR (sitting 20): the credit guards read `_creditWith(` too (first:
   a double-pay risk); quest-door's scanner `||=`, `??=`, Object.assign.
+- Then WAITING on K and L. THE ESCROW
+  LEDGER'S ORDER (the planning session's (b)): the market, the auction
+  house and the arena's stakes join in later R PRs, AFTER K's 5194, 5196,
+  5197 (`market.js`, `store.js`) and L's arena door (`gladiator.js`).
 
 ## Found
 
 - `grids.js` `_tryLevelUpFromBuildPoints` has no caller (dead).
 - Local workerd: no point-in-time recovery (`getBookmarkForTime` throws).
 - `_isGearNotWeapon` told gear by a gid alone; PR 3 reads `prov` instead.
-- The join loads the quest maps as plain copies (with a prototype); every
-  id written is the server's own table's: prototype-free copies, later.
+- The join's quest maps are plain copies: prototype-free ones, later.
 
 ## Needs
 
-- The owner's call, two costs (PR 6): `fullsnap` (2 keys more read a
-  player a day, a copy ~190 bytes bigger) and `resetbook` (one row for the
-  room, a write a restart; nothing live reads it, the census unmoved).
-- For the owner, LATER (PR 9; the owner's "Just go recommended": not now):
-  the lab's restore try (`lab.yml` lines in `docs/specs/cloudflare-lab.md`).
-- New live flags, a row each: `storesize` (PR 8, on), `roomexport` (PR 7,
-  on), `roomrewind` (PR 9, off until the owner sets it).
+- The owner's costs, OFF: `fullsnap` (PR 6: 2 keys more read a player a
+  day), `resetbook` (PR 6: one room row, a write a restart; nothing live
+  reads it, the census unmoved), `xferescrow` (PR 11: a row a wagered duel).
+- LATER (PR 9, "Just go recommended"): the lab's restore try (lab.yml).
+- Live flags: `storesize`, `roomexport` on; `roomrewind` off (the owner).
