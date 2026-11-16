@@ -134,8 +134,9 @@ export const PLAYER_ROADS = Object.freeze({
   duel_pot: fz({
     at: 'duel.js _interceptDuel, _resolveDuel', carries: ['gold'],
     roads: { gold: ['escrow_debit_group', 'mail_gold'] },
-    fee: 0, hold: 0, pace: 0, ledger: 'none',
-    ledgerWhy: 'an escrow road: card R PR 11 (`xferescrow`)',
+    /* v2.3.5290 (card R PR 11): its row, in the pot's own run, only with
+       `xferescrow: true` (OFF by default: a row a wagered duel) */
+    fee: 0, hold: 0, pace: 0, ledger: 'xfer', writer: 'duel.js xferDuelPot',
     why: 'a duel\'s wagers: both held in `duelEscrow:` in one write, the pot paid to the winner (`duelpot:`), a void refunded (`duelrefund:`)',
   }),
   arena_entries: fz({
