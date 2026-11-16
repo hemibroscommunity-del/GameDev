@@ -1,37 +1,36 @@
 card: Z
-branch: claude/plan-z-sitting-19b
-prs: (this PR), tag 5378, the last line of sitting 19b's list (ready)
+branch: claude/plan-z-sitting-21
+prs: (this PR), tag 5379, the last line of sitting 21's list (ready)
 state: ready
 
 ## Done
-- Sitting 19 (`main` 29b1a0d -> 481bac2): T, RT-1's three, K's two,
-  #1926. Sitting 19a and 19b (this list), reviewed and rehearsed on
-  `main` 2fcc767 (sitting 20 in). Review: `census/review-z19.md` (its
-  last section); sitting 20's: `census/review-z20.md`.
+- Sittings 19, 19b and 20 merged (`main` b2d763a). Sitting 21 (this
+  list), reviewed and rehearsed on `main` b2d763a: `census/review-z21.md`.
+- The plan noted for sitting 20's merges (1.7 begun: O's 14a, 14b; 5.3b:
+  L's page doors, the phase table's line 22 -> 16; 9.5: P's four).
 
-## The list: merge in this order, in one sitting, each "Create a merge commit"
-RT-3 and MOD: 1 #1878 · 2 #1890 · 3 #1883 · 4 #1897 · 5 #1907 ·
-OPS: 6 #1874 · 7 #1880 · 8 #1886 · 9 #1908 · 10 #1891 · 11 #1872 ·
-12 #1893 · 13 #1905 · 14 #1913 · 15 #1917 · 16 #1920 · 17 this PR.
-Nine deploy (#1878, #1890, #1897, #1907, #1880, #1886, #1908, #1913,
-#1920): back to back. New live flags `feedback`, `silence`, `namerules`,
-`roomhealth`, `rf_spread`, `boardcache`, `boardsweep`, `publicreads`
-(ON); levers `freezedevice`, `seathold`, `exactseen` (OFF).
+## The list: merge in this order, each "Create a merge commit"
+1 L #1930 (5522, deploys; a draft: "Ready for review" first) ·
+2 O #1929 (5237) · K: 3 #1900 (5188) · 4 #1931 (5189) · 5 #1932 (5190) ·
+6 #1933 (5191) · 7 #1934 (5192) · 8 this PR. K's five are stacked, each
+on the last, all based on `main`: one merge base at every step.
+All seven deploy (each touches `server/test/`, TRAPS §277): back to
+back; only #1930 changes the worker's code. New live flag `arenadoor` (ON).
 
-## Held (expires at sitting 21)
-- None. (Sitting 20's one hold was sitting 19's held line: it is this
-  list's 1 to 5.)
+## Held (expires at sitting 22)
+- None.
 
 ## Stalled
-- Card K: as sitting 20 said (#1900 waits for a fresh K session).
+- None. For sitting 22 (arrived after this list closed): T #1935
+  (5308, the switch rows' merge days), L #1936 (5523, the ride door,
+  on #1930), and the heads P, MOD, OPS, RT-1,
+  R and J2 send.
 
 ## Found
-- `seathold`: not to be turned on until its gate tells a holder from a
-  stranger (#1908's MEDIUM, written into its row and spec).
-- T: the new switch rows of sittings 19 and 19b say `on` 2026-11-15:
-  set each to its merge day.
-- MOD next: the fold's last misses (BroTovvn, a Cherokee A, Admln); the
-  device source for `freezedevice`; words outside the six lanes.
-- The owner: `.github/workflows/crash-report.yml` needs the key.
-- RT-1: an old key's derivation spelled out in devicelock.js and its
-  spec: cut before the repo goes public.
+- O asks the owner: a fill or a glint that fails its self-test has no way
+  back (drawn as today, named in `self`): switch it off on that chip?
+- T: #1930's switch row says `on` 2026-11-15: set it to its merge day.
+- Sitting 19b's merges (RT-3, MOD, OPS) are no step of the plan's: no
+  note. Earlier Founds (`seathold`, the crash-report key, RT-1's old key
+  derivation, MOD's fold misses) stand.
+- `mp-palette` red on main (card O's Found, sitting 20): still for J2.
