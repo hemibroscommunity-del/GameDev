@@ -75,15 +75,28 @@ const T0 = Date.UTC(2026, 10, 15, 12, 0, 0);
 
 /* ── 4. the room's internal answer ── */
 const realNow = Date.now;
+/* v2.3.5601 (mend, sitting 19b): up or down for anyone; the numbers with the owner's key */
+const OWNER = 'room-health-key';
+const keyed = (k) => ({ headers: { Authorization: 'Bearer ' + k } });
+const withKey = (room) => { room.env = Object.assign({}, room.env, { ADMIN_KEY: OWNER }); return room; };
 {
-  const room = await openRoom(makeStorage());
+  const room = withKey(await openRoom(makeStorage()));
   let res = await room.fetch(new Request('https://room' + HEALTH.ROOM_PATH));
   let body = await res.json();
-  check('4. /_room_health: 200 and the numbers when healthy', res.status === 200 && body.ok === true && res.headers.get('Cache-Control') === 'no-store', { status: res.status, body });
+  check('4. /_room_health: 200 and up or down only, to anyone', res.status === 200 && JSON.stringify(body) === '{"ok":true}' && res.headers.get('Cache-Control') === 'no-store', { status: res.status, body });
+  res = await room.fetch(new Request('https://room' + HEALTH.ROOM_PATH, keyed(OWNER)));
+  body = await res.json();
+  check('4. ...and the numbers with the owner\'s key', res.status === 200 && body.ok === true && JSON.stringify(Object.keys(body).sort()) === JSON.stringify(KEYS), { status: res.status, body });
+  res = await room.fetch(new Request('https://room' + HEALTH.ROOM_PATH, keyed('a-wrong-key')));
+  body = await res.json();
+  check('4. ...a wrong key: up or down only', JSON.stringify(body) === '{"ok":true}', body);
   room.sessions.set(fakeWs('b'), Object.assign(baseSession(), { id: 'bp_health_b' }));
   res = await room.fetch(new Request('https://room' + HEALTH.ROOM_PATH));
   body = await res.json();
-  check('4. ...and 503 with the same numbers when not (a socket, no tick)', res.status === 503 && body.ok === false && body.problems.includes('no tick'), { status: res.status, body });
+  check('4. ...and 503 when not (a socket, no tick), still up or down only', res.status === 503 && JSON.stringify(body) === '{"ok":false}', { status: res.status, body });
+  res = await room.fetch(new Request('https://room' + HEALTH.ROOM_PATH, keyed(OWNER)));
+  body = await res.json();
+  check('4. ...and 503 with the same numbers when not (a socket, no tick), with the key', res.status === 503 && body.ok === false && body.problems.includes('no tick'), { status: res.status, body });
   const off = await openRoom(makeStorage(), { roomhealth: false });
   check('4. `roomhealth: false` is read as off; unset or true is on', roomHealthOff(off) && !roomHealthOff(room) && !roomHealthOff({ _liveFlags: { roomhealth: true } }));
   res = await off.fetch(new Request('https://room' + HEALTH.ROOM_PATH));
@@ -92,18 +105,30 @@ const realNow = Date.now;
 
 /* ── 5. the outer worker's route ── */
 {
-  const room = await openRoom(makeStorage());
+  const room = withKey(await openRoom(makeStorage()));
   const envOf = (fetcher) => ({ GAME_ROOM: { idFromName: (n) => n, get: () => ({ fetch: fetcher }) }, ROOMS: 'brotown-1' });
   const asked = [];
-  const env = envOf(async (u) => { asked.push(String(u)); return room.fetch(new Request(u)); });
-  let res = await worker.fetch(new Request('https://api.brotown.net' + HEALTH.PATH), env);
+  const sent = [];
+  const env = envOf(async (u) => {
+    const r = typeof u === 'string' ? new Request(u) : u;
+    asked.push(r.url); sent.push([...r.headers.keys()].sort());
+    return room.fetch(new Request(r));
+  });
+  let res = await worker.fetch(new Request('https://api.brotown.net' + HEALTH.PATH, { headers: { Cookie: 'x=1', 'X-Other': 'y' } }), env);
   let body = await res.json();
-  check('5. GET /health/room asks the room\'s /_room_health and answers 200 when healthy', res.status === 200 && body.ok === true && asked.length === 1 && asked[0].endsWith(HEALTH.ROOM_PATH), { status: res.status, body, asked });
+  check('5. GET /health/room asks the room\'s /_room_health and answers 200, up or down only', res.status === 200 && JSON.stringify(body) === '{"ok":true}' && asked.length === 1 && asked[0].endsWith(HEALTH.ROOM_PATH), { status: res.status, body, asked });
+  check('5. ...passing the room nothing of the request but the key and the address', sent[0].every((h) => h === 'authorization' || h === 'cf-connecting-ip'), sent);
+  res = await worker.fetch(new Request('https://api.brotown.net' + HEALTH.PATH, keyed(OWNER)), env);
+  body = await res.json();
+  check('5. ...the numbers with the owner\'s key', res.status === 200 && body.ok === true && typeof body.players === 'number', body);
   room.tickInterval = 1;
   room._roomRowTick(Date.now() - HEALTH.TICK_LATE_MS - 50);
+  res = await worker.fetch(new Request('https://api.brotown.net' + HEALTH.PATH, keyed(OWNER)), env);
+  body = await res.json();
+  check('5. ...503 with the numbers when the room is not well (the key)', res.status === 503 && body.problems.includes('tick late'), { status: res.status, body });
   res = await worker.fetch(new Request('https://api.brotown.net' + HEALTH.PATH), env);
   body = await res.json();
-  check('5. ...503 with the numbers when the room is not well', res.status === 503 && body.problems.includes('tick late'), { status: res.status, body });
+  check('5. ...and 503, up or down only, without it', res.status === 503 && JSON.stringify(body) === '{"ok":false}', body);
   const off = await openRoom(makeStorage(), { roomhealth: false });
   res = await worker.fetch(new Request('https://api.brotown.net' + HEALTH.PATH), envOf(async (u) => off.fetch(new Request(u))));
   check('5. ...404 passed on with the switch thrown', res.status === 404);
@@ -119,7 +144,7 @@ const realNow = Date.now;
   body = await res.json();
   check('5. /health is unchanged: the worker alone, never the room', res.status === 200 && body.status === 'ok');
   res = await worker.fetch(new Request('https://api.brotown.net' + HEALTH.PATH + '?room=nowhere'), env);
-  check('5. a room the worker does not make is 404, never asked', res.status === 404 && asked.length === 2);
+  check('5. a room the worker does not make is 404, never asked', res.status === 404 && asked.length === 4);
 }
 
 /* ── 6. the paths ── */

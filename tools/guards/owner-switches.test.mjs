@@ -79,6 +79,13 @@ const check = (name, ok, detail) => {
   const flags = panel.indexOf('>Live flags<');
   check('4: the Test panel mounts the row, after its Live flags list', at > 0 && flags > 0 && at > flags, { at, flags });
   check('4: ...with its call (the admin key) and the flags list\'s setter', /<SetSwitchRow [^>]*call=\{call\}[^>]*onFlags=\{setFlags\}/.test(panel));
+  /* v2.3.5602 (mend, sitting 19b): what it says shows under its own button, a server's error too */
+  {
+    const row = readFileSync(join(ROOT, 'src/ui/panels/SetSwitchRow.jsx'), 'utf8');
+    const setAt = row.indexOf('data-setswitch-set="1"'), noteAt = row.indexOf('data-setswitch-note="1"');
+    check('4: the row says what it says right under its Set button', setAt > 0 && noteAt > setAt && !/[^.]setMsg\(/.test(row.replace(/setMsg\(t\)/g, '')), { setAt, noteAt });
+    check('4: ...and the server\'s refusal too (call\'s `say`)', /call\('\/flags', \{ name: n, value: v \}, undefined, \{ say: setNote \}\)/.test(row) && /opts\.say/.test(panel));
+  }
 }
 
 console.log(failed ? `\n${failed} FAILED` : '\nall green');

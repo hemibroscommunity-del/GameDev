@@ -31,6 +31,15 @@
  * the join goes on to the account and device checks like any other, and is
  * refused there; the hold is not used up by it.
  *
+ * NOT TO BE TURNED ON UNTIL MENDED (sitting 19b, its gatekeeper's review;
+ * the list in docs/specs/seat-hold.md, "Not to be turned on"): the socket
+ * gate (index.js fetch, `_seatHeldCount`) cannot tell a holder from a
+ * stranger, so at a full room strangers' sockets fill the held slots while
+ * their joins are in flight (~2 in 3 blipped players still lose the seat
+ * with 2,000 waiting); `_seatJoinRefused` counts only phase `joined`, so two
+ * strangers at once can pass the cap by the held seats; and lesser faults.
+ * The mend is a later PR.
+ *
  * BUILT OFF: on only when `seathold` is `true`.  On, it costs at most one
  * small write every 15 s while the roster changes (5,760 a day at the very
  * most, ~17 cents a month at Cloudflare's $1 a million; a quiet room writes
@@ -138,7 +147,7 @@ export const seatHoldMethods = {
     if (id && held.has(id)) return false;
     const cap = this._roomCap();
     if (this._seatJoinedIds().size + held.size < cap) return false;
-    rfNote(this, now);   /* a knock like any refusal (rfspread.js) */
+    rfNote(this, now, ws && this.sessions.get(ws) && this.sessions.get(ws).ip);   /* a knock like any refusal (rfspread.js): an address once a second (v2.3.5604 mend) */
     try {
       ws.send(JSON.stringify({ type: 'room_full', reason: 'full', count: this.sessions.size, cap, retryMs: rfRetryMs(this, now) }));
     } catch (e) { /* the close says it alone */ }

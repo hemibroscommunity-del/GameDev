@@ -19,7 +19,11 @@
  *     phone throw its key away for a fresh character (wsClient.js), and an
  *     unknown reason makes an older phone stop retrying;
  *   - a character no device is known for yet: its next device is taken and
- *     remembered (the first-device rule; how it was for everyone before);
+ *     remembered (the first-device rule; how it was for everyone before).
+ *     v2.3.5582: NO MORE for a character with no list at all (one from
+ *     before this, the fill found no device for) -- refused like any other
+ *     device, the owner's pass the way in (see "AN OLD KEY NEVER ADDS A
+ *     DEVICE BY ITSELF" below);
  *   - the owner's PASS lets one new device in within DEVICE_LOCK.PASS_MS
  *     (/api/admin/device-pass), and FORGET clears the list, SEALS it and puts
  *     out whoever is playing it, so nobody gets in until a pass does -- for a
@@ -135,13 +139,65 @@ export const deviceLockMethods = {
 
   /* What a matching key from `device` may do for this character now:
      'known' (one of its devices), 'pass' (the owner let one new device in),
-     'first' (no device known for it yet), or 'refuse'. */
+     'first' (no device known for it yet: only under `oldkeylock: false`,
+     v2.3.5582), or 'refuse'.  Asked only for an OLD key (join.js, account.js,
+     loginkeys.js): a new key is good from any device and never comes here. */
   _deviceDecide(auth, device, now) {
     const devs = auth && Array.isArray(auth.devs) ? auth.devs : [];
     if (device && devs.some((e) => e && e.d === device)) return 'known';
     if (device && auth && auth.pass && typeof auth.pass.until === 'number' && auth.pass.until > now) return 'pass';
-    if (!devs.length && !(auth && auth.sealed)) return 'first';
+    /* v2.3.5582: a character with NO list (one from before the device lock
+       whose devices the one-time fill never found) takes no first device
+       any more; an explicit empty list -- written only by a join that named
+       no device, which the page never sends without (index.js
+       getDeviceNonce) -- keeps the old rule (the suites' own characters) */
+    const listed = !!auth && Array.isArray(auth.devs);
+    if (!devs.length && !(auth && auth.sealed) && (listed || !this._oldKeyLockOn())) return 'first';
     return 'refuse';
+  },
+
+  /* ═══ v2.3.5582: AN OLD KEY NEVER ADDS A DEVICE BY ITSELF ═══
+     The red team (RT-1, finding N1; docs/security/rt1-findings.md): an old
+     key -- four words of fifty and a number, ~29 bits -- is worked out from
+     its character's PUBLIC id, which carries the key's first two words and a
+     31-bit hash of the whole (passphraseToId, src/networking/index.js): 20 of
+     20 keys in about 0.15 s each, offline.  The device lock held it to the
+     character's devices, except where the character had none on its list:
+     there the first-device rule gave the thief the character, a new key, and
+     shut its player out (its device no longer on the list).  So an old key
+     for a character with NO list -- one from before the device lock (it had
+     no `devs` then) whose devices the one-time fill never found -- is refused
+     'device', like any other device, and the owner's pass
+     (/api/admin/device-pass) is the way in, for the owner's own characters
+     and test mode as for everyone.  A listed device, a pass and a new key are
+     unchanged.  An explicit EMPTY list keeps the first-device rule: only a
+     registering join that named no device writes one, and the page always
+     names one (getDeviceNonce makes one even with storage blocked), so no
+     player's character has one -- the suites' characters do (seventy suites
+     join with a key and no device).  Kill switch `oldkeylock: false`: the
+     first-device rule back for a missing list too, and the lockout below as
+     before. */
+  _oldKeyLockOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && own(f, 'oldkeylock') && !f.oldkeylock);
+  },
+
+  /* v2.3.5582 (RT-1, finding N9): five wrong keys lock an id for a minute,
+     ids are public, and an OLD key does not pass the lock (a new one does,
+     v2.3.3355): anyone could keep an old-key player out.  Now that an old key
+     is good only from one of its character's devices (or the owner's pass),
+     the lock no longer has to stand in front of that: its rightful holder --
+     the right old key, from a device this character may be played on now --
+     goes through.  Anyone else is still 'locked'.  Reads only; the caller
+     carries on with its own checks after. */
+  async _oldKeyHolder(id, phrase, device, now) {
+    if (!this._oldKeyLockOn() || !this._deviceLockOn()) return false;
+    if (typeof phrase !== 'string' || !phrase) return false;
+    const auth = await this.state.storage.get('auth:' + id);
+    if (!auth || typeof auth !== 'object' || auth.oldGone || !auth.pfHash) return false;
+    if ((await this._phraseHash(phrase)) !== auth.pfHash) return false;
+    const how = await this._deviceLockCheck(id, auth, cleanDevice(device), now);
+    return how === 'known' || how === 'pass';
   },
 
   /* Remember `device` for this character after a 'first' or 'pass' decision:

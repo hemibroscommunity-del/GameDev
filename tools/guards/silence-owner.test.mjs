@@ -73,5 +73,13 @@ check('2: a minute, an hour, a day, until lifted: 1, 60, 1440 and 0 minutes, in 
   check('4: ...with callOwner (the admin key), the running list, and its reload', /<SilenceButtons [^>]*until=\{silences \? silences\[r\.target\] : undefined\}[^>]*callOwner=\{callOwner\}[^>]*onChanged=\{loadSilences\}/.test(panel));
 }
 
+/* ── 5 (v2.3.5605, mended for sitting 19b's gatekeeper) ── */
+{
+  const off = silenceMap({ ok: true, on: false, silenced: [{ playerId: 'bp_a', until: 0 }] });
+  check('5: GET\'s `on` read: with the switch thrown no silence is shown as running', Object.keys(off).length === 0 && Object.keys(silenceMap({ ok: true, on: true, silenced: [{ playerId: 'bp_a', until: 0 }] })).length === 1);
+  const btns = readFileSync(join(ROOT, 'src/ui/panels/SilenceButtons.jsx'), 'utf8');
+  check('5: its words show under its own buttons, the server\'s errors too', /data-silence-note="1"/.test(btns) && (btns.match(/\{ say: setNote \}/g) || []).length === 2 && !/\bsetMsg\((?!t\))/.test(btns));
+}
+
 console.log(failed ? `\n${failed} FAILED` : '\nall green');
 process.exit(failed ? 1 : 0);

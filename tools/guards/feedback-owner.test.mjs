@@ -81,5 +81,15 @@ check('4: a 404 says which (no route on this worker, or the key)', /can't take a
   check('5: ...with callOwner (the admin key outside /api/admin) and call (to tell a 404 apart)', /<FeedbackOwnerRows [^>]*call=\{call\}[^>]*callOwner=\{callOwner\}/.test(panel) && /const callOwner = useCallback/.test(panel));
 }
 
+/* ── 6 (v2.3.5603, mended for sitting 19b's gatekeeper) ── */
+{
+  const rows = readFileSync(join(ROOT, 'src/ui/panels/FeedbackOwnerRows.jsx'), 'utf8');
+  const gone = rows.indexOf("'That post is already gone.'");
+  const okBranch = rows.lastIndexOf('r.status >= 200 && r.status < 300', gone);
+  check('6: "already gone" only for the board\'s own answer (2xx without ok), never a 500 or 502', gone > 0 && okBranch > 0 && gone - okBranch < 200
+    && /The server could not take it down \(/.test(rows) && /The post is still there/.test(rows), { gone, okBranch });
+  check('6: each act\'s words show under its own button (show, each post, sweep)', /\{noteAt\('show'\)\}/.test(rows) && /noteAt\(posts\[i\]\.id\)/.test(rows) && /\{noteAt\('sweep'\)\}/.test(rows) && /\{ say: sayAt\(/.test(rows));
+}
+
 console.log(failed ? `\n${failed} FAILED` : '\nall green');
 process.exit(failed ? 1 : 0);
