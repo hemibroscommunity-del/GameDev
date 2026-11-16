@@ -416,6 +416,12 @@ play, a number 1.1 can measure.
   any handler at the router and the routes; `wiredoor`, ON; the hostile
   census 19 -> 1), merged at sitting 16: step 2's lists and checks are
   made from the table (the gatekeeper, sitting 17, tag 5374).*
+  *K's #1899 (the chat lanes made from the table, `CHAT_LANE_TYPES`, for
+  card MOD's silence; what a relayed event meets at the door, pinned) and
+  #1923 (a relay's bytes bounded: one relay 4 KB, a socket 8 KB at once
+  then 2 KB a second, the room's queue 256 KB; `relaybytes`, ON; the red
+  team's RT-1 N10), merged at sitting 19 (the gatekeeper, sitting 20, tag
+  5377).*
 - [ ] **4.1b [NEXT] The send door**: one `_send` (132 places write to a
   socket today), counting bytes by type.
 - [ ] **4.2 [NEXT] Claims, bounded.** "No claims" can be met by calling a
@@ -636,6 +642,11 @@ nothing known, and a restore copies nothing.
   reads moved), merged at sitting 18. The box waits for the rest of the
   page's reads moved through it (T's PRs 8 on) (the gatekeeper, sitting
   19, tag 5376).*
+  *T's PR 7, #1889 (the thrown run's preload changes nothing by itself: a
+  module hook, not an import of the worker; a row's `thrownFails` never a
+  canary suite), merged at sitting 19. The box waits for the rest of the
+  page's reads moved through the reader (T's PRs 8 on) (the gatekeeper,
+  sitting 20, tag 5377).*
 - [x] **7.2 [NEXT] The end date** (the owner: yes). For a logic switch: four
   weeks on with no revert, then the old way goes. A device off-ramp stays
   while its risk is live. A fallback stays while its trigger lives: a guard

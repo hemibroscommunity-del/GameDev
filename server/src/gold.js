@@ -164,6 +164,12 @@ export const GOLD_ROADS = Object.freeze({
      booked signed (a negative purse healed to 0 books a negative burn) */
   join_stored:         R('set', null, 'join.js _handleJoin: the stored character', 'burn'),
   join_new:            R('set', null, 'join.js _handleJoin: a new character (the server\'s defaults, capped)', 'mint'),
+  /* v2.3.5285 (card R PR 6): the owner's restore of one player
+     (playerrestore.js): the purse made the copy's, and the vault's gold,
+     each judged by its difference (signed: a restore that lowers books a
+     negative mint), booked on the character */
+  restore:             R('set', null, 'playerrestore.js restoredCharacter: the purse made the copy\'s', 'mint'),
+  restore_vault:       R('set', null, 'playerrestore.js bookVault: the vault\'s gold made the copy\'s, booked on the character', 'mint'),
 
   /* ── paying for things ── */
   amulet_craft:        R('take', 'plain', 'amulet.js _handleAmuletForge: craft an amulet', 'burn'),

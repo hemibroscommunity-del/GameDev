@@ -35,6 +35,7 @@
  *      finishes it and the worker pays.
  */
 import * as H from './harness.mjs';
+import { DESK_GESTURE_HINT, PHONE_GESTURE_HINT } from '../../../src/game/gesturePose.js';   /* v2.3.5640: the two lines' words (no imports: node reads it) */
 export const lane = 'full';
 
 const DESK = { width: 1280, height: 800 };
@@ -320,8 +321,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const started = await H.readState(L, (S) => (S._extraction ? S._extraction.skill : null));
     rec.ok(`5. sideways: a real tap on the ${disc.label} button (${Math.round(disc.w)} px, on top) starts chopping`, disc.onTop && started === 'woodcutting', { disc, started });
     const r = await ready(L);
-    const hint = await L.page.evaluate(() => { const h = document.querySelector('.bt-rjoy-deskhint'); return h ? getComputedStyle(h).display : 'missing'; });
-    rec.ok('5. at the window the computer\'s line is not shown on a phone', r === 'ready' && hint === 'none', { r, hint });
+    /* v2.3.5640 (card J2): since v2.3.4196 a phone's first FIRST_HINTS harvests show a line in the same place -- the
+       PHONE's words, "Now swipe side to side!" (gesturePose.js PHONE_GESTURE_HINT; BroTown stamps data-first) -- so the
+       line shown here is the phone's (red on main each run: "block").  What is asked stays: never the computer's words
+       (DESK_GESTURE_HINT, "or hold E") on a phone */
+    const hl = await L.page.evaluate(() => { const h = document.querySelector('.bt-rjoy-deskhint'); return h ? { d: getComputedStyle(h).display, text: h.textContent, first: h.getAttribute('data-first') } : { d: 'missing' }; });
+    const hint = hl.d;
+    const phoneWords = hint === 'none' || (hl.first === '1' && hl.text === PHONE_GESTURE_HINT.woodcutting);
+    rec.ok(`5. at the window the computer's line is not shown on a phone (${hint === 'none' ? 'no line' : '"' + hl.text + '"'})`,
+      r === 'ready' && phoneWords && !Object.values(DESK_GESTURE_HINT).includes(hl.text), { r, hl });
     /* a finger on the WORLD, away from the button: not the gesture (the phone's rule: on the button) */
     const off = await L.page.evaluate(() => {
       const S = window._gameState.current;
