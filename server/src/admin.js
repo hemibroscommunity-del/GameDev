@@ -30,6 +30,7 @@
  * input gate stays closed between validation and commit (rule 9). */
 
 import { rewindPlan, rewindDo } from './restore.js';   /* v2.3.5288: the room's way back (card R PR 9) */
+import { playerRestore, snapshotCopy } from './playerrestore.js';   /* v2.3.5285: a player's restore from the registry (card R PR 6) */
 import * as FLOOD_NS from './flood.js';   /* v2.3.5583: the address (requestIp), and its /64 (ipKey) once the /64 change (PR #1875) is in */
 
 /* ═══ v2.3.5583: THE ADMIN KEY'S TIME-OUT (red team RT-1, finding N7) ═══
@@ -367,7 +368,10 @@ export const adminMethods = {
       if (typeof last === 'number' && now - last < SNAPSHOT.INTERVAL_MS) return;
       const d = new Date(now);
       const ymd = d.getUTCFullYear() * 10000 + (d.getUTCMonth() + 1) * 100 + d.getUTCDate();
-      await this.state.storage.put('rpgsnap:' + playerId + ':' + ymd, storedBlob);
+      /* v2.3.5285: with `fullsnap: true` the copy carries the player's other
+         restored records too (playerrestore.js snapshotCopy: the vault and
+         the pets under `_with`; two rows more read, OFF by default) */
+      await this.state.storage.put('rpgsnap:' + playerId + ':' + ymd, await snapshotCopy(this, playerId, storedBlob));
       await this.state.storage.put('rpgsnap_at:' + playerId, now);
       // Prune the ring.  v2.3.1179: the two key classes prune
       // SEPARATELY.  The old single sorted list was wrong: 'prerestore-'
@@ -695,32 +699,21 @@ export const adminMethods = {
         return json({ ok: true });
       }
 
+      /* v2.3.5285 (card R PR 6): THE PLAYER'S RESTORE, MADE FROM THE REGISTRY
+         (playerrestore.js): every record of theirs the copy holds, through
+         the doors (the difference booked: the world's sum stays balanced),
+         the `prerestore-` copy of all it overwrites in the same run of
+         writes, a newer worker's record refused, and what of theirs is held
+         between players named in the answer.  `dry: true` writes nothing.
+         The refusals are the same words as before (player online, still in
+         the world, no snapshot). */
       if (request.method === 'POST' && path === '/restore') {
-        const body = await request.json();
-        const { playerId, snapKey } = body || {};
-        if (!playerId || !snapKey || !snapKey.startsWith('rpgsnap:' + playerId + ':')) {
-          return json({ ok: false, error: 'playerId + a matching snapKey required' }, 400);
-        }
-        // A live session's next _saveRpg would clobber the restore --
-        // kick first, deliberately manual (the operator should know
-        // the player is being reverted).
-        if (this._wsBySessionId(playerId)) return json({ ok: false, error: 'player online -- kick first' }, 409);
-        /* v2.3.4413: ...and while the player is still IN THE ROOM.  A kick
-           during a fight with another player leaves the body standing for
-           20 s (linger.js), and its end saves that body over the restore --
-           which had answered ok, the prerestore copy holding the broken
-           record (state-machine sweep V3, S2-21).  Refused in plain words;
-           the owner waits and presses Restore again (OPERATIONS.md). */
-        if (this.playerState[playerId]) return json({ ok: false, error: 'player still in the world (a body left in a fight stays up to 20 seconds) -- wait 20 seconds, then restore again' }, 409);
-        const snap = await this.state.storage.get(snapKey);
-        if (!snap) return json({ ok: false, error: 'snapshot not found' }, 404);
-        // NEVER destroy data during recovery: current blob is saved as
-        // a prerestore snapshot before being overwritten.
-        const current = await this.state.storage.get('rpg:' + playerId);
-        if (current) await this.state.storage.put('rpgsnap:' + playerId + ':prerestore-' + Date.now(), current);
-        await this.state.storage.put('rpg:' + playerId, snap);
-        await this._adminLog({ op: 'restore', playerId, snapKey });
-        return json({ ok: true, restoredFrom: snapKey });
+        let body = null;
+        try { body = await request.json(); } catch (e) { body = null; }
+        const r = await playerRestore(this, body);
+        const { status, ...out } = r;
+        if (r.ok && !r.dry) await this._adminLog({ op: 'restore', playerId: body.playerId, snapKey: body.snapKey, restored: r.restored, copy: r.copy });
+        return json(out, status || 200);
       }
 
       /* v2.3.5288: THE ROOM'S WAY BACK (restore.js; card R PR 9): the whole

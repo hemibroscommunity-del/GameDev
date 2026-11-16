@@ -28,6 +28,8 @@ import { LOGIN_KEYS, newKeyOf } from './loginkeys.js'; /* v2.3.3355: new Login K
 import { stashGive, stashTake, stashSet } from './stash.js';   /* v2.3.5281: the stashes' door (card R PR 2) */
 import { rfNote, rfRetryMs } from './rfspread.js';   /* v2.3.5604: a waiting crowd knocks more slowly (card OPS PR 5) */
 import { requestIp } from './flood.js';   /* v2.3.5604 (mend): a refusal counted once an address a second */
+import { questLoad } from './queststate.js';   /* v2.3.5284: quest state's door (card R PR 5) */
+import { xpSet } from './xp.js';   /* v2.3.5289: experience and levels' door (card R PR 10) */
 
 /* ═══ v2.3.1627: the JOIN DATA ALLOWLIST ═══
  *
@@ -1063,8 +1065,8 @@ export const joinMethods = {
         this.playerState[msg.id].inventory = stored.inventory || {};
         this.playerState[msg.id].lifeSkills = stored.lifeSkills || {};
         healLifeSkillLevels(this.playerState[msg.id]);   /* v2.3.3041: a stored level 0 reads 1 (migrations.js) */
-        this.playerState[msg.id].level = stored.level || 1;
-        this.playerState[msg.id].xp = stored.xp || 0;
+        xpSet(this.playerState[msg.id], 'level', stored.level || 1, 'join_level');   /* v2.3.5289: the experience door */
+        xpSet(this.playerState[msg.id], 'xp', stored.xp || 0, 'join_xp');
         pointsSet(this.playerState[msg.id], stored.unspentT2 || 0, 'join_stored_t2');   /* v2.3.5283: the skill points' door */
         pointsSet(this.playerState[msg.id], stored.buildPointsThisLvl || 0, 'join_stored_bp');
         this._hpSet(this.playerState[msg.id], typeof stored.hp === 'number' ? stored.hp : 100, 'join_stored'); /* v2.3.4820: the life door */
@@ -1119,9 +1121,12 @@ export const joinMethods = {
         this.playerState[msg.id].goldBars = (typeof stored.goldBars === 'number')
           ? Math.max(0, Math.floor(stored.goldBars))
           : this._amuletClampBars(msg.data && msg.data.rpgGoldBars);
-        this.playerState[msg.id]._quests = (stored._quests && typeof stored._quests === 'object') ? { ...stored._quests } : {};
-        this.playerState[msg.id]._questFlags = (stored._questFlags && typeof stored._questFlags === 'object') ? { ...stored._questFlags } : {};
-        this.playerState[msg.id]._questKills = (stored._questKills && typeof stored._questKills === 'object') ? { ...stored._questKills } : {};
+        /* v2.3.5284: the quest door (queststate.js), each map the caller's own copy as before */
+        questLoad(this.playerState[msg.id], {
+          _quests: (stored._quests && typeof stored._quests === 'object') ? { ...stored._quests } : {},
+          _questFlags: (stored._questFlags && typeof stored._questFlags === 'object') ? { ...stored._questFlags } : {},
+          _questKills: (stored._questKills && typeof stored._questKills === 'object') ? { ...stored._questKills } : {},
+        }, 'join_stored');
         this.playerState[msg.id].achievementPoints = stored.achievementPoints || 0;
         /* v2.3.1664: server-verified kills.  MUST be restored here or a
            reconnect resets the counter to 0 and the next on-chain
@@ -1212,10 +1217,10 @@ export const joinMethods = {
            freshLifeSkills() -- and this stays as the second line for those
            two. */
         trapBootstrapGuard(this.playerState[msg.id]);
-        this.playerState[msg.id].level = Math.max(1, Math.min(BOOTSTRAP_LEVEL_CAP,
-          (msg.data && typeof msg.data.rpgLevel === 'number') ? Math.floor(msg.data.rpgLevel) : 1));
-        this.playerState[msg.id].xp = Math.max(0, Math.min(BOOTSTRAP_XP_CAP,
-          (msg.data && typeof msg.data.rpgXp === 'number') ? Math.floor(msg.data.rpgXp) : 0));
+        xpSet(this.playerState[msg.id], 'level', Math.max(1, Math.min(BOOTSTRAP_LEVEL_CAP,
+          (msg.data && typeof msg.data.rpgLevel === 'number') ? Math.floor(msg.data.rpgLevel) : 1)), 'join_new_level');   /* v2.3.5289: the experience door */
+        xpSet(this.playerState[msg.id], 'xp', Math.max(0, Math.min(BOOTSTRAP_XP_CAP,
+          (msg.data && typeof msg.data.rpgXp === 'number') ? Math.floor(msg.data.rpgXp) : 0)), 'join_new_xp');
         pointsSet(this.playerState[msg.id], Math.max(0, Math.min(BOOTSTRAP_UT2_CAP,
           (msg.data && typeof msg.data.rpgUnspentT2 === 'number') ? Math.floor(msg.data.rpgUnspentT2) : 0)), 'join_new_t2');   /* v2.3.5283: the skill points' door */
         // build_point_earned dispatches own up to 4 in a flurry on
@@ -1308,9 +1313,12 @@ export const joinMethods = {
           }
           return out;
         };
-        this.playerState[msg.id]._quests = _capObjKeys((msg.data && msg.data.rpgQuests) || null);
-        this.playerState[msg.id]._questFlags = _capObjKeys((msg.data && msg.data.rpgQuestFlags) || null);
-        this.playerState[msg.id]._questKills = _qKclean;
+        /* v2.3.5284: the quest door (queststate.js) */
+        questLoad(this.playerState[msg.id], {
+          _quests: _capObjKeys((msg.data && msg.data.rpgQuests) || null),
+          _questFlags: _capObjKeys((msg.data && msg.data.rpgQuestFlags) || null),
+          _questKills: _qKclean,
+        }, 'join_new');
         this.playerState[msg.id].achievementPoints = Math.max(0, Math.min(99999,
           (msg.data && typeof msg.data.rpgAchievementPoints === 'number') ? Math.floor(msg.data.rpgAchievementPoints) : 0));
         this.playerState[msg.id]._perfectHistory = [];
