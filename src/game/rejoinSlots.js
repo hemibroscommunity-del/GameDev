@@ -30,6 +30,7 @@
 import { lockOntoDuelOpponent } from './duelLock.js';
 import { t2OnStateSync } from './tradeSlot.js';
 import { runResets } from './resetOn.js';   /* v2.3.5203: the rejoin edge's one door (card L) */
+import { poseTo } from './poseDoor.js';   /* v2.3.5520: the pose's page door, S._pose's one writer (no imports of its own) */
 
 export const REJOIN_SLOTS = Object.freeze([
   /* v2.3.1185: the party HUD (wsClient.js setParty(null)); party.js */
@@ -74,7 +75,7 @@ export function rejoinClear(S, count, setTrade2, clearIv) {
      moves' sounds and the townsfolk's reactions reading S._pose) stood
      alone until you moved.  Cleared, not said again (poses.js: "a deploy
      stands everyone up"); no word to the worker, which already holds none. */
-  if (S._pose) { done.push('pose'); S._pose = null; }
+  if (S._pose) { done.push('pose'); poseTo(S, null, 'forget'); }   /* v2.3.5520: through the pose's page door */
   const n = rejoinCount({ rejoinResend: count });
   if (n >= 1) {
     if (S._inDuel || S._activeDuel) done.push('duel');

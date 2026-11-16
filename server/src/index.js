@@ -6331,6 +6331,8 @@ export class GameRoom {
              false`): said on the room's own post, so the board object reads
              no flags of its own and asks the room nothing (leaderboard.js) */
           ...(this._liveFlags?.boardcache === false ? { bc: 0 } : {}),
+          /* v2.3.5608: the sweep of week-old board rows stopped (`boardsweep: false`) */
+          ...(this._liveFlags?.boardsweep === false ? { bs: 0 } : {}),
           /* v2.3.5608: the boards' lastSeen exact again (`exactseen: true`, to run an old draw) */
           ...(this._liveFlags?.exactseen === true ? { xs: 1 } : {}),
         }),

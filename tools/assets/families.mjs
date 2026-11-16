@@ -197,8 +197,10 @@ export const ASSET_FAMILIES = Object.freeze([
     { tool: ['tools/ui/make_collection_eyewear.py', 'tools/species_alien.py'], sources: 'assets/portrait-source/hemi-bros/*.png', draw: 'dom', loader: 'src/rendering/characterPortrait.js', px: 'frame 256x256' }),
   fam('traits-frames', 'made', 'public/sprites/traits/{hair,headwear,facialhair,eyewear,eyestyle}/*/{east,north,northeast,south,southwest}.png',
     { tool: ['tools/downscale_traits.py', 'tools/ui/make_collection_eyewear.py', 'tools/species_alien.py'], sources: '<piece>/hi/<dir>.png', draw: 'file', loader: 'src/rendering/systems/entityRenderer.js', px: 'frame 128x128', note: 'a coloured piece draws look/heads' }),
-  fam('traits-hairmasks', 'made', 'public/sprites/traits/headwear/*/hairmask/*.png',
-    { tool: 'tools/make_hairmask.py', sources: 'public/sprites/traits/headwear/<id>/<dir>.png, the player\'s stand and jog sheets', draw: 'file', loader: 'src/rendering/systems/entityRenderer.js', px: 'frame 128x128' }),
+  fam('traits-hairmasks', 'made', 'public/sprites/traits/headwear/*/hairmask/{east,north,northeast,south,southwest}.png',
+    { tool: 'tools/make_hairmask.py', sources: 'public/sprites/traits/headwear/<id>/<dir>.png, the player\'s stand and jog sheets', draw: 'file', loader: 'src/rendering/systems/entityRenderer.js', px: 'frame 128x128', note: 'v2.3.5562: drawn from their twins where colour numbers are drawn (traits-hairmasks-twins); these with ?hairmasks=0 or ?alphaclip' }),
+  fam('traits-hairmasks-twins', 'made', 'public/sprites/traits/headwear/*/hairmask/*.p256.png',
+    { tool: 'tools/art/reduce256.mjs', sources: 'beside', draw: 'numbers', loader: 'src/rendering/p256.js', px: 'frame 128x128', note: 'v2.3.5562, card P\'s backlog: the hats\' hair masks read from their 256-colour twins by default (exact: two colours); listed in src/data/p256Files.js; ?hairmasks=0' }),
   fam('traits-meta', 'data', 'public/sprites/traits/{hair,headwear,facialhair,eyewear,eyestyle}/*/meta.json',
     { tool: ['tools/import_headwear_green.py', 'tools/ui/make_collection_eyewear.py', 'tools/species_alien.py'], draw: 'data', loader: 'src/rendering/systems/entityRenderer.js' }),
   fam('traits-thumbs', 'supplied', 'public/sprites/traits/{hair,headwear,facialhair}/*/thumb.png',
@@ -222,8 +224,10 @@ export const ASSET_FAMILIES = Object.freeze([
     { tool: ['tools/species_frames.py', 'tools/species_alien.py'], sources: 'tools/species-fixes/<id>.json', draw: 'data', loader: 'src/rendering/traits/speciesArt.js' }),
   fam('cape', 'supplied', 'public/sprites/traits/cape/*/{east,north,northeast,south,southwest}.png',
     { draw: 'file', loader: 'src/rendering/capeSprites.js', px: 'frame 256x256', note: 'tools/import_cape_green.py from an AI sheet not kept' }),
-  fam('cape-hood', 'made', 'public/sprites/traits/cape/*/hood/*.png',
-    { tool: 'tools/cape/split-cape-hood.py', sources: 'public/sprites/traits/cape/<id>/<dir>.png', draw: 'file', loader: 'src/rendering/capeSprites.js', px: 'frame 256x256' }),
+  fam('cape-hood', 'made', 'public/sprites/traits/cape/*/hood/{east,south,southwest,hairmask-east,hairmask-south,hairmask-southwest}.png',
+    { tool: 'tools/cape/split-cape-hood.py', sources: 'public/sprites/traits/cape/<id>/<dir>.png', draw: 'file', loader: 'src/rendering/capeSprites.js', px: 'frame 256x256', note: 'v2.3.5564: the hair masks drawn from their twins where colour numbers are drawn (cape-hood-twins), these with ?capehood=0 or ?alphaclip; the halves, pixel art drawn crisp, stay pictures' }),
+  fam('cape-hood-twins', 'made', 'public/sprites/traits/cape/*/hood/hairmask-*.p256.png',
+    { tool: 'tools/art/reduce256.mjs', sources: 'beside', draw: 'numbers', loader: 'src/rendering/p256.js', px: 'frame 256x256', note: 'v2.3.5564, card P\'s backlog: a cape hood\'s hair masks (exact) read from their twins by default, not the halves (drawn crisp); listed in src/data/p256Files.js; ?capehood=0' }),
   fam('cape-meta', 'data', 'public/sprites/traits/cape/*/meta.json', { tool: 'tools/import_cape_green.py', draw: 'none' }),
 
   /* ── townsfolk: public/sprites/npc/ ── */
@@ -237,8 +241,10 @@ export const ASSET_FAMILIES = Object.freeze([
     { draw: 'none', note: 'townsfolk load the .webp bakes; mayor-bro.png is the art from before the hat fix' }),
 
   /* ── pets, shields, projectiles, gathering tools, weapons ── */
-  fam('pets', 'made', 'public/sprites/pets/*.png',
-    { tool: 'tools/make_pet_sheet.py', sources: 'public/sprites/monsters/** walk strips', draw: 'file', loader: 'src/rendering/petSprites.js', px: 'art law' }),
+  fam('pets', 'made', 'public/sprites/pets/pet-sheet.png',
+    { tool: 'tools/make_pet_sheet.py', sources: 'public/sprites/monsters/** walk strips', draw: 'file', loader: 'src/rendering/petSprites.js', px: 'art law', note: 'v2.3.5563: drawn from its twin where colour numbers are drawn (pets-twins); this with ?petsheet=0, and the portrait\'s <img>' }),
+  fam('pets-twins', 'made', 'public/sprites/pets/pet-sheet.p256.png',
+    { tool: 'tools/art/reduce256.mjs', sources: 'beside', draw: 'numbers', loader: 'src/rendering/p256.js', px: 'art law', note: 'v2.3.5563, card P\'s backlog: the pet sheet read from its 256-colour twin by default (79k colours cut to 256, moved 0.021 OKLab); listed in src/data/p256Files.js; ?petsheet=0' }),
   fam('shields', 'made', 'public/sprites/shields/*.png',
     { tool: 'tools/gear/make-pine-wood.mjs', sources: 'tools/gear/src-art/shields/*.webp', draw: 'file', loader: 'src/rendering/shieldSprites.js' }),
   fam('weapons-wood', 'made', 'public/sprites/weapons/{bows,staffs}/*.png',
