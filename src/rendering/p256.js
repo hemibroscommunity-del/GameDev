@@ -82,9 +82,21 @@ const FX_SHEETS_ON = !NO_TWINS && !/[?&]fxsheets=0(&|$)/.test(_q);
    dark and light (<img>s).  `?elemicons=0` keeps them pictures. */
 const ELEM_ICONS = /^\/icons\/ui\/elem-(?:flame|frost|water|venom|flora|stone|storm|wind)\.webp$/;
 const ELEM_ICONS_ON = !NO_TWINS && !/[?&]elemicons=0(&|$)/.test(_q);
+/* v2.3.5562, `traits-hairmasks`: the hats' hair masks, the white silhouettes
+   the hair is clipped to under a hat (entityRenderer.js _loadHairMaskDir,
+   hairClip.js's stencil): 128 px, two colours, so their twins are exact.
+   Loaded for every clipping hat drawn -- yours, other players', the
+   townsfolk's -- and kept: 2.1 MB at the memory check's fight, four bytes a
+   pixel in the page.  As colour numbers, a byte a pixel; the stencil draws a
+   numbers silhouette with its own program (hairClip.js).  `?hairmasks=0`
+   keeps them pictures. */
+const HAIRMASKS = /^\/sprites\/traits\/headwear\/[a-z0-9-]+\/hairmask\/(?:east|north|northeast|south|southwest)\.png$/;
+/* (not with `?alphaclip`, the alpha mask as it was: a filter reads the
+   silhouette as a picture, which a colour numbers' cannot be) */
+const HAIRMASKS_ON = !NO_TWINS && !/[?&]hairmasks=0(&|$)/.test(_q) && !/[?&]alphaclip\b/.test(_q);
 /** whether the picture at `path` (no host, no query) is read from its twin here */
-function wantedPath(path) { return !NO_TWINS && (ALL_TWINS || (FX_MADE_ON && FX_MADE.test(path)) || (WORLD_ICONS_ON && WORLD_ICONS.test(path)) || (FX_SHEETS_ON && FX_SHEETS.test(path)) || (ELEM_ICONS_ON && ELEM_ICONS.test(path))); }
-const WANTED = !NO_TWINS && (ALL_TWINS || FX_MADE_ON || WORLD_ICONS_ON || FX_SHEETS_ON || ELEM_ICONS_ON);
+function wantedPath(path) { return !NO_TWINS && (ALL_TWINS || (FX_MADE_ON && FX_MADE.test(path)) || (WORLD_ICONS_ON && WORLD_ICONS.test(path)) || (FX_SHEETS_ON && FX_SHEETS.test(path)) || (ELEM_ICONS_ON && ELEM_ICONS.test(path)) || (HAIRMASKS_ON && HAIRMASKS.test(path))); }
+const WANTED = !NO_TWINS && (ALL_TWINS || FX_MADE_ON || WORLD_ICONS_ON || FX_SHEETS_ON || ELEM_ICONS_ON || HAIRMASKS_ON);
 /* (never while QA compares cropped strips against their files: __btTrimVerify) */
 export function p256On() { return WANTED && picNumbersOn(); }
 
@@ -101,6 +113,13 @@ function queryOf(url) {
   const s = String(url || ''), q = s.indexOf('?');
   return q < 0 ? '' : s.slice(q);
 }
+
+/* v2.3.5562: the picture's bundle of rows on the colour atlas: a file's own,
+   but the hats' hair masks one bundle together -- each is the same two
+   colours (see-through and white), so they share one row, where a bundle
+   each took a row each (30 rows for the hats in view at the memory check's
+   fight).  Neither is ever let go (these pictures are kept for the game). */
+function bundleOf(url) { return HAIRMASKS.test(pathOf(url)) ? 'p256:hairmasks' : 'p256:' + pathOf(url); }
 
 /* a picture with a twin, wanted */
 function listed(url) {
@@ -157,7 +176,7 @@ export function p256Twin(url) {
 /** gearSheets.js loadCroppedStrip, once packed: the strip as colour numbers on
  *  its own row, or null (the canvas stays, as before). */
 export function packedTwinAsNumbers(url, canvas) {
-  const src = stripAsNumbers('p256:' + pathOf(url), canvas, String(url));
+  const src = stripAsNumbers(bundleOf(url), canvas, String(url));
   if (src) { _stats.strips++; _toPack.add(src); }
   else _stats.asOriginal++;
   return src;
@@ -202,7 +221,7 @@ export const p256LoadParser = {
       const cv = document.createElement('canvas');
       cv.width = w; cv.height = h;
       cv.getContext('2d', { willReadFrequently: true }).drawImage(img, 0, 0);
-      src = stripAsNumbers('p256:' + pathOf(url), cv, String(url));
+      src = stripAsNumbers(bundleOf(url), cv, String(url));
       /* (kept only for QA's comparison: picsNumbers.js __btPicNumVerify) */
       if (!(src && src.__btOrigCanvas === cv)) { cv.width = 0; cv.height = 0; }
     } catch (e) { src = null; }
@@ -341,6 +360,6 @@ export function startP256Pack(renderer, canvas) {
 }
 
 if (typeof window !== 'undefined') {
-  window.__btP256 = () => ({ wanted: WANTED, on: p256On(), all: ALL_TWINS, fxMade: FX_MADE_ON, worldIcons: WORLD_ICONS_ON, fxSheets: FX_SHEETS_ON, elemIcons: ELEM_ICONS_ON, twins: Object.keys(P256_FILES).length, ..._stats,
+  window.__btP256 = () => ({ wanted: WANTED, on: p256On(), all: ALL_TWINS, fxMade: FX_MADE_ON, worldIcons: WORLD_ICONS_ON, fxSheets: FX_SHEETS_ON, elemIcons: ELEM_ICONS_ON, hairMasks: HAIRMASKS_ON, twins: Object.keys(P256_FILES).length, ..._stats,
     pack: { ..._pk, packedNow: _packed.size, waiting: _toPack.size } });
 }

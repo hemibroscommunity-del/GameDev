@@ -71,6 +71,17 @@ const SCOPE = [
      fewer already, so their twins are exact. */
   { dir: 'icons/ui', only: /^elem-(flame|frost|water|venom|flora|stone|storm|wind)\.webp$/, always: true },
 ];
+/* v2.3.5562 (card P's backlog, traits-hairmasks): the hats' hair masks,
+   the white silhouettes the hair is clipped to (entityRenderer.js
+   _loadHairMaskDir, hairClip.js's stencil): two colours each, so twinned
+   exactly (`always`: they are RGBA PNGs, and only a palette PNG is read as
+   colour numbers).  Every hat that ships a hairmask/ folder. */
+{
+  const hw = path.join(PUB, 'sprites/traits/headwear');
+  if (fs.existsSync(hw)) for (const hat of fs.readdirSync(hw).sort()) {
+    if (fs.existsSync(path.join(hw, hat, 'hairmask'))) SCOPE.push({ dir: `sprites/traits/headwear/${hat}/hairmask`, skip: null, always: true });
+  }
+}
 
 function colourCount(d) {
   const s = new Set();

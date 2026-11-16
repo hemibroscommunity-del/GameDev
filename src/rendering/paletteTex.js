@@ -368,13 +368,21 @@ extensions.add(PaletteBatcher);
    Routed by the sprite itself (hairClip.js, `_btClipAlpha`). */
 export const PAL_CLIP_BATCHER = 'bt-palette-clip';
 const FRAG_CLIP = FRAG.replace('    finalColor = outColor * vColor;', '    if (outColor.a < 0.5) discard;\n    finalColor = outColor * vColor;');
-let _clipBatchShader = null;
-function clipBatchShader() {
-  if (_clipBatchShader) return _clipBatchShader;
+/* v2.3.5562 (card P's backlog, traits-hairmasks): a hat's hair mask as colour
+   numbers (p256.js HAIRMASKS), the hair's stencil shape (hairClip.js
+   `_btClipMask`): cut on the very line hairClip.js's own clip program cuts
+   the picture's (`a * r` under a half: the silhouettes are white, so the
+   alpha squared), not this program's alpha under a half */
+export const PAL_HAIR_CLIP_BATCHER = 'bt-palette-hairclip';
+const FRAG_HAIR_CLIP = FRAG.replace('    finalColor = outColor * vColor;', '    if (outColor.a * outColor.r < 0.5) discard;\n    finalColor = outColor * vColor;');
+const _clipShaders = {};
+function clipBatchShader(prog = { fragment: FRAG_CLIP, name: 'bt-palette-clip' }) {
+  const name = prog.name;
+  if (_clipShaders[name]) return _clipShaders[name];
   const units = new Int32Array(SLOTS);
   for (let i = 0; i < SLOTS; i++) units[i] = i;
-  _clipBatchShader = new Shader({
-    glProgram: GlProgram.from({ vertex: VERT, fragment: FRAG_CLIP, name: 'bt-palette-clip' }),
+  _clipShaders[name] = new Shader({
+    glProgram: GlProgram.from({ vertex: VERT, fragment: prog.fragment, name }),
     resources: {
       paletteSamplers: new UniformGroup({
         uTextures: { value: units, type: 'i32', size: SLOTS },
@@ -382,7 +390,7 @@ function clipBatchShader() {
       }, { isStatic: true }),
     },
   });
-  return _clipBatchShader;
+  return _clipShaders[name];
 }
 class PaletteClipBatcher extends PaletteBatcher {
   constructor() {
@@ -393,10 +401,19 @@ class PaletteClipBatcher extends PaletteBatcher {
 }
 PaletteClipBatcher.extension = { type: [ExtensionType.Batcher], name: PAL_CLIP_BATCHER };
 extensions.add(PaletteClipBatcher);
+class PaletteHairClipBatcher extends PaletteBatcher {
+  constructor() {
+    super();
+    this.name = PAL_HAIR_CLIP_BATCHER;
+    this.shader = clipBatchShader({ fragment: FRAG_HAIR_CLIP, name: 'bt-palette-hairclip' });
+  }
+}
+PaletteHairClipBatcher.extension = { type: [ExtensionType.Batcher], name: PAL_HAIR_CLIP_BATCHER };
+extensions.add(PaletteHairClipBatcher);
 /** v2.3.3707: the clip program (did it link? the silhouettes' prewarm) */
 export function paletteClipProgram() { return clipBatchShader().glProgram; }
 /** v2.3.3707: the discard is in it (the line it rides on was found) */
-export function paletteClipMade() { return FRAG_CLIP !== FRAG; }
+export function paletteClipMade() { return FRAG_CLIP !== FRAG && FRAG_HAIR_CLIP !== FRAG; }   /* v2.3.5562: and the hair masks' */
 
 /* ═══ v2.3.3447: ONE DRAWING PROGRAM FOR EVERY SPRITE ═══
    The owner: "iterate on what best improves framerate without loss of quality

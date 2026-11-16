@@ -1,5 +1,5 @@
 card: P
-branch: claude/plan-p-20-pack-loss (main 481bac2 inside: the line for sitting 20)
+branch: claude/plan-p-21-hairmasks (#1881's head: the line for sitting 20)
 prs: #1713, #1715, #1716, #1718, #1719, #1736, #1743, #1745, #1757, #1749, #1763, #1766, #1805, #1806, #1810, #1840, #1846, #1853, #1859, #1868 (5241-5259, 5560, merged); #1881 (5561), #1906 (5562), #1918 (5563), #1925 (5564) ready
 state: working
 

@@ -120,6 +120,7 @@ const FORMS = {
   'guarddoor': '0',
   'guest': '1',
   'guidearrow': '0',
+  'hairmasks': '0',
   'halloween': '*',
   'harvestdoor': '0',
   'headframes': '',
