@@ -93,6 +93,7 @@ export const INFRA = Object.freeze({
   _shopSend: 'the shop\'s answer itself',
   _wsBySessionId: 'finds the socket', _sendPlayerState: 'the echo after a paid sale',
   _relayAllowed: 'the relay list (relay.js): read by the default case\'s own guard',
+  _relayBytesDrop: 'v2.3.5543: a relay\'s bytes (relay.js; RT-1 N10): read by the default case\'s own guard, beside the count\'s',
   _socialLane: 'which allowance a relay spends', _socialAllow: 'the social allowance: read by the default case\'s own guard',
   _pfBowShot: 'times a bow shot for the trial (freeswing.js); refuses nothing',
   _dgShot: 'v2.3.4801: stamps a drawn arrow or a gathered bolt (drawgather.js); refuses nothing',
@@ -109,7 +110,7 @@ export const SWALLOWED = Object.freeze({
 
 /* The list's size when it was frozen (v2.3.4791).  Lower these as lines come
    off; raising one is a decision the PR names. */
-export const FROZEN = Object.freeze({ listed: 271, known: 0 });   /* v2.3.5540: +1, the archer's lane's own drop beside the plain floor's (combat.js; card K, step 4.2); v2.3.4801: +1, the draw and gather's quiet drop (drawgather.js); v2.3.4880: -22, the workshop answers (forge, amulet forge, gem cut, smelter, armour forge); v2.3.4881: -14, the points, the chest, the capes and the reroll; v2.3.4882: -4, the purses; v2.3.4883: -6, the weapon stash; v2.3.4884: the heap burn's 4 recoded `fight`, the fire's 1 off; v2.3.4885: -2, the last three answer (party accept, trade2's weapon cap, the relay trade's run-out offer; and a party accept with no invite map, after a deploy), two right silences beside them named */
+export const FROZEN = Object.freeze({ listed: 272, known: 0 });   /* v2.3.5543: +1, the relay's byte bounds beside the count's (relay.js; RT-1 N10; card K); v2.3.5540: +1, the archer's lane's own drop beside the plain floor's (combat.js; card K, step 4.2); v2.3.4801: +1, the draw and gather's quiet drop (drawgather.js); v2.3.4880: -22, the workshop answers (forge, amulet forge, gem cut, smelter, armour forge); v2.3.4881: -14, the points, the chest, the capes and the reroll; v2.3.4882: -4, the purses; v2.3.4883: -6, the weapon stash; v2.3.4884: the heap burn's 4 recoded `fight`, the fire's 1 off; v2.3.4885: -2, the last three answer (party accept, trade2's weapon cap, the relay trade's run-out offer; and a party accept with no invite map, after a deploy), two right silences beside them named */
 
 /* handler -> { guard: 'code[ code...][: note]' } */
 export const ALLOW = {
@@ -542,6 +543,7 @@ export const ALLOW = {
     "if (!this._relayAllowed(msg.type))": "shape",
     "if (_social && !this._socialAllow(session, _now))": "rate",
     "if (session.relayTokens < 1)": "rate",
+    "if (this._relayBytesDrop(session, msg, Date.now()))": "rate",   /* v2.3.5543: the relay's bytes, silent as the count's is (relay.js; a flood is not answered) */
     "if (msg.type === 'chat' && !this._sanitizeChatRelay(session, msg))": "inner",
     "if (msg.type === 'emote' && !this._sanitizeEmoteRelay(session, msg))": "inner",
     "if (!msg)": "inner",

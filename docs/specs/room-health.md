@@ -14,7 +14,10 @@ anywhere.
 ## What
 
 `GET https://api.brotown.net/health/room` asks the room (3 s at most) and
-answers with numbers only:
+answers **up or down only**: `{ ok }`, 200 or 503 (all a monitor reads).
+With the owner's key (`Authorization: Bearer`, the room's own admin check and
+its lockout) it answers the numbers too (v2.3.5601, mended for sitting 19b:
+"newer saves refused" told a stranger a rollback had happened):
 
 | field | what |
 |---|---|
@@ -24,8 +27,9 @@ answers with numbers only:
 | `ticking`, `tickAgeMs` | the tick loop runs; since its last tick began |
 | `savesRefused` | `{ put, newer }` since the worker started (`roomrow.js`) |
 
-- 200 when `ok`; 503 with the same numbers when not; 503 `{ room: 'no
-  answer' }` when the room does not answer in 3 s.
+- 200 when `ok`; 503 when not; 503 `{ room: 'no answer' }` when the room
+  does not answer in 3 s. The route passes the room only the caller's key
+  and address.
 - `tick late`: the loop runs and its last tick is over 5 s old. An empty
   room has no loop (it stops with the last socket), and is healthy.
 - `save refused` / `newer saves refused`: one in the last minute. The second
