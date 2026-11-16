@@ -2,6 +2,11 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { PlayerDrawings, AccuracyDays } from './DevWatch.jsx';   /* v2.3.4545: what players drew, and every player's accuracy a day */
 import { ReportTable } from './ReportTable.jsx';   /* v2.3.5125: the smoothness table, copied (card A) */
 import { EconCard } from './EconCard.jsx';   /* v2.3.5093: the owner's card, the economy (card E) */
+import { SetSwitchRow } from './SetSwitchRow.jsx';   /* v2.3.5602: set a switch, no terminal (card OPS) */
+import { FeedbackOwnerRows } from './FeedbackOwnerRows.jsx';   /* v2.3.5603: the feedback board's takedown and sweep (card OPS) */
+import { SilenceButtons } from './SilenceButtons.jsx';   /* v2.3.5605: silence from a chat report (card OPS) */
+import { RenameRow } from './RenameRow.jsx';   /* v2.3.5611: rename, from a chat report and your own (card OPS) */
+import { SILENCE_PATH, silenceMap } from '../../game/silenceOwner.js';
 import { COL, getState } from '../mobile/dash/common.js';
 import { BT_API_BASE } from '../../networking/index.js';
 import { runSpeedTest } from '../../game/speedTest.js';   /* v2.3.3339: the speed test, measured on this phone */
@@ -431,7 +436,11 @@ export const DevPanel = ({ onClose }) => {
        because a background probe that disables buttons or writes errors is
        reporting on a request nobody asked for. */
     const quiet = !!(opts && opts.quiet);
-    const say = quiet ? () => {} : setMsg;
+    /* v2.3.5602 (mend, sitting 19b): `say` -- a row's own line, under its
+       button, told too (the panel's line is ~1,300 px away on a phone, so a
+       refused tap looked dead) */
+    const own = opts && typeof opts.say === 'function' ? opts.say : null;
+    const say = quiet ? () => {} : (own ? (t) => { setMsg(t); own(t); } : setMsg);
     if (!key) { say('Enter your admin key first.'); return null; }
     if (!quiet) setBusy(true);
     try {
@@ -488,6 +497,35 @@ export const DevPanel = ({ onClose }) => {
       say(isAbort(e) ? TIMEOUT_MSG : 'Network error: ' + String(e).slice(0, 80));
       return null;
     } finally { if (!quiet) setBusy(false); }
+  }, [key]);
+
+  /* v2.3.5603: the owner's calls OUTSIDE /api/admin -- the feedback board's
+     takedown and sweep (FeedbackOwnerRows.jsx; red team RT-3's #1878: the
+     Feedback object reads the same admin key).  The same key and timeout as
+     `call`; it answers { status, j } and judges nothing, because there a 404
+     means "this worker has no such route, or no key" and the row says which
+     (it asks `call('/overview')` quietly).  Not act(): act() carries a
+     player's session token, never the owner's key. */
+  /* v2.3.5605: and a JSON body, for the silence's POST (SilenceButtons.jsx) */
+  /* v2.3.5603 (mend, sitting 19b): `body` (JSON) and `opts.say`, a row's own
+     line under its button, told what went wrong too */
+  const callOwner = useCallback(async (path, method, body, opts) => {
+    const own = opts && typeof opts.say === 'function' ? opts.say : null;
+    const say = (t) => { setMsg(t); if (own) own(t); };
+    if (!key) { say('Enter your admin key first.'); return null; }
+    setBusy(true);
+    try {
+      const res = await fetchWithTimeout(BT_API_BASE + path, {
+        method: method || 'GET',
+        headers: Object.assign({ Authorization: 'Bearer ' + key }, body ? { 'Content-Type': 'application/json' } : {}),
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      const j = await res.json().catch(() => ({}));
+      return { status: res.status, j };
+    } catch (e) {
+      say(isAbort(e) ? TIMEOUT_MSG : 'Network error: ' + String(e).slice(0, 80));
+      return null;
+    } finally { setBusy(false); }
   }, [key]);
 
   const refresh = useCallback(async (quiet) => {
@@ -664,10 +702,18 @@ export const DevPanel = ({ onClose }) => {
      is written to the admin log by the worker.  On demand, like the flags. */
   const [reports, setReports] = useState(null);
   const [sure, setSure] = useState('');   /* the Freeze waiting for its second tap */
+  /* v2.3.5605: the silences running, read with the reports (card MOD's
+     GET /api/admin/silence): a report's buttons say Lift while one runs.  A
+     worker without the route answers 404: no list, the buttons say why. */
+  const [silences, setSilences] = useState(null);
+  const loadSilences = useCallback(async () => {
+    const r = await callOwner(SILENCE_PATH, 'GET');
+    setSilences(r && r.status === 200 && r.j && r.j.ok ? silenceMap(r.j) : null);
+  }, [callOwner]);
   const loadReports = useCallback(async (keepMsg) => {
     const j = await call('/reports?limit=50');
-    if (j) { setReports(Array.isArray(j.reports) ? j.reports : []); if (!keepMsg) setMsg(''); }
-  }, [call]);
+    if (j) { setReports(Array.isArray(j.reports) ? j.reports : []); if (!keepMsg) setMsg(''); await loadSilences(); }
+  }, [call, loadSilences]);
   const reportAct = useCallback(async (r, act) => {
     const who = r.targetName || r.target;
     if (act === 'freeze' && sure !== 'freeze:' + r.key) { setSure('freeze:' + r.key); return; }
@@ -1004,6 +1050,10 @@ export const DevPanel = ({ onClose }) => {
                 </button>
               ))}
             </div>
+
+            {/* v2.3.5611: your own character's name (a staff word allowed: `force`; RenameRow.jsx, card OPS PR 12) */}
+            <RenameRow targetId={myId} who="your character" mine call={call} callOwner={callOwner}
+              busy={busy} setMsg={setMsg} chip={chip} COL={COL} />
 
             {/* ═══ v2.3.3527: ACHIEVEMENTS ═══
                 The owner's lever (server devtools.js /dev/achv ->
@@ -1367,6 +1417,11 @@ export const DevPanel = ({ onClose }) => {
               );
             })()}
 
+            {/* v2.3.5602: any switch set to a value from here, never a terminal (SetSwitchRow.jsx, card OPS PR 3) */}
+            <SetSwitchRow call={call} busy={busy} setMsg={setMsg} COL={COL} btn={btn} chip={chip} label={label} onFlags={setFlags} />
+            {/* v2.3.5603: take a feedback post down, sweep the board (FeedbackOwnerRows.jsx, card OPS PR 4) */}
+            <FeedbackOwnerRows call={call} callOwner={callOwner} busy={busy} setMsg={setMsg} COL={COL} btn={btn} chip={chip} label={label} />
+
             {/* ═══ v2.3.3344: PLAYER LOGINS ═══  See the note by letDeviceIn. */}
             <div style={label}>Player logins</div>
             <div style={{ color: COL.muted, fontSize: 12, marginBottom: 7, lineHeight: 1.4 }}>
@@ -1607,6 +1662,12 @@ export const DevPanel = ({ onClose }) => {
                       <button type="button" data-report-act="dismiss" style={{ ...chip, minHeight: 34, flex: 'none' }}
                         disabled={busy} onClick={() => reportAct(r, 'dismiss')}>Dismiss</button>
                     </div>
+                    {/* v2.3.5605: silence (card MOD's route), beside the Freeze (SilenceButtons.jsx, card OPS PR 6) */}
+                    <SilenceButtons r={r} until={silences ? silences[r.target] : undefined} call={call} callOwner={callOwner}
+                      busy={busy} setMsg={setMsg} chip={chip} COL={COL} onChanged={loadSilences} />
+                    {/* v2.3.5611: and a rename (card MOD's #1907 route; RenameRow.jsx, card OPS PR 12) */}
+                    <RenameRow targetId={r.target} who={r.targetName || r.target} call={call} callOwner={callOwner}
+                      busy={busy} setMsg={setMsg} chip={chip} COL={COL} />
                   </div>
                 ))}
               </>

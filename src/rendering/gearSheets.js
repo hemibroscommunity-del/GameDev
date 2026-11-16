@@ -638,6 +638,20 @@ export function gearSheetLoad(slot, item, pose, dir) {
   if (_sheets[key] === 'loading' && _sheetLoads[key]) return _sheetLoads[key];
   return Promise.resolve();
 }
+/** v2.3.5560: a gear sheet's state, asking nothing: 'in', 'loading',
+ *  'gone' (given up on: `[]`) or 'none' (never asked for). */
+export function gearSheetState(slot, item, pose, dir) {
+  item = gearArtSafe(slot, item);
+  const v = item ? _sheets[slot + '/' + item + '/' + pose + '/' + dir] : undefined;
+  return v === undefined ? 'none' : v === 'loading' ? 'loading' : (v.length ? 'in' : 'gone');
+}
+/** v2.3.5560: a gear sheet not in yet and on its way (started now when
+ *  nobody has asked for it); false once it is in, or given up on (`[]`),
+ *  which is never waited for (beltHold.js: the belt's stand-in). */
+export function gearSheetWaiting(slot, item, pose, dir) {
+  if (gearSheetState(slot, item, pose, dir) === 'none') gearSheetLoad(slot, item, pose, dir);
+  return gearSheetState(slot, item, pose, dir) === 'loading';
+}
 /* ═══ v2.3.3577: THE CHAIN BELT BEFORE A FULL SET IS BAKED ═══
    A full set's jog frames are baked with the chain belt (maskedBake.js), which
    is not a GEAR_SLOT, so preloadGear never loads it: the first getGearFrame

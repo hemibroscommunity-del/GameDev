@@ -83,6 +83,7 @@ import { ensureStandIn } from './standIns.js';   /* v2.3.3136: the farmer kneels
 import { preloadMonsterShots } from './monsterShotFx.js'; /* v2.3.2732: the monsters' goo and fire, minted in code */
 import { preloadWorldLife } from './worldLife.js';        /* v2.3.2811: the buildings' swinging and waving pieces */
 import { preloadRideArt } from './rideFx.js';             /* v2.3.3776: the skateboard */
+import { selfTestReady } from './selfTest.js';            /* v2.3.5234: the self-test at the door (card O PR 14a) */
 
 /* v2.3.1405 (owner: "per zone loading instead of one long pregame loading
    screen"): ZONE-SPECIFIC textures moved OFF the blocking pre-game gate —
@@ -387,6 +388,14 @@ export async function preloadWorldAnimations() {
        because a still image in a module named "strips" is exactly the kind
        of thing a later reader assumes was forgotten. */
     fxStrips: fxStripsReady(),
+    /* ═══ v2.3.5234: THE SELF-TEST AT THE DOOR (card O PR 14a) ═══
+       Each of the game's own drawing programs draws a known 16 x 16 picture
+       where it is warmed, as the renderer is made -- behind this loading
+       screen, before any art goes through it -- and falls back alone if it
+       draws it wrong (rendering/selfTest.js).  Registered here per the
+       preloading LAW, as the gate's group: what it found, and its ms in
+       loadTimes. */
+    selfTest: selfTestReady(),
     /* ═══ v2.3.2732: the monsters' thrown goo and fire ═══
        MINTED, not fetched -- rendering/monsterShotArt.js draws every frame in
        code and monsterShotFx.js packs them into one atlas -- but an animation

@@ -35,6 +35,9 @@
  */
 import { readFileSync } from 'node:fs';
 import * as DOOR from '../../src/game/actions.js';   /* v2.3.5185: the action door's rows */
+import { setActionTransport } from '../../src/game/actions.js';   /* v2.3.5188: the page's sends leave through the action door (card K PR 7.2): its transport is the stand-in phone's channel */
+/* v2.3.5188: the door's transport is this phone's channel (none: nothing leaves, as with no connection) */
+const via = (S) => { setActionTransport(S && S.channel ? { send: (m) => S.channel.send(m) } : null); return S; };
 import { PRIVILEGED_EVENTS } from '../src/wire/lists.js';   /* v2.3.5181: made from the wire table */
 
 let passed = 0, failed = 0;
@@ -177,7 +180,7 @@ const freshS = (extra) => Object.assign({ chatLog: [] }, extra || {});
 /* ── 6. the title ── */
 {
   const sent = [];
-  const S = freshS({ _serverCaps: { achievements: true }, channel: { send: (m) => sent.push(m) } });
+  const S = via(freshS({ _serverCaps: { achievements: true }, channel: { send: (m) => sent.push(m) } }));
   A.onAchvState(S, { got: { first_blood: 1, gladiator: 2 } });
   check('6a never for one you have not earned', A.sendAchvTitle(S, 'godly', 100) === false && sent.length === 0);
   check('6b one you have: sent in the shape the worker\'s router reads, {type, payload: {id}}',
@@ -189,8 +192,8 @@ const freshS = (extra) => Object.assign({ chatLog: [] }, extra || {});
   check('6f a lost answer stops being waited for after TITLE_ASK_MS', A.achvTitleWaiting(S, 400 + A.TITLE_ASK_MS + 1) === null);
   const off = freshS({ _serverCaps: {}, channel: { send: (m) => sent.push(m) } });
   A.onAchvState(off, { got: { gladiator: 1 } });
-  check('6g a worker without achievements is never asked', A.sendAchvTitle(off, 'gladiator') === false && sent.length === 2);
-  check('6h nor with no connection', A.sendAchvTitle(freshS({ _serverCaps: { achievements: true } }), null) === false);
+  check('6g a worker without achievements is never asked', A.sendAchvTitle(via(off), 'gladiator') === false && sent.length === 2);
+  check('6h nor with no connection', A.sendAchvTitle(via(freshS({ _serverCaps: { achievements: true } })), null) === false);
 }
 
 /* ── 7. the wiring ── */

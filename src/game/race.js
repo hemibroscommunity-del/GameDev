@@ -23,12 +23,15 @@
  * a reconnect is run again.
  *
  * No imports but the sound cue (and v2.3.3583's tally, data/raceTally.js,
- * which has none), so the race's rules can be read by a node test without
- * the game.
+ * which has none; v2.3.5204's resetOn; v2.3.5218's page door, raceDoor.js,
+ * which has none either), so the race's rules can be read by a node test
+ * without the game.
  */
 import { cue } from '@/game/eventSounds.js';
 import { noteRaceLost } from '@/data/raceTally.js';   /* v2.3.3583: his next line knows he beat you (no imports of its own) */
 import { resetOn } from '@/game/resetOn.js';   /* v2.3.5204: a race the worker forgot at a join ends here too (card L) */
+import { act } from '@/game/actions.js';   /* v2.3.5188: the page's requests leave through the action door (card K PR 7) */
+import { raceTo } from '@/game/raceDoor.js';   /* v2.3.5218: the race's page door, S._race's one writer (no imports of its own) */
 
 const LIL = 'Lil Bro';
 /* how long the phone waits for the worker to answer race_start before it
@@ -73,8 +76,8 @@ export function raceHeld(S, now) {
  *  or there is no socket to ask on. */
 export function requestRace(S) {
   if (!S || !S.channel || raceLive(S)) return false;
-  S._race = { phase: 'asked', at: Date.now() };
-  try { S.channel.send({ type: 'race_start', payload: {} }); } catch (e) { S._race = null; return false; }
+  if (!raceTo(S, { phase: 'asked', at: Date.now() }, 'ask')) return false;   /* v2.3.5218: the page door */
+  try { act('race_start', {}); } catch (e) { raceTo(S, null, 'fail'); return false; }   /* v2.3.5188: through the action door (actions.js) */
   raceBus.emit();
   return true;
 }
@@ -113,8 +116,8 @@ export function onRaceState(S, p) {
   const t0 = now + Math.max(0, Math.min(10000, Number(p.in) || 0));
   const speed = Math.max(1, Number(p.speed) || 165);
   const lilMs = Math.max(1, Number(p.lilMs) || 1);
-  S._race = { phase: 'count', t0, lilMs, speed, flagR: Number(p.flagR) || 80,
-    flags: p.flags, path: p.path, next: 0, said: 0, count: -1 };
+  raceTo(S, { phase: 'count', t0, lilMs, speed, flagR: Number(p.flagR) || 80,
+    flags: p.flags, path: p.path, next: 0, said: 0, count: -1 }, 'state');   /* v2.3.5218: the page door */
   S._raceLil = { path: p.path, t0, speed, len: pathLen(p.path), lilMs };
   lilSays(S, 'On your marks! Get set!');   /* v2.3.4025: plain words (docs/specs/plain-words.md) */
   raceBus.emit();
@@ -137,8 +140,8 @@ export function onRaceEnd(S, p) {
   if (!S) return;
   const res = p || {};
   const was = S._race;
-  S._race = { phase: 'done', result: res, at: Date.now(),
-    flags: was && was.flags, next: was && was.flags ? was.flags.length : 0 };
+  raceTo(S, { phase: 'done', result: res, at: Date.now(),
+    flags: was && was.flags, next: was && was.flags ? was.flags.length : 0 }, 'end');   /* v2.3.5218: the page door */
   /* refused before it began: nobody runs */
   if (res.err && (!was || was.phase === 'asked')) S._raceLil = null;
   /* a race that ends early (a false start, leaving the Wheel) stops the kid
@@ -169,14 +172,14 @@ export function onRaceEnd(S, p) {
    `?socialreset=0` keeps it, as before. */
 function forgetRace(S) {
   if (!S || (!S._race && !S._raceLil)) return;
-  S._race = null;
+  raceTo(S, null, 'forget');   /* v2.3.5218: the page door */
   S._raceLil = null;
   raceBus.emit();
 }
 resetOn('rejoin', forgetRace, 'social');
 
 export function dismissRace(S) {
-  if (S && S._race && S._race.phase === 'done') { S._race = null; raceBus.emit(); }
+  if (S && S._race && S._race.phase === 'done') { raceTo(S, null, 'dismiss'); raceBus.emit(); }   /* v2.3.5218: the page door */
 }
 
 /** Once a frame (BroTown's loop): the countdown's beats and the gun, and a
@@ -186,7 +189,7 @@ export function raceTick(S, now) {
   if (!r) return;
   const t = typeof now === 'number' ? now : Date.now();
   if (r.phase === 'asked') {
-    if (t - r.at > ASK_MS) { S._race = null; raceBus.emit(); }
+    if (t - r.at > ASK_MS) { raceTo(S, null, 'timeout'); raceBus.emit(); }   /* v2.3.5218: the page door */
     return;
   }
   if (r.phase === 'count') {
@@ -197,14 +200,14 @@ export function raceTick(S, now) {
       raceBus.emit();
     }
     if (t >= r.t0) {
-      r.phase = 'run';
+      raceTo(S, null, 'gun');   /* v2.3.5218: the page door (count -> run, in place) */
       lilSays(S, 'Later, slowpoke!');
       raceBus.emit();
     }
     return;
   }
   if (r.phase === 'run') {
-    if (t - r.t0 > r.lilMs + FORGET_AFTER_MS) { S._race = null; raceBus.emit(); }
+    if (t - r.t0 > r.lilMs + FORGET_AFTER_MS) { raceTo(S, null, 'timeout'); raceBus.emit(); }   /* v2.3.5218: the page door */
     return;
   }
   if (r.phase === 'done' && t - r.at > RACE_RESULT_MS) dismissRace(S);

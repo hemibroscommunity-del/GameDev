@@ -207,7 +207,7 @@ export function ladderDepth() {
 /* ── the game's own drawing programs (step 1.7: the report's `self`) ── */
 export const PROGRAMS = Object.freeze([
   { name: 'one', file: 'src/rendering/paletteTex.js', built: Object.freeze(['bt-one-batch']), back: 'the three programs' },
-  { name: 'palette', file: 'src/rendering/paletteTex.js', built: Object.freeze(['bt-palette-batch', 'bt-palette-clip', 'bt-palette-mesh', 'bt-palette-fill']), back: 'whole colours' },
+  { name: 'palette', file: 'src/rendering/paletteTex.js', built: Object.freeze(['bt-palette-batch', 'bt-palette-clip', 'bt-palette-hairclip', 'bt-palette-mesh', 'bt-palette-fill']), back: 'whole colours' },
   { name: 'look', file: 'src/rendering/lookPalette.js', built: Object.freeze(['bt-look-batch', 'bt-look-sheen-batch']), back: 'each look baked' },
   { name: 'sharp', file: 'src/rendering/sharpPixels.js', built: Object.freeze(['batch-sharp']), back: 'plain pixels' },
   { name: 'clip', file: 'src/rendering/hairClip.js', built: Object.freeze(['batch-clip', 'batch-clip-alpha']), back: null },
