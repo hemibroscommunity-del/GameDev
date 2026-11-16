@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "f62a2096d52bd14abe56fbe234349d1b4160f0a9",
+  "tree": "44327b44a6fa3bb76d8688ae903d281f2aae7646",
+  "committedAt": "2026-11-16T13:29:46-08:00",
+  "subject": "Merge pull request #1882 from hemibroscommunity-del/claude/rt1-oldkey",
+  "files": 7754,
+  "bytes": 957339078,
+  "listingSha256": "9461552b4f659ae01cedf7aac0a6a5bdfa0378895f5ec9dc43163174b5a65581",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

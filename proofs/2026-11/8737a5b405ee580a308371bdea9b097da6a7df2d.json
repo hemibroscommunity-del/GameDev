@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "8737a5b405ee580a308371bdea9b097da6a7df2d",
+  "tree": "923518b3814e000c3fa2563ecfd1cd79d87670c0",
+  "committedAt": "2026-11-16T13:30:07-08:00",
+  "subject": "Merge pull request #1899 from hemibroscommunity-del/claude/plan-k-door-relay",
+  "files": 7755,
+  "bytes": 957362641,
+  "listingSha256": "0719db4068c27484d7ab7717bbbc16e3242a2fe54ddaef6a99a9cd9b6a83e67f",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
