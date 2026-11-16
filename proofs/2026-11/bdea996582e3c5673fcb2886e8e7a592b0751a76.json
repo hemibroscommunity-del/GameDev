@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "bdea996582e3c5673fcb2886e8e7a592b0751a76",
+  "tree": "d6ba8099019300a9f0ef8948df2af23feaebf6d6",
+  "committedAt": "2026-11-16T15:19:02-08:00",
+  "subject": "Merge pull request #1878 from hemibroscommunity-del/claude/rt3-feedback-board",
+  "files": 7941,
+  "bytes": 958075532,
+  "listingSha256": "04e446b3b12834fde8436d6772d6cf714fb7deeafba3ff85efe5d921cab6f212",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
