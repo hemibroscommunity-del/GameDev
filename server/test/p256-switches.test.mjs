@@ -37,6 +37,7 @@ const at = (q) => new Function('_q', section + '\nreturn { wantedPath, WANTED };
 /* [switch, a picture of its family (no host, no query)] */
 const ROWS = [
   ['fishspot', '/sprites/world/fish-spot-627.webp'],   /* v2.3.5565 */
+  ['hudbars', '/ui/bars/hp-frame.png'],                /* v2.3.5566 (and the pills, /icons/ui/bar-*.webp) */
 ];
 const OTHER = '/sprites/pets/pet-sheet.png';   /* another family's, read from its twin by default */
 
