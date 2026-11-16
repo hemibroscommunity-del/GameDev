@@ -430,8 +430,11 @@ curl -X POST -H "Authorization: Bearer YOUR_KEY" -H "Content-Type: application/j
 curl -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/admin/silence"
 curl -X DELETE -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/admin/silence?id=bp_..."
 ```
-`minutes` 0 is until lifted. The live switches `silence` and `freezedevice`
-(set to `false`) turn each off. `docs/specs/silence.md`.
+Leave `minutes` out for until lifted (otherwise a whole number of minutes,
+1 to a year). The live switch `silence` (set to `false`) turns silences off.
+The phone half of a freeze is OFF until you turn it on: the live switch
+`freezedevice` set to `true` (it can hold out a phone your own other
+character has used, so it waits for your word). `docs/specs/silence.md`.
 
 ## A copy of the room's records, a page at a time (v2.3.5286)
 
