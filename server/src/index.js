@@ -428,7 +428,7 @@ async function routeHttp(request, env) {
        stuck room read "ok" there.  For an uptime monitor. */
     if (url.pathname === '/health/room') {   /* HEALTH.PATH: the wire table's lister reads the literal */
       if (!roomName) return noSuchRoom();
-      return routeRoomHealth(env, roomName, corsHeaders);
+      return routeRoomHealth(env, roomName, corsHeaders, request);
     }
 
     if (url.pathname === '/health') {
@@ -4571,7 +4571,7 @@ export class GameRoom {
        (health.js), after the switches load (its own, `roomhealth`, among
        them); internal like `/_room_count`: no outside path is forwarded here */
     if (url.pathname === '/_room_health') {   /* HEALTH.ROOM_PATH */
-      return this._roomHealthFetch();
+      return this._roomHealthFetch(request);
     }
     /* v2.3.5184: THE WIRE DOOR for the room's routes (wire/door.js), after
        the switches load and before the first route: a key named like the
