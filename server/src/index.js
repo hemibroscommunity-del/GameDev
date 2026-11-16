@@ -4641,7 +4641,7 @@ export class GameRoom {
        first socket, so the first harvest already reads the owner's values */
     await this._hiddenEnsure();
     if (this.sessions.size >= this._roomCap()) {
-      return this._roomFullRefusal(url);
+      return this._roomFullRefusal(url, undefined, request);
     }
     /* v2.3.3274: one address holds at most `ip_sockets` places and opens at
        most `ip_joins_min` sockets a minute (flood.js): the room's places were
@@ -4649,7 +4649,7 @@ export class GameRoom {
        own word (`reason: 'ip'`). */
     const _ip = requestIp(request);
     if (!this._floodIpOk(_ip, Date.now())) {
-      return this._roomFullRefusal(url, 'ip');
+      return this._roomFullRefusal(url, 'ip', request);
     }
     const [client, server] = Object.values(new WebSocketPair());
     this.state.acceptWebSocket(server);

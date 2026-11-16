@@ -26,6 +26,8 @@ import { cleanWheelSizes } from './wheeltables.js'; /* v2.3.3315: the Wheel size
 import { DEVICE_LOCK, cleanDevice } from './devicelock.js'; /* v2.3.3344: a key on its character's devices */
 import { LOGIN_KEYS, newKeyOf } from './loginkeys.js'; /* v2.3.3355: new Login Keys, made by the worker */
 import { stashGive, stashTake, stashSet } from './stash.js';   /* v2.3.5281: the stashes' door (card R PR 2) */
+import { rfNote, rfRetryMs } from './rfspread.js';   /* v2.3.5604: a waiting crowd knocks more slowly (card OPS PR 5) */
+import { requestIp } from './flood.js';   /* v2.3.5604 (mend): a refusal counted once an address a second */
 import { questLoad } from './queststate.js';   /* v2.3.5284: quest state's door (card R PR 5) */
 import { xpSet } from './xp.js';   /* v2.3.5289: experience and levels' door (card R PR 10) */
 import { tidyCharName } from './charname.js';   /* v2.3.5622: a name with no record held to the rule (the sitting 19 review) */
@@ -350,13 +352,19 @@ export const joinMethods = {
      (webSocketMessage/Close) are never wired to it -- `accept()` rather
      than `state.acceptWebSocket()` keeps this socket outside the room's
      bookkeeping entirely. */
-  _roomFullRefusal(url, why) {
+  _roomFullRefusal(url, why, request) {
     const cap = this._roomCap();
+    const _now = Date.now();
     /* Old clients (and anything that isn't our client) keep the exact
        refusal they have always had. */
     if (!url || url.searchParams.get('rf') !== '1') {
       return new Response('Room full', { status: 503 });
     }
+    /* v2.3.5604: a refusal the game's phones obey is counted (rfspread.js),
+       and the answer's `retryMs` follows the count.  Mended for sitting 19b:
+       only these (`?rf=1`), never an old client's 503, and an address at most
+       once a second -- one loud client set every waiter to 30 s */
+    rfNote(this, _now, requestIp(request));
     const payload = {
       type: 'room_full',
       /* `reason` mirrors join_rejected's field so the client's refusal
@@ -370,7 +378,7 @@ export const joinMethods = {
          reads as a bug in the refusal rather than as a full world. */
       count: this.sessions.size,
       cap,
-      retryMs: ROOM_FULL.RETRY_MS,
+      retryMs: rfRetryMs(this, _now),   /* v2.3.5604: ROOM_FULL.RETRY_MS (5 s) until the crowd knocks over 40 a second (rfspread.js); `rf_spread: false` keeps it */
     };
     const [client, server] = Object.values(new WebSocketPair());
     try {
