@@ -430,13 +430,13 @@ export function FeedbackPanel(props) {
           color: cat === null || cat === void 0 ? void 0 : cat.color,
           border: '1px solid ' + (cat === null || cat === void 0 ? void 0 : cat.color) + '30'
         }
-      }, (cat === null || cat === void 0 ? void 0 : cat.label) || t.category), /*#__PURE__*/React.createElement("span", {
+      }, (cat === null || cat === void 0 ? void 0 : cat.label) || String(t.category || '')), /*#__PURE__*/React.createElement("span", {
         style: {
           fontSize: 11,
           fontWeight: 600,
           color: '#96A2A0'
         }
-      }, (top === null || top === void 0 ? void 0 : top.label) || t.topic), /*#__PURE__*/React.createElement("span", {
+      }, (top === null || top === void 0 ? void 0 : top.label) || String(t.topic || '')), /*#__PURE__*/React.createElement("span", {
         style: {
           fontSize: 11,
           color: '#96A2A0',
@@ -450,14 +450,15 @@ export function FeedbackPanel(props) {
           lineHeight: 1.4,
           wordBreak: 'break-word'
         }
-      }, t.text), /*#__PURE__*/React.createElement("div", {
+      }, String(t.text || '')), /*#__PURE__*/React.createElement("div", {
         style: {
           fontSize: 11,
           color: '#96A2A0',
           marginTop: 3,
           fontVariantNumeric: 'tabular-nums'
         }
-      }, "by ", t.playerName, " \xB7 👍", t.up, " 👎", t.down)));
+      }, /* v2.3.5593: every field the board serves printed as a string (RT-3 S3: a name kept as an object made React throw) */
+      "by ", String(t.playerName || 'Bro'), " \xB7 👍", Number(t.up) || 0, " 👎", Number(t.down) || 0)));
     }), /*#__PURE__*/React.createElement("button", {
       onClick: function onClick() {
         stateRef.current._fbLastFilter = null;

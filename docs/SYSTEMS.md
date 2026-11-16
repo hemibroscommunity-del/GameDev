@@ -27,6 +27,7 @@ line), every door is in its system's files, and this page is what the table make
 | [bots](#bots) | telling a person from a script: bot signals, fingerprints, claims that are bounded |
 | [liveops](#liveops) | the live flags, the admin and dev levers, test mode, feedback |
 | [server-core](#server-core) | the worker's spine: saving, migrations, the tick, its pace, hidden settings, the room's own row |
+| [ops](#ops) | the room under a crowd and the watch on it: its health for a monitor, the waiting crowd's pace, a seat held, the public boards' and the room's public reads |
 | [combat](#combat) | hitting and being hit: weapons, abilities, the bow, shields, damage, PvP |
 | [monsters](#monsters) | the monsters' lives, moves, status, spawns and the boss |
 | [economy](#economy) | gold, the bag, the bank, the market and shops, trades, drops, chests and daily rewards |
@@ -84,8 +85,8 @@ A sitting: the join, leaving, lingering, the rejoin and what it re-sends.
 
 Who a player is: ids, accounts, the device lock, login keys, the account check, the sites that may open a socket.
 
-- **Files**: `server/src/`: account, devicelock, loginkeys, verify, broverify, origin, httpauth
-- **Files**: `src/game/`: tabIdentity, characterRecord
+- **Files**: `server/src/`: account, devicelock, loginkeys, verify, broverify, origin, httpauth, charname
+- **Files**: `src/game/`: tabIdentity, characterRecord, charName
 - **Files**: everything under `src/ui/account/`
 - **Doors**: none named yet
 - **Switches**: [its rows in the switch table](SWITCHES.md#identity)
@@ -107,8 +108,9 @@ Telling a person from a script: bot signals, fingerprints, claims that are bound
 The live flags, the admin and dev levers, test mode, feedback.
 
 - **Files**: `server/src/`: liveops, admin, devtools, testmode, feedback
-- **Files**: `src/game/`: testMode
+- **Files**: `src/game/`: testMode, switches, ownerSwitches, feedbackOwner, silenceOwner, renameOwner
 - **Files**: `server/src/`: restore
+- **Files**: `server/src/`: playerrestore
 - **Doors**: `flagNameOk` in `server/src/liveops.js` (the names a live flag (a kill switch) may take); `_testMode` in `server/src/testmode.js` (the one question an honesty check asks)
 - **Switches**: [its rows in the switch table](SWITCHES.md#liveops)
 - **Words**: `liveops`, `admin`, `devtools`, `test-mode`, `testmode`, `feedback`, `flags`
@@ -124,12 +126,22 @@ The worker's spine: saving, migrations, the tick, its pace, hidden settings, the
 - **Words**: `persistence`, `migration`, `tick`, `storage`, `save`, `hidden`, `cost-guard`, `costguard`, `daybook`, `roomrow`
 - **Traps**: `server-core`
 
+## ops
+
+The room under a crowd and the watch on it: its health for a monitor, the waiting crowd's pace, a seat held, the public boards' and the room's public reads.
+
+- **Files**: `server/src/`: health, rfspread, seathold, publicreads
+- **Doors**: none named yet
+- **Switches**: [its rows in the switch table](SWITCHES.md#ops)
+- **Words**: `room-health`, `rf-spread`, `seat-hold`, `board-cache`, `public-reads`
+- **Traps**: none
+
 ## combat
 
 Hitting and being hit: weapons, abilities, the bow, shields, damage, PvP.
 
 - **Files**: `server/src/`: combat, hits, abilities, accuracy, burst, freeswing, fightlock, killroll, threat, telegraph, elemental, oneformula, statcap, arrowblast, swordconvert, shieldwear, shieldgem, weapongem, amulet, pvpbalance, pvpextras, pvplunge
-- **Files**: `src/game/`: abilities, accuracy, combatHelpers, manualCombat, targeting, projectiles, bowDraw, bowFeel, bowVolley, swordFeel, staffFeel, weaponFeel, deathBlow, dodge, elemHits, elemWindup, killRoll, killXp, pvpSwing, shieldCopies, shieldGem, shieldToggle, shieldWear, arrowEdge, whirlCatch, deskShield, weaponGem, weaponSlots, amuletGem, apChip, peerShots, shotGround, shockSpark, stormSparks, waterAttack
+- **Files**: `src/game/`: abilities, accuracy, combatHelpers, manualCombat, targeting, projectiles, bowDraw, bowFeel, bowVolley, swordFeel, staffFeel, weaponFeel, deathBlow, dodge, elemHits, elemWindup, killRoll, killXp, pvpSwing, shieldCopies, shieldGem, shieldToggle, guardDoor, shieldWear, arrowEdge, whirlCatch, deskShield, weaponGem, weaponSlots, amuletGem, apChip, peerShots, shotGround, shockSpark, stormSparks, waterAttack
 - **Doors**: `_monsterHit` in `server/src/hits.js` (MONSTER_HITS: every monster hit on a player)
 - **Switches**: [its rows in the switch table](SWITCHES.md#combat)
 - **Words**: `combat`, `hit`, `ability`, `abilit`, `bow`, `arrow`, `sword`, `staff`, `shield`, `weapon`, `pvp`, `damage`, `whirl`, `dodge`, `elemental`, `accuracy`
@@ -163,7 +175,7 @@ Gold, the bag, the bank, the market and shops, trades, drops, chests and daily r
 The life skills: gathering, cooking, smithing, the farm, fishing, trapping.
 
 - **Files**: `server/src/`: gathering, cooking, smelting, armorforge, forgeladder, farm, farmorders, fishlog, trapping, hardening, hardenedwood, drawgather, firetrail, gscopper, shardcrack, gems
-- **Files**: `src/game/`: smithing, forgeTabs, farmFeedback, farmTrip, farmWalk, farmWork, fishWeigh, trapping, tierOre, tierTrees, drawGather, lifeSkillRewards, quickEat, fightFood, mastery, shardCrack, fireRefuse
+- **Files**: `src/game/`: smithing, forgeTabs, farmFeedback, farmTrip, farmWalk, farmWork, fishWeigh, trapping, tierOre, tierTrees, drawGather, lifeSkillRewards, harvestDoor, quickEat, fightFood, mastery, shardCrack, fireRefuse
 - **Doors**: none named yet
 - **Switches**: [its rows in the switch table](SWITCHES.md#skills)
 - **Words**: `gather`, `cook`, `smelt`, `smith`, `forge`, `farm`, `fish`, `trap`, `harden`, `firemaking`, `skill`, `gem`, `ore`, `tree`, `shard`
@@ -175,8 +187,10 @@ Quests, achievements, the codex, pets' book, points.
 
 - **Files**: `server/src/`: quests, achievements, codex, petbook, pets, pointsreset, prog3
 - **Files**: `server/src/`: skillpoints
+- **Files**: `server/src/`: xp
+- **Files**: `server/src/`: queststate
 - **Files**: `src/game/`: quests, questCard, questComplete, questFly, questHandIn, questJournal, questKept, questPins, questRoute, questTrailStyle, questWays, trackedQuest, achievements, petBook, petFetch, pointsBubbles, pointsReset, pointsTips, tour, levelCelebration, xpBar, xpPop, welcomeBanner
-- **Doors**: `pointsGive` in `server/src/skillpoints.js` (POINT_ROADS: every change to a player's build points (pointsGive, pointsTake, pointsSet, pointsDeal; v2.3.5283, card R))
+- **Doors**: `pointsGive` in `server/src/skillpoints.js` (POINT_ROADS: every change to a player's build points (pointsGive, pointsTake, pointsSet, pointsDeal; v2.3.5283, card R)); `xpGive` in `server/src/xp.js` (XP_ROADS: every change to a character's experience and levels (xpGive, xpLevelUp, xpSet, xpMake; v2.3.5289, card R)); `questStateSet` in `server/src/queststate.js` (QUEST_ROADS: every change to a quest's state, progress, flags and kept lists (seven verbs; v2.3.5284, card R))
 - **Switches**: [its rows in the switch table](SWITCHES.md#quests)
 - **Words**: `quest`, `achievement`, `codex`, `pet`, `points`, `tour`, `xp`, `level`
 - **Traps**: `quests`
@@ -185,8 +199,8 @@ Quests, achievements, the codex, pets' book, points.
 
 Parties, clans, guilds, friends, chat, emotes, duels, the arena, races, boards.
 
-- **Files**: `server/src/`: party, clanparty, clans, guilds, alliance, friends, chatlanes, chatmod, chatguard, emotes, boards, arena, gladiator, duel, spar, race, leaderboard, power, statboards
-- **Files**: `src/game/`: alliance, chat, chatChannel, chatColor, chatMute, emotes, emoteMoves, gesturePose, friendErrors, duelLock, duelPending, partyChip, partyEq, partyMarks, partyRows, peerDot, race, spar, sparTargets, bubbleSkins, boardBumps, dictation
+- **Files**: `server/src/`: party, clanparty, clans, guilds, alliance, friends, chatlanes, chatmod, chatguard, reservednames, silence, emotes, boards, arena, gladiator, duel, spar, race, leaderboard, power, statboards
+- **Files**: `src/game/`: alliance, chat, chatChannel, chatColor, chatMute, emotes, emoteMoves, gesturePose, friendErrors, duelLock, duelPending, partyChip, partyEq, partyMarks, partyRows, peerDot, race, raceDoor, spar, sparTargets, bubbleSkins, boardBumps, dictation
 - **Doors**: none named yet
 - **Switches**: [its rows in the switch table](SWITCHES.md#social)
 - **Words**: `party`, `clan`, `guild`, `alliance`, `friend`, `chat`, `emote`, `duel`, `arena`, `gladiator`, `spar`, `race`, `board`, `leaderboard`, `social`
@@ -218,7 +232,7 @@ Moving: steps, sprinting, jumping, climbing, riding, swimming, resting.
 
 The townspeople: their days, walks, talk and reactions.
 
-- **Files**: `src/game/`: townsfolkDay, townsfolkReact, townsfolkWalk, townChatter, mayorTalk, interactions
+- **Files**: `src/game/`: townsfolkDay, townsfolkReact, townsfolkWalk, townChatter, mayorTalk, interactions, poseDoor
 - **Doors**: none named yet
 - **Switches**: [its rows in the switch table](SWITCHES.md#townsfolk)
 - **Words**: `townsfolk`, `npc`, `mayor`, `folk`

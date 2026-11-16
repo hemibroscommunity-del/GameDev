@@ -19,6 +19,7 @@ import { BT_AUDIO, EXTRACT_WINDOW_MS, MINIGAME_REWARDS, addLifeSkillXp, computeO
 import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.1915 */
 import { rollHarvestShard, shardByKey } from '@/data/shards.js';
 import { _objectSpread } from '@/lib/babelHelpers.js';
+import { harvestTo } from '@/game/harvestDoor.js';   /* v2.3.5219: the one writer of S._extraction (card L PR 5) */
 
 import { pushDmgPopup, swimRefused /* v2.3.3012 */, offlineRefused /* v2.3.3034 */ } from '@/game/combatHelpers.js';
 import { climbOut } from '@/game/wheelSwim.js';   /* v2.3.3012: a seat on the bank ends a swim */
@@ -216,7 +217,7 @@ export function startExtraction(S, node, skill, extra) {
       try { if (BT_AUDIO.swimSplash) BT_AUDIO.swimSplash('out'); } catch (e) {}
     }
     /* One extraction at a time -- tapping a new node cancels the old. */
-    if (S._extraction) S._extraction = null;
+    if (S._extraction) harvestTo(S, null, 'again');   /* v2.3.5219: through the harvest's page door */
     if (_locked) { _startLockedTry(S, node, skill, _locked); return; }
     var R = S.rpg;
     var skillLvl = (R && R.lifeSkills && R.lifeSkills[skill] && R.lifeSkills[skill].level) || 0;
@@ -237,7 +238,10 @@ export function startExtraction(S, node, skill, extra) {
        theirs (rule 19: gated on the cap, not on hope). */
     var _hitMode = !!(S._serverCaps && S._serverCaps.gatherhits) && !!S.channel
       && Object.prototype.hasOwnProperty.call(GATHER_SWING, skill);
-    S._extraction = {
+    /* v2.3.5219: the record is made whole (its hits, a cook's fish), then
+       handed to the harvest's page door (game/harvestDoor.js), the one
+       writer of S._extraction */
+    var _rec = {
       nodeId: node.id,
       /* v2.3.253: keep the node reference too so the tick can find it
          even when nodes lack ids (SP locally-spawned nodes were
@@ -252,7 +256,7 @@ export function startExtraction(S, node, skill, extra) {
     };
     if (_hitMode) {
       S._gatherHitSeq = (S._gatherHitSeq || 0) + 1;
-      S._extraction.hits = {
+      _rec.hits = {
         seq: S._gatherHitSeq,
         plan: null,                       /* the worker's dice, once they land */
         times: null,                      /* when each one lands (Date.now() ms) */
@@ -265,7 +269,8 @@ export function startExtraction(S, node, skill, extra) {
     }
     /* v2.3.853: cooking carries the chosen raw fish key so succeed/burn can
        apply the cook outcome (the "node" is the campfire, not a gather node). */
-    if (extra) { for (var _k in extra) S._extraction[_k] = extra[_k]; }
+    if (extra) { for (var _k in extra) _rec[_k] = extra[_k]; }
+    if (!harvestTo(S, _rec, 'start')) return;   /* v2.3.5219: never refused today (none, after 'again' above) */
     /* v2.3.230: tell the server we started so it can validate the
        eventual node_strike's timing against the same computeOpenDelay
        window we just rolled.  Server treats missing extraction_start
@@ -325,7 +330,7 @@ function _startLockedTry(S, node, skill, need) {
     } catch (e) { /* the three */ }
     var plan = [];
     for (var i = 0; i < n; i++) plan.push(0);
-    S._extraction = {
+    var _try = {   /* v2.3.5219: handed whole to the harvest's page door (its `try`) */
       nodeId: node.id,
       nodeRef: node,
       skill: skill,
@@ -347,6 +352,7 @@ function _startLockedTry(S, node, skill, need) {
         planAt: now,
       },
     };
+    if (!harvestTo(S, _try, 'try')) return;   /* v2.3.5219: never refused today (none: startExtraction ended the old one) */
     var label = need.skill.charAt(0).toUpperCase() + need.skill.slice(1);
     var at = _gatherHitAt(S, skill, node, 0);
     var said = 'Requires ' + label + ' Lv ' + need.need;
@@ -455,7 +461,7 @@ export function tickGatherHits(S, ex, node, now) {
        beat after its last 0 (_startLockedTry) -- the window never opens */
     if (ex.locked && h.shown >= h.plan.length && now >= h.times[h.times.length - 1] + LOCKED_END_MS) {
       if (ex._probe) ex._probe.endedAt = now;
-      if (S._extraction === ex) S._extraction = null;
+      if (S._extraction === ex) harvestTo(S, null, 'tried');   /* v2.3.5219: through the harvest's page door */
     }
 }
 /* = entityRenderer SELF_DEATH_HOLD_MS, the corpse hold selfCorpseUp bounds
@@ -536,7 +542,7 @@ export function succeedExtraction(S, accuracy, deps) {
               : (S.gatherNodes && _ex.nodeId
                  ? S.gatherNodes.find(function (n) { return n.id === _ex.nodeId; })
                  : null);
-    if (!node) { S._extraction = null; return false; }
+    if (!node) { harvestTo(S, null, 'lost'); return false; }   /* v2.3.5219: through the harvest's page door */
     /* accuracy comes from the phase-2 gesture grade (ExtractionSwipeLayer);
        defaults to 'good' for any legacy caller. Keyed into MINIGAME_REWARDS. */
     var result = { accuracy: (accuracy === 'perfect' || accuracy === 'ok') ? accuracy : 'good' };
@@ -545,7 +551,7 @@ export function succeedExtraction(S, accuracy, deps) {
     else if (_ex.skill === 'woodcutting') applyWoodReward(S, node, result, deps);
     else if (_ex.skill === 'mining')      applyMiningReward(S, node, result, deps);
     S._lastHarvestOkAt = Date.now();   /* v2.3.4343: the first-harvest teaching (ui/deskTeach.js) tells a done harvest from a missed window */
-    S._extraction = null;
+    harvestTo(S, null, 'strike');   /* v2.3.5219: through the harvest's page door */
     return true;
 }
 

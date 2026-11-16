@@ -220,6 +220,7 @@ Screens: creator, creator-tab-*, creator-paint, creator-paint-designs
 - The name, Randomize Bro and Reset sit in one carved plate from the owner's mockup (a lion medallion on top, v2.3.2361); ENTER stays outside it. BRO NAME is a centred heading (owner: "Make the name your character area more obvious. Maybe center and large and in all caps put the BRO NAME label.", v2.3.2151), and the name field is the biggest control there ("Make name larger to fill the space", v2.3.2416), with a gold reroll icon inside it. The icon sits inside the field's right end on purpose (v2.3.1251), the name's text kept clear of it, and the owner asked for it bigger ("randomize button for name needs to be larger it looks small and awkward", v2.3.2453); the automatic check's "partly covered by Generate a random name" on the name field is that icon.
 - Randomize Bro (green) rolls the whole look; Reset (russet) gives the blank slate the owner asked for ("bald shirtless character is what I wanted"), drawings included. Different colours at the owner's request (v2.3.2151); "Randomize Bro", not "Look", at the owner's word (v2.3.2456).
 - ENTER BRO TOWN can always be pressed, so it can say why you can't go yet, in one short line under the name: "Name your bro first", "Type at least 2 letters", "Pinch back to 100% zoom" (owner: "if someone tries to press the shared 'join brotown button' make it give the reason it can't join (need name first) etc.", v2.3.2388; one line each since v2.3.3430). Its label gently grows and shrinks (owner: "make the Enter Bro Town text subtly grow and shrink", v2.3.1577), and only once you are able to leave.
+- The name follows the worker's name rule, and the same line says why before you press (v2.3.5622, card MOD; the red team's RT-3 S2): "No emoji or symbols" (an emoji in the world's outlined name is a known iPhone crash, and a hidden or right-to-left mark can disguise a name), "Pick a name of your own" (a name that reads as the game or its staff: BroTown, Admin, Mod, Owner...), "20 letters at most". Each fits the one-line slot at 320 like the others. The rule is the worker's own (src/game/charName.js, held to it by mirror-audit), so a name the box takes is never refused at the join.
 - The name field does not grab focus when the screen opens: on iPhone that opens the keyboard and hides the bro (owner, v2.3.1818). While you type, the bro shrinks and the logo steps aside so the keyboard doesn't shove the screen (owner's iOS report, v2.3.2391).
 - It opens on the Bro type tab, "Species" until v2.3.3772 (v2.3.3589). It opened on Skin from v2.3.3526, when Skin held the species too: the first ChatGPT review asked for it so a new player sees the drawing card (a tattoo) at once, and the owner said yes ("Go recommended on everything"), the species and skin being what the rest is built on. With the two apart it opens on the species, and the Skin tab with its card is the next tab. The camera still opens on the whole bro. Until v2.3.3526 it opened on Hair, and a player who never visited Skin, Shirt, Pants or Shoes never saw the card.
 - Back returns to the door (owner: "Create a character need a back button to main menu.", v2.3.2219). The "already have a bro?" link was removed here (owner, v2.3.2006): the door's Continue does that.
@@ -1218,8 +1219,9 @@ Screens: lazy-cantopen
 - **Close puts the window away too** (its own close, so the game is not left "busy" behind a window with no ✕). Opened again, it tries again.
 - **One try more first, unseen.** A dropped connection is the other way a window's code can fail; it is tried once more, a moment later, before the card shows.
 - **The middle of the play column**, in the game's dark-and-gold card, with Reload (`data-enter`) and Close (`data-esc`) for a computer's keys.
+- **A window that breaks while it is open uses the same card** (v2.3.5593, the red team's RT-3 S3): "This window hit a problem" over "Close it and open it again, or reload the game." Before it, one bad value in one window (a feedback post whose name was not words) blanked every screen of the game, because nothing caught the error. Now the window's guard catches it, the card shows (`data-lazy-cantopen="threw"`), the game plays on, and the error goes to the crash feed. Opened again, the window is drawn afresh. The words differ from the update card's because the fix differs: here closing and opening again is usually enough.
 
-Sources: src/ui/lazyPanel.js, src/ui/lazyPanels.js, docs/specs/worker-code-diet.md, tools/qa/mp/mp-lazyfail.mjs
+Sources: src/ui/lazyPanel.js, src/ui/lazyPanels.js, docs/specs/worker-code-diet.md, docs/specs/feedback-guard.md, tools/qa/mp/mp-lazyfail.mjs, tools/qa/mp/mp-panelguard.mjs
 
 ## The Town Hall's board and the map pins
 Screens: building-townhall, building-townhall-page, building-townhall-action
@@ -1975,6 +1977,68 @@ Screens: dev-econ-card
 - Cases waiting, for card Q.
 
 Sources: src/ui/panels/EconCard.jsx, src/game/econCard.js, server/src/econcard.js, server/src/worldsum.js, server/test/econ-card.test.mjs, server/src/daybook.js, docs/plan/cards/E.md (PR 12).
+
+## The Test panel sets a switch
+Screens: dev-set-switch
+
+**What it is for:** Setting any live switch to a value from the owner's phone, with no terminal: the owner is never asked to run a command (CLAUDE.md §1). The two that matter most: `newersave` off right after a dashboard rollback (OPERATIONS, "Rolling back"), and `max_players` to hold the world to fewer seats (v2.3.5602, card OPS PR 3).
+
+**Decisions, and why:**
+- **A row under Live flags, not a window**: the list above already shows each switch and its Clear, so setting one sits beside where it then appears. The list is shown again after a set.
+- **The usual switches as chips, each with its words** (`src/game/ownerSwitches.js`); any other lower-case name may be typed, and the server judges it (its refusal shows in the panel's message line). A guard holds every chip to a row of the switch table, so a chip never names a switch that is gone.
+- **On/off as two choices, a number as a number**: an on/off switch offers no number field, a number switch a whole number in its range; anything else is not sent.
+- **Two taps, the panel's own pattern** (as Forget and New key): the first shows, in the message line, what setting it will do, in plain words; only the second sends. A typo cannot change the live game on its own.
+- **The same POST as the panel's other switch taps**, with the admin key: no second way in.
+
+**Still open:**
+- The worker's four old camelCase switches are not offered (they keep the lower-case rule's exception on the server); none is an owner's recovery.
+
+Sources: src/ui/panels/SetSwitchRow.jsx, src/game/ownerSwitches.js, src/ui/panels/DevPanel.jsx (its flags section), tools/guards/owner-switches.test.mjs, docs/plan/cards/OPS.md (PR 3).
+
+## The Test panel looks after the feedback board
+Screens: dev-feedback-owner
+
+**What it is for:** Taking down a post anyone can read on the feedback board, and sweeping the board (posts too big for it and old pace rows out, its counts made again), from the owner's phone, never a terminal (red team RT-3's #1878 routes; v2.3.5603, card OPS PR 4).
+
+**Decisions, and why:**
+- **The board's newest 20, each with its own Take down**, not a box for a post's id: the owner sees the post on the board, never its id. The list is the board's public one, read only when "Show the newest posts" is tapped.
+- **Two taps, the panel's own pattern**: the first says, in the message line, which post (who, about what, its start) or what a sweep removes; only the second acts. Take down's chip turns red while it waits.
+- **A 404 is told apart in words**: the Feedback object answers a plain 404 both to a worker without these routes and to a key it does not take, so the row asks the panel's own admin route quietly and says which ("this server can't take a post down yet" or "your admin key does not work on this server"). Either side can ship first.
+- **The sweep's numbers in words**, every number the reply carries: one the row does not know by name is said by its own, never dropped.
+- **The admin key outside /api/admin goes through the panel's `callOwner`**, the same key and timeout as its `call`: one way the owner's key leaves the page.
+
+Sources: src/ui/panels/FeedbackOwnerRows.jsx, src/game/feedbackOwner.js, src/ui/panels/DevPanel.jsx (callOwner), tools/guards/feedback-owner.test.mjs, tools/qa/mp/mp-feedbackowner.mjs.
+
+## The Test panel silences from a chat report
+Screens: dev-feedback-owner
+
+**What it is for:** Silencing a player from the report on them, without a terminal: their chat reaches nobody, and they still play. Between Kick (back at once) and Freeze (kept out). Card MOD's #1897 route, the admin key (v2.3.5605, card OPS PR 6).
+
+**Decisions, and why:**
+- **Under each chat report, beside its Freeze**: the report is where the owner meets the trouble; a silence is answered there, with the same two taps as Freeze.
+- **Four lengths, never a typed number**: a minute, an hour, a day, until lifted. The first tap says, in the message line, who and for how long, and that they still play.
+- **The running silences are read with the reports** (one more request on "Show chat reports"): a silenced player's report reads "Silenced until 14:32 UTC" (a day and a time when it is not today's) with a Lift, in place of the four.
+- **Times in UTC**, as the silenced player is told them (card MOD's spec): one clock for both.
+- **A 404 is told apart**, as the feedback rows do: "this server can't silence anyone yet" (a worker without the route) or the key.
+
+(Its screenshot rides the Test panel's own screens: the report needs a second player, which the UI review's single page has not.)
+
+Sources: src/ui/panels/SilenceButtons.jsx, src/game/silenceOwner.js, src/ui/panels/DevPanel.jsx (chat reports, callOwner), tools/guards/silence-owner.test.mjs, tools/qa/mp/mp-silenceowner.mjs.
+
+## The Test panel renames a character
+Screens: dev-rename
+
+**What it is for:** Renaming a character without a terminal. Card MOD's #1907 made names permanent (the phone can no longer change one) and gave the owner the only rename, behind the admin key (v2.3.5611, card OPS PR 12).
+
+**Decisions, and why:**
+- **Two places, one row**: under each chat report, after its Silence (a name is often what was reported), and in the Character section as "Rename my character".
+- **Closed until asked**: a single Rename chip, so a report's row stays short; it opens to the new name, Rename and Cancel.
+- **Staff word only on your own**: the chip that sends `force` (a name like "Owner" that reads as the game or its staff) is offered only on the owner's own row; a report's row never sends it.
+- **Two taps**: the first says, in the message line, who becomes what and that everyone sees it; the second sends.
+- **The reply in words**: the old name and the new, whether they see it now or next time they play, and that the boards follow at their next update; a refused name says why in the rule's words (no emoji or symbols, 20 letters at most, reads as staff).
+- **A 404 is told apart**, as the silence does: no saved character with that id (a guest has none), a worker without the route ("this server can't rename anyone yet"), or the key.
+
+Sources: src/ui/panels/RenameRow.jsx, src/game/renameOwner.js, src/ui/panels/DevPanel.jsx (chat reports, Character), tools/guards/rename-owner.test.mjs, tools/qa/mp/mp-renameowner.mjs.
 
 ## The login wheel (free daily spin)
 Screens: login-spin

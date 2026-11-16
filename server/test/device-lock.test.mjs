@@ -6,7 +6,12 @@
  *   3. its own device: in, nothing written; another device, or none: refused
  *      with reason 'device' and close 4016, never 'auth', the live session
  *      untouched, and never counted as a failed key;
- *   4. a character with no device yet: its next device is taken;
+ *   4. a character made by a join with no device (an explicit empty list):
+ *      its next device is taken; 4b. (v2.3.5582) a character with NO list
+ *      (from before the lock, the fill found none): an old key is refused
+ *      'device' and the owner's pass is the way in; a listed device is
+ *      unaffected; the lockout never shuts the rightful holder out (red team
+ *      RT-1, N1 and N9); `oldkeylock: false` the way back;
  *   5. the owner's pass: one new device within 30 min, spent; forget: the
  *      list cleared and sealed, whoever plays it put out, nobody in until a
  *      pass; the routes need the admin key;
@@ -140,7 +145,7 @@ const authOf = (room, id) => room.state._store.get('auth:' + id);
   check('3. a wrong key from its own device is \'auth\', as before (close 4003)', rejected(w6) && rejected(w6).reason === 'auth' && w6.closed && w6.closed.code === 4003);
 }
 
-// ── 4. no device known yet: the next one is taken ──
+// ── 4. no device known yet (an explicit empty list): the next one is taken ──
 {
   const room = newRoom();
   const w1 = await join(room, 'bp_devlock_b', 'b-key-1', undefined);
@@ -153,6 +158,81 @@ const authOf = (room, id) => room.state._store.get('auth:' + id);
   check('4. ...and remembered', (authOf(room, 'bp_devlock_b').devs || []).map((e) => e.d).join() === 'phone2xyz');
   const w4 = await join(room, 'bp_devlock_b', 'b-key-1', D1);
   check('4. ...after which another device is refused', rejected(w4) && rejected(w4).reason === 'device');
+}
+
+// ── 4b. v2.3.5582: an old key never adds a device by itself (red team RT-1, N1 and N9) ──
+{
+  const { accountPassphraseToId } = await import('../src/account.js');
+  /* a character from before the new keys: no device list (the fill found
+     none), the fill long done -- the red team's takeover: its old key is
+     worked out from its public id, and a thief's device came in first */
+  const KEY = 'raven-solar-jet-nexus-42';
+  const KID = accountPassphraseToId(KEY);
+  const state = makeState();
+  const room = newRoom(state);
+  state._store.set(DEVICE_LOCK.FILLED_KEY, { at: 1, chars: 0, devices: 0 });
+  state._store.set('auth:' + KID, { pfHash: await room._phraseHash(KEY), createdAt: 1 });
+  const thief = await join(room, KID, KEY, { id: 'thiefdev9' }, { kv: 2 });
+  check('4b. a list-less old-key character: the right key from a new device is refused \'device\' (close 4016)',
+    rejected(thief) && rejected(thief).reason === 'device' && thief.closed && thief.closed.code === 4016, thief.sent.map((m) => m.type));
+  check('4b. ...never \'auth\' (which makes a phone throw its key away), no state, no new key handed out',
+    !thief.sent.some((m) => m.type === 'state_sync' || m.type === 'key_new'));
+  check('4b. ...and nothing remembered: the list is still empty', !(authOf(room, KID).devs || []).length, authOf(room, KID));
+  const none = await join(room, KID, KEY, undefined);
+  check('4b. ...a join that names no device: refused too', rejected(none) && rejected(none).reason === 'device');
+  /* an explicit EMPTY list -- only a registering join that named no device
+     writes one; the page always names one -- keeps the first-device rule
+     (section 4 plays it whole); no player's character has one */
+  state._store.set('auth:bp_devlock_e0', { pfHash: await room._phraseHash('e0-key'), createdAt: 1, devs: [] });
+  const e0 = await join(room, 'bp_devlock_e0', 'e0-key', D2);
+  check('4b. an explicit EMPTY list (a join with no device made it) keeps the first-device rule', joined(e0), rejected(e0));
+  /* the login door and the restart say the same */
+  room._accountLogin = room._accountLogin.bind(room);
+  let r = await room._accountLogin(KEY, '9.8.7.1', 'thiefdev9');
+  check('4b. the login check: exists, device unknown', r.ok && r.exists && r.device === 'unknown', r);
+  r = await room._accountReset(KEY, true, '9.8.7.2', 'thiefdev9');
+  check('4b. a restart from it is refused \'device\'', !r.ok && r.reason === 'device', r);
+  /* the owner's pass is the way in (the owner's own characters, test mode) */
+  const pr = await admin(room, '/device-pass', { playerId: KID });
+  check('4b. the owner\'s pass', pr.status === 200 && (await pr.json()).ok);
+  const owner = await join(room, KID, KEY, D1);
+  check('4b. ...lets the player\'s device in', joined(owner), rejected(owner));
+  check('4b. ...remembered, the pass spent', (authOf(room, KID).devs || []).map((e) => e.d).join() === 'phone1abc' && !authOf(room, KID).pass, authOf(room, KID));
+  const thief2 = await join(room, KID, KEY, { id: 'thiefdev9' });
+  check('4b. ...and the thief\'s device is still refused', rejected(thief2) && rejected(thief2).reason === 'device');
+  const back = await join(room, KID, KEY, D1);
+  check('4b. a listed device is unaffected: in, as before', joined(back), rejected(back));
+
+  /* N9: the lockout -- five wrong keys lock an id, and ids are public */
+  for (let i = 0; i < 5; i++) await join(room, KID, 'wrong-guess-' + i, { id: 'thiefdev9' });
+  const lockedWrong = await join(room, KID, 'wrong-guess-9', { id: 'thiefdev9' });
+  check('4b. five wrong keys lock the id (a sixth: \'locked\')', rejected(lockedWrong) && rejected(lockedWrong).reason === 'locked', rejected(lockedWrong));
+  const lockedRightElsewhere = await join(room, KID, KEY, { id: 'thiefdev9' });
+  check('4b. ...the right key from a device that is not the character\'s: still \'locked\'', rejected(lockedRightElsewhere) && rejected(lockedRightElsewhere).reason === 'locked', rejected(lockedRightElsewhere));
+  r = await room._accountLogin(KEY, '9.8.7.3', 'thiefdev9');
+  check('4b. ...and at the login door', r.ok === false && r.reason === 'locked', r);
+  r = await room._accountLogin(KEY, '9.8.7.4', 'phone1abc');
+  check('4b. the rightful holder at the login door, from a listed device: not locked out', r.ok && r.exists && r.device === 'ok', r);
+  const holder = await join(room, KID, KEY, D1);
+  check('4b. the rightful holder (the right key, a listed device) joins through the lock', joined(holder), rejected(holder));
+
+  /* the way back: `oldkeylock: false` -- a missing list takes its first device again */
+  {
+    const st1 = makeState();
+    const r1 = newRoom(st1, { oldkeylock: false });
+    st1._store.set(DEVICE_LOCK.FILLED_KEY, { at: 1, chars: 0, devices: 0 });
+    st1._store.set('auth:' + KID, { pfHash: await r1._phraseHash(KEY), createdAt: 1 });
+    const t1 = await join(r1, KID, KEY, { id: 'thiefdev9' });
+    check('4b. oldkeylock false: a list-less character takes its first device again, as before', joined(t1), rejected(t1));
+  }
+  /* ...and the lock as before */
+  const st2 = makeState();
+  const r2 = newRoom(st2, { oldkeylock: false });
+  st2._store.set(DEVICE_LOCK.FILLED_KEY, { at: 1, chars: 0, devices: 0 });
+  st2._store.set('auth:' + KID, { pfHash: await r2._phraseHash(KEY), createdAt: 1, devs: [{ d: 'phone1abc', at: 1 }] });
+  for (let i = 0; i < 5; i++) await join(r2, KID, 'wrong-guess-' + i, D2);
+  const old = await join(r2, KID, KEY, D1);
+  check('4b. oldkeylock false: the lock shuts out even the right key from a listed device, as before', rejected(old) && rejected(old).reason === 'locked', rejected(old));
 }
 
 // ── 5. the owner's tools ──
@@ -266,7 +346,7 @@ const authOf = (room, id) => room.state._store.get('auth:' + id);
   const s = state._store;
   check('7. the fill gives each character the devices the worker already knew', JSON.stringify((s.get('auth:bp_old_a').devs || []).map((e) => e.d)) === '["tabletone","phonetwo"]', s.get('auth:bp_old_a'));
   check('7. ...a gatherer\'s last device too', (s.get('auth:bp_old_b').devs || []).map((e) => e.d).sort().join() === 'gatherdev,tabletone', s.get('auth:bp_old_b'));
-  check('7. ...a character in no record keeps no list (its next device is taken)', s.get('auth:bp_old_c').devs === undefined);
+  check('7. ...a character in no record keeps no list (v2.3.5582: the owner\'s pass its way in)', s.get('auth:bp_old_c').devs === undefined);
   check('7. ...a list a join already wrote is left alone', JSON.stringify(s.get('auth:bp_new').devs) === '[{"d":"mine","at":5}]');
   check('7. ...and an id with no character is skipped', !s.has('auth:bp_guest_z'));
   const mark = s.get(DEVICE_LOCK.FILLED_KEY);
@@ -314,7 +394,8 @@ const authOf = (room, id) => room.state._store.get('auth:' + id);
   check('7. ...one from before on a device no record knew: refused', rejected(wB) && rejected(wB).reason === 'device');
   st3._store.set('auth:bp_old_c', { ...st3._store.get('auth:bp_old_c'), pfHash: await room3._phraseHash('old-c-key') });
   const wC = await join(room3, 'bp_old_c', 'old-c-key', { id: 'anydev' });
-  check('7. ...one no record knew at all: its device taken', joined(wC) && (st3._store.get('auth:bp_old_c').devs || []).map((e) => e.d).join() === 'anydev');
+  check('7. ...one no record knew at all: refused \'device\', nothing remembered (v2.3.5582: an old key never adds a device by itself)',
+    rejected(wC) && rejected(wC).reason === 'device' && !(st3._store.get('auth:bp_old_c').devs || []).length);
   check('7. (the first join with a stamped-wrong hash was refused as a wrong key, not a device)', rejected(okA) && rejected(okA).reason === 'auth');
 }
 
@@ -325,7 +406,8 @@ const authOf = (room, id) => room.state._store.get('auth:' + id);
   state._store.set('auth:bp_f', { pfHash: await room._phraseHash('f-key'), createdAt: 1 });
   state.failList = true;
   const w1 = await join(room, 'bp_f', 'f-key', D1);
-  check('8. a fill that fails lets the join through (its device taken, as before this change)', joined(w1) && (state._store.get('auth:bp_f').devs || []).map((e) => e.d).join() === 'phone1abc');
+  check('8. a fill that fails leaves the list empty: the old key refused \'device\', never \'auth\' (v2.3.5582; it was let through, its device taken)',
+    rejected(w1) && rejected(w1).reason === 'device' && !(state._store.get('auth:bp_f').devs || []).length);
   check('8. ...and is not marked done', !state._store.has(DEVICE_LOCK.FILLED_KEY) && !room._devFilled);
   state.failList = false;
   await room._deviceFillReady(T + 1000);
