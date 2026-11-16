@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "520970cf565a9ab2d5f59d2865c2254b45dc23c1",
+  "tree": "f6bccc0ad0f6d759c386af5e50407cc61d71249b",
+  "committedAt": "2026-11-16T14:09:25-08:00",
+  "subject": "Merge pull request #1892 from hemibroscommunity-del/claude/plan-j2-14-fishvariants",
+  "files": 7758,
+  "bytes": 957407668,
+  "listingSha256": "e991b0fb8a9f347b5919fc757c4cf23d53b13a4fb92040f7e6c8f7dc4a7828e1",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

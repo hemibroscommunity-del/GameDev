@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "7d235b02f886c9f2b6a5525a0311acba338470e5",
+  "tree": "997658e6f34a787a19ea2acc6eaeccd9012dc96d",
+  "committedAt": "2026-11-16T14:10:17-08:00",
+  "subject": "Merge pull request #1924 from hemibroscommunity-del/claude/plan-j2-21-deskharvest",
+  "files": 7758,
+  "bytes": 957414672,
+  "listingSha256": "3994bae42c9c6995469671310d57dd717dbe93a6cecaac80fb7757cec563d1c6",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "dc276a4d31ab855e9f90fd3f38bdd70dd666dc53",
+  "tree": "4952ffed0e00d90f04b954af8a76d4cd1d6a0b6f",
+  "committedAt": "2026-11-16T14:09:47-08:00",
+  "subject": "Merge pull request #1912 from hemibroscommunity-del/claude/plan-j2-17-deathzones",
+  "files": 7758,
+  "bytes": 957409260,
+  "listingSha256": "5fe6c10f3d9f0b89409d54703ceda7e6e12f048716289ff14b45811f6b281ce6",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

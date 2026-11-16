@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "9cb0dddafda4c1c8526d423fd95c9a662522b487",
+  "tree": "7545d1bee2ccf14fadf1aadceb6774c5460fcdd4",
+  "committedAt": "2026-11-16T14:09:55-08:00",
+  "subject": "Merge pull request #1916 from hemibroscommunity-del/claude/plan-j2-18-sprint",
+  "files": 7758,
+  "bytes": 957409963,
+  "listingSha256": "18d0b18f32f86315fdd373e6e698f2955f79e2cfe7a4228afaaa7a46530b8aa1",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

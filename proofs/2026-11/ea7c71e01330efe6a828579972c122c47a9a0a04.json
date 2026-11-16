@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "ea7c71e01330efe6a828579972c122c47a9a0a04",
+  "tree": "c7157e18a5ddf644e691b96ebcb73ef18099f886",
+  "committedAt": "2026-11-16T14:10:42-08:00",
+  "subject": "Merge pull request #1895 from hemibroscommunity-del/claude/plan-r-11-escrow-ledger",
+  "files": 7763,
+  "bytes": 957515027,
+  "listingSha256": "e92e262a99f9106baa4583320e9ccadde2132528cac709b7521456796abaac6f",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

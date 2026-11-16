@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "c2cbe3c8ce40c96aafadee84af86651f1779e6af",
+  "tree": "6592f56b1175c1c91cdef553a162caafae6bbd68",
+  "committedAt": "2026-11-16T14:10:49-08:00",
+  "subject": "Merge pull request #1898 from hemibroscommunity-del/claude/plan-r-10-xp-door",
+  "files": 7766,
+  "bytes": 957545357,
+  "listingSha256": "0089d5177f5bdf4fddd7ebe63648d17c095414d64dae51421dd99fba76381a7d",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "99afa283d0f764be6aae542165422832336fc6d9",
+  "tree": "ba1eab659e0f63403e87316bef995edcca066bc2",
+  "committedAt": "2026-11-16T14:10:57-08:00",
+  "subject": "Merge pull request #1922 from hemibroscommunity-del/claude/plan-r-12-credit-guards",
+  "files": 7766,
+  "bytes": 957548756,
+  "listingSha256": "e24163a7974de372e85531ce9df7ae1ce55d4b555e87634948b88228ff79041f",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

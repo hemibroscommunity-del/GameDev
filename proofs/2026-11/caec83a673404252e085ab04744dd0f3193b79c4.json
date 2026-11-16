@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "caec83a673404252e085ab04744dd0f3193b79c4",
+  "tree": "5aff5b5b9e15e6cfdd8e960f7ba83d74286743d1",
+  "committedAt": "2026-11-16T14:10:10-08:00",
+  "subject": "Merge pull request #1921 from hemibroscommunity-del/claude/plan-j2-20-lazyfail",
+  "files": 7758,
+  "bytes": 957413828,
+  "listingSha256": "5f97fb3938e5078919a50cf4247b2b2abc1b658fe578cbbc528ad2ad08080fab",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

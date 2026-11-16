@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "510edc7aec59d50c4892d1387677bc515dd056f8",
+  "tree": "d6236b75a37c63a38c5624f27395cb854b75c20f",
+  "committedAt": "2026-11-16T14:09:33-08:00",
+  "subject": "Merge pull request #1902 from hemibroscommunity-del/claude/plan-j2-15-jump",
+  "files": 7758,
+  "bytes": 957408641,
+  "listingSha256": "2067ae4d0710eceabe7eb440856586d99902fd9b9fa769567b2a63049ca38178",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

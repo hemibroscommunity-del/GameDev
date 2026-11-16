@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "9aa116de57a5d2a5e531bd58c78a24eb22ba304b",
+  "tree": "9f9fcf28213e00f77b567d24702ae9c1fc12786f",
+  "committedAt": "2026-11-16T14:09:41-08:00",
+  "subject": "Merge pull request #1904 from hemibroscommunity-del/claude/plan-j2-16-shieldgem",
+  "files": 7758,
+  "bytes": 957408980,
+  "listingSha256": "12b1ec391d327dd3ab3658f8a1f5415f2d6b22236aa093ca6e8e742c36a407ae",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

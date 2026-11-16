@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "ebea27943f609824734015278b3700922914d6e5",
+  "tree": "da565a2b5ebef5bcaf4cb00259bcb6c467fe0dc7",
+  "committedAt": "2026-11-16T14:10:34-08:00",
+  "subject": "Merge pull request #1887 from hemibroscommunity-del/claude/plan-r-6-player-restore",
+  "files": 7763,
+  "bytes": 957505127,
+  "listingSha256": "a2efe8062df4063b39d58a5d00db9ad9a50036c3ff5ea8168b0f357c17146d4e",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

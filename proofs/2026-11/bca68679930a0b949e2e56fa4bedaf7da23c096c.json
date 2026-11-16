@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "bca68679930a0b949e2e56fa4bedaf7da23c096c",
+  "tree": "4bf00b3455cde0a04a5c5cfea47c17d8e82ce10b",
+  "committedAt": "2026-11-16T14:09:18-08:00",
+  "subject": "Merge pull request #1888 from hemibroscommunity-del/claude/plan-j2-13-boardwheels",
+  "files": 7758,
+  "bytes": 957406349,
+  "listingSha256": "d71d6d16a1480b6bc2da1d81ff9a3fdf58ba1457acd1e0d933909167e463fdec",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
