@@ -1,7 +1,7 @@
 card: L
 branch: claude/plan-l-22-arena-door (each PR on main, main merged in)
-prs: #1746 to #1866 (merged), #1876 (5218), #1894 (5219), #1903 (5520), #1910 (5521), PR 5 tag 5522: working
-state: working
+prs: #1746 to #1866 (merged), #1876 (5218), #1894 (5219), #1903 (5520), #1910 (5521), PR 5 tag 5522: built, paused
+state: ready
 
 ## Done
 
@@ -15,8 +15,9 @@ state: working
 
 ## Next
 
-- PR 5: free page halves (5523 on; arena's, trade's and duel's need gameEvents.js:
-  K's 7.3); worker guard waits for K, ride SK, death door K's k-7, `connection` K.
+- Paused (planner, 2026-11-16: nothing new till sittings 19, 19b, 20 merge):
+  the arena door (5522, this branch, no PR yet); before its PR, mp-arena's
+  "both phones leave the duel" check: 27/28 here, 28/28 on main 29b1a0d.
 - Backlog (J2's find): a rejoin (a stall past 5 s) clears the party and the
   Saloon's alliance forms (what was typed is lost): a REJOIN_SLOTS row.
 
