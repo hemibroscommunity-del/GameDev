@@ -46,6 +46,7 @@ import { mayorScreenRect } from './mayorScreen.js';   /* v2.3.4106: the first st
 import { harvestCoachWanted, gestureWanted, killedAny } from '../game/deskTeachState.js';   /* v2.3.4343 */
 import { worldReady } from './loadingGate.js';   /* v2.3.4136: nothing while a loading screen is up */
 import { onAfterFrame, framesRunning, onDevicePx } from './afterFrame.js';   /* v2.3.4360: the Mayor's arrow follows him every frame */
+import { sw } from '../game/switches.js';   /* v2.3.5306: the page's one reader (card T) */
 /* v2.3.4106: the pacing referee's answers (onboardingPace.js: is a plate up,
    was the tutorial skipped) are handed in by the coach that starts this --
    that module imports through '@/', which node (the server's test) cannot */
@@ -69,7 +70,7 @@ const ARROW_SVG = '<svg viewBox="0 0 56 56" width="56" height="56" aria-hidden="
   + '<path d="M22 7 H34 V29 H43" fill="none" stroke="#FFF3B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity=".75"/></svg>';
 
 function offByUrl() {
-  try { return new URLSearchParams(window.location.search).get('guidearrow') === '0'; } catch (e) { return false; }
+  return sw('guidearrow');   /* v2.3.5306: the one reader (was URLSearchParams .get('guidearrow') === '0') */
 }
 function calm() {
   try { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) { return false; }

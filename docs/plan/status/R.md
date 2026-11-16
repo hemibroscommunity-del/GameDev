@@ -1,6 +1,6 @@
 card: R
-branch: claude/plan-r-2-stash (one branch a PR, each begun from main)
-prs: #1819 (5280), #1823 (5283), #1825 (5287), #1844 (5288): merged; #1847 (5286), PR 2 (5281): ready
+branch: claude/plan-r-7-export (one branch a PR, each begun from main)
+prs: #1819 (5280), #1823 (5283), #1825 (5287), #1844 (5288), #1862 (5281): merged; #1847 (5286): ready
 state: ready
 
 ## Done
@@ -10,24 +10,27 @@ state: ready
 - PR 8 (5287, #1825, merged): the storage's size in the day's book (ON).
 - PR 9 (5288, #1844, merged): the room's way back (`restore.js`,
   `roomrewind` OFF by default) and the lab's restore try (files only).
-- PR 7 (5286, #1847, ready): the paged export (an allow list; ON).
-- PR 2 (5281, `claude/plan-r-2-stash`, ready): the stashes' door
-  (`stash.js`, 35 roads), and the gatekeeper's low on `xfer` rows.
+- PR 2 (5281, #1862, merged): the stashes' door (`stash.js`, 35 roads),
+  and the gatekeeper's low on `xfer` rows.
+- PR 7 (5286, #1847, ready, sitting 18): the paged export (allow list; ON).
 
 ## Next
 
-- Waiting (the planning session: no side work). Then PRs 3 (a weapon's
-  id), 5 and 6, each after PR 2 is merged.
+- Waiting (the planning session: no side work). PR 3 (5282, a weapon's
+  own id) is free now that PR 2 is merged: on the planning session's word.
+  Then PRs 5 and 6.
 
 ## Found
 
 - `grids.js` `_tryLevelUpFromBuildPoints` has no caller (dead).
 - Local workerd: `sql.databaseSize`, `getCurrentBookmark` work;
   `getBookmarkForTime` throws (no point-in-time recovery locally).
+- The stash cuts that remain after PR 2 (for later, the planning session's
+  word): the join's (`_sanitizeWeaponList`), the phone's capped copy, the
+  gear lists' at the save (`capStash`) and the join.
 
 ## Needs
 
-- PRs 3, 5, 6 wait for PR 2 (5281) merged.
 - Taken from card K: an honest `character_reset` reads to the world's sum
   as value gone; R mends it in PR 6 (5285: persistence.js, its roads).
 - For the owner, LATER (PR 9; the owner's "Just go recommended": not now):

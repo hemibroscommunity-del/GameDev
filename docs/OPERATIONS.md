@@ -11,6 +11,11 @@ key, and without the key the endpoints don't even appear to exist.
 1. Think of a long random password (a password manager's 30+ character
    generate button is perfect). This is your ADMIN KEY — treat it like a
    bank password. Anyone who has it can grant gold and freeze players.
+   **Ten wrong keys within ten minutes** from one internet connection put
+   that connection in a **15-minute time-out** (v2.3.5583): every admin
+   command from it answers "Too many wrong keys from this address: try
+   again in N minutes". It lifts by itself; your phone on its own data
+   connection is not affected, and the next deploy clears it too.
 2. Cloudflare dashboard → **Workers & Pages** → **brotown-server** →
    **Settings** → **Variables and Secrets** → **Add** →
    Type: **Secret**, Name: `ADMIN_KEY`, Value: *your password* → **Deploy**.
@@ -382,6 +387,43 @@ curl -X DELETE -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/admin/fre
 Note: players running an old cached version of the game may end up on a
 fresh blank character instead of seeing the freeze message. If that happens,
 just freeze the new id too — their real character stays locked either way.
+
+## A copy of the room's records, a page at a time (v2.3.5286)
+
+For keeping your own copy of the game's saved records, or reading exactly
+what one character has on file. It only reads: nothing changes. It gives
+only the kinds of record on its list: the characters' own and everything
+that holds gold or goods. Never a login, a device's id, the anti-bot
+evidence, the words players sent each other, or the hidden settings.
+
+**Each run costs a little**: Cloudflare counts every record it reads (a page
+reads up to 50 by default, 200 at most, and the whole room once over is every
+record it holds). It costs nothing when you do not use it, so it is on.
+
+Ask for one kind of record by its prefix (the names in the registry,
+`docs/ARCHITECTURE-HANDOFF.md` rule 2: `rpg:` the characters, `bank:` the
+vaults, `store_listing:` the auction house, `shop_stock` Diego's pile...):
+```
+curl -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/admin/export?prefix=rpg:"
+```
+or everything one character has on file (their save, bank, mail, pets,
+farm, backups...):
+```
+curl -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/admin/export?player=bp_XXXX"
+```
+The answer is a page: `rows` (each record's name `k` and what it holds `v`),
+`read` (how many records it read) and `next`. While `next` is not null, ask
+again with `&cursor=` and that value for the next page; the last page may be
+empty. `&limit=` sets a page's size (1 to 200).
+
+- Its switch is `roomexport` in the live flags (below): on unless it is
+  `false`; off, it answers "off" and reads nothing. To turn it off:
+```
+curl -X POST -H "Authorization: Bearer YOUR_KEY" -H "Content-Type: application/json" \
+  -d '{"name":"roomexport","value":false}' "https://WORKER/api/admin/flags"
+```
+- Asked for a kind of record not on its list (a login's `auth:`, a
+  device's `device:`, the hidden settings...), it says no.
 
 ## Fixing a broken save (restore from backup)
 
