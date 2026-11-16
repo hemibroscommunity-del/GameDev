@@ -106,6 +106,10 @@ const wsD = fakeWs('dressed');
 room.sessions.set(wsD, baseSession());
 await room.webSocketMessage(wsD, JSON.stringify({
   type: 'join', id: DRESSED_ID, name: 'Dressy', phrase: DRESSED_PHRASE,
+  /* v2.3.5582: made on a device, as every phone's join is -- an old key
+     never adds a device by itself any more (devicelock.js), so the restart
+     below comes from this one */
+  device: { id: 'dressedphone' },
   /* `name` INSIDE data, not the top-level one: _loadOrCreateCharacter reads
      cleanJoinData.name, and a nameless join deliberately creates no character
      (join.js, v2.3.1814 -- a blank character must never be made permanent). */
@@ -132,7 +136,7 @@ check('a key with no character previews look:null, not an empty look',
 // through the STORAGE, not the response: an endpoint that returns ok and
 // deletes nothing is exactly the failure a status-code check would miss.
 state._store.set('rpg:' + DRESSED_ID, { level: 42, xp: 9999, _v: 1 });
-r = await room._accountReset(DRESSED_PHRASE, true, '1.1.1.1');
+r = await room._accountReset(DRESSED_PHRASE, true, '1.1.1.1', 'dressedphone');
 check('a correct key restarts the character', r.ok === true && r.reset === true && r.id === DRESSED_ID, r);
 check('...and the rpg blob is really gone, so the rejoin bootstraps level 1',
   state._store.get('rpg:' + DRESSED_ID) === undefined, state._store.get('rpg:' + DRESSED_ID));
@@ -147,7 +151,7 @@ check('...and so is the auth record, so the Login Key still works',
 
 // confirm is not a formality: without it nothing is touched.
 state._store.set('rpg:' + DRESSED_ID, { level: 7, _v: 1 });
-r = await room._accountReset(DRESSED_PHRASE, false, '1.1.1.1');
+r = await room._accountReset(DRESSED_PHRASE, false, '1.1.1.1', 'dressedphone');
 check('no confirm -> bad_request', r.ok === false && r.reason === 'bad_request', r);
 check('...and the blob is still there', !!state._store.get('rpg:' + DRESSED_ID), null);
 

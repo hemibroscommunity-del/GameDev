@@ -164,7 +164,9 @@ export const accountMethods = {
     // Shared lockout with the join gate (see module header).
     if (!this._authFails) this._authFails = new Map();
     const fails = this._authFails.get(id);
-    if (fails && fails.until > now) return { ok: false, settled: true, reason: 'locked' };
+    /* v2.3.5582: never the rightful holder (the right old key from one of
+       the character's devices: devicelock.js _oldKeyHolder; RT-1, N9) */
+    if (fails && fails.until > now && !(await this._oldKeyHolder(id, phrase, device, now))) return { ok: false, settled: true, reason: 'locked' };
 
     const auth = await this.state.storage.get('auth:' + id);
     if (!auth) {
