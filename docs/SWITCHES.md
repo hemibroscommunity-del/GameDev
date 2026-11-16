@@ -601,6 +601,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `ip_sockets` | worker | value | v2.3.3274 |  | a number, 0 to 1000 | logic |  | no | Sockets an address may hold at once (0 to 1000; 0 is no limit). |
 | `movediet` | worker | switch | v2.3.3204 | 2026-10-13 | false | logic |  | no | Un-advertises the move diet: each phone sends every move again from its next join. |
 | `pileleft` | worker | switch | v2.3.4383 | 2026-11-10 | false | logic |  | no | Stops the death pile's time-left fields on the wire. |
+| `relaybytes` | worker | switch | v2.3.5543 | 2026-11-15 | false | logic |  | no | Every relay goes into the room's queue whatever its size, as before: no bound on one relay's bytes, on a socket's relay bytes a second, or on the queue's (the red team's RT-1 N10 open again). |
 | `relaylist` | worker | switch | v2.3.3304 | 2026-10-17 | false | logic |  | no | Relays every type that is not privileged again (the old deny-list). |
 | `?room` | page | lever | v2.3.217 |  | a room's name | none |  | no | Joins the named room, not the lobby's. |
 | `?wheelwhole` | page | switch | v2.3.3318 | 2026-10-17 | present | logic |  | no | Asks for every world monster on the way in, not only those near. |

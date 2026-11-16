@@ -41,7 +41,7 @@
  * Not a phone test: node, card E's test room (testroom.mjs).  Under a
  * second. */
 import { WIRE_DOOR, wireDoorJudge, wireDoorRouteJudge, wireDoorRouteRow } from '../src/wire/door.js';
-import { wireDoorRows, chatLanes, CHAT_LANES } from '../src/wire/lists.js';   /* v2.3.5542: + the chat lanes */
+import { wireDoorRows, chatLanes, CHAT_LANE_TYPES } from '../src/wire/lists.js';   /* v2.3.5542: + the chat lanes */
 import { WIRE_IN } from '../src/wire/in.js';
 import { makeStorage, openRoom, fakeWs, join, settle } from './testroom.mjs';
 
@@ -221,8 +221,8 @@ async function routeCases(flags) {
   const wChat = await sendOne({ type: 'area_chat', payload: { text: 'x'.repeat(5000) } });
   check('7: ...the same line in the wire\'s form is refused by the door and counted by its row', wChat === 0 && w.room._wireDoorCounts && w.room._wireDoorCounts['area_chat words'] === 1, w.room._wireDoorCounts);
   const want = ['chat', 'party_chat', 'area_chat', 'whisper', 'friend_dm', 'store_dm'];
-  check(`7: the chat lanes are the table's rows whose text is words (${[...CHAT_LANES].join(', ')}), never join, track, dice or emote`,
-    want.every((n) => CHAT_LANES.has(n)) && !['join', 'track', 'dice', 'emote', 'trade2_open'].some((n) => CHAT_LANES.has(n)), [...CHAT_LANES]);
+  check(`7: the chat lanes are the table's rows whose text is words (${[...CHAT_LANE_TYPES].join(', ')}), never join, track, dice or emote`,
+    want.every((n) => CHAT_LANE_TYPES.has(n)) && !['join', 'track', 'dice', 'emote', 'trade2_open'].some((n) => CHAT_LANE_TYPES.has(n)), [...CHAT_LANE_TYPES]);
   check('7: ...a lane added to the table is one with no other edit', chatLanes({ inn: [{ name: 'zz_lane', trust: { text: 'words' } }], relay: [] }).has('zz_lane'));
 }
 

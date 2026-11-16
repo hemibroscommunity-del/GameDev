@@ -68,7 +68,7 @@ no other edit (`wire-door.test` §4).
 
 ## The chat lanes (v2.3.5542)
 
-`lists.js` makes **`CHAT_LANES`**, the socket rows whose `text` is a `words`
+`lists.js` makes **`CHAT_LANE_TYPES`** (v2.3.5543: renamed from `CHAT_LANES`, a name chatlanes.js already exports), the socket rows whose `text` is a `words`
 field (a line another player reads: `chat`, `party_chat`, `area_chat`,
 `whisper`, `friend_dm`, `store_dm`), for a check on what a player says (card
 MOD's silence, its own step after the door). Not the table's `speaks`, which
