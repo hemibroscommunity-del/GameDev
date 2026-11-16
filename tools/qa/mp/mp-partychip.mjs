@@ -90,11 +90,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const ids = {};
     for (const [k, P] of [['A', A], ['B', B], ['C', C]]) ids[k] = await H.readState(P, (S) => S.myId);
     /* the party, by the game's own messages (mp-party drives the invite card) */
-    for (const k of ['B', 'C']) {
-      await A.page.evaluate((t) => window._gameState.current.channel.send({ type: 'broadcast', event: 'party_invite', payload: { target: t } }), ids[k]);
-      await (k === 'B' ? B : C).page.waitForTimeout(1500);
-      await (k === 'B' ? B : C).page.evaluate((t) => window._gameState.current.channel.send({ type: 'broadcast', event: 'party_accept', payload: { target: t } }), ids.A);
-      await A.page.waitForTimeout(1500);
+    /* v2.3.5431 (card J2): each accept once its invite has ARRIVED (the friend's own "invites you" popup), not after
+       a fixed 1.5 s: with three pages on this box a stall held an invite past it, the accept met no invite on the
+       worker, and the party never formed (1 run in 3, the guard).  A friend still out after a round is asked again */
+    const members = () => H.readState(A, (S) => (S._party && S._party.members ? S._party.members.map((m) => m.id) : []));
+    for (let round = 0; round < 3; round++) {
+      const inParty = await members();
+      for (const k of ['B', 'C']) {
+        if (inParty.includes(ids[k])) continue;
+        const F = k === 'B' ? B : C;
+        await A.page.evaluate((t) => window._gameState.current.channel.send({ type: 'broadcast', event: 'party_invite', payload: { target: t } }), ids[k]);
+        await H.waitFor(F, (S) => (S.dmgNumbers || []).some((d) => /invites you to a party/.test(d.text || '')), (v) => v, { timeout: 8000, label: 'the invite' }).catch(() => null);
+        await F.page.evaluate((t) => window._gameState.current.channel.send({ type: 'broadcast', event: 'party_accept', payload: { target: t } }), ids.A);
+        await A.page.waitForTimeout(1500);
+      }
+      if ((await members()).length === 3) break;
     }
     const formed = await H.waitFor(A, (S) => (S._party && S._party.members ? S._party.members.length : 0), (n) => n === 3,
       { timeout: 20000, label: 'a party of three' }).catch(() => null);
@@ -124,7 +134,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     /* ── 2. a tap opens it, a tap on its head folds it ── */
     await tapAt(A, '[data-party-chip="folded"]');
-    const h2 = await hud(A);
+    /* v2.3.5431: read once the chip is drawn: a rejoin in one of this box's stalls clears the party until the worker
+       sends it again, and a read in that gap found no chip at all (the tap had worked: "open" stored) */
+    const hudBack = async (P) => { let h = await hud(P); for (let i = 0; i < 16 && h.state === null; i++) { await P.page.waitForTimeout(500); h = await hud(P); } return h; };
+    let h2 = await hudBack(A);
+    /* v2.3.5431 (card J2): a tap inside one of this box's stalls (the page held for seconds) can come to nothing:
+       still folded and nothing stored, it is made once more (1 run in 4 here; the open itself unchanged) */
+    if (h2.state === 'folded' && h2.stored === null) { await A.page.waitForTimeout(1500); await tapAt(A, '[data-party-chip="folded"]'); h2 = await hudBack(A); }
     await shot(A, 'upright-open');
     rec.ok(`2. a tap opens the list: ${h2.rows} rows and the ✖, kept on the device (${h2.stored})`, h2.state === 'open' && h2.why === 'you' && h2.rows === 3 && h2.leave && h2.stored === 'open', h2);
     await A.page.waitForTimeout(5000);
@@ -143,6 +159,22 @@ export async function run({ browser, wsPort, webPort, rec }) {
       return { state: c ? c.getAttribute('data-party-chip') : null, why: c ? c.getAttribute('data-party-open') : null, attn: window.__btPartyAttn || null,
         hp: m ? [m.hp, m.maxHp] : null };
     }, ids.C);
+    /* v2.3.5431 (card J2): WATCHED, not sampled.  The list opens by itself for ATTN_MS (4 s, game/partyChip.js) when
+       a friend first drops under a quarter; a read every 0.9 s on this box, which can hold the page for seconds,
+       missed that window, and every roster after it was low already, so never news again (and a rejoin in a stall
+       starts the news over: `null` in seen3) -- "26 of 250, never open", red on main 1 run in 3.  The chip's own
+       attribute is watched from now on, and its first opening by itself is what is judged */
+    await A.page.evaluate(() => {
+      window.__qaChipOpen = null;
+      const look = () => {
+        const c = document.querySelector('[data-party-chip]');
+        if (!window.__qaChipOpen && c && c.getAttribute('data-party-chip') === 'open') {
+          window.__qaChipOpen = { state: 'open', why: c.getAttribute('data-party-open'), attn: window.__btPartyAttn || null };
+        }
+      };
+      new MutationObserver(look).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-party-chip', 'data-party-open'] });
+      look();
+    });
     let h3 = null;
     const seen3 = [];
     for (let i = 0; i < 14 && !h3; i++) {
@@ -150,7 +182,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await A.page.waitForTimeout(900);
       const v = await read3();
       seen3.push(v.hp);
-      if (v.state === 'open') h3 = v;
+      const o = await A.page.evaluate(() => window.__qaChipOpen);
+      if (o) h3 = Object.assign({}, v, o);
+      else if (v.state === 'open') h3 = v;
     }
     await shot(A, 'upright-attention');
     rec.ok(`3. a friend under a quarter of their health: the list opens by itself (${JSON.stringify(h3)})`, !!h3 && h3.why === 'attention' && !!h3.attn && h3.attn.why === 'low', { h3, seen3 });
@@ -167,9 +201,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const h4a = await hud(A);
     rec.ok(`4. the leader's first tap on a kick says "${(h4a.kick.find((k) => k.armed === 'armed') || {}).text}" and kicks nobody (${h4a.n} in the party)`,
       nKick === 2 && h4a.kick.some((k) => k.armed === 'armed' && k.text === 'Kick?') && h4a.n === 3, { nKick, h4a });
-    await tapAt(A, '[data-party-kick="armed"]');
-    const n4 = await H.waitFor(A, (S) => (S._party && S._party.members ? S._party.members.length : 0), (n) => n === 2,
+    const kicked = () => H.waitFor(A, (S) => (S._party && S._party.members ? S._party.members.length : 0), (n) => n === 2,
       { timeout: 8000, label: 'the kick' }).catch(() => null);
+    const tapped = await tapAt(A, '[data-party-kick="armed"]');
+    let n4 = tapped ? await kicked() : null;
+    /* v2.3.5431 (card J2): the kick stays armed 3 s (KICK_ARM_MS); the two taps are about a second apart, and one
+       of this box's stalls between them let it disarm, so the second tap found no armed kick (1 run in 3 here, once
+       on main for card L).  Armed again and tapped at once -- the first tap's "kicks nobody" is checked above */
+    if (n4 !== 2) { await tapAt(A, kickSel); await tapAt(A, '[data-party-kick="armed"]'); n4 = await kicked(); }
     rec.ok('4. ...the second tap kicks', n4 === 2, n4);
     await tapAt(A, '[data-party-fold]');
 

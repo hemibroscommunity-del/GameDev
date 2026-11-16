@@ -22,7 +22,9 @@ import { register } from 'node:module';
 const PIXI_NAMES = ['Filter', 'Matrix', 'Rectangle', 'Sprite', 'Texture', 'DefaultBatcher', 'ExtensionType', 'extensions',
   'Shader', 'GlProgram', 'Geometry', 'Buffer', 'BufferUsage', 'compileHighShaderGl', 'compileHighShaderGpuProgram',
   'vertexGlTemplate', 'fragmentGlTemplate', 'globalUniformsBitGl', 'colorBitGl', 'colorBit', 'roundPixelsBitGl',
-  'roundPixelsBit', 'generateTextureBatchBit', 'getBatchSamplersUniformGroup', 'getMaxTexturesPerBatch', 'BatcherPipe'];
+  'roundPixelsBit', 'generateTextureBatchBit', 'getBatchSamplersUniformGroup', 'getMaxTexturesPerBatch', 'BatcherPipe',
+  /* v2.3.5236: the self-test's pictures (sharpPixels.js, sheenBatch.js: card O PR 14b) */
+  'BufferImageSource', 'RenderTexture'];
 const PIXI_STUB = 'const P = new Proxy(function () {}, { get: (t, k) => (k === "prototype" ? t.prototype : (typeof k === "symbol" ? undefined : P)), apply: () => P, construct: () => ({}) });\n'
   + PIXI_NAMES.map((n) => `export const ${n} = P;`).join('\n');
 register('data:text/javascript,' + encodeURIComponent(

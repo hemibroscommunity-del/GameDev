@@ -194,6 +194,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `tradeonewrite` | worker | switch | v2.3.4795 | 2026-11-11 | false | logic |  | no | The trade's swap goes back to its old order of writes. |
 | `valuepause` | worker | switch | v2.3.5090 | 2026-11-14 | false | logic |  | no | An action that hands gold or goods on runs even in the minute after the storage refused a save (nothing pauses). |
 | `xfer` | worker | switch | v2.3.5092 | 2026-11-14 | false | logic |  | no | No transfer ledger row (`xfer:`) is written; trades run exactly as before. |
+| `xferescrow` | worker | switch | v2.3.5290 | off | true | logic | `xfer` | no | Thrown (true), a wagered duel's pot writes its transfer-ledger row (`xfer:`) in the pot's own run: one row a wagered duel; unset or false, the default, the pot pays as before and writes none. |
 
 ## identity
 
@@ -203,6 +204,8 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `devicelock` | worker | switch | v2.3.3344 | 2026-10-18 | false | logic |  | no | The join, the login check and the restart as they were: no device lock read or written. |
 | `disable_verify` | worker | switch | v2.3.3275 | 2026-10-16 | true | logic |  | no | Thrown, the account check (Turnstile) is not asked at the join. |
 | `keys2` | worker | switch | v2.3.3355 | 2026-10-18 | false | logic |  | no | No new login key is handed out (keys already made still work). |
+| `namerules` | worker | switch | v2.3.5622 | 2026-11-15 | false | logic |  | no | A new character's name is taken as before (any characters, 64 at most) and `track` may rename; the owner's rename stays. |
+| `oldkeylock` | worker | switch | v2.3.5582 | 2026-11-15 | false | logic |  | no | An old login key may take the first device of a character with no device list again, and the five-wrong-keys lock shuts out even its rightful holder on its own device, as before. |
 | `?tabid` | page | switch | v2.3.4521 | 2026-11-11 | =0 | logic |  | no | This phone takes the old road: the shared slot at every join, not its tab's own id. |
 
 ## input
@@ -223,12 +226,16 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 
 | name | side | kind | born | on | thrown | risk | needs | fallback | off |
 |---|---|---|---|---|---|---|---|---|---|
+| `adminlock` | worker | switch | v2.3.5583 | 2026-11-15 | false | logic |  | no | No address is timed out for wrong admin keys: every guess answered, as before. |
 | `bagonesum` | worker | switch | v2.3.4900 | 2026-11-12 | false | logic |  | no | The bag door's one sum is off: every bag road back on its own sum. |
 | `daybook` | worker | switch | v2.3.5080 | 2026-11-14 | false | logic |  | no | The day's book adds, writes and prunes nothing; what is stored stays and its reader says it is off. |
 | `disable_bigbags` | worker | switch | v2.3.4224 | 2026-11-04 | true | logic |  | no | Thrown, the weapon and gear stashes go back to 8 and 32. |
+| `feedback` | worker | switch | v2.3.5593 | 2026-11-15 | false | logic |  | no | The feedback board takes no posts, votes or crash reports (reading stays): the owner's lever in a flood (read by the Feedback object from the room's flags, once a minute). |
+| `fullsnap` | worker | switch | v2.3.5285 | off | true | logic |  | no | Thrown (true), a player's daily copy carries their vault and pets too (two keys more read a player a day, no row more written), so the owner's restore puts them back with the character; unset or false, the default, the copy is the character alone, as before. |
 | `report` | worker | switch | v2.3.5122 | 2026-11-14 | false | logic |  | no | Un-advertises the field report, so no phone sends its smoothness, and drops any that still comes. |
 | `reportlanes` | worker | switch | v2.3.5221 | 2026-11-14 | false | logic | `report`, `reportspeed` | no | The field report no longer takes a lane but full, the governor's rung or the self-test (caps.report back to 2). |
 | `reportspeed` | worker | switch | v2.3.5127 | 2026-11-14 | false | logic | `report` | no | The Speed test's card is no longer taken (caps.report back to 1); the smoothness reports carry on. |
+| `resetbook` | worker | switch | v2.3.5285 | off | true | logic |  | no | Thrown (true), a restart books the deleted character and its vault into `econ_gone` (one row for the room, one write and a read a restart), read by the world's sum as the tests take it (restore.test); nothing live reads it yet (the day's walk reads the records that hold value only, and the owner's economy card already counts restarts, econResetBook); the hostile census runs on the default flags, so its line stays. Unset or false, the default, a restart books nothing, as before. |
 | `roomexport` | worker | switch | v2.3.5286 | 2026-11-15 | false | logic |  | no | The owner's paged export of the room's records answers "off" and reads nothing. |
 | `roomrewind` | worker | lever | v2.3.5288 |  | true | none |  | no | Thrown (true), the owner's lever that puts the whole room back to an earlier time works (its dry run, then its do); unset or false, the default, both its steps answer "off". |
 | `roomrow` | worker | switch | v2.3.5124 | 2026-11-14 | false | logic | `daybook` | no | Nothing of the room's own row is added into the day's book. |
@@ -330,6 +337,18 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `steadymovers` | worker | switch | v2.3.3203 | 2026-10-13 | false | logic |  | no | Every move goes out again, from the next tick. |
 | `?tapms` | page | lever | v2.3.3105 |  | a number of ms | none |  | no | A test's own longest tap that still counts as free. |
 
+## ops
+
+| name | side | kind | born | on | thrown | risk | needs | fallback | off |
+|---|---|---|---|---|---|---|---|---|---|
+| `boardcache` | worker | switch | v2.3.5608 | 2026-11-15 | false | logic |  | no | Every board is read from storage at every request, as before (said on the room's own post to the board object as `bc: 0`); the sweep of week-old rows, `playtime` only on its own board and last-seen by the hour stay. |
+| `boardsweep` | worker | switch | v2.3.5608 | 2026-11-16 | false | logic |  | no | No week-old board row is deleted (said on the room's post to the board object as `bs: 0`): the stale rows stay off every board as before, and stay on file. |
+| `exactseen` | worker | lever | v2.3.5608 |  | true | none |  | no | Thrown (true), the public boards say each player's last-seen time exactly again, with no `seen: 'hour'` word, so the prize draw page reads its window to the millisecond (to run an old draw again exactly). Unset or false, the default: last seen to the hour. |
+| `publicreads` | worker | switch | v2.3.5609 | 2026-11-15 | false | logic |  | no | The market's orders, the store's browse and the arena's status walk their book at every read, as before: nothing kept, no address paced. |
+| `rf_spread` | worker | switch | v2.3.5604 | 2026-11-15 | false | logic |  | no | A full room asks every waiting phone to try again in 5 s, however many are knocking (the cadence before); the count is still kept. |
+| `roomhealth` | worker | switch | v2.3.5601 | 2026-11-15 | false | logic |  | no | GET /health/room answers 404 (the room answers its own 404 and the route passes it on); /health is unchanged and nothing in the game changes. |
+| `seathold` | worker | lever | v2.3.5606 |  | true | none |  | no | NOT TO BE TURNED ON UNTIL MENDED (sitting 19b's review: the gate cannot tell a holder from a stranger, so with 2,000 waiting ~2 in 3 blipped players still lose the seat; two strangers at once can pass the cap by the held seats; and lesser faults: docs/specs/seat-hold.md). Thrown (true), a joined player whose socket drops holds their seat a minute and a deploy's players theirs for 30 s, so a waiting crowd cannot take them; at most one small write every 15 s while who is in changes. Unset or false, the default: the gate counts sockets as before, nothing held, nothing written. |
+
 ## page-thread
 
 | name | side | kind | born | on | thrown | risk | needs | fallback | off |
@@ -384,6 +403,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?boardroll` | page | switch | v2.3.3855 | 2026-10-29 | =0, off, false | logic |  | no | The board rolls as it was: no spots, dip or bumps. |
 | `?burnfire` | page | switch | v2.3.3878 | 2026-10-29 | =0 | logic |  | no | A burn draws its old flames, not the building's fire. |
 | `?camsnap` | page | switch | v2.3.3469 | 2026-10-18 | =0 | chip |  | no | The camera is not snapped to whole device pixels. |
+| `?capehood` | page | switch | v2.3.5564 | 2026-11-15 | =0 | memory |  | no | A cape hood's hair masks are drawn from their pictures, as before, not from their 256-colour twins. |
 | `?caustics` | page | value | v2.3.3021 |  | a number, 0 to 2 | logic |  | no | The water's light web this many times as bright. |
 | `?coinflip` | page | switch | v2.3.5247 | 2026-11-14 | =0 | memory |  | no | Ace's coin strips keep their decoded copies, as before. |
 | `?deathbig` | page | lever | v2.3.3954 |  | =1 or =0 | none |  | no | QA: every kill's death is the big one (=1) or the ordinary one (=0). |
@@ -408,6 +428,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?gripguess` | page | switch | v2.3.3399 | 2026-10-18 | =0 | logic |  | no | The bow's grip between shots as it was, not guessed. |
 | `?groundbg` | page | switch | v2.3.3452 | 2026-10-18 | =1 | chip |  | no | The black under the world's ground is drawn every frame, as it was. |
 | `groundkeep` | both | switch | v2.3.3775 | 2026-10-29 | off_groundkeep: true; ?groundkeep=0, off, false | chip |  | no | The world's ground is rebuilt on a return, not kept, as before. |
+| `?hairmasks` | page | switch | v2.3.5562 | 2026-11-15 | =0 | memory |  | no | The hats' hair masks are drawn from their full-colour pictures, as before, not from their 256-colour twins. |
 | `?iconretry` | page | switch | v2.3.4431 | 2026-11-10 | =0 | logic | `?retrylooks` | no | Icons that failed are not asked for again. |
 | `?ladderpass` | page | switch | v2.3.5229 | 2026-11-14 | =0, off, false | chip | `govern` | no | The passes' rungs are off: the metal shines, the shadows are drawn and the sea moves, whatever the rung. |
 | `?layerpush` | page | switch | v2.3.3449 | 2026-10-18 | present | chip |  | no | Every layer's uniforms are pushed as Pixi does, to compare. |
@@ -434,10 +455,12 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?p256` | page | switch | v2.3.3728 | 2026-11-14 (v2.3.5249) | =1 every twin on; =0 every twin off (v2.3.5249) | memory |  | no | With =0 every effect and icon is drawn from its full-colour picture; =1 turns on the twins not yet on by default. |
 | `?packworker` | page | switch | v2.3.5253 | 2026-11-14 | =0 | logic |  | no | A gear sheet first drawn in play is packed on the page a few ms at a time, as before, not on the body bake's worker. |
 | `?pagebases` | page | switch | v2.3.4450 | 2026-11-10 | =0, off, false | logic |  | no | A page's ground lines are read on the page, not the worker. |
+| `?petsheet` | page | switch | v2.3.5563 | 2026-11-15 | =0 | memory |  | no | The pet sheet is drawn from its full-colour picture, as before, not from its 256-colour twin. |
 | `?pixidelay` | page | lever | v2.3.3709 |  | a number of ms | none |  | no | QA: the renderer arrives this much later, as a slow phone's. |
 | `?platelayer` | page | switch | v2.3.4886 | 2026-11-12 (v2.3.4990) | =0 | memory |  | no | Armour plates are not drawn as their own layer. |
 | `?popupworld` | page | switch | v2.3.3192 | 2026-10-13 | present | logic |  | no | Popups drawn in the world, not on the screen. |
 | `?seacover` | page | switch | v2.3.3452 | 2026-10-18 | =0 | chip |  | no | The ground is drawn under every sea quad, as it was. |
+| `?selftest` | page | lever | v2.3.5234 |  | =fail:<name>[,<name>...] (one, palette, look, sharp, sheen, shadow, water); =0, off, false | none |  | no | QA: the named programs fail their self-test at the door, each falling back alone (mp-selftest); =0 runs none. |
 | `?shade` | page | switch | v2.3.2740 | 2026-09-23 | =0 | logic |  | no | No form shading on objects. |
 | `?shadowhp` | page | switch | v2.3.3338 | 2026-10-18 | =0 | chip |  | no | The shadow filter at the half precision it had. |
 | `?shadowlock` | page | switch | v2.3.3149 | 2026-10-11 | =0 | logic |  | no | Shadows are not locked to their casters. |
@@ -550,12 +573,14 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `duelzone` | worker | switch | v2.3.4371 | 2026-11-10 | false | logic |  | no | No zone starts a duel's clock (one running is cleared at the next zone write). |
 | `emotemoves` | worker | switch | v2.3.3392 | 2026-10-18 | false | logic | `emotes` | no | No emote move is relayed and no pose kept; the plain emotes go on. |
 | `emotes` | worker | switch | v2.3.3391 | 2026-10-18 | false | logic |  | no | No emote is relayed, and caps.emotes false shuts the picker at the next join. |
+| `freezedevice` | worker | lever | v2.3.5621 |  | true | none |  | no | Thrown (true), a freeze also refuses any new character on the frozen character's phones (never a phone one of the owner's test-mode characters has played on); unset or false, the default, a freeze holds the frozen character only, as before. |
 | `leaderidleat` | worker | switch | v2.3.4378 | 2026-11-10 | false | logic |  | no | The party leader's idle clock counts only a `seen` above 0, as before. |
 | `partydoor` | worker | switch | v2.3.5212 | 2026-11-14 | false | logic |  | no | A player can be put in a party that does not list them, as the lines before the party door could have (nothing does today). |
 | `partykeep` | worker | switch | v2.3.3276 | 2026-10-17 | false | logic |  | no | Parties are not kept: the old cap and the away window remove a dropped member. |
 | `posedoor` | worker | switch | v2.3.5216 | 2026-11-15 | false | logic |  | no | A held pose takes any id a caller asks, and the dead can be written posing, as the line before the pose door could have (the phone's pose handler still checks both first). |
 | `power` | worker | switch | v2.3.5481 | 2026-11-14 | false | logic |  | no | Un-advertises the power index: no board report carries one, so the Power board empties as players report and the other boards are as they were. |
 | `race` | worker | switch | v2.3.3525 | 2026-10-20 | false | logic |  | no | Lil Bro's race un-advertised and none started. |
+| `silence` | worker | switch | v2.3.5621 | 2026-11-15 | false | logic |  | no | No silence is checked: every character speaks (the owner's silences are kept, and hold again when it is put back). |
 | `?socialreset` | page | switch | v2.3.5204 | 2026-11-14 | =0 | logic |  | no | A race the worker forgot at a reconnect stays on the phone until its own clock lets it go, as before. |
 | `spar` | worker | switch | v2.3.3265 | 2026-10-16 | false | logic |  | no | No sparring clones: every live clone goes on the next tick and the cap is withdrawn. |
 | `statboards` | worker | switch | v2.3.5484 | 2026-11-14 | false | logic |  | no | Un-advertises the stat boards: no board report carries the points allocated, so those boards empty as players report; every other board is as it was. |
@@ -599,10 +624,12 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `bundle` | worker | switch | v2.3.3254 | 2026-10-15 | false | logic |  | no | Stops advertising message bundles: each phone sends its messages one by one from its next join. |
 | `?diet` | page | switch | v2.3.3726 | 2026-10-28 (v2.3.3744) | =1 or =0 (kept for the tab) | logic |  | no | Puts this phone on the move diet (=1) or keeps it off (=0), whatever the worker says for everyone. |
 | `disable_weapon_drops` | worker | switch | v2.3.1150 | 2026-07-03 | true | logic |  | no | Thrown, weapon drops stop rolling (caps.weaponDrops stays true, so no phone mints its own). |
+| `ip64` | worker | switch | v2.3.5581 | 2026-11-15 | false | logic |  | no | The address limits count each IPv6 address apart again, as before (an IPv6 line is one address by its /64 while on). |
 | `ip_joins_min` | worker | value | v2.3.3274 |  | a number, 0 to 10000 | logic |  | no | Joins an address may make a minute (0 to 10000; 0 is no limit). |
 | `ip_sockets` | worker | value | v2.3.3274 |  | a number, 0 to 1000 | logic |  | no | Sockets an address may hold at once (0 to 1000; 0 is no limit). |
 | `movediet` | worker | switch | v2.3.3204 | 2026-10-13 | false | logic |  | no | Un-advertises the move diet: each phone sends every move again from its next join. |
 | `pileleft` | worker | switch | v2.3.4383 | 2026-11-10 | false | logic |  | no | Stops the death pile's time-left fields on the wire. |
+| `relaybytes` | worker | switch | v2.3.5543 | 2026-11-15 | false | logic |  | no | Every relay goes into the room's queue whatever its size, as before: no bound on one relay's bytes, on a socket's relay bytes a second, or on the queue's (the red team's RT-1 N10 open again). |
 | `relaylist` | worker | switch | v2.3.3304 | 2026-10-17 | false | logic |  | no | Relays every type that is not privileged again (the old deny-list). |
 | `?room` | page | lever | v2.3.217 |  | a room's name | none |  | no | Joins the named room, not the lobby's. |
 | `?wheelwhole` | page | switch | v2.3.3318 | 2026-10-17 | present | logic |  | no | Asks for every world monster on the way in, not only those near. |

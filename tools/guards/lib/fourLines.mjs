@@ -494,14 +494,17 @@ export function stateWritesFromRendering({ live = false } = {}) {
    src/game/ride.js); entityRenderer.js 8955 -> 8953 (SK's #1782 and card
    O's #1836, the crowd's rung).  v2.3.5375 (the gatekeeper, sitting 18, main
    abff2ef): monsterCombat.js 1792 -> 1785 and its updateMonsterCombat
-   1732 -> 1724 (card K's #1861: the combat and moving sends through act()). */
+   1732 -> 1724 (card K's #1861: the combat and moving sends through act()).
+   v2.3.5376 (the gatekeeper, sitting 19, main 29b1a0d): entityRenderer.js
+   8953 -> 8941 (card P's #1868: the full set's test moved into
+   beltHold.js). */
 export const LINES = Object.freeze({
   /* a file's code lines.  These files have a line of their own, at their
      count on the day; every other file under src/ stays at or under
      OTHER_FILE (a new file too) */
   FILE: Object.freeze({
     'src/rendering/systems/effectsRenderer.js': 9870,
-    'src/rendering/systems/entityRenderer.js': 8953,
+    'src/rendering/systems/entityRenderer.js': 8941,
     'src/ui/BroTown.jsx': 8370,
     'src/data/gameSystems.js': 5622,
     'src/data/gameDisplay.js': 4268,

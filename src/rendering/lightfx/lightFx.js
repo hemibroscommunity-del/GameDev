@@ -17,7 +17,7 @@
  * runtime (window.__btLightFx.set(true)) takes effect on the next frame, which
  * is how the QA pictures take a before and an after of the same moment.
  */
-import { ShadowSystem, shadowSystemCount } from './shadows.js';
+import { ShadowSystem, shadowSystemCount, shadeSelfTest } from './shadows.js';   /* v2.3.5236: + the shade's self-test (card O PR 14b) */
 import { GlintSystem, sheenOn, sheenLive, shineKnobOn } from './glint.js';   /* v2.3.5229: sheenLive, the switch and the lanes' knob */
 import { laneKnob, onKnob, seeKnob } from '@/game/drawLanes.js';   /* v2.3.5229: the shadows are a knob of the lanes (card O PR 9) */
 import { collectCasters, SELF_STAND_IN_FIELDS, SELF_STAND_IN_SETS } from './casters.js';
@@ -95,6 +95,10 @@ export class LightFx {
      with it (shadows.js _prepass) */
   constructor(layers, worldContainer, renderer = null) {
     this.shadows = layers && layers.shadows ? new ShadowSystem(layers.shadows, worldContainer, renderer) : null;
+    /* v2.3.5236 (card O PR 14b; the gatekeeper's sitting 20, a low): the
+       shade's self-test, behind the loading screen -- only where the light
+       is on (`?lightfx=0` draws no shadow: its program is not built for it) */
+    if (this.shadows && renderer && lightFxOn()) { try { shadeSelfTest(renderer); } catch (e) { /* drawn as today */ } }
     this.glint = new GlintSystem();
     this._wasOn = false;
     this.lastMs = 0;

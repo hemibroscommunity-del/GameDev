@@ -43,7 +43,7 @@ import {
   globalUniformsBitGl, colorBitGl, colorBit, roundPixelsBitGl, roundPixelsBit,
   generateTextureBatchBitGl, generateTextureBatchBit, getBatchSamplersUniformGroup, getMaxTexturesPerBatch,
 } from 'pixi.js';
-import { PAL_CLIP_BATCHER } from './paletteTex.js';   /* v2.3.3707: a colour-numbers picture's stencil shape */
+import { PAL_CLIP_BATCHER, PAL_HAIR_CLIP_BATCHER } from './paletteTex.js';   /* v2.3.3707: a colour-numbers picture's stencil shape; v2.3.5562: a hair mask's */
 import { isPaletteSource } from './paletteDraw.js';
 
 export const CLIP_BATCHER = 'bt-clip';
@@ -163,7 +163,7 @@ export function alphaClipProgram() { return _alphaShader ? _alphaShader.glProgra
       get() {
         const r = this.renderable;
         if (r && _installed && !_alpha) {
-          if (r._btClipMask) return CLIP_BATCHER;
+          if (r._btClipMask) return isPaletteSource(r.texture && r.texture.source) ? PAL_HAIR_CLIP_BATCHER : CLIP_BATCHER;   /* v2.3.5562: a hat's mask as colour numbers (p256.js HAIRMASKS) */
           /* v2.3.3707: a thing's picture as a silhouette's stencil shape
              (monsterSilhouette.js): its own colours' program, or its colour
              numbers' */

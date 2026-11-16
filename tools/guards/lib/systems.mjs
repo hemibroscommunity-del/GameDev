@@ -82,7 +82,7 @@ export const SYSTEMS = Object.freeze({
   },
   identity: {
     what: 'who a player is: ids, accounts, the device lock, login keys, the account check, the sites that may open a socket',
-    files: [f('server/src', 'account|devicelock|loginkeys|verify|broverify|origin|httpauth'), f('src/game', 'tabIdentity|characterRecord'), re('^src/ui/account/')],
+    files: [f('server/src', 'account|devicelock|loginkeys|verify|broverify|origin|httpauth|charname'), f('src/game', 'tabIdentity|characterRecord|charName'), re('^src/ui/account/')],   /* v2.3.5622: + charname, charName (card MOD) */
     words: ['account', 'login', 'devicelock', 'device-lock', 'identity', 'origin', 'verify', 'turnstile'],
     traps: ['identity'],
     doors: [],
@@ -96,8 +96,9 @@ export const SYSTEMS = Object.freeze({
   },
   liveops: {
     what: 'the live flags, the admin and dev levers, test mode, feedback',
-    files: [f('server/src', 'liveops|admin|devtools|testmode|feedback'), f('src/game', 'testMode|switches'),
+    files: [f('server/src', 'liveops|admin|devtools|testmode|feedback'), f('src/game', 'testMode|switches|ownerSwitches|feedbackOwner|silenceOwner|renameOwner'),   /* v2.3.5602: ownerSwitches; v2.3.5603: feedbackOwner; v2.3.5605: silenceOwner; v2.3.5611: renameOwner (card OPS) */
       f('server/src', 'restore'),   /* v2.3.5288 (card R): the room's way back, the owner's lever */
+      f('server/src', 'playerrestore'),   /* v2.3.5285 (card R): one player's restore, the owner's lever */
     ],
     words: ['liveops', 'admin', 'devtools', 'test-mode', 'testmode', 'feedback', 'flags'],
     traps: ['liveops'],
@@ -115,6 +116,17 @@ export const SYSTEMS = Object.freeze({
       { name: 'HIDDEN_SPEC', file: 'server/src/hidden.js', what: 'a server-only number a copier would value' },
       { name: 'bookAdd', file: 'server/src/daybook.js', what: 'the day\'s book (`daybook:`): every part adds through it (v2.3.5080, card E)' },
     ],
+  },
+  /* v2.3.5601 (card OPS): the room under a crowd and the watch on it.  Its
+     own system so a switch of it runs its own suites in the switches-thrown
+     guard: server-core's and liveops' include suites that fail under the
+     guard's preload with any flag (tick-pace, cold-flags; card T's Found). */
+  ops: {
+    what: 'the room under a crowd and the watch on it: its health for a monitor, the waiting crowd\'s pace, a seat held, the public boards\' and the room\'s public reads',
+    files: [f('server/src', 'health|rfspread|seathold|publicreads')],   /* v2.3.5609: publicreads */
+    words: ['room-health', 'rf-spread', 'seat-hold', 'board-cache', 'public-reads'],   /* v2.3.5608: board-cache (leaderboard.js stays social's file) */
+    traps: [],
+    doors: [],
   },
   combat: {
     what: 'hitting and being hit: weapons, abilities, the bow, shields, damage, PvP',
@@ -165,20 +177,24 @@ export const SYSTEMS = Object.freeze({
     files: [
       f('server/src', 'quests|achievements|codex|petbook|pets|pointsreset|prog3'),
       f('server/src', 'skillpoints'),   /* v2.3.5283 (card R): the skill points' door */
+      f('server/src', 'xp'),   /* v2.3.5289 (card R): experience and levels' door */
+      f('server/src', 'queststate'),   /* v2.3.5284 (card R): quest state's door */
       f('src/game', 'quests|questCard|questComplete|questFly|questHandIn|questJournal|questKept|questPins|questRoute|questTrailStyle|questWays|trackedQuest|achievements|petBook|petFetch|pointsBubbles|pointsReset|pointsTips|tour|levelCelebration|xpBar|xpPop|welcomeBanner'),
     ],
     words: ['quest', 'achievement', 'codex', 'pet', 'points', 'tour', 'xp', 'level'],
     traps: ['quests'],
     doors: [
       { name: 'pointsGive', file: 'server/src/skillpoints.js', what: 'POINT_ROADS: every change to a player\'s build points (pointsGive, pointsTake, pointsSet, pointsDeal; v2.3.5283, card R)' },
+      { name: 'xpGive', file: 'server/src/xp.js', what: 'XP_ROADS: every change to a character\'s experience and levels (xpGive, xpLevelUp, xpSet, xpMake; v2.3.5289, card R)' },
+      { name: 'questStateSet', file: 'server/src/queststate.js', what: 'QUEST_ROADS: every change to a quest\'s state, progress, flags and kept lists (seven verbs; v2.3.5284, card R)' },
     ],
   },
   social: {
     what: 'parties, clans, guilds, friends, chat, emotes, duels, the arena, races, boards',
     files: [
       /* v2.3.5480 (card PW): + power, the boards' power index; v2.3.5484: + statboards;
-         v2.3.5218 (card L): + raceDoor, the race's page door */
-      f('server/src', 'party|clanparty|clans|guilds|alliance|friends|chatlanes|chatmod|chatguard|emotes|boards|arena|gladiator|duel|spar|race|leaderboard|power|statboards'),
+         v2.3.5218 (card L): + raceDoor, the race's page door; v2.3.5594: + reservednames (a name that reads as staff); v2.3.5621: + silence (card MOD) */
+      f('server/src', 'party|clanparty|clans|guilds|alliance|friends|chatlanes|chatmod|chatguard|reservednames|silence|emotes|boards|arena|gladiator|duel|spar|race|leaderboard|power|statboards'),
       f('src/game', 'alliance|chat|chatChannel|chatColor|chatMute|emotes|emoteMoves|gesturePose|friendErrors|duelLock|duelPending|partyChip|partyEq|partyMarks|partyRows|peerDot|race|raceDoor|spar|sparTargets|bubbleSkins|boardBumps|dictation'),
     ],
     words: ['party', 'clan', 'guild', 'alliance', 'friend', 'chat', 'emote', 'duel', 'arena', 'gladiator', 'spar', 'race', 'board', 'leaderboard', 'social'],

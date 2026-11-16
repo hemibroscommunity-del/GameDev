@@ -416,6 +416,12 @@ play, a number 1.1 can measure.
   any handler at the router and the routes; `wiredoor`, ON; the hostile
   census 19 -> 1), merged at sitting 16: step 2's lists and checks are
   made from the table (the gatekeeper, sitting 17, tag 5374).*
+  *K's #1899 (the chat lanes made from the table, `CHAT_LANE_TYPES`, for
+  card MOD's silence; what a relayed event meets at the door, pinned) and
+  #1923 (a relay's bytes bounded: one relay 4 KB, a socket 8 KB at once
+  then 2 KB a second, the room's queue 256 KB; `relaybytes`, ON; the red
+  team's RT-1 N10), merged at sitting 19 (the gatekeeper, sitting 20, tag
+  5377).*
 - [ ] **4.1b [NEXT] The send door**: one `_send` (132 places write to a
   socket today), counting bytes by type.
 - [ ] **4.2 [NEXT] Claims, bounded.** "No claims" can be met by calling a
@@ -440,6 +446,11 @@ play, a number 1.1 can measure.
   ON), merged at sitting 16: a stepping archer keeps every arrow; the bow
   cheats' rise it allows is for the bow claim's PR to bound. The box waits
   for the other judges (the gatekeeper, sitting 17, tag 5374).*
+  *K's #1848 (the sprint mark: a sprint marked on every other move pays
+  its stamina, and only a move the sprint bills is judged at its bound;
+  `sprintmark`, OFF by the owner's choice, `true` the owner's to give),
+  merged at sitting 18. The box waits for the other judges (the
+  gatekeeper, sitting 19, tag 5376).*
 - [ ] **4.3 [NEXT] Doors for what is left of value**: experience and
   levels, the stashes, quest state, skill points. A weapon gets an id of its
   own, as gear has.
@@ -500,6 +511,11 @@ play, a number 1.1 can measure.
   owner's "not now"), merged at sitting 16. The box waits for the restore
   from the registry (R's PR 6), the paged export (PR 7) and the lab's try
   (the gatekeeper, sitting 17, tag 5374).*
+  *R's PR 7, #1847 (the paged export: `EXPORT.ALLOW`, what it keeps out
+  and why, a page 50 records by default; `roomexport`, ON by the owner's
+  yes), merged at sitting 18. The box waits for the restore from the
+  registry (R's PR 6) and the lab's try (the gatekeeper, sitting 19, tag
+  5376).*
 
 (4.6 of version 1 is pillar 10.)
 
@@ -562,6 +578,9 @@ nothing known, and a restore copies nothing.
   *L's #1851 (the harvest door, `harvestdoor`) and #1855 (the dungeon
   door, `dungeondoor`), both ON, merged at sitting 17: 24 `todo`; the line
   lowered 27 -> 24 (the gatekeeper, sitting 18, tag 5375).*
+  *L's #1864 (the pose door: `_poseTo`, `posedoor`) and #1866 (the race
+  door: `_raceTo`, `racedoor`), both ON, merged at sitting 18: 22 `todo`;
+  the line lowered 24 -> 22 (the gatekeeper, sitting 19, tag 5376).*
 - [ ] **5.4 [LATER] The frame as named steps.** PR 1 moves nothing: the six
   calls the loop already makes, plus one `legacy` step, become the list;
   each counts its errors to the crash ring (a throw in the frame reaches
@@ -618,6 +637,16 @@ nothing known, and a restore copies nothing.
   its reader, the thrown run, a row's place its name), merged at sitting
   14: every switch found is a row, rule 4 held. The box waits for the
   page's one reader (T's PR 6) (the gatekeeper, sitting 15, tag 5372).*
+  *T's PR 6, #1863 (the page's one reader, `src/game/switches.js`: `sw`,
+  `swHas`, `swValue`, the forms from the table, check 13; the first seven
+  reads moved), merged at sitting 18. The box waits for the rest of the
+  page's reads moved through it (T's PRs 8 on) (the gatekeeper, sitting
+  19, tag 5376).*
+  *T's PR 7, #1889 (the thrown run's preload changes nothing by itself: a
+  module hook, not an import of the worker; a row's `thrownFails` never a
+  canary suite), merged at sitting 19. The box waits for the rest of the
+  page's reads moved through the reader (T's PRs 8 on) (the gatekeeper,
+  sitting 20, tag 5377).*
 - [x] **7.2 [NEXT] The end date** (the owner: yes). For a logic switch: four
   weeks on with no revert, then the old way goes. A device off-ramp stays
   while its risk is live. A fallback stays while its trigger lives: a guard
@@ -748,6 +777,11 @@ the memory a family holds as the game draws it.
   they go; `?slimewalk=0`; `artCache` 95.1 -> 90.6) and #1859 (five rank
   trophies nothing drew, removed by the owner's word), merged at sitting
   17. The step is open (the gatekeeper, sitting 18, tag 5375).*
+  *Card P: #1853 (the element marks, a memory saver ON, `?elemicons=0`;
+  `artCache` 90.6 -> 88.6) and #1868 (the chain belt's stand-in, the
+  owner's own answer, `?beltstandin=0`), merged at sitting 18;
+  entityRenderer.js's line 8953 -> 8941 (5.1), the room #1868 earned. The
+  step is open (the gatekeeper, sitting 19, tag 5376).*
 - [ ] **9.6 [LATER] An address that changes with the content**, by a
   `?h=` lookup (the client builds a hundred sprite addresses as it runs;
   renaming files would break them). A wrong hash on art that loads in play
