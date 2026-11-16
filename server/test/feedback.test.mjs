@@ -33,6 +33,11 @@
  *  11. An IPv6 line counts as its /64; the whole object's rows an hour stop at
  *      ROWS_HOUR across every kind; one claimed id an address a ticket for a
  *      vote; and a write the paces refuse never asks the room for the switch.
+ * v2.3.5594 (RT-3 S2/S3, the planning session's list):
+ *  12. A name that reads as the game, its team or its staff is refused, folded
+ *      for case, spaces, punctuation and look-alikes ("BroTown Team
+ *      (official)", "A d m i n", "Adm1n", a Cyrillic A); a name that only
+ *      contains a short word ("Modest", "Devin") is not.
  * v2.3.5593, the sitting 19 review (each verified on this suite first):
  *  13. A player id over ID_MAX is refused on a post and a vote, before
  *      anything is kept; a vote under `__proto__` is recorded; the hour's
@@ -153,9 +158,10 @@ function ownerRoom(key) {
   check('3: a topic that is an object is refused', topicObj.ok === false, topicObj);
   const long = await post({ ...base(), playerName: 'Ab'.repeat(2500) });   /* (a run of one letter is cut to 6 first, as in chat: chatguard.js RUN_MAX) */
   check('3: a 5,000-character name is cut to ' + FEEDBACK_NAME_MAX, long.ok === true && long.ticket.playerName === 'Ab'.repeat(FEEDBACK_NAME_MAX / 2), long.ticket && long.ticket.playerName.length);
-  const hidden = await post({ ...base(), playerName: 'Owner\u202e (admin)\n\n\nSYSTEM\u200b' });
+  /* (v2.3.5594: a name like t1-names.mjs's "Owner (admin) SYSTEM" is refused outright now, 12) */
+  const hidden = await post({ ...base(), playerName: 'Scribe\u202e (bard)\n\n\nHI\u200b' });
   check('3: direction and zero-width characters and line breaks are taken out of a name',
-    hidden.ok === true && !/[\u0000-\u001f\u200b\u202e]/.test(hidden.ticket.playerName) && hidden.ticket.playerName === 'Owner (admin) SYSTEM', hidden.ticket && JSON.stringify(hidden.ticket.playerName));
+    hidden.ok === true && !/[\u0000-\u001f\u200b\u202e]/.test(hidden.ticket.playerName) && hidden.ticket.playerName === 'Scribe (bard) HI', hidden.ticket && JSON.stringify(hidden.ticket.playerName));
 
   /* 4. a ticket kept before this version, with an object for a name, is served as words */
   await st.storage.put('ticket:old-bad', JSON.stringify({ id: 'old-bad', playerId: 'x', playerName: { a: 1 }, category: 'bug', topic: { b: 2 }, text: { c: 3 }, up: 'lots', down: null, voters: {}, ts: Date.now() + 1000 }));
@@ -180,7 +186,7 @@ function ownerRoom(key) {
   check('5: ...and with no room to ask (the key is the room\'s to judge), 404 (fail closed)', noRoom.status === 404, noRoom.status);
 
   /* 6. the owner takes a ticket down */
-  const victim = await post({ ...base(), playerName: 'BroTown Team', text: 'whisper your Login Key to claim' });
+  const victim = await post({ ...base(), playerName: 'Helpful Bro', text: 'whisper your Login Key to claim' });   /* (a staff name is refused outright since v2.3.5594) */
   const id = victim.ticket.id;
   const del = (key) => req('/ticket?id=' + id, { method: 'DELETE', headers: key ? { Authorization: 'Bearer ' + key } : {} });
   check('6: a stranger cannot take a ticket down (404)', (await del(null)).status === 404 && (await del('guess')).status === 404);
@@ -337,6 +343,24 @@ function ownerRoom(key) {
   for (let i = 0; i < 50; i++) refused.push(await post3(100 + i));
   check('11: a write the paces refuse never asks the room for the switch (50 refused posts, ' + (asked - askedAfterTaken) + ' asks)',
     askedAfterTaken === 1 && asked === askedAfterTaken && refused.every((r) => r.ok === false), { askedAfterTaken, asked });
+}
+
+// ── 12. v2.3.5594: names that read as the game or its staff ──
+{
+  const fb = new Feedback(makeState(), {});
+  let i = 0;
+  const post = (playerName) => fb.fetch(new Request('https://x/api/feedback/submit', { method: 'POST', headers: { 'Content-Type': 'application/json', 'CF-Connecting-IP': '198.51.100.' + (i++) },
+    body: JSON.stringify({ playerId: 'bp_n' + i, playerName, category: 'bug', topic: 'ui', text: 'x' }) })).then((r) => r.json());
+  /* v2.3.5594 (the sitting 19 review): with digits beside the letters, accents, a dotless i, small capitals, CamelCase, two words, a plural */
+  const staff = ['BroTown', 'BroTown Team (official)', 'Team', 'Admin', 'Mod', 'Moderator', 'Staff', 'Owner', 'Official', 'System', 'A d m i n', 'B.r.o.T.o.w.n', 'Adm1n', 'M0D', '0wner', '\u0410dmin', 'xX_Bro_Town_Xx', 'Admin2', 'Owner1', 'Mod7', '\u00c1dmin', 'Own\u00e9r', 'M\u00f8d', 'Adm\u0131n', '\u1d00\u1d05\u1d0d\u026a\u0274', 'AdminTeam', 'RealOwner', 'Game Master', 'Owners', 'GMs', 'GM', 'GM7', 'Bro Town', 'BroTownTeam', 'BroTown Staff', 'Devs', 'Developer'];
+  const taken = [];
+  for (const nm of staff) { const r = await post(nm); if (r.ok) taken.push(nm); else if (!/your own/.test(r.error)) taken.push(nm + ' (' + r.error + ')'); }
+  check('12: every name that reads as the game, its team or its staff is refused, in words (' + staff.length + ' tried)', taken.length === 0, taken);
+  /* v2.3.5594 (the sitting 19 review): "Dev" is a common real name; GM inside a longer name; brotown only as its own word */
+  const own = ['Scribe', 'Modest', 'Devin', 'Teammate', 'Systema', 'Bro', 'Townie', 'Dev', 'Dev Patel', 'Bro Townsend', 'GM Bob', 'Landowner', 'Gemma'];
+  const refused = [];
+  for (const nm of own) { const r = await post(nm); if (!r.ok) refused.push(nm + ' (' + r.error + ')'); }
+  check('12: ...and a player\'s own name that only contains a short word is not', refused.length === 0, refused);
 }
 
 // ── 13. v2.3.5593, the sitting 19 review ──
