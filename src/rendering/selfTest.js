@@ -70,6 +70,205 @@ export function selfRgba() {
   return out;
 }
 
+/* ═══ v2.3.5236 (card O PR 14b): THE OTHER PROGRAMS' PICTURES AND ANSWERS ═══
+   Each worked here on the CPU from the program's own lines, at inputs where
+   every term the CPU cannot follow to the bit is multiplied away (said at
+   each).  Pure: server/test/self-test.test.mjs holds each against the
+   lines it copies. */
+const N = SELF_SIZE;
+const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+const smooth = (e0, e1, x) => { const t = clamp01((x - e0) / (e1 - e0)); return t * t * (3 - 2 * t); };
+const byte = (v) => Math.round(clamp01(v) * 255);
+/** A picture of these four colours, by the known picture's numbers. */
+export function selfPicture(pal) {
+  const idx = selfIdx();
+  const out = new Uint8Array(N * N * 4);
+  for (let i = 0; i < idx.length; i++) for (let c = 0; c < 4; c++) out[i * 4 + c] = pal[idx[i] * 4 + c];
+  return out;
+}
+
+/* ── THE SHARP READ (sharpPixels.js SHARP_SAMPLE_GLSL; the one program's
+   too): an 8 x 8 picture drawn twice its size.  Magnified exactly 2x the
+   sharp read lands every pixel on a texel's middle (f is 1 on even pixels,
+   0 on odd: base + f is k + 0.5 for both pixels of texel k), so the answer
+   is each texel twice each way; the plain smooth read blends a quarter of
+   the neighbour into every pixel.  The texture is smooth (linear), as a
+   figure's are. ── */
+export const SHARP_SRC = 8;
+export function selfSharpRgba() {
+  const n = SHARP_SRC;
+  const out = new Uint8Array(n * n * 4);
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+    const k = (((x * 3) >> 1) + ((y * 5) >> 1) + (x >= n / 2 ? 1 : 0)) & 3;
+    for (let c = 0; c < 4; c++) out[(y * n + x) * 4 + c] = SELF_PAL[k * 4 + c];
+  }
+  return out;
+}
+export function selfSharpWant() {
+  const src = selfSharpRgba(), n = SHARP_SRC;
+  const out = new Uint8Array(N * N * 4);
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) for (let c = 0; c < 4; c++) out[(y * N + x) * 4 + c] = src[((y >> 1) * n + (x >> 1)) * 4 + c];
+  return out;
+}
+
+/* ── THE SHINE (lightfx/sheenLift.js SHEEN_LIFT; the sheen batcher's and
+   the look program's shine): the sun's side 0 (the lift's `side` exactly
+   0.5), no figure frame (uFig.z 0), a white tint -- what is left is a
+   function of each pixel's colour: its highlight (`hi`, a smoothstep of its
+   brightness) lifting each channel toward the ceiling, rolled off.  Four
+   colours, chosen where the lift is still steep (near the ceiling it
+   saturates, and a moved line would not show): dark (no lift), and three
+   that the highlight's start, its end and the ceiling each move past the
+   allowance (12, 9 and 7 levels of 255).  The sun-side weight cannot show
+   with the sun at 0: the shine's lines are checked as text against these
+   (SHEEN_LINES, self-test.test.mjs §5). ── */
+export const SELF_SHEEN = Object.freeze({ r: 1.0, g: 0.95, b: 0.9, k: 1 });
+export const SELF_SHEEN_PAL = Object.freeze([
+  40, 60, 90, 255,
+  190, 185, 40, 255,
+  230, 215, 90, 255,
+  255, 255, 166, 255,
+]);
+/* the shine's numbers this copies (sheenLift.js: the highlight's smoothstep;
+   sheenBatch.js SHEEN_CEIL; the side's weight) */
+export const SHEEN_LINES = Object.freeze({ e0: 0.55, e1: 0.96, ceil: 0.92, w: 0.35 });
+/** SHEEN_LIFT on one premultiplied RGBA picture (bytes), the sun's side 0,
+ *  no figure frame, a white tint; bytes out.  `L`: the shine's numbers (a
+ *  test moves one to see the answer can tell). */
+export function sheenLiftCpu(rgba, sh = SELF_SHEEN, L = SHEEN_LINES) {
+  const out = new Uint8Array(rgba.length);
+  const U = [sh.r, sh.g, sh.b];
+  for (let i = 0; i < rgba.length; i += 4) {
+    const a = rgba[i + 3] / 255;
+    if (!(a > 0)) continue;
+    const c = [rgba[i] / 255, rgba[i + 1] / 255, rgba[i + 2] / 255];
+    const art = c.map((v) => clamp01(v / a / 1));
+    const hi = smooth(L.e0, L.e1, 0.299 * art[0] + 0.587 * art[1] + 0.114 * art[2]);
+    const s = sh.k * hi * (L.w + (1 - L.w) * 0.5);
+    for (let k = 0; k < 3; k++) {
+      let col = c[k] / a;
+      const head = Math.max(U[k] * L.ceil - col, 0);
+      col += head * (1 - Math.exp(-(U[k] * s) / Math.max(head, 0.001)));
+      out[i + k] = byte(Math.min(col, 1) * a);
+    }
+    out[i + 3] = byte(a);
+  }
+  return out;
+}
+export function selfSheenRgba() { return selfPicture(SELF_SHEEN_PAL); }
+export function selfSheenWant() { return sheenLiftCpu(selfSheenRgba()); }
+
+/* ── THE SHADOWS' SHADE (lightfx/shadows.js FRAG, the pre-pass's quad):
+   the pieces' picture read at five points -- the texel and its four
+   neighbours a soft step away -- uShift 0 and uSoft 1, so each read is a
+   texel's middle (the edge's held by the texture's clamp); the alpha
+   blended .36 / .16 x 4, capped at 1, times uAlpha, in uColor. ── */
+export const SELF_SHADE = Object.freeze({ alpha: 0.8, color: Object.freeze([0.2, 0.4, 0.6]), soft: 1 });
+const SHADE_A = [0, 85, 170, 255];
+/** The pieces' picture: its alpha by the known numbers (premultiplied: no colour). */
+export function selfShadeRgba() {
+  const idx = selfIdx();
+  const out = new Uint8Array(N * N * 4);
+  for (let i = 0; i < idx.length; i++) out[i * 4 + 3] = SHADE_A[idx[i]];
+  return out;
+}
+export function selfShadeWant(sh = SELF_SHADE) {
+  const src = selfShadeRgba();
+  const A = (x, y) => src[(Math.min(N - 1, Math.max(0, y)) * N + Math.min(N - 1, Math.max(0, x))) * 4 + 3] / 255;
+  const out = new Uint8Array(N * N * 4);
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    let a = A(x, y) * 0.36 + (A(x + 1, y) + A(x - 1, y) + A(x, y + 1) + A(x, y - 1)) * 0.16;
+    a = Math.min(a, 1) * sh.alpha;
+    const o = (y * N + x) * 4;
+    out[o] = byte(sh.color[0] * a); out[o + 1] = byte(sh.color[1] * a); out[o + 2] = byte(sh.color[2] * a); out[o + 3] = byte(a);
+  }
+  return out;
+}
+
+/* ── THE MOVING WATER (wheelWater.js FRAG, and its colour-numbers twin) at
+   strength 0: the swell, the web, the sparkles, the crests, the surf, the
+   flow's streaks and the caps are each multiplied by it (or by min(k,
+   1.25)), so what is left is the piece's colour, read at the texel's middle,
+   times how wet the field says it is there (wet = smoothstep(0.3, 0.9,
+   field.r x 10.625)), premultiplied -- and nothing where it is dry.  The
+   field is still open sea (green 255, no flow); its wetness by a pattern of
+   its own, so a field read at the wrong place shows. ── */
+export const SELF_WET = Object.freeze([0, 10, 17, 24]);   /* field.r: 0, 0.42, 0.71 and 1.0 game px from the shore */
+export function selfWaterField() {
+  const out = new Uint8Array(N * N * 4);
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    const o = (y * N + x) * 4;
+    out[o] = SELF_WET[((x + 2 * y) >> 2) & 3]; out[o + 1] = 255; out[o + 2] = 128; out[o + 3] = 128;
+  }
+  return out;
+}
+/** The answer over a piece (straight RGBA bytes: the plain program reads
+ *  its rgb, the twin its palette's). */
+export function selfWaterWant(piece) {
+  const f = selfWaterField();
+  const out = new Uint8Array(N * N * 4);
+  for (let i = 0; i < N * N; i++) {
+    const wet = smooth(0.3, 0.9, (f[i * 4] / 255) * 10.625);
+    if (!(wet > 0)) continue;
+    for (let c = 0; c < 3; c++) out[i * 4 + c] = byte((piece[i * 4 + c] / 255) * wet);
+    out[i * 4 + 3] = byte(wet);
+  }
+  return out;
+}
+
+/* ── THE LOOK PROGRAM (lookPalette.js fragSource): a sheet of its own, 16 x
+   16 numbers at 8 bits, drawn at its size (no scale, no mip, no armour's
+   mask, a body's kind).  Numbers 1 and 2 are no role: their own colours
+   from the sheet's table.  3 and 4 are role 1, recoloured by the look's row
+   (recol: the row's colour at the pixel's brightness over the role's ref,
+   rounded and capped), so the sheet's header, its table, its roles and the
+   row of the colours' atlas are all read.  Without a row (none free) 3 and
+   4 are their own colours too. ── */
+export const SELF_LOOK = Object.freeze({
+  table: Object.freeze([[0, 0, 0, 0], [30, 60, 200, 255], [220, 200, 40, 255], [150, 150, 150, 255], [100, 120, 80, 255]]),
+  ref: 150, entry: 1, T: Object.freeze([200, 110, 60]), ends: Object.freeze([3, 5]),
+});
+/** The sheet's manifest row and roles (lookUnpack.js lookSheetSpec's input). */
+export function selfLookManifest() {
+  return { m: { w: N, h: N, tableRows: Math.ceil((SELF_LOOK.table.length * 2) / N), entries: SELF_LOOK.table.length, bits: 8, ds: 1, mip: false, ends: SELF_LOOK.ends.slice(), refScale: 1, kind: 'body' },
+    roles: [{ entry: SELF_LOOK.entry, ref: SELF_LOOK.ref, under: 0 }] };
+}
+/** The sheet's picture as its PNG would hold it (W x (n + table rows),
+ *  opaque): the numbers in red, the table two pixels an entry. */
+export function selfLookPicture() {
+  const { m } = selfLookManifest();
+  const idx = selfIdx();
+  const px = new Uint8Array(N * (N + m.tableRows) * 4).fill(255);
+  for (let i = 0; i < idx.length; i++) { px[i * 4] = idx[i] + 1; px[i * 4 + 1] = 0; px[i * 4 + 2] = 0; }
+  SELF_LOOK.table.forEach((t, e) => {
+    const s = (N * N + 2 * e) * 4;
+    px[s] = t[0]; px[s + 1] = t[1]; px[s + 4] = t[2]; px[s + 5] = t[3];
+  });
+  return px;
+}
+export function selfLookWant(withRow = true) {
+  const idx = selfIdx();
+  const out = new Uint8Array(N * N * 4);
+  for (let i = 0; i < idx.length; i++) {
+    const k = idx[i] + 1;
+    const c = SELF_LOOK.table[k];
+    let rgb = [c[0], c[1], c[2]];
+    if (withRow && k >= SELF_LOOK.ends[0] && k < SELF_LOOK.ends[1]) {
+      const lum = (0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2]) / SELF_LOOK.ref;
+      rgb = SELF_LOOK.T.map((t) => Math.min(255, Math.floor(t * lum + 0.5)));
+    }
+    for (let ch = 0; ch < 3; ch++) out[i * 4 + ch] = Math.floor((rgb[ch] * c[3]) / 255 + 0.5);
+    out[i * 4 + 3] = c[3];
+  }
+  return out;
+}
+/** The look's row (lookPalette.js lookRow's form): the role's entry. */
+export function selfLookRow() {
+  const rgba = new Uint8Array(256 * 4);
+  rgba.set([SELF_LOOK.T[0], SELF_LOOK.T[1], SELF_LOOK.T[2], 255], SELF_LOOK.entry * 4);
+  return rgba;
+}
+
 /* ── the lever: ?selftest=fail:<name>[,<name>...] ── */
 let _forced = null;
 /* the address's `selftest`, as the search string the two readers below take:
@@ -121,9 +320,9 @@ export function selfDiff(got, want, tol = 2) {
  *  in `self`.  Only a picture read and wrong falls a program back: a read
  *  that fails says nothing of the program, and the colour numbers' way back,
  *  whole colours, costs an iPhone's memory (the memory law). */
-export function selfCheck(name, got, want, ms = 0) {
+export function selfCheck(name, got, want, ms = 0, tol = 2) {
   let off = Infinity;
-  try { off = selfDiff(got, want); } catch (e) { off = Infinity; }
+  try { off = selfDiff(got, want, tol); } catch (e) { off = Infinity; }
   const f = forced(name);
   if (!got && !f) {
     _res[name] = { result: 'unread', why: 'nothing read back: the program kept as today', ms: Math.round(ms * 100) / 100, off: null };
@@ -246,35 +445,50 @@ function _poll() {
     p.readMs += performance.now() - t0;
     if (!done) continue;
     _pending.splice(i, 1);
-    /* every picture the program drew must be right: a wrong one is its
-       answer; else, any not read back, unread (kept as today); else a pass */
-    const read = p.got.filter(Boolean);
-    const wrong = read.find((px) => selfDiff(px, p.want) !== 0);
-    got = wrong || (read.length && read.length === p.got.length ? read[0] : null);
+    /* every picture the program drew must be right (each held to its own
+       answer, v2.3.5236): a wrong one is its answer; else, any not read
+       back, unread (kept as today); else a pass */
+    let wrong = -1, unread = false;
+    for (let k = 0; k < p.got.length; k++) {
+      if (!p.got[k]) unread = true;
+      else if (selfDiff(p.got[k], p.wants[k], p.tols[k]) !== 0) { wrong = k; break; }
+    }
+    const at = wrong >= 0 ? wrong : 0;
+    got = wrong >= 0 ? p.got[wrong] : (unread ? null : p.got[0]);
     for (const j of p.jobs) _endRead(j);
     _draws.push([p.name, Math.round(p.drawMs * 10) / 10, Math.round(p.readMs * 10) / 10, p.tries]);
-    if (!selfCheck(p.name, got, p.want, p.drawMs + p.readMs)) { try { p.onFail(); } catch (e) { /* falls back as it can */ } }
+    if (!selfCheck(p.name, got, p.wants[at], p.drawMs + p.readMs, p.tols[at])) { try { p.onFail(); } catch (e) { /* falls back as it can */ } }
   }
-  if (_pending.length) { _queued = true; beforeDraw(_poll); return; }
+  /* (a fallback above may have queued a test of its own -- the one
+     program's queues the sharp batcher's -- and with it this poll) */
+  if (_pending.length) { if (!_queued) { _queued = true; beforeDraw(_poll); } return; }
   if (_resolveAll) { const r = _resolveAll; _resolveAll = null; _allDone = null; r(selfResults()); }
 }
 /** A program's drawn pictures (selfDraw's textures, each held to `want`):
  *  copied now behind a fence (the textures destroyed), judged at the top of
  *  a later frame once the copy is done; `onFail()` falls it back alone.
- *  `drawMs`: the draw's time. */
+ *  `drawMs`: the draw's time.
+ *  v2.3.5236 (14b): `want` is one answer for every picture, or a list of
+ *  them, one a picture (in `rts`' order); an answer may be `{ want, tol }`,
+ *  a channel allowed to round by `tol` (2 unless said: a program that works
+ *  a curve at a phone's half precision, the shine, is allowed 4). */
 export function selfQueue(name, renderer, rts, want, onFail, drawMs = 0) {
   const t0 = performance.now();
   const list = [].concat(rts || []);
+  const each = Array.isArray(want) && want.length === list.length && want.every((w) => w && (w.want || ArrayBuffer.isView(w))) ? want : list.map(() => want);
+  const wants = each.map((w) => (w && w.want ? w.want : w));
+  const tols = each.map((w) => (w && w.want && Number.isFinite(w.tol) ? w.tol : 2));
   const jobs = list.map((rt) => _startRead(renderer, rt));
   selfDrop(list);
-  _pending.push({ name, jobs, got: jobs.map((j) => (j ? undefined : null)), want, onFail: typeof onFail === 'function' ? onFail : () => {},
+  _pending.push({ name, jobs, got: jobs.map((j) => (j ? undefined : null)), wants, tols, onFail: typeof onFail === 'function' ? onFail : () => {},
     drawMs: drawMs + (performance.now() - t0), readMs: 0, tries: 0 });
   if (!_queued) { _queued = true; beforeDraw(_poll); }
 }
 
 /** v2.3.5234 (the gatekeeper's sitting 20): this program's pictures wait for
  *  their verdict (paletteTex.js paletteDecided: what loads in that window
- *  waits with them). */
+ *  waits with them; v2.3.5236: the look's choices too, lookPalette.js
+ *  lookSheenState, TRAPS §340). */
 export function selfPending(name) {
   for (const p of _pending) if (p.name === name) return true;
   return false;
