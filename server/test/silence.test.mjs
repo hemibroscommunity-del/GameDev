@@ -43,7 +43,8 @@ async function join(pid, device, r) {
   const rm = r || room;
   const ws = fakeWs(pid);
   rm.sessions.set(ws, baseSession());
-  await rm.webSocketMessage(ws, JSON.stringify({ type: 'join', id: pid, name: pid.slice(3, 12), phrase: 'p-' + pid, protocolVersion: 2, ws: [1, 5],
+  /* v2.3.5622: a name the name rules take ('mod_troll' reads as staff: card MOD PR 2) */
+  await rm.webSocketMessage(ws, JSON.stringify({ type: 'join', id: pid, name: 'T' + pid.slice(7, 15), phrase: 'p-' + pid, protocolVersion: 2, ws: [1, 5],
     device: { id: device }, data: { x: 100, y: 100, z: 'town' } }));
   await settle();
   return ws;

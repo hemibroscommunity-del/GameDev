@@ -51,9 +51,29 @@ export function checkCharName(raw) {
   const s = raw.normalize('NFC').replace(/\s+/g, ' ').trim();
   if (s.length < CHAR_NAME.MIN) return { why: 'short' };
   if (s.length > CHAR_NAME.MAX) return { why: 'long' };
-  if (!/^[\p{L}\p{N} '_-]+$/u.test(s) || !/[\p{L}\p{N}]/u.test(s)) return { why: 'chars' };
+  /* v2.3.5622 (the sitting 19 review): a mark after a letter is a letter's
+     part (Devanagari, Thai and every accent written apart were "No emoji or
+     symbols"); a character that draws nothing (the Hangul fillers U+3164,
+     U+115F, U+1160, U+FFA0, which are letters, and every other default
+     ignorable) is refused */
+  if (!/^(?:\p{L}\p{M}*|\p{N}|[ '_-])+$/u.test(s) || !/[\p{L}\p{N}]/u.test(s) || /\p{Default_Ignorable_Code_Point}/u.test(s)) return { why: 'chars' };
   if (nameReadsAsStaff(s)) return { why: 'staff' };
   return { name: s };
+}
+
+/** v2.3.5622 (the sitting 19 review): a name with no character record (a
+ *  guest's, or a join's own when its data names nobody) is TIDIED, not
+ *  refused: what the rule refuses taken out (a control, a direction or
+ *  hidden character, an emoji, a sign), spaces collapsed, cut to MAX, and
+ *  then the rule (a staff name stays out).  '' when nothing it allows is
+ *  left: the caller names it 'Anon'. */
+export function tidyCharName(raw) {
+  if (typeof raw !== 'string') return '';
+  let t;
+  try { t = raw.slice(0, 256).normalize('NFC'); } catch (e) { t = raw.slice(0, 256); }
+  t = t.replace(/\p{Default_Ignorable_Code_Point}|[^\p{L}\p{M}\p{N} '_-]/gu, ' ').replace(/\s+/g, ' ').trim();
+  t = Array.from(t).slice(0, CHAR_NAME.MAX).join('').trim();
+  return checkCharName(t).name || '';
 }
 
 const own = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);
@@ -70,15 +90,19 @@ export const charNameMethods = {
    *  socket because a NEW character's name breaks the rule.  `joinData` is
    *  the join's own `data` (its name tidied in place: spaces, NFC).  A
    *  character on file is never asked: its name is kept. */
-  async _charNameRefuse(ws, charId, joinData) {
+  async _charNameRefuse(ws, charId, joinData, topName) {
     if (typeof charId !== 'string' || charId.indexOf('bp_') !== 0 || !this._nameRulesOn()) return false;
-    if (!joinData || typeof joinData !== 'object') return false;
+    /* v2.3.5622 (the sitting 19 review): the data's name, or, when it names
+       nobody, the join's own (`msg.name`, the session's name: it was never
+       asked, and S2's string passed that way) */
+    const data = joinData && typeof joinData === 'object' ? joinData : null;
+    const dataName = data && typeof data.name === 'string' && data.name.trim() ? data.name : '';
+    const raw = dataName || (typeof topName === 'string' ? topName : '');
+    if (!raw.trim()) return false;   /* nothing named: join.js names it 'Anon' */
     const stored = await this.state.storage.get('char:' + charId);
     if (stored && stored.look) return false;
-    const raw = joinData && typeof joinData.name === 'string' ? joinData.name : '';
-    if (!raw.trim()) return false;   /* a nameless join makes no character (join.js), nothing to judge */
     const c = checkCharName(raw);
-    if (c.name) { joinData.name = c.name; return false; }
+    if (c.name) { if (dataName) data.name = c.name; return false; }
     try { ws.send(JSON.stringify({ type: 'join_rejected', reason: 'name', why: c.why })); } catch (e) { /* closed */ }
     try { ws.close(CHAR_NAME.CLOSE, 'name'); } catch (e) { /* closed */ }
     if (this._playerLeaves) await this._playerLeaves(ws, 'refused');

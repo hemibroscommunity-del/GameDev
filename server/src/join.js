@@ -26,6 +26,7 @@ import { cleanWheelSizes } from './wheeltables.js'; /* v2.3.3315: the Wheel size
 import { DEVICE_LOCK, cleanDevice } from './devicelock.js'; /* v2.3.3344: a key on its character's devices */
 import { LOGIN_KEYS, newKeyOf } from './loginkeys.js'; /* v2.3.3355: new Login Keys, made by the worker */
 import { stashGive, stashTake, stashSet } from './stash.js';   /* v2.3.5281: the stashes' door (card R PR 2) */
+import { tidyCharName } from './charname.js';   /* v2.3.5622: a name with no record held to the rule (the sitting 19 review) */
 
 /* ═══ v2.3.1627: the JOIN DATA ALLOWLIST ═══
  *
@@ -737,7 +738,7 @@ export const joinMethods = {
         return;
       }
       /* v2.3.5622: a NEW character's name by the rule (charname.js, card MOD), before it is made */
-      if (await this._charNameRefuse(ws, msg.id, msg.data)) return;
+      if (await this._charNameRefuse(ws, msg.id, msg.data, msg.name)) return;   /* v2.3.5622: the join's own name too, when its data has none */
     }
     /* ═══ v2.3.3260: YOUR BODY IS STILL IN THE FIGHT ═══
        A player who left within 10 s of a hit between players leaves their
@@ -877,6 +878,17 @@ export const joinMethods = {
     /* v2.3.4455: a kept body is where it stands, whatever this phone said:
        peers read the place from session.data (getAllPlayerData spreads it
        last) and from player_join */
+    /* v2.3.5622 (the sitting 19 review, HIGH): a session with no character
+       record -- a guest or a keyless id, or a join whose data names nobody --
+       took its name as the join sent it (sanitizeDisplayName keeps a
+       direction override and a zero-width space), and every peer, room chat
+       and the board read it.  Held to the rule, both copies (tidied: what
+       the rule refuses taken out, so "Bro<line break>killer" is "Bro
+       killer"; a staff name stays out), or 'Anon'. */
+    if (!(session.char && session.char.name) && this._nameRulesOn && this._nameRulesOn()) {
+      session.name = tidyCharName(msg.name) || 'Anon';
+      if (typeof cleanJoinData.name === 'string') cleanJoinData.name = tidyCharName(cleanJoinData.name) || session.name;
+    }
     if (_body) { cleanJoinData.x = _body.x; cleanJoinData.y = _body.y; cleanJoinData.z = _body.z; cleanJoinData.d = _body.d; }
     session.data = cleanJoinData;
     // Protocol v2 opt-in.  v2 sessions get delta player_state emits,
