@@ -255,6 +255,26 @@ const enc = (s) => new TextEncoder().encode(s);
   while (Date.now() - t2 < 15000 && !D.src.__btFP) await new Promise((r) => setTimeout(r, 100));
   check('...and it is packed again once the new chip has drawn it', !!D.src.__btFP && D.src.resource.length === 0);
   for (const fn of D.ends) fn();   /* D's end: the checks below count A and B only */
+  /* v2.3.5561 (sitting 20's low): a strip still WAITING in the line when the
+     restorer runs (not begun: no pack of its own to let go) goes back to
+     waiting for the new chip, and is not packed after the rebuild */
+  const E = strip([[256, 256], [256, 256], [240, 256]], 6);
+  const G = strip([[256, 256], [200, 256], [256, 240]], 8);
+  FP.wantFramePack(E.src, E.cells); FP.wantFramePack(G.src, G.cells);   /* not drawn: only the line moves them */
+  const lost1 = FP.framePackStats().lostMidPack;
+  FP.queueStrips([E.src, G.src]);
+  await nextTask();
+  await restorers[0]();
+  const t3 = Date.now();
+  while (Date.now() - t3 < 15000 && FP.framePackStats().lostMidPack === lost1) await new Promise((r) => setTimeout(r, 50));
+  await new Promise((r) => setTimeout(r, 1500));
+  check('a strip still waiting in the line when the chip is rebuilt goes back to waiting: not packed after the rebuild, its numbers whole',
+    !G.src.__btFP && same(G.src.resource, G.idx) && !!G.src._btNumbers && !E.src.__btFP, { g: !!G.src.__btFP, e: !!E.src.__btFP });
+  E.src._gpuData[1] = {}; G.src._gpuData[1] = {};
+  const t4 = Date.now();
+  while (Date.now() - t4 < 20000 && !(E.src.__btFP && G.src.__btFP)) await new Promise((r) => setTimeout(r, 100));
+  check('...and both are packed once the new chip has drawn them', !!E.src.__btFP && !!G.src.__btFP);
+  for (const fn of [...E.ends, ...G.ends]) fn();
   /* (the restorer unpacked A too: packed again before the checks below) */
   while (Date.now() - t2 < 30000 && !A.src.__btFP) await new Promise((r) => setTimeout(r, 100));
   /* a frame that will not unpack: nothing to read, never a throw */
