@@ -305,10 +305,13 @@ export function warmSilhouettes(renderer) {
   const made = [];
   let palSrc = null;
   try {
-    const add = (maskTex) => {
+    const add = (maskTex, hairMask) => {
       const box = new Container();
       const pic = new Sprite(maskTex);
-      pic._btClipAlpha = true;
+      /* v2.3.5562 (sitting 20's low): and a hat's hair mask as colour numbers
+         (hairClip.js `_btClipMask`: PAL_HAIR_CLIP_BATCHER), the one palette
+         program the first hat drawn would otherwise build, in play */
+      if (hairMask) pic._btClipMask = true; else pic._btClipAlpha = true;
       pic.width = 4; pic.height = 4;
       box.addChild(pic);
       const body = new Sprite(Texture.WHITE);
@@ -327,7 +330,7 @@ export function warmSilhouettes(renderer) {
         idx: new Uint8Array([1, 1, 1, 1]), w: 1, h: 1, stride: 4,
         rgba: new Uint8Array([0, 0, 0, 0, 255, 255, 255, 255]), alphaMode: 'premultiplied-alpha', label: 'bt-silhouette-prewarm',
       });
-      if (palSrc) add(new Texture({ source: palSrc }));
+      if (palSrc) { const t = new Texture({ source: palSrc }); add(t); add(t, true); }
     }
     root.alpha = 0.001;
     renderer.render({ container: root });
