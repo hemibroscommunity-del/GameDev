@@ -41,7 +41,7 @@ makes them: **eight short words**, like `crowd-crate-yoga-eagle-rule-agony-mop-g
 | Reason | Close | When |
 |---|---|---|
 | `key` | 4017 | a new-shaped key that isn't this character's (taken back, or never made by the server), or an old key that was retired. A new-shaped key with no character is never registered from a phone. |
-| `locked` | 4018 | five wrong keys for this id within a minute (anyone's). It used to answer `auth`, which makes a phone throw its key away for a fresh character, so anyone could cost a player their character on that phone. A matching **new** key goes through a lockout. |
+| `locked` | 4018 | five wrong keys for this id within a minute (anyone's). It used to answer `auth`, which makes a phone throw its key away for a fresh character, so anyone could cost a player their character on that phone. A matching **new** key goes through a lockout; so does the right **old** key from one of the character's own devices (v2.3.5582, `oldkeylock`; device-lock.md). |
 | `device` | 4016 | unchanged (step 1): the right old key from a device the character was never played on. |
 
 Never `auth` for any of them. The phone:
