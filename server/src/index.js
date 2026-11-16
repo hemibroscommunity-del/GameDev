@@ -428,7 +428,7 @@ async function routeHttp(request, env) {
        stuck room read "ok" there.  For an uptime monitor. */
     if (url.pathname === '/health/room') {   /* HEALTH.PATH: the wire table's lister reads the literal */
       if (!roomName) return noSuchRoom();
-      return routeRoomHealth(env, roomName, corsHeaders);
+      return routeRoomHealth(env, roomName, corsHeaders, request);
     }
 
     if (url.pathname === '/health') {
@@ -4571,7 +4571,7 @@ export class GameRoom {
        (health.js), after the switches load (its own, `roomhealth`, among
        them); internal like `/_room_count`: no outside path is forwarded here */
     if (url.pathname === '/_room_health') {   /* HEALTH.ROOM_PATH */
-      return this._roomHealthFetch();
+      return this._roomHealthFetch(request);
     }
     /* v2.3.5184: THE WIRE DOOR for the room's routes (wire/door.js), after
        the switches load and before the first route: a key named like the
@@ -6150,6 +6150,10 @@ export class GameRoom {
           msg.from = session.id;
           /* v2.3.3265: your sparring clones see your specials coming (spar.js) */
           if (this._spars && this._spars.size) this._sparSeen(session.id, msg);
+          /* v2.3.5543 (RT-1 N10): a relay's bytes -- one too big, a socket past
+             its byte budget, the queue past its cap: dropped, counted
+             (relay.js _relayBytesDrop; `relaybytes: false` lets all in) */
+          if (this._relayBytesDrop(session, msg, Date.now())) break;
           this.eventBuffer.push(msg);
         }
         break;

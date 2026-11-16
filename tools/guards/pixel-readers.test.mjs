@@ -93,7 +93,7 @@ const READERS = {
 /* A file on READERS that names an address p256.js would pack, the reader it
    reads that picture through, and why the pack never comes first. */
 const NAMES_PACKED = {
-  'effectsRenderer.js': '_tightPopupIcon cuts the heart popup through readSourceRect as it loads (_loadPopupIcon), before it is ever drawn: p256.js packs only what the chip already has. Its other page-copy reads are the chop strip (_cropChop) and the bakes\' probe (__btFxBakes), neither a p256 picture.',
+  'effectsRenderer.js': '_tightPopupIcon cuts the heart popup and the eight element marks (v2.3.5258) through readSourceRect as they load (_loadPopupIcon), before they are ever drawn: p256.js packs only what the chip already has. Its other page-copy reads are the chop strip (_cropChop) and the bakes\' probe (__btFxBakes), neither a p256 picture.',
 };
 
 /* The shatter's callers, and where each one's pictures come from. */
