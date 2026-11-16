@@ -94,9 +94,17 @@ const HAIRMASKS = /^\/sprites\/traits\/headwear\/[a-z0-9-]+\/hairmask\/(?:east|n
 /* (not with `?alphaclip`, the alpha mask as it was: a filter reads the
    silhouette as a picture, which a colour numbers' cannot be) */
 const HAIRMASKS_ON = !NO_TWINS && !/[?&]hairmasks=0(&|$)/.test(_q) && !/[?&]alphaclip\b/.test(_q);
+/* v2.3.5563, `pets`: the pet sheet every pet is drawn from (petSprites.js, on
+   the loading screen for everyone, a pet going everywhere you go): 1.5 MB
+   held as a picture in the page at the memory check's fight, where no pet
+   is drawn.  Its twin cuts 79k colours to 256 (moved 0.021 OKLab, under the
+   whirlwind's 0.028).  The pet's portrait (petPortrait.jsx) is an <img> of
+   the sheet itself, unchanged.  `?petsheet=0` keeps it a picture. */
+const PET_SHEET_P = /^\/sprites\/pets\/pet-sheet\.png$/;
+const PET_SHEET_ON = !NO_TWINS && !/[?&]petsheet=0(&|$)/.test(_q);
 /** whether the picture at `path` (no host, no query) is read from its twin here */
-function wantedPath(path) { return !NO_TWINS && (ALL_TWINS || (FX_MADE_ON && FX_MADE.test(path)) || (WORLD_ICONS_ON && WORLD_ICONS.test(path)) || (FX_SHEETS_ON && FX_SHEETS.test(path)) || (ELEM_ICONS_ON && ELEM_ICONS.test(path)) || (HAIRMASKS_ON && HAIRMASKS.test(path))); }
-const WANTED = !NO_TWINS && (ALL_TWINS || FX_MADE_ON || WORLD_ICONS_ON || FX_SHEETS_ON || ELEM_ICONS_ON || HAIRMASKS_ON);
+function wantedPath(path) { return !NO_TWINS && (ALL_TWINS || (FX_MADE_ON && FX_MADE.test(path)) || (WORLD_ICONS_ON && WORLD_ICONS.test(path)) || (FX_SHEETS_ON && FX_SHEETS.test(path)) || (ELEM_ICONS_ON && ELEM_ICONS.test(path)) || (HAIRMASKS_ON && HAIRMASKS.test(path)) || (PET_SHEET_ON && PET_SHEET_P.test(path))); }
+const WANTED = !NO_TWINS && (ALL_TWINS || FX_MADE_ON || WORLD_ICONS_ON || FX_SHEETS_ON || ELEM_ICONS_ON || HAIRMASKS_ON || PET_SHEET_ON);
 /* (never while QA compares cropped strips against their files: __btTrimVerify) */
 export function p256On() { return WANTED && picNumbersOn(); }
 
@@ -360,6 +368,6 @@ export function startP256Pack(renderer, canvas) {
 }
 
 if (typeof window !== 'undefined') {
-  window.__btP256 = () => ({ wanted: WANTED, on: p256On(), all: ALL_TWINS, fxMade: FX_MADE_ON, worldIcons: WORLD_ICONS_ON, fxSheets: FX_SHEETS_ON, elemIcons: ELEM_ICONS_ON, hairMasks: HAIRMASKS_ON, twins: Object.keys(P256_FILES).length, ..._stats,
+  window.__btP256 = () => ({ wanted: WANTED, on: p256On(), all: ALL_TWINS, fxMade: FX_MADE_ON, worldIcons: WORLD_ICONS_ON, fxSheets: FX_SHEETS_ON, elemIcons: ELEM_ICONS_ON, hairMasks: HAIRMASKS_ON, petSheet: PET_SHEET_ON, twins: Object.keys(P256_FILES).length, ..._stats,
     pack: { ..._pk, packedNow: _packed.size, waiting: _toPack.size } });
 }

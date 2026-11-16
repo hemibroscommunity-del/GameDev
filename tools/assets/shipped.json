@@ -1296,6 +1296,7 @@
     {"path":"public/sprites/ore/ore-iron.png","bytes":10141,"sha256":"db9e347c37f436adcc82a1b451376e260deb4bdf417f5d3e22a2f5ddf255a992","family":"ore-tiers","kind":"made"},
     {"path":"public/sprites/ore/ore-obsidian.png","bytes":24555,"sha256":"ff6631ba29250f15dd5d392f73c2970390176bf5d2778a96967bdd2a45c9f4f6","family":"ore-tiers","kind":"made"},
     {"path":"public/sprites/ore/ore-titanium.png","bytes":19813,"sha256":"55482cc101cd3854a379c89e73ddcaffe554623d4ee676da9488d1249e3548f5","family":"ore-tiers","kind":"made"},
+    {"path":"public/sprites/pets/pet-sheet.p256.png","bytes":80911,"sha256":"651433ed1efa1800c660958e43fcdbbd47dcbc6e42db1eb11bd3622c21ce5fbb","family":"pets-twins","kind":"made"},
     {"path":"public/sprites/pets/pet-sheet.png","bytes":364949,"sha256":"73c9cc41b356a2bc7dd6c000fbde0ca5f35cde1383207a6e6a21f141cac40efe","family":"pets","kind":"made"},
     {"path":"public/sprites/player-naked/stand-east.png","bytes":12346,"sha256":"fb5c1983ed0a4a6613877d170e72a0a292ce56a50d4ef5c1ba1ad4a7319bb95b","family":"player-naked","kind":"supplied"},
     {"path":"public/sprites/player-naked/stand-north.png","bytes":15682,"sha256":"c68042b759d228ca446b263fb30a13df679e9011c57991d221d93075aafff8f0","family":"player-naked","kind":"supplied"},

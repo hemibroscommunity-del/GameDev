@@ -440,6 +440,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?p256` | page | switch | v2.3.3728 | 2026-11-14 (v2.3.5249) | =1 every twin on; =0 every twin off (v2.3.5249) | memory |  | no | With =0 every effect and icon is drawn from its full-colour picture; =1 turns on the twins not yet on by default. |
 | `?packworker` | page | switch | v2.3.5253 | 2026-11-14 | =0 | logic |  | no | A gear sheet first drawn in play is packed on the page a few ms at a time, as before, not on the body bake's worker. |
 | `?pagebases` | page | switch | v2.3.4450 | 2026-11-10 | =0, off, false | logic |  | no | A page's ground lines are read on the page, not the worker. |
+| `?petsheet` | page | switch | v2.3.5563 | 2026-11-15 | =0 | memory |  | no | The pet sheet is drawn from its full-colour picture, as before, not from its 256-colour twin. |
 | `?pixidelay` | page | lever | v2.3.3709 |  | a number of ms | none |  | no | QA: the renderer arrives this much later, as a slow phone's. |
 | `?platelayer` | page | switch | v2.3.4886 | 2026-11-12 (v2.3.4990) | =0 | memory |  | no | Armour plates are not drawn as their own layer. |
 | `?popupworld` | page | switch | v2.3.3192 | 2026-10-13 | present | logic |  | no | Popups drawn in the world, not on the screen. |
