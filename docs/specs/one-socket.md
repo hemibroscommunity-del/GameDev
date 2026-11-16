@@ -130,6 +130,16 @@ a second. The budget is 4x that.
   `CF-Connecting-IP`; a local test has none and is not counted.
   - The refusal is the full room's: `room_full` with `reason: 'ip'`, close
     `4009`. The client shows "the world is full" and retries on its own.
+  - **An IPv6 line is one address (v2.3.5581).** An IPv6 home or phone
+    line is given a whole /64 block, and a script took a new address of it
+    for every socket: the red team's local run (RT-1, finding N4) filled the
+    room's 120 places from one line. So both limits, and the login door's 20
+    tries a minute (account.js), count an IPv6 address by its /64, its first
+    four groups (`flood.js ipKey`). IPv4, and IPv4 written as IPv6
+    (`::ffff:1.2.3.4`), count as themselves; an address it cannot read counts
+    as written. The session keeps its whole address (the account check sends
+    it to Turnstile). Kill switch `ip64: false`: each IPv6 address apart
+    again, as before.
 
 ### 5. A message that is just `null`
 
@@ -185,6 +195,7 @@ skips the close's duties but its save (`docs/specs/takeover-save.md`).
 |---|---|---|---|
 | `ip_sockets` | 16 | 0-1000 | places one address may hold; 0 = no limit |
 | `ip_joins_min` | 20 | 0-10000 | sockets one address may open a minute; 0 = no limit |
+| `ip64` | on | `false` | v2.3.5581: count an IPv6 address by its /64; `false` counts each apart |
 
 Set with the admin flags route, as any flag (docs/OPERATIONS.md, "Live
 switches").
