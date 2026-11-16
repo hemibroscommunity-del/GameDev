@@ -45,7 +45,7 @@ while away.
 | `auction_sale` | the Auction House, bought now | gold, bag, weapon, gear, pet | `none` |
 | `auction_bid` | the Auction House, a bid won | gold, bag, weapon, gear, pet | `none` |
 | `auction_offer` | the Auction House, an offer taken | gold, bag, weapon, gear, pet | `none` |
-| `duel_pot` | a duel's two wagers, held in `duelEscrow:`, the pot to the winner | gold | `none` |
+| `duel_pot` | a duel's two wagers, held in `duelEscrow:`, the pot to the winner | gold | `xfer` (v2.3.5290; only with `xferescrow: true`) |
 | `arena_entries` | the arena's entry fees, held in `arena_entry:`, paid to the champion with the house's part | gold | `none` |
 | `arena_stakes` | the arena's sponsorship stakes, held in `arena_stake:`, paid as the cut, the winnings and a failed sponsorship's claim | gold | `none` |
 | `threat_bounty` | the threat's 10% fine, held on the threatener's head in `bounty:`, paid to whoever kills them | gold | `none` (a kill) |
@@ -53,10 +53,18 @@ while away.
 | `ground` | a pile on the ground: a death's bag or a dropped stack (`death_pile:`), taken by whoever picks it up | bag | `none` (nobody chose the other side) |
 | `diego_pile` | Diego's pile (`shop_stock`): what one player sells him, the next buys | bag | `none` (each side trades with the shop) |
 
-The escrow rows' `none` (the market, the Auction House, a duel, the arena)
-waits for card R's last PR (tag 5290): each settlement writing one `xfer:`
-row is more rows a day, a cost question for the owner, built OFF behind
-`xferescrow`.
+The escrow rows' ledger (card R PR 11, tag 5290, the planning session's
+reading (b)): each settlement writes one `xfer:` row in its own run, which is
+more rows a day, a cost question for the owner, so it is built OFF behind
+`xferescrow: true` in the live flags (`xfer.js xferEscrowOn`; off too with
+`xfer: false`). Built first for **the duel's pot** (`xferDuelPot`: the
+loser's wager to the winner, the price empty, `by` the winner's blow or
+nobody's; paid through `inbox.js _creditWith` so the credit, its stamp and
+the row are one write; `xfer.test` §8, `cost-guard` §20: one row a wagered
+duel, two over its life with its prune). **The market, the Auction House and
+the arena's stakes join in later PRs**, in the file table's order: after card
+K's 5194, 5196 and 5197 (`market.js`, `store.js`) and card L's arena door
+(`gladiator.js`) are merged. Their rows stay `none` until then.
 
 **A player's own escrow** is not a road between players. `OWN_ROADS` lists
 those with why: today the bank (`bank:<pid>`, marked `player` in the storage
