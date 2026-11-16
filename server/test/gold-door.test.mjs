@@ -224,7 +224,9 @@ const NOT_A_PURSE = [
    the call's own closing bracket (strings skipped). */
 function callsIn(s) {
   const out = [];
-  const re = /this\._gold(Give|Take|Set)\(/g;
+  /* v2.3.5285: by any name, not only `this` (playerrestore.js is plain
+     functions handed the room: `room._goldSet(...)`) */
+  const re = /\b[A-Za-z_$][\w$]*\._gold(Give|Take|Set)\(/g;
   for (const m of s.matchAll(re)) {
     let i = m.index + m[0].length, depth = 1, q = null;
     for (; i < s.length && depth > 0; i++) {
@@ -442,7 +444,8 @@ function callsIn(s) {
   check('8. every GOLD_ROADS row has a class, a move or an escrow its other side', gf.length === 0, gf);
   const counts = {};
   for (const r of Object.values(GOLD_ROADS)) counts[r.class] = (counts[r.class] || 0) + 1;
-  check('8. at v2.3.5084: 14 mints, 15 burns (+ nml_lost), 13 escrows, 3 moves (a change of class is a change here)', counts.mint === 14 && counts.burn === 15 && counts.escrow === 13 && counts.move === 3, counts);
+  /* v2.3.5285: + the restore's two (restore, restore_vault: mints judged by their difference) */
+  check('8. at v2.3.5285: 16 mints, 15 burns (+ nml_lost), 13 escrows, 3 moves (a change of class is a change here)', counts.mint === 16 && counts.burn === 15 && counts.escrow === 13 && counts.move === 3, counts);
   /* a move lands on the other player by the mail; the mail is the escrow
      every credit passes */
   const moves = Object.entries(GOLD_ROADS).filter(([, r]) => r.class === 'move');
@@ -463,7 +466,10 @@ function callsIn(s) {
   /* every credit in server/src, by its opId's first word: a _creditPlayer
      call, and each `entry: {...}` a _creditLiveTogether is handed (the call
      itself takes a list built above it).  A credit whose opId is not a
-     literal is listed here with the word it builds, and why. */
+     literal is listed here with the word it builds, and why.
+     v2.3.5291 (card R, the sitting 20 review): a _creditWith call too (the
+     credit with its caller's own writes: storeoffer.js, duel.js's pot) --
+     unread, its opId could change unseen */
   const NOT_LITERAL = [
     { file: 'admin.js', word: 'admin', why: 'the operator\'s grant: `opId` is built a line above (\'admin:\' + a uuid, or the one the operator passes back to retry)' },
   ];
@@ -483,10 +489,10 @@ function callsIn(s) {
   let calls = 0;
   for (const f of files) {
     const s = code[f];
-    for (const re of [/\b_creditPlayer\s*\(/g, /\bentry\s*:\s*\{/g]) {
+    for (const re of [/\b_creditPlayer\s*\(/g, /\b_creditWith\s*\(/g, /\bentry\s*:\s*\{/g]) {
       for (const m of s.matchAll(re)) {
         const t = argText(s, m.index + m[0].length - 1);
-        if (/^\(playerId, entry\)/.test(t)) continue;   /* the definition (inbox.js) */
+        if (/^\(playerId, entry(, also)?\)/.test(t)) continue;   /* the definitions (inbox.js) */
         calls++;
         const ws = [...t.matchAll(/opId\s*:\s*['`]([A-Za-z0-9_]+):/g)].map((x) => x[1]);
         const where = f + ':' + lineOf(s, m.index);

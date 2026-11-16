@@ -113,6 +113,19 @@ async function openCard(P, key) {
   await P.page.waitForTimeout(500);
 }
 
+/* v2.3.5433 (card J2): Inspect is behind the card's "⋯" since v2.3.4191
+   (GearTab GEAR_MORE_ONLY: never the gold button), so the card's own "⋯" is
+   tapped for real first when Inspect is not on the card's face -- the test's
+   question (TRAPS §177): it looked for Inspect on the face, 4a to 5 red on
+   main each run.  Returns whether Inspect is there to tap */
+async function showInspect(P) {
+  const face = await P.page.$('[data-fish-inspect]');
+  if (face && await face.isVisible()) return true;
+  if (!(await P.page.$('[data-gear-act="more"]'))) return false;
+  await tap(P, '[data-gear-act="more"]').catch(() => {});
+  return P.page.waitForSelector('[data-gear-more-menu] [data-fish-inspect]', { state: 'visible', timeout: 4000 }).then(() => true).catch(() => false);
+}
+
 export async function run({ browser, wsPort, webPort, rec }) {
   const OUT = join(H.REPO, 'tools/qa/mp/out');
   mkdirSync(OUT, { recursive: true });
@@ -182,10 +195,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     /* ── 4 ── */
     await openCard(A, 'fish_minnow_albino');
-    const card = await A.page.evaluate(() => {
+    const shown = await showInspect(A);
+    const card = await A.page.evaluate((shown) => {
       const b = document.querySelector('[data-fish-inspect]');
-      return { inspect: !!b, words: document.body.innerText.includes('Albino Minnow') };
-    });
+      return { inspect: shown && !!b, words: document.body.innerText.includes('Albino Minnow') };
+    }, shown);
     rec.ok('4a the item card names it "Albino Minnow" and offers Inspect', card.inspect && card.words, card);
     if (card.inspect) await tap(A, '[data-fish-inspect]');
     const w1 = await A.page.waitForSelector('[data-fish-weigh="weighed"]', { timeout: 10000 }).then(() => A.page.evaluate(() => {
@@ -213,7 +227,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     /* Inspect again: nothing left to weigh */
     await openCard(A, 'fish_minnow_albino');
-    if (await A.page.$('[data-fish-inspect]')) await tap(A, '[data-fish-inspect]').catch(() => {});
+    if (await showInspect(A)) await tap(A, '[data-fish-inspect]').catch(() => {});
     const w2 = await A.page.waitForSelector('[data-fish-weigh="none"]', { timeout: 8000 }).then(() => A.page.evaluate(() => (document.querySelector('[data-fish-weigh-words]') || {}).textContent || '')).catch(() => null);
     rec.ok(`4d Inspect again: "${w2}"`, w2 === "You've weighed all your Minnow.", w2);
     await A.page.evaluate(() => { const b = document.querySelector('[data-fish-weigh-close]'); if (b) b.click(); });
@@ -223,6 +237,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await A.page.evaluate(() => { const S = window._gameState.current; S.channel.send({ type: 'cook_request', payload: { fishKey: 'fish_minnow_albino', kind: 'cooked' } }); });
     const cooked = await H.waitFor(A, (S) => ((S.rpg && S.rpg.inventory) || {}).cooked_fish_minnow_albino || 0, (n) => n >= 1, { timeout: 10000, label: 'cooked' }).catch(() => 0);
     rec.ok('6a cooked, it is cooked_fish_minnow_albino', cooked >= 1, { cooked });
+    /* v2.3.5433 (card J2): the commons are safe ground, and it tops the bar off
+       6 s out of a fight, a tenth a tick (safeheal.js): on this box the lever's
+       10 HP was full again before the Eat landed, "HP full" (6c, 6d red by run).
+       Its own live switch off for the Eat, as mp-quickeat does; back at the end */
+    await H.liveFlag(wsPort, 'safeheal', false).catch(() => {});
     await H.devOp(wsPort, 'vitals', me, { hp: 10 }).catch(() => {});
     const hurt = await H.waitFor(A, (S) => S.rpg && S.rpg.hp, (h) => h > 0 && h <= 10, { timeout: 6000, label: 'hurt' }).catch(() => null);
     /* the lever's HP is the worker's; a page that has not heard it yet would
@@ -257,6 +276,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('7 no page errors', errs.length === 0, errs);
   } finally {
     stop();
+    await H.liveFlag(wsPort, 'safeheal', null).catch(() => {});
     await A.ctx.close().catch(() => {});
   }
 }

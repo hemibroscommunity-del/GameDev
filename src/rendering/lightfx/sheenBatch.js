@@ -44,9 +44,10 @@ import {
   DefaultBatcher, ExtensionType, extensions, Shader, GlProgram, Geometry, Buffer, BufferUsage,
   compileHighShaderGl, compileHighShaderGpuProgram, vertexGlTemplate, fragmentGlTemplate,
   globalUniformsBitGl, colorBitGl, colorBit, roundPixelsBitGl, roundPixelsBit, generateTextureBatchBit,
-  getBatchSamplersUniformGroup, getMaxTexturesPerBatch, Sprite, Texture,
+  getBatchSamplersUniformGroup, getMaxTexturesPerBatch, Sprite, Texture, BufferImageSource, RenderTexture,
 } from 'pixi.js';
-import { sharpTextureBitGl, sharpMaxTextures, setSheenBatcher } from '../sharpPixels.js';
+import { sharpTextureBitGl, sharpMaxTextures, setSheenBatcher, sharpSelfOff } from '../sharpPixels.js';
+import { selfDraw, selfQueue, selfSkip, selfTestOn, selfSheenRgba, selfSheenWant, SELF_SHEEN, SELF_SIZE } from '../selfTest.js';   /* v2.3.5236: the self-test at the door (card O PR 14b) */
 import { SHEEN_LIFT } from './sheenLift.js';
 
 export const SHEEN_BATCHER = 'sheen';
@@ -63,10 +64,14 @@ let _passAll = false;   /* QA: window.__btSheenPass(true), every piece in a pass
 let _built = false;     /* the program made (warmSheenBatch, behind the loading screen) */
 let _packed = 0;        /* pieces packed */
 
+/* v2.3.5236 (card O PR 14b): the self-test found the shine drawn wrong in
+   the frame here: every piece in a pass of its own, as `?sheenpass` (its own
+   flag: the Speed test's step sets _passAll, and would put it back) */
+let _selfOff = false;
 /** Should the shine be drawn in the frame?  glint.js asks this once a frame. */
 export function sheenBatchOn() {
-  return !_urlOff && !_passAll && sharpMaxTextures() > 0
-    && !(typeof window !== 'undefined' && window.__btSharpOff);
+  return !_urlOff && !_passAll && !_selfOff && sharpMaxTextures() > 0
+    && !(typeof window !== 'undefined' && window.__btSharpOff) && !sharpSelfOff();
 }
 
 export class SheenGeometry extends Geometry {
@@ -300,7 +305,13 @@ export function installSheenBatch() {
    filter's).  The sprite is marked as a figure piece (`_sharp`) so the sharp
    batcher takes it, and carries a shine, so this one does. */
 export function warmSheenBatch(renderer) {
-  if (!renderer || _built || !sheenBatchOn()) return false;
+  if (!renderer || _built || !sheenBatchOn()) {
+    /* v2.3.5236: the self-test's word on why the shine in the frame is not
+       tested here (the sharp read found wrong takes it with it: this batcher
+       reads its pieces with that read, and draws only what it would) */
+    if (!_built) selfSkip('sheen', _urlOff ? 'every shine in a pass of its own (?sheenpass)' : sharpSelfOff() ? 'the sharp read fell back (its self-test): every shine in a pass of its own' : 'every shine in a pass of its own here');
+    return false;
+  }
   let spr = null;
   try {
     spr = new Sprite(Texture.WHITE);
@@ -314,7 +325,35 @@ export function warmSheenBatch(renderer) {
     _built = true;
   } catch (e) { _built = false; }
   try { if (spr) spr.destroy(); } catch (e) { /* best-effort */ }
+  if (_built) sheenSelfTest(renderer);
   return _built;
+}
+
+/* ═══ v2.3.5236: THE SELF-TEST AT THE DOOR (card O PR 14b; selfTest.js) ═══
+   Built, the shine in the frame draws a known picture of four colours, as a
+   figure's piece carrying a shine (the sun's side 0, no figure frame, a
+   white tint: selfTest.js sheenLiftCpu says why that is exact), held to the
+   CPU's lift.  A channel may round by 4 (a phone's half precision over the
+   lift's exp and smoothstep).  Wrong, and every piece's shine goes in a pass
+   of its own, as `?sheenpass` draws it (glint.js re-routes them on its next
+   update).  Drawn here, at the end of the loading screen's chain
+   (pixiRenderer.js), so its verdict may come in the first frames of play:
+   a re-route, the filter's program built behind the loading screen too
+   (glint.js prewarmGlintPipe). */
+function sheenSelfTest(renderer) {
+  if (!selfTestOn()) { selfSkip('sheen', 'no self-test on this page (?selftest=0)'); return; }
+  const t0 = performance.now();
+  let spr = null, rt = null;
+  try {
+    const src = new BufferImageSource({ resource: selfSheenRgba(), width: SELF_SIZE, height: SELF_SIZE, alphaMode: 'premultiplied-alpha', label: 'bt-sheen-selftest' });
+    spr = new Sprite(new Texture({ source: src }));
+    spr._sharp = true;
+    spr._btSheen = sheenParams(null);
+    Object.assign(spr._btSheen, { on: true, r: SELF_SHEEN.r, g: SELF_SHEEN.g, b: SELF_SHEEN.b, k: SELF_SHEEN.k, sx: 0, sy: 0 });
+    rt = selfDraw(renderer, spr, RenderTexture);
+  } catch (e) { rt = null; }
+  try { if (spr) spr.destroy({ texture: true, textureSource: true }); } catch (e) { /* gone */ }
+  selfQueue('sheen', renderer, rt, { want: selfSheenWant(), tol: 4 }, () => { _selfOff = true; }, performance.now() - t0);
 }
 
 /** Every piece in a pass of its own (true), as before v2.3.3453, or the
@@ -332,7 +371,7 @@ export function sheenParams(prev) {
 if (!_urlOff) installSheenBatch();
 
 if (typeof window !== 'undefined') {
-  window.__btSheenBatch = () => ({ on: sheenBatchOn(), urlOff: _urlOff, passAll: _passAll, built: _built, packed: _packed });
+  window.__btSheenBatch = () => ({ on: sheenBatchOn(), urlOff: _urlOff, passAll: _passAll, selfOff: _selfOff /* v2.3.5236 */, built: _built, packed: _packed });
   /* QA: every piece in a pass of its own (true) or drawn in the frame (false),
      this page -- glint.js re-routes them on its next update */
   window.__btSheenPass = (v) => setSheenPass(v);
