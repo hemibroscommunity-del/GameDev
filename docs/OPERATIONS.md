@@ -317,6 +317,37 @@ If one is not acceptable:
 
 Names are shown here too, but this page does not change a name.
 
+## The feedback board: taking a post down, and the crash feed (v2.3.5593)
+
+Anyone could post to the Feedback board (More → Feedback → Browse) under any
+name, flood it, and nobody could take a post down (the red team, 2026-11-14:
+`docs/specs/feedback-guard.md`). Now a post's name is cleaned like a chat
+line and cut to 24 letters, posts are limited per internet line and for the
+whole game, and you have three levers:
+
+- **Take one post down**, **clear out oversized posts**, and **read the crash
+  feed**: your way is the Test panel's buttons (coming from card OPS, beside
+  the drawings' Remove). Nothing to type.
+- **Close the board in a flood**: the live switch `feedback` set to `false`
+  (the Test panel's live switches) stops new posts, votes and crash reports
+  within a minute; the board can still be read. Set it back to `true` to open
+  it.
+
+For a session that holds the admin key (never the owner by hand), the same
+three by command:
+```
+curl -X DELETE -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/feedback/ticket?id=THE_ID"
+curl -X DELETE -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/feedback/sweep"
+curl -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/feedback/crashes?limit=50"
+```
+A post's id is each ticket's `id` in `/api/feedback/list?sort=new`. Without
+the key each answers a plain 404 (the key is checked by the game room's admin
+door, the same one that times out an address sending wrong keys). The sweep
+takes every post whose own words are over 4 KB and the old pace rows the
+board no longer reads, and mends a post a bad vote grew (that vote taken out). On a local machine the QA tools
+send the harness's key for the crash feed (`tools/qa/qa-telemetry.mjs` reads
+`BT_ADMIN_KEY`, else the harness's).
+
 ## Accuracy: how often each weapon hits (v2.3.4545)
 
 The game counts every basic attack (a sword swing, an arrow, a staff bolt)
@@ -382,6 +413,43 @@ curl -X DELETE -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/admin/fre
 Note: players running an old cached version of the game may end up on a
 fresh blank character instead of seeing the freeze message. If that happens,
 just freeze the new id too — their real character stays locked either way.
+
+## A copy of the room's records, a page at a time (v2.3.5286)
+
+For keeping your own copy of the game's saved records, or reading exactly
+what one character has on file. It only reads: nothing changes. It gives
+only the kinds of record on its list: the characters' own and everything
+that holds gold or goods. Never a login, a device's id, the anti-bot
+evidence, the words players sent each other, or the hidden settings.
+
+**Each run costs a little**: Cloudflare counts every record it reads (a page
+reads up to 50 by default, 200 at most, and the whole room once over is every
+record it holds). It costs nothing when you do not use it, so it is on.
+
+Ask for one kind of record by its prefix (the names in the registry,
+`docs/ARCHITECTURE-HANDOFF.md` rule 2: `rpg:` the characters, `bank:` the
+vaults, `store_listing:` the auction house, `shop_stock` Diego's pile...):
+```
+curl -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/admin/export?prefix=rpg:"
+```
+or everything one character has on file (their save, bank, mail, pets,
+farm, backups...):
+```
+curl -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/admin/export?player=bp_XXXX"
+```
+The answer is a page: `rows` (each record's name `k` and what it holds `v`),
+`read` (how many records it read) and `next`. While `next` is not null, ask
+again with `&cursor=` and that value for the next page; the last page may be
+empty. `&limit=` sets a page's size (1 to 200).
+
+- Its switch is `roomexport` in the live flags (below): on unless it is
+  `false`; off, it answers "off" and reads nothing. To turn it off:
+```
+curl -X POST -H "Authorization: Bearer YOUR_KEY" -H "Content-Type: application/json" \
+  -d '{"name":"roomexport","value":false}' "https://WORKER/api/admin/flags"
+```
+- Asked for a kind of record not on its list (a login's `auth:`, a
+  device's `device:`, the hidden settings...), it says no.
 
 ## Fixing a broken save (restore from backup)
 

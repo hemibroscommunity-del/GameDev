@@ -122,6 +122,7 @@ import { hatHairFit } from '../traits/hatHairFit.js';   /* v2.3.1943 band refit 
 import { AIM_CARET, AIM_CARET_EDGE, AIM_CARET_HOT } from '../aimCaret.js'; /* v2.3.1799 */
 import { BLOCK_ARM_ENABLED, BLOCK_ARM_FACING, BLOCK_ARM_CUT, blockArmTexture, blockArmSleeveTexture } from '../blockArm.js'; /* v2.3.1785, sleeve v2.3.1789, ENABLED v2.3.1798 */
 import { gearTint, gearArt, gearMaterial, gearIdFor } from '../gearVariants.js'; /* v2.3.1757: material recolor; v2.3.2872: + owned pieces -> art */
+import { fullsetCoversBake as _fullsetCoversBake, beltHoldsJog } from '../beltHold.js';   /* v2.3.5560: the chain belt's stand-in, the idle frame */
 import { materialTint, weaponTint } from '../traits/materialTints.js'; /* v2.3.1757: weapons share the metals table */
 import { getEquip, onEquipChange, isWearingArmor } from '../gearCatalog.js'; /* v2.3.1407: GEAR_CATALOG import dropped with the speculative all-states prewarm */
 import { wornSigOf, pickEvictKey } from '../maskedEvict.js';   /* v2.3.3704: the armour you wear is the last to go */
@@ -2259,26 +2260,7 @@ function _fullsetFrame(chestItem, legsItem, pose, dir, frameIdx, phase) {
 function _fullsetTint(chestItem) {
   return gearTint(chestItem);
 }
-function _fullsetCoversBake(worn, pose, dir) {
-  /* v2.3.1408: DISPLAY_DS guard lifted with _fullsetFrame's (the figure
-     path now runs at any DS), so the dead-bake skip keeps paying. */
-  if (pose !== 'jog' || dir === 'northeast') return false;
-  /* v2.3.1757: the worn keys carry the ITEM id, so a recoloured pair has to be
-     matched through gearArt or its dead bakes stop being skipped. */
-  const artOf = (pfx) => {
-    const w = worn.find((x) => x.k && x.k.indexOf(pfx) === 0);
-    return w ? gearArt(w.k.slice(pfx.length)) : null;
-  };
-  if (artOf('chest:') !== 'steelplate' || artOf('legs:') !== 'steelgreaves') return false;
-  /* v2.3.1761: a mixed-metal pair does NOT get the figure (see _fullsetFrame),
-     so its masked bake is not dead weight — skipping it here would drop the
-     player back to a bare body on those frames. */
-  const matOf = (pfx) => {
-    const w = worn.find((x) => x.k && x.k.indexOf(pfx) === 0);
-    return w ? gearMaterial(w.k.slice(pfx.length)) : null;
-  };
-  return matOf('chest:') === matOf('legs:');
-}
+/* v2.3.5560: _fullsetCoversBake moved to beltHold.js (imported under its old name), beside the belt's stand-in that asks it */
 /* v2.3.1757: QA probe — the tints the renderer is ACTUALLY drawing gear with.
    It reads the live sprites rather than echoing back what we asked for, so a
    tint clobbered further down the frame still shows up as wrong.  Same posture
@@ -12958,7 +12940,7 @@ export class EntityRenderer {
       display._rideLkPose = _rLk ? _rLk.pose : null;
       const pose = _rexBodyPose
         ? _rexBodyPose
-        : (_rDodge ? 'dodge' : (_rJump ? 'jog' : (isHit ? 'hit' : (_rLk ? _rLk.pose : (isMoving ? 'jog' : 'stand')))));
+        : (_rDodge ? 'dodge' : (_rJump ? 'jog' : (isHit ? 'hit' : (_rLk ? _rLk.pose : ((isMoving && !beltHoldsJog(facing, other.equip && other.equip.chest, other.equip && other.equip.legs, true)) ? 'jog' : 'stand')))));   /* v2.3.5560: standing while the belt's jog sheet is on its way (beltHold.js) */
       const spritesAvailable = hasPose(pose) || hasPose('stand');
       let useSprite = false;
       if (!_rexStandIn && spritesAvailable) {
@@ -14791,7 +14773,7 @@ export class EntityRenderer {
                       ? 'jog'
                       : (isHit
                           ? 'hit'
-                          : (_rideLk ? _rideLk.pose : ((isMoving && !_blockPlanted) ? 'jog' : 'stand')))))));   /* v2.3.3776: on the board, rideLook's pose */
+                          : (_rideLk ? _rideLk.pose : ((isMoving && !_blockPlanted && !beltHoldsJog(facing, getEquip('chest'), getEquip('legs'))) ? 'jog' : 'stand')))))));   /* v2.3.3776: on the board, rideLook's pose; v2.3.5560: standing while the belt's jog sheet is on its way (beltHold.js) */
     /* Resolve to the unmirrored sheet direction + mirror flag.  Lifted
        to outer scope so the weapon-positioning code below can pin to
        the per-frame hand anchor regardless of whether the spritesheet
