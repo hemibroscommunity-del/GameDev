@@ -149,6 +149,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
   mkdirSync(OUT, { recursive: true });
   const P = await H.newPlayer(browser, {
     name: 'Stencil', wsPort, webPort, viewport: PHONE, touch: true, dpr: 3, world: 'wheel',
+    /* v2.3.5562 (sitting 20's low): the masks as pictures.  This compares the
+       stencil with the alpha mask by throwing the alpha mask live, which the
+       game never does with the masks' 256-colour twins in (`?alphaclip`
+       turns them off at load: p256.js HAIRMASKS): a filter would read a
+       mask's colour numbers as a picture */
+    query: 'hairmasks=0&capehood=0',   /* v2.3.5564: and the hood's */
     init: () => { try { localStorage.setItem('bt-hair', 'afro'); } catch (e) { /* the default look */ } },
   });
   const errors = [];

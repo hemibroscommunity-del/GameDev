@@ -48,6 +48,18 @@
  * THE KILL SWITCH `xfer: false` in the live flags: no row is written, and
  * the settlements run exactly as before (nothing else reads the ledger in
  * the settlement's path).
+ *
+ * v2.3.5290 (card R PR 11, step 10.5's `ledger`, its second step): THE
+ * ESCROW ROADS.  A settlement through a record the worker holds between two
+ * players writes its row too, in the run that pays it -- built for a duel's
+ * pot first (xferDuelPot: the loser's wager to the winner; its door, card
+ * L's, is on main).  The market, the auction house and the arena's stakes
+ * join in later PRs, after card K's 5194/5196/5197 and card L's arena door
+ * (the file table's order, the planning session's (b)).  A row a wagered
+ * duel is more rows a day, so it is OFF until the owner says:
+ * `xferescrow: true` in the live flags (xferEscrowOn).  Off, the duel pays
+ * exactly as before, through _creditPlayer; on, through _creditWith, the
+ * pot's credit and its row in one run.
  */
 
 import { playerRoadsBy } from './playerroads.js';   /* v2.3.5280: the roads between players, one table */
@@ -81,6 +93,14 @@ export function xferKey(day, id) {
   if (typeof day !== 'string' || !/^\d{8}$/.test(day)) return null;
   if (typeof id !== 'string' || !id || id.length > XFER.KEY_MAX || !ID_RE.test(id)) return null;
   return XFER.PREFIX + day + ':' + id;
+}
+
+/** v2.3.5290: an escrow road's row only with `xferescrow: true` in the
+ *  live flags (OFF by default: more rows a day, the owner's call). */
+export function xferEscrowOn(room) {
+  const f = room && room._liveFlags;
+  if (xferOff(room)) return false;   /* rule 4: off with the ledger it needs (`xfer: false`) */
+  return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'xferescrow') && f.xferescrow === true);
 }
 
 /** `xfer: false` in the live flags. */
@@ -237,3 +257,17 @@ export function xferGift(room, pending, from, to) {
   if (!pending || typeof pending !== 'object') return null;
   return xferRow(room, { road: 'gift_trade', id: 'gift-' + pending.id, from, to, gives: pending.offer, price: {}, by: to });
 }
+
+/* ══════════ THE ESCROW ROADS THAT WRITE A ROW (v2.3.5290) ══════════
+   Only with `xferescrow: true` (xferEscrowOn), each from inside its
+   settlement's own run, as the two above. */
+
+/** A duel's pot (duel.js _resolveDuel): the loser's wager to the winner, the
+ *  winner's own wager coming back to them (not a transfer: the row's price
+ *  is empty).  `by` the winner when their blow settled it (`kill`); a
+ *  forfeit, a clock or another death is nobody's tap. */
+export function xferDuelPot(room, duel, winnerId, loserId, how) {
+  if (!xferEscrowOn(room) || !duel || typeof duel !== 'object' || !(Number(duel.wager) > 0)) return null;
+  return xferRow(room, { road: 'duel_pot', id: 'duel-' + duel.id, from: loserId, to: winnerId, gives: { _gold: duel.wager }, price: {}, by: how === 'kill' ? winnerId : null });
+}
+

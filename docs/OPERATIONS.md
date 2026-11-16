@@ -493,14 +493,56 @@ someone:
    Until it has gone the restore answers "player still in the world ... wait
    20 seconds, then restore again" and changes nothing: just run it again
    (v2.3.4413).
-3. Restore:
+3. See what it would do first (nothing changes): add `"dry":true`.
+```
+curl -X POST -H "Authorization: Bearer YOUR_KEY" \
+  -d '{"playerId":"bp_XXXX","snapKey":"rpgsnap:bp_XXXX:20260703","dry":true}' \
+  "https://WORKER/api/admin/restore"
+```
+   The answer says what it would put back (`restored`), what it leaves as it
+   is (`left`), how much gold and how many of each item the player gains or
+   loses (`booked`: a minus is a loss), and which auction listings, orders,
+   fines or piles on the ground still hold something of theirs (`between`).
+   Those are never put back: they are another player's too. A piece they
+   listed after the backup comes back to them AND stays in its listing, so
+   look there and take the listing down if you need to.
+4. Restore (the same, without `dry`):
 ```
 curl -X POST -H "Authorization: Bearer YOUR_KEY" \
   -d '{"playerId":"bp_XXXX","snapKey":"rpgsnap:bp_XXXX:20260703"}' \
   "https://WORKER/api/admin/restore"
 ```
-Restores are themselves safe: the current (broken) save is stashed as a
-`prerestore-` backup first, so you can always restore the restore.
+Restores are themselves safe: everything the restore replaces is stashed as
+a `prerestore-` backup first, in the same moment, so you can always restore
+the restore (its name is the answer's `copy`).
+
+What comes back (v2.3.5285): the character (gold, items, gear, levels,
+quests), and, from backups taken while `fullsnap` is on, their bank vault and
+their pets too. Never their login key, your freezes or test mode, their mail,
+achievements or the day's prizes (those would pay twice). The gold and items
+it adds or takes are counted in the game's books, so the economy numbers stay
+true. A backup saved by a newer version of the game is refused, never
+written over: wait for that version to be back.
+
+**Turning on the fuller backups** (off by default, because each backup then
+reads two more records: about 2 extra reads a player a day):
+```
+curl -X POST -H "Authorization: Bearer YOUR_KEY" -H "Content-Type: application/json" \
+  -d '{"name":"fullsnap","value":true}' "https://WORKER/api/admin/flags"
+```
+
+**Counting a character restart in the economy check** (off by default,
+because it adds one record for the whole game and one more write each time
+a player restarts their character): with `resetbook` on, the gold and items
+a restarted character had are written down as gone, so the game's balance
+check (run by the tests) does not read them as missing. Nothing you see
+changes with it: the daily economy numbers do not read that record yet, and
+your economy card already counts restarts on its own. Leave it off unless a
+later change starts reading it.
+```
+curl -X POST -H "Authorization: Bearer YOUR_KEY" -H "Content-Type: application/json" \
+  -d '{"name":"resetbook","value":true}' "https://WORKER/api/admin/flags"
+```
 
 ## Taking the whole room back to an earlier time (v2.3.5288)
 
