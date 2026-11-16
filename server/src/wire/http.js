@@ -299,6 +299,18 @@ export const WIRE_HTTP = [
   { name: 'http:/api/admin/freeze DELETE', dir: 'in', at: 'admin.js _adminFetch', wayIn: 'admin',
     envelope: 'http', phase: ['none checked'], mayStart: 'owner', doesWhat: ['others'], reqId: 'state',
     trust: { id: 'request' }, absent: 'refused: no id is a 400', bad: ['taken'], answer: 'http' },
+  /* v2.3.5621: the owner's silence (silence.js, card MOD) */
+  { name: 'http:/api/admin/silence GET', dir: 'in', at: 'silence.js _silenceAdminRoute', wayIn: 'admin',
+    envelope: 'http', phase: ['none checked'], mayStart: 'owner', doesWhat: ['reads'], reqId: 'harmless',
+    trust: {}, absent: 'nothing', bad: [], answer: 'http' },
+  { name: 'http:/api/admin/silence POST', dir: 'in', at: 'silence.js _silenceAdminRoute', wayIn: 'admin',
+    envelope: 'http', phase: ['none checked'], mayStart: 'owner', doesWhat: ['others'], reqId: 'state',
+    trust: { playerId: 'request', minutes: 'request', note: 'words' },
+    absent: 'refused: no playerId is a 400; default: no minutes is until lifted, no note is \'\'', bad: ['clamped', 'taken'], answer: 'http',
+    flag: 'silence' },
+  { name: 'http:/api/admin/silence DELETE', dir: 'in', at: 'silence.js _silenceAdminRoute', wayIn: 'admin',
+    envelope: 'http', phase: ['none checked'], mayStart: 'owner', doesWhat: ['others'], reqId: 'state',
+    trust: { id: 'request' }, absent: 'refused: no id is a 400', bad: ['taken'], answer: 'http' },
   { name: 'http:/api/admin/restore', dir: 'in', at: 'admin.js _adminFetch', wayIn: 'admin', envelope: 'http',
     phase: ['none checked'], mayStart: 'owner', doesWhat: ['others'], reqId: 'harmless',
     trust: { playerId: 'request', snapKey: 'request', dry: 'request' }, absent: 'refused: no playerId or no snapKey is a 400',   /* v2.3.5285: `dry: true` writes nothing (playerrestore.js) */

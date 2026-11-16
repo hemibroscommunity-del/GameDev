@@ -129,6 +129,9 @@ export const EXPORT = Object.freeze({
     'codex:', 'fishlog:', 'achv:', 'life:', 'aponce:', 'guild_claims:', 'gearlock:', 'nml_state:',
     'farm:', 'farmorders:', 'harden_ledger:', 'frozen:', 'testmode:', 'cadence:', 'daily_rewards:',
     'acc:', 'friends:', 'chat_mute:', 'chain_score:', 'clan_by_player:', 'party_by_player:',
+    /* v2.3.5621: the owner's silence (silence.js), a character's own beside
+       its freeze: the until, the owner's note and when */
+    'silenced:',
     /* the world's value held between players, or by the room */
     'mkt_order:', 'store_listing:', 'duelEscrow:', 'arena_entry:', 'arena_stake:', 'bounty:',
     'jackpot:draw', 'trade2wpn:', 'death_pile:', 'shop_stock',
@@ -745,6 +748,9 @@ export const adminMethods = {
          paths it doesn't own */
       const dl = await this._deviceLockAdminRoute(request, url, path, json);
       if (dl) return dl;
+      /* v2.3.5621: the owner's silence (silence.js, card MOD) -- same contract */
+      const sl = await this._silenceAdminRoute(request, url, path, json);
+      if (sl) return sl;
 
       const lo = await this._liveopsRoutes(request, url, path, json);
       if (lo) return lo;

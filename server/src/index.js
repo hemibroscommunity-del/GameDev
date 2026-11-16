@@ -247,6 +247,7 @@ import { freeSwingMethods } from './freeswing.js'; /* v2.3.4520: the free-swing 
 import { drawGatherMethods } from './drawgather.js'; /* v2.3.4801: the bow's draw and the staff's gather (a shot's share of a full build) */
 import { testModeMethods } from './testmode.js'; /* v2.3.3430: test mode -- the owner's own characters without the honesty checks */
 import { deviceLockMethods } from './devicelock.js'; /* v2.3.3344: a character's login key works on the devices it is played on */
+import { silenceMethods } from './silence.js'; /* v2.3.5621: the owner's silence, and a freeze that holds the device (card MOD) */
 import { loginKeyMethods } from './loginkeys.js'; /* v2.3.3355: new Login Keys, made by the worker */
 import { pvpLungeMethods } from './pvplunge.js'; /* v2.3.3262: the sword's opening lunge, at a player too */
 import { oneFormulaMethods } from './oneformula.js'; /* v2.3.3260: one formula for every fight -- health, monsters' hits, the hit cap, two specials */
@@ -4795,6 +4796,8 @@ export class GameRoom {
        request id outside SHAPES' form is dropped and counted.  Only what no
        page sends; `wiredoor: false` turns it off.  Synchronous (TRAPS §182). */
     if (this._wireDoor(session, msg)) return;
+    /* v2.3.5621: the owner's silence, its own step after the door (silence.js, card MOD; card K's word) */
+    if (this._silenceDoor(session, msg)) return;
     /* Reset the AFK clock on real input only.  Pong replies are
        keepalive heartbeats, not player activity -- counting them would
        mean the timeout fires only on TCP death, not on AFK players
@@ -6531,6 +6534,7 @@ Object.assign(GameRoom.prototype, freeSwingMethods); /* v2.3.4520: the free-swin
 Object.assign(GameRoom.prototype, drawGatherMethods); /* v2.3.4801: the bow's draw and the staff's gather (drawgather.js) */
 Object.assign(GameRoom.prototype, testModeMethods); /* v2.3.3430: test mode (testmode.js) */
 Object.assign(GameRoom.prototype, deviceLockMethods); /* v2.3.3344: a character's login key works on the devices it is played on */
+Object.assign(GameRoom.prototype, silenceMethods); /* v2.3.5621: the owner's silence, and a freeze that holds the device (card MOD) */
 Object.assign(GameRoom.prototype, loginKeyMethods); /* v2.3.3355: new Login Keys, made by the worker */
 Object.assign(GameRoom.prototype, pvpLungeMethods); /* v2.3.3262: the sword's opening lunge at a player (pvplunge.js) */
 Object.assign(GameRoom.prototype, oneFormulaMethods); /* v2.3.3260: one formula for every fight */

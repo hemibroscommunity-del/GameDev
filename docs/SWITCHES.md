@@ -559,12 +559,14 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `duelzone` | worker | switch | v2.3.4371 | 2026-11-10 | false | logic |  | no | No zone starts a duel's clock (one running is cleared at the next zone write). |
 | `emotemoves` | worker | switch | v2.3.3392 | 2026-10-18 | false | logic | `emotes` | no | No emote move is relayed and no pose kept; the plain emotes go on. |
 | `emotes` | worker | switch | v2.3.3391 | 2026-10-18 | false | logic |  | no | No emote is relayed, and caps.emotes false shuts the picker at the next join. |
+| `freezedevice` | worker | lever | v2.3.5621 |  | true | none |  | no | Thrown (true), a freeze also refuses any new character on the frozen character's phones (never a phone one of the owner's test-mode characters has played on); unset or false, the default, a freeze holds the frozen character only, as before. |
 | `leaderidleat` | worker | switch | v2.3.4378 | 2026-11-10 | false | logic |  | no | The party leader's idle clock counts only a `seen` above 0, as before. |
 | `partydoor` | worker | switch | v2.3.5212 | 2026-11-14 | false | logic |  | no | A player can be put in a party that does not list them, as the lines before the party door could have (nothing does today). |
 | `partykeep` | worker | switch | v2.3.3276 | 2026-10-17 | false | logic |  | no | Parties are not kept: the old cap and the away window remove a dropped member. |
 | `posedoor` | worker | switch | v2.3.5216 | 2026-11-15 | false | logic |  | no | A held pose takes any id a caller asks, and the dead can be written posing, as the line before the pose door could have (the phone's pose handler still checks both first). |
 | `power` | worker | switch | v2.3.5481 | 2026-11-14 | false | logic |  | no | Un-advertises the power index: no board report carries one, so the Power board empties as players report and the other boards are as they were. |
 | `race` | worker | switch | v2.3.3525 | 2026-10-20 | false | logic |  | no | Lil Bro's race un-advertised and none started. |
+| `silence` | worker | switch | v2.3.5621 | 2026-11-15 | false | logic |  | no | No silence is checked: every character speaks (the owner's silences are kept, and hold again when it is put back). |
 | `?socialreset` | page | switch | v2.3.5204 | 2026-11-14 | =0 | logic |  | no | A race the worker forgot at a reconnect stays on the phone until its own clock lets it go, as before. |
 | `spar` | worker | switch | v2.3.3265 | 2026-10-16 | false | logic |  | no | No sparring clones: every live clone goes on the next tick and the cap is withdrawn. |
 | `statboards` | worker | switch | v2.3.5484 | 2026-11-14 | false | logic |  | no | Un-advertises the stat boards: no board report carries the points allocated, so those boards empty as players report; every other board is as it was. |
