@@ -1,6 +1,6 @@
 card: L
 branch: claude/plan-l-22-arena-door (each PR on main, main merged in)
-prs: #1746 to #1910 (merged), #PENDING (5522, ready)
+prs: #1746 to #1910 (merged), #1930 (5522, ready)
 state: ready
 
 ## Done
