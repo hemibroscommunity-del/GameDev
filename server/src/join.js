@@ -502,7 +502,12 @@ export const joinMethods = {
        key (loginkeys.js) is checked anyway: 84 bits are not guessed, and its
        holder is never shut out by somebody else's tries. */
     const _nkLock = newKeyOf(phrase);
-    if (rec && rec.until > now && !_nkLock) return 'locked'; // lockout window active
+    if (rec && rec.until > now && !_nkLock) {
+      /* v2.3.5582: ...but never the rightful holder of an OLD key: the right
+         key from one of this character's devices, or the owner's pass
+         (devicelock.js _oldKeyHolder; red team RT-1, N9) */
+      if (!(await this._oldKeyHolder(id, phrase, opts && opts.device, now))) return 'locked'; // lockout window active
+    }
     const auth = await this.state.storage.get('auth:' + id);
     if (!auth) {
       // Unregistered id.  Register when the client proves it owns a

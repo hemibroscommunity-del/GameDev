@@ -6141,6 +6141,10 @@ export class GameRoom {
           msg.from = session.id;
           /* v2.3.3265: your sparring clones see your specials coming (spar.js) */
           if (this._spars && this._spars.size) this._sparSeen(session.id, msg);
+          /* v2.3.5543 (RT-1 N10): a relay's bytes -- one too big, a socket past
+             its byte budget, the queue past its cap: dropped, counted
+             (relay.js _relayBytesDrop; `relaybytes: false` lets all in) */
+          if (this._relayBytesDrop(session, msg, Date.now())) break;
           this.eventBuffer.push(msg);
         }
         break;

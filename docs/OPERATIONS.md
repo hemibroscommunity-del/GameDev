@@ -11,6 +11,11 @@ key, and without the key the endpoints don't even appear to exist.
 1. Think of a long random password (a password manager's 30+ character
    generate button is perfect). This is your ADMIN KEY — treat it like a
    bank password. Anyone who has it can grant gold and freeze players.
+   **Ten wrong keys within ten minutes** from one internet connection put
+   that connection in a **15-minute time-out** (v2.3.5583): every admin
+   command from it answers "Too many wrong keys from this address: try
+   again in N minutes". It lifts by itself; your phone on its own data
+   connection is not affected, and the next deploy clears it too.
 2. Cloudflare dashboard → **Workers & Pages** → **brotown-server** →
    **Settings** → **Variables and Secrets** → **Add** →
    Type: **Secret**, Name: `ADMIN_KEY`, Value: *your password* → **Deploy**.
