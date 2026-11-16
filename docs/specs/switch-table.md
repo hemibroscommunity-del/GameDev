@@ -153,6 +153,15 @@ The plan's rule 4: all new, or exactly one switch thrown.
   - Anything else is a second configuration that breaks: listed as known in
     the guard (`KNOWN`, a census) and written under Found in card T's status
     file. Card T fixes none.
+  - **The preload changes nothing by itself** (v2.3.5307). It imports no
+    game code: a module hook patches `GameRoom` as the suite itself imports
+    `server/src/index.js` (`thrown-hooks.mjs`, `thrown-patch.mjs`), so a
+    suite's own setup runs first. It loads nothing early and replaces no game
+    function, so a room's cold start stays cold. Every server suite (400)
+    passes with a flag nothing reads (`--none`, by hand); on every PR the two
+    canaries do (`cold-flags.test`, `tick-pace.test`). The planning session
+    found the v2.3.5304 preload breaking both (it imported `index.js` before
+    the suite set `WebSocketPair`, and loaded the flags as a room was made).
   - On every PR only the rows born from tag 5301 on run, with no baseline
     (`npm test` runs the same suites plain in that job, so a check red
     unthrown is red there already): 17 s for 97 suite runs (v2.3.5305; 30 s
@@ -221,6 +230,46 @@ its file, two things stay:
 A fallback leaves the list, and its row's `fallback` goes to `'no'`, only
 in the PR that removes its trigger. The list only shrinks: a census
 (`FALLBACK_LINE`), the gatekeeper's to change.
+
+## The page's one reader (v2.3.5306; 7.1's "one reader")
+
+`src/game/switches.js` answers every switch by its name. It reads
+`location.search` at each ask and parses it again only when it has changed.
+A page does change its own address: `BroTown.jsx` drops `create`, `login`
+and `noresume` with `history.replaceState`, and tests flip a switch
+mid-page. So the reader always answers for the address as it is now (the
+gatekeeper's medium, sitting 18; check 4 of its guard). It has no imports,
+so node tests it and any file may ask it.
+
+- **One function a form**, from the row's `thrown` on the page:
+  - `sw(name)`: a row with a form (`=0`, the words its read takes like
+    `=0, off, false`, `=1`, `=all`, or `present`). True when the address
+    throws it, or throws a switch it needs (rule 4: a dependent turns off
+    with what it needs).
+  - `swHas(name)`: the name in the address at all.
+  - `swValue(name)`: its value as written, or null.
+  - `thrown()`: the names thrown on this page, for the report's `sw`.
+- **The forms and needs are the table's**, written into the reader between
+  its markers by `switches.test.mjs --write` and held equal (check 13): one
+  source. A form is read from `thrown` with notes in brackets set aside;
+  where two values both mean something (`=1, =0, on or off`), the form is a
+  value, and `swValue` reads it.
+- A need the address cannot show (a worker's flag) is not the page reader's.
+  A need whose form is a value is not resolved either: `govern`, which
+  card O's `?ladderpix` and `?ladderrate` need, today.
+- **A move changes no address's meaning.** `tools/guards/switch-reader.test.mjs`
+  keeps each moved read's old test word for word (`MOVED`) and holds it
+  equal to the reader on 13 fixed addresses: the name absent, present,
+  `=` empty, `=0`, `=1`, `=off`, `=false`, a value, inside a longer name
+  before and after, and beside another name. Every ask names a page row,
+  and `sw` only one with a form. The addresses also throw each switch the
+  moved read's row needs: a move that would add a need's meaning fails.
+- **The outside reads** (a census, only falls): `location.search` in the
+  page's code outside the reader, 221 at its first count (228 before the
+  first seven reads moved). Card T's PRs 7 on lower it as reads move in.
+- The first reads moved (PR 6): `?starcue`, `?guidearrow` (two files),
+  `?nmlask`, `?loginspin`, `?nomapdetail`, `?tapthrough`, chosen in files no
+  running card holds, with no needs, so no answer can change.
 
 ## A new switch
 

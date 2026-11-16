@@ -27,6 +27,7 @@ import { DEVICE_LOCK, cleanDevice } from './devicelock.js'; /* v2.3.3344: a key 
 import { LOGIN_KEYS, newKeyOf } from './loginkeys.js'; /* v2.3.3355: new Login Keys, made by the worker */
 import { stashGive, stashTake, stashSet } from './stash.js';   /* v2.3.5281: the stashes' door (card R PR 2) */
 import { rfNote, rfRetryMs } from './rfspread.js';   /* v2.3.5604: a waiting crowd knocks more slowly (card OPS PR 5) */
+import { requestIp } from './flood.js';   /* v2.3.5604 (mend): a refusal counted once an address a second */
 
 /* ═══ v2.3.1627: the JOIN DATA ALLOWLIST ═══
  *
@@ -348,17 +349,19 @@ export const joinMethods = {
      (webSocketMessage/Close) are never wired to it -- `accept()` rather
      than `state.acceptWebSocket()` keeps this socket outside the room's
      bookkeeping entirely. */
-  _roomFullRefusal(url, why) {
+  _roomFullRefusal(url, why, request) {
     const cap = this._roomCap();
-    /* v2.3.5604: every refusal is a knock on the thread, counted (rfspread.js),
-       the old client's 503 too; the answer's `retryMs` follows the count */
     const _now = Date.now();
-    rfNote(this, _now);
     /* Old clients (and anything that isn't our client) keep the exact
        refusal they have always had. */
     if (!url || url.searchParams.get('rf') !== '1') {
       return new Response('Room full', { status: 503 });
     }
+    /* v2.3.5604: a refusal the game's phones obey is counted (rfspread.js),
+       and the answer's `retryMs` follows the count.  Mended for sitting 19b:
+       only these (`?rf=1`), never an old client's 503, and an address at most
+       once a second -- one loud client set every waiter to 30 s */
+    rfNote(this, _now, requestIp(request));
     const payload = {
       type: 'room_full',
       /* `reason` mirrors join_rejected's field so the client's refusal
@@ -506,7 +509,12 @@ export const joinMethods = {
        key (loginkeys.js) is checked anyway: 84 bits are not guessed, and its
        holder is never shut out by somebody else's tries. */
     const _nkLock = newKeyOf(phrase);
-    if (rec && rec.until > now && !_nkLock) return 'locked'; // lockout window active
+    if (rec && rec.until > now && !_nkLock) {
+      /* v2.3.5582: ...but never the rightful holder of an OLD key: the right
+         key from one of this character's devices, or the owner's pass
+         (devicelock.js _oldKeyHolder; red team RT-1, N9) */
+      if (!(await this._oldKeyHolder(id, phrase, opts && opts.device, now))) return 'locked'; // lockout window active
+    }
     const auth = await this.state.storage.get('auth:' + id);
     if (!auth) {
       // Unregistered id.  Register when the client proves it owns a

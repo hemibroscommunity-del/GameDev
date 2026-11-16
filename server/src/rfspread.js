@@ -29,13 +29,22 @@
  * what spreads them); a slower one is fair the same way.  Every waiter is
  * asked the same at the same moment.
  *
- * Both refusals count (the `?rf=1` socket and an old client's 503), and so
- * does the address limit's (`reason: 'ip'`): each is a knock on the thread.
+ * v2.3.5604 (mended for sitting 19b, its gatekeeper's review): WHAT COUNTS.
+ * It counted every refusal, an old client's 503 included, before the
+ * address limit: one client sending 240+ upgrade requests a second (no
+ * socket needed) set every honest waiter's wait to 30 s.  Now only the
+ * refusals the game's own phones get count (`?rf=1`, the room_full they
+ * read and obey: the full room's and the address limit's), and at most ONE
+ * an address a second (flood.js requestIp; an absent address, which only a
+ * request off Cloudflare has, counts each time).  An old client's 503 is
+ * answered as before and counted nowhere.  So the count is how many phones
+ * wait, never how loud one is.
  *
  * Kill switch `rf_spread: false` in the live flags: BASE_MS always, as before.
  */
 
 export const RF_SPREAD = Object.freeze({
+  MAX_ADDRS: 10000,   /* v2.3.5604 (mend): addresses remembered in one second at most */
   BASE_MS: 5000,      /* join.js ROOM_FULL.RETRY_MS, the cadence before this */
   MAX_MS: 30000,      /* wsClient.js RF_RETRY_MAX: the phone clamps to it anyway */
   PER_S: 40,          /* refusals a second the room takes before asking for slower */
@@ -62,11 +71,18 @@ function ringOf(room, sec) {
   return r;
 }
 
-/** One refusal, now. */
-export function rfNote(room, now) {
+/** One refusal, now.  `addr` (v2.3.5604, mend): the knocker's address; an
+ *  address counts at most once a second (null or absent: each time). */
+export function rfNote(room, now, addr) {
   const sec = Math.floor((typeof now === 'number' ? now : Date.now()) / 1000);
   const r = ringOf(room, sec);
   if (sec < r.sec) return;   /* a clock that went back: not counted */
+  if (typeof addr === 'string' && addr) {
+    if (!r.seen || r.seenSec !== sec) { r.seen = new Set(); r.seenSec = sec; }
+    if (r.seen.has(addr)) return;   /* this address knocked this second already */
+    if (r.seen.size >= RF_SPREAD.MAX_ADDRS) return;
+    r.seen.add(addr);
+  }
   r.counts[sec % RF_SPREAD.WINDOW_S]++;
 }
 
