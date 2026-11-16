@@ -333,6 +333,11 @@ devices it waits for: with one player, the table is empty for weeks.
   that hides no one is passed; `?laddercrowd=0`) at sitting 16b. The box
   waits for the passes' and the queue's knobs (O's PRs 9, 10) and the
   memory's rung (PR 11) (the gatekeeper, sitting 17, tag 5374).*
+  *O's #1850 (the passes as rungs: the shine, the shadows and still water
+  go a step at a time on a phone the chip holds back, never one late from
+  its own work; `?ladderpass=0`) and #1854 (the strip slice is the lanes'
+  `queue` knob, 4 ms, `thirty` 8), merged at sitting 17. The box waits for
+  the memory's rung (O's PR 11) (the gatekeeper, sitting 18, tag 5375).*
 - [ ] **2.4 [NEXT] Off-ramps become overrides of the ladder**, through one
   reader (pillar 7's table).
 - [ ] **2.5 [NEXT] The 30 lane** (an iPhone in Low Power Mode): named by the
@@ -356,6 +361,10 @@ outside the profile.
   (`tools/qa/mp/held-budget.mjs`), is card P's (the gatekeeper, sitting 8,
   v2.3.5364). #1762 (sitting 9) closed sitting 5's loose ends on the bake
   worker; `pack-page` is still open (the gatekeeper, sitting 10, v2.3.5366).*
+  *J2's #1849 (`other: R > J` back on the held list at 16 ms, `ours`, with
+  its why and next: the door prompt measured inside React's commit),
+  merged at sitting 17: the step is one row further from done, honestly
+  (the gatekeeper, sitting 18, tag 5375).*
 - [ ] **3.2 [LATER] One queue for work that is not this frame's**, with
   priorities. It takes nothing while the frames are late or the pacer is
   trying a step up. Work put off (after a fight, at a veil) joins it one a
@@ -431,6 +440,11 @@ play, a number 1.1 can measure.
   ON), merged at sitting 16: a stepping archer keeps every arrow; the bow
   cheats' rise it allows is for the bow claim's PR to bound. The box waits
   for the other judges (the gatekeeper, sitting 17, tag 5374).*
+  *K's #1848 (the sprint mark: a sprint marked on every other move pays
+  its stamina, and only a move the sprint bills is judged at its bound;
+  `sprintmark`, OFF by the owner's choice, `true` the owner's to give),
+  merged at sitting 18. The box waits for the other judges (the
+  gatekeeper, sitting 19, tag 5376).*
 - [ ] **4.3 [NEXT] Doors for what is left of value**: experience and
   levels, the stashes, quest state, skill points. A weapon gets an id of its
   own, as gear has.
@@ -438,6 +452,11 @@ play, a number 1.1 can measure.
   `POINT_ROADS`, `skillpoints-door.test`), merged at sitting 14. The box
   waits for the stashes, a weapon's id, quest state and experience (R's
   PRs 2, 3, 5 and 10) (the gatekeeper, sitting 15, tag 5372).*
+  *R's PR 2, #1862 (the stashes' door: `stash.js` `STASH_ROADS`, the
+  weapon bag and the gear lists; a give past the cap is refused, the join
+  still cuts a bag over it), merged at sitting 17. The box waits for a
+  weapon's id, quest state and experience (R's PRs 3, 5 and 10) (the
+  gatekeeper, sitting 18, tag 5375).*
 - [x] **4.4 [NOW] The whole world's sum.** "A purse equals its start plus
   the roads that ran" is true by construction; past copies went through
   legal roads (ore sold 24 times in one bundle). So every road in
@@ -486,6 +505,11 @@ play, a number 1.1 can measure.
   owner's "not now"), merged at sitting 16. The box waits for the restore
   from the registry (R's PR 6), the paged export (PR 7) and the lab's try
   (the gatekeeper, sitting 17, tag 5374).*
+  *R's PR 7, #1847 (the paged export: `EXPORT.ALLOW`, what it keeps out
+  and why, a page 50 records by default; `roomexport`, ON by the owner's
+  yes), merged at sitting 18. The box waits for the restore from the
+  registry (R's PR 6) and the lab's try (the gatekeeper, sitting 19, tag
+  5376).*
 
 (4.6 of version 1 is pillar 10.)
 
@@ -545,6 +569,12 @@ nothing known, and a restore copies nothing.
   *L's #1839 (the cook door: the activity claim's one writer, `exdoor`,
   ON), merged at sitting 16: 27 `todo`; the line lowered 28 -> 27 (the
   gatekeeper, sitting 17, tag 5374).*
+  *L's #1851 (the harvest door, `harvestdoor`) and #1855 (the dungeon
+  door, `dungeondoor`), both ON, merged at sitting 17: 24 `todo`; the line
+  lowered 27 -> 24 (the gatekeeper, sitting 18, tag 5375).*
+  *L's #1864 (the pose door: `_poseTo`, `posedoor`) and #1866 (the race
+  door: `_raceTo`, `racedoor`), both ON, merged at sitting 18: 22 `todo`;
+  the line lowered 24 -> 22 (the gatekeeper, sitting 19, tag 5376).*
 - [ ] **5.4 [LATER] The frame as named steps.** PR 1 moves nothing: the six
   calls the loop already makes, plus one `legacy` step, become the list;
   each counts its errors to the crash ring (a throw in the frame reaches
@@ -566,6 +596,10 @@ nothing known, and a restore copies nothing.
   row a request, its guard; nothing calls it yet), merged at sitting 15.
   The box waits for the page's sends moved through it (K's PR 7, a
   family a PR) (the gatekeeper, sitting 16, tag 5373).*
+  *K's PR 7.1, #1861 (57 of 58 combat and moving sends through `act()`;
+  the census 203 -> 146), merged at sitting 17; monsterCombat.js's two
+  lines lowered (5.1). The box waits for the rest of the page's sends
+  (K's PRs 7.2 to 7.5) (the gatekeeper, sitting 18, tag 5375).*
 - [x] **5.9 [NOW] Pins.** PixiJS at an exact version; the places the game
   patches its inside, one table with a test.
   *Merged: #1702 (card B), PixiJS at 8.17.1, `tools/guards/pixi-pins.test.mjs`.*
@@ -597,6 +631,11 @@ nothing known, and a restore copies nothing.
   its reader, the thrown run, a row's place its name), merged at sitting
   14: every switch found is a row, rule 4 held. The box waits for the
   page's one reader (T's PR 6) (the gatekeeper, sitting 15, tag 5372).*
+  *T's PR 6, #1863 (the page's one reader, `src/game/switches.js`: `sw`,
+  `swHas`, `swValue`, the forms from the table, check 13; the first seven
+  reads moved), merged at sitting 18. The box waits for the rest of the
+  page's reads moved through it (T's PRs 8 on) (the gatekeeper, sitting
+  19, tag 5376).*
 - [x] **7.2 [NEXT] The end date** (the owner: yes). For a logic switch: four
   weeks on with no revert, then the old way goes. A device off-ramp stays
   while its risk is live. A fallback stays while its trigger lives: a guard
@@ -633,6 +672,12 @@ nothing known, and a restore copies nothing.
   *J2's #1845 (`mp-ghostaudit`: the cook's fire lit again, a world tree no
   leftover), merged at sitting 16. Still open: L's status names seven
   phone tests red on `main` (the gatekeeper, sitting 17, tag 5374).*
+  *J2's #1858 (`monsterstatus.test`'s gust step on one pinned clock) and
+  #1860 (`mp-alliance`, the test's: its typed fields checked after a
+  resync), merged at sitting 17. Still open: L's status names phone tests
+  red on `main` (ownersounds, deathzones, hitsound, race, desklunge,
+  bowprops, fishvariants, moresounds), and J2's next is `mp-partychip`
+  (the gatekeeper, sitting 18, tag 5375).*
 - [ ] **8.2 [NEXT] Traps become guards**, each with a break proof. The count
   that matters is traps held by a proof, not traps of prose.
   *Card V merged, #1724 to #1740: 31 traps held by a proof (25 the rule, 6
@@ -717,6 +762,15 @@ the memory a family holds as the game draws it.
   frame at a time once drawn, `?framepack=0`; the census 8.10 -> 6.65 MB
   at the fight), merged at sitting 16. The step is open (the gatekeeper,
   sitting 17, tag 5374).*
+  *Card P: #1846 (the slimes walk: their strips as you walk, freed when
+  they go; `?slimewalk=0`; `artCache` 95.1 -> 90.6) and #1859 (five rank
+  trophies nothing drew, removed by the owner's word), merged at sitting
+  17. The step is open (the gatekeeper, sitting 18, tag 5375).*
+  *Card P: #1853 (the element marks, a memory saver ON, `?elemicons=0`;
+  `artCache` 90.6 -> 88.6) and #1868 (the chain belt's stand-in, the
+  owner's own answer, `?beltstandin=0`), merged at sitting 18;
+  entityRenderer.js's line 8953 -> 8941 (5.1), the room #1868 earned. The
+  step is open (the gatekeeper, sitting 19, tag 5376).*
 - [ ] **9.6 [LATER] An address that changes with the content**, by a
   `?h=` lookup (the client builds a hundred sprite addresses as it runs;
   renaming files would break them). A wrong hash on art that loads in play
