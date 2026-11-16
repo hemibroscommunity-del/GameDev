@@ -1024,6 +1024,22 @@ Three things worth knowing so nothing surprises you mid-event:
 * **One cape per account.** A player who has already redeemed cannot win a
   second ticket, so the three winners are three different people.
 
+**The prize draw page reads the contest's window by the hour (v2.3.5608).**
+The public boards say when each player was last seen to the hour, not to the
+minute (a minute-by-minute time for every player was a live "who plays, and
+when" anyone could read). So the draw page (`/tools/draw.html`) counts everyone
+last seen in the hour the event started in, the hour it ended in, and every hour
+between, and its list says so ("Read by the hour: ... UTC"). It rounds outward:
+nobody who played during the event is left out; at most someone who played in
+the first or last hour just outside the event is let in. Set the event's start
+and end on the hour and nobody extra can be.
+
+To run an OLD draw again exactly as it was first run (to the minute): in the
+Test panel, Live flags, **Set a switch**, type `exactseen`, value `on`, tap Set
+twice. The boards learn it the next time the game writes a player's row: open
+the game yourself and they have it. Run the draw, then the switch's Clear puts
+the boards back to the hour.
+
 ## Testing safely
 
 Add `&room=qa1` (or `?room=qa1` if it's the first parameter) to any command

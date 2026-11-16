@@ -115,6 +115,7 @@ import { reportMethods, rttWaverNext, reportSiteOf } from './report.js';   /* v2
 import { roomRowMethods } from './roomrow.js';   /* v2.3.5124: the room's own row in the day's book */
 import { healthMethods, routeRoomHealth } from './health.js';   /* v2.3.5601: the room's own health (card OPS PR 2) */
 import { seatHoldMethods } from './seathold.js';   /* v2.3.5606: a seat held for the player who had it (card OPS PR 7) */
+import { publicReadMethods } from './publicreads.js';   /* v2.3.5609: the room's public reads kept and paced (card OPS PR 10) */
 import { charWatchMethods } from './charwatch.js';   /* v2.3.4545: what players drew, for the owner to look at (the Test panel) */
 import { achievementMethods } from './achievements.js';   /* v2.3.3527 */
 import { killRollMethods } from './killroll.js';   /* v2.3.3209: one roll a kill, each drop its own numbers */
@@ -4574,7 +4575,7 @@ export class GameRoom {
        (health.js), after the switches load (its own, `roomhealth`, among
        them); internal like `/_room_count`: no outside path is forwarded here */
     if (url.pathname === '/_room_health') {   /* HEALTH.ROOM_PATH */
-      return this._roomHealthFetch(request);
+      return this._publicReadDo(request, url, () => this._roomHealthFetch(request));   /* v2.3.5609: kept and paced (publicreads.js) */
     }
     /* v2.3.5184: THE WIRE DOOR for the room's routes (wire/door.js), after
        the switches load and before the first route: a key named like the
@@ -4589,16 +4590,19 @@ export class GameRoom {
     }
     // v2.3.1118: marketplace HTTP surface (order book lives in this DO
     // now -- see market.js).  Before the Upgrade check like _room_count.
+    /* v2.3.5609: the three surfaces' public reads kept 3 s and paced by
+       address, a write on a surface dropping what was kept for it
+       (publicreads.js; `publicreads: false` turns it off) */
     if (url.pathname.startsWith('/api/market')) {
-      return this._marketFetch(request);
+      return this._publicReadDo(request, url, () => this._marketFetch(request));
     }
     // v2.3.2475: auction-house HTTP surface -- see store.js.
     if (url.pathname.startsWith('/api/store')) {
-      return this._storeFetch(request);
+      return this._publicReadDo(request, url, () => this._storeFetch(request));
     }
     // v2.3.1126: arena HTTP surface (same fold -- see gladiator.js).
     if (url.pathname.startsWith('/api/arena')) {
-      return this._arenaFetch(request);
+      return this._publicReadDo(request, url, () => this._arenaFetch(request));
     }
     // v2.3.1143: account-login pre-flight -- see account.js.
     if (url.pathname.startsWith('/api/account')) {
@@ -6329,6 +6333,14 @@ export class GameRoom {
           ...(apOwn !== null ? { ap: apOwn } : {}),
           ...(powerIndex ? { powerIndex } : {}),
           ...(statPoints ? { statPoints } : {}),
+          /* v2.3.5608: the boards' minute of keeping, off (`boardcache:
+             false`): said on the room's own post, so the board object reads
+             no flags of its own and asks the room nothing (leaderboard.js) */
+          ...(this._liveFlags?.boardcache === false ? { bc: 0 } : {}),
+          /* v2.3.5608: the sweep of week-old board rows stopped (`boardsweep: false`) */
+          ...(this._liveFlags?.boardsweep === false ? { bs: 0 } : {}),
+          /* v2.3.5608: the boards' lastSeen exact again (`exactseen: true`, to run an old draw) */
+          ...(this._liveFlags?.exactseen === true ? { xs: 1 } : {}),
         }),
       }));
     } catch {}
@@ -6449,6 +6461,7 @@ Object.assign(GameRoom.prototype, reportMethods); /* v2.3.5123 */
 Object.assign(GameRoom.prototype, roomRowMethods); /* v2.3.5124 */
 Object.assign(GameRoom.prototype, healthMethods); /* v2.3.5601: the room's own health (health.js) */
 Object.assign(GameRoom.prototype, seatHoldMethods); /* v2.3.5606: a seat held (seathold.js) */
+Object.assign(GameRoom.prototype, publicReadMethods); /* v2.3.5609: public reads kept and paced (publicreads.js) */
 Object.assign(GameRoom.prototype, charWatchMethods); /* v2.3.4545 */
 Object.assign(GameRoom.prototype, riseChestMethods); /* v2.3.4453 */
 Object.assign(GameRoom.prototype, achievementMethods); /* v2.3.3527 */

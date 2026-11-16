@@ -2025,6 +2025,21 @@ Screens: dev-feedback-owner
 
 Sources: src/ui/panels/SilenceButtons.jsx, src/game/silenceOwner.js, src/ui/panels/DevPanel.jsx (chat reports, callOwner), tools/guards/silence-owner.test.mjs, tools/qa/mp/mp-silenceowner.mjs.
 
+## The Test panel renames a character
+Screens: dev-rename
+
+**What it is for:** Renaming a character without a terminal. Card MOD's #1907 made names permanent (the phone can no longer change one) and gave the owner the only rename, behind the admin key (v2.3.5611, card OPS PR 12).
+
+**Decisions, and why:**
+- **Two places, one row**: under each chat report, after its Silence (a name is often what was reported), and in the Character section as "Rename my character".
+- **Closed until asked**: a single Rename chip, so a report's row stays short; it opens to the new name, Rename and Cancel.
+- **Staff word only on your own**: the chip that sends `force` (a name like "Owner" that reads as the game or its staff) is offered only on the owner's own row; a report's row never sends it.
+- **Two taps**: the first says, in the message line, who becomes what and that everyone sees it; the second sends.
+- **The reply in words**: the old name and the new, whether they see it now or next time they play, and that the boards follow at their next update; a refused name says why in the rule's words (no emoji or symbols, 20 letters at most, reads as staff).
+- **A 404 is told apart**, as the silence does: no saved character with that id (a guest has none), a worker without the route ("this server can't rename anyone yet"), or the key.
+
+Sources: src/ui/panels/RenameRow.jsx, src/game/renameOwner.js, src/ui/panels/DevPanel.jsx (chat reports, Character), tools/guards/rename-owner.test.mjs, tools/qa/mp/mp-renameowner.mjs.
+
 ## The login wheel (free daily spin)
 Screens: login-spin
 

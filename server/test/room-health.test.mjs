@@ -91,6 +91,7 @@ const withKey = (room) => { room.env = Object.assign({}, room.env, { ADMIN_KEY: 
   body = await res.json();
   check('4. ...a wrong key: up or down only', JSON.stringify(body) === '{"ok":true}', body);
   room.sessions.set(fakeWs('b'), Object.assign(baseSession(), { id: 'bp_health_b' }));
+  room._pr = null;   /* v2.3.5609: the public answer is kept 3 s (publicreads.js); read past it */
   res = await room.fetch(new Request('https://room' + HEALTH.ROOM_PATH));
   body = await res.json();
   check('4. ...and 503 when not (a socket, no tick), still up or down only', res.status === 503 && JSON.stringify(body) === '{"ok":false}', { status: res.status, body });
@@ -126,6 +127,7 @@ const withKey = (room) => { room.env = Object.assign({}, room.env, { ADMIN_KEY: 
   res = await worker.fetch(new Request('https://api.brotown.net' + HEALTH.PATH, keyed(OWNER)), env);
   body = await res.json();
   check('5. ...503 with the numbers when the room is not well (the key)', res.status === 503 && body.problems.includes('tick late'), { status: res.status, body });
+  room._pr = null;   /* v2.3.5609: the public answer is kept 3 s (publicreads.js); read past it */
   res = await worker.fetch(new Request('https://api.brotown.net' + HEALTH.PATH), env);
   body = await res.json();
   check('5. ...and 503, up or down only, without it', res.status === 503 && JSON.stringify(body) === '{"ok":false}', body);
