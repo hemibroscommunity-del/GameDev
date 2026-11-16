@@ -71,6 +71,7 @@ const FORMS = {
   'burstnumbers': '0',
   'camsnap': '0',
   'canvascheck': '0',
+  'capehood': '0',
   'caperetry': '0',
   'caustics': '*',
   'coinflip': '0',

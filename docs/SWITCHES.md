@@ -389,6 +389,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?boardroll` | page | switch | v2.3.3855 | 2026-10-29 | =0, off, false | logic |  | no | The board rolls as it was: no spots, dip or bumps. |
 | `?burnfire` | page | switch | v2.3.3878 | 2026-10-29 | =0 | logic |  | no | A burn draws its old flames, not the building's fire. |
 | `?camsnap` | page | switch | v2.3.3469 | 2026-10-18 | =0 | chip |  | no | The camera is not snapped to whole device pixels. |
+| `?capehood` | page | switch | v2.3.5564 | 2026-11-15 | =0 | memory |  | no | A cape hood's hair masks are drawn from their pictures, as before, not from their 256-colour twins. |
 | `?caustics` | page | value | v2.3.3021 |  | a number, 0 to 2 | logic |  | no | The water's light web this many times as bright. |
 | `?coinflip` | page | switch | v2.3.5247 | 2026-11-14 | =0 | memory |  | no | Ace's coin strips keep their decoded copies, as before. |
 | `?deathbig` | page | lever | v2.3.3954 |  | =1 or =0 | none |  | no | QA: every kill's death is the big one (=1) or the ordinary one (=0). |
