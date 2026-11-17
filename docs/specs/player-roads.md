@@ -47,7 +47,7 @@ while away.
 | `auction_offer` | the Auction House, an offer taken | gold, bag, weapon, gear, pet | `none` |
 | `duel_pot` | a duel's two wagers, held in `duelEscrow:`, the pot to the winner | gold | `xfer` (v2.3.5290; only with `xferescrow: true`) |
 | `arena_entries` | the arena's entry fees, held in `arena_entry:`, paid to the champion with the house's part | gold | `none` |
-| `arena_stakes` | the arena's sponsorship stakes, held in `arena_stake:`, paid as the cut, the winnings and a failed sponsorship's claim | gold | `none` |
+| `arena_stakes` | the arena's sponsorship stakes, held in `arena_stake:`, paid as the cut, the winnings and a failed sponsorship's claim | gold | `xfer` (v2.3.5292; only with `xferescrow: true`) |
 | `threat_bounty` | the threat's 10% fine, held on the threatener's head in `bounty:`, paid to whoever kills them | gold | `none` (a kill) |
 | `jackpot` | the weekly pool: every ticket's gold in `jackpot:draw`, paid to one winner | gold | `none` (a draw among many) |
 | `ground` | a pile on the ground: a death's bag or a dropped stack (`death_pile:`), taken by whoever picks it up | bag | `none` (nobody chose the other side) |
@@ -61,10 +61,33 @@ more rows a day, a cost question for the owner, so it is built OFF behind
 loser's wager to the winner, the price empty, `by` the winner's blow or
 nobody's; paid through `inbox.js _creditWith` so the credit, its stamp and
 the row are one write; `xfer.test` §8, `cost-guard` §20: one row a wagered
-duel, two over its life with its prune). **The market, the Auction House and
-the arena's stakes join in later PRs**, in the file table's order: after card
-K's 5194, 5196 and 5197 (`market.js`, `store.js`) and card L's arena door
-(`gladiator.js`) are merged. Their rows stay `none` until then.
+duel, two over its life with its prune). **The market and the Auction House
+join in a later PR** (tag 5293), in the file table's order: after card K's
+5194, 5196 and 5197 (`market.js`, `store.js`) are merged. Their rows stay
+`none` until then.
+
+**The arena's stakes** (card R PR 13, tag 5292; card L's arena door #1930
+first). A match's stakes settle as a pool: when no sponsor backed the
+winner, every losing stake goes whole to the winning fighter; when some
+did, the fighter keeps `FIGHTER_CUT` of the losing stakes (and the rounding's
+coins) and the winning sponsors share the rest, pro rata. A row has one
+`from` and one `to`, so (the planning session's reading (1), no change to the
+row's shape): **one row a losing stake**, `from` its sponsor, **`to` the
+winning fighter**, its whole gold, the price empty, `by` nobody (a stake
+settles by the match's end, not by a tap on it). **Its `ids` carry the
+winning sponsors' parts of that stake**, `share:<sponsorId>:<n>`; the
+fighter's part is the rest. The parts are whole coins (`xfer.js
+arenaStakeParts`: each its floor of the pro-rata share, then the coins left
+over to the largest remainders), so **the gold of a match's rows adds up to
+the losing pool**, each winning sponsor's shares across them to exactly what
+it gained beyond its own stake, and the fighter's parts to its cut. Written
+by `xferArenaStakes` in the plan's own run (`gladiator.js
+_arenaSettleStakes`: the plan's put, the losers' stamps and the rows, one
+run: a restart lands before all of them or after), so a plan the sweep
+finishes already has its rows. The old order (`arenasettleplan: false`)
+writes none. Rows: one a losing sponsor a match (two over its life, with its
+prune); a winning stake is its owner's own coming back, no row. `xfer.test`
+§9, `cost-guard` §21.
 
 **A player's own escrow** is not a road between players. `OWN_ROADS` lists
 those with why: today the bank (`bank:<pid>`, marked `player` in the storage

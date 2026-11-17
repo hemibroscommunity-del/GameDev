@@ -67,7 +67,8 @@ row in the switch table): none of the three bounds, today's way.
   `trade_accept` row names `target`, but the receiving page reads `offer`.
   Filtering on it would break relays. A row's full field list is a column
   the table does not have yet; the byte bounds stop the flood without it.
-- **A room-wide ceiling on messages in** (RT-1's N5): its own PR.
+- **A room-wide ceiling on messages in** (RT-1's N5): its own PR,
+  `docs/specs/room-ceiling.md` (v2.3.5545).
 
 ## What holds it
 
