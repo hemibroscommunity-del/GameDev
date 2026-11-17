@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "8c7286f700c4b97341fe7c3c2f0ec14a424c2bc9",
+  "tree": "e65da01af3819fba8dcda302943459803ea176a0",
+  "committedAt": "2026-11-17T14:23:12-08:00",
+  "subject": "Merge pull request #2058 from hemibroscommunity-del/claude/plan-l-36-guard-door",
+  "files": 8125,
+  "bytes": 960117700,
+  "listingSha256": "21e1bcb1c3334666273fdf8e5d0e276a6eb315355728cf4c89187c32398c80a5",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "014907014b3dcda5930ad8102e710db181bdc01f",
+  "tree": "c01c8f8ebea682e4a65393b3a0cd2f0da9cbb86e",
+  "committedAt": "2026-11-17T14:23:15-08:00",
+  "subject": "Merge pull request #2065 from hemibroscommunity-del/claude/plan-l-37-zone-door",
+  "files": 8127,
+  "bytes": 960131211,
+  "listingSha256": "8fc24ce1e1b50afd762d271c7891261a8914fe297f75727feda11cb5ec204f65",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

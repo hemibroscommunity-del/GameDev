@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "aac869ca1cbe18bdb6dc187b656304e564e8e68c",
+  "tree": "eaf15ce0b45e484d485e0ec53182f8cd9c375751",
+  "committedAt": "2026-11-17T14:23:08-08:00",
+  "subject": "Merge pull request #2070 from hemibroscommunity-del/claude/plan-u2-1-card",
+  "files": 8124,
+  "bytes": 960101703,
+  "listingSha256": "e74dfdf7d55b3bb645f15945d520be977756e2e27abbe34472ea89fef658ba9d",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
