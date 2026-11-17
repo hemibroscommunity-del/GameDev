@@ -255,6 +255,7 @@ async function join(room, id, z) {
   const A = { name: 'Copper Chestplate', gearBase: 'copper', tierMult: 1.12, tier: 'common' };
   const B = { name: 'Copper Chestplate of the Ox', gearBase: 'copper', tierMult: 1.2, tier: 'common' };
   p.ps.armor = { ...A };
+  p.ps.armorStash = [...(p.ps.armorStash || []), { ...B }];   /* v2.3.5715: a piece the worker holds, so the gates below are what refuse (gearheld) */
   const armourSent = () => p.ws.sent.filter((m) => m.type === 'player_state' && m.payload && 'armor' in m.payload);
   const realLock = room._threatGearLocked;
   room._threatGearLocked = () => true;   /* the guard has you (threat.js) */
