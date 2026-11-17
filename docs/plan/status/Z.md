@@ -1,28 +1,31 @@
 card: Z
-branch: claude/plan-z-sitting-29
-prs: (this PR), tag 5667, the last line of sitting 29's list (ready)
+branch: claude/plan-z-sitting-30
+prs: (this PR), tag 5668, the last line of sitting 30's list (ready)
 state: ready
 
 ## Done
-- Sitting 28 merged (`main` 657d7f7f: K #1981, T #1992, #1993, Z #1995).
-  Sitting 29 (this list), reviewed and rehearsed on 657d7f7f:
-  `census/review-z29.md`. Plan noted for sitting 28's merges: 7.1 (#1992,
-  #1993), 11.3 (#1981).
+- Sitting 29 merged (`main` 78f70f4a: T #1994, #1996, Z #1998).
+  Sitting 30 (this list), reviewed and rehearsed on 78f70f4a:
+  `census/review-z30.md`. Plan noted for sitting 29's merges: 7.1 (#1994,
+  #1996).
 
 ## The list: merge in this order, each "Create a merge commit"
-1 T #1994 (5314) · 2 T #1996 (5315, stacked on #1994) · 3 this PR. All
-based on `main`, one merge base at every step. No worker deploy (no
-`server/` file): the page only, through Pages. No new live flag, no new
-address flag, no stored shape: the moved reads keep their old patterns.
+1 K #1997 (5196, `gidnames` ON) · 2 K #1999 (5547, stacked on #1997) ·
+3 L #2000 (5526, `?windowdoor`) · 4 T #2001 (5316) · 5 T #2002 (5317,
+stacked on #2001) · 6 this PR. All based on `main`, one merge base at
+every step. The worker deploys (K's `server/src/`, L's `server/test/`).
+New live flag `gidnames` (ON) and cap `gidnames`; page switch
+`?windowdoor` (ON). No stored shape.
 
 ## Held
-- None.
+- K #2003 (5197, the words rule): its guard matches names ending
+  name/tag, not the table's `words` fields (card K 12); the chat line and
+  market toast still print the joined note; stored shape (`noteT` on
+  inbox entries). Conflicts with #1997. Sitting 31, its own line.
 
 ## Stalled
-- None. Not yet in: K 5196 (branch k-11-gidnames, no PR), 5197 and the
-  `_reqSeen` slots (K renumbers
-  k-10 off 5546 before it opens); L's window door; J2's shopkeeper and
-  flakes; R 5293 (after K's 5196/5197): sitting 30. Z's next tag: 5668.
+- None. Not yet in: J2's shopkeeper and flakes; R 5293 (after K's 5196,
+  5197). Z's next tag: 5669.
 
 ## Found
 - `DevPanel.jsx:1638` shows a report's last 3 lines, never `said`. No card.
