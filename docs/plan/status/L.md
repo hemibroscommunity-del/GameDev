@@ -1,6 +1,6 @@
 card: L
 branch: claude/plan-l-23-ride-door (each PR on main, main merged in)
-prs: #1746 to #1910 (merged), #1930 (5522, ready), 5523 ride door (worker, this branch, on #1930)
+prs: #1746 to #1910 (merged), #1930 (5522, ready), #1936 (5523, ready, on #1930)
 state: ready
 
 ## Done
