@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "e6d4546b9e2bbe8e457cb7d25935db0850272a0d",
+  "tree": "4ff65c7414789e5572fffe54aa806b1c95c63aec",
+  "committedAt": "2026-11-17T09:59:29-08:00",
+  "subject": "Merge pull request #2034 from hemibroscommunity-del/claude/plan-sec-3-bankretry",
+  "files": 8084,
+  "bytes": 959664759,
+  "listingSha256": "463f4ffa5c6b63da907797c51a44d4f43cf5c84bc07c4cc53140d59debdd68a4",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "0c6249d5d26919bcf6a18b2124a9afe6996f0be5",
+  "tree": "fd606806c74a31f954b7bcb0149d685c59860e5d",
+  "committedAt": "2026-11-17T09:59:32-08:00",
+  "subject": "Merge pull request #2037 from hemibroscommunity-del/claude/plan-sec-4-bagkeep",
+  "files": 8085,
+  "bytes": 959674036,
+  "listingSha256": "ef38392cc8ab9c3d284641c9770a0ff030d0d432aa2dfe40da6922051ff6c7d4",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
