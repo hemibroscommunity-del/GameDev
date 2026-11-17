@@ -195,6 +195,11 @@ and no reader until then); a lane picked by facts beyond `thirty`.
   any is over the memory check's line for it: `framePacer.js` `MEM_LINES`, a
   copy of `tools/qa/mp/memory-budget.mjs` `MEMORY_BUDGET` (artCache, gpu,
   sound) held equal by `frame-pacer.test` §23a; never a number of its own.
+- v2.3.5681 (the planner's, after sitting 27): **not the sound** -- no rung
+  lowers it, so a sound over its line held players hidden for nothing (a
+  sound rung of its own is later work). The count is read only while the
+  governor judges, and a memory rung waits 35 s after the last
+  (`MEM_SETTLE_MS`: past the masked frames' 30 s deferred destroy).
 - **The planner's choice (2026-11-17): the art and sound lines everywhere;
   the chip's only on a phone or a tablet** (no fine pointer,
   `deviceProfile.js` `fineInput`). A computer's screen-sized pictures are no

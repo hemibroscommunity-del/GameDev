@@ -507,7 +507,8 @@ _liveKnobs(KNOB_NAMES);   /* v2.3.5224: §13 to §16, the whole ladder (above) *
   const g = makeGovernor({ on: true, store: memStore() });
   g.veil(0);
   const was = KNOB_NAMES.map((k) => knobAt('full', k, ladderRung()));
-  for (let i = 0; i < 12; i++) g.verdict(0, 1000 * (i + 1), { axis: 'chip', atFloor: true, memFull: true });
+  /* v2.3.5681: a memory rung waits MEM_SETTLE_MS after the last (40 s apart here) */
+  for (let i = 0; i < 12; i++) g.verdict(0, 40000 * (i + 1), { axis: 'chip', atFloor: true, memFull: true });
   const st = g.read();
   /* v2.3.5231 (card O PR 11; the planner's): the memory's own axis -- the caches, then the crowd */
   check(`15. a full memory steps the memory's own axis (the caches, then the crowd), never the chip's or the work's: ${st.steps.map((x) => x.axis + ' ' + x.knobs.join('+')).join(', ')}`,
@@ -911,15 +912,30 @@ _liveKnobs(null);   /* v2.3.5224: from here, today's live knobs */
 {
   const { MEMORY_BUDGET } = await import('../../tools/qa/mp/memory-budget.mjs');
   const FP = await import('../../src/game/framePacer.js');
-  check('23a. the pacer\'s memory lines are the memory check\'s (artCache, gpu, sound): a copy, never a number of its own',
-    FP.MEM_LINES.artCache === MEMORY_BUDGET.artCache.mb && FP.MEM_LINES.gpu === MEMORY_BUDGET.gpu.mb && FP.MEM_LINES.sound === MEMORY_BUDGET.sound.mb, { pacer: FP.MEM_LINES });
+  check('23a. the pacer\'s memory lines are the memory check\'s (artCache, gpu; v2.3.5681 not sound: no rung lowers it): a copy, never a number of its own',
+    FP.MEM_LINES.artCache === MEMORY_BUDGET.artCache.mb && FP.MEM_LINES.gpu === MEMORY_BUDGET.gpu.mb && Object.keys(FP.MEM_LINES).join() === 'artCache,gpu', { pacer: FP.MEM_LINES });
   const L = FP.MEM_LINES;
-  check('23b. a count over a line is a full memory; the chip\'s count is judged only when handed in (a computer hands in none)',
-    !FP.memOver([L.artCache, L.gpu, L.sound]) && FP.memOver([L.artCache + 1, 0, 0]) && FP.memOver([0, 0, L.sound + 1]) && FP.memOver([0, L.gpu + 1, 0])
+  check('23b. a count over a line is a full memory; the chip\'s count is judged only when handed in (a computer hands in none); v2.3.5681: the sound never (no rung lowers it)',
+    !FP.memOver([L.artCache, L.gpu, 0]) && FP.memOver([L.artCache + 1, 0, 0]) && !FP.memOver([0, 0, 999]) && FP.memOver([0, L.gpu + 1, 0])
     && !FP.memOver([0, null, 0]) && !FP.memOver(null));
   const rp = readFileSync(join(ROOT, 'src/debug/report.js'), 'utf8');
   check('23c. debug/report.js hands its count in: the report\'s three reads, the chip\'s only with no fine pointer (a phone or a tablet)',
     /try \{ useMemCount\(memCount\); \}/.test(rp) && /const g = fineInput\(\) \? null : \(window\.__btGpuTex && window\.__btGpuTex\(\)\);/.test(rp));
+  /* v2.3.5681 (the gatekeeper's sitting 27): the count is read only while the governor judges; memory rungs wait MEM_SETTLE_MS */
+  const fpSrc = readFileSync(join(ROOT, 'src/game/framePacer.js'), 'utf8');
+  check('23g. the pacer reads the memory\'s count only while the governor judges (on, a lane, not switched off): a phone with it off never walks the chip\'s textures',
+    /memFull: \(!gov\.judging \|\| gov\.judging\(\)\) && memFull\(ts\)/.test(fpSrc) && /judging\(\) \{ return on && lane != null && !switchedOff\(\); \}/.test(fpSrc));
+  {
+    _resetLanes();
+    const g = makeGovernor({ on: true, store: memStore() });
+    g.veil(0);
+    for (let i = 0; i < 12; i++) g.verdict(0, 1000 * (i + 1), { axis: 'chip', atFloor: true, memFull: true });
+    const one = g.read().mem;
+    for (let i = 0; i < 4; i++) g.verdict(0, 2000 + FP.MEM_SETTLE_MS + 1000 * i, { axis: 'chip', atFloor: true, memFull: true });
+    const two = g.read().mem;
+    check('23h. a memory rung waits MEM_SETTLE_MS (past the 30 s deferred destroy) after the last: 12 s of a full memory take one, the next only after the wait', FP.MEM_SETTLE_MS > 30000 && one === 1 && two === 2, { one, two });
+    _resetLanes();
+  }
   const ME = await import('../../src/rendering/maskedEvict.js');
   const DL = await import('../../src/game/drawLanes.js');
   _resetLanes();

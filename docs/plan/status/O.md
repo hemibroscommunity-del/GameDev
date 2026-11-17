@@ -1,7 +1,7 @@
 card: O
-branch: claude/plan-o-11-caches (one branch a PR; main ee235aaa merged in)
-prs: #1787, #1792, #1794, #1800, #1814, #1815, #1832, #1841, #1836, #1850, #1854, #1896, #1915, #1929, #1937, #1952, #1970, #1974, #1977 (merged); #1985 (5231): ready
-state: ready
+branch: claude/plan-o-17-memlows (one branch a PR; on #1985's head)
+prs: #1787, #1792, #1794, #1800, #1814, #1815, #1832, #1841, #1836, #1850, #1854, #1896, #1915, #1929, #1937, #1952, #1970, #1974, #1977 (merged); #1985 (5231): ready; 5681: open
+state: working
 
 ## Done
 
@@ -20,8 +20,8 @@ state: ready
 
 ## Next
 
-- #1970 (PR 12), #1974 (PR 13), #1977 (#1952's lows, block 2): merged.
-- #1985 (5231, ready): the memory's axis; caches in gearNumbers, maskedEvict.
+- #1985 (5231, ready): the memory's axis; 5681 (open): its lows, no sound.
+- Later: a sound rung of its own (no rung lowers sound now).
   BUDGETS part 3's rest (fishing tops, peer bakes, strips, shirts, species,
   catalogs, palette rows, busts, portraits; peer figs, sfx, music) waits: M.
 
