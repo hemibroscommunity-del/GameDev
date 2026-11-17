@@ -11,10 +11,10 @@ with one merge base at every step (`git merge-base --all`, each against
 `main` with the PRs above it merged in as merge commits). The tree after
 each merge:
 
-1 SEC #2030 14cda149138b1cc532dcb2bad2a33b214cb59732 -> 45126e74e7f4131d678d975e61d31bb9b5d50fcd
-2 K #2028 30d7681eba2b841d800cedb446a1d8ec826b7194 -> 7f731f860f16da5bbc0964abeb44624b3a127352
-3 L #2031 37bb49117d6db24f038ed9c99de88be17d47023f -> d665cff64f9050b7e1b1f31a3e2e97325d2211da
-4 L #2033 97af140bad7b63e3f1628acb76353251c6a64736 -> e8c01313ce16762b1bff8a93c4cab1f1339a8fad
+1 SEC #2030 9d5bd5d634026afa2ecf7e3b65ae2c6e4d9414c5 -> 3e7982267c4b4737eb6a15275a617b55f211620f
+2 K #2028 30d7681eba2b841d800cedb446a1d8ec826b7194 -> f8c83a616c73eb72e391a486b9a19211d5d473df
+3 L #2031 37bb49117d6db24f038ed9c99de88be17d47023f -> 8dfd8e5695459accf6b1193b301e6dff920c3f85
+4 L #2033 97af140bad7b63e3f1628acb76353251c6a64736 -> c6c5c8a60390557c74e489130efd136545502a44
 5 Z (this PR): its head and tree are in the list (`status/Z.md`).
 
 The bases, step by step: #2030 52244a81; #2028 fe1297b0 (#2024's head,
@@ -34,7 +34,12 @@ from the rehearsed one in that file alone.
 READY (documents and the tag table: step 3). The planner's message
 (15:52 UTC) names card SEC (session ...oMQ3nmwcTbRueMgd, tags 5700-5719)
 and card K2 (5720-5739). Open, not a draft, based on `main` 52244a81;
-`test` green on 14cda149. Three files: `docs/plan/cards/SEC.md` (the
+`test` green on 14cda149 and on its new head 9d5bd5d6 (SEC's message
+at 16:33: one commit, `docs/plan/cards/SEC.md` only, +23 lines: items
+16 to 20 and item 15's addition, "word for word, from the orchestrator
+on the owner's 'go recommended'"). Rehearsed at 14cda149: the new
+head's trees differ from the rehearsed ones in that file alone. Three
+files: `docs/plan/cards/SEC.md` (the
 card: PRs 2 to 15, the second red team's fixes that need no decision and
 sit in no running card's files), `docs/plan/status/SEC.md` (`ready`),
 `tools/dev/tag-blocks.json` (the block `"SEC": [[5700, 5719]]`;
@@ -43,8 +48,14 @@ No deploy.
 - K2's first PR also moves `nextBlock` (planner): it is not on this list;
   when it comes, it merges `main` with #2030 in first (the same line).
 - For the owner: card SEC is new scope. Its words quote you, 2026-11-17
-  (*"Go recommended"*); a gatekeeper cannot check them. Merge it if those
-  are yours.
+  (*"Go recommended"*; items 16 to 20: *"For all decisions waiting on me
+  just go recommended"*); a gatekeeper cannot check them. Merge it if
+  those are yours. Items 17 and 20 bring words a player reads (refusals)
+  and 19 a tick in the Test panel, each behind its switch.
+- SEC #2032 (5701, the join's id held to its form; `joinidform`, ON;
+  `server/`) came at 16:33 and #2034 (5702) is a draft: both to sitting
+  37 (a change to the join wants a full review and its own rehearsal,
+  past this list's close).
 
 ## K #2028 (5553): `cookstart`, a cook is a cook the worker started (OFF)
 
