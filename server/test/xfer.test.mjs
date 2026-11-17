@@ -24,6 +24,18 @@
  *      writes no row; on: ONE row, the loser's wager to the winner, `by` the
  *      winner's blow, in the pot's own run (a restart at any of its writes:
  *      the pot and its row both, or neither).
+ *   9. v2.3.5292 (card R PR 13): THE ARENA'S STAKES.  `xferescrow` off: the
+ *      match settles as before, no row; on: ONE row a losing stake, its
+ *      sponsor to the winning fighter, its whole gold, `by` nobody; the
+ *      winning sponsors' parts in its ids (`share:<sid>:<n>`).  The rows
+ *      add up to the losing pool, each winner's shares to exactly what it
+ *      gained, the fighter's parts to its cut, at 1 v 1, 2 v 3, 3 v 2 with
+ *      odd stakes and 0 v 3 (no sponsor on the winner: every stake whole to
+ *      the fighter, no share).  The parts never ask more of a stake than it
+ *      held (arenaStakeParts, 400 random pools).  In the plan's own run: a
+ *      restart at any batch, the plan and its rows both, or neither; the
+ *      sweep finishes a plan with its rows already on file.  The old order
+ *      (`arenasettleplan: false`) writes none.
  *
  * BREAK PROOF (rule 8), tried by hand: the row's line in trade2.js moved
  * after `await together` (a run of its own) -> FAIL 3 ("a restart at any
@@ -31,10 +43,13 @@
  * And (sitting 10) the empty side's check taken out of xferRow -> FAIL 3
  * (an empty window wrote a row).  And (v2.3.5290) duel.js's row written
  * after the credit's await, not in _creditWith's run -> FAIL 8 (a restart
- * between: paid, no row).
+ * between: paid, no row).  And (v2.3.5292) gladiator.js's rows pushed after
+ * the plan's `await Promise.all(writes)` (a run of their own) -> FAIL 9 (a
+ * restart between: the plan on file, no rows); the leftover-coin passes taken
+ * out of arenaStakeParts -> FAIL 9 (the shares short of the gains).
  */
 import { makeStorage, openRoom, join, fakeWs, settle, seededClock } from './testroom.mjs';
-import { XFER, xferRow, xferKey, xferDay, xferList, xferPrunePage, xferOff } from '../src/xfer.js';
+import { XFER, xferRow, xferKey, xferDay, xferList, xferPrunePage, xferOff, arenaStakeParts } from '../src/xfer.js';
 import { GOLD_ROADS } from '../src/gold.js';
 import { BAG_ROADS } from '../src/bag.js';
 import { PLAYER_ROADS } from '../src/playerroads.js';   /* v2.3.5280 */
@@ -275,6 +290,112 @@ async function duelTo(flags) {
     if (paid !== (n === 1) || n > 1) bad.push({ crashAt: k, paid, rows: n, coinsA: recA.coins });
   }
   check('8. a restart at any write of the pot: the pot and its row both, or neither', bad.length === 0, bad);
+}
+
+/* ══════════ 9. THE ARENA'S STAKES (v2.3.5292) ══════════ */
+{
+  const TID = 'xf-t', MID = 'a1b2c3d4-e5f6-4789-abcd-0123456789ab';
+  const FW = 'bp_xf_w', FL = 'bp_xf_l';
+  const rec0 = () => ({ _v: 21, coins: 0, inventory: {}, level: 5, hp: 100, maxHp: 100, _econ: { v: 1, g: { m: 0, b: 0 }, i: {} } });
+  /* `win` and `lose` the stakes on the winner and the loser */
+  const arena = async (flags, win, lose) => {
+    const m = new Map([['rpg:' + FW, rec0()], ['rpg:' + FL, rec0()]]);
+    const sp = [];
+    [...win.map((a) => [FW, a]), ...lose.map((a) => [FL, a])].forEach(([t, a], i) => {
+      const id = 'bp_xf_s' + i; sp.push({ id, t, a });
+      m.set('rpg:' + id, rec0());
+      m.set('arena_stake:' + TID + ':' + MID + ':' + id, { tid: TID, matchId: MID, sponsorId: id, targetId: t, amount: a, ts: clock.now() });
+    });
+    const st = makeStorage(m);
+    const room = await openRoom(st, flags);
+    return { st, room, sp };
+  };
+  const purse = (st, pid) => {
+    let g = Math.floor(((st._store.get('rpg:' + pid) || {}).coins) || 0);
+    for (const e of st._store.get('inbox:' + pid) || []) if (e.kind === 'gold') g += e.payload.amount;
+    return g;
+  };
+  const shareOf = (row) => { const o = Object.create(null); for (const x of row.ids) { const p = /^share:(.+):(\d+)$/.exec(x); if (p) o[p[1]] = (o[p[1]] || 0) + +p[2]; } return o; };
+
+  const off = await arena(null, [100], [100]);
+  await off.room._arenaSettleStakes(TID, MID, FW); await settle(); await settle();
+  check('9. xferescrow off (the default): the stakes settle as before, and no row', rows(off.st).length === 0 && purse(off.st, FW) === 10 && purse(off.st, off.sp[0].id) === 190, { rows: rows(off.st), fw: purse(off.st, FW) });
+
+  for (const [win, lose] of [[[100], [100]], [[100, 50], [70, 33, 10]], [[17, 29, 11], [13, 101]], [[], [40, 25, 99]]]) {
+    const t = await arena({ xferescrow: true }, win, lose);
+    await t.room._arenaSettleStakes(TID, MID, FW); await settle(); await settle();
+    const rs = rows(t.st).map((k) => [k, t.st._store.get(k)]);
+    const losers = t.sp.filter((x) => x.t === FL), winners = t.sp.filter((x) => x.t === FW);
+    const pool = losers.reduce((n, x) => n + x.a, 0);
+    const shares = Object.create(null);
+    let fighter = 0, rowsOk = true;
+    for (const [k, r] of rs) {
+      const sh = shareOf(r);
+      const given = Object.values(sh).reduce((n, v) => n + v, 0);
+      const l = losers.find((x) => x.id === r.from);
+      if (!l || r.road !== 'arena_stakes' || r.to !== FW || r.gold !== l.a || r.by !== null || r.price.gold !== 0 || given > r.gold || !k.endsWith(':as-' + MID.replace(/-/g, '') + '-' + l.id) || r.cut) rowsOk = false;
+      for (const [sid, n] of Object.entries(sh)) shares[sid] = (shares[sid] || 0) + n;
+      fighter += r.gold - given;
+    }
+    const gained = winners.map((x) => purse(t.st, x.id) - x.a);
+    const label = winners.length + ' v ' + losers.length + ' (' + win.join('+') + ' / ' + lose.join('+') + ')';
+    check(`9. ${label}: one row a losing stake, its sponsor to the winning fighter, its whole gold, \`by\` nobody`, rs.length === losers.length && rowsOk, rs);
+    check(`9. ${label}: the rows add up to the losing pool (${pool}), the fighter's parts to its cut, each winner's shares to what it gained`,
+      rs.reduce((n, [, r]) => n + r.gold, 0) === pool && fighter === purse(t.st, FW)
+      && winners.every((x, i) => (shares[x.id] || 0) === gained[i]) && Object.keys(shares).every((sid) => winners.some((x) => x.id === sid))
+      && (winners.length > 0 || Object.keys(shares).length === 0),
+      { pool, fighter, fw: purse(t.st, FW), shares, gained });
+  }
+  {
+    /* the parts: whole coins, every gain exact, no stake asked for more than it held */
+    let bad = null, seedN = 7;
+    const rnd = () => { seedN = (seedN * 1103515245 + 12345) & 0x7fffffff; return seedN; };
+    for (let n = 0; n < 400 && !bad; n++) {
+      const losers = Array.from({ length: 1 + rnd() % 9 }, (_, j) => ({ sponsorId: 'l' + j, amount: 10 + rnd() % 500 }));
+      const total = losers.reduce((a, x) => a + x.amount, 0);
+      const pool = total - Math.floor(total * 0.1);
+      const k = 1 + rnd() % 8;
+      const w = Array.from({ length: k }, () => 1 + rnd() % 500);
+      const wt = w.reduce((a, b) => a + b, 0);
+      const gains = w.map((a, i) => ({ sponsorId: 'w' + i, n: Math.floor(pool * a / wt) }));
+      const parts = arenaStakeParts(losers, gains);
+      const per = Object.create(null);
+      parts.forEach((mp, j) => { let s = 0; for (const [sid, v] of mp) { per[sid] = (per[sid] || 0) + v; s += v; if (!(v > 0) || v !== Math.floor(v)) bad = { n, why: 'part', sid, v }; } if (s > losers[j].amount) bad = { n, why: 'over', j, s }; });
+      for (const g of gains) if ((per[g.sponsorId] || 0) !== g.n) bad = { n, why: 'gain', g, got: per[g.sponsorId] };
+    }
+    check('9. the parts: whole coins, every winner\'s gain exact, no stake giving more than it held (400 random pools)', !bad, bad);
+  }
+  {
+    /* in the plan's own run: a restart at any batch -- the plan and its rows both, or neither */
+    const bad = [];
+    for (let k = 0; k <= 3; k++) {
+      const t = await arena({ xferescrow: true }, [100, 50], [70, 33, 10]);
+      t.st.crashAt(t.st.batches() + k);
+      await t.room._arenaSettleStakes(TID, MID, FW).catch(() => {});
+      await settle(); await settle();
+      const plan = t.st._store.has('arena_settle:' + TID + ':' + MID);
+      const paid = purse(t.st, FW) > 0;
+      const n = rows(t.st).length;
+      if (!((plan || paid) ? n === 3 : n === 0)) bad.push({ crashAt: k, plan, paid, rows: n });
+    }
+    check('9. a restart at any write of the settlement: the plan (or its payment) and its rows both, or neither', bad.length === 0, bad);
+    /* a restart after the plan: the next worker's sweep finishes it, the rows already there, none written twice */
+    const t = await arena({ xferescrow: true }, [100, 50], [70, 33, 10]);
+    t.st.crashAt(t.st.batches() + 1);
+    await t.room._arenaSettleStakes(TID, MID, FW).catch(() => {});
+    await settle();
+    const before = rows(t.st);
+    const st2 = makeStorage(t.st._store);   /* the next worker */
+    const r2 = await openRoom(st2, { xferescrow: true });
+    r2._lastStakeSweep = 0;
+    await r2._arenaStakeSweep(); await settle(); await settle();
+    check('9. a restart after the plan: the sweep pays it, its rows already on file (3, none twice)', before.length === 3 && rows(st2).length === 3 && purse(st2, FW) > 0 && !st2._store.has('arena_settle:' + TID + ':' + MID), { before, after: rows(st2), fw: purse(st2, FW) });
+  }
+  {
+    const t = await arena({ xferescrow: true, arenasettleplan: false }, [100], [100]);
+    await t.room._arenaSettleStakes(TID, MID, FW); await settle(); await settle();
+    check('9. the old order (`arenasettleplan: false`): settled as before, no row', rows(t.st).length === 0 && purse(t.st, FW) === 10, { rows: rows(t.st) });
+  }
 }
 
 clock.restore();
