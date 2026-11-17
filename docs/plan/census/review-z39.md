@@ -14,14 +14,12 @@ merge:
 
 1 SEC #2054 75579c1152afc2d5623bef041a9be913683605b2 -> 8b9bf6e355848c1dbf0b554534e16b46db036fa1
 2 K2 #2051 adb2de6df37be8eef9dd56d0f08bc88cf65b8e80 -> c11f9e28b6447243ef8c2fff3058d352763cf9af
-3 K2 #2053 5ec4d137c132c4b50017ac57471de05651634fe5 -> 771b2bb38bcef212cfeee0405eb9d032130c2aa8
+3 K2 #2053 feabf566872df47dbf53598a09b83c8beaa49977 -> 771b2bb38bcef212cfeee0405eb9d032130c2aa8
 4 Z (this PR): its head and tree are in the list (`status/Z.md`).
 
 The bases, step by step: #2054 9e228210 (SEC merged `main` in at 19:11);
-#2051 9e228210 (K2 merged `main` in at 19:33); #2053 a7bb41a3 (#2051's
-19:33 head, merged into #2053; #2051's later commit adb2de6d sits on it,
-so over #2051's merge commit the base is still the one, a7bb41a3); this
-PR 9e228210. One line each.
+#2051 9e228210 (K2 merged `main` in at 19:33); #2053 adb2de6d (#2051's
+head, merged into #2053 at 20:00); this PR 9e228210. One line each.
 
 ## SEC #2054 (5711): the owner can see a flood
 
@@ -120,13 +118,17 @@ nothing else red (its WARNs: SEC's stacked branches 13 to 18 carry
 #2054's 5711, as each holds it; the branch count). `cd server && npm
 test` alone in that tree: 500 suites, all green (530.6 s). Every guard in
 `tools/guards/` green there (34). #2051's adb2de6d came after (a test's
-line, above): its suite run twice in the new tree (771b2bb3), green; the
-rest of the tree is the rehearsed one. This PR on top (one base,
+line, above), and #2053 took it in at feabf566: the suite run twice in
+the new tree (771b2bb3), green; the rest of the tree is the rehearsed
+one. This PR on top (one base,
 9e228210): the phase table 4 `todo` under the line 4.
 
 CI on the listed heads: #2054 `test`, playable, lint-build green; its
 memory-budget hit the job's 20-minute timeout (a cancel), its one rerun
-green. #2051 adb2de6d and #2053 5ec4d137: see the list (`status/Z.md`).
+green. #2053 at 5ec4d137 all green (`test`, playable, memory-budget,
+lint-build). #2051 red once at a7bb41a3 on heap-forget check 4 (2,571
+against 2,560), the cause of adb2de6d; #2051 adb2de6d and #2053
+feabf566 (adb2de6d merged in, nothing else): see the list.
 
 Two rehearsals before this one were stopped: the first met L's #2052
 over #2051 in `docs/SWITCHES.md`; the second, K2's heads moved (19:33).
