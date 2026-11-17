@@ -1,6 +1,6 @@
 card: L
-branch: claude/plan-l-25-loading-door (each PR on main, main merged in)
-prs: #1746 to #1930 (merged), #1936 (5523), #1946 (5524), #1956 (5525): ready
+branch: claude/plan-l-25-loading-door (5525); 5524 is claude/plan-l-24-ally-drafts (each PR on main, main merged in)
+prs: #1746 to #1936 (merged), #1946 (5524), #1956 (5525): ready
 state: ready
 
 ## Done
@@ -16,6 +16,7 @@ state: ready
 ## Next
 
 - #1930 (arena) merged: card R may take the escrow ledger's other rows.
+  #1936 (ride) merged, ridedoor on.
 - Next: the window door (S._windows, windowTo). Guard (worker), connection and
   the loading door's `net` reason (S._netHold) wait for K (wsClient, combat, index).
 

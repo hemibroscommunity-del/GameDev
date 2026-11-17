@@ -47,8 +47,10 @@
  * session's call): the device half is OFF until the owner turns it on, a
  * freeze holding the character only, as before.  It can hold the OWNER out
  * (a ?guest=1 alt shares the main's phone; a device reached with a new key is
- * never recorded), so it waits for the owner's decision and for its next PR
- * (its devices from botfp's `device:` record, the owner's spare complete).
+ * never recorded), so it waits for the owner's decision.  v2.3.5625 (card MOD
+ * PR 5): its devices now come from botfp's `device:` record too, and the
+ * owner's spare is complete the same way (`_frozenDeviceIs`); the lever stays
+ * OFF, the owner's to turn on.
  * The sitting 19 review also: the frozen characters' records are read 128 a
  * get (the runtime's most: 129 freezes threw, and it failed open), and a
  * silence's `minutes` is a positive whole number or left out (-60 and 0.5
@@ -57,15 +59,40 @@
 
 import { WIRE_IN } from './wire/in.js';
 import { WIRE_RELAY } from './wire/relays.js';
+import { CHAT_LANE_TYPES } from './wire/lists.js';
+import { EMOTE } from './emotes.js';
 
 /* THE CHAT LANES a silence closes: the wire table's rows whose trust has
    `text: 'words'` (card K's word, 2026-11-15: never every `speaks` row --
    that is 39, `join`, `track`, a trade and a duel among them): today chat,
    area_chat, whisper, party_chat, friend_dm and store_dm, and a new lane by
-   its row.  Made here from the table, as card K offered, until K's
-   `CHAT_LANES` (wire/lists.js, the one reader of the table) takes it in. */
-export const SILENCE_LANES = Object.freeze(new Set([...WIRE_IN, ...WIRE_RELAY]
-  .filter((r) => r && r.trust && r.trust.text === 'words').map((r) => r.name)));
+   its row.  v2.3.5625: card K's own CHAT_LANE_TYPES (wire/lists.js, the one
+   reader of the table), as the silence first offered to take in. */
+export const SILENCE_LANES = CHAT_LANE_TYPES;
+
+/* v2.3.5625 (card MOD PR 5; the sitting 19 review's low, "words still reach
+   others outside the six lanes"): THE OTHER ROWS WITH WORDS.  Every socket
+   row whose trust names a `words` field is either one a silence closes
+   (SILENCE_WORDS: a name other players read -- a pet's, an alliance's, a
+   clan's) or one it leaves open, with why (SILENCE_OPEN); silence.test fails
+   a new row in neither, so a new name others read is covered by deciding,
+   not by remembering.  And the emote's quick LINES ("GG", "EZ", "RIP": the
+   closed list, emotes.js EMOTE.LINES) are words over the head: a silenced
+   character's are dropped, its emoji and moves go on (they say nothing). */
+export const SILENCE_WORDS = Object.freeze(new Set(['pet_name', 'alliance_name', 'clan_create', 'clan_invite']));
+export const SILENCE_OPEN = Object.freeze({
+  join: 'the name is the record\'s (charname.js: a new one by the rule); a silence never stops a character joining',
+  track: 'never renames (charname.js _stampRecordName); its look and place are play',
+  chat_mute: 'one\'s own mute list; nobody else reads it',
+  friend_request: 'the name it carries is the sender\'s own page\'s; the target reads the server\'s (friends.js)',
+  dungeon_start: 'the worker\'s own config (the page names only the mouth); nobody reads its name',
+});
+/** The socket rows whose trust names a `words` field (what SILENCE_WORDS and
+ *  SILENCE_OPEN between them must cover, beside the lanes). */
+export function wordRows({ inn = WIRE_IN, relay = WIRE_RELAY } = {}) {
+  return [...inn, ...relay].filter((r) => r && r.trust && Object.values(r.trust).includes('words')).map((r) => r.name);
+}
+const LINE_EMOTES = new Set(EMOTE.LINES);
 
 export const SILENCE = Object.freeze({
   KEY: 'silenced:',
@@ -124,7 +151,7 @@ export const silenceMethods = {
 
   /** May this session's words go out?  False drops them; the speaker is told
    *  once a TELL_MS, in the game's voice, to their own socket only. */
-  _silenceSpeakOk(session, now) {
+  _silenceSpeakOk(session, now, what) {
     const t = now || Date.now();
     const s = session && this._silenceOf(session.id, t);
     if (!s) return true;
@@ -132,7 +159,7 @@ export const silenceMethods = {
       session._silenceToldAt = t;
       const ws = this._wsBySessionId ? this._wsBySessionId(session.id) : null;
       if (ws) {
-        try { ws.send(JSON.stringify({ type: 'server_announce', payload: { text: 'You can\'t chat right now: the owner has silenced this character ' + silenceUntilWords(s.until) + '.', ts: t } })); } catch (e) { /* closed */ }
+        try { ws.send(JSON.stringify({ type: 'server_announce', payload: { text: 'You can\'t ' + (what === 'name' ? 'give names others read' : 'chat') + ' right now: the owner has silenced this character ' + silenceUntilWords(s.until) + '.', ts: t } })); } catch (e) { /* closed */ }
       }
     }
     return false;
@@ -146,61 +173,91 @@ export const silenceMethods = {
    *  dropped. */
   _silenceDoor(session, msg) {
     if (!msg || !this._silenceOn() || !this._silences || !this._silences.size) return false;
-    if (!SILENCE_LANES.has(msg.type)) return false;
-    return !this._silenceSpeakOk(session);
+    if (SILENCE_LANES.has(msg.type)) return !this._silenceSpeakOk(session);
+    /* v2.3.5625: a name others read, and an emote's quick line */
+    if (SILENCE_WORDS.has(msg.type)) return !this._silenceSpeakOk(session, 0, 'name');
+    if (msg.type === 'emote') {
+      const p = msg.payload && typeof msg.payload === 'object' ? msg.payload : msg;
+      if (typeof p.emoji === 'string' && LINE_EMOTES.has(p.emoji)) return !this._silenceSpeakOk(session);
+    }
+    return false;
   },
 
   /* ── A FREEZE HOLDS THE DEVICE ── */
-  /** The devices every frozen character has played on.  The `frozen:` rows
-   *  (the owner's few) are listed at every join, so a freeze holds the next
-   *  join at once; their devices (and the owner's test-mode phones) are read
-   *  again only when that list changed or FROZEN_TTL_MS has passed. */
-  async _frozenDevices(now) {
+  /** The owner's few lists, for the device rule: the frozen characters
+   *  (`frozen:`, listed at every join, so a freeze holds the next join at
+   *  once), the owner's own characters (`testmode:`), and the devices each
+   *  side's `auth:<pid>.devs` names (the device lock's list), read again only
+   *  when the frozen list changed or FROZEN_TTL_MS has passed. */
+  async _frozenLists(now) {
     const t = now || Date.now();
+    const empty = { frozen: new Set(), owner: new Set(), devs: new Set(), ownerDevs: new Set() };
     let frozenIds;
     try {
       const rows = await this.state.storage.list({ prefix: 'frozen:', limit: SILENCE.FROZEN_MAX });
       frozenIds = [...rows.keys()].map((k) => k.slice('frozen:'.length));
-    } catch (e) { return this._frozenDev || new Set(); }
-    if (!frozenIds.length) { this._frozenDev = new Set(); this._frozenSig = ''; return this._frozenDev; }
+    } catch (e) { return this._frozenL || empty; }
+    if (!frozenIds.length) { this._frozenL = empty; this._frozenSig = ''; return empty; }
     const sig = frozenIds.join('|');
-    if (this._frozenDev && sig === this._frozenSig && t - this._frozenDevAt < SILENCE.FROZEN_TTL_MS) return this._frozenDev;
+    if (this._frozenL && sig === this._frozenSig && t - this._frozenAt < SILENCE.FROZEN_TTL_MS) return this._frozenL;
     const devsOf = async (ids) => {
-      const out = [];
+      const out = new Set();
       /* v2.3.5621 (the sitting 19 review): GET_MAX a get, the runtime's most */
       for (let i = 0; i < ids.length; i += SILENCE.GET_MAX) {
         const auths = await this.state.storage.get(ids.slice(i, i + SILENCE.GET_MAX).map((id) => 'auth:' + id));
-        for (const a of auths.values()) for (const d of (a && Array.isArray(a.devs) ? a.devs : [])) if (d && typeof d.d === 'string') out.push(d.d);
+        for (const a of auths.values()) for (const d of (a && Array.isArray(a.devs) ? a.devs : [])) if (d && typeof d.d === 'string') out.add(d.d);
       }
       return out;
     };
     try {
-      const set = new Set(await devsOf(frozenIds));
-      if (set.size) {
-        const tm = await this.state.storage.list({ prefix: 'testmode:', limit: SILENCE.FROZEN_MAX });
-        for (const d of await devsOf([...tm.keys()].map((k) => k.slice('testmode:'.length)))) set.delete(d);   /* never the owner's own phone */
-      }
-      this._frozenDev = set; this._frozenSig = sig; this._frozenDevAt = t;
+      const tm = await this.state.storage.list({ prefix: 'testmode:', limit: SILENCE.FROZEN_MAX });
+      const owner = new Set([...tm.keys()].map((k) => k.slice('testmode:'.length)));
+      const lists = { frozen: new Set(frozenIds), owner, devs: await devsOf(frozenIds), ownerDevs: await devsOf([...owner]) };
+      this._frozenL = lists; this._frozenSig = sig; this._frozenAt = t;
     } catch (e) { /* the last read stands */ }
-    return this._frozenDev || new Set();
+    return this._frozenL || empty;
   },
 
   /** True when this join's device belongs to a frozen character (the join is
-   *  then refused `frozen`, as a frozen character's own is). */
-  async _frozenDeviceIs(device, now) {
+   *  then refused `frozen`, as a frozen character's own is).  `pid` is the
+   *  character the join names.
+   *  v2.3.5625 (card MOD PR 5; the sitting 19 review's two MEDIUMs): the
+   *  device's characters come from botfp's own record, `device:<device>`
+   *  (botfp.js `_botfpOnJoin`: every character that joined from this
+   *  device, whatever key it came with, its last DEVICE_IDS_CAP in 30 days),
+   *  beside the device lock's `auth:<pid>.devs` (which records only the
+   *  device a character was MADE on, or added with its key: a freeze held
+   *  only that one, and its spare missed the owner's other phones).  The
+   *  owner's spare is complete the same way: the device is never held when
+   *  the record (or a test-mode character's `devs`) shows one of the owner's
+   *  own characters on it, nor is a join that names one (its key still
+   *  decides, after this).  A refused join writes nothing, so the record
+   *  cannot be flushed of the frozen character by new ones once it holds. */
+  async _frozenDeviceIs(device, now, pid) {
     if (!this._freezeDeviceOn() || typeof device !== 'string' || !device) return false;
-    return (await this._frozenDevices(now)).has(device);
+    const L = await this._frozenLists(now);
+    if (!L.frozen.size) return false;
+    if (typeof pid === 'string' && L.owner.has(pid)) return false;   /* the owner's own character, by name */
+    if (L.ownerDevs.has(device)) return false;                      /* never the owner's own phone */
+    let ids = [];
+    try {
+      const rec = await this.state.storage.get('device:' + device);
+      ids = rec && Array.isArray(rec.ids) ? rec.ids.map((e) => e && e.id).filter((x) => typeof x === 'string') : [];
+    } catch (e) { ids = []; }
+    if (ids.some((x) => L.owner.has(x))) return false;              /* ...whatever key it came with */
+    if (ids.some((x) => L.frozen.has(x))) return true;
+    return L.devs.has(device);
   },
 
   /** The join's half (join.js, before the key is checked: a refused join
    *  writes nothing): true when it refused this socket, as a frozen
    *  character's own join is refused (`frozen`, close 4004, which the phone
    *  never answers with a new character). */
-  async _frozenDeviceRefuse(ws, device) {
+  async _frozenDeviceRefuse(ws, device, pid) {
     /* ...and the silences into memory, once a room's life: every speaker has
        joined first, so the speak check (a Map read) always has them */
     await this._silenceEnsure();
-    if (!(await this._frozenDeviceIs(device))) return false;
+    if (!(await this._frozenDeviceIs(device, 0, pid))) return false;
     try { ws.send(JSON.stringify({ type: 'join_rejected', reason: 'frozen' })); } catch (e) { /* closed */ }
     try { ws.close(4004, 'frozen'); } catch (e) { /* closed */ }
     if (this._playerLeaves) await this._playerLeaves(ws, 'refused');
