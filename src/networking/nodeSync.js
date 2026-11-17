@@ -1,4 +1,5 @@
 import { createGatherNode, ZONES } from '@/data/index.js';
+import { act } from '@/game/actions.js';   /* v2.3.5189: the page's requests leave through the action door (card K PR 7) */
 
 /* === nodeSync — gather-node snapshot self-heal (v2.3.1301) ===
  *
@@ -85,7 +86,7 @@ export function onZoneEntered(S, zoneId) {
     if (done) { clearInterval(S._nodeResyncT); S._nodeResyncT = null; return; }
     if (S.channel && S.player) {
       /* Same packet shape as the teleport re-sends in wsClient. */
-      S.channel.send({ type: 'broadcast', event: 'move', payload: { x: S.player.x, y: S.player.y, z: S.currentZone, vx: 0, vy: 0 } });
+      act('move', { x: S.player.x, y: S.player.y, z: S.currentZone, vx: 0, vy: 0 });   /* v2.3.5189: through the action door (actions.js) */
     }
   }, 2000);
 }

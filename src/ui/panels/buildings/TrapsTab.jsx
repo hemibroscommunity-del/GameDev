@@ -2,6 +2,7 @@ import React from 'react';
 import { TRAPPING } from '@/data/trapping.js';
 import { thumbFor } from '@/ui/mobile/dash/InventoryPanel.jsx';
 import { TRAP_ICON_URL } from '@/rendering/controlsPreload.js';
+import { act } from '@/game/actions.js';   /* v2.3.5190: the page's requests leave through the action door (card K PR 7) */
 
 /* ═══ v2.3.3120: THE WOODWORKER'S TRAPS TAB ═══
  * Plan: docs/PET-TRAPPING-PLAN.md, "Making traps": one log of ANY kind makes
@@ -55,7 +56,7 @@ export function TrapsTab({ rpgState, stateRef }) {
 
   const make = (log, n) => {
     if (!S.channel || busy) return;
-    try { S.channel.send({ type: 'make_traps', payload: { log, count: n } }); } catch (e) { return; }
+    try { act('make_traps', { log, count: n }); } catch (e) { return; }   /* v2.3.5190: through the action door (actions.js) */
     sentAt.current = Date.now();
     madeSeen.current = S._trapsMade || 0;
     setBusy(log);

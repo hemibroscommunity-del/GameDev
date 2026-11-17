@@ -9,6 +9,7 @@ import { installHintBus } from '../installHintBus.js'; /* v2.3.2159 */
 import { TRAIL_STYLES, getTrailStyle, setTrailStyle, GROUND_PATH } from '@/game/questTrailStyle.js'; /* v2.3.2992 GROUND_PATH */
 import { DASH_SIDES, getDashSidePref, setDashSidePref } from '@/game/dashSidePref.js'; /* v2.3.2177 */
 import { onIOS } from '../../../game/deviceProfile.js';   /* v2.3.4804: the device profile */
+import { act } from '@/game/actions.js';   /* v2.3.5191: the page's requests leave through the action door (card K PR 7) */
 
 /* v2.3.1232: Lantern Slate pass (docs/LANTERN-SLATE-SPEC.md) — 44px
    setting rows, and the switch grows to a 46×26 touchable pill: track
@@ -211,7 +212,7 @@ export const SettingsPanel = () => {
     };
     const sendReset = () => {
       setResetStage('sending');
-      try { S.channel.send({ type: 'character_reset', payload: { confirm: true } }); } catch (e) {}
+      try { act('character_reset', { confirm: true }); } catch (e) {}   /* v2.3.5191: through the action door (actions.js) */
       /* Fallback: if the ack (or the reload it triggers) never lands --
          dropped socket mid-flight -- reload anyway after 8s.  Whether the
          server processed the reset decides what the rejoin loads; the

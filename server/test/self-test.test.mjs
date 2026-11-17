@@ -315,13 +315,50 @@ const code = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`\\])\/\
     /if \(_ok\) waterSelfTest\(\);/.test(ww) && /function stillNow\(\) \{ return _liveOff \|\| _ok === false \|\| waterKnobStill\(\); \}/.test(ww)
     && /selfQueue\('water', _renderer, rts, wants, \(\) => \{\s*_ok = false;[\s\S]{0,140}setWheelWaterMoves\(false\);\s*\}/.test(ww));
   /* every name the page tests or skips is a program the worker's `self` takes */
-  const files = ['src/rendering/paletteTex.js', 'src/rendering/sharpPixels.js', 'src/rendering/lightfx/sheenBatch.js', 'src/rendering/lookPalette.js', 'src/rendering/lightfx/shadows.js', 'src/rendering/wheelWater.js'];
+  const files = ['src/rendering/paletteTex.js', 'src/rendering/sharpPixels.js', 'src/rendering/lightfx/sheenBatch.js', 'src/rendering/lookPalette.js', 'src/rendering/lightfx/shadows.js', 'src/rendering/wheelWater.js',
+    'src/rendering/fillBatch.js', 'src/rendering/lightfx/glint.js'];   /* v2.3.5237: + 14c's */
   const names = new Set();
   for (const f of files) for (const mm of code(src(f)).matchAll(/self(?:Queue|Skip)\('([a-z]+)'/g)) names.add(mm[1]);
   const progs = src('src/game/drawLanes.js').match(/\{ name: '([a-z]+)', file:/g).map((x) => x.split("'")[1]);
   const stray = [...names].filter((x) => !progs.includes(x));
-  check('7. every program the page tests is one of drawLanes.js PROGRAMS (the worker\'s SELF_PROGRAMS): ' + [...names].sort().join(', '), stray.length === 0 && names.size === 7, { names: [...names], stray });
-  check('7. the lever\'s row names them', /fail:<name>\[,<name>...\] \(one, palette, look, sharp, sheen, shadow, water\)/.test(src('tools/guards/lib/switches.mjs')));
+  check('7. every program the page tests is one of drawLanes.js PROGRAMS (the worker\'s SELF_PROGRAMS): ' + [...names].sort().join(', '), stray.length === 0 && names.size === 9, { names: [...names], stray });
+  check('7. the lever\'s row names them', /fail:<name>\[,<name>...\] \(one, palette, look, sharp, sheen, shadow, water, fill, glint\)/.test(src('tools/guards/lib/switches.mjs')));
+}
+
+/* ── 8. v2.3.5237 (14c): the fill and the glint -- no way back, named ── */
+{
+  const n = S.SELF_SIZE;
+  const differ = (a, b, tol = 2) => S.selfDiff(a, b, tol);
+  /* the fill: a grey of each pixel's brightness, tinted: its own colours gone;
+     the tint alone, or the picture's own colours, are other pictures */
+  const fw = S.selfFillWant(), pic = S.selfRgba();
+  const tintOnly = new Uint8Array(n * n * 4);
+  for (let i = 0; i < n * n; i++) { for (let c = 0; c < 3; c++) tintOnly[i * 4 + c] = S.SELF_FILL_TINT_BYTES[c]; tintOnly[i * 4 + 3] = 255; }
+  const greys = new Set(); for (let i = 0; i < n * n; i++) greys.add(fw[i * 4]);
+  check('8. the fill\'s answer: four shades of the tint (one a colour of the picture), not the tint alone, not the picture\'s own colours',
+    greys.size === 4 && differ(fw, tintOnly) > 100 && differ(fw, pic) > 200, { shades: [...greys], tint: differ(fw, tintOnly) });
+  /* the glint: with no grade, the sheen batcher's shine to the byte (one text,
+     SHEEN_LIFT); a grade's highlights another picture */
+  const sp = S.selfSheenRgba();
+  check('8. the glint\'s answer with no grade is the shine\'s own (SHEEN_LIFT, one text); with a rare grade its highlights are lit another colour (past the allowance)',
+    differ(S.glintCpu(sp), S.selfSheenWant(), 0) === 0 && differ(S.glintCpu(sp, S.SELF_SHEEN, S.SELF_GRADE), S.selfSheenWant(), 4) > 50,
+    differ(S.glintCpu(sp, S.SELF_SHEEN, S.SELF_GRADE), S.selfSheenWant(), 4));
+  const fb = src('src/rendering/fillBatch.js'), gl = src('src/rendering/lightfx/glint.js');
+  const mirror = {
+    'fill: its grey': fb.includes('float btL = clamp(0.5 + 0.8 * dot(btC, vec3(0.299, 0.587, 0.114)), 0.0, 1.0);') && fb.includes('outColor = vec4(vec3(btL * btA), btA);'),
+    'glint: the shine is SHEEN_LIFT': gl.includes('${SHEEN_LIFT}') && gl.includes('col = min(col + uColor * k, vec3(1.0));') && gl.includes('float k = band * uStrength * (0.3 + 0.7 * lum);'),
+    'glint: the grade\'s highlights': gl.includes('float l = dot(col, vec3(0.299, 0.587, 0.114));') && gl.includes('vec3 lit = gc * clamp(l * 1.3 + 0.2, 0.0, 1.0);') && gl.includes('col = mix(col, lit, hi * 0.6 * ga);'),
+    'glint: the glow only where alpha < 1': gl.includes('if (c.a < 0.999 && ga > 0.0) {'),
+  };
+  check('8. the CPU\'s copies match the fill\'s and the glint\'s own lines', Object.values(mirror).every(Boolean), mirror);
+  const fbc = code(fb), glc = code(gl);
+  check('8. the fill: tested once built, in the whirlwind\'s amber; NO way back (its onFail does nothing: named in `self`, drawn as today)',
+    /if \(_built\) fillSelfTest\(renderer\);/.test(fbc) && /selfQueue\('fill', renderer, rt, selfFillWant\(\), \(\) => \{\s*\}/.test(fbc));
+  check('8. the glint: tested once a renderer where its filter is warmed, alone and with a grade (allowed 4); NO way back',
+    /if \(ok && !_selfTested\.has\(renderer\)\) \{ _selfTested\.add\(renderer\); glintSelfTest\(renderer\); \}/.test(glc)
+    && /wants\.push\(\{ want: glintCpu\(pic, SELF_SHEEN, grade\), tol: 4 \}\);/.test(glc) && /selfQueue\('glint', renderer, rts, wants, \(\) => \{\s*\}/.test(glc));
+  const progs = src('src/game/drawLanes.js');
+  check('8. the card: the fill and the glint have no way back (drawLanes.js PROGRAMS `back: null`)', /name: 'fill',[^\n]*back: null/.test(progs) && /name: 'glint',[^\n]*back: null/.test(progs));
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);

@@ -56,6 +56,7 @@ import { worldReady } from '../ui/loadingGate.js';   /* v2.3.4136: the loading g
 import { chatLogBus } from '../ui/mobile/chatLogBus.js';
 import { CODEX_KINDS } from '../data/monsterCodex.js';   /* Know Thy Enemy's nine, for its row's progress */
 import { WHEEL_DUNGEON_HOMES } from '../data/wheelDungeons.js';   /* Delver's three (the worker's WHEEL_DUNGEON.LANDS, mirror-audit) */
+import { act } from './actions.js';   /* v2.3.5188: the page's requests leave through the action door (card K PR 7) */
 
 /* how long a big one's banner is up, and how long a moment may wait for the
    world to come into view before it is let go quietly (the daily toast's
@@ -213,7 +214,7 @@ export function sendAchvTitle(S, id, now) {
   const a = S._achv;
   const want = id == null ? null : id;
   if (want !== null && !(achvById(want) && a && has(a.got, want))) return false;
-  try { S.channel.send({ type: 'achv_title', payload: { id: want } }); } catch (e) { return false; }
+  try { act('achv_title', { id: want }); } catch (e) { return false; }   /* v2.3.5188: through the action door (actions.js) */
   achvOf(S).titleAsk = { id: want, at: typeof now === 'number' ? now : Date.now() };
   bump(S._achv);
   return true;

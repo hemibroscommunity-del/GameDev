@@ -18,6 +18,8 @@
  *
  * No imports, so node can test it (server/test/quest-kept.test.mjs). */
 
+import { act } from './actions.js';   /* v2.3.5188: the action door (card K PR 7), its only import: it has none of its own, so node still reads this file */
+
 const _kept = new Map();   /* 'quest_accept:<id>' / 'quest_turn_in:<id>' -> the message */
 
 const keyOf = (msg) => String(msg && msg.type) + ':' + String(msg && msg.payload && msg.payload.questId);
@@ -25,7 +27,7 @@ const keyOf = (msg) => String(msg && msg.type) + ':' + String(msg && msg.payload
 /* did the channel take it?  Only `false` means dropped (its quest path answers
    nothing when it sends), and a throw is a send that did not happen */
 function _send(S, msg) {
-  try { return !!(S && S.channel) && S.channel.send(msg) !== false; } catch (e) { return false; }
+  try { return !!(S && S.channel) && act(msg.type, msg.payload) !== false; } catch (e) { return false; }   /* v2.3.5188: through the action door (actions.js) */
 }
 
 /** Send a quest_accept or quest_turn_in; kept for the rejoin when the channel
