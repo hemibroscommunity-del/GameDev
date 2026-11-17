@@ -20,18 +20,18 @@ on `main`, one base at every step. The worker deploys once.
 
 ## Held / Stalled
 - None held (#2042, #2045 held at review, fixed by SEC this sitting); none
-  stalled. Late, to sitting 39: K2 #2051 (5725, on #2048).
+  stalled. Late, to 39: SEC #2054; K2 #2051, #2053; L #2052.
 
 ## Found
 - `mp-alliance` 3 13-15/16 since #2022; no card owns it.
 - `movetop` ON: the ride, sprint and potion node suites hold only the
   flat bound; no card. #2033: a damage of `Infinity` draws "-Infinity".
-- #2028, for `cookstart` ON: a result the floor or the fish check drops
-  has spent its plan.
+- #2028, for `cookstart` ON: a dropped result has spent its plan.
 - SEC's: a join with NO id is let in as `session.id` undefined (join.js).
 - #2038: a known field a save leaves out comes from a newer record.
 - #2047: received friend requests never expire (SEC's Found).
-- K2's: `mp-movepath`'s two "no worse" checks fail on main's worker too.
+- K2's: `mp-movepath`'s two "no worse" checks fail on main's worker too;
+  `heap-forget` check 4 at 2563 on CI against its line 2560 (twice).
 - The phase line 5 -> 4 once L #2046 is merged (sitting 39).
 
 ## Needs

@@ -3,7 +3,7 @@
 Taken 2026-11-17 on `main` 357eae05 (sitting 37 merged: SEC #2032, #2034,
 #2037, #2038, #2040; K2 #2035, #2041; L #2039; Z #2044). SEC, K2 and L
 were told this sitting's session at its start (18:00 UTC). Gathered 18:00
-to about 19:05 UTC. Tags bare.
+to 19:05 UTC. Tags bare.
 
 ## Heads, merge bases and trees
 
@@ -112,7 +112,36 @@ numbered 49, above 47. Nothing a player sees. Only `server/test/` under
 
 ## The rehearsal
 
-REHEARSAL
+`tools/dev/gatekeeper.mjs` on 357eae05 with #2042 (4bad24e4), #2043
+(883aa217), #2045 (753d7a5b), #2047 (e4e1615e), #2049 (4d0be77c), #2048
+(5d33b467) and #2046 (1efd9cd6), in that order: tree c3c82cdb (the same as
+the step-by-step merges); build PASS; questline 187/187 (593 s); precheck
+the one 5-minute server-tests limit (the settled one) and nothing else
+red (its WARNs: the branch count, and proto-safety's heuristic at
+`feedback.js` 391 and 711: each `{}` there is copied into an
+`Object.create(null)` map, so a false alarm). `cd server && npm test`
+alone in that tree: 497 suites, all green (590.1 s). This PR merged on
+top (one base, 357eae05): every guard in `tools/guards/` green (34), the
+phase table 4 `todo` under the line 5. `test`, playable, memory-budget
+and lint-build green on every listed head (SEC's #2045 and #2049 `test`
+each red once on `heap-forget` check 4, 2563 bytes against its line
+2560 on CI's runner, about 660 locally on `main` and the stack alike;
+the one rerun green; K2's suite, named to K2 by SEC).
+
+Three rehearsals before this one were stopped when SEC's heads moved
+(the holds' fixes, then a second close's guard).
+
+Late, to sitting 39: SEC #2054 (5711, `floodtally`; on #2049); K2 #2051
+(5725, `dungeonground`; on #2048) and #2053 (5726; on #2051); L #2052
+(5535, the dungeon's page door; on #2046). Each came after this list's
+rehearsal began; each merges the new `main` in after the PR below it lands.
+
+No two listed PRs share a file but: SEC's stack (`status/SEC.md`,
+`persistence.js`, `join.js`: each holds the one before); the switch
+table's rows (`switches.mjs`, `SWITCHES.md`: `feedbackshare`,
+`guestquiet`, `reqincap`, `joinplace`, `dyingdoor`, each its own line,
+merged clean); `tools/guards/phase-table.test.mjs` (#2046's break proof
+in the header, this PR's `TODO_LINE`: merged clean).
 
 ## Z (this PR, 5676)
 
