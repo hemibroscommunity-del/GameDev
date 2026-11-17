@@ -1,5 +1,5 @@
 card: RV
-branch: claude/rv-rewind (PR 15, stacked on claude/rv-names)
+branch: claude/rv-passwords (PR 16, stacked on claude/rv-rewind)
 prs: #2072, #2083 (sitting 42); #2091, #2094 (ready); PRs 5-11 built, in their runs
 state: ready
 
@@ -21,13 +21,14 @@ state: ready
 - PR 11 (5811): friends.js ACC-5, SEC-F4 (`friendfix`).
 - PR 14 (5814): S6, S7 (`cleanmore`, `namestaff`). 7 FAIL on main.
 - PR 15 (5815): the rewind names login acts since (`rewindsays`).
-  Then: the pass words (5816), S3 and `track` (after L).
+- PR 16 (5816): the Test panel's pass words. Then S3, `track` (after L).
 
 ## Found
 
 - For card K2: ACC-1, ACC-2, SEC-F1, ACC-3, S2's join (PR 11), duelquiet.
 - For `index.js` (K2, then card L): S2's `track` half, S3's board report.
-- For card L (`wsClient.js`): SEC-F3, the 49th chest piece.
+- For card L (`wsClient.js`): SEC-F3. For the planner: the players' device
+  words (DeviceScreen.js, AccountLoginForm.jsx) still say "ask the owner".
 - `mktsettle: false` + a re-listed noted order loses the taker's escrow
   on its cancel (market.js; read, not shown).
 
