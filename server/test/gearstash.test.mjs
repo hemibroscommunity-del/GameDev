@@ -36,6 +36,11 @@ import { GEAR_STASH_CAP, GEAR_STASH_FIELDS, normalizeGearStashes, mergeStashList
 
 function makeState(store = new Map()) {
   const counts = { rpgPuts: 0 };
+  /* v2.3.5715 (card SEC PR 16): with `gearheld` on, the default, the join
+     takes no armour or legs claim at all (the worker keeps those two live).
+     This suite tests the claim door itself, so every room it opens plays it
+     open; gearheld.test is the gate's own. */
+  if (!store.has('liveflags')) store.set('liveflags', { gearheld: false });
   return {
     storage: {
       get: async (k) => store.get(k),
@@ -74,6 +79,7 @@ const room = new GameRoom(state, mockEnv);
    The pre-v2.3.3138 suite joined brand-new ids and relied on the first
    join reading the claim. */
 async function join(roomRef, ws, id, data, opts) {
+  await roomRef._liveFlagsEnsure();   /* v2.3.5715: reads makeState's gearheld seed (above) */
   roomRef.sessions.set(ws, { id: null, name: 'T', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now() });
   // Pre-settle the daily reward so credits don't shift blob contents
   // mid-assert (the suite convention since v2.3.1149).
