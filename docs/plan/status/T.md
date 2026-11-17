@@ -19,7 +19,7 @@ state: ready
 
 - 5308: the 18 switch rows of sittings 19, 19b and 20 written `on` 2026-11-15
   take their merge day on main, 2026-11-16 (UTC); five that merged on the
-  15th keep it. Then the reads moved (5309 on).
+  15th keep it; `arenadoor` (sitting 21) takes 2026-11-17. Then the reads moved (5309 on).
 
 ## Found
 
