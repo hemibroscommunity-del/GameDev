@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "2ec85d138fe78634afae7c423951c0840765a64d",
+  "tree": "414c1b095f72863942da628a5257982abf55899d",
+  "committedAt": "2026-11-17T03:32:49-08:00",
+  "subject": "Merge pull request #2012 from hemibroscommunity-del/claude/plan-l-28-connection-door",
+  "files": 8054,
+  "bytes": 959455821,
+  "listingSha256": "c8f614257a7814a8ed41fe228a1bd92c7f58541e223e9b95a9c2511a7d7c1ea8",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

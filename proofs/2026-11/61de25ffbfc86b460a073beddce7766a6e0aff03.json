@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "61de25ffbfc86b460a073beddce7766a6e0aff03",
+  "tree": "a9d6266f403d0a92226f6912e87b4a0d491f1a58",
+  "committedAt": "2026-11-17T03:32:28-08:00",
+  "subject": "Merge pull request #2014 from hemibroscommunity-del/claude/plan-k-13-sends-b",
+  "files": 8051,
+  "bytes": 959432176,
+  "listingSha256": "bd7b7463ed245021a06623051220ed22c47ee3bb1513733416b9f82e0175241b",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
