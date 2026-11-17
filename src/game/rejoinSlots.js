@@ -30,6 +30,7 @@
 import { lockOntoDuelOpponent } from './duelLock.js';
 import { t2OnStateSync } from './tradeSlot.js';
 import { runResets } from './resetOn.js';   /* v2.3.5203: the rejoin edge's one door (card L) */
+import { duelTo } from './duelDoor.js';   /* v2.3.5529: the duel's page door (no imports but the switch reader) */
 import { poseTo } from './poseDoor.js';   /* v2.3.5520: the pose's page door, S._pose's one writer (no imports of its own) */
 
 export const REJOIN_SLOTS = Object.freeze([
@@ -79,8 +80,7 @@ export function rejoinClear(S, count, setTrade2, clearIv) {
   const n = rejoinCount({ rejoinResend: count });
   if (n >= 1) {
     if (S._inDuel || S._activeDuel) done.push('duel');
-    S._inDuel = null;
-    S._activeDuel = null;
+    duelTo(S, null, 'rejoin', null);   /* v2.3.5529: the duel's page door */
     /* a lock on a player is only ever a duel lock (duelLock.js, duel_end) */
     if (S.lockedTarget && S.lockedTarget.type === 'player') S.lockedTarget = null;
   }
@@ -108,13 +108,12 @@ export function rejoinClear(S, count, setTrade2, clearIv) {
 export function duelResume(S, payload, now) {
   if (!S || !payload || payload.foe == null) return false;
   const t = now === undefined ? Date.now() : now;
-  S._activeDuel = { partnerId: payload.foe, startTs: t };
-  S._inDuel = {
+  duelTo(S, {
     opponent: payload.foe,
     opponentName: payload.foeName || '',
     wager: payload.wager || 0,
     startTime: t,
-  };
+  }, 'resume', { partnerId: payload.foe, startTs: t });   /* v2.3.5529: the duel's page door */
   lockOntoDuelOpponent(S, payload.foe);
   return true;
 }
