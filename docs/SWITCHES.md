@@ -411,7 +411,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?coinflip` | page | switch | v2.3.5247 | 2026-11-14 | =0 | memory |  | no | Ace's coin strips keep their decoded copies, as before. |
 | `?deathbig` | page | lever | v2.3.3954 |  | =1 or =0 | none |  | no | QA: every kill's death is the big one (=1) or the ordinary one (=0). |
 | `?deathkind` | page | lever | v2.3.3954 |  | own, normal, slice, decap, leg or topple | none |  | no | QA: every monster dies this way on this phone. |
-| `?deathstrip` | page | switch | v2.3.5567 | 2026-11-15 | =0 | memory |  | no | The death strip (drawn when the bones' explosion has no corpse) is drawn from its full-colour picture, as before, not from its 256-colour twin. |
+| `?deathstrip` | page | switch | v2.3.5567 | 2026-11-17 | =0 | memory |  | no | The death strip (drawn when the bones' explosion has no corpse) is drawn from its full-colour picture, as before, not from its 256-colour twin. |
 | `?deathzones` | page | switch | v2.3.3954 | 2026-11-03 | =0 | logic |  | no | No death zones' effects. |
 | `?depthbuf` | page | switch | v2.3.3072 | 2026-10-06 | present | chip |  | no | The depth buffer is kept, to compare. |
 | `?dmgscale` | page | value | v2.3.3033 |  | a number | logic |  | no | Scales the damage numbers. |
@@ -423,7 +423,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?firelog` | page | switch | v2.3.3660 | 2026-10-27 | =0 | logic |  | no | The fire's log is drawn the old way. |
 | `?fishgrip` | page | switch | v2.3.3623 | 2026-10-27 | =1 | logic |  | no | The fishing grip is drawn over the plate. |
 | `?fishgriptrousers` | page | switch | v2.3.3657 | 2026-10-27 | =1 | logic |  | no | The fishing grip lifts the trousers too. |
-| `?fishspot` | page | switch | v2.3.5565 | 2026-11-15 | =0 | memory |  | no | The pond under a fishing spot is drawn from its full-colour picture, as before, not from its 256-colour twin. |
+| `?fishspot` | page | switch | v2.3.5565 | 2026-11-17 | =0 | memory |  | no | The pond under a fishing spot is drawn from its full-colour picture, as before, not from its 256-colour twin. |
 | `?flipbake` | page | switch | v2.3.3577 | 2026-10-23 | =0 | logic |  | no | Flipped facings are not baked from their source, as before. |
 | `?folkskills` | page | switch | v2.3.5462 | 2026-11-14 | =0 | memory | `lookfolk` | folkSkillReady in src/rendering/folkSkill.js | The townsfolk work in card TF PR 1's poses again (Chef Blaze and Woodworker Bro the pickup, Farmer Bro standing), and the trades' figures (the `skills` look set) are not loaded. |
 | `?folkwork` | page | switch | v2.3.3949 | 2026-11-03 | =0 | logic |  | no | The townsfolk walk but stand at their stops, not work. |
@@ -434,7 +434,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?groundbg` | page | switch | v2.3.3452 | 2026-10-18 | =1 | chip |  | no | The black under the world's ground is drawn every frame, as it was. |
 | `groundkeep` | both | switch | v2.3.3775 | 2026-10-29 | off_groundkeep: true; ?groundkeep=0, off, false | chip |  | no | The world's ground is rebuilt on a return, not kept, as before. |
 | `?hairmasks` | page | switch | v2.3.5562 | 2026-11-16 | =0 | memory |  | no | The hats' hair masks are drawn from their full-colour pictures, as before, not from their 256-colour twins. |
-| `?hudbars` | page | switch | v2.3.5566 | 2026-11-15 | =0 | memory |  | no | The bars over heads (the HP, mana and stamina pills, the health bar and the harvest bar) are drawn from their full-colour pictures, as before, not from their 256-colour twins. |
+| `?hudbars` | page | switch | v2.3.5566 | 2026-11-17 | =0 | memory |  | no | The bars over heads (the HP, mana and stamina pills, the health bar and the harvest bar) are drawn from their full-colour pictures, as before, not from their 256-colour twins. |
 | `?iconretry` | page | switch | v2.3.4431 | 2026-11-10 | =0 | logic | `?retrylooks` | no | Icons that failed are not asked for again. |
 | `?ladderpass` | page | switch | v2.3.5229 | 2026-11-14 | =0, off, false | chip | `govern` | no | The passes' rungs are off: the metal shines, the shadows are drawn and the sea moves, whatever the rung. |
 | `?layerpush` | page | switch | v2.3.3449 | 2026-10-18 | present | chip |  | no | Every layer's uniforms are pushed as Pixi does, to compare. |
@@ -480,6 +480,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?sootms` | page | lever | v2.3.3679 |  | a number of ms | none |  | no | QA: soot marks lie this long. |
 | `?standinlegs` | page | switch | v2.3.3640 | 2026-10-27 | =0 | logic |  | no | The sword and bow bodies keep their legs under greaves, as before. |
 | `?traitretry` | page | switch | v2.3.3606 | 2026-10-26 | =0 | logic | `?retrylooks` | no | A trait picture that failed is not asked for again. |
+| `?uploadicons` | page | switch | v2.3.5569 | 2026-11-17 | =0 | memory |  | no | The five-block stamina and mana strips and the verified Bro badge over a name are drawn from their full-colour pictures, as before, not from their 256-colour twins. |
 | `?waves` | page | value | v2.3.3019 |  | a number, 0.25 to 3 | logic |  | no | The water's motion this many times as strong. |
 | `?weaponretry` | page | switch | v2.3.4431 | 2026-11-10 | =0 | logic | `?retrylooks` | no | Weapon sheets that failed are not asked for again. |
 | `?webskip` | page | switch | v2.3.3448 | 2026-10-18 | =0 | chip |  | no | The water's light web is drawn on every quad, not skipped. |

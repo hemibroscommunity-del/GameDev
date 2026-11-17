@@ -22,8 +22,9 @@
  *     canvas once, and hands back a texture of colour numbers -- the same
  *     address, the same size, so nothing that loads, finds or frees it
  *     changes (Assets.unload destroys it, which gives its row back).  (The fish
- *     spot's pond and the health bar's three are a column wider: v2.3.5565
- *     FISH_SPOT, v2.3.5566 HUD_BARS.)
+ *     spot's pond and the health bar's three are a column wider, the
+ *     stamina strip two: v2.3.5565 FISH_SPOT, v2.3.5566 HUD_BARS, v2.3.5569
+ *     UPLOAD_ICONS.)
  * Anything that cannot be (no colour-numbers program on this device, a row
  * short, a twin that will not load) is the original, as before.
  *
@@ -149,9 +150,21 @@ const HUD_BARS_ON = !NO_TWINS && !/[?&]hudbars=0(&|$)/.test(_q);
    keeps it a picture. */
 const PLAYER_DEATH = /^\/sprites\/players\/death-v1\.png$/;
 const PLAYER_DEATH_ON = !NO_TWINS && !/[?&]deathstrip=0(&|$)/.test(_q);
+/* v2.3.5569, `icons-from-uploads-world`: the owner's five-block stamina and
+   mana strips (fxStrips.js BLOCK_BARS, behind the loading screen) and the
+   verified Bro badge over a name (entityRenderer.js BRO_BADGE_URL): 1.25 MB
+   held as pictures in the page at the memory check's fight.  Their twins cut
+   2.5k-38k colours to 256 (moved 0.005-0.006 OKLab); the stamina strip's is
+   1640 wide, two see-through columns past its last frame (its frames are
+   cut 273 px each, floor(width / 6), the same either way).  The profile's
+   badge (PlayerProfilePanel.jsx) is an <img> of the picture, unchanged, as
+   the mana blocks would be in VitalBar.jsx (its `block`, which no screen
+   asks for).  `?uploadicons=0` keeps them pictures. */
+const UPLOAD_ICONS = /^\/icons\/ui\/(?:blocks-(?:mp|stam)|verified-bro-small)\.webp$/;
+const UPLOAD_ICONS_ON = !NO_TWINS && !/[?&]uploadicons=0(&|$)/.test(_q);
 /** whether the picture at `path` (no host, no query) is read from its twin here */
-function wantedPath(path) { return !NO_TWINS && (ALL_TWINS || (FX_MADE_ON && FX_MADE.test(path)) || (WORLD_ICONS_ON && WORLD_ICONS.test(path)) || (FX_SHEETS_ON && FX_SHEETS.test(path)) || (ELEM_ICONS_ON && ELEM_ICONS.test(path)) || (HAIRMASKS_ON && HAIRMASKS.test(path)) || (PET_SHEET_ON && PET_SHEET_P.test(path)) || (CAPE_HOOD_ON && CAPE_HOOD.test(path)) || (FISH_SPOT_ON && FISH_SPOT.test(path)) || (HUD_BARS_ON && HUD_BARS.test(path)) || (PLAYER_DEATH_ON && PLAYER_DEATH.test(path))); }
-const WANTED = !NO_TWINS && (ALL_TWINS || FX_MADE_ON || WORLD_ICONS_ON || FX_SHEETS_ON || ELEM_ICONS_ON || HAIRMASKS_ON || PET_SHEET_ON || CAPE_HOOD_ON || FISH_SPOT_ON || HUD_BARS_ON || PLAYER_DEATH_ON);
+function wantedPath(path) { return !NO_TWINS && (ALL_TWINS || (FX_MADE_ON && FX_MADE.test(path)) || (WORLD_ICONS_ON && WORLD_ICONS.test(path)) || (FX_SHEETS_ON && FX_SHEETS.test(path)) || (ELEM_ICONS_ON && ELEM_ICONS.test(path)) || (HAIRMASKS_ON && HAIRMASKS.test(path)) || (PET_SHEET_ON && PET_SHEET_P.test(path)) || (CAPE_HOOD_ON && CAPE_HOOD.test(path)) || (FISH_SPOT_ON && FISH_SPOT.test(path)) || (HUD_BARS_ON && HUD_BARS.test(path)) || (PLAYER_DEATH_ON && PLAYER_DEATH.test(path)) || (UPLOAD_ICONS_ON && UPLOAD_ICONS.test(path))); }
+const WANTED = !NO_TWINS && (ALL_TWINS || FX_MADE_ON || WORLD_ICONS_ON || FX_SHEETS_ON || ELEM_ICONS_ON || HAIRMASKS_ON || PET_SHEET_ON || CAPE_HOOD_ON || FISH_SPOT_ON || HUD_BARS_ON || PLAYER_DEATH_ON || UPLOAD_ICONS_ON);
 /* (never while QA compares cropped strips against their files: __btTrimVerify) */
 export function p256On() { return WANTED && picNumbersOn(); }
 
@@ -417,6 +430,6 @@ export function startP256Pack(renderer, canvas) {
 }
 
 if (typeof window !== 'undefined') {
-  window.__btP256 = () => ({ wanted: WANTED, on: p256On(), all: ALL_TWINS, fxMade: FX_MADE_ON, worldIcons: WORLD_ICONS_ON, fxSheets: FX_SHEETS_ON, elemIcons: ELEM_ICONS_ON, hairMasks: HAIRMASKS_ON, petSheet: PET_SHEET_ON, capeHood: CAPE_HOOD_ON, fishSpot: FISH_SPOT_ON, hudBars: HUD_BARS_ON, playerDeath: PLAYER_DEATH_ON, twins: Object.keys(P256_FILES).length, ..._stats,
+  window.__btP256 = () => ({ wanted: WANTED, on: p256On(), all: ALL_TWINS, fxMade: FX_MADE_ON, worldIcons: WORLD_ICONS_ON, fxSheets: FX_SHEETS_ON, elemIcons: ELEM_ICONS_ON, hairMasks: HAIRMASKS_ON, petSheet: PET_SHEET_ON, capeHood: CAPE_HOOD_ON, fishSpot: FISH_SPOT_ON, hudBars: HUD_BARS_ON, playerDeath: PLAYER_DEATH_ON, uploadIcons: UPLOAD_ICONS_ON, twins: Object.keys(P256_FILES).length, ..._stats,
     pack: { ..._pk, packedNow: _packed.size, waiting: _toPack.size } });
 }
