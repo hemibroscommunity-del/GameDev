@@ -28,6 +28,37 @@ import { bagEconOwn } from './bag.js';   /* v2.3.5084: the bag door's counts rea
 import { econResetBook } from './econcard.js';   /* v2.3.5093: a restart booked for the owner's economy card */
 import { GONE_KEY, GONE_V, goneAdd } from './worldsum.js';   /* v2.3.5285: a restart's character booked for the world's sum */
 import { resetBookOn } from './playerrestore.js';   /* v2.3.5285: its switch, `resetbook` (OFF by default) */
+import { FIGHT_WORDS } from './fightlock.js';   /* v2.3.5719: the restart's fight refusal says what the other fight refusals say */
+
+/* ═══ v2.3.5719 (card SEC PR 20): A CHARACTER RESTART STARTS FROM NOTHING ═══
+   A restart left the market's listings and orders on file, so a player could
+   list everything, restart and cancel: the goods came back to the new
+   character.  Now a restart is REFUSED while the market holds something of
+   the player's -- an order in the General Store's book (`mkt_order:`), a
+   listing on the Auction House's shelf (`store_listing:`) they sell, or one
+   they hold the top bid or an open offer on (its gold is escrowed, and a
+   refund would pay the new character) -- with words that say why
+   (RESET_REFUSED_WORDS); and the restart also deletes the daily rewards'
+   row (`daily_rewards:`: the day's spin and its pot, the daily quests, the
+   season's stars), in the restart's one delete, with its cached copy
+   forgotten unwritten (dailyrewards.js _drForget).  The login streak itself
+   lives in `cadence:login:` and is not this card's.
+   Gatekeeper Z40's review: the first build asked playerrestore.js betweenOf,
+   which reads one page (200) of each list, so on a busy market a player's
+   own listing past the first page was missed; and the cached daily record,
+   if dirty, was written back by the restart's own leave.  The hold now asks
+   the room's own indexes (market.js _mktOrderCounts, store.js _stIndex),
+   which hold every order and listing.  Other records held between players
+   (a duel's wager, an arena stake, the weekly pool, a bounty) do not hold a
+   restart: the card names listings and orders.  KILL SWITCH
+   `resetclean: false`: none of it, as before. */
+export const RESET_REFUSED_WORDS = Object.freeze({
+  fight: FIGHT_WORDS,
+  market: 'Not while you have something on the market: cancel your listings, orders and offers, or wait out your top bids',
+});
+/* v2.3.5719 (Z40's review): the phone shows a refusal's words only up to 120
+   characters (wsClient.js character_reset_refused; past that it shows the
+   fight's), so every one fits (resetclean.test pins it) */
 
 /* v2.3.2523: one bound for the five gear stashes, applied at BOTH the
    save and the echo below.  Handoff rule 3's warning is why it is a
@@ -520,10 +551,40 @@ export const persistenceMethods = {
        reloads after its 8 s, on a character that is still there. */
     if (this._fightLockHolds && this._fightLockHolds(pid, 'fightlockreset')) {
       const ws = this._wsBySessionId(pid);
-      if (ws) { try { this._send(ws, { type: 'character_reset_refused', payload: { reason: 'fight', message: 'Not while you are fighting a player' } }); } catch (e) { /* nothing was wiped */ } }
+      if (ws) { try { this._send(ws, { type: 'character_reset_refused', payload: { reason: 'fight', message: RESET_REFUSED_WORDS.fight } }); } catch (e) { /* nothing was wiped */ } }
+      return;
+    }
+    /* v2.3.5719 (resetclean, above): not while the market holds something of theirs */
+    if (await this._resetMarketHold(pid)) {
+      const ws = this._wsBySessionId(pid);
+      if (ws) { try { this._send(ws, { type: 'character_reset_refused', payload: { reason: 'market', message: RESET_REFUSED_WORDS.market } }); } catch (e) { /* nothing was wiped */ } }
       return;
     }
     await this._resetCharacterData(pid);
+  },
+
+  /* v2.3.5719: `resetclean: false` in the live flags: off */
+  _resetCleanOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'resetclean') && !f.resetclean);
+  },
+  /** v2.3.5719: how many of the market's orders and listings hold this
+   *  player (0: none, or the switch off).  The room's own indexes, every
+   *  order and listing (Z40: never one page of them); loading them is the
+   *  read, and the heal, the first market request makes anyway. */
+  async _resetMarketHold(pid) {
+    if (!pid || !this._resetCleanOn()) return 0;
+    let n = 0;
+    try {
+      await this._mktEnsureIndex();
+      n += (this._mktOrderCounts && this._mktOrderCounts.get(pid)) || 0;
+      await this._stEnsureIndex();
+      if (this._stIndex) for (const rec of this._stIndex.values()) {
+        if (rec && (rec.sellerId === pid || (rec.topBid && rec.topBid.bidderId === pid)
+          || (rec.offers && typeof rec.offers === 'object' && Object.prototype.hasOwnProperty.call(rec.offers, pid)))) n++;   /* an offer escrows gold as a bid does (storeoffer.js) */
+      }
+    } catch (e) { /* a read that fails holds what it found (none: the restart as before) */ }
+    return n;
   },
 
   /* v2.3.5285: `econ_gone` with this restart's character and vault booked
@@ -599,7 +660,8 @@ export const persistenceMethods = {
     } catch (e) { /* best-effort: the stamps only ever cause a re-grant to be skipped, never a double pay */ }
     const keys = ['rpg:' + pid, ...(gone ? [] : ['bank:' + pid]), ...stamps,
       'gear_prov:' + pid, 'farm:' + pid, 'aponce:' + pid, 'pets:' + pid, 'codex:' + pid,
-      'fishlog:' + pid, 'achv:' + pid, 'testmode:' + pid, 'life:' + pid];
+      'fishlog:' + pid, 'achv:' + pid, 'testmode:' + pid, 'life:' + pid,
+      ...(this._resetCleanOn() ? ['daily_rewards:' + pid] : [])];   /* v2.3.5719 (resetclean): the daily rewards' row goes too */
     try {
       booked.put();
       if (gone) { this.state.storage.put(GONE_KEY, gone); this.state.storage.delete('bank:' + pid); }
@@ -616,6 +678,7 @@ export const persistenceMethods = {
     this._codexForget(pid);
     this._fishlogForget(pid);
     this._achvForget(pid);
+    if (this._resetCleanOn() && this._drForget) this._drForget(pid);   /* v2.3.5719: unwritten, or the leave writes the old row back (Z40) */
     /* v2.3.3284: and the party, which lasts now (party.js): a restarted
        character has joined nothing.  Before the socket closes, so the rest
        of the party is told at once. */

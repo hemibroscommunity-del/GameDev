@@ -160,6 +160,16 @@ restore from.
   the PR path) stubs the two stores with the property that matters — a
   fresh `localStorage` per origin, one shared cookie jar that enforces
   the public-suffix and host-scope rules.
+- **v2.3.5718 (card SEC PR 19): host-only now.** The mirror is every Login
+  Key the phone holds, and every preview build is a host of the same
+  registrable domain (`<hash>.gamedev-aix.pages.dev`), running whatever its
+  pull request says: any preview could read the keys. The roster's cookie is
+  now written with no Domain, so only the host that wrote it reads it (the
+  real site its own), and a wide copy an older build wrote goes at the first
+  write. What is given up is a preview's first visit finding a character with
+  no key typed. The small "seen this" flags hold no secret and stay wide.
+  `?rostercookie=0` brings back the wide mirror (the suite above plays it so);
+  `tools/guards/browser-secrets.test.mjs` holds the host-only way.
 
 ## The empty-list bug (v2.3.2112)
 
