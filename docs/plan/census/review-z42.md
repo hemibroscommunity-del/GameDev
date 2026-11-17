@@ -180,10 +180,10 @@ gather-hits, lifeskills-economy, refusal-door): all green (623 s),
 session's own full `npm test` green on its head (K2 514, RV 514, V2 518,
 U2 518, M 514, T2 513).
 
-CI on the listed heads at the close: `test` green on #2073, #2081,
-#2076 to #2080, #2074, #2082, #2072, #2083, #2071, #2075, #2087, #2089
-(and playable, lint-build, memory-budget where they run, green or
-running); #2084's `test` running (merge it once green).
+CI on the listed heads at the close: `test` green on every one (#2073,
+#2081, #2076 to #2080, #2074, #2082, #2072, #2083, #2071, #2075, #2087,
+#2084, #2089); playable, lint-build and memory-budget, where they run,
+green or still running at 23:08 (#2081's, #2083's and #2084's playable).
 
 ## Found (carried, and new)
 
