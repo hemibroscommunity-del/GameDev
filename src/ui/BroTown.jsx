@@ -30,6 +30,7 @@ import RaceHud from './mobile/RaceHud.jsx'; /* v2.3.3525: Lil Bro's race on the 
 import DungeonClearHud from './mobile/DungeonClearHud.jsx'; /* v2.3.3556: after a dungeon's clear, 30 s to pick up the loot */
 import { raceTick, raceHeld, raceDriveNpc } from '@/game/race.js'; /* v2.3.3525: Lil Bro's race (server/src/race.js judges it) */
 import { windowTo } from '@/game/windowDoor.js';   /* v2.3.5526: the window door, what is open over the world (card L) */
+import { arenaTo } from '@/game/arenaDoor.js';   /* v2.3.5531: the arena's page door (card L) */
 import { townsfolkFrame, townsfolkStep, folkWalkWanted } from '@/game/townsfolkDay.js';   /* v2.3.4058: the townsfolk walk around and work */
 import { lookFolkOn } from '@/rendering/lookFolk.js';   /* v2.3.4058: only while they are drawn live */
 import { restOn, requestRest, wellRestedLeft } from '@/game/rest.js'; /* v2.3.3539: a real rest at the Hotel or your farm's bed (server/src/rest.js) */
@@ -9203,12 +9204,10 @@ export var BroTown = function BroTown(_ref0) {
           var _inTourney = Array.isArray(_tPlayers) && _tPlayers.some(function (p) {
             return p && (p.playerId === _meId || p.id === _meId);
           });
-          S3._arenaInvolved = !!(_inQueue || _inTourney);
-          /* Store current match on stateRef for PvP kill hook */
-          if (d.status === 'fighting' && d.currentMatch) {
-            var _d$tournament2;
-            S3._arenaMatch = d.currentMatch;
-            S3._arenaTournamentId = (_d$tournament2 = d.tournament) === null || _d$tournament2 === void 0 ? void 0 : _d$tournament2.id;
+          /* Store current match on stateRef for PvP kill hook -- v2.3.5531: through the arena's page door */
+          var _fighting = d.status === 'fighting' && !!d.currentMatch;
+          arenaTo(S3, 'poll', _inQueue || _inTourney, _fighting ? d.currentMatch : null, _fighting && d.tournament ? d.tournament.id : undefined);
+          if (_fighting) {
             /* Notify player they have a match */
             if (!S3._arenaNotified || S3._arenaNotified !== d.currentMatch.id) {
               S3._arenaNotified = d.currentMatch.id;
@@ -9220,8 +9219,6 @@ export var BroTown = function BroTown(_ref0) {
               }, 100);
               S3.screenShake = 4;
             }
-          } else {
-            S3._arenaMatch = null;
           }
           /* v2.3.4911: the page's own 3x bet payout (§BET, for the old
              wells' page-only bets) is gone with those wells (PartyPanel):
