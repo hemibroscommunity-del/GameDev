@@ -127,6 +127,9 @@
  *      line's besides is the arena door's own, `fn`)
  * v2.3.5523 (the ride door):
  *  38. `ps._ride = true;` back in ride.js _handleRide -> FAIL 2
+ * v2.3.5525 (the loading door):
+ *  39. `S._farmArtHold = seq;` back in farmTrip.js -> loading-door.test FAIL 2
+ *  40. `S._veils = new Map();` in zoneTransitions.js -> FAIL 2
  *
  * Run from the repository's root: node tools/guards/phase-table.test.mjs
  * (cd server && npm test runs it with every other guard and suite).
@@ -362,6 +365,9 @@ const DOOR_SUITES = Object.freeze({
   /* v2.3.5523: the ride door (ps._ridePid is written beside it, in _rideTo) */
   'server/test/ride-door.test.mjs': { field: 'ps._ride', fn: '_rideTo', holds: '§2: no write of ._ride or ._ridePid in server/src outside _rideTo',
     prop: '_ride', besides: [] },
+  /* v2.3.5525: the loading door (its reasons' old fields: the suite's §2) */
+  'server/test/loading-door.test.mjs': { field: 'S._veils', fn: 'veilTo', holds: '§2: no write of S._veils, nor of a veil\'s old field (S._zoneLoading, S._wheelTripVeil, S._townArtHold, S._farmArtHold, S._avatarArtHold), in src/ outside veilTo',
+    prop: '_veils', besides: [] },
   /* v2.3.5521: the guard's page door */
   'server/test/guard-page-door.test.mjs': { field: 'S._shieldUp', fn: 'guardTo', holds: '§2: no write of S._shieldUp in src/ outside guardTo',
     prop: '_shieldUp', besides: [

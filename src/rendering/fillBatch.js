@@ -43,6 +43,7 @@ export const FILL_BATCHER = 'fill';
 
 let _on = false;
 let _urlOff = false;
+let _selfOff = false;   /* v2.3.5239: its self-test found it wrong: drawn as `?fill=0` (card O PR 15) */
 let _pinned = 0;
 let _built = false;
 try { if (typeof location !== 'undefined' && /[?&]fill=0\b/.test(location.search)) _urlOff = true; } catch (e) { /* on */ }
@@ -92,7 +93,7 @@ class FillBatcher extends DefaultBatcher {
 FillBatcher.extension = { type: [ExtensionType.Batcher], name: FILL_BATCHER };
 
 /** Is the one-colour batcher in?  (A caller draws with it only then.) */
-export const fillBatchOn = () => _on;
+export const fillBatchOn = () => _on && !_selfOff;   /* v2.3.5239: and its self-test passed (or not run) */
 
 /** Call once, after app.init. */
 export function installFillBatch(app) {
@@ -168,10 +169,10 @@ export function warmFillBatch(renderer) {
 /* ═══ v2.3.5237: THE SELF-TEST AT THE DOOR (card O PR 14c; selfTest.js) ═══
    Built, the fill draws the known picture as a monster in the whirlwind's
    amber, held to the CPU's answer (selfTest.js selfFillWant: each pixel's
-   brightness lifted to a grey, then tinted).  THERE IS NO WAY BACK (the
-   card: drawLanes.js PROGRAMS `back: null`): a wrong picture is named in
-   the report's `self` and the fill is drawn as today -- what it would mean
-   on that chip is the owner's question (card O's status, Found). */
+   brightness lifted to a grey, then tinted).  v2.3.5239 (the planner, for
+   the owner): a wrong picture falls back ALONE, as `?fill=0`: no one-colour
+   glow (the whirlwind's rings still mark the catch; entityRenderer.js
+   _whirlGlow asks fillBatchOn, which hides a glow already made). */
 function fillSelfTest(renderer) {
   if (!selfTestOn()) { selfSkip('fill', 'no self-test on this page (?selftest=0)'); return; }
   const t0 = performance.now();
@@ -185,9 +186,9 @@ function fillSelfTest(renderer) {
     rt = selfDraw(renderer, spr, RenderTexture);
   } catch (e) { rt = null; }
   try { if (spr) spr.destroy({ texture: true, textureSource: true }); } catch (e) { /* gone */ }
-  selfQueue('fill', renderer, rt, selfFillWant(), () => { /* no way back: named in `self`, drawn as today */ }, performance.now() - t0);
+  selfQueue('fill', renderer, rt, selfFillWant(), () => { _selfOff = true; }, performance.now() - t0);
 }
 
 if (typeof window !== 'undefined') {
-  window.__btFill = () => ({ on: _on, urlOff: _urlOff, built: _built, pinned: _pinned, maxTextures: _maxTex });
+  window.__btFill = () => ({ on: _on && !_selfOff, selfOff: _selfOff, urlOff: _urlOff, built: _built, pinned: _pinned, maxTextures: _maxTex });
 }

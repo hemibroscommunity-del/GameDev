@@ -140,6 +140,16 @@ a second. The budget is 4x that.
     as written. The session keeps its whole address (the account check sends
     it to Turnstile). Kill switch `ip64: false`: each IPv6 address apart
     again, as before.
+  - **A whole /56 is one customer (v2.3.5584).** Many providers give a home
+    line a /56, which is 256 /64s, so a script rotating /64s still took
+    sixteen places in each. Every address limit above (the sockets held, the
+    opens a minute, the login door's tries) now also counts an IPv6 address
+    by its /56 (`flood.js ip56Key`: its first three groups and the top half of
+    the fourth), at **three times** the /64's line (`IP56.TIMES`): 48 sockets,
+    60 opens a minute, 60 login tries a minute by default. An honest
+    household's few /64s never reach it. IPv4, and anything it cannot read,
+    has no /56 and counts by its own line alone. A refusal by either count
+    counts in neither. Kill switch `ip56: false`: the /64's line alone.
 
 ### 5. A message that is just `null`
 
@@ -196,6 +206,7 @@ skips the close's duties but its save (`docs/specs/takeover-save.md`).
 | `ip_sockets` | 16 | 0-1000 | places one address may hold; 0 = no limit |
 | `ip_joins_min` | 20 | 0-10000 | sockets one address may open a minute; 0 = no limit |
 | `ip64` | on | `false` | v2.3.5581: count an IPv6 address by its /64; `false` counts each apart |
+| `ip56` | on | `false` | v2.3.5584: also count an IPv6 address by its /56, at 3x the line; `false` the /64 alone |
 
 Set with the admin flags route, as any flag (docs/OPERATIONS.md, "Live
 switches").

@@ -594,7 +594,10 @@ export function setupWebSocket(ctx) {
       retireSocket(_prevWs, 1000, 'replaced');
       var sock;
       try {
-        sock = ws = new WebSocket(WS_URL);
+        /* v2.3.5612: the seat this line had, named on its address (the worker's
+           seat hold, seathold.js `seathold: true`: a held seat is let in on the
+           held slots; a worker from before ignores it) */
+        sock = ws = new WebSocket(WS_URL + (_ti0.id ? '&seat=' + encodeURIComponent(_ti0.id) : ''));
         _connectAt = Date.now();   /* v2.3.3496: a connect that never finishes is retried (_aliveTimer) */
       } catch (e) {
         scheduleReconnect();

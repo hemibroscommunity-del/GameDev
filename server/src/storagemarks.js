@@ -96,6 +96,7 @@ export const STORAGE_MARKS = Object.freeze({
   'arena_house':      M('none', 'room', 'the house\'s gold this hour, a count (the gold is minted when paid)'),
   'harden_h5_log':    M('none', 'room', 'a mint log'),
   'device:':          M('none', 'room', 'a device\'s characters'),
+  'ownerdev:':        M('none', 'room', 'a device the owner\'s own characters joined from (v2.3.5627, silence.js): a freeze never holds it'),
   'admin_log':        M('none', 'room', 'the operator\'s log'),
   'liveflags':        M('none', 'room', 'the live flags'),
   'seats':            M('none', 'room', 'who was in, for a restart\'s held seats (v2.3.5606, seathold.js)'),

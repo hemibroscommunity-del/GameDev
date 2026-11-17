@@ -71,6 +71,14 @@
    unbounded-list-on-the-join-path stall. */
 import { stashTake } from './stash.js';   /* v2.3.5281: the stashes' door (card R PR 2) */
 
+/* v2.3.5294 (card R PR 14): a gid as the minter writes it (_gearProvMintId
+   below): 'g' + the time + '.' + the counter + '.' + four random
+   characters.  The weapon reader (gear.js _isGearNotWeapon, _sanitizeWeapon)
+   reads it, so a worker that comes before every weapon's own id (card R
+   PR 3, tag 5282) already keeps a weapon that carries one, should that
+   worker ever be rolled back to. */
+export const GID_RE = /^g[0-9a-z]{1,12}\.[0-9a-z]{1,10}\.[0-9a-z]{4}$/;
+
 export const GEAR_PROV_KEY = (playerId) => 'gear_prov:' + playerId;
 
 /* The ledger's own schema stamp, so a future shape change has somewhere

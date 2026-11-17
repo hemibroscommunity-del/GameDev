@@ -32,11 +32,13 @@
  *      `sharp`, the others on -- but the shine in the frame, which rides the
  *      sharp read (sheenBatch.js: it reads its pieces with it, and draws only
  *      what the sharp batcher would), goes to its own pass with it, untested;
- *   11-12. v2.3.5237 (14c): `fail:fill`, `fail:glint`: neither has a way
- *      back (drawLanes.js PROGRAMS `back: null`), so each is NAMED in `self`
- *      and drawn as today -- still on, the others passed and on.
- *   13. v2.3.5238 (14d): `fail:clip` (hairClip.js's two programs: the hat's
- *      shape and the monsters'): no way back either -- named, still on.
+ *   11-12. v2.3.5237 (14c), v2.3.5239: `fail:fill`, `fail:glint`: each
+ *      falls back ALONE (the fill: no one-colour glow, as `?fill=0`; the
+ *      glint: every piece it filtered plain), the others passed and on, and
+ *      `self` names it.
+ *   13. v2.3.5238 (14d), v2.3.5239: `fail:clip` (hairClip.js's two
+ *      programs: the hat's shape and the monsters'): falls back alone to the
+ *      alpha mask (as `?alphaclip`), `self` names it.
  *
  * Every page reaches BroTown and draws with no page error: a failed test
  * never stops the load.
@@ -81,9 +83,9 @@ function readPage() {
       shadow: !!(sp && !sp.selfOff() && shadows.length && shadows.every((x) => x.home === 'cast')),
       water: !!(water && water.ok === true),
       sharp: !!(sharp && sharp.enabled && !sharp.selfOff),
-      fill: !!(fill && fill.on && fill.built),   /* v2.3.5237: no way back: on whatever its verdict */
-      glint: !!(glint && glint.ok > 0),
-      clip: !!(clip && clip.stencil),   /* v2.3.5238: no way back: on whatever its verdict */
+      fill: !!(fill && fill.on && fill.built),   /* v2.3.5239: `on` is off once its self-test failed */
+      glint: !!(glint && glint.ok > 0 && !glint.selfOff),   /* v2.3.5239 */
+      clip: !!(clip && clip.stencil),   /* v2.3.5239: the alpha mask once its self-test failed */
     },
     lookDrawn: look ? look.drawn : null,
     shadowHomes: shadows.map((x) => x.home),
@@ -214,15 +216,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
     s.got.on.sheen === false && rs.sheen && rs.sheen.result === 'skipped' && /sharp read fell back/.test(rs.sheen.why || ''), { sheen: rs.sheen });
   rec.ok('10c. ...and the report\'s `self` names `sharp`', selfIs(s.got, ['sharp']), s.got.rep);
 
-  /* 11-13. v2.3.5237 (14c), v2.3.5238 (14d): no way back -- named, and drawn as today */
+  /* 11-13. v2.3.5239: the fill, the glint and the clip fall back alone */
   n = 11;
   for (const name of ['fill', 'glint', 'clip']) {
     const p = await onePage(browser, wsPort, webPort, rec, 'selftest-' + name, 'onebatch=1&selftest=fail:' + name, TESTED_ONE);
     const r = res(p.got);
     const f = othersFine(p.got, TESTED_ONE, name);
     rec.ok(`${n}a. \`selftest=fail:${name}\`: the page reaches BroTown and draws, no page error`, p.inWorld && p.errors.length === 0, p.errors);
-    rec.ok(`${n}b. ...${name} has no way back: it is drawn as today (still on); the others passed and are on`,
-      r[name] && r[name].result === 'forced' && p.got.on[name] === true && f.ok, { r: r[name], on: p.got.on, bad: f.bad });
+    rec.ok(`${n}b. ...${name} falls back ALONE (off); the others passed and are on`,
+      r[name] && r[name].result === 'forced' && p.got.on[name] === false && f.ok, { r: r[name], on: p.got.on, bad: f.bad });
     rec.ok(`${n}c. ...and the report's \`self\` names \`${name}\``, selfIs(p.got, [name]), p.got.rep);
     n++;
   }

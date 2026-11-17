@@ -21,7 +21,11 @@
  *   6. `publicreads: false`: every read reaches the surface, nothing is
  *      refused;
  *   7. at most 256 answers kept, the oldest out;
- *   8. index.js sends the three surfaces through it.
+ *   8. index.js sends the three surfaces through it;
+ *   9. v2.3.5613 (sitting 19b's LOW): the socket's writes on a surface drop
+ *      it too -- a store offer, its cancel and its reply drop the store's
+ *      kept browse, an arena sponsorship the arena's status; another
+ *      surface's kept answer stays.
  */
 import { readFileSync } from 'node:fs';
 import { publicReadMethods, PUBLIC_READS, surfaceOf } from '../src/publicreads.js';
@@ -189,6 +193,25 @@ async function read(R, path, ip, serve) {
   const ok = ['_marketFetch', '_storeFetch', '_arenaFetch'].every((f) => new RegExp('return this\\._publicReadDo\\(request, url, \\(\\) => this\\.' + f + '\\(request\\)\\);').test(src));
   check('8. index.js sends the three surfaces through it', ok && /Object\.assign\(GameRoom\.prototype, publicReadMethods\)/.test(src));
   check('8. ...and the room\'s health', /return this\._publicReadDo\(request, url, \(\) => this\._roomHealthFetch\(request\)\);/.test(src));
+}
+
+/* ── 9. the socket's writes (v2.3.5613) ── */
+{
+  Date.now = realNow;
+  const { makeStorage, openRoom, fakeWs, join } = await import('./testroom.mjs');
+  const R = await openRoom(makeStorage());
+  const ws = await join(R, fakeWs('a'), 'bp_prsock_aaaa');
+  const seed = () => { const m = R._prMem(); for (const k of ['/api/store/browse?x', '/api/arena/status?x', '/api/market/orders?x']) m.kept.set(k, { at: Date.now(), body: '{}', status: 200 }); };
+  const kept = () => [...R._prMem().kept.keys()].map((k) => k.split('?')[0]).sort().join();
+  for (const type of ['store_offer', 'store_offer_cancel', 'store_offer_reply']) {
+    seed();
+    await R.webSocketMessage(ws, JSON.stringify({ type, payload: {} }));
+    check(`9. a socket's ${type} drops the store's kept browse (the market's and the arena's stay)`, kept() === '/api/arena/status,/api/market/orders', kept());
+  }
+  seed();
+  await R.webSocketMessage(ws, JSON.stringify({ type: 'arena_sponsor', payload: {} }));
+  check('9. a socket\'s arena_sponsor drops the arena\'s kept status', kept() === '/api/market/orders,/api/store/browse', kept());
+  Date.now = () => NOW;
 }
 
 Date.now = realNow;
