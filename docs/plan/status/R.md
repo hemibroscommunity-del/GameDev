@@ -1,6 +1,6 @@
 card: R
 branch: claude/plan-r-15-share-lows (one branch a PR, each begun from main)
-prs: #1819, #1823, #1825, #1844, #1862, #1847, #1877, #1887, #1895, #1898, #1922, #1961: merged; #1960 (5294), PR 15 (5295): ready; #1873 (5282): held
+prs: #1819, #1823, #1825, #1844, #1862, #1847, #1877, #1887, #1895, #1898, #1922, #1961: merged; #1960 (5294), #1969 (5295): ready; #1873 (5282): held
 state: ready
 
 ## Done
@@ -12,10 +12,11 @@ state: ready
 - Merged, sitting 23: PR 13 (5292, #1961, which replaced #1950): the
   arena's stakes' ledger rows.
 - PR 3 (5282, #1873, HELD by sitting 23): a roll-back past it lost every
-  weapon carrying a gid (no schema gate outside `rpg:`). Waits for PR 14.
+  weapon carrying a gid (no schema gate outside `rpg:`). Waits for PR 14
+  deployed; a later sitting.
 - PR 14 (5294, #1960, sitting 24): the tolerant weapon reader, first
   (gear.js, gearprov.js GID_RE); deploys before #1873.
-- PR 15 (5295, this branch, ready): #1961's two lows (a share's own bound,
+- PR 15 (5295, #1969, sitting 24): #1961's two lows (a share's own bound,
   SHARES_MAX 128; the owner's card counts no item for a share).
   `econcard.js` is outside the card: decided by the planner.
 
