@@ -106,7 +106,7 @@ export const lingerMethods = {
     ps._lingerZ = ps.z;
     /* it stands still and drops its guard: nobody is holding the stick */
     ps.vx = 0; ps.vy = 0;
-    ps.blocking = false; ps.blockStartT = 0; ps.dodging = false;
+    this._guardTo(ps, 'lower'); ps.dodging = false;   /* v2.3.5536: the guard door */
     this._exTo(ps, null, 'linger');   /* v2.3.5213: the cook door */
     ps._sprintStep = false;
     if (!this._lingerBodies) this._lingerBodies = new Map();

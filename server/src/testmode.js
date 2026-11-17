@@ -59,11 +59,9 @@
  * (v2.3.5720, wire/door.js BODY_CAP: `bodycap`), the look relay's pace and
  * bytes (v2.3.5721, lookrelay.js LOOK_PACE: `lookpace`), a Workshop run's
  * safe ground (v2.3.5725, dungeon.js: `dungeonground`), a move's fields held
- * to their form (v2.3.5723, movement.js MOVE_FIELDS: `movefields`),
- * a General Store sell filed under its weapon's own tier and a refund and its
- * order's delete in one write (v2.3.5801, market.js: `mkttier`, `mktheal`),
- * the rise chest's stamp kept for good by the oplog prune (v2.3.5802,
- * inbox.js OP_PRUNE.KEEP: `risekeep`), the owner's routes
+ * to their form (v2.3.5723, movement.js MOVE_FIELDS: `movefields`), a relay's
+ * fields typed and the room's send to joined sockets only (v2.3.5724,
+ * relay.js RELAY_FORMS: `relaytyped`), the owner's routes
  * with no key and the public reads at the edge (v2.3.5726, wire/door.js:
  * the worker settings `EDGE_GUARD`, `EDGE_CACHE`), every save and payment rule,
  * the login key and its lockouts, a frozen account, PvP consent and every
@@ -71,6 +69,10 @@
  * locks, the tool and level gates and a harvest's reach, damage being the
  * worker's own roll, and the admin key itself.  A test-mode character can
  * still only do what its phone does; it is simply not doubted.
+ * Also left on, for everyone (v2.3.5801, card RV): a General Store sell
+ * filed under its weapon's own tier, and a refund and its order's delete in
+ * one write (market.js: `mkttier`, `mktheal`); the rise chest's stamp kept
+ * for good by the oplog prune (v2.3.5802, inbox.js OP_PRUNE.KEEP: `risekeep`).
  *
  * WHO CAN TURN IT ON.  Only the admin key, through the Test panel's
  * POST /api/admin/dev/testmode {playerId, on} (devtools.js), which the owner's

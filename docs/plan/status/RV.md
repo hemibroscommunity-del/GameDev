@@ -1,6 +1,6 @@
 card: RV
 branch: claude/rv-risechest (PR 3, stacked on claude/rv-market)
-prs: #2072 (5800, ready: sitting 42); #2083 (5801, ready); PR 3 (5802, working)
+prs: #2072 (5800, ready: sitting 42); #2083 (5801, ready: sitting 42); PR 3 (5802, ready)
 state: ready
 
 ## Done

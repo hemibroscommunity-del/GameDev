@@ -65,7 +65,9 @@ const room = await openRoom(makeStorage());
 {
   const r2 = await openRoom(makeStorage());
   const a = rawWs('a'), b = rawWs('b'), dead = { send() { throw new Error('closed'); } };
-  r2.sessions.set(a, {}); r2.sessions.set(dead, {}); r2.sessions.set(b, {});
+  /* v2.3.5724: each a joined player's (the room's send passes over a socket
+     that never joined: relaytyped.test §5) */
+  r2.sessions.set(a, { id: 'bp_sd_a' }); r2.sessions.set(dead, { id: 'bp_sd_d' }); r2.sessions.set(b, { id: 'bp_sd_b' });
   const msg = { type: 'room_probe', payload: { t: 'hé' } };
   r2.broadcastAll(msg);
   r2.broadcastExcept(a, msg);
