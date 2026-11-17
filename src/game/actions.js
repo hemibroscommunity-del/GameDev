@@ -16,14 +16,16 @@
  *   attack     a PvP swing: the batch flushed, then sent as its own type
  *   rider      rides the next frame (gather_node: game/quietPhone.js)
  *   batch      a broadcast event in the 33 ms batch
- *   http       a route, with the session's token in x-bt-auth
+ *   http       a route: a GET as a plain request (no headers, its fields in
+ *              the query), a POST with its JSON body (v2.3.5191)
  *
  * and its flags: `settled` (the worker answers it, so the dead-pipe watch
  * waits for one: wsClient.js SETTLED_SENDS), `held` (kept through a lost
  * socket and sent on the rejoin: node_strike), `req` (it moves value out or
  * cannot be undone: the door gives it a request id, below), `body: 'top'`
  * (its fields sit at the message's top, not in `payload`), `legacy` (sent for
- * an older worker; today's drops it).
+ * an older worker; today's drops it), `auth` (a route that reads the session's
+ * token: the door sends it in x-bt-auth; v2.3.5191, the table's `trust`).
  *
  * THE SHIM IS THE DOOR'S TRANSPORT.  wsClient.js's channelShim reads these
  * rows: its pass-through (the list it kept by hand, TRAPS §18), its
@@ -405,6 +407,14 @@ export const ACTIONS = Object.freeze({
   dungeon_start: A('batch'),
   emote: A('batch'),
   friend_request: A('batch'),
+  /* v2.3.5191: the friends' answers, sent by SocialPanel's sendFriend(event, payload) -- a name
+     passed to a helper, which the guard's literal scan (§2) never saw, so they had no row: the shim
+     passed every broadcast, but act() refuses a name with no row.  The 33 ms batch, as the shim
+     sent them (none is a PRIORITY_EVENT) */
+  friend_accept: A('batch'),
+  friend_decline: A('batch'),
+  friend_remove: A('batch'),
+  friend_dm: A('batch'),
   gamble_request: A('batch', { req: 1 }),
   guild_quest_turn_in: A('batch'),
   harden_weapon: A('batch', { req: 1 }),
@@ -419,20 +429,23 @@ export const ACTIONS = Object.freeze({
   player_shield: A('batch'),
   player_swing: A('batch'),
 
-  /* ── a route a player's page calls (its path, its method; the session's token in x-bt-auth) ── */
+  /* ── a route a player's page calls (its path, its method; `auth`: the session's token in x-bt-auth,
+     on the routes whose table row reads it -- v2.3.5191, card K PR 7.5: the economy's, as the page
+     sent it, and no other.  v2.3.1178: the worker refuses an economy call whose playerId is not
+     backed by the caller's own state_sync token: the forged entry fee, the market's item theft) ── */
   'http:/api/market/orders': A('http', { method: 'GET', path: '/api/market/orders' }),
   'http:/api/market/my': A('http', { method: 'GET', path: '/api/market/my' }),
-  'http:/api/market/place': A('http', { req: 1, method: 'POST', path: '/api/market/place' }),
-  'http:/api/market/cancel': A('http', { method: 'DELETE', path: '/api/market/cancel' }),
+  'http:/api/market/place': A('http', { req: 1, auth: 1, method: 'POST', path: '/api/market/place' }),
+  'http:/api/market/cancel': A('http', { auth: 1, method: 'DELETE', path: '/api/market/cancel' }),
   'http:/api/store/browse': A('http', { method: 'GET', path: '/api/store/browse' }),
   'http:/api/store/mine': A('http', { method: 'GET', path: '/api/store/mine' }),
-  'http:/api/store/list': A('http', { req: 1, method: 'POST', path: '/api/store/list' }),
-  'http:/api/store/buy': A('http', { req: 1, method: 'POST', path: '/api/store/buy' }),
-  'http:/api/store/bid': A('http', { req: 1, method: 'POST', path: '/api/store/bid' }),
-  'http:/api/store/accept': A('http', { req: 1, method: 'POST', path: '/api/store/accept' }),
-  'http:/api/store/cancel': A('http', { method: 'DELETE', path: '/api/store/cancel' }),
-  'http:/api/arena/join': A('http', { req: 1, method: 'POST', path: '/api/arena/join' }),
-  'http:/api/arena/leave': A('http', { method: 'POST', path: '/api/arena/leave' }),
+  'http:/api/store/list': A('http', { req: 1, auth: 1, method: 'POST', path: '/api/store/list' }),
+  'http:/api/store/buy': A('http', { req: 1, auth: 1, method: 'POST', path: '/api/store/buy' }),
+  'http:/api/store/bid': A('http', { req: 1, auth: 1, method: 'POST', path: '/api/store/bid' }),
+  'http:/api/store/accept': A('http', { req: 1, auth: 1, method: 'POST', path: '/api/store/accept' }),
+  'http:/api/store/cancel': A('http', { auth: 1, method: 'DELETE', path: '/api/store/cancel' }),
+  'http:/api/arena/join': A('http', { req: 1, auth: 1, method: 'POST', path: '/api/arena/join' }),
+  'http:/api/arena/leave': A('http', { auth: 1, method: 'POST', path: '/api/arena/leave' }),
   'http:/api/arena/status': A('http', { method: 'GET', path: '/api/arena/status' }),
   'http:/api/arena/tournament': A('http', { method: 'GET', path: '/api/arena/tournament' }),
   'http:/api/arena/*': A('http', { method: 'GET', path: '/api/arena/history' }),
@@ -496,19 +509,29 @@ export function setActionTransport(t) { _t = t && typeof t === 'object' ? t : nu
 export function act(name, payload, opts) {
   const r = actionRow(name);
   if (!r || r.way === 'own') return doorRefuse(name, r ? 'own' : 'act');
-  if (!_t) return false;
+  /* v2.3.5191: no transport (before a session, after its teardown): a route's
+     call answers as a fetch that could not leave -- a rejected promise -- so
+     its caller's catch runs as it always has; a socket's send answers false */
+  if (!_t) return r.way === 'http' ? Promise.reject(new Error('offline')) : false;
   const p = payload && typeof payload === 'object' && !Array.isArray(payload) ? Object.assign({}, payload) : {};
   if (r.req && p.reqId === undefined) p.reqId = makeReqId();
   const env = ENV_OF_WAY[r.way];
   if (env === 'event') return _t.send({ type: 'broadcast', event: name, payload: p });
   if (env === 'http') {
-    if (typeof _t.http !== 'function') return false;
+    if (typeof _t.http !== 'function') return Promise.reject(new Error('offline'));
     const q = opts && opts.query ? '?' + opts.query : '';
-    const headers = { 'Content-Type': 'application/json' };
-    const tok = typeof _t.token === 'function' ? _t.token() : null;
+    /* v2.3.5191 (card K PR 7.5, the page's fetches moved here): the bytes the
+       page sent before.  A GET is a plain request -- no headers, its fields in
+       the query -- as every GET of the page was (a header on it would cost a
+       phone a preflight's round trip on every list); a body only on a POST; the
+       session's token only on a row that reads it (`auth`) */
+    const init = { method: r.method };
+    const headers = {};
+    if (r.method === 'POST') { headers['Content-Type'] = 'application/json'; init.body = JSON.stringify(p); }
+    const tok = r.auth && typeof _t.token === 'function' ? _t.token() : null;
     if (tok) headers['x-bt-auth'] = tok;
-    const init = { method: r.method, headers };
-    if (r.method !== 'GET') init.body = JSON.stringify(p);
+    if (Object.keys(headers).length) init.headers = headers;
+    if (opts && opts.signal) init.signal = opts.signal;   /* a caller's time limit (storeAnswer.js postWithin) */
     return _t.http(r.path + q, init);
   }
   if (r.body === 'top') return _t.send(Object.assign({}, p, { type: name }));

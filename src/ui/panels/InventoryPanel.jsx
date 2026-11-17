@@ -8,6 +8,7 @@ import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHe
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { pvpHealWaitMs, pvpHealWaitText, noteInstantHeal } from '@/game/fightFood.js'; /* v2.3.3133: one bite at a time in a fight with a player */
 import { cue } from '@/game/eventSounds.js'; /* v2.3.3462: the owner's munch */
+import { act } from '@/game/actions.js';   /* v2.3.5190: the page's requests leave through the action door (card K PR 7) */
 /* === InventoryPanel — the showInventory modal === */
 /* v2.3.883: extracted verbatim from the showInventory && rpgState JSX
    subtree in BroTown.jsx (the full inventory / equipment screen: equip
@@ -581,7 +582,7 @@ export function InventoryPanel(props) {
             if (!S || !S.channel) return;
             /* opId so a retry on a flaky phone cannot redeem twice. */
             var opId = key + ':' + (S.playerId || 'me') + ':' + Date.now();
-            try { S.channel.send({ type: 'cape_redeem', payload: { invKey: key, opId: opId } }); } catch (e) {}
+            try { act('cape_redeem', { invKey: key, opId: opId }); } catch (e) {}   /* v2.3.5190: through the action door (actions.js) */
           }
         }, "Open Golden Ticket", qty > 1 ? ' \xD7' + qty : '');
       }));
@@ -680,7 +681,7 @@ export function InventoryPanel(props) {
              (ability_use), v2.3.2063 (shop_purchase). Presence on the channel
              is the only precondition. */
           if (stateRef.current.channel) {
-            try { stateRef.current.channel.send({ type: 'eat_request', payload: { invKey: key } }); } catch (e) {}
+            try { act('eat_request', { invKey: key }); } catch (e) {}   /* v2.3.5190: through the action door (actions.js) */
           }
           cue('munch');   /* v2.3.3462: the owner's munch (a beep(), silent since v2.3.1103) */
         }
@@ -959,7 +960,7 @@ export function InventoryPanel(props) {
              a town screen, so the equip never reached the worker (see
              ItemDetailPopup's syncWeaponSlot note). */
           if (_Seq.channel) {
-            try { _Seq.channel.send({ type: 'equip_request', payload: { stashIdx: si, slot: swIsRanged ? 'rangedWeapon' : 'weapon' } }); } catch (e) {}
+            try { act('equip_request', { stashIdx: si, slot: swIsRanged ? 'rangedWeapon' : 'weapon' }); } catch (e) {}   /* v2.3.5190: through the action door (actions.js) */
           }
         }
         setRpgState(_objectSpread({}, R));

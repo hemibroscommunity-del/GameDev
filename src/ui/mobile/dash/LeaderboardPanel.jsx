@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { COL, panelStyle, getState } from './common.js';
-import { BT_API_BASE } from '@/networking/index.js';
 import { FishBoard } from './FishBoard.jsx';   /* v2.3.4036: the Biggest fish board (server fishlog.js) */
 import { takeFishBoardWant, subscribeFishWeigh, fishWeighLive } from '@/game/fishWeigh.js';
 import { BoardRow, BoardEmpty, useBoardFaces, TableRow, BarBack, LB_ART, LB_PIECES, BoardFace, LvPill } from './BoardRow.jsx';   /* v2.3.4393: the face, the level, the record; v2.3.5501: the table, the bars, the pieces */
@@ -8,6 +7,7 @@ import { askSpinBoard, subscribeSpinBoard, spinBoardLive, spinRowLine } from '@/
 import { aceFlipBus } from '../aceFlipBus.js';
 import { PROG3_BODY_META, PROG3_ATK_META } from '@/data/prog3.js';   /* v2.3.5502: the stat boards' labels and icons, the Bro tab's */
 import { useBoxSize, railHeading, FOOT_FADE } from './railKit.js';   /* v2.3.4394: the measuring and the headings this page and the Quests page share */
+import { act } from '@/game/actions.js';   /* v2.3.5191: the page's requests leave through the action door (card K PR 7) */
 
 /* v2.3.1671: a TRADITIONAL HISCORES BOARD — one ranking per skill.
    Owner: "a traditional high scores system that ranks each skill... I want
@@ -527,7 +527,7 @@ function RankBoard({ board, podium, w }) {
   useEffect(() => {
     let alive = true;
     const load = () => {
-      fetch(BT_API_BASE + '/api/leaderboard/top?category=' + encodeURIComponent(cat) + '&limit=50')
+      act('http:/api/leaderboard/top', {}, { query: 'category=' + encodeURIComponent(cat) + '&limit=50' })   /* v2.3.5191: through the action door (actions.js) */
         .then(r => r.json())
         .then(d => {
           if (!alive || !d || !d.ok) return;
@@ -643,7 +643,7 @@ function FlipBoard({ side, setSide }) {
     const ask = () => {
       const S = getState();
       /* gamble.js _handleAceBoardRequest: the room answers `ace_board` */
-      try { if (S && S.channel) S.channel.send({ type: 'broadcast', event: 'ace_board_request', payload: {} }); } catch (_e) { /* the next tick asks */ }
+      try { if (S && S.channel) act('ace_board_request', {}); } catch (_e) { /* the next tick asks */ }   /* v2.3.5191: through the action door (actions.js) */
     };
     ask();
     const id = setInterval(ask, REFRESH_MS);
