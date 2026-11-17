@@ -152,7 +152,9 @@ export const lingerMethods = {
     if (this._placeRemember) this._placeRemember(id, ps, Date.now());
     delete this.playerState[id];
     this._gearProvForget(id);
-    if (this._bankForget) this._bankForget(id);   /* v2.3.3785 */
+    /* v2.3.5702: a vault owed is forgotten after the save below carries it (bank.js A VAULT OWED) */
+    const _bankOwed = !!(this._bankOwed && this._bankOwed(id));
+    if (this._bankForget && !_bankOwed) this._bankForget(id);   /* v2.3.3785 */
     const pets = this._petbookDirtyCopy(id);
     this._petbookForget(id);
     const codex = this._codexDirtyCopy(id);
@@ -181,6 +183,7 @@ export const lingerMethods = {
     /* the body's last word: its HP, bag and all, as it stands now (a hit
        during the linger was coalesced, _saveRpgVitals) */
     try { await this._saveRpg(id, ps); } catch (e) { /* the next join reads what was saved */ }
+    if (_bankOwed && this._bankForget && !this.playerState[id]) this._bankForget(id);   /* v2.3.5702 */
     if (pets) await this._petbookPut(id, pets);
     if (codex) await this._codexPut(id, codex);
     if (fish) await this._fishlogPut(id, fish);

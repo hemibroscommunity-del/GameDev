@@ -69,3 +69,28 @@ a player).
 - `tools/qa/draw-page.mjs` 1d: the hour rule, outward; the level floor the
   same; the list's words; the lock's `seenRead`. Its old checks (no `seen`
   word) read to the millisecond as before.
+
+## v2.3.5705: what the board holds (card SEC PR 6)
+
+The second red team found five more ways the public board and the room's
+reports could be pushed around. Each is held now (`server/src/leaderboard.js`
+`BOARD_HOLD`; suite `server/test/boardhold.test.mjs`):
+
+- **`limit`** is a whole number from 1 to 100 (`boardLimit`), at the route and
+  in `getTop`. A negative one had listed nearly every row (`slice(0, -n)`).
+- **The board's real name first** (`Leaderboard.boardName`): a category no
+  board reads is the level board, under the level board's own key. Before,
+  every made-up category was a new key and a full read.
+- **Each kept field** of a report is held to its type and a short length:
+  the name 64 characters, the colour 32, the clan tag 16 (past those: the
+  default, as for none); the counts whole numbers; the series numbers under
+  at most 64 keys of 32 characters. An honest row keeps every value as sent.
+- **A row over 4096 bytes is not kept** (the row before it stands). An
+  honest row with every board filled is under a third of that.
+- **The read is paged** (1000 rows a list), and the stale rows it met are
+  swept before the sort, inside the read.
+
+No kill switch: this object keeps no flags and learns the room's only by a
+field on the room's own report (`bc`, `bs`, `xs`, written in `index.js`
+`reportToLeaderboard`), which is another card's file (K2). `boardcache` and
+`boardsweep` still work as above.

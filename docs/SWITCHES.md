@@ -162,6 +162,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `ahonewrite` | worker | switch | v2.3.4500 | 2026-11-10 | false | logic |  | no | An auction-house listing goes back to its old two writes, restart hole and all. |
 | `armorstashlive` | worker | switch | v2.3.4840 | 2026-11-11 | false | logic |  | no | The armour stash list goes back to being sent only at the join. |
 | `bank` | worker | switch | v2.3.3785 | 2026-10-29 | false | logic |  | no | Un-advertises the bank and refuses every deposit and withdrawal; what is in a vault stays and still shows. |
+| `bankretry` | worker | switch | v2.3.5702 | 2026-11-17 | false | logic |  | no | A vault whose put the storage refused is no longer written with the character's next save, nor kept to the leave's save, and the bank no longer answers `paused` for it (a withdrawal then may stand twice, a deposit in neither). |
 | `capeoffkept` | worker | switch | v2.3.5422 | 2026-11-14 | false | logic |  | no | A cape taken off is kept in memory only again, so it is worn again after a rejoin or a deploy. |
 | `dailyChest` | worker | switch | v2.3.2820 | 2026-09-24 | false | logic |  | no | Un-advertises the daily chest and pays the day's reward as plain gold again (a chest in a bag waits). |
 | `dailyquests` | worker | switch | v2.3.3140 | 2026-10-07 | true | logic |  | no | Thrown (true), the put-away daily quests come back: counting, rerolls and claims. |
@@ -207,6 +208,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `broCount` | worker | switch | v2.3.3255 | 2026-10-15 | false | logic |  | no | The phone falls back to the worn-Bro check instead of counting a wallet's Bros (links and counts stored keep showing). |
 | `devicelock` | worker | switch | v2.3.3344 | 2026-10-18 | false | logic |  | no | The join, the login check and the restart as they were: nothing refused (a matching old key's device is still written down unless offdevs is false too). |
 | `disable_verify` | worker | switch | v2.3.3275 | 2026-10-16 | true | logic |  | no | Thrown, the account check (Turnstile) is not asked at the join. |
+| `joinidform` | worker | switch | v2.3.5701 | 2026-11-17 | false | logic |  | no | A join whose id is a list, a number, a boolean, an object, empty, over 64 characters or holds a character outside A-Z a-z 0-9 _ is let in again, as before (only the magic names refused). |
 | `keys2` | worker | switch | v2.3.3355 | 2026-10-18 | false | logic |  | no | No new login key is handed out (keys already made still work). |
 | `namerules` | worker | switch | v2.3.5622 | 2026-11-16 | false | logic |  | no | A new character's name is taken as before (any characters, 64 at most), `track` may rename and the arena's bracket takes the page's name; the owner's rename stays, and the name box keeps its rule. |
 | `offdevs` | worker | switch | v2.3.5584 | 2026-11-17 | false | logic |  | no | While the device lock is off, nothing is written down for it again, as before (a matching old key's device recorded while on, so the lock can come back without shutting a player out or handing the character to whichever device comes first; a key holder can still push the player's devices off its list of 12 while it is off). |
@@ -223,6 +225,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 
 | name | side | kind | born | on | thrown | risk | needs | fallback | off |
 |---|---|---|---|---|---|---|---|---|---|
+| `?dyingdoor` | page | switch | v2.3.5534 | 2026-11-17 | =0 | logic |  | no | Your dying seconds on the phone take any start a caller writes (one that is no number), as the lines before the life's page door; every caller writes a number today. |
 | `lifenoheal` | worker | switch | v2.3.4901 | 2026-11-12 | false | logic |  | no | A dying player can be healed again (the life door's step 2a off). |
 | `lifesave` | worker | switch | v2.3.4902 | 2026-11-12 | false | logic |  | no | No life note written or read: the join stands up as v2.3.4374 did. |
 | `xpdecay` | worker | switch | v2.3.3251 | 2026-10-14 | false | logic |  | no | Full XP everywhere again, harvests and fights, cap un-advertised. |
@@ -266,6 +269,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?lookatlas` | page | switch | v2.3.4993 | 2026-11-12 | =0 | memory | `lookpalette` | no | The look palette's sheets are not packed into an atlas. |
 | `lookdelta` | worker | switch | v2.3.3240 | 2026-10-14 | false | logic |  | no | Every look track is relayed whole again. |
 | `lookfolk` | both | switch | v2.3.3809 | 2026-10-29 | off_lookfolk: true; ?lookfolk=0 | memory | `lookpalette` | no | The townsfolk are drawn from their photographs again, loaded then. |
+| `lookpace` | worker | switch | v2.3.5721 | 2026-11-17 | false | logic |  | no | A look relay goes the moment a track comes, outside the relay byte budget, its rpgData whole (every key the page put in it), as before. |
 | `?lookprobe` | page | lever | v2.3.3716 |  | present or =1 | none |  | no | QA: loads the look palette's probe (an oracle a test reads). |
 | `lookshirt` | both | switch | v2.3.3751 | 2026-10-29 | off_lookshirt: true; ?lookshirt=0 | chip | `lookpalette` | no | Printed shirts are baked again, not coloured on the chip. |
 | `?pickwood` | page | switch | v2.3.3671 | 2026-10-27 | =0 | logic |  | no | The pickaxe's wood is painted with the skin, as before. |
@@ -502,6 +506,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `farplayers` | worker | switch | v2.3.3197 | 2026-10-13 | false | logic |  | no | Sends everyone every far player every tick again. |
 | `heapburn` | worker | switch | v2.3.3748 | 2026-10-28 | false | logic |  | no | Un-advertises the burning heap: the phone sends nothing and nobody burns. |
 | `hidden_off` | worker | switch | v2.3.3723 | 2026-10-28 | true | logic |  | no | Thrown, the hidden settings are not read: the public placeholders are used. |
+| `newerkeep` | worker | switch | v2.3.5704 | 2026-11-17 | false | logic |  | no | A newer worker's character let in by `newersave: false` is saved from this worker's field list alone again: the fields the newer version added are dropped. |
 | `newersave` | worker | switch | v2.3.3303 | 2026-10-17 | false | logic |  | no | A save from a newer worker is let through the join, the newer `_v` kept. |
 | `roundpos` | worker | switch | v2.3.3197 | 2026-10-13 | false | logic |  | no | Positions go out as the phones sent them, not rounded. |
 | `skillfreeze` | worker | switch | v2.3.4380 | 2026-11-10 | false | logic |  | no | A prog3 character's reported skill tracks are stored and restored again. |
@@ -601,6 +606,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `race` | worker | switch | v2.3.3525 | 2026-10-20 | false | logic |  | no | Lil Bro's race un-advertised and none started. |
 | `reportring` | worker | switch | v2.3.5623 | 2026-11-15 | false | logic |  | no | A chat report quotes the speaker's last 3 lines in any lane again, not the lines the reporter could have received. |
 | `silence` | worker | switch | v2.3.5621 | 2026-11-16 | false | logic |  | no | No silence is checked: every character speaks (the owner's silences are kept, and hold again when it is put back). |
+| `?skulldoor` | page | switch | v2.3.5533 | 2026-11-17 | =0 | logic |  | no | Your skull on the phone takes any write its own code asks again (a kind that is no skull, a time that is no number), as the lines before the fight's page door; only a relayed threat with a malformed countdown is refused today. |
 | `?socialreset` | page | switch | v2.3.5204 | 2026-11-14 | =0 | logic |  | no | A race the worker forgot at a reconnect stays on the phone until its own clock lets it go, as before. |
 | `spar` | worker | switch | v2.3.3265 | 2026-10-16 | false | logic |  | no | No sparring clones: every live clone goes on the next tick and the cap is withdrawn. |
 | `statboards` | worker | switch | v2.3.5484 | 2026-11-14 | false | logic |  | no | Un-advertises the stat boards: no board report carries the points allocated, so those boards empty as players report; every other board is as it was. |
@@ -642,6 +648,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 
 | name | side | kind | born | on | thrown | risk | needs | fallback | off |
 |---|---|---|---|---|---|---|---|---|---|
+| `bodycap` | worker | switch | v2.3.5720 | 2026-11-17 | false | logic |  | no | The room's web routes read a body whole again, of any size, before any route asks who sends (the outer router's own check is the worker setting `BODY_CAP`, not this flag). |
 | `bundle` | worker | switch | v2.3.3254 | 2026-10-15 | false | logic |  | no | Stops advertising message bundles: each phone sends its messages one by one from its next join. |
 | `?conndoor` | page | switch | v2.3.5528 | 2026-11-17 | =0 | logic |  | no | The phone's socket phase takes any word a caller writes, as the lines before the connection door (every caller writes a word of the list today). |
 | `?diet` | page | switch | v2.3.3726 | 2026-10-28 (v2.3.3744) | =1 or =0 (kept for the tab) | logic |  | no | Puts this phone on the move diet (=1) or keeps it off (=0), whatever the worker says for everyone. |

@@ -25,6 +25,7 @@
  */
 import { readFileSync } from 'node:fs';
 import { dungeonTo } from '../../src/game/dungeonDoor.js';   /* v2.3.5535: the respawn's run writes go through the dungeon's page door */
+import { dyingTo } from '../../src/game/dyingDoor.js';   /* v2.3.5534: the respawn's life writes go through the life's page door */
 import { runResets } from '../../src/game/resetOn.js';   /* v2.3.5203: the zone door's new call (card L) */
 
 let passed = 0, failed = 0;
@@ -90,10 +91,10 @@ const gone = (S) => S._campfire === null && S._peerCampfires.size === 0 && S._ba
   const body = block(src('src/game/respawn.js'), 'export function applyLocalRespawn(S, zone) {');
   check('2a applyLocalRespawn found', !!body);
   const names = ['dropDungeonZone', 'releaseLeftZoneArt', 'updateZoneDimensions', 'BT_AUDIO', 'generateZoneMap', 'ZONES', 'TILE',
-    'deathLine', 'chatLogBus', 'wantWheelSpawn', 'veilWheelTrip', 'localStorage', 'cue', 'changeZone', 'dungeonTo'];
+    'deathLine', 'chatLogBus', 'wantWheelSpawn', 'veilWheelTrip', 'localStorage', 'cue', 'changeZone', 'dungeonTo', 'dyingTo'];
   const fn = new Function(...names, 'return function (S, zone) {' + body + '};')(
     () => {}, () => {}, () => {}, { startZoneAmbient() {} }, () => [[0]], { town: { w: 10, h: 10 } }, 32,
-    () => null, { bump() {} }, () => {}, () => {}, { setItem() {} }, () => {}, changeZone, dungeonTo);   /* v2.3.5535: the dungeon's page door, the real one */
+    () => null, { bump() {} }, () => {}, () => {}, { setItem() {} }, () => {}, changeZone, dungeonTo, dyingTo);   /* v2.3.5535: the dungeon's page door, the real one (v2.3.5534: the life's) */
   const S = Object.assign({ currentZone: 'wheel', player: { x: 0, y: 0 }, rpg: {}, _dying: true }, leftovers());
   fn(S, 'town');
   check('2b a respawn puts you in town', S.currentZone === 'town', S.currentZone);

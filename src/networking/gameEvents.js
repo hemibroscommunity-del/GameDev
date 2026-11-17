@@ -213,6 +213,8 @@ import { act } from '@/game/actions.js';   /* v2.3.5189: the page's requests lea
 import { duelTo } from '@/game/duelDoor.js';   /* v2.3.5529: the duel's page door, S._inDuel's one writer (card L) */
 import { partyTo } from '@/game/partyDoor.js';   /* v2.3.5529: the party's page door, S._party's one writer (card L) */
 import { dungeonTo } from '@/game/dungeonDoor.js';   /* v2.3.5535: the dungeon's page door, your run (card L) */
+import { skullTo } from '@/game/skullDoor.js';   /* v2.3.5533: the fight's page door, your skull's one writer (card L) */
+import { dyingTo } from '@/game/dyingDoor.js';   /* v2.3.5534: the life's page door, your dying seconds (card L) */
 
 /* v2.3.1107: angle -> 8-way compass, same SECTORS convention as
    entityRenderer (atan2(dy,dx) -> 'east' when dx>0).  Used to reconcile a
@@ -3784,12 +3786,12 @@ export function processGameEvent(type, payload, S, deps) {
                  Keep the SP path for client-local monsters. */
               if (!S._serverMonsters && R2.hp <= 0 && !S._dying) {
                 /* Player death from client-local monster (SP mode) */
-                S._dying = true;
+                dyingTo(S, 'die', Date.now());   /* v2.3.5534: the life's page door (the death and its start) */
                 if (!R2._compStats) R2._compStats = createDefaultCompStats();
                 R2._compStats.deaths++;
                 /* Death-anim timeline starts now; renderer plays the
-                   21-frame sequence until respawn clears it. */
-                S._deathStart = Date.now();
+                   21-frame sequence until respawn clears it (v2.3.5534: written
+                   above, with the death, by the life's page door). */
                 /* Tell the server we died now so monster AI stops
                    targeting us during the 5 s respawn window, and
                    broadcast the death so remote clients render a
@@ -4847,8 +4849,7 @@ export function processGameEvent(type, payload, S, deps) {
                   /* Echo of my own threat — replace InspectPlayerPanel's
                      optimistic base-countdown anchor with the server's
                      authoritative (level-scaled) one. */
-                  S._pvpSkullType = 'red';
-                  S._pvpSkullUntil = _thUntil;
+                  skullTo(S, 'red', _thUntil, 'threat');   /* v2.3.5533: the fight's page door */
                   if (S.rpg) S.rpg._threatState = { target: payload.target, ts: Date.now(), type: 'red', expires: _thUntil };
                 } else {
                   _setThreatMark(S, _thFrom, 'red', _thUntil);
@@ -4873,12 +4874,10 @@ export function processGameEvent(type, payload, S, deps) {
                  dropped server-side, so a relayed response is truth. */
               if (payload.target === S.myId) {
                 if (payload.action === 'guards') {
-                  S._pvpSkullType = null;
-                  S._pvpSkullUntil = 0;
+                  skullTo(S, null, 0, 'threat');   /* v2.3.5533: the fight's page door */
                   if (S.rpg) S.rpg._threatState = null;
                 } else {
-                  S._pvpSkullType = 'white';
-                  S._pvpSkullUntil = Date.now() + PVP_THREAT_CONSENT_MS;
+                  skullTo(S, 'white', Date.now() + PVP_THREAT_CONSENT_MS, 'threat');   /* v2.3.5533: the fight's page door */
                   if (S.rpg) S.rpg._threatState = { target: payload.from || payload.id, ts: Date.now(), type: 'white', expires: S._pvpSkullUntil };
                 }
               } else if (payload.target) {
@@ -4903,8 +4902,7 @@ export function processGameEvent(type, payload, S, deps) {
                  skull.  The threat_response guards branch above does the
                  same via the relay; this private event is the guaranteed
                  copy (it only exists when the levy/lock really landed). */
-              S._pvpSkullType = null;
-              S._pvpSkullUntil = 0;
+              skullTo(S, null, 0, 'threat');   /* v2.3.5533: the fight's page door */
               if (S.rpg) S.rpg._threatState = null;
               break;
             }
@@ -4923,8 +4921,7 @@ export function processGameEvent(type, payload, S, deps) {
                 var _thWhiteUntil = Date.now() + PVP_THREAT_CONSENT_MS;
                 if (payload && payload.from) _setThreatMark(S, payload.from, 'white', _thWhiteUntil);
                 if (payload && payload.target) {
-                  S._pvpSkullType = 'white';
-                  S._pvpSkullUntil = _thWhiteUntil;
+                  skullTo(S, 'white', _thWhiteUntil, 'threat');   /* v2.3.5533: the fight's page door */
                   if (S.rpg) S.rpg._threatState = { target: payload.target, ts: Date.now(), type: 'white', expires: _thWhiteUntil };
                 }
               }

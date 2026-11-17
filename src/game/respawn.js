@@ -23,6 +23,7 @@ import { BT_AUDIO, ZONES, TILE, generateZoneMap, updateZoneDimensions } from '@/
 import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: the respawn heard */
 import { releaseLeftZoneArt, veilWheelTrip, changeZone } from '@/game/zoneTransitions.js'; /* v2.3.2328: dying is leaving a zone; v2.3.3025: under one veil; v2.3.4414: + the flip and its wipe */
 import { dungeonTo } from '@/game/dungeonDoor.js';   /* v2.3.5535: the dungeon's page door (card L) */
+import { dyingTo } from '@/game/dyingDoor.js';   /* v2.3.5534: the life's page door (card L) */
 import { wantWheelSpawn } from '@/game/wheelHome.js'; /* v2.3.2990: and you come back in the Wheel's Brotown */
 import { dropDungeonZone } from '@/game/wheelDungeons.js'; /* v2.3.3016: a dungeon's synthetic zone, dropped after its art is released */
 import { deathLine } from '@/game/deathCard.js'; /* v2.3.3817: the chat's line once you are back */
@@ -84,8 +85,7 @@ export function applyLocalRespawn(S, zone) {
     S.player.y = (ZONES[S.currentZone] ? ZONES[S.currentZone].h / 2 : 16) * TILE;
   }
   S.respawnTimer = Date.now() + 3000;
-  S._deathStart = 0;
-  S._dying = false;
+  dyingTo(S, 'respawn');   /* v2.3.5534: the life's page door */
   /* v2.3.3817: one line in the chat saying what happened -- the card over the
      scene (ui/mobile/DeathCard.jsx) goes with the respawn, and a capture or a
      glance away missed everything a death showed (game/deathCard.js) */

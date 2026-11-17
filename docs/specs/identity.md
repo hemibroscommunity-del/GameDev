@@ -30,6 +30,16 @@ gate (the prerequisite safety fix for the PR6 duel machine).
    legacy randoms), so `reason: 'auth'` — which makes the client
    regenerate its passphrase once — is the correct client behavior.
    Legacy phraseless joins on ordinary ids are unaffected.
+   **v2.3.5701 (card SEC PR 2): the id's form.** Just before the magic
+   names, a join whose `id` is present (not undefined or null) and is not
+   1 to 64 of `A-Z a-z 0-9 _` gets the same answer, with nothing read or
+   written first: a list, a number, a boolean or an object had gone on to
+   write `auth:` and `rpg:` records under their string forms
+   (`rpg:[object Object]`), let two sessions share one character, and left
+   the owner's kick, freeze and silence answering "not online". Every id
+   the game makes fits the form (`bp_` ids, a guest's base-36 random, the
+   bots' and the suites'; the census is in `server/test/joinid.test.mjs`).
+   Kill switch `joinidform: false`.
 4. **Server verify** (`_verifyJoinAuth`, `server/src/index.js`), BEFORE
    the same-id session eviction:
    - `auth:<id>` storage record exists → the phrase must SHA-256-match

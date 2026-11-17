@@ -201,7 +201,7 @@ Quests, achievements, the codex, pets' book, points.
 Parties, clans, guilds, friends, chat, emotes, duels, the arena, races, boards.
 
 - **Files**: `server/src/`: party, clanparty, clans, guilds, alliance, friends, chatlanes, chatmod, chatguard, reservednames, silence, emotes, boards, arena, gladiator, duel, spar, race, leaderboard, power, statboards
-- **Files**: `src/game/`: alliance, allyDrafts, duelDoor, partyDoor, arenaDoor, chat, chatChannel, chatColor, chatMute, emotes, emoteMoves, gesturePose, friendErrors, duelLock, duelPending, partyChip, partyEq, partyMarks, partyRows, peerDot, race, raceDoor, spar, sparTargets, bubbleSkins, boardBumps, dictation
+- **Files**: `src/game/`: alliance, allyDrafts, duelDoor, partyDoor, arenaDoor, skullDoor, chat, chatChannel, chatColor, chatMute, emotes, emoteMoves, gesturePose, friendErrors, duelLock, duelPending, partyChip, partyEq, partyMarks, partyRows, peerDot, race, raceDoor, spar, sparTargets, bubbleSkins, boardBumps, dictation
 - **Doors**: none named yet
 - **Switches**: [its rows in the switch table](SWITCHES.md#social)
 - **Words**: `party`, `clan`, `guild`, `alliance`, `friend`, `chat`, `emote`, `duel`, `arena`, `gladiator`, `spar`, `race`, `board`, `leaderboard`, `social`
@@ -244,7 +244,7 @@ The townspeople: their days, walks, talk and reactions.
 A player's health and life phase: dying, the death card, respawning.
 
 - **Files**: `server/src/`: life, xpdecay
-- **Files**: `src/game/`: respawn, phoneDeath, deathCard
+- **Files**: `src/game/`: respawn, dyingDoor, phoneDeath, deathCard
 - **Doors**: `_hpSet` in `server/src/life.js` (HP_ROADS: every change to a player's health; the life phase only through _lifeTo)
 - **Switches**: [its rows in the switch table](SWITCHES.md#life)
 - **Words**: `life`, `death`, `respawn`, `die`, `hp`

@@ -70,6 +70,8 @@ why: a QA tag, a direction, an input's source, a setting.
 | `race` | page | the phone's race, `S._race` (none; asked, count, run, done: its record's own `phase`) | `raceTo` (`raceDoor.js`, v2.3.5218) | `race-page-door.test` §2, and the guard's tree |
 | `pose` | page | the phone's own held pose, `S._pose` (standing, or its record: posing) | `poseTo` (`poseDoor.js`, v2.3.5520) | `pose-page-door.test` §2, and the guard's tree |
 | `dungeon` | page | your run, `S._inDungeon` (none, in, complete; its notes `S._inCustomDungeon`, `S._dungeonComplete` beside it) | `dungeonTo` (`dungeonDoor.js`, v2.3.5535) | `dungeon-page-door.test` §2, and the guard's tree |
+| `fight` | page | your skull, `S._pvpSkullType` (free, red, white; its time `S._pvpSkullUntil` beside it) | `skullTo` (`skullDoor.js`, v2.3.5533) | `fight-page-door.test` §2, and the guard's tree |
+| `life` | page | your dying seconds, `S._dying` (alive, dying; its start `S._deathStart` beside it) | `dyingTo` (`dyingDoor.js`, v2.3.5534) | `life-page-door.test` §2, and the guard's tree |
 | `arena` | page | your arena, `S._arenaMatch` (none, involved, fighting; its notes `S._arenaInvolved`, `S._arenaTournamentId` beside it) | `arenaTo` (`arenaDoor.js`, v2.3.5531) | `arena-page-door.test` §2, and the guard's tree |
 | `trade` | page | the phone's trade, `S._t2Live` (none, or the open trade's id) | `t2LiveTo` (`tradeSlot.js`, v2.3.5530) | `trade-page-door.test` §2, and the guard's tree |
 | `ride` | page | your board, `S._ride` (its `on`: off, on) | `rideTo` (`ride.js`, v2.3.5530) | `ride-page-door.test` §2, and the guard's tree |

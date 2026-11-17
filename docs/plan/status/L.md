@@ -1,6 +1,6 @@
 card: L
 branch: claude/plan-l-35-dungeon-page (from main)
-prs: #1746 to #2033 (merged), #2039, #2046, #2052 (5535): ready
+prs: #1746 to #2039 (merged), #2046 (5534), #2052 (5535, on #2046): ready
 state: ready
 
 ## Done
