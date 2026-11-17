@@ -1,7 +1,7 @@
 card: MOD
 branch: claude/plan-mod-<n>-<topic> (one line: #1878 > #1890 > #1883 > #1897 > #1907 > #1909 > #1914, T's 4334b6d at the bottom, every PR against main)
 prs: #1883 (5620, the card), #1897 (5621, silence), #1907 (5622, names), #1909 (5623, report evidence), #1914 (5624, invite pace): ready; RT-3's #1878 (5593), #1890 (5594): ready; #1869 (findings): draft
-state: ready
+state: working
 
 ## Done
 
@@ -13,9 +13,8 @@ state: ready
 
 ## Next
 
-- Sitting 19's mends are in (#1878's five, #1890's name folding, #1897's freeze off by default, #1907's join name); #1909 and #1914 wait for a later sitting.
-- The next PR after sitting 19 (the planning session's list): the freeze's device half made right (botfp's device record, the owner's spare complete) before anyone turns `freezedevice` on; words outside the six lanes; the name rule's lows (rename's update, the name box's switch, a refusal's words, the arena's own name).
-- Switch `silence.js`'s SILENCE_LANES to K's CHAT_LANES import in whichever of #1897 and #1899 lands second.
+- #1941 (5625), waiting for the gatekeeper.
+- PR 6 (5626): a market order's tier label and seller name are the worker's own, never the page's free text (switch `mktwords`). It touches card K's market.js (~83-105, ~385-391): the planning session's yes, 2026-11-17, as its own small PR so it merges before K reaches market.js.
 
 ## Found
 
