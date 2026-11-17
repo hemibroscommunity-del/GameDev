@@ -362,8 +362,6 @@ const code = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`\\])\/\
   check('8. the card: the fill and the glint have no way back (drawLanes.js PROGRAMS `back: null`)', /name: 'fill',[^\n]*back: null/.test(progs) && /name: 'glint',[^\n]*back: null/.test(progs));
 }
 
-console.log(`\n${passed} passed, ${failed} failed`);
-if (failed) process.exit(1);
 
 /* ── 9. v2.3.5238 (14d): the clip -- its two programs, no way back, named ── */
 {
@@ -386,3 +384,6 @@ if (failed) process.exit(1);
     && /selfQueue\('clip', renderer, rts, wants, \(\) => \{\s*\}/.test(hcc));
   check('9. the card: the clip has no way back (drawLanes.js PROGRAMS `back: null`)', /name: 'clip',[^\n]*back: null/.test(src('src/game/drawLanes.js')));
 }
+
+console.log(`\n${passed} passed, ${failed} failed`);
+if (failed) process.exit(1);
