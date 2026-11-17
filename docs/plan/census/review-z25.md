@@ -56,6 +56,29 @@ own; the card's PR 9 line still lists the `reqid` cap, actions.js's
 re-send, http.js's rows and SHAPES part 2, which moved to 5194b (K's status
 and spec say so; the card line is not changed).
 
+## R #1873 (5282): every weapon gets its own id (save shape 21 -> 22)
+
+READY with lows; its own line, after the deploy of 1-3 is green (#1960,
+the tolerant reader, deployed at 02:46 UTC, run 44003771631 on 8494bf9).
+One `export const GID_RE` (gearprov.js:90). Migration 22 calls
+`weaponIdsAll`: a second run gives nothing; an earlier failed migration
+leaves the load unfinished. Every road a weapon reaches the bag by keeps
+its id or mints one (mail claim, market unwind, trade stage, delivery
+and refund, No man's land, loot, forge, quests, reveal): old mail or a
+v21 escrow gets one id at the claim, never doubled. The shape number is
+one constant (`newersave`, playerrestore.js:110). weapon-id 27/27,
+weapon-reader 13/13, migrations, world-sum 37/37, stash-door 23/23.
+Lows (the world's sum only, R's next):
+- worldsum.js:103: `sale.goodsPaid` is never written, so a store
+  listing's weapon counts twice between its goods stamp and the
+  listing's delete (reproduced); check the `store:<id>:goods` stamp;
+- worldsum.js:114: `trade2wpn:` the same after a delivery or refund
+  stamp (reproduced);
+- a buy order matched by a sell taker holds the weapon only in
+  `settle.legs[0].weapon` (a miss); with `mktsettle: false` the
+  sell-order guard double counts;
+- no kill switch ("Switch: none"): a shape bump cannot switch back.
+
 ## OPS #1975, P #1976: status files
 
 Card check only: each says `state: done`.
