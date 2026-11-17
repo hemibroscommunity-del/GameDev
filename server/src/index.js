@@ -3240,7 +3240,7 @@ export class GameRoom {
       ps.mana = ps.maxMana || 100;
       this._lifeTo(ps, 'alive', 'respawn');   /* v2.3.4820: the life door */
       ps.respawnAt = 0;
-      ps.z = 'town';
+      this._zoneTo(ps, 'town', 'respawn');   /* v2.3.5537: the zone door (zonejudge.js) */
       this._duelZoneMoved(id);   /* v2.3.4371: every zone write asks the duel (duel.js) */
       /* v2.3.3325: no place in town to judge the next move from, and no way
          back into the Wheel but its arrival (movement.js _moveRespawned) */

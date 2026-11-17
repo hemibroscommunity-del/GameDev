@@ -122,15 +122,14 @@ export const PHASES = [
   /* ═══ TO DO, THE WORKER (card L PR 5: trade, duel, party, cook, harvest,
      fishing, dungeon, guard, ride, pose, race, arena) ═══ */
   {
-    name: 'zone', side: 'worker', status: 'todo',
+    name: 'zone', side: 'worker', status: 'door',
     what: 'A player\'s place on the worker, judged at a change (zonejudge.js) and written by hand where the worker moves them.',
-    field: null, states: ['wheel', 'town', 'farm_home', 'dungeon:<id>'], fn: null, file: null,
+    field: 'ps.z', states: ['wheel', 'town', 'farm_home', 'dungeon:<id>'],
+    fn: '_zoneTo', file: 'server/src/zonejudge.js',
     clears: [{ edge: 'death', at: 'server/src/index.js _tickPlayerRespawn' }],
     rejoin: 'none: the join writes the place afresh (join.js _handleJoin)',
-    today: [
-      { field: 'ps.z', file: 'server/src/movement.js', writers: ['server/src/movement.js _handleMove', 'server/src/join.js _handleJoin', 'server/src/index.js _tickPlayerRespawn'] },
-    ],
-    note: 'Three functions, five places (the join\'s three: the fresh body, the stand-up, a kept body). A sparring clone copies its owner\'s (spar.js), not a player\'s place. The leave remembers it (lastplace.js) with the body.',
+    held: { suite: 'server/test/zone-door.test.mjs' },
+    note: 'v2.3.5537: the door (ZONE_WAYS move, respawn, standup, spar; a place that is no zone, movement.js _validZone, is refused; live flag zonedoor). The fresh body\'s place is its birth (join.js, the guard\'s besides); a kept body keeps its own. Each caller still asks the duel after (_duelZoneMoved). The leave remembers it (lastplace.js) with the body.',
   },
   {
     name: 'fight', side: 'worker', status: 'todo',
