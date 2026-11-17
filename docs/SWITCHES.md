@@ -181,6 +181,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `itemdrop` | worker | switch | v2.3.3473 | 2026-10-18 | false | logic |  | no | Dropping an item on the ground is refused (off). |
 | `loginspin` | worker | switch | v2.3.4285 | 2026-11-05 | false | logic |  | no | Un-advertises the login wheel and refuses every ask. |
 | `mktsettle` | worker | switch | v2.3.4505 | 2026-11-10 | false | logic |  | no | A market leftover with a settle note is healed the old way. |
+| `mktwords` | worker | switch | v2.3.5626 | 2026-11-17 | false | logic |  | no | A market order's tier label and seller name are the page's free text again, as before (the worker's own tier label and the character's name while on). |
 | `revealbag` | worker | switch | v2.3.3951 | 2026-11-03 | false | logic |  | no | Un-advertises the bag's reveal and brings back the at-once reveal. |
 | `risechest` | worker | switch | v2.3.4438 | 2026-11-10 | false | logic |  | no | The rise chest's cap goes and an ask is answered off. |
 | `salvage` | worker | switch | v2.3.3141 | 2026-10-07 | false | logic |  | no | Un-advertises salvage and refuses both acts. |
@@ -420,6 +421,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?firelog` | page | switch | v2.3.3660 | 2026-10-27 | =0 | logic |  | no | The fire's log is drawn the old way. |
 | `?fishgrip` | page | switch | v2.3.3623 | 2026-10-27 | =1 | logic |  | no | The fishing grip is drawn over the plate. |
 | `?fishgriptrousers` | page | switch | v2.3.3657 | 2026-10-27 | =1 | logic |  | no | The fishing grip lifts the trousers too. |
+| `?fishspot` | page | switch | v2.3.5565 | 2026-11-15 | =0 | memory |  | no | The pond under a fishing spot is drawn from its full-colour picture, as before, not from its 256-colour twin. |
 | `?flipbake` | page | switch | v2.3.3577 | 2026-10-23 | =0 | logic |  | no | Flipped facings are not baked from their source, as before. |
 | `?folkskills` | page | switch | v2.3.5462 | 2026-11-14 | =0 | memory | `lookfolk` | folkSkillReady in src/rendering/folkSkill.js | The townsfolk work in card TF PR 1's poses again (Chef Blaze and Woodworker Bro the pickup, Farmer Bro standing), and the trades' figures (the `skills` look set) are not loaded. |
 | `?folkwork` | page | switch | v2.3.3949 | 2026-11-03 | =0 | logic |  | no | The townsfolk walk but stand at their stops, not work. |
@@ -562,6 +564,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | name | side | kind | born | on | thrown | risk | needs | fallback | off |
 |---|---|---|---|---|---|---|---|---|---|
 | `alliance` | worker | switch | v2.3.3313 | 2026-10-17 | false | logic | `partykeep` | no | No alliance status, names, wars or board; tags come off at the next vitals echo. |
+| `?allydrafts` | page | switch | v2.3.5524 | 2026-11-17 | =0 | logic |  | no | The Saloon's alliance forms keep nothing: a rejoin makes them again empty, what the leader typed lost, as before. |
 | `arenaap` | worker | switch | v2.3.3481 | 2026-10-19 | false | logic |  | no | The arena champion is paid gold alone, no AP, and the cap is un-advertised. |
 | `arenadoor` | worker | switch | v2.3.5522 | 2026-11-17 | false | logic |  | no | The tournament takes any write its own code asks again (an open over one, a start or crown from any phase, a crown with no champion, a clear while it runs), as the lines before the arena door could have; the callers still check each first. |
 | `arenaeatgate` | worker | switch | v2.3.4413 | 2026-11-10 | false | logic |  | no | Eating in an arena match is gated by the match flag alone, as before. |
