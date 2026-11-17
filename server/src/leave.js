@@ -76,6 +76,7 @@ const FULL = Object.freeze({
   leave: true, count: true, lastOut: true, copies: true,
 });
 
+import { heapForgetMethods } from './heapforget.js';   /* v2.3.5544 (RT-1 N11): the room forgets who left */
 import { bookAdd } from './daybook.js';   /* v2.3.5093: a sitting's seconds into the book's riding `econ` part */
 
 export const LEAVE_WAYS = Object.freeze({
@@ -111,6 +112,7 @@ export const LEAVE_WAYS = Object.freeze({
 });
 
 export const leaveMethods = {
+  ...heapForgetMethods,   /* v2.3.5544: _heapForget, _heapSweep, _heapClip (heapforget.js) */
   /* THE DOOR.  Returns a promise (the caller may await it); the session is
      out of the map when it settles, whatever happened inside. */
   _playerLeaves(ws, why, opts) {
@@ -244,6 +246,7 @@ export const leaveMethods = {
       _accLeft = this._accDirtyCopy(session.id);
       /* v2.3.3527: achievements hold nothing unwritten (achievements.js) */
       this._achvForget(session.id);
+      this._heapForget(session.id);   /* v2.3.5544 (RT-1 N11): the room's maps keyed by them (heapforget.js) */
       delete this.stateHistory[session.id];
       }
       /* v2.3.3322: the extraction record is NOT deleted here any more.  A

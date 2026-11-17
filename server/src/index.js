@@ -116,6 +116,7 @@ import { roomRowMethods } from './roomrow.js';   /* v2.3.5124: the room's own ro
 import { healthMethods, routeRoomHealth } from './health.js';   /* v2.3.5601: the room's own health (card OPS PR 2) */
 import { seatHoldMethods } from './seathold.js';   /* v2.3.5606: a seat held for the player who had it (card OPS PR 7) */
 import { publicReadMethods } from './publicreads.js';   /* v2.3.5609: the room's public reads kept and paced (card OPS PR 10) */
+import { guestLazyMethods } from './guestlazy.js';   /* v2.3.5610: a guest's join writes nothing (card OPS PR 11) */
 import { charWatchMethods } from './charwatch.js';   /* v2.3.4545: what players drew, for the owner to look at (the Test panel) */
 import { achievementMethods } from './achievements.js';   /* v2.3.3527 */
 import { killRollMethods } from './killroll.js';   /* v2.3.3209: one roll a kill, each drop its own numbers */
@@ -4927,6 +4928,9 @@ export class GameRoom {
              (state-machine sweep V3).  The phone knows no 4013: an ordinary
              drop on its backoff, which is what this comment always meant. */
           try { ws.close(4013, 'join failed'); } catch {}
+        } finally {
+          /* v2.3.5610: a fresh guest's mark lasts the join only (guestlazy.js) */
+          this._guestLazyEnd(msg && msg.id);
         }
         // v2.3.1177: the v2.3.1173 hoist dropped this break, so every
         // join fell through into case 'move'.  Benign only because
@@ -6465,6 +6469,7 @@ Object.assign(GameRoom.prototype, roomRowMethods); /* v2.3.5124 */
 Object.assign(GameRoom.prototype, healthMethods); /* v2.3.5601: the room's own health (health.js) */
 Object.assign(GameRoom.prototype, seatHoldMethods); /* v2.3.5606: a seat held (seathold.js) */
 Object.assign(GameRoom.prototype, publicReadMethods); /* v2.3.5609: public reads kept and paced (publicreads.js) */
+Object.assign(GameRoom.prototype, guestLazyMethods); /* v2.3.5610: a guest's join writes nothing (guestlazy.js) */
 Object.assign(GameRoom.prototype, charWatchMethods); /* v2.3.4545 */
 Object.assign(GameRoom.prototype, riseChestMethods); /* v2.3.4453 */
 Object.assign(GameRoom.prototype, achievementMethods); /* v2.3.3527 */
