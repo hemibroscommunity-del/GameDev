@@ -304,6 +304,11 @@ export const persistenceMethods = {
         if (w && typeof w.catch === 'function') w.catch(() => {});
       } catch (e) {}
     }
+    /* v2.3.5702 (card SEC PR 3): a vault whose put the storage refused is
+       put again HERE, before the blob's own put and with no await between
+       them (the aponce mark's way above): the two records land together or
+       not at all (bank.js A VAULT OWED; `bankretry`) */
+    if (this._bankOwed) { const _owed = this._bankOwed(playerId); if (_owed) this._bankRetryPut(playerId, _owed); }
     try {
       await this.state.storage.put('rpg:' + playerId, {
         coins: ps.coins || 0,
