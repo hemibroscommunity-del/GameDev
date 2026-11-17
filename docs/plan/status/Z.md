@@ -1,39 +1,40 @@
 card: Z
-branch: claude/plan-z-sitting-22
-prs: (this PR), tag 5660, the last line of sitting 22's list (ready)
+branch: claude/plan-z-sitting-23
+prs: (this PR), tag 5661, the last line of sitting 23's list (ready)
 state: ready
 
 ## Done
-- Sitting 21 merged (`main` f692b93). Sitting 22 (this list), reviewed and
-  rehearsed on f692b93: `census/review-z22.md`. Plan noted for sitting
-  21's merges (1.7: O's 14c; 5.3b: L's arena door, the line 16 -> 15;
-  5.8: K's 7.2 to 7.6).
+- Sitting 22 merged (`main` 8149d61). Sitting 23 (this list), reviewed and
+  rehearsed on 8149d61: `census/review-z23.md`. Plan noted for sitting
+  22's merges (1.7: O's 14d; 5.3b: L's ride door, the line 15 -> 14;
+  7.1: T's #1935, #1939).
 
 ## The list: merge in this order, each "Create a merge commit"
-1 T #1935 (5308) · 2 T #1939 (5309, on #1935) · 3 L #1936 (5523) · 4 MOD #1941 (5625) · 5 O #1937 (5238)
-· 6 this PR. All based on `main`, one merge base at every step. Deploys:
-3, 4 and 5 (`server/**`), back to back. New live flag `ridedoor` (ON).
-Rehearsed (T, T, L, MOD 5, O at 360d8bb; a8cc384 moves a test's exit):
-precheck 0 FAIL, build PASS, questline 187/187. This PR is a draft.
+1 MOD #1947 (5626) · 2 L #1946 (5524) · 3 J2 #1948 (5641) · 4 P #1943 (5565)
+· 5 K #1942 (5544) · 6 K #1949 (5545, on #1942) · 7 MOD #1909 (5623)
+· 8 MOD #1914 (5624, on #1909) · 9 OPS #1944 (5610) · 10 R #1961 (5292,
+replaces #1950: never merge #1950) · 11 this PR. All based on `main`, one
+merge base at every step. Deploys: the worker at 1, 5-10 (`server/**`).
+New live flags, all ON: `mktwords`, `?allydrafts`, `?fishspot`,
+`heapforget`, `roomceiling` (a cap), `reportring`, `invitepace`,
+`guestlazy`. Rehearsed (tree a49f278): build PASS, questline 187/187,
+server tests 464 green (precheck's limit timed out under load).
 
-## Held (expires at sitting 23)
-- MOD #1909 > #1914 and RT-1 #1940: no fault, but their switch rows meet
-  T's #1935 (and #1914's meet #1941's) on one line. Each merges the new
-  `main` in after this list lands (sessions told).
+## Held (expires at sitting 24)
+- R #1873 (save shape 21 -> 22): a rolled-back worker destroys weapons
+  with `gid` outside `rpg:`. R's #1960 (the tolerant reader) deploys first.
+- O #1952: a failed clip leaves the hair masks as colour numbers under
+  the alpha mask (`p256.js` HAIRMASKS_ON/CAPE_HOOD_ON fixed at load).
 
 ## Stalled
-- None. For sitting 23 (arrived during this one): K #1942 (5544,
-  `heapforget` ON), R #1873 (5282, the save shape 21 -> 22: its own line),
-  P #1943 (5565), OPS #1944 (5610), L #1946 (5524), MOD #1947 (5626,
-  `mktwords`), and the three above. Z's next tag: 5661.
+- None. For sitting 24: RT-1 #1940 (07f549b5, merges main after this
+  list), P #1955 > #1959, J2 #1953, T #1958, L #1956, R #1960 > #1873,
+  MOD #1954 (`ownerdev:`, a new key) and #1962, O #1952 fixed, OPS #1951.
+  Z's next tag: 5662.
 
 ## Found
-- MOD #1941 (`freezedevice`, OFF): two faults before the lever is ever
-  thrown (the owner's spare can fall off botfp's 8-character, 30-day
-  record; an existing character is held, not only a new one) and a fold
-  miss ("Officlal"). Sent to MOD.
-- L #1936 (`ridedoor` ON): a session with a non-string id is refused a
-  ride (no phone or bot sends one). For L.
-- O's question stands: a failed fill, glint or clip has no way back.
-- OPS: `mp-itemdrop` 5b red on main; MOD: `mp-lazyfail` red on main;
-  `mp-palette` (sitting 20): all for J2.
+- precheck's `server-tests` limit (5 min) vs the suite's 256 s: load times it out. No card.
+- `switches-thrown` finds a system's suites by file name, so `ip56`/`ip64`
+  cannot list account.test (`tools/guards/lib/systems.mjs`; T's).
+- `on` dates of 11-15 on rows merging 11-17: `?fishspot`, `guestlazy`,
+  `reportring`, `invitepace` (for T's date sweep).

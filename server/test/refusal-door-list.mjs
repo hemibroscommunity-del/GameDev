@@ -80,6 +80,7 @@ export const HANDLERS = Object.freeze({
    (`_handle*`, EXTRA or VALUE) or listed here. */
 export const INFRA = Object.freeze({
   _floodClose: 'closes the socket: the answer itself',
+  _guestLazyEnd: 'v2.3.5610: clears a fresh guest\'s join-time mark when the join returns (guestlazy.js); refuses nothing',
   _sigOnMove: 'bot signals: they count, they never refuse (botsig.js)',
   _sigOnHit: 'bot signals', _sigOnStart: 'bot signals', _sigOnStrike: 'bot signals', _sigOnCook: 'bot signals', _sigOnAbility: 'bot signals',
   _accShots: 'telemetry stamps on `track`', _clanStampTag: 'telemetry stamps on `track`', _capeStamp: 'telemetry stamps on `track`',
