@@ -83,6 +83,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `fightlocktable` | worker | switch | v2.3.4510 | 2026-11-10 | false | logic |  | no | Forging, duels and the other ways to turn goods into what the loss does not take are no longer refused in a fight. |
 | `freeswing` | worker | switch | v2.3.4520 | 2026-11-10 | false | logic |  | no | No phone gets the free swing; every phone is told. |
 | `freeswingbonus` | worker | switch | v2.3.4520 | 2026-11-10 | false | logic |  | no | The free swing never pays its timing bonus. |
+| `gearheld` | worker | switch | v2.3.5715 | 2026-11-17 | false | logic |  | no | A described armour or legs piece is worn whether or not the worker holds it, and a captured record's join merges the phone's armour and legs claims, as before. |
 | `?guarddoor` | page | switch | v2.3.5521 | 2026-11-16 | =0 | logic |  | no | Your shield on the phone takes any raise or drop its own code asks again (a raise over a raised one, with no shield or in the cooldown, a drop of none), as the lines before the page door could have; raiseShieldToggle and dropShield still check each first. |
 | `killroll` | worker | switch | v2.3.3209 | 2026-10-13 | false | logic |  | no | Every drop on its own roll again, nothing sent over the monster. |
 | `?manual` | page | value | v2.3.4357 |  | =0 to =4 (remembered on the device) | logic |  | no | Picks the combat mode on this device: 0 the old, 1 to 4 the manual trials. |
@@ -212,8 +213,11 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `keys2` | worker | switch | v2.3.3355 | 2026-10-18 | false | logic |  | no | No new login key is handed out (keys already made still work). |
 | `namerules` | worker | switch | v2.3.5622 | 2026-11-16 | false | logic |  | no | A new character's name is taken as before (any characters, 64 at most), `track` may rename and the arena's bracket takes the page's name; the owner's rename stays, and the name box keeps its rule. |
 | `offdevs` | worker | switch | v2.3.5584 | 2026-11-17 | false | logic |  | no | While the device lock is off, nothing is written down for it again, as before (a matching old key's device recorded while on, so the lock can come back without shutting a player out or handing the character to whichever device comes first; a key holder can still push the player's devices off its list of 12 while it is off). |
+| `oldkeyheld` | worker | switch | v2.3.5716 | 2026-11-17 | false | logic |  | no | An old Login Key is let in from a device not on its character's list while the device lock is off or the owner's pass is open, as before. |
 | `oldkeylock` | worker | switch | v2.3.5582 | 2026-11-16 | false | logic |  | no | An old login key may take the first device of a character with no device list again, and the five-wrong-keys lock shuts out even its rightful holder on its own device, as before. |
+| `?rostercookie` | page | switch | v2.3.5718 | 2026-11-17 | =0, off, false | logic |  | no | The roster's cookie (every Login Key the phone holds) is written on the whole registrable domain again, as before: a preview build on another host of it reads the keys, and a first visit to a new build's address finds its characters without a key typed. |
 | `?tabid` | page | switch | v2.3.4521 | 2026-11-11 | =0 | logic |  | no | This phone takes the old road: the shared slot at every join, not its tab's own id. |
+| `verifylocal` | worker | switch | v2.3.5714 | 2026-11-17 | false | logic |  | no | The account check's address override (TURNSTILE_VERIFY_URL) is honoured whatever its host, as before (it is a test seam: nothing sets it for the real worker). |
 
 ## input
 
@@ -245,6 +249,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `reportlanes` | worker | switch | v2.3.5221 | 2026-11-14 | false | logic | `report`, `reportspeed` | no | The field report no longer takes a lane but full, the governor's rung or the self-test (caps.report back to 2). |
 | `reportspeed` | worker | switch | v2.3.5127 | 2026-11-14 | false | logic | `report` | no | The Speed test's card is no longer taken (caps.report back to 1); the smoothness reports carry on. |
 | `resetbook` | worker | switch | v2.3.5285 | off | true | logic |  | no | Thrown (true), a restart books the deleted character and its vault into `econ_gone` (one row for the room, one write and a read a restart), read by the world's sum as the tests take it (restore.test); nothing live reads it yet (the day's walk reads the records that hold value only, and the owner's economy card already counts restarts, econResetBook); the hostile census runs on the default flags, so its line stays. Unset or false, the default, a restart books nothing, as before. |
+| `resetclean` | worker | switch | v2.3.5719 | 2026-11-17 | false | logic |  | no | A character restart goes through while a market order or a store listing names the player, and the login streak's row is kept, as before. |
 | `roomexport` | worker | switch | v2.3.5286 | 2026-11-15 | false | logic |  | no | The owner's paged export of the room's records answers "off" and reads nothing. |
 | `roomrewind` | worker | lever | v2.3.5288 |  | true | none |  | no | Thrown (true), the owner's lever that puts the whole room back to an earlier time works (its dry run, then its do); unset or false, the default, both its steps answer "off". |
 | `roomrow` | worker | switch | v2.3.5124 | 2026-11-14 | false | logic | `daybook` | no | Nothing of the room's own row is added into the day's book. |
@@ -357,6 +362,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 |---|---|---|---|---|---|---|---|---|---|
 | `boardcache` | worker | switch | v2.3.5608 | 2026-11-16 | false | logic |  | no | Every board is read from storage at every request, as before (said on the room's own post to the board object as `bc: 0`); the sweep of week-old rows, `playtime` only on its own board and last-seen by the hour stay. |
 | `boardsweep` | worker | switch | v2.3.5608 | 2026-11-16 | false | logic |  | no | No week-old board row is deleted (said on the room's post to the board object as `bs: 0`): the stale rows stay off every board as before, and stay on file. |
+| `chainscore` | worker | switch | v2.3.5712 | 2026-11-17 | false | logic |  | no | Nothing is sent to the chain: a level-up's score checkpoint answers switched-off and stores nothing, so it is sent at the next level-up once the switch is back (the day's ceiling and the fee's ceiling stand while it is on). |
 | `exactseen` | worker | lever | v2.3.5608 |  | true | none |  | no | Thrown (true), the public boards say each player's last-seen time exactly again, with no `seen: 'hour'` word, so the prize draw page reads its window to the millisecond (to run an old draw again exactly). Unset or false, the default: last seen to the hour. |
 | `floodtally` | worker | switch | v2.3.5711 | 2026-11-17 | false | logic |  | no | The overview's `floodTally` reads null and nothing is counted: a flood is counted on its session only and reaches no owner page, as before. |
 | `guestlazy` | worker | switch | v2.3.5610 | 2026-11-17 | false | logic |  | no | A guest's join (no key, no record) writes its rows again: its record twice, its pet book, its login streak and its day's rewards. |
@@ -690,6 +696,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `disable_dungeons` | worker | switch | v2.3.1150 | 2026-07-03 | true | logic |  | no | Thrown, every dungeon start is refused with a message. |
 | `dungeonbag` | worker | switch | v2.3.3556 | 2026-10-22 | false | logic |  | no | A dungeon death drops its pile and empties the bag, as before. |
 | `dungeondoor` | worker | switch | v2.3.5215 | 2026-11-14 | false | logic |  | no | A dungeon run's end and its boss can be written again, as the lines before the dungeon door could have (the tick asks neither twice today). |
+| `?dungeondoor` | page | switch | v2.3.5535 | 2026-11-17 | =0 | logic |  | no | Your run on the phone takes any write its own code asks again (an enter that is not in, a leave that is), as the lines before the dungeon's page door; every caller writes what the door allows today. |
 | `dungeonground` | worker | switch | v2.3.5725 | 2026-11-17 | false | logic |  | no | A Workshop dungeon start (one naming no mouth) is taken wherever the player stands, out in a land mid-fight too, as before. |
 | `dungeonlive` | worker | switch | v2.3.4423 | 2026-11-10 | false | logic |  | no | Any `dungeon:` id on its shape is taken again, live run or not. |
 | `eventplace` | worker | switch | v2.3.3245 | 2026-10-14 | false | logic |  | no | Every event goes to everyone again, from the next tick. |

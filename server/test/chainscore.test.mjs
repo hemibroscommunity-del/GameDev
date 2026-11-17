@@ -88,7 +88,7 @@ function stubNode(log, over = {}) {
     }
     let result = null;
     if (body.method === 'eth_getTransactionCount') result = '0x0';
-    else if (body.method === 'eth_gasPrice') result = '0x3b9aca00';
+    else if (body.method === 'eth_gasPrice') result = '0x989680';   /* 0.01 gwei (v2.3.5712: was 1 gwei, 100x Hemi's own; at it a fourteen-skill first write's most possible fee is 0.003 ETH, over the fee's ceiling, chainday.test) */
     else if (body.method === 'eth_sendRawTransaction') result = '0x' + 'ee'.repeat(32);
     else if (body.method === 'eth_getCode') result = '0x6080604052';
     else if (body.method === 'eth_getBalance') result = '0xde0b6b3a7640000';   // 1 ETH
