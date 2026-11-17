@@ -4,8 +4,7 @@ prs: Z_PR (this PR), tag 5677, the last line of sitting 39's list (ready)
 state: ready
 
 ## Done
-- Sitting 38 merged (`main` 9e228210). Sitting 39: `census/review-z39.md`.
-  This PR: the phase line 5 -> 4 (#2046); the plan noted (5.3b).
+- `census/review-z39.md`; this PR: the phase line 5 -> 4 (#2046), 5.3b.
 
 ## The list: merge in this order, each "Create a merge commit"
 1 SEC #2054 (5711, the owner sees a flood: the overview's `floodTally`,
@@ -26,13 +25,13 @@ the edge; worker settings `EDGE_GUARD`, `EDGE_CACHE`, on) · 4 Z Z_PR (this PR).
   ride, sprint, potion suites hold only the flat bound.
 - (c) #2033: a damage of `Infinity` draws "-Infinity". (d) #2028, for
   `cookstart` ON: a dropped result has spent its plan.
-- (e) The phase line 5 -> 4: done by this PR (4 -> 3 after #2052).
-- (f) SEC's: a join with NO id is let in as `session.id` undefined. (g)
-  #2038: a known field a save leaves out comes from a newer record.
+- (e) The phase line 5 -> 4: this PR (4 -> 3 after #2052). (f) SEC's: a join with NO id is let in as
+  `session.id` undefined. (g) #2038: a known field a save leaves out
+  comes from a newer record.
 - (h) #2047: received friend requests never expire (friends.js).
 - (i) K2's: `mp-movepath`'s two "no worse" checks fail on main's worker.
-  (j) `heap-forget` check 4 on CI: mended by #2051 (on the list).
-- (k) K2's: a joiner's state_sync still carries each player's `rpgData`.
+  (j) heap-forget check 4 on CI: mended by #2051 (listed). (k) K2's:
+  a joiner's state_sync still carries each player's `rpgData`.
 
 ## Needs
 - The owner: `cookstart` ON (not yet decided); the cost switches
