@@ -134,7 +134,7 @@ player sees changes except the wrong thing the finding is.
 
 | PR | Tag | Files | Findings | Switch |
 |---|---|---|---|---|
-| 2 | 5801 | `market.js` | MS-2 (a sell filed under its weapon's own tier and kind); MS-4 (the scan finishes a refunded order before the prune can outrun it) | `mkttier`, `mktheal` |
+| 2 | 5801 | `market.js`, `inbox.js` (`_creditWith`) | MS-2 (a sell filed under its weapon's own tier and kind); MS-4 (a refund and its order's delete in one write: `inbox.js` `_creditWith` learns a weapon) | `mkttier`, `mktheal` |
 | 3 | 5802 | `risechest.js`, `inbox.js` (the prune) | MD-1 (the chest's stamp is the record and is kept: the prune passes over its range, no new row) | `risekeep` |
 | 4 | 5803 | `trade2.js`, `inbox.js` | MS-3 (a dying side refuses the confirm; a goods credit to a dying player waits in the mail) | `dyingmail` |
 | 5 | 5804 | `nomansland.js` | MS-1 (the killer paid in the victim's own write) | `nmlonewrite` |

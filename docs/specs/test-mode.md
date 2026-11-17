@@ -62,6 +62,9 @@ switch allows it.
   a Workshop run's safe ground (v2.3.5725, `dungeon.js`, `dungeonground`);
   a move's fields held to their form (v2.3.5723, `movement.js` `MOVE_FIELDS`,
   `movefields`);
+  a General Store sell filed under its weapon's own tier, and a refund and
+  its order's delete in one write (v2.3.5801, `market.js`, `mkttier`,
+  `mktheal`);
   the owner's routes with no key and the public reads at the edge (v2.3.5726,
   `wire/door.js`; the worker settings `EDGE_GUARD`, `EDGE_CACHE`).
 - Every save and payment rule; the login key, the device lock, the lockouts;
