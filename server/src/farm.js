@@ -338,7 +338,7 @@ export const farmMethods = {
   _farmSend(pid, payload) {
     const ws = this._wsBySessionId(pid);
     if (!ws) return;
-    try { ws.send(JSON.stringify({ type: 'farm_state', payload })); } catch (e) { /* the farm is saved */ }
+    try { this._send(ws, { type: 'farm_state', payload }); } catch (e) { /* the farm is saved */ }
   },
 
   /* A fixed one-minute window per player, in memory.  A deploy resets it,

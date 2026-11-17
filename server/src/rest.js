@@ -76,7 +76,7 @@ export const restMethods = {
   _restSend(pid, payload) {
     const ws = this._wsBySessionId(pid);
     if (!ws) return;
-    try { ws.send(JSON.stringify({ type: 'rest_result', payload })); } catch (e) { /* the rest stands */ }
+    try { this._send(ws, { type: 'rest_result', payload }); } catch (e) { /* the rest stands */ }
   },
 
   /* In a fight: a fight with a player (a duel, or a hit between players in

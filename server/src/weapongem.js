@@ -187,7 +187,7 @@ export const weaponGemMethods = {
   _weaponGemSend(pid, payload, withState) {
     const ws = this._wsBySessionId(pid);
     if (!ws) return;
-    try { ws.send(JSON.stringify({ type: 'weapon_gem_result', payload })); } catch (e) { /* the act is saved; the state carries it */ }
+    try { this._send(ws, { type: 'weapon_gem_result', payload }); } catch (e) { /* the act is saved; the state carries it */ }
     if (withState) this._sendPlayerState(ws, pid);
   },
 

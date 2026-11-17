@@ -314,7 +314,7 @@ export const achievementMethods = {
           /* v2.3.3527: the card's rarest, worked out here so the page never
              keeps its own copy of the order */
           ...(rarestOf(book.rec) ? { rarest: rarestOf(book.rec) } : {}), ...(extra || {}) };
-    try { ws.send(JSON.stringify({ type: 'achv_state', payload })); } catch (e) {}
+    try { this._send(ws, { type: 'achv_state', payload }); } catch (e) {}
   },
 
   /* Would the worker pay `id`'s points to this player now?  The points, 0

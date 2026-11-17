@@ -70,7 +70,7 @@ export const petMethods = {
   _petSend(playerId, type, payload) {
     const ws = this._wsBySessionId(playerId);
     if (!ws) return;
-    try { ws.send(JSON.stringify({ type, payload })); } catch (e) {}
+    try { this._send(ws, { type, payload }); } catch (e) {}
   },
 
   /* v2.3.3120: retired.  An old client's capture is answered, never acted on

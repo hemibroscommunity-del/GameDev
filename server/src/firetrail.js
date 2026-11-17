@@ -271,7 +271,7 @@ export const fireTrailMethods = {
       const left = f.dieAt - now;
       if (left <= 0) continue;
       try {
-        ws.send(JSON.stringify({
+        this._send(ws, {
           type: 'fire_trail',
           payload: {
             zone: zoneId, monsterId: f.mid,
@@ -282,7 +282,7 @@ export const fireTrailMethods = {
                standing in a fire everyone else is being burned by. */
             arm: 0,
           },
-        }));
+        });
         sent++;
       } catch (e) { /* socket closing mid-transition: nothing to recover */ }
     }

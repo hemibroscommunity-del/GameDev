@@ -63,7 +63,7 @@ export const chatLaneMethods = {
   _laneSend(playerId, type, payload) {
     const ws = this._wsBySessionId(playerId);
     if (!ws) return false;
-    try { ws.send(JSON.stringify({ type, payload })); return true; } catch (e) { return false; }
+    try { this._send(ws, { type, payload }); return true; } catch (e) { return false; }
   },
 
   /* Display name, with the same fallback ladder _partyNameOf uses -- some

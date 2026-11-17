@@ -391,7 +391,7 @@ export const shopMethods = {
   _shopSend(playerId, type, payload) {
     const ws = this._wsBySessionId(playerId);
     if (!ws) return;
-    try { ws.send(JSON.stringify({ type, payload })); } catch (e) { /* dead socket */ }
+    try { this._send(ws, { type, payload }); } catch (e) { /* dead socket */ }
   },
 
   /** Base worth of one unit, by longest matching family. Longest wins

@@ -230,7 +230,7 @@ export const nearJoinMethods = {
       } else {
         m = whole || (whole = JSON.stringify({ type: 'player_join', id, name, data: pub }));
       }
-      try { w.send(m); } catch {}
+      try { this._send(w, m, 'player_join'); } catch {}   /* v2.3.5193: the send door */
     }
   },
 

@@ -67,7 +67,7 @@ export const threatMethods = {
   _threatSend(playerId, type, payload) {
     const ws = this._wsBySessionId(playerId);
     if (!ws) return;
-    try { ws.send(JSON.stringify({ type, payload })); } catch (e) {}
+    try { this._send(ws, { type, payload }); } catch (e) {}
   },
 
   /* Intercept the relayed threat handshake (default-branch hook, the

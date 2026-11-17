@@ -105,7 +105,7 @@ export const trade2Methods = {
   _t2Send(playerId, type, payload) {
     const ws = this._wsBySessionId(playerId);
     if (!ws) return;
-    try { ws.send(JSON.stringify({ type, payload })); } catch (e) {}
+    try { this._send(ws, { type, payload }); } catch (e) {}
   },
 
   /* v2.3.4795: the weapons in the swap's one write (_handleTrade2Confirm).
