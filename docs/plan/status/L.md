@@ -1,6 +1,6 @@
 card: L
-branch: claude/plan-l-32-relay-popup (on #2031)
-prs: #1746 to #2027 (merged), #2031 (5531), #2033 (5532, on #2031): ready
+branch: claude/plan-l-33-fight-page (from main)
+prs: #1746 to #2033 (merged), 5533 fight page door (this branch): ready
 state: ready
 
 ## Done
@@ -10,13 +10,13 @@ state: ready
   doors; the resets, 484 -> 233 rows.
 - PR 5, 5210-5217, 5522-5523: the worker's trade, duel, party, cook, harvest+
   fishing, dungeon, pose, race, arena, ride doors; the page's (5218-5219,
-  5520-5521, 5525-5531): race, harvest+cook+fishing, pose, guard, veils, windows,
-  connection, duel, party, trade, ride, arena.
+  5520-5521, 5525-5533): race, harvest+cook+fishing, pose, guard, veils, windows,
+  connection, duel, party, trade, ride, arena, fight (the skull).
 - 5524: alliance drafts outlive a rejoin (J2). 5532: relay floater's form (SEC).
 
 ## Next
 
-- Next: the page halves left (life, fight, dungeon), grouped
+- Next: the page halves left (life, dungeon), grouped
   by file. Guard (worker) waits for K2's index.js PRs (planner, 15:52).
 
 ## Found

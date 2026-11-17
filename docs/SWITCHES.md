@@ -601,6 +601,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `race` | worker | switch | v2.3.3525 | 2026-10-20 | false | logic |  | no | Lil Bro's race un-advertised and none started. |
 | `reportring` | worker | switch | v2.3.5623 | 2026-11-15 | false | logic |  | no | A chat report quotes the speaker's last 3 lines in any lane again, not the lines the reporter could have received. |
 | `silence` | worker | switch | v2.3.5621 | 2026-11-16 | false | logic |  | no | No silence is checked: every character speaks (the owner's silences are kept, and hold again when it is put back). |
+| `?skulldoor` | page | switch | v2.3.5533 | 2026-11-17 | =0 | logic |  | no | Your skull on the phone takes any write its own code asks again (a kind that is no skull, a time that is no number), as the lines before the fight's page door; only a relayed threat with a malformed countdown is refused today. |
 | `?socialreset` | page | switch | v2.3.5204 | 2026-11-14 | =0 | logic |  | no | A race the worker forgot at a reconnect stays on the phone until its own clock lets it go, as before. |
 | `spar` | worker | switch | v2.3.3265 | 2026-10-16 | false | logic |  | no | No sparring clones: every live clone goes on the next tick and the cap is withdrawn. |
 | `statboards` | worker | switch | v2.3.5484 | 2026-11-14 | false | logic |  | no | Un-advertises the stat boards: no board report carries the points allocated, so those boards empty as players report; every other board is as it was. |

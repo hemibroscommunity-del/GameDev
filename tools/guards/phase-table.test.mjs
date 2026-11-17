@@ -130,6 +130,8 @@
  * v2.3.5525 (the loading door):
  *  39. `S._farmArtHold = seq;` back in farmTrip.js -> loading-door.test FAIL 2
  *  40. `S._veils = new Map();` in zoneTransitions.js -> FAIL 2
+ * v2.3.5533 (the fight's page door):
+ *  48. `S._pvpSkullType = null;` back in noMansLand.js -> fight-page-door.test FAIL 2
  * v2.3.5531 (the arena's page door):
  *  47. `S3._arenaMatch = null;` back in BroTown.jsx -> arena-page-door.test FAIL 2
  * v2.3.5530 (the trade's and the ride's page doors):
@@ -377,6 +379,11 @@ const DOOR_SUITES = Object.freeze({
   /* v2.3.5523: the ride door (ps._ridePid is written beside it, in _rideTo) */
   'server/test/ride-door.test.mjs': { field: 'ps._ride', fn: '_rideTo', holds: '§2: no write of ._ride or ._ridePid in server/src outside _rideTo',
     prop: '_ride', besides: [] },
+  /* v2.3.5533: the fight's page door (its note S._pvpSkullUntil: the suite's §2) */
+  'server/test/fight-page-door.test.mjs': { field: 'S._pvpSkullType', fn: 'skullTo', holds: '§2: no write of S._pvpSkullType or S._pvpSkullUntil in src/ outside skullTo',
+    prop: '_pvpSkullType', besides: [
+      { file: fileNamed('entityRenderer.js'), text: '_pvpSkullType: null, _pvpSkullUntil: 0', fn: 'poseFrame', why: 'a copy of the state made for a posed picture (Object.assign({}, real, ...)), never S' },
+    ] },
   /* v2.3.5531: the arena's page door (its notes: the suite's §2) */
   'server/test/arena-page-door.test.mjs': { field: 'S._arenaMatch', fn: 'arenaTo', holds: '§2: no write of S._arenaMatch, S._arenaInvolved or S._arenaTournamentId in src/ outside arenaTo',
     prop: '_arenaMatch', besides: [] },

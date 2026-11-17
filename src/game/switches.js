@@ -246,6 +246,7 @@ const FORMS = {
   'shieldretry': '0',
   'shirtworker': '0|off|false',
   'skillsreset': '0',
+  'skulldoor': '0',
   'slimesplat': '*',
   'slimewalk': '0|off|false',
   'socialreset': '0',
