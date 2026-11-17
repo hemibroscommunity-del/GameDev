@@ -281,7 +281,11 @@ export const leaveMethods = {
       if (this.sessions.size === 0 && this._lingerBodies && this._lingerBodies.size) {
         for (const id of [...this._lingerBodies.keys()]) { const _le = this._lingerEnd(id); if (_le && _le.catch) _le.catch(() => {}); }
       }
-      if (this.sessions.size === 0 && this.tickInterval) { clearInterval(this.tickInterval); this.tickInterval = null; }
+      if (this.sessions.size === 0 && this.tickInterval) {
+        clearInterval(this.tickInterval); this.tickInterval = null;
+        /* v2.3.5612: the roster once more as the tick stops (the seats held, to their ends: a room started long after holds nobody; seathold.js, on only) */
+        this._seatRosterTick(Date.now(), true);
+      }
       /* v2.3.5124: the last one out writes the day's book (roomrow.js
          _roomRowLastOut): an empty room has no tick, and is put away with
          what waits in memory -- the sitting's last report and counts */
