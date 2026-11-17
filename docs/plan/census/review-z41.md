@@ -158,7 +158,10 @@ this box (sitting 40's first rehearsal met the same).
 The second rehearsal, the box quiet: tree 0ab04423 with T2's #2071
 merged on top (its tag-blocks conflict mended as T2 was asked: both
 rows, nextBlock 5800; tree 3c3bc8e6): build PASS (14 s); questline
-187/187 (487 s); `cd server && npm test` SERVER_RESULT. #2071 adds six
+187/187 (487 s); `cd server && npm test` 512 of 513 (489 s): `switches-thrown`'s
+`roomceiling` row once (flood-ceiling 4 passed under load where the
+list wants it red: the wall-second race K2's Found names, K2's PR 9
+`ceilfair`); `--only roomceiling` alone in the same tree: green. #2071 adds six
 reads in `src/game/` to that tree and nothing on the worker.
 
 CI on the listed heads: L #2058 c689468e, #2065 a6bdaa4e, #2067
