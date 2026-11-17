@@ -627,6 +627,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?starcue` | page | switch | v2.3.3872 | 2026-10-29 | =0 | logic |  | no | No star cue over what to do next. |
 | `?tradeside` | page | value | v2.3.3856 |  | =0 or =1 | logic |  | no | Picks which side the trade window's lanes are on. |
 | `?wdgeterror` | page | switch | v2.3.3450 | 2026-10-18 | present | logic |  | no | The world map's thumbnail asks the chip for errors every time, as before. |
+| `?windowdoor` | page | switch | v2.3.5526 | 2026-11-17 | =0 | logic |  | no | What is open over the world is written to its old fields alone (S._uiBusy, S._npcProxLatch), as the lines before the window door; S._windows is not kept (nothing reads it to draw). |
 
 ## wire
 

@@ -474,17 +474,14 @@ export const PHASES = [
     note: 'v2.3.5525: the door (the planner\'s reading: one field, the set of reasons; S._veils a Map from VEIL_WHYS zone, trip, town, farm, avatar to its hold; veilTo writes each reason\'s old field, S._zoneLoading, S._wheelTripVeil, S._townArtHold, S._farmArtHold, S._avatarArtHold, for its readers; switch ?veildoor). Beside it: S._netHold (wsClient.js, card K\'s file, and serverReady.js: folded in after K), the dungeon\'s opening (the dungeon row), and the first loading screen\'s gate (ui/loadingGate.js _up, _worldIn, _waiting: its own read of the overlay).',
   },
   {
-    name: 'window', side: 'page', status: 'todo',
-    what: 'The open window: a panel, a sheet or a card over the world, and the busy latch.',
-    field: null, states: ['none', 'open'], fn: null, file: null,
-    clears: [{ edge: 'end', at: 'src/ui/mobile/modalGuardBus.js guardPush' }],
+    name: 'window', side: 'page', status: 'door',
+    what: 'What is open over the world: a panel, a sheet or a card of BroTown\'s, and the townsperson whose prompt is up.',
+    field: 'S._windows', states: ['none', 'open'],
+    fn: 'windowTo', file: 'src/game/windowDoor.js',
+    clears: [{ edge: 'end', at: 'src/ui/BroTown.jsx BroTown' }, { edge: 'end', at: 'src/ui/mobile/modalGuardBus.js guardPush' }],
     rejoin: 'none: the page\'s own',
-    today: [
-      { field: 'S._uiBusy' }, { field: 'S._npcProxLatch' },
-      { variable: '_depth', file: 'src/ui/mobile/modalGuardBus.js' }, { variable: 'state', file: 'src/ui/mobile/inventoryBus.js' },
-      { variable: '_state', file: 'src/ui/mobile/ChestReveal.jsx' }, { variable: 'state', file: 'src/ui/mobile/wheelBus.js' },
-    ],
-    note: 'A bus a window (inventoryBus, wheelBus, ChestReveal, ...): no one field says which is open. The guard\'s depth (modalGuardBus.js guardPush, and the release it hands back) counts the open ones; S._uiBusy is BroTown\'s copy of "any panel open".',
+    held: { suite: 'server/test/window-door.test.mjs' },
+    note: 'v2.3.5526: the door (the planner\'s reading: one field, the set of reasons; S._windows a Map from WINDOW_WHYS panel, npc to its hold; windowTo writes each reason\'s old field, S._uiBusy (a lift is false) and S._npcProxLatch (a lift is null), for its readers; switch ?windowdoor). Beside it: the decision panels\' count (modalGuardBus.js _depth, module state with no S, guardPush and the release it hands back) and each window\'s own bus record (inventoryBus, wheelBus, ChestReveal): what is in a window, not whether the world is covered.',
   },
 ];
 
