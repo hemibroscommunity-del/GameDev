@@ -317,6 +317,12 @@ const mkSword = (gearBase, type, quality) => ({ type: type || 'sword', tier: 'co
   ps().weapon = null;
   ps().armor = null;
   ps().weaponStash = [mkSword('wood')];
+  /* v2.3.5715 (card SEC PR 16): with `gearheld` on, the default, a described
+     piece the worker does not hold is never worn -- the exploit stops at its
+     first step; this section plays the legacy lane it rode (gearheld.test is
+     the gate's own) */
+  const _ghWas = room._liveFlags;
+  room._liveFlags = { ...(room._liveFlags || {}), gearheld: false };
   const coins0 = ps().coins;
   const iron0 = bars('bar_iron');
   await msg('stats_update', { armor: DRESSED });
@@ -383,6 +389,7 @@ const mkSword = (gearBase, type, quality) => ({ type: type || 'sword', tier: 'co
   /* the suite's own socket back (that join superseded it) */
   await join(ws, PID);
   ps().armor = null;
+  room._liveFlags = _ghWas;
 }
 
 // ── 8. The shopkeeper, the cooldown, the kill switch ──
