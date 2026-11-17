@@ -82,7 +82,7 @@ const SCRATCH = {
   /* the fight of the moment: its phases, timers and running sums */
   fight: ['blocking', 'blockStartT', 'dodging', 'dmgFromMonster', 'lastDamageAt', '_abilCd', '_abilFrom',
     '_arrowBlastCdUntil', '_burstCdUntil', '_chillUntil', '_cursedUntil', '_dazeImmuneUntil', '_dazeUntil',
-    '_dmgFromPlayer', '_evadeAcc', '_freezeImmuneUntil', '_freezeUntil', '_fs', '_ss', '_pfb', '_guardBrokenUntil',
+    '_dmgFromPlayer', '_evadeAcc', '_freezeImmuneUntil', '_freezeUntil', '_fs', '_ss', '_bs', '_pfb', '_guardBrokenUntil',
     '_gustLeft', '_gustUntil', '_hitBucket', '_lastCollisionMana', '_lastDealtAt', '_lastStandReadyAt',
     '_luckyAcc', '_lungeAt', '_monHitCad', '_pveSpec', '_pvpSpecLeft', '_pvpSpecUntil', '_resonanceStreak',
     '_secondWindReadyAt', '_soakUntil', '_staggerUntil', '_stuckImmuneUntil', '_stuckUntil',

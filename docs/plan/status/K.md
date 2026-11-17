@@ -1,5 +1,5 @@
 card: K
-branch: claude/plan-k-14d-ontoday (5551, on #2021; the second block 5540-5559)
+branch: claude/plan-k-14d-ontoday (5551, on #2023 on #2021; the second block 5540-5559)
 prs: #1822 to #2006, #2003, #2013, #2014, #2018 merged; open: #2021 (5549), #2023 (5550), 5551 (this branch)
 state: ready
 

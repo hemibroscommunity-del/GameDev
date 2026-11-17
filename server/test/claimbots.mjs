@@ -305,7 +305,11 @@ export async function honestBow(W, ph, take, opts = {}) {
     }
     if (dist(target, ph) > 620) nextShot = Infinity;
     if (nextShot === Infinity && !flying.length) { nextShot = ph.pageNow; continue; }
-    if (ph.pageNow >= nextShot) { flying.push({ m: target, at: ph.pageNow + (dist(target, ph) / 480) * 1000 }); nextShot = ph.pageNow + 495; }
+    if (ph.pageNow >= nextShot) {
+      /* v2.3.5550: the arrow's relay, as a page looses it (monsterCombat.js: `player_projectile`; bowshot.js counts it) */
+      await ph.send({ type: 'player_projectile', payload: { x: Math.round(ph.x), y: Math.round(ph.y), ang: Math.atan2(target.y - ph.y, target.x - ph.x), isStaff: false, ts: Math.round(ph.pageNow) } });
+      flying.push({ m: target, at: ph.pageNow + (dist(target, ph) / 480) * 1000 }); nextShot = ph.pageNow + (opts.gap || 495);   /* v2.3.5550: `opts.gap`, the flicked bow's 371 ms */
+    }
     flying.sort((a, b) => a.at - b.at);
     const due = Math.min(nextShot, flying.length ? flying[0].at : Infinity);
     /* v2.3.5540: the stepping archer runs in while it waits (to 260 px) */
@@ -331,7 +335,7 @@ export async function honestBow(W, ph, take, opts = {}) {
 /* the liar's bow label (TRAPS §329): a sword's blow sent as `ranged` with a
    bow worn, standing still, five claims a second over everything in the
    bow's whole reach */
-export async function liarBowLabel(W, ph, take) {
+export async function liarBowLabel(W, ph, take, opts = {}) {
   await combatStart(W, ph, 'bow');
   while (!ph.over) {
     const ps = W.ps(PID);
@@ -343,7 +347,11 @@ export async function liarBowLabel(W, ph, take) {
       await ph.walkTo(() => a.x, () => a.y, { speed: 480, stop: reach - 40, honest: false });
       continue;
     }
-    for (const m of inReach.slice(0, 5)) { const r = await claim(W, ph, m, 'ranged', { noKb: true }); if (r.killed) take.kills++; await ph.wait(200); }
+    for (const m of inReach.slice(0, 5)) {
+      /* v2.3.5550: `opts.shots`, the liar `bowshot` meets: an arrow's relay sent before each claim (bowshot.js counts it at the bow's rate) */
+      if (opts.shots) await ph.send({ type: 'player_projectile', payload: { x: Math.round(ph.x), y: Math.round(ph.y), ang: 0, isStaff: false, ts: Math.round(ph.pageNow) } });
+      const r = await claim(W, ph, m, 'ranged', { noKb: true }); if (r.killed) take.kills++; await ph.wait(200);
+    }
   }
   take.xp = fightTake(W.ws[PID]);
 }
