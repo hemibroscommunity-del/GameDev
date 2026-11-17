@@ -1,31 +1,31 @@
 card: Z
-branch: claude/plan-z-sitting-30
-prs: (this PR), tag 5668, the last line of sitting 30's list (ready)
+branch: claude/plan-z-sitting-31
+prs: (this PR), tag 5669, the last line of sitting 31's list (ready)
 state: ready
 
 ## Done
-- Sitting 29 merged (`main` 78f70f4a: T #1994, #1996, Z #1998).
-  Sitting 30 (this list), reviewed and rehearsed on 78f70f4a:
-  `census/review-z30.md`. Plan noted for sitting 29's merges: 7.1 (#1994,
-  #1996).
+- Sitting 30 merged (`main` c55c8b59: K #1997, #1999, L #2000, T #2001,
+  #2002, Z #2004). Sitting 31 (this list), reviewed and rehearsed on
+  c55c8b59: `census/review-z31.md`. Plan noted for sitting 30's merges:
+  5.3b (#2000; the phase line 13 -> 12), 7.1 (#2001, #2002), 11.3 ticked
+  (#1997, #1999: card K's 11.3 PRs all merged).
 
 ## The list: merge in this order, each "Create a merge commit"
-1 K #1997 (5196, `gidnames` ON) · 2 K #1999 (5547, stacked on #1997) ·
-3 L #2000 (5526, `?windowdoor`) · 4 T #2001 (5316) · 5 T #2002 (5317,
-stacked on #2001) · 6 this PR. All based on `main`, one merge base at
-every step. The worker deploys (K's `server/src/`, L's `server/test/`).
-New live flag `gidnames` (ON) and cap `gidnames`; page switch
-`?windowdoor` (ON). No stored shape.
+1 T #2007 (5318, docs) · 2 J2 #2005 (5649) · 3 J2 #2008 (5650, stacked
+on #2005) · 4 J2 #2009 (5651, stacked on #2008) · 5 K #2006 (5193, the
+send door; its own line: the day's book's `send` part; live flag
+`sendcount` ON) · 6 K #2003 (5197, the words rule, stacked on #2006; its
+own line: inbox entries gain `noteT`) · 7 L #2010 (5527, the net door) ·
+8 this PR. All based on `main`, one merge base at every step. The worker
+deploys (K's `server/src/`; J2's and L's `server/test/`).
 
 ## Held
-- K #2003 (5197, the words rule): its guard matches names ending
-  name/tag, not the table's `words` fields (card K 12); the chat line and
-  market toast still print the joined note; stored shape (`noteT` on
-  inbox entries). Conflicts with #1997. Sitting 31, its own line.
+- None.
 
 ## Stalled
-- None. Not yet in: J2's shopkeeper and flakes; R 5293 (after K's 5196,
-  5197). Z's next tag: 5669.
+- None. T stops by the planning session's word (`stalled`: its 71 reads
+  wait on K, L, M and nine suites' owners). Not in: K 13 (5198/5199,
+  after #2006), R 5293 (after #2003), L's next door. Z's next tag: 5670.
 
 ## Found
 - `DevPanel.jsx:1638` shows a report's last 3 lines, never `said`. No card.

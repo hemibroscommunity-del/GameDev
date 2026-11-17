@@ -167,7 +167,7 @@ const fileNamed = (name) => {
    since card L's arena door (#1930).
    Tag 5661 (the gatekeeper, sitting 23, main 8149d61): 15 -> 14, the count
    since card L's ride door (#1936). */
-export const TODO_LINE = 13;   /* v2.3.5663: lowered 14 -> 13 by the gatekeeper, sitting 25 (L's loading door, #1956) */
+export const TODO_LINE = 12;   /* v2.3.5669: lowered 13 -> 12 by the gatekeeper, sitting 31 (L's window door, #2000); v2.3.5663: 14 -> 13 (#1956) */
 
 /* the machines every side must have a row for: SHAPES part 5's names and
    step 5.3b's list (the plan's own `dungeon`, `connection`, `loading`,
@@ -371,7 +371,7 @@ const DOOR_SUITES = Object.freeze({
   'server/test/window-door.test.mjs': { field: 'S._windows', fn: 'windowTo', holds: '§2: no write of S._windows, nor of a window\'s old field (S._uiBusy, S._npcProxLatch), in src/ outside windowTo',
     prop: '_windows', besides: [] },
   /* v2.3.5525: the loading door (its reasons' old fields: the suite's §2) */
-  'server/test/loading-door.test.mjs': { field: 'S._veils', fn: 'veilTo', holds: '§2: no write of S._veils, nor of a veil\'s old field (S._zoneLoading, S._wheelTripVeil, S._townArtHold, S._farmArtHold, S._avatarArtHold), in src/ outside veilTo',
+  'server/test/loading-door.test.mjs': { field: 'S._veils', fn: 'veilTo', holds: '§2: no write of S._veils, nor of a veil\'s old field (S._zoneLoading, S._wheelTripVeil, S._townArtHold, S._farmArtHold, S._avatarArtHold, S._netHold), in src/ outside veilTo',
     prop: '_veils', besides: [] },
   /* v2.3.5521: the guard's page door */
   'server/test/guard-page-door.test.mjs': { field: 'S._shieldUp', fn: 'guardTo', holds: '§2: no write of S._shieldUp in src/ outside guardTo',
