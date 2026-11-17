@@ -1,6 +1,6 @@
 card: SEC
 branch: claude/plan-sec-<n>-<topic> (stacked: each PR on the one before until it merges)
-prs: #2030-#2049 merged; #2054: sitting 39; #2055, #2056: CI; PRs 15-18 (5714-5717): suites
+prs: #2030-#2049 merged; #2054: sitting 39; #2055-#2057: CI; PRs 16-19 (5715-5718): suites
 state: ready
 
 ## Done
@@ -10,10 +10,12 @@ state: ready
 - PRs 15-18 (5714-5717): three guards and words (`verifylocal`); gear
   worn only if held (`gearheld`); an old key held to its devices
   (`oldkeyheld`); the site's headers ship (public/_headers, a guard).
+- PR 19 (5718): the roster's cookie host-only (`?rostercookie=0`); the
+  Test panel's admin key for the session, a "Remember" tick.
 
 ## Next
 
-- PRs 15-18: suites and PRs; then item 19 (5718): `rostercookie`.
+- PRs 16-19: suites and PRs; then item 20 (5719): `resetclean`.
 
 ## Found
 

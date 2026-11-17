@@ -1627,7 +1627,7 @@ export async function warpToZone(P, { wsPort, label, zoneId, settleMs = 3500 }) 
     set.call(inp, k);
     inp.dispatchEvent(new Event('input', { bubbles: true }));
   }, ADMIN_KEY);
-  await tap('Save key on this device');
+  await tap('Save key');
   await P.page.waitForTimeout(1500);
   await tap('Finish all quests');
   await P.page.waitForTimeout(2000);
