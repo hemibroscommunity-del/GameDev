@@ -197,6 +197,30 @@ export function selfFillWant(rgba = selfRgba(), tint = SELF_FILL_TINT) {
   }
   return out;
 }
+/* ── v2.3.5238 (14d) THE CLIP (hairClip.js: the stencil's shapes, drawn as
+   pictures): each program keeps a fragment or discards it, and what it keeps
+   is drawn as it is.  The hat's (`batch-clip`, a white silhouette) keeps
+   alpha x red at least half; the monsters' (`batch-clip-alpha`, a thing's own
+   colours) keeps alpha at least half.  Four premultiplied colours, none near
+   the line: kept by both, by neither, by the shape's alone, by both. ── */
+export const SELF_CLIP_PAL = Object.freeze([
+  0xff, 0xff, 0xff, 0xff,   /* white, whole: a x r 1 */
+  0x50, 0x50, 0x50, 0x50,   /* white, a 0.31: neither */
+  0x20, 0x90, 0x40, 0xa0,   /* a 0.63, red 0.13: a x r 0.08 -- the shape's alone */
+  0xc0, 0x10, 0x30, 0xd0,   /* a 0.82, red 0.75: a x r 0.62 -- both */
+]);
+export function selfClipRgba() { return selfPicture(SELF_CLIP_PAL); }
+/** The answer: the picture where its program keeps it, nothing elsewhere.
+ *  `alpha`: the monsters' test (alpha), else the hat's (alpha x red). */
+export function selfClipWant(alpha = false, rgba = selfClipRgba()) {
+  const out = new Uint8Array(rgba.length);
+  for (let i = 0; i < rgba.length; i += 4) {
+    const a = rgba[i + 3] / 255;
+    const keep = alpha ? a >= 0.5 : a * (rgba[i] / 255) >= 0.5;
+    if (keep) for (let c = 0; c < 4; c++) out[i + c] = rgba[i + c];
+  }
+  return out;
+}
 export function selfSheenRgba() { return selfPicture(SELF_SHEEN_PAL); }
 export function selfSheenWant() { return sheenLiftCpu(selfSheenRgba()); }
 
