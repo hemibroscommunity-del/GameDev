@@ -224,19 +224,17 @@ export const PHASES = [
     note: 'v2.3.5213: the door (EX_WAYS move, linger, take; a claim is a string of 32 characters at most, or nothing; the edge stamps _exAt, _exX, _exY; live flag exdoor). Notes beside it, not phases: ps._fireLit (moveclaims.js _fireLitNote) and ps._cookHits (gathering.js _planCookHits, cooking.js _handleCookRequest). No record is held to a cook on purpose (gathering.js): ps.ex === \'cook\' is the only "is cooking".',
   },
   {
-    name: 'guard', side: 'worker', status: 'todo',
+    name: 'guard', side: 'worker', status: 'door',
     what: 'The shield: down, raised with its parry window, holding, broken for 3 s.',
-    field: null, states: ['down', 'parry', 'raised', 'broken'], fn: null, file: null,
+    field: 'ps.blocking', states: ['down', 'parry', 'raised', 'broken'],
+    fn: '_guardTo', file: 'server/src/moveclaims.js',
     clears: [
       { edge: 'end', at: 'server/src/hits.js _hitStopped' },
       { edge: 'leave', at: 'server/src/linger.js _lingerOnClose' },
     ],
     rejoin: 'none: the phone says `blocking` again on every move',
-    today: [
-      { field: 'ps.blocking', file: 'server/src/movement.js', writers: ['server/src/join.js _handleJoin', 'server/src/movement.js _handleMove', 'server/src/moveclaims.js _swingDropsGuard', 'server/src/combat.js _resolvePvPAttack', 'server/src/pvpextras.js _strikePlayer', 'server/src/hits.js _hitStopped', 'server/src/index.js _tickPlayerRegen', 'server/src/linger.js _lingerOnClose', 'server/src/bodytake.js _bodyTakeStart'] },
-      { field: 'ps._guardBrokenUntil', file: 'server/src/hits.js', writers: ['server/src/combat.js _resolvePvPAttack', 'server/src/pvpextras.js _strikePlayer', 'server/src/hits.js _hitStopped', 'server/src/index.js _tickPlayerRegen'] },
-    ],
-    note: 'ps.blocking has nine writers in nine files (and five more for the sparring clone in spar.js); a death touches none of it.',
+    held: { suite: 'server/test/guard-door.test.mjs' },
+    note: 'v2.3.5536: the door (GUARD_WAYS raise, lower, break; the parry stamp ps.blockStartT and the break latch ps._guardBrokenUntil written beside it, never alone; a raise is refused while the latch is live; live flag guarddoor). Its callers: movement.js _handleMove, moveclaims.js _swingDropsGuard, combat.js _resolvePvPAttack, pvpextras.js _strikePlayer, hits.js _hitStopped, index.js _tickPlayerRegen, linger.js, bodytake.js, and the sparring clone (spar.js). The phase is guardPhase (moveclaims.js); a death touches none of it.',
   },
   {
     name: 'pose', side: 'worker', status: 'door',
@@ -451,20 +449,18 @@ export const PHASES = [
     note: 'v2.3.5531: the door (ARENA_PAGE_WAYS poll; switch ?arenadoor). Its notes S._arenaInvolved and S._arenaTournamentId by the same call; beside it: the stake board (S._arenaStakeBoard, gameEvents.js) and the popup mark (S._arenaNotified). A match rides S._inDuel (the duel\'s row): the rejoin clears it with the duel.',
   },
   {
-    name: 'dungeon', side: 'page', status: 'todo',
+    name: 'dungeon', side: 'page', status: 'door',
     what: 'A dungeon run on the phone: opening, in it, its waves, cleared, complete, back out.',
-    field: null, states: ['none', 'opening', 'in', 'clear', 'complete'], fn: null, file: null,
+    field: 'S._inDungeon', states: ['none', 'in', 'complete'],
+    fn: 'dungeonTo', file: 'src/game/dungeonDoor.js',
     clears: [
       { edge: 'death', at: 'src/game/respawn.js applyLocalRespawn' },
       { edge: 'zone', at: 'src/game/wheelDungeons.js leaveWheelDungeon' },
     ],
     rejoin: 'none: the worker\'s run keeps the pass across a reconnect behind the loading screen (zonejudge.js R1)',
-    today: [
-      { field: 'S._inDungeon' }, { field: 'S._serverDungeon' }, { field: 'S._dungeonZone' }, { field: 'S._dungeonWave' },
-      { field: 'S._dungeonClear' }, { field: 'S._dungeonComplete' }, { field: 'S._inCustomDungeon' }, { field: 'S._dungeonBack' },
-      { field: 'S._wheelDungeonOpening' }, { field: 'S._dungeonEnteredAt' },
-    ],
-    note: 'S._inDungeon is written from six files (the ledger\'s writers).',
+    held: { suite: 'server/test/dungeon-page-door.test.mjs' },
+    notes: ['S._inCustomDungeon', 'S._dungeonComplete'],   /* v2.3.5535: written beside the field by the same call */
+    note: 'v2.3.5535: the door (DUNGEON_PAGE_WAYS enter, complete, leave; each call names the fields its site wrote, and only those; switch ?dungeondoor), in place of twenty-four writes in seven files. The opening (S._wheelDungeonOpening) and the clear (S._dungeonClear) are their own notes beside it, with the run\'s place and number (S._serverDungeon, S._dungeonZone, S._dungeonWave, S._dungeonBack) and the entry time (S._dungeonEnteredAt).',
   },
   {
     name: 'connection', side: 'page', status: 'door',

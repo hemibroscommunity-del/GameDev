@@ -54,7 +54,7 @@
  *      NOT_A_MACHINE                                       -> FAIL 5
  *   5. the `race` worker row deleted -> FAIL 1 (4 stays green: the page's
  *      `race` row still carries the wire's name)
- *   6. TODO_LINE one under the count (4; tag 5676)           -> FAIL 7
+ *   6. TODO_LINE one under the count (3; tag 5677)           -> FAIL 7
  * v2.3.5203 (the gatekeeper's sitting 8, its two holes), each tried by hand:
  *   7. `_sneakJoin(ws,\n msg) { ... s.phase = 'joined' }` at the end of
  *      join.js's joinMethods (its parameters over two lines)  -> FAIL 2
@@ -127,11 +127,15 @@
  *      line's besides is the arena door's own, `fn`)
  * v2.3.5523 (the ride door):
  *  38. `ps._ride = true;` back in ride.js _handleRide -> FAIL 2
+ * v2.3.5536 (the guard door):
+ *  51. `ps.blocking = false;` back in linger.js -> guard-door.test FAIL 2
  * v2.3.5537 (the zone door):
  *  52. `ps.z = 'town';` back in index.js _tickPlayerRespawn -> zone-door.test FAIL 2
  * v2.3.5525 (the loading door):
  *  39. `S._farmArtHold = seq;` back in farmTrip.js -> loading-door.test FAIL 2
  *  40. `S._veils = new Map();` in zoneTransitions.js -> FAIL 2
+ * v2.3.5535 (the dungeon's page door):
+ *  50. `S._inDungeon = false;` back in respawn.js -> dungeon-page-door.test FAIL 2
  * v2.3.5533 (the fight's page door):
  *  48. `S._pvpSkullType = null;` back in noMansLand.js -> fight-page-door.test FAIL 2
  * v2.3.5534 (the life's page door):
@@ -183,7 +187,7 @@ const fileNamed = (name) => {
    since card L's arena door (#1930).
    Tag 5661 (the gatekeeper, sitting 23, main 8149d61): 15 -> 14, the count
    since card L's ride door (#1936). */
-export const TODO_LINE = 5;   /* v2.3.5676: lowered 6 -> 5 by the gatekeeper, sitting 38 (L's fight page door, #2039); v2.3.5675: lowered 7 -> 6 by the gatekeeper, sitting 37 (L's arena page door, #2031); v2.3.5674: lowered 9 -> 7 by the gatekeeper, sitting 36 (L's trade and ride page doors, #2027); v2.3.5673: lowered 11 -> 9 by the gatekeeper, sitting 35 (L's duel and party page doors, #2022); v2.3.5671: lowered 12 -> 11 by the gatekeeper, sitting 33 (L's connection door, #2012); v2.3.5669: lowered 13 -> 12 by the gatekeeper, sitting 31 (L's window door, #2000); v2.3.5663: 14 -> 13 (#1956) */
+export const TODO_LINE = 4;   /* v2.3.5677: lowered 5 -> 4 by the gatekeeper, sitting 39 (L's life page door, #2046); v2.3.5676: lowered 6 -> 5 by the gatekeeper, sitting 38 (L's fight page door, #2039); v2.3.5675: lowered 7 -> 6 by the gatekeeper, sitting 37 (L's arena page door, #2031); v2.3.5674: lowered 9 -> 7 by the gatekeeper, sitting 36 (L's trade and ride page doors, #2027); v2.3.5673: lowered 11 -> 9 by the gatekeeper, sitting 35 (L's duel and party page doors, #2022); v2.3.5671: lowered 12 -> 11 by the gatekeeper, sitting 33 (L's connection door, #2012); v2.3.5669: lowered 13 -> 12 by the gatekeeper, sitting 31 (L's window door, #2000); v2.3.5663: 14 -> 13 (#1956) */
 
 /* the machines every side must have a row for: SHAPES part 5's names and
    step 5.3b's list (the plan's own `dungeon`, `connection`, `loading`,
@@ -383,6 +387,15 @@ const DOOR_SUITES = Object.freeze({
   /* v2.3.5523: the ride door (ps._ridePid is written beside it, in _rideTo) */
   'server/test/ride-door.test.mjs': { field: 'ps._ride', fn: '_rideTo', holds: '§2: no write of ._ride or ._ridePid in server/src outside _rideTo',
     prop: '_ride', besides: [] },
+  /* v2.3.5535: the dungeon's page door (its notes: the suite's §2) */
+  'server/test/dungeon-page-door.test.mjs': { field: 'S._inDungeon', fn: 'dungeonTo', holds: '§2: no write of S._inDungeon, S._inCustomDungeon or S._dungeonComplete in src/ outside dungeonTo',
+    prop: '_inDungeon', besides: [] },
+  /* v2.3.5536: the guard door (its parry stamp and break latch: the suite's §2) */
+  'server/test/guard-door.test.mjs': { field: 'ps.blocking', fn: '_guardTo', holds: '§2: no write of .blocking, .blockStartT or ._guardBrokenUntil in server/src outside _guardTo',
+    prop: 'blocking', besides: [
+      { file: fileNamed('spar.js'), text: 'blocking: false, blockStartT: 0', fn: '_sparSpawn', why: 'the sparring clone\'s birth, guard down, before any move' },
+      { file: fileNamed('tick.js'), text: 'e.blocking = ps.blocking || false;', why: 'a copy of the guard onto the tick\'s entry, not the player\'s' },
+    ] },
   /* v2.3.5537: the zone door */
   'server/test/zone-door.test.mjs': { field: 'ps.z', fn: '_zoneTo', holds: '§2: no write of a player\'s .z in server/src outside _zoneTo',
     prop: 'z', besides: [
