@@ -18,11 +18,11 @@ On main 82fb78d, seeded, 4 simulated minutes a run (the cook's an hour).
 
 | Claim | The judge | The take | Honest | Liar | Gain | Its spread | Over 1.5 |
 |---|---|---|---|---|---|---|---|
-| the sword's reach (`reach`) | a melee hit is taken from `PVE_MELEE_RANGE` (400 px, index.js; combat.js _handleMonsterDamage), and a miss never reaches the worker | kills an hour | 360 (the honest sword: in to 90 px, a swing every 600 ms) | 1,064 (every monster within 399 px, each every 210 ms (its lane), unshoved (`noKb`)) | **2.96** | 0.56 | yes |
+| the sword's reach (`reach`) | a melee hit is taken from `PVE_MELEE_RANGE` (400 px, index.js; combat.js _handleMonsterDamage), and a miss never reaches the worker | kills an hour | 360 (the honest sword: in to 90 px, a swing every 600 ms) | 510 (every monster within 399 px, each every 210 ms (its lane), unshoved (`noKb`)) | **1.42** | 0.56 | no |
 | a sword's claim labelled a bow's (TRAPS §329) (`bowlabel`) | `slot: 'ranged'` with a bow worn takes the bow's reach (1,490 px, hitproof.js) and five claims a second, and never lowers the guard | kills an hour | 675 (the flicking archer: in to 600 px, a shot every 371 ms (the free-swing trial's flicked bow)) | 2,228 (standing, five `ranged` claims a second over everything in the bow's reach) | **3.3** | 0.23 | yes |
 | the guard beyond #1530's limits (`guard`) | `blocking` is believed with no shield worn (movement.js), and a guard sent with each swing stays up through it (moveclaims.js) | damage taken an hour | 84,339 (the honest sword, its guard down while it swings) | 61,380 (each swing sent with a raised guard pointed at its target, no shield) | **1.37** | 0.49 | no |
 | the cooking shield beyond #1530's limits (`cookshield`) | `ex: 'cook'` is believed at a fire the worker saw lit, with no fish (moveclaims.js _cookShieldHolds): 3 s after any attack, 120 px from where it began | damage taken a kill | 224 (the honest sword, its guard down while it swings) | 335 (its own fire by the field; after each kill `ex: 'cook'` with no fish, the 3 s re-arm waited out) | **0.67** | 0.29 | no |
-| the move (`move`) | `MOVE_BUDGET`: 500 px a second and a 3 s burst (movement.js), the sprint mark (sprint.js), and no walls on the worker | px of ground an hour | 585,017 (the honest sprinter: 3 s sprinting (every move marked), 0.8 s walking, again) | 1,498,368 (point to point at 660 px a second, every other step marked a sprint) | **2.56** | 0.01 | yes |
+| the move (`move`) | `MOVE_BUDGET`: 500 px a second and a 3 s burst (movement.js), the sprint mark (sprint.js), and no walls on the worker | px of ground an hour | 585,017 (the honest sprinter: 3 s sprinting (every move marked), 0.8 s walking, again) | 685,545 (point to point at 660 px a second, every other step marked a sprint) | **1.17** | 0.01 | no |
 | the harvest's grade (`harvest`) | the phone's `accuracy` on `node_strike` (gathering.js), believed when its swipe looks a person's (botfp.js); a perfect pays 2 ore | ore an hour | 420 (a phone's grades (45% perfect, 44% good: the bot lab's guess)) | 780 (every strike perfect, at the earliest the worker takes it) | **1.86** | 0.32 | yes |
 | the cook's result (`cook`) | the phone's `kind` on `cook_request` (cooking.js): no fire, no start and no gesture are asked of it, only 45 a minute and 2,400 an hour | fish cooked an hour | 1,508 (the honest cook: a fire, the start, its hits and the gesture) | 2,400 (`cook_request` alone, at 45 a minute) | **1.59** | 0.02 | yes |
 | the quest hand-in (`quest`) | each objective is read on the worker's own record (quests.js _questObjectiveMet), and a quest pays once | gold (the run's whole take) | 50 (the honest hand-in of a quest it holds) | 50 (every quest the game has, twenty times) | **1** | 0 | no |
@@ -36,7 +36,7 @@ The spread is the gain's highest less its lowest over five other seeds (`CLAIMS_
 - `bowlabel`: the honest archer: in to 600 px, a shot every 495 ms, each claim when its arrow lands: 569; the liar over it: **3.91**.
 - `bowlabel`: the honest sword: 329; the liar over it: **6.76**.
 - `bowlabel`: the stepping archer: a shot every 495 ms, running in (250 px a second) while its arrows fly: 330; the liar over it: **6.75**.
-- `move`: the honest walker: 150 px a second, point to point: 538,534; the liar over it: **2.78**.
+- `move`: the honest walker: 150 px a second, point to point: 538,534; the liar over it: **1.27**.
 - `harvest`: a computer holding E (never perfect): 313; the liar over it: **2.49**.
 
 ## Claims with no number yet, and why

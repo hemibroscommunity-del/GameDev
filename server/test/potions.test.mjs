@@ -46,6 +46,7 @@ function check(name, cond, detail) {
 }
 
 const room = new GameRoom(makeState(), mockEnv);
+room._liveFlags = { movetop: false };   /* v2.3.5551: the potion's bound on the flat 500 (`movetop: false`, its kill switch) */
 const TICK_MS = REGEN_TICKS * room.TICK_RATE;
 
 /* v2.3.3130: a potion is DRUNK FROM THE BAG.  These used to buy-and-apply in

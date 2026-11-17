@@ -1,7 +1,7 @@
 /* THE SWORD'S SWING -- v2.3.5548 (grand plan step 4.2, the sword's reach;
- * card K PR 14; docs/specs/sword-swing.md).  OFF: the owner's to turn on
- * (`swordswing: true` in the live flags), since it changes how combat is
- * judged.
+ * card K PR 14; docs/specs/sword-swing.md).  ON since v2.3.5551 (the
+ * owner, 2026-11-17: "Go recommended"); `swordswing: false` in the live
+ * flags is its kill switch.
  *
  * The bench (claims-gain.test, `reach`) found the sword's claim worth 2.96
  * times an honest sword's take: a melee hit was believed from
@@ -47,10 +47,10 @@ export const SWORD_SWING = Object.freeze({
 const own = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);
 
 export const swordSwingMethods = {
-  /* an opt-in, off: only `swordswing: true` turns it on */
+  /* v2.3.5551: ON (the owner, 2026-11-17: "Go recommended"); `swordswing: false` is its kill switch */
   _swordSwingOn() {
     const f = this._liveFlags;
-    return !!(f && typeof f === 'object' && own(f, 'swordswing') && f.swordswing === true);
+    return !(f && typeof f === 'object' && own(f, 'swordswing') && !f.swordswing);
   },
   /* the sword's reach the worker believes */
   _swordReach() {

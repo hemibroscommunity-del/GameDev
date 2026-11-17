@@ -76,6 +76,7 @@ const realRandom = Math.random;
 Math.random = () => 0.999;
 
 const room = new GameRoom(mockState, mockEnv);
+room._liveFlags = { movetop: false };   /* v2.3.5551: the gust's budget is measured on the flat bound (`movetop: false`, its kill switch) */
 const ws = fakeWs('p');
 room.sessions.set(ws, { id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now() });
 await room.webSocketMessage(ws, JSON.stringify({ type: 'join', id: 'p1', name: 'Player', protocolVersion: 2, ws: [1, 5], data: { x: 1000, y: 1000, z: 'town' } }));

@@ -82,7 +82,7 @@ async function fresh(st, zone) {
   ps.blocking = false; ps._guardBrokenUntil = 0; ps.dead = false; ps.dying = false; ps.disconnected = false;
   ps._sprintAt = 0; ps._sprintOwed = 0; ps._sprintStep = false; ps._sprintLastPaid = false; ps._sprintPrevPaid = false;
   ps._sprintBilledAt = 0; ps._mvWalk = { b: 0, at: T };   /* v2.3.5541: the walk's own budget empty, as the move's is */
-  room._liveFlags = {};
+  room._liveFlags = { movetop: false };
   ps.lastMoveAt = T;
   ps._mvBudget = 0; ps._mvBudgetAt = T;
 }
@@ -105,12 +105,12 @@ async function run(n, step, gapMs, extra) {
   const sync = ws.sent.find((m) => m.type === 'state_sync');
   check('caps: state_sync advertises caps.sprint', !!(sync && sync.caps && sync.caps.sprint === true), sync && sync.caps && sync.caps.sprint);
   const ws2 = fakeWs('q');
-  room._liveFlags = { sprint: false };
+  room._liveFlags = { movetop: false, sprint: false };
   room.sessions.set(ws2, { id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: T });
   await room.webSocketMessage(ws2, JSON.stringify({ type: 'join', id: 'p2', name: 'Walker', protocolVersion: 2, data: { x: 1000, y: 1000, z: 'meadow' } }));
   const sync2 = ws2.sent.find((m) => m.type === 'state_sync');
   check('caps: `sprint: false` in liveflags un-advertises it', !!(sync2 && sync2.caps && sync2.caps.sprint === false), sync2 && sync2.caps && sync2.caps.sprint);
-  room._liveFlags = {};
+  room._liveFlags = { movetop: false };
 }
 
 // ── 2. THE BOUND ──────────────────────────────────────────────────────────
@@ -236,11 +236,11 @@ async function run(n, step, gapMs, extra) {
 // ── 7. THE KILL SWITCH ────────────────────────────────────────────────────
 {
   await fresh(100);
-  room._liveFlags = { sprint: false };
+  room._liveFlags = { movetop: false, sprint: false };
   const off = await run(1, 120, 200, { sp: 1 });
   await run(10, 40, 100, { sp: 1 });
   check('kill switch: `sprint: false` stops every sprint step -- walking bound, nothing billed', off === 0 && ps.stamina === 100, { st: ps.stamina });
-  room._liveFlags = {};
+  room._liveFlags = { movetop: false };
 }
 
 // ── 8. THE WIRE ───────────────────────────────────────────────────────────
@@ -420,7 +420,7 @@ async function run(n, step, gapMs, extra) {
    is 600 px a second: over the walk's 500, inside the sprint's 665; the
    walk's budget starts empty (fresh), so each such move needs the sprint. */
 {
-  const on = () => { room._liveFlags = { sprintmark: true }; };
+  const on = () => { room._liveFlags = { movetop: false, sprintmark: true }; };
   /* the cheat: every other move marked, all at sprint speed, 2 s */
   await fresh(100); on();
   for (let i = 0; i < 20; i++) { wait(100); await move(ps.x + 60, ps.y, i % 2 ? { sp: 1 } : undefined); }

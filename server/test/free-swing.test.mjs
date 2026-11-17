@@ -90,7 +90,7 @@ function arm(p) {
   p.ps.z = ZONE; p.ps.x = 500; p.ps.y = 500;   /* the middle of the zone: a shove is not clamped to its edge */
   p.ps.dead = false; p.ps.dying = false; p.ps.disconnected = false;
   p.ps.mana = p.ps.maxMana = 1000;
-  delete p.ps._monHitCad; p.ps._pveSpec = undefined; p.ps._fs = undefined;
+  delete p.ps._monHitCad; p.ps._pveSpec = undefined; p.ps._fs = undefined; p.ps._ss = undefined;   /* v2.3.5551: + the sword's swing (swordswing.js) */
 }
 function monster(p, d, dy = 0) {
   const zcfg = room._getZoneConfig(ZONE);
@@ -239,7 +239,7 @@ check('12. a new character\'s sword cycle is the untried 600 ms', cycle === 600,
   T += 150;
   hit(A, m, { sw: 14, element: 'frost' });
   check('4. a light frost swing sets off no collision (and so no mana back)', !lastEvents.some((e) => e.payload && e.payload.collision) && !!m.statuses.burn, m.statuses);
-  T += 700;
+  T += 700; home(A, m);   /* v2.3.5551: back beside it (the full swings shoved it past the sword's 150 px: swordswing.js) */
   hit(A, m, { sw: 15, element: 'frost' });
   check('4. ...a full one does (guard: the pair collides)', lastEvents.some((e) => e.payload && e.payload.collision), lastEvents.map((e) => e.payload));
   room._liveFlags = {};

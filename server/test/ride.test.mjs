@@ -87,7 +87,7 @@ async function fresh(x, y) {
   ps.stamina = 100; ps.maxStamina = 100;
   ps._sprintAt = 0; ps._sprintLastPaid = false; ps._sprintPrevPaid = false;
   ps._godUntil = 0; ps._zoneEntryGraceUntil = 0;
-  room._liveFlags = {};
+  room._liveFlags = { movetop: false };
   ps.lastMoveAt = T;
   ps._mvBudget = 0; ps._mvBudgetAt = T; ps._mvFollow = undefined; ps._mp = undefined;
 }
@@ -103,12 +103,12 @@ async function step(dx, gapMs, extra) {
   const sync = ws.sent.find((m) => m.type === 'state_sync');
   check('1. caps: state_sync advertises caps.ride', !!(sync && sync.caps && sync.caps.ride === true), sync && sync.caps && sync.caps.ride);
   const ws2 = fakeWs('q');
-  room._liveFlags = { ride: false };
+  room._liveFlags = { movetop: false, ride: false };
   room.sessions.set(ws2, { id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: T });
   await room.webSocketMessage(ws2, JSON.stringify({ type: 'join', id: 'r2', name: 'Walker', protocolVersion: 2, data: { x: CX + 50, y: CY, z: 'wheel' } }));
   const sync2 = ws2.sent.find((m) => m.type === 'state_sync');
   check('1. caps: `ride: false` in liveflags un-advertises it', !!(sync2 && sync2.caps && sync2.caps.ride === false), sync2 && sync2.caps && sync2.caps.ride);
-  room._liveFlags = {};
+  room._liveFlags = { movetop: false };
   check('1. ride_state is privileged (a client cannot forge it to another)', PRIVILEGED_EVENTS.has('ride_state'));
   check('1. a rider faster than a sprint (the owner\'s list: "faster than sprinting")', RIDE.MULT > SPRINT.MULT, RIDE.MULT);
 }
@@ -136,10 +136,10 @@ async function step(dx, gapMs, extra) {
   check('2. dead: refused', ps._ride === false && lastRide().on === false, lastRide());
 
   await fresh();
-  room._liveFlags = { ride: false };
+  room._liveFlags = { movetop: false, ride: false };
   await ride(true);
   check('2. the switch off: refused (`off`)', ps._ride === false && lastRide().why === 'off', lastRide());
-  room._liveFlags = {};
+  room._liveFlags = { movetop: false };
 
   await fresh();
   ps.ex = 'chop';
@@ -257,12 +257,12 @@ async function step(dx, gapMs, extra) {
   /* the kill switch mid-ride */
   await fresh();
   await ride(true);
-  room._liveFlags = { ride: false };
+  room._liveFlags = { movetop: false, ride: false };
   check('4. the kill switch: no board on the wire at once', room._rideWire(ps) === false);
   ps.lastMoveAt = T; ps._mvBudget = 0; ps._mvBudgetAt = T;
   const took = await step(190, 200);
   check('4. ...and the next move is judged on foot and ends the ride (`off`)', took === false && ps._ride === false && lastRide().why === 'off', { took, last: lastRide() });
-  room._liveFlags = {};
+  room._liveFlags = { movetop: false };
 }
 
 // ── 5. THE OTHERS ─────────────────────────────────────────────────────────
@@ -290,10 +290,10 @@ async function step(dx, gapMs, extra) {
   await move(ps.x + 5, ps.y);
   const onBoard = await tickOnce();
   check('5. riding, the tick carries `brd: 1` for the others', !!onBoard && onBoard.brd === 1, { onBoard, types: wsO.sent.map((m) => m.type) });
-  room._liveFlags = { ride: false };
+  room._liveFlags = { movetop: false, ride: false };
   const off = await tickOnce();
   check('5. with the kill switch thrown, no `brd`', !!off && !('brd' in off), off);
-  room._liveFlags = {};
+  room._liveFlags = { movetop: false };
   room.sessions.delete(wsO);
   delete room.playerState.o1;
 }

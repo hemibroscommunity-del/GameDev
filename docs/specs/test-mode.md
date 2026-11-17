@@ -46,6 +46,8 @@ switch allows it.
 | A hit on a monster: weapon slot, reach, rate, paid special | combat.js `_handleMonsterDamage` (hitproof.js) | lands as sent |
 | The 400 px melee reach and the Wheel's 3,600 px | combat.js `_handleMonsterDamage` | none |
 | The per-monster lanes (210 ms, three specials in 1.2 s) | combat.js `_handleMonsterDamage` | none |
+| The sword's swing (one a cycle), its 150 px reach and its shove (v2.3.5548, `swordswing`) | combat.js `_handleMonsterDamage`, swordswing.js | none |
+| A bow's claim held to an arrow seen (v2.3.5550, `bowshot`) | combat.js `_handleMonsterDamage`, bowshot.js | none |
 | The order of the first quests ('first', 'order') | quests.js `_questBarred` | any order |
 | The dodge-roll window against a player's blow | movement.js `_rollOn` | the phone's `dodging` is believed |
 

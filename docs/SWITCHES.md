@@ -106,7 +106,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?swingbonus` | page | switch | v2.3.4520 | 2026-11-10 | =0 (remembered; =1 forgets) | logic |  | no | The free swing without its perfect-strike bonus on this device. |
 | `swordconvert` | worker | switch | v2.3.3895 | 2026-10-30 | false | logic |  | no | Stops the sword conversion's boundary heals and the Forge's mapping. |
 | `?swordfeel` | page | switch | v2.3.4800 | 2026-11-11 | =0 (remembered; =1 forgets) | logic |  | no | The sword's look before its feel (no dimming, glint, arc or weight), on this device. |
-| `swordswing` | worker | switch | v2.3.5548 | off | true | logic |  | no | An opt-in, off (the owner's to turn on: it changes how combat is judged): thrown (`swordswing: true`), a sword's claim on a monster lands from 150 px at most, a player's swings come at the sword's own rate (one a cycle, an allowance of two, a ring's targets together), and a sword's `noKb` is not believed. |
+| `swordswing` | worker | switch | v2.3.5548 | 2026-11-17 | false | logic |  | no | ON since v2.3.5551 (the owner, 2026-11-17: "Go recommended"); thrown (`swordswing: false`), a sword is judged as before: a claim from 400 px, on each monster every 210 ms, its `noKb` believed. |
 | `weapongem` | worker | switch | v2.3.3513 | 2026-10-20 | false | logic |  | no | Un-advertises the weapon gem, refuses every ask, and the fight goes back on the claimed element. |
 | `whirlWindup` | worker | switch | v2.3.2820 | 2026-09-24 | false | logic |  | no | The whirlwind is instant again, with no wind-up. |
 | `xp_mult` | worker | value | v2.3.1150 |  | a number, 1 to 4 | logic |  | no | Multiplies kill XP (the 2x weekend lever), 1 to 4. |
@@ -329,7 +329,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `movebudget` | worker | switch | v2.3.3325 | 2026-10-17 | false | logic |  | no | The move budget off: the per-message 80, the refusals and the three bypasses as before. |
 | `?movementreset` | page | switch | v2.3.5204 | 2026-11-14 | =0 | logic |  | no | A climb and a swim end a frame after a change of place again, on their own off-the-Wheel checks, not at the zone door. |
 | `movepath` | worker | switch | v2.3.3726 | 2026-10-28 (v2.3.3744) | false | logic |  | no | No glide from the next tick; every phone is told to send every move again. |
-| `movetop` | worker | switch | v2.3.5549 | off | true | logic |  | no | An opt-in, off (the owner's to turn on: it changes how moves are judged): thrown (`movetop: true`), the move's bound refills at the player's own top speed (the walk x agility and swiftness x the fastest amulet x the path, with headroom; the buff, the move stat, the ride, the sprint) instead of a flat 500 px a second; the burst it holds stays the old size. |
+| `movetop` | worker | switch | v2.3.5549 | 2026-11-17 | false | logic |  | no | ON since v2.3.5551 (the owner, 2026-11-17: "Go recommended"); thrown (`movetop: false`), every player is held to the flat 500 px a second again, as before. |
 | `pathall` | worker | switch | v2.3.3726 | 2026-10-28 (v2.3.3744) | false | logic | `movepath` | no | Only a phone that asks with ?diet=1 gets the move glide. |
 | `rest` | worker | switch | v2.3.3539 | 2026-10-21 | false | logic |  | no | Un-advertises the Hotel's rest: it rests nobody and pays no Well Rested XP. |
 | `ride` | worker | switch | v2.3.3776 | 2026-10-29 | false | logic |  | no | Un-advertises riding and ends every ride on the rider's next move. |

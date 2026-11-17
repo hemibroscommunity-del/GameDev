@@ -33,7 +33,7 @@
 import { readFileSync } from 'node:fs';
 import { srcFiles } from './src-walk.mjs';
 import { GameRoom } from '../src/index.js';
-import { MOVE_BUDGET } from '../src/movement.js';
+import { MOVE_TOP, MOVE_BUDGET } from '../src/movement.js';
 import { WHEEL_ZONE } from '../src/wheelzone.js';
 import { flagNameOk } from '../src/liveops.js';
 /* v2.3.4953: plays the world (the Wheel), off retired-lands.test's FIXTURES
@@ -77,7 +77,9 @@ const FULL = MOVE_BUDGET.SPEED_PX * MOVE_BUDGET.BURST_S + MOVE_BUDGET.SLACK_PX; 
 let seq = 0;
 async function setup(opts = {}) {
   const room = new GameRoom(makeState(), env);
-  room._liveFlags = opts.flags || {};
+  /* v2.3.5551: this suite holds the flat bound (SPEED_PX), the path `movetop: false`
+     keeps as its kill switch; the player's own top (ON) is section 10 and claims-gain 2e */
+  room._liveFlags = { movetop: false, ...(opts.flags || {}) };
   room._saveRpg = () => {}; room._saveRpgVitals = () => {}; room._saveRpgPools = () => {};
   const id = 'bp_mb' + (++seq);
   const ws = fakeWs();
@@ -410,7 +412,7 @@ async function walk(p, pxs, ms, gap = 33, extra) {
   check('7. a server placement ends it: the worker\'s place stands', near(p.ps.x, 1200) && !p.ps._mvFollow);
   p = await start();
   const xk = p.ps.x;
-  p.room._liveFlags = { movebudget: false };
+  p.room._liveFlags = { movebudget: false, movetop: false };
   ticks(p.room, 500);
   check('7. the kill switch ends it', near(p.ps.x, xk) && !p.room._mvFollowing.has(p.id));
   p = await setup();
@@ -452,8 +454,21 @@ async function walk(p, pxs, ms, gap = 33, extra) {
      now (lastplace.js: the join names where it starts) */
   check('9. the overview counts the moves judged, the ones followed, and who is followed now',
     info.on === true && info.judged === 3 && info.followed === 1 && info.following === 1 && info.wayBack === 0 && info.arrival === 0, info);
-  p.room._liveFlags = { movebudget: false };
+  p.room._liveFlags = { movebudget: false, movetop: false };
   check('9. ...and says when the switch is off', p.room._moveBudgetInfo().on === false);
+}
+
+// ── 10. v2.3.5551: THE PLAYER'S OWN TOP (movement.js MOVE_TOP; `movetop`, ON) ──
+{
+  const p = await setup({ flags: { movetop: true } });
+  const top = MOVE_TOP.WALK_PX * MOVE_TOP.AMULET_MAX * MOVE_TOP.TILE_MAX * MOVE_TOP.FLIP_MAX * MOVE_TOP.HEADROOM;
+  let r = await walk(p, 150, 5000);
+  check(`10. a new character's honest walk, 150 px/s: every move taken (${r.taken}/${r.n})`, r.taken === r.n, r);
+  r = await walk(p, top * 0.95, 5000);
+  check(`10. ...and just under its own top (${Math.round(top)} px/s): every move taken (${r.taken}/${r.n})`, r.taken === r.n, r);
+  T += 3000;
+  r = await walk(p, 600, 10000);
+  check(`10. 600 px/s claimed with no stats behind it (the old bound let 500 through): followed once its burst is spent, not taken whole (${r.taken}/${r.n})`, r.taken < r.n, r);
 }
 
 console.log(failures === 0 ? '\nmove-budget: all checks passed' : `\nmove-budget: ${failures} FAILED`);

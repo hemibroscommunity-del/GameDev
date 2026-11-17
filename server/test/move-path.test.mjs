@@ -83,7 +83,7 @@ async function makeRoom(flags) {
   globalThis.setInterval = (fn, ms) => { if (ms === room.TICK_RATE && !tickFn) { tickFn = fn; return 1; } return realSetInterval(fn, ms); };
   room.startTickLoop();
   globalThis.setInterval = realSetInterval;
-  room._liveFlags = flags || {};
+  room._liveFlags = { movetop: false, ...(flags || {}) };   /* v2.3.5551: the flat bound's arithmetic, `movetop: false` (its kill switch); the player's own top: move-budget 10, claims-gain 2e */
   return { room, tickFn };
 }
 async function join(room, id) {
@@ -427,12 +427,12 @@ let on0Tick = 22;
   await send(room, B, Object.assign({ type: 'move', x: 21704, y: 21792, z: 'wheel', vx: 275, vy: 0 }, base));
   NOW += room.TICK_RATE; tickFn();
   const moved = room.playerState.py.x > 21704;
-  room._liveFlags = { movepath: false };
+  room._liveFlags = { movetop: false, movepath: false };
   const xs = room.playerState.py.x;
   NOW += room.TICK_RATE; tickFn();
   check('6e. the kill switch stops every glide from the next tick', moved && room.playerState.py.x === xs, { moved, x: room.playerState.py.x, xs });
   /* ...and every phone is told at once, through the admin route */
-  room._liveFlags = {};   /* the default again, after 6e's kill switch */
+  room._liveFlags = { movetop: false };   /* the default again, after 6e's kill switch */
   const told = [];
   room.broadcastAll = (m) => told.push(m);
   room._adminLog = async () => {};

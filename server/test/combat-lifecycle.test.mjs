@@ -532,7 +532,7 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   // element; burn is CONSUMED; damage capped at raw*3.2.
   // v2.3.1134: clear the hit-cadence tracker -- in real play these two
   // swings are >=450ms apart; the test fires them back-to-back.
-  if (psA._monHitCad) psA._monHitCad.clear();
+  if (psA._monHitCad) psA._monHitCad.clear(); psA._ss = undefined;   /* v2.3.5551: and the sword's swing (swordswing.js, ON): the next swing a cycle later, as in real play */
   psA.weapon.element1 = 'frost';   /* v2.3.3513: a frost gem now */
   const hpBeforeCol = me.hp;
   room.eventBuffer.length = 0;
@@ -629,14 +629,14 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
 
   // Baseline burn (no attunement): remaining == base 4s.
   psA.weaponSpecs = {};
-  if (psA._monHitCad) psA._monHitCad.clear();
+  if (psA._monHitCad) psA._monHitCad.clear(); psA._ss = undefined;   /* v2.3.5551: and the sword's swing (swordswing.js, ON): the next swing a cycle later, as in real play */
   await room.webSocketMessage(wsA, JSON.stringify({ type: 'monster_damage', payload: { monsterId: ma.id, zone: 'meadow', element: 'flame', slot: 'melee' } }));
   const basePlain = ma.statuses && ma.statuses.burn && ma.statuses.burn.remaining;
 
   // 99-pt attunement on a fresh application: x1.99 (v2.3.1343).
   ma.statuses = undefined;
   psA.weaponSpecs = { staff: { attunement: 99 } };
-  if (psA._monHitCad) psA._monHitCad.clear();
+  if (psA._monHitCad) psA._monHitCad.clear(); psA._ss = undefined;   /* v2.3.5551: and the sword's swing (swordswing.js, ON): the next swing a cycle later, as in real play */
   await room.webSocketMessage(wsA, JSON.stringify({ type: 'monster_damage', payload: { monsterId: ma.id, zone: 'meadow', element: 'flame', slot: 'melee' } }));
   const buffed = ma.statuses && ma.statuses.burn;
   // burn def: dur 4, maxDur 6 — both scale by the multiplier.
@@ -654,7 +654,7 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
 {
   psA.z = 'meadow'; psA.dead = false; psA.weapon = { type: 'sword', tierMult: 1 };
   psA.power = 0; psA.weaponSpecs = {};
-  if (psA._monHitCad) psA._monHitCad.clear();
+  if (psA._monHitCad) psA._monHitCad.clear(); psA._ss = undefined;   /* v2.3.5551: and the sword's swing (swordswing.js, ON): the next swing a cycle later, as in real play */
   const ca = meadowMonsters[7];
   const cb = meadowMonsters[8];
   ca.alive = true; ca.hp = ca.maxHp = 10000; ca.dmgByPlayer = {}; ca.statuses = undefined;
@@ -675,13 +675,14 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
 
   // A backdated last-hit stamp (>335ms ago) lets the next hit through.
   psA._monHitCad.get(ca.id).n = Date.now() - 400;
+  psA._ss = undefined;   /* v2.3.5551: the sword's own cycle passed too (swordswing.js, ON) */
   room.eventBuffer.length = 0;
   await room.webSocketMessage(wsA, JSON.stringify({ type: 'monster_damage', payload: { monsterId: ca.id, zone: 'meadow', slot: 'melee' } }));
   check('cadence: hit lands again after the 335ms floor elapses',
     room.eventBuffer.filter((e) => e.type === 'monster_hit' && e.payload.monsterId === ca.id).length === 1);
 
   // Specials: 3 land (staff cone burst), the 4th in the window is dropped.
-  if (psA._monHitCad) psA._monHitCad.clear();
+  if (psA._monHitCad) psA._monHitCad.clear(); psA._ss = undefined;   /* v2.3.5551: and the sword's swing (swordswing.js, ON): the next swing a cycle later, as in real play */
   room.eventBuffer.length = 0;
   /* v2.3.3334: a staff claim needs a staff (hitproof.js), and a special a paid swipe */
   psA.staffWeapon = { type: 'staff', tierMult: 1 };
@@ -721,7 +722,7 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   psA.staffWeapon = { type: 'staff', tierMult: 1 };
   psA.rangedWeapon = { type: 'bow', tierMult: 1 };
   psA.power = 0; psA.mind = 0; psA.agility = 0; psA.weaponSpecs = {};
-  if (psA._monHitCad) psA._monHitCad.clear();
+  if (psA._monHitCad) psA._monHitCad.clear(); psA._ss = undefined;   /* v2.3.5551: and the sword's swing (swordswing.js, ON): the next swing a cycle later, as in real play */
   const rs = meadowMonsters[7];
   rs.alive = true; rs.hp = rs.maxHp = 100000; rs.dmgByPlayer = {}; rs.statuses = undefined;
 
@@ -742,7 +743,7 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   // lands, a third inside the lane is dropped; with `arrowlane: false` the
   // second is dropped, as before (the old-client shape).
   const rapid = async (n) => {
-    if (psA._monHitCad) psA._monHitCad.clear();
+    if (psA._monHitCad) psA._monHitCad.clear(); psA._ss = undefined;   /* v2.3.5551: and the sword's swing (swordswing.js, ON): the next swing a cycle later, as in real play */
     room.eventBuffer.length = 0;
     for (let i = 0; i < n; i++) await room.webSocketMessage(wsA, JSON.stringify({ type: 'monster_damage', payload: { monsterId: rs.id, zone: 'meadow', slot: 'ranged', special: false } }));
     return room.eventBuffer.filter((e) => e.type === 'monster_hit' && e.payload.monsterId === rs.id).length;
@@ -833,7 +834,7 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
     for (const m of meadowMonsters) if (m !== bb && !others.includes(m)) { m.x = -99999; m.y = -99999; }
   };
   const reset = () => {
-    if (psA._monHitCad) psA._monHitCad.clear();
+    if (psA._monHitCad) psA._monHitCad.clear(); psA._ss = undefined;   /* v2.3.5551: and the sword's swing (swordswing.js, ON): the next swing a cycle later, as in real play */
     for (const m of [bb, ...others]) { m.alive = true; m.hp = m.maxHp = 1000000; m.dmgByPlayer = {}; m.statuses = undefined; }
     room.eventBuffer.length = 0;
     paySpecials(psA);   /* v2.3.3334 */
@@ -987,7 +988,7 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
       Math.abs(STAFF_BOLT.CAP_K * 1.65 - STAFF_BOLT.BAND[1]) < 1e-9, { CAP_K: STAFF_BOLT.CAP_K, BAND: STAFF_BOLT.BAND });
   }
   for (const o of _saved) Object.assign(o.m, { x: o.x, y: o.y, hp: o.hp, maxHp: o.maxHp, alive: o.alive, dmgByPlayer: o.dmgByPlayer, statuses: o.statuses });
-  if (psA._monHitCad) psA._monHitCad.clear();
+  if (psA._monHitCad) psA._monHitCad.clear(); psA._ss = undefined;   /* v2.3.5551: and the sword's swing (swordswing.js, ON): the next swing a cycle later, as in real play */
   room.eventBuffer.length = 0;
 }
 
@@ -2835,7 +2836,7 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
      block lands several hits on the SAME monster inside one millisecond, so
      clear it between hits.  The floor itself is pinned positively in
      anticheat.test.mjs; nothing here is about it. */
-  const nocad = () => { psA._monHitCad = new Map(); };
+  const nocad = () => { psA._monHitCad = new Map(); psA._ss = undefined; };   /* v2.3.5551: + the sword's swing (swordswing.js) */
 
   /* Fresh monsters pushed into the LIVE meadow list rather than reused from
      the `meadowMonsters` capture at the top of the file: by this point in the
@@ -3001,7 +3002,7 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   psA.power = 0; psA.mind = 200; psA.agility = 0; psA.weaponSpecs = {};
   const bv = meadowMonsters[7];
   const reset = () => {
-    if (psA._monHitCad) psA._monHitCad.clear();
+    if (psA._monHitCad) psA._monHitCad.clear(); psA._ss = undefined;   /* v2.3.5551: and the sword's swing (swordswing.js, ON): the next swing a cycle later, as in real play */
     bv.alive = true; bv.hp = bv.maxHp = 1000000; bv.dmgByPlayer = {}; bv.statuses = undefined;
     room.eventBuffer.length = 0;
     paySpecials(psA);   /* v2.3.3334 */

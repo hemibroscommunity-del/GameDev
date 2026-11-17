@@ -126,8 +126,8 @@ export const MOVE_BUDGET = Object.freeze({
    MOVE_BUDGET.SPEED_PX (500) was set against the fastest legitimate stack
    of the old stats (~441 px a second); every player is held to it, so a
    new character walking 150 px a second may claim three times that (the
-   claims bench's `move`: 2.56).  With `movetop: true` (an opt-in, OFF: the
-   owner's) the bound is THIS player's top speed: the page's walk
+   claims bench's `move`: 2.56).  ON since v2.3.5551 (the owner, 2026-11-17:
+   "Go recommended"; `movetop: false` is its kill switch), the bound is THIS player's top speed: the page's walk
    (BroTown.jsx: SPEED 2.5 a frame, 150 px a second, x calcMoveSpeed's
    agility and swiftness, the same numbers the worker stores), x the most
    an amulet adds (it is the page's: its largest, AMULET_MAX), x the path
@@ -316,10 +316,10 @@ export const movementMethods = {
     return { spdCap: _spdCap, moveMult: _moveMult * _rideK * _topK };
   },
 
-  /* v2.3.5549: an opt-in, off: only `movetop: true` turns it on */
+  /* v2.3.5551: ON (the owner, 2026-11-17: "Go recommended"); `movetop: false` is its kill switch */
   _moveTopOn() {
     const f = this._liveFlags;
-    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'movetop') && f.movetop === true);
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'movetop') && !f.movetop);
   },
 
   /* v2.3.3325: a move the budget could not cover goes on being followed

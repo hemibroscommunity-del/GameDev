@@ -73,7 +73,7 @@ const ARR = { x: C[0], y: C[1] + LAST_PLACE.ARRIVAL_DY };
 
 function room(flags) {
   const r = new GameRoom(makeState(), env);
-  r._liveFlags = flags || {};
+  r._liveFlags = { movetop: false, ...(flags || {}) };   /* v2.3.5551: the join's judge on the flat bound's arithmetic, `movetop: false` (its kill switch) */
   r._saveRpg = () => {}; r._saveRpgVitals = () => {}; r._saveRpgPools = () => {};
   /* a bystander, so the room is never empty (the last one out ends every
      linger: linger.js) */
@@ -470,7 +470,7 @@ async function walk(r, ws, id, pxs, ms, gap = 33, extra) {
   const info = r._lastPlaceInfo();
   check('8. the overview counts the places kept, the joins judged, the ones followed and the fresh ones',
     info.on === true && info.kept === 2 && info.judged === 2 && info.followed >= 1 && info.fresh === 1 && info.held === 0, info);
-  r._liveFlags = { lastplace: false };
+  r._liveFlags = { lastplace: false, movetop: false };
   check('8. ...and says when the switch is off', r._lastPlaceInfo().on === false);
 }
 

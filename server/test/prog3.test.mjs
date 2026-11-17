@@ -1326,11 +1326,13 @@ const psA = room.playerState.pa;
       prog3: { sk: { sword: { level: 1 }, bow: { level: 1 }, staff: { level: 1 } }, alloc: { move: movePts }, atk: prog3FreshAtk(), pool: 0 },
     });
     const dist = 500 * 1.3 - 5;   /* inside the widened bound (x1.31 at cap), outside the plain one */
+    const _flagsMv = room._liveFlags;
+    room._liveFlags = Object.assign({}, _flagsMv || {}, { movetop: false });   /* v2.3.5551: the flat 500's widening, `movetop: false` (its kill switch) */
     try {
       room.playerState.mvA = mkMover(75); room.playerState.mvB = mkMover(0);
       room._handleMove({ id: 'mvA' }, null, { x: CX + dist, y: CY, z: WHEEL_ZONE });
       room._handleMove({ id: 'mvB' }, null, { x: CX + dist, y: CY, z: WHEEL_ZONE });
-    } finally { Date.now = _realNow; }
+    } finally { Date.now = _realNow; room._liveFlags = _flagsMv; }
     check('a maxed-move player\'s legitimate move is accepted by the widened bound',
       room.playerState.mvA.x === CX + dist, { x: room.playerState.mvA.x - CX });
     check('...while the same move from a player with no move points is refused (followed only the plain 500 px)',
