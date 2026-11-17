@@ -4647,10 +4647,12 @@ export class GameRoom {
        first socket, so the first harvest already reads the owner's values */
     await this._hiddenEnsure();
     /* v2.3.5606: with `seathold: true`, a deploy's roster read once (its
-       seats held 30 s), and a socket let in for each seat held: the join
-       decides who it is for (seathold.js); off, both are nothing */
+       seats held 30 s), and a socket let in for each seat held; v2.3.5612:
+       the gate tells a holder (`?seat=`) from a stranger (seathold.js
+       _seatGate); off, the cap as before */
     await this._seatHoldLoad(Date.now());
-    if (this.sessions.size >= this._roomCap() + this._seatHeldCount(Date.now())) {
+    const _gate = this._seatGate(url, Date.now());
+    if (!_gate.ok) {
       return this._roomFullRefusal(url, undefined, request);
     }
     /* v2.3.3274: one address holds at most `ip_sockets` places and opens at
@@ -4674,6 +4676,7 @@ export class GameRoom {
       asn: Number.isFinite(_asn) && _asn > 0 ? _asn : null, asOrg: typeof _cf.asOrganization === 'string' ? _cf.asOrganization.slice(0, 64) : null,
       /* v2.3.5127: the game's own site or not, from the page's Origin -- the field report's build (report.js) */
       site: reportSiteOf(request && request.headers ? request.headers.get('Origin') : null) });
+    if (_gate.seat) this.sessions.get(server).seat = _gate.seat;   /* v2.3.5612: let in on a held seat: its join must be that id (seathold.js) */
     if (!this.tickInterval && this.sessions.size === 1) this.startTickLoop();
     return new Response(null, { status: 101, webSocket: client });
   }
