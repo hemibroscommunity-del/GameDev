@@ -23,12 +23,13 @@
  *
  * `?loudclear` in the address is Pixi as it ships, to compare. */
 import { GraphicsContext } from 'pixi.js';
+import { swHas } from '../game/switches.js';   /* v2.3.5315: the page's one reader (card T) */
 
 let _installed = false;
 let _skipped = 0;
 
 function urlOff() {
-  try { return /[?&]loudclear(=|&|$)/.test(window.location.search || ''); } catch (e) { return false; }
+  return swHas('loudclear');
 }
 
 export function installQuietClear() {

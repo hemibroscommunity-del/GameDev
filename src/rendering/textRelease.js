@@ -39,12 +39,13 @@
  *
  * `?textkeep` in the address is Pixi as it ships, to compare. */
 import { AbstractText, Text, TextStyle } from 'pixi.js';
+import { swHas } from '../game/switches.js';   /* v2.3.5315: the page's one reader (card T) */
 
 let _installed = false;
 const _stats = { released: 0, unshared: 0 };
 
 function urlOff() {
-  try { return /[?&]textkeep(=|&|$)/.test(window.location.search || ''); } catch (e) { return false; }
+  return swHas('textkeep');
 }
 
 /* the spread of a TextStyle: a plain object (not a TextStyle) that carries
