@@ -25,7 +25,8 @@
  * 50 whatever the rung.  Always drawn, at every rung: your party, your
  * target, whoever fights you, your duel (crowdPick's own rule).
  */
-import { laneKnob, ladderCrowdOn, seeKnob } from './drawLanes.js';   /* v2.3.5226: the crowd's knob (card O) */
+import { laneKnob, ladderCrowdOn, seeKnob } from './drawLanes.js';
+import { readerFor, swValue } from './switches.js';   /* v2.3.5232 (card O PR 12): `?crowd` through the page's one reader */   /* v2.3.5226: the crowd's knob (card O) */
 
 /* the owner's number */
 export const CROWD_K = 50;
@@ -38,10 +39,11 @@ export const CROWD_HOLD = 8;
 /** `?crowd=K` from an address's search string: K (1-500) a cap of K,
  *  `?crowd=0` or `?crowd=all` no cap (Infinity); null when not given. */
 export function crowdFromSearch(search) {
-  const m = /[?&]crowd=([^&]*)/.exec(String(search || ''));
-  if (!m) return null;
-  let v = '';
-  try { v = decodeURIComponent(m[1] || '').trim().toLowerCase(); } catch (e) { return null; }
+  /* v2.3.5232: the value through the page's one reader (an address handed
+     in, by its own); decoded there */
+  const raw = typeof search === 'string' ? readerFor(search).swValue('crowd') : swValue('crowd');
+  if (raw === null) return null;
+  const v = String(raw).trim().toLowerCase();
   if (v === 'all' || v === '0' || v === 'off') return Infinity;
   const n = Math.round(Number(v));
   return Number.isFinite(n) && n >= 1 ? Math.min(500, n) : null;
@@ -49,9 +51,6 @@ export function crowdFromSearch(search) {
 
 /* v2.3.5226: the address's word, read once (undefined: not read yet) */
 let _urlK;
-function _search() {
-  try { return (typeof location !== 'undefined' && location.search) || ''; } catch (e) { return ''; }
-}
 /** v2.3.5226: the cap now -- `?crowd=K`, else the lane's crowd at the
  *  ladder's rung (`?laddercrowd=0`: the owner's 50).  The renderer asks it
  *  every frame: a read of the lanes' table, no allocation.  `search` (the
@@ -62,9 +61,8 @@ export function crowdK(search) {
     return q != null ? q : ladderCrowdOn(search) ? _knob() : CROWD_K;
   }
   if (_urlK === undefined) {
-    const s = _search();
-    const q = crowdFromSearch(s);
-    _urlK = q != null ? q : ladderCrowdOn(s) ? null : CROWD_K;   /* null: the knob's, each ask */
+    const q = crowdFromSearch();
+    _urlK = q != null ? q : ladderCrowdOn() ? null : CROWD_K;   /* null: the knob's, each ask */
   }
   return _urlK != null ? _urlK : _knob();
 }

@@ -49,6 +49,7 @@ import {
 import { sharpTextureBitGl, sharpMaxTextures, setSheenBatcher, sharpSelfOff } from '../sharpPixels.js';
 import { selfDraw, selfQueue, selfSkip, selfTestOn, selfSheenRgba, selfSheenWant, SELF_SHEEN, SELF_SIZE } from '../selfTest.js';   /* v2.3.5236: the self-test at the door (card O PR 14b) */
 import { SHEEN_LIFT } from './sheenLift.js';
+import { sw } from '../../game/switches.js';   /* v2.3.5232 (card O PR 12): the passes' switch through the page's one reader */
 
 export const SHEEN_BATCHER = 'sheen';
 /* floats a vertex: Pixi's six (position, uv, colour, texture id and round)
@@ -59,7 +60,7 @@ const VS = 21;
 export const SHEEN_VS = VS;
 
 let _urlOff = false;
-try { if (typeof location !== 'undefined' && /[?&]sheenpass(=|&|$)/.test(location.search || '')) _urlOff = true; } catch (e) { /* on */ }
+try { if (sw('sheenpass')) _urlOff = true; } catch (e) { /* on */ }   /* v2.3.5232 (card O PR 12): through the page's one reader */
 let _passAll = false;   /* QA: window.__btSheenPass(true), every piece in a pass of its own */
 let _built = false;     /* the program made (warmSheenBatch, behind the loading screen) */
 let _packed = 0;        /* pieces packed */

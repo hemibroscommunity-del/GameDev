@@ -80,6 +80,7 @@ import { setWheelPalette } from '../game/wheelTrial.js';
 import { isPaletteSource } from './paletteDraw.js';
 import { deviceProfile, rendererName, devAsk } from '../game/deviceProfile.js';   /* v2.3.5016: a Windows or Mac computer keeps the three programs; v2.3.5227: the chip's name asked there too; v2.3.5228: the fallbacks' questions too */
 import { laneKnob, pinOf, askingAs } from '../game/drawLanes.js';   /* v2.3.5228: one program or three is the lanes' `program` knob (card O PR 8) */
+import { readerFor, swValue } from '../game/switches.js';   /* v2.3.5232 (card O PR 12): `?onebatch` through the page's one reader */
 import { selfDraw, selfDrop, selfQueue, selfSkip, selfPending, selfIdx, selfPalBytes, selfRgba, selfSharpWant, selfTestOn, SELF_SIZE } from './selfTest.js';   /* v2.3.5234: the self-test at the door (card O PR 14a); v2.3.5236 the sharp read's answer (14b) */
 export { isPaletteSource, drawSourceRect, paletteRegionRGBA } from './paletteDraw.js';
 
@@ -487,8 +488,10 @@ const ONE_ID_K = 64;   /* the texture id: slot + 64 x code (Pixi's is 16 bits) *
  *  of deviceProfile.js (devAsk), the software list (SOFT_GL) kept there
  *  alone.  The same answers and whys (server/test/one-program.test.mjs). */
 export function oneBatchChoice(search, renderer, os) {
-  const m = /(^|[?&])onebatch=([01])(&|$)/.exec(search || '');
-  if (m) return { on: m[2] === '1', why: 'address' };
+  /* v2.3.5232 (card O PR 12): the value through the page's one reader (none
+     handed in: the page's) */
+  const v = typeof search === 'string' ? readerFor(search).swValue('onebatch') : swValue('onebatch');
+  if (v === '0' || v === '1') return { on: v === '1', why: 'address' };
   const ask = devAsk({ renderer: renderer || '', windows: !!(os && os.windows), mac: !!(os && os.mac) });
   return askingAs(ask, () => {
     const pin = pinOf('program');
@@ -498,9 +501,6 @@ export function oneBatchChoice(search, renderer, os) {
 /* the chip's own name: v2.3.5227, asked of the device profile
    (game/deviceProfile.js rendererName: the one place a device is asked,
    card O PR 7), the same answer as the copy that was here */
-function pageSearch() {
-  try { return window.location.search || ''; } catch (e) { return ''; }
-}
 let _oneWanted = null;        /* oneBatchChoice's answer for this page's renderer */
 let _oneRoute = false;        /* sprites sent to ONE_BATCHER: while it is tried, and once it linked */
 let _oneOk = null;            /* null: not tried; true: linked; false: the three programs */
@@ -1012,7 +1012,7 @@ export function setOneBatchRenderer(r) {
   /* v2.3.5016: which computer, if one (game/deviceProfile.js: asked there, once) */
   let os = null;
   try { const d = deviceProfile(); os = { windows: !!d.windows, mac: !!d.mac }; } catch (e) { os = null; }
-  const choice = oneBatchChoice(pageSearch(), name, os);
+  const choice = oneBatchChoice(undefined, name, os);
   _oneWanted = choice.on;
   _oneStats.why = choice.why;
   _oneStats.renderer = name;

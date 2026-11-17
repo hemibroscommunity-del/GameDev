@@ -51,6 +51,7 @@ import { stripAsNumbers, releaseBundleNumbers, picNumbersOn, stripRowsAsk, strip
 import { wantFramePack } from './framePack.js';   /* v2.3.5257: a strip's numbers kept deflated a frame at a time once the chip has it (?framepack=0) */
 import { noteMade } from '../debug/madeLog.js';   /* v2.3.4400: a strip packed on the page says its name and its time */
 import { laneKnob } from '../game/drawLanes.js';   /* v2.3.5230: the slice is the lane's `queue` knob (card O PR 10) */
+import { sw, swValue } from '../game/switches.js';   /* v2.3.5232 (card O PR 12): `?stripslice`, `?stripgentle` through the page's one reader */
 import { readStrip, stripReadOn } from './stripRead.js';   /* v2.3.4470: a strip read from its 256-colour file's own numbers, off the page's thread */
 import { retintPalette } from './retintPalette.js';   /* v2.3.4470: a strip in another colour is its palette in another colour */
 
@@ -295,9 +296,9 @@ export function stripSliceMs() {
   if (!stripFrameMs()) return 0;
   return _sliceFixed || sliceMs();
 }
-const _search = (() => { try { return window.location.search || ''; } catch (e) { return ''; } })();
-const _gentleOff = /(^|[?&])stripgentle=(0|off|false)(&|$)/.test(_search);
-const _sliceFixed = (() => { const m = /(^|[?&])stripslice=(\d+)(&|$)/.exec(_search); return m ? Math.max(1, +m[2]) : 0; })();
+/* v2.3.5232 (card O PR 12): through the page's one reader */
+const _gentleOff = (() => { try { return sw('stripgentle'); } catch (e) { return false; } })();
+const _sliceFixed = (() => { try { const m = /^(\d+)$/.exec(swValue('stripslice') || ''); return m ? Math.max(1, +m[1]) : 0; } catch (e) { return 0; } })();
 let _play = null;
 /** BroTown.jsx: `fn()` is the frame's length in ms while the world is in
  *  play, 0 behind a loading screen (or the tab hidden). */

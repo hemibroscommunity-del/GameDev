@@ -37,8 +37,11 @@
  *      glint: every piece it filtered plain), the others passed and on, and
  *      `self` names it.
  *   13. v2.3.5238 (14d), v2.3.5239: `fail:clip` (hairClip.js's two
- *      programs: the hat's shape and the monsters'): falls back alone to the
- *      alpha mask (as `?alphaclip`), `self` names it.
+ *      programs: the hat's shape and the monsters'): falls back alone --
+ *      a silhouette that is a picture to the alpha mask (as `?alphaclip`),
+ *      one of colour numbers (the hats' and hoods' hair masks) kept on the
+ *      stencil by the palette's program (clipRoute.js; v2.3.5680) -- `self`
+ *      names it.
  *
  * Every page reaches BroTown and draws with no page error: a failed test
  * never stops the load.
