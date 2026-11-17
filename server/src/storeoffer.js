@@ -413,9 +413,14 @@ export const storeOfferMethods = {
     if (!me) return;
     const listingId = this._scListingId(payload && payload.listingId);
     if (!listingId) return;
-    const r = await this._stOfferPlace(listingId, me, payload && payload.gold);
-    if (!r.ok) this._soSend(me, 'store_offer_error', { listingId, error: r.error });
-    else this._soSend(me, 'store_offer_state', { listingId, offers: r.offers });
+    /* v2.3.5194: a repeat of the same request id acts once and gets the
+       first answer again, echoed (reqonce.js); none: as before */
+    const rid = this._reqIdOf ? this._reqIdOf(payload && payload.reqId) : null;
+    const run = () => this._stOfferPlace(listingId, me, payload && payload.gold);
+    const r = rid ? await this._reqOnce(me, rid, run) : await run();
+    const echo = rid ? { reqId: rid } : {};
+    if (!r.ok) this._soSend(me, 'store_offer_error', { listingId, error: r.error, ...echo });
+    else this._soSend(me, 'store_offer_state', { listingId, offers: r.offers, ...echo });
   },
 
   async _handleStoreOfferCancel(session, payload) {
@@ -423,9 +428,12 @@ export const storeOfferMethods = {
     if (!me) return;
     const listingId = this._scListingId(payload && payload.listingId);
     if (!listingId) return;
-    const r = await this._stOfferWithdraw(listingId, me);
-    if (!r.ok) this._soSend(me, 'store_offer_error', { listingId, error: r.error });
-    else this._soSend(me, 'store_offer_state', { listingId, offers: r.offers });
+    const rid = this._reqIdOf ? this._reqIdOf(payload && payload.reqId) : null;   /* v2.3.5194 */
+    const run = () => this._stOfferWithdraw(listingId, me);
+    const r = rid ? await this._reqOnce(me, rid, run) : await run();
+    const echo = rid ? { reqId: rid } : {};
+    if (!r.ok) this._soSend(me, 'store_offer_error', { listingId, error: r.error, ...echo });
+    else this._soSend(me, 'store_offer_state', { listingId, offers: r.offers, ...echo });
   },
 
   async _handleStoreOfferReply(session, payload) {
@@ -435,8 +443,11 @@ export const storeOfferMethods = {
     const buyerId = this._scListingId(payload && payload.buyerId);
     const reply = payload && payload.reply;
     if (!listingId || !buyerId) return;
-    const r = await this._stOfferReply(listingId, me, buyerId, reply);
-    if (!r.ok) this._soSend(me, 'store_offer_error', { listingId, error: r.error });
-    else this._soSend(me, 'store_offer_state', { listingId, offers: r.offers || [], sold: !!r.sold });
+    const rid = this._reqIdOf ? this._reqIdOf(payload && payload.reqId) : null;   /* v2.3.5194 */
+    const run = () => this._stOfferReply(listingId, me, buyerId, reply);
+    const r = rid ? await this._reqOnce(me, rid, run) : await run();
+    const echo = rid ? { reqId: rid } : {};
+    if (!r.ok) this._soSend(me, 'store_offer_error', { listingId, error: r.error, ...echo });
+    else this._soSend(me, 'store_offer_state', { listingId, offers: r.offers || [], sold: !!r.sold, ...echo });
   },
 };

@@ -19,15 +19,19 @@
  * The numbers themselves are the card's (src/game/econCard.js): this only
  * reads.  At most DAYS_MAX days, XFER_ROWS rows a day (a day past it says
  * `cut`).  `econ: false` reads nothing (the card says not counted). */
-import { xferDay, xferList } from './xfer.js';
+import { xferDay, xferList, xferIsShare } from './xfer.js';   /* v2.3.5295: xferIsShare (card R PR 15) */
 import { worldCtx, worldAdd } from './worldsum.js';
 import { bookAdd, bookDay, bookStage } from './daybook.js';
 
 export const ECONCARD = Object.freeze({ DAYS_MAX: 7, XFER_ROWS: 500, METRICS_PREFIX: 'metrics:' });
 
 const whole = (v) => { const n = Math.floor(Number(v)); return Number.isFinite(n) && n > 0 ? n : 0; };
+/* v2.3.5295 (card R PR 15; the gatekeeper's sitting 23): an arena stake's
+   row names each winning sponsor's part of its gold as an id
+   (`share:<sid>:<n>`, xfer.js xferArenaStakes): that is how the gold was
+   split, not an item that moved, so it is not counted as one */
 const itemsOf = (side) => Object.values(side && side.goods && typeof side.goods === 'object' ? side.goods : {}).reduce((a, n) => a + whole(n), 0)
-  + (side && Array.isArray(side.ids) ? side.ids.length : 0);
+  + (side && Array.isArray(side.ids) ? side.ids.filter((x) => !xferIsShare(x)).length : 0);
 
 /** One day of the ledger, summed. */
 export function xferSummary(day, list, cut) {

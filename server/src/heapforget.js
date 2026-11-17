@@ -26,6 +26,7 @@
  */
 import { CHAT_LANES } from './chatlanes.js';
 import { STORE_CHAT } from './storechat.js';
+import { REQ_ONCE } from './reqonce.js';
 
 export const HEAP_FORGET_CFG = Object.freeze({
   SWEEP_MS: 60 * 1000,   /* the room's sweep of the spent buckets and old logs, at most this often */
@@ -47,6 +48,9 @@ export const HEAP_FORGET = Object.freeze({
   _scBuckets:         Object.freeze({ shape: 'map', when: 'refilled', burst: STORE_CHAT.BURST, refillMs: STORE_CHAT.REFILL_MS }),
   /* chatmod.js _chatModReportGate: a reporter's reports in the last day */
   _chatReportLog:     Object.freeze({ shape: 'map', when: 'aged', windowMs: DAY_MS }),
+  /* reqonce.js _reqRemember (v2.3.5194): a sitting's answers, kept past a
+     leave so a re-send after a reconnect gets its first answer */
+  _reqSeen:           Object.freeze({ shape: 'map', when: 'aged', windowMs: REQ_ONCE.MEM_MS }),
 });
 
 /* true when this entry may go now */

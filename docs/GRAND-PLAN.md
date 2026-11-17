@@ -271,7 +271,7 @@ way: build the table from what exists, add the test, move no behaviour.
   *Merged: #1708 (card A), `server/src/roomrow.js` into the `room` part
   (the flag `roomrow`); `restarts` is held in memory until the book's next
   write (review-z7). Ticked by the gatekeeper, sitting 8 (v2.3.5364).*
-- [ ] **1.7 [NEXT] A self-test at the door.** The report cannot see a body
+- [x] **1.7 [NEXT] A self-test at the door.** The report cannot see a body
   that vanishes at perfect frame times. Each of the game's own drawing
   programs draws a known picture behind the loading screen and compares it
   with the page's recolour. One that fails falls back alone, and the report
@@ -289,6 +289,12 @@ way: build the table from what exists, add the test, move no behaviour.
   batcher, named in `self`), merged at sitting 22. The box waits for a way
   back for the fill, the glint and the clip (O's #1952, held at sitting 23)
   (the gatekeeper, sitting 23, tag 5661).*
+  *Ticked: O's #1952 (a failed fill, glint or clip falls back alone: the
+  clip to the alpha mask or the stencil, never onto the failed program),
+  merged at sitting 24. Every program now falls back alone and is named in
+  `self`. Open, no card: `bt-palette-hairclip` and the stencil have no
+  self-test of their own (review-z24) (the gatekeeper, sitting 25, tag
+  5663).*
 
 **Done when** a session answers "how does it run on X" from the table.
 Every step that needs field numbers says how many reports from how many
@@ -479,6 +485,11 @@ play, a number 1.1 can measure.
   still cuts a bag over it), merged at sitting 17. The box waits for a
   weapon's id, quest state and experience (R's PRs 3, 5 and 10) (the
   gatekeeper, sitting 18, tag 5375).*
+  *R's PR 14, #1960 (the tolerant weapon reader: a weapon carrying a
+  `gid` survives the join, the mail claim, escrow and the market's unwind,
+  none doubled; today's saves unchanged), merged at sitting 24. A weapon's
+  own id (#1873, save shape 21 -> 22) waits for #1960's deploy to finish
+  (the gatekeeper, sitting 25, tag 5663).*
 - [x] **4.4 [NOW] The whole world's sum.** "A purse equals its start plus
   the roads that ran" is true by construction; past copies went through
   legal roads (ore sold 24 times in one bundle). So every road in
@@ -607,6 +618,9 @@ nothing known, and a restore copies nothing.
   *L's #1936 (the ride door: `_rideTo`, `ridedoor`, ON), merged at
   sitting 22: 14 `todo` on `main` 8149d61; the line lowered 15 -> 14 (the
   gatekeeper, sitting 23, tag 5661).*
+  *L's #1956 (the loading door: `veilTo`, `?veildoor`, ON), merged at
+  sitting 24: 13 `todo` on `main` 4751cb7; the line lowered 14 -> 13 (the
+  gatekeeper, sitting 25, tag 5663).*
 - [ ] **5.4 [LATER] The frame as named steps.** PR 1 moves nothing: the six
   calls the loop already makes, plus one `legacy` step, become the list;
   each counts its errors to the crash ring (a throw in the frame reaches
@@ -681,6 +695,9 @@ nothing known, and a restore copies nothing.
   the reader; the outside line 221 -> 212), merged at sitting 22. The box
   waits for the rest of the page's reads (the gatekeeper, sitting 23, tag
   5661).*
+  *T's #1958 (eleven more reads into the reader; the outside line 212 ->
+  201), merged at sitting 24. The box waits for the rest of the page's
+  reads (the gatekeeper, sitting 25, tag 5663).*
 - [x] **7.2 [NEXT] The end date** (the owner: yes). For a logic switch: four
   weeks on with no revert, then the old way goes. A device off-ramp stays
   while its risk is live. A fallback stays while its trigger lives: a guard
@@ -726,6 +743,10 @@ nothing known, and a restore copies nothing.
   *J2's #1948 (`mp-palette`'s two phones read ground lines alike, the
   test's), merged at sitting 23. The step is open (the gatekeeper, sitting
   24, tag 5662).*
+  *J2's #1953 (`mp-blockface` 2 photographs the picture's own box) and
+  #1964 (`mp-petsmatter` 5 reads the worker's `FREEZE.CHILL_MS`), the
+  tests', merged at sitting 24. The step is open (the gatekeeper, sitting
+  25, tag 5663).*
 - [ ] **8.2 [NEXT] Traps become guards**, each with a break proof. The count
   that matters is traps held by a proof, not traps of prose.
   *Card V merged, #1724 to #1740: 31 traps held by a proof (25 the rule, 6
@@ -825,6 +846,10 @@ the memory a family holds as the game draws it.
   *Card P: #1943 (the pond's twin, `?fishspot`; `artCache` 84.5 -> 83.0),
   merged at sitting 23. The step is open (the gatekeeper, sitting 24, tag
   5662).*
+  *Card P: #1955 (`?hudbars`), #1959 (`?deathstrip`) and #1963
+  (`?uploadicons`), memory savers ON with their `=0`; `artCache` 83.0 ->
+  79.3, merged at sitting 24. Card P is done; the step is open (the
+  gatekeeper, sitting 25, tag 5663).*
 - [ ] **9.6 [LATER] An address that changes with the content**, by a
   `?h=` lookup (the client builds a hundred sprite addresses as it runs;
   renaming files would break them). A wrong hash on art that loads in play

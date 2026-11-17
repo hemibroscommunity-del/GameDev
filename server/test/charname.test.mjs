@@ -102,6 +102,10 @@ const refusedName = (ws) => ws.sent.find((m) => m.type === 'join_rejected' && m.
     !!r && wE.closed && wE.closed.code === CHAR_NAME.CLOSE && !(await S.storage.get('char:bp_nm_evil00001')), { r, closed: wE.closed });
   const wS = await join('bp_nm_staff0001', 'BroTown Team');
   check('2: ..."BroTown Team" is refused, saying why (staff)', refusedName(wS) && refusedName(wS).why === 'staff', wS.sent.map((m) => m.type));
+  /* v2.3.5630 (card MOD PR 10): and the phone is told why, in the name box's words (it said nothing) */
+  const said = wS.sent.find((m) => m.type === 'server_announce');
+  check('2: ...the phone is told why, in the name box\'s own words, before the refusal', !!said && said.payload.text === 'Name refused: Pick a name of your own'
+    && wS.sent.indexOf(said) < wS.sent.findIndex((m) => m.type === 'join_rejected'), wS.sent.map((m) => m.type));
   const wG = await join('bp_nm_good00001', '  Scribe   the   Bard ');
   const rec = await S.storage.get('char:bp_nm_good00001');
   check('2: a good name makes the character, its spaces tidied', !refusedName(wG) && rec && rec.name === 'Scribe the Bard', rec && rec.name);
@@ -144,6 +148,11 @@ const refusedName = (ws) => ws.sent.find((m) => m.type === 'join_rejected' && m.
   check('4: the owner renames: the record, the session, the player\'s state', r.ok && rec.name === 'Kind Bro' && sess.name === 'Kind Bro' && room.playerState['bp_nm_target001'].name === 'Kind Bro', { r, rec: rec && rec.name });
   await settle();
   check('4: ...and everyone is told (player_update)', wW.sent.some((m) => m.type === 'player_update' && m.id === 'bp_nm_target001' && m.data && m.data.name === 'Kind Bro'), wW.sent.map((m) => m.type));
+  /* v2.3.5630 (card MOD PR 10): the whole look rides with the new name -- `{name}` alone set a peer's build back to average */
+  const up = wW.sent.find((m) => m.type === 'player_update' && m.id === 'bp_nm_target001');
+  const sdata = sess.data || {};
+  const lookKeys = Object.keys(sdata).filter((k) => k !== 'name');
+  check('4: ...with the player\'s whole look beside the new name (the build kept on every page)', !!up && lookKeys.length > 0 && lookKeys.every((k) => JSON.stringify(up.data[k]) === JSON.stringify(sdata[k])), { keys: lookKeys, sent: up && Object.keys(up.data) });
   const bad = await call({ playerId: 'bp_nm_target001', name: 'Bro \ud83d\ude00' }, KEY);
   const staff = await call({ playerId: 'bp_nm_target001', name: 'Owner' }, KEY);
   const forced = await (await call({ playerId: 'bp_nm_target001', name: 'Owner', force: true }, KEY)).json();

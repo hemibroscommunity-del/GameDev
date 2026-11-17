@@ -112,7 +112,7 @@ export const SWALLOWED = Object.freeze({
 
 /* The list's size when it was frozen (v2.3.4791).  Lower these as lines come
    off; raising one is a decision the PR names. */
-export const FROZEN = Object.freeze({ listed: 272, known: 0 });   /* v2.3.5628: -1, the friend request's pace answers as sent (card MOD PR 8); v2.3.5624: +1, the friend request's pace (friends.js; card MOD PR 4, RT-3 S5), as the party invite's `rate`; v2.3.5543: +1, the relay's byte bounds beside the count's (relay.js; RT-1 N10; card K); v2.3.5540: +1, the archer's lane's own drop beside the plain floor's (combat.js; card K, step 4.2); v2.3.4801: +1, the draw and gather's quiet drop (drawgather.js); v2.3.4880: -22, the workshop answers (forge, amulet forge, gem cut, smelter, armour forge); v2.3.4881: -14, the points, the chest, the capes and the reroll; v2.3.4882: -4, the purses; v2.3.4883: -6, the weapon stash; v2.3.4884: the heap burn's 4 recoded `fight`, the fire's 1 off; v2.3.4885: -2, the last three answer (party accept, trade2's weapon cap, the relay trade's run-out offer; and a party accept with no invite map, after a deploy), two right silences beside them named */
+export const FROZEN = Object.freeze({ listed: 270, known: 0 });   /* v2.3.5194: -2, the chest's and the spin's repeat answered the first answer again (reqonce.js; card K PR 9); v2.3.5628: -1, the friend request's pace answers as sent (card MOD PR 8); v2.3.5624: +1, the friend request's pace (friends.js; card MOD PR 4, RT-3 S5), as the party invite's `rate`; v2.3.5543: +1, the relay's byte bounds beside the count's (relay.js; RT-1 N10; card K); v2.3.5540: +1, the archer's lane's own drop beside the plain floor's (combat.js; card K, step 4.2); v2.3.4801: +1, the draw and gather's quiet drop (drawgather.js); v2.3.4880: -22, the workshop answers (forge, amulet forge, gem cut, smelter, armour forge); v2.3.4881: -14, the points, the chest, the capes and the reroll; v2.3.4882: -4, the purses; v2.3.4883: -6, the weapon stash; v2.3.4884: the heap burn's 4 recoded `fight`, the fire's 1 off; v2.3.4885: -2, the last three answer (party accept, trade2's weapon cap, the relay trade's run-out offer; and a party accept with no invite map, after a deploy), two right silences beside them named */
 
 /* handler -> { guard: 'code[ code...][: note]' } */
 export const ALLOW = {
@@ -217,7 +217,6 @@ export const ALLOW = {
   '_handleChestOpen': {
     "if (invKey !== CHEST.KEY)": "shape",
     "if (this._chestOff())": "off",
-    "if (opId && typeof opId === 'string' && await this._opSeen('chestop:' + opId))": "dup",
   },
   '_handleRewardsGet': {
     "if (ps._lastRewardsGetAt && now - ps._lastRewardsGetAt < 800)": "rate",
@@ -226,7 +225,6 @@ export const ALLOW = {
   '_handleDailySpin': {
     "if (this._spinOff())": "off",
     "if (ps._lastDailySpinAt && now - ps._lastDailySpinAt < SPIN.COOLDOWN_MS)": "rate",
-    "if (opId && await this._opSeen('spinop:' + opId))": "dup",
     "if (!rec || !this.playerState[pid])": "err norec",
   },
   '_handleDailyReroll': {
@@ -315,7 +313,7 @@ export const ALLOW = {
   },
   '_handleCapeRedeem': {
     "if (!capeId)": "shape",
-    "if (opId && typeof opId === 'string' && await this._opSeen('capered:' + opId))": "dup",
+    "if (opKey && await this._opSeen(opKey))": "dup",   /* v2.3.5194: kept with the pid (reqonce.js); a request id's repeat is sent the bag again, an older phone's opId's is silent as before */
   },
   '_handleCapeEquip': {
     "if (ps.capeOff === next)": "noop",

@@ -89,6 +89,13 @@ writes none. Rows: one a losing sponsor a match (two over its life, with its
 prune); a winning stake is its owner's own coming back, no row. `xfer.test`
 §9, `cost-guard` §21.
 
+Sitting 23's two lows, mended (tag 5295, card R PR 15): a share counts
+against its own bound, `XFER.SHARES_MAX` (128, above the room's 120 players),
+not `IDS_MAX` (32), so a match with more winning sponsors than that keeps
+every share and its rows still add up to the pool; and the owner's card
+(`econcard.js` `itemsOf`) counts no item for a share (`xferIsShare`), since a
+share is how the gold was split, not a thing that moved. `xfer.test` §10.
+
 **A player's own escrow** is not a road between players. `OWN_ROADS` lists
 those with why: today the bank (`bank:<pid>`, marked `player` in the storage
 registry: nothing in it reaches another account).

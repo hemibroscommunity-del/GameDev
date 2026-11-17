@@ -54,6 +54,7 @@ import { prog3FromLegacy, prog3SplitAtk, prog3GrantRetroPoints, prog3MoveElemToA
 import { normalizeGearStashes } from './gearstash.js';
 import { convertRecordSwords } from './swordconvert.js';   /* v2.3.3895: v19, swords become greatswords */
 import { convertRecordGreatswords } from './gscopper.js';   /* v2.3.3980: v20, old wooden greatswords become copper */
+import { weaponIdsAll } from './stash.js';   /* v2.3.5282: v22, every weapon its own id */
 
 /* v2.3.2523: 16, appended above the attributes restructure's v15
  * (v2.3.2512), which merged while this slice was in flight.  Migration
@@ -62,7 +63,7 @@ import { convertRecordGreatswords } from './gscopper.js';   /* v2.3.3980: v20, o
 /* v2.3.2592: 17 — the four-column points redesign (luck fold + shared pool). */
 /* v2.3.3538: 18 — one level (the highest skill): every character's points
    dealt again once (prog3Redeal). */
-export const RPG_SCHEMA_VERSION = 21;   /* v2.3.3895: 18 -> 19, swords-become-greatswords; v2.3.3980: 19 -> 20, wooden-greatswords-become-copper; v2.3.5083: 20 -> 21, econ-field */
+export const RPG_SCHEMA_VERSION = 22;   /* v2.3.3895: 18 -> 19, swords-become-greatswords; v2.3.3980: 19 -> 20, wooden-greatswords-become-copper; v2.3.5083: 20 -> 21, econ-field; v2.3.5282: 21 -> 22, weapon-gid */
 
 /* ═══ v2.3.5083: `_econ`, THE SECOND EXCEPTION TO RULE 1 ═══
  * (grand plan step 4.4, card E PR 4; docs/SHAPES.md part 7, "Open", ruled;
@@ -812,6 +813,22 @@ export const MIGRATIONS = [
       const had = blob._econ;
       blob._econ = econClean(had);
       return true;
+    },
+  },
+  {
+    v: 22,
+    name: 'weapon-gid',
+    /* v2.3.5282 (grand plan step 4.3, card R PR 3; SHAPES part 2): every
+       weapon carries its own `gid`, made by the minter gear has
+       (gearprov.js gearMintId) -- in the hands and in the bag
+       (stash.js weaponIdsAll): a weapon without one is given one, and the
+       second of two that share one a new one.  Idempotent: a weapon with its
+       own keeps it, so a re-run gives nothing.  The shape number is the
+       point too: a worker rolled back past this one refuses the record at
+       the join (handoff rule 1) instead of saving its weapons without ids. */
+    run(blob) {
+      if (!blob || typeof blob !== 'object') return false;
+      return weaponIdsAll(blob) > 0;
     },
   },
 ];

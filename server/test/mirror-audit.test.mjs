@@ -2864,6 +2864,8 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   check('names: the same lengths', SC.CHAR_NAME.MIN === PC.CHAR_NAME.MIN && SC.CHAR_NAME.MAX === PC.CHAR_NAME.MAX, { worker: SC.CHAR_NAME, page: PC.CHAR_NAME });
   const whys = ['short', 'long', 'chars', 'staff'].filter((w) => typeof PC.CHAR_NAME_WORDS[w] !== 'string' || !PC.CHAR_NAME_WORDS[w]);
   check('names: every reason the worker gives has words on the page', whys.length === 0, whys);
+  /* v2.3.5630: the worker says the page's own words when it refuses a name */
+  check('names: the worker\'s refusal words are the name box\'s', JSON.stringify(SC.CHAR_NAME_WORDS) === JSON.stringify(PC.CHAR_NAME_WORDS), { worker: SC.CHAR_NAME_WORDS, page: PC.CHAR_NAME_WORDS });
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

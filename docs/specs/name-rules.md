@@ -73,10 +73,31 @@ lets a staff word through (the owner's own character). Logged in `admin_log`.
   name box; a `name` refusal shows no words on the phone; the arena's own
   name.
 
+## The lows, closed (v2.3.5630, card MOD PR 10)
+
+- **The rename keeps the look**: the owner's rename tells everyone with the
+  player's whole relay (the look beside the new name); `{name}` alone set
+  every peer's copy of the build (`hg`, `fr`) back to average.
+- **A refusal says why**: before `join_rejected {reason: 'name'}` the worker
+  says it to that socket in the game's voice (`server_announce`), in the
+  name box's own words (`CHAR_NAME_WORDS`, the worker's copy held equal to
+  the page's by mirror-audit). The page's join_rejected switch
+  (`wsClient.js`) is at its four-lines line, so the worker says it.
+- **The arena's name is the character's** (`gladiator.js _arenaJoin`, card
+  L's file by the planning session's yes): the bracket took the page's
+  free text (24 letters), read by everyone, as the market did before
+  #1947. Under `namerules`.
+- **The name box stays on, always** (the planning session's call,
+  2026-11-17): it runs before any join, so it reads no caps, and the worker
+  is the judge: `namerules: false` switches off the worker's check, which is
+  enough (an honest name the box refuses is the box's own help text).
+
 ## Switch
 
 `namerules: false`: a new name is taken as before (any characters, 64 at
-most) and `track` may rename; the owner's rename stays.
+most), `track` may rename, and the arena's bracket takes the page's name;
+the owner's rename stays. The page's name box keeps its rule (decided
+above).
 
 ## Not here
 

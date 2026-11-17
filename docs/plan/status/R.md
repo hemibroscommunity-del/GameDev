@@ -1,6 +1,6 @@
 card: R
-branch: claude/plan-r-14-weapon-reader (#1960), claude/plan-r-15-share-lows (#1969); one a PR, each from main
-prs: #1819, #1823, #1825, #1844, #1862, #1847, #1877, #1887, #1895, #1898, #1922, #1961: merged; #1960 (5294), #1969 (5295): ready; #1873 (5282): held
+branch: claude/plan-r-3-weapon-gid (#1873); claude/plan-r-15-share-lows (#1969); one a PR, each from main
+prs: #1819, #1823, #1825, #1844, #1862, #1847, #1877, #1887, #1895, #1898, #1922, #1961, #1960: merged; #1873 (5282), #1969 (5295): ready
 state: ready
 
 ## Done
@@ -11,17 +11,16 @@ state: ready
   #1895, the duel pot's row), PR 10 (5289, #1898), PR 12 (5291, #1922).
 - Merged, sitting 23: PR 13 (5292, #1961, which replaced #1950): the
   arena's stakes' ledger rows.
-- PR 3 (5282, #1873, HELD by sitting 23: a roll-back past it lost weapons
-  carrying a gid). A later sitting, once PR 14 is deployed.
-- PR 14 (5294, #1960, sitting 24): the tolerant weapon reader, first
-  (gear.js, gearprov.js GID_RE); deploys before #1873.
-- PR 15 (5295, #1969, sitting 24): #1961's two lows (a share's own bound,
+- Merged, sitting 24: PR 14 (5294, #1960), the tolerant weapon reader.
+- PR 3 (5282, #1873, ready once #1960's deploy is live; save shape 21 -> 22,
+  a line of its own): main merged, one GID_RE; sitting 23's worldsum low fixed.
+- PR 15 (5295, #1969, ready, on sitting 25's list): #1961's two lows (a share's own bound,
   SHARES_MAX 128; the owner's card counts no item for a share).
   `econcard.js` is outside the card: decided by the planner.
 
 ## Next
 
-- After PR 14 deploys: #1873 again, with sitting 23's worldsum.js:90 low.
+- #1873 to sitting 25 on its own line (#1960 deployed green, run 44003771631).
 - Tag 5293 (market, auction house) only AFTER K's 5194, 5196, 5197.
 
 ## Found
