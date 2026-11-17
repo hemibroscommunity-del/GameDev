@@ -226,39 +226,73 @@ export const seatHoldMethods = {
     return this._guestIdleNewest(now) ? GUEST_SHARE.SPARE : 0;
   },
 
-  /** v2.3.5729: join.js, once the key is checked.  True when this join was
-   *  refused (a guest past its share, or a join on a spare socket that is not
-   *  a played character's, and no idle guest to give way).  A played
-   *  character's join to a full room moves the newest idle guest out. */
-  _guestShareRefused(ws, id, keyOut) {
-    if (!this._guestShareOn()) return false;
-    const sess = ws ? this.sessions.get(ws) : null;
-    if (!sess) return false;
-    const guest = !!(keyOut && keyOut.guest === true);
-    sess.guest = guest;   /* in memory only */
-    const now = Date.now();
-    /* a seat held for this id (seathold, above) is that switch's to judge */
-    const held = this._seatHeldIds(now);
-    if (sess.seat || held.has(id)) return false;
-    /* the places taken: every other socket (joins in flight too) but this
-       id's own old one (the join takes it over), and the held seats */
+  /* v2.3.5729: the places taken for a join on `ws` of `id`: every other
+     socket (joins in flight too) but this id's own old one (the join takes it
+     over), and the held seats; and how many of them are guests' */
+  _guestTaken(ws, id, held) {
     let taken = held.size, guests = 0;
     for (const [w, s] of this.sessions) {
       if (w === ws || !s) continue;
       if (s.id && s.id === id) continue;
       taken++;
-      if (s.guest === true && s.id) guests++;
+      if (s.guest === true) guests++;   /* in flight too: marked before the key (below) */
     }
+    return { taken, guests };
+  },
+
+  /** v2.3.5729: join.js, BEFORE the key is checked (sitting 43's review, F2:
+   *  the key's check writes a new character's `auth:` row, so a refusal after
+   *  it left that row behind and the phone's next knock counted as played).
+   *  True when this join was refused, having read or written nothing but, for
+   *  a keyed join on a spare socket, its `auth:` row (a read):
+   *    - a guest (no key) past its share, or on a spare socket;
+   *    - a key with no record on a spare socket (a fresh character waits for
+   *      a place, as at the cap before);
+   *  a key WITH a record on a spare socket goes on to its check, and the seat
+   *  is decided after it (_guestShareRefused). */
+  async _guestSharePre(ws, msg) {
+    if (!this._guestShareOn()) return false;
+    const sess = ws ? this.sessions.get(ws) : null;
+    if (!sess || !msg) return false;
+    const id = typeof msg.id === 'string' ? msg.id : '';
+    const keyed = typeof msg.phrase === 'string' && msg.phrase.length > 0;
+    sess.guest = !keyed;   /* in memory only; a keyless join of an id with a key is refused at the key */
+    const now = Date.now();
+    /* a seat held for this id (seathold, above) is that switch's to judge */
+    const held = this._seatHeldIds(now);
+    if (sess.seat || held.has(id)) return false;
+    const { taken, guests } = this._guestTaken(ws, id, held);
     const cap = this._roomCap();
     let refuse = false;
-    if (guest) refuse = guests >= this._guestCap() || taken >= cap;
+    if (!keyed) refuse = guests >= this._guestCap() || taken >= cap;
     else if (taken >= cap) {
-      const played = !(keyOut && keyOut.fresh === true);
-      const idle = played ? this._guestIdleNewest(now) : null;
-      if (idle) this._guestGiveWay(idle[0], now, cap);
+      let rec = null;
+      try { rec = await this.state.storage.get('auth:' + id); } catch (e) { rec = null; }
+      if (rec) sess._guestBump = true;
       else refuse = true;
     }
     if (!refuse) return false;
+    this._guestRoomFull(ws, sess, now, cap);
+    this._playerLeaves(ws, 'refused');   /* the session door (leave.js) */
+    return true;
+  },
+
+  /** v2.3.5729: join.js, once the key is checked: a played character let on
+   *  a spare socket (_guestSharePre) takes the newest idle guest's seat, or
+   *  is refused if none is idle now.  True when refused.  Nothing else is
+   *  judged here. */
+  _guestShareRefused(ws, id) {
+    if (!this._guestShareOn()) return false;
+    const sess = ws ? this.sessions.get(ws) : null;
+    if (!sess || !sess._guestBump) return false;
+    sess._guestBump = false;
+    const now = Date.now();
+    const held = this._seatHeldIds(now);
+    const { taken } = this._guestTaken(ws, id, held);
+    const cap = this._roomCap();
+    if (taken < cap) return false;
+    const idle = this._guestIdleNewest(now);
+    if (idle) { this._guestGiveWay(idle[0], now, cap); return false; }
     this._guestRoomFull(ws, sess, now, cap);
     this._playerLeaves(ws, 'refused');   /* the session door (leave.js) */
     return true;

@@ -114,7 +114,8 @@ const gateOk = (room) => !!(room._seatGate && room._seatGate(URL0, Date.now()).o
 
 /* ── 4. on a spare socket: a wrong key, a fresh character, a guest ── */
 {
-  const room = await openRoom(makeStorage(), { max_players: 2 });
+  const st4 = makeStorage();
+  const room = await openRoom(st4, { max_players: 2 });
   await made(room, 'bp_gs_played', 'p-played');
   const g1 = await joinAs(room, 'g1', 'bp_gs_ga');
   await joinAs(room, 'k', 'bp_gs_kk', 'p-kk');
@@ -123,6 +124,11 @@ const gateOk = (room) => !!(room._seatGate && room._seatGate(URL0, Date.now()).o
   check('4. a wrong key on a spare socket moves no guest', !!rejected(wrong) && inRoom(room, 'bp_gs_ga') && !fullSaid(g1), wrong.sent.map((m) => m.type));
   const fresh = await joinAs(room, 'f', 'bp_gs_fresh', 'p-fresh');
   check('4. a fresh character on a spare socket is refused room_full, no guest moved', !!fullSaid(fresh) && !synced(fresh) && inRoom(room, 'bp_gs_ga'), fresh.sent.map((m) => m.type));
+  /* sitting 43's F2: decided before the key's check, which writes a new
+     character's auth: row */
+  check('4. ...and nothing is written for it (no auth: row)', !st4._store.has('auth:bp_gs_fresh'), [...st4._store.keys()].filter((k) => k.includes('bp_gs_fresh')));
+  const fresh2 = await joinAs(room, 'f2', 'bp_gs_fresh', 'p-fresh');
+  check('4. ...so its next knock is a fresh character\'s again: refused, no guest moved', !!fullSaid(fresh2) && !synced(fresh2) && inRoom(room, 'bp_gs_ga') && !st4._store.has('auth:bp_gs_fresh'), fresh2.sent.map((m) => m.type));
   const g = await joinAs(room, 'g', 'bp_gs_gz');
   check('4. a guest on a spare socket is refused room_full, no guest moved', !!fullSaid(g) && !synced(g) && inRoom(room, 'bp_gs_ga'), g.sent.map((m) => m.type));
 }

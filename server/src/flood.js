@@ -210,9 +210,11 @@ export function ip56Key(ip) {
 /* ═══ v2.3.5729: ...AND A WHOLE /48 IS ONE SITE (card K2 PR 10; `guestshare`) ═══
  * Past the /56, a provider or a host hands out a /48 -- 256 /56s -- so a
  * script holding one still took IP56.TIMES the line in each of them: one
- * IPv6 line could hold all 120 places.  Each address limit now also counts
- * an IPv6 address by its /48 (its first three groups), at IP48.TIMES the
- * /64's line: 64 places and 80 opens a minute at the defaults, under the
+ * IPv6 line could hold all 120 places.  The room's two address limits
+ * (_floodIpOk: places held, opens a minute) now also count an IPv6 address
+ * by its /48 (its first three groups), at IP48.TIMES the /64's line -- not
+ * the login door's tries (account.js, card SEC's file, still at the /56): 64
+ * places and 80 opens a minute at the defaults, under the
  * room's 120, and far over what a household or a school's few phones need.
  * null for IPv4 and anything ipKey cannot read.  The switch is the card's
  * one for this PR: `guestshare: false` (seathold.js) and the /56 line is the
@@ -360,7 +362,9 @@ export const floodMethods = {
       if (list.length >= maxJoins) return no();
       const listWide = wide ? this._ipOpensOf(wide, now, key) : null;
       if (listWide && listWide.length >= maxJoins * IP56.TIMES) return no();
-      const listSite = site ? this._ipOpensOf(site, now, key) : null;
+      /* v2.3.5729: neither list just read is the one pruned for a new key
+         at the map's cap (sitting 43's review) */
+      const listSite = site ? this._ipOpensOf(site, now, [key, wide]) : null;
       if (listSite && listSite.length >= maxJoins * IP48.TIMES) return no();
       list.push(now);
       if (listWide) listWide.push(now);
@@ -371,8 +375,9 @@ export const floodMethods = {
 
   /* One key's opens in the last minute, kept in _ipOpens (the map pruned at
      its cap when a new key comes in, as before v2.3.5584; never `keep`, the
-     other key of the same open). */
+     other key of the same open -- v2.3.5729: or keys, a list). */
   _ipOpensOf(k, now, keep) {
+    const kept = Array.isArray(keep) ? (kk) => keep.includes(kk) : (kk) => kk === keep;
     let list = this._ipOpens.get(k);
     if (list) {
       list = list.filter((t) => now - t < 60000);
@@ -380,11 +385,11 @@ export const floodMethods = {
       list = [];
       if (this._ipOpens.size >= FLOOD.IP_MAP_CAP) {
         for (const [kk, v] of this._ipOpens) {
-          if (kk !== keep && (!v.length || now - v[v.length - 1] >= 60000)) this._ipOpens.delete(kk);
+          if (!kept(kk) && (!v.length || now - v[v.length - 1] >= 60000)) this._ipOpens.delete(kk);
           if (this._ipOpens.size < FLOOD.IP_MAP_CAP) break;
         }
         if (this._ipOpens.size >= FLOOD.IP_MAP_CAP) {
-          const first = [...this._ipOpens.keys()].find((kk) => kk !== keep);
+          const first = [...this._ipOpens.keys()].find((kk) => !kept(kk));
           if (first !== undefined) this._ipOpens.delete(first);
         }
       }
