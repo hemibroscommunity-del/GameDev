@@ -25,6 +25,7 @@
  *      are refused.
  * v2.3.5625 (card MOD PR 5): 1c, the fold's last misses (BroTovvn, a
  * Cherokee A, Admln) read as staff; the honest names beside them pass.
+ * v2.3.5627: "Officlal" and "Offlclal" too (the l read as an i before cl as d).
  * Break proofs (2026-11-17): `listed` back to the plain list -> FAIL 1c
  * (BroTovvn, Admln); the Cherokee map taken out -> FAIL 1c (the Cherokee A).
  * Break proofs (2026-11-16, each turned its check red): the join's new
@@ -58,7 +59,7 @@ function check(name, cond, detail) {
 
 /* ── 1c. the fold's last misses (v2.3.5625, card MOD PR 5; the sitting 21 list) ── */
 {
-  const staff = ['BroTovvn', 'Ꭺdmin', 'ᎪDMIN', 'Admln', 'Ovvner', 'Adrnin', 'Mocl', 'Offlcial', 'Ꭲeam', 'Bro Tovvn'];
+  const staff = ['BroTovvn', 'Ꭺdmin', 'ᎪDMIN', 'Admln', 'Ovvner', 'Adrnin', 'Mocl', 'Offlcial', 'Ꭲeam', 'Bro Tovvn', 'Officlal', 'Offlclal'];   /* v2.3.5627: + a cl made of an i (sitting 22) */
   const passed = staff.filter((n) => checkCharName(n).why !== 'staff');
   check('1c: letters read together (vv a w, rn an m, cl a d), an l read as an i and a Cherokee letter that looks Latin read as staff (' + staff.length + ')', passed.length === 0, passed);
   const honest = ['Bro Townsend', 'Modesto', 'Dev', 'Lily', 'Clyde', 'Bjorn', 'Corn', 'Vivian', 'Liam', 'Ali', 'Mila', 'Modern', 'Barn', 'Owen', 'Molly', 'Willow', 'Bill', 'Ellie', 'ᎣᎳᎩ'];

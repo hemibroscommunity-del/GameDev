@@ -60,6 +60,18 @@ let in (the account check, Turnstile, is off). The About panel promises
   own characters, nor is a join that names one (its key still decides). A
   refused join writes nothing, so new characters cannot push the frozen one
   out of the record once it holds.
+- **The owner's devices, kept** (v2.3.5627, card MOD PR 7; sitting 22's
+  review): botfp's record forgets (its last 8 characters, 30 days), so the
+  owner's character could fall off it and the phone be held. A join that is
+  in, by a character in test mode, marks its device `ownerdev:<device>`
+  {pid, at}, once a device (the owner's handful of puts, ever), and a freeze
+  never holds a marked device.
+- **Only a NEW character is held** (the planning session's call,
+  2026-11-17, sitting 22's review; the lever stays OFF, the owner can change
+  it): a held phone refuses a character with no login and no record yet
+  (`auth:` / `char:`), never an existing character's join, so a friend's own
+  character on a phone the frozen troll once used plays on. The frozen
+  character itself is refused by its own `frozen:` row.
 - The frozen characters' records are read 128 a get (`SILENCE.GET_MAX`, the
   runtime's most: 129 freezes threw, and the read failed open).
 

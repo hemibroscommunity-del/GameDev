@@ -336,7 +336,8 @@ function makeGlintFilter() {
  * next game frame redraws the whole of it. */
 const _warmFilters = [];
 const _warmStats = { runs: 0, ok: 0 };
-if (typeof window !== 'undefined') window.__btGlintWarm = () => ({ ..._warmStats, pooled: _warmFilters.length });   /* QA */
+let _selfOff = false;   /* v2.3.5239: its self-test found the filter wrong (card O PR 15) */
+if (typeof window !== 'undefined') window.__btGlintWarm = () => ({ ..._warmStats, pooled: _warmFilters.length, selfOff: _selfOff });   /* QA */
 export function prewarmGlintPipe(renderer) {
   if (!renderer) return false;
   _warmStats.runs++;
@@ -373,8 +374,10 @@ export function prewarmGlintPipe(renderer) {
    shine alone (SHEEN_LIFT, as the sheen batcher's), then with a rare
    piece's grade (its highlights lit blue) -- held to the CPU's answer
    (selfTest.js glintCpu), a channel allowed 4 (a phone's half precision).
-   THERE IS NO WAY BACK (drawLanes.js PROGRAMS `back: null`): a wrong
-   picture is named in the report's `self` and the shine is drawn as today.
+   v2.3.5239 (the planner, for the owner): a wrong picture falls back ALONE:
+   no piece is filtered (`_selfOff`, in update): what the filter drew -- a
+   pinned sweep, a grade's look, a shine not drawn in the frame -- is drawn
+   plain; the shine in the frame (sheenBatch.js, its own test) is kept.
    Once a renderer (a second loading screen warms again: one test). */
 const _selfTested = new WeakSet();
 function glintSelfTest(renderer) {
@@ -400,7 +403,7 @@ function glintSelfTest(renderer) {
     try { if (f) f.destroy(); } catch (e) { /* the shared program stays */ }
   }
   if (!rts.length) { rts.push(null); wants.push(glintCpu(pic)); }
-  selfQueue('glint', renderer, rts, wants, () => { /* no way back: named in `self`, drawn as today */ }, performance.now() - t0);
+  selfQueue('glint', renderer, rts, wants, () => { _selfOff = true; }, performance.now() - t0);
 }
 
 /* The shine colour of each metal: steel white, iron cooler, copper warm. */
@@ -1052,6 +1055,8 @@ export class GlintSystem {
         continue;
       }
       if (this._batched.has(spr)) { this._unbatch(spr); this._batched.delete(spr); }
+      /* v2.3.5239: the filter found wrong at the door: this piece drawn plain */
+      if (_selfOff) { const f1 = this._on.get(spr); if (f1) { this._release(spr, f1); this._on.delete(spr); } continue; }
       let f = this._on.get(spr);
       if (!f) {
         /* never take over a sprite some other effect is filtering */

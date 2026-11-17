@@ -651,14 +651,38 @@ export const DevPanel = ({ onClose }) => {
   const [apInfo, setApInfo] = useState(null);
   const loadApInfo = useCallback(async () => {
     if (!apName.trim()) { setMsg('Type a player name first.'); return; }
-    const j = await call('/dev/apinfo?name=' + encodeURIComponent(apName.trim()));
-    if (j) { setApInfo(Array.isArray(j.players) ? j.players : []); setMsg(''); }
+    /* v2.3.5607: the worker reads 200 characters a request (`next`, card OPS
+       PR 8: it read every one at once); the panel follows the pages itself,
+       so a name is still typed once.  A worker from before answers no
+       `next`: one request, as before. */
+    const found = [];
+    let after = null, got = false;
+    for (let n = 0; n < 250; n++) {
+      const j = await call('/dev/apinfo?name=' + encodeURIComponent(apName.trim()) + (after ? '&after=' + encodeURIComponent(after) : ''));
+      if (!j) break;
+      got = true;
+      if (Array.isArray(j.players)) found.push(...j.players);
+      after = typeof j.next === 'string' && j.next ? j.next : null;
+      if (!after) break;
+    }
+    if (got) { setApInfo(found); setMsg(found.length ? '' : 'No character named ' + apName.trim() + '.'); }
   }, [call, apName]);
   const [botFlags, setBotFlags] = useState(null);
-  const loadBotFlags = useCallback(async () => {
-    const j = await call('/dev/botflags');
-    if (j) { setBotFlags(Array.isArray(j.flagged) ? j.flagged : []); setMsg(''); }
-  }, [call]);
+  const [botFlagsNext, setBotFlagsNext] = useState(null);   /* v2.3.5607: the page after (null: all read) */
+  const loadBotFlags = useCallback(async (more) => {
+    /* v2.3.5607: 200 records a request (card OPS PR 8); More reads the next
+       page and the list is sorted again, newest flag first */
+    const after = more === true ? botFlagsNext : null;
+    const j = await call('/dev/botflags' + (after ? '?after=' + encodeURIComponent(after) : ''));
+    if (!j) return;
+    const page = Array.isArray(j.flagged) ? j.flagged : [];
+    setBotFlags((was) => {
+      const all = after && was ? was.concat(page.filter((f) => !was.some((w) => w.id === f.id))) : page;
+      return all.slice().sort((a, b) => ((b.last && b.last.at) || 0) - ((a.last && a.last.at) || 0));
+    });
+    setBotFlagsNext(typeof j.next === 'string' && j.next ? j.next : null);
+    setMsg('');
+  }, [call, botFlagsNext]);
 
   /* ═══ v2.3.3723: THE HIDDEN SETTINGS (server/src/hidden.js) ═══
      The anti-bot's thresholds, weights and flag score, the fleet limits and
@@ -1498,10 +1522,21 @@ export const DevPanel = ({ onClose }) => {
             {/* ═══ v2.3.3323: BOT FLAGS ═══  See the note by loadBotFlags. */}
             <div style={label}>Bot flags</div>
             <button type="button" style={btn(false)} disabled={busy}
-              onClick={loadBotFlags}>
+              onClick={() => loadBotFlags(false)}>
               {botFlags ? 'Reload flagged players' : 'Show flagged players'}
             </button>
-            {botFlags && botFlags.length === 0 && (
+            {botFlags && botFlagsNext && (
+              <button type="button" data-botflags-more="1" style={btn(false)} disabled={busy}
+                onClick={() => loadBotFlags(true)}>
+                More: read the next 200 records
+              </button>
+            )}
+            {botFlags && botFlags.length === 0 && botFlagsNext && (
+              <div style={{ color: COL.text2, fontSize: 12, marginBottom: 8 }}>
+                Nobody flagged in the records read so far. More reads the next ones.
+              </div>
+            )}
+            {botFlags && botFlags.length === 0 && !botFlagsNext && (
               <div data-botflags-empty="1" style={{ color: COL.text2, fontSize: 12, marginBottom: 8 }}>
                 No player is flagged. A flag is evidence only: it changes nothing in the game.
               </div>
@@ -1509,7 +1544,7 @@ export const DevPanel = ({ onClose }) => {
             {botFlags && botFlags.length > 0 && (
               <>
                 <div style={{ color: COL.muted, fontSize: 12, marginBottom: 6, lineHeight: 1.4 }}>
-                  Newest first. A flag is evidence only: it changes nothing in the game
+                  Newest first{botFlagsNext ? ', of the records read so far (More reads the rest)' : ''}. A flag is evidence only: it changes nothing in the game
                   (docs/OPERATIONS.md, "Bot flags").
                 </div>
                 {botFlags.map((f) => (

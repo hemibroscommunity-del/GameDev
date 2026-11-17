@@ -40,10 +40,10 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { SWITCHES } from './lib/switches.mjs';
-import { blankComments, pageFiles, pageForm, READER_FILE, ROOT } from './lib/switchScan.mjs';
+import { blankComments, pageFiles, pageForm, READER_FILE, READER_IMPORT, ROOT } from './lib/switchScan.mjs';
 
 /* the outside reads: only falls */
-const OUTSIDE_LINE = 204;   /* its first count, v2.3.5306: 228 with sitting 17's `?slimewalk` (card P's slimeSprites.js, P still running: not moved), 221 after the first seven reads moved; 212 after v2.3.5309's nine; 204 after v2.3.5232's eight (card O PR 12: the lanes' off-ramps) */
+const OUTSIDE_LINE = 193;   /* its first count, v2.3.5306: 228 with sitting 17's `?slimewalk` (card P's slimeSprites.js, P still running: not moved), 221 after the first seven reads moved; 212 after v2.3.5309's nine; 201 after v2.3.5310's eleven; 193 after v2.3.5232's eight (card O PR 12: the lanes' off-ramps) */
 
 /* ── the reads moved into the reader: each old test word for word, as a
    function of the address (S) ── */
@@ -65,6 +65,18 @@ const MOVED = Object.freeze([
   { name: 'nobeds', call: 'sw', file: 'src/game/ambientBeds.js', old: (S) => /[?&]nobeds(?:[&=]|$)/.test(S) },
   { name: 'noforge', call: 'sw', file: 'src/game/townAmbience.js', old: (S) => /[?&]noforge(?:[&=]|$)/.test(S) },
   { name: 'sounds', call: 'swHas', file: 'src/game/soundStudio.js', old: (S) => /[?&]sounds(=|&|$)/.test(S) },
+  /* v2.3.5310: data, preload, and world's and ui's plain switches (files held by no running card) */
+  { name: 'burstnumbers', call: 'sw', file: 'src/data/levelUpBurst.js', old: (S) => /[?&]burstnumbers=0(&|$)/.test(S || '') },
+  { name: 'codelazy', call: 'sw', file: 'src/ui/lazyPanel.js', old: (S) => /(^|[?&])codelazy=(0|off|false)(&|$)/.test(S || '') },
+  { name: 'bodyhere', call: 'sw', file: 'src/game/bodyPlace.js', old: (S) => new URLSearchParams(S).get('bodyhere') === '0' },
+  { name: 'noobjects', call: 'swHas', file: 'src/game/wheelTrial.js', old: (S) => /(^|[?&])noobjects(=|&|$)/.test(S || '') },
+  { name: 'nolife', call: 'swHas', file: 'src/game/wheelTrial.js', old: (S) => /(^|[?&])nolife(=|&|$)/.test(S || '') },
+  { name: 'noswim', call: 'sw', file: 'src/game/wheelTrial.js', old: (S) => /(^|[?&])noswim(=|&|$)/.test(S || '') },
+  { name: 'groundwait', call: 'sw', file: 'src/game/wheelTrial.js', old: (S) => /[?&]groundwait=0(&|$)/.test(S || '') },
+  { name: 'heaplean', call: 'sw', file: 'src/game/wheelTrial.js', old: (S) => /[?&]heaplean=(0|off|false)(&|$)/.test(S || '') },
+  { name: 'folkbake', call: 'sw', file: 'src/game/worldTrial.js', old: (S) => /(^|[?&])folkbake=0(&|$)/.test(S || '') },
+  { name: 'playvwlive', call: 'sw', file: 'src/ui/mobile/playViewport.js', old: (S) => /(^|[?&])playvwlive=1(&|$)/.test(S || '') },
+  { name: 'dev', call: 'sw', file: 'src/ui/GameApp.jsx', old: (S) => /[?&]dev=1\b/.test(S) },
   /* v2.3.5232 (card O PR 12): the lanes' off-ramps (the values -- ?lane, ?govern, ?crowd, ?onebatch, ?lookpalette, ?pixbudget, ?res, ?zoom -- read by swValue, their old patterns held to the value) */
   { name: 'ladderrate', call: 'sw', file: 'src/game/drawLanes.js', old: (S) => /(^|[?&])ladderrate=(0|off|false)(&|$)/.test(typeof S === 'string' ? S : '') },
   { name: 'ladderpix', call: 'sw', file: 'src/game/drawLanes.js', old: (S) => /(^|[?&])ladderpix=(0|off|false)(&|$)/.test(typeof S === 'string' ? S : '') },
@@ -125,7 +137,7 @@ const src = new Map(files.map((f) => [f, readFileSync(join(ROOT, f), 'utf8')]));
     if (f === READER_FILE) continue;
     const code = blankComments(s);
     for (const m of code.matchAll(/(?<![\w$.])(sw|swHas|swValue)\(\s*(['"])\??([A-Za-z][\w-]*)\2/g)) {
-      if (!/from\s+['"](?:@|\.{1,2})?(?:\/(?:[\w-]+|\.\.))*\/switches(?:\.js)?['"]/.test(code)) continue;   /* v2.3.5232: and `../../` */
+      if (!READER_IMPORT.test(code)) continue;
       asks++;
       const [, fn, , n] = m;
       if (!forms.has(n)) bad.push(`${f}: ${fn}('${n}') names no page row`);

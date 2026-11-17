@@ -107,6 +107,7 @@ export const SILENCE = Object.freeze({
   /* the most frozen characters read for their devices (the owner's freezes: a handful) */
   FROZEN_MAX: 500,
   GET_MAX: 128,   /* v2.3.5621: the keys one storage.get takes (the runtime's limit) */
+  OWNER_DEV: 'ownerdev:',   /* v2.3.5627: a device the owner's own characters joined from */
 });
 
 /** When the silence ends, in words a player reads. */
@@ -212,10 +213,40 @@ export const silenceMethods = {
     try {
       const tm = await this.state.storage.list({ prefix: 'testmode:', limit: SILENCE.FROZEN_MAX });
       const owner = new Set([...tm.keys()].map((k) => k.slice('testmode:'.length)));
-      const lists = { frozen: new Set(frozenIds), owner, devs: await devsOf(frozenIds), ownerDevs: await devsOf([...owner]) };
+      const ownerDevs = await devsOf([...owner]);
+      /* v2.3.5627 (sitting 22's review): and every device the owner's own
+         characters have joined from, kept for good (`ownerdev:`, below) --
+         botfp's record keeps only a device's last 8 characters in 30 days,
+         so the owner's could fall off it, and the phone be held */
+      const od = await this.state.storage.list({ prefix: SILENCE.OWNER_DEV, limit: SILENCE.FROZEN_MAX });
+      for (const k of od.keys()) ownerDevs.add(k.slice(SILENCE.OWNER_DEV.length));
+      const lists = { frozen: new Set(frozenIds), owner, devs: await devsOf(frozenIds), ownerDevs };
       this._frozenL = lists; this._frozenSig = sig; this._frozenAt = t;
     } catch (e) { /* the last read stands */ }
     return this._frozenL || empty;
+  },
+
+  /** v2.3.5627 (card MOD PR 7; sitting 22's review, its first finding): the
+   *  owner's own devices, KEPT.  A join that is in (join.js, after the key,
+   *  beside botfp's) by a character in test mode (`ps._testMode`: the
+   *  owner's own) marks its device `ownerdev:<device>` {pid, at}, once a
+   *  device (a put only when the device is new to the list: a handful,
+   *  ever).  A freeze never holds a marked device, whatever its botfp
+   *  record has since forgotten (its last 8 characters in 30 days). */
+  async _ownerDeviceNote(session) {
+    const id = session && session.id;
+    const device = session && session.device;
+    if (typeof id !== 'string' || typeof device !== 'string' || !device) return;
+    const ps = this.playerState && this.playerState[id];
+    if (!(this._testMode && this._testMode(ps))) return;
+    if (!this._ownerDevNoted) this._ownerDevNoted = new Set();
+    if (this._ownerDevNoted.has(device)) return;
+    try {
+      const key = SILENCE.OWNER_DEV + device;
+      if (!(await this.state.storage.get(key))) await this.state.storage.put(key, { pid: id, at: Date.now() });
+      this._ownerDevNoted.add(device);
+      if (this._frozenL && this._frozenL.ownerDevs) this._frozenL.ownerDevs.add(device);
+    } catch (e) { /* the next join tries again */ }
   },
 
   /** True when this join's device belongs to a frozen character (the join is
@@ -245,8 +276,20 @@ export const silenceMethods = {
       ids = rec && Array.isArray(rec.ids) ? rec.ids.map((e) => e && e.id).filter((x) => typeof x === 'string') : [];
     } catch (e) { ids = []; }
     if (ids.some((x) => L.owner.has(x))) return false;              /* ...whatever key it came with */
-    if (ids.some((x) => L.frozen.has(x))) return true;
-    return L.devs.has(device);
+    if (!ids.some((x) => L.frozen.has(x)) && !L.devs.has(device)) return false;
+    /* v2.3.5627 (the planning session's call, 2026-11-17, sitting 22's
+       review: the lever stays OFF, the owner can change it): a held phone
+       refuses only a NEW character, one with no login and no record yet --
+       never an existing character's join (a friend's own character on a
+       phone the frozen one once used plays on; the frozen one itself is
+       refused by its own `frozen:` row, join.js) */
+    if (typeof pid === 'string' && pid) {
+      try {
+        const had = await this.state.storage.get(['auth:' + pid, 'char:' + pid]);
+        if (had && had.size) return false;
+      } catch (e) { return false; }   /* a failed read lets the join on to the key */
+    }
+    return true;
   },
 
   /** The join's half (join.js, before the key is checked: a refused join

@@ -46,6 +46,7 @@
  *   ms              how long the frame is held (see the timing note below)
  */
 import { POINTS_ART_DIR, POINTS_ART_V } from './pointsHeadArt.js'; /* v2.3.3693: the gold numerals */
+import { sw } from '../game/switches.js';   /* v2.3.5310: the page's one reader (card T) */
 
 export const LEVELUP_STRIP_SRC = '/sprites/fx/levelup-burst-v1.webp?v=2.3.2591';
 export const LEVELUP_STRIP_W = 2172;
@@ -95,7 +96,7 @@ export const LEVELUP_FRAMES = [
  * `?burstnumbers=0`: the strip, as before.  (So does a browser that cannot
  * unpack the files, iOS before 16.4, or a load that fails.) */
 export const LEVELUP_NUMBER_SRCS = Object.freeze(LEVELUP_FRAMES.map((_, i) => `/sprites/fx/levelup-burst-v1-f${i}.p256.png?v=2.3.5004`));
-export const LEVELUP_BURST_NUMBERS = (() => { try { return !/[?&]burstnumbers=0(&|$)/.test(window.location.search || ''); } catch (e) { return true; } })();
+export const LEVELUP_BURST_NUMBERS = !sw('burstnumbers');
 
 /* Frame 7 holds this long after the run-in, then the overlay fades out.
    v2.3.3608: HALF AS LONG ON SCREEN -- the owner, 2026-10-26: "reduce the time

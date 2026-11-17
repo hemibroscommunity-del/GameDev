@@ -353,13 +353,15 @@ const code = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`\\])\/\
   };
   check('8. the CPU\'s copies match the fill\'s and the glint\'s own lines', Object.values(mirror).every(Boolean), mirror);
   const fbc = code(fb), glc = code(gl);
-  check('8. the fill: tested once built, in the whirlwind\'s amber; NO way back (its onFail does nothing: named in `self`, drawn as today)',
-    /if \(_built\) fillSelfTest\(renderer\);/.test(fbc) && /selfQueue\('fill', renderer, rt, selfFillWant\(\), \(\) => \{\s*\}/.test(fbc));
-  check('8. the glint: tested once a renderer where its filter is warmed, alone and with a grade (allowed 4); NO way back',
+  check('8. the fill: tested once built, in the whirlwind\'s amber; v2.3.5239: wrong, it falls back alone as `?fill=0` (fillBatchOn false: no one-colour glow)',
+    /if \(_built\) fillSelfTest\(renderer\);/.test(fbc) && /selfQueue\('fill', renderer, rt, selfFillWant\(\), \(\) => \{ _selfOff = true; \}/.test(fbc)
+    && /export const fillBatchOn = \(\) => _on && !_selfOff;/.test(fbc));
+  check('8. the glint: tested once a renderer where its filter is warmed, alone and with a grade (allowed 4); v2.3.5239: wrong, every piece it filtered drawn plain (the shine in the frame kept)',
     /if \(ok && !_selfTested\.has\(renderer\)\) \{ _selfTested\.add\(renderer\); glintSelfTest\(renderer\); \}/.test(glc)
-    && /wants\.push\(\{ want: glintCpu\(pic, SELF_SHEEN, grade\), tol: 4 \}\);/.test(glc) && /selfQueue\('glint', renderer, rts, wants, \(\) => \{\s*\}/.test(glc));
+    && /wants\.push\(\{ want: glintCpu\(pic, SELF_SHEEN, grade\), tol: 4 \}\);/.test(glc) && /selfQueue\('glint', renderer, rts, wants, \(\) => \{ _selfOff = true; \}/.test(glc)
+    && /if \(_selfOff\) \{ const f1 = this\._on\.get\(spr\); if \(f1\) \{ this\._release\(spr, f1\); this\._on\.delete\(spr\); \} continue; \}/.test(glc));
   const progs = src('src/game/drawLanes.js');
-  check('8. the card: the fill and the glint have no way back (drawLanes.js PROGRAMS `back: null`)', /name: 'fill',[^\n]*back: null/.test(progs) && /name: 'glint',[^\n]*back: null/.test(progs));
+  check('8. v2.3.5239: the fill and the glint have their way back in drawLanes.js PROGRAMS', /name: 'fill',[^\n]*back: 'no one-colour glow'/.test(progs) && /name: 'glint',[^\n]*back: 'the filtered pieces plain'/.test(progs));
 }
 
 
@@ -378,11 +380,35 @@ const code = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`\\])\/\
   check('9. the CPU\'s lines are the programs\' own (alpha x red; alpha)',
     hc.includes('if (outColor.a * outColor.r < 0.5) discard;') && hc.includes('if (outColor.a < 0.5) discard;'));
   const hcc = code(hc);
-  check('9. the clip: tested once installed, each program through its sprite\'s own batcher; NO way back (its onFail does nothing: named in `self`, drawn as today)',
+  check('9. the clip: tested once installed, each program through its sprite\'s own batcher; v2.3.5239: wrong, it falls back alone (its pictures to the alpha mask, as `?alphaclip`; clipRoute.js)',
     /_installed = true;\s*try \{ clipSelfTest\(r\); \}/.test(hcc)
     && /if \(alpha\) spr\._btClipAlpha = true; else spr\._btClipMask = true;/.test(hcc)
-    && /selfQueue\('clip', renderer, rts, wants, \(\) => \{\s*\}/.test(hcc));
-  check('9. the card: the clip has no way back (drawLanes.js PROGRAMS `back: null`)', /name: 'clip',[^\n]*back: null/.test(src('src/game/drawLanes.js')));
+    && /selfQueue\('clip', renderer, rts, wants, \(\) => \{ _selfOff = true; reclipAll\(\); \}/.test(hcc));
+  check('9. v2.3.5239: the clip\'s way back in drawLanes.js PROGRAMS', /name: 'clip',[^\n]*back: 'the alpha mask'/.test(src('src/game/drawLanes.js')));
+}
+
+/* ── 10. v2.3.5239 (the gatekeeper's sitting 23): a failed clip sends only
+   PICTURES to the alpha mask; a silhouette of colour numbers (the hats' and
+   hoods' hair masks, p256.js) stays on the stencil, drawn by the palette's
+   program -- the alpha mask would read its numbers as nothing (the hair
+   gone under 31 of the 40 hats).  BREAK: clipRoute's `&& !palette` taken
+   out -> FAIL 10 (numbers to the alpha mask). ── */
+{
+  const { clipRoute } = await import('../../src/rendering/clipRoute.js');
+  const rows = [
+    [[true, false, false, false], 'stencil', 'a picture, the clip passed'],
+    [[true, false, false, true], 'stencil', 'colour numbers, the clip passed'],
+    [[true, false, true, false], 'alpha', 'a picture, the clip failed: the alpha mask'],
+    [[true, false, true, true], 'stencil', 'colour numbers, the clip failed: still the stencil (the palette\'s program)'],
+    [[true, true, false, true], 'alpha', '`?alphaclip`: the alpha mask (p256.js keeps the masks pictures then)'],
+    [[false, false, false, false], 'alpha', 'not installed'],
+  ];
+  const bad = rows.filter(([a, want]) => clipRoute(...a) !== want).map(([a, want, why]) => `${why}: ${clipRoute(...a)}`);
+  check('10. each silhouette clips its own way: a failed clip sends pictures to the alpha mask, colour numbers stay on the stencil', bad.length === 0, bad);
+  const hc = code(src('src/rendering/hairClip.js'));
+  check('10. hairClip.js asks it where a hair is clipped and where a silhouette picks its batcher',
+    /if \(routeOf\(m\) !== 'stencil'\) \{/.test(hc) && /if \(r && \(r\._btClipMask \|\| r\._btClipAlpha\) && routeOf\(r\) === 'stencil'\) \{/.test(hc)
+    && /const routeOf = \(m\) => clipRoute\(_installed, _alpha, _selfOff, !!\(m && m\.texture && isPaletteSource\(m\.texture\.source\)\)\);/.test(hc));
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);

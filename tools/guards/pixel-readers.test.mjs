@@ -96,6 +96,8 @@ const READERS = {
    reads that picture through, and why the pack never comes first. */
 const NAMES_PACKED = {
   'effectsRenderer.js': '_tightPopupIcon cuts the heart popup and the eight element marks (v2.3.5258) through readSourceRect as they load (_loadPopupIcon), before they are ever drawn: p256.js packs only what the chip already has. Its other page-copy reads are the chop strip (_cropChop) and the bakes\' probe (__btFxBakes), neither a p256 picture.',
+  /* v2.3.5566; v2.3.5569 the badge */
+  'entityRenderer.js': '_HUD_BAR_FILES names the HP, mana and stamina pills (hud-bars), and BRO_BADGE_URL the verified Bro badge (icons-from-uploads-world), which p256.js packs; it never reads their pixels: its page-copy reads are the masked bodies\' bakes and their QA probes, the body, gear, belt and rod sheets it bakes from, a frame\'s cache entry let go, and a probe that names a texture\'s file by its address (no pixel)',
 };
 
 /* The shatter's callers, and where each one's pictures come from. */
