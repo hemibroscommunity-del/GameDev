@@ -12,12 +12,13 @@ state: working
   tools/guards/frame-steps.test.mjs (legacy's census 1555 code lines),
   tools/qa/mp/mp-framesteps.mjs. Then the phone runs beside main's.
 
+  after-frame.test 2a accepts the step marks (the planning session's
+  answer, 2026-11-17; server/test: the merge deploys the worker).
+
 ## Found
 - (none)
 
 ## Needs
-- Planning session: may PR 1 change after-frame.test 2a's pattern to
-  accept the step marks? (asked 2026-11-17; server/test: deploys)
 - Card L done (its #2052, #2058, #2065, #2067 merged) before PR 1 opens
   (the planning session's answer 1). No open PR touches BroTown.jsx or the
   two renderers today (checked 2026-11-17).
