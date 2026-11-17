@@ -270,6 +270,11 @@ so node tests it and any file may ask it.
 - The first reads moved (PR 6): `?starcue`, `?guidearrow` (two files),
   `?nmlask`, `?loginspin`, `?nomapdetail`, `?tapthrough`, chosen in files no
   running card holds, with no needs, so no answer can change.
+- The reads moved (PRs 7 on), the systems with the fewest reads first, in
+  files no running card holds: v2.3.5309, quests (`?questpath`), skills
+  (`?treefade`), economy (`?droplines`, `?equipredraw`), townsfolk
+  (`?townchat`, `?folkwalk`) and audio (`?nobeds`, `?noforge`, `?sounds`):
+  the line 212.
 
 ## A new switch
 

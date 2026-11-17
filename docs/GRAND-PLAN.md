@@ -281,6 +281,10 @@ way: build the table from what exists, add the test, move no behaviour.
   (14b: the look, sharp, sheen, shadow, water, each with its way back),
   merged at sitting 20. The box waits for 14c (the fill and the glint) and
   14d (the clip) (the gatekeeper, sitting 21, tag 5379).*
+  *O's #1929 (14c: the fill and the glint, each its picture, named in
+  `self` when it fails, drawn as today), merged at sitting 21. The box
+  waits for 14d (the clip) and a way back for the fill and the glint (the
+  gatekeeper, sitting 22, tag 5660).*
 
 **Done when** a session answers "how does it run on X" from the table.
 Every step that needs field numbers says how many reports from how many
@@ -590,6 +594,9 @@ nothing known, and a restore copies nothing.
   (the pose: `poseTo`) and #1910 (the guard: `guardTo`), merged at sitting
   20: 16 `todo` on `main` b2d763a; the line lowered 22 -> 16 (the
   gatekeeper, sitting 21, tag 5379).*
+  *L's #1930 (the arena door: `_arenaTo`, `arenadoor`, ON), merged at
+  sitting 21: 15 `todo` on `main` f692b93; the line lowered 16 -> 15 (the
+  gatekeeper, sitting 22, tag 5660).*
 - [ ] **5.4 [LATER] The frame as named steps.** PR 1 moves nothing: the six
   calls the loop already makes, plus one `legacy` step, become the list;
   each counts its errors to the crash ring (a throw in the frame reaches
@@ -615,6 +622,10 @@ nothing known, and a restore copies nothing.
   the census 203 -> 146), merged at sitting 17; monsterCombat.js's two
   lines lowered (5.1). The box waits for the rest of the page's sends
   (K's PRs 7.2 to 7.5) (the gatekeeper, sitting 18, tag 5375).*
+  *K's PRs 7.2 to 7.6, #1900 and #1931 to #1934 (the page's sends through
+  `act()`, a family a PR; the census 105 -> 4 sends, fetches 0), merged at
+  sitting 21. The box waits for the last 4 sends (the gatekeeper,
+  sitting 22, tag 5660).*
 - [x] **5.9 [NOW] Pins.** PixiJS at an exact version; the places the game
   patches its inside, one table with a test.
   *Merged: #1702 (card B), PixiJS at 8.17.1, `tools/guards/pixi-pins.test.mjs`.*
