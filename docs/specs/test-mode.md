@@ -36,7 +36,7 @@ switch allows it.
 | The move budget and the per-message bound | movement.js `_handleMove` | the phone's place is taken as it says |
 | The follow after a far move | movement.js `_tickMoveFollow` | dropped |
 | The way back into the Wheel judged from where you left it | movement.js `_handleMove` (`_wheelEntryFrom`) | not judged |
-| A reconnect judged from your last place | lastplace.js `_placeOnJoin` | joins where it says |
+| A reconnect judged from your last place; a join naming no place stood where the worker had you or at the Wheel's arrival (v2.3.5722, `joinplace`) | lastplace.js `_placeOnJoin`, `_placeUnnamed` | joins where it says |
 | A strike before its window (too early) | gathering.js `_handleNodeStrike` | paid |
 | A strike with no start of its own | gathering.js `_handleNodeStrike` (`HARVEST_PROOF`) | paid |
 | 45 perfect harvests a minute | gathering.js `_ratedHarvestAccuracy` | no limit |
