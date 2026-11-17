@@ -463,6 +463,53 @@ export const gearStashMethods = {
     const f = this._liveFlags;
     return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'armorstashlive') && !f.armorstashlive);
   },
+  /* ═══ v2.3.5715 (card SEC PR 16): GEAR IS WORN ONLY IF THE WORKER HOLDS IT ═══
+     A piece the phone DESCRIBES (grids.js, the armour and legs describe
+     branches) was worn as described: a character with an empty bag that
+     described an elite chest and legs wore them (prov 'legacy') and took 15%
+     of a blow, and each swap pushed the invented piece into the stash.  Now a
+     described piece goes on only if one with its signature (stashSig: its
+     gid, else name|gearBase|tierMult|tier) is the worn piece or in the
+     worker's own stash for that slot -- the stash this worker keeps live
+     (_gearStashLiveAdd, every road that hands a piece to the bag); else what
+     is worn stays, and the worn slots are sent back.  And the join stops
+     merging the phone's armour and legs claims (_gearStashAdoptOnJoin):
+     those two the worker keeps live, so a claim adds nothing honest.
+     v2.3.5715 (gatekeeper Z40's review): CAPTURED OR NOT.  The first build
+     closed them only once `gearStashCaptured` was set, but that stamp is
+     set only by a join whose merge took something -- and since v2.3.4840
+     the worker adds every piece itself, so an honest record usually stays
+     uncaptured.  One join with a forged elite chest then merged it, stamped
+     the record, and the describe path wore it.  A piece only a phone made
+     before the worker kept the stash live is the one honest loss (named in
+     card SEC's status).  The signature is read through sanitizeGearPiece on
+     both sides (_gearHeld): the stash's copy went through it (tierMult 1
+     when it had none), so a described piece with no tierMult matched
+     nothing and could never be worn again.  What is already worn or stashed on file is
+     untouched.  With the live stash off (`armorstashlive: false`) the worker
+     holds no stash to ask, and the gate stands aside.
+     KILL SWITCH `gearheld: false`: the describe path and the join as before. */
+  _gearHeldOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'gearheld') && !f.gearheld) && this._gearStashLiveOn();
+  },
+  /** true when the worker holds a piece with this one's signature for the
+   *  slot: worn now, or in its stash */
+  _gearHeld(ps, slot, piece) {
+    const field = liveField(slot);
+    if (!field || !ps || !piece || typeof piece !== 'object') return false;
+    const heldSig = (g) => stashSig(field, sanitizeGearPiece(g, false) || g);   /* as the stash's copy was made */
+    const sig = heldSig(piece);
+    if (!sig) return false;
+    if (ps[slot] && heldSig(ps[slot]) === sig) return true;
+    return Array.isArray(ps[field]) && ps[field].some((g) => heldSig(g) === sig);
+  },
+  /** the describe path's refusal: what is worn stays, and is sent back */
+  _gearHeldRefuse(session) {
+    if (this._gearResendOff && this._gearResendOff()) return;   /* `gearresend: false`: silent, as the other refusals */
+    const w = session && this._wsBySessionId(session.id);
+    if (w) this._resendPlayerState(w, session.id, ['armor', 'legsArmor']);
+  },
   /* v2.3.5281: each through the stashes' door (stash.js), by the road its
      caller names (stash-door.test holds that every caller names one) */
   _gearStashLiveAdd(ps, slot, piece, road) {
@@ -480,8 +527,11 @@ export const gearStashMethods = {
     if (!ps || !piece || typeof piece !== 'object') return false;
     const field = liveField(slot);
     if (!field || !this._gearStashLiveOn() || !Array.isArray(ps[field])) return false;
-    const sig = stashSig(field, piece);
-    const i = ps[field].findIndex((g) => stashSig(field, g) === sig);
+    /* v2.3.5715: read as the stash's copy was made (sanitizeGearPiece: a
+       piece with no tierMult has 1 there), so the piece put on leaves it */
+    const heldSig = (g) => stashSig(field, sanitizeGearPiece(g, false) || g);
+    const sig = heldSig(piece);
+    const i = ps[field].findIndex((g) => heldSig(g) === sig);
     if (i < 0) return false;
     return stashTake(ps, field, i, road) !== null;
   },
@@ -551,6 +601,7 @@ export const gearStashMethods = {
        this capture is not the player's whole wardrobe, whichever list
        it was. */
     const report = { truncated: false };
+    const claimsClosed = this._gearHeldOn();   /* v2.3.5715: captured or not (Z40's review, above) */
     for (const f of GEAR_STASH_FIELDS) {
       const slot = GEAR_STASH_PROV_SLOT[f];
       /* v2.3.2534: every entry, ours and theirs, goes through the provenance
@@ -574,6 +625,9 @@ export const gearStashMethods = {
          taken back from a client that still offers it -- by its id; the
          dead player's own game was told to drop it (nml_loss) */
       const raw = Array.isArray(raw0) && this._nmlForfeited ? raw0.filter((g) => !this._nmlForfeited(ps, g)) : raw0;
+      /* v2.3.5715 (gearheld, above): no record takes armour or legs from
+         the phone -- the worker keeps those two itself */
+      if (claimsClosed && liveField(slot) === f) continue;
       if (Array.isArray(raw)) {
         /* v2.3.2540: v2.3.2527's truncation accounting, kept exactly --
            a claim the CAP cut short must not stamp the capture complete.

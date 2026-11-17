@@ -647,6 +647,9 @@ const psA = room.playerState.pa;
   const _flagsWas = room._liveFlags;
   room._liveFlags = { gearlevel: false };
   psA.armor = null;
+  /* v2.3.5715: a plate the worker holds (gearheld wears only those; these
+     checks are the defence-point and level gates') */
+  psA.armorStash = [...(psA.armorStash || []), { name: 'Test Plate', tierMult: 4 }];
   p3.alloc.def = 9;
   room._handleStatsUpdate(sess, { armor: { name: 'Test Plate', tierMult: 4 } }); // tier 4 → req 10
   check('(gearlevel: false) armor ingest: over-tier swap rejected (defense points too low)', psA.armor === null, psA.armor);

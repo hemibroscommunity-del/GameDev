@@ -2,6 +2,7 @@
 // All mobile devtools-replacement plumbing lives here so the rest of the
 // codebase can stay untouched. Wire new debug commands with debugBus.cmd(...).
 import { pageAddress } from '../game/switches.js';   /* v2.3.5314: the page's one reader (card T) */
+import { blankFrame, blankAtPath, blankShallow } from './blankSecrets.js';   /* v2.3.5713: no key or token recorded or shown */
 
 const MAX_LOGS = 500;
 const MAX_WS_FRAMES = 200;
@@ -42,7 +43,7 @@ const pushWS = (dir, data) => {
   } catch {
     summary = typeof data === 'string' ? data.slice(0, 60) : '[binary]';
   }
-  wsFrames.push({ t: Date.now(), dir, summary, raw: parsed ?? data });
+  wsFrames.push({ t: Date.now(), dir, summary, raw: parsed != null ? blankFrame(parsed) : data });   /* v2.3.5713: a copy, its key and tokens blanked */
   if (wsFrames.length > MAX_WS_FRAMES) wsFrames.splice(0, wsFrames.length - MAX_WS_FRAMES);
   emit();
 };
@@ -161,7 +162,7 @@ cmd('state', (args) => {
     if (cur == null) return '(undefined)';
     cur = cur[k];
   }
-  return cur;
+  return blankShallow(blankAtPath(args[0], cur));   /* v2.3.5713: no key or token shown */
 }, 'state [path]  — inspect stateRef.current at dotted path');
 
 cmd('set', (args) => {

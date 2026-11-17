@@ -61,7 +61,7 @@ async function openTestPanel(P) {
     inp.dispatchEvent(new Event('input', { bubbles: true }));
     return true;
   }, H.ADMIN_KEY);
-  if (keyed) { await tapText(P, 'Save key on this device'); await P.page.waitForTimeout(1500); }
+  if (keyed) { await tapText(P, 'Save key'); await P.page.waitForTimeout(1500); }
   return true;
 }
 

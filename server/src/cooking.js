@@ -929,7 +929,11 @@ export const cookingMethods = {
 
   /* ═══ v2.3.5553: A COOK IS A COOK THE WORKER STARTED (grand plan 4.2, the
      cook's result; card K PR 14; docs/specs/cook-start.md) ═══
-     An opt-in, OFF (`cookstart: true`, the owner's to turn on).  The bench
+     Landed an opt-in, OFF; ON since v2.3.5727 (card K2 PR 8; decided for the
+     owner while away by the planning session, on the owner's words of
+     2026-11-17: "Go recommended on all"); `cookstart: false` in the live
+     flags is its kill switch (on unless its own falsy value, as
+     `swordswing`).  The bench
      (claims-gain.test, `cook`) found `cook_request` alone worth 1.59 times
      an honest cook: no start, no fire, no gesture was asked of it.  An
      honest page starts every cook (`extraction_start`, skill 'cooking':
@@ -944,21 +948,26 @@ export const cookingMethods = {
      character is left as it is (testmode.js). */
   _cookStartOn() {
     const f = this._liveFlags;
-    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'cookstart') && f.cookstart === true);
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'cookstart') && !f.cookstart);
   },
-  _cookStartTake(ps, fishKey, now, session) {
+  /* v2.3.5727 (sitting 36's review, Found (c)): the judge is split in two.
+     _cookStartOk only LOOKS (it spends nothing); _cookStartTake spends the
+     plan (or the session's one no-plan result) and runs only after the
+     900 ms floor and the bag's fish check have passed too, so a result
+     those drop no longer spends its plan. */
+  _cookStartOk(ps, fishKey, now, session) {
     const c = ps && ps._cookHits;
     /* no plan at all: the worker restarted mid-cook (its memory wiped, the
        player joined again) -- one such result a session, never two */
-    if (!c) {
-      if (session && !session._cookNoPlan) { session._cookNoPlan = true; return true; }
-      return false;
-    }
+    if (!c) return !!session && !session._cookNoPlan;
     if (c.used || c.fishKey !== fishKey || !Array.isArray(c.hits)) return false;
     const min = (Math.max(0, c.hits.length - 1) * COOK_START.HIT_MS + COOK_START.CYCLE_MS) * COOK_START.SLACK;
-    if (now - (Number(c.rolledAt) || 0) < min) return false;
-    c.used = true;
-    return true;
+    return now - (Number(c.rolledAt) || 0) >= min;
+  },
+  _cookStartTake(ps, session) {
+    const c = ps && ps._cookHits;
+    if (c) c.used = true;
+    else if (session) session._cookNoPlan = true;
   },
   _handleCookRequest(session, payload) {
     if (!session || !session.id) return;
@@ -981,8 +990,11 @@ export const cookingMethods = {
       if (ws) this._sendPlayerState(ws, session.id);
       return;
     }
-    /* v2.3.5553: a result on a cook the worker started (`cookstart`, OFF) */
-    if (this._cookStartOn() && !(typeof this._testMode === 'function' && this._testMode(ps)) && !this._cookStartTake(ps, fishKey, Date.now(), session)) {
+    /* v2.3.5553: a result on a cook the worker started (`cookstart`; ON since
+       v2.3.5727).  v2.3.5727: only looked at here; spent below, once the
+       floor and the fish check pass too */
+    const cookStart = this._cookStartOn() && !(typeof this._testMode === 'function' && this._testMode(ps));
+    if (cookStart && !this._cookStartOk(ps, fishKey, Date.now(), session)) {
       const ws = this._wsBySessionId(session.id);
       if (ws) this._sendPlayerState(ws, session.id);
       return;
@@ -1029,6 +1041,7 @@ export const cookingMethods = {
       if (ws) this._sendPlayerState(ws, session.id);
       return;
     }
+    if (cookStart) this._cookStartTake(ps, session);   /* v2.3.5727: the plan spent only now (Found (c)) */
     ps._lastCookAt = nowCk;
     ps._cookHits = null;   /* v2.3.2956: the cook's hits are spent with its fish (gathering.js _planCookHits) */
     bagTake(ps.inventory, fishKey, 1, 'cook_fish_used'); /* v2.3.4810: the bag door */
