@@ -1,6 +1,6 @@
 card: L
-branch: claude/plan-l-27-veil-net (from main)
-prs: #1746 to #2000 (merged), #2010 (5527): ready
+branch: claude/plan-l-28-connection-door (on #2010)
+prs: #1746 to #2000 (merged), #2010 (5527), 5528 (this branch, on #2010): ready
 state: ready
 
 ## Done
@@ -10,14 +10,14 @@ state: ready
   doors; the resets, 484 -> 233 rows.
 - PR 5, 5210-5217, 5522-5523: the worker's trade, duel, party, cook, harvest+
   fishing, dungeon, pose, race, arena, ride doors; the page's (5218-5219,
-  5520-5521, 5525-5527): race, harvest+cook+fishing, pose, guard, veils (+net), windows.
+  5520-5521, 5525-5528): race, harvest+cook+fishing, pose, guard, veils, windows,
+  connection.
 - 5524: the Saloon's alliance drafts outlive a rejoin (J2's find).
 
 ## Next
 
-- K freed wsClient.js (planner, 09:21): next the connection door; then the
-  page halves in wsClient.js, gameEvents.js after K's #2003. Guard (worker)
-  waits for K's items 13, 14 (index.js, combat.js).
+- Next: the page halves in wsClient.js; gameEvents.js after K's #2003. Guard
+  (worker) waits for K's items 13, 14 (index.js, combat.js).
 
 ## Found
 

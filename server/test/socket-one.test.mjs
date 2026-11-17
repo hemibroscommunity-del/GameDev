@@ -23,6 +23,7 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import vm from 'node:vm';
 import * as L from '../../src/game/socketLine.js';
+import { connTo } from '../../src/game/connectionDoor.js';   /* v2.3.5528: the socket phase's one writer, the real one in the rig */
 
 let passed = 0, failed = 0;
 function check(name, cond, detail) {
@@ -92,6 +93,7 @@ function rig() {
     clearTimeout: () => {},
     showResumeBanner: (t) => banners.push(t),
     resetServerReady: () => {},
+    connTo,   /* v2.3.5528: S._realtimeStatus goes through the connection door */
   };
   const ctx = new Proxy(base, {
     has: () => true,
@@ -160,7 +162,7 @@ if (connectSrc && schedSrc) {
 const ssAt = WSC.indexOf("case 'state_sync':");
 const ssBody = ssAt < 0 ? '' : WSC.slice(ssAt, WSC.indexOf("case '", ssAt + 20));
 check('3a state_sync writes \'connected\' (a stray \'superseded\' heals at the next sync)',
-  /S\._realtimeStatus\s*=\s*'connected'/.test(ssBody));
+  /S\._realtimeStatus\s*=\s*'connected'|connTo\(S, 'connected'\)/.test(ssBody));   /* v2.3.5528: through the connection door */
 const cleanupAt = WSC.lastIndexOf('    return function () {');
 const cleanup = cleanupAt < 0 ? '' : WSC.slice(cleanupAt, WSC.indexOf('\n    };', cleanupAt));
 check('3b the effect\'s cleanup retires its socket (handlers off before the close)',

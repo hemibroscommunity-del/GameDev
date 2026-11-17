@@ -58,7 +58,7 @@ export const SYSTEMS = Object.freeze({
     what: 'the socket and the messages: the router, the relay, the client\'s connection and its event switch, what each side can do (caps)',
     /* v2.3.5061 (card N): server/src/wire/, the wire table (one row a message or route) */
     files: [f('server/src', 'index|relay|bundle|clientoff|flood'), re('^server/src/wire/'), re('^src/networking/'), f('src/game', 'clientOff|clientOffApply|blockedAsks|workerClock|t1Sync|tooFar'),
-      f('src/game', 'actions'),   /* v2.3.5185 (card K): the action door, the one way a request leaves the page */
+      f('src/game', 'actions|connectionDoor'),   /* v2.3.5528: + the connection door (card L); v2.3.5185 (card K): the action door, the one way a request leaves the page */
       f('server/src', 'heapforget|reqonce|gidnames'),   /* v2.3.5544 (card K, RT-1 N11): the room forgets who left; v2.3.5194: a repeat acts once */
     ],
     words: ['wire', 'protocol', 'relay', 'caps', 'bundle', 'privileged', 'clientoff', 'flood', 'heap-forget', 'req-once', 'gid-names'],
