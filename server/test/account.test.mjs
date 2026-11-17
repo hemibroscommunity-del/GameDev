@@ -211,6 +211,27 @@ room._liveFlags = Object.assign({}, room._liveFlags || {}, { ip64: false });
 r = await room._accountLogin(ALICE_PHRASE, '2001:db8:7:9::abcd');
 check('5581: ip64 false counts each IPv6 address apart again', r.ok === true && r.exists === true, r);
 delete room._liveFlags.ip64;
+/* v2.3.5584: ...and a whole /56 is one customer (flood.js ip56Key): its
+   /64s share IP56.TIMES the line between them */
+{
+  const { IP56 } = await import('../src/flood.js');
+  const WIDE = ACCOUNT.IP_MAX_ATTEMPTS * IP56.TIMES;
+  let rated = 0;
+  for (let i = 0; i < WIDE; i++) {
+    /* a new /64 of the /56 every three tries: no /64 near its own line */
+    const r2 = await room._accountLogin('knack-lava-mystic-nova-' + (i % 10), '2001:db8:8:' + (Math.floor(i / 3) + 1).toString(16) + '::1');
+    if (r2.reason === 'rate') rated++;
+  }
+  check('5584: a /56\'s ' + WIDE + ' tries, spread over its /64s, all taken', rated === 0, rated);
+  r = await room._accountLogin(ALICE_PHRASE, '2001:db8:8:ee::1');
+  check('5584: the next try from a fresh /64 of the same /56 -> rate', r.ok === false && r.reason === 'rate', r);
+  r = await room._accountLogin(ALICE_PHRASE, '2001:db8:8:100::1');
+  check('5584: the next /56 is another customer', r.ok === true && r.exists === true, r);
+  room._liveFlags = Object.assign({}, room._liveFlags || {}, { ip56: false });
+  r = await room._accountLogin(ALICE_PHRASE, '2001:db8:8:ef::1');
+  check('5584: ip56 false counts the /64 alone again', r.ok === true && r.exists === true, r);
+  delete room._liveFlags.ip56;
+}
 
 // ── 7. fetch surface ──
 const resBad = await room._accountFetch(new Request('https://x/api/account/login', { method: 'POST', body: 'not json' }));

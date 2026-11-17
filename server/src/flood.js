@@ -144,26 +144,52 @@ export function roomNameFor(url, env) {
  * address (`session.ip`: the account check sends it to Turnstile).  Kill
  * switch `ip64: false`: each IPv6 address counted apart again. */
 const HEX4_RE = /^[0-9a-f]{1,4}$/;
-export function ipKey(ip) {
-  if (typeof ip !== 'string' || ip.indexOf(':') < 0) return ip;
+/* v2.3.5584: the reading ipKey always did, shared with ip56Key: an IPv6
+   address's eight groups, an IPv4 one written as IPv6 as that IPv4 address
+   (a string), or null for anything else */
+function v6Groups(ip) {
+  if (typeof ip !== 'string' || ip.indexOf(':') < 0) return null;
   let s = ip.trim().toLowerCase();
   const pct = s.indexOf('%');
   if (pct >= 0) s = s.slice(0, pct);
   const mapped = /^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/.exec(s);
   if (mapped) return mapped[1];
   const halves = s.split('::');
-  if (halves.length > 2) return ip;
+  if (halves.length > 2) return null;
   const head = halves[0] ? halves[0].split(':') : [];
   const tail = halves.length === 2 && halves[1] ? halves[1].split(':') : [];
   let groups;
   if (halves.length === 1) groups = head;
   else {
     const fill = 8 - head.length - tail.length;
-    if (fill < 1) return ip;
+    if (fill < 1) return null;
     groups = head.concat(new Array(fill).fill('0'), tail);
   }
-  if (groups.length !== 8 || !groups.every((g) => HEX4_RE.test(g))) return ip;
-  return groups.slice(0, 4).map((g) => g.replace(/^0+(?=.)/, '')).join(':') + '::/64';
+  if (groups.length !== 8 || !groups.every((g) => HEX4_RE.test(g))) return null;
+  return groups;
+}
+const bare = (g) => g.replace(/^0+(?=.)/, '');
+export function ipKey(ip) {
+  const g = v6Groups(ip);
+  if (typeof g === 'string') return g;
+  if (!g) return ip;
+  return g.slice(0, 4).map(bare).join(':') + '::/64';
+}
+
+/* ═══ v2.3.5584: ...AND A WHOLE /56 IS ONE CUSTOMER (red team RT-1, ip56) ═══
+ * Many providers hand a home line a /56 -- 256 /64s -- so the /64 count
+ * above still let one line take sixteen places in each of its 256 blocks.
+ * Each address limit now also counts an IPv6 address by its /56 (its first
+ * three groups and the top half of the fourth), at IP56.TIMES the /64's line
+ * (sockets held, opens a minute, the login door's tries): an honest
+ * household's few /64s never reach it, a script rotating /64s does.  null for
+ * IPv4 and anything ipKey cannot read (counted by the /64 line alone).  Kill
+ * switch `ip56: false`: the /64 line alone, as v2.3.5581 left it. */
+export const IP56 = Object.freeze({ TIMES: 3 });
+export function ip56Key(ip) {
+  const g = v6Groups(ip);
+  if (!Array.isArray(g)) return null;
+  return g.slice(0, 3).map(bare).join(':') + ':' + bare(g[3].padStart(4, '0').slice(0, 2) + '00') + '::/56';
 }
 
 /** The address Cloudflare's edge stamped on the request, or null: absent
@@ -183,6 +209,11 @@ export const floodMethods = {
   _ip64On() {
     const f = this._liveFlags;
     return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'ip64') && !f.ip64);
+  },
+  /* v2.3.5584: `ip56: false` -- the /64 line alone (ip56Key above) */
+  _ip56On() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'ip56') && !f.ip56);
   },
 
   /* ── 3. the budget per socket ── */
@@ -219,34 +250,56 @@ export const floodMethods = {
     /* v2.3.5581: an IPv6 address counted by its /64 (ipKey above) */
     const by = (typeof this._ip64On !== 'function' || this._ip64On()) ? ipKey : (a) => a;
     const key = by(ip);
+    /* v2.3.5584: ...and by its /56, at IP56.TIMES the line (ip56Key above) */
+    const wide = (typeof this._ip56On !== 'function' || this._ip56On()) ? ip56Key(ip) : null;
     const maxSockets = this._flagNum ? this._flagNum('ip_sockets', FLOOD.IP_SOCKETS, 0, 1000) : FLOOD.IP_SOCKETS;
     if (maxSockets > 0) {
-      let held = 0;
-      for (const [, s] of this.sessions) if (s.ip && by(s.ip) === key) held++;
+      let held = 0, heldWide = 0;
+      for (const [, s] of this.sessions) {
+        if (!s.ip) continue;
+        if (by(s.ip) === key) held++;
+        if (wide && ip56Key(s.ip) === wide) heldWide++;
+      }
       if (held >= maxSockets) return false;
+      if (wide && heldWide >= maxSockets * IP56.TIMES) return false;
     }
-    ip = key;   /* the opens a minute below are kept by the same key */
     const maxJoins = this._flagNum ? this._flagNum('ip_joins_min', FLOOD.IP_JOINS_PER_MIN, 0, 10000) : FLOOD.IP_JOINS_PER_MIN;
     if (maxJoins > 0) {
       if (!this._ipOpens) this._ipOpens = new Map();
-      let list = this._ipOpens.get(ip);
-      if (list) {
-        list = list.filter((t) => now - t < 60000);
-        if (list.length >= maxJoins) { this._ipOpens.set(ip, list); return false; }
-      } else {
-        list = [];
-        if (this._ipOpens.size >= FLOOD.IP_MAP_CAP) {
-          for (const [k, v] of this._ipOpens) {
-            if (!v.length || now - v[v.length - 1] >= 60000) this._ipOpens.delete(k);
-            if (this._ipOpens.size < FLOOD.IP_MAP_CAP) break;
-          }
-          if (this._ipOpens.size >= FLOOD.IP_MAP_CAP) this._ipOpens.delete(this._ipOpens.keys().next().value);
-        }
-      }
+      /* the opens a minute are kept by the same keys; both are looked at
+         before either is counted, so a refusal counts in neither */
+      const list = this._ipOpensOf(key, now);
+      if (list.length >= maxJoins) return false;
+      const listWide = wide ? this._ipOpensOf(wide, now, key) : null;
+      if (listWide && listWide.length >= maxJoins * IP56.TIMES) return false;
       list.push(now);
-      this._ipOpens.set(ip, list);
+      if (listWide) listWide.push(now);
     }
     return true;
+  },
+
+  /* One key's opens in the last minute, kept in _ipOpens (the map pruned at
+     its cap when a new key comes in, as before v2.3.5584; never `keep`, the
+     other key of the same open). */
+  _ipOpensOf(k, now, keep) {
+    let list = this._ipOpens.get(k);
+    if (list) {
+      list = list.filter((t) => now - t < 60000);
+    } else {
+      list = [];
+      if (this._ipOpens.size >= FLOOD.IP_MAP_CAP) {
+        for (const [kk, v] of this._ipOpens) {
+          if (kk !== keep && (!v.length || now - v[v.length - 1] >= 60000)) this._ipOpens.delete(kk);
+          if (this._ipOpens.size < FLOOD.IP_MAP_CAP) break;
+        }
+        if (this._ipOpens.size >= FLOOD.IP_MAP_CAP) {
+          const first = [...this._ipOpens.keys()].find((kk) => kk !== keep);
+          if (first !== undefined) this._ipOpens.delete(first);
+        }
+      }
+    }
+    this._ipOpens.set(k, list);
+    return list;
   },
 
   /* ── 1. pacing what a player's own taps may write ── */
