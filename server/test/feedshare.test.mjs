@@ -1,24 +1,31 @@
 /* ═══ v2.3.5706: THE FEEDBACK BOARD KEEPS ITS HOUR FOR HONEST POSTS (card SEC PR 7) ═══
  * (server/src/feedback.js "THE HOUR, SHARED"; docs/specs/feedback-guard.md)
  *
- *   1. Each kind has its SHARE of the hour (posts 60, votes 30, crash reports
- *      30: 300 rows): a flood of votes from many addresses stops at the vote
+ *   1. Each kind has its SHARE of the hour (posts 30, votes 45, crash reports
+ *      60: 300 rows): a flood of votes from many addresses stops at the vote
  *      share, and an honest crash report and a bug report still land beside
  *      it (the one shared budget let one kind shut out the others).
- *   2. One address cannot use more than its kind's share, and its count is
- *      in the hour's row: a new object over the same storage (a wake, a
- *      deploy) still refuses it.  No new row.
+ *   2. One address cannot use more than its kind's share: it is held to
+ *      SHARE_ADDR, well under it (votes, crash reports: the sitting 38
+ *      review's probe, one address's 30 votes or 30 crash reports shut the
+ *      kind for everyone), and an honest one from another address lands.
+ *      Its count is in the hour's row: a new object over the same storage (a
+ *      wake, a deploy) still refuses it.  No new row.
  *   3. A vote on a ticket that does not exist counts nothing (it was counted
  *      before the ticket was looked for).
  *   4. The crash feed: 200 junk reports from 200 addresses leave a real one
  *      readable; the feed is cut by its bytes (a full one drops its oldest
- *      half); the owner's sweep clears it.
+ *      half); the owner's sweep with `?trim=1` clears it, and a plain sweep
+ *      (the Test panel's, whose words say posts and pace rows) keeps it.
  *   5. The list: its answer kept 30 s (a second ask reads nothing), a write
  *      here clears it at once; only the newest 500 tickets served; the
- *      owner's sweep takes away the ones older than those.
+ *      owner's sweep with `?trim=1` takes away the ones older than those (a
+ *      plain sweep keeps them).
  *   6. The text goes through the name's cleaner: no direction or zero-width
  *      characters kept or served.
- *   7. `feedbackshare: false` (the room's flags): the old way.
+ *   7. `feedbackshare: false` (the room's flags): the old way -- and thrown
+ *      while a share is FULL it releases it (the switch is read before the
+ *      share, not only after a write the share let through).
  *
  * BREAK PROOF (rule 8), tried by hand: main's feedback.js -> FAIL 1 to 6.
  * Not a phone test: node, the object on a storage in memory. */
@@ -32,6 +39,7 @@ function check(name, cond, detail) {
 let NOW = Date.UTC(2026, 10, 17, 12, 0, 0);
 Date.now = () => NOW;
 const SHARE = FEEDBACK_PACE.SHARE || { posts: 60, votes: 30, crash: 30 };
+const SHARE_ADDR = FEEDBACK_PACE.SHARE_ADDR || { posts: 5, votes: 60, crash: 30 };
 const LIST_NEWEST = FEEDBACK_PACE.LIST_NEWEST || 500;
 
 function makeState() {
@@ -68,7 +76,7 @@ function board(st, env) {
     vote: (ip, ticketId, id) => call('/vote', { method: 'POST', headers: H(ip), body: JSON.stringify({ ticketId, playerId: id || ('bp_v' + (n++)), vote: 'up' }) }),
     crash: (ip, extra) => call('/crash', { method: 'POST', headers: H(ip), body: JSON.stringify({ sid: 's' + (n++), log: [{ kind: 'x', msg: 'junk' }], ...(extra || {}) }) }),
     list: (q) => call('/list?' + (q || 'sort=new&limit=50'), {}),
-    sweep: () => fb.fetch(new Request('https://x/api/feedback/sweep', { method: 'DELETE', headers: { Authorization: 'Bearer kfs' } })).then((r) => r.json()),
+    sweep: (q) => fb.fetch(new Request('https://x/api/feedback/sweep' + (q || ''), { method: 'DELETE', headers: { Authorization: 'Bearer kfs' } })).then((r) => r.json()),
   };
 }
 const ip = (i) => '198.51.100.' + (i % 250) + '.' + i;
@@ -110,6 +118,22 @@ const ip = (i) => '198.51.100.' + (i % 250) + '.' + i;
   const later = await woken.post('203.0.113.50');
   check('2. ...until the hour is over', later.ok === true, later);
 }
+/* 2b. the sitting 38 review's probe: one address against the vote and crash shares */
+{
+  const st = makeState();
+  const B = board(st);
+  const t = await B.post('203.0.113.52');
+  const one = [];
+  for (let i = 0; i < 30; i++) one.push(await B.vote('203.0.113.53', t.ticket.id, 'bp_toggler'));   /* its own vote, toggled */
+  check('2. one address toggling its own vote stops at its own ' + SHARE_ADDR.votes + ', well under the share (' + SHARE.votes + ')', one.filter((r) => r.ok).length === SHARE_ADDR.votes && SHARE_ADDR.votes < SHARE.votes, one.map((r) => r.ok));
+  const honest = await B.vote('203.0.113.54', t.ticket.id);
+  check('2. ...and the next honest vote from another address lands', honest.ok === true, honest);
+  const crashes = [];
+  for (let i = 0; i < 30; i++) crashes.push(await B.crash('203.0.113.55'));
+  check('2. one address\'s crash reports (fresh sids) stop at its own ' + SHARE_ADDR.crash + ', well under the share (' + SHARE.crash + ')', crashes.filter((r) => r.ok).length === SHARE_ADDR.crash && SHARE_ADDR.crash < SHARE.crash, crashes.map((r) => r.ok));
+  const real = await B.crash('203.0.113.56', { sid: 'real' });
+  check('2. ...and the next real crash report from another address lands', real.ok === true, real);
+}
 
 /* 3. a vote on no ticket counts nothing */
 {
@@ -138,8 +162,10 @@ const ip = (i) => '198.51.100.' + (i % 250) + '.' + i;
   const raw = st._store.get('_crashlog');
   const kept = JSON.parse(raw);
   check('4. the feed is cut by its bytes (' + (FEEDBACK_PACE.CRASH_BYTES || 131072) + '): a full one drops its oldest half, the newest kept', raw.length <= (FEEDBACK_PACE.CRASH_BYTES || 131072) && kept.length > 0 && kept[kept.length - 1].ts === NOW, { bytes: raw.length, n: kept.length });
-  const sw = await B.sweep();
-  check('4. the owner\'s sweep clears the crash feed', sw.ok === true && !st._store.has('_crashlog'), sw);
+  const plain = await B.sweep();
+  check('4. a plain sweep (the Test panel\'s) keeps the crash feed', plain.ok === true && st._store.has('_crashlog'), plain);
+  const sw = await B.sweep('?trim=1');
+  check('4. the owner\'s sweep with ?trim=1 clears it', sw.ok === true && !st._store.has('_crashlog'), sw);
 }
 
 /* 5. the list */
@@ -167,9 +193,11 @@ const ip = (i) => '198.51.100.' + (i % 250) + '.' + i;
   const B2 = board(st2, owner());
   const l2 = await B2.list('sort=new&limit=50&offset=0');
   check('5. only the newest ' + LIST_NEWEST + ' tickets are served (the oldest 25 not)', l2.total === LIST_NEWEST && l2.tickets[0].text === 'r' + (LIST_NEWEST + 24), { total: l2.total, first: l2.tickets[0] && l2.tickets[0].text });
-  const sw = await B2.sweep();
+  const plain2 = await B2.sweep();
+  check('5. a plain sweep keeps every ticket', plain2.ok && [...st2._store.keys()].filter((k) => k.startsWith('ticket:')).length === LIST_NEWEST + 25, plain2);
+  const sw = await B2.sweep('?trim=1');
   const leftT = [...st2._store.keys()].filter((k) => k.startsWith('ticket:'));
-  check('5. the owner\'s sweep takes away the tickets older than those (25), and only those', sw.ok && sw.old === 25 && leftT.length === LIST_NEWEST && !st2._store.has('ticket:t0000') && st2._store.has('ticket:t' + String(LIST_NEWEST + 24).padStart(4, '0')), { old: sw.old, left: leftT.length });
+  check('5. the owner\'s sweep with ?trim=1 takes away the tickets older than those (25), and only those', sw.ok && sw.old === 25 && leftT.length === LIST_NEWEST && !st2._store.has('ticket:t0000') && st2._store.has('ticket:t' + String(LIST_NEWEST + 24).padStart(4, '0')), { old: sw.old, left: leftT.length });
 }
 
 /* 6. the text */
@@ -197,6 +225,24 @@ const ip = (i) => '198.51.100.' + (i % 250) + '.' + i;
   const ghost = await B.vote('203.0.113.91', 'no-such');
   const row = await st.storage.get(FEEDBACK_PACE.ROWS_KEY);
   check('7. ...a vote on no ticket is counted before the look, as before', ghost.ok === false && row && !row.k, row);
+}
+
+/* 7b. the switch releases a full share */
+{
+  const st = makeState();
+  const flags = {};
+  const B = board(st, owner(flags));
+  const t = await B.post('203.0.113.92');
+  for (let i = 0; i < SHARE.votes + 10; i++) await B.vote(ip(7500 + i), t.ticket.id);
+  const full = await B.vote('203.0.113.93', t.ticket.id);
+  check('7. the vote share full: an honest vote is refused (guard)', full.ok === false, full);
+  flags.feedbackshare = false;
+  NOW += FEEDBACK_PACE.FLAG_TTL_MS + 1;
+  const freed = await B.vote('203.0.113.94', t.ticket.id);
+  check('7. feedbackshare: false thrown while it is full: the next vote lands (the switch read before the share)', freed.ok === true && B.fb._shareFlag === false, { freed, flag: B.fb._shareFlag });
+  const woken = board(st, owner(flags));
+  const again = await woken.vote('203.0.113.95', t.ticket.id);
+  check('7. ...and a woken object over the stored counts too', again.ok === true, again);
 }
 
 console.log(`\n${passes} passed, ${failures} failed`);

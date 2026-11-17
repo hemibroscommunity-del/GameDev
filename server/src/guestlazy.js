@@ -51,6 +51,11 @@
  *     ended, it writes at its pace.
  * A guest who leaves having done nothing leaves no row at all.  Memory only,
  * at most QUIET_MAX ids (the oldest out: that guest then writes as before).
+ * An id leaves the set ONLY through _guestQuietEnd, which gives its session
+ * the board's clock back (a removal that skipped it left `_lbAt` held off for
+ * the rest of the sitting: the sitting-38 review), and the leave drops it
+ * (_guestQuietGone) once no socket of it is left.  Evidence (a flag, a cap
+ * clamp) is written quiet or not (botfp.js botfpEvidence).
  * The owner's sweep (`DELETE /api/botstat?sweep=1`, botfp.js) takes away the
  * `botstat:` rows whose character has no record, a page at a time.
  * KILL SWITCH `guestquiet: false`: the board report and `botstat:` as before.
@@ -97,7 +102,8 @@ export const guestLazyMethods = {
       if (!this._guestQuietIds) this._guestQuietIds = new Set();
       this._guestQuietIds.delete(id);
       this._guestQuietIds.add(id);
-      while (this._guestQuietIds.size > GUEST_QUIET.QUIET_MAX) this._guestQuietIds.delete(this._guestQuietIds.values().next().value);
+      /* the oldest out through _guestQuietEnd, which gives its session the board's clock back */
+      while (this._guestQuietIds.size > GUEST_QUIET.QUIET_MAX) this._guestQuietEnd(this._guestQuietIds.values().next().value);
     }
     return lazy;
   },
@@ -114,6 +120,14 @@ export const guestLazyMethods = {
     if (!this._guestQuietIds || !this._guestQuietIds.has(id)) return;
     this._guestQuietIds.delete(id);
     if (this.sessions) for (const s of this.sessions.values()) if (s && s.id === id && s._lbAt === Infinity) s._lbAt = 0;
+  },
+
+  /** v2.3.5708: leave.js, once the session is gone: a quiet id with no
+   *  socket left goes (the set holds the guests here, not every one seen). */
+  _guestQuietGone(id) {
+    if (!this._guestQuietIds || !this._guestQuietIds.has(id)) return;
+    if (this.sessions) for (const s of this.sessions.values()) if (s && s.id === id) return;
+    this._guestQuietEnd(id);
   },
 
   /** index.js, when the join returns or throws: the mark goes. */

@@ -263,9 +263,15 @@ back what the player banked since the copy (the vault is not rewound) and
 what they traded or gifted away (the other side keeps it). The answer, dry
 and real, now carries `moved` when anything did (`playerrestore.js`
 `movedSince`): `vault`, the vault's gold and items now when the copy does
-not carry the vault; `given`, the transfer ledger's `xfer:` rows from the
-copy's day on (`copyDay`: a daily copy's key, or a `prereset-` or
-`prerestore-` copy's time) whose giver (`from`) is this player, at most 50
-(`givenMore` past five pages of 200). Nothing moved: no field, the answer as
+not carry the vault; `given`, what this player handed over since the copy,
+from the transfer ledger's `xfer:` rows: as the giver (`from`) the row's own
+side, and as the other side (`to`) its `price` (a trade window's side b, a
+market's or auction's buyer), each with its gold, goods and ids (pets,
+weapons, gear), at most 50 (`givenMore` past five pages of 200). Rows from
+the copy's own time on, `givenSince`: a `prereset-` or `prerestore-` key's
+time (`copyTime`); a daily copy's from `rpgsnap_at:` when that is the same
+day, else the day's start with `exact: false` (daily copies are taken every
+20 h, not at midnight). Sitting 38's review found the first version named
+the giver's side only, dropped the ids, and counted the whole copy day. Nothing moved: no field, the answer as
 before. Reads only; no new write, no new lever. Suite:
 `server/test/restoremoved.test.mjs`.

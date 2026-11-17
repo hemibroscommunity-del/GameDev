@@ -18,6 +18,13 @@
  *      and so does one playing now.
  *   5. `guestquiet: false`: the old way (reported at the join, `botstat:`
  *      written).
+ * The sitting-38 review's two holds and its note:
+ *   6. evidence is never held back: a quiet guest flagged (or cap-clamped)
+ *      has its `botstat:` written at once and at its leave;
+ *   7. a quiet id pushed out of the set (QUIET_MAX) gets the board's clock
+ *      back: it earns, and the next track reports it; and the leave drops a
+ *      quiet guest's id (the set holds the guests here);
+ *   8. the sweep keeps an orphan row holding a flag (`?flagged=1` reads it).
  *
  * BREAK PROOF (rule 8), tried by hand: main's guestlazy.js, join.js and
  * botfp.js -> FAIL 1 and 4.
@@ -147,6 +154,50 @@ const botDirty = (room, id) => { const rec = room._botfp && room._botfp.get(id);
   botDirty(room, 'bp_gq_old');
   await leave(room, ws);
   check('5. guestquiet: false: the old way (reported at the join; botstat: written)', reports.includes('bp_gq_old') && state.m.has('botstat:bp_gq_old'), { reports, rows: mine(state, 'bp_gq_old') });
+}
+
+/* 6. evidence is never held back */
+{
+  const { room, state } = await openRoom();
+  const ws = await join(room, 'bp_gq_flag');
+  check('6. a fresh guest is quiet (guard)', room._guestQuiet('bp_gq_flag'));
+  const rec = room._botfp && room._botfp.get('bp_gq_flag');
+  room._botfpFlag('bp_gq_flag', rec, 'test_flag', { n: 1 }, NOW);
+  await settle();
+  const row = state.m.get('botstat:bp_gq_flag');
+  check('6. a quiet guest flagged has its botstat: written at once, the flag in it', !!row && Array.isArray(row.flags) && row.flags.length === 1, row);
+  await leave(room, ws);
+  check('6. ...and its leave writes it too (the leave\'s flush)', state.writes.filter((k) => k === 'botstat:bp_gq_flag').length >= 2, mine(state, 'bp_gq_flag'));
+}
+
+/* 7. out of the set: the board's clock back; the leave drops the id */
+{
+  const { room, state, reports } = await openRoom();
+  const ws = await join(room, 'bp_gq_evict');
+  check('7. quiet at its join, its board clock held off (guard)', room._guestQuiet('bp_gq_evict') && room.sessions.get(ws)._lbAt === Infinity);
+  for (let i = 0; i < 5000; i++) await room._guestLazyCheck('bp_gq_fill_' + i);
+  check('7. pushed out of the set by 5000 newer guests', !room._guestQuiet('bp_gq_evict'));
+  check('7. ...its session has the board\'s clock back (not held off for the sitting)', room.sessions.get(ws)._lbAt !== Infinity, room.sessions.get(ws)._lbAt);
+  await room.fetch(new Request('https://x/api/admin/grant', { method: 'POST', headers: { Authorization: 'Bearer ' + KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ playerId: 'bp_gq_evict', kind: 'gold', payload: { amount: 150 }, note: 'earns after' }) }));
+  await settle();
+  NOW += 400000;
+  await room.reportToLeaderboard(room.sessions.get(ws));
+  check('7. ...so it earns, is saved, and the next track reports it', state.m.has('rpg:bp_gq_evict') && reports.includes('bp_gq_evict'), reports.filter((x) => x === 'bp_gq_evict'));
+  await leave(room, ws);
+  const ws2 = await join(room, 'bp_gq_drop');
+  check('7. a quiet guest here is in the set (guard)', room._guestQuietIds.has('bp_gq_drop'));
+  await leave(room, ws2);
+  check('7. ...and its leave drops its id (the set holds the guests here)', !room._guestQuietIds.has('bp_gq_drop'));
+}
+
+/* 8. the sweep keeps a flagged orphan */
+{
+  const seed = [['botstat:bp_gq_flagged', { v: 1, flags: [{ at: 1, kind: 'x' }] }], ['botstat:bp_gq_plain', { v: 1, flags: [] }]];
+  const { room, state } = await openRoom(seed);
+  let next = null, pages = 0;
+  do { const r = await (await room.fetch(new Request('https://x/api/botstat?sweep=1' + (next ? '&after=' + next : ''), { method: 'DELETE', headers: { Authorization: 'Bearer ' + KEY } }))).json(); next = r.next; pages++; } while (next && pages < 20);
+  check('8. the sweep keeps an orphan row holding a flag, and takes the plain one', state.m.has('botstat:bp_gq_flagged') && !state.m.has('botstat:bp_gq_plain'), [...state.m.keys()]);
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);
