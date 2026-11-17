@@ -519,6 +519,12 @@ play, a number 1.1 can measure.
   2.56 -> 1.17 and the bow label 3.3 -> 1.60 with each on, the honest
   walker and archer unrefused. The box waits for the bow's reach, the
   harvest and the cook (the gatekeeper, sitting 35, tag 5673).*
+  *K's #2024 (5551, `swordswing` and `movetop` turned ON, the owner's
+  yes: "Go recommended"), merged at sitting 35: on the bench the reach
+  2.96 -> 1.42 and the move 2.56 -> 1.17 as merged, the honest sword and
+  walker unrefused; `swordswing: false` / `movetop: false` the kill
+  switches. `bowshot` waits for the owner. The box waits for the bow's
+  reach, the harvest and the cook (the gatekeeper, sitting 36, tag 5674).*
 - [ ] **4.3 [NEXT] Doors for what is left of value**: experience and
   levels, the stashes, quest state, skill points. A weapon gets an id of its
   own, as gear has.
@@ -687,6 +693,10 @@ nothing known, and a restore copies nothing.
   `partyTo`; `?dueldoor`, `?partydoor`, ON), merged at sitting 34: 9
   `todo` on `main` 01b8f33d; the line lowered 11 -> 9 (the gatekeeper,
   sitting 35, tag 5673).*
+  *L's #2027 (5530, the trade's and the ride's page doors: `t2LiveTo`,
+  `rideTo`; `?tradedoor`, `?ridedoor`, ON), merged at sitting 35: 7
+  `todo` on `main` 52244a81; the line lowered 9 -> 7 (the gatekeeper,
+  sitting 36, tag 5674).*
 - [ ] **5.4 [LATER] The frame as named steps.** PR 1 moves nothing: the six
   calls the loop already makes, plus one `legacy` step, become the list;
   each counts its errors to the crash ring (a throw in the frame reaches
