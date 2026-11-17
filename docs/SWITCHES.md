@@ -606,6 +606,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `power` | worker | switch | v2.3.5481 | 2026-11-14 | false | logic |  | no | Un-advertises the power index: no board report carries one, so the Power board empties as players report and the other boards are as they were. |
 | `race` | worker | switch | v2.3.3525 | 2026-10-20 | false | logic |  | no | Lil Bro's race un-advertised and none started. |
 | `reportring` | worker | switch | v2.3.5623 | 2026-11-15 | false | logic |  | no | A chat report quotes the speaker's last 3 lines in any lane again, not the lines the reporter could have received. |
+| `reqincap` | worker | switch | v2.3.5709 | 2026-11-17 | false | logic |  | no | No ceiling on the friend requests a player receives, as before (the 51st and every one after kept). |
 | `silence` | worker | switch | v2.3.5621 | 2026-11-16 | false | logic |  | no | No silence is checked: every character speaks (the owner's silences are kept, and hold again when it is put back). |
 | `?skulldoor` | page | switch | v2.3.5533 | 2026-11-17 | =0 | logic |  | no | Your skull on the phone takes any write its own code asks again (a kind that is no skull, a time that is no number), as the lines before the fight's page door; only a relayed threat with a malformed countdown is refused today. |
 | `?socialreset` | page | switch | v2.3.5204 | 2026-11-14 | =0 | logic |  | no | A race the worker forgot at a reconnect stays on the phone until its own clock lets it go, as before. |

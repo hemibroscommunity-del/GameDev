@@ -37,6 +37,7 @@ import { PACE } from './flood.js';   /* v2.3.3274: an offline friend's box takes
 export const FRIENDS = {
   LIST_MAX: 100,        // friendships per player
   REQ_OUT_MAX: 25,      // pending outgoing requests per player
+  REQ_IN_MAX: 50,       // v2.3.5709: pending requests a player RECEIVES (card SEC PR 10)
   DM_MAX: 280,          // chars per message
   DM_BACKLOG_MAX: 50,   // stored offline DMs per recipient
   NAME_MAX: 24,         // stored display-name clamp
@@ -141,6 +142,16 @@ export const friendsMethods = {
     const theirs = await this._friendsDoc(target);
     if (ownKeys(theirs.list).length >= FRIENDS.LIST_MAX) {
       return this._friendsSend(from, 'friend_error', { reason: 'target-full', target });
+    }
+    /* v2.3.5709 (card SEC PR 10): and the requests a player RECEIVES have a
+       ceiling (none had: one player's record grew by a request from every
+       made-up id), answered as a full list is.  KILL SWITCH `reqincap: false`. */
+    {
+      const _rf = this._liveFlags;
+      const _cap = !(_rf && typeof _rf === 'object' && Object.prototype.hasOwnProperty.call(_rf, 'reqincap') && !_rf.reqincap);
+      if (_cap && ownKeys(theirs.reqIn).length >= FRIENDS.REQ_IN_MAX) {
+        return this._friendsSend(from, 'friend_error', { reason: 'target-full', target });
+      }
     }
     /* v2.3.5624: one NEW request card to the same target per
        REQUEST_REPEAT_MS: a repeat's card is held (v2.3.5628: the request still recorded and answered; a
