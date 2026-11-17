@@ -20,7 +20,11 @@ in as merge commits). The tree after each merge:
 5 T #2002 6f9019d46c85b53c5783ae36d34ea178baf1a223 -> 80bfeb4476994d821d60f7d85cd3686b36a5aa2c
   (base a3804acb: stacked on #2001)
 
-REHEARSAL
+Rehearsed (`tools/dev/gatekeeper.mjs` on 78f70f4a) with all five at the
+heads above: tree 80bfeb44 (the same as the step-by-step merges above):
+precheck OK (0 FAIL, 4 WARN), build PASS, questline 187/187. An earlier
+run with #1997 at e317f5e5, L at ee8ab092 and #2001 at 445bcb03 was green
+too. `test` green on all five heads.
 
 ## K #1997 (5196): a weapon named by its id, never by its place
 
@@ -75,7 +79,20 @@ test on `pageAddress()`; the outside line 144 -> 116. #2002: 45 render
 reads on `pageAddress()`, each regular expression word for word (checked
 line by line); 116 -> 71. Stacked: #2002 holds #2001's head.
 
+## Held: K #2003 (5197, the words rule), to sitting 31
+
+Wording holds word for word; no player or save risk found. Held against
+card K 12: its guard (`words-rule.test.mjs:66`) matches names ending
+name/tag, not the table's `words` fields (misses `'gift from ' + who`,
+a template literal, `.join`, a join over two lines; `gold.js`,
+`risechest.js` exempt whole); only `postOffice.js:95` fills the
+template (`gameEvents.js:2112,2129`, the chat line and the market toast,
+print the joined note). A stored shape: inbox entries gain `noteT`
+(`inbox.js:578`; no shape number); a rolled-back worker's 200+ merge
+keeps a stale `noteT`. Conflicts with #1997 (systems.mjs, SYSTEMS.md,
+K.md). Its own line when listed.
+
 ## Not in
 
-K 5197; J2's shopkeeper and flakes; R 5293 (after K's 5196/5197). No PR
+ J2's shopkeeper and flakes; R 5293 (after K's 5196/5197). No PR
 open when the list went: sitting 31.
