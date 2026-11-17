@@ -674,13 +674,11 @@ export const marketMethods = {
        false` re-listed): a later roll forward reads that note to send the
        taker's escrow home, so it keeps the old two writes */
     if (delKey && this._mktHealOn() && !order.settle) {
-      const entry = order.type === 'buy'
-        ? { opId: 'refund:' + order.id, source: 'market', kind: 'gold', payload: { amount: order.price }, note: why }
-        : (order.item ? { opId: 'refund:' + order.id, source: 'market', kind: 'weapon', payload: { weapon: order.item }, note: why } : null);
-      if (entry) {
-        const r = await this._creditWith(order.playerId, entry, () => [this.state.storage.delete(delKey)]);
-        if (r) return true;
-      }
+      const del = () => [this.state.storage.delete(delKey)];
+      let r = null;
+      if (order.type === 'buy') r = await this._creditWith(order.playerId, { opId: 'refund:' + order.id, source: 'market', kind: 'gold', payload: { amount: order.price }, note: why }, del);
+      else if (order.item) r = await this._creditWith(order.playerId, { opId: 'refund:' + order.id, source: 'market', kind: 'weapon', payload: { weapon: order.item }, note: why }, del);
+      if (r) return true;
     }
     if (order.type === 'buy') {
       await this._creditPlayer(order.playerId, { opId: 'refund:' + order.id, source: 'market', kind: 'gold', payload: { amount: order.price }, note: why });
