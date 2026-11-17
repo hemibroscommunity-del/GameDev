@@ -317,6 +317,7 @@ export const persistenceMethods = {
        _regenDirty again.  See _tickPlayerRegen in index.js. */
     ps._regenSaveAt = Date.now();
     ps._regenDirty = false;
+    if (this._guestQuietEnd) this._guestQuietEnd(playerId);   /* v2.3.5708: a guest's first save: no longer quiet (guestlazy.js) */
     this._pruneBuffs(ps);
     this._econAdopt(playerId, ps);   /* v2.3.5083: the join's `_econ`, before the put (never a blank over a stored one) */
     /* v2.3.5084: the bag's record is named (the bag door counts straight into
