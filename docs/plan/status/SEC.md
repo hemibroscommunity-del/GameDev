@@ -18,9 +18,7 @@ state: done
 
 ## Next
 
-- None: #2055-#2063 merged at sitting 40 (main cc4815a8); the card is
-  done (written by the gatekeeper, sitting 41, tag 5679: SEC's tags are
-  all used).
+- None: #2055-#2063 merged at sitting 40; done (the gatekeeper, 5679).
 
 ## Found
 

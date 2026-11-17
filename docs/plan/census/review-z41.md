@@ -171,7 +171,24 @@ and a table: the other three do not run).
 
 ## Found (carried, and new)
 
-As `status/Z.md`'s Found: sitting 40's (a)-(n) carried, (e) done by
-this PR's tick; new: (o) and (p) from this sitting's reviews, (q) the
-precheck's server-tests limit. The reviews' nits above are their
-sessions' to take in a later PR; none holds a merge.
+- (a) `mp-alliance` 3 13-15/16 since #2022; no card. (b) `movetop` ON:
+  ride, sprint, potion suites hold only the flat bound. (c) #2033: a
+  damage of `Infinity` draws "-Infinity". (d) #2028, for `cookstart`
+  ON: a dropped result has spent its plan (K2's #2073 turns it ON). (e)
+  done: this PR's tick. (f) A join with NO id is let in as `session.id`
+  undefined (join.js). (g) #2038: a known field a save leaves out comes
+  from a newer record. (h) Received friend requests never expire
+  (friends.js). (i) `mp-movepath`'s two "no worse" checks fail on main's
+  worker. (k) A joiner's state_sync carries `rpgData`. (l) #2060: the
+  Test panel's "Let one new device in" promises what `oldkeyheld` stops
+  (DevPanel.jsx). (m) #2059: the phone adds a 49th chest piece the
+  worker never holds (wsClient.js 4426). (n) #2062: `www.` and the bare
+  domain no longer share the character list.
+- New: (o) #2068: `relay-bytes` runs only with `relaytyped: false` (the
+  wall with it ON, the default, untested); relay.md's "exactly as sent"
+  overstates. (p) #2065: the stand-up to town asks no duel (L's Found);
+  `duel-zone` 226 exempts any `_ps` caller. (q) precheck's 5-minute
+  server-tests limit against a 6 to 10 minute suite on this box; and
+  `switches-thrown`'s `roomceiling` row flakes under load (K2's PR 9).
+- The reviews' nits above are their sessions' to take in a later PR;
+  none holds a merge.
