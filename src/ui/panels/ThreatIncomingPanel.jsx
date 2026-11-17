@@ -3,6 +3,7 @@ import { BT_AUDIO } from '@/data/index.js';
 import { _objectSpread } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
+import { act } from '@/game/actions.js';   /* v2.3.5190: the page's requests leave through the action door (card K PR 7) */
 /* === ThreatIncomingPanel — the PvP threat / call-guards modal === */
 /* v2.3.891: extracted verbatim from the threatIncoming JSX subtree in
    BroTown.jsx (the incoming-PvP-threat popup: ignore -> become
@@ -137,14 +138,10 @@ export function ThreatIncomingPanel(props) {
     onClick: function onClick() {
       /* IGNORE — threatener gets white skull (still attackable, but victim keeps equipped items on death) */
       var S2 = stateRef.current;
-      if (S2.channel) S2.channel.send({
-        type: 'broadcast',
-        event: 'threat_response',
-        payload: {
-          target: threatIncoming.fromId,
-          from: S2.myId,
-          action: 'ignored'
-        }
+      if (S2.channel) act('threat_response', {   /* v2.3.5190: through the action door (actions.js) */
+        target: threatIncoming.fromId,
+        from: S2.myId,
+        action: 'ignored'
       });
       setThreatIncoming(_objectSpread(_objectSpread({}, threatIncoming), {}, {
         responded: true
@@ -168,14 +165,10 @@ export function ThreatIncomingPanel(props) {
     onClick: function onClick() {
       /* CALL GUARDS — threatener loses 10% gold + gear locked 30min */
       var S2 = stateRef.current;
-      if (S2.channel) S2.channel.send({
-        type: 'broadcast',
-        event: 'threat_response',
-        payload: {
-          target: threatIncoming.fromId,
-          from: S2.myId,
-          action: 'guards'
-        }
+      if (S2.channel) act('threat_response', {   /* v2.3.5190: through the action door (actions.js) */
+        target: threatIncoming.fromId,
+        from: S2.myId,
+        action: 'guards'
       });
       setThreatIncoming(_objectSpread(_objectSpread({}, threatIncoming), {}, {
         responded: true

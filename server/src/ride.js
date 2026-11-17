@@ -81,7 +81,45 @@ export const RIDE_ENDS_ON = new Set([
 
 const own = (o, k) => !!o && typeof k === 'string' && Object.prototype.hasOwnProperty.call(o, k);
 
+/* ═══ v2.3.5523: THE RIDE DOOR -- ONE WRITER OF THE BOARD (card L PR 5) ═══
+   (docs/specs/ride-door.md; server/test/ride-door.test.mjs)
+   The skateboard is one field, `ps._ride` (off, on), with the session it
+   tells, `ps._ridePid`, written beside it.  Written only by _rideTo, by a
+   way of RIDE_WAYS:
+     board  _handleRide   on, telling `pid` (a get-on the refusals passed)
+     end    _rideEnd      off (every end: asked, edge, zone, dead, hit,
+                          fight, duel, off)
+   The door's rules are the callers' own checks, so nothing a player sees
+   changes: a board is taken by the living alone and tells a session; an
+   end is only of a ride that is on.  `ridedoor: false` in the live flags
+   lifts them, as the lines before the door.  Nothing is stored (the head):
+   a join is off the board, so there is no join or load way. */
+export const RIDE_WAYS = Object.freeze({ board: 'on', end: 'off' });
+
 export const rideMethods = {
+  /* v2.3.5523: the ride door's kill switch (live flag `ridedoor: false`) */
+  _rideDoorOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && own(f, 'ridedoor') && !f.ridedoor);
+  },
+
+  /* v2.3.5523: THE ONE WRITER of the board.  `pid` is the session a board
+     tells (unused by an end).  True when it wrote. */
+  _rideTo(ps, way, pid) {
+    if (!ps || typeof ps !== 'object' || !own(RIDE_WAYS, way)) return false;
+    const off = this._rideDoorOff();
+    if (way === 'board') {
+      if (!off && (ps.dead || ps.dying || typeof pid !== 'string' || !pid)) return false;
+      ps._ride = true;
+      ps._ridePid = pid;
+      return true;
+    }
+    if (!off && !ps._ride) return false;
+    ps._ride = false;
+    ps._ridePid = undefined;
+    return true;
+  },
+
   /* `ride: false` in liveflags switches it off (lower case, TRAPS §117) */
   _rideOff() {
     const f = this._liveFlags;
@@ -130,8 +168,10 @@ export const rideMethods = {
       this._rideSend(pid, { on: false, why: no });
       return null;
     }
-    ps._ride = true;
-    ps._ridePid = pid;
+    if (!this._rideTo(ps, 'board', pid)) {   /* v2.3.5523: through the ride door (never refused today: the refusals above answer first) */
+      this._rideSend(pid, { on: false, why: 'dead' });
+      return null;
+    }
     ps._mp = undefined;   /* a glide noted at the walk's pace stops here (movepath.js; lane D) */
     this.dirtyPlayers.add(pid);   /* the others draw the board (tick.js brd) */
     this._rideSend(pid, { on: true, why: null });
@@ -143,8 +183,7 @@ export const rideMethods = {
   _rideEnd(ps, why, pid) {
     if (!ps || !ps._ride) return null;
     const id = pid || ps._ridePid || null;
-    ps._ride = false;
-    ps._ridePid = undefined;
+    this._rideTo(ps, 'end');   /* v2.3.5523: off, through the ride door */
     ps._mp = undefined;   /* a glide noted at the board's pace stops here (movepath.js; lane D) */
     /* ...and a follow made on the board goes on at the WALK's pace (lane D:
        _mvFollow.rate is fixed when it is made, and a far target would be

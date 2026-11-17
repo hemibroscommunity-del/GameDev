@@ -20,7 +20,9 @@
 
    ?townchat=0 is the off-ramp (the old cadence, for one tab).
 
-   No imports: node tests it (server/test/town-chatter.test.mjs). */
+   No imports but the page's one reader (itself import-free): node tests it
+   (server/test/town-chatter.test.mjs). */
+import { sw } from './switches.js';   /* v2.3.5309: the page's one reader (card T) */
 
 export var IDLE_REACH = 350;
 export var IDLE_GAP_MS = 20000;
@@ -34,7 +36,7 @@ export var OLD_TIMER_SPAN_MS = 15000;
 var _off = null;
 export function townChatOff() {
   if (_off === null) {
-    try { _off = typeof location !== 'undefined' && /[?&]townchat=0(?:&|$)/.test(location.search); } catch (e) { _off = false; }
+    _off = sw('townchat');
   }
   return _off;
 }
