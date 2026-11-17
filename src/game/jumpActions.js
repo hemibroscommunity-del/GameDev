@@ -21,6 +21,7 @@ import { isWheelSwimming } from '@/game/wheelSwim.js';
 import { footstepSurface } from '@/game/worldTrial.js';
 import { isWearingArmor } from '@/rendering/gearCatalog.js';
 import { act } from '@/game/actions.js';   /* v2.3.5187: the page's requests leave through the action door (card K PR 7) */
+import { pageAddress } from '@/game/switches.js';   /* v2.3.5740: the page's one reader (card T2) */
 
 /* QA, the `?repairms=` habit (wheelBreak.js): `?jumpms=` lengthens the jump
    (200-3000 ms) -- a test machine drawing a frame every ~200 ms gets three
@@ -30,7 +31,7 @@ function jumpMsOverride() {
   if (_jumpMs !== undefined) return _jumpMs;
   _jumpMs = null;
   try {
-    var m = /(?:^|[?&])jumpms=(\d+)/.exec((typeof window !== 'undefined' && window.location && window.location.search) || '');
+    var m = /(?:^|[?&])jumpms=(\d+)/.exec(pageAddress() || '');   /* v2.3.5740: the address from the page's one reader (card T2) */
     if (m) _jumpMs = Math.max(200, Math.min(3000, +m[1]));
   } catch (e) { /* no window */ }
   return _jumpMs;

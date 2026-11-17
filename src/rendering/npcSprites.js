@@ -26,6 +26,7 @@ import { loadCroppedStrip } from './gearSheets.js'; /* v2.3.2859: the NPC walk s
 import { WHEEL_TOWNSFOLK } from '../data/wheelBuildingDoors.js'; /* v2.3.3067: who stands in the Wheel's Brotown */
 import { loadTracked, unloadBundle, bundleLoaded } from './zoneTextures.js'; /* v2.3.2651: zone decor is freed on exit like every other per-zone sheet */
 import { lookFolkAtLoad, noteFolkPhotos, noteFolkPhotosLate } from './lookFolk.js';
+import { sw } from '../game/switches.js';   /* v2.3.5741: the page's one reader (card T2) */
 import { npcLookByName } from '../data/npcLooks.js'; /* v2.3.3809: who has a look to be drawn from */ /* v2.3.3809: the townsfolk drawn live leave their photographs unloaded */
 
 /* v2.3.2618: art an NPC's DIALOG needs warm, as opposed to art the world
@@ -203,7 +204,7 @@ export function hasNpcWalk(npcId) {
    texture and the cache's key, not the HTTP cache): the <img> reads the same
    address (npcArtUrl) from the HTTP cache when its window opens.  On by
    default; `?npcheads=0` keeps them as before. */
-const HEADS_LET_GO = (() => { try { return !/[?&]npcheads=0(&|$)/.test(location.search || ''); } catch (e) { return true; } })();
+const HEADS_LET_GO = (() => { try { return !sw('npcheads'); } catch (e) { return true; } })();   /* v2.3.5741: the page's one reader (card T2) */
 /* v2.3.5247: Ace's two coin strips the same way (card P's backlog,
    fx-coinflip: 2.06 MB held at the fight, 1408 x 192 each at four bytes a
    pixel).  They are a CSS background in his window (AceFlipPanel.jsx), never
@@ -212,7 +213,7 @@ const HEADS_LET_GO = (() => { try { return !/[?&]npcheads=0(&|$)/.test(location.
    asked for the strip without npcArtUrl's `?v=`, so the coin was fetched
    when it first flew; the window now asks for the address warmed here.
    `?coinflip=0` keeps the decoded copies as before. */
-const COIN_LET_GO = (() => { try { return !/[?&]coinflip=0(&|$)/.test(location.search || ''); } catch (e) { return true; } })();
+const COIN_LET_GO = (() => { try { return !sw('coinflip'); } catch (e) { return true; } })();   /* v2.3.5741: the page's one reader (card T2) */
 
 export function loadNpcSprites() {
   if (_done) return _done;

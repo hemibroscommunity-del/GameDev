@@ -43,7 +43,7 @@ switch allows it.
 | Bot scoring and its 2,400-an-hour caps | botfp.js `_botfpOnStrike`, `_botfpOnCook` | not scored, flagged or capped |
 | The server's own bot signals (v2.3.3731) | botsig.js `_sigSkip`, `_sigOnWindup`, `_sigReverifyOk` | nothing measured, flagged or re-checked (the network signal and the Turnstile re-check included) |
 | 45 cooks a minute, 900 ms between cooks | cooking.js `_cookRateOk`, `_handleCookRequest` | no limit |
-| A cook's result held to the cook it started (v2.3.5553, `cookstart`) | cooking.js `_handleCookRequest`, `_cookStartTake` | lands as sent |
+| A cook's result held to the cook it started (v2.3.5553, `cookstart`, ON since v2.3.5727) | cooking.js `_handleCookRequest`, `_cookStartOk` | lands as sent |
 | A hit on a monster: weapon slot, reach, rate, paid special | combat.js `_handleMonsterDamage` (hitproof.js) | lands as sent |
 | The 400 px melee reach and the Wheel's 3,600 px | combat.js `_handleMonsterDamage` | none |
 | The per-monster lanes (210 ms, three specials in 1.2 s) | combat.js `_handleMonsterDamage` | none |
@@ -62,7 +62,8 @@ switch allows it.
   a Workshop run's safe ground (v2.3.5725, `dungeon.js`, `dungeonground`);
   a move's fields held to their form (v2.3.5723, `movement.js` `MOVE_FIELDS`,
   `movefields`); a relay's fields typed and the room's send to joined
-  sockets only (v2.3.5724, `relay.js` `RELAY_FORMS`, `relaytyped`);
+  sockets only (v2.3.5724, `relay.js` `RELAY_FORMS`, `relaytyped`); the room
+  ceiling's honest floor (v2.3.5728, `flood.js` `HONEST_PER_S`, `ceilfair`);
   the owner's routes with no key and the public reads at the edge (v2.3.5726,
   `wire/door.js`; the worker settings `EDGE_GUARD`, `EDGE_CACHE`).
 - Every save and payment rule; the login key, the device lock, the lockouts;
