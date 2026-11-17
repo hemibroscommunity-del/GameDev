@@ -43,7 +43,10 @@ const _IMMEDIATE = new Set(['error', 'rejection', 'CONTEXT_LOST', 'pixi-init-fai
    the way back) and 'audio-kick' -- the evidence for the owner's "input dead
    / sound dead after returning", riding along with whatever is sent next,
    never sent on its own (an app switch mid-press is ordinary) */
-const _QUIET = new Set(['resume', 'died', 'evicted', 'touch-stale', 'audio-kick']);
+/* v2.3.5340: + 'frame-step' (a step of the frame threw, src/game/frameSteps.js:
+   its first throw a page load), rides along, never sent alone: a new upload
+   is a new cost, the owner's (card M, the planning session's answer 2) */
+const _QUIET = new Set(['resume', 'died', 'evicted', 'touch-stale', 'audio-kick', 'frame-step']);
 let _flushTimer = null;
 let _flushAt = 0;
 /* v2.3.4156: the newest entry's key, not the ring's length (a full ring stays

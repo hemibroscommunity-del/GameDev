@@ -374,7 +374,7 @@ import { markLoad } from '@/game/loadTimes.js';   /* v2.3.5019: the load timer *
 import { CANVAS_BG } from '@/rendering/pixiApp.js';   /* v2.3.3017: the watchdog reads the canvas's own colour as dark */
 import { IMAGE_ZONE_MAPS } from '@/rendering/tiledMaps.js';
 import { perfTracker } from '@/debug/perfTracker.js';
-import { markAlive } from '@/debug/crashTrap.js';   /* v2.3.3017: a page that dies open is reported by the next one */
+import { markAlive, recordCrash } from '@/debug/crashTrap.js';   /* v2.3.3017: a page that dies open is reported by the next one; v2.3.5340: a frame step's first throw (frameSteps.js) */
 import { t1StatsPayload } from '@/game/t1Sync.js'; /* v2.3.1633: shared T1 report gate */
 import * as DATA from '@/data/index.js';
 import { wsrvUrl, getBtPlayerId, getBtPassphrase, generatePassphrase, passphraseToId, idForKey } from '@/networking/index.js';
@@ -496,6 +496,8 @@ import { laneKnob } from '@/game/drawLanes.js';   /* v2.3.5233 (card O PR 13): t
    (laneKnob('step'): 50 ms at 60, 100 at 30); the clock and the clamp read it */
 function _stepCapMs() { try { const v = Number(laneKnob('step')); return v > 0 ? v : 50; } catch (e) { return 50; } }
 import { framePaceOn, makeFramePacer, noteDrawn, whenDrawn, beforeDraw, runBeforeDraw } from '@/game/framePacer.js';   /* v2.3.4400: a steady rate on a screen the game cannot keep up with */
+import { makeFrameSteps } from '@/game/frameSteps.js';   /* v2.3.5340: the frame as named steps (grand plan 5.4, card M) */
+import { sw } from '@/game/switches.js';   /* v2.3.5340: the page's one reader of its switches (`?framesteps=0`) */
 import { accTrack } from '@/game/accuracy.js';   /* v2.3.4545: the shot counts that ride the track */
 import { noteMade } from '@/debug/madeLog.js';   /* v2.3.4400: a job between frames says its name and its time */
 import { setStripPlay } from '@/rendering/zoneTextures.js';   /* v2.3.4400: a look that loads as you walk is unpacked between frames */
@@ -4894,6 +4896,17 @@ export var BroTown = function BroTown(_ref0) {
         return S._frameMs > 0 ? S._frameMs : 16.667;
       });
     } catch (e) { /* unpacked at once, as before */ }
+    /* ═══ v2.3.5340: THE FRAME AS NAMED STEPS (game/frameSteps.js; grand plan 5.4, card M PR 1) ═══
+       The loop below is a list of steps: `legacy` (everything before the six
+       calls at its end), then each of the six.  Each counts its time and its
+       throws; the catch asks which step was open, and a step's first throw a
+       page load goes to the crash ring as 'frame-step' (quiet: it rides with
+       the next real upload, never sends alone).  Nothing moves: a throw still
+       ends the frame as before.  The probe: window.__btSteps().  `?framesteps=0`:
+       no marks, no ring entry, the loop as it was.  A line added inside
+       legacy turns tools/guards/frame-steps.test.mjs red (its census only falls). */
+    var _steps = sw('framesteps') ? null : makeFrameSteps({ report: function (name, msg) { recordCrash('frame-step', name + ': ' + msg); } });
+    if (typeof window !== 'undefined') window.__btSteps = function () { return _steps ? _steps.read() : { on: false }; };
     var _gameLoop = function gameLoop(_rafT) {
       frameRef.current = requestAnimationFrame(_gameLoop);
       /* v2.3.4470: reads that wait for the graphics chip, before anything of this frame is sent to it (framePacer.js) */
@@ -4903,6 +4916,7 @@ export var BroTown = function BroTown(_ref0) {
       /* this refresh is one the world is drawn in: whoever reads the canvas asks for one (framePacer.js whenDrawn) */
       noteDrawn(_rafT);
       try {
+        if (_steps) _steps.begin(0);   /* v2.3.5340: legacy, the body before the six calls */
         if (!S._frameCount) S._frameCount = 0;
         S._frameCount++;
         /* the rate changed: the steady step's mean is of the old rate's frames, so it starts again */
@@ -8437,19 +8451,19 @@ export var BroTown = function BroTown(_ref0) {
         /* ── Screen-shake / facing / footstep / interp / remote-projectile:
            v2.3.814: moved verbatim to src/game/visualSystems.js
            (REBUILD-PLAN Phase 8, slice 6). ── */
-        updateVisualSystems(S);
+        if (_steps) { _steps.end(0); _steps.begin(1); } updateVisualSystems(S); if (_steps) _steps.end(1);   /* v2.3.5340: legacy ends; the steps */
 
         /* ── Arrow projectile simulation — v2.3.813: moved verbatim to
            src/game/projectiles.js (REBUILD-PLAN Phase 8, slice 5). ── */
-        updateArrows(S, { setRpgState: setRpgState, setLevelUpMsg: setLevelUpMsg });
+        if (_steps) _steps.begin(2); updateArrows(S, { setRpgState: setRpgState, setLevelUpMsg: setLevelUpMsg }); if (_steps) _steps.end(2);
 
         /* ── Slime projectile simulation — v2.3.813: moved verbatim to
            src/game/projectiles.js (REBUILD-PLAN Phase 8, slice 5). ── */
-        updateSlimeProjectiles(S);
+        if (_steps) _steps.begin(3); updateSlimeProjectiles(S); if (_steps) _steps.end(3);
 
         /* ── State cleanup flags — v2.3.815: moved verbatim to
            src/game/stateCleanup.js (REBUILD-PLAN Phase 8, slice 7). ── */
-        updateStateCleanup(S);
+        if (_steps) _steps.begin(4); updateStateCleanup(S); if (_steps) _steps.end(4);
 
         /* ══════════════════════════════════════════════════════════
            ── RENDER ── PixiJS only.  The Canvas 2D fallback path was
@@ -8466,13 +8480,15 @@ export var BroTown = function BroTown(_ref0) {
            src/game/renderFrame.js (v2.3.816, REBUILD-PLAN Phase 8 slice 8).
            Frame-timing values (_perfNow/_perfDelta) computed at loop top
            are passed in; perfTracker recording lives in the module now. */
-        renderFrame(S, { pixiRef: pixiRef, canvas: canvas, nfts: nfts, perfNow: _perfNow, perfDelta: _perfDelta });
+        if (_steps) _steps.begin(5); renderFrame(S, { pixiRef: pixiRef, canvas: canvas, nfts: nfts, perfNow: _perfNow, perfDelta: _perfDelta }); if (_steps) _steps.end(5);
         /* v2.3.4360: the page's marks on things IN the world (the first
            steps' box and arrow on Mayor Bro) are moved now, from the camera
            this frame was drawn with (ui/afterFrame.js) */
-        runAfterFrame(S);
+        if (_steps) _steps.begin(6); runAfterFrame(S); if (_steps) _steps.end(6);
       } catch (gameLoopErr) {
-        console.error('GameLoop error:', gameLoopErr.message, gameLoopErr.stack);
+        /* v2.3.5340: the step that was open threw: counted, its first throw to the ring */
+        var _stepThrew = _steps ? _steps.fault(gameLoopErr) : null;
+        console.error('GameLoop error' + (_stepThrew ? ' (step ' + _stepThrew + ')' : '') + ':', gameLoopErr.message, gameLoopErr.stack);
       }
     };
     perfTracker.init();
