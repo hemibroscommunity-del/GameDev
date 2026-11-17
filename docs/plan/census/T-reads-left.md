@@ -7,22 +7,25 @@ Each waits on one of three things. A T session moves them as each clears;
 single-name switch whose row has no need its old test lacks), its old test
 in `MOVED`, as PRs 5309-5317 did.
 
-## 1. Files card K or L holds (16 reads): move when that card is `done`
+## 1. Files card K or L held (16 reads): MOVED by card T2 (v2.3.5740-5743)
 
-| reads | file | held by |
+All 16 moved; the line **55** after card T2's PR 4 (`switch-reader.test`
+check 3: the 38 of part 2 and the 17 of part 3 are left).
+
+| reads | file | moved by |
 |---|---|---|
-| 3 | src/networking/wsClient.js | K (wire; and L's `net` door waits on it) |
-| 1 | src/networking/gameEvents.js | K |
-| 1 | src/game/desktopControls.js | K |
-| 1 | src/game/jumpActions.js | K |
-| 1 | src/game/nmlAsk.js | K (`?nmlask` moved in 5306; the passes' read is left) |
-| 1 | src/game/ride.js | K, L (ride door) |
-| 1 | src/game/speedTest.js | K (named in its card) |
-| 1 | src/game/resetOn.js | L (the state's resets) |
-| 1 | src/ui/mobile/dash/SettingsPanel.jsx | K |
-| 2 | src/ui/mobile/sheet/HeroExpanded.jsx | K |
-| 1 | src/ui/panels/TradeWindowPanel.jsx | K |
-| 2 | src/rendering/npcSprites.js | K, L (named in their cards) |
+| 3 | src/networking/wsClient.js | 5742, #2087 (`?wheelwhole` on `sw`; `?diet`, `?room` on `pageAddress()`) |
+| 1 | src/networking/gameEvents.js | 5743 (`killXpOn(pageAddress())`) |
+| 1 | src/game/desktopControls.js | 5740, #2071 (`?dbltap` on `sw`) |
+| 1 | src/game/jumpActions.js | 5740, #2071 (`?jumpms` on `pageAddress()`) |
+| 1 | src/game/nmlAsk.js | 5740, #2071 (`?nmlaskms` on `pageAddress()`) |
+| 1 | src/game/ride.js | 5740, #2071 (`rideCoastOn(pageAddress())`) |
+| 1 | src/game/speedTest.js | 5740, #2071 (`?speedms` on `pageAddress()`) |
+| 1 | src/game/resetOn.js | 5740, #2071 (`resetSwitches(pageAddress())`) |
+| 1 | src/ui/mobile/dash/SettingsPanel.jsx | 5741, #2075 (`?dev` on `sw`) |
+| 2 | src/ui/mobile/sheet/HeroExpanded.jsx | 5741, #2075 (`?p3colour`, `?p3cols` on `sw`) |
+| 1 | src/ui/panels/TradeWindowPanel.jsx | 5741, #2075 (`?tradeside` on `pageAddress()`) |
+| 2 | src/rendering/npcSprites.js | 5741, #2075 (`?npcheads`, `?coinflip` on `sw`) |
 
 ## 2. Kept for card M (38 reads): move after M, or with its leave
 
