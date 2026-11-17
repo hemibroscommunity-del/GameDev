@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "788a058661d9ed97c70388faa6a801d441e29b02",
+  "tree": "d977f8c34b058189c09eadde4fe1c5844c63d5df",
+  "committedAt": "2026-11-17T13:21:54-08:00",
+  "subject": "Merge pull request #2061 from hemibroscommunity-del/claude/plan-sec-18-headers",
+  "files": 8114,
+  "bytes": 960019644,
+  "listingSha256": "8267a184bbb292565bf7e62e4f12b41dc2f803e2ce35eb330bbecb173a39db41",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

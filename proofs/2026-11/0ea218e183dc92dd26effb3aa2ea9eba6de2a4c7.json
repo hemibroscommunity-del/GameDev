@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "0ea218e183dc92dd26effb3aa2ea9eba6de2a4c7",
+  "tree": "da661e3cbc8fba3f86400f85bf653395df5ad85a",
+  "committedAt": "2026-11-17T13:21:47-08:00",
+  "subject": "Merge pull request #2059 from hemibroscommunity-del/claude/plan-sec-16-gearheld",
+  "files": 8113,
+  "bytes": 960003230,
+  "listingSha256": "2d1619a5c545f084c262fcb77bd7efda5fe5f675393768b2d6015ffe788800b0",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

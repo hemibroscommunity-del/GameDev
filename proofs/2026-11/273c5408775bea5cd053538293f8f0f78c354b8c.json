@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "273c5408775bea5cd053538293f8f0f78c354b8c",
+  "tree": "2098ec261da9687d04197b46125f18069ecf57b0",
+  "committedAt": "2026-11-17T13:21:51-08:00",
+  "subject": "Merge pull request #2060 from hemibroscommunity-del/claude/plan-sec-17-oldkeyheld",
+  "files": 8114,
+  "bytes": 960015779,
+  "listingSha256": "da0c984771ca7d508b5159aed50c5419152295bef2b1a55afed8c5487727f1af",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
