@@ -25,7 +25,6 @@ state: stalled
 
 - The table is the one list of names for A's `sw` and K's `flag`.
 - New switch rows need `on`; a page row also `--write` (the reader's forms).
-- Card B's map files src/game/crowdCap.js under `monsters`; `?crowd` caps players.
 - Rule 4: `ahonewrite` thrown fails store-heal-wait.test check 2 (two off).
 - Card O's knobs stay O's reads (step 2.4): `?pixbudget`, `?res`,
   `?onebatch`, `?lookpalette`, `?pace`, `?crowd`, the passes'; and `govern`
