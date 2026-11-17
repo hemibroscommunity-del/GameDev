@@ -1,7 +1,7 @@
 card: O
 branch: claude/plan-o-11-caches (one branch a PR; on #1974's head, stacked)
-prs: #1787, #1792, #1794, #1800, #1814, #1815, #1832, #1841, #1836, #1850, #1854, #1896, #1915, #1929, #1937, #1952 (merged); #1970 (5232), #1974 (5233): ready; #1977 (5680): ready; PR 11 (5231): open
-state: working
+prs: #1787, #1792, #1794, #1800, #1814, #1815, #1832, #1841, #1836, #1850, #1854, #1896, #1915, #1929, #1937, #1952 (merged); #1970 (5232), #1974 (5233): ready; #1977 (5680): ready; #1985 (5231): ready
+state: ready
 
 ## Done
 
@@ -21,7 +21,7 @@ state: working
 ## Next
 
 - #1970 (PR 12), #1974 (PR 13), #1977 (#1952's lows, block 2): ready.
-- PR 11 (5231, open): the memory's axis; caches in gearNumbers, maskedEvict.
+- #1985 (5231, ready): the memory's axis; caches in gearNumbers, maskedEvict.
   BUDGETS part 3's rest (fishing tops, peer bakes, strips, shirts, species,
   catalogs, palette rows, busts, portraits; peer figs, sfx, music) waits: M.
 
