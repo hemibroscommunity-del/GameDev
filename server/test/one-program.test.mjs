@@ -1,4 +1,8 @@
 /* ═══ v2.3.5228: ONE PROGRAM OR THREE, AND HOW A LOOK IS MADE: KNOBS OF THE LANES ═══
+ * TRAPS §225 (one case): a software renderer (this box's SwiftShader, Windows' WARP) keeps the three programs, so this box's frame rate never judges the one program; one case because judging a program by frames a second is a habit. Break: src/game/drawLanes.js: the program's `software` override taken out of OVERRIDES -> FAIL (tried 2026-11-17).
+ * TRAPS §260 (one case): the program's choice for each kind of chip is today's (a phone the one, a computer and a software renderer the three), over a grid of 728 chips, computers and addresses; one case because a chip's own fault no check sees (the owner's phone judges a new program). Break: src/game/drawLanes.js: the program's `computer` override taken out of OVERRIDES -> FAIL (tried 2026-11-17).
+ * (v2.3.5764: the two form lines, card V2.)
+ *
  * (card O PR 8; grand plan 2.1 and 2.4; src/game/drawLanes.js, docs/LANES.md)
  *
  * Two choices made once behind the loading screen were each decided by a

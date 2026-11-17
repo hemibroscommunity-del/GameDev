@@ -126,6 +126,10 @@ import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync, existsSy
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+/* v2.3.5781: four checks' rules, one copy each, shared with their guards (tools/guards/) */
+import { storageKeyRows } from '../guards/lib/storageKeys.mjs';
+import { capGateRows } from '../guards/lib/capGates.mjs';
+import { lookParityRows, lookBlankRows } from '../guards/lib/lookKeys.mjs';
 
 const baseRef = process.argv[2] || 'origin/main';
 const results = []; // {level:'PASS'|'FAIL'|'WARN'|'INFO', check, msg}
@@ -475,31 +479,10 @@ function sanitize(src, { jsxText = false } = {}) {
 }
 
 /* ---- 5. storage-keys --------------------------------------------- */
-{
-  // registry covers GameRoom DO storage (handoff rule 2); other DOs exempt
-  const EXEMPT = new Set(['server/src/marketplace.js', 'server/src/arena.js',
-    'server/src/leaderboard.js', 'server/src/feedback.js']);
-  let registry = new Set();
-  try {
-    const handoff = read('docs/ARCHITECTURE-HANDOFF.md');
-    for (const mm of handoff.matchAll(/`([a-zA-Z_][a-zA-Z0-9_]*):/g)) registry.add(mm[1]);
-  } catch { add('WARN', 'storage-keys', 'docs/ARCHITECTURE-HANDOFF.md unreadable — registry check skipped'); registry = null; }
-  let fails = 0, scanned = 0;
-  if (registry) {
-    for (const f of changedServerSrc) {
-      if (EXEMPT.has(f)) continue;
-      scanned++;
-      const srcText = read(f);
-      for (const mm of srcText.matchAll(/storage\s*\.\s*(?:put|get)\s*\(\s*[`'"]([a-zA-Z_][a-zA-Z0-9_]*):/g)) {
-        if (!registry.has(mm[1])) {
-          fails++;
-          add('FAIL', 'storage-keys', `${f}:${lineOf(srcText, mm.index)} — storage prefix '${mm[1]}:' not in the ARCHITECTURE-HANDOFF rule-2 registry table; register it there (same PR)`);
-        }
-      }
-    }
-    if (!fails) add('PASS', 'storage-keys', `all literal storage prefixes in ${scanned} changed server/src file(s) are registered`);
-  }
-}
+/* v2.3.5781: the rule lives in tools/guards/lib/storageKeys.mjs, one copy:
+   tools/guards/storage-keys.test.mjs runs it over every server/src file on
+   GitHub; here, over the files this branch changed (output unchanged). */
+for (const r of storageKeyRows(root, changedServerSrc).rows) add(r.level, r.check, r.msg);
 
 /* ---- 6. proto-safety (WARN) --------------------------------------- */
 {
@@ -1105,45 +1088,10 @@ if (changedServer.length || changedClient.length || changedGuards.length) {
 
    Repo-wide rather than diff-scoped: the failure is the list falling BEHIND
    the code, and the commit that adds `_serverCaps.newThing` is the one that
-   must register it, whether or not it touches DevPanel. */
-{
-  let gates = null;
-  try {
-    const panel = read('src/ui/panels/DevPanel.jsx');
-    const m = panel.match(/const CAP_GATES = \[([\s\S]*?)\];/);
-    if (m) gates = new Set([...m[1].matchAll(/'([A-Za-z0-9_]+)'/g)].map((x) => x[1]));
-  } catch { /* handled below */ }
-  if (!gates) {
-    add('WARN', 'cap-registry', 'CAP_GATES not found in src/ui/panels/DevPanel.jsx — cap registry check skipped');
-  } else {
-    const used = new Map(); // cap -> first "file:line"
-    const files = [];
-    const walk = (dir) => {
-      for (const e of readdirSync(join(root, dir), { withFileTypes: true })) {
-        if (e.name === 'node_modules' || e.name.startsWith('.')) continue;
-        const rel = dir + '/' + e.name;
-        if (e.isDirectory()) walk(rel);
-        else if (/\.(js|jsx|mjs)$/.test(e.name)) files.push(rel);
-      }
-    };
-    walk('src');
-    for (const f of files) {
-      const t = read(f);
-      for (const mm of t.matchAll(/_serverCaps\s*\.\s*([A-Za-z0-9_]+)/g)) {
-        if (!used.has(mm[1])) used.set(mm[1], `${f}:${lineOf(t, mm.index)}`);
-      }
-    }
-    const missing = [...used.keys()].filter((c) => !gates.has(c)).sort();
-    if (!missing.length) {
-      add('PASS', 'cap-registry', `all ${used.size} capability gate(s) the client reads are registered in CAP_GATES (${gates.size} listed)`);
-    } else {
-      add('FAIL', 'cap-registry',
-        `${missing.length} capability gate(s) read by the client are missing from CAP_GATES in src/ui/panels/DevPanel.jsx —\n`
-        + '    the test panel would report "all clear" while these are switched off. Add them (same PR):\n'
-        + missing.map((c) => `    ${c}  (${used.get(c)})`).join('\n'));
-    }
-  }
-}
+   must register it, whether or not it touches DevPanel.
+   v2.3.5781: the rule lives in tools/guards/lib/capGates.mjs, one copy:
+   tools/guards/cap-gates.test.mjs runs it on GitHub (output unchanged). */
+for (const r of capGateRows(root).rows) add(r.level, r.check, r.msg);
 
 /* ---- 13. ready-caps --------------------------------------------------
    v2.3.2439.  The client now holds the loading screen until state_sync
@@ -1206,51 +1154,10 @@ if (changedServer.length || changedClient.length || changedGuards.length) {
    inline rec.look.<k> read) or declared in LOOK_UNRESTORED with a reason.
    In NEITHER is a FAIL -- which is what makes the next key added to the gate
    a decision somebody has to make, rather than a thing that quietly goes
-   missing for the players who own it. */
-{
-  const KNOWN_NON_LOOK = new Set(['name']);   /* identity, not appearance */
-  let gate = null, setters = null, inline = null, declared = null;
-  try {
-    const j = read('server/src/join.js').match(/JOIN_COSMETIC_KEYS\s*=\s*\[([\s\S]*?)\n\];/);
-    if (j) gate = [...j[1].matchAll(/'([A-Za-z0-9_]+)'/g)].map((x) => x[1]);
-  } catch { /* handled below */ }
-  try {
-    const c = read('src/game/characterRecord.js');
-    const m = c.match(/const LOOK_SETTERS = \{([\s\S]*?)\n\};/);
-    if (m) setters = [...m[1].matchAll(/^\s{2}([A-Za-z0-9_]+):/gm)].map((x) => x[1]);
-    inline = [...c.matchAll(/rec\.look\.([A-Za-z0-9_]+)/g)].map((x) => x[1]);
-    const u = c.match(/LOOK_UNRESTORED = \{([\s\S]*?)\n\};/);
-    if (u) declared = [...u[1].matchAll(/^\s{2}([A-Za-z0-9_]+):/gm)].map((x) => x[1]);
-  } catch { /* handled below */ }
-  if (!gate || !setters || !declared) {
-    add('WARN', 'look-parity',
-      'could not parse JOIN_COSMETIC_KEYS or characterRecord\'s tables — check skipped');
-  } else {
-    const covered = new Set([...setters, ...inline, ...declared, ...KNOWN_NON_LOOK]);
-    const orphan = gate.filter((k) => !covered.has(k));
-    /* the other direction: a table naming a key the gate does not carry is
-       dead weight that reads as coverage */
-    const ghosts = [...new Set([...setters, ...declared])]
-      .filter((k) => !gate.includes(k) && !KNOWN_NON_LOOK.has(k));
-    if (!orphan.length && !ghosts.length) {
-      add('PASS', 'look-parity',
-        `all ${gate.length} stored look key(s) are restored (${setters.length + inline.length}) `
-        + `or declared unrestored (${declared.length})`);
-    } else {
-      add('FAIL', 'look-parity',
-        (orphan.length
-          ? `${orphan.length} key(s) the worker STORES are neither restored nor declared in\n`
-            + '    src/game/characterRecord.js — peers will see them and the owner will not:\n'
-            + `    ${orphan.join(' ')}\n`
-            + '    Add a setter to LOOK_SETTERS, or an entry to LOOK_UNRESTORED saying why not.\n'
-          : '')
-        + (ghosts.length
-          ? `    ${ghosts.length} key(s) named in characterRecord are not on the worker's gate `
-            + `(dead coverage): ${ghosts.join(' ')}`
-          : ''));
-    }
-  }
-}
+   missing for the players who own it.
+   v2.3.5781: the rule lives in tools/guards/lib/lookKeys.mjs, one copy:
+   tools/guards/look-keys.test.mjs runs it on GitHub (output unchanged). */
+for (const r of lookParityRows(root).rows) add(r.level, r.check, r.msg);
 
 /* ---- look-blank: the record is the whole look, on both sides (v2.3.2690) ----
    Owner: "every saved character has same face tattoo as one."  A device holds
@@ -1265,41 +1172,10 @@ if (changedServer.length || changedClient.length || changedGuards.length) {
      - the worker's RECORD_LOOK_KEYS (join.js) drops those same keys from the
        join frame and the relay when the record lacks them.  A key on one side
        only is a character that looks right on its own screen and wrong on
-       everyone else's, or the other way round. */
-{
-  let setters = null, blank = null, worker = null;
-  try {
-    const c = read('src/game/characterRecord.js');
-    const m = c.match(/const LOOK_SETTERS = \{([\s\S]*?)\n\};/);
-    if (m) setters = [...m[1].matchAll(/^\s{2}([A-Za-z0-9_]+):/gm)].map((x) => x[1]);
-    const b = c.match(/const LOOK_BLANK = \{([\s\S]*?)\n\};/);
-    if (b) blank = [...b[1].matchAll(/([A-Za-z0-9_]+):\s*(?:'[^']*'|null)/g)].map((x) => x[1]);
-  } catch { /* handled below */ }
-  try {
-    const j = read('server/src/join.js').match(/RECORD_LOOK_KEYS\s*=\s*new Set\(\[([\s\S]*?)\]\);/);
-    if (j) worker = [...j[1].matchAll(/'([A-Za-z0-9_]+)'/g)].map((x) => x[1]);
-  } catch { /* handled below */ }
-  if (!setters || !blank || !worker) {
-    add('WARN', 'look-blank',
-      'could not parse LOOK_SETTERS / LOOK_BLANK (characterRecord.js) or RECORD_LOOK_KEYS (join.js) — check skipped');
-  } else {
-    const want = new Set(setters);
-    const diff = (have, name) => {
-      const h = new Set(have);
-      const missing = setters.filter((k) => !h.has(k));
-      const extra = [...h].filter((k) => !want.has(k));
-      return (missing.length ? `    ${name} is missing: ${missing.join(' ')}\n` : '')
-        + (extra.length ? `    ${name} has keys LOOK_SETTERS does not: ${extra.join(' ')}\n` : '');
-    };
-    const out = diff(blank, 'LOOK_BLANK (characterRecord.js)') + diff(worker, 'RECORD_LOOK_KEYS (server/src/join.js)');
-    if (!out) {
-      add('PASS', 'look-blank', `all ${setters.length} look key(s) have a client blank and are on the worker's list`);
-    } else {
-      add('FAIL', 'look-blank',
-        'a look key must mean the same thing on both sides when a record lacks it:\n' + out.replace(/\n$/, ''));
-    }
-  }
-}
+       everyone else's, or the other way round.
+   v2.3.5781: the rule lives in tools/guards/lib/lookKeys.mjs, one copy:
+   tools/guards/look-keys.test.mjs runs it on GitHub (output unchanged). */
+for (const r of lookBlankRows(root).rows) add(r.level, r.check, r.msg);
 
 /* ═══ v2.3.3552: A PHONE TEST PLAYS THE WORLD, NEVER THE RETIRED OLD MAP ═══
    The owner: "Hold on you're in the old map (this was retired).  You keep

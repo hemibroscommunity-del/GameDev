@@ -178,6 +178,11 @@ await send(ws, 'sell_weapon', { stashIdx: -1 });
 check('sell: negative stashIdx is a clean no-op', econSnap(ps) === preSell);
 
 // ── 3. cook_request ──
+/* v2.3.5727: `cookstart` is ON (card K2 PR 8), and 3 and 3a's results start
+   no cook: the outcome, the rate and the floor are read with the start's
+   judge off (it has its own suite, cookstart-on.test) */
+const _flags3 = room._liveFlags;
+room._liveFlags = { ...(_flags3 || {}), cookstart: false };
 ps.inventory = { fish_minnow: 2 };
 ps.lifeSkills = { cooking: { level: 1, xp: 0 } };
 ps._cookHistory = [];
@@ -259,6 +264,7 @@ await send(ws, 'cook_request', { fishKey: 'fish_trout', kind: 'cooked' });
 check('missing-fish cook echoes player_state (no silent drop)',
   msgsOfType(ws, 'player_state').length >= 1 && (ps.inventory.cooked_fish_trout || 0) === 0,
   ws.sent.map((m) => m.type));
+room._liveFlags = _flags3;   /* v2.3.5727: the cook's start judge back on */
 
 // ── 3b. eat_request (v2.3.1166: first direct coverage, added with the
 // cooking.js extraction) ──
