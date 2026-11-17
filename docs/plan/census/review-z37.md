@@ -15,17 +15,19 @@ each merge:
 2 SEC #2034 5eba61046bf793a2cbab3f45f8545828f2efbbc4 -> 4ff65c7414789e5572fffe54aa806b1c95c63aec
 3 SEC #2037 2275f8ef02bb508481b081d92992359f18a954c8 -> fd606806c74a31f954b7bcb0149d685c59860e5d
 4 SEC #2038 0a31cbde65c3b0b6903b446f008c646d08a3fc91 -> a2cf1f65f076569fe1dcdf5a5d922b7738a1d892
-5 K2 #2035 b72d2f9cc2443c4a294c638428bf45aff6c9d496 -> 63ba47fb72f31b615c0f91a8f11dc0d1728d1c41
-6 L #2039 db797aef56b362b4c2c9144f59531555537f63df -> 8519ead9f3b1384224b93c1ea07ebcdd62d90d0a
-7 Z (this PR): its head and tree are in the list (`status/Z.md`).
+5 SEC #2040 cfcecb3e03632fb549889f6065c28c9b888a2dc0 -> 21f7daee62ed9ce7362f740c02c144cf862e9857
+6 K2 #2035 b72d2f9cc2443c4a294c638428bf45aff6c9d496 -> 35f2daff32dcfc788b9ecb27108f14c516189a9a
+7 K2 #2041 61e642e5e70d61d6a4e27386a23607343b1e95f6 -> adf0857c3fc58ff6dbcce9c24e7ef48e907d8277
+8 L #2039 db797aef56b362b4c2c9144f59531555537f63df -> 306f41e8516e6cd9efc7bdaad2c5b2ffc59a8359
+9 Z (this PR): its head and tree are in the list (`status/Z.md`).
 
 The bases, step by step: #2032 bbd22176; #2034 90f32e15 (#2032's head:
 SEC's stack, each PR holds the one before, each with `main` bbd22176
 merged in); #2037 5eba6104 (#2034's head); #2038 2275f8ef (#2037's
-head); #2035 bbd22176 (K2 merged `main` in at 17:07, after #2030's
-block); #2039 bbd22176; this PR bbd22176. One line each. The
-rehearsal's tree (`gatekeeper.mjs`, the six in that order) is 8519ead9,
-the same.
+head); #2040 0a31cbde (#2038's head); #2035 bbd22176 (K2 merged `main`
+in at 17:07, after #2030's block); #2041 b72d2f9c (#2035's head); #2039
+bbd22176; this PR bbd22176. One line each. The rehearsal's tree
+(`gatekeeper.mjs`, the eight in that order) is 306f41e8, the same.
 
 ## SEC #2032 (5701): a join's id is a string of the id's form
 
@@ -90,6 +92,25 @@ memory-budget green on 0a31cbde.
   ever matters.
 - DEPLOYS.
 
+## SEC #2040 (5705): the leaderboard holds what it keeps and what it reads
+
+READY (reviewed in full). Card SEC PR 6; holds #2038. SEC's message at
+17:26 UTC; `test`, playable, memory-budget and lint-build green on
+cfcecb3e.
+- `leaderboard.js`: `limit` held to 1 to 100 at the route and in
+  `getTop` (`boardLimit`; a negative one listed nearly every row); the
+  board's real name worked out before the kept key (`boardName`: a
+  category no board reads is the level board's key); each kept field held
+  to its type and a short length (name 64, colour 32, clan tag 16, counts
+  whole numbers, `series` at most 64 numeric keys) and a row over 4096
+  bytes not kept (the suite's full honest row is under half); the read
+  lists `player:` a page of 1000 at a time and sweeps the stale rows
+  before the sort (getTop's own sweep then finds none: no double delete).
+- No kill switch: the Leaderboard object keeps no flags and learns the
+  room's only through `index.js`'s report, K2's file (said in the PR).
+  For the owner: a server behaviour with no switch of its own.
+- No stored shape changes (the same fields, held). DEPLOYS.
+
 ## K2 #2035 (5720): a body's size before anything reads it
 
 READY (reviewed in full). Card K2 PR 1 (the second red team's CRITICAL
@@ -111,6 +132,28 @@ READY (reviewed in full). Card K2 PR 1 (the second red team's CRITICAL
   setting as the router's lever) the planning session answered, in the
   PR's words.
 - New suite `bodycap` (14 FAIL on main). DEPLOYS.
+
+## K2 #2041 (5721): the look relay paced and bounded
+
+READY (reviewed in full). Card K2 PR 2 (the second red team's CRITICAL
+2); holds #2035 (K2's message, 17:30 UTC). `test`, playable,
+memory-budget and lint-build green on 61e642e5.
+- `lookrelay.js`: with `lookpace` on, one look relay a socket a second
+  (a `track` inside the second is held, the latest winning, sent at the
+  next slot by one timer a socket; a gone socket's is dropped); each paid
+  from the sender's relay byte bucket (`relay.js` `_relayBytesHave`, the
+  bucket's refill moved out of `_relayBytesDrop` unchanged), held until
+  it can pay, never dropped; `rpgData` on the relay cut to the fields a
+  page reads of another player (`RPGDATA_READ`), each to its form.
+- Read against `src/`: every field another player's `rpgData` is read for
+  (`equipModel.js`, `entityRenderer.js`, `LeaderboardPanel.jsx`,
+  `ClanPanel.jsx`, `playerProfile.js` incl. `combat` and `petInfo`, the
+  quiet phone's `LAZY_IN`) is in the list; the eight left out (power,
+  vitality, endurance, agility, mind, pvpKills, pvpDeaths, deaths) are
+  read by no page of another player. An honest page tracks every 2 s at
+  most, so it is never held. Nothing a player sees changes.
+- `near-join.test` §7's soak throws `lookpace` (its reason in the PR).
+  Fewer bytes sent: no new write, no new message. DEPLOYS.
 
 ## L #2039 (5533): the fight's page door
 
@@ -156,7 +199,9 @@ listed head (17:27 UTC).
 No two listed PRs share a file but: SEC's stack (`status/SEC.md`,
 `persistence.js`: each holds the one before); the switch table's rows
 (`switches.mjs`, `SWITCHES.md`: `joinidform`, `bankretry`, `newerkeep`,
-`bodycap`, each its own line, merged clean).
+`bodycap`, `lookpace`, `skulldoor`, each its own line, merged clean);
+K2's stack (`status/K2.md`, `testmode.js`, `test-mode.md`: #2041 holds
+#2035).
 
 ## Z (this PR, 5675)
 
