@@ -109,6 +109,8 @@ export const accountMethods = {
        played on another device (fightlock.js `fightlockreset`): the wipe would
        leave the killer nothing.  The picker says so (CharacterPicker.jsx). */
     if (this._fightLockHolds && this._fightLockHolds(auth.id, 'fightlockreset')) return { ok: false, settled: true, reason: 'fight', id: auth.id };
+    /* v2.3.5719 (persistence.js resetclean): not while the market holds something of theirs */
+    if (this._resetMarketHold && await this._resetMarketHold(auth.id)) return { ok: false, settled: true, reason: 'market', id: auth.id };
     await this._resetCharacterData(auth.id);
     return { ok: true, settled: true, reset: true, id: auth.id };
   },

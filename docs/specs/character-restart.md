@@ -119,3 +119,28 @@ rows as before (`rpg:`, `bank:`, the quest stamps, `gear_prov:`, `farm:`,
 today's order board is kept, as before. No switch (the card: the shape of a
 delete, not a way of the game). Suite: `server/test/resetone.test.mjs` (the
 restart killed before each of its batches in turn).
+
+## v2.3.5719: a restart starts from nothing (card SEC PR 20)
+
+A restart left the market's listings and orders on file, so a player could
+list everything, restart, and cancel: the goods came back to the new
+character. Now (`persistence.js` "A CHARACTER RESTART STARTS FROM NOTHING"):
+
+- a restart, in game (Settings) or from the character picker, is **refused
+  while a market order (`mkt_order:`) or a store listing (`store_listing:`)
+  names the player** -- found by `playerrestore.js` `betweenOf`, the
+  restore's own search of the records held between players; a live offer or
+  bid on another's listing names the player too (its gold is held there).
+  The words, in `RESET_REFUSED_WORDS` beside the fight's: "Not while you have
+  something on the market: cancel your listings and orders first"; the
+  picker's (`CharacterPicker.jsx`): "This character has something on the
+  market. Nothing was changed: cancel its listings and orders first."
+- the restart also deletes the login streak's row (`daily_rewards:`), in its
+  one delete (v2.3.5709, above).
+- The other records `betweenOf` finds (a duel's wager, an arena stake, the
+  weekly pool, a bounty) do not hold a restart: the card names listings and
+  orders.
+
+Kill switch `resetclean: false`: neither, as before. Suite:
+`server/test/resetclean.test.mjs`; `restore.test` §4 and `fight-lock.test` 8d-8e
+play a restart with a listing on file, so they throw it.

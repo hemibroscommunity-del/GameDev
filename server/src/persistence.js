@@ -27,7 +27,25 @@ import { revealPublic, revealPublicList } from './revealbag.js';   /* v2.3.4012:
 import { bagEconOwn } from './bag.js';   /* v2.3.5084: the bag door's counts reach the record they belong on */
 import { econResetBook } from './econcard.js';   /* v2.3.5093: a restart booked for the owner's economy card */
 import { GONE_KEY, GONE_V, goneAdd } from './worldsum.js';   /* v2.3.5285: a restart's character booked for the world's sum */
-import { resetBookOn } from './playerrestore.js';   /* v2.3.5285: its switch, `resetbook` (OFF by default) */
+import { resetBookOn, betweenOf } from './playerrestore.js';   /* v2.3.5285: its switch, `resetbook` (OFF by default); v2.3.5719: + what names the player */
+
+/* ═══ v2.3.5719 (card SEC PR 20): A CHARACTER RESTART STARTS FROM NOTHING ═══
+   A restart left the market's listings and orders on file, so a player could
+   list everything, restart and cancel: the goods came back to the new
+   character.  Now a restart is REFUSED while a market order (`mkt_order:`)
+   or a store listing (`store_listing:`) names the player -- found by
+   playerrestore.js betweenOf, the restore's own search of the records held
+   between players -- with words that say why (RESET_REFUSED_WORDS); and the
+   restart also deletes the login streak's row (`daily_rewards:`), in the
+   restart's one delete.  The other records betweenOf finds (a duel's wager,
+   an arena stake, the weekly pool, a bounty) do not hold a restart: the card
+   names listings and orders.  KILL SWITCH `resetclean: false`: neither, as
+   before. */
+export const RESET_REFUSED_WORDS = Object.freeze({
+  fight: 'Not while you are fighting a player',
+  market: 'Not while you have something on the market: cancel your listings and orders first',
+});
+const RESET_HOLD_PREFIXES = Object.freeze(['mkt_order:', 'store_listing:']);
 
 /* v2.3.2523: one bound for the five gear stashes, applied at BOTH the
    save and the echo below.  Handoff rule 3's warning is why it is a
@@ -520,10 +538,30 @@ export const persistenceMethods = {
        reloads after its 8 s, on a character that is still there. */
     if (this._fightLockHolds && this._fightLockHolds(pid, 'fightlockreset')) {
       const ws = this._wsBySessionId(pid);
-      if (ws) { try { this._send(ws, { type: 'character_reset_refused', payload: { reason: 'fight', message: 'Not while you are fighting a player' } }); } catch (e) { /* nothing was wiped */ } }
+      if (ws) { try { this._send(ws, { type: 'character_reset_refused', payload: { reason: 'fight', message: RESET_REFUSED_WORDS.fight } }); } catch (e) { /* nothing was wiped */ } }
+      return;
+    }
+    /* v2.3.5719 (resetclean, above): not while the market holds something of theirs */
+    if (await this._resetMarketHold(pid)) {
+      const ws = this._wsBySessionId(pid);
+      if (ws) { try { this._send(ws, { type: 'character_reset_refused', payload: { reason: 'market', message: RESET_REFUSED_WORDS.market } }); } catch (e) { /* nothing was wiped */ } }
       return;
     }
     await this._resetCharacterData(pid);
+  },
+
+  /* v2.3.5719: `resetclean: false` in the live flags: off */
+  _resetCleanOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'resetclean') && !f.resetclean);
+  },
+  /** v2.3.5719: how many market orders and listings name this player (0:
+   *  none, or the switch off) -- reads only */
+  async _resetMarketHold(pid) {
+    if (!pid || !this._resetCleanOn()) return 0;
+    let b = null;
+    try { b = await betweenOf(this, pid); } catch (e) { return 0; }   /* a read that fails holds nothing (the restart as before) */
+    return ((b && b.between) || []).filter((e) => RESET_HOLD_PREFIXES.some((p) => String(e.key).startsWith(p))).length;
   },
 
   /* v2.3.5285: `econ_gone` with this restart's character and vault booked
@@ -599,7 +637,8 @@ export const persistenceMethods = {
     } catch (e) { /* best-effort: the stamps only ever cause a re-grant to be skipped, never a double pay */ }
     const keys = ['rpg:' + pid, ...(gone ? [] : ['bank:' + pid]), ...stamps,
       'gear_prov:' + pid, 'farm:' + pid, 'aponce:' + pid, 'pets:' + pid, 'codex:' + pid,
-      'fishlog:' + pid, 'achv:' + pid, 'testmode:' + pid, 'life:' + pid];
+      'fishlog:' + pid, 'achv:' + pid, 'testmode:' + pid, 'life:' + pid,
+      ...(this._resetCleanOn() ? ['daily_rewards:' + pid] : [])];   /* v2.3.5719 (resetclean): the login streak's row goes too */
     try {
       booked.put();
       if (gone) { this.state.storage.put(GONE_KEY, gone); this.state.storage.delete('bank:' + pid); }
