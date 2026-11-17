@@ -79,6 +79,14 @@ const QUEUED = new WeakMap();
 const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
 
 export const relayMethods = {
+  /* v2.3.5724: `relaytyped: false` in the live flags: a relay keeps every
+     field the phone put in it, and the room's send reaches a socket that
+     never joined, as before (on unless its own falsy value) */
+  _relayTypedOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && own(f, 'relaytyped') && !f.relaytyped);
+  },
+
   /* May a phone relay a message of this type to the others? */
   _relayAllowed(type) {
     if (RELAY.TYPES.has(type)) return true;
