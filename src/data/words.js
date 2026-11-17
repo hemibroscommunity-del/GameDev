@@ -10,6 +10,7 @@
 export const WORDS = Object.freeze({
   sold_to: '{item} sold to {buyer} for {price}',
   trade_from: 'trade from {from}',
+  trade_with: 'trade with {from}',   /* v2.3.5197: the trade window's (trade2.js) */
   clan_war: 'clan war vs [{tag}]{outcome}',
 });
 
