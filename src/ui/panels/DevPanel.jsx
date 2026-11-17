@@ -328,6 +328,7 @@ const CAP_GATES = [
   'report' /* v2.3.5123: the field report (server/src/report.js; the phone's half debug/report.js): the phone sends its smoothness only to a worker that says this -- lower case, a kill switch.  v2.3.5127: a count, 2 the Speed test's card too (takesSpeed; `reportspeed: false` 1).  v2.3.5221: 3 card O's lanes, rung and self too (takesLanes; `reportlanes: false` 2) */,
   'power' /* v2.3.5502 (card LB): the power index's version, a number (card PW, #1776) -- Overall and the Power column on the Leaderboards, from each row's powerIndex of that version */,
   'statboards' /* v2.3.5502 (card LB): a count -- how many stat boards the worker ranks (card PW, #1781): the Leaderboards' Stats group shows that many */,
+  'reqid' /* v2.3.5546: a repeat acts once (server/src/reqonce.js): the action door may re-send a request it heard nothing from, with the same id -- lower case, a kill switch (`reqonce`) */,
   'accuracy' /* v2.3.4545: shots and hits a weapon (server/src/accuracy.js): the phone numbers its basic shots and the Journey page shows how many hit -- lower case, a kill switch */,
 ];
 /* v2.3.3732: caps that are OFF by default on purpose -- an opt-in, not a job

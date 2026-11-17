@@ -1,6 +1,6 @@
 card: K
 branch: claude/plan-k-<n>-<topic> (one branch a PR, each begun from main)
-prs: #1822, #1820, #1826, #1829, #1831, #1838, #1842, #1861, #1848, #1899, #1923, #1900, #1931-#1934, #1942, #1949, #1972 merged; ready: #1981 (5194b, 5546), #1989 (5195, this branch; replaces #1983)
+prs: #1822, #1820, #1826, #1829, #1831, #1838, #1842, #1861, #1848, #1899, #1923, #1900, #1931-#1934, #1942, #1949, #1972, #1989 merged; ready: #1981 (5194b, 5546, this branch)
 state: ready
 
 ## Done
@@ -17,11 +17,10 @@ state: ready
 
 ## Next
 
-- #1981 5194b (5546): the `reqid` cap, the door's one re-send, http.js's
-  rows, SHAPES part 2, sitting 25's mends.
-- #1983 5195: every other value request at the wire door
-  (reqonce.js `_reqOnceDoor`; 31 rows `none` -> `reqId`; req-once-door).
-  Card K's PR 9 entry tidied (the planning session's word).
+- #1981 5194b (5546): the `reqid` cap, the door's one re-send (the store's
+  four only, sitting 27's mend), http.js's rows, SHAPES part 2.
+- #1989 5195 (merged): every other value request at the wire door.
+- Lows: the door's entries need their own memory list (sitting 27).
 - Then 5196, 5197. The move's walls; the sword's reach; the bow claim.
 
 ## Found

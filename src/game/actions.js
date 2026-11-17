@@ -503,6 +503,17 @@ export function doorCounts() { return { total: _refusedTotal, byName: Object.ass
    worker, `token()` the session's x-bt-auth. */
 let _t = null;
 export function setActionTransport(t) { _t = t && typeof t === 'object' ? t : null; }
+/* v2.3.5546: how long the door waits before its one re-send of a route's
+   request the worker never answered (caps.reqid only) */
+export const RESEND_MS = 1500;
+/* v2.3.5546 (the gatekeeper, sitting 27): the routes the door may re-send --
+   those whose repeat is safe even after the worker restarted and forgot its
+   first answer: a listing finds itself on its own record; a buy, a bid or
+   an accept finds the listing sold or the bid standing.  NOT the market's
+   place (an order that matched at once leaves no record: a re-send after a
+   restart would sell the next weapon) nor the arena's join (its repeat reads
+   "Already queued", an error, while the player is queued). */
+export const RESEND_ROWS = Object.freeze(new Set(['http:/api/store/list', 'http:/api/store/buy', 'http:/api/store/bid', 'http:/api/store/accept']));
 
 /** A request, out of the page.  `opts.query` for a route's query string.
  *  Returns what the transport returns (false: nothing left the page). */
@@ -519,7 +530,16 @@ export function act(name, payload, opts) {
   if (env === 'event') return _t.send({ type: 'broadcast', event: name, payload: p });
   if (env === 'http') {
     if (typeof _t.http !== 'function') return Promise.reject(new Error('offline'));
-    const q = opts && opts.query ? '?' + opts.query : '';
+    /* v2.3.5546 (card K PR 9): against a worker that answers a repeat once
+       (caps.reqid, the transport's reqOnce), a request id rides a DELETE's
+       query (it has no body), and a request the page heard nothing back from
+       -- the fetch failed, or the worker answered 5xx -- is sent ONCE more with
+       the same id after RESEND_MS: the worker acts once and answers the first
+       answer again (server/src/reqonce.js).  Without the cap: the bytes and the
+       one try of before. */
+    const once = r.req && RESEND_ROWS.has(name) && typeof p.reqId === 'string' && typeof _t.reqOnce === 'function' && !!_t.reqOnce();
+    let q = opts && opts.query ? '?' + opts.query : '';
+    if (once && r.method === 'DELETE') q += (q ? '&' : '?') + 'reqId=' + encodeURIComponent(p.reqId);
     /* v2.3.5191 (card K PR 7.5, the page's fetches moved here): the bytes the
        page sent before.  A GET is a plain request -- no headers, its fields in
        the query -- as every GET of the page was (a header on it would cost a
@@ -532,7 +552,16 @@ export function act(name, payload, opts) {
     if (tok) headers['x-bt-auth'] = tok;
     if (Object.keys(headers).length) init.headers = headers;
     if (opts && opts.signal) init.signal = opts.signal;   /* a caller's time limit (storeAnswer.js postWithin) */
-    return _t.http(r.path + q, init);
+    if (!once) return _t.http(r.path + q, init);
+    const url = r.path + q;
+    const again = () => new Promise((res) => setTimeout(res, RESEND_MS)).then(() => {
+      if (init.signal && init.signal.aborted) throw new Error('aborted');
+      return _t ? _t.http(url, init) : Promise.reject(new Error('offline'));
+    });
+    return Promise.resolve().then(() => _t.http(url, init)).then(
+      (res) => (res && typeof res.status === 'number' && res.status >= 500 ? again() : res),
+      (e) => (init.signal && init.signal.aborted ? Promise.reject(e) : again()),
+    );
   }
   if (r.body === 'top') return _t.send(Object.assign({}, p, { type: name }));
   return _t.send({ type: name, payload: p });
