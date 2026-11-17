@@ -1,6 +1,6 @@
 card: Z
 branch: claude/plan-z-sitting-36
-prs: (this PR), tag 5674, the last line of sitting 36's list (ready)
+prs: #2036 (this PR), tag 5674, the last line of sitting 36's list (ready)
 state: ready
 
 ## Done
@@ -12,12 +12,12 @@ state: ready
 ## The list: merge in this order, each "Create a merge commit"
 1 SEC #2030 (5700, card SEC, its block; documents) · 2 K #2028 (5553,
 `cookstart`, OFF) · 3 L #2031 (5531, the arena's page door, ON) · 4 L
-#2033 (5532, a relay's floater held to its form; holds #2031) · 5 this
-PR. All based on `main`, one merge base at every step. The worker deploys
-once (K's `server/src/`; L's `server/test/`).
+#2033 (5532, a relay's floater held to its form; holds #2031) · 5 Z
+#2036 (this PR). All based on `main`, one base at every step. The
+worker deploys once (K's `server/src/`; L's `server/test/`).
 
 ## Held
-- None.
+- None. Late, to sitting 37: SEC #2032 (5701), K2 #2035 (5720).
 
 ## Stalled
 - None. Card K: `done` (#2028 its last PR).
