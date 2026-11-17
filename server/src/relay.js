@@ -112,10 +112,7 @@ export const relayMethods = {
     let why = '';
     if (bytes > RELAY.MAX_BYTES) why = 'size';
     else {
-      if (typeof session.relayBytes !== 'number') { session.relayBytes = RELAY.BYTES_BURST; session.relayBytesAt = t; }
-      session.relayBytes = Math.min(RELAY.BYTES_BURST, session.relayBytes + Math.max(0, (t - (session.relayBytesAt || t)) / 1000) * RELAY.BYTES_PER_S);
-      session.relayBytesAt = t;
-      if (session.relayBytes < bytes) why = 'budget';
+      if (this._relayBytesHave(session, t) < bytes) why = 'budget';
       else if ((this._relayQueued || 0) + bytes > RELAY.QUEUE_BYTES_MAX) why = 'queue';
     }
     if (why) {
@@ -132,6 +129,17 @@ export const relayMethods = {
     this._relayQueued = (this._relayQueued || 0) + bytes;
     QUEUED.set(msg, bytes);
     return false;
+  },
+
+  /* v2.3.5721 (card K2 PR 2): the socket's relay bytes now, refilled to
+     `now` (the bucket above; moved here from _relayBytesDrop, unchanged, so
+     the look relay (lookrelay.js) spends from the same bucket) */
+  _relayBytesHave(session, now) {
+    const t = typeof now === 'number' ? now : Date.now();
+    if (typeof session.relayBytes !== 'number') { session.relayBytes = RELAY.BYTES_BURST; session.relayBytesAt = t; }
+    session.relayBytes = Math.min(RELAY.BYTES_BURST, session.relayBytes + Math.max(0, (t - (session.relayBytesAt || t)) / 1000) * RELAY.BYTES_PER_S);
+    session.relayBytesAt = t;
+    return session.relayBytes;
   },
 
   /* v2.3.5543: the tick sent these events: their bytes leave the queue's count */

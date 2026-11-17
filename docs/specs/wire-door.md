@@ -109,6 +109,33 @@ worker's life, before any route). A refused route answers sooner than its
 route would have. A refused frame stops before any handler, so it costs
 less than the same frame did before. The count is in memory only.
 
+## A body's size (v2.3.5720, card K2 PR 1)
+
+The second red team's CRITICAL 1: the routes' door read every body whole
+(`request.clone().text()`) and parsed it before any route asked who sends,
+and nothing above it limited a body. A 24 MB POST with no key held the
+room's thread 2.8 to 4.5 s and several hundred MB.
+
+- **The cap**: 32 KB a body (`BODY_CAP.BYTES`, `wire/door.js`); a crash
+  report 64 KB (`BODY_CAP.ROUTES`: sixteen log lines of 500 characters, about
+  10 KB in ASCII, some 49 KB at the very worst). Measured over every route a
+  page, the Test panel or a scenario posts: the largest honest bodies are a
+  market order (191 bytes), a store listing (150), a feedback post (500
+  characters, about 1.6 KB) and the Test panel's levers (about 120).
+- **The outer router** (`index.js` `routeHttp`, `bodyCapRoute`), before any
+  forward: a declared length past the route's cap is a 413, unread; a body
+  with no length is read through the cap and goes on as the bytes read.
+- **The room's door** (`_wireDoorHttp`): the same cap, a declared length
+  first, then a read that stops past it (`readBodyCapped`); a refusal is a
+  413 counted as `<row> size`. Before the door's own switch, so `wiredoor:
+  false` keeps the cap.
+- **The reader** `readBodyCapped(request, cap)` is exported for the Feedback
+  object's own reads (card SEC: `feedback.js`).
+- **The switches**: `bodycap: false` in the live flags and the room's door
+  reads a body whole again; the outer router has no live flags (they are the
+  room's storage), so its lever is the worker's setting `BODY_CAP = "off"`
+  (as `ORIGIN_LOCK`). `bodycap.test` holds both.
+
 ## The switch
 
 `wiredoor: false` in the live flags (`liveops.js` `_wireDoorOff`; its row in
