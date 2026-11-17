@@ -276,6 +276,11 @@ way: build the table from what exists, add the test, move no behaviour.
   programs draws a known picture behind the loading screen and compares it
   with the page's recolour. One that fails falls back alone, and the report
   names it. Each has a forced-fail scenario.
+  *Begun (card O): #1896 (14a: the one program and the colour numbers;
+  `self` in the report; `?selftest=fail:<name>`, `?selftest=0`) and #1915
+  (14b: the look, sharp, sheen, shadow, water, each with its way back),
+  merged at sitting 20. The box waits for 14c (the fill and the glint) and
+  14d (the clip) (the gatekeeper, sitting 21, tag 5379).*
 
 **Done when** a session answers "how does it run on X" from the table.
 Every step that needs field numbers says how many reports from how many
@@ -581,6 +586,10 @@ nothing known, and a restore copies nothing.
   *L's #1864 (the pose door: `_poseTo`, `posedoor`) and #1866 (the race
   door: `_raceTo`, `racedoor`), both ON, merged at sitting 18: 22 `todo`;
   the line lowered 24 -> 22 (the gatekeeper, sitting 19, tag 5376).*
+  *L's page doors #1894 (harvest, cook and fishing: `harvestTo`), #1903
+  (the pose: `poseTo`) and #1910 (the guard: `guardTo`), merged at sitting
+  20: 16 `todo` on `main` b2d763a; the line lowered 22 -> 16 (the
+  gatekeeper, sitting 21, tag 5379).*
 - [ ] **5.4 [LATER] The frame as named steps.** PR 1 moves nothing: the six
   calls the loop already makes, plus one `legacy` step, become the list;
   each counts its errors to the crash ring (a throw in the frame reaches
@@ -782,6 +791,9 @@ the memory a family holds as the game draws it.
   owner's own answer, `?beltstandin=0`), merged at sitting 18;
   entityRenderer.js's line 8953 -> 8941 (5.1), the room #1868 earned. The
   step is open (the gatekeeper, sitting 19, tag 5376).*
+  *Card P: #1881 (a pack's loss), #1906 (the hair masks), #1918 (the pets)
+  and #1925 (the cape's hood), merged at sitting 20. The step is open (the
+  gatekeeper, sitting 21, tag 5379).*
 - [ ] **9.6 [LATER] An address that changes with the content**, by a
   `?h=` lookup (the client builds a hundred sprite addresses as it runs;
   renaming files would break them). A wrong hash on art that loads in play
