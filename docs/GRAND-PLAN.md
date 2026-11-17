@@ -525,6 +525,13 @@ play, a number 1.1 can measure.
   walker unrefused; `swordswing: false` / `movetop: false` the kill
   switches. `bowshot` waits for the owner. The box waits for the bow's
   reach, the harvest and the cook (the gatekeeper, sitting 36, tag 5674).*
+  *K's #2028 (5553, `cookstart`: a cook's result lands only on the plan
+  the worker rolled at its start, the same fish, once; OFF as merged, the
+  owner's to turn on), merged at sitting 36: on the bench the bare
+  `cook_request` 1.59 -> 0.00 with it on, the honest cook unrefused. Card
+  K done. `bowshot` ON is the owner's yes (card K2's PR 8). The box waits
+  for the bow's reach, the harvest and `cookstart` ON (the gatekeeper,
+  sitting 37, tag 5675).*
 - [ ] **4.3 [NEXT] Doors for what is left of value**: experience and
   levels, the stashes, quest state, skill points. A weapon gets an id of its
   own, as gear has.
@@ -697,6 +704,9 @@ nothing known, and a restore copies nothing.
   `rideTo`; `?tradedoor`, `?ridedoor`, ON), merged at sitting 35: 7
   `todo` on `main` 52244a81; the line lowered 9 -> 7 (the gatekeeper,
   sitting 36, tag 5674).*
+  *L's #2031 (5531, the arena's page door: `arenaTo`, `?arenadoor`, ON),
+  merged at sitting 36: 6 `todo` on `main` bbd22176; the line lowered
+  7 -> 6 (the gatekeeper, sitting 37, tag 5675).*
 - [ ] **5.4 [LATER] The frame as named steps.** PR 1 moves nothing: the six
   calls the loop already makes, plus one `legacy` step, become the list;
   each counts its errors to the crash ring (a throw in the frame reaches

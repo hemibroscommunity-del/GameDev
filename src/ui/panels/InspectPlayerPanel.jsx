@@ -37,6 +37,7 @@ function openFromCard(id) {
 }
 import { portraitSrc } from '../mobile/sheet/portraitStore.js'; /* v2.3.2926: your own portrait, for your own card */
 import { act } from '@/game/actions.js';   /* v2.3.5190: the page's requests leave through the action door (card K PR 7) */
+import { skullTo } from '@/game/skullDoor.js';   /* v2.3.5533: the fight's page door (card L) */
 
 /* v2.3.1917: mirrors GameRoom.OPEN_PVP (server/src/index.js).  While it is
    false the worker refuses pvp_threat and every non-consensual hit, so the
@@ -557,8 +558,7 @@ export function InspectPlayerPanel(props) {
          replaces it with the server's authoritative level-scaled
          countdown, or — if the server drops the threat (cooldown/
          forged) — nothing arrives and the base window just ages out. */
-      S._pvpSkullType = 'red';
-      S._pvpSkullUntil = Date.now() + PVP_THREAT_BASE_COUNTDOWN;
+      skullTo(S, 'red', Date.now() + PVP_THREAT_BASE_COUNTDOWN, 'issue');   /* v2.3.5533: the fight's page door */
       S._pvpThreatCdUntil = Date.now() + PVP_THREAT_COOLDOWN;
       pushDmgPopup(S, S.player.x, S.player.y - 30, 'Threat issued!', '#D95C54');
       BT_AUDIO.beep(150, 0.15, 0.2, 'sawtooth');
