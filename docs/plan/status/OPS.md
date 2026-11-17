@@ -1,6 +1,6 @@
 card: OPS
 branch: claude/plan-ops-11-guestlazy (on main b2d763a9)
-prs: PR 11 (5610) ready, PR pending
+prs: #1944 (5610) ready
 state: ready
 
 ## Done
@@ -10,7 +10,7 @@ state: ready
   #1886 (5604) `rf_spread`; #1908 (5606) `seathold` OFF; #1891 (5602),
   #1893 (5603), #1905 (5605), #1917 (5611) the Test panel's rows; #1913
   (5608) the boards; #1920 (5609) `publicreads`.
-- PR 11 (5610) `guestlazy`: a guest's join 5 rows -> 0, keyed unchanged
+- #1944 (5610) `guestlazy`: a guest's join 5 rows -> 0, keyed unchanged
   (`docs/specs/guest-lazy.md`).
 
 ## Next
