@@ -4943,7 +4943,7 @@ export var BroTown = function BroTown(_ref0) {
            past the 3-frame cap is a break and is taken as it is, as before.
            `?dtsmooth=0`: the old way. */
         var _stepMs = _frameClock ? _frameClock.step(_perfDelta) : _perfDelta;
-        S._dtScale = Math.max(0.2, Math.min((_frameClock ? _stepCapMs() : 50) / 16.667, (_stepMs || 16.667) / 16.667));   /* v2.3.5233: the lane's cap (3 at 60, 6 at 30: card O PR 13); `?dtsmooth=0` the old way, 3 */
+        S._dtScale = Math.max(0.2, Math.min((_frameClock ? _stepCapMs() : 50) * 3 / 50, (_stepMs || 16.667) / 16.667));   /* v2.3.5233: the lane's cap (3 at 60, 6 at 30: card O PR 13); `?dtsmooth=0` the old way, 3 */
         /* v2.3.3017: and how long the frame really was -- past the 3-frame cap a
            step covers less ground than the clock moved, and a jump's crossing
            rule must count what it covers (propFeetBlocked).

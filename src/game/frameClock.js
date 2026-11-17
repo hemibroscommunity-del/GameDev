@@ -42,6 +42,15 @@
  */
 
 export const SMOOTH_FRAMES = 10;
+/* v2.3.5231 (the gatekeeper's sittings 25 and 26): THE 30 LANE'S STEP IS NOT
+   COMBAT'S.  The loop's _dtScale may reach 6 on a 30 screen (its cap three
+   of the lane's frames, 100 ms); a projectile -- yours (projectiles.js) and
+   another player's copy (visualSystems.js) -- steps at most the old clamp's
+   3, so projectiles.js _segGap's sweep cap (144 px = 24 x 2.0 x 3) and
+   effectsRenderer's trail guard (260) hold, and an arrow never steps past a
+   monster on a long frame.  Here (no imports) so node holds it. */
+export const COMBAT_DT_MAX = 3;
+export function combatDt(dt) { const d = dt || 1; return d > COMBAT_DT_MAX ? COMBAT_DT_MAX : d; }
 export const SMOOTH_MAX_MS = 50;
 
 /** Is the steady step on?  The address: `dtsmooth=0` (or off, false) is the

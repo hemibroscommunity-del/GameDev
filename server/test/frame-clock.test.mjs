@@ -118,7 +118,7 @@ check('7. on unless the address says dtsmooth=0', frameSmoothOn('') && frameSmoo
 /* 8 */
 {
   const bt = readFileSync(join(ROOT, 'src/ui/BroTown.jsx'), 'utf8');
-  check('8. the game loop steps by the clock', /var _stepMs = _frameClock \? _frameClock\.step\(_perfDelta\) : _perfDelta;\s*S\._dtScale = Math\.max\(0\.2, Math\.min\(\(_frameClock \? _stepCapMs\(\) : 50\) \/ 16\.667, \(_stepMs \|\| 16\.667\) \/ 16\.667\)\);/.test(bt));   /* v2.3.5233: the lane's cap */
+  check('8. the game loop steps by the clock', /var _stepMs = _frameClock \? _frameClock\.step\(_perfDelta\) : _perfDelta;\s*S\._dtScale = Math\.max\(0\.2, Math\.min\(\(_frameClock \? _stepCapMs\(\) : 50\) \* 3 \/ 50, \(_stepMs \|\| 16\.667\) \/ 16\.667\)\);/.test(bt));   /* v2.3.5233: the lane's cap */
   check('8b. ...one clock a loop, none with the off-ramp', /if \(frameSmoothOn\(window\.location\.search \|\| ''\)\) _frameClock = makeFrameClock\(undefined, _stepCapMs\);/.test(bt));
   check('8c. ...and nothing else in the loop makes the step from the frame\'s own length', (bt.match(/S\._dtScale = /g) || []).length === 1 && !/S\._dtScale = [^;]*_perfDelta/.test(bt));
 }
@@ -153,13 +153,18 @@ check('7. on unless the address says dtsmooth=0', frameSmoothOn('') && frameSmoo
   check('9d. the clock asks its cap each frame (a function handed in): 67 ms under a cap of 100 is a step, not a break', c2.step(33.3) > 0 && c2.held() === 1 && c2.step(66.7) < 66.7 && c2.held() === 2);
   const bt = readFileSync(join(ROOT, 'src/ui/BroTown.jsx'), 'utf8');
   check('9e. BroTown.jsx hands the lane\'s cap to the clock and clamps the step with the same cap (one line)',
-    /makeFrameClock\(undefined, _stepCapMs\)/.test(bt) && /S\._dtScale = Math\.max\(0\.2, Math\.min\(\(_frameClock \? _stepCapMs\(\) : 50\) \/ 16\.667, \(_stepMs \|\| 16\.667\) \/ 16\.667\)\);/.test(bt)
+    /makeFrameClock\(undefined, _stepCapMs\)/.test(bt) && /S\._dtScale = Math\.max\(0\.2, Math\.min\(\(_frameClock \? _stepCapMs\(\) : 50\) \* 3 \/ 50, \(_stepMs \|\| 16\.667\) \/ 16\.667\)\);/.test(bt)
     && /function _stepCapMs\(\) \{ try \{ const v = Number\(laneKnob\('step'\)\);/.test(bt));
   const ab = readFileSync(join(ROOT, 'src/game/abilities.js'), 'utf8');
-  /* the gatekeeper's sitting 25: a projectile steps at most the old clamp's 3 (its sweep cap and the trail guard assume it) */
-  const pj = readFileSync(join(ROOT, 'src/game/projectiles.js'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
-  check('9g. not combat: every projectile step reads _combatDt (at most 3), none the loop\'s _dtScale itself; with `?dtsmooth=0` the clamp is the old 50 ms',
-    /export const COMBAT_DT_MAX = 3;/.test(pj) && (pj.match(/S\._dtScale \|\| 1/g) || []).length === 1 && (pj.match(/_combatDt\(S\)/g) || []).length >= 5);
+  /* the gatekeeper's sittings 25 and 26: a projectile -- yours and a peer's copy -- steps at most the old clamp's 3 */
+  const FC = await import('../../src/game/frameClock.js');
+  const strip9 = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '');
+  const pj = strip9(readFileSync(join(ROOT, 'src/game/projectiles.js'), 'utf8'));
+  const vs = strip9(readFileSync(join(ROOT, 'src/game/visualSystems.js'), 'utf8'));
+  check('9g. not combat: combatDt holds a step at the old clamp\'s 3 (6 -> 3, 2 -> 2, none -> 1); your projectiles and a peer\'s copy step by it, none by the loop\'s _dtScale itself',
+    FC.COMBAT_DT_MAX === 3 && FC.combatDt(6) === 3 && FC.combatDt(2) === 2 && FC.combatDt(undefined) === 1
+    && /function _combatDt\(S\) \{ return combatDt\(S\._dtScale\); \}/.test(pj) && !/S\._dtScale \|\| 1/.test(pj) && (pj.match(/_combatDt\(S\)/g) || []).length >= 5
+    && /var _rpDt = combatDt\(S\._dtScale\);/.test(vs));
   check('9f. not combat: the dash keeps its own per-frame cap (DASH_MAX_STEP_PX), and no combat file reads the step knob',
     /Math\.min\(DASH_MAX_STEP_PX, DASH_STEP_PX \* \(S\._dtScale \|\| 1\)\)/.test(bt) && !/laneKnob\('step'\)/.test(ab));
 }

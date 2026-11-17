@@ -1,6 +1,6 @@
 card: O
-branch: claude/plan-o-16-cliplows (one branch a PR; on #1974's head, stacked, as sitting 26 asked)
-prs: #1787, #1792, #1794, #1800, #1814, #1815, #1832, #1841, #1836, #1850, #1854, #1896, #1915, #1929, #1937, #1952 (merged); #1970 (5232), #1974 (5233): ready; #1977 (5680): ready
+branch: claude/plan-o-11-caches (one branch a PR; main ee235aaa merged in)
+prs: #1787, #1792, #1794, #1800, #1814, #1815, #1832, #1841, #1836, #1850, #1854, #1896, #1915, #1929, #1937, #1952, #1970, #1974, #1977 (merged); #1985 (5231): ready
 state: ready
 
 ## Done
@@ -20,9 +20,10 @@ state: ready
 
 ## Next
 
-- #1970 (5232, PR 12), #1974 (5233, PR 13): ready; #1952 merged.
-- #1977 (5680, ready; O's second block, the planner's word): #1952's lows.
-- PR 11 (5231): next (P's files free), then stop.
+- #1970 (PR 12), #1974 (PR 13), #1977 (#1952's lows, block 2): merged.
+- #1985 (5231, ready): the memory's axis; caches in gearNumbers, maskedEvict.
+  BUDGETS part 3's rest (fishing tops, peer bakes, strips, shirts, species,
+  catalogs, palette rows, busts, portraits; peer figs, sfx, music) waits: M.
 
 ## Found
 
@@ -32,8 +33,7 @@ state: ready
 - A suite importing `src/rendering/**` stands in for `pixi.js` (CI installs
   only server/'s packages). Traps §225, §259: names now in `deviceProfile.js`.
 - PR 12 leaves BroTown.jsx's `framePaceOn(location.search)` (not O's file).
-- `mp-palette` is red on main 3876051 (4 of 15: shadow bases 6 of 13 and
-  23 of 40; water 1364 px), the same with 14a: for card Z.
+- `mp-palette` red on main 3876051 (4 of 15), as with 14a: for card Z.
 
 ## Needs
 

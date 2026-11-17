@@ -39,7 +39,7 @@ export function lightFxOn() {
   let v = null;
   try {
     const w = swValue('lightfx');   /* v2.3.5232 (card O PR 12): through the page's one reader */
-    const m = w === '1' || w === '0' || w === 'on' || w === 'off' ? [w, w] : null;
+    const m = /^(1|0|on|off)\b/.exec(w || '');   /* the old pattern's, on the value: `=0.5` is `0`, as before (the gatekeeper's sitting 26) */
     if (m) {
       v = (m[1] === '1' || m[1] === 'on') ? '1' : '0';
       localStorage.setItem(KEY, v);
