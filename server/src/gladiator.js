@@ -44,6 +44,8 @@
  * (results are server-observed) -- old clients that still send it lose
  * nothing, because the bracket advances off the duels regardless. */
 
+import { xferArenaStakes } from './xfer.js';   /* v2.3.5292: the arena's stakes' ledger rows (card R PR 13; `xferescrow`, OFF by default) */
+
 export const ARENA = {
   ENTRY_FEE: 100,          // GDD §43
   /* v2.3.3178: the champion's prize FOLLOWS THE BRACKET.  It was 2,000 for
@@ -709,6 +711,15 @@ export const arenaMethods = {
         const plan = { v: 1, tid, matchId, winnerId, legs, keys: all.map((x) => x.k), ts: Date.now() };
         const writes = [this.state.storage.put(planKey, plan)];
         if (totalW > 0) for (const x of losers) writes.push(this._opStamp('arenastakeloss:' + tid + ':' + matchId + ':' + x.rec.sponsorId));
+        /* v2.3.5292 (card R PR 13): with `xferescrow` on, the transfer
+           ledger's rows ride this run: one a losing stake, to the winning
+           fighter, the winning sponsors' parts in its ids (xfer.js
+           xferArenaStakes); off (the default), nothing more is written */
+        writes.push(...xferArenaStakes(this, {
+          tid, matchId, winnerId,
+          losers: losers.map((x) => ({ sponsorId: x.rec.sponsorId, amount: amt(x.rec) })),
+          gains: winners.map((x) => ({ sponsorId: x.rec.sponsorId, n: (payout.get(x.rec.sponsorId) || 0) - amt(x.rec) })),
+        }));
         await Promise.all(writes);   /* one run: the plan and the losers' stamps, or neither */
         if (typeof this._arenaPlansOpen === 'number') this._arenaPlansOpen++;   /* the prune waits for it (_arenaSettleWait) */
         if (await this._arenaStakeFinish(planKey, plan) && this._arenaPlansOpen > 0) this._arenaPlansOpen--;

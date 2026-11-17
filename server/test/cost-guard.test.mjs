@@ -63,6 +63,10 @@
  *  20. v2.3.5290 (card R PR 11): a wagered duel's pot: `xferescrow` off
  *      (the default), the rows as before and no `xfer:` row; on, ONE row
  *      more (its `xfer:` row; its delete 90 days on: two over its life);
+ *  21. v2.3.5292 (card R PR 13): a match's sponsorship stakes settled (2
+ *      backing the winner, 3 the loser): `xferescrow` off (the default),
+ *      the rows as before and no `xfer:` row; on, ONE row more a LOSING
+ *      stake (3), none for a winning one;
  * A line here may move when a feature really needs the rows: say so in the
  * PR, in plain words, as the memory budget asks (CLAUDE.md).
  */
@@ -813,6 +817,31 @@ const FAST = 110;
   console.log('     20. a duel\'s pot: off ' + JSON.stringify(off) + ', on ' + JSON.stringify(on));
   check('20. xferescrow off (the default): a duel\'s pot writes no xfer: row', off.xfer === 0 && off.writes > 0, off);
   check(`20. xferescrow on: ONE row more (${off.writes} -> ${on.writes}), its xfer: row`, on.xfer === 1 && on.writes === off.writes + 1, { off, on });
+}
+
+/* ── 21. a match's stakes, `xferescrow` off and on (v2.3.5292) ─────────── */
+{
+  const measure = async (flags) => {
+    const { room, state } = await makeRoom();
+    room._liveFlags = Object.assign({}, room._liveFlags, flags || {});
+    const W = 'cg_as_w', L = 'cg_as_l';
+    for (const id of [W, L]) state.store.set('rpg:' + id, { _v: 21, coins: 0, level: 5, inventory: {} });
+    for (let i = 0; i < 5; i++) {
+      const sid = 'cg_as_s' + i;
+      state.store.set('rpg:' + sid, { _v: 21, coins: 0, level: 5, inventory: {} });
+      state.store.set('arena_stake:cg-t:cg-m:' + sid, { tid: 'cg-t', matchId: 'cg-m', sponsorId: sid, targetId: i < 2 ? W : L, amount: 100, ts: Date.now() });
+    }
+    const w0 = state.writes.length;
+    await room._arenaSettleStakes('cg-t', 'cg-m', W);
+    for (let i = 0; i < 4; i++) await new Promise((r) => setTimeout(r, 2));
+    const w = state.writes.slice(w0);
+    return { writes: w.length, xfer: w.filter((k) => k.startsWith('xfer:')).length, byPrefix: byPrefix(w) };
+  };
+  const off = await measure(null);
+  const on = await measure({ xferescrow: true });
+  console.log('     21. a match\'s stakes (2 v 3): off ' + JSON.stringify(off) + ', on ' + JSON.stringify(on));
+  check('21. xferescrow off (the default): a match\'s stakes write no xfer: row', off.xfer === 0 && off.writes > 0, off);
+  check(`21. xferescrow on: ONE row more a losing stake (${off.writes} -> ${on.writes}: 3), none a winning one`, on.xfer === 3 && on.writes === off.writes + 3, { off, on });
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);
