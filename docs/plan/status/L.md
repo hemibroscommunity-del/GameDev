@@ -1,6 +1,6 @@
 card: L
 branch: claude/plan-l-26-window-door (from main 657d7f7f)
-prs: #1746 to #1956 (merged), 5526 window door (this branch): ready
+prs: #1746 to #1956 (merged), #2000 (5526): ready
 state: ready
 
 ## Done
