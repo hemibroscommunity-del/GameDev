@@ -1,6 +1,6 @@
 card: O
-branch: claude/plan-o-14c-selftest (one branch a PR; begun from 14b's head, main merged in)
-prs: #1787, #1792, #1794, #1800, #1814, #1815, #1832, #1841, #1836, #1850, #1854, #1896, #1915 (merged); #1929 (5237, 14c): ready
+branch: claude/plan-o-14d-selftest (one branch a PR; begun from #1929's head)
+prs: #1787, #1792, #1794, #1800, #1814, #1815, #1832, #1841, #1836, #1850, #1854, #1896, #1915, #1929 (merged); #1937 (5238, 14d): ready
 state: ready
 
 ## Done
@@ -20,8 +20,10 @@ state: ready
 
 ## Next
 
-- #1929 (5237, 14c, ready): the fill and the glint, named in `self`; then 14d, the clip.
-- PR 11 (caches) waits for card P; 12 for card T's PR 6; 13 for card SK.
+- #1929 (5237, 14c, merged): fill, glint; #1937 (5238, 14d, ready): the clip.
+- 5239 (after 14d; the planner for the owner): a failed fill or glint falls
+  back alone (CLAUDE.md §7), not drawn as today.
+- PR 11 waits for card P; 12 for card T's PR 6; 13 for card SK.
 
 ## Found
 
@@ -35,5 +37,4 @@ state: ready
 
 ## Needs
 
-- Owner: fill and glint have no way back; a failed one is named in `self`
-  and drawn as today. Switch it off on that chip instead? 14d's tag: 5238?
+- The clip's way back too (`?alphaclip`, the alpha mask) in 5239? Asked.
