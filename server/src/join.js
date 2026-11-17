@@ -1053,7 +1053,7 @@ export const joinMethods = {
       const _lifeLeft = await this._lifeNoteRead(msg.id, stored, Date.now());
       /* v2.3.5610: a FRESH guest (no key, no record of any kind): its join
          writes none of its rows (guestlazy.js; index.js clears the mark) */
-      if (this._guestQuietIds) this._guestQuietIds.delete(msg.id);   /* v2.3.5708: quiet is this join's to decide (a keyed join of the id never is) */
+      if (this._guestQuietEnd) this._guestQuietEnd(msg.id);   /* v2.3.5708: quiet is this join's to decide (a keyed join of the id never is); through the end, which gives the board's clock back */
       if (_keyOut.guest === true && !stored) await this._guestLazyCheck(msg.id);
       /* ═══ v2.3.3138: A NEW CHARACTER STARTS FROM THE SERVER'S DEFAULTS ═══
          Owner, on the farm's review: "Yes fix all of your recommended

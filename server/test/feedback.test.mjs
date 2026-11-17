@@ -222,16 +222,19 @@ function ownerRoom(key) {
   check('7: ...another address is not', other.ok === true, other);
   const keys = await st.storage.list({});
   check('7: no `rate:` or `crashrate:` row is written (the paces are in memory)', ![...keys.keys()].some((k) => /^(rate|crashrate):/.test(k)), [...keys.keys()].filter((k) => /rate:/.test(k)));
-  /* the whole game's ceiling: many addresses */
+  /* the whole game's ceiling: many addresses (v2.3.5706: with the shares
+     on, the default, the lower of the old ceiling and the kind's share;
+     one address's crash reports the lower of its old limit and SHARE_ADDR) */
+  const POSTS_CAP = Math.min(FEEDBACK_PACE.POSTS_ALL, FEEDBACK_PACE.SHARE.posts);
+  const CRASH_ONE = Math.min(FEEDBACK_PACE.CRASH_ADDR, FEEDBACK_PACE.SHARE_ADDR.crash);
   let taken = 0;
-  for (let i = 0; i < FEEDBACK_PACE.POSTS_ALL + 20; i++) { const r = await post(fresh(), '198.51.100.' + (i % 250) + ':' + i); if (r.ok) taken++; }
-  check('7: the whole game takes at most ' + FEEDBACK_PACE.POSTS_ALL + ' posts an hour, from any number of addresses', taken + one.filter((r) => r.ok).length + 1 === FEEDBACK_PACE.POSTS_ALL, taken);
+  for (let i = 0; i < POSTS_CAP + 20; i++) { const r = await post(fresh(), '198.51.100.' + (i % 250) + ':' + i); if (r.ok) taken++; }
+  check('7: the whole game takes at most ' + POSTS_CAP + ' posts an hour, from any number of addresses', taken + one.filter((r) => r.ok).length + 1 === POSTS_CAP, taken);
   const crash = [];
-  for (let i = 0; i < FEEDBACK_PACE.CRASH_ADDR + 5; i++) crash.push(await req('/crash', { method: 'POST', headers: from('203.0.113.9'), body: JSON.stringify({ sid: 'sid' + i, log: [{ kind: 'x' }] }) }).then((r) => r.json()));
-  check('7: crash reports from one address with fresh sids stop at ' + FEEDBACK_PACE.CRASH_ADDR + ' an hour', crash.filter((r) => r.ok).length === FEEDBACK_PACE.CRASH_ADDR, crash.map((r) => r.ok));
-  /* v2.3.5706: shown on posts, on a board of its own: the address above
-     filled the crash share (SHARE.crash, 30, the address's own 30), so a
-     crash report from anyone is refused for the hour now, which is the share */
+  for (let i = 0; i < CRASH_ONE + 5; i++) crash.push(await req('/crash', { method: 'POST', headers: from('203.0.113.9'), body: JSON.stringify({ sid: 'sid' + i, log: [{ kind: 'x' }] }) }).then((r) => r.json()));
+  check('7: crash reports from one address with fresh sids stop at ' + CRASH_ONE + ' an hour', crash.filter((r) => r.ok).length === CRASH_ONE, crash.map((r) => r.ok));
+  /* v2.3.5706: shown on posts, on a board of its own (the hour's row here
+     holds the crash reports above) */
   const fbLocal = new Feedback(makeState(), {});
   const local = [];
   for (let i = 0; i < FEEDBACK_PACE.POSTS_ADDR + 3; i++) local.push(await fbLocal.fetch(new Request('https://x/api/feedback/submit', { method: 'POST', headers: from(), body: JSON.stringify(fresh()) })).then((r) => r.json()));

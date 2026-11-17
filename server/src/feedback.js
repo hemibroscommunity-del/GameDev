@@ -115,11 +115,18 @@ export const FEEDBACK_PACE = Object.freeze({
   BIG_ROW: 4096,
   FLAG_TTL_MS: 60000,
   /* v2.3.5706 (card SEC PR 7): EACH KIND'S SHARE of ROWS_HOUR, a count of
-     that kind an hour for the whole board: posts 60 (180 rows), votes 30 (60),
-     crash reports 30 (60) -- 300 in all, so a flood of one kind can never
+     that kind an hour for the whole board: posts 30 (90 rows), votes 45 (90),
+     crash reports 60 (120) -- 300 in all, so a flood of one kind can never
      spend another's (a burst of votes had shut out every post and crash
-     report for the hour).  Counted in the hour's own row with ROWS_HOUR. */
-  SHARE: Object.freeze({ posts: 60, votes: 30, crash: 30 }),
+     report for the hour).  Counted in the hour's own row with ROWS_HOUR.
+     The sitting 38 review: the first shares (votes 30, crash 30) were no
+     bigger than ONE address's own limits (votes 60, crash 30), so one
+     address shut its kind for everyone; crash reports have the most room now
+     (a bad release's wave). */
+  SHARE: Object.freeze({ posts: 30, votes: 45, crash: 60 }),
+  /* ...and what ONE address may use of it, an hour, held in the same row:
+     well under each share, so it takes several addresses to fill one */
+  SHARE_ADDR: Object.freeze({ posts: 5, votes: 15, crash: 15 }),
   /* the addresses the hour's row keeps a count for (past it: the oldest go) */
   ADDR_KEYS: 400,
   /* the crash feed, cut by its bytes: past this, its oldest half goes */
@@ -240,7 +247,7 @@ export class Feedback {
       // DELETE /sweep — v2.3.5593: the owner takes away every oversized ticket and the old pace rows (RT-1 N3)
       if (request.method === 'DELETE' && path.startsWith('/sweep')) {
         if (!(await this._ownerKey(request))) return new Response(JSON.stringify({ ok: false, error: 'Not found' }), { status: 404, headers: H });
-        return new Response(JSON.stringify(await this.sweep()), { headers: H });
+        return new Response(JSON.stringify(await this.sweep({ trim: url.searchParams.get('trim') === '1' })), { headers: H });   /* v2.3.5706: `?trim=1` its own call */
       }
 
       return new Response(JSON.stringify({ ok: false, error: 'Not found' }), { status: 404, headers: H });
@@ -550,6 +557,13 @@ export class Feedback {
     const rows = (kind === 'posts' ? 2 : 1) + 1;
     const budget = await this._rowsBudget(now);
     if (budget.n + rows > FEEDBACK_PACE.ROWS_HOUR) return false;
+    /* v2.3.5706 (the sitting 38 review): the switches read BEFORE the share,
+       so a write its share refuses still reads `feedbackshare` -- read only
+       after the share let a write through, the switch could not release the
+       very refusal it is for.  After the paces above, so a write THEY refuse
+       still never asks the room (feedback.test §11); at most one read a
+       FLAG_TTL_MS, as before. */
+    await this._boardOpen();
     /* v2.3.5706: the kind's share, and the address's count, both in the hour's row */
     const share = this._shareOn();
     const ak = addr ? kind + '|' + addr : null;
@@ -557,7 +571,7 @@ export class Feedback {
       if (!budget.k) budget.k = {};
       if (!budget.a) budget.a = {};
       if ((budget.k[kind] || 0) >= FEEDBACK_PACE.SHARE[kind]) return false;
-      if (ak && Object.prototype.hasOwnProperty.call(budget.a, ak) && budget.a[ak] >= lim[0]) return false;
+      if (ak && Object.prototype.hasOwnProperty.call(budget.a, ak) && budget.a[ak] >= FEEDBACK_PACE.SHARE_ADDR[kind]) return false;
     }
     for (const k of keys) {
       if (!k) continue;
@@ -616,17 +630,18 @@ export class Feedback {
      past a row's size, with no way to clear it; the list read every ticket
      ever kept on each ask; and the text kept direction-changing and
      zero-width characters.  Now:
-       - each kind has its SHARE of the hour (posts 60, votes 30, crash 30:
+       - each kind has its SHARE of the hour (posts 30, votes 45, crash 60:
          300 rows), counted in the hour's own row (`k`), never past it;
        - the counts by address are in that row too (`a`, at most ADDR_KEYS),
+         each held to SHARE_ADDR, well under its kind's share,
          so a wake does not refill them (no new row: the row the hour's
          budget already writes with every write);
        - a vote looks its ticket up first: none, nothing counted;
        - the crash feed is cut by its bytes (CRASH_BYTES): a full one drops
-         its oldest half; the owner's sweep clears it;
+         its oldest half; the owner's sweep clears it (`?trim=1`);
        - the list's answer is kept LIST_TTL_MS (any write here clears it) and
          serves the newest LIST_NEWEST tickets; the owner's sweep takes away
-         the ones older than those;
+         the ones older than those (`?trim=1`);
        - the text goes through the name's cleaner (feedbackWords: no hidden
          or direction characters, spaces collapsed; the panels draw no line
          breaks, so a player reads the same).
@@ -664,15 +679,18 @@ export class Feedback {
      vote is not up or down, is taken out (the counts follow), and the row
      written back (`mended`); only a ticket whose own fields are oversized
      goes.  A page at a time (TRAPS §76). */
-  async sweep() {
+  async sweep(opts) {
     let big = 0, paces = 0, mended = 0, old = 0, crashes = 0;
     const counts = Object.create(null);
     let total = 0;
     this._listKept = null;
     /* v2.3.5706: the newest LIST_NEWEST tickets are kept; the ones older than
        those (the list no longer serves them) go, and the crash feed is
-       cleared (the shares' switch) */
-    const share = this._shareOn();
+       cleared (the shares' switch) -- ONLY when asked, `?trim=1`: the
+       sitting 38 review, the Test panel's Sweep says it removes oversized
+       posts and old pace rows, and the owner would tap it to mend a row and
+       lose the crash reports unread (OPERATIONS's feedback section) */
+    const share = this._shareOn() && !!(opts && opts.trim);
     const ages = [];
     if (share) {
       await this._eachTicket((k, raw) => {
