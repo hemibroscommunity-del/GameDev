@@ -1,7 +1,7 @@
 card: MOD
-branch: claude/plan-mod-<n>-<topic> (one line: #1878 > #1890 > #1883 > #1897 > #1907 > #1909 > #1914, T's 4334b6d at the bottom, every PR against main)
-prs: #1883 (5620, the card), #1897 (5621, silence), #1907 (5622, names), #1909 (5623, report evidence), #1914 (5624, invite pace): ready; RT-3's #1878 (5593), #1890 (5594): ready; #1869 (findings): draft
-state: ready
+branch: claude/plan-mod-<n>-<topic> (#1909 > #1914 restacked on main b2d763a9; PR 5 on main; every PR against main)
+prs: #1909 (5623, report evidence), #1914 (5624, invite pace): ready; PR 5 (5625, the freeze's devices, words outside the lanes, the name fold): working; #1869 (findings): draft
+state: working
 
 ## Done
 
@@ -13,16 +13,16 @@ state: ready
 
 ## Next
 
-- Sitting 19's mends are in (#1878's five, #1890's name folding, #1897's freeze off by default, #1907's join name); #1909 and #1914 wait for a later sitting.
-- The next PR after sitting 19 (the planning session's list): the freeze's device half made right (botfp's device record, the owner's spare complete) before anyone turns `freezedevice` on; words outside the six lanes; the name rule's lows (rename's update, the name box's switch, a refusal's words, the arena's own name).
-- Switch `silence.js`'s SILENCE_LANES to K's CHAT_LANES import in whichever of #1897 and #1899 lands second.
+- PR 5 (5625): the freeze's devices from botfp's `device:` record and the owner's spare complete the same way (`freezedevice` stays OFF); the words outside the six lanes (pet, alliance and clan names, an emote's quick line) closed to a silenced character, every words row decided; the name fold's misses (BroTovvn, a Cherokee A, Admln); SILENCE_LANES is K's CHAT_LANE_TYPES.
 
 ## Found
 
 - `mp-lazyfail` is red on main: it cannot find the More page's "achievements" tile on a local worker (routed to J2).
+- The wire table's `flag` column does not name `silence` on the six chat rows (server/src/wire/: card K's).
 - `boards.test` and others join with one-letter names ("T"): the name rule's minimum is 1 (the box keeps its 2) so honest tests and names pass.
 
 ## Needs
 
 - The owner (through the planning session): the slur list's words; new-player protection in No man's land; friends-only whispers for a new character; a hold on a new character's trades; names unique across characters (a migration: every name on file read once).
 - Card OPS: the Test panel's buttons for silence, lift, rename (after its feedback rows).
+- The planning session (asked 2026-11-17): may PR 5 take market.js ~293-363 (an order's label and seller name, free text from the page that everyone reads) for the server's own values?
