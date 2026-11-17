@@ -34,6 +34,7 @@ import { landLook, hexRgb } from '../data/wheelLands.js';   /* v2.3.3024: each l
 import { wheelLong, noteWheelBuilt } from './wheelSize.js';   /* v2.3.3315: which Wheel the room plays */
 import { clientOffAtLoad } from './clientOff.js';   /* v2.3.3755: the Test panel's Memory savers */
 import { fillOrder } from './zoneGate.js';   /* v2.3.4400: the gate's pieces, nearest the arrival first */
+import { sw, swHas } from './switches.js';   /* v2.3.5310: the page's one reader (card T) */
 
 const ROW_KEEP = 160;          /* walk-grid rows kept made, a byte a cell (v2.3.3315: 1.8 KB today, 7 KB on the long Wheel; a JS array was ~14 KB and would be ~58) */
 /* v2.3.3298: the Wheel's walls come a block at a time (the worker's 'block':
@@ -126,12 +127,12 @@ export function wheelObjectsInfo() { return _info ? _info.objects || null : null
 /* `?noobjects` in the address leaves the Wheel bare, as before v2.3.2975 --
    the ground alone -- so its cost can be told from theirs on a phone */
 export function wheelObjectsOn() {
-  try { return !/(^|[?&])noobjects(=|&|$)/.test(window.location.search || ''); } catch (e) { return true; }
+  return !swHas('noobjects');
 }
 /* v2.3.2983: `?nolife` leaves the buildings still -- no smoke, lamps,
    sparks or glints (src/rendering/wheelLife.js) -- to tell their cost */
 export function wheelLifeOn() {
-  try { return !/(^|[?&])nolife(=|&|$)/.test(window.location.search || ''); } catch (e) { return true; }
+  return !swHas('nolife');
 }
 const _stopFns = new Set();
 export function wheelOnStop(fn) {
@@ -147,7 +148,7 @@ export function wheelOnStop(fn) {
    the shallows stays a wall (ground.js swimBits).  `?noswim` in the
    address puts the water back as it was: every drop of it a wall. */
 export function wheelSwimOn() {
-  try { return !/(^|[?&])noswim(=|&|$)/.test(window.location.search || ''); } catch (e) { return true; }
+  return !sw('noswim');
 }
 /* Is the plan's cell at (x, y) water you can swim in (not land, not open
    sea)?  false outside the Wheel's worker, or with `?noswim`. */
@@ -251,13 +252,13 @@ export function wheelPaletteAsked() { return _palette; }
 const RENDERER_WAIT_MS = 15000;
 /* `?groundwait=0` starts it at once, as before (mp-groundwait's comparison) */
 let _waitOn = true;
-try { if (typeof location !== 'undefined' && /[?&]groundwait=0(&|$)/.test(location.search || '')) _waitOn = false; } catch (e) { /* waits */ }
+if (sw('groundwait')) _waitOn = false;
 /* v2.3.3717: `?heaplean`, the page's own leftovers let go (the overview's
    pixels, above): docs/specs/worker-code-diet.md.
    v2.3.3736: ON unless the address says `heaplean=0` (the owner's "including
    the new memory change work by default would be better") */
 let _heapLean = true;
-try { if (typeof location !== 'undefined' && /[?&]heaplean=(0|off|false)(&|$)/.test(location.search || '')) _heapLean = false; } catch (e) { /* lean */ }
+if (sw('heaplean')) _heapLean = false;
 /* v2.3.3755: ...and off when the Test panel's Memory savers row turned it off, from the next load (clientOff.js) */
 try { if (clientOffAtLoad('heaplean')) _heapLean = false; } catch (e) { /* as the address says */ }
 let _said = false;

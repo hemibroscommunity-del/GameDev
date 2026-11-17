@@ -1,24 +1,25 @@
 card: MOD
-branch: claude/plan-mod-<n>-<topic> (on main cfcd70b1: #1954; #1962 > #1967; every PR against main)
-prs: #1954 (5627, the freeze's spare, new characters only), #1962 (5628, the report and pace lows), #1967 (5629, a report on a guest with no record): ready; #1971 (5630, the name rule's lows, for sitting 25): ready; #1869 (findings): draft
-state: ready
+branch: claude/plan-mod-<n>-<topic> (the last: #1971 on main 4751cb7a; every PR against main)
+prs: #1971 (5630, the name rule's lows): ready, for sitting 25; every other PR merged; #1869 (findings): draft
+state: done
 
 ## Done
 
 - RT-3 red team: findings #1869 (draft); the feedback board #1878 (5593) and its staff names #1890 (5594).
 - PR 1 (5621, #1897): the owner's silence (the chat lanes, its own router step after the wire door) and a freeze that holds the device.
 - PR 2 (5622, #1907): the name rules: a new name by the rule (the box says why first), `track` never renames, the owner's rename.
-- PR 3 (5623, #1909): a report carries what the reporter received (the reported player's lines to the reporter: a whisper, the party, a friend, a shop's chat, the room or the area), not only the room's last lines; switch `reportring`. K said: build it.
-- PR 4 (5624, #1914): invite pace: one trade card and one friend request card a target per 5 s (the invite is kept, only the repeat card is held; the pair's pace resets when a trade opens); switch `invitepace`. The planning session gave trade2.js's lines to this card (no open branch touches them); friends.js has no card.
-- PR 5 (5625, #1941, merged in sitting 22): the freeze's devices from botfp's record; words outside the six lanes closed to the silenced; the name fold's misses; SILENCE_LANES is K's CHAT_LANE_TYPES.
-- PR 6 (5626, #1947, merged in sitting 23): a market order's label and seller name are the worker's own (switch `mktwords`; card K's market.js by the planning session's yes). #1909 and #1914 merged in sitting 23.
+- PR 3 (5623, #1909): a report carries what the reporter received, not only the room's last lines; switch `reportring`.
+- PR 4 (5624, #1914): invite pace: one trade card and one friend request card a target per 5 s; switch `invitepace`.
+- PR 5 (5625, #1941): the freeze's devices from botfp's record; words outside the six lanes closed to the silenced; the name fold's misses; SILENCE_LANES is K's CHAT_LANE_TYPES.
+- PR 6 (5626, #1947): a market order's label and seller name are the worker's own (switch `mktwords`; card K's market.js by the planning session's yes).
+- PR 7 (5627, #1954): `freezedevice` (lever OFF) holds only NEW characters, never the owner's devices (`ownerdev:`); "Officlal".
+- PR 8 (5628, #1962): a report quotes lines addressed to the reporter first, the speaker's own beside (`said`); a paced friend request answered as sent.
+- PR 9 (5629, #1967): a report on a guest who chatted and left with no record lands.
+- PR 10 (5630, #1971, for sitting 25): a rename keeps the look; a `name` refusal says why; the arena's name is the character's (card L's gladiator.js, the planning session's yes); the name box stays on (decided).
 
 ## Next
 
-- #1954 (5627): sitting 22's findings on #1941 and the planning session's `freezedevice` meaning (lever OFF): a held phone refuses only a NEW character; the owner's devices kept (`ownerdev:`, a new key: a cost line for the owner); "Officlal".
-- #1962 (5628): sitting 23's lows: a report quotes the lines addressed to the reporter first, the speaker's own last lines beside (`said`); a paced friend request answered as sent; the ring's memory with `tos`.
-- #1967 (5629, on #1962): a report on a guest who chatted and left with no record lands (the planning session's call).
-- #1971 (5630, on main), for sitting 25: a rename's `player_update` carries the whole look; a `name` refusal says why (the worker's `server_announce`: wsClient.js is at its four-lines line); the arena's name is the character's (touches card L's gladiator.js ~384, by the planning session's yes); the name box stays on (the planning session's call, in name-rules.md).
+- None: the card is finished (the planning session, 2026-11-17). #1971 waits for sitting 25.
 
 ## Found
 

@@ -43,6 +43,7 @@ import { LoginSpinWindow } from './mobile/LoginSpinWindow.jsx';   /* v2.3.4295: 
 import { advanceMastery, earnCertification } from '../game/mastery.js';
 import { debugBus } from '../debug/debugBus.js';
 import { BuildBadge } from './BuildBadge.jsx';
+import { sw } from '../game/switches.js';   /* v2.3.5310: the page's one reader (card T) */
 /* v2.3.1207: derived-stat helpers for buildSelfProfile's tier2 tiles —
    the same call pairs the dashboard readouts use. */
 import { BT_AUDIO, calcCritChance, calcCritMult, getWeaponCritStat, getWeaponCritDmgStat, passiveDodgeChance, getEvasionPts } from '../data/gameSystems.js';
@@ -780,7 +781,7 @@ export const GameApp = () => {
       {/* v2.3.221: dev-tooling overlays gated on ?dev=1 URL param so
           the player-facing build doesn't show the D button, version
           badge, or FPS counter. */}
-      {typeof window !== 'undefined' && /[?&]dev=1\b/.test(window.location.search) && (
+      {sw('dev') && (
         <>
           <DebugOverlay />
           <BuildBadge />

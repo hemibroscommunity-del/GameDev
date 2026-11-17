@@ -14,10 +14,10 @@
  *      yellows is left; the shield's own gold is still in the middle;
  *   3. the shield up (a tap): the button lit, the same picture;
  *   4. no page errors.
- * Pictures: tools/qa/mp/out/blockface-*.png.
+ * Pictures: tools/qa/mp/out/blockface-*.png (face: the picture alone).
  */
 import * as H from './harness.mjs';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 export const lane = 'full';
 
@@ -105,8 +105,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* 2. on screen: a calm blue disc round the shield, no burst left */
     await blow();
     await P.page.waitForTimeout(300);
-    const face = await P.page.$('[data-shield] [data-icon="block"]');
-    const buf = face ? await face.screenshot() : null;
+    /* the picture's own box, off the page (an element screenshot of the face
+       span took the world beside the button: the skin lays the face apart) */
+    const box = await P.page.evaluate(() => {
+      const i = document.querySelector('[data-shield] [data-icon="block"] img');
+      if (!i) return null;
+      const r = i.getBoundingClientRect();
+      return { x: r.x, y: r.y, width: r.width, height: r.height };
+    });
+    const buf = box && box.width > 8 ? await P.page.screenshot({ clip: box }).catch(() => null) : null;
+    if (buf) writeFileSync(join(OUT, 'blockface-face.png'), buf);
     const c = buf ? colours(buf) : null;
     await blow();
     if (buf) await P.page.screenshot({ path: join(OUT, 'blockface-down.png'), clip: await around(P) }).catch(() => {});

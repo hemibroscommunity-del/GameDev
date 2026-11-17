@@ -66,6 +66,7 @@ The bot checks already read it.
 - passes used (`pass`);
 - refusals (`refused`);
 - login checks (`checks`);
+- devices written down while the lock was off (`off`, v2.3.5584);
 - whether the one-time fill has run, and what it filled.
 
 ## Storage
@@ -81,10 +82,10 @@ worker never scans again.
 
 ## An old key never adds a device by itself (v2.3.5582)
 
-The red team (RT-1, findings N1 and N9) worked out old keys from their
-characters' public ids: an old key's id carries the key's first two words and
-a 31-bit hash of the whole, so a key is found offline in a fraction of a
-second. The device lock held it to the character's devices, except where the
+The red team (RT-1, findings N1 and N9) showed that an old key is not a
+secret: someone other than its player can come to hold it. (How is kept out
+of this spec on purpose, v2.3.5584: the repository may be public one day.)
+The device lock held it to the character's devices, except where the
 character had no list: the first device to come in was taken, the thief's, who
 was then handed a new key and the player shut out.
 
@@ -104,6 +105,46 @@ was then handed a new key and the player shut out.
   check. Anyone else is still `locked`.
 - **Kill switch `oldkeylock: false`:** both as before.
 
+## While the lock is off, its devices are still written down (v2.3.5584)
+
+With `devicelock: false` the server used to write no device at all. A
+character made then had no list, and a character played from a new phone did
+not list it. When the lock came back on, each went wrong one way or the other:
+
+- no list, with the one-time fill already done: refused everywhere (v2.3.5582),
+  so its own player was shut out on the phone they had played on all along;
+- an empty list, or `oldkeylock: false`: the first device to come in took the
+  character, whoever's it was.
+
+So while the lock is off, a join whose **old** key matched still writes down
+the device it came from. It is the same write as the first-device rule: one
+put, only for a device not yet on the list, never a write on every join.
+
+- **Turned back on**, the devices that played while it was off are on the
+  list: their player is let in, and a stranger's device is refused `device`.
+  The first-device rule never applies to a character played while off (its
+  list is not empty), even with `oldkeylock: false`.
+- **A new character** made while it is off is registered with its device. One
+  whose join names no device keeps no list at all, never an empty one (an
+  empty one would hand it to whoever comes first once the lock is back).
+- **A sealed character** (the owner's Forget) gets nothing written down: the
+  seal waits for the owner's pass, as with the lock on.
+- **A character from before the lock** (no list) waits for the one-time fill
+  first, so the devices the server already knew are kept. If the fill fails,
+  nothing is written down, and the next join tries again.
+- **A pass** is not spent while the lock is off, and nothing is refused.
+- **A new key** is good from any device and writes nothing here.
+
+It only writes down what the lock being off already let in: while it is off,
+the key is the only gate, so anyone who played with it is listed, as in
+"Someone already in" below. Someone holding the key could also fill the list
+with made-up devices while it is off (the oldest drop off past 12). If the lock
+was off for a while, the owner can Forget a character's devices and let its
+player's device in.
+
+Kill switch `offdevs: false`: nothing written down while the lock is off, as
+before.
+
 ## What it doesn't cover
 
 - **The fill misses some devices.** On a device with several characters, the
@@ -119,11 +160,13 @@ was then handed a new key and the player shut out.
 ## The switch
 
 `devicelock: false` in the live flags puts back the join, the login check and
-the restart as they were. Nothing is read or written for this.
+the restart as they were: nothing is refused. Since v2.3.5584 a matching old
+key's device is still written down (above); with `offdevs: false` too,
+nothing is read or written for this.
 
 ## Tests
 
-- `device-lock` suite (67 checks): the real join, the account requests and the
+- `device-lock` suite (105 checks): the real join, the account requests and the
   admin routes.
   - I broke the code on purpose in 24 different ways and the suite caught
     every one.
