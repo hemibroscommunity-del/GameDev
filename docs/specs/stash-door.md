@@ -163,4 +163,19 @@ has (`gearprov.js` `gearMintId`; `_gearProvMintId` is it). The field is
   reader that shipped first (v2.3.5294, the section above), on any worker
   from that one on (the gatekeeper's sitting 23).
 
-`server/test/weapon-id.test.mjs` holds it.
+- **No kill switch, on purpose** (the gatekeeper's sitting 25, low 4). The
+  change is a stored record's shape: once a save is stamped 22 and its
+  weapons carry ids, a switch could not put the old shape back, and a
+  worker that stopped giving ids would only leave new weapons without one.
+  The way back is the one every shape bump has: a roll-back worker refuses a
+  newer save at the join (`migrations.md`), and the reader that shipped
+  first (v2.3.5294) keeps every weapon whole on the other roads.
+- **The world's sum reads each leg's stamp** (v2.3.5296, card R PR 16;
+  sitting 25's lows 1 to 3): a listing's goods once `store:<id>:goods` or
+  `:refund` is on file, a trade window's weapon once its `wpndeliver` or
+  `wpnrefund` is, and a market order's weapon once `settle:<id>:item` is
+  (with a note or without, `mktsettle: false`) are counted where they went,
+  not twice; a buy order a sell taker crossed holds that weapon in its note
+  (`settle.legs[0]`) until the leg is paid.
+
+`server/test/weapon-id.test.mjs` holds it (§7, §8).

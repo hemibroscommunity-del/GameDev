@@ -26,6 +26,8 @@
  *   - `|| seen.has(w.gid)` deleted from weaponIdsAll                 -> FAIL 3 (two share one)
  *   - `('gid' in w && !weaponIdOk(w))` made `'gid' in w`              -> FAIL 5, FAIL 6 (every weapon dropped as gear)
  *   - worldsum.js's mkt_order `paid` made `false`                       -> FAIL 7 (a paid sale's weapon counted twice)
+ *   - v2.3.5296: stampedAt made `() => false`                           -> FAIL 7, FAIL 8 (every paid leg counted twice)
+ *   - v2.3.5296: the buy order's note branch deleted                    -> FAIL 8 (the taker's weapon missed)
  */
 import { gearMintId, GID_RE } from '../src/gearprov.js';
 import { stashGive, stashSet, weaponIdOk, weaponIdGive, weaponIdsAll, WEAPON_HANDS } from '../src/stash.js';
@@ -171,6 +173,40 @@ const room5 = await openRoom(st5);
     paid.dup.length === 0 && unpaid.dup.length === 0, { paid: paid.dup, unpaid: unpaid.dup });
   store.set('inbox:bp_b', [{ kind: 'weapon', payload: { weapon: { ...w } } }]);
   check('7. ...and with no stamp, a weapon in both places is still a duplicate (the guard keeps its teeth)', worldCount({ playerState: {} }, store).dup.length === 1);
+}
+
+/* ══════════ 8. THE SUM'S STAMPS (v2.3.5296; the gatekeeper's sitting 25) ══════════ */
+{
+  const w = () => blade('s', { gid: gearMintId({}) });
+  const sum = (entries) => worldCount({ playerState: {} }, new Map(entries));
+  const mail = (pid, weapon) => ['inbox:' + pid, [{ kind: 'weapon', payload: { weapon: { ...weapon } } }]];
+  /* 1. a listing whose goods are paid (or sent home): counted in the mail, not the listing */
+  const a = w();
+  const listing = ['store_listing:L9', { id: 'L9', kind: 'weapon', weapon: { ...a }, sale: { paid: true } }];
+  const b = w();
+  const listingBack = ['store_listing:L8', { id: 'L8', kind: 'weapon', weapon: { ...b } }];
+  check('8. a listing whose goods are paid, or sent home, counts them once (its `store:<id>:goods` / `:refund` stamp)',
+    sum([listing, mail('bp_b', a), ['oplog:store:L9:goods', 1], listingBack, mail('bp_s', b), ['oplog:store:L8:refund', 1]]).dup.length === 0);
+  check('8. ...with no stamp, a weapon in the listing and the mail is still a duplicate', sum([listing, mail('bp_b', a)]).dup.length === 1);
+  /* 2. a trade window's weapon delivered, or refunded, before its record goes */
+  const t = w(), r = w();
+  const owed = ['trade2wpn:bp_a:3', { pid: 'bp_a', sid: 'T1', seq: 3, weapon: { ...t }, to: 'bp_b' }];
+  const back = ['trade2wpn:bp_a:4', { pid: 'bp_a', sid: 'T1', seq: 4, weapon: { ...r } }];
+  check('8. a trade window\'s weapon delivered or refunded counts once (its wpndeliver / wpnrefund stamp)',
+    sum([owed, mail('bp_b', t), ['oplog:trade2:T1:wpndeliver:bp_a:3', 1], back, mail('bp_a', r), ['oplog:trade2:T1:wpnrefund:bp_a:4', 1]]).dup.length === 0);
+  check('8. ...with no stamp, still a duplicate', sum([owed, mail('bp_b', t)]).dup.length === 1);
+  /* 3. a buy order a sell taker crossed: the taker's weapon is in its note until paid */
+  const x = w();
+  const buy = ['mkt_order:B1', { id: 'B1', type: 'buy', playerId: 'bp_b', price: 9,
+    settle: { v: 1, legs: [{ leg: 'item', to: 'bp_b', weapon: { ...x } }, { leg: 'gold', to: 'bp_s', amount: 9 }] } }];
+  const unpaid = sum([buy, mail('bp_x', x)]);
+  check('8. a buy order\'s note holds the taker\'s weapon until its item leg is paid (counted: seen once more)', unpaid.dup.length === 1);
+  check('8. ...and once paid, the buyer\'s alone', sum([buy, mail('bp_b', x), ['oplog:settle:B1:item', 1]]).dup.length === 0);
+  /* 3b. `mktsettle: false`: the same stamp on a sell order with no note */
+  const y = w();
+  const sell = ['mkt_order:S1', { id: 'S1', type: 'sell', playerId: 'bp_s', item: { ...y }, price: 4 }];
+  check('8. a sell order with no note (`mktsettle: false`) whose item leg is stamped counts its weapon once',
+    sum([sell, mail('bp_b', y), ['oplog:settle:S1:item', 1]]).dup.length === 0 && sum([sell, mail('bp_b', y)]).dup.length === 1);
 }
 
 await settle();
