@@ -19,8 +19,9 @@
  * at its own check, so a search for _testMode finds them all):
  *   - the speed limits on moving: the move budget and the per-message bound
  *     (movement.js _handleMove), the follow after it (_tickMoveFollow) and the
- *     reconnect's judge (lastplace.js _placeOnJoin) -- the phone's place is
- *     taken as it says;
+ *     reconnect's judge (lastplace.js _placeOnJoin, and v2.3.5722 its stand
+ *     for a join naming no place, `joinplace`) -- the phone's place is taken
+ *     as it says;
  *   - the timing checks on harvesting and cooking: the too-early strike and
  *     the strike with no start of its own (gathering.js _handleNodeStrike),
  *     the 45 perfect harvests a minute (_ratedHarvestAccuracy), the 45 cooks a

@@ -123,6 +123,27 @@ Honest reconnects taken exactly, every one:
 - a second tab;
 - a refused join's retry (judged from where the refused one was put).
 
+## A join that names no place (v2.3.5722, card K2 PR 3)
+
+The second red team's HIGH 3: `_placeOnJoin` returned early for a join with
+no x/y, before the move clock was set, so that join's first move was a
+first move, judged from nothing: 24,780 to 70,000 px in one step, five of
+five, where a reconnect naming a place is held to 1,580. Every page names
+its place at the join, so only a script meets this. Now (`_placeUnnamed`):
+
+- in the same zone as the place the worker remembers (or the session it
+  takes over): stood there, with the budget a reconnect naming that very
+  place keeps;
+- in the Wheel otherwise: the way back they left it by, else the Wheel's
+  arrival;
+- the move clock is set, so the first move is judged from there;
+- out of the Wheel with nowhere to stand (today's town, no memory): left as
+  before, but the next way into the Wheel is judged from the arrival.
+
+A kept body (its own place and clock) is not touched; a test-mode character
+joins where it says. `joinplace: false` returns early, as before
+(`joinplace.test`: 10 FAIL on main).
+
 ## The switch
 
 `lastplace: false` in the live flags is all of it as before:

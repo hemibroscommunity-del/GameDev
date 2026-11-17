@@ -329,18 +329,29 @@ export const adminMethods = {
      relay bytes refused) and reached no owner page.  One tally on the room,
      in MEMORY only (a deploy starts it again; nothing is written), read by
      /api/admin/overview as `floodTally`:
-       - `closed`: sockets closed for flooding (leave.js, the `flood` way:
-         the room's message budget, flood.js _floodClose);
+       - `closed`: sockets closed for sending too many messages (leave.js,
+         the `flood` way, and only a session past the room's message budget:
+         more than FLOOD.MSG_CLOSE_AFTER dropped, flood.js _floodDropped).
+         The same door's other two closes -- no join in time (tick.js, a
+         slow phone among them) and a second join -- are not counted
+         (sitting 39's review);
        - `relayBytesDropped` and `relayDropsBy`: relay frames refused for their
          bytes, and why (relay.js's own room count, read as it is);
        - `ip`: refusals by address -- null until card K2's PR 10 counts them
-         where they are decided (flood.js _floodIpOk, K2's file);
-       - `since`: when this worker started counting.
+         where they are decided (flood.js _floodIpOk, K2's file) with
+         `_floodTallyAdd('ip')`;
+       - `since`: when the first of these counts landed (null before one);
+         the relay's counts are relay.js's, since the room woke.
      KILL SWITCH `floodtally: false`: nothing counted here, and the field is
      null.  An older Test panel reads the overview as before (one new field). */
   _floodTallyOn() {
     const f = this._liveFlags;
     return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'floodtally') && !f.floodtally);
+  },
+  /* leave.js, at the `flood` way: a close for too many messages only */
+  _floodTallyLeave(ws) {
+    const s = this.sessions && this.sessions.get(ws);
+    if (s && Number(s.msgDropped) > FLOOD_NS.FLOOD.MSG_CLOSE_AFTER) this._floodTallyAdd('closed');
   },
   _floodTallyAdd(k) {
     if (!this._floodTallyOn()) return;
@@ -354,7 +365,7 @@ export const adminMethods = {
       since: t.since, closed: t.closed || 0,
       relayBytesDropped: this._relayByteDropped || 0,
       relayDropsBy: this._relayByteDrops ? { ...this._relayByteDrops } : {},
-      ip: null,
+      ip: typeof t.ip === 'number' ? t.ip : null,   /* K2's PR 10: _floodTallyAdd('ip') */
     };
   },
 

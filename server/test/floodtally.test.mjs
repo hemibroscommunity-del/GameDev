@@ -13,6 +13,9 @@
  *   4. the overview's other fields are all still there;
  *      `ip` is null (refusals by address: card K2's PR 10, flood.js);
  *   5. `floodtally: false`: nothing counted, the field null.
+ *   6. (sitting 39's review) the door's other `flood` closes are not
+ *      counted: a socket that sent no join in time (the sweep, tick.js) and
+ *      a second join on one socket.
  *
  * BREAK PROOF (rule 8), tried by hand: main's admin.js and leave.js -> FAIL
  * 1, 2, 4 and 5 (no floodTally on the overview).
@@ -73,6 +76,21 @@ async function flood(room, id) {
   await flood(room, 'bp_ft_c');
   const o = await overview(room);
   check('5. floodtally: false: nothing counted, the field null', o.ok && o.floodTally === null && !(room._floodTally && room._floodTally.closed), o.floodTally);
+}
+
+/* 6. the other closes at the same door */
+{
+  const { room } = await world();
+  const ws = fakeWs('bp_ft_slow');
+  room.sessions.set(ws, { id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now(), openedAt: Date.now() - 60000 });
+  check('6. a socket past its join window (guard: the sweep would close it)', room._floodNoJoin(room.sessions.get(ws), Date.now()));
+  room._floodClose(ws, 4011, 'no join');   /* the sweep's own close (tick.js), CLOSE_JOIN */
+  const ws2 = fakeWs('bp_ft_twice');
+  await join(room, ws2, 'bp_ft_twice');
+  room._floodClose(ws2, 4011, 'already joined');
+  await settle();
+  const o = await overview(room);
+  check('6. no join in time, and a second join: neither counts in closed', !!ws.closed && o.floodTally && o.floodTally.closed === 0 && o.floodTally.since === null, o.floodTally);
 }
 
 clock.restore();

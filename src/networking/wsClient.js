@@ -19,6 +19,7 @@ import { processGameEvent } from '@/networking/gameEvents.js';
 import { veilTo } from '@/game/veilDoor.js';   /* v2.3.5527: the loading door, the veils' one writer (S._netHold its `net` reason; card L) */
 import { connTo } from '@/game/connectionDoor.js';   /* v2.3.5528: the connection door, S._realtimeStatus's one writer (card L) */
 import { partyTo } from '@/game/partyDoor.js';   /* v2.3.5529: the party's page door (card L) */
+import { dyingTo } from '@/game/dyingDoor.js';   /* v2.3.5534: the life's page door (card L) */
 import { actionWay, namesOfWay, settledSends, doorRefuse, setActionTransport, act } from '@/game/actions.js'; /* v2.3.5185: the action door's rows (grand plan step 5.8); v2.3.5189: and act(), the door, for the page's own requests here */
 import { chestRevealBus } from '@/ui/mobile/ChestReveal.jsx'; /* v2.3.2820: the daily chest's reveal */
 import { loginSpinBus } from '@/game/loginSpinWheel.js'; /* v2.3.4295: the login wheel */
@@ -3404,7 +3405,7 @@ export function setupWebSocket(ctx) {
                  player_state to restore hp/stamina/mana.  Local R.hp
                  is no longer the trigger (worker authoritative this slice). */
               if (!S.rpg || S._dying) break;
-              S._dying = true;
+              dyingTo(S, 'die', Date.now());   /* v2.3.5534: the life's page door (the death and its start) */
               /* v2.3.2242 (post-review): a corpse does not hold a shield or a
                  grudge.  Left up, _shieldUp kept riding every move packet as
                  blocking:true through the death and into the respawn, and
@@ -3414,7 +3415,6 @@ export function setupWebSocket(ctx) {
               try { dropShield(S, 'dead'); } catch (e) { /* display-only */ }
               if (!S.rpg._compStats) S.rpg._compStats = createDefaultCompStats();
               S.rpg._compStats.deaths++;
-              S._deathStart = Date.now();
               /* v2.3.3817: the card over the scene for the five seconds --
                  what killed you, read now (the respawn empties the monster
                  list), and when you are back (game/deathCard.js) */

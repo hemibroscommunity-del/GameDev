@@ -118,7 +118,7 @@ export const leaveMethods = {
   _playerLeaves(ws, why, opts) {
     let row = LEAVE_WAYS[why];
     if (!row) throw new Error('session door: no way of leaving named ' + why);
-    if (why === 'flood' && this._floodTallyAdd) this._floodTallyAdd('closed');   /* v2.3.5711: the owner's flood tally (admin.js) */
+    if (why === 'flood' && this._floodTallyLeave) this._floodTallyLeave(ws);   /* v2.3.5711: the owner's flood tally (admin.js): too many messages only */
     /* v2.3.4921: a refusal reaching a session that HAS joined runs the full
        leave, so its body does not stay standing (session-door.md "Known
        leftovers", the sweep's V3).  It takes a race: two joins on one socket,
