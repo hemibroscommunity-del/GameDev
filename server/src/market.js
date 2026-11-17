@@ -34,7 +34,7 @@
 
 import { swordToGreatsword } from './swordconvert.js';   /* v2.3.3895: a sword's order is rewritten once as a greatsword */
 import { oldGreatswordToMetal } from './gscopper.js';   /* v2.3.3980: ...and a wooden or base-less greatsword's as a metal one */
-import { BLACKSMITH_TIER_LABELS } from './data.js';   /* v2.3.3980: a converted sell order's tier label */
+import { BLACKSMITH_TIER_LABELS, WOODWORKING_TIER_LABELS } from './data.js';   /* v2.3.3980: a converted sell order's tier label; v2.3.5626: every order's */
 import { stashGive, stashTake, stashSet } from './stash.js';   /* v2.3.5281: the stashes' door (card R PR 2) */
 export const MARKET = {
   ORDER_EXPIRY: 86400000,       // 24h
@@ -80,6 +80,29 @@ export const marketMethods = {
    * the escrowed weapon, so a modified client can advertise a copper
    * blade as godly -- needs a taxonomy the server can derive, and is
    * written up rather than guessed at. */
+  /* v2.3.5626 (card MOD PR 6): an order's words are the worker's own --
+     the tier's label from the worker's tables (an unknown key is shown as
+     itself: _mktField has held it to letters, digits, _ and -), and the
+     seller's name as the room shows it (relay.js _relayName: the record's,
+     by the name rules).  `mktwords: false`: the page's words, as before. */
+  _mktWordsOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'mktwords') && !f.mktwords);
+  },
+  _mktTierLabel(tierKey) {
+    const k = String(tierKey || '');
+    if (Object.prototype.hasOwnProperty.call(BLACKSMITH_TIER_LABELS, k)) return BLACKSMITH_TIER_LABELS[k];
+    const w = k.replace(/^ww_/, '');
+    if (Object.prototype.hasOwnProperty.call(WOODWORKING_TIER_LABELS, w)) return WOODWORKING_TIER_LABELS[w];
+    return k.slice(0, 32);
+  },
+  _mktSellerName(playerId, ps) {
+    if (ps && typeof ps.name === 'string' && ps.name) return ps.name.slice(0, 24);
+    const ws = this._wsBySessionId ? this._wsBySessionId(playerId) : null;
+    const sess = ws && this.sessions ? this.sessions.get(ws) : null;
+    return (sess && typeof sess.name === 'string' && sess.name) ? sess.name.slice(0, 24) : 'Unknown';
+  },
+
   _mktField(v) {
     if (typeof v !== 'string') return null;
     const s = v.trim();
@@ -359,8 +382,13 @@ export const marketMethods = {
          name), so they are truncated rather than charset-gated -- but they
          ride into the same 128 KB `mkt_order:` value as everything else,
          and an unbounded one was the destructive half of the bug above. */
-      tierLabel: (typeof _tierLabel === 'string' && _tierLabel) ? _tierLabel.slice(0, 32) : tierKey,   /* v2.3.3980: _tierLabel */
-      playerName: (typeof playerName === 'string' && playerName) ? playerName.slice(0, 24) : 'Unknown',
+      /* v2.3.5626 (card MOD PR 6; the sitting 19 review's low, RT-3 S2):
+         the label and the seller's name are the worker's own, never the
+         page's words -- every player reads them in the book, so they were a
+         wall anyone could write on ("Owner (admin) ... send your login").
+         `mktwords: false` in the live flags takes the page's again. */
+      tierLabel: this._mktWordsOn() ? this._mktTierLabel(tierKey) : ((typeof _tierLabel === 'string' && _tierLabel) ? _tierLabel.slice(0, 32) : tierKey),   /* v2.3.3980: _tierLabel */
+      playerName: this._mktWordsOn() ? this._mktSellerName(playerId, ps) : ((typeof playerName === 'string' && playerName) ? playerName.slice(0, 24) : 'Unknown'),
       playerId,
       ts: Date.now(), expires: Date.now() + MARKET.ORDER_EXPIRY,
     };
