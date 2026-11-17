@@ -976,7 +976,7 @@ export const DevPanel = ({ onClose }) => {
             </label>
             <button type="button" style={btn(true)} onClick={saveKey}>Save key</button>
             <div style={{ color: COL.muted, fontSize: 12 }}>
-              Kept until this browser closes, unless you tick Remember on this device (your own phone only). Set the key in Cloudflare → Workers → brotown-server → Settings → Variables (see OPERATIONS.md).
+              Kept in this tab until it closes, unless you tick Remember on this device (your own phone only). Set the key in Cloudflare → Workers → brotown-server → Settings → Variables (see OPERATIONS.md).
             </div>
           </>
         )}

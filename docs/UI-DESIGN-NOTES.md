@@ -2045,9 +2045,9 @@ Sources: src/ui/panels/RenameRow.jsx, src/game/renameOwner.js, src/ui/panels/Dev
 **What it is for:** The admin key opens every lever in the Test panel. It was kept on any device it was typed on, for good: a borrowed phone, a shared computer, a preview build's own address (v2.3.5718, card SEC PR 19).
 
 **Decisions, and why:**
-- **For this session by default**: the key is kept until the browser closes (sessionStorage), so typing it once on someone else's device leaves nothing behind.
+- **For this session by default**: the key is kept in this tab until it closes (sessionStorage is per tab: a new tab asks again; gatekeeper Z40's review), so typing it once on someone else's device leaves nothing behind.
 - **A tick, "Remember on this device"**, off unless ticked, above **Save key**: on the owner's own phone it keeps today's way, so the owner types the key once.
-- **The line under the button says which**: "Kept until this browser closes, unless you tick Remember on this device (your own phone only)".
+- **The line under the button says which**: "Kept in this tab until it closes, unless you tick Remember on this device (your own phone only)".
 - **Nobody is logged out by the update**: a key remembered before this version is still read, as remembered; **Forget** clears it from both places.
 - **The button is "Save key"**: "on this device" was true only with the tick. The QA tools tap the new words.
 

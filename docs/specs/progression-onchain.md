@@ -341,8 +341,17 @@ CEILING"):
   signed or sent (`fee-over-ceiling`), gives its day's place back, and the
   next level-up tries again.
 
-`/api/admin/chainstatus` says `on` and `day: { sends, ceiling, feeMaxWei }`.
-Suite: `server/test/chainday.test.mjs`.
+The switch and the day's ceiling are asked again **when each queued job
+runs**, not only when a checkpoint is queued (gatekeeper Z40's review): a
+job waits behind others that each hold the queue 6-60 s for a receipt, so a
+backlog queued before `chainscore: false` was thrown kept sending. The
+ceiling is asked before the preflight and the nonce read, so a refused job
+asks the node nothing; a place taken by a job that then fails is given back.
+
+`/api/admin/chainstatus` says `on` and `day: { sends, ceiling, feeMaxWei,
+refused }`, `refused` the day's refusals by reason (`switched-off`,
+`day-ceiling`, `fee-over-ceiling`; memory only), so writes that stop are
+seen. Suite: `server/test/chainday.test.mjs`.
 
 ## When something goes wrong
 
