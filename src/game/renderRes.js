@@ -91,7 +91,8 @@
 import { VIEW_CAP } from './viewCap.js';   /* v2.3.5140: the reference area of world (no imports: node reads it too) */
 import { phoneScreen } from './deviceProfile.js';   /* v2.3.5140: the budget's class */
 import { laneKnob, onKnob, ladderPixOn as laneHasPix } from './drawLanes.js';   /* v2.3.5225: the pixels' knob (card O) */
-import { beforeDraw } from './framePacer.js';   /* v2.3.5225: a knob's change carried out at the top of a frame */
+import { beforeDraw } from './framePacer.js';
+import { swValue } from './switches.js';   /* v2.3.5232 (card O PR 12): `?pixbudget`, `?res`, `?zoom` through the page's one reader */   /* v2.3.5225: a knob's change carried out at the top of a frame */
 
 /* v2.3.5140: game px per picture px (public/tools/style/bible.js
    PIXEL.gamePxPerArtPx; render-res.test holds the two together) */
@@ -114,12 +115,10 @@ let _viewOut = null;  /* v2.3.5140: ?zoom=, read once, as worldViewport's VIEW_O
 let _pixF = 1;        /* v2.3.5225: the ladder's share of the pixels drawn (laneKnob('pixels')) */
 let _pixOff = null;   /* v2.3.5225: ?ladderpix=0, read once */
 
-function search() {
-  try { return (typeof location !== 'undefined' && location.search) || ''; } catch (e) { return ''; }
-}
-
+/* v2.3.5232: each value as written, through the page's one reader; the
+   old tests' patterns now held to the whole value (what `=...(&|$)` read) */
 function budgetOn() {
-  if (_budgetOn === null) _budgetOn = !/(?:^|[?&])pixbudget=0(?:&|$)/.test(search());
+  if (_budgetOn === null) _budgetOn = swValue('pixbudget') !== '0';
   return _budgetOn;
 }
 
@@ -128,7 +127,7 @@ function urlBudget() {
   if (_urlBudget !== null) return _urlBudget;
   _urlBudget = 0;
   try {
-    const m = /(?:^|[?&])pixbudget=([0-9]+(?:\.[0-9]+)?(?:e[0-9]+)?)(?:&|$)/i.exec(search());
+    const m = /^([0-9]+(?:\.[0-9]+)?(?:e[0-9]+)?)$/i.exec(swValue('pixbudget') || '');
     const v = m ? Number(m[1]) : NaN;
     if (Number.isFinite(v) && v >= URL_BUDGET_MIN) _urlBudget = v;
   } catch (e) { /* none */ }
@@ -141,7 +140,7 @@ function viewOut() {
   if (_viewOut !== null) return _viewOut;
   _viewOut = VIEW_CAP.VIEW_OUT_REF;
   try {
-    const m = /(?:^|[?&])zoom=([0-9.]+)(?:&|$)/.exec(search());
+    const m = /^([0-9.]+)$/.exec(swValue('zoom') || '');
     const k = m ? Number(m[1]) : NaN;
     if (Number.isFinite(k) && k > 0) _viewOut = Math.max(0.4, Math.min(1.5, k));
   } catch (e) { /* the default */ }
@@ -176,7 +175,7 @@ function urlRes() {
   if (_url !== null) return _url;
   _url = 0;
   try {
-    const m = /[?&]res=([0-9]+(?:\.[0-9]+)?)\b/.exec(search());
+    const m = /^([0-9]+(?:\.[0-9]+)?)\b/.exec(swValue('res') || '');
     if (m) {
       const v = parseFloat(m[1]);
       if (v >= 1 && v <= 4) _url = v;
@@ -188,7 +187,7 @@ function urlRes() {
 /* v2.3.5225: the ladder's pixel rungs, on unless ?ladderpix=0 (read in
    drawLanes.js, which also takes them out of the governor's reach) */
 function ladderPixOn() {
-  if (_pixOff === null) _pixOff = !laneHasPix(search());
+  if (_pixOff === null) _pixOff = !laneHasPix();
   return !_pixOff;
 }
 /* v2.3.5225: the share of the pixels drawn the ladder keeps (1, 0.75, 0.5) */

@@ -384,7 +384,7 @@ const code = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`\\])\/\
     /_installed = true;\s*try \{ clipSelfTest\(r\); \}/.test(hcc)
     && /if \(alpha\) spr\._btClipAlpha = true; else spr\._btClipMask = true;/.test(hcc)
     && /selfQueue\('clip', renderer, rts, wants, \(\) => \{ _selfOff = true; reclipAll\(\); \}/.test(hcc));
-  check('9. v2.3.5239: the clip\'s way back in drawLanes.js PROGRAMS', /name: 'clip',[^\n]*back: 'the alpha mask'/.test(src('src/game/drawLanes.js')));
+  check('9. v2.3.5239: the clip\'s way back in drawLanes.js PROGRAMS', /name: 'clip',[^\n]*back: 'pictures to the alpha mask \(colour numbers stay on the stencil\)'/.test(src('src/game/drawLanes.js')));
 }
 
 /* ── 10. v2.3.5239 (the gatekeeper's sitting 23): a failed clip sends only

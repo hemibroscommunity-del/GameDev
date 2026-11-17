@@ -221,7 +221,8 @@ sprite marked as that program's shape answers its own batcher. The answer
 discarded nothing, or everything, or the wrong colours, draws another
 picture.
 
-- v2.3.5239: a wrong picture falls back alone to the alpha mask (part 15).
+- v2.3.5239: a wrong picture falls back alone: pictures to the alpha mask,
+  colour numbers kept on the stencil (part 15; said so here v2.3.5680).
 - Not tested where it is not installed (no WebGL2, or `?alphaclip`):
   `skipped`, saying why.
 - `?selftest=fail:clip`: `mp-selftest` page 13.
@@ -242,7 +243,7 @@ today" any more.
 | program | its way back |
 |---|---|
 | **fill** | as `?fill=0`: no one-colour glow (`fillBatchOn` false; `_whirlGlow` hides a glow already made); the whirlwind's rings still mark the catch |
-| **clip** | the alpha mask, as `?alphaclip` (`setHairClipStencil(false)`: every hair clipped again that way); the monsters' silhouettes behind things, which need the stencil, not drawn |
+| **clip** | a silhouette that is a **picture** to the alpha mask, as `?alphaclip`; one of **colour numbers** (the hats' and hoods' hair masks, `p256.js`) kept on the stencil, drawn by the palette's program, not the clip's (`clipRoute.js`: the alpha mask would read its numbers as nothing, the hair gone -- the gatekeeper's sitting 23). Every hair clipped again (`reclipAll`); the monsters' silhouettes behind things not drawn (`hairClipStencilOn` false) |
 | **glint** | no piece filtered (`_selfOff`, in `update`): a pinned sweep, a grade's look and a shine not drawn in the frame are drawn plain; the shine in the frame (`sheenBatch.js`, its own test) is kept |
 
 - Each is its own flag, never the Speed test's or the lanes' switch.

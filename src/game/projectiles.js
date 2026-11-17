@@ -960,6 +960,15 @@ export function shotAimAt(S, ox, oy, ang, len, opts) {
   return (s && s.aim) ? s.aim : null;
 }
 
+/* v2.3.5233 (card O PR 13; the gatekeeper's sitting 25): THE 30 LANE'S
+   STEP IS NOT COMBAT'S.  The loop's _dtScale may reach 6 on a 30 screen (its
+   cap three of the lane's frames, 100 ms); a projectile still steps at most
+   the old clamp's 3, so the sweep cap below (144 px = 24 x 2.0 x 3) and
+   effectsRenderer's trail guard (260) hold, and an arrow never steps past a
+   monster on a long frame. */
+export const COMBAT_DT_MAX = 3;
+function _combatDt(S) { const d = S._dtScale || 1; return d > COMBAT_DT_MAX ? COMBAT_DT_MAX : d; }
+
 function _segGap(px, py, ax, ay, bx, by) {
   var dx = bx - ax, dy = by - ay;
   var L = dx * dx + dy * dy;
@@ -1214,7 +1223,7 @@ export function updateArrows(S, deps) {
                    counted from the hit (stuckAt), so none of that moves. */
                 var _sdx = _stX - a._renderX, _sdy = _stY - a._renderY;
                 var _sdd = Math.sqrt(_sdx * _sdx + _sdy * _sdy);
-                var _sStep = (a.speedPx != null ? a.speedPx : ARROW_SPEED_PX * (a._rangeMult || 1)) * (S._dtScale || 1);   /* v2.3.2891: a volley lands at its own (slower) speed */
+                var _sStep = (a.speedPx != null ? a.speedPx : ARROW_SPEED_PX * (a._rangeMult || 1)) * _combatDt(S);   /* v2.3.2891: a volley lands at its own (slower) speed */
                 if (_sdd > _sStep && _sAge < LAND_MAX_MS) {
                   a._renderX += _sdx / _sdd * _sStep;
                   a._renderY += _sdy / _sdd * _sStep;
@@ -1283,7 +1292,7 @@ export function updateArrows(S, deps) {
               var _Lc = Math.cos(a.ang), _Ls = Math.sin(a.ang);
               var _Ldx = _Ltx - (a._renderX + _Lc * _Ld.front), _Ldy = _Lty - (a._renderY + _Ls * _Ld.front);
               var _Ldd = Math.sqrt(_Ldx * _Ldx + _Ldy * _Ldy);
-              var _Lstep = (a.speedPx != null ? a.speedPx : (a.isStaff ? 5 : ARROW_SPEED_PX * (a._rangeMult || 1))) * (S._dtScale || 1);
+              var _Lstep = (a.speedPx != null ? a.speedPx : (a.isStaff ? 5 : ARROW_SPEED_PX * (a._rangeMult || 1))) * _combatDt(S);
               if (_Ldd <= _Lstep || Date.now() >= _Ld.until) {
                 a._renderX = _Ltx - _Lc * _Ld.front;
                 a._renderY = _Lty - _Ls * _Ld.front;
@@ -1452,7 +1461,7 @@ export function updateArrows(S, deps) {
                  0.9 per 60fps-frame and the position gains that velocity, so
                  both terms take the scale or a spent arrow falls at the
                  refresh rate too. */
-              var _fdt = S._dtScale || 1;
+              var _fdt = _combatDt(S);
               a._fallVy = (a._fallVy || 0) + 0.9 * _fdt;
               a._plantY = (a._plantY != null ? a._plantY : a._plantStartY) + a._fallVy * _fdt;
               a._renderX = a._plantX;
@@ -1481,7 +1490,7 @@ export function updateArrows(S, deps) {
                which is the half that was broken.
                `life` becomes fractional — every reader compares or divides
                (`life <= 0`, `life / 20` for the fade), none index by it. */
-            var _pdt = S._dtScale || 1;
+            var _pdt = _combatDt(S);
             var _dist0 = a.dist;   /* v2.3.2473: where this frame's step STARTED -- see the prev-point seed below */
             /* v2.3.2262: `speedPx` is an optional per-projectile override.  The
                magic special's three orbs each fly at their own speed (fast,
@@ -2771,7 +2780,7 @@ export function updateSlimeProjectiles(S) {
         if (S.slimeProjectiles && S.slimeProjectiles.length > 0) {
           var _R6P = S.rpg || {};
           var _pInvuln = Date.now() < (S.respawnTimer || 0);
-          var _sdt = S._dtScale || 1;
+          var _sdt = _combatDt(S);
           S.slimeProjectiles = S.slimeProjectiles.filter(function (proj) {
             /* v2.3.1770: same frame-rate term as the arrow above.  A monster's
                shot that flies faster on a faster screen gives the player less

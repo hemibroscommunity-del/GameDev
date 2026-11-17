@@ -172,7 +172,7 @@ const cellBytes = (d, W, i, fw, fh) => { const out = new Uint8ClampedArray(fw * 
     && /return _stripFrames\(bundle, url, fw, fh, img, n, packed, read, whole\);/.test(gently));
   const tail = gently.slice(gently.indexOf('if ((_gen.get(bundle) || 0) !== gen)'));
   check('4g. a zone left while its strip was unpacked keeps nothing, and nothing waits after that check', /packed\.canvas\.width = 0/.test(tail) && /return \[\];/.test(tail) && !/await /.test(tail));
-  check('4h. `?stripgentle=0` is the old way', /stripgentle=\(0\|off\|false\)/.test(zt) && /if \(_gentleOff \|\| !_play\) return 0;/.test(zt));
+  check('4h. `?stripgentle=0` is the old way', /sw\('stripgentle'\)/.test(zt) && /if \(_gentleOff \|\| !_play\) return 0;/.test(zt));
   const bt = readFileSync(join(ROOT, 'src/ui/BroTown.jsx'), 'utf8');
   const play = bt.slice(bt.indexOf('setStripPlay(function () {'), bt.indexOf('setStripPlay(function () {') + 520);
   check('4i. "in play" is no loading hold up and the tab on screen; then the frame\'s own length',
