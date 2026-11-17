@@ -12,8 +12,8 @@
  *      goes from the second phone too; out again, it comes back;
  *   4. MORE ROOM: 10 places for 1,000 gold, asked once, the worker's record
  *      40 places and the gold gone;
- *   5. THE WARD IN A REAL FIGHT: a Frost Ridge snowman's chill lands 660 ms
- *      long, not 1,000, the hit saying wd 34; "Ward 34%" over the pet, its
+ *   5. THE WARD IN A REAL FIGHT: a Frost Ridge snowman's chill lands the
+ *      worker's FREEZE.CHILL_MS less the ward's 34%, the hit saying wd 34; "Ward 34%" over the pet, its
  *      ring drawn;
  *   6. THE REVEAL: a forced golden Big catch -- "Golden!" and "Big one!"
  *      over the trap, the card headed "A big golden one!" with its glow, the
@@ -227,7 +227,12 @@ async function steps({ A, B, wsPort, rec, errors }) {
   });
   rec.ok('the player came through the ward fight alive (guard)', !alive.dying && alive.deaths === 0, alive);
   const ring = await A.page.evaluate(() => window._pixiRenderer.petDrawn());
-  rec.ok(`a snowman's chill lands ${got && got.stMs} ms, not 1000, the hit saying wd ${got && got.wd}`, !!got && got.stMs === 660 && got.wd === 34, got);
+  /* v2.3.5643: a snowball's chill is the longer one (`freezehit`, on): the game's
+     own FREEZE.CHILL_MS (2000), less the ward's 34% -- read off the worker's
+     table, not a number written here (it was CHILL.MS, 1000, before) */
+  const { FREEZE } = await import(H.REPO + '/server/src/monsterstatus.js');
+  const wantMs = Math.round(FREEZE.CHILL_MS * (1 - 34 / 100));
+  rec.ok(`a snowman's chill lands ${got && got.stMs} ms (the ward's 34% off the ${FREEZE.CHILL_MS}), the hit saying wd ${got && got.wd}`, !!got && got.stMs === wantMs && got.wd === 34, { ...got, wantMs });
   rec.ok(`..."${wardSaid.said}" over the pet, and its ring drawn (${ring && ring.wards} time(s))`, wardSaid.said === 'Ward 34%' && !!ring && ring.wards >= 1, { wardSaid, ring });
   await shot(A, 'ward');
   await H.devOp(wsPort, 'vitals', aId, { heal: true, god: true, godMinutes: 10 });

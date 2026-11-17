@@ -39,6 +39,9 @@ const at = (q) => new Function('_q', section + '\nreturn { wantedPath, WANTED };
    suite that plays a switch by that text. */
 const ROWS = [
   ['?fishspot=0', '/sprites/world/fish-spot-627.webp'],   /* v2.3.5565 */
+  ['?hudbars=0', '/ui/bars/hp-frame.png'],                /* v2.3.5566 (and the pills, /icons/ui/bar-*.webp) */
+  ['?deathstrip=0', '/sprites/players/death-v1.png'],     /* v2.3.5567 */
+  ['?uploadicons=0', '/icons/ui/blocks-stam.webp'],       /* v2.3.5569 (and the mana strip, the Bro badge) */
 ];
 const OTHER = '/sprites/pets/pet-sheet.png';   /* another family's, read from its twin by default */
 

@@ -49,7 +49,10 @@
  * switching a phone to a key it could not play, and the restart refuses.
  *
  * Kill switch `devicelock: false`: the join, the login check and the restart as
- * they were, nothing read or written for it.
+ * they were -- nothing refused, and (v2.3.5584) only a matching old key's
+ * device recorded, so the lock can come back on without locking a player out
+ * or handing the character to whichever device comes first (`offdevs`, "WHILE THE LOCK IS OFF"
+ * below; `offdevs: false` reads and writes nothing for it, as before).
  */
 import { BOTFP } from './botfp.js';
 import { makeLoginKey } from './keywords.js';   /* v2.3.3355: the owner's "Give it a new key" */
@@ -131,9 +134,55 @@ export const deviceLockMethods = {
     return !(f && typeof f === 'object' && own(f, 'devicelock') && !f.devicelock);
   },
 
+  /* ═══ v2.3.5584: WHILE THE LOCK IS OFF, ITS DEVICES ARE STILL WRITTEN DOWN ═══
+     The red team (RT-1, 5584): with `devicelock: false` a join wrote no
+     device -- a character made then had no list, and one played from a new
+     phone did not list it.  Turned back on, each went wrong one way or the
+     other: no list and the fill done is refused for everyone (v2.3.5582, the
+     owner's own player shut out on the phone they had played on all along);
+     an explicit empty list, or `oldkeylock: false`, hands the character to
+     whichever device comes first -- anyone's who holds the key.  So while the
+     lock is off, a join whose OLD key matched still records the device it
+     came from (the 'first' rule's own write, _deviceRemember: one put, and
+     only for a device not yet listed -- never a write a join), and:
+       - a SEALED record (the owner's Forget) is never added to: its seal
+         waits for the owner's pass, as with the lock on;
+       - a record with NO list (from before the lock) waits for the one-time
+         fill first, so the devices the worker already knew are not lost (the
+         fill skips a record that has a list); a fill that fails records
+         nothing, and the next join tries again;
+       - a new character made while it is off is registered with its device
+         (join.js), and with NO list when the join names none -- never an
+         explicit empty list, which would hand its first device after the
+         lock comes back to whoever comes first;
+       - a pass is not spent; nothing is refused.
+     It records only what the lock being off already let in: the key is the
+     only gate then, so whoever played is listed, as with the lock on (the
+     spec's "someone already in").  A new key never comes here (it is good
+     from any device).  Kill switch `offdevs: false`: nothing recorded while
+     the lock is off, as before. */
+  _offDevsOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && own(f, 'offdevs') && !f.offdevs);
+  },
+
+  async _deviceOffRecord(id, auth, device, now) {
+    let a = auth;
+    if (!a || typeof a !== 'object' || a.sealed) return;
+    if (!Array.isArray(a.devs)) {
+      await this._deviceFillReady(now);
+      if (!this._devFilled) return;
+      a = (await this.state.storage.get('auth:' + id)) || a;
+      if (!a || typeof a !== 'object' || a.sealed) return;
+    }
+    if (Array.isArray(a.devs) && a.devs.some((e) => e && e.d === device)) return;
+    this._dlTally('off');
+    await this._deviceRemember(id, a, device, 'first', now);
+  },
+
   /* the overview's counts */
   _dlTally(k, n) {
-    const c = this._dlCount || (this._dlCount = { known: 0, first: 0, pass: 0, refused: 0, checks: 0 });
+    const c = this._dlCount || (this._dlCount = { known: 0, first: 0, pass: 0, refused: 0, checks: 0, off: 0 });
     c[k] = (c[k] || 0) + (n || 1);
   },
 
@@ -157,12 +206,12 @@ export const deviceLockMethods = {
   },
 
   /* ═══ v2.3.5582: AN OLD KEY NEVER ADDS A DEVICE BY ITSELF ═══
-     The red team (RT-1, finding N1; docs/security/rt1-findings.md): an old
-     key -- four words of fifty and a number, ~29 bits -- is worked out from
-     its character's PUBLIC id, which carries the key's first two words and a
-     31-bit hash of the whole (passphraseToId, src/networking/index.js): 20 of
-     20 keys in about 0.15 s each, offline.  The device lock held it to the
-     character's devices, except where the character had none on its list:
+     The red team (RT-1, finding N1; docs/security/rt1-findings.md) showed
+     an old key is not a secret: anyone may hold it without its player.
+     (How is the findings' business, never this file's: v2.3.5584 took the
+     recipe out, as the repository may be public one day.)  The device lock
+     held it to the character's devices, except where the character had none
+     on its list:
      there the first-device rule gave the thief the character, a new key, and
      shut its player out (its device no longer on the list).  So an old key
      for a character with NO list -- one from before the device lock (it had
@@ -280,7 +329,11 @@ export const deviceLockMethods = {
   /* The join's half (join.js _verifyJoinAuth, after the key matched):
      true to let it in, 'device' to refuse. */
   async _deviceLockJoin(id, auth, device, now) {
-    if (!this._deviceLockOn()) return true;
+    if (!this._deviceLockOn()) {
+      /* v2.3.5584: its device still written down (above) */
+      if (device && this._offDevsOn()) await this._deviceOffRecord(id, auth, device, now);
+      return true;
+    }
     let a = auth;
     if (!Array.isArray(a.devs)) {
       await this._deviceFillReady(now);
@@ -388,6 +441,7 @@ export const deviceLockMethods = {
     return {
       on: this._deviceLockOn(), filled: !!this._devFilled, fill: this._devFillInfo || null,
       known: c.known || 0, first: c.first || 0, pass: c.pass || 0, refused: c.refused || 0, checks: c.checks || 0,
+      off: c.off || 0,   /* v2.3.5584: devices recorded while the lock was off */
     };
   },
 };

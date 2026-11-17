@@ -37,10 +37,10 @@ const DIGIT_LOOK = Object.freeze({ 0: 'o', 1: 'i', 3: 'e', 4: 'a', 5: 's', 7: 't
    Cherokee letters that look Latin, each in both its cases (the fold lowers
    the name first, and a capital Cherokee letter lowers to U+AB70-ABBF) */
 const CHEROKEE = Object.freeze({
-  'Ꭰ': 'd', 'Ꭱ': 'r', 'Ꭲ': 't', 'Ꭵ': 'i', 'Ꭹ': 'y', 'Ꭺ': 'a', 'Ꭻ': 'j', 'Ꭼ': 'e',
-  'Ꮃ': 'w', 'Ꮇ': 'm', 'Ꮋ': 'h', 'Ꮐ': 'g', 'Ꮒ': 'h', 'Ꮓ': 'z', 'Ꮟ': 'b', 'Ꮢ': 'r',
-  'Ꮤ': 'w', 'Ꮥ': 's', 'Ꮩ': 'v', 'Ꮪ': 's', 'Ꮮ': 'l', 'Ꮯ': 'c', 'Ꮲ': 'p', 'Ꮶ': 'k',
-  'Ᏼ': 'b',
+  '\u13a0': 'd', '\u13a1': 'r', '\u13a2': 't', '\u13a5': 'i', '\u13a9': 'y', '\u13aa': 'a', '\u13ab': 'j', '\u13ac': 'e',
+  '\u13b3': 'w', '\u13b7': 'm', '\u13bb': 'h', '\u13c0': 'g', '\u13c2': 'h', '\u13c3': 'z', '\u13cf': 'b', '\u13d2': 'r',
+  '\u13d4': 'w', '\u13d5': 's', '\u13d9': 'v', '\u13da': 's', '\u13de': 'l', '\u13df': 'c', '\u13e2': 'p', '\u13e6': 'k',
+  '\u13f4': 'b',
 });
 const LOOKS = (() => {
   const m = Object.create(null);
@@ -52,7 +52,9 @@ const LOOKS = (() => {
    read as another when put together (vv a w, rn an m, cl a d) and an l read
    as an i, on both sides: a word is on the list when it reads as a listed
    word this way too ("Ovvner", "Adrnin", "Mocl", "Admln", "Offlcial") */
-const together = (w) => w.replace(/vv/g, 'w').replace(/rn/g, 'm').replace(/cl/g, 'd').replace(/i/g, 'l');
+/* v2.3.5627 (sitting 22's review): the l and the i first, so a "cl" made of an
+   i ("Officlal", "Offlclal") reads as the "ci" it stands for, on both sides */
+const together = (w) => w.replace(/i/g, 'l').replace(/vv/g, 'w').replace(/rn/g, 'm').replace(/cl/g, 'd');
 const READS = new Set(RESERVED_NAME_WORDS.map(together));
 const listed = (w) => WORDS.has(w) || READS.has(together(w));
 const COMBINING = /\p{M}/gu;
