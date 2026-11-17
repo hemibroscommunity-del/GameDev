@@ -58,7 +58,8 @@ switch allows it.
   (flood.js); the relay's allowlist and its rebuild in the sender's name
   (relay.js); `PRIVILEGED_EVENTS`; the origin lock; a web request's body
   cap (v2.3.5720, `wire/door.js` `BODY_CAP`, `bodycap`); the look relay's
-  pace, bytes and fields (v2.3.5721, `lookrelay.js` `LOOK_PACE`, `lookpace`).
+  pace, bytes and fields (v2.3.5721, `lookrelay.js` `LOOK_PACE`, `lookpace`);
+  a Workshop run's safe ground (v2.3.5725, `dungeon.js`, `dungeonground`).
 - Every save and payment rule; the login key, the device lock, the lockouts;
   a frozen account.
 - PvP consent and **every check on a hit between players** (pvpbalance.js,

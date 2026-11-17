@@ -202,6 +202,13 @@ export const DUNGEON_PHASES = Object.freeze(['active', 'boss', 'done']);
 export const DUNGEON_WAYS = Object.freeze({ boss: 'boss', clear: 'done' });
 
 export const dungeonMethods = {
+  /* v2.3.5725: `dungeonground: false` in the live flags and a Workshop run
+     starts anywhere, as before (on unless its own falsy value) */
+  _dungeonGroundOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'dungeonground') && !f.dungeonground);
+  },
+
   /* v2.3.5215: the dungeon door's kill switch (live flag `dungeondoor: false`) */
   _dungeonDoorOff() {
     const f = this._liveFlags;
@@ -405,6 +412,20 @@ export const dungeonMethods = {
       cfg = w.cfg;
       back = w.back;
     } else {
+      /* ═══ v2.3.5725 (card K2 PR 6b; the second red team): A WORKSHOP RUN
+         STARTS ON SAFE GROUND ═══
+         A start that names no mouth (the Workshop's own config) was taken
+         wherever the player stood, so one out in a land, mid-fight, stepped
+         straight into a run of its own and out of the fight.  The Workshop
+         is in BroTown's safe commons: such a start is now refused off the
+         Wheel's safe ground (`_wheelSafeAt`, as the board and the login
+         spin ask), with the door's own `not-now` words (no new words).
+         Other zones (today's town, the farm) as before.  `dungeonground:
+         false` in the live flags: taken anywhere, as before. */
+      if (this._dungeonGroundOn() && ps.z === 'wheel' && typeof this._wheelSafeAt === 'function'
+          && !this._wheelSafeAt(ps.x, ps.y)) {
+        return this._dungeonError(session.id, 'not-now', 'Cannot start a dungeon right now');
+      }
       cfg = this._dungeonSanitizeConfig((payload && payload.config) || payload, ps);
     }
     const id = crypto.randomUUID().slice(0, 8);

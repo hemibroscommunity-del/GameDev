@@ -4817,7 +4817,13 @@ export class GameRoom {
       }
       return;
     }
-    return this._onMessage(ws, session, msg);
+    /* v2.3.5725 (card K2 PR 6a; the second red team): a frame of its own is
+       caught as a bundle's part is (above): a handler that throws -- an
+       object where it reads a scalar -- drops only that message, logged as
+       the bundle logs it, and never reaches the runtime as the room's own
+       uncaught error. */
+    try { return await this._onMessage(ws, session, msg); }
+    catch (e) { try { console.error('[message] ' + String(msg && msg.type).slice(0, 64) + ' threw:', e && e.message); } catch {} }
   }
 
   /* v2.3.3254: one message, out of a frame of its own or a bundle (above) */
