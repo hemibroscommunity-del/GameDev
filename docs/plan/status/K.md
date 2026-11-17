@@ -1,6 +1,6 @@
 card: K
-branch: claude/plan-k-13-sends-a (5198; 5199 is claude/plan-k-13-sends-b, on it)
-prs: #1822 to #1989, #1981, #1997, #1999, #2006, #2003 merged; open: 5198 (this branch)
+branch: claude/plan-k-13-sends-b (5199, on #2013 5198)
+prs: #1822 to #1989, #1981, #1997, #1999, #2006, #2003 merged; open: #2013 (5198), #2014 (5199, this branch)
 state: ready
 
 ## Done

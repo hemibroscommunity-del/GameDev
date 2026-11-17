@@ -1665,7 +1665,7 @@ export const gatheringMethods = {
          harvest_credit event so the client can fire the appropriate
          floating popups. */
       try {
-        ws.send(JSON.stringify({
+        this._send(ws, {
           type: 'harvest_credit',
           payload: {
             nodeId: id,
@@ -1678,7 +1678,7 @@ export const gatheringMethods = {
             /* v2.3.4036: the fish's key and variant, for the catch's words */
             ...(fishCaught ? { fish: fishCaught } : {}),
           },
-        }));
+        });
       } catch (e) {}
     }
   },

@@ -500,7 +500,7 @@ export const arenaMethods = {
       const ws = this._wsBySessionId(pid);
       if (ws) {
         try {
-          ws.send(JSON.stringify({ type: 'arena_match_start', payload: this._arenaStartPayload(t, m, pid) }));
+          this._send(ws, { type: 'arena_match_start', payload: this._arenaStartPayload(t, m, pid) });
         } catch (e) {}
       }
     }
@@ -523,7 +523,7 @@ export const arenaMethods = {
     if (!t || t.status !== 'running' || !ws) return;
     const m = t.matches.find((x) => x.active && !x.winner && x.round === t.round && (x.a === playerId || x.b === playerId));
     if (!m) return;
-    try { ws.send(JSON.stringify({ type: 'arena_match_start', payload: { ...this._arenaStartPayload(t, m, playerId), rejoin: true } })); } catch (e) {}
+    try { this._send(ws, { type: 'arena_match_start', payload: { ...this._arenaStartPayload(t, m, playerId), rejoin: true } }); } catch (e) {}
   },
 
   /* ═══ v2.3.4413: IS THIS FIGHTER IN A MATCH? THE DUEL'S RECORD SAYS ═══
@@ -578,7 +578,7 @@ export const arenaMethods = {
       const tgt = payload && payload.targetId;
       if (typeof tgt === 'string' && tgt.length <= 64) out.targetId = tgt;
       if (m && typeof m.id === 'string') out.matchId = m.id;
-      if (ws) { try { ws.send(JSON.stringify({ type: 'arena_stake_error', payload: out })); } catch (e) {} }
+      if (ws) { try { this._send(ws, { type: 'arena_stake_error', payload: out }); } catch (e) {} }
     };
     const t = this._arena;
     if (!t || t.status !== 'running') return err('no-tournament', 'No tournament running');
@@ -637,7 +637,7 @@ export const arenaMethods = {
     const ws = this._wsBySessionId(session.id);
     if (ws) {
       try {
-        ws.send(JSON.stringify({ type: 'arena_stake_placed', payload: { matchId: m.id, targetId, targetName: targetId === m.a ? m.aName : m.bName, amount } }));
+        this._send(ws, { type: 'arena_stake_placed', payload: { matchId: m.id, targetId, targetName: targetId === m.a ? m.aName : m.bName, amount } });
       } catch (e) {}
     }
     // v2.3.1210: refresh the spectator board now this stake landed.
@@ -735,7 +735,7 @@ export const arenaMethods = {
           const ws = this._wsBySessionId(x.rec.sponsorId);
           if (ws) {
             try {
-              ws.send(JSON.stringify({ type: 'arena_stake_result', payload: { matchId, targetId: x.rec.targetId, won, amount: x.rec.amount, payout: won ? (payout.get(x.rec.sponsorId) || 0) : 0 } }));
+              this._send(ws, { type: 'arena_stake_result', payload: { matchId, targetId: x.rec.targetId, won, amount: x.rec.amount, payout: won ? (payout.get(x.rec.sponsorId) || 0) : 0 } });
             } catch (e) {}
           }
         }
@@ -772,7 +772,7 @@ export const arenaMethods = {
         const ws = this._wsBySessionId(x.rec.sponsorId);
         if (ws) {
           try {
-            ws.send(JSON.stringify({ type: 'arena_stake_result', payload: { matchId, targetId: x.rec.targetId, won, amount: x.rec.amount, payout: won ? (payout.get(x.rec.sponsorId) || 0) : 0 } }));
+            this._send(ws, { type: 'arena_stake_result', payload: { matchId, targetId: x.rec.targetId, won, amount: x.rec.amount, payout: won ? (payout.get(x.rec.sponsorId) || 0) : 0 } });
           } catch (e) {}
         }
       }

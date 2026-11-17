@@ -186,8 +186,9 @@ function body(src, name) {
 }
 
 /* ── 8. the census ── */
-const LINE = 28;   /* v2.3.5193: 150 on main 78f70f4a (140 `.send(JSON.stringify` and 10 of frames made first); 57 moved behind the helpers.
-                      v2.3.5198 (card K PR 13, batch 1): every file no card holds, 65 more: 28 left, all in the second batch's (cooking, dungeon, gathering, gladiator, join, persistence, prog3, quests) */
+const LINE = 0;   /* v2.3.5193: 150 on main 78f70f4a (140 `.send(JSON.stringify` and 10 of frames made first); 57 moved behind the helpers.
+                      v2.3.5198 (card K PR 13, batch 1): every file no card holds, 65 more: 28 left, all in the second batch's (cooking, dungeon, gathering, gladiator, join, persistence, prog3, quests).
+                      v2.3.5199 (batch 2): those 28: 0, the door the one place a frame is written (the gatekeeper makes it strict) */
 {
   const found = [];
   const walk = (dir) => {

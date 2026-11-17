@@ -1347,7 +1347,7 @@ export const prog3Methods = {
       const ws = this._wsBySessionId(playerId);
       if (ws) {
         try {
-          ws.send(JSON.stringify({
+          this._send(ws, {
             type: 'prog3_level',
             payload: {
               skill: cat, level: sk.level, pool: p3.pool, charLevel: ps.level,
@@ -1374,7 +1374,7 @@ export const prog3Methods = {
                  "this level crossed no rung". */
               abilities: this._abilityUnlockList(ps),
             },
-          }));
+          });
         } catch (e) {}
       }
       this._queuePlayerStateFlush(playerId);
@@ -1483,13 +1483,13 @@ export const prog3Methods = {
     const ws = this._wsBySessionId(session.id);
     if (ws) {
       try {
-        ws.send(JSON.stringify({
+        this._send(ws, {
           type: 'prog3_allocated',
           /* v2.3.2176: the breakdown rides the ack so the lane counts move
              the moment the spend settles, not on the next player_state.
              v2.3.2592: and the shared pool with it. */
           payload: { ...applied, pool: p3.pool, poolBy: { ...p3.poolBy }, shared: p3.shared },
-        }));
+        });
       } catch (e) {}
       this._sendPlayerState(ws, session.id);
     }
