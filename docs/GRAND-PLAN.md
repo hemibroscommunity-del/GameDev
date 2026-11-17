@@ -334,7 +334,7 @@ devices it waits for: with one player, the table is empty for weeks.
 - [ ] **2.2b [LATER] The look palette on computers**: a smaller program
   (TRAPS §259's cure), built without blocking against a deadline, else the
   bake. Waits for reports from real Windows machines.
-- [ ] **2.3 [NEXT] The governor is the pacer, grown.** One state machine,
+- [x] **2.3 [NEXT] The governor is the pacer, grown.** One state machine,
   one table: `framePacer.js` owns the one verdict "late" on every screen
   (today it gives none at 60 or 30). It picks its axis from the strip's
   split: the game's own work, then the crowd and the rate; waiting for the
@@ -366,6 +366,11 @@ devices it waits for: with one player, the table is empty for weeks.
   while the governor judges; sound out of the verdict; a rung waits 35 s),
   merged at sitting 27. A full memory now frees caches, then the crowd
   (the gatekeeper, sitting 28, tag 5666).*
+  *Done: card O's PRs are all merged (the last, #1985 5231 and #1991 5681,
+  at sitting 27). On `main` fcd1ae92, `frame-pacer.test` check 13 (a
+  node model of a heating and cooling phone, two seeds each at 30, 60 and
+  120) passes: it steps down, settles, makes no see-saw and comes back.
+  Ticked by the gatekeeper, sitting 43 (tag 5032).*
 - [ ] **2.4 [NEXT] Off-ramps become overrides of the ladder**, through one
   reader (pillar 7's table).
   *Begun (card O): #1970 (5232: the lanes' off-ramps, `?sheen`,
@@ -532,7 +537,7 @@ play, a number 1.1 can measure.
   K done. `bowshot` ON is the owner's yes (card K2's PR 8). The box waits
   for the bow's reach, the harvest and `cookstart` ON (the gatekeeper,
   sitting 37, tag 5675).*
-- [ ] **4.3 [NEXT] Doors for what is left of value**: experience and
+- [x] **4.3 [NEXT] Doors for what is left of value**: experience and
   levels, the stashes, quest state, skill points. A weapon gets an id of its
   own, as gear has.
   *Begun (card R): #1823, the skill points' door (`skillpoints.js`
@@ -559,6 +564,10 @@ play, a number 1.1 can measure.
   of review-z25), merged at sitting 27. Open: a store listing's gold and a
   buy order's `back` leg counted between the credit and the delete
   (review-z27, R's Found) (the gatekeeper, sitting 28, tag 5666).*
+  *Done: card R is done (#2015, its last, merged at sitting 32); quest
+  state (`queststate.js` `QUEST_ROADS`, `quest-door.test`) and experience
+  (`xp.js` `XP_ROADS`, `xp-door.test`) have their doors on `main`
+  fcd1ae92. Ticked by the gatekeeper, sitting 43 (tag 5032).*
 - [x] **4.4 [NOW] The whole world's sum.** "A purse equals its start plus
   the roads that ran" is true by construction; past copies went through
   legal roads (ore sold 24 times in one bundle). So every road in
@@ -1038,7 +1047,7 @@ punishes by itself.
   book's four parts (`econ`; the room's row, 1.6; the device bins,
   `report.js`'s `dev`, 1.1; `speed`). "Cases waiting" is blank until card Q
   (10.9) (the gatekeeper, sitting 12, v2.3.5369).*
-- [ ] **10.5 [NEXT] The roads between players, one table.** Every road that
+- [x] **10.5 [NEXT] The roads between players, one table.** Every road that
   moves value from one account to another, one row: its fee, its hold, its
   pace, its ledger. All zero today (a trade moves 999,999 gold with no fee,
   and the daily spin pays a new character about 464 gold). A guard fails a
@@ -1059,6 +1068,10 @@ punishes by itself.
   call), merged at sitting 32: every escrow road has its ledger row, and
   card R is done. Throwing `xferescrow` stays the owner's (the gatekeeper,
   sitting 33, tag 5671).*
+  *Done: the table, its guard and every escrow road's ledger row are on
+  `main` fcd1ae92 (card R done). Turning a fee, hold or pace up, and
+  throwing `xferescrow`, stay the owner's calls. Ticked by the gatekeeper,
+  sitting 43 (tag 5032).*
 - [ ] **10.6 [NEXT] What an honest player's trouble looks like.** Each
   signal lists what changes it without any cheating: the frame rate, the
   line's delay, a deploy, a hidden tab. Every Low Power iPhone shares one
