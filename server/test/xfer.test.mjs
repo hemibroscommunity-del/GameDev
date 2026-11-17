@@ -36,6 +36,11 @@
  *      restart at any batch, the plan and its rows both, or neither; the
  *      sweep finishes a plan with its rows already on file.  The old order
  *      (`arenasettleplan: false`) writes none.
+ *  10. v2.3.5295 (card R PR 15; the gatekeeper's sitting 23's two lows): a
+ *      match with 40 winning sponsors (more than IDS_MAX) keeps every share,
+ *      uncut, the sums still exact; other ids keep IDS_MAX.  The owner's
+ *      card (econcard.js xferSummary) counts no item for a share: a match's
+ *      rows read as gold alone, the pool, and an ordinary id still counts.
  *
  * BREAK PROOF (rule 8), tried by hand: the row's line in trade2.js moved
  * after `await together` (a run of its own) -> FAIL 3 ("a restart at any
@@ -46,13 +51,17 @@
  * between: paid, no row).  And (v2.3.5292) gladiator.js's rows pushed after
  * the plan's `await Promise.all(writes)` (a run of their own) -> FAIL 9 (a
  * restart between: the plan on file, no rows); the leftover-coin passes taken
- * out of arenaStakeParts -> FAIL 9 (the shares short of the gains).
+ * out of arenaStakeParts -> FAIL 9 (the shares short of the gains).  And
+ * (v2.3.5295) the share's own bound taken out of sideOf -> FAIL 10 (40
+ * winners: the row cut at 32 ids); xferIsShare's filter taken out of
+ * econcard.js itemsOf -> FAIL 10 (the shares counted as items).
  */
 import { makeStorage, openRoom, join, fakeWs, settle, seededClock } from './testroom.mjs';
 import { XFER, xferRow, xferKey, xferDay, xferList, xferPrunePage, xferOff, arenaStakeParts } from '../src/xfer.js';
 import { GOLD_ROADS } from '../src/gold.js';
 import { BAG_ROADS } from '../src/bag.js';
 import { PLAYER_ROADS } from '../src/playerroads.js';   /* v2.3.5280 */
+import { xferSummary } from '../src/econcard.js';   /* v2.3.5295 */
 
 let failures = 0, passes = 0;
 function check(name, cond, detail) {
@@ -396,6 +405,46 @@ async function duelTo(flags) {
     await t.room._arenaSettleStakes(TID, MID, FW); await settle(); await settle();
     check('9. the old order (`arenasettleplan: false`): settled as before, no row', rows(t.st).length === 0 && purse(t.st, FW) === 10, { rows: rows(t.st) });
   }
+}
+
+/* ══════════ 10. THE TWO LOWS (v2.3.5295) ══════════ */
+{
+  const TID = 'xf-t10', MID = 'b1b2c3d4-e5f6-4789-abcd-0123456789ab';
+  const FW = 'bp_xf10_w', FL = 'bp_xf10_l';
+  const rec0 = () => ({ _v: 21, coins: 0, inventory: {}, level: 5, hp: 100, maxHp: 100, _econ: { v: 1, g: { m: 0, b: 0 }, i: {} } });
+  const m = new Map([['rpg:' + FW, rec0()], ['rpg:' + FL, rec0()]]);
+  const winners = [], losers = [];
+  for (let i = 0; i < 43; i++) {
+    const id = 'bp_xf10_s' + i, win = i < 40, amount = win ? 10 + (i % 7) : 300 + i;
+    (win ? winners : losers).push({ id, amount });
+    m.set('rpg:' + id, rec0());
+    m.set('arena_stake:' + TID + ':' + MID + ':' + id, { tid: TID, matchId: MID, sponsorId: id, targetId: win ? FW : FL, amount, ts: clock.now() });
+  }
+  const st = makeStorage(m);
+  const room = await openRoom(st, { xferescrow: true });
+  await room._arenaSettleStakes(TID, MID, FW); await settle(); await settle();
+  const rs = rows(st).map((k) => st._store.get(k));
+  const purse = (pid) => {
+    let g = Math.floor(((st._store.get('rpg:' + pid) || {}).coins) || 0);
+    for (const e of st._store.get('inbox:' + pid) || []) if (e.kind === 'gold') g += e.payload.amount;
+    return g;
+  };
+  const got = Object.create(null);
+  for (const r of rs) for (const x of r.ids) { const p = /^share:(.+):(\d+)$/.exec(x); if (p) got[p[1]] = (got[p[1]] || 0) + +p[2]; }
+  const pool = losers.reduce((n, x) => n + x.amount, 0);
+  check('10. 40 winning sponsors (more than IDS_MAX): every share kept, no row cut, each winner\'s shares what it gained',
+    rs.length === 3 && rs.every((r) => !r.cut) && winners.every((w) => (got[w.id] || 0) === purse(w.id) - w.amount && got[w.id] > 0),
+    { rows: rs.length, cut: rs.map((r) => !!r.cut), ids: rs.map((r) => r.ids.length) });
+  const sum = xferSummary(DAY, rs.map((row) => ({ row })), false);
+  check('10. the owner\'s card counts no item for a share: the match reads as gold alone, the pool, one way',
+    sum.rows === 3 && sum.items === 0 && sum.itemsOneWay === 0 && sum.gold === pool && sum.goldOneWay === pool, sum);
+  const plain = xferSummary(DAY, [{ row: { gold: 5, goods: { ore: 2 }, ids: ['pet:p1', 'share:bp_x:3'], price: {} } }], false);
+  check('10. ...an ordinary id still counts as an item (a pet), a share beside it does not', plain.items === 3, plain);
+  const st2 = makeStorage();
+  const room2 = await openRoom(st2);
+  await xferRow(room2, { road: 'gift_trade', id: 'g10', from: 'bp_a', to: 'bp_b', gives: { _gold: 1 }, ids: Array.from({ length: 40 }, (_, i) => 'pet:' + i), price: {} });
+  const r2 = st2._store.get(xferKey(DAY, 'g10'));
+  check('10. other ids keep IDS_MAX (cut past it, as before)', r2 && r2.ids.length === XFER.IDS_MAX && r2.cut === true, r2 && { ids: r2.ids.length, cut: r2.cut });
 }
 
 clock.restore();
