@@ -15,8 +15,9 @@ state: ready
 15 M2 #2084 (5343; carries #2085, 5344) · 16 M #2089 (5340) · 17 Z (this
 PR). Heads and trees: `census/review-z42.md`; one base at every step.
 ## Held / Stalled
-- None held at review; none stalled. To 43: T2 #2088 (5743, came at the
-  close, not reviewed); the cards' next PRs (K2 10, RV 3, U2 4, M 2, M2 6).
+- None held at review; none stalled. To 43, came at the close, not
+  reviewed: T2 #2090 (5743, on #2087; meets #2084's switch-reader line:
+  merges `main` after #2084); #2088 (site hardening, not in 42's queue).
 ## Found
 - Sitting 41's (a)-(q) carried (`census/review-z41.md`); new: (r) main's
   deploy of 41's batch (8b8b5a87) failed on `switches-thrown`'s
