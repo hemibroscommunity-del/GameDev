@@ -104,6 +104,18 @@ An override pins a knob, over the lane and the ladder; the governor never moves 
 | `look` | `baked` | `windows` | Windows: ANGLE's FXC inlines the look palette's program, the loading screen stood at 75% for 5-10 minutes on the owner's laptop (v2.3.3838) |
 | `look` | `baked` | `mac` | a Mac: ANGLE's Metal inlines as FXC does, and a computer has the memory the palette saves (v2.3.3842) |
 
+The off-ramps: a switch in the address pins its knob (to a step, or to the lane's row: `-`), read through the page's one reader (`src/game/switches.js`).
+
+| Knob | Pinned to | When the address has | Why |
+|---|---|---|---|
+| `program` | `three` | `?onebatch=0` | the three programs, as before the one program |
+| `program` | `one` | `?onebatch=1` | the one program asked for (QA: a software renderer would keep the three) |
+| `look` | `baked` | `?lookpalette=0` | every look baked |
+| `look` | `palette` | `?lookpalette=1` | the look palette asked for (QA: even on Windows) |
+| `water` | `still` | `?nowaves` | the sea still |
+| `rate` | - | `?pace` | the pacer off (`?pace=0`): the rate is read by nothing |
+| `crowd` | - | `?crowd` | a crowd cap of its own (`?crowd=K`): the knob is read by nothing |
+
 ## The game's own drawing programs
 
 The report's `self` names one that failed its self-test at the door (step 1.7). Pixi's own programs are not the

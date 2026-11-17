@@ -79,6 +79,7 @@ import { setWheelWaterMoves } from '../game/wheelTrial.js';
 import { isPaletteSource, paletteAtlasSource, paletteOn, makePaletteSource } from './paletteTex.js';   /* v2.3.3190 */
 import { laneKnob, onKnob, seeKnob } from '../game/drawLanes.js';   /* v2.3.5229: the moving sea is a knob of the lanes (card O PR 9) */
 import { selfDraw, selfQueue, selfSkip, selfTestOn, selfRgba, selfIdx, selfPalBytes, selfWaterField, selfWaterWant, SELF_SIZE } from './selfTest.js';   /* v2.3.5236: the self-test at the door (card O PR 14b) */
+import { sw } from '../game/switches.js';   /* v2.3.5232 (card O PR 12): the passes' switch through the page's one reader */
 
 const VERT = `
 in vec2 aPosition;
@@ -612,7 +613,7 @@ export function setWheelWaterRenderer(r) {
 /** `?nowaves` in the address keeps the water still (the ground worker reads
  *  the same word: ground.js wavesOn). */
 export function wavesOn() {
-  try { return !/(^|[?&])nowaves(=|&|$)/.test(window.location.search || ''); } catch (e) { return true; }
+  try { return !sw('nowaves'); } catch (e) { return true; }   /* v2.3.5232 (card O PR 12): through the page's one reader */
 }
 
 function webgl2() {

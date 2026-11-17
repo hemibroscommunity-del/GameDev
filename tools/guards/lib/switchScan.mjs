@@ -469,7 +469,7 @@ export function scanWorker(files = workerFiles(), { source = null } = {}) {
 /* ═══ the page ═══ */
 /* v2.3.5306: the page's one reader, and how a file asks it */
 export const READER_FILE = 'src/game/switches.js';
-const READER_IMPORT = /from\s+['"](?:@|\.{1,2})?(?:\/[\w-]+)*\/switches(?:\.js)?['"]/;
+const READER_IMPORT = /from\s+['"](?:@|\.{1,2})?(?:\/(?:[\w-]+|\.\.))*\/switches(?:\.js)?['"]/;   /* v2.3.5232: and two folders up (`../../game/switches.js`: lightfx/) */
 
 /* v2.3.5306: a page row's form, from its `thrown` on the page: the words that throw it
    ('0|off|false'), '' its presence, '*' a value (no words: swValue reads it) */

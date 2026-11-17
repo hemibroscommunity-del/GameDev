@@ -1,7 +1,7 @@
 card: O
-branch: claude/plan-o-14d-selftest (one branch a PR; begun from #1929's head)
-prs: #1787, #1792, #1794, #1800, #1814, #1815, #1832, #1841, #1836, #1850, #1854, #1896, #1915, #1929 (merged); #1937 (5238, 14d): ready
-state: ready
+branch: claude/plan-o-12-overrides (one branch a PR; begun from main)
+prs: #1787, #1792, #1794, #1800, #1814, #1815, #1832, #1841, #1836, #1850, #1854, #1896, #1915, #1929, #1937 (merged); #1952 (5239): ready; PR 12 (5232): open
+state: working
 
 ## Done
 
@@ -20,10 +20,9 @@ state: ready
 
 ## Next
 
-- #1929 (5237, 14c, merged): fill, glint; #1937 (5238, 14d, ready): the clip.
-- 5239 (after 14d; the planner for the owner): a failed fill or glint falls
-  back alone (CLAUDE.md §7), not drawn as today.
-- PR 11 waits for card P; 12 for card T's PR 6; 13 for card SK.
+- #1952 (5239, ready): a failed fill, glint or clip falls back alone.
+- PR 12 (5232, open): the off-ramps through T's reader, pinning their knobs.
+- PR 11 waits for card H's done and card P; 13 for card H's done.
 
 ## Found
 
@@ -32,6 +31,7 @@ state: ready
   `phases.js` (`ladder`); `DOOR_SUITES` (frame-pacer).
 - A suite importing `src/rendering/**` stands in for `pixi.js` (CI installs
   only server/'s packages). Traps §225, §259: names now in `deviceProfile.js`.
+- PR 12 leaves BroTown.jsx's `framePaceOn(location.search)` (not O's file).
 - `mp-palette` is red on main 3876051 (4 of 15: shadow bases 6 of 13 and
   23 of 40; water 1364 px), the same with 14a: for card Z.
 
