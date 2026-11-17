@@ -1,6 +1,6 @@
 card: L
-branch: claude/plan-l-30-page-halves (from main)
-prs: #1746 to #2022 (merged), #2027 (5530): ready
+branch: claude/plan-l-31-arena-page (from main)
+prs: #1746 to #2027 (merged), #2031 (5531): ready
 state: ready
 
 ## Done
@@ -10,14 +10,14 @@ state: ready
   doors; the resets, 484 -> 233 rows.
 - PR 5, 5210-5217, 5522-5523: the worker's trade, duel, party, cook, harvest+
   fishing, dungeon, pose, race, arena, ride doors; the page's (5218-5219,
-  5520-5521, 5525-5530): race, harvest+cook+fishing, pose, guard, veils, windows,
-  connection, duel, party, trade, ride.
+  5520-5521, 5525-5531): race, harvest+cook+fishing, pose, guard, veils, windows,
+  connection, duel, party, trade, ride, arena.
 - 5524: the Saloon's alliance drafts outlive a rejoin (J2's find).
 
 ## Next
 
-- Next: the page halves left (life, fight, arena, dungeon), grouped
-  by file. Guard (worker) waits for K's item 14 (index.js, combat.js).
+- Next: the page halves left (life, fight, dungeon), grouped
+  by file. Guard (worker) waits for K2's index.js PRs (planner, 15:52).
 
 ## Found
 
