@@ -24,8 +24,7 @@ import { forgeLevelFor, forgeOffered } from './forgeladder.js'; /* v2.3.3524: th
 import { ELEMENT_STATUS } from './elemental.js'; /* v2.3.3513: a weapon's gems are checked on the way in */
 import { isVolatilePair } from './weapongem.js'; /* v2.3.3513 */
 import { bagTake } from './bag.js'; /* v2.3.4810: the bag door */
-import { stashGive, stashTake, stashSet } from './stash.js';   /* v2.3.5281: the stashes' door (card R PR 2) */
-import { GID_RE } from './gearprov.js';   /* v2.3.5294: a weapon's own id, read before it is written (card R PR 14) */
+import { stashGive, stashTake, stashSet, weaponIdOk, weaponIdGive } from './stash.js';   /* v2.3.5281: the stashes' door (card R PR 2); v2.3.5282: a weapon's own id */
 
 export const gearMethods = {
   /* v2.3.4386: `gearresend: false` in the live flags is the way back to the
@@ -135,7 +134,7 @@ export const gearMethods = {
        mail, a market sell order, an auction listing, a trade window's
        weapon, the join's load.  A phone's claim (strict) never names an id,
        and a malformed one is dropped (gear stays gear: _isGearNotWeapon) */
-    if (strict || typeof out.gid !== 'string' || !GID_RE.test(out.gid)) delete out.gid;
+    if (strict || !weaponIdOk(out)) delete out.gid;   /* v2.3.5282: stash.js weaponIdOk (GID_RE) */
     out.tierMult = (typeof out.tierMult === 'number' && out.tierMult > 0)
       ? Math.min(8, out.tierMult) : 1;
     if (strict) {
@@ -315,7 +314,7 @@ export const gearMethods = {
        worker minted carries `prov` beside its gid, always (_gearProvRecord),
        and a weapon never does; a gid the minter did not write is not a
        weapon's either.  So gear is `prov`, or a gid not well-formed. */
-    return !!(w && typeof w === 'object' && ('prov' in w || ('gid' in w && !(typeof w.gid === 'string' && GID_RE.test(w.gid)))));
+    return !!(w && typeof w === 'object' && ('prov' in w || ('gid' in w && !weaponIdOk(w))));   /* v2.3.5282: stash.js weaponIdOk (GID_RE) */
   },
 
   // ═══ v2.3.1661: THE server equip gate (PROGRESSION-REDESIGN §6) ═══
@@ -664,6 +663,7 @@ export const gearMethods = {
       hardness: 0,
       temper: 0,
     };
+    weaponIdGive(ps[slot]);   /* v2.3.5282: a weapon just made, its own id */
 
     // Crafting XP -- mirrors client at the forge sites:
     //   blacksmithing: tier.minLvl * 5

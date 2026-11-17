@@ -45,7 +45,11 @@ function holdBag(ctx, bag) {
   for (const k of Object.keys(bag)) add(ctx.goods, k, wholeCount(bag[k]));
 }
 const GEAR_FIELDS = ['armor', 'legsArmor', 'shield', 'amulet', 'weapon', 'rangedWeapon', 'staffWeapon'];
-const STASH_FIELDS = ['armorStash', 'legsStash', 'shieldStash', 'gearStash', 'amuletStash'];
+/* v2.3.5282 (card R PR 3): + the weapon bag, now that a weapon carries its
+   own gid (stash.js): counted by id, as gear is, in one place */
+const STASH_FIELDS = ['weaponStash', 'armorStash', 'legsStash', 'shieldStash', 'gearStash', 'amuletStash'];
+/* a weapon held in a place, by its id (v2.3.5282) */
+const holdWeapon = (ctx, w, where) => { if (w && typeof w === 'object' && typeof w.gid === 'string' && w.gid) ctx.ids.push(['gear', w.gid, where]); };
 function holdGear(ctx, rec, where) {
   for (const f of GEAR_FIELDS) { const p = rec && rec[f]; if (p && typeof p === 'object' && typeof p.gid === 'string' && p.gid) ctx.ids.push(['gear', p.gid, where]); }
   for (const f of STASH_FIELDS) for (const p of (rec && Array.isArray(rec[f]) ? rec[f] : [])) if (p && typeof p.gid === 'string' && p.gid) ctx.ids.push(['gear', p.gid, where]);
@@ -78,15 +82,25 @@ export const READERS = {
       if (e.kind === 'gold') { const n = Math.max(0, Math.floor(p.amount || 0)); ctx.gold += n; ctx.net.gold += mailMinted(e, n); }
       else if (e.kind === 'item' && typeof p.invKey === 'string') { const n = Math.max(1, Math.floor(p.count || 1)); add(ctx.goods, p.invKey, n); add(ctx.net.goods, p.invKey, mailMinted(e, n)); }
       else if (e.kind === 'gear' && p.piece && typeof p.piece.gid === 'string') ctx.ids.push(['gear', p.piece.gid, key]);
+      else if (e.kind === 'weapon') holdWeapon(ctx, p.weapon, key);   /* v2.3.5282 */
       else if (e.kind === 'pet' && p.pet && typeof p.pet.id === 'string') ctx.ids.push(['pet', p.pet.id, key]);
     }
   },
   'pets:': (ctx, key, v) => { for (const pet of (v && Array.isArray(v.list) ? v.list : [])) if (pet && typeof pet.id === 'string') ctx.ids.push(['pet', pet.id, key]); },
-  'mkt_order:': (ctx, key, v) => { ctx.gold += orderEscrowGold(v); /* a sell order holds a weapon: summed once weapons carry a gid (step 4.3) */ },
+  'mkt_order:': (ctx, key, v) => {
+    ctx.gold += orderEscrowGold(v);
+    /* v2.3.5282: a sell order's weapon, by its id -- but not once a noted
+       sale's item leg is stamped paid (market.js _mktSettleRun: the weapon
+       is the buyer's now; the record goes when every leg is): as a listing's
+       `goodsPaid` (the gatekeeper's sitting 23, its worldsum.js:90 low) */
+    const paid = !!(v && v.settle && typeof v.id === 'string' && ctx.stamped && ctx.stamped('settle:' + v.id + ':item'));
+    if (v && v.type === 'sell' && !paid) holdWeapon(ctx, v.item, key);
+  },
   'store_listing:': (ctx, key, v) => {
     if (!v) return;
     if (v.kind === 'item' && typeof v.invKey === 'string' && !(v.sale && v.sale.goodsPaid)) add(ctx.goods, v.invKey, Math.max(0, Math.floor(Number(v.qty) || 0)));
     if (v.kind === 'gear' && v.gear && typeof v.gear.gid === 'string') ctx.ids.push(['gear', v.gear.gid, key]);
+    if (v.kind === 'weapon' && !(v.sale && v.sale.goodsPaid)) holdWeapon(ctx, v.weapon, key);   /* v2.3.5282 */
     if (v.kind === 'pet' && v.pet && typeof v.pet.id === 'string') ctx.ids.push(['pet', v.pet.id, key]);
     if (v.topBid && Number(v.topBid.amount) > 0) ctx.gold += Math.floor(Number(v.topBid.amount));
     for (const o of Object.values(v.offers || {})) if (o && Number(o.gold) > 0) ctx.gold += Math.floor(Number(o.gold));
@@ -97,7 +111,7 @@ export const READERS = {
   'arena_stake:': (ctx, key, v) => { ctx.gold += Math.max(0, Math.floor(Number(v && v.amount) || 0)); },
   'bounty:': (ctx, key, v) => { ctx.gold += Math.max(0, Math.floor(Number(v && v.amount) || 0)); },
   'jackpot:draw': (ctx, key, v) => { ctx.gold += Math.max(0, Math.floor(Number(v && v.pool) || 0)); },
-  'trade2wpn:': () => { /* a weapon: summed once weapons carry a gid (step 4.3) */ },
+  'trade2wpn:': (ctx, key, v) => { holdWeapon(ctx, v && v.weapon, key); /* v2.3.5282: a weapon in a trade window, or owed after it, by its id */ },
   'death_pile:': (ctx, key, v) => {
     /* a pile is counted once: from the ground while the room holds it, from
        its row only before the room has restored it */
@@ -195,6 +209,7 @@ export function count(room, state, readers = READERS) {
     }
   }
   const keys = [...store.keys()].sort();
+  ctx.stamped = (opId) => store.has('oplog:' + opId);   /* v2.3.5282: a stamp on file (a noted sale's leg paid) */
   for (const key of keys) worldAdd(ctx, key, store.get(key), readers);
   const dup = [];
   const seen = new Map();

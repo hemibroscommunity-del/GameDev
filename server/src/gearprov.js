@@ -71,12 +71,22 @@
    unbounded-list-on-the-join-path stall. */
 import { stashTake } from './stash.js';   /* v2.3.5281: the stashes' door (card R PR 2) */
 
-/* v2.3.5294 (card R PR 14): a gid as the minter writes it (_gearProvMintId
-   below): 'g' + the time + '.' + the counter + '.' + four random
-   characters.  The weapon reader (gear.js _isGearNotWeapon, _sanitizeWeapon)
-   reads it, so a worker that comes before every weapon's own id (card R
-   PR 3, tag 5282) already keeps a weapon that carries one, should that
-   worker ever be rolled back to. */
+/* ═══ v2.3.5282: THE ONE MINTER (card R PR 3; SHAPES part 2) ═══
+   A made thing's id, `gid`: a piece of gear's (its ledger's counter) and,
+   since this version, a weapon's (the stashes' door's counter, stash.js; a
+   weapon has no ledger row: SHAPES part 2, the card's reading).  Pure, so
+   the save's migration mints with it too.  'g' + the time + '.' + the
+   counter + '.' + four random characters: two never meet.  No second name
+   is made: the field on the piece is `gid` either way. */
+export function gearMintId(ledger) {
+  const seq = (ledger.seq = (ledger.seq || 0) + 1);
+  const rnd = Math.floor(Math.random() * 1679616).toString(36).padStart(4, '0');
+  return 'g' + Date.now().toString(36) + '.' + seq.toString(36) + '.' + rnd;
+}
+/* a gid as the minter writes it (a weapon's is held to this at every load
+   and every give: anything else is minted again).  v2.3.5294 (card R PR 14)
+   put it here first, for the weapon reader (gear.js) that shipped before
+   5282: one definition. */
 export const GID_RE = /^g[0-9a-z]{1,12}\.[0-9a-z]{1,10}\.[0-9a-z]{4}$/;
 
 export const GEAR_PROV_KEY = (playerId) => 'gear_prov:' + playerId;
@@ -350,9 +360,7 @@ export const gearProvMethods = {
      forged claim accidentally name one of their own rows, which is
      noise nobody needs. */
   _gearProvMintId(ledger) {
-    const seq = (ledger.seq = (ledger.seq || 0) + 1);
-    const rnd = Math.floor(Math.random() * 1679616).toString(36).padStart(4, '0');
-    return 'g' + Date.now().toString(36) + '.' + seq.toString(36) + '.' + rnd;
+    return gearMintId(ledger);   /* v2.3.5282 (card R PR 3): the one minter, gear's and a weapon's */
   },
 
   /* The in-memory ledger cache: playerId -> ledger.  Lives exactly as
