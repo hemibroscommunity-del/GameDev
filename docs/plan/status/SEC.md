@@ -22,8 +22,10 @@ state: ready
 - A join with NO id is let in as `session.id` undefined: a body under
   `playerState.undefined` and a `cadence:login:undefined` row, shared by
   every such join (join.js; PR 2's card covers an id present only).
+- PR 14's first half (the relay's damage popup, gameEvents.js) is card
+  L's file: handed to L, who takes it as its tag 5532 (L, 2026-11-17).
+  PR 14 builds only the dev console's half.
 
 ## Needs
 
-- Card L (asked by message 2026-11-17): does it hold
-  src/networking/gameEvents.js? PR 14's first half waits on the answer.
+- Nothing open.
