@@ -25,7 +25,7 @@ import { LINGER } from './linger.js'; /* v2.3.3260: the refusal's close code */
 import { cleanWheelSizes } from './wheeltables.js'; /* v2.3.3315: the Wheel sizes a phone draws */
 import { DEVICE_LOCK, cleanDevice } from './devicelock.js'; /* v2.3.3344: a key on its character's devices */
 import { LOGIN_KEYS, newKeyOf } from './loginkeys.js'; /* v2.3.3355: new Login Keys, made by the worker */
-import { stashGive, stashTake, stashSet } from './stash.js';   /* v2.3.5281: the stashes' door (card R PR 2) */
+import { stashGive, stashTake, stashSet, weaponIdsAll } from './stash.js';   /* v2.3.5281: the stashes' door (card R PR 2); v2.3.5282: a weapon's own id */
 import { rfNote, rfRetryMs } from './rfspread.js';   /* v2.3.5604: a waiting crowd knocks more slowly (card OPS PR 5) */
 import { requestIp } from './flood.js';   /* v2.3.5604 (mend): a refusal counted once an address a second */
 import { questLoad } from './queststate.js';   /* v2.3.5284: quest state's door (card R PR 5) */
@@ -1131,6 +1131,7 @@ export const joinMethods = {
         // pre-slice forged amulet heals on this reconnect (gear.js).
         this.playerState[msg.id].amulet = this._gearProvResolve(msg.id, 'amulet', stored.amulet, (a) => this._sanitizeAmulet(a), true);
         stashSet(this.playerState[msg.id], 'weaponStash', this._sanitizeWeaponList(stored.weaponStash), 'join_stored');
+        weaponIdsAll(this.playerState[msg.id]);   /* v2.3.5282: every weapon in hand and bag its own id, none shared */
         // v2.3.1192 (amulet forge): gold nugget/bar ledger.  Stored
         // wins; a record that predates the server ledger falls back to
         // the join payload ONCE (clamped -- the v2.3.1021 weaponSkills
@@ -1304,6 +1305,7 @@ export const joinMethods = {
         this.playerState[msg.id].goldNuggets = this._amuletClampNuggets(msg.data && msg.data.rpgGoldNuggets);
         this.playerState[msg.id].goldBars = this._amuletClampBars(msg.data && msg.data.rpgGoldBars);
         stashSet(this.playerState[msg.id], 'weaponStash', this._sanitizeWeaponList(msg.data && msg.data.rpgWeaponStash, true), 'join_new');
+        weaponIdsAll(this.playerState[msg.id]);   /* v2.3.5282: a new character's weapons, each its own id */
         // Quest state bootstrap (slice 17).  Trust shape but not
         // size -- a cheater could pass a 10000-entry _questKills
         // map to inflate storage.  Strip non-numeric values and
