@@ -11,10 +11,11 @@
  * Test panel's "Player drawings" page (src/ui/panels/DevPanel.jsx): admin
  * only (devtools.js _devFetch, behind the admin key like every lever).
  *
- *   GET  /dev/looks?before=<ms>&limit=<n>
+ *   GET  /dev/looks?after=<id>&limit=<n>
  *        Every character that has DRAWN something (a drawing key with ink:
- *        join.js DRAWING_KEYS), newest first by the day it was made, a page
- *        at a time.  Each row: its id, name, when it was made, whether it is
+ *        join.js DRAWING_KEYS), a page of characters at a time (v2.3.5607:
+ *        by id, newest first within the page; it was every character at
+ *        each look, newest first).  Each row: its id, name, when it was made, whether it is
  *        in the world now, its inked drawings as they are stored (a drawing
  *        is 256 hex characters, a 16 x 16 grid: the page draws each large),
  *        and the short ids its face is drawn from (boards.js boardFace).
@@ -32,19 +33,19 @@
  *        the record keeps when (`artWipedAt`).  Its traits, name and colours
  *        are untouched.  Logged (admin_log) like every admin change.
  *
- * A read scans every `char:` record (as /dev/apinfo does): the owner's own
- * action, never a player's.  No cap and no kill switch: nothing here is a
+ * A read lists a page of `char:` records (v2.3.5607: it was every one, as
+ * /dev/apinfo was; red team RT-2 F9): the owner's own action, never a player's.  No cap and no kill switch: nothing here is a
  * player's to call, and a wipe is an operator's act like a freeze.
  *
  * Suite: server/test/charwatch.test.mjs.  Spec: docs/specs/char-watch.md. */
 import { DRAWING_KEYS } from './join.js';
 import { boardFace } from './boards.js';
+import { ownerCursor } from './liveops.js';   /* v2.3.5607: the owner's reads, a page at a time */
 
 export const CHAR_WATCH = Object.freeze({
   SEEN_KEY: 'artwatch_seen',
   PAGE: 24,
   PAGE_MAX: 60,
-  SCAN_MAX: 20000,
   NAME_MAX: 64,
   ART_LEN: 256,
 });
@@ -102,16 +103,22 @@ export const charWatchMethods = {
     } catch (e) { return 0; }
   },
 
-  /* GET /dev/looks */
+  /* GET /dev/looks
+     v2.3.5607: A PAGE OF CHARACTERS AT A TIME (card OPS PR 8; red team RT-2
+     F9: every `char:` record, up to 20,000, was listed at each look).
+     `limit` characters (at most PAGE_MAX: a drawn row is ~5 KB) after the id
+     `after`; the ones that drew, newest first within the page; `next` for
+     the page after (null: the last).  `total` and `fresh` count THIS page's
+     (the panel adds them up); `before` is no longer read: a date order over
+     every character needs every character read. */
   async _watchLooks(params) {
-    const before = int(params && params.get('before'), 0, Number.MAX_SAFE_INTEGER);
-    const limit = int((params && params.get('limit')) || CHAR_WATCH.PAGE, 1, CHAR_WATCH.PAGE_MAX);
-    let chars;
-    try { chars = await this.state.storage.list({ prefix: 'char:', limit: CHAR_WATCH.SCAN_MAX }); }
+    const limit = int((params && params.get('limit')) || CHAR_WATCH.PAGE_MAX, 1, CHAR_WATCH.PAGE_MAX);
+    let chars, next;
+    try { ({ page: chars, next } = await this._ownerPage('char:', ownerCursor(params && params.get('after')), limit)); }
     catch (e) { return { ok: false, error: 'could not read the characters' }; }
     const seenAt = await this._watchSeenAt();
-    const page = watchPage(chars, { before, limit, seenAt, online: (id) => !!(this.playerState && this.playerState[id]) });
-    return { ok: true, seenAt, ...page };
+    const page = watchPage(chars, { before: 0, limit: CHAR_WATCH.PAGE_MAX, seenAt, online: (id) => !!(this.playerState && this.playerState[id]) });
+    return { ok: true, seenAt, ...page, more: next !== null, next };
   },
 
   /* POST /dev/lookseen */

@@ -133,7 +133,7 @@ The room under a crowd and the watch on it: its health for a monitor, the waitin
 - **Files**: `server/src/`: health, rfspread, seathold, publicreads
 - **Doors**: none named yet
 - **Switches**: [its rows in the switch table](SWITCHES.md#ops)
-- **Words**: `room-health`, `rf-spread`, `seat-hold`, `board-cache`, `public-reads`
+- **Words**: `room-health`, `rf-spread`, `seat-hold`, `board-cache`, `public-reads`, `owner-pages`
 - **Traps**: none
 
 ## combat

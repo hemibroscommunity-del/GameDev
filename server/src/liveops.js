@@ -66,6 +66,24 @@ export const METRICS = {
   RETRY_MS: 3600000,
 };
 
+/* ═══ v2.3.5607: THE OWNER'S READS, A PAGE AT A TIME (card OPS PR 8) ═══
+   Red team RT-2, F9: the owner's own Test panel reads listed a whole prefix
+   in one request (the bot flags, the drawings, a name's AP, the economy):
+   after a viral week ~20,000 rows of 1-2 KB, tens of MB read into the room
+   beside the 45-80 MB a full room holds, against its 128 MB.  Each now lists
+   at most OWNER_PAGE rows a request, resumed after `after` (the last id, or
+   key, the page before gave as `next`); `next` is null on the last page.
+   A request with no `after` reads the first page, so an older panel still
+   gets an answer. */
+export const OWNER_PAGE = 200;
+/* v2.3.5607: /economy's tables, read in this order, one page a request:
+   [prefix, its part of the answer, its page] */
+const ECON_PARTS = Object.freeze([['rpg:', 'players', OWNER_PAGE], ['mkt_order:', 'market', OWNER_PAGE], ['inbox:', 'inbox', METRICS.BOX_PAGE]]);
+/** A cursor from a request: a short string, or null (from the first row). */
+export function ownerCursor(v) {
+  return typeof v === 'string' && v.length > 0 && v.length <= 200 ? v : null;
+}
+
 /* ═══ v2.3.3368: THE GOLD A MARKET ORDER HOLDS ═══
    An order carries `type` ('buy' or 'sell'), `price` and `item` (market.js
    _mktPlaceOrder): a buy takes its price from the buyer when it is placed
@@ -289,9 +307,8 @@ export const liveopsMethods = {
    * within a minute, which is all the "lazy on join" clause of rule 12
    * ever needed here.
    *
-   * _economySnapshot itself is kept for the owner's /economy endpoint,
-   * paged the same way so its memory is bounded; it is an explicit
-   * operator request and may take as long as the table is large. */
+   * The owner's /economy endpoint reads the same tables a page a request
+   * (v2.3.5607, _economyPart: it walked every page in one request). */
   /* v2.3.5093 (sitting 10, M1): today's restarts so far, as the day's book
      holds them (econcard.js econResetBook): the card adds back the restarts
      between two counts, so each count says how many of its day's it saw */
@@ -339,44 +356,62 @@ export const liveopsMethods = {
     return { page, last, done: page.size < limit || !last };
   },
 
-  async _economySnapshot() {
-    let totalGold = 0, playerBlobs = 0, after = null;
-    let top = [];
-    for (;;) {
-      const pg = await this._economyPage(after);
-      totalGold += pg.gold; playerBlobs += pg.count;
-      top = top.concat(pg.players).sort((a, b) => b.coins - a.coins).slice(0, 10);
-      if (pg.done) break;
-      after = pg.last;
-    }
-    let openOrders = 0, escrowedGold = 0;
-    for (after = null; ;) {
-      const pg = await this._metricsList('mkt_order:', METRICS.PAGE, after);
-      openOrders += pg.page.size;
+  /* v2.3.5607: one page (at most OWNER_PAGE, or `limit`) of `prefix`, after the id
+     `after`: { page, next }, `next` the last id listed when the page was
+     full (there may be more), else null. */
+  async _ownerPage(prefix, after, limit) {
+    const n = Math.max(1, Math.min(OWNER_PAGE, Math.floor(Number(limit)) || OWNER_PAGE));   /* fewer for heavy rows (the drawings) */
+    const pg = await this._metricsList(prefix, n, after ? prefix + after : null);
+    return { page: pg.page, next: pg.done ? null : pg.last.slice(prefix.length) };
+  },
+
+  /* ═══ v2.3.5607: /economy, ONE PAGE A REQUEST (card OPS PR 8) ═══
+     It walked every `rpg:`, `mkt_order:` and `inbox:` page in one request
+     (red team RT-2 F9: its memory was bounded, its time held the room).  Now
+     one page of one table a request, in that order: `cursor` is the `next`
+     the page before gave (the last key read, or the next table's prefix);
+     none starts at the first.  Each answer counts ITS page only, in the
+     fields /economy always had (`part` says which: players' playerBlobs,
+     totalGold, top10; market; inbox); the reader adds the pages up.  The
+     daily record (`metrics:`) is still the whole sum, made by the tick's
+     job a page a slot. */
+  async _economyPart(cursorIn) {
+    const cur = ownerCursor(cursorIn) || ECON_PARTS[0][0];
+    const i = ECON_PARTS.findIndex(([p]) => cur.startsWith(p));
+    if (i < 0) return { ok: false, error: 'cursor', words: 'cursor: the `next` an earlier page of /economy gave.' };
+    const [prefix, part, limit] = ECON_PARTS[i];
+    const pg = await this._metricsList(prefix, limit, cur === prefix ? null : cur);
+    const out = { ok: true, part };
+    if (part === 'players') {
+      let gold = 0;
+      const players = [];
+      for (const [k, b] of pg.page) {
+        const coins = (b && b.coins) || 0;
+        gold += coins;
+        players.push({ id: k.slice(4), coins, level: (b && b.level) || 1 });
+      }
+      out.playerBlobs = pg.page.size;
+      out.totalGold = gold;
+      out.top10 = players.sort((a, b) => b.coins - a.coins).slice(0, 10);
+    } else if (part === 'market') {
+      let escrowedGold = 0;
       for (const o of pg.page.values()) escrowedGold += orderEscrowGold(o);
-      if (pg.done) break;
-      after = pg.last;
-    }
-    let inboxes = 0, pendingEntries = 0;
-    for (after = null; ;) {
-      const pg = await this._metricsList('inbox:', METRICS.BOX_PAGE, after);
-      inboxes += pg.page.size;
+      out.market = { openOrders: pg.page.size, escrowedGold };
+    } else {
+      let pendingEntries = 0;
       for (const box of pg.page.values()) pendingEntries += boxEntries(box);
-      if (pg.done) break;
-      after = pg.last;
+      out.inbox = { inboxes: pg.page.size, pendingEntries };
     }
-    const h5log = (await this.state.storage.get('harden_h5_log')) || [];
-    const jackpot = (await this.state.storage.get('jackpot:draw')) || null;
-    return {
-      playerBlobs,
-      totalGold,
-      top10: top,
-      market: { openOrders, escrowedGold },
-      inbox: { inboxes, pendingEntries },
-      hardenH5Mints: h5log.length,
-      jackpot: jackpot ? { period: jackpot.period, pool: jackpot.pool, entrants: Object.keys(jackpot.entries || {}).length } : null,
-      ts: Date.now(),
-    };
+    out.next = !pg.done ? pg.last : (ECON_PARTS[i + 1] ? ECON_PARTS[i + 1][0] : null);
+    if (cur === ECON_PARTS[0][0]) {
+      /* the first page carries the two small reads, once */
+      const h5log = (await this.state.storage.get('harden_h5_log')) || [];
+      const jackpot = (await this.state.storage.get('jackpot:draw')) || null;
+      out.hardenH5Mints = h5log.length;
+      out.jackpot = jackpot ? { period: jackpot.period, pool: jackpot.pool, entrants: Object.keys(jackpot.entries || {}).length } : null;
+    }
+    out.ts = Date.now();
+    return out;
   },
 
   /* Once-daily economy snapshot, a page at a time.  Key-existence

@@ -124,7 +124,7 @@ export const SYSTEMS = Object.freeze({
   ops: {
     what: 'the room under a crowd and the watch on it: its health for a monitor, the waiting crowd\'s pace, a seat held, the public boards\' and the room\'s public reads',
     files: [f('server/src', 'health|rfspread|seathold|publicreads')],   /* v2.3.5609: publicreads */
-    words: ['room-health', 'rf-spread', 'seat-hold', 'board-cache', 'public-reads'],   /* v2.3.5608: board-cache (leaderboard.js stays social's file) */
+    words: ['room-health', 'rf-spread', 'seat-hold', 'board-cache', 'public-reads', 'owner-pages'],   /* v2.3.5607: owner-pages (the reads stay their systems' files) */   /* v2.3.5608: board-cache (leaderboard.js stays social's file) */
     traps: [],
     doors: [],
   },
