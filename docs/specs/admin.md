@@ -39,6 +39,27 @@ IPv6 address by its /64 once the /64 change's `ipKey`, PR #1875, is on the worke
 
 Suite: `server/test/admin-lock.test.mjs`.
 
+### The flood tally (v2.3.5711, card SEC PR 12)
+
+A flood was counted on each session only. The overview's `floodTally` is
+one tally on the room (`admin.js` "THE OWNER CAN SEE A FLOOD"), MEMORY ONLY:
+no row, so it starts again at 0 after a deploy or an eviction.
+
+- `closed`: sockets closed for sending too many messages, counted at the
+  leave door (`leave.js`, `why === 'flood'`) only for a session past the
+  message budget (more than `FLOOD.MSG_CLOSE_AFTER` dropped). The same
+  door's closes for no join in time and for a second join are not counted
+  (sitting 39's review: a slow phone is not a flood);
+- `relayBytesDropped`, `relayDropsBy`: relay frames refused for their bytes
+  (`relay.js`'s own counts, read as they are);
+- `ip`: refusals by address, `null` until card K2's PR 10 counts them
+  with `_floodTallyAdd('ip')` (`flood.js` is K2's);
+- `since`: when the first `closed` (or `ip`) count landed, `null` before
+  one; the relay's counts are `relay.js`'s, since the room woke;
+- kill switch `floodtally: false`: the field `null`, nothing counted.
+
+Suite: `server/test/floodtally.test.mjs`.
+
 ## Endpoints
 
 | Method + path | Body / params | Effect |
