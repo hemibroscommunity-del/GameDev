@@ -128,7 +128,7 @@
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { nmlLive, nmlCanAttack, nmlHere, nmlLockedOut, nmlLockedIn, nmlLockAsk, nmlLockAllow } from '@/game/noMansLand.js';   /* v2.3.3770: + the lock */
 import { NML } from '@/data/noMansLandRings.js'; /* v2.3.3530: SKULL_MS -- an attacker's right in `bys` dates their choice or blow */
-import { sw } from '@/game/switches.js';   /* v2.3.5306: the page's one reader (card T) */
+import { sw, pageAddress } from '@/game/switches.js';   /* v2.3.5306: the page's one reader (card T); v2.3.5740: + its address (card T2) */
 import { chooseFoe, isLiveFighter, pvpBoutAt, isLiveFoe, liveFoes, hitMeAt, attackersNow, FIGHT_QUIET_MS } from '@/game/sparTargets.js'; /* v2.3.3268: Attack is a choice that lasts; v2.3.3316: + who a swing already hits; v2.3.3528: + when a bout began; v2.3.3530: + who attacks you (a group joins your fight) */
 
 /* how long an unanswered window stays */
@@ -161,7 +161,7 @@ let _msOverride = 0;
 export function nmlAskMs() {
   if (_msOverride) return _msOverride;
   try {
-    const m = typeof location !== 'undefined' && /[?&]nmlaskms=(\d+)/.exec(location.search || '');
+    const m = /[?&]nmlaskms=(\d+)/.exec(pageAddress() || '');   /* v2.3.5740: the address from the page's one reader (card T2) */
     if (m) return Math.max(1000, Math.min(60000, Number(m[1]) || NML_ASK_MS));
   } catch (e) { /* the default */ }
   return NML_ASK_MS;

@@ -37,7 +37,11 @@
  *      with the worker's own roll at a fixed die); and (v2.3.4799) the
  *      MIXED rhythms, shots with and without a field, on a monster and in
  *      a duel: never past today's best forged rhythm, never more perfects
- *      than honest full draws. */
+ *      than honest full draws. *
+ * v2.3.5727 (card K2 PR 8): every room here with `bowshot: false` -- ON, a
+ * bow's claim also needs an arrow the worker saw leave (bowshot.js;
+ * claims-gain 2f holds that), and these claims send none: this suite
+ * measures its own judge alone. */
 import { readFileSync } from 'node:fs';
 import { GameRoom } from '../src/index.js';
 import { DRAW_GATHER } from '../src/drawgather.js';
@@ -74,7 +78,7 @@ const mockEnv = { LEADERBOARD: { idFromName: () => 'x', get: () => ({ fetch: asy
 function fakeWs() { return { sent: [], send(s) { this.sent.push(JSON.parse(s)); }, close() {} }; }
 
 const room = new GameRoom(makeState(), mockEnv);
-room._liveFlags = {};
+room._liveFlags = { bowshot: false };
 async function join(id, extra, v1) {
   const ws = fakeWs();
   room.sessions.set(ws, { id: null, name: 'Anon', data: {}, rtt: 0, lastPing: 0, lastRecv: T });
@@ -175,11 +179,11 @@ const SCYC = room._dgStaffCycleMs(P.ps);
     flagNameOk('bowdraw') && flagNameOk('staffgather') && room._bowDrawOn() && room._staffGatherOn());
   const c = capsOf(P);
   check('1. caps.bowDraw and caps.staffGather are advertised', c.bowDraw === 1 && c.staffGather === 1, c);
-  room._liveFlags = { bowdraw: false };
+  room._liveFlags = { bowshot: false, bowdraw: false };
   const c1 = capsOf(await join('bp_dg_c1', { fs: 2 }));
-  room._liveFlags = { staffgather: false };
+  room._liveFlags = { bowshot: false, staffgather: false };
   const c2 = capsOf(await join('bp_dg_c2', { fs: 2 }));
-  room._liveFlags = {};
+  room._liveFlags = { bowshot: false };
   check('1. ...each un-advertised by its own switch, the other kept', c1.bowDraw === undefined && c1.staffGather === 1 && c2.bowDraw === 1 && c2.staffGather === undefined, { c1: [c1.bowDraw, c1.staffGather], c2: [c2.bowDraw, c2.staffGather] });
   const jtxt = read('../src/join.js');
   check('1. each cap on its OWN line in join.js (TRAPS §316)',
@@ -326,11 +330,11 @@ async function drawAt(p, dr, gap) {
   check('4. a phone that declined the bonus (`fs: 1`): a plain full arrow', nob.d === 100 && nob.ev.payload.pf === undefined && nob.mana === 0);
   const off = await drawAt(OFF, BCYC);
   check('4. a phone off the trial (no perfect today) gets none from a draw either', off.d === 100 && off.ev.payload.pf === undefined);
-  room._liveFlags = { perfectbow: false };
+  room._liveFlags = { bowshot: false, perfectbow: false };
   const pb = await drawAt(P, BCYC);
-  room._liveFlags = { freeswingbonus: false };
+  room._liveFlags = { bowshot: false, freeswingbonus: false };
   const fb = await drawAt(P, BCYC);
-  room._liveFlags = {};
+  room._liveFlags = { bowshot: false };
   check('4. `perfectbow: false` and `freeswingbonus: false`: a full draw is a plain full arrow, no mana', pb.d === 100 && fb.d === 100 && pb.mana === 0 && fb.mana === 0 && pb.ev.payload.pf === undefined);
 }
 
@@ -513,7 +517,7 @@ async function drawAt(p, dr, gap) {
     T += 50;
     const d = kind === 'staff' ? orb(P, mm, st) : arrow(P, mm, st);
     check(`8. \`${flag}: false\`: a shot claiming a 50 ms build is today's whole one, nothing kept, the claim relayed as sent`, d === 100 && P.ps._dg === undefined && relayed && relayed.payload[kind === 'staff' ? 'ga' : 'dr'] === 50, { d });
-    room._liveFlags = {};
+    room._liveFlags = { bowshot: false };
   }
   /* v2.3.4799: a switch thrown live reaches every phone already playing
      (the combined feel's review, F2: the caps were read only at a join, so
@@ -535,7 +539,7 @@ async function drawAt(p, dr, gap) {
     await req('DELETE', '/api/admin/flags?name=staffgather');
     const c = told.filter((x) => x.type === 'draw_gather').pop();
     room.broadcastAll = realBA;
-    room._liveFlags = {};
+    room._liveFlags = { bowshot: false };
     check('8. setting `bowdraw: false` live tells every phone (draw_gather, bow 0, staff 1)', !!a && a.bow === 0 && a.staff === 1, a);
     check('8. ...`staffgather: false` too (bow 0, staff 0), and clearing both puts both back', !!b && b.bow === 0 && b.staff === 0 && !!c && c.bow === 1 && c.staff === 1, { b, c });
     const { PRIVILEGED_EVENTS } = await import('../src/index.js');
@@ -549,9 +553,9 @@ async function drawAt(p, dr, gap) {
   const mk = monster(P, 120);
   await bow(P, 0); T += 2000;
   const sk = await bow(P, 50); T += 50;
-  room._liveFlags = { bowdraw: false };
+  room._liveFlags = { bowshot: false, bowdraw: false };
   const dk = arrow(P, mk, sk);
-  room._liveFlags = {};
+  room._liveFlags = { bowshot: false };
   check('8. ...a shot kept before the switch went off lands today\'s whole one', dk === 100, dk);
   /* protocol v1 */
   arm(V1); T += 10000;
