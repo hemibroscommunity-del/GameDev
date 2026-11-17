@@ -12,7 +12,8 @@ with one merge base at every step (`git merge-base --all`, each against
 each merge:
 
 1 K #2024 fe1297b0b43e5c23f19a7d57847bdeb17544ea8d -> 72a2f75571700a54e74ee580358fdc2c77cadf17
-@@MORE@@
+2 L #2027 679e99ace270943d914539e02aacb244497e3aa0 -> c4b358d0849a7481ee4f576464e1dbc9b92e70e8
+3 Z (this PR): its head and tree are in the list (`status/Z.md`).
 
 #2024 was built on #2021 and #2023, both now on `main`. Rehearsed at
 c778c680 (one base 5594e52d, tree a8c82322); at 14:44 K sent fe1297b0:
@@ -66,4 +67,45 @@ PR turns their defaults:
   only: no behaviour change.
 - DEPLOYS the worker (`server/src/`).
 
-@@REST@@
+## L #2027 (5530): the trade's and the ride's page doors
+
+READY (reviewed in full: `src/`). Card L PR 5's page halves, the trade
+and the ride (L's message at 14:51 UTC; based on `main`, holding
+01b8f33d; one base before and after #2024 lands). Tag 5530: L's block
+5520-5539.
+- `src/game/tradeSlot.js` `t2LiveTo` (ways open, close, rejoin), the one
+  writer of `S._t2Live` (four writes in `gameEvents.js`, one in
+  `rejoinSlots.js` before). Open takes an id (true, a non-empty string
+  or a finite number), the others none; the worker's trade id is a
+  `crypto.randomUUID()` string (`trade2.js` 204), so every write the old
+  code made is made, with the same value. `?tradedoor=0` writes what the
+  caller asks.
+- `src/game/ride.js` `rideTo` (ways make, apply, forget), the one writer
+  of `S._ride` and its `on`: `r0`'s record (`RIDE_FRESH`, the same 18
+  fields and values as the literal it replaces), `rideApply`'s `on`,
+  `clearRide`'s null. The record's other numbers stay notes written by
+  their own steps. `?ridedoor=0`. `ride.js` now imports the page's switch
+  reader (`switches.js`, no imports of its own; `sw` is cached by the
+  page's address), so node still tests it.
+- The phase table: page `trade` and `ride` `todo` -> `door` (9 -> 7
+  `todo`); the state ledger's `_ride` and `_t2Live` rows name the doors;
+  SHAPES, SWITCHES and the switch table each a line of their own. New
+  suites `trade-page-door`, `ride-page-door`; `trade-window-slot` 4f
+  follows the import line. Nothing a player sees changes.
+- Only `server/test/` under `server/`: DEPLOYS the worker (with #2024's
+  deploy, one).
+- After it lands the phase line can go 9 -> 7 (sitting 36: only a
+  merged count is ticked).
+
+## The rehearsal
+
+@@GK@@
+
+## Z (this PR, 5673)
+
+The phase table's line 11 -> 9 (`tools/guards/phase-table.test.mjs`
+`TODO_LINE`; 8 fails 7, tried), the count on `main` 01b8f33d after L's
+#2022. The plan noted for sitting 34's merges: 4.2 (K #2021 `movetop`,
+#2023 `bowshot`, both merged OFF), 5.3b (L #2022). Documents and the
+guard's one number: no deploy of its own.
+
