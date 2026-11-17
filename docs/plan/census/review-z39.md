@@ -13,13 +13,13 @@ with the PRs above it merged in as merge commits). The tree after each
 merge:
 
 1 SEC #2054 75579c1152afc2d5623bef041a9be913683605b2 -> 8b9bf6e355848c1dbf0b554534e16b46db036fa1
-2 K2 #2051 adb2de6df37be8eef9dd56d0f08bc88cf65b8e80 -> c11f9e28b6447243ef8c2fff3058d352763cf9af
-3 K2 #2053 feabf566872df47dbf53598a09b83c8beaa49977 -> 771b2bb38bcef212cfeee0405eb9d032130c2aa8
+2 K2 #2051 8542c104971ecee9a8c067802cdcf56fe3d3cfc8 -> 9440b5871639a177bffb60da683182aa8e3684c6
+3 K2 #2053 08bc3ecd350b8e24cab8bd4e2983030fc49e4b30 -> 3ee187725494522cc13b51e463d07bc26fd836f6
 4 Z (this PR): its head and tree are in the list (`status/Z.md`).
 
 The bases, step by step: #2054 9e228210 (SEC merged `main` in at 19:11);
-#2051 9e228210 (K2 merged `main` in at 19:33); #2053 adb2de6d (#2051's
-head, merged into #2053 at 20:00); this PR 9e228210. One line each.
+#2051 9e228210 (K2 merged `main` in at 19:33); #2053 8542c104 (#2051's
+head, merged into #2053 at 20:09); this PR 9e228210. One line each.
 
 ## SEC #2054 (5711): the owner can see a flood
 
@@ -70,6 +70,12 @@ READY (reviewed in full). Card K2 PR 6.
   proof (the forget taken out of leave.js) reads about 0 forgotten: both
   lines red. A test only, no code. Run twice in the merged tree: on 1,560
   and 1,628, all three of check 4 green.
+- adb2de6d's `test` went RED on CI (job 134324361790), its own cause:
+  `guards/switches-thrown` with `heapforget` thrown, the new second line
+  of check 4 not on the row's `thrownFails` (told to K2 at 20:06). K2's
+  8542c104 (20:09) names it in `switches.mjs`, one line. In the final
+  merged tree: `switches-thrown --only heapforget`, `switches.test` and
+  `heap-forget` green.
 - DEPLOYS.
 
 ## K2 #2053 (5726): the owner's routes with no key, and the public reads, at the edge
@@ -117,27 +123,28 @@ s); precheck the one 5-minute server-tests limit (the settled one) and
 nothing else red (its WARNs: SEC's stacked branches 13 to 18 carry
 #2054's 5711, as each holds it; the branch count). `cd server && npm
 test` alone in that tree: 500 suites, all green (530.6 s). Every guard in
-`tools/guards/` green there (34). #2051's adb2de6d came after (a test's
-line, above), and #2053 took it in at feabf566: the suite run twice in
-the new tree (771b2bb3), green; the rest of the tree is the rehearsed
-one. This PR on top (one base,
+`tools/guards/` green there (34). #2051's adb2de6d and 8542c104 came after
+(a test's line and its switch row, above), and #2053 took them in at
+08bc3ecd: those suites green in the final tree (3ee18772); the rest of
+the tree is the rehearsed one. This PR on top (one base,
 9e228210): the phase table 4 `todo` under the line 4.
 
 CI on the listed heads: #2054 `test`, playable, lint-build green; its
 memory-budget hit the job's 20-minute timeout (a cancel), its one rerun
 green. #2053 at 5ec4d137 all green (`test`, playable, memory-budget,
 lint-build). #2051 red once at a7bb41a3 on heap-forget check 4 (2,571
-against 2,560), the cause of adb2de6d; #2051 adb2de6d and #2053
-feabf566 (adb2de6d merged in, nothing else): see the list.
+against 2,560), the cause of adb2de6d; adb2de6d red on
+switches-thrown (above), the cause of 8542c104. #2051 8542c104 and #2053
+08bc3ecd (8542c104 merged in, nothing else): see the list.
 
 Two rehearsals before this one were stopped: the first met L's #2052
 over #2051 in `docs/SWITCHES.md`; the second, K2's heads moved (19:33).
 
 Late, to sitting 40: L #2052 (5535; reviewed clean, merges the new `main`
-in after #2051) and #2058 (5536, the worker's guard door; after #2052,
-`status/L.md`); SEC #2055 (5712), #2056 (5713), #2057 (5714; CLAUDE.md
+in after #2051), #2058 (5536, the worker's guard door) and #2065 (5537,
+the worker's zone door), in that order (`status/L.md`); SEC #2055 (5712), #2056 (5713), #2057 (5714; CLAUDE.md
 §4 and REPO-SAFETY words, nothing in `.github/` or `wrangler.toml`),
-stacked on #2054; K2's PR 4 (5723, `movefields`, index.js).
+stacked on #2054; K2's #2066 (5723, `movefields`, index.js; on #2053).
 
 No two listed PRs share a file but: K2's stack (`status/K2.md`,
 `index.js`, `dungeon.js`, `market.js`, `testmode.js`, the switch table:
