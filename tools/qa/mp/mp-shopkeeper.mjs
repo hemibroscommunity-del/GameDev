@@ -167,8 +167,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
      Without this they have no slot for a quote to appear in, and the check
      fails for the wrong reason. */
   await H.grant(wsPort, bId, 'item', { invKey: KEY, count: 2 });
-  await A.page.waitForTimeout(1200);
-  const carried = await bag(A);
+  /* v2.3.5649: until the grant has landed on the page (at most 20 s), not a flat 1.2 s: this box
+     delivers a grant a few seconds late (TRAPS §200) */
+  let carried = 0;
+  for (let t0 = Date.now(); Date.now() - t0 < 20000 && !(carried > 0); ) { await A.page.waitForTimeout(500); carried = await bag(A); }
   rec.ok(`the seller is carrying something he will take (${carried})`, carried > 0, { carried });
 
   /* ══ THE BAG DOES NOT MOVE ══
