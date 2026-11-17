@@ -1,7 +1,7 @@
 card: K
 branch: claude/plan-k-<n>-<topic> (one branch a PR, each begun from main)
-prs: #1822, #1820, #1826, #1829, #1831, #1838, #1842, #1861, #1848, #1899, #1923 merged; ready: #1900 (5188); 7.3 (5189); 7.4 (5190); 7.5 (5191); 7.6 (5192) this branch, on 7.5
-state: working
+prs: #1822, #1820, #1826, #1829, #1831, #1838, #1842, #1861, #1848, #1899, #1923 merged; ready, in order: #1900 (5188), #1931 (5189), #1932 (5190), #1933 (5191), #1934 (5192, this branch)
+state: ready
 
 ## Done
 
@@ -21,7 +21,7 @@ state: working
 
 ## Next
 
-- Questline on the stack's top, then the PRs; then N11, N5.
+- The gatekeeper's sitting for #1900, #1931-#1934; then N11, N5.
 - The move's walls (movement.js); the sword's reach (index.js, after card
   R's 5281); the bow claim (bowlabel 3.91, the aimbot +12%).
 - Lows: wire-table §7's cure; door.js "by type"; `rideEnds` (SK is done).
