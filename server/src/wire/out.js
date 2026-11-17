@@ -774,7 +774,7 @@ export const WIRE_OUT = [
     note: ['not sent under today\'s flags: the cut is refused before its roll while `shardcrack` is on'] },
   /* v2.3.3785: the Bank's vault (bank.js) */
   { name: 'bank_state', dir: 'out', at: 'bank.js _bankSend; phone: wsClient direct', wayIn: 'socket',
-    envelope: 'direct', phase: ['none checked'], mayStart: 'system', doesWhat: ['reads'], reqId: 'last.opId',
+    envelope: 'direct', phase: ['none checked'], mayStart: 'system', doesWhat: ['reads'], reqId: 'last.reqId+last.opId',
     trust: {}, absent: 'dropped: no body; default: no ok or on reads true; default: no items reads none',
     bad: ['dropped:shape', 'clamped'], answer: 'none' },
   /* v2.3.2047: the shopkeeper's two answers. Both are SERVER-EMITTED and
@@ -831,14 +831,14 @@ export const WIRE_OUT = [
   { name: 'store_offer_state', dir: 'out',
     at: 'storeoffer.js _soNotify, storeoffer.js _handleStoreOffer, storeoffer.js _handleStoreOfferCancel, and 1 more; phone: gameEvents processGameEvent',
     wayIn: 'socket', envelope: 'group', phase: ['none checked'], mayStart: 'system',
-    doesWhat: ['reads', 'speaks'], reqId: 'none', trust: { 'offers[].buyerName': 'words' },
+    doesWhat: ['reads', 'speaks'], reqId: 'reqId', trust: { 'offers[].buyerName': 'words' },
     absent: 'dropped: no body; default: no offers reads none', bad: ['dropped:shape', 'dropped:gone'],
     answer: 'none' },
   /* why: the comment on store_offer_state's row (one comment of the old list, v2.3.5181) */
   { name: 'store_offer_error', dir: 'out',
     at: 'storeoffer.js _handleStoreOffer, storeoffer.js _handleStoreOfferCancel, storeoffer.js _handleStoreOfferReply, and 1 more; phone: gameEvents processGameEvent',
     wayIn: 'socket', envelope: 'direct', phase: ['none checked'], mayStart: 'system', doesWhat: ['reads'],
-    reqId: 'none', trust: {}, absent: 'dropped: no body; default: no error shows the store\'s general line',
+    reqId: 'reqId', trust: {}, absent: 'dropped: no body; default: no error shows the store\'s general line',
     bad: ['dropped:gone'], answer: 'none' },
   // v2.3.1124: gamble outcomes are server-rolled + privately sent;
   // forging one at the room is pure grief-popup surface.
@@ -929,7 +929,7 @@ export const WIRE_OUT = [
      so a forged one would put a fake jackpot on another player's screen. */
   { name: 'chest_opened', dir: 'out', at: 'dailychest.js _handleChestOpen; phone: wsClient direct',
     wayIn: 'socket', envelope: 'direct', phase: ['none checked'], mayStart: 'system', doesWhat: ['reads'],
-    reqId: 'none', trust: {},
+    reqId: 'reqId', trust: {},
     absent: 'dropped: no prize draws nothing, and the window offers the chest again after 8 s', bad: [],
     answer: 'none' },
   /* v2.3.4295: the login wheel (loginspin.js) -- its answer names a prize, so a
@@ -953,7 +953,7 @@ export const WIRE_OUT = [
      would paint a won jackpot or a finished quest on another player's screen. */
   { name: 'rewards_state', dir: 'out', at: 'dailyrewards.js _drSendState; phone: wsClient direct',
     wayIn: ['socket', 'room'], envelope: 'direct', phase: ['none checked'], mayStart: 'system',
-    doesWhat: ['reads'], reqId: 'none', trust: {}, absent: 'dropped: no body, and the last state stands',
+    doesWhat: ['reads'], reqId: 'news.reqId', trust: {}, absent: 'dropped: no body, and the last state stands',
     bad: ['dropped:shape'], answer: 'none' },
   /* why: the comment on rewards_state's row (one comment of the old list, v2.3.5181) */
   { name: 'daily_progress', dir: 'out', at: 'dailyrewards.js _drSendProgress; phone: wsClient direct',

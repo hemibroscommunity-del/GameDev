@@ -215,10 +215,18 @@ export const bankMethods = {
     const pid = session.id;
     const p = payload && typeof payload === 'object' ? payload : {};
     const kind = p.kind === 'gold' ? 'gold' : p.kind === 'item' ? 'item' : null;
-    const opId = okOp(p.opId) ? p.opId : null;
+    /* v2.3.5194: the request id first (SHAPES part 2; reqonce.js), the
+       phone's opId from an older page: either goes in the vault's `ops`,
+       the record's own, so a repeat acts once across a restart too */
+    const rid = this._reqIdOf ? this._reqIdOf(p.reqId) : null;
+    const opId = rid || (okOp(p.opId) ? p.opId : null);
     const n = wholeN(p.n);
     const id = kind === 'item' ? p.id : null;
-    const last = (ok, err) => ({ opId, dir, kind, id: kind === 'item' && okKey(id) ? id : null, n, ok, err: err || null });
+    const last = (ok, err) => {
+      const o = { opId, dir, kind, id: kind === 'item' && okKey(id) ? id : null, n, ok, err: err || null };
+      if (rid) o.reqId = rid;   /* v2.3.5194: the answer echoes its id */
+      return o;
+    };
     const v = await this._bankLoad(pid);
     /* ── after the read, everything below is ONE synchronous run ── */
     const ps = this.playerState[pid];

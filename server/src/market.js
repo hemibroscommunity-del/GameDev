@@ -32,6 +32,7 @@
  * expiry; bounty boards deferred; direct self-trades never enter the
  * price history (the matcher already skips same-player orders). */
 
+import { reqOnceMethods } from './reqonce.js';   /* v2.3.5194: a repeat acts once (card K PR 9) */
 import { swordToGreatsword } from './swordconvert.js';   /* v2.3.3895: a sword's order is rewritten once as a greatsword */
 import { oldGreatswordToMetal } from './gscopper.js';   /* v2.3.3980: ...and a wooden or base-less greatsword's as a metal one */
 import { BLACKSMITH_TIER_LABELS, WOODWORKING_TIER_LABELS } from './data.js';   /* v2.3.3980: a converted sell order's tier label; v2.3.5626: every order's */
@@ -49,6 +50,7 @@ export const MARKET = {
 };
 
 export const marketMethods = {
+  ...reqOnceMethods,   /* v2.3.5194: _reqOnce and its kin (reqonce.js), for every value request's repeat */
   /* ═══ v2.3.1971: BOUND THE TAXONOMY STRINGS BEFORE THEY ESCROW ═══
    *
    * category / subtype / tierKey / element1 / element2 arrive from the
@@ -267,7 +269,10 @@ export const marketMethods = {
           return new Response(JSON.stringify({ ok: false, settled: true, error: 'Not authorized' }), { status: 403, headers: H });
         }
         if (this._valuePaused && this._valuePaused()) return this._valuePauseHttp(H);   /* v2.3.5090: an order's escrow waits while saves are refused (valuepause.js) */
-        const result = await this._mktPlaceOrder(body);
+        /* v2.3.5194: a repeat of the same request id acts once and gets the
+           first answer again (reqonce.js); none: as before */
+        const _rid = this._reqIdOf(body && body.reqId);
+        const result = _rid ? await this._reqOnce(body.playerId, _rid, () => this._mktPlaceOrder(body, _rid), { record: true }) : await this._mktPlaceOrder(body);
         return new Response(JSON.stringify(result), { headers: H });
       }
       if (request.method === 'DELETE' && path.startsWith('/cancel')) {
@@ -277,7 +282,9 @@ export const marketMethods = {
         if (!this._httpAuthCheck(url.searchParams.get('playerId'), request)) {
           return new Response(JSON.stringify({ ok: false, settled: true, error: 'Not authorized' }), { status: 403, headers: H });
         }
-        const result = await this._mktCancelOrder(url.searchParams.get('id'), url.searchParams.get('playerId'));
+        const _rid = this._reqIdOf(url.searchParams.get('reqId'));   /* v2.3.5194: a cancel's id rides its query */
+        const _cancel = () => this._mktCancelOrder(url.searchParams.get('id'), url.searchParams.get('playerId'));
+        const result = _rid ? await this._reqOnce(url.searchParams.get('playerId'), _rid, _cancel) : await _cancel();
         return new Response(JSON.stringify(result), { headers: H });
       }
       return new Response(JSON.stringify({ ok: false, error: 'Not found' }), { status: 404, headers: H });
@@ -312,9 +319,17 @@ export const marketMethods = {
    * in-game; it also means escrow always mutates live playerState, never
    * the lagging blob).  Settlement credits go through _creditPlayer so
    * the counterparty can be offline.  No cross-DO awaits anywhere. */
-  async _mktPlaceOrder(body) {
+  async _mktPlaceOrder(body, rid) {
     const { type, price, tierLabel, playerName, playerId } = body || {};
     if (!type || !price || !playerId) return { ok: false, error: 'Missing fields' };
+    /* v2.3.5194: the request's id is kept on the order it makes, in the same
+       put: a repeat the sitting has forgotten (a restart) finds its order
+       still resting and gets it back, escrowing nothing again */
+    if (rid) {
+      for (const [, b] of this._mktIndex) {
+        for (const o of [...b.buys, ...b.sells]) if (o.playerId === playerId && o.reqId === rid) return { ok: true, settled: true, matched: false, order: o, repeat: true };
+      }
+    }
     const p = Math.floor(price);
     if (!(p >= 1 && p <= 999999)) return { ok: false, error: 'Invalid price' };
     if (type !== 'buy' && type !== 'sell') return { ok: false, error: 'Invalid type' };
@@ -392,6 +407,7 @@ export const marketMethods = {
       playerId,
       ts: Date.now(), expires: Date.now() + MARKET.ORDER_EXPIRY,
     };
+    if (rid) order.reqId = rid;   /* v2.3.5194: the request that made it (reqonce.js) */
 
     // Match against the opposite bucket head (skip own orders -- direct
     // self-trades can neither dupe nor paint the price history).
