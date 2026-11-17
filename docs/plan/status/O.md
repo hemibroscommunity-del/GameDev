@@ -1,5 +1,5 @@
 card: O
-branch: claude/plan-o-13-thirty (one branch a PR; on #1970's head, as sitting 25's gatekeeper asked)
+branch: claude/plan-o-16-cliplows (one branch a PR; on #1974's head, stacked, as sitting 26 asked)
 prs: #1787, #1792, #1794, #1800, #1814, #1815, #1832, #1841, #1836, #1850, #1854, #1896, #1915, #1929, #1937, #1952 (merged); #1970 (5232), #1974 (5233): ready; #1977 (5680): ready
 state: ready
 

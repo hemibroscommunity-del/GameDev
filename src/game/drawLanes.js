@@ -213,7 +213,7 @@ export const PROGRAMS = Object.freeze([
   { name: 'palette', file: 'src/rendering/paletteTex.js', built: Object.freeze(['bt-palette-batch', 'bt-palette-clip', 'bt-palette-hairclip', 'bt-palette-mesh', 'bt-palette-fill']), back: 'whole colours' },
   { name: 'look', file: 'src/rendering/lookPalette.js', built: Object.freeze(['bt-look-batch', 'bt-look-sheen-batch']), back: 'each look baked' },
   { name: 'sharp', file: 'src/rendering/sharpPixels.js', built: Object.freeze(['batch-sharp']), back: 'plain pixels' },
-  { name: 'clip', file: 'src/rendering/hairClip.js', built: Object.freeze(['batch-clip', 'batch-clip-alpha']), back: 'the alpha mask' },
+  { name: 'clip', file: 'src/rendering/hairClip.js', built: Object.freeze(['batch-clip', 'batch-clip-alpha']), back: 'pictures to the alpha mask (colour numbers stay on the stencil)' },
   { name: 'fill', file: 'src/rendering/fillBatch.js', built: Object.freeze(['batch-fill']), back: 'no one-colour glow' },
   { name: 'water', file: 'src/rendering/wheelWater.js', built: Object.freeze(['bt-wheel-water', 'bt-wheel-water-all', 'bt-wheel-water-pal', 'bt-wheel-water-pal-all']), back: 'still water' },
   { name: 'glint', file: 'src/rendering/lightfx/glint.js', built: Object.freeze(['bt-glint-filter']), back: 'the filtered pieces plain' },
