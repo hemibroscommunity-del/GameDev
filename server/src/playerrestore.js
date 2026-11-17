@@ -56,6 +56,24 @@ import { RPG_SCHEMA_VERSION } from './migrations.js';
 import { BANK } from './bank.js';
 import { PETBOOK } from './petbook.js';
 
+/* ═══ v2.3.5710 (card SEC PR 11): WHAT MOVED SINCE THE COPY ═══
+   The second red team: with `fullsnap` off a copy carries the character
+   only, so the vault is never rewound -- restoring one player gave back
+   what they had banked since the copy (in the vault AND in the restored
+   purse), and what they traded or gifted away (the other player keeps it;
+   the restored character has it again).  The dry run showed the new total
+   and not why.  Now the answer (dry and real) says `moved`, when anything
+   did:
+     - `vault`: the vault's gold and items NOW, when the copy does not carry
+       the vault (it stays as it is: read it beside `booked`);
+     - `given`: the transfer ledger's rows (`xfer:`, xfer.js) from the
+       copy's day on that name this player as the giver (`from`): when, the
+       road, to whom, the gold and the goods.  At most GIVEN_PAGES pages of
+       GIVEN_PAGE rows read (`givenMore` when there were more).
+   Nothing moved: no `moved` field, the answer as before.  Reads only: no
+   new write, no new lever.  docs/OPERATIONS.md's restore steps say to read
+   it.  (An explicit yes in the Test panel is a later PR: it needs the
+   panel's row.) */
 export const PLAYER_RESTORE = Object.freeze({
   /* rows read of each between-players prefix for the answer, at most */
   BETWEEN_PAGE: 200,
@@ -63,7 +81,64 @@ export const PLAYER_RESTORE = Object.freeze({
   NAME_DEPTH: 6,
   /* between records named in the answer, at most */
   NAMED_MAX: 50,
+  /* v2.3.5710: the ledger read for `moved.given`: pages, and rows a page */
+  GIVEN_PAGE: 200,
+  GIVEN_PAGES: 5,
+  GIVEN_MAX: 50,
 });
+
+/* v2.3.5710: the day a copy was made, as the ledger writes it (yyyymmdd):
+   a daily copy's key ends with it; a `prereset-` or `prerestore-` copy's with
+   the time it was made.  null: not known (every row read). */
+export function copyDay(snapKey) {
+  const tail = String(snapKey || '').split(':').pop();
+  if (/^\d{8}$/.test(tail)) return tail;
+  const m = /^pre(?:reset|restore)-(\d{10,})$/.exec(tail);
+  if (!m) return null;
+  const d = new Date(Number(m[1]));
+  if (!Number.isFinite(d.getTime())) return null;
+  const p = (n) => String(n).padStart(2, '0');
+  return d.getUTCFullYear() + p(d.getUTCMonth() + 1) + p(d.getUTCDate());
+}
+
+/** v2.3.5710: what moved since the copy that a restore will not rewind:
+ *  the vault now (when the copy has none), and what the player gave away
+ *  (`xfer:` rows from the copy's day on, `from` the player).  null: nothing. */
+export async function movedSince(room, pid, snap, snapKey, vaultNow) {
+  const out = {};
+  if (!holds(snap, 'bank:') && vaultNow && typeof vaultNow === 'object') {
+    const gold = wholeGold(vaultNow.gold);
+    const items = (Array.isArray(vaultNow.items) ? vaultNow.items : [])
+      .filter((it) => it && typeof it.key === 'string' && !BAD_KEYS.has(it.key) && wholeCount(it.n) > 0)
+      .map((it) => ({ key: it.key, n: wholeCount(it.n) }));
+    if (gold > 0 || items.length) out.vault = { gold, items };
+  }
+  const day = copyDay(snapKey);
+  const st = room.state.storage;
+  const given = [];
+  let more = false, after = null;
+  for (let page = 0; page < PLAYER_RESTORE.GIVEN_PAGES; page++) {
+    const opt = { prefix: 'xfer:', limit: PLAYER_RESTORE.GIVEN_PAGE };
+    if (after !== null) opt.startAfter = after;
+    else if (day) opt.start = 'xfer:' + day;
+    let rows;
+    try { rows = await st.list(opt); } catch (e) { break; }
+    let n = 0;
+    for (const [k, v] of rows) {
+      n++; after = k;
+      if (day && k < 'xfer:' + day) continue;   /* a storage that ignores `start` */
+      if (!v || typeof v !== 'object' || v.from !== pid) continue;
+      if (given.length >= PLAYER_RESTORE.GIVEN_MAX) { more = true; continue; }
+      given.push({ key: k, at: Number(v.at) || 0, road: typeof v.road === 'string' ? v.road : null, to: typeof v.to === 'string' ? v.to : null,
+        gold: wholeGold(v.gold), goods: v.goods && typeof v.goods === 'object' ? v.goods : {} });
+    }
+    if (n < PLAYER_RESTORE.GIVEN_PAGE) break;
+    if (page === PLAYER_RESTORE.GIVEN_PAGES - 1) more = true;
+  }
+  if (given.length) out.given = given;
+  if (more) out.givenMore = true;
+  return Object.keys(out).length ? out : null;
+}
 
 const own = (o, k) => !!o && typeof o === 'object' && Object.prototype.hasOwnProperty.call(o, k);
 const BAD_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
@@ -244,7 +319,9 @@ export async function playerRestore(room, body, now = Date.now()) {
 
   const between = await betweenOf(room, pid);
   const left = Object.keys(RESTORE_WAYS).filter((p) => !touched.includes(p));
-  const answer = { ok: true, restoredFrom: snapKey, dry, restored: touched, left, booked, ...between };
+  /* v2.3.5710: what moved since the copy that this restore will not rewind */
+  const moved = await movedSince(room, pid, snap, snapKey, cur('bank:'));
+  const answer = { ok: true, restoredFrom: snapKey, dry, restored: touched, left, booked, ...between, ...(moved ? { moved } : {}) };
   if (dry) return { status: 200, ...answer, copy: null, words: 'Nothing written: this is what the restore would do.' };
 
   const puts = Object.create(null), dels = [];

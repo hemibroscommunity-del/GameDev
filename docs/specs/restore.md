@@ -255,3 +255,17 @@ not fall with this switch: it would only with `resetbook` on for the census.
 `fullsnap: true` and `resetbook: true` in the live flags, each off by
 default (`docs/SWITCHES.md`).
 
+
+## v2.3.5710: what moved since the copy (card SEC PR 11)
+
+With `fullsnap` off a copy carries the character only, so a restore gave
+back what the player banked since the copy (the vault is not rewound) and
+what they traded or gifted away (the other side keeps it). The answer, dry
+and real, now carries `moved` when anything did (`playerrestore.js`
+`movedSince`): `vault`, the vault's gold and items now when the copy does
+not carry the vault; `given`, the transfer ledger's `xfer:` rows from the
+copy's day on (`copyDay`: a daily copy's key, or a `prereset-` or
+`prerestore-` copy's time) whose giver (`from`) is this player, at most 50
+(`givenMore` past five pages of 200). Nothing moved: no field, the answer as
+before. Reads only; no new write, no new lever. Suite:
+`server/test/restoremoved.test.mjs`.

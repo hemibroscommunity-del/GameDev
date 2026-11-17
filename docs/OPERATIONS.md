@@ -532,6 +532,14 @@ curl -X POST -H "Authorization: Bearer YOUR_KEY" \
    Those are never put back: they are another player's too. A piece they
    listed after the backup comes back to them AND stays in its listing, so
    look there and take the listing down if you need to.
+   **Read `moved` too** (v2.3.5710), when it is there: what changed since
+   the backup that the restore will NOT undo. `moved.vault` is what is in
+   their bank now (a backup without the bank leaves it as it is, so gold
+   they banked since is in the bank AND comes back in the purse);
+   `moved.given` lists what they handed to other players since the backup
+   (each one's gold, items and who got it: the other player keeps it, and
+   the restored character has it again). If either is there, decide before
+   step 4 whether the restore is still right. No `moved`: nothing moved.
 4. Restore (the same, without `dry`):
 ```
 curl -X POST -H "Authorization: Bearer YOUR_KEY" \
