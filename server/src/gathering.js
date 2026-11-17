@@ -1365,7 +1365,10 @@ export const gatheringMethods = {
        CLAUDE.md rule 4, and a plain {} silently no-ops on '__proto__' (three
        incidents in one day, 2026-07-07). */
     if (!this._lastStrikeById) this._lastStrikeById = Object.create(null);
-    this._lastStrikeById[session.id] = Object.assign({ why, at: Date.now() }, extra || {});
+    /* v2.3.5544 (RT-1 N11): a string field kept only up to STR_MAX -- the
+       phone's raw zone, up to the 16 KB frame, kept for good was ~27 KB a
+       guest on the heap (heapforget.js; the entry goes at the leave) */
+    this._lastStrikeById[session.id] = Object.assign({ why, at: Date.now() }, this._heapClip(extra || {}));
   },
 
   /** The operator view's read side.  Null when this player has not struck a

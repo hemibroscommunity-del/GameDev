@@ -16,7 +16,7 @@ state: ready
 ## Next
 
 - #1942 N11 (5544, `heapforget`): the room forgets who left.
-- #1949 N5 (5545, `roomceiling`, ON): the room's ceiling, 4,000 messages in a
+- #1949 N5 (5545, `roomceiling`, ON, on #1942): the room's ceiling, 4,000 messages in a
   second; past it a socket over its share is dropped, then closed.
   Then 5194/5196/5197 (after MOD's market.js PR).
 - The move's walls (movement.js); the sword's reach (index.js, after card
