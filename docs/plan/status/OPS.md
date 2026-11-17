@@ -1,6 +1,6 @@
 card: OPS
-branch: claude/plan-ops-11b-guestday (on main 7a22a603; the rest on their own)
-prs: #1951 (5607), #1957 (5613), #1966 (5612): ready; 5614 working
+branch: claude/plan-ops-11b-guestday (on main cfcd70b1; each OPS PR on its own branch)
+prs: #1951 (5607), #1957 (5613), #1966 (5612), #1968 (5614): ready
 state: ready
 
 ## Done
@@ -18,7 +18,7 @@ state: ready
 - Ready: #1951 (5607) the paged reads; #1957 (5613) 19b's LOW, socket
   writes drop the kept read; #1966 (5612) the seat mend, OFF (seatrace
   blip and restart 6/6, main 5/6; its wsClient.js line the planner's).
-- 5614: guestlazy's `on` its merge day; the planner's words in its spec.
+- #1968 (5614): guestlazy's `on` its merge day; the planner's words in its spec.
 
 ## Found
 
