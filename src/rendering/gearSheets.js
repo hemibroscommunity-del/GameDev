@@ -30,6 +30,7 @@ import { keepAsImage } from './keepAsImage.js';   /* v2.3.3702: every strip pack
 import { KEEP_GPU_COPIES } from './gpuOnly.js';
 import { gearNumbersKey, gearNumbersCanvas } from './gearNumbers.js';   /* v2.3.5000: the walking armour's pixels from its numbers */
 import { noteMade } from '../debug/madeLog.js';   /* v2.3.5251: a packing slice's time on the page, by its hold's name */
+import { sw, pageAddress } from '../game/switches.js';   /* v2.3.5316: the page's one reader (card T) */
 
 /* ═══ v2.3.3702: A STRIP PACKED HERE IS KEPT AS AN IMAGE OF ITSELF ═══
  * The owner, 2026-10-28: "Memory seems to be the persistent bottleneck in
@@ -131,7 +132,7 @@ const _GEAR_RETRY_MS = [2000, 6000];
 const GEAR_RETRY_LATER_MS = [5000, 10000, 20000, 40000, 60000];
 const GEAR_RETRY_ROUNDS = 10;   /* then the sheet stays given up on: never a request a minute for good */
 let _gearRetryOn = true;
-try { if (typeof location !== 'undefined' && /[?&](gearretry|retrylooks)=0\b/.test(location.search || '')) _gearRetryOn = false; } catch (e) { /* on */ }
+if (sw('gearretry')) _gearRetryOn = false;
 const _gaveUp = Object.create(null);   /* sheet key -> { at, n, args }; keys built from ids off the wire (rule 4) */
 /* the sheet at `key` again, if it was given up on and its time has come; true
    when a new round has started (the caller answers null meanwhile) */
@@ -320,7 +321,7 @@ export async function packTrimmedSliced(img, fw, fh, n, turn) {
    as before.  `?gearpackgentle=0`: the old way for one tab. */
 const GEAR_SLICE_MS = 6, GEAR_SLICE_WAIT_MS = 120;
 let _gearPlay = null, _gearLine = Promise.resolve(), _gearT0 = 0, _gearPending = 0;   /* v2.3.5253: + the packs asked for and not done */
-const _gearGentleOff = (() => { try { return /(^|[?&])gearpackgentle=(0|off|false)(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();
+const _gearGentleOff = sw('gearpackgentle');
 /** zoneTextures.setStripPlay hands the same `fn` here: the frame's length in
  *  ms while the world is in play, 0 behind a loading screen. */
 export function setGearPackPlay(fn) { _gearPlay = typeof fn === 'function' ? fn : null; }
@@ -683,7 +684,7 @@ export function preloadBeltSheets() {
    probe reading the page's bake...), `?shirtworker=0` (this alone), and a job
    the worker could not do (its file, an error: the page's bake, with its own
    retries). */
-const _SHIRT_WORKER_OFF = (() => { try { return /(^|[?&])shirtworker=(0|off|false)(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();
+const _SHIRT_WORKER_OFF = sw('shirtworker');
 /* ═══ v2.3.5253: EVERY SHEET PACKED IN PLAY, ON THE WORKER (pack-page) ═══
    Card P's `pack-page` (tools/qa/mp/held-budget.mjs's debt list, line 20):
    a gear sheet first drawn in play was packed on the page a few ms at a time
@@ -703,7 +704,7 @@ const _SHIRT_WORKER_OFF = (() => { try { return /(^|[?&])shirtworker=(0|off|fals
    page's own pack in play (and `?shirtworker=0`, `?bodyworker=0` with it).
    (Gear sheets as colour numbers -- the card's first road -- is a memory
    project, not a page-hold one: the backlog's, later.) */
-const _PACK_WORKER_OFF = (() => { try { return /(^|[?&])packworker=(0|off|false)(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();
+const _PACK_WORKER_OFF = (() => { try { return /(^|[?&])packworker=(0|off|false)(&|$)/.test(pageAddress()); } catch (e) { return false; } })();
 /* QA (the planning session's condition): how long a sheet waited for the
    worker, asked to answered -- it may queue behind a fish bake */
 const _workerWait = { sheets: 0, maxMs: 0, sumMs: 0, last: [], work: [] };   /* work: each job's own time on the worker */

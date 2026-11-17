@@ -40,6 +40,7 @@ import { lookPaletteWanted, lookPose, getLookFrame, preloadLookSheets, registerL
 import { installLookProbe } from './lookPaletteProbe.js';   /* v2.3.3716: QA, `?lookpalette=1` / `?lookprobe` only */
 import { bodyWorkerWanted, bakeOnWorker, noteWorkerSheet } from './bodyBake.js';   /* v2.3.4930: the bake on a worker */
 import { FRAME_W, FRAME_H, setBakeTag, bakeBodyFull, bakeHeadFull, GARMENT_SPECKS_OFF, recolorBodyToCanvas, retintSkinPixels, recolorStandInSkin, recolorStandInSkinSplit } from './bodyRecolor.js';   /* v2.3.4930: the recolour, moved verbatim (a worker runs it too) */
+import { pageAddress } from '../game/switches.js';   /* v2.3.5316: the page's one reader (card T) */
 export { recolorBodyToCanvas, retintSkinPixels, recolorStandInSkin, recolorStandInSkinSplit };
 
 /* ── Catalogs ── `target` = the LIT color for that choice; null = native. */
@@ -1019,7 +1020,7 @@ function _headSheetKey(skinId, pantsId, shoesId, pose, dir, blank, a) {
    before -- for what the numbers cannot carry: an eye style that erases (its
    fill is the colour round each eye), a face drawing, the garment specks'
    old way, no atlas row, the set not in. */
-const HEAD_LOOK_OFF = (() => { try { return /(^|[?&])headlook=(0|off|false)(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();
+const HEAD_LOOK_OFF = (() => { try { return /(^|[?&])headlook=(0|off|false)(&|$)/.test(pageAddress()); } catch (e) { return false; } })();
 if (!HEAD_LOOK_OFF) registerLookSheets('bodyheads', '/sprites/look/bodyheads/roles.json');
 function _headLookFrames(pose, dir, skinT, blank, a) {
   if (HEAD_LOOK_OFF || GARMENT_SPECKS_OFF || blank || _headArtSeg(a) || !lookPaletteWanted()) return null;
@@ -1549,7 +1550,7 @@ if (typeof window !== 'undefined') {
 /* v2.3.3716: the look-palette oracle's probe (mp-lookpalette), on a page that
    asks for it only */
 try {
-  if (typeof window !== 'undefined' && /(^|[?&])(lookpalette=1|lookprobe(=1)?)(&|$)/.test(window.location.search || '')) {
+  if (typeof window !== 'undefined' && /(^|[?&])(lookpalette=1|lookprobe(=1)?)(&|$)/.test(pageAddress())) {
     installLookProbe({ getBodyFrame, getLookBodyFrame, getFrame, playerFrameCount,
       /* v2.3.3750: poseSkinTarget -- hit, roll, mine and fish always recolour the skin */
       touches: (L, pose, dir) => !!(poseSkinTarget(skinTarget(L[0]), pose) || pantsTarget(L[1]) || shoesTarget(L[2]) || eyeFor(pose, dir, L[3])) });

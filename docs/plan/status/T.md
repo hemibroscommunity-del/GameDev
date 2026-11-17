@@ -1,6 +1,6 @@
 card: T
-branch: claude/plan-t-15-reads6 (on #1994's branch; main merged in)
-prs: #1754 ... #1958, #1978 (5301-5311, merged); #1992, #1993 (5312-5313, merged); #1994 5314 (ready); 5315 (ready, on #1994)
+branch: claude/plan-t-16-reads7 (on #1996's branch; main merged in)
+prs: #1754 ... #1958, #1978 (5301-5311, merged); #1992, #1993 (5312-5313, merged); #1994 5314 (ready); #1996 5315 (ready, on #1994); 5316 (ready, on #1996)
 state: ready
 
 ## Done
@@ -18,7 +18,7 @@ state: ready
 
 ## Next
 
-- 5315: eleven reads (memory); the line 144. Then look, render;
+- 5316: twenty-eight reads (look); the line 116. Then render;
   K's and L's files when they end.
 
 ## Found
@@ -37,4 +37,4 @@ state: ready
 
 ## Needs
 
-- The gatekeeper: #1994, then #1996 (5315) on it.
+- The gatekeeper: #1994, #1996, then 5316 on them.
