@@ -1,6 +1,6 @@
 card: L
 branch: claude/plan-l-30-page-halves (from main)
-prs: #1746 to #2022 (merged), 5530 trade+ride page doors (this branch): ready
+prs: #1746 to #2022 (merged), #2027 (5530): ready
 state: ready
 
 ## Done
