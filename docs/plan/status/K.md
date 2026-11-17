@@ -1,7 +1,7 @@
 card: K
 branch: claude/plan-k-<n>-<topic> (one branch a PR, each begun from main)
-prs: #1822, #1820, #1826, #1829, #1831, #1838, #1842, #1861, #1848, #1899, #1923, #1900, #1931-#1934 merged; ready: #1942 (N11, 5544); N5 (5545) this branch
-state: working
+prs: #1822, #1820, #1826, #1829, #1831, #1838, #1842, #1861, #1848, #1899, #1923, #1900, #1931-#1934 merged; ready: #1942 (N11, 5544), #1949 (N5, 5545, this branch)
+state: ready
 
 ## Done
 
@@ -16,7 +16,7 @@ state: working
 ## Next
 
 - #1942 N11 (5544, `heapforget`): the room forgets who left.
-- N5 (5545, `roomceiling`, ON): the room's ceiling, 4,000 messages in a
+- #1949 N5 (5545, `roomceiling`, ON): the room's ceiling, 4,000 messages in a
   second; past it a socket over its share is dropped, then closed.
   Then 5194/5196/5197 (after MOD's market.js PR).
 - The move's walls (movement.js); the sword's reach (index.js, after card
