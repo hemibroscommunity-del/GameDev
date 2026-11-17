@@ -96,6 +96,7 @@ const FORMS = {
   'droplines': '0',
   'dtsmooth': '0|off|false',
   'dueldoor': '0',
+  'dungeondoor': '0',
   'dyingdoor': '0',
   'elemicons': '0',
   'equipredraw': '0',

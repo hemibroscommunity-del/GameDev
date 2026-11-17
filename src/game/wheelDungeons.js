@@ -37,6 +37,7 @@ import { releaseLeftZoneArt, clearZoneLocalFx, veilWheelTrip, changeZone } from 
 import { WHEEL_DUNGEON_HOMES, DOOR_R, WHEEL_DOOR_LOOK, WHEEL_DUNGEON_FLOOR, WHEEL_ARENA, WHEEL_DUNGEON_PARTY, WHEEL_DUNGEON_REC, dungeonLevelsLine, dungeonDoorLine, dungeonBoardLine } from '@/data/wheelDungeons.js';   /* v2.3.3573: + the party dungeons and their words; v2.3.3608: + the level each is for */
 import { freeDungeonArt } from './dungeonArt.js';   /* v2.3.3566 */
 import { act } from '@/game/actions.js';   /* v2.3.5188: the page's requests leave through the action door (card K PR 7) */
+import { dungeonTo } from '@/game/dungeonDoor.js';   /* v2.3.5535: the dungeon's page door (card L) */
 
 /* the table -- which lands, the button's reach, each mouth's light, each
    arena's floor -- is src/data/wheelDungeons.js (no imports: the server's
@@ -256,10 +257,8 @@ export function leaveWheelDungeon(S) {
   const left = S.currentZone;
   const inst = S._serverDungeon;
   S._serverDungeon = null;
-  S._inDungeon = false;
-  S._inCustomDungeon = false;
+  dungeonTo(S, 'leave', { in: false, custom: false, complete: false });   /* v2.3.5535: the dungeon's page door */
   S._customDungeonConfig = null;
-  S._dungeonComplete = false;
   S._dungeonBossSpawned = false;
   S._serverMonsters = false;
   S._dungeonBack = null;
