@@ -191,6 +191,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `jackcheck` | worker | switch | v2.3.5813 | 2026-11-17 | false | logic |  | no | The jackpot's deposit takes after its awaits without asking the purse again, as before (MD-3). |
 | `leftoverheal` | worker | switch | v2.3.5809 | 2026-11-17 | false | logic |  | no | The trade window's weapons and the arena's champion pay, then delete their escrow record in a later write, as before (MS-6). |
 | `loginspin` | worker | switch | v2.3.4285 | 2026-11-05 | false | logic |  | no | Un-advertises the login wheel and refuses every ask. |
+| `minebids` | worker | switch | v2.3.5817 | 2026-11-17 | false | logic |  | no | The Auction House's `/mine` answers anyone asking with a player's bids (what, how much, when), as before (RT-3 P1). |
 | `mktheal` | worker | switch | v2.3.5801 | 2026-11-17 | false | logic |  | no | A General Store cancel or expiry pays the escrow back, then deletes the order in a later write, as before (MS-4: a restart between, then 48 quiet hours, can pay it twice). |
 | `mktsettle` | worker | switch | v2.3.4505 | 2026-11-10 | false | logic |  | no | A market leftover with a settle note is healed the old way. |
 | `mkttier` | worker | switch | v2.3.5801 | 2026-11-17 | false | logic |  | no | A General Store sell is filed under the category, kind and tier its request names, as before (MS-2: a cheap blade can fill a better tier's buy order). |
