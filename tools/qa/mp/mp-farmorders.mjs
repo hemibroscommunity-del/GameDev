@@ -158,7 +158,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* ── 1. the Orders tab ── */
     const vt = await until((v) => v.tab, 10000);
     rec.ok('a finger on "Enter" opens the Feed & Seed (guard)', vt.tab, cover);
-    await tap('[data-farm-tab="orders"]');
+    /* v2.3.5646: a tap the page lets go (it is the first on a panel that has only just drawn)
+       is made again, up to three times, until the Orders pane shows */
+    for (let k = 0; k < 3; k++) {
+      await tap('[data-farm-tab="orders"]');
+      if ((await until((v) => v.shown, 2500)).shown) break;
+    }
     const v1 = await until((v) => v.shown && v.board && v.rows.length === 3);
     await shot(A, 'board');
     const day = v1.board && v1.board.day;
