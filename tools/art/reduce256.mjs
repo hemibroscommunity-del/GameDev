@@ -92,6 +92,10 @@ SCOPE.push({ dir: 'sprites/world', only: /^fish-spot-627\.webp$/, always: true, 
    columns 7-356).  Not the duel ask's small icon (SMALL_TEX, 0.02 MB). */
 SCOPE.push({ dir: 'icons/ui', only: /^bar-(hp|mp|stam)\.webp$/, always: true });
 SCOPE.push({ dir: 'ui/bars', only: /^(hp-frame|hp-full|node-full-green)\.png$/, always: true, pad4: true });
+/* v2.3.5567 (card P's backlog, player-death): the owner's death strip
+   (playerDeathSprites.js, 21 frames of 128 px), the fallback drawn when the
+   bones' explosion (deathCrumble.js) has no corpse: 38k colours, cut to 256. */
+SCOPE.push({ dir: 'sprites/players', only: /^death-v1\.png$/, always: true });
 /* v2.3.5564 (card P's backlog, cape-hood): a cape's hood's hair masks, cut
    from its facings (tools/cape/split-cape-hood.py): two colours, exact.  Not
    the hood halves (sitting 20, the planning session's answer (a)): a cape is

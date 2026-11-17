@@ -141,9 +141,17 @@ const FISH_SPOT_ON = !NO_TWINS && !/[?&]fishspot=0(&|$)/.test(_q);
    by BroTown.jsx and never rendered).  `?hudbars=0` keeps them pictures. */
 const HUD_BARS = /^\/(?:icons\/ui\/bar-(?:hp|mp|stam)\.webp|ui\/bars\/(?:hp-frame|hp-full|node-full-green)\.png)$/;
 const HUD_BARS_ON = !NO_TWINS && !/[?&]hudbars=0(&|$)/.test(_q);
+/* v2.3.5567, `player-death`: the owner's death strip (playerDeathSprites.js,
+   21 frames of 128 px, loaded behind the loading screen for everyone and
+   kept), the fallback drawn when the bones' explosion (deathCrumble.js) has
+   no corpse: 1.3 MB held as a picture in the page at the memory check's
+   fight.  Its twin cuts 38k colours to 256 (moved 0.009 OKLab).  `?deathstrip=0`
+   keeps it a picture. */
+const PLAYER_DEATH = /^\/sprites\/players\/death-v1\.png$/;
+const PLAYER_DEATH_ON = !NO_TWINS && !/[?&]deathstrip=0(&|$)/.test(_q);
 /** whether the picture at `path` (no host, no query) is read from its twin here */
-function wantedPath(path) { return !NO_TWINS && (ALL_TWINS || (FX_MADE_ON && FX_MADE.test(path)) || (WORLD_ICONS_ON && WORLD_ICONS.test(path)) || (FX_SHEETS_ON && FX_SHEETS.test(path)) || (ELEM_ICONS_ON && ELEM_ICONS.test(path)) || (HAIRMASKS_ON && HAIRMASKS.test(path)) || (PET_SHEET_ON && PET_SHEET_P.test(path)) || (CAPE_HOOD_ON && CAPE_HOOD.test(path)) || (FISH_SPOT_ON && FISH_SPOT.test(path)) || (HUD_BARS_ON && HUD_BARS.test(path))); }
-const WANTED = !NO_TWINS && (ALL_TWINS || FX_MADE_ON || WORLD_ICONS_ON || FX_SHEETS_ON || ELEM_ICONS_ON || HAIRMASKS_ON || PET_SHEET_ON || CAPE_HOOD_ON || FISH_SPOT_ON || HUD_BARS_ON);
+function wantedPath(path) { return !NO_TWINS && (ALL_TWINS || (FX_MADE_ON && FX_MADE.test(path)) || (WORLD_ICONS_ON && WORLD_ICONS.test(path)) || (FX_SHEETS_ON && FX_SHEETS.test(path)) || (ELEM_ICONS_ON && ELEM_ICONS.test(path)) || (HAIRMASKS_ON && HAIRMASKS.test(path)) || (PET_SHEET_ON && PET_SHEET_P.test(path)) || (CAPE_HOOD_ON && CAPE_HOOD.test(path)) || (FISH_SPOT_ON && FISH_SPOT.test(path)) || (HUD_BARS_ON && HUD_BARS.test(path)) || (PLAYER_DEATH_ON && PLAYER_DEATH.test(path))); }
+const WANTED = !NO_TWINS && (ALL_TWINS || FX_MADE_ON || WORLD_ICONS_ON || FX_SHEETS_ON || ELEM_ICONS_ON || HAIRMASKS_ON || PET_SHEET_ON || CAPE_HOOD_ON || FISH_SPOT_ON || HUD_BARS_ON || PLAYER_DEATH_ON);
 /* (never while QA compares cropped strips against their files: __btTrimVerify) */
 export function p256On() { return WANTED && picNumbersOn(); }
 
@@ -409,6 +417,6 @@ export function startP256Pack(renderer, canvas) {
 }
 
 if (typeof window !== 'undefined') {
-  window.__btP256 = () => ({ wanted: WANTED, on: p256On(), all: ALL_TWINS, fxMade: FX_MADE_ON, worldIcons: WORLD_ICONS_ON, fxSheets: FX_SHEETS_ON, elemIcons: ELEM_ICONS_ON, hairMasks: HAIRMASKS_ON, petSheet: PET_SHEET_ON, capeHood: CAPE_HOOD_ON, fishSpot: FISH_SPOT_ON, hudBars: HUD_BARS_ON, twins: Object.keys(P256_FILES).length, ..._stats,
+  window.__btP256 = () => ({ wanted: WANTED, on: p256On(), all: ALL_TWINS, fxMade: FX_MADE_ON, worldIcons: WORLD_ICONS_ON, fxSheets: FX_SHEETS_ON, elemIcons: ELEM_ICONS_ON, hairMasks: HAIRMASKS_ON, petSheet: PET_SHEET_ON, capeHood: CAPE_HOOD_ON, fishSpot: FISH_SPOT_ON, hudBars: HUD_BARS_ON, playerDeath: PLAYER_DEATH_ON, twins: Object.keys(P256_FILES).length, ..._stats,
     pack: { ..._pk, packedNow: _packed.size, waiting: _toPack.size } });
 }

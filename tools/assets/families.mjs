@@ -140,8 +140,10 @@ export const ASSET_FAMILIES = Object.freeze([
     { tool: 'public/tools/weapon-anchor.html', draw: 'none', note: 'a stale copy: the game reads weapons/handles.json' }),
   fam('player-naked', 'supplied', 'public/sprites/player-naked/*.png',
     { draw: 'file', loader: 'src/rendering/systems/entityRenderer.js', px: 'frame 256x256', note: 'loaded behind the loading screen; nothing reads the texture' }),
-  fam('player-death', 'supplied', 'public/sprites/players/*.png',
-    { draw: 'file', loader: 'src/rendering/playerDeathSprites.js', px: 'frame 128x128', note: 'only when deathCrumble has no corpse' }),
+  fam('player-death', 'supplied', 'public/sprites/players/death-v1.png',
+    { draw: 'file', loader: 'src/rendering/playerDeathSprites.js', px: 'frame 128x128', note: 'only when deathCrumble has no corpse; v2.3.5567: drawn from its twin where colour numbers are drawn (player-death-twins); this with ?deathstrip=0' }),
+  fam('player-death-twins', 'made', 'public/sprites/players/*.p256.png',
+    { tool: 'tools/art/reduce256.mjs', sources: 'beside', draw: 'numbers', loader: 'src/rendering/p256.js', px: 'frame 128x128', note: 'v2.3.5567, card P\'s backlog: the death strip read from its 256-colour twin by default (38k colours cut to 256, moved 0.009 OKLab); listed in src/data/p256Files.js; ?deathstrip=0' }),
 
   /* ── armour and clothes: public/sprites/gear/ ── */
   fam('gear-belt', 'made', 'public/sprites/gear/belt/*/*.png',
