@@ -92,7 +92,7 @@ export const riseChestMethods = {
   _riseChestSend(pid, payload) {
     const ws = this._wsBySessionId && this._wsBySessionId(pid);
     if (!ws) return;
-    try { ws.send(JSON.stringify({ type: 'rise_chest', payload })); } catch (e) { /* the answer only: the payment is on file */ }
+    try { this._send(ws, { type: 'rise_chest', payload }); } catch (e) { /* the answer only: the payment is on file */ }
   },
 
   /* ═══ rise_chest_open {id} (index.js's router) ═══

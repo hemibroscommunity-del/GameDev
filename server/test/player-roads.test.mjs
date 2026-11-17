@@ -222,7 +222,8 @@ check('5. every kind is behind a door or listed DOORLESS, never both', f.kinds.l
 /* ══════════ 8. AN `xfer` ROW HAS A WRITER (v2.3.5281, the gatekeeper's low) ══════════ */
 {
   check('8. every `xfer` row\'s key is a `move` road it names, or it names its writer, called there', f.xfer.length === 0 && Object.values(PLAYER_ROADS).some((r) => r.ledger === 'xfer'), f.xfer);
-  const claim = faults({ ...REAL, rows: { ...PLAYER_ROADS, market: { ...PLAYER_ROADS.market, ledger: 'xfer' } } });
+  /* v2.3.5293: the market names its writer now (card R PR 17), so the proof takes it away */
+  const claim = faults({ ...REAL, rows: { ...PLAYER_ROADS, market: { ...PLAYER_ROADS.market, ledger: 'xfer', writer: undefined } } });
   check('8. ...a row that claims `xfer` with neither fails (the market, its key no move road)', claim.xfer.some((s) => s.startsWith('market:')), claim.xfer);
   const named = faults({ ...REAL, rows: { ...PLAYER_ROADS, market: { ...PLAYER_ROADS.market, ledger: 'xfer', writer: 'trade2.js xferTradeWindow' } } });
   const wrong = faults({ ...REAL, rows: { ...PLAYER_ROADS, market: { ...PLAYER_ROADS.market, ledger: 'xfer', writer: 'market.js xferTradeWindow' } } });

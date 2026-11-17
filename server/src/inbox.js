@@ -119,7 +119,10 @@ export const inboxMethods = {
      merge restarts the room) took a stake with no record for the sweep to
      refund: the gold was simply gone.  The opIds are the caller's and must
      be fresh (a new duel's id); nothing here is a retry. */
-  async _escrowDebitGoldTogether(debits, puts) {
+  /* v2.3.5293 (card R PR 17): `also`, when given, is called once every check
+     has passed and its promises join the same run (the Auction House's
+     ledger row: written only for a sale that is paid). */
+  async _escrowDebitGoldTogether(debits, puts, also) {
     const list = Array.isArray(debits) ? debits : [];
     if (!list.length) return { ok: false, reason: 'nothing' };
     for (const d of list) {
@@ -138,6 +141,7 @@ export const inboxMethods = {
     for (const kv of Array.isArray(puts) ? puts : []) {
       if (Array.isArray(kv) && typeof kv[0] === 'string') writes.push(this.state.storage.put(kv[0], kv[1]));
     }
+    if (typeof also === 'function') { const more = also(); for (const w of (Array.isArray(more) ? more : [more])) if (w) writes.push(w); }
     for (const d of list) this._queuePlayerStateFlush(d.id);
     await Promise.all(writes);
     return { ok: true };
@@ -560,7 +564,7 @@ export const inboxMethods = {
             const add = Math.max(0, Math.floor(p.amount || 0));
             g.payload.minted = mailMinted(g, Math.max(0, Math.floor(g.payload.amount || 0))) + mailMinted(entry, add);
             g.payload.amount = (g.payload.amount || 0) + add;
-            g.note = 'merged payouts';
+            g.note = 'merged payouts'; delete g.noteT;   /* v2.3.5197: a merged note is the game's own: no template */
             merged = true;
           }
         }
@@ -570,12 +574,12 @@ export const inboxMethods = {
             const add = Math.max(1, Math.floor(p.count || 1));
             it.payload.minted = mailMinted(it, Math.max(1, Math.floor(it.payload.count || 1))) + mailMinted(entry, add);   /* v2.3.5085: as the gold's */
             it.payload.count = (it.payload.count || 1) + add;
-            it.note = 'merged payouts';
+            it.note = 'merged payouts'; delete it.noteT;   /* v2.3.5197 */
             merged = true;
           }
         }
       }
-      if (!merged) box.push({ opId: entry.opId, ts: Date.now(), source: entry.source || '', kind: entry.kind, payload: entry.payload, note: entry.note || '' });
+      if (!merged) box.push({ opId: entry.opId, ts: Date.now(), source: entry.source || '', kind: entry.kind, payload: entry.payload, note: entry.note || '', ...(entry.noteT ? { noteT: entry.noteT } : {}) });   /* v2.3.5197: the note's template beside it (words.js) */
       const writes = [this.state.storage.put(key, box)];
       if (opId) writes.push(this._opStamp(opId));
       /* v2.3.4500: ...and the caller's own record, in the same run (_creditWith) */
@@ -667,13 +671,13 @@ export const inboxMethods = {
     const ws = wsOverride || this._wsBySessionId(playerId);
     if (!ws) return;
     try {
-      ws.send(JSON.stringify({
+      this._send(ws, {
         type: 'inbox_delivered',
         payload: {
-          entries: entries.map((e) => ({ kind: e.kind, payload: e.payload, note: e.note || '', source: e.source || '' })),
+          entries: entries.map((e) => ({ kind: e.kind, payload: e.payload, note: e.note || '', ...(e.noteT ? { noteT: e.noteT } : {}), source: e.source || '' })),   /* v2.3.5197: and its template (words.js) */
           queued: queued || 0,
         },
-      }));
+      });
     } catch (e) { /* dead socket: the credits are already persisted */ }
   },
 

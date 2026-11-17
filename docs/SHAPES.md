@@ -235,6 +235,15 @@ So:
 | `opId` | Stays the worker's. A payment a request starts gets its `opId` from the worker's own ids, as today. |
 | Either side first | The five types keep reading `opId` from an older phone, and read `reqId` first once they move. |
 
+### A sentence with a player's words (v2.3.5197, card K PR 12)
+
+| | |
+|---|---|
+| The name | `noteT`, beside a mail entry's `note`: `{ t, p }`, a template id of the game's sentences and its parts. |
+| The maker | The worker, in one function: `server/src/words.js` `wordsNote` (the note and its template together). |
+| Its readers | The page's mail line (`src/game/postOffice.js` `mailLine`, filling from `src/data/words.js`); an older phone reads `note`. |
+| Where it is | On the mail entry (`inbox:<pid>`), in the same put as the note; dropped when entries merge. No new row. |
+
 ### Things a phone names by their place today
 
 Each is a row of the wire table whose request must name the thing by its id
@@ -756,7 +765,11 @@ Three things no list holds today, for cards N and K:
   budget applies to no route.
 - **No test holds which of the phone's two switches takes a type.**
 - **There is no single send**: 132 places write to a socket, through about 36
-  helpers of the systems' own.
+  helpers of the systems' own. *v2.3.5193 (card K PR 8): the send door,
+  `server/src/send.js` `_send` (and `_sendRoom`), counts frames by type and
+  rides the day's book (part `send`); the helpers, the room's broadcasts and
+  the tick write through it. 93 raw writes are left (`send-door.test`'s
+  census, falling); card K PR 13 moves them.*
 
 ## 6. The device class
 
@@ -1020,6 +1033,7 @@ writes them, never identifiers: `dungeon`, `connection`, `loading` and
 | `poseTo`, `posePhase`, `poseDoorOff`, `POSE_PAGE_WAYS`, `src/game/poseDoor.js`, page switch `?posedoor` (v2.3.5520) | the pose's page door: the phone's own held pose, its one writer, its ways and its switch; free at the commit as whole words (the worker's are `_poseTo` and `_poseDoorOff`) | 5 (step 5.3b) |
 | `guardTo`, `guardPhase`, `guardDoorOff`, `GUARD_PAGE_WAYS`, `src/game/guardDoor.js`, `docs/specs/guard-door.md`, page switch `?guarddoor` (v2.3.5521) | the guard's page door: your raised shield on the phone, its one writer, its ways and its switch; free at the commit (no hit in `src`, `server`, `tools` or `docs`) | 5 (step 5.3b) |
 | `_rideTo`, `_rideDoorOff`, `RIDE_WAYS`, `docs/specs/ride-door.md`, live flag `ridedoor` (v2.3.5523) | the ride door: the skateboard, its one writer and its ways (`server/src/ride.js`), and its kill switch; free at the commit (no hit in `src`, `server`, `tools` or `docs`) | 5 (step 5.3b) |
+| `connTo`, `connDoorOff`, `CONN_PHASES`, `src/game/connectionDoor.js`, `docs/specs/connection-door.md`, page switch `?conndoor` (v2.3.5528) | the connection door: the phone's socket phase, its one writer, its words and its switch; free at the commit (no hit in `src`, `server`, `tools` or `docs`) | 5 (step 5.3b) |
 | `windowTo`, `windowPhase`, `windowDoorOff`, `WINDOW_WHYS`, `S._windows`, `src/game/windowDoor.js`, `docs/specs/window-door.md`, page switch `?windowdoor` (v2.3.5526) | the window door: what is open over the world, its one field and writer, the reasons and the switch; free at the commit in `src`, `tools` and `docs` (`server/test/xfer.test.mjs` has a local helper `windowTo` of its own, a test's, never imported) | 5 (step 5.3b) |
 | `veilTo`, `veilPhase`, `veilDoorOff`, `VEIL_WHYS`, `S._veils`, `src/game/veilDoor.js`, `docs/specs/loading-door.md`, page switch `?veildoor` (v2.3.5525) | the loading door: the world's veils, their one field and writer, the reasons and the switch; free at the commit (no hit in `src`, `server`, `tools` or `docs`) | 5 (step 5.3b) |
 | `_arenaTo`, `_arenaPhase`, `_arenaDoorOff`, `ARENA_WAYS`, `docs/specs/arena-door.md`, live flag `arenadoor` (v2.3.5522) | the arena door: the Gladiator tournament, its one writer and its ways (`server/src/gladiator.js`), and its kill switch; free at the commit (no hit in `src`, `server`, `tools` or `docs`) | 5 (step 5.3b) |

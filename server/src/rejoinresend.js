@@ -57,13 +57,13 @@ export const rejoinResendMethods = {
     const foe = d.a === playerId ? d.b : d.a;
     const fs = this.playerState[foe];
     try {
-      ws.send(JSON.stringify({ type: 'duel_resume', payload: { foe, foeName: (fs && fs.name) || '', wager: d.wager || 0 } }));
+      this._send(ws, { type: 'duel_resume', payload: { foe, foeName: (fs && fs.name) || '', wager: d.wager || 0 } });
     } catch (e) { return false; }
     return true;
   },
 
   _t2Resend(playerId, ws) {
-    const send = (type, payload) => { try { ws.send(JSON.stringify({ type, payload })); } catch (e) { /* gone */ } };
+    const send = (type, payload) => { try { this._send(ws, { type, payload }); } catch (e) { /* gone */ } };
     const s = this._t2SessionFor ? this._t2SessionFor(playerId) : null;
     if (s) { send('trade2_state', Object.assign(this._t2Wire(s), { rejoin: true })); return 'open'; }
     if (!this._t2Invites || this._t2Invites.size === 0) return null;

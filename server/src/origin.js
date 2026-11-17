@@ -38,6 +38,7 @@
  * and last until the next deploy).  docs/specs/origin-lock.md.
  */
 import { ROOMS } from './flood.js';
+import { sendOutside } from './send.js';   /* v2.3.5198: the send door (card K PR 13) */
 
 export const ORIGIN_LOCK = Object.freeze({
   SITES: Object.freeze(['brotown.net', 'gamedev-aix.pages.dev']),
@@ -118,7 +119,7 @@ export function refuseOrigin(request, origin, why, deps = {}) {
   try {
     const [client, server] = Object.values(new Pair());
     server.accept();
-    server.send(JSON.stringify({ type: 'join_rejected', reason: ORIGIN_LOCK.REASON, home: ORIGIN_LOCK.HOME }));
+    sendOutside(server, { type: 'join_rejected', reason: ORIGIN_LOCK.REASON, home: ORIGIN_LOCK.HOME });   /* v2.3.5198: the send door's form outside a room */
     server.close(ORIGIN_LOCK.CLOSE, 'play at brotown.net');
     return new Resp(null, { status: 101, webSocket: client });
   } catch (e) {

@@ -103,32 +103,36 @@ export const PLAYER_ROADS = Object.freeze({
   market: fz({
     at: 'market.js _mktPlaceOrder, _mktSettleRun', carries: ['gold', 'weapon'],
     roads: { gold: ['market_order', 'market_unwind', 'mail_gold'], stash: ['market_sell', 'market_back', 'mail_weapon'] },
-    fee: 0, hold: 0, pace: 0, ledger: 'none',
-    ledgerWhy: 'an escrow road: its price is its point; whether its settle writes a row in the transfer ledger is card R PR 11 (`xferescrow`, more rows a day: the owner\'s cost question)',
+    /* v2.3.5293 (card R PR 17): one row a sale, in its commit's run, only
+       with `xferescrow: true` (OFF by default) */
+    fee: 0, hold: 0, pace: 0, ledger: 'xfer', writer: 'market.js xferMarketSale',
     why: 'the General Store\'s order book: a buy order\'s gold and a sell order\'s weapon rest in `mkt_order:`; a cross pays each side by the mail',
   }),
   auction_sale: fz({
     at: 'store.js _stCreateListing, _stBuyNow, _stSettle', carries: ['gold', 'bag', 'weapon', 'gear', 'pet'],
     roads: { gold: ['escrow_debit', 'escrow_debit_stored', 'escrow_debit_group', 'mail_gold'], bag: ['ah_listing', 'escrow_item', 'escrow_item_stored', 'mail_item'],
       stash: ['store_list', 'gear_list', 'mail_weapon', 'gear_mail'] },
-    fee: 0, hold: 0, pace: 0, ledger: 'none',
-    ledgerWhy: 'an escrow road: card R PR 11 says whether its settle writes a row in the transfer ledger (`xferescrow`)',
+    /* v2.3.5293 (card R PR 17): one row a sale, in its commit's run, only
+       with `xferescrow: true` (OFF by default) */
+    fee: 0, hold: 0, pace: 0, ledger: 'xfer', writer: 'store.js xferAuctionSale',
     why: 'the Auction House, bought now: the seller\'s goods held in `store_listing:`, the buyer\'s gold paid in, each side paid by the mail',
   }),
   auction_bid: fz({
     at: 'store.js _stCreateListing, _stPlaceBid, _stAcceptBid, _stSettle', carries: ['gold', 'bag', 'weapon', 'gear', 'pet'],
     roads: { gold: ['escrow_debit', 'escrow_debit_stored', 'mail_gold'], bag: ['ah_listing', 'escrow_item', 'escrow_item_stored', 'mail_item'],
       stash: ['store_list', 'gear_list', 'mail_weapon', 'gear_mail'] },
-    fee: 0, hold: 0, pace: 0, ledger: 'none',
-    ledgerWhy: 'an escrow road: card R PR 11 (`xferescrow`)',
+    /* v2.3.5293 (card R PR 17): one row a sale, in its commit's run, only
+       with `xferescrow: true` (OFF by default) */
+    fee: 0, hold: 0, pace: 0, ledger: 'xfer', writer: 'store.js xferAuctionSale',
     why: 'the Auction House, a bid won: the bid\'s gold held on the listing until it wins (or is refunded, outbid), then the goods and the gold swap by the mail',
   }),
   auction_offer: fz({
     at: 'store.js _stCreateListing; storeoffer.js _stOfferPlace, _soPlaceOneWrite, _stOfferReply', carries: ['gold', 'bag', 'weapon', 'gear', 'pet'],
     roads: { gold: ['ah_offer', 'ah_offer_back', 'escrow_debit', 'escrow_debit_stored', 'mail_gold'], bag: ['ah_listing', 'escrow_item', 'escrow_item_stored', 'mail_item'],
       stash: ['store_list', 'gear_list', 'mail_weapon', 'gear_mail'] },
-    fee: 0, hold: 0, pace: 0, ledger: 'none',
-    ledgerWhy: 'an escrow road: card R PR 11 (`xferescrow`)',
+    /* v2.3.5293 (card R PR 17): one row a sale, in its commit's run, only
+       with `xferescrow: true` (OFF by default) */
+    fee: 0, hold: 0, pace: 0, ledger: 'xfer', writer: 'storeoffer.js xferAuctionSale',
     why: 'the Auction House, an offer taken: the offer\'s gold held on the listing until the seller takes it (or it is refunded), then the swap by the mail',
   }),
   duel_pot: fz({

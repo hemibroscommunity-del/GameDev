@@ -65,6 +65,7 @@ import { telegraphMethods } from './telegraph.js'; /* v2.3.1730 */
 import { hitMethods } from './hits.js'; /* v2.3.3296: one door for every monster hit on a player */
 import { monsterLifeMethods } from './monsterlife.js'; /* v2.3.4843: a world monster's one reset for a new life */
 import { monsterMoveMethods } from './monstermoves.js'; /* v2.3.4011: the tiers' moves (combo, charge, volley, slams, enrage) */
+import { sendMethods } from './send.js'; /* v2.3.5193: the send door (card K PR 8) */
 import { relayMethods } from './relay.js'; /* v2.3.3304: the relay is an allowlist, in the sender's name */
 /* v2.3.4851: depth.js (v2.3.2790, the dunes' north-south depth) is gone with the old map; was: the monster AI */
 import { dailyChestMethods } from './dailychest.js'; /* v2.3.2820: the daily chest */
@@ -2937,10 +2938,10 @@ export class GameRoom {
     if (have < cost) {
       if (ws) {
         try {
-          ws.send(JSON.stringify({
+          this._send(ws, {
             type: 'ability_rejected',
             payload: { type, pool, cost, have },
-          }));
+          });
         } catch (e) {}
       }
       return;
@@ -3177,13 +3178,13 @@ export class GameRoom {
     const ws = this._wsBySessionId(playerId);
     if (ws) {
       try {
-        ws.send(JSON.stringify({
+        this._send(ws, {
           type: 'player_died',
           /* v2.3.3556: `keptBag` -- the worker kept the bag (a dungeon, a
              duel), so the phone can say so; absent, as from an older worker,
              the phone promises nothing */
           payload: { cause: cause || 'unknown', respawnInMs: 5000, ...(ps._deathKeepsBag ? { keptBag: 1 } : {}) },
-        }));
+        });
       } catch (e) {}
     }
   }
@@ -3271,10 +3272,10 @@ export class GameRoom {
          `joinstandup`). */
       if (!ws) continue;
       try {
-        ws.send(JSON.stringify({
+        this._send(ws, {
           type: 'player_respawned',
           payload: { zone: 'town' },
-        }));
+        });
       } catch (e) { /* did not arrive: the rejoin's player_state stands them up */ }
       this._queuePlayerStateFlush(id);
     }
@@ -4215,11 +4216,11 @@ export class GameRoom {
       const ws = this._wsBySessionId(session.id);
       if (!ws) return;
       try {
-        ws.send(JSON.stringify({
+        this._send(ws, {
           type: 'loot_pickup_rejected',
           /* v2.3.4383: `viaPet` echoed, so the phone knows whose ask it was */
           payload: { lootId: (payload && payload.lootId) || null, zone: (payload && payload.zone) || null, reason, ...(payload && payload.viaPet ? { viaPet: true } : {}), ...(extra || {}) },
-        }));
+        });
       } catch (e) {}
     };
     if (!session || !session.id) return;  // no session = no way to tell them
@@ -4322,7 +4323,7 @@ export class GameRoom {
       const ws = this._wsBySessionId(session.id);
       if (ws) {
         try {
-          ws.send(JSON.stringify({
+          this._send(ws, {
             type: 'loot_credit',
             payload: {
               lootId,
@@ -4336,7 +4337,7 @@ export class GameRoom {
               // render the pickup at the pet instead of the player.
               viaPet,
             },
-          }));
+          });
         } catch (e) {}
         this._sendPlayerState(ws, session.id);
       }
@@ -4481,7 +4482,7 @@ export class GameRoom {
     const ws = this._wsBySessionId(session.id);
     if (ws) {
       try {
-        ws.send(JSON.stringify({
+        this._send(ws, {
           type: 'loot_credit',
           payload: {
             lootId,
@@ -4518,7 +4519,7 @@ export class GameRoom {
             // render the pickup at the pet + count the pet-loot quest.
             viaPet,
           },
-        }));
+        });
       } catch (e) {}
       this._sendPlayerState(ws, session.id);
     }
@@ -6365,8 +6366,9 @@ export class GameRoom {
     if (!this._faceFilled && this._boardsFaceFill) { try { await this._boardsFaceFill(); } catch { /* best-effort */ } }
   }
 
-  broadcastAll(msg) { const s = JSON.stringify(msg); for (const [ws] of this.sessions) { try { ws.send(s); } catch {} } }
-  broadcastExcept(ex, msg) { const s = JSON.stringify(msg); for (const [ws] of this.sessions) { if (ws !== ex) { try { ws.send(s); } catch {} } } }
+  /* v2.3.5193: the room's form of the send door (send.js _sendRoom): the frame made once, as before */
+  broadcastAll(msg) { this._sendRoom(msg); }
+  broadcastExcept(ex, msg) { this._sendRoom(msg, ex); }
   /* v2.3.2537: the peer copy is cropped of gear ids before it goes out --
      see _gearProvCropPeer (gearprov.js) for why a gid has no business on a
      room-wide broadcast even though it is not exploitable. */
@@ -6439,6 +6441,7 @@ Object.assign(GameRoom.prototype, hitMethods); /* v2.3.3296 */
 Object.assign(GameRoom.prototype, monsterMoveMethods); /* v2.3.4011 */
 Object.assign(GameRoom.prototype, monsterLifeMethods); /* v2.3.4843 */
 Object.assign(GameRoom.prototype, relayMethods); /* v2.3.3304 */
+Object.assign(GameRoom.prototype, sendMethods); /* v2.3.5193: the send door */
 Object.assign(GameRoom.prototype, dailyChestMethods); /* v2.3.2820 */
 Object.assign(GameRoom.prototype, loginSpinMethods); /* v2.3.4295 */
 Object.assign(GameRoom.prototype, dailyRewardsMethods); /* v2.3.3140 */

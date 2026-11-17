@@ -383,7 +383,7 @@ export const joinMethods = {
     const [client, server] = Object.values(new WebSocketPair());
     try {
       server.accept();
-      server.send(JSON.stringify(payload));
+      this._send(server, payload);
       server.close(ROOM_FULL.CLOSE_CODE, 'room full');
     } catch (e) {
       /* If the upgrade could not be completed there is nothing to say on
@@ -674,7 +674,7 @@ export const joinMethods = {
        against 400: 40 of 40 draws, reproduced on main).  The gate protects
        the maps nobody audited, so it names them all (MAGIC_IDS). */
     if (typeof msg.id === 'string' && MAGIC_IDS.has(msg.id)) {
-      try { ws.send(JSON.stringify({ type: 'join_rejected', reason: 'auth' })); } catch {}
+      try { this._send(ws, { type: 'join_rejected', reason: 'auth' }); } catch {}
       try { ws.close(4003, 'auth'); } catch {}
       this._playerLeaves(ws, 'refused');   /* v2.3.4830: the session door (leave.js) */
       return;
@@ -721,7 +721,7 @@ export const joinMethods = {
          close (loginkeys.js), never 'auth' -- that makes the phone throw its
          key away for a fresh character */
       if (_authOk === 'key') {
-        try { ws.send(JSON.stringify({ type: 'join_rejected', reason: 'key' })); } catch {}
+        try { this._send(ws, { type: 'join_rejected', reason: 'key' }); } catch {}
         try { ws.close(LOGIN_KEYS.CLOSE, 'key'); } catch {}
         this._playerLeaves(ws, 'refused');   /* v2.3.4830: the session door (leave.js) */
         return;
@@ -730,7 +730,7 @@ export const joinMethods = {
          'locked', never 'auth': it is somebody's guesses, not this phone's
          key that is wrong */
       if (_authOk === 'locked') {
-        try { ws.send(JSON.stringify({ type: 'join_rejected', reason: 'locked', ms: 60000 })); } catch {}
+        try { this._send(ws, { type: 'join_rejected', reason: 'locked', ms: 60000 }); } catch {}
         try { ws.close(LOGIN_KEYS.LOCKED_CLOSE, 'locked'); } catch {}
         this._playerLeaves(ws, 'refused');   /* v2.3.4830: the session door (leave.js) */
         return;
@@ -740,13 +740,13 @@ export const joinMethods = {
          its key away), its own close, and the live session untouched -- this
          gate runs before the eviction below. */
       if (_authOk === 'device') {
-        try { ws.send(JSON.stringify({ type: 'join_rejected', reason: 'device' })); } catch {}
+        try { this._send(ws, { type: 'join_rejected', reason: 'device' }); } catch {}
         try { ws.close(DEVICE_LOCK.CLOSE, 'device'); } catch {}
         this._playerLeaves(ws, 'refused');   /* v2.3.4830: the session door (leave.js) */
         return;
       }
       if (!_authOk) {
-        try { ws.send(JSON.stringify({ type: 'join_rejected', reason: 'auth' })); } catch {}
+        try { this._send(ws, { type: 'join_rejected', reason: 'auth' }); } catch {}
         try { ws.close(4003, 'auth'); } catch {}
         this._playerLeaves(ws, 'refused');   /* v2.3.4830: the session door (leave.js) */
         return;
@@ -758,7 +758,7 @@ export const joinMethods = {
       // just push the player onto a new character.
       const _frozen = await this.state.storage.get('frozen:' + msg.id);
       if (_frozen) {
-        try { ws.send(JSON.stringify({ type: 'join_rejected', reason: 'frozen' })); } catch {}
+        try { this._send(ws, { type: 'join_rejected', reason: 'frozen' }); } catch {}
         try { ws.close(4004, 'frozen'); } catch {}
         this._playerLeaves(ws, 'refused');   /* v2.3.4830: the session door (leave.js) */
         return;
@@ -806,7 +806,7 @@ export const joinMethods = {
     if (!_body && msg.id && this._lingerOnJoin) {
       const _lw = await this._lingerOnJoin(msg.id, msg.data, Date.now());
       if (_lw && typeof _lw === 'object' && _lw.wait > 0) {
-        try { ws.send(JSON.stringify({ type: 'linger_wait', payload: { ms: Math.ceil(_lw.wait) } })); } catch {}
+        try { this._send(ws, { type: 'linger_wait', payload: { ms: Math.ceil(_lw.wait) } }); } catch {}
         try { ws.close(LINGER.CLOSE_CODE, 'linger'); } catch {}
         this._playerLeaves(ws, 'refused');   /* v2.3.4830: the session door (leave.js) */
         return;
@@ -1747,7 +1747,7 @@ export const joinMethods = {
     {
       const _motd = await this.state.storage.get('motd');
       if (_motd && _motd.text) {
-        try { ws.send(JSON.stringify({ type: 'server_announce', payload: { text: _motd.text, motd: true, ts: _motd.ts } })); } catch (e) {}
+        try { this._send(ws, { type: 'server_announce', payload: { text: _motd.text, motd: true, ts: _motd.ts } }); } catch (e) {}
       }
       /* v2.3.2438: the daily metric is NOT kicked here any more -- it is a
          paged job on the tick's housekeeping slot (liveops.js), and this
@@ -1879,7 +1879,7 @@ export const joinMethods = {
         _capeWarm.then(() => {
           try {
             const w = this._wsBySessionId(session.id);
-            if (w) w.send(JSON.stringify({ type: 'cape_status', payload: this._capePublicStatus() }));
+            if (w) this._send(w, { type: 'cape_status', payload: this._capePublicStatus() });
           } catch (e) { /* the player is gone; nothing to tell */ }
         }).catch(() => {});
       }
@@ -1888,7 +1888,7 @@ export const joinMethods = {
        the worker's copy of them does too (accuracy.js) -- a reconnect never counts a shot twice */
     this._roomRowJoin(session.protocolVersion);   /* v2.3.5124: a join taken, by its protocol (roomrow.js) */
     if (this._accJoin) this._accJoin(session.id, Date.now());
-    ws.send(JSON.stringify({
+    this._send(ws, {
       type: 'state_sync',
       // v2.3.1119: capability advertisement.  Clients gate their
       // legacy client-side settlement paths on these flags so old
@@ -2030,7 +2030,7 @@ export const joinMethods = {
       monsterZone: joinZone,
       /* v2.3.4455: a body_place follows (bodytake.js): the phone holds its trip into the world for it */
       ...(_body ? { bodyPlace: 1 } : {}),
-    }));
+    });
     /* Authoritative rpg state sync -- the client overwrites its
        local R.coins / R.inventory with whatever's on the worker.
        Bootstrap-from-join (above) means this matches what the
@@ -2045,7 +2045,7 @@ export const joinMethods = {
       const _lr = _psJ && _psJ._lifeResumed;
       if (_lr) {
         delete _psJ._lifeResumed;
-        try { ws.send(JSON.stringify({ type: 'player_died', payload: { cause: _lr.cause, respawnInMs: _lr.ms, ...(_lr.keptBag ? { keptBag: 1 } : {}) } })); } catch (e) { /* the respawn's messages still stand it up */ }
+        try { this._send(ws, { type: 'player_died', payload: { cause: _lr.cause, respawnInMs: _lr.ms, ...(_lr.keptBag ? { keptBag: 1 } : {}) } }); } catch (e) { /* the respawn's messages still stand it up */ }
       }
     }
     /* v2.3.4455: where the kept body stands, after its health (bodytake.js) */

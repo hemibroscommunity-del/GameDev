@@ -83,7 +83,7 @@ export const friendsMethods = {
   _friendsSend(pid, type, payload) {
     const ws = this._wsBySessionId(pid);
     if (!ws) return false;
-    try { ws.send(JSON.stringify({ type, payload })); } catch (e) {}
+    try { this._send(ws, { type, payload }); } catch (e) {}
     return true;
   },
 
@@ -108,10 +108,10 @@ export const friendsMethods = {
     try {
       const doc = await this._friendsDoc(pid);
       const wire = { list: { ...doc.list }, reqIn: { ...doc.reqIn }, reqOut: { ...doc.reqOut } };
-      try { ws.send(JSON.stringify({ type: 'friend_sync', payload: wire })); } catch (e) {}
+      try { this._send(ws, { type: 'friend_sync', payload: wire }); } catch (e) {}
       const box = await this.state.storage.get('friend_msg:' + pid);
       if (Array.isArray(box) && box.length) {
-        try { ws.send(JSON.stringify({ type: 'friend_dm_backlog', payload: { messages: box } })); } catch (e) {}
+        try { this._send(ws, { type: 'friend_dm_backlog', payload: { messages: box } }); } catch (e) {}
         await this.state.storage.delete('friend_msg:' + pid);
       }
     } catch (e) { /* social must never break a join */ }

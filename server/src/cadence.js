@@ -142,7 +142,7 @@ export const cadenceMethods = {
     const ws = this._wsBySessionId(playerId);
     if (!ws) return;
     this._jackpotState(extra).then((payload) => {
-      try { ws.send(JSON.stringify({ type: 'jackpot_state', payload })); } catch (e) {}
+      try { this._send(ws, { type: 'jackpot_state', payload }); } catch (e) {}
     }).catch(() => {});
   },
 

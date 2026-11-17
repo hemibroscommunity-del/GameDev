@@ -196,7 +196,7 @@ export const bankMethods = {
       noBank,
       last: last || null,
     };
-    try { ws.send(JSON.stringify({ type: 'bank_state', payload })); } catch (e) { /* the vault stands */ }
+    try { this._send(ws, { type: 'bank_state', payload }); } catch (e) { /* the vault stands */ }
   },
 
   /* bank_open {} -- the vault, read (once) and shown.  Anywhere: it moves

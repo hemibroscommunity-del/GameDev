@@ -1,6 +1,6 @@
 card: K
-branch: claude/plan-k-<n>-<topic> (one branch a PR, each begun from main)
-prs: #1822, #1820, #1826, #1829, #1831, #1838, #1842, #1861, #1848, #1899, #1923, #1900, #1931-#1934, #1942, #1949, #1972, #1989, #1981 merged; ready: #1997 (5196), #1999 (5547, this branch, on #1997)
+branch: claude/plan-k-13-sends-b (5199, on #2013 5198)
+prs: #1822 to #1989, #1981, #1997, #1999, #2006, #2003 merged; open: #2013 (5198), #2014 (5199, this branch)
 state: ready
 
 ## Done
@@ -10,16 +10,18 @@ state: ready
 - Claims 5540 (#1842, `arrowlane` ON), 5541 (#1848, the sprint mark OFF).
 - 5542 (#1899): chat lanes for MOD. RT-1: N10 (5543, #1923, `relaybytes`),
   N11 (5544, #1942, `heapforget`), N5 (5545, #1949, `roomceiling`).
-- #1972 5194 (`reqonce` ON, `reqstamp` OFF): a repeat acts once on
-  the market, the store and its offers, the bank, chest, cape and spin
-  (reqonce.js; req-once.test; cost-guard §22). The planning session's
-  split: the held files wait for 5194b.
+- 5194, 5194b, 5195 (`reqonce` ON, `reqstamp` OFF), 5196 (`gidnames` ON),
+  5547: a repeat acts once; a weapon named by its id (sitting 30).
+- 5193 (#2006, `sendcount` ON): the send door, census 150 -> 93; 5197
+  (#2003): the words rule (sitting 31).
 
 ## Next
 
-- #1997 5196 (`gidnames` ON): a weapon named by its id beside its place.
-- #1999 5547: the wire door's own memory list (sitting 27's low).
-- Then 5197 (the words rule). The move's walls; the sword's reach; the bow.
+- 5198 (13, batch 1): every file no card holds through the door, 93 -> 28
+  (origin.js's refusal outside a room: `sendOutside`). 5199: the 28 left
+  (L's and R's files, their doors merged): census 0, for the gatekeeper.
+- Then the second block: the claims tightened (14).
+- wsClient.js: done for good (told L). index.js, combat.js: 13 and 14.
 
 ## Found
 
@@ -27,7 +29,6 @@ state: ready
 - One sprint step's bill is capped at 1 s (STEP_MAX_MS), on or off.
 - A sell order's tierKey is the seller's claim, not the escrowed weapon's.
 - After a reconnect admin's lastStrike/arrowBlast read null (#1942).
-- `wiredoor`'s listed wire-door.test FAIL 3 passed on main too: off its list.
 - #1949: a socket at 95/s is never closed (550 drops / 10 s < 600), and
   the full room's 33/s share sits at a crowd fight's 35-40/s: the owner's.
 

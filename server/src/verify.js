@@ -88,7 +88,7 @@ export const verifyMethods = {
   /** The refusal, in one place: the reason and the site key the phone
    *  renders the widget with, then the close the client's gate keys on. */
   _verifyRefuse(ws) {
-    try { ws.send(JSON.stringify({ type: 'join_rejected', reason: 'verify', sitekey: this._verifySiteKey() })); } catch (e) {}
+    try { this._send(ws, { type: 'join_rejected', reason: 'verify', sitekey: this._verifySiteKey() }); } catch (e) {}
     try { ws.close(VERIFY.CLOSE_CODE, 'verify'); } catch (e) {}
     this._playerLeaves(ws, 'refused');   /* v2.3.4830: the session door (leave.js) */
   },

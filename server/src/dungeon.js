@@ -234,7 +234,7 @@ export const dungeonMethods = {
   _dungeonSend(playerId, obj) {
     const ws = this._wsBySessionId(playerId);
     if (!ws) return;
-    try { ws.send(JSON.stringify(obj)); } catch (e) {}
+    try { this._send(ws, obj); } catch (e) {}
   },
 
   _dungeonError(playerId, code, message) {
@@ -929,9 +929,9 @@ export const dungeonMethods = {
       if (!ps || ps.z !== zone) continue;
       try {
         if (s.protocolVersion === 2) {
-          ws.send(JSON.stringify({ type: 'zone_state', zone, monsters: wire, nodes: [], loot: this._zoneLootForWire(zone, s.id) }));   /* v2.3.3473: their own drops too (itemdrop.js) */
+          this._send(ws, { type: 'zone_state', zone, monsters: wire, nodes: [], loot: this._zoneLootForWire(zone, s.id) });   /* v2.3.3473: their own drops too (itemdrop.js) */
         } else {
-          ws.send(JSON.stringify({ type: 'zone_monsters', zone, monsters: wire }));
+          this._send(ws, { type: 'zone_monsters', zone, monsters: wire });
         }
       } catch (e) {}
     }

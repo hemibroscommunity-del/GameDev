@@ -91,12 +91,14 @@
  * `inbox:<pid>` at their next join.  No new event type, so nothing to add
  * to PRIVILEGED_EVENTS. */
 
+import { wordsNote } from './words.js';   /* v2.3.5197: the words rule -- a sentence with a player's words is a template and its parts */
 import { SHOP_ITEMS } from './data.js';
 import { petPublic } from './petbook.js';   /* v2.3.3122: pet listings (what a buyer is shown) */
 import { swordToGreatsword } from './swordconvert.js';   /* v2.3.3895: a sword's listing is rewritten once as a greatsword */
 import { oldGreatswordToMetal } from './gscopper.js';   /* v2.3.3980: ...and a wooden or base-less greatsword's as a metal one */
 import { bagTake } from './bag.js'; /* v2.3.4810: the bag door */
 import { stashGive, stashTake, stashSet } from './stash.js';   /* v2.3.5281: the stashes' door (card R PR 2) */
+import { xferAuctionSale } from './xfer.js';   /* v2.3.5293: a sale's ledger row (card R PR 17; `xferescrow`, OFF by default) */
 
 /* v2.3.3525: the four remains keys in words (the game's src/data/remains.js) */
 const REMAINS_WORDS = Object.freeze({
@@ -937,7 +939,10 @@ export const storeMethods = {
       rec.sale = { buyerId, buyerName: this._stNameOf(buyerId) || 'Someone', price: rec.askPrice, paid: true, bidSeq: null, at: Date.now() };
       const took = await this._escrowDebitGoldTogether(
         [{ id: buyerId, amount: rec.askPrice, opId: 'store:' + rec.id + ':pay' }],
-        [['store_listing:' + rec.id, rec]]);
+        [['store_listing:' + rec.id, rec]],
+        /* v2.3.5293 (card R PR 17): the sale's ledger row, in the payment's
+           run, only once it is paid (`xferescrow`, OFF by default) */
+        () => xferAuctionSale(this, rec, 'auction_sale', buyerId));
       if (!took.ok) {
         rec.sale = null;   /* nothing was written */
         return { ok: false, settled: true, error: 'Not enough gold' };
@@ -1037,7 +1042,9 @@ export const storeMethods = {
 
     const bid = rec.topBid;
     rec.sale = { buyerId: bid.bidderId, buyerName: bid.bidderName, price: bid.amount, paid: true, bidSeq: bid.seq, at: Date.now() };
-    await this.state.storage.put('store_listing:' + rec.id, rec);
+    /* v2.3.5293 (card R PR 17): the sale's ledger row rides the mark's write
+       (`xferescrow`, OFF by default) */
+    await Promise.all([this.state.storage.put('store_listing:' + rec.id, rec), xferAuctionSale(this, rec, 'auction_bid', sellerId)].filter(Boolean));
 
     await this._stSettle(rec, bid.bidderId, bid.bidderName, bid.amount, bid.seq);
     this._stRemoveFromIndex(rec);
@@ -1066,7 +1073,7 @@ export const storeMethods = {
     await this._creditPlayer(rec.sellerId, {
       opId: 'store:' + rec.id + ':gold', source: 'market', kind: 'gold',
       payload: { amount: price },
-      note: label + ' sold to ' + (buyerName || 'someone') + ' for ' + price,
+      ...wordsNote('sold_to', { item: label, buyer: buyerName || 'someone', price }),   /* v2.3.5197: the words rule (words.js) */
     });
     if (rec.topBid && rec.topBid.seq !== paidBidSeq) {
       await this._creditPlayer(rec.topBid.bidderId, {

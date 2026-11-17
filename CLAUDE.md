@@ -191,6 +191,7 @@ spec. Add a line here only for a new RULE every session must follow.
   named in its row's `trust`: the wire door (`wire/door.js`) holds it to its
   form before any handler.
 - **One way out of the page**: a request leaves through `act()`, a row in `src/game/actions.js` (the action door, v2.3.5185).
+- **One way out of the worker**: a frame leaves through `_send` (`send.js`, the send door, v2.3.5193; `send-door.test`'s census of raw writes only falls).
 - **A reconnect**: the phone clears its copy of a worker session (a duel, a
   trade, the party) at `state_sync` only together with the worker's re-send:
   a row in `REJOIN_SLOTS` (`src/game/rejoinSlots.js`; TRAPS §278).

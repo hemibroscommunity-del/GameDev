@@ -268,10 +268,10 @@ export const gridMethods = {
     const ws = this._wsBySessionId(session.id);
     if (ws) {
       try {
-        ws.send(JSON.stringify({
+        this._send(ws, {
           type: 'stat_allocated',
           payload: { stat, newUnspentT2: ps.unspentT2 },
-        }));
+        });
       } catch (e) {}
       this._sendPlayerState(ws, session.id);
     }

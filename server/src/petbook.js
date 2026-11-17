@@ -455,7 +455,7 @@ export const petbookMethods = {
     const payload = (!book || book.locked)
       ? { unavailable: true, ...(extra || {}) }
       : { ...this._petbookWire(book), ...(extra || {}) };
-    try { ws.send(JSON.stringify({ type: 'pets_state', payload })); } catch (e) {}
+    try { this._send(ws, { type: 'pets_state', payload }); } catch (e) {}
   },
 
   /* ═══ v2.3.3123: WHAT THE OTHERS SEE (Phase 4) ═══

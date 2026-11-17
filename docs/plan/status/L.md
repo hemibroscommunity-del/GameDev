@@ -1,6 +1,6 @@
 card: L
-branch: claude/plan-l-26-window-door (from main 657d7f7f)
-prs: #1746 to #1956 (merged), #2000 (5526): ready
+branch: claude/plan-l-28-connection-door (on #2010)
+prs: #1746 to #2000 (merged), #2010 (5527), #2012 (5528, on #2010): ready
 state: ready
 
 ## Done
@@ -10,15 +10,14 @@ state: ready
   doors; the resets, 484 -> 233 rows.
 - PR 5, 5210-5217, 5522-5523: the worker's trade, duel, party, cook, harvest+
   fishing, dungeon, pose, race, arena, ride doors; the page's (5218-5219,
-  5520-5521, 5525-5526): race, harvest+cook+fishing, pose, guard, veils, windows.
+  5520-5521, 5525-5528): race, harvest+cook+fishing, pose, guard, veils, windows,
+  connection.
 - 5524: the Saloon's alliance drafts outlive a rejoin (J2's find).
 
 ## Next
 
-- #1930 (arena) merged: card R may take the escrow ledger's other rows.
-  #1936 (ride) merged, ridedoor on.
-- After 5526: guard (worker), connection, and the loading door's `net` reason
-  (S._netHold) wait for K (wsClient, combat, index). Then the page's todo rows.
+- Next: the page halves in wsClient.js; gameEvents.js after K's #2003. Guard
+  (worker) waits for K's items 13, 14 (index.js, combat.js).
 
 ## Found
 
@@ -28,13 +27,14 @@ state: ready
   alliance (16, 14, 9 of 16 by run: the typed name or the war's tap lost),
   fishvariants (4a-5: no Inspect on the card; 6c by run: healed before Eat),
   moresounds (setup and 10 every run; 8b, 9a by run: other cues heard),
-  deskharvest 5 (a phone's first-harvest hint, read as a computer's: to J2),
-  blockface 2 (the block icon's disc: 13 of 560 px blue, on main too).
+  deskharvest 5 (a phone's first-harvest hint, read as a computer's), blockface 2 (the block icon's disc: 13 of 560 px blue, on main too),
+  comeback 1, 5 (a stick's release, a frozen page's rejoin: on main c55c8b59).
 - bodytake.js ~94 cites a pose row that is none. Dead: S._shieldStamina,
   S.shieldActive, S._iceAttack, monsterCombat's respawn, playerActions' raiseShield.
 
 ## Needs
 
-- The owner: wheelMusic `_m` (a return to the Wheel's music at once) and
-  deskTeach `_armed` (no "Almost!" after a change of place): `sitting`.
+- Decided by the planner (2026-11-17, the owner's "go recommended"): wheelMusic
+  `_m` (the Wheel's music returns at once), deskTeach `_armed` (no "Almost!"
+  after a change of place): both `sitting`, as written.
 - SK's ride.js (S._ride); S._spar (unread); A's perfTracker.js; death door leads.

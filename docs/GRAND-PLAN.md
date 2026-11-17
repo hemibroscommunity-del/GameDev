@@ -464,6 +464,12 @@ play, a number 1.1 can measure.
   ON, a cap), merged at sitting 23 (the gatekeeper, sitting 24, tag 5662).*
 - [ ] **4.1b [NEXT] The send door**: one `_send` (132 places write to a
   socket today), counting bytes by type.
+  *Step 1 merged: K's #2006 (5193: one `_send` and `_sendRoom` in
+  `send.js`, every frame byte for byte as before; the counts ride the
+  day's book's `send` part; `sendcount`, ON; the census of raw writes
+  150 -> 93), at sitting 31. The box waits for card K's item 13 (5198,
+  5199: the census to 0, then made strict) (the gatekeeper, sitting 32,
+  tag 5670).*
 - [ ] **4.2 [NEXT] Claims, bounded.** "No claims" can be met by calling a
   loose check a judge. So each bounded claim carries its **gain**: a
   maximal liar's take an hour over an honest player's, measured by a house
@@ -649,6 +655,9 @@ nothing known, and a restore copies nothing.
   *L's #1956 (the loading door: `veilTo`, `?veildoor`, ON), merged at
   sitting 24: 13 `todo` on `main` 4751cb7; the line lowered 14 -> 13 (the
   gatekeeper, sitting 25, tag 5663).*
+  *L's #2000 (5526, the window door: `windowTo`, `?windowdoor`, ON),
+  merged at sitting 30: 12 `todo` on `main` c55c8b59; the line lowered
+  13 -> 12 (the gatekeeper, sitting 31, tag 5669).*
 - [ ] **5.4 [LATER] The frame as named steps.** PR 1 moves nothing: the six
   calls the loop already makes, plus one `legacy` step, become the list;
   each counts its errors to the crash ring (a throw in the frame reaches
@@ -737,6 +746,11 @@ nothing known, and a restore copies nothing.
   #1996 (5315: eleven memory reads; 155 -> 144), merged at sitting 29.
   The box waits for the rest of the page's reads (the gatekeeper, sitting
   30, tag 5668).*
+  *T's #2001 (5316: thirteen look reads; 144 -> 116) and #2002 (5317:
+  forty-five render reads on `pageAddress()`; 116 -> 71), merged at
+  sitting 30. The box waits for the 71 reads left, each waiting on its
+  card (T's census `T-reads-left.md`, #2007) (the gatekeeper, sitting 31,
+  tag 5669).*
 - [x] **7.2 [NEXT] The end date** (the owner: yes). For a logic switch: four
   weeks on with no revert, then the old way goes. A device off-ramp stays
   while its risk is live. A fallback stays while its trigger lives: a guard
@@ -1006,7 +1020,7 @@ are cheap now and a rewrite later, and builds no helper feature.
   the login keys: an older worker would honour it as a full login.
   *Merged as a shape: #1666 (a section of `docs/SHAPES.md`). No card builds
   it yet.*
-- [ ] **11.3 [NEXT] Ids and repeats.** Whatever can be listed has a server
+- [x] **11.3 [NEXT] Ids and repeats.** Whatever can be listed has a server
   id, never a place in a list (the market's `place` takes a position and no
   request id: a retry after a timeout can sell the next sword). Every
   request that moves value takes a request id and acts once.
@@ -1023,12 +1037,25 @@ are cheap now and a rewrite later, and builds no helper feature.
   accept only; the cap `reqid`, `reqonce: false`), merged at sitting 28.
   The box waits for a weapon named by its id (K's 5196, 5197) and the
   `_reqSeen` slots (the gatekeeper, sitting 29, tag 5667).*
-- [ ] **11.4 [NEXT] The words rule.** Text a player wrote (a name, chat, a
+  *Ticked: K's #1997 (5196: a weapon named by its id in the nine
+  handlers that take one from the stash; `gidnames`, ON) and #1999
+  (5547: the wire door's request ids keep their own list), merged at
+  sitting 30: card K's 11.3 PRs (9, 9b, 10, 11) are all merged. K's Found
+  keeps two (a sell order's `tierKey` is the seller's claim; a kept quest
+  hand-in's fresh id on its rejoin send) (the gatekeeper, sitting 31, tag
+  5669).*
+- [x] **11.4 [NEXT] The words rule.** Text a player wrote (a name, chat, a
   shop's note) never sits inside a sentence the game speaks: mail today
   reads "sold to" and then the buyer's name. Such messages carry a template
   and its parts, and a guard fails a server string built from a player's
   words. Another player's assistant must be able to tell the game's voice
   from a stranger's.
+  *Ticked: K's #2003 (5197, card K's item 12: the sentences go out as a
+  template and its parts, `fillWords` on the page, word for word the
+  same; `words-rule.test` fails a server string joined with a player's
+  words outside `words.js`, its `KNOWN` rows by file and words; inbox
+  entries gain `noteT`), merged at sitting 31 (the gatekeeper, sitting
+  32, tag 5670).*
 - [ ] **11.5 [NEXT] Found on the way**: `/api/store/mine?playerId=` shows
   anyone's bids; public reads wake the one room with no pace.
 - [ ] **11.6 [LATER] The game's public facts**, made in the build from the

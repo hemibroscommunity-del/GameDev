@@ -320,7 +320,7 @@ export const chatModMethods = {
   _chatModSend(pid, type, payload) {
     const ws = this._wsBySessionId(pid);
     if (!ws) return false;
-    try { ws.send(JSON.stringify({ type, payload })); } catch (e) {}
+    try { this._send(ws, { type, payload }); } catch (e) {}
     return true;
   },
 
@@ -343,7 +343,7 @@ export const chatModMethods = {
       const doc = await this._chatMuteDoc(pid);
       this._chatModCache(pid, doc);
       const wire = { list: this._chatModListWire(doc), settled: true };
-      try { ws.send(JSON.stringify({ type: 'chat_mute_list', payload: wire })); } catch (e) {}
+      try { this._send(ws, { type: 'chat_mute_list', payload: wire }); } catch (e) {}
     } catch (e) { /* moderation must never break a join */ }
   },
 

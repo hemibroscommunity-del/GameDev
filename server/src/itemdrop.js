@@ -93,7 +93,7 @@ export const itemDropMethods = {
   _dropReply(sid, out) {
     const ws = sid ? this._wsBySessionId(sid) : null;
     if (!ws) return;
-    try { ws.send(JSON.stringify({ type: 'item_drop_result', payload: out })); } catch (e) { /* the socket is going */ }
+    try { this._send(ws, { type: 'item_drop_result', payload: out }); } catch (e) { /* the socket is going */ }
   },
 
   /* `item_drop {key, qty}` */
@@ -128,7 +128,7 @@ export const itemDropMethods = {
     /* to the dropper alone: the pile, the bag, the answer */
     const ws = this._wsBySessionId(sid);
     if (ws) {
-      try { ws.send(JSON.stringify({ type: 'loot_drop', payload: { pile: this._serializePile(pile) } })); } catch (e) { /* going */ }
+      try { this._send(ws, { type: 'loot_drop', payload: { pile: this._serializePile(pile) } }); } catch (e) { /* going */ }
       this._sendPlayerState(ws, sid);
     }
     this._dropReply(sid, { ok: true, key: ask.key, qty, lootId: pile.lootId });
@@ -227,7 +227,7 @@ export const itemDropMethods = {
         n++;
         const msg = { type: 'loot_drop', payload: { pile: this._serializePile(p) } };
         if (p.revealed) this.eventBuffer.push(msg);
-        else if (ws) { try { ws.send(JSON.stringify(msg)); } catch (e) { /* going */ } }
+        else if (ws) { try { this._send(ws, msg); } catch (e) { /* going */ } }
       }
     }
     return { ok: true, aged: n, ms };

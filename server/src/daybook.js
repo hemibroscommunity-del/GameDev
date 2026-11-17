@@ -80,6 +80,11 @@
  * again the next day), where a bump would have it drop its OWN counts for the
  * day (bookNormalize: a newer day is left whole, its sums dropped).
  *
+ * v2.3.5193: THE SEND DOOR'S COUNTS (send.js, card K PR 8), the part `send`:
+ * `{ <type>: [frames, length] }`, folded by sendRide at a put already being
+ * made for today (RIDES: no row of its own; cost-guard §15e), and read by
+ * bookRead with what is not yet folded.  DAYBOOK.V stays 1, as for `size`.
+ *
  * THE READ: bookRead(room, n) -- the newest `n` days, stored plus what is
  * counted and not yet written.  The owner's card (card E, PR 12) and card A's
  * one admin route read the book through it.
@@ -93,6 +98,7 @@ export const DAYBOOK = Object.freeze({
   /* the parts, a closed list: a part not here is refused */
   PARTS: Object.freeze(['econ', 'room', 'dev', 'speed',
     'size',   /* v2.3.5287 (card R PR 8): the storage's size, riding */
+    'send',   /* v2.3.5193 (card K PR 8): the send door's frames by type, riding */
   ]),
   /* v2.3.5085 (the gatekeeper's sitting 8): the parts whose adds never start
      a put of their own: they RIDE the others' paced puts and the last one
@@ -102,6 +108,7 @@ export const DAYBOOK = Object.freeze({
      write the pace did not count on.  Riding, it writes no row of its own */
   RIDES: Object.freeze(['econ',
     'size',   /* v2.3.5287: read at a put already being made, never a put of its own */
+    'send',   /* v2.3.5193: folded at a put already being made (sendRide) */
   ]),
   /* v2.3.5080: one put every five minutes at most -- 12 rows an hour the room
      is awake and counting, 288 on a day it never sleeps (the free plan's day
@@ -114,6 +121,10 @@ export const DAYBOOK = Object.freeze({
      place 25), so a day with all four parts full stays under ~100 KB, inside
      a stored value's 128 KiB.  How deep, how long a key, how long an array: */
   PART_BYTES: 24 * 1024,
+  /* v2.3.5193: a part held to less than PART_BYTES (the worst full day, every
+     part full, stays under a stored value's 128 KiB: daybook.test 10b) --
+     the send door's, a type a key (~110 types; past it, `over`) */
+  PART_BYTES_OF: Object.freeze({ send: 8 * 1024 }),
   DEPTH_MAX: 4,
   KEY_MAX: 96,
   ARR_MAX: 64,
@@ -124,6 +135,9 @@ const KEY_RE = /^[A-Za-z0-9_.:|,+=-]+$/;
 const BAD_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 const isObj = (o) => !!o && typeof o === 'object' && !Array.isArray(o);
 const clampNum = (n) => Math.max(-DAYBOOK.NUM_MAX, Math.min(DAYBOOK.NUM_MAX, n));
+
+/* v2.3.5193: a part's own line (PART_BYTES_OF), else PART_BYTES */
+const partBytes = (p) => DAYBOOK.PART_BYTES_OF[p] || DAYBOOK.PART_BYTES;
 
 export const bookKey = (day) => DAYBOOK.PREFIX + day;
 
@@ -251,7 +265,7 @@ function mergeDay(parts, over, src) {
   for (const p of DAYBOOK.PARTS) {
     const from = src.parts[p];
     if (!Object.keys(from).length) continue;
-    const r = mergeInto(parts[p], from, DAYBOOK.PART_BYTES - bookBytes(parts[p]), false);
+    const r = mergeInto(parts[p], from, partBytes(p) - bookBytes(parts[p]), false);
     if (r.refused) over[p] = (over[p] || 0) + r.refused;
   }
   for (const p of Object.keys(src.over)) over[p] = (over[p] || 0) + src.over[p];
@@ -325,7 +339,7 @@ export function bookAdd(room, part, nums, now) {
     if (!treeOk(nums, 1)) { over(); return false; }
     const tgt = d.parts[part];
     /* the memory's own line: what waits to be written is a part's at most */
-    const budget = DAYBOOK.PART_BYTES - bookBytes(tgt);
+    const budget = partBytes(part) - bookBytes(tgt);
     if (mergeInto(tgt, nums, budget, true).refused) { over(); return false; }
     mergeInto(tgt, nums, budget, false);
     if (DAYBOOK.RIDES.indexOf(part) < 0) bookMaybePut(room, now);   /* v2.3.5085: a riding part waits for another's put */
@@ -397,6 +411,22 @@ export function storeSizeRide(room) {
   } catch (e) { return null; }   /* a count must never stop what it counts */
 }
 
+/** v2.3.5193 (card K PR 8): THE SEND DOOR'S COUNTS (send.js), folded into
+ *  today's `send` part -- only when today's sums are about to be written (the
+ *  put it rides), so a room that only sends never writes the book.  Returns
+ *  true when folded.  The book off (`daybook: false`): nothing folded, the
+ *  counts stay with the door (its own memory, a type each). */
+export function sendRide(room) {
+  try {
+    if (!room || off(room) || typeof room._sendTree !== 'function') return false;
+    const b = mem(room);
+    const d = b.days.get(bookDay(roomNow()));
+    if (!d || DAYBOOK.PARTS.every((p) => !Object.keys(d.parts[p]).length)) return false;   /* nothing of today's going out */
+    const tree = room._sendTree(true);
+    return !!tree && bookAdd(room, 'send', tree);
+  } catch (e) { return false; }   /* a count must never stop what it counts */
+}
+
 /* The write itself: every day with sums waiting, oldest first; then one page
    of the prune.  Only ever run as `b.putting` (one at a time). */
 async function putDays(room, now) {
@@ -404,6 +434,7 @@ async function putDays(room, now) {
   const b = mem(room);
   now = callerNow(now);
   storeSizeRide(room);   /* v2.3.5287: the storage's size rides today's put, once a day */
+  sendRide(room);   /* v2.3.5193: the send door's counts ride it too */
   const days = [...b.days.keys()].sort();
   for (const day of days) {
     const taken = b.days.get(day);
@@ -523,6 +554,20 @@ export async function bookRead(room, n) {
       const r = rows.get(day) || bookBlank(day);
       if (r.newer) continue;
       mergeDay(r, r.over, d);   /* reads `d`, never changes it: the read leaves what waits as it is */
+      rows.set(day, r);
+    }
+  }
+  /* v2.3.5193: the send door's counts not yet folded, read as today's (the
+     read changes nothing: they ride the next put) */
+  const sends = typeof room._sendTree === 'function' ? room._sendTree(false) : null;
+  if (sends && !off(room)) {
+    const day = bookDay(roomNow());
+    const r = rows.get(day) || bookBlank(day);
+    if (!r.newer) {
+      const src = { parts: Object.create(null), over: Object.create(null) };
+      for (const p of DAYBOOK.PARTS) src.parts[p] = Object.create(null);
+      src.parts.send = sends;
+      mergeDay(r, r.over, src);
       rows.set(day, r);
     }
   }

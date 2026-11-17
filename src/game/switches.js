@@ -77,6 +77,7 @@ const FORMS = {
   'caustics': '*',
   'coinflip': '0',
   'combatreset': '0',
+  'conndoor': '0',
   'create': '1',
   'crowd': '*',
   'dbltap': '0',

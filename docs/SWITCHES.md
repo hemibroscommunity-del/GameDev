@@ -195,7 +195,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `tradeonewrite` | worker | switch | v2.3.4795 | 2026-11-11 | false | logic |  | no | The trade's swap goes back to its old order of writes. |
 | `valuepause` | worker | switch | v2.3.5090 | 2026-11-14 | false | logic |  | no | An action that hands gold or goods on runs even in the minute after the storage refused a save (nothing pauses). |
 | `xfer` | worker | switch | v2.3.5092 | 2026-11-14 | false | logic |  | no | No transfer ledger row (`xfer:`) is written; trades run exactly as before. |
-| `xferescrow` | worker | switch | v2.3.5290 | off | true | logic | `xfer` | no | Thrown (true), a wagered duel's pot writes its transfer-ledger row (`xfer:`) in the pot's own run: one row a wagered duel; and (v2.3.5292) a match's sponsorship stakes one row a losing stake, in the stakes plan's run; unset or false, the default, both pay as before and write none. |
+| `xferescrow` | worker | switch | v2.3.5290 | off | true | logic | `xfer` | no | Thrown (true), a wagered duel's pot writes its transfer-ledger row (`xfer:`) in the pot's own run: one row a wagered duel; and (v2.3.5292) a match's sponsorship stakes one row a losing stake, in the stakes plan's run; and (v2.3.5293) a market cross and an Auction House sale one row each; unset or false, the default, both pay as before and write none. |
 
 ## identity
 
@@ -634,6 +634,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | name | side | kind | born | on | thrown | risk | needs | fallback | off |
 |---|---|---|---|---|---|---|---|---|---|
 | `bundle` | worker | switch | v2.3.3254 | 2026-10-15 | false | logic |  | no | Stops advertising message bundles: each phone sends its messages one by one from its next join. |
+| `?conndoor` | page | switch | v2.3.5528 | 2026-11-17 | =0 | logic |  | no | The phone's socket phase takes any word a caller writes, as the lines before the connection door (every caller writes a word of the list today). |
 | `?diet` | page | switch | v2.3.3726 | 2026-10-28 (v2.3.3744) | =1 or =0 (kept for the tab) | logic |  | no | Puts this phone on the move diet (=1) or keeps it off (=0), whatever the worker says for everyone. |
 | `disable_weapon_drops` | worker | switch | v2.3.1150 | 2026-07-03 | true | logic |  | no | Thrown, weapon drops stop rolling (caps.weaponDrops stays true, so no phone mints its own). |
 | `gidnames` | worker | switch | v2.3.5196 | 2026-11-17 | false | logic |  | no | A weapon in the stash is read by its place alone, as before: a request sent as the stash moved acts on the weapon now at that place (the next one). |
@@ -650,6 +651,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `reqstamp` | worker | lever | v2.3.5194 |  | true | none | `reqonce` | no | Thrown (true), a request with no record of its own (a store buy, bid, accept or cancel, a market cancel, an auction offer) writes a lasting stamp row (oplog:rq:<pid>:<reqId>, pruned at 48 h): one row a request, the owner's cost question; unset or false, the default, its first answer is kept for the sitting only. |
 | `?room` | page | lever | v2.3.217 |  | a room's name | none |  | no | Joins the named room, not the lobby's. |
 | `roomceiling` | worker | switch | v2.3.5545 | 2026-11-17 | false | logic |  | no | No ceiling on the room's messages in: a full room of sockets each inside its own budget is ~14,400 a second, all taken, as before (the red team's RT-1 N5 open again). |
+| `sendcount` | worker | switch | v2.3.5193 | 2026-11-17 | false | logic |  | no | The send door writes every frame as before but counts none: the day's book carries no `send` part (the frames a type and their length). |
 | `?wheelwhole` | page | switch | v2.3.3318 | 2026-10-17 | present | logic |  | no | Asks for every world monster on the way in, not only those near. |
 | `wiredoor` | worker | switch | v2.3.5184 | 2026-11-14 | false | logic |  | no | Every message and the room's web routes reach their handlers unchecked again, as before the wire door; a mute of `__proto__` is taken again. |
 | `?wirereset` | page | switch | v2.3.5207 | 2026-11-14 | =0 | logic |  | no | The monsters' balls in flight, their warnings on the ground and the impact rings carry over a change of place again, emptied only where a way out did it by hand or by their own clock. |

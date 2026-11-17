@@ -175,7 +175,7 @@ export const codexMethods = {
     if (!ws) return;
     const book = this._codexOf(pid);
     const payload = (!book || book.locked || !book.rec) ? { unavailable: true } : this._codexWire(book);
-    try { ws.send(JSON.stringify({ type: 'codex_state', payload })); } catch (e) {}
+    try { this._send(ws, { type: 'codex_state', payload }); } catch (e) {}
   },
 
   /* ═══ A KILL (combat.js _resolveMonsterKill, for each XP recipient) ═══

@@ -227,7 +227,7 @@ export const revealBagMethods = {
   _revealBagSend(pid, res, achv) {
     const ws = this._wsBySessionId && this._wsBySessionId(pid);
     if (!ws || !res) return;
-    try { ws.send(JSON.stringify({ type: 'item_reveal', payload: res })); } catch (e) { /* the record is saved; the next echo carries it */ }
+    try { this._send(ws, { type: 'item_reveal', payload: res }); } catch (e) { /* the record is saved; the next echo carries it */ }
     /* ...and only THEN what the grade earned (see _revealBagAchv) */
     if (Array.isArray(achv) && achv.length && this._achvSend) this._achvSend(pid, { new: achv });
   },
@@ -367,7 +367,7 @@ export const revealBagMethods = {
       const r = { ...r0 };
       if (Array.isArray(r._achv)) for (const id of r._achv) if (achv.indexOf(id) < 0) achv.push(id);
       delete r._achv;
-      try { ws.send(JSON.stringify({ type: 'item_reveal', payload: r })); } catch (e) { /* the record is saved */ }
+      try { this._send(ws, { type: 'item_reveal', payload: r }); } catch (e) { /* the record is saved */ }
     }
     /* what the grades earned, after the answers (see _revealBagAchv) */
     const pid = this.sessions && this.sessions.get(ws) && this.sessions.get(ws).id;
@@ -411,11 +411,11 @@ export const revealBagMethods = {
     const pub = revealPublic(piece);
     if (ws) {
       try {
-        ws.send(JSON.stringify({ type: 'loot_credit', payload: {
+        this._send(ws, { type: 'loot_credit', payload: {
           lootId: 'dev-reveal', zone: ps.z || null, coins: 0, skull: null, shard: null, gem: null,
           armor: [pub], reveals: piece.unrevealed ? null : this._revealsFor(null, [piece]),
           weapon: null, weaponStashed: false, weaponSoldFor: null, viaPet: false,
-        } }));
+        } });
       } catch (e) { /* the row is recorded; a rejoin's adoption has it */ }
     }
     return { ok: true, give: d.slot, gid: piece.gid, unrevealed: !!piece.unrevealed };

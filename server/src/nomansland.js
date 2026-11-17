@@ -545,7 +545,7 @@ export const noMansLandMethods = {
     const bys = this._nmlGroupOn() ? this._nmlBys(s) : null;
     if (bys) payload.bys = bys;
     try {
-      ws.send(JSON.stringify({ type: 'nml_skull', payload }));
+      this._send(ws, { type: 'nml_skull', payload });
     } catch (e) { /* the next send will carry it */ }
   },
 
@@ -830,11 +830,11 @@ export const noMansLandMethods = {
     const ws = this._wsBySessionId && this._wsBySessionId(playerId);
     if (ws) {
       try {
-        ws.send(JSON.stringify({ type: 'nml_loss', payload: {
+        this._send(ws, { type: 'nml_loss', payload: {
           by: to ? ((killerSession && killerSession.name) || 'a player') : null,
           red, weapons: lost.weapons, gear: lost.gear, worn: lost.worn,
           coins: lost.coins, bag: true, named: true, keepWorn: red && !takeWorn,
-        } }));
+        } });
       } catch (e) { /* the echo still carries the worker's own state */ }
     }
     /* v2.3.3770: the owner -- "A red skull disappears after dying": it goes
@@ -965,7 +965,7 @@ export const noMansLandMethods = {
       if (inn.length >= NML.LOCK_CAP) break;
     }
     if (quietIfNone && !out.length && !inn.length) return;
-    try { ws.send(JSON.stringify({ type: 'nml_lock', payload: { out, in: inn } })); } catch (e) { /* the next change carries it */ }
+    try { this._send(ws, { type: 'nml_lock', payload: { out, in: inn } }); } catch (e) { /* the next change carries it */ }
   },
 
   /* At a join (join.js, after the record is read): this player's locks, if
@@ -997,7 +997,7 @@ export const noMansLandMethods = {
     a._nmlLockAskAt.set(vid, now);
     const ws = this._wsBySessionId && this._wsBySessionId(vid);
     if (!ws) return false;
-    try { ws.send(JSON.stringify({ type: 'nml_lock_ask', payload: { from: aid } })); } catch (e) { return false; }
+    try { this._send(ws, { type: 'nml_lock_ask', payload: { from: aid } }); } catch (e) { return false; }
     return true;
   },
 
@@ -1047,14 +1047,14 @@ export const noMansLandMethods = {
     for (const it of (pile && Array.isArray(pile.deathItems) ? pile.deathItems : [])) items += Math.max(0, Math.floor(Number(it && it.qty) || 0));
     const lost = res.lost || {};
     try {
-      ws.send(JSON.stringify({ type: 'nml_take', payload: {
+      this._send(ws, { type: 'nml_take', payload: {
         from: (vs && vs.name) || 'a player',
         items, lootId: pile && pile.lootId ? pile.lootId : null,
         coins: Math.max(0, Math.floor(Number(lost.coins) || 0)),
         weapons: Math.max(0, Math.floor(Number(lost.weapons) || 0)),
         gear: Array.isArray(lost.gear) ? lost.gear.length : 0,
         worn: Array.isArray(lost.worn) ? lost.worn.length : 0,
-      } }));
+      } });
     } catch (e) { /* the pile and the mail say it anyway */ }
   },
 };

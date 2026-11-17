@@ -23,6 +23,7 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import vm from 'node:vm';
 import * as L from '../../src/game/socketLine.js';
+import { connTo } from '../../src/game/connectionDoor.js';   /* v2.3.5528: the socket phase's one writer, the real one in the rig */
 
 let passed = 0, failed = 0;
 function check(name, cond, detail) {
@@ -92,6 +93,7 @@ function rig() {
     clearTimeout: () => {},
     showResumeBanner: (t) => banners.push(t),
     resetServerReady: () => {},
+    connTo,   /* v2.3.5528: S._realtimeStatus goes through the connection door */
   };
   const ctx = new Proxy(base, {
     has: () => true,
@@ -160,7 +162,7 @@ if (connectSrc && schedSrc) {
 const ssAt = WSC.indexOf("case 'state_sync':");
 const ssBody = ssAt < 0 ? '' : WSC.slice(ssAt, WSC.indexOf("case '", ssAt + 20));
 check('3a state_sync writes \'connected\' (a stray \'superseded\' heals at the next sync)',
-  /S\._realtimeStatus\s*=\s*'connected'/.test(ssBody));
+  /S\._realtimeStatus\s*=\s*'connected'|connTo\(S, 'connected'\)/.test(ssBody));   /* v2.3.5528: through the connection door */
 const cleanupAt = WSC.lastIndexOf('    return function () {');
 const cleanup = cleanupAt < 0 ? '' : WSC.slice(cleanupAt, WSC.indexOf('\n    };', cleanupAt));
 check('3b the effect\'s cleanup retires its socket (handlers off before the close)',
@@ -178,8 +180,10 @@ const dir = mkdtempSync(join(tmpdir(), 'socket-one-'));
 const stubPath = join(dir, 'common.mjs');
 writeFileSync(stubPath, 'export const S = { _netHold: false };\nexport function getState() { return S; }\n');
 const srSrc = src('src/networking/serverReady.js')
-  .replace(/from '@\/ui\/mobile\/dash\/common\.js'/, 'from ' + JSON.stringify(pathToFileURL(stubPath).href));
-check('4a serverReady.js\'s one import stubbed', srSrc.includes(pathToFileURL(stubPath).href));
+  .replace(/from '@\/ui\/mobile\/dash\/common\.js'/, 'from ' + JSON.stringify(pathToFileURL(stubPath).href))
+  /* v2.3.5527: and the loading door, the real one (S._netHold is its `net` reason; it imports only the switch reader) */
+  .replace(/from '@\/game\/veilDoor\.js'/, 'from ' + JSON.stringify(new URL('../../src/game/veilDoor.js', import.meta.url).href));
+check('4a serverReady.js\'s imports: the stubbed state and the real loading door', srSrc.includes(pathToFileURL(stubPath).href) && !srSrc.includes("'@/"));
 
 /* a clock, and a page: the loading screen is `.bt-intro` */
 let now = 0; let tq = []; let tid = 0;

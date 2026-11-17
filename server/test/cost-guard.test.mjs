@@ -47,6 +47,9 @@
  *  15d. v2.3.5287: the storage's size (daybook.js storeSizeRide, card R PR
  *      8) rides the book's own puts: an hour of adds writes the book no more
  *      often with the size read than without, and reads it once;
+ *  15e. v2.3.5193: the send door's counts (send.js, card K PR 8) ride the
+ *      book's own puts: a room that only sends writes no book row, and an
+ *      hour of sends and adds writes the book no more often than 15b;
  *  16. v2.3.5092: the transfer ledger (xfer.js) writes ONE row a settlement
  *      between two players (the trade window: five trades, five rows; and
  *      its delete 90 days on, XFER.KEEP_DAYS), none a kill (a purse taken in
@@ -70,6 +73,9 @@
  *      backing the winner, 3 the loser): `xferescrow` off (the default),
  *      the rows as before and no `xfer:` row; on, ONE row more a LOSING
  *      stake (3), none for a winning one;
+ *  23. v2.3.5293 (card R PR 17): an Auction House buy-now and a market
+ *      cross: `xferescrow` off (the default), the rows as before and no
+ *      `xfer:` row; on, ONE row more a sale;
  * A line here may move when a feature really needs the rows: say so in the
  * PR, in plain words, as the memory budget asks (CLAUDE.md).
  */
@@ -691,6 +697,33 @@ const FAST = 110;
   check(`15d. the hour again with the storage's size read: the book written ${rows.length} times, at most ${line}, and the size read ${asked} time(s) (once a worker's life a day)`, rows.length >= 1 && rows.length <= line && asked === 1, { rows: byPrefix(rows), asked });
 }
 
+/* v2.3.5193 (card K PR 8): the send door's counts ride the book's own
+   puts -- a joined player's ticks are sent the whole time.  Ten minutes of
+   sends alone (the room row off) write no book row; 15b's hour with them
+   writes no more than its line, and the stored day carries the frames
+   (break proof: sendRide without its "nothing of today's going out" guard,
+   with bookMaybePut after its add, writes the book at every pace of sends) */
+{
+  const { room, tickFn, state } = await makeRoom();
+  await join(room, 'cg_send');
+  room._liveFlags = Object.assign(room._liveFlags || {}, { roomrow: false });
+  const w0 = state.writes.length;
+  await run(room, tickFn, 10 * 60000, null, FAST);
+  const none = state.writes.slice(w0).filter((k) => k.startsWith(DAYBOOK.PREFIX));
+  const sent = room._sendTally && room._sendTally.get('tick');
+  check(`15e. ten minutes of sends alone (${sent ? sent[0] : 0} tick frames) write no book row (${none.length})`, none.length === 0 && !!sent && sent[0] > 0, none);
+  const w1 = state.writes.length;
+  await run(room, tickFn, 60 * 60000, async () => {
+    bookAdd(room, 'room', { tick: { n: 1 } }, NOW);
+    if (room._daybook && room._daybook.putting) await room._daybook.putting;
+  }, FAST);
+  const rows = state.writes.slice(w1).filter((k) => k.startsWith(DAYBOOK.PREFIX));
+  const line = 13;
+  let carried = false;
+  for (const [k, v] of state.store) if (String(k).startsWith(DAYBOOK.PREFIX) && v && v.send && v.send.tick) carried = true;
+  check(`15e. the hour with every tick sent: the book written ${rows.length} times, at most ${line}, the frames carried in it`, rows.length >= 1 && rows.length <= line && carried, byPrefix(rows));
+}
+
 /* ── 16. v2.3.5092: the transfer ledger (xfer.js) ─────────────────────────── */
 /* One row a settlement, none a kill (the owner's yes, call 13): the line is a
    number a trade, not the ledger's own count of what it carried */
@@ -876,6 +909,41 @@ const FAST = 110;
   console.log('     22. a market order and its cancel: no id ' + JSON.stringify(plain) + ', an id ' + JSON.stringify(off) + ', reqstamp on ' + JSON.stringify(on));
   check('22. a request id with reqstamp off (the default): the rows of no id, no stamp row', off.writes === plain.writes && off.stamps === 0 && plain.writes > 0, { plain, off });
   check(`22. reqstamp on: ONE row more, the cancel's stamp (the order's id rides its own row) (${off.writes} -> ${on.writes})`, on.stamps === 1 && on.writes === off.writes + 1, { off, on });
+}
+
+/* ── 23. a sale at the Auction House and the market, `xferescrow` off and on (v2.3.5293) ── */
+{
+  const measure = async (flags, which) => {
+    const { room, state } = await makeRoom();
+    room._liveFlags = Object.assign({}, room._liveFlags, flags || {});
+    const s = 'cg_ah_s', b = 'cg_ah_b';
+    state.store.set('rpg:' + s, { _v: 22, coins: 0, level: 5, inventory: { slime_gel: 3 }, weaponStash: [{ type: 'greatsword', tierMult: 1, name: 'Iron', gid: 'gcg1x.1.a1b2' }] });
+    state.store.set('rpg:' + b, { _v: 22, coins: 500, level: 5, inventory: {} });
+    await join(room, s); await join(room, b);
+    let w0;
+    if (which === 'ah') {
+      await room._stEnsureIndex();
+      const L = (await room._stCreateListing({ playerId: s, kind: 'item', invKey: 'slime_gel', qty: 1, price: 100 })).listing.id;
+      w0 = state.writes.length;
+      await room._stBuyNow(L, b);
+    } else {
+      await room._mktEnsureIndex();
+      await room._mktPlaceOrder({ type: 'sell', category: 'weapon', subtype: 'greatsword', tierKey: 'iron', price: 100, playerId: s, stashIndex: 0 });
+      w0 = state.writes.length;
+      await room._mktPlaceOrder({ type: 'buy', category: 'weapon', subtype: 'greatsword', tierKey: 'iron', price: 100, playerId: b });
+    }
+    for (let i = 0; i < 4; i++) await new Promise((r) => setTimeout(r, 2));
+    const w = state.writes.slice(w0);
+    return { writes: w.length, xfer: w.filter((k) => k.startsWith('xfer:')).length, byPrefix: byPrefix(w) };
+  };
+  for (const which of ['ah', 'mkt']) {
+    const off = await measure(null, which);
+    const on = await measure({ xferescrow: true }, which);
+    const what = which === 'ah' ? 'an Auction House buy-now' : 'a market cross';
+    console.log('     23. ' + what + ': off ' + JSON.stringify(off) + ', on ' + JSON.stringify(on));
+    check(`23. xferescrow off (the default): ${what} writes no xfer: row`, off.xfer === 0 && off.writes > 0, off);
+    check(`23. xferescrow on: ${what} writes ONE row more (${off.writes} -> ${on.writes})`, on.xfer === 1 && on.writes === off.writes + 1, { off, on });
+  }
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);

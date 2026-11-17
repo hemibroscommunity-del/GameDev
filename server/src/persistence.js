@@ -479,7 +479,7 @@ export const persistenceMethods = {
        reloads after its 8 s, on a character that is still there. */
     if (this._fightLockHolds && this._fightLockHolds(pid, 'fightlockreset')) {
       const ws = this._wsBySessionId(pid);
-      if (ws) { try { ws.send(JSON.stringify({ type: 'character_reset_refused', payload: { reason: 'fight', message: 'Not while you are fighting a player' } })); } catch (e) { /* nothing was wiped */ } }
+      if (ws) { try { this._send(ws, { type: 'character_reset_refused', payload: { reason: 'fight', message: 'Not while you are fighting a player' } }); } catch (e) { /* nothing was wiped */ } }
       return;
     }
     await this._resetCharacterData(pid);
@@ -664,7 +664,7 @@ export const persistenceMethods = {
     try { if (this._accGone) await this._accGone(pid); } catch (e) { /* a count, not a debt */ }
     const ws = this._wsBySessionId(pid);
     if (ws) {
-      try { ws.send(JSON.stringify({ type: 'character_reset_done' })); } catch (e) {}
+      try { this._send(ws, { type: 'character_reset_done' }); } catch (e) {}
       try { ws.close(4005, 'character reset'); } catch (e) {}
       await this._playerLeaves(ws, 'reset');   /* v2.3.4830: the session door (leave.js) */
     }
@@ -847,7 +847,7 @@ export const persistenceMethods = {
         }
         if (changed === 0) return; // nothing changed -- skip the emit
       }
-      ws.send(JSON.stringify({ type: 'player_state', payload }));
+      this._send(ws, { type: 'player_state', payload });
     } catch (e) {}
   },
 
