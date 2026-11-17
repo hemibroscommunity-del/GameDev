@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "9efb86945d67f1b17a1e6df020615803b8cc2954",
+  "tree": "07e28710c76da3559eeb54bb5f673bbc00704015",
+  "committedAt": "2026-11-17T14:23:19-08:00",
+  "subject": "Merge pull request #2067 from hemibroscommunity-del/claude/plan-l-38-fight-door",
+  "files": 8129,
+  "bytes": 960145135,
+  "listingSha256": "f50b743457aee4fa4a6b631a2d79eb2b2aed2f934c1c969269784a9cb032f10e",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

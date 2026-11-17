@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "8b8b5a87541a7fe884d0e262b004db3bd62612ff",
+  "tree": "0ab04423893ae8ac8b4c690296806f5c8dfd7b5b",
+  "committedAt": "2026-11-17T14:23:22-08:00",
+  "subject": "Merge pull request #2068 from hemibroscommunity-del/claude/plan-k2-relaytyped",
+  "files": 8130,
+  "bytes": 960165381,
+  "listingSha256": "93ab071e8019773cf20264e9b013f229b8dce7b1a3f3ad9c012fb269325b6cb3",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
