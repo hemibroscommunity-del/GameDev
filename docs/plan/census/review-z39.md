@@ -134,8 +134,10 @@ memory-budget hit the job's 20-minute timeout (a cancel), its one rerun
 green. #2053 at 5ec4d137 all green (`test`, playable, memory-budget,
 lint-build). #2051 red once at a7bb41a3 on heap-forget check 4 (2,571
 against 2,560), the cause of adb2de6d; adb2de6d red on
-switches-thrown (above), the cause of 8542c104. #2051 8542c104 and #2053
-08bc3ecd (8542c104 merged in, nothing else): see the list.
+switches-thrown (above), the cause of 8542c104. #2051 8542c104: `test`,
+memory-budget, lint-build green (20:19), playable still running at the
+close. #2053 08bc3ecd (8542c104 merged in, nothing else): `test`,
+playable, memory-budget, lint-build all green (20:19).
 
 Two rehearsals before this one were stopped: the first met L's #2052
 over #2051 in `docs/SWITCHES.md`; the second, K2's heads moved (19:33).
