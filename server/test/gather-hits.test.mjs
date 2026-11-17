@@ -422,7 +422,10 @@ async function withRandom(fn, body) {
   const l1 = planOf();
   check('cook: no cooking level rolls as level 1 (ten 1s on a minnow)', !!l1 && l1.hits.length === 10 && l1.hits.every((d) => d === 1), l1 && l1.hits);
 
-  /* A cook is held to nothing new: cook_request at once still cooks. */
+  /* A cook is held to nothing new: cook_request at once still cooks.
+     v2.3.5727: with `cookstart` off -- it is ON since card K2 PR 8, and holds
+     a result to its plan's hits (cooking.js; cookstart-on.test) */
+  room._liveFlags = { ...(room._liveFlags || {}), cookstart: false };
   ps.lifeSkills = { cooking: { level: 1, xp: 0 } };
   ws.sent.length = 0;
   await send('extraction_start', { skill: 'cooking', fishKey: 'fish_minnow', hitSeq: 14 });
@@ -432,6 +435,7 @@ async function withRandom(fn, body) {
     ps.inventory.fish_minnow === before - 1 && (ps.inventory.cooked_fish_minnow || 0) === 1,
     { raw: ps.inventory.fish_minnow, cooked: ps.inventory.cooked_fish_minnow });
   check('cook: ...and the cooked fish spends the plan (the operator view clears)', room._gatherHitPlanFor('bp_gh') === null, room._gatherHitPlanFor('bp_gh'));
+  delete room._liveFlags.cookstart;
 
   /* The operator view is whichever attempt was asked for last. */
   const ore = byType('oreVein');
