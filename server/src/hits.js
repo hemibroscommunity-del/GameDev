@@ -343,9 +343,7 @@ export const hitMethods = {
          meaning of "no stamina" now: the same three writes as theirs.
          `monsterguardbreak: false` in the live flags is the way back. */
       if (ps.stamina <= 0 && !this._monsterGuardBreakOff()) {
-        ps.blocking = false;
-        ps.blockStartT = 0;
-        ps._guardBrokenUntil = Date.now() + this.GUARD_BREAK_MS;   /* the latch reads Date.now() (movement.js) */
+        this._guardTo(ps, 'break');   /* v2.3.5536: the guard door (the latch reads Date.now(): movement.js) */
       }
       this._saveRpgPools(pid, ps);   /* coalesced -- see v2.3.1619b; v2.3.3300: the boss's too */
       this._queuePlayerStateFlush(pid);

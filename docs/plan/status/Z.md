@@ -1,40 +1,34 @@
 card: Z
-branch: claude/plan-z-sitting-39
-prs: #2064 (this PR), tag 5677, the last line of sitting 39's list (ready)
+branch: claude/plan-z-sitting-41
+prs: #2086 (this PR), tag 5679, the last line of sitting 41's list (ready)
 state: ready
 
 ## Done
-- `census/review-z39.md`; this PR: the phase line 5 -> 4 (#2046), 5.3b.
-
+- `census/review-z41.md`. Tick: the phase line 4 -> 3 (L's #2052,
+  merged at 40). SEC's status written `done` (its tags all used).
 ## The list: merge in this order, each "Create a merge commit"
-1 SEC #2054 (5711, the owner sees a flood: the overview's `floodTally`,
-memory only; `floodtally`, ON) · 2 K2 #2051 (5725, three guards: a
-frame's throw caught, a Workshop run on safe ground, `reqId` off the
-public reads; `dungeonground`, ON; heap-forget's line 2.5 -> 4 KB) ·
-3 K2 #2053 (5726, the owner's routes with no key and the public reads at
-the edge; worker settings `EDGE_GUARD`, `EDGE_CACHE`, on) · 4 Z #2064 (this PR). All based on
-`main`, one base at every step. The worker deploys once.
-
+1 U2 #2070 (5780, the card and its tag block) · 2 L #2058 (5536,
+`guarddoor`) · 3 L #2065 (5537, `zonedoor`) · 4 L #2067 (5538,
+`fightdoor`) · 5 K2 #2068 (5724, `relaytyped`) · 6 Z (this PR). All on
+`main`, one base at every step (heads and trees in
+`census/review-z41.md`); the worker deploys once. With L's three, card
+L is done and card M chain A's PR 1 (5340) may open.
 ## Held / Stalled
-- None held (#2054 held at review, fixed by SEC); none stalled. To 40:
-  L #2052 (clean; its switch row meets #2051's), #2058, #2065, #2067; SEC
-  #2055-#2063; K2 #2066.
-
+- None held at review; none stalled. To 42: U2 #2074 (adds
+  `status/U2.md`, as #2070 does: merges `main` after it), RV #2072 (its
+  tag-blocks row meets #2070's and #2071's: merges `main` after them),
+  K2 #2073 (`bowshot` ON, and `cookstart` ON coming; on #2068; at the
+  close, not reviewed); T2 #2071 (READY; meets #2070 in tag-blocks:
+  merges `main` after it) and #2075 (on #2071); V2 #2076-#2080 (came at
+  22:01; #2076's tag-blocks row meets #2070's).
 ## Found
-- (a) `mp-alliance` 3 13-15/16 since #2022; no card. (b) `movetop` ON:
-  ride, sprint, potion suites hold only the flat bound.
-- (c) #2033: a damage of `Infinity` draws "-Infinity". (d) #2028, for
-  `cookstart` ON: a dropped result has spent its plan.
-- (e) The phase line 5 -> 4: this PR (4 -> 3 after #2052). (f) SEC's: a join with NO id is let in as
-  `session.id` undefined. (g) #2038: a known field a save leaves out
-  comes from a newer record.
-- (h) #2047: received friend requests never expire (friends.js).
-- (i) K2's: `mp-movepath`'s two "no worse" checks fail on main's worker.
-  (j) heap-forget check 4 on CI: mended by #2051 (listed). (k) K2's:
-  a joiner's state_sync still carries each player's `rpgData`.
-
+- Sitting 40's (a)-(n) carried, (e) ticked here; new (o) #2068's
+  `relay-bytes` only with `relaytyped` off, (p) #2065's `duel-zone` 226,
+  (q) precheck's 5-minute suite limit: `census/review-z41.md`.
 ## Needs
-- The owner: `cookstart` ON (not yet decided); the cost switches
-  (`reqstamp`, `fullsnap`, `xferescrow`, `resetbook`, `seathold`,
-  `freezedevice`), `.github/`, Cloudflare (#2053's two levers live
-  there). Z's next tag: 5678.
+- The owner: the cost switches (`reqstamp`, `fullsnap`, `xferescrow`,
+  `resetbook`, `seathold`, `freezedevice`), `.github/`, Cloudflare
+  (`EDGE_GUARD`, `EDGE_CACHE`, `BODY_CAP`, a www redirect, a rate-limit
+  rule). `cookstart` ON: the planning session says the owner answered
+  "Go recommended on all"; K2's #2073 carries it to 42. Card L done once
+  #2058, #2065, #2067 land: card M chain A's PR 1 (5340) may open.
