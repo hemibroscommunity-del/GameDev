@@ -55,7 +55,9 @@ No deploy.
 - SEC #2032 (5701, the join's id held to its form; `joinidform`, ON;
   `server/`) came at 16:33 and #2034 (5702) is a draft: both to sitting
   37 (a change to the join wants a full review and its own rehearsal,
-  past this list's close).
+  past this list's close). K2 #2035 (5720, `bodycap`, `server/`; card
+  K2's PR 1) came at 16:35: sitting 37 too, after it merges the `main`
+  that holds #2030 (both write `tag-blocks.json`'s block list).
 
 ## K #2028 (5553): `cookstart`, a cook is a cook the worker started (OFF)
 
