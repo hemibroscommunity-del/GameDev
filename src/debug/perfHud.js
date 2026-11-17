@@ -22,6 +22,7 @@ import { perfTracker } from './perfTracker.js';
 import { frameSmoothOn } from '../game/frameClock.js';   /* v2.3.4400: which step this tab moves by */
 import { startBusyBeat, busyIn } from './busyBeat.js';   /* v2.3.4400: was the page busy, or waiting? */
 import { AXES } from '../game/drawLanes.js';   /* v2.3.5222: the ladder's two axes (card O) */
+import { pageAddress } from '../game/switches.js';   /* v2.3.5314: the page's one reader (card T) */
 
 /* ═══ v2.3.4400: THE HITCHES THE AVERAGES HIDE, AND THE THUMB ═══
    The owner's iPhone on the skateboard, after the step was made steady: "a
@@ -54,7 +55,7 @@ const sampleStick = () => {
 
 const shouldActivate = () => {
   try {
-    const p = new URLSearchParams(window.location.search);
+    const p = new URLSearchParams(pageAddress());
     return p.get('perf') === '1' || p.get('debug') === '1';
   } catch {
     return false;
@@ -233,7 +234,7 @@ const hitchLines = (all) => {
     let n = 0, worst = null;
     for (const x of win) if ((x.totalMs || 0) > late) { n++; if (!worst || x.totalMs > worst.totalMs) worst = x; }
     const secs = Math.max(1, Math.round(win.reduce((a, x) => a + (x.totalMs || 0), 0) / 1000));
-    out += `\nlate frames ${n} in ${secs}s  step ${frameSmoothOn(window.location.search || '') ? 'steady' : 'raw'}`;
+    out += `\nlate frames ${n} in ${secs}s  step ${frameSmoothOn(pageAddress()) ? 'steady' : 'raw'}`;
     /* the average frame's time outside, split (the last two seconds) */
     try {
       const rec = win.slice(-120);
