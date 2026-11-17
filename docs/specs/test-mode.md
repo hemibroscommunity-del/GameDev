@@ -68,7 +68,9 @@ switch allows it.
 - A General Store sell filed under its weapon's own tier, and a refund and
   its order's delete in one write (v2.3.5801, card RV, `market.js`,
   `mkttier`, `mktheal`); the rise chest's stamp kept for good by the oplog
-  prune (v2.3.5802, `inbox.js` `OP_PRUNE.KEEP`, `risekeep`).
+  prune (v2.3.5802, `inbox.js` `OP_PRUNE.KEEP`, `risekeep`); goods credited
+  in the dying seconds kept through the respawn (v2.3.5803, `inbox.js`
+  `_applyCreditToPs`, `dyingkeep`).
 - Every save and payment rule; the login key, the device lock, the lockouts;
   a frozen account.
 - PvP consent and **every check on a hit between players** (pvpbalance.js,
