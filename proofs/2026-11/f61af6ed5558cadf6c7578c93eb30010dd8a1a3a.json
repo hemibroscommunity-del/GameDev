@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "f61af6ed5558cadf6c7578c93eb30010dd8a1a3a",
+  "tree": "0bc2ffb281022a7599b14ee99a7646adccffd85a",
+  "committedAt": "2026-11-17T06:21:05-08:00",
+  "subject": "Merge pull request #2023 from hemibroscommunity-del/claude/plan-k-14c-bowshot",
+  "files": 8061,
+  "bytes": 959507687,
+  "listingSha256": "cbc70c2137d1ffbd8ef1d51b5a3e1aa95fe58150cc46504ca5f8806e63df9d91",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
