@@ -306,6 +306,8 @@ after the fire was lit. The unit suite could not see it, because the
 missing piece was between the two things it mocks. Caught by
 `tools/qa/mp/mp-authority.mjs`, which asks the worker.
 
+Held by: tools/guards/action-door.test.mjs (tag 5764).
+
 ## 19. Reading "PvP is opt-in" as "PvP hits who you aimed at"
 
 **Tempting:** the PvP path looks target-shaped from the client. You lock
@@ -6185,6 +6187,8 @@ until the thread is full.  And a Node test that captures the tick from
 `setInterval` must never see the interval set again (`WebSocketPair` is the
 runtime check, `tickpace.js`).
 
+Held by: tools/guards/traps-frame.test.mjs (tag 5764).
+
 ## 171. "mp-wheelbreak's arrows stick, so the bow shoots props" (v2.3.3206)
 
 **Plausible:** the Wheel's objects take arrows. `mp-wheelbreak` sends 28
@@ -6846,6 +6850,8 @@ error in the page sends a report) and the safety net (the test takes the
 context bare first): on main without it the report took the canvas and the minimap
 covered the screen; now the renderer's context every time, the minimap in its
 box.
+
+Held by: tools/guards/traps-frame.test.mjs (tag 5764).
 
 ## 195. "A socket with no Origin is a forger's: refuse it" (v2.3.3312)
 
@@ -7734,6 +7740,8 @@ they did; `?onebatch=1` tests the one program here anyway.
 
 **v2.3.3894:** every chip now keeps the three programs unless the address asks
 for the one (§260): on the owner's iPhone the one program lost a bro's legs.
+
+Held by: server/test/one-program.test.mjs (tag 5764).
 
 ## 226. "Route it in my own wrapper: I installed it last, so it runs last" (v2.3.3459)
 
@@ -8811,6 +8819,8 @@ fixes and said "Everything looks fine to me make 1 program the default": it is
 the default on phones and tablets now (`docs/specs/one-batch.md`). The rule
 stands for the next program: the owner's phone is the judge, not this box.
 
+Held by: server/test/one-program.test.mjs (tag 5764).
+
 ## 261. "A mixed-grade set can't be one figure, so draw it as its pieces" (v2.3.3953)
 
 **The move.** A matched set jogs as ONE full-set figure on the body sprite
@@ -9326,6 +9336,8 @@ uneven 51, and is less work.
 **Receipt:** `frame-pacer` suite, `mp-steadypace`, `mp-peerarrive`,
 docs/specs/frame-pacer.md.
 
+Held by: tools/guards/traps-frame.test.mjs (tag 5764).
+
 ## 283. "It slows by the blacksmith, so it is the blacksmith" (v2.3.4400)
 
 **The move.** A player reports a slowdown at a place or beside a character
@@ -9591,6 +9603,8 @@ asks again (`pageDropDue`, 5 s; the ground's pieces already did this).
 only turned every failure into "fulfilled", so the loading report (§12's
 check) could never show a miss. **The rule.** Settle the promises as they
 are (`preloadReport.js` `settleGroups`). **Receipt:** `renderer-life.test`.
+
+Held by: tools/guards/traps-frame.test.mjs (tag 5764).
 
 ## 304. "Set `S.currentZone` and clear what you left" (v2.3.4414)
 
