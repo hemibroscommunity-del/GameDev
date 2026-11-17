@@ -144,15 +144,25 @@ only: `gameEvents.js`, `relay-popup.test.mjs`, `status/L.md`.
 
 ## The rehearsal
 
-`tools/dev/gatekeeper.mjs` on 52244a81 with #2028 (at ffff340b): tree
-f16d6174 (the same as the step-by-step merge); build PASS; questline
-187/187; precheck 0 FAIL but the server suites' 5-minute limit under load
-(the settled one, sittings 33 to 35; its one WARN the branch count), so
-`cd server && npm test` was run alone in that tree: 480 suites, all green
-(346 s). #2028's new head 30d7681e changes only K's status file against
-that tree (tree 6c43fb23). This PR merged on top of both (one base,
-52244a81; tree fce1b531): every guard in `tools/guards/` green (34), the
-phase table 7 `todo`, at the line 7. `test` green on both of #2028's heads.
+First, #2028 alone (at ffff340b) on 52244a81: tree f16d6174; build
+PASS; questline 187/187; precheck 0 FAIL but the server suites' 5-minute
+limit under load (the settled one, sittings 33 to 35; its one WARN the
+branch count); `cd server && npm test` alone in that tree: 480 suites,
+all green (346 s).
+
+Then the list: `tools/dev/gatekeeper.mjs` on 52244a81 with #2030 (at
+14cda149), #2028 (30d7681e), #2031 (37bb4911) and #2033 (97af140b), in
+that order: tree e8c01313 (the same as the step-by-step merges); build
+PASS; questline 187/187; precheck the same one timeout and nothing else
+red; `cd server && npm test` alone: NPMTEST. #2030's new head 9d5bd5d6
+changes only its card against that tree. This PR merged on top of the
+list (one base, 52244a81): GUARDS. `test` green on every listed head.
+
+No two listed PRs share a file but: the switch table's rows
+(`switches.mjs`, `SWITCHES.md`; #2028 and #2031, each its own line,
+merged clean); `status/L.md` (#2031 and #2033: #2033 holds #2031);
+`phase-table.test.mjs` (#2031's door-suite row, this PR's line: other
+parts of the file, merged clean).
 
 ## Z (this PR, 5674)
 
