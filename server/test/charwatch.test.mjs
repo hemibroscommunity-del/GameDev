@@ -26,7 +26,8 @@ function makeState() {
     storage: {
       get: async (k) => store.get(k),
       put: async (k, v) => { puts.push(k); store.set(k, typeof v === 'string' ? v : JSON.parse(JSON.stringify(v))); },
-      list: async (o) => { const out = new Map(); for (const [k, v] of store) if (!o?.prefix || k.startsWith(o.prefix)) out.set(k, v); return out; },
+      /* v2.3.5607: in key order, with startAfter and limit, as the runtime's (the page is read a page at a time) */
+      list: async (o) => { const out = new Map(); for (const [k, v] of [...store].sort((a, b) => (a[0] < b[0] ? -1 : 1))) { if (o?.prefix && !k.startsWith(o.prefix)) continue; if (o?.startAfter && k <= o.startAfter) continue; if (o?.limit && out.size >= o.limit) break; out.set(k, v); } return out; },
       delete: async (k) => { for (const x of (Array.isArray(k) ? k : [k])) store.delete(x); },
     },
     getWebSockets: () => [], acceptWebSocket: () => {},

@@ -58,6 +58,7 @@ import { bookRead } from './daybook.js'; /* v2.3.5125: the day's book's one read
 import { econCardRead } from './econcard.js'; /* v2.3.5093: the owner's card's other read (/dev/econcard) */
 import { questStateSet, questCountSet, questForget, questKeptTake } from './queststate.js';   /* v2.3.5284: quest state's door (card R PR 5) */
 import { xpMake } from './xp.js';   /* v2.3.5289: experience and levels' door (card R PR 10) */
+import { ownerCursor } from './liveops.js';   /* v2.3.5607: the owner's reads, a page at a time (/dev/apinfo) */
 
 export const DEVKIT = {
   /* The tutorial's own starter weapons -- copper/pine/pine.  Deliberately
@@ -640,23 +641,32 @@ export const devToolsMethods = {
      was earned: achv.got), and the AP on each daily snapshot (rpgsnap:, the
      last 7 days the player joined: how the total grew day by day).  A scan of
      char: -- the owner's lever only, never on a player's path. */
-  async _apInfo(nameIn) {
+  /* v2.3.5607: A PAGE AT A TIME (card OPS PR 8; red team RT-2 F9: it
+     listed up to 20,000 `char:` records at once).  OWNER_PAGE characters a
+     request, after the id `after`; `next` for the page after (null: the
+     last).  A page with nobody of the name answers ok with none and its
+     `next` (the panel follows it); 'no character named' only when one page
+     was the whole list. */
+  async _apInfo(nameIn, afterIn) {
     const want = String(nameIn || '').trim().toLowerCase();
     if (!want) return { ok: false, error: 'name required' };
+    const after = ownerCursor(afterIn);
     const ids = [];
+    let next = null;
     try {
-      const chars = await this.state.storage.list({ prefix: 'char:', limit: 20000 });
-      for (const [k, c] of chars) {
+      const pg = await this._ownerPage('char:', after);
+      next = pg.next;
+      for (const [k, c] of pg.page) {
         if (c && typeof c.name === 'string' && c.name.trim().toLowerCase() === want) ids.push([k.slice(5), c]);
       }
     } catch (e) { return { ok: false, error: 'could not read the characters' }; }
-    if (!ids.length) return { ok: false, error: 'no character named ' + nameIn };
+    if (!ids.length && after === null && next === null) return { ok: false, error: 'no character named ' + nameIn };
     const out = [];
     for (const [id, c] of ids.slice(0, 10)) {
       const rpg = (await this.state.storage.get('rpg:' + id)) || {};
       const achv = (await this.state.storage.get(ACHV_KEY(id))) || {};
       const claims = (await this.state.storage.get('guild_claims:' + id)) || {};
-      const snaps = await this.state.storage.list({ prefix: 'rpgsnap:' + id + ':' });
+      const snaps = await this.state.storage.list({ prefix: 'rpgsnap:' + id + ':', limit: 31 });   /* v2.3.5607: two rings of SNAPSHOT.KEEP (7) are kept; bounded all the same */
       const q = rpg._quests || {};
       const handed = Object.keys(q).filter((k) => q[k] === 'turnedIn');
       const guild = [];
@@ -683,7 +693,7 @@ export const devToolsMethods = {
         daily: [...snaps.entries()].map(([k, b]) => ({ day: k.slice(('rpgsnap:' + id + ':').length), ap: (b && b.achievementPoints) || 0 })),
       });
     }
-    return { ok: true, players: out };
+    return { ok: true, players: out, next };
   },
 
   /* Routed from _adminFetch, so auth, the fail-closed 404 and the audit log
@@ -712,7 +722,9 @@ export const devToolsMethods = {
     if (request.method === 'GET' && path === '/dev/botflags') {
       /* v2.3.3723: the score in force (the hidden settings), not the placeholder */
       await this._hiddenEnsure();
-      return json({ ok: true, flagged: await this._botfpFlaggedList(50), flagAt: this._hid().FLAG_AT });
+      /* v2.3.5607: a page at a time (`after`, `next`: botfp.js _botfpFlaggedPage; red team RT-2 F9) */
+      const pg = await this._botfpFlaggedPage(new URL(request.url).searchParams.get('after'));
+      return json({ ok: true, flagged: pg.flagged, next: pg.next, flagAt: this._hid().FLAG_AT });
     }
     /* v2.3.3723: THE HIDDEN SETTINGS (hidden.js): GET the list, POST {name,
        value} one (null: its placeholder), DELETE ?name= one or all.  No
@@ -728,7 +740,8 @@ export const devToolsMethods = {
        with 120 -- "which types total to the 120" and "one play session or
        multiple").  Read-only; the Test panel's "Player AP" box. */
     if (request.method === 'GET' && path === '/dev/apinfo') {
-      const r = await this._apInfo(new URL(request.url).searchParams.get('name'));
+      const q = new URL(request.url).searchParams;
+      const r = await this._apInfo(q.get('name'), q.get('after'));   /* v2.3.5607: + `after`, a page at a time */
       return json(r, r.ok ? 200 : 404);
     }
     /* v2.3.4545: WHAT PLAYERS DREW (charwatch.js): every character with a drawing, newest first, a page at a
