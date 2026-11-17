@@ -11,18 +11,22 @@ with one merge base at every step (`git merge-base --all`, each against
 `main` with the PRs above it merged in as merge commits). The tree after
 each merge:
 
-1 K #2028 ffff340b29de987f859f6c2f666bb964c6b97ce2 -> f16d6174ced51b5012ebabebbadf2b7a36dbd33a
+1 K #2028 30d7681eba2b841d800cedb446a1d8ec826b7194 -> 6c43fb232b353fedf9ca333af3d4653948c66873
 2 Z (this PR): its head and tree are in the list (`status/Z.md`).
 
 #2028 was built on #2024 (its one base fe1297b0, #2024's head, now on
 `main`): the base GitHub shows (01b8f33d) is only the `main` it was
-opened against.
+opened against. Reviewed and rehearsed at ffff340b (tree f16d6174); at
+15:50 K sent 30d7681e, one commit on top: `docs/plan/status/K.md` only
+(card K `done`, the planner's word: item 14 closed). The new tree differs
+from the rehearsed one in that file alone.
 
 ## K #2028 (5553): `cookstart`, a cook is a cook the worker started (OFF)
 
 READY (reviewed in full: `server/`). Card K PR 14, the cook's result
 (4.2); K's tag 5553 (block 5540-5559). Open, not a draft (K marked it
 ready at this sitting's start); `test` green on ffff340b (15:28 UTC).
+- `test` on 30d7681e: see the rehearsal.
 - `server/src/cooking.js` `_cookStartOn()` (an own `true` only: OFF),
   `_cookStartTake(ps, fishKey, now, session)`: with it on, a
   `cook_request` lands only on the plan `extraction_start` rolled
