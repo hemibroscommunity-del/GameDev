@@ -408,28 +408,28 @@ export async function run({ browser, wsPort, webPort, rec }) {
      a richer test character reads digits and commas. */
   rec.ok('...and the count itself is still a number', /^[\d,]+$/.test(coinIcon.text || ''), coinIcon);
 
-  /* v2.3.5649: townsfolk are drawn live (v2.3.3809) and a sprite out of view or not yet sized
-     reads 0: read until the shopkeeper's is there (at most 30 s), and only the drawn ones count */
+  /* v2.3.5649: townsfolk are drawn live (v2.3.3809) and walk their day: a sprite out of view
+     reads 0, a jogger is drawn shorter than a stander, and each has his own `size` (the Mayor's
+     1.1): so he is read once he STANDS, beside him (not in front: his drawer stays shut), and
+     compared with the other standing grown folk by height over size, as mp-npclooks does */
   const readSizes = () => A.page.evaluate(() =>
     ((window.__btNpcSprites && window.__btNpcSprites()) || [])
-      .reduce((o, n) => { o[n.id] = Math.round(n.height); return o; }, {}));
-  /* beside him (not in front: his drawer stays shut), where he is drawn */
+      .map((n) => ({ id: n.id, h: Math.round(n.height), size: n.size || 1, pose: n.pose || null, live: !!n.live })));
   const diego = await A.page.evaluate(() => { const n = ((window._gameState.current || {}).npcs || []).find((q) => q.id === 'shopkeeper_bro'); return n ? { x: n.x, y: n.y } : null; });
   if (diego) await H.hopTo(A, diego.x + 120, diego.y + 40, { step: 100, gap: 260, tries: 90 }).catch(() => {});
   let sizes = await readSizes();
-  for (let t0 = Date.now(); Date.now() - t0 < 30000 && !(sizes.shopkeeper_bro > 0); ) { await A.page.waitForTimeout(500); sizes = await readSizes(); }
-  /* v2.3.2052 (owner: "make shopkeeper larger his sprite is bit small"): his
-     hand-painted figure drew 120 px against Mayor Bro's 132, the smallest man
-     in the square.  v2.3.3580: every grown townsperson is a bro from the
-     character creator drawn a player's own height (the owner: "NPCs should
-     look like normal bro characters"), and the Mayor 10% over that (the
-     owner's v2.3.1822) -- so Diego stands as tall as any grown man in town,
-     the Mayor aside, and is no longer the small one.  (Lil Bro's cell is a
-     bro's: he is photographed small inside it.) */
-  const others = Object.entries(sizes).filter(([id, h]) => id !== 'shopkeeper_bro' && id !== 'mayor_bro' && h > 0);
-  rec.ok(`the shopkeeper is drawn a grown bro's height (${sizes.shopkeeper_bro}px; `
-       + `${others.map(([id, h]) => id + ' ' + h).join(', ')}; Mayor Bro ${sizes.mayor_bro})`,
-    sizes.shopkeeper_bro > 140 && others.length > 0 && others.every(([, h]) => h <= sizes.shopkeeper_bro), sizes);
+  const standing = (z) => !!z && z.h > 0 && (!z.live || z.pose === 'stand');
+  for (let t0 = Date.now(); Date.now() - t0 < 60000 && !standing(sizes.find((z) => z.id === 'shopkeeper_bro')); ) { await A.page.waitForTimeout(500); sizes = await readSizes(); }
+  const me = sizes.find((z) => z.id === 'shopkeeper_bro');
+  const others = sizes.filter((z) => z.id !== 'shopkeeper_bro' && z.id !== 'mayor_bro' && z.id !== 'lil_bro' && standing(z));
+  const norm = (z) => z.h / z.size;
+  const mids = others.map(norm).sort((x, y) => x - y);
+  const mid = mids.length ? mids[Math.floor(mids.length / 2)] : 0;
+  /* (since v2.3.3580 every grown townsperson is a bro drawn a player's height, the Mayor aside: Diego
+     is no longer the small one) */
+  rec.ok(`the shopkeeper is drawn a grown bro's height (${me && me.h}px, ${me ? Math.round(norm(me)) : '?'} over his size; the standing others' middle ${Math.round(mid)}: `
+       + `${others.map((z) => z.id + ' ' + z.h + '/' + z.size).join(', ')})`,
+    standing(me) && others.length >= 2 && norm(me) >= mid * 0.9, { me, others });
 
   await A.page.screenshot({ path: H.REPO + '/tools/qa/mp/out/shopkeeper-panel.png' }).catch(() => {});
 
