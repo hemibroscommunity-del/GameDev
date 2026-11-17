@@ -162,6 +162,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `ahonewrite` | worker | switch | v2.3.4500 | 2026-11-10 | false | logic |  | no | An auction-house listing goes back to its old two writes, restart hole and all. |
 | `armorstashlive` | worker | switch | v2.3.4840 | 2026-11-11 | false | logic |  | no | The armour stash list goes back to being sent only at the join. |
 | `bank` | worker | switch | v2.3.3785 | 2026-10-29 | false | logic |  | no | Un-advertises the bank and refuses every deposit and withdrawal; what is in a vault stays and still shows. |
+| `bankretry` | worker | switch | v2.3.5702 | 2026-11-17 | false | logic |  | no | A vault whose put the storage refused is no longer written with the character's next save, nor kept to the leave's save, and the bank no longer answers `paused` for it (a withdrawal then may stand twice, a deposit in neither). |
 | `capeoffkept` | worker | switch | v2.3.5422 | 2026-11-14 | false | logic |  | no | A cape taken off is kept in memory only again, so it is worn again after a rejoin or a deploy. |
 | `dailyChest` | worker | switch | v2.3.2820 | 2026-09-24 | false | logic |  | no | Un-advertises the daily chest and pays the day's reward as plain gold again (a chest in a bag waits). |
 | `dailyquests` | worker | switch | v2.3.3140 | 2026-10-07 | true | logic |  | no | Thrown (true), the put-away daily quests come back: counting, rerolls and claims. |

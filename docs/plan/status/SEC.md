@@ -1,7 +1,7 @@
 card: SEC
 branch: claude/plan-sec-<n>-<topic> (one a PR; PR 2 on PR 1's branch until #2030 merges)
-prs: #2030 (5700, the card): ready; #2032 (5701, the join's id form): ready
-state: ready
+prs: #2030 (5700): ready; #2032 (5701): ready; PR 3 (5702, the vault owed): working
+state: working
 
 ## Done
 
@@ -11,11 +11,16 @@ state: ready
   `joinid.test`, red on main: 58 FAIL; a one-item list `['bp_x']` wrote
   `auth:bp_x`, a real character's own key).
 
+- PR 3 (5702): a vault whose put was refused is owed and rides the
+  character's next save in one put; the leave saves it before the copy
+  goes; the bank answers `paused` (switch `bankretry`; suite
+  `bankretry.test`, 12 FAIL on main: a withdrawal doubled, a deposit lost).
+
 ## Next
 
-- PR 3 (5702): a refused vault write owed, written with the character's
-  next save in one put; the leave writes both (bank.js, persistence.js,
-  leave.js, linger.js).
+- PR 3's full suite and PR; then PR 4 (5703): the bag-size switch lowers
+  only what a give may fill, never the cuts (gearstash.js, gear.js,
+  persistence.js capStash).
 
 ## Found
 

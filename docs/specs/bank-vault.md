@@ -64,6 +64,34 @@ rules 5 and 7), so the Durable Object commits them together: a restart can
 never leave an item in both places or in neither. The only await is the vault's
 first read, and everything is checked again after it.
 
+### A write that is refused: the vault owed (v2.3.5702, card SEC PR 3)
+
+When the storage refuses a move's puts, memory has moved and the file has
+not. Before, the next ordinary save wrote the purse or bag again from memory
+and nothing wrote the vault (the leave forgot its copy): a withdrawal's gold
+was then in the purse **and** still in the vault on file, and a deposit made
+then was in neither. Now:
+
+- a vault whose put was refused is **owed** (`bank.js` `_bankWatch`,
+  `_bankOwed`);
+- the character's next save carries it in the **same put**, both records in
+  one (`persistence.js` `_saveRpg` through `_bankWithSave`): they land
+  together or not at all;
+- the leave saves while one is owed, before the copy goes (`leave.js`,
+  `linger.js`). After that save the copy goes whether the put landed or not:
+  refused too, both records stand on file as they were before the move (the
+  move undone whole), and a copy kept past the leave would be read by the
+  next join beside a purse read from the file;
+- the bank's answer says so: a second `bank_state` whose last move is
+  refused `paused` (the value pause's words, "Saving is paused for a moment,
+  try again."; `valuepause.js`).
+
+The refused put is counted where card A counts every one (`roomrow.js`).
+Nothing is written in the ordinary case: an ordinary save is the rpg put
+alone. Kill switch `bankretry: false`: the old way. Suite:
+`server/test/bankretry.test.mjs` (the world's sum after a later save, a
+leave and a restart, and the every-batch sweep over both moves).
+
 ### A read that fails is not an empty vault
 
 If the vault's storage read throws, the worker does **not** treat it as an

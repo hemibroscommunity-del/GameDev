@@ -55,6 +55,7 @@
  */
 import { PACE } from './flood.js';
 import { bagGive, bagTake } from './bag.js'; /* v2.3.4810: the bag door */
+import { PAUSE } from './valuepause.js';   /* v2.3.5702: the words a refused write answers with */
 
 const has = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);
 
@@ -119,6 +120,57 @@ export const bankMethods = {
   _bankMap() {
     if (!this._bankCache) this._bankCache = new Map();
     return this._bankCache;
+  },
+
+  /* ═══ v2.3.5702: A VAULT OWED (card SEC PR 3) ═══
+     When the storage refused a move's two puts, memory had moved and the
+     file had not.  The next ORDINARY save wrote the purse or bag again from
+     memory and nothing wrote the vault (the leave forgot its copy), so a
+     withdrawal's gold was in the purse AND still in the vault on file, and
+     a deposit made then was in neither.  Now a vault whose put was refused
+     is OWED: the character's next save carries it in the SAME put
+     (persistence.js _saveRpg, through _bankWithSave: one write, handoff
+     rules 5 and 7), the leave saves while one is owed before it forgets the
+     copy (leave.js, linger.js), and the bank answers `paused`.  A refused
+     put is counted where card A counts every one (roomrow.js); nothing is
+     counted here.  No write in the ordinary case: the ordinary save is the
+     rpg put alone, as before.
+     After the leave's save, the copy goes whether that put landed or not:
+     refused too, both records stand on file as they were before the move
+     (the move undone whole), and a copy kept past the leave would be read
+     by the next join beside a purse read from the file -- a deposit made
+     twice.  KILL SWITCH `bankretry: false`: the old way. */
+  _bankRetryOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && has(f, 'bankretry') && !f.bankretry);
+  },
+
+  /** Watch a put of `v`: landed, it is on file; refused, the vault is owed. */
+  _bankWatch(v, w, refused) {
+    const g = (v.gen = (v.gen || 0) + 1);
+    if (!w || typeof w.then !== 'function') { v.okGen = Math.max(v.okGen || 0, g); return; }
+    w.then(() => { if (g > (v.okGen || 0)) v.okGen = g; },
+      () => { if (g > (v.owedGen || 0)) v.owedGen = g; if (refused) { try { refused(); } catch (e) { /* the vault stands */ } } });
+  },
+
+  /** The vault `pid` owes the file (a refused put no later put covered),
+   *  or null.  Not while a save carrying it is still in flight. */
+  _bankOwed(pid) {
+    if (!pid || !this._bankCache || !this._bankRetryOn()) return null;
+    const v = this._bankCache.get(pid);
+    if (!v || v.newer || v.failed || v.retry) return null;
+    return (v.owedGen || 0) > (v.okGen || 0) ? v : null;
+  },
+
+  /** The character's save with the vault it owes: ONE put of both records. */
+  _bankWithSave(pid, v, rec) {
+    const w = this.state.storage.put({ ['rpg:' + pid]: rec, ['bank:' + pid]: vaultRecord(v) });
+    this._bankWatch(v, w, null);
+    const g = v.gen;
+    v.retry = g;
+    const done = () => { if (v.retry === g) v.retry = 0; };
+    if (w && typeof w.then === 'function') w.then(done, done); else done();
+    return w;
   },
 
   _bankForget(pid) {
@@ -287,6 +339,9 @@ export const bankMethods = {
     try {
       const w = this.state.storage.put('bank:' + pid, vaultRecord(v));
       if (w && typeof w.catch === 'function') w.catch(() => {});
+      /* v2.3.5702: a refused put leaves the vault OWED (A VAULT OWED, below),
+         and the bank says so in the value pause's own words */
+      if (this._bankRetryOn()) this._bankWatch(v, w, () => { if (this.playerState[pid]) this._bankSend(pid, v, last(false, PAUSE.CODE)); });
     } catch (e) { /* the output gate holds the answer until both land */ }
     const ws = this._wsBySessionId(pid);
     if (ws) this._sendPlayerState(ws, pid);

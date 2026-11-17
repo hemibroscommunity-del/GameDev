@@ -304,8 +304,11 @@ export const persistenceMethods = {
         if (w && typeof w.catch === 'function') w.catch(() => {});
       } catch (e) {}
     }
+    /* v2.3.5702: the record built first, so a vault owed rides its put
+       (below); a record that cannot be built is not written, as before */
+    let _rec;
     try {
-      await this.state.storage.put('rpg:' + playerId, {
+      _rec = {
         coins: ps.coins || 0,
         inventory: ps.inventory || {},
         lifeSkills: ps.lifeSkills || {},
@@ -451,7 +454,14 @@ export const persistenceMethods = {
            sitting card goes inside it, under a key of its own: a third
            field is refused (migrations.test §econ). */
         _econ: econClean(ps._econ),
-      });
+      };
+    } catch (e) { return; }
+    /* v2.3.5702 (card SEC PR 3): a vault whose put the storage refused rides
+       this put, both records in one (bank.js A VAULT OWED; `bankretry`) */
+    const _owed = this._bankOwed ? this._bankOwed(playerId) : null;
+    try {
+      if (_owed) await this._bankWithSave(playerId, _owed, _rec);
+      else await this.state.storage.put('rpg:' + playerId, _rec);
     } catch (e) {}
   },
 
