@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "8ddbad238d6d77c1b779d2840576af3a882ae4c2",
+  "tree": "a57275c5b80ce35b63702e5809bbf8f99d82e14f",
+  "committedAt": "2026-11-16T22:44:51-08:00",
+  "subject": "Merge pull request #1984 from hemibroscommunity-del/claude/plan-j2-27-dailyrewards",
+  "files": 8031,
+  "bytes": 959253547,
+  "listingSha256": "e51a5bc65b7f5a0b4eadf80068e789072df15999e5bc636d78e824d4d861ac19",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
