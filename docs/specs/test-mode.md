@@ -65,6 +65,8 @@ switch allows it.
   a General Store sell filed under its weapon's own tier, and a refund and
   its order's delete in one write (v2.3.5801, `market.js`, `mkttier`,
   `mktheal`);
+  the rise chest's stamp kept for good by the oplog prune (v2.3.5802,
+  `inbox.js` `OP_PRUNE.KEEP`, `risekeep`);
   the owner's routes with no key and the public reads at the edge (v2.3.5726,
   `wire/door.js`; the worker settings `EDGE_GUARD`, `EDGE_CACHE`).
 - Every save and payment rule; the login key, the device lock, the lockouts;
