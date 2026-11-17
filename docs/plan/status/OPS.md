@@ -1,6 +1,6 @@
 card: OPS
-branch: claude/plan-ops-10b-prfresh (on main b2d763a9; PR 11, PR 8, the seat mend on their own)
-prs: #1944 (5610) ready; #1951 (5607) waits on the planning session; seat mend (5612) working; 5613 (19b's LOW) ready
+branch: claude/plan-ops-10b-prfresh (on main 8149d61e; PR 11, PR 8, the seat mend on their own)
+prs: #1944 (5610) ready; #1951 (5607) ready; seat mend (5612) working; #1957 (5613) ready
 state: working
 
 ## Done
