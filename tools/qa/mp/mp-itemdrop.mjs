@@ -50,7 +50,7 @@ async function dropThroughCard(P, key, n, shot) {
   const tile = await P.page.$(`[data-inv-key="${key}"]`);
   if (!tile) return { step: 'tile' };
   await tile.dispatchEvent('pointerup');
-  const drop = await P.page.waitForSelector('button[data-item-drop=""]', { timeout: 6000 }).catch(() => null);
+  const drop = await P.page.waitForSelector('button[data-item-drop=""]', { state: 'attached', timeout: 20000 }).catch(() => null);
   if (!drop) return { step: 'drop button' };
   /* the card's row of buttons, each wholly inside the card and on one line */
   const row = await P.page.evaluate(() => {
@@ -66,7 +66,9 @@ async function dropThroughCard(P, key, n, shot) {
   });
   if (shot) await shot(P, 'card-' + key);
   await drop.click();
-  const sheet = await P.page.waitForSelector('[data-drop-sheet]', { timeout: 6000 }).catch(() => null);
+  const sheet = await P.page.waitForSelector('[data-drop-sheet]', { state: 'attached', timeout: 20000 }).catch(() => null);
+  /* v2.3.5652: 'attached', not Playwright's 'visible': the sheet is in the page while it still slides in
+     (this box draws a few frames a second, TRAPS §200); the clicks below wait for it to be actionable */
   if (!sheet) {
     const top = await P.page.evaluate(() => {
       const b = document.querySelector('button[data-item-drop=""]');
