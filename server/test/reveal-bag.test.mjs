@@ -284,8 +284,11 @@ const ps = room.playerState[PID];
   check('7. the weapon sanitizer\'s strict branch (a phone\'s claim) drops it', room._sanitizeWeapon({ type: 'greatsword', name: 'x', tierMult: 1, unrevealed: 1 }, true).unrevealed === undefined);
   check('7. ...its own-copy branch keeps it (the worker wrote it)', room._sanitizeWeapon({ type: 'greatsword', name: 'x', tierMult: 1, unrevealed: 1 }, false).unrevealed === 1);
   const wsF = fakeWs('F');
-  await join(room, wsF, 'bp_reveal_f', { rpgArmorStash: [{ name: 'Iron Torso', mat: 'iron', slot: 'armor', tierMult: 2, unrevealed: true }] }, { rb: 1 });
-  const fs = room.playerState.bp_reveal_f.armorStash || [];
+  /* v2.3.5715 (card SEC PR 16, gearheld): the join takes no armour or legs
+     claim at all now, so the forged "?" rides a shield claim, a lane that
+     still merges */
+  await join(room, wsF, 'bp_reveal_f', { rpgShieldStash: [{ name: 'Iron Buckler', mat: 'iron', slot: 'shield', tierMult: 2, unrevealed: true }] }, { rb: 1 });
+  const fs = room.playerState.bp_reveal_f.shieldStash || [];
   check('7. a forged "?" in a join claim (no id) lands as a plain piece', fs.length === 1 && !fs[0].unrevealed, fs);
 }
 

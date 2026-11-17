@@ -105,3 +105,34 @@ no failure that `main` does not also show (duel 1, trade 6 and clan 1 fail on
 both).
 
 A new relay goes in `RELAY.TYPES` or it reaches no one (TRAPS §190).
+
+## A relay's fields typed, and the room's send (v2.3.5724, card K2 PR 5)
+
+The second red team: `_relayBuild` copied every field a phone put in a
+relay, each as sent. `monster_dmg_at`'s `dmg` reached every screen in the
+zone as text; a `trade_reject` or `duel_decline` carrying `reason: 'paused'`
+made the other phone say the game's own "Saving is paused" words, and a
+`pvp_confirmed` could carry words of its own. And `_sendRoom` sent the
+room's traffic to a socket that opened and never joined.
+
+Now, with `relaytyped` on:
+
+- **A relay keeps only the fields its row names** (the wire table's
+  `trust`, `wire/relays.js`), each held to the form an honest page sends
+  (`relay.js` `RELAY_FORMS`): a player's id (a string of at most 64), a
+  finite number, a whole number, a flag (`true`/`false` or `1`/`0`: four
+  flags go as the number 1), a string of at most N characters, chat's line
+  (cut to 1,000 here; the chat sanitiser cuts it to 200), a trade's offer
+  (item keys to whole counts), and the two arrays of a shot (2 and 5 whole
+  numbers). A field out of its form is dropped; the relay still goes. The
+  forms come from a census of every sender in `src/` and every reader
+  (`gameEvents.js`, `wsClient.js`), 2026-11-17: every honest shape goes
+  through exactly as sent (`relaytyped.test` §4, 29 shapes of the 26
+  types). The worker's own intercepts after the rebuild (a trade's, a
+  duel's, a threat's) add their fields as before.
+- **The room's send** (`send.js` `_sendRoom`) reaches only a socket whose
+  player joined: a joining phone is sent the room whole in its state_sync.
+
+`relaytyped: false` keeps every field as sent and sends to every socket,
+as before (`relaytyped.test`: 12 FAIL on main).
+

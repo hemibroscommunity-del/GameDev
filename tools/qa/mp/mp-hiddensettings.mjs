@@ -114,7 +114,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     set.call(inp, k);
     inp.dispatchEvent(new Event('input', { bubbles: true }));
   }, H.ADMIN_KEY);
-  await tapText(O, /^Save key on this device$/);
+  await tapText(O, /^Save key$/);
   await O.page.waitForTimeout(1200);
   rec.ok('1. the panel offers "Show hidden settings"', await tapText(O, /^Show hidden settings$/));
   await O.page.waitForTimeout(1500);

@@ -97,7 +97,7 @@ export const SYSTEMS = Object.freeze({
   },
   liveops: {
     what: 'the live flags, the admin and dev levers, test mode, feedback',
-    files: [f('server/src', 'liveops|admin|devtools|testmode|feedback'), f('src/game', 'testMode|switches|ownerSwitches|feedbackOwner|silenceOwner|renameOwner'),   /* v2.3.5602: ownerSwitches; v2.3.5603: feedbackOwner; v2.3.5605: silenceOwner; v2.3.5611: renameOwner (card OPS) */
+    files: [f('server/src', 'liveops|admin|devtools|testmode|feedback'), f('src/game', 'testMode|switches|ownerSwitches|feedbackOwner|silenceOwner|renameOwner|adminKeyStore'),   /* v2.3.5602: ownerSwitches; v2.3.5603: feedbackOwner; v2.3.5605: silenceOwner; v2.3.5611: renameOwner (card OPS); v2.3.5718: adminKeyStore (card SEC) */
       f('server/src', 'restore'),   /* v2.3.5288 (card R): the room's way back, the owner's lever */
       f('server/src', 'playerrestore'),   /* v2.3.5285 (card R): one player's restore, the owner's lever */
     ],
@@ -206,7 +206,7 @@ export const SYSTEMS = Object.freeze({
     what: 'the Wheel: zones and their doors, lands, dungeons, No Man\'s Land, the map, props',
     files: [
       f('server/src', 'wheelzone|wheelnear|wheelfaces|wheeltables|wheeldungeon|dungeon|dungeonreward|zonejudge|nomansland|props|eventplace'),
-      f('src/game', 'wheelBreak|wheelDungeons|wheelHome|wheelNoticeboard|wheelSize|wheelTownDoors|wheelTrial|worldTrial|worldViewport|zoneGate|zoneMechanics|zoneTransitions|veilDoor|dungeonArt|dungeonClear|dungeonWaves|noMansLand|nmlAsk|nmlExplainOnce|mapPinPlaces|mapPins|pinSlots|buildingRooms|placeSafety|plateSafety|bodyPlace|timeOfDay|season|expoAddress|onePic|bannerReach'),
+      f('src/game', 'wheelBreak|wheelDungeons|wheelHome|wheelNoticeboard|wheelSize|wheelTownDoors|wheelTrial|worldTrial|worldViewport|zoneGate|zoneMechanics|zoneTransitions|veilDoor|dungeonDoor|dungeonArt|dungeonClear|dungeonWaves|noMansLand|nmlAsk|nmlExplainOnce|mapPinPlaces|mapPins|pinSlots|buildingRooms|placeSafety|plateSafety|bodyPlace|timeOfDay|season|expoAddress|onePic|bannerReach'),
     ],
     words: ['wheel', 'zone', 'land', 'dungeon', 'nomansland', 'nml', 'map', 'world', 'town', 'door', 'prop'],
     traps: ['world'],
