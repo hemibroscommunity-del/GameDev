@@ -1361,6 +1361,12 @@ export const combatMethods = {
     const _dg = (!isSpecial && (_effSlot === 'ranged' || _effSlot === 'staff'))
       ? this._dgFind(attackerPs, _effSlot, payload.sw) : null;
     if (_hp && !isSpecial && !this._hitRateTake(attackerPs, _effSlot, _hpNow, _dg ? (_dg.drop ? 0 : _dg.f) : 1)) { this._hpTally('rate'); return; }
+    /* v2.3.5550 (card K, step 4.2): A BOW'S CLAIM IS AN ARROW SEEN
+       (bowshot.js, an opt-in: `bowshot: true`) -- an ordinary `ranged` claim
+       lands only on an arrow whose relay the worker counted; a paid
+       special's window (its chips, its patch) and a test-mode character are
+       left as they are */
+    if (_effSlot === 'ranged' && !isSpecial && !_tm && this._bowShotDrop(attackerPs, payload.sw, monsterId, _hpNow)) { this._hpTally('shot'); return; }
     /* v2.3.5548 (card K, step 4.2): THE SWORD'S SWING (swordswing.js, an
        opt-in: `swordswing: true`) -- one counted swing a player at the
        sword's own rate, its ring's targets together; a phone on the

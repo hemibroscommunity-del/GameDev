@@ -66,6 +66,7 @@ import { hitMethods } from './hits.js'; /* v2.3.3296: one door for every monster
 import { monsterLifeMethods } from './monsterlife.js'; /* v2.3.4843: a world monster's one reset for a new life */
 import { monsterMoveMethods } from './monstermoves.js'; /* v2.3.4011: the tiers' moves (combo, charge, volley, slams, enrage) */
 import { sendMethods } from './send.js'; /* v2.3.5193: the send door (card K PR 8) */
+import { bowShotMethods } from './bowshot.js'; /* v2.3.5550: a bow's claim is an arrow the worker saw leave (card K, step 4.2; `bowshot`, off) */
 import { swordSwingMethods } from './swordswing.js'; /* v2.3.5548: the sword's swing and reach (card K, step 4.2; `swordswing`, off) */
 import { relayMethods } from './relay.js'; /* v2.3.3304: the relay is an allowlist, in the sender's name */
 /* v2.3.4851: depth.js (v2.3.2790, the dunes' north-south depth) is gone with the old map; was: the monster AI */
@@ -6131,6 +6132,8 @@ export class GameRoom {
              worker's clock times it for the perfect strike (freeswing.js
              _pfBowShot; a session not on the trial: nothing) */
           if (msg.type === 'player_projectile') this._pfBowShot(session, msg.payload, Date.now());
+          /* v2.3.5550: ...and counted as an arrow for its claims (bowshot.js, `bowshot: true` only) */
+          if (msg.type === 'player_projectile') this._bowShotSeen(session, msg.payload, Date.now());
           /* v2.3.3304: rebuilt -- {type, payload} and nothing else, the
              payload a copy in the worker's name for the sender (relay.js):
              a phone relayed "Bob died" by putting Bob's id in the payload,
@@ -6443,6 +6446,7 @@ Object.assign(GameRoom.prototype, monsterMoveMethods); /* v2.3.4011 */
 Object.assign(GameRoom.prototype, monsterLifeMethods); /* v2.3.4843 */
 Object.assign(GameRoom.prototype, relayMethods); /* v2.3.3304 */
 Object.assign(GameRoom.prototype, sendMethods); /* v2.3.5193: the send door */
+Object.assign(GameRoom.prototype, bowShotMethods); /* v2.3.5550: a bow's claim is an arrow seen */
 Object.assign(GameRoom.prototype, swordSwingMethods); /* v2.3.5548: the sword's swing and reach */
 Object.assign(GameRoom.prototype, dailyChestMethods); /* v2.3.2820 */
 Object.assign(GameRoom.prototype, loginSpinMethods); /* v2.3.4295 */
