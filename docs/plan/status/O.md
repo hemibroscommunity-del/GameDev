@@ -1,7 +1,7 @@
 card: O
 branch: claude/plan-o-12-overrides (one branch a PR; begun from main)
-prs: #1787, #1792, #1794, #1800, #1814, #1815, #1832, #1841, #1836, #1850, #1854, #1896, #1915, #1929, #1937 (merged); #1952 (5239): ready; PR 12 (5232): open
-state: working
+prs: #1787, #1792, #1794, #1800, #1814, #1815, #1832, #1841, #1836, #1850, #1854, #1896, #1915, #1929, #1937 (merged); #1952 (5239): ready; #1970 (5232): ready
+state: ready
 
 ## Done
 
@@ -21,7 +21,7 @@ state: working
 ## Next
 
 - #1952 (5239, ready): a failed fill, glint or clip falls back alone.
-- PR 12 (5232, open): the off-ramps through T's reader, pinning their knobs.
+- #1970 (5232, ready): the off-ramps through T's reader, pinning their knobs.
 - PR 11 waits for card H's done and card P; 13 for card H's done.
 
 ## Found
