@@ -1,7 +1,7 @@
 card: P
-branch: claude/plan-p-28-upload-icons (5569, on #1959)
-prs: #1943 (5565 ready), #1943 (5565), #1955 (5566), #1959 (5567), 5569 ready; #1713, #1715, #1716, #1718, #1719, #1736, #1743, #1745, #1757, #1749, #1763, #1766, #1805, #1806, #1810, #1840, #1846, #1853, #1859, #1868, #1881, #1906, #1918, #1925 (5241-5259, 5560-5564, merged)
-state: ready
+branch: claude/plan-p-29-done (5570: the status only)
+prs: #1713-#1868 (5241-5259, 5560 merged), #1881, #1906, #1918, #1925 (5561-5564), #1943, #1955, #1959, #1963 (5565-5567, 5569; all merged)
+state: done
 
 ## Done
 
@@ -13,9 +13,9 @@ state: ready
 
 ## Next
 
-- 5569 `upload-icons` ready on #1959 (artCache 17.4 -> 16.2, line 80.5 ->
-  79.3). Then P stops (planner's word): ore-tiers, props-parts,
-  projectile-sheets wait. #1955 gets main merged once #1943 lands.
+- Nothing: stopped by the planner's ranking (2026-11-17). Left for later:
+  `ore-tiers`, `props-parts`, `projectile-sheets`, and `pack-page`'s
+  follow-ups by the card; card M may start.
 
 ## Found
 
