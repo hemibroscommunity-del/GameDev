@@ -500,7 +500,16 @@ export const dailyRewardsMethods = {
     try {
       const rec = await this._drLoad(pid);
       if (!rec) return;
-      if (await this._drRollover(pid, rec, this._drNow())) await this._drSave(pid);
+      /* v2.3.5610: a fresh guest's join saves no record (guestlazy.js): it
+         stays in memory, and is not marked to be saved at the close or by
+         the tick -- a fresh record's turn-over pays nothing (no pot, no
+         season's stars: guestlazy.js reads none on file), it only sets the
+         day; the first thing counted on it marks it again */
+      const _lazy = !!(this._guestLazy && this._guestLazy(pid));
+      if (await this._drRollover(pid, rec, this._drNow())) {
+        if (_lazy) this._drDirtyMap().delete(pid);
+        else await this._drSave(pid);
+      }
     } catch (e) { /* rewards must never block a join */ }
   },
 

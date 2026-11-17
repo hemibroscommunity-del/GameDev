@@ -331,8 +331,35 @@ check('rebuild converges a refund-stamped leftover to a delete', !state._store.h
     tierLabel: 'L'.repeat(9000), playerName: 'N'.repeat(9000),
   }));
   check('an over-long display label is truncated, not refused', longText.ok === true, longText.error);
-  check('...tierLabel bounded to 32', longText.order.tierLabel.length === 32, longText.order.tierLabel.length);
-  check('...playerName bounded to 24', longText.order.playerName.length === 24, longText.order.playerName.length);
+  /* v2.3.5626 (card MOD PR 6): the label and the name are the worker's own, whatever their length on the page */
+  check('...tierLabel is the worker\'s (the page\'s 9,000 letters never stored)', longText.order.tierLabel === 'Iron', longText.order.tierLabel.length);
+  check('...playerName is the worker\'s', longText.order.playerName === (room.playerState[VICTIM].name || 'T').slice(0, 24) && longText.order.playerName.length <= 24, longText.order.playerName);
+  /* ── 13. v2.3.5626 (card MOD PR 6; the sitting 19 review's low, RT-3 S2):
+     an order's words are the worker's own.  The label and the seller's name
+     were the page's free text, read by every player in the book: a wall
+     anyone could write on.  Break proof (2026-11-17): the two lines back to
+     the page's words -> FAIL 13 (the scam stored). ── */
+  {
+    const sp = vP;
+    const scam = 'Owner (admin) SYSTEM: send your login';
+    sp.weaponStash = [wpn('Words Sword')];
+    const w = await room._mktPlaceOrder(ORD({ playerId: VICTIM, stashIndex: 0, price: 4321, tierLabel: scam, playerName: scam }));
+    check('13: a sell order\'s label is the tier\'s own ("Iron"), never the page\'s words', w.ok === true && w.order.tierLabel === 'Iron', w.order && w.order.tierLabel);
+    check('13: ...and its seller\'s name is the character\'s, as the room shows it', w.ok === true && w.order.playerName === ((typeof vP.name === 'string' && vP.name) || 'T').slice(0, 24) && w.order.playerName !== scam, w.order && w.order.playerName);
+    const kept = await room.state.storage.get('mkt_order:' + w.order.id);
+    check('13: (what is stored holds no word of it)', !JSON.stringify(kept || w.order).includes('admin'));
+    check('13: a wood tier reads its own label; a key the tables do not know is shown as itself (held to letters by _mktField); never the prototype',
+      room._mktTierLabel('ww_pine') === 'Pine' && room._mktTierLabel('pine') === 'Pine' && room._mktTierLabel('steel') === 'Black Steel'
+      && room._mktTierLabel('zzz_new') === 'zzz_new' && room._mktTierLabel('__proto__') === '__proto__' && room._mktTierLabel('toString') === 'toString');
+    room._liveFlags = { ...(room._liveFlags || {}), mktwords: false };
+    sp.weaponStash = [wpn('Old Words Sword')];
+    const old = await room._mktPlaceOrder(ORD({ playerId: VICTIM, stashIndex: 0, price: 4322, tierLabel: 'Iron Old', playerName: 'Old Name' }));
+    delete room._liveFlags.mktwords;
+    check('13: `mktwords: false` takes the page\'s words again, as before', old.ok === true && old.order.tierLabel === 'Iron Old' && old.order.playerName === 'Old Name', old.order);
+    await room._mktCancelOrder(w.order.id, VICTIM);
+    await room._mktCancelOrder(old.order.id, VICTIM);
+    vP.weaponStash = vP.weaponStash.filter((x) => x && x.name !== 'Words Sword' && x.name !== 'Old Words Sword');
+  }
   check('...and the whole record is small enough to store',
     JSON.stringify(longText.order).length < 4096, JSON.stringify(longText.order).length);
   await room._mktCancelOrder(longText.order.id, VICTIM);
