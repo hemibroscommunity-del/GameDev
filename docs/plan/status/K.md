@@ -1,7 +1,7 @@
 card: K
 branch: claude/plan-k-<n>-<topic> (one branch a PR, each begun from main)
-prs: #1822, #1820, #1826, #1829, #1831, #1838, #1842, #1861, #1848, #1899, #1923, #1900, #1931-#1934, #1942, #1949, #1972, #1989, #1981 merged; ready: #1997 (5196), #1999 (5547); 5197 this branch
-state: working
+prs: #1822, #1820, #1826, #1829, #1831, #1838, #1842, #1861, #1848, #1899, #1923, #1900, #1931-#1934, #1942, #1949, #1972, #1989, #1981 merged; ready: #1997 (5196), #1999 (5547), #2003 (5197, this branch)
+state: ready
 
 ## Done
 
@@ -17,7 +17,7 @@ state: working
 ## Next
 
 - #1997 5196 (`gidnames` ON), #1999 5547 (the door's own list): ready.
-- 5197 (this branch): the words rule -- words.js, the mail's three
+- #2003 5197: the words rule -- words.js, the mail's three
   sentences as templates (`noteT`), the page fills them; census line 3.
 - Then the move's walls; the sword's reach; the bow claim.
 
