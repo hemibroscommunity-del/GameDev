@@ -288,6 +288,13 @@ so node tests it and any file may ask it.
   (the line 172, with card O's PR 12 moving twelve beside them). `manualCombat.js`, `weaponFeel.js` and `pinSlots.js` keep
   theirs: their suites (manual-combat 10a, weapon-feel 8a, map-pin 9i) hold
   each to no imports.
+- v2.3.5313 (cards A, G, H, O and P done, their files free; the planning
+  session's word): preload (`?warmonce`,
+  `?banners`, and pageAddress() in `picsOnce.js`), world (pageAddress() in
+  `worldViewport.js`, two) and art (`?sharp`, `?figround`, pageAddress() in
+  `bodyBake.js`, `p256.js`, `stripRead.js`), and `deviceProfile.js`'s
+  address: the line 161. `?foldgentle` stays in `soundFold.js`:
+  sound-fold.test 4e reads its test in the file's text.
 
 ## A new switch
 

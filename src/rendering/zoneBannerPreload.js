@@ -54,6 +54,7 @@
 import { bannerStripFor, ZONE_BANNER_THEME, ZONE_BANNER_STRIPS } from '../data/zoneBanner.js';
 import { ZONES } from '../data/zones.js';   /* v2.3.5003: the Wheel's middle, safe edge and lands */
 import { bannerLandsNear, BANNER_KEEP } from '../game/bannerReach.js';   /* v2.3.5003: which lands' banners, from where you stand */
+import { sw } from '../game/switches.js';   /* v2.3.5313: the page's one reader (card T) */
 
 /* theme -> the decoded Image we are holding.  Keyed by THEME rather than by
    zone so two zones that ever share one (none today, one line away) warm and
@@ -97,7 +98,7 @@ const _stats = { loads: 0, frees: 0, fails: 0, lastMs: 0 };
    v2.3.5003 (house style, `?gearwalk=0`; it rides along through the game's
    own reloads, keepSwitches.js) */
 const _all = (() => {
-  try { return /(^|[?&])banners=all(&|$)/.test(window.location.search || ''); } catch (e) { return false; }
+  return sw('banners');
 })();
 export function bannersAll() { return _all; }
 

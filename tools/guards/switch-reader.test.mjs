@@ -47,7 +47,7 @@ import { SWITCHES } from './lib/switches.mjs';
 import { blankComments, pageFiles, pageForm, READER_FILE, READER_IMPORT, ROOT } from './lib/switchScan.mjs';
 
 /* the outside reads: only falls */
-const OUTSIDE_LINE = 172;   /* its first count, v2.3.5306: 228 with sitting 17's `?slimewalk` (card P's slimeSprites.js, P still running: not moved), 221 after the first seven reads moved; 212 after v2.3.5309's nine; 201 after v2.3.5310's eleven; 189 after v2.3.5232's twelve (card O PR 12: the lanes' off-ramps); 172 with v2.3.5311's pageAddress() sites (seventeen) */
+const OUTSIDE_LINE = 161;   /* its first count, v2.3.5306: 228 with sitting 17's `?slimewalk` (card P's slimeSprites.js, P still running: not moved), 221 after the first seven reads moved; 212 after v2.3.5309's nine; 201 after v2.3.5310's eleven; 189 after v2.3.5232's twelve (card O PR 12: the lanes' off-ramps); 172 with v2.3.5311's pageAddress() sites (seventeen) ; 161 after v2.3.5313's eleven */
 
 /* ── the reads moved into the reader: each old test word for word, as a
    function of the address (S) ── */
@@ -81,6 +81,11 @@ const MOVED = Object.freeze([
   { name: 'folkbake', call: 'sw', file: 'src/game/worldTrial.js', old: (S) => /(^|[?&])folkbake=0(&|$)/.test(S || '') },
   { name: 'playvwlive', call: 'sw', file: 'src/ui/mobile/playViewport.js', old: (S) => /(^|[?&])playvwlive=1(&|$)/.test(S || '') },
   { name: 'dev', call: 'sw', file: 'src/ui/GameApp.jsx', old: (S) => /[?&]dev=1\b/.test(S) },
+  /* v2.3.5313: preload, art (cards A, G, H, O, P done: their files free) */
+  { name: 'warmonce', call: 'sw', file: 'src/rendering/warmOnce.js', old: (S) => /[?&]warmonce=0\b/.test(S || '') },
+  { name: 'banners', call: 'sw', file: 'src/rendering/zoneBannerPreload.js', old: (S) => /(^|[?&])banners=all(&|$)/.test(S || '') },
+  { name: 'sharp', call: 'sw', file: 'src/rendering/sharpPixels.js', old: (S) => /[?&]sharp=0\b/.test(S) },
+  { name: 'figround', call: 'sw', file: 'src/rendering/sharpPixels.js', old: (S) => /[?&]figround=1\b/.test(S) },
   /* v2.3.5232 (card O PR 12): the lanes' off-ramps (the values -- ?lane, ?govern, ?crowd, ?onebatch, ?lookpalette, ?pixbudget, ?res, ?zoom -- read by swValue, their old patterns held to the value) */
   { name: 'ladderrate', call: 'sw', file: 'src/game/drawLanes.js', old: (S) => /(^|[?&])ladderrate=(0|off|false)(&|$)/.test(typeof S === 'string' ? S : '') },
   { name: 'ladderpix', call: 'sw', file: 'src/game/drawLanes.js', old: (S) => /(^|[?&])ladderpix=(0|off|false)(&|$)/.test(typeof S === 'string' ? S : '') },

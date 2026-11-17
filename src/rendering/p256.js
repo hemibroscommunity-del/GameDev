@@ -35,8 +35,9 @@ import { picNumbersOn, stripAsNumbers } from './picsNumbers.js';
 import { isPaletteSource } from './paletteDraw.js';
 import { paletteDecided } from './paletteTex.js';
 import { addPictureRestorer } from './picsOnce.js';
+import { pageAddress } from '../game/switches.js';   /* v2.3.5313: the page's one reader (card T) */
 
-const _q = (() => { try { return typeof location !== 'undefined' ? (location.search || '') : ''; } catch (e) { return ''; } })();
+const _q = pageAddress();
 /* OFF by default (v2.3.3728, measured): at the memory check's Flame Fields
    fight the chip held 2.3 MB less and the page's buffers 0.8 MB more, and on
    arrival the chip 2.8 MB more (every effect sent up front) -- a picture this

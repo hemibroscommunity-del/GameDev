@@ -369,7 +369,12 @@ let _search = null;
  *  handed this, so its meaning is unchanged (the planning session's answer,
  *  2026-11-17: one read here, the sites call it). */
 export function pageAddress() {
-  try { return (typeof location !== 'undefined' && location.search) || ''; } catch (e) { return ''; }
+  /* v2.3.5313: `location`, else `window.location` (one object on a page; a
+     node suite that stubs only `window` -- banner-reach -- reads as before) */
+  try {
+    const loc = typeof location !== 'undefined' ? location : (typeof window !== 'undefined' && window ? window.location : null);
+    return (loc && loc.search) || '';
+  } catch (e) { return ''; }
 }
 
 function page() {

@@ -46,6 +46,7 @@ import {
 } from 'pixi.js';
 import { liveSwitch, rebuildDrawLists } from './drawLists.js';
 import { selfDraw, selfQueue, selfSkip, selfTestOn, selfSharpRgba, selfSharpWant, SHARP_SRC, SELF_SIZE } from './selfTest.js';   /* v2.3.5236: the self-test at the door (card O PR 14b) */
+import { sw } from '../game/switches.js';   /* v2.3.5313: the page's one reader (card T) */
 
 let _enabled = false;
 /* v2.3.3449: window.__btSharpOff, read below as a plain field */
@@ -53,7 +54,7 @@ const _liveOff = liveSwitch('__btSharpOff');
 let _maxTex = 0;
 let _routed = 0;
 let _urlOff = false;
-try { if (typeof location !== 'undefined' && /[?&]sharp=0\b/.test(location.search)) _urlOff = true; } catch (e) { /* on */ }
+if (sw('sharp')) _urlOff = true;
 
 /* ═══ v2.3.2922: A FIGURE'S LAYERS ARE NOT SNAPPED ONE BY ONE ═══
  *
@@ -100,7 +101,7 @@ try { if (typeof location !== 'undefined' && /[?&]sharp=0\b/.test(location.searc
  * `window.__btFigRound = true` (live, from the next rebuild of the draw
  * list) -- an A/B on one build (mp-figureseam, mp-sharppixels). */
 let _figRound = false;
-try { if (typeof location !== 'undefined' && /[?&]figround=1\b/.test(location.search)) _figRound = true; } catch (e) { /* off */ }
+if (sw('figround')) _figRound = true;
 const figRoundOn = () => _figRound || (typeof window !== 'undefined' && !!window.__btFigRound);
 
 /* sharp bilinear: flat texels, a one-screen-pixel blend at each seam.  Only

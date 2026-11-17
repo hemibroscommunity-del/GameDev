@@ -17,7 +17,8 @@
  * `?stripworker=0`: every strip is unpacked on the page (the old way, for one
  * tab).  Probe: window.__btStripRead().
  */
-const _q = (() => { try { return typeof location !== 'undefined' ? (location.search || '') : ''; } catch (e) { return ''; } })();
+import { pageAddress } from '../game/switches.js';   /* v2.3.5313: the page's one reader (card T) */
+const _q = pageAddress();
 const _off = /(^|[?&])stripworker=(0|off|false)(&|$)/.test(_q);
 const IDLE_MS = 4000;
 const READ_MS = 20000;      /* a strip not back in this long is unpacked on the page */
