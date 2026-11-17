@@ -22,7 +22,7 @@ state: ready
 
 ## Next
 
-- PR 13's suite and PR; then PR 14 (5713): the dev console's blanks.
+- PR 14 (5713): the dev console's blanks; then PR 15 (5714).
 
 ## Found
 
