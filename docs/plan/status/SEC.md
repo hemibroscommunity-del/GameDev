@@ -1,7 +1,7 @@
 card: SEC
 branch: claude/plan-sec-<n>-<topic> (stacked: each PR on the one before until it merges)
-prs: #2030-#2054 merged; #2055-#2063 (5712-5719): sitting 40, Z40's holds fixed
-state: ready
+prs: #2030-#2063 merged
+state: done
 
 ## Done
 
@@ -18,7 +18,9 @@ state: ready
 
 ## Next
 
-- #2055-#2063: sitting 40. Merge main in as it moves. Then the card is done.
+- None: #2055-#2063 merged at sitting 40 (main cc4815a8); the card is
+  done (written by the gatekeeper, sitting 41, tag 5679: SEC's tags are
+  all used).
 
 ## Found
 
