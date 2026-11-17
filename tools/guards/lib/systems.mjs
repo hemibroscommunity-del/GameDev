@@ -313,7 +313,7 @@ export const SYSTEMS = Object.freeze({
   },
   ui: {
     what: 'the screens: BroTown.jsx, the band and its panels, windows, banners',
-    files: [],
+    files: [f('src/game', 'windowDoor')],
     rest: [re('^src/ui/'), re('^src/styles/')],
     words: ['ui', 'panel', 'window', 'band', 'banner', 'screen', 'dash', 'sheet', 'popup'],
     traps: ['ui'],
