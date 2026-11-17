@@ -17,7 +17,8 @@ PR). Heads and trees: `census/review-z42.md`; one base at every step.
 ## Held / Stalled
 - None held at review; none stalled. To 43, came at the close, not
   reviewed: T2 #2090 (5743, on #2087; meets #2084's switch-reader line:
-  merges `main` after #2084); #2088 (site hardening, not in 42's queue).
+  merges `main` after #2084); RV #2091 (5802, `risekeep`, on #2083;
+  deploys); #2088 (site hardening, not in 42's queue).
 ## Found
 - Sitting 41's (a)-(q) carried (`census/review-z41.md`); new: (r) main's
   deploy of 41's batch (8b8b5a87) failed on `switches-thrown`'s
