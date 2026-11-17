@@ -91,6 +91,7 @@
  * `inbox:<pid>` at their next join.  No new event type, so nothing to add
  * to PRIVILEGED_EVENTS. */
 
+import { wordsNote } from './words.js';   /* v2.3.5197: the words rule -- a sentence with a player's words is a template and its parts */
 import { SHOP_ITEMS } from './data.js';
 import { petPublic } from './petbook.js';   /* v2.3.3122: pet listings (what a buyer is shown) */
 import { swordToGreatsword } from './swordconvert.js';   /* v2.3.3895: a sword's listing is rewritten once as a greatsword */
@@ -1066,7 +1067,7 @@ export const storeMethods = {
     await this._creditPlayer(rec.sellerId, {
       opId: 'store:' + rec.id + ':gold', source: 'market', kind: 'gold',
       payload: { amount: price },
-      note: label + ' sold to ' + (buyerName || 'someone') + ' for ' + price,
+      ...wordsNote('sold_to', { item: label, buyer: buyerName || 'someone', price }),   /* v2.3.5197: the words rule (words.js) */
     });
     if (rec.topBid && rec.topBid.seq !== paidBidSeq) {
       await this._creditPlayer(rec.topBid.bidderId, {

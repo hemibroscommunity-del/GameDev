@@ -35,6 +35,7 @@
  * In-memory pending offers on purpose: a deploy wipe just voids
  * un-accepted offers -- nothing is escrowed, no value at risk. */
 
+import { wordsNote } from './words.js';   /* v2.3.5197: the words rule */
 import { bagTake } from './bag.js'; /* v2.3.4810: the bag door */
 import { xferGift } from './xfer.js'; /* v2.3.5092: the transfer ledger */
 
@@ -208,14 +209,14 @@ export const tradeMethods = {
     }
     // Credit the accepter through the PR2 primitives (they're online --
     // they just clicked accept -- so this applies live and notifies).
-    const note = 'trade from ' + pending.fromName;
+    const { note, noteT } = wordsNote('trade_from', { from: pending.fromName });   /* v2.3.5197: the words rule (words.js) */
     const credits = [];
     if (offer._gold) {
-      credits.push({ pid: fromId, entry: { opId: 'trade:' + pending.id + ':gold', source: 'trade', kind: 'gold', payload: { amount: offer._gold }, note } });
+      credits.push({ pid: fromId, entry: { opId: 'trade:' + pending.id + ':gold', source: 'trade', kind: 'gold', payload: { amount: offer._gold }, note, noteT } });
     }
     for (const [k, v] of Object.entries(offer)) {
       if (k === '_gold') continue;
-      credits.push({ pid: fromId, entry: { opId: 'trade:' + pending.id + ':' + k, source: 'trade', kind: 'item', payload: { invKey: k, count: v }, note } });
+      credits.push({ pid: fromId, entry: { opId: 'trade:' + pending.id + ':' + k, source: 'trade', kind: 'item', payload: { invKey: k, count: v }, note, noteT } });
     }
     /* v2.3.3294: the sender's debit and the accepter's credit in ONE write
        (inbox.js _creditLiveTogether): the sender was saved here and each

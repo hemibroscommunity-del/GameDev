@@ -27,6 +27,7 @@ import { prog3Live } from '@/data/prog3.js'; /* v2.3.1727: the kill-XP popup is 
    monster objects (the server owns statuses and never syncs them) — see
    the element_nova case. */
 import { ELEMENTS } from '@/data/elements.js';
+import { fillWords } from '@/data/words.js';   /* v2.3.5197: the words rule (the mail's note from its template) */
 import { applyLocalRespawn } from '@/game/respawn.js'; /* v2.3.4363: the one stand-up */
 import { refillPools } from '@/game/phoneDeath.js'; /* v2.3.4363 */
 import { STATUS_DEFS, applyStatus, STAFF_LIFE /* v2.3.2387 */, COLLISION_TABLE /* v2.3.3264: a collision on a player, by its name */ } from '@/data/gameSystems.js';
@@ -2106,10 +2107,14 @@ export function processGameEvent(type, payload, S, deps) {
                      achievement", its name from the phone's table, never "?" */
                   : _e.kind === 'achv' ? achvMailPhrase(_ep)
                   : 'a delivery';
+                /* v2.3.5197 (the gatekeeper, sitting 30): the words rule -- the
+                   note from its template (src/data/words.js), the worker's own
+                   sentence when this page's table lacks it; word for word the same */
+                const _said = (_e.noteT && fillWords(_e.noteT)) || _e.note;
                 S.chatLog = [].concat(_toConsumableArray(S.chatLog.slice(-50)), [{
                   id: 'inbox-' + Date.now() + '-' + _ie,
                   name: '',
-                  text: '📫 You received ' + _what + (_e.note ? ' (' + _e.note + ')' : ''),
+                  text: '📫 You received ' + _what + (_said ? ' (' + _said + ')' : ''),
                   ts: Date.now()
                 }]);
                 /* ═══ v2.3.2476: A SALE IS THE ONE DELIVERY YOU WAIT FOR ═══
@@ -2126,7 +2131,7 @@ export function processGameEvent(type, payload, S, deps) {
                    deliberately (v2.3.2037) and a toast would put it back,
                    louder. */
                 if (_e.source === 'market') {
-                  storeToastBus.push('You received ' + _what + (_e.note ? ' \u2014 ' + _e.note : ''));
+                  storeToastBus.push('You received ' + _what + (_said ? ' \u2014 ' + _said : ''));
                   /* v2.3.3343: ...and heard, a coin clink and a note (it was
                      silent).  Market only, as the card is: the rest stays as
                      quiet as v2.3.2037 made the daily reward. */

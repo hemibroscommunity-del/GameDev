@@ -124,8 +124,8 @@ export const WIRE_OUT = [
   { name: 'inbox_delivered', dir: 'out',
     at: 'inbox.js _sendInboxDelivered, inbox.js _creditPlayerOnce, inbox.js _creditWith, and 2 more; phone: gameEvents processGameEvent',
     wayIn: ['socket', 'http', 'admin', 'room'], envelope: 'direct', phase: ['none checked'],
-    mayStart: 'system', doesWhat: ['reads', 'speaks'], reqId: 'none', trust: { 'entries[].note': 'words' },
-    absent: 'default: no entries shows nothing; default: an unknown kind reads \'a delivery\'; default: a missing amount or count is 0 or 1; default: no note, no brackets',
+    mayStart: 'system', doesWhat: ['reads', 'speaks'], reqId: 'none', trust: { 'entries[].note': 'words', 'entries[].noteT.p': 'words' },
+    absent: 'default: no entries shows nothing; default: an unknown kind reads \'a delivery\'; default: a missing amount or count is 0 or 1; default: no note, no brackets; default: no noteT (or one this page\'s table lacks) reads the note (v2.3.5197, the words rule)',
     bad: ['dropped:shape', 'clamped'], answer: 'none' },
   // Bootstrap + protocol
   { name: 'ping', dir: 'out', at: 'tick.js _tickPingAndAfk; phone: wsClient direct', wayIn: 'room',
