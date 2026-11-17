@@ -115,7 +115,7 @@ game's.
 | `palette` | `src/rendering/paletteTex.js` | `bt-palette-batch`, `bt-palette-clip`, `bt-palette-hairclip`, `bt-palette-mesh`, `bt-palette-fill` | whole colours |
 | `look` | `src/rendering/lookPalette.js` | `bt-look-batch`, `bt-look-sheen-batch` | each look baked |
 | `sharp` | `src/rendering/sharpPixels.js` | `batch-sharp` | plain pixels |
-| `clip` | `src/rendering/hairClip.js` | `batch-clip`, `batch-clip-alpha` | the alpha mask |
+| `clip` | `src/rendering/hairClip.js` | `batch-clip`, `batch-clip-alpha` | pictures to the alpha mask (colour numbers stay on the stencil) |
 | `fill` | `src/rendering/fillBatch.js` | `batch-fill` | no one-colour glow |
 | `water` | `src/rendering/wheelWater.js` | `bt-wheel-water`, `bt-wheel-water-all`, `bt-wheel-water-pal`, `bt-wheel-water-pal-all` | still water |
 | `glint` | `src/rendering/lightfx/glint.js` | `bt-glint-filter` | the filtered pieces plain |

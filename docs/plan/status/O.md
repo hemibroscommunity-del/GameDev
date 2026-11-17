@@ -1,7 +1,7 @@
 card: O
-branch: claude/plan-o-15-fallback (one branch a PR; begun from #1937's head)
-prs: #1787, #1792, #1794, #1800, #1814, #1815, #1832, #1841, #1836, #1850, #1854, #1896, #1915, #1929, #1937 (merged); #1952 (5239): ready
-state: ready
+branch: claude/plan-o-16-cliplows (one branch a PR; begun from #1952's head)
+prs: #1787, #1792, #1794, #1800, #1814, #1815, #1832, #1841, #1836, #1850, #1854, #1896, #1915, #1929, #1937 (merged); #1952 (5239), #1970 (5232), #1974 (5233): ready; 5680: open
+state: working
 
 ## Done
 
@@ -20,10 +20,9 @@ state: ready
 
 ## Next
 
-- #1929 (5237, 14c, merged): fill, glint; #1937 (5238, 14d, merged): the clip.
-- #1952 (5239, ready; the planner for the owner): a failed fill, glint or
-  clip falls back alone (CLAUDE.md §7), not drawn as today.
-- PR 11 waits for card P; 12 for card T's PR 6; 13 for card SK.
+- #1952 (5239), #1970 (5232, PR 12), #1974 (5233, PR 13): ready.
+- 5680 (open, on #1952; O's second block, the planner's word): #1952's lows.
+- PR 11 (5231): P's files free; the planner asked whether it is still O's.
 
 ## Found
 
