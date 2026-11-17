@@ -1,7 +1,7 @@
 card: OPS
-branch: claude/plan-ops-8-paged (on main b2d763a9; PR 11 on claude/plan-ops-11-guestlazy)
-prs: #1944 (5610) ready; PR 8 (5607) built, waits on the planning session
-state: working
+branch: claude/plan-ops-8-paged (on main 8149d61e; PR 11 on its own)
+prs: #1944 (5610) ready; #1951 (5607) ready
+state: ready
 
 ## Done
 
@@ -15,8 +15,9 @@ state: working
 
 ## Next
 
-- PR 8 (5607): the five reads paged (owner-pages 21/21); the panel's
-  More, AP follows pages, drawings add up. Then the seathold mend.
+- #1951 (5607): the five reads paged (owner-pages 21/21); its readings
+  and src/ui/panels/DevWatch.jsx (outside the card's list) decided by the
+  planner, 2026-11-17. Then the seathold mend.
 
 ## Found
 
@@ -28,8 +29,6 @@ state: working
 
 ## Needs
 
-- PR 8: the planning session's word on the paging readings (sent
-  2026-11-17), and DevWatch.jsx (the drawings page, not on the card).
 
 - `seathold` stays OFF until mended (sitting 19b's MEDIUM: #1908's gate
   cannot tell a seat's holder from a stranger); ON, at most 5,760 writes a
