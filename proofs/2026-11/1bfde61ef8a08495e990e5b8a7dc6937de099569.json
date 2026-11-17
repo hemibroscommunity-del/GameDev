@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "1bfde61ef8a08495e990e5b8a7dc6937de099569",
+  "tree": "dcc49e4c8bee0561a7ec34537c4645bde4b319b4",
+  "committedAt": "2026-11-16T23:51:17-08:00",
+  "subject": "Merge pull request #1981 from hemibroscommunity-del/claude/plan-k-9b-reqid",
+  "files": 8033,
+  "bytes": 959317046,
+  "listingSha256": "bca911b7929f2ff1a35208de62c164ec4ab3c74ad3b5bec9353cd1a21cf171f1",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
