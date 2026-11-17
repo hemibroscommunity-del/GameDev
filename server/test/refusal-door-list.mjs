@@ -313,7 +313,7 @@ export const ALLOW = {
   },
   '_handleCapeRedeem': {
     "if (!capeId)": "shape",
-    "if (opKey && await this._opSeen(opKey))": "dup",   /* v2.3.5194: kept with the pid (reqonce.js); a request id's repeat is sent the bag again, an older phone's opId's is silent as before */
+    "if (dup)": "dup",   /* v2.3.5546: kept with the pid (reqonce.js); a request id's repeat is sent the bag again, an older phone's opId's is silent as before */
   },
   '_handleCapeEquip': {
     "if (ps.capeOff === next)": "noop",
