@@ -13,7 +13,7 @@ each merge:
 
 1 K #2024 fe1297b0b43e5c23f19a7d57847bdeb17544ea8d -> 72a2f75571700a54e74ee580358fdc2c77cadf17
 2 L #2027 679e99ace270943d914539e02aacb244497e3aa0 -> c4b358d0849a7481ee4f576464e1dbc9b92e70e8
-3 RT #2026 a75ba2af1025a574eca0c0990e234e33bf03213d -> @@T3@@
+3 RT #2026 a75ba2af1025a574eca0c0990e234e33bf03213d -> ede3156a78323938001efc1b53b2bcf889d4d85a
 4 Z (this PR): its head and tree are in the list (`status/Z.md`).
 
 #2024 was built on #2021 and #2023, both now on `main`. Rehearsed at
