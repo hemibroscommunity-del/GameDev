@@ -408,9 +408,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
      a richer test character reads digits and commas. */
   rec.ok('...and the count itself is still a number', /^[\d,]+$/.test(coinIcon.text || ''), coinIcon);
 
-  const sizes = await A.page.evaluate(() =>
+  /* v2.3.5649: townsfolk are drawn live (v2.3.3809) and a sprite out of view or not yet sized
+     reads 0: read until the shopkeeper's is there (at most 30 s), and only the drawn ones count */
+  const readSizes = () => A.page.evaluate(() =>
     ((window.__btNpcSprites && window.__btNpcSprites()) || [])
       .reduce((o, n) => { o[n.id] = Math.round(n.height); return o; }, {}));
+  let sizes = await readSizes();
+  for (let t0 = Date.now(); Date.now() - t0 < 30000 && !(sizes.shopkeeper_bro > 0); ) { await A.page.waitForTimeout(500); sizes = await readSizes(); }
   /* v2.3.2052 (owner: "make shopkeeper larger his sprite is bit small"): his
      hand-painted figure drew 120 px against Mayor Bro's 132, the smallest man
      in the square.  v2.3.3580: every grown townsperson is a bro from the
@@ -419,7 +423,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      owner's v2.3.1822) -- so Diego stands as tall as any grown man in town,
      the Mayor aside, and is no longer the small one.  (Lil Bro's cell is a
      bro's: he is photographed small inside it.) */
-  const others = Object.entries(sizes).filter(([id]) => id !== 'shopkeeper_bro' && id !== 'mayor_bro');
+  const others = Object.entries(sizes).filter(([id, h]) => id !== 'shopkeeper_bro' && id !== 'mayor_bro' && h > 0);
   rec.ok(`the shopkeeper is drawn a grown bro's height (${sizes.shopkeeper_bro}px; `
        + `${others.map(([id, h]) => id + ' ' + h).join(', ')}; Mayor Bro ${sizes.mayor_bro})`,
     sizes.shopkeeper_bro > 140 && others.length > 0 && others.every(([, h]) => h <= sizes.shopkeeper_bro), sizes);
