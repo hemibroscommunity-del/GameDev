@@ -21,6 +21,7 @@ import { celebrateLevelUps } from '@/game/levelCelebration.js';
 import { saveRpgSoon } from '@/game/rpgSave.js'; /* v2.3.1356 */
 import { amLootRecipient, mayAsk } from '@/game/lootAsk.js'; /* v2.3.4364: one "may I ask" for the hand and the pet */
 import { dropWaitsForYou } from '@/game/itemDrop.js'; /* v2.3.3473: your own drop, left alone until you step off it */
+import { act } from '@/game/actions.js';   /* v2.3.5188: the page's requests leave through the action door (card K PR 7) */
 export function updateGroundLootPickup(S, deps) {
   var P = S.player;
   var pixiRef = deps.pixiRef,
@@ -279,7 +280,7 @@ export function updateGroundLootPickup(S, deps) {
                 loot._pickupPending = true;
                 loot._pickupSentAt = Date.now();
                 if (S.channel) {
-                  try { S.channel.send({ type: 'loot_pickup', payload: { lootId: loot.lootId, zone: S.currentZone } }); } catch (e) {}
+                  try { act('loot_pickup', { lootId: loot.lootId, zone: S.currentZone }); } catch (e) {}   /* v2.3.5188: through the action door (actions.js) */
                 }
               }
               return true;

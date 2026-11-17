@@ -60,6 +60,7 @@ import {
   recalcDerived,
 } from '../../../data/gameSystems.js';
 import { fineInput } from '../../../game/deviceProfile.js';   /* v2.3.4804: the device profile */
+import { act } from '@/game/actions.js';   /* v2.3.5191: the page's requests leave through the action door (card K PR 7) */
 
 /* v2.3.3516: the card's line for a gem, a shard with a gem in it, or the Rare
    Gem -- null for anything else */
@@ -1962,7 +1963,7 @@ function syncWeaponSlot(msg) {
   }
   const S = getState();
   if (S && S.channel) {
-    try { S.channel.send(msg); } catch (e) {}
+    try { act(msg.type, msg.payload); } catch (e) {}   /* v2.3.5191: through the action door (actions.js) */
   }
 }
 

@@ -91,7 +91,75 @@ export const ARENA = {
   STALE_STAKE_MS: 600000,  // orphaned stake age before the sweep refunds
 };
 
+/* ═══ v2.3.5522: THE ARENA DOOR -- ONE WRITER OF THE TOURNAMENT (card L PR 5) ═══
+   (docs/specs/arena-door.md; server/test/arena-door.test.mjs)
+   The Gladiator tournament is one field, `this._arena`: none, or its record,
+   whose own `status` goes gathering (the first entry opens it), running
+   (_arenaStart), complete (_arenaCrown).  Written only by _arenaTo, by a way
+   of ARENA_WAYS:
+     open    _arenaJoin       a record {status: 'gathering'} (the first entry)
+     start   _arenaStart      gathering -> running, in place
+     crown   _arenaCrown      running -> complete, in place (its champion on it)
+     empty   _arenaLeave      none: the last in the queue left
+     cancel  _arenaLazyTick   none: too few at the gather deadline (refunded)
+     clear   _tickArena       none: the 60 s the finished one is kept for the
+                              game's completion poll are over
+   The door's rules are the callers' own checks, so nothing a player sees
+   changes: a tournament opens only where none is, with its id, its queue
+   and its gather deadline; it starts only from gathering, is crowned only
+   from running and with its champion; the queue empties and the gather is
+   cancelled only while gathering; and the finished one is cleared only
+   when complete.  `arenadoor: false` in the live flags lifts them, as the
+   lines before the door.  A deploy voids the tournament by design (no join
+   or load way: the bracket is in memory alone, gladiator.js's head).
+   A player's match (`ps._arenaMatch`, the healing gates' marker) is a note
+   beside it: set where a match goes live (_arenaTryActivate), taken where
+   it is resolved (_arenaOnMatchResolved), the suite holding both. */
+export const ARENA_WAYS = Object.freeze({
+  open: 'gathering', start: 'running', crown: 'complete',
+  empty: 'none', cancel: 'none', clear: 'none',
+});
+const ARENA_FROM = Object.freeze({ start: 'gathering', crown: 'running', empty: 'gathering', cancel: 'gathering', clear: 'complete' });
+
 export const arenaMethods = {
+  /* v2.3.5522: the arena door's kill switch (live flag `arenadoor: false`) */
+  _arenaDoorOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'arenadoor') && !f.arenadoor);
+  },
+
+  /* v2.3.5522: the tournament's phase: its record's status, or none */
+  _arenaPhase() {
+    const t = this._arena;
+    return t && typeof t.status === 'string' ? t.status : 'none';
+  },
+
+  /* v2.3.5522: THE ONE WRITER of the tournament.  `rec` is the record for
+     `open`, null for every other way.  True when it wrote. */
+  _arenaTo(rec, way) {
+    if (!Object.prototype.hasOwnProperty.call(ARENA_WAYS, way)) return false;
+    const to = ARENA_WAYS[way];
+    const off = this._arenaDoorOff();
+    const from = this._arenaPhase();
+    if (way === 'open') {
+      if (!rec || typeof rec !== 'object' || rec.status !== 'gathering') return false;
+      if (!off && (from !== 'none' || typeof rec.id !== 'string' || !Array.isArray(rec.queue) || !Number.isFinite(rec.gatherDeadline))) return false;
+      this._arena = rec;
+      return true;
+    }
+    if (rec !== null) return false;
+    if (!off && from !== ARENA_FROM[way]) return false;
+    if (to === 'none') {
+      this._arena = null;
+      return true;
+    }
+    const t = this._arena;
+    if (!t) return false;
+    if (!off && to === 'complete' && !t.champion) return false;
+    t.status = to;
+    return true;
+  },
+
   /* v2.3.3481: `arenaap: false` in liveflags -- the champion is paid gold
      alone, as before (ARENA.CHAMPION_AP). */
   _arenaApOff() {
@@ -279,9 +347,11 @@ export const arenaMethods = {
       return { ok: false, settled: true, error: this._arena.status === 'running' ? 'Tournament in progress' : 'Tournament just ended' };
     }
     if (!this._arena) {
-      this._arena = { id: crypto.randomUUID(), status: 'gathering', queue: [], gatherDeadline: Date.now() + ARENA.GATHER_MS, round: 0, players: [], matches: [], champion: null };
+      /* v2.3.5522: the first entry opens it, through the arena door */
+      this._arenaTo({ id: crypto.randomUUID(), status: 'gathering', queue: [], gatherDeadline: Date.now() + ARENA.GATHER_MS, round: 0, players: [], matches: [], champion: null }, 'open');
     }
     const t = this._arena;
+    if (!t) return { ok: false, settled: true, error: 'No open queue' };   /* v2.3.5522: never today (the door opens one where none is) */
     if (t.queue.some((p) => p.playerId === playerId)) return { ok: false, settled: true, error: 'Already queued' };
     /* v2.3.3171: one id per ENTRY, not per (tournament, player).  A leave
        refunds under its own id but the entry's debit stamp stays, so a
@@ -324,7 +394,7 @@ export const arenaMethods = {
     if (idx < 0) return { ok: false, settled: true, error: 'Not queued' };
     const [entry] = t.queue.splice(idx, 1);
     await this._arenaRefundEntry(t.id, playerId, 'left the arena queue', entry && entry.n);
-    if (t.queue.length === 0) this._arena = null;
+    if (t.queue.length === 0) this._arenaTo(null, 'empty');   /* v2.3.5522: through the arena door */
     return { ok: true, settled: true };
   },
 
@@ -351,7 +421,7 @@ export const arenaMethods = {
       else {
         // Undersubscribed: cancel + refund (fire-and-forget, idempotent).
         const tid = t.id, queued = [...t.queue];
-        this._arena = null;
+        this._arenaTo(null, 'cancel');   /* v2.3.5522: through the arena door */
         (async () => { try { for (const p of queued) await this._arenaRefundEntry(tid, p.playerId, 'arena cancelled (not enough gladiators)', p.n); } catch (e) {} })();
       }
       return;
@@ -373,7 +443,7 @@ export const arenaMethods = {
     const fighters = t.queue.slice(0, size);
     const overflow = t.queue.slice(size);
     (async () => { try { for (const p of overflow) await this._arenaRefundEntry(t.id, p.playerId, 'arena bracket was full', p.n); } catch (e) {} })();
-    t.status = 'running';
+    this._arenaTo(null, 'start');   /* v2.3.5522: gathering -> running, through the arena door */
     t.queue = [];
     t.round = 1;
     t.players = fighters.map((p) => ({ ...p, eliminated: false }));
@@ -852,7 +922,7 @@ export const arenaMethods = {
     const ap = apOn && this._achvWouldPay ? (this._achvWouldPay(champion.playerId, 'gladiator') || 0) : 0;
     t.champion = { playerId: champion.playerId, playerName: champion.playerName, prize };
     if (ap) t.champion.ap = ap;
-    t.status = 'complete';
+    this._arenaTo(null, 'crown');   /* v2.3.5522: running -> complete, through the arena door (its champion just set) */
     this.eventBuffer.push({ type: 'arena_tournament_complete', payload: { tid: t.id, champion: t.champion } });
     const tid = t.id;
     const entrants = t.players.map((p) => p.playerId);
@@ -883,7 +953,7 @@ export const arenaMethods = {
   _tickArena(now) {
     this._arenaLazyTick(now);
     if (this._arena && this._arena.status === 'complete' && this._arenaClearAt && now > this._arenaClearAt) {
-      this._arena = null;
+      this._arenaTo(null, 'clear');   /* v2.3.5522: through the arena door */
       this._arenaClearAt = 0;
     }
   },

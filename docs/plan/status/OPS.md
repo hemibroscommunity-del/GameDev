@@ -1,5 +1,5 @@
 card: OPS
-branch: claude/plan-ops-11-guestlazy (on main b2d763a9)
+branch: claude/plan-ops-11-guestlazy (on main 8149d61e)
 prs: #1944 (5610) ready
 state: ready
 

@@ -36,6 +36,7 @@ function openFromCard(id) {
   dashboardPanelBus.open(id);
 }
 import { portraitSrc } from '../mobile/sheet/portraitStore.js'; /* v2.3.2926: your own portrait, for your own card */
+import { act } from '@/game/actions.js';   /* v2.3.5190: the page's requests leave through the action door (card K PR 7) */
 
 /* v2.3.1917: mirrors GameRoom.OPEN_PVP (server/src/index.js).  While it is
    false the worker refuses pvp_threat and every non-consensual hit, so the
@@ -247,12 +248,8 @@ export function InspectPlayerPanel(props) {
      verbatim, not rewritten. */
   var sendPartyInvite = function onClick() {
     var S = stateRef.current;
-    if (S.channel) S.channel.send({
-      type: 'broadcast',
-      event: 'party_invite',
-      payload: {
-        target: inspectPlayer.id
-      }
+    if (S.channel) act('party_invite', {   /* v2.3.5190: through the action door (actions.js) */
+      target: inspectPlayer.id
     });
     pushDmgPopup(S, S.player.x, S.player.y - 30, 'Party invite sent', '#fbbf24');
     setInspectPlayer(null);
@@ -265,7 +262,7 @@ export function InspectPlayerPanel(props) {
     var _St2 = stateRef.current;
     if (_St2._serverCaps && _St2._serverCaps.trade2 && _St2.channel) {
       try {
-        _St2.channel.send({ type: 'broadcast', event: 'trade2_open', payload: { target: inspectPlayer.id } });
+        act('trade2_open', { target: inspectPlayer.id });   /* v2.3.5190: through the action door (actions.js) */
       } catch (e) {}
       setInspectPlayer(null);
       return;
@@ -280,15 +277,11 @@ export function InspectPlayerPanel(props) {
   };
   var sendDuel = function onClick() {
     var S = stateRef.current;
-    if (S.channel) S.channel.send({
-      type: 'broadcast',
-      event: 'duel_wager_request',
-      payload: {
-        target: inspectPlayer.id,
-        from: S.myId,
-        fromName: S.myName,
-        wager: 0
-      }
+    if (S.channel) act('duel_wager_request', {   /* v2.3.5190: through the action door (actions.js) */
+      target: inspectPlayer.id,
+      from: S.myId,
+      fromName: S.myName,
+      wager: 0
     });
     pushDmgPopup(S, S.player.x, S.player.y - 30, 'Duel sent', '#a78bfa');
     setInspectPlayer(null);
@@ -514,7 +507,7 @@ export function InspectPlayerPanel(props) {
         try {
           var _S9 = stateRef.current;
           if (_S9 && _S9._serverCaps && _S9._serverCaps.friends && _S9.channel) {
-            _S9.channel.send({ type: 'broadcast', event: 'friend_request', payload: { target: inspectPlayer.id, name: inspectPlayer.name } });
+            act('friend_request', { target: inspectPlayer.id, name: inspectPlayer.name });   /* v2.3.5190: through the action door (actions.js) */
           }
         } catch (e) {}
         pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Friend request sent!', '#59BF91');
@@ -552,15 +545,11 @@ export function InspectPlayerPanel(props) {
         setInspectPlayer(null);
         return;
       }
-      if (S.channel) S.channel.send({
-        type: 'broadcast',
-        event: 'pvp_threat',
-        payload: {
-          target: inspectPlayer.id,
-          from: S.myId,
-          fromName: S.myName,
-          fromLevel: ((_S$rpg26 = S.rpg) === null || _S$rpg26 === void 0 ? void 0 : _S$rpg26.level) || 1
-        }
+      if (S.channel) act('pvp_threat', {   /* v2.3.5190: through the action door (actions.js) */
+        target: inspectPlayer.id,
+        from: S.myId,
+        fromName: S.myName,
+        fromLevel: ((_S$rpg26 = S.rpg) === null || _S$rpg26 === void 0 ? void 0 : _S$rpg26.level) || 1
       });
       /* v2.3.1193: no longer orphaned — entityRenderer draws my own red
          skull from these anchors.  This write is OPTIMISTIC (base
@@ -593,16 +582,12 @@ export function InspectPlayerPanel(props) {
     "data-act": "clan",
     onClick: function onClick() {
       var S = stateRef.current;
-      if (S.channel) S.channel.send({
-        type: 'broadcast',
-        event: 'clan_invite',
-        payload: {
-          target: inspectPlayer.id,
-          from: S.myId,
-          fromName: S.myName,
-          clanName: clanData.name,
-          clanTag: clanData.tag
-        }
+      if (S.channel) act('clan_invite', {   /* v2.3.5190: through the action door (actions.js) */
+        target: inspectPlayer.id,
+        from: S.myId,
+        fromName: S.myName,
+        clanName: clanData.name,
+        clanTag: clanData.tag
       });
       pushDmgPopup(S, S.player.x, S.player.y - 30, 'Clan invite sent', '#a78bfa');
       setInspectPlayer(null);

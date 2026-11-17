@@ -86,7 +86,8 @@ if (typeof F.takeBackFireWhat === 'function') {
 {
   const wc = src('src/networking/wsClient.js');
   check('4 wsClient relays campfire_out only for a fire it put out',
-    /case 'firemaking_refused':[\s\S]{0,900}if \(_fireBack === 'fire' && S\.channel\)[\s\S]{0,80}S\.channel\.send\(campfireOutMsg\(S\)\)/.test(wc));
+    /* v2.3.5189: the send goes through the action door (act), campfireOutMsg's payload */
+    /case 'firemaking_refused':[\s\S]{0,900}if \(_fireBack === 'fire' && S\.channel\)[\s\S]{0,80}act\('campfire_out', campfireOutMsg\(S\)\.payload\)/.test(wc));
   const ge = src('src/networking/gameEvents.js');
   check('4 gameEvents draws campfire_out', /case 'campfire_out':[\s\S]{0,400}peerFireOut\(S, payload\)/.test(ge));
 }

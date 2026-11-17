@@ -26,6 +26,7 @@ import { cue } from '@/game/eventSounds.js';
 import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js';
 import { gemColor, gemElementName } from '@/data/gems.js';
 import { RAW_PER_GEM } from '@/data/shards.js';
+import { act } from '@/game/actions.js';   /* v2.3.5188: the page's requests leave through the action door (card K PR 7) */
 
 /* how long an unanswered ask holds the buttons */
 export const SHARD_CRACK_WAIT_MS = 4000;
@@ -68,7 +69,7 @@ export function shardCrackReasonText(reason, extra) {
 
 function send(S, type, payload, pend) {
   if (!shardCrackOnServer(S) || shardCrackBus.pending()) return null;
-  try { S.channel.send({ type, payload }); } catch (e) { return null; }
+  try { act(type, payload); } catch (e) { return null; }   /* v2.3.5188: through the action door (actions.js) */
   _pending = { ...pend, at: Date.now() };
   emit();
   return payload;
