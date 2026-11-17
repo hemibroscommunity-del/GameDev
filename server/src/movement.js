@@ -914,7 +914,7 @@ export const movementMethods = {
       /* v2.3.5723: each field to its form (MOVE_FIELDS above; `movefields`) */
       const _mf = this._moveFieldsOn();
       if (msg.d !== undefined && msg.d !== null && (!_mf || _mfFacing(msg.d))) ps.d = msg.d;
-      ps.z = newZone;
+      this._zoneTo(ps, newZone, 'move');   /* v2.3.5537: the zone door (zonejudge.js) */
       /* v2.3.4371: a duel split across zones starts the away clock (duel.js) */
       if (zoneChanged) this._duelZoneMoved(session.id);
       /* v2.3.4640: a run's pass is used by the step in (zonejudge.js) */

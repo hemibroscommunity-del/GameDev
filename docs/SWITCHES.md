@@ -745,4 +745,5 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `wheelslope` | worker | switch | v2.3.3320 | 2026-10-17 | false | logic |  | no | A Wheel spawned after it is levels 1-2 again. |
 | `wheelstep` | worker | switch | v2.3.4540 | 2026-11-10 | false | logic |  | no | A page that joins the Wheel off its step (a preview) is no longer kept out of harm and dealing nothing. |
 | `?worldreset` | page | switch | v2.3.5208 | 2026-11-14 | =0 | logic |  | no | Your arrows, the hit and death particles and the place's air are emptied only by each way's own clear block again (the respawn's 0.4 s after its flip, under its veil), not at the zone door. |
+| `zonedoor` | worker | switch | v2.3.5537 | 2026-11-17 | false | logic |  | no | A place that is no zone can be written on a player, as the lines before the zone door could have; the move's judge still refuses one first. |
 | `zonejudge` | worker | switch | v2.3.4565 | 2026-11-11 | false | logic |  | no | The zone judge off (but its rule R3, the retired lands, stays: `retiredlands`). |

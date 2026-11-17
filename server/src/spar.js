@@ -581,7 +581,7 @@ export const sparMethods = {
     const a = (sp && typeof sp.ringAt === 'number') ? (sp.ringAt += Math.PI * 2 / 3) : rnd() * Math.PI * 2;
     ps.x = (ownerPs.x || 0) + Math.cos(a) * SPAR.RING_R;
     ps.y = (ownerPs.y || 0) + Math.sin(a) * SPAR.RING_R;
-    ps.z = ownerPs.z;
+    this._zoneTo(ps, ownerPs.z, 'spar');   /* v2.3.5537: the zone door (zonejudge.js) */
     this._duelZoneMoved(c.id);   /* v2.3.4371: every zone write asks the duel (duel.js); a clone duels nobody */
     ps.vx = 0; ps.vy = 0;
     ps.lastMoveAt = now;

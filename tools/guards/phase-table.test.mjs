@@ -129,6 +129,8 @@
  *  38. `ps._ride = true;` back in ride.js _handleRide -> FAIL 2
  * v2.3.5536 (the guard door):
  *  51. `ps.blocking = false;` back in linger.js -> guard-door.test FAIL 2
+ * v2.3.5537 (the zone door):
+ *  52. `ps.z = 'town';` back in index.js _tickPlayerRespawn -> zone-door.test FAIL 2
  * v2.3.5525 (the loading door):
  *  39. `S._farmArtHold = seq;` back in farmTrip.js -> loading-door.test FAIL 2
  *  40. `S._veils = new Map();` in zoneTransitions.js -> FAIL 2
@@ -393,6 +395,17 @@ const DOOR_SUITES = Object.freeze({
     prop: 'blocking', besides: [
       { file: fileNamed('spar.js'), text: 'blocking: false, blockStartT: 0', fn: '_sparSpawn', why: 'the sparring clone\'s birth, guard down, before any move' },
       { file: fileNamed('tick.js'), text: 'e.blocking = ps.blocking || false;', why: 'a copy of the guard onto the tick\'s entry, not the player\'s' },
+    ] },
+  /* v2.3.5537: the zone door */
+  'server/test/zone-door.test.mjs': { field: 'ps.z', fn: '_zoneTo', holds: '§2: no write of a player\'s .z in server/src outside _zoneTo',
+    prop: 'z', besides: [
+      { file: fileNamed('join.js'), text: 'out.z = v;', fn: '_sanitizeJoinData', why: 'the join\'s cleaned copy of the phone\'s data, not a player' },
+      { file: fileNamed('join.js'), text: 'cleanJoinData.z = _body.z;', fn: '_handleJoin', why: 'the join\'s data told the kept body\'s place, not a player' },
+      { file: fileNamed('join.js'), text: 'cleanJoinData.z = \'town\';', fn: '_handleJoin', why: 'the join\'s data told the stand-up\'s town, not a player (the player\'s is the door\'s standup way)' },
+      { file: fileNamed('nearjoin.js'), text: 'entry.z = q.z;', why: 'a near-join list\'s entry, a copy' },
+      { file: fileNamed('nearjoin.js'), text: 'out.z = q.z;', fn: '_nearJoinListEntry', why: 'a near-join list\'s entry, a copy' },
+      { file: fileNamed('spar.js'), text: 'z: ownerPs.z,', fn: '_sparSpawn', why: 'the sparring clone\'s birth, at its owner\'s place' },
+      { file: fileNamed('tick.js'), text: 'e.z = ps.z;', why: 'a copy of the place onto the tick\'s entry, not the player\'s' },
     ] },
   /* v2.3.5533: the fight's page door (its note S._pvpSkullUntil: the suite's §2) */
   'server/test/fight-page-door.test.mjs': { field: 'S._pvpSkullType', fn: 'skullTo', holds: '§2: no write of S._pvpSkullType or S._pvpSkullUntil in src/ outside skullTo',
