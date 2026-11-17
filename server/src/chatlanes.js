@@ -182,7 +182,7 @@ export const chatLaneMethods = {
       ts: Date.now(),
     };
     this._chatModRemember(session.id, text,
-      (this.playerState[session.id] && this.playerState[session.id].z) || null, 'whisper');
+      (this.playerState[session.id] && this.playerState[session.id].z) || null, 'whisper', targetId);   /* v2.3.5623: whom it was for */
     /* A mute is silent to the sender ON PURPOSE.  Telling them "you are
        muted" hands a harasser a way to confirm they got through to someone
        -- chatmod.js makes the same argument for the room lane.  The sender's
