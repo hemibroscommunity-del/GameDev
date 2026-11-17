@@ -26,7 +26,9 @@ in as merge commits). The tree after each merge:
   (base c55c8b59)
 
 Rehearsed (`tools/dev/gatekeeper.mjs` on c55c8b59), all seven at the
-heads above: REHEARSAL_ALL. Earlier, #2007, #2005, #2008 and #2006 at
+heads above: tree f69ca16b (the same as the step-by-step
+merges): precheck OK (0 FAIL, 4 WARN, the server suites inside its
+limit), build PASS, questline 187/187. Earlier, #2007, #2005, #2008 and #2006 at
 these heads: tree 5e5d9c03, build PASS, questline 187/187; precheck's
 `server-tests` hit its 5-minute limit under load (settled), and
 `cd server && npm test` on that tree alone: 474 suites, all green
