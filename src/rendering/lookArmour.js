@@ -40,6 +40,7 @@ import { lookPaletteWanted, lookPaletteOn, lookSetSheets, lookSheetBytes, lookSh
 import { lookBytesHash } from './lookUnpack.js';   /* v2.3.5015: QA's comparison of the worker's bytes with the page's */
 import { takePaletteRow, givePaletteRow, paletteRowWrite } from './paletteTex.js';
 import { clientOff } from '../game/clientOff.js';   /* the Test panel's live off switch */
+import { sw, pageAddress } from '../game/switches.js';   /* v2.3.5316: the page's one reader (card T) */
 
 const MAX_ROWS = 1024;            /* the atlas at most: 2 MB (MASK_W x 1024 bytes) */
 const GROW = 128;                 /* it grows by this many rows */
@@ -53,7 +54,7 @@ const _stats = { looks: 0, looksMade: 0, looksFreed: 0, books: 0, booksFull: 0, 
    phone, and the Test panel's "Bodies under armour coloured on the chip" for
    every phone, live (clientOff.js) -- then every armoured figure is the old
    masked bake again, from the next frame */
-const _armourWanted = (() => { try { return !/(^|[?&])lookarmour=0(&|$)/.test(window.location.search || ''); } catch (e) { return true; } })();
+const _armourWanted = (() => { try { return !/(^|[?&])lookarmour=0(&|$)/.test(pageAddress()); } catch (e) { return true; } })();
 /** Armour drawn from the numbers: the look palette on, and its own switches (`?lookarmour=0`, clientOff). */
 export function lookArmourOn() { return _armourWanted && lookPaletteWanted() && lookPaletteOn() && !clientOff('lookarmour'); }
 
@@ -314,7 +315,7 @@ export function lookSheetFetchFailed(worker, key) {
 export function lookSheetFetchDone(key, hash) {
   if (_qaHashes && _qaHashes.has(key)) _qaHashes.get(key).worker = hash;
 }
-const SHEET_FETCH = (() => { try { return !/(^|[?&])sheetfetch=0(&|$)/.test(window.location.search || ''); } catch (e) { return true; } })();
+const SHEET_FETCH = !sw('sheetfetch');
 const _fetchStats = { url: 0, bytes: 0, failed: 0 };
 /* QA (mp-sheetfetch, armed by the harness: window.__btSheetFetchCheck): the
    page's own bytes' hash for each sheet sent as a file, to set beside the

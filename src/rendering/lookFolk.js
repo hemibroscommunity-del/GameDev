@@ -20,8 +20,9 @@
 import { clientOff, clientOffAtLoad } from '../game/clientOff.js';
 import { lookPaletteWanted, lookPaletteOn } from './lookPalette.js';
 import { paletteRendererOf } from './paletteTex.js';
+import { pageAddress } from '../game/switches.js';   /* v2.3.5316: the page's one reader (card T) */
 
-const _wanted = (() => { try { return !/(^|[?&])lookfolk=0(&|$)/.test(window.location.search || ''); } catch (e) { return true; } })();
+const _wanted = (() => { try { return !/(^|[?&])lookfolk=0(&|$)/.test(pageAddress()); } catch (e) { return true; } })();
 
 const _stats = { photosSkipped: false, photosLate: 0 };
 /* QA only (mp-lookfolk's facings): every townsperson drawn live turned this way */

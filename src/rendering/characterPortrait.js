@@ -55,6 +55,7 @@ import { getWeaponHandle, getAnchor } from './playerAnchors.js'; /* v2.3.1841 */
 import { hemiBustUrl } from './hemiBust.js';   /* v2.3.3999: a headshot is a Hemi Bro */
 import { playFrameMs } from './gearSheets.js';   /* v2.3.5042: in play, the figure drawn a few ms at a time */
 import { witnessCanvas } from './canvasWitness.js';   /* v2.3.5042: a body kept between draws is witnessed (TRAPS §250) */
+import { sw } from '../game/switches.js';   /* v2.3.5316: the page's one reader (card T) */
 
 const FRAME = 256;
 
@@ -440,7 +441,7 @@ function _solidOf(cv) {
 function _stillThere(k) {
   try { return k.cv.width > k.x && k.cv.getContext('2d').getImageData(k.x, k.y, 1, 1).data[3] > 0; } catch (e) { return false; }
 }
-const _portraitGentleOff = (() => { try { return /(^|[?&])portraitgentle=(0|off|false)(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();
+const _portraitGentleOff = sw('portraitgentle');
 const _portraitAfterFrame = () => new Promise((res) => {
   let done = false;
   const go = () => { if (!done) { done = true; res(); } };

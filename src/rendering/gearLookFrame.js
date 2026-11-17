@@ -23,8 +23,9 @@
  * draws for 30 s lets its frames go (lookPalette.js sweep).
  */
 import { registerLookSheets, getLookPartFrames, lookHas, lookSheenOn, lookSheenState, lookPaletteWanted, lookSetsSettled, preloadLookSheets, whenLookKnown } from './lookPalette.js';
+import { pageAddress } from '../game/switches.js';   /* v2.3.5316: the page's one reader (card T) */
 
-const _wanted = (() => { try { return !/(^|[?&])gearlook=0(&|$)/.test(window.location.search || ''); } catch (e) { return true; } })();
+const _wanted = (() => { try { return !/(^|[?&])gearlook=0(&|$)/.test(pageAddress()); } catch (e) { return true; } })();
 /* v2.3.4999: its own load, when this module came after the loading screen
    began (registerLookSheets then loads it apart: gearLookDecided waits) */
 const _reg = _wanted ? registerLookSheets('gear', '/sprites/look/gear/roles.json') : Promise.resolve(false);
@@ -90,7 +91,7 @@ if (typeof window !== 'undefined') {
   /* the armour's oracle (mp-lookgear), on a page that asks for it only: its
      own chunk, never in the game's */
   try {
-    if (/(^|[?&])lookprobe(=1)?(&|$)/.test(window.location.search || '')) {
+    if (/(^|[?&])lookprobe(=1)?(&|$)/.test(pageAddress())) {
       import('./gearLookProbe.js').then((m) => m.installGearProbe({ framesOf: (sheet) => getLookPartFrames('gear', sheet, ENTRIES, OPTS) }));
     }
   } catch (e) { /* QA only */ }
