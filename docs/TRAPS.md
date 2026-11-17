@@ -5755,6 +5755,8 @@ downstream, every way IN is a gate: grep every writer of the container
 marks speak: the gear ledger's `gid` / `prov` are never on a weapon, so a
 "weapon" carrying one is gear.
 
+Held by: tools/guards/traps-worker.test.mjs (tag 5940).
+
 ## 146. "The oplog makes it idempotent" (v2.3.3162)
 
 **The plausible move.** A payout carries a deterministic opId (rule 5), so a
@@ -5775,6 +5777,8 @@ The state that says "paid" is saved in the same run as the payment, by every
 caller. A function that pays marks its own record dirty
 (dailyrewards.js `_drRollover`), so a caller that forgets is caught by the
 tick or the close.
+
+Held by: tools/guards/traps-worker.test.mjs (tag 5940).
 
 ## 147. "Stamp first, then debit" (v2.3.3165)
 
@@ -5874,6 +5878,8 @@ whose screen said 0 or a smaller number.
 accept echoes what it showed, and the server refuses a stake above it. The
 other side's record decides only what is at or under the consent.
 
+Held by: tools/guards/traps-worker.test.mjs (tag 5940).
+
 ## 153. "The shield keeps what the pickup gave" (v2.3.3169)
 
 **The plausible move.** A death inside a second of a pickup keeps what the
@@ -5888,6 +5894,8 @@ stack.
 still held: keep `min(shield, held)`. Kept plus dropped must equal held for
 every key, checked against the bag at the moment of the wipe.
 
+Held by: tools/guards/traps-worker.test.mjs (tag 5940).
+
 ## 154. "Every zone's kills drop that zone's shard" (v2.3.3170)
 
 **The plausible move.** A shard is `'shard_' + zoneId`, so any zone a monster
@@ -5901,6 +5909,8 @@ permanent key in his pile each time.
 **The rule.** Item keys come from a fixed table (`ZONES`, a catalog), never
 from an id the server invents at runtime. Gate a built key on the table.
 
+Held by: tools/guards/traps-worker.test.mjs (tag 5940).
+
 ## 155. "Refuse the bad state" (v2.3.3171)
 
 **The plausible move.** An arena join must not land in a tournament that is
@@ -5912,6 +5922,8 @@ queue nothing would start, with no refund.
 
 **The rule.** Gate on the one state that is allowed (`status === 'gathering'`),
 not on the states you thought of that are not.
+
+Held by: tools/guards/traps-worker.test.mjs (tag 5940).
 
 ## 156. "The op id makes the debit idempotent" (v2.3.3171)
 
@@ -5926,6 +5938,8 @@ new operation.
 **The rule.** An id may be reused only by a retry of the same act. After a
 refund or cancel, the next act carries a new id (`:n`), and so does its
 refund.
+
+Held by: tools/guards/traps-worker.test.mjs (tag 5940).
 
 ## 157. "Activate each match as it is built" (v2.3.3171)
 
@@ -5967,6 +5981,8 @@ Every reconnect deleted what the server itself had paid past 200.
 server's own record is healed only once, when it may still hold an old
 unclamped capture, and is otherwise left alone.
 
+Held by: tools/guards/traps-worker.test.mjs (tag 5940).
+
 ## 160. "A stack is just a stack" (v2.3.3173)
 
 **The plausible move.** Ace's item wager works on any stack in the bag;
@@ -5992,6 +6008,8 @@ kept "redeemed" and the stored ticket, which was traded and redeemed again.
 
 **The rule.** Writes that must land together are issued in one synchronous
 run with no `await` between them. An await is a batch boundary.
+
+Held by: tools/guards/traps-worker.test.mjs (tag 5940).
 
 ## 162. "A second login is a reconnect" (v2.3.3174)
 
@@ -6583,6 +6601,8 @@ same run as it debits (`_creditLiveTogether`). A payment's stamp is issued
 with the payment's write. Anything that reads a record and writes it back
 takes its turn (`_inboxSerial`). Test it on inbox.test's batch storage, at
 every write.
+
+Held by: tools/guards/traps-worker.test.mjs (tag 5940).
 
 ## 185. "A new monster attack needs its own copy of the hit" (v2.3.3296)
 
@@ -7575,6 +7595,8 @@ the record and puts out a join whose key or device it no longer lets in.
 **Receipt:** login-keys §12 (21 checks): a gate where each change waits, the
 owner's tool run in the gap; nine fail on v2.3.3355's code.
 
+Held by: tools/guards/traps-worker.test.mjs (tag 5940).
+
 ## 220. "Every window puts a scrim over the screen, so the coach keeps off windows by itself" (v2.3.3407)
 
 **Tempting:** leave the quest coach alone when a window is open: it draws a
@@ -8217,6 +8239,8 @@ trades.
 **Receipt:** `server/test/weapon-gem.test.mjs` §9b (one gem passed between two
 players: 400, then 0, then 0; a gem the second player made, 400), and
 `shard-crack` §6 (a combined gem is owed its XP).
+
+Held by: tools/guards/traps-worker.test.mjs (tag 5940).
 
 ## 243. "The button reads the game state, so it shows when the state says" (v2.3.3548)
 
@@ -9120,6 +9144,8 @@ never evicts an online player's record (botfp.js `_botfpRecord`, kill switch
 live records, or re-read before the first write.
 
 **Receipt:** `server/test/botfp-evict.test.mjs`; docs/specs/anticheat-botfp.md.
+
+Held by: tools/guards/traps-worker.test.mjs (tag 5940).
 
 ## 276. "Stamp the limit on `ps`" (v2.3.4372)
 
