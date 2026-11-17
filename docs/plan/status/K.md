@@ -1,6 +1,6 @@
 card: K
-branch: claude/plan-k-14d-ontoday (5551; the second block 5540-5559)
-prs: #1822 to #2006, #2003, #2013, #2014, #2018, #2021, #2023 merged; open: #2024 (5551, this branch)
+branch: claude/plan-k-14f-cookstart (5553, on #2024; the second block 5540-5559)
+prs: #1822 to #2006, #2003, #2013, #2014, #2018, #2021, #2023 merged; open: #2024 (5551), 5553 (this branch)
 state: ready
 
 ## Done
@@ -16,8 +16,9 @@ state: ready
 
 - 5549 `movetop`, 5550 `bowshot` (3.3 -> 1.60; OFF) merged. 5551 (this
   branch): `swordswing` and `movetop` ON (the owner, 2026-11-17: "Go
-  recommended"). The bow's reach tried: no gain past the spread. Next: the
-  harvest's grade (1.86), the cook's result (1.59).
+  recommended"). The bow's reach tried: no gain past the spread. 5553
+  (this branch): `cookstart` OFF (the cook 1.59 -> 0.99). Next: the
+  harvest's grade (1.86): a question to the planner.
 - Later (the planner): walls on the worker (the Wheel's coast): a new
   system and worker memory, for when real players come.
 - wsClient.js: done for good (told L). index.js, combat.js: 14 still.
@@ -32,7 +33,7 @@ state: ready
 
 ## Needs
 
-- The owner: turn on `bowshot` (a cheat's bow 3.3 -> 1.60; honest play the
-  same with it on)?
+- The owner: turn on `bowshot` (a cheat's bow 3.3 -> 1.60) and
+  `cookstart` (its cook 1.59 -> 0.99)? Honest play the same with each on.
 - The owner: `reqstamp` (a lasting stamp row a request with no record of
   its own: a store buy, a cancel, an offer; pruned at 48 h): on or off.

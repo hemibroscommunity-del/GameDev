@@ -35,6 +35,8 @@ import { REGEN_TICKS } from './tick.js';   /* v2.3.2062: the regen cadence */
 import { cropHealFor } from './farm.js';  /* v2.3.3537: every crop is food */
 import { fishKeyInfo } from './fishlog.js';   /* v2.3.4036: an albino or a large fish eaten */
 import { bagGive, bagTake } from './bag.js'; /* v2.3.4810: the bag door */
+/* v2.3.5553: a cook's beat (MIRROR: gathering.js GATHER_HITS.MS.cooking, the pan's 650 ms grease beat) and the network's slack */
+export const COOK_START = Object.freeze({ HIT_MS: 650, CYCLE_MS: 1510 /* MIRROR: gathering.js HONEST_CYCLE_MIN_MS (lead 90, settle 220, the gesture's 1,200 floor) */, SLACK: 0.7 });
 
 /* v2.3.3036: _cookRateOk's cooks a minute, 20 -> 45.  20 ("one per 3 s ...
    well above legit play") held while the pan's gesture alone took 4.8 s or
@@ -925,6 +927,39 @@ export const cookingMethods = {
     return true;
   },
 
+  /* ═══ v2.3.5553: A COOK IS A COOK THE WORKER STARTED (grand plan 4.2, the
+     cook's result; card K PR 14; docs/specs/cook-start.md) ═══
+     An opt-in, OFF (`cookstart: true`, the owner's to turn on).  The bench
+     (claims-gain.test, `cook`) found `cook_request` alone worth 1.59 times
+     an honest cook: no start, no fire, no gesture was asked of it.  An
+     honest page starts every cook (`extraction_start`, skill 'cooking':
+     gathering.js _planCookHits rolls its plan, ps._cookHits) and sends its
+     result only after the plan's hits and its gesture.  With it on, a
+     result lands only on that plan -- the same fish, used once -- and no
+     sooner than its hits and the gesture could be played (COOK_START: each
+     hit's beat after the first, and the honest cycle's floor, with SLACK for
+     the network); one result with no plan a session, for a worker that
+     restarted mid-cook.  A result without one is dropped
+     WITHOUT consuming, the state sent back, as the rate's drop.  A test-mode
+     character is left as it is (testmode.js). */
+  _cookStartOn() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'cookstart') && f.cookstart === true);
+  },
+  _cookStartTake(ps, fishKey, now, session) {
+    const c = ps && ps._cookHits;
+    /* no plan at all: the worker restarted mid-cook (its memory wiped, the
+       player joined again) -- one such result a session, never two */
+    if (!c) {
+      if (session && !session._cookNoPlan) { session._cookNoPlan = true; return true; }
+      return false;
+    }
+    if (c.used || c.fishKey !== fishKey || !Array.isArray(c.hits)) return false;
+    const min = (Math.max(0, c.hits.length - 1) * COOK_START.HIT_MS + COOK_START.CYCLE_MS) * COOK_START.SLACK;
+    if (now - (Number(c.rolledAt) || 0) < min) return false;
+    c.used = true;
+    return true;
+  },
   _handleCookRequest(session, payload) {
     if (!session || !session.id) return;
     const { fishKey, kind } = payload || {};
@@ -942,6 +977,12 @@ export const cookingMethods = {
     // player_state snaps the client's optimistic outcome back.
     const bot = this._botfpOnCook(session, ps, payload);
     if (bot.drop) {
+      const ws = this._wsBySessionId(session.id);
+      if (ws) this._sendPlayerState(ws, session.id);
+      return;
+    }
+    /* v2.3.5553: a result on a cook the worker started (`cookstart`, OFF) */
+    if (this._cookStartOn() && !(typeof this._testMode === 'function' && this._testMode(ps)) && !this._cookStartTake(ps, fishKey, Date.now(), session)) {
       const ws = this._wsBySessionId(session.id);
       if (ws) this._sendPlayerState(ws, session.id);
       return;
