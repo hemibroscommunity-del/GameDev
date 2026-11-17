@@ -1,7 +1,7 @@
 card: K
 branch: claude/plan-k-<n>-<topic> (one branch a PR, each begun from main)
-prs: #1822, #1820, #1826, #1829, #1831, #1838, #1842, #1861, #1848, #1899, #1923 merged; ready, in order: #1900, #1931-#1934 (5188-5192); N11 (5544) this branch
-state: working
+prs: #1822, #1820, #1826, #1829, #1831, #1838, #1842, #1861, #1848, #1899, #1923 merged; ready, in order: #1900, #1931-#1934 (5188-5192); #1942 (N11, 5544, this branch)
+state: ready
 
 ## Done
 
@@ -18,7 +18,7 @@ state: working
 
 ## Next
 
-- N11 (5544, `heapforget`, ON): the room forgets who left (heapforget.js,
+- #1942 N11 (5544, `heapforget`, ON): the room forgets who left (heapforget.js,
   HEAP_FORGET: six maps; a strike's strings to 64); 7 KB -> 1.5 KB a guest.
   Then N5 (a room-wide ceiling on messages in), 5194/5196/5197.
 - The move's walls (movement.js); the sword's reach (index.js, after card
