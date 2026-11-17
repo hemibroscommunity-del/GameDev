@@ -76,6 +76,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?combatreset` | page | switch | v2.3.5206 | 2026-11-14 | =0 | logic |  | no | A fight you picked, a roll or a lunge, the hit marks on the ground, a kill's XP still waiting and another player's damage numbers still queued carry over a change of place again, each ending on its own clock or its own check, not at the zone door. |
 | `disable_threats` | worker | switch | v2.3.1150 | 2026-07-03 | true | logic |  | no | Thrown, every relayed threat handshake is dropped. |
 | `elemup` | worker | switch | v2.3.3518 | 2026-10-20 | false | logic |  | no | Un-advertises the element bonus and takes it away. |
+| `fightdoor` | worker | switch | v2.3.5538 | 2026-11-17 | false | logic |  | no | A fight clock can be written under an id that is no string, as the lines before the fight door could have; every caller passes a session's id. |
 | `fightlockarmor` | worker | switch | v2.3.4582 | 2026-11-11 | false | logic |  | no | Armour put on or taken off in a fight is no longer refused. |
 | `fightlockdoor` | worker | switch | v2.3.4510 | 2026-11-10 | false | logic |  | no | A dungeon's mouth and the party pull are no longer locked in a fight. |
 | `fightlockequip` | worker | switch | v2.3.4510 | 2026-11-10 | false | logic |  | no | A spare weapon or shield put on in a fight is no longer refused. |
@@ -84,6 +85,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `freeswing` | worker | switch | v2.3.4520 | 2026-11-10 | false | logic |  | no | No phone gets the free swing; every phone is told. |
 | `freeswingbonus` | worker | switch | v2.3.4520 | 2026-11-10 | false | logic |  | no | The free swing never pays its timing bonus. |
 | `gearheld` | worker | switch | v2.3.5715 | 2026-11-17 | false | logic |  | no | A described armour or legs piece is worn whether or not the worker holds it, and a captured record's join merges the phone's armour and legs claims, as before. |
+| `guarddoor` | worker | switch | v2.3.5536 | 2026-11-17 | false | logic |  | no | A raise is written while the guard break's latch is live, as the lines before the guard door could have; movement.js and the sparring clone still check the latch first. |
 | `?guarddoor` | page | switch | v2.3.5521 | 2026-11-16 | =0 | logic |  | no | Your shield on the phone takes any raise or drop its own code asks again (a raise over a raised one, with no shield or in the cooldown, a drop of none), as the lines before the page door could have; raiseShieldToggle and dropShield still check each first. |
 | `killroll` | worker | switch | v2.3.3209 | 2026-10-13 | false | logic |  | no | Every drop on its own roll again, nothing sent over the monster. |
 | `?manual` | page | value | v2.3.4357 |  | =0 to =4 (remembered on the device) | logic |  | no | Picks the combat mode on this device: 0 the old, 1 to 4 the manual trials. |
@@ -676,6 +678,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `pileleft` | worker | switch | v2.3.4383 | 2026-11-10 | false | logic |  | no | Stops the death pile's time-left fields on the wire. |
 | `relaybytes` | worker | switch | v2.3.5543 | 2026-11-16 | false | logic |  | no | Every relay goes into the room's queue whatever its size, as before: no bound on one relay's bytes, on a socket's relay bytes a second, or on the queue's (the red team's RT-1 N10 open again). |
 | `relaylist` | worker | switch | v2.3.3304 | 2026-10-17 | false | logic |  | no | Relays every type that is not privileged again (the old deny-list). |
+| `relaytyped` | worker | switch | v2.3.5724 | 2026-11-17 | false | logic |  | no | A relay keeps every field the phone put in it, each as sent, and the room's send reaches a socket that never joined, as before. |
 | `reqonce` | worker | switch | v2.3.5194 | 2026-11-17 | false | logic |  | no | No request id is read: a repeat of a market order, a store listing, buy, bid, accept or cancel, an auction offer, a bank move, a chest, a cape or a spin acts again as before (the bank, chest, cape and spin still read an older phone's opId), and no answer echoes an id. |
 | `reqstamp` | worker | lever | v2.3.5194 |  | true | none | `reqonce` | no | Thrown (true), a request with no record of its own (a store buy, bid, accept or cancel, a market cancel, an auction offer) writes a lasting stamp row (oplog:rq:<pid>:<reqId>, pruned at 48 h): one row a request, the owner's cost question; unset or false, the default, its first answer is kept for the sitting only. |
 | `?room` | page | lever | v2.3.217 |  | a room's name | none |  | no | Joins the named room, not the lobby's. |
@@ -745,4 +748,5 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `wheelslope` | worker | switch | v2.3.3320 | 2026-10-17 | false | logic |  | no | A Wheel spawned after it is levels 1-2 again. |
 | `wheelstep` | worker | switch | v2.3.4540 | 2026-11-10 | false | logic |  | no | A page that joins the Wheel off its step (a preview) is no longer kept out of harm and dealing nothing. |
 | `?worldreset` | page | switch | v2.3.5208 | 2026-11-14 | =0 | logic |  | no | Your arrows, the hit and death particles and the place's air are emptied only by each way's own clear block again (the respawn's 0.4 s after its flip, under its veil), not at the zone door. |
+| `zonedoor` | worker | switch | v2.3.5537 | 2026-11-17 | false | logic |  | no | A place that is no zone can be written on a player, as the lines before the zone door could have; the move's judge still refuses one first. |
 | `zonejudge` | worker | switch | v2.3.4565 | 2026-11-11 | false | logic |  | no | The zone judge off (but its rule R3, the retired lands, stays: `retiredlands`). |
