@@ -1,6 +1,6 @@
 card: M
 branch: claude/plan-m-1-framesteps (PR 1, tag 5340; from main)
-prs: PR 1 (5340): ready (L done; main bdfa8734 merged in)
+prs: #2089 (5340): ready (L done; main bdfa8734 merged in)
 state: ready
 
 ## Done
