@@ -9,7 +9,7 @@ state: ready
   PR 9 (5288, #1844), PR 2 (5281, #1862), PR 7 (5286, #1847).
 - Merged, sitting 20: PR 5 (5284, #1877), PR 6 (5285, #1887), PR 11 (5290,
   #1895, the duel pot's row), PR 10 (5289, #1898), PR 12 (5291, #1922).
-- PR 3 (5282, #1873, ready, sitting 22): a weapon's own id; main f692b93a
+- PR 3 (5282, #1873, ready, sitting 23): a weapon's own id; main 8149d61e
   merged in (OPS's #1891 and #1872 live). Schema 21 -> 22: a stored
   record's shape, merged on a line of its own.
 
