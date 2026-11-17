@@ -72,6 +72,10 @@
  * _arenaSettleStakes: the plan's put and the losers' stamps), with
  * `xferescrow` on only; the old order (`arenasettleplan: false`) writes
  * none.  The row's shape is unchanged.
+ *
+ * v2.3.5293 (card R PR 17): THE MARKET AND THE AUCTION HOUSE, the escrow
+ * ledger's last rows (xferMarketSale, xferAuctionSale, at the foot): one row
+ * a sale, seller to buyer, the goods one way and the price the other.
  */
 
 import { playerRoadsBy } from './playerroads.js';   /* v2.3.5280: the roads between players, one table */
@@ -354,4 +358,43 @@ export function xferArenaStakes(room, { tid, matchId, winnerId, losers, gains } 
     if (p) out.push(p);
   });
   return out;
+}
+
+/* ══════════ v2.3.5293 (card R PR 17): THE MARKET AND THE AUCTION HOUSE ══════════
+   The escrow ledger's last rows (card R PR 11's `ledger`, step 2), after
+   card K's 5194, 5196 and 5197 (`market.js`, `store.js`).  Each writes ONE
+   row a sale, from the seller to the buyer, the goods and their ids one
+   way and the price the other, in the run that commits the sale; only with
+   `xferescrow: true` (OFF by default: the owner's cost question). */
+
+/** The goods of a listing (store.js `_stGoodsCredit`'s kinds) as a row's
+ *  side: an item counted by its key, a weapon, a piece of gear or a pet by
+ *  its id. */
+function goodsOf(kind, rec) {
+  const g = Object.create(null);
+  const ids = [];
+  if (kind === 'item' && typeof rec.invKey === 'string') g[rec.invKey] = whole(rec.qty);
+  else if (kind === 'weapon') ids.push('weapon:' + ((rec.weapon && typeof rec.weapon.gid === 'string' && rec.weapon.gid) || '?'));
+  else if (kind === 'gear') ids.push('gear:' + ((rec.gear && typeof rec.gear.gid === 'string' && rec.gear.gid) || '?'));
+  else if (kind === 'pet') ids.push('pet:' + ((rec.pet && typeof rec.pet.id === 'string' && rec.pet.id) || '?'));
+  return { goods: g, ids };
+}
+
+/** The General Store's order book (market.js, a noted sale's commit: the
+ *  maker's `settle` note, in the taker's escrow's run): the weapon from the
+ *  seller to the buyer, the price the other way, `by` the taker's tap. */
+export function xferMarketSale(room, { makerId, sellerId, buyerId, weapon, price, by } = {}) {
+  if (!xferEscrowOn(room) || typeof makerId !== 'string') return null;
+  const side = goodsOf('weapon', { weapon });
+  return xferRow(room, { road: 'market', id: 'mkt-' + makerId, from: sellerId, to: buyerId, gives: side.goods, ids: side.ids, price: { _gold: price }, by });
+}
+
+/** The Auction House (store.js, storeoffer.js): a listing's goods from the
+ *  seller to `rec.sale`'s buyer, its price the other way; `road` the way it
+ *  sold (`auction_sale` bought now, `auction_bid` a bid accepted,
+ *  `auction_offer` an offer taken), `by` whose tap settled it. */
+export function xferAuctionSale(room, rec, road, by) {
+  if (!xferEscrowOn(room) || !rec || typeof rec !== 'object' || !rec.sale || typeof rec.id !== 'string') return null;
+  const side = goodsOf(rec.kind, rec);
+  return xferRow(room, { road, id: 'ah-' + rec.id, from: rec.sellerId, to: rec.sale.buyerId, gives: side.goods, ids: side.ids, price: { _gold: rec.sale.price }, by });
 }

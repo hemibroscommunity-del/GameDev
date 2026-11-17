@@ -1,6 +1,6 @@
 card: R
-branch: claude/plan-r-16-sum-lows (one branch a PR, each begun from main)
-prs: #1819, #1823, #1825, #1844, #1862, #1847, #1877, #1887, #1895, #1898, #1922, #1961, #1960, #1969, #1873: merged; PR 16 (5296): ready
+branch: claude/plan-r-17-market-rows (one branch a PR, each begun from main)
+prs: #1819, #1823, #1825, #1844, #1862, #1847, #1877, #1887, #1895, #1898, #1922, #1961, #1960, #1969, #1873, #1980: merged; PR 17 (5293): ready
 state: ready
 
 ## Done
@@ -13,13 +13,13 @@ state: ready
 - Merged, sitting 24: PR 14 (5294, #1960), the tolerant weapon reader.
 - Merged, sitting 25: PR 15 (5295, #1969); PR 3 (5282, #1873), a weapon's
   own id (save shape 22), after #1960's deploy.
-- PR 16 (5296, this branch, ready): sitting 25's four lows on the world's
-  sum (a leg's stamp read; a buy order's noted weapon; no switch, why).
+- Merged: PR 16 (5296, #1980), the world sum's four lows.
+- PR 17 (5293, this branch, ready): the market's and the Auction House's
+  ledger rows (`xferescrow`, OFF), after K's 5194, 5196, 5197.
 
 ## Next
 
-- Tag 5293 (market, auction house) only AFTER K's 5194, 5196, 5197.
-  No side work in K's or L's files while waiting.
+- After PR 17 merges, the card's PRs are all done.
 
 ## Found
 
@@ -34,6 +34,7 @@ state: ready
 
 - The owner's costs, OFF: `fullsnap` (PR 6: 2 keys more read a player a
   day), `resetbook` (PR 6: one room row, a write a restart), `xferescrow`
-  (PR 11: a row a wagered duel; PR 13: a row a losing stake a match).
+  (PR 11: a row a wagered duel; PR 13: a row a losing stake a match;
+  PR 17: a row a market cross or Auction House sale).
 - LATER (PR 9, "Just go recommended"): the lab's restore try (lab.yml).
 - Live flags: `storesize`, `roomexport` on; `roomrewind` off (the owner).
