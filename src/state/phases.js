@@ -334,15 +334,17 @@ export const PHASES = [
     note: 'v2.3.5529: the door (DUEL_PAGE_WAYS start, resume, pending, drop, end, rejoin; switch ?dueldoor). Its note S._activeDuel is written beside it by the same call. The record\'s own marks (settleBy, prev) are duelPending.js\'s.',
   },
   {
-    name: 'trade', side: 'page', status: 'todo',
+    name: 'trade', side: 'page', status: 'door',
     what: 'The phone\'s trade window and invite card.',
-    field: null, states: ['none', 'invited', 'open', 'leaving'], fn: null, file: null,
+    field: 'S._t2Live', states: ['none', 'open'],
+    fn: 't2LiveTo', file: 'src/game/tradeSlot.js',
     clears: [
       { edge: 'rejoin', at: 'src/game/rejoinSlots.js rejoinClear' },
       { edge: 'end', at: 'src/networking/gameEvents.js processGameEvent' },
     ],
     rejoin: ['trade', 'trade-invite'],
-    today: [{ field: 'S._t2Live' }, { field: 'S._t2Leave' }, { field: 'S._t2QuietUntil' }, { field: 'S._t2DoneWatch' }, { field: 'S._t2LocalEnd' }],
+    held: { suite: 'server/test/trade-page-door.test.mjs' },
+    note: 'v2.3.5530: the door (TRADE_PAGE_WAYS open, close, rejoin; switch ?tradedoor). The invite card and a leave under way are notes beside it (the invite: React state and REJOIN_SLOTS trade-invite; the leave: S._t2Leave and its hush S._t2QuietUntil, t2Leave), as are S._t2DoneWatch and S._t2LocalEnd.',
   },
   {
     name: 'party', side: 'page', status: 'door',
@@ -355,12 +357,14 @@ export const PHASES = [
     note: 'v2.3.5529: the door (PARTY_PAGE_WAYS state, gone, rejoin; switch ?partydoor). The HUD (setParty, React state) is the callers\'.',
   },
   {
-    name: 'ride', side: 'page', status: 'todo',
+    name: 'ride', side: 'page', status: 'door',
     what: 'Your skateboard on the phone.',
-    field: null, states: ['off', 'on'], fn: null, file: null,
+    field: 'S._ride', states: ['off', 'on'],
+    fn: 'rideTo', file: 'src/game/ride.js',
     clears: [{ edge: 'rejoin', at: 'src/game/ride.js clearRide' }],
     rejoin: ['ride'],
-    today: [{ field: 'S._ride' }],
+    held: { suite: 'server/test/ride-page-door.test.mjs' },
+    note: 'v2.3.5530: the door (RIDE_PAGE_WAYS make, apply, forget; the phase is the record\'s own on; switch ?ridedoor). The record\'s other numbers (the ask, the speed, the last step) are notes on it, written by their own steps.',
   },
   {
     name: 'harvest', side: 'page', status: 'door',

@@ -28,7 +28,7 @@
  * No imports but the duel lock, the trade slot and the resets' door (none
  * of their own), so node can test it. */
 import { lockOntoDuelOpponent } from './duelLock.js';
-import { t2OnStateSync } from './tradeSlot.js';
+import { t2OnStateSync, t2LiveTo } from './tradeSlot.js';
 import { runResets } from './resetOn.js';   /* v2.3.5203: the rejoin edge's one door (card L) */
 import { duelTo } from './duelDoor.js';   /* v2.3.5529: the duel's page door (no imports but the switch reader) */
 import { poseTo } from './poseDoor.js';   /* v2.3.5520: the pose's page door, S._pose's one writer (no imports of its own) */
@@ -88,7 +88,7 @@ export function rejoinClear(S, count, setTrade2, clearIv) {
     if (S._t2Live) done.push('trade');
     /* the window too: the worker re-sends a trade still open.  A leave
        already asked for keeps its timer (tradeSlot.js t2Leave). */
-    S._t2Live = null;
+    t2LiveTo(S, null, 'rejoin');   /* v2.3.5530: the trade's page door */
     t2OnStateSync(S, setTrade2, clearIv);
   }
   /* v2.3.5203 (grand plan step 5.3, card L): this is the rejoin edge's ONE

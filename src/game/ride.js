@@ -17,10 +17,49 @@
  * the worker's word is on its way.  The worker's own `ride_state` then just
  * agrees.
  *
- * No imports: BroTown hands in what it knows (the safe ground's centre and
+ * No imports but the switch reader (v2.3.5530): BroTown hands in what it knows (the safe ground's centre and
  * radius among it), and node can test this (server/test/ride.test.mjs).
  * RIDE_MULT MIRRORS the worker's RIDE.MULT (mirror-audit.test.mjs).
  */
+import { sw } from './switches.js';   /* v2.3.5530: the page's switch reader (no imports of its own) */
+
+/* ═══ v2.3.5530: THE RIDE'S PAGE DOOR -- ONE WRITER OF S._ride (card L PR 5) ═══
+   (docs/specs/ride-page-door.md; server/test/ride-page-door.test.mjs)
+   Your board on the phone is one record, S._ride; its phase is its `on`
+   (off, on: the worker's word, ride_state).  The record and its phase are
+   written only by rideTo, by a way of RIDE_PAGE_WAYS: make (the record, off,
+   on first use: r0), apply (`on` from the worker's ride_state: rideApply),
+   forget (none, a fresh join: clearRide).  Its other numbers (the ask, the
+   speed, the last step) are notes on the record, written by their own
+   steps.  The rule is the callers' own, so nothing a player sees changes.
+   `?ridedoor=0` writes what a caller asks (the worker's `ridedoor` is its
+   own door's switch). */
+export const RIDE_PAGE_WAYS = Object.freeze({ make: 'off', apply: 'word', forget: 'none' });
+const RIDE_FRESH = () => ({ on: false, asked: 0, askedOn: null, why: null, at: 0, n: 0, line: null, lineAt: 0, spd: 0, push: -1, wx: 0, wy: 0, clk: 0, fx: 0, fy: 0, tx: 0, ty: 0, tl: 0 });
+
+export function rideDoorOff() {
+  return sw('ridedoor');
+}
+
+/* THE ONE WRITER.  `on` is the worker's word for apply.  True when it wrote. */
+export function rideTo(S, on, way) {
+  if (!S || typeof S !== 'object' || !Object.prototype.hasOwnProperty.call(RIDE_PAGE_WAYS, way)) return false;
+  if (way === 'forget') { S._ride = null; return true; }
+  if (way === 'make') {
+    if (S._ride && !rideDoorOff()) return false;
+    S._ride = RIDE_FRESH();
+    return true;
+  }
+  if (!S._ride) return false;
+  S._ride.on = !!on;
+  return true;
+}
+
+/* the ride's phase on this phone (the phase table's words) */
+export function ridePhase(S) {
+  return S && S._ride && S._ride.on ? 'on' : 'off';
+}
+
 
 /* MIRROR: server/src/ride.js RIDE.MULT */
 export const RIDE_MULT = 2.0;   /* the owner: "about twice as fast as run speed" */
@@ -36,7 +75,7 @@ export const ASK_MS = 2500;
    on the next frame (blocked: stopped).  Numbers, never a second phase
    beside `on` (CLAUDE.md §5). */
 function r0(S) {
-  if (!S._ride) S._ride = { on: false, asked: 0, askedOn: null, why: null, at: 0, n: 0, line: null, lineAt: 0, spd: 0, push: -1, wx: 0, wy: 0, clk: 0, fx: 0, fy: 0, tx: 0, ty: 0, tl: 0 };
+  if (!S._ride) rideTo(S, null, 'make');   /* v2.3.5530: the ride's page door */
   return S._ride;
 }
 
@@ -104,7 +143,7 @@ export function rideApply(S, p, now) {
   if (!S || !p) return;
   const r = r0(S);
   const was = r.on;
-  r.on = !!p.on;
+  rideTo(S, p.on, 'apply');   /* v2.3.5530: the ride's page door (r is S._ride) */
   r.why = p.why || null;
   r.asked = 0;
   r.askedOn = null;
@@ -203,7 +242,7 @@ export function rideOffLine(why, verb) {
 
 /** A forgotten board on a fresh join (the worker forgets it too). */
 export function clearRide(S) {
-  if (S) S._ride = null;
+  if (S) rideTo(S, null, 'forget');   /* v2.3.5530: the ride's page door */
 }
 
 /* ═══ v2.3.3776: HOW A RIDER STANDS -- SIDEWAYS, WITH A PUSH ═══

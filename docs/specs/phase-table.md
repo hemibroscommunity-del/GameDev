@@ -69,6 +69,8 @@ why: a QA tag, a direction, an input's source, a setting.
 | `ride` | worker | the skateboard, `ps._ride` (off, on; the session it tells, `ps._ridePid`, beside it) | `_rideTo` (`ride.js`, v2.3.5523) | `ride-door.test` §2, and the guard's tree |
 | `race` | page | the phone's race, `S._race` (none; asked, count, run, done: its record's own `phase`) | `raceTo` (`raceDoor.js`, v2.3.5218) | `race-page-door.test` §2, and the guard's tree |
 | `pose` | page | the phone's own held pose, `S._pose` (standing, or its record: posing) | `poseTo` (`poseDoor.js`, v2.3.5520) | `pose-page-door.test` §2, and the guard's tree |
+| `trade` | page | the phone's trade, `S._t2Live` (none, or the open trade's id) | `t2LiveTo` (`tradeSlot.js`, v2.3.5530) | `trade-page-door.test` §2, and the guard's tree |
+| `ride` | page | your board, `S._ride` (its `on`: off, on) | `rideTo` (`ride.js`, v2.3.5530) | `ride-page-door.test` §2, and the guard's tree |
 | `duel` | page | the phone's duel, `S._inDuel` (none, pending, on; its note `S._activeDuel` beside it) | `duelTo` (`duelDoor.js`, v2.3.5529) | `duel-page-door.test` §2, and the guard's tree |
 | `party` | page | the phone's party, `S._party` (none, member) | `partyTo` (`partyDoor.js`, v2.3.5529) | `party-page-door.test` §2, and the guard's tree |
 | `connection` | page | the phone's socket, `S._realtimeStatus` (connecting, connected, disconnected, idle, linger, and each refusal's screen) | `connTo` (`connectionDoor.js`, v2.3.5528) | `connection-door.test` §2, and the guard's tree |
