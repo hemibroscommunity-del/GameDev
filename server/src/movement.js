@@ -177,7 +177,42 @@ export const ENTRY_GRACE_GAP_MS = 10000;
 export const EX_WAYS = Object.freeze({ move: 'claim', linger: 'none', take: 'none' });
 export const EX_MAX = 32;
 
+/* ═══ v2.3.5723 (card K2 PR 4; the second red team): A MOVE'S FIELDS HELD TO
+   THEIR FORM ═══
+   A move's `d`, `f`, `eqc`, `eql`, `eqs`, `vx` and `vy` were stored as sent
+   and ticked to everyone near: a 10 KB string or an object in `eqc`, or
+   `vx: 1e308`, went to every phone around the sender with every tick.  Each
+   is now held to what the page sends (BroTown.jsx's move, wsClient.js's
+   shim; the wire table's `move` row: d, f `claim`; eqc, eql, eqs `look`):
+     d, f       the facing ('down', 'northeast', ...): a string of at most
+                TEXT_MAX characters, or a finite number (v2.3.1107 kept the
+                door open to a numeric facing); `f` may be null (no facing yet);
+     eqc, eql, eqs  a worn piece's id (gearCatalog.js getEquip: 'none' or an
+                id of some 15 characters): a string of at most TEXT_MAX, or
+                null;
+     vx, vy     the velocity x 100, rounded (at most about 600 in a dodge): a
+                finite number within V_MAX.
+   A field out of its form is DROPPED -- the move still goes, as if the phone
+   had not sent that field (a facing or a piece kept as it was, a velocity 0,
+   today's rule for a missing one).  `movefields: false` in the live flags:
+   stored as sent, as before. */
+export const MOVE_FIELDS = Object.freeze({
+  TEXT_MAX: 48,
+  V_MAX: 10000,
+});
+const _mfText = (v) => typeof v === 'string' && v.length <= MOVE_FIELDS.TEXT_MAX;
+const _mfFacing = (v) => _mfText(v) || (typeof v === 'number' && Number.isFinite(v));
+const _mfPiece = (v) => v === null || _mfText(v);
+const _mfVel = (v) => (typeof v === 'number' && Number.isFinite(v) && Math.abs(v) <= MOVE_FIELDS.V_MAX ? v : 0);
+
 export const movementMethods = {
+  /* v2.3.5723: `movefields: false` in the live flags and a move's fields are
+     stored as sent, as before (on unless its own falsy value) */
+  _moveFieldsOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'movefields') && !f.movefields);
+  },
+
   /* v2.3.5213: the cook door's kill switch (live flag `exdoor: false`) */
   _exDoorOff() {
     const f = this._liveFlags;
@@ -876,20 +911,22 @@ export const movementMethods = {
          numeric encoding (0 = north) would silently stop relaying.
          null/undefined still mean "no update" (client sends f: null
          when it has no facing yet). */
-      if (msg.d !== undefined && msg.d !== null) ps.d = msg.d;
-      ps.z = newZone;
+      /* v2.3.5723: each field to its form (MOVE_FIELDS above; `movefields`) */
+      const _mf = this._moveFieldsOn();
+      if (msg.d !== undefined && msg.d !== null && (!_mf || _mfFacing(msg.d))) ps.d = msg.d;
+      this._zoneTo(ps, newZone, 'move');   /* v2.3.5537: the zone door (zonejudge.js) */
       /* v2.3.4371: a duel split across zones starts the away clock (duel.js) */
       if (zoneChanged) this._duelZoneMoved(session.id);
       /* v2.3.4640: a run's pass is used by the step in (zonejudge.js) */
       if (zoneChanged) this._zonePassUse(session.id, newZone);
-      ps.vx = msg.vx || 0; ps.vy = msg.vy || 0;
+      ps.vx = _mf ? _mfVel(msg.vx) : (msg.vx || 0); ps.vy = _mf ? _mfVel(msg.vy) : (msg.vy || 0);
       /* v2.3.840: persist the sender's 8-way facing + live equip so
          the tick can relay them -- peers render the correct jog
          direction and live armour on/off. */
-      if (msg.f !== undefined && msg.f !== null) ps.f = msg.f;
-      if (msg.eqc !== undefined) ps.eqc = msg.eqc;
-      if (msg.eql !== undefined) ps.eql = msg.eql;
-      if (msg.eqs !== undefined) ps.eqs = msg.eqs;
+      if (msg.f !== undefined && msg.f !== null && (!_mf || _mfFacing(msg.f))) ps.f = msg.f;
+      if (msg.eqc !== undefined && (!_mf || _mfPiece(msg.eqc))) ps.eqc = msg.eqc;
+      if (msg.eql !== undefined && (!_mf || _mfPiece(msg.eql))) ps.eql = msg.eql;
+      if (msg.eqs !== undefined && (!_mf || _mfPiece(msg.eqs))) ps.eqs = msg.eqs;
       /* v2.3.1092: harvest activity code (mine|chop|fish|cook|fire, or
          null). Pure presentation state relayed to peers so they can see
          this player gathering; not authoritative over loot/XP. */
@@ -934,13 +971,14 @@ export const movementMethods = {
            difference between a guard break and a suggestion. */
         const _wasBlocking = !!ps.blocking;
         const _guardBroken = ps._guardBrokenUntil && Date.now() < ps._guardBrokenUntil;
-        ps.blocking = _guardBroken ? false : !!msg.blocking;
         /* v2.3.4605: ...and a raise parries only after PARRY_REARM_MS with
            the guard down on the worker -- a quicker one blocks, unstamped
-           (moveclaims.js `parryrearm`; a down-up bundle parried every blow) */
+           (moveclaims.js `parryrearm`; a down-up bundle parried every blow).
+           v2.3.5536: written through the guard door (moveclaims.js
+           _guardTo); a guard held up is not written again. */
         const _raiseAt = Date.now();
-        if (ps.blocking && !_wasBlocking) ps.blockStartT = this._parryRearmed(ps, _raiseAt) ? _raiseAt : 0;
-        else if (!ps.blocking) ps.blockStartT = 0;
+        if (!_guardBroken && msg.blocking) { if (!_wasBlocking) this._guardTo(ps, 'raise', this._parryRearmed(ps, _raiseAt) ? _raiseAt : 0); }
+        else this._guardTo(ps, 'lower');
         this._guardDownNote(ps, _raiseAt);
       }
       /* v2.3.1705: the shield's facing angle, for the directional block

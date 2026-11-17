@@ -212,6 +212,7 @@ import { sameWire } from '@/game/partyEq.js'; /* v2.3.4884: an identical party_s
 import { act } from '@/game/actions.js';   /* v2.3.5189: the page's requests leave through the action door (card K PR 7) */
 import { duelTo } from '@/game/duelDoor.js';   /* v2.3.5529: the duel's page door, S._inDuel's one writer (card L) */
 import { partyTo } from '@/game/partyDoor.js';   /* v2.3.5529: the party's page door, S._party's one writer (card L) */
+import { dungeonTo } from '@/game/dungeonDoor.js';   /* v2.3.5535: the dungeon's page door, your run (card L) */
 import { skullTo } from '@/game/skullDoor.js';   /* v2.3.5533: the fight's page door, your skull's one writer (card L) */
 import { dyingTo } from '@/game/dyingDoor.js';   /* v2.3.5534: the life's page door, your dying seconds (card L) */
 
@@ -973,14 +974,12 @@ export function processGameEvent(type, payload, S, deps) {
                    zone change's own call (BroTown's `if (!S.map)`) never runs,
                    and the land's music played on inside (mp-googrotto) */
                 try { BT_AUDIO.startZoneAmbient(payload.zone); } catch (e) { /* sound only */ }
-                S._inDungeon = true;
-                S._inCustomDungeon = true;
+                dungeonTo(S, 'enter', { in: true, custom: true, complete: false });   /* v2.3.5535: the dungeon's page door */
                 S._customDungeonConfig = _dCfg;
                 S._dungeonDepth = 'shallow';
                 S._dungeonWave = 0;
                 S._dungeonMaxWaves = _dCfg.waves || 3;
                 S._dungeonBossSpawned = false;
-                S._dungeonComplete = false;
                 S.monsters = [];
                 S.gatherNodes = [];
                 S.groundLoot = [];
@@ -1081,7 +1080,7 @@ export function processGameEvent(type, payload, S, deps) {
                  feedback and the 3s return-home, mirroring the legacy
                  dungeonWaves completion visuals. */
               if (!payload || payload.zone !== S._serverDungeon) break;
-              S._dungeonComplete = true;
+              dungeonTo(S, 'complete', { complete: true });   /* v2.3.5535: the dungeon's page door */
               var _dcR = S.rpg;
               if (_dcR) {
                 if (!_dcR._compStats) _dcR._compStats = createDefaultCompStats();
@@ -1121,8 +1120,7 @@ export function processGameEvent(type, payload, S, deps) {
                 if (leaveWheelDungeon(S)) return;
                 if (ZONES[S._serverDungeon] && ZONES[S._serverDungeon]._instance) delete ZONES[S._serverDungeon];
                 S._serverDungeon = null;
-                S._inDungeon = false;
-                S._inCustomDungeon = false;
+                dungeonTo(S, 'leave', { in: false, custom: false });   /* v2.3.5535: the dungeon's page door */
                 S._customDungeonConfig = null;
                 S._serverMonsters = false;
                 /* v2.3.4414: and the arena's leftovers go with it: a fire lit

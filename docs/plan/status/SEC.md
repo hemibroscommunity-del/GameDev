@@ -1,40 +1,40 @@
 card: SEC
 branch: claude/plan-sec-<n>-<topic> (stacked: each PR on the one before until it merges)
-prs: #2030-#2049 merged; #2054 (5711): sitting 39 (its review fixed); #2055 (5712): CI; PR 14 (5713): opening
-state: ready
+prs: #2030-#2063 merged
+state: done
 
 ## Done
 
-- PRs 1 to 6 (#2030-#2040, merged): the card (items 16 to 20 added); a
-  join's id of its form; a refused vault put owed; stored bags never cut;
-  a newer worker's fields kept; the board holds its limit and fields.
-- PRs 7, 8 (#2042, #2043): the feedback hour shared by kind, address counts in its
-  row, the crash feed cut by bytes, the list kept 30 s (`feedbackshare`);
-  a header no side door past the public reads' pace.
-- PR 9 (#2045): an idle guest writes no row and sends no board report
-  until its first save; the owner's sweep of orphan `botstat:` (`guestquiet`).
-- PRs 10, 11 (#2047, #2049): a restart's deletes in one run; 50 requests
-  received at most (`reqincap`); a restore's answer says `moved`.
-- PR 12 (#2054): the overview's `floodTally` (closed, relay bytes; `ip`
-  null until K2's PR 10); OPERATIONS: an uptime monitor (`floodtally`).
-- PR 13 (#2055): the chain's sends: 200 a day (memory), a fee at most
-  0.001 ETH, kill switch `chainscore`.
-- PR 14 (5713): the dev console blanks the Login Key, device pass and
-  tokens (frames, State tab); the popup half was card L's #2033.
+- PRs 1-11 (#2030-#2049, merged): items 1 to 10 and the card.
+- PRs 12-14 (#2054-#2056): flood tally; chain budget; dev console blanks.
+- PRs 15-18 (5714-5717): three guards and words (`verifylocal`); gear worn
+  only if held (`gearheld`); an old key held to its devices (`oldkeyheld`);
+  the site's headers ship (public/_headers, a guard).
+- PRs 19, 20 (5718, 5719): the roster's cookie host-only, the admin key for
+  the session (`?rostercookie=0`); a restart refused while the market holds
+  the player, daily_rewards: deleted (`resetclean`).
+- Z40's holds fixed: #2055 (each queued chain job asks the switch), #2059
+  (claims closed uncaptured too), #2063 (the room's market indexes).
 
 ## Next
 
-- PR 14's suite and PR; then PR 15 (5714): three guards and words.
+- None: #2055-#2063 merged at sitting 40; done (the gatekeeper, 5679).
 
 ## Found
 
-- A join with NO id is let in as `session.id` undefined: a body under
-  `playerState.undefined` and a `cadence:login:undefined` row, shared by
-  every such join (join.js; PR 2's card covers an id present only).
-- Sitting 38: received friend requests never expire; 50 throwaways fill a
-  player's inbox (friends.js). Later: expire them by `at`.
+- A join with NO id is let in as `session.id` undefined: one body and one
+  `cadence:login:undefined` row shared by every such join (join.js).
+- The Test panel's "Let one new device in (30 min)" no longer lets an old
+  key in (PR 17): its words mislead now (DevPanel.jsx).
+- src/public/_redirects and favicon.svg ship neither (publicDir is public/).
+- Item 16 (planner): shield, cosmetic and amulet join claims are unguarded.
+- gearheld: an armour piece only a phone made before v2.3.4840 is lost; and
+  the phone adds a 49th chest piece the worker refuses (wsClient.js 4426).
+- wire/out.js 227 (card K's): character_reset_refused names only `fight`.
+- Item 19 (planner): the host-only roster splits www.brotown.net from
+  brotown.net; a www -> brotown.net redirect in Cloudflare (the owner's).
+- Sitting 38: received friend requests never expire (friends.js).
 
 ## Needs
 
-- Nothing open (PR 12's refusals by address: the planning session said no to
-  flood.js, card K2's; that count comes in K2's PR 10).
+- None. (Items 16 and 19 answered by the planning session: as built.)

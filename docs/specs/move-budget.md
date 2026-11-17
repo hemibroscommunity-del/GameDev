@@ -170,6 +170,25 @@ now says what stays open by design: a join with no remembered place.
 The server still has no map of water, walls or buildings, so a script also
 walks through them (the review's note).
 
+## A move's fields held to their form (v2.3.5723, card K2 PR 4)
+
+The second red team: a move's `d`, `f`, `eqc`, `eql`, `eqs`, `vx` and `vy`
+were stored as sent and ticked to everyone near (a 4 KB string or an
+object in a worn piece, `vx: 1e308`), and `{"toString": 1}` in any of them
+made the AFK signature (`index.js` `_moveActivitySig`) throw before the
+handler, so the whole move was lost. Now (`movement.js` `MOVE_FIELDS`), each
+to what the page sends:
+
+| Field | Form | Out of it |
+|---|---|---|
+| `d`, `f` (the facing) | a string of at most 48 characters, or a finite number; `f` may be null | dropped: the facing kept |
+| `eqc`, `eql`, `eqs` (a worn piece's id) | a string of at most 48 characters, or null | dropped: the piece kept |
+| `vx`, `vy` (the velocity x 100) | a finite number within 10,000 (a dodge is 600) | 0, as a missing one |
+
+The move always goes. The signature reads only plain strings, numbers and
+booleans. `movefields: false` stores them as sent, as before
+(`movefields.test`: 10 FAIL on main).
+
 ## The switch
 
 `movebudget: false` in the live flags (liveops, POST `/api/admin/flags`) is

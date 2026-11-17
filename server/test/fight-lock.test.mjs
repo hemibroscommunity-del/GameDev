@@ -572,12 +572,15 @@ for (const name of Object.keys(CASES)) {
   check('8c. both roads are rows of the table under `fightlockreset`', !!FL && !!FL.FIGHT_LOCK.character_reset
     && FL.FIGHT_LOCK.character_reset.sw === 'fightlockreset' && FL.FIGHT_LOCK['http:/api/account/reset'].sw === 'fightlockreset' && !own(FL.FIGHT_OPEN, 'character_reset'));
   /* the switch: today's behaviour back -- the picker's road wipes it */
-  room._liveFlags = { ...(keepFlags || {}), nmlsteps: false, fightlockreset: false };
+  /* v2.3.5719: the suite's earlier rows left a listing and an offer naming them
+     (the store rows above), which `resetclean` holds a restart for; these two
+     are the fight lock's, so it is thrown */
+  room._liveFlags = { ...(keepFlags || {}), nmlsteps: false, fightlockreset: false, resetclean: false };
   await hit();
   const r2 = await room._accountReset('a key', true, '1.2.3.4', 'dev');
   check('8d. `fightlockreset: false`: the restart goes through mid-fight, as before this version', !!r2 && r2.ok === true && r2.reset === true && !room.playerState[ids.v], r2);
   room._accountLogin = keepLogin;
-  room._liveFlags = { ...(keepFlags || {}), nmlsteps: false };
+  room._liveFlags = { ...(keepFlags || {}), nmlsteps: false, resetclean: false };
   /* out of a fight it works, as it always did: the friend, never in one */
   ws.f.sent.length = 0;
   await send(ws.f, 'character_reset', { confirm: true });
