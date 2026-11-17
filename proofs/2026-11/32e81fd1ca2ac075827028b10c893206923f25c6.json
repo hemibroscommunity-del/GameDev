@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "32e81fd1ca2ac075827028b10c893206923f25c6",
+  "tree": "a33a398a27bf1f6d7bf0be5156b4d8ae5c6561c3",
+  "committedAt": "2026-11-16T16:49:32-08:00",
+  "subject": "Merge pull request #1935 from hemibroscommunity-del/claude/plan-t-8-ondays",
+  "files": 7987,
+  "bytes": 958493880,
+  "listingSha256": "1d1ae56262e2a097ff638a4eb7687e28eb4a9295e9d1968ed9a525199a6750c4",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
