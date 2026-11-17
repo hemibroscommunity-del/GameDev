@@ -111,6 +111,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const where = () => A.page.evaluate(({ s, t }) => {
         const e = Array.from(document.querySelectorAll(s)).find((q) => !t || (q.textContent || '').includes(t));
         if (!e) return null;
+        /* v2.3.5651: in view first: "Try again" is the last thing in a long panel, and a finger
+           put where it would be, under the band at the foot of the screen, lands on the band */
+        try { e.scrollIntoView({ block: 'center' }); } catch (x) { /* no scroll */ }
         const r = e.getBoundingClientRect();
         return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
       }, { s: sel, t: text || null });
