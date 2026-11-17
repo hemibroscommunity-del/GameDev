@@ -9,8 +9,7 @@ state: ready
   owed; bags never cut; newer fields kept; the board held; the feedback
   hour shared; the public reads' side door; a quiet guest; a restart in one
   write; `moved` on a restore.
-- PRs 12-14 (#2054-#2056): the owner's flood tally (`floodtally`); the
-  chain's day budget (`chainscore`); the dev console blanks keys.
+- PRs 12-14 (#2054-#2056): flood tally; chain budget; dev console blanks.
 - PR 15 (5714): do-migrations reads every wrangler.*, holds name, main,
   bindings; provenance's check names main; the verify seam local only
   (`verifylocal`); the stranger's-text rule in CLAUDE.md §4, REPO-SAFETY.
