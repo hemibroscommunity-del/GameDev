@@ -724,12 +724,13 @@ export const noMansLandMethods = {
       if (!to || !this._creditPlayer) return;
       /* one id per piece of this one death (its time and its place in the
          list): a retry of the same credit pays once, never twice */
-      const seq = n++;
-      owed.push({ opId: 'nmlloot:' + playerId + ':' + now + ':' + seq, source: 'nml', kind, payload, note });
+      owed.push({ seq: n++, kind, payload, note });
     };
-    const payOne = (entry) => {
+    /* each credit written out whole at its call, its op id a literal word
+       (opid-audit, gold-door §8: the money guards read it there) */
+    const payOne = (o) => {
       try {
-        const p = this._creditPlayer(to, entry);
+        const p = this._creditPlayer(to, { opId: 'nmlloot:' + playerId + ':' + now + ':' + o.seq, source: 'nml', kind: o.kind, payload: o.payload, note: o.note });
         if (p && typeof p.catch === 'function') p.catch(() => {});
       } catch (e) { /* the piece is gone either way: a loss, never a duplicate */ }
     };
@@ -853,14 +854,14 @@ export const noMansLandMethods = {
       if (this._nmlOneWriteOn() && this._creditLiveTogether && this.playerState[to]) {
         const now1 = owed.filter((e) => e.kind === 'gold' || e.kind === 'weapon');
         if (now1.length) {
-          const run = this._creditLiveTogether(now1.map((entry) => ({ pid: to, entry })), [], null);
+          const run = this._creditLiveTogether(now1.map((o) => ({ pid: to, entry: { opId: 'nmlloot:' + playerId + ':' + now + ':' + o.seq, source: 'nml', kind: o.kind, payload: o.payload, note: o.note } })), [], null);
           if (run) {
             if (typeof run.catch === 'function') run.catch(() => {});
             rest = owed.filter((e) => !(e.kind === 'gold' || e.kind === 'weapon'));
           }
         }
       }
-      for (const entry of rest) payOne(entry);
+      for (const o of rest) payOne(o);
     }
     this._nmlSave(playerId, ps);
     /* tell the victim's game what went, so it clears its own copies.
