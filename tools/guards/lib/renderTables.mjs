@@ -158,7 +158,7 @@ function loneValue(node) {
    v2.3.5345 (the planning session's answer, 2026-11-17): the tuned lone
    constants' systems are read by hand the same way, in the same table (one
    SYSTEM_BY_HAND): each leaves into its system's file under
-   src/rendering/tables/ (entityRenderer.js's here; effectsRenderer.js's
+   src/rendering/tables/ (entityRenderer.js's with tag 5345, effectsRenderer.js's
    with tag 5346). */
 export const SYSTEM_BY_HAND = Object.freeze({
   /* the tables */
@@ -189,6 +189,15 @@ export const SYSTEM_BY_HAND = Object.freeze({
   PLATE_LEVEL_STROKE_PX: 'ui', PLATE_H_RATIO: 'ui', PLATE_PAD_L_RATIO: 'ui', PLATE_GAP_RATIO: 'ui',
   PLATE_PAD_R_RATIO: 'ui', PLATE_BADGE_TYPE_RATIO: 'ui', RES_BAR_W: 'ui', RES_BAR_H: 'ui', RES_MP_Y: 'ui',
   RES_BLOCK_W: 'ui', RES_SPENT_GAP: 'ui',
+  /* effectsRenderer.js's tuned lone constants (v2.3.5346) */
+  PRINT_W: 'render', STANDIN_REF_BODY_H: 'skills', CHOP_STANDIN_H: 'skills', COOK_STANDIN_H: 'skills',
+  COOK_PAN_DX: 'skills', CHOP_OFFSET: 'skills', FIRE_STANDIN_H: 'skills', FIRE_FEET_ROW: 'skills',
+  DMG_LIFT: 'combat', JET_LEN_PX: 'combat', SNOWBALL_BURST_H: 'combat', PROP_SLASH_LEN: 'combat',
+  HARD_DOT_R: 'monsters', CAMPFIRE_HPBAR_GAP: 'skills', DMG_STROKE_PX: 'combat', DMG_WORD_PAD: 'combat',
+  EMOTE_POP_PX: 'social', LOOT_SCALE: 'economy', DROP_GROW: 'economy', BEAM_H_PX: 'economy', BEAM_W_PX: 'economy',
+  BEAM_TEX_W: 'economy', BEAM_TEX_H: 'economy', BEAM_HALO_W: 'economy', MOTE_PX: 'economy', POP_H: 'economy',
+  POP_BOUNCE_H: 'economy', PILE_R: 'economy', SMITH_ANVIL_W: 'skills', SMITH_ANVIL_X: 'skills',
+  SMITH_ANVIL_FOOT: 'skills', SMITH_FACE_Y: 'skills',
 });
 
 /* the system from the map's words (a table not read by hand above) */

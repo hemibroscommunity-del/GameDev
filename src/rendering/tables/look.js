@@ -516,3 +516,14 @@ const NECK_ROWS = {
 };
 
 export { PLAYER_SIZE_MULT, TRAIT_RETRY_LATER_MS, _TRAIT_RETRY_MS, MIRROR_SCREEN_DIR, JOG_FOOT_FRAMES, BODY_DIR_SCALE, BODY_ROWS, JOG_EW_HAT_TUNE, STAND_HAT_TUNE, FULLSET_CROWN, FULLSET_HEAD_RES, FULLSET_HEAD_SEAT, _GEAR_SLOTS, _CAPE_HIDDEN_POSES, _CAPE_JOG_TILT, _CAPE_PIVOT_Y, _CAPE_JOG_DX, _CAPE_HOOD_TILT_K, _CAPE_HOOD_DX_K, BODY_NECK_FRAC, BODY_WAIST_FRAC, _REGION_SPR, BODY_CELL_MID, LOCAL_BODY_SCALE, NECK_ROWS };
+
+/* ── from effectsRenderer.js (v2.3.5346) ── */
+
+/* Place the cape and then drop its BACK half under the stand-in body.  The
+   re-seat is per frame and guarded: the swing re-orders its weapon every frame
+   too (_orderSwingWeapon), and the index it wants moves as sprites are shown
+   and hidden, so reading the body's live index is the only thing that stays
+   correct through that. */
+const _STAND_IN_TRAIT_KEYS = ['capeBack', 'hair', 'beard', 'capeHood', 'capeHoodMask', 'species', 'eyestyle', 'eyewear', 'hat', 'hairMask'];   /* v2.3.2361: + eyewear, over the hood and under the hat -- this order IS the z-order when the set changes layer; v2.3.2643: + eyestyle, just under the eyewear; v2.3.2682: + species, just under the eye style */
+
+export { _STAND_IN_TRAIT_KEYS };

@@ -11,3 +11,9 @@
 /* v2.3.2991: exported -- the stat scene's films are sized off the slime as
    the world really draws it (effectsRenderer captureFxFilm) */
 export const MONSTER_SIZE_MULT = 1.5;
+
+/* ── from effectsRenderer.js (v2.3.5346) ── */
+
+const HARD_DOT_R = 7;
+
+export { HARD_DOT_R };

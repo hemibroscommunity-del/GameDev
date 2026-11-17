@@ -119,3 +119,45 @@ const SOUTH_BLOCK_OFFHAND_BY_TYPE = {
 };
 
 export { SOUTH_IDLE_TILT, GRIP_NUDGE_X, GRIP_HOLE_FACINGS, GRIP_HOLE_R, GRIP_HOLE_R_BY_FACING, SWING_FULL_ARC, REST_ANG, BLOCK_ARM_SHOULDER, SOUTH_BLOCK_OFFHAND, SOUTH_BLOCK_OFFHAND_BY_TYPE };
+
+/* ── from effectsRenderer.js (v2.3.5346) ── */
+
+/* v2.3.1784: the 8-way compass, module scope.  An identical list already
+   existed as a local inside _updateRemoteBowShots; the slung shield needs it
+   too, and two copies of a fixed ordering is how a facing table drifts.  Must
+   stay in the same order as entityRenderer's SECTORS — S._renderFacing is
+   published from there. */
+const SECTORS8 = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'];
+
+/* Each number spawns its CENTRE a fixed 34 px over the band (entityRenderer
+   POPUP_BAR_CLEAR, combatHelpers HERO_POPUP_CLEAR), which was worked out for a
+   21 px number whose spawn pop (1.6x) reaches 16.8 px below its centre (v2.3.1638).
+   A bigger glyph reaches further, so its centre is lifted by this much of the
+   extra size -- 0.9 puts the popped glyph's bottom edge exactly as far over the
+   bar as the old number's was, for a plain hit and for a crit alike. */
+const DMG_LIFT = 0.9;
+
+/* v2.3.3399: the aim's eight sectors, in entityRenderer's SECTORS order (it
+   picks the bow pose's facing with them), and the switch that leaves the
+   between-shots grip as it was -- see _predictBowGrip */
+const BOW_AIM_SECTORS = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'];
+
+const MAGIC_BOLT_ANCHOR = { x: 0.688, y: 0.534 };
+
+const SWORD_FEEL_FLIP = { south: ['south', true], 'south|m': ['south', false], north: ['north', true], 'north|m': ['north', false] };
+
+/* Trailing length in world px — derived above; NOT a whole-flight streak.  One
+   that spanned launch-to-head would grow to the full 675 px range, and then
+   every arrow in a volley would paint the same solid band: the failure mode is
+   a smear that reads as clutter rather than as a line. */
+const JET_LEN_PX = 190;
+
+const SNOWBALL_BURST_H = 44;      /* drawn height in world px; the ball is 16 */
+
+const PROP_SLASH_LEN = 30;       /* drawn world px along the cut */
+
+const DMG_STROKE_PX = 3;
+
+const DMG_WORD_PAD = 12;
+
+export { SECTORS8, DMG_LIFT, BOW_AIM_SECTORS, MAGIC_BOLT_ANCHOR, SWORD_FEEL_FLIP, JET_LEN_PX, SNOWBALL_BURST_H, PROP_SLASH_LEN, DMG_STROKE_PX, DMG_WORD_PAD };
