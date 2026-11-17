@@ -65,9 +65,10 @@ The socket and the messages: the router, the relay, the client's connection and 
 - **Files**: everything under `src/networking/`
 - **Files**: `src/game/`: clientOff, clientOffApply, blockedAsks, workerClock, t1Sync, tooFar
 - **Files**: `src/game/`: actions
+- **Files**: `server/src/`: heapforget
 - **Doors**: `PRIVILEGED_EVENTS` in `server/src/wire/lists.js` (every type the server sends (every out row of the wire table); anything else a client could forge); `RELAY_TYPES` in `server/src/wire/lists.js` (RELAY.TYPES: the relays a phone may send (every relay row), rebuilt in its name); `wireDoorJudge` in `server/src/wire/door.js` (the wire door: the table's checks on every message and the room's routes, before any handler (v2.3.5184)); `act` in `src/game/actions.js` (ACTIONS: the one way a request leaves the page, and its request id (v2.3.5185))
 - **Switches**: [its rows in the switch table](SWITCHES.md#wire)
-- **Words**: `wire`, `protocol`, `relay`, `caps`, `bundle`, `privileged`, `clientoff`, `flood`
+- **Words**: `wire`, `protocol`, `relay`, `caps`, `bundle`, `privileged`, `clientoff`, `flood`, `heap-forget`
 - **Traps**: `wire`
 
 ## session
@@ -200,7 +201,7 @@ Quests, achievements, the codex, pets' book, points.
 Parties, clans, guilds, friends, chat, emotes, duels, the arena, races, boards.
 
 - **Files**: `server/src/`: party, clanparty, clans, guilds, alliance, friends, chatlanes, chatmod, chatguard, reservednames, silence, emotes, boards, arena, gladiator, duel, spar, race, leaderboard, power, statboards
-- **Files**: `src/game/`: alliance, chat, chatChannel, chatColor, chatMute, emotes, emoteMoves, gesturePose, friendErrors, duelLock, duelPending, partyChip, partyEq, partyMarks, partyRows, peerDot, race, raceDoor, spar, sparTargets, bubbleSkins, boardBumps, dictation
+- **Files**: `src/game/`: alliance, allyDrafts, chat, chatChannel, chatColor, chatMute, emotes, emoteMoves, gesturePose, friendErrors, duelLock, duelPending, partyChip, partyEq, partyMarks, partyRows, peerDot, race, raceDoor, spar, sparTargets, bubbleSkins, boardBumps, dictation
 - **Doors**: none named yet
 - **Switches**: [its rows in the switch table](SWITCHES.md#social)
 - **Words**: `party`, `clan`, `guild`, `alliance`, `friend`, `chat`, `emote`, `duel`, `arena`, `gladiator`, `spar`, `race`, `board`, `leaderboard`, `social`
