@@ -214,6 +214,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `offdevs` | worker | switch | v2.3.5584 | 2026-11-17 | false | logic |  | no | While the device lock is off, nothing is written down for it again, as before (a matching old key's device recorded while on, so the lock can come back without shutting a player out or handing the character to whichever device comes first; a key holder can still push the player's devices off its list of 12 while it is off). |
 | `oldkeylock` | worker | switch | v2.3.5582 | 2026-11-16 | false | logic |  | no | An old login key may take the first device of a character with no device list again, and the five-wrong-keys lock shuts out even its rightful holder on its own device, as before. |
 | `?tabid` | page | switch | v2.3.4521 | 2026-11-11 | =0 | logic |  | no | This phone takes the old road: the shared slot at every join, not its tab's own id. |
+| `verifylocal` | worker | switch | v2.3.5714 | 2026-11-17 | false | logic |  | no | The account check's address override (TURNSTILE_VERIFY_URL) is honoured whatever its host, as before (it is a test seam: nothing sets it for the real worker). |
 
 ## input
 

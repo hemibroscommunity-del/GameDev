@@ -14,7 +14,9 @@
  *   6. a token the verifier refuses is refused; a verifier that throws
  *      refuses (fail closed); a token over the wire bound is refused without
  *      a call; a non-string token the same;
- *   7. TURNSTILE_VERIFY_URL is the address asked when set.
+ *   7. TURNSTILE_VERIFY_URL is the address asked when set -- v2.3.5714, only
+ *      for a local host: a remote one is not asked (Cloudflare's is), and
+ *      `verifylocal: false` honours any address, as before.
  */
 import { GameRoom } from '../src/index.js';
 import { VERIFY } from '../src/verify.js';
@@ -169,6 +171,17 @@ const rows = (state, prefix) => [...state._store.keys()].filter((k) => k.startsW
   calls.length = 0;
   await join(r, 'bp_new4', { phrase: 'ember-frost-grove-haven-4', verify: 'good' });
   check('7. TURNSTILE_VERIFY_URL is the address asked when set', calls.length === 1 && calls[0].url === 'http://127.0.0.1:1/siteverify', calls);
+  /* v2.3.5714 (card SEC PR 15): on this machine only */
+  const far = room({ ...ON, TURNSTILE_VERIFY_URL: 'https://yes-to-all.example/siteverify' }).r;
+  calls.length = 0;
+  await join(far, 'bp_new5', { phrase: 'ember-frost-grove-haven-5', verify: 'good' });
+  check('7. a remote TURNSTILE_VERIFY_URL is not asked: Cloudflare\'s verifier is', calls.length === 1 && calls[0].url === VERIFY.URL, calls);
+  const old = room({ ...ON, TURNSTILE_VERIFY_URL: 'https://yes-to-all.example/siteverify' }).r;
+  await old._liveFlagsEnsure();
+  old._liveFlags.verifylocal = false;
+  calls.length = 0;
+  await join(old, 'bp_new6', { phrase: 'ember-frost-grove-haven-6', verify: 'good' });
+  check('7. verifylocal: false: any address honoured, as before', calls.length === 1 && calls[0].url === 'https://yes-to-all.example/siteverify', calls);
   check('7. the close code is the room\'s own, not one the client reads as something else', ![4003, 4004, 4005, 4006, 4009, 4010, 4011, 4012].includes(VERIFY.CLOSE_CODE));
 }
 

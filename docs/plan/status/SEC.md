@@ -1,30 +1,27 @@
 card: SEC
 branch: claude/plan-sec-<n>-<topic> (stacked: each PR on the one before until it merges)
-prs: #2030-#2049 merged; #2054 (5711): sitting 39 (its review fixed); #2055 (5712): CI; PR 14 (5713): opening
+prs: #2030-#2049 merged; #2054 (5711): sitting 39; #2055 (5712), #2056 (5713): CI; PR 15 (5714): suite
 state: ready
 
 ## Done
 
-- PRs 1 to 6 (#2030-#2040, merged): the card (items 16 to 20 added); a
-  join's id of its form; a refused vault put owed; stored bags never cut;
-  a newer worker's fields kept; the board holds its limit and fields.
-- PRs 7, 8 (#2042, #2043): the feedback hour shared by kind, address counts in its
-  row, the crash feed cut by bytes, the list kept 30 s (`feedbackshare`);
-  a header no side door past the public reads' pace.
-- PR 9 (#2045): an idle guest writes no row and sends no board report
-  until its first save; the owner's sweep of orphan `botstat:` (`guestquiet`).
-- PRs 10, 11 (#2047, #2049): a restart's deletes in one run; 50 requests
-  received at most (`reqincap`); a restore's answer says `moved`.
+- PRs 1 to 11 (#2030-#2049, merged): the card; a join's id; a vault put
+  owed; bags never cut; newer fields kept; the board held; the feedback
+  hour shared; the public reads' side door; a quiet guest; a restart in one
+  write; `moved` on a restore.
 - PR 12 (#2054): the overview's `floodTally` (closed, relay bytes; `ip`
   null until K2's PR 10); OPERATIONS: an uptime monitor (`floodtally`).
 - PR 13 (#2055): the chain's sends: 200 a day (memory), a fee at most
   0.001 ETH, kill switch `chainscore`.
-- PR 14 (5713): the dev console blanks the Login Key, device pass and
+- PR 14 (#2056): the dev console blanks the Login Key, device pass and
   tokens (frames, State tab); the popup half was card L's #2033.
+- PR 15 (5714): do-migrations reads every wrangler.*, holds name, main,
+  bindings; provenance's check names main; the verify seam local only
+  (`verifylocal`); the stranger's-text rule in CLAUDE.md §4, REPO-SAFETY.
 
 ## Next
 
-- PR 14's suite and PR; then PR 15 (5714): three guards and words.
+- PR 15's suite and PR; then items 16 to 20 (5715-5719).
 
 ## Found
 

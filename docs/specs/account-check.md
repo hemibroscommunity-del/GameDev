@@ -90,7 +90,7 @@ one case to avoid, and the setup order above avoids it.
 |---|---|---|
 | `TURNSTILE_SITEKEY` | `server/wrangler.toml` `[vars]` | the widget's site key; empty = off |
 | `TURNSTILE_SECRET` | dashboard secret | the widget's secret key; absent = off |
-| `TURNSTILE_VERIFY_URL` | test seam only | where the room asks; `mp-verify` points it at a stand-in |
+| `TURNSTILE_VERIFY_URL` | test seam only | where the room asks; `mp-verify` points it at a stand-in. v2.3.5714: honoured only for a local host (localhost, 127.x, ::1); any other address is ignored and Cloudflare is asked (kill switch `verifylocal: false`: any address, as before) |
 | `disable_verify` | live flag | true = off without a deploy |
 
 ## Tests
