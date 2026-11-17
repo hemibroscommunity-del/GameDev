@@ -123,11 +123,50 @@ const off = (room, name) => {
   return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, name) && !f[name]);
 };
 
+/* v2.3.5536: THE GUARD DOOR (card L PR 5; docs/specs/guard-door.md).  The
+   shield is one field, `ps.blocking` (down, raised), with its parry stamp
+   `ps.blockStartT` and its break latch `ps._guardBrokenUntil` written beside
+   it, never alone: only _guardTo writes them, by a way of GUARD_WAYS.  A
+   raise is refused while the break's latch is live (movement.js and the
+   sparring clone asked it first: step 1 changes nothing); a lower and a break
+   always write.  `guarddoor: false` in the live flags lifts the latch rule,
+   as the lines before the door.  guard-door.test fails a second writer. */
+export const GUARD_WAYS = Object.freeze({ raise: 'raised', lower: 'down', break: 'broken' });
+
+/* the phase a reader would name: broken (the latch), parry (raised, stamped,
+   inside the window), raised, down */
+export function guardPhase(ps, now, parryMs) {
+  if (!ps) return 'down';
+  if (ps._guardBrokenUntil && now < ps._guardBrokenUntil) return 'broken';
+  if (!ps.blocking) return 'down';
+  const t = ps.blockStartT;
+  return (typeof t === 'number' && t > 0 && now >= t && now - t <= parryMs) ? 'parry' : 'raised';
+}
+
 export const moveClaimMethods = {
   _parryRearmOff() { return off(this, 'parryrearm'); },
   _swingGuardOff() { return off(this, 'swingguard'); },
   _blockArcOff() { return off(this, 'blockarc'); },
   _cookShieldOff() { return off(this, 'cookshield'); },
+  _guardDoorOff() { return off(this, 'guarddoor'); },
+
+  /* v2.3.5536: the guard door (above GUARD_WAYS).  `at`: a raise's parry
+     stamp (0 or none: unstamped, it blocks but never parries); a break's
+     clock (none: now). */
+  _guardTo(ps, way, at) {
+    if (!ps || typeof ps !== 'object' || !Object.prototype.hasOwnProperty.call(GUARD_WAYS, way)) return false;
+    const fin = typeof at === 'number' && Number.isFinite(at);
+    if (way === 'raise') {
+      if (!this._guardDoorOff() && ps._guardBrokenUntil && Date.now() < ps._guardBrokenUntil) return false;
+      ps.blocking = true;
+      ps.blockStartT = fin && at > 0 ? at : 0;
+      return true;
+    }
+    ps.blocking = false;
+    ps.blockStartT = 0;
+    if (way === 'break') ps._guardBrokenUntil = (fin ? at : Date.now()) + this.GUARD_BREAK_MS;
+    return true;
+  },
 
   /* May the raise the worker just took open the parry window?  Only when the
      guard was down for PARRY_REARM_MS.  `_guardDownAt` 0 or unset is a guard
@@ -166,8 +205,7 @@ export const moveClaimMethods = {
       melee = slot === 'melee';
     }
     if (!melee) return false;
-    ps.blocking = false;
-    ps.blockStartT = 0;
+    this._guardTo(ps, 'lower');   /* v2.3.5536: the guard door */
     ps._guardDownAt = Date.now();
     return true;
   },

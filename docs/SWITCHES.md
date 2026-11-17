@@ -83,6 +83,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `fightlocktable` | worker | switch | v2.3.4510 | 2026-11-10 | false | logic |  | no | Forging, duels and the other ways to turn goods into what the loss does not take are no longer refused in a fight. |
 | `freeswing` | worker | switch | v2.3.4520 | 2026-11-10 | false | logic |  | no | No phone gets the free swing; every phone is told. |
 | `freeswingbonus` | worker | switch | v2.3.4520 | 2026-11-10 | false | logic |  | no | The free swing never pays its timing bonus. |
+| `guarddoor` | worker | switch | v2.3.5536 | 2026-11-17 | false | logic |  | no | A raise is written while the guard break's latch is live, as the lines before the guard door could have; movement.js and the sparring clone still check the latch first. |
 | `?guarddoor` | page | switch | v2.3.5521 | 2026-11-16 | =0 | logic |  | no | Your shield on the phone takes any raise or drop its own code asks again (a raise over a raised one, with no shield or in the cooldown, a drop of none), as the lines before the page door could have; raiseShieldToggle and dropShield still check each first. |
 | `killroll` | worker | switch | v2.3.3209 | 2026-10-13 | false | logic |  | no | Every drop on its own roll again, nothing sent over the monster. |
 | `?manual` | page | value | v2.3.4357 |  | =0 to =4 (remembered on the device) | logic |  | no | Picks the combat mode on this device: 0 the old, 1 to 4 the manual trials. |

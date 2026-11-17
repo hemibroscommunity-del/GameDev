@@ -127,6 +127,8 @@
  *      line's besides is the arena door's own, `fn`)
  * v2.3.5523 (the ride door):
  *  38. `ps._ride = true;` back in ride.js _handleRide -> FAIL 2
+ * v2.3.5536 (the guard door):
+ *  51. `ps.blocking = false;` back in linger.js -> guard-door.test FAIL 2
  * v2.3.5525 (the loading door):
  *  39. `S._farmArtHold = seq;` back in farmTrip.js -> loading-door.test FAIL 2
  *  40. `S._veils = new Map();` in zoneTransitions.js -> FAIL 2
@@ -381,6 +383,12 @@ const DOOR_SUITES = Object.freeze({
   /* v2.3.5523: the ride door (ps._ridePid is written beside it, in _rideTo) */
   'server/test/ride-door.test.mjs': { field: 'ps._ride', fn: '_rideTo', holds: '§2: no write of ._ride or ._ridePid in server/src outside _rideTo',
     prop: '_ride', besides: [] },
+  /* v2.3.5536: the guard door (its parry stamp and break latch: the suite's §2) */
+  'server/test/guard-door.test.mjs': { field: 'ps.blocking', fn: '_guardTo', holds: '§2: no write of .blocking, .blockStartT or ._guardBrokenUntil in server/src outside _guardTo',
+    prop: 'blocking', besides: [
+      { file: fileNamed('spar.js'), text: 'blocking: false, blockStartT: 0', fn: '_sparSpawn', why: 'the sparring clone\'s birth, guard down, before any move' },
+      { file: fileNamed('tick.js'), text: 'e.blocking = ps.blocking || false;', why: 'a copy of the guard onto the tick\'s entry, not the player\'s' },
+    ] },
   /* v2.3.5533: the fight's page door (its note S._pvpSkullUntil: the suite's §2) */
   'server/test/fight-page-door.test.mjs': { field: 'S._pvpSkullType', fn: 'skullTo', holds: '§2: no write of S._pvpSkullType or S._pvpSkullUntil in src/ outside skullTo',
     prop: '_pvpSkullType', besides: [
