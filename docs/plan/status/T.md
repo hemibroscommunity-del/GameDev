@@ -18,9 +18,9 @@ state: ready
 
 ## Next
 
-- 5312: sitting 27's two lows (the spec's file count; wheelTrial's `search`).
-  Then the 172 left, in files running cards hold (A, G, H, K, L, O, P) or
-  whose suites want no imports: each moves as its card ends.
+- 5312: sitting 27's two lows (the spec's file count; wheelTrial's `search`:
+  one `let`, as the Memory savers' row adds to it).
+  Then the 172 left: A, G, H, O, P are done (their files free); K, L later.
 
 ## Found
 
