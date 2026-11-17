@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "8e50ec1263a556fb8266061ef41a2fadd00f46eb",
+  "tree": "e659112e3f846df39194b4a6cd32e917edcbdcca",
+  "committedAt": "2026-11-16T19:39:50-08:00",
+  "subject": "Merge pull request #1873 from hemibroscommunity-del/claude/plan-r-3-weapon-gid",
+  "files": 8028,
+  "bytes": 959211812,
+  "listingSha256": "b8c2ceaa5a66659d2e8513c0b8d87fd371a9710a183ce0644e2b0f14faec765d",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
