@@ -548,7 +548,7 @@ const A = await join('bp_rep_a', 'Repo');
   check('14.2 ...and absent where the pacer knows no refresh (the QA box\'s few frames a second)', ax.judged === 0 && ax.drawn === 3);
   const ph = readFileSync(new URL('../../src/debug/report.js', import.meta.url), 'utf8');
   check('14.1 one rule, never a copy: the report imports the pacer\'s lateOver and writes no lateness of its own',
-    /import \{ PACE_BREAK_MS, lateOver \} from '\.\.\/game\/framePacer\.js';/.test(ph) && /const lateMs = judging \? lateOver\(pace\.refresh, pace\.every \|\| 1\) : Infinity;/.test(ph) && !/refresh \/ 2/.test(ph));
+    /import \{ PACE_BREAK_MS, lateOver, useMemCount \} from '\.\.\/game\/framePacer\.js';/.test(ph) && /const lateMs = judging \? lateOver\(pace\.refresh, pace\.every \|\| 1\) : Infinity;/.test(ph) && !/refresh \/ 2/.test(ph));
   check('14.3 the governor\'s `rung` goes to a worker that takes lanes alone: [the most rungs taken, the seconds seen below the row]',
     /if \(takesLanes\(_S\)\) r\.rung = \[_w\(a\.rungMax\), Math\.min\(secs, _w\(a\.belowMs \/ 1000\)\)\];/.test(ph) && /if \(depth > 0\) a\.belowMs \+= seenD;/.test(ph) && blankBins(0).rungMax === 0);
 }

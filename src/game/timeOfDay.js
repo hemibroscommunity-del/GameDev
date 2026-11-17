@@ -20,6 +20,7 @@
  * a full-screen flat fill cannot light a lantern, which is most of what makes
  * a night read as night rather than as a dim screen.
  */
+import { pageAddress } from './switches.js';   /* v2.3.5311: the page's one read of its address (card T) */
 
 /* Forty minutes, dawn to dawn.  Long enough that a session sees one change
    rather than a strobe, short enough that someone who plays for an evening
@@ -85,7 +86,7 @@ function overridePhase() {
   if (overridePhase._url === undefined) {
     overridePhase._url = null;
     try {
-      const m = /[?&]tod=([a-z0-9.]+)/i.exec(window.location.search);
+      const m = /[?&]tod=([a-z0-9.]+)/i.exec(pageAddress());
       if (m) {
         const s = m[1].toLowerCase();
         if (Object.prototype.hasOwnProperty.call(NAMED_PHASES, s)) overridePhase._url = NAMED_PHASES[s];

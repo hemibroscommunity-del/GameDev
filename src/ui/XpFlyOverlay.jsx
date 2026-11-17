@@ -7,6 +7,7 @@ import { fixedBox } from '@/ui/fixedBox.js'; /* v2.3.3470 */
 import { xpGainWords } from '@/game/xpBar.js';  /* v2.3.3893 */
 import { xpPopAt, XP_POP_INK } from '@/game/xpPop.js';  /* v2.3.3992: the kill's "+N" pops, no pill */
 import { killXpOn, KILL_XP_LINES_AFTER_MS, killXpInbound } from '@/game/killXp.js';      /* v2.3.3893 */
+import { pageAddress } from '../game/switches.js';   /* v2.3.5311: the page's one read of its address (card T) */
 
 /* HudPopupOverlay — HUD-anchored "+N XP" / "+N G" feedback, plus the
    transient XP bar the XP popup flies into.  Reads entries pushed to
@@ -596,7 +597,7 @@ export function pushHudPopup(S, opts) {
    the bar React draws, so a redraw of the bar cannot drop them. */
 export function flyKillXp(S, f) {
   if (!S || !f || !(f.gain > 0)) return;
-  if (typeof window !== 'undefined' && !killXpOn(window.location && window.location.search)) return;
+  if (typeof window !== 'undefined' && !killXpOn(pageAddress())) return;
   /* from where its drop lines rise (game/dropLines.js spotOf: half its
      popup height over the monster), so the XP is up first, from the same
      place, and well over them as they start */

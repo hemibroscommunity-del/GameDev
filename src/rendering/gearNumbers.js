@@ -20,6 +20,7 @@
  */
 import { lookSheetBytes } from './lookPalette.js';
 import { lookSheetParse, lookFrameRGBA } from './lookExpand.js';
+import { laneKnob, onKnob } from '../game/drawLanes.js';   /* v2.3.5231 (card O PR 11): the caps, a share of their own (the lanes' `caches` knob) */
 
 const ROW = new Uint8Array(256 * 4);   /* no roles: the table's own colours */
 const SHEET_CAP = 4;                   /* parsed sheets kept on the page (fallbacks only) */
@@ -27,6 +28,23 @@ const FRAME_CAP = 24;                  /* expanded frames kept on the page */
 const _sheets = new Map();
 const _frames = new Map();
 const _stats = { parsed: 0, expanded: 0 };
+/* v2.3.5231 (card O PR 11): each cap a share of its own -- the lanes'
+   `caches` knob, 1 or 0.5 on the memory axis's first rung (a full memory).
+   A rung taken trims at once: the least recently used sheets and frames go
+   (each a copy for the page's readers, made again when asked). */
+function _share() { try { const v = Number(laneKnob('caches')); return v > 0 && v <= 1 ? v : 1; } catch (e) { return 1; } }
+const sheetCap = () => Math.max(1, Math.round(SHEET_CAP * _share()));
+const frameCap = () => Math.max(1, Math.round(FRAME_CAP * _share()));
+function trimSheets() { while (_sheets.size > sheetCap()) _sheets.delete(_sheets.keys().next().value); }
+function trimFrames() {
+  while (_frames.size > frameCap()) {
+    const k = _frames.keys().next().value;
+    const old = _frames.get(k);
+    _frames.delete(k);
+    try { old.width = 0; old.height = 0; } catch (e) { /* gone */ }
+  }
+}
+try { onKnob('caches', () => { trimSheets(); trimFrames(); }); } catch (e) { /* no lanes: the whole caps */ }
 
 /** 'gearwalk/<sheet>' for a texture drawn from the walking armour's numbers,
  *  else null. */
@@ -60,7 +78,7 @@ function sheetOf(key) {
   try { s = lookSheetParse(d.bytes, d.w, d.rows, d.bits); } catch (e) { return null; }
   _stats.parsed++;
   _sheets.set(key, s);
-  while (_sheets.size > SHEET_CAP) _sheets.delete(_sheets.keys().next().value);
+  trimSheets();
   return s;
 }
 
@@ -80,12 +98,7 @@ export function gearNumbersCanvas(tex) {
   c.getContext('2d').putImageData(new ImageData(rgba, inp.cell.w, inp.cell.h), 0, 0);
   _stats.expanded++;
   _frames.set(fk, c);
-  while (_frames.size > FRAME_CAP) {
-    const k = _frames.keys().next().value;
-    const old = _frames.get(k);
-    _frames.delete(k);
-    try { old.width = 0; old.height = 0; } catch (e) { /* gone */ }
-  }
+  trimFrames();
   return c;
 }
 

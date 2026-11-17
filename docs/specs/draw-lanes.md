@@ -162,7 +162,8 @@ and no reader until then); a lane picked by facts beyond `thirty`.
   file), `?onebatch`, `?lookpalette`, and the passes' `?sheenpass`,
   `?shadowpass`, `?nowaves`, and the knobs' other switches (`?sheen`,
   `?lightfx`, `?waves`, `?stripslice` with `?stripgentle`: the sitting 25
-  gatekeeper). A move changes no address's meaning: the
+  gatekeeper; v2.3.5231: `?sheen` and `?lightfx` by the old pattern on the
+  value, so `=0.5` still reads `0`). A move changes no address's meaning: the
   switches are held to their old tests by `switch-reader.test` (MOVED), the
   values by `off-ramps.test` §3. The functions keep their `search` argument
   (the tests' address, read by its own reader); none given, the page's.
@@ -183,3 +184,41 @@ and no reader until then); a lane picked by facts beyond `thirty`.
   `framePaceOn(window.location.search)` (the same answer, by its argument)
   and the look probes' `lookpalette=1|lookprobe` reads (QA, not off-ramps).
 - `docs/LANES.md` lists the off-ramps under the overrides.
+
+## The memory's axis and the caches (v2.3.5231, card O PR 11, step 2.3)
+
+"A full memory frees caches and crowd, never resizes."
+
+- **The count is the game's own**: the report's `mem` (the art from files,
+  the chip's textures, the decoded sound, MB), handed to the pacer by
+  `debug/report.js` (`useMemCount`), read at most every 5 s. **Full** when
+  any is over the memory check's line for it: `framePacer.js` `MEM_LINES`, a
+  copy of `tools/qa/mp/memory-budget.mjs` `MEMORY_BUDGET` (artCache, gpu,
+  sound) held equal by `frame-pacer.test` §23a; never a number of its own.
+- v2.3.5681 (the planner's, after sitting 27): **not the sound** -- no rung
+  lowers it, so a sound over its line held players hidden for nothing (a
+  sound rung of its own is later work). The count is read only while the
+  governor judges, and a memory rung waits 35 s after the last
+  (`MEM_SETTLE_MS`: past the masked frames' 30 s deferred destroy).
+- **The planner's choice (2026-11-17): the art and sound lines everywhere;
+  the chip's only on a phone or a tablet** (no fine pointer,
+  `deviceProfile.js` `fineInput`). A computer's screen-sized pictures are no
+  fault, and the judges play on computers: the count hands in no chip there.
+- **The planner's choice: the memory's own axis** (`AXES.mem`): the caches
+  to half, then the crowd's two rungs (the crowd is the work axis's too; a
+  knob takes the deeper of its axes). A full memory steps it, never the
+  chip's or the work's, so a late frame never halves a cache. A memory rung
+  is the sitting's own: never kept for the next.
+- **The caches' knob** (`caches`, `[1, 0.5]`), read where a cap frees memory:
+  the walking armour's sheets and frames (`gearNumbers.js`, 4 and 24) and
+  the masked body frames (`maskedEvict.js` for `entityRenderer.js`'s cache,
+  900). A rung taken trims at once (`onKnob`): the least recently used go
+  (for the masked frames, of any armour but yours, each destroyed 30 s on so
+  a sprite still showing one re-points first); one drawn again is made
+  again. Given back, each cap is its own. Nothing the loading screen loads
+  is let go: neither cache is filled there.
+- **Not here**: `lookPalette.js` `DIR_CAP` (the atlas's 8 KB directory:
+  fewer slots free nothing and would send later sheets to a texture each)
+  and `cacheBytes.js` (the art line's counting rule, no cap), though the card
+  named them. The rest of `docs/BUDGETS.md` part 3's caches wait (card O's
+  status, Next): card M reworks the renderers that hold most of them.

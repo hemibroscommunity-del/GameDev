@@ -25,15 +25,17 @@
  *     reader refuses another character's.
  * `?tabid=0` is the one-phone off-ramp: the old road, as it was.
  *
- * No imports: node tests it (server/test/tab-identity.test.mjs).  The
+ * No imports but the page's one reader (itself import-free): node tests it
+ * (server/test/tab-identity.test.mjs).  The
  * networking module passes its own `idOf` (idForKey) and `isNew` (isNewKey).
  */
+import { pageAddress } from './switches.js';   /* v2.3.5311: the page's one read of its address (card T) */
 
 /** `?tabid=0`: this phone takes the old road (the shared slot at every join). */
 export function tabIdOff(search) {
   try {
     let s = search;
-    if (s === undefined) s = typeof location !== 'undefined' ? location.search : '';
+    if (s === undefined) s = pageAddress();
     return /[?&]tabid=0\b/.test(s || '');
   } catch (e) { return false; }
 }

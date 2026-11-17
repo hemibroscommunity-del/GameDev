@@ -81,3 +81,27 @@ off, one while on.
 
 `server/test/req-once.test.mjs`, and its break proof (the market's place with
 the id ignored sells the next weapon); `cost-guard.test` §22.
+
+## 5195: every other value request, at the wire door (v2.3.5195)
+
+Card K PR 10. The other 31 socket rows a player may start whose `doesWhat`
+holds `value-out` or `final` (a weapon sold or forged, a cook, a gamble, a
+shop's buy and sell, a trade's staged weapon, a report...) read `reqId`
+through ONE step, not 31 handlers: the wire door (`wire/door.js`
+`_wireDoor`, after its checks) asks `reqonce.js` `_reqOnceDoor`. A message
+whose id the player sent before (the sitting's memory, `_reqSeen`) reaches no
+handler and is answered the player's state again (every field, not the
+delta): what these rows change. The first is remembered before its handler
+runs: a socket's messages run one at a time, so its repeat finds it whatever
+the first's outcome.
+
+- The rows that keep their own record and answer (5194: the bank's two, the
+  chest, the cape, the spin, the auction house's three offers) are left to
+  them (`REQ_OWN`); the door's list is made from the table (`reqDoorTypes`).
+- Left `none`, with its reason (`req-once-door.test` §4): the account
+  reset's route, which knows no player until it has read the phrase.
+- It sits behind the wire door: `wiredoor: false` or `reqonce: false` turns
+  it off.
+
+`server/test/req-once-door.test.mjs` holds it (its break proof in its header).
+

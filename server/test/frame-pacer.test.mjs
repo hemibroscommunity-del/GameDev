@@ -507,11 +507,14 @@ _liveKnobs(KNOB_NAMES);   /* v2.3.5224: §13 to §16, the whole ladder (above) *
   const g = makeGovernor({ on: true, store: memStore() });
   g.veil(0);
   const was = KNOB_NAMES.map((k) => knobAt('full', k, ladderRung()));
-  for (let i = 0; i < 12; i++) g.verdict(0, 1000 * (i + 1), { axis: 'chip', atFloor: true, memFull: true });
+  /* v2.3.5681: a memory rung waits MEM_SETTLE_MS after the last (40 s apart here) */
+  for (let i = 0; i < 12; i++) g.verdict(0, 40000 * (i + 1), { axis: 'chip', atFloor: true, memFull: true });
   const st = g.read();
-  check(`15. a full memory steps the work axis (the crowd), never the chip's: ${st.steps.map((x) => x.axis + ' ' + x.knobs.join('+')).join(', ')}`,
-    st.steps.length >= 2 && st.steps.every((x) => x.axis === 'work') && st.chip === 0 && knobAt('full', 'pixels', ladderRung()) === was[KNOB_NAMES.indexOf('pixels')], st);
-  check('15. ...and no work rung is a pixel rung (a full memory frees, never resizes)', AXES.work.every((r) => r.knob !== 'pixels'));
+  /* v2.3.5231 (card O PR 11; the planner's): the memory's own axis -- the caches, then the crowd */
+  check(`15. a full memory steps the memory's own axis (the caches, then the crowd), never the chip's or the work's: ${st.steps.map((x) => x.axis + ' ' + x.knobs.join('+')).join(', ')}`,
+    st.steps.length === 3 && st.steps.every((x) => x.axis === 'mem') && st.steps.map((x) => x.knobs.join('+')).join() === 'caches,crowd,crowd' && st.chip === 0 && st.work === 0
+    && knobAt('full', 'pixels', ladderRung()) === was[KNOB_NAMES.indexOf('pixels')] && knobAt('full', 'caches', ladderRung()) === 0.5, st);
+  check('15. ...and no memory rung is a pixel rung (a full memory frees, never resizes)', AXES.mem.every((r) => r.knob !== 'pixels') && AXES.mem.map((r) => r.knob).join() === 'caches,crowd,crowd');
   _resetLanes();
 }
 /* 16 */
@@ -569,7 +572,7 @@ _liveKnobs(null);   /* v2.3.5224: from here, today's live knobs */
   const writes = [...dl.matchAll(/\b_rung\s*=(?!=)/g)].length;
   check('17. ...and the rung (`LANE._rung`) is written in setRung, and reset for the tests (_resetLanes), nowhere else', writes === 2
     && /const LANE = \{ _rung: ROW \};/.test(dl)
-    && /export function setRung\([^)]*\) \{[\s\S]*?LANE\._rung = w === 0 && c === 0 && p === 0 \? ROW : Object\.freeze/.test(dl) && /export function _resetLanes\(\) \{[^}]*LANE\._rung = ROW;/.test(dl), writes);
+    && /export function setRung\([^)]*\) \{[\s\S]*?LANE\._rung = w === 0 && c === 0 && p === 0 && m === 0 \? ROW : Object\.freeze/.test(dl) && /export function _resetLanes\(\) \{[^}]*LANE\._rung = ROW;/.test(dl), writes);
   const fp = strip(readFileSync(join(ROOT, 'src/game/framePacer.js'), 'utf8'));
   /* v2.3.5235: and the owner's switch's list (clientOff.js), a leaf too */
   const co = strip(readFileSync(join(ROOT, 'src/game/clientOff.js'), 'utf8'));
@@ -895,6 +898,60 @@ _liveKnobs(null);   /* v2.3.5224: from here, today's live knobs */
      axis alone on the work's verdict), so nothing but the rate is given back */
   check(`22c. ...and cooled with 10 near, back at the row in ONE try (${ups.length} up), no try spent on a crowd step (every ${cooled.every})`,
     ups.length === 1 && cooled.end.depth === 0 && cooled.end.work === 0 && cooled.every === 1, { steps: cooled.steps, end: cooled.end });
+}
+
+/* ── 23. v2.3.5231 (card O PR 11): THE MEMORY'S VERDICT AND THE CACHES ──
+   The pacer's lines are the memory check's (a copy, held here); a count over
+   one is a full memory; the chip's count is judged only where it is handed
+   in (a phone or a tablet: debug/report.js); the two caches' caps are a
+   share of their own and a rung taken trims them at once.
+   BREAKS (rule 8), tried by hand once, 2026-11-17:
+     - MEM_LINES' artCache 79.3 made 80                    -> FAIL 23a
+     - report.js's `fineInput() ? null :` taken out      -> FAIL 23c
+     - maskedEvict.js trimMasked's `maskedCap(cap)` made `cap` -> FAIL 23d */
+{
+  const { MEMORY_BUDGET } = await import('../../tools/qa/mp/memory-budget.mjs');
+  const FP = await import('../../src/game/framePacer.js');
+  check('23a. the pacer\'s memory lines are the memory check\'s (artCache, gpu; v2.3.5681 not sound: no rung lowers it): a copy, never a number of its own',
+    FP.MEM_LINES.artCache === MEMORY_BUDGET.artCache.mb && FP.MEM_LINES.gpu === MEMORY_BUDGET.gpu.mb && Object.keys(FP.MEM_LINES).join() === 'artCache,gpu', { pacer: FP.MEM_LINES });
+  const L = FP.MEM_LINES;
+  check('23b. a count over a line is a full memory; the chip\'s count is judged only when handed in (a computer hands in none); v2.3.5681: the sound never (no rung lowers it)',
+    !FP.memOver([L.artCache, L.gpu, 0]) && FP.memOver([L.artCache + 1, 0, 0]) && !FP.memOver([0, 0, 999]) && FP.memOver([0, L.gpu + 1, 0])
+    && !FP.memOver([0, null, 0]) && !FP.memOver(null));
+  const rp = readFileSync(join(ROOT, 'src/debug/report.js'), 'utf8');
+  check('23c. debug/report.js hands its count in: the report\'s three reads, the chip\'s only with no fine pointer (a phone or a tablet)',
+    /try \{ useMemCount\(memCount\); \}/.test(rp) && /const g = fineInput\(\) \? null : \(window\.__btGpuTex && window\.__btGpuTex\(\)\);/.test(rp));
+  /* v2.3.5681 (the gatekeeper's sitting 27): the count is read only while the governor judges; memory rungs wait MEM_SETTLE_MS */
+  const fpSrc = readFileSync(join(ROOT, 'src/game/framePacer.js'), 'utf8');
+  check('23g. the pacer reads the memory\'s count only while the governor judges (on, a lane, not switched off): a phone with it off never walks the chip\'s textures',
+    /memFull: \(!gov\.judging \|\| gov\.judging\(\)\) && memFull\(ts\)/.test(fpSrc) && /judging\(\) \{ return on && lane != null && !switchedOff\(\); \}/.test(fpSrc));
+  {
+    _resetLanes();
+    const g = makeGovernor({ on: true, store: memStore() });
+    g.veil(0);
+    for (let i = 0; i < 12; i++) g.verdict(0, 1000 * (i + 1), { axis: 'chip', atFloor: true, memFull: true });
+    const one = g.read().mem;
+    for (let i = 0; i < 4; i++) g.verdict(0, 2000 + FP.MEM_SETTLE_MS + 1000 * i, { axis: 'chip', atFloor: true, memFull: true });
+    const two = g.read().mem;
+    check('23h. a memory rung waits MEM_SETTLE_MS (past the 30 s deferred destroy) after the last: 12 s of a full memory take one, the next only after the wait', FP.MEM_SETTLE_MS > 30000 && one === 1 && two === 2, { one, two });
+    _resetLanes();
+  }
+  const ME = await import('../../src/rendering/maskedEvict.js');
+  const DL = await import('../../src/game/drawLanes.js');
+  _resetLanes();
+  const cache = new Map(); for (let i = 0; i < 900; i++) cache.set('u' + i + '|x|6', i);
+  const dropped = [];
+  DL.setRung(0, 0, 0, 1);   /* the memory axis's first rung: the caches at half */
+  ME.trimMasked(cache, 900, () => cache.keys().next().value, (o) => dropped.push(o));
+  check('23d. on the memory axis\'s first rung the masked frames\' cap is half its own (450), the oldest let go', ME.maskedCap(900) === 450 && cache.size === 450 && dropped.length === 450 && dropped[0] === 0, { size: cache.size });
+  let told = 0; ME.onCachesTrim(() => { told++; });
+  DL.setRung(0, 0, 0, 0); DL.setRung(0, 0, 0, 1);
+  check('23e. a rung taken or given back tells the caches at once (onKnob), and given back the cap is its own', told === 2 && (DL.setRung(0, 0, 0, 0), ME.maskedCap(900) === 900), { told });
+  const gn = readFileSync(join(ROOT, 'src/rendering/gearNumbers.js'), 'utf8');
+  check('23f. the walking armour\'s sheets and frames (gearNumbers.js) keep a share of their caps and trim when told',
+    /const sheetCap = \(\) => Math\.max\(1, Math\.round\(SHEET_CAP \* _share\(\)\)\);/.test(gn) && /const frameCap = \(\) => Math\.max\(1, Math\.round\(FRAME_CAP \* _share\(\)\)\);/.test(gn)
+    && /onKnob\('caches', \(\) => \{ trimSheets\(\); trimFrames\(\); \}\)/.test(gn));
+  _resetLanes();
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);

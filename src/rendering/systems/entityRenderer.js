@@ -125,7 +125,7 @@ import { gearTint, gearArt, gearMaterial, gearIdFor } from '../gearVariants.js';
 import { fullsetCoversBake as _fullsetCoversBake, beltHoldsJog } from '../beltHold.js';   /* v2.3.5560: the chain belt's stand-in, the idle frame */
 import { materialTint, weaponTint } from '../traits/materialTints.js'; /* v2.3.1757: weapons share the metals table */
 import { getEquip, onEquipChange, isWearingArmor } from '../gearCatalog.js'; /* v2.3.1407: GEAR_CATALOG import dropped with the speculative all-states prewarm */
-import { wornSigOf, pickEvictKey } from '../maskedEvict.js';   /* v2.3.3704: the armour you wear is the last to go */
+import { wornSigOf, pickEvictKey, maskedCap, trimMasked, onCachesTrim } from '../maskedEvict.js';   /* v2.3.3704: the armour you wear is the last to go */
 import { storeFishTop, holdFishTop, releaseFishTop } from '../fishTopEvict.js';   /* v2.3.4157: a fishing overlay pushed out is let go of for good */
 import { releaseCanvasSource } from '../releaseCanvasTexture.js';   /* v2.3.4157: ...its Cache entry and canvas too (TRAPS §139) */
 import { footstepSurface, groundStepAt } from '@/game/worldTrial.js';   /* v2.3.2967: each ground its own footstep (the Wheel); v2.3.3343: + under another player's boots */
@@ -3119,6 +3119,24 @@ const _maskedBodyCache = new Map();
 const MASKED_CAP = 900;
 const _localWornSig = () => wornSigOf(getEquip('chest'), getEquip('legs'));
 const _maskedEvictKey = () => pickEvictKey(_maskedBodyCache.keys(), _localWornSig());
+    /* v2.3.780: destroy DEFERRED, not immediate.  destroy(true) nuked the
+       TextureSource the moment an entry was evicted -- and a REMOTE
+       player's join-bake burst (~144 frames) is exactly what pushes the
+       cache over cap, so eviction could land on a frame a local sprite
+       was still displaying.  Worst case is the STAND pose: one frame,
+       never reassigned, so the sprite kept rendering the destroyed
+       texture forever ('my character's face/body got erased when the
+       other session joined').  After 30s an evicted frame is either
+       genuinely cold (dies quietly) or has long since re-baked under a
+       fresh texture and every sprite has re-pointed. */
+const _maskedDrop = (old) => setTimeout(() => {
+      /* v2.3.2872: a cropped frame is a Texture over a Cache-held source, so
+         destroying it does not clear that Cache entry -- do it here, or every
+         eviction leaves its canvas reachable */
+      try { const r = old.source && old.source.resource; if (r && Assets.cache.has(r)) Assets.cache.remove(r); } catch (e) { /* ignore */ }
+      try { old.destroy(true); } catch (e) { /* ignore */ }
+    }, 30000);
+onCachesTrim(() => trimMasked(_maskedBodyCache, MASKED_CAP, _maskedEvictKey, _maskedDrop));   /* v2.3.5231: a memory rung taken trims at once */
 let _spareSkipped = 0;   /* spare-set frames not baked for want of room (QA: __btLocalMisses) */
 /* ═══ v2.3.2871: THE BAKE, FASTER AND BYTE-FOR-BYTE THE SAME ═══
    Owner: "whenever I put on a piece of armor like legs or torso the game
@@ -3802,7 +3820,7 @@ if (typeof window !== 'undefined') {
     const sig = _localWornSig();
     let worn = 0;
     for (const k of _maskedBodyCache.keys()) { const t = String(k); if (t.slice(t.indexOf('|') + 1, t.lastIndexOf('|')) === sig) worn++; }
-    return { misses: _localMisses.slice(), cachedUids: uids, size: _maskedBodyCache.size, cap: MASKED_CAP, worn, spareSkipped: _spareSkipped };
+    return { misses: _localMisses.slice(), cachedUids: uids, size: _maskedBodyCache.size, cap: maskedCap(MASKED_CAP), worn, spareSkipped: _spareSkipped };
   };
   /* v2.3.3577: QA (mp-armourflash) -- of every frame your bro can be drawn
      in under what you wear (each prewarmed pose, all EIGHT facings, the three
@@ -4161,27 +4179,7 @@ function _storeBake(key, dc, _beltPending, _bt0, _bs, cell) {
      let go of is the least recently drawn frame of any OTHER armour
      (_maskedEvictKey), and the sets one equip away are baked only into room
      the cache has (prewarmAltWornSets). */
-  while (_maskedBodyCache.size > MASKED_CAP) {
-    const k0 = _maskedEvictKey();
-    const old = _maskedBodyCache.get(k0); _maskedBodyCache.delete(k0);
-    /* v2.3.780: destroy DEFERRED, not immediate.  destroy(true) nuked the
-       TextureSource the moment an entry was evicted -- and a REMOTE
-       player's join-bake burst (~144 frames) is exactly what pushes the
-       cache over cap, so eviction could land on a frame a local sprite
-       was still displaying.  Worst case is the STAND pose: one frame,
-       never reassigned, so the sprite kept rendering the destroyed
-       texture forever ('my character's face/body got erased when the
-       other session joined').  After 30s an evicted frame is either
-       genuinely cold (dies quietly) or has long since re-baked under a
-       fresh texture and every sprite has re-pointed. */
-    setTimeout(() => {
-      /* v2.3.2872: a cropped frame is a Texture over a Cache-held source, so
-         destroying it does not clear that Cache entry -- do it here, or every
-         eviction leaves its canvas reachable */
-      try { const r = old.source && old.source.resource; if (r && Assets.cache.has(r)) Assets.cache.remove(r); } catch (e) { /* ignore */ }
-      try { old.destroy(true); } catch (e) { /* ignore */ }
-    }, 30000);
-  }
+  trimMasked(_maskedBodyCache, MASKED_CAP, _maskedEvictKey, _maskedDrop);   /* v2.3.5231: at the cap the lanes' `caches` knob leaves (maskedEvict.js; card O PR 11) */
   return t;
 }
 
@@ -4715,7 +4713,7 @@ export async function prewarmAltWornSets(opts) {
              set's, before _maskedEvictKey, and now another spare's, a bake
              thrown away for a bake.  A spare frame not baked is baked when
              that piece goes on, as before v2.3.2873. */
-          if (spare && _maskedBodyCache.size >= MASKED_CAP && !_maskedBodyCache.has(_maskedKey(tex, worn, 6))) { _spareSkipped++; continue; }
+          if (spare && _maskedBodyCache.size >= maskedCap(MASKED_CAP) && !_maskedBodyCache.has(_maskedKey(tex, worn, 6))) { _spareSkipped++; continue; }
           /* ═══ v2.3.2904: THE PACES WERE SET FOR A BAKE ON THIS THREAD ═══
              The trickle's gaps (v2.3.699: two bakes per idle slice, 90 ms
              apart; v2.3.2873's `soon`: one per two frames) were measured
@@ -5425,7 +5423,6 @@ if (typeof window !== 'undefined') {
   };
 }
 function _orderHairOverHat(display, hatId) {
-  _lastHairDisplay = display;
   const hair = display && display._hairSprite;
   const hat = display && display._headwearSprite;
   if (!hair || !hat || !hair.parent || hair.parent !== hat.parent) return;
@@ -15363,7 +15360,7 @@ export class EntityRenderer {
         _placeSpecies(display, getSpecies(), getSkin(), pose, dir, mirror, frameIdx, bodyScale);   /* v2.3.2682: under the eye style */
         _placeEyeStyle(display, getEyeStyle(), getEyeColor(), pose, dir, mirror, frameIdx, bodyScale);   /* v2.3.2643: under the eyewear; v2.3.2645: + the eye colour */
         _placeEyewear(display, getEyewear(), getEyewearColor(), pose, dir, mirror, frameIdx, bodyScale);   /* v2.3.2361; v2.3.2424 + colour */
-        _placeHair(display, getHair(), getHairColor(), getHeadwear(), pose, dir, mirror, frameIdx, bodyScale);
+        _placeHair(display, getHair(), getHairColor(), getHeadwear(), pose, dir, mirror, frameIdx, bodyScale); _lastHairDisplay = display;   /* v2.3.5571: the probes read the LOCAL player's hair, not the last figure drawn (a peer or a townsperson drawn after read all-false) */
         _crownOverride = null;
         _watchOwnHead(display, pose, dir, mirror);   /* v2.3.3689: a piece hidden where it ships, asked for again and logged */
         if (HEAD_FRAMES_ON) display._btHeadAt = { pose, dir, mirror, frameIdx };   /* v2.3.3860: the head-frame count's context (headFrames.js, `?headframes` only) */

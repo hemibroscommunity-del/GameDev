@@ -5,6 +5,7 @@ import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { weaponPillAnchor, WPILL, ctlBottom, RBTN, LBTN, discRight, discBottom, sprintAnchor, jumpAnchor, blockAnchor,
   ctlColumn, CTL_SLOT, rightCluster, RCTL_SLOT, leftCluster, LCTL_SLOT } from './ShieldButton.jsx';
 import { WPN_PILL_ICONS } from './controlSkin.jsx';
+import { pageAddress } from '../../game/switches.js';   /* v2.3.5311: the page's one read of its address (card T) */
 
 /* ═══ v2.3.4130: THE WEAPON PILL, CENTRED AT THE FOOT OF THE WORLD ═══
  *
@@ -64,7 +65,7 @@ function tapMaxMs() {
   if (_qaTapMs !== undefined) return _qaTapMs;
   _qaTapMs = TAP_MAX_MS;
   try {
-    const m = /(?:^|[?&])tapms=(\d+)/.exec((typeof window !== 'undefined' && window.location && window.location.search) || '');
+    const m = /(?:^|[?&])tapms=(\d+)/.exec(pageAddress());
     if (m) _qaTapMs = Math.max(200, Math.min(10000, +m[1]));
   } catch (e) { /* no window */ }
   return _qaTapMs;

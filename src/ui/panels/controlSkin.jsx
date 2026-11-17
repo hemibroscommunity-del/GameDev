@@ -1,5 +1,6 @@
 import React from 'react';
 import { metalIconPath, weaponMaterial } from '../../rendering/traits/materialTints.js';
+import { pageAddress } from '../../game/switches.js';   /* v2.3.5311: the page's one read of its address (card T) */
 
 /* ═══ v2.3.3018: ONE SKIN FOR EVERY TOUCH CONTROL ═══
  *
@@ -542,7 +543,7 @@ const JUMP_MARKS = {
 };
 export function jumpGlyphKind(search) {
   try {
-    var q = search != null ? search : ((typeof window !== 'undefined' && window.location && window.location.search) || '');
+    var q = search != null ? search : pageAddress();
     var m = /(?:^|[?&])jumpicon=([a-z]+)/.exec(q);
     /* v2.3.4130: no ?jumpicon= is the owner's leaping figure, a picture
        (ICON_URL.jump; JumpButton), so null; a drawn mark only when asked */

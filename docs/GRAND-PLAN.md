@@ -295,6 +295,10 @@ way: build the table from what exists, add the test, move no behaviour.
   `self`. Open, no card: `bt-palette-hairclip` and the stencil have no
   self-test of their own (review-z24) (the gatekeeper, sitting 25, tag
   5663).*
+  *O's #1977 (5680: #1952's lows said: the clip's `_selfOff` a ledger row,
+  the self-test's words), merged at sitting 26. Still open, no card:
+  `bt-palette-hairclip` and the stencil's own self-test (the gatekeeper,
+  sitting 27, tag 5665).*
 
 **Done when** a session answers "how does it run on X" from the table.
 Every step that needs field numbers says how many reports from how many
@@ -359,9 +363,18 @@ devices it waits for: with one player, the table is empty for weeks.
   the memory's rung (O's PR 11) (the gatekeeper, sitting 18, tag 5375).*
 - [ ] **2.4 [NEXT] Off-ramps become overrides of the ladder**, through one
   reader (pillar 7's table).
+  *Begun (card O): #1970 (5232: the lanes' off-ramps, `?sheen`,
+  `?lightfx`, `?waves`, `?stripslice`, read only through `switches.js`;
+  `?lane=` holds the ladder), merged at sitting 26. The box waits for the
+  rest of the knobs' reads (card T's moves, then O's) (the gatekeeper,
+  sitting 27, tag 5665).*
 - [ ] **2.5 [NEXT] The 30 lane** (an iPhone in Low Power Mode): named by the
   pacer, the step's cap set by lane (today 50 ms, which at 30 turns one
   missed refresh into slow motion). To confirm with 1.1.
+  *Begun (card O): #1974 (5233: the thirty lane's step, `_combatDt` capped
+  at 3 for every projectile, the dash its own step cap; `?dtsmooth=0` the
+  old clamp), merged at sitting 26. The box waits for 1.1's numbers from a
+  Low Power iPhone (the gatekeeper, sitting 27, tag 5665).*
 
 **Done when** no name of a system or browser decides a quality choice
 outside the profile.

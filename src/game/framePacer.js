@@ -198,7 +198,7 @@ export function makeFramePacer(opts) {
     /* v2.3.5222: then the ladder, on the same verdict (THE GOVERNOR): it
        steps down only once this screen's own rate is at its floor, and never
        on a verdict the rate itself stepped on (one step a verdict) */
-    gov.verdict(share, ts, { refresh, every, atFloor: every >= most, rateMoved: changes !== was });
+    gov.verdict(share, ts, { refresh, every, atFloor: every >= most, rateMoved: changes !== was, memFull: (!gov.judging || gov.judging()) && memFull(ts) });   /* v2.3.5231: the memory's count (card O PR 11); v2.3.5681 read only while the governor judges */
     readRate();   /* v2.3.5224: the rung may have moved the rate */
   };
   return {
@@ -332,6 +332,39 @@ export function governOn(search) {
    walks the samples recorded after fromT and returns the newest's time;
    busyIn the busy beat's (`?perf=1`), or none */
 let _samples = null, _busyIn = null;
+/* ═══ v2.3.5231 (card O PR 11): THE MEMORY'S VERDICT ═══
+   The game's own count -- the report's `mem` [art from files, the chip's
+   textures, decoded sound] in MB, handed in (useMemCount: debug/report.js;
+   no import into the pacer) -- over the memory check's lines for each.
+   MEM_LINES is a COPY of tools/qa/mp/memory-budget.mjs MEMORY_BUDGET's
+   (artCache, gpu; v2.3.5681 not sound: no rung lowers it), held equal by frame-pacer.test §23: never a number
+   of its own.  The planner's, 2026-11-17: the art and sound lines
+   everywhere; the chip's only where deviceProfile.js says a phone or a
+   tablet (a computer's screen-sized pictures are no fault: the counter hands
+   in no chip count there).  Read at most every MEM_READ_MS. */
+export const MEM_LINES = Object.freeze({ artCache: 79.3, gpu: 115 });
+export const MEM_READ_MS = 5000;
+/* v2.3.5681 (the gatekeeper's sitting 27): the wait between memory rungs,
+   past the masked frames' 30 s deferred destroy (maskedEvict.js) */
+export const MEM_SETTLE_MS = 35000;
+let _memCount = null, _memAt = -Infinity, _memWas = false;
+/** debug/report.js hands its count here: fn() -> [tex, gpu or null, snd] MB. */
+export function useMemCount(fn) { _memCount = typeof fn === 'function' ? fn : null; _memAt = -Infinity; }
+/** Is any count over its line?  [tex, gpu, snd]; a null gpu is not judged. */
+export function memOver(m) {
+  if (!Array.isArray(m)) return false;
+  /* v2.3.5681 (the planner's): not the sound -- no rung lowers it (a sound
+     rung of its own is later work: card O's status) */
+  return m[0] > MEM_LINES.artCache || (m[1] != null && m[1] > MEM_LINES.gpu);
+}
+function memFull(ts) {
+  if (!_memCount) return false;
+  if (ts - _memAt < MEM_READ_MS) return _memWas;
+  _memAt = ts;
+  try { _memWas = memOver(_memCount()); } catch (e) { _memWas = false; }
+  return _memWas;
+}
+
 /** debug/perfTracker.js hands its ring here: no import into the pacer. */
 export function useFrameSamples(each, busyIn) {
   _samples = typeof each === 'function' ? each : null;
@@ -404,6 +437,7 @@ export function makeGovernor(opts) {
   const store = o.store !== undefined ? o.store : _pageStore();
   let lane = null;              /* the lane its rung is kept for; null: none loaded yet (a veil loads it) */
   let bad = 0, trial = false, wasUp = false, changedAt = 0, upWait = UP_WAIT_MS;
+  let memAt = -Infinity;        /* v2.3.5681: the last memory rung taken (MEM_SETTLE_MS) */
   let stack = [];               /* the axes stepped down, in order: a try up undoes the last */
   let pending = null;           /* a step that moves the pixels, waiting for a veil: { axis, dir, hides } */
   let fromT = -Infinity;        /* the samples already judged */
@@ -428,7 +462,7 @@ export function makeGovernor(opts) {
      live change are let go (rungDepth's count, and a try up that has
      something to undo) */
   const trim = (r) => {
-    const t = { work: r.work | 0, chip: r.chip | 0, pixels: r.pixels | 0 };
+    const t = { work: r.work | 0, chip: r.chip | 0, pixels: r.pixels | 0, mem: r.mem | 0 };   /* v2.3.5231: the memory's axis */
     for (const a of AXIS_NAMES) while (t[a] > 0 && same(vec(t), vec({ ...t, [a]: t[a] - 1 }))) t[a]--;
     return t;
   };
@@ -452,12 +486,12 @@ export function makeGovernor(opts) {
   const apply = (to, axis, dir, ts) => {
     const before = vec(ladderRung());
     const t = trim(to);
-    setRung(t.work, t.chip, t.pixels);
+    setRung(t.work, t.chip, t.pixels, t.mem);
     const after = vec(ladderRung());
     const knobs = liveKnobs().filter((k, i) => before[i] !== after[i]);
     if (dir < 0) stack.push(axis);
     else { const i = stack.lastIndexOf(axis); if (i >= 0) stack.splice(i, 1); }
-    steps.push({ t: ts, axis, dir, knobs, work: t.work, chip: t.chip, pixels: t.pixels });
+    steps.push({ t: ts, axis, dir, knobs, work: t.work, chip: t.chip, pixels: t.pixels, mem: t.mem });
     if (steps.length > STEPS_KEPT) steps.shift();
     stepsN++;
     changedAt = ts;
@@ -510,8 +544,8 @@ export function makeGovernor(opts) {
        after a hot sitting (sitting 11's hold, live rungs this time).  Still
        hot, the passes are taken again within the sitting (~2 s a step
        down).  §19c holds as written. */
-    const t = trim({ work: Math.max(0, Math.min(AXES.work.length, Math.floor(Number(w) || 0))), chip: Math.max(0, Math.min(CHIP_KEPT, Math.floor(Number(c) || 0))), pixels: 0 });
-    setRung(t.work, t.chip, t.pixels);
+    const t = trim({ work: Math.max(0, Math.min(AXES.work.length, Math.floor(Number(w) || 0))), chip: Math.max(0, Math.min(CHIP_KEPT, Math.floor(Number(c) || 0))), pixels: 0, mem: 0 });   /* v2.3.5231: a memory rung is the sitting's own, never kept */
+    setRung(t.work, t.chip, t.pixels, 0);
     const r = ladderRung();
     stack = [];
     if (r.work > 0) stack.push('work');
@@ -528,12 +562,12 @@ export function makeGovernor(opts) {
   const rest = (ts, veil) => {
     pending = null; bad = 0; trial = false; wasUp = false; upWait = UP_WAIT_MS;
     const r = ladderRung();
-    const row = { work: 0, chip: 0, pixels: 0 };
-    if (r.work === 0 && r.chip === 0 && r.pixels === 0) return;
+    const row = { work: 0, chip: 0, pixels: 0, mem: 0 };
+    if (r.work === 0 && r.chip === 0 && r.pixels === 0 && !(r.mem > 0)) return;
     /* v2.3.5225: the pixels are an axis of their own -- the work's and the chip's at once, the pixels' at a veil */
-    const to = veil || !movesPixels(r, row) ? row : { work: 0, chip: 0, pixels: r.pixels };
-    if (to.work === r.work && to.chip === r.chip && to.pixels === r.pixels) return;
-    apply(to, to.chip !== r.chip ? 'chip' : to.work !== r.work ? 'work' : 'pixels', +1, ts);
+    const to = veil || !movesPixels(r, row) ? row : { work: 0, chip: 0, pixels: r.pixels, mem: 0 };
+    if (to.work === r.work && to.chip === r.chip && to.pixels === r.pixels && to.mem === (r.mem | 0)) return;
+    apply(to, to.chip !== r.chip ? 'chip' : to.work !== r.work ? 'work' : to.mem !== (r.mem | 0) ? 'mem' : 'pixels', +1, ts);
     stack = ladderRung().pixels > 0 ? ['pixels'] : [];
   };
   /* the axis the late frames' time says, or null (no samples handed in) */
@@ -571,6 +605,9 @@ export function makeGovernor(opts) {
     /** The pacer's verdict: `share` of the frames late.  ctx: { refresh,
      *  every, atFloor (the screen's own rate can go no lower), rateMoved
      *  (the rate stepped on this verdict), memFull, axis (the tests') }. */
+    /** v2.3.5681: is it judging at all (on, a lane loaded, not switched off)?
+     *  The pacer reads the memory's count only then. */
+    judging() { return on && lane != null && !switchedOff(); },
     verdict(share, ts, ctx) {
       const c = ctx || {};
       if (!on || lane == null) return;
@@ -579,10 +616,10 @@ export function makeGovernor(opts) {
       let axis = c.axis !== undefined ? c.axis : axisNow(c.refresh, c.every);
       if (axis) lastAxis = axis;
       /* a full memory (card O PR 11's count): a bad verdict whose step is
-         the work axis's, never the chip's -- it frees, never resizes -- and
-         no try up while it lasts */
+         the memory's own axis (v2.3.5231: caches, then the crowd), never
+         the chip's -- it frees, never resizes -- and no try up while it lasts */
       const mem = !!c.memFull;
-      if (mem) axis = 'work';
+      if (mem) axis = 'mem';
       if (share > LATE_DOWN || mem) {
         if (pending && pending.dir > 0) pending = null;
         if (trial) {
@@ -593,7 +630,15 @@ export function makeGovernor(opts) {
         }
         if (++bad < DOWN_VERDICTS) return;
         bad = 0;
-        if (mem) { down('work', ts); return; }
+        if (mem) {
+          /* v2.3.5681 (the gatekeeper's sitting 27): a rung's frames are let go
+             30 s on (maskedEvict.js), so the count shows a trim only then: the
+             next memory rung waits MEM_SETTLE_MS, never stepping past what the
+             last one frees */
+          if (ts - memAt < MEM_SETTLE_MS) return;
+          if (down('mem', ts)) memAt = ts;
+          return;
+        }
         if (!c.atFloor || c.rateMoved) return;   /* the screen's own rate first: one step a verdict */
         /* v2.3.5225 (the gatekeeper's sitting 12): the axes in the order the
            late frames' split says -- the chip's, then the pixels' (behind a
@@ -626,7 +671,7 @@ export function makeGovernor(opts) {
       const r = ladderRung();
       let back = null;
       for (let i = stack.length - 1; i >= 0 && !back; i--) if (stack[i] !== 'pixels' && r[stack[i]] > 0) back = stack[i];
-      if (!back) back = r.chip > 0 ? 'chip' : r.work > 0 ? 'work' : r.pixels > 0 ? 'pixels' : null;
+      if (!back) back = r.chip > 0 ? 'chip' : r.work > 0 ? 'work' : r.mem > 0 ? 'mem' : r.pixels > 0 ? 'pixels' : null;
       if (!back || (pending && pending.axis === back)) return;   /* the pixels' try waits for its veil */
       const done = step(back, +1, ts, false);
       if (done === true) { trial = true; wasUp = true; }
@@ -634,7 +679,7 @@ export function makeGovernor(opts) {
     /** The strip, the report and QA. */
     read() {
       const r = ladderRung();
-      return { on, off: switchedOff(), held: _held, lane, work: r.work, chip: r.chip, pixels: r.pixels, depth: rungDepth(), pending: pending ? { ...pending } : null,
+      return { on, off: switchedOff(), held: _held, lane, work: r.work, chip: r.chip, pixels: r.pixels, mem: r.mem | 0, depth: rungDepth(), pending: pending ? { ...pending } : null,
         trial, upWait, bad, steps: steps.slice(), stepsN, axis: lastAxis, split: lastSplit };
     },
   };
