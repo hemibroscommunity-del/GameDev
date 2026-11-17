@@ -1,6 +1,6 @@
 card: Z
 branch: claude/plan-z-sitting-37
-prs: #ZPR (this PR), tag 5675, the last line of sitting 37's list (ready)
+prs: #2044 (this PR), tag 5675, the last line of sitting 37's list (ready)
 state: ready
 
 ## Done
@@ -15,7 +15,7 @@ state: ready
 3 SEC #2037 (5703, `disable_bigbags` never cuts what is stored; holds
 #2034) · 4 SEC #2038 (5704, a newer worker's fields kept; `newerkeep`,
 ON; holds #2037) · 5 K2 #2035 (5720, a body's size; `bodycap`, ON) ·
-6 L #2039 (5533, the fight's page door, ON) · 7 Z #ZPR (this PR). All
+6 L #2039 (5533, the fight's page door, ON) · 7 Z #2044 (this PR). All
 based on `main`, one base at every step. The worker deploys once.
 
 ## Held
