@@ -36,6 +36,11 @@ import { GEAR_STASH_CAP, GEAR_STASH_FIELDS, normalizeGearStashes, mergeStashList
 
 function makeState(store = new Map()) {
   const counts = { rpgPuts: 0 };
+  /* v2.3.5715 (card SEC PR 16): with `gearheld` on, the default, the join
+     takes no armour or legs claim at all (the worker keeps those two live).
+     This suite tests the claim door itself, so every room it opens plays it
+     open; gearheld.test is the gate's own. */
+  if (!store.has('liveflags')) store.set('liveflags', { gearheld: false });
   return {
     storage: {
       get: async (k) => store.get(k),
@@ -74,6 +79,7 @@ const room = new GameRoom(state, mockEnv);
    The pre-v2.3.3138 suite joined brand-new ids and relied on the first
    join reading the claim. */
 async function join(roomRef, ws, id, data, opts) {
+  await roomRef._liveFlagsEnsure();   /* v2.3.5715: reads makeState's gearheld seed (above) */
   roomRef.sessions.set(ws, { id: null, name: 'T', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now() });
   // Pre-settle the daily reward so credits don't shift blob contents
   // mid-assert (the suite convention since v2.3.1149).
@@ -195,6 +201,11 @@ const clientClaim = () => ({
      taken.  Held: 2x plate + 1x plate2, 1 shield.  Claimed: 6 plates, 2
      shields.  Surplus is 4 plates and 1 shield, never the sum. */
   const room3 = new GameRoom(makeState(state._store), mockEnv);
+  /* v2.3.5715 (card SEC PR 16): with `gearheld` on, the default, a captured
+     record takes no more armour or legs claims (the worker keeps those two
+     live); this section plays the open door it replaced (gearheld.test is
+     the new way's) */
+  await room3._liveFlagsEnsure(); room3._liveFlags.gearheld = false;
   const ws3 = fakeWs('greedy');
   await join(room3, ws3, 'bp_gs_a', {
     rpgArmorStash: [plate(), plate(), plate(), plate(), plate(), plate()],
@@ -394,6 +405,7 @@ const clientClaim = () => ({
   /* The gear that a LATER join brings is adopted rather than refused --
      this is the case a stamped, one-shot capture threw away. */
   const roomD5 = new GameRoom(makeState(vetStore), mockEnv);
+  await roomD5._liveFlagsEnsure(); roomD5._liveFlags.gearheld = false;   /* v2.3.5715: the open door (above) */
   await join(roomD5, fakeWs('newpiece'), 'bp_gs_vet',
     { rpgArmorStash: [plate(), plate(), plate2(), { name: 'Iron Plate', gearBase: 'iron', tierMult: 3, tier: 't3' }] });
   check('a piece the server has never seen is still adopted on a later join',
@@ -419,6 +431,7 @@ const clientClaim = () => ({
     gearStashCaptured: true,
   });
   const roomG = new GameRoom(makeState(gradeStore), mockEnv);
+  await roomG._liveFlagsEnsure(); roomG._liveFlags.gearheld = false;   /* v2.3.5715: a captured record's claim, the open door (above) */
   await join(roomG, fakeWs('grade'), 'bp_gs_grade', { rpgArmorStash: [elite()] });
   const psG = roomG.playerState['bp_gs_grade'];
   check('a stripped grade is backfilled from the client\'s copy, not duplicated',

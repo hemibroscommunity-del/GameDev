@@ -8,7 +8,7 @@
  * flag `guarddoor: false` lifts that).  This suite:
  *
  *   1. the door's own rules: the ways, the stamp, the latch, a hostile way,
- *      no body, the switch; the phase (guardPhase);
+ *      no body, the switch; the phase (guardStateOf);
  *   2. A SECOND WRITER FAILS: a write of `.blocking`, `.blockStartT` or
  *      `._guardBrokenUntil` anywhere in server/src outside _guardTo (the
  *      sparring clone's birth and the tick's copy are the phase table's
@@ -22,7 +22,7 @@
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { GameRoom } from '../src/index.js';
-import { moveClaimMethods, GUARD_WAYS, guardPhase } from '../src/moveclaims.js';
+import { moveClaimMethods, GUARD_WAYS, guardStateOf } from '../src/moveclaims.js';
 
 let failures = 0, passes = 0;
 function check(name, cond, detail) {
@@ -62,9 +62,9 @@ function check(name, cond, detail) {
   check('1. guarddoor: true is the default', door._guardTo(ps, 'raise', 1) === false);
   const P = (o) => Object.assign({ blocking: false, blockStartT: 0, _guardBrokenUntil: 0 }, o);
   check('1. the phase: down, parry, raised, broken',
-    guardPhase(P({}), 1000, 250) === 'down' && guardPhase(P({ blocking: true, blockStartT: 900 }), 1000, 250) === 'parry'
-    && guardPhase(P({ blocking: true, blockStartT: 500 }), 1000, 250) === 'raised' && guardPhase(P({ blocking: true }), 1000, 250) === 'raised'
-    && guardPhase(P({ _guardBrokenUntil: 2000 }), 1000, 250) === 'broken' && guardPhase(null, 1000, 250) === 'down');
+    guardStateOf(P({}), 1000, 250) === 'down' && guardStateOf(P({ blocking: true, blockStartT: 900 }), 1000, 250) === 'parry'
+    && guardStateOf(P({ blocking: true, blockStartT: 500 }), 1000, 250) === 'raised' && guardStateOf(P({ blocking: true }), 1000, 250) === 'raised'
+    && guardStateOf(P({ _guardBrokenUntil: 2000 }), 1000, 250) === 'broken' && guardStateOf(null, 1000, 250) === 'down');
 }
 
 /* ── 2. no second writer ── */

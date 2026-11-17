@@ -135,7 +135,7 @@ export const GUARD_WAYS = Object.freeze({ raise: 'raised', lower: 'down', break:
 
 /* the phase a reader would name: broken (the latch), parry (raised, stamped,
    inside the window), raised, down */
-export function guardPhase(ps, now, parryMs) {
+export function guardStateOf(ps, now, parryMs) {
   if (!ps) return 'down';
   if (ps._guardBrokenUntil && now < ps._guardBrokenUntil) return 'broken';
   if (!ps.blocking) return 'down';

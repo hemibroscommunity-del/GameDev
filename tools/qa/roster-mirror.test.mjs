@@ -17,7 +17,10 @@
  *
  * Zero dependencies, same posture as server/test.  Deliberately not on the PR
  * path (owner directive, 2026-07-16): run it when touching charRoster.js or
- * rosterCookie.js. */
+ * rosterCookie.js.
+ * v2.3.5718 (card SEC PR 19): the roster's cookie is host-only now, so the
+ * cross-origin mirror played here is `?rostercookie=0`'s, the off-ramp; the
+ * host-only way is tools/guards/browser-secrets.test.mjs's. */
 let COOKIES = null;   /* the browser's jar, shared across "origins" */
 let LS = null;        /* per-origin localStorage */
 let HOST = '';
@@ -58,7 +61,7 @@ function setCookie(str) {
 function origin(host, freshStorage) {
   HOST = host;
   if (freshStorage || !LS) LS = new Map();
-  globalThis.location = { hostname: host, protocol: 'https:', search: '' };
+  globalThis.location = { hostname: host, protocol: 'https:', search: '?rostercookie=0' };   /* v2.3.5718: the wide mirror this suite plays is the off-ramp now (rosterCookie.js); browser-secrets.test is the host-only way */
   globalThis.document = { get cookie() { return jarStr(); }, set cookie(v) { setCookie(v); } };
   globalThis.localStorage = {
     getItem: k => (LS.has(k) ? LS.get(k) : null),

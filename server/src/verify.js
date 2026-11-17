@@ -35,7 +35,21 @@
  * TURNSTILE_VERIFY_URL is a test seam only: the QA scenario (mp-verify)
  * points it at a stand-in verifier on this machine.  Nothing in this repo
  * sets it for the real worker.
+ * v2.3.5714 (card SEC PR 15): and it is HONOURED ONLY FOR A LOCAL HOST
+ * (localhost, 127.x, ::1): set to any other address -- a dashboard variable
+ * pointed at a verifier that says yes to everything -- the room asks
+ * Cloudflare as ever, and the account check cannot be talked round by one
+ * setting.  KILL SWITCH `verifylocal: false`: any address honoured, as
+ * before.
  */
+/* v2.3.5714: is this the address of a verifier on this machine? */
+export function verifyUrlLocal(url) {
+  let u = null;
+  try { u = new URL(String(url)); } catch (e) { return false; }
+  if (u.protocol !== 'http:' && u.protocol !== 'https:') return false;
+  const h = u.hostname.replace(/^\[|\]$/g, '').toLowerCase();
+  return h === 'localhost' || h === '::1' || /^127(\.\d{1,3}){3}$/.test(h);
+}
 
 export const VERIFY = Object.freeze({
   URL: 'https://challenges.cloudflare.com/turnstile/v0/siteverify',
@@ -66,7 +80,10 @@ export const verifyMethods = {
    *  uses to tie the token to the connection. */
   async _verifyToken(token, ip) {
     if (typeof token !== 'string' || !token || token.length > VERIFY.TOKEN_MAX) return false;
-    const url = (this.env && typeof this.env.TURNSTILE_VERIFY_URL === 'string' && this.env.TURNSTILE_VERIFY_URL) || VERIFY.URL;
+    const seam = (this.env && typeof this.env.TURNSTILE_VERIFY_URL === 'string' && this.env.TURNSTILE_VERIFY_URL) || '';
+    const f = this._liveFlags;
+    const anyHost = !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'verifylocal') && !f.verifylocal);
+    const url = (seam && (anyHost || verifyUrlLocal(seam))) ? seam : VERIFY.URL;   /* v2.3.5714: the seam on this machine only */
     const body = new URLSearchParams();
     body.set('secret', String(this.env.TURNSTILE_SECRET));
     body.set('response', token);

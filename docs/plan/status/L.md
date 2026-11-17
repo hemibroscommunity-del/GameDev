@@ -1,6 +1,6 @@
 card: L
 branch: claude/plan-l-38-fight-door (from main)
-prs: #1746 to #2046 (merged), #2052, #2058, #2065, #2067 (5535-5538, stacked): ready
+prs: #1746 to #2052 (merged), #2058, #2065, #2067 (5536-5538, stacked): ready
 state: ready
 
 ## Done

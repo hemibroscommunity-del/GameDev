@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { debugBus } from './debugBus.js';
+import { blankStateValue, blankAtPath } from './blankSecrets.js';   /* v2.3.5713: the State tab shows no key or token */
 import { perfTracker } from './perfTracker.js';
 import { BUILD_INFO } from '../ui/BuildBadge.jsx';
 import { screenAngle, getDashSidePref } from '@/game/dashSidePref.js'; /* v2.3.2177: the side decision, readable on the phone */
@@ -144,6 +145,7 @@ const StatePanel = () => {
   let target = s;
   if (path && s) {
     for (const k of path.split('.').filter(Boolean)) target = target?.[k];
+    target = blankAtPath(path, target);
   }
   const render = (v, depth = 0) => {
     if (v == null) return <span style={{ color: '#888' }}>{String(v)}</span>;
@@ -158,7 +160,7 @@ const StatePanel = () => {
           <div key={k}>
             <span style={{ color: '#80cbc4' }}>{k}</span>
             <span style={{ opacity: .5 }}>: </span>
-            {render(vv, depth + 1)}
+            {render(blankStateValue(k, vv), depth + 1)}
           </div>
         ))}
         {Object.keys(v).length > 50 && <div style={{ color: '#888' }}>…+{Object.keys(v).length - 50} more</div>}

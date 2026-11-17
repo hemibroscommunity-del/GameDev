@@ -333,7 +333,7 @@ export async function waitForReceipt(txHash, opts = {}) {
 /** Pull nonce + fee data and broadcast. Returns {ok, txHash} | {ok:false,
  *  reason}.  Never throws into a caller: a chain outage is not a game bug. */
 export async function sendRecordScore({
-  playerId, skills, values, nonce, contract, priv, chainId, opts = {},
+  playerId, skills, values, nonce, contract, priv, chainId, opts = {}, feeMaxWei,
 }) {
   try {
     if (!Array.isArray(skills) || !skills.length) return { ok: false, reason: 'no-skills' };
@@ -354,6 +354,15 @@ export async function sendRecordScore({
        costs nothing, one that never lands is a silently missing score. */
     const maxFeePerGas = baseFee * 2n;
     const maxPriorityFeePerGas = baseFee / 10n > 0n ? baseFee / 10n : 1n;
+    const gasLimit = 250000n + 90000n * BigInt(skills.length);
+    /* v2.3.5712 (card SEC PR 13): THE FEE'S CEILING.  The most this send
+       could pay is its gas limit at maxFeePerGas -- twice the node's quote,
+       whatever the quote is.  A caller that names `feeMaxWei` gets nothing
+       sent past it: no signature, no broadcast, and the caller stores
+       nothing, so the checkpoint is tried again at the next level-up. */
+    if (feeMaxWei !== undefined && feeMaxWei !== null && maxFeePerGas * gasLimit > BigInt(feeMaxWei)) {
+      return { ok: false, reason: 'fee-over-ceiling', feeWei: (maxFeePerGas * gasLimit).toString() };
+    }
 
     const { raw } = await buildSignedTx({
       chainId: cid,
@@ -372,7 +381,7 @@ export async function sendRecordScore({
          A gas LIMIT is a ceiling, not a charge: unused gas is refunded, so
          over-estimating costs nothing while under-estimating burns the whole
          fee on a failed transaction.  Hence ~35% headroom over measured. */
-      gasLimit: 250000n + 90000n * BigInt(skills.length),
+      gasLimit,
       to: contract,
       value: 0n,
       data,

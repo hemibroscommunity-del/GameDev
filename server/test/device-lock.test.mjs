@@ -76,7 +76,10 @@ function fakeWs(label) {
 }
 function newRoom(state, flags) {
   const room = new GameRoom(state || makeState(), mockEnv);
-  room._liveFlags = flags || {};
+  /* v2.3.5716 (card SEC PR 17): this suite plays the owner's pass and the
+     lock thrown off as they let an OLD key in; with `oldkeyheld` on, the
+     default, neither does -- oldkeyheld.test is the new way's */
+  room._liveFlags = { oldkeyheld: false, ...(flags || {}) };
   return room;
 }
 async function join(room, id, phrase, device, extra) {
@@ -467,14 +470,14 @@ const authOf = (room, id) => room.state._store.get('auth:' + id);
   check('11. a new character with no device named keeps NO list (never an empty one)', authOf(room, 'bp_off_n').devs === undefined, authOf(room, 'bp_off_n'));
 
   /* turned back on: the owner's phones in, a stranger's refused */
-  room._liveFlags = {};
+  room._liveFlags = { oldkeyheld: false };
   check('11. back on: the phone first played while off is in', joined(await join(room, 'bp_off_a', 'off-a-key', D2)));
   const s1 = await join(room, 'bp_off_a', 'off-a-key', { id: 'stranger01' });
   check('11. back on: a stranger\'s device with the key is refused \'device\', not taken first', rejected(s1) && rejected(s1).reason === 'device');
-  room._liveFlags = { oldkeylock: false };
+  room._liveFlags = { oldkeyheld: false, oldkeylock: false };
   const s2 = await join(room, 'bp_off_a', 'off-a-key', { id: 'stranger02' });
   check('11. ...even with `oldkeylock: false` (its list is not empty)', rejected(s2) && rejected(s2).reason === 'device');
-  room._liveFlags = {};
+  room._liveFlags = { oldkeyheld: false };
   const n1 = await join(room, 'bp_off_n', 'off-n-key', { id: 'stranger03' });
   check('11. back on: the no-device character takes no first device either (no list, the fill done: the owner\'s pass)',
     rejected(n1) && rejected(n1).reason === 'device' && authOf(room, 'bp_off_n').devs === undefined, authOf(room, 'bp_off_n'));
@@ -488,7 +491,7 @@ const authOf = (room, id) => room.state._store.get('auth:' + id);
   state._store.set('auth:bp_off_old', { pfHash: await room._phraseHash('off-old-key'), createdAt: 1 });
   await join(room, 'bp_off_old', 'off-old-key', D1);
   check('11. a list-less old character played while off: its device listed', (authOf(room, 'bp_off_old').devs || []).map((e) => e.d).join() === 'phone1abc', authOf(room, 'bp_off_old'));
-  room._liveFlags = {};
+  room._liveFlags = { oldkeyheld: false };
   check('11. ...back on, its player is in on that phone (not shut out)', joined(await join(room, 'bp_off_old', 'off-old-key', D1)));
   check('11. ...and another device refused', rejected(await join(room, 'bp_off_old', 'off-old-key', D2)).reason === 'device');
 }
@@ -516,10 +519,10 @@ const authOf = (room, id) => room.state._store.get('auth:' + id);
   await admin(room, '/device-forget', { playerId: 'bp_off_s' });
   const ws = await join(room, 'bp_off_s', 'off-s-key', D2);
   check('11. a sealed record while off: in (the lock is off), its device NOT written down', joined(ws) && !(authOf(room, 'bp_off_s').devs || []).length && authOf(room, 'bp_off_s').sealed === true, authOf(room, 'bp_off_s'));
-  room._liveFlags = {};
+  room._liveFlags = { oldkeyheld: false };
   check('11. ...back on, that device is refused: the seal waits for the owner\'s pass', rejected(await join(room, 'bp_off_s', 'off-s-key', D2)).reason === 'device');
   await admin(room, '/device-pass', { playerId: 'bp_off_s' });
-  room._liveFlags = { devicelock: false };
+  room._liveFlags = { oldkeyheld: false, devicelock: false };
   await join(room, 'bp_off_s', 'off-s-key', D2);
   check('11. a pass is not spent while off', !!(authOf(room, 'bp_off_s').pass), authOf(room, 'bp_off_s'));
 }

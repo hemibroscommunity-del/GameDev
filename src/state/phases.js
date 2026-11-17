@@ -232,7 +232,7 @@ export const PHASES = [
     ],
     rejoin: 'none: the phone says `blocking` again on every move',
     held: { suite: 'server/test/guard-door.test.mjs' },
-    note: 'v2.3.5536: the door (GUARD_WAYS raise, lower, break; the parry stamp ps.blockStartT and the break latch ps._guardBrokenUntil written beside it, never alone; a raise is refused while the latch is live; live flag guarddoor). Its callers: movement.js _handleMove, moveclaims.js _swingDropsGuard, combat.js _resolvePvPAttack, pvpextras.js _strikePlayer, hits.js _hitStopped, index.js _tickPlayerRegen, linger.js, bodytake.js, and the sparring clone (spar.js). The phase is guardPhase (moveclaims.js); a death touches none of it.',
+    note: 'v2.3.5536: the door (GUARD_WAYS raise, lower, break; the parry stamp ps.blockStartT and the break latch ps._guardBrokenUntil written beside it, never alone; a raise is refused while the latch is live; live flag guarddoor). Its callers: movement.js _handleMove, moveclaims.js _swingDropsGuard, combat.js _resolvePvPAttack, pvpextras.js _strikePlayer, hits.js _hitStopped, index.js _tickPlayerRegen, linger.js, bodytake.js, and the sparring clone (spar.js). The phase is guardStateOf (moveclaims.js); a death touches none of it.',
   },
   {
     name: 'pose', side: 'worker', status: 'door',
