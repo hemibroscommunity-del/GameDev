@@ -460,7 +460,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?platelayer` | page | switch | v2.3.4886 | 2026-11-12 (v2.3.4990) | =0 | memory |  | no | Armour plates are not drawn as their own layer. |
 | `?popupworld` | page | switch | v2.3.3192 | 2026-10-13 | present | logic |  | no | Popups drawn in the world, not on the screen. |
 | `?seacover` | page | switch | v2.3.3452 | 2026-10-18 | =0 | chip |  | no | The ground is drawn under every sea quad, as it was. |
-| `?selftest` | page | lever | v2.3.5234 |  | =fail:<name>[,<name>...] (one, palette, look, sharp, sheen, shadow, water, fill, glint); =0, off, false | none |  | no | QA: the named programs fail their self-test at the door, each falling back alone (mp-selftest); =0 runs none. |
+| `?selftest` | page | lever | v2.3.5234 |  | =fail:<name>[,<name>...] (one, palette, look, sharp, sheen, shadow, water, fill, glint, clip); =0, off, false | none |  | no | QA: the named programs fail their self-test at the door, each falling back alone (mp-selftest); =0 runs none. |
 | `?shade` | page | switch | v2.3.2740 | 2026-09-23 | =0 | logic |  | no | No form shading on objects. |
 | `?shadowhp` | page | switch | v2.3.3338 | 2026-10-18 | =0 | chip |  | no | The shadow filter at the half precision it had. |
 | `?shadowlock` | page | switch | v2.3.3149 | 2026-10-11 | =0 | logic |  | no | Shadows are not locked to their casters. |
