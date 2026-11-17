@@ -196,6 +196,7 @@ const hit = () => {
   // consecutively on purpose -- rewind the cadence stamp so each call
   // represents a legally-spaced swing.
   if (ps._monHitCad) ps._monHitCad.delete(mTarget.id);
+  ps._ss = undefined;   /* v2.3.5551: the sword's swing too (swordswing.js, ON): each test swing a cycle apart, as in real play */
   return room._handleMonsterDamage(room.sessions.get(ws), { monsterId: mTarget.id, zone: 'meadow', element: 'frost', slot: 'melee' });
 };
 primeSetup(1.0); // resonating

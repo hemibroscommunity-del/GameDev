@@ -1,8 +1,8 @@
 # The move's top, the player's own (v2.3.5549)
 
-Grand plan step 4.2, the move; card K PR 14. An opt-in switch, `movetop`,
-landing **OFF**: turning it on is the owner's choice, because it changes how
-moves are judged.
+Grand plan step 4.2, the move; card K PR 14. The switch `movetop` landed
+OFF (v2.3.5549) and is **ON** since v2.3.5551: the owner, 2026-11-17, *"Go
+recommended"*. `movetop: false` in the live flags is its kill switch.
 
 ## Why
 
@@ -66,5 +66,7 @@ memory, so it waits for real players (the planner, 2026-11-17).
 
 ## Switch
 
-`movetop: true` in the live flags turns it on; absent or `false`, the bound
-is the flat 500 as before.
+ON by default (v2.3.5551). `movetop: false` in the live flags puts the flat
+500 back. The suites that test the flat bound's own arithmetic
+(`move-budget` 1-9, `move-path`, `ride`, `sprint`) run with `movetop:
+false`; `move-budget` 10 and `claims-gain` 2e hold the player's own top.

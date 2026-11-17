@@ -1,6 +1,6 @@
 card: K
-branch: claude/plan-k-14b-movetop (5549, the second block 5540-5559)
-prs: #1822 to #2006, #2003, #2013, #2014, #2018 merged; open: #2021 (5549, this branch)
+branch: claude/plan-k-14d-ontoday (5551, on #2021; the second block 5540-5559)
+prs: #1822 to #2006, #2003, #2013, #2014, #2018 merged; open: #2021 (5549), #2023 (5550), 5551 (this branch)
 state: ready
 
 ## Done
@@ -14,12 +14,12 @@ state: ready
 
 ## Next
 
-- 5548 (#2018, merged): the sword's reach and swing, `swordswing` OFF.
-  5549 (#2021, this branch): the move's top, `movetop` OFF (gain 2.56 ->
-  1.17). Next: the bow.
+- #2021 5549 `movetop`, #2023 5550 `bowshot` (3.3 -> 1.60): OFF as built.
+  5551 (this branch, on #2021): `swordswing` and `movetop` ON (the owner,
+  2026-11-17: "Go recommended"). Next: the bow's reach.
 - Later (the planner): walls on the worker (the Wheel's coast): a new
   system and worker memory, for when real players come.
-- wsClient.js: done for good (told L). index.js, combat.js: 13 and 14.
+- wsClient.js: done for good (told L). index.js, combat.js: 14 still.
 
 ## Found
 
@@ -31,7 +31,7 @@ state: ready
 
 ## Needs
 
-- The owner: turn on `swordswing` (a cheat's sword 2.96 -> 1.42) and
-  `movetop` (its move 2.56 -> 1.17)? Honest play the same with each on.
+- The owner: turn on `bowshot` (a cheat's bow 3.3 -> 1.60; honest play the
+  same with it on)?
 - The owner: `reqstamp` (a lasting stamp row a request with no record of
   its own: a store buy, a cancel, an offer; pruned at 48 h): on or off.

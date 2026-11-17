@@ -41,8 +41,8 @@ import * as B from './claimbots.mjs';
 const BAR = 1.5;
 /* today's gains (main 82fb78d, the default seed): a line only falls */
 const LINES = {
-  reach: 2.96, bowlabel: 3.76, guard: 1.37, cookshield: 0.67, move: 2.56, harvest: 1.86, cook: 1.59, quest: 1, sale: 1, local: 1,
-};   /* v2.3.5541: move 4.35 -> 2.56 (the sprint mark, ON: the run goes on through the grace, and the sprint's bound only for what is billed; review-z16) */
+  reach: 1.42, bowlabel: 3.76, guard: 1.37, cookshield: 0.67, move: 1.17, harvest: 1.86, cook: 1.59, quest: 1, sale: 1, local: 1,
+};   /* v2.3.5551: reach 2.96 -> 1.42 (`swordswing` ON), move 2.56 -> 1.17 (`movetop` ON): the owner's yes, 2026-11-17; v2.3.5541: move 4.35 -> 2.56 (the sprint mark, ON: the run goes on through the grace, and the sprint's bound only for what is billed; review-z16) */
 /* each gain's spread over five other seeds (CLAIMS_SEED=a..e, --gains:
    the highest less the lowest, rounded up), measured 2026-11-14.  A gain
    fails only past its line by more than its spread, so a change elsewhere in
@@ -195,8 +195,9 @@ if (stepOff) check(`2b: the stepping archer keeps every arrow; with \`arrowlane:
    owner's yes waits), it takes what it took. */
 {
   const mc = CLAIMS.find((c) => c.id === 'move');
-  const on = rows.find((r) => r.c.id === 'move');
-  const off = GAINS_ONLY ? null : await runBot(mc, mc.liar, { ms: GAIN_MIN * B.MIN, flags: {} });
+  const onRun = GAINS_ONLY ? null : await runBot(mc, mc.liar, { ms: GAIN_MIN * B.MIN, flags: { sprintmark: true, movetop: false } });
+  const on = onRun && { liar: { v: perHour(mc, valueOf(mc, onRun.take), onRun.ms) } };
+  const off = GAINS_ONLY ? null : await runBot(mc, mc.liar, { ms: GAIN_MIN * B.MIN, flags: { movetop: false } });   /* v2.3.5551: the sprint mark alone, the move's top off on both sides */
   if (off && on) {
     const offV = perHour(mc, valueOf(mc, off.take), off.ms);
     check(`2c: the sprint mark: the move's liar takes ${Math.round(on.liar.v)} px an hour with \`sprintmark: true\`, and ${Math.round(offV)} as it lands (off)`, offV > on.liar.v * 1.1, { on: on.liar.v, off: offV });
@@ -211,21 +212,25 @@ if (!GAINS_ONLY) {
   const rc = CLAIMS.find((c) => c.id === 'reach');
   const ms = GAIN_MIN * B.MIN;
   const ON = { swordswing: true };
-  const hOff = rows.find((r) => r.c.id === 'reach').hon[0];
+  /* v2.3.5551: ON by default now: its off side explicit (`swordswing: false`) */
+  const OFF = { swordswing: false };
+  const hOffRun = await runBot(rc, rc.honest[0], { ms, flags: OFF });
+  const hOff = { v: perHour(rc, valueOf(rc, hOffRun.take), hOffRun.ms) };
   const hOn = await runBot(rc, rc.honest[0], { ms, flags: ON });
   const hOnV = perHour(rc, valueOf(rc, hOn.take), hOn.ms);
   const ssDist = [];
   for (const d of DISTURBANCES) { const r = await runBot(rc, rc.honest[0], { d, ms: DIST_S * 1000, flags: ON }); if (r.refusals.length) ssDist.push(d.id + ': ' + r.refusals[0]); }
   check(`2d: \`swordswing: true\`: the honest sword takes what it took (${Math.round(hOnV)} kills an hour, off ${Math.round(hOff.v)}) and meets no refusal on any disturbance`, Math.round(hOnV) === Math.round(hOff.v) && !hOn.refusals.length && !ssDist.length, { on: hOnV, off: hOff.v, refused: [...hOn.refusals.slice(0, 2), ...ssDist] });
   const walk = ['every monster in reach at an honest walk (150 px a second)', B.liarSword, { speed: B.WALK }];
-  const lOff = await runBot(rc, walk, { ms });
+  const lOff = await runBot(rc, walk, { ms, flags: OFF });
   const lOn = await runBot(rc, walk, { ms, flags: ON });
   const gOff = perHour(rc, valueOf(rc, lOff.take), lOff.ms) / Math.max(hOff.v, 1e-9);
   const gOn = perHour(rc, valueOf(rc, lOn.take), lOn.ms) / Math.max(hOnV, 1e-9);
   check(`2d: the sword's own claim (its liar at an honest walk): gain ${gOff.toFixed(2)} off, ${gOn.toFixed(2)} with \`swordswing: true\` (the bar ${BAR})`, gOn <= BAR && gOff > gOn, { off: gOff, on: gOn });
   /* the whole liar (its walk at the move's bound) with it on: what is left is the move's claim (the next judge) */
   const fOn = await runBot(rc, rc.liar, { ms, flags: ON });
-  console.log(`     2d: the whole liar with \`swordswing: true\`: gain ${(perHour(rc, valueOf(rc, fOn.take), fOn.ms) / Math.max(hOnV, 1e-9)).toFixed(2)} (off ${rows.find((r) => r.c.id === 'reach').gain}); the rest is the move's claim`);
+  const fOff = await runBot(rc, rc.liar, { ms, flags: { ...OFF, movetop: false } });
+  console.log(`     2d: the whole liar with \`swordswing: true\`: gain ${(perHour(rc, valueOf(rc, fOn.take), fOn.ms) / Math.max(hOnV, 1e-9)).toFixed(2)} (both off: ${(perHour(rc, valueOf(rc, fOff.take), fOff.ms) / Math.max(hOff.v, 1e-9)).toFixed(2)})`);
 }
 /* v2.3.5549 (card K, step 4.2): THE MOVE'S TOP (movement.js MOVE_TOP; an
    opt-in, `movetop: true`, the owner's to turn on).  With it on, the honest
@@ -236,10 +241,13 @@ if (!GAINS_ONLY) {
   const mr = rows.find((r) => r.c.id === 'move');
   const ms = GAIN_MIN * B.MIN;
   const ON = { ...(mc.world.flags || {}), movetop: true };
+  const MOFF = { ...(mc.world.flags || {}), movetop: false };   /* v2.3.5551: ON by default now: its off side explicit */
   const same = [], refused = [];
-  let bestOn = 0;
+  let bestOn = 0, bestOff = 0;
   for (const h of mc.honest) {
-    const off = mr.hon.find((x) => x.who === h[0]);
+    const offRun = await runBot(mc, h, { ms, flags: MOFF });
+    const off = { v: perHour(mc, valueOf(mc, offRun.take), offRun.ms) };
+    bestOff = Math.max(bestOff, off.v);
     const r = await runBot(mc, h, { ms, flags: ON });
     const v = perHour(mc, valueOf(mc, r.take), r.ms);
     bestOn = Math.max(bestOn, v);
@@ -250,7 +258,9 @@ if (!GAINS_ONLY) {
   check(`2e: \`movetop: true\`: the honest walker and sprinter take what they took and meet no refusal on any disturbance`, !same.length && !refused.length, { same, refused: refused.slice(0, 4) });
   const lOn = await runBot(mc, mc.liar, { ms, flags: ON });
   const gOn = perHour(mc, valueOf(mc, lOn.take), lOn.ms) / Math.max(bestOn, 1e-9);
-  check(`2e: the move's liar: gain ${mr.gain} off, ${gOn.toFixed(2)} with \`movetop: true\` (the bar ${BAR})`, gOn <= BAR, { on: gOn });
+  const lOff = await runBot(mc, mc.liar, { ms, flags: MOFF });
+  const gOff = perHour(mc, valueOf(mc, lOff.take), lOff.ms) / Math.max(bestOff, 1e-9);
+  check(`2e: the move's liar: gain ${gOff.toFixed(2)} with \`movetop: false\`, ${gOn.toFixed(2)} on (the bar ${BAR})`, gOn <= BAR && gOn < gOff, { on: gOn, off: gOff });
 }
 for (const r of rows) {
   const line = LINES[r.c.id];

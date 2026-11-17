@@ -1,8 +1,9 @@
 # The sword's swing and reach (v2.3.5548)
 
-Grand plan step 4.2, the sword's reach; card K PR 14. An opt-in switch,
-`swordswing`, landing **OFF**: turning it on is the owner's choice, because
-it changes how combat is judged.
+Grand plan step 4.2, the sword's reach; card K PR 14. The switch
+`swordswing` landed OFF (v2.3.5548) and is **ON** since v2.3.5551: the
+owner, 2026-11-17, *"Go recommended"*. `swordswing: false` in the live flags
+is its kill switch.
 
 ## Why
 
@@ -54,5 +55,5 @@ the move's claim, the next judge.
 
 ## Switch
 
-`swordswing: true` in the live flags turns it on; absent or `false`, the
-worker judges a sword as before (400 px, the 210 ms lane, `noKb` believed).
+ON by default (v2.3.5551). `swordswing: false` in the live flags puts the
+sword back as it was (400 px, the 210 ms lane, `noKb` believed).

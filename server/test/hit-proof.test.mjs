@@ -421,7 +421,8 @@ const fresh = (p) => { delete p.ps._monHitCad; };
   for (let i = 0; i < 30; i++) ring.push(monster(p, 30, i));
   landed = 0;
   for (const mm of ring) if (hit(p, mm, { slot: 'melee' }) > 0) landed++;
-  check('4b. a sword\'s swing through a pack of 30 is not limited by the rate (its ring holds what it holds)', landed === 30, landed);
+  /* v2.3.5551: one swing takes SWING_TARGETS at most (swordswing.js, ON: a whirlwind pulls 16) */
+  check('4b. a sword\'s swing through a pack of 30 is not limited by the bow\'s rate: its ring takes the swing\'s 24 (swordswing.js)', landed === 24, landed);
 
   /* the switch */
   const k = await setup({ hitproof: false });
