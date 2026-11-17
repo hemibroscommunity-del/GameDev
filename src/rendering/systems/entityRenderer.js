@@ -168,6 +168,7 @@ import { isLiveClone } from '../../game/sparTargets.js';   /* v2.3.3481: a clone
 import { clipHair, hairClippedBy } from '../hairClip.js';   /* v2.3.3459: the hair clipped through the stencil, not a pass of its own */
 import { heapTrimOn } from '../heapTrim.js';   /* v2.3.5007: the heap trim's switch */
 import { bakeMaskedCanvas } from '../maskedBake.js'; /* v2.3.2874: the masked-body pixel work, shared with the prewarm worker */ /* v2.3.2761: the rod is found by its recorded shape now that it is pine */
+import { dyingTo } from '@/game/dyingDoor.js';   /* v2.3.5534: the life's page door (card L) */
 
 /* §9.2.1 Collision-opportunity weapon edge glow — proximity radius (≈20u). */
 const COLLISION_GLOW_RANGE_PX = 80;
@@ -14203,7 +14204,7 @@ export class EntityRenderer {
        respawn by the handlers, so this only kicks in when nothing
        else set it. */
     if (S.rpg && S.rpg.hp <= 0 && !S._deathStart) {
-      S._deathStart = Date.now();
+      dyingTo(S, 'seed', Date.now());   /* v2.3.5534: the life's page door (the start alone) */
     }
     const _selfElapsed = S._deathStart ? Date.now() - S._deathStart : Infinity;
     const selfDead = selfCorpseUp(S);

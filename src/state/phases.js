@@ -303,13 +303,15 @@ export const PHASES = [
 
   /* ═══ TO DO, THE PAGE (card L PR 5: then connection, loading, window) ═══ */
   {
-    name: 'life', side: 'page', status: 'todo',
+    name: 'life', side: 'page', status: 'door',
     what: 'Your own dying seconds on the phone, from the death to the respawn.',
-    field: null, states: ['alive', 'dying'], fn: null, file: null,
+    field: 'S._dying', states: ['alive', 'dying'],
+    fn: 'dyingTo', file: 'src/game/dyingDoor.js',
     clears: [{ edge: 'death', at: 'src/game/respawn.js applyLocalRespawn' }],
     rejoin: 'none: the worker\'s life note sends the same death back at the join',
-    today: [{ field: 'S._dying' }, { field: 'S._deathStart' }, { field: 'S._deathCard' }, { field: 'S.respawnTimer' }],
-    note: 'S._dying is written from five files (the ledger\'s writers).',
+    held: { suite: 'server/test/life-page-door.test.mjs' },
+    notes: ['S._deathStart'],   /* v2.3.5534: written beside the field by the same call */
+    note: 'v2.3.5534: the door (DYING_WAYS die, seed, respawn; switch ?dyingdoor), in place of fourteen writes in six files. Beside it: S.respawnTimer (also a dodge\'s short hold, dodge.js), the death card (S._deathCard, deathCard.js). The worker\'s half is the life door (_lifeTo, ps.life).',
   },
   {
     name: 'fight', side: 'page', status: 'todo',

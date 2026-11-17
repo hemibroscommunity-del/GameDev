@@ -231,7 +231,7 @@ export const SYSTEMS = Object.freeze({
   },
   life: {
     what: 'a player\'s health and life phase: dying, the death card, respawning',
-    files: [f('server/src', 'life|xpdecay'), f('src/game', 'respawn|phoneDeath|deathCard')],
+    files: [f('server/src', 'life|xpdecay'), f('src/game', 'respawn|dyingDoor|phoneDeath|deathCard')],
     words: ['life', 'death', 'respawn', 'die', 'hp'],
     traps: [],
     doors: [{ name: '_hpSet', file: 'server/src/life.js', what: 'HP_ROADS: every change to a player\'s health; the life phase only through _lifeTo' }],

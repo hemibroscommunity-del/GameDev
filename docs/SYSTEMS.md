@@ -244,7 +244,7 @@ The townspeople: their days, walks, talk and reactions.
 A player's health and life phase: dying, the death card, respawning.
 
 - **Files**: `server/src/`: life, xpdecay
-- **Files**: `src/game/`: respawn, phoneDeath, deathCard
+- **Files**: `src/game/`: respawn, dyingDoor, phoneDeath, deathCard
 - **Doors**: `_hpSet` in `server/src/life.js` (HP_ROADS: every change to a player's health; the life phase only through _lifeTo)
 - **Switches**: [its rows in the switch table](SWITCHES.md#life)
 - **Words**: `life`, `death`, `respawn`, `die`, `hp`
