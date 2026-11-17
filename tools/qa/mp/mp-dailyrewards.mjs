@@ -235,7 +235,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
     let card = null;
     try {
       await H.openDest(P, 'Quests');
-      card = await waitFor(() => P.page.evaluate(() => { const c = document.querySelector('[data-daily-card-open]'); return c ? (c.textContent || '').trim() : null; }), 6000);
+      const cardText = () => P.page.evaluate(() => { const c = document.querySelector('[data-daily-card-open]'); return c ? (c.textContent || '').trim() : null; });
+      card = await waitFor(cardText, 3000);
+      /* v2.3.5645: the journal keeps the daily card under its own "Daily" pill when a quest
+         is in focus (QuestsPanel '@daily'); with none to show it is on the pane itself */
+      if (!card) {
+        await P.page.evaluate(() => { const n = document.querySelector('[data-quest-nav="daily"]'); if (n) { n.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })); n.dispatchEvent(new PointerEvent('pointerup', { bubbles: true })); n.click(); } });
+        card = await waitFor(cardText, 6000);
+      }
     } catch (e) { card = null; }
     await shot(P, 'quests-card');
     rec.ok('the Quests tab\'s card says the day in words: the streak once the spin is taken, no stars, no quests',
