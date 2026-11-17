@@ -26,7 +26,14 @@
  * v2.3.5625 (card MOD PR 5): 5b, words outside the six lanes (a pet's,
  * an alliance's and a clan's name, an emote's quick line) dropped from a
  * silenced character, and every socket row with words decided (closed, or
- * open with why); the lanes are card K's CHAT_LANE_TYPES.  Break proof: the
+ * open with why); the lanes are card K's CHAT_LANE_TYPES.
+ * v2.3.5627 (card MOD PR 7; sitting 22's review): 6c, the owner's own
+ * devices kept (`ownerdev:`): a computer whose botfp record has forgotten the
+ * owner's character (its last 8) is still never held.  Break proof: the
+ * `ownerdev:` list not read -> FAIL 6c (the computer held).  And the
+ * planning session's call (2026-11-17): a held phone refuses only a NEW
+ * character (no login, no record), never an existing one's join.  Break
+ * proof: the record check taken out -> FAIL 6b (the friend refused).  Break proof: the
  * door's names line taken out -> FAIL 5b.  6b, the device's characters from botfp's
  * `device:` record (a device reached with a new key is held; the owner's
  * computer, so reached, is spared; the owner's character named by the join
@@ -245,6 +252,12 @@ const wb = await join('bp_mod_kind', 'devkind001');
   const lapAlt = await join('bp_mod_roam_alt', 'devroamlaptop', room);
   check('6b: a new character on a device the frozen character reached with a new key is refused `frozen` (only the phone it was made on was held)',
     lapAlt.sent.some((m) => m.type === 'join_rejected' && m.reason === 'frozen'), lapAlt.sent.map((m) => m.type).slice(0, 4));
+  /* v2.3.5627 (the planning session's call): a held phone refuses only a NEW character */
+  room._liveFlags.devicelock = false;   /* the friend's key on the laptop: past the device lock */
+  const friendOn = await join('bp_mod_kind', 'devroamlaptop', room);
+  delete room._liveFlags.devicelock;
+  check('6b: an EXISTING character (a friend\'s own) joining from a held phone is never refused `frozen` (only a new character is)',
+    !friendOn.sent.some((m) => m.type === 'join_rejected' && m.reason === 'frozen'), friendOn.sent.map((m) => [m.type, m.reason]).slice(0, 4));
   const homeAlt = await join('bp_mod_roam_alt2', 'devroamhome', room);
   check('6b: ...and the phone it was made on still is', homeAlt.sent.some((m) => m.type === 'join_rejected' && m.reason === 'frozen'), homeAlt.sent.map((m) => m.type).slice(0, 4));
   /* the owner's spare, complete the same way: the owner's character on a shared computer, reached with a new key */
@@ -266,6 +279,34 @@ const wb = await join('bp_mod_kind', 'devkind001');
   check('6b: the owner\'s own character, named by the join, is never held by a device (its key still decides)',
     !bossOnHeld.sent.some((m) => m.type === 'join_rejected' && m.reason === 'frozen'), bossOnHeld.sent.map((m) => m.type).slice(0, 4));
   await room.state.storage.delete('testmode:bp_mod_boss');
+  /* v2.3.5627 (card MOD PR 7; sitting 22's review): the owner's own devices are KEPT (`ownerdev:`):
+     botfp's record keeps a device's last 8 characters, so the owner's fell off it and the computer was held */
+  await room.state.storage.put('testmode:bp_mod_chief', { v: 1, on: true, at: Date.now(), name: 'Chief' });
+  room._liveFlags.devicelock = false;
+  await join('bp_mod_chief', 'devcafe', room);
+  await room.state.storage.delete('testmode:bp_mod_chief');   /* no test-mode character's auth names it either */
+  for (let i = 0; i < 9; i++) await join('bp_mod_cafe' + i, 'devcafe', room);
+  delete room._liveFlags.devicelock;
+  const cafe = await room.state.storage.get('device:devcafe');
+  check('6c: (botfp\'s record has forgotten the owner\'s character on the computer: its last 8 only)', !!cafe && !cafe.ids.some((e) => e.id === 'bp_mod_chief'), cafe && cafe.ids.map((e) => e.id));
+  check('6c: (the device is kept as the owner\'s: `ownerdev:`)', !!(await room.state.storage.get(SILENCE.OWNER_DEV + 'devcafe')));
+  await admin('POST', '/freeze', { playerId: 'bp_mod_cafe8', note: 'x' }, KEY);
+  clock.advance(SILENCE.FROZEN_TTL_MS + 1);
+  const cafeNew = await join('bp_mod_cafe_new', 'devcafe', room);
+  check('6c: a computer the owner\'s own character joined from is never held, its record forgetting it or not',
+    !cafeNew.sent.some((m) => m.type === 'join_rejected'), cafeNew.sent.map((m) => m.type).slice(0, 4));
+  const puts0 = [];
+  const put0 = room.state.storage.put.bind(room.state.storage);
+  room.state.storage.put = async (k, v) => { if (String(k).startsWith(SILENCE.OWNER_DEV)) puts0.push(k); return put0(k, v); };
+  await room.state.storage.put('testmode:bp_mod_chief', { v: 1, on: true, at: Date.now(), name: 'Chief' });
+  room._liveFlags.devicelock = false;
+  await join('bp_mod_chief', 'devcafe', room);
+  await join('bp_mod_cafe0', 'devcafe2', room);
+  delete room._liveFlags.devicelock;
+  room.state.storage.put = put0;
+  check('6c: the mark is written once a device (the owner\'s again: no put), and never for a character not in test mode', puts0.length === 0 && !(await room.state.storage.get(SILENCE.OWNER_DEV + 'devcafe2')), puts0);
+  await room.state.storage.delete('testmode:bp_mod_chief');
+  await admin('DELETE', '/freeze?id=bp_mod_cafe8', null, KEY);
   await admin('DELETE', '/freeze?id=bp_mod_boss_alt', null, KEY);
   await admin('DELETE', '/freeze?id=bp_mod_roam', null, KEY);
   void wh; void wl;

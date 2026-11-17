@@ -988,6 +988,7 @@ export const joinMethods = {
     // ring.  Await is input-gate-safe (rule 9).
     await this._botfpOnJoin(session, msg);
     session.device = cleanDevice(msg.device);   /* v2.3.4295: the account the login wheel counts (loginspin.js) */
+    await this._ownerDeviceNote(session);   /* v2.3.5627: the owner's own devices, kept (silence.js; a freeze never holds one) */
     this._sigOnJoin(session);   /* v2.3.3731: the network, and a first judgement (botsig.js) */
     /* Load (or bootstrap) the player's server-authoritative
        coins + inventory.  Stored entry wins; if there's no

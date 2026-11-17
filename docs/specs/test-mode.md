@@ -66,6 +66,11 @@ switch allows it.
 A test-mode character can only do what its phone does; the worker simply does
 not doubt it.
 
+A test-mode character's device is also kept as the owner's (v2.3.5627,
+`silence.js _ownerDeviceNote`, `ownerdev:<device>`): a freeze's device rule
+(`freezedevice`) never holds the owner's own phone. Not a check: it turns
+nothing off.
+
 ## The switch
 
 | Surface | Who | What |
