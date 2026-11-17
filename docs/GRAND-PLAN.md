@@ -462,7 +462,7 @@ play, a number 1.1 can measure.
   *K's #1942 (the room forgets who left: `heapforget`, ON) and #1949 (the
   room's ceiling on messages in, a share of 4000/s a socket; `roomceiling`,
   ON, a cap), merged at sitting 23 (the gatekeeper, sitting 24, tag 5662).*
-- [ ] **4.1b [NEXT] The send door**: one `_send` (132 places write to a
+- [x] **4.1b [NEXT] The send door**: one `_send` (132 places write to a
   socket today), counting bytes by type.
   *Step 1 merged: K's #2006 (5193: one `_send` and `_sendRoom` in
   `send.js`, every frame byte for byte as before; the counts ride the
@@ -475,6 +475,10 @@ play, a number 1.1 can measure.
   census made strict by the gatekeeper's sitting 33 (tag 5671: any raw
   `.send(` outside `send.js` fails `send-door.test`); the box is ticked
   once that PR is merged (the gatekeeper, sitting 33, tag 5671).*
+  *The gatekeeper's #2020 (5671: the census strict), merged at sitting
+  33 (`main` ea7df6b0): every frame leaves through `_send`, and a raw
+  `.send(` outside `send.js` fails `send-door.test` 8. Ticked (the
+  gatekeeper, sitting 34, tag 5672).*
 - [ ] **4.2 [NEXT] Claims, bounded.** "No claims" can be met by calling a
   loose check a judge. So each bounded claim carries its **gain**: a
   maximal liar's take an hour over an honest player's, measured by a house
@@ -502,6 +506,12 @@ play, a number 1.1 can measure.
   `sprintmark`, OFF by the owner's choice, `true` the owner's to give),
   merged at sitting 18. The box waits for the other judges (the
   gatekeeper, sitting 19, tag 5376).*
+  *K's #2018 (5548, the sword's reach 150 px and its swing, a token
+  bucket of 2 at one a cycle; `swordswing`, OFF, the owner's to turn on):
+  with it on, the reach claim 2.87 -> 1.38 and the whole liar 2.96 ->
+  1.42 on the bench, the honest sword unrefused; merged at sitting 33. The
+  box waits for the move and the bow judges (the gatekeeper, sitting 34,
+  tag 5672).*
 - [ ] **4.3 [NEXT] Doors for what is left of value**: experience and
   levels, the stashes, quest state, skill points. A weapon gets an id of its
   own, as gear has.
