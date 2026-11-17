@@ -1,6 +1,6 @@
 card: P
 branch: claude/plan-p-25-hud-bars (held: main 2fcc767 inside, no PR)
-prs: #1713, #1715, #1716, #1718, #1719, #1736, #1743, #1745, #1757, #1749, #1763, #1766, #1805, #1806, #1810, #1840, #1846, #1853, #1859, #1868, #1881, #1906, #1918, #1925 (5241-5259, 5560-5564, merged)
+prs: #1943 (5565 ready), 5566 ready; #1713, #1715, #1716, #1718, #1719, #1736, #1743, #1745, #1757, #1749, #1763, #1766, #1805, #1806, #1810, #1840, #1846, #1853, #1859, #1868, #1881, #1906, #1918, #1925 (5241-5259, 5560-5564, merged)
 state: ready
 
 ## Done
@@ -13,10 +13,9 @@ state: ready
 
 ## Next
 
-- 5565 `world-fish-spot` is ready (its runs and line done: artCache 21.4 ->
-  19.9, line 84.5 -> 83.0). Stacked on it, each to get its own runs: 5566
-  `hud-bars`, 5567 `player-death`, 5569 `upload-icons`; then `ore-tiers`,
-  `props-parts`, `projectile-sheets` by the card.
+- 5566 `hud-bars` ready on #1943 (artCache 19.9 -> 18.8, line 83.0 -> 81.9).
+  Then 5567 `player-death`, 5569 `upload-icons`; the planner's word: stop
+  after those four (ore-tiers, props-parts, projectile-sheets wait).
 
 ## Found
 
