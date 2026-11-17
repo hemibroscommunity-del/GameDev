@@ -43,6 +43,20 @@ import { nameReadsAsStaff } from './reservednames.js';
 
 export const CHAR_NAME = Object.freeze({ MIN: 1, MAX: 20, CLOSE: 4023 });
 
+/* v2.3.5630 (card MOD PR 10; the sitting 19 review's low, "a `name` refusal
+   shows no words"): the name box's own words for each reason
+   (src/game/charName.js CHAR_NAME_WORDS; mirror-audit holds the two equal),
+   said by the worker in the game's voice (`server_announce`, to that socket
+   only) before it refuses: only a page older than the rule meets the
+   refusal, and it said nothing (the page's join_rejected switch is at its
+   line, four-lines). */
+export const CHAR_NAME_WORDS = Object.freeze({
+  short: 'Type at least 2 letters',
+  long: '20 letters at most',
+  chars: 'No emoji or symbols',
+  staff: 'Pick a name of your own',
+});
+
 /** A name by the rule: `{ name }` when it may be taken, else `{ why }`:
  *  'short', 'long', 'chars' (a character the rule refuses: an emoji, a hidden
  *  or direction mark, a sign) or 'staff' (it reads as the game or its staff). */
@@ -103,6 +117,7 @@ export const charNameMethods = {
     if (stored && stored.look) return false;
     const c = checkCharName(raw);
     if (c.name) { if (dataName) data.name = c.name; return false; }
+    try { ws.send(JSON.stringify({ type: 'server_announce', payload: { text: 'Name refused: ' + (CHAR_NAME_WORDS[c.why] || 'pick another name'), ts: Date.now() } })); } catch (e) { /* closed */ }   /* v2.3.5630 */
     try { ws.send(JSON.stringify({ type: 'join_rejected', reason: 'name', why: c.why })); } catch (e) { /* closed */ }
     try { ws.close(CHAR_NAME.CLOSE, 'name'); } catch (e) { /* closed */ }
     if (this._playerLeaves) await this._playerLeaves(ws, 'refused');
@@ -142,7 +157,12 @@ export const charNameMethods = {
       if (sess.data && typeof sess.data === 'object') sess.data.name = name;
       const ps = this.playerState && this.playerState[id];
       if (ps) ps.name = name;
-      if (this.broadcastAll) this.broadcastAll({ type: 'player_update', id, data: { name } });
+      /* v2.3.5630 (card MOD PR 10; the sitting 19 review's low): the whole
+         relay with the new name, as `track` sends it -- a peer's page reads a
+         player_update as the player's look, and `{name}` alone set the build
+         (`hg`, `fr`) back to average until the next track */
+      const look = sess.data && typeof sess.data === 'object' ? { ...sess.data, name } : { name };
+      if (this.broadcastAll) this.broadcastAll({ type: 'player_update', id, data: look });
     }
     if (this._adminLog) await this._adminLog({ op: 'rename', playerId: id, from: was, to: name });
     return json({ ok: true, playerId: id, from: was, name, online: !!sess });

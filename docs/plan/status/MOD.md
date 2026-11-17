@@ -1,7 +1,7 @@
 card: MOD
-branch: claude/plan-mod-<n>-<topic> (on main 8149d61e: #1909 > #1914; #1947; #1954; every PR against main)
-prs: #1909 (5623), #1914 (5624), #1947 (5626, the market's words), #1954 (5627, the freeze's spare and new characters only): ready; #1869 (findings): draft
-state: ready
+branch: claude/plan-mod-<n>-<topic> (on main cfcd70b1: #1954; #1962 > #1967; every PR against main)
+prs: #1954 (5627, the freeze's spare, new characters only), #1962 (5628, the report and pace lows), #1967 (5629, a report on a guest with no record): ready; PR 10 (5630, the name rule's lows): working; #1869 (findings): draft
+state: working
 
 ## Done
 
@@ -11,13 +11,14 @@ state: ready
 - PR 3 (5623, #1909): a report carries what the reporter received (the reported player's lines to the reporter: a whisper, the party, a friend, a shop's chat, the room or the area), not only the room's last lines; switch `reportring`. K said: build it.
 - PR 4 (5624, #1914): invite pace: one trade card and one friend request card a target per 5 s (the invite is kept, only the repeat card is held; the pair's pace resets when a trade opens); switch `invitepace`. The planning session gave trade2.js's lines to this card (no open branch touches them); friends.js has no card.
 - PR 5 (5625, #1941, merged in sitting 22): the freeze's devices from botfp's record; words outside the six lanes closed to the silenced; the name fold's misses; SILENCE_LANES is K's CHAT_LANE_TYPES.
+- PR 6 (5626, #1947, merged in sitting 23): a market order's label and seller name are the worker's own (switch `mktwords`; card K's market.js by the planning session's yes). #1909 and #1914 merged in sitting 23.
 
 ## Next
 
-- #1947 (5626): a market order's label and seller name are the worker's own (switch `mktwords`); touches card K's market.js (~83-105, ~385-391) by the planning session's yes.
-- #1954 (5627): sitting 22's findings on #1941 and the planning session's `freezedevice` meaning (lever OFF): a held phone refuses only a NEW character, never an existing one's join; the owner's devices kept (`ownerdev:`); "Officlal".
-- #1909 > #1914 restacked on main 8149d61e for sitting 23.
-- Still open, the name rule's lows (sitting 19 review): a rename's `player_update` flattens the build for a minute; `namerules: false` does not reach the name box; a `name` refusal shows no words; the arena's own name.
+- #1954 (5627): sitting 22's findings on #1941 and the planning session's `freezedevice` meaning (lever OFF): a held phone refuses only a NEW character; the owner's devices kept (`ownerdev:`, a new key: a cost line for the owner); "Officlal".
+- #1962 (5628): sitting 23's lows: a report quotes the lines addressed to the reporter first, the speaker's own last lines beside (`said`); a paced friend request answered as sent; the ring's memory with `tos`.
+- #1967 (5629, on #1962): a report on a guest who chatted and left with no record lands (the planning session's call).
+- PR 10 (5630, on main): the name rule's lows: a rename's `player_update` carries the whole look (the build no longer flattened); a `name` refusal says why on the phone. Asked the planning session (2026-11-17): the arena's own name (gladiator.js, cards L and R) and `namerules: false` reaching the name box.
 
 ## Found
 
