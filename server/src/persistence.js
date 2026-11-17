@@ -129,6 +129,12 @@ export const persistenceMethods = {
      memory, from each load to the next; a load that completes forgets it. */
   _rpgSaveVNote(playerId, stored, mig, newer) {
     if (!this._rpgSaveV) this._rpgSaveV = new Map();
+    /* v2.3.5704 (card SEC PR 5): a newer worker's record, kept as it was
+       read, so its saves here keep the fields this worker does not know
+       (_rpgNewerKeep below); a load that is not newer forgets it */
+    if (!this._rpgNewerKept) this._rpgNewerKept = new Map();
+    if (newer && this._newerKeepOn()) this._rpgNewerKept.set(playerId, { ...stored });
+    else this._rpgNewerKept.delete(playerId);
     if (newer) {
       this._rpgSaveV.set(playerId, stored._v);
     } else if (mig && mig.failed) {
@@ -169,6 +175,26 @@ export const persistenceMethods = {
   _rpgSaveVFor(playerId) {
     const v = this._rpgSaveV && this._rpgSaveV.get(playerId);
     return typeof v === 'number' ? v : RPG_SCHEMA_VERSION;
+  },
+
+  /* ═══ v2.3.5704 (card SEC PR 5): A NEWER WORKER'S FIELDS, KEPT ═══
+     With `newersave: false` (the rollback's step 2, docs/OPERATIONS.md) this
+     older worker lets a newer worker's character in and saves it, keeping
+     the newer `_v` (_rpgSaveVFor).  The save wrote the record from THIS
+     worker's field list, so a field the newer version added was dropped,
+     and the kept `_v` meant no migration ever put it back.  Now the record
+     as it was read is kept, by player, and _saveRpg's put spreads it FIRST:
+     every field this worker knows is written from the live state over it,
+     as before, and the ones it does not know go through as they were read.
+     Memory only, one record a newer character between its load and the
+     next.  KILL SWITCH `newerkeep: false`: the old way (dropped). */
+  _newerKeepOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'newerkeep') && !f.newerkeep);
+  },
+  _rpgNewerKeep(playerId) {
+    const r = this._rpgNewerKept && this._newerKeepOn() ? this._rpgNewerKept.get(playerId) : null;
+    return r && typeof r === 'object' ? r : null;
   },
 
   /* v2.3.3303: `newersave: false` in the live flags (liveops) */
@@ -317,6 +343,9 @@ export const persistenceMethods = {
     if (this._bankOwed) { const _owed = this._bankOwed(playerId); if (_owed) this._bankRetryPut(playerId, _owed); }
     try {
       await this.state.storage.put('rpg:' + playerId, {
+        /* v2.3.5704: a newer worker's record first, so the fields this
+           worker does not know go through and every one below wins */
+        ...this._rpgNewerKeep(playerId),
         coins: ps.coins || 0,
         inventory: ps.inventory || {},
         lifeSkills: ps.lifeSkills || {},

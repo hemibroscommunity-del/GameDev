@@ -504,6 +504,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `farplayers` | worker | switch | v2.3.3197 | 2026-10-13 | false | logic |  | no | Sends everyone every far player every tick again. |
 | `heapburn` | worker | switch | v2.3.3748 | 2026-10-28 | false | logic |  | no | Un-advertises the burning heap: the phone sends nothing and nobody burns. |
 | `hidden_off` | worker | switch | v2.3.3723 | 2026-10-28 | true | logic |  | no | Thrown, the hidden settings are not read: the public placeholders are used. |
+| `newerkeep` | worker | switch | v2.3.5704 | 2026-11-17 | false | logic |  | no | A newer worker's character let in by `newersave: false` is saved from this worker's field list alone again: the fields the newer version added are dropped. |
 | `newersave` | worker | switch | v2.3.3303 | 2026-10-17 | false | logic |  | no | A save from a newer worker is let through the join, the newer `_v` kept. |
 | `roundpos` | worker | switch | v2.3.3197 | 2026-10-13 | false | logic |  | no | Positions go out as the phones sent them, not rounded. |
 | `skillfreeze` | worker | switch | v2.3.4380 | 2026-11-10 | false | logic |  | no | A prog3 character's reported skill tracks are stored and restored again. |
