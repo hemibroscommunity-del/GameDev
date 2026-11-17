@@ -61,7 +61,8 @@
  * safe ground (v2.3.5725, dungeon.js: `dungeonground`), a move's fields held
  * to their form (v2.3.5723, movement.js MOVE_FIELDS: `movefields`), a relay's
  * fields typed and the room's send to joined sockets only (v2.3.5724,
- * relay.js RELAY_FORMS: `relaytyped`), the owner's routes
+ * relay.js RELAY_FORMS: `relaytyped`), the room ceiling's honest floor
+ * (v2.3.5728, flood.js HONEST_PER_S: `ceilfair`), the owner's routes
  * with no key and the public reads at the edge (v2.3.5726, wire/door.js:
  * the worker settings `EDGE_GUARD`, `EDGE_CACHE`), every save and payment rule,
  * the login key and its lockouts, a frozen account, PvP consent and every

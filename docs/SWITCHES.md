@@ -656,6 +656,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 |---|---|---|---|---|---|---|---|---|---|
 | `bodycap` | worker | switch | v2.3.5720 | 2026-11-17 | false | logic |  | no | The room's web routes read a body whole again, of any size, before any route asks who sends (the outer router's own check is the worker setting `BODY_CAP`, not this flag). |
 | `bundle` | worker | switch | v2.3.3254 | 2026-10-15 | false | logic |  | no | Stops advertising message bundles: each phone sends its messages one by one from its next join. |
+| `ceilfair` | worker | switch | v2.3.5728 | 2026-11-17 | false | logic |  | no | A socket's share of the room's ceiling is the plain share again (4,000 over the room's sockets: 33 a second at 120), so a crowd fight's honest phones lose messages while a flood holds the room past it, as before. |
 | `?conndoor` | page | switch | v2.3.5528 | 2026-11-17 | =0 | logic |  | no | The phone's socket phase takes any word a caller writes, as the lines before the connection door (every caller writes a word of the list today). |
 | `?diet` | page | switch | v2.3.3726 | 2026-10-28 (v2.3.3744) | =1 or =0 (kept for the tab) | logic |  | no | Puts this phone on the move diet (=1) or keeps it off (=0), whatever the worker says for everyone. |
 | `disable_weapon_drops` | worker | switch | v2.3.1150 | 2026-07-03 | true | logic |  | no | Thrown, weapon drops stop rolling (caps.weaponDrops stays true, so no phone mints its own). |
