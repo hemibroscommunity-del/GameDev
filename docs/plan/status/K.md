@@ -1,6 +1,6 @@
 card: K
-branch: claude/plan-k-14c-bowshot (5550, the second block 5540-5559)
-prs: #1822 to #2006, #2003, #2013, #2014, #2018 merged; open: #2021 (5549), 5550 (this branch)
+branch: claude/plan-k-14c-bowshot (5550, on #2021; the second block 5540-5559)
+prs: #1822 to #2006, #2003, #2013, #2014, #2018 merged; open: #2021 (5549), #2023 (5550, this branch, on #2021)
 state: ready
 
 ## Done
