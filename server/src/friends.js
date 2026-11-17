@@ -40,6 +40,12 @@ export const FRIENDS = {
   DM_MAX: 280,          // chars per message
   DM_BACKLOG_MAX: 50,   // stored offline DMs per recipient
   NAME_MAX: 24,         // stored display-name clamp
+  /* v2.3.5624 (card MOD PR 4; the red team's RT-3 S5): one request a player
+     to the same target per this long -- a request, its cancel and the
+     request again was a popup at the target each time, with no pace -- and
+     the paces held, at most PACE_KEYS (the oldest go first) */
+  REQUEST_REPEAT_MS: 5000,
+  PACE_KEYS: 2000,
 };
 
 const ownKeys = (o) => (o ? Object.keys(o) : []);
@@ -135,6 +141,21 @@ export const friendsMethods = {
     const theirs = await this._friendsDoc(target);
     if (ownKeys(theirs.list).length >= FRIENDS.LIST_MAX) {
       return this._friendsSend(from, 'friend_error', { reason: 'target-full', target });
+    }
+    /* v2.3.5624: one NEW request card to the same target per
+       REQUEST_REPEAT_MS, dropped silently before it is written or sent (a
+       request, its cancel and the request again: party.js's rule; the
+       answers above -- already friends, a duplicate -- stay as they were).
+       KILL SWITCH `invitepace: false` in the live flags. */
+    const _f = this._liveFlags;
+    if (!(_f && typeof _f === 'object' && Object.prototype.hasOwnProperty.call(_f, 'invitepace') && !_f.invitepace)) {
+      if (!this._friendReqAt) this._friendReqAt = new Map();   /* 'from>target' -> ts: capped, oldest first */
+      const _k = from + '>' + target, _now = Date.now();
+      const _was = this._friendReqAt.get(_k);
+      if (_was && _now - _was < FRIENDS.REQUEST_REPEAT_MS) return;
+      this._friendReqAt.delete(_k);
+      this._friendReqAt.set(_k, _now);
+      while (this._friendReqAt.size > FRIENDS.PACE_KEYS) this._friendReqAt.delete(this._friendReqAt.keys().next().value);
     }
     const now = Date.now();
     /* reqOut name is client-supplied DISPLAY data for the requester's
@@ -235,7 +256,7 @@ export const friendsMethods = {
        (chatmod.js).  Remembered first, because a DM is the lane where the
        nastiest things get said and the report path can only quote lines
        the server actually saw. */
-    this._chatModRemember(from, text, this.playerState[from] && this.playerState[from].z, 'dm');
+    this._chatModRemember(from, text, this.playerState[from] && this.playerState[from].z, 'dm', to);   /* v2.3.5623: whom it was for */
     if (this._chatModMuted(to, from)) return;
     if (!this._friendsSend(to, 'friend_dm', wire)) {
       const box = (await this.state.storage.get('friend_msg:' + to)) || [];

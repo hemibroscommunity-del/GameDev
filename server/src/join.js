@@ -545,6 +545,9 @@ export const joinMethods = {
         /* v2.3.3355: a character made just now -- handed a new key once its
            join is in, and this first key retired at the new one's first use */
         if (opts && opts.out) opts.out.fresh = true;
+      } else if (opts && opts.out) {
+        /* v2.3.5610: no key and no record of one: a guest (guestlazy.js) */
+        opts.out.guest = true;
       }
       return true;
     }
@@ -1028,6 +1031,9 @@ export const joinMethods = {
          ordinary join reads nothing more.  A storage read: the input gate
          stays shut through it. */
       const _lifeLeft = await this._lifeNoteRead(msg.id, stored, Date.now());
+      /* v2.3.5610: a FRESH guest (no key, no record of any kind): its join
+         writes none of its rows (guestlazy.js; index.js clears the mark) */
+      if (_keyOut.guest === true && !stored) await this._guestLazyCheck(msg.id);
       /* ═══ v2.3.3138: A NEW CHARACTER STARTS FROM THE SERVER'S DEFAULTS ═══
          Owner, on the farm's review: "Yes fix all of your recommended
          fixes.  Game is still a demo."  The first-join bootstrap below used
@@ -1356,7 +1362,8 @@ export const joinMethods = {
           this.playerState[msg.id].defenseUnspent = Math.max(0, Math.min(999, Math.floor(Number(_md.rpgDefenseUnspent) || 0)));
           this.playerState[msg.id].defenseSpec = this._sanitizeDefenseSpec(_md.rpgDefenseSpec);
         }
-        await this._saveRpg(msg.id, this.playerState[msg.id]);
+        /* v2.3.5610: a fresh guest's join saves no record (guestlazy.js) */
+        if (!this._guestLazy(msg.id)) await this._saveRpg(msg.id, this.playerState[msg.id]);
       }
       // v2.3.1198 (gem income): adopt the previously client-local gem
       // economy.  Heals/clamps whatever gems map landed above (stored
@@ -1640,7 +1647,7 @@ export const joinMethods = {
             if (typeof this._moveRespawned === 'function') this._moveRespawned(_ps);
           }
         }
-        this._saveRpg(msg.id, _ps);
+        if (!this._guestLazy(msg.id)) this._saveRpg(msg.id, _ps);   /* v2.3.5610: not a fresh guest's (guestlazy.js) */
       }
     } else {
       /* v2.3.4455: the kept body's locks told to this phone (the block above

@@ -59,6 +59,12 @@ export const TRADE2 = {
      just drawn on the client: a cooldown a client can skip is decoration, and
      the scam it exists to stop is run by a modified client. */
   ACCEPT_COOLDOWN_MS: 2500,
+  /* v2.3.5624 (card MOD PR 4; the red team's RT-3 S5): one
+     invite card per inviter per target per this long, party.js's
+     INVITE_REPEAT_MS rule -- every trade2_open re-sent the card, 100 in 10 s
+     at a victim, each a popup and a sound (t6-invites.mjs) */
+  INVITE_REPEAT_MS: 5000,
+  PACE_KEYS: 2000,      // v2.3.5624: the invite paces held at most (the oldest go first)
 };
 
 /* ═══ v2.3.5210: THE TRADE DOOR (card L PR 5; grand plan step 5.3b) ═══
@@ -191,6 +197,8 @@ export const trade2Methods = {
     if (inv && now - inv < TRADE2.INVITE_TTL) {
       this._t2Invites.delete(target + '>' + session.id);
       this._t2Invites.delete(session.id + '>' + target);
+      /* v2.3.5624: a trade that opened is no spam: the pair's card pace starts over */
+      if (this._t2InviteCardAt) { this._t2InviteCardAt.delete(target + '>' + session.id); this._t2InviteCardAt.delete(session.id + '>' + target); }
       const s = {
         id: crypto.randomUUID(), a: target, b: session.id,
         aName: (targetPs.name || 'Trader'), bName: (ps.name || 'Trader'),
@@ -213,8 +221,30 @@ export const trade2Methods = {
     }
     // First half: record + invite the target (their popup renders it;
     // clicking Trade back completes the mutual open above).
+    /* v2.3.5624: one CARD per inviter per target per INVITE_REPEAT_MS, as
+       party.js: the invite is recorded as ever (a mutual open, the rejoin's
+       re-send), but a repeat card inside the window is not sent -- the
+       target's popup and sound, the spam (t6-invites.mjs: 100 in 10 s).  A
+       trade that opens starts the pair's pace over (above), so a real
+       second trade is never held.  KILL SWITCH `invitepace: false`. */
+    const _f = this._liveFlags;
+    const _paceOn = !(_f && typeof _f === 'object' && Object.prototype.hasOwnProperty.call(_f, 'invitepace') && !_f.invitepace);
+    let _card = true;
+    if (_paceOn) {
+      /* its own map, not _t2Invites: a cancel deletes the invite, and an
+         open-cancel-open loop was exactly the 100 cards */
+      if (!this._t2InviteCardAt) this._t2InviteCardAt = new Map();   /* 'from>to' -> ts: capped, oldest first */
+      const _k = session.id + '>' + target;
+      const _was = this._t2InviteCardAt.get(_k);
+      if (_was && now - _was < TRADE2.INVITE_REPEAT_MS) _card = false;
+      else {
+        this._t2InviteCardAt.delete(_k);
+        this._t2InviteCardAt.set(_k, now);
+        while (this._t2InviteCardAt.size > TRADE2.PACE_KEYS) this._t2InviteCardAt.delete(this._t2InviteCardAt.keys().next().value);
+      }
+    }
     this._t2Invites.set(session.id + '>' + target, now);
-    this._t2Send(target, 'trade2_invite', { from: session.id, fromName: (ps.name || 'Someone') });
+    if (_card) this._t2Send(target, 'trade2_invite', { from: session.id, fromName: (ps.name || 'Someone') });
     this._t2Send(session.id, 'trade2_state', { state: 'invited', target });
   },
 
