@@ -18,7 +18,8 @@ state: ready
 (5612) · 17 OPS #1968 (5614) · 18 this PR. All based on `main`, one merge
 base at every step. Deploys: the worker at 4-16 (`server/**`). New live
 flags: `ip56`, `offdevs` (ON); page switches ON: `?hudbars`,
-`?deathstrip`, `?uploadicons`, `?veildoor`. REHEARSED
+`?deathstrip`, `?uploadicons`, `?veildoor`. Rehearsed (tree fe90e68):
+precheck PASS (0 FAIL), build PASS, questline 187/187.
 
 ## Held
 - R #1873 (save shape 21 -> 22): not before #1960 is deployed (a later

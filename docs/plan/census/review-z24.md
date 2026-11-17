@@ -21,7 +21,13 @@ lower head already holds cfcd70b, so one merge base at every step):
 
 MOD's three and R #1960 merge clean in any order.
 
-REHEARSAL
+Rehearsed (`tools/dev/gatekeeper.mjs`, the seventeen in list order; the
+merged tree fe90e68): precheck PASS (0 FAIL, 3 WARN, 256 s), build PASS,
+questline 187/187. `test` is green on every listed head. The tree after
+each merge, from `git merge-tree` step by step (one merge base at each):
+1 b0b3e36 · 2 695484a · 3 c5ed83a · 4 784805f · 5 d05ea1e · 6 6fff45f
+· 7 5661ad7 · 8 a4a6b94 · 9 83fb1ef · 10 a8139a8 · 11 7e4ffb7 · 12 54c0ed5
+· 13 255cd6f · 14 c2e2ef7 · 15 d4ec032 · 16 5a5f281 · 17 fe90e68.
 
 ## J2 #1953 (5642) > #1964 (5643): the tests'
 
