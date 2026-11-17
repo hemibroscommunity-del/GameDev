@@ -101,3 +101,17 @@ without it) takes away, one page of `botstat:` rows a call (`next` to go on),
 each whose character has no `rpg:` record and is not playing now. A
 character with a record keeps its row. No new storage key. Kill switch
 `guestquiet: false`. Suite: `server/test/guestquiet.test.mjs`.
+
+**Sitting 38's review** (two holds and a note, fixed in the same PR):
+- **Evidence is never held back.** A quiet guest's record holding a flag or
+  a cap clamp (`botfp.js` `botfpEvidence`) is written as before, at once
+  and at the leave. Otherwise a bot refused at every strike never earns,
+  never saves, and stays quiet for good, its flags in memory only, lost at
+  a deploy.
+- **An id leaves the quiet set only through `_guestQuietEnd`**, which gives
+  its session the board's clock back. This covers the QUIET_MAX eviction
+  and a later join of the id; the leave drops the id once no socket of it
+  is left (`_guestQuietGone`). Before, an evicted guest who then earned was
+  never reported for the rest of the sitting.
+- **The sweep keeps an orphan row holding evidence**, which the owner's
+  `?flagged=1` review reads.
