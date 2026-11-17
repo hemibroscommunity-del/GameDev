@@ -90,7 +90,7 @@ export const SYSTEMS = Object.freeze({
   },
   bots: {
     what: 'telling a person from a script: bot signals, fingerprints, claims that are bounded',
-    files: [f('server/src', 'botfp|botsig|botstats|charwatch|hitproof|moveclaims|swordswing')],   /* v2.3.5548: the sword's swing, a bounded claim */
+    files: [f('server/src', 'botfp|botsig|botstats|charwatch|hitproof|moveclaims|swordswing|bowshot')],   /* v2.3.5548: the sword's swing, a bounded claim; v2.3.5550: a bow's claim an arrow seen */
     words: ['bot', 'antibot', 'anticheat', 'charwatch', 'hitproof', 'moveclaim'],
     traps: [],
     doors: [],
