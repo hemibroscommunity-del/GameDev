@@ -160,6 +160,15 @@ extended.
    at the next join), the phone's copy (sent capped), and the gear lists'
    at the save (`capStash`) and the join (gearstash.js). No kill switch:
    one would only bring back a cut that destroys weapons.
+   **v2.3.5703 (card SEC PR 4): the cuts that remain run at the NORMAL caps
+   (140 weapons, 48 of each gear list), whatever `disable_bigbags` says**
+   (`gear.js` `_sanitizeWeaponList` for a stored bag, `persistence.js`
+   `keepStash` at the save, `gearstash.js` `gearStashKeepCap()` at the join
+   and the migration). Under the switch they ran at 8 and 32, and a
+   player's 140 weapons became 8 on file at their next login. The switch
+   now lowers only what a give (the door) or a phone's claim may fill, and
+   the phone's copy (the echo); nothing stored is cut by it. No kill switch,
+   for the reason above. Suite: `server/test/bagkeep.test.mjs`.
 4. **The regen tick's durable write is COALESCED, and that is deliberate**
    (v2.3.1619). `_tickPlayerRegen` runs every ~670 ms but calls `_saveRpg`
    at most once per `REGEN_SAVE_MS` (10 s); the skipped ticks set

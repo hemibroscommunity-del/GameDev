@@ -209,7 +209,8 @@ export const leaveMethods = {
          be lost to DO eviction.  No-ops (_regenDirty false) for every
          player whose last write was value-bearing. */
       const _ps = this.playerState[session.id];
-      if (d.save === 'dirty' && _ps && _ps._regenDirty) await this._saveRpg(session.id, _ps);
+      if (d.save === 'dirty' && _ps && (_ps._regenDirty
+          || (this._bankOwed && this._bankOwed(session.id)))) await this._saveRpg(session.id, _ps);   /* v2.3.5702: and a vault owed, written with it before its copy goes (bank.js) */
       /* v2.3.3140: the daily quests' counting is written at most every 30 s;
          this is its last chance (dailyrewards.js).  Awaited for the same
          reason as the regen flush above -- and, like it, ONLY when there is

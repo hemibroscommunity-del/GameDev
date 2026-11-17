@@ -312,12 +312,15 @@ export const PHASES = [
     note: 'S._dying is written from five files (the ledger\'s writers).',
   },
   {
-    name: 'fight', side: 'page', status: 'todo',
+    name: 'fight', side: 'page', status: 'door',
     what: 'The phone\'s own note of a fight with a player, and the skull it shows.',
-    field: null, states: ['free', 'fighting', 'red', 'white'], fn: null, file: null,
+    field: 'S._pvpSkullType', states: ['free', 'red', 'white'],
+    fn: 'skullTo', file: 'src/game/skullDoor.js',
     clears: [{ edge: 'never', at: 'src/game/fightFood.js notePvpHit' }],
     rejoin: 'none: a clock that runs out by itself',
-    today: [{ field: 'S._pvpAt' }, { field: 'S._pvpSkullType' }, { field: 'S._pvpSkullUntil' }],
+    held: { suite: 'server/test/fight-page-door.test.mjs' },
+    notes: ['S._pvpSkullUntil'],   /* v2.3.5533: written beside the skull by the same call */
+    note: 'v2.3.5533: the door (SKULL_WAYS threat, issue, nml; switch ?skulldoor): the skull and its time. Beside it: the fight\'s own clock (S._pvpAt, fightFood.js: the last blow, read as fighting by the fight lock), the threat\'s record (S.rpg._threatState) and cooldown (S._pvpThreatCdUntil), No man\'s land\'s record (S._nmlSelf).',
   },
   {
     name: 'duel', side: 'page', status: 'door',

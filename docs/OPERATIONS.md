@@ -677,7 +677,9 @@ curl -X POST -H "Authorization: Bearer YOUR_KEY" -H "Content-Type: application/j
   -d '{"name":"newersave","value":false}' "https://WORKER/api/admin/flags"
 ```
    Their saves keep the newer version's mark, so nothing is changed twice
-   when the fix arrives. A few parts the newer version saved for a player
+   when the fix arrives, and keep every part of the character the older
+   version does not know, as the newer version wrote it (v2.3.5704; the
+   switch `newerkeep`). A few parts the newer version saved for a player
    (the farm, pets, the codex, the order board, the daily rewards) stay shut
    for that player until the fix is deployed; nothing is lost.
 3. **Hold every merge that touches the server until the fix is in.** The
