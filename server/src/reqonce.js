@@ -29,6 +29,8 @@
  * `reqonce: false` in the live flags: no reqId is read (an `opId` still is,
  * as before), nothing is remembered and nothing echoed.
  */
+import { WIRE_IN } from './wire/in.js';   /* v2.3.5195: the door's rows, made from the table */
+
 export const REQ_ONCE = Object.freeze({
   KEEP: 32,                 /* the last answers kept a player (the bank's ops are 32 too) */
   MEM_MS: 10 * 60 * 1000,   /* how long a sitting's answer is kept: far past any page's re-send */
@@ -36,7 +38,45 @@ export const REQ_ONCE = Object.freeze({
   STAMP: 'oplog:rq:',       /* the lasting stamp, `reqstamp` only */
 });
 
+/* v2.3.5195 (card K PR 10): THE DOOR'S WAY.  Every other socket row whose
+   `reqId` column is `reqId` (wire/in.js) is held at the wire door
+   (wire/door.js _wireDoor): a repeat of an id the player sent before, for
+   the sitting, reaches no handler, and is answered with the player's state
+   again -- what these rows change (the bag, the purse, the gear).  The rows
+   whose handler keeps its own record and answer (5194: the bank's two, the
+   chest, the cape, the spin, the auction house's three offers) are left to
+   it: REQ_OWN. */
+export const REQ_OWN = Object.freeze(new Set(['bank_deposit', 'bank_withdraw', 'chest_open', 'cape_redeem', 'daily_spin', 'store_offer', 'store_offer_cancel', 'store_offer_reply']));
+let _doorTypes = null;
+export function reqDoorTypes() {
+  if (!_doorTypes) _doorTypes = new Set(WIRE_IN.filter((r) => r.wayIn === 'socket' && r.reqId === 'reqId' && !REQ_OWN.has(r.name)).map((r) => r.name));
+  return _doorTypes;
+}
+
 export const reqOnceMethods = {
+  /* The wire door's step (door.js): true when this message is a repeat to
+     drop, its answer sent.  The first is remembered BEFORE its handler runs:
+     a socket's messages run one at a time (the router awaits each), so its
+     repeat finds it, whatever the first's outcome -- a refused first is not
+     tried again by its repeat either. */
+  _reqOnceDoor(session, msg, ws) {
+    if (!session || !session.id || !msg || !reqDoorTypes().has(msg.type)) return false;
+    const p = msg.payload && typeof msg.payload === 'object' ? msg.payload : null;
+    const rid = this._reqIdOf(p && p.reqId !== undefined ? p.reqId : msg.reqId);
+    if (!rid) return false;
+    const key = msg.type + ':' + rid;
+    if (this._reqRecall(session.id, key) !== undefined) {
+      session.reqAgain = (session.reqAgain || 0) + 1;
+      const w = ws || (this._wsBySessionId && this._wsBySessionId(session.id));
+      /* every field again, not the delta (which would be empty: nothing changed) */
+      const sent = session.lastPlayerStateSent && typeof session.lastPlayerStateSent === 'object' ? Object.keys(session.lastPlayerStateSent) : [];
+      if (w && this.playerState && this.playerState[session.id] && this._resendPlayerState) { try { this._resendPlayerState(w, session.id, sent); } catch (e) { /* the next state carries it */ } }
+      return true;
+    }
+    this._reqRemember(session.id, key, 1);
+    return false;
+  },
+
   _reqOnceOff() {
     const f = this._liveFlags;
     return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'reqonce') && !f.reqonce);

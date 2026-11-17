@@ -1,6 +1,6 @@
 card: K
 branch: claude/plan-k-<n>-<topic> (one branch a PR, each begun from main)
-prs: #1822, #1820, #1826, #1829, #1831, #1838, #1842, #1861, #1848, #1899, #1923, #1900, #1931-#1934, #1942, #1949 merged; ready: #1972 (5194, this branch)
+prs: #1822, #1820, #1826, #1829, #1831, #1838, #1842, #1861, #1848, #1899, #1923, #1900, #1931-#1934, #1942, #1949, #1972 merged; ready: #1981 (5194b, 5546), #1989 (5195, this branch; replaces #1983)
 state: ready
 
 ## Done
@@ -17,19 +17,20 @@ state: ready
 
 ## Next
 
-- 5194b once their holders merge: the `reqid` cap (join.js, CAP_GATES),
-  http.js's market and store rows (+ #1947's `mktwords` flag, tierLabel and
-  playerName read only when it is off), actions.js's gated re-send and a
-  DELETE's id in its query, SHAPES part 2.
+- #1981 5194b (5546): the `reqid` cap, the door's one re-send, http.js's
+  rows, SHAPES part 2, sitting 25's mends.
+- #1983 5195: every other value request at the wire door
+  (reqonce.js `_reqOnceDoor`; 31 rows `none` -> `reqId`; req-once-door).
+  Card K's PR 9 entry tidied (the planning session's word).
 - Then 5196, 5197. The move's walls; the sword's reach; the bow claim.
 
 ## Found
 
-- `clan_war_kill`/`clan_war_end` sent for an older worker (`legacy` rows).
 - A kept quest hand-in gets a fresh request id on its rejoin send.
 - One sprint step's bill is capped at 1 s (STEP_MAX_MS), on or off.
 - A sell order's tierKey is the seller's claim, not the escrowed weapon's.
 - After a reconnect admin's lastStrike/arrowBlast read null (#1942).
+- `wiredoor`'s listed wire-door.test FAIL 3 passed on main too: off its list.
 - #1949: a socket at 95/s is never closed (550 drops / 10 s < 600), and
   the full room's 33/s share sits at a crowd fight's 35-40/s: the owner's.
 
