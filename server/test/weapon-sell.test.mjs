@@ -14,6 +14,9 @@
  *   4. the wiring: InventoryPanel asks first and draws only when it went. */
 import { readFileSync } from 'node:fs';
 import { GameRoom } from '../src/index.js';
+import { setActionTransport } from '../../src/game/actions.js';   /* v2.3.5188: the page's sends leave through the action door (card K PR 7.2): its transport is the stand-in phone's channel */
+/* v2.3.5188: the door's transport is this phone's channel (none: nothing leaves, as with no connection) */
+const via = (S) => { setActionTransport(S && S.channel ? { send: (m) => S.channel.send(m) } : null); return S; };
 
 let passed = 0, failed = 0;
 function check(name, cond, detail) {
@@ -62,7 +65,7 @@ if (typeof W.askSellWeapon === 'function') {
   ps.coins = 50; ps.weaponStash = [sword()];
   R._sendPlayerState(ws, ID); ws.sent.length = 0;
   const phone = { coins: 50, weaponStash: [sword(), sword()], _compStats: { totalGoldEarned: 0 } };
-  const went = W.askSellWeapon(S, 1);
+  const went = W.askSellWeapon(via(S), 1);
   check('1 the ask went', went === true && pending.length === 1 && pending[0].type === 'sell_weapon' && pending[0].payload.stashIdx === 1, pending);
   W.drawWeaponSale(phone, 1, 15);
   check('1 the page drew the sale', phone.coins === 65 && phone.weaponStash.length === 1);
@@ -76,14 +79,14 @@ if (typeof W.askSellWeapon === 'function') {
   R._sendPlayerState(ws, ID); ws.sent.length = 0;
   const phone2 = { coins: 50, weaponStash: [sword()] };
   const val = R._weaponSellValue(sword());
-  W.askSellWeapon(S, 0); W.drawWeaponSale(phone2, 0, val);
+  W.askSellWeapon(via(S), 0); W.drawWeaponSale(phone2, 0, val);
   await flush(); adopt(phone2);
   check('2 paid: the worker\'s coins are the prediction\'s', phone2.coins === 50 + val && ps.coins === 50 + val && ps.weaponStash.length === 0, { phone: phone2.coins, worker: ps.coins });
 
   /* 3. dropped: the shim answers false while the socket is down, or throws */
   const down = { channel: { send() { return false; } } };
   const broken = { channel: { send() { throw new Error('closed'); } } };
-  check('3 a dropped ask says so', W.askSellWeapon(down, 0) === false && W.askSellWeapon(broken, 0) === false && W.askSellWeapon({}, 0) === false);
+  check('3 a dropped ask says so', W.askSellWeapon(via(down), 0) === false && W.askSellWeapon(via(broken), 0) === false && W.askSellWeapon(via({}), 0) === false);
   check('3 a sale at an empty place draws nothing', W.drawWeaponSale({ coins: 5, weaponStash: [] }, 0, 15) === false);
 }
 

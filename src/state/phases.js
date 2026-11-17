@@ -185,18 +185,17 @@ export const PHASES = [
     note: 'v2.3.5212: the door (PARTY_WAYS load, join, clan, leave, disband; a member stands in the party\'s own list; live flag partydoor). The leave marks the member away, it does not remove them (partykeep). A rejoin re-sends the roster (join.js _partyOnRejoin, before rejoinresend.js existed).',
   },
   {
-    name: 'ride', side: 'worker', status: 'todo',
+    name: 'ride', side: 'worker', status: 'door',
     what: 'The skateboard: on or off, ended for a reason (RIDE.WHY).',
-    field: null, states: ['off', 'on'], fn: null, file: null,
+    field: 'ps._ride', states: ['off', 'on'],
+    fn: '_rideTo', file: 'server/src/ride.js',
     clears: [
       { edge: 'end', at: 'server/src/ride.js _rideEnd' },
       { edge: 'death', at: 'server/src/index.js _handlePlayerDeath' },
     ],
     rejoin: 'none: the worker stores nothing and a join is off the board (the ride slot\'s why: the phone clears its own)',
-    today: [
-      { field: 'ps._ride', file: 'server/src/ride.js', writers: ['server/src/ride.js _handleRide', 'server/src/ride.js _rideEnd'] },
-    ],
-    note: 'Nearly a door already: every end goes through _rideEnd, and _handleRide is the start. The worker stores nothing, so a join is off the board (the slot\'s why).',
+    held: { suite: 'server/test/ride-door.test.mjs' },
+    note: 'v2.3.5523: the door (RIDE_WAYS board, end; a board is the living\'s alone and tells a session, ps._ridePid written beside it; an end only of a ride that is on; live flag ridedoor). Every end goes through _rideEnd, the start through _handleRide. The worker stores nothing, so a join is off the board (the slot\'s why).',
   },
   {
     name: 'harvest', side: 'worker', status: 'door',
@@ -265,19 +264,17 @@ export const PHASES = [
     note: 'v2.3.5217: the door (RACE_WAYS start, end; a race on carries its gun t0 and its deadline endBy after it, so the next move can always end it; live flag racedoor). The countdown (now < t0) and the running are times, not phases. A death or a leave of the Wheel ends it at the next move (_raceOnMove, \'left\').',
   },
   {
-    name: 'arena', side: 'worker', status: 'todo',
+    name: 'arena', side: 'worker', status: 'door',
     what: 'The Gladiator tournament (gathering, running, complete) and a player\'s match in it.',
-    field: null, states: ['gathering', 'running', 'complete', 'queued', 'fighting', 'eliminated'], fn: null, file: null,
+    field: 'this._arena', states: ['none', 'gathering', 'running', 'complete'],
+    fn: '_arenaTo', file: 'server/src/gladiator.js',
     clears: [
       { edge: 'end', at: 'server/src/gladiator.js _arenaOnMatchResolved' },
       { edge: 'death', at: 'server/src/duel.js _duelOnDeath' },
     ],
     rejoin: ['arena'],
-    today: [
-      { field: 'this._arena', file: 'server/src/gladiator.js', writers: ['server/src/gladiator.js _arenaJoin', 'server/src/gladiator.js _arenaLeave', 'server/src/gladiator.js _arenaLazyTick', 'server/src/gladiator.js _tickArena'] },
-      { field: 'ps._arenaMatch', file: 'server/src/gladiator.js', writers: ['server/src/gladiator.js _arenaTryActivate', 'server/src/gladiator.js _arenaOnMatchResolved'] },
-    ],
-    note: 'A match is a wager-0 duel (this._duels, arenaMatch); _arenaInMatch reads the duel as the truth. arena.js is the retired class, kept for its binding.',
+    held: { suite: 'server/test/arena-door.test.mjs' },
+    note: 'v2.3.5522: the door (ARENA_WAYS open, start, crown, empty, cancel, clear; the rules are the callers\' own checks; live flag arenadoor). The phase is the record\'s own status; start and crown turn it in place. A player\'s place in it (queued, fighting, eliminated) is read off the record (_arenaStatusFor); ps._arenaMatch, the healing gates\' marker, is a note beside it, held by the suite to its two writers (_arenaTryActivate, _arenaOnMatchResolved). A match is a wager-0 duel (this._duels, arenaMatch); _arenaInMatch reads the duel as the truth. arena.js is the retired class, kept for its binding.',
   },
   {
     name: 'fishing', side: 'worker', status: 'door',

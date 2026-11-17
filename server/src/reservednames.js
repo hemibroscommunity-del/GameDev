@@ -23,6 +23,10 @@
  *   - two words side by side ("Game Master", "Bro Town");
  *   - the whole of it with nothing between the letters ("A d m i n",
  *     "B.r.o.T.o.w.n").
+ * v2.3.5625 (card MOD PR 5; the sitting 21 list): a word is also read with
+ * letters that look like one when put together (vv a w, rn an m, cl a d) and
+ * an l as an i ("BroTovvn", "Adrnin", "Admln"), and the Cherokee letters
+ * that look Latin are folded ("\u13aadmin").
  * A word that only CONTAINS a short one ("Modest", "Devin", "Teammate",
  * "Systema", "Bro Townsend") is not refused: the list is of words, not of
  * letters.
@@ -61,6 +65,28 @@ const LOOK = Object.freeze({
   '\u03bd': 'v', '\u03c1': 'p', '\u03c4': 't', '\u03c5': 'u', '\u03c7': 'x', '\u0261': 'g',
 });
 const DIGIT_LOOK = Object.freeze({ 0: 'o', 1: 'i', 3: 'e', 4: 'a', 5: 's', 7: 't', 8: 'b', '@': 'a', $: 's', '!': 'i', '|': 'l' });
+/* v2.3.5625 (card MOD PR 5; the sitting 21 list: "a Cherokee A"): the
+   Cherokee letters that look Latin, each in both its cases (the fold lowers
+   the name first, and a capital Cherokee letter lowers to U+AB70-ABBF) */
+const CHEROKEE = Object.freeze({
+  'Ꭰ': 'd', 'Ꭱ': 'r', 'Ꭲ': 't', 'Ꭵ': 'i', 'Ꭹ': 'y', 'Ꭺ': 'a', 'Ꭻ': 'j', 'Ꭼ': 'e',
+  'Ꮃ': 'w', 'Ꮇ': 'm', 'Ꮋ': 'h', 'Ꮐ': 'g', 'Ꮒ': 'h', 'Ꮓ': 'z', 'Ꮟ': 'b', 'Ꮢ': 'r',
+  'Ꮤ': 'w', 'Ꮥ': 's', 'Ꮩ': 'v', 'Ꮪ': 's', 'Ꮮ': 'l', 'Ꮯ': 'c', 'Ꮲ': 'p', 'Ꮶ': 'k',
+  'Ᏼ': 'b',
+});
+const LOOKS = (() => {
+  const m = Object.create(null);
+  for (const k of Object.keys(LOOK)) m[k] = LOOK[k];
+  for (const k of Object.keys(CHEROKEE)) { m[k] = CHEROKEE[k]; m[k.toLowerCase()] = CHEROKEE[k]; }
+  return Object.freeze(m);
+})();
+/* v2.3.5625 (the sitting 21 list: "BroTovvn", "Admln"): the letters that
+   read as another when put together (vv a w, rn an m, cl a d) and an l read
+   as an i, on both sides: a word is on the list when it reads as a listed
+   word this way too ("Ovvner", "Adrnin", "Mocl", "Admln", "Offlcial") */
+const together = (w) => w.replace(/vv/g, 'w').replace(/rn/g, 'm').replace(/cl/g, 'd').replace(/i/g, 'l');
+const READS = new Set(RESERVED_NAME_WORDS.map(together));
+const listed = (w) => WORDS.has(w) || READS.has(together(w));
 const COMBINING = /\p{M}/gu;
 const CAMEL = /(\p{Ll})(\p{Lu})/gu;
 
@@ -75,7 +101,7 @@ export function foldName(name, one, digits) {
   const signs = digits !== false;
   let out = '';
   for (const ch of s) {
-    let m = Object.prototype.hasOwnProperty.call(LOOK, ch) ? LOOK[ch] : ch;
+    let m = ch in LOOKS ? LOOKS[ch] : ch;   /* v2.3.5625: + the Cherokee (a null-prototype map) */
     if (Object.prototype.hasOwnProperty.call(DIGIT_LOOK, ch)) m = !signs ? (/[0-9]/.test(ch) ? ch : ' ') : ch === '1' && one ? one : DIGIT_LOOK[ch];
     out += /[a-z0-9]/.test(m) ? m : ' ';
   }
@@ -89,9 +115,9 @@ export function nameReadsAsStaff(name) {
     const folded = foldName(name, way[0], way[1]);
     if (!folded) continue;
     const words = way[1] ? folded.split(' ') : folded.split(' ').flatMap((w) => w.replace(/[0-9]+/g, ' ').trim().split(' ')).filter(Boolean);
-    if (words.some((w) => WORDS.has(w))) return true;
-    for (let i = 0; i + 1 < words.length; i++) if (WORDS.has(words[i] + words[i + 1])) return true;
-    if (words.length && WORDS.has(words.join(''))) return true;
+    if (words.some(listed)) return true;   /* v2.3.5625: read together too (listed) */
+    for (let i = 0; i + 1 < words.length; i++) if (listed(words[i] + words[i + 1])) return true;
+    if (words.length && listed(words.join(''))) return true;
     /* GM: the whole name, or with digits or a plural ("GM", "GM7", "GMs") */
     if (!way[1]) {
       const raw = folded.split(' ');

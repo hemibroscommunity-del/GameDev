@@ -1038,7 +1038,8 @@ for (const p of files) {
     fishSpot: /if \(S\._nearNode && S\._nearNode\.nodeType === 'fishSpot'\) \{ try \{ BT_AUDIO\.sfxAhead\('fishSpot'\)/.test(code('src/ui/BroTown.jsx')),
     cast: /if \(skill === 'fishing'\) \{ try \{ if \(BT_AUDIO\.sfxAhead\) BT_AUDIO\.sfxAhead\('cast'\)/.test(code('src/game/lifeSkillRewards.js')),
     levelNear: /if \(sfxLevelNear\(S\.rpg, prog3XpRequired, LIFE_SKILL_XP\)\) BT_AUDIO\.sfxAhead\('levelNear'\)/.test(code('src/networking/wsClient.js')),
-    flip: (code('src/ui/panels/AceFlipPanel.jsx').match(/BT_AUDIO\.sfxAhead\('flip'\);[^\n]*\n\s*try \{\s*\n\s*(st|S)\.channel\.send\(\{ type: 'broadcast', event: 'ace_(item_)?flip_request'/g) || []).length === 2
+    /* v2.3.5190: the toss's request goes through the action door (act) */
+    flip: (code('src/ui/panels/AceFlipPanel.jsx').match(/BT_AUDIO\.sfxAhead\('flip'\);[^\n]*\n\s*try \{\s*\n\s*act\('ace_(item_)?flip_request'/g) || []).length === 2
       && /if \(stage === 'shaking'\) \{ try \{ BT_AUDIO\.sfxAhead\('flip'\)/.test(code('src/ui/mobile/ChestReveal.jsx')),
   };
   check(`18k each moment is asked for where it is seen coming: the water near, a fishing spot in reach, the cast, a skill near its level, Ace's toss (both, before the request) and a chest shaking (${Object.keys(sites).length} of ${Object.keys(WHEN).length})`,

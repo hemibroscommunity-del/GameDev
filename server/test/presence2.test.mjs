@@ -36,6 +36,9 @@ import { WHEEL_CENTRE } from '../src/wheelspawns.js';
 import { ROSTER, FAR_PLAYERS } from '../src/tick.js';
 import { PRESENCE2 } from '../src/presence2.js';
 import * as DOOR from '../../src/game/actions.js';   /* v2.3.5185: the action door's rows */
+import { setActionTransport } from '../../src/game/actions.js';   /* v2.3.5188: the page's sends leave through the action door (card K PR 7.2): its transport is the stand-in phone's channel */
+/* v2.3.5188: the door's transport is this phone's channel (none: nothing leaves, as with no connection) */
+const via = (S) => { setActionTransport(S && S.channel ? { send: (m) => S.channel.send(m) } : null); return S; };
 
 let passed = 0, failed = 0;
 function check(name, cond, detail) {
@@ -312,7 +315,7 @@ check('0b the session took pres: 2 from its join (v2)', sessionOf(room, A).pres2
     C2.onlineListFresh(S1, 1000 + C2.PRESENCE2_CLIENT.ONLINE_STALE_MS - 1) && !C2.onlineListFresh(S1, 1000 + C2.PRESENCE2_CLIENT.ONLINE_STALE_MS));
   const S0 = fakeS({}); S0.channel.owner = S0; S0._onlineAt = 1000;
   check('9c ...and never stands down against a worker without presence2', !C2.onlineListFresh(S0, 1001));
-  C2.sendMapWatch(S1, true); C2.sendMapWatch(S0, true);
+  C2.sendMapWatch(via(S1), true); C2.sendMapWatch(via(S0), true);
   check('9d map_watch goes only to a worker that advertises presence2 (an old one would rebroadcast it)',
     S1.sent.length === 1 && S1.sent[0].type === 'map_watch' && S1.sent[0].on === true && S0.sent.length === 0, { s1: S1.sent, s0: S0.sent });
   check('9e the open map repeats it inside the worker\'s watch', C2.PRESENCE2_CLIENT.MAP_HEARTBEAT_MS * 2 <= PRESENCE2.MAP_WATCH_MS && C2.PRESENCE2_CLIENT.MAP_HEARTBEAT_MS === PRESENCE2.MAP_HEARTBEAT_MS);

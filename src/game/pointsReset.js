@@ -14,6 +14,8 @@
  * NO IMPORTS: server/test/points-reset.test.mjs runs it in node.
  */
 
+import { act } from './actions.js';   /* v2.3.5188: the action door (card K PR 7), its only import: it has none of its own, so node still reads this file */
+
 /* the three weapon skills, in the worker's order (server/src/prog3.js
    PROG3.SKILLS -- the suite holds the two together) */
 export const POINTS_RESET_SKILLS = Object.freeze(['sword', 'bow', 'staff']);
@@ -57,7 +59,7 @@ export function requestPointsReset(S, now) {
   const t = typeof now === 'number' ? now : Date.now();
   if (S._pointsResetAskedAt && t - S._pointsResetAskedAt < ASK_MS) return false;
   S._pointsResetAskedAt = t;
-  try { S.channel.send({ type: 'points_reset', payload: {} }); } catch (e) { return false; }
+  try { act('points_reset', {}); } catch (e) { return false; }   /* v2.3.5188: through the action door (actions.js) */
   return true;
 }
 

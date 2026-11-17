@@ -17,6 +17,7 @@
 import { cueAt } from '@/game/eventSounds.js';
 import { wheelTownDoors } from '@/game/wheelTownDoors.js';
 import { isWheelTrialZone } from '@/game/worldTrial.js';
+import { sw } from '@/game/switches.js';   /* v2.3.5309: the page's one reader (card T) */
 
 export const FORGE_PLOT = 'blacksmith';
 /* heard within this many game px of the forge's door: earVol has it at
@@ -30,7 +31,7 @@ const st = { next: 0, played: 0, last: null, off: null };
 
 function off() {
   if (st.off === null) {
-    try { st.off = typeof location !== 'undefined' && /[?&]noforge(?:[&=]|$)/.test(location.search); } catch (e) { st.off = false; }
+    st.off = sw('noforge');
   }
   return st.off;
 }

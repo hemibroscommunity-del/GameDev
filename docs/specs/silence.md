@@ -19,8 +19,20 @@ let in (the account check, Turnstile, is off). The About panel promises
   covered by its row; the page's shim sends a relayed event as its own type).
   Never every `speaks` row (card K, 2026-11-15: that is 39, `join`, `track`,
   a trade and a duel among them): a silenced character still logs in, moves,
-  trades, invites, duels and emotes. Card K's coming `CHAT_LANES`
-  (`wire/lists.js`, the one reader of the table) takes it in.
+  trades, invites, duels and emotes. v2.3.5625: `SILENCE_LANES` is card K's
+  `CHAT_LANE_TYPES` (`wire/lists.js`, the one reader of the table).
+- **Words outside the lanes** (v2.3.5625, card MOD PR 5; the sitting 19
+  review's low): a name other players read (`pet_name`, `alliance_name`,
+  `clan_create`, `clan_invite`: `SILENCE_WORDS`) and an emote's quick line
+  ("GG", "EZ", "RIP": `EMOTE.LINES`) are dropped too; its emoji and moves go
+  on. Every socket row whose trust names a `words` field is either closed or
+  left open with why (`SILENCE_OPEN`: `join` and `track`, the record's name;
+  `chat_mute`, one's own list; `friend_request`, the target reads the
+  server's name; `dungeon_start`, the worker's own config), and
+  `silence.test` fails a new one in neither. Told: "You can't give names
+  others read right now: ...". The market's order label and seller name
+  (free text from the page, `market.js`) are not a socket row: under the
+  card's Needs.
 - **Where**: `_silenceDoor`, one step in the router (`index.js _onMessage`)
   right after the wire door, never inside it (card K's word: the door
   refuses only what no page sends and sits behind `wiredoor`).
@@ -38,9 +50,16 @@ let in (the account check, Turnstile, is off). The About panel promises
   `freezedevice: true` in the live flags turns it on, from the Test panel's
   live switches. It can hold the OWNER out today (a `?guest=1` alt shares the
   main's phone id; a device reached with a new key is never recorded in
-  `devs`), and "a freeze blocks the device" is the owner's decision; the
-  next PR makes its devices right (botfp's `device:<devId>` record) before
-  anyone turns it on.
+  `devs`), and "a freeze blocks the device" is the owner's decision.
+- **Its devices, complete** (v2.3.5625, card MOD PR 5): a device's
+  characters are read from botfp's own record, `device:<devId>` (every
+  character that joined from it, whatever key it came with: its last 8 in
+  30 days), beside `auth:<pid>.devs` (the device a character was made on).
+  The owner's spare is complete the same way: a device is never held when
+  its record (or a test-mode character's `devs`) shows one of the owner's
+  own characters, nor is a join that names one (its key still decides). A
+  refused join writes nothing, so new characters cannot push the frozen one
+  out of the record once it holds.
 - The frozen characters' records are read 128 a get (`SILENCE.GET_MAX`, the
   runtime's most: 129 freezes threw, and the read failed open).
 
@@ -89,7 +108,8 @@ then); the name rules (PR 2); what a reporter received (PR 3); invite pace
 told once, others speak; it plays on; lifted, run out, kept across a deploy;
 the switch; a new character on a frozen phone refused (t4-ban.mjs's proof),
 another phone let in, the owner's phone spared, `freezedevice: false`,
-unfreeze; the lever OFF by default, 129 freezes read 128 a get, `minutes`
+unfreeze; 5b the words outside the lanes, 6b the device's characters from
+botfp's record and the owner's complete spare (v2.3.5625); the lever OFF by default, 129 freezes read 128 a get, `minutes`
 refused unless a positive whole number (the sitting 19 review, each with its
 break proof in the suite's header). Break proofs (by hand, 2026-11-15): the router line removed, the
 join hook removed, the owner's phone not spared, the switch ignored: each

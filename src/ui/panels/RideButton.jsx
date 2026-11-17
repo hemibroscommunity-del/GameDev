@@ -8,6 +8,7 @@ import { RIDE_KEY } from '@/game/deskKeys.js';
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { Skin, pressOn, pressOff } from './controlSkin.jsx';
 import { RIDE_ICON_URL } from '@/rendering/rideFx.js';
+import { act } from '@/game/actions.js';   /* v2.3.5190: the page's requests leave through the action door (card K PR 7) */
 
 /* ═══ v2.3.3776: THE SKATEBOARD BUTTON ═══
  *
@@ -110,7 +111,7 @@ export function RideButton(props) {
   var tap = function () {
     var s = stateRef && stateRef.current;
     if (!s) return;
-    var asked = toggleRide(s, Date.now(), function (type, payload) { if (s.channel) s.channel.send({ type: type, payload: payload }); });
+    var asked = toggleRide(s, Date.now(), function (type, payload) { if (s.channel) act(type, payload); });   /* v2.3.5190: through the action door (actions.js) */
     if (asked === null && s.player) pushDmgPopup(s, s.player.x, s.player.y - 70, rideOffLine('off'), '#F4E7C8');
     keyRef.current = '';
     setTick(function (x) { return (x + 1) % 1000000; });
