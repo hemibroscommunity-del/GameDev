@@ -1,37 +1,40 @@
 card: SEC
 branch: claude/plan-sec-<n>-<topic> (stacked: each PR on the one before until it merges)
-prs: #2030-#2049 merged; #2054: sitting 39; #2055-#2057: CI; PRs 16-19 (5715-5718): suites
+prs: #2030-#2054 merged; #2055-#2063 (5712-5719): sitting 40, Z40's holds fixed
 state: ready
 
 ## Done
 
-- PRs 1 to 11 (#2030-#2049, merged): items 1 to 10 and the card.
+- PRs 1-11 (#2030-#2049, merged): items 1 to 10 and the card.
 - PRs 12-14 (#2054-#2056): flood tally; chain budget; dev console blanks.
-- PRs 15-18 (5714-5717): three guards and words (`verifylocal`); gear
-  worn only if held (`gearheld`); an old key held to its devices
-  (`oldkeyheld`); the site's headers ship (public/_headers, a guard).
-- PR 19 (5718): the roster's cookie host-only (`?rostercookie=0`); the
-  Test panel's admin key for the session, a "Remember" tick.
+- PRs 15-18 (5714-5717): three guards and words (`verifylocal`); gear worn
+  only if held (`gearheld`); an old key held to its devices (`oldkeyheld`);
+  the site's headers ship (public/_headers, a guard).
+- PRs 19, 20 (5718, 5719): the roster's cookie host-only, the admin key for
+  the session (`?rostercookie=0`); a restart refused while the market holds
+  the player, daily_rewards: deleted (`resetclean`).
+- Z40's holds fixed: #2055 (each queued chain job asks the switch), #2059
+  (claims closed uncaptured too), #2063 (the room's market indexes).
 
 ## Next
 
-- PRs 16-19: suites and PRs; then item 20 (5719): `resetclean`.
+- #2055-#2063: sitting 40. Merge main in as it moves. Then the card is done.
 
 ## Found
 
-- A join with NO id is let in as `session.id` undefined: a body under
-  `playerState.undefined` and a `cadence:login:undefined` row, shared by
-  every such join (join.js; PR 2's card covers an id present only).
+- A join with NO id is let in as `session.id` undefined: one body and one
+  `cadence:login:undefined` row shared by every such join (join.js).
 - The Test panel's "Let one new device in (30 min)" no longer lets an old
-  key in (PR 17): its words mislead now (DevPanel.jsx, the page).
-- src/public/_redirects and favicon.svg ship neither (publicDir is
-  public/): the SPA fallback and the icon are not live. Not item 18's.
-- Sitting 38: received friend requests never expire; 50 throwaways fill a
-  player's inbox (friends.js). Later: expire them by `at`.
+  key in (PR 17): its words mislead now (DevPanel.jsx).
+- src/public/_redirects and favicon.svg ship neither (publicDir is public/).
+- Item 16 (planner): shield, cosmetic and amulet join claims are unguarded.
+- gearheld: an armour piece only a phone made before v2.3.4840 is lost; and
+  the phone adds a 49th chest piece the worker refuses (wsClient.js 4426).
+- wire/out.js 227 (card K's): character_reset_refused names only `fight`.
+- Item 19 (planner): the host-only roster splits www.brotown.net from
+  brotown.net; a www -> brotown.net redirect in Cloudflare (the owner's).
+- Sitting 38: received friend requests never expire (friends.js).
 
 ## Needs
 
-- Item 16 says the join stops merging stash claims once captured; I
-  stopped armour and legs only (the worker keeps no live shield, cosmetic
-  or amulet stash: stopping those loses a piece earned this session). All
-  five, or as built? (PR 16 says so.)
+- None. (Items 16 and 19 answered by the planning session: as built.)
