@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "bb83c1a95f60a5accff0fa7ec40e61f656183a93",
+  "tree": "ede3156a78323938001efc1b53b2bcf889d4d85a",
+  "committedAt": "2026-11-17T07:27:21-08:00",
+  "subject": "Merge pull request #2026 from hemibroscommunity-del/claude/grand-plan-red-team-a6ycng",
+  "files": 8073,
+  "bytes": 959566684,
+  "listingSha256": "ce941f005742dd0cdfa5fc05331df74b6388265fa4e791c7654b84d458f9409f",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "4fc0cb6296dab6c6cdb2df2c5310ecb6451dbc64",
+  "tree": "c4b358d0849a7481ee4f576464e1dbc9b92e70e8",
+  "committedAt": "2026-11-17T07:27:12-08:00",
+  "subject": "Merge pull request #2027 from hemibroscommunity-del/claude/plan-l-30-page-halves",
+  "files": 8072,
+  "bytes": 959562101,
+  "listingSha256": "33c18232478b37114a4a0dc2e0ae799d3407f4239a21ac3c74ce4d6c59b9fe5d",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
