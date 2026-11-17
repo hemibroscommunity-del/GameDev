@@ -7,8 +7,7 @@ state: ready
 
 - #2072 (5800): the review, `docs/plan/census/RV-review.md`.
 - #2083 (5801): market.js MS-2 (`mkttier`), MS-4 (`mktheal`).
-- #2091 (5802): the rise chest's stamp kept for good (`risekeep`).
-- #2094 (5803): goods in the dying seconds kept (`dyingkeep`).
+- #2091 (5802): the rise chest (`risekeep`); #2094 (5803): `dyingkeep`.
 
 ## Next (built, each red on main first; full runs one at a time)
 
