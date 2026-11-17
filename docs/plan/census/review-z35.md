@@ -11,13 +11,15 @@ with one merge base at every step (`git merge-base --all`, each against
 `main` with the PRs above it merged in as merge commits). The tree after
 each merge:
 
-1 K #2024 c778c6801a9ae4005a967e963937df52b0b03a57 -> a8c8232238083a0532af94e1a6d8a73be3aa8074
+1 K #2024 fe1297b0b43e5c23f19a7d57847bdeb17544ea8d -> 72a2f75571700a54e74ee580358fdc2c77cadf17
 @@MORE@@
 
-#2024 was built on #2021 and #2023 (K merged #2023's head 5594e52d in at
-sitting 34's word); both are now on `main`, so its one base is 5594e52d.
-Its PR page still shows the base sha ea7df6b0 (where it was opened); its
-`base.ref` is `main`.
+#2024 was built on #2021 and #2023, both now on `main`. Rehearsed at
+c778c680 (one base 5594e52d, tree a8c82322); at 14:44 K sent fe1297b0:
+`main` 01b8f33d merged in (its one base now `main` itself) and sitting
+34's carry fixed. The new tree differs from the rehearsed one in three
+files only: `server/src/testmode.js` (five comment lines), `docs/specs/
+test-mode.md` (two rows), `docs/plan/status/K.md`.
 
 ## K #2024 (5551): `swordswing` and `movetop` ON (the owner's yes)
 
@@ -57,9 +59,11 @@ PR turns their defaults:
 - Review note, not a hold: the ride, sprint and potion suites are now
   held only on the flat bound (`movetop: false`); with it on they are
   covered by the bench and #2021's phone runs, not by a node suite.
-- Found (carried from sitting 34, now live): `swordswing` (ON with this
-  PR) and `bowshot` ask `_tm` (combat.js 1312-1375, 1735) but
-  `testmode.js`'s header names neither (CLAUDE.md §5): card K.
+- Sitting 34's carry, fixed here (fe1297b0): `swordswing` and `bowshot`
+  (each asks `_tm`, combat.js 1312-1375, 1735) are now named in
+  `testmode.js`'s header and `test-mode.md`'s table (CLAUDE.md §5's three
+  lists; `test-mode` §8 already lists combat.js). Comments and a doc
+  only: no behaviour change.
 - DEPLOYS the worker (`server/src/`).
 
 @@REST@@
