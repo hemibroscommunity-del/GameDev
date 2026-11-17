@@ -1,26 +1,19 @@
 card: SEC
 branch: claude/plan-sec-<n>-<topic> (stacked: each PR on the one before until it merges)
-prs: #2030-#2049 merged; #2054: sitting 39; #2055, #2056: CI; PRs 15-17 (5714-5716): suites
+prs: #2030-#2049 merged; #2054: sitting 39; #2055, #2056: CI; PRs 15-18 (5714-5717): suites
 state: ready
 
 ## Done
 
-- PRs 1 to 11 (#2030-#2049, merged): the card; a join's id; a vault put
-  owed; bags never cut; newer fields kept; the board held; the feedback
-  hour shared; the public reads' side door; a quiet guest; a restart in one
-  write; `moved` on a restore.
+- PRs 1 to 11 (#2030-#2049, merged): items 1 to 10 and the card.
 - PRs 12-14 (#2054-#2056): flood tally; chain budget; dev console blanks.
-- PR 15 (5714): do-migrations reads every wrangler.*, holds name, main,
-  bindings; provenance's check names main; the verify seam local only
-  (`verifylocal`); the stranger's-text rule in CLAUDE.md §4, REPO-SAFETY.
-- PR 16 (5715): a described armour or legs piece is worn only if the worker
-  holds it; a captured join takes no armour or legs claims (`gearheld`).
-- PR 17 (5716): an old key never works from an unlisted device, lock off or
-  in a pass (`oldkeyheld`); OPERATIONS: a new key is the way onto a device.
+- PRs 15-18 (5714-5717): three guards and words (`verifylocal`); gear
+  worn only if held (`gearheld`); an old key held to its devices
+  (`oldkeyheld`); the site's headers ship (public/_headers, a guard).
 
 ## Next
 
-- PRs 15-17: suites and PRs; then item 18 (5717): the headers.
+- PRs 15-18: suites and PRs; then item 19 (5718): `rostercookie`.
 
 ## Found
 
@@ -29,6 +22,8 @@ state: ready
   every such join (join.js; PR 2's card covers an id present only).
 - The Test panel's "Let one new device in (30 min)" no longer lets an old
   key in (PR 17): its words mislead now (DevPanel.jsx, the page).
+- src/public/_redirects and favicon.svg ship neither (publicDir is
+  public/): the SPA fallback and the icon are not live. Not item 18's.
 - Sitting 38: received friend requests never expire; 50 throwaways fill a
   player's inbox (friends.js). Later: expire them by `at`.
 
