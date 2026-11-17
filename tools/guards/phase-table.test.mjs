@@ -54,7 +54,7 @@
  *      NOT_A_MACHINE                                       -> FAIL 5
  *   5. the `race` worker row deleted -> FAIL 1 (4 stays green: the page's
  *      `race` row still carries the wire's name)
- *   6. TODO_LINE one under the count (10; tag 5671)          -> FAIL 7
+ *   6. TODO_LINE one under the count (8; tag 5673)           -> FAIL 7
  * v2.3.5203 (the gatekeeper's sitting 8, its two holes), each tried by hand:
  *   7. `_sneakJoin(ws,\n msg) { ... s.phase = 'joined' }` at the end of
  *      join.js's joinMethods (its parameters over two lines)  -> FAIL 2
@@ -175,7 +175,7 @@ const fileNamed = (name) => {
    since card L's arena door (#1930).
    Tag 5661 (the gatekeeper, sitting 23, main 8149d61): 15 -> 14, the count
    since card L's ride door (#1936). */
-export const TODO_LINE = 11;   /* v2.3.5671: lowered 12 -> 11 by the gatekeeper, sitting 33 (L's connection door, #2012); v2.3.5669: lowered 13 -> 12 by the gatekeeper, sitting 31 (L's window door, #2000); v2.3.5663: 14 -> 13 (#1956) */
+export const TODO_LINE = 9;   /* v2.3.5673: lowered 11 -> 9 by the gatekeeper, sitting 35 (L's duel and party page doors, #2022); v2.3.5671: lowered 12 -> 11 by the gatekeeper, sitting 33 (L's connection door, #2012); v2.3.5669: lowered 13 -> 12 by the gatekeeper, sitting 31 (L's window door, #2000); v2.3.5663: 14 -> 13 (#1956) */
 
 /* the machines every side must have a row for: SHAPES part 5's names and
    step 5.3b's list (the plan's own `dungeon`, `connection`, `loading`,
