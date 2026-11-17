@@ -10,9 +10,8 @@ state: ready
   doors; the resets, 484 -> 233 rows.
 - PR 5, 5210-5217, 5522-5523, 5536-5537: the worker's trade, duel, party, cook,
   harvest+fishing, dungeon, pose, race, arena, ride, guard, zone doors; the
-  page's (5218-5219, 5520-5521, 5525-5535): race, harvest+cook+fishing, pose,
-  guard, veils, windows, connection, duel, party, trade, ride, arena, fight,
-  life, dungeon.
+  page's (5218-5219, 5520-5521, 5525-5535): race, harvest+cook+fishing, pose, guard,
+  veils, windows, connection, duel, party, trade, ride, arena, fight, life, dungeon.
 - 5524: alliance drafts outlive a rejoin (J2). 5532: relay floater's form (SEC).
 
 ## Next
@@ -28,8 +27,9 @@ state: ready
   fishvariants (4a-5: no Inspect on the card; 6c by run: healed before Eat),
   moresounds (setup and 10 every run; 8b, 9a by run: other cues heard),
   deskharvest 5 (a phone's first-harvest hint, read as a computer's), blockface 2 (the block icon's disc: 13 of 560 px blue, on main too),
-  comeback 1, 5 (on main c55c8b59). precheck's 5-min server limit < the suite's ~310 s.
-- bodytake.js ~94 cites a pose row that is none. Dead: S._shieldStamina,
+  comeback 1, 5 (on main c55c8b59). precheck's 5-min limit < the suite's ~450 s.
+- join.js's stand-up to town asks no duel (_duelZoneMoved; duel-zone §7 never
+  counted it). bodytake.js ~94 cites a pose row that is none. Dead: S._shieldStamina,
   S.shieldActive, S._iceAttack, monsterCombat's respawn, playerActions' raiseShield.
 
 ## Needs
