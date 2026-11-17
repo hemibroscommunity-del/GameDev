@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "b248fc2fd5491d32b69f3dc42c3215fc209c1a9d",
+  "tree": "a8cc7442c23e9fba9c1255ef22f79b2dfc4680e4",
+  "committedAt": "2026-11-17T13:22:05-08:00",
+  "subject": "Merge pull request #2066 from hemibroscommunity-del/claude/plan-k2-movefields",
+  "files": 8118,
+  "bytes": 960063977,
+  "listingSha256": "1239e6b0926f23cb30140db489ebcf60fec72cf4406287d9eef149444aa2f778",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "c8e7aa76a9428e58d25c7d87a5292b277f35d6dd",
+  "tree": "2e426d3bf715d4463b7c583e81cf9449c11bfb04",
+  "committedAt": "2026-11-17T13:21:57-08:00",
+  "subject": "Merge pull request #2062 from hemibroscommunity-del/claude/plan-sec-19-rostercookie",
+  "files": 8116,
+  "bytes": 960035690,
+  "listingSha256": "33e43747afdf5c603590f90fd3d4c498894d14b18acb9137ae7d91ff447189e8",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

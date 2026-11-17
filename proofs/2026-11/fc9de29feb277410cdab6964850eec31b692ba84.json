@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "fc9de29feb277410cdab6964850eec31b692ba84",
+  "tree": "9956d7e158d3a2eeb0d82a5b4d2bfbd21f8ccbb2",
+  "committedAt": "2026-11-17T13:22:01-08:00",
+  "subject": "Merge pull request #2063 from hemibroscommunity-del/claude/plan-sec-20-resetclean",
+  "files": 8117,
+  "bytes": 960052512,
+  "listingSha256": "72d1ff993b66a71f16a8ec8e1026f24760444595a2602a4a343c01cceae5de8f",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

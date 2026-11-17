@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "297b098d816e19313752782493979b4244043b13",
+  "tree": "b9e586554f205c1376418d2818ee8c246b44094b",
+  "committedAt": "2026-11-17T13:22:08-08:00",
+  "subject": "Merge pull request #2052 from hemibroscommunity-del/claude/plan-l-35-dungeon-page",
+  "files": 8121,
+  "bytes": 960076934,
+  "listingSha256": "2f2742d499b68597d328ec3a06327e31b915e1de320c6d55cb740dabd159d019",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
