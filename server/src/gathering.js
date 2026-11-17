@@ -1294,7 +1294,7 @@ export const gatheringMethods = {
   _sendGatherHits(session, payload) {
     const ws = this._wsBySessionId(session.id);
     if (!ws) return;
-    try { ws.send(JSON.stringify({ type: 'gather_hits', payload })); } catch (e) {}
+    try { this._send(ws, { type: 'gather_hits', payload }); } catch (e) {}
   },
 
   /** v2.3.2956: the operator view of the plan (admin.js `hitPlan`), so a

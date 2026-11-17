@@ -215,7 +215,7 @@ export const tickMethods = {
         continue;
       }
       session.lastPing = nowMs;
-      try { ws.send(pingMsg); } catch {}
+      try { this._send(ws, pingMsg, 'ping'); } catch {}   // v2.3.5193: the send door
     }
   },
 
@@ -1277,7 +1277,7 @@ export const tickMethods = {
           msg = (msg ? msg.slice(0, -1) : tickHead) + ',"on":' + onJson + '}';
           s._onlineAt = ts;
         }
-        if (msg) { try { ws.send(msg); } catch {} }
+        if (msg) { try { this._send(ws, msg, 'tick'); } catch {} }   // v2.3.5193: the send door
       }
 
       /* v2.3.3246: the due far players went out (ROSTER); a player gone from

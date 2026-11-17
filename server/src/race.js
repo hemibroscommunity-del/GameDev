@@ -153,7 +153,7 @@ export const raceMethods = {
   _raceSend(pid, type, payload) {
     const ws = this._wsBySessionId(pid);
     if (!ws) return;
-    try { ws.send(JSON.stringify({ type, payload })); } catch (e) { /* the race state stands */ }
+    try { this._send(ws, { type, payload }); } catch (e) { /* the race state stands */ }
   },
 
   /* race_start {} -- on your marks.  Answers `race_state` (the course, in the
