@@ -24,7 +24,8 @@
  *  11. (v2.3.5584) while the lock is off, a matching old key's device is
  *      still written down (never on a sealed record, a list-less one after
  *      the fill), so turning it back on shuts its player out of nothing and
- *      hands a stranger nothing; `offdevs: false` the way back. */
+ *      does not hand it to whichever device comes first; `offdevs: false`
+ *      the way back. */
 import { readFileSync } from 'node:fs';
 import { srcFiles } from './src-walk.mjs';
 import { GameRoom } from '../src/index.js';

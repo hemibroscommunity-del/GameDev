@@ -230,6 +230,10 @@ delete room._liveFlags.ip64;
   room._liveFlags = Object.assign({}, room._liveFlags || {}, { ip56: false });
   r = await room._accountLogin(ALICE_PHRASE, '2001:db8:8:ef::1');
   check('5584: ip56 false counts the /64 alone again', r.ok === true && r.exists === true, r);
+  /* a refused try counts in neither: one noisy /64 does not fill its /56 */
+  for (let i = 0; i < WIDE + 10; i++) await room._accountLogin('knack-lava-mystic-nova-' + (i % 10), '2001:db8:c:1::' + (i + 1).toString(16));
+  r = await room._accountLogin(ALICE_PHRASE, '2001:db8:c:2::1');
+  check('5584: a /64 refused past its own line counts nothing for its /56: the household\'s next /64 is in', r.ok === true && r.exists === true, r);
   delete room._liveFlags.ip56;
 }
 

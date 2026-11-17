@@ -134,7 +134,15 @@ export const accountMethods = {
        line (flood.js ip56Key; `ip56: false` the /64 line alone) */
     const wide = (typeof this._ip56On !== 'function' || this._ip56On()) ? ip56Key(ip) : null;
     if (typeof this._ip64On !== 'function' || this._ip64On()) ip = ipKey(ip);
-    /* each key's tries this window; both counted, either over refuses */
+    /* each key's tries this window: both looked at before either is
+       counted, so a try refused by one counts in neither (a noisy /64
+       never fills its /56 for the household's other lines) */
+    const triesOf = (k) => {
+      const rec = this._acctIp.get(k);
+      return (!rec || now - rec.windowStart > ACCOUNT.IP_WINDOW_MS) ? 0 : rec.count;
+    };
+    if (triesOf(ip) >= ACCOUNT.IP_MAX_ATTEMPTS) return { ok: false, settled: true, reason: 'rate' };
+    if (wide && triesOf(wide) >= ACCOUNT.IP_MAX_ATTEMPTS * IP56.TIMES) return { ok: false, settled: true, reason: 'rate' };
     const bump = (k) => {
       const rec = this._acctIp.get(k);
       if (!rec || now - rec.windowStart > ACCOUNT.IP_WINDOW_MS) {
@@ -146,15 +154,10 @@ export const accountMethods = {
           }
         }
         this._acctIp.set(k, { count: 1, windowStart: now });
-        return 1;
-      }
-      rec.count += 1;
-      return rec.count;
+      } else rec.count += 1;
     };
-    const tries = bump(ip);
-    const triesWide = wide ? bump(wide) : 0;
-    if (tries > ACCOUNT.IP_MAX_ATTEMPTS) return { ok: false, settled: true, reason: 'rate' };
-    if (wide && triesWide > ACCOUNT.IP_MAX_ATTEMPTS * IP56.TIMES) return { ok: false, settled: true, reason: 'rate' };
+    bump(ip);
+    if (wide) bump(wide);
 
     /* ═══ v2.3.3355: A NEW LOGIN KEY (loginkeys.js) ═══
        Its character is found by its fingerprint's index, never worked out

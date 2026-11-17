@@ -51,7 +51,7 @@
  * Kill switch `devicelock: false`: the join, the login check and the restart as
  * they were -- nothing refused, and (v2.3.5584) only a matching old key's
  * device recorded, so the lock can come back on without locking a player out
- * or handing a stranger the character (`offdevs`, "WHILE THE LOCK IS OFF"
+ * or handing the character to whichever device comes first (`offdevs`, "WHILE THE LOCK IS OFF"
  * below; `offdevs: false` reads and writes nothing for it, as before).
  */
 import { BOTFP } from './botfp.js';
