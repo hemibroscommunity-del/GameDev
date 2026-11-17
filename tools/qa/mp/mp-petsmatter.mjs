@@ -227,7 +227,7 @@ async function steps({ A, B, wsPort, rec, errors }) {
   });
   rec.ok('the player came through the ward fight alive (guard)', !alive.dying && alive.deaths === 0, alive);
   const ring = await A.page.evaluate(() => window._pixiRenderer.petDrawn());
-  /* v2.3.3620: a snowball's chill is the longer one (`freezehit`, on): the game's
+  /* v2.3.5643: a snowball's chill is the longer one (`freezehit`, on): the game's
      own FREEZE.CHILL_MS (2000), less the ward's 34% -- read off the worker's
      table, not a number written here (it was CHILL.MS, 1000, before) */
   const { FREEZE } = await import(H.REPO + '/server/src/monsterstatus.js');
