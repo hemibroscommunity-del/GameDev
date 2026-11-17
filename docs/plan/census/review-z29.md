@@ -17,7 +17,8 @@ in). The tree after each merge:
 Rehearsed (`tools/dev/gatekeeper.mjs` on 657d7f7f): #1994 at 996a6da0
 (tree ff78ac40; the head 7f664d6d differs from it only in
 `docs/plan/status/T.md`): precheck OK (0 FAIL, 1 WARN), build PASS,
-questline 187/187. Then #1994 + #1996 at the heads above: REHEARSAL2.
+questline 187/187. Then #1994 + #1996 at the heads above (tree 53334cad): precheck OK (0
+FAIL, 1 WARN), build PASS, questline 187/187. `test` green on both heads.
 
 ## T #1994 (5314): six debug reads into the page's one reader
 
@@ -44,6 +45,7 @@ green; the outside line 155 -> 144. Low:
 
 ## Not in
 
-K 5196/5197 and the `_reqSeen` slots (K's unopened k-10 branch still
-carries 5546: precheck's one WARN), L's window door, J2's shopkeeper and
-flakes, R 5293: no PR open when the list went. Sitting 30.
+K 5196 (pushed as `claude/plan-k-11-gidnames`, no PR yet), 5197 and the
+`_reqSeen` slots; L's window door; J2's shopkeeper and flakes; R 5293: no
+PR open when the list went. Sitting 30. Precheck's one WARN, each run, is
+its list of branches pushed in the last 48 hours.

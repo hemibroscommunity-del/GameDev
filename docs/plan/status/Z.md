@@ -19,7 +19,8 @@ address flag, no stored shape: the moved reads keep their old patterns.
 - None.
 
 ## Stalled
-- None. Not yet in: K 5196, 5197 and the `_reqSeen` slots (K renumbers
+- None. Not yet in: K 5196 (branch k-11-gidnames, no PR), 5197 and the
+  `_reqSeen` slots (K renumbers
   k-10 off 5546 before it opens); L's window door; J2's shopkeeper and
   flakes; R 5293 (after K's 5196/5197): sitting 30. Z's next tag: 5668.
 
