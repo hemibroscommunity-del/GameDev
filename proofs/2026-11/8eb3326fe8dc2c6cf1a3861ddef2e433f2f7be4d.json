@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "8eb3326fe8dc2c6cf1a3861ddef2e433f2f7be4d",
+  "tree": "4015af6f8c3f24de743d9226376438ae3470303a",
+  "committedAt": "2026-11-17T15:12:33-08:00",
+  "subject": "Merge pull request #2081 from hemibroscommunity-del/claude/plan-k2-ceilfair",
+  "files": 8137,
+  "bytes": 960220480,
+  "listingSha256": "80cd7f9b20342b1630adc1546e1ad490906c43e0ce38f34fc028819b54eb5a16",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

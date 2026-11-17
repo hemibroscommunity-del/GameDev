@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "b748c6e24558b32cde029d1c0b584729cd1aa48f",
+  "tree": "0739ff26a494fdc53a4a213c5cebd8acd61e2d99",
+  "committedAt": "2026-11-17T15:12:27-08:00",
+  "subject": "Merge pull request #2073 from hemibroscommunity-del/claude/plan-k2-bowshot",
+  "files": 8137,
+  "bytes": 960214939,
+  "listingSha256": "11c7666778ce26966aeda026e4a63dc4cb18d3e98be072d196dafebed1999fae",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
