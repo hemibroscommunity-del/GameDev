@@ -79,14 +79,38 @@ export function PlayerDrawings({ call, busy, setMsg, COL, btn, chip, label }) {
   const [sure, setSure] = useState('');
   const faces = useBoardFaces((page ? page.rows : []).map((r) => ({ look: r.face || null })));
 
+  /* v2.3.5607: THE WORKER READS A PAGE OF CHARACTERS A REQUEST (card OPS
+     PR 8; red team RT-2 F9: it read every character at each look).  Its
+     answer carries `next` (null: all read); its total and fresh count that
+     page, so the panel adds them up, and it reads on past pages where
+     nobody drew (at most 12 requests a tap) until it has some to show.  A
+     worker from before answers no `next`: its `before`, newest first over
+     every character, as it was. */
   const load = useCallback(async (older) => {
-    const before = older && page && page.rows.length ? page.rows[page.rows.length - 1].createdAt : 0;
-    const j = await call('/dev/looks?limit=24' + (before ? '&before=' + before : ''));
-    if (!j || !j.ok) return;
-    setPage((was) => (older && was
-      ? { ...j, rows: was.rows.concat(j.rows.filter((r) => !was.rows.some((w) => w.id === r.id))) }
-      : j));
-    if (!older) setMsg(j.total ? j.total + ' character' + (j.total === 1 ? ' has' : 's have') + ' drawn something; ' + j.fresh + ' new.' : 'Nobody has drawn anything yet.');
+    const paged = !!(page && 'next' in page);
+    let after = older && paged ? page.next : null;
+    const before = older && page && !paged && page.rows.length ? page.rows[page.rows.length - 1].createdAt : 0;
+    let acc = null;
+    for (let n = 0; n < 12; n++) {
+      const q = after ? '&after=' + encodeURIComponent(after) : (before && n === 0 ? '&before=' + before : '');
+      const j = await call('/dev/looks?limit=60' + q);
+      if (!j || !j.ok) break;
+      acc = acc ? { ...j, rows: acc.rows.concat(j.rows), total: acc.total + j.total, fresh: acc.fresh + j.fresh } : j;
+      if (!('next' in j) || !j.next || acc.rows.length >= 24) break;
+      after = j.next;
+    }
+    if (!acc) return;
+    const byPage = 'next' in acc;
+    const merged = (was) => (older && was
+      ? { ...acc, rows: was.rows.concat(acc.rows.filter((r) => !was.rows.some((w) => w.id === r.id))),
+        total: byPage ? was.total + acc.total : acc.total, fresh: byPage ? was.fresh + acc.fresh : acc.fresh }
+      : acc);
+    setPage(merged);
+    if (!older) {
+      const more = byPage && acc.next ? ' so far (more to read)' : '';
+      setMsg(acc.total ? acc.total + ' character' + (acc.total === 1 ? ' has' : 's have') + ' drawn something' + more + '; ' + acc.fresh + ' new.'
+        : (more ? 'Nobody in the first characters read has drawn anything; Show more reads on.' : 'Nobody has drawn anything yet.'));
+    }
   }, [call, page, setMsg]);
 
   const markSeen = useCallback(async () => {
@@ -121,7 +145,7 @@ export function PlayerDrawings({ call, busy, setMsg, COL, btn, chip, label }) {
       {page && (
         <>
           <div style={{ color: COL.muted, fontSize: 12, marginBottom: 6, lineHeight: 1.4 }}>
-            Every character that drew something in the creator, newest first: {page.total} in all, {page.fresh} new since you last marked them seen.
+            Every character that drew something in the creator, {'next' in page ? 'newest first in each batch read' : 'newest first'}: {page.total} {'next' in page && page.next ? 'so far' : 'in all'}, {page.fresh} new since you last marked them seen.
             Remove drawings takes them off that character for everyone, for good (its hair, clothes and name stay).
           </div>
           {page.fresh > 0 && (
@@ -129,7 +153,7 @@ export function PlayerDrawings({ call, busy, setMsg, COL, btn, chip, label }) {
               Mark all seen
             </button>
           )}
-          {page.rows.length === 0 && (
+          {page.rows.length === 0 && !page.more && (
             <div data-watch-empty="1" style={{ color: COL.text2, fontSize: 12, marginBottom: 8 }}>Nobody has drawn anything yet.</div>
           )}
           {page.rows.map((r, i) => (
@@ -167,7 +191,7 @@ export function PlayerDrawings({ call, busy, setMsg, COL, btn, chip, label }) {
             </div>
           ))}
           {page.more && (
-            <button type="button" data-watch-more="1" style={btn(false)} disabled={busy} onClick={() => load(true)}>Show older ones</button>
+            <button type="button" data-watch-more="1" style={btn(false)} disabled={busy} onClick={() => load(true)}>{'next' in page ? 'Show more' : 'Show older ones'}</button>
           )}
         </>
       )}

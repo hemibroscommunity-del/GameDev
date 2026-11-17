@@ -237,6 +237,11 @@ export const chatModMethods = {
     const prev = this.chatSeen.get(pid);
     if (prev) this.chatSeen.delete(pid);
     const arr = prev || [];
+    /* v2.3.5629: the speaker's name as the room showed it, kept with its
+       lines, so a report on a speaker who has left (a guest with no record)
+       still names it */
+    const _ps = this.playerState && this.playerState[pid];
+    if (_ps && typeof _ps.name === 'string' && _ps.name) arr.n = _ps.name;
     const line = { text, ts: Date.now(), zone: zone || null, lane: lane || 'room', to: typeof to === 'string' && to ? to : null };
     if (Array.isArray(tos) && tos.length) line.tos = tos.slice(0, CHATMOD.TOS_MAX);
     arr.push(line);
@@ -301,6 +306,9 @@ export const chatModMethods = {
     const ps = this.playerState[pid];
     if (ps && ps.name) return ps.name;
     for (const [, s] of this.sessions) { if (s.id === pid) return s.name || 'Bro'; }
+    /* v2.3.5629: a speaker who has left, by the name its lines were heard under */
+    const heard = this.chatSeen && this.chatSeen.get(pid);
+    if (heard && typeof heard.n === 'string' && heard.n) return heard.n;
     /* Offline: fall back to the requester's CLAIM, clamped.  Display-only
        and only ever shown back to the person who typed it (their own mute
        list), exactly the friends.js reqOut precedent — it never reaches a
@@ -421,7 +429,14 @@ export const chatModMethods = {
        existence test friends.js runs, for the same reason: a report on an
        id nobody has ever held is noise in the operator's queue. */
     const targetPs = this.playerState[target];
-    if (!targetPs && !(await this.state.storage.get('rpg:' + target))) {
+    /* v2.3.5629 (card MOD PR 9; the planning session's call, 2026-11-17):
+       or a speaker the room HEARD -- its lines are in the ring.  A guest who
+       chatted and left without earning has no record (card OPS's guestlazy),
+       and the report on it answered `not-found`: the abuse it typed was
+       kept, and nobody could file it.  An id never heard and never saved is
+       still `not-found`. */
+    const heard = this._reportRingOn() && !!(this.chatSeen && this.chatSeen.has(target));   /* `reportring: false`: as before */
+    if (!targetPs && !heard && !(await this.state.storage.get('rpg:' + target))) {
       return this._chatModSend(me, 'chat_report_ack', { ok: false, error: 'not-found' });
     }
     const gate = this._chatModReportGate(me, target);
