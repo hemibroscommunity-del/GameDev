@@ -48,6 +48,19 @@ Nothing a player sees changes: the guest plays its character from memory.
 | main | 5 rows | 5 kept | 6 |
 | this | 0 | 0 (`botstat:` only) | 6 (unchanged) |
 
+## Decided (sitting 23's review; the planning session, 2026-11-17)
+
+- `server/src/index.js` (the mark cleared when the join returns, 3 lines)
+  and the new `server/src/guestlazy.js` were outside PR 11's file list:
+  the planning session's yes, given afterwards (v2.3.5614).
+- A guest that earned but never spun comes back the next day at streak 1,
+  not 2 (its first join writes no `cadence:login:`): left so, a guest's
+  streak starts with its first record.
+- A guest that chatted and left without earning reads `not-found` to a chat
+  report or a friend request (no `rpg:` on file): a report should still
+  land; card MOD mends it (`chatmod.js`, `friends.js`).
+- The switch's `on` is its merge day, 2026-11-17 (v2.3.5614).
+
 ## The switch
 
 `guestlazy: false` in the live flags: a guest's join writes its rows as
