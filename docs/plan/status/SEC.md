@@ -1,6 +1,6 @@
 card: SEC
 branch: claude/plan-sec-<n>-<topic> (stacked: each PR on the one before until it merges)
-prs: #2030-#2049 merged; #2054 (5711): sitting 39 (its review fixed); #2055 (5712); PR 14 (5713): suite
+prs: #2030-#2049 merged; #2054 (5711): sitting 39 (its review fixed); #2055 (5712): CI
 state: ready
 
 ## Done
@@ -8,21 +8,21 @@ state: ready
 - PRs 1 to 6 (#2030-#2040, merged): the card (items 16 to 20 added); a
   join's id of its form; a refused vault put owed; stored bags never cut;
   a newer worker's fields kept; the board holds its limit and fields.
-- PR 7 (#2042): the feedback hour shared by kind, address counts in its
-  row, the crash feed cut by bytes, the list kept 30 s (`feedbackshare`).
-- PR 8 (#2043): a header no side door past the public reads' pace.
+- PRs 7, 8 (#2042, #2043): the feedback hour shared by kind, address counts in its
+  row, the crash feed cut by bytes, the list kept 30 s (`feedbackshare`);
+  a header no side door past the public reads' pace.
 - PR 9 (#2045): an idle guest writes no row and sends no board report
   until its first save; the owner's sweep of orphan `botstat:` (`guestquiet`).
-- PR 10 (#2047): a restart's deletes in one run; 50 requests received at
-  most (`reqincap`).
-- PR 11 (#2049): a restore's answer says `moved` (the vault now, what was
-  given since the copy; 4 FAIL on main).
-- PR 12 (5711): the overview's `floodTally` (closed, relay bytes; `ip` null
-  until K2's PR 10), memory only; OPERATIONS: an uptime monitor (`floodtally`).
+- PRs 10, 11 (#2047, #2049): a restart's deletes in one run; 50 requests
+  received at most (`reqincap`); a restore's answer says `moved`.
+- PR 12 (#2054): the overview's `floodTally` (closed, relay bytes; `ip`
+  null until K2's PR 10); OPERATIONS: an uptime monitor (`floodtally`).
+- PR 13 (5712): the chain's sends: 200 a day (memory), a fee at most
+  0.001 ETH, kill switch `chainscore`.
 
 ## Next
 
-- PR 12's suite and PR; then PR 13 (5712): the chain's day budget.
+- PR 14 (5713): the dev console's blanks; then PR 15 (5714).
 
 ## Found
 
