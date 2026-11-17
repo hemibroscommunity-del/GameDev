@@ -80,7 +80,9 @@
  * only of a real challenge, the pot and its escrow's delete one write
  * (v2.3.5805, duel.js: `duelpace`, `duelonewrite`); a muted sender's shop-thread
  * line not shown on open, and a player who mutes you away to you
- * (v2.3.5806, storechat.js, chatlanes.js, party.js: `storemute`, `mutehides`).
+ * (v2.3.5806, storechat.js, chatlanes.js, party.js: `storemute`, `mutehides`);
+ * a player's avatar and colour in the game's own forms on the board and on
+ * the page (v2.3.5807, lookform.js, src/game/lookForm.js: `?lookform=0`).
  *
  * WHO CAN TURN IT ON.  Only the admin key, through the Test panel's
  * POST /api/admin/dev/testmode {playerId, on} (devtools.js), which the owner's
