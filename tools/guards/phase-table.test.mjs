@@ -125,6 +125,8 @@
  *  36. `this._arena = null;` back in gladiator.js _tickArena -> FAIL 2
  *  37. `t.status = 'running';` back in _arenaStart -> FAIL 2 (the duel
  *      line's besides is the arena door's own, `fn`)
+ * v2.3.5523 (the ride door):
+ *  38. `ps._ride = true;` back in ride.js _handleRide -> FAIL 2
  *
  * Run from the repository's root: node tools/guards/phase-table.test.mjs
  * (cd server && npm test runs it with every other guard and suite).
@@ -353,6 +355,9 @@ const DOOR_SUITES = Object.freeze({
   /* v2.3.5522: the arena door (its status writes are the duel line's besides, in _arenaTo) */
   'server/test/arena-door.test.mjs': { field: 'this._arena', fn: '_arenaTo', holds: '§2: no write of this._arena in server/src outside _arenaTo, nor of a tournament\'s status',
     prop: '_arena', besides: [] },
+  /* v2.3.5523: the ride door (ps._ridePid is written beside it, in _rideTo) */
+  'server/test/ride-door.test.mjs': { field: 'ps._ride', fn: '_rideTo', holds: '§2: no write of ._ride or ._ridePid in server/src outside _rideTo',
+    prop: '_ride', besides: [] },
   /* v2.3.5521: the guard's page door */
   'server/test/guard-page-door.test.mjs': { field: 'S._shieldUp', fn: 'guardTo', holds: '§2: no write of S._shieldUp in src/ outside guardTo',
     prop: '_shieldUp', besides: [
