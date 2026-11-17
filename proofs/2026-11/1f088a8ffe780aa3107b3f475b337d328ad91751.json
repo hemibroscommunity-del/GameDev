@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "1f088a8ffe780aa3107b3f475b337d328ad91751",
+  "tree": "7384f1b5f40eb31af445a46c42811dc4c217640c",
+  "committedAt": "2026-11-17T13:13:29-08:00",
+  "subject": "Merge pull request #2057 from hemibroscommunity-del/claude/plan-sec-15-guards",
+  "files": 8112,
+  "bytes": 959984492,
+  "listingSha256": "cd7ec3e0f2092b4f1a33e610cdc501e909850a8c0a3f753a1fd98badd749b3da",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
