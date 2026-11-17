@@ -29,7 +29,7 @@
  * law); `?fill=0` leaves it out, and nothing is drawn this way.  Probe:
  * window.__btFill(). */
 import {
-  BatcherPipe, DefaultBatcher, ExtensionType, extensions, Shader, Sprite, Texture,
+  BatcherPipe, DefaultBatcher, ExtensionType, extensions, Shader, Sprite, Texture, BufferImageSource, RenderTexture,
   compileHighShaderGlProgram, compileHighShaderGpuProgram,
   colorBitGl, colorBit, generateTextureBatchBitGl, generateTextureBatchBit, roundPixelsBitGl, roundPixelsBit,
   getBatchSamplersUniformGroup, getMaxTexturesPerBatch,
@@ -37,6 +37,7 @@ import {
 
 import { PAL_FILL_BATCHER } from './paletteTex.js';   /* v2.3.3715 */
 import { isPaletteSource } from './paletteDraw.js';
+import { selfDraw, selfQueue, selfSkip, selfTestOn, selfRgba, selfFillWant, SELF_FILL_TINT_BYTES, SELF_SIZE } from './selfTest.js';   /* v2.3.5237: the self-test at the door (card O PR 14c) */
 
 export const FILL_BATCHER = 'fill';
 
@@ -145,7 +146,10 @@ export function installFillBatch(app) {
  *  the first whirlwind of the session (sheenBatch.js warmSheenBatch, the same
  *  way). */
 export function warmFillBatch(renderer) {
-  if (!renderer || _built || !_on) return false;
+  if (!renderer || _built || !_on) {
+    if (!_built && renderer) selfSkip('fill', _urlOff ? 'switched off (?fill=0)' : 'not installed here');   /* v2.3.5237 */
+    return false;
+  }
   let spr = null;
   try {
     spr = new Sprite(Texture.WHITE);
@@ -157,7 +161,31 @@ export function warmFillBatch(renderer) {
     _built = true;
   } catch (e) { _built = false; }
   try { if (spr) spr.destroy(); } catch (e) { /* best-effort */ }
+  if (_built) fillSelfTest(renderer);
   return _built;
+}
+
+/* ═══ v2.3.5237: THE SELF-TEST AT THE DOOR (card O PR 14c; selfTest.js) ═══
+   Built, the fill draws the known picture as a monster in the whirlwind's
+   amber, held to the CPU's answer (selfTest.js selfFillWant: each pixel's
+   brightness lifted to a grey, then tinted).  THERE IS NO WAY BACK (the
+   card: drawLanes.js PROGRAMS `back: null`): a wrong picture is named in
+   the report's `self` and the fill is drawn as today -- what it would mean
+   on that chip is the owner's question (card O's status, Found). */
+function fillSelfTest(renderer) {
+  if (!selfTestOn()) { selfSkip('fill', 'no self-test on this page (?selftest=0)'); return; }
+  const t0 = performance.now();
+  let spr = null, rt = null;
+  try {
+    const src = new BufferImageSource({ resource: selfRgba(), width: SELF_SIZE, height: SELF_SIZE, alphaMode: 'premultiplied-alpha', label: 'bt-fill-selftest' });
+    spr = new Sprite(new Texture({ source: src }));
+    spr._btFill = true;
+    spr._noSharp = true;
+    spr.tint = (SELF_FILL_TINT_BYTES[0] << 16) | (SELF_FILL_TINT_BYTES[1] << 8) | SELF_FILL_TINT_BYTES[2];
+    rt = selfDraw(renderer, spr, RenderTexture);
+  } catch (e) { rt = null; }
+  try { if (spr) spr.destroy({ texture: true, textureSource: true }); } catch (e) { /* gone */ }
+  selfQueue('fill', renderer, rt, selfFillWant(), () => { /* no way back: named in `self`, drawn as today */ }, performance.now() - t0);
 }
 
 if (typeof window !== 'undefined') {

@@ -24,6 +24,7 @@
  *
  * Sound only, like every helper here: nothing may throw into a caller. */
 import { BT_AUDIO } from '@/data/index.js';
+import { swHas } from '@/game/switches.js';   /* v2.3.5309: the page's one reader (card T) */
 
 /* How many started sounds are remembered. */
 export const HEARD_MAX = 48;
@@ -148,7 +149,7 @@ if (typeof window !== 'undefined') {
   /* ?sounds in the address: the studio, once the world is up (the loading
      screen gone) -- the owner's quick way in, and the tests' */
   try {
-    if (/[?&]sounds(=|&|$)/.test(window.location.search)) {
+    if (swHas('sounds')) {
       const t0 = Date.now();
       const wait = () => {
         const S = window._gameState && window._gameState.current;

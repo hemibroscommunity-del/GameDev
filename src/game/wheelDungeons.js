@@ -36,6 +36,7 @@ import { wantWheelSpawn } from './wheelHome.js';
 import { releaseLeftZoneArt, clearZoneLocalFx, veilWheelTrip, changeZone } from './zoneTransitions.js';   /* v2.3.4651: + the one door */
 import { WHEEL_DUNGEON_HOMES, DOOR_R, WHEEL_DOOR_LOOK, WHEEL_DUNGEON_FLOOR, WHEEL_ARENA, WHEEL_DUNGEON_PARTY, WHEEL_DUNGEON_REC, dungeonLevelsLine, dungeonDoorLine, dungeonBoardLine } from '@/data/wheelDungeons.js';   /* v2.3.3573: + the party dungeons and their words; v2.3.3608: + the level each is for */
 import { freeDungeonArt } from './dungeonArt.js';   /* v2.3.3566 */
+import { act } from '@/game/actions.js';   /* v2.3.5188: the page's requests leave through the action door (card K PR 7) */
 
 /* the table -- which lands, the button's reach, each mouth's light, each
    arena's floor -- is src/data/wheelDungeons.js (no imports: the server's
@@ -201,7 +202,7 @@ export function enterWheelDungeon(S, id) {
   if (S._wheelDoorAskedAt && now - S._wheelDoorAskedAt < 1000) return false;
   S._wheelDoorAskedAt = now;
   try {
-    S.channel.send({ type: 'broadcast', event: 'dungeon_start', payload: { entrance: id } });
+    act('dungeon_start', { entrance: id });   /* v2.3.5188: through the action door (actions.js) */
   } catch (e) { return false; }
   try { BT_AUDIO.enterBuilding('mouth'); } catch (e) { /* sound only: a cave's knock, not the door (v2.3.3664) */ }
   return true;
@@ -296,7 +297,7 @@ export function leaveWheelDungeon(S) {
   wantWheelSpawn(S);
   veilWheelTrip(S);   /* v2.3.3025: today's town never painted on the way back */
   if (S.channel && S.player) {
-    try { S.channel.send({ type: 'broadcast', event: 'move', payload: { x: S.player.x, y: S.player.y, z: 'town', vx: 0, vy: 0 } }); } catch (e) { /* the next move carries it */ }
+    try { act('move', { x: S.player.x, y: S.player.y, z: 'town', vx: 0, vy: 0 }); } catch (e) { /* the next move carries it */ }   /* v2.3.5188: through the action door (actions.js) */
   }
   return true;
 }

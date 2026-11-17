@@ -23,6 +23,10 @@
  *   1b. A mark after a letter is a letter's part (Devanagari, Thai, an
  *      accent written apart); the Hangul fillers (letters that draw nothing)
  *      are refused.
+ * v2.3.5625 (card MOD PR 5): 1c, the fold's last misses (BroTovvn, a
+ * Cherokee A, Admln) read as staff; the honest names beside them pass.
+ * Break proofs (2026-11-17): `listed` back to the plain list -> FAIL 1c
+ * (BroTovvn, Admln); the Cherokee map taken out -> FAIL 1c (the Cherokee A).
  * Break proofs (2026-11-16, each turned its check red): the join's new
  * block taken out -> FAIL 6a; `_charNameRefuse` reading the data's name only
  * -> FAIL 6b; the old [\p{L}\p{N} '_-] rule -> FAIL 1b (the marks); the
@@ -50,6 +54,16 @@ function check(name, cond, detail) {
   check('1: a line break never survives (collapsed to a space)', checkCharName('Bro\nMan').name === 'Bro Man', checkCharName('Bro\nMan'));
   const whys = Object.entries(bad).filter(([n, w]) => n !== 'Bro\nMan' && checkCharName(n).why !== w).map(([n, w]) => [n, w, checkCharName(n).why]);
   check('1: each refusal says why', whys.length === 0, whys);
+}
+
+/* ── 1c. the fold's last misses (v2.3.5625, card MOD PR 5; the sitting 21 list) ── */
+{
+  const staff = ['BroTovvn', 'Ꭺdmin', 'ᎪDMIN', 'Admln', 'Ovvner', 'Adrnin', 'Mocl', 'Offlcial', 'Ꭲeam', 'Bro Tovvn'];
+  const passed = staff.filter((n) => checkCharName(n).why !== 'staff');
+  check('1c: letters read together (vv a w, rn an m, cl a d), an l read as an i and a Cherokee letter that looks Latin read as staff (' + staff.length + ')', passed.length === 0, passed);
+  const honest = ['Bro Townsend', 'Modesto', 'Dev', 'Lily', 'Clyde', 'Bjorn', 'Corn', 'Vivian', 'Liam', 'Ali', 'Mila', 'Modern', 'Barn', 'Owen', 'Molly', 'Willow', 'Bill', 'Ellie', 'ᎣᎳᎩ'];
+  const refused = honest.filter((n) => !checkCharName(n).name);
+  check('1c: ...and the honest names beside them still pass (' + honest.length + ', a name in Cherokee among them)', refused.length === 0, refused.map((n) => [n, checkCharName(n)]));
 }
 
 /* ── 1b. marks after a letter; the fillers (v2.3.5622, the sitting 19 review) ── */
