@@ -1,11 +1,11 @@
 card: SEC
 branch: claude/plan-sec-<n>-<topic> (stacked: each PR on the one before until it merges)
-prs: #2030 (5700): sitting 36; #2032 (5701), #2034 (5702), #2037 (5703): sitting 37; PR 5 (5704): working
-state: working
+prs: #2030 (5700): merged; #2032 (5701), #2034 (5702), #2037 (5703), PR 5 (5704): ready, sitting 37
+state: ready
 
 ## Done
 
-- PR 1 (5700, #2030): the card, this file, the block SEC; items 16 to 20 and
+- PR 1 (5700, #2030, merged): the card, this file, the block SEC; items 16 to 20 and
   item 15's addition word for word (the orchestrator, on the owner's "go
   recommended"), built after item 15.
 - PR 2 (5701, #2032): a join's id is 1 to 64 of A-Z a-z 0-9 _ or refused as a
@@ -20,7 +20,7 @@ state: working
 
 ## Next
 
-- PR 5's suite and PR; then PR 6 (5705): the leaderboard's holds (no
+- PR 6 (5705): the leaderboard's holds (no
   switch: its flags ride index.js's report, card K2's file).
 
 ## Found
@@ -28,7 +28,7 @@ state: working
 - A join with NO id is let in as `session.id` undefined: a body under
   `playerState.undefined` and a `cadence:login:undefined` row, shared by
   every such join (join.js; PR 2's card covers an id present only).
-- PR 14's popup half (gameEvents.js) is card L's: its #2033 (tag 5532).
+- PR 14's popup half (gameEvents.js) is card L's: its #2033 (5532), merged.
 - The hub is the planning session ("Grand plan · planning session (part
   2)"); the orchestrator that wrote this card has ended.
 
