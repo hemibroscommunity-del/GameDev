@@ -193,8 +193,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const p5 = (m5 || []).find((p) => p.key === 'ore_copper_ore');
     rec.ok('5a one copper ore dropped through the card ("Drop it"), drawn as the ore\'s picture with no count', r5.step === 'done' && r5.label === 'Drop it' && !!p5 && /ore/.test(p5.url || '') && p5.count === null, { r5, p5 });
     await H.devOp(wsPort, 'dropage', aId, { ms: 121000 });
-    const flashB = await waitDrop(B, (ps) => ps.some((p) => p.lootId === (p5 && p5.lootId) && p.flashing));
-    const flashA = await waitDrop(A, (ps) => ps.some((p) => p.lootId === (p5 && p5.lootId) && p.flashing));
+    /* v2.3.5652: no wait for "flashing" first: it flashes for ten seconds and a wait of up to 15 s
+       on each screen ate them (the alpha read below shows the flash itself) */
     /* on and off: its alpha read on every frame the page draws, both screens at once, until both
        the lit and the dim half have been seen (at most 8 s of the ten it flashes for): this box
        draws a few frames a second, so a count of reads by the clock misses one half (TRAPS §200) */
@@ -214,7 +214,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const alphas = { A: new Set(sa), B: new Set(sb) };
     const onOff = (s) => [...s].some((a) => a >= 0.9) && [...s].some((a) => a <= 0.3);
     await shot(B, '5-flashing');
-    rec.ok('5b two minutes on, it flashes on both screens: on and off', !!flashA && !!flashB && onOff(alphas.A) && onOff(alphas.B),
+    rec.ok('5b two minutes on, it flashes on both screens: on and off', onOff(alphas.A) && onOff(alphas.B),
       { A: [...alphas.A], B: [...alphas.B] });
     const end5A = await waitDrop(A, (ps) => !ps.some((p) => p.lootId === (p5 && p5.lootId)), 20000);
     const end5B = await waitDrop(B, (ps) => !ps.some((p) => p.lootId === (p5 && p5.lootId)), 20000);
