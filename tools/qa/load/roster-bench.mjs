@@ -78,7 +78,7 @@ function tick() {
   tickFn();
 }
 function run(slim, pres2 = false) {
-  room._liveFlags = Object.assign({}, room._liveFlags || {}, { slimroster: slim, presence2: pres2 });
+  room._liveFlags = Object.assign({}, room._liveFlags || {}, { slimroster: slim, presence2: pres2, guestshare: false });   /* v2.3.5729: its bots join as keyless guests, so `guestshare` (seathold.js) is off here: a guest may hold only half the places */
   for (let t = 0; t < 90; t++) tick();
   for (const p of ps) p.ws.b = 0;
   const ticks = Math.round(SECS * 1000 / room.TICK_RATE);

@@ -28,13 +28,22 @@ them. A played character then waited outside behind a room of strangers.
   gate lets up to `SPARE` (4) sockets past the cap while the room holds an
   idle guest. A join on one of those that is not a played character's is
   refused `room_full`.
-- **It is decided after the key** (join.js, after `_charNameRefuse`), so a
-  wrong key, a lockout or a refused device moves no guest. With `seathold`
-  on too, a keyed join at a full room goes on to its key check whenever a
-  guest is idle, and the same rule decides after it.
+- **The share is decided before the key, the seat after it.** Before the
+  key is checked (join.js `_guestSharePre`), a guest past its share, a
+  guest on a spare socket and a key with no record on a spare socket (a
+  fresh character) are refused. Nothing is read or written for them but,
+  for a key, its `auth:` row (a read): the key's check writes a new
+  character's row, so a refusal after it left one behind and made the
+  phone's next knock a played one (sitting 43's review, F2). Only a key
+  with a record on file goes on, and its seat is decided once its key is
+  right (`_guestShareRefused`, after `_charNameRefuse`), so a wrong key, a
+  lockout or a refused device moves no guest. With `seathold` on too, a
+  keyed join at a full room goes on to these whenever a guest is idle.
 - **An IPv6 address is also counted by its /48** (flood.js `ip48Key`, at
-  `IP48.TIMES` (4) the line). That is 64 places and 80 opens a minute from
-  one /48 at the defaults, under the room's 120.
+  `IP48.TIMES` (4) the line) in the room's two address limits. That is 64
+  places and 80 opens a minute from one /48 at the defaults, under the
+  room's 120. The login door's tries (account.js, card SEC's file) still
+  stop at the /56.
 - **Every address refusal is counted** for the owner's overview
   (`floodTally.ip`, admin.js, card SEC's tally; `floodtally`).
 
@@ -50,9 +59,16 @@ idle for a minute may be shown the full room's screen to make way for a
 played character. A guest past the share sees the full room's screen, as it
 would at the cap.
 
+## The load benches
+
+Their bots join as keyless guests, so each bench turns `guestshare` off
+(`tools/qa/load/`: load.mjs through the flags route, join-bench, memprobe,
+roster-bench, events-bench and load-wheel in the room's flags). With it on,
+a cap of 140 let in 70 of 120 bots (sitting 43's review, F1).
+
 ## Tests
 
-`flood-guestshare.test` (16 FAIL on main; named for the wire system's `flood` word, so the switch guard plays it): the reader, the share, the seat given
+`flood-guestshare.test` (16 FAIL on main, and its two F2 checks fail on the first version of this PR; named for the wire system's `flood` word, so the switch guard plays it): the reader, the share, the seat given
 way, the spare socket, the wrong key, the fresh character and the guest on a
 spare socket, `seathold` with it, the /48, the tally, and the switch.
 
