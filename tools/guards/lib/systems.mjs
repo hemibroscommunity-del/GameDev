@@ -59,8 +59,9 @@ export const SYSTEMS = Object.freeze({
     /* v2.3.5061 (card N): server/src/wire/, the wire table (one row a message or route) */
     files: [f('server/src', 'index|relay|bundle|clientoff|flood'), re('^server/src/wire/'), re('^src/networking/'), f('src/game', 'clientOff|clientOffApply|blockedAsks|workerClock|t1Sync|tooFar'),
       f('src/game', 'actions'),   /* v2.3.5185 (card K): the action door, the one way a request leaves the page */
+      f('server/src', 'heapforget'),   /* v2.3.5544 (card K, RT-1 N11): the room forgets who left */
     ],
-    words: ['wire', 'protocol', 'relay', 'caps', 'bundle', 'privileged', 'clientoff', 'flood'],
+    words: ['wire', 'protocol', 'relay', 'caps', 'bundle', 'privileged', 'clientoff', 'flood', 'heap-forget'],
     traps: ['wire'],
     doors: [
       /* v2.3.5184 (the gatekeeper, sitting 13): the two lists are made from the wire table now (lists.js, card K PR 1) */
