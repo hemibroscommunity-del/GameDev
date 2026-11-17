@@ -114,6 +114,20 @@ export const FEEDBACK_PACE = Object.freeze({
   STATS_KEYS: 100,
   BIG_ROW: 4096,
   FLAG_TTL_MS: 60000,
+  /* v2.3.5706 (card SEC PR 7): EACH KIND'S SHARE of ROWS_HOUR, a count of
+     that kind an hour for the whole board: posts 60 (180 rows), votes 30 (60),
+     crash reports 30 (60) -- 300 in all, so a flood of one kind can never
+     spend another's (a burst of votes had shut out every post and crash
+     report for the hour).  Counted in the hour's own row with ROWS_HOUR. */
+  SHARE: Object.freeze({ posts: 60, votes: 30, crash: 30 }),
+  /* the addresses the hour's row keeps a count for (past it: the oldest go) */
+  ADDR_KEYS: 400,
+  /* the crash feed, cut by its bytes: past this, its oldest half goes */
+  CRASH_BYTES: 131072,
+  /* the list's answer, kept this long (any write here clears it), and the
+     newest tickets it serves of all the board keeps */
+  LIST_TTL_MS: 30000,
+  LIST_NEWEST: 500,
 });
 export const FEEDBACK_TOPIC_MAX = 32;
 /* v2.3.5593: what a refused post says (the panel prints the error as it comes) */
@@ -258,10 +272,18 @@ export class Feedback {
         msg: String((e && e.msg) || '').slice(0, 300),
       })),
     };
-    const all = JSON.parse(await this.state.storage.get('_crashlog') || '[]');
+    let all = [];
+    try { all = JSON.parse(await this.state.storage.get('_crashlog') || '[]'); } catch (e) { all = []; }
+    if (!Array.isArray(all)) all = [];
     all.push(report);
     while (all.length > 200) all.shift();
-    await this.state.storage.put('_crashlog', JSON.stringify(all));
+    let out = JSON.stringify(all);
+    /* v2.3.5706: cut by its bytes: a full feed drops its oldest half (a
+       real report then outlives a flood of junk ones the share lets in) */
+    if (this._shareOn()) {
+      while (out.length > FEEDBACK_PACE.CRASH_BYTES && all.length > 1) { all = all.slice(Math.ceil(all.length / 2)); out = JSON.stringify(all); }
+    }
+    await this.state.storage.put('_crashlog', out);
     return { ok: true };
   }
 
@@ -284,6 +306,9 @@ export class Feedback {
        fit in 100.  The legacy panel's own 100 cap is a client limit and
        stays; this is the ceiling, not a target. */
     if (typeof text !== 'string' || text.length > FEEDBACK_TEXT_MAX) return { ok: false, error: 'Max ' + FEEDBACK_TEXT_MAX + ' characters' };
+    /* v2.3.5706: the text through the name's cleaner (the shares' switch) */
+    const words = this._shareOn() ? feedbackWords(text, FEEDBACK_TEXT_MAX) : text;
+    if (!words) return { ok: false, error: 'Missing fields' };
 
     const VALID_CATEGORIES = ['bug', 'balance', 'remove', 'add', 'qol', 'praise'];
     if (!VALID_CATEGORIES.includes(category)) return { ok: false, error: 'Invalid category' };
@@ -298,13 +323,14 @@ export class Feedback {
     const ticket = {
       id: crypto.randomUUID(),
       playerId, playerName, category, topic,
-      text: text.slice(0, FEEDBACK_TEXT_MAX),
+      text: words.slice(0, FEEDBACK_TEXT_MAX),
       up: 0, down: 0,
       voters: {}, // { playerId: 'up'|'down' }
       ts: Date.now(),
     };
 
     await this.state.storage.put('ticket:' + ticket.id, JSON.stringify(ticket));
+    this._listKept = null;   /* v2.3.5706: the poster sees the post at once */
 
     // Update topic count index
     const stats = JSON.parse(await this.state.storage.get('_stats') || '{}');
@@ -324,6 +350,12 @@ export class Feedback {
     /* v2.3.5593 (the sitting 19 review): both ids are short strings, before
        anything is kept (a 1.9 MB id voted into a real report made it a 1.9 MB row) */
     if (typeof playerId !== 'string' || playerId.length > FEEDBACK_PACE.ID_MAX || typeof ticketId !== 'string' || ticketId.length > FEEDBACK_PACE.ID_MAX) return { ok: false, error: 'Invalid vote' };
+    /* v2.3.5706: the ticket looked up FIRST: a vote on none counts nothing */
+    let found = null;
+    if (this._shareOn()) {
+      found = await this.state.storage.get('ticket:' + ticketId);
+      if (!found) return { ok: false, error: 'Ticket not found' };
+    }
     /* v2.3.5593: a vote is a row too: paced as a post is (RT-1 N2); and one
        claimed id an address a ticket, so made-up ids buy no votes (the same id
        may still take its vote back) */
@@ -340,8 +372,10 @@ export class Feedback {
       if (this._votesBy.size > FEEDBACK_PACE.KEYS_MAX) { const now = Date.now(); for (const [k2, b] of this._votesBy) if (b.until <= now || this._votesBy.size > FEEDBACK_PACE.KEYS_MAX) this._votesBy.delete(k2); }
     }
 
-    const raw = await this.state.storage.get('ticket:' + ticketId);
+    const raw = await this.state.storage.get('ticket:' + ticketId);   /* read again: another vote may have landed while this one waited */
     if (!raw) return { ok: false, error: 'Ticket not found' };
+    void found;
+    this._listKept = null;   /* v2.3.5706: the list shows the vote at once */
 
     const ticket = JSON.parse(raw);
     /* v2.3.5593 (the sitting 19 review): a map with no prototype, so a vote
@@ -372,10 +406,22 @@ export class Feedback {
        ticket kept as the few fields the board serves (no voters), a row over
        READ_MAX skipped (one grown before this version: the sweep mends it) */
     let tickets = [];
-    await this._eachTicket((k, raw) => {
-      if (typeof raw !== 'string' || raw.length > FEEDBACK_PACE.READ_MAX) return;
-      try { tickets.push(this.sanitize(JSON.parse(raw))); } catch {}
-    });
+    /* v2.3.5706: the board read at most once a LIST_TTL_MS (a write here
+       clears it), and only its newest LIST_NEWEST tickets served */
+    const share = this._shareOn();
+    const now0 = Date.now();
+    if (share && this._listKept && now0 - this._listKept.at < FEEDBACK_PACE.LIST_TTL_MS) tickets = this._listKept.tickets.slice();
+    else {
+      await this._eachTicket((k, raw) => {
+        if (typeof raw !== 'string' || raw.length > FEEDBACK_PACE.READ_MAX) return;
+        try { tickets.push(this.sanitize(JSON.parse(raw))); } catch {}
+      });
+      if (share) {
+        tickets.sort((a, b) => b.ts - a.ts);
+        tickets = tickets.slice(0, FEEDBACK_PACE.LIST_NEWEST);
+        this._listKept = { at: now0, tickets: tickets.slice() };
+      }
+    }
 
     // Filter
     if (topic) tickets = tickets.filter(t => t.topic === topic);
@@ -421,7 +467,7 @@ export class Feedback {
   sanitize(t) {
     return { id: t.id, playerName: feedbackWords(t.playerName, FEEDBACK_NAME_MAX) || 'Bro',
       category: typeof t.category === 'string' ? t.category : 'bug', topic: feedbackWords(t.topic, FEEDBACK_TOPIC_MAX),
-      text: typeof t.text === 'string' ? t.text.slice(0, FEEDBACK_TEXT_MAX) : '',
+      text: typeof t.text === 'string' ? (this._shareOn() ? feedbackWords(t.text, FEEDBACK_TEXT_MAX) : t.text.slice(0, FEEDBACK_TEXT_MAX)) : '',   /* v2.3.5706: served cleaned too */
       up: Number(t.up) || 0, down: Number(t.down) || 0, ts: Number(t.ts) || 0 };
   }
 
@@ -472,6 +518,7 @@ export class Feedback {
     let t = null;
     try { t = JSON.parse(raw); } catch { t = null; }
     await this.state.storage.delete('ticket:' + id);
+    this._listKept = null;   /* v2.3.5706 */
     if (t) {
       const stats = JSON.parse(await this.state.storage.get('_stats') || '{}');
       const topicKey = t.topic + ':' + t.category;
@@ -503,13 +550,30 @@ export class Feedback {
     const rows = (kind === 'posts' ? 2 : 1) + 1;
     const budget = await this._rowsBudget(now);
     if (budget.n + rows > FEEDBACK_PACE.ROWS_HOUR) return false;
+    /* v2.3.5706: the kind's share, and the address's count, both in the hour's row */
+    const share = this._shareOn();
+    const ak = addr ? kind + '|' + addr : null;
+    if (share) {
+      if (!budget.k) budget.k = {};
+      if (!budget.a) budget.a = {};
+      if ((budget.k[kind] || 0) >= FEEDBACK_PACE.SHARE[kind]) return false;
+      if (ak && Object.prototype.hasOwnProperty.call(budget.a, ak) && budget.a[ak] >= lim[0]) return false;
+    }
     for (const k of keys) {
       if (!k) continue;
       const b = at(k);
       if (b) b.n++; else M.set(k, { n: 1, until: now + FEEDBACK_PACE.HOUR_MS });
     }
     budget.n += rows;
-    await this.state.storage.put(FEEDBACK_PACE.ROWS_KEY, { n: budget.n, until: budget.until });
+    if (share) {
+      budget.k[kind] = (budget.k[kind] || 0) + 1;
+      if (ak) {
+        budget.a[ak] = (Object.prototype.hasOwnProperty.call(budget.a, ak) ? budget.a[ak] : 0) + 1;
+        const ks = Object.keys(budget.a);
+        for (let i = 0; ks.length - i > FEEDBACK_PACE.ADDR_KEYS; i++) delete budget.a[ks[i]];   /* the oldest go */
+      }
+    }
+    await this.state.storage.put(FEEDBACK_PACE.ROWS_KEY, share ? { n: budget.n, until: budget.until, k: budget.k, a: budget.a } : { n: budget.n, until: budget.until });
     if (M.size > FEEDBACK_PACE.KEYS_MAX) {
       for (const [k, b] of M) if (b.until <= now) M.delete(k);
       /* still full: the oldest go (a Map keeps its order), never the game's own ceilings */
@@ -528,15 +592,48 @@ export class Feedback {
           let b = null;
           try { b = await this.state.storage.get(FEEDBACK_PACE.ROWS_KEY); } catch (e) { b = null; }
           const ok = b && typeof b === 'object' && Number.isFinite(b.n) && Number.isFinite(b.until) && b.until <= Date.now() + FEEDBACK_PACE.HOUR_MS;
-          return ok ? { n: b.n, until: b.until } : { n: 0, until: 0 };
+          /* v2.3.5706: and each kind's count and the addresses' (the shares) */
+          const k = ok && b.k && typeof b.k === 'object' ? { posts: +b.k.posts || 0, votes: +b.k.votes || 0, crash: +b.k.crash || 0 } : {};
+          const a = Object.create(null);
+          if (ok && b.a && typeof b.a === 'object') for (const key of Object.keys(b.a).slice(-FEEDBACK_PACE.ADDR_KEYS)) { const v = Number(b.a[key]); if (Number.isFinite(v)) a[key] = v; }
+          return ok ? { n: b.n, until: b.until, k, a } : { n: 0, until: 0, k: {}, a: Object.create(null) };
         })();
       }
       const loaded = await this._rowsLoad;
       if (!this._rowsHour) this._rowsHour = loaded;
     }
-    if (this._rowsHour.until <= now) { this._rowsHour.n = 0; this._rowsHour.until = now + FEEDBACK_PACE.HOUR_MS; }
+    if (this._rowsHour.until <= now) { this._rowsHour.n = 0; this._rowsHour.until = now + FEEDBACK_PACE.HOUR_MS; this._rowsHour.k = {}; this._rowsHour.a = Object.create(null); }
     return this._rowsHour;
   }
+
+  /* ═══ v2.3.5706 (card SEC PR 7): THE HOUR, SHARED ═══
+     The second red team: the paces by address lived in memory and reset when
+     the object slept; one budget of ROWS_HOUR rows served posts, votes and
+     crash reports together (a burst of votes shut out every post and crash
+     report for the hour); a vote on a ticket that does not exist was counted
+     before the ticket was looked for; the crash feed was one row, a ring of
+     200, that junk could push every real report out of and that could grow
+     past a row's size, with no way to clear it; the list read every ticket
+     ever kept on each ask; and the text kept direction-changing and
+     zero-width characters.  Now:
+       - each kind has its SHARE of the hour (posts 60, votes 30, crash 30:
+         300 rows), counted in the hour's own row (`k`), never past it;
+       - the counts by address are in that row too (`a`, at most ADDR_KEYS),
+         so a wake does not refill them (no new row: the row the hour's
+         budget already writes with every write);
+       - a vote looks its ticket up first: none, nothing counted;
+       - the crash feed is cut by its bytes (CRASH_BYTES): a full one drops
+         its oldest half; the owner's sweep clears it;
+       - the list's answer is kept LIST_TTL_MS (any write here clears it) and
+         serves the newest LIST_NEWEST tickets; the owner's sweep takes away
+         the ones older than those;
+       - the text goes through the name's cleaner (feedbackWords: no hidden
+         or direction characters, spaces collapsed; the panels draw no line
+         breaks, so a player reads the same).
+     KILL SWITCH `feedbackshare: false` in the live flags (read with the board's
+     own switch, `feedback`, the same way: the last word read, on at first):
+     every one of these off, the board as before. */
+  _shareOn() { return this._shareFlag !== false; }
 
   /* v2.3.5593: the KILL SWITCH `feedback: false` in the live flags (the room's:
      this object keeps none), read with the owner's key over the binding at
@@ -552,7 +649,7 @@ export class Feedback {
       const stub = env.GAME_ROOM.get(env.GAME_ROOM.idFromName(ROOMS.MAIN));
       const res = await stub.fetch(new Request('https://internal/api/admin/flags', { headers: { Authorization: 'Bearer ' + env.ADMIN_KEY } }));
       const j = await res.json();
-      if (j && j.ok && j.flags && typeof j.flags === 'object') this._flagOpen = j.flags.feedback !== false;
+      if (j && j.ok && j.flags && typeof j.flags === 'object') { this._flagOpen = j.flags.feedback !== false; this._shareFlag = j.flags.feedbackshare !== false; }   /* v2.3.5706: and the shares' switch */
     } catch (e) { /* the last word stands */ }
     return this._flagOpen !== false;
   }
@@ -568,9 +665,26 @@ export class Feedback {
      written back (`mended`); only a ticket whose own fields are oversized
      goes.  A page at a time (TRAPS §76). */
   async sweep() {
-    let big = 0, paces = 0, mended = 0;
+    let big = 0, paces = 0, mended = 0, old = 0, crashes = 0;
     const counts = Object.create(null);
     let total = 0;
+    this._listKept = null;
+    /* v2.3.5706: the newest LIST_NEWEST tickets are kept; the ones older than
+       those (the list no longer serves them) go, and the crash feed is
+       cleared (the shares' switch) */
+    const share = this._shareOn();
+    const ages = [];
+    if (share) {
+      await this._eachTicket((k, raw) => {
+        let ts = 0;
+        try { const t = JSON.parse(raw); ts = Number(t && t.ts) || 0; } catch { ts = 0; }
+        ages.push([k, ts]);
+      });
+      ages.sort((x, y) => y[1] - x[1]);
+      for (const [k] of ages.slice(FEEDBACK_PACE.LIST_NEWEST)) { await this.state.storage.delete(k); old++; }
+      const log = await this.state.storage.get('_crashlog');
+      if (log) { try { const a = JSON.parse(log); crashes = Array.isArray(a) ? a.length : 0; } catch { crashes = 0; } await this.state.storage.delete('_crashlog'); }
+    }
     await this._eachTicket(async (k, raw) => {
       let t = null;
       try { t = typeof raw === 'string' ? JSON.parse(raw) : null; } catch { t = null; }
@@ -605,6 +719,6 @@ export class Feedback {
       }
     }
     await this.state.storage.put('_stats', JSON.stringify({ ...counts, _total: total }));
-    return { ok: true, big, mended, paces, tickets: total };
+    return { ok: true, big, mended, paces, tickets: total, ...(share ? { old, crashes } : {}) };
   }
 }

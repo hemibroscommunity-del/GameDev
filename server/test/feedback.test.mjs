@@ -105,7 +105,9 @@ function ownerRoom(key) {
   })).then((r) => r.json());
   const base = { playerId: 'bp_fb', playerName: 'Scribe', category: 'bug', topic: 'ui' };
 
-  const long = await post({ ...base, text: 'x'.repeat(500) });
+  /* v2.3.5706: words, not one letter 500 times (the text goes through the
+     name's cleaner now: a run of one character past 6 is cut, as a chat line) */
+  const long = await post({ ...base, text: 'abcdefghij'.repeat(50) });
   check('a 500-character report is kept (the panel offers 500; the old cap was 100)', long.ok === true, long);
   const tooLong = await post({ ...base, text: 'x'.repeat(501) });
   check('...501 is refused', tooLong.ok === false, tooLong);
@@ -227,7 +229,13 @@ function ownerRoom(key) {
   const crash = [];
   for (let i = 0; i < FEEDBACK_PACE.CRASH_ADDR + 5; i++) crash.push(await req('/crash', { method: 'POST', headers: from('203.0.113.9'), body: JSON.stringify({ sid: 'sid' + i, log: [{ kind: 'x' }] }) }).then((r) => r.json()));
   check('7: crash reports from one address with fresh sids stop at ' + FEEDBACK_PACE.CRASH_ADDR + ' an hour', crash.filter((r) => r.ok).length === FEEDBACK_PACE.CRASH_ADDR, crash.map((r) => r.ok));
-  const crashAgain = await req('/crash', { method: 'POST', headers: from(), body: JSON.stringify({ sid: 'local', log: [{ kind: 'x' }] }) }).then((r) => r.json());
+  /* v2.3.5706: shown on posts, on a board of its own: the address above
+     filled the crash share (SHARE.crash, 30, the address's own 30), so a
+     crash report from anyone is refused for the hour now, which is the share */
+  const fbLocal = new Feedback(makeState(), {});
+  const local = [];
+  for (let i = 0; i < FEEDBACK_PACE.POSTS_ADDR + 3; i++) local.push(await fbLocal.fetch(new Request('https://x/api/feedback/submit', { method: 'POST', headers: from(), body: JSON.stringify(fresh()) })).then((r) => r.json()));
+  const crashAgain = { ok: local.every((r) => r.ok === true), local: local.map((r) => r.ok) };
   check('7: ...a local caller (no address) is not counted by address (flood.js\'s rule)', crashAgain.ok === true, crashAgain);
 }
 {
@@ -238,7 +246,7 @@ function ownerRoom(key) {
     await fb.fetch(new Request('https://x/api/feedback/submit', { method: 'POST', headers: { 'Content-Type': 'application/json', 'CF-Connecting-IP': '192.0.2.' + i },
       body: JSON.stringify({ playerId: 'bp_t' + i, playerName: 'T', category: 'bug', topic: 'topic' + i, text: 'x' }) }));
     fb._paces.clear();   /* (the paces are 7's; this is the row's cap) */
-    if (fb._rowsHour) fb._rowsHour.n = 0;   /* (and the rows' budget, 11's and 13's) */
+    if (fb._rowsHour) { fb._rowsHour.n = 0; fb._rowsHour.k = {}; fb._rowsHour.a = Object.create(null); }   /* (and the rows' budget, 11's and 13's; v2.3.5706: and the shares, SEC's) */
   }
   const stats = JSON.parse(await st.storage.get('_stats'));
   check('8: `_stats` keeps at most ' + FEEDBACK_PACE.STATS_KEYS + ' topics (+ the total), however many are posted', Object.keys(stats).length <= FEEDBACK_PACE.STATS_KEYS + 1 && stats._total === FEEDBACK_PACE.STATS_KEYS + 40, Object.keys(stats).length);
@@ -312,11 +320,16 @@ function ownerRoom(key) {
      votes until the whole object's budget stops them (a post writes 3 rows:
      its ticket, `_stats` and the budget's own row; a vote 2), and then a
      crash report is refused too; the rows counted are the rows written */
+  /* v2.3.5706 (card SEC PR 7): the ONE shared budget is the old way, kept
+     behind `feedbackshare: false` (read from the room's flags, as `feedback`
+     is): this section plays it so; the shares, on, are §14's */
   const st2 = makeState();
   let puts = 0;
   const put0 = st2.storage.put;
   st2.storage.put = async (k, v) => { puts++; return put0(k, v); };
-  const fb2 = new Feedback(st2, {});
+  const offRoom = { fetch: async () => new Response(JSON.stringify({ ok: true, flags: { feedbackshare: false } })) };
+  const fb2 = new Feedback(st2, { ADMIN_KEY: 'k11s', GAME_ROOM: { idFromName: (x) => x, get: () => offRoom } });
+  await fb2._boardOpen();
   const ip2 = (i) => '192.0.2.' + (i % 250) + '.' + i;
   let rows = 0, first = null;
   for (let i = 0; i < FEEDBACK_PACE.POSTS_ALL + 5; i++) {
