@@ -11,15 +11,15 @@ state: ready
 1 SEC #2054 (5711, the owner sees a flood: the overview's `floodTally`,
 memory only; `floodtally`, ON) · 2 K2 #2051 (5725, three guards: a
 frame's throw caught, a Workshop run on safe ground, `reqId` off the
-public reads; `dungeonground`, ON) · 3 K2 #2053 (5726, the owner's routes
-with no key and the public reads answered at the edge; worker settings
-`EDGE_GUARD`, `EDGE_CACHE`, on) · 4 Z Z_PR (this PR). All based on
+public reads; `dungeonground`, ON; heap-forget's line 2.5 -> 4 KB) ·
+3 K2 #2053 (5726, the owner's routes with no key and the public reads at
+the edge; worker settings `EDGE_GUARD`, `EDGE_CACHE`, on) · 4 Z Z_PR (this PR). All based on
 `main`, one base at every step. The worker deploys once.
 
 ## Held / Stalled
 - None held (#2054 held at review, fixed by SEC); none stalled. To 40:
-  L #2052 (clean; its switch row meets #2051's, merges main after it);
-  K2 PR 4 (5723); SEC #2055 (5712, draft).
+  L #2052 (clean; its switch row meets #2051's), #2058; SEC #2055-#2057;
+  K2 PR 4 (5723).
 
 ## Found
 - (a) `mp-alliance` 3 13-15/16 since #2022; no card. (b) `movetop` ON:
@@ -31,7 +31,7 @@ with no key and the public reads answered at the edge; worker settings
   #2038: a known field a save leaves out comes from a newer record.
 - (h) #2047: received friend requests never expire (friends.js).
 - (i) K2's: `mp-movepath`'s two "no worse" checks fail on main's worker.
-  (j) `heap-forget` check 4 at 2563 on CI against its line 2560.
+  (j) `heap-forget` check 4 on CI: mended by #2051 (on the list).
 - (k) K2's: a joiner's state_sync still carries each player's `rpgData`.
 
 ## Needs

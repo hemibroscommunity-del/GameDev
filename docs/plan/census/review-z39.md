@@ -13,13 +13,15 @@ with the PRs above it merged in as merge commits). The tree after each
 merge:
 
 1 SEC #2054 75579c1152afc2d5623bef041a9be913683605b2 -> 8b9bf6e355848c1dbf0b554534e16b46db036fa1
-2 K2 #2051 a7bb41a33412b6faac6940e5561c7096f2bee2a5 -> 2b27c2eaede069e4d66f057627315496fa791220
-3 K2 #2053 5ec4d137c132c4b50017ac57471de05651634fe5 -> bef3d0f3837786aa46e46fc67004b788a1995815
+2 K2 #2051 adb2de6df37be8eef9dd56d0f08bc88cf65b8e80 -> c11f9e28b6447243ef8c2fff3058d352763cf9af
+3 K2 #2053 5ec4d137c132c4b50017ac57471de05651634fe5 -> 771b2bb38bcef212cfeee0405eb9d032130c2aa8
 4 Z (this PR): its head and tree are in the list (`status/Z.md`).
 
 The bases, step by step: #2054 9e228210 (SEC merged `main` in at 19:11);
 #2051 9e228210 (K2 merged `main` in at 19:33); #2053 a7bb41a3 (#2051's
-head, merged into #2053); this PR 9e228210. One line each.
+19:33 head, merged into #2053; #2051's later commit adb2de6d sits on it,
+so over #2051's merge commit the base is still the one, a7bb41a3); this
+PR 9e228210. One line each.
 
 ## SEC #2054 (5711): the owner can see a flood
 
@@ -62,6 +64,14 @@ READY (reviewed in full). Card K2 PR 6.
 - (c) `reqId` left off the market's two public reads (`mktPublicOrders`);
   the stored order keeps it for the repeat check. Read against `src/`: no
   page reads `reqId` from an order. No switch (nothing reads it).
+- adb2de6d (19:48, after the rehearsal began; read in full): only
+  `heap-forget.test` check 4, sitting 38's Found (j). The absolute line
+  RAISED 2,560 -> 4,096 B a guest (CI's runner read 2,563 to 2,573, this
+  box 247 to 1,628), and a new line that does not hang on the runner:
+  the zone forgotten, `off - on >= 3,500` (CI 5,350 to 5,756). The break
+  proof (the forget taken out of leave.js) reads about 0 forgotten: both
+  lines red. A test only, no code. Run twice in the merged tree: on 1,560
+  and 1,628, all three of check 4 green.
 - DEPLOYS.
 
 ## K2 #2053 (5726): the owner's routes with no key, and the public reads, at the edge
@@ -102,7 +112,36 @@ new `main` in after #2051 lands (each row its own line, by
 
 ## The rehearsal
 
-REHEARSAL_RESULT
+`tools/dev/gatekeeper.mjs` on 9e228210 with #2054 (75579c11), #2051
+(a7bb41a3) and #2053 (5ec4d137), in that order: tree bef3d0f3 (the same
+as the step-by-step merges); build PASS (17 s); questline 187/187 (534
+s); precheck the one 5-minute server-tests limit (the settled one) and
+nothing else red (its WARNs: SEC's stacked branches 13 to 18 carry
+#2054's 5711, as each holds it; the branch count). `cd server && npm
+test` alone in that tree: 500 suites, all green (530.6 s). Every guard in
+`tools/guards/` green there (34). #2051's adb2de6d came after (a test's
+line, above): its suite run twice in the new tree (771b2bb3), green; the
+rest of the tree is the rehearsed one. This PR on top (one base,
+9e228210): the phase table 4 `todo` under the line 4.
+
+CI on the listed heads: #2054 `test`, playable, lint-build green; its
+memory-budget hit the job's 20-minute timeout (a cancel), its one rerun
+green. #2051 adb2de6d and #2053 5ec4d137: see the list (`status/Z.md`).
+
+Two rehearsals before this one were stopped: the first met L's #2052
+over #2051 in `docs/SWITCHES.md`; the second, K2's heads moved (19:33).
+
+Late, to sitting 40: L #2052 (5535; reviewed clean, merges the new `main`
+in after #2051) and #2058 (5536, the worker's guard door; after #2052,
+`status/L.md`); SEC #2055 (5712), #2056 (5713), #2057 (5714; CLAUDE.md
+§4 and REPO-SAFETY words, nothing in `.github/` or `wrangler.toml`),
+stacked on #2054; K2's PR 4 (5723, `movefields`, index.js).
+
+No two listed PRs share a file but: K2's stack (`status/K2.md`,
+`index.js`, `dungeon.js`, `market.js`, `testmode.js`, the switch table:
+#2053 holds #2051); the switch table (`switches.mjs`, `SWITCHES.md`:
+`floodtally`, `dungeonground`, each its own line, merged clean);
+`server/src/admin.js` and `leave.js` are SEC's alone.
 
 ## Z (this PR, 5677)
 
