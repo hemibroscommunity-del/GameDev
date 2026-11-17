@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "1a75a1223672c7e2caf1e740d065df3eb2431d70",
+  "tree": "72a2f75571700a54e74ee580358fdc2c77cadf17",
+  "committedAt": "2026-11-17T07:27:03-08:00",
+  "subject": "Merge pull request #2024 from hemibroscommunity-del/claude/plan-k-14d-ontoday",
+  "files": 8068,
+  "bytes": 959543271,
+  "listingSha256": "f340467be8f540875ed0c651169a94967913405402199ebbd09d6b1ff081c0bd",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
