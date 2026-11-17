@@ -276,8 +276,20 @@ export const silenceMethods = {
       ids = rec && Array.isArray(rec.ids) ? rec.ids.map((e) => e && e.id).filter((x) => typeof x === 'string') : [];
     } catch (e) { ids = []; }
     if (ids.some((x) => L.owner.has(x))) return false;              /* ...whatever key it came with */
-    if (ids.some((x) => L.frozen.has(x))) return true;
-    return L.devs.has(device);
+    if (!ids.some((x) => L.frozen.has(x)) && !L.devs.has(device)) return false;
+    /* v2.3.5627 (the planning session's call, 2026-11-17, sitting 22's
+       review: the lever stays OFF, the owner can change it): a held phone
+       refuses only a NEW character, one with no login and no record yet --
+       never an existing character's join (a friend's own character on a
+       phone the frozen one once used plays on; the frozen one itself is
+       refused by its own `frozen:` row, join.js) */
+    if (typeof pid === 'string' && pid) {
+      try {
+        const had = await this.state.storage.get(['auth:' + pid, 'char:' + pid]);
+        if (had && had.size) return false;
+      } catch (e) { return false; }   /* a failed read lets the join on to the key */
+    }
+    return true;
   },
 
   /** The join's half (join.js, before the key is checked: a refused join

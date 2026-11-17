@@ -66,11 +66,12 @@ let in (the account check, Turnstile, is off). The About panel promises
   in, by a character in test mode, marks its device `ownerdev:<device>`
   {pid, at}, once a device (the owner's handful of puts, ever), and a freeze
   never holds a marked device.
-- **Every character on a held phone** is refused, new or old (the card's
-  "whatever character it names"): a friend's own character on a phone the
-  frozen troll once used is held with it. That is the device rule as the
-  card has it; the switch row says so (sitting 22's review asked that the
-  row and the code agree).
+- **Only a NEW character is held** (the planning session's call,
+  2026-11-17, sitting 22's review; the lever stays OFF, the owner can change
+  it): a held phone refuses a character with no login and no record yet
+  (`auth:` / `char:`), never an existing character's join, so a friend's own
+  character on a phone the frozen troll once used plays on. The frozen
+  character itself is refused by its own `frozen:` row.
 - The frozen characters' records are read 128 a get (`SILENCE.GET_MAX`, the
   runtime's most: 129 freezes threw, and the read failed open).
 

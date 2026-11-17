@@ -30,7 +30,10 @@
  * v2.3.5627 (card MOD PR 7; sitting 22's review): 6c, the owner's own
  * devices kept (`ownerdev:`): a computer whose botfp record has forgotten the
  * owner's character (its last 8) is still never held.  Break proof: the
- * `ownerdev:` list not read -> FAIL 6c (the computer held).  Break proof: the
+ * `ownerdev:` list not read -> FAIL 6c (the computer held).  And the
+ * planning session's call (2026-11-17): a held phone refuses only a NEW
+ * character (no login, no record), never an existing one's join.  Break
+ * proof: the record check taken out -> FAIL 6b (the friend refused).  Break proof: the
  * door's names line taken out -> FAIL 5b.  6b, the device's characters from botfp's
  * `device:` record (a device reached with a new key is held; the owner's
  * computer, so reached, is spared; the owner's character named by the join
@@ -249,6 +252,12 @@ const wb = await join('bp_mod_kind', 'devkind001');
   const lapAlt = await join('bp_mod_roam_alt', 'devroamlaptop', room);
   check('6b: a new character on a device the frozen character reached with a new key is refused `frozen` (only the phone it was made on was held)',
     lapAlt.sent.some((m) => m.type === 'join_rejected' && m.reason === 'frozen'), lapAlt.sent.map((m) => m.type).slice(0, 4));
+  /* v2.3.5627 (the planning session's call): a held phone refuses only a NEW character */
+  room._liveFlags.devicelock = false;   /* the friend's key on the laptop: past the device lock */
+  const friendOn = await join('bp_mod_kind', 'devroamlaptop', room);
+  delete room._liveFlags.devicelock;
+  check('6b: an EXISTING character (a friend\'s own) joining from a held phone is never refused `frozen` (only a new character is)',
+    !friendOn.sent.some((m) => m.type === 'join_rejected' && m.reason === 'frozen'), friendOn.sent.map((m) => [m.type, m.reason]).slice(0, 4));
   const homeAlt = await join('bp_mod_roam_alt2', 'devroamhome', room);
   check('6b: ...and the phone it was made on still is', homeAlt.sent.some((m) => m.type === 'join_rejected' && m.reason === 'frozen'), homeAlt.sent.map((m) => m.type).slice(0, 4));
   /* the owner's spare, complete the same way: the owner's character on a shared computer, reached with a new key */
