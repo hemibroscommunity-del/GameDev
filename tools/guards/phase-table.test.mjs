@@ -131,6 +131,8 @@
  *  51. `ps.blocking = false;` back in linger.js -> guard-door.test FAIL 2
  * v2.3.5537 (the zone door):
  *  52. `ps.z = 'town';` back in index.js _tickPlayerRespawn -> zone-door.test FAIL 2
+ * v2.3.5538 (the fight door):
+ *  53. `this._pvpHealClocks.delete(id);` back in spar.js _sparRemove -> fight-door.test FAIL 2
  * v2.3.5525 (the loading door):
  *  39. `S._farmArtHold = seq;` back in farmTrip.js -> loading-door.test FAIL 2
  *  40. `S._veils = new Map();` in zoneTransitions.js -> FAIL 2
@@ -407,6 +409,9 @@ const DOOR_SUITES = Object.freeze({
       { file: fileNamed('spar.js'), text: 'z: ownerPs.z,', fn: '_sparSpawn', why: 'the sparring clone\'s birth, at its owner\'s place' },
       { file: fileNamed('tick.js'), text: 'e.z = ps.z;', why: 'a copy of the place onto the tick\'s entry, not the player\'s' },
     ] },
+  /* v2.3.5538: the fight door (the clock's pvpAt and healAt: the suite's §2) */
+  'server/test/fight-door.test.mjs': { field: 'this._pvpHealClocks', fn: '_fightTo', holds: '§2: no write of this._pvpHealClocks, a clock\'s .pvpAt or .healAt in server/src outside _fightTo',
+    prop: '_pvpHealClocks', besides: [] },
   /* v2.3.5533: the fight's page door (its note S._pvpSkullUntil: the suite's §2) */
   'server/test/fight-page-door.test.mjs': { field: 'S._pvpSkullType', fn: 'skullTo', holds: '§2: no write of S._pvpSkullType or S._pvpSkullUntil in src/ outside skullTo',
     prop: '_pvpSkullType', besides: [

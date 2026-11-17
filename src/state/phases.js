@@ -132,16 +132,14 @@ export const PHASES = [
     note: 'v2.3.5537: the door (ZONE_WAYS move, respawn, standup, spar; a place that is no zone, movement.js _validZone, is refused; live flag zonedoor). The fresh body\'s place is its birth (join.js, the guard\'s besides); a kept body keeps its own. Each caller still asks the duel after (_duelZoneMoved). The leave remembers it (lastplace.js) with the body.',
   },
   {
-    name: 'fight', side: 'worker', status: 'todo',
+    name: 'fight', side: 'worker', status: 'door',
     what: 'A player fighting another player: a clock, not a field; the fight lock derives it at each ask.',
-    field: null, states: ['free', 'fighting', 'locked'], fn: null, file: null,
+    field: 'this._pvpHealClocks', states: ['free', 'fighting', 'locked'],
+    fn: '_fightTo', file: 'server/src/cooking.js',
     clears: [{ edge: 'never', at: 'server/src/cooking.js _pvpHealPrune' }],
     rejoin: 'none: the clock is the room\'s and survives a rejoin on purpose (cooking.js); refusals say it per action',
-    today: [
-      { field: 'this._pvpHealClocks', file: 'server/src/cooking.js', writers: ['server/src/cooking.js _pvpHealClock', 'server/src/cooking.js _notePvpExchange', 'server/src/cooking.js _pvpHealPrune', 'server/src/spar.js _sparRemove'] },
-      { field: 'ps.lastDamageAt', file: 'server/src/combat.js', writers: ['server/src/combat.js _applyDamage', 'server/src/join.js _handleJoin', 'server/src/index.js _tickPlayerRespawn'] },
-    ],
-    note: 'fightlock.js _fightLockHolds reads the duel, this clock (10 s), the red skull (ps._nml.red with ps.lastDamageAt) and the place (No man\'s land).',
+    held: { suite: 'server/test/fight-door.test.mjs' },
+    note: 'v2.3.5538: the door (FIGHT_WAYS open, exchange, heal, prune, forget; an id that is no string is refused; live flag fightdoor). The clock\'s one store, id -> { pvpAt, healAt }; fightlock.js _fightLockHolds reads the duel, this clock (10 s), the red skull (ps._nml.red with ps.lastDamageAt) and the place (No man\'s land). ps.lastDamageAt is every blow\'s stamp (combat.js _applyDamage), not this machine\'s field: a note it reads.',
   },
   {
     name: 'duel', side: 'worker', status: 'door',
