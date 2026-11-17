@@ -19,7 +19,7 @@ Each SEC PR holds the one before, #2041 holds #2035. All based on
 `main`, one base at every step. The worker deploys once.
 
 ## Held / Stalled
-- None. / None.
+- None held; none stalled. Late, to sitting 38: SEC #2042, #2043; L #2046.
 
 ## Found
 - `mp-alliance` 3 13-15/16 since #2022; no card owns it.
