@@ -192,6 +192,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const m5 = await waitDrop(A, (ps) => ps.some((p) => p.key === 'ore_copper_ore' && p.picture));
     const p5 = (m5 || []).find((p) => p.key === 'ore_copper_ore');
     rec.ok('5a one copper ore dropped through the card ("Drop it"), drawn as the ore\'s picture with no count', r5.step === 'done' && r5.label === 'Drop it' && !!p5 && /ore/.test(p5.url || '') && p5.count === null, { r5, p5 });
+    /* v2.3.5652: the watcher beside it before it is aged, in view and past the magnet (50 px, the
+       pickup 20): his screen never listed it from where he had been left (a 150 px walk away) */
+    if (p5) await H.hopTo(B, p5.x + 110, p5.y + 15, { step: 50 });
+    if (p5) await waitDrop(B, (ps) => ps.some((q) => q.lootId === p5.lootId), 20000);
     await H.devOp(wsPort, 'dropage', aId, { ms: 121000 });
     /* v2.3.5652: no wait for "flashing" first: it flashes for ten seconds and a wait of up to 15 s
        on each screen ate them (the alpha read below shows the flash itself) */
