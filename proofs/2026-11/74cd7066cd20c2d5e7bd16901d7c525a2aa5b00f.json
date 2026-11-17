@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "74cd7066cd20c2d5e7bd16901d7c525a2aa5b00f",
+  "tree": "596a67d2239696009203dd3eb9ae53fe849a5a3e",
+  "committedAt": "2026-11-16T16:23:53-08:00",
+  "subject": "Merge pull request #1932 from hemibroscommunity-del/claude/plan-k-7-4-panels-act",
+  "files": 7985,
+  "bytes": 958476490,
+  "listingSha256": "b0e2d82750526cc845f573971726e879988840863dcdfbd02e07dabd88919f38",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

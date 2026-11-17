@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "5d2426bb37581b788e9f2b734a365274d6b37b5a",
+  "tree": "15853a6c3c573078f71edb98010d05e2b2724ff8",
+  "committedAt": "2026-11-16T16:23:40-08:00",
+  "subject": "Merge pull request #1931 from hemibroscommunity-del/claude/plan-k-7-3-net-act",
+  "files": 7985,
+  "bytes": 958472608,
+  "listingSha256": "ded0f8862938c694a9d54252167bf524801c9a1a943187edf956d7e063c4e779",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

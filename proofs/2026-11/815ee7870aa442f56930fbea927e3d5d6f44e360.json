@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "815ee7870aa442f56930fbea927e3d5d6f44e360",
+  "tree": "97dea65047c41f44ab2f89e3e109a550df7b20a2",
+  "committedAt": "2026-11-16T16:24:04-08:00",
+  "subject": "Merge pull request #1933 from hemibroscommunity-del/claude/plan-k-7-5-sheets-act",
+  "files": 7986,
+  "bytes": 958487534,
+  "listingSha256": "26e0863fe99ff3661f898e6c8daecfd5a4f53c4d4d704bbcdcbd10340e572037",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

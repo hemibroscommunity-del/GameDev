@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "aa69a2c3b381f157b7aa386b4af8a64f8e55aadb",
+  "tree": "b552bbe4fe95a3d222e2e6162a7633ca4c8eefa2",
+  "committedAt": "2026-11-16T16:23:30-08:00",
+  "subject": "Merge pull request #1900 from hemibroscommunity-del/claude/plan-k-7-2-life-act",
+  "files": 7985,
+  "bytes": 958471715,
+  "listingSha256": "72e8282187818430fd32fef808853483f482d89a0b380612929c660b8bb568e2",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

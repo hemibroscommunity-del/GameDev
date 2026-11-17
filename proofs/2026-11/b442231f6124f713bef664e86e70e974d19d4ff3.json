@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "b442231f6124f713bef664e86e70e974d19d4ff3",
+  "tree": "d1c3b30a75d62601a868145a444249a56bca3620",
+  "committedAt": "2026-11-16T16:24:16-08:00",
+  "subject": "Merge pull request #1934 from hemibroscommunity-del/claude/plan-k-7-6-brotown-act",
+  "files": 7986,
+  "bytes": 958488466,
+  "listingSha256": "0b1c25ba7d15b045fc3b84fc88d3e3681aefc8550c2acf29d8823df753ca404b",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
