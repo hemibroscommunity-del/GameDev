@@ -112,7 +112,7 @@ export const SWALLOWED = Object.freeze({
 
 /* The list's size when it was frozen (v2.3.4791).  Lower these as lines come
    off; raising one is a decision the PR names. */
-export const FROZEN = Object.freeze({ listed: 270, known: 0 });   /* v2.3.5194: -2, the chest's and the spin's repeat answered the first answer again (reqonce.js; card K PR 9); v2.3.5628: -1, the friend request's pace answers as sent (card MOD PR 8); v2.3.5624: +1, the friend request's pace (friends.js; card MOD PR 4, RT-3 S5), as the party invite's `rate`; v2.3.5543: +1, the relay's byte bounds beside the count's (relay.js; RT-1 N10; card K); v2.3.5540: +1, the archer's lane's own drop beside the plain floor's (combat.js; card K, step 4.2); v2.3.4801: +1, the draw and gather's quiet drop (drawgather.js); v2.3.4880: -22, the workshop answers (forge, amulet forge, gem cut, smelter, armour forge); v2.3.4881: -14, the points, the chest, the capes and the reroll; v2.3.4882: -4, the purses; v2.3.4883: -6, the weapon stash; v2.3.4884: the heap burn's 4 recoded `fight`, the fire's 1 off; v2.3.4885: -2, the last three answer (party accept, trade2's weapon cap, the relay trade's run-out offer; and a party accept with no invite map, after a deploy), two right silences beside them named */
+export const FROZEN = Object.freeze({ listed: 271, known: 0 });   /* v2.3.5548: +1, the sword's swing (swordswing.js, opt-in; card K, step 4.2) as the lanes' `rate`; v2.3.5194: -2, the chest's and the spin's repeat answered the first answer again (reqonce.js; card K PR 9); v2.3.5628: -1, the friend request's pace answers as sent (card MOD PR 8); v2.3.5624: +1, the friend request's pace (friends.js; card MOD PR 4, RT-3 S5), as the party invite's `rate`; v2.3.5543: +1, the relay's byte bounds beside the count's (relay.js; RT-1 N10; card K); v2.3.5540: +1, the archer's lane's own drop beside the plain floor's (combat.js; card K, step 4.2); v2.3.4801: +1, the draw and gather's quiet drop (drawgather.js); v2.3.4880: -22, the workshop answers (forge, amulet forge, gem cut, smelter, armour forge); v2.3.4881: -14, the points, the chest, the capes and the reroll; v2.3.4882: -4, the purses; v2.3.4883: -6, the weapon stash; v2.3.4884: the heap burn's 4 recoded `fight`, the fire's 1 off; v2.3.4885: -2, the last three answer (party accept, trade2's weapon cap, the relay trade's run-out offer; and a party accept with no invite map, after a deploy), two right silences beside them named */
 
 /* handler -> { guard: 'code[ code...][: note]' } */
 export const ALLOW = {
@@ -150,10 +150,11 @@ export const ALLOW = {
     "if (attackerPs.z !== zone)": "fight",
     "if (this._pvpStaggered && this._pvpStaggered(attackerPs))": "fight",
     "if (_hp && !this._hitWeaponOk(attackerPs, _effSlot))": "fight",
-    "if (_rdx * _rdx + _rdy * _rdy > this.PVE_MELEE_RANGE * this.PVE_MELEE_RANGE)": "fight",
+    "if (_rdx * _rdx + _rdy * _rdy > _rr * _rr)": "fight",   /* v2.3.5548: the sword's reach, PVE_MELEE_RANGE or swordswing.js's REACH_PX */
     "if (_reach !== null && _hdx * _hdx + _hdy * _hdy > _reach * _reach)": "fight",
     "if (_wdx * _wdx + _wdy * _wdy > WHEEL.RANGED_MAX * WHEEL.RANGED_MAX)": "fight",
     "if (_hp && !isSpecial && !this._hitRateTake(attackerPs, _effSlot, _hpNow, _dg ? (_dg.drop ? 0 : _dg.f) : 1))": "rate",
+    "if (_effSlot === 'melee' && !isSpecial && !_tm && this._swordSwingOn() && !this._freeSwingFor(session) && !this._swordSwingTake(attackerPs, monsterId, _hpNow))": "rate",   /* v2.3.5548: the sword's swing (swordswing.js, opt-in): a claim past the sword's rate, as the lanes' */
     "if (cad.s.length >= 3)": "rate",
     "if (nowTs - cad.n < 210)": "rate",
     "if (nowTs < cad.n)": "rate: v2.3.5540, the archer's lane (arrowlane): an arrow or bolt past its one early claim, the same lane",

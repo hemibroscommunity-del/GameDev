@@ -17,7 +17,8 @@ state: ready
 - 5198 (13, batch 1): every file no card holds through the door, 93 -> 28
   (origin.js's refusal outside a room: `sendOutside`). 5199: the 28 left
   (L's and R's files, their doors merged): census 0, for the gatekeeper.
-- Then the second block: the claims tightened (14).
+- 5548 (14, this branch): the sword's reach and swing, `swordswing` OFF
+  (the planner's reading: both, the owner turns it on). Next: the move.
 - wsClient.js: done for good (told L). index.js, combat.js: 13 and 14.
 
 ## Found
@@ -30,11 +31,8 @@ state: ready
 
 ## Needs
 
-- The planner (14, the sword's reach): the reach alone does not lower the
-  gain (the liar's kills at reach 400/250/180/130: 46/99/83/71, the
-  honest 17): its take is the cadence, a hit a monster every 210 ms (the
-  lane) over a swing every 600 ms. Tighten the cadence too (a sword's
-  swing a player, its targets in one swing together), or reach only?
-
+- The owner: turn on `swordswing` (the sword's reach and swing: a cheat's
+  gain 2.96 -> 1.42; the honest sword's kills the same, no refusal on any
+  disturbance; sword feel, hit ladder, questline green with it on).
 - The owner: `reqstamp` (a lasting stamp row a request with no record of
   its own: a store buy, a cancel, an offer; pruned at 48 h): on or off.

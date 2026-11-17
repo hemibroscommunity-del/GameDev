@@ -105,6 +105,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?swingbonus` | page | switch | v2.3.4520 | 2026-11-10 | =0 (remembered; =1 forgets) | logic |  | no | The free swing without its perfect-strike bonus on this device. |
 | `swordconvert` | worker | switch | v2.3.3895 | 2026-10-30 | false | logic |  | no | Stops the sword conversion's boundary heals and the Forge's mapping. |
 | `?swordfeel` | page | switch | v2.3.4800 | 2026-11-11 | =0 (remembered; =1 forgets) | logic |  | no | The sword's look before its feel (no dimming, glint, arc or weight), on this device. |
+| `swordswing` | worker | switch | v2.3.5548 | off | true | logic |  | no | An opt-in, off (the owner's to turn on: it changes how combat is judged): thrown (`swordswing: true`), a sword's claim on a monster lands from 150 px at most, a player's swings come at the sword's own rate (one a cycle, an allowance of two, a ring's targets together), and a sword's `noKb` is not believed. |
 | `weapongem` | worker | switch | v2.3.3513 | 2026-10-20 | false | logic |  | no | Un-advertises the weapon gem, refuses every ask, and the fight goes back on the claimed element. |
 | `whirlWindup` | worker | switch | v2.3.2820 | 2026-09-24 | false | logic |  | no | The whirlwind is instant again, with no wind-up. |
 | `xp_mult` | worker | value | v2.3.1150 |  | a number, 1 to 4 | logic |  | no | Multiplies kill XP (the 2x weekend lever), 1 to 4. |
