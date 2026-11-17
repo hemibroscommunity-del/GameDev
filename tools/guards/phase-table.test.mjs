@@ -54,7 +54,7 @@
  *      NOT_A_MACHINE                                       -> FAIL 5
  *   5. the `race` worker row deleted -> FAIL 1 (4 stays green: the page's
  *      `race` row still carries the wire's name)
- *   6. TODO_LINE one under the count (6; tag 5674)           -> FAIL 7
+ *   6. TODO_LINE one under the count (5; tag 5675)           -> FAIL 7
  * v2.3.5203 (the gatekeeper's sitting 8, its two holes), each tried by hand:
  *   7. `_sneakJoin(ws,\n msg) { ... s.phase = 'joined' }` at the end of
  *      join.js's joinMethods (its parameters over two lines)  -> FAIL 2
@@ -130,6 +130,8 @@
  * v2.3.5525 (the loading door):
  *  39. `S._farmArtHold = seq;` back in farmTrip.js -> loading-door.test FAIL 2
  *  40. `S._veils = new Map();` in zoneTransitions.js -> FAIL 2
+ * v2.3.5533 (the fight's page door):
+ *  48. `S._pvpSkullType = null;` back in noMansLand.js -> fight-page-door.test FAIL 2
  * v2.3.5534 (the life's page door):
  *  49. `S._dying = false;` back in respawn.js -> life-page-door.test FAIL 2
  * v2.3.5531 (the arena's page door):
@@ -179,7 +181,7 @@ const fileNamed = (name) => {
    since card L's arena door (#1930).
    Tag 5661 (the gatekeeper, sitting 23, main 8149d61): 15 -> 14, the count
    since card L's ride door (#1936). */
-export const TODO_LINE = 7;   /* v2.3.5674: lowered 9 -> 7 by the gatekeeper, sitting 36 (L's trade and ride page doors, #2027); v2.3.5673: lowered 11 -> 9 by the gatekeeper, sitting 35 (L's duel and party page doors, #2022); v2.3.5671: lowered 12 -> 11 by the gatekeeper, sitting 33 (L's connection door, #2012); v2.3.5669: lowered 13 -> 12 by the gatekeeper, sitting 31 (L's window door, #2000); v2.3.5663: 14 -> 13 (#1956) */
+export const TODO_LINE = 6;   /* v2.3.5675: lowered 7 -> 6 by the gatekeeper, sitting 37 (L's arena page door, #2031); v2.3.5674: lowered 9 -> 7 by the gatekeeper, sitting 36 (L's trade and ride page doors, #2027); v2.3.5673: lowered 11 -> 9 by the gatekeeper, sitting 35 (L's duel and party page doors, #2022); v2.3.5671: lowered 12 -> 11 by the gatekeeper, sitting 33 (L's connection door, #2012); v2.3.5669: lowered 13 -> 12 by the gatekeeper, sitting 31 (L's window door, #2000); v2.3.5663: 14 -> 13 (#1956) */
 
 /* the machines every side must have a row for: SHAPES part 5's names and
    step 5.3b's list (the plan's own `dungeon`, `connection`, `loading`,
@@ -379,6 +381,11 @@ const DOOR_SUITES = Object.freeze({
   /* v2.3.5523: the ride door (ps._ridePid is written beside it, in _rideTo) */
   'server/test/ride-door.test.mjs': { field: 'ps._ride', fn: '_rideTo', holds: '§2: no write of ._ride or ._ridePid in server/src outside _rideTo',
     prop: '_ride', besides: [] },
+  /* v2.3.5533: the fight's page door (its note S._pvpSkullUntil: the suite's §2) */
+  'server/test/fight-page-door.test.mjs': { field: 'S._pvpSkullType', fn: 'skullTo', holds: '§2: no write of S._pvpSkullType or S._pvpSkullUntil in src/ outside skullTo',
+    prop: '_pvpSkullType', besides: [
+      { file: fileNamed('entityRenderer.js'), text: '_pvpSkullType: null, _pvpSkullUntil: 0', fn: 'poseFrame', why: 'a copy of the state made for a posed picture (Object.assign({}, real, ...)), never S' },
+    ] },
   /* v2.3.5534: the life's page door (its note S._deathStart: the suite's §2) */
   'server/test/life-page-door.test.mjs': { field: 'S._dying', fn: 'dyingTo', holds: '§2: no write of S._dying or S._deathStart in src/ outside dyingTo',
     prop: '_dying', besides: [
