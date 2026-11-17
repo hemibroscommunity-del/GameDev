@@ -55,6 +55,7 @@ const refusedWith = (ws) => ws.sent.find((m) => m.type === 'character_reset_refu
   const { st, room, ws } = await world(null, [ORDER]);
   await restartInGame(room, ws);
   const r = refusedWith(ws);
+  check('1. every refusal\'s words fit the phone\'s 120 characters (wsClient.js shows the fight\'s past that)', Object.values(RESET_REFUSED_WORDS).length === 2 && Object.values(RESET_REFUSED_WORDS).every((w) => typeof w === 'string' && w.length > 0 && w.length <= 120), Object.values(RESET_REFUSED_WORDS).map((w) => w.length));
   check('1. listed: the restart in game is refused, `market`, with its words', r && r.payload && r.payload.reason === 'market' && r.payload.message === RESET_REFUSED_WORDS.market, ws.sent.map((m) => m.type));
   check('1. ...and nothing is wiped (the record, the order, the streak)', st._store.has('rpg:' + PID) && st._store.has(ORDER[0]) && st._store.has('daily_rewards:' + PID));
   /* the picker's login check passed (its own suites hold it: login-keys,

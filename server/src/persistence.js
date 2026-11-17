@@ -54,8 +54,11 @@ import { FIGHT_WORDS } from './fightlock.js';   /* v2.3.5719: the restart's figh
    `resetclean: false`: none of it, as before. */
 export const RESET_REFUSED_WORDS = Object.freeze({
   fight: FIGHT_WORDS,
-  market: 'Not while you have something on the market: cancel your listings, orders and offers first, or wait for an auction you lead to end',
+  market: 'Not while you have something on the market: cancel your listings, orders and offers, or wait out your top bids',
 });
+/* v2.3.5719 (Z40's review): the phone shows a refusal's words only up to 120
+   characters (wsClient.js character_reset_refused; past that it shows the
+   fight's), so every one fits (resetclean.test pins it) */
 
 /* v2.3.2523: one bound for the five gear stashes, applied at BOTH the
    save and the echo below.  Handoff rule 3's warning is why it is a

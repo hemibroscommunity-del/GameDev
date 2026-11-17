@@ -319,7 +319,7 @@ export const CharacterPicker = ({ onPlay, onClose }) => {
           ? 'This character is in a fight with a player right now. Nothing was changed: try again once it is over.'
         /* v2.3.5719: it has a listing or an order on the market (server persistence.js resetclean) */
         : res && res.reason === 'market'
-          ? 'This character has something on the market. Nothing was changed: cancel its listings, orders and offers first, or wait for an auction it leads to end.'
+          ? 'This character has something on the market. Nothing was changed: cancel its listings, orders and offers, or wait out its top bids.'
           : 'That did not work. Nothing was changed.');
       return;
     }

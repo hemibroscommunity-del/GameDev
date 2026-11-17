@@ -137,10 +137,11 @@ character. Now (`persistence.js` "A CHARACTER RESTART STARTS FROM NOTHING"):
   makes anyway.
   The words, in `RESET_REFUSED_WORDS` (the fight's is `fightlock.js`
   `FIGHT_WORDS`): "Not while you have something on the market: cancel your
-  listings, orders and offers first, or wait for an auction you lead to
-  end"; the picker's (`CharacterPicker.jsx`): "This character has something
-  on the market. Nothing was changed: cancel its listings, orders and offers
-  first, or wait for an auction it leads to end."
+  listings, orders and offers, or wait out your top bids" (every one at most
+  120 characters: the phone shows the fight's words past that,
+  `wsClient.js`); the picker's (`CharacterPicker.jsx`): "This character has
+  something on the market. Nothing was changed: cancel its listings, orders
+  and offers, or wait out its top bids."
 - the restart also deletes the daily rewards' row (`daily_rewards:`: the
   day's spin and its pot, the daily quests, the season's stars), in its one
   delete (v2.3.5709, above), and forgets its cached copy unwritten
