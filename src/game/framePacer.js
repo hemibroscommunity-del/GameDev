@@ -198,7 +198,7 @@ export function makeFramePacer(opts) {
     /* v2.3.5222: then the ladder, on the same verdict (THE GOVERNOR): it
        steps down only once this screen's own rate is at its floor, and never
        on a verdict the rate itself stepped on (one step a verdict) */
-    gov.verdict(share, ts, { refresh, every, atFloor: every >= most, rateMoved: changes !== was, memFull: memFull(ts) });   /* v2.3.5231: the memory's count (card O PR 11) */
+    gov.verdict(share, ts, { refresh, every, atFloor: every >= most, rateMoved: changes !== was, memFull: (!gov.judging || gov.judging()) && memFull(ts) });   /* v2.3.5231: the memory's count (card O PR 11); v2.3.5681 read only while the governor judges */
     readRate();   /* v2.3.5224: the rung may have moved the rate */
   };
   return {
@@ -337,20 +337,25 @@ let _samples = null, _busyIn = null;
    textures, decoded sound] in MB, handed in (useMemCount: debug/report.js;
    no import into the pacer) -- over the memory check's lines for each.
    MEM_LINES is a COPY of tools/qa/mp/memory-budget.mjs MEMORY_BUDGET's
-   (artCache, gpu, sound), held equal by frame-pacer.test §23: never a number
+   (artCache, gpu; v2.3.5681 not sound: no rung lowers it), held equal by frame-pacer.test §23: never a number
    of its own.  The planner's, 2026-11-17: the art and sound lines
    everywhere; the chip's only where deviceProfile.js says a phone or a
    tablet (a computer's screen-sized pictures are no fault: the counter hands
    in no chip count there).  Read at most every MEM_READ_MS. */
-export const MEM_LINES = Object.freeze({ artCache: 79.3, gpu: 115, sound: 22 });
+export const MEM_LINES = Object.freeze({ artCache: 79.3, gpu: 115 });
 export const MEM_READ_MS = 5000;
+/* v2.3.5681 (the gatekeeper's sitting 27): the wait between memory rungs,
+   past the masked frames' 30 s deferred destroy (maskedEvict.js) */
+export const MEM_SETTLE_MS = 35000;
 let _memCount = null, _memAt = -Infinity, _memWas = false;
 /** debug/report.js hands its count here: fn() -> [tex, gpu or null, snd] MB. */
 export function useMemCount(fn) { _memCount = typeof fn === 'function' ? fn : null; _memAt = -Infinity; }
 /** Is any count over its line?  [tex, gpu, snd]; a null gpu is not judged. */
 export function memOver(m) {
   if (!Array.isArray(m)) return false;
-  return m[0] > MEM_LINES.artCache || (m[1] != null && m[1] > MEM_LINES.gpu) || m[2] > MEM_LINES.sound;
+  /* v2.3.5681 (the planner's): not the sound -- no rung lowers it (a sound
+     rung of its own is later work: card O's status) */
+  return m[0] > MEM_LINES.artCache || (m[1] != null && m[1] > MEM_LINES.gpu);
 }
 function memFull(ts) {
   if (!_memCount) return false;
@@ -432,6 +437,7 @@ export function makeGovernor(opts) {
   const store = o.store !== undefined ? o.store : _pageStore();
   let lane = null;              /* the lane its rung is kept for; null: none loaded yet (a veil loads it) */
   let bad = 0, trial = false, wasUp = false, changedAt = 0, upWait = UP_WAIT_MS;
+  let memAt = -Infinity;        /* v2.3.5681: the last memory rung taken (MEM_SETTLE_MS) */
   let stack = [];               /* the axes stepped down, in order: a try up undoes the last */
   let pending = null;           /* a step that moves the pixels, waiting for a veil: { axis, dir, hides } */
   let fromT = -Infinity;        /* the samples already judged */
@@ -599,6 +605,9 @@ export function makeGovernor(opts) {
     /** The pacer's verdict: `share` of the frames late.  ctx: { refresh,
      *  every, atFloor (the screen's own rate can go no lower), rateMoved
      *  (the rate stepped on this verdict), memFull, axis (the tests') }. */
+    /** v2.3.5681: is it judging at all (on, a lane loaded, not switched off)?
+     *  The pacer reads the memory's count only then. */
+    judging() { return on && lane != null && !switchedOff(); },
     verdict(share, ts, ctx) {
       const c = ctx || {};
       if (!on || lane == null) return;
@@ -621,7 +630,15 @@ export function makeGovernor(opts) {
         }
         if (++bad < DOWN_VERDICTS) return;
         bad = 0;
-        if (mem) { down('mem', ts); return; }
+        if (mem) {
+          /* v2.3.5681 (the gatekeeper's sitting 27): a rung's frames are let go
+             30 s on (maskedEvict.js), so the count shows a trim only then: the
+             next memory rung waits MEM_SETTLE_MS, never stepping past what the
+             last one frees */
+          if (ts - memAt < MEM_SETTLE_MS) return;
+          if (down('mem', ts)) memAt = ts;
+          return;
+        }
         if (!c.atFloor || c.rateMoved) return;   /* the screen's own rate first: one step a verdict */
         /* v2.3.5225 (the gatekeeper's sitting 12): the axes in the order the
            late frames' split says -- the chip's, then the pixels' (behind a
