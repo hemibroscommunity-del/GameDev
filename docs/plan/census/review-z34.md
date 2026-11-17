@@ -110,8 +110,10 @@ with `bowshot: true`:
 ## Not on this list
 
 - The owner's word, relayed by the planner at 13:21 UTC: `swordswing`
-  and `movetop` ON ("Go recommended"). K's PR that turns both on had not
-  opened when the window closed: sitting 35, after #2021.
+  and `movetop` ON ("Go recommended"). K's #2024 (5551, both ON; holds
+  #2023 and #2021; 34 files, the fast-swing and flat-500 suites made to
+  hold) opened at 14:07 UTC, after the window closed at 14:05 and the
+  rehearsal: not reviewed, sitting 35's first line.
 
 
 ## The rehearsal

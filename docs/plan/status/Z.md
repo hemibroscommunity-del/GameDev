@@ -21,7 +21,9 @@ All based on `main`, one merge base at every step. The worker deploys
 - None.
 
 ## Stalled
-- None.
+- None. Later: K #2024 (5551, `swordswing` and `movetop` ON, the
+  owner's yes via the planner) opened at 14:07, after the window: sitting
+  35's first line.
 
 ## Found
 - `swordswing` (#2018) and `bowshot` (#2023) ask `_tm` in combat.js but
