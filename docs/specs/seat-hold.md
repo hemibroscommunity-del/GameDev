@@ -80,6 +80,20 @@ a quiet room writes nothing. A pace that writes more is the owner's word.
 (At a write pace of a minute, the restart kept 1 of 6: the roster missed
 everyone who had joined in the minute before the deploy. Hence 15 s.)
 
+The mend (v2.3.5612; local runtime, cap 6, `seatrace.mjs` with the switch
+on, every phone naming its seat as `wsClient.js` now does, and each join sent
+300 ms after its socket opens, a phone's round trip: the window the review
+named; with no wait, both gates keep every seat locally):
+
+| | before the mend (main 8149d61e) | mended |
+|---|---|---|
+| three phones' 1 s blip, 400 waiting | 5 of 6 | **6 of 6** |
+| a restart, 400 waiting | 5 of 6 (a waiter took one) | **6 of 6** |
+| three phones' blip, 1,000 waiting | 3 of 6 | not measured (the box's limit) |
+
+With no wait between socket and join, 30, 200 and 1,000 waiting: 6 of 6
+through a restart and a blip, before and after.
+
 ## Tests
 
 `server/test/seat-hold.test.mjs` (v2.3.5612: the gate telling a holder from

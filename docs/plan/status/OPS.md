@@ -1,7 +1,7 @@
 card: OPS
-branch: claude/plan-ops-7b-seatmend (on main b2d763a9; PR 11, PR 8 on their own)
-prs: #1944 (5610) ready; #1951 (5607) waits on the planning session; seat mend (5612) working
-state: working
+branch: claude/plan-ops-7b-seatmend (on main 8149d61e; PR 11, PR 8, 5613 on their own)
+prs: #1944 (5610), #1951 (5607), #1957 (5613), the seat mend (5612): ready
+state: ready
 
 ## Done
 
@@ -15,8 +15,10 @@ state: working
 
 ## Next
 
-- The seathold mend (5612): server half built (seat-hold 42/42, all
-  suites green); the phone's `&seat=` waits on wsClient.js's word.
+- The seathold mend (5612), OFF: seat-hold 43/43; seatrace (a 300 ms
+  join) blip 6/6 (main 5/6), restart 6/6 (main 5/6). Its
+  src/networking/wsClient.js line (K's chain file, outside the card's
+  list) decided by the planner, 2026-11-17.
 
 ## Found
 
@@ -28,8 +30,6 @@ state: working
 
 ## Needs
 
-- The planning session: PR 8's paging readings and DevWatch.jsx; the
-  mend's src/networking/wsClient.js (`&seat=`). Both asked 2026-11-17.
 
 - `seathold` stays OFF; mended in 5612, ON is the owner's word (at most
   5,760 writes a day, and one as the room empties).
