@@ -55,6 +55,8 @@
  * new one.  Kill switch: `lookdelta: false` in the live flags relays every
  * track whole again, from the next one.
  */
+import { RELAY } from './relay.js';
+
 export const LOOK_RELAY = Object.freeze({
   FULL_EVERY_MS: 60000,
   RIDE_ALONG: Object.freeze(['x', 'y', 'dir']),
@@ -65,6 +67,98 @@ export const LOOK_RELAY = Object.freeze({
   LAZY_IN: Object.freeze({ rpgData: Object.freeze(['kills', 'svKills', 'goldEarned', 'playtime']) }),
   ALWAYS: Object.freeze(['hg', 'fr']),
 });
+
+/* ═══ v2.3.5721: THE LOOK RELAY PACED AND BOUNDED (card K2 PR 2; the second red team's CRITICAL 2) ═══
+ *
+ * The relay went out the moment a `track` came, to every other player
+ * (broadcastExcept), outside the relay byte budget (relay.js RELAY.BYTES_*),
+ * and `rpgData` went whole, any keys, up to TRACK_BLOB_MAX_BYTES (8 KB): one
+ * socket sending a `track` with a fresh `rpgData` every message made the
+ * room send about 0.9 MB a second to every other phone.  Now, with
+ * `lookpace` on (on unless its own falsy value):
+ *   - PACE: at most one look relay a socket a second (SLOT_MS).  A `track`
+ *     inside the second is HELD, the latest one winning, and sent at the
+ *     next slot (a timer, one a socket at most).  An honest page sends one
+ *     every 2 s at most (BroTown.jsx `S._lastTrack`), so it is never held;
+ *   - BYTES: the relay as it goes out is paid from the sender's relay byte
+ *     bucket (relay.js `_relayBytesHave`: 8 KB at once, 2 KB a second
+ *     after), as a phone's other relays are; one it cannot pay for is held
+ *     until it can (never dropped: the others would keep a stale look);
+ *   - FIELDS: `rpgData` carries only the fields a page reads from another
+ *     player (RPGDATA_READ, each to its form; found by grep in src/, every
+ *     one kept, so what the others see is unchanged).  The page sends eight
+ *     more (power, vitality, endurance, agility, mind, pvpKills, pvpDeaths,
+ *     deaths) that no page reads of another player: they stay in the
+ *     player's own copy (session.data, playerState, the leaderboard's
+ *     report) and are left out of the relay.  A change to one of them alone
+ *     is no longer news.
+ * `lookpace: false` relays every `track` at once, whole `rpgData`, outside
+ * the bucket: the way before. */
+export const LOOK_PACE = Object.freeze({
+  SLOT_MS: 1000,
+  /* one string field's length on the relay: above every honest one (an
+     item's name, a clan's, an achievement's id) */
+  TEXT_MAX: 96,
+});
+
+/* What a page reads of another player's `rpgData` (grep `rpgData` in src/,
+   2026-11-17), by its form: 'text' a string (or null), 'num' a finite number,
+   an object a nested one, each of its fields by its form.
+     equipModel.js (the equipment sheet): weapon, armor, shield, amulet;
+     entityRenderer.js (a slung shield, the block pose): shield;
+     LeaderboardPanel.jsx (the room's live list): lifeTotal, ap, kills,
+       dungeons, goldEarned, playtime, clanTag;
+     ClanPanel.jsx: clanTag, clanName, clanColor1;
+     playerProfile.js profileFromPeer (the Inspect card): ap, clanName,
+       clanTag, combat {melee, bow, staff}, farmReady, kills, petInfo {name,
+       species, level, kind, stage, gold}, quests, svKills, title, rarest. */
+export const RPGDATA_READ = Object.freeze({
+  weapon: 'text', armor: 'text', shield: 'text', amulet: 'text',
+  clanTag: 'text', clanName: 'text', clanColor1: 'text', title: 'text', rarest: 'text',
+  ap: 'num', kills: 'num', svKills: 'num', quests: 'num', dungeons: 'num',
+  goldEarned: 'num', lifeTotal: 'num', playtime: 'num', farmReady: 'num',
+  combat: Object.freeze({ melee: 'num', bow: 'num', staff: 'num' }),
+  petInfo: Object.freeze({ name: 'text', species: 'text', level: 'num', kind: 'text', stage: 'num', gold: 'bool' }),
+});
+
+const ownKey = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+/* one value to its form, or undefined to leave it out */
+function toForm(form, v) {
+  if (form === 'text') {
+    if (v === null) return null;
+    return typeof v === 'string' ? (v.length > LOOK_PACE.TEXT_MAX ? v.slice(0, LOOK_PACE.TEXT_MAX) : v) : undefined;
+  }
+  if (form === 'num') return typeof v === 'number' && Number.isFinite(v) ? v : undefined;
+  if (form === 'bool') return typeof v === 'boolean' ? v : undefined;
+  if (form && typeof form === 'object') {
+    if (!v || typeof v !== 'object' || Array.isArray(v)) return undefined;
+    const o = {};
+    for (const k of Object.keys(form)) {
+      if (!ownKey(v, k)) continue;
+      const x = toForm(form[k], v[k]);
+      if (x !== undefined) o[k] = x;
+    }
+    return o;
+  }
+  return undefined;
+}
+
+/** `rpgData` as the relay carries it: only RPGDATA_READ's fields, each to
+ *  its form.  Pure. */
+export function rpgDataRelayed(rd) {
+  if (!rd || typeof rd !== 'object' || Array.isArray(rd)) return rd;
+  return toForm(RPGDATA_READ, rd);
+}
+
+/** The look as the relay carries it (`rpgData` cut; every other key as the
+ *  track's gate left it).  `clean` itself is never changed. */
+export function lookRelayed(clean) {
+  if (!clean || !ownKey(clean, 'rpgData') || !clean.rpgData || typeof clean.rpgData !== 'object') return clean;
+  const out = Object.create(null);
+  for (const k of Object.keys(clean)) out[k] = clean[k];
+  out.rpgData = rpgDataRelayed(clean.rpgData);
+  return out;
+}
 
 const RIDE_ALONG = new Set(LOOK_RELAY.RIDE_ALONG);
 const LAZY = new Set(LOOK_RELAY.LAZY);
@@ -141,27 +235,102 @@ export const lookRelayMethods = {
     return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'lookdelta') && !f.lookdelta);
   },
 
+  /* v2.3.5721: `lookpace: false` in the live flags: relayed at once, whole
+     `rpgData`, outside the bucket (on unless its own falsy value) */
+  _lookPaceOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'lookpace') && !f.lookpace);
+  },
+
   /* index.js case 'track': relay this player's look to everyone else, or
-     what changed of it (above) */
+     what changed of it (above).  v2.3.5721: paced, paid for and cut (the
+     header's LOOK_PACE): 'held' when it waits for its slot or its bytes */
   _lookRelay(ws, session, clean) {
     const st = this._lookStats || (this._lookStats = { tracks: 0, full: 0, delta: 0, none: 0 });
     st.tracks++;
+    if (this._lookPaceOff()) return this._lookRelayNow(ws, session, clean);
+    const look = lookRelayed(clean);
+    const now = Date.now();
+    if (!session._lookHeld && !(now - (session._lookSentAt || -Infinity) < LOOK_PACE.SLOT_MS)) {
+      const r = this._lookRelayNow(ws, session, look, now);
+      if (r !== 'held') return r;
+    }
+    session._lookHeld = { ws, look };   /* the latest wins */
+    st.held = (st.held || 0) + 1;
+    this._lookArm(session, now);
+    return 'held';
+  },
+
+  /* the held look's timer: one a socket, at its slot (or when its bytes
+     are there) */
+  _lookArm(session, now) {
+    if (session._lookTimer) return;
+    const t = typeof now === 'number' ? now : Date.now();
+    const wait = Math.max(0, (session._lookSentAt || -Infinity) + LOOK_PACE.SLOT_MS - t, session._lookWaitMs || 0);
+    session._lookTimer = setTimeout(() => { session._lookTimer = null; this._lookFlush(session); }, Math.min(Math.max(wait, 0), 60000) || 0);
+  },
+
+  /* the held look goes now, if its socket is still this session's and its
+     slot has come; else it waits again */
+  _lookFlush(session, now) {
+    const held = session && session._lookHeld;
+    if (!held) return 'none';
+    if (this.sessions && this.sessions.get(held.ws) !== session) { session._lookHeld = null; return 'gone'; }
+    const t = typeof now === 'number' ? now : Date.now();
+    if (t - (session._lookSentAt || -Infinity) < LOOK_PACE.SLOT_MS) { this._lookArm(session, t); return 'held'; }
+    session._lookHeld = null;
+    const r = this._lookRelayNow(held.ws, session, held.look, t);
+    if (r === 'held') { session._lookHeld = held; this._lookArm(session, t); }
+    return r;
+  },
+
+  /* the relay itself: whole or a delta (lookDelta), paid for from the relay
+     bucket when paced ('held' when it cannot pay yet, nothing kept) */
+  _lookRelayNow(ws, session, clean, now) {
+    const st = this._lookStats || (this._lookStats = { tracks: 0, full: 0, delta: 0, none: 0 });
+    const paced = !this._lookPaceOff();
+    const t = typeof now === 'number' ? now : Date.now();
     if (this._lookDeltaOff()) {
+      if (paced && !this._lookPay(session, { type: 'player_update', id: session.id, data: clean }, t)) return 'held';
       session._look = null;
       st.full++;
+      if (paced) session._lookSentAt = t;
       this.broadcastExcept(ws, { type: 'player_update', id: session.id, data: clean });
       /* v2.3.3276: every phone now holds this look whole (nearjoin.js) */
       if (this._nearJoinWholeSent) this._nearJoinWholeSent(session.id);
       return 'full';
     }
-    const r = lookDelta(clean, session._look || null, Date.now());
+    const r = lookDelta(clean, session._look || null, paced ? t : Date.now());
+    if (!r.data) { session._look = r.last; st.none++; return 'none'; }
+    const out = { type: 'player_update', id: session.id, data: r.data };
+    if (paced && !this._lookPay(session, out, t)) return 'held';   /* nothing kept: the next try is measured from what the phones hold */
     session._look = r.last;
-    if (!r.data) { st.none++; return 'none'; }
+    if (paced) session._lookSentAt = t;
     if (r.full) st.full++; else st.delta++;
-    this.broadcastExcept(ws, { type: 'player_update', id: session.id, data: r.data });
+    this.broadcastExcept(ws, out);
     /* v2.3.3276: a whole one: every phone now holds this look (nearjoin.js) */
     if (r.full && this._nearJoinWholeSent) this._nearJoinWholeSent(session.id);
     return r.full ? 'full' : 'delta';
+  },
+
+  /* v2.3.5721: pay for a look relay from the sender's relay bytes (relay.js
+     `_relayBytesHave`): true when paid.  One larger than the whole bucket
+     (none is, cut: a whole look is some 1 to 3 KB) waits for a full bucket.
+     `_lookWaitMs`: how long until it could pay. */
+  _lookPay(session, msg, now) {
+    if (!this._relayBytesHave) return true;
+    let bytes = 0;
+    try { bytes = JSON.stringify(msg).length; } catch (e) { return true; }
+    const cost = Math.min(bytes, RELAY.BYTES_BURST);
+    const have = this._relayBytesHave(session, now);
+    if (have < cost) {
+      session._lookWaitMs = Math.ceil(((cost - have) / RELAY.BYTES_PER_S) * 1000);
+      const st = this._lookStats; if (st) st.unpaid = (st.unpaid || 0) + 1;
+      return false;
+    }
+    session._lookWaitMs = 0;
+    session.relayBytes -= cost;
+    return true;
   },
 
   /* Something else relayed this player (clans.js, leaving a clan): the next
@@ -174,6 +343,6 @@ export const lookRelayMethods = {
      a delta, or not at all */
   _lookInfo() {
     const st = this._lookStats || { tracks: 0, full: 0, delta: 0, none: 0 };
-    return { on: !this._lookDeltaOff(), ...st };
+    return { on: !this._lookDeltaOff(), paced: !this._lookPaceOff(), ...st };
   },
 };

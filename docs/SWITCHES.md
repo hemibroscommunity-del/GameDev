@@ -266,6 +266,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?lookatlas` | page | switch | v2.3.4993 | 2026-11-12 | =0 | memory | `lookpalette` | no | The look palette's sheets are not packed into an atlas. |
 | `lookdelta` | worker | switch | v2.3.3240 | 2026-10-14 | false | logic |  | no | Every look track is relayed whole again. |
 | `lookfolk` | both | switch | v2.3.3809 | 2026-10-29 | off_lookfolk: true; ?lookfolk=0 | memory | `lookpalette` | no | The townsfolk are drawn from their photographs again, loaded then. |
+| `lookpace` | worker | switch | v2.3.5721 | 2026-11-17 | false | logic |  | no | A look relay goes the moment a track comes, outside the relay byte budget, its rpgData whole (every key the page put in it), as before. |
 | `?lookprobe` | page | lever | v2.3.3716 |  | present or =1 | none |  | no | QA: loads the look palette's probe (an oracle a test reads). |
 | `lookshirt` | both | switch | v2.3.3751 | 2026-10-29 | off_lookshirt: true; ?lookshirt=0 | chip | `lookpalette` | no | Printed shirts are baked again, not coloured on the chip. |
 | `?pickwood` | page | switch | v2.3.3671 | 2026-10-27 | =0 | logic |  | no | The pickaxe's wood is painted with the skin, as before. |

@@ -400,7 +400,13 @@ mA.pump(); mB.pump();
 {
   const { room: R, tickFn: tf } = await makeRoom();
   R._tickShareVerify = { checked: 0, mismatched: 0, first: null };
-  R._liveFlags = { steadymovers: false };
+  /* v2.3.5721 (card K2 PR 2): `lookpace` thrown here.  This soak's clock
+     stands still between its lulls, so one player's tracks come many times
+     inside one second -- faster than any page sends them (one every 2 s:
+     BroTown.jsx S._lastTrack).  Paced, such a track is held to the next
+     slot, and the near phone's list (pl, the latest look) is up to 1 s
+     ahead of the control's relays; lookpace.test holds the pace itself. */
+  R._liveFlags = { steadymovers: false, lookpace: false };
   let seed = 7;
   const rnd = () => ((seed = (seed * 1103515245 + 12345) >>> 0) / 4294967296);
   const NP = 24;
