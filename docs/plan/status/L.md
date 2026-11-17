@@ -1,6 +1,6 @@
 card: L
 branch: claude/plan-l-27-veil-net (from main)
-prs: #1746 to #2000 (merged), 5527 veils' net (this branch): ready
+prs: #1746 to #2000 (merged), #2010 (5527): ready
 state: ready
 
 ## Done
