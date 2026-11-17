@@ -22,7 +22,8 @@
  *   4. THE MARKET: a sell order's weapon carrying an id comes back with it.
  *   5. THE JOIN: a record whose weapons carry ids loads every one of them,
  *      in hand and bag, ids kept -- a v21 record, and a NEWER (v22) record
- *      let through by `newersave: false`.
+ *      let through by `newersave: false`.  (v2.3.5282: and one without an
+ *      id is given its own there.)
  *   6. GEAR STAYS GEAR: an armour piece in the weapon bag is still dropped.
  *
  * BREAK PROOFS (rule 8), tried by hand: `_isGearNotWeapon` put back to
@@ -101,7 +102,9 @@ for (const [v, flags] of [[21, null], [22, { newersave: false }]]) {
   const ps = r.playerState[pid];
   const got = ps ? [ps.weapon, ...(ps.weaponStash || [])].filter(Boolean) : [];
   check(`5. a v${v} record${flags ? ' (let through by `newersave: false`)' : ''} loads every weapon, in hand and bag, ids kept`,
-    got.length === 4 && got[0].gid === hand.gid && got[1].gid === bag[0].gid && got[2].gid === bag[1].gid && !('gid' in got[3]), got.map((w) => [w.name, w.gid]));
+    /* v2.3.5282 (card R PR 3): the join gives the weapon that had none its
+       own (stash.js weaponIdsAll); the three that had one keep theirs */
+    got.length === 4 && got[0].gid === hand.gid && got[1].gid === bag[0].gid && got[2].gid === bag[1].gid && GID_RE.test(got[3].gid), got.map((w) => [w.name, w.gid]));
 }
 
 /* ══════════ 6. GEAR STAYS GEAR ══════════ */
