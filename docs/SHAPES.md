@@ -235,6 +235,15 @@ So:
 | `opId` | Stays the worker's. A payment a request starts gets its `opId` from the worker's own ids, as today. |
 | Either side first | The five types keep reading `opId` from an older phone, and read `reqId` first once they move. |
 
+### A sentence with a player's words (v2.3.5197, card K PR 12)
+
+| | |
+|---|---|
+| The name | `noteT`, beside a mail entry's `note`: `{ t, p }`, a template id of the game's sentences and its parts. |
+| The maker | The worker, in one function: `server/src/words.js` `wordsNote` (the note and its template together). |
+| Its readers | The page's mail line (`src/game/postOffice.js` `mailLine`, filling from `src/data/words.js`); an older phone reads `note`. |
+| Where it is | On the mail entry (`inbox:<pid>`), in the same put as the note; dropped when entries merge. No new row. |
+
 ### Things a phone names by their place today
 
 Each is a row of the wire table whose request must name the thing by its id

@@ -35,6 +35,7 @@
  * AP is deliberately NOT granted (GDD §27.3 deleted AP; the client
  * popup text is cosmetic).  MVP bonus deferred (handoff backlog). */
 
+import { wordsNote } from './words.js';   /* v2.3.5197: the words rule */
 import { ZONES } from './data.js';
 import { CLAN_PARTY } from './clanparty.js';
 
@@ -492,7 +493,7 @@ export const clanMethods = {
             await this._creditPlayer(pid, {
               opId: 'clanwar:' + war.id + ':' + pid, source: 'clanwar', kind: 'gold',
               payload: { amount: rate.gold },
-              note: 'clan war vs [' + war[sideName === 'challenger' ? 'defender' : 'challenger'].tag + ']' + (winnerSide ? (sideName === winnerSide ? ' — victory' : ' — defeat') : ' — draw'),
+              ...wordsNote('clan_war', { tag: war[sideName === 'challenger' ? 'defender' : 'challenger'].tag, outcome: winnerSide ? (sideName === winnerSide ? ' — victory' : ' — defeat') : ' — draw' }),   /* v2.3.5197: the words rule (words.js) */
             });
           }
         }

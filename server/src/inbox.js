@@ -560,7 +560,7 @@ export const inboxMethods = {
             const add = Math.max(0, Math.floor(p.amount || 0));
             g.payload.minted = mailMinted(g, Math.max(0, Math.floor(g.payload.amount || 0))) + mailMinted(entry, add);
             g.payload.amount = (g.payload.amount || 0) + add;
-            g.note = 'merged payouts';
+            g.note = 'merged payouts'; delete g.noteT;   /* v2.3.5197: a merged note is the game's own: no template */
             merged = true;
           }
         }
@@ -570,12 +570,12 @@ export const inboxMethods = {
             const add = Math.max(1, Math.floor(p.count || 1));
             it.payload.minted = mailMinted(it, Math.max(1, Math.floor(it.payload.count || 1))) + mailMinted(entry, add);   /* v2.3.5085: as the gold's */
             it.payload.count = (it.payload.count || 1) + add;
-            it.note = 'merged payouts';
+            it.note = 'merged payouts'; delete it.noteT;   /* v2.3.5197 */
             merged = true;
           }
         }
       }
-      if (!merged) box.push({ opId: entry.opId, ts: Date.now(), source: entry.source || '', kind: entry.kind, payload: entry.payload, note: entry.note || '' });
+      if (!merged) box.push({ opId: entry.opId, ts: Date.now(), source: entry.source || '', kind: entry.kind, payload: entry.payload, note: entry.note || '', ...(entry.noteT ? { noteT: entry.noteT } : {}) });   /* v2.3.5197: the note's template beside it (words.js) */
       const writes = [this.state.storage.put(key, box)];
       if (opId) writes.push(this._opStamp(opId));
       /* v2.3.4500: ...and the caller's own record, in the same run (_creditWith) */
@@ -670,7 +670,7 @@ export const inboxMethods = {
       ws.send(JSON.stringify({
         type: 'inbox_delivered',
         payload: {
-          entries: entries.map((e) => ({ kind: e.kind, payload: e.payload, note: e.note || '', source: e.source || '' })),
+          entries: entries.map((e) => ({ kind: e.kind, payload: e.payload, note: e.note || '', ...(e.noteT ? { noteT: e.noteT } : {}), source: e.source || '' })),   /* v2.3.5197: and its template (words.js) */
           queued: queued || 0,
         },
       }));
