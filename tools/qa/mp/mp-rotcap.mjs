@@ -204,7 +204,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const step = () => {
           const s = window.__btMonsterSprite(mid), d = window.__btMonsterDeath ? window.__btMonsterDeath(mid) : null;
           out.push(s ? { t: Date.now() - from, ix: s.ix, n: s.n, sx: s.sx, vis: s.visible, cut: !!(d && d.kind && d.kind !== 'normal') } : { t: Date.now() - from, gone: true });
-          if (Date.now() - from > 3400) resolve(out); else requestAnimationFrame(step);
+          /* v2.3.5647: until it is gone (at most 8 s): this box draws a few frames a second and the
+             great one's strip and its going take longer than a fixed 3.4 s there (TRAPS §200) */
+          const goneNow = !s || s.visible === false;
+          if (Date.now() - from > 8000 || (Date.now() - from > 1500 && goneNow)) resolve(out); else requestAnimationFrame(step);
         };
         requestAnimationFrame(step);
       }), [id, big]);
