@@ -33,7 +33,7 @@
  *   node tools/guards/render-tables.test.mjs --write   write the census page
  * (cd server && npm test runs it with every other guard and suite).
  */
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { scanRenderers, scanText, suitesNaming, tunedName, ROOT } from './lib/renderTables.mjs';
 
@@ -101,6 +101,19 @@ const check = (name, ok, detail) => {
 console.log(failed ? `\n${failed} FAILED` : '\nall green');
 process.exit(failed ? 1 : 0);
 
+/* the leaf files under src/rendering/tables/ and the names each exports */
+function movedOut() {
+  const dir = join(ROOT, 'src/rendering/tables');
+  let files = [];
+  try { files = readdirSync(dir).filter((f) => f.endsWith('.js')).sort(); } catch { return []; }
+  return files.map((f) => {
+    const t = readFileSync(join(dir, f), 'utf8');
+    const names = [...t.matchAll(/^export const (\w+)/gm)].map((m) => m[1])
+      .concat(...[...t.matchAll(/^export \{([^}]*)\}/gm)].map((m) => m[1].split(',').map((x) => x.trim()).filter(Boolean)));
+    return [`src/rendering/tables/${f}`, names];
+  });
+}
+
 /* ── the census page ── */
 function censusPage(s) {
   const short = (f) => f.split('/').pop();
@@ -135,7 +148,7 @@ function censusPage(s) {
   L.push('## The systems, and their order (largest first)');
   L.push('');
   L.push('A counted table\'s system is read by hand from what it draws');
-  L.push('(`TABLE_SYSTEM` in the lib). The tables leave in two PRs, one a renderer');
+  L.push('(`SYSTEM_BY_HAND` in the lib). The tables leave in two PRs, one a renderer');
   L.push('(tag 5345 entityRenderer.js, 5346 effectsRenderer.js); in each, the');
   L.push('systems go in this order, a system\'s tables together.');
   L.push('');
@@ -150,6 +163,17 @@ function censusPage(s) {
     for (const [sys, e] of [...by].sort((a, b) => b[1].lines - a[1].lines || b[1].n - a[1].n || a[0].localeCompare(b[0]))) L.push(`| ${f} | ${sys} | ${e.n} | ${e.lines} |`);
   }
   L.push('');
+  /* v2.3.5345: what has left, file by file (the leaf files' own exports) */
+  const gone = movedOut();
+  if (gone.length) {
+    L.push('## 0. Moved out (src/rendering/tables/)');
+    L.push('');
+    L.push('Each moved verbatim with its comment block and imported back by the same');
+    L.push('name; the PR that moved it showed each deep-equal to its literal before.');
+    L.push('');
+    for (const [f, names] of gone) L.push(`- \`${f}\` (${names.length}): ${names.map((n) => '`' + n + '`').join(', ')}`);
+    L.push('');
+  }
   L.push('## 1. The tables (counted)');
   L.push('');
   L.push('| name | file | line | lines | system | names tables | suites that read it |');
@@ -161,9 +185,9 @@ function censusPage(s) {
   L.push('Marked by the name\'s words (`TUNED_WORDS`, none of `UNTUNED_WORDS`). They');
   L.push('leave with their renderer\'s tables.');
   L.push('');
-  L.push('| name | file | line | suites that read it |');
-  L.push('|---|---|---|---|');
-  for (const r of tuned) L.push(`| \`${r.name}\` | ${short(r.file)} | ${r.line} | ${su(r.name)} |`);
+  L.push('| name | file | line | system | suites that read it |');
+  L.push('|---|---|---|---|---|');
+  for (const r of tuned) L.push(`| \`${r.name}\` | ${short(r.file)} | ${r.line} | ${r.byHand ? r.system : '(not read yet)'} | ${su(r.name)} |`);
   L.push('');
   L.push('## 3. The other lone constants (stay)');
   L.push('');

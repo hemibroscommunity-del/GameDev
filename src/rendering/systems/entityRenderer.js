@@ -148,7 +148,6 @@ import { activePet } from '../../game/petBook.js'; /* v2.3.3120: the pet out wit
 import { petFrames, petSideFaces, petArtHeight } from '../petSprites.js'; /* v2.3.3120: the pet sheet */
 import { PET_ART, petTint, petLevelScale, petDisplayName, petKindOfOld, worldSafeText } from '../../data/trapping.js'; /* v2.3.3120 */
 import { elemLook } from '../../game/elemHits.js'; /* v2.3.3123: the ward's ring in its element's colour */
-const PET_DRAW_K = 0.85;   /* v2.3.3120: see _updatePet */
 const WARD_RING_MS = 520;   /* v2.3.3123: the land ward's ring after a hit the pet softened */
 import { monsterDisplayName } from '@/data/gameDisplay.js'; /* v2.3.1918: monster name plates */
 import { engagedStance } from '@/game/targeting.js'; /* v2.3.2251: a lock is automatic; intent is not */
@@ -169,6 +168,14 @@ import { clipHair, hairClippedBy } from '../hairClip.js';   /* v2.3.3459: the ha
 import { heapTrimOn } from '../heapTrim.js';   /* v2.3.5007: the heap trim's switch */
 import { bakeMaskedCanvas } from '../maskedBake.js'; /* v2.3.2874: the masked-body pixel work, shared with the prewarm worker */ /* v2.3.2761: the rod is found by its recorded shape now that it is pine */
 import { dyingTo } from '@/game/dyingDoor.js';   /* v2.3.5534: the life's page door (card L) */
+import { PET_DRAW_K, SECTORS } from '../tables/render.js';   /* v2.3.5345: the render system's hand-tuned tables, moved verbatim (card M) */
+import { THREAT_SKULL_PX, HPBAR_ASPECT, HPBAR_IN_X, HPBAR_IN_W, HPBAR_IN_Y, HPBAR_IN_H, PEER_HPBAR_Y, MONSTER_HPBAR_W, PLAYER_HPBAR_W, PLAYER_HEART_SIZE, MONSTER_HEART_SIZE, HP_RING_OUTER_R, HP_RING_GAP_PX, PLATE_BORDER_PX, PLATE_LEVEL_STROKE_PX, PLATE_H_RATIO, PLATE_PAD_L_RATIO, PLATE_GAP_RATIO, PLATE_PAD_R_RATIO, PLATE_BADGE_TYPE_RATIO, RES_BAR_W, RES_BAR_H, RES_MP_Y, RES_BLOCK_W, RES_FILL, RES_GHOST, RES_GHOST_HEX, RES_SPENT_GAP } from '../tables/ui.js';   /* v2.3.5345: the ui system's hand-tuned tables, moved verbatim (card M) */
+import { NPC_TALK_PX, NPC_SPRITE_SCALE, NPC_FRAME_FEET_Y, NPC_FRAME_TOP_Y, NPC_PLATE_DROP_FRAC, NPC_DIRS_8, NPC_WALK_PX_PER_FRAME, QUEST_BADGE_R } from '../tables/townsfolk.js';   /* v2.3.5345: the townsfolk system's hand-tuned tables, moved verbatim (card M) */
+import { PLAYER_SIZE_MULT, TRAIT_RETRY_LATER_MS, _TRAIT_RETRY_MS, MIRROR_SCREEN_DIR, JOG_FOOT_FRAMES, BODY_DIR_SCALE, BODY_ROWS, MINE_TRAIT_MUL, FISH_TRAIT_MUL, JOG_EW_HAT_TUNE, STAND_HAT_TUNE, FULLSET_CROWN, FULLSET_HEAD_RES, FULLSET_HEAD_SEAT, _GEAR_SLOTS, _CAPE_HIDDEN_POSES, _CAPE_JOG_TILT, _CAPE_PIVOT_Y, _CAPE_JOG_DX, _CAPE_HOOD_TILT_K, _CAPE_HOOD_DX_K, BODY_NECK_FRAC, BODY_WAIST_FRAC, _REGION_SPR, BODY_CELL_MID, LOCAL_BODY_SCALE, NECK_ROWS } from '../tables/look.js';   /* v2.3.5345: the look system's hand-tuned tables, moved verbatim (card M) */
+import { SOUTH_IDLE_TILT, GRIP_NUDGE_X, GRIP_HOLE_FACINGS, GRIP_HOLE_R, GRIP_HOLE_R_BY_FACING, SWING_FULL_ARC, REST_ANG, BLOCK_ARM_SHOULDER, SOUTH_BLOCK_OFFHAND, SOUTH_BLOCK_OFFHAND_BY_TYPE } from '../tables/combat.js';   /* v2.3.5345: the combat system's hand-tuned tables, moved verbatim (card M) */
+import { MONSTER_SIZE_MULT } from '../tables/monsters.js';   /* v2.3.5345: the monsters system's hand-tuned tables, moved verbatim (card M) */
+import { PREWARM_POSES } from '../tables/preload.js';   /* v2.3.5345: the preload system's hand-tuned tables, moved verbatim (card M) */
+export { MONSTER_SIZE_MULT, MINE_TRAIT_MUL, FISH_TRAIT_MUL };   /* v2.3.5345: still the renderer's exports (moved to ../tables/) */
 
 /* §9.2.1 Collision-opportunity weapon edge glow — proximity radius (≈20u). */
 const COLLISION_GLOW_RANGE_PX = 80;
@@ -190,12 +197,6 @@ function threatSkullPhase(type, until, now) {
    near-white in every platform emoji set, so a multiplicative tint
    yields the red variant without a second texture. */
 const SKULL_RED_TINT = 0xff5e6c;
-/* v2.3.3279: the owner's skull and talk bubble (data/smallIcons.js), in world
-   px: the skull a little over the 💀 emoji's 18 px font, as its picture keeps a
-   margin; the bubble smaller than the quest badge (QUEST_BADGE_R x 2) whose
-   place it takes while the townsperson has no quest for you */
-const THREAT_SKULL_PX = 24;
-const NPC_TALK_PX = 28;
 
 /* Above-player HUD bar textures (v2.3.107).  Three pill-shaped PNGs
    the DOM dashboard also uses -- reuse the same `?v=` cache key so
@@ -241,16 +242,6 @@ const _hudBarLoads = loadSetLater({
 });
 function _ensureHudBarTextures() { _hudBarLoads.ensure(); }
 
-/* v2.3.1273: shared geometry for the owner's bar art.  The red fill
-   occupies an inset region of the sprite box (measured on the sheet):
-   x 5%..95%, y 21%..79% — ghost/flash rectangles use these fractions. */
-const HPBAR_ASPECT = 104 / 363;
-const HPBAR_IN_X = 0.05, HPBAR_IN_W = 0.90, HPBAR_IN_Y = 0.21, HPBAR_IN_H = 0.58;
-/* v2.3.1917: the peer bar rides ABOVE the name plate (which sits at
-   y = -34), and holds for a few seconds after the last reported hit so it
-   does not strobe between exchanges — long enough to cover a missed swing
-   or a dodge, short enough that a peer who walked away loses it. */
-const PEER_HPBAR_Y = -48;
 /* ═══ v2.3.3858: WHILE A PLAYER TALKS, THE BUBBLE HAS THE NAME'S PLACE ═══
    The owner: "for character messages I'd rather have chat bubbles right
    above character head and just cover nameplate during chat".  Is a chat
@@ -265,7 +256,6 @@ function _chatBubbleUp(S, pid, now) {
   return !!(b && b.text && (now - (b.ts || 0)) < CHAT_BUBBLE_MS);
 }
 const PEER_HPBAR_HOLD_MS = 8000;
-const MONSTER_HPBAR_W = 44;
 const MONSTER_HPBAR_H = Math.round(MONSTER_HPBAR_W * HPBAR_ASPECT); /* 13 */
 /* v2.3.2295: how long the notice cue stays up. Owner asked for "brief"; the
    dot this replaced ran 600ms, which on a phone at arm's length is a flicker
@@ -274,7 +264,6 @@ const MONSTER_HPBAR_H = Math.round(MONSTER_HPBAR_W * HPBAR_ASPECT); /* 13 */
    the first two thirds and fades out over the last, so it reads as an event
    with a beginning rather than as something already ending. */
 const NOTICE_MS = 1100;
-const PLAYER_HPBAR_W = 76;
 const PLAYER_HPBAR_H = Math.round(PLAYER_HPBAR_W * HPBAR_ASPECT);   /* 22 */
 /* v2.3.3267: another player's bar is yours (the owner: "should be the same
    size as mine"), _drawPeerHpBar -- the monster's 44 x 13 until then */
@@ -298,45 +287,6 @@ const HPBAR_FLASH_MS = 160;   /* white flash on damage */
    m._popupTopOff -> combatHelpers.monsterPopupY(). */
 const POPUP_BAR_CLEAR = 34;
 
-/* v2.3.1274: size experiment (owner directive) — characters render 33%
-   bigger and world monsters 50% bigger.  Applied at the CONTAINER level
-   so the body, above-head bar, and labels scale together and the change
-   stays one knob per entity type.  Render-only: world positions, server
-   hitboxes, and combat ranges are untouched. */
-/* v2.3.1277: owner — "character 25% smaller."  4/3 x 0.75 = 1.0, i.e.
-   exactly the pre-experiment size; keep the knob for further tuning.
-   ── v2.3.1821: back UP 25% (owner: "Make the character and name plate 25%
-   larger.  Needs to be more legible for discerning details about the
-   character and the font size").  This is the knob that note kept for
-   exactly this, and it is the right one because it is applied at the
-   CONTAINER level: the body, the above-head bar and the name plate all grow
-   together, so the plate cannot drift off the character it belongs to.
-   Render-only — world positions, server hitboxes and combat ranges are
-   untouched, so nothing about reach or collision changes with it.
-   The plate's TEXT needs one thing more than this scale; see the resolution
-   note in _attachNamePill. */
-const PLAYER_SIZE_MULT = 1.25;
-/* v2.3.1821b: how far the idle SOUTH greatsword tilts off the face, in
-   radians about the grip.  Negative because the south sheet is mirrored (see
-   the note at the assignment); ~10 degrees, which is the "smidge" the owner
-   asked for rather than a re-pose. */
-/* v2.3.1839: -0.18 -> -0.60.  Owner, on the second look: "South idle the
-   sword is in front of the characters face.  Angle south sword just a bit so
-   it's not over the face."  Chosen from a SWEEP photographed in game
-   (mp-southsword, BT_TILT_SWEEP) rather than derived: the sign is the trap
-   this file already warns about, and the sweep settles which way is which —
-   negative swings the tip LEFT clear of the head, positive drags it down
-   across the chest.  At -0.18 the blade ran straight up over the face; -0.45
-   only grazed clear; -0.60 clears the head box with the whole segment below
-   it, and still reads as a carried sword rather than a held-out one. */
-const SOUTH_IDLE_TILT = -0.60;
-/* v2.3.2925: display px the carried greatsword shifts right while its grip
-   hole is on, so the grip runs under the middle of the hand (see the snap block
-   in _updatePlayer).  Keyed pose-facingIdx; each one picked by sweeping it
-   in-game.  jog S: the grip slanted out of the fist.  idle S / SE (owner:
-   "fingers around the grip"): the grip hung mostly left of the fingers.
-   window.__btGripNudge = { 'stand-2': 3, ... } overrides per key. */
-const GRIP_NUDGE_X = { 'jog-2': 2, 'stand-2': 4, 'stand-1': 2 };
 function gripNudgeX(pose, facingIdx) {
   const k = pose + '-' + facingIdx;
   try {
@@ -375,9 +325,6 @@ SPAWN_WHITE_FILTER.matrix = [
   0, 0, 0, 0, 1,
   0, 0, 0, 1, 0,
 ];
-/* v2.3.2991: exported -- the stat scene's films are sized off the slime as
-   the world really draws it (effectsRenderer captureFxFilm) */
-export const MONSTER_SIZE_MULT = 1.5;
 /* ═══ v2.3.3556: A DUNGEON'S BOSS IS DRAWN HUGE ═══
    The owner, of dungeons: "This will probably need work to get right."  The
    boss looked exactly like the wave monsters before it -- same picture, same
@@ -389,18 +336,6 @@ export const MONSTER_SIZE_MULT = 1.5;
    a deep red (PLATE_BOSS_FILL), and it goes see-through while it covers you
    (BOSS_SEE_THROUGH). */
 const BOSS_SEE_THROUGH = 0.45;
-/* NPC art draw scale.  96 world px per frame is what this renderer treats as
-   player scale (see the 96/128 baseScale at the harvest stand-in, commented
-   exactly that).
-   v2.3.1673 doubled this to 192 ("he needs to be twice as large");
-   v2.3.1675 halves it back ("reduce his size by 50%") — so the mayor stood
-   at the same height as the player again;
-   v2.3.1681 adds a quarter on top ("Mayor bro is about 25% too small"), which
-   is the owner eyeballing him against the buildings and the player rather
-   than against the old placeholder circle.  120/256 = 96 x 1.25.  Everything
-   positional below derives from this constant, so the quest marker and name
-   follow the figure automatically rather than needing their own pass. */
-const NPC_SPRITE_SCALE = 120 / 256;
 
 /* v2.3.1822: per-figure size, because "the mayor" is no longer the only NPC.
    Every earlier size request (1673/1675/1681 above) was about Mayor Bro and
@@ -639,32 +574,10 @@ if (typeof window !== 'undefined') {
   window.__btPeersDrawn._m = _peersDrawn;
 }
 
-/* The sprite frame's own geometry, in frame pixels: the figure's feet sit on
-   y=223 and its top (hat) on y=23 — see the asset note in gameDisplay.js
-   NPC_DATA.  Kept as named constants because three different offsets are
-   derived from them, and a magic 223 in four places is how they drift. */
-const NPC_FRAME_FEET_Y = 223;
-const NPC_FRAME_TOP_Y = 23;
-/* v2.3.2069: how far below the feet a name plate hangs, as a fraction of the
-   figure's own height. 38/121.9 is Shopkeeper Bro's shipped placement -- the
-   one the owner set by eye -- so he is unmoved by construction and every other
-   plate is spaced like his. See the note at the namePlate branch. */
-const NPC_PLATE_DROP_FRAC = 38 / 121.9;
-
 /** Height of the drawn figure above the NPC's feet, in world px.
  *  v2.3.3580: times his figure's size in its cell (npcFigureSize). */
 const npcFigureHeight = (src, npc) => npcSpriteScale(src) * (NPC_FRAME_FEET_Y - NPC_FRAME_TOP_Y) * npcFigureSize(npc);
 
-/* ═══ v2.3.2046: WHICH WAY A WALKING NPC IS FACING ═══
- * Straight from his movement, in the eight names the strips are filed under.
- * Screen space, so +y is DOWN and therefore south -- getting that backwards is
- * the classic version of this bug and it looks like the figure walking
- * backwards up the street.
- * The diagonal band is deliberately wide (22.5 degrees either side of each
- * eighth): an NPC wandering to a point almost due south should read as south
- * rather than flickering between south and southeast on sub-pixel jitter. */
-const NPC_DIRS_8 = ['east', 'southeast', 'south', 'southwest',
-                    'west', 'northwest', 'north', 'northeast'];
 /* v2.3.3809: a townsperson drawn live has no figure this far past the view
    (world px beyond its half-diagonal: _updateNPCs) */
 const FOLK_FAR_MARGIN = 300;
@@ -680,12 +593,6 @@ function npcDirFromDelta(dx, dy) {
   const oct = Math.round(a / (Math.PI / 4));       /* -4..4 */
   return NPC_DIRS_8[((oct % 8) + 8) % 8];
 }
-/* World px of travel per walk frame. Distance-driven rather than time-driven
-   so the feet match the speed: a time-driven cycle makes a slow NPC skate,
-   which is the thing you notice without being able to say why. Tuned to the
-   figure's own stride -- he is ~200px tall drawn at NPC scale, and a four
-   frame cycle over ~26px reads as a step rather than a shuffle. */
-const NPC_WALK_PX_PER_FRAME = 6.5;
 /* v2.3.3520: the arm capsule's body clone and every clone riding on it
    (shirt v2.3.2134, cape v2.3.2138, greaves and plate v2.3.3520), hidden
    together.  The shield's and the empty hand's branches hid the body clone
@@ -730,11 +637,6 @@ function npcWalkCell(npc, dir, phase) {
   return Math.floor(phase / Math.max(1, stride / cycle)) % cycle;
 }
 
-/* v2.3.1681: the quest badge behind the '!' (owner: "thick white outline or
-   something to be more attention grabbing").  Radius in world px — the label
-   stack above the NPC's head is laid out from it, so changing this one number
-   moves the name out of the way too. */
-const QUEST_BADGE_R = 16;
 /** Three concentric rings, drawn outside in.  `fill` carries the state
  *  (gold = quest to offer, green = ready to turn in). */
 function _drawQuestBadge(g, fill, check) {
@@ -1049,19 +951,6 @@ const TRAIT_VER = '2.3.3590';   /* v2.3.2174: de-fringe sweep across the trait s
    and any future category share one loader.  Each entry owns its own
    per-direction texture set + meta. */
 const _traitCache = {};  // `${category}/${id}` -> { tex:{east,...}, meta, loadStarted }
-/* ═══ v2.3.3606: A PIECE THAT COULD NOT BE LOADED IS TRIED AGAIN WHILE WORN ═══
-   The owner: "Some traits will disappear" -- a bro bald on one facing.  The
-   bounded retry below (v2.3.1305 / v2.3.1382: two more tries, 2 s and 6 s
-   on) was the end of it: a facing or a meta.json that failed three times was
-   given up for the whole session, so a few bad seconds of a phone's
-   connection during the loading screen (which asks for every piece in the
-   catalog at once) left that facing bald until a reload.  Now a piece given
-   up on is tried again, a round of three tries each time, LATER and only
-   while something still asks for it (_ensureTraitLoaded runs every frame for
-   every piece worn on screen): 5 s after the round that gave up, then 10,
-   20, 40, and every minute after.  A piece nobody wears asks for nothing.
-   `?traitretry=0` is the game as it was. */
-const TRAIT_RETRY_LATER_MS = [5000, 10000, 20000, 40000, 60000];
 let _traitRetryOn = true;
 try { if (typeof location !== 'undefined' && /[?&]traitretry=0\b/.test(location.search || '')) _traitRetryOn = false; } catch (e) { /* on */ }
 /* v2.3.3865: P1's off-ramp for every art loader that asks again (`?retrylooks=0`), read here too */
@@ -1138,24 +1027,6 @@ function _traitMetaLean(j) {
   for (const k of Object.keys(j)) if (!TRAIT_META_DOC.has(k)) out[k] = j[k];
   return out;
 }
-/* v2.3.1305: per-direction trait load with bounded retry.  Owner
-   two-player report: "lots of layers are missing depending on the
-   angle of the player (face missing, clothes missing)".  The old
-   loader fired each direction's Assets.load exactly ONCE with a
-   swallow-all catch — one flaked request (deploy-day cold CDN edge,
-   iPhone Safari dropping a request during the join burst) left
-   e.tex[dir] null for the whole session, silently hiding that trait
-   for that facing (_placeTrait's visible=false branch).  Two quiet
-   retries (2s/6s) recover the transient case; the retry URL appends
-   &r=N so a poisoned CDN/browser cache entry — and Pixi's own
-   rejected-load cache — can't replay the failure.  A direction that
-   still fails WITH a loaded sibling is real evidence (the art set
-   exists but this dir flaked deterministically) and lands in the
-   crashTrap ring + upload; a direction with NO loaded siblings stays
-   quiet (trait sets missing whole dirs were historically normal —
-   the old catch comment said "expected for directions that don't
-   exist yet"). */
-const _TRAIT_RETRY_MS = [2000, 6000];
 /* v2.3.3689: TRAIT_LOAD_TIMEOUT_MS (traitImg.js): the longest a head piece's
    picture may take before it is asked for again (loadCroppedStrip's
    timeoutMs), shared with the colour catalogs' own copies */
@@ -1397,28 +1268,6 @@ function _ensureBodyData() {
   return _bodyDataPromise;
 }
 
-/* Mirrored views (W/NW/SE) reuse the opposite sheet texture, so they
-   render with dir = E/NE/SW + mirror.  This maps that base dir back to
-   the on-screen direction so meta can carry an optional override keyed
-   by the mirrored side (e.g. crownNudge.west) without disturbing the
-   un-mirrored side. */
-const MIRROR_SCREEN_DIR = { east: 'west', northeast: 'northwest', southwest: 'southeast' };
-
-/* v2.3.1106: per-direction jog FOOT-PLANT frames (footstep SFX fires when the
-   animation lands on one). Module-scope so the jog render path doesn't allocate
-   a fresh object + arrays every frame (that per-frame garbage was a likely
-   source of periodic GC hitches). resolveDirection only ever yields the 5 base
-   dirs; mirror keys kept for clarity. */
-const JOG_FOOT_FRAMES = {
-  east: [3, 17], west: [3, 17],
-  south: [0, 13], north: [0, 11],
-  northeast: [9, 21], northwest: [9, 21],
-  /* v2.3.1107: SW/SE is a DOUBLE-stride loop (~1656ms, ~2x the other dirs), so
-     it has FOUR foot-plants per cycle, not two. [2,17] left the middle two
-     silent and bunched the audible pair into a "first two replay". */
-  southwest: [2, 8, 13, 18], southeast: [2, 8, 13, 18],
-};
-
 /* ═══ v2.3.3015: A FOOT-PLANT STEPPED OVER STILL COUNTS ═══
    The footstep's edge-trigger fired only when the drawn frame LANDED on a
    plant frame -- right at 60 fps, where the jog moves at most one frame a
@@ -1445,214 +1294,12 @@ function _jogPlantCrossed(contacts, prev, cur, fc, backward, gapMs, cycMs) {
   return false;
 }
 
-/* v2.3.537: per-(pose,dir) body render scale, DERIVED from silhouette
-   measurement -- replaces the old hand-tuned bump stack (v2.3.164-171:
-   N/S/E *1.10, NE *1.05/*1.0815, etc).  Goal: equal on-screen character
-   HEIGHT across all 8 facings so the player doesn't grow/shrink when they
-   turn.  Reference = crown-to-hip span (pose-invariant -- it sits above the
-   swinging legs and ignores arm-swing, the two things that corrupt a raw
-   pixel count or bbox height).  Measured per facing on the real sheets,
-   normalized so every facing matches the tallest (southwest = 1.0, the
-   larger size the user dialed in as the target).  Stand and jog measured
-   separately because the run bends the legs (a deep stride is not a height
-   change).  Mirror dirs (W<-E, NW<-NE, SE<-SW) share their base value.
-   hit/attack keep the old behavior (no armor on them yet; east-hit
-   stays slightly smaller per the original tuning).  v2.3.1053: pickup now
-   ships chest/legs/shirt gear sheets (south-only) -- the gear shares the
-   body transform, so it scales with the pose's default and needs no entry. */
-const BODY_DIR_SCALE = {
-  /* v2.3.541: south -3% (1.130->1.096), north -2% (1.150->1.127) per user.
-     v2.3.548: NE idle 1.130->0.98 -- the armored figure (tall NE helmet +
-     pauldrons) rendered 14% bigger than the others; bare-body scale couldn't
-     account for armor height.  Brought NE down to match the armored cluster
-     (~240px) so east no longer reads small next to it. */
-  /* v2.3.569: derived by tools/derive_armor_scales.py -- normalizes every idle
-     to ONE rendered height (~86px = 1.063x the median jog height, the validated
-     standing-taller ratio) measured on the ARMORED figure (not the bare body,
-     which couldn't see the gear's size variation).  Body WIDTH is handled
-     separately in the gear (normalize_idle_width.py, helmet kept native).
-     Manual tweaks baked in: south x0.97, north x0.98. */
-  /* v2.3.571: NO width manipulation -- idle gear is kept at the ASPECT RATIO it
-     was DRAWN at and only scaled UNIFORMLY (diagonally) to a consistent rendered
-     height (~86px) by these per-dir factors.  The earlier per-axis width passes
-     (bare-body in v2.3.569, jog-bulk in v2.3.570) distorted the drawn art and
-     made dirs read too fat/skinny -- dropped.  scale.x == scale.y (STAND_WIDTH
-     all 1.0) so the drawn proportions are preserved exactly. */
-  /* v2.3.684: south 1.136 -> 1.051 -- the idle popped 8% LARGER than the jog
-     when the run stopped.  v2.3.645 neutralized STAND_HEIGHT (0.975) and
-     JOG_HEIGHT (1.052) without re-deriving this map; for south those two
-     factors were what held idle == jog.  Re-measured on the armored figure:
-     stand 188px, jog mean 197.6px -> 197.6/188 = 1.051 makes them equal. */
-  /* ═══ v2.3.1826: RE-DERIVED FROM THE FIGURE ON SCREEN ═══
-     Owner: "Character's size is inconsistent across different directions
-     (east, southwest, etc).  I don't know the best way to fix that.  Also
-     without breaking anything else (relative item scale like hats, beards,
-     etc)."
-
-     They are right, and the old numbers are why.  Measured through
-     bodyFigureProbe — the painted crown-to-boots of the frame actually on
-     screen, converted through the live transform — the eight facings came
-     out spanning 9.4%:
-         north 74.0  east/west 74.6  south 76.5  NE/NW 77.6  SE/SW 81.4
-     Southwest is 9.9% taller than north, which is exactly the pair the
-     owner named.
-
-     WHY THE OLD MAP DID NOT HOLD IT.  It was derived at v2.3.569 against the
-     ARMOURED figure, because at the time gear was drawn at its own size and
-     the bare body could not see it.  v2.3.645 ended that — the aligned gear
-     is drawn to FIT the body now, and only this uniform scale applies — so
-     normalising the armoured silhouette stopped being the right target and
-     nobody re-derived it.  South was then hand-patched at v2.3.684 for a
-     different reason again (idle/jog parity).
-
-     THE NEW TARGET is 77.2px, the facing-weighted mean of what the eight
-     were already doing (east art covers E+W, SW art covers SW+SE, NE art
-     covers NE+NW, so those three carry double weight).  Keeping the mean
-     fixed means this removes the VARIANCE without making the character
-     bigger or smaller overall — a size change is not what was asked for.
-
-     THE BOOTS COME ALONG FOR FREE, and that is the check that the model is
-     right rather than a coincidence: the body sprite is anchored at the
-     CELL's centre, and the painted figure's centre sits at row ~126 of 256
-     in every sheet, so a facing that is drawn taller also puts its feet
-     lower — the character sinks and rises as it turns.  Equalising the
-     heights predicted a foot-line spread of 1.2px, down from 4.5px, and
-     that is what mp-bodysize measures.
-
-     AND THE HATS ARE SAFE, which was the owner's actual worry: every trait
-     is placed through _placeTrait with THIS bodyScale, and its anchors are
-     frame-relative, so a hat's size and its seat on the head scale in
-     lockstep with the body.  mp-bodysize asserts hat-height / body-height
-     stays constant across facings rather than trusting that.
-
-     NOT TOUCHING `jog` — see the note below.  Its numbers encode a
-     deliberate perceptual correction for east's under-drawn source art, and
-     re-deriving it on height alone would undo that. */
-  stand: { south: 1.061, east: 1.018, north: 1.083, northeast: 0.998, southwest: 0.933 },
-  /* v2.3.539: jog re-derived to match each facing's OWN idle size (the player
-     was bigger running than standing).  Crown-to-hip over-scaled the jog
-     because a running figure leans + spreads its legs, compressing vertical
-     spans.  Re-anchored to rendered FULL height (crown-to-feet, what the eye
-     actually reads) against the user's gold standard: SW jog==idle looks
-     right, so every facing now hits SW's jog/idle render ratio (0.941). */
-  /* north nudged 0.967 -> 1.05 (v2.3.540): its run has the largest leg-spread
-     of any facing, so full-height matching shrank the body to fit the spread
-     legs.  Hip-span said 1.22 (too big), full-height 0.967 (a bit small) --
-     truth sits just above the full-height end. */
-  /* east -3% (1.218->1.181, covers west via mirror) v2.3.542 per user. */
-  /* east -2% uniform (1.181->1.157) v2.3.584 per user (covers west via mirror). */
-  /* v2.3.740: east 1.157 -> 1.25 (owner: east jog armor much smaller than it
-     should be).  Diagnosis: the jog-east SOURCE art draws the figure with
-     ~18% less body mass than every other direction (mean silhouette 163px vs
-     ~200px; it has been that way since the v2.3.5xx sheets — confirmed NOT a
-     regression from the v2.3.705 half-cycle remap, whose frames are byte-
-     identical art).  Height normalization alone can't fix small body mass on
-     a leaning profile figure, so this is a perceptual split: +8% closes most
-     of the mass gap at the cost of a small jog>stand height pop when
-     stopping.  The DURABLE fix is regenerating jog-east art at proper figure
-     scale via the same video pipeline that rebuilt NE (v2.3.708/716). */
-  /* ═══ v2.3.1830: THE JOG MAP, RE-DERIVED ON EAST'S ANCHOR ═══
-     Owner: "the larger issue is still the inconsistent player scale per
-     direction.  I need you to provide a visual preview of the character per
-     direction and come up with the best solution to equalize the scale
-     between directions."
-
-     v2.3.1826 equalised STAND to 0.1%.  Jogging still spanned 8.1%:
-         south 77.39  SE/SW 77.39  E/W 78.54  NE/NW 80.24  north 83.67
-     measured as painted crown-to-feet through the live transform, taken as
-     the MEDIAN OF THE WHOLE RUN CYCLE rather than one frame — a running
-     figure bobs, and a single frame compares eight arbitrary moments.  (The
-     first pass sampled 14 moments and had SE and SW, which are the same
-     sheet mirrored, disagreeing by 1%.  They are identical here, which is
-     the check that the sampling is converged.)
-
-     WHY EAST IS THE ANCHOR AND NOT THE MEAN.  East's 1.25 is not a height
-     number — v2.3.740 set it to close an ~18% BODY MASS deficit in the
-     jog-east source art, knowingly buying a small jog>stand pop to do it.
-     Re-deriving it on height would quietly undo that.  So the target is
-     east's own current rendered height, 78.54px, which happens to also be
-     the median of the eight: east's entry is therefore UNCHANGED BY
-     CONSTRUCTION and everything else moves to meet it.
-
-     WHY NORTH MOVES MOST (1.050 -> 0.986, -6.1%).  v2.3.540 derived north
-     on full height as 0.967, judged it "a bit small" against the leg-spread
-     of its run, and settled on 1.050 — matched to the idle map OF THAT ERA,
-     when north stood at 74.0px.  v2.3.1826 moved north's stand to 77.2px,
-     so the target that 1.050 was tuned against no longer exists; this is
-     the same principle re-applied to corrected inputs, not a perceptual
-     call being overridden.  0.986 also sits 2% ABOVE the 0.967 that was
-     called small, so it does not walk back into that.
-
-     RESULT: jog spread 8.1% -> 0.05%, and because the anchor is east's
-     height rather than the stand height, every facing now has the SAME
-     +1.7% stand->jog pop that v2.3.740 already accepted for east — the pop
-     is uniform instead of ranging from -0.8% to +8.4%.
-     Traits ride this scale through _placeTrait, so hats and beards follow
-     in lockstep; mp-scalesheet asserts that ratio while JOGGING rather than trusting it
-     (mp-bodysize only ever covered standing). */
-  jog:   { south: 1.015, east: 1.25, north: 0.986, northeast: 1.102, southwest: 1.015 },
-};
-/* ═══ v2.3.1836: WHERE THE CROWN AND THE FEET ACTUALLY ARE ═══
- *
- * Owner: "the shield block per direction still have mismatched character
- * scales."
- *
- * The block, the swing and the bow shot all replace the walking body with a
- * STAND-IN drawn by effectsRenderer, and entityRenderer sizes and plants it by
- * publishing S._swordBodyH / S._swordFootY.  Both were computed from the
- * constants 221 (feet row) and 33 (crown row), which are SOUTH's rows applied
- * to every facing — and then multiplied by bodyDirScale('stand', dir).
- *
- * That multiplication is the bug, and it is backwards in an interesting way.
- * The dir-scale exists to CANCEL the per-facing height differences in the
- * walking art: the sheets paint the figure 189/197/185/201/214 units tall and
- * the scale brings them all to one rendered height.  Measured:
- *      south 189*1.061   east 197*1.018   north 185*1.083
- *      northeast 201*0.998   southwest 214*0.933      -> 200.5 every time
- * Multiply that same scale by a CONSTANT 188 instead and the cancellation runs
- * the wrong way — it re-introduces the variation it was built to remove:
- *      175.4 .. 203.6, a 16.1% spread.
- * So the block pose was up to 16% bigger in one direction than another, which
- * is exactly what the owner is looking at.  The jog figure used for the
- * moving-block leg composite was worse: 26.8%.
- *
- * These are the MEASURED painted rows of each sheet, in 256-frame units, so
- * (feet - crown + 1) * dirScale is the constant the dir-scale was designed to
- * produce.  The jog rows are the CYCLE MEDIAN — a running figure bobs, so one
- * frame would be one arbitrary moment (the same reason mp-scalesheet medians
- * over the strip).
- *
- * The feet row was wrong per facing too, and independently: 221 is south's,
- * while east ends at 223 and southwest at 234.  A stand-in planted on south's
- * feet row floats or sinks in every other direction.
- */
-const BODY_ROWS = {
-  stand: {
-    south:     { crown: 33, feet: 221 },
-    east:      { crown: 27, feet: 223 },
-    north:     { crown: 35, feet: 219 },
-    northeast: { crown: 27, feet: 227 },
-    southwest: { crown: 21, feet: 234 },
-  },
-  jog: {
-    south:     { crown: 32, feet: 232 },
-    east:      { crown: 48, feet: 210 },
-    north:     { crown: 24, feet: 230 },
-    northeast: { crown: 44, feet: 228 },
-    southwest: { crown: 32, feet: 232 },
-  },
-};
 /* South is the fallback because it is the pair the old constants encoded, so
    an unknown facing lands exactly where it used to rather than somewhere new. */
 function bodyRows(pose, dir) {
   const m = BODY_ROWS[pose] || BODY_ROWS.stand;
   return m[dir] || m.south;
 }
-
-/* v2.3.3146: the head traits' size on the gathering body poses -- the head
-   there against the head standing (see poseTraitMul in _placeTrait) */
-export const MINE_TRAIT_MUL = 1.116;
-export const FISH_TRAIT_MUL = 1.07;
 
 function bodyDirScale(pose, dir) {
   if (pose === 'hit') return dir === 'east' ? 0.88 : 1.0;
@@ -1666,66 +1313,6 @@ function bodyDirScale(pose, dir) {
    The neutralized scaffolding (functions returning 1.0 multiplied into every
    scale) was deleted in the v2.3.688 cleanup; history has the tuned maps. */
 
-/* v2.3.1353: per-hat jog east/west corrections — the owner read the
-   headwear comparison sheet row by row and dialed each hat against the
-   v2.3.1349 global 0.67: `mul` multiplies the jog-east trait scale
-   (west is the mirrored render of the same dir), `dy` nudges the hat
-   down in SCREEN pixels (the three wide-brim hats rode high on the
-   jogging head).  Applied to the hat AND its hair-clip mask (both flow
-   through _placeTrait with the same tune), never to hair/beard — the
-   bare-head row was owner-rated 0.
-   v2.3.1354 (owner round 2, cumulative): helmet 1.20->1.15 +2px down,
-   top-hat +3px, purple +1px, beanie 1.20->1.25 +2px down, shark-hat
-   +2px down, wide-brims 10->7px (owner: "up 3px"). */
-/* v2.3.1925: five `mul` values below were REBASED, not retuned.  The per-facing
-   stand fit (tools/fit-headwear-scale.mjs) moved scale[east] on five of these
-   hats, and jog-east renders scale[east] * 0.67 * mul — so leaving `mul` alone
-   would have dragged the running hat along with the standing one.  Each was
-   divided by exactly the factor its east scale moved by, which holds the jog
-   frames pixel-identical to what they render today:
-       bandana    x0.947 -> 1.10 / 0.947 = 1.162
-       red-cap    x0.908 -> 1.10 / 0.908 = 1.211
-       shark-hat  x0.850 -> 1.00 / 0.850 = 1.176
-       top-hat    x1.077 -> 1.10 / 1.077 = 1.022
-       wizard-hat x1.136 -> 1.40 / 1.136 = 1.232
-   These eleven numbers are the owner's own by-eye round from v2.3.1353-1355 and
-   the intent is to preserve that judgement exactly, not to re-open it. */
-const JOG_EW_HAT_TUNE = {
-  'old-school-helmet': { mul: 1.15, dy: 2 },
-  'top-hat':           { mul: 1.022, dy: 3 },
-  'purple-hat':        { mul: 1.10, dy: 1 },
-  'beanie':            { mul: 1.25, dy: 2 },
-  'red-cap':           { mul: 1.211, dy: 0 },
-  'shark-hat':         { mul: 1.176, dy: 2 },
-  'bandana':           { mul: 1.162, dy: 0 },
-  'sombrero':          { mul: 1.20, dy: 6 }, /* v2.3.1355: owner round 3, up 1px */
-  'bucket-hat':        { mul: 1.20, dy: 6 },
-  'fedora':            { mul: 1.20, dy: 6 },
-  /* v2.3.1542 (owner: "jog east makes the wizard hat fly off the head").  The
-     hat is pinned by its OWN crown pixel, which for the wizard hat is the tip
-     of the cone -- meta.anchors.east is the bbox top-centre and crownNudge.east
-     is -37, by far the largest lift in the set (next is evil-crown at -30).
-     The blanket jog-east 0.67 then shrinks the whole hat ABOUT THAT TIP, so the
-     brim -- 47px below the anchor -- rises by a third of that span while the
-     tip stays put.  Measured against the standing placement the brim landed
-     ~15px high in 256-space, which on a tall pointed hat reads as the hat
-     hovering over a bald head.  Every un-dialled hat has this to some degree;
-     the wizard hat is the one where the geometry makes it obvious.
-     mul 1.40 is the same correction hair got in v2.3.1454 (1.40 x 0.67 = 0.938,
-     the MEASURED jog-east/stand-east head ratio, 44px vs 47px), and dy 3 pays
-     back the last ~2px, which is the part of the -37 lift that _placeTrait
-     applies unscaled while the head around it is 6% smaller.  Verified frame by
-     frame against the standing reference over the whole 28-frame cycle. */
-  'wizard-hat':        { mul: 1.232, dy: 3 },
-};
-/* v2.3.1354: IDLE (stand pose, every facing — a hat that reads small
-   idling east reads small on every idle facing; per-dir splits would
-   make the hat pop while turning) corrections from the same review:
-   bucket-hat and fedora +10% and 2px down. */
-const STAND_HAT_TUNE = {
-  'bucket-hat': { mul: 1.10, dy: 2 },
-  'fedora':     { mul: 1.10, dy: 2 },
-};
 function hatPoseTune(hatId, pose, dir) {
   if (pose === 'jog' && dir === 'east') return JOG_EW_HAT_TUNE[hatId] || null;
   if (pose === 'stand') return STAND_HAT_TUNE[hatId] || null;
@@ -1814,59 +1401,6 @@ const JOG_EW_HAIR_TUNE = { mul: 1.40 };
 function hairPoseTune(pose, dir) {
   return (pose === 'jog' && dir === 'east') ? JOG_EW_HAIR_TUNE : null;
 }
-
-/* v2.3.1389 (owner: "the head doesn't bob with the armor" + "headwear
-   needs to move left with the head"): when the fullset knight figure is
-   active, the DRAWN head is the jog-<dir>-head.png overlay — rebuilt
-   (tools/rebuild_east_head_track.py) to ride the armor's own 25-frame
-   bob and carrying the owner-dialed left shift.  body-tops.json still
-   describes the BODY sheet's crown (28-frame cadence, unshifted), so
-   hats/hair/beards anchored there slid against the visible head.  This
-   table is the rebuilt head sheet's measured per-frame crown ([x, y],
-   256-space, one entry per ARMOR frame); _crownOverride swaps it in for
-   the trait anchors while the fullset figure is on screen. */
-const FULLSET_CROWN = {
-  /* v2.3.1390: smoothed track (owner: "really jittery") — the raw
-     per-frame measurement stepped up to 10px between adjacent frames;
-     this glides ≤4px like body-tops itself.
-     v2.3.1455: FLOAT precision + the sub-pixel head residual folded in
-     (the old even-integer rounding quantized the track to 2px steps),
-     so hats/hair glide with the same corrected head the player sees. */
-  east: [[134.6, 47.5], [135.6, 46.8], [136.0, 47.2], [135.4, 47.8], [134.6, 49.3], [134.6, 52.3], [135.0, 54.8], [134.9, 57.1], [134.4, 58.2], [133.9, 56.8], [134.0, 54.1], [134.1, 51.4], [134.6, 48.0], [135.6, 46.5], [136.0, 46.5], [135.6, 47.7], [134.5, 49.2], [134.2, 51.4], [134.6, 52.8], [135.0, 55.5], [134.6, 55.4], [134.0, 53.2], [134.0, 50.7], [134.1, 48.7], [134.1, 47.7]],
-};
-/* v2.3.1455 (owner: "'slivering' effect like lines are slightly cut and
-   moving while jogging where the head meets the torso armor"): the head
-   sheet's baked per-frame shift quantizes to whole sheet pixels (2px in
-   256-space at the 128px sheet) while the armor's smoothed bob moves
-   fractionally, so the head-to-collar seam breathed open/closed ±1px
-   through the jog cycle — a thin moving cut line at the neck.  This is
-   the FRACTIONAL remainder the bake couldn't carry (256-space, one
-   entry per armor frame, emitted by tools/rebuild_east_head_track.py);
-   _placePickupHead applies it as a sub-pixel y offset so the drawn head
-   rides the armor's true smooth track and the seam stays put. */
-const FULLSET_HEAD_RES = {
-  east: [0.0, -0.67, 0.22, -0.22, -0.67, -0.22, -0.67, -0.44, 0.22, -0.67, -0.89, 0.44, 0.0, 0.0, 0.0, 0.22, 0.67, 0.89, -0.67, 0.0, 0.44, 0.67, 0.67, 0.67, 0.67],
-};
-/* v2.3.1540: CONSTANT per-direction seat of the head overlay on the fullset,
-   in 256-space [dx, dy] (so 2 = one pixel of the 128px head sheet).  Distinct
-   from FULLSET_HEAD_RES above, which is a per-FRAME sub-pixel residual keeping
-   the head on the armour's smooth bob -- this is a fixed placement correction
-   for a direction whose head simply sits wrong on the plate.
-   Owner on the 3/4 front view: "southwest/southeast the head looks a little
-   receded inside the armor, like the head is a little too far back and
-   slightly under."  [-2,-2] is one sheet pixel forward (down-left is the
-   facing) and one up, chosen off a 3x3 grid of 0/-1/-2 on both axes: at -1,-1
-   the chin clears the collar cleanly, and by two sheet pixels a gap opens at
-   the side of the neck.
-   dx rides sb.scale.x, which carries the mirror sign, so SOUTHEAST -- drawn as
-   a mirrored southwest -- gets the correction mirrored for free, which is what
-   the owner asked for by naming both sides.
-   Jog-only in practice: _placePickupHead is gated on the fullset for jog, so an
-   unarmoured run is untouched.  tools/seal_jog_neck.py mirrors this table (in
-   SHEET px) so the neck seam is measured where the head LANDS. */
-const FULLSET_HEAD_SEAT = {
-  southwest: [-2, -2],
-};
 
 let _crownOverride = null;   // set around the trait placements when fullset is active
 function _fullsetCrown(dir, phase) {
@@ -2179,13 +1713,6 @@ function _placeSpecies(display, spId, skinId, pose, dir, mirror, frameIdx, bodyS
    _placeShirt / _shirtSprite path was removed; the sprite object is kept but
    left invisible to avoid disturbing the display graph. */
 
-/* v2.3.503: layered gear (paper-doll).  Each gear sheet frame is pixel-aligned
-   to the body frame, so placement is just copying the body sprite's transform
-   (which already carries mirror + bodyScale + bob).  No anchors/angles.  equip
-   = { legs, chest, shoulders } item ids.  See gear-layer-spec.md. */
-/* v2.3.748: 'shirt' is a tinted under-layer (white-base sheet x picked colour);
-   it is NOT in the masked-body worn list (skin-tight, no body erase). */
-const _GEAR_SLOTS = [['shirt', '_gearShirt'], ['legs', '_gearLegs'], ['chest', '_gearChest'], ['shoulders', '_gearShoulders']];
 /* v2.3.1459: the v2.3.1216 _FISH_CHEST_DEJITTER table is GONE.  It existed
    because the fish-south gear sheets were one stamp hand-placed with ~2.1x
    the body's sway; tools/rebake_fish_gear.py has since re-baked all three
@@ -2397,190 +1924,6 @@ function _remoteBodyArtBuild(other, mirror) {
       pantsPattern: q, shoesPattern: f, mirror: !!mirror }
     : null;
 }
-
-/* ═══ v2.3.2023: THE CAPE ═══
- * A full-frame sticker, so it takes the BODY SPRITE'S transform exactly as a
- * full-frame armour piece does below — import_cape_green.py already fitted
- * each frame into a 256 frame against the real stand-<dir> body, so there is
- * no anchor, no nudge table and no per-facing exception to get wrong.  The
- * mirror is free: sb.scale.x already carries its sign for W / NW / SE.
- *
- * HIDDEN DURING ATTACKS, ON PURPOSE — AND `pose` IS NOT WHAT SAYS SO.
- * During a swing or a bow shot the real body is HIDDEN and the whole figure is
- * redrawn by a stand-in in another layer (effectsRenderer, nodeLayer), and the
- * trap v2.3.1784 records is that `pose` STILL READS 'stand' or 'jog'
- * throughout.  So a pose list cannot catch a swing: measured, the pose never
- * left 'stand' across a full attack.  The load-bearing test is
- * `sb.visible` — is the real body being drawn at all — which tracks the
- * stand-in swap directly instead of inferring it.  The pose list below is
- * belt-and-braces for the poses that DO rename themselves (dodge, pickup),
- * and on its own it would have been the back shield's bug over again.
- *
- * A sprite that keeps drawing against a body that is no longer there hangs in
- * mid-air beside the swing.  The shield had to be drawn TWICE to fix that,
- * which means two renderers holding one piece of geometry, and "the moment a
- * value is copied into two renderers it starts to drift".  For a cosmetic
- * cape that is not worth it: a swing is a few frames, and a missing cape
- * reads far better than a floating one.
- *
- * ═══ v2.3.2190: ...AND THE STAND-IN NOW WEARS ONE OF ITS OWN ═══
- * Owner: "the attack animations need to have the cape anchored on the player's
- * head to look right."  Everything above still holds and none of it changes:
- * THIS path stays off during an attack, because there is still no body here to
- * hang a cape on.  What the owner's word "anchored" points at is that the
- * stand-in HAS a known anchor -- its own per-frame crown, out of crowns.json --
- * and hats, hair, beards and the hair clip have all ridden it since v2.3.867.
- * So the cape is not a second copy of THIS geometry; it is one more sprite pair
- * on an anchor that already exists and is already maintained.  See
- * placeStandInCape, and mp-capeattack for the assertions.
- *
- * ═══ v2.3.2129: WHICH OF THESE WERE ACTUALLY HIDING ANYTHING ═══
- * Owner: "Add it to all the animations as well" -> "yes do the free 8".
- *
- * The list above was written defensively at v2.3.2023, when the cape was one
- * facing old and the question was only "where can it definitely not go
- * wrong".  Ten poses went in.  Read against the renderer, they are three
- * different things and only one of them is a reason:
- *
- *   STAND-IN POSES — chop, cook, fire (and swing, bowshot).  The real figure
- *   is replaced by a whole separate sprite in another layer and the body
- *   container is hidden outright (`_chopHide`, line ~7703; the peer path's
- *   `_rexStandIn`).  These stay listed, but note they were never doing the
- *   work: the container is invisible, so its cape child is too, and `pose`
- *   does not even read 'chop' while chopping.  `sb.visible` is what actually
- *   holds the line here, exactly as the paragraph above says.
- *
- *   REAL-BODY POSES — dodge, mine, fish, pickup, hit.  These draw the
- *   player's own body sprite out of a real sheet, and the cape rides that
- *   sprite's transform like any other full-frame layer.  Nothing was wrong
- *   with them; they were listed because nobody had looked yet.  REMOVED, so a
- *   cape you paid for does not vanish every time you take a hit or bend down
- *   for loot.
- *
- * That is five poses back, not the eight I first told the owner — chop, cook
- * and fire only LOOKED free.  Their entries stay because deleting them would
- * invite the next reader to re-derive all of this. */
-/* ═══ v2.3.2516: THE ROLL AND THE LOOT BEND TAKE THE CAPE OFF AGAIN ═══
- * Owner (D6, backlog triage 2026-09-14 §5.8): "hide the cape on the dodge pose
- * INCLUDING the loot bend."
- *
- * This reverses the v2.3.2129 paragraph directly above for TWO of its five
- * poses, and the reason is that the paragraph reasoned about the wrong risk.
- * It asked "does the cape still get DRAWN on this pose" and answered yes for
- * every real-body pose, which is true.  What it never asked is whether the
- * cape drawn there is drawn in the right PLACE.
- *
- * It is not, and only on these two.  The cape is a standing still pinned to
- * the frame's crown (_lookupBodyTop, see _placeCape), so it tracks the head
- * and hangs straight down from it.  That is correct for any pose where the
- * figure stays upright -- mine, fish and hit all do, which is why those three
- * stay OFF this list and keep the cape the owner paid for.  dodge and pickup
- * are the two where the torso goes HORIZONTAL: the bro tucks into a roll, or
- * folds down over a loot pile.  The crown follows him down, and a garment that
- * hangs straight down from it then hangs into the ground while the body is
- * bent away underneath -- the owner's words, "a cape hanging in mid-air while
- * the player crouched".
- *
- * `pickup` is a separate pose string from `dodge` (see the pose ladder at
- * ~9885 and the dodge branch at ~10033), so both are named; adding only
- * `dodge` would leave the loot bend exactly as reported. */
-const _CAPE_HIDDEN_POSES = { swing: 1, bowshot: 1, chop: 1, cook: 1, fire: 1, dodge: 1, pickup: 1 };
-
-/* ═══ v2.3.2024: THE CAPE TRAILS WHEN HE RUNS ═══
- * Owner: "The cape needs to be rotated so the back of the character doesn't
- * stick out while running."
- *
- * The art is a standing cape, hanging straight down.  A running figure leans
- * into the direction of travel, so a vertical cape stops covering the back and
- * the character's shoulders and arm show behind it.  Tilting the cape the
- * other way — the hem swinging back along the line of travel — both covers the
- * back and reads as the cape streaming behind him, which is what a cape does.
- *
- * Radians, per BASE facing, applied only while jogging.  The sign follows the
- * direction of travel: running east the hem trails west, so the bottom swings
- * left; running southwest it trails north-east, so the bottom swings the other
- * way.  North and south move toward or away from the camera, where a
- * horizontal tilt would be a lie, so they stay at zero and rely on the crown
- * offset alone.
- *
- * A TABLE, not a formula, because the five facings are drawn at five different
- * three-quarter angles and the amount that reads correctly is not a projection
- * of anything — it is a look.  Mirrored facings negate it, for the same reason
- * the body's own scale.x carries its sign. */
-/* v2.3.2025: owner, "angled more with jog" -- doubled.
-   v2.3.2125: owner, "angled more aggressively so that the back of his body
-   doesn't show behind it" -- 1.5x again (east 0.30 -> 0.45).  Chosen off a
-   rendered ladder at 1x / 1.5x / 2x / 2.5x, and the ladder is why it is not
-   more: past about 1.5x the rotation stops covering the back and starts
-   LIFTING THE HEM off it, because the cape swings about the shoulders -- at
-   2.5x the hem is near horizontal and the lower back is barer than it was at
-   1x. More angle is not monotonically more cover, which is the thing that is
-   not obvious from the ask. */
-/* v2.3.2126: owner, of the v2.3.2125 ladder -- "Last cape frame most angled is
-   correct". That frame was 2.5x the THEN-current table (east 0.30), i.e. 0.75
-   rad, so the table takes those absolute values rather than another multiplier:
-   a scale is meaningless once the thing it scales has moved, which is the trap
-   the sweep that produced this fell into first (it asked for 2.5x again and
-   rendered 1.125 rad -- a rung off a ladder nobody had looked at). */
-const _CAPE_JOG_TILT = { east: 0.75, northeast: 0.50, southwest: -0.50, north: 0, south: 0 };
-/* Where the cape swings FROM: the shoulders, not the middle of the frame.
-   Pivoting about the centre would swing the hood as far as the hem and take
-   the hood off the head, which is the thing v2.3.2023b just fixed.
-
-   v2.3.2125: 0.27 -> 0.31, and this is a CONSEQUENCE of v2.3.2122-2124 rather
-   than a taste change. The pivot is a fraction of the 256 FRAME, but what it
-   needs to sit on is the shoulders of the ART -- and the art just moved 10px
-   down inside that frame. Left at 0.27 the swing had crept up from the
-   shoulders towards the neck, which is the "hanging off the side of his head"
-   half of the report. 10/256 = 0.039, so 0.31 puts it back where it was. */
-const _CAPE_PIVOT_Y = 0.33;   /* v2.3.2126: the picked frame's value */
-
-/* ═══ v2.3.2126: AND SLIDE IT BACK ALONG THE LINE OF TRAVEL ═══
- * Owner, picking the hardest angle off the ladder: "Last cape frame most
- * angled is correct but needs to nudge left to fit."
- *
- * Rotation alone cannot put it there, and the reason is what the pivot IS. The
- * cape turns about the shoulders, so the hem swings one way and the HOOD
- * swings the other -- and at the angle the owner chose the hood has come far
- * enough forward to sit over the face. Sliding the whole sprite back along the
- * line of travel re-seats the hood on the head and carries the hem with it,
- * which a bigger or smaller angle cannot do: those trade the two ends against
- * each other, and this moves both at once.
- *
- * In 256-space, applied only while jogging, and MIRRORED like the tilt -- the
- * offset is "backwards along the direction of travel", not "left on screen",
- * so running west it has to go the other way or the cape would lead him. Same
- * sign convention the tilt already uses, for the same reason. */
-/* v2.3.2127: owner, of the slide ladder -- "Only the furthest right frame
-   looked correct", which is -28. My reading of "nudge left" had been that it
-   would walk the hood off the head, and the pictures said so plainly at -20
-   and -28; the owner looked at the same pictures and chose -28 anyway. The
-   rendering was right and the JUDGEMENT was mine to lose: at this angle the
-   hood is meant to ride back off the crown, because the figure is leaning into
-   the run and the hood is trailing with the rest of the garment.
-   The diagonals scale with the tilt (0.50/0.75 of east), so the whole table
-   keeps one shape rather than three independent hand-set numbers. */
-const _CAPE_JOG_DX = { east: -28, northeast: -19, southwest: 19, north: 0, south: 0 };
-
-/* ═══ v2.3.2189: HOW MUCH OF THAT MOTION THE HOOD TAKES ═══
- * Fractions of the two numbers above, not a second table: the panels' tilt and
- * slide have been tuned by the owner three times (v2.3.2025, 2125, 2126-2127)
- * and re-tuning them must keep moving the whole garment.  See the long note in
- * _placeCape for why a hood cannot take the panels' motion at all.
- *
- * BOTH ARE ZERO, and that is the answer the pictures gave rather than a
- * placeholder: at 0 the hood sits exactly where the STANDING frames put it --
- * on the crown, tracking the head's own bob through the body-tops offset the
- * placement already applies -- and standing is the one pose that has never been
- * reported wrong.  A fraction of the panel motion is the obvious middle ground
- * and it is NOT free, because the pivot is at the shoulders: a partial swing
- * about a point below the neck still TRANSLATES the hood off the head, just
- * less far, so buying a little lean costs a little of the seat that was the
- * bug.  If a lean is ever wanted, the pivot has to move onto the neck first.
- * They exist as named constants, and as bench handles below, so that round is
- * a sweep rather than a rebuild. */
-const _CAPE_HOOD_TILT_K = 0;
-const _CAPE_HOOD_DX_K = 0;
 
 /* ═══ v2.3.2125: THE TWO NUMBERS THIS KEEPS BEING ASKED TO CHANGE ═══
  * The tilt has now been re-asked for twice ("angled more with jog", v2.3.2025;
@@ -2951,16 +2294,6 @@ function _placeGear(display, equip, pose, dir, frameIdx, legsFrom) {
      hand-drawn depth (arm over waist, plate over seam) applies to the chain
      automatically.  Other poses keep their baked belts (backlog). */
 }
-/* v2.3.608: per-region body sub-sprites.  Helmet/chest/legs are independent
-   slots; the body is drawn as three region sprites (head / torso+arms / legs)
-   cut from the SAME body frame, so they always reconstruct the body exactly.
-   A region is shown only when its slot's armour is OFF (covered regions are
-   hidden -> no underbody poke, no mask).  The body regions use the NAKED scale
-   (independent lever) while the gear keeps the armour-fit scale, bottom-aligned
-   to the same feet, so a bare region reads at naked proportions even next to a
-   plate piece.  Row splits are frame fractions measured off the sheets. */
-const BODY_NECK_FRAC = 0.30;
-const BODY_WAIST_FRAC = 0.585;
 const REGION_ROWS = {
   head: [0, Math.round(256 * BODY_NECK_FRAC)],
   torso: [Math.round(256 * BODY_NECK_FRAC), Math.round(256 * BODY_WAIST_FRAC)],
@@ -4208,28 +3541,6 @@ function _storeBake(key, dc, _beltPending, _bt0, _bs, cell) {
    per frame; IntroVideo polls this to draw a real progress bar. */
 export const prewarmProgress = { done: 0, total: 0 };
 
-/* v2.3.1477: the poses whose masked-body bakes are paid for behind the intro.
-   'hit' joined stand/jog when the recoil finally got its own chest/legs sheets
-   -- 6 frames x 5 dirs = 30 more 256x256 bakes (~8MB, ~3% of what v2.3.1407
-   cut).  Worth it: the bake would otherwise land on the exact frame a monster
-   connects with you.  v2.3.1478: + 'mine' (south only, 14 frames) once the
-   pickaxe swing got its own sheets -- the mine BODY sheet was deliberately
-   left lazy back in v2.3.1118 as "pure VRAM waste", which was true while the
-   pose had no armour to bake against.  If iPhone context loss ever returns,
-   this list is the first thing to trim back to ['stand', 'jog']. */
-/* v2.3.1534: + 'dodge'.  The recolored body sheets are baked HERE, during the
-   loading screen; a pose left off this list falls back to the un-recolored
-   base frame on its first use while the bake runs, which for dodge would be a
-   flash of default skin/pants the first time the player rolls.  That is the
-   first-use hitch class CLAUDE.md's animation-preloading law exists to stop.
-   Cost is 2 dirs x 9 frames = 18, against jog's ~140. */
-/* v2.3.2500 (owner: "the first item you pick up you are shirtless for about
-   half a second", and the animation-preload LAW, CLAUDE.md / TRAPS #12):
-   + 'pickup' and + 'fish'.  The gear SHEETS for these two poses are warmed by
-   preloadGear (gearSheets.js, same change); this list is the other half of the
-   gate -- it walks the same (pose, dir, frame) grid the renderer will ask for
-   so the BODY bake and the armour composite are warm too. */
-const PREWARM_POSES = ['stand', 'jog', 'hit', 'mine', 'dodge', 'pickup', 'fish'];
 /* The gather poses are authored SOUTH-ONLY -- walking them through all five
    dirs would bake four empty frames per pose and log four 404s per slot.
    Dodge is authored south + east for the same reason (see playerSprites). */
@@ -4788,7 +4099,6 @@ function _schedulePrewarm() {
 }
 for (const _sl of ['chest', 'legs']) onEquipChange(_sl, _schedulePrewarm);
 
-const _REGION_SPR = { head: '_bodyHead', torso: '_bodyTorso', legs: '_bodyLegs' };
 /* Draw the body via its three region sprites.  `show` = {head,torso,legs}.
    v2.3.609: the regions use the SAME transform as the reference sprite `sb`
    (position + scale), so they are exactly the body in three pieces -- they
@@ -6158,8 +5468,6 @@ export function preloadTraits() {
   ]);
 }
 
-const PLAYER_HEART_SIZE = 40;
-const MONSTER_HEART_SIZE = 40;
 const PLAYER_HP_NUM_STYLE = {
   fontFamily: 'Source Sans 3, sans-serif',
   fontSize: 18,
@@ -6170,18 +5478,9 @@ const PLAYER_HP_NUM_STYLE = {
   dropShadow: { color: '#000000', blur: 0, distance: 1, alpha: 0.9 },
   align: 'center',
 };
-/* HP ring widget (v2.3.458): replaces the above-head heart.  A quartile-
-   colored progress arc drains clockwise from 12 o'clock; four ~1.5px gaps
-   slice it into quadrants that land exactly on the 25/50/75% color
-   thresholds, so the arc flips color as it recedes past each gap.  Muted-
-   gray center holds the large current HP over a small muted max.  (A thin
-   ring *around* the heart was tried in v2.3.249 and reverted; this is the
-   full replacement widget.) */
-const HP_RING_OUTER_R = 24;
 const HP_RING_BAND = 5;
 const HP_RING_CENTER_R = HP_RING_OUTER_R - HP_RING_BAND - 2; /* gray center disk */
 const HP_RING_STROKE_R = HP_RING_OUTER_R - HP_RING_BAND / 2; /* arc centerline */
-const HP_RING_GAP_PX = 1.5;
 const HP_RING_TRACK = 0x202833;       /* muted slate (drained portion) */
 const HP_RING_CENTER_FILL = 0x2b303a; /* muted gray center */
 const HP_TIER_GREEN = 0x3ec27a, HP_TIER_YELLOW = 0xf5c542, HP_TIER_ORANGE = 0xe8843a, HP_TIER_RED = 0xe34646;
@@ -6208,11 +5507,6 @@ const MONSTER_HP_NUM_STYLE = {
   stroke: { color: '#000000', width: 3 },
   align: 'center',
 };
-
-/* Module-scope SECTORS array — shared by local + other player update
- * paths.  Was previously allocated as a `const` inside each per-frame
- * loop, which produced a small but recurring GC pressure source. */
-const SECTORS = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'];
 
 /* ═══ v2.3.2322: A HELD BOW GOES BEHIND THE BODY ON THE NEAR DIAGONALS ═══
  *
@@ -6292,42 +5586,6 @@ function heldWeaponInFront(wpnType, facingIdx, inFrontBase) {
   return inFrontBase;   /* greatsword: point-up, clears the torso -- E/SE only */
 }
 
-/* ═══ v2.3.2911: THE FIST GOES OVER THE HANDLE ═══
- * Owner: "East, Southwest, northeast the characters hand should be over the
- * handle."  Measured before changing anything (a red dot drawn at the grip
- * anchor): the anchor WAS on the hand at all three -- the fault was layering.
- * At E and NE the carried greatsword is drawn above the body, so the handle
- * covered the fist whole; at SW it was drawn behind (v2.3.2516), so the arm
- * swallowed the handle and only the crossguard showed, beside the hand.
- *
- * The fix is a HOLE, not a stamp: the blade is inverse-masked by a small
- * circle at the grip, so whatever the character has at the hand -- skin, a
- * sleeve, a gauntlet, a recolour -- shows through on top of the handle, with
- * the handle visible either side of the fist.  The v2.3.185 hand-cap did this
- * by cloning BODY pixels, which is why it had to be switched off under a
- * shirt (v2.3.749) and so never ran for most players.
- *
- * SW: the carried pose comes back in front for this -- the blade hangs away
- * from the body there, so the fist is the only overlap.  The SWING keeps the
- * v2.3.2516 behind-the-body order (swingActive is excluded; the swing's own
- * z-order lives in effectsRenderer).  Greatsword only: its per-facing art is
- * the one this was measured on. */
-/* v2.3.2925: + south (2).  Owner: "you can make it look like the players hand
-   is over the sword handle jogging south.  Right now it just shows the
-   floating handle with the hand behind it." */
-/* v2.3.2925: + southeast (1), standing only (see gripHoleWanted).  Owner:
-   "Southeast fingers around the grip (slight strip showing between fingers." */
-const GRIP_HOLE_FACINGS = { 0: true, 1: true, 2: true, 3: true, 7: true };
-const GRIP_HOLE_R = 4.2;   /* display px -- about the fist; window.__btGripHoleR tunes it */
-/* ═══ v2.3.2925: SOUTH GETS A FIST-SIZED HOLE ═══
-   Owner: "The fist during jog south actually punches through the handle."
-   4.2 display px is ~5 sheet px of radius at the south jog's 0.42 body scale
-   -- a hole ~10 px across round a fist ~5-6 px across -- so the cut showed a
-   ring of gap round the fist, a fist punched THROUGH the handle rather than
-   wrapped round it.  2.6 is the fist's own radius (~3 sheet px), still wider
-   than the handle, so the fist reads across it.  The other three facings keep
-   the size the owner signed off on at v2.3.2911. */
-const GRIP_HOLE_R_BY_FACING = { 2: 2.6 };
 /* ═══ v2.3.2925: ...BUT NOT JOGGING SOUTHWEST ═══
    Owner: "Southwest jog the sword needs to be occluded by the players body."
    The hole is what pulls the carried SW blade in front (v2.3.2911, via
@@ -6369,13 +5627,6 @@ function clearGripHole(spr) {
  * aim direction.  Each weapon's rest blade angle is the orientation
  * of the sprite as drawn (sword tilts NE, staff vertical, bow horiz). */
 const SWING_ANIM_MS = 250;
-const SWING_FULL_ARC = Math.PI * 0.85 * 0.70;   // ~107° visual sweep
-const REST_ANG = {
-  sword: -Math.PI / 4,
-  greatsword: -Math.PI / 4,
-  bow: 0,
-  staff: -Math.PI / 2,
-};
 
 /**
  * NFT 360° render — applies the front/back cross-fade + horizontal
@@ -6711,95 +5962,6 @@ function createMonsterDisplay(monster) {
   return container;
 }
 
-/* ═══ v2.3.1564/1565: the name + level plate under a player's feet ═══
-
-   Owner: "a slick minimalist pill that shows player name and level
-   beneath that, beneath the character at all times", then "make it
-   consistent and beneath other players too".
-
-   The local player had NO world nameplate at all — the above-head one was
-   hidden in favour of a top-right identity card, and that card was retired
-   in v2.3.1294, so the readout silently went missing.  Remote players kept
-   a bare floating name above the head.  Both now use THIS, so there is one
-   plate implementation rather than two that drift.
-
-   Below the feet is also the safer anchor: the old above-head plates were
-   pushed to -38 / -42 specifically to clear a sword tip that pokes over
-   the head on extended-arm frames.  Nothing to collide with down here.
-
-   Planted, not bobbing.  Every other child of these containers adds bobY
-   so it rides the walk cycle; a label bouncing under the boots reads as
-   loose, so this one keeps a fixed y and stays stuck to the ground.
-
-   The Graphics is rebuilt ONLY when the text changes (_pillKey cache).
-   A rounded-rect rebuild at 60fps for a label that changes on level-up
-   would be pure waste — and with up to 50 players in a room it would be
-   50x that waste. */
-/* v2.3.1953: `host` is where the pill NODE is added; `container` still owns the
-   refs.  Player displays pass their _uiLayer so the plate rides the build-scale
-   correction with the rest of the HUD; monsters (and any caller that omits it)
-   are unchanged. */
-/* v2.3.1953: the v2.3.1887 hide-by-EXCEPTION sweep, made to descend one level.
-   The HUD moved into display._uiLayer (see createPlayerDisplay), so a flat pass
-   over display.children would have seen ONE opaque child in place of eighteen
-   and hidden the name plate and the vitals with it.  Running the same keep-set
-   over both levels leaves the rule literally unchanged: everything that is not
-   named survives death nowhere, and everything named survives wherever it
-   lives. */
-/* ═══ v2.3.1953: HEIGHT AND FRAME, APPLIED IN ONE PLACE ═══
- *
- * Owner: "is there a way to add 'height' to your character as an option?" and
- * then "Maybe also frame wideness (thin, medium, large)".
- *
- * ── WHY THE CONTAINER AND NOT THE SPRITES ──
- * The figure is not one sprite: it is the body, three body REGIONS, four gear
- * layers, a shirt, hair, a beard, a hat, two shield clones, a weapon container
- * and a block arm, and every one of them is placed from the body's transform in
- * 256-space with per-facing anchors, nudges and dir-scales.  Scaling them
- * individually would mean threading a second axis through every placement
- * helper, and the first thing to go wrong would be a beard that drifts off the
- * chin at `tall` — a silent, per-facing bug of exactly the kind this file's
- * comment history is full of.  The display CONTAINER is above all of it, so one
- * non-uniform scale moves the whole figure with its alignment intact, by
- * construction rather than by care.
- *
- * ── THE FEET STAY ON THE GROUND ──
- * The container's origin is the sprite CENTRE, not the boots (feet sit
- * FEET_OFFSET=24 units below it, sheetGeometry).  Scaling about the centre
- * would push a tall bro's boots ~3px INTO the floor and lift a short one off
- * it.  So the display is nudged up by exactly the growth below the origin,
- * which pins the feet to the world position the server knows about — the only
- * point of the figure that has to agree with anything.
- *
- * ── AND THE HUD DOES NOT STRETCH ──
- * display._uiLayer carries the inverse, so the name plate, level, threat
- * skull, floating vitals and duel bar are the same size and shape on every
- * build.  Their POSITIONS still ride the scale, which is what you want: the
- * plate under a tall bro sits under his actual boots.
- *
- * Sets the scale on the display and the inverse on its ui layer, and RETURNS
- * the lift to add to display.y — a return rather than a mutation because the
- * caller owns that assignment and has just written the world position into it.
- */
-/* ── HOW FAR THE BOOTS ARE BELOW THE DISPLAY'S ORIGIN, in container units ──
- * Derived from the numbers that already govern it rather than restated as a
- * constant: BODY_ROWS carries each facing's MEASURED foot row in 256-frame
- * units, the cell centre is 128, and one 256-space unit is
- * bodyDirScale * LOCAL_SCALE container units.
- *
- * The first cut used sheetGeometry's FEET_OFFSET = 24 -- which is a TOUCH
- * anchor, a different measurement of a different thing -- and the boots came
- * out 2.9 world px low on a tall bro.  The real figure is ~41.6 (south stand:
- * (221-128) * 1.061 * 0.421875), and mp-build measured exactly that before
- * this was fixed, which is how it was found.
- *
- * pose/dir come from the display's own animation cache, i.e. the frame that
- * was last DRAWN.  One frame of lag on a correction whose per-facing spread is
- * under a container unit is invisible, and it avoids reordering this call to
- * after the pose is chosen -- which would mean applying the lift after
- * display.y has already been read by the zone-scale lookup. */
-const BODY_CELL_MID = 128;
-const LOCAL_BODY_SCALE = 0.421875;   /* the local player's LOCAL_SCALE, v2.3.741 */
 /* v2.3.3580: capturePoseFrames' eight facings (screen space, +y down) and the
    sheet each is drawn from -- west, northwest and southeast are east,
    northeast and southwest mirrored, by the world */
@@ -6875,20 +6037,6 @@ export function nominalStandFigure(dir) {
   const s = bodyDirScale('stand', d) * LOCAL_BODY_SCALE * PLAYER_SIZE_MULT;
   return { bodyH: (rows.feet - rows.crown + 1) * s, footDy: (rows.feet - BODY_CELL_MID) * s };
 }
-/* ═══ v2.3.3003: A SWIMMER'S WATERLINE ═══
-   Swimming in the Wheel (game/wheelSwim.js, rendering/swimFx.js) only the
-   head is out of the water: the figure is sunk until this row is at the
-   water's surface and cut off below it.  The row is the middle of the NECK
-   -- the whole head and its hat above it, the shoulders under -- measured
-   off the bare body sheets the way BODY_ROWS is (256-frame units): each
-   standing sheet's narrowest run between the jaw and the shoulders, and the
-   jog's the median of its frames plus two (its body bobs; the head bobs in
-   the water with it).  Returned in the figure's own units, like
-   _feetOffsetUnits, with its feet and crown for the same frame. */
-const NECK_ROWS = {
-  stand: { south: 83, east: 82, north: 84, northeast: 79, southwest: 80 },
-  jog: { south: 80, east: 92, north: 72, northeast: 82, southwest: 76 },
-};
 export function figureSwimLine(display) {
   const pose = (display && display._animPose) === 'jog' ? 'jog' : 'stand';
   const dir = (display && display._animDir) || 'south';
@@ -7226,13 +6374,6 @@ const PLATE_NAME_WEIGHT = '600';
    reach for the band colours themselves). */
 const PLATE_BORDER_ALPHA = 0.80;
 
-/* The border's width, unchanged at 2.  §5.2 states 2 px and the owner
-   confirmed the four bands against that number (D16), so this round takes its
-   softening from the alpha above and leaves the width alone -- a thinner ring
-   costs band information twice over (less colour AND fewer pixels to judge it
-   by).  It lives here so it is visible as a knob, not so it gets pulled. */
-const PLATE_BORDER_PX = 2;
-
 /* v2.3.2530's PLATE_BADGE_FILL (the level disc's off-white) is GONE in
    v2.3.2571 along with the disc it filled -- see the level block in
    _drawPlateCapsule.  Deleted rather than left as a knob that paints nothing:
@@ -7301,7 +6442,6 @@ const PLATE_BAND = {
    drift by way of a second hand-written hex literal. */
 function _hexOf(n) { return '#' + Number(n).toString(16).padStart(6, '0'); }
 const PLATE_LEVEL_STROKE = '#0A1620';
-const PLATE_LEVEL_STROKE_PX = 2;
 /* ═══ THE ATTACKING-YOU FILL, AND THE ONE NUMBER THE MOCK DOES NOT GIVE ═══
    D4: "the plate's BACKGROUND FILL turns bright red while the monster is
    attacking you; the border rules do not change."  The mock has no example of
@@ -7368,43 +6508,6 @@ const PLATE_BOSS_FILL_ALPHA = 0.94;
    still carries the band (D4), and the digits go white so they can be read at
    the moment the plate is shouting. */
 const PLATE_ALARM_LEVEL_FILL = '#FFFFFF';
-/* Geometry, as ratios of the name's type size so the whole plate scales from
-   one number (the same "the plate sizes itself off this number" property the
-   old pill had, which is what kept text from rattling in a fixed box). */
-/* ═══ v2.3.2590: "SMALLER OVERALL" IS TAKEN OUT OF THE CHROME, NOT THE TYPE ═══
-   Owner: "The name plates are also a bit too large and distracting."
-
-   The ratios below are the plate's PADDING and HEIGHT, i.e. the empty space
-   the capsule wraps around the words.  They come down; the type does not.
-   That ordering is the owner's own stated preference from the last time they
-   asked for a shrink -- "still keeping the text largeness mostly intact" --
-   and it is the right order on its own merits: the words are the content and
-   the capsule is the wrapper, so the wrapper gives first.
-
-   At the 15 CSS px the plate is designed at, and read off the renderer rather
-   than estimated:
-       height        27 -> 23 px   (1.80x the type -> 1.55x; mp-monsterplate
-                                    asserts the ratio, not the pixel count)
-       side padding  24 -> 18 px   (padL + gap + padR, so every plate is
-                                    exactly 6 px narrower whatever its name is)
-
-   The WIDTH moves least, and it is worth saying why rather than letting the
-   next person re-derive it: most of a plate's width is the NAME, which this
-   round does not touch.  So chrome alone cannot make the plate dramatically
-   narrower -- past this point the only lever left is the type size, and the
-   owner has twice asked for the text to stay ("still keeping the text
-   largeness mostly intact"), so that is their call to make and not a thing to
-   do quietly on their behalf.
-
-   PLATE_BORDER_PX is deliberately NOT in this list: the knob block above
-   records that a thinner ring costs band information twice over (less colour
-   AND fewer pixels to judge it by), and a plate that is smaller everywhere
-   except its ring is the one shape where 2 px is doing MORE work, not less. */
-const PLATE_H_RATIO = 1.55;     /* was 1.8 (26.7 / 14.3 measured off the mock) */
-const PLATE_PAD_L_RATIO = 0.5;  /* was 0.7 */
-const PLATE_GAP_RATIO = 0.42;   /* was 0.55 */
-const PLATE_PAD_R_RATIO = 0.25; /* was 0.3 */
-const PLATE_BADGE_TYPE_RATIO = 0.85;
 /* D4: "hit by you within the last 3 s" -- how long a landed hit keeps this
    monster counted as the fight you are in, so the plate stays down between
    swings instead of blinking back on in the gap. */
@@ -8109,29 +7212,6 @@ function _drawPlateCapsule(display, level, broId, alarm, band, party, boss, elem
   };
 }
 
-
-/* ═══ v2.3.1785: the raised shield gets an arm ═══
- * See blockArm.js for why this is cut from the bow art rather than masked out
- * of the standing body (owner: "There is no outstretched arm the shield orbits
- * the body").  Returns the world-space point the shield should be held at, or
- * null when there is no arm for this facing — in which case the caller keeps
- * the old free-floating placement, which is what every north facing uses.
- *
- * The bow art is authored at a different size from the walking body, so the
- * arm is scaled by the same ratio the bow stand-in uses (drawn body height
- * over the bow sheet's 188px figure) and then pinned by its SHOULDER to the
- * body's shoulder.  Pinning by the shoulder rather than by the frame corner is
- * what keeps it attached when the figure's per-facing scale changes.
- */
-const BLOCK_ARM_SHOULDER = {
-  /* Where the body's shoulder sits, in display-local px, per rendered facing.
-     Only the facings with an arm appear — south has none (see blockArm.js). */
-  east:      [7, -12],
-  west:      [-7, -12],
-  southeast: [6, -12],
-  southwest: [-6, -12],
-};
-
 /* Hide the arm AND record it.  Both must happen together: the probe was
    written only inside the placement at first, so lowering the shield left the
    previous frame's reading in place and mp-blockarm read a shield-down bro as
@@ -8220,47 +7300,6 @@ function _hideBlockCaret(display) {
  * to hiding the sprite rather than leaving a stale icon on screen.
  */
 const SOUTH_BLOCK_OFFHAND_ENABLED = true;
-/* ═══ v2.3.1882: JUST BELOW THE HEAD, ON THE CAMERA'S RIGHT ═══
- * Owner: "The south block sword needs its position to move.  It should be
- * just below the head on the right side of the body (right side from camera
- * perspective)."
- *
- * Was { x: -11, y: -34 }, which put the grip at screen LEFT and at HEAD
- * height — above the shoulders, clear of the body, with the blade sweeping
- * further left again.  Nothing was holding it, and that is what it looked
- * like: a sword hanging in the air beside his ear.
- *
- * The new numbers are read off the figure rather than guessed, via
- * blockGeomProbe (pixiRenderer), which reports the body in THIS space —
- * display-local, the same units this constant is written in.  For the south
- * stand at the time of writing: crown y -42.5, shoulders y -15.7, feet y
- * 41.6, torso x -13.9..+13.9, and the shield a 72px disc centred (4.2, 15.4),
- * i.e. spanning y -20.6..+51.4.  So:
- *   x +17  — just outside the right ribs (13.9), so it reads as beside him
- *            rather than painted on his chest.  POSITIVE is the camera's
- *            right, which is the player's own left hand: the off hand, which
- *            is the one not carrying the shield.
- *   y -13  — a couple of units below the shoulder line at -15.7, which is
- *            "just below the head" stated as a number.
- * That lands the grip inside the shield's top-right quadrant, so the disc
- * cuts the hilt and the blade runs out past its edge — the occlusion the
- * owner asked for at v2.3.1871 and the reason this sprite is parked directly
- * beneath the shield in the child list. */
-const SOUTH_BLOCK_OFFHAND = { x: 17, y: -13 };
-/* Per-type, because the two kinds of art hang from the grip in opposite
- * directions.  The posed greatsword and bow are drawn hilt-high with the
- * blade falling away, so the default puts the grip up by the shoulder and the
- * blade runs down into the shield.  A staff is AIMED (its icon is neutral)
- * and stands head-up out of the fist, so the same grip drove its butt end
- * straight across the face.  Dropped and pushed out, it rises clear of the
- * head and its lower end tucks behind the shield's top edge instead. */
-const SOUTH_BLOCK_OFFHAND_BY_TYPE = {
-  /* v2.3.1882: mirrored with the default (x -25 -> +25).  Its own offset from
-     the grip is unchanged — it still stands further out and lower than a
-     blade does, because it is AIMED and rises head-up out of the fist rather
-     than hanging from a hilt. */
-  staff: { x: 25, y: -20, px: 40 },
-};
 /* Aimed down and out, so the blade leaves the silhouette below the shield
  * instead of climbing across the face.
  * v2.3.1882: 0.72pi -> 0.28pi, which is the SAME angle mirrored about the
@@ -9454,72 +8493,7 @@ function createOtherPlayerDisplay() {
   return container;
 }
 
-/**
- * Manages all entity rendering.
- */
-/* ═══ v2.3.1895: THE SPEND BARS UNDER THE CHARACTER ═══
- * Owner: "Instead of the special attack counter I want to see what it looks
- * like to have the mp bar below the character (name plate will disappear when
- * mp is used).  The amount of mp used will slide right.  The resource bar will
- * begin fading after 1 second and disappear after 2 seconds if no further mp
- * is used.  Do the same thing for energy but beneath the mp bar.  Reserve the
- * space for whenever mp and energy is used (they stay in those positions)."
- *
- * Geometry is FIXED, not laid out: MP always draws at RES_MP_Y and energy at
- * RES_EN_Y whether or not the other is up.  That is the "reserve the space"
- * requirement, and it is why these are two independent draws rather than a
- * stack — a stack would slide the energy bar upward on the frames where MP is
- * hidden, which is the jitter the request rules out.
- *
- * The bars sit where the NAME PLATE sits, so the plate hides while either is
- * up.  Both therefore share one visibility answer rather than each hiding the
- * plate on its own, or the plate would flicker back between two spends.
- *
- * THE SLIDING CHUNK.  On a spend, the segment between the new fill edge and
- * the old one is kept and animated RIGHT while fading, so the amount that just
- * left is legible as a quantity rather than as a jump.  It is measured from
- * the CURRENT edge every frame rather than from a cached x, so a second spend
- * mid-slide re-bases it instead of leaving two ghosts disagreeing about where
- * the edge is.
- */
-/* v2.3.1896 (owner: "thick white border ... black fill when it's spent ...
-   large enough so that you can fit the numbers on each bar").  The bar grew
-   from 46x4 to 66x14 to hold an 8px readout: 14 less two 2px borders leaves
-   10px of interior, and 8px of text centred in 10 is the smallest that stays
-   legible at this scale.  The width follows so "118 / 118" is not cramped
-   against the ends. */
-/* v2.3.1896c: 66x14 -> 72x16, and the readout 8px -> 10 bold (owner: "space
-   to make the numbers bolder and larger").  16 less two 2px borders leaves
-   12px of interior, which is what 10px text needs to sit centred without
-   crowding the keyline; the width follows so "118 / 118" keeps its air. */
-const RES_BAR_W = 72;
-const RES_BAR_H = 16;
 const RES_BORDER = 2;          /* the white keyline, drawn OUTSIDE the track */
-/* v2.3.1896c: 40 -> 52 (owner: "move the bars down a notch so they don't cover
-   the player's feet").  Not guessed — blockGeomProbe puts the boots at y 41.6
-   in this same display-local space, and the bar was starting at 40 with a 2px
-   border above that, so it genuinely overlapped them.  52 clears the feet by
-   ~8px.  The plate still has to hide: it sits at 38 and stands ~29 tall, so it
-   would reach into the bars wherever they start below it. */
-const RES_MP_Y = 52;
-/* v2.3.1896b: the gap has to clear BOTH borders, not just the bar.  At
-   +3 the MP border's bottom edge (y + H + BORDER) landed 1px BELOW the
-   energy border's top (y - BORDER) and the two rounded outlines merged into
-   one lozenge — visible the moment they were photographed together.  Bar +
-   two borders + 3px of real air. */
-/* v2.3.1896c: derived from RES_MP_Y, not from a repeated literal.  It said
-   `40 + ...` while MP moved to 52, so the energy bar climbed INTO the MP bar
-   and clipped its readout — caught in the screenshot, not by the suite, which
-   only asserts enY > mpY and was still true.  Deriving it makes the two
-   impossible to separate again. */
-/* v2.3.2300: the block sheet's own aspect. His frames are 273x98, so a bar
-   drawn 76 wide is 27 tall -- taller than the 20 the old bar plus its keyline
-   occupied, which is why RES_EN_Y is re-derived below rather than left at a
-   number tuned for the old one. 76 keeps the width the owner has been looking
-   at since v2.3.1896c; the height follows the art rather than being squashed
-   into the old slot, because five blocks squeezed to 16px stop reading as five
-   things. */
-const RES_BLOCK_W = 76;
 const RES_BLOCK_H = Math.round(RES_BLOCK_W * 98 / 273);
 /* Derived, never a literal -- v2.3.1896c records the energy bar climbing INTO
    the MP bar because this said `40 + ...` while MP had moved to 52, and the
@@ -9559,28 +8533,6 @@ const RES_SLIDE_MS = 420;      /* how long the spent chunk takes to leave */
    enough to the terrain to blur the empty end. */
 const RES_TRACK = 0x000000;
 const RES_BORDER_COL = 0xFFFFFF;
-const RES_FILL = { mana: 0x5B99DE, stamina: 0xD8A85F };
-const RES_GHOST = { mana: 0x9CC8F2, stamina: 0xF0D9A6 };
-const RES_GHOST_HEX = { mana: '#9CC8F2', stamina: '#F0D9A6' };
-/* v2.3.1897: the spent amount, as a number, gliding off the bar's right end
-   (owner: "I want the resource number spent to glide to the right of the
-   resource bar (as a negative number)").  The ghost chunk stays — it is the
-   MASS that leaves — and this is the same gesture continued past the bar's
-   edge with a figure on it, so you can read HOW MUCH left rather than
-   estimate it from a sliver.
-
-   v2.3.1898 (owner: "I saw the number appear but not gliding.  I want the
-   numbers to slowly move right then fade", and "the glide numbers need to
-   match the same timing as the resource bars for appearing and fading"):
-   it used to ride the CHUNK's clock — 13px over RES_SLIDE_MS.  420ms is
-   under a third of a second of travel across thirteen pixels, which lands
-   before the eye gets there: you see a number appear, already parked.  It now
-   drifts across the bar's WHOLE life instead, 26px over the full hold+fade,
-   so it is still moving while it fades out.  Tying it to RES_HOLD_MS +
-   RES_FADE_MS rather than a duration of its own is what makes "match the
-   bar's timing" true by construction — one clock, so the two cannot drift
-   apart when someone retunes the fade. */
-const RES_SPENT_GAP = 6;       /* clear of the white keyline before it starts */
 const RES_SPENT_TRAVEL = 26;   /* how far right of that it drifts */
 const RES_SPENT_GLIDE_MS = RES_HOLD_MS + RES_FADE_MS;
 
