@@ -3461,9 +3461,7 @@ export class GameRoom {
           if (ps.stamina <= 0) {
             /* Drop the shield AND lock it down.  Before the latch this
                assignment survived milliseconds. */
-            ps.blocking = false;
-            ps.blockStartT = 0;
-            ps._guardBrokenUntil = Date.now() + this.GUARD_BREAK_MS;
+            this._guardTo(ps, 'break');   /* v2.3.5536: the guard door (moveclaims.js) */
             changed = true;
           }
         } else if (ps.stamina < ps.maxStamina && !this._sprintHoldsRegen(ps, now)) {

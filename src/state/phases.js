@@ -225,19 +225,17 @@ export const PHASES = [
     note: 'v2.3.5213: the door (EX_WAYS move, linger, take; a claim is a string of 32 characters at most, or nothing; the edge stamps _exAt, _exX, _exY; live flag exdoor). Notes beside it, not phases: ps._fireLit (moveclaims.js _fireLitNote) and ps._cookHits (gathering.js _planCookHits, cooking.js _handleCookRequest). No record is held to a cook on purpose (gathering.js): ps.ex === \'cook\' is the only "is cooking".',
   },
   {
-    name: 'guard', side: 'worker', status: 'todo',
+    name: 'guard', side: 'worker', status: 'door',
     what: 'The shield: down, raised with its parry window, holding, broken for 3 s.',
-    field: null, states: ['down', 'parry', 'raised', 'broken'], fn: null, file: null,
+    field: 'ps.blocking', states: ['down', 'parry', 'raised', 'broken'],
+    fn: '_guardTo', file: 'server/src/moveclaims.js',
     clears: [
       { edge: 'end', at: 'server/src/hits.js _hitStopped' },
       { edge: 'leave', at: 'server/src/linger.js _lingerOnClose' },
     ],
     rejoin: 'none: the phone says `blocking` again on every move',
-    today: [
-      { field: 'ps.blocking', file: 'server/src/movement.js', writers: ['server/src/join.js _handleJoin', 'server/src/movement.js _handleMove', 'server/src/moveclaims.js _swingDropsGuard', 'server/src/combat.js _resolvePvPAttack', 'server/src/pvpextras.js _strikePlayer', 'server/src/hits.js _hitStopped', 'server/src/index.js _tickPlayerRegen', 'server/src/linger.js _lingerOnClose', 'server/src/bodytake.js _bodyTakeStart'] },
-      { field: 'ps._guardBrokenUntil', file: 'server/src/hits.js', writers: ['server/src/combat.js _resolvePvPAttack', 'server/src/pvpextras.js _strikePlayer', 'server/src/hits.js _hitStopped', 'server/src/index.js _tickPlayerRegen'] },
-    ],
-    note: 'ps.blocking has nine writers in nine files (and five more for the sparring clone in spar.js); a death touches none of it.',
+    held: { suite: 'server/test/guard-door.test.mjs' },
+    note: 'v2.3.5536: the door (GUARD_WAYS raise, lower, break; the parry stamp ps.blockStartT and the break latch ps._guardBrokenUntil written beside it, never alone; a raise is refused while the latch is live; live flag guarddoor). Its callers: movement.js _handleMove, moveclaims.js _swingDropsGuard, combat.js _resolvePvPAttack, pvpextras.js _strikePlayer, hits.js _hitStopped, index.js _tickPlayerRegen, linger.js, bodytake.js, and the sparring clone (spar.js). The phase is guardStateOf (moveclaims.js); a death touches none of it.',
   },
   {
     name: 'pose', side: 'worker', status: 'door',
