@@ -1,7 +1,7 @@
 card: K
 branch: claude/plan-k-<n>-<topic> (one branch a PR, each begun from main)
-prs: #1822, #1820, #1826, #1829, #1831, #1838, #1842, #1861, #1848, #1899, #1923, #1900, #1931-#1934, #1942, #1949, #1972 merged; 5194b this branch
-state: working
+prs: #1822, #1820, #1826, #1829, #1831, #1838, #1842, #1861, #1848, #1899, #1923, #1900, #1931-#1934, #1942, #1949, #1972 merged; ready: #1981 (5194b, 5546, this branch)
+state: ready
 
 ## Done
 
@@ -17,7 +17,7 @@ state: working
 
 ## Next
 
-- 5194b (this branch): the `reqid` cap, the door's one re-send, http.js's
+- #1981 5194b (5546): the `reqid` cap, the door's one re-send, http.js's
   rows (+ `mktwords`), SHAPES part 2; sitting 25's mends (a first that
   threw kept; both ids' stamps; the bank's opId); req-once 37.
 - Card K's PR 9 entry (cards/K.md) still lists 5194b's parts: the planner's.
