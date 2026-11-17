@@ -1969,6 +1969,8 @@ export const joinMethods = {
         power: this._powerCap(),
         /* v2.3.5484: THE STAT BOARDS (statboards.js, card PW): GET /api/leaderboard/top?category=pts_<stat> ranks the points allocated to each shared stat (and `pts_dmg` the weapons' damage points summed), from every board row's `statPoints`.  HOW MANY boards (STAT_BOARD_IDS, in order): a count that grows (TRAPS §9).  `statboards: false` in liveflags un-advertises it and no report carries the points. */
         statboards: this._statBoardsCap(),
+        /* v2.3.5546 (card K PR 9, 5194b): A REPEAT ACTS ONCE (reqonce.js): a value request carrying its request id (`reqId`) is answered once, a repeat getting the first answer again -- so the page may re-send a request it heard nothing back from with the same id (src/game/actions.js).  `reqonce: false` un-advertises it, and the page re-sends nothing */
+        reqid: this._reqOnceOff() ? undefined : 1,
         accuracy: this._accOn() /* v2.3.4545: ACCURACY (accuracy.js) -- the phone numbers its basic shots a weapon and sends the counts on `track` (`ac`) and each hit's shot (`sn`); `acc_request` answers `acc_state`; `accuracy: false` in liveflags un-advertises it and counts nothing -- lower case, a kill switch */ },
       // v2.3.1178: this session's private economy-endpoint token.
       // state_sync goes to the joining socket ONLY -- never broadcast.

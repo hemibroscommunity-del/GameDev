@@ -573,14 +573,16 @@ _liveKnobs(null);   /* v2.3.5224: from here, today's live knobs */
   const fp = strip(readFileSync(join(ROOT, 'src/game/framePacer.js'), 'utf8'));
   /* v2.3.5235: and the owner's switch's list (clientOff.js), a leaf too */
   const co = strip(readFileSync(join(ROOT, 'src/game/clientOff.js'), 'utf8'));
-  check('17b. the pacer imports the lanes\' table and the owner\'s switches alone (leaves with no imports)', [...fp.matchAll(/^import .* from '([^']+)';/gm)].map((m) => m[1]).join() === './drawLanes.js,./clientOff.js'
-    && ![...dl.matchAll(/^import /gm)].length && ![...co.matchAll(/^import /gm)].length);
+  check('17b. the pacer imports the lanes\' table, the page\'s one reader and the owner\'s switches alone (leaves: the table imports the reader alone, v2.3.5232)', [...fp.matchAll(/^import .* from '([^']+)';/gm)].map((m) => m[1]).join() === './drawLanes.js,./switches.js,./clientOff.js'
+    && [...dl.matchAll(/^import .* from '([^']+)';/gm)].map((m) => m[1]).join() === './switches.js' && ![...co.matchAll(/^import /gm)].length);
   const pt = readFileSync(join(ROOT, 'src/debug/perfTracker.js'), 'utf8');
   check('17c. the frame meter hands the pacer its samples by a setter (no import into the pacer)', /useFrameSamples\(eachSince, busyIn\);/.test(pt));
   const st = readFileSync(join(ROOT, 'src/game/speedTest.js'), 'utf8');
   check('17d. the Speed test holds the ladder while it runs, and lets it go in its finally', /holdLadder\(true\);/.test(st) && /finally \{\s*restore\(was\);\s*holdLadder\(false\);/.test(st));
   const bt = readFileSync(join(ROOT, 'src/ui/BroTown.jsx'), 'utf8');
-  check('17e. no new loop and no step of the frame: BroTown.jsx makes the pacer as before and knows nothing of the governor', !/makeGovernor|holdLadder|setRung|laneKnob/.test(bt) && /_framePacer = makeFramePacer\(\);/.test(bt));
+  /* v2.3.5233 (card O PR 13): its one knob read is the step's cap (laneKnob('step'), the 30 lane) */
+  const btKnobs = [...new Set([...bt.matchAll(/(?<![\w$.])laneKnob\(\s*'([a-z]+)'/g)].map((m) => m[1]))];
+  check('17e. no new loop and no step of the frame: BroTown.jsx makes the pacer as before and knows nothing of the governor (its one knob, the step\'s cap)', !/makeGovernor|holdLadder|setRung/.test(bt) && btKnobs.length === 1 && btKnobs[0] === 'step' && /_framePacer = makeFramePacer\(\);/.test(bt), btKnobs);
 }
 
 /* 18: the rate is a knob (v2.3.5224) */

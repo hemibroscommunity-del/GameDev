@@ -46,15 +46,31 @@ off, one while on.
   acts again, as before (the five still read an older phone's `opId`).
 - `reqstamp: true`: the lasting stamp above (off by default).
 
-## Not done here (5194b, once the files other cards hold are free)
+## 5194b: the page re-sends, and the review's mends (v2.3.5546)
 
-- The cap `reqid` (`join.js`, `CAP_GATES`) that tells the page the worker
-  answers once; only then may the action door re-send a timed-out request
-  with the same id (`src/game/actions.js`), and send a DELETE's id in its
-  query.
-- The market's and the store's rows of the wire table (`wire/http.js`): their
-  `reqId` column `none` -> `reqId`, and `reqId` in their `trust`.
-- `docs/SHAPES.md` part 2's "Where it is remembered" row, for each request.
+- **The cap `reqid`** (`join.js`; `CAP_GATES`): the worker answers once.
+  `reqonce: false` takes it away.
+- **The page's one re-send** (`src/game/actions.js`, `RESEND_MS` 1.5 s): with
+  the cap, a route's request the page heard nothing back from (the fetch
+  failed, or a 5xx) goes once more with the same id; never a third time, and
+  never after the caller's own time limit. Without the cap: one try, as
+  before. (A DELETE's id would ride its query; the two cancels are not
+  request rows, so the page sends none: a repeat finds the order gone.)
+- **The wire table**: the market's place and the store's list, buy, bid and
+  accept read `reqId` (`wire/http.js`), and the place names `mktwords` (its
+  label and seller's name read only with it off: card MOD #1947).
+- **The gatekeeper's review (sitting 25)**: a first that threw is kept as
+  `interrupted` and never runs again (a matched sale may already be owed);
+  a re-send with both ids across a deploy finds the older stamp by its opId
+  (the chest, the cape, the spin); the bank's answer keeps the phone's own
+  opId.
+- `docs/SHAPES.md` part 2 says each.
+
+## Still open
+
+- An order that matches at once leaves no resting record: its repeat is
+  answered from memory only, so after a restart it reads `Item not in stash`
+  rather than the sale (nothing is sold twice).
 
 ## What holds it
 

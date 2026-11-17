@@ -490,6 +490,12 @@ play, a number 1.1 can measure.
   none doubled; today's saves unchanged), merged at sitting 24. A weapon's
   own id (#1873, save shape 21 -> 22) waits for #1960's deploy to finish
   (the gatekeeper, sitting 25, tag 5663).*
+  *R's #1873 (every weapon its own id: one `GID_RE`, migration 22, every
+  road a weapon reaches the bag by keeps its id or mints one; save shape
+  21 -> 22, no switch back), merged at sitting 25 after #1960's deploy.
+  The box waits for quest state and experience (R's PRs 5 and 10); the
+  world's sum's weapon lows are R's next (review-z25) (the gatekeeper,
+  sitting 26, tag 5664).*
 - [x] **4.4 [NOW] The whole world's sum.** "A purse equals its start plus
   the roads that ran" is true by construction; past copies went through
   legal roads (ore sold 24 times in one bundle). So every road in
@@ -910,6 +916,9 @@ punishes by itself.
   OFF), merged at sitting 23. Before the flag is thrown: R's 5295 (the
   `share:` ids counted as items, `IDS_MAX` 32) (the gatekeeper, sitting 24,
   tag 5662).*
+  *R's #1969 (5295: an arena share keeps its own bound, `SHARES_MAX` 128,
+  other ids `IDS_MAX` 32; ledger only, `xferescrow` still OFF), merged at
+  sitting 25 (the gatekeeper, sitting 26, tag 5664).*
 - [ ] **10.6 [NEXT] What an honest player's trouble looks like.** Each
   signal lists what changes it without any cheating: the frame rate, the
   line's delay, a deploy, a hidden tab. Every Low Power iPhone shares one
@@ -965,6 +974,12 @@ are cheap now and a rewrite later, and builds no helper feature.
   id, never a place in a list (the market's `place` takes a position and no
   request id: a retry after a timeout can sell the next sword). Every
   request that moves value takes a request id and acts once.
+  *Begun (card K): #1972 (a repeat acts once: answers kept by player and
+  `reqId`, 32 a player; `reqonce`, ON; the stamp row `reqstamp`, OFF, the
+  owner's cost call), merged at sitting 25. The box waits for the page's
+  re-send (K's 5194b), which must not ship until a first try that threw
+  after the market's sale was owed is remembered (review-z25) (the
+  gatekeeper, sitting 26, tag 5664).*
 - [ ] **11.4 [NEXT] The words rule.** Text a player wrote (a name, chat, a
   shop's note) never sits inside a sentence the game speaks: mail today
   reads "sold to" and then the buyer's name. Such messages carry a template
