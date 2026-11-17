@@ -1,7 +1,7 @@
 card: K
 branch: claude/plan-k-<n>-<topic> (one branch a PR, each begun from main)
-prs: #1822, #1820, #1826, #1829, #1831, #1838, #1842, #1861, #1848, #1899, #1923, #1900, #1931-#1934, #1942, #1949 merged; 5194 this branch
-state: working
+prs: #1822, #1820, #1826, #1829, #1831, #1838, #1842, #1861, #1848, #1899, #1923, #1900, #1931-#1934, #1942, #1949 merged; ready: #1972 (5194, this branch)
+state: ready
 
 ## Done
 
@@ -10,7 +10,7 @@ state: working
 - Claims 5540 (#1842, `arrowlane` ON), 5541 (#1848, the sprint mark OFF).
 - 5542 (#1899): chat lanes for MOD. RT-1: N10 (5543, #1923, `relaybytes`),
   N11 (5544, #1942, `heapforget`), N5 (5545, #1949, `roomceiling`).
-- 5194 (this branch, `reqonce` ON, `reqstamp` OFF): a repeat acts once on
+- #1972 5194 (`reqonce` ON, `reqstamp` OFF): a repeat acts once on
   the market, the store and its offers, the bank, chest, cape and spin
   (reqonce.js; req-once.test; cost-guard §22). The planning session's
   split: the held files wait for 5194b.
