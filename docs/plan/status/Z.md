@@ -1,40 +1,37 @@
 card: Z
-branch: claude/plan-z-sitting-23
-prs: (this PR), tag 5661, the last line of sitting 23's list (ready)
+branch: claude/plan-z-sitting-24
+prs: (this PR), tag 5662, the last line of sitting 24's list (ready)
 state: ready
 
 ## Done
-- Sitting 22 merged (`main` 8149d61). Sitting 23 (this list), reviewed and
-  rehearsed on 8149d61: `census/review-z23.md`. Plan noted for sitting
-  22's merges (1.7: O's 14d; 5.3b: L's ride door, the line 15 -> 14;
-  7.1: T's #1935, #1939).
+- Sitting 23 merged (`main` cfcd70b). Sitting 24 (this list), reviewed and
+  rehearsed on cfcd70b: `census/review-z24.md`. Plan noted for sitting
+  23's merges (4.1: K's #1942, #1949; 8.1: J2's #1948; 9.5: P's #1943;
+  10.5: R's #1961).
 
 ## The list: merge in this order, each "Create a merge commit"
-1 MOD #1947 (5626) · 2 L #1946 (5524) · 3 J2 #1948 (5641) · 4 P #1943 (5565)
-· 5 K #1942 (5544) · 6 K #1949 (5545, on #1942) · 7 MOD #1909 (5623)
-· 8 MOD #1914 (5624, on #1909) · 9 OPS #1944 (5610) · 10 R #1961 (5292,
-replaces #1950: never merge #1950) · 11 this PR. All based on `main`, one
-merge base at every step. Deploys: the worker at 1, 5-10 (`server/**`).
-New live flags, all ON: `mktwords`, `?allydrafts`, `?fishspot`,
-`heapforget`, `roomceiling` (a cap), `reportring`, `invitepace`,
-`guestlazy`. Rehearsed (tree a49f278): build PASS, questline 187/187,
-server tests 464 green (precheck's limit timed out under load).
+1 J2 #1953 (5642) · 2 J2 #1964 (5643, on #1953) · 3 T #1958 (5310)
+· 4 P #1955 (5566) · 5 P #1959 (5567) · 6 P #1963 (5569) · 7 L #1956
+(5525, on #1963) · 8 O #1952 (5239) · 9 RT-1 #1940 (5584) · 10 R #1960
+(5294) · 11 MOD #1962 (5628) · 12 MOD #1967 (5629, on #1962) · 13 MOD
+#1954 (5627) · 14 OPS #1951 (5607) · 15 OPS #1957 (5613) · 16 OPS #1966
+(5612) · 17 OPS #1968 (5614) · 18 this PR. All based on `main`, one merge
+base at every step. Deploys: the worker at 4-16 (`server/**`). New live
+flags: `ip56`, `offdevs` (ON); page switches ON: `?hudbars`,
+`?deathstrip`, `?uploadicons`, `?veildoor`. REHEARSED
 
-## Held (expires at sitting 24)
-- R #1873 (save shape 21 -> 22): a rolled-back worker destroys weapons
-  with `gid` outside `rpg:`. R's #1960 (the tolerant reader) deploys first.
-- O #1952: a failed clip leaves the hair masks as colour numbers under
-  the alpha mask (`p256.js` HAIRMASKS_ON/CAPE_HOOD_ON fixed at load).
+## Held
+- R #1873 (save shape 21 -> 22): not before #1960 is deployed (a later
+  sitting); it then merges main (keep one `GID_RE`).
 
 ## Stalled
-- None. For sitting 24: RT-1 #1940 (07f549b5, merges main after this
-  list), P #1955 > #1959, J2 #1953, T #1958, L #1956, R #1960 > #1873,
-  MOD #1954 (`ownerdev:`, a new key) and #1962, O #1952 fixed, OPS #1951.
-  Z's next tag: 5662.
+- None. For sitting 25: O #1970 (5232), MOD #1971 (5630), K #1972
+  (5194), R #1969 (5295), R #1873. Z's next tag: 5663.
 
 ## Found
-- precheck's `server-tests` limit (5 min) vs the suite's 256 s: load times it out. No card.
-- `switches-thrown` finds a system's suites by file name, so `ip56`/`ip64`
-  cannot list account.test (`tools/guards/lib/systems.mjs`; T's).
-- `on` dates of 11-15 on rows merging 11-17: `?fishspot`, `guestlazy`,
-  `reportring`, `invitepace` (for T's date sweep).
+- precheck's `server-tests` 5-minute limit vs the suite's ~220-256 s
+  under load (sitting 23's, still; R and O hit it). No card.
+- `mp-membudget`'s `buffers` at 24.1-24.2 against its line 24.2 (P's
+  reviewer): the next PR may go red on noise.
+- `DevPanel.jsx:1638` shows a report's last 3 lines and never `said`
+  (since #1909): whoever holds the Test panel (OPS's file).
