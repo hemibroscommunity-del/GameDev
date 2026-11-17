@@ -20,6 +20,7 @@ which also writes the reason's old field:
 | `town` | `S._townArtHold` | `zoneTransitions.js` `syncTownScenery`, `_liftTownVeil` |
 | `farm` | `S._farmArtHold` | `farmTrip.js` (your farm's art) |
 | `avatar` | `S._avatarArtHold` | `avatarHold.js` `holdForAvatar` (your bro's pictures) |
+| `net` | `S._netHold` (a lift is `false`) | `wsClient.js` (state_sync's readiness, the socket's close) and `serverReady.js` (v2.3.5527, once card K freed `wsClient.js`) |
 
 The phase: `veiled` while any reason holds, else `in` (`veilPhase`).
 
@@ -33,8 +34,6 @@ loading screen (questline and an `mp-heldsweep` sample, at the PR).
 
 ## Beside the door
 
-- `S._netHold`, the server's veil: written in `wsClient.js` (card K's file)
-  and `serverReady.js`. It joins the door as the reason `net` after card K.
 - `S._wheelDungeonOpening`: the dungeon row's.
 - The first loading screen's gate (`ui/loadingGate.js`): its own read of the
   overlay (`_up`), the one-way `_worldIn` and the queue `_waiting`.

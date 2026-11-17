@@ -185,7 +185,7 @@ const req = (path, origin, upgrade = true) => ({
   check("5. the page reads the worker's close code, and stops there (no reconnect on it)",
     new RegExp('event\\.code === ' + ORIGIN_LOCK.CLOSE + '\\)\\) \\{[\\s\\S]{0,240}?showOriginScreen\\([\\s\\S]{0,40}?return;').test(ws));
   check('5. ...and that stop comes before the ordinary reconnect', ws.indexOf('event.code === ' + ORIGIN_LOCK.CLOSE) > 0
-    && ws.indexOf('event.code === ' + ORIGIN_LOCK.CLOSE) < ws.indexOf("resetServerReady('lost');\n        S._netHold = true;\n        scheduleReconnect();"));
+    && ws.indexOf('event.code === ' + ORIGIN_LOCK.CLOSE) < ws.indexOf("resetServerReady('lost');\n        veilTo(S, 'net', true);"));   /* v2.3.5527: S._netHold through the loading door */
   check("5. the screen's own home is the worker's", screen.includes("const HOME = '" + ORIGIN_LOCK.HOME + "';"));
   const others = [4003, 4004, 4005, 4006, 4009, 4010, FLOOD.CLOSE_JOIN, FLOOD.CLOSE_FLOOD, VERIFY.CLOSE_CODE];
   check('5. 4015 is no other refusal\'s code', !others.includes(ORIGIN_LOCK.CLOSE), others);

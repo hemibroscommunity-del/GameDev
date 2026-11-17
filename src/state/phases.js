@@ -471,7 +471,7 @@ export const PHASES = [
     clears: [{ edge: 'zone', at: 'src/game/zoneTransitions.js handleZoneTransitions' }],
     rejoin: 'none: the page\'s own',
     held: { suite: 'server/test/loading-door.test.mjs' },
-    note: 'v2.3.5525: the door (the planner\'s reading: one field, the set of reasons; S._veils a Map from VEIL_WHYS zone, trip, town, farm, avatar to its hold; veilTo writes each reason\'s old field, S._zoneLoading, S._wheelTripVeil, S._townArtHold, S._farmArtHold, S._avatarArtHold, for its readers; switch ?veildoor). Beside it: S._netHold (wsClient.js, card K\'s file, and serverReady.js: folded in after K), the dungeon\'s opening (the dungeon row), and the first loading screen\'s gate (ui/loadingGate.js _up, _worldIn, _waiting: its own read of the overlay).',
+    note: 'v2.3.5525: the door (the planner\'s reading: one field, the set of reasons; S._veils a Map from VEIL_WHYS zone, trip, town, farm, avatar (and net, v2.3.5527) to its hold; veilTo writes each reason\'s old field, S._zoneLoading, S._wheelTripVeil, S._townArtHold, S._farmArtHold, S._avatarArtHold, for its readers; switch ?veildoor). v2.3.5527: + net, S._netHold (wsClient.js, serverReady.js), once card K freed wsClient.js. Beside it: the dungeon\'s opening (the dungeon row), and the first loading screen\'s gate (ui/loadingGate.js _up, _worldIn, _waiting: its own read of the overlay).',
   },
   {
     name: 'window', side: 'page', status: 'door',

@@ -47,6 +47,7 @@
  * do the new one; they wait, visibly, for a server that can.
  */
 import { getState } from '@/ui/mobile/dash/common.js';
+import { veilTo } from '@/game/veilDoor.js';   /* v2.3.5527: the loading door (S._netHold, its `net` reason) */
 
 export const SERVER_READY_CAPS = ['prog3'];
 
@@ -165,8 +166,8 @@ function _hideVeil() {
 
 function _apply(st, graceMs) {
   const S = getState();
-  if (st.ready) { if (S) S._netHold = false; _hideVeil(); return; }
-  if (S) S._netHold = true;
+  if (st.ready) { if (S) veilTo(S, 'net', null); _hideVeil(); return; }   /* v2.3.5527: the loading door */
+  if (S) veilTo(S, 'net', true);
   if (_veilTimer) clearTimeout(_veilTimer);
   _veilTimer = setTimeout(_veilDue, graceMs);
 }

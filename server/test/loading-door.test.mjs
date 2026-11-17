@@ -4,7 +4,7 @@
  * The world's veils are one field, `S._veils` (a Map from the reason to its
  * hold), written only by veilTo, which also writes each reason's old field
  * (S._zoneLoading, S._wheelTripVeil, S._townArtHold, S._farmArtHold,
- * S._avatarArtHold) for its readers.  This suite:
+ * S._avatarArtHold, and since v2.3.5527 S._netHold) for its readers.  This suite:
  *
  *   1. the door's own rules: every reason, a hold and a lift, the old field
  *      written as before (the trip's lift is false, the others' null), the
@@ -33,25 +33,25 @@ setSearch('');
 
 /* ── 1. the door's own rules ── */
 {
-  check('1. the reasons and their old fields', JSON.stringify(VEIL_WHYS) === JSON.stringify({ zone: '_zoneLoading', trip: '_wheelTripVeil', town: '_townArtHold', farm: '_farmArtHold', avatar: '_avatarArtHold' }));
+  check('1. the reasons and their old fields', JSON.stringify(VEIL_WHYS) === JSON.stringify({ zone: '_zoneLoading', trip: '_wheelTripVeil', town: '_townArtHold', farm: '_farmArtHold', avatar: '_avatarArtHold', net: '_netHold' }));
   const S = {};
   check('1. nothing held: in', veilPhase(S) === 'in');
-  const holds = { zone: { zone: 'dungeon_1' }, trip: true, town: { t: 1, done: false }, farm: 7, avatar: { t: 2 } };
+  const holds = { zone: { zone: 'dungeon_1' }, trip: true, town: { t: 1, done: false }, farm: 7, avatar: { t: 2 }, net: true };
   let ok = true;
   for (const [why, h] of Object.entries(holds)) {
     if (veilTo(S, why, h) !== true || S[VEIL_WHYS[why]] !== h || S._veils.get(why) !== h) ok = false;
   }
-  check('1. each reason holds: its old field is its hold, and it is in S._veils', ok && S._veils.size === 5);
+  check('1. each reason holds: its old field is its hold, and it is in S._veils', ok && S._veils.size === 6);
   check('1. ...veiled', veilPhase(S) === 'veiled');
-  veilTo(S, 'zone', null); veilTo(S, 'trip', null); veilTo(S, 'town', null); veilTo(S, 'farm', null);
-  check('1. lifts: the old fields as before (the trip false, the others null), still veiled by the one left',
-    S._zoneLoading === null && S._wheelTripVeil === false && S._townArtHold === null && S._farmArtHold === null && veilPhase(S) === 'veiled' && S._veils.size === 1);
+  veilTo(S, 'zone', null); veilTo(S, 'trip', null); veilTo(S, 'town', null); veilTo(S, 'farm', null); veilTo(S, 'net', null);
+  check('1. lifts: the old fields as before (the trip and the net false, the others null), still veiled by the one left',
+    S._zoneLoading === null && S._wheelTripVeil === false && S._townArtHold === null && S._farmArtHold === null && S._netHold === false && veilPhase(S) === 'veiled' && S._veils.size === 1);
   veilTo(S, 'avatar', undefined);
   check('1. the last lift: in', veilPhase(S) === 'in' && S._avatarArtHold === null);
   veilTo(S, 'trip', false);
   check('1. a hold of false is a lift', S._wheelTripVeil === false && veilPhase(S) === 'in');
   check('1. a reason that is none, one off the prototype, or no S is refused',
-    veilTo(S, 'net', true) === false && veilTo(S, 'constructor', true) === false && veilTo(S, '__proto__', true) === false && veilTo(null, 'zone', {}) === false && S._netHold === undefined && veilPhase(S) === 'in');
+    veilTo(S, 'dungeon', true) === false && veilTo(S, 'constructor', true) === false && veilTo(S, '__proto__', true) === false && veilTo(null, 'zone', {}) === false && S._dungeon === undefined && veilPhase(S) === 'in');
   setSearch('?veildoor=0');
   const T = {};
   check('1. ?veildoor=0: the old field alone, as before', veilTo(T, 'farm', 3) === true && T._farmArtHold === 3 && T._veils === undefined);
@@ -70,7 +70,7 @@ setSearch('');
     }
   })('src/');
   const strip = (t) => t.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' ')).replace(/(^|[^:'"\\])\/\/.*$/gm, '$1');
-  const NAMES = '_veils|_zoneLoading|_wheelTripVeil|_townArtHold|_farmArtHold|_avatarArtHold';
+  const NAMES = '_veils|_zoneLoading|_wheelTripVeil|_townArtHold|_farmArtHold|_avatarArtHold|_netHold';
   const WRITE = new RegExp(`(?:\\.(?:${NAMES})\\b|\\[\\s*['"](?:${NAMES})['"]\\s*\\])\\s*(?:[-+*/]?=(?!=)|\\+\\+|--)|delete\\s+[\\w$.]+\\.(?:${NAMES})\\b|Object\\.assign\\(\\s*[\\w$.]+\\s*,[^)]*\\{[^}]*\\b(?:${NAMES})\\s*:`);
   const read = (f) => readFileSync(new URL(f, ROOT), 'utf8');
   const outside = [];
@@ -100,7 +100,13 @@ setSearch('');
     ['zone+', 'zone-', 'trip+', 'trip-', 'town+', 'town-'].every((k) => has(zt, k)), zt);
   check('2. farmTrip.js holds and lifts the farm, avatarHold.js the avatar',
     has(ft, 'farm+') && has(ft, 'farm-') && has(ah, 'avatar+') && has(ah, 'avatar-'), { ft, ah });
-  check('2. no other file calls veilTo', files.filter((f) => !/veilDoor\.js$/.test(f) && /\bveilTo\(/.test(strip(read(f)))).sort().join() === 'src/game/avatarHold.js,src/game/farmTrip.js,src/game/zoneTransitions.js');
+  /* v2.3.5527: the net's callers, found by what they call (no big file named by its path) */
+  const callers = files.filter((f) => !/veilDoor\.js$/.test(f) && /\bveilTo\(/.test(strip(read(f))));
+  const net = callers.flatMap((f) => [...strip(read(f)).matchAll(/veilTo\(S, 'net', ([^)]*?)\);/g)].map((m) => ({ f, lift: /^null$/.test(m[1].trim()) || /\? null : true$/.test(m[1].trim()) })));
+  const netFiles = [...new Set(net.map((n) => n.f))];
+  check('2. the net is held and lifted in two networking files (state_sync and the close; the readiness veil)',
+    netFiles.length === 2 && netFiles.every((f) => f.startsWith('src/networking/')) && net.some((n) => n.lift) && net.length >= 3, net);
+  check('2. no other file calls veilTo (five: the zone door, the farm, your bro, and the two of the net)', callers.length === 5, callers);
 }
 
 /* ── 3. a real hold ── */
