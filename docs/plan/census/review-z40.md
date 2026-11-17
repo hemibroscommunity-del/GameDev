@@ -236,4 +236,33 @@ session asked for the list within 15 minutes. Not reviewed this sitting.
 
 ## The rehearsal
 
-REHEARSAL_PLACEHOLDER
+`tools/dev/gatekeeper.mjs` on 17f749b1 with the ten listed heads, in the
+list's order: tree b9e58655 (the same as the step-by-step merges with
+#2063 at 71ba0da5); build PASS (16 s); questline 187/187 (528 s);
+precheck the one 5-minute server-tests limit (the settled one) and
+nothing else red (its WARNs: L's stacked #2058, #2065, #2067 carry
+#2052's 5535, as each holds it; the branch count). In that tree:
+`chainday`, `gearheld`, `oldkeyheld`, `resetclean`, `movefields`,
+`verify`, `elemental2` green; `switches-thrown --only bowshot` green.
+The whole server suite was not run alone here this sitting (the
+planning session asked for the list within 15 minutes at 21:05):
+CI's `test` on each head is it, and SEC's local run on #2063's a9c570cd
+(the stack's top bar the words) read 507 suites green.
+
+Two rehearsals before this one: the first (SEC's first heads and K2,
+20:23) met a worker gone mid-questline ("fetch failed") while four
+readers ran suites on this box (CI's playable on the same SEC tip:
+green); the second (#2055-#2057 at their first heads, K2, L #2052):
+187/187. A third was stopped: L #2058 conflicts after #2059 (above).
+
+CI on the listed heads: #2055 cb74e8e1, #2056, #2057, #2060, #2061,
+#2062: `test`, lint-build, playable, memory-budget all green. #2059
+45a1625b: `test`, lint-build, playable green; memory-budget cancelled
+at the job's 20-minute limit (as #2054's at 39), its one rerun running
+at the close; #2060's head, which carries it, green on all four. #2063
+71ba0da5: lint-build, memory-budget green; `test` red once on
+`switches-thrown`, "bowshot thrown | elemental2: restore clamps at
+maxMana 99" (job 134361589356), outside its diff (no bow, no collision
+mana in it), green here in the rehearsed tree; its one rerun and
+playable running at the close. K2 #2066 932cdbf3 and L #2052 eba7de64:
+all four green.
