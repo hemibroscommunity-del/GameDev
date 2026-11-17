@@ -1,6 +1,6 @@
 card: K
 branch: claude/plan-k-<n>-<topic> (one branch a PR, each begun from main)
-prs: #1822, #1820, #1826, #1829, #1831, #1838, #1842, #1861, #1848, #1899, #1923, #1900, #1931-#1934, #1942, #1949, #1972, #1989 merged; ready: #1981 (5194b, 5546, this branch)
+prs: #1822, #1820, #1826, #1829, #1831, #1838, #1842, #1861, #1848, #1899, #1923, #1900, #1931-#1934, #1942, #1949, #1972, #1989, #1981 merged; ready: #1997 (5196, this branch)
 state: ready
 
 ## Done
@@ -10,18 +10,15 @@ state: ready
 - Claims 5540 (#1842, `arrowlane` ON), 5541 (#1848, the sprint mark OFF).
 - 5542 (#1899): chat lanes for MOD. RT-1: N10 (5543, #1923, `relaybytes`),
   N11 (5544, #1942, `heapforget`), N5 (5545, #1949, `roomceiling`).
-- #1972 5194 (`reqonce` ON, `reqstamp` OFF): a repeat acts once on
-  the market, the store and its offers, the bank, chest, cape and spin
-  (reqonce.js; req-once.test; cost-guard §22). The planning session's
-  split: the held files wait for 5194b.
+- #1972 5194, #1981 5194b, #1989 5195 (`reqonce` ON, `reqstamp` OFF):
+  a repeat acts once on every value request (reqonce.js; the wire door).
 
 ## Next
 
-- #1981 5194b (5546): the `reqid` cap, the door's one re-send (the store's
-  four only, sitting 27's mend), http.js's rows, SHAPES part 2.
-- #1989 5195 (merged): every other value request at the wire door.
-- Lows: the door's entries need their own memory list (sitting 27).
-- Then 5196, 5197. The move's walls; the sword's reach; the bow claim.
+- #1997 5196 (`gidnames` ON): a weapon named by its id beside its
+  place in nine handlers (gidnames.js; the door's GID_PLACE adds it).
+- Then 5197 (the words rule). Lows: the door's entries their own memory
+  list (sitting 27). The move's walls; the sword's reach; the bow claim.
 
 ## Found
 

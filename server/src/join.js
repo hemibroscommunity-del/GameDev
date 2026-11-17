@@ -1971,6 +1971,8 @@ export const joinMethods = {
         statboards: this._statBoardsCap(),
         /* v2.3.5546 (card K PR 9, 5194b): A REPEAT ACTS ONCE (reqonce.js): a value request carrying its request id (`reqId`) is answered once, a repeat getting the first answer again -- so the page may re-send a request it heard nothing back from with the same id (src/game/actions.js).  `reqonce: false` un-advertises it, and the page re-sends nothing */
         reqid: this._reqOnceOff() ? undefined : 1,
+        /* v2.3.5196 (card K PR 11): A WEAPON NAMED BY ITS ID (gidnames.js): the nine requests that take a weapon from the stash read its `gid` beside its place, and refuse when the two disagree -- so the page sends it (src/game/actions.js GID_PLACE).  `gidnames: false` un-advertises it, and the place alone is read */
+        gidnames: this._gidNamesOff() ? undefined : 1,
         accuracy: this._accOn() /* v2.3.4545: ACCURACY (accuracy.js) -- the phone numbers its basic shots a weapon and sends the counts on `track` (`ac`) and each hit's shot (`sn`); `acc_request` answers `acc_state`; `accuracy: false` in liveflags un-advertises it and counts nothing -- lower case, a kill switch */ },
       // v2.3.1178: this session's private economy-endpoint token.
       // state_sync goes to the joining socket ONLY -- never broadcast.

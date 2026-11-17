@@ -238,18 +238,22 @@ So:
 ### Things a phone names by their place today
 
 Each is a row of the wire table whose request must name the thing by its id
-once it has one (card K, after card R's weapon id):
+once it has one (card K, after card R's weapon id). **Built (v2.3.5196, card K
+PR 11; `docs/specs/gid-names.md`):** each reads the weapon's `gid` beside its
+place, refuses when the two disagree, and reads the place alone from an older
+phone; the page's action door adds the id (`GID_PLACE`, `caps.gidnames`).
+Salvage, essence and the reveal take it too:
 
 | Request | Names a weapon by | A check beside it |
 |---|---|---|
-| `sell_weapon` | its place in the stash | none |
-| `equip_request` | its place, and a slot | the type must fit the slot |
-| `POST /api/market/place` | its place | none |
-| `POST /api/store/list` (a weapon) | its place | none |
-| `amulet_forge_request` (extract, from the stash) | its place | none |
-| `trade2_stage_weapon` | its place | the weapon's name, if sent |
-| `smith_salvage`, `essence_apply` | its place | a signature of what it is (`weaponSig`): two alike pass for each other |
-| `reveal_item` | its place | its name, if sent |
+| `sell_weapon` | its `gid` beside its place in the stash (v2.3.5196) | none |
+| `equip_request` | its `gid` beside its place, and a slot (v2.3.5196) | the type must fit the slot |
+| `POST /api/market/place` | its `gid` beside its place (v2.3.5196) | none |
+| `POST /api/store/list` (a weapon) | its `gid` beside its place (v2.3.5196) | none |
+| `amulet_forge_request` (extract, from the stash) | its `gid` beside its place (v2.3.5196) | none |
+| `trade2_stage_weapon` | its `gid` beside its place (v2.3.5196) | the weapon's name, if sent |
+| `smith_salvage`, `essence_apply` | its `gid` beside its place (v2.3.5196) | a signature of what it is (`weaponSig`): two alike pass for each other |
+| `reveal_item` | its `gid` beside its place (v2.3.5196) | its name, if sent |
 
 Gear is named by `gid` and a pet by its id already.
 

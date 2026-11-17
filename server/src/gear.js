@@ -237,7 +237,7 @@ export const gearMethods = {
     const ps = this.playerState[session.id];
     if (!ps) return;
     if (ps.dying || ps.dead || ps.disconnected) return;
-    const { stashIdx } = payload || {};
+    const stashIdx = this._gidPlace(ps, payload && payload.stashIdx, payload && payload.gid);   /* v2.3.5196: by its id when sent (gidnames.js) */
     if (!Number.isInteger(stashIdx) || stashIdx < 0) return;
     /* v2.3.4883: a sale refused (no weapon at that place, a piece of gear)
        sends the weapon bag and the coins back: the phone takes the weapon
@@ -756,7 +756,8 @@ export const gearMethods = {
     if (ps.dying || ps.dead || ps.disconnected) return;
     // v2.3.1129: guard gear lock (see threat.js).
     if (this._threatGearLocked(session.id, ps)) return;
-    const { stashIdx, slot } = payload || {};
+    const { slot } = payload || {};
+    const stashIdx = this._gidPlace(ps, payload && payload.stashIdx, payload && payload.gid);   /* v2.3.5196: by its id when sent (gidnames.js) */
     /* v2.3.3160: a WEAPON slot only -- see _isWeaponSlot.  The armour,
        shield and amulet slots never swap with the weapon bag. */
     if (!this._isWeaponSlot(slot)) return;

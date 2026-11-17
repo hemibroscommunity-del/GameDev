@@ -692,7 +692,7 @@ export const trade2Methods = {
     const ps = this.playerState[session.id];
     if (!ps || ps.dying || ps.dead) return;
     const stash = Array.isArray(ps.weaponStash) ? ps.weaponStash : [];   /* v2.3.5281: read here; only the stashes' door writes it */
-    const idx = payload && payload.stashIdx;
+    const idx = this._gidPlace(ps, payload && payload.stashIdx, payload && payload.gid);   /* v2.3.5196: by its id when sent (gidnames.js) */
     if (!Number.isInteger(idx) || idx < 0 || idx >= stash.length) return;
     // Stale-index guard: the client's stash view can lag a just-staged
     // weapon's removal, so an optional name check turns a stale tap into
