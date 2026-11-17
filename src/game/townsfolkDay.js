@@ -21,12 +21,13 @@
  * (server/test/townsfolk-walk.test.mjs). */
 import { folkStops, folkSeed, folkAt, folkStep, folkFacing, folkGroundBlocked, folkWalkersAllowed, folkStepBumps,
   FOLK_GIVER_NEAR, FOLK_TALK_NEAR, FOLK_BUMP_PX, FOLK_MAX_WALKERS, FOLK_WALK_PX_S } from './townsfolkWalk.js';
+import { sw } from './switches.js';   /* v2.3.5309: the page's one reader (card T) */
 
 /* past the view's half-diagonal by this much he is far from the screen (the
    renderer's FOLK_FAR_MARGIN: there he has no figure) */
 const NEAR_MARGIN = 300;
 
-const _off = (() => { try { return /(^|[?&])folkwalk=0(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();
+const _off = sw('folkwalk');
 /** `?folkwalk=0`: they stand at their spots on this phone. */
 export function folkWalkWanted() { return !_off; }
 

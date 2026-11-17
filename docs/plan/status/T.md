@@ -1,6 +1,6 @@
 card: T
-branch: claude/plan-t-8-ondays (one branch a PR, each begun from main once the one before merged)
-prs: #1754, #1768, #1816, #1817, #1837, #1863, #1889 (5301-5307, merged); the `on` days (5308, ready)
+branch: claude/plan-t-9-reads1 (one branch a PR, each begun from the one before)
+prs: #1754, #1768, #1816, #1817, #1837, #1863, #1889 (5301-5307, merged); #1935 the `on` days (5308, ready); 5309 reads moved (ready, on #1935)
 state: ready
 
 ## Done
@@ -17,9 +17,9 @@ state: ready
 
 ## Next
 
-- 5308: the 18 switch rows of sittings 19, 19b and 20 written `on` 2026-11-15
-  take their merge day on main, 2026-11-16 (UTC); five that merged on the
-  15th keep it; `arenadoor` (sitting 21) takes 2026-11-17. Then the reads moved (5309 on).
+- 5309: nine reads moved (quests, skills, economy, townsfolk, audio); the
+  outside line 221 -> 212 (5308 also sets
+  `arenadoor`, sitting 21, to 2026-11-17). Then 5310: ui and world reads in free files.
 
 ## Found
 
@@ -37,4 +37,4 @@ state: ready
 
 ## Needs
 
-- The gatekeeper: 5308's PR (sitting 21).
+- The gatekeeper: #1935 (5308), then 5309 on it (sitting 21).
