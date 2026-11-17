@@ -1,7 +1,7 @@
 card: K
 branch: claude/plan-k-<n>-<topic> (one branch a PR, each begun from main)
-prs: #1822, #1820, #1826, #1829, #1831, #1838, #1842, #1861, #1848, #1899, #1923 merged; ready: #1900 (5188); 7.3 (5189); 7.4 (5190); 7.5 (5191) this branch, on 7.4
-state: working
+prs: #1822, #1820, #1826, #1829, #1831, #1838, #1842, #1861, #1848, #1899, #1923 merged; ready, in order: #1900 (5188), #1931 (5189), #1932 (5190), #1933 (5191), #1934 (5192, this branch)
+state: ready
 
 ## Done
 
@@ -10,8 +10,9 @@ state: working
 - Claims 5541 (#1848, merged): the sprint mark, OFF (review-z16, z18 mended).
 - 7.2 (#1900) 146 -> 105, on main b2d763a9; each next on the last: 7.3
   (5189, src/networking/) -> 88; 7.4 (5190, the panels) -> 44; 7.5 (5191,
-  the sheets, 24 of 25 fetches) -> 22. `nmlAsk.js` and
-  `LoginSpinWindow.jsx` wait for card T's #1863.
+  the sheets, 24 of 25 fetches) -> 22; 7.6 (5192, BroTown.jsx's 17, its
+  fetch, the ride key's) -> 4 sends, 0 fetches. The 4: `nmlAsk.js` and
+  `LoginSpinWindow.jsx`, after card T's #1863; then the gatekeeper's strict.
 - 5542 (#1899, merged): the chat lanes for MOD; wire-door.test §7's pin.
 - N10 (5543, `relaybytes`, ON): a relay's bytes bounded three ways (one
   4 KB, a socket 2 KB/s, the queue 256 KB): the flood 2,417 -> 4 KB/s;
@@ -20,7 +21,7 @@ state: working
 
 ## Next
 
-- 7.6 (5192), on 7.5; then N11, N5.
+- The gatekeeper's sitting for #1900, #1931-#1934; then N11, N5.
 - The move's walls (movement.js); the sword's reach (index.js, after card
   R's 5281); the bow claim (bowlabel 3.91, the aimbot +12%).
 - Lows: wire-table §7's cure; door.js "by type"; `rideEnds` (SK is done).

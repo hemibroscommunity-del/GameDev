@@ -227,7 +227,7 @@ const OWNER_KEY_FILE = 'src/ui/panels/DevPanel.jsx';
    PR 7's first, v2.3.5187: from here the rows are the ways, held by §1 to §5) ── */
 
 /* ── 7. the census: sends and fetches outside the door ── */
-const LINE = { sends: 22, fetches: 1 };   /* v2.3.5187: 203 less PR 7.1's 57; v2.3.5188: less PR 7.2's 41; v2.3.5189: less PR 7.3's 17; v2.3.5190: less PR 7.4's 44; v2.3.5191: less PR 7.5's 22 sends and 24 fetches (the fetch left: BroTown's, 7.6; LoginSpinWindow.jsx waits for card T's #1863) */
+const LINE = { sends: 4, fetches: 0 };   /* v2.3.5187: 203 less PR 7.1's 57; v2.3.5188: less PR 7.2's 41; v2.3.5189: less PR 7.3's 17; v2.3.5190: less PR 7.4's 44; v2.3.5191: less PR 7.5's 22 sends and 24 fetches (the fetch left: BroTown's, 7.6; LoginSpinWindow.jsx waits for card T's #1863); v2.3.5192: less PR 7.6's 18 sends (BroTown.jsx's 17, the ride key's) and 1 fetch; the 4 left: nmlAsk.js and LoginSpinWindow.jsx, after card T's #1863 */
 {
   let sends = 0; const byFile = new Map();
   for (const [f, s] of SRC) {
