@@ -1,4 +1,4 @@
-# The review: money, accounts and players' safety (card RV, tag 5800)
+# The review: money, accounts and players' safety (card RV, v2.3.5800)
 
 Card RV (`docs/plan/cards/RV.md`), PR 1: the review written down. **No code
 changes in this PR.** Read on `main` at 297b098d8 (2026-11-17, with every
