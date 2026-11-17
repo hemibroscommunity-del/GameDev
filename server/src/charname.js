@@ -117,8 +117,8 @@ export const charNameMethods = {
     if (stored && stored.look) return false;
     const c = checkCharName(raw);
     if (c.name) { if (dataName) data.name = c.name; return false; }
-    try { ws.send(JSON.stringify({ type: 'server_announce', payload: { text: 'Name refused: ' + (CHAR_NAME_WORDS[c.why] || 'pick another name'), ts: Date.now() } })); } catch (e) { /* closed */ }   /* v2.3.5630 */
-    try { ws.send(JSON.stringify({ type: 'join_rejected', reason: 'name', why: c.why })); } catch (e) { /* closed */ }
+    try { this._send(ws, { type: 'server_announce', payload: { text: 'Name refused: ' + (CHAR_NAME_WORDS[c.why] || 'pick another name'), ts: Date.now() } }); } catch (e) { /* closed */ }   /* v2.3.5630 */
+    try { this._send(ws, { type: 'join_rejected', reason: 'name', why: c.why }); } catch (e) { /* closed */ }
     try { ws.close(CHAR_NAME.CLOSE, 'name'); } catch (e) { /* closed */ }
     if (this._playerLeaves) await this._playerLeaves(ws, 'refused');
     return true;

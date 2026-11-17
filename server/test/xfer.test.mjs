@@ -36,6 +36,16 @@
  *      restart at any batch, the plan and its rows both, or neither; the
  *      sweep finishes a plan with its rows already on file.  The old order
  *      (`arenasettleplan: false`) writes none.
+ *  11. v2.3.5293 (card R PR 17): THE MARKET AND THE AUCTION HOUSE.
+ *      `xferescrow` off: each sells as before and writes no row; on: ONE
+ *      row a sale, the seller to the buyer, the goods (a weapon by its id;
+ *      an item by its key) one way and the price the other, `by` whose tap
+ *      settled it -- a market cross (`market`, the taker), an Auction House
+ *      buy-now (`auction_sale`, the buyer), a bid accepted (`auction_bid`,
+ *      the seller), an offer taken (`auction_offer`, the seller).  In the
+ *      commit's own run: a buy-now with a restart at any batch, the sale
+ *      paid and its row both, or neither; a buy-now refused (not enough
+ *      gold) writes none.
  *  10. v2.3.5295 (card R PR 15; the gatekeeper's sitting 23's two lows): a
  *      match with 40 winning sponsors (more than IDS_MAX) keeps every share,
  *      uncut, the sums still exact; other ids keep IDS_MAX.  The owner's
@@ -54,7 +64,10 @@
  * out of arenaStakeParts -> FAIL 9 (the shares short of the gains).  And
  * (v2.3.5295) the share's own bound taken out of sideOf -> FAIL 10 (40
  * winners: the row cut at 32 ids); xferIsShare's filter taken out of
- * econcard.js itemsOf -> FAIL 10 (the shares counted as items).
+ * econcard.js itemsOf -> FAIL 10 (the shares counted as items).  And
+ * (v2.3.5293) store.js's buy-now row passed outside the payment's run (after
+ * its await) -> FAIL 11 (a restart between: paid, no row); the `also` hook's
+ * call taken out of _escrowDebitGoldTogether -> FAIL 11 (no row on).
  */
 import { makeStorage, openRoom, join, fakeWs, settle, seededClock } from './testroom.mjs';
 import { XFER, xferRow, xferKey, xferDay, xferList, xferPrunePage, xferOff, arenaStakeParts } from '../src/xfer.js';
@@ -445,6 +458,85 @@ async function duelTo(flags) {
   await xferRow(room2, { road: 'gift_trade', id: 'g10', from: 'bp_a', to: 'bp_b', gives: { _gold: 1 }, ids: Array.from({ length: 40 }, (_, i) => 'pet:' + i), price: {} });
   const r2 = st2._store.get(xferKey(DAY, 'g10'));
   check('10. other ids keep IDS_MAX (cut past it, as before)', r2 && r2.ids.length === XFER.IDS_MAX && r2.cut === true, r2 && { ids: r2.ids.length, cut: r2.cut });
+}
+
+/* ══════════ 11. THE MARKET AND THE AUCTION HOUSE (v2.3.5293) ══════════ */
+{
+  const S = 'bp_xf11_s', B = 'bp_xf11_b';
+  const GID = 'gmk11x.1.a1b2', GEL = 'slime_gel';
+  const world = async (flags, coinsB) => {
+    const m = seed([S], 0, { [GEL]: 5 });
+    for (const [k, v] of seed([B], coinsB == null ? 1000 : coinsB, {})) m.set(k, v);
+    m.get('rpg:' + S).weaponStash = [{ type: 'greatsword', tierMult: 1, name: 'Iron', gid: GID }];
+    const st = makeStorage(m);
+    const room = await openRoom(st, flags);
+    await join(room, fakeWs('s'), S, { loginTaken: true });
+    await join(room, fakeWs('b'), B, { loginTaken: true });
+    await room._stEnsureIndex();   /* as every store request does first */
+    return { st, room };
+  };
+  const ORD = (over) => ({ type: 'sell', category: 'weapon', subtype: 'greatsword', tierKey: 'iron', price: 100, ...over });
+  const rowsOf = (st) => rows(st).map((k) => [k, st._store.get(k)]);
+
+  /* the market: a sell order, crossed by a buy */
+  for (const on of [false, true]) {
+    const { st, room } = await world(on ? { xferescrow: true } : null);
+    await room._mktEnsureIndex();
+    const sell = await room._mktPlaceOrder(ORD({ playerId: S, stashIndex: 0 }));
+    const buy = await room._mktPlaceOrder(ORD({ type: 'buy', playerId: B, price: 100 }));
+    await settle(); await settle();
+    const rs = rowsOf(st);
+    const r = rs.length ? rs[0][1] : null;
+    if (!on) check('11. xferescrow off: a market cross sells as before, and no row', sell.ok && buy.ok && buy.matched && rs.length === 0, { buy, rows: rs.map((x) => x[0]) });
+    else check('11. xferescrow on: a market cross writes ONE row, the weapon (by its id) seller to buyer, the price back, `by` the taker',
+      buy.ok && buy.matched && rs.length === 1 && r.road === 'market' && r.from === S && r.to === B && r.ids.join() === 'weapon:' + GID && r.price.gold === 100 && r.by === B, rs);
+  }
+
+  /* the Auction House: bought now, a bid accepted, an offer taken */
+  const ways = [
+    ['auction_sale', 'buy-now', B, async (room, L) => room._stBuyNow(L, B)],
+    ['auction_bid', 'a bid accepted', S, async (room, L) => { await room._stPlaceBid(L, B, 120); return room._stAcceptBid(L, S); }],
+    ['auction_offer', 'an offer taken', S, async (room, L) => { room._soBuckets = null; await room._stOfferPlace(L, B, 90); return room._stOfferReply(L, S, B, 'yes'); }],
+  ];
+  for (const [road, what, by, act] of ways) {
+    for (const on of [false, true]) {
+      const { st, room } = await world(on ? { xferescrow: true } : null);
+      const made = await room._stCreateListing({ playerId: S, kind: 'item', invKey: GEL, qty: 2, price: 150 });
+      const L = made && made.listing && made.listing.id;
+      const out = await act(room, L);
+      await settle(); await settle();
+      const rs = rowsOf(st);
+      const r = rs.length ? rs[0][1] : null;
+      const price = road === 'auction_sale' ? 150 : road === 'auction_bid' ? 120 : 90;
+      if (!on) check(`11. xferescrow off: ${what} sells as before, and no row`, !!L && out && out.ok && rs.length === 0, { out, rows: rs.map((x) => x[0]) });
+      else check(`11. xferescrow on: ${what} writes ONE row (\`${road}\`), the goods seller to buyer, the price back, \`by\` its tap`,
+        !!L && out && out.ok && rs.length === 1 && r.road === road && r.from === S && r.to === B && r.goods[GEL] === 2 && r.price.gold === price && r.by === by && rs[0][0].endsWith(':ah-' + L), { out, rs });
+    }
+  }
+  {
+    /* a buy-now refused (not enough gold): no row */
+    const { st, room } = await world({ xferescrow: true }, 10);
+    const L = (await room._stCreateListing({ playerId: S, kind: 'item', invKey: GEL, qty: 1, price: 150 })).listing.id;
+    const out = await room._stBuyNow(L, B);
+    await settle();
+    check('11. a buy-now refused (not enough gold) writes no row', out && out.ok === false && rows(st).length === 0, { out, rows: rows(st) });
+  }
+  {
+    /* in the payment's own run: a restart at any batch of the buy-now -- paid and its row both, or neither */
+    const bad = [];
+    for (let k = 0; k <= 4; k++) {
+      const { st, room } = await world({ xferescrow: true });
+      const L = (await room._stCreateListing({ playerId: S, kind: 'item', invKey: GEL, qty: 1, price: 150 })).listing.id;
+      await settle();
+      st.crashAt(st.batches() + k);
+      await room._stBuyNow(L, B).catch(() => {});
+      await settle(); await settle();
+      const paid = st._store.has('oplog:store:' + L + ':pay');
+      const n = rows(st).length;
+      if (paid !== (n === 1) || n > 1) bad.push({ crashAt: k, paid, rows: n });
+    }
+    check('11. a restart at any write of a buy-now: the sale paid and its row both, or neither', bad.length === 0, bad);
+  }
 }
 
 clock.restore();

@@ -354,7 +354,7 @@ export const accuracyMethods = {
       if (e) for (const slot of ACC.SLOTS) accAdd(rec, slot, e.d[slot][0], e.d[slot][1]);
       payload = { w: accView(rec) };
     }
-    try { ws.send(JSON.stringify({ type: 'acc_state', payload })); } catch (err) { /* display only */ }
+    try { this._send(ws, { type: 'acc_state', payload }); } catch (err) { /* display only */ }
   },
 
   /* ═══ the owner's days (devtools.js GET /dev/accuracy): every player's, newest first ═══ */

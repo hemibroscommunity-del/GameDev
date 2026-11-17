@@ -1,6 +1,6 @@
 card: K
 branch: claude/plan-k-14a-reach (5548, the second block 5540-5559)
-prs: #1822 to #1989, #1981, #1997, #1999, #2006, #2003 merged; open: #2013 (5198), #2014 (5199)
+prs: #1822 to #2006, #2003, #2013, #2014 merged; open: #2018 (5548, this branch)
 state: ready
 
 ## Done
@@ -9,14 +9,11 @@ state: ready
   mark OFF); 5542 (MOD's chat lanes); RT-1 N10, N11, N5 (5543-5545).
 - 5194, 5194b, 5195 (`reqonce` ON, `reqstamp` OFF), 5196 (`gidnames` ON),
   5547: a repeat acts once; a weapon named by its id (sitting 30).
-- 5193 (#2006, `sendcount` ON): the send door, census 150 -> 93; 5197
-  (#2003): the words rule (sitting 31).
+- 5193 (#2006, `sendcount` ON): the send door; 5197 (#2003): the words
+  rule; 5198, 5199 (#2013, #2014): every send through it, census 0.
 
 ## Next
 
-- 5198 (13, batch 1): every file no card holds through the door, 93 -> 28
-  (origin.js's refusal outside a room: `sendOutside`). 5199: the 28 left
-  (L's and R's files, their doors merged): census 0, for the gatekeeper.
 - 5548 (14, this branch): the sword's reach and swing, `swordswing` OFF
   (the planner's reading: both, the owner turns it on). Next: the move.
 - wsClient.js: done for good (told L). index.js, combat.js: 13 and 14.

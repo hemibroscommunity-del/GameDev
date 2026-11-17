@@ -100,7 +100,7 @@ export const hardenedWoodMethods = {
   _handleMakeHardenedWood(session, payload) {
     if (!session || !session.id) return null;
     const ws = this._wsBySessionId(session.id);
-    const reply = (p) => { if (ws) { try { ws.send(JSON.stringify({ type: 'hardened_wood_result', payload: p })); } catch (e) { /* the make is saved */ } } };
+    const reply = (p) => { if (ws) { try { this._send(ws, { type: 'hardened_wood_result', payload: p }); } catch (e) { /* the make is saved */ } } };
     const key = payload && typeof payload.key === 'string' ? payload.key : '';
     if (this._hardenedWoodOff()) { reply({ error: 'off', key }); return null; }
     const ps = this.playerState[session.id];

@@ -830,11 +830,11 @@ export const noMansLandMethods = {
     const ws = this._wsBySessionId && this._wsBySessionId(playerId);
     if (ws) {
       try {
-        ws.send(JSON.stringify({ type: 'nml_loss', payload: {
+        this._send(ws, { type: 'nml_loss', payload: {
           by: to ? ((killerSession && killerSession.name) || 'a player') : null,
           red, weapons: lost.weapons, gear: lost.gear, worn: lost.worn,
           coins: lost.coins, bag: true, named: true, keepWorn: red && !takeWorn,
-        } }));
+        } });
       } catch (e) { /* the echo still carries the worker's own state */ }
     }
     /* v2.3.3770: the owner -- "A red skull disappears after dying": it goes
@@ -997,7 +997,7 @@ export const noMansLandMethods = {
     a._nmlLockAskAt.set(vid, now);
     const ws = this._wsBySessionId && this._wsBySessionId(vid);
     if (!ws) return false;
-    try { ws.send(JSON.stringify({ type: 'nml_lock_ask', payload: { from: aid } })); } catch (e) { return false; }
+    try { this._send(ws, { type: 'nml_lock_ask', payload: { from: aid } }); } catch (e) { return false; }
     return true;
   },
 

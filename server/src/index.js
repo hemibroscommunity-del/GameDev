@@ -2939,10 +2939,10 @@ export class GameRoom {
     if (have < cost) {
       if (ws) {
         try {
-          ws.send(JSON.stringify({
+          this._send(ws, {
             type: 'ability_rejected',
             payload: { type, pool, cost, have },
-          }));
+          });
         } catch (e) {}
       }
       return;
@@ -3179,13 +3179,13 @@ export class GameRoom {
     const ws = this._wsBySessionId(playerId);
     if (ws) {
       try {
-        ws.send(JSON.stringify({
+        this._send(ws, {
           type: 'player_died',
           /* v2.3.3556: `keptBag` -- the worker kept the bag (a dungeon, a
              duel), so the phone can say so; absent, as from an older worker,
              the phone promises nothing */
           payload: { cause: cause || 'unknown', respawnInMs: 5000, ...(ps._deathKeepsBag ? { keptBag: 1 } : {}) },
-        }));
+        });
       } catch (e) {}
     }
   }
@@ -3273,10 +3273,10 @@ export class GameRoom {
          `joinstandup`). */
       if (!ws) continue;
       try {
-        ws.send(JSON.stringify({
+        this._send(ws, {
           type: 'player_respawned',
           payload: { zone: 'town' },
-        }));
+        });
       } catch (e) { /* did not arrive: the rejoin's player_state stands them up */ }
       this._queuePlayerStateFlush(id);
     }
@@ -4217,11 +4217,11 @@ export class GameRoom {
       const ws = this._wsBySessionId(session.id);
       if (!ws) return;
       try {
-        ws.send(JSON.stringify({
+        this._send(ws, {
           type: 'loot_pickup_rejected',
           /* v2.3.4383: `viaPet` echoed, so the phone knows whose ask it was */
           payload: { lootId: (payload && payload.lootId) || null, zone: (payload && payload.zone) || null, reason, ...(payload && payload.viaPet ? { viaPet: true } : {}), ...(extra || {}) },
-        }));
+        });
       } catch (e) {}
     };
     if (!session || !session.id) return;  // no session = no way to tell them
@@ -4324,7 +4324,7 @@ export class GameRoom {
       const ws = this._wsBySessionId(session.id);
       if (ws) {
         try {
-          ws.send(JSON.stringify({
+          this._send(ws, {
             type: 'loot_credit',
             payload: {
               lootId,
@@ -4338,7 +4338,7 @@ export class GameRoom {
               // render the pickup at the pet instead of the player.
               viaPet,
             },
-          }));
+          });
         } catch (e) {}
         this._sendPlayerState(ws, session.id);
       }
@@ -4483,7 +4483,7 @@ export class GameRoom {
     const ws = this._wsBySessionId(session.id);
     if (ws) {
       try {
-        ws.send(JSON.stringify({
+        this._send(ws, {
           type: 'loot_credit',
           payload: {
             lootId,
@@ -4520,7 +4520,7 @@ export class GameRoom {
             // render the pickup at the pet + count the pet-loot quest.
             viaPet,
           },
-        }));
+        });
       } catch (e) {}
       this._sendPlayerState(ws, session.id);
     }

@@ -464,6 +464,12 @@ play, a number 1.1 can measure.
   ON, a cap), merged at sitting 23 (the gatekeeper, sitting 24, tag 5662).*
 - [ ] **4.1b [NEXT] The send door**: one `_send` (132 places write to a
   socket today), counting bytes by type.
+  *Step 1 merged: K's #2006 (5193: one `_send` and `_sendRoom` in
+  `send.js`, every frame byte for byte as before; the counts ride the
+  day's book's `send` part; `sendcount`, ON; the census of raw writes
+  150 -> 93), at sitting 31. The box waits for card K's item 13 (5198,
+  5199: the census to 0, then made strict) (the gatekeeper, sitting 32,
+  tag 5670).*
 - [ ] **4.2 [NEXT] Claims, bounded.** "No claims" can be met by calling a
   loose check a judge. So each bounded claim carries its **gain**: a
   maximal liar's take an hour over an honest player's, measured by a house
@@ -1038,12 +1044,18 @@ are cheap now and a rewrite later, and builds no helper feature.
   keeps two (a sell order's `tierKey` is the seller's claim; a kept quest
   hand-in's fresh id on its rejoin send) (the gatekeeper, sitting 31, tag
   5669).*
-- [ ] **11.4 [NEXT] The words rule.** Text a player wrote (a name, chat, a
+- [x] **11.4 [NEXT] The words rule.** Text a player wrote (a name, chat, a
   shop's note) never sits inside a sentence the game speaks: mail today
   reads "sold to" and then the buyer's name. Such messages carry a template
   and its parts, and a guard fails a server string built from a player's
   words. Another player's assistant must be able to tell the game's voice
   from a stranger's.
+  *Ticked: K's #2003 (5197, card K's item 12: the sentences go out as a
+  template and its parts, `fillWords` on the page, word for word the
+  same; `words-rule.test` fails a server string joined with a player's
+  words outside `words.js`, its `KNOWN` rows by file and words; inbox
+  entries gain `noteT`), merged at sitting 31 (the gatekeeper, sitting
+  32, tag 5670).*
 - [ ] **11.5 [NEXT] Found on the way**: `/api/store/mine?playerId=` shows
   anyone's bids; public reads wake the one room with no pace.
 - [ ] **11.6 [LATER] The game's public facts**, made in the build from the

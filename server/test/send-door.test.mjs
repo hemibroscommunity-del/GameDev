@@ -23,7 +23,7 @@
  * Break proof (tried by hand): `_send` writing `s + ' '` -> 1 and 3 red; a
  * helper put back to `ws.send(JSON.stringify(` -> 4 and 8 red. */
 import { readFileSync, readdirSync } from 'node:fs';
-import { SEND } from '../src/send.js';
+import { SEND, sendOutside } from '../src/send.js';
 import { DAYBOOK, bookAdd, bookPut, bookRead } from '../src/daybook.js';
 import { makeStorage, openRoom, join, settle } from './testroom.mjs';
 
@@ -51,6 +51,11 @@ const room = await openRoom(makeStorage());
   let threw = false;
   try { room._send(dead, { type: 'dead_probe' }); } catch (e) { threw = true; }
   check('1: a socket that throws throws to the caller, and is counted nothing', threw && tally(room, 'dead_probe')[0] === 0);
+  /* v2.3.5198: outside any room (origin.js's refusal): written the same, counted nowhere */
+  const wo = rawWs('o');
+  const om = { type: 'join_rejected', reason: 'origin', home: 'https://brotown.net' };
+  sendOutside(wo, om);
+  check('1: a frame outside any room is written byte for byte', wo.raw[0] === JSON.stringify(om), wo.raw);
   room._send(ws, { type: 'Not A Type' });
   check('1: a type out of form is counted under OTHER', tally(room, SEND.OTHER)[0] === 1);
 }
@@ -181,7 +186,9 @@ function body(src, name) {
 }
 
 /* ── 8. the census ── */
-const LINE = 93;   /* v2.3.5193: 150 on main 78f70f4a (140 `.send(JSON.stringify` and 10 of frames made first); 57 moved behind the helpers */
+const LINE = 0;   /* v2.3.5193: 150 on main 78f70f4a (140 `.send(JSON.stringify` and 10 of frames made first); 57 moved behind the helpers.
+                      v2.3.5198 (card K PR 13, batch 1): every file no card holds, 65 more: 28 left, all in the second batch's (cooking, dungeon, gathering, gladiator, join, persistence, prog3, quests).
+                      v2.3.5199 (batch 2): those 28: 0, the door the one place a frame is written (the gatekeeper makes it strict) */
 {
   const found = [];
   const walk = (dir) => {

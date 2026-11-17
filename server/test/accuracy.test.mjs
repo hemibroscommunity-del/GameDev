@@ -254,7 +254,8 @@ const t = clock;
   room._accEntry = boom;
   check('7a3. a fault in the counting never reaches the hit, the join or the track that carries it', threw === false);
   check('7b. the join resets the worker\'s copy before the state goes out',
-    /if \(this\._accJoin\) this\._accJoin\(session\.id, Date\.now\(\)\);\s*ws\.send\(JSON\.stringify\(\{\s*type: 'state_sync',/.test(src('server/src/join.js')));
+    /* v2.3.5199: the state goes out through the send door (send.js) */
+    /if \(this\._accJoin\) this\._accJoin\(session\.id, Date\.now\(\)\);\s*this\._send\(ws, \{\s*type: 'state_sync',/.test(src('server/src/join.js')));
 }
 
 // ── 8. the owner's days ──

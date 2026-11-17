@@ -244,7 +244,7 @@ export const cookingMethods = {
          alone, the fire stays (as before) */
       if (!this._fireRefuseOff()) {
         const w = this._wsBySessionId(session.id);
-        if (w) { try { w.send(JSON.stringify({ type: 'firemaking_refused', payload: { invKey } })); } catch (e) { /* the bag went */ } }
+        if (w) { try { this._send(w, { type: 'firemaking_refused', payload: { invKey } }); } catch (e) { /* the bag went */ } }
       }
       return;
     }
@@ -650,7 +650,7 @@ export const cookingMethods = {
     const wait = this._pvpHealWait(id, ps);
     if (wait <= 0) return false;
     const ws = this._wsBySessionId(id);
-    if (ws) { try { ws.send(JSON.stringify({ type: 'eat_refused', payload: { wait: Math.ceil(wait) } })); } catch (e) { /* the resend still puts the bag back */ } }
+    if (ws) { try { this._send(ws, { type: 'eat_refused', payload: { wait: Math.ceil(wait) } }); } catch (e) { /* the resend still puts the bag back */ } }
     return true;
   },
 

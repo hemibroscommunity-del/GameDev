@@ -614,10 +614,10 @@ export const pvpExtrasMethods = {
     const ws = this._wsBySessionId(killerId);
     if (ws) {
       try {
-        ws.send(JSON.stringify({
+        this._send(ws, {
           type: 'lifesteal_credit',
           payload: { playerId: killerId, victimId, refund, reason, slot: slot || null },
-        }));
+        });
       } catch (e) {}
     }
     if (refund > 0 || lb > 0) {

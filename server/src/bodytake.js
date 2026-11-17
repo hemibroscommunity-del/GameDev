@@ -150,7 +150,7 @@ export const bodyTakeMethods = {
     await this._playerLeaves(ws, 'bodyTakeFailed');   /* v2.3.4830: the session door (leave.js) */
     const b = this._lingerBodies ? this._lingerBodies.get(id) : null;
     if (b) {
-      try { ws.send(JSON.stringify({ type: 'linger_wait', payload: { ms: Math.ceil(Math.max(0, b.until - Date.now()) + LINGER.WAIT_SLACK_MS) } })); } catch {}
+      try { this._send(ws, { type: 'linger_wait', payload: { ms: Math.ceil(Math.max(0, b.until - Date.now()) + LINGER.WAIT_SLACK_MS) } }); } catch {}
       try { ws.close(LINGER.CLOSE_CODE, 'linger'); } catch {}
     } else {
       try { ws.close(1011, 'try again'); } catch {}   /* the fight is over: an ordinary rejoin */

@@ -113,13 +113,13 @@ export const broVerifyMethods = {
     const nonce = crypto.randomUUID();
     session._broNonce = { nonce, exp: Date.now() + NONCE_TTL_MS };
     try {
-      ws.send(JSON.stringify({
+      this._send(ws, {
         type: 'bro_nonce',
         message: _nonceText(session.id, nonce),
         chainId: CHAIN.id,
         contract: HEMI_BROS,
         expiresAt: session._broNonce.exp,
-      }));
+      });
     } catch { /* socket already gone */ }
   },
 
@@ -128,7 +128,7 @@ export const broVerifyMethods = {
      mutates state.  Fails closed: a chain outage is a refusal, not a grant. */
   async _handleBroVerify(session, payload, ws) {
     const reply = (ok, reason, extra) => {
-      try { ws.send(JSON.stringify({ type: 'bro_verify_result', ok, reason, ...(extra || {}) })); } catch { /* gone */ }
+      try { this._send(ws, { type: 'bro_verify_result', ok, reason, ...(extra || {}) }); } catch { /* gone */ }
     };
     if (!session || !session.id) return;
 
@@ -261,8 +261,8 @@ export const broVerifyMethods = {
       const ws = typeof this._wsBySessionId === 'function' ? this._wsBySessionId(pid) : null;
       if (ws) {
         try {
-          ws.send(JSON.stringify({ type: 'bro_verify_result', ok: true, reason: null, refresh: true,
-            tokenId: next.tokenId || null, address: next.address, count: next.count }));
+          this._send(ws, { type: 'bro_verify_result', ok: true, reason: null, refresh: true,
+            tokenId: next.tokenId || null, address: next.address, count: next.count });
         } catch { /* gone */ }
       }
       return next;

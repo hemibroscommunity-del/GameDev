@@ -112,7 +112,7 @@ export const armorForgeMethods = {
     const result = { recipe: key, piece, xp: r.xp, leveled: !!res.leveled, fromLevel: lvl, newLevel: res.newLevel };
     const ws = this._wsBySessionId(session.id);
     if (ws) {
-      try { ws.send(JSON.stringify({ type: 'forge_armor_result', payload: result })); } catch (e) { /* the forge is saved */ }
+      try { this._send(ws, { type: 'forge_armor_result', payload: result }); } catch (e) { /* the forge is saved */ }
       this._sendPlayerState(ws, session.id);
     }
     return result;

@@ -17,6 +17,7 @@
    by showNameModal/showLogin — same as the original early return). */
 import { processGameEvent } from '@/networking/gameEvents.js';
 import { veilTo } from '@/game/veilDoor.js';   /* v2.3.5527: the loading door, the veils' one writer (S._netHold its `net` reason; card L) */
+import { connTo } from '@/game/connectionDoor.js';   /* v2.3.5528: the connection door, S._realtimeStatus's one writer (card L) */
 import { actionWay, namesOfWay, settledSends, doorRefuse, setActionTransport, act } from '@/game/actions.js'; /* v2.3.5185: the action door's rows (grand plan step 5.8); v2.3.5189: and act(), the door, for the page's own requests here */
 import { chestRevealBus } from '@/ui/mobile/ChestReveal.jsx'; /* v2.3.2820: the daily chest's reveal */
 import { loginSpinBus } from '@/game/loginSpinWheel.js'; /* v2.3.4295: the login wheel */
@@ -548,7 +549,7 @@ export function setupWebSocket(ctx) {
       if (sock) retireSocket(sock, 1000, 'tab moved');
       if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
       S._tabMoved = true;
-      S._realtimeStatus = 'superseded';
+      connTo(S, 'superseded');
       try { window.__btTabMoved = ((window.__btTabMoved || 0) | 0) + 1; } catch (e) { /* QA probe only */ }
       showResumeBanner('This account connected from another window.', 'Play here instead');
     }
@@ -615,7 +616,7 @@ export function setupWebSocket(ctx) {
            supposed to stay calm — and there is nothing to join into
            anyway.  Cheap, and true of any close that beats the open. */
         if (ws.readyState !== 1) return;
-        S._realtimeStatus = 'connected';
+        connTo(S, 'connected');
         _connectAt = 0;   /* v2.3.3496: connected */
         _lastInboundAt = Date.now();   /* v2.3.3034: a fresh socket gets a fresh window */
         _settleSentAt = 0;
@@ -1483,7 +1484,7 @@ export function setupWebSocket(ctx) {
                  4010 right after, and onclose does the waiting */
               var _lgMs = msg.payload && +msg.payload.ms;
               _lgPending = { ms: isFinite(_lgMs) ? _lgMs : LG_WAIT_DEFAULT, at: Date.now() };
-              S._realtimeStatus = 'linger';
+              connTo(S, 'linger');
               break;
             }
           case 'room_full':
@@ -1504,7 +1505,7 @@ export function setupWebSocket(ctx) {
                 retryMs: +msg.retryMs || 0,
                 at: Date.now(),
               };
-              S._realtimeStatus = 'full';
+              connTo(S, 'full');
               break;
             }
           case 'join_rejected':
@@ -1708,7 +1709,7 @@ export function setupWebSocket(ctx) {
                  'connected' write, so a 'superseded' a stray line stamped over
                  a live one stuck until the next open: the dot red, Friends
                  "Reconnecting...", the dead-pipe watch off (V4 N1-2 stuck). */
-              S._realtimeStatus = 'connected';
+              connTo(S, 'connected');
               /* v2.3.3034: we are in again -- an idle or superseded banner is
                  no longer true, and a strike that had no socket to carry it
                  goes now (_holdForRejoin).  Only into a world the game will
@@ -4766,7 +4767,7 @@ export function setupWebSocket(ctx) {
 
       ws.onclose = function (event) {
         if (sock !== ws) return;   /* v2.3.4367: a replaced line's close re-arms nothing */
-        S._realtimeStatus = 'disconnected';
+        connTo(S, 'disconnected');
         /* v2.3.771: close-reason evidence.
            v2.3.2615: the note that used to sit here said "src/networking/
            wsClient.js is dead code (not in the bundle); fixes must land HERE"
@@ -4789,7 +4790,7 @@ export function setupWebSocket(ctx) {
            hammer the join gate forever.  The banner was already shown
            by the join_rejected handler. */
         if (S._frozenByAdmin || (event && event.code === 4004)) {
-          S._realtimeStatus = 'frozen';
+          connTo(S, 'frozen');
           return;
         }
         /* v2.3.3312: not the game's own site (join_rejected 'origin' / 4015):
@@ -4797,7 +4798,7 @@ export function setupWebSocket(ctx) {
         if (_ogPending || (event && event.code === 4015)) {
           var _og = _ogPending;
           _ogPending = null;
-          S._realtimeStatus = 'origin';
+          connTo(S, 'origin');
           showOriginScreen(_og && _og.home);
           return;
         }
@@ -4807,7 +4808,7 @@ export function setupWebSocket(ctx) {
         if (_dvPending || (event && event.code === 4016)) {
           var _dv = _dvPending;
           _dvPending = null;
-          S._realtimeStatus = 'device';
+          connTo(S, 'device');
           showDeviceScreen((_dv && _dv.id) || S.myId || '');
           return;
         }
@@ -4840,7 +4841,7 @@ export function setupWebSocket(ctx) {
               scheduleReconnect();
               return;
             }
-            S._realtimeStatus = 'key';
+            connTo(S, 'key');
             showDeviceScreen((_ky && _ky.id) || S.myId || '', { mode: 'key' });
           };
           /* v2.3.3355: a new key that joined as the wrong character -- a page
@@ -4873,7 +4874,7 @@ export function setupWebSocket(ctx) {
         if (_lkPending || (event && event.code === 4018)) {
           var _lk = _lkPending;
           _lkPending = null;
-          S._realtimeStatus = 'locked';
+          connTo(S, 'locked');
           var _lkMs = (_lk && _lk.ms) || 60000;
           try { if (S.player) pushDmgPopup(S, S.player.x, S.player.y - 30, 'Too many wrong Login Keys tried for this character. Trying again in ' + Math.ceil(_lkMs / 1000) + ' s', '#B9C1BF', { ttl: 6 }); } catch (e) { /* words only */ }
           setTimeout(function () { try { scheduleReconnect(); } catch (e) { /* the next load joins */ } }, _lkMs + 2000);
@@ -4886,7 +4887,7 @@ export function setupWebSocket(ctx) {
         if (_vfPending || (event && event.code === 4014)) {
           var _vf = _vfPending;
           _vfPending = null;
-          S._realtimeStatus = 'verify';
+          connTo(S, 'verify');
           showVerifyGate(_vf && _vf.sitekey);
           return;
         }
@@ -4900,7 +4901,7 @@ export function setupWebSocket(ctx) {
         if (_rfPending || (event && event.code === 4009)) {
           var _rf = _rfPending;
           _rfPending = null;
-          S._realtimeStatus = 'full';
+          connTo(S, 'full');
           /* onopen pushed "<name> joined BroTown!" into the chat log
              optimistically, before the refusal could possibly be known.
              That join never happened, and a player who waits out twenty
@@ -4921,7 +4922,7 @@ export function setupWebSocket(ctx) {
         if (_lgPending || (event && event.code === 4010)) {
           var _lg = _lgPending;
           _lgPending = null;
-          S._realtimeStatus = 'linger';
+          connTo(S, 'linger');
           _lingerRetry(_lg);
           return;
         }
@@ -4938,7 +4939,7 @@ export function setupWebSocket(ctx) {
            looped join->reject->close(4003)->reconnect forever, burning
            the server's per-id auth-fail budget. */
         if (S._joinRejectedFatal) {
-          S._realtimeStatus = 'rejected';
+          connTo(S, 'rejected');
           return;
         }
         /* v2.3.1913: AFK logout (worker sweep or our own idleLogout).
@@ -4947,13 +4948,13 @@ export function setupWebSocket(ctx) {
            reporting, just with extra steps.  Same shape as the
            superseded banner below: stop, say why, wait for a human. */
         if ((event && event.code === 4006) || (event && event.reason === 'idle timeout')) {
-          S._realtimeStatus = 'idle';
+          connTo(S, 'idle');
           showResumeBanner('You were away, so your character logged out.', "I'm back");
           _armComeBack();   /* v2.3.3034: the next touch is "I'm back" */
           return;
         }
         if (event && event.reason === 'superseded by reconnect') {
-          S._realtimeStatus = 'superseded';
+          connTo(S, 'superseded');
           showResumeBanner('This account connected from another window.', 'Play here instead');
           return;
         }
@@ -4969,7 +4970,7 @@ export function setupWebSocket(ctx) {
       };
       ws.onerror = function () {
         if (sock !== ws) return;   /* v2.3.4367 */
-        S._realtimeStatus = 'disconnected';
+        connTo(S, 'disconnected');
       };
     }
     /* v2.3.1913: the "we stopped on purpose, tap to come back" banner.
@@ -5069,7 +5070,7 @@ export function setupWebSocket(ctx) {
                 _g.tokens++;
                 S._verifyToken = token;
                 try { _el.remove(); } catch (e) {}
-                S._realtimeStatus = 'connecting';
+                connTo(S, 'connecting');
                 if (reconnectTimer) clearTimeout(reconnectTimer);
                 reconnectDelay = 1000;
                 connect();
@@ -6092,7 +6093,7 @@ export function setupWebSocket(ctx) {
            reading 'connected' -- a silent death, which is the one thing
            this feature must not be.  A server-initiated eviction still
            lands in onclose normally; that path is unchanged. */
-        S._realtimeStatus = 'idle';
+        connTo(S, 'idle');
         var _old = ws;
         ws = null;
         try {
@@ -6133,6 +6134,6 @@ export function setupWebSocket(ctx) {
          goes with the shim it sends through -- an act() after the teardown
          is refused (nothing leaves), never sent through a closed set-up */
       setActionTransport(null);
-      S._realtimeStatus = 'disconnected';
+      connTo(S, 'disconnected');
     };
 }

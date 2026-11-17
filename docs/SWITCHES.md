@@ -196,7 +196,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `tradeonewrite` | worker | switch | v2.3.4795 | 2026-11-11 | false | logic |  | no | The trade's swap goes back to its old order of writes. |
 | `valuepause` | worker | switch | v2.3.5090 | 2026-11-14 | false | logic |  | no | An action that hands gold or goods on runs even in the minute after the storage refused a save (nothing pauses). |
 | `xfer` | worker | switch | v2.3.5092 | 2026-11-14 | false | logic |  | no | No transfer ledger row (`xfer:`) is written; trades run exactly as before. |
-| `xferescrow` | worker | switch | v2.3.5290 | off | true | logic | `xfer` | no | Thrown (true), a wagered duel's pot writes its transfer-ledger row (`xfer:`) in the pot's own run: one row a wagered duel; and (v2.3.5292) a match's sponsorship stakes one row a losing stake, in the stakes plan's run; unset or false, the default, both pay as before and write none. |
+| `xferescrow` | worker | switch | v2.3.5290 | off | true | logic | `xfer` | no | Thrown (true), a wagered duel's pot writes its transfer-ledger row (`xfer:`) in the pot's own run: one row a wagered duel; and (v2.3.5292) a match's sponsorship stakes one row a losing stake, in the stakes plan's run; and (v2.3.5293) a market cross and an Auction House sale one row each; unset or false, the default, both pay as before and write none. |
 
 ## identity
 
@@ -635,6 +635,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | name | side | kind | born | on | thrown | risk | needs | fallback | off |
 |---|---|---|---|---|---|---|---|---|---|
 | `bundle` | worker | switch | v2.3.3254 | 2026-10-15 | false | logic |  | no | Stops advertising message bundles: each phone sends its messages one by one from its next join. |
+| `?conndoor` | page | switch | v2.3.5528 | 2026-11-17 | =0 | logic |  | no | The phone's socket phase takes any word a caller writes, as the lines before the connection door (every caller writes a word of the list today). |
 | `?diet` | page | switch | v2.3.3726 | 2026-10-28 (v2.3.3744) | =1 or =0 (kept for the tab) | logic |  | no | Puts this phone on the move diet (=1) or keeps it off (=0), whatever the worker says for everyone. |
 | `disable_weapon_drops` | worker | switch | v2.3.1150 | 2026-07-03 | true | logic |  | no | Thrown, weapon drops stop rolling (caps.weaponDrops stays true, so no phone mints its own). |
 | `gidnames` | worker | switch | v2.3.5196 | 2026-11-17 | false | logic |  | no | A weapon in the stash is read by its place alone, as before: a request sent as the stash moved acts on the weapon now at that place (the next one). |

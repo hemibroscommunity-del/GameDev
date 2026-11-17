@@ -452,16 +452,14 @@ export const PHASES = [
     note: 'S._inDungeon is written from six files (the ledger\'s writers).',
   },
   {
-    name: 'connection', side: 'page', status: 'todo',
+    name: 'connection', side: 'page', status: 'door',
     what: 'The phone\'s socket: connecting, connected, idle, and each refusal\'s screen.',
-    field: null, states: ['connecting', 'connected', 'disconnected', 'idle', 'linger', 'full', 'device', 'key', 'locked', 'origin', 'rejected', 'superseded', 'verify', 'frozen'], fn: null, file: null,
+    field: 'S._realtimeStatus', states: ['connecting', 'connected', 'disconnected', 'idle', 'linger', 'full', 'device', 'key', 'locked', 'origin', 'rejected', 'superseded', 'verify', 'frozen'],
+    fn: 'connTo', file: 'src/game/connectionDoor.js',
     clears: [{ edge: 'rejoin', at: 'src/networking/wsClient.js onmessage' }],
     rejoin: 'none: it is the rejoin',
-    today: [
-      { field: 'S._realtimeStatus' }, { field: 'S._joinRejectedFatal' }, { field: 'S._netHold' }, { field: 'S._tabMoved' }, { field: 'S._frozenByAdmin' },
-      { variable: '_state', file: 'src/networking/serverReady.js' }, { variable: '_veil', file: 'src/networking/serverReady.js' },
-    ],
-    note: 'S._realtimeStatus is set in eleven functions of wsClient.js (card K\'s file: this door goes before K starts, or after it).',
+    held: { suite: 'server/test/connection-door.test.mjs' },
+    note: 'v2.3.5528: the door (CONN_PHASES, the one rule the callers\' own: a word of the list; switch ?conndoor), once card K freed wsClient.js, which wrote it in 21 places. Beside it: the refusals\' own marks (S._joinRejectedFatal, S._tabMoved, S._frozenByAdmin), the server\'s veil (S._netHold, the loading door\'s net), serverReady.js\'s _state and _veil.',
   },
   {
     name: 'loading', side: 'page', status: 'door',

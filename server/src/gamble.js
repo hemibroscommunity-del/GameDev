@@ -226,10 +226,10 @@ export const gambleMethods = {
     const ws = this._wsBySessionId(session.id);
     if (ws) {
       try {
-        ws.send(JSON.stringify({
+        this._send(ws, {
           type: 'ace_item_flip_result',
           payload: { won, items: staked, kinds, total },
-        }));
+        });
       } catch (e) { /* the echo carries the bag either way */ }
     }
     /* The board is in GOLD, so an item wager does not land on it -- see the
@@ -269,12 +269,12 @@ export const gambleMethods = {
     const ws = this._wsBySessionId(session.id);
     if (ws) {
       try {
-        ws.send(JSON.stringify({
+        this._send(ws, {
           type: 'ace_flip_result',
           /* `delta` is signed and authoritative; the panel animates off `won`
              and reads the coins from the player_state echo (rule 20). */
           payload: { won, stake, risk, delta: won ? risk : -risk },
-        }));
+        });
       } catch (e) { /* echo carries the coins either way */ }
     }
     /* v2.3.2619: the hall of fame, AFTER the settle and the result.  Awaited
@@ -306,10 +306,10 @@ export const gambleMethods = {
     const ws = this._wsBySessionId(session.id);
     if (ws) {
       try {
-        ws.send(JSON.stringify({
+        this._send(ws, {
           type: 'gamble_result',
           payload: { won, wager, payout: won ? wager * 2 : 0 },
-        }));
+        });
       } catch (e) { /* echo carries the coins either way */ }
     }
   },

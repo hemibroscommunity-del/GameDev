@@ -38,6 +38,7 @@ import { swordToGreatsword } from './swordconvert.js';   /* v2.3.3895: a sword's
 import { oldGreatswordToMetal } from './gscopper.js';   /* v2.3.3980: ...and a wooden or base-less greatsword's as a metal one */
 import { BLACKSMITH_TIER_LABELS, WOODWORKING_TIER_LABELS } from './data.js';   /* v2.3.3980: a converted sell order's tier label; v2.3.5626: every order's */
 import { stashGive, stashTake, stashSet } from './stash.js';   /* v2.3.5281: the stashes' door (card R PR 2) */
+import { xferMarketSale } from './xfer.js';   /* v2.3.5293: a sale's ledger row (card R PR 17; `xferescrow`, OFF by default) */
 export const MARKET = {
   ORDER_EXPIRY: 86400000,       // 24h
   MAX_ORDERS_PER_PLAYER: 10,
@@ -457,7 +458,11 @@ export const marketMethods = {
       if (!this._mktSettleOff()) {
         const rec = { ...maker, settle: this._mktSettlePlan(order, execPrice, buyerId, sellerId, weapon, label) };
         try {
-          await this.state.storage.put('mkt_order:' + maker.id, rec);
+          /* v2.3.5293 (card R PR 17): with `xferescrow` on, the sale's ledger
+             row rides this run (the taker's escrow, the note); off (the
+             default), nothing more is written */
+          const row = xferMarketSale(this, { makerId: maker.id, sellerId, buyerId, weapon, price: execPrice, by: playerId });
+          await Promise.all([this.state.storage.put('mkt_order:' + maker.id, rec), row].filter(Boolean));
         } catch (err) {
           /* the note never landed, so nothing moved: the maker still rests on
              disk, and the taker's escrow goes home (v2.3.1971's rule) */
