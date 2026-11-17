@@ -1,6 +1,6 @@
 card: K
-branch: claude/plan-k-14d-ontoday (5551, on #2023 on #2021; the second block 5540-5559)
-prs: #1822 to #2006, #2003, #2013, #2014, #2018 merged; open: #2021 (5549), #2023 (5550), 5551 (this branch)
+branch: claude/plan-k-14d-ontoday (5551; the second block 5540-5559)
+prs: #1822 to #2006, #2003, #2013, #2014, #2018, #2021, #2023 merged; open: #2024 (5551, this branch)
 state: ready
 
 ## Done
@@ -14,9 +14,10 @@ state: ready
 
 ## Next
 
-- #2021 5549 `movetop`, #2023 5550 `bowshot` (3.3 -> 1.60): OFF as built.
-  5551 (this branch, on #2021): `swordswing` and `movetop` ON (the owner,
-  2026-11-17: "Go recommended"). Next: the bow's reach.
+- 5549 `movetop`, 5550 `bowshot` (3.3 -> 1.60; OFF) merged. 5551 (this
+  branch): `swordswing` and `movetop` ON (the owner, 2026-11-17: "Go
+  recommended"). The bow's reach tried: no gain past the spread. Next: the
+  harvest's grade (1.86), the cook's result (1.59).
 - Later (the planner): walls on the worker (the Wheel's coast): a new
   system and worker memory, for when real players come.
 - wsClient.js: done for good (told L). index.js, combat.js: 14 still.

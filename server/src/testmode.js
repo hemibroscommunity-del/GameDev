@@ -32,7 +32,10 @@
  *   - the limits on how fast and how far a hit on a MONSTER lands: the
  *     weapon slot, reach and rate and the paid special's window (hitproof.js,
  *     combat.js _handleMonsterDamage), the per-monster lanes (210 ms, three
- *     specials in 1.2 s) and the 400 px melee and 3,600 px Wheel reach;
+ *     specials in 1.2 s) and the 400 px melee and 3,600 px Wheel reach; the
+ *     sword's swing and its 150 px reach and believed shove (v2.3.5548,
+ *     swordswing.js, `swordswing`) and a bow's claim held to an arrow seen
+ *     (v2.3.5550, bowshot.js, `bowshot`), both asked in combat.js;
  *   - the order of the first quests (quests.js _questBarred, v2.3.3179: the
  *     'first' and 'order' rules; a quest nobody can give is still refused);
  *   - the dodge-roll window against a player's blow (movement.js _rollOn,
