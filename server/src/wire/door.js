@@ -300,6 +300,93 @@ export function wireDoorRouteRow(pathname, method, rows = WIRE_DOOR_ROWS.ROUTES)
   return rows.has(b) ? b : '';
 }
 
+/* ═══ v2.3.5726 (card K2 PR 7; the planning session's addendum, 2026-11-17):
+   THE OWNER'S ROUTES REFUSED AT THE EDGE WHEN THEY CARRY NO KEY ═══
+   `/api/admin*` and `/api/botstat*` woke the room for every request, a key
+   or none, and the room refused one with no key (admin.js _adminAuth,
+   botfp.js _botfpAdminFetch).  The outer router now gives that same answer
+   itself, before any object is asked:
+     - /api/admin* with no `Authorization: Bearer <something>`: 404 `Not
+       found` when the worker has no ADMIN_KEY (the surface does not exist),
+       else 401 `Unauthorized` -- the room's own two answers, byte for byte;
+     - /api/botstat* with neither `Authorization: Bearer` nor `x-admin-key`:
+       the room's plain `Not found` 404.
+   A request WITH a header goes to the room as before, which checks the key
+   and counts a wrong one toward its time-out.  `EDGE_GUARD = "off"` (the
+   worker's setting, as ORIGIN_LOCK; absent means on) sends every one on. */
+export const EDGE_GUARD = Object.freeze({
+  ADMIN: '/api/admin',
+  BOTSTAT: '/api/botstat',
+});
+
+const bearerOf = (request) => {
+  const a = request.headers.get('Authorization') || '';
+  return a.startsWith('Bearer ') && a.length > 7;
+};
+
+/** The outer router's answer for an owner's route that carries no key, or
+ *  null to go on (index.js `routeHttp`). */
+export function edgeKeyRefusal(request, pathname, env) {
+  if (String((env && env.EDGE_GUARD) || 'on').trim().toLowerCase() === 'off') return null;
+  if (request.method === 'OPTIONS') return null;
+  /* the router's own tests (startsWith), so exactly what it would forward */
+  if (pathname.startsWith(EDGE_GUARD.ADMIN)) {
+    if (bearerOf(request)) return null;
+    const H = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' };
+    if (!(env && env.ADMIN_KEY)) return new Response(JSON.stringify({ ok: false, error: 'Not found' }), { status: 404, headers: H });
+    return new Response(JSON.stringify({ ok: false, error: 'Unauthorized' }), { status: 401, headers: H });
+  }
+  if (pathname.startsWith(EDGE_GUARD.BOTSTAT)) {
+    if (bearerOf(request) || request.headers.get('x-admin-key')) return null;
+    return new Response('Not found', { status: 404 });
+  }
+  return null;
+}
+
+/* ═══ v2.3.5726 (card K2 PR 7): THE PUBLIC READS ANSWERED AT THE EDGE, FOR
+   EVERYONE BUT THE GAME'S OWN PAGES ═══
+   Four reads anyone may make (the market's book and a player's list by its
+   id, the store's browse, the arena's status) woke the outer worker's room
+   every time; the room keeps them 3 s and paces them by address
+   (publicreads.js), but each still reached it.  Now the outer router answers
+   them from the edge's cache (`caches.default`, EDGE_CACHE.TTL_S, keyed by
+   the whole URL) -- but ONLY for a request whose Origin is not one of the
+   game's sites (origin.js originAllowed: 'site' or 'local').  The planning
+   session's answer, 2026-11-17: the page always sends its Origin, so it
+   always reads through the room, whose copies drop on any write ("the
+   player who just acted reads their own act at once"), and nothing a player
+   sees changes; a script that names the game's Origin meets the room's own
+   keep and pace, as today.  A request carrying a key (`Authorization`,
+   `x-bt-auth`) is never answered from the cache, and only a 200 is kept.
+   Nothing in wrangler.toml: the cache needs no binding (and where there is
+   none, as in node, every read goes on).  `EDGE_CACHE = "off"` (the
+   worker's setting, as ORIGIN_LOCK; absent means on): every read goes on. */
+export const EDGE_CACHE = Object.freeze({
+  TTL_S: 3,
+  PATHS: Object.freeze(['/api/market/orders', '/api/market/my', '/api/store/browse', '/api/arena/status']),
+});
+
+/** The outer router's read through the edge cache: `forward()` is the
+ *  room's answer; `gameOrigin(origin)` says whether a page of the game sent
+ *  it. */
+export async function edgeCacheRead(request, url, env, gameOrigin, forward) {
+  const off = String((env && env.EDGE_CACHE) || 'on').trim().toLowerCase() === 'off';
+  const cache = (typeof caches !== 'undefined' && caches && caches.default) || null;
+  if (off || !cache || request.method !== 'GET' || !EDGE_CACHE.PATHS.includes(url.pathname)
+      || request.headers.get('Authorization') || request.headers.get('x-bt-auth')
+      || gameOrigin(request.headers.get('Origin'))) return forward();
+  const key = new Request(url.toString(), { method: 'GET' });
+  let hit = null;
+  try { hit = await cache.match(key); } catch (e) { hit = null; }
+  if (hit) return hit;
+  const res = await forward();
+  if (!res || res.status !== 200) return res;
+  const out = new Response(res.body, res);
+  out.headers.set('Cache-Control', 'public, max-age=' + EDGE_CACHE.TTL_S);
+  try { await cache.put(key, out.clone()); } catch (e) { /* not kept: the answer stands */ }
+  return out;
+}
+
 /* ── the room's methods (index.js mixes them in) ── */
 export const wireDoorMethods = {
   /* count and (the first few) log a refusal.  v2.3.5184 (the gatekeeper,

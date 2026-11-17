@@ -1,6 +1,6 @@
 card: L
 branch: claude/plan-l-36-guard-door (from main)
-prs: #1746 to #2046 (merged), #2052 (5535), guard door (5536): ready
+prs: #1746 to #2046 (merged), #2052 (5535), #2058 (5536, on #2052): ready
 state: ready
 
 ## Done

@@ -22,6 +22,7 @@
 import { BT_AUDIO, ZONES, TILE, generateZoneMap, updateZoneDimensions } from '@/data/index.js';
 import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: the respawn heard */
 import { releaseLeftZoneArt, veilWheelTrip, changeZone } from '@/game/zoneTransitions.js'; /* v2.3.2328: dying is leaving a zone; v2.3.3025: under one veil; v2.3.4414: + the flip and its wipe */
+import { dungeonTo } from '@/game/dungeonDoor.js';   /* v2.3.5535: the dungeon's page door (card L) */
 import { dyingTo } from '@/game/dyingDoor.js';   /* v2.3.5534: the life's page door (card L) */
 import { wantWheelSpawn } from '@/game/wheelHome.js'; /* v2.3.2990: and you come back in the Wheel's Brotown */
 import { dropDungeonZone } from '@/game/wheelDungeons.js'; /* v2.3.3016: a dungeon's synthetic zone, dropped after its art is released */
@@ -50,10 +51,8 @@ export function applyLocalRespawn(S, zone) {
     S._serverDungeon = null;
   }
   S._dungeonBack = null;   /* v2.3.3016: a death comes back to the Wheel's town, not the mouth */
-  S._inDungeon = false;
-  S._inCustomDungeon = false;
+  dungeonTo(S, 'leave', { in: false, custom: false, complete: false });   /* v2.3.5535: the dungeon's page door */
   S._customDungeonConfig = null;
-  S._dungeonComplete = false;
   S._dungeonBossSpawned = false;
   /* v2.3.2328: release the art of the zone we are leaving BY DYING.  Every
      other exit from a combat zone frees its map and its monster variant

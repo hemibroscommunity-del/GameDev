@@ -450,20 +450,18 @@ export const PHASES = [
     note: 'v2.3.5531: the door (ARENA_PAGE_WAYS poll; switch ?arenadoor). Its notes S._arenaInvolved and S._arenaTournamentId by the same call; beside it: the stake board (S._arenaStakeBoard, gameEvents.js) and the popup mark (S._arenaNotified). A match rides S._inDuel (the duel\'s row): the rejoin clears it with the duel.',
   },
   {
-    name: 'dungeon', side: 'page', status: 'todo',
+    name: 'dungeon', side: 'page', status: 'door',
     what: 'A dungeon run on the phone: opening, in it, its waves, cleared, complete, back out.',
-    field: null, states: ['none', 'opening', 'in', 'clear', 'complete'], fn: null, file: null,
+    field: 'S._inDungeon', states: ['none', 'in', 'complete'],
+    fn: 'dungeonTo', file: 'src/game/dungeonDoor.js',
     clears: [
       { edge: 'death', at: 'src/game/respawn.js applyLocalRespawn' },
       { edge: 'zone', at: 'src/game/wheelDungeons.js leaveWheelDungeon' },
     ],
     rejoin: 'none: the worker\'s run keeps the pass across a reconnect behind the loading screen (zonejudge.js R1)',
-    today: [
-      { field: 'S._inDungeon' }, { field: 'S._serverDungeon' }, { field: 'S._dungeonZone' }, { field: 'S._dungeonWave' },
-      { field: 'S._dungeonClear' }, { field: 'S._dungeonComplete' }, { field: 'S._inCustomDungeon' }, { field: 'S._dungeonBack' },
-      { field: 'S._wheelDungeonOpening' }, { field: 'S._dungeonEnteredAt' },
-    ],
-    note: 'S._inDungeon is written from six files (the ledger\'s writers).',
+    held: { suite: 'server/test/dungeon-page-door.test.mjs' },
+    notes: ['S._inCustomDungeon', 'S._dungeonComplete'],   /* v2.3.5535: written beside the field by the same call */
+    note: 'v2.3.5535: the door (DUNGEON_PAGE_WAYS enter, complete, leave; each call names the fields its site wrote, and only those; switch ?dungeondoor), in place of twenty-four writes in seven files. The opening (S._wheelDungeonOpening) and the clear (S._dungeonClear) are their own notes beside it, with the run\'s place and number (S._serverDungeon, S._dungeonZone, S._dungeonWave, S._dungeonBack) and the entry time (S._dungeonEnteredAt).',
   },
   {
     name: 'connection', side: 'page', status: 'door',

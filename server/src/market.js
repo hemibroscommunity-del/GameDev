@@ -39,6 +39,18 @@ import { oldGreatswordToMetal } from './gscopper.js';   /* v2.3.3980: ...and a w
 import { BLACKSMITH_TIER_LABELS, WOODWORKING_TIER_LABELS } from './data.js';   /* v2.3.3980: a converted sell order's tier label; v2.3.5626: every order's */
 import { stashGive, stashTake, stashSet } from './stash.js';   /* v2.3.5281: the stashes' door (card R PR 2) */
 import { xferMarketSale } from './xfer.js';   /* v2.3.5293: a sale's ledger row (card R PR 17; `xferescrow`, OFF by default) */
+
+/* v2.3.5725 (card K2 PR 6c): an order as the public reads show it: every
+   field but the request id that made it */
+export function mktPublicOrders(orders) {
+  return (orders || []).map((o) => {
+    if (!o || typeof o !== 'object' || !Object.prototype.hasOwnProperty.call(o, 'reqId')) return o;
+    const rest = { ...o };
+    delete rest.reqId;
+    return rest;
+  });
+}
+
 export const MARKET = {
   ORDER_EXPIRY: 86400000,       // 24h
   MAX_ORDERS_PER_PLAYER: 10,
@@ -246,12 +258,17 @@ export const marketMethods = {
       await this._mktEnsureIndex();
       await this._mktSweep();
 
+      /* v2.3.5725 (card K2 PR 6c; the second red team): the two public
+         reads leave out each order's request id (`reqId`, v2.3.5194: kept on
+         the stored order for reqonce.js's repeat check).  Anyone may read
+         the book and anyone's list by its id; no page reads `reqId` there
+         (grep src/: only actions.js, which makes one). */
       if (request.method === 'GET' && path.startsWith('/orders')) {
-        const orders = this._mktQueryOrders(url.searchParams.get('category'), url.searchParams.get('subtype'), url.searchParams.get('tier'), null, 100);
+        const orders = mktPublicOrders(this._mktQueryOrders(url.searchParams.get('category'), url.searchParams.get('subtype'), url.searchParams.get('tier'), null, 100));
         return new Response(JSON.stringify({ ok: true, orders }), { headers: H });
       }
       if (request.method === 'GET' && path.startsWith('/my')) {
-        const orders = this._mktQueryOrders(null, null, null, url.searchParams.get('playerId'), 100);
+        const orders = mktPublicOrders(this._mktQueryOrders(null, null, null, url.searchParams.get('playerId'), 100));
         return new Response(JSON.stringify({ ok: true, orders }), { headers: H });
       }
       if (request.method === 'GET' && path.startsWith('/history')) {

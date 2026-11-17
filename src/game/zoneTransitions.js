@@ -41,6 +41,7 @@ import { FARM_FROM_WORKSHOP } from '@/data/farmLayout.js';   /* v2.3.3136: the f
 import { holdFarmUntilReady } from '@/game/farmTrip.js';
 import { runResets, resetOn } from '@/game/resetOn.js'; /* v2.3.5203: the zone edge's one door runs the state's resets (card L); v2.3.5208: + the world's own */
 import { veilTo } from '@/game/veilDoor.js';   /* v2.3.5525: the loading door, the veils' one writer (card L) */
+import { dungeonTo } from '@/game/dungeonDoor.js';   /* v2.3.5535: the dungeon's page door (card L) */
 import { act } from '@/game/actions.js';   /* v2.3.5188: the page's requests leave through the action door (card K PR 7) */
 
 /* ═══ v2.3.2272: FREE THE ZONE YOU LEFT, ONE BEAT LATE ═══
@@ -1287,7 +1288,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
               if (ZONES[S._serverDungeon] && ZONES[S._serverDungeon]._instance) delete ZONES[S._serverDungeon];
               changeZone(S, S._dungeonZone || 'town');   /* v2.3.4651: the one door (TRAPS §304) */
               S._serverDungeon = null;
-              S._inCustomDungeon = false;
+              dungeonTo(S, 'leave', { custom: false });   /* v2.3.5535: the dungeon's page door */
               S._customDungeonConfig = null;
               S._serverMonsters = false;
               S.monsters = [];
@@ -1296,8 +1297,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
               }
             }
             /* Exit dungeon — return to combat zone at current depth */
-            S._inDungeon = false;
-            S._dungeonComplete = false;
+            dungeonTo(S, 'leave', { in: false, complete: false });   /* v2.3.5535: the dungeon's page door */
             var _zn = ZONES[S._dungeonZone || S.currentZone];
             var depth = S._currentDepth || 'shallow';
             S.map = generateZoneMap(S.currentZone);
