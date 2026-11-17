@@ -47,6 +47,7 @@ import {
 import { selfDraw, selfQueue, selfSkip, selfTestOn, selfClipRgba, selfClipWant, SELF_SIZE } from './selfTest.js';   /* v2.3.5238: the self-test at the door (card O PR 14d) */
 import { PAL_CLIP_BATCHER, PAL_HAIR_CLIP_BATCHER } from './paletteTex.js';   /* v2.3.3707: a colour-numbers picture's stencil shape; v2.3.5562: a hair mask's */
 import { isPaletteSource } from './paletteDraw.js';
+import { clipRoute } from './clipRoute.js';   /* v2.3.5239: the stencil or the alpha mask, a silhouette at a time */
 
 export const CLIP_BATCHER = 'bt-clip';
 /* v2.3.3707: a coloured picture's shape, for the monsters' silhouettes */
@@ -55,13 +56,16 @@ export const ALPHA_CLIP_BATCHER = 'bt-clip-alpha';
 let _alpha = false;     /* `?alphaclip`: the alpha mask, as it was */
 try { if (typeof location !== 'undefined' && /[?&]alphaclip\b/.test(location.search || '')) _alpha = true; } catch (e) { /* stencil */ }
 let _installed = false;
+let _selfOff = false;   /* v2.3.5239: the clip's programs failed their self-test: pictures to the alpha mask (clipRoute.js) */
 let _maxTex = 0;
 const _stats = { boxes: 0, clipped: 0, reboxed: 0 };
 const _boxes = new Set();   /* every box made, for the live switch (QA) */
 
 /** The stencil way is in use (installed on a WebGL2 renderer and not
  *  switched off by the address). */
-export function hairClipStencilOn() { return _installed && !_alpha; }
+export function hairClipStencilOn() { return _installed && !_alpha && !_selfOff; }   /* v2.3.5239: a picture's way (the monsters' silhouettes ask it) */
+/* the way one silhouette clips (clipRoute.js) */
+const routeOf = (m) => clipRoute(_installed, _alpha, _selfOff, !!(m && m.texture && isPaletteSource(m.texture.source)));
 
 /* the silhouette's opaque half only: a fragment where the alpha mask would
    have kept less than half the hair is discarded (MaskFilter: a * r) */
@@ -164,7 +168,7 @@ export function alphaClipProgram() { return _alphaShader ? _alphaShader.glProgra
       configurable: true,
       get() {
         const r = this.renderable;
-        if (r && _installed && !_alpha) {
+        if (r && (r._btClipMask || r._btClipAlpha) && routeOf(r) === 'stencil') {   /* v2.3.5239: clipRoute.js */
           if (r._btClipMask) return isPaletteSource(r.texture && r.texture.source) ? PAL_HAIR_CLIP_BATCHER : CLIP_BATCHER;   /* v2.3.5562: a hat's mask as colour numbers (p256.js HAIRMASKS) */
           /* v2.3.3707: a thing's picture as a silhouette's stencil shape
              (monsterSilhouette.js): its own colours' program, or its colour
@@ -210,9 +214,12 @@ export function installHairClip(app) {
    (`batcherName` above), held to the CPU's answer (selfTest.js
    selfClipWant: kept where alpha x red, or alpha, is at least half; nothing
    elsewhere).  v2.3.5239 (the planner, for the owner): a wrong picture falls
-   back ALONE to the alpha mask, as `?alphaclip` (setHairClipStencil(false):
-   every hair clipped again that way; the monsters' silhouettes, which need
-   the stencil, not drawn -- monsterSilhouette.js asks hairClipStencilOn). */
+   back ALONE: a silhouette that is a PICTURE to the alpha mask, as
+   `?alphaclip`; one of COLOUR NUMBERS (the hats' and hoods' hair masks,
+   p256.js) stays on the stencil, drawn by the palette's program, not the
+   clip's (clipRoute.js: the alpha mask would read its numbers as nothing,
+   the gatekeeper's sitting 23).  Every hair clipped again; the monsters'
+   silhouettes not drawn (monsterSilhouette.js asks hairClipStencilOn). */
 function clipSelfTest(renderer) {
   if (!selfTestOn()) { selfSkip('clip', 'no self-test on this page (?selftest=0)'); return; }
   const t0 = performance.now();
@@ -229,7 +236,7 @@ function clipSelfTest(renderer) {
     try { if (spr) spr.destroy({ texture: true, textureSource: true }); } catch (e) { /* gone */ }
   }
   if (!rts.length) { rts.push(null); wants.push(selfClipWant()); }
-  selfQueue('clip', renderer, rts, wants, () => { setHairClipStencil(false); }, performance.now() - t0);
+  selfQueue('clip', renderer, rts, wants, () => { _selfOff = true; reclipAll(); }, performance.now() - t0);
 }
 
 /* the silhouette's box, made the first time it clips: put where the
@@ -278,7 +285,7 @@ export function clipBoxOrSelf(m) {
  *  through the stencil, or as an alpha mask where that is off. */
 export function clipHair(hair, m) {
   if (!hair) return;
-  if (!hairClipStencilOn()) {
+  if (routeOf(m) !== 'stencil') {   /* v2.3.5239: a silhouette at a time (clipRoute.js) */
     /* (a silhouette already boxed stays in its box: Pixi's alpha mask turns
        the silhouette itself off, and the box holds nothing else) */
     if (hair.mask !== m) hair.mask = m;
@@ -316,12 +323,16 @@ export function clipHair(hair, m) {
  *  has clipped is clipped again the way the switch now says. */
 export function setHairClipStencil(on) {
   _alpha = !on;
+  reclipAll();
+  return hairClipStencilOn();
+}
+/* every hair a box has clipped, clipped again the way each silhouette now goes */
+function reclipAll() {
   for (const box of _boxes) {
     const hair = box._btHair, m = box.children[0];
     if (!hair || hair.destroyed || !m || (hair.mask !== box && hair.mask !== m)) continue;
     clipHair(hair, m);
   }
-  return hairClipStencilOn();
 }
 
 /** Is the hair clipped to the silhouette `m` (either way)?  Through the

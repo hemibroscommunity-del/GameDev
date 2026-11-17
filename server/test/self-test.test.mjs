@@ -380,11 +380,35 @@ const code = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`\\])\/\
   check('9. the CPU\'s lines are the programs\' own (alpha x red; alpha)',
     hc.includes('if (outColor.a * outColor.r < 0.5) discard;') && hc.includes('if (outColor.a < 0.5) discard;'));
   const hcc = code(hc);
-  check('9. the clip: tested once installed, each program through its sprite\'s own batcher; v2.3.5239: wrong, it falls back alone to the alpha mask (as `?alphaclip`)',
+  check('9. the clip: tested once installed, each program through its sprite\'s own batcher; v2.3.5239: wrong, it falls back alone (its pictures to the alpha mask, as `?alphaclip`; clipRoute.js)',
     /_installed = true;\s*try \{ clipSelfTest\(r\); \}/.test(hcc)
     && /if \(alpha\) spr\._btClipAlpha = true; else spr\._btClipMask = true;/.test(hcc)
-    && /selfQueue\('clip', renderer, rts, wants, \(\) => \{ setHairClipStencil\(false\); \}/.test(hcc));
+    && /selfQueue\('clip', renderer, rts, wants, \(\) => \{ _selfOff = true; reclipAll\(\); \}/.test(hcc));
   check('9. v2.3.5239: the clip\'s way back in drawLanes.js PROGRAMS', /name: 'clip',[^\n]*back: 'the alpha mask'/.test(src('src/game/drawLanes.js')));
+}
+
+/* ── 10. v2.3.5239 (the gatekeeper's sitting 23): a failed clip sends only
+   PICTURES to the alpha mask; a silhouette of colour numbers (the hats' and
+   hoods' hair masks, p256.js) stays on the stencil, drawn by the palette's
+   program -- the alpha mask would read its numbers as nothing (the hair
+   gone under 31 of the 40 hats).  BREAK: clipRoute's `&& !palette` taken
+   out -> FAIL 10 (numbers to the alpha mask). ── */
+{
+  const { clipRoute } = await import('../../src/rendering/clipRoute.js');
+  const rows = [
+    [[true, false, false, false], 'stencil', 'a picture, the clip passed'],
+    [[true, false, false, true], 'stencil', 'colour numbers, the clip passed'],
+    [[true, false, true, false], 'alpha', 'a picture, the clip failed: the alpha mask'],
+    [[true, false, true, true], 'stencil', 'colour numbers, the clip failed: still the stencil (the palette\'s program)'],
+    [[true, true, false, true], 'alpha', '`?alphaclip`: the alpha mask (p256.js keeps the masks pictures then)'],
+    [[false, false, false, false], 'alpha', 'not installed'],
+  ];
+  const bad = rows.filter(([a, want]) => clipRoute(...a) !== want).map(([a, want, why]) => `${why}: ${clipRoute(...a)}`);
+  check('10. each silhouette clips its own way: a failed clip sends pictures to the alpha mask, colour numbers stay on the stencil', bad.length === 0, bad);
+  const hc = code(src('src/rendering/hairClip.js'));
+  check('10. hairClip.js asks it where a hair is clipped and where a silhouette picks its batcher',
+    /if \(routeOf\(m\) !== 'stencil'\) \{/.test(hc) && /if \(r && \(r\._btClipMask \|\| r\._btClipAlpha\) && routeOf\(r\) === 'stencil'\) \{/.test(hc)
+    && /const routeOf = \(m\) => clipRoute\(_installed, _alpha, _selfOff, !!\(m && m\.texture && isPaletteSource\(m\.texture\.source\)\)\);/.test(hc));
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);
