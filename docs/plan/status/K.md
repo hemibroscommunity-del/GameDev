@@ -1,7 +1,7 @@
 card: K
 branch: claude/plan-k-<n>-<topic> (one branch a PR, each begun from main)
-prs: #1822, #1820, #1826, #1829, #1831, #1838, #1842, #1861, #1848 merged; ready: #1899 (5542), #1900 (5188); N10 (5543) this branch, on #1899
-state: ready
+prs: #1822, #1820, #1826, #1829, #1831, #1838, #1842, #1861, #1848, #1899, #1923 merged; ready: #1900 (5188, this branch)
+state: working
 
 ## Done
 
@@ -18,8 +18,8 @@ state: ready
 
 ## Next
 
-- #1900 (7.2) restacked on N10 when sitting 19 lands; 7.3-7.6 in order;
-  then N11, N5.
+- #1900 (7.2) restacked on main b2d763a9 (race.js: raceTo 'ask' then
+  act); then 7.3-7.6 (5189-5192) in order, each on the last; then N11, N5.
 - The move's walls (movement.js); the sword's reach (index.js, after card
   R's 5281); the bow claim (bowlabel 3.91, the aimbot +12%).
 - Lows: wire-table §7's cure; door.js "by type"; `rideEnds` (SK is done).

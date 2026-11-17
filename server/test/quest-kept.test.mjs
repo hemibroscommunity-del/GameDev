@@ -19,6 +19,9 @@
  *      when the channel took the message. */
 import { readFileSync } from 'node:fs';
 import { GameRoom } from '../src/index.js';
+import { setActionTransport } from '../../src/game/actions.js';   /* v2.3.5188: the page's sends leave through the action door (card K PR 7.2): its transport is the stand-in phone's channel */
+/* v2.3.5188: the door's transport is this phone's channel (none: nothing leaves, as with no connection) */
+const via = (S) => { setActionTransport(S && S.channel ? { send: (m) => S.channel.send(m) } : null); return S; };
 
 let passed = 0, failed = 0;
 function check(name, cond, detail) {
@@ -65,36 +68,36 @@ if (Q1 && K.sendQuestMsg) {
   K.clearKeptQuests();
   /* 2. down: kept, not sent */
   up = false;
-  const ok = K.sendQuestMsg(S, { type: 'quest_accept', payload: { questId: Q1 } });
+  const ok = K.sendQuestMsg(via(S), { type: 'quest_accept', payload: { questId: Q1 } });
   await settle();
   check('2a down: the accept is not sent, and is kept', ok === false && sent.length === 0 && K.keptQuestCount() === 1 && quest(Q1) !== 'active', { ok, kept: K.keptQuestCount(), q: quest(Q1) });
   /* the rejoin */
   up = true;
-  const n = K.resendKeptQuests(S);
+  const n = K.resendKeptQuests(via(S));
   await settle();
   check('2b on the rejoin it goes, once, and the worker has the quest', n === 1 && sent.length === 1 && sent[0].type === 'quest_accept' && K.keptQuestCount() === 0 && quest(Q1) === 'active', { n, sent: sent.length, q: quest(Q1) });
   /* 4. a later rejoin sends nothing */
-  const n2 = K.resendKeptQuests(S);
+  const n2 = K.resendKeptQuests(via(S));
   check('4 a later rejoin sends nothing again', n2 === 0 && sent.length === 1);
   /* 1. connected: at once, nothing kept */
   sent.length = 0;
-  const ok1 = K.sendQuestMsg(S, { type: 'quest_accept', payload: { questId: Q1 } });
+  const ok1 = K.sendQuestMsg(via(S), { type: 'quest_accept', payload: { questId: Q1 } });
   check('1 connected: it goes at once and nothing is kept (the worker judges a repeat)', ok1 === true && sent.length === 1 && K.keptQuestCount() === 0);
   /* 3 and 5: order, and down again mid-rejoin */
   sent.length = 0;
   up = false;
-  K.sendQuestMsg(S, { type: 'quest_accept', payload: { questId: 'qa' } });
+  K.sendQuestMsg(via(S), { type: 'quest_accept', payload: { questId: 'qa' } });
   K.sendQuestMsg(S, { type: 'quest_turn_in', payload: { questId: 'qa', xpCat: 'sword' } });
   K.sendQuestMsg(S, { type: 'quest_accept', payload: { questId: 'qa' } });   /* the same tap again: one kept */
   check('3a in one gap: an accept and its hand-in are kept, one each', K.keptQuestCount() === 2);
   let calls = 0;
   const S2 = { channel: { send(msg) { calls++; if (calls > 1) return false; sent.push(msg); return undefined; } } };
-  const n3 = K.resendKeptQuests(S2);
+  const n3 = K.resendKeptQuests(via(S2));
   check('5 down again during the rejoin: the first went, the rest wait in order', n3 === 1 && sent.length === 1 && sent[0].type === 'quest_accept' && K.keptQuestCount() === 1);
   up = true;
   sent.length = 0;
   const S3 = { channel: { send(msg) { sent.push(msg); return undefined; } } };
-  K.resendKeptQuests(S3);
+  K.resendKeptQuests(via(S3));
   check('3b ...and the hand-in follows on the next', sent.length === 1 && sent[0].type === 'quest_turn_in' && K.keptQuestCount() === 0);
   check('7 anything but a quest tap is not its business', K.sendQuestMsg(S3, { type: 'stats_update', payload: {} }) === false && K.keptQuestCount() === 0);
 }
