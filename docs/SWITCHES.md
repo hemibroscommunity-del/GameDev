@@ -561,6 +561,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | name | side | kind | born | on | thrown | risk | needs | fallback | off |
 |---|---|---|---|---|---|---|---|---|---|
 | `alliance` | worker | switch | v2.3.3313 | 2026-10-17 | false | logic | `partykeep` | no | No alliance status, names, wars or board; tags come off at the next vitals echo. |
+| `?allydrafts` | page | switch | v2.3.5524 | 2026-11-17 | =0 | logic |  | no | The Saloon's alliance forms keep nothing: a rejoin makes them again empty, what the leader typed lost, as before. |
 | `arenaap` | worker | switch | v2.3.3481 | 2026-10-19 | false | logic |  | no | The arena champion is paid gold alone, no AP, and the cap is un-advertised. |
 | `arenaeatgate` | worker | switch | v2.3.4413 | 2026-11-10 | false | logic |  | no | Eating in an arena match is gated by the match flag alone, as before. |
 | `arenasettleplan` | worker | switch | v2.3.5089 | 2026-11-14 (v2.3.5095) | false | logic |  | no | An arena match's stakes settle in the old order again (the losers stamped first, then each payout in a write of its own): a restart mid-settlement can lose the stakes. On since v2.3.5095 (the owner's yes; two rows a match). |
