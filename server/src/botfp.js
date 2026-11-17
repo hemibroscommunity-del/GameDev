@@ -223,6 +223,12 @@ function ringVariance(ring, key) {
   return m2 / n;
 }
 
+/* v2.3.5708: a record (live or stored) holding evidence -- a flag, or a cap
+   clamp -- is written and kept whatever guestquiet says (guestlazy.js) */
+export function botfpEvidence(rec) {
+  return !!(rec && typeof rec === 'object' && ((Array.isArray(rec.flags) && rec.flags.length > 0) || (rec.counters && rec.counters.capClamps > 0)));
+}
+
 export const botfpMethods = {
   // ── join: device capture + durable hydration ──
   // Runs inside the join case (input gate held across the await — rule 9).
@@ -572,6 +578,13 @@ export const botfpMethods = {
   // Throttled fire-and-forget durable write (no per-tick writes; flags and
   // first-cap-clamp flush immediately via force).
   _botfpMaybePut(id, rec, force) {
+    /* v2.3.5708: a quiet guest's signals are not written (guestlazy.js): the
+       record stays dirty, and writes at its pace once the guest has done
+       something worth keeping.  Evidence is never held back (the sitting-38
+       review): a record holding a flag or a cap clamp is written as before,
+       quiet or not -- a bot refused at every strike never earns, never
+       saves, and would stay quiet for good with its flags in memory only */
+    if (this._guestQuiet && this._guestQuiet(id) && !botfpEvidence(rec)) return;
     const now = now_();
     if (!force && (!rec.dirty || now - rec.lastPutAt < BOTFP.PUT_MIN_MS)) return;
     rec.lastPutAt = now;
@@ -617,6 +630,27 @@ export const botfpMethods = {
     if (!(typeof this._adminAuth === 'function' && (await this._adminAuth(request, true)) === 'ok')) return notFound();
     const url = new URL(request.url);
     const headers = { 'Content-Type': 'application/json' };
+    /* ═══ v2.3.5708 (card SEC PR 9): THE OWNER'S SWEEP OF ORPHAN SIGNALS ═══
+       DELETE /api/botstat?sweep=1[&after=<the next a page gave>]: one page of
+       `botstat:` rows (liveops.js _ownerPage), each whose character has no
+       record (`rpg:` not on file) and is not playing now taken away -- a
+       throwaway guest's, left before guestquiet (guestlazy.js).  A character
+       with a record keeps its row.  One read of the page's records, one
+       delete of its orphans.  `{removed, next}`: call again with `after`
+       until `next` is null. */
+    if (request.method === 'DELETE' && url.searchParams.get('sweep') === '1') {
+      const { page, next } = await this._ownerPage('botstat:', ownerCursor(url.searchParams.get('after')));
+      const ids = [...page.keys()].map((k) => k.slice('botstat:'.length));
+      /* the storage reads and deletes at most 128 keys a call */
+      const recs = new Map();
+      for (let i = 0; i < ids.length; i += 128) for (const [k, v] of await this.state.storage.get(ids.slice(i, i + 128).map((x) => 'rpg:' + x))) recs.set(k, v);
+      const here = new Set([...(this.sessions ? this.sessions.values() : [])].map((s) => s && s.id).filter(Boolean));
+      /* a row holding evidence stays: the owner's `?flagged=1` review reads it */
+      const gone = ids.filter((x) => !recs.has('rpg:' + x) && !here.has(x) && !(this.playerState && this.playerState[x]) && !botfpEvidence(page.get('botstat:' + x)));
+      for (let i = 0; i < gone.length; i += 128) await this.state.storage.delete(gone.slice(i, i + 128).map((x) => 'botstat:' + x));
+      for (const x of gone) if (this._botfp) this._botfp.delete(x);
+      return new Response(JSON.stringify({ ok: true, removed: gone.length, next }), { headers });
+    }
     const id = url.searchParams.get('id');
     if (id) {
       const stored = (await this.state.storage.get('botstat:' + id)) || null;

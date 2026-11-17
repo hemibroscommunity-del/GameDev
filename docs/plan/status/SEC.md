@@ -1,6 +1,6 @@
 card: SEC
 branch: claude/plan-sec-<n>-<topic> (stacked: each PR on the one before until it merges)
-prs: #2030 (5700): merged; #2032 (5701), #2034 (5702), #2037 (5703), #2038 (5704): sitting 37; #2040 (5705), #2042 (5706): CI; PR 8 (5707): working
+prs: #2030 (5700): merged; #2032 (5701), #2034 (5702), #2037 (5703), #2038 (5704): sitting 37; #2040 (5705): sitting 37; #2042 (5706), #2043 (5707): CI; PR 9 (5708): working
 state: working
 
 ## Done
@@ -8,11 +8,9 @@ state: working
 - PR 1 (5700, #2030, merged): the card, this file, the block; items 16 to
   20 and item 15's addition word for word (the orchestrator, on the owner's
   "go recommended"), built after item 15.
-- PR 2 (5701, #2032): a join's id of the id's form (`joinidform`; 58 FAIL on main).
-- PR 3 (5702, #2034): a refused vault put owed, put again in the next save's
-  run; the leave saves it first; `paused` (`bankretry`; 12 FAIL on main).
-- PR 4 (5703, #2037): stored bags never cut by `disable_bigbags` (4 FAIL).
-- PR 5 (5704, #2038): a newer worker's unknown fields kept (`newerkeep`; 2 FAIL).
+- PRs 2 to 5 (#2032, #2034, #2037, #2038): a join's id of its form; a
+  refused vault put owed and put again with the next save; stored bags never
+  cut by `disable_bigbags`; a newer worker's unknown fields kept.
 - PR 6 (5705, #2040): the board holds its limit, its name before the key,
   each field, a 4096-byte row, a paged read (no switch: its flags ride
   index.js, K2's; 13 FAIL on main).
@@ -20,11 +18,14 @@ state: working
   a vote looks first, the crash feed cut by bytes, the list kept 30 s and the
   newest 500, the text cleaned (`feedbackshare`; 15 FAIL on main).
 
+- PR 8 (5707, #2043): a header no side door past the public reads' pace;
+  the four other reads paced (11 FAIL on main).
+- PR 9 (5708): an idle guest writes no row and sends no board report until
+  its first save; the owner's sweep of orphan `botstat:` (`guestquiet`; 3 FAIL).
+
 ## Next
 
-- PR 8 (5707): a header no side door past the public reads' pace; the
-  four other reads paced (`public-sidedoor.test`, 11 FAIL on main). Its
-  suite, then PR; then PR 9 (5708): a guest that has done nothing.
+- PR 9's suite and PR; then PR 10 (5709): a restart in one run; 50 requests in.
 
 ## Found
 
