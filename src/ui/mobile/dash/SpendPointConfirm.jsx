@@ -4,6 +4,7 @@ import { spendConfirmBus } from './spendConfirmBus.js';
 import { swallowTapClick } from '../../swallowTapClick.js';   /* v2.3.3560 */
 import { recalcDerived, WEAPON_CHANNEL_CAP, DEFENSE_CHANNEL_CAP, GRID_CHANNEL_CAP, combatBuildTotal, COMBAT_BUILD_CEILING, isT2SimpleEnabled, isT2BenchEnabled, t2FlatOf, t2BenchRoleOf, t2PointValue, t2BenchLevel, t2SpendLevel } from '../../../data/gameSystems.js';
 import { celebrateLevelUps } from '../../../game/levelCelebration.js';
+import { act } from '../../../game/actions.js';   /* v2.3.5191: the page's requests leave through the action door (card K PR 7) */
 
 /* v2.3.911: confirmation window for spending a build-skill Tier-2 point.
    Shows the channel's current effect vs the effect after +1 (via the
@@ -126,7 +127,7 @@ export const SpendPointConfirm = () => {
          applies partial payloads (each field presence-gated) + clamps. */
       try {
         if (S && S.channel) {
-          S.channel.send({ type: 'stats_update', payload: {
+          act('stats_update', {   /* v2.3.5191: through the action door (actions.js) */
             weaponSpecs: R.weaponSpecs || {},
             weaponUnspent: R.weaponUnspent || {},
             weaponSkills: R.weaponSkills || {},
@@ -138,7 +139,7 @@ export const SpendPointConfirm = () => {
             hpUnspent: (typeof R.hpUnspent === 'number') ? R.hpUnspent : 0,
             enduranceSpec: R.enduranceSpec || {},
             enduranceUnspent: (typeof R.enduranceUnspent === 'number') ? R.enduranceUnspent : 0,
-          } });
+          });
         }
       } catch (e) {}
     }

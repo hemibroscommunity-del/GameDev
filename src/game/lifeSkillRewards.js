@@ -27,6 +27,7 @@ import { jumpAirborne } from '@/game/jump.js';     /* v2.3.3017 */
 import { MINE_SEAT_DX, MINE_SEAT_DY, FISH_SEAT_DX, FISH_SEAT_DY } from '@/data/constants.js';   /* v2.3.2915 */
 import { gatherNeed } from '@/data/lifeSkills.js';   /* v2.3.3038: a resource's level is a real requirement */
 import { cue } from '@/game/eventSounds.js';   /* v2.3.3434: the prize heard landing in the bag */
+import { act } from '@/game/actions.js';   /* v2.3.5188: the page's requests leave through the action door (card K PR 7) */
 /* v2.3.849: fly a harvested-resource icon from its world node into the
    bottom-left inventory.  DOM-only (appended to document.body, like the
    resume spinner) so it floats above the canvas/HUD and animates on the
@@ -289,7 +290,7 @@ export function startExtraction(S, node, skill, extra) {
         /* v2.3.2956: asking for hits, and naming this attempt so a plan for
            an abandoned one can be told apart (applyGatherHits). */
         if (S._extraction.hits) _esPayload.hitSeq = S._extraction.hits.seq;
-        S.channel.send({ type: 'extraction_start', payload: _esPayload });
+        act('extraction_start', _esPayload);   /* v2.3.5188: through the action door (actions.js) */
       } catch (e) {}
     }
     try { BT_AUDIO.beep(440, 0.03, 0.04, 'sine'); } catch (e) {}
@@ -486,7 +487,7 @@ function _gatherHitsToTimer(S, ex, resend) {
     ex.windowClosesAt = now + openDelay + EXTRACT_WINDOW_MS;
     if (resend && S.channel && ex.skill !== 'cooking') {
       try {
-        S.channel.send({ type: 'extraction_start', payload: { nodeId: ex.nodeId, zone: S.currentZone, skill: ex.skill } });
+        act('extraction_start', { nodeId: ex.nodeId, zone: S.currentZone, skill: ex.skill });   /* v2.3.5188: through the action door (actions.js) */
       } catch (e) {}
     }
 }
@@ -581,7 +582,7 @@ function applyFishingReward(S, node, result, deps) {
         var _swipeFp = (S._extraction && S._extraction.swipeFp) || null;
         var _np = { id: node.id, zone: S.currentZone, accuracy: accuracy };
         if (_swipeFp) _np.swipeFp = _swipeFp;
-        S.channel.send({ type: 'node_strike', payload: _np });
+        act('node_strike', _np);   /* v2.3.5188: through the action door (actions.js) */
       } catch (e) {}
     }
     /* Inventory grant for the resource itself (fish_clownfish, etc.).
@@ -698,7 +699,7 @@ function applyWoodReward(S, node, result, deps) {
         var _swipeFp = (S._extraction && S._extraction.swipeFp) || null;
         var _np = { id: node.id, zone: S.currentZone, accuracy: accuracy };
         if (_swipeFp) _np.swipeFp = _swipeFp;
-        S.channel.send({ type: 'node_strike', payload: _np });
+        act('node_strike', _np);   /* v2.3.5188: through the action door (actions.js) */
       } catch (e) {}
     }
     /* Resource inventory grant on the worker when authoritative;
@@ -795,7 +796,7 @@ function applyMiningReward(S, node, result, deps) {
         var _swipeFp = (S._extraction && S._extraction.swipeFp) || null;
         var _np = { id: node.id, zone: S.currentZone, accuracy: accuracy };
         if (_swipeFp) _np.swipeFp = _swipeFp;
-        S.channel.send({ type: 'node_strike', payload: _np });
+        act('node_strike', _np);   /* v2.3.5188: through the action door (actions.js) */
       } catch (e) {}
     }
     /* Resource inventory grant on the worker when authoritative;
@@ -902,7 +903,7 @@ export function applyCookingResult(S, fishKey, kind, taps, deps) {
           && S._extraction.skill === 'cooking' && S._extraction.swipeFp) {
         _cookPayload.swipeFp = S._extraction.swipeFp;
       }
-      try { S.channel.send({ type: 'cook_request', payload: _cookPayload }); } catch (e) {}
+      try { act('cook_request', _cookPayload); } catch (e) {}   /* v2.3.5188: through the action door (actions.js) */
       return;
     }
     /* Fallback: no channel (SP / dungeon offline). */

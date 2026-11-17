@@ -208,6 +208,7 @@ import { noteHitBlow } from '@/game/deathBlow.js'; /* v2.3.3985: the killing blo
 import { t2LeaveDrop, t2IgnoreBusy, t2Hushed } from '@/game/tradeSlot.js'; /* v2.3.4362: the trade window never outlives its server */
 import { peerFireOut } from '@/game/fireRefuse.js'; /* v2.3.4942: a peer's refused fire, put out */
 import { sameWire } from '@/game/partyEq.js'; /* v2.3.4884: an identical party_state re-echo does not re-render */
+import { act } from '@/game/actions.js';   /* v2.3.5189: the page's requests leave through the action door (card K PR 7) */
 
 /* v2.3.1107: angle -> 8-way compass, same SECTORS convention as
    entityRenderer (atan2(dy,dx) -> 'east' when dx>0).  Used to reconcile a
@@ -663,7 +664,7 @@ export function processGameEvent(type, payload, S, deps) {
                     var _lf = _legacy[_li];
                     var _lid = (_lf && _lf.id) || _lf;
                     if (!_lid || (payload.list && payload.list[_lid]) || (payload.reqOut && payload.reqOut[_lid])) continue;
-                    S.channel.send({ type: 'broadcast', event: 'friend_request', payload: { target: _lid, name: (_lf && _lf.name) || 'Bro' } });
+                    act('friend_request', { target: _lid, name: (_lf && _lf.name) || 'Bro' });   /* v2.3.5189: through the action door (actions.js) */
                   }
                   localStorage.setItem('bt_friendsMigrated', '1');
                 }
@@ -989,7 +990,7 @@ export function processGameEvent(type, payload, S, deps) {
                 /* Step into the instance NOW (not on the next joystick
                    packet) so the wave-1 zone_state arrives immediately. */
                 if (S.channel) {
-                  try { S.channel.send({ type: 'broadcast', event: 'move', payload: { x: S.player.x, y: S.player.y, z: S.currentZone, vx: 0, vy: 0 } }); } catch (e) {}
+                  try { act('move', { x: S.player.x, y: S.player.y, z: S.currentZone, vx: 0, vy: 0 }); } catch (e) {}   /* v2.3.5189: through the action door (actions.js) */
                 }
                 pushDmgPopup(S, S.player.x, S.player.y - 50, _dCfg.name || 'Dungeon', '#a070e0');
                 pushDmgPopup(S, S.player.x, S.player.y - 35, 'Wave 1/' + (_dCfg.waves || 3), 'rgba(255,255,255,.5)');
@@ -1145,7 +1146,7 @@ export function processGameEvent(type, payload, S, deps) {
                 S._zoneWipe = Date.now();
                 holdFarmUntilReady(S);
                 if (S.channel) {
-                  try { S.channel.send({ type: 'broadcast', event: 'move', payload: { x: S.player.x, y: S.player.y, z: 'farm_home', vx: 0, vy: 0 } }); } catch (e) {}
+                  try { act('move', { x: S.player.x, y: S.player.y, z: 'farm_home', vx: 0, vy: 0 }); } catch (e) {}   /* v2.3.5189: through the action door (actions.js) */
                 }
               });
               /* ═══ v2.3.3565: THE BOSS'S CHEST, AND THE CLEAR'S XP ═══
@@ -3788,8 +3789,8 @@ export function processGameEvent(type, payload, S, deps) {
                    targeting us during the 5 s respawn window, and
                    broadcast the death so remote clients render a
                    dead pose at our last position. */
-                if (S.channel) S.channel.send({ type: 'broadcast', event: 'move', payload: { x: S.player.x, y: S.player.y, z: S.currentZone, vx: 0, vy: 0 } });
-                if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_died_to_monster', payload: { id: S.myId, x: S.player.x, y: S.player.y } });
+                if (S.channel) act('move', { x: S.player.x, y: S.player.y, z: S.currentZone, vx: 0, vy: 0 });   /* v2.3.5189: through the action door (actions.js) */
+                if (S.channel) act('player_died_to_monster', { id: S.myId, x: S.player.x, y: S.player.y });
                 /* v2.3.4363: no gold taken -- it was 10% off the gold SHOWN; the
                    worker never takes it (the 2026-11-03 sweep, V2 U1-2) */
                 /* Death particles */
@@ -4461,25 +4462,21 @@ export function processGameEvent(type, payload, S, deps) {
                  ticks eight times; the bookkeeping is the kill's, and the
                  attacker's own screen already knows the hit was the worker's
                  (_pvpSrvHits) */
-              if (S.channel && !(_pvTk && !_wouldDiePvp)) S.channel.send({
-                type: 'broadcast',
-                event: 'pvp_confirmed',
-                payload: {
-                  target: payload.attacker,
-                  from: S.myId,
-                  dmg: dmgTaken,
-                  isCrit: payload.isCrit,
-                  died: _wouldDiePvp,
-                  name: S.myName,
-                  blocked: payload.blocked,
-                  /* v2.3.1612: "this one came from the SERVER's pvp_hit".  The
-                     attacker uses it to skip the legacy hit popup, which would
-                     otherwise double up on the real damage number — see the
-                     pvp_confirmed handler below.  Old clients ignore the
-                     field; old workers never produce a pvp_hit for us to set
-                     it on, so both deploy orders keep working (rule 19). */
-                  srv: true
-                }
+              if (S.channel && !(_pvTk && !_wouldDiePvp)) act('pvp_confirmed', {   /* v2.3.5189: through the action door (actions.js) */
+                target: payload.attacker,
+                from: S.myId,
+                dmg: dmgTaken,
+                isCrit: payload.isCrit,
+                died: _wouldDiePvp,
+                name: S.myName,
+                blocked: payload.blocked,
+                /* v2.3.1612: "this one came from the SERVER's pvp_hit".  The
+                   attacker uses it to skip the legacy hit popup, which would
+                   otherwise double up on the real damage number — see the
+                   pvp_confirmed handler below.  Old clients ignore the
+                   field; old workers never produce a pvp_hit for us to set
+                   it on, so both deploy orders keep working (rule 19). */
+                srv: true
               });
               setRpgState(_objectSpread({}, _R2));
               break;
@@ -4518,13 +4515,9 @@ export function processGameEvent(type, payload, S, deps) {
               });
               S.screenShake = 4;
               BT_AUDIO.beep(200, 0.1, 0.15, 'sawtooth');
-              if (S.channel) S.channel.send({
-                type: 'broadcast',
-                event: 'stunned',
-                payload: {
-                  target: payload.id,
-                  duration: 2000
-                }
+              if (S.channel) act('stunned', {   /* v2.3.5189: through the action door (actions.js) */
+                target: payload.id,
+                duration: 2000
               });
               /* Predict "Killed by X" popup from predicted dmg vs current
                  local hp (worker-authoritative store means _R3.hp won't
@@ -4534,16 +4527,12 @@ export function processGameEvent(type, payload, S, deps) {
                 pushDmgPopup(S, S.player.x, S.player.y - 45, 'Killed by ' + payload.name, '#ff5e6c');
                 BT_AUDIO.deathBoom();
               }
-              if (S.channel) S.channel.send({
-                type: 'broadcast',
-                event: 'pvp_confirmed',
-                payload: {
-                  target: payload.id,
-                  from: S.myId,
-                  dmg: _dmgTaken,
-                  isCrit: isCrit,
-                  died: _wouldDieAtk
-                }
+              if (S.channel) act('pvp_confirmed', {   /* v2.3.5189: through the action door (actions.js) */
+                target: payload.id,
+                from: S.myId,
+                dmg: _dmgTaken,
+                isCrit: isCrit,
+                died: _wouldDieAtk
               });
               setRpgState(_objectSpread({}, _R3));
               break;
@@ -4617,14 +4606,10 @@ export function processGameEvent(type, payload, S, deps) {
                   };
                   _war2.killLog.push(kill);
                   if (isChallenger) _war2.challenger.score += points;else _war2.defender.score += points;
-                  if (S.channel) S.channel.send({
-                    type: 'broadcast',
-                    event: 'clan_war_kill',
-                    payload: {
-                      warId: _war2.id,
-                      kill: kill,
-                      scoreSide: isChallenger ? 'challenger' : 'defender'
-                    }
+                  if (S.channel) act('clan_war_kill', {   /* v2.3.5189: through the action door (actions.js) */
+                    warId: _war2.id,
+                    kill: kill,
+                    scoreSide: isChallenger ? 'challenger' : 'defender'
                   });
                   pushDmgPopup(S, S.player.x, S.player.y - 65, '+' + points + ' war points!', '#ff5e6c');
                 }

@@ -1,6 +1,6 @@
 card: O
-branch: claude/plan-o-14b-selftest (one branch a PR; begun from #1896's head, the planning session's word)
-prs: #1787, #1792, #1794, #1800, #1814, #1815, #1832, #1841, #1836, #1850, #1854 (merged); #1896 (5234, 14a), #1915 (5236, 14b): ready
+branch: claude/plan-o-14d-selftest (one branch a PR; begun from #1929's head)
+prs: #1787, #1792, #1794, #1800, #1814, #1815, #1832, #1841, #1836, #1850, #1854, #1896, #1915, #1929 (merged); #1937 (5238, 14d): ready
 state: ready
 
 ## Done
@@ -13,15 +13,17 @@ state: ready
   knobs, their fallbacks `OVERRIDES` asked of `deviceProfile.js` alone.
 - #1850 (5229) the passes knobs; (A) revised: a kept rung keeps the rate.
 - #1854 (5230): the strip slice the lanes' `queue` knob (4 ms; `thirty` 8).
-- #1896 (5234, 14a, ready): the self-test at the door; the one program and
+- #1896 (5234, 14a, merged): the self-test at the door; the one program and
   the colour numbers; `self`; `?selftest=fail:<name>`, `?selftest=0`.
-- #1915 (5236, 14b, ready, on #1896): look, sharp (the one program's read where
+- #1915 (5236, 14b, merged): look, sharp (the one program's read where
   it draws), sheen, shadow, water: each its picture and its way back.
 
 ## Next
 
-- 14c (5237): the clip, the fill, the glint (after #1896 and 14b).
-- PR 11 (caches) waits for card P; 12 for card T's PR 6; 13 for card SK.
+- #1929 (5237, 14c, merged): fill, glint; #1937 (5238, 14d, ready): the clip.
+- 5239 (after 14d; the planner for the owner): a failed fill or glint falls
+  back alone (CLAUDE.md §7), not drawn as today.
+- PR 11 waits for card P; 12 for card T's PR 6; 13 for card SK.
 
 ## Found
 
@@ -35,4 +37,4 @@ state: ready
 
 ## Needs
 
-- (none)
+- The clip's way back too (`?alphaclip`, the alpha mask) in 5239? Asked.
