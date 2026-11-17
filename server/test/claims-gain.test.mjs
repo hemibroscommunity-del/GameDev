@@ -41,8 +41,8 @@ import * as B from './claimbots.mjs';
 const BAR = 1.5;
 /* today's gains (main 82fb78d, the default seed): a line only falls */
 const LINES = {
-  reach: 1.42, bowlabel: 3.3, guard: 1.37, cookshield: 0.67, move: 1.17, harvest: 1.86, cook: 1.59, quest: 1, sale: 1, local: 1,
-};   /* v2.3.5551: reach 2.96 -> 1.42 (`swordswing` ON), move 2.56 -> 1.17 (`movetop` ON): the owner's yes, 2026-11-17; v2.3.5550: bowlabel 3.76 -> 3.3 (the flicking archer, an honest way the free-swing trial plays); v2.3.5541: move 4.35 -> 2.56 (the sprint mark, ON: the run goes on through the grace, and the sprint's bound only for what is billed; review-z16) */
+  reach: 1.42, bowlabel: 1.6, guard: 1.37, cookshield: 0.67, move: 1.17, harvest: 1.86, cook: 1.59, quest: 1, sale: 1, local: 1,
+};   /* v2.3.5727: bowlabel 3.3 -> 1.6 (`bowshot` ON, card K2 PR 8: decided for the owner while away, 2026-11-17); v2.3.5551: reach 2.96 -> 1.42 (`swordswing` ON), move 2.56 -> 1.17 (`movetop` ON): the owner's yes, 2026-11-17; v2.3.5550: bowlabel 3.76 -> 3.3 (the flicking archer, an honest way the free-swing trial plays); v2.3.5541: move 4.35 -> 2.56 (the sprint mark, ON: the run goes on through the grace, and the sprint's bound only for what is billed; review-z16) */
 /* each gain's spread over five other seeds (CLAIMS_SEED=a..e, --gains:
    the highest less the lowest, rounded up), measured 2026-11-14.  A gain
    fails only past its line by more than its spread, so a change elsewhere in
@@ -264,21 +264,23 @@ if (!GAINS_ONLY) {
   const gOff = perHour(mc, valueOf(mc, lOff.take), lOff.ms) / Math.max(bestOff, 1e-9);
   check(`2e: the move's liar: gain ${gOff.toFixed(2)} with \`movetop: false\`, ${gOn.toFixed(2)} on (the bar ${BAR})`, gOn <= BAR && gOn < gOff, { on: gOn, off: gOff });
 }
-/* v2.3.5550 (card K, step 4.2): A BOW'S CLAIM IS AN ARROW SEEN (bowshot.js;
-   an opt-in, `bowshot: true`, the owner's to turn on).  With it on, the
-   honest archers (and the stepping one) take exactly what they took and
-   meet no refusal on any disturbance; the liar -- sending an arrow's relay
-   before every claim, the most the judge then accepts -- falls under the
-   bar. */
+/* v2.3.5550 (card K, step 4.2): A BOW'S CLAIM IS AN ARROW SEEN (bowshot.js).
+   ON since v2.3.5727 (card K2 PR 8), so its off side is explicit here
+   (`bowshot: false`), as 2e's `movetop`.  With it on, the honest archers
+   (and the stepping one) take exactly what they took with it off and meet
+   no refusal on any disturbance; the liar -- sending an arrow's relay
+   before every claim, the most the judge then accepts -- falls from its
+   gain off. */
 if (!GAINS_ONLY) {
   const bc = CLAIMS.find((c) => c.id === 'bowlabel');
-  const br = rows.find((r) => r.c.id === 'bowlabel');
   const ms = GAIN_MIN * B.MIN;
-  const ON = { bowshot: true };
+  const ON = { bowshot: true }, OFF = { bowshot: false };
   const same = [], refused = [];
-  let bestOn = 0;
+  let bestOn = 0, bestOff = 0;
   for (const h of bc.honest) {
-    const off = br.hon.find((x) => x.who === h[0]);
+    const offRun = await runBot(bc, h, { ms, flags: OFF });
+    const off = { v: perHour(bc, valueOf(bc, offRun.take), offRun.ms) };
+    bestOff = Math.max(bestOff, off.v);
     const r = await runBot(bc, h, { ms, flags: ON });
     const v = perHour(bc, valueOf(bc, r.take), r.ms);
     bestOn = Math.max(bestOn, v);
@@ -290,12 +292,15 @@ if (!GAINS_ONLY) {
   check(`2f: \`bowshot: true\`: the honest archers take what they took and meet no refusal on any disturbance`, !same.length && !refused.length, { same, refused: refused.slice(0, 4) });
   const lOn = await runBot(bc, ['the liar, an arrow\'s relay before each claim', B.liarBowLabel, { shots: true }], { ms, flags: ON });
   const gOn = perHour(bc, valueOf(bc, lOn.take), lOn.ms) / Math.max(bestOn, 1e-9);
+  const lOff = await runBot(bc, ['the liar, an arrow\'s relay before each claim', B.liarBowLabel, { shots: true }], { ms, flags: OFF });
+  const gOff = perHour(bc, valueOf(bc, lOff.take), lOff.ms) / Math.max(bestOff, 1e-9);
+  const br = { gain: gOff.toFixed(2) };
   /* 1.60 on main ea7df6b0 (the default seed): over the bar by what is left
      of the bow's REACH -- 1,490 px, its run allowance a second at the flat
      500 px a second (hitproof.js _hitReach), so the liar stands back and
      never walks.  A line that only falls; the reach is the next judge */
   const BOWSHOT_LINE = 1.60;
-  check(`2f: the bow's liar: gain ${br.gain} off, ${gOn.toFixed(2)} with \`bowshot: true\` (its line ${BOWSHOT_LINE}, the bar ${BAR}; the rest is the bow's reach)`, gOn <= BOWSHOT_LINE + SPREAD.bowlabel && gOn < br.gain, { on: gOn });
+  check(`2f: the bow's liar: gain ${br.gain} off, ${gOn.toFixed(2)} with \`bowshot: true\` (its line ${BOWSHOT_LINE}, the bar ${BAR}; the rest is the bow's reach)`, gOn <= BOWSHOT_LINE + SPREAD.bowlabel && gOn < gOff, { on: gOn, off: gOff });
 }
 /* v2.3.5553 (card K, step 4.2): A COOK IS A COOK THE WORKER STARTED
    (cooking.js _cookStartTake; an opt-in, `cookstart: true`, the owner's to
