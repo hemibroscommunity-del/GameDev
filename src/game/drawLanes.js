@@ -70,10 +70,11 @@
  * window, the dash's step, the bow's sight, the tick or what the worker
  * reads from moves, nor moves a load off the loading screen.
  *
- * NO IMPORTS: node tests it (tools/guards/draw-lanes.test.mjs, which also
+ * NO IMPORTS but switches.js (the page's one reader, itself none; v2.3.5232): node tests it (tools/guards/draw-lanes.test.mjs, which also
  * makes docs/LANES.md from this table; server/test/mirror-audit.test.mjs
  * holds the worker's lists to these).  Spec: docs/specs/draw-lanes.md.
  */
+import { readerFor, sw, swValue } from './switches.js';   /* v2.3.5232 (card O PR 12): the off-ramps through the page's one reader (no imports of its own) */
 
 /* ── the knobs (the plan's 2.1 list), each step in a player's words ── */
 export const KNOBS = Object.freeze({
@@ -232,6 +233,55 @@ export const OVERRIDES = Object.freeze([
   Object.freeze({ knob: 'look', value: 'baked', when: 'windows', why: 'Windows: ANGLE\'s FXC inlines the look palette\'s program, the loading screen stood at 75% for 5-10 minutes on the owner\'s laptop (v2.3.3838)' }),
   Object.freeze({ knob: 'look', value: 'baked', when: 'mac', why: 'a Mac: ANGLE\'s Metal inlines as FXC does, and a computer has the memory the palette saves (v2.3.3842)' }),
 ]);
+/* ── v2.3.5232 (card O PR 12): THE OFF-RAMPS ARE OVERRIDES TOO.  A switch in
+   this page's address (read through switches.js, the page's one reader)
+   pins its knob: to `value`, where the off-ramp is one of the knob's steps,
+   or (value null) to its lane's row -- either way out of the governor's
+   reach (liveKnobs), so a rung is never taken on a knob nothing reads.
+   `addr`: a switch's name (`nowaves`: thrown, as its row says), or a name
+   and the value it is written with (`onebatch=0`).  Only this page's own
+   address: a choice asking as another device (askingAs) reads its own. ── */
+export const ADDRESS_PINS = Object.freeze([
+  Object.freeze({ knob: 'program', value: 'three', addr: 'onebatch=0', why: 'the three programs, as before the one program' }),
+  Object.freeze({ knob: 'program', value: 'one', addr: 'onebatch=1', why: 'the one program asked for (QA: a software renderer would keep the three)' }),
+  Object.freeze({ knob: 'look', value: 'baked', addr: 'lookpalette=0', why: 'every look baked' }),
+  Object.freeze({ knob: 'look', value: 'palette', addr: 'lookpalette=1', why: 'the look palette asked for (QA: even on Windows)' }),
+  Object.freeze({ knob: 'water', value: 'still', addr: 'nowaves', why: 'the sea still' }),
+  Object.freeze({ knob: 'rate', value: null, addr: 'pace', why: 'the pacer off (`?pace=0`): the rate is read by nothing' }),
+  Object.freeze({ knob: 'crowd', value: null, addr: 'crowd', why: 'a crowd cap of its own (`?crowd=K`): the knob is read by nothing' }),
+]);
+/** Does this page's address throw an address pin's switch?  A name and a
+ *  value: the value as written; a switch with a form: thrown; a value's
+ *  switch (`?crowd`): written with one. */
+function addrPinned(addr) {
+  const i = addr.indexOf('=');
+  if (i >= 0) return swValue(addr.slice(0, i)) === addr.slice(i + 1);
+  if (addr === 'crowd') return crowdWord(swValue('crowd'));
+  if (addr === 'pace') return sw('pace');
+  if (addr === 'nowaves') return sw('nowaves');
+  return false;
+}
+/* `?crowd=K` as crowdCap.js crowdFromSearch takes it (a cap of 1-500, or
+   0/all/off for none): a word it ignores pins nothing.  Its copy here, held
+   to crowdFromSearch by off-ramps.test §3 (crowdCap.js imports this file) */
+function crowdWord(raw) {
+  if (raw === null) return false;
+  const v = String(raw).trim().toLowerCase();
+  if (v === 'all' || v === '0' || v === 'off') return true;
+  const n = Math.round(Number(v));
+  return Number.isFinite(n) && n >= 1;
+}
+/** The address pin on this knob on this page, or null. */
+export function addressPinOf(name) {
+  if (_askNow) return null;   /* a choice asking as another device: its own address */
+  for (const o of ADDRESS_PINS) {
+    if (o.knob !== name) continue;
+    let yes = false;
+    try { yes = addrPinned(o.addr); } catch (e) { yes = false; }
+    if (yes) return o;
+  }
+  return null;
+}
 /* the questions an override's `when` may ask: deviceProfile.js devAsk
    answers each (one-program.test §2); this file reads no device's name */
 export const DEV_ASKS = Object.freeze(['software', 'computer', 'windows', 'mac']);
@@ -260,8 +310,10 @@ export function pickLane(cls) {
 /** `?lane=<name>` from an address's search string: a lane of the table, or
  *  null (none, or a name off the table: the facts pick). */
 export function laneFromSearch(search) {
-  const m = /(?:^|[?&])lane=([a-z]+)(?:&|$)/.exec(typeof search === 'string' ? search : '');
-  return m && LANE_NAMES.includes(m[1]) ? m[1] : null;
+  /* v2.3.5232 (card O PR 12): through the page's one reader (switches.js);
+     an address handed in (the tests') read by its own reader */
+  const v = typeof search === 'string' ? readerFor(search).swValue('lane') : swValue('lane');
+  return v && LANE_NAMES.includes(v) ? v : null;
 }
 
 /** A knob's value in a lane at a rung ({ work, chip }: rungs taken on each
@@ -291,9 +343,6 @@ let _urlLane;             /* undefined: not read; null: none */
 const _subs = Object.create(null);   /* knob -> [fn] (onKnob) */
 const _told = Object.create(null);   /* knob -> the value its subscribers were last told */
 
-function _search() {
-  try { return (typeof location !== 'undefined' && location.search) || ''; } catch (e) { return ''; }
-}
 function _now() {
   try { return typeof performance !== 'undefined' ? performance.now() : Date.now(); } catch (e) { return Date.now(); }
 }
@@ -310,7 +359,7 @@ export function useDevClass(fn) {
  *  asked again when LANE_ASK_MS has passed.  Never throws. */
 export function drawLane(cls) {
   try {
-    if (_urlLane === undefined) _urlLane = laneFromSearch(_search());
+    if (_urlLane === undefined) _urlLane = laneFromSearch();
     if (_urlLane) return _urlLane;
     let c = cls;
     if (c === undefined && _classOf) {
@@ -366,11 +415,13 @@ let _liveNow = null;      /* _live less the knobs this page's address takes off 
    then held the rate (sitting 11's class); with `?ladderrate=0` a slow 60
    computer was never paced but softened at the next veil.  The two
    switches are read here, once (framePacer.js and renderRes.js ask these) */
+/* v2.3.5232 (card O PR 12): each through the page's one reader (switches.js:
+   no address handed in, the page's; the tests' by its own reader) */
 export function ladderRateOn(search) {
-  return !/(^|[?&])ladderrate=(0|off|false)(&|$)/.test(typeof search === 'string' ? search : '');
+  return !(typeof search === 'string' ? readerFor(search).sw('ladderrate') : sw('ladderrate'));
 }
 export function ladderPixOn(search) {
-  return !/(^|[?&])ladderpix=(0|off|false)(&|$)/.test(typeof search === 'string' ? search : '');
+  return !(typeof search === 'string' ? readerFor(search).sw('ladderpix') : sw('ladderpix'));
 }
 /* v2.3.5229 (card O PR 9): the passes -- the metal's shine, the shadows, the
    moving sea -- are the chip axis's rungs after the rate.  `?ladderpass=0`
@@ -379,20 +430,20 @@ export function ladderPixOn(search) {
    whatever the step (as `?ladderpix=0`, sitting 12) */
 export const PASS_KNOBS = Object.freeze(['shine', 'shadows', 'water']);
 export function ladderPassOn(search) {
-  return !/(^|[?&])ladderpass=(0|off|false)(&|$)/.test(typeof search === 'string' ? search : '');
+  return !(typeof search === 'string' ? readerFor(search).sw('ladderpass') : sw('ladderpass'));
 }
 /* v2.3.5226 (card O PR 6): the crowd's rungs, out of reach under `?laddercrowd=0` (crowdCap.js asks it too) */
 export function ladderCrowdOn(search) {
-  return !/(^|[?&])laddercrowd=(0|off|false)(&|$)/.test(typeof search === 'string' ? search : '');
+  return !(typeof search === 'string' ? readerFor(search).sw('laddercrowd') : sw('laddercrowd'));
 }
 /** The knobs a rung can change today: marked moved and on an axis (the
  *  tests' list while one is set), less any this page's address takes off
  *  the ladder. */
 export function liveKnobs() {
   if (_liveNow) return _liveNow;
-  const s = _search();
-  _liveNow = Object.freeze(_live.filter((k) => !(k === 'rate' && !ladderRateOn(s)) && !(k === 'pixels' && !ladderPixOn(s)) && !(k === 'crowd' && !ladderCrowdOn(s))
-    && !(PASS_KNOBS.includes(k) && !ladderPassOn(s))));   /* v2.3.5229: the passes */
+  _liveNow = Object.freeze(_live.filter((k) => !(k === 'rate' && !ladderRateOn()) && !(k === 'pixels' && !ladderPixOn()) && !(k === 'crowd' && !ladderCrowdOn())
+    && !(PASS_KNOBS.includes(k) && !ladderPassOn())
+    && !addressPinOf(k)));   /* v2.3.5232: a knob an off-ramp pins is never moved (card O PR 12) */   /* v2.3.5229: the passes */
   return _liveNow;
 }
 /** For the tests only: play the ladder with these knobs live (null: the moved ones). */
@@ -438,6 +489,8 @@ export function pinFor(name, ask) {
 }
 /** The override pinning a knob on this page (or the device askingAs names), or null. */
 export function pinOf(name) {
+  const a = addressPinOf(name);   /* v2.3.5232: this page's off-ramp first */
+  if (a && a.value !== null) return { knob: a.knob, value: a.value, when: 'address', why: a.why };
   return pinFor(name, _askNow || _ask);
 }
 
@@ -506,6 +559,6 @@ if (typeof window !== 'undefined') {
   window.__btLane = () => {
     const knobs = Object.create(null);
     for (const n of KNOB_NAMES) knobs[n] = laneKnob(n);
-    return { lane: drawLane(), fromAddress: !!laneFromSearch(_search()), rung: { ...LANE._rung }, depth: rungDepth(), live: liveKnobs().slice(), knobs };
+    return { lane: drawLane(), fromAddress: !!laneFromSearch(), rung: { ...LANE._rung }, depth: rungDepth(), live: liveKnobs().slice(), knobs };
   };
 }

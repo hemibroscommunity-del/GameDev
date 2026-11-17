@@ -119,6 +119,7 @@ import { SHEEN_LIFT } from './sheenLift.js';   /* v2.3.3453: the sheen's lines, 
 import { sheenBatchOn, sheenParams } from './sheenBatch.js';   /* v2.3.3453: the shine drawn in the frame */
 import { isSharpPiece } from '../sharpPixels.js';
 import { laneKnob, onKnob } from '../../game/drawLanes.js';   /* v2.3.5229: the shine is a knob of the lanes (card O PR 9) */
+import { swValue } from '../../game/switches.js';   /* v2.3.5232 (card O PR 12): through the page's one reader */
 
 const FRAG = `
 in vec2 vTextureCoord;
@@ -515,7 +516,8 @@ export function sheenOn() {
   if (_sheen !== null) return _sheen;
   let v = null;
   try {
-    const m = /[?&]sheen=(1|0|on|off)\b/.exec(window.location.search);
+    const w = swValue('sheen');   /* v2.3.5232 (card O PR 12): through the page's one reader */
+    const m = w === '1' || w === '0' || w === 'on' || w === 'off' ? [w, w] : null;
     if (m) {
       v = (m[1] === '1' || m[1] === 'on') ? '1' : '0';
       localStorage.setItem(SHEEN_KEY, v);

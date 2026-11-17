@@ -26,6 +26,7 @@ import { zoneLight, sunLeft, WHEEL_SUN, wheelLandLight } from './zoneLight.js';
 import { dayPhase, lightingAt, zoneHasSky } from '@/game/timeOfDay.js';   /* v2.3.2717: the sun sets */
 import { isWheelTrialZone } from '@/game/worldTrial.js';   /* v2.3.3000: the Wheel's one sun */
 import { wheelHere } from '@/game/wheelTrial.js';
+import { swValue } from '../../game/switches.js';   /* v2.3.5232 (card O PR 12): through the page's one reader */
 
 const KEY = 'bt-lightfx';
 let _on = null;
@@ -37,7 +38,8 @@ export function lightFxOn() {
   if (_on !== null) return _on;
   let v = null;
   try {
-    const m = /[?&]lightfx=(1|0|on|off)\b/.exec(window.location.search);
+    const w = swValue('lightfx');   /* v2.3.5232 (card O PR 12): through the page's one reader */
+    const m = w === '1' || w === '0' || w === 'on' || w === 'off' ? [w, w] : null;
     if (m) {
       v = (m[1] === '1' || m[1] === 'on') ? '1' : '0';
       localStorage.setItem(KEY, v);
