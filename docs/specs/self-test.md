@@ -222,7 +222,7 @@ discarded nothing, or everything, or the wrong colours, draws another
 picture.
 
 - v2.3.5239: a wrong picture falls back alone: pictures to the alpha mask,
-  colour numbers kept on the stencil (part 15).
+  colour numbers kept on the stencil (part 15; said so here v2.3.5680).
 - Not tested where it is not installed (no WebGL2, or `?alphaclip`):
   `skipped`, saying why.
 - `?selftest=fail:clip`: `mp-selftest` page 13.

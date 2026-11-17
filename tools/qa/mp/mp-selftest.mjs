@@ -40,7 +40,8 @@
  *      programs: the hat's shape and the monsters'): falls back alone --
  *      a silhouette that is a picture to the alpha mask (as `?alphaclip`),
  *      one of colour numbers (the hats' and hoods' hair masks) kept on the
- *      stencil by the palette's program (clipRoute.js) -- `self` names it.
+ *      stencil by the palette's program (clipRoute.js; v2.3.5680) -- `self`
+ *      names it.
  *
  * Every page reaches BroTown and draws with no page error: a failed test
  * never stops the load.
