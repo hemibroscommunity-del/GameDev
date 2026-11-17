@@ -1,7 +1,7 @@
 card: SEC
 branch: claude/plan-sec-<n>-<topic> (stacked: each PR on the one before until it merges)
-prs: #2030 (5700): merged; #2032 (5701), #2034 (5702), #2037 (5703), PR 5 (5704): ready, sitting 37
-state: ready
+prs: #2030 (5700): merged; #2032 (5701), #2034 (5702), #2037 (5703), #2038 (5704): sitting 37; PR 6 (5705): working
+state: working
 
 ## Done
 
@@ -15,13 +15,17 @@ state: ready
   `bankretry.test`, 12 FAIL on main: a withdrawal doubled, a deposit lost).
 - PR 4 (5703, #2037): `disable_bigbags` lowers only what a give or a claim
   fills; stored bags are cut at 140 and 48 always (`bagkeep.test`, 4 FAIL).
-- PR 5 (5704): a newer worker's record keeps the fields this worker does not
+- PR 5 (5704, #2038): a newer worker's record keeps the fields this worker does not
   know through its saves (`newerkeep`; `newerkeep.test`, 2 FAIL on main).
+
+- PR 6 (5705): the board holds its limit (1 to 100), its board's real name
+  before the key, each kept field, a 4096-byte row, a paged read swept
+  before the sort (no switch: its flags ride index.js, K2's; `boardhold.test`,
+  13 FAIL on main).
 
 ## Next
 
-- PR 6 (5705): the leaderboard's holds (no
-  switch: its flags ride index.js's report, card K2's file).
+- PR 6's suite and PR; then PR 7 (5706): the feedback board's shares.
 
 ## Found
 
@@ -29,8 +33,7 @@ state: ready
   `playerState.undefined` and a `cadence:login:undefined` row, shared by
   every such join (join.js; PR 2's card covers an id present only).
 - PR 14's popup half (gameEvents.js) is card L's: its #2033 (5532), merged.
-- The hub is the planning session ("Grand plan · planning session (part
-  2)"); the orchestrator that wrote this card has ended.
+- The hub: the planning session ("Grand plan · planning session (part 2)").
 
 ## Needs
 
