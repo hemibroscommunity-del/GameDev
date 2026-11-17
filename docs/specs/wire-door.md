@@ -136,6 +136,33 @@ room's thread 2.8 to 4.5 s and several hundred MB.
   room's storage), so its lever is the worker's setting `BODY_CAP = "off"`
   (as `ORIGIN_LOCK`). `bodycap.test` holds both.
 
+## The owner's routes and the public reads at the edge (v2.3.5726, card K2 PR 7)
+
+The planning session's addendum to card K2 (item 7) and its answer on the
+edge cache, 2026-11-17. Both in the outer router (`index.js` `routeHttp`,
+`wire/door.js`), before any object is asked:
+
+- **The owner's routes with no key** (`edgeKeyRefusal`): `/api/admin*` with
+  no `Authorization: Bearer <key>` gets the room's own answer (404 `Not
+  found` with no ADMIN_KEY set, else 401 `Unauthorized`); `/api/botstat*`
+  with neither `Authorization: Bearer` nor `x-admin-key` gets its plain 404.
+  A request with a header goes on, so the room still judges a wrong key and
+  counts it toward its time-out. A room the worker does not make is still
+  `no such room` first.
+- **The public reads from the edge's cache** (`edgeCacheRead`): the
+  market's book (`/api/market/orders`) and a player's list (`/my`), the
+  store's browse and the arena's status, kept in `caches.default` for 3 s by
+  the whole URL, but only for a request whose Origin is not one of the
+  game's sites (`origin.js` `originAllowed`: `site` or `local`). The page
+  always sends its Origin, so it always reads through the room, whose
+  copies drop on any write (`publicreads.js`): nothing a player sees
+  changes. A read carrying a key, a read not on the list, or an answer that
+  is not a 200 is never kept. Nothing in `wrangler.toml`.
+- **The levers** are the worker's settings, read like `ORIGIN_LOCK` (absent
+  means on): `EDGE_GUARD = "off"` sends the owner's routes on;
+  `EDGE_CACHE = "off"` sends every read on. `edge-guard.test`: 15 FAIL on
+  main.
+
 ## The switch
 
 `wiredoor: false` in the live flags (`liveops.js` `_wireDoorOff`; its row in
