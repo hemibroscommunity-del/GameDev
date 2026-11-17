@@ -40,6 +40,13 @@ export const SEND = Object.freeze({
   OTHER: '_other',  /* the day's book's keys take it; no type starts with _ */
 });
 
+/* v2.3.5198 (card K PR 13): a frame written OUTSIDE any room -- the worker's
+   refusal of a socket before it reaches one (origin.js refuseOrigin): no
+   room, so nothing counts it; written as JSON.stringify(msg), as before */
+export function sendOutside(ws, msg) {
+  ws.send(JSON.stringify(msg));
+}
+
 export const sendMethods = {
   _sendCountOff() {
     const f = this._liveFlags;

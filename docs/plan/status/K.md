@@ -1,6 +1,6 @@
 card: K
-branch: claude/plan-k-8-send-door (5193; one branch a PR, each begun from main)
-prs: #1822 to #1989, #1981, #1997, #1999 merged; open: #2003 (5197, held at 30: mending), #2006 (5193, this branch)
+branch: claude/plan-k-13-sends-a (5198, on #2006; one branch a PR)
+prs: #1822 to #1989, #1981, #1997, #1999 merged; open: #2003 (5197, mended), #2006 (5193); 5198 (this branch, opened when #2006 merges)
 state: ready
 
 ## Done
@@ -17,7 +17,10 @@ state: ready
 
 - #2006 5193 (PR 8, never built; 13 waits on it): the send door, send.js
   `_send`; the ~55 helpers through it; counts ride the day's book (`send`,
-  8 KB); census 150 -> 93; `sendcount` ON. Then 13 (5198, 5199).
+  8 KB); census 150 -> 93; `sendcount` ON.
+- 5198 (13, batch 1): every file no card holds through the door, 93 -> 28
+  (origin.js's refusal outside a room: `sendOutside`). 5199: the 28 left
+  (cooking, dungeon, gathering, gladiator, join, persistence, prog3, quests).
 - #2003 5197: the words rule; sitting 30's findings being mended.
 - Then the second block: the claims tightened (14).
 - wsClient.js: done for good (told L). index.js, combat.js: 13 and 14.

@@ -160,7 +160,7 @@ export const silenceMethods = {
       session._silenceToldAt = t;
       const ws = this._wsBySessionId ? this._wsBySessionId(session.id) : null;
       if (ws) {
-        try { ws.send(JSON.stringify({ type: 'server_announce', payload: { text: 'You can\'t ' + (what === 'name' ? 'give names others read' : 'chat') + ' right now: the owner has silenced this character ' + silenceUntilWords(s.until) + '.', ts: t } })); } catch (e) { /* closed */ }
+        try { this._send(ws, { type: 'server_announce', payload: { text: 'You can\'t ' + (what === 'name' ? 'give names others read' : 'chat') + ' right now: the owner has silenced this character ' + silenceUntilWords(s.until) + '.', ts: t } }); } catch (e) { /* closed */ }
       }
     }
     return false;
@@ -301,7 +301,7 @@ export const silenceMethods = {
        joined first, so the speak check (a Map read) always has them */
     await this._silenceEnsure();
     if (!(await this._frozenDeviceIs(device, 0, pid))) return false;
-    try { ws.send(JSON.stringify({ type: 'join_rejected', reason: 'frozen' })); } catch (e) { /* closed */ }
+    try { this._send(ws, { type: 'join_rejected', reason: 'frozen' }); } catch (e) { /* closed */ }
     try { ws.close(4004, 'frozen'); } catch (e) { /* closed */ }
     if (this._playerLeaves) await this._playerLeaves(ws, 'refused');
     return true;

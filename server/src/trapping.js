@@ -264,7 +264,7 @@ export const trappingMethods = {
   _handleMakeTraps(session, payload) {
     if (!session || !session.id) return;
     const ws = this._wsBySessionId(session.id);
-    const reply = (p) => { if (ws) { try { ws.send(JSON.stringify({ type: 'make_traps_result', payload: p })); } catch (e) {} } };
+    const reply = (p) => { if (ws) { try { this._send(ws, { type: 'make_traps_result', payload: p }); } catch (e) {} } };
     if (this._trapcraftOff()) return reply({ error: 'off' });
     const ps = this.playerState[session.id];
     if (!ps || ps.dying || ps.dead || ps.disconnected) return;
@@ -306,7 +306,7 @@ export const trappingMethods = {
     const monsterId = payload && typeof payload.monsterId === 'string' ? payload.monsterId : '';
     const ws = this._wsBySessionId(pid);
     const refuse = (error, extra) => {
-      if (ws) { try { ws.send(JSON.stringify({ type: 'trap_armed', payload: { monsterId, error, ...(extra || {}) } })); } catch (e) {} }
+      if (ws) { try { this._send(ws, { type: 'trap_armed', payload: { monsterId, error, ...(extra || {}) } }); } catch (e) {} }
     };
     if (this._trappingOff()) return refuse('off');
     const ps = this.playerState[pid];
@@ -346,9 +346,9 @@ export const trappingMethods = {
     const chance = trapChance(T, M);
     if (ws) {
       try {
-        ws.send(JSON.stringify({ type: 'trap_armed', payload: {
+        this._send(ws, { type: 'trap_armed', payload: {
           monsterId: m.id, until, ms: TRAPPING.MARK_MS, chance, stretch: trapStretch(M), traps: trapsIn(ps),
-        } }));
+        } });
       } catch (e) {}
     }
   },
@@ -380,7 +380,7 @@ export const trappingMethods = {
       const ps = this.playerState[pid];
       if (!ps || ps.dead || ps.disconnected || ps.z !== zone) continue;
       const ws = this._wsBySessionId(pid);
-      const tell = (p) => { if (ws) { try { ws.send(JSON.stringify({ type: 'trap_result', payload: { monsterId: m.id, ...p } })); } catch (e) {} } };
+      const tell = (p) => { if (ws) { try { this._send(ws, { type: 'trap_result', payload: { monsterId: m.id, ...p } }); } catch (e) {} } };
       const share = has(shares, pid) ? Number(shares[pid]) || 0 : 0;
       if (!(share >= TRAPPING.MIN_SHARE)) { tell({ sprung: false, why: 'share' }); continue; }
       if (trapsIn(ps) < 1) { tell({ sprung: false, why: 'no-trap' }); continue; }

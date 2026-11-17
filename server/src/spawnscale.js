@@ -94,10 +94,10 @@ export const spawnScaleMethods = {
              zone_state REPLACES a phone's piles, so theirs would vanish at
              every roster change.  Rare: only while a drop is a minute old. */
           if (this._dropPrivateIn(zoneId, s.id)) {
-            ws.send(JSON.stringify({
+            this._send(ws, {
               type: 'zone_state', zone: zoneId,
               monsters: snap.monsters, nodes: snap.nodes, loot: this._zoneLootForWire(zoneId, s.id),
-            }));
+            });
             continue;
           }
           if (v2 === null) {
@@ -106,14 +106,14 @@ export const spawnScaleMethods = {
               monsters: snap.monsters, nodes: snap.nodes, loot: snap.loot,
             });
           }
-          ws.send(v2);
+          this._send(ws, v2, 'zone_state');   /* v2.3.5198: the send door, the frame made once */
         } else {
           if (v1m === null) {
             v1m = JSON.stringify({ type: 'zone_monsters', zone: zoneId, monsters: snap.monsters });
             v1n = JSON.stringify({ type: 'zone_nodes', zone: zoneId, nodes: snap.nodes });
           }
-          ws.send(v1m);
-          ws.send(v1n);
+          this._send(ws, v1m, 'zone_monsters');   /* v2.3.5198: the send door */
+          this._send(ws, v1n, 'zone_nodes');
         }
       } catch (e) { /* dead socket; webSocketClose reaps it */ }
     }

@@ -147,7 +147,7 @@ export const smeltingMethods = {
     const result = { barKey, count, xp: r.xp * count, leveled, fromLevel, newLevel };
     const ws = this._wsBySessionId(session.id);
     if (ws) {
-      try { ws.send(JSON.stringify({ type: 'smelt_result', payload: result })); } catch (e) { /* the smelt is saved */ }
+      try { this._send(ws, { type: 'smelt_result', payload: result }); } catch (e) { /* the smelt is saved */ }
       this._sendPlayerState(ws, session.id);
     }
     return result;

@@ -343,7 +343,7 @@ export const chatModMethods = {
       const doc = await this._chatMuteDoc(pid);
       this._chatModCache(pid, doc);
       const wire = { list: this._chatModListWire(doc), settled: true };
-      try { ws.send(JSON.stringify({ type: 'chat_mute_list', payload: wire })); } catch (e) {}
+      try { this._send(ws, { type: 'chat_mute_list', payload: wire }); } catch (e) {}
     } catch (e) { /* moderation must never break a join */ }
   },
 

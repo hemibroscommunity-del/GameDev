@@ -534,10 +534,10 @@ export const amuletMethods = {
     if (ws) {
       this._sendPlayerState(ws, session.id);
       try {
-        ws.send(JSON.stringify({
+        this._send(ws, {
           type: 'gem_cut_result',
           payload: { gem, success, leveled, newLevel },
-        }));
+        });
       } catch (e) {}
     }
   },

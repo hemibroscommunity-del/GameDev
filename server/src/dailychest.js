@@ -115,7 +115,7 @@ export const dailyChestMethods = {
     if (dup) {
       const again = rid ? this._reqRecall(session.id, rid) : undefined;
       const ws0 = again ? this._wsBySessionId(session.id) : null;
-      if (ws0) { try { ws0.send(JSON.stringify({ type: 'chest_opened', payload: { ...again, reqId: rid } })); } catch (e) { /* the bag says it */ } }
+      if (ws0) { try { this._send(ws0, { type: 'chest_opened', payload: { ...again, reqId: rid } }); } catch (e) { /* the bag says it */ } }
       return;
     }
     /* v2.3.4881: no chest -- the bag goes back to the phone (refusal door) */
@@ -151,7 +151,7 @@ export const dailyChestMethods = {
 
     const ws = this._wsBySessionId(session.id);
     if (ws) {
-      try { ws.send(JSON.stringify({ type: 'chest_opened', payload: { prize, streak, ...(rid ? { reqId: rid } : {}) } })); } catch (e) { /* the credit is saved */ }
+      try { this._send(ws, { type: 'chest_opened', payload: { prize, streak, ...(rid ? { reqId: rid } : {}) } }); } catch (e) { /* the credit is saved */ }
       this._sendPlayerState(ws, session.id);
     }
     return prize;

@@ -163,7 +163,7 @@ export const devToolsMethods = {
       const ws = t.ws || this._wsBySessionId(playerId);
       for (const piece of over) {
         if (!ws) break;
-        try { ws.send(JSON.stringify({ type: 'quest_reward_stashed', payload: { questId: 'devkit', item: piece } })); out.armor++; } catch (e) { /* best effort */ }
+        try { this._send(ws, { type: 'quest_reward_stashed', payload: { questId: 'devkit', item: piece } }); out.armor++; } catch (e) { /* best effort */ }
       }
     }
     /* ═══ v2.3.3187: A SHIELD, AND POLISHED GEMS ═══

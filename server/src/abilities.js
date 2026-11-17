@@ -572,10 +572,10 @@ export const abilityMethods = {
     const reject = (reason, extra) => {
       if (!ws) return;
       try {
-        ws.send(JSON.stringify({
+        this._send(ws, {
           type: 'ability_rejected',
           payload: { kind, reason, ...(extra || {}) },
-        }));
+        });
       } catch (e) {}
     };
 
@@ -670,10 +670,10 @@ export const abilityMethods = {
     const reject = (reason, extra) => {
       if (!ws) return;
       try {
-        ws.send(JSON.stringify({
+        this._send(ws, {
           type: 'ability_rejected',
           payload: { kind, reason, ...(extra || {}) },
-        }));
+        });
       } catch (e) {}
     };
     ps._abilFrom = { x: ps.x || 0, y: ps.y || 0, at: Date.now(), kind };

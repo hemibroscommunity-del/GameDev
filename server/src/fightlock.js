@@ -163,7 +163,7 @@ const FIGHT_LOCK_HOW = Object.freeze({
       const ws = room._wsBySessionId(pid);
       const out = { code: 'fight', message: FIGHT_WORDS };
       if (p && typeof p.targetId === 'string' && p.targetId.length <= 64) out.targetId = p.targetId;
-      if (ws) { try { ws.send(JSON.stringify({ type: 'arena_stake_error', payload: out })); } catch (e) { /* nothing moved */ } }
+      if (ws) { try { room._send(ws, { type: 'arena_stake_error', payload: out }); } catch (e) { /* nothing moved */ } }
     },
   },
   /* the 100 g entry into the queue's escrow, refunded on a leave */

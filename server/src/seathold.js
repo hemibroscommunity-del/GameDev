@@ -208,7 +208,7 @@ export const seatHoldMethods = {
     rfNote(this, now, sess && sess.ip);   /* a knock like any refusal (rfspread.js): an address once a second (v2.3.5604 mend) */
     try {
       /* v2.3.5612: the count is the seats taken, inside and held (it said the sockets: "1 / 3 inside" at a room of holds) */
-      ws.send(JSON.stringify({ type: 'room_full', reason: 'full', count: Math.min(cap, this._seatJoinedIds().size + held.size), cap, retryMs: rfRetryMs(this, now) }));
+      this._send(ws, { type: 'room_full', reason: 'full', count: Math.min(cap, this._seatJoinedIds().size + held.size), cap, retryMs: rfRetryMs(this, now) });
     } catch (e) { /* the close says it alone */ }
     try { ws.close(SEAT_HOLD.CLOSE_CODE, 'room full'); } catch (e) { /* gone */ }
     this._playerLeaves(ws, 'refused');   /* the session door (leave.js) */

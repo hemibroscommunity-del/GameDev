@@ -2227,7 +2227,7 @@ export const combatMethods = {
         const recipWs = this._wsBySessionId(rid);
         if (recipWs) {
           try {
-            recipWs.send(JSON.stringify({
+            this._send(recipWs, {
               type: 'combat_credit',
               payload: {
                 monsterId: m.id,
@@ -2243,7 +2243,7 @@ export const combatMethods = {
                 ...(kr ? { roll: kr.roll } : {}),
                 ...(kr && this._killRollTheirs(kr, rid, killerId, goldRecipients) ? { rh: kr.hit } : {}),
               },
-            }));
+            });
           } catch (e) {}
         }
         this._queuePlayerStateFlush(rid);
@@ -2256,7 +2256,7 @@ export const combatMethods = {
       const killerWs = this._wsBySessionId(killerId);
       if (killerWs) {
         try {
-          killerWs.send(JSON.stringify({
+          this._send(killerWs, {
             type: 'lifesteal_credit',
             payload: {
               playerId: killerId,
@@ -2268,7 +2268,7 @@ export const combatMethods = {
               slot: slot || null,
               activeSlot: (killerPs && killerPs.activeSlot) || null,
             },
-          }));
+          });
         } catch (e) {}
         if (refund > 0) {
           // Persist the post-heal hp.  v2.3.3305: the heal ran before the
