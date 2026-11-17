@@ -56,7 +56,8 @@ switch allows it.
 
 - The flood and message budgets, the join window, the per-address limits
   (flood.js); the relay's allowlist and its rebuild in the sender's name
-  (relay.js); `PRIVILEGED_EVENTS`; the origin lock.
+  (relay.js); `PRIVILEGED_EVENTS`; the origin lock; a web request's body
+  cap (v2.3.5720, `wire/door.js` `BODY_CAP`, `bodycap`).
 - Every save and payment rule; the login key, the device lock, the lockouts;
   a frozen account.
 - PvP consent and **every check on a hit between players** (pvpbalance.js,

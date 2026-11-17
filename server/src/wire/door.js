@@ -42,6 +42,21 @@
  * `_wireDoorOff`) and the door checks nothing, counts nothing: today's way,
  * byte for byte (wire-door.test §6 runs it thrown: the plan's rule 4).
  *
+ * v2.3.5720 (card K2 PR 1; the second red team's CRITICAL 1): A BODY'S SIZE,
+ * BEFORE ANYTHING READS IT.  The routes' door read a whole body
+ * (`request.clone().text()`) and parsed it before any route asked who
+ * sends: a 24 MB POST with no key held the room's thread 2.8 to 4.5 s and
+ * several hundred MB.  Now a body is at most BODY_CAP.BYTES (32 KB; a
+ * route's own in BODY_CAP.ROUTES): the outer router (index.js `routeHttp`,
+ * `bodyCapRoute` below) refuses a longer declared length with a 413 before
+ * any forward and reads a body with no length through the cap, and this
+ * door reads through the same cap (`readBodyCapped`, exported for the
+ * Feedback object's own reads).  Every honest body is a few hundred bytes
+ * (the largest a crash report, BODY_CAP.ROUTES).  THE SWITCHES:
+ * `bodycap: false` in the live flags and this door reads as before; the
+ * outer router has no live flags (they are the room's storage), so its
+ * lever is the worker's setting `BODY_CAP = "off"` (as `ORIGIN_LOCK`).
+ *
  * docs/specs/wire-door.md says it in full. */
 import { WIRE_DOOR_ROWS } from './lists.js';
 
@@ -62,6 +77,107 @@ export const WIRE_DOOR = Object.freeze({
   /* refusals logged in a worker's life; every one is counted */
   LOG_FIRST: 20,
 });
+
+/* ═══ v2.3.5720: A BODY'S SIZE (card K2 PR 1; header) ═══
+ * Measured 2026-11-17 over every route a page, the Test panel or a phone
+ * scenario posts (the server suites' 221 bodies through this door, and the
+ * page's own senders read by hand): the largest is a market order (191
+ * bytes in the suites), a store listing (150), a login (59 + the key), a
+ * feedback post (its text at most 500 characters: about 1.6 KB in UTF-8)
+ * and the Test panel's dev levers (about 120).  One is larger: a crash
+ * report (src/debug/crashTrap.js), sixteen log lines of at most 500
+ * characters each, about 10 KB in ASCII and some 49 KB at the very worst
+ * (every character JSON-escaped), so its route has its own cap. */
+export const BODY_CAP = Object.freeze({
+  BYTES: 32 * 1024,
+  /* a route whose honest body can pass BYTES: its own cap, by path */
+  ROUTES: Object.freeze({ '/api/feedback/crash': 64 * 1024 }),
+  /* the answer to a body past its cap */
+  STATUS: 413,
+  /* refusals the outer router logs in an isolate's life */
+  LOG_FIRST: 20,
+});
+
+/** The cap for a route's body, in bytes. */
+export function bodyCapFor(pathname) {
+  return own(BODY_CAP.ROUTES, pathname) ? BODY_CAP.ROUTES[pathname] : BODY_CAP.BYTES;
+}
+
+/** Can a request of this method carry a body we read?  GET, HEAD and
+ *  OPTIONS: no (the runtime reads none for them). */
+export const bodyMethod = (method) => method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS';
+
+/** The length a request declares: a number of bytes, -1 when it names none,
+ *  NaN when what it names is not a length. */
+export function bodyDeclared(request) {
+  const h = request.headers.get('content-length');
+  if (h === null) return -1;
+  return /^\s*\d{1,15}\s*$/.test(h) ? Number(h) : NaN;
+}
+
+/** A request's body read through a cap: `{ ok: true, bytes, data }` (a
+ *  Uint8Array, and `text` when asked) or `{ ok: false, bytes }` once more
+ *  than `cap` bytes have come, the rest never read (the stream is
+ *  cancelled).  Memory: at most `cap` and one chunk.  A body that fails to
+ *  read is an empty one (the door's way before).  For the Feedback object
+ *  too (card SEC: feedback.js). */
+export async function readBodyCapped(request, cap = BODY_CAP.BYTES, { text = true } = {}) {
+  const empty = () => ({ ok: true, bytes: 0, data: new Uint8Array(0), text: text ? '' : undefined });
+  if (!request || !request.body) return empty();
+  let reader;
+  try { reader = request.body.getReader(); } catch (e) { return empty(); }
+  const parts = [];
+  let n = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const chunk = value instanceof Uint8Array ? value : new Uint8Array(value);
+      n += chunk.byteLength;
+      if (n > cap) {
+        /* not awaited: a clone's branch (`request.clone()`, a tee) settles
+           its cancel only once its twin is cancelled too, so an await here
+           never ends (found by bodycap.test §3) */
+        try { reader.cancel().catch(() => {}); } catch (e) { /* the refusal stands */ }
+        return { ok: false, bytes: n };
+      }
+      parts.push(chunk);
+    }
+  } catch (e) {
+    return empty();
+  }
+  const data = parts.length === 1 ? parts[0] : new Uint8Array(n);
+  if (parts.length !== 1) { let at = 0; for (const p of parts) { data.set(p, at); at += p.byteLength; } }
+  return { ok: true, bytes: n, data, text: text ? new TextDecoder().decode(data) : undefined };
+}
+
+/* the 413, CORS like every route's answer */
+const tooLarge = () => new Response(JSON.stringify({ ok: false, error: 'too large' }), {
+  status: BODY_CAP.STATUS, headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' },
+});
+
+let _bodyCapLogged = 0;
+function bodyCapLog(pathname, why) {
+  if (++_bodyCapLogged > BODY_CAP.LOG_FIRST) return;
+  try { console.warn('[bodycap] refused ' + String(pathname).slice(0, 64) + ': ' + why); } catch (e) { /* the refusal stands */ }
+}
+
+/** The outer router's check (index.js `routeHttp`), before any forward:
+ *  `{ refused }` (a 413) or `{ request }` to go on with.  A declared length
+ *  past the route's cap is refused unread; a body with no length is read
+ *  through the cap here and goes on as the bytes read.  `env.BODY_CAP =
+ *  "off"` checks nothing. */
+export async function bodyCapRoute(request, pathname, env) {
+  if (!bodyMethod(request.method || 'GET')) return { request };
+  if (String((env && env.BODY_CAP) || 'on').trim().toLowerCase() === 'off') return { request };
+  const cap = bodyCapFor(pathname);
+  const said = bodyDeclared(request);
+  if (Number.isNaN(said) || said > cap) { bodyCapLog(pathname, 'length ' + said); return { refused: tooLarge() }; }
+  if (said >= 0 || !request.body) return { request };
+  const r = await readBodyCapped(request, cap, { text: false });
+  if (!r.ok) { bodyCapLog(pathname, 'read past ' + cap); return { refused: tooLarge() }; }
+  return { request: new Request(request, { body: r.data }) };
+}
 
 const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
 const isPlain = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -217,15 +333,42 @@ export const wireDoorMethods = {
     return true;
   },
 
-  /* The routes' door: a 400 to answer with, or null to go on.  The body is
-     read from a clone, so the route reads its own as before. */
+  /* v2.3.5720: `bodycap: false` in the live flags and the routes' door
+     reads a body whole again (on unless its own falsy value) */
+  _bodyCapOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'bodycap') && !f.bodycap);
+  },
+
+  /* The routes' door: a 400 (or a 413) to answer with, or null to go on.
+     The body is read from a clone, so the route reads its own as before.
+     v2.3.5720: a body past its cap (BODY_CAP) is a 413, refused unread when
+     its length says so, else as soon as the cap is passed; before the
+     door's own switch, so `wiredoor: false` keeps the cap. */
   async _wireDoorHttp(request, url) {
-    if (this._wireDoorOff && this._wireDoorOff()) return null;
     const method = request.method || 'GET';
+    const carries = bodyMethod(method);
+    const capOn = carries && !this._bodyCapOff();
+    const cap = bodyCapFor(url.pathname);
+    const refuseSize = () => {
+      this._wireDoorCount(wireDoorRouteRow(url.pathname, method) || 'http:(no row)', 'size', 'http:' + url.pathname);
+      return tooLarge();
+    };
+    if (capOn) {
+      const said = bodyDeclared(request);
+      if (Number.isNaN(said) || said > cap) return refuseSize();
+    }
+    if (this._wireDoorOff && this._wireDoorOff()) return null;
     let body;
-    if (method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS') {
+    if (carries) {
       let text = '';
-      try { text = await request.clone().text(); } catch (e) { text = ''; }
+      if (capOn) {
+        const r = await readBodyCapped(request.clone(), cap);
+        if (!r.ok) return refuseSize();
+        text = r.text;
+      } else {
+        try { text = await request.clone().text(); } catch (e) { text = ''; }
+      }
       if (text) { try { body = JSON.parse(text); } catch (e) { body = undefined; } }
     }
     const row = wireDoorRouteRow(url.pathname, method);
