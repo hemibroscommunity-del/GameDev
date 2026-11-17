@@ -17,6 +17,7 @@ import { spawnPropDebris, propImpactSound, orbCrashFx, markProp, queueArrowSnap,
 import { strikeWheelObject } from '@/game/wheelBreak.js';   /* v2.3.2995: a peer's shot hits the Wheel's objects on your screen too */
 import { earVol } from '@/game/hitSounds.js';   /* v2.3.3343: a peer's shot on a prop, heard by distance */
 import { arrowSnaps } from '@/data/arrowSnap.js';   /* v2.3.2731 */
+import { combatDt } from '@/game/frameClock.js';   /* v2.3.5231: a peer's arrow steps as yours (the 30 lane) */
 import { shotSkip } from '@/game/projectiles.js';   /* v2.3.3206: a peer's shot flies over low things as yours does */
 import { BOW_VOLLEY, LONE_BURN_MS } from '@/game/bowVolley.js';   /* v2.3.2849: how long a peer's special stands burning */
 import { parkAway } from '@/game/presence2.js';   /* v2.3.3250: a far player's copy stays out of sight */
@@ -303,7 +304,7 @@ export function updateVisualSystems(S) {
                came late.  Same term now, clamp included.  The volley's wait
                below is counted in the same scaled frames it flies in, so the
                80 px train v2.3.2848 measured still holds at any rate. */
-            var _rpDt = S._dtScale || 1;
+            var _rpDt = combatDt(S._dtScale);   /* v2.3.5231: at most the old clamp's 3, as your own arrow (frameClock.js; the gatekeeper's sitting 26) */
             var _rpWait = false;
             if (rp.holdFrames > 0) { rp.holdFrames -= _rpDt; _rpWait = true; }
             else if (rp.holdUntil && Date.now() < rp.holdUntil) _rpWait = true;

@@ -133,10 +133,12 @@ phone's strip (`?perf=1`) tells them apart since this change:
   under `movebudget: false`). No server change.
 - **Not combat**: the dash keeps its own per-frame cap (`DASH_MAX_STEP_PX`),
   and the swing's clock and the bow's sight read no step cap. A projectile
-  steps at most the old clamp's 3 (`projectiles.js` `_combatDt`,
-  `COMBAT_DT_MAX`): its sweep cap (200 px over 144) and the trail's guard
+  steps at most the old clamp's 3 (`frameClock.js` `combatDt`,
+  `COMBAT_DT_MAX`; read by `projectiles.js` and, v2.3.5231, by
+  `visualSystems.js` for another player's arrow: the sitting 26 low): its sweep cap (200 px over 144) and the trail's guard
   (260) assume it, and at 6 an arrow would step past a monster on a long
   frame (the gatekeeper's sitting 25).
 - `?dtsmooth=0` stays the old way: no clock, and the clamp the old 50 ms.
+- The clamp is the cap x 3 / 50: main's 3 exactly at 60 (v2.3.5231), 6 at 30.
 - Held by `frame-clock.test` §9 (a 30 screen missing one refresh covers its
   whole ground; the 60 cap would lose 17 ms) and `mp-steadystep`'s 30 rides.

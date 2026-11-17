@@ -162,7 +162,8 @@ and no reader until then); a lane picked by facts beyond `thirty`.
   file), `?onebatch`, `?lookpalette`, and the passes' `?sheenpass`,
   `?shadowpass`, `?nowaves`, and the knobs' other switches (`?sheen`,
   `?lightfx`, `?waves`, `?stripslice` with `?stripgentle`: the sitting 25
-  gatekeeper). A move changes no address's meaning: the
+  gatekeeper; v2.3.5231: `?sheen` and `?lightfx` by the old pattern on the
+  value, so `=0.5` still reads `0`). A move changes no address's meaning: the
   switches are held to their old tests by `switch-reader.test` (MOVED), the
   values by `off-ramps.test` §3. The functions keep their `search` argument
   (the tests' address, read by its own reader); none given, the page's.

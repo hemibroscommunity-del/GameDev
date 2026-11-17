@@ -93,6 +93,9 @@ const LC = await import('../../src/game/lookPaletteChoice.js');
   const ramps = [['src/rendering/lightfx/glint.js', 'sheen', 'swValue'], ['src/rendering/lightfx/lightFx.js', 'lightfx', 'swValue'], ['src/rendering/wheelWater.js', 'waves', 'swValue'],
     ['src/rendering/zoneTextures.js', 'stripslice', 'swValue'], ['src/rendering/wheelWater.js', 'nowaves', 'sw'], ['src/rendering/lightfx/sheenBatch.js', 'sheenpass', 'sw'], ['src/rendering/lightfx/shadows.js', 'shadowpass', 'sw']];
   const old = ramps.filter(([f, n, call]) => { const c = code(readFileSync(join(ROOT, f), 'utf8')); return new RegExp('\\[\\?&\\]\\)?' + n + '\\b').test(c) ||   /* an old read's pattern ([?&]name, (^|[?&])name), not a word in a message */ !c.includes(call + "('" + n + "')"); }).map(([f, n]) => f + ': ' + n);
+  /* the gatekeeper's sitting 26: `?sheen` and `?lightfx` take the old pattern's words on the value (`=0.5` is `0`) */
+  const tails = ['src/rendering/lightfx/glint.js', 'src/rendering/lightfx/lightFx.js'].filter((f) => !/const m = \/\^\(1\|0\|on\|off\)\\b\/\.exec\(w \|\| ''\);/.test(readFileSync(join(ROOT, f), 'utf8')));
+  check('4. `?sheen` and `?lightfx` read their value by the old pattern (a tail after the word, as `=0.5`, still its word)', tails.length === 0, tails);
   check('4. every knob\'s off-ramp in the drawing\'s files asks the reader (' + ramps.length + ': ?sheen, ?lightfx, ?waves, ?stripslice, the passes\')', old.length === 0, old);
 }
 

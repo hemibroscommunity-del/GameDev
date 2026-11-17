@@ -960,14 +960,8 @@ export function shotAimAt(S, ox, oy, ang, len, opts) {
   return (s && s.aim) ? s.aim : null;
 }
 
-/* v2.3.5233 (card O PR 13; the gatekeeper's sitting 25): THE 30 LANE'S
-   STEP IS NOT COMBAT'S.  The loop's _dtScale may reach 6 on a 30 screen (its
-   cap three of the lane's frames, 100 ms); a projectile still steps at most
-   the old clamp's 3, so the sweep cap below (144 px = 24 x 2.0 x 3) and
-   effectsRenderer's trail guard (260) hold, and an arrow never steps past a
-   monster on a long frame. */
-export const COMBAT_DT_MAX = 3;
-function _combatDt(S) { const d = S._dtScale || 1; return d > COMBAT_DT_MAX ? COMBAT_DT_MAX : d; }
+/* v2.3.5233: a projectile steps at most the old clamp's 3 (frameClock.js combatDt, the why) */
+function _combatDt(S) { return combatDt(S._dtScale); }
 
 function _segGap(px, py, ax, ay, bx, by) {
   var dx = bx - ax, dy = by - ay;
@@ -1003,6 +997,7 @@ function _segGap(px, py, ax, ay, bx, by) {
    Captures (depth-aware scope scan; build can't run in this env): `P` is
    the player; `setRpgState`/`setLevelUpMsg` arrive via deps (arrows only);
    everything else is a module import below. S is stateRef.current. */
+import { combatDt } from './frameClock.js';   /* v2.3.5233: the 30 lane's step is not combat's (card O PR 13) */
 import {
   BT_AUDIO, ELEMENTS, QUEST_CHAINS, QUEST_STATUS, RARITY_TIERS,
   PVP_THREAT_DURATION,
