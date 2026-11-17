@@ -207,6 +207,23 @@ export function ip56Key(ip) {
   return g.slice(0, 3).map(bare).join(':') + ':' + bare(g[3].padStart(4, '0').slice(0, 2) + '00') + '::/56';
 }
 
+/* ═══ v2.3.5729: ...AND A WHOLE /48 IS ONE SITE (card K2 PR 10; `guestshare`) ═══
+ * Past the /56, a provider or a host hands out a /48 -- 256 /56s -- so a
+ * script holding one still took IP56.TIMES the line in each of them: one
+ * IPv6 line could hold all 120 places.  Each address limit now also counts
+ * an IPv6 address by its /48 (its first three groups), at IP48.TIMES the
+ * /64's line: 64 places and 80 opens a minute at the defaults, under the
+ * room's 120, and far over what a household or a school's few phones need.
+ * null for IPv4 and anything ipKey cannot read.  The switch is the card's
+ * one for this PR: `guestshare: false` (seathold.js) and the /56 line is the
+ * widest again. */
+export const IP48 = Object.freeze({ TIMES: 4 });
+export function ip48Key(ip) {
+  const g = v6Groups(ip);
+  if (!Array.isArray(g)) return null;
+  return g.slice(0, 3).map(bare).join(':') + '::/48';
+}
+
 /** The address Cloudflare's edge stamped on the request, or null: absent
  *  locally (wrangler dev adds none), and loopback is never counted. */
 export function requestIp(request) {
@@ -315,28 +332,39 @@ export const floodMethods = {
     const key = by(ip);
     /* v2.3.5584: ...and by its /56, at IP56.TIMES the line (ip56Key above) */
     const wide = (typeof this._ip56On !== 'function' || this._ip56On()) ? ip56Key(ip) : null;
+    /* v2.3.5729: ...and by its /48, at IP48.TIMES the line (ip48Key above;
+       `guestshare`, seathold.js) */
+    const site = (typeof this._guestShareOn === 'function' && this._guestShareOn()) ? ip48Key(ip) : null;
+    /* v2.3.5729: each refusal counted for the owner's overview (admin.js
+       _floodTallyAdd, card SEC's; `floodtally`) */
+    const no = () => { if (this._floodTallyAdd) this._floodTallyAdd('ip'); return false; };
     const maxSockets = this._flagNum ? this._flagNum('ip_sockets', FLOOD.IP_SOCKETS, 0, 1000) : FLOOD.IP_SOCKETS;
     if (maxSockets > 0) {
-      let held = 0, heldWide = 0;
+      let held = 0, heldWide = 0, heldSite = 0;
       for (const [, s] of this.sessions) {
         if (!s.ip) continue;
         if (by(s.ip) === key) held++;
         if (wide && ip56Key(s.ip) === wide) heldWide++;
+        if (site && ip48Key(s.ip) === site) heldSite++;
       }
-      if (held >= maxSockets) return false;
-      if (wide && heldWide >= maxSockets * IP56.TIMES) return false;
+      if (held >= maxSockets) return no();
+      if (wide && heldWide >= maxSockets * IP56.TIMES) return no();
+      if (site && heldSite >= maxSockets * IP48.TIMES) return no();
     }
     const maxJoins = this._flagNum ? this._flagNum('ip_joins_min', FLOOD.IP_JOINS_PER_MIN, 0, 10000) : FLOOD.IP_JOINS_PER_MIN;
     if (maxJoins > 0) {
       if (!this._ipOpens) this._ipOpens = new Map();
-      /* the opens a minute are kept by the same keys; both are looked at
-         before either is counted, so a refusal counts in neither */
+      /* the opens a minute are kept by the same keys; all are looked at
+         before any is counted, so a refusal counts in none */
       const list = this._ipOpensOf(key, now);
-      if (list.length >= maxJoins) return false;
+      if (list.length >= maxJoins) return no();
       const listWide = wide ? this._ipOpensOf(wide, now, key) : null;
-      if (listWide && listWide.length >= maxJoins * IP56.TIMES) return false;
+      if (listWide && listWide.length >= maxJoins * IP56.TIMES) return no();
+      const listSite = site ? this._ipOpensOf(site, now, key) : null;
+      if (listSite && listSite.length >= maxJoins * IP48.TIMES) return no();
       list.push(now);
       if (listWide) listWide.push(now);
+      if (listSite) listSite.push(now);
     }
     return true;
   },

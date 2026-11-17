@@ -780,6 +780,10 @@ export const joinMethods = {
       }
       /* v2.3.5622: a NEW character's name by the rule (charname.js, card MOD), before it is made */
       if (await this._charNameRefuse(ws, msg.id, msg.data, msg.name)) return;   /* v2.3.5622: the join's own name too, when its data has none */
+      /* v2.3.5729: a guest's share of the places, and a played character's
+         seat at a full room (seathold.js, `guestshare`; card K2 PR 10) --
+         after the key, so a wrong one moves no guest */
+      if (this._guestShareRefused(ws, msg.id, _keyOut)) return;
     }
     /* ═══ v2.3.3260: YOUR BODY IS STILL IN THE FIGHT ═══
        A player who left within 10 s of a hit between players leaves their
