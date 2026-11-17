@@ -93,9 +93,13 @@ console.log('\n1. the control');
   for (const cat of PROG3.SKILLS) bare.prog3 = { ...bare.prog3, atk: { ...bare.prog3.atk, [cat]: { ...bare.prog3.atk[cat], aspd: 0 } } };
   const cy = { melee: cycleMs(room, bare, 'melee'), bow: cycleMs(room, bare, 'bow'), magic: cycleMs(room, bare, 'magic') };
   check('1m. the held cycles at no Speed points: 600 / 495 / 900 ms', cy.melee === 600 && Math.abs(cy.bow - 495) <= 1.5 && cy.magic === 900, cy);
-  let t0 = performance.now();
+  /* v2.3.5650: the room's own CPU time, not the clock on the wall: this box is shared (a phone
+     run beside the suite doubled a score's wall time once, 1n red), and what the line holds is
+     what a score costs the room */
+  const cpu0 = process.cpuUsage();
   for (let i = 0; i < 20; i++) powerOf(room, c);
-  const ms = (performance.now() - t0) / 20;
+  const cpu = process.cpuUsage(cpu0);
+  const ms = (cpu.user + cpu.system) / 1000 / 20;
   console.log('     (one score: ' + ms.toFixed(2) + ' ms)');
   check('1n. a score costs the room a few ms at most (once a board report)', ms < 15, ms);
 }
