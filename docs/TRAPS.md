@@ -5778,6 +5778,8 @@ await. Both land or neither does, and a stamp can never stand for a payment
 that did not happen. inbox.test's crash storage (it drops every put after a
 named key) is the way to test it.
 
+Held by: tools/guards/traps-money.test.mjs (tag 5760).
+
 ## 148. "The row exists, so the player can sell it" (v2.3.3164)
 
 **The plausible move.** The gear ledger's row is the proof a piece is yours
@@ -5822,6 +5824,8 @@ no rate limit: 200 refusals sent 200 copies of the pile to each bystander.
 siblings have (`ps.dying || ps.dead || ps.disconnected`, the gear lock, a
 cooldown). Only a change that happened is news to everyone; a refusal
 answers the asker.
+
+Held by: tools/guards/traps-money.test.mjs (tag 5760).
 
 ## 151. "The hook already excludes duel kills" (v2.3.3168)
 
@@ -6664,6 +6668,8 @@ saw it as "Opponents do not drop all of their items".
 set it actually computes (here `_QUEST_KEEP_SPEC()` and `_GATHER_TOOL_KEYS()`)
 rather than reading its name. A family match grows with every quest that names
 a family.
+
+Held by: tools/guards/traps-money.test.mjs (tag 5760).
 
 ## 189. "Another player's stand-in can share yours: it is the same figure" (v2.3.3314)
 
@@ -9421,6 +9427,8 @@ the taker's. Anything that removes a death pile from `this.loot` calls
 the pile comes back at the next start. **Receipt:** `death-pile-saved.test`
 §7 (every crash point), cost-guard §13; switch `deathpilesave`.
 
+Held by: tools/guards/traps-money.test.mjs (tag 5760).
+
 ## 291. "A pile's windows are worker times, compare them with the clock" (v2.3.4383)
 
 **Tempting:** read a death pile's `ownerOnlyUntil` and `expiry` against the
@@ -9614,6 +9622,8 @@ held in escrow. **The rule.** Drop only a still-waiting bet
 (`_serverStake && !_placed`), matched by `targetId`, and nothing on
 `already-staked` (`src/game/arenaStakes.js`). **Receipt:**
 `silent-refusals.test` §2.
+
+Held by: tools/guards/traps-money.test.mjs (tag 5760).
 
 ## 309. "A second login is a takeover: build the character afresh where the new phone says" (v2.3.4432)
 
@@ -9888,6 +9898,8 @@ writes is never the fix. Test it on `inbox.test` §8c's batch storage,
 restarting before every batch. #1521 also lists a stack, takes a raise and
 marks a buy-now `sale.paid` this way. Off-ramp: the flag `ahonewrite: false`
 (the old order, holes included). **Receipt:** `store-onewrite.test`.
+
+Held by: tools/guards/traps-money.test.mjs (tag 5760).
 
 ## 322. "A leftover with a stamp is done: delete it" (v2.3.4505)
 
