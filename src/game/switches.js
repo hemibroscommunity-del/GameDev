@@ -132,6 +132,7 @@ const FORMS = {
   'heaptrim': '0|off|false',
   'held': '0',
   'hemiface': '1',
+  'hudbars': '0',
   'iconretry': '0',
   'jumpbtn': '0',
   'jumpicon': '*',

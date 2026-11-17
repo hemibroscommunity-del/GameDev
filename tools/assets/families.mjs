@@ -505,7 +505,9 @@ export const ASSET_FAMILIES = Object.freeze([
   fam('icons-svg-unwired', 'supplied', 'public/icons/ui/{chip-frame-*,recessed-well,toolbar-button-danger,toolbar-button-danger-pressed,toolbar-button-frame-only,toolbar-button-primary-brass}.svg',
     { draw: 'none' }),
   fam('hud-bars', 'made', ['public/{icons/ui/{bar-hp,bar-mp,bar-stam,nml-ask-duel}.webp,ui/bars/hp-{frame,full}.png}', 'public/ui/bars/node-full-green.png'],
-    { tool: ['unknown', 'tools/ui/green-node-bar.sh'], draw: 'file', loader: 'src/rendering/systems/entityRenderer.js', note: 'the bars over heads (_HUD_BAR_FILES); node-full-green a hue turn of hp-full' }),
+    { tool: ['unknown', 'tools/ui/green-node-bar.sh'], draw: 'file', loader: 'src/rendering/systems/entityRenderer.js', note: 'the bars over heads (_HUD_BAR_FILES); node-full-green a hue turn of hp-full; v2.3.5566: the six bars drawn from their twins where colour numbers are drawn (hud-bars-twins); these with ?hudbars=0' }),
+  fam('hud-bars-twins', 'made', 'public/{icons/ui/bar-{hp,mp,stam},ui/bars/{hp-frame,hp-full,node-full-green}}.p256.png',
+    { tool: 'tools/art/reduce256.mjs', sources: 'beside', draw: 'numbers', loader: 'src/rendering/p256.js', px: 'art law', note: 'v2.3.5566, card P\'s backlog: the bars over heads read from their 256-colour twins by default (2.3k-8.5k colours cut to 256, moved 0.001-0.004 OKLab), the health bar\'s three padded to 364 px by one see-through column on the right; listed in src/data/p256Files.js; ?hudbars=0' }),
 
   /* ── the page's own pictures: public/ui/ ── */
   fam('ui-daily-chest', 'made', 'public/ui/chest/daily-chest-strip.webp',
