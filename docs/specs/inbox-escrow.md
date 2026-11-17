@@ -17,7 +17,9 @@ the blob from a fixed field list and drops foreign fields):
 | `inbox:<playerId>` | array of pending credit entries |
 | `oplog:<opId>` | timestamp; idempotency journal, lazily pruned after 48h |
 
-Inbox entry: `{ opId, ts, source, kind, payload, note }` where `kind` is
+Inbox entry: `{ opId, ts, source, kind, payload, note, noteT? }` (v2.3.5197:
+`noteT` is the note's template and parts, `{ t, p }`, beside the sentence --
+the words rule, `docs/specs/words-rule.md`) where `kind` is
 `'gold'` (`payload {amount}`), `'item'` (`payload {invKey, count}`), or
 `'weapon'` (`payload {weapon}` — opaque blob, re-sanitized on apply).
 
@@ -87,7 +89,7 @@ are pruned after 48 hours.
 
 | Message | Direction | Payload |
 |---|---|---|
-| `inbox_delivered` | s→c | `{ entries: [{kind, payload, note, source}], queued }` |
+| `inbox_delivered` | s→c | `{ entries: [{kind, payload, note, noteT?, source}], queued }` (v2.3.5197: `noteT`, the note's template) |
 
 `inbox_delivered` is in `PRIVILEGED_EVENTS` (clients can't forge it). The
 credits themselves ride the authoritative `player_state` echo; the event

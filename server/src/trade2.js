@@ -47,6 +47,7 @@ import { PACE } from './flood.js';   /* v2.3.3293: the weapon lane's pace */
 import { bagTake } from './bag.js'; /* v2.3.4810: the bag door */
 import { xferTradeWindow } from './xfer.js'; /* v2.3.5092: the transfer ledger */
 import { stashGive, stashTake, stashSet } from './stash.js';   /* v2.3.5281: the stashes' door (card R PR 2) */
+import { wordsNote } from './words.js';   /* v2.3.5197: the words rule -- the trade's mail sentence is a template and its parts */
 
 export const TRADE2 = {
   INVITE_TTL: 60000,    // open-toward-you offer lifetime
@@ -386,13 +387,13 @@ export const trade2Methods = {
     const credits = [];
     for (const side of sides) {
       const gets = s.offers[side.getsFrom] || {};
-      const note = 'trade with ' + (side.getsFrom === s.a ? s.aName : s.bName);
+      const { note, noteT } = wordsNote('trade_with', { from: side.getsFrom === s.a ? s.aName : s.bName });   /* v2.3.5197: the words rule (words.js) */
       if (gets._gold) {
-        credits.push({ pid: side.id, entry: { opId: 'trade2:' + s.id + ':' + side.id + ':gold', source: 'trade', kind: 'gold', payload: { amount: gets._gold }, note } });
+        credits.push({ pid: side.id, entry: { opId: 'trade2:' + s.id + ':' + side.id + ':gold', source: 'trade', kind: 'gold', payload: { amount: gets._gold }, note, noteT } });
       }
       for (const [k, v] of Object.entries(gets)) {
         if (k === '_gold') continue;
-        credits.push({ pid: side.id, entry: { opId: 'trade2:' + s.id + ':' + side.id + ':' + k, source: 'trade', kind: 'item', payload: { invKey: k, count: v }, note } });
+        credits.push({ pid: side.id, entry: { opId: 'trade2:' + s.id + ':' + side.id + ':' + k, source: 'trade', kind: 'item', payload: { invKey: k, count: v }, note, noteT } });
       }
     }
     /* ═══ v2.3.4795: THE WEAPONS IN THE SAME WRITE AS THE GOLD ═══
@@ -418,12 +419,12 @@ export const trade2Methods = {
       for (const side of sides) {
         const incoming = s.weapons[side.getsFrom] || [];
         if (!incoming.length) continue;
-        const note = 'trade with ' + (side.getsFrom === s.a ? s.aName : s.bName);
+        const { note, noteT } = wordsNote('trade_with', { from: side.getsFrom === s.a ? s.aName : s.bName });   /* v2.3.5197: the words rule (words.js) */
         const fits = this._weaponStashRoom(side.ps) >= incoming.length;
         for (const entry of incoming) {
           const credit = { pid: side.id, from: side.getsFrom, seq: entry.seq, entry: {
             opId: 'trade2:' + s.id + ':wpndeliver:' + side.getsFrom + ':' + entry.seq,
-            source: 'trade', kind: 'weapon', payload: { weapon: entry.weapon }, note,
+            source: 'trade', kind: 'weapon', payload: { weapon: entry.weapon }, note, noteT,
           } };
           if (fits) { wpnLive.push(credit); credits.push(credit); } else wpnOwed.push(credit);
         }
@@ -466,13 +467,13 @@ export const trade2Methods = {
       this._queuePlayerStateFlush(s.b);
       for (const side of sides) {
         const gets = s.offers[side.getsFrom] || {};
-        const note = 'trade with ' + (side.getsFrom === s.a ? s.aName : s.bName);
+        const { note, noteT } = wordsNote('trade_with', { from: side.getsFrom === s.a ? s.aName : s.bName });   /* v2.3.5197: the words rule (words.js) */
         if (gets._gold) {
-          await this._creditPlayer(side.id, { opId: 'trade2:' + s.id + ':' + side.id + ':gold', source: 'trade', kind: 'gold', payload: { amount: gets._gold }, note });
+          await this._creditPlayer(side.id, { opId: 'trade2:' + s.id + ':' + side.id + ':gold', source: 'trade', kind: 'gold', payload: { amount: gets._gold }, note, noteT });
         }
         for (const [k, v] of Object.entries(gets)) {
           if (k === '_gold') continue;
-          await this._creditPlayer(side.id, { opId: 'trade2:' + s.id + ':' + side.id + ':' + k, source: 'trade', kind: 'item', payload: { invKey: k, count: v }, note });
+          await this._creditPlayer(side.id, { opId: 'trade2:' + s.id + ':' + side.id + ':' + k, source: 'trade', kind: 'item', payload: { invKey: k, count: v }, note, noteT });
         }
       }
     }
@@ -487,11 +488,11 @@ export const trade2Methods = {
     // (`tradeonewrite: false`, or the swap's credits went one by one).
     if (s.weapons && !(together && wpnInRun)) {
       for (const side of sides) {
-        const note = 'trade with ' + (side.getsFrom === s.a ? s.aName : s.bName);
+        const { note, noteT } = wordsNote('trade_with', { from: side.getsFrom === s.a ? s.aName : s.bName });   /* v2.3.5197: the words rule (words.js) */
         for (const entry of (s.weapons[side.getsFrom] || [])) {
           await this._creditPlayer(side.id, {
             opId: 'trade2:' + s.id + ':wpndeliver:' + side.getsFrom + ':' + entry.seq,
-            source: 'trade', kind: 'weapon', payload: { weapon: entry.weapon }, note,
+            source: 'trade', kind: 'weapon', payload: { weapon: entry.weapon }, note, noteT,
           });
           await this.state.storage.delete('trade2wpn:' + side.getsFrom + ':' + entry.seq);
         }
@@ -501,7 +502,7 @@ export const trade2Methods = {
       await this._creditPlayer(mv.to, {
         opId: 'trade2:' + s.id + ':pet:' + mv.pet.id,
         source: 'trade', kind: 'pet', payload: { pet: mv.pet, from: mv.from },
-        note: 'trade with ' + (mv.from === s.a ? s.aName : s.bName),
+        ...wordsNote('trade_with', { from: mv.from === s.a ? s.aName : s.bName }),   /* v2.3.5197: the words rule */
       });
     }
     this._t2Broadcast(s, { settled: true, petsMoved: s.petsMoved || [] });
