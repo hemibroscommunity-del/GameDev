@@ -7,7 +7,7 @@ built: the page's in v2.3.5521, the worker's in v2.3.5536.
 
 ## The worker (v2.3.5536)
 
-`server/src/moveclaims.js` (`_guardTo`, `GUARD_WAYS`, `guardPhase`,
+`server/src/moveclaims.js` (`_guardTo`, `GUARD_WAYS`, `guardStateOf`,
 `_guardDoorOff`); held by `server/test/guard-door.test.mjs` and the phase
 table's guard (the `guard` row on the worker). The shield is one field,
 `ps.blocking` (down, raised); its parry stamp `ps.blockStartT` and its
@@ -24,7 +24,7 @@ of `GUARD_WAYS`:
 - **Step 1 changes nothing a player sees**: a raise is refused while the
   latch is live, the check `movement.js` and the clone already made first;
   a lower and a break always write. A guard held up is not written again
-  (its stamp stands). The phase a reader would name (`guardPhase`): broken,
+  (its stamp stands). The phase a reader would name (`guardStateOf`): broken,
   parry, raised, down.
 - **Not folded, notes beside it**: the swing's `_guardDownAt` (the parry's
   re-arm, `_guardDownNote`), the shield's facing `ba`.

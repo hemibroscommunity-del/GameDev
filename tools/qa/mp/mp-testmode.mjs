@@ -132,7 +132,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     set.call(inp, k);
     inp.dispatchEvent(new Event('input', { bubbles: true }));
   }, H.ADMIN_KEY);
-  await tapText(P, /^Save key on this device$/);
+  await tapText(P, /^Save key$/);
   await P.page.waitForTimeout(1500);
   const note = await P.page.evaluate(() => { const el = document.querySelector('[data-dev-testmode-note]'); return el ? el.textContent.replace(/\s+/g, ' ').trim() : null; });
   rec.ok('1. the panel has a Test mode section that says what it turns off and what stays on',

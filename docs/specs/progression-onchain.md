@@ -319,6 +319,40 @@ what changed, about **23,000**. On Hemi these are fractions of a cent. A
 thousand players reaching level 10 is two thousand transactions — still
 pocket change. The milestone list itself is the spending cap.
 
+## The day's budget (v2.3.5712, card SEC PR 13)
+
+The milestone list caps a character, not the game: every new character's
+first level-up made the relayer pay a fee, with no ceiling a day, no live
+flag, and a fee of twice the node's quote whatever the quote was
+(`chainscore.js` "THE CHAIN'S DAY BUDGET", `chainwriter.js` "THE FEE'S
+CEILING"):
+
+- **Kill switch `chainscore: false`** (the live switches): nothing is sent,
+  no RPC is asked; a checkpoint stores nothing, so the next level-up after
+  the switch is back sends it.
+- **At most 200 sends a UTC day** (`CHAIN_SCORE.SENDS_DAY`): past it a
+  checkpoint answers `day-ceiling` and stores nothing; the player's next
+  level-up after the day turns sends the whole series (it is cumulative:
+  nothing is lost). The count is **memory only**: no record a send already
+  writes is the room's, and a new write is the owner's call, so a deploy or
+  an eviction starts the day's count again.
+- **A send's most possible fee is at most 0.001 ETH** (`FEE_MAX_WEI`, half
+  the 0.002 the runbook funds the relayer with): a quote above it is not
+  signed or sent (`fee-over-ceiling`), gives its day's place back, and the
+  next level-up tries again.
+
+The switch and the day's ceiling are asked again **when each queued job
+runs**, not only when a checkpoint is queued (gatekeeper Z40's review): a
+job waits behind others that each hold the queue 6-60 s for a receipt, so a
+backlog queued before `chainscore: false` was thrown kept sending. The
+ceiling is asked before the preflight and the nonce read, so a refused job
+asks the node nothing; a place taken by a job that then fails is given back.
+
+`/api/admin/chainstatus` says `on` and `day: { sends, ceiling, feeMaxWei,
+refused }`, `refused` the day's refusals by reason (`switched-off`,
+`day-ceiling`, `fee-over-ceiling`; memory only), so writes that stop are
+seen. Suite: `server/test/chainday.test.mjs`.
+
 ## When something goes wrong
 
 ### The relayer key leaks

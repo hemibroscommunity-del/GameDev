@@ -449,6 +449,9 @@ const session = [...room.sessions.values()].find((s) => s.id === 'bp_gr_a');
 {
   const psL = room.playerState['bp_gr_a'];
   psL.legsArmor = null;
+  /* v2.3.5715: greaves the worker holds (gearheld wears only those;
+     gearheld.test is the gate's own) -- the forged one as its clamp makes it */
+  psL.legsStash = [{ name: 'Iron Greaves', tierMult: 1 }, { name: 'Forged Greaves', tierMult: 8 }];
   room._handleStatsUpdate(session, { legsArmor: { name: 'Iron Greaves', tierMult: 1 } });
   check('legs: an equipped greave is stored on the server',
     !!psL.legsArmor && psL.legsArmor.name === 'Iron Greaves', psL.legsArmor);

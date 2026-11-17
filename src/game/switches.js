@@ -232,6 +232,7 @@ const FORMS = {
   'ridecoast': '0|off|false',
   'ridedoor': '0',
   'room': '*',
+  'rostercookie': '0|off|false',
   'seacover': '0',
   'selftest': '*',
   'sfxahead': '0|off',
