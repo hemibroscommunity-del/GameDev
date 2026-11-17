@@ -11,8 +11,13 @@ with one merge base at every step (`git merge-base --all`, each against
 `main` with the PRs above it merged in as merge commits). The tree after
 each merge:
 
-1 K #2028 30d7681eba2b841d800cedb446a1d8ec826b7194 -> 6c43fb232b353fedf9ca333af3d4653948c66873
-2 Z (this PR): its head and tree are in the list (`status/Z.md`).
+1 SEC #2030 14cda149138b1cc532dcb2bad2a33b214cb59732 -> 45126e74e7f4131d678d975e61d31bb9b5d50fcd
+2 K #2028 30d7681eba2b841d800cedb446a1d8ec826b7194 -> 7f731f860f16da5bbc0964abeb44624b3a127352
+3 L #2031 37bb49117d6db24f038ed9c99de88be17d47023f -> d665cff64f9050b7e1b1f31a3e2e97325d2211da
+4 Z (this PR): its head and tree are in the list (`status/Z.md`).
+
+The bases, step by step: #2030 52244a81; #2028 fe1297b0 (#2024's head,
+on `main`); #2031 52244a81; this PR 52244a81. One line each.
 
 #2028 was built on #2024 (its one base fe1297b0, #2024's head, now on
 `main`): the base GitHub shows (01b8f33d) is only the `main` it was
@@ -20,6 +25,23 @@ opened against. Reviewed and rehearsed at ffff340b (tree f16d6174); at
 15:50 K sent 30d7681e, one commit on top: `docs/plan/status/K.md` only
 (card K `done`, the planner's word: item 14 closed). The new tree differs
 from the rehearsed one in that file alone.
+
+## SEC #2030 (5700): card SEC, its status and its tag block
+
+READY (documents and the tag table: step 3). The planner's message
+(15:52 UTC) names card SEC (session ...oMQ3nmwcTbRueMgd, tags 5700-5719)
+and card K2 (5720-5739). Open, not a draft, based on `main` 52244a81;
+`test` green on 14cda149. Three files: `docs/plan/cards/SEC.md` (the
+card: PRs 2 to 15, the second red team's fixes that need no decision and
+sit in no running card's files), `docs/plan/status/SEC.md` (`ready`),
+`tools/dev/tag-blocks.json` (the block `"SEC": [[5700, 5719]]`;
+`nextBlock` 5700 -> 5720). Tag 5700 the block's first; unused on `main`.
+No deploy.
+- K2's first PR also moves `nextBlock` (planner): it is not on this list;
+  when it comes, it merges `main` with #2030 in first (the same line).
+- For the owner: card SEC is new scope. Its words quote you, 2026-11-17
+  (*"Go recommended"*); a gatekeeper cannot check them. Merge it if those
+  are yours.
 
 ## K #2028 (5553): `cookstart`, a cook is a cook the worker started (OFF)
 
@@ -57,6 +79,32 @@ ready at this sitting's start); `test` green on ffff340b (15:28 UTC).
   starts every cook afresh (a new plan), so no honest cook is lost; for K
   when it is turned on.
 - DEPLOYS the worker (`server/src/`).
+
+## L #2031 (5531): the arena's page door
+
+READY (reviewed in full: `src/`). Card L PR 5's page halves, the arena
+(L's message at 16:04 UTC; based on `main`, 52244a81 merged in). Tag 5531:
+L's block 5520-5539. `test` green on 37bb4911 (16:09 UTC).
+- `src/game/arenaDoor.js` `arenaTo(S, way, involved, match, tid)` (one
+  way, `poll`), the one writer of `S._arenaMatch` and its two notes
+  (`_arenaInvolved`, `_arenaTournamentId`); its one caller the arena's
+  status poll in `BroTown.jsx`, replacing four direct writes. Read side by
+  side, the poll's old lines and the door write the same values in every
+  case: involved `!!(queue || tourney)`; with a fighting status and a
+  match, the match and the tournament's id; else the match null and the
+  id kept. The door's one new refusal, a match that is no record, never
+  meets the worker's answer (`arena.js` 143: `currentMatch: myMatch ||
+  null`). `?arenadoor=0` writes what the poll asks.
+- The phase table: page `arena` `todo` -> `door` (7 -> 6 `todo`); its
+  guard's door-suite row; the state ledger's three rows move to the
+  `social` system with the door as writer; SHAPES, SWITCHES, SYSTEMS, the
+  switch table, `phase-table.md` each a line of their own. New suite
+  `arena-page-door` (11 checks, its break proof named). Nothing a player
+  sees changes.
+- Only `server/test/` under `server/`: DEPLOYS the worker (with #2028's
+  deploy, one).
+- After it lands the phase line can go 7 -> 6 (sitting 37: only a merged
+  count is ticked).
 
 ## The rehearsal
 
