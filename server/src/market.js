@@ -32,7 +32,8 @@
  * expiry; bounty boards deferred; direct self-trades never enter the
  * price history (the matcher already skips same-player orders). */
 
-import { reqOnceMethods } from './reqonce.js';   /* v2.3.5194: a repeat acts once (card K PR 9) */
+import { reqOnceMethods } from './reqonce.js';
+import { gidNamesMethods } from './gidnames.js';   /* v2.3.5196: a weapon named by its id (card K PR 11) */   /* v2.3.5194: a repeat acts once (card K PR 9) */
 import { swordToGreatsword } from './swordconvert.js';   /* v2.3.3895: a sword's order is rewritten once as a greatsword */
 import { oldGreatswordToMetal } from './gscopper.js';   /* v2.3.3980: ...and a wooden or base-less greatsword's as a metal one */
 import { BLACKSMITH_TIER_LABELS, WOODWORKING_TIER_LABELS } from './data.js';   /* v2.3.3980: a converted sell order's tier label; v2.3.5626: every order's */
@@ -50,6 +51,7 @@ export const MARKET = {
 };
 
 export const marketMethods = {
+  ...gidNamesMethods,   /* v2.3.5196: _gidPlace (gidnames.js) */
   ...reqOnceMethods,   /* v2.3.5194: _reqOnce and its kin (reqonce.js), for every value request's repeat */
   /* ═══ v2.3.1971: BOUND THE TAXONOMY STRINGS BEFORE THEY ESCROW ═══
    *
@@ -367,7 +369,7 @@ export const marketMethods = {
     // Escrow.
     let item = null;
     if (type === 'sell') {
-      const idx = Math.floor(body.stashIndex);
+      const idx = Math.floor(this._gidPlace(ps, body.stashIndex, body.gid));   /* v2.3.5196: by its id when sent (gidnames.js) */
       if (!Number.isFinite(idx) || idx < 0 || !Array.isArray(ps.weaponStash) || idx >= ps.weaponStash.length) {
         return { ok: false, error: 'Item not in stash' };
       }

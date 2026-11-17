@@ -506,6 +506,24 @@ export function setActionTransport(t) { _t = t && typeof t === 'object' ? t : nu
 /* v2.3.5546: how long the door waits before its one re-send of a route's
    request the worker never answered (caps.reqid only) */
 export const RESEND_MS = 1500;
+/* v2.3.5196 (card K PR 11): a weapon named by its id, never by its place.
+   The requests that take a weapon from the stash name it by its place (the
+   key below, and when the payload says it is a stash weapon); against a
+   worker that reads the id (caps.gidnames, the transport's weaponGid), the
+   door adds the id of the weapon at that place, read from the same stash the
+   tap was drawn from: if the stash moved before the worker reads it, the
+   worker finds the weapon by its id, or refuses (server/src/gidnames.js). */
+export const GID_PLACE = Object.freeze({
+  sell_weapon: { key: 'stashIdx' },
+  equip_request: { key: 'stashIdx' },
+  trade2_stage_weapon: { key: 'stashIdx' },
+  amulet_forge_request: { key: 'stashIdx', when: (p) => p.target === 'stash' },
+  smith_salvage: { key: 'idx', when: (p) => p.field === 'weaponStash' },
+  essence_apply: { key: 'idx', when: (p) => p.field === 'weaponStash' },
+  reveal_item: { key: 'idx', when: (p) => p.field === 'weaponStash' },
+  'http:/api/market/place': { key: 'stashIndex', when: (p) => p.type === 'sell' },
+  'http:/api/store/list': { key: 'stashIndex', when: (p) => p.kind === 'weapon' },
+});
 /* v2.3.5546 (the gatekeeper, sitting 27): the routes the door may re-send --
    those whose repeat is safe even after the worker restarted and forgot its
    first answer: a listing finds itself on its own record; a buy, a bid or
@@ -526,6 +544,12 @@ export function act(name, payload, opts) {
   if (!_t) return r.way === 'http' ? Promise.reject(new Error('offline')) : false;
   const p = payload && typeof payload === 'object' && !Array.isArray(payload) ? Object.assign({}, payload) : {};
   if (r.req && p.reqId === undefined) p.reqId = makeReqId();
+  /* v2.3.5196: the weapon's id beside its place (GID_PLACE) */
+  const gp = GID_PLACE[name];
+  if (gp && p.gid === undefined && (!gp.when || gp.when(p)) && typeof _t.weaponGid === 'function') {
+    const g = _t.weaponGid(p[gp.key]);
+    if (typeof g === 'string' && g) p.gid = g;
+  }
   const env = ENV_OF_WAY[r.way];
   if (env === 'event') return _t.send({ type: 'broadcast', event: name, payload: p });
   if (env === 'http') {
