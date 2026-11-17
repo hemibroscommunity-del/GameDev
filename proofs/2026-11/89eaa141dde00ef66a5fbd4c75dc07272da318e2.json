@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "89eaa141dde00ef66a5fbd4c75dc07272da318e2",
+  "tree": "1dc20792ef2269ab5550e472de689245aa4dd9dc",
+  "committedAt": "2026-11-17T04:54:55-08:00",
+  "subject": "Merge pull request #2018 from hemibroscommunity-del/claude/plan-k-14a-reach",
+  "files": 8057,
+  "bytes": 959475513,
+  "listingSha256": "efda48339ec01785c8bbb8ddcf099817bda1a1e71894ce87b8966e838e6d457a",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

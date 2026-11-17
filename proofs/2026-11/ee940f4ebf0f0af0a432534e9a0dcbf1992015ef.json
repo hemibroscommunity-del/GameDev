@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "ee940f4ebf0f0af0a432534e9a0dcbf1992015ef",
+  "tree": "d5673498708e8cd89f9fcd5df58410c804e001ee",
+  "committedAt": "2026-11-17T04:54:46-08:00",
+  "subject": "Merge pull request #2019 from hemibroscommunity-del/claude/plan-j2-34-dropsteady",
+  "files": 8055,
+  "bytes": 959463736,
+  "listingSha256": "c4fd92c9b3ee6bc59b08fdb1e79421c810edced8b155f58ff2e14a8ce0d7c270",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
