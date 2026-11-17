@@ -26,7 +26,8 @@ from the rehearsed one in that file alone.
 READY (reviewed in full: `server/`). Card K PR 14, the cook's result
 (4.2); K's tag 5553 (block 5540-5559). Open, not a draft (K marked it
 ready at this sitting's start); `test` green on ffff340b (15:28 UTC).
-- `test` on 30d7681e: see the rehearsal.
+- `test` green on 30d7681e too (15:59 UTC), with playable, memory-budget
+  and lint-build.
 - `server/src/cooking.js` `_cookStartOn()` (an own `true` only: OFF),
   `_cookStartTake(ps, fishKey, now, session)`: with it on, a
   `cook_request` lands only on the plan `extraction_start` rolled
@@ -59,3 +60,20 @@ ready at this sitting's start); `test` green on ffff340b (15:28 UTC).
 
 ## The rehearsal
 
+`tools/dev/gatekeeper.mjs` on 52244a81 with #2028 (at ffff340b): tree
+f16d6174 (the same as the step-by-step merge); build PASS; questline
+187/187; precheck 0 FAIL but the server suites' 5-minute limit under load
+(the settled one, sittings 33 to 35; its one WARN the branch count), so
+`cd server && npm test` was run alone in that tree: 480 suites, all green
+(346 s). #2028's new head 30d7681e changes only K's status file against
+that tree (tree 6c43fb23). This PR merged on top of both (one base,
+52244a81; tree fce1b531): every guard in `tools/guards/` green (34), the
+phase table 7 `todo`, at the line 7. `test` green on both of #2028's heads.
+
+## Z (this PR, 5674)
+
+The phase table's line 9 -> 7 (`tools/guards/phase-table.test.mjs`
+`TODO_LINE`; 6 fails 7, tried), the count on `main` 52244a81 after L's
+#2027. The plan noted for sitting 35's merges: 4.2 (K #2024, `swordswing`
+and `movetop` ON), 5.3b (L #2027). Documents and the guard's one number:
+no deploy of its own.
