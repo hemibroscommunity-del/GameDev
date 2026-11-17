@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "0e20213b74e4dfad3d8264c4ef929b841ad6870a",
+  "tree": "f14ec0753642434d5b144340c57918ca13ba9863",
+  "committedAt": "2026-11-17T01:18:13-08:00",
+  "subject": "Merge pull request #1997 from hemibroscommunity-del/claude/plan-k-11-gidnames",
+  "files": 8038,
+  "bytes": 959345304,
+  "listingSha256": "76564bf64985214373633a7a1df064a0eb77624ecd1cd8a0fd6cedb2c12c722f",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
