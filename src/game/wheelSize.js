@@ -24,6 +24,7 @@
  * no Pixi, no React.
  */
 import { setWheelGeom } from '../data/zones.js';   /* (relative: this module loads in Node -- test-world-core, through wheelTrial.js) */
+import { pageAddress } from './switches.js';   /* v2.3.5311: the page's one read of its address (card T) */
 
 /* every Wheel this bundle can draw */
 export const WHEEL_SIZES_DRAWN = Object.freeze([1, 5]);
@@ -41,8 +42,7 @@ export function wheelPreviewAddress(search) {
    preview, so the worker keeps a preview's player out of harm (they stand on
    the short Wheel's ground in the long one's world) */
 export function wheelSizesDrawn() {
-  let search = '';
-  try { search = window.location.search || ''; } catch (e) { /* no page: a test */ }
+  const search = pageAddress();
   return wheelPreviewAddress(search) ? [1] : WHEEL_SIZES_DRAWN.slice();
 }
 

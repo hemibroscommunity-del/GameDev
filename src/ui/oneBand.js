@@ -42,13 +42,14 @@
  * v2.3.4152 '1' meant on and no key meant off; now no key (never asked, or an
  * old "off", which was a removed key) and the old '1' both read ON, so a
  * device that tried ?oneband=1 stays on and every other device moves over. */
+import { pageAddress } from '../game/switches.js';   /* v2.3.5311: the page's one read of its address (card T) */
 
 const KEY = 'bt_oneband';
 const CLS = 'bt-one-band';
 
 export function oneBandWanted(search) {
   let q;
-  try { q = new URLSearchParams(search != null ? search : (typeof location !== 'undefined' ? location.search : '')); } catch (e) { q = null; }
+  try { q = new URLSearchParams(search != null ? search : pageAddress()); } catch (e) { q = null; }
   const v = q ? q.get('oneband') : null;
   /* v2.3.4152: on is the default, so ?oneband=1 clears the stored off and
      ?oneband=0 stores it; only a stored '0' is off */

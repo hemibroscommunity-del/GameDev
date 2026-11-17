@@ -17,6 +17,7 @@
  * Off with ?pointsfly=0 (one tab). */
 import { flyPicture } from '@/game/questFly.js';
 import { POINTS_FLY_SKILLS, pointsFlyOn, pointsBubbleCount } from '@/game/pointsBubbles.js';
+import { pageAddress } from '../game/switches.js';   /* v2.3.5311: the page's one read of its address (card T) */
 
 /** The bubbles' flight from `from` (the medallion: an element, or its rect
  *  read earlier).  `skill` the prog3 key; nothing for a life skill or the
@@ -24,7 +25,7 @@ import { POINTS_FLY_SKILLS, pointsFlyOn, pointsBubbleCount } from '@/game/points
 export function flyPointsBubbles(from, skill, level) {
   try {
     if (POINTS_FLY_SKILLS.indexOf(skill) < 0 || !from) return 0;
-    if (typeof window !== 'undefined' && !pointsFlyOn(window.location && window.location.search)) return 0;
+    if (typeof window !== 'undefined' && !pointsFlyOn(pageAddress())) return 0;
     var r = from.getBoundingClientRect ? from.getBoundingClientRect() : from;
     if (!r || r.width < 2) return 0;
     var n = pointsBubbleCount(level), sent = 0;

@@ -71,7 +71,7 @@ import { setAlwaysDay } from './timeOfDay.js';
 import { setClosedDoorZones, setWheelDoorsOpen } from '../data/gameSystems.js';   /* v2.3.3029: today's town's doors, out of reach with no way back; v2.3.3032: and the Wheel's own */
 import { wheelArtStats } from '../rendering/wheelMonsterArt.js';   /* v2.3.2989: the monsters' looks, loaded as you walk toward them */
 import { wheelLong, onWheelLong, wheelSizeTold } from './wheelSize.js';   /* v2.3.3315: which Wheel the room plays */
-import { sw } from './switches.js';   /* v2.3.5310: the page's one reader (card T) */
+import { sw, pageAddress } from './switches.js';   /* v2.3.5310: the page's one reader (card T); v2.3.5311 its address */
 
 export const WORLD_TRIAL_ZONE = 'worldview';
 /* v2.3.2978: the Wheel's own zone, where the server stands each element
@@ -177,7 +177,7 @@ export function applyWorldTrial() {
   const mode = readFlag();
   if (!mode) return false;
   try {
-    const q = new URLSearchParams(window.location.search);
+    const q = new URLSearchParams(pageAddress());
     _spawnOff = q.has('nospawn');
     _wayBack = q.has('wayback');   /* v2.3.3025 */
     _hudOn = q.has('trial') || q.has('trialhud');

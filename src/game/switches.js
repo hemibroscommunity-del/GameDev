@@ -362,9 +362,18 @@ export function readerFor(search) {
    string compare an ask; a parse only on a change. */
 let _page = null;
 let _search = null;
+
+/** v2.3.5311: the page's address as it is now ('?a=1&b', or '' with no page
+ *  or no address): THE one read of location.search.  A rule that is handed
+ *  the whole address (`killXpOn(search)`, `q ?? address` for its tests) is
+ *  handed this, so its meaning is unchanged (the planning session's answer,
+ *  2026-11-17: one read here, the sites call it). */
+export function pageAddress() {
+  try { return (typeof location !== 'undefined' && location.search) || ''; } catch (e) { return ''; }
+}
+
 function page() {
-  let s = '';
-  try { s = (typeof location !== 'undefined' && location.search) || ''; } catch (e) { s = ''; }
+  const s = pageAddress();
   if (_page && s === _search) return _page;
   _search = s;
   _page = readerFor(s);

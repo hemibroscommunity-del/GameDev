@@ -21,10 +21,11 @@
 
 import { oneBandActive } from './oneBand.js';   /* v2.3.4072 */
 import { COMPUTER_FRAME_QUERY } from '../game/deviceProfile.js';   /* v2.3.4804: the device profile */
+import { pageAddress } from '../game/switches.js';   /* v2.3.5311: the page's one read of its address (card T) */
 
 export function deskWideWanted(search) {
   let q;
-  try { q = new URLSearchParams(search != null ? search : (typeof location !== 'undefined' ? location.search : '')); } catch (e) { return true; }
+  try { q = new URLSearchParams(search != null ? search : pageAddress()); } catch (e) { return true; }
   const v = q.get('deskwide');
   /* the choice is the TAB's: the game's own reloads (a key typed, a log-out, a
      recovery) go back to a bare address, and the column must not turn wide
