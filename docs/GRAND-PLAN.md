@@ -470,6 +470,11 @@ play, a number 1.1 can measure.
   150 -> 93), at sitting 31. The box waits for card K's item 13 (5198,
   5199: the census to 0, then made strict) (the gatekeeper, sitting 32,
   tag 5670).*
+  *K's #2013 and #2014 (5198, 5199: every raw socket write through the
+  door, byte for byte; the census 93 -> 0), merged at sitting 32. The
+  census made strict by the gatekeeper's sitting 33 (tag 5671: any raw
+  `.send(` outside `send.js` fails `send-door.test`); the box is ticked
+  once that PR is merged (the gatekeeper, sitting 33, tag 5671).*
 - [ ] **4.2 [NEXT] Claims, bounded.** "No claims" can be met by calling a
   loose check a judge. So each bounded claim carries its **gain**: a
   maximal liar's take an hour over an honest player's, measured by a house
@@ -658,6 +663,9 @@ nothing known, and a restore copies nothing.
   *L's #2000 (5526, the window door: `windowTo`, `?windowdoor`, ON),
   merged at sitting 30: 12 `todo` on `main` c55c8b59; the line lowered
   13 -> 12 (the gatekeeper, sitting 31, tag 5669).*
+  *L's #2012 (5528, the connection door: `connTo`, `?conndoor`, ON),
+  merged at sitting 32: 11 `todo` on `main` 35aa7f7b; the line lowered
+  12 -> 11 (the gatekeeper, sitting 33, tag 5671).*
 - [ ] **5.4 [LATER] The frame as named steps.** PR 1 moves nothing: the six
   calls the loop already makes, plus one `legacy` step, become the list;
   each counts its errors to the crash ring (a throw in the frame reaches
@@ -969,6 +977,11 @@ punishes by itself.
   *R's #1969 (5295: an arena share keeps its own bound, `SHARES_MAX` 128,
   other ids `IDS_MAX` 32; ledger only, `xferescrow` still OFF), merged at
   sitting 25 (the gatekeeper, sitting 26, tag 5664).*
+  *R's #2015 (5293: the market's cross and the Auction House's sales
+  write their `xfer:` rows; `xferescrow` still OFF, the owner's cost
+  call), merged at sitting 32: every escrow road has its ledger row, and
+  card R is done. Throwing `xferescrow` stays the owner's (the gatekeeper,
+  sitting 33, tag 5671).*
 - [ ] **10.6 [NEXT] What an honest player's trouble looks like.** Each
   signal lists what changes it without any cheating: the frame rate, the
   line's delay, a deploy, a hidden tab. Every Low Power iPhone shares one

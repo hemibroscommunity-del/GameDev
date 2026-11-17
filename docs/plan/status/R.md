@@ -1,7 +1,7 @@
 card: R
-branch: claude/plan-r-17-market-rows (one branch a PR, each begun from main)
-prs: #1819, #1823, #1825, #1844, #1862, #1847, #1877, #1887, #1895, #1898, #1922, #1961, #1960, #1969, #1873, #1980: merged; PR 17 (5293): ready
-state: ready
+branch: claude/plan-r-18-done (one branch a PR, each begun from main)
+prs: #1819, #1823, #1825, #1844, #1862, #1847, #1877, #1887, #1895, #1898, #1922, #1961, #1960, #1969, #1873, #1980, #2015: merged
+state: done
 
 ## Done
 
@@ -14,12 +14,12 @@ state: ready
 - Merged, sitting 25: PR 15 (5295, #1969); PR 3 (5282, #1873), a weapon's
   own id (save shape 22), after #1960's deploy.
 - Merged: PR 16 (5296, #1980), the world sum's four lows.
-- PR 17 (5293, this branch, ready): the market's and the Auction House's
-  ledger rows (`xferescrow`, OFF), after K's 5194, 5196, 5197.
+- Merged, sitting 32: PR 17 (5293, #2015), the market's and the Auction
+  House's ledger rows (`xferescrow`, OFF).
 
 ## Next
 
-- After PR 17 merges, the card's PRs are all done.
+- None: card R's PRs are all merged (the card is done).
 
 ## Found
 

@@ -66,6 +66,7 @@ import { hitMethods } from './hits.js'; /* v2.3.3296: one door for every monster
 import { monsterLifeMethods } from './monsterlife.js'; /* v2.3.4843: a world monster's one reset for a new life */
 import { monsterMoveMethods } from './monstermoves.js'; /* v2.3.4011: the tiers' moves (combo, charge, volley, slams, enrage) */
 import { sendMethods } from './send.js'; /* v2.3.5193: the send door (card K PR 8) */
+import { swordSwingMethods } from './swordswing.js'; /* v2.3.5548: the sword's swing and reach (card K, step 4.2; `swordswing`, off) */
 import { relayMethods } from './relay.js'; /* v2.3.3304: the relay is an allowlist, in the sender's name */
 /* v2.3.4851: depth.js (v2.3.2790, the dunes' north-south depth) is gone with the old map; was: the monster AI */
 import { dailyChestMethods } from './dailychest.js'; /* v2.3.2820: the daily chest */
@@ -6442,6 +6443,7 @@ Object.assign(GameRoom.prototype, monsterMoveMethods); /* v2.3.4011 */
 Object.assign(GameRoom.prototype, monsterLifeMethods); /* v2.3.4843 */
 Object.assign(GameRoom.prototype, relayMethods); /* v2.3.3304 */
 Object.assign(GameRoom.prototype, sendMethods); /* v2.3.5193: the send door */
+Object.assign(GameRoom.prototype, swordSwingMethods); /* v2.3.5548: the sword's swing and reach */
 Object.assign(GameRoom.prototype, dailyChestMethods); /* v2.3.2820 */
 Object.assign(GameRoom.prototype, loginSpinMethods); /* v2.3.4295 */
 Object.assign(GameRoom.prototype, dailyRewardsMethods); /* v2.3.3140 */

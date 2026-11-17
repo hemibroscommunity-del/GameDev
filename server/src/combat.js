@@ -1318,7 +1318,8 @@ export const combatMethods = {
         && typeof m.x === 'number' && typeof m.y === 'number') {
       const _rdx = attackerPs.x - m.x;
       const _rdy = attackerPs.y - m.y;
-      if (_rdx * _rdx + _rdy * _rdy > this.PVE_MELEE_RANGE * this.PVE_MELEE_RANGE) return;
+      const _rr = this._swordReach();   /* v2.3.5548: REACH_PX with `swordswing: true` (swordswing.js), else PVE_MELEE_RANGE */
+      if (_rdx * _rdx + _rdy * _rdy > _rr * _rr) return;
     }
     /* v2.3.3334: a bow's or a staff's own reach, in every zone, from the
        worker's own copy of the player (hitproof.js _hitReach) -- inside a paid
@@ -1360,6 +1361,13 @@ export const combatMethods = {
     const _dg = (!isSpecial && (_effSlot === 'ranged' || _effSlot === 'staff'))
       ? this._dgFind(attackerPs, _effSlot, payload.sw) : null;
     if (_hp && !isSpecial && !this._hitRateTake(attackerPs, _effSlot, _hpNow, _dg ? (_dg.drop ? 0 : _dg.f) : 1)) { this._hpTally('rate'); return; }
+    /* v2.3.5548 (card K, step 4.2): THE SWORD'S SWING (swordswing.js, an
+       opt-in: `swordswing: true`) -- one counted swing a player at the
+       sword's own rate, its ring's targets together; a phone on the
+       free-swing trial is prorated by time already, and a special swing and
+       a test-mode character are left as they are */
+    if (_effSlot === 'melee' && !isSpecial && !_tm && this._swordSwingOn() && !this._freeSwingFor(session)
+        && !this._swordSwingTake(attackerPs, monsterId, _hpNow)) { this._hpTally('swing'); return; }
     /* v2.3.2849: a big bolt is ONE roll from its own band that then explodes
        (STAFF_BOLT at the top of this file) -- `_bigBolt` is what the wire
        said, `_orbs` below is what the lane lets it be worth. */
@@ -1715,7 +1723,11 @@ export const combatMethods = {
        drew is where the blow lands, and a sword's shoves had pushed every
        combo out of reach of the player chasing it (measured: the first cut's
        tier 2 took LESS damage than tier 1) */
-    if (attackerPs && payload.noKb !== true && !_fsLight /* v2.3.4520: nor a shove */ && !(this._moveBraced && this._moveBraced(m))) {
+    /* v2.3.5548 (swordswing.js): with `swordswing: true` a sword's claim
+       never opts out of its shove -- only a bow's chips and a volley's later
+       arrows send `noKb` (projectiles.js); no page's sword does */
+    const _noKb = payload.noKb === true && !(_effSlot === 'melee' && !_tm && this._swordSwingOn());
+    if (attackerPs && !_noKb && !_fsLight /* v2.3.4520: nor a shove */ && !(this._moveBraced && this._moveBraced(m))) {
       /* v2.3.2790: x the zone's depth at the monster's feet -- a mummy drawn
          at 0.42 on Wind Dunes' north edge is shoved 0.42 as far, so the hit
          reads as the same shove on screen (1 on every other zone).  The
