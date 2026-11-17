@@ -277,6 +277,7 @@ export const leaveMethods = {
       if (d.count) this.broadcastAll({ type: 'player_count', count: this.getPlayerCount() - 1 });
     }
     this.sessions.delete(ws);
+    if (session.id && this._guestQuietGone) this._guestQuietGone(session.id);   /* v2.3.5708: a quiet guest's id goes with its last socket (guestlazy.js) */
     /* the room's tail runs on every close the runtime delivers, a second one
        included (a session already gone): the tick must stop in an empty room */
     if (d.lastOut) {

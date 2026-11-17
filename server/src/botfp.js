@@ -223,6 +223,12 @@ function ringVariance(ring, key) {
   return m2 / n;
 }
 
+/* v2.3.5708: a record (live or stored) holding evidence -- a flag, or a cap
+   clamp -- is written and kept whatever guestquiet says (guestlazy.js) */
+function botfpEvidence(rec) {
+  return !!(rec && typeof rec === 'object' && ((Array.isArray(rec.flags) && rec.flags.length > 0) || (rec.counters && rec.counters.capClamps > 0)));
+}
+
 export const botfpMethods = {
   // ── join: device capture + durable hydration ──
   // Runs inside the join case (input gate held across the await — rule 9).
@@ -574,8 +580,11 @@ export const botfpMethods = {
   _botfpMaybePut(id, rec, force) {
     /* v2.3.5708: a quiet guest's signals are not written (guestlazy.js): the
        record stays dirty, and writes at its pace once the guest has done
-       something worth keeping */
-    if (this._guestQuiet && this._guestQuiet(id)) return;
+       something worth keeping.  Evidence is never held back (the sitting-38
+       review): a record holding a flag or a cap clamp is written as before,
+       quiet or not -- a bot refused at every strike never earns, never
+       saves, and would stay quiet for good with its flags in memory only */
+    if (this._guestQuiet && this._guestQuiet(id) && !botfpEvidence(rec)) return;
     const now = now_();
     if (!force && (!rec.dirty || now - rec.lastPutAt < BOTFP.PUT_MIN_MS)) return;
     rec.lastPutAt = now;
@@ -636,7 +645,8 @@ export const botfpMethods = {
       const recs = new Map();
       for (let i = 0; i < ids.length; i += 128) for (const [k, v] of await this.state.storage.get(ids.slice(i, i + 128).map((x) => 'rpg:' + x))) recs.set(k, v);
       const here = new Set([...(this.sessions ? this.sessions.values() : [])].map((s) => s && s.id).filter(Boolean));
-      const gone = ids.filter((x) => !recs.has('rpg:' + x) && !here.has(x) && !(this.playerState && this.playerState[x]));
+      /* a row holding evidence stays: the owner's `?flagged=1` review reads it */
+      const gone = ids.filter((x) => !recs.has('rpg:' + x) && !here.has(x) && !(this.playerState && this.playerState[x]) && !botfpEvidence(page.get('botstat:' + x)));
       for (let i = 0; i < gone.length; i += 128) await this.state.storage.delete(gone.slice(i, i + 128).map((x) => 'botstat:' + x));
       for (const x of gone) if (this._botfp) this._botfp.delete(x);
       return new Response(JSON.stringify({ ok: true, removed: gone.length, next }), { headers });
