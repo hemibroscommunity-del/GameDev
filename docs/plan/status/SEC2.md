@@ -1,6 +1,6 @@
 card: SEC2
 branch: claude/plan-sec2-site-hardening
-prs: PR 1 (5820) open
+prs: #2088 (5820) open
 state: ready
 
 ## Done
