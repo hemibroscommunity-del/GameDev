@@ -1,6 +1,6 @@
 card: Z
 branch: claude/plan-z-sitting-42 (stacked on RV #2072's head, for tag-blocks)
-prs: this PR, tag 5820, the last line of sitting 42's list (ready)
+prs: #2093 (this PR), tag 5820, the last line of sitting 42's list (ready)
 state: ready
 
 ## Done
@@ -12,7 +12,7 @@ state: ready
 #2081 (5728, `ceilfair`) · 3-7 V2 #2076-#2080 (5760-5764; #2080 deploys) ·
 8 U2 #2074 (5781) · 9 U2 #2082 (5782) · 10 RV #2072 (5800) · 11 RV #2083
 (5801, `mkttier`, `mktheal`) · 12-14 T2 #2071, #2075, #2087 (5740-5742) ·
-15 M2 #2084 (5343; carries #2085, 5344) · 16 M #2089 (5340) · 17 Z (this
+15 M2 #2084 (5343; carries #2085, 5344) · 16 M #2089 (5340) · 17 Z #2093 (this
 PR). Heads and trees: `census/review-z42.md`; one base at every step.
 ## Held / Stalled
 - None held at review; none stalled. To 43, came at the close, not

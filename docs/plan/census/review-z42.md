@@ -58,7 +58,7 @@ flood-ceiling race that failed main's deploy of sitting 41's batch,
 14 T2 #2087 af969303ed52c355444f8a0e3581655ad4d262ad -> 321864d7c27e7bd55a608d2f1ab8de4a61940bf5 (base 996f5e7b)
 15 M2 #2084 6ad38d79ec0ebee6f7abbab942858db0ebfa1b15 -> ae1529a79a07dacb29bb0d3180bff5f6e459906a (base af969303)
 16 M #2089 27a8886d42b7688c3b7fc70d6996515a3b18edaa -> 9224a787b1812c1b5e86f8ef45f6befdaf96d8d0 (base bdfa8734)
-17 Z (this PR): stacked on RV #2072's head; its head and tree are in the list.
+17 Z #2093 (this PR): stacked on RV #2072's head; its head and tree are in the list.
 
 M2 #2085 (5344, 55c15c04057fefee1fa36765fb099f7e09ed9e58) is NOT a line
 of its own: #2084 carries its head (merged in for `status/M2.md`), and
