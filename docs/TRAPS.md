@@ -1997,6 +1997,8 @@ place cannot reproduce this.
 
 ---
 
+Held by: tools/guards/traps-phone-memory.test.mjs (tag 5763).
+
 ## §50 — A derived-geometry reservation outlives the things it reserved (v2.3.2320)
 
 **The plausible move:** widen the dashboard's five nav buttons by raising the
@@ -5559,6 +5561,8 @@ release what it baked, not only what a zone change clears. And "it is freed"
 is a claim about what still REACHES the object, so prove it with a count after
 a forced GC (mp-bakeleak), not by reading the release.
 
+Held by: tools/guards/traps-phone-memory.test.mjs (tag 5763).
+
 ## 140. "Hide it from the renderer and it is gone" (v2.3.3145)
 
 **The plausible move.** Something the player should not see yet -- a resource
@@ -8585,6 +8589,8 @@ then every facing again; a hat whose southwest file failed every try, back once
 it can be had) -- and with `QA_HK_EXPECT=blank` the build before: blank after
 the wipe, blank after the rebuild, the hat never back.
 
+Held by: tools/guards/traps-phone-memory.test.mjs (tag 5763).
+
 ## 254. "Spread the base style and change what differs" (v2.3.3633)
 
 **The move.** A Pixi text style is derived from a shared one the way a plain
@@ -8615,6 +8621,8 @@ changing them is a change to how they look.
 
 **Receipt:** `mp-textrelease` (a family built both ways, and two real trips
 to a fight with and without `?textkeep`).
+
+Held by: tools/guards/traps-phone-memory.test.mjs (tag 5763).
 
 ## 255. "Fill the gap with something neutral" (v2.3.3640)
 
@@ -10201,6 +10209,8 @@ cap that then falls back; and `lookSetsSettled()` for the sets, which also
 waits for a set registered after the loading screen began.
 **Receipt:** `mp-lookgear` ("the walking armour's RGBA is not on the chip").
 
+Held by: tools/guards/traps-phone-memory.test.mjs (tag 5763).
+
 ## 341. "Let each of them go: `for (const t of frames) t.destroy(false)`" (v2.3.5011)
 
 **The plausible move.** A cache of Textures over one shared picture (a look
@@ -10222,6 +10232,8 @@ of a 2,000-listener source took 34.6 ms one by one and 1.6 ms in one pass.
 `src/rendering/bulkTexDestroy.js destroyTextures(list)`: each source's list
 rebuilt once (server/test/bulk-tex-destroy.test.mjs). A single Texture now and
 then is fine as it is.
+
+Held by: tools/guards/traps-phone-memory.test.mjs (tag 5763).
 
 ## 342. "The test can't find the button: the game lost it" (v2.3.5439)
 
