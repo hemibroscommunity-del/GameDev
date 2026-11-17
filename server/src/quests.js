@@ -476,9 +476,9 @@ export const questMethods = {
         if (ws0) {
           try {
             for (const _piece of _over) {
-              ws0.send(JSON.stringify({ type: 'quest_reward_stashed', payload: {
+              this._send(ws0, { type: 'quest_reward_stashed', payload: {
                 questId, item: _piece,
-              } }));
+              } });
             }
           } catch (e) { /* best effort — the turn-in itself still stands */ }
         }
