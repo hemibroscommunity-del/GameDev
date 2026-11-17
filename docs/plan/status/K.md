@@ -1,6 +1,6 @@
 card: K
-branch: claude/plan-k-12-words (5197, on #2006; one branch a PR)
-prs: #1822 to #1989, #1981, #1997, #1999 merged; open: #2006 (5193), #2003 (5197, this branch, on #2006: mended)
+branch: claude/plan-k-13-sends-a (5198; 5199 is claude/plan-k-13-sends-b, on it)
+prs: #1822 to #1989, #1981, #1997, #1999, #2006, #2003 merged; open: 5198 (this branch)
 state: ready
 
 ## Done
@@ -12,13 +12,14 @@ state: ready
   N11 (5544, #1942, `heapforget`), N5 (5545, #1949, `roomceiling`).
 - 5194, 5194b, 5195 (`reqonce` ON, `reqstamp` OFF), 5196 (`gidnames` ON),
   5547: a repeat acts once; a weapon named by its id (sitting 30).
+- 5193 (#2006, `sendcount` ON): the send door, census 150 -> 93; 5197
+  (#2003): the words rule (sitting 31).
 
 ## Next
 
-- #2006 5193 (PR 8, never built; 13 waits on it): the send door, send.js
-  `_send`; the ~55 helpers through it; counts ride the day's book (`send`,
-  8 KB); census 150 -> 93; `sendcount` ON. Then 13 (5198, 5199).
-- #2003 5197: the words rule; sitting 30's findings mended (stacked on #2006).
+- 5198 (13, batch 1): every file no card holds through the door, 93 -> 28
+  (origin.js's refusal outside a room: `sendOutside`). 5199: the 28 left
+  (L's and R's files, their doors merged): census 0, for the gatekeeper.
 - Then the second block: the claims tightened (14).
 - wsClient.js: done for good (told L). index.js, combat.js: 13 and 14.
 

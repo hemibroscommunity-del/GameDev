@@ -123,7 +123,7 @@ export const deviceLockMethods = {
      (admin.js, before v2.3.3356): deleting the session first left the body
      standing in the world. */
   async _authPutOut(ws, why) {
-    try { ws.send(JSON.stringify({ type: 'join_rejected', reason: why })); } catch (e) { /* closed */ }
+    try { this._send(ws, { type: 'join_rejected', reason: why }); } catch (e) { /* closed */ }
     try { ws.close(why === 'key' ? 4017 : DEVICE_LOCK.CLOSE, why); } catch (e) { /* closed */ }   /* 4017: LOGIN_KEYS.CLOSE (loginkeys.js imports this file) */
     await this._playerLeaves(ws, 'device');   /* v2.3.4830: the session door (leave.js) */
   },

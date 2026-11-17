@@ -176,7 +176,7 @@ export const loginKeyMethods = {
     if (gone.length) {
       try { await S.delete(gone.map((k) => LOGIN_KEYS.IDX + k.h)); } catch (e) { /* a stale index finds nothing: the record decides */ }
     }
-    try { ws.send(JSON.stringify({ type: 'key_new', key, id })); } catch (e) { /* closed: the next join is handed one */ }
+    try { this._send(ws, { type: 'key_new', key, id }); } catch (e) { /* closed: the next join is handed one */ }
   },
 
   /* The login door's half (account.js): the character a new key belongs to,

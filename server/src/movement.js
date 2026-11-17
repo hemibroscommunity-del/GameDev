@@ -963,21 +963,21 @@ export const movementMethods = {
         const zoneLootWire = _zsnap.loot;
         if (session.protocolVersion === 2) {
           // Protocol v2: one merged snapshot instead of three messages.
-          ws.send(JSON.stringify({
+          this._send(ws, {
             type: 'zone_state', zone: ps.z,
             monsters: zoneMonstersWire, nodes: zoneNodesWire, loot: zoneLootWire,
             ...(_near ? { mnear: 1 } : {}),
-          }));
+          });
         } else {
-          ws.send(JSON.stringify({
+          this._send(ws, {
             type: 'zone_monsters', zone: ps.z, monsters: zoneMonstersWire,
-          }));
-          ws.send(JSON.stringify({
+          });
+          this._send(ws, {
             type: 'zone_nodes', zone: ps.z, nodes: zoneNodesWire,
-          }));
-          ws.send(JSON.stringify({
+          });
+          this._send(ws, {
             type: 'zone_loot', zone: ps.z, loot: zoneLootWire,
-          }));
+          });
         }
         /* v2.3.2238: ...and any ground the fire goblin has already set
            alight (server/src/firetrail.js).  This is NOT cosmetic polish:
@@ -997,19 +997,19 @@ export const movementMethods = {
         // S.monsters / S.gatherNodes / S.groundLoot after the
         // player crosses to town, and render on the town map.
         if (session.protocolVersion === 2) {
-          ws.send(JSON.stringify({
+          this._send(ws, {
             type: 'zone_state', zone: ps.z, monsters: [], nodes: [], loot: [],
-          }));
+          });
         } else {
-          ws.send(JSON.stringify({
+          this._send(ws, {
             type: 'zone_monsters', zone: ps.z, monsters: [],
-          }));
-          ws.send(JSON.stringify({
+          });
+          this._send(ws, {
             type: 'zone_nodes', zone: ps.z, nodes: [],
-          }));
-          ws.send(JSON.stringify({
+          });
+          this._send(ws, {
             type: 'zone_loot', zone: ps.z, loot: [],
-          }));
+          });
         }
       }
     }

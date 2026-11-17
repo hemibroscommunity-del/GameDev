@@ -173,7 +173,7 @@ export const PAUSE_REFUSE = Object.freeze({
     const ws = room._wsBySessionId(pid);
     const out = { code: PAUSE.CODE, message: PAUSE.WORDS };
     if (typeof p.targetId === 'string' && p.targetId.length <= 64) out.targetId = p.targetId;
-    if (ws) { try { ws.send(JSON.stringify({ type: 'arena_stake_error', payload: out })); } catch (e) { /* nothing moved */ } }
+    if (ws) { try { room._send(ws, { type: 'arena_stake_error', payload: out }); } catch (e) { /* nothing moved */ } }
   },
   /* its refusal said nothing (a coins resend): now the jackpot's own state,
      with the words (the planning session's yes) */

@@ -158,13 +158,13 @@ export const burstMethods = {
          game.  `reason` is additive; an old client ignores it. */
       if (ws) {
         try {
-          ws.send(JSON.stringify({
+          this._send(ws, {
             type: 'ability_rejected',
             payload: {
               type: BURST_ABILITY_KIND, pool: 'mana', reason: refusal,
               cost: this._burstCost(ps), have: (ps && ps.mana) || 0,
             },
-          }));
+          });
         } catch (e) {}
       }
       return;

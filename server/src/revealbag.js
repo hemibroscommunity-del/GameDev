@@ -411,11 +411,11 @@ export const revealBagMethods = {
     const pub = revealPublic(piece);
     if (ws) {
       try {
-        ws.send(JSON.stringify({ type: 'loot_credit', payload: {
+        this._send(ws, { type: 'loot_credit', payload: {
           lootId: 'dev-reveal', zone: ps.z || null, coins: 0, skull: null, shard: null, gem: null,
           armor: [pub], reveals: piece.unrevealed ? null : this._revealsFor(null, [piece]),
           weapon: null, weaponStashed: false, weaponSoldFor: null, viaPet: false,
-        } }));
+        } });
       } catch (e) { /* the row is recorded; a rejoin's adoption has it */ }
     }
     return { ok: true, give: d.slot, gid: piece.gid, unrevealed: !!piece.unrevealed };

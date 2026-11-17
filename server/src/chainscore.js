@@ -343,7 +343,7 @@ export const chainScoreMethods = {
       const ws = this._wsBySessionId(playerId);
       if (ws) {
         try {
-          ws.send(JSON.stringify({
+          this._send(ws, {
             type: 'chain_score_recorded',
             payload: {
               level, milestone, series,
@@ -351,7 +351,7 @@ export const chainScoreMethods = {
               txHash: res.txHash,
               explorer: CHAIN.explorer + '/tx/' + res.txHash,
             },
-          }));
+          });
         } catch (e) {}
       }
       return { ok: true, txHash: res.txHash, milestone, level, series, skills };

@@ -12,6 +12,7 @@
  * The chain is injected (room._broFetch), so this runs with no network.
  */
 import { broVerifyMethods, RECHECK_MS, BRO_VERIFY_GAP_MS } from '../src/broverify.js';
+import { sendMethods } from '../src/send.js';
 import { readFileSync } from 'node:fs';
 import { PRIVILEGED_EVENTS, TRACK_COSMETIC_KEYS } from '../src/index.js';
 
@@ -33,7 +34,7 @@ function mkRoom() {
     } },
     _store: store,
   };
-  Object.assign(room, broVerifyMethods);
+  Object.assign(room, sendMethods, broVerifyMethods);   /* v2.3.5198: a room writes through the send door (send.js) */
   return room;
 }
 function mkWs() { const sent = []; return { sent, send: (s) => sent.push(JSON.parse(s)) }; }
