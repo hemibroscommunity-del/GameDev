@@ -1,6 +1,6 @@
 card: L
 branch: claude/plan-l-34-life-page (from main)
-prs: #1746 to #2033 (merged), #2039 (5533), 5534 life page door (this branch): ready
+prs: #1746 to #2033 (merged), #2039 (5533), #2046 (5534): ready
 state: ready
 
 ## Done
