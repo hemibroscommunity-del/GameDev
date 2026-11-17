@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "1023d04203158eddc7a059e158b72cce30bf3168",
+  "tree": "684ecfc4bae405d65234dd5f81dd5d93c55c9501",
+  "committedAt": "2026-11-17T01:18:31-08:00",
+  "subject": "Merge pull request #2000 from hemibroscommunity-del/claude/plan-l-26-window-door",
+  "files": 8041,
+  "bytes": 959360385,
+  "listingSha256": "99b9c9c55f4a75712d6ad5a8214436535e5a0b61a888e5ea2ba40902d0d561e3",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
