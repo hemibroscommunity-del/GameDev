@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "253e1c72b5cc541eeff9675ce72798a346b92f8a",
+  "tree": "f69ca16b3b678d4390b2ea27ef9225dfecc7710c",
+  "committedAt": "2026-11-17T02:39:36-08:00",
+  "subject": "Merge pull request #2010 from hemibroscommunity-del/claude/plan-l-27-veil-net",
+  "files": 8050,
+  "bytes": 959422938,
+  "listingSha256": "a32c6facd0bf173ca6737a05edee3c607ffb1f5dd4e07acdfd33e7bd9d40e170",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

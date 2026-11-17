@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "d44e549091d76f1b08ed9fb58af1978734491c9e",
+  "tree": "f37f46567acd4aa11481aa8634bc8847e727d805",
+  "committedAt": "2026-11-17T02:38:47-08:00",
+  "subject": "Merge pull request #2005 from hemibroscommunity-del/claude/plan-j2-31-shopkeeper",
+  "files": 8043,
+  "bytes": 959375618,
+  "listingSha256": "e5ee8450074a5cfc13cda438891437f0e506c6d4795575f074220993a8357513",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

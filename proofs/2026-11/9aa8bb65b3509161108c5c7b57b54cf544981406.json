@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "9aa8bb65b3509161108c5c7b57b54cf544981406",
+  "tree": "9d634f19d05600a3c16a7cb5b3ce257c90459dd3",
+  "committedAt": "2026-11-17T02:38:53-08:00",
+  "subject": "Merge pull request #2008 from hemibroscommunity-del/claude/plan-j2-32-flakes",
+  "files": 8043,
+  "bytes": 959376055,
+  "listingSha256": "25f0c31dcf76a5aeec286957c1b327f0f8407075b6caad1224e21980aee38f3d",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

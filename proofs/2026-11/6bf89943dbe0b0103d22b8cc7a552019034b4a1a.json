@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "6bf89943dbe0b0103d22b8cc7a552019034b4a1a",
+  "tree": "b01b004f944b94ecf73ff25db4f4f6eab1f619b1",
+  "committedAt": "2026-11-17T02:39:04-08:00",
+  "subject": "Merge pull request #2009 from hemibroscommunity-del/claude/plan-j2-33-farmask",
+  "files": 8043,
+  "bytes": 959376682,
+  "listingSha256": "98f3a4f2069997b6eb2ce0305434bd24505fc7c0e78f9968f21ff956296c45f4",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

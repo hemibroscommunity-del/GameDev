@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "f0d5375473b556167f7bc70f43c080a1df6e2e03",
+  "tree": "ee7e0d184458cf1efc20717ba02563eff199a126",
+  "committedAt": "2026-11-17T02:39:25-08:00",
+  "subject": "Merge pull request #2003 from hemibroscommunity-del/claude/plan-k-12-words",
+  "files": 8050,
+  "bytes": 959420995,
+  "listingSha256": "2173836992f2e83a39b22a5dabe9a21505ef4a019b79cb0f1dc66af63fab8fc2",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
