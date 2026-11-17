@@ -5,6 +5,7 @@ import { thumbFor } from './dash/InventoryPanel.jsx';
 import { armorIconFor } from '@/rendering/gearVariants.js';
 import { DAILY_CHEST_STRIP, DAILY_CHEST_FRAMES } from '@/rendering/chestPreload.js';
 import { BT_AUDIO } from '@/data/index.js';   /* v2.3.3045: the chest's sounds, on its own frames */
+import { act } from '@/game/actions.js';   /* v2.3.5191: the page's requests leave through the action door (card K PR 7) */
 
 /* ═══ v2.3.2820: THE DAILY CHEST'S CLAIM WINDOW ═══
  * Owner, with the chest art: "You can make the daily reward this chest that
@@ -142,7 +143,7 @@ export const ChestReveal = () => {
     shakeAtRef.current = Date.now();
     setStage('shaking');
     const opId = 'chest:' + (S.myId || 'me') + ':' + Date.now();
-    try { S.channel.send({ type: 'chest_open', payload: { invKey: 'daily_chest', opId } }); } catch (e) { /* timeout below */ }
+    try { act('chest_open', { invKey: 'daily_chest', opId }); } catch (e) { /* timeout below */ }   /* v2.3.5191: through the action door (actions.js) */
     later(() => { if (!prizeRef.current) setStage('error'); }, ANSWER_TIMEOUT_MS);
   };
 

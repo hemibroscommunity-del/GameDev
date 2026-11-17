@@ -40,6 +40,7 @@ import { playerGroundDy } from '@/rendering/systems/entityRenderer.js'; /* v2.3.
 import { FARM_FROM_WORKSHOP } from '@/data/farmLayout.js';   /* v2.3.3136: the farm you walk */
 import { holdFarmUntilReady } from '@/game/farmTrip.js';
 import { runResets, resetOn } from '@/game/resetOn.js'; /* v2.3.5203: the zone edge's one door runs the state's resets (card L); v2.3.5208: + the world's own */
+import { act } from '@/game/actions.js';   /* v2.3.5188: the page's requests leave through the action door (card K PR 7) */
 
 /* ═══ v2.3.2272: FREE THE ZONE YOU LEFT, ONE BEAT LATE ═══
  *
@@ -1290,7 +1291,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
               S._serverMonsters = false;
               S.monsters = [];
               if (S.channel) {
-                try { S.channel.send({ type: 'broadcast', event: 'move', payload: { x: P.x, y: P.y, z: S.currentZone, vx: 0, vy: 0 } }); } catch (e) {}
+                try { act('move', { x: P.x, y: P.y, z: S.currentZone, vx: 0, vy: 0 }); } catch (e) {}   /* v2.3.5188: through the action door (actions.js) */
               }
             }
             /* Exit dungeon — return to combat zone at current depth */

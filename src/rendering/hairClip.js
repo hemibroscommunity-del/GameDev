@@ -42,7 +42,9 @@ import {
   compileHighShaderGl, compileHighShaderGpuProgram, vertexGlTemplate, fragmentGlTemplate,
   globalUniformsBitGl, colorBitGl, colorBit, roundPixelsBitGl, roundPixelsBit,
   generateTextureBatchBitGl, generateTextureBatchBit, getBatchSamplersUniformGroup, getMaxTexturesPerBatch,
+  Sprite, Texture, BufferImageSource, RenderTexture,
 } from 'pixi.js';
+import { selfDraw, selfQueue, selfSkip, selfTestOn, selfClipRgba, selfClipWant, SELF_SIZE } from './selfTest.js';   /* v2.3.5238: the self-test at the door (card O PR 14d) */
 import { PAL_CLIP_BATCHER, PAL_HAIR_CLIP_BATCHER } from './paletteTex.js';   /* v2.3.3707: a colour-numbers picture's stencil shape; v2.3.5562: a hair mask's */
 import { isPaletteSource } from './paletteDraw.js';
 
@@ -178,10 +180,13 @@ export function alphaClipProgram() { return _alphaShader ? _alphaShader.glProgra
 
 /** Call once, after app.init. */
 export function installHairClip(app) {
-  if (_installed || _alpha) return false;
+  if (_installed || _alpha) {
+    if (!_installed && app && app.renderer) selfSkip('clip', 'switched off (?alphaclip)');   /* v2.3.5238 */
+    return false;
+  }
   try {
     const r = app && app.renderer;
-    if (!r || !r.context || r.context.webGLVersion !== 2) return false;
+    if (!r || !r.context || r.context.webGLVersion !== 2) { if (r) selfSkip('clip', 'not installed here (no WebGL2: the alpha mask)'); return false; }
     _maxTex = (r.limits && r.limits.maxBatchableTextures) || getMaxTexturesPerBatch();
     clipShader(_maxTex);
     extensions.add(ClipBatcher);
@@ -190,11 +195,41 @@ export function installHairClip(app) {
     alphaClipShader(_maxTex);
     extensions.add(AlphaClipBatcher);
     _installed = true;
+    try { clipSelfTest(r); } catch (e) { /* never stops the load */ }   /* v2.3.5238 */
     return true;
   } catch (e) {
     try { console.warn('[hairClip] not installed: the alpha mask as before', e && e.message); } catch (e2) { /* never */ }
     return false;
   }
+}
+
+/* ═══ v2.3.5238: THE SELF-TEST AT THE DOOR (card O PR 14d; selfTest.js) ═══
+   Installed, each of the two programs draws the clip's known picture as a
+   picture (not into the stencil: what it keeps is then seen), its sprite
+   marked as the program's own shape so the sprite answers its batcher
+   (`batcherName` above), held to the CPU's answer (selfTest.js
+   selfClipWant: kept where alpha x red, or alpha, is at least half; nothing
+   elsewhere).  THERE IS NO WAY BACK in the card's list (drawLanes.js PROGRAMS
+   `back: null`): a wrong picture is named in the report's `self` and the clip
+   is drawn as today.  (`?alphaclip`, the alpha mask, is the way it was: the
+   owner's question in card O's status, Needs.) */
+function clipSelfTest(renderer) {
+  if (!selfTestOn()) { selfSkip('clip', 'no self-test on this page (?selftest=0)'); return; }
+  const t0 = performance.now();
+  const rts = [], wants = [];
+  for (const alpha of [false, true]) {
+    let spr = null;
+    try {
+      const src = new BufferImageSource({ resource: selfClipRgba(), width: SELF_SIZE, height: SELF_SIZE, alphaMode: 'premultiplied-alpha', label: 'bt-clip-selftest' });
+      spr = new Sprite(new Texture({ source: src }));
+      if (alpha) spr._btClipAlpha = true; else spr._btClipMask = true;
+      rts.push(selfDraw(renderer, spr, RenderTexture));
+      wants.push(selfClipWant(alpha));
+    } catch (e) { /* what was drawn is judged; the rest unread */ }
+    try { if (spr) spr.destroy({ texture: true, textureSource: true }); } catch (e) { /* gone */ }
+  }
+  if (!rts.length) { rts.push(null); wants.push(selfClipWant()); }
+  selfQueue('clip', renderer, rts, wants, () => { /* no way back: named in `self`, drawn as today */ }, performance.now() - t0);
 }
 
 /* the silhouette's box, made the first time it clips: put where the

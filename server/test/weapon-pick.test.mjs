@@ -22,6 +22,7 @@
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import * as W from '../../src/game/weaponSlots.js';
+import { act, setActionTransport } from '../../src/game/actions.js';   /* v2.3.5189: wsClient's sends leave through the action door (act) */
 
 let passed = 0, failed = 0;
 function check(name, cond, detail) {
@@ -102,11 +103,13 @@ const selSrc = (/var _desktopSelectSlot = useCallback\((function \(slot\) \{[\s\
 function select(rpg, slot) {
   const sent = [], floated = [], played = [];
   const S = { rpg, player: { x: 0, y: 0 }, channel: { send: (m) => sent.push(m) } };
+  setActionTransport({ send: (m) => S.channel.send(m) });   /* v2.3.5192: the door's transport is this phone's channel */
   try {
     const fn = vm.runInNewContext('(' + selSrc + ')', {
       stateRef: { current: S }, setRpgState() {}, _objectSpread: (a, b) => Object.assign({}, a, b),
       pushDmgPopup: (_s, _x, _y, text) => floated.push(String(text)), cue: (n) => played.push(n),
       pickSlot: W.pickSlot,
+      act,   /* v2.3.5192: the pick tells the worker through the action door */
     });
     fn(slot);
   } catch (e) { return { error: String(e).slice(0, 200) }; }
@@ -138,8 +141,9 @@ const adoptSrc = (/(if \(typeof msg\.payload\.activeSlot === 'string' && !S\._us
 function adopt(rpg, payloadSlot, latched) {
   const sent = [];
   const S = { rpg, _userCycledSlot: !!latched, channel: { send: (m) => sent.push(m) } };
+  setActionTransport({ send: (m) => S.channel.send(m) });   /* v2.3.5189: the door's transport is this phone's channel */
   try {
-    vm.runInNewContext('(function () {' + adoptSrc + '})', { msg: { payload: { activeSlot: payloadSlot } }, S, healedSlot: W.healedSlot })();
+    vm.runInNewContext('(function () {' + adoptSrc + '})', { msg: { payload: { activeSlot: payloadSlot } }, S, healedSlot: W.healedSlot, act })();
   } catch (e) { return { error: String(e).slice(0, 200) }; }
   return { hand: rpg.activeSlot, sent: sent.map((m) => m.type + ':' + (m.payload && m.payload.slot)) };
 }

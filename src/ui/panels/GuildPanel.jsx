@@ -3,6 +3,7 @@ import { GUILD_RANKS, SKILL_GUILDS, getGuildQuest, getGuildRank } from '@/data/i
 import { _slicedToArray } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
+import { act } from '@/game/actions.js';   /* v2.3.5190: the page's requests leave through the action door (card K PR 7) */
 /* ═══ GuildPanel — skill-guild rank/quest/title screen ═══ */
 /* v2.3.857: moved verbatim from BroTown.jsx's JSX tree (UI-panel
    decomposition; behavior-frozen). createElement subtree unchanged. Props:
@@ -296,7 +297,7 @@ export function GuildPanel(props) {
            are the worker's (CLAUDE.md §5). */
         if (S._serverCaps && S._serverCaps.guilds && S.channel) {
           try {
-            S.channel.send({ type: 'broadcast', event: 'guild_quest_turn_in', payload: { skill: key } });
+            act('guild_quest_turn_in', { skill: key });   /* v2.3.5190: through the action door (actions.js) */
           } catch (e) {}
           return;
         }

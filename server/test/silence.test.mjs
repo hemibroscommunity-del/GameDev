@@ -23,9 +23,20 @@
  * its check red): the lever read as before (on unless false) -> FAIL 6 (OFF
  * by default); one get for every frozen record -> FAIL 6 (the 128 a get);
  * the old Math.max/floor parse -> FAIL 4 (`minutes`).
+ * v2.3.5625 (card MOD PR 5): 5b, words outside the six lanes (a pet's,
+ * an alliance's and a clan's name, an emote's quick line) dropped from a
+ * silenced character, and every socket row with words decided (closed, or
+ * open with why); the lanes are card K's CHAT_LANE_TYPES.  Break proof: the
+ * door's names line taken out -> FAIL 5b.  6b, the device's characters from botfp's
+ * `device:` record (a device reached with a new key is held; the owner's
+ * computer, so reached, is spared; the owner's character named by the join
+ * is never held).  Break proofs: the record not read -> FAIL 6b (the laptop
+ * let in); the owner's spare from the record dropped -> FAIL 6b (the shared
+ * computer refused); the named spare dropped -> FAIL 6b (the owner refused).
  */
 import { makeStorage, openRoom, fakeWs, baseSession, settle, seededClock, mockEnv } from './testroom.mjs';
-import { SILENCE, SILENCE_LANES } from '../src/silence.js';
+import { SILENCE, SILENCE_LANES, SILENCE_WORDS, SILENCE_OPEN, wordRows } from '../src/silence.js';
+import { CHAT_LANE_TYPES } from '../src/wire/lists.js';
 
 let failures = 0;
 function check(name, cond, detail) {
@@ -139,6 +150,36 @@ const wb = await join('bp_mod_kind', 'devkind001');
   check('5: ...put back, the silence holds again', room._silenceDoor(room.sessions.get(wa3), { type: 'chat' }) === true);
 }
 
+/* ── 5b. words outside the six lanes (v2.3.5625, card MOD PR 5; the sitting 19 review's low) ── */
+{
+  const wt = [...room.sessions.keys()][0];
+  const troll = room.sessions.get(wt);
+  const wk = await join('bp_mod_kind2', 'devkind002', room);
+  const kind = room.sessions.get(wk);
+  const rows = wordRows();
+  const loose = rows.filter((n) => !SILENCE_LANES.has(n) && !SILENCE_WORDS.has(n) && !Object.prototype.hasOwnProperty.call(SILENCE_OPEN, n));
+  check('5b: every socket row with words is a lane, a name a silence closes, or one it leaves open with why (' + rows.length + ')', loose.length === 0, loose);
+  check('5b: the lanes are card K\'s CHAT_LANE_TYPES (wire/lists.js)', SILENCE_LANES === CHAT_LANE_TYPES && SILENCE_LANES.size === 6, [...SILENCE_LANES]);
+  troll._silenceToldAt = 0;
+  const shut = ['pet_name', 'alliance_name', 'clan_create', 'clan_invite'].filter((t) => room._silenceDoor(troll, { type: t, payload: { name: 'Owner Says Hi' } }) !== true);
+  check('5b: a silenced character\'s pet, alliance and clan names are dropped (others read them)', shut.length === 0, shut);
+  check('5b: ...told once, in words that say names', told(wt).some((m) => /give names others read/.test(m.payload.text)), told(wt).map((m) => m.payload.text));
+  check('5b: an emote\'s quick line ("EZ") is dropped; an emoji and a move go on',
+    room._silenceDoor(troll, { type: 'emote', payload: { emoji: 'EZ' } }) === true
+    && room._silenceDoor(troll, { type: 'emote', payload: { emoji: '👋' } }) === false
+    && room._silenceDoor(troll, { type: 'emote', payload: { move: 'wave' } }) === false);
+  const before = room.eventBuffer.length;
+  await send(wt, 'emote', { emoji: 'EZ' });
+  await send(wk, 'emote', { emoji: 'EZ' });
+  const emoted = room.eventBuffer.slice(before).filter((e) => e && (e.type === 'emote' || e.event === 'emote')).map((e) => (e.payload && e.payload.id) || e.from);
+  check('5b: (played through the socket) the silenced character\'s "EZ" reaches nobody, the other\'s goes out', !emoted.includes('bp_mod_troll') && emoted.includes('bp_mod_kind2'), { emoted, buf: room.eventBuffer.slice(before).map((e) => e && (e.type || e.event)) });
+  const kindShut = ['pet_name', 'alliance_name', 'clan_create', 'clan_invite', 'chat'].filter((t) => room._silenceDoor(kind, { type: t, payload: { name: 'Rex' } }) !== false)
+    .concat(room._silenceDoor(kind, { type: 'emote', payload: { emoji: 'EZ' } }) !== false ? ['emote'] : []);
+  check('5b: a character not silenced names its pet and says "EZ"', kindShut.length === 0, kindShut);
+  check('5b: the silenced character still joins, moves and starts a dungeon (play is not words)',
+    ['join', 'track', 'dungeon_start', 'move'].every((t) => room._silenceDoor(troll, { type: t, payload: {} }) === false));
+}
+
 /* ── 6. a freeze holds the device (t4-ban.mjs's proof): the owner's lever ── */
 {
   /* v2.3.5621 (the sitting 19 review): OFF until the owner turns it on */
@@ -189,6 +230,45 @@ const wb = await join('bp_mod_kind', 'devkind001');
   check('6: ' + (SILENCE.GET_MAX + 6) + ' frozen characters: read ' + SILENCE.GET_MAX + ' a get at most, and the last one\'s phone is still held',
     lastAlt.sent.some((m) => m.type === 'join_rejected' && m.reason === 'frozen') && gets.length >= 2 && gets.every((n) => n <= SILENCE.GET_MAX), { gets, sent: lastAlt.sent.map((m) => m.type).slice(0, 3) });
   for (let i = 0; i < SILENCE.GET_MAX + 5; i++) await room.state.storage.delete('frozen:bp_mod_many' + String(i).padStart(4, '0'));
+  clock.advance(SILENCE.FROZEN_TTL_MS + 1);
+  /* v2.3.5625 (card MOD PR 5; the sitting 19 review's MEDIUMs): the device's
+     characters from botfp's `device:` record, beside the device lock's list */
+  const wh = await join('bp_mod_roam', 'devroamhome', room);
+  room._liveFlags.devicelock = false;   /* the laptop reached as a key reaches it: past the device lock, never on its list */
+  const wl = await join('bp_mod_roam', 'devroamlaptop', room);
+  delete room._liveFlags.devicelock;
+  const roamAuth = await room.state.storage.get('auth:bp_mod_roam');
+  await room.state.storage.put('auth:bp_mod_roam', { ...(roamAuth || { id: 'bp_mod_roam' }), devs: [{ d: 'devroamhome', at: Date.now() }] });   /* the laptop reached with a new key: never on the list */
+  const rec = await room.state.storage.get('device:devroamlaptop');
+  check('6b: (botfp\'s record has the character on the laptop; the device lock\'s list does not)', !!(rec && rec.ids.some((e) => e.id === 'bp_mod_roam')), rec);
+  await admin('POST', '/freeze', { playerId: 'bp_mod_roam', note: 'x' }, KEY);
+  const lapAlt = await join('bp_mod_roam_alt', 'devroamlaptop', room);
+  check('6b: a new character on a device the frozen character reached with a new key is refused `frozen` (only the phone it was made on was held)',
+    lapAlt.sent.some((m) => m.type === 'join_rejected' && m.reason === 'frozen'), lapAlt.sent.map((m) => m.type).slice(0, 4));
+  const homeAlt = await join('bp_mod_roam_alt2', 'devroamhome', room);
+  check('6b: ...and the phone it was made on still is', homeAlt.sent.some((m) => m.type === 'join_rejected' && m.reason === 'frozen'), homeAlt.sent.map((m) => m.type).slice(0, 4));
+  /* the owner's spare, complete the same way: the owner's character on a shared computer, reached with a new key */
+  await room.state.storage.put('testmode:bp_mod_boss', { v: 1, on: true, at: Date.now(), name: 'Boss' });
+  await join('bp_mod_boss', 'devbossphone', room);
+  room._liveFlags.devicelock = false;
+  await join('bp_mod_boss', 'devshared', room);
+  delete room._liveFlags.devicelock;
+  const bossAuth = await room.state.storage.get('auth:bp_mod_boss');
+  await room.state.storage.put('auth:bp_mod_boss', { ...(bossAuth || { id: 'bp_mod_boss' }), devs: [{ d: 'devbossphone', at: Date.now() }] });
+  await join('bp_mod_boss_alt', 'devshared', room);   /* the owner's own alt, not in test mode */
+  await admin('POST', '/freeze', { playerId: 'bp_mod_boss_alt', note: 'testing the freeze' }, KEY);
+  clock.advance(SILENCE.FROZEN_TTL_MS + 1);
+  const bossNew = await join('bp_mod_boss_new', 'devshared', room);
+  check('6b: a computer the owner\'s own character played on (with a new key) is never held, a frozen alt on it or not',
+    !bossNew.sent.some((m) => m.type === 'join_rejected'), bossNew.sent.map((m) => m.type).slice(0, 4));
+  await room.state.storage.put('device:devroamhome', { v: 1, ids: [{ id: 'bp_mod_roam', lastSeen: Date.now() }] });
+  const bossOnHeld = await join('bp_mod_boss', 'devroamhome', room);
+  check('6b: the owner\'s own character, named by the join, is never held by a device (its key still decides)',
+    !bossOnHeld.sent.some((m) => m.type === 'join_rejected' && m.reason === 'frozen'), bossOnHeld.sent.map((m) => m.type).slice(0, 4));
+  await room.state.storage.delete('testmode:bp_mod_boss');
+  await admin('DELETE', '/freeze?id=bp_mod_boss_alt', null, KEY);
+  await admin('DELETE', '/freeze?id=bp_mod_roam', null, KEY);
+  void wh; void wl;
   delete room._liveFlags.freezedevice;
   await admin('DELETE', '/freeze?id=bp_mod_villain', null, KEY);
   clock.advance(SILENCE.FROZEN_TTL_MS + 1);

@@ -34,6 +34,9 @@ import { POINTS_RESET, pointsPlaced } from '../src/pointsreset.js';
 import { PROG3, prog3RespecPoints } from '../src/prog3.js';
 import * as PR from '../../src/game/pointsReset.js';
 import * as DOOR from '../../src/game/actions.js';   /* v2.3.5185: the action door's rows */
+import { setActionTransport } from '../../src/game/actions.js';   /* v2.3.5188: the page's sends leave through the action door (card K PR 7.2): its transport is the stand-in phone's channel */
+/* v2.3.5188: the door's transport is this phone's channel (none: nothing leaves, as with no connection) */
+const via = (S) => { setActionTransport(S && S.channel ? { send: (m) => S.channel.send(m) } : null); return S; };
 import { readFileSync } from 'fs';
 
 function makeState() {
@@ -348,6 +351,7 @@ const P = room.playerState.bp_pr_a;
   check('7: ...and counts placed points as the worker does', PR.placedPoints(p3) === 7 && pointsPlaced(p3) === 7 && PR.placedPoints(null) === 0 && PR.placedPoints({ alloc: { hp: -3 } }) === 0);
   const sent = [];
   const S = { _serverCaps: { pointsreset: true }, rpg: { prog3: p3 }, channel: { send: (m) => sent.push(m) } };
+  via(S);
   check('7: the button shows against a worker that resets, with a point placed',
     PR.showPointsReset(S) && !PR.showPointsReset({ _serverCaps: {}, rpg: { prog3: p3 } }) && !PR.showPointsReset({ _serverCaps: { pointsreset: true }, rpg: { prog3: { alloc: { hp: 0 } } } }));
   const t = 1000000;
