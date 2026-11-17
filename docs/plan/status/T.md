@@ -1,7 +1,7 @@
 card: T
-branch: claude/plan-t-17-reads8 (on #2001's branch; main merged in)
-prs: #1754 ... #1978 (5301-5311), #1992-#1996 (5312-5315): merged; #2001 5316 (ready); #2002 5317 (ready, on #2001)
-state: ready
+branch: claude/plan-t-18-left (on main)
+prs: #1754 ... #1978 (5301-5311), #1992-#2002 (5312-5317): merged; 5318 (ready)
+state: stalled
 
 ## Done
 
@@ -13,13 +13,15 @@ state: ready
 - PR 6 (5306, #1863): the page's one reader, src/game/switches.js; its guard.
 - 5307 (#1889): the thrown run's preload changes nothing by itself.
 - 5308 (#1935) the `on` days; 5309 (#1939) nine reads moved, the line 212.
-- 5310 (#1958): eleven more; the line 201; READER_IMPORT takes `../../`.
-- 5311 (#1978): pageAddress(); 17 reads in 16 files; the line 172 (with O's 12).
+- 5310-5311 (#1958, #1978): eleven; pageAddress(); the line 172.
+- 5312-5317 (#1992-#2002): the lows; device, preload, debug, memory, look,
+  render; the line 71.
 
 ## Next
 
-- 5317: forty-five render reads on pageAddress(); the line 71. Then K's
-  and L's files as they end, and the files whose suites pin their text.
+- 5318: the 71 reads left, each with what it waits on:
+  docs/plan/census/T-reads-left.md. Then this session stops (the planning
+  session's word); a T session moves them as K, L and M end.
 
 ## Found
 
@@ -29,12 +31,10 @@ state: ready
 - Card O's knobs stay O's reads (step 2.4): `?pixbudget`, `?res`,
   `?onebatch`, `?lookpalette`, `?pace`, `?crowd`, the passes'; and `govern`
   (a value on the page) is a need the reader cannot resolve.
-- Reads pinned by other cards' suites stay (`?bandbeat`, `?foldgentle`; and
-  gameDisplay.js's eight: four-lines, tests-by-system): the spec lists them.
-
-- manualCombat.js, weaponFeel.js, pinSlots.js keep their address reads: their
-  suites (manual-combat 10a, weapon-feel 8a, map-pin 9i) require no imports.
+- Nine suites hold 17 reads in place (text pins, no-import checks): the
+  census's part 3 names each; its owner's change frees them.
 
 ## Needs
 
-- The gatekeeper: #2001, then #2002 (5317) on it.
+- Cards K, L, M done (38 + 16 reads); the owners of the 9 suites in the
+  census's part 3 (17 reads).
