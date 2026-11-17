@@ -80,6 +80,14 @@ export const FLOOD = Object.freeze({
      ordinary reconnect on its backoff, which the address limits then bound */
   CLOSE_JOIN: 4011,    /* a second join on the socket, or none in time */
   CLOSE_FLOOD: 4012,   /* too many messages */
+  /* v2.3.5545 (RT-1 N5): the room's own ceiling on messages in, a second.
+     A full room of sockets each inside its budget was ~14,400 a second, all
+     taken (the free plan's day of requests in ~2.5 minutes).  Past this, a
+     socket over its fair share of it (this / the room's sockets) has the
+     rest of its second dropped; the drops count toward MSG_CLOSE_AFTER, so a
+     socket that keeps it up is closed.  120 phones fighting (~30 a second
+     each) are 3,600, each under its share of 33 */
+  ROOM_MSG_PER_S: 4000,
 });
 
 export const PACE = Object.freeze({
@@ -219,14 +227,49 @@ export const floodMethods = {
   /* ── 3. the budget per socket ── */
   /** 'ok' to take the message, 'drop' to ignore it, 'close' to end the socket. */
   _floodMsgOk(session, now) {
+    /* v2.3.5545 (RT-1 N5): the room's ceiling first: a message past it from
+       a socket over its share is dropped (and counted below, as a dropped
+       one is: a socket that keeps it up is closed) */
+    if (this._floodRoomOver(session, now)) return this._floodDropped(session, now);
     if (session.msgTokens === undefined) { session.msgTokens = FLOOD.MSG_BURST; session.msgAt = now; }
     session.msgTokens = Math.min(FLOOD.MSG_BURST,
       session.msgTokens + Math.max(0, now - session.msgAt) / 1000 * FLOOD.MSG_PER_S);
     session.msgAt = now;
     if (session.msgTokens >= 1) { session.msgTokens -= 1; return 'ok'; }
+    return this._floodDropped(session, now);
+  },
+
+  /* a dropped message, counted: 'close' once a socket has had MSG_CLOSE_AFTER
+     dropped within DROP_WINDOW_MS */
+  _floodDropped(session, now) {
     if (!session.msgDropAt || now - session.msgDropAt > FLOOD.DROP_WINDOW_MS) { session.msgDropAt = now; session.msgDropped = 0; }
     session.msgDropped = (session.msgDropped || 0) + 1;
     return session.msgDropped > FLOOD.MSG_CLOSE_AFTER ? 'close' : 'drop';
+  },
+
+  /* ── 3b. the room's ceiling (v2.3.5545, RT-1 N5) ──
+     Every message in counts, the room's and the socket's, by the second.
+     True when the room is past ROOM_MSG_PER_S this second AND this socket is
+     past its share of it: the heaviest senders lose their messages first and
+     a phone under its share never does.  So a second takes at most twice
+     the ceiling: the ceiling, then each socket its share.  `roomceiling: false` in the live
+     flags: no ceiling, as before (N5 open again). */
+  _floodRoomOver(session, now) {
+    if (this._roomCeilingOff()) return false;
+    const sec = Math.floor(now / 1000);
+    const w = this._roomMsgWin || (this._roomMsgWin = { sec, n: 0 });
+    if (w.sec !== sec) { w.sec = sec; w.n = 0; }
+    w.n++;
+    if (session.roomSec !== sec) { session.roomSec = sec; session.roomN = 0; }
+    session.roomN++;
+    if (w.n <= FLOOD.ROOM_MSG_PER_S) return false;
+    const share = FLOOD.ROOM_MSG_PER_S / Math.max(1, this.sessions ? this.sessions.size : 1);
+    return session.roomN > share;
+  },
+
+  _roomCeilingOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'roomceiling') && !f.roomceiling);
   },
 
   /** Close a socket the room is done with: the AFK sweep's own three steps

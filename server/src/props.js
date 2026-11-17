@@ -51,6 +51,10 @@ function boxesFor(zoneId) {
   if (!zoneId) return [];
   if (_boxes[zoneId]) return _boxes[zoneId];
   const rows = Object.prototype.hasOwnProperty.call(ZONE_PROPS, zoneId) ? ZONE_PROPS[zoneId] : null;
+  /* v2.3.5544 (RT-1 N11): a zone with no rows is not cached -- a key for
+     every name a phone could put in ps.z, kept for good, was the room's heap
+     growing (heapforget.js) */
+  if (!rows) return [];
   /* Object.create(null) for the cache and hasOwnProperty for the lookup:
      `zoneId` reaches here from ps.z, which is client-supplied (CLAUDE.md
      rule 4 -- a plain {} no-ops on '__proto__', three incidents in one day). */

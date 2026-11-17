@@ -35,11 +35,13 @@
  *      and `export const g = () => new WheelShatter(null);`           -> FAIL 2
  *   4. hotArrowFx.js: `export const A_ZZ = '/sprites/fx/portal-beam.webp';`
  *      added at its end                                                -> FAIL 4
+ *   3c (v2.3.5565, 2026-11-15): p256.js FISH_SPOT widened to match
+ *      `/world/objects/buildings-1.png` as well                       -> FAIL 3c
  *
  * Run from the repository's root: node tools/guards/pixel-readers.test.mjs
  * (cd server && npm test runs it with every other guard and suite).
  */
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { ROOT } from './lib/fourLines.mjs';
 import { codeOf } from './lib/codeOnly.mjs';
@@ -167,8 +169,13 @@ check('the rule reads as p256.js means it (an obsidian ore icon is packed; a roc
   ];
   check(`3a. the trap's box is TRAP_ICON_URL (${trap || 'not found'}), loaded by effectsRenderer.js for trapFx.js`, handed);
   check(`3b. effectsRenderer.js shatters only the rocks (ORE_TEX: ${ore.length} pictures)`, oreOnly && ore.length > 0);
-  check('3c. wheelObjects.js shatters the Wheel\'s objects, under /world/objects/, which no p256 pattern or twin names',
-    objects.length === 1 && !patterns.filter(Boolean).some((x) => /world/.test(x.re.source)) && !Object.keys(P256_FILES).some((k) => k.startsWith('/world/')));
+  /* v2.3.5565: held by the pictures' own addresses (every one in the
+     folder), not by a pattern's spelling: the fish spot's pond, packed since
+     5565, lives under /sprites/world/ and is no Wheel object */
+  const objPics = readdirSync(join(ROOT, 'public/world/objects')).filter((f) => /\.(png|webp)$/i.test(f)).map((f) => '/world/objects/' + f);
+  check(`3c. wheelObjects.js shatters the Wheel's objects, under /world/objects/ (${objPics.length} pictures), which no p256 pattern or twin names`,
+    objects.length === 1 && objPics.length > 0 && !objPics.some((a) => packedBy(a)) && !Object.keys(P256_FILES).some((k) => k.startsWith('/world/objects/')),
+    objPics.filter((a) => packedBy(a)).slice(0, 5));
   const bad = cuts.filter((c) => packedBy(c.a)).map((c) => `${c.who}: ${bare(c.a)} (${packedBy(c.a)})`);
   check(`3. no picture the shatter cuts is one p256.js packs (${cuts.length} pictures: a packed one is found empty and never breaks)`, bad.length === 0, bad);
 }

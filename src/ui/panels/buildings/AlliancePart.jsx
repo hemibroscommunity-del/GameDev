@@ -1,5 +1,6 @@
 import React from 'react';
 import { allyBus, allyCapsOn, allyTagShown, waitWords } from '@/game/alliance.js';
+import { draftGet, draftSet, draftDrop } from '@/game/allyDrafts.js';   /* v2.3.5524: what the leader typed outlives a rejoin */
 
 /* ═══ v2.3.3313: THE SALOON'S ALLIANCE PART (server alliance.js) ═══
  *
@@ -44,9 +45,13 @@ function tagLabel(tag) {
 
 /* the leader's name-and-tag form */
 function NameForm(props) {
-  var a = props.ally;
-  var [name, setName] = React.useState(a.name || '');
-  var [tag, setTag] = React.useState(a.tag || '');
+  var a = props.ally, pid = props.pid;
+  /* v2.3.5524: a rejoin makes this form again (the party is cleared at
+     state_sync until re-sent): what was typed comes back (allyDrafts.js) */
+  var [name, setNameRaw] = React.useState(function () { return draftGet('name', pid, a.name || ''); });
+  var [tag, setTagRaw] = React.useState(function () { return draftGet('tag', pid, a.tag || ''); });
+  var setName = function (v) { draftSet('name', pid, a.name || '', v); setNameRaw(v); };
+  var setTag = function (v) { draftSet('tag', pid, a.tag || '', v); setTagRaw(v); };
   var wait = a.name && a.renameIn > 0 ? a.renameIn : 0;
   return (
     <div data-ally-nameform="" style={{ display: 'grid', gap: 6 }}>
@@ -57,7 +62,7 @@ function NameForm(props) {
           onChange={function (e) { setTag(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '')); }} style={Object.assign({}, INPUT, { textTransform: 'uppercase' })} />
       </div>
       <button type="button" data-ally-save="" disabled={!!wait}
-        onClick={function () { allyBus.name(props.S, name, tag); }}
+        onClick={function () { draftDrop('name', pid); draftDrop('tag', pid); allyBus.name(props.S, name, tag); }}
         style={Object.assign({}, BTN, wait ? { opacity: 0.5, cursor: 'default' } : null)}>
         {a.name ? 'Rename' : 'Name your alliance'}
       </button>
@@ -69,8 +74,9 @@ function NameForm(props) {
 }
 
 function WarPart(props) {
-  var a = props.ally, S = props.S;
-  var [foe, setFoe] = React.useState('');
+  var a = props.ally, S = props.S, pid = props.pid;
+  var [foe, setFoeRaw] = React.useState(function () { return draftGet('foe', pid, ''); });   /* v2.3.5524: kept across a rejoin (allyDrafts.js) */
+  var setFoe = function (v) { draftSet('foe', pid, '', v); setFoeRaw(v); };
   var w = a.war;
   if (w && w.them) {
     var left = Math.max(0, Math.ceil((w.endsIn || 0) / 60000));
@@ -108,7 +114,7 @@ function WarPart(props) {
         <input data-ally-foe="" aria-label="Their tag" placeholder="Their tag" maxLength={4} value={foe}
           onChange={function (e) { setFoe(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '')); }} style={Object.assign({}, INPUT, { textTransform: 'uppercase' })} />
         <button type="button" data-ally-war="" disabled={!!rest || !foe}
-          onClick={function () { allyBus.war(S, foe); }}
+          onClick={function () { draftDrop('foe', pid); allyBus.war(S, foe); }}
           style={Object.assign({}, BTN, { color: LS.danger }, (rest || !foe) ? { opacity: 0.5, cursor: 'default' } : null)}>
           Declare war
         </button>
@@ -171,9 +177,9 @@ export function AlliancePart(props) {
                 <span style={{ fontSize: 12, color: LS.txt2, whiteSpace: 'nowrap' }}>{a.active | 0} active</span>
               </div>
               <div style={SMALL}>Members who played in the last 7 days and are level 5 or more count. It stays an alliance while {drop} of them do.</div>
-              {leader ? <NameForm key={(a.name || '') + '|' + (a.tag || '')} ally={a} S={S} /> : null}
+              {leader ? <NameForm key={(a.name || '') + '|' + (a.tag || '')} ally={a} S={S} pid={party.id} /> : null}
               <div style={{ height: 1, background: LS.border }} />
-              <WarPart ally={a} S={S} leader={leader} />
+              <WarPart ally={a} S={S} leader={leader} pid={party.id} />
             </>
           ) : (
             <>

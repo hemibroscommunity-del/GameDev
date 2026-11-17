@@ -2666,6 +2666,7 @@
     {"path":"public/sprites/weapons/swords/steel-sword-east.webp","bytes":2574,"sha256":"8b6f3180bd09de13a2cebda494cfcf48bfb8ace192da33bf2e0b3bb6e095eb45","family":"weapons-sword-originals","kind":"supplied"},
     {"path":"public/sprites/wood/axe-v2.webp","bytes":29444,"sha256":"62175ced337ff46cfc3c1a270d0c221e6b400e83d4caa8ca7ab7948c1f6b1ba6","family":"world-sprites-retired","kind":"made"},
     {"path":"public/sprites/wood/tree-v2.webp","bytes":59834,"sha256":"93305558215c28311267aeed805695a685997877a529d3049393007883a105e5","family":"world-sprites-retired","kind":"made"},
+    {"path":"public/sprites/world/fish-spot-627.p256.png","bytes":46407,"sha256":"55801acc8313a8b3288aed06fdbbaa4fd9e18a83033bc8e5783c75261941445c","family":"world-fish-spot-twins","kind":"made"},
     {"path":"public/sprites/world/fish-spot-627.webp","bytes":30856,"sha256":"812799b604f2cd26fee9e8bbde7fbb31bf22c71f2cb6f4a173e3ed6c5933930f","family":"world-fish-spot","kind":"made"},
     {"path":"public/sprites/world/fish-spot.webp","bytes":67820,"sha256":"9afa7417c3a8128f52ef5d7c0b9f18fa45f8e86d289131f72f05a1887100bbaf","family":"world-originals","kind":"supplied"},
     {"path":"public/sprites/world/ore-vein-627.webp","bytes":33646,"sha256":"95badfa79f5b474d9572756156a318eae4d917cd1d5c18f65c879e373107bf10","family":"world-sprites-retired","kind":"made"},
