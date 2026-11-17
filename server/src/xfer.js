@@ -53,13 +53,25 @@
  * ESCROW ROADS.  A settlement through a record the worker holds between two
  * players writes its row too, in the run that pays it -- built for a duel's
  * pot first (xferDuelPot: the loser's wager to the winner; its door, card
- * L's, is on main).  The market, the auction house and the arena's stakes
- * join in later PRs, after card K's 5194/5196/5197 and card L's arena door
+ * L's, is on main).  The market and the auction house join in a later PR,
+ * after card K's 5194/5196/5197; the arena's stakes did at v2.3.5292, below
  * (the file table's order, the planning session's (b)).  A row a wagered
  * duel is more rows a day, so it is OFF until the owner says:
  * `xferescrow: true` in the live flags (xferEscrowOn).  Off, the duel pays
  * exactly as before, through _creditPlayer; on, through _creditWith, the
  * pot's credit and its row in one run.
+ *
+ * v2.3.5292 (card R PR 13): THE ARENA'S STAKES (xferArenaStakes).  A
+ * match's stakes settle as a POOL, and a row has one `from` and one `to`:
+ * the planning session's reading (1) is ONE ROW A LOSING STAKE, `from` its
+ * sponsor, `to` the winning fighter, its whole gold; when sponsors backed
+ * the winner, each one's part of that stake rides the row's `ids` as
+ * `share:<sponsorId>:<n>` (the fighter's part the rest).  So the rows of a
+ * match add up to the losing pool, and their shares to what the winning
+ * sponsors gained.  Written in the plan's own run (gladiator.js
+ * _arenaSettleStakes: the plan's put and the losers' stamps), with
+ * `xferescrow` on only; the old order (`arenasettleplan: false`) writes
+ * none.  The row's shape is unchanged.
  */
 
 import { playerRoadsBy } from './playerroads.js';   /* v2.3.5280: the roads between players, one table */
@@ -271,3 +283,58 @@ export function xferDuelPot(room, duel, winnerId, loserId, how) {
   return xferRow(room, { road: 'duel_pot', id: 'duel-' + duel.id, from: loserId, to: winnerId, gives: { _gold: duel.wager }, price: {}, by: how === 'kill' ? winnerId : null });
 }
 
+/** v2.3.5292: each loser's stake split among the winning sponsors' gains
+ *  (`gains`: [{sponsorId, n}]), in whole coins, so that every winner's
+ *  parts add up to its gain exactly and no stake gives more than it held:
+ *  each part its floor of the pro-rata share, then the coins left over one
+ *  at a time, the largest remainder first, to a stake with room.  Returns
+ *  one Map(sponsorId -> n) a loser, in the losers' order. */
+export function arenaStakeParts(losers, gains) {
+  const L = losers.map((x) => whole(x && x.amount));
+  const total = L.reduce((n, a) => n + a, 0);
+  const parts = L.map(() => new Map());
+  if (!total) return parts;
+  const room = L.slice();
+  const rem = [];
+  const left = [];
+  (Array.isArray(gains) ? gains : []).forEach((g, i) => {
+    const s = Math.min(whole(g && g.n), total);
+    let given = 0;
+    L.forEach((a, j) => {
+      const f = Math.floor(s * a / total);
+      if (f > 0) { parts[j].set(g.sponsorId, f); room[j] -= f; given += f; }
+      rem.push({ i, j, r: (s * a) % total });
+    });
+    left[i] = s - given;
+  });
+  rem.sort((x, y) => (y.r - x.r) || (x.i - y.i) || (x.j - y.j));
+  const give = (i, j) => {
+    const sid = gains[i].sponsorId;
+    parts[j].set(sid, (parts[j].get(sid) || 0) + 1); room[j]--; left[i]--;
+  };
+  for (const { i, j } of rem) if (left[i] > 0 && room[j] > 0) give(i, j);
+  for (let i = 0; i < left.length; i++) for (let j = 0; j < L.length && left[i] > 0; j++) while (left[i] > 0 && room[j] > 0) give(i, j);
+  return parts;
+}
+
+/** v2.3.5292: a match's stakes (gladiator.js _arenaSettleStakes, its plan's
+ *  run): one row a losing stake, `from` its sponsor, `to` the winning
+ *  fighter, its whole gold, the winning sponsors' parts of it in `ids` as
+ *  `share:<sponsorId>:<n>` (the header).  `losers` [{sponsorId, amount}],
+ *  `gains` [{sponsorId, n}] what each winning sponsor gained beyond its own
+ *  stake.  `by` nobody: a stake settles by the match's end, not by a tap on
+ *  it.  The puts' promises, for the caller's run; [] when off. */
+export function xferArenaStakes(room, { tid, matchId, winnerId, losers, gains } = {}) {
+  if (!xferEscrowOn(room) || typeof matchId !== 'string' || !Array.isArray(losers) || !losers.length) return [];
+  const parts = arenaStakeParts(losers, gains);
+  const mid = matchId.replace(/-/g, '');
+  const out = [];
+  losers.forEach((x, j) => {
+    if (!x || typeof x.sponsorId !== 'string') return;
+    const ids = [];
+    for (const [sid, n] of parts[j]) if (n > 0) ids.push('share:' + sid + ':' + n);
+    const p = xferRow(room, { road: 'arena_stakes', id: 'as-' + mid + '-' + x.sponsorId, from: x.sponsorId, to: winnerId, gives: { _gold: x.amount }, ids, price: {}, by: null });
+    if (p) out.push(p);
+  });
+  return out;
+}
