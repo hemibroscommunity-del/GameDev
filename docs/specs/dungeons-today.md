@@ -118,8 +118,9 @@ Your call:
 
 A `dungeon_start` that names no mouth (the Workshop's own config) was taken
 wherever the player stood: one out in a land, mid-fight, stepped into a run
-of its own and out of the fight (the second red team). The Workshop is in
-BroTown's safe commons, so such a start is now refused off the Wheel's safe
-ground (`_wheelSafeAt`), with the door's own `not-now` words. A mouth's
-start, today's town and the farm are as before. `dungeonground: false` in
+of its own and out of the fight (the second red team). The page's Workshop
+is on the farm (`gameDisplay.js` `FARM_SPOTS.workshop`), so in the Wheel only
+a forged start names no mouth: such a start is now refused off the Wheel's
+safe ground (`_wheelSafeAt`), with the door's own `not-now` words. A mouth's
+start, the farm and today's town are as before. `dungeonground: false` in
 the live flags takes it anywhere again (`three-guards.test` b).

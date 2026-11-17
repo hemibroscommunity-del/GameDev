@@ -31,6 +31,7 @@ import DungeonClearHud from './mobile/DungeonClearHud.jsx'; /* v2.3.3556: after 
 import { raceTick, raceHeld, raceDriveNpc } from '@/game/race.js'; /* v2.3.3525: Lil Bro's race (server/src/race.js judges it) */
 import { windowTo } from '@/game/windowDoor.js';   /* v2.3.5526: the window door, what is open over the world (card L) */
 import { arenaTo } from '@/game/arenaDoor.js';   /* v2.3.5531: the arena's page door (card L) */
+import { dyingTo } from '@/game/dyingDoor.js';   /* v2.3.5534: the life's page door (card L) */
 import { townsfolkFrame, townsfolkStep, folkWalkWanted } from '@/game/townsfolkDay.js';   /* v2.3.4058: the townsfolk walk around and work */
 import { lookFolkOn } from '@/rendering/lookFolk.js';   /* v2.3.4058: only while they are drawn live */
 import { restOn, requestRest, wellRestedLeft } from '@/game/rest.js'; /* v2.3.3539: a real rest at the Hotel or your farm's bed (server/src/rest.js) */
@@ -5051,10 +5052,9 @@ export var BroTown = function BroTown(_ref0) {
            frame, and the worker's real death was then skipped as "already
            dying" (the 2026-11-03 sweep, V2 U1-2) */
         if (catchAllDies(S)) {
-          S._dying = true;
+          dyingTo(S, 'die', S._deathStart || Date.now());   /* v2.3.5534: the life's page door (a start already seeded kept) */
           if (!S.rpg._compStats) S.rpg._compStats = createDefaultCompStats();
           S.rpg._compStats.deaths++;
-          if (!S._deathStart) S._deathStart = Date.now();
           /* Stop momentum so the corpse doesn't drift during the
              death-anim hold. */
           P.vx = 0; P.vy = 0;
@@ -5153,7 +5153,7 @@ export var BroTown = function BroTown(_ref0) {
            during an honest death, however long the respawn takes. */
         if (S._dying && S._deathStart && (Date.now() - S._deathStart) > 20000
             && S.rpg && S.rpg.hp > 0) {
-          try { applyLocalRespawn(S, 'town'); } catch (e) { S._dying = false; S._deathStart = 0; }
+          try { applyLocalRespawn(S, 'town'); } catch (e) { dyingTo(S, 'respawn'); }   /* v2.3.5534: the life's page door */
         }
         /* Dead during the death-animation hold (HP=0 or _dying set by
            a death handler).  Suppresses joystick + keyboard + dodge so

@@ -70,3 +70,24 @@ before; nothing kept, nothing counted.
   refused, another address, the next second, no address); RT-1's flood; the
   switch; the cap; the room's routing.
 - The market, store and arena suites, unchanged, pass with it on.
+
+## v2.3.5707: no side door (card SEC PR 8)
+
+The second red team found two ways around the pace (`server/src/publicreads.js`
+"NO SIDE DOOR"; suite `server/test/public-sidedoor.test.mjs`):
+
+- **A header was a side door.** A request carrying any `Authorization`
+  header, whatever it said, skipped both the kept answer and the pace. The
+  pass-through is now for the room's health check alone (`/_room_health`, the
+  owner's numbers behind the key, with its own lockout). On the market, the
+  store and the arena a header changes nothing: a public read is kept and
+  paced as one without. None of the three answers by the header (market.js,
+  store.js and gladiator.js read their query only), so a kept answer is the
+  same for both.
+- **Four reads were never paced**: `/api/market/my`, `/api/market/history`,
+  `/api/store/mine`, `/api/arena/tournament`. Every other GET on the three
+  surfaces is now paced by address as a public read is (10 a second), and
+  never kept: each answers one player's own. A phone's honest reads, a few a
+  second at most, are all answered.
+
+No switch of its own: it rides `publicreads` (off, everything as before).
