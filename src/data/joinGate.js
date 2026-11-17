@@ -50,6 +50,8 @@
  * it in its slot; "tap the field above" went because the field IS above).
  */
 
+import { checkCharName, CHAR_NAME_WORDS } from '../game/charName.js';   /* v2.3.5622 */
+
 /* The pinch-zoom threshold.  1.05 rather than 1.0: Safari reports scale as a
    float that rounds a hair off 1 at rest on some devices, and refusing to
    start a game the player did nothing wrong in is worse than the layout risk
@@ -73,6 +75,11 @@ export function joinBlockReason(name) {
   /* v2.3.3430: one line each (see the header) */
   if (trimmed.length === 0) return 'Name your bro first';
   if (trimmed.length < 2) return 'Type at least 2 letters';
+  /* v2.3.5622: the worker's name rule (game/charName.js, its mirror): an
+     emoji, a hidden or direction mark, or a name that reads as the game or
+     its staff is said here, before the join (card MOD; RT-3 S2) */
+  const c = checkCharName(trimmed);
+  if (c.why) return CHAR_NAME_WORDS[c.why] || 'Pick another name';
   if (pageIsPinchZoomed()) return 'Pinch back to 100% zoom';
   return null;
 }

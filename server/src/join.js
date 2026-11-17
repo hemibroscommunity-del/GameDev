@@ -26,6 +26,11 @@ import { cleanWheelSizes } from './wheeltables.js'; /* v2.3.3315: the Wheel size
 import { DEVICE_LOCK, cleanDevice } from './devicelock.js'; /* v2.3.3344: a key on its character's devices */
 import { LOGIN_KEYS, newKeyOf } from './loginkeys.js'; /* v2.3.3355: new Login Keys, made by the worker */
 import { stashGive, stashTake, stashSet, weaponIdsAll } from './stash.js';   /* v2.3.5281: the stashes' door (card R PR 2); v2.3.5282: a weapon's own id */
+import { rfNote, rfRetryMs } from './rfspread.js';   /* v2.3.5604: a waiting crowd knocks more slowly (card OPS PR 5) */
+import { requestIp } from './flood.js';   /* v2.3.5604 (mend): a refusal counted once an address a second */
+import { questLoad } from './queststate.js';   /* v2.3.5284: quest state's door (card R PR 5) */
+import { xpSet } from './xp.js';   /* v2.3.5289: experience and levels' door (card R PR 10) */
+import { tidyCharName } from './charname.js';   /* v2.3.5622: a name with no record held to the rule (the sitting 19 review) */
 
 /* ═══ v2.3.1627: the JOIN DATA ALLOWLIST ═══
  *
@@ -347,13 +352,19 @@ export const joinMethods = {
      (webSocketMessage/Close) are never wired to it -- `accept()` rather
      than `state.acceptWebSocket()` keeps this socket outside the room's
      bookkeeping entirely. */
-  _roomFullRefusal(url, why) {
+  _roomFullRefusal(url, why, request) {
     const cap = this._roomCap();
+    const _now = Date.now();
     /* Old clients (and anything that isn't our client) keep the exact
        refusal they have always had. */
     if (!url || url.searchParams.get('rf') !== '1') {
       return new Response('Room full', { status: 503 });
     }
+    /* v2.3.5604: a refusal the game's phones obey is counted (rfspread.js),
+       and the answer's `retryMs` follows the count.  Mended for sitting 19b:
+       only these (`?rf=1`), never an old client's 503, and an address at most
+       once a second -- one loud client set every waiter to 30 s */
+    rfNote(this, _now, requestIp(request));
     const payload = {
       type: 'room_full',
       /* `reason` mirrors join_rejected's field so the client's refusal
@@ -367,7 +378,7 @@ export const joinMethods = {
          reads as a bug in the refusal rather than as a full world. */
       count: this.sessions.size,
       cap,
-      retryMs: ROOM_FULL.RETRY_MS,
+      retryMs: rfRetryMs(this, _now),   /* v2.3.5604: ROOM_FULL.RETRY_MS (5 s) until the crowd knocks over 40 a second (rfspread.js); `rf_spread: false` keeps it */
     };
     const [client, server] = Object.values(new WebSocketPair());
     try {
@@ -501,7 +512,12 @@ export const joinMethods = {
        key (loginkeys.js) is checked anyway: 84 bits are not guessed, and its
        holder is never shut out by somebody else's tries. */
     const _nkLock = newKeyOf(phrase);
-    if (rec && rec.until > now && !_nkLock) return 'locked'; // lockout window active
+    if (rec && rec.until > now && !_nkLock) {
+      /* v2.3.5582: ...but never the rightful holder of an OLD key: the right
+         key from one of this character's devices, or the owner's pass
+         (devicelock.js _oldKeyHolder; red team RT-1, N9) */
+      if (!(await this._oldKeyHolder(id, phrase, opts && opts.device, now))) return 'locked'; // lockout window active
+    }
     const auth = await this.state.storage.get('auth:' + id);
     if (!auth) {
       // Unregistered id.  Register when the client proves it owns a
@@ -656,6 +672,10 @@ export const joinMethods = {
       this._playerLeaves(ws, 'refused');   /* v2.3.4830: the session door (leave.js) */
       return;
     }
+    /* v2.3.5606: A SEAT HELD (seathold.js, `seathold: true`): once the free
+       seats are gone, a join naming no held seat is refused with room_full,
+       before the account, the device or any record is read or written */
+    if (this._seatJoinRefused(ws, msg)) return;
     // v2.3.1116: identity auth gate.  Runs BEFORE the eviction loop
     // below on purpose -- player ids are broadcast to the whole room
     // (player_join / state_sync), so before this gate existed anyone
@@ -672,6 +692,10 @@ export const joinMethods = {
        first used) once this join is in (loginkeys.js _keysAfterJoin) */
     const _keyOut = {};
     if (msg.id) {
+      /* v2.3.5621: a device a frozen character played on is frozen too, a new
+         character on it included (silence.js, card MOD; before the key, so a
+         refused join writes nothing) */
+      if (await this._frozenDeviceRefuse(ws, cleanDevice(msg.device))) return;
       /* v2.3.3275: the account check (verify.js) -- asked only of a character
          that does not exist yet, and only when the owner has turned it on. */
       /* v2.3.3344: ...and the device the join came from (devicelock.js) */
@@ -732,6 +756,8 @@ export const joinMethods = {
         this._playerLeaves(ws, 'refused');   /* v2.3.4830: the session door (leave.js) */
         return;
       }
+      /* v2.3.5622: a NEW character's name by the rule (charname.js, card MOD), before it is made */
+      if (await this._charNameRefuse(ws, msg.id, msg.data, msg.name)) return;   /* v2.3.5622: the join's own name too, when its data has none */
     }
     /* ═══ v2.3.3260: YOUR BODY IS STILL IN THE FIGHT ═══
        A player who left within 10 s of a hit between players leaves their
@@ -871,6 +897,17 @@ export const joinMethods = {
     /* v2.3.4455: a kept body is where it stands, whatever this phone said:
        peers read the place from session.data (getAllPlayerData spreads it
        last) and from player_join */
+    /* v2.3.5622 (the sitting 19 review, HIGH): a session with no character
+       record -- a guest or a keyless id, or a join whose data names nobody --
+       took its name as the join sent it (sanitizeDisplayName keeps a
+       direction override and a zero-width space), and every peer, room chat
+       and the board read it.  Held to the rule, both copies (tidied: what
+       the rule refuses taken out, so "Bro<line break>killer" is "Bro
+       killer"; a staff name stays out), or 'Anon'. */
+    if (!(session.char && session.char.name) && this._nameRulesOn && this._nameRulesOn()) {
+      session.name = tidyCharName(msg.name) || 'Anon';
+      if (typeof cleanJoinData.name === 'string') cleanJoinData.name = tidyCharName(cleanJoinData.name) || session.name;
+    }
     if (_body) { cleanJoinData.x = _body.x; cleanJoinData.y = _body.y; cleanJoinData.z = _body.z; cleanJoinData.d = _body.d; }
     session.data = cleanJoinData;
     // Protocol v2 opt-in.  v2 sessions get delta player_state emits,
@@ -1050,8 +1087,8 @@ export const joinMethods = {
         this.playerState[msg.id].inventory = stored.inventory || {};
         this.playerState[msg.id].lifeSkills = stored.lifeSkills || {};
         healLifeSkillLevels(this.playerState[msg.id]);   /* v2.3.3041: a stored level 0 reads 1 (migrations.js) */
-        this.playerState[msg.id].level = stored.level || 1;
-        this.playerState[msg.id].xp = stored.xp || 0;
+        xpSet(this.playerState[msg.id], 'level', stored.level || 1, 'join_level');   /* v2.3.5289: the experience door */
+        xpSet(this.playerState[msg.id], 'xp', stored.xp || 0, 'join_xp');
         pointsSet(this.playerState[msg.id], stored.unspentT2 || 0, 'join_stored_t2');   /* v2.3.5283: the skill points' door */
         pointsSet(this.playerState[msg.id], stored.buildPointsThisLvl || 0, 'join_stored_bp');
         this._hpSet(this.playerState[msg.id], typeof stored.hp === 'number' ? stored.hp : 100, 'join_stored'); /* v2.3.4820: the life door */
@@ -1107,9 +1144,12 @@ export const joinMethods = {
         this.playerState[msg.id].goldBars = (typeof stored.goldBars === 'number')
           ? Math.max(0, Math.floor(stored.goldBars))
           : this._amuletClampBars(msg.data && msg.data.rpgGoldBars);
-        this.playerState[msg.id]._quests = (stored._quests && typeof stored._quests === 'object') ? { ...stored._quests } : {};
-        this.playerState[msg.id]._questFlags = (stored._questFlags && typeof stored._questFlags === 'object') ? { ...stored._questFlags } : {};
-        this.playerState[msg.id]._questKills = (stored._questKills && typeof stored._questKills === 'object') ? { ...stored._questKills } : {};
+        /* v2.3.5284: the quest door (queststate.js), each map the caller's own copy as before */
+        questLoad(this.playerState[msg.id], {
+          _quests: (stored._quests && typeof stored._quests === 'object') ? { ...stored._quests } : {},
+          _questFlags: (stored._questFlags && typeof stored._questFlags === 'object') ? { ...stored._questFlags } : {},
+          _questKills: (stored._questKills && typeof stored._questKills === 'object') ? { ...stored._questKills } : {},
+        }, 'join_stored');
         this.playerState[msg.id].achievementPoints = stored.achievementPoints || 0;
         /* v2.3.1664: server-verified kills.  MUST be restored here or a
            reconnect resets the counter to 0 and the next on-chain
@@ -1200,10 +1240,10 @@ export const joinMethods = {
            freshLifeSkills() -- and this stays as the second line for those
            two. */
         trapBootstrapGuard(this.playerState[msg.id]);
-        this.playerState[msg.id].level = Math.max(1, Math.min(BOOTSTRAP_LEVEL_CAP,
-          (msg.data && typeof msg.data.rpgLevel === 'number') ? Math.floor(msg.data.rpgLevel) : 1));
-        this.playerState[msg.id].xp = Math.max(0, Math.min(BOOTSTRAP_XP_CAP,
-          (msg.data && typeof msg.data.rpgXp === 'number') ? Math.floor(msg.data.rpgXp) : 0));
+        xpSet(this.playerState[msg.id], 'level', Math.max(1, Math.min(BOOTSTRAP_LEVEL_CAP,
+          (msg.data && typeof msg.data.rpgLevel === 'number') ? Math.floor(msg.data.rpgLevel) : 1)), 'join_new_level');   /* v2.3.5289: the experience door */
+        xpSet(this.playerState[msg.id], 'xp', Math.max(0, Math.min(BOOTSTRAP_XP_CAP,
+          (msg.data && typeof msg.data.rpgXp === 'number') ? Math.floor(msg.data.rpgXp) : 0)), 'join_new_xp');
         pointsSet(this.playerState[msg.id], Math.max(0, Math.min(BOOTSTRAP_UT2_CAP,
           (msg.data && typeof msg.data.rpgUnspentT2 === 'number') ? Math.floor(msg.data.rpgUnspentT2) : 0)), 'join_new_t2');   /* v2.3.5283: the skill points' door */
         // build_point_earned dispatches own up to 4 in a flurry on
@@ -1297,9 +1337,12 @@ export const joinMethods = {
           }
           return out;
         };
-        this.playerState[msg.id]._quests = _capObjKeys((msg.data && msg.data.rpgQuests) || null);
-        this.playerState[msg.id]._questFlags = _capObjKeys((msg.data && msg.data.rpgQuestFlags) || null);
-        this.playerState[msg.id]._questKills = _qKclean;
+        /* v2.3.5284: the quest door (queststate.js) */
+        questLoad(this.playerState[msg.id], {
+          _quests: _capObjKeys((msg.data && msg.data.rpgQuests) || null),
+          _questFlags: _capObjKeys((msg.data && msg.data.rpgQuestFlags) || null),
+          _questKills: _qKclean,
+        }, 'join_new');
         this.playerState[msg.id].achievementPoints = Math.max(0, Math.min(99999,
           (msg.data && typeof msg.data.rpgAchievementPoints === 'number') ? Math.floor(msg.data.rpgAchievementPoints) : 0));
         this.playerState[msg.id]._perfectHistory = [];

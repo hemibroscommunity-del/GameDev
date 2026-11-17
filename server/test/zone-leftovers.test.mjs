@@ -53,7 +53,10 @@ const clearBody = block(zt, 'export function clearZoneLocalFx(S) {');
 const changeBody = block(zt, 'export function changeZone(S, to) {');
 check('1a clearZoneLocalFx found', !!clearBody);
 check('1b changeZone found in zoneTransitions.js', !!changeBody);
-const clearZoneLocalFx = new Function('return function (S) {' + clearBody + '};')();
+/* v2.3.5219: it clears the harvest through its page door (game/harvestDoor.js,
+   a module of no imports): the real one, handed in */
+const { harvestTo } = await import('../../src/game/harvestDoor.js');
+const clearZoneLocalFx = new Function('harvestTo', 'return function (S) {' + clearBody + '};')(harvestTo);
 /* v2.3.5203: the door runs the state's resets on a real change of place
    (game/resetOn.js, card L): handed in as the rest of its scope is.  No
    system's module is loaded here, so none is registered: a no-op, as the

@@ -252,6 +252,7 @@ export const tickMethods = {
       const _now = Date.now();
       this._tickPaceStart(_now);
       this._roomRowTick(_now);   /* v2.3.5124: the gap between ticks, and the room's row into the day's book (roomrow.js) */
+      this._seatRosterTick(_now);   /* v2.3.5606: who is in, for a restart's held seats, at most every 15 s (seathold.js; `seathold: true` only) */
       /* v2.3.4653: a throw that still escapes the guards below (the snapshot
          before them) is counted like theirs, once in the log, instead of an
          uncaught error every 22 ms (state-machine sweep VA, S3-1) */
@@ -759,6 +760,8 @@ export const tickMethods = {
           bytes += j.length; eventJson.push(j); take++;
         }
         events = this.eventBuffer.splice(0, take);
+        /* v2.3.5543 (RT-1 N10): the relays sent leave the queue's byte count (relay.js) */
+        if (this._relayQueued) this._relayDrained(events);
       }
       /* v2.3.3245: where each event happened (eventplace.js), or null when
          none of this tick's has a place -- then every phone is sent every

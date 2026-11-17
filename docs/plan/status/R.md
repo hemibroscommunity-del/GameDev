@@ -1,38 +1,38 @@
 card: R
 branch: claude/plan-r-3-weapon-gid (one branch a PR, each begun from main)
-prs: #1819 (5280), #1823 (5283), #1825 (5287), #1844 (5288), #1862 (5281): merged; #1847 (5286), PR 3 (5282): ready
+prs: #1819, #1823, #1825, #1844, #1862, #1847, #1877, #1887, #1895, #1898, #1922: merged; #1873 (5282): ready
 state: ready
 
 ## Done
 
-- PR 1 (5280, #1819, merged): the roads between players (`playerroads.js`).
-- PR 4 (5283, #1823, merged): the skill points' door (`skillpoints.js`).
-- PR 8 (5287, #1825, merged): the storage's size in the day's book (ON).
-- PR 9 (5288, #1844, merged): the room's way back (`restore.js`, OFF).
-- PR 2 (5281, #1862, merged): the stashes' door (`stash.js`, 35 roads).
-- PR 7 (5286, #1847, ready, sitting 18): the paged export (allow list; ON).
-- PR 3 (5282, `claude/plan-r-3-weapon-gid`, ready): a weapon's own id
-  (schema 22: a stored record's shape; merged on a line of its own).
+- Merged: PR 1 (5280, #1819), PR 4 (5283, #1823), PR 8 (5287, #1825),
+  PR 9 (5288, #1844), PR 2 (5281, #1862), PR 7 (5286, #1847).
+- Merged, sitting 20: PR 5 (5284, #1877), PR 6 (5285, #1887), PR 11 (5290,
+  #1895, the duel pot's row), PR 10 (5289, #1898), PR 12 (5291, #1922).
+- PR 3 (5282, #1873, ready, sitting 21): a weapon's own id; main b2d763a9
+  merged in (OPS's #1891 and #1872 live). Schema 21 -> 22: a stored
+  record's shape, merged on a line of its own.
 
 ## Next
 
-- Waiting (the planning session: no side work). Then PR 5 (quest state's
-  door) and PR 6 (a player's restore from the registry).
+- After #1873: the escrow ledger's other rows, in the planned order. The
+  arena's stakes once L's arena door (#1930) merges; the market and the
+  auction house only AFTER K's 5194, 5196, 5197 (`market.js`, `store.js`).
+  No side work in K's or L's files while waiting.
 
 ## Found
 
 - `grids.js` `_tryLevelUpFromBuildPoints` has no caller (dead).
-- Local workerd: `sql.databaseSize`, `getCurrentBookmark` work;
-  `getBookmarkForTime` throws (no point-in-time recovery locally).
-- The stash cuts that remain after PR 2 (for later): the join's, the
-  phone's capped copy, the gear lists' at the save and the join.
+- Local workerd: no point-in-time recovery (`getBookmarkForTime` throws).
 - `_isGearNotWeapon` told gear by a gid alone; PR 3 reads `prov` instead.
+- The join's quest maps are plain copies: prototype-free ones, later.
 
 ## Needs
 
-- Taken from card K: an honest `character_reset` reads to the world's sum
-  as value gone; R mends it in PR 6 (5285: persistence.js, its roads).
-- For the owner, LATER (PR 9; the owner's "Just go recommended": not now):
-  the lab's restore try (`lab.yml` lines in `docs/specs/cloudflare-lab.md`).
-- New live flags, a row each: `storesize` (PR 8, on), `roomexport` (PR 7,
-  on), `roomrewind` (PR 9, off until the owner sets it).
+- The owner's costs, OFF: `fullsnap` (PR 6: 2 keys more read a player a
+  day), `resetbook` (PR 6: one room row, a write a restart; nothing live
+  reads it, the census unmoved), `xferescrow` (PR 11: a row a wagered duel).
+- LATER (PR 9, "Just go recommended"): the lab's restore try (lab.yml).
+- Live flags: `storesize`, `roomexport` on; `roomrewind` off (the owner).
+- A tag for each escrow row PR still to come: 5292 onward from R's block
+  (5280-5299), unless the planning session says otherwise.

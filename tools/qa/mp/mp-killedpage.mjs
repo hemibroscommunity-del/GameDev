@@ -67,7 +67,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const killed = rlog.filter((e) => e.kind === 'killed');
       rec.ok(`a page that died open is reported by the next one: ${killed.length ? killed[killed.length - 1].msg : 'nothing'}`,
         killed.length === 1 && /ON SCREEN/.test(killed[0].msg) && /zone wheel/.test(killed[0].msg), { before: before && { sid: before.sid, zone: before.zone }, rlog: rlog.slice(-4) });
-      const feed = await (await fetch(`http://127.0.0.1:${wsPort}/api/feedback/crashes?limit=20`)).json().catch(() => null);
+      /* v2.3.5593: the crash feed is the owner's (feedback.js), so the harness's key asks for it */
+      const feed = await (await fetch(`http://127.0.0.1:${wsPort}/api/feedback/crashes?limit=20`, { headers: { Authorization: `Bearer ${H.ADMIN_KEY}` } })).json().catch(() => null);
       const sent = !!feed && Array.isArray(feed.reports) && feed.reports.some((r) => (r.log || []).some((e) => e.kind === 'killed'));
       rec.ok('...and the report reaches the worker\'s crash feed', sent, feed && { count: feed.count, kinds: (feed.reports || []).map((r) => (r.log || []).map((e) => e.kind).slice(-3)) });
     } finally {

@@ -118,6 +118,9 @@ export const STASH_ROADS = Object.freeze({
   shield_swap_off: R('give', S, 'shieldwear.js _handleShieldWear: the shield taken off as another goes on', 'move', STASH_SELF),
   shield_on:       R('take', S, 'shieldwear.js _handleShieldWear: the shield put on, from the bag', 'move', STASH_SELF),
   nml_gear:        R('set',  G, 'nomansland.js _nmlOnDeath: the gear lost in No man\'s land, to the killer\'s mail', 'escrow', 'inbox:'),
+
+  /* ── the owner's restore of one player (v2.3.5285, card R PR 6) ── */
+  restore:         R('set',  STASH_FIELDS, 'playerrestore.js restoredCharacter: each stash made the copy\'s (judged by its difference)', 'mint'),
 });
 
 const own = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);
