@@ -29,8 +29,8 @@ in `MOVED`, as PRs 5309-5317 did.
 | reads | file |
 |---|---|
 | 16 | src/ui/BroTown.jsx |
-| 13 | src/rendering/systems/effectsRenderer.js |
-| 9 | src/rendering/systems/entityRenderer.js |
+| 0 | src/rendering/systems/effectsRenderer.js (its 13 moved, v2.3.5343: 10 on `sw`/`swHas` in `MOVED`; `?legslook` (a need), `?dmgscale`, `?orebreakms` (values) on `pageAddress()`, the old test in place) |
+| 0 | src/rendering/systems/entityRenderer.js (its 9 moved, v2.3.5343: 6 on `sw`/`swHas` in `MOVED`; `?traitretry` (a need), `?lookinline` (`=0` is not thrown), `?lookpalette=1`/`?lookprobe` (two names) on `pageAddress()`) |
 
 (Part 11: nothing beside card M in BroTown.jsx or the two renderers; cards
 K and L also name them.)

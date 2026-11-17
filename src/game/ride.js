@@ -21,7 +21,7 @@
  * radius among it), and node can test this (server/test/ride.test.mjs).
  * RIDE_MULT MIRRORS the worker's RIDE.MULT (mirror-audit.test.mjs).
  */
-import { sw } from './switches.js';   /* v2.3.5530: the page's switch reader (no imports of its own) */
+import { sw, pageAddress } from './switches.js';   /* v2.3.5530: the page's switch reader (no imports of its own); v2.3.5740: + its address (card T2) */
 
 /* ═══ v2.3.5530: THE RIDE'S PAGE DOOR -- ONE WRITER OF S._ride (card L PR 5) ═══
    (docs/specs/ride-page-door.md; server/test/ride-page-door.test.mjs)
@@ -365,7 +365,7 @@ let _feelOn = null;   /* the address's word, read once (null: not yet) */
 /** The roll-off and push start live on this page? */
 export function rideFeelOn() {
   if (_feelOn === null) {
-    try { _feelOn = rideCoastOn(typeof window !== 'undefined' && window.location ? window.location.search : ''); } catch (e) { _feelOn = true; }
+    try { _feelOn = rideCoastOn(pageAddress());   /* v2.3.5740: the address from the page's one reader (card T2) */ } catch (e) { _feelOn = true; }
   }
   return _feelOn;
 }

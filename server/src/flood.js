@@ -88,6 +88,13 @@ export const FLOOD = Object.freeze({
      socket that keeps it up is closed.  120 phones fighting (~30 a second
      each) are 3,600, each under its share of 33 */
   ROOM_MSG_PER_S: 4000,
+  /* v2.3.5728 (card K2 PR 9; `ceilfair`): a socket's share of the ceiling
+     never falls under this -- the busiest honest phone, a crowd fight's 35
+     to 40 a second (card K's census on #1949), with room.  At 120 sockets
+     the plain share is 33: a crowd fight's honest phones lost messages (and
+     those drops counted toward their close) whenever a flood had the room
+     past its ceiling */
+  HONEST_PER_S: 45,
 });
 
 export const PACE = Object.freeze({
@@ -263,8 +270,21 @@ export const floodMethods = {
     if (session.roomSec !== sec) { session.roomSec = sec; session.roomN = 0; }
     session.roomN++;
     if (w.n <= FLOOD.ROOM_MSG_PER_S) return false;
-    const share = FLOOD.ROOM_MSG_PER_S / Math.max(1, this.sessions ? this.sessions.size : 1);
+    let share = FLOOD.ROOM_MSG_PER_S / Math.max(1, this.sessions ? this.sessions.size : 1);
+    /* v2.3.5728: never under the honest rate (FLOOD.HONEST_PER_S): the room
+       ceiling drops only a socket past what any honest phone sends.  A full
+       room's second is then at most the ceiling and each socket the larger
+       of the two (120 x 45: still under twice the ceiling).  `ceilfair:
+       false`: the plain share, as before. */
+    if (this._ceilFairOn()) share = Math.max(share, FLOOD.HONEST_PER_S);
     return session.roomN > share;
+  },
+
+  /* v2.3.5728: `ceilfair: false` in the live flags: the plain share (on
+     unless its own falsy value) */
+  _ceilFairOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'ceilfair') && !f.ceilfair);
   },
 
   _roomCeilingOff() {

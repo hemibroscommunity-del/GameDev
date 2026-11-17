@@ -1,0 +1,8 @@
+# v2.3.5820 (card SEC2): where to report a security problem in BroTown (RFC 9116).
+# The owner's choice, 2026-11-17: GitHub's private vulnerability reporting, so
+# no address is published.  Renew Expires before it passes (at most a year
+# ahead): tools/guards/site-headers.test.mjs fails once it has.
+Contact: https://github.com/hemibroscommunity-del/GameDev/security/advisories/new
+Expires: 2027-11-01T00:00:00.000Z
+Preferred-Languages: en
+Canonical: https://brotown.net/.well-known/security.txt
