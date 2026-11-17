@@ -343,6 +343,50 @@ export function edgeKeyRefusal(request, pathname, env) {
   return null;
 }
 
+/* ═══ v2.3.5726 (card K2 PR 7): THE PUBLIC READS ANSWERED AT THE EDGE, FOR
+   EVERYONE BUT THE GAME'S OWN PAGES ═══
+   Four reads anyone may make (the market's book and a player's list by its
+   id, the store's browse, the arena's status) woke the outer worker's room
+   every time; the room keeps them 3 s and paces them by address
+   (publicreads.js), but each still reached it.  Now the outer router answers
+   them from the edge's cache (`caches.default`, EDGE_CACHE.TTL_S, keyed by
+   the whole URL) -- but ONLY for a request whose Origin is not one of the
+   game's sites (origin.js originAllowed: 'site' or 'local').  The planning
+   session's answer, 2026-11-17: the page always sends its Origin, so it
+   always reads through the room, whose copies drop on any write ("the
+   player who just acted reads their own act at once"), and nothing a player
+   sees changes; a script that names the game's Origin meets the room's own
+   keep and pace, as today.  A request carrying a key (`Authorization`,
+   `x-bt-auth`) is never answered from the cache, and only a 200 is kept.
+   Nothing in wrangler.toml: the cache needs no binding (and where there is
+   none, as in node, every read goes on).  `EDGE_CACHE = "off"` (the
+   worker's setting, as ORIGIN_LOCK; absent means on): every read goes on. */
+export const EDGE_CACHE = Object.freeze({
+  TTL_S: 3,
+  PATHS: Object.freeze(['/api/market/orders', '/api/market/my', '/api/store/browse', '/api/arena/status']),
+});
+
+/** The outer router's read through the edge cache: `forward()` is the
+ *  room's answer; `gameOrigin(origin)` says whether a page of the game sent
+ *  it. */
+export async function edgeCacheRead(request, url, env, gameOrigin, forward) {
+  const off = String((env && env.EDGE_CACHE) || 'on').trim().toLowerCase() === 'off';
+  const cache = (typeof caches !== 'undefined' && caches && caches.default) || null;
+  if (off || !cache || request.method !== 'GET' || !EDGE_CACHE.PATHS.includes(url.pathname)
+      || request.headers.get('Authorization') || request.headers.get('x-bt-auth')
+      || gameOrigin(request.headers.get('Origin'))) return forward();
+  const key = new Request(url.toString(), { method: 'GET' });
+  let hit = null;
+  try { hit = await cache.match(key); } catch (e) { hit = null; }
+  if (hit) return hit;
+  const res = await forward();
+  if (!res || res.status !== 200) return res;
+  const out = new Response(res.body, res);
+  out.headers.set('Cache-Control', 'public, max-age=' + EDGE_CACHE.TTL_S);
+  try { await cache.put(key, out.clone()); } catch (e) { /* not kept: the answer stands */ }
+  return out;
+}
+
 /* ── the room's methods (index.js mixes them in) ── */
 export const wireDoorMethods = {
   /* count and (the first few) log a refusal.  v2.3.5184 (the gatekeeper,
