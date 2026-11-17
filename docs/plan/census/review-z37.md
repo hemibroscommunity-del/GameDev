@@ -17,14 +17,16 @@ each merge:
 3 SEC #2037 2275f8ef02bb508481b081d92992359f18a954c8 -> fd606806c74a31f954b7bcb0149d685c59860e5d
 4 SEC #2038 0a31cbde65c3b0b6903b446f008c646d08a3fc91 -> a2cf1f65f076569fe1dcdf5a5d922b7738a1d892
 5 K2 #2035 b72d2f9cc2443c4a294c638428bf45aff6c9d496 -> 63ba47fb72f31b615c0f91a8f11dc0d1728d1c41
-6 Z (this PR): its head and tree are in the list (`status/Z.md`).
+6 L #2039 db797aef56b362b4c2c9144f59531555537f63df -> 8519ead9f3b1384224b93c1ea07ebcdd62d90d0a
+7 Z (this PR): its head and tree are in the list (`status/Z.md`).
 
 The bases, step by step: #2032 bbd22176; #2034 90f32e15 (#2032's head:
 SEC's stack, each PR holds the one before, each with `main` bbd22176
 merged in); #2037 5eba6104 (#2034's head); #2038 2275f8ef (#2037's
 head); #2035 bbd22176 (K2 merged `main` in at 17:07, after #2030's
-block); this PR bbd22176. One line each. The rehearsal's tree
-(`gatekeeper.mjs`, the five in that order) is 63ba47fb, the same.
+block); #2039 bbd22176; this PR bbd22176. One line each. The
+rehearsal's tree (`gatekeeper.mjs`, the six in that order) is 8519ead9,
+the same.
 
 ## SEC #2032 (5701): a join's id is a string of the id's form
 
@@ -110,6 +112,28 @@ READY (reviewed in full). Card K2 PR 1 (the second red team's CRITICAL
   setting as the router's lever) the planning session answered, in the
   PR's words.
 - New suite `bodycap` (14 FAIL on main). DEPLOYS.
+
+## L #2039 (5533): the fight's page door
+
+READY (reviewed in full: `src/`). Card L PR 5's page halves, the fight
+(L's message at 17:11 UTC; based on `main` bbd22176). Tag 5533, L's block
+5520-5539.
+- `src/game/skullDoor.js` `skullTo(S, type, until, way)` (ways `threat`,
+  `issue`, `nml`), the one writer of `S._pvpSkullType` and its note
+  `S._pvpSkullUntil`; eight direct writes in `gameEvents.js` (four),
+  `InspectPlayerPanel.jsx` and `noMansLand.js` (three) replaced, each
+  with the same values. The one new refusal: a time that is no finite
+  number (a `pvp_threat` whose `countdown` is not a number made
+  `Date.now() + countdown` a string, written as the skull's time before);
+  the worker sends a number. `?skulldoor=0` writes what a caller asks.
+- The phase table: page `fight` `todo` -> `door` (6 -> 5 `todo`); the
+  state ledger's two rows move to `social` with the door as writer;
+  SHAPES, SWITCHES, SYSTEMS, the switch tables, `phase-table.md` each a
+  line of their own. New suite `fight-page-door`. Nothing a player sees
+  changes.
+- Only `server/test/` under `server/`: DEPLOYS the worker (with the
+  others, one).
+- After it lands the phase line can go 6 -> 5 (sitting 38).
 
 ## The rehearsal
 
