@@ -21,7 +21,8 @@
  *     ahead of Pixi's own reads the twin as a picture, its numbers off a
  *     canvas once, and hands back a texture of colour numbers -- the same
  *     address, the same size, so nothing that loads, finds or frees it
- *     changes (Assets.unload destroys it, which gives its row back).
+ *     changes (Assets.unload destroys it, which gives its row back).  (One
+ *     twin is a column wider, the fish spot's pond: v2.3.5565, FISH_SPOT.)
  * Anything that cannot be (no colour-numbers program on this device, a row
  * short, a twin that will not load) is the original, as before.
  *
@@ -113,9 +114,21 @@ const PET_SHEET_ON = !NO_TWINS && !/[?&]petsheet=0(&|$)/.test(_q);
    with `?alphaclip`, as the hats'. */
 const CAPE_HOOD = /^\/sprites\/traits\/cape\/[a-z0-9-]+\/hood\/hairmask-(?:east|south|southwest)\.png$/;
 const CAPE_HOOD_ON = !NO_TWINS && !/[?&]capehood=0(&|$)/.test(_q) && !/[?&]alphaclip\b/.test(_q);
+/* v2.3.5565, `world-fish-spot`: the pond under a fishing spot
+   (effectsRenderer.js NODE_SPRITE_SOURCES, behind the loading screen for
+   everyone and kept): 1.5 MB held as a picture in the page at the memory
+   check's fight.  Its twin cuts 32k colours to 256 (moved 0.008 OKLab) and
+   is ONE COLUMN WIDER than the picture (628, `pad` in p256Files.js): a
+   see-through column on its right, where the pond never reaches, made by
+   tools/art/reduce256.mjs, so the rule below holds (no twin needing padding
+   here).  The one twin not the same size: the pond is scaled by its height
+   at anchor (0.5, 0.5), so it is drawn the same size, half a texel left.
+   `?fishspot=0` keeps it a picture. */
+const FISH_SPOT = /^\/sprites\/world\/fish-spot-627\.webp$/;
+const FISH_SPOT_ON = !NO_TWINS && !/[?&]fishspot=0(&|$)/.test(_q);
 /** whether the picture at `path` (no host, no query) is read from its twin here */
-function wantedPath(path) { return !NO_TWINS && (ALL_TWINS || (FX_MADE_ON && FX_MADE.test(path)) || (WORLD_ICONS_ON && WORLD_ICONS.test(path)) || (FX_SHEETS_ON && FX_SHEETS.test(path)) || (ELEM_ICONS_ON && ELEM_ICONS.test(path)) || (HAIRMASKS_ON && HAIRMASKS.test(path)) || (PET_SHEET_ON && PET_SHEET_P.test(path)) || (CAPE_HOOD_ON && CAPE_HOOD.test(path))); }
-const WANTED = !NO_TWINS && (ALL_TWINS || FX_MADE_ON || WORLD_ICONS_ON || FX_SHEETS_ON || ELEM_ICONS_ON || HAIRMASKS_ON || PET_SHEET_ON || CAPE_HOOD_ON);
+function wantedPath(path) { return !NO_TWINS && (ALL_TWINS || (FX_MADE_ON && FX_MADE.test(path)) || (WORLD_ICONS_ON && WORLD_ICONS.test(path)) || (FX_SHEETS_ON && FX_SHEETS.test(path)) || (ELEM_ICONS_ON && ELEM_ICONS.test(path)) || (HAIRMASKS_ON && HAIRMASKS.test(path)) || (PET_SHEET_ON && PET_SHEET_P.test(path)) || (CAPE_HOOD_ON && CAPE_HOOD.test(path)) || (FISH_SPOT_ON && FISH_SPOT.test(path))); }
+const WANTED = !NO_TWINS && (ALL_TWINS || FX_MADE_ON || WORLD_ICONS_ON || FX_SHEETS_ON || ELEM_ICONS_ON || HAIRMASKS_ON || PET_SHEET_ON || CAPE_HOOD_ON || FISH_SPOT_ON);
 /* (never while QA compares cropped strips against their files: __btTrimVerify) */
 export function p256On() { return WANTED && picNumbersOn(); }
 
@@ -381,6 +394,6 @@ export function startP256Pack(renderer, canvas) {
 }
 
 if (typeof window !== 'undefined') {
-  window.__btP256 = () => ({ wanted: WANTED, on: p256On(), all: ALL_TWINS, fxMade: FX_MADE_ON, worldIcons: WORLD_ICONS_ON, fxSheets: FX_SHEETS_ON, elemIcons: ELEM_ICONS_ON, hairMasks: HAIRMASKS_ON, petSheet: PET_SHEET_ON, capeHood: CAPE_HOOD_ON, twins: Object.keys(P256_FILES).length, ..._stats,
+  window.__btP256 = () => ({ wanted: WANTED, on: p256On(), all: ALL_TWINS, fxMade: FX_MADE_ON, worldIcons: WORLD_ICONS_ON, fxSheets: FX_SHEETS_ON, elemIcons: ELEM_ICONS_ON, hairMasks: HAIRMASKS_ON, petSheet: PET_SHEET_ON, capeHood: CAPE_HOOD_ON, fishSpot: FISH_SPOT_ON, twins: Object.keys(P256_FILES).length, ..._stats,
     pack: { ..._pk, packedNow: _packed.size, waiting: _toPack.size } });
 }
