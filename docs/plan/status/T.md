@@ -1,6 +1,6 @@
 card: T
 branch: claude/plan-t-17-reads8 (on #2001's branch; main merged in)
-prs: #1754 ... #1958, #1978 (5301-5311, merged); #1992, #1993 (5312-5313, merged); #1994 5314 (ready); #1996 5315 (ready, on #1994); #2001 5316; 5317 (ready, on #2001)
+prs: #1754 ... #1978 (5301-5311), #1992-#1996 (5312-5315): merged; #2001 5316 (ready); #2002 5317 (ready, on #2001)
 state: ready
 
 ## Done
@@ -37,4 +37,4 @@ state: ready
 
 ## Needs
 
-- The gatekeeper: #1994, #1996, #2001, then 5317 on them.
+- The gatekeeper: #2001, then #2002 (5317) on it.
