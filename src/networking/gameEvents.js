@@ -210,6 +210,8 @@ import { t2LeaveDrop, t2IgnoreBusy, t2Hushed } from '@/game/tradeSlot.js'; /* v2
 import { peerFireOut } from '@/game/fireRefuse.js'; /* v2.3.4942: a peer's refused fire, put out */
 import { sameWire } from '@/game/partyEq.js'; /* v2.3.4884: an identical party_state re-echo does not re-render */
 import { act } from '@/game/actions.js';   /* v2.3.5189: the page's requests leave through the action door (card K PR 7) */
+import { duelTo } from '@/game/duelDoor.js';   /* v2.3.5529: the duel's page door, S._inDuel's one writer (card L) */
+import { partyTo } from '@/game/partyDoor.js';   /* v2.3.5529: the party's page door, S._party's one writer (card L) */
 
 /* v2.3.1107: angle -> 8-way compass, same SECTORS convention as
    entityRenderer (atan2(dy,dx) -> 'east' when dx>0).  Used to reconcile a
@@ -4653,8 +4655,7 @@ export function processGameEvent(type, payload, S, deps) {
                  drawn: far away) waits for a tap, which BroTown's tap handler
                  turns into the lock for a duel opponent. */
               if (payload.opponentId != null) {
-                S._activeDuel = { partnerId: payload.opponentId, startTs: Date.now(), arena: payload.matchId || true };
-                S._inDuel = {
+                duelTo(S, {
                   opponent: payload.opponentId,
                   opponentName: payload.opponentName || '',
                   wager: 0,
@@ -4662,7 +4663,7 @@ export function processGameEvent(type, payload, S, deps) {
                   arena: payload.matchId || true,
                   round: payload.round || 1,
                   deadline: payload.deadline || 0
-                };
+                }, 'start', { partnerId: payload.opponentId, startTs: Date.now(), arena: payload.matchId || true });   /* v2.3.5529: the duel's page door */
                 lockOntoDuelOpponent(S, payload.opponentId);
               }
               break;
@@ -4734,10 +4735,6 @@ export function processGameEvent(type, payload, S, deps) {
                  the Accept tap showed at once is real (duelPending.js) */
               if (settleOwnAccept(S, payload)) break;
               if (payload.target === S.myId) {
-                S._activeDuel = {
-                  partnerId: payload.from,
-                  startTs: Date.now()
-                };
                 /* v2.3.1306: the CHALLENGER never got S._inDuel — only the
                    accepter sets it (DuelRequestPanel).  Both PvP attack
                    gates key on it (monsterCombat melee, projectiles
@@ -4745,12 +4742,12 @@ export function processGameEvent(type, payload, S, deps) {
                    while tap-locked: the owner's "only melee hurt" duel
                    report was half challenger-side gating.  Mirror the
                    accepter's shape; duel_end clears both fields already. */
-                S._inDuel = {
+                duelTo(S, {
                   opponent: payload.from,
                   opponentName: payload.fromName || '',
                   wager: payload.wager || 0,
                   startTime: Date.now()
-                };
+                }, 'start', { partnerId: payload.from, startTs: Date.now() });   /* v2.3.5529: the duel's page door (its note beside it) */
                 /* v2.3.2145: lock onto them, which is what a duel means -- and
                    is what puts the BLOCK BUTTON on screen at all
                    (LockOnActions returns null without a lock). See
@@ -4786,8 +4783,7 @@ export function processGameEvent(type, payload, S, deps) {
                    naming its own opponent. */
                 var _endFoe = _won ? payload.loser : payload.winner;
                 if (S._inDuel && S._inDuel.arena && String(S._inDuel.opponent) !== String(_endFoe)) break;
-                S._activeDuel = null;
-                S._inDuel = null;
+                duelTo(S, null, 'end', null);   /* v2.3.5529: the duel's page door */
                 /* v2.3.2242 (post-review): the duel took the lock and may have
                    raised the shield; neither outlives it.  A lock on a
                    player is only ever a duel lock (duelLock.js). */
@@ -5151,7 +5147,7 @@ export function processGameEvent(type, payload, S, deps) {
                 /* v2.3.1185: mirror for the renderer's nameplate party
                    marker (entityRenderer reads S._party per frame --
                    grafted from the competing party build, PR #221). */
-                S._party = payload;
+                partyTo(S, payload, 'state');   /* v2.3.5529: the party's page door */
                 /* v2.3.3313: the alliance's moments (server alliance.js): it
                    became one or a party again, was named, a war began or a war
                    kill landed -- said over you and in the chat */
@@ -5169,7 +5165,7 @@ export function processGameEvent(type, payload, S, deps) {
                 }
               } else {
                 setParty(null);
-                S._party = null;
+                partyTo(S, null, 'gone');   /* v2.3.5529 */
                 var _ptyWhy = {
                   'left': 'You left the party', 'kicked': 'Kicked from the party',
                   'disbanded': 'Party disbanded', 'offline': 'Removed from party (offline)',

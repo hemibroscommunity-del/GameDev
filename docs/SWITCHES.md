@@ -582,6 +582,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `chatguard` | worker | switch | v2.3.3396 | 2026-10-18 | false | logic |  | no | All three chat guards off: chat and emotes spend the relay bucket again, nothing filtered or cleaned. |
 | `clanparty` | worker | switch | v2.3.3321 | 2026-10-17 | false | logic | `partykeep` | no | No clan is turned into a party; clans work as they did. |
 | `dueldoor` | worker | switch | v2.3.5211 | 2026-11-14 | false | logic |  | no | A resolved duel's end can be written again, as the line before the duel door would have (nothing does today). |
+| `?dueldoor` | page | switch | v2.3.5529 | 2026-11-17 | =0 | logic |  | no | The phone's duel takes any write its own code asks again (a duel with no opponent, an end that leaves one), as the lines before the duel's page door; every caller writes what the door allows today. |
 | `duelzone` | worker | switch | v2.3.4371 | 2026-11-10 | false | logic |  | no | No zone starts a duel's clock (one running is cleared at the next zone write). |
 | `emotemoves` | worker | switch | v2.3.3392 | 2026-10-18 | false | logic | `emotes` | no | No emote move is relayed and no pose kept; the plain emotes go on. |
 | `emotes` | worker | switch | v2.3.3391 | 2026-10-18 | false | logic |  | no | No emote is relayed, and caps.emotes false shuts the picker at the next join. |
@@ -589,6 +590,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `invitepace` | worker | switch | v2.3.5624 | 2026-11-15 | false | logic |  | no | A trade invite card and a friend request card go every time again (no 5-second pace a target). |
 | `leaderidleat` | worker | switch | v2.3.4378 | 2026-11-10 | false | logic |  | no | The party leader's idle clock counts only a `seen` above 0, as before. |
 | `partydoor` | worker | switch | v2.3.5212 | 2026-11-14 | false | logic |  | no | A player can be put in a party that does not list them, as the lines before the party door could have (nothing does today). |
+| `?partydoor` | page | switch | v2.3.5529 | 2026-11-17 | =0 | logic |  | no | The phone's party takes any write its own code asks again (a roster that is no record, a clear that writes one), as the lines before the party's page door; every caller writes what the door allows today. |
 | `partykeep` | worker | switch | v2.3.3276 | 2026-10-17 | false | logic |  | no | Parties are not kept: the old cap and the away window remove a dropped member. |
 | `posedoor` | worker | switch | v2.3.5216 | 2026-11-15 | false | logic |  | no | A held pose takes any id a caller asks, and the dead can be written posing, as the line before the pose door could have (the phone's pose handler still checks both first). |
 | `power` | worker | switch | v2.3.5481 | 2026-11-14 | false | logic |  | no | Un-advertises the power index: no board report carries one, so the Power board empties as players report and the other boards are as they were. |

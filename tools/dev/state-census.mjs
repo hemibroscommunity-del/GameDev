@@ -2499,7 +2499,9 @@ async function pageDoors() {
     const P = await import(pathToFileURL(join(ROOT, 'src', 'state', 'phases.js')).href);
     return (P.PHASES || []).filter((r) => r && r.side === 'page' && r.status === 'door' && typeof r.field === 'string'
       && r.field.startsWith('S.') && typeof r.fn === 'string' && typeof r.file === 'string')
-      .map((r) => ({ field: r.field.slice(2), fn: r.fn, file: r.file }));
+      /* v2.3.5529: and each note the door writes beside its field (a row's `notes`, e.g. the duel's S._activeDuel) */
+      .flatMap((r) => [r.field, ...(Array.isArray(r.notes) ? r.notes : [])].filter((x) => typeof x === 'string' && x.startsWith('S.'))
+        .map((x) => ({ field: x.slice(2), fn: r.fn, file: r.file })));
   } catch (e) { return []; }
 }
 /* v2.3.5219 (card L PR 5, the harvest's page door): every call of a page
