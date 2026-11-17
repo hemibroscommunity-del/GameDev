@@ -87,6 +87,13 @@ Found by the architecture review (2026-10-17), reproduced on the real room.
   - `newersave: false` in the live flags lets the join through. Its saves
     then keep the newer `_v`, so the newer worker does not migrate the blob a
     second time.
+  - v2.3.5704 (card SEC PR 5): ...and keep the fields this worker does not
+    know. The record as it was read is kept by player at the load
+    (`_rpgNewerKept`), and `_saveRpg`'s put spreads it first: every field of
+    this worker's list is written from the live state over it, and the
+    newer version's own fields go through as they were read (before, the
+    save dropped them and the kept `_v` meant no migration put them back).
+    Memory only. Kill switch `newerkeep: false`. `newerkeep.test.mjs`.
 - `migrations.test.mjs`, the last section, plays both through the real
   load, join and save.
 

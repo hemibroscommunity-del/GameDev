@@ -87,6 +87,14 @@ export const WEAPON_STASH_CAP_LEGACY = 8;
 let _gearCap = GEAR_STASH_CAP;
 export function gearStashCap() { return _gearCap; }
 export function setGearStashCap(n) { _gearCap = Number.isFinite(n) && n > 0 ? Math.floor(n) : GEAR_STASH_CAP; }
+/* v2.3.5703 (card SEC PR 4): THE CUTS' CAP.  `disable_bigbags` lowers
+   gearStashCap() to 32, and the cuts rule 3 calls "the cuts that remain"
+   (the join's, the save's, the migration's) ran at it: a player's 48 pieces
+   of a list became 32 on file at their next login.  A cut of what is STORED
+   runs at the normal cap always; the lowered one only bounds what a give
+   (the stashes' door, stash.js) or a claim may fill.  No kill switch, for
+   rule 3's reason: one would only bring back a cut that destroys gear. */
+export function gearStashKeepCap() { return GEAR_STASH_CAP; }
 
 /* The five fields, in one place, because three files have to agree on
    them: the fixed field list (_saveRpg), the echo (_sendPlayerState)
@@ -171,7 +179,7 @@ export function normalizeGearStashes(blob) {
        Either way the field lands as an empty list rather than being left
        for the next reader to guess at.  v2.3.5281: one set through the
        stashes' door, either way */
-    const next = !Array.isArray(cur) ? [] : cur.filter((e) => e && typeof e === 'object' && !Array.isArray(e)).slice(0, gearStashCap());
+    const next = !Array.isArray(cur) ? [] : cur.filter((e) => e && typeof e === 'object' && !Array.isArray(e)).slice(0, gearStashKeepCap());   /* v2.3.5703: a stored list, the cuts' cap */
     if (Array.isArray(cur) && next.length === cur.length) continue;
     stashSet(blob, f, next, 'gear_migrate');
     changed = true;
@@ -386,7 +394,7 @@ function healGradeFromClaim(field, heldPiece, claimedPiece) {
 }
 
 export function mergeStashLists(field, held, claimed, report) {
-  const out = Array.isArray(held) ? held.slice(0, gearStashCap()) : [];
+  const out = Array.isArray(held) ? held.slice(0, gearStashKeepCap()) : [];   /* v2.3.5703: what is held, the cuts' cap */
   if (!Array.isArray(claimed) || !claimed.length) return out;
   /* Signature -> the indexes in `out` holding it, in order.  An index
      list rather than a bare count (v2.3.2527) because a matched pair
@@ -411,7 +419,7 @@ export function mergeStashLists(field, held, claimed, report) {
     else healGradeFromClaim(field, out[idxs[taken]], g);
     takenCounts.set(s, taken + 1);
   }
-  return out.slice(0, gearStashCap());
+  return out.slice(0, Math.max(gearStashCap(), Math.min(held && held.length || 0, gearStashKeepCap())));   /* v2.3.5703: a claim fills to the give cap; what was held stays */
 }
 
 /* Which provenance slot each stash list belongs to (gearprov.js).  Written
@@ -557,7 +565,7 @@ export const gearStashMethods = {
       const strictSan = (g) => sanitizeStashList(f, [g], true, amuletSan)[0] || null;
       const ownSan = (g) => sanitizeStashList(f, [g], false, amuletSan)[0] || null;
       const own = stored ? stored[f] : ps[f];
-      stashSet(ps, f, this._gearProvResolveList(playerId, slot, Array.isArray(own) ? own.slice(0, gearStashCap()) : [], ownSan, !!stored), 'gear_join_own');   /* v2.3.5281 */
+      stashSet(ps, f, this._gearProvResolveList(playerId, slot, Array.isArray(own) ? own.slice(0, gearStashKeepCap()) : [], ownSan, !!stored), 'gear_join_own');   /* v2.3.5281 */
       /* GEAR_STASH_SEED_KEYS has no amuletStash entry on purpose
          (v2.3.2527 finding 3), so that list simply has no claim to read. */
       const key = GEAR_STASH_SEED_KEYS[f];

@@ -77,6 +77,20 @@ const JOIN_PRESENCE_KEYS = ['x', 'y', 'd', 'z'];
    inherited members (handoff rule: Object.create(null) or Map for such maps;
    this gate is the backstop for the ones nobody audited). */
 const MAGIC_IDS = new Set([...Object.getOwnPropertyNames(Object.prototype), 'prototype']);
+/* v2.3.5701 (card SEC PR 2): THE ID'S FORM.  MAGIC_IDS asked only of strings:
+   a list, a number, a boolean or an object went on to write `auth:` and
+   `rpg:` under its string form (`rpg:[object Object]`), two sessions could
+   share one character ([1] and "1"), and the owner's kick, freeze and silence
+   answered "not online".  Every id the game makes fits this (`bp_` ids, a
+   guest's base-36 random, the bots' and the suites': the census in
+   test/joinid.test.mjs).  Undefined and null are a join with no id (today's
+   way, not this gate's).  KILL SWITCH `joinidform: false`. */
+const JOIN_ID_FORM = /^[A-Za-z0-9_]{1,64}$/;
+function joinIdMalformed(flags, id) {
+  if (id === undefined || id === null) return false;
+  if (flags && typeof flags === 'object' && Object.prototype.hasOwnProperty.call(flags, 'joinidform') && !flags.joinidform) return false;
+  return typeof id !== 'string' || !JOIN_ID_FORM.test(id);
+}
 /* v2.3.2445: EXPORTED so the suites can be driven off it rather than off a
    literal copy.  Two literal arrays in anticheat and thirteen hand-written
    checks in identity had drifted from this list -- `sb` was never asserted at
@@ -673,7 +687,8 @@ export const joinMethods = {
        and the week's FIRST depositor won the whole pool every time (1 ticket
        against 400: 40 of 40 draws, reproduced on main).  The gate protects
        the maps nobody audited, so it names them all (MAGIC_IDS). */
-    if (typeof msg.id === 'string' && MAGIC_IDS.has(msg.id)) {
+    if ((typeof msg.id === 'string' && MAGIC_IDS.has(msg.id))
+        || joinIdMalformed(this._liveFlags, msg.id)) {   /* v2.3.5701: and an id not of the id's form, the same answer (card SEC PR 2) */
       try { this._send(ws, { type: 'join_rejected', reason: 'auth' }); } catch {}
       try { ws.close(4003, 'auth'); } catch {}
       this._playerLeaves(ws, 'refused');   /* v2.3.4830: the session door (leave.js) */

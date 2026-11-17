@@ -4,7 +4,9 @@
  *
  *   a. a frame of its own whose handler throws reached the runtime as the
  *      room's own uncaught error (a bundle's part was caught: index.js
- *      webSocketMessage).  Now it is caught and logged as the bundle's
+ *      webSocketMessage; the red team's `{ toString: 1 }` where a scalar goes:
+ *      gamble_request, jackpot_deposit, ace_flip_request ...).  Now it is
+ *      caught and logged as the bundle's
  *      part is: the message is dropped, the socket and the room go on;
  *   b. a Workshop `dungeon_start` (no `entrance`) was taken wherever the
  *      player stood, out in a land mid-fight too (dungeon.js).  Now it needs
@@ -27,6 +29,24 @@ function check(name, cond, detail) {
 const quiet = async (f) => { const e = console.error, w = console.warn; const logged = []; console.error = (...a) => logged.push(a.join(' ')); console.warn = () => {}; try { await f(); } finally { console.error = e; console.warn = w; } return logged; };
 
 /* ── a. a frame of its own that throws ── */
+{
+  /* the red team's shape (2026-11-17): the VALUE `{ toString: 1 }` (valid
+     JSON, past the wire door) where a handler takes a scalar: `Number()`,
+     `String()` or a key of it throws "Cannot convert object to primitive
+     value".  Ten types did; three of them here, each a frame of its own. */
+  const room = await openRoom(makeStorage());
+  const ws = fakeWs('r');
+  await join(room, ws, 'bp_tg_r', { loginTaken: true });
+  const BAD = { toString: 1 };
+  for (const [type, payload] of [['gamble_request', { amount: BAD }], ['jackpot_deposit', { amount: BAD }], ['ace_flip_request', { bet: BAD, amount: BAD }]]) {
+    let escaped = null;
+    const logged = await quiet(async () => {
+      try { await room.webSocketMessage(ws, JSON.stringify({ type, payload })); await settle(); } catch (e) { escaped = String(e && e.message); }
+    });
+    check('a. ' + type + ' with { toString: 1 } in its payload: the throw does not reach the runtime', escaped === null, escaped);
+    check('a. ...logged once, as a bundle\'s part is', logged.filter((l) => l.includes('[message] ' + type + ' threw')).length <= 1 && room.sessions.has(ws), logged.slice(0, 2));
+  }
+}
 {
   const room = await openRoom(makeStorage());
   const ws = fakeWs('a');
