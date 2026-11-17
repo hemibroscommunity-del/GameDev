@@ -1,6 +1,6 @@
 card: O
 branch: claude/plan-o-16-cliplows (one branch a PR; begun from #1952's head)
-prs: #1787, #1792, #1794, #1800, #1814, #1815, #1832, #1841, #1836, #1850, #1854, #1896, #1915, #1929, #1937 (merged); #1952 (5239), #1970 (5232), #1974 (5233): ready; #1977 (5680): ready
+prs: #1787, #1792, #1794, #1800, #1814, #1815, #1832, #1841, #1836, #1850, #1854, #1896, #1915, #1929, #1937, #1952 (merged); #1970 (5232), #1974 (5233): ready; #1977 (5680): ready
 state: ready
 
 ## Done
@@ -20,9 +20,9 @@ state: ready
 
 ## Next
 
-- #1952 (5239), #1970 (5232, PR 12), #1974 (5233, PR 13): ready.
-- #1977 (5680, ready, on #1952; O's second block, the planner's word): #1952's lows.
-- PR 11 (5231): P's files free; the planner asked whether it is still O's.
+- #1970 (5232, PR 12), #1974 (5233, PR 13): ready; #1952 merged.
+- #1977 (5680, ready; O's second block, the planner's word): #1952's lows.
+- PR 11 (5231): next (P's files free), then stop.
 
 ## Found
 
