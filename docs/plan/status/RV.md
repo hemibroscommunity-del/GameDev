@@ -20,8 +20,7 @@ state: ready
 - PR 9 (5809): MS-5, MS-6 (`offerpend`, `leftoverheal`).
 - PR 11 (5811): friends.js ACC-5, SEC-F4 (`friendfix`).
 - PR 14 (5814): S6, S7 (`cleanmore`, `namestaff`). 7 FAIL on main.
-- Then: the rewind's words, the Test panel's pass words, S3 and `track`'s
-  half (after card L's index.js).
+- Then: the rewind's words, the pass words, S3 and `track` (after L).
 
 ## Found
 
