@@ -304,11 +304,13 @@ export const persistenceMethods = {
         if (w && typeof w.catch === 'function') w.catch(() => {});
       } catch (e) {}
     }
-    /* v2.3.5702: the record built first, so a vault owed rides its put
-       (below); a record that cannot be built is not written, as before */
-    let _rec;
+    /* v2.3.5702 (card SEC PR 3): a vault whose put the storage refused is
+       put again HERE, before the blob's own put and with no await between
+       them (the aponce mark's way above): the two records land together or
+       not at all (bank.js A VAULT OWED; `bankretry`) */
+    if (this._bankOwed) { const _owed = this._bankOwed(playerId); if (_owed) this._bankRetryPut(playerId, _owed); }
     try {
-      _rec = {
+      await this.state.storage.put('rpg:' + playerId, {
         coins: ps.coins || 0,
         inventory: ps.inventory || {},
         lifeSkills: ps.lifeSkills || {},
@@ -454,14 +456,7 @@ export const persistenceMethods = {
            sitting card goes inside it, under a key of its own: a third
            field is refused (migrations.test §econ). */
         _econ: econClean(ps._econ),
-      };
-    } catch (e) { return; }
-    /* v2.3.5702 (card SEC PR 3): a vault whose put the storage refused rides
-       this put, both records in one (bank.js A VAULT OWED; `bankretry`) */
-    const _owed = this._bankOwed ? this._bankOwed(playerId) : null;
-    try {
-      if (_owed) await this._bankWithSave(playerId, _owed, _rec);
-      else await this.state.storage.put('rpg:' + playerId, _rec);
+      });
     } catch (e) {}
   },
 

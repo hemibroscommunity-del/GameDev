@@ -74,9 +74,10 @@ then was in neither. Now:
 
 - a vault whose put was refused is **owed** (`bank.js` `_bankWatch`,
   `_bankOwed`);
-- the character's next save carries it in the **same put**, both records in
-  one (`persistence.js` `_saveRpg` through `_bankWithSave`): they land
-  together or not at all;
+- the character's next save puts it again in the **same synchronous run**
+  as its own put, no await between (`persistence.js` `_saveRpg` through
+  `_bankRetryPut`; the aponce mark's way): they land together or not at
+  all;
 - the leave saves while one is owed, before the copy goes (`leave.js`,
   `linger.js`). After that save the copy goes whether the put landed or not:
   refused too, both records stand on file as they were before the move (the

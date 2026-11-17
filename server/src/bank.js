@@ -128,9 +128,9 @@ export const bankMethods = {
      memory and nothing wrote the vault (the leave forgot its copy), so a
      withdrawal's gold was in the purse AND still in the vault on file, and
      a deposit made then was in neither.  Now a vault whose put was refused
-     is OWED: the character's next save carries it in the SAME put
-     (persistence.js _saveRpg, through _bankWithSave: one write, handoff
-     rules 5 and 7), the leave saves while one is owed before it forgets the
+     is OWED: the character's next save puts it again in the SAME run as its
+     own put, no await between (persistence.js _saveRpg, through
+     _bankRetryPut: one write, handoff rules 5 and 7), the leave saves while one is owed before it forgets the
      copy (leave.js, linger.js), and the bank answers `paused`.  A refused
      put is counted where card A counts every one (roomrow.js); nothing is
      counted here.  No write in the ordinary case: the ordinary save is the
@@ -162,15 +162,16 @@ export const bankMethods = {
     return (v.owedGen || 0) > (v.okGen || 0) ? v : null;
   },
 
-  /** The character's save with the vault it owes: ONE put of both records. */
-  _bankWithSave(pid, v, rec) {
-    const w = this.state.storage.put({ ['rpg:' + pid]: rec, ['bank:' + pid]: vaultRecord(v) });
+  /** The vault `pid` owes, put again by the character's save, in its run. */
+  _bankRetryPut(pid, v) {
+    let w = null;
+    try { w = this.state.storage.put('bank:' + pid, vaultRecord(v)); } catch (e) { return; }
+    if (w && typeof w.catch === 'function') w.catch(() => {});
     this._bankWatch(v, w, null);
     const g = v.gen;
     v.retry = g;
     const done = () => { if (v.retry === g) v.retry = 0; };
     if (w && typeof w.then === 'function') w.then(done, done); else done();
-    return w;
   },
 
   _bankForget(pid) {

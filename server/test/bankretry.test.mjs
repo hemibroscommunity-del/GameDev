@@ -7,7 +7,8 @@
  * and nothing ever wrote the vault (the leave drops its copy), so a
  * withdrawal's gold was in the purse AND still in the vault on file, and a
  * deposit made then was in neither.  Now a vault whose put was refused is
- * OWED: the character's next save carries it in the same put (one write),
+ * OWED: the character's next save puts it again in the same synchronous
+ * run as its own put, no await between (one write),
  * the leave saves while one is owed, and the bank answers `paused`.
  *
  *   1. A WITHDRAWAL in a refusal: answered `paused` after its ok; the file
@@ -51,9 +52,10 @@ const op = () => 'br-' + (++opN);
 async function world(flags, seed) {
   const st = makeStorage(seed || new Map([['rpg:' + PID, rec()]]));
   const inner = st.storage.put;
-  const ctl = { refuse: false, puts: [] };
+  const ctl = { refuse: false, puts: [], runs: [] };
   st.storage.put = function (...a) {
     ctl.puts.push(typeof a[0] === 'string' ? [a[0]] : Object.keys(a[0] || {}));
+    ctl.runs.push(st.batches() + (ctl.refuse ? 0.5 : 0));   /* puts of one synchronous run share a number (testroom.mjs: a run is a batch) */
     return ctl.refuse ? Promise.reject(new Error('refused')) : inner.apply(this, a);
   };
   const room = await openRoom(st, flags);
@@ -156,9 +158,10 @@ async function withdrawCase(flags) {
   await W.send('bank_withdraw', { kind: 'gold', n: 100, opId: op() });
   W.ctl.refuse = false;
   W.P._regenDirty = false;   /* nothing else for the leave to save */
-  W.ctl.puts.length = 0;
+  W.ctl.puts.length = 0; W.ctl.runs.length = 0;
   await W.leave();
-  check('3. a leave after it recovers writes purse and vault in one put', W.ctl.puts.some((k) => k.includes('rpg:' + PID) && k.includes('bank:' + PID)), W.ctl.puts);
+  const ri = W.ctl.puts.findIndex((k) => k[0] === 'rpg:' + PID), bi = W.ctl.puts.findIndex((k) => k[0] === 'bank:' + PID);
+  check('3. a leave after it recovers writes purse and vault in one run (no await between)', ri >= 0 && bi >= 0 && W.ctl.runs[ri] === W.ctl.runs[bi], { puts: W.ctl.puts, runs: W.ctl.runs });
   const { sum } = await afterRestart(W.st);
   const u = unexplained(start, sum);
   check('3. ...(800, 200) and the sum is unchanged', u.gold === 0 && W.file().coins === 800 && W.file().vault === 200, { u, f: W.file() });
