@@ -287,6 +287,12 @@ const HPBAR_FLASH_MS = 160;   /* white flash on damage */
    m._popupTopOff -> combatHelpers.monsterPopupY(). */
 const POPUP_BAR_CLEAR = 34;
 
+/* v2.3.2925: display px the carried greatsword shifts right while its grip
+   hole is on, so the grip runs under the middle of the hand (see the snap block
+   in _updatePlayer).  Keyed pose-facingIdx; each one picked by sweeping it
+   in-game.  jog S: the grip slanted out of the fist.  idle S / SE (owner:
+   "fingers around the grip"): the grip hung mostly left of the fingers.
+   window.__btGripNudge = { 'stand-2': 3, ... } overrides per key. */
 function gripNudgeX(pose, facingIdx) {
   const k = pose + '-' + facingIdx;
   try {
@@ -951,6 +957,18 @@ const TRAIT_VER = '2.3.3590';   /* v2.3.2174: de-fringe sweep across the trait s
    and any future category share one loader.  Each entry owns its own
    per-direction texture set + meta. */
 const _traitCache = {};  // `${category}/${id}` -> { tex:{east,...}, meta, loadStarted }
+/* ═══ v2.3.3606: A PIECE THAT COULD NOT BE LOADED IS TRIED AGAIN WHILE WORN ═══
+   The owner: "Some traits will disappear" -- a bro bald on one facing.  The
+   bounded retry below (v2.3.1305 / v2.3.1382: two more tries, 2 s and 6 s
+   on) was the end of it: a facing or a meta.json that failed three times was
+   given up for the whole session, so a few bad seconds of a phone's
+   connection during the loading screen (which asks for every piece in the
+   catalog at once) left that facing bald until a reload.  Now a piece given
+   up on is tried again, a round of three tries each time, LATER and only
+   while something still asks for it (_ensureTraitLoaded runs every frame for
+   every piece worn on screen): 5 s after the round that gave up, then 10,
+   20, 40, and every minute after.  A piece nobody wears asks for nothing.
+   `?traitretry=0` is the game as it was. */
 let _traitRetryOn = true;
 try { if (typeof location !== 'undefined' && /[?&]traitretry=0\b/.test(location.search || '')) _traitRetryOn = false; } catch (e) { /* on */ }
 /* v2.3.3865: P1's off-ramp for every art loader that asks again (`?retrylooks=0`), read here too */
@@ -1313,6 +1331,10 @@ function bodyDirScale(pose, dir) {
    The neutralized scaffolding (functions returning 1.0 multiplied into every
    scale) was deleted in the v2.3.688 cleanup; history has the tuned maps. */
 
+/* v2.3.1354: IDLE (stand pose, every facing — a hat that reads small
+   idling east reads small on every idle facing; per-dir splits would
+   make the hat pop while turning) corrections from the same review:
+   bucket-hat and fedora +10% and 2px down. */
 function hatPoseTune(hatId, pose, dir) {
   if (pose === 'jog' && dir === 'east') return JOG_EW_HAT_TUNE[hatId] || null;
   if (pose === 'stand') return STAND_HAT_TUNE[hatId] || null;
@@ -1925,6 +1947,108 @@ function _remoteBodyArtBuild(other, mirror) {
     : null;
 }
 
+/* ═══ v2.3.2023: THE CAPE ═══
+ * A full-frame sticker, so it takes the BODY SPRITE'S transform exactly as a
+ * full-frame armour piece does below — import_cape_green.py already fitted
+ * each frame into a 256 frame against the real stand-<dir> body, so there is
+ * no anchor, no nudge table and no per-facing exception to get wrong.  The
+ * mirror is free: sb.scale.x already carries its sign for W / NW / SE.
+ *
+ * HIDDEN DURING ATTACKS, ON PURPOSE — AND `pose` IS NOT WHAT SAYS SO.
+ * During a swing or a bow shot the real body is HIDDEN and the whole figure is
+ * redrawn by a stand-in in another layer (effectsRenderer, nodeLayer), and the
+ * trap v2.3.1784 records is that `pose` STILL READS 'stand' or 'jog'
+ * throughout.  So a pose list cannot catch a swing: measured, the pose never
+ * left 'stand' across a full attack.  The load-bearing test is
+ * `sb.visible` — is the real body being drawn at all — which tracks the
+ * stand-in swap directly instead of inferring it.  The pose list below is
+ * belt-and-braces for the poses that DO rename themselves (dodge, pickup),
+ * and on its own it would have been the back shield's bug over again.
+ *
+ * A sprite that keeps drawing against a body that is no longer there hangs in
+ * mid-air beside the swing.  The shield had to be drawn TWICE to fix that,
+ * which means two renderers holding one piece of geometry, and "the moment a
+ * value is copied into two renderers it starts to drift".  For a cosmetic
+ * cape that is not worth it: a swing is a few frames, and a missing cape
+ * reads far better than a floating one.
+ *
+ * ═══ v2.3.2190: ...AND THE STAND-IN NOW WEARS ONE OF ITS OWN ═══
+ * Owner: "the attack animations need to have the cape anchored on the player's
+ * head to look right."  Everything above still holds and none of it changes:
+ * THIS path stays off during an attack, because there is still no body here to
+ * hang a cape on.  What the owner's word "anchored" points at is that the
+ * stand-in HAS a known anchor -- its own per-frame crown, out of crowns.json --
+ * and hats, hair, beards and the hair clip have all ridden it since v2.3.867.
+ * So the cape is not a second copy of THIS geometry; it is one more sprite pair
+ * on an anchor that already exists and is already maintained.  See
+ * placeStandInCape, and mp-capeattack for the assertions.
+ *
+ * ═══ v2.3.2129: WHICH OF THESE WERE ACTUALLY HIDING ANYTHING ═══
+ * Owner: "Add it to all the animations as well" -> "yes do the free 8".
+ *
+ * The list above was written defensively at v2.3.2023, when the cape was one
+ * facing old and the question was only "where can it definitely not go
+ * wrong".  Ten poses went in.  Read against the renderer, they are three
+ * different things and only one of them is a reason:
+ *
+ *   STAND-IN POSES — chop, cook, fire (and swing, bowshot).  The real figure
+ *   is replaced by a whole separate sprite in another layer and the body
+ *   container is hidden outright (`_chopHide`, line ~7703; the peer path's
+ *   `_rexStandIn`).  These stay listed, but note they were never doing the
+ *   work: the container is invisible, so its cape child is too, and `pose`
+ *   does not even read 'chop' while chopping.  `sb.visible` is what actually
+ *   holds the line here, exactly as the paragraph above says.
+ *
+ *   REAL-BODY POSES — dodge, mine, fish, pickup, hit.  These draw the
+ *   player's own body sprite out of a real sheet, and the cape rides that
+ *   sprite's transform like any other full-frame layer.  Nothing was wrong
+ *   with them; they were listed because nobody had looked yet.  REMOVED, so a
+ *   cape you paid for does not vanish every time you take a hit or bend down
+ *   for loot.
+ *
+ * That is five poses back, not the eight I first told the owner — chop, cook
+ * and fire only LOOKED free.  Their entries stay because deleting them would
+ * invite the next reader to re-derive all of this. */
+
+/* ═══ v2.3.2024: THE CAPE TRAILS WHEN HE RUNS ═══
+ * Owner: "The cape needs to be rotated so the back of the character doesn't
+ * stick out while running."
+ *
+ * The art is a standing cape, hanging straight down.  A running figure leans
+ * into the direction of travel, so a vertical cape stops covering the back and
+ * the character's shoulders and arm show behind it.  Tilting the cape the
+ * other way — the hem swinging back along the line of travel — both covers the
+ * back and reads as the cape streaming behind him, which is what a cape does.
+ *
+ * Radians, per BASE facing, applied only while jogging.  The sign follows the
+ * direction of travel: running east the hem trails west, so the bottom swings
+ * left; running southwest it trails north-east, so the bottom swings the other
+ * way.  North and south move toward or away from the camera, where a
+ * horizontal tilt would be a lie, so they stay at zero and rely on the crown
+ * offset alone.
+ *
+ * A TABLE, not a formula, because the five facings are drawn at five different
+ * three-quarter angles and the amount that reads correctly is not a projection
+ * of anything — it is a look.  Mirrored facings negate it, for the same reason
+ * the body's own scale.x carries its sign. */
+
+/* ═══ v2.3.2126: AND SLIDE IT BACK ALONG THE LINE OF TRAVEL ═══
+ * Owner, picking the hardest angle off the ladder: "Last cape frame most
+ * angled is correct but needs to nudge left to fit."
+ *
+ * Rotation alone cannot put it there, and the reason is what the pivot IS. The
+ * cape turns about the shoulders, so the hem swings one way and the HOOD
+ * swings the other -- and at the angle the owner chose the hood has come far
+ * enough forward to sit over the face. Sliding the whole sprite back along the
+ * line of travel re-seats the hood on the head and carries the hem with it,
+ * which a bigger or smaller angle cannot do: those trade the two ends against
+ * each other, and this moves both at once.
+ *
+ * In 256-space, applied only while jogging, and MIRRORED like the tilt -- the
+ * offset is "backwards along the direction of travel", not "left on screen",
+ * so running west it has to go the other way or the cape would lead him. Same
+ * sign convention the tilt already uses, for the same reason. */
+
 /* ═══ v2.3.2125: THE TWO NUMBERS THIS KEEPS BEING ASKED TO CHANGE ═══
  * The tilt has now been re-asked for twice ("angled more with jog", v2.3.2025;
  * "angled more aggressively so the back of his body doesn't show behind it",
@@ -2294,6 +2418,14 @@ function _placeGear(display, equip, pose, dir, frameIdx, legsFrom) {
      hand-drawn depth (arm over waist, plate over seam) applies to the chain
      automatically.  Other poses keep their baked belts (backlog). */
 }
+/* v2.3.608: per-region body sub-sprites.  Helmet/chest/legs are independent
+   slots; the body is drawn as three region sprites (head / torso+arms / legs)
+   cut from the SAME body frame, so they always reconstruct the body exactly.
+   A region is shown only when its slot's armour is OFF (covered regions are
+   hidden -> no underbody poke, no mask).  The body regions use the NAKED scale
+   (independent lever) while the gear keeps the armour-fit scale, bottom-aligned
+   to the same feet, so a bare region reads at naked proportions even next to a
+   plate piece.  Row splits are frame fractions measured off the sheets. */
 const REGION_ROWS = {
   head: [0, Math.round(256 * BODY_NECK_FRAC)],
   torso: [Math.round(256 * BODY_NECK_FRAC), Math.round(256 * BODY_WAIST_FRAC)],
@@ -5478,6 +5610,13 @@ const PLAYER_HP_NUM_STYLE = {
   dropShadow: { color: '#000000', blur: 0, distance: 1, alpha: 0.9 },
   align: 'center',
 };
+/* HP ring widget (v2.3.458): replaces the above-head heart.  A quartile-
+   colored progress arc drains clockwise from 12 o'clock; four ~1.5px gaps
+   slice it into quadrants that land exactly on the 25/50/75% color
+   thresholds, so the arc flips color as it recedes past each gap.  Muted-
+   gray center holds the large current HP over a small muted max.  (A thin
+   ring *around* the heart was tried in v2.3.249 and reverted; this is the
+   full replacement widget.) */
 const HP_RING_BAND = 5;
 const HP_RING_CENTER_R = HP_RING_OUTER_R - HP_RING_BAND - 2; /* gray center disk */
 const HP_RING_STROKE_R = HP_RING_OUTER_R - HP_RING_BAND / 2; /* arc centerline */
@@ -5586,6 +5725,26 @@ function heldWeaponInFront(wpnType, facingIdx, inFrontBase) {
   return inFrontBase;   /* greatsword: point-up, clears the torso -- E/SE only */
 }
 
+/* ═══ v2.3.2911: THE FIST GOES OVER THE HANDLE ═══
+ * Owner: "East, Southwest, northeast the characters hand should be over the
+ * handle."  Measured before changing anything (a red dot drawn at the grip
+ * anchor): the anchor WAS on the hand at all three -- the fault was layering.
+ * At E and NE the carried greatsword is drawn above the body, so the handle
+ * covered the fist whole; at SW it was drawn behind (v2.3.2516), so the arm
+ * swallowed the handle and only the crossguard showed, beside the hand.
+ *
+ * The fix is a HOLE, not a stamp: the blade is inverse-masked by a small
+ * circle at the grip, so whatever the character has at the hand -- skin, a
+ * sleeve, a gauntlet, a recolour -- shows through on top of the handle, with
+ * the handle visible either side of the fist.  The v2.3.185 hand-cap did this
+ * by cloning BODY pixels, which is why it had to be switched off under a
+ * shirt (v2.3.749) and so never ran for most players.
+ *
+ * SW: the carried pose comes back in front for this -- the blade hangs away
+ * from the body there, so the fist is the only overlap.  The SWING keeps the
+ * v2.3.2516 behind-the-body order (swingActive is excluded; the swing's own
+ * z-order lives in effectsRenderer).  Greatsword only: its per-facing art is
+ * the one this was measured on. */
 /* ═══ v2.3.2925: ...BUT NOT JOGGING SOUTHWEST ═══
    Owner: "Southwest jog the sword needs to be occluded by the players body."
    The hole is what pulls the carried SW blade in front (v2.3.2911, via
@@ -5962,6 +6121,76 @@ function createMonsterDisplay(monster) {
   return container;
 }
 
+/* ═══ v2.3.1564/1565: the name + level plate under a player's feet ═══
+
+   Owner: "a slick minimalist pill that shows player name and level
+   beneath that, beneath the character at all times", then "make it
+   consistent and beneath other players too".
+
+   The local player had NO world nameplate at all — the above-head one was
+   hidden in favour of a top-right identity card, and that card was retired
+   in v2.3.1294, so the readout silently went missing.  Remote players kept
+   a bare floating name above the head.  Both now use THIS, so there is one
+   plate implementation rather than two that drift.
+
+   Below the feet is also the safer anchor: the old above-head plates were
+   pushed to -38 / -42 specifically to clear a sword tip that pokes over
+   the head on extended-arm frames.  Nothing to collide with down here.
+
+   Planted, not bobbing.  Every other child of these containers adds bobY
+   so it rides the walk cycle; a label bouncing under the boots reads as
+   loose, so this one keeps a fixed y and stays stuck to the ground.
+
+   The Graphics is rebuilt ONLY when the text changes (_pillKey cache).
+   A rounded-rect rebuild at 60fps for a label that changes on level-up
+   would be pure waste — and with up to 50 players in a room it would be
+   50x that waste. */
+/* v2.3.1953: `host` is where the pill NODE is added; `container` still owns the
+   refs.  Player displays pass their _uiLayer so the plate rides the build-scale
+   correction with the rest of the HUD; monsters (and any caller that omits it)
+   are unchanged. */
+/* v2.3.1953: the v2.3.1887 hide-by-EXCEPTION sweep, made to descend one level.
+   The HUD moved into display._uiLayer (see createPlayerDisplay), so a flat pass
+   over display.children would have seen ONE opaque child in place of eighteen
+   and hidden the name plate and the vitals with it.  Running the same keep-set
+   over both levels leaves the rule literally unchanged: everything that is not
+   named survives death nowhere, and everything named survives wherever it
+   lives. */
+/* ═══ v2.3.1953: HEIGHT AND FRAME, APPLIED IN ONE PLACE ═══
+ *
+ * Owner: "is there a way to add 'height' to your character as an option?" and
+ * then "Maybe also frame wideness (thin, medium, large)".
+ *
+ * ── WHY THE CONTAINER AND NOT THE SPRITES ──
+ * The figure is not one sprite: it is the body, three body REGIONS, four gear
+ * layers, a shirt, hair, a beard, a hat, two shield clones, a weapon container
+ * and a block arm, and every one of them is placed from the body's transform in
+ * 256-space with per-facing anchors, nudges and dir-scales.  Scaling them
+ * individually would mean threading a second axis through every placement
+ * helper, and the first thing to go wrong would be a beard that drifts off the
+ * chin at `tall` — a silent, per-facing bug of exactly the kind this file's
+ * comment history is full of.  The display CONTAINER is above all of it, so one
+ * non-uniform scale moves the whole figure with its alignment intact, by
+ * construction rather than by care.
+ *
+ * ── THE FEET STAY ON THE GROUND ──
+ * The container's origin is the sprite CENTRE, not the boots (feet sit
+ * FEET_OFFSET=24 units below it, sheetGeometry).  Scaling about the centre
+ * would push a tall bro's boots ~3px INTO the floor and lift a short one off
+ * it.  So the display is nudged up by exactly the growth below the origin,
+ * which pins the feet to the world position the server knows about — the only
+ * point of the figure that has to agree with anything.
+ *
+ * ── AND THE HUD DOES NOT STRETCH ──
+ * display._uiLayer carries the inverse, so the name plate, level, threat
+ * skull, floating vitals and duel bar are the same size and shape on every
+ * build.  Their POSITIONS still ride the scale, which is what you want: the
+ * plate under a tall bro sits under his actual boots.
+ *
+ * Sets the scale on the display and the inverse on its ui layer, and RETURNS
+ * the lift to add to display.y — a return rather than a mutation because the
+ * caller owns that assignment and has just written the world position into it.
+ */
 /* v2.3.3580: capturePoseFrames' eight facings (screen space, +y down) and the
    sheet each is drawn from -- west, northwest and southeast are east,
    northeast and southwest mirrored, by the world */
@@ -6037,6 +6266,16 @@ export function nominalStandFigure(dir) {
   const s = bodyDirScale('stand', d) * LOCAL_BODY_SCALE * PLAYER_SIZE_MULT;
   return { bodyH: (rows.feet - rows.crown + 1) * s, footDy: (rows.feet - BODY_CELL_MID) * s };
 }
+/* ═══ v2.3.3003: A SWIMMER'S WATERLINE ═══
+   Swimming in the Wheel (game/wheelSwim.js, rendering/swimFx.js) only the
+   head is out of the water: the figure is sunk until this row is at the
+   water's surface and cut off below it.  The row is the middle of the NECK
+   -- the whole head and its hat above it, the shoulders under -- measured
+   off the bare body sheets the way BODY_ROWS is (256-frame units): each
+   standing sheet's narrowest run between the jaw and the shoulders, and the
+   jog's the median of its frames plus two (its body bobs; the head bobs in
+   the water with it).  Returned in the figure's own units, like
+   _feetOffsetUnits, with its feet and crown for the same frame. */
 export function figureSwimLine(display) {
   const pose = (display && display._animPose) === 'jog' ? 'jog' : 'stand';
   const dir = (display && display._animDir) || 'south';
@@ -8493,7 +8732,62 @@ function createOtherPlayerDisplay() {
   return container;
 }
 
+/**
+ * Manages all entity rendering.
+ */
+/* ═══ v2.3.1895: THE SPEND BARS UNDER THE CHARACTER ═══
+ * Owner: "Instead of the special attack counter I want to see what it looks
+ * like to have the mp bar below the character (name plate will disappear when
+ * mp is used).  The amount of mp used will slide right.  The resource bar will
+ * begin fading after 1 second and disappear after 2 seconds if no further mp
+ * is used.  Do the same thing for energy but beneath the mp bar.  Reserve the
+ * space for whenever mp and energy is used (they stay in those positions)."
+ *
+ * Geometry is FIXED, not laid out: MP always draws at RES_MP_Y and energy at
+ * RES_EN_Y whether or not the other is up.  That is the "reserve the space"
+ * requirement, and it is why these are two independent draws rather than a
+ * stack — a stack would slide the energy bar upward on the frames where MP is
+ * hidden, which is the jitter the request rules out.
+ *
+ * The bars sit where the NAME PLATE sits, so the plate hides while either is
+ * up.  Both therefore share one visibility answer rather than each hiding the
+ * plate on its own, or the plate would flicker back between two spends.
+ *
+ * THE SLIDING CHUNK.  On a spend, the segment between the new fill edge and
+ * the old one is kept and animated RIGHT while fading, so the amount that just
+ * left is legible as a quantity rather than as a jump.  It is measured from
+ * the CURRENT edge every frame rather than from a cached x, so a second spend
+ * mid-slide re-bases it instead of leaving two ghosts disagreeing about where
+ * the edge is.
+ */
+/* v2.3.1896 (owner: "thick white border ... black fill when it's spent ...
+   large enough so that you can fit the numbers on each bar").  The bar grew
+   from 46x4 to 66x14 to hold an 8px readout: 14 less two 2px borders leaves
+   10px of interior, and 8px of text centred in 10 is the smallest that stays
+   legible at this scale.  The width follows so "118 / 118" is not cramped
+   against the ends. */
+/* v2.3.1896c: 66x14 -> 72x16, and the readout 8px -> 10 bold (owner: "space
+   to make the numbers bolder and larger").  16 less two 2px borders leaves
+   12px of interior, which is what 10px text needs to sit centred without
+   crowding the keyline; the width follows so "118 / 118" keeps its air. */
 const RES_BORDER = 2;          /* the white keyline, drawn OUTSIDE the track */
+/* v2.3.1896b: the gap has to clear BOTH borders, not just the bar.  At
+   +3 the MP border's bottom edge (y + H + BORDER) landed 1px BELOW the
+   energy border's top (y - BORDER) and the two rounded outlines merged into
+   one lozenge — visible the moment they were photographed together.  Bar +
+   two borders + 3px of real air. */
+/* v2.3.1896c: derived from RES_MP_Y, not from a repeated literal.  It said
+   `40 + ...` while MP moved to 52, so the energy bar climbed INTO the MP bar
+   and clipped its readout — caught in the screenshot, not by the suite, which
+   only asserts enY > mpY and was still true.  Deriving it makes the two
+   impossible to separate again. */
+/* v2.3.2300: the block sheet's own aspect. His frames are 273x98, so a bar
+   drawn 76 wide is 27 tall -- taller than the 20 the old bar plus its keyline
+   occupied, which is why RES_EN_Y is re-derived below rather than left at a
+   number tuned for the old one. 76 keeps the width the owner has been looking
+   at since v2.3.1896c; the height follows the art rather than being squashed
+   into the old slot, because five blocks squeezed to 16px stop reading as five
+   things. */
 const RES_BLOCK_H = Math.round(RES_BLOCK_W * 98 / 273);
 /* Derived, never a literal -- v2.3.1896c records the energy bar climbing INTO
    the MP bar because this said `40 + ...` while MP had moved to 52, and the
@@ -8533,6 +8827,24 @@ const RES_SLIDE_MS = 420;      /* how long the spent chunk takes to leave */
    enough to the terrain to blur the empty end. */
 const RES_TRACK = 0x000000;
 const RES_BORDER_COL = 0xFFFFFF;
+/* v2.3.1897: the spent amount, as a number, gliding off the bar's right end
+   (owner: "I want the resource number spent to glide to the right of the
+   resource bar (as a negative number)").  The ghost chunk stays — it is the
+   MASS that leaves — and this is the same gesture continued past the bar's
+   edge with a figure on it, so you can read HOW MUCH left rather than
+   estimate it from a sliver.
+
+   v2.3.1898 (owner: "I saw the number appear but not gliding.  I want the
+   numbers to slowly move right then fade", and "the glide numbers need to
+   match the same timing as the resource bars for appearing and fading"):
+   it used to ride the CHUNK's clock — 13px over RES_SLIDE_MS.  420ms is
+   under a third of a second of travel across thirteen pixels, which lands
+   before the eye gets there: you see a number appear, already parked.  It now
+   drifts across the bar's WHOLE life instead, 26px over the full hold+fade,
+   so it is still moving while it fades out.  Tying it to RES_HOLD_MS +
+   RES_FADE_MS rather than a duration of its own is what makes "match the
+   bar's timing" true by construction — one clock, so the two cannot drift
+   apart when someone retunes the fade. */
 const RES_SPENT_TRAVEL = 26;   /* how far right of that it drifts */
 const RES_SPENT_GLIDE_MS = RES_HOLD_MS + RES_FADE_MS;
 

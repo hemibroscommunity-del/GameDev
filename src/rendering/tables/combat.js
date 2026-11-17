@@ -23,34 +23,8 @@
    it, and still reads as a carried sword rather than a held-out one. */
 const SOUTH_IDLE_TILT = -0.60;
 
-/* v2.3.2925: display px the carried greatsword shifts right while its grip
-   hole is on, so the grip runs under the middle of the hand (see the snap block
-   in _updatePlayer).  Keyed pose-facingIdx; each one picked by sweeping it
-   in-game.  jog S: the grip slanted out of the fist.  idle S / SE (owner:
-   "fingers around the grip"): the grip hung mostly left of the fingers.
-   window.__btGripNudge = { 'stand-2': 3, ... } overrides per key. */
 const GRIP_NUDGE_X = { 'jog-2': 2, 'stand-2': 4, 'stand-1': 2 };
 
-/* ═══ v2.3.2911: THE FIST GOES OVER THE HANDLE ═══
- * Owner: "East, Southwest, northeast the characters hand should be over the
- * handle."  Measured before changing anything (a red dot drawn at the grip
- * anchor): the anchor WAS on the hand at all three -- the fault was layering.
- * At E and NE the carried greatsword is drawn above the body, so the handle
- * covered the fist whole; at SW it was drawn behind (v2.3.2516), so the arm
- * swallowed the handle and only the crossguard showed, beside the hand.
- *
- * The fix is a HOLE, not a stamp: the blade is inverse-masked by a small
- * circle at the grip, so whatever the character has at the hand -- skin, a
- * sleeve, a gauntlet, a recolour -- shows through on top of the handle, with
- * the handle visible either side of the fist.  The v2.3.185 hand-cap did this
- * by cloning BODY pixels, which is why it had to be switched off under a
- * shirt (v2.3.749) and so never ran for most players.
- *
- * SW: the carried pose comes back in front for this -- the blade hangs away
- * from the body there, so the fist is the only overlap.  The SWING keeps the
- * v2.3.2516 behind-the-body order (swingActive is excluded; the swing's own
- * z-order lives in effectsRenderer).  Greatsword only: its per-facing art is
- * the one this was measured on. */
 /* v2.3.2925: + south (2).  Owner: "you can make it look like the players hand
    is over the sword handle jogging south.  Right now it just shows the
    floating handle with the hand behind it." */

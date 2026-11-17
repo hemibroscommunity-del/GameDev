@@ -27,18 +27,6 @@
    note in _attachNamePill. */
 const PLAYER_SIZE_MULT = 1.25;
 
-/* ═══ v2.3.3606: A PIECE THAT COULD NOT BE LOADED IS TRIED AGAIN WHILE WORN ═══
-   The owner: "Some traits will disappear" -- a bro bald on one facing.  The
-   bounded retry below (v2.3.1305 / v2.3.1382: two more tries, 2 s and 6 s
-   on) was the end of it: a facing or a meta.json that failed three times was
-   given up for the whole session, so a few bad seconds of a phone's
-   connection during the loading screen (which asks for every piece in the
-   catalog at once) left that facing bald until a reload.  Now a piece given
-   up on is tried again, a round of three tries each time, LATER and only
-   while something still asks for it (_ensureTraitLoaded runs every frame for
-   every piece worn on screen): 5 s after the round that gave up, then 10,
-   20, 40, and every minute after.  A piece nobody wears asks for nothing.
-   `?traitretry=0` is the game as it was. */
 const TRAIT_RETRY_LATER_MS = [5000, 10000, 20000, 40000, 60000];
 
 /* v2.3.1305: per-direction trait load with bounded retry.  Owner
@@ -340,10 +328,6 @@ const JOG_EW_HAT_TUNE = {
   'wizard-hat':        { mul: 1.232, dy: 3 },
 };
 
-/* v2.3.1354: IDLE (stand pose, every facing — a hat that reads small
-   idling east reads small on every idle facing; per-dir splits would
-   make the hat pop while turning) corrections from the same review:
-   bucket-hat and fedora +10% and 2px down. */
 const STAND_HAT_TUNE = {
   'bucket-hat': { mul: 1.10, dy: 2 },
   'fedora':     { mul: 1.10, dy: 2 },
@@ -412,68 +396,6 @@ const FULLSET_HEAD_SEAT = {
    it is NOT in the masked-body worn list (skin-tight, no body erase). */
 const _GEAR_SLOTS = [['shirt', '_gearShirt'], ['legs', '_gearLegs'], ['chest', '_gearChest'], ['shoulders', '_gearShoulders']];
 
-/* ═══ v2.3.2023: THE CAPE ═══
- * A full-frame sticker, so it takes the BODY SPRITE'S transform exactly as a
- * full-frame armour piece does below — import_cape_green.py already fitted
- * each frame into a 256 frame against the real stand-<dir> body, so there is
- * no anchor, no nudge table and no per-facing exception to get wrong.  The
- * mirror is free: sb.scale.x already carries its sign for W / NW / SE.
- *
- * HIDDEN DURING ATTACKS, ON PURPOSE — AND `pose` IS NOT WHAT SAYS SO.
- * During a swing or a bow shot the real body is HIDDEN and the whole figure is
- * redrawn by a stand-in in another layer (effectsRenderer, nodeLayer), and the
- * trap v2.3.1784 records is that `pose` STILL READS 'stand' or 'jog'
- * throughout.  So a pose list cannot catch a swing: measured, the pose never
- * left 'stand' across a full attack.  The load-bearing test is
- * `sb.visible` — is the real body being drawn at all — which tracks the
- * stand-in swap directly instead of inferring it.  The pose list below is
- * belt-and-braces for the poses that DO rename themselves (dodge, pickup),
- * and on its own it would have been the back shield's bug over again.
- *
- * A sprite that keeps drawing against a body that is no longer there hangs in
- * mid-air beside the swing.  The shield had to be drawn TWICE to fix that,
- * which means two renderers holding one piece of geometry, and "the moment a
- * value is copied into two renderers it starts to drift".  For a cosmetic
- * cape that is not worth it: a swing is a few frames, and a missing cape
- * reads far better than a floating one.
- *
- * ═══ v2.3.2190: ...AND THE STAND-IN NOW WEARS ONE OF ITS OWN ═══
- * Owner: "the attack animations need to have the cape anchored on the player's
- * head to look right."  Everything above still holds and none of it changes:
- * THIS path stays off during an attack, because there is still no body here to
- * hang a cape on.  What the owner's word "anchored" points at is that the
- * stand-in HAS a known anchor -- its own per-frame crown, out of crowns.json --
- * and hats, hair, beards and the hair clip have all ridden it since v2.3.867.
- * So the cape is not a second copy of THIS geometry; it is one more sprite pair
- * on an anchor that already exists and is already maintained.  See
- * placeStandInCape, and mp-capeattack for the assertions.
- *
- * ═══ v2.3.2129: WHICH OF THESE WERE ACTUALLY HIDING ANYTHING ═══
- * Owner: "Add it to all the animations as well" -> "yes do the free 8".
- *
- * The list above was written defensively at v2.3.2023, when the cape was one
- * facing old and the question was only "where can it definitely not go
- * wrong".  Ten poses went in.  Read against the renderer, they are three
- * different things and only one of them is a reason:
- *
- *   STAND-IN POSES — chop, cook, fire (and swing, bowshot).  The real figure
- *   is replaced by a whole separate sprite in another layer and the body
- *   container is hidden outright (`_chopHide`, line ~7703; the peer path's
- *   `_rexStandIn`).  These stay listed, but note they were never doing the
- *   work: the container is invisible, so its cape child is too, and `pose`
- *   does not even read 'chop' while chopping.  `sb.visible` is what actually
- *   holds the line here, exactly as the paragraph above says.
- *
- *   REAL-BODY POSES — dodge, mine, fish, pickup, hit.  These draw the
- *   player's own body sprite out of a real sheet, and the cape rides that
- *   sprite's transform like any other full-frame layer.  Nothing was wrong
- *   with them; they were listed because nobody had looked yet.  REMOVED, so a
- *   cape you paid for does not vanish every time you take a hit or bend down
- *   for loot.
- *
- * That is five poses back, not the eight I first told the owner — chop, cook
- * and fire only LOOKED free.  Their entries stay because deleting them would
- * invite the next reader to re-derive all of this. */
 /* ═══ v2.3.2516: THE ROLL AND THE LOOT BEND TAKE THE CAPE OFF AGAIN ═══
  * Owner (D6, backlog triage 2026-09-14 §5.8): "hide the cape on the dodge pose
  * INCLUDING the loot bend."
@@ -500,27 +422,6 @@ const _GEAR_SLOTS = [['shirt', '_gearShirt'], ['legs', '_gearLegs'], ['chest', '
  * `dodge` would leave the loot bend exactly as reported. */
 const _CAPE_HIDDEN_POSES = { swing: 1, bowshot: 1, chop: 1, cook: 1, fire: 1, dodge: 1, pickup: 1 };
 
-/* ═══ v2.3.2024: THE CAPE TRAILS WHEN HE RUNS ═══
- * Owner: "The cape needs to be rotated so the back of the character doesn't
- * stick out while running."
- *
- * The art is a standing cape, hanging straight down.  A running figure leans
- * into the direction of travel, so a vertical cape stops covering the back and
- * the character's shoulders and arm show behind it.  Tilting the cape the
- * other way — the hem swinging back along the line of travel — both covers the
- * back and reads as the cape streaming behind him, which is what a cape does.
- *
- * Radians, per BASE facing, applied only while jogging.  The sign follows the
- * direction of travel: running east the hem trails west, so the bottom swings
- * left; running southwest it trails north-east, so the bottom swings the other
- * way.  North and south move toward or away from the camera, where a
- * horizontal tilt would be a lie, so they stay at zero and rely on the crown
- * offset alone.
- *
- * A TABLE, not a formula, because the five facings are drawn at five different
- * three-quarter angles and the amount that reads correctly is not a projection
- * of anything — it is a look.  Mirrored facings negate it, for the same reason
- * the body's own scale.x carries its sign. */
 /* v2.3.2025: owner, "angled more with jog" -- doubled.
    v2.3.2125: owner, "angled more aggressively so that the back of his body
    doesn't show behind it" -- 1.5x again (east 0.30 -> 0.45).  Chosen off a
@@ -550,22 +451,6 @@ const _CAPE_JOG_TILT = { east: 0.75, northeast: 0.50, southwest: -0.50, north: 0
    half of the report. 10/256 = 0.039, so 0.31 puts it back where it was. */
 const _CAPE_PIVOT_Y = 0.33;   /* v2.3.2126: the picked frame's value */
 
-/* ═══ v2.3.2126: AND SLIDE IT BACK ALONG THE LINE OF TRAVEL ═══
- * Owner, picking the hardest angle off the ladder: "Last cape frame most
- * angled is correct but needs to nudge left to fit."
- *
- * Rotation alone cannot put it there, and the reason is what the pivot IS. The
- * cape turns about the shoulders, so the hem swings one way and the HOOD
- * swings the other -- and at the angle the owner chose the hood has come far
- * enough forward to sit over the face. Sliding the whole sprite back along the
- * line of travel re-seats the hood on the head and carries the hem with it,
- * which a bigger or smaller angle cannot do: those trade the two ends against
- * each other, and this moves both at once.
- *
- * In 256-space, applied only while jogging, and MIRRORED like the tilt -- the
- * offset is "backwards along the direction of travel", not "left on screen",
- * so running west it has to go the other way or the cape would lead him. Same
- * sign convention the tilt already uses, for the same reason. */
 /* v2.3.2127: owner, of the slide ladder -- "Only the furthest right frame
    looked correct", which is -28. My reading of "nudge left" had been that it
    would walk the hood off the head, and the pictures said so plainly at -20
@@ -598,90 +483,12 @@ const _CAPE_HOOD_TILT_K = 0;
 
 const _CAPE_HOOD_DX_K = 0;
 
-/* v2.3.608: per-region body sub-sprites.  Helmet/chest/legs are independent
-   slots; the body is drawn as three region sprites (head / torso+arms / legs)
-   cut from the SAME body frame, so they always reconstruct the body exactly.
-   A region is shown only when its slot's armour is OFF (covered regions are
-   hidden -> no underbody poke, no mask).  The body regions use the NAKED scale
-   (independent lever) while the gear keeps the armour-fit scale, bottom-aligned
-   to the same feet, so a bare region reads at naked proportions even next to a
-   plate piece.  Row splits are frame fractions measured off the sheets. */
 const BODY_NECK_FRAC = 0.30;
 
 const BODY_WAIST_FRAC = 0.585;
 
 const _REGION_SPR = { head: '_bodyHead', torso: '_bodyTorso', legs: '_bodyLegs' };
 
-/* ═══ v2.3.1564/1565: the name + level plate under a player's feet ═══
-
-   Owner: "a slick minimalist pill that shows player name and level
-   beneath that, beneath the character at all times", then "make it
-   consistent and beneath other players too".
-
-   The local player had NO world nameplate at all — the above-head one was
-   hidden in favour of a top-right identity card, and that card was retired
-   in v2.3.1294, so the readout silently went missing.  Remote players kept
-   a bare floating name above the head.  Both now use THIS, so there is one
-   plate implementation rather than two that drift.
-
-   Below the feet is also the safer anchor: the old above-head plates were
-   pushed to -38 / -42 specifically to clear a sword tip that pokes over
-   the head on extended-arm frames.  Nothing to collide with down here.
-
-   Planted, not bobbing.  Every other child of these containers adds bobY
-   so it rides the walk cycle; a label bouncing under the boots reads as
-   loose, so this one keeps a fixed y and stays stuck to the ground.
-
-   The Graphics is rebuilt ONLY when the text changes (_pillKey cache).
-   A rounded-rect rebuild at 60fps for a label that changes on level-up
-   would be pure waste — and with up to 50 players in a room it would be
-   50x that waste. */
-/* v2.3.1953: `host` is where the pill NODE is added; `container` still owns the
-   refs.  Player displays pass their _uiLayer so the plate rides the build-scale
-   correction with the rest of the HUD; monsters (and any caller that omits it)
-   are unchanged. */
-/* v2.3.1953: the v2.3.1887 hide-by-EXCEPTION sweep, made to descend one level.
-   The HUD moved into display._uiLayer (see createPlayerDisplay), so a flat pass
-   over display.children would have seen ONE opaque child in place of eighteen
-   and hidden the name plate and the vitals with it.  Running the same keep-set
-   over both levels leaves the rule literally unchanged: everything that is not
-   named survives death nowhere, and everything named survives wherever it
-   lives. */
-/* ═══ v2.3.1953: HEIGHT AND FRAME, APPLIED IN ONE PLACE ═══
- *
- * Owner: "is there a way to add 'height' to your character as an option?" and
- * then "Maybe also frame wideness (thin, medium, large)".
- *
- * ── WHY THE CONTAINER AND NOT THE SPRITES ──
- * The figure is not one sprite: it is the body, three body REGIONS, four gear
- * layers, a shirt, hair, a beard, a hat, two shield clones, a weapon container
- * and a block arm, and every one of them is placed from the body's transform in
- * 256-space with per-facing anchors, nudges and dir-scales.  Scaling them
- * individually would mean threading a second axis through every placement
- * helper, and the first thing to go wrong would be a beard that drifts off the
- * chin at `tall` — a silent, per-facing bug of exactly the kind this file's
- * comment history is full of.  The display CONTAINER is above all of it, so one
- * non-uniform scale moves the whole figure with its alignment intact, by
- * construction rather than by care.
- *
- * ── THE FEET STAY ON THE GROUND ──
- * The container's origin is the sprite CENTRE, not the boots (feet sit
- * FEET_OFFSET=24 units below it, sheetGeometry).  Scaling about the centre
- * would push a tall bro's boots ~3px INTO the floor and lift a short one off
- * it.  So the display is nudged up by exactly the growth below the origin,
- * which pins the feet to the world position the server knows about — the only
- * point of the figure that has to agree with anything.
- *
- * ── AND THE HUD DOES NOT STRETCH ──
- * display._uiLayer carries the inverse, so the name plate, level, threat
- * skull, floating vitals and duel bar are the same size and shape on every
- * build.  Their POSITIONS still ride the scale, which is what you want: the
- * plate under a tall bro sits under his actual boots.
- *
- * Sets the scale on the display and the inverse on its ui layer, and RETURNS
- * the lift to add to display.y — a return rather than a mutation because the
- * caller owns that assignment and has just written the world position into it.
- */
 /* ── HOW FAR THE BOOTS ARE BELOW THE DISPLAY'S ORIGIN, in container units ──
  * Derived from the numbers that already govern it rather than restated as a
  * constant: BODY_ROWS carries each facing's MEASURED foot row in 256-frame
@@ -703,16 +510,6 @@ const BODY_CELL_MID = 128;
 
 const LOCAL_BODY_SCALE = 0.421875;   /* the local player's LOCAL_SCALE, v2.3.741 */
 
-/* ═══ v2.3.3003: A SWIMMER'S WATERLINE ═══
-   Swimming in the Wheel (game/wheelSwim.js, rendering/swimFx.js) only the
-   head is out of the water: the figure is sunk until this row is at the
-   water's surface and cut off below it.  The row is the middle of the NECK
-   -- the whole head and its hat above it, the shoulders under -- measured
-   off the bare body sheets the way BODY_ROWS is (256-frame units): each
-   standing sheet's narrowest run between the jaw and the shoulders, and the
-   jog's the median of its frames plus two (its body bobs; the head bobs in
-   the water with it).  Returned in the figure's own units, like
-   _feetOffsetUnits, with its feet and crown for the same frame. */
 const NECK_ROWS = {
   stand: { south: 83, east: 82, north: 84, northeast: 79, southwest: 80 },
   jog: { south: 80, east: 92, north: 72, northeast: 82, southwest: 76 },
