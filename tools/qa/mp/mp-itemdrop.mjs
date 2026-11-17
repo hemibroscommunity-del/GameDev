@@ -195,16 +195,23 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await H.devOp(wsPort, 'dropage', aId, { ms: 121000 });
     const flashB = await waitDrop(B, (ps) => ps.some((p) => p.lootId === (p5 && p5.lootId) && p.flashing));
     const flashA = await waitDrop(A, (ps) => ps.some((p) => p.lootId === (p5 && p5.lootId) && p.flashing));
-    /* on and off: sample its alpha for a second and a half */
-    const alphas = { A: new Set(), B: new Set() };
-    for (let i = 0; i < 12; i++) {
-      for (const [k, P] of [['A', A], ['B', B]]) {
-        const ps = await drops(P);
-        const p = (ps || []).find((q) => q.lootId === (p5 && p5.lootId));
-        if (p && p.alpha != null) alphas[k].add(p.alpha);
-      }
-      await A.page.waitForTimeout(110);
-    }
+    /* on and off: its alpha read on every frame the page draws, both screens at once, until both
+       the lit and the dim half have been seen (at most 8 s of the ten it flashes for): this box
+       draws a few frames a second, so a count of reads by the clock misses one half (TRAPS §200) */
+    const sample = (P) => P.page.evaluate((id) => new Promise((resolve) => {
+      const seen = new Set(), t0 = Date.now();
+      const step = () => {
+        const ps = window.__btDrops ? window.__btDrops().piles : [];
+        const q = (ps || []).find((x) => x.lootId === id);
+        if (q && q.alpha != null) seen.add(q.alpha);
+        const arr = [...seen];
+        if ((arr.some((x) => x >= 0.9) && arr.some((x) => x <= 0.3)) || Date.now() - t0 > 8000) resolve(arr);
+        else requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    }), p5 && p5.lootId);
+    const [sa, sb] = await Promise.all([sample(A), sample(B)]);
+    const alphas = { A: new Set(sa), B: new Set(sb) };
     const onOff = (s) => [...s].some((a) => a >= 0.9) && [...s].some((a) => a <= 0.3);
     await shot(B, '5-flashing');
     rec.ok('5b two minutes on, it flashes on both screens: on and off', !!flashA && !!flashB && onOff(alphas.A) && onOff(alphas.B),
