@@ -114,7 +114,10 @@
     <p class="note">Already set to the contest window — change it only if the event
     ran long or short. Wait <b>10 minutes</b> after the last player stops before loading.
     The server only refreshes a player's "last seen" every 10 minutes, so anyone who
-    quit in the last few minutes may not have been written down yet.</p>
+    quit in the last few minutes may not have been written down yet.
+    The game's board says when each player was last seen <b>to the hour</b>, so the
+    window is read by whole hours: everyone seen in the hour it starts in, the hour it
+    ends in, and every hour between. The list below says which window it read.</p>
     <button id="load">Load entrants</button>
     <div id="out1"></div>
   </div>
@@ -180,12 +183,36 @@
    * last twenty minutes may not clear it.  So the threshold is an INPUT, not
    * a constant, and the panel says out loud who it excluded rather than
    * quietly shortening the list. */
-  function entrantsFrom(rows, fromMs, toMs, minLevel) {
+  /* v2.3.5608: BY THE HOUR (card OPS PR 9; red team RT-3 P1).  The public
+   * board says when a player was last seen to the hour, never the
+   * millisecond (leaderboard.js: a time refreshed every ten minutes was a
+   * live "who plays, and when" for every player), and says so: its answer
+   * carries `seen: 'hour'`.  Then the window is read by the hour, rounded
+   * OUTWARD: a row counts when the hour it was last seen in is between the
+   * hour the window starts in and the hour it ends in, both included.
+   * Nobody who played inside the window is left out; at most someone seen in
+   * the start's or the end's hour, outside it, is let in.
+   * A board without the word (a worker from before, or the owner's
+   * `exactseen` switch on, to run an old draw again) is read to the
+   * millisecond, exactly as every draw before was. */
+  var HOUR_MS = 3600000;
+  function hourOf(ms) { return Math.floor(ms / HOUR_MS); }
+  function inWindow(t, fromMs, toMs, byHour) {
+    if (!(typeof t === 'number' && isFinite(t))) return false;
+    if (!byHour) return t >= fromMs && t <= toMs;
+    return hourOf(t) >= hourOf(fromMs) && hourOf(t) <= hourOf(toMs);
+  }
+  /* the window as read: by the hour, the start's hour to the end of the end's */
+  function readWindow(fromMs, toMs, byHour) {
+    if (!byHour) return { from: fromMs, to: toMs };
+    return { from: hourOf(fromMs) * HOUR_MS, to: (hourOf(toMs) + 1) * HOUR_MS - 1 };
+  }
+
+  function entrantsFrom(rows, fromMs, toMs, minLevel, byHour) {
     var floor = (typeof minLevel === 'number' && isFinite(minLevel)) ? minLevel : 0;
     return (rows || [])
       .filter(function (r) {
-        var t = r && r.lastSeen;
-        if (!(typeof t === 'number' && t >= fromMs && t <= toMs)) return false;
+        if (!inWindow(r && r.lastSeen, fromMs, toMs, byHour)) return false;   /* v2.3.5608 */
         return (typeof r.level === 'number' ? r.level : 0) >= floor;
       })
       /* Stable, content-derived order.  It must NOT depend on the order the
@@ -231,18 +258,17 @@
   /* Played in the window but missed the level floor.  Surfaced so a genuine
      latecomer caught by the threshold is VISIBLE and the owner can lower it,
      rather than vanishing from a list that looks complete. */
-  function excludedBy(rows, fromMs, toMs, minLevel) {
+  function excludedBy(rows, fromMs, toMs, minLevel, byHour) {
     var floor = (typeof minLevel === 'number' && isFinite(minLevel)) ? minLevel : 0;
     return (rows || []).filter(function (r) {
-      var t = r && r.lastSeen;
-      if (!(typeof t === 'number' && t >= fromMs && t <= toMs)) return false;
+      if (!inWindow(r && r.lastSeen, fromMs, toMs, byHour)) return false;   /* v2.3.5608 */
       return (typeof r.level === 'number' ? r.level : 0) < floor;
     }).map(function (r) {
       return { name: String(r.name || 'Anon'), level: (typeof r.level === 'number') ? r.level : 0 };
     }).sort(function (a, b) { return b.level - a.level; });
   }
 
-  window.__draw = { entrantsFrom: entrantsFrom, drawFrom: drawFrom, excludedBy: excludedBy };
+  window.__draw = { entrantsFrom: entrantsFrom, drawFrom: drawFrom, excludedBy: excludedBy, inWindow: inWindow, readWindow: readWindow };
 
   /* ═══ NETWORK ═══ two explorers, tried in order.  A draw that cannot be
      completed because one explorer is having a bad day is a bad draw. */
@@ -290,6 +316,7 @@
   /* ═══ STATE ═══ */
   var entrants = null;
   var lock = null;
+  var lastRead = 'exact';   /* v2.3.5608: how the last list read its window (renderEntrants) */
   try { lock = JSON.parse(localStorage.getItem(LS) || 'null'); } catch (e) { lock = null; }
 
   function esc(s) {
@@ -393,8 +420,10 @@
             (j && j.error ? ' (' + j.error + ')' : '') + '. Check the address.');
         }
         var rows = j.results;
-        entrants = entrantsFrom(rows, f, t, minLv);
-        renderEntrants(rows.length, excludedBy(rows, f, t, minLv), minLv);
+        /* v2.3.5608: the board says when it is by the hour (leaderboard.js) */
+        var byHour = j.seen === 'hour';
+        entrants = entrantsFrom(rows, f, t, minLv, byHour);
+        renderEntrants(rows.length, excludedBy(rows, f, t, minLv, byHour), minLv, readWindow(f, t, byHour), byHour);
       })
       .catch(function (e) {
         var msg = (e && e.message) || String(e);
@@ -412,8 +441,22 @@
       .then(function () { $('load').disabled = false; });
   };
 
-  function renderEntrants(returned, excluded, minLv) {
+  function renderEntrants(returned, excluded, minLv, read, byHour) {
     var h = '';
+    /* v2.3.5608: which window was read, said every time (by the hour or to the minute) */
+    var hm = function (ms) {
+      var d = new Date(ms), p = function (x) { return String(x).padStart(2, '0'); };
+      return p(d.getUTCHours()) + ':' + p(d.getUTCMinutes());
+    };
+    if (read) {
+      h += '<p class="note" data-read-window="' + (byHour ? 'hour' : 'exact') + '" style="margin-top:16px">' +
+           (byHour
+             ? 'Read <b>by the hour</b>: everyone last seen from ' + esc(hm(read.from)) + ' to ' +
+               esc(hm(read.to)) + ' UTC.'
+             : 'Read <b>to the minute</b>: everyone last seen from ' + esc(hm(read.from)) + ' to ' +
+               esc(hm(read.to)) + ' UTC.') + '</p>';
+    }
+    lastRead = byHour ? 'hour' : 'exact';
     if (!entrants.length) {
       h = '<div class="warn">Nobody qualified. ' +
           (excluded.length
@@ -470,6 +513,7 @@
         minLevel: Math.max(0, parseInt($('minlv').value, 10) || 0),
         entrants: entrants,
         rule: 'last 8 hex characters of the block hash, as a number, modulo the number of entrants',
+        seenRead: lastRead,   /* v2.3.5608: the window read by the hour, or exactly */
       };
       try { localStorage.setItem(LS, JSON.stringify(lock)); } catch (e) {}
       renderLock();

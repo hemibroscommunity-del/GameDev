@@ -26,8 +26,11 @@ import { cleanWheelSizes } from './wheeltables.js'; /* v2.3.3315: the Wheel size
 import { DEVICE_LOCK, cleanDevice } from './devicelock.js'; /* v2.3.3344: a key on its character's devices */
 import { LOGIN_KEYS, newKeyOf } from './loginkeys.js'; /* v2.3.3355: new Login Keys, made by the worker */
 import { stashGive, stashTake, stashSet } from './stash.js';   /* v2.3.5281: the stashes' door (card R PR 2) */
+import { rfNote, rfRetryMs } from './rfspread.js';   /* v2.3.5604: a waiting crowd knocks more slowly (card OPS PR 5) */
+import { requestIp } from './flood.js';   /* v2.3.5604 (mend): a refusal counted once an address a second */
 import { questLoad } from './queststate.js';   /* v2.3.5284: quest state's door (card R PR 5) */
 import { xpSet } from './xp.js';   /* v2.3.5289: experience and levels' door (card R PR 10) */
+import { tidyCharName } from './charname.js';   /* v2.3.5622: a name with no record held to the rule (the sitting 19 review) */
 
 /* ═══ v2.3.1627: the JOIN DATA ALLOWLIST ═══
  *
@@ -349,13 +352,19 @@ export const joinMethods = {
      (webSocketMessage/Close) are never wired to it -- `accept()` rather
      than `state.acceptWebSocket()` keeps this socket outside the room's
      bookkeeping entirely. */
-  _roomFullRefusal(url, why) {
+  _roomFullRefusal(url, why, request) {
     const cap = this._roomCap();
+    const _now = Date.now();
     /* Old clients (and anything that isn't our client) keep the exact
        refusal they have always had. */
     if (!url || url.searchParams.get('rf') !== '1') {
       return new Response('Room full', { status: 503 });
     }
+    /* v2.3.5604: a refusal the game's phones obey is counted (rfspread.js),
+       and the answer's `retryMs` follows the count.  Mended for sitting 19b:
+       only these (`?rf=1`), never an old client's 503, and an address at most
+       once a second -- one loud client set every waiter to 30 s */
+    rfNote(this, _now, requestIp(request));
     const payload = {
       type: 'room_full',
       /* `reason` mirrors join_rejected's field so the client's refusal
@@ -369,7 +378,7 @@ export const joinMethods = {
          reads as a bug in the refusal rather than as a full world. */
       count: this.sessions.size,
       cap,
-      retryMs: ROOM_FULL.RETRY_MS,
+      retryMs: rfRetryMs(this, _now),   /* v2.3.5604: ROOM_FULL.RETRY_MS (5 s) until the crowd knocks over 40 a second (rfspread.js); `rf_spread: false` keeps it */
     };
     const [client, server] = Object.values(new WebSocketPair());
     try {
@@ -663,6 +672,10 @@ export const joinMethods = {
       this._playerLeaves(ws, 'refused');   /* v2.3.4830: the session door (leave.js) */
       return;
     }
+    /* v2.3.5606: A SEAT HELD (seathold.js, `seathold: true`): once the free
+       seats are gone, a join naming no held seat is refused with room_full,
+       before the account, the device or any record is read or written */
+    if (this._seatJoinRefused(ws, msg)) return;
     // v2.3.1116: identity auth gate.  Runs BEFORE the eviction loop
     // below on purpose -- player ids are broadcast to the whole room
     // (player_join / state_sync), so before this gate existed anyone
@@ -679,6 +692,10 @@ export const joinMethods = {
        first used) once this join is in (loginkeys.js _keysAfterJoin) */
     const _keyOut = {};
     if (msg.id) {
+      /* v2.3.5621: a device a frozen character played on is frozen too, a new
+         character on it included (silence.js, card MOD; before the key, so a
+         refused join writes nothing) */
+      if (await this._frozenDeviceRefuse(ws, cleanDevice(msg.device), typeof msg.id === 'string' ? msg.id : null)) return;   /* v2.3.5625: and the character it names (the owner's spare) */
       /* v2.3.3275: the account check (verify.js) -- asked only of a character
          that does not exist yet, and only when the owner has turned it on. */
       /* v2.3.3344: ...and the device the join came from (devicelock.js) */
@@ -739,6 +756,8 @@ export const joinMethods = {
         this._playerLeaves(ws, 'refused');   /* v2.3.4830: the session door (leave.js) */
         return;
       }
+      /* v2.3.5622: a NEW character's name by the rule (charname.js, card MOD), before it is made */
+      if (await this._charNameRefuse(ws, msg.id, msg.data, msg.name)) return;   /* v2.3.5622: the join's own name too, when its data has none */
     }
     /* ═══ v2.3.3260: YOUR BODY IS STILL IN THE FIGHT ═══
        A player who left within 10 s of a hit between players leaves their
@@ -878,6 +897,17 @@ export const joinMethods = {
     /* v2.3.4455: a kept body is where it stands, whatever this phone said:
        peers read the place from session.data (getAllPlayerData spreads it
        last) and from player_join */
+    /* v2.3.5622 (the sitting 19 review, HIGH): a session with no character
+       record -- a guest or a keyless id, or a join whose data names nobody --
+       took its name as the join sent it (sanitizeDisplayName keeps a
+       direction override and a zero-width space), and every peer, room chat
+       and the board read it.  Held to the rule, both copies (tidied: what
+       the rule refuses taken out, so "Bro<line break>killer" is "Bro
+       killer"; a staff name stays out), or 'Anon'. */
+    if (!(session.char && session.char.name) && this._nameRulesOn && this._nameRulesOn()) {
+      session.name = tidyCharName(msg.name) || 'Anon';
+      if (typeof cleanJoinData.name === 'string') cleanJoinData.name = tidyCharName(cleanJoinData.name) || session.name;
+    }
     if (_body) { cleanJoinData.x = _body.x; cleanJoinData.y = _body.y; cleanJoinData.z = _body.z; cleanJoinData.d = _body.d; }
     session.data = cleanJoinData;
     // Protocol v2 opt-in.  v2 sessions get delta player_state emits,

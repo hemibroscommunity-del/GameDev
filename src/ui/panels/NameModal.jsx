@@ -20,6 +20,7 @@ import { portraitLook, categoryCrops } from '@/game/characterCreatorEffects.js';
 import { BUILD_INFO } from '../BuildBadge.jsx';
 import { BT_AUDIO } from '@/data/index.js';   /* v2.3.4323: the creator has the session music */
 import { joinBlockReason } from '@/data/joinGate.js';   /* v2.3.2388 */
+import { checkCharName, CHAR_NAME_WORDS } from '@/game/charName.js';   /* v2.3.5622: the worker's name rule (card MOD) */
 /* v2.3.1143: account login -- "Already have a character?" entry point
    for a player on a NEW device, who lands on this splash with a fresh
    silent identity and needs a way in with their saved Login Key before
@@ -906,7 +907,9 @@ export function NameModal(props) {
      names are not unique server-side, so there is no availability
      check to run — trimmed length is the honest contract. */
   var _trimmedName = (nameInput || '').trim();
-  var _nameValid = _trimmedName.length >= 2;
+  /* v2.3.5622: valid by the worker's name rule too (game/charName.js, card MOD) */
+  var _nameWhy = _trimmedName.length >= 2 ? checkCharName(_trimmedName).why : null;
+  var _nameValid = _trimmedName.length >= 2 && !_nameWhy;
   /* ═══ v2.3.2388: THE BUTTON SAYS WHY IT WILL NOT GO ═══
      Owner: "if someone tries to press the shared 'join brotown button' make it
      give the reason it can't join (need name first) etc."
@@ -1551,7 +1554,7 @@ export function NameModal(props) {
        of colour is part of what makes it register as a REPLY. */
     style: { color: _pressMsg ? '#E5B45C' : (_nameValid ? '#55B98A' : '#8D9B98') }
   }, _pressMsg
-      || (_trimmedName.length === 0 ? '' : _nameValid ? '✓ Ready to go' : 'At least 2 characters'))), /*#__PURE__*/React.createElement("div", {
+      || (_trimmedName.length === 0 ? '' : _nameValid ? '✓ Ready to go' : (_nameWhy ? CHAR_NAME_WORDS[_nameWhy] : 'At least 2 characters')))), /*#__PURE__*/React.createElement("div", {
     /* v2.3.1524: one action left. "Customize Appearance" opened the drawer,
        and the drawer is now a permanent column, so the button had nothing to
        open. Randomize rerolls the whole look. */

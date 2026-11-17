@@ -1,7 +1,7 @@
 card: P
-branch: claude/plan-p-26-player-death (held: main 2fcc767 inside, no PR)
-prs: #1713, #1715, #1716, #1718, #1719, #1736, #1743, #1745, #1757, #1749, #1763, #1766, #1805, #1806, #1810, #1840, #1846, #1853, #1859, #1868, #1881, #1906, #1918, #1925 (5241-5259, 5560-5564, merged)
-state: working
+branch: claude/plan-p-25-hud-bars (5566, on #1943)
+prs: #1943 (5565 ready), 5566 ready; #1713, #1715, #1716, #1718, #1719, #1736, #1743, #1745, #1757, #1749, #1763, #1766, #1805, #1806, #1810, #1840, #1846, #1853, #1859, #1868, #1881, #1906, #1918, #1925 (5241-5259, 5560-5564, merged)
+state: ready
 
 ## Done
 
@@ -13,13 +13,9 @@ state: working
 
 ## Next
 
-- Held for a fresh P session, pushed as branches (no PRs), stacked:
-  `plan-p-24-fish-spot` (5565), `-25-hud-bars` (5566), `-26-player-death`
-  (5567), `-28-upload-icons` (5569); each switch played thrown by
-  `server/test/p256-switches.test.mjs`.  Their memory runs were at older
-  bases: three runs on main, the census, the line and the asset door's row
-  are still to do, each.  Then `ore-tiers`, `props-parts`,
-  `projectile-sheets` by the card.
+- 5566 `hud-bars` ready on #1943 (artCache 19.9 -> 18.8, line 83.0 -> 81.9).
+  Then 5567 `player-death`, 5569 `upload-icons`; the planner's word: stop
+  after those four (ore-tiers, props-parts, projectile-sheets wait).
 
 ## Found
 
