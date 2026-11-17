@@ -401,7 +401,8 @@ export const petbookMethods = {
     if (!book.rec.moved) {
       this._petbookMoveOldPets(pid, ps, book.rec);
       book.rec.moved = true;
-      this._petbookSave(pid, book);
+      /* v2.3.5610: a fresh guest's join saves no book (guestlazy.js): it stays in memory */
+      if (!(this._guestLazy && this._guestLazy(pid))) this._petbookSave(pid, book);
     }
     /* The old fields stay empty from now on: the record is the only list. */
     if (ls) {
