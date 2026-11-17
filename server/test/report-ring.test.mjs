@@ -19,6 +19,10 @@
  *   5. (card K's review) A party line said while the victim was in the party
  *      is quoted after they leave it (the natural order); someone never in
  *      the party does not get it.
+ *   6. v2.3.5628 (sitting 23's review): 17 harmless room lines after two
+ *      whispers no longer push the whispers out (the lines addressed to the
+ *      reporter first); the speaker's own last lines ride beside (`said`).
+ *      Break proof: the old single filter -> FAIL 6.
  * Break proofs (2026-11-15, each turned its check red): the plain trim
  * (`chatModTrimAt` returning 0) -> FAIL 4; matching a party line by the
  * reporter's party now (no `tos`) -> FAIL 5.
@@ -117,6 +121,26 @@ const lastReport = () => reports().sort((a, b) => a.at - b.at).pop();
   await send(F, 'chat_report', { target: 'bp_rr_harasser', reason: 'harassment' });
   const fred = lastReport().lines.map((l) => l.text);
   check('5: ...and someone never in the party does not get it', !fred.includes('PARTY ABUSE'), fred);
+}
+
+/* ── 6. v2.3.5628 (card MOD PR 8; sitting 23's review): the public flush, and the speaker's own lines beside ── */
+{
+  clock.advance(3600 * 1000 + 1);   /* the victim's reports an hour (REPORT_PER_HOUR) start over */
+  const H = fakeWs('H');   /* a fresh speaker: an empty ring */
+  await join(room, H, 'bp_rr_harass02', { name: 'Hank', data: { x: 100, y: 100, z: 'town', name: 'Hank', hc: '#ffffff' } });
+  await send(H, 'whisper', { to: 'Vicky', text: 'PUBLIC FLUSH 1' });
+  await send(H, 'whisper', { to: 'Vicky', text: 'PUBLIC FLUSH 2' });
+  for (let i = 0; i < CHATMOD.CONTEXT_LINES - 3; i++) await send(H, 'chat', { text: 'hello room ' + i });   /* the ring keeps them: the whispers, these, and the aside */
+  await send(H, 'whisper', { to: 'Fred', text: 'aside to fred' });
+  clock.advance(CHATMOD.REPORT_DUP_MS + 1);
+  await send(V, 'chat_report', { target: 'bp_rr_harass02', reason: 'harassment' });
+  const r = lastReport();
+  const texts = r.lines.map((l) => l.text);
+  check('6: two whispers, then ' + (CHATMOD.CONTEXT_LINES - 3) + ' harmless room lines: the report still holds the two (the lines addressed to the reporter first)',
+    texts.includes('PUBLIC FLUSH 1') && texts.includes('PUBLIC FLUSH 2') && texts.length <= CHATMOD.REPORT_LINES, texts);
+  check('6: ...the room\'s lines fill what is left, in the order said', texts.some((t) => /^hello room/.test(t)) && r.lines.every((l, i) => i === 0 || l.ts >= r.lines[i - 1].ts), texts);
+  const said = (r.said || []).map((l) => l.text);
+  check('6: beside them, the speaker\'s own last lines in any lane (the card\'s "beside")', said.length === CHATMOD.LEGACY_LINES && said[said.length - 1] === 'aside to fred', said);
 }
 
 clock.restore();

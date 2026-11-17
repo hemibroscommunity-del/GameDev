@@ -27,7 +27,9 @@
  * (rule 16).  `_chatModRemember` records each line as `_sanitizeChatRelay`
  * (index.js) / `_handlePartyChat` (party.js) finished sanitising it —
  * clamped, control-stripped, sender stamped from the session — and a
- * report attaches the last CONTEXT_LINES of those.  A report message
+ * report attaches those the reporter could have received (REPORT_LINES,
+ * the lines addressed to them first; v2.3.5623, v2.3.5628) and, beside them,
+ * the speaker's last LEGACY_LINES in any lane (`said`).  A report message
  * therefore carries only WHO and WHY; nothing a client types can end up
  * in the operator's evidence, so a report cannot be used to plant words
  * in somebody else's mouth.
@@ -277,9 +279,18 @@ export const chatModMethods = {
          who has walked on loses those; a party line, its hearers when said
          (`tos`), so leaving the party first keeps it */
       const myZone = this.playerState[reporter] ? this.playerState[reporter].z : null;
-      picked = recent.filter((l) => l.to === reporter
-        || (l.lane === 'party' && (l.tos ? l.tos.includes(reporter) : !!partyId && l.to === partyId))
-        || (l.lane === 'room' && !l.to) || (l.lane === 'area' && !l.to && l.zone && l.zone === myZone)).slice(-CHATMOD.REPORT_LINES);
+      /* v2.3.5628 (card MOD PR 8; sitting 23's review): the lines ADDRESSED
+         to the reporter (a whisper, a friend's message, a shop thread, the
+         reporter's party) come first, the room's and the area's fill what is
+         left: ten harmless public lines after two abusive whispers pushed the
+         whispers out of the report (RT-3 S4's flush again).  In the order
+         they were said. */
+      const direct = recent.filter((l) => l.to === reporter
+        || (l.lane === 'party' && (l.tos ? l.tos.includes(reporter) : !!partyId && l.to === partyId)));
+      const pub = recent.filter((l) => (l.lane === 'room' && !l.to) || (l.lane === 'area' && !l.to && l.zone && l.zone === myZone));
+      const mine = direct.slice(-CHATMOD.REPORT_LINES);
+      const room = CHATMOD.REPORT_LINES - mine.length > 0 ? pub.slice(-(CHATMOD.REPORT_LINES - mine.length)) : [];
+      picked = mine.concat(room).sort((a, b) => a.ts - b.ts);
     } else {
       picked = recent.slice(-CHATMOD.LEGACY_LINES);
     }
@@ -433,6 +444,10 @@ export const chatModMethods = {
       targetOnline: !!targetPs,
       /* Server's copy of what was actually said (see the header). */
       lines: this._chatModRecentLines(target, me),   /* v2.3.5623: what the reporter could have received */
+      /* v2.3.5628 (card MOD PR 8; sitting 23's review: the card says
+         "beside the speaker's own lines"): and the speaker's own last
+         LEGACY_LINES, any lane, as a report held before PR 3 */
+      said: this._reportRingOn() ? this._chatModRecentLines(target) : undefined,
     };
     await this.state.storage.put('chat_report:' + id, rec);
     this._chatModSend(me, 'chat_report_ack', { ok: true, id, lines: rec.lines.length, settled: true });

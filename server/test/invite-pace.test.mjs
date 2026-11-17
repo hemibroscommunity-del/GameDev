@@ -68,6 +68,19 @@ const cards = (ws, t) => ws.sent.filter((m) => m.type === t).length;
   }
   const n = cards(V, 'friend_request_in');
   check('2: a request, its decline and the request again for 10 s put at most 3 cards up', n <= 3 && n >= 1, n);
+  /* v2.3.5628 (sitting 23's review): a held repeat is answered as sent -- recorded, the sender's list synced */
+  clock.advance(6000);
+  await send(A, 'friend_request', { target: 'bp_ip_victim01', name: 'Vicky' });
+  await send(V, 'friend_decline', { from: 'bp_ip_pest0001' });
+  A.sent.length = 0;
+  const vCards = cards(V, 'friend_request_in');
+  clock.advance(200);
+  await send(A, 'friend_request', { target: 'bp_ip_victim01', name: 'Vicky' });
+  const doc = await room.state.storage.get('friends:bp_ip_pest0001');
+  check('2: a repeat inside 5 s is answered as sent (the sender\'s list synced, the request recorded) and puts no card up',
+    A.sent.some((m) => m.type === 'friend_sync') && !!(doc && doc.reqOut && doc.reqOut['bp_ip_victim01']) && cards(V, 'friend_request_in') === vCards,
+    { sent: A.sent.map((m) => m.type), cards: [vCards, cards(V, 'friend_request_in')], doc: doc && Object.keys(doc.reqOut || {}) });
+  await send(V, 'friend_decline', { from: 'bp_ip_pest0001' });
   /* the answers stay: a duplicate is still a no-op, already-friends still answers */
   clock.advance(10000);
   await send(A, 'friend_request', { target: 'bp_ip_other001', name: 'Willa' });

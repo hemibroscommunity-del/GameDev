@@ -196,8 +196,11 @@ design, built here:
   for (the target for a whisper, a friend's message or a shop thread; the
   party's id for party chat; null for the room or an area).
 - The ring holds `CONTEXT_LINES` (20) a speaker, still per speaker and still
-  under `SEEN_MAX` speakers (the LRU; the memory stays bounded: about 1 MB at
-  the very worst, 240 speakers of 20 lines of 200 characters).
+  under `SEEN_MAX` speakers (the LRU; the memory stays bounded: about 1 MB
+  of words at the very worst, 240 speakers of 20 lines of 200 characters,
+  and with each party line's `tos` (up to `TOS_MAX` 50 ids of about 20
+  characters) about 5 MB more at the very worst; v2.3.5628, sitting 23's
+  review).
 - **A fair trim** (card K's review): one plain ring of 20 let 21 harmless
   lines to anyone else push two whispers out (the same flush, seven times the
   typing, instant for a script). Past 20, the line dropped is the oldest of
@@ -208,7 +211,13 @@ design, built here:
   those whispers is its own evidence in its own hearer's report.
 - A report by R about X quotes X's lines R could have received: addressed to
   R, a party line R heard, said to the room, or to an area in R's zone; the
-  last `REPORT_LINES` (10) of them.
+  last `REPORT_LINES` (10) of them. **The lines addressed to R come first**
+  (v2.3.5628, sitting 23's review): the room's and the area's fill what is
+  left, so ten harmless public lines after two abusive whispers no longer push
+  the whispers out; in the order they were said.
+- **Beside them, the speaker's own lines** (`said`, v2.3.5628; the card's
+  "beside the speaker's own lines"): X's last 3 lines in any lane, as a
+  report held before.
 - **A party line keeps its hearers** (`tos`: the members online who had not
   muted the speaker, at most `TOS_MAX`), so a victim who leaves the party, or
   is kicked, before reporting (the natural order) still has its lines.
