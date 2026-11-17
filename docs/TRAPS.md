@@ -196,6 +196,8 @@ them in the same pass, or the next audit finds the one you walked past.
 Closed with `_sanitizeJoinData` (join.js), same allowlist shape;
 `anticheat.test.mjs` §8.
 
+Held by: tools/guards/traps-wire.test.mjs (tag 5762).
+
 ## 14. Switching `clipsHair` on because a hat has a mask folder
 
 **Tempting:** `make_hairmask.py --all-with-masks` treats the presence of a
@@ -1115,6 +1117,8 @@ WORKER'S blob through the admin API rather than on client state — a test that
 checked the client would have passed throughout the bug.
 
 ---
+
+Held by: tools/guards/traps-wire.test.mjs (tag 5762).
 
 ## §33 — A test that reads a field the game does not have asserts nothing (v2.3.2078)
 
@@ -3206,6 +3210,8 @@ in the same PR that *introduces* it keeps every player at "connecting" until
 the worker catches up — or forever, if that deploy failed. precheck's
 `ready-caps` check refuses the push unless every required name is already in
 the base branch's caps literal. Never require a cap you just added.
+
+Held by: tools/guards/traps-wire.test.mjs (tag 5762).
 
 ## 76. "It's wrapped in try/catch and fire-and-forget, so it can't block anything" (v2.3.2438)
 
@@ -8891,6 +8897,8 @@ never close a line with its handlers still attached.
 **Receipt:** `server/test/socket-one.test.mjs` (17 of 30 fail on the old
 code); docs/specs/socket-one-line.md.
 
+Held by: tools/guards/traps-wire.test.mjs (tag 5762).
+
 ## 265. "Remember the picked weapon by its place in the stash" (v2.3.4369)
 
 **The move.** The General Store's "List for Sale" names the pick by its place
@@ -9373,6 +9381,8 @@ friend refusal reason gets its sentence in `src/game/friendErrors.js`
 maps keyed by player id, not arrays: "listed twice" cannot happen, so do not
 add an `includes` check to `_friendAcceptCore`. **Receipt:** `friend-errors.test`.
 
+Held by: tools/guards/traps-wire.test.mjs (tag 5762).
+
 ## 286. "Same name and same strength, so the same armour piece" (v2.3.4386)
 
 **Tempting:** after a reconnect the phone matches its armour to the server's
@@ -9513,6 +9523,8 @@ bro is still in that fight" on a loop. **The rule.** A new reason gets a code
 no file uses, listed in `docs/specs/one-socket.md`'s table (a failed join is
 4013). An old phone reads an unknown code as an ordinary drop.
 **Receipt:** `session-exits.test` §1.
+
+Held by: tools/guards/traps-wire.test.mjs (tag 5762).
 
 ## 298. "The player is offline, so the admin may write their record" (v2.3.4413)
 
@@ -9772,6 +9784,8 @@ A new cap goes on its OWN new line in both places, with its version comment,
 so two new caps never touch the same line. Do not reflow the old long line
 while you are there (that conflicts with everyone). **Receipt:** precheck
 `cap-registry` holds that the two lists agree; the line rule is review's.
+
+Held by: tools/guards/traps-wire.test.mjs (tag 5762).
 
 ## 317. "The art is 256 colours and the game holds it as numbers, so loading it is cheap" (v2.3.4470)
 
