@@ -1,5 +1,5 @@
 card: RV
-branch: claude/rv-friends (PR 11, stacked on claude/rv-leftovers)
+branch: claude/rv-names (PR 14, stacked on claude/rv-friends)
 prs: #2072, #2083 (sitting 42); #2091, #2094 (ready); PRs 5-11 built, in their runs
 state: ready
 
@@ -19,8 +19,9 @@ state: ready
 - PR 8 (5808): loginkeys.js SEC-F5 (`oldkeyheld`).
 - PR 9 (5809): MS-5, MS-6 (`offerpend`, `leftoverheal`).
 - PR 11 (5811): friends.js ACC-5, SEC-F4 (`friendfix`).
-- Then: chatguard/pet/alliance names (S6, S7), the rewind's words, the
-  Test panel's pass words, S3 and `track`'s half (after card L's index.js).
+- PR 14 (5814): S6, S7 (`cleanmore`, `namestaff`). 7 FAIL on main.
+- Then: the rewind's words, the Test panel's pass words, S3 and `track`'s
+  half (after card L's index.js).
 
 ## Found
 
@@ -28,8 +29,8 @@ state: ready
   `duelquiet` (its PR 12).
 - For `index.js` (K2, then card L): S2's `track` half, S3's board report.
 - For card L (`wsClient.js`): SEC-F3, the 49th chest piece.
-- `mktsettle: false` + a re-listed noted order: its cancel loses the
-  taker's escrow even with no restart (market.js; read, not shown).
+- `mktsettle: false` + a re-listed noted order loses the taker's escrow
+  on its cancel (market.js; read, not shown).
 
 ## Needs
 

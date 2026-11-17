@@ -87,7 +87,10 @@
  * an offer's Yes waits for a bid half made, and a payment and its escrow's
  * delete one write (v2.3.5809, storeoffer.js, trade2.js, gladiator.js:
  * `offerpend`, `leftoverheal`); a friendship both sides or neither, and a request
- * nobody answers let go after 30 days (v2.3.5811, friends.js: `friendfix`).
+ * nobody answers let go after 30 days (v2.3.5811, friends.js: `friendfix`); the
+ * cleaner's blank and hidden characters, and a new pet or alliance name held
+ * to the name rule (v2.3.5814, chatguard.js, petbook.js, alliance.js:
+ * `cleanmore`, `namestaff`).
  *
  * WHO CAN TURN IT ON.  Only the admin key, through the Test panel's
  * POST /api/admin/dev/testmode {playerId, on} (devtools.js), which the owner's

@@ -54,6 +54,7 @@
  * A party that ends still clears its row (a name must not outlive it). */
 import { PARTY } from './party.js';
 import { NML } from './nomansland.js';
+import { nameReadsAsStaff } from './reservednames.js';   /* v2.3.5814 (card RV, S7): a new alliance name's and tag's staff words */
 
 export const ALLIANCE = Object.freeze({
   AT: 20,                               // active members to become an alliance
@@ -319,6 +320,16 @@ export const allianceMethods = {
     if (!name) return this._allyError(pid, 'bad-name');
     const tag = allyTagOk(payload && payload.tag);
     if (!tag) return this._allyError(pid, 'bad-tag');
+    /* v2.3.5814 (card RV, S7; the owner's call, decided while away): a NEW
+       name and tag held to the character name's rule too -- nothing that
+       draws nothing, no pile of stacked marks, nothing that reads as the game
+       or its staff ("BroTown Staff", the tag "GM") -- with the refusals they
+       already have.  A name or tag already stored is never touched.
+       `namestaff: false` in the live flags: as before. */
+    if (this._nameStaffOn && this._nameStaffOn()) {
+      if (/\p{Default_Ignorable_Code_Point}|\p{M}{3,}/u.test(name) || nameReadsAsStaff(name)) return this._allyError(pid, 'bad-name');
+      if (nameReadsAsStaff(tag)) return this._allyError(pid, 'bad-tag');
+    }
     const a = p.ally;
     if (a.name === name && a.tag === tag) return this._partyBroadcast(p);
     if (a.name && a.renamedAt && now - a.renamedAt < ALLIANCE.RENAME_MS) {
