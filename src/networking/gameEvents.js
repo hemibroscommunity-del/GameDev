@@ -3867,10 +3867,18 @@ export function processGameEvent(type, payload, S, deps) {
               if (!_peerInZone(S, payload.id)) break;
               /* Client-local peer floater -> smoothing queue (keyed by a
                  coarse position bucket since this carries only x,y). */
-              enqueuePeerDamage(S, peerDmgKey(null, payload.x || 0, payload.y || 0), {
-                x: payload.x || 0,
-                y: (payload.y || 0) - 20,
-                text: '-' + (payload.dmg || 0),
+              /* v2.3.5532 (card SEC's find, handed to L): a relay is another
+                 phone's words, so what it draws is held to its form -- the
+                 damage a number (Number(dmg) || 0), the place finite -- and
+                 never a string a sender chose drawn as the floater's text. */
+              var _rd = Number(payload.dmg) || 0;
+              var _rx = Number(payload.x), _ry = Number(payload.y);
+              if (!Number.isFinite(_rx)) _rx = 0;
+              if (!Number.isFinite(_ry)) _ry = 0;
+              enqueuePeerDamage(S, peerDmgKey(null, _rx, _ry), {
+                x: _rx,
+                y: _ry - 20,
+                text: '-' + _rd,
                 color: payload.isCrit ? DMG_CRIT_COLOR : '#ff8888',
                 /* v2.3.2211: a peer's crit reads as a crit too -- found by the
                    crit-popup precheck rule, not by hand. */

@@ -43,6 +43,7 @@ switch allows it.
 | Bot scoring and its 2,400-an-hour caps | botfp.js `_botfpOnStrike`, `_botfpOnCook` | not scored, flagged or capped |
 | The server's own bot signals (v2.3.3731) | botsig.js `_sigSkip`, `_sigOnWindup`, `_sigReverifyOk` | nothing measured, flagged or re-checked (the network signal and the Turnstile re-check included) |
 | 45 cooks a minute, 900 ms between cooks | cooking.js `_cookRateOk`, `_handleCookRequest` | no limit |
+| A cook's result held to the cook it started (v2.3.5553, `cookstart`) | cooking.js `_handleCookRequest`, `_cookStartTake` | lands as sent |
 | A hit on a monster: weapon slot, reach, rate, paid special | combat.js `_handleMonsterDamage` (hitproof.js) | lands as sent |
 | The 400 px melee reach and the Wheel's 3,600 px | combat.js `_handleMonsterDamage` | none |
 | The per-monster lanes (210 ms, three specials in 1.2 s) | combat.js `_handleMonsterDamage` | none |
