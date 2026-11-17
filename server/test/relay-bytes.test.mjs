@@ -35,8 +35,14 @@ function check(name, cond, detail) {
 }
 
 const A = 'bp_rb_aaa', B = 'bp_rb_bbb';
+/* v2.3.5724 (card K2 PR 5): measured with `relaytyped: false`.  Typed, a
+   relay keeps only its row's fields, each a few bytes (relay.js
+   RELAY_FORMS): a 14 KB junk field never reaches the bucket at all
+   (relaytyped.test).  The byte bucket stays as the wall behind it, and
+   this suite measures that wall alone. */
+const TYPED_OFF = { relaytyped: false };
 async function newRoom(flags) {
-  const room = await openRoom(makeStorage(new Map()), flags);
+  const room = await openRoom(makeStorage(new Map()), Object.assign({}, TYPED_OFF, flags || {}));
   const wa = await join(room, fakeWs('a'), A, { name: 'Ada', data: { x: 1000, y: 1000, z: 'town' } });
   const wb = await join(room, fakeWs('b'), B, { name: 'Bob', data: { x: 1040, y: 1000, z: 'town' } });
   await settle();
@@ -112,7 +118,7 @@ const swing = () => ({ type: 'player_swing', payload: { ang: 1.2, wpn: 'sword', 
 
 /* ── 5. the flood, in a real tick loop ── */
 async function flood(flags, guests, secs, junk) {
-  const room = await openRoom(makeStorage(new Map()), flags);
+  const room = await openRoom(makeStorage(new Map()), Object.assign({}, TYPED_OFF, flags || {}));
   const hon = fakeWs('honest'); let got = 0; hon.send = (s) => { got += s.length; };
   await join(room, hon, 'bp_rb_honest', { name: 'Hon', data: { x: 1000, y: 1000, z: 'town' } });
   const gs = [];
