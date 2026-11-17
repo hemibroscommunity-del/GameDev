@@ -63,6 +63,10 @@
  *  20. v2.3.5290 (card R PR 11): a wagered duel's pot: `xferescrow` off
  *      (the default), the rows as before and no `xfer:` row; on, ONE row
  *      more (its `xfer:` row; its delete 90 days on: two over its life);
+ *  21. v2.3.5292 (card R PR 13): a match's sponsorship stakes settled (2
+ *      backing the winner, 3 the loser): `xferescrow` off (the default),
+ *      the rows as before and no `xfer:` row; on, ONE row more a LOSING
+ *      stake (3), none for a winning one;
  * A line here may move when a feature really needs the rows: say so in the
  * PR, in plain words, as the memory budget asks (CLAUDE.md).
  */
@@ -138,10 +142,11 @@ async function makeRoom() {
 const ARRIVAL = { x: 21504, y: 21792 };
 const mv = (x, y, vx = 0, vy = 0, z = 'wheel') => ({ type: 'move', x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10, d: 'down', f: 'south',
   eqc: 'none', eql: 'none', eqs: 'none', ex: null, z, vx: Math.round(vx), vy: Math.round(vy), dodging: false, blocking: false, ba: null, dead: false });
-async function join(room, id) {
+async function join(room, id, phrase) {
   const ws = fakeWs();
   room.sessions.set(ws, baseSession());
-  await room.webSocketMessage(ws, JSON.stringify({ type: 'join', id, name: id, protocolVersion: 2, data: { x: 1000, y: 1000, z: 'town' } }));
+  /* v2.3.5610: `phrase`: a join with a key (a real phone's); without one, a guest's (guestlazy.js) */
+  await room.webSocketMessage(ws, JSON.stringify({ type: 'join', id, name: id, ...(phrase ? { phrase } : {}), protocolVersion: 2, data: { x: 1000, y: 1000, z: 'town' } }));
   await room.webSocketMessage(ws, JSON.stringify(mv(ARRIVAL.x, ARRIVAL.y)));   /* down the stairs, into the Wheel */
   return { ws, id };
 }
@@ -357,17 +362,28 @@ const FAST = 110;
 {
   const { room, state } = await makeRoom();
   const w0 = state.writes.length;
-  const p = await join(room, 'cg_new');
+  /* v2.3.5610: with its key, as every phone of the game joins (a keyless join is a guest's: 7c) */
+  const p = await join(room, 'cg_new', 'p-cg_new');
   const fresh = mine(state, 'cg_new', w0);
   check(`7. a new character's join and arrival in the Wheel: ${fresh.length} rows (${Object.entries(byPrefix(fresh)).map((e) => e.join(' ')).join(', ')}), at most 6`,
     fresh.length <= 6, fresh);
   await room.webSocketClose(p.ws, 1000, 'bye', true);
   NOW += 60000;
   const w1 = state.writes.length;
-  await join(room, 'cg_new');
+  await join(room, 'cg_new', 'p-cg_new');
   const again = mine(state, 'cg_new', w1);
   check(`7b. coming back the same day: ${again.length} rows (${Object.entries(byPrefix(again)).map((e) => e.join(' ')).join(', ') || 'none'}), at most 4`,
     again.length <= 4, again);
+  /* v2.3.5610: a guest's (no key, nothing on file): its join and arrival write
+     nothing of its own; a guest that left having done nothing, only the bot
+     signals' botstat (guestlazy.js; red team RT-1 N6: it was 5 rows, 4 for good) */
+  const w2 = state.writes.length;
+  const g = await join(room, 'cg_guest');
+  const gj = mine(state, 'cg_guest', w2);
+  await room.webSocketClose(g.ws, 1000, 'bye', true);
+  const gl = mine(state, 'cg_guest', w2).filter((k) => k.indexOf('botstat:') !== 0);
+  check(`7c. a guest's join and arrival: ${gj.length} rows (${Object.entries(byPrefix(gj)).map((e) => e.join(' ')).join(', ') || 'none'}), and leaving having done nothing ${gl.length} more but its botstat, at most 0`,
+    gj.length === 0 && gl.length === 0, { gj, gl });
 }
 
 /* ── 8. the room's own ─────────────────────────────────────────────────── */
@@ -801,6 +817,31 @@ const FAST = 110;
   console.log('     20. a duel\'s pot: off ' + JSON.stringify(off) + ', on ' + JSON.stringify(on));
   check('20. xferescrow off (the default): a duel\'s pot writes no xfer: row', off.xfer === 0 && off.writes > 0, off);
   check(`20. xferescrow on: ONE row more (${off.writes} -> ${on.writes}), its xfer: row`, on.xfer === 1 && on.writes === off.writes + 1, { off, on });
+}
+
+/* ── 21. a match's stakes, `xferescrow` off and on (v2.3.5292) ─────────── */
+{
+  const measure = async (flags) => {
+    const { room, state } = await makeRoom();
+    room._liveFlags = Object.assign({}, room._liveFlags, flags || {});
+    const W = 'cg_as_w', L = 'cg_as_l';
+    for (const id of [W, L]) state.store.set('rpg:' + id, { _v: 21, coins: 0, level: 5, inventory: {} });
+    for (let i = 0; i < 5; i++) {
+      const sid = 'cg_as_s' + i;
+      state.store.set('rpg:' + sid, { _v: 21, coins: 0, level: 5, inventory: {} });
+      state.store.set('arena_stake:cg-t:cg-m:' + sid, { tid: 'cg-t', matchId: 'cg-m', sponsorId: sid, targetId: i < 2 ? W : L, amount: 100, ts: Date.now() });
+    }
+    const w0 = state.writes.length;
+    await room._arenaSettleStakes('cg-t', 'cg-m', W);
+    for (let i = 0; i < 4; i++) await new Promise((r) => setTimeout(r, 2));
+    const w = state.writes.slice(w0);
+    return { writes: w.length, xfer: w.filter((k) => k.startsWith('xfer:')).length, byPrefix: byPrefix(w) };
+  };
+  const off = await measure(null);
+  const on = await measure({ xferescrow: true });
+  console.log('     21. a match\'s stakes (2 v 3): off ' + JSON.stringify(off) + ', on ' + JSON.stringify(on));
+  check('21. xferescrow off (the default): a match\'s stakes write no xfer: row', off.xfer === 0 && off.writes > 0, off);
+  check(`21. xferescrow on: ONE row more a losing stake (${off.writes} -> ${on.writes}: 3), none a winning one`, on.xfer === 3 && on.writes === off.writes + 3, { off, on });
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);
