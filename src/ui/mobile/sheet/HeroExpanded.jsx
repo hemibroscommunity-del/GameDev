@@ -46,6 +46,7 @@ import { StatCaption, STAT_CAPTION_SHORT } from './StatCaption.jsx';            
 import { showPointsReset, requestPointsReset, POINTS_RESET_CONFIRM_MS, pointsResetOn } from '../../../game/pointsReset.js'; /* v2.3.3541: the free points reset */
 import { firstSpendHint } from '../../../game/pointsTips.js'; /* v2.3.3551: after a first spend, the free reset named */
 import { BroCard } from './BroCard.jsx';                                      /* v2.3.4172: the Bro page, as the owner drew it */
+import { act } from '@/game/actions.js';   /* v2.3.5191: the page's requests leave through the action door (card K PR 7) */
 
 /* v2.3.1286: Hero expanded — the detailed character sheet.
    v2.3.1295 (ChatGPT round-4, owner-approved): no longer one long
@@ -1246,7 +1247,7 @@ export const HeroExpanded = () => {
                           e.stopPropagation();
                           try {
                             const St = getState();
-                            if (St && St.channel) St.channel.send({ type: 'cape_equip', payload: { worn: false } });
+                            if (St && St.channel) act('cape_equip', { worn: false });   /* v2.3.5191: through the action door (actions.js) */
                           } catch (_e) { /* offline: the next player_state is the truth anyway */ }
                         }}
                         style={{
@@ -1567,10 +1568,7 @@ export const HeroExpanded = () => {
                   }
                   const count = Math.max(1, Math.floor(Number(n) || 1));
                   for (let i = 0; i < count; i++) {
-                    S2.channel.send({
-                      type: 'prog3_allocate',
-                      payload: { stat: st.key, cat: st.atk ? cat : prog3SharedSpendCat(R2) },
-                    });
+                    act('prog3_allocate', { stat: st.key, cat: st.atk ? cat : prog3SharedSpendCat(R2) });   /* v2.3.5191: through the action door (actions.js) */
                   }
                 },
               };

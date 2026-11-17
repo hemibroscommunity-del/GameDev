@@ -27,6 +27,7 @@
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { cue } from '@/game/eventSounds.js';
 import { NO_DROP_ZONES, DROP_GONE_MS, DROP_FLASH_MS } from '@/data/itemDrop.js';   /* the worker's rules (mirror-audit) */
+import { act } from '@/game/actions.js';   /* v2.3.5188: the page's requests leave through the action door (card K PR 7) */
 
 export { NO_DROP_ZONES };
 
@@ -62,7 +63,7 @@ export function sendItemDrop(S, key, qty) {
   if (!S || !S.channel || typeof key !== 'string' || !key) return false;
   if (!dropSupported(S)) return false;
   const n = Math.max(1, Math.floor(Number(qty) || 1));
-  try { S.channel.send({ type: 'item_drop', key, qty: n }); } catch (e) { return false; }
+  try { act('item_drop', { key, qty: n }); } catch (e) { return false; }   /* v2.3.5188: through the action door (actions.js) */
   return true;
 }
 

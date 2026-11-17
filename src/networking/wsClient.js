@@ -16,7 +16,7 @@
    body is untouched. Returns the effect cleanup (or undefined when gated
    by showNameModal/showLogin — same as the original early return). */
 import { processGameEvent } from '@/networking/gameEvents.js';
-import { actionWay, namesOfWay, settledSends, doorRefuse, setActionTransport } from '@/game/actions.js'; /* v2.3.5185: the action door's rows (grand plan step 5.8) */
+import { actionWay, namesOfWay, settledSends, doorRefuse, setActionTransport, act } from '@/game/actions.js'; /* v2.3.5185: the action door's rows (grand plan step 5.8); v2.3.5189: and act(), the door, for the page's own requests here */
 import { chestRevealBus } from '@/ui/mobile/ChestReveal.jsx'; /* v2.3.2820: the daily chest's reveal */
 import { loginSpinBus } from '@/game/loginSpinWheel.js'; /* v2.3.4295: the login wheel */
 import { applyRewardsState, applyDailyProgress } from '@/game/dailyRewards.js'; /* v2.3.3140: the free spin, daily quests, the season */
@@ -3046,7 +3046,7 @@ export function setupWebSocket(ctx) {
                 if (_healSlot !== S.rpg.activeSlot) {
                   S.rpg.activeSlot = _healSlot;
                   if (S.channel) {
-                    try { S.channel.send({ type: 'set_active_slot', payload: { slot: _healSlot } }); } catch (e) { /* the next join heals it again */ }
+                    try { act('set_active_slot', { slot: _healSlot }); } catch (e) { /* the next join heals it again */ }   /* v2.3.5189: through the action door (actions.js) */
                   }
                 }
               }
@@ -3479,8 +3479,8 @@ export function setupWebSocket(ctx) {
               } catch (e) { /* telemetry never breaks the game */ }
               /* Tell the room we died so remote clients render a dead
                  pose at our last position.  Server already knows. */
-              if (S.channel) S.channel.send({ type: 'broadcast', event: 'move', payload: { x: S.player.x, y: S.player.y, z: S.currentZone, vx: 0, vy: 0 } });
-              if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_died_to_monster', payload: { id: S.myId, x: S.player.x, y: S.player.y } });
+              if (S.channel) act('move', { x: S.player.x, y: S.player.y, z: S.currentZone, vx: 0, vy: 0 });   /* v2.3.5189: through the action door (actions.js) */
+              if (S.channel) act('player_died_to_monster', { id: S.myId, x: S.player.x, y: S.player.y });
               setRpgState(_objectSpread({}, S.rpg));
               break;
             }
@@ -3553,7 +3553,7 @@ export function setupWebSocket(ctx) {
               /* v2.3.4942: the campfire it put out had gone to the others
                  (campfire_lit): they are told it is out (fireRefuse.js) */
               if (_fireBack === 'fire' && S.channel) {
-                try { S.channel.send(campfireOutMsg(S)); } catch (e) { /* their fire burns out on its fuse */ }
+                try { act('campfire_out', campfireOutMsg(S).payload); } catch (e) { /* their fire burns out on its fuse */ }   /* v2.3.5189: through the action door (actions.js) */
               }
               break;
             }

@@ -12,6 +12,9 @@
  * Date.now() + `offset`, the gap measured when its last message arrived --
  * so a phone whose own clock is minutes off still counts down to the moment
  * the worker will actually pay (a phone's clock is never the date). */
+
+import { act } from '../../game/actions.js';   /* v2.3.5191: the action door (card K PR 7), its only import: it has none of its own, so node still reads this file */
+
 const listeners = new Set();
 const emit = () => { for (const fn of listeners) fn(); };
 
@@ -83,14 +86,14 @@ export const farmBus = {
      to send on or a request is already out (a double-tap is the normal way a
      phone presses once). */
   open(S) {
-    return this._out(S, 'open', () => S.channel.send({ type: 'farm_open', payload: {} }));
+    return this._out(S, 'open', () => act('farm_open', {}));   /* v2.3.5191: through the action door (actions.js) */
   },
   act(S, op, beds, crop) {
     const payload = crop ? { op, beds, crop } : { op, beds };
-    return this._out(S, op, () => S.channel.send({ type: 'farm_act', payload }));
+    return this._out(S, op, () => act('farm_act', payload));   /* v2.3.5191: through the action door (actions.js) */
   },
   buy(S, item, count) {
-    return this._out(S, 'buy', () => S.channel.send({ type: 'farm_buy', payload: { item, count } }));
+    return this._out(S, 'buy', () => act('farm_buy', { item, count }));   /* v2.3.5191: through the action door (actions.js) */
   },
   /* v2.3.3134: deliver one of today's orders.  The day and id ride along as
      a check: a board that turned over at midnight under an open window is
@@ -100,7 +103,7 @@ export const farmBus = {
     const b = this.orders;
     const o = b && b.list && b.list[slot];
     if (!o || !o.id || o.done) return false;
-    return this._out(S, 'order', () => S.channel.send({ type: 'farm_order', payload: { slot, day: b.day, id: o.id } }));
+    return this._out(S, 'order', () => act('farm_order', { slot, day: b.day, id: o.id }));   /* v2.3.5191: through the action door (actions.js) */
   },
 
   _out(S, op, fire) {

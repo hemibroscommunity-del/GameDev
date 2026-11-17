@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { COL, panelStyle } from './common.js';
-import { BT_API_BASE } from '@/networking/index.js';
 import { FEEDBACK_CATEGORIES, FEEDBACK_TOPICS } from '@/data/index.js';
+import { act } from '@/game/actions.js';   /* v2.3.5191: the page's requests leave through the action door (card K PR 7) */
 
 /* v2.3.1232: Lantern Slate pass (docs/LANTERN-SLATE-SPEC.md) — tabs
    become the spec segmented control (36px on the #121B20 well track,
@@ -46,11 +46,7 @@ export const FeedbackPanel = () => {
     if (!t || !S || !S.myId || status === 'sending') return;
     setStatus('sending'); setErr('');
     try {
-      const res = await fetch(BT_API_BASE + '/api/feedback/submit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ playerId: S.myId, playerName: S.myName || 'Bro', category, topic, text: t }),
-      });
+      const res = await act('http:/api/feedback/submit', { playerId: S.myId, playerName: S.myName || 'Bro', category, topic, text: t });   /* v2.3.5191: through the action door (actions.js) */
       const d = await res.json().catch(() => ({}));
       if (!d || !d.ok) {
         setStatus('error'); setErr((d && d.error) || 'Could not send. Try again.');
@@ -167,7 +163,7 @@ const FeedbackBoard = () => {
 
   const load = useCallback(() => {
     setFailed(false);
-    fetch(BT_API_BASE + '/api/feedback/list?sort=' + sort + '&limit=30&offset=0')
+    act('http:/api/feedback/list', {}, { query: 'sort=' + sort + '&limit=30&offset=0' })   /* v2.3.5191: through the action door (actions.js) */
       .then((r) => r.json())
       .then((d) => { if (d && d.ok) setRows(d.tickets || []); else setFailed(true); })
       .catch(() => setFailed(true));
@@ -177,11 +173,7 @@ const FeedbackBoard = () => {
   const vote = (id) => {
     const S = window._gameState && window._gameState.current;
     if (!S || !S.myId) return;
-    fetch(BT_API_BASE + '/api/feedback/vote', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ticketId: id, playerId: S.myId, vote: 'up' }),
-    }).then((r) => r.json()).then((d) => {
+    act('http:/api/feedback/vote', { ticketId: id, playerId: S.myId, vote: 'up' }).then((r) => r.json()).then((d) => {   /* v2.3.5191: through the action door (actions.js) */
       if (!d || !d.ok) return;
       setRows((rs) => (rs || []).map((t) => (t.id === id ? { ...t, up: d.up, down: d.down } : t)));
       setMine((m) => { const n = Object.assign(Object.create(null), m); n[id] = d.myVote; return n; });

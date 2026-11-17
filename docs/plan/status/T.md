@@ -18,7 +18,8 @@ state: ready
 ## Next
 
 - 5309: nine reads moved (quests, skills, economy, townsfolk, audio); the
-  outside line 221 -> 212. Then 5310: ui and world reads in free files.
+  outside line 221 -> 212 (5308 also sets
+  `arenadoor`, sitting 21, to 2026-11-17). Then 5310: ui and world reads in free files.
 
 ## Found
 

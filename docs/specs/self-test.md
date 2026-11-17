@@ -1,9 +1,9 @@
-# The self-test at the door (v2.3.5234, v2.3.5236)
+# The self-test at the door (v2.3.5234, v2.3.5236, v2.3.5237)
 
 Card O's PR 14 (grand plan step 1.7), in three parts: 14a (v2.3.5234) the
 frame, the one program and the colour numbers; 14b (v2.3.5236) the look
 program, the sharp read, the shine in the frame, the shadows' shade and the
-moving water; 14c the clip, the fill and the glint. The code:
+moving water; 14c (v2.3.5237) the fill and the glint; 14d the clip. The code:
 `src/rendering/selfTest.js` (the frame, every picture and every answer);
 each program's own file for where its picture is drawn and its one way
 back. The checks: `server/test/self-test.test.mjs` and
@@ -178,7 +178,37 @@ back alone to the way it is drawn when its switch is off.
   not reached behind the Wheel's loading screen (6.5 ms): both under the
   held-page line (12 ms).
 
-## 14c (to come)
+## 14c: the fill and the glint (v2.3.5237)
 
-- 14c (5237): the clip, the fill and the glint: tested and named in `self`;
-  where a program has no way back, it is drawn as today and named.
+Neither has a way back (the card's program list, `back: null`): a wrong
+picture is **named** in the report's `self` and the program is drawn as
+today. What a wrong picture should mean on that chip is the owner's
+question (card O's status, Needs).
+
+| program | where its picture is drawn | the picture, and its answer |
+|---|---|---|
+| **fill** (`fillBatch.js`) | once it is built (`fillSelfTest`), behind the loading screen | the known picture as a monster in the whirlwind's amber: each pixel's brightness lifted to a grey (0.5 + 0.8 x luma, at most 1), its alpha kept, then tinted (`selfFillWant`) |
+| **glint** (`lightfx/glint.js`) | once a renderer, where its filter is warmed (`glintSelfTest`) | the shine's four colours, its sweep's strength 0, the sun's side 0, no figure frame, a white tint, drawn twice: the shine alone (the sheen batcher's SHEEN_LIFT, to the byte) and with a rare piece's blue grade (its highlights lit in the grade's colour); allowed 4 a channel, as the shine (`glintCpu`) |
+
+- **The fill's grey is the picture's luma**, so a picture's colours read
+  wrong would still show through the tint.
+- **The glint with no grade is the sheen batcher's shine**: one CPU copy
+  (`sheenLiftCpu` is `glintCpu` with no grade), held to both programs'
+  text (`self-test.test.mjs` §8).
+- `?selftest=fail:fill` and `fail:glint`: `mp-selftest` pages 11 and 12;
+  each is named in `self`, still on, the others passed and on.
+
+### What 14c costs (measured 2026-11-16, `mp-selftest`, unthrottled)
+
+| | drawn | read |
+|---|--:|--:|
+| the fill (one picture) | 1.2 ms | 0.5 ms |
+| the glint (two pictures) | 2.0 ms | 0.3 ms |
+
+About 4 ms more behind the loading screen; every program's tests together
+76.8 ms on that run (the shade's first build 50 of it, as in 14b).
+
+## 14d (to come)
+
+- 14d: the clip, tested and named in `self` (after card P's #1906 and
+  #1918, now merged).

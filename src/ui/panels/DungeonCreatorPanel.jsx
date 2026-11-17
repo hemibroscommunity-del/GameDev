@@ -5,6 +5,7 @@ import { _defineProperty, _objectSpread, _slicedToArray, _toConsumableArray } fr
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { cue } from '@/game/eventSounds.js'; /* v2.3.3462: "Not enough gold!" heard */
+import { act } from '@/game/actions.js';   /* v2.3.5190: the page's requests leave through the action door (card K PR 7) */
 /* ═══ DungeonCreatorPanel — custom dungeon builder (workshop) ═══ */
 /* v2.3.863: moved verbatim from BroTown.jsx's JSX tree (UI-panel
    decomposition; behavior-frozen) — the largest panel (~1073 lines).
@@ -881,7 +882,7 @@ export function DungeonCreatorPanel(props) {
          for old workers, per the deploy-order safety rule. */
       if (S._serverCaps && S._serverCaps.dungeon && S.channel) {
         try {
-          S.channel.send({ type: 'broadcast', event: 'dungeon_start', payload: { config: config } });
+          act('dungeon_start', { config: config });   /* v2.3.5190: through the action door (actions.js) */
         } catch (e) {}
         pushDmgPopup(S, P.x, P.y - 30, 'Entering dungeon...', '#a070e0');
         setShowDungeonCreator(false);
