@@ -67,6 +67,11 @@ function check(name, cond, detail) {
 
 const state = makeState();
 const room = new GameRoom(state, mockEnv);
+/* v2.3.5715 (card SEC PR 16): with `gearheld` on, the default, the join
+   takes no armour or legs claim at all (the worker keeps those two live).
+   This suite tests the claim door itself, so its main room plays it open;
+   gearheld.test is the gate's own. */
+await room._liveFlagsEnsure(); room._liveFlags.gearheld = false;
 /* v2.3.2544: kept so sections that stub _wsBySessionId can put it back --
    see the note on the gear-lock stub in section 4b. */
 const _realWsBySessionId = room._wsBySessionId.bind(room);
