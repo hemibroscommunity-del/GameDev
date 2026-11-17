@@ -202,6 +202,31 @@ if (stepOff) check(`2b: the stepping archer keeps every arrow; with \`arrowlane:
     check(`2c: the sprint mark: the move's liar takes ${Math.round(on.liar.v)} px an hour with \`sprintmark: true\`, and ${Math.round(offV)} as it lands (off)`, offV > on.liar.v * 1.1, { on: on.liar.v, off: offV });
   }
 }
+/* v2.3.5549 (card K, step 4.2): THE MOVE'S TOP (movement.js MOVE_TOP; an
+   opt-in, `movetop: true`, the owner's to turn on).  With it on, the honest
+   walker and sprinter take exactly what they took and meet no refusal on
+   any disturbance; the liar's gain falls under the bar. */
+if (!GAINS_ONLY) {
+  const mc = CLAIMS.find((c) => c.id === 'move');
+  const mr = rows.find((r) => r.c.id === 'move');
+  const ms = GAIN_MIN * B.MIN;
+  const ON = { ...(mc.world.flags || {}), movetop: true };
+  const same = [], refused = [];
+  let bestOn = 0;
+  for (const h of mc.honest) {
+    const off = mr.hon.find((x) => x.who === h[0]);
+    const r = await runBot(mc, h, { ms, flags: ON });
+    const v = perHour(mc, valueOf(mc, r.take), r.ms);
+    bestOn = Math.max(bestOn, v);
+    if (Math.round(v) !== Math.round(off.v)) same.push(h[0] + ': ' + Math.round(off.v) + ' -> ' + Math.round(v));
+    refused.push(...r.refusals.slice(0, 1));
+    for (const d of DISTURBANCES) { const x = await runBot(mc, h, { d, ms: DIST_S * 1000, flags: ON }); if (x.refusals.length) refused.push(h[0] + ' / ' + d.id + ': ' + x.refusals[0]); }
+  }
+  check(`2e: \`movetop: true\`: the honest walker and sprinter take what they took and meet no refusal on any disturbance`, !same.length && !refused.length, { same, refused: refused.slice(0, 4) });
+  const lOn = await runBot(mc, mc.liar, { ms, flags: ON });
+  const gOn = perHour(mc, valueOf(mc, lOn.take), lOn.ms) / Math.max(bestOn, 1e-9);
+  check(`2e: the move's liar: gain ${mr.gain} off, ${gOn.toFixed(2)} with \`movetop: true\` (the bar ${BAR})`, gOn <= BAR, { on: gOn });
+}
 for (const r of rows) {
   const line = LINES[r.c.id];
   check(`3: ${r.c.id}: its gain ${r.gain} is within its line ${line} and its spread ${SPREAD[r.c.id]} (${r.gain <= BAR ? 'under' : 'over'} the bar ${BAR})`, r.gain <= line + SPREAD[r.c.id] + 1e-9, { honest: Math.round(r.best.v), liar: Math.round(r.liar.v) });

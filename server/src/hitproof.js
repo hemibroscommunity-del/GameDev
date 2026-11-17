@@ -198,7 +198,7 @@ export const hitProofMethods = {
   _hitReach(ps, slot, now) {
     if (slot !== 'ranged' && slot !== 'staff') return null;
     if (slot === 'ranged' && this._pveVolleyLive(ps, now)) return WHEEL.RANGED_MAX;
-    const k = typeof this._moveSpeedK === 'function' ? this._moveSpeedK(ps) : { spdCap: 1, moveMult: 1 };
+    const k = typeof this._moveSpeedK === 'function' ? this._moveSpeedK(ps, { reach: true }) : { spdCap: 1, moveMult: 1 };   /* v2.3.5549: the run as it was, whatever `movetop` */
     const run = MOVE_BUDGET.SPEED_PX * k.spdCap * k.moveMult * SPRINT.MULT;
     const cat = slot === 'staff' ? 'staff' : 'bow';
     const mult = (ps && ps.prog3)
