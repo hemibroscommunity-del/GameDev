@@ -7,13 +7,20 @@ state: ready
 - `census/review-z41.md`. Tick: the phase line 4 -> 3 (L's #2052,
   merged at 40). SEC's status written `done` (its tags all used).
 ## The list: merge in this order, each "Create a merge commit"
-LIST_LINES
+1 U2 #2070 (5780, the card and its tag block) · 2 L #2058 (5536,
+`guarddoor`) · 3 L #2065 (5537, `zonedoor`) · 4 L #2067 (5538,
+`fightdoor`) · 5 K2 #2068 (5724, `relaytyped`) · 6 Z (this PR). All on
+`main`, one base at every step (heads and trees in
+`census/review-z41.md`); the worker deploys once. With L's three, card
+L is done and card M chain A's PR 1 (5340) may open.
 ## Held / Stalled
 - None held at review; none stalled. To 42: U2 #2074 (adds
   `status/U2.md`, as #2070 does: merges `main` after it), RV #2072 (its
   tag-blocks row meets #2070's and #2071's: merges `main` after them),
   K2 #2073 (`bowshot` ON, and `cookstart` ON coming; on #2068; at the
-  close, not reviewed).CARRY_T2
+  close, not reviewed); T2 #2071 (READY; meets #2070 in tag-blocks:
+  merges `main` after it) and #2075 (on #2071); V2 #2076-#2080 (came at
+  22:01; #2076's tag-blocks row meets #2070's).
 ## Found
 - (a) `mp-alliance` 3 13-15/16 since #2022; no card. (b) `movetop` ON:
   ride, sprint, potion suites hold only the flat bound. (c) #2033: a

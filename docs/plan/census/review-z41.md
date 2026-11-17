@@ -13,7 +13,23 @@ sitting 40 (READY); its merges of `main` since were read here.
 
 ## Heads, merge bases and trees
 
-HEADS_TABLE
+Every listed PR is based on `main` (`base.ref`), open, not a draft, with
+one merge base at every step (`git merge-base --all`, each against `main`
+with the PRs above it merged in as merge commits). The tree after each
+merge:
+
+1 U2 #2070 b12ce5d95c9c028950131efafb54e16c18f98816 -> eaf15ce0b45e484d485e0ec53182f8cd9c375751 (base 8c45c630)
+2 L #2058 c689468eae77178f61db034300e06d725b639528 -> e65da01af3819fba8dcda302943459803ea176a0 (base cc4815a8)
+3 L #2065 a6bdaa4e606eb8b44bba33517901160ef1d8d75f -> c01c8f8ebea682e4a65393b3a0cd2f0da9cbb86e (base c689468e)
+4 L #2067 03ab6e1081d101e087076e1aeff3671ab0a4d07e -> 07e28710c76da3559eeb54bb5f673bbc00704015 (base a6bdaa4e)
+5 K2 #2068 b8b5f7218428f4345072b9ce9cd710f3343907c1 -> 0ab04423893ae8ac8b4c690296806f5c8dfd7b5b (base 932cdbf3)
+6 Z (this PR): its head and tree are in the list (`status/Z.md`).
+
+L's stack is one line of branches (each on the one before; `main`
+cc4815a8 merged up it at about 21:33). The caps and live flags
+(`guarddoor`, `zonedoor`, `fightdoor`, `relaytyped`) meet in
+`tools/guards/lib/switches.mjs` and `docs/SWITCHES.md` and merge
+without a conflict in this order.
 
 ## L #2058 (5536): the guard door
 
@@ -96,17 +112,27 @@ still tests it). `switch-reader` green; break proof: speedTest.js's old
 read put back, `switch-reader` 3 red (66 against the line 65). The card
 file is the carrier branch's word for word. Its `tag-blocks.json` row
 meets U2's #2070 on the same lines: T2 merges U2's head (with `main`
-in) and keeps both rows (nextBlock 5800). T2_LINE
+in) and keeps both rows (nextBlock 5800).
+
+Not on this list: U2 did not merge `main` into #2070 by the close, so
+T2 could not stack on it. To 42: after #2070 lands, T2 merges `main`
+into #2071 (both rows) and up into #2075 (5741, stacked on it).
 
 ## U2 #2070 (5780): card U2 and its tag block
 
 READY (documents and a table: step 3). The card is the carrier
 branch's (`claude/plan-m-card`) word for word; the block 5780-5799.
 Nit: `nextBlock` 5800 is RV's block's start until RV's #2072 adds its
-row (5820 then). U2_LINE
+row (5820 then).
 
 ## To sitting 42
 
+- T2 #2071 (5740, READY above) and #2075 (5741, the screens' and
+  townsfolk pictures' six reads; on #2071; came at 21:56; not
+  reviewed): after #2070 lands, T2 merges `main` up its stack.
+- V2 #2076-#2080 (5760-5764, traps into guards; stacked; #2080 touches
+  `server/test/`, so the worker deploys): came at 22:01; #2076's
+  tag-blocks row meets #2070's and #2071's. Not reviewed.
 - U2 #2074 (5781, five guards for checks that ran only in precheck;
   precheck's storage-keys, cap-gates, look-parity and look-blank read
   from shared rules): adds `docs/plan/status/U2.md`, which #2070 also
@@ -121,8 +147,28 @@ row (5820 then). U2_LINE
 
 ## The rehearsal
 
-REHEARSAL
+`tools/dev/gatekeeper.mjs` on cc4815a8 with the five listed code heads
+(#2070, #2058, #2065, #2067, #2068), in the list's order: tree
+0ab04423, the same as the step-by-step merges above; precheck the one
+5-minute server-tests limit (the settled one) and nothing else red (3
+WARN); build PASS (48 s); questline red once on "TypeError: fetch
+failed" after 10 of 11 checks, while three readers ran server suites on
+this box (sitting 40's first rehearsal met the same).
+
+The second rehearsal, the box quiet: tree 0ab04423 with T2's #2071
+merged on top (its tag-blocks conflict mended as T2 was asked: both
+rows, nextBlock 5800; tree 3c3bc8e6): build PASS (14 s); questline
+187/187 (487 s); `cd server && npm test` SERVER_RESULT. #2071 adds six
+reads in `src/game/` to that tree and nothing on the worker.
+
+CI on the listed heads: L #2058 c689468e, #2065 a6bdaa4e, #2067
+03ab6e10, K2 #2068 b8b5f721: `test`, lint-build, playable,
+memory-budget all green. U2 #2070 b12ce5d9: `test` green (documents
+and a table: the other three do not run).
 
 ## Found (carried, and new)
 
-FOUND
+As `status/Z.md`'s Found: sitting 40's (a)-(n) carried, (e) done by
+this PR's tick; new: (o) and (p) from this sitting's reviews, (q) the
+precheck's server-tests limit. The reviews' nits above are their
+sessions' to take in a later PR; none holds a merge.
