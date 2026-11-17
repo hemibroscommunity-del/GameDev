@@ -1,7 +1,7 @@
 card: MOD
 branch: claude/plan-mod-<n>-<topic> (one line: #1878 > #1890 > #1883 > #1897 > #1907 > #1909 > #1914, T's 4334b6d at the bottom, every PR against main)
 prs: #1883 (5620, the card), #1897 (5621, silence), #1907 (5622, names), #1909 (5623, report evidence), #1914 (5624, invite pace): ready; RT-3's #1878 (5593), #1890 (5594): ready; #1869 (findings): draft
-state: working
+state: ready
 
 ## Done
 
@@ -14,7 +14,7 @@ state: working
 ## Next
 
 - #1941 (5625), waiting for the gatekeeper.
-- PR 6 (5626): a market order's tier label and seller name are the worker's own, never the page's free text (switch `mktwords`). It touches card K's market.js (~83-105, ~385-391): the planning session's yes, 2026-11-17, as its own small PR so it merges before K reaches market.js.
+- #1947 (5626), waiting for the gatekeeper: a market order's tier label and seller name are the worker's own, never the page's free text (switch `mktwords`). It touches card K's market.js (~83-105, ~385-391): the planning session's yes, 2026-11-17, as its own small PR so it merges before K reaches market.js.
 
 ## Found
 
