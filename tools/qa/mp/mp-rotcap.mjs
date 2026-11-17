@@ -244,7 +244,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const S = window._gameState.current;
         return (S.monsters || []).filter((m) => m.home === 'mist' && m.alive !== false).map((m) => {
           const sp = window.__btMonsterSprite ? window.__btMonsterSprite(m.id) : null;
-          return { id: m.id, arch: m.archetype || m.type, d: Math.round(Math.hypot(m.x - S.player.x, m.y - S.player.y)),
+          return { id: m.id, arch: m.archetype || m.type, x: m.x, y: m.y, d: Math.round(Math.hypot(m.x - S.player.x, m.y - S.player.y)),
             s: sp ? { vis: sp.visible, alive: sp.texAlive, n: sp.n, name: sp.plate && sp.plate.name } : null };
         }).sort((a, b) => a.d - b.d);
       });
@@ -259,12 +259,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok('7. ...their look loaded as you walked to it, as every land\'s is (the preloading law)',
         !!art && Object.keys(art.looks).some((k) => (k === 'mireWisp' || k === 'bogLurker') && art.looks[k] === 'ready'), art);
       await P.page.screenshot({ path: `${OUT}/4-forest.png` }).catch(() => {});
+      /* v2.3.5647: only the ordinary rotcap spits: stand beside the nearest one (the nearest of
+         all may be a great one, which does not), and give it 90 s, not 60 */
+      {
+        const near = (await read()).find((m) => m.arch === 'mireWisp' && m.x != null);
+        if (near) await H.hopTo(P, near.x + 70, near.y + 70, { tries: 100 }).catch(() => {});
+      }
       const spit = await P.page.evaluate(() => new Promise((resolve) => {
         const from = Date.now();
         const step = () => {
           const ms = window.__btMonsterShots ? window.__btMonsterShots() : null;
           const mine = ms && (ms.shots || []).find((x) => x.arch === 'mireWisp');
-          if (mine || Date.now() - from > 60000) resolve(mine || null); else requestAnimationFrame(step);
+          if (mine || Date.now() - from > 90000) resolve(mine || null); else requestAnimationFrame(step);
         };
         requestAnimationFrame(step);
       }));
