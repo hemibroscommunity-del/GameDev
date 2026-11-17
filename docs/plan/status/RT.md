@@ -1,7 +1,7 @@
 card: RT
 branch: claude/grand-plan-red-team-a6ycng
-prs: #2026 (5059, ready)
-state: ready
+prs: #2026 (5059, merged at sitting 35)
+state: done
 
 ## Done
 
@@ -13,7 +13,10 @@ state: ready
 
 ## Next
 
-- The red team's second round (the owner, 2026-11-17: "a fresh look.
+- None: the session has ended (the planner, 2026-11-17; marked done by
+  the gatekeeper, sitting 36, tag 5674). Its second round's fixes are
+  card SEC (#2030) and card K2.
+- Was: the red team's second round (the owner, 2026-11-17: "a fresh look.
   Starting from scratch"): nine lanes, each blind to the first round's
   reports, on local copies only. Its findings become a card for the
   fixes, started as a session of its own: never a part of #2026.
