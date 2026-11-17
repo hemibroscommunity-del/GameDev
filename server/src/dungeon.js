@@ -416,11 +416,14 @@ export const dungeonMethods = {
          STARTS ON SAFE GROUND ═══
          A start that names no mouth (the Workshop's own config) was taken
          wherever the player stood, so one out in a land, mid-fight, stepped
-         straight into a run of its own and out of the fight.  The Workshop
-         is in BroTown's safe commons: such a start is now refused off the
+         straight into a run of its own and out of the fight.  The page's
+         Workshop is on the farm (gameDisplay.js FARM_SPOTS.workshop:
+         S._nearWorkshop is set only in farm_home), so in the Wheel only a
+         forged start names no mouth: such a start is now refused off the
          Wheel's safe ground (`_wheelSafeAt`, as the board and the login
          spin ask), with the door's own `not-now` words (no new words).
-         Other zones (today's town, the farm) as before.  `dungeonground:
+         Other zones (the farm, today's town) as before (sitting 39's
+         review).  `dungeonground:
          false` in the live flags: taken anywhere, as before. */
       if (this._dungeonGroundOn() && ps.z === 'wheel' && typeof this._wheelSafeAt === 'function'
           && !this._wheelSafeAt(ps.x, ps.y)) {
