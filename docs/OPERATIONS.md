@@ -81,6 +81,25 @@ Who's online, is the world ticking:
 curl -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/admin/overview"
 ```
 
+**Is someone flooding the room?** (v2.3.5711) The overview's `floodTally`
+counts, since the room last started: `closed` (sockets the room closed for
+sending too many messages; a phone too slow to join is not one) and `relayBytesDropped` (moves and looks a phone
+sent that were too big to pass on, by kind in `relayDropsBy`). A few is a
+bad connection; hundreds in an hour is someone hammering the room. The
+counts live in the room's memory only (they cost no writes), so they start
+again at 0 after a deploy or a restart. `ip` (refusals by address) reads
+`null` until a later change fills it. Throw `floodtally: false` to turn
+the tally off.
+
+**Being told when the game is down**, without watching it: point a free
+uptime monitor (UptimeRobot, Better Stack and the like: a web page check
+every 5 minutes) at `https://WORKER/health/room`. It answers 200 while the
+room is up and answers, and 503 when it is not; the monitor emails you.
+It needs no key. And turn on Cloudflare's own usage notice (the
+dashboard's Notifications page: add a usage or billing notification for
+Workers): a flood that gets through shows there as requests and writes
+far above a normal day before it shows on the bill.
+
 The economy — total gold in the world, richest players, market escrow
 (the gold waiting in the market's buy orders; it read 0 by mistake until
 v2.3.3368, so older daily snapshots show 0 there).

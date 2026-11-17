@@ -324,6 +324,51 @@ export const adminMethods = {
     m.set(at, e);
   },
 
+  /* ═══ v2.3.5711 (card SEC PR 12): THE OWNER CAN SEE A FLOOD ═══
+     A flood was counted on each session only (its dropped messages, its
+     relay bytes refused) and reached no owner page.  One tally on the room,
+     in MEMORY only (a deploy starts it again; nothing is written), read by
+     /api/admin/overview as `floodTally`:
+       - `closed`: sockets closed for sending too many messages (leave.js,
+         the `flood` way, and only a session past the room's message budget:
+         more than FLOOD.MSG_CLOSE_AFTER dropped, flood.js _floodDropped).
+         The same door's other two closes -- no join in time (tick.js, a
+         slow phone among them) and a second join -- are not counted
+         (sitting 39's review);
+       - `relayBytesDropped` and `relayDropsBy`: relay frames refused for their
+         bytes, and why (relay.js's own room count, read as it is);
+       - `ip`: refusals by address -- null until card K2's PR 10 counts them
+         where they are decided (flood.js _floodIpOk, K2's file) with
+         `_floodTallyAdd('ip')`;
+       - `since`: when the first of these counts landed (null before one);
+         the relay's counts are relay.js's, since the room woke.
+     KILL SWITCH `floodtally: false`: nothing counted here, and the field is
+     null.  An older Test panel reads the overview as before (one new field). */
+  _floodTallyOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'floodtally') && !f.floodtally);
+  },
+  /* leave.js, at the `flood` way: a close for too many messages only */
+  _floodTallyLeave(ws) {
+    const s = this.sessions && this.sessions.get(ws);
+    if (s && Number(s.msgDropped) > FLOOD_NS.FLOOD.MSG_CLOSE_AFTER) this._floodTallyAdd('closed');
+  },
+  _floodTallyAdd(k) {
+    if (!this._floodTallyOn()) return;
+    const t = this._floodTally || (this._floodTally = { since: Date.now(), closed: 0 });
+    t[k] = (t[k] || 0) + 1;
+  },
+  _floodTallyInfo() {
+    if (!this._floodTallyOn()) return null;
+    const t = this._floodTally || { since: null, closed: 0 };
+    return {
+      since: t.since, closed: t.closed || 0,
+      relayBytesDropped: this._relayByteDropped || 0,
+      relayDropsBy: this._relayByteDrops ? { ...this._relayByteDrops } : {},
+      ip: typeof t.ip === 'number' ? t.ip : null,   /* K2's PR 10: _floodTallyAdd('ip') */
+    };
+  },
+
   _adminLockTally(k) {
     const c = this._adminLockCount || (this._adminLockCount = { wrong: 0, held: 0, refused: 0 });
     c[k] = (c[k] || 0) + 1;
@@ -472,6 +517,8 @@ export const adminMethods = {
           /* v2.3.5583: the admin key's time-out -- wrong keys, time-outs
              started, asks refused, addresses held now (ADMIN_LOCK above) */
           adminLock: this._adminLockInfo(),
+          /* v2.3.5711: a flood, seen (the tally above; memory only) */
+          floodTally: this._floodTallyInfo(),
           /* v2.3.3240: the 2 s look relay -- tracks in, and how many went out
              whole, as only what changed, or not at all (lookrelay.js) */
           lookRelay: this._lookInfo(),
