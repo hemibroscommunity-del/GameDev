@@ -280,7 +280,7 @@ import { moveClaimMethods, guardFacing } from './moveclaims.js'; /* v2.3.4605: w
 import { attackBlocked, slideMove } from './props.js'; /* v2.3.2652: a rock stops a monster's hit; v2.3.2653: and its feet */
 import { staminaRegenMethods } from './staminaregen.js'; /* v2.3.3536: stamina regen worked out by the worker */
 import { fightLockMethods, FIGHT_GATED } from './fightlock.js'; /* v2.3.4510: one fight-lock table */
-import { wireDoorMethods } from './wire/door.js'; /* v2.3.5184: the wire door -- the table's checks before any handler */
+import { wireDoorMethods, bodyCapRoute } from './wire/door.js'; /* v2.3.5184: the wire door -- the table's checks before any handler; v2.3.5720: a body's size before any forward (`bodyCapRoute`) */
 import { leaveMethods } from './leave.js'; /* v2.3.4830: the session door -- every way of leaving */
 import { goldMethods } from './gold.js'; /* v2.3.4670: the gold door -- every change to a player's gold */
 import { lifeMethods } from './life.js'; /* v2.3.4820: the life door -- a player's health and life phase */
@@ -318,6 +318,21 @@ async function routeHttp(request, env) {
 
     if (request.method === 'OPTIONS') {
       return new Response(null, { headers: { ...corsHeaders, 'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS', 'Access-Control-Allow-Headers': '*' } });
+    }
+
+    /* v2.3.5720 (card K2 PR 1; the second red team's CRITICAL 1): A BODY'S
+       SIZE BEFORE ANY FORWARD.  A 24 MB POST with no key reached the room,
+       whose routes' door read it whole and parsed it before any route asked
+       who sends: the room's thread held 2.8 to 4.5 s, several hundred MB.
+       A body declared past its cap (32 KB; a crash report 64 KB: wire/door.js
+       BODY_CAP) is a 413 here, unread; one with no length is read through
+       the cap and goes on as the bytes read.  Every honest body is a few
+       hundred bytes.  `BODY_CAP = "off"` (the worker's setting) checks
+       nothing: the outer router has no live flags. */
+    {
+      const capped = await bodyCapRoute(request, url.pathname, env);
+      if (capped.refused) return capped.refused;
+      request = capped.request;
     }
 
     /* v2.3.3274: only the rooms the worker is told to make (flood.js
