@@ -1,6 +1,6 @@
 card: T
-branch: claude/plan-t-11-reads3 (one branch a PR, each begun from main once the one before merged)
-prs: #1754 ... #1889, #1935, #1939, #1958 (5301-5310, merged); 5311 pageAddress (ready)
+branch: claude/plan-t-12-lows (one branch a PR, each begun from main once the one before merged)
+prs: #1754 ... #1958, #1978 (5301-5311, merged); 5312 the review's lows (ready)
 state: ready
 
 ## Done
@@ -8,19 +8,19 @@ state: ready
 - PR 1 (5301, #1754): the table, the scanner, the census guard, the page.
 - PR 2 (5302, #1768): the page's game-side rows; the scanner's shapes.
 - PR 3 (5303, #1816): the drawing side's rows, unlisted 0; B's map reads it.
-- PR 4 (5304, #1817, for #1804): a row's place by its name (check 10);
-  needs and readers (check 11); the thrown run (thrown.mjs, a preload).
+- PR 4 (5304, #1817): needs and readers; the thrown run (thrown.mjs).
 - PR 5 (5305, #1837): the end date (`on`, `--due`, the fallback hold).
 - PR 6 (5306, #1863): the page's one reader, src/game/switches.js; its guard.
 - 5307 (#1889): the thrown run's preload changes nothing by itself.
-- 5308 (#1935): the `on` days of sittings 19-21's rows.
-- 5309 (#1939): nine reads moved; the outside line 212.
+- 5308 (#1935) the `on` days; 5309 (#1939) nine reads moved, the line 212.
 - 5310 (#1958): eleven more; the line 201; READER_IMPORT takes `../../`.
+- 5311 (#1978): pageAddress(); 17 reads in 16 files; the line 172 (with O's 12).
 
 ## Next
 
-- 5311: pageAddress() in the reader; 17 reads call it; the line 172 (with O's 12).
-  Then the reads in files held by running cards, as each card is done.
+- 5312: sitting 27's two lows (the spec's file count; wheelTrial's `search`:
+  one `let`, as the Memory savers' row adds to it).
+  Then the 172 left: A, G, H, O, P are done (their files free); K, L later.
 
 ## Found
 
@@ -37,4 +37,4 @@ state: ready
 
 ## Needs
 
-- The gatekeeper: 5311's PR.
+- The gatekeeper: 5312's PR.

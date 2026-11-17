@@ -339,8 +339,7 @@ export function wheelStart() {
     /* v2.3.2948: the address, so `?trial=wheel&edgepieces` can bring back
        the edge pieces, put away (public/tools/world/core/ground.js) --
        v2.3.2955: and `?trial=wheel&blends` the blends, put away too */
-    let search = '';
-    search = pageAddress();
+    let search = pageAddress();   /* v2.3.5312: let: the Memory savers' row below adds to it */
     /* v2.3.3755: the lean ground builder (on unless `groundlean=0`, ground-
        worker.js) turned off in what the worker is told when the Test panel's
        Memory savers row turned it off, from this load (clientOff.js) */
