@@ -580,7 +580,9 @@ _liveKnobs(null);   /* v2.3.5224: from here, today's live knobs */
   const st = readFileSync(join(ROOT, 'src/game/speedTest.js'), 'utf8');
   check('17d. the Speed test holds the ladder while it runs, and lets it go in its finally', /holdLadder\(true\);/.test(st) && /finally \{\s*restore\(was\);\s*holdLadder\(false\);/.test(st));
   const bt = readFileSync(join(ROOT, 'src/ui/BroTown.jsx'), 'utf8');
-  check('17e. no new loop and no step of the frame: BroTown.jsx makes the pacer as before and knows nothing of the governor', !/makeGovernor|holdLadder|setRung|laneKnob/.test(bt) && /_framePacer = makeFramePacer\(\);/.test(bt));
+  /* v2.3.5233 (card O PR 13): its one knob read is the step's cap (laneKnob('step'), the 30 lane) */
+  const btKnobs = [...new Set([...bt.matchAll(/(?<![\w$.])laneKnob\(\s*'([a-z]+)'/g)].map((m) => m[1]))];
+  check('17e. no new loop and no step of the frame: BroTown.jsx makes the pacer as before and knows nothing of the governor (its one knob, the step\'s cap)', !/makeGovernor|holdLadder|setRung/.test(bt) && btKnobs.length === 1 && btKnobs[0] === 'step' && /_framePacer = makeFramePacer\(\);/.test(bt), btKnobs);
 }
 
 /* 18: the rate is a knob (v2.3.5224) */

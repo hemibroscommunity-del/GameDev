@@ -139,10 +139,12 @@ export const KNOBS = Object.freeze({
     reader: { files: Object.freeze(['src/rendering/lookPalette.js', 'src/rendering/gearNumbers.js', 'src/rendering/systems/entityRenderer.js', 'src/rendering/cacheBytes.js']), moved: false }, pr: 11, switch: '', system: 'look',
   },
   step: {
-    what: 'the longest step, in ms, one frame may move the world (frameClock.js SMOOTH_MAX_MS; the loop\'s clamp)',
-    steps: Object.freeze([50]),
-    say: Object.freeze(['A frame moves the world at most 50 ms (three frames at 60)']),
-    reader: { files: Object.freeze(['src/game/frameClock.js', 'src/ui/BroTown.jsx']), moved: false }, pr: 13, switch: '?dtsmooth', system: 'page-thread',
+    what: 'the longest step, in ms, one frame may move the world (frameClock.js SMOOTH_MAX_MS, handed in; the loop\'s clamp): three of the lane\'s frames',
+    steps: Object.freeze([50, 100]),
+    say: Object.freeze(['A frame moves the world at most 50 ms (three frames at 60)', 'A frame moves the world at most 100 ms (three frames at 30): a missed refresh is still its whole ground']),
+    /* v2.3.5233 (card O PR 13): read in BroTown.jsx alone, which hands it to
+       the clock (frameClock.js keeps no imports) and clamps its step with it */
+    reader: { files: Object.freeze(['src/ui/BroTown.jsx']), moved: true }, pr: 13, switch: '?dtsmooth', system: 'ui',
   },
   prewarm: {
     what: 'the prewarm ring (step 3.3, LATER): one value and no reader until 3.3 builds the ring',
@@ -164,8 +166,8 @@ export const LANES = Object.freeze({
     row: Object.freeze({ rate: 34, pixels: 1, crowd: 30, program: 'one', look: 'palette', shine: 'off', shadows: 'on', water: 'moving', queue: 4, caches: 1, step: 50, prewarm: 0 }),
   },
   thirty: {
-    say: 'A screen of 30 a second (an iPhone in Low Power Mode): the full lane\'s row (v2.3.5230: but monsters\' art 8 ms a frame, a 30 screen\'s quarter, as before) until its step\'s cap (card O PR 13)',
-    row: Object.freeze({ rate: 26, pixels: 1, crowd: 50, program: 'one', look: 'palette', shine: 'on', shadows: 'on', water: 'moving', queue: 8, caches: 1, step: 50, prewarm: 0 }),
+    say: 'A screen of 30 a second (an iPhone in Low Power Mode): the full lane\'s row (v2.3.5230: but monsters\' art 8 ms a frame, a 30 screen\'s quarter, as before) and a step of three of its frames, 100 ms (v2.3.5233, card O PR 13)',
+    row: Object.freeze({ rate: 26, pixels: 1, crowd: 50, program: 'one', look: 'palette', shine: 'on', shadows: 'on', water: 'moving', queue: 8, caches: 1, step: 100, prewarm: 0 }),   /* v2.3.5233: three of its frames (card O PR 13) */
   },
 });
 export const LANE_NAMES = Object.freeze(Object.keys(LANES));

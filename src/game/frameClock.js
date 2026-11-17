@@ -51,15 +51,18 @@ export function frameSmoothOn(search) {
 }
 
 /** A clock for one game loop: step(raw) takes the frame's measured length in
- *  ms and gives the length to move by. */
+ *  ms and gives the length to move by.  `maxMs`: the cap, or (v2.3.5233,
+ *  card O PR 13) a function asked it each frame -- the lane's `step` knob,
+ *  three of its frames: 50 at 60, 100 at 30 (BroTown.jsx hands it in). */
 export function makeFrameClock(n = SMOOTH_FRAMES, maxMs = SMOOTH_MAX_MS) {
+  const capOf = typeof maxMs === 'function' ? () => { const v = Number(maxMs()); return v > 0 ? v : SMOOTH_MAX_MS; } : () => maxMs;
   const buf = new Float64Array(Math.max(1, n | 0));
   let count = 0, at = 0, sum = 0;
   const reset = () => { count = 0; at = 0; sum = 0; };
   return {
     step(raw) {
       /* no length, or a break: as it is, and the mean starts again */
-      if (!(raw > 0) || raw > maxMs) { reset(); return raw; }
+      if (!(raw > 0) || raw > capOf()) { reset(); return raw; }
       if (count === buf.length) sum -= buf[at]; else count++;
       buf[at] = raw;
       sum += raw;
