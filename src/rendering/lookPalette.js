@@ -61,6 +61,7 @@ import { heapTrimOn } from './heapTrim.js';   /* v2.3.5007: the heap trim's swit
 import { lookPaletteChoice } from '../game/lookPaletteChoice.js';   /* v2.3.3838: not built on Windows */
 import { SheenGeometry, SHEEN_VS, sheenBitGl, packSheenQuad, SHEEN_BATCHER, sheenParams, sheenBatchOn } from './lightfx/sheenBatch.js';   /* v2.3.4998: the shine on a numbers picture; v2.3.5236: its self-test's */
 import { selfDraw, selfQueue, selfSkip, selfPending, selfTestOn, selfLookManifest, selfLookPicture, selfLookWant, selfLookRow, sheenLiftCpu, SELF_SHEEN, SELF_SIZE } from './selfTest.js';   /* v2.3.5236: the self-test at the door (card O PR 14b) */
+import { sw, pageAddress } from '../game/switches.js';   /* v2.3.5316: the page's one reader (card T) */
 
 export const LOOK_BATCHER = 'bt-look';
 /* ═══ v2.3.4998: THE LOOK PROGRAM WITH THE METAL'S SHINE ═══
@@ -118,7 +119,7 @@ const DIR_CAP = 1024;             /* sheets it holds (8 KB) */
    and it buys no batch -- shining armour is drawn by the look program's
    shine form (LOOK_SHEEN_BATCHER), a batch apart from the bodies anyway */
 const ATLAS_SETS = new Set(['body', 'heads', 'shirt']);
-const _atlasWanted = (() => { try { return !/(^|[?&])lookatlas=0(&|$)/.test(window.location.search || ''); } catch (e) { return true; } })();
+const _atlasWanted = (() => { try { return !/(^|[?&])lookatlas=0(&|$)/.test(pageAddress()); } catch (e) { return true; } })();
 
 /* ── the switch ── */
 /* v2.3.3716: ON by default -- the owner, 2026-10-28: "I think including the
@@ -495,7 +496,7 @@ function dirOf(t) {
    60 s: far past a slow line's download, so only a dead request fails.
    `?retrylooks=0` is the game as it was. */
 const SET_FILE_TIMEOUT_MS = (() => {
-  try { if (typeof location !== 'undefined' && /[?&]retrylooks=0\b/.test(location.search || '')) return 0; } catch (e) { /* on */ }
+  if (sw('retrylooks')) return 0;
   return 60000;
 })();
 /* v2.3.4993: a set's manifest, fetched once (the atlas plans every set's

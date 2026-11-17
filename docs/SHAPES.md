@@ -238,18 +238,22 @@ So:
 ### Things a phone names by their place today
 
 Each is a row of the wire table whose request must name the thing by its id
-once it has one (card K, after card R's weapon id):
+once it has one (card K, after card R's weapon id). **Built (v2.3.5196, card K
+PR 11; `docs/specs/gid-names.md`):** each reads the weapon's `gid` beside its
+place, refuses when the two disagree, and reads the place alone from an older
+phone; the page's action door adds the id (`GID_PLACE`, `caps.gidnames`).
+Salvage, essence and the reveal take it too:
 
 | Request | Names a weapon by | A check beside it |
 |---|---|---|
-| `sell_weapon` | its place in the stash | none |
-| `equip_request` | its place, and a slot | the type must fit the slot |
-| `POST /api/market/place` | its place | none |
-| `POST /api/store/list` (a weapon) | its place | none |
-| `amulet_forge_request` (extract, from the stash) | its place | none |
-| `trade2_stage_weapon` | its place | the weapon's name, if sent |
-| `smith_salvage`, `essence_apply` | its place | a signature of what it is (`weaponSig`): two alike pass for each other |
-| `reveal_item` | its place | its name, if sent |
+| `sell_weapon` | its `gid` beside its place in the stash (v2.3.5196) | none |
+| `equip_request` | its `gid` beside its place, and a slot (v2.3.5196) | the type must fit the slot |
+| `POST /api/market/place` | its `gid` beside its place (v2.3.5196) | none |
+| `POST /api/store/list` (a weapon) | its `gid` beside its place (v2.3.5196) | none |
+| `amulet_forge_request` (extract, from the stash) | its `gid` beside its place (v2.3.5196) | none |
+| `trade2_stage_weapon` | its `gid` beside its place (v2.3.5196) | the weapon's name, if sent |
+| `smith_salvage`, `essence_apply` | its `gid` beside its place (v2.3.5196) | a signature of what it is (`weaponSig`): two alike pass for each other |
+| `reveal_item` | its `gid` beside its place (v2.3.5196) | its name, if sent |
 
 Gear is named by `gid` and a pet by its id already.
 
@@ -1020,6 +1024,7 @@ writes them, never identifiers: `dungeon`, `connection`, `loading` and
 | `poseTo`, `posePhase`, `poseDoorOff`, `POSE_PAGE_WAYS`, `src/game/poseDoor.js`, page switch `?posedoor` (v2.3.5520) | the pose's page door: the phone's own held pose, its one writer, its ways and its switch; free at the commit as whole words (the worker's are `_poseTo` and `_poseDoorOff`) | 5 (step 5.3b) |
 | `guardTo`, `guardPhase`, `guardDoorOff`, `GUARD_PAGE_WAYS`, `src/game/guardDoor.js`, `docs/specs/guard-door.md`, page switch `?guarddoor` (v2.3.5521) | the guard's page door: your raised shield on the phone, its one writer, its ways and its switch; free at the commit (no hit in `src`, `server`, `tools` or `docs`) | 5 (step 5.3b) |
 | `_rideTo`, `_rideDoorOff`, `RIDE_WAYS`, `docs/specs/ride-door.md`, live flag `ridedoor` (v2.3.5523) | the ride door: the skateboard, its one writer and its ways (`server/src/ride.js`), and its kill switch; free at the commit (no hit in `src`, `server`, `tools` or `docs`) | 5 (step 5.3b) |
+| `windowTo`, `windowPhase`, `windowDoorOff`, `WINDOW_WHYS`, `S._windows`, `src/game/windowDoor.js`, `docs/specs/window-door.md`, page switch `?windowdoor` (v2.3.5526) | the window door: what is open over the world, its one field and writer, the reasons and the switch; free at the commit in `src`, `tools` and `docs` (`server/test/xfer.test.mjs` has a local helper `windowTo` of its own, a test's, never imported) | 5 (step 5.3b) |
 | `veilTo`, `veilPhase`, `veilDoorOff`, `VEIL_WHYS`, `S._veils`, `src/game/veilDoor.js`, `docs/specs/loading-door.md`, page switch `?veildoor` (v2.3.5525) | the loading door: the world's veils, their one field and writer, the reasons and the switch; free at the commit (no hit in `src`, `server`, `tools` or `docs`) | 5 (step 5.3b) |
 | `_arenaTo`, `_arenaPhase`, `_arenaDoorOff`, `ARENA_WAYS`, `docs/specs/arena-door.md`, live flag `arenadoor` (v2.3.5522) | the arena door: the Gladiator tournament, its one writer and its ways (`server/src/gladiator.js`), and its kill switch; free at the commit (no hit in `src`, `server`, `tools` or `docs`) | 5 (step 5.3b) |
 

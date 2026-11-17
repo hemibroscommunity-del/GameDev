@@ -69,7 +69,7 @@ export const WIRE_HTTP = [
     doesWhat: ['value-out', 'final'], reqId: 'reqId',
     trust: { reqId: 'request', playerId: 'request', 'x-bt-auth': 'request', 'type': 'request', price: 'request',
          category: 'claim', subtype: 'claim', tierKey: 'claim', element1: 'request', element2: 'request',
-         stashIndex: 'request', tierLabel: 'words', playerName: 'words', room: 'request' },
+         stashIndex: 'request', gid: 'request', tierLabel: 'words', playerName: 'words', room: 'request' },
     absent: 'refused: no body, no playerId or no token is a 403; refused: no type or price is \'Missing fields\'; default: no tierLabel is the tierKey; default: no playerName is \'Unknown\'',
     bad: ['refused', 'clamped', 'taken'], answer: 'http',
     fight: 'lock:fightlock', flag: ['swordconvert', 'gscopper', 'mktsettle', 'mktwords', 'reqonce'],

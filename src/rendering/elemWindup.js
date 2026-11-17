@@ -47,6 +47,7 @@ import { windupPieces, seedOfId, windupSizeK, windupStrength } from '@/game/elem
 import { SHAPE_DRAW } from './elemWindupShapes.js';
 import { monsterTorsoY, monsterMeleeHitRadius } from '@/data/gameSystems.js';
 import { monsterDrawScale } from '@/game/combatHelpers.js';
+import { pageAddress } from '../game/switches.js';   /* v2.3.5317: the page's one read of its address (card T) */
 
 const COLS = 4;
 let _cells = null;      /* shape -> Texture, cut from one source */
@@ -84,7 +85,7 @@ export function warmElemWindup() {
 }
 
 function windupOn() {
-  try { return !(typeof location !== 'undefined' && new URLSearchParams(location.search).has('nowindupfx')); }
+  try { return !(typeof location !== 'undefined' && new URLSearchParams(pageAddress()).has('nowindupfx')); }
   catch (e) { return true; }
 }
 

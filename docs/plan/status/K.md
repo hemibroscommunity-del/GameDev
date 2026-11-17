@@ -1,6 +1,6 @@
 card: K
 branch: claude/plan-k-8-send-door (5193; one branch a PR, each begun from main)
-prs: #1822, #1820, #1826, #1829, #1831, #1838, #1842, #1861, #1848, #1899, #1923, #1900, #1931-#1934, #1942, #1949, #1972, #1989, #1981 merged; ready: #1997 (5196), #1999 (5547), #2003 (5197); 5193 (this branch)
+prs: #1822 to #1989, #1981, #1997, #1999 merged; open: #2003 (5197, held at 30: mending), #2006 (5193, this branch)
 state: ready
 
 ## Done
@@ -10,19 +10,17 @@ state: ready
 - Claims 5540 (#1842, `arrowlane` ON), 5541 (#1848, the sprint mark OFF).
 - 5542 (#1899): chat lanes for MOD. RT-1: N10 (5543, #1923, `relaybytes`),
   N11 (5544, #1942, `heapforget`), N5 (5545, #1949, `roomceiling`).
-- #1972, #1981, #1989 (5194, 5194b, 5195; `reqonce` ON, `reqstamp` OFF):
-  a repeat acts once on every value request
-  (reqonce.js; the wire door).
+- 5194, 5194b, 5195 (`reqonce` ON, `reqstamp` OFF), 5196 (`gidnames` ON),
+  5547: a repeat acts once; a weapon named by its id (sitting 30).
 
 ## Next
 
-- #1997 5196 (`gidnames` ON), #1999 5547 (the door's own list): ready.
-- #2003 5197: the words rule -- words.js, the mail's three
-  sentences as templates (`noteT`), the page fills them; census line 3.
-- 5193 (PR 8, never built; 13 waits on it): the send door, send.js
+- #2006 5193 (PR 8, never built; 13 waits on it): the send door, send.js
   `_send`; the ~55 helpers through it; counts ride the day's book (`send`,
   8 KB); census 150 -> 93; `sendcount` ON. Then 13 (5198, 5199).
+- #2003 5197: the words rule; sitting 30's findings being mended.
 - Then the second block: the claims tightened (14).
+- wsClient.js: done for good (told L). index.js, combat.js: 13 and 14.
 
 ## Found
 
@@ -30,7 +28,6 @@ state: ready
 - One sprint step's bill is capped at 1 s (STEP_MAX_MS), on or off.
 - A sell order's tierKey is the seller's claim, not the escrowed weapon's.
 - After a reconnect admin's lastStrike/arrowBlast read null (#1942).
-- `wiredoor`'s listed wire-door.test FAIL 3 passed on main too: off its list.
 - #1949: a socket at 95/s is never closed (550 drops / 10 s < 600), and
   the full room's 33/s share sits at a crowd fight's 35-40/s: the owner's.
 

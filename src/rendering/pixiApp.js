@@ -20,6 +20,7 @@ import { startFramePack } from './framePack.js'; /* v2.3.5257: a monster strip's
 import { installPicsOnceUpload, startPicsOnce, restoreAllPictures, addPictureRestorer } from './picsOnce.js'; /* v2.3.3715: a picture from a file held once (?onecopy) */
 import { cacheSourceBytes } from './cacheBytes.js'; /* v2.3.5248: what a cached picture holds in the page (colour numbers: nothing here) */
 import { Application, Cache, Container, GlTextureSystem, TextureSource } from 'pixi.js';
+import { pageAddress } from '../game/switches.js';   /* v2.3.5317: the page's one read of its address (card T) */
 
 /* ═══ v2.3.3069: A DESTROYED TEXTURE LETS GO OF ITS PIXELS ═══
    TextureSource.destroy() nulls its `resource` -- but Pixi also keeps the
@@ -186,7 +187,7 @@ const SCREEN_LAYER_NAMES = ['atmosphere', 'screenFX', 'hud'];
 
 /* v2.3.3449: each world layer its own render group (buildScene); off with
    `?nolayergroups` to compare */
-const LAYER_GROUPS = !(typeof location !== 'undefined' && /[?&]nolayergroups\b/.test(location.search || ''));
+const LAYER_GROUPS = !(typeof location !== 'undefined' && /[?&]nolayergroups\b/.test(pageAddress()));
 export const LAYER_NAMES = [...WORLD_LAYER_NAMES, ...SCREEN_LAYER_NAMES];
 /* v2.3.1915: the world stack, published for QA. "Arrows draw under the
    player" is a statement about ORDER, and a scenario that hard-coded the
@@ -231,7 +232,7 @@ function buildScene(app) {
      screen's.  The camera on the GPU is in 32-bit floats, so an edge can land
      a pixel over now and then -- the shift the owner accepted.
      `?norendergroups` is the scene as it was, to compare. */
-  if (!(typeof location !== 'undefined' && /[?&]norendergroups\b/.test(location.search || ''))) {
+  if (!(typeof location !== 'undefined' && /[?&]norendergroups\b/.test(pageAddress()))) {
     worldContainer.isRenderGroup = true;
     screenContainer.isRenderGroup = true;
   }
@@ -652,7 +653,7 @@ export const CANVAS_BG = 0x0d0b18;
    app is made; `?depthbuf` in the address keeps the depth buffer, to compare. */
 function withoutDepthBuffer(canvas) {
   try {
-    if (/(^|[?&])depthbuf(=|&|$)/.test(window.location.search || '')) return () => {};
+    if (/(^|[?&])depthbuf(=|&|$)/.test(pageAddress())) return () => {};
     /* v2.3.3313: a canvas whose context came up with no stencil buffer is
        made again once (BroTown, TRAPS §194), and that one asks for exactly
        what Pixi asks by default, depth buffer and all -- in case a device

@@ -116,21 +116,21 @@ import { BatcherPipe, BufferImageSource, Container, Filter, GlProgram, Matrix, M
 import { selfDraw, selfQueue, selfSkip, selfTestOn, selfShadeRgba, selfShadeWant, SELF_SHADE, SELF_SIZE } from '../selfTest.js';   /* v2.3.5236: the self-test at the door (card O PR 14b) */
 import { profileAtU } from '../propGround.js';
 import { healAfterRenderThrow } from '../renderHeal.js';   /* v2.3.3458: a pre-pass that throws leaves nothing open */
-import { sw } from '../../game/switches.js';   /* v2.3.5232 (card O PR 12): the passes' switch through the page's one reader */
+import { sw, pageAddress } from '../../game/switches.js';   /* v2.3.5232 (card O PR 12): the passes' switch through the page's one reader */
 
 /* v2.3.3149: on unless `?shadowlock=0` (see the header) -- read once */
 let _lockOn = null;
 function lockOn() {
   if (_lockOn !== null) return _lockOn;
   _lockOn = true;
-  try { if (typeof location !== 'undefined' && /[?&]shadowlock=0\b/.test(location.search || '')) _lockOn = false; } catch (e) { /* on */ }
+  try { if (typeof location !== 'undefined' && /[?&]shadowlock=0\b/.test(pageAddress())) _lockOn = false; } catch (e) { /* on */ }
   return _lockOn;
 }
 
 /* v2.3.3338: `?shadowsnap=1` -- Pixi's snapping back on the shadow pieces;
    `?shadowhp=0` -- the filter at the half precision it had (see the header).
    Read once. */
-const _q = (re) => { try { return typeof location !== 'undefined' && re.test(location.search || ''); } catch (e) { return false; } };
+const _q = (re) => { try { return typeof location !== 'undefined' && re.test(pageAddress()); } catch (e) { return false; } };
 const SNAP_OLD = _q(/[?&]shadowsnap=1\b/);
 const HP_ON = !_q(/[?&]shadowhp=0\b/);
 /* v2.3.3458: `?shadowpass` -- the filter in the middle of the frame, as it

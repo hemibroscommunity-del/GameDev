@@ -422,7 +422,10 @@ export function equipStashWeapon(wpn, hintIdx, opts) {
   /* v2.3.1159: server-sync -- pre-splice index, InventoryPanel convention;
      the slot activation must reach the worker too or its
      _computeAttackDamage keeps resolving the previous slot. */
-  syncWeaponSlot({ type: 'equip_request', payload: { stashIdx: idx, slot } });
+  /* v2.3.5196 (the gatekeeper, sitting 30): the weapon's id taken from the
+     weapon itself -- the stash above has already moved, so the action door's
+     lookup by place would name the NEXT weapon */
+  syncWeaponSlot({ type: 'equip_request', payload: { stashIdx: idx, slot, ...(live && typeof live.gid === 'string' ? { gid: live.gid } : {}) } });
   if (activate || handEmpty) {
     R.activeSlot = ACTIVE_FOR[slot];
     syncWeaponSlot({ type: 'set_active_slot', payload: { slot: R.activeSlot } });

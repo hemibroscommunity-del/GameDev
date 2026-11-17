@@ -35,6 +35,7 @@ import { hemiRecipe, hemiFaceChoice } from './hemiLook.js';
 import { decodePng8 } from './png8Decode.js';
 import { skinTarget } from './playerSkins.js';
 import { getPattern } from './traits/patternCatalog.js';
+import { pageAddress } from '../game/switches.js';   /* v2.3.5316: the page's one reader (card T) */
 
 export const HEMI_SCALE = 6;          /* 32 x 6 = 192, the townsfolk's heads' size */
 const CACHE_CAP = 24;                 /* data URLs kept, newest last (a cache has a cap) */
@@ -47,8 +48,7 @@ const _stats = { wanted: null, why: '', loaded: false, loadError: '', made: 0, c
 
 function choice() {
   if (_choice) return _choice;
-  let search = '';
-  try { search = (typeof window !== 'undefined' && window.location && window.location.search) || ''; } catch (e) { search = ''; }
+  const search = pageAddress();
   _choice = hemiFaceChoice(search);
   _stats.wanted = _choice.on; _stats.why = _choice.why;
   return _choice;

@@ -53,8 +53,9 @@
 import { Container, Graphics, Matrix, Rectangle, RenderTexture, Sprite, Texture, checkChildrenDidChange } from 'pixi.js';
 import { ONE_PIC, onePicFromQuery, onePicNearFromQuery, calmFigure, gradedWire, pickPictures, deviceSplit, slotGrid, sheetBytes } from '../game/onePic.js';
 import { maxTextureSize } from '../game/deviceProfile.js';   /* v2.3.5227: the device asked in one place (card O PR 7) */
+import { pageAddress } from '../game/switches.js';   /* v2.3.5317: the page's one read of its address (card T) */
 
-const _search = typeof location !== 'undefined' ? (location.search || '') : '';
+const _search = pageAddress();
 
 export class PeerImpostors {
   constructor(renderer, layers) {

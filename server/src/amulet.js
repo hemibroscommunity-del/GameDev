@@ -233,7 +233,7 @@ export const amuletMethods = {
       } else if (target === 'stash') {
         // Stash weapons are not equipped, so no gear lock (matching the
         // gear.js stash ops).  Index-addressed like _handleUnstash.
-        const idx = payload && payload.stashIdx;
+        const idx = this._gidPlace(ps, payload && payload.stashIdx, payload && payload.gid);   /* v2.3.5196: by its id when sent (gidnames.js) */
         if (!Array.isArray(ps.weaponStash)
           || !Number.isInteger(idx) || idx < 0 || idx >= ps.weaponStash.length) return;
         item = ps.weaponStash[idx];

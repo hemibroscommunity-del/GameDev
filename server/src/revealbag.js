@@ -167,7 +167,7 @@ export const revealBagMethods = {
       let idx = null;
       if (wornSlot) w = ps[wornSlot];
       else {
-        idx = ref.idx;
+        idx = this._gidPlace(ps, ref.idx, ref.gid);   /* v2.3.5196: by its id when sent (gidnames.js) */
         if (!Number.isInteger(idx) || idx < 0 || !Array.isArray(ps.weaponStash) || idx >= ps.weaponStash.length) return { ok: false, reason: 'not_held' };
         w = ps.weaponStash[idx];
         /* the trade's tiebreak (trade2.js expectName): a list that moved

@@ -179,7 +179,7 @@ export const salvageMethods = {
 
   /* A weapon in the weapon bag by index AND signature, or a reason. */
   _salvageWeaponAt(ps, payload) {
-    const idx = payload && payload.idx;
+    const idx = this._gidPlace(ps, payload && payload.idx, payload && payload.gid);   /* v2.3.5196: by its id when sent (gidnames.js) */
     if (!Number.isInteger(idx) || idx < 0) return { reason: 'bad' };
     const list = Array.isArray(ps.weaponStash) ? ps.weaponStash : [];
     const w = list[idx];

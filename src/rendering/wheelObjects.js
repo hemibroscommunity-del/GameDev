@@ -63,6 +63,7 @@ import { readArtBottoms } from './propGround.js';               /* v2.3.3028: wh
 import { pageDropDue } from './artHolds.js';                    /* v2.3.4416: a failed page is asked for again */
 import { drawSourceRect } from './paletteDraw.js';              /* v2.3.3190: a page kept as colour numbers, read on the CPU */
 import { paletteOn, makePaletteSource, paletteStats } from './paletteTex.js';   /* v2.3.3190: ...and drawn so */
+import { pageAddress } from '../game/switches.js';   /* v2.3.5317: the page's one read of its address (card T) */
 
 const BASE = '/world/objects/';
 const CACHE_PREFIX = 'wheel-object/';
@@ -96,7 +97,7 @@ const SEE_ALPHA = 0.42, SEE_MS = 110;
    (monsterSilhouette.js). */
 const CANOPY_FADE = (() => {
   try {
-    const q = window.location.search || '';
+    const q = pageAddress();
     return !/(^|[?&])nofade(=|&|$)/.test(q);
   } catch (e) { return true; }
 })();
@@ -293,7 +294,7 @@ async function loadPalettePage(url) {
 }
 /* how a page's ground lines are read: true, on the worker (as it ships); false, on the page (`?pagebases=0`);
    'both' while a test compares them (window.__btBasesVerify, set before the world loads) */
-const _basesOff = (() => { try { return /(^|[?&])pagebases=(0|off|false)(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();
+const _basesOff = (() => { try { return /(^|[?&])pagebases=(0|off|false)(&|$)/.test(pageAddress()); } catch (e) { return false; } })();
 function _basesWay() {
   if (_basesOff) return false;
   return (typeof window !== 'undefined' && window.__btBasesVerify === true) ? 'both' : true;

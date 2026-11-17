@@ -44,6 +44,7 @@ import { seedOfId, windupSizeK } from '@/game/elemWindup.js';
 import { WATER_RAMP, WATER_PIXELS } from './waterAttackShapes.js';
 import { monsterTorsoY, monsterBodyOffsetY } from '@/data/gameSystems.js';
 import { monsterDrawScale } from '@/game/combatHelpers.js';
+import { pageAddress } from '../game/switches.js';   /* v2.3.5317: the page's one read of its address (card T) */
 
 let _cells = null;      /* shape -> Texture, cut from one source */
 
@@ -111,7 +112,7 @@ let _wanted = false;
 export function wantWaterAttack(on) { _wanted = !!on; }
 
 function waterOn() {
-  try { return !(typeof location !== 'undefined' && new URLSearchParams(location.search).has('nowaterfx')); }
+  try { return !(typeof location !== 'undefined' && new URLSearchParams(pageAddress()).has('nowaterfx')); }
   catch (e) { return true; }
 }
 

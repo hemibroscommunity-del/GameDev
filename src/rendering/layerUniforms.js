@@ -26,13 +26,14 @@
  *
  * `?layerpush` in the address is Pixi's way, to compare. */
 import { RenderGroupPipe, executeInstructions, RendererType } from 'pixi.js';
+import { pageAddress } from '../game/switches.js';   /* v2.3.5317: the page's one read of its address (card T) */
 
 let _installed = false;
 let _all = false;   /* QA: every group pushed as Pixi does, this page (window.__btLayerPushAll) */
 let _empty = 0, _shared = 0, _pushed = 0;
 
 function urlOff() {
-  try { return /[?&]layerpush(=|&|$)/.test(window.location.search || ''); } catch (e) { return false; }
+  try { return /[?&]layerpush(=|&|$)/.test(pageAddress()); } catch (e) { return false; }
 }
 
 function sameMatrix(m, n) {

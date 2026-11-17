@@ -12,6 +12,7 @@ import { getGearFrame, getShirtLookFrame, gearSheetLoad } from './gearSheets.js'
 import { parsePattern } from './traits/patternCatalog.js';
 import { clientOff } from '../game/clientOff.js';   /* v2.3.3790: the Test panel's live off switch */
 import { installShirtProbe } from './lookShirtProbe.js';
+import { pageAddress } from '../game/switches.js';   /* v2.3.5316: the page's one reader (card T) */
 
 /* v2.3.3790: the dressed tee's own off switches (the rest of the look palette
    as it is): `?lookshirt=0` for one phone, and the Test panel's Memory savers
@@ -19,9 +20,9 @@ import { installShirtProbe } from './lookShirtProbe.js';
    numbers it costs ~5 draw calls a dressed figure until the look program joins
    the one batcher, so the owner can turn it off at the showing if frames
    suffer (still ON by default: "I can always revert") */
-const _wanted = (() => { try { return !/(^|[?&])lookshirt=0(&|$)/.test(window.location.search || ''); } catch (e) { return true; } })();
+const _wanted = (() => { try { return !/(^|[?&])lookshirt=0(&|$)/.test(pageAddress()); } catch (e) { return true; } })();
 /* v2.3.4992: a plain tee from the numbers when its body is (below); `?plaintee=0` as before */
-const _plainTee = (() => { try { return !/(^|[?&])plaintee=0(&|$)/.test(window.location.search || ''); } catch (e) { return true; } })();
+const _plainTee = (() => { try { return !/(^|[?&])plaintee=0(&|$)/.test(pageAddress()); } catch (e) { return true; } })();
 
 /* behind the loading screen with the body's sheets (preloadLookSheets) */
 registerLookSheets('shirt', '/sprites/look/shirt/roles.json');
@@ -93,7 +94,7 @@ export function getLookShirtFrame(item, pose, dir, frameIdx, look) {
 
 /* the shirt oracle's probe (mp-lookshirts), on a page that asks for it only */
 try {
-  if (typeof window !== 'undefined' && /(^|[?&])(lookpalette=1|lookprobe(=1)?)(&|$)/.test(window.location.search || '')) {
+  if (typeof window !== 'undefined' && /(^|[?&])(lookpalette=1|lookprobe(=1)?)(&|$)/.test(pageAddress())) {
     installShirtProbe({ getGearFrame, getShirtLookFrame, getLookShirtFrame, parsePattern, sideForDir, preloadGearSheet: gearSheetLoad });
   }
 } catch (e) { /* QA only */ }

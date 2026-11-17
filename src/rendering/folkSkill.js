@@ -50,14 +50,15 @@ import { shirtFill } from './traits/shirtColorCatalog.js';
 import { SHADE } from './formShade.js';
 import { lookFolkWantedAtLoad } from './lookFolk.js';
 import { folkWalkWanted } from '@/game/townsfolkDay.js';
+import { pageAddress } from '../game/switches.js';   /* v2.3.5317: the page's one read of its address (card T) */
 
 /* `?folkwork=0` (folkPose.js's switch, read the same way): no work poses on
    this phone, so none of these figures is loaded either.  `?folkskills=0`
    (v2.3.5462, its row in tools/guards/lib/switches.mjs): these figures alone
    off, none of the set loaded, and the three back in card TF PR 1's poses
    (FOLK_SKILL_FALLBACK) */
-const _workOff = (() => { try { return /(^|[?&])folkwork=0(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();
-const _skillsOff = (() => { try { return /(^|[?&])folkskills=0(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();
+const _workOff = (() => { try { return /(^|[?&])folkwork=0(&|$)/.test(pageAddress()); } catch (e) { return false; } })();
+const _skillsOff = (() => { try { return /(^|[?&])folkskills=0(&|$)/.test(pageAddress()); } catch (e) { return false; } })();
 const _off = _workOff || _skillsOff;
 /* ...and only on a phone where somebody will be drawn doing them (the
    gatekeeper's review, sitting 12): the townsfolk drawn live from their looks
