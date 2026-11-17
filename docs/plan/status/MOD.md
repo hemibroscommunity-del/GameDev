@@ -1,7 +1,7 @@
 card: MOD
 branch: claude/plan-mod-<n>-<topic> (#1909 > #1914 restacked on main b2d763a9; PR 5 on main; every PR against main)
 prs: #1909 (5623, report evidence), #1914 (5624, invite pace): ready; #1941 (5625, the freeze's devices, words outside the lanes, the name fold): ready; #1869 (findings): draft
-state: ready
+state: working
 
 ## Done
 
@@ -13,7 +13,10 @@ state: ready
 
 ## Next
 
-- #1941 (5625), waiting for the gatekeeper: the freeze's devices from botfp's `device:` record and the owner's spare complete the same way (`freezedevice` stays OFF); the words outside the six lanes (pet, alliance and clan names, an emote's quick line) closed to a silenced character, every words row decided; the name fold's misses (BroTovvn, a Cherokee A, Admln); SILENCE_LANES is K's CHAT_LANE_TYPES.
+- #1941 (5625) and #1947 (5626, touches card K's market.js ~83-105 and ~385-391 by the planning session's yes), waiting for the gatekeeper.
+- PR 7 (5627, stacked on #1941): sitting 22's three findings: the owner's devices kept (`ownerdev:`, botfp's record forgets); the `freezedevice` row says every character on a held phone, as the card ("whatever character it names"); the l read as an i before cl as d ("Officlal").
+- After sitting 22 merges: main into #1909, then #1909 into #1914 (their switch rows clash with T's #1935 and #1941), heads to the gatekeeper of sitting 23.
+- Still open, the name rule's lows (sitting 19 review): a rename's `player_update` flattens the build for a minute; `namerules: false` does not reach the name box; a `name` refusal shows no words; the arena's own name.
 
 ## Found
 

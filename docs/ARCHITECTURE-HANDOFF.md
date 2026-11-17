@@ -113,6 +113,7 @@ extended.
    | `device:<deviceId>` | identity list per device nonce (fleet correlation) | anticheat-botfp.md |
    | `frozen:<pid>` | `{ts, note}` operator freeze — join gate | admin.md |
    | `silenced:<pid>` | `{until, note, at}` (v2.3.5621) the owner's silence: the character's chat lanes reach nobody until `until` (0: until lifted); all loaded into memory once a room's life, checked by the router's silence door | silence.md |
+   | `ownerdev:<deviceId>` | `{pid, at}` (v2.3.5627) a device one of the owner's own characters (test mode) joined from: written once a device, at a join that is in; a freeze's device rule never holds it (botfp's `device:` record forgets after 8 characters or 30 days) | silence.md |
    | `testmode:<pid>` | `{v, on: true, at, name}` — the owner's TEST MODE for one character (v2.3.3430, testmode.js): present is on, deleted is off. Written only by the admin route (POST /api/admin/dev/testmode, the Test panel; `on` only for a character who is online); read once at a join, BEFORE the reconnect's place is judged, kept as `ps._testMode` (memory only, never the rpg blob); a failed read is off. Deleted by `_resetCharacterData`. `testmode: false` in the live flags turns every one off without touching the records | test-mode.md |
    | `rpgsnap:<pid>:<yyyymmdd>` | daily rpg-blob snapshot (ring of 7) | admin.md |
    | `rpgsnap:<pid>:prereset-<ts>` | parachute snapshot before a self-service character restart | character-restart.md |
