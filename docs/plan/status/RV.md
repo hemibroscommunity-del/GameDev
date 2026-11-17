@@ -1,6 +1,6 @@
 card: RV
-branch: claude/rv-dying (PR 4, stacked on claude/rv-risechest)
-prs: #2072, #2083 (5800, 5801: sitting 42); PR 3 (5802, ready); PR 4 (5803, working)
+branch: claude/rv-nml (PR 5, stacked on claude/rv-dying)
+prs: #2072, #2083 (sitting 42); #2091 (5802, ready); PR 4 (5803, ready soon); PR 5 (5804, working)
 state: ready
 
 ## Done
@@ -14,9 +14,11 @@ state: ready
 
 - #2083 (5801, ready): `market.js`, `inbox.js`: MS-2 (`mkttier`), MS-4
   (`mktheal`). `market-own-place.test`: 10 FAIL on main, green here.
-- PR 3 (5802, ready): the chest's stamp kept for good (MD-1, `risekeep`).
+- #2091 (5802, ready): the chest's stamp kept for good (MD-1, `risekeep`).
 - PR 4 (5803): goods credited in the dying seconds kept (MS-3,
   `dyingkeep`, `inbox.js` only). `dying-keep.test`: 4 FAIL without it.
+- PR 5 (5804): No man's land's killer paid in the victim's own write
+  (MS-1, `nmlonewrite`). `nml-onewrite.test`: 1 FAIL on main.
 
 ## Found
 
