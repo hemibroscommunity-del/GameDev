@@ -33,6 +33,7 @@ import { FREE_SWING } from './freeswing.js';
 
 export const BOW_SHOT = Object.freeze({
   BURST: 2,        /* the allowance's top: an arrow, and one the network delayed */
+  RETREAT_SLACK_MS: 500,   /* a paid retreat's arrow may come this long after its roll ends */
   KEPT: 8,         /* the arrows kept to judge claims by: no clock on them, so a claim a hidden tab held
                       (its arrow's relay before the hold, the claim after) still finds its arrow; banked
                       arrows buy a script KEPT hits at most, each paid at the bow's rate */
@@ -57,6 +58,15 @@ export const bowShotMethods = {
     const ps = this.playerState && this.playerState[session.id];
     if (!ps) return;
     const sw = (typeof payload.ts === 'number' && Number.isFinite(payload.ts)) ? payload.ts : null;
+    /* a paid retreat's arrow is an arrow more, never the bow's own: counted
+       free while the retreat the worker charged is on (movement.js
+       _rollStamp, kind 'retreat') */
+    if (payload.retreat && ps._rollKind === 'retreat' && now <= (ps._rollUntil || 0) + BOW_SHOT.RETREAT_SLACK_MS) {
+      const st = this._bowShotState(ps);
+      st.q.push({ sw, at: now, ids: null });
+      if (st.q.length > BOW_SHOT.KEPT) st.q.shift();
+      return;
+    }
     this._bowShotCount(ps, sw, null, now);
   },
   /* one arrow from the allowance (refilled at the bow's own rate), or null */
@@ -90,7 +100,16 @@ export const bowShotMethods = {
     /* no arrow seen with a target left: its relay was lost (a dropped line,
        the relay's own bucket) or never sent -- an arrow from the allowance,
        so the bound is the bow's rate whatever the relays say */
-    if (!shot) return !!this._bowShotCount(ps, null, key, now);
+    if (!shot) {
+      /* a paid retreat's one arrow, its relay or not (the worker charged it) */
+      if (ps._rollKind === 'retreat' && now <= (ps._rollUntil || 0) + BOW_SHOT.RETREAT_SLACK_MS && s.retreatOf !== ps._rollUntil) {
+        s.retreatOf = ps._rollUntil;
+        s.q.push({ sw: null, at: now, ids: new Set([key]) });
+        if (s.q.length > BOW_SHOT.KEPT) s.q.shift();
+        return true;
+      }
+      return !!this._bowShotCount(ps, null, key, now);
+    }
     if (!shot.ids) shot.ids = new Set();
     if (shot.ids.has(key) || shot.ids.size >= cap) return false;
     shot.ids.add(key);

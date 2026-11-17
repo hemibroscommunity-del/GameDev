@@ -29,7 +29,9 @@ sword's blow with a bow's label.
    to the relay's own bucket costs an honest arrow nothing. With the allowance
    spent, the claim is dropped quietly and counted as `shot`.
 
-So the bound is **arrows at the bow's own rate, each with its targets**.
+So the bound is **arrows at the bow's own rate, each with its targets**. A
+paid retreat's arrow is one more, free: while the retreat the worker charged
+is on, its arrow (relayed or not) costs the allowance nothing.
 
 Left as they are: a paid special's claims and everything inside its window
 (the volley's stuck arrows' chips, its burning patch), a staff's bolts, a
@@ -47,6 +49,12 @@ The bar is 1.5. What is left is the bow's **reach**: 1,490 px (`hitproof.js`
 `_hitReach`: 675 x Range, 150 of slack, and a second of running at the flat
 500 px a second), so the cheat stands back and never walks. That is the next
 judge. With `movetop` on, the run's speed could follow the player's own top.
+
+**Phone tests with it on** (a local run): `bowfeel` 21/21, `questline`
+187/187, `bowprops` 23/24 (its Town Hall check, red on main too: card L's
+Found). The suites that claim arrows with no relay faster than their
+character's bow (`hit-proof` 4b) fail with the switch thrown, by design; its
+row lists them.
 
 The bench gained an honest way in this PR: **the flicking archer**, a shot
 every 371 ms (the free-swing trial's flicked bow). With it, the bow's gain
