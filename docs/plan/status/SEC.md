@@ -1,16 +1,13 @@
 card: SEC
 branch: claude/plan-sec-<n>-<topic> (stacked: each PR on the one before until it merges)
-prs: #2030 #2032-#2040 merged; #2042 #2043 #2045 #2047 #2049: sitting 38 (main merged in); PR 12 (5711): suite
+prs: #2030 #2032-#2040 merged; #2042 #2043 #2045 #2047 #2049: sitting 38 (its review's holds fixed); PR 12 (5711): opened
 state: working
 
 ## Done
 
-- PR 1 (5700, #2030, merged): the card, this file, the block; items 16 to
-  20 and item 15's addition word for word (the orchestrator, on the owner's
-  "go recommended"), built after item 15.
-- PRs 2 to 6 (#2032-#2040, merged): a join's id of its form; a refused
-  vault put owed; stored bags never cut; a newer worker's fields kept; the
-  board holds its limit and fields.
+- PRs 1 to 6 (#2030-#2040, merged): the card (items 16 to 20 added); a
+  join's id of its form; a refused vault put owed; stored bags never cut;
+  a newer worker's fields kept; the board holds its limit and fields.
 - PR 7 (#2042): the feedback hour shared by kind, address counts in its
   row, the crash feed cut by bytes, the list kept 30 s (`feedbackshare`).
 - PR 8 (#2043): a header no side door past the public reads' pace.
@@ -32,7 +29,9 @@ state: working
 - A join with NO id is let in as `session.id` undefined: a body under
   `playerState.undefined` and a `cadence:login:undefined` row, shared by
   every such join (join.js; PR 2's card covers an id present only).
-- PR 14's popup half (gameEvents.js): card L's #2033 (5532), merged. Hub: the planning session.
+- PR 14's popup half: card L's #2033, merged.
+- Sitting 38: received friend requests never expire; 50 throwaways fill a
+  player's inbox (friends.js). Later: expire them by `at`.
 
 ## Needs
 
