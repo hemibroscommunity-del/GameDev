@@ -51,7 +51,16 @@ exists), RV #2072.
   today); a spar knock-down can leave a stale `_deathShield` (overwritten
   at the next death before any read).
 
-### K2 #2092 (5729, `guestshare`): HELD
+### K2 #2092 (5729, `guestshare`): held, then mended at 336c238b
+
+- K2's 336c238b: the share is decided BEFORE the key's check
+  (`_guestSharePre`: a guest past its share, a guest on a spare socket,
+  and a key with no `auth:` on a spare socket are refused there, nothing
+  written; one read of `auth:` at a full room); the seat after the key
+  (`_guestShareRefused`). `flood-guestshare` 4 gains two checks (no
+  `auth:` row; the next knock refused again), red on 471e2d2e. The benches
+  turn `guestshare` off. Re-read here: no finding. Kept on purpose: junk
+  sockets on the spares count as taken; `account.js` stays /56 (SEC's).
 
 - **F2 (a new write; the spec says none).** At a full room with an idle
   guest, a fresh keyed join takes a spare socket; `_verifyJoinAuthNow`
@@ -81,3 +90,41 @@ exists), RV #2072.
   named tests exist (server suites, guards or precheck checks).
 - U2's note: row 25's break proof (`mp-membudget`) was not tried (it
   needs a browser).
+
+### O2 #2098 (5860): none (tools)
+
+- The card's PR 1: `tools/qa/profiles.mjs` (budget-android, hotel-laptop,
+  existing knobs only), the harness's lane and knob lines, the guard
+  `qa-profiles` (all ok here); `BT_QA_PROFILE=nope` throws before boot.
+
+### K3 #2099 (5880): none
+
+- nmlAsk.js's three sends through `act()`: `party_invite` and
+  `trade2_open` leave as the same broadcast; `nml_attack` (body `top`)
+  gains a `reqId`, which its wire row trusts (a resend acts once).
+  `action-door`'s line 4 -> 1. Nit: with no transport `act` answers false
+  where the old send threw, so `sendChoice` would say true; `S.channel`'s
+  guard before it covers that.
+
+## The list, step by step (on `main` fcd1ae92)
+
+| # | PR | head | bases | tree after |
+|---|---|---|---|---|
+| 1 | RV #2072 | 51513256ba36bcf77ab1a58cf13e78a868724ff0 | 1 | 29dd4524c5d14fba708f3fc66931468ff41e5570 |
+| 2 | RV #2083 | aaadd4903b25b4445ef877c98924308a80bb683b | 1 | bce3167a299ce7117ec08b813ff0e59938e648f1 |
+| 3 | RV #2091 | 9db323ca6bd0f4cb52562bffa64143969ef6ca13 | 1 | 7a7950e131744cf4757e77c967ce4f49f274b037 |
+| 4 | RV #2094 | 39d6d49a2f45268fbaaec20f7e5822d407df529d | 1 | dc8e8cc510b559726b47acce68edca1986e94247 |
+| 5 | K2 #2092 | 336c238ba6a5604f7d5775857ed52f13e6f60bdf | 1 | 18c3d92ce5c380b81d79a35bbcdfc815205c5120 |
+| 6 | T2 #2090 | 7e85d0a9be65e0b7911acf409bdae89e8d63d021 | 1 | 1fdae4b3cc7c79d1191523a457f3f1785952c024 |
+| 7 | U2 #2095 | 813df6cd214d4d34c6ff63207bd2ead84322b598 | 1 | b6276f06e491c33738a665c626bbe4d1d8a26da4 |
+| 8 | Z #2097 | (this PR's head) | 1 | (in the list's message) |
+| 9 | O2 #2098 | 364d239a84364fb767ee1bbc31291484a061df3d | 1 | (in the list's message) |
+| 10 | K3 #2099 | 0bb754a061eb90438383dab097511112b9fc243a | 1 | (in the list's message) |
+
+Deploys: 2, 3, 4 and 5 change `server/` (each merge deploys the worker).
+1, 6 to 10 do not. No stored shape changes; no new cap.
+
+Rehearsal: `tools/dev/gatekeeper.mjs` on main + #2072, #2083 (earlier
+heads), #2092 (471e2d2e), #2090, #2095, #2097: precheck all but its
+5-minute `server-tests` limit; `npm run build` PASS. `cd server && npm
+test` on main + the RV chain + #2092: 534 suites green, 843 s.
