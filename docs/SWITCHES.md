@@ -533,6 +533,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 |---|---|---|---|---|---|---|---|---|---|
 | `armorforge` | worker | switch | v2.3.3092 | 2026-10-06 | false | logic |  | no | Refuses every armour forge and un-advertises the cap; bars and armour already made are untouched. |
 | `bowdraw` | worker | switch | v2.3.4801 | 2026-11-11 | false | logic |  | no | No bow draw is counted and caps.bowDraw is un-advertised. |
+| `cookstart` | worker | switch | v2.3.5553 | off | true | logic |  | no | An opt-in, off (the owner's to turn on: it changes how a cook is judged): thrown (`cookstart: true`), a cook's result lands only on the plan the worker rolled at its start (the same fish, once), no sooner than its hits and the gesture could be played; one result with no plan a session, for a restart. |
 | `cropeat` | worker | switch | v2.3.3537 | 2026-10-21 | false | logic |  | no | No crop is eaten, and caps.cropeat reads false so the bag offers no Eat. |
 | `dropgrades` | worker | switch | v2.3.3952 | 2026-11-03 | false | logic |  | no | A monster drop's grade is rolled on the forge's odds again. |
 | `exdoor` | worker | switch | v2.3.5213 | 2026-11-14 | false | logic |  | no | The claim on a move (cook, fire, mine, chop, fish, a farm step) takes any value a phone sends again, as the line before the cook door did; the game's own claims pass either way. |
