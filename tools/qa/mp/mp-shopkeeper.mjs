@@ -409,27 +409,27 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and the count itself is still a number', /^[\d,]+$/.test(coinIcon.text || ''), coinIcon);
 
   /* v2.3.5649: townsfolk are drawn live (v2.3.3809) and walk their day: a sprite out of view
-     reads 0, a jogger is drawn shorter than a stander, and each has his own `size` (the Mayor's
-     1.1): so he is read once he STANDS, beside him (not in front: his drawer stays shut), and
-     compared with the other standing grown folk by height over size, as mp-npclooks does */
+     reads 0 and a jogger is drawn shorter than a stander.  The rule is mp-npclooks': every grown
+     bro is drawn a bro's height times his own `size` (the Mayor's 1.1), STANDING, within 3% of the
+     middle of those standing.  Every standing figure seen -- before he walks to Diego's side and
+     while he waits for him to stand -- is pooled. */
   const readSizes = () => A.page.evaluate(() =>
     ((window.__btNpcSprites && window.__btNpcSprites()) || [])
       .map((n) => ({ id: n.id, h: Math.round(n.height), size: n.size || 1, pose: n.pose || null, live: !!n.live })));
+  const seen = {};
+  const pool = (list) => { for (const z of list) if (z.h > 0 && (!z.live || z.pose === 'stand')) seen[z.id] = z; };
+  pool(await readSizes());
   const diego = await A.page.evaluate(() => { const n = ((window._gameState.current || {}).npcs || []).find((q) => q.id === 'shopkeeper_bro'); return n ? { x: n.x, y: n.y } : null; });
   if (diego) await H.hopTo(A, diego.x + 120, diego.y + 40, { step: 100, gap: 260, tries: 90 }).catch(() => {});
-  let sizes = await readSizes();
-  const standing = (z) => !!z && z.h > 0 && (!z.live || z.pose === 'stand');
-  for (let t0 = Date.now(); Date.now() - t0 < 60000 && !standing(sizes.find((z) => z.id === 'shopkeeper_bro')); ) { await A.page.waitForTimeout(500); sizes = await readSizes(); }
-  const me = sizes.find((z) => z.id === 'shopkeeper_bro');
-  const others = sizes.filter((z) => z.id !== 'shopkeeper_bro' && z.id !== 'mayor_bro' && z.id !== 'lil_bro' && standing(z));
+  for (let t0 = Date.now(); Date.now() - t0 < 60000 && !seen.shopkeeper_bro; ) { await A.page.waitForTimeout(500); pool(await readSizes()); }
+  const stood = Object.values(seen);
   const norm = (z) => z.h / z.size;
-  const mids = others.map(norm).sort((x, y) => x - y);
+  const mids = stood.map(norm).sort((x, y) => x - y);
   const mid = mids.length ? mids[Math.floor(mids.length / 2)] : 0;
-  /* (since v2.3.3580 every grown townsperson is a bro drawn a player's height, the Mayor aside: Diego
-     is no longer the small one) */
-  rec.ok(`the shopkeeper is drawn a grown bro's height (${me && me.h}px, ${me ? Math.round(norm(me)) : '?'} over his size; the standing others' middle ${Math.round(mid)}: `
-       + `${others.map((z) => z.id + ' ' + z.h + '/' + z.size).join(', ')})`,
-    standing(me) && others.length >= 2 && norm(me) >= mid * 0.9, { me, others });
+  const me = seen.shopkeeper_bro;
+  rec.ok(`the shopkeeper is drawn a bro's height like the others standing (${me ? me.h : 0}px over size ${me ? me.size : '?'} = ${me ? norm(me).toFixed(1) : '?'}; the middle ${mid.toFixed(1)} of ${stood.length}: `
+       + `${stood.map((z) => z.id + ' ' + z.h + '/' + z.size).join(', ')})`,
+    !!me && stood.length >= 3 && Math.abs(norm(me) - mid) <= mid * 0.03, { me, mid, stood });
 
   await A.page.screenshot({ path: H.REPO + '/tools/qa/mp/out/shopkeeper-panel.png' }).catch(() => {});
 
