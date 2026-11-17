@@ -1,6 +1,6 @@
 card: R
 branch: claude/plan-r-13-arena-stakes (one branch a PR, each begun from main)
-prs: #1819, #1823, #1825, #1844, #1862, #1847, #1877, #1887, #1895, #1898, #1922: merged; #1873 (5282), PR 13 (5292): ready
+prs: #1819, #1823, #1825, #1844, #1862, #1847, #1877, #1887, #1895, #1898, #1922: merged; #1873 (5282), #1950 (5292): ready
 state: ready
 
 ## Done
@@ -9,9 +9,9 @@ state: ready
   PR 9 (5288, #1844), PR 2 (5281, #1862), PR 7 (5286, #1847).
 - Merged, sitting 20: PR 5 (5284, #1877), PR 6 (5285, #1887), PR 11 (5290,
   #1895, the duel pot's row), PR 10 (5289, #1898), PR 12 (5291, #1922).
-- PR 3 (5282, #1873, ready, sitting 22): a weapon's own id. Schema 21 -> 22:
+- PR 3 (5282, #1873, ready, sitting 23): a weapon's own id. Schema 21 -> 22:
   a stored record's shape, merged on a line of its own.
-- PR 13 (5292, this branch, ready): the arena's stakes' ledger rows (the
+- PR 13 (5292, #1950, ready, sitting 23): the arena's stakes' ledger rows (the
   planning session's reading (1): one row a losing stake, to the fighter,
   the winning sponsors' parts in `ids`); `xferescrow` still OFF.
 
