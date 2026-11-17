@@ -46,6 +46,7 @@
 import { extensions, ExtensionType, LoaderParserPriority, Texture, Rectangle, Cache, loadTextures } from 'pixi.js';
 import { paletteOn, makePaletteSource, isPaletteSource } from './paletteTex.js';
 import { whenPaletteDecided } from './p256.js';   /* v2.3.5248: the trees wait for the renderer's word, as the effects' twins do */
+import { sw } from '../game/switches.js';   /* v2.3.5315: the page's one reader (card T) */
 
 /* the farm's ground and its palette twin (the address the game asks for ->
    the file read as numbers) */
@@ -71,7 +72,7 @@ function pathOf(url) {
    atlas each), as the farm's are.  effectsRenderer.js asks for them once the
    renderer has said whether pictures are drawn so (p256.js
    whenPaletteDecided), still behind the loading screen.  `?treenumbers=0`: pictures, as before. */
-export const TREE_NUMBERS = (() => { try { return !/[?&]treenumbers=0(&|$)/.test(location.search || ''); } catch (e) { return true; } })();
+export const TREE_NUMBERS = !sw('treenumbers');
 /** When effectsRenderer.js may ask for the trees: once the renderer has said
  *  whether pictures are drawn as numbers here (p256.js whenPaletteDecided,
  *  the effects' own wait: at most 20 s, then as pictures); at once when off. */

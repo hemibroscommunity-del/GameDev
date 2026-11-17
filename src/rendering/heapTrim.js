@@ -20,14 +20,15 @@
  *      numbers unboxed (fieldLean.js): Chrome boxed every number in them.
  *
  * `?heaptrim=0` is the page as before, all four (read once, as the page
- * loads).  No imports: node can read it.
+ * loads).  No imports but the import-free switches.js: node can read it.
  */
+import { sw } from '../game/switches.js';   /* v2.3.5315: the page's one reader (card T) */
 let _on = null;
 export function heapTrimOn() {
   if (_on === null) {
     _on = true;
     try {
-      if (typeof location !== 'undefined' && /[?&]heaptrim=(0|off|false)(&|$)/.test(location.search || '')) _on = false;
+      if (sw('heaptrim')) _on = false;
     } catch (e) { /* on */ }
   }
   return _on;

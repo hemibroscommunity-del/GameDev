@@ -295,6 +295,17 @@ so node tests it and any file may ask it.
   `bodyBake.js`, `p256.js`, `stripRead.js`), and `deviceProfile.js`'s
   address: the line 161. `?foldgentle` stays in `soundFold.js`:
   sound-fold.test 4e reads its test in the file's text.
+- v2.3.5314: debug (`?dev` in `crashTrap.js`, two; `?report`;
+  pageAddress() in `debugBus.js` and `perfHud.js`, two): the line 155.
+  `src/data/gameDisplay.js`'s eight stay: it is at its line in
+  four-lines (an import is one over), tests-by-system keeps a new suite
+  from naming it, and five of its reads are read in its text by
+  sound-fold 3c and sound-cues 18f, 18i, 21a.
+- v2.3.5315: memory (`?canvascheck`, `?gfxlean`, `?gpucopies`, `?heaptrim`,
+  `?held`, `?treenumbers`, `?nopalette`, `?loudclear`, `?textkeep`,
+  `?poolkeep`; pageAddress() in `picsNumbers.js`): the line 144.
+  `keepAsImage.js` keeps `?keepimage`: keep-as-image 7h holds it to no
+  imports.
 
 ## A new switch
 
