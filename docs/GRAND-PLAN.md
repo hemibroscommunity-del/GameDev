@@ -285,6 +285,10 @@ way: build the table from what exists, add the test, move no behaviour.
   `self` when it fails, drawn as today), merged at sitting 21. The box
   waits for 14d (the clip) and a way back for the fill and the glint (the
   gatekeeper, sitting 22, tag 5660).*
+  *O's #1937 (14d: the clip, each program through its own sprite's
+  batcher, named in `self`), merged at sitting 22. The box waits for a way
+  back for the fill, the glint and the clip (O's #1952, held at sitting 23)
+  (the gatekeeper, sitting 23, tag 5661).*
 
 **Done when** a session answers "how does it run on X" from the table.
 Every step that needs field numbers says how many reports from how many
@@ -597,6 +601,9 @@ nothing known, and a restore copies nothing.
   *L's #1930 (the arena door: `_arenaTo`, `arenadoor`, ON), merged at
   sitting 21: 15 `todo` on `main` f692b93; the line lowered 16 -> 15 (the
   gatekeeper, sitting 22, tag 5660).*
+  *L's #1936 (the ride door: `_rideTo`, `ridedoor`, ON), merged at
+  sitting 22: 14 `todo` on `main` 8149d61; the line lowered 15 -> 14 (the
+  gatekeeper, sitting 23, tag 5661).*
 - [ ] **5.4 [LATER] The frame as named steps.** PR 1 moves nothing: the six
   calls the loop already makes, plus one `legacy` step, become the list;
   each counts its errors to the crash ring (a throw in the frame reaches
@@ -667,6 +674,10 @@ nothing known, and a restore copies nothing.
   canary suite), merged at sitting 19. The box waits for the rest of the
   page's reads moved through the reader (T's PRs 8 on) (the gatekeeper,
   sitting 20, tag 5377).*
+  *T's #1935 (the rows' merge days) and #1939 (nine more reads moved into
+  the reader; the outside line 221 -> 212), merged at sitting 22. The box
+  waits for the rest of the page's reads (the gatekeeper, sitting 23, tag
+  5661).*
 - [x] **7.2 [NEXT] The end date** (the owner: yes). For a logic switch: four
   weeks on with no revert, then the old way goes. A device off-ramp stays
   while its risk is live. A fallback stays while its trigger lives: a guard
