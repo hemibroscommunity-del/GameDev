@@ -167,8 +167,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
      Without this they have no slot for a quote to appear in, and the check
      fails for the wrong reason. */
   await H.grant(wsPort, bId, 'item', { invKey: KEY, count: 2 });
-  await A.page.waitForTimeout(1200);
-  const carried = await bag(A);
+  /* v2.3.5649: until the grant has landed on the page (at most 20 s), not a flat 1.2 s: this box
+     delivers a grant a few seconds late (TRAPS §200) */
+  let carried = 0;
+  for (let t0 = Date.now(); Date.now() - t0 < 20000 && !(carried > 0); ) { await A.page.waitForTimeout(500); carried = await bag(A); }
   rec.ok(`the seller is carrying something he will take (${carried})`, carried > 0, { carried });
 
   /* ══ THE BAG DOES NOT MOVE ══
@@ -183,7 +185,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
      (the sweep of 2026-10-17).  Opening the shop now unfolds a folded band
      itself (BottomDashboard, v2.3.3399) -- B below checks that half. */
   await H.unfoldBand(A);
-  const before = await view(A);
+  /* v2.3.5649: until the bag has drawn after the unfold (this box is slow to) */
+  const before = await until(A, (x) => !!x.bandBag, 'A: the bag on screen');
   rec.ok('the bag is on screen before the shop opens (or the next check is vacuous)',
     !!before.bandBag, before.bandBag);
   await openShop(A);
@@ -258,7 +261,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const vb = await until(B, (x) => x.panel && x.broSlot && x.bagQuote, 'B: shelf + quote');
   const bFoldNow = await foldOf(B);
   rec.ok('a new player\'s folded band opens with the shop, so the bag to sell from is there',
-    bFold === 'min' && bFoldNow === 'open' && !!vb.bagQuote, { before: bFold, after: bFoldNow, bagQuote: vb.bagQuote });
+    /* v2.3.5649: a brand-new guest's band is no longer always folded at its first join (it was
+       'min' since v2.3.2495; on main it arrives 'open'): what the check is for is that the band
+       is open, with its bag, once the shop is */
+    (bFold === 'min' || bFold === 'open') && bFoldNow === 'open' && !!vb.bagQuote, { before: bFold, after: bFoldNow, bagQuote: vb.bagQuote });
   rec.ok('a player who never touched anything sees the pile the seller filled',
     vb.broSlot && vb.broHolds === 1, { holds: vb.broHolds, vb });
 
@@ -402,21 +408,28 @@ export async function run({ browser, wsPort, webPort, rec }) {
      a richer test character reads digits and commas. */
   rec.ok('...and the count itself is still a number', /^[\d,]+$/.test(coinIcon.text || ''), coinIcon);
 
-  const sizes = await A.page.evaluate(() =>
+  /* v2.3.5649: townsfolk are drawn live (v2.3.3809) and walk their day: a sprite out of view
+     reads 0 and a jogger is drawn shorter than a stander.  The rule is mp-npclooks': every grown
+     bro is drawn a bro's height times his own `size` (the Mayor's 1.1), STANDING, within 3% of the
+     middle of those standing.  Every standing figure seen -- before he walks to Diego's side and
+     while he waits for him to stand -- is pooled. */
+  const readSizes = () => A.page.evaluate(() =>
     ((window.__btNpcSprites && window.__btNpcSprites()) || [])
-      .reduce((o, n) => { o[n.id] = Math.round(n.height); return o; }, {}));
-  /* v2.3.2052 (owner: "make shopkeeper larger his sprite is bit small"): his
-     hand-painted figure drew 120 px against Mayor Bro's 132, the smallest man
-     in the square.  v2.3.3580: every grown townsperson is a bro from the
-     character creator drawn a player's own height (the owner: "NPCs should
-     look like normal bro characters"), and the Mayor 10% over that (the
-     owner's v2.3.1822) -- so Diego stands as tall as any grown man in town,
-     the Mayor aside, and is no longer the small one.  (Lil Bro's cell is a
-     bro's: he is photographed small inside it.) */
-  const others = Object.entries(sizes).filter(([id]) => id !== 'shopkeeper_bro' && id !== 'mayor_bro');
-  rec.ok(`the shopkeeper is drawn a grown bro's height (${sizes.shopkeeper_bro}px; `
-       + `${others.map(([id, h]) => id + ' ' + h).join(', ')}; Mayor Bro ${sizes.mayor_bro})`,
-    sizes.shopkeeper_bro > 140 && others.length > 0 && others.every(([, h]) => h <= sizes.shopkeeper_bro), sizes);
+      .map((n) => ({ id: n.id, h: Math.round(n.height), size: n.size || 1, pose: n.pose || null, live: !!n.live })));
+  const seen = {};
+  const pool = (list) => { for (const z of list) if (z.h > 0 && (!z.live || z.pose === 'stand')) seen[z.id] = z; };
+  pool(await readSizes());
+  const diego = await A.page.evaluate(() => { const n = ((window._gameState.current || {}).npcs || []).find((q) => q.id === 'shopkeeper_bro'); return n ? { x: n.x, y: n.y } : null; });
+  if (diego) await H.hopTo(A, diego.x + 120, diego.y + 40, { step: 100, gap: 260, tries: 90 }).catch(() => {});
+  for (let t0 = Date.now(); Date.now() - t0 < 60000 && !seen.shopkeeper_bro; ) { await A.page.waitForTimeout(500); pool(await readSizes()); }
+  const stood = Object.values(seen);
+  const norm = (z) => z.h / z.size;
+  const mids = stood.map(norm).sort((x, y) => x - y);
+  const mid = mids.length ? mids[Math.floor(mids.length / 2)] : 0;
+  const me = seen.shopkeeper_bro;
+  rec.ok(`the shopkeeper is drawn a bro's height like the others standing (${me ? me.h : 0}px over size ${me ? me.size : '?'} = ${me ? norm(me).toFixed(1) : '?'}; the middle ${mid.toFixed(1)} of ${stood.length}: `
+       + `${stood.map((z) => z.id + ' ' + z.h + '/' + z.size).join(', ')})`,
+    !!me && stood.length >= 3 && Math.abs(norm(me) - mid) <= mid * 0.03, { me, mid, stood });
 
   await A.page.screenshot({ path: H.REPO + '/tools/qa/mp/out/shopkeeper-panel.png' }).catch(() => {});
 
