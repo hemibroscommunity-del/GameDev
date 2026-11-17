@@ -1,32 +1,30 @@
 card: Z
-branch: claude/plan-z-sitting-31
-prs: (this PR), tag 5669, the last line of sitting 31's list (ready)
+branch: claude/plan-z-sitting-32
+prs: (this PR), tag 5670, the last line of sitting 32's list (ready)
 state: ready
 
 ## Done
-- Sitting 30 merged (`main` c55c8b59: K #1997, #1999, L #2000, T #2001,
-  #2002, Z #2004). Sitting 31 (this list), reviewed and rehearsed on
-  c55c8b59: `census/review-z31.md`. Plan noted for sitting 30's merges:
-  5.3b (#2000; the phase line 13 -> 12), 7.1 (#2001, #2002), 11.3 ticked
-  (#1997, #1999: card K's 11.3 PRs all merged).
+- Sitting 31 merged (`main` a0b24f2e: T #2007; J2 #2005, #2008, #2009;
+  K #2006, #2003; L #2010; Z #2011). Sitting 32 (this list), reviewed and
+  rehearsed on a0b24f2e: `census/review-z32.md`. Plan noted for sitting
+  31's merges: 4.1b (#2006, step 1), 11.4 ticked (#2003, card K item 12).
 
 ## The list: merge in this order, each "Create a merge commit"
-1 T #2007 (5318, docs) · 2 J2 #2005 (5649) · 3 J2 #2008 (5650, stacked
-on #2005) · 4 J2 #2009 (5651, stacked on #2008) · 5 K #2006 (5193, the
-send door; its own line: the day's book's `send` part; live flag
-`sendcount` ON) · 6 K #2003 (5197, the words rule, stacked on #2006; its
-own line: inbox entries gain `noteT`) · 7 L #2010 (5527, the net door) ·
-8 this PR. All based on `main`, one merge base at every step. The worker
-deploys (K's `server/src/`; J2's and L's `server/test/`).
+1 K #2013 (5198, the sends through the door, batch 1) · 2 K #2014 (5199,
+batch 2, stacked on #2013) · 3 R #2015 (5293, the market and Auction
+House ledger rows; `xferescrow` stays OFF) · 4 L #2012 (5528, the
+connection door; `?conndoor`) · 5 this PR. All based on `main`, one merge
+base at every step. The worker deploys (K's and R's `server/src/`, L's
+`server/test/`).
 
 ## Held
 - None.
 
 ## Stalled
-- None. T stops by the planning session's word (`stalled`: its 71 reads
-  wait on K, L, M and nine suites' owners). Not in: K 13 (5198/5199,
-  after #2006), R 5293 (after #2003), L's next door. Z's next tag: 5670.
+- None. J2's mp-itemdrop tap fix had no PR by the cut-off (sitting 33).
+  Not in: K 14 (the claims), after #2013, #2014. Z's next tag: 5671.
 
 ## Found
 - `DevPanel.jsx:1638` shows a report's last 3 lines, never `said`. No card.
 - `bt-palette-hairclip` and the stencil have no self-test (1.7). No card.
+- After #2014: the send-door census to strict (card K's item 13: Z's).
