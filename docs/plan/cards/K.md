@@ -350,6 +350,10 @@ first line.
      later; across a restart for those with a record) acts once and gets
      the first answer, the world's sum holds, and the market's `place` with
      the id ignored sells the next weapon (break proof).
+   - *Split by the planning session's word: #1972 (5194) the worker's side
+     in the files then free; #1981 (9b, tag 5546) the `reqid` cap, the
+     action door's re-send, `wire/http.js`'s rows and SHAPES part 2, with
+     sitting 25's mends.*
 10. **(tag 5195) Ids and repeats, step 2: every other value request**
     (11.3). The rest of the table's rows a player may start whose
     `doesWhat` holds `value-out` or `final` and whose `reqId` is `none` (35
