@@ -421,6 +421,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?firelog` | page | switch | v2.3.3660 | 2026-10-27 | =0 | logic |  | no | The fire's log is drawn the old way. |
 | `?fishgrip` | page | switch | v2.3.3623 | 2026-10-27 | =1 | logic |  | no | The fishing grip is drawn over the plate. |
 | `?fishgriptrousers` | page | switch | v2.3.3657 | 2026-10-27 | =1 | logic |  | no | The fishing grip lifts the trousers too. |
+| `?fishspot` | page | switch | v2.3.5565 | 2026-11-15 | =0 | memory |  | no | The pond under a fishing spot is drawn from its full-colour picture, as before, not from its 256-colour twin. |
 | `?flipbake` | page | switch | v2.3.3577 | 2026-10-23 | =0 | logic |  | no | Flipped facings are not baked from their source, as before. |
 | `?folkskills` | page | switch | v2.3.5462 | 2026-11-14 | =0 | memory | `lookfolk` | folkSkillReady in src/rendering/folkSkill.js | The townsfolk work in card TF PR 1's poses again (Chef Blaze and Woodworker Bro the pickup, Farmer Bro standing), and the trades' figures (the `skills` look set) are not loaded. |
 | `?folkwork` | page | switch | v2.3.3949 | 2026-11-03 | =0 | logic |  | no | The townsfolk walk but stand at their stops, not work. |
