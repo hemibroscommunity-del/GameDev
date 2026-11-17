@@ -14,6 +14,8 @@
  *   4. THE TABLE: no row a player may start that moves value is `none`, but
  *      those left with their reason (LEFT).
  *   5. THE SWITCH: `reqonce: false` -- the repeat sells again, as before.
+ *   6. v2.3.5547: THE DOOR'S OWN LIST: its messages never push a route's
+ *      remembered answer out (the gatekeeper, sitting 27).
  * Break proof (tried by hand): _reqOnceDoor's call out of door.js -> 1 red. */
 import { WIRE_IN } from '../src/wire/in.js';
 import { WIRE_HTTP } from '../src/wire/http.js';
@@ -78,6 +80,16 @@ const LEFT = Object.freeze({
   await msg(room, ws, 'sell_weapon', { stashIdx: 0, reqId: 'rq-sell-9' });
   await msg(room, ws, 'sell_weapon', { stashIdx: 0, reqId: 'rq-sell-9' });
   check('5: `reqonce: false`: the repeat sells again, as before', P.weaponStash.length === 0, P.weaponStash.length);
+}
+
+/* ── 6. v2.3.5547 (sitting 27): the door's own list ── */
+{
+  const room = await openRoom(makeStorage());
+  const ws = fakeWs('f'); await join(room, ws, 'bp_rqd_f');
+  room._reqRemember('bp_rqd_f', 'rq-route-1', { ok: true, kept: 1 });
+  for (let i = 0; i < 40; i++) await room.webSocketMessage(ws, JSON.stringify({ type: 'heap_burn', payload: { reqId: 'rq-door-' + i } }));
+  await settle();
+  check('6: 40 door messages leave a route\'s remembered answer where it was (the door keeps its own list)', room._reqRecall('bp_rqd_f', 'rq-route-1') !== undefined && room._reqSeenDoor && room._reqSeenDoor.get('bp_rqd_f').length === 40, { route: room._reqRecall('bp_rqd_f', 'rq-route-1'), door: room._reqSeenDoor && room._reqSeenDoor.get('bp_rqd_f') && room._reqSeenDoor.get('bp_rqd_f').length });
 }
 
 console.log(failures ? `\n${failures} FAILED` : '\nALL PASS');
