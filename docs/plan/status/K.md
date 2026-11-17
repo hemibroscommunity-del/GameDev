@@ -1,6 +1,6 @@
 card: K
 branch: claude/plan-k-<n>-<topic> (one branch a PR, each begun from main)
-prs: #1822, #1820, #1826, #1829, #1831, #1838, #1842, #1861, #1848, #1899, #1923 merged; ready: #1900 (5188); 7.3 (5189) this branch, on #1900
+prs: #1822, #1820, #1826, #1829, #1831, #1838, #1842, #1861, #1848, #1899, #1923 merged; ready: #1900 (5188); 7.3 (5189); 7.4 (5190) this branch, on 7.3
 state: working
 
 ## Done
@@ -10,7 +10,8 @@ state: working
 - Claims 5541 (#1848, merged): the sprint mark, OFF (review-z16, z18 mended).
 - PR 7.2 (#1900, 146 -> 105) restacked on main b2d763a9.
 - PR 7.3 (5189): the networking files, 17 sends (105 -> 88); none left in
-  src/networking/ but the door's transport. 7.4-7.6 follow, each on the
+  src/networking/ but the door's transport.
+- PR 7.4 (5190): the panels, 44 sends in 25 files (88 -> 44). 7.5, 7.6 follow, each on the
   last. `nmlAsk.js` and `LoginSpinWindow.jsx` wait for card T's #1863.
 - 5542 (#1899): the chat lanes for MOD; wire-door.test §7's pin.
 - N10 (5543, `relaybytes`, ON): a relay's bytes bounded three ways (one
@@ -20,7 +21,7 @@ state: working
 
 ## Next
 
-- 7.4-7.6 (5190-5192) in order, each on the last; then N11, N5.
+- 7.5, 7.6 (5191, 5192) in order, each on the last; then N11, N5.
 - The move's walls (movement.js); the sword's reach (index.js, after card
   R's 5281); the bow claim (bowlabel 3.91, the aimbot +12%).
 - Lows: wire-table §7's cure; door.js "by type"; `rideEnds` (SK is done).

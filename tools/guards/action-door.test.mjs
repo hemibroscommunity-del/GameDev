@@ -200,7 +200,7 @@ const OWNER_KEY_FILE = 'src/ui/panels/DevPanel.jsx';
    PR 7's first, v2.3.5187: from here the rows are the ways, held by §1 to §5) ── */
 
 /* ── 7. the census: sends and fetches outside the door ── */
-const LINE = { sends: 88, fetches: 25 };   /* v2.3.5187: 203 less PR 7.1's 57; v2.3.5188: less PR 7.2's 41; v2.3.5189: less PR 7.3's 17 */
+const LINE = { sends: 44, fetches: 25 };   /* v2.3.5187: 203 less PR 7.1's 57; v2.3.5188: less PR 7.2's 41; v2.3.5189: less PR 7.3's 17; v2.3.5190: less PR 7.4's 44 */
 {
   let sends = 0; const byFile = new Map();
   for (const [f, s] of SRC) {
