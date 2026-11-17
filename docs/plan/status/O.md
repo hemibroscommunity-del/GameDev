@@ -21,8 +21,8 @@ state: working
 ## Next
 
 - #1929 (5237, 14c): fill, glint; #1937 (5238, 14d, on #1929): the clip.
-- 5239 (open, on #1937; the planner for the owner): a failed fill or glint
-  falls back alone (CLAUDE.md §7), not drawn as today.
+- 5239 (open, on #1937; the planner for the owner): a failed fill, glint or
+  clip falls back alone (CLAUDE.md §7), not drawn as today.
 - PR 11 waits for card P; 12 for card T's PR 6; 13 for card SK.
 
 ## Found
@@ -37,4 +37,4 @@ state: working
 
 ## Needs
 
-- The clip's way back too (`?alphaclip`, the alpha mask) in 5239? Asked.
+- (none)

@@ -221,9 +221,7 @@ sprite marked as that program's shape answers its own batcher. The answer
 discarded nothing, or everything, or the wrong colours, draws another
 picture.
 
-- **No way back in the card's list** (`back: null`): a wrong picture is
-  named in `self` and the clip drawn as today. `?alphaclip` (the alpha
-  mask, as it was) could be one; that is asked in card O's status, Needs.
+- v2.3.5239: a wrong picture falls back alone to the alpha mask (part 15).
 - Not tested where it is not installed (no WebGL2, or `?alphaclip`):
   `skipped`, saying why.
 - `?selftest=fail:clip`: `mp-selftest` page 13.
@@ -234,17 +232,18 @@ The clip: drawn 26.7 ms (both programs' first build: until now they were
 built on the first hat or silhouette in play), read 0.2 ms. Every program's
 tests together 77.8 ms on that run.
 
-## 15: the fill and the glint fall back alone (v2.3.5239)
+## 15: the fill, the glint and the clip fall back alone (v2.3.5239)
 
 Decided by the planning session for the owner (their standing "go
 recommended"): a program that draws its picture wrong falls back alone, as
-the sprite programs do (CLAUDE.md §7), so 14c's "named, drawn as today" is
-now for the clip only.
+the sprite programs do (CLAUDE.md §7): no program is "named, drawn as
+today" any more.
 
 | program | its way back |
 |---|---|
 | **fill** | as `?fill=0`: no one-colour glow (`fillBatchOn` false; `_whirlGlow` hides a glow already made); the whirlwind's rings still mark the catch |
+| **clip** | the alpha mask, as `?alphaclip` (`setHairClipStencil(false)`: every hair clipped again that way); the monsters' silhouettes behind things, which need the stencil, not drawn |
 | **glint** | no piece filtered (`_selfOff`, in `update`): a pinned sweep, a grade's look and a shine not drawn in the frame are drawn plain; the shine in the frame (`sheenBatch.js`, its own test) is kept |
 
 - Each is its own flag, never the Speed test's or the lanes' switch.
-- `mp-selftest` pages 11 and 12: each forced fail is off, the others on.
+- `mp-selftest` pages 11 to 13: each forced fail is off, the others on.

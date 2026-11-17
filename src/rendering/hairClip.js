@@ -209,10 +209,10 @@ export function installHairClip(app) {
    marked as the program's own shape so the sprite answers its batcher
    (`batcherName` above), held to the CPU's answer (selfTest.js
    selfClipWant: kept where alpha x red, or alpha, is at least half; nothing
-   elsewhere).  THERE IS NO WAY BACK in the card's list (drawLanes.js PROGRAMS
-   `back: null`): a wrong picture is named in the report's `self` and the clip
-   is drawn as today.  (`?alphaclip`, the alpha mask, is the way it was: the
-   owner's question in card O's status, Needs.) */
+   elsewhere).  v2.3.5239 (the planner, for the owner): a wrong picture falls
+   back ALONE to the alpha mask, as `?alphaclip` (setHairClipStencil(false):
+   every hair clipped again that way; the monsters' silhouettes, which need
+   the stencil, not drawn -- monsterSilhouette.js asks hairClipStencilOn). */
 function clipSelfTest(renderer) {
   if (!selfTestOn()) { selfSkip('clip', 'no self-test on this page (?selftest=0)'); return; }
   const t0 = performance.now();
@@ -229,7 +229,7 @@ function clipSelfTest(renderer) {
     try { if (spr) spr.destroy({ texture: true, textureSource: true }); } catch (e) { /* gone */ }
   }
   if (!rts.length) { rts.push(null); wants.push(selfClipWant()); }
-  selfQueue('clip', renderer, rts, wants, () => { /* no way back: named in `self`, drawn as today */ }, performance.now() - t0);
+  selfQueue('clip', renderer, rts, wants, () => { setHairClipStencil(false); }, performance.now() - t0);
 }
 
 /* the silhouette's box, made the first time it clips: put where the

@@ -382,9 +382,9 @@ if (failed) process.exit(1);
   check('9. the CPU\'s lines are the programs\' own (alpha x red; alpha)',
     hc.includes('if (outColor.a * outColor.r < 0.5) discard;') && hc.includes('if (outColor.a < 0.5) discard;'));
   const hcc = code(hc);
-  check('9. the clip: tested once installed, each program through its sprite\'s own batcher; NO way back (its onFail does nothing: named in `self`, drawn as today)',
+  check('9. the clip: tested once installed, each program through its sprite\'s own batcher; v2.3.5239: wrong, it falls back alone to the alpha mask (as `?alphaclip`)',
     /_installed = true;\s*try \{ clipSelfTest\(r\); \}/.test(hcc)
     && /if \(alpha\) spr\._btClipAlpha = true; else spr\._btClipMask = true;/.test(hcc)
-    && /selfQueue\('clip', renderer, rts, wants, \(\) => \{\s*\}/.test(hcc));
-  check('9. the card: the clip has no way back (drawLanes.js PROGRAMS `back: null`)', /name: 'clip',[^\n]*back: null/.test(src('src/game/drawLanes.js')));
+    && /selfQueue\('clip', renderer, rts, wants, \(\) => \{ setHairClipStencil\(false\); \}/.test(hcc));
+  check('9. v2.3.5239: the clip\'s way back in drawLanes.js PROGRAMS', /name: 'clip',[^\n]*back: 'the alpha mask'/.test(src('src/game/drawLanes.js')));
 }
