@@ -1,7 +1,7 @@
 card: RV
 branch: claude/rv-market (PR 2, stacked on claude/rv-review)
-prs: #2072 (5800, ready); PR 2 (5801, working)
-state: working
+prs: #2072 (5800, ready: sitting 42, after #2070 and #2071); PR 2 (5801, ready)
+state: ready
 
 ## Done
 
@@ -12,9 +12,9 @@ state: working
 
 ## Next
 
-- PR 2 (5801): `market.js`, `inbox.js`: MS-2 (a sell filed under its
-  weapon's own tier, `mkttier`), MS-4 (a refund and its order's delete in
-  one write, `mktheal`). Suite `market-own-place.test`: 10 FAIL on main.
+- PR 2 (5801, ready): `market.js`, `inbox.js`: MS-2 (`mkttier`), MS-4
+  (`mktheal`). `market-own-place.test`: 10 FAIL on main, green here.
+- Then PR 3 (5802): `risechest.js`, `inbox.js`'s prune (MD-1, `risekeep`).
 
 ## Found
 
@@ -28,7 +28,6 @@ state: working
 
 ## Needs
 
-- The planning session: may PR 7 add one call each in `join.js`
-  `_sanitizeJoinData` and `index.js` `case 'track'` (S2), or do those wait
-  for K2 and L? And the current gatekeeper's id (sitting 40's is inactive).
-- The owner's calls, listed in the census part 2 (none blocks a fix PR).
+- #2072: merge main in once #2070 and #2071 land (every block kept,
+  nextBlock 5820), as sitting 41 asked.
+- PR 7's `index.js` half waits for card L's #2058, #2065, #2067 on main.
