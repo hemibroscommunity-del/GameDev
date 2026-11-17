@@ -371,6 +371,10 @@ let amuletGid = null;
   /* Defense points would otherwise gate the swap; grandfather it by
      equipping the modest piece the server itself minted. */
   room._prog3EquipOk = () => true;
+  /* v2.3.5715: the legacy pieces below are ones the worker holds (gearheld
+     wears only those; gearheld.test is the gate's own) */
+  ps.armorStash = [...(ps.armorStash || []), { name: 'Forged Plate', tierMult: 8 }];
+  ps.legsStash = [...(ps.legsStash || []), { name: 'Greaves', tierMult: 4 }];
 
   await send(room, wsC, { type: 'stats_update', payload: { armor: { name: 'Forged Plate', tierMult: 8, prov: PROV_MINTED } } });
   check('a forged prov mark on stats_update is not believed',
@@ -402,6 +406,8 @@ let amuletGid = null;
   await join(room, ws, PID);
   const ps = room.playerState[PID];
   room._prog3EquipOk = () => true;
+  /* v2.3.5715: the legacy 'Old Plate' below is one the worker holds (gearheld) */
+  ps.armorStash = [...(ps.armorStash || []), { name: 'Old Plate', tierMult: 2 }];
 
   ps._questGrantOverflow = null;
   room._grantQuestItem(ps, { kind: 'armor', name: 'Copper Torso', mat: 'copper', tierMult: 1 }, PID);
