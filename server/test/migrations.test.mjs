@@ -616,13 +616,12 @@ const legacyBlob = () => ({
    own (`_v`, `_econ`) fails.  BREAK PROOF (rule 8), tried by hand:
    `_foo: 1,` added to _saveRpg's put -> FAIL "a third field". ── */
 {
-  /* v2.3.5282: econ-field is 21; weapon-gid (22) came after it */
-  check('econ: econ-field is migration 21 (the schema at or past it)',
-    RPG_SCHEMA_VERSION >= 21 && MIGRATIONS.some((m) => m.v === 21 && m.name === 'econ-field'));
+  check('econ: the schema is 21, its last migration econ-field',
+    RPG_SCHEMA_VERSION === 21 && MIGRATIONS[MIGRATIONS.length - 1].v === 21 && MIGRATIONS[MIGRATIONS.length - 1].name === 'econ-field');
   /* a record from before: blank `_econ`, stamped 21, once */
   const old = { _v: 20, coins: 5, inventory: { ore_copper: 2 } };
   const r1 = runRpgMigrations(old);
-  check('econ: a v20 record gets a blank _econ and runs on to the schema (' + RPG_SCHEMA_VERSION + ')', r1.changed && old._v === RPG_SCHEMA_VERSION && JSON.stringify(old._econ) === JSON.stringify(econBlank()) && old.coins === 5, old);
+  check('econ: a v20 record gets a blank _econ and _v 21', r1.changed && old._v === 21 && JSON.stringify(old._econ) === JSON.stringify(econBlank()) && old.coins === 5, old);
   const r2 = runRpgMigrations(old);
   check('econ: ...and never again (current costs nothing)', !r2.changed);
   /* a hand-edited or hostile one is cleaned, never reset */

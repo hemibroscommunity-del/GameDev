@@ -107,33 +107,3 @@ PR 1's table let a row claim `ledger: 'xfer'` with nothing that writes it.
 Now `player-roads.test` §8 holds that every `xfer` row's key is a `move`
 road it names, or it names its `writer` (`'file fn'`) and that file calls
 it.
-
-## A weapon's own id (v2.3.5282, card R PR 3)
-
-Every weapon carries `gid` (SHAPES part 2), made by the one minter gear
-has (`gearprov.js` `gearMintId`; `_gearProvMintId` is it). The field is
-`gid` either way, and no second name is made.
-
-- **The door gives it.** A weapon the door gives into the bag, or sets in
-  its place, without a well-formed id is given one (`weaponIdGive`); one
-  with its own keeps it, whatever road it came by (traded, sold, mailed,
-  listed, dropped). The forge gives the weapon it makes one.
-- **Hands and bag together** (`weaponIdsAll`), at the join's load and in
-  the save's migration (`migrations.js` v22, `weapon-gid`): a weapon without
-  one gets one, and the second of two that share one gets a new one (the
-  first keeps it), so two never share, and a weapon never gets a second.
-- **A phone never names one.** The strict sanitizer (a new character's
-  claim) drops it, and the worker's copy keeps only a well-formed one.
-- **No ledger row** (the card's reading: `gear_prov:` holds 256 rows a
-  player, and a weapon's would be more rows, a cost question). The door
-  keeps its own counter for the minter.
-- **Gear or weapon.** A gid alone no longer says gear: a piece the worker
-  minted as gear carries `prov` beside its gid, and a weapon never does
-  (`gear.js` `_isGearNotWeapon`).
-- **The world's sum** counts a weapon by its id, as gear: in the hands and
-  the bag, a listing, a sell order, a trade window and the mail.
-- **The record's shape changed** (a weapon on `rpg:` gains `gid`): the
-  schema is 22, so a worker rolled back past this one refuses the record at
-  the join (handoff rule 1) instead of saving its weapons without ids.
-
-`server/test/weapon-id.test.mjs` holds it.

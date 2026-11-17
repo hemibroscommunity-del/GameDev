@@ -49,22 +49,10 @@
  *           record).
  * A new way to change a stash is a new row here and one call that names it.
  *
- * A WEAPON'S OWN ID (v2.3.5282, card R PR 3; SHAPES part 2): every weapon
- * carries `gid`, made by the minter gear has (gearprov.js gearMintId), the
- * same field and no second name.  A weapon the door gives into the bag or
- * sets in its place without a well-formed id is given one (a weapon just
- * made, or one made before ids); one that has its own keeps it, whatever
- * road it came by (traded, sold, mailed, listed, dropped).  At the join and
- * in the save's migration (migrations.js v22) `weaponIdsAll` does the hand
- * and the bag together: a weapon without one gets one, and the second of
- * two that share one gets a new one, so two never share.  No ledger row (a
- * weapon's is the card's cost question): the door's own counter.
- *
  * The stash roads between players (a weapon by the mail, the market, the
  * auction house, a trade window) are on PR 1's table (playerroads.js), whose
  * guard holds them.  One import, gearstash.js's cap: node tests it bare. */
 import { gearStashCap } from './gearstash.js';   /* a function, called at run time only: gearstash.js imports this door back */
-import { gearMintId, GID_RE } from './gearprov.js';   /* v2.3.5282: the one minter (called at run time only: gearprov.js imports this door back) */
 
 /* the gear lists are gearstash.js GEAR_STASH_FIELDS, written out here (the
    two modules import each other; stash-door.test holds them the same) */
@@ -125,39 +113,6 @@ export const STASH_ROADS = Object.freeze({
 
 const own = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);
 
-/* ── a weapon's own id (v2.3.5282) ── */
-/* the door's counter for the minter (a weapon has no ledger: SHAPES part 2) */
-const WEAPON_MINT = { seq: 0 };
-/** The hands a weapon is held in (a weapon in a hand keeps its id). */
-export const WEAPON_HANDS = Object.freeze(['weapon', 'rangedWeapon', 'staffWeapon']);
-/** True when `w` carries an id as the minter writes it. */
-export function weaponIdOk(w) {
-  return !!w && typeof w === 'object' && typeof w.gid === 'string' && GID_RE.test(w.gid);
-}
-/** `w` given its own id when it has none well-formed (it keeps one it has).
- *  Returns `w`. */
-export function weaponIdGive(w) {
-  if (w && typeof w === 'object' && !Array.isArray(w) && !weaponIdOk(w)) w.gid = gearMintId(WEAPON_MINT);
-  return w;
-}
-/** Every weapon `rec` holds, in its hands and its bag, with an id, and no
- *  two sharing one: a weapon without one is given one, and the second of
- *  two that share one is given a new one (the first keeps it).  The join's
- *  load and the save's migration run it.  Returns how many were given. */
-export function weaponIdsAll(rec) {
-  if (!rec || typeof rec !== 'object') return 0;
-  const seen = new Set();
-  let n = 0;
-  const one = (w) => {
-    if (!w || typeof w !== 'object' || Array.isArray(w)) return;
-    if (!weaponIdOk(w) || seen.has(w.gid)) { w.gid = gearMintId(WEAPON_MINT); n++; }
-    seen.add(w.gid);
-  };
-  for (const h of WEAPON_HANDS) one(rec[h]);
-  if (Array.isArray(rec.weaponStash)) for (const w of rec.weaponStash) one(w);
-  return n;
-}
-
 function roadFor(road, verb, field) {
   const row = typeof road === 'string' && own(STASH_ROADS, road) ? STASH_ROADS[road] : null;
   if (!row) throw new Error('stash door: no road "' + road + '" (stash.js STASH_ROADS)');
@@ -190,7 +145,6 @@ export function stashGive(rec, field, piece, road, room) {
   roadFor(road, 'give', field);
   const list = listOf(rec, field);
   if (list.length >= stashCap(field, room)) return false;
-  if (field === 'weaponStash') weaponIdGive(piece);   /* v2.3.5282: a weapon's own id */
   list.push(piece);
   return true;
 }
@@ -209,12 +163,10 @@ export function stashSet(rec, field, v, road, at) {
   roadFor(road, 'set', field);
   if (at === undefined) {
     rec[field] = Array.isArray(v) ? v : [];
-    if (field === 'weaponStash') for (const w of rec[field]) weaponIdGive(w);   /* v2.3.5282 */
     return true;
   }
   const list = listOf(rec, field);
   if (!Number.isInteger(at) || at < 0 || at >= list.length) return false;
-  if (field === 'weaponStash') weaponIdGive(v);   /* v2.3.5282 */
   list[at] = v;
   return true;
 }

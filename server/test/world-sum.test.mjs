@@ -376,8 +376,7 @@ for (const [what, plant, wantGold, wantGoods] of [
   check('stash: every place a stash road holds a piece in is read by the sum (' + places.join(', ') + ')', places.length >= 4 && unread.length === 0, unread);
   const src = (await import('node:fs')).readFileSync(new URL('../src/worldsum.js', import.meta.url), 'utf8');
   const m = /const STASH_FIELDS = (\[[^\]]*\]);/.exec(src);
-  /* v2.3.5282 (card R PR 3): the weapon bag too, now that a weapon has its own id */
-  check('stash: the sum counts every stash the door writes, the weapon bag included (by id)', !!m && JSON.stringify(JSON.parse(m[1].replace(/'/g, '"'))) === JSON.stringify(STASH_FIELDS), m && m[1]);
+  check('stash: the sum counts every gear list the door writes', !!m && JSON.stringify(JSON.parse(m[1].replace(/'/g, '"'))) === JSON.stringify(STASH_FIELDS.filter((f) => f !== 'weaponStash')), m && m[1]);
 }
 
 Math.random = realRandom;

@@ -13,8 +13,7 @@ state: ready
   a stored record's shape, merged on a line of its own.
 - PR 13 (5292, #1950, ready, sitting 23): the arena's stakes' ledger rows (the
   planning session's reading (1): one row a losing stake, to the fighter,
-  the winning sponsors' parts in `ids`); `xferescrow` still OFF. Stacked on
-  #1873 (its head merged in, the gatekeeper's word): lands the line after.
+  the winning sponsors' parts in `ids`); `xferescrow` still OFF.
 
 ## Next
 
