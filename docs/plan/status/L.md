@@ -1,6 +1,6 @@
 card: L
-branch: claude/plan-l-23-ride-door (each PR on main, main merged in)
-prs: #1746 to #1910 (merged), #1930 (5522, ready), #1936 (5523, ready, on #1930)
+branch: claude/plan-l-25-loading-door (5525); 5524 is claude/plan-l-24-ally-drafts (each PR on main, main merged in)
+prs: #1746 to #1936 (merged), #1946 (5524), #1956 (5525): ready
 state: ready
 
 ## Done
@@ -10,15 +10,15 @@ state: ready
   doors; the resets, 484 -> 233 rows.
 - PR 5, 5210-5217, 5522-5523: the worker's trade, duel, party, cook, harvest+
   fishing, dungeon, pose, race, arena, ride doors; the page's (5218-5219,
-  5520-5521): race, harvest+cook+fishing, pose, guard.
+  5520-5521, 5525): race, harvest+cook+fishing, pose, guard, loading (S._veils).
+- 5524: the Saloon's alliance drafts outlive a rejoin (J2's find).
 
 ## Next
 
-- #1930 arena (5522): mp-arena 28/28 (27/28 was timing), questline 187/187.
-  On merge: card R may take the escrow ledger's other rows.
-- Ride door (5523, ride.js only). The worker's guard door waits: it writes
-  join.js, index.js (cards A, E); connection waits for K, loading/window H.
-- Backlog (J2): a rejoin past 5 s clears the party and alliance forms: REJOIN_SLOTS.
+- #1930 (arena) merged: card R may take the escrow ledger's other rows.
+  #1936 (ride) merged, ridedoor on.
+- Next: the window door (S._windows, windowTo). Guard (worker), connection and
+  the loading door's `net` reason (S._netHold) wait for K (wsClient, combat, index).
 
 ## Found
 
