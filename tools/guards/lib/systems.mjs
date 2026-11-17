@@ -59,9 +59,9 @@ export const SYSTEMS = Object.freeze({
     /* v2.3.5061 (card N): server/src/wire/, the wire table (one row a message or route) */
     files: [f('server/src', 'index|relay|bundle|clientoff|flood'), re('^server/src/wire/'), re('^src/networking/'), f('src/game', 'clientOff|clientOffApply|blockedAsks|workerClock|t1Sync|tooFar'),
       f('src/game', 'actions'),   /* v2.3.5185 (card K): the action door, the one way a request leaves the page */
-      f('server/src', 'heapforget|reqonce|gidnames|send'),   /* v2.3.5544 (card K, RT-1 N11): the room forgets who left; v2.3.5194: a repeat acts once; v2.3.5193: the send door */
+      f('server/src', 'heapforget|reqonce|gidnames|send|words'),   /* v2.3.5544 (card K, RT-1 N11): the room forgets who left; v2.3.5194: a repeat acts once; v2.3.5193: the send door; v2.3.5197: the words rule */
     ],
-    words: ['wire', 'protocol', 'relay', 'caps', 'bundle', 'privileged', 'clientoff', 'flood', 'heap-forget', 'req-once', 'gid-names', 'send-door'],
+    words: ['wire', 'protocol', 'relay', 'caps', 'bundle', 'privileged', 'clientoff', 'flood', 'heap-forget', 'req-once', 'gid-names', 'send-door', 'words-rule'],
     traps: ['wire'],
     doors: [
       /* v2.3.5184 (the gatekeeper, sitting 13): the two lists are made from the wire table now (lists.js, card K PR 1) */

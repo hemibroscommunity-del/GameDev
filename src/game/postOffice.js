@@ -18,6 +18,7 @@
  * No imports but data/remains.js (itself import-free) and game/achievements.js
  * (relative, its own imports import-free), so node can still read its rules.
  */
+import { fillWords } from '../data/words.js';   /* v2.3.5197: the words rule */
 import { remainsName } from '../data/remains.js';   /* v2.3.3525: "remains", not "remnants" */
 import { achvMailWords } from './achievements.js';   /* v2.3.3527: an achievement in the mail */
 
@@ -88,7 +89,11 @@ export function mailLine(e) {
      "Gladiator achievement", its name from the phone's table, never "?" */
   else if (kind === 'achv') what = achvMailWords(p);
   else what = 'A delivery';
-  let note = e && typeof e.note === 'string' ? e.note : '';
+  /* v2.3.5197: the words rule -- a note with a template is filled from the
+     game's own sentences (src/data/words.js), the player's words put in as
+     text; the worker's sentence stays for a template this table lacks */
+  const filled = e && e.noteT ? fillWords(e.noteT) : null;
+  let note = typeof filled === 'string' ? filled : (e && typeof e.note === 'string' ? e.note : '');
   if (!note && source === 'daily') note = 'Daily reward';
   /* v2.3.3734: a gold line's amount, for the owner's coin pile beside it */
   const amount = kind === 'gold' ? Math.max(0, Math.round(Number(p.amount) || 0)) : 0;
