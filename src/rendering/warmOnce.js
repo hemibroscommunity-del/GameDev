@@ -18,9 +18,10 @@
  * gate (the <img> fetches at use).
  *
  * `?warmonce=0` is the game as it was (a fresh warm every pass). */
+import { sw } from '../game/switches.js';   /* v2.3.5313: the page's one reader (card T) */
 
 let _on = true;
-try { if (typeof location !== 'undefined' && /[?&]warmonce=0\b/.test(location.search || '')) _on = false; } catch (e) { /* on */ }
+if (sw('warmonce')) _on = false;
 
 export function warmOnce(held) {
   const warmed = new Map();   /* url -> the promise of its held <img> */

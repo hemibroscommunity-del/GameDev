@@ -1,6 +1,6 @@
 card: T
-branch: claude/plan-t-12-lows (one branch a PR, each begun from main once the one before merged)
-prs: #1754 ... #1958, #1978 (5301-5311, merged); 5312 the review's lows (ready)
+branch: claude/plan-t-13-reads4 (on #1992's branch; main merged in)
+prs: #1754 ... #1958, #1978 (5301-5311, merged); #1992 5312 lows (ready); 5313 reads (ready, on #1992)
 state: ready
 
 ## Done
@@ -18,9 +18,8 @@ state: ready
 
 ## Next
 
-- 5312: sitting 27's two lows (the spec's file count; wheelTrial's `search`:
-  one `let`, as the Memory savers' row adds to it).
-  Then the 172 left: A, G, H, O, P are done (their files free); K, L later.
+- 5313: eleven reads (device, preload, world, art); the line 161.
+  Then look, memory, debug, data, render; K's and L's files when they end.
 
 ## Found
 
@@ -30,11 +29,11 @@ state: ready
 - Card O's knobs stay O's reads (step 2.4): `?pixbudget`, `?res`,
   `?onebatch`, `?lookpalette`, `?pace`, `?crowd`, the passes'; and `govern`
   (a value on the page) is a need the reader cannot resolve.
-- `?bandbeat` stays: held-sweep.test 10a pins its text (card H's test).
+- `?bandbeat`, `?foldgentle` stay: held-sweep 10a, sound-fold 4e pin their text.
 
 - manualCombat.js, weaponFeel.js, pinSlots.js keep their address reads: their
   suites (manual-combat 10a, weapon-feel 8a, map-pin 9i) require no imports.
 
 ## Needs
 
-- The gatekeeper: 5312's PR.
+- The gatekeeper: #1992, then 5313's PR on it.

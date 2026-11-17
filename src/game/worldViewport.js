@@ -36,6 +36,7 @@ import { renderDpr } from './renderRes.js'; /* v2.3.3339 */
 import { ZONES } from '@/data/zones.js'; /* v2.3.2247: the per-zone zoom ceiling */
 import { capViewScale, viewCapChoice } from './viewCap.js'; /* v2.3.4084: one visible area for every screen */
 import { clientOff } from './clientOff.js'; /* v2.3.4084: the Test panel's row turns the cap off */
+import { pageAddress } from './switches.js';   /* v2.3.5313: the page's one reader (card T) */
 
 /* The design target, in WORLD px: a 390px-wide iPhone Safari viewport times
    WORLD_ZOOM.  390 is the width playViewport.js falls back to and the one the
@@ -225,7 +226,7 @@ export const FIGURE_SCALE_FLOOR = 0.50;
 export const VIEW_OUT_DEFAULT = 0.77;
 function readViewOut() {
   try {
-    const m = /(?:^|[?&])zoom=([0-9.]+)(?:&|$)/.exec((typeof window !== 'undefined' && window.location && window.location.search) || '');
+    const m = /(?:^|[?&])zoom=([0-9.]+)(?:&|$)/.exec(pageAddress());
     const k = m ? Number(m[1]) : NaN;
     if (Number.isFinite(k) && k > 0) return Math.max(0.4, Math.min(1.5, k));
   } catch (_e) { /* no address: the default */ }
@@ -282,7 +283,7 @@ export const REF_VIEW_H = Math.round(320 * WORLD_ZOOM);   /* 960 at WORLD_ZOOM 3
    without a load), the Test panel's word every call (a Set lookup: it follows
    the worker live, `live: true` in clientOff.js) */
 const VIEW_CAP_SEARCH = (() => {
-  try { return (typeof window !== 'undefined' && window.location && window.location.search) || ''; } catch (_e) { return ''; }
+  return pageAddress();
 })();
 export function viewCapOn() {
   let off = false;
