@@ -1,6 +1,6 @@
 card: L
 branch: claude/plan-l-31-arena-page (from main)
-prs: #1746 to #2027 (merged), 5531 arena page door (this branch): ready
+prs: #1746 to #2027 (merged), #2031 (5531): ready
 state: ready
 
 ## Done
@@ -17,7 +17,7 @@ state: ready
 ## Next
 
 - Next: the page halves left (life, fight, dungeon), grouped
-  by file. Guard (worker) waits for K's item 14 (index.js, combat.js).
+  by file. Guard (worker) waits for K2's index.js PRs (planner, 15:52).
 
 ## Found
 
