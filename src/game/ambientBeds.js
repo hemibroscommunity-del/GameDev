@@ -34,6 +34,7 @@ import { OWNER_LOOPS, LOOP_REFS } from '@/data/ownerSoundClips.js';
 import { wheelMapInfo, wheelWaterAt } from '@/game/wheelTrial.js';
 import { waterDistance, noteWaterMap, RIVER_VOL } from '@/game/waterAmbience.js';
 import { burningNow } from '@/rendering/buildingFire.js';
+import { sw } from '@/game/switches.js';   /* v2.3.5309: the page's one reader (card T) */
 
 export const SEA_NEAR = 180;
 export const SEA_FAR = 900;
@@ -65,7 +66,7 @@ for (const id in BEDS) st.beds[id] = { k: 0, src: null, gain: null, ctx: null, q
 
 function off() {
   if (st.off === null) {
-    try { st.off = typeof location !== 'undefined' && /[?&]nobeds(?:[&=]|$)/.test(location.search); } catch (e) { st.off = false; }
+    st.off = sw('nobeds');
   }
   return st.off;
 }

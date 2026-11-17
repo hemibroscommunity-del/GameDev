@@ -4,6 +4,7 @@ import { guardPush } from '../mobile/modalGuardBus.js'; /* v2.3.2145 */
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
+import { act } from '@/game/actions.js';   /* v2.3.5190: the page's requests leave through the action door (card K PR 7) */
 /* === TradePanel — the showTrade modal === */
 /* v2.3.884: extracted verbatim from the showTrade && tradeTarget &&
    rpgState JSX subtree in BroTown.jsx (the outgoing player-to-player
@@ -271,15 +272,11 @@ export function TradePanel(props) {
     onClick: function onClick() {
       var S = stateRef.current;
       if (S.channel) {
-        if (S.channel) S.channel.send({
-          type: 'broadcast',
-          event: 'trade_offer',
-          payload: {
-            from: S.myId,
-            fromName: S.myName,
-            target: tradeTarget.id,
-            offer: tradeOffer
-          }
+        if (S.channel) act('trade_offer', {   /* v2.3.5190: through the action door (actions.js) */
+          from: S.myId,
+          fromName: S.myName,
+          target: tradeTarget.id,
+          offer: tradeOffer
         });
         pushDmgPopup(S, S.player.x, S.player.y - 30, 'Trade sent!', '#59BF91');
         setShowTrade(false);

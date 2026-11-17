@@ -9,6 +9,8 @@
  *
  * No imports: node tests read it.  Spec: docs/specs/leaderboards.md. */
 
+import { act } from './actions.js';   /* v2.3.5188: the action door (card K PR 7), its only import: it has none of its own, so node still reads this file */
+
 const listeners = new Set();
 function emit() { for (const fn of listeners) { try { fn(); } catch (_e) { /* a screen's own */ } } }
 
@@ -27,7 +29,7 @@ export function spinBoardLive(S) {
 /** Ask for the board. */
 export function askSpinBoard(S) {
   if (!spinBoardLive(S) || !S.channel) return false;
-  try { S.channel.send({ type: 'spin_board_request', payload: {} }); } catch (_e) { return false; }
+  try { act('spin_board_request', {}); } catch (_e) { return false; }   /* v2.3.5188: through the action door (actions.js) */
   return true;
 }
 

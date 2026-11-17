@@ -32,6 +32,7 @@ import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { deskWords } from '@/game/deskWords.js';   /* v2.3.4105: E beside someone says "Click <name> to talk" */
 import { folkDisplayName } from '@/data/folkNames.js';   /* v2.3.4105: ...by the name his plate wears */
 import { fineInput } from './deviceProfile.js';   /* v2.3.4804: the device profile */
+import { act } from '@/game/actions.js';   /* v2.3.5192: the page's requests leave through the action door (card K PR 7) */
 /* v2.3.4105: aceFlipBus, shopBus, npcSpeaks and mayorSaysNext left with E's
    talk (runTalk): a tap on him answers each (BroTown.jsx tapNpcAtCss) */
 
@@ -260,7 +261,7 @@ export function setupDesktopControls(S, deps) {
       if (e.code === 'KeyZ' && !e.repeat) {   /* RIDE_KEY (deskKeys.js), written out as the other keys are (desk-keys.test §6) */
         if (rideButtonWanted(S, rideGround(S))) {
           e.preventDefault();
-          toggleRide(S, Date.now(), function (type, payload) { if (S.channel) S.channel.send({ type: type, payload: payload }); });
+          toggleRide(S, Date.now(), function (type, payload) { if (S.channel) act(type, payload); });   /* v2.3.5192: through the action door (actions.js): the ride key, left by PR 7.1 while card SK held the ride */
           return;
         }
       }

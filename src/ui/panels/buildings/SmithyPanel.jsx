@@ -19,6 +19,7 @@ import { forgeLevelFor, forgeOffered, forgeStatReq } from '@/data/forgeLadder.js
 import { OWNER_ICON } from '@/data/ownerIcons.js'; /* v2.3.3524: the Upgrade tab's hammer */
 import { amuletTabShown } from '@/game/forgeTabs.js'; /* v2.3.3535: the Amulet tab only with gold for it */
 import { C, ITEMS_V, COIN, XP, Icon, Cost, Chip, Lock, Btn, Row } from './BenchParts.jsx'; /* v2.3.3667 */
+import { act } from '@/game/actions.js';   /* v2.3.5190: the page's requests leave through the action door (card K PR 7) */
 
 /* ═══ v2.3.2826: THE BLACKSMITH, REBUILT ═══
  *
@@ -152,7 +153,7 @@ export function SmithyPanel({ rpgState, stateRef }) {
   }, [busy]);
   const ask = (key, msg, { sig, done, fail, kind, workMs }) => {
     if (!S.channel || busy) return;
-    try { S.channel.send(msg); } catch (e) { return; }
+    try { act(msg.type === 'broadcast' ? msg.event : msg.type, msg.payload); } catch (e) { return; }   /* v2.3.5190: through the action door (actions.js): a broadcast's name is its event */
     pending.current = { key, sig, before: sig(), done, fail, kind };
     setBusy(key);
     startSmithing(S, workMs || SMITH_STRIKE_MS * 3, kind);
@@ -554,7 +555,7 @@ function SalvageTab({ S, R, inv }) {
       return;
     }
     setArmed(null);
-    try { S.channel.send({ type, payload }); } catch (e) { return; }
+    try { act(type, payload); } catch (e) { return; }   /* v2.3.5190: through the action door (actions.js) */
     setWait({ key, at: Date.now() });
     startSmithing(S, SMITH_STRIKE_MS * 2, 'salvage');
   };

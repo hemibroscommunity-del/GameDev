@@ -21,6 +21,8 @@
  * wsClient), so a node test reads its rules: server/test/rest.test.mjs.
  */
 
+import { act } from './actions.js';   /* v2.3.5188: the action door (card K PR 7), its only import: it has none of its own, so node still reads this file */
+
 /* the worker's rules, for the words (server/src/rest.js REST) */
 export const REST_MS = 30 * 60 * 1000;
 export const REST_XP_PCT = 10;
@@ -61,7 +63,7 @@ export function requestRest(S, where, now) {
   const t = typeof now === 'number' ? now : Date.now();
   if (S._restAsked && t - S._restAsked < ASK_MS) return false;
   S._restAsked = t;
-  try { S.channel.send({ type: 'rest_request', payload: { where } }); } catch (e) { S._restAsked = 0; return false; }
+  try { act('rest_request', { where }); } catch (e) { S._restAsked = 0; return false; }   /* v2.3.5188: through the action door (actions.js) */
   return true;
 }
 

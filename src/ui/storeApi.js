@@ -22,8 +22,8 @@
  * the authoritative player_state echo, which is the whole point of the
  * server-settled store (handoff rule zero). */
 
-import { BT_API_BASE } from '@/networking/index.js';
 import { postWithin } from '@/game/storeAnswer.js';   /* v2.3.4412: a time limit, and "not sure" is not "no" */
+import { act } from '@/game/actions.js';   /* v2.3.5191: the page's requests leave through the action door (card K PR 7) */
 
 function S() {
   try { return window._gameState && window._gameState.current; } catch (e) { return null; }
@@ -88,7 +88,7 @@ export function storeChatEnabled() {
    socket is for, and the shim passes both through (wsClient.js). */
 export function storeChatSend(type, payload) {
   const s = S();
-  try { if (s && s.channel) s.channel.send({ type, payload }); } catch (e) { /* offline */ }
+  try { if (s && s.channel) act(type, payload); } catch (e) { /* offline */ }   /* v2.3.5191: through the action door (actions.js) */
 }
 
 /* ═══ v2.3.2623: ...and can a buyer make a gold OFFER on a listing? ═══
@@ -121,38 +121,32 @@ export function storeMyId() {
   return (s && s.myId) || null;
 }
 
-function headers() {
-  const h = { 'Content-Type': 'application/json' };
-  const s = S();
-  if (s && s._httpToken) h['x-bt-auth'] = s._httpToken;
-  return h;
-}
-
 /* v2.3.4412: a request the network swallows ends after a time limit, and no
    answer comes back `unsure`, never a plain refusal (game/storeAnswer.js: a
    lost answer read as a refusal made players list twice) */
-async function post(path, body) {
-  return postWithin((u, i) => fetch(u, i), BT_API_BASE + '/api/store' + path + '?room=' + room(), {
-    method: 'POST', headers: headers(),
-    body: JSON.stringify({ ...body, playerId: storeMyId() }),
-  });
+async function post(route, body) {
+  /* v2.3.5191: through the action door (actions.js), the route its row's name
+     (http:/api/store/...: each written whole below, so the door's guard reads
+     it); the row makes the headers (the token: `auth`) and the body;
+     postWithin's own init carries only its time limit's signal */
+  return postWithin((u, i) => act(route, { ...body, playerId: storeMyId() }, { query: 'room=' + room(), signal: i && i.signal }), '', {});
 }
 
 export async function storeBrowse(cat, cursor, limit) {
   try {
-    const q = '?room=' + room()
+    const q = 'room=' + room()
       + (cat && cat !== 'all' ? '&cat=' + encodeURIComponent(cat) : '')
       + (cursor ? '&cursor=' + encodeURIComponent(cursor) : '')
       + (limit ? '&limit=' + limit : '');
-    const res = await fetch(BT_API_BASE + '/api/store/browse' + q);
+    const res = await act('http:/api/store/browse', {}, { query: q });   /* v2.3.5191: through the action door (actions.js) */
     return await res.json();
   } catch (e) { return { ok: false, error: 'No answer from the store' }; }
 }
 
 export async function storeMine() {
   try {
-    const res = await fetch(BT_API_BASE + '/api/store/mine?room=' + room()
-      + '&playerId=' + encodeURIComponent(storeMyId() || ''));
+    const res = await act('http:/api/store/mine', {}, { query: 'room=' + room()   /* v2.3.5191: through the action door (actions.js) */
+      + '&playerId=' + encodeURIComponent(storeMyId() || '') });
     return await res.json();
   } catch (e) { return { ok: false, error: 'No answer from the store' }; }
 }
@@ -183,19 +177,16 @@ export async function storeMine() {
    from them, against its own list; `hint` is our index, believed only if
    the worker's own entry at that position agrees.  `sel` is a selector
    and never the goods: what is escrowed is the worker's own copy. */
-export const storeList = (body) => post('/list', body);
-export const storeBuy = (listingId) => post('/buy', { listingId });
-export const storeBid = (listingId, amount) => post('/bid', { listingId, amount });
-export const storeAccept = (listingId) => post('/accept', { listingId });
+export const storeList = (body) => post('http:/api/store/list', body);
+export const storeBuy = (listingId) => post('http:/api/store/buy', { listingId });
+export const storeBid = (listingId, amount) => post('http:/api/store/bid', { listingId, amount });
+export const storeAccept = (listingId) => post('http:/api/store/accept', { listingId });
 
 export async function storeCancel(listingId) {
   try {
-    const res = await fetch(BT_API_BASE + '/api/store/cancel?room=' + room()
+    const res = await act('http:/api/store/cancel', {}, { query: 'room=' + room()   /* v2.3.5191: through the action door (actions.js): a DELETE, the token its row's */
       + '&id=' + encodeURIComponent(listingId)
-      + '&playerId=' + encodeURIComponent(storeMyId() || ''), {
-      method: 'DELETE',
-      headers: (S() && S()._httpToken) ? { 'x-bt-auth': S()._httpToken } : undefined,
-    });
+      + '&playerId=' + encodeURIComponent(storeMyId() || '') });
     return await res.json();
   } catch (e) { return { ok: false, error: 'No answer from the store' }; }
 }
