@@ -618,6 +618,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `freezedevice` | worker | lever | v2.3.5621 |  | true | none |  | no | Thrown (true), a freeze also refuses a NEW character (no login, no record yet) made on a phone the frozen character has played on, by the game's own device record; never an existing character's join, never a phone one of the owner's own characters has joined from (kept for good), nor a join naming one. Unset or false, the default, a freeze holds the frozen character only, as before. |
 | `invitepace` | worker | switch | v2.3.5624 | 2026-11-15 | false | logic |  | no | A trade invite card and a friend request card go every time again (no 5-second pace a target). |
 | `leaderidleat` | worker | switch | v2.3.4378 | 2026-11-10 | false | logic |  | no | The party leader's idle clock counts only a `seen` above 0, as before. |
+| `mutehides` | worker | switch | v2.3.5806 | 2026-11-17 | false | logic |  | no | A whisper to a player who muted you is answered with silence (a name nobody holds: no-such-player), and a party invite reaches them, as before (S8). |
 | `partydoor` | worker | switch | v2.3.5212 | 2026-11-14 | false | logic |  | no | A player can be put in a party that does not list them, as the lines before the party door could have (nothing does today). |
 | `?partydoor` | page | switch | v2.3.5529 | 2026-11-17 | =0 | logic |  | no | The phone's party takes any write its own code asks again (a roster that is no record, a clear that writes one), as the lines before the party's page door; every caller writes what the door allows today. |
 | `partykeep` | worker | switch | v2.3.3276 | 2026-10-17 | false | logic |  | no | Parties are not kept: the old cap and the away window remove a dropped member. |
@@ -631,6 +632,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?socialreset` | page | switch | v2.3.5204 | 2026-11-14 | =0 | logic |  | no | A race the worker forgot at a reconnect stays on the phone until its own clock lets it go, as before. |
 | `spar` | worker | switch | v2.3.3265 | 2026-10-16 | false | logic |  | no | No sparring clones: every live clone goes on the next tick and the cap is withdrawn. |
 | `statboards` | worker | switch | v2.3.5484 | 2026-11-14 | false | logic |  | no | Un-advertises the stat boards: no board report carries the points allocated, so those boards empty as players report; every other board is as it was. |
+| `storemute` | worker | switch | v2.3.5806 | 2026-11-17 | false | logic |  | no | A muted sender's shop-thread line is stored and shown when the thread is opened, as before (S5: the mute held the live send only). |
 
 ## townsfolk
 

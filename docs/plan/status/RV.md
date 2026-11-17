@@ -1,6 +1,6 @@
 card: RV
-branch: claude/rv-duel (PR 6, stacked on claude/rv-nml)
-prs: #2072, #2083 (sitting 42); #2091 (5802); PRs 4-6 (5803-5805) in their runs
+branch: claude/rv-storemute (PR 6b, stacked on claude/rv-duel)
+prs: #2072, #2083 (sitting 42); #2091, #2094 (ready); PRs 5, 6, 6b (5804-5806) in their runs
 state: ready
 
 ## Done
@@ -15,12 +15,14 @@ state: ready
 - #2083 (5801, ready): `market.js`, `inbox.js`: MS-2 (`mkttier`), MS-4
   (`mktheal`). `market-own-place.test`: 10 FAIL on main, green here.
 - #2091 (5802, ready): the chest's stamp kept for good (MD-1, `risekeep`).
-- PR 4 (5803): goods credited in the dying seconds kept (MS-3,
+- #2094 (5803): goods credited in the dying seconds kept (MS-3,
   `dyingkeep`, `inbox.js` only). `dying-keep.test`: 4 FAIL without it.
 - PR 5 (5804): No man's land's killer paid in the victim's own write
   (MS-1, `nmlonewrite`). `nml-onewrite.test`: 1 FAIL on main.
 - PR 6 (5805): duel.js: S1, S4, MS-6's pot (`duelpace`, `duelonewrite`).
-  `duel-pace.test`: 6 FAIL on main. `duelquiet` sent to K2 (relay.js).
+  `duel-pace.test`: 6 FAIL on main. `duelquiet` sent to K2 (eventplace.js).
+- PR 6b (5806): a muted line not shown on open; a muter away to you
+  (`storemute`, `mutehides`). `store-mute.test`: 4 FAIL on main.
 
 ## Found
 
