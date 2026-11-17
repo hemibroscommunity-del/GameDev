@@ -94,5 +94,5 @@ K.md). Its own line when listed.
 
 ## Not in
 
- J2's shopkeeper and flakes; R 5293 (after K's 5196/5197). No PR
+J2's shopkeeper and flakes; R 5293 (after K's 5196/5197). No PR
 open when the list went: sitting 31.
