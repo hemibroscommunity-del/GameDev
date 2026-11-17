@@ -1,6 +1,6 @@
 card: L
 branch: claude/plan-l-29-page-halves (from main)
-prs: #1746 to #2012 (merged), 5529 duel+party page doors (this branch): ready
+prs: #1746 to #2012 (merged), #2022 (5529): ready
 state: ready
 
 ## Done
@@ -28,7 +28,7 @@ state: ready
   fishvariants (4a-5: no Inspect on the card; 6c by run: healed before Eat),
   moresounds (setup and 10 every run; 8b, 9a by run: other cues heard),
   deskharvest 5 (a phone's first-harvest hint, read as a computer's), blockface 2 (the block icon's disc: 13 of 560 px blue, on main too),
-  comeback 1, 5 (a stick's release, a frozen page's rejoin: on main c55c8b59).
+  comeback 1, 5 (on main c55c8b59). precheck's 5-min server limit < the suite's ~310 s.
 - bodytake.js ~94 cites a pose row that is none. Dead: S._shieldStamina,
   S.shieldActive, S._iceAttack, monsterCombat's respawn, playerActions' raiseShield.
 
