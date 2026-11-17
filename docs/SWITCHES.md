@@ -329,6 +329,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `rest` | worker | switch | v2.3.3539 | 2026-10-21 | false | logic |  | no | Un-advertises the Hotel's rest: it rests nobody and pays no Well Rested XP. |
 | `ride` | worker | switch | v2.3.3776 | 2026-10-29 | false | logic |  | no | Un-advertises riding and ends every ride on the rider's next move. |
 | `?ridecoast` | page | switch | v2.3.5440 | 2026-11-14 | =0, off, false | logic |  | no | The board starts at top speed and stops the moment you let go, as before: no pushes to speed up, no roll-off. |
+| `ridedoor` | worker | switch | v2.3.5523 | 2026-11-17 | false | logic |  | no | A board can be taken by the dead or with no session to tell, and an end written over no ride, as the lines before the ride door could have; _handleRide's refusals and _rideEnd still check first. |
 | `rollwindow` | worker | switch | v2.3.3292 | 2026-10-17 | false | logic |  | no | A roll claim is trusted as before, paid or not. |
 | `safeheal` | worker | switch | v2.3.3569 | 2026-10-22 | false | logic |  | no | The safe ground's heal is the wilds' trickle again. |
 | `serverdead` | worker | switch | v2.3.4373 | 2026-11-10 | false | logic |  | no | A phone's move may write `dead` again (the move's write back). |
