@@ -213,6 +213,7 @@ import { act } from '@/game/actions.js';   /* v2.3.5189: the page's requests lea
 import { duelTo } from '@/game/duelDoor.js';   /* v2.3.5529: the duel's page door, S._inDuel's one writer (card L) */
 import { partyTo } from '@/game/partyDoor.js';   /* v2.3.5529: the party's page door, S._party's one writer (card L) */
 import { skullTo } from '@/game/skullDoor.js';   /* v2.3.5533: the fight's page door, your skull's one writer (card L) */
+import { dyingTo } from '@/game/dyingDoor.js';   /* v2.3.5534: the life's page door, your dying seconds (card L) */
 
 /* v2.3.1107: angle -> 8-way compass, same SECTORS convention as
    entityRenderer (atan2(dy,dx) -> 'east' when dx>0).  Used to reconcile a
@@ -3787,12 +3788,12 @@ export function processGameEvent(type, payload, S, deps) {
                  Keep the SP path for client-local monsters. */
               if (!S._serverMonsters && R2.hp <= 0 && !S._dying) {
                 /* Player death from client-local monster (SP mode) */
-                S._dying = true;
+                dyingTo(S, 'die', Date.now());   /* v2.3.5534: the life's page door (the death and its start) */
                 if (!R2._compStats) R2._compStats = createDefaultCompStats();
                 R2._compStats.deaths++;
                 /* Death-anim timeline starts now; renderer plays the
-                   21-frame sequence until respawn clears it. */
-                S._deathStart = Date.now();
+                   21-frame sequence until respawn clears it (v2.3.5534: written
+                   above, with the death, by the life's page door). */
                 /* Tell the server we died now so monster AI stops
                    targeting us during the 5 s respawn window, and
                    broadcast the death so remote clients render a

@@ -83,7 +83,7 @@ curl -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/admin/overview"
 
 **Is someone flooding the room?** (v2.3.5711) The overview's `floodTally`
 counts, since the room last started: `closed` (sockets the room closed for
-sending too many messages) and `relayBytesDropped` (moves and looks a phone
+sending too many messages; a phone too slow to join is not one) and `relayBytesDropped` (moves and looks a phone
 sent that were too big to pass on, by kind in `relayDropsBy`). A few is a
 bad connection; hundreds in an hour is someone hammering the room. The
 counts live in the room's memory only (they cost no writes), so they start

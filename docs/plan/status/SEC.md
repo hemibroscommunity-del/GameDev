@@ -1,7 +1,7 @@
 card: SEC
 branch: claude/plan-sec-<n>-<topic> (stacked: each PR on the one before until it merges)
-prs: #2030 #2032-#2040 merged; #2042 #2043 #2045 #2047 #2049: sitting 38; #2054 (5711): CI; PR 13 (5712): suite
-state: working
+prs: #2030-#2049 merged; #2054 (5711): sitting 39 (its review fixed); #2055 (5712): CI
+state: ready
 
 ## Done
 

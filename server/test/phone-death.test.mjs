@@ -115,7 +115,7 @@ const ge = read('src/networking/gameEvents.js');
 
 /* 6: the watchdog, exactly as it stood (v2.3.1822) */
 check('6a the 20-second watchdog is unchanged',
-  bro.includes("if (S._dying && S._deathStart && (Date.now() - S._deathStart) > 20000\n            && S.rpg && S.rpg.hp > 0) {\n          try { applyLocalRespawn(S, 'town'); } catch (e) { S._dying = false; S._deathStart = 0; }"));
+  bro.includes("if (S._dying && S._deathStart && (Date.now() - S._deathStart) > 20000\n            && S.rpg && S.rpg.hp > 0) {\n          try { applyLocalRespawn(S, 'town'); } catch (e) { dyingTo(S, 'respawn'); }"));   /* v2.3.5534: its fallback through the life's page door */
 
 if (failures) { console.log(`\n${failures} FAILED`); process.exit(1); }
 console.log('\nphone-death: all passed');

@@ -76,6 +76,7 @@ import { arrowEdgeRoom } from '@/game/arrowEdge.js'; /* v2.3.3489: where an arro
 import { changeZone } from '@/game/zoneTransitions.js';   /* v2.3.4651: the one door (TRAPS §304) */
 import { shotAimWire } from '@/game/shotGround.js';   /* v2.3.3501: what a shot is fired at, on the wire */
 import { act } from '@/game/actions.js';   /* v2.3.5187: the page's requests leave through the action door (card K PR 7) */
+import { dyingTo } from '@/game/dyingDoor.js';   /* v2.3.5534: the life's page door (card L) */
 
 /* ═══ v2.3.3206: HOW FAR A PLAIN ARROW FLIES BEFORE THE SCREEN'S EDGE ═══
    projectiles.js plants a bow arrow before its drawn point leaves the view
@@ -1133,14 +1134,14 @@ export function updateMonsterCombat(S, deps) {
                        restore+teleport so the death animation plays at the
                        death position before the player is whisked off to town.
                        S._dying gates re-entry while we wait for the timeout. */
-                    S._dying = true;
+                    dyingTo(S, 'die', Date.now());   /* v2.3.5534: the life's page door (the death and its start) */
                     if (!_R6._compStats) _R6._compStats = createDefaultCompStats();
                     _R6._compStats.deaths++;
                     /* Start the death-animation timeline.  Renderer plays
                        the 21-frame sequence over ~3.15 s, then holds the
                        final pile-of-bones frame until the setTimeout below
-                       fires the respawn and clears the dead state. */
-                    S._deathStart = Date.now();
+                       fires the respawn and clears the dead state (v2.3.5534:
+                       its start written above, with the death). */
                     /* Tell the server immediately that we died.  The
                        channelShim move builder reads dead = rpg.hp <= 0,
                        so sending a move now (while hp is still 0) gives
@@ -1264,11 +1265,11 @@ export function updateMonsterCombat(S, deps) {
                       P.y = TOWN_SPAWN.y;
                       P.vx = 0; P.vy = 0;
                       S.respawnTimer = Date.now() + respawnMs;
-                      S._dying = false;
                       /* Clear the death-animation start so the next death
                          retriggers the renderer's death timeline from
-                         frame 0 rather than reading a stale _selfElapsed. */
-                      S._deathStart = 0;
+                         frame 0 rather than reading a stale _selfElapsed
+                         (v2.3.5534: alive and the start, by the life's page door). */
+                      dyingTo(S, 'respawn');
                       S.groundLoot = []; if (window._pixiRenderer && window._pixiRenderer.flushAllLoot) window._pixiRenderer.flushAllLoot();
                       S.hitParticles = [];
                       S.arrows = [];

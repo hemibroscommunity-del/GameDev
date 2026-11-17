@@ -174,7 +174,13 @@ export const lastPlaceMethods = {
     if (this._testMode(ps)) return;
     const mem = live || kept;
     if (typeof this._wheelInStep === 'function' && !this._wheelInStep(ps)) return;
-    if (!claimed || !num(ps.x) || !num(ps.y) || typeof ps.z !== 'string') return;
+    /* v2.3.5722 (card K2 PR 3): a join that named no place is stood where
+       the worker had them, or at the Wheel's arrival, with its move clock
+       set (_placeUnnamed below; `joinplace: false`, the early return) */
+    if (!claimed || !num(ps.x) || !num(ps.y) || typeof ps.z !== 'string') {
+      if (!claimed && this._joinPlaceOn()) this._placeUnnamed(id, ps, mem, t);
+      return;
+    }
     /* the first move after this join is judged from where it puts them */
     ps.lastMoveAt = t;
     if (!mem) {
@@ -230,6 +236,62 @@ export const lastPlaceMethods = {
     this._lpTally('followed');
   },
 
+  /* v2.3.5722: `joinplace: false` in the live flags and a join that names
+     no place returns early, as before (on unless its own falsy value) */
+  _joinPlaceOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'joinplace') && !f.joinplace);
+  },
+
+  /* ═══ v2.3.5722 (card K2 PR 3; the second red team's HIGH 3): A JOIN THAT
+     NAMES NO PLACE ═══
+     _placeOnJoin returned early for a join with no x/y, before the move
+     clock (`lastMoveAt`) was set, so that join's first move was a FIRST
+     move, judged from nothing: 24,780 to 70,000 px in one step, five of
+     five, where a reconnect naming a place is held to 1,580.  Every page
+     names its place at the join (wsClient.js `data: { x, y, z }`), so only a
+     script meets this.  Now such a join is stood:
+       - where the worker last had them, in the same zone (the remembered
+         place, or the session it took over), its budget as a reconnect
+         naming that very place keeps it;
+       - in the Wheel otherwise: the way back they left it by, else the
+         Wheel's ARRIVAL (a fresh page lands there);
+     and its move clock is set, so its first move is judged from there
+     (movement.js: no longer `firstMove`).  Out of the Wheel with nowhere
+     to stand (a fresh state, no memory: today's town) it is left as before,
+     but its next way into the Wheel is judged from the arrival.  A kept
+     body (join.js `_body`, its own place and clock) is not touched. */
+  _placeUnnamed(id, ps, mem, t) {
+    if (!ps || typeof ps.z !== 'string' || num(ps.lastMoveAt)) return;
+    const inWheel = ps.z === WHEEL_ZONE;
+    let at = null, kept = false;
+    if (mem && mem.z === ps.z && num(mem.x) && num(mem.y)) { at = { x: mem.x, y: mem.y }; kept = true; }
+    else if (inWheel) {
+      const back = mem && mem.back && num(mem.back.x) && num(mem.back.y) ? mem.back : null;
+      at = back ? { x: back.x, y: back.y } : this._wheelArrival();
+    }
+    /* out of the Wheel: its way back, as a join naming a place keeps it,
+       and the arrival when there is no memory (a fresh page's way in) */
+    if (!inWheel) {
+      if (mem) {
+        ps._wheelBack = mem.z === WHEEL_ZONE ? { x: mem.x, y: mem.y } : (mem.back ? { x: mem.back.x, y: mem.back.y } : undefined);
+        ps._wheelArrive = (ps.z === 'town' || mem.z === WHEEL_ZONE || mem.arrive || ps.z !== mem.z) ? true : undefined;
+      } else ps._wheelArrive = true;
+    }
+    if (!at) { this._lpTally('fresh'); return; }
+    ps.x = at.x; ps.y = at.y;
+    ps.lastMoveAt = t;
+    if (kept) {
+      /* the budget a reconnect naming this very place keeps (_placeOnJoin) */
+      const walk = num(mem.walk) && mem.walk > 0 ? mem.walk : MOVE_BUDGET.SPEED_PX;
+      const away = Math.max(0, (t - mem.at) / 1000);
+      const left = mem.budget !== null ? Math.max(0, mem.budget) : walk * MOVE_BUDGET.BURST_S + MOVE_BUDGET.SLACK_PX;
+      ps._mvBudget = Math.min(walk * MOVE_BUDGET.BURST_S + MOVE_BUDGET.SLACK_PX, left + walk * SPRINT.MULT * away);
+      ps._mvBudgetAt = t;
+    }
+    this._lpTally('placed');
+  },
+
   /* for /api/admin/overview: places kept, joins judged from one, those
      followed past it, joins with nothing to judge from; places held now */
   _lastPlaceInfo() {
@@ -240,6 +302,7 @@ export const lastPlaceMethods = {
       judged: c.judged || 0,
       followed: c.followed || 0,
       fresh: c.fresh || 0,
+      placed: c.placed || 0,   /* v2.3.5722: joins naming no place, stood (_placeUnnamed) */
       held: this._lastPlaces ? this._lastPlaces.size : 0,
     };
   },
