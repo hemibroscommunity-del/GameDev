@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "1ad03d1cbbfc3d0a034d78ff7335109cd7215f18",
+  "tree": "257153ffc7b7d00320cae64d10f557d664480db9",
+  "committedAt": "2026-11-16T22:45:31-08:00",
+  "subject": "Merge pull request #1985 from hemibroscommunity-del/claude/plan-o-11-caches",
+  "files": 8032,
+  "bytes": 959290745,
+  "listingSha256": "6003e53f58371f571606ab1232437d2910488a75b0a500a6a10e64a7bd4230e6",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

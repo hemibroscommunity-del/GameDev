@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "a8236fa4e77362ce46587ee1a889431eacdf8757",
+  "tree": "0670f9eb25690c6943f3c7375cf518202427772c",
+  "committedAt": "2026-11-16T22:45:44-08:00",
+  "subject": "Merge pull request #1988 from hemibroscommunity-del/claude/plan-p-30-capehair-probe",
+  "files": 8032,
+  "bytes": 959293638,
+  "listingSha256": "8fe1052e5e4008a00a8dbf1169d53bfeb6bdda0d83141a449e4788c20709d759",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

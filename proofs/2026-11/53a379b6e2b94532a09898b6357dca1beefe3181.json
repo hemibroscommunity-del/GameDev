@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "53a379b6e2b94532a09898b6357dca1beefe3181",
+  "tree": "ce8ca16a1dda24ba337c6d7f370070a9aacb749a",
+  "committedAt": "2026-11-16T22:45:11-08:00",
+  "subject": "Merge pull request #1980 from hemibroscommunity-del/claude/plan-r-16-sum-lows",
+  "files": 8031,
+  "bytes": 959261115,
+  "listingSha256": "19f54b724a5a7128e2e4fdf7921d6fc090e4a9d987f77b20a4a885f45bf95b5b",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "dfeeb6ecaff9fc7f283109450e72f8382db80ec6",
+  "tree": "9c9796ce94b1c2dcc24f68e4e72a77d402bdeb3d",
+  "committedAt": "2026-11-16T22:45:38-08:00",
+  "subject": "Merge pull request #1991 from hemibroscommunity-del/claude/plan-o-17-memlows",
+  "files": 8032,
+  "bytes": 959293501,
+  "listingSha256": "f237df154142ea65ecd585929e27593bb139f178565401bb8355cb4974ef7636",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
