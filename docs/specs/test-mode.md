@@ -87,7 +87,8 @@ switch allows it.
   (v2.3.5811, `friends.js`, `friendfix`); the cleaner's blank and hidden
   characters, and a new pet or alliance name held to the name rule
   (v2.3.5814, `chatguard.js`, `petbook.js`, `alliance.js`, `cleanmore`,
-  `namestaff`).
+  `namestaff`); the rewind's plan names the owner's login acts since its time
+  (v2.3.5815, `restore.js`, `rewindsays`).
 - Every save and payment rule; the login key, the device lock, the lockouts;
   a frozen account.
 - PvP consent and **every check on a hit between players** (pvpbalance.js,

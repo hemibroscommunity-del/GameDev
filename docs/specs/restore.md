@@ -85,6 +85,12 @@ The plan and the do say so in their words and in `alsoBack`
 `liveflags`) and the frozen ids (one list of `frozen:`, at most 100), so the
 owner can set again
 what was set since. `rewind.test` §4b holds it.
+v2.3.5815 (card RV, ACC-4; `rewindsays`): for a time (not an undo's
+bookmark) `alsoBack` also has `since`, the owner's login acts after that time
+read from the admin log before the do (the log goes back too): a new key, a
+device forgotten, a pass, a silence and its lifting, an unfreeze. Each comes
+undone, so a key taken from an intruder works again; the words name each, to
+do again after. `rewind.test` §7.
 
 ### What a player sees
 

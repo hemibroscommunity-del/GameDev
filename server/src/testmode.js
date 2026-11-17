@@ -90,7 +90,8 @@
  * nobody answers let go after 30 days (v2.3.5811, friends.js: `friendfix`); the
  * cleaner's blank and hidden characters, and a new pet or alliance name held
  * to the name rule (v2.3.5814, chatguard.js, petbook.js, alliance.js:
- * `cleanmore`, `namestaff`).
+ * `cleanmore`, `namestaff`); the rewind's plan names the owner's login acts since
+ * its time (v2.3.5815, restore.js: `rewindsays`).
  *
  * WHO CAN TURN IT ON.  Only the admin key, through the Test panel's
  * POST /api/admin/dev/testmode {playerId, on} (devtools.js), which the owner's
