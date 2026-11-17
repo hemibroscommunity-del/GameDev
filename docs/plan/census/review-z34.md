@@ -11,7 +11,15 @@ with one merge base at every step (`git merge-base --all`, each against
 `main` with the PRs above it merged in as merge commits). The tree after
 each merge:
 
-@@TREES@@
+1 K #2021 633aad5cbc4c5dd9f044696786dc26a80aa87c91 -> 8435db296e258aea63bc55fa0a0b678deba6c91a
+2 K #2023 5594e52d6ece32bd80cb506eb94172e5bacc9b3e -> 0bc2ffb281022a7599b14ee99a7646adccffd85a
+3 L #2022 7010c83c70f221b479fbf9de9314c7bc2411ac23 -> b682f768c878cb46ee945da6c97db25e2bb175a0
+4 Z (this PR): its head and tree are in the list (`status/Z.md`).
+
+#2023 holds #2021's head (K merged 633aad5c in at sitting 34's word: the
+two met in `status/K.md` and `claims-gain.test.mjs`); its one base after
+#2021 lands is 633aad5c. L #2022 merged `main` ea7df6b0 in (7010c83c:
+the same tree as its 4fb1fc7f merged with `main`).
 
 ## K #2021 (5549): the move's top, the player's own (`movetop`)
 
@@ -64,14 +72,60 @@ of `S._party`. `?dueldoor=0`, `?partydoor=0` (page switches, ON).
   (11); two older suites follow the moved lines.
 - `mp-alliance` (reads the party): L's runs 13, 15, 15 of 16 on the
   branch, 14/16 with the party writes put back, 16/16 twice on main.
-  @@ALLIANCE@@
+  Sitting 34: 15/16 on the merged tree (`main` + #2021 + #2022), the
+  same step (the board: an 8 s wait for the worker's list, `board: []`),
+  and 16/16 on `main` once more. The step reads the Saloon's board, not
+  `S._party`, and failed with the party writes put back: not held, and
+  under Found (no card owns the scenario).
 - Only `server/test/` under `server/`: DEPLOYS the worker.
 
-@@FLIP@@
+## K #2023 (5550): a bow's claim is an arrow the worker saw leave (`bowshot`)
+
+READY (reviewed in full: `server/`). Card K item 14's third judge (a
+sword's claim labelled a bow's, TRAPS §329). New `server/src/bowshot.js`
+(in `fight`'s scratch list: `_bs`, memory only), mixed into `GameRoom`;
+with `bowshot: true`:
+- the shot: each `player_projectile` relay (index.js, beside
+  `_pfBowShot`) counts a bow's arrow from an allowance of 2 at the bow's
+  own rate (`_pfBowCycleMs`, the flicked bow's); a staff's bolt and a
+  special's are not judged; a paid retreat's arrow is free in its window;
+- the claim: an ordinary `ranged` claim on a monster lands on one of the
+  last 8 arrows counted (the one its `sw` names, else the oldest with a
+  target left; each monster once an arrow, 1 + Piercing targets, 4 at
+  most), or on an arrow drawn from the allowance (a relay lost costs an
+  honest arrow nothing); past it, dropped quietly (`shot`; the quiet-drop
+  list FROZEN 271 -> 272, named, `rate`).
+- Left: a paid special's window (`_pveVolleyLive`), a staff, test mode
+  (`_tm`, combat.js 1312), a player's arrow at a player.
+- Off: `_bowShotSeen` returns before any state; `_bowShotDrop` is false
+  (`_bowShotOn()` reads an own `true`): every path as today.
+- The bench (`claims-gain` 2f, `claims.md`): the honest archers (a new
+  flicking archer, a shot every 371 ms) unrefused on every disturbance;
+  `bowlabel` 3.3 -> 1.60 with it on (the rest is the bow's reach, K's
+  next judge). DEPLOYS the worker.
+- Found: neither `bowshot` nor #2018's `swordswing` is said in
+  `testmode.js`'s header list (CLAUDE.md §5; test-mode §8 checks files,
+  and combat.js is listed): card K.
+
+## Not on this list
+
+- The owner's word, relayed by the planner at 13:21 UTC: `swordswing`
+  and `movetop` ON ("Go recommended"). K's PR that turns both on had not
+  opened when the window closed: sitting 35, after #2021.
+
 
 ## The rehearsal
 
-@@REHEARSAL@@
+`tools/dev/gatekeeper.mjs` on ea7df6b0 with #2021, #2023 and #2022 in
+that order: tree b682f768 (the same as the step-by-step merges); build
+PASS; questline 187/187; precheck 0 FAIL but the server suites' 5-minute
+limit under load (the settled one), so `cd server && npm test` was run
+alone in the merged tree: 478 suites, all green (351 s). Earlier, #2021
+and #2022 alone: tree 1c39a73e, build PASS, questline 187/187, server 478
+all green (342 s). `test` green on every listed head. No two listed PRs
+share a file except #2023 with #2021 (it holds #2021's head) and the
+switch table's rows (`switches.mjs`, `SWITCHES.md`: each its own line,
+merged clean).
 
 ## Z (this PR, 5672)
 
