@@ -14,13 +14,13 @@ state: ready
 - Merged, sitting 24: PR 14 (5294, #1960), the tolerant weapon reader.
 - PR 3 (5282, #1873, ready once #1960's deploy is live; save shape 21 -> 22,
   a line of its own): main merged, one GID_RE; sitting 23's worldsum low fixed.
-- PR 15 (5295, #1969, sitting 25): #1961's two lows (a share's own bound,
+- PR 15 (5295, #1969, ready, on sitting 25's list): #1961's two lows (a share's own bound,
   SHARES_MAX 128; the owner's card counts no item for a share).
   `econcard.js` is outside the card: decided by the planner.
 
 ## Next
 
-- #1873 and #1969 to sitting 25 (main merged into #1969 when it lands).
+- #1873 to sitting 25 on its own line (#1960 deployed green, run 44003771631).
 - Tag 5293 (market, auction house) only AFTER K's 5194, 5196, 5197.
 
 ## Found
