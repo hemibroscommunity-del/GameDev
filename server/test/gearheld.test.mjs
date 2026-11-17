@@ -7,15 +7,22 @@
  *      piece put in its stash, and its worn slots sent back.
  *   2. A character re-equipping a piece the worker holds (in its stash, by
  *      the describe path) still can: worn, and taken from the stash.
- *   3. A captured record's join takes no more armour or legs claims (the
- *      worker keeps those two live); a shield claim is still merged; a
- *      record not yet captured takes its armour claim as before.
+ *   3. A record's join takes no armour or legs claims, captured or not
+ *      (the worker keeps those two live); a shield claim is still merged.
+ *      Gatekeeper Z40's probe: an UNCAPTURED record (the honest usual, since
+ *      the worker adds every piece itself) joining with a forged elite chest
+ *      and then describing it wears nothing, and is not stamped captured.
  *   4. What is already worn or stashed on file is untouched by the join.
  *   5. `gearheld: false`: the old way (the described piece worn, the claim
  *      merged).
+ *   6. A piece with no tierMult (Z40's review): the stash's copy has 1
+ *      (sanitizeGearPiece); described as it was, it is still the worker's,
+ *      so it goes on and leaves the stash.
  *
  * BREAK PROOF (rule 8), tried by hand: main's grids.js and gearstash.js ->
- * FAIL 1 (worn, 15% of a blow), 2 and 3 (the claim merged).
+ * FAIL 1 (worn, 15% of a blow), 2 and 3 (the claim merged).  The first
+ * build (claims closed only once captured, the raw signature) -> FAIL 3's
+ * probe and 6.
  * Not a phone test: node, the shared test room (testroom.mjs). */
 import { makeStorage, openRoom, fakeWs, join, settle } from './testroom.mjs';
 import { RPG_SCHEMA_VERSION } from '../src/migrations.js';
@@ -74,8 +81,19 @@ const describe = async (room, ws, payload) => { await room.webSocketMessage(ws, 
   check('3. a captured record\'s join takes no more armour or legs claims', ps.armorStash.length === 1 && ps.armorStash[0].name === 'Copper Plate' && ps.legsStash.length === 0, { a: ps.armorStash.map((g) => g.name), l: ps.legsStash.map((g) => g.name) });
   check('3. ...a shield claim is still merged (the worker keeps no live shield stash)', ps.shieldStash.length === 1, ps.shieldStash);
   check('4. what is already worn and stashed on file is untouched', ps.armor && ps.armor.name === 'Iron Plate' && ps.armorStash[0].name === 'Copper Plate', { armor: ps.armor });
-  const fresh = await world('bp_gh_fresh', record({ gearStashCaptured: false }), null, { rpgArmorStash: [copper()] });
-  check('3. a record not yet captured takes its armour claim, as before', fresh.ps.armorStash.length === 1, fresh.ps.armorStash);
+  const fresh = await world('bp_gh_fresh', record({ gearStashCaptured: false }), null, { rpgArmorStash: [copper()], rpgShieldStash: [{ name: 'Pine Shield', gearBase: 'wood', tierMult: 1, tier: 't1' }] });
+  check('3. a record not yet captured takes no armour claim either', fresh.ps.armorStash.length === 0, fresh.ps.armorStash);
+  check('3. ...and its shield claim is still merged', fresh.ps.shieldStash.length === 1, fresh.ps.shieldStash);
+}
+
+/* 3. Z40's probe: an uncaptured record, a forged chest at the join, then the describe */
+{
+  const { room, ws, ps } = await world('bp_gh_probe', record({ gearStashCaptured: false }), null, { rpgArmorStash: [eliteChest()] });
+  const dr0 = room._armorDrMult(ps);
+  check('3. an uncaptured record\'s forged elite chest is not merged', ps.armorStash.length === 0, ps.armorStash);
+  check('3. ...and the record is not stamped captured by it', !ps.gearStashCaptured, ps.gearStashCaptured);
+  await describe(room, ws, { armor: eliteChest() });
+  check('3. ...so describing it wears nothing and takes no reduction', !ps.armor && room._armorDrMult(ps) === dr0, { armor: ps.armor, dr0, now: room._armorDrMult(ps) });
 }
 
 /* 5. the switch */
@@ -84,6 +102,16 @@ const describe = async (room, ws, payload) => { await room.webSocketMessage(ws, 
   check('5. gearheld: false: a captured record\'s claim merged, as before', ps.armorStash.length === 1, ps.armorStash);
   await describe(room, ws, { legsArmor: eliteLegs() });
   check('5. ...and a described piece worn, as before', ps.legsArmor && ps.legsArmor.name === 'Mithril Greaves', ps.legsArmor);
+}
+
+/* 6. a piece with no tierMult */
+{
+  const plain = () => ({ name: 'Bronze Plate', gearBase: 'bronze', tier: 't2' });   /* no tierMult */
+  const { room, ws, ps } = await world('bp_gh_plain', record({ armorStash: [plain()] }));
+  check('6. (the stash\'s copy has tierMult 1, as sanitizeGearPiece makes it, guard)', ps.armorStash.length === 1 && ps.armorStash[0].tierMult === 1, ps.armorStash);
+  await describe(room, ws, { armor: plain() });
+  check('6. described with no tierMult, the piece the worker holds goes on', ps.armor && ps.armor.name === 'Bronze Plate', ps.armor);
+  check('6. ...and leaves the stash (no copy left behind)', ps.armorStash.length === 0, ps.armorStash);
 }
 
 console.log(`\n${passes} passed, ${failures} failed`);
