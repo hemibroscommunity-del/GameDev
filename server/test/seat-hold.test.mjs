@@ -31,6 +31,7 @@
  *      ran out holds nobody.
  */
 import { readFileSync } from 'node:fs';
+import { findIn } from '../../tools/guards/lib/filesOf.mjs';
 import { SEAT_HOLD, seatHoldOn } from '../src/seathold.js';
 import { makeStorage, openRoom, fakeWs, join, settle, seededClock } from './testroom.mjs';
 
@@ -110,8 +111,9 @@ const keysOf = (st, id) => [...st._store.keys()].filter((k) => k.includes(id));
 /* ── 4. the gate and the cap ── */
 {
   const src = readFileSync(new URL('../src/index.js', import.meta.url), 'utf8');
-  const wsc = readFileSync(new URL('../../src/networking/wsClient.js', import.meta.url), 'utf8');
-  check('4. the phone names its seat on its socket\'s address (wsClient.js, v2.3.5612)', /new WebSocket\(WS_URL \+ \(_ti0\.id \? '&seat=' \+ encodeURIComponent\(_ti0\.id\) : ''\)\)/.test(wsc));
+  /* (read by system, never by path: tools/guards/lib/filesOf.mjs) */
+  const seatLine = findIn('wire', /new WebSocket\(WS_URL \+ \(_ti0\.id \? '&seat=' \+ encodeURIComponent\(_ti0\.id\) : ''\)\)/);
+  check('4. the phone names its seat on its socket\'s address (the wire\'s files: wsClient.js, v2.3.5612)', seatLine.length === 1, seatLine);
   check('4. the socket gate is the seat gate (seathold.js _seatGate), its seat carried to the join',
     /const _gate = this\._seatGate\(url, Date\.now\(\)\);\s*if \(!_gate\.ok\)/.test(src) && /if \(_gate\.seat\) this\.sessions\.get\(server\)\.seat = _gate\.seat;/.test(src));
   const room = await openRoom(makeStorage(), { seathold: true });
