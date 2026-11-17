@@ -20,7 +20,14 @@ exists), RV #2072.
 
 ## Findings
 
-### RV #2091 (5802, `risekeep`): HELD
+### RV #2091 (5802, `risekeep`): held, then the hold lifted
+
+- **Decided for the owner while away** (the planning session, 23:41): a
+  restart does NOT free the chest. It stays once per character id, for
+  good, because a restart has no pace, and freeing it would make a faucet
+  (open, trade the 400 to a main, restart, repeat). The medium below is
+  intended, not a bug. Off: `risekeep: false` (the 48 h prune as before).
+  RV's eb553118 folds in the two code nits.
 
 - **Medium.** `persistence.js` `_resetCharacterData` (a restart, an
   account delete) clears `oplog:questitem:<pid>:` and `aponce:<pid>`, but
