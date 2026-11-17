@@ -1,5 +1,5 @@
 card: P
-branch: claude/plan-p-25-hud-bars (held: main 2fcc767 inside, no PR)
+branch: claude/plan-p-25-hud-bars (5566, on #1943)
 prs: #1943 (5565 ready), 5566 ready; #1713, #1715, #1716, #1718, #1719, #1736, #1743, #1745, #1757, #1749, #1763, #1766, #1805, #1806, #1810, #1840, #1846, #1853, #1859, #1868, #1881, #1906, #1918, #1925 (5241-5259, 5560-5564, merged)
 state: ready
 
