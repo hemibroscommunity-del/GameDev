@@ -1,6 +1,6 @@
 card: L
-branch: claude/plan-l-31-arena-page (from main)
-prs: #1746 to #2027 (merged), #2031 (5531): ready
+branch: claude/plan-l-32-relay-popup (on #2031)
+prs: #1746 to #2027 (merged), #2031 (5531), #2033 (5532, on #2031): ready
 state: ready
 
 ## Done
@@ -12,7 +12,7 @@ state: ready
   fishing, dungeon, pose, race, arena, ride doors; the page's (5218-5219,
   5520-5521, 5525-5531): race, harvest+cook+fishing, pose, guard, veils, windows,
   connection, duel, party, trade, ride, arena.
-- 5524: the Saloon's alliance drafts outlive a rejoin (J2's find).
+- 5524: alliance drafts outlive a rejoin (J2). 5532: relay floater's form (SEC).
 
 ## Next
 
