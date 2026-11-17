@@ -18,6 +18,8 @@ import { FISH_TIERS, FISH_HEAL, COOKING_RECIPES, SHOP_ITEMS, DISHES, DIEGO_SHELF
 /* v2.3.3133: the most players the one-bite clocks keep before a prune drops
    the ones that can no longer hold anyone back (_pvpHealPrune). */
 const PVP_HEAL_CLOCKS_MAX = 512;
+/* v2.3.5538: the fight door's ways (_fightTo) */
+export const FIGHT_WAYS = Object.freeze({ open: 'open', exchange: 'exchange', heal: 'heal', prune: 'prune', forget: 'forget' });
 
 /* v2.3.3130: the timers -- and their magnitudes -- each slot owns
    (_clearBuffSlot).  A magnitude listed here goes with its timer, never
@@ -656,37 +658,74 @@ export const cookingMethods = {
     return true;
   },
 
-  _pvpHealClock(id) {
-    if (!this._pvpHealClocks) this._pvpHealClocks = new Map();
-    let c = this._pvpHealClocks.get(id);
-    if (!c) {
-      if (this._pvpHealClocks.size >= PVP_HEAL_CLOCKS_MAX) this._pvpHealPrune(Date.now());
-      c = { pvpAt: 0, healAt: 0 };
-      this._pvpHealClocks.set(id, c);
+  /* ═══ v2.3.5538: THE FIGHT DOOR (card L PR 5; docs/specs/fight-door.md) ═══
+     A player's fight with another player is a clock, not a field: the fight
+     lock (fightlock.js) and the bite rule derive it at each ask from the
+     duel, this room's clock (`pvpAt`, within PVP_HEAL.WINDOW_MS), the red
+     skull and the place.  The clock's one store is `this._pvpHealClocks`
+     (id -> { pvpAt, healAt }), written only by _fightTo, by a way of
+     FIGHT_WAYS: open (a clock at zero, for a reader), exchange (a hit
+     between two players: both sides' pvpAt), heal (a heal eaten at once:
+     healAt), prune (the clocks that hold nobody back, when the map is full),
+     forget (a sparring clone gone).  An id that is no string is refused;
+     `fightdoor: false` lifts that.  fight-door.test fails a second writer. */
+  _fightDoorOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'fightdoor') && !f.fightdoor);
+  },
+
+  _fightTo(way, ids, now) {
+    if (!Object.prototype.hasOwnProperty.call(FIGHT_WAYS, way)) return false;
+    const t = typeof now === 'number' && Number.isFinite(now) ? now : Date.now();
+    if (way === 'prune') {
+      if (!this._pvpHealClocks) return true;
+      const keep = Math.max(PVP_HEAL.WINDOW_MS, PVP_HEAL.GAP_MS);
+      for (const [k, c] of this._pvpHealClocks) {
+        if (t - c.pvpAt >= keep && t - c.healAt >= keep) this._pvpHealClocks.delete(k);
+      }
+      return true;
     }
-    return c;
+    const list = Array.isArray(ids) ? ids : [ids];
+    if (!list.length || (!this._fightDoorOff() && !list.every((id) => typeof id === 'string' && id.length > 0))) return false;
+    if (way === 'forget') {
+      if (this._pvpHealClocks) for (const id of list) this._pvpHealClocks.delete(id);
+      return true;
+    }
+    if (!this._pvpHealClocks) this._pvpHealClocks = new Map();
+    for (const id of list) {
+      let c = this._pvpHealClocks.get(id);
+      if (!c) {
+        if (this._pvpHealClocks.size >= PVP_HEAL_CLOCKS_MAX) this._fightTo('prune', null, Date.now());
+        c = { pvpAt: 0, healAt: 0 };
+        this._pvpHealClocks.set(id, c);
+      }
+      if (way === 'exchange') c.pvpAt = t;
+      else if (way === 'heal') c.healAt = t;
+    }
+    return true;
+  },
+
+  /* a player's clock, made at zero if it is not there (through the door) */
+  _pvpHealClock(id) {
+    this._fightTo('open', id);
+    return this._pvpHealClocks ? this._pvpHealClocks.get(id) : undefined;
   },
 
   /* A clock that can no longer hold anyone back is dropped: past the fight
      window AND the gap.  Run only when the map is full, so it costs nothing
-     in the common case. */
+     in the common case.  v2.3.5538: the fight door's prune way. */
   _pvpHealPrune(now) {
-    const keep = Math.max(PVP_HEAL.WINDOW_MS, PVP_HEAL.GAP_MS);
-    for (const [k, c] of this._pvpHealClocks) {
-      if (now - c.pvpAt >= keep && now - c.healAt >= keep) this._pvpHealClocks.delete(k);
-    }
+    this._fightTo('prune', null, now);
   },
 
   /* A hit between two players (combat.js _resolvePvPAttack): both sides. */
   _notePvpExchange(a, b, now) {
-    const t = typeof now === 'number' ? now : Date.now();
-    this._pvpHealClock(a).pvpAt = t;
-    this._pvpHealClock(b).pvpAt = t;
+    this._fightTo('exchange', [a, b], now);
   },
 
   /* A heal eaten at once, by any of its roads. */
   _noteInstantHeal(id, now) {
-    this._pvpHealClock(id).healAt = typeof now === 'number' ? now : Date.now();
+    this._fightTo('heal', id, now);
   },
 
   /* v2.3.3133: the rule's kill switch, read the meals' way.  caps.pvpheal
