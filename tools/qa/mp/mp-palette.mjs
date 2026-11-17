@@ -262,8 +262,8 @@ function save(name, f) {
 
 export async function run({ browser, wsPort, webPort, rec }) {
   mkdirSync(OUT, { recursive: true });
-  const A = await H.newPlayer(browser, { name: 'numbers', wsPort, webPort, viewport: PHONE, touch: true, dpr: 3, world: 'wheel', query: 'nolife', init: INIT });
-  const B = await H.newPlayer(browser, { name: 'colours', wsPort, webPort, viewport: PHONE, touch: true, dpr: 3, world: 'wheel', query: 'nolife&nopalette', init: INIT });
+  const A = await H.newPlayer(browser, { name: 'numbers', wsPort, webPort, viewport: PHONE, touch: true, dpr: 3, world: 'wheel', query: 'nolife&pagebases=0', init: INIT });
+  const B = await H.newPlayer(browser, { name: 'colours', wsPort, webPort, viewport: PHONE, touch: true, dpr: 3, world: 'wheel', query: 'nolife&nopalette&pagebases=0', init: INIT });
   /* the whole frame drawn and finished, A and B in turn three times, the
      other page's frames held meanwhile (it shares the one software chip),
      and the draw calls a frame makes: what colouring numbers costs.  On this

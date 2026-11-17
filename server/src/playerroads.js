@@ -149,8 +149,10 @@ export const PLAYER_ROADS = Object.freeze({
   arena_stakes: fz({
     at: 'gladiator.js _handleArenaSponsor, _arenaSettleStakes', carries: ['gold'],
     roads: { gold: ['escrow_debit', 'escrow_debit_stored', 'escrow_debit_group', 'mail_gold'] },
-    fee: 0, hold: 0, pace: 0, ledger: 'none',
-    ledgerWhy: 'an escrow road: card R PR 11 (`xferescrow`)',
+    /* v2.3.5292 (card R PR 13): a row a losing stake, to the winning
+       fighter, the winning sponsors' parts in its ids, in the plan's own
+       run, only with `xferescrow: true` (OFF by default) */
+    fee: 0, hold: 0, pace: 0, ledger: 'xfer', writer: 'gladiator.js xferArenaStakes',
     why: 'the arena\'s sponsorship stakes: held in `arena_stake:`, paid as the fighter\'s cut, the sponsors\' winnings and a failed sponsorship\'s claim, refunded on a void',
   }),
   threat_bounty: fz({
