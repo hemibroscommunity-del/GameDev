@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "0a80dda096b3f5f2c7a5397a452c1955b2cd9023",
+  "tree": "c6c5c8a60390557c74e489130efd136545502a44",
+  "committedAt": "2026-11-17T08:50:44-08:00",
+  "subject": "Merge pull request #2033 from hemibroscommunity-del/claude/plan-l-32-relay-popup",
+  "files": 8081,
+  "bytes": 959622303,
+  "listingSha256": "f0c6ce3419f351b748cfa5892bedd97daed5d2c3cc9f72a45205fe7e5b9b6fde",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

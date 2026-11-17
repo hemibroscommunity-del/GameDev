@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "0ac995e5866ec1ace1ffcfdcb434a281cd01adf2",
+  "tree": "8dfd8e5695459accf6b1193b301e6dff920c3f85",
+  "committedAt": "2026-11-17T08:50:36-08:00",
+  "subject": "Merge pull request #2031 from hemibroscommunity-del/claude/plan-l-31-arena-page",
+  "files": 8080,
+  "bytes": 959618875,
+  "listingSha256": "2777d33c353899fbc5f0294a78c1d1432720d829239fec410192fdf92a77e1d5",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
