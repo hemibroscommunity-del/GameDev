@@ -41,10 +41,10 @@ while away.
 | `trade_window` | the trade window: both sides staged and confirmed, swapped in one write | gold, bag, weapon, pet | `xfer` |
 | `gift_trade` | the old one-way gift | gold, bag | `xfer` |
 | `nml_loss` | No man's land: a player killed under its rule loses the purse, the spare weapons (a red skull the worn gear too) to the killer's mail | gold, weapon, gear | `kill` |
-| `market` | the General Store's order book: a buy order's gold and a sell order's weapon rest in `mkt_order:`; a cross pays each side by the mail | gold, weapon | `none` |
-| `auction_sale` | the Auction House, bought now | gold, bag, weapon, gear, pet | `none` |
-| `auction_bid` | the Auction House, a bid won | gold, bag, weapon, gear, pet | `none` |
-| `auction_offer` | the Auction House, an offer taken | gold, bag, weapon, gear, pet | `none` |
+| `market` | the General Store's order book: a buy order's gold and a sell order's weapon rest in `mkt_order:`; a cross pays each side by the mail | gold, weapon | `xfer` (v2.3.5293; only with `xferescrow: true`) |
+| `auction_sale` | the Auction House, bought now | gold, bag, weapon, gear, pet | `xfer` (v2.3.5293; only with `xferescrow: true`) |
+| `auction_bid` | the Auction House, a bid won | gold, bag, weapon, gear, pet | `xfer` (v2.3.5293; only with `xferescrow: true`) |
+| `auction_offer` | the Auction House, an offer taken | gold, bag, weapon, gear, pet | `xfer` (v2.3.5293; only with `xferescrow: true`) |
 | `duel_pot` | a duel's two wagers, held in `duelEscrow:`, the pot to the winner | gold | `xfer` (v2.3.5290; only with `xferescrow: true`) |
 | `arena_entries` | the arena's entry fees, held in `arena_entry:`, paid to the champion with the house's part | gold | `none` |
 | `arena_stakes` | the arena's sponsorship stakes, held in `arena_stake:`, paid as the cut, the winnings and a failed sponsorship's claim | gold | `xfer` (v2.3.5292; only with `xferescrow: true`) |
@@ -61,10 +61,16 @@ more rows a day, a cost question for the owner, so it is built OFF behind
 loser's wager to the winner, the price empty, `by` the winner's blow or
 nobody's; paid through `inbox.js _creditWith` so the credit, its stamp and
 the row are one write; `xfer.test` §8, `cost-guard` §20: one row a wagered
-duel, two over its life with its prune). **The market and the Auction House
-join in a later PR** (tag 5293), in the file table's order: after card K's
-5194, 5196 and 5197 (`market.js`, `store.js`) are merged. Their rows stay
-`none` until then.
+duel, two over its life with its prune). **The market and the Auction House**
+(card R PR 17, tag 5293, after card K's 5194, 5196 and 5197): a sale writes
+one row, the goods' side `from` the seller `to` the buyer, the price the
+gold, `by` the tap that settled it. The market's noted cross (`mkt-<maker
+order>`, `xferMarketSale`) is put beside the maker order's own put; the
+Auction House's (`ah-<listing>`, `xferAuctionSale`) beside the listing's put
+on a bid accepted (`auction_bid`) or an offer taken (`auction_offer`), and on
+a buy-now (`auction_sale`) inside the buyer's debit run (`inbox.js
+_escrowDebitGoldTogether`'s `also`), so a refused debit writes none
+(`xfer.test` §11, `cost-guard` §23: one write more a sale, flag on).
 
 **The arena's stakes** (card R PR 13, tag 5292; card L's arena door #1930
 first). A match's stakes settle as a pool: when no sponsor backed the

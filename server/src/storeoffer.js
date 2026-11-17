@@ -75,6 +75,7 @@ export const STORE_OFFER = {
 /* The seller's answers. Enumerated, never free text: the client renders the
    words from the id, so a reply cannot carry anything a player typed. */
 import { PACE } from './flood.js';   /* v2.3.3274: the "let me think" mark is written at a pace */
+import { xferAuctionSale } from './xfer.js';   /* v2.3.5293: a sale's ledger row (card R PR 17; `xferescrow`, OFF by default) */
 
 export const OFFER_REPLIES = ['yes', 'think', 'no'];
 
@@ -343,7 +344,9 @@ export const storeOfferMethods = {
       buyerId, buyerName: o.name, price: o.gold, paid: true,
       bidSeq: null, offerSeq: o.seq, at: Date.now(),
     };
-    await this.state.storage.put('store_listing:' + rec.id, rec);
+    /* v2.3.5293 (card R PR 17): the sale's ledger row rides the mark's write
+       (`xferescrow`, OFF by default) */
+    await Promise.all([this.state.storage.put('store_listing:' + rec.id, rec), xferAuctionSale(this, rec, 'auction_offer', sellerId)].filter(Boolean));
     await this._stSettle(rec, buyerId, o.name, o.gold, null);
     this._stRemoveFromIndex(rec);
     await this._scDropThreads(rec.id);
