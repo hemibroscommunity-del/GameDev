@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "5c90763a60711bd1fe377f3a7ea6c0ee955f8961",
+  "tree": "7e4ffb7fe9ab291c97d24425d81eeddf541617ec",
+  "committedAt": "2026-11-16T18:31:47-08:00",
+  "subject": "Merge pull request #1962 from hemibroscommunity-del/claude/plan-mod-8-reportlows",
+  "files": 8021,
+  "bytes": 959081527,
+  "listingSha256": "eb967cadb201a15f64e41cb070b9cbc9ba714ce5ac30d0d4832030dae3a1936b",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

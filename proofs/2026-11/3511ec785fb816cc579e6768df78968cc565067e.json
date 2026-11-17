@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "3511ec785fb816cc579e6768df78968cc565067e",
+  "tree": "fe90e689be8d3ea5f1bcfad05ef9ec1e552b2e65",
+  "committedAt": "2026-11-16T18:32:46-08:00",
+  "subject": "Merge pull request #1968 from hemibroscommunity-del/claude/plan-ops-11b-guestday",
+  "files": 8023,
+  "bytes": 959136741,
+  "listingSha256": "3525ea6961c3ad453b4154c922eae05932d8999bed6fdb15393144d7caec8082",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

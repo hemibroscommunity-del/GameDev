@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "95eed85d822c7828ee1ebe9f51b33af0cdb90436",
+  "tree": "255cd6fc6a80bc16b6520fd0e4ef95da1bed03f8",
+  "committedAt": "2026-11-16T18:32:09-08:00",
+  "subject": "Merge pull request #1954 from hemibroscommunity-del/claude/plan-mod-7-freezespare",
+  "files": 8021,
+  "bytes": 959093611,
+  "listingSha256": "d3bb2c4cf858e8f0279509395f3a0d82dee1e3a3636cb2303602dcec28000519",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
