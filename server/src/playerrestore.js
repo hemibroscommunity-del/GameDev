@@ -55,6 +55,7 @@ import { worldCtx, worldAdd } from './worldsum.js';
 import { RPG_SCHEMA_VERSION } from './migrations.js';
 import { BANK } from './bank.js';
 import { PETBOOK } from './petbook.js';
+import { XFER } from './xfer.js';   /* v2.3.5710: the ledger's prefix, read from its one writer (shapes-once) */
 
 /* ═══ v2.3.5710 (card SEC PR 11): WHAT MOVED SINCE THE COPY ═══
    The second red team: with `fullsnap` off a copy carries the character
@@ -66,7 +67,7 @@ import { PETBOOK } from './petbook.js';
    did:
      - `vault`: the vault's gold and items NOW, when the copy does not carry
        the vault (it stays as it is: read it beside `booked`);
-     - `given`: the transfer ledger's rows (`xfer:`, xfer.js) from the
+     - `given`: the transfer ledger's rows (XFER.PREFIX, xfer.js) from the
        copy's day on that name this player as the giver (`from`): when, the
        road, to whom, the gold and the goods.  At most GIVEN_PAGES pages of
        GIVEN_PAGE rows read (`givenMore` when there were more).
@@ -103,7 +104,7 @@ export function copyDay(snapKey) {
 
 /** v2.3.5710: what moved since the copy that a restore will not rewind:
  *  the vault now (when the copy has none), and what the player gave away
- *  (`xfer:` rows from the copy's day on, `from` the player).  null: nothing. */
+ *  (the ledger's rows, xfer.js, from the copy's day on, `from` the player).  null: nothing. */
 export async function movedSince(room, pid, snap, snapKey, vaultNow) {
   const out = {};
   if (!holds(snap, 'bank:') && vaultNow && typeof vaultNow === 'object') {
@@ -118,15 +119,15 @@ export async function movedSince(room, pid, snap, snapKey, vaultNow) {
   const given = [];
   let more = false, after = null;
   for (let page = 0; page < PLAYER_RESTORE.GIVEN_PAGES; page++) {
-    const opt = { prefix: 'xfer:', limit: PLAYER_RESTORE.GIVEN_PAGE };
+    const opt = { prefix: XFER.PREFIX, limit: PLAYER_RESTORE.GIVEN_PAGE };
     if (after !== null) opt.startAfter = after;
-    else if (day) opt.start = 'xfer:' + day;
+    else if (day) opt.start = XFER.PREFIX + day;
     let rows;
     try { rows = await st.list(opt); } catch (e) { break; }
     let n = 0;
     for (const [k, v] of rows) {
       n++; after = k;
-      if (day && k < 'xfer:' + day) continue;   /* a storage that ignores `start` */
+      if (day && k < XFER.PREFIX + day) continue;   /* a storage that ignores `start` */
       if (!v || typeof v !== 'object' || v.from !== pid) continue;
       if (given.length >= PLAYER_RESTORE.GIVEN_MAX) { more = true; continue; }
       given.push({ key: k, at: Number(v.at) || 0, road: typeof v.road === 'string' ? v.road : null, to: typeof v.to === 'string' ? v.to : null,
