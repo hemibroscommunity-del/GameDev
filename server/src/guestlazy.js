@@ -60,6 +60,8 @@
  * `botstat:` rows whose character has no record, a page at a time.
  * KILL SWITCH `guestquiet: false`: the board report and `botstat:` as before.
  * No new storage key. */
+import { botfpEvidence } from './botfp.js';   /* v2.3.5708: what of a quiet guest's bot record is evidence */
+
 export const GUEST_QUIET = Object.freeze({ FLAG: 'guestquiet', QUIET_MAX: 5000 });
 /** `guestquiet: false` in the live flags: off.  Unset or anything else: on. */
 export function guestQuietOn(room) {
@@ -127,6 +129,11 @@ export const guestLazyMethods = {
   _guestQuietGone(id) {
     if (!this._guestQuietIds || !this._guestQuietIds.has(id)) return;
     if (this.sessions) for (const s of this.sessions.values()) if (s && s.id === id) return;
+    /* its bot record goes with it, unless it holds evidence (written at the
+       leave's flush): left in the cache, the cache's eviction (botfp.js
+       _botfpRecord) put it as `botstat:` once the id was no longer quiet --
+       the idle guest's row after all (sitting 38's re-review) */
+    if (this._botfp) { const rec = this._botfp.get(id); if (rec && !botfpEvidence(rec)) this._botfp.delete(id); }
     this._guestQuietEnd(id);
   },
 

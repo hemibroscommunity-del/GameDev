@@ -25,6 +25,9 @@
  *      back: it earns, and the next track reports it; and the leave drops a
  *      quiet guest's id (the set holds the guests here);
  *   8. the sweep keeps an orphan row holding a flag (`?flagged=1` reads it).
+ *   9. (the re-review) an idle guest's bot record goes with its quiet id at
+ *      the leave: 200 records after it (the cache's eviction puts what it
+ *      drops) write no `botstat:` for it; a flagged one keeps its record.
  *
  * BREAK PROOF (rule 8), tried by hand: main's guestlazy.js, join.js and
  * botfp.js -> FAIL 1 and 4.
@@ -198,6 +201,23 @@ const botDirty = (room, id) => { const rec = room._botfp && room._botfp.get(id);
   let next = null, pages = 0;
   do { const r = await (await room.fetch(new Request('https://x/api/botstat?sweep=1' + (next ? '&after=' + next : ''), { method: 'DELETE', headers: { Authorization: 'Bearer ' + KEY } }))).json(); next = r.next; pages++; } while (next && pages < 20);
   check('8. the sweep keeps an orphan row holding a flag, and takes the plain one', state.m.has('botstat:bp_gq_flagged') && !state.m.has('botstat:bp_gq_plain'), [...state.m.keys()]);
+}
+
+/* 9. the cache's eviction after the leave */
+{
+  const { room, state } = await openRoom();
+  const ws = await join(room, 'bp_gq_idle2');
+  botDirty(room, 'bp_gq_idle2');
+  await leave(room, ws);
+  check('9. the leave takes the idle guest\'s bot record out of the cache', !(room._botfp && room._botfp.has('bp_gq_idle2')));
+  for (let i = 0; i < 200; i++) { NOW += 1; room._botfpRecord('bp_gq_after_' + i, NOW); }
+  await settle();
+  check('9. ...so 200 records after it (the cache\'s eviction) write no botstat: for it', !state.m.has('botstat:bp_gq_idle2'), mine(state, 'bp_gq_idle2'));
+  const ws2 = await join(room, 'bp_gq_flag2');
+  const rec = room._botfp.get('bp_gq_flag2');
+  room._botfpFlag('bp_gq_flag2', rec, 'test_flag', { n: 1 }, NOW);
+  await leave(room, ws2);
+  check('9. a flagged quiet guest keeps its record (evidence)', room._botfp.has('bp_gq_flag2') && state.m.has('botstat:bp_gq_flag2'));
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);

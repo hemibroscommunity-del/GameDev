@@ -225,7 +225,7 @@ function ringVariance(ring, key) {
 
 /* v2.3.5708: a record (live or stored) holding evidence -- a flag, or a cap
    clamp -- is written and kept whatever guestquiet says (guestlazy.js) */
-function botfpEvidence(rec) {
+export function botfpEvidence(rec) {
   return !!(rec && typeof rec === 'object' && ((Array.isArray(rec.flags) && rec.flags.length > 0) || (rec.counters && rec.counters.capClamps > 0)));
 }
 
