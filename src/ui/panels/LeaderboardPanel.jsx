@@ -1,8 +1,8 @@
 import React from 'react';
 import { LIFE_SKILLS } from '@/data/index.js';
-import { BT_API_BASE } from '@/networking/index.js';
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 import { myAllyTag } from '@/game/alliance.js';   /* v2.3.3321: the tag a player wears is their alliance's or former clan's */
+import { act } from '@/game/actions.js';   /* v2.3.5191: the page's requests leave through the action door (card K PR 7) */
 
 /* ═══ LeaderboardPanel — top-50 rankings per category ═══ */
 /* v2.3.856: moved verbatim from BroTown.jsx's JSX tree (UI-panel
@@ -164,7 +164,7 @@ export function LeaderboardPanel(props) {
     if (S._lbLastTab !== leaderboardTab) {
       S._lbLastTab = leaderboardTab;
       S._lbServerData = null;
-      fetch(BT_API_BASE + '/api/leaderboard/top?category=' + leaderboardTab + '&limit=50').then(function (r) {
+      act('http:/api/leaderboard/top', {}, { query: 'category=' + leaderboardTab + '&limit=50' }).then(function (r) {   /* v2.3.5191: through the action door (actions.js) */
         return r.json();
       }).then(function (d) {
         if (d.ok) {

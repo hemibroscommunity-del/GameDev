@@ -7,6 +7,7 @@ import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: a cut or a shattered 
 import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.2591: a crafting level gets the same celebration as a gathering one */
 import { shardCrackOnServer } from '@/game/shardCrack.js'; /* v2.3.3516: shards cracked, raw gems combined, by the worker */
 import { ShardCrackPanel } from './ShardCrackPanel.jsx';
+import { act } from '@/game/actions.js';   /* v2.3.5190: the page's requests leave through the action door (card K PR 7) */
 /* === GemcutPanel — buildingPanel === 'gemcut' sub-panel === */
 /* v2.3.875: extracted verbatim from the buildingPanel === 'gemcut' clause
    in BroTown.jsx (UI decomposition; behavior-frozen). 3 props; data +
@@ -165,7 +166,7 @@ export function GemcutPanel(props) {
             {
               var _Sgc = stateRef.current;
               if (_Sgc._serverCaps && _Sgc._serverCaps.gems && _Sgc.channel) {
-                try { _Sgc.channel.send({ type: 'gem_cut_request', payload: { gem: elem } }); } catch (e) {}
+                try { act('gem_cut_request', { gem: elem }); } catch (e) {}   /* v2.3.5190: through the action door (actions.js) */
                 sk.gems[rawKey] = (sk.gems[rawKey] || 1) - 1;
                 if (sk.gems[rawKey] <= 0) delete sk.gems[rawKey];
                 setRpgState(_objectSpread({}, R));

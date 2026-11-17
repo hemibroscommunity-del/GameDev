@@ -1,6 +1,7 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
 import { pushDmgPopup } from '@/game/combatHelpers.js';
+import { act } from '@/game/actions.js';   /* v2.3.5190: the page's requests leave through the action door (card K PR 7) */
 
 /* ═══ v2.3.3066: A CLAN INVITE YOU CAN TAKE UP ═══
  *
@@ -21,7 +22,7 @@ export function ClanInviteCard(props) {
   var stateRef = props.stateRef, invite = props.invite, onDone = props.onDone;
   var accept = function () {
     var S = stateRef.current;
-    if (S.channel) S.channel.send({ type: 'broadcast', event: 'clan_join_accept', payload: { inviter: invite.inviter } });
+    if (S.channel) act('clan_join_accept', { inviter: invite.inviter });   /* v2.3.5190: through the action door (actions.js) */
     S._pendingClanInvite = null;
     if (S.player) pushDmgPopup(S, S.player.x, S.player.y - 30, 'Joining [' + invite.clanTag + ']...', '#59BF91');
     onDone();

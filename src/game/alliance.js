@@ -12,6 +12,9 @@
  * window that may not be open), sends the three requests, and words the
  * refusals.  The requests go only against caps.alliance (an older worker
  * would relay them to the room). */
+
+import { act } from './actions.js';   /* v2.3.5188: the action door (card K PR 7), its only import: it has none of its own, so node still reads this file */
+
 const listeners = new Set();
 const emit = () => { for (const fn of listeners) fn(); };
 
@@ -144,18 +147,18 @@ export const allyBus = {
   name(S, name, tag) {
     if (!S || !S.channel || !allyCapsOn(S)) return false;
     this.error = null; this.rev += 1; emit();
-    try { S.channel.send({ type: 'alliance_name', payload: { name: String(name || ''), tag: String(tag || '') } }); } catch (e) { return false; }
+    try { act('alliance_name', { name: String(name || ''), tag: String(tag || '') }); } catch (e) { return false; }   /* v2.3.5188: through the action door (actions.js) */
     return true;
   },
   war(S, tag) {
     if (!S || !S.channel || !allyCapsOn(S)) return false;
     this.error = null; this.rev += 1; emit();
-    try { S.channel.send({ type: 'alliance_war', payload: { tag: String(tag || '') } }); } catch (e) { return false; }
+    try { act('alliance_war', { tag: String(tag || '') }); } catch (e) { return false; }   /* v2.3.5188: through the action door (actions.js) */
     return true;
   },
   askBoard(S) {
     if (!S || !S.channel || !allyCapsOn(S)) return false;
-    try { S.channel.send({ type: 'alliance_board', payload: {} }); } catch (e) { return false; }
+    try { act('alliance_board', {}); } catch (e) { return false; }   /* v2.3.5188: through the action door (actions.js) */
     return true;
   },
 };

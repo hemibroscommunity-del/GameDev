@@ -23,6 +23,7 @@
 import { readFileSync } from 'node:fs';
 import * as T from '../../src/game/storeSellTap.js';
 import * as BH from '../../src/lib/babelHelpers.js';
+import { act, setActionTransport } from '../../src/game/actions.js';   /* v2.3.5191: the panel's routes leave through the action door (act) */
 
 let passed = 0, failed = 0;
 function check(name, cond, detail) {
@@ -65,10 +66,12 @@ const answer = (i, data) => answers[i].resolve({ json: () => Promise.resolve(dat
 const popups = [];
 const make = new Function('React', 'fetch', 'BLACKSMITH_TIERS', 'ELEMENTS', 'MKT_CATEGORIES', 'MKT_TIERS', 'MKT_WOOD_TIERS', 'WEAPON_TYPES', 'WOODWORKING_TIERS',
   'estimateMktPrice', 'BT_API_BASE', 'storeEnabled', 'coinArtFor', 'COIN_ONE', '_asyncToGenerator', '_objectSpread', '_regenerator', '_slicedToArray',
-  'pushDmgPopup', 'claimPlace', 'releasePlace', 'cue', body);
+  'pushDmgPopup', 'claimPlace', 'releasePlace', 'cue', 'act', body);
 const ExchangePanel = make(React, fetchStub, {}, [], {}, [], [], { sword: { label: 'Sword', emoji: 's' } }, {},
   () => 100, 'http://x', () => false, () => '', '', BH._asyncToGenerator, BH._objectSpread, BH._regenerator, BH._slicedToArray,
-  (S, x, y, text) => popups.push(text), T.claimPlace || (() => true), T.releasePlace || (() => {}), () => {});
+  (S, x, y, text) => popups.push(text), T.claimPlace || (() => true), T.releasePlace || (() => {}), () => {}, act);
+/* v2.3.5191: the door's route way reaches the stub fetch, as wsClient's transport reaches the real one */
+setActionTransport({ send: () => true, http: (path, init) => fetchStub('http://x' + path, init), token: () => null });
 
 function findButton(node, re) {
   if (!node || typeof node !== 'object') return null;

@@ -1,6 +1,7 @@
 import React from 'react';
 import { HARDENED_WOOD_RECIPES, HARDENED_WOOD_MAX_PER_REQUEST, hardenedWoodRecipe } from '@/data/hardenedWood.js';
 import { thumbFor } from '@/ui/mobile/dash/InventoryPanel.jsx';
+import { act } from '@/game/actions.js';   /* v2.3.5190: the page's requests leave through the action door (card K PR 7) */
 
 /* ═══ v2.3.3139: THE WOODWORKER'S HARDEN TAB ═══
  * The owner: "Maybe 5 logs of the raw material can make one 'hardened (name)
@@ -60,7 +61,7 @@ export function HardenedWoodTab({ rpgState, stateRef }) {
 
   const make = (key, n) => {
     if (!S.channel || busy) return;
-    try { S.channel.send({ type: 'make_hardened_wood', payload: { key, count: n } }); } catch (e) { return; }
+    try { act('make_hardened_wood', { key, count: n }); } catch (e) { return; }   /* v2.3.5190: through the action door (actions.js) */
     sentAt.current = Date.now();
     seen.current = S._hardenedWoodSeen || 0;
     setBusy(key);
