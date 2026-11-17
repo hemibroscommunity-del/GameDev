@@ -1,6 +1,7 @@
 // Debug bus: log capture, command registry, WS sniffer, state pointer.
 // All mobile devtools-replacement plumbing lives here so the rest of the
 // codebase can stay untouched. Wire new debug commands with debugBus.cmd(...).
+import { pageAddress } from '../game/switches.js';   /* v2.3.5314: the page's one reader (card T) */
 
 const MAX_LOGS = 500;
 const MAX_WS_FRAMES = 200;
@@ -184,7 +185,7 @@ const initFromUrl = () => {
      find the floating button — useful when the game canvas is broken and
      they need diagnostics immediately. */
   try {
-    const params = new URLSearchParams(location.search);
+    const params = new URLSearchParams(pageAddress());
     if (params.get('nodebug') === '1') {
       try { localStorage.removeItem('brotown_debug'); } catch {}
       return;
