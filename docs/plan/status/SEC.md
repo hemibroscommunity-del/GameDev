@@ -13,8 +13,8 @@ state: ready
 - PRs 19, 20 (5718, 5719): the roster's cookie host-only, the admin key for
   the session (`?rostercookie=0`); a restart refused while the market holds
   the player, daily_rewards: deleted (`resetclean`).
-- Z40's holds: #2059 closes the armour/legs claims captured or not; #2063
-  reads the room's own market indexes and forgets the daily cache.
+- Z40's holds fixed: #2055 (each queued chain job asks the switch), #2059
+  (claims closed uncaptured too), #2063 (the room's market indexes).
 
 ## Next
 
@@ -27,13 +27,14 @@ state: ready
 - The Test panel's "Let one new device in (30 min)" no longer lets an old
   key in (PR 17): its words mislead now (DevPanel.jsx).
 - src/public/_redirects and favicon.svg ship neither (publicDir is public/).
-- Item 16 (planner): shield, cosmetic and amulet claims still come in through
-  the join; nothing guards them yet (gearstash.js).
+- Item 16 (planner): shield, cosmetic and amulet join claims are unguarded.
 - gearheld: an armour piece only a phone made before v2.3.4840 is lost; and
   the phone adds a 49th chest piece the worker refuses (wsClient.js 4426).
 - wire/out.js 227 (card K's): character_reset_refused names only `fight`.
+- Item 19 (planner): the host-only roster splits www.brotown.net from
+  brotown.net; a www -> brotown.net redirect in Cloudflare (the owner's).
 - Sitting 38: received friend requests never expire (friends.js).
 
 ## Needs
 
-- None. (Item 16 answered by the planning session: as built.)
+- None. (Items 16 and 19 answered by the planning session: as built.)
