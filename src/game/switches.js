@@ -114,6 +114,7 @@ const FORMS = {
   'folkwalk': '0',
   'folkwork': '0',
   'framepack': '0|off|false',
+  'framesteps': '0',
   'fxmade': '0',
   'fxsheets': '0',
   'garmentspecks': '0',

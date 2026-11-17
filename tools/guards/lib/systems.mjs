@@ -270,7 +270,7 @@ export const SYSTEMS = Object.freeze({
   },
   'page-thread': {
     what: 'the page\'s one thread: the frame\'s pace and clock, what holds the page',
-    files: [f('src/game', 'framePacer|frameClock|renderFrame|heapBurn|buildWatch'), f('src/ui', 'afterFrame')],
+    files: [f('src/game', 'framePacer|frameClock|frameSteps|renderFrame|heapBurn|buildWatch'), f('src/ui', 'afterFrame')],   /* v2.3.5340: + frameSteps (the frame as named steps, card M) */
     words: ['frame', 'held', 'pacer', 'thread', 'jank', 'smooth'],
     traps: ['page-thread'],
     doors: [{ name: 'beforeDraw', file: 'src/game/framePacer.js', what: 'a read that waits for the graphics chip runs at the top of a frame' }],
