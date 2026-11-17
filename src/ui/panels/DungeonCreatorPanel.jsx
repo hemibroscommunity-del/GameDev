@@ -6,6 +6,7 @@ import { _defineProperty, _objectSpread, _slicedToArray, _toConsumableArray } fr
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { cue } from '@/game/eventSounds.js'; /* v2.3.3462: "Not enough gold!" heard */
 import { act } from '@/game/actions.js';   /* v2.3.5190: the page's requests leave through the action door (card K PR 7) */
+import { dungeonTo } from '@/game/dungeonDoor.js';   /* v2.3.5535: the dungeon's page door (card L) */
 /* ═══ DungeonCreatorPanel — custom dungeon builder (workshop) ═══ */
 /* v2.3.863: moved verbatim from BroTown.jsx's JSX tree (UI-panel
    decomposition; behavior-frozen) — the largest panel (~1073 lines).
@@ -932,8 +933,7 @@ export function DungeonCreatorPanel(props) {
       globalThis.COLS = dW;
       globalThis.ROWS = dH;
       /* Set up custom dungeon state */
-      S._inDungeon = true;
-      S._inCustomDungeon = true;
+      dungeonTo(S, 'enter', { in: true, custom: true, complete: false });   /* v2.3.5535: the dungeon's page door */
       S._customDungeonConfig = config;
       S._customDungeonTerrain = terrain;
       S._dungeonZone = S.currentZone;
@@ -941,7 +941,6 @@ export function DungeonCreatorPanel(props) {
       S._dungeonWave = 0;
       S._dungeonMaxWaves = config.waves;
       S._dungeonBossSpawned = false;
-      S._dungeonComplete = false;
       /* Spawn first wave from config */
       S.monsters = [];
       var waveArchs = config.monsters || [{

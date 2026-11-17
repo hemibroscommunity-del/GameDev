@@ -127,7 +127,10 @@ const tickOnce = async (mark = true) => {
   A.armor = { name: 'Iron Torso', mat: 'iron', tierMult: 2, quality: 'rare' };
   const rare = await tickOnce();
   check('wire: a rare torso over no greaves -- `eqg` "rn"', !!rare && rare.eqg === 'rn', rare);
-  /* the legacy lane: a piece the client DESCRIBES, grade and a forged prov */
+  /* the legacy lane: a piece the client DESCRIBES, grade and a forged prov
+     (v2.3.5715: one the worker holds, in its stash -- gearheld wears only
+     those; gearheld.test is the gate's own) */
+  A.armorStash = [{ name: 'Copper Torso', mat: 'copper', tierMult: 1, quality: 'godly' }];
   await send('p1', 'stats_update', { armor: { name: 'Copper Torso', mat: 'copper', tierMult: 1, quality: 'godly', prov: 'minted' } });
   check('wire: a described godly torso is worn with its claimed prov stripped (the legacy lane)',
     !!A.armor && A.armor.quality === 'godly' && A.armor.prov !== 'minted', A.armor);

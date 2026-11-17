@@ -163,10 +163,14 @@ played on another device"** and a code (`bp_...`). That happens on:
 1. They send you the code. Let a device in only when you're sure the message
    comes from that character's own player: someone else who has the key and
    asks you is exactly who this keeps out.
-2. Open the Test panel. Under **Player logins**, paste the code and tap **Let
-   one new device in (30 min)**.
-3. Tell them to tap **Try again** within 30 minutes. That device is theirs from
-   then on.
+2. **Since v2.3.5716, give them a new key** (below: **Give it a new key**),
+   and send it to them. An OLD key (the short one) never works on a device
+   that is not on the character's list any more: not while **Let one new
+   device in** is open, and not with the device lock switched off -- an old
+   key is not a secret, and both were a way round it. A new key works on any
+   device. (`oldkeyheld: false` brings back the old way: the pass lets one
+   new device in with the old key, for 30 minutes, and `devicelock: false`
+   lets every device in.)
 
 **New Login Keys (v2.3.3355).** Players now get a new, longer key made by
 the server: eight short words, shown on their Account card. A new key works on
@@ -182,9 +186,9 @@ from you. Most players moving devices won't need you any more.
    tap **Use a Login Key** on their screen and type it.
 
 **Forget all its devices** still exists: it puts the player out, takes back
-every new key and forgets every device, and **Let one new device in** then
-lets the real player back in with the old key. For a character whose old key
-is retired (one made since v2.3.3355), use **Give it a new key** instead.
+every new key and forgets every device. Since v2.3.5716 **Let one new device
+in** no longer lets the old key back in after it, so follow it with **Give it
+a new key** (or use that alone: it does both).
 
 From a computer:
 ```

@@ -78,7 +78,7 @@ const store = new Map();
   check('0. the world on file: a character whose lock knows one device', auth && Array.isArray(auth.devs) && auth.devs.length === 1, auth);
 }
 /* the owner throws the switch (as POST /flags stores it) */
-store.set('liveflags', { devicelock: false });
+store.set('liveflags', { devicelock: false, oldkeyheld: false });   /* v2.3.5716: with oldkeyheld on an old key is held to its list whatever devicelock says; this suite's subject is the cold load, so both are thrown */
 
 function login(room, device, ip) {
   return room.fetch(new Request('https://x/api/account/login', { method: 'POST', body: JSON.stringify({ phrase: KEY, device }), headers: { 'CF-Connecting-IP': ip } }));
