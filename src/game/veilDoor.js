@@ -19,16 +19,19 @@
  *                             _liftTownVeil: the town's townsfolk loading
  *   farm    S._farmArtHold    farmTrip.js: your farm's art loading
  *   avatar  S._avatarArtHold  avatarHold.js: your bro's pictures being made
+ *   net     S._netHold        wsClient.js (state_sync's readiness, the socket's
+ *                             close) and serverReady.js: waiting for the server
+ *                             (v2.3.5527)
  * A hold is any value but null, false and undefined (the old fields carry
- * a record, a number or true); a lift is null.  The phase (the phase
+ * a record, a number or true); a lift is null (false for the trip and the
+ * net, as their old lines wrote).  The phase (the phase
  * table's words): `veiled` while any reason holds, else `in`.
  *
  * `?veildoor=0` writes the old fields alone, as the lines before the door
  * (S._veils is then not kept).  The overlay itself (zoneLoading.js show /
  * hide) is the callers' still: the door writes state, never a screen.
  *
- * Notes beside the door, not folded here: `S._netHold` (the server's veil:
- * wsClient.js, card K's file, and serverReady.js; folded in after K), the
+ * Notes beside the door, not folded here: the
  * dungeon's opening (`S._wheelDungeonOpening`, the dungeon row's), and the
  * first loading screen's gate (ui/loadingGate.js: its own read of the
  * overlay, `_up`, a one-way `_worldIn` and the queue `_waiting`).
@@ -43,7 +46,10 @@ export const VEIL_WHYS = Object.freeze({
   town: '_townArtHold',
   farm: '_farmArtHold',
   avatar: '_avatarArtHold',
+  net: '_netHold',   /* v2.3.5527: the server's veil (wsClient.js, serverReady.js), folded in once card K freed wsClient.js */
 });
+/* what each reason's old field holds when lifted (as its old lines wrote) */
+const LIFT = Object.freeze({ zone: null, trip: false, town: null, farm: null, avatar: null, net: false });
 const has = (o, k) => !!o && typeof k === 'string' && Object.prototype.hasOwnProperty.call(o, k);
 
 /* `?veildoor=0` -- through the page's one reader, so a test can set it */
@@ -56,7 +62,7 @@ export function veilDoorOff() {
 export function veilTo(S, why, hold) {
   if (!S || typeof S !== 'object' || !has(VEIL_WHYS, why)) return false;
   const on = hold !== null && hold !== undefined && hold !== false;
-  S[VEIL_WHYS[why]] = on ? hold : (why === 'trip' ? false : null);
+  S[VEIL_WHYS[why]] = on ? hold : LIFT[why];
   if (veilDoorOff()) return true;
   if (!(S._veils instanceof Map)) S._veils = new Map();
   if (on) S._veils.set(why, hold);

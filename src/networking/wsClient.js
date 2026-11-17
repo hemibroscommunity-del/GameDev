@@ -16,6 +16,7 @@
    body is untouched. Returns the effect cleanup (or undefined when gated
    by showNameModal/showLogin — same as the original early return). */
 import { processGameEvent } from '@/networking/gameEvents.js';
+import { veilTo } from '@/game/veilDoor.js';   /* v2.3.5527: the loading door, the veils' one writer (S._netHold its `net` reason; card L) */
 import { actionWay, namesOfWay, settledSends, doorRefuse, setActionTransport, act } from '@/game/actions.js'; /* v2.3.5185: the action door's rows (grand plan step 5.8); v2.3.5189: and act(), the door, for the page's own requests here */
 import { chestRevealBus } from '@/ui/mobile/ChestReveal.jsx'; /* v2.3.2820: the daily chest's reveal */
 import { loginSpinBus } from '@/game/loginSpinWheel.js'; /* v2.3.4295: the login wheel */
@@ -1692,12 +1693,9 @@ export function setupWebSocket(ctx) {
                  _rejoinForReadiness asks again in a few seconds.  The rest
                  of the sync still applies -- state is harmless to hold, it
                  is SHOWING it that the owner's rule forbids. */
-              if (markServerReady(S._serverCaps)) {
-                S._netHold = false;
-              } else {
-                S._netHold = true;
-                _rejoinForReadiness(serverReadyReason(S._serverCaps));
-              }
+              const _srvReady = markServerReady(S._serverCaps);
+              veilTo(S, 'net', _srvReady ? null : true);   /* v2.3.5527: the loading door (S._netHold false or true, as before) */
+              if (!_srvReady) _rejoinForReadiness(serverReadyReason(S._serverCaps));
               /* v2.3.1982: we are IN.  state_sync is the first message
                  that only exists for an admitted session, so this is the
                  exact moment the "world is full" screen stops being true.
@@ -4966,7 +4964,7 @@ export function setupWebSocket(ctx) {
            deliberate stop above (frozen, full, reset, rejected, idle,
            superseded) has its own screen and returns before this line. */
         resetServerReady('lost');
-        S._netHold = true;
+        veilTo(S, 'net', true);   /* v2.3.5527: the loading door */
         scheduleReconnect();
       };
       ws.onerror = function () {

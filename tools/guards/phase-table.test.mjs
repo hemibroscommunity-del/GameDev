@@ -371,7 +371,7 @@ const DOOR_SUITES = Object.freeze({
   'server/test/window-door.test.mjs': { field: 'S._windows', fn: 'windowTo', holds: '§2: no write of S._windows, nor of a window\'s old field (S._uiBusy, S._npcProxLatch), in src/ outside windowTo',
     prop: '_windows', besides: [] },
   /* v2.3.5525: the loading door (its reasons' old fields: the suite's §2) */
-  'server/test/loading-door.test.mjs': { field: 'S._veils', fn: 'veilTo', holds: '§2: no write of S._veils, nor of a veil\'s old field (S._zoneLoading, S._wheelTripVeil, S._townArtHold, S._farmArtHold, S._avatarArtHold), in src/ outside veilTo',
+  'server/test/loading-door.test.mjs': { field: 'S._veils', fn: 'veilTo', holds: '§2: no write of S._veils, nor of a veil\'s old field (S._zoneLoading, S._wheelTripVeil, S._townArtHold, S._farmArtHold, S._avatarArtHold, S._netHold), in src/ outside veilTo',
     prop: '_veils', besides: [] },
   /* v2.3.5521: the guard's page door */
   'server/test/guard-page-door.test.mjs': { field: 'S._shieldUp', fn: 'guardTo', holds: '§2: no write of S._shieldUp in src/ outside guardTo',

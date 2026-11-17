@@ -178,8 +178,10 @@ const dir = mkdtempSync(join(tmpdir(), 'socket-one-'));
 const stubPath = join(dir, 'common.mjs');
 writeFileSync(stubPath, 'export const S = { _netHold: false };\nexport function getState() { return S; }\n');
 const srSrc = src('src/networking/serverReady.js')
-  .replace(/from '@\/ui\/mobile\/dash\/common\.js'/, 'from ' + JSON.stringify(pathToFileURL(stubPath).href));
-check('4a serverReady.js\'s one import stubbed', srSrc.includes(pathToFileURL(stubPath).href));
+  .replace(/from '@\/ui\/mobile\/dash\/common\.js'/, 'from ' + JSON.stringify(pathToFileURL(stubPath).href))
+  /* v2.3.5527: and the loading door, the real one (S._netHold is its `net` reason; it imports only the switch reader) */
+  .replace(/from '@\/game\/veilDoor\.js'/, 'from ' + JSON.stringify(new URL('../../src/game/veilDoor.js', import.meta.url).href));
+check('4a serverReady.js\'s imports: the stubbed state and the real loading door', srSrc.includes(pathToFileURL(stubPath).href) && !srSrc.includes("'@/"));
 
 /* a clock, and a page: the loading screen is `.bt-intro` */
 let now = 0; let tq = []; let tid = 0;
