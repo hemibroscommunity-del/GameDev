@@ -269,6 +269,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?lookatlas` | page | switch | v2.3.4993 | 2026-11-12 | =0 | memory | `lookpalette` | no | The look palette's sheets are not packed into an atlas. |
 | `lookdelta` | worker | switch | v2.3.3240 | 2026-10-14 | false | logic |  | no | Every look track is relayed whole again. |
 | `lookfolk` | both | switch | v2.3.3809 | 2026-10-29 | off_lookfolk: true; ?lookfolk=0 | memory | `lookpalette` | no | The townsfolk are drawn from their photographs again, loaded then. |
+| `lookpace` | worker | switch | v2.3.5721 | 2026-11-17 | false | logic |  | no | A look relay goes the moment a track comes, outside the relay byte budget, its rpgData whole (every key the page put in it), as before. |
 | `?lookprobe` | page | lever | v2.3.3716 |  | present or =1 | none |  | no | QA: loads the look palette's probe (an oracle a test reads). |
 | `lookshirt` | both | switch | v2.3.3751 | 2026-10-29 | off_lookshirt: true; ?lookshirt=0 | chip | `lookpalette` | no | Printed shirts are baked again, not coloured on the chip. |
 | `?pickwood` | page | switch | v2.3.3671 | 2026-10-27 | =0 | logic |  | no | The pickaxe's wood is painted with the skin, as before. |
@@ -607,6 +608,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `reportring` | worker | switch | v2.3.5623 | 2026-11-15 | false | logic |  | no | A chat report quotes the speaker's last 3 lines in any lane again, not the lines the reporter could have received. |
 | `reqincap` | worker | switch | v2.3.5709 | 2026-11-17 | false | logic |  | no | No ceiling on the friend requests a player receives, as before (the 51st and every one after kept). |
 | `silence` | worker | switch | v2.3.5621 | 2026-11-16 | false | logic |  | no | No silence is checked: every character speaks (the owner's silences are kept, and hold again when it is put back). |
+| `?skulldoor` | page | switch | v2.3.5533 | 2026-11-17 | =0 | logic |  | no | Your skull on the phone takes any write its own code asks again (a kind that is no skull, a time that is no number), as the lines before the fight's page door; only a relayed threat with a malformed countdown is refused today. |
 | `?socialreset` | page | switch | v2.3.5204 | 2026-11-14 | =0 | logic |  | no | A race the worker forgot at a reconnect stays on the phone until its own clock lets it go, as before. |
 | `spar` | worker | switch | v2.3.3265 | 2026-10-16 | false | logic |  | no | No sparring clones: every live clone goes on the next tick and the cap is withdrawn. |
 | `statboards` | worker | switch | v2.3.5484 | 2026-11-14 | false | logic |  | no | Un-advertises the stat boards: no board report carries the points allocated, so those boards empty as players report; every other board is as it was. |
@@ -648,6 +650,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 
 | name | side | kind | born | on | thrown | risk | needs | fallback | off |
 |---|---|---|---|---|---|---|---|---|---|
+| `bodycap` | worker | switch | v2.3.5720 | 2026-11-17 | false | logic |  | no | The room's web routes read a body whole again, of any size, before any route asks who sends (the outer router's own check is the worker setting `BODY_CAP`, not this flag). |
 | `bundle` | worker | switch | v2.3.3254 | 2026-10-15 | false | logic |  | no | Stops advertising message bundles: each phone sends its messages one by one from its next join. |
 | `?conndoor` | page | switch | v2.3.5528 | 2026-11-17 | =0 | logic |  | no | The phone's socket phase takes any word a caller writes, as the lines before the connection door (every caller writes a word of the list today). |
 | `?diet` | page | switch | v2.3.3726 | 2026-10-28 (v2.3.3744) | =1 or =0 (kept for the tab) | logic |  | no | Puts this phone on the move diet (=1) or keeps it off (=0), whatever the worker says for everyone. |
