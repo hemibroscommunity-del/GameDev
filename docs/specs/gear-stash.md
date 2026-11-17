@@ -405,3 +405,43 @@ Mail (the market, trades) already pushed into the list (inbox.js).
 - **Kill switch:** `armorstashlive: false` in the live flags (join-only, as
   before).
 - Test: `server/test/armour-stash-live.test.mjs`.
+
+## v2.3.5715: gear is worn only if the worker holds it (card SEC PR 16)
+
+The describe path (`grids.js`, the armour and legs branches) wore whatever
+the phone described: a character with an empty bag that described an elite
+chest and legs wore them (`prov: 'legacy'`) and took 15% of a blow, and each
+swap pushed the invented piece into the stash. With the live stash above
+(v2.3.4840) the worker holds every armour and legs piece the bag gets, so:
+
+- **a described piece is worn only if the worker holds one with its
+  signature** (`stashSig`: its `gid`, else name|gearBase|tierMult|tier) --
+  the worn piece, or one in `armorStash` / `legsStash`
+  (`gearstash.js` `_gearHeld`). Both sides are read through
+  `sanitizeGearPiece` first, as the stash's copy was made, so a piece with no
+  `tierMult` (1 in the stash) still matches, and leaves the stash as it goes
+  on (`_gearStashLiveTake`). Else what is worn stays and the worn slots
+  are sent back. The ref lane (`armorRef`) is unchanged: it names the
+  ledger's own piece.
+- **the join takes no armour or legs claim from the phone, captured or
+  not.** The first build closed them only once `gearStashCaptured` was set
+  (the card's words), but gatekeeper Z40's review found that stamp is set
+  only by a join whose merge took something. Since the worker adds every
+  piece itself, an honest record usually stays uncaptured, so one join with
+  a forged elite chest merged it, stamped the record, and the describe path
+  wore it (it then took a fifth of each blow). The one honest loss: a piece only a phone
+  made before the worker kept the stash live. The shield, cosmetic and amulet
+  lists are still merged (answered by the planning session): the worker keeps
+  no live copy of those, so stopping their merge would lose a piece earned
+  this session. The grade backfill (v2.3.2527, above) no longer runs for
+  armour and legs either.
+- What is already worn or stashed on file is untouched. With the live stash
+  off (`armorstashlive: false`) the worker has no stash to ask and the gate
+  stands aside.
+
+Kill switch `gearheld: false`: the describe path and the join as before.
+Suite: `server/test/gearheld.test.mjs` (Z40's probe: an uncaptured record,
+a forged chest at the join, then the describe). `gearstash.test` and
+`gearprov.test` test the claim door itself, so they play it with the switch
+thrown; `reveal-bag` 7's forged "?" rides a shield claim; `grids`,
+`armorgrade` and the others put the pieces they describe in the stash first.
