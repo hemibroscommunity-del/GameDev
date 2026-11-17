@@ -1,6 +1,6 @@
 card: Z
 branch: claude/plan-z-sitting-39
-prs: Z_PR (this PR), tag 5677, the last line of sitting 39's list (ready)
+prs: #2064 (this PR), tag 5677, the last line of sitting 39's list (ready)
 state: ready
 
 ## Done
@@ -12,7 +12,7 @@ memory only; `floodtally`, ON) · 2 K2 #2051 (5725, three guards: a
 frame's throw caught, a Workshop run on safe ground, `reqId` off the
 public reads; `dungeonground`, ON; heap-forget's line 2.5 -> 4 KB) ·
 3 K2 #2053 (5726, the owner's routes with no key and the public reads at
-the edge; worker settings `EDGE_GUARD`, `EDGE_CACHE`, on) · 4 Z Z_PR (this PR). All based on
+the edge; worker settings `EDGE_GUARD`, `EDGE_CACHE`, on) · 4 Z #2064 (this PR). All based on
 `main`, one base at every step. The worker deploys once.
 
 ## Held / Stalled
