@@ -1,6 +1,6 @@
 card: L
 branch: claude/plan-l-33-fight-page (from main)
-prs: #1746 to #2033 (merged), 5533 fight page door (this branch): ready
+prs: #1746 to #2033 (merged), #2039 (5533): ready
 state: ready
 
 ## Done
