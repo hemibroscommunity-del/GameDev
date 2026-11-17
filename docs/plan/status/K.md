@@ -1,6 +1,6 @@
 card: K
-branch: claude/plan-k-14a-reach (5548, the second block 5540-5559)
-prs: #1822 to #2006, #2003, #2013, #2014 merged; open: #2018 (5548, this branch)
+branch: claude/plan-k-14b-movetop (5549, the second block 5540-5559)
+prs: #1822 to #2006, #2003, #2013, #2014, #2018 merged; open: #2021 (5549, this branch)
 state: ready
 
 ## Done
@@ -14,8 +14,11 @@ state: ready
 
 ## Next
 
-- 5548 (14, this branch): the sword's reach and swing, `swordswing` OFF
-  (the planner's reading: both, the owner turns it on). Next: the move.
+- 5548 (#2018, merged): the sword's reach and swing, `swordswing` OFF.
+  5549 (#2021, this branch): the move's top, `movetop` OFF (gain 2.56 ->
+  1.17). Next: the bow.
+- Later (the planner): walls on the worker (the Wheel's coast): a new
+  system and worker memory, for when real players come.
 - wsClient.js: done for good (told L). index.js, combat.js: 13 and 14.
 
 ## Found
@@ -28,8 +31,7 @@ state: ready
 
 ## Needs
 
-- The owner: turn on `swordswing` (the sword's reach and swing: a cheat's
-  gain 2.96 -> 1.42; the honest sword's kills the same, no refusal on any
-  disturbance; sword feel, hit ladder, questline green with it on).
+- The owner: turn on `swordswing` (a cheat's sword 2.96 -> 1.42) and
+  `movetop` (its move 2.56 -> 1.17)? Honest play the same with each on.
 - The owner: `reqstamp` (a lasting stamp row a request with no record of
   its own: a store buy, a cancel, an offer; pruned at 48 h): on or off.

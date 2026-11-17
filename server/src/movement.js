@@ -121,6 +121,36 @@ export const MOVE_BUDGET = Object.freeze({
   BURST_S: 3,
 });
 
+/* ═══ v2.3.5549: THE MOVE'S TOP, THE PLAYER'S OWN (grand plan 4.2, the move;
+   card K PR 14; docs/specs/move-top.md) ═══
+   MOVE_BUDGET.SPEED_PX (500) was set against the fastest legitimate stack
+   of the old stats (~441 px a second); every player is held to it, so a
+   new character walking 150 px a second may claim three times that (the
+   claims bench's `move`: 2.56).  With `movetop: true` (an opt-in, OFF: the
+   owner's) the bound is THIS player's top speed: the page's walk
+   (BroTown.jsx: SPEED 2.5 a frame, 150 px a second, x calcMoveSpeed's
+   agility and swiftness, the same numbers the worker stores), x the most
+   an amulet adds (it is the page's: its largest, AMULET_MAX), x the path
+   tile's lift (TILE_MAX), x a jump's flip (FLIP_MAX), x HEADROOM for a
+   frame's wobble -- and then the
+   multipliers every bound already reads (a buff the worker sold, the move
+   stat, the ride; the sprint where it is billed).  Slower things (sand,
+   water, a raised shield, a drawn bow) only slow. */
+export const MOVE_TOP = Object.freeze({
+  WALK_PX: 150,       /* SPEED (2.5, gameSystems.js) x 60 frames a second */
+  AMULET_MAX: 1.065,  /* the fastest amulet's move bonus (the 500's own audit note) */
+  TILE_MAX: 1.1,      /* the path tile (BroTown.jsx terrainMult) */
+  FLIP_MAX: 1.45,     /* a jump's flip, its air time (game/jump.js 1 + FLIP_BOOST_MAX) */
+  HEADROOM: 1.15,
+});
+/* the page's calcMoveSpeed(agility, swiftness) / 5 (gameSystems.js), from the
+   worker's own stored stats */
+export function moveTopStatK(ps) {
+  const agi = Math.max(0, Number(ps && ps.agility) || 0);
+  const sw = Math.max(0, Number(ps && ps.enduranceSpec && ps.enduranceSpec.swiftness) || 0);
+  return (5.0 * (1 + Math.min(agi * 0.0012, 0.60)) + Math.min(2.0, sw * 0.02)) / 5.0;
+}
+
 /* v2.3.4454: the zone-entry grace is given at most once in this long
    (_entryGraceGive below) -- no honest walk changes place twice in it */
 export const ENTRY_GRACE_GAP_MS = 10000;
@@ -185,11 +215,21 @@ export const movementMethods = {
     c[k] = (c[k] || 0) + 1;
   },
 
+  /* v2.3.5549: the budget's cap.  With `movetop: true` the REFILL is the
+     player's own top, but the burst it holds is never smaller than the old
+     bound's (SPEED_PX's 3 s): a lunge (~900 px at 1,560 px a second), a
+     roll, a gust and a stalled line's backlog spend it as before.  A script
+     still gets one jump of what it saved, and then the player's own top. */
+  _moveCapFor(rate) {
+    const c = rate * MOVE_BUDGET.BURST_S + MOVE_BUDGET.SLACK_PX;
+    return this._moveTopOn() ? Math.max(c, MOVE_BUDGET.SPEED_PX * MOVE_BUDGET.BURST_S + MOVE_BUDGET.SLACK_PX) : c;
+  },
+
   /* v2.3.3325: the budget at `now`, refilled at `rate` px/s since it was last
      stamped and held to its cap; full on a new connection's first judged
      move (a join is a fresh player state) */
   _moveBudgetNow(ps, rate, now) {
-    const cap = rate * MOVE_BUDGET.BURST_S + MOVE_BUDGET.SLACK_PX;
+    const cap = this._moveCapFor(rate);
     const b = ps._mvBudget;
     if (typeof b !== 'number' || !Number.isFinite(b) || typeof ps._mvBudgetAt !== 'number') return cap;
     const dt = Math.max(0, (now - ps._mvBudgetAt) / 1000);
@@ -225,7 +265,7 @@ export const movementMethods = {
   /* v2.3.3327: the walk bound's two multipliers, the worker's own: a speed
      buff it sold, the move stat it stored.  The move handler's bound and the
      join's judge (lastplace.js) read the same numbers. */
-  _moveSpeedK(ps) {
+  _moveSpeedK(ps, opts) {
     /* ═══ v2.3.2062: THE CAP WIDENS FOR A BUFF THE SERVER ITSELF SOLD ═══
        Owner: "a speed potion that lets you run 1.5x speed 3 mins."
 
@@ -269,7 +309,17 @@ export const movementMethods = {
        the worker's own `ps._ride`, never a move's field; 1 dead, off the
        board or with the kill switch thrown (_rideK). */
     const _rideK = typeof this._rideK === 'function' ? this._rideK(ps) : 1;
-    return { spdCap: _spdCap, moveMult: _moveMult * _rideK };
+    /* v2.3.5549: with `movetop: true`, the 500 is this player's own top (MOVE_TOP above): folded into the
+       multiplier every MOVE bound reads (the budget, the follow, the glide, the join's judge); a bow's
+       or a staff's reach (hitproof.js, `reach: true`) keeps its run as it was */
+    const _topK = this._moveTopOn() && !(opts && opts.reach) ? (MOVE_TOP.WALK_PX * moveTopStatK(ps) * MOVE_TOP.AMULET_MAX * MOVE_TOP.TILE_MAX * MOVE_TOP.FLIP_MAX * MOVE_TOP.HEADROOM) / MOVE_BUDGET.SPEED_PX : 1;
+    return { spdCap: _spdCap, moveMult: _moveMult * _rideK * _topK };
+  },
+
+  /* v2.3.5549: an opt-in, off: only `movetop: true` turns it on */
+  _moveTopOn() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'movetop') && f.movetop === true);
   },
 
   /* v2.3.3325: a move the budget could not cover goes on being followed
@@ -669,7 +719,7 @@ export const movementMethods = {
          hides a step.  Kept only while the mark is on. */
       if (typeof this._sprintMarkOn === 'function' && this._sprintMarkOn()) {
         const _d = Math.sqrt(dx * dx + dy * dy);
-        const _wr = MOVE_BUDGET.SPEED_PX * _spdCap * _moveMult, _wcap = _wr * MOVE_BUDGET.BURST_S + MOVE_BUDGET.SLACK_PX;
+        const _wr = MOVE_BUDGET.SPEED_PX * _spdCap * _moveMult, _wcap = this._moveCapFor(_wr);   /* v2.3.5549: the burst's size kept (movetop) */
         const _w = ps._mvWalk || (ps._mvWalk = { b: _wcap, at: _now });
         _w.b = Math.min(_wcap, _w.b + _wr * Math.max(0, (_now - _w.at) / 1000)); _w.at = _now;
         _needSprint = _sprintK > 1 && _d > _w.b + _gust;
