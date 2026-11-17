@@ -1,7 +1,7 @@
 card: MOD
 branch: claude/plan-mod-<n>-<topic> (#1909 > #1914 restacked on main b2d763a9; PR 5 on main; every PR against main)
-prs: #1909 (5623, report evidence), #1914 (5624, invite pace): ready; PR 5 (5625, the freeze's devices, words outside the lanes, the name fold): working; #1869 (findings): draft
-state: working
+prs: #1909 (5623, report evidence), #1914 (5624, invite pace): ready; #1941 (5625, the freeze's devices, words outside the lanes, the name fold): ready; #1869 (findings): draft
+state: ready
 
 ## Done
 
@@ -13,7 +13,7 @@ state: working
 
 ## Next
 
-- PR 5 (5625): the freeze's devices from botfp's `device:` record and the owner's spare complete the same way (`freezedevice` stays OFF); the words outside the six lanes (pet, alliance and clan names, an emote's quick line) closed to a silenced character, every words row decided; the name fold's misses (BroTovvn, a Cherokee A, Admln); SILENCE_LANES is K's CHAT_LANE_TYPES.
+- #1941 (5625), waiting for the gatekeeper: the freeze's devices from botfp's `device:` record and the owner's spare complete the same way (`freezedevice` stays OFF); the words outside the six lanes (pet, alliance and clan names, an emote's quick line) closed to a silenced character, every words row decided; the name fold's misses (BroTovvn, a Cherokee A, Admln); SILENCE_LANES is K's CHAT_LANE_TYPES.
 
 ## Found
 
