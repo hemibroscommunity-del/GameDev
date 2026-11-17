@@ -8,11 +8,9 @@ state: working
 - PR 1 (5700, #2030, merged): the card, this file, the block; items 16 to
   20 and item 15's addition word for word (the orchestrator, on the owner's
   "go recommended"), built after item 15.
-- PR 2 (5701, #2032): a join's id of the id's form (`joinidform`; 58 FAIL on main).
-- PR 3 (5702, #2034): a refused vault put owed, put again in the next save's
-  run; the leave saves it first; `paused` (`bankretry`; 12 FAIL on main).
-- PR 4 (5703, #2037): stored bags never cut by `disable_bigbags` (4 FAIL).
-- PR 5 (5704, #2038): a newer worker's unknown fields kept (`newerkeep`; 2 FAIL).
+- PRs 2 to 5 (#2032, #2034, #2037, #2038): a join's id of its form; a
+  refused vault put owed and put again with the next save; stored bags never
+  cut by `disable_bigbags`; a newer worker's unknown fields kept.
 - PR 6 (5705, #2040): the board holds its limit, its name before the key,
   each field, a 4096-byte row, a paged read (no switch: its flags ride
   index.js, K2's; 13 FAIL on main).
