@@ -2,8 +2,7 @@
 
 Taken 2026-11-17 on `main` bbd22176 (sitting 36 merged: SEC #2030, K
 #2028, L #2031, L #2033, Z #2036). SEC, K2 and L were told this
-sitting's session at its start (16:52 UTC). Gathered 16:51 to about
-17:55 UTC. Tags bare.
+sitting's session at its start (16:52 UTC). Gathered 16:51 to 17:35 UTC. Tags bare.
 
 ## Heads, merge bases and trees
 
@@ -137,7 +136,22 @@ READY (reviewed in full: `src/`). Card L PR 5's page halves, the fight
 
 ## The rehearsal
 
-REHEARSAL_RESULTS
+First, #2032 alone (at 90f32e15) on bbd22176: tree 5b5598aa; build
+PASS; questline 187/187; precheck 0 FAIL but the server suites' 5-minute
+limit under load (the settled one, sittings 33 to 36; its WARNs the tag
+check's own reading of SEC's stack, which holds 5701, and the branch
+count).
+
+Then the list: `tools/dev/gatekeeper.mjs` on bbd22176 with #2032
+(90f32e15), #2034 (5eba6104), #2037 (2275f8ef), #2038 (0a31cbde), #2035
+(b72d2f9c) and #2039 (db797aef), in that order: tree 8519ead9 (the same
+as the step-by-step merges); build PASS; questline 187/187; precheck the
+same one timeout and nothing else red (its one WARN the branch count);
+`cd server && npm test` alone in that tree: 488 suites, all green
+(418.6 s); every guard in `tools/guards/` green (34). This PR merged on
+top of the list (one base, bbd22176): the phase table 5 `todo` under the
+line 6. `test`, playable, memory-budget and lint-build green on every
+listed head (17:27 UTC).
 
 No two listed PRs share a file but: SEC's stack (`status/SEC.md`,
 `persistence.js`: each holds the one before); the switch table's rows
