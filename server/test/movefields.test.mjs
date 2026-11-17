@@ -19,7 +19,7 @@
  *
  * Red on main (v2.3.5719): 1, 2 and 4. */
 import { makeStorage, openRoom, fakeWs, join, settle, seededClock } from './testroom.mjs';
-import { MOVE_FIELDS } from '../src/movement.js';
+import * as MV from '../src/movement.js';
 import { LAST_PLACE } from '../src/lastplace.js';
 import { wheelTable } from '../src/wheeltables.js';
 
@@ -32,7 +32,7 @@ const quiet = async (f) => { const e = console.error, w = console.warn; console.
 
 const C = wheelTable(5).WHEEL_CENTRE;
 const ARR = { x: C[0], y: C[1] + LAST_PLACE.ARRIVAL_DY };
-const TEXT_MAX = (MOVE_FIELDS && MOVE_FIELDS.TEXT_MAX) || 48;
+const TEXT_MAX = (MV.MOVE_FIELDS && MV.MOVE_FIELDS.TEXT_MAX) || 48;   /* read as a namespace so the suite runs on main too (its red run) */
 
 async function mover(flags) {
   const clock = seededClock().install();
