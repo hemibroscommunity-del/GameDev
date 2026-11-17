@@ -21,7 +21,7 @@
  * bootstrap stay in index.js -- they belong to the join slice. */
 
 import { RPG_SCHEMA_VERSION, runRpgMigrations, healLifeSkills, econClean } from './migrations.js';
-import { gearStashCap } from './gearstash.js';
+import { gearStashCap, gearStashKeepCap } from './gearstash.js';   /* v2.3.5703: + the cuts' cap */
 import { cleanApOnce } from './inbox.js';   /* v2.3.3488: the once-a-character prize marks */
 import { revealPublic, revealPublicList } from './revealbag.js';   /* v2.3.4012: a piece waiting in the bag goes out without its grade */
 import { bagEconOwn } from './bag.js';   /* v2.3.5084: the bag door's counts reach the record they belong on */
@@ -40,6 +40,12 @@ const ECON_JOINED_MAX = 4096;
 
 function capStash(v) {
   return Array.isArray(v) ? v.slice(0, gearStashCap()) : [];
+}
+/* v2.3.5703 (card SEC PR 4): the save's cut runs at the normal cap, whatever
+   `disable_bigbags` says (gearstash.js gearStashKeepCap); the echo keeps the
+   phone's copy at the lowered one (capStash) */
+function keepStash(v) {
+  return Array.isArray(v) ? v.slice(0, gearStashKeepCap()) : [];
 }
 
 /* v2.3.2058: ps._buffs is otherwise a pure {name: endsAt} map -- _pruneBuffs
@@ -388,11 +394,11 @@ export const persistenceMethods = {
            idempotent), because gating on this stamp is what let a
            second device's empty browser close the capture over a
            wardrobe it had never seen.  See _gearStashAdoptOnJoin. */
-        armorStash: capStash(ps.armorStash),
-        legsStash: capStash(ps.legsStash),
-        shieldStash: capStash(ps.shieldStash),
-        gearStash: capStash(ps.gearStash),
-        amuletStash: capStash(ps.amuletStash),
+        armorStash: keepStash(ps.armorStash),
+        legsStash: keepStash(ps.legsStash),
+        shieldStash: keepStash(ps.shieldStash),
+        gearStash: keepStash(ps.gearStash),
+        amuletStash: keepStash(ps.amuletStash),
         gearStashCaptured: !!ps.gearStashCaptured,
         // Quest state (slice 17).  Chain progression + flags +
         // kill counters.  Server validates accept/turn-in state

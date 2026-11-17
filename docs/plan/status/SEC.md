@@ -1,6 +1,6 @@
 card: SEC
 branch: claude/plan-sec-<n>-<topic> (stacked: each PR on the one before until it merges)
-prs: #2030 (5700): ready; #2032 (5701): ready; PR 3 (5702, the vault owed): working
+prs: #2030 (5700): ready; #2032 (5701): ready; #2034 (5702): CI; PR 4 (5703, bags kept): working
 state: working
 
 ## Done
@@ -11,15 +11,19 @@ state: working
 - PR 2 (5701, #2032): a join's id is 1 to 64 of A-Z a-z 0-9 _ or refused as a
   magic name is (switch `joinidform`; `joinid.test`, 58 FAIL on main; a
   one-item list `['bp_x']` wrote `auth:bp_x`, a real character's key).
-- PR 3 (5702): a vault whose put was refused is owed and put again in the
+- PR 3 (5702, #2034): a vault whose put was refused is owed and put again in the
   run of the character's next save; the leave saves it before the copy
   goes; the bank answers `paused` (switch `bankretry`; `bankretry.test`,
   12 FAIL on main: a withdrawal doubled, a deposit lost).
 
+- PR 4 (5703): `disable_bigbags` lowers only what a give or a claim may
+  fill; the cuts of what is stored run at 140 and 48 always (`bagkeep.test`,
+  4 FAIL on main: 140 weapons became 8 on file, 48 pieces 32).
+
 ## Next
 
-- PR 3's full suite and PR; then PR 4 (5703): the bag-size switch lowers
-  only what a give may fill, never the cuts.
+- PR 4's suite and PR; then PR 5 (5704): a newer worker's record keeps its
+  unknown fields through this worker's saves (`newerkeep`).
 
 ## Found
 
