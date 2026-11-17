@@ -1,7 +1,7 @@
 card: O
 branch: claude/plan-o-13-thirty (one branch a PR; begun from main)
-prs: #1787, #1792, #1794, #1800, #1814, #1815, #1832, #1841, #1836, #1850, #1854, #1896, #1915, #1929, #1937 (merged); #1952 (5239), #1970 (5232): ready; PR 13 (5233): open
-state: working
+prs: #1787, #1792, #1794, #1800, #1814, #1815, #1832, #1841, #1836, #1850, #1854, #1896, #1915, #1929, #1937 (merged); #1952 (5239), #1970 (5232): ready; #1974 (5233): ready
+state: ready
 
 ## Done
 
@@ -22,7 +22,7 @@ state: working
 
 - #1952 (5239, ready): a failed fill, glint or clip falls back alone.
 - #1970 (5232, ready): the off-ramps through T's reader, pinning their knobs.
-- PR 13 (5233, open): the 30 lane, a step of three of its frames.
+- #1974 (5233, ready): the 30 lane, a step of three of its frames.
 - PR 11 waits on card P (cacheBytes.js, gearSheets.js).
 
 ## Found
