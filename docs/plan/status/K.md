@@ -1,7 +1,7 @@
 card: K
 branch: claude/plan-k-<n>-<topic> (one branch a PR, each begun from main)
-prs: #1822, #1820, #1826, #1829, #1831, #1838, #1842, #1861, #1848, #1899, #1923, #1900, #1931-#1934, #1942, #1949, #1972, #1989, #1981 merged; 5196 this branch
-state: working
+prs: #1822, #1820, #1826, #1829, #1831, #1838, #1842, #1861, #1848, #1899, #1923, #1900, #1931-#1934, #1942, #1949, #1972, #1989, #1981 merged; ready: #1997 (5196, this branch)
+state: ready
 
 ## Done
 
@@ -15,7 +15,7 @@ state: working
 
 ## Next
 
-- 5196 (this branch, `gidnames` ON): a weapon named by its id beside its
+- #1997 5196 (`gidnames` ON): a weapon named by its id beside its
   place in nine handlers (gidnames.js; the door's GID_PLACE adds it).
 - Then 5197 (the words rule). Lows: the door's entries their own memory
   list (sitting 27). The move's walls; the sword's reach; the bow claim.
