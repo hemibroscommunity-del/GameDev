@@ -1,7 +1,7 @@
 card: MOD
-branch: claude/plan-mod-<n>-<topic> (on main 8149d61e: #1909 > #1914 > PR 8; #1947; #1954; every PR against main)
-prs: #1909 (5623), #1914 (5624), #1947 (5626, the market's words), #1954 (5627, the freeze's spare and new characters only): ready; PR 8 (5628, sitting 23's lows on #1909 and #1914, stacked on #1914): working; #1869 (findings): draft
-state: working
+branch: claude/plan-mod-<n>-<topic> (on main 8149d61e: #1909 > #1914 > #1962; #1947; #1954; every PR against main)
+prs: #1909 (5623), #1914 (5624), #1947 (5626, the market's words), #1954 (5627, the freeze's spare and new characters only): ready; #1962 (5628, sitting 23's lows on #1909 and #1914, stacked on #1914): ready; #1869 (findings): draft
+state: ready
 
 ## Done
 
@@ -17,7 +17,7 @@ state: working
 - #1947 (5626): a market order's label and seller name are the worker's own (switch `mktwords`); touches card K's market.js (~83-105, ~385-391) by the planning session's yes.
 - #1954 (5627): sitting 22's findings on #1941 and the planning session's `freezedevice` meaning (lever OFF): a held phone refuses only a NEW character, never an existing one's join; the owner's devices kept (`ownerdev:`); "Officlal".
 - #1909 > #1914 on sitting 23's list.
-- PR 8 (5628, stacked on #1914): a report quotes the lines addressed to the reporter first (the public flush), and the speaker's own last lines beside (the card's "beside"); a paced friend request answered as sent; the ring's memory (with `tos`) and chatmod's header put right.
+- #1962 (5628, stacked on #1914), waiting for the gatekeeper: a report quotes the lines addressed to the reporter first (the public flush), and the speaker's own last lines beside (the card's "beside"); a paced friend request answered as sent; the ring's memory (with `tos`) and chatmod's header put right.
 - Still open, the name rule's lows (sitting 19 review): a rename's `player_update` flattens the build for a minute; `namerules: false` does not reach the name box; a `name` refusal shows no words; the arena's own name.
 
 ## Found
