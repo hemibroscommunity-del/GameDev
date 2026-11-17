@@ -529,7 +529,7 @@ let room2, key2, key2First, h2First;
       join(room, id, OLD, D1, KV), admin(room, '/device-pass', { playerId: id }), join(room, id, OLD, D3, KV),
       admin(room, '/device-forget', { playerId: id }), join(room, id, OLD, D2, KV),
     ];
-    const timeout = new Promise((r) => setTimeout(() => r('timeout'), 3000));
+    const timeout = new Promise((r) => setTimeout(() => r('timeout'), 20000));   /* v2.3.5650: a guard against a hang for ever, not a speed (3 s lost to a loaded box once) */
     const res = await Promise.race([Promise.all(all).then(() => 'done'), timeout]);
     check('12e. eight changes to one record at once: every one finishes (no wait for ever)', res === 'done', res);
     await tick();
@@ -600,7 +600,7 @@ let room2, key2, key2First, h2First;
     const pc = await pastCheck(room, 'bp_lk_s1', 'auth:bp_lk_s1');
     const p1 = join(room, 'bp_lk_s1', OLD, D1);
     await tick();
-    const w2 = await Promise.race([join(room, 'bp_lk_s2', OLD, D2), new Promise((r) => setTimeout(() => r(null), 1000))]);
+    const w2 = await Promise.race([join(room, 'bp_lk_s2', OLD, D2), new Promise((r) => setTimeout(() => r(null), 15000))]);   /* v2.3.5650: the same: held for ever, not slow */
     check('12f. another character\'s join is not held by this one\'s', !!w2 && joined(w2), w2 && w2.sent.map((m) => m.type));
     pc.g.open();
     const w1 = await p1;

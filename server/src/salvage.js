@@ -173,7 +173,7 @@ export const salvageMethods = {
   _salvageSend(pid, type, payload, withState) {
     const ws = this._wsBySessionId(pid);
     if (!ws) return;
-    try { ws.send(JSON.stringify({ type, payload })); } catch (e) { /* the act is saved; the state carries it */ }
+    try { this._send(ws, { type, payload }); } catch (e) { /* the act is saved; the state carries it */ }
     if (withState) this._sendPlayerState(ws, pid);
   },
 

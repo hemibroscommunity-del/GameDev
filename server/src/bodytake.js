@@ -101,7 +101,7 @@ export const bodyTakeMethods = {
   _bodyTakeSend(ws, id) {
     const ps = this.playerState[id];
     if (!ps || !ps._bodyWait) return;
-    try { ws.send(JSON.stringify({ type: 'body_place', payload: { z: ps.z, x: ps.x, y: ps.y, d: ps.d } })); } catch (e) { /* the wait runs out into the linger */ }
+    try { this._send(ws, { type: 'body_place', payload: { z: ps.z, x: ps.x, y: ps.y, d: ps.d } }); } catch (e) { /* the wait runs out into the linger */ }
   },
 
   /* the one transition out */

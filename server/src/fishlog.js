@@ -344,7 +344,7 @@ export const fishlogMethods = {
   _fishSend(pid, type, payload) {
     const ws = this._wsBySessionId && this._wsBySessionId(pid);
     if (!ws) return;
-    try { ws.send(JSON.stringify({ type, payload })); } catch (e) { /* display only */ }
+    try { this._send(ws, { type, payload }); } catch (e) { /* display only */ }
   },
 
   /* ═══ THE BOARDS ═══ read once a worker's life (this room is the only

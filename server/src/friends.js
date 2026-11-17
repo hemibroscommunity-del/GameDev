@@ -83,7 +83,7 @@ export const friendsMethods = {
   _friendsSend(pid, type, payload) {
     const ws = this._wsBySessionId(pid);
     if (!ws) return false;
-    try { ws.send(JSON.stringify({ type, payload })); } catch (e) {}
+    try { this._send(ws, { type, payload }); } catch (e) {}
     return true;
   },
 

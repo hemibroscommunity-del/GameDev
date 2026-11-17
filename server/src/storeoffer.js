@@ -82,7 +82,7 @@ export const storeOfferMethods = {
   _soSend(playerId, type, payload) {
     const ws = this._wsBySessionId(playerId);
     if (!ws) return false;
-    try { ws.send(JSON.stringify({ type, payload })); return true; } catch (e) { return false; }
+    try { this._send(ws, { type, payload }); return true; } catch (e) { return false; }
   },
 
   /* Its own bucket, harder than the chat's: a number field invites repeated

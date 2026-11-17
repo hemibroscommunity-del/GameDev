@@ -130,7 +130,7 @@ export const rideMethods = {
     if (!pid || typeof this._wsBySessionId !== 'function') return;
     const ws = this._wsBySessionId(pid);
     if (!ws) return;
-    try { ws.send(JSON.stringify({ type: 'ride_state', payload })); } catch (e) { /* the ride state stands */ }
+    try { this._send(ws, { type: 'ride_state', payload }); } catch (e) { /* the ride state stands */ }
   },
 
   /* Is this player where a board may roll, and free to get on?  Null when

@@ -164,7 +164,7 @@ export const gambleMethods = {
     const ws = this._wsBySessionId(pid);
     if (!ws) return;
     this._aceBoardRead().then((board) => {
-      try { ws.send(JSON.stringify({ type: 'ace_board', payload: board })); } catch (e) {}
+      try { this._send(ws, { type: 'ace_board', payload: board }); } catch (e) {}
     }).catch(() => {});
   },
 

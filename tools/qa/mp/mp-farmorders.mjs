@@ -111,6 +111,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const where = () => A.page.evaluate(({ s, t }) => {
         const e = Array.from(document.querySelectorAll(s)).find((q) => !t || (q.textContent || '').includes(t));
         if (!e) return null;
+        /* v2.3.5651: in view first: "Try again" is the last thing in a long panel, and a finger
+           put where it would be, under the band at the foot of the screen, lands on the band */
+        try { e.scrollIntoView({ block: 'center' }); } catch (x) { /* no scroll */ }
         const r = e.getBoundingClientRect();
         return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
       }, { s: sel, t: text || null });
@@ -239,9 +242,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const asked2 = await A.page.evaluate(() => window.__qaAsks.length);
     rec.ok('...asks once, and when that ask goes unanswered, offers Try again', v5b.retry && asked2 === 1, { retry: v5b.retry, asked2 });
     await A.page.evaluate(() => { window.__qaDrop = false; });
-    await fingerTap('[data-farm-orders] button', 'Try again');
+    /* v2.3.5651: the tap is made again, up to three times, until a SECOND farm_open leaves the
+       page (the counter above sees every one: it wraps S.channel.send): a tap on a button the
+       page has just drawn is lost on this box now and then (TRAPS §200) */
+    let retapped = 0;
+    for (let k = 0; k < 3; k++) {
+      await fingerTap('[data-farm-orders] button', 'Try again');
+      retapped++;
+      const sent = await until((v) => !v.old, 2500).then(() => A.page.evaluate(() => window.__qaAsks.length));
+      if (sent > asked2) break;
+    }
     const v5c = await until((v) => !v.old && /^New orders in \d/.test(v.reset || '') && v.rows.length === 3, 8000);
-    rec.ok(`...which brings the board back ("${v5c.reset}")`, !v5c.old && /^New orders in \d/.test(v5c.reset || '') && v5c.board && v5c.board.day === day, v5c);
+    rec.ok(`...which brings the board back ("${v5c.reset}")`, !v5c.old && /^New orders in \d/.test(v5c.reset || '') && v5c.board && v5c.board.day === day, { asked2, retapped, v5c });
     await shot(A, 'midnight');
 
     /* ── 6. the board switched off under an open window ── */

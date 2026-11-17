@@ -254,7 +254,7 @@ export const boardMethods = {
   _boardSend(pid, type, payload) {
     const ws = this._wsBySessionId && this._wsBySessionId(pid);
     if (!ws) return;
-    try { ws.send(JSON.stringify({ type, payload })); } catch (e) { /* display only */ }
+    try { this._send(ws, { type, payload }); } catch (e) { /* display only */ }
   },
 
   /* ═══ spin_board_request (index.js's router) ═══ */

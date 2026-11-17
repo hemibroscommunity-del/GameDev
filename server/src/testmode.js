@@ -159,7 +159,7 @@ export const testModeMethods = {
     const ws = this._wsBySessionId(playerId);
     if (!ws) return;
     try {
-      ws.send(JSON.stringify({ type: 'test_mode', payload: { on: this._testMode(this.playerState[playerId]) } }));
+      this._send(ws, { type: 'test_mode', payload: { on: this._testMode(this.playerState[playerId]) } });
     } catch (e) { /* the player is gone; their next join reads the record */ }
   },
 

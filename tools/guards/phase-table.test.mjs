@@ -169,7 +169,7 @@ const fileNamed = (name) => {
    since card L's arena door (#1930).
    Tag 5661 (the gatekeeper, sitting 23, main 8149d61): 15 -> 14, the count
    since card L's ride door (#1936). */
-export const TODO_LINE = 13;   /* v2.3.5663: lowered 14 -> 13 by the gatekeeper, sitting 25 (L's loading door, #1956) */
+export const TODO_LINE = 12;   /* v2.3.5669: lowered 13 -> 12 by the gatekeeper, sitting 31 (L's window door, #2000); v2.3.5663: 14 -> 13 (#1956) */
 
 /* the machines every side must have a row for: SHAPES part 5's names and
    step 5.3b's list (the plan's own `dungeon`, `connection`, `loading`,

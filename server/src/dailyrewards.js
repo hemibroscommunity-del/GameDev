@@ -1095,7 +1095,7 @@ export const dailyRewardsMethods = {
   _drSendProgress(pid, i, q) {
     const ws = this._wsBySessionId(pid);
     if (!ws) return;
-    try { ws.send(JSON.stringify({ type: 'daily_progress', payload: { i, n: q.n, g: q.g } })); } catch (e) { /* the state carries it later */ }
+    try { this._send(ws, { type: 'daily_progress', payload: { i, n: q.n, g: q.g } }); } catch (e) { /* the state carries it later */ }
   },
 
   async _drState(pid, rec, news) {
@@ -1174,6 +1174,6 @@ export const dailyRewardsMethods = {
       payload.kept = this.__drKept.get(pid);
       this.__drKept.delete(pid);
     }
-    try { ws.send(JSON.stringify({ type: 'rewards_state', payload })); } catch (e) { /* the next one carries it */ }
+    try { this._send(ws, { type: 'rewards_state', payload }); } catch (e) { /* the next one carries it */ }
   },
 };
