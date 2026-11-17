@@ -34,6 +34,7 @@ function check(name, cond, detail) {
 const src = (p) => readFileSync(new URL('../../' + p, import.meta.url), 'utf8');
 /* a missing module is FAIL lines, not a crash */
 let P = {};
+import { duelTo } from '../../src/game/duelDoor.js';   /* v2.3.5529: S._inDuel's one writer, given to the duel cases run here */
 try { P = await import('../../src/game/duelPending.js'); } catch (e) { P = {}; }
 const L = await import('../../src/game/duelLock.js');
 const has = (f) => typeof P[f] === 'function';
@@ -124,6 +125,7 @@ const ctx = vm.createContext({
   cue: () => {}, dropShield: () => {}, BT_AUDIO: { _now: () => 0 },
   String, Date,
   act,   /* v2.3.5190: the Accept's send leaves through the action door */
+  duelTo,   /* v2.3.5529: the duel's page door, the real one */
 });
 const onEvent = vm.runInContext(`(function (type, payload, S) { switch (type) { ${duelCases} } })`, ctx);
 const tapAccept = vm.runInContext(`(function (stateRef, duelRequest, setDuelRequest) { ${acceptBody} })`, ctx);

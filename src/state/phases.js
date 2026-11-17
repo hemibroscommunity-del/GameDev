@@ -320,15 +320,18 @@ export const PHASES = [
     today: [{ field: 'S._pvpAt' }, { field: 'S._pvpSkullType' }, { field: 'S._pvpSkullUntil' }],
   },
   {
-    name: 'duel', side: 'page', status: 'todo',
+    name: 'duel', side: 'page', status: 'door',
     what: 'The phone\'s copy of a duel: pending, on, over.',
-    field: null, states: ['none', 'pending', 'on'], fn: null, file: null,
+    field: 'S._inDuel', states: ['none', 'pending', 'on'],
+    fn: 'duelTo', file: 'src/game/duelDoor.js',
     clears: [
       { edge: 'rejoin', at: 'src/game/rejoinSlots.js rejoinClear' },
       { edge: 'end', at: 'src/networking/gameEvents.js processGameEvent' },
     ],
     rejoin: ['duel'],
-    today: [{ field: 'S._inDuel' }, { field: 'S._activeDuel' }],
+    held: { suite: 'server/test/duel-page-door.test.mjs' },
+    notes: ['S._activeDuel'],   /* v2.3.5529: a field the door writes beside its own, by the same call */
+    note: 'v2.3.5529: the door (DUEL_PAGE_WAYS start, resume, pending, drop, end, rejoin; switch ?dueldoor). Its note S._activeDuel is written beside it by the same call. The record\'s own marks (settleBy, prev) are duelPending.js\'s.',
   },
   {
     name: 'trade', side: 'page', status: 'todo',
@@ -342,12 +345,14 @@ export const PHASES = [
     today: [{ field: 'S._t2Live' }, { field: 'S._t2Leave' }, { field: 'S._t2QuietUntil' }, { field: 'S._t2DoneWatch' }, { field: 'S._t2LocalEnd' }],
   },
   {
-    name: 'party', side: 'page', status: 'todo',
+    name: 'party', side: 'page', status: 'door',
     what: 'The phone\'s party roster.',
-    field: null, states: ['none', 'member'], fn: null, file: null,
+    field: 'S._party', states: ['none', 'member'],
+    fn: 'partyTo', file: 'src/game/partyDoor.js',
     clears: [{ edge: 'rejoin', at: 'src/networking/wsClient.js onmessage' }],
     rejoin: ['party'],
-    today: [{ field: 'S._party' }],
+    held: { suite: 'server/test/party-page-door.test.mjs' },
+    note: 'v2.3.5529: the door (PARTY_PAGE_WAYS state, gone, rejoin; switch ?partydoor). The HUD (setParty, React state) is the callers\'.',
   },
   {
     name: 'ride', side: 'page', status: 'todo',

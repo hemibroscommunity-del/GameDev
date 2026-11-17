@@ -18,6 +18,7 @@
 import { processGameEvent } from '@/networking/gameEvents.js';
 import { veilTo } from '@/game/veilDoor.js';   /* v2.3.5527: the loading door, the veils' one writer (S._netHold its `net` reason; card L) */
 import { connTo } from '@/game/connectionDoor.js';   /* v2.3.5528: the connection door, S._realtimeStatus's one writer (card L) */
+import { partyTo } from '@/game/partyDoor.js';   /* v2.3.5529: the party's page door (card L) */
 import { actionWay, namesOfWay, settledSends, doorRefuse, setActionTransport, act } from '@/game/actions.js'; /* v2.3.5185: the action door's rows (grand plan step 5.8); v2.3.5189: and act(), the door, for the page's own requests here */
 import { chestRevealBus } from '@/ui/mobile/ChestReveal.jsx'; /* v2.3.2820: the daily chest's reveal */
 import { loginSpinBus } from '@/game/loginSpinWheel.js'; /* v2.3.4295: the login wheel */
@@ -1778,7 +1779,7 @@ export function setupWebSocket(ctx) {
                  HUD on every fresh sync.  The join path re-sends
                  party_state right after state_sync when the roster
                  survived, so a real party pops straight back. */
-              try { if (setParty) setParty(null); S._party = null; } catch (e) {}
+              try { if (setParty) setParty(null); partyTo(S, null, 'rejoin'); } catch (e) {}   /* v2.3.5529: the party's page door */
               /* v2.3.4362: and what the old socket's trade left that no worker
                  re-sends -- an invite card, a waiting drawer, a receipt and its
                  watcher (game/tradeSlot.js).  NOT a window showing an open

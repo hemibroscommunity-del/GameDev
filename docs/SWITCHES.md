@@ -71,6 +71,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `arrowlane` | worker | switch | v2.3.5540 | 2026-11-14 | false | logic |  | no | Arrows and bolts are back on the plain 210 ms floor: an archer who steps in between shots loses an arrow that lands too soon after the last. |
 | `bigorb` | worker | switch | v2.3.2849 | 2026-09-24 | false | logic |  | no | Un-advertises the staff's big orb: a phone that joins after fires the old three orbs, with no blast. |
 | `?bowfeel` | page | switch | v2.3.4802 | 2026-11-11 | =0 (remembered; =1 forgets) | logic |  | no | The bow's old flick, not its draw, on this device. |
+| `bowshot` | worker | switch | v2.3.5550 | off | true | logic |  | no | An opt-in, off (the owner's to turn on: it changes how combat is judged): thrown (`bowshot: true`), an ordinary bow claim lands only on an arrow -- one whose relay the worker counted at the bow's own rate, or one drawn from that allowance -- each monster once an arrow, 1 + Piercing targets. |
 | `bowvolley` | worker | switch | v2.3.2808 | 2026-09-24 | false | logic |  | no | Un-advertises the bow's volley: a phone that joins after fires the old single arrow and blast. |
 | `?combatreset` | page | switch | v2.3.5206 | 2026-11-14 | =0 | logic |  | no | A fight you picked, a roll or a lunge, the hit marks on the ground, a kill's XP still waiting and another player's damage numbers still queued carry over a change of place again, each ending on its own clock or its own check, not at the zone door. |
 | `disable_threats` | worker | switch | v2.3.1150 | 2026-07-03 | true | logic |  | no | Thrown, every relayed threat handshake is dropped. |
@@ -328,6 +329,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `movebudget` | worker | switch | v2.3.3325 | 2026-10-17 | false | logic |  | no | The move budget off: the per-message 80, the refusals and the three bypasses as before. |
 | `?movementreset` | page | switch | v2.3.5204 | 2026-11-14 | =0 | logic |  | no | A climb and a swim end a frame after a change of place again, on their own off-the-Wheel checks, not at the zone door. |
 | `movepath` | worker | switch | v2.3.3726 | 2026-10-28 (v2.3.3744) | false | logic |  | no | No glide from the next tick; every phone is told to send every move again. |
+| `movetop` | worker | switch | v2.3.5549 | off | true | logic |  | no | An opt-in, off (the owner's to turn on: it changes how moves are judged): thrown (`movetop: true`), the move's bound refills at the player's own top speed (the walk x agility and swiftness x the fastest amulet x the path, with headroom; the buff, the move stat, the ride, the sprint) instead of a flat 500 px a second; the burst it holds stays the old size. |
 | `pathall` | worker | switch | v2.3.3726 | 2026-10-28 (v2.3.3744) | false | logic | `movepath` | no | Only a phone that asks with ?diet=1 gets the move glide. |
 | `rest` | worker | switch | v2.3.3539 | 2026-10-21 | false | logic |  | no | Un-advertises the Hotel's rest: it rests nobody and pays no Well Rested XP. |
 | `ride` | worker | switch | v2.3.3776 | 2026-10-29 | false | logic |  | no | Un-advertises riding and ends every ride on the rider's next move. |
@@ -580,6 +582,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `chatguard` | worker | switch | v2.3.3396 | 2026-10-18 | false | logic |  | no | All three chat guards off: chat and emotes spend the relay bucket again, nothing filtered or cleaned. |
 | `clanparty` | worker | switch | v2.3.3321 | 2026-10-17 | false | logic | `partykeep` | no | No clan is turned into a party; clans work as they did. |
 | `dueldoor` | worker | switch | v2.3.5211 | 2026-11-14 | false | logic |  | no | A resolved duel's end can be written again, as the line before the duel door would have (nothing does today). |
+| `?dueldoor` | page | switch | v2.3.5529 | 2026-11-17 | =0 | logic |  | no | The phone's duel takes any write its own code asks again (a duel with no opponent, an end that leaves one), as the lines before the duel's page door; every caller writes what the door allows today. |
 | `duelzone` | worker | switch | v2.3.4371 | 2026-11-10 | false | logic |  | no | No zone starts a duel's clock (one running is cleared at the next zone write). |
 | `emotemoves` | worker | switch | v2.3.3392 | 2026-10-18 | false | logic | `emotes` | no | No emote move is relayed and no pose kept; the plain emotes go on. |
 | `emotes` | worker | switch | v2.3.3391 | 2026-10-18 | false | logic |  | no | No emote is relayed, and caps.emotes false shuts the picker at the next join. |
@@ -587,6 +590,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `invitepace` | worker | switch | v2.3.5624 | 2026-11-15 | false | logic |  | no | A trade invite card and a friend request card go every time again (no 5-second pace a target). |
 | `leaderidleat` | worker | switch | v2.3.4378 | 2026-11-10 | false | logic |  | no | The party leader's idle clock counts only a `seen` above 0, as before. |
 | `partydoor` | worker | switch | v2.3.5212 | 2026-11-14 | false | logic |  | no | A player can be put in a party that does not list them, as the lines before the party door could have (nothing does today). |
+| `?partydoor` | page | switch | v2.3.5529 | 2026-11-17 | =0 | logic |  | no | The phone's party takes any write its own code asks again (a roster that is no record, a clear that writes one), as the lines before the party's page door; every caller writes what the door allows today. |
 | `partykeep` | worker | switch | v2.3.3276 | 2026-10-17 | false | logic |  | no | Parties are not kept: the old cap and the away window remove a dropped member. |
 | `posedoor` | worker | switch | v2.3.5216 | 2026-11-15 | false | logic |  | no | A held pose takes any id a caller asks, and the dead can be written posing, as the line before the pose door could have (the phone's pose handler still checks both first). |
 | `power` | worker | switch | v2.3.5481 | 2026-11-14 | false | logic |  | no | Un-advertises the power index: no board report carries one, so the Power board empties as players report and the other boards are as they were. |
