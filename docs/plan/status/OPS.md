@@ -1,5 +1,5 @@
 card: OPS
-branch: claude/plan-ops-8-paged (on main cfcd70b1; each OPS PR on its own branch)
+branch: claude/plan-ops-10b-prfresh (on main cfcd70b1; each OPS PR on its own branch)
 prs: #1951 (5607), #1957 (5613), #1966 (5612), #1968 (5614): ready
 state: ready
 

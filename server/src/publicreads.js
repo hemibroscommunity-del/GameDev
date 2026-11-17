@@ -17,9 +17,11 @@
  *     read (a place, a buy, a cancel, a list, a bid, a join, a leave) drops
  *     every answer kept for it, before and after it runs, so the player who
  *     just acted reads their own act at once (and a read begun before the
- *     write is not kept after it); a change the room makes by
- *     itself (an order expiring, an arena round moving on, a store offer
- *     taken over the socket) shows within KEEP_MS;
+ *     write is not kept after it); v2.3.5613 (sitting 19b's LOW): the
+ *     socket's writes on a surface drop it too (a store offer, its cancel
+ *     and its reply; an arena sponsorship: index.js); a change the room
+ *     makes by itself (an order expiring, an arena round moving on) shows
+ *     within KEEP_MS;
  *   - PACED: a read that would wake the room (not kept) counts against its
  *     address (flood.js requestIp: Cloudflare's stamp; absent locally and
  *     loopback never counted); past PER_S in one second, 429 with
