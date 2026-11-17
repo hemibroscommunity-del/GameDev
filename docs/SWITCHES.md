@@ -676,6 +676,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `disable_dungeons` | worker | switch | v2.3.1150 | 2026-07-03 | true | logic |  | no | Thrown, every dungeon start is refused with a message. |
 | `dungeonbag` | worker | switch | v2.3.3556 | 2026-10-22 | false | logic |  | no | A dungeon death drops its pile and empties the bag, as before. |
 | `dungeondoor` | worker | switch | v2.3.5215 | 2026-11-14 | false | logic |  | no | A dungeon run's end and its boss can be written again, as the lines before the dungeon door could have (the tick asks neither twice today). |
+| `?dungeondoor` | page | switch | v2.3.5535 | 2026-11-17 | =0 | logic |  | no | Your run on the phone takes any write its own code asks again (an enter that is not in, a leave that is), as the lines before the dungeon's page door; every caller writes what the door allows today. |
 | `dungeonlive` | worker | switch | v2.3.4423 | 2026-11-10 | false | logic |  | no | Any `dungeon:` id on its shape is taken again, live run or not. |
 | `eventplace` | worker | switch | v2.3.3245 | 2026-10-14 | false | logic |  | no | Every event goes to everyone again, from the next tick. |
 | `fightlock` | worker | switch | v2.3.3183 | 2026-10-12 | false | logic |  | no | The bag is no longer locked in a fight on the roads the fight lock's table names `fightlock`. |

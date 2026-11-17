@@ -24,6 +24,7 @@
  * The code under test is cut from src/ and run here with stubs.
  */
 import { readFileSync } from 'node:fs';
+import { dungeonTo } from '../../src/game/dungeonDoor.js';   /* v2.3.5535: the respawn's run writes go through the dungeon's page door */
 import { runResets } from '../../src/game/resetOn.js';   /* v2.3.5203: the zone door's new call (card L) */
 
 let passed = 0, failed = 0;
@@ -89,10 +90,10 @@ const gone = (S) => S._campfire === null && S._peerCampfires.size === 0 && S._ba
   const body = block(src('src/game/respawn.js'), 'export function applyLocalRespawn(S, zone) {');
   check('2a applyLocalRespawn found', !!body);
   const names = ['dropDungeonZone', 'releaseLeftZoneArt', 'updateZoneDimensions', 'BT_AUDIO', 'generateZoneMap', 'ZONES', 'TILE',
-    'deathLine', 'chatLogBus', 'wantWheelSpawn', 'veilWheelTrip', 'localStorage', 'cue', 'changeZone'];
+    'deathLine', 'chatLogBus', 'wantWheelSpawn', 'veilWheelTrip', 'localStorage', 'cue', 'changeZone', 'dungeonTo'];
   const fn = new Function(...names, 'return function (S, zone) {' + body + '};')(
     () => {}, () => {}, () => {}, { startZoneAmbient() {} }, () => [[0]], { town: { w: 10, h: 10 } }, 32,
-    () => null, { bump() {} }, () => {}, () => {}, { setItem() {} }, () => {}, changeZone);
+    () => null, { bump() {} }, () => {}, () => {}, { setItem() {} }, () => {}, changeZone, dungeonTo);   /* v2.3.5535: the dungeon's page door, the real one */
   const S = Object.assign({ currentZone: 'wheel', player: { x: 0, y: 0 }, rpg: {}, _dying: true }, leftovers());
   fn(S, 'town');
   check('2b a respawn puts you in town', S.currentZone === 'town', S.currentZone);
@@ -103,10 +104,10 @@ const ge = src('src/networking/gameEvents.js');
 {
   const body = block(ge, 'startDungeonClear(S, payload.zone, Date.now(), function () {');
   check('2d the Workshop clear\'s way home found', !!body);
-  const names = ['leaveWheelDungeon', 'ZONES', 'updateZoneDimensions', 'generateZoneMap', 'TILE', 'FARM_FROM_WORKSHOP', 'holdFarmUntilReady', 'changeZone', 'S'];
+  const names = ['leaveWheelDungeon', 'ZONES', 'updateZoneDimensions', 'generateZoneMap', 'TILE', 'FARM_FROM_WORKSHOP', 'holdFarmUntilReady', 'changeZone', 'S', 'dungeonTo'];
   const S = Object.assign({ currentZone: 'dungeon:ws1', _serverDungeon: 'dungeon:ws1', player: { x: 0, y: 0 }, channel: null }, leftovers());
   const fn = new Function(...names, 'return function () {' + body + '};')(
-    () => false, { farm_home: { w: 40, h: 30 } }, () => {}, () => [[0]], 32, { x: 10, y: 10 }, () => {}, changeZone, S);
+    () => false, { farm_home: { w: 40, h: 30 } }, () => {}, () => [[0]], 32, { x: 10, y: 10 }, () => {}, changeZone, S, dungeonTo);   /* v2.3.5535: the dungeon's page door */
   fn();
   check('2e the Workshop clear takes you to the farm', S.currentZone === 'farm_home', S.currentZone);
   check('2f ...without the arena\'s fire as a Cook spot there, or the lock', gone(S), { campfire: S._campfire, lock: S.lockedTarget });
