@@ -131,7 +131,8 @@ export const cadenceMethods = {
       if (streak % STK.FREEZE_EVERY === 0) fz = Math.min(STK.FREEZE_MAX, fz + 1);
       const best = Math.max(streak, Math.floor(Number(rec && rec.best) || 0));
       const out = { period: today, streak, fz, saved, best };
-      await this._cadenceSet('login', playerId, out);
+      /* v2.3.5610: a fresh guest's join writes no streak (guestlazy.js): its readers take none as day 1 */
+      if (!(this._guestLazy && this._guestLazy(playerId))) await this._cadenceSet('login', playerId, out);
       return out;
     } catch (e) { return null; /* a streak must never block a join */ }
   },
