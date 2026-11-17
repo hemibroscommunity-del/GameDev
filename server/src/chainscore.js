@@ -84,6 +84,28 @@ export const CHAIN_SCORE = {
   MILESTONES: [2, 5, 10, 20, 30, 40, 50, 75, 100],
   SUM_MILESTONES: [4, 10, 25, 50, 100, 150, 200, 250, 300],
   KEY: (pid) => 'chain_score:' + pid,
+  /* ═══ v2.3.5712 (card SEC PR 13): THE CHAIN'S DAY BUDGET ═══
+     The second red team: every new character's first level-up made the
+     game's wallet pay a fee, with no ceiling a day, no live flag, and a fee
+     taken at twice the node's quote whatever it was.  Now:
+       - KILL SWITCH `chainscore: false` in the live flags: nothing is sent
+         (a checkpoint answers `switched-off`; nothing stored, so it is sent
+         at the next level-up once the switch is back);
+       - at most SENDS_DAY sends a UTC day: past it a checkpoint answers
+         `day-ceiling` and stores nothing, so the player's next level-up
+         after the day turns sends it (the series is cumulative: nothing is
+         lost).  The count is MEMORY ONLY: no record a send already writes
+         is the room's (`chain_score:` is the player's), and a new write is
+         the owner's call -- so a deploy or an eviction starts the day's
+         count again, at most SENDS_DAY more that day;
+       - a send whose most possible fee (its gas limit at maxFeePerGas) is
+         over FEE_MAX_WEI is not sent (`fee-over-ceiling`, chainwriter.js),
+         and gives its day's place back.  0.001 ETH: half the 0.002 the
+         runbook funds the relayer with (a first fourteen-skill write at
+         Hemi's usual price is a fraction of a cent). */
+  FLAG: 'chainscore',
+  SENDS_DAY: 200,
+  FEE_MAX_WEI: '1000000000000000',
 };
 
 export const chainScoreMethods = {
@@ -92,6 +114,23 @@ export const chainScoreMethods = {
    *  what lets this ship before the contract is deployed. */
   _chainScoreConfigured() {
     return !!(this.env && this.env.RELAYER_KEY && this.env.SCORES_CONTRACT);
+  },
+
+  /** v2.3.5712: `chainscore: false` in the live flags: nothing sent. */
+  _chainScoreOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, CHAIN_SCORE.FLAG) && !f[CHAIN_SCORE.FLAG]);
+  },
+
+  /** v2.3.5712: take one of the day's sends (memory only, the header):
+   *  false past SENDS_DAY. */
+  _chainDayTake(now) {
+    const d = new Date(now);
+    const day = d.getUTCFullYear() * 10000 + (d.getUTCMonth() + 1) * 100 + d.getUTCDate();
+    if (!this._chainDay || this._chainDay.day !== day) this._chainDay = { day, n: 0 };
+    if (this._chainDay.n >= CHAIN_SCORE.SENDS_DAY) return false;
+    this._chainDay.n++;
+    return true;
   },
 
   /** RPC options for every chain call this module makes (v2.3.1682).  One
@@ -230,6 +269,7 @@ export const chainScoreMethods = {
   async _chainScoreCheckpoint(playerId, ps) {
     if (!playerId || !ps) return { ok: false, reason: 'no-player' };
     if (!this._chainScoreConfigured()) return { ok: false, reason: 'not-configured' };
+    if (!this._chainScoreOn()) return { ok: false, reason: 'switched-off' };   /* v2.3.5712 */
 
     const level = ps.level || 0;
     const milestone = this._chainScoreMilestone(level);
@@ -316,6 +356,9 @@ export const chainScoreMethods = {
         const storedNonce = (stored && stored.nonce) || 0;
         const nonce = Math.max(storedNonce, chainNonce) + 1;
 
+        /* v2.3.5712: the day's sends (CHAIN_SCORE header): past them, stored
+           nothing, sent at a level-up after the day turns */
+        if (!this._chainDayTake(Date.now())) return { ok: false, reason: 'day-ceiling' };
         const sent = await sendRecordScore({
           playerId,
           skills,
@@ -325,7 +368,9 @@ export const chainScoreMethods = {
           priv,
           chainId: Number(this.env.CHAIN_ID || CHAIN.id),
           opts: this._chainRpcOptions(),
+          feeMaxWei: CHAIN_SCORE.FEE_MAX_WEI,   /* v2.3.5712: the fee's ceiling */
         });
+        if (!sent.ok && sent.reason === 'fee-over-ceiling' && this._chainDay) this._chainDay.n = Math.max(0, this._chainDay.n - 1);   /* not sent: its place back */
         return sent.ok ? { ...sent, nonce } : sent;
       });
 
@@ -367,6 +412,7 @@ export const chainScoreMethods = {
    */
   _chainScoreOnLevelUp(playerId, ps) {
     if (!this._chainScoreConfigured()) return;
+    if (!this._chainScoreOn()) return;   /* v2.3.5712: the switch */
     if (!this._chainScoreMilestone(ps && ps.level)) return;   // cheap pre-filter
     try {
       Promise.resolve(this._chainScoreCheckpoint(playerId, ps)).catch(() => {});
@@ -398,6 +444,9 @@ export const chainScoreMethods = {
     const out = {
       ok: true,
       configured: this._chainScoreConfigured(),
+      /* v2.3.5712: the switch, and the day's sends so far (memory only) */
+      on: this._chainScoreOn(),
+      day: { sends: this._chainDay ? this._chainDay.n : 0, ceiling: CHAIN_SCORE.SENDS_DAY, feeMaxWei: CHAIN_SCORE.FEE_MAX_WEI },
       contract: (this.env && this.env.SCORES_CONTRACT) || '',
       chainId: Number((this.env && this.env.CHAIN_ID) || CHAIN.id),
       rpc: (this.env && this.env.CHAIN_RPC) || CHAIN.rpc,
