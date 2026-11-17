@@ -1,6 +1,6 @@
 card: SEC
 branch: claude/plan-sec-<n>-<topic> (stacked: each PR on the one before until it merges)
-prs: #2030-#2049 merged; #2054: sitting 39; #2055-#2057: sitting 40; #2059-#2063 (5715-5719): CI
+prs: #2030-#2054 merged; #2055-#2063 (5712-5719): sitting 40, main merged in
 state: ready
 
 ## Done
@@ -17,7 +17,7 @@ state: ready
 
 ## Next
 
-- #2059-#2063: CI green, then ready and to the gatekeeper. Then the card
+- #2055-#2063: sitting 40. Merge main in as it moves. Then the card
   is done.
 
 ## Found
