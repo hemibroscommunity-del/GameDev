@@ -161,3 +161,49 @@ on every page, as 61 other probes.
   word, the row.
 - M2 #2085 (5344): `render-tables` green; `M-tables.md` (54 tables, 79
   lone constants); the card's line 5. Lands inside #2084.
+
+## The rehearsal
+
+`tools/dev/gatekeeper.mjs` on bdfa8734 with the sixteen listed code heads
+(#2085 inside #2084), in the order tools, server, client (the list's
+order with K2 first gives the same tree: every merge clean): tree
+9224a787. precheck: only the 5-minute server-tests limit (the settled
+one, Found (q)) red, 3 WARN (the version-tag notes: this PR carries RV's
+5800 by its stacking, M2's next branch carries 5344, the 48 h note);
+build PASS (17 s); questline 187/187 (673 s). Then, in the same tree,
+the twenty server suites the listed PRs touch or turn on (flood-ceiling,
+market, market-own-place, market-settle, cookstart-on, claims-gain,
+test-mode, switches-thrown, one-program, after-frame, liveops,
+keep-switches, gold-door, inbox, stash-door, anticheat, fish-variants,
+gather-hits, lifeskills-economy, refusal-door): all green (623 s),
+`switches-thrown` (`roomceiling` included) green on the box. Each
+session's own full `npm test` green on its head (K2 514, RV 514, V2 518,
+U2 518, M 514, T2 513).
+
+CI on the listed heads at the close: `test` green on #2073, #2081,
+#2076 to #2080, #2074, #2082, #2072, #2083, #2071, #2075, #2087, #2089
+(and playable, lint-build, memory-budget where they run, green or
+running); #2084's `test` running (merge it once green).
+
+## Found (carried, and new)
+
+- Sitting 41's (a) to (q) carried (`census/review-z41.md`).
+- New: (r) main's worker deploy of sitting 41's batch (8b8b5a87) failed
+  on `switches-thrown`'s `roomceiling` row (Found (q)); the planning
+  session re-ran it. K2's #2081 (line 2) puts flood-ceiling 4 on the
+  test's clock. (s) The state ledger's 233 rows sitting with a
+  suggestion (`render` 118, `ui` 88, the files M and M2 hold): card L is
+  done and no card owns them, so 5.3 stays open. (t) RV #2083's nits
+  (wire/http.js's market rows name no new flag); K2 #2081's bound in its
+  body; T2's reader takes a repeated name's first value; M #2089's
+  heldsweep sample (the full run offered).
+- U2's Found: `public/audio/ambient/wind-dunes.mp3` has no CREDITS.md
+  row (its source is the owner's; asked).
+
+## To sitting 43
+
+Came at the close, not reviewed: T2 #2090 (5743, on #2087; meets #2084's
+`switch-reader` line: merges `main` after #2084 and sets the line); RV
+#2091 (5802, `risekeep`, on #2083; deploys); K2 #2092 (5729,
+`guestshare`, on #2081); #2088 (site hardening; not in this sitting's
+queue).
