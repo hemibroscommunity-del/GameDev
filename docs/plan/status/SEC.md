@@ -1,6 +1,6 @@
 card: SEC
 branch: claude/plan-sec-<n>-<topic> (stacked: each PR on the one before until it merges)
-prs: #2030-#2049 merged; #2054: sitting 39; #2055-#2057: CI; PRs 16-20 (5715-5719): suites
+prs: #2030-#2049 merged; #2054-#2056: Z39; #2057-#2061: CI; PR 20 (5719): suite
 state: ready
 
 ## Done
@@ -28,12 +28,11 @@ state: ready
   key in (PR 17): its words mislead now (DevPanel.jsx, the page).
 - src/public/_redirects and favicon.svg ship neither (publicDir is
   public/): the SPA fallback and the icon are not live. Not item 18's.
+- Item 16 (planner): shield, cosmetic and amulet claims still come in
+  through the join's claim; nothing guards them yet (gearstash.js).
 - Sitting 38: received friend requests never expire; 50 throwaways fill a
   player's inbox (friends.js). Later: expire them by `at`.
 
 ## Needs
 
-- Item 16 says the join stops merging stash claims once captured; I
-  stopped armour and legs only (the worker keeps no live shield, cosmetic
-  or amulet stash: stopping those loses a piece earned this session). All
-  five, or as built? (PR 16 says so.)
+- None. (Item 16 answered by the planning session: as built.)
