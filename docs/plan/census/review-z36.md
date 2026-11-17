@@ -14,10 +14,13 @@ each merge:
 1 SEC #2030 14cda149138b1cc532dcb2bad2a33b214cb59732 -> 45126e74e7f4131d678d975e61d31bb9b5d50fcd
 2 K #2028 30d7681eba2b841d800cedb446a1d8ec826b7194 -> 7f731f860f16da5bbc0964abeb44624b3a127352
 3 L #2031 37bb49117d6db24f038ed9c99de88be17d47023f -> d665cff64f9050b7e1b1f31a3e2e97325d2211da
-4 Z (this PR): its head and tree are in the list (`status/Z.md`).
+4 L #2033 97af140bad7b63e3f1628acb76353251c6a64736 -> e8c01313ce16762b1bff8a93c4cab1f1339a8fad
+5 Z (this PR): its head and tree are in the list (`status/Z.md`).
 
 The bases, step by step: #2030 52244a81; #2028 fe1297b0 (#2024's head,
-on `main`); #2031 52244a81; this PR 52244a81. One line each.
+on `main`); #2031 52244a81; #2033 37bb4911 (#2031's head: it holds #2031, merged in
+at 16:21 so its status file and #2031's agree); this PR 52244a81. One
+line each.
 
 #2028 was built on #2024 (its one base fe1297b0, #2024's head, now on
 `main`): the base GitHub shows (01b8f33d) is only the `main` it was
@@ -105,6 +108,26 @@ L's block 5520-5539. `test` green on 37bb4911 (16:09 UTC).
   deploy, one).
 - After it lands the phase line can go 7 -> 6 (sitting 37: only a merged
   count is ticked).
+
+## L #2033 (5532): a relay's damage floater held to its form
+
+READY (reviewed in full: `src/`). Card SEC's find, handed to card L by
+the planner (L's message, 16:19 UTC). Tag 5532, L's block. It sits on
+#2031: its first head f86bd164 (on `main`) met #2031 in
+`docs/plan/status/L.md`; at Z's word L merged #2031's head (37bb4911,
+no newer `main`) in and sent 97af140b. Over #2031 it changes three files
+only: `gameEvents.js`, `relay-popup.test.mjs`, `status/L.md`.
+- `src/networking/gameEvents.js` `monster_dmg_at` (a relay: another
+  phone's words, passed on): the floater's text is `'-' + (Number(dmg)
+  || 0)` and its place finite numbers, where it drew `payload.dmg` and
+  `x`, `y` as sent (a string a sender chose drawn over your world). An
+  honest number draws as before. Nothing else in the case changes.
+- New suite `relay-popup` (6 checks): runs the real case, cut from the
+  event switch (found by system, `filesOf`), in a sandbox.
+- Review note, not a hold: a damage of `Infinity` still draws
+  "-Infinity" (a number, never a sender's words).
+- Only `server/test/` under `server/`: DEPLOYS the worker (with the
+  others, one).
 
 ## The rehearsal
 

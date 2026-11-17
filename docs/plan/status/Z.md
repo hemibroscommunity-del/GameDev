@@ -5,14 +5,14 @@ state: ready
 
 ## Done
 - Sitting 35 merged (`main` 52244a81: K #2024, L #2027, RT #2026, Z
-  #2029). Sitting 36 (this list), reviewed and rehearsed on 52244a81:
-  `census/review-z36.md`. This PR: the phase line 9 -> 7 (#2027); the
-  plan noted for sitting 35's merges (4.2: #2024; 5.3b: #2027);
-  `status/RT.md` done (the planner: its session ended).
+  #2029). Sitting 36: `census/review-z36.md`. This PR: the phase line
+  9 -> 7 (#2027); the plan noted for sitting 35's merges (4.2: #2024;
+  5.3b: #2027); `status/RT.md` done (the planner: its session ended).
 
 ## The list: merge in this order, each "Create a merge commit"
 1 SEC #2030 (5700, card SEC, its block; documents) · 2 K #2028 (5553,
-`cookstart`, OFF) · 3 L #2031 (5531, the arena's page door, ON) · 4 this
+`cookstart`, OFF) · 3 L #2031 (5531, the arena's page door, ON) · 4 L
+#2033 (5532, a relay's floater held to its form; holds #2031) · 5 this
 PR. All based on `main`, one merge base at every step. The worker deploys
 once (K's `server/src/`; L's `server/test/`).
 
