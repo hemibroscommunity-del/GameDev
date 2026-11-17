@@ -364,8 +364,6 @@ const code = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`\\])\/\
   check('8. v2.3.5239: the fill and the glint have their way back in drawLanes.js PROGRAMS', /name: 'fill',[^\n]*back: 'no one-colour glow'/.test(progs) && /name: 'glint',[^\n]*back: 'the filtered pieces plain'/.test(progs));
 }
 
-console.log(`\n${passed} passed, ${failed} failed`);
-if (failed) process.exit(1);
 
 /* ── 9. v2.3.5238 (14d): the clip -- its two programs, no way back, named ── */
 {
@@ -388,3 +386,6 @@ if (failed) process.exit(1);
     && /selfQueue\('clip', renderer, rts, wants, \(\) => \{ setHairClipStencil\(false\); \}/.test(hcc));
   check('9. v2.3.5239: the clip\'s way back in drawLanes.js PROGRAMS', /name: 'clip',[^\n]*back: 'the alpha mask'/.test(src('src/game/drawLanes.js')));
 }
+
+console.log(`\n${passed} passed, ${failed} failed`);
+if (failed) process.exit(1);

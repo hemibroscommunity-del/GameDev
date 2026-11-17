@@ -11,6 +11,7 @@ import { weaponDisplayName } from '@/ui/mobile/sheet/equipModel.js';
 import { TRAP_ICON_URL } from '@/rendering/controlsPreload.js';
 import { OWNER_ICON } from '@/data/ownerIcons.js';
 import { C, ITEMS_V, COIN, XP, Icon, Cost, Chip, Lock, Btn, Row } from './BenchParts.jsx';
+import { act } from '@/game/actions.js';   /* v2.3.5190: the page's requests leave through the action door (card K PR 7) */
 
 /* ═══ v2.3.3667: THE WOODWORKER, REBUILT AFTER THE BLACKSMITH ═══
  *
@@ -114,7 +115,7 @@ export function WoodworkPanel({ rpgState, stateRef }) {
   }, [busy]);
   const ask = (key, msg, { sig, done, fail, kind }) => {
     if (!S.channel || busy) return;
-    try { S.channel.send(msg); } catch (e) { return; }
+    try { act(msg.type === 'broadcast' ? msg.event : msg.type, msg.payload); } catch (e) { return; }   /* v2.3.5190: through the action door (actions.js): a broadcast's name is its event */
     pending.current = { key, sig, before: sig(), done, fail, kind };
     setBusy(key);
   };
