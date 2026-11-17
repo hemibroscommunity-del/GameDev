@@ -1,7 +1,7 @@
 card: K
 branch: claude/plan-k-14f-cookstart (5553, on #2024; the second block 5540-5559)
-prs: #1822 to #2006, #2003, #2013, #2014, #2018, #2021, #2023 merged; open: #2024 (5551), 5553 (this branch, pushed)
-state: ready
+prs: #1822 to #2006, #2003, #2013, #2014, #2018, #2021, #2023, #2024 merged; open: #2028 (5553, sitting 36)
+state: done
 
 ## Done
 
@@ -14,13 +14,14 @@ state: ready
 
 ## Next
 
-- 5549, 5550 merged; 5551 `swordswing`, `movetop` ON ("Go recommended");
-  5553 `cookstart` OFF (the cook 1.59 -> 0.99). The bow's reach: no gain.
+- None: card K is done (the planner, 2026-11-17). Item 14 closed: 5549,
+  5550, 5551 (`swordswing`, `movetop` ON), 5553 `cookstart` OFF (the cook
+  1.59 -> 0.99). The bow's reach: no gain. The harvest's grade: a Found.
 - 5553 trips precheck's 5-minute `npm test` cap (312 s, all green alone):
   the planner, pushed with CI's `test` as the gate (a settled item).
-- Later (the planner): walls on the worker (the Wheel's coast): a new
-  system and worker memory, for when real players come.
-- wsClient.js: done for good (told L). index.js, combat.js: 14 still.
+- Later (the planner): walls on the worker (the Wheel's coast).
+- The second red team's findings go to card K2 (a fresh session).
+- wsClient.js, index.js, combat.js: done for good (told L).
 
 ## Found
 
