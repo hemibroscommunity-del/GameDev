@@ -18,8 +18,7 @@ state: ready
 - PR 8 (5808): loginkeys.js SEC-F5 (`oldkeyheld`).
 - PR 9 (5809): MS-5, MS-6 (`offerpend`, `leftoverheal`).
 - PR 11 (5811): friends.js ACC-5, SEC-F4 (`friendfix`).
-- PR 14 (5814): S6, S7 (`cleanmore`, `namestaff`). 7 FAIL on main.
-- PR 15 (5815): the rewind names login acts since (`rewindsays`).
+- PR 14 (5814): S6, S7 (`cleanmore`, `namestaff`). PR 15 (5815): `rewindsays`.
 - PR 16 (5816): the pass words. PR 13 (5813): the jackpot re-check.
   Then S3 and `track` (after card L's index.js).
 
