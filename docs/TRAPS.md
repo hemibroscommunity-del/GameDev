@@ -306,6 +306,8 @@ after the fire was lit. The unit suite could not see it, because the
 missing piece was between the two things it mocks. Caught by
 `tools/qa/mp/mp-authority.mjs`, which asks the worker.
 
+Held by: tools/guards/action-door.test.mjs (tag 5764).
+
 ## 19. Reading "PvP is opt-in" as "PvP hits who you aimed at"
 
 **Tempting:** the PvP path looks target-shaped from the client. You lock
@@ -1996,6 +1998,8 @@ place cannot reproduce this.
 **Related:** §21 (an instrument that measures the wrong quantity reports green).
 
 ---
+
+Held by: tools/guards/traps-phone-memory.test.mjs (tag 5763).
 
 ## §50 — A derived-geometry reservation outlives the things it reserved (v2.3.2320)
 
@@ -5559,6 +5563,8 @@ release what it baked, not only what a zone change clears. And "it is freed"
 is a claim about what still REACHES the object, so prove it with a count after
 a forced GC (mp-bakeleak), not by reading the release.
 
+Held by: tools/guards/traps-phone-memory.test.mjs (tag 5763).
+
 ## 140. "Hide it from the renderer and it is gone" (v2.3.3145)
 
 **The plausible move.** Something the player should not see yet -- a resource
@@ -6180,6 +6186,8 @@ off by that difference under load; with the pacer it is off by about 2 ms
 until the thread is full.  And a Node test that captures the tick from
 `setInterval` must never see the interval set again (`WebSocketPair` is the
 runtime check, `tickpace.js`).
+
+Held by: tools/guards/traps-frame.test.mjs (tag 5764).
 
 ## 171. "mp-wheelbreak's arrows stick, so the bow shoots props" (v2.3.3206)
 
@@ -6842,6 +6850,8 @@ error in the page sends a report) and the safety net (the test takes the
 context bare first): on main without it the report took the canvas and the minimap
 covered the screen; now the renderer's context every time, the minimap in its
 box.
+
+Held by: tools/guards/traps-frame.test.mjs (tag 5764).
 
 ## 195. "A socket with no Origin is a forger's: refuse it" (v2.3.3312)
 
@@ -7731,6 +7741,8 @@ they did; `?onebatch=1` tests the one program here anyway.
 **v2.3.3894:** every chip now keeps the three programs unless the address asks
 for the one (§260): on the owner's iPhone the one program lost a bro's legs.
 
+Held by: server/test/one-program.test.mjs (tag 5764).
+
 ## 226. "Route it in my own wrapper: I installed it last, so it runs last" (v2.3.3459)
 
 **Tempting:** to send some sprites to a batcher of your own, wrap
@@ -8585,6 +8597,8 @@ then every facing again; a hat whose southwest file failed every try, back once
 it can be had) -- and with `QA_HK_EXPECT=blank` the build before: blank after
 the wipe, blank after the rebuild, the hat never back.
 
+Held by: tools/guards/traps-phone-memory.test.mjs (tag 5763).
+
 ## 254. "Spread the base style and change what differs" (v2.3.3633)
 
 **The move.** A Pixi text style is derived from a shared one the way a plain
@@ -8615,6 +8629,8 @@ changing them is a change to how they look.
 
 **Receipt:** `mp-textrelease` (a family built both ways, and two real trips
 to a fight with and without `?textkeep`).
+
+Held by: tools/guards/traps-phone-memory.test.mjs (tag 5763).
 
 ## 255. "Fill the gap with something neutral" (v2.3.3640)
 
@@ -8802,6 +8818,8 @@ owner's phone decides (docs/specs/one-batch.md "v2.3.4994").
 fixes and said "Everything looks fine to me make 1 program the default": it is
 the default on phones and tablets now (`docs/specs/one-batch.md`). The rule
 stands for the next program: the owner's phone is the judge, not this box.
+
+Held by: server/test/one-program.test.mjs (tag 5764).
 
 ## 261. "A mixed-grade set can't be one figure, so draw it as its pieces" (v2.3.3953)
 
@@ -9318,6 +9336,8 @@ uneven 51, and is less work.
 **Receipt:** `frame-pacer` suite, `mp-steadypace`, `mp-peerarrive`,
 docs/specs/frame-pacer.md.
 
+Held by: tools/guards/traps-frame.test.mjs (tag 5764).
+
 ## 283. "It slows by the blacksmith, so it is the blacksmith" (v2.3.4400)
 
 **The move.** A player reports a slowdown at a place or beside a character
@@ -9583,6 +9603,8 @@ asks again (`pageDropDue`, 5 s; the ground's pieces already did this).
 only turned every failure into "fulfilled", so the loading report (§12's
 check) could never show a miss. **The rule.** Settle the promises as they
 are (`preloadReport.js` `settleGroups`). **Receipt:** `renderer-life.test`.
+
+Held by: tools/guards/traps-frame.test.mjs (tag 5764).
 
 ## 304. "Set `S.currentZone` and clear what you left" (v2.3.4414)
 
@@ -10201,6 +10223,8 @@ cap that then falls back; and `lookSetsSettled()` for the sets, which also
 waits for a set registered after the loading screen began.
 **Receipt:** `mp-lookgear` ("the walking armour's RGBA is not on the chip").
 
+Held by: tools/guards/traps-phone-memory.test.mjs (tag 5763).
+
 ## 341. "Let each of them go: `for (const t of frames) t.destroy(false)`" (v2.3.5011)
 
 **The plausible move.** A cache of Textures over one shared picture (a look
@@ -10222,6 +10246,8 @@ of a 2,000-listener source took 34.6 ms one by one and 1.6 ms in one pass.
 `src/rendering/bulkTexDestroy.js destroyTextures(list)`: each source's list
 rebuilt once (server/test/bulk-tex-destroy.test.mjs). A single Texture now and
 then is fine as it is.
+
+Held by: tools/guards/traps-phone-memory.test.mjs (tag 5763).
 
 ## 342. "The test can't find the button: the game lost it" (v2.3.5439)
 

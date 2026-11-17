@@ -379,6 +379,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | name | side | kind | born | on | thrown | risk | needs | fallback | off |
 |---|---|---|---|---|---|---|---|---|---|
 | `?dtsmooth` | page | switch | v2.3.4355 | 2026-11-10 | =0, off, false | logic |  | no | The frame's step is the raw time, not the steady step. |
+| `?framesteps` | page | switch | v2.3.5340 | 2026-11-17 | =0 | logic |  | no | The frame is not marked as named steps: no step times, no step's throw in the crash ring, and window.__btSteps() says off; the loop runs as before. |
 | `govern` | both | switch | v2.3.5222 | 2026-11-14 | off_govern: true (v2.3.5235: every phone, live, the Test panel's list); ?govern=0 (off), =1 (on where `?lane=` holds it) | logic |  | no | The governor no longer moves the ladder: the lane's row, however late the frames. |
 | `?ladderrate` | page | switch | v2.3.5224 | 2026-11-14 | =0, off, false | logic | `govern` | no | The rate as before the ladder: a 60 screen is never paced, whatever the rung. |
 | `?pace` | page | switch | v2.3.4355 | 2026-11-10 | =0, off, false | logic |  | no | No frame pacer: the frames are drawn as the browser calls, as before. |

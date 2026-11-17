@@ -1,4 +1,6 @@
 /* ═══ v2.3.5185: THE ACTION DOOR HOLDS (grand plan step 5.8; card K PR 5) ═══
+ * TRAPS §18 (the rule): every type, event and route the page sends by name (a `.send({ type:`, a broadcast's `event:`, an `act('...'`, a fetch of '/api/...') has a row of the action door, and a send outside the door is counted (check 7); the shim's hand-kept pass-through list cannot come back (check 4). Break: src/ui/panels/buildings/CookPanel.jsx: `S.channel.send({ type: 'my_request' });` beside the eat request -> FAIL (tried 2026-11-17).
+ * (v2.3.5764: the form line, card V2.)
  *
  * src/game/actions.js is the one way a request leaves the page: one row a
  * request, its way (alone, priority, the 33 ms batch, a rider, a route...)
