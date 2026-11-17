@@ -18,6 +18,7 @@
 
 import { ringUploadKey } from './crashRing.js';
 import { userAgent, maxTextureSize } from '../game/deviceProfile.js';   /* v2.3.5227: the device asked in one place (card O PR 7) */
+import { sw } from '../game/switches.js';   /* v2.3.5314: the page's one reader (card T) */
 const KEY = 'bt-crashlog';
 
 function read() {
@@ -295,7 +296,7 @@ export function installCrashTrap() {
        but its ring buffer survived in localStorage.  Upload it on the
        NEXT boot so even eviction deaths leave server-side evidence. */
     _scheduleFlush('prior');
-    if (/[?&]dev=1\b/.test(window.location.search)) {
+    if (sw('dev')) {
       /* v2.3.773: show the TAIL of the log, not just the last entry --
          the last entry was always a routine [resume] and hid the story.
          v2.3.776: header carries the build version so a screenshot also
@@ -341,7 +342,7 @@ export function watchContextLoss(canvas) {
         if (window._rebuildRenderer) window._rebuildRenderer('contextlost: rebuilding (restore is not survivable)');
       } catch (err) { /* ignore */ }
     }, 2500);
-    if (/[?&]dev=1\b/.test(window.location.search)) banner('WEBGL CONTEXT LOST — the black-screen bug just happened. Screenshot this.');
+    if (sw('dev')) banner('WEBGL CONTEXT LOST — the black-screen bug just happened. Screenshot this.');
   });
   canvas.addEventListener('webglcontextrestored', () => {
     recordCrash('CONTEXT_RESTORED', 'WebGL context restored');

@@ -47,7 +47,7 @@ import { SWITCHES } from './lib/switches.mjs';
 import { blankComments, pageFiles, pageForm, READER_FILE, READER_IMPORT, ROOT } from './lib/switchScan.mjs';
 
 /* the outside reads: only falls */
-const OUTSIDE_LINE = 161;   /* its first count, v2.3.5306: 228 with sitting 17's `?slimewalk` (card P's slimeSprites.js, P still running: not moved), 221 after the first seven reads moved; 212 after v2.3.5309's nine; 201 after v2.3.5310's eleven; 189 after v2.3.5232's twelve (card O PR 12: the lanes' off-ramps); 172 with v2.3.5311's pageAddress() sites (seventeen) ; 161 after v2.3.5313's eleven */
+const OUTSIDE_LINE = 71;   /* its first count, v2.3.5306: 228 with sitting 17's `?slimewalk` (card P's slimeSprites.js, P still running: not moved), 221 after the first seven reads moved; 212 after v2.3.5309's nine; 201 after v2.3.5310's eleven; 189 after v2.3.5232's twelve (card O PR 12: the lanes' off-ramps); 172 with v2.3.5311's pageAddress() sites (seventeen) ; 161 after v2.3.5313's eleven ; 155 after v2.3.5314's six ; 144 after v2.3.5315's eleven ; 116 after v2.3.5316's twenty-eight ; 71 after v2.3.5317's forty-five (render, on pageAddress()) */
 
 /* ── the reads moved into the reader: each old test word for word, as a
    function of the address (S) ── */
@@ -86,6 +86,34 @@ const MOVED = Object.freeze([
   { name: 'banners', call: 'sw', file: 'src/rendering/zoneBannerPreload.js', old: (S) => /(^|[?&])banners=all(&|$)/.test(S || '') },
   { name: 'sharp', call: 'sw', file: 'src/rendering/sharpPixels.js', old: (S) => /[?&]sharp=0\b/.test(S) },
   { name: 'figround', call: 'sw', file: 'src/rendering/sharpPixels.js', old: (S) => /[?&]figround=1\b/.test(S) },
+  /* v2.3.5314: debug (card A done) */
+  { name: 'dev', call: 'sw', file: 'src/debug/crashTrap.js', old: (S) => /[?&]dev=1\b/.test(S) },
+  { name: 'report', call: 'sw', file: 'src/debug/report.js', old: (S) => /(^|[?&])report=0(&|$)/.test(S || '') },
+  /* v2.3.5315: memory (cards G, H done) */
+  { name: 'canvascheck', call: 'sw', file: 'src/rendering/canvasWitness.js', old: (S) => /[?&]canvascheck=0\b/.test(S || '') },
+  { name: 'gfxlean', call: 'sw', file: 'src/rendering/gfxLean.js', old: (S) => /[?&]gfxlean=(0|off|false)(&|$)/.test(S || '') },
+  { name: 'gpucopies', call: 'swHas', file: 'src/rendering/gpuOnly.js', old: (S) => /[?&]gpucopies\b/.test(S || '') },
+  { name: 'heaptrim', call: 'sw', file: 'src/rendering/heapTrim.js', old: (S) => /[?&]heaptrim=(0|off|false)(&|$)/.test(S || '') },
+  { name: 'held', call: 'sw', file: 'src/rendering/heldNumbers.js', old: (S) => /[?&]held=0\b/.test(S || '') },
+  { name: 'treenumbers', call: 'sw', file: 'src/rendering/paletteLoad.js', old: (S) => /[?&]treenumbers=0(&|$)/.test(S || '') },
+  { name: 'nopalette', call: 'swHas', file: 'src/rendering/paletteTex.js', old: (S) => /(^|[?&])nopalette(=|&|$)/.test(S || '') },
+  { name: 'loudclear', call: 'swHas', file: 'src/rendering/quietClear.js', old: (S) => /[?&]loudclear(=|&|$)/.test(S || '') },
+  { name: 'textkeep', call: 'swHas', file: 'src/rendering/textRelease.js', old: (S) => /[?&]textkeep(=|&|$)/.test(S || '') },
+  { name: 'poolkeep', call: 'swHas', file: 'src/rendering/texturePoolTrim.js', old: (S) => /[?&]poolkeep(=|&|$)/.test(S || '') },
+  /* v2.3.5316: look (cards H, P done); a look whose row needs ?lookpalette keeps its old test on pageAddress() */
+  { name: 'garmentspecks', call: 'sw', file: 'src/rendering/bodyRecolor.js', old: (S) => /[?&]garmentspecks=0(&|$)/.test(S || '') },
+  { name: 'pickwood', call: 'sw', file: 'src/rendering/bodyRecolor.js', old: (S) => /[?&]pickwood=0(&|$)/.test(S || '') },
+  { name: 'toolsolid', call: 'sw', file: 'src/rendering/bodyRecolor.js', old: (S) => /[?&]toolsolid=(0|off|false)(&|$)/.test(S || '') },
+  { name: 'bakeread', call: 'sw', file: 'src/rendering/bodyRecolor.js', old: (S) => /(^|[?&])bakeread=0(&|$)/.test(S || '') },
+  { name: 'portraitgentle', call: 'sw', file: 'src/rendering/characterPortrait.js', old: (S) => /(^|[?&])portraitgentle=(0|off|false)(&|$)/.test(S || '') },
+  { name: 'gearretry', call: 'sw', file: 'src/rendering/gearSheets.js', old: (S) => /[?&](gearretry|retrylooks)=0\b/.test(S || '') },
+  { name: 'gearpackgentle', call: 'sw', file: 'src/rendering/gearSheets.js', old: (S) => /(^|[?&])gearpackgentle=(0|off|false)(&|$)/.test(S || '') },
+  { name: 'shirtworker', call: 'sw', file: 'src/rendering/gearSheets.js', old: (S) => /(^|[?&])shirtworker=(0|off|false)(&|$)/.test(S || '') },
+  { name: 'sheetfetch', call: 'sw', file: 'src/rendering/lookArmour.js', old: (S) => /(^|[?&])sheetfetch=0(&|$)/.test(S || '') },
+  { name: 'retrylooks', call: 'sw', file: 'src/rendering/lookPalette.js', old: (S) => /[?&]retrylooks=0\b/.test(S || '') },
+  { name: 'traitretry', call: 'sw', file: 'src/rendering/traits/speciesArt.js', old: (S) => /[?&](traitretry|retrylooks)=0\b/.test(S || '') },
+  { name: 'alphaclip', call: 'swHas', file: 'src/rendering/hairClip.js', old: (S) => /[?&]alphaclip\b/.test(S || '') },
+  { name: 'headframes', call: 'swHas', file: 'src/rendering/headFrames.js', old: (S) => /[?&]headframes(=|&|$)/.test(S || '') },
   /* v2.3.5232 (card O PR 12): the lanes' off-ramps (the values -- ?lane, ?govern, ?crowd, ?onebatch, ?lookpalette, ?pixbudget, ?res, ?zoom -- read by swValue, their old patterns held to the value) */
   { name: 'ladderrate', call: 'sw', file: 'src/game/drawLanes.js', old: (S) => /(^|[?&])ladderrate=(0|off|false)(&|$)/.test(typeof S === 'string' ? S : '') },
   { name: 'ladderpix', call: 'sw', file: 'src/game/drawLanes.js', old: (S) => /(^|[?&])ladderpix=(0|off|false)(&|$)/.test(typeof S === 'string' ? S : '') },

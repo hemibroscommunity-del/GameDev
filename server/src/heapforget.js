@@ -51,6 +51,8 @@ export const HEAP_FORGET = Object.freeze({
   /* reqonce.js _reqRemember (v2.3.5194): a sitting's answers, kept past a
      leave so a re-send after a reconnect gets its first answer */
   _reqSeen:           Object.freeze({ shape: 'map', when: 'aged', windowMs: REQ_ONCE.MEM_MS }),
+  /* reqonce.js _reqOnceDoor (v2.3.5547): the wire door's own list, the same way */
+  _reqSeenDoor:       Object.freeze({ shape: 'map', when: 'aged', windowMs: REQ_ONCE.MEM_MS }),
 });
 
 /* true when this entry may go now */

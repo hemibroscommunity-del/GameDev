@@ -1,6 +1,6 @@
 card: T
-branch: claude/plan-t-13-reads4 (on #1992's branch; main merged in)
-prs: #1754 ... #1958, #1978 (5301-5311, merged); #1992 5312 lows (ready); 5313 reads (ready, on #1992)
+branch: claude/plan-t-17-reads8 (on #2001's branch; main merged in)
+prs: #1754 ... #1978 (5301-5311), #1992-#1996 (5312-5315): merged; #2001 5316 (ready); #2002 5317 (ready, on #2001)
 state: ready
 
 ## Done
@@ -18,8 +18,8 @@ state: ready
 
 ## Next
 
-- 5313: eleven reads (device, preload, world, art); the line 161.
-  Then look, memory, debug, data, render; K's and L's files when they end.
+- 5317: forty-five render reads on pageAddress(); the line 71. Then K's
+  and L's files as they end, and the files whose suites pin their text.
 
 ## Found
 
@@ -29,11 +29,12 @@ state: ready
 - Card O's knobs stay O's reads (step 2.4): `?pixbudget`, `?res`,
   `?onebatch`, `?lookpalette`, `?pace`, `?crowd`, the passes'; and `govern`
   (a value on the page) is a need the reader cannot resolve.
-- `?bandbeat`, `?foldgentle` stay: held-sweep 10a, sound-fold 4e pin their text.
+- Reads pinned by other cards' suites stay (`?bandbeat`, `?foldgentle`; and
+  gameDisplay.js's eight: four-lines, tests-by-system): the spec lists them.
 
 - manualCombat.js, weaponFeel.js, pinSlots.js keep their address reads: their
   suites (manual-combat 10a, weapon-feel 8a, map-pin 9i) require no imports.
 
 ## Needs
 
-- The gatekeeper: #1992, then 5313's PR on it.
+- The gatekeeper: #2001, then #2002 (5317) on it.

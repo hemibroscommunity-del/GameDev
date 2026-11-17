@@ -48,6 +48,7 @@
  */
 import { DefaultBatcher } from 'pixi.js';
 import { liveSwitch } from './drawLists.js';
+import { pageAddress } from '../game/switches.js';   /* v2.3.5317: the page's one read of its address (card T) */
 
 /* [top rgb multipliers, bottom rgb multipliers].  Top: as painted, a hair
    warm.  Bottom: a cool shade.  Figures lighter than props: a character is
@@ -95,7 +96,7 @@ export function propShade(zoneId) {
 
 let _on = true;
 try {
-  if (typeof location !== 'undefined' && /[?&]shade=0\b/.test(location.search)) _on = false;
+  if (typeof location !== 'undefined' && /[?&]shade=0\b/.test(pageAddress())) _on = false;
 } catch (e) { /* no location: on */ }
 export const formShadeOn = () => _on;
 

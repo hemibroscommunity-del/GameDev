@@ -41,8 +41,9 @@
  */
 import { inflateRawSync } from './inflateRaw.js';
 import { deflateOnWorker } from './stripRead.js';   /* the reader's worker deflates the pieces off the page's thread */
+import { pageAddress } from '../game/switches.js';   /* v2.3.5317: the page's one read of its address (card T) */
 
-const _q = (() => { try { return typeof location !== 'undefined' ? (location.search || '') : ''; } catch (e) { return ''; } })();
+const _q = (() => { try { return pageAddress(); } catch (e) { return ''; } })();
 export const FRAME_PACK = !/(^|[?&])framepack=(0|off|false)(&|$)/.test(_q) && typeof CompressionStream !== 'undefined' && typeof Blob !== 'undefined';
 /* the unpacked frames kept for the readers: a hit reads the frame it hit,
    an arrow the frames its monster shows while it is in it */

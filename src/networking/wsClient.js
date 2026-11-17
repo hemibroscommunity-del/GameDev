@@ -6110,7 +6110,7 @@ export function setupWebSocket(ctx) {
     };
     S.channel = channelShim;
     /* v2.3.5185: the shim is the action door's transport (src/game/actions.js act) */
-    setActionTransport({ send: function (m) { return channelShim.send(m); }, http: function (path, init) { return fetch(API_BASE + path, init); }, token: function () { return S._httpToken || null; }, reqOnce: function () { return !!(S._serverCaps && S._serverCaps.reqid); } });   /* v2.3.5546: the worker answers a repeat once (caps.reqid): the door may re-send */
+    setActionTransport({ send: function (m) { return channelShim.send(m); }, http: function (path, init) { return fetch(API_BASE + path, init); }, token: function () { return S._httpToken || null; }, reqOnce: function () { return !!(S._serverCaps && S._serverCaps.reqid); }, weaponGid: function (i) { if (!(S._serverCaps && S._serverCaps.gidnames)) return null; const st = S.rpg && Array.isArray(S.rpg.weaponStash) ? S.rpg.weaponStash : null; const w = st && Number.isInteger(Number(i)) ? st[Math.floor(Number(i))] : null; return w && typeof w.gid === 'string' ? w.gid : null; } });   /* v2.3.5196: a weapon's id at its place, against a worker that reads it (caps.gidnames) */   /* v2.3.5546: the worker answers a repeat once (caps.reqid): the door may re-send */
     connect();
     return function () {
       stopBatchTimer();

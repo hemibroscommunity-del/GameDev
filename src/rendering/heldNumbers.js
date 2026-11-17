@@ -46,12 +46,13 @@
  * `?held=0` keeps every canvas; so do `?gpucopies` and QA's __btTrimVerify
  * (gpuOnly.js keepCopies).  QA: window.__btHeld(). */
 import { keepOnGpuOnly, gpuCopiesKept } from './gpuOnly.js';
+import { sw } from '../game/switches.js';   /* v2.3.5315: the page's one reader (card T) */
 
 const MAX_COLOURS = 256;
 const SWEEP_BUDGET_MS = 6;   /* the most one sweep spends reading canvases */
 
 const _off = (() => {
-  try { return typeof location !== 'undefined' && /[?&]held=0\b/.test(location.search || ''); } catch (e) { return false; }
+  return sw('held');
 })();
 
 /* waiting to be drawn, then read and emptied */

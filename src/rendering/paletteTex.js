@@ -82,6 +82,7 @@ import { deviceProfile, rendererName, devAsk } from '../game/deviceProfile.js'; 
 import { laneKnob, pinOf, askingAs } from '../game/drawLanes.js';   /* v2.3.5228: one program or three is the lanes' `program` knob (card O PR 8) */
 import { readerFor, swValue } from '../game/switches.js';   /* v2.3.5232 (card O PR 12): `?onebatch` through the page's one reader */
 import { selfDraw, selfDrop, selfQueue, selfSkip, selfPending, selfIdx, selfPalBytes, selfRgba, selfSharpWant, selfTestOn, SELF_SIZE } from './selfTest.js';   /* v2.3.5234: the self-test at the door (card O PR 14a); v2.3.5236 the sharp read's answer (14b) */
+import { swHas } from '../game/switches.js';   /* v2.3.5315: the page's one reader (card T) */
 export { isPaletteSource, drawSourceRect, paletteRegionRGBA } from './paletteDraw.js';
 
 export const PAL_BATCHER = 'bt-palette';
@@ -90,7 +91,7 @@ const ATLAS_W = 256, ATLAS_ROWS = 256;
 
 /* ── the switch ── */
 function wantedByAddress() {
-  try { return !/(^|[?&])nopalette(=|&|$)/.test(window.location.search || ''); } catch (e) { return true; }
+  return !swHas('nopalette');
 }
 const _wanted = wantedByAddress();
 let _renderer = null;

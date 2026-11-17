@@ -27,8 +27,9 @@
 import { getLookPartFrames, lookHas, lookSheenOn, lookSheenState, lookPaletteWanted, lookSetsSettled, registerLookSheets, preloadLookSheets, whenLookKnown } from './lookPalette.js';
 import { getGearFrame, getGearFramePhased, setGearDrawnElsewhere, setGearPreloadSkip } from './gearSheets.js';
 import { gearArtSafe } from './gearVariants.js';
+import { pageAddress } from '../game/switches.js';   /* v2.3.5316: the page's one reader (card T) */
 
-const _wanted = (() => { try { return !/(^|[?&])gearwalk=0(&|$)/.test(window.location.search || ''); } catch (e) { return true; } })();
+const _wanted = (() => { try { return !/(^|[?&])gearwalk=0(&|$)/.test(pageAddress()); } catch (e) { return true; } })();
 /* v2.3.5000: its own load, when this module came after the loading screen
    began (registerLookSheets then loads it apart: gearWalkDecided waits) */
 const _reg = _wanted ? registerLookSheets('gearwalk', '/sprites/look/gearwalk/roles.json') : Promise.resolve(false);

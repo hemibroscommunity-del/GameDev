@@ -21,8 +21,9 @@
  * to start again.  mp-headframes plays a phone through it.
  */
 import { Texture } from 'pixi.js';
+import { swHas } from '../game/switches.js';   /* v2.3.5316: the page's one reader (card T) */
 
-export const HEAD_FRAMES_ON = typeof window !== 'undefined' && /[?&]headframes(=|&|$)/.test((window.location && window.location.search) || '');
+export const HEAD_FRAMES_ON = swHas('headframes');
 
 /* the walking figure's sprite -> the stand-in set's (effectsRenderer) */
 const PIECES = [

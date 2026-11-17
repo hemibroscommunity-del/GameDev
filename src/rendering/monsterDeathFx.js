@@ -63,6 +63,7 @@ import { deathZonesOn, buildZoneDeath, stepZoneDeath, zoneDeathProbe, zoneDeaths
 /* v2.3.3985: the killing blow -- its direction and whether it was a big one
    (the owner: "simulate physics based on the direction they're hit in") */
 import { deathBlowOf } from '@/game/deathBlow.js';
+import { pageAddress } from '../game/switches.js';   /* v2.3.5317: the page's one read of its address (card T) */
 
 export const DEATH_NONE = 0;   /* not handled: draw the normal death */
 export const DEATH_LIVE = 1;   /* drawn this frame: keep the display */
@@ -116,7 +117,7 @@ function rng(seed) {
 const DEATH_KINDS_ALL = ['own', 'normal', 'slice', 'decap', 'leg', 'topple'];
 const _urlKind = (() => {
   try {
-    const k = typeof location !== 'undefined' ? new URLSearchParams(location.search || '').get('deathkind') : null;
+    const k = typeof location !== 'undefined' ? new URLSearchParams(pageAddress()).get('deathkind') : null;
     return k && DEATH_KINDS_ALL.indexOf(k) >= 0 ? k : null;
   } catch (e) { return null; }
 })();
@@ -126,7 +127,7 @@ const _urlKind = (() => {
    window.__btDeathBig (true / false) does (which wins when both are set). */
 const _urlBig = (() => {
   try {
-    const v = typeof location !== 'undefined' ? new URLSearchParams(location.search || '').get('deathbig') : null;
+    const v = typeof location !== 'undefined' ? new URLSearchParams(pageAddress()).get('deathbig') : null;
     return v === '1' ? true : v === '0' ? false : null;
   } catch (e) { return null; }
 })();

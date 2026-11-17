@@ -40,12 +40,13 @@
  * `?bindfix=0` in the address leaves Pixi as it is, to compare
  * (mp-sceneleak's mask check). */
 import { BindGroup, Texture, TextureSource, TextureStyle } from 'pixi.js';
+import { pageAddress } from '../game/switches.js';   /* v2.3.5317: the page's one read of its address (card T) */
 
 let _installed = false;
 let _swaps = 0;
 
 function urlOff() {
-  try { return /[?&]bindfix=0(&|$)/.test(window.location.search || ''); } catch (e) { return false; }
+  try { return /[?&]bindfix=0(&|$)/.test(pageAddress()); } catch (e) { return false; }
 }
 
 /* what stands in for a destroyed picture or sampler: the empty texture's own,

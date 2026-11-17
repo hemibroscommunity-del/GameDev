@@ -105,6 +105,7 @@ function memCount() {
 try { useMemCount(memCount); } catch (e) { /* no pacer: no verdict */ }
 import { wheelHere } from '../game/wheelTrial.js';
 import { act } from '../game/actions.js';   /* v2.3.5189: the page's requests leave through the action door (card K PR 7) */
+import { sw } from '../game/switches.js';   /* v2.3.5314: the page's one reader (card T) */
 
 export const REPORT = Object.freeze({
   V: 1,
@@ -219,7 +220,7 @@ const _w = (v) => Math.max(0, Math.round(Number(v) || 0));
 
 /** The switch: on unless this device turned it off, or `?report=0`. */
 export function reportOn() {
-  try { if (typeof window !== 'undefined' && /(^|[?&])report=0(&|$)/.test(window.location.search || '')) return false; } catch (e) { /* on */ }
+  if (sw('report')) return false;
   try { return !(typeof localStorage !== 'undefined' && localStorage.getItem(OFF_KEY) === 'off'); } catch (e) { return true; }
 }
 /** The About panel's switch, kept on this device. */

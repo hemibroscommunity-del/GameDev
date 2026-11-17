@@ -31,8 +31,9 @@
  * every input back to being cut on the page.
  */
 import { gearInput } from './gearNumbers.js';   /* v2.3.5000: the bakes read the armour's numbers */
+import { pageAddress } from '../game/switches.js';   /* v2.3.5317: the page's one read of its address (card T) */
 
-const OFF = (() => { try { return typeof location !== 'undefined' && /[?&]bakeurl=0\b/.test(location.search || ''); } catch (e) { return false; } })();
+const OFF = (() => { try { return typeof location !== 'undefined' && /[?&]bakeurl=0\b/.test(pageAddress()); } catch (e) { return false; } })();
 const _refused = new Set();
 /* keptMB: the sheets the worker holds (its last reply; mp-membudget cannot see a worker's bitmaps) */
 const _stats = { sent: 0, cut: 0, refused: 0, retried: 0, stuck: 0, checked: 0, same: 0, differ: 0, lastDiffer: null, keptMB: 0, keptMaxMB: 0 };
