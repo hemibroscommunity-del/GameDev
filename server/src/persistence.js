@@ -847,7 +847,7 @@ export const persistenceMethods = {
         }
         if (changed === 0) return; // nothing changed -- skip the emit
       }
-      ws.send(JSON.stringify({ type: 'player_state', payload }));
+      this._send(ws, { type: 'player_state', payload });
     } catch (e) {}
   },
 

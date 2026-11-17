@@ -47,6 +47,9 @@
  *  15d. v2.3.5287: the storage's size (daybook.js storeSizeRide, card R PR
  *      8) rides the book's own puts: an hour of adds writes the book no more
  *      often with the size read than without, and reads it once;
+ *  15e. v2.3.5193: the send door's counts (send.js, card K PR 8) ride the
+ *      book's own puts: a room that only sends writes no book row, and an
+ *      hour of sends and adds writes the book no more often than 15b;
  *  16. v2.3.5092: the transfer ledger (xfer.js) writes ONE row a settlement
  *      between two players (the trade window: five trades, five rows; and
  *      its delete 90 days on, XFER.KEEP_DAYS), none a kill (a purse taken in
@@ -689,6 +692,33 @@ const FAST = 110;
   const rows = state.writes.slice(w1).filter((k) => k.startsWith(DAYBOOK.PREFIX));
   const line = 13;
   check(`15d. the hour again with the storage's size read: the book written ${rows.length} times, at most ${line}, and the size read ${asked} time(s) (once a worker's life a day)`, rows.length >= 1 && rows.length <= line && asked === 1, { rows: byPrefix(rows), asked });
+}
+
+/* v2.3.5193 (card K PR 8): the send door's counts ride the book's own
+   puts -- a joined player's ticks are sent the whole time.  Ten minutes of
+   sends alone (the room row off) write no book row; 15b's hour with them
+   writes no more than its line, and the stored day carries the frames
+   (break proof: sendRide without its "nothing of today's going out" guard,
+   with bookMaybePut after its add, writes the book at every pace of sends) */
+{
+  const { room, tickFn, state } = await makeRoom();
+  await join(room, 'cg_send');
+  room._liveFlags = Object.assign(room._liveFlags || {}, { roomrow: false });
+  const w0 = state.writes.length;
+  await run(room, tickFn, 10 * 60000, null, FAST);
+  const none = state.writes.slice(w0).filter((k) => k.startsWith(DAYBOOK.PREFIX));
+  const sent = room._sendTally && room._sendTally.get('tick');
+  check(`15e. ten minutes of sends alone (${sent ? sent[0] : 0} tick frames) write no book row (${none.length})`, none.length === 0 && !!sent && sent[0] > 0, none);
+  const w1 = state.writes.length;
+  await run(room, tickFn, 60 * 60000, async () => {
+    bookAdd(room, 'room', { tick: { n: 1 } }, NOW);
+    if (room._daybook && room._daybook.putting) await room._daybook.putting;
+  }, FAST);
+  const rows = state.writes.slice(w1).filter((k) => k.startsWith(DAYBOOK.PREFIX));
+  const line = 13;
+  let carried = false;
+  for (const [k, v] of state.store) if (String(k).startsWith(DAYBOOK.PREFIX) && v && v.send && v.send.tick) carried = true;
+  check(`15e. the hour with every tick sent: the book written ${rows.length} times, at most ${line}, the frames carried in it`, rows.length >= 1 && rows.length <= line && carried, byPrefix(rows));
 }
 
 /* ── 16. v2.3.5092: the transfer ledger (xfer.js) ─────────────────────────── */

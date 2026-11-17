@@ -104,7 +104,7 @@ export const loginSpinMethods = {
 
   _loginSpinSend(session, type, payload) {
     const ws = this._wsBySessionId(session.id);
-    if (ws) { try { ws.send(JSON.stringify({ type, payload })); } catch (e) { /* the next ask tells */ } }
+    if (ws) { try { this._send(ws, { type, payload }); } catch (e) { /* the next ask tells */ } }
   },
 
   /* v2.3.4295, the owner: "only allow the wheel to spin if you're in a safe

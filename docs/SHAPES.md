@@ -765,7 +765,11 @@ Three things no list holds today, for cards N and K:
   budget applies to no route.
 - **No test holds which of the phone's two switches takes a type.**
 - **There is no single send**: 132 places write to a socket, through about 36
-  helpers of the systems' own.
+  helpers of the systems' own. *v2.3.5193 (card K PR 8): the send door,
+  `server/src/send.js` `_send` (and `_sendRoom`), counts frames by type and
+  rides the day's book (part `send`); the helpers, the room's broadcasts and
+  the tick write through it. 93 raw writes are left (`send-door.test`'s
+  census, falling); card K PR 13 moves them.*
 
 ## 6. The device class
 

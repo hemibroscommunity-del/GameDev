@@ -348,7 +348,7 @@ export const sparMethods = {
     const ws = this._wsBySessionId(ownerId);
     if (!ws) return;
     try {
-      ws.send(JSON.stringify({ type: 'spar_state', payload: { ...this._sparSummary(ownerId), note: note || null, ...(extra || null) } }));
+      this._send(ws, { type: 'spar_state', payload: { ...this._sparSummary(ownerId), note: note || null, ...(extra || null) } });
     } catch (e) { /* the next one will do */ }
   },
 

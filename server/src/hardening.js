@@ -236,7 +236,7 @@ export const hardeningMethods = {
   _hardenSend(playerId, payload) {
     const ws = this._wsBySessionId(playerId);
     if (!ws) return;
-    try { ws.send(JSON.stringify({ type: 'harden_result', payload })); } catch (e) {}
+    try { this._send(ws, { type: 'harden_result', payload }); } catch (e) {}
   },
 
   async _handleHardenWeapon(session, payload) {

@@ -116,7 +116,7 @@ export const pointsResetMethods = {
   _pointsResetSend(pid, payload) {
     const ws = this._wsBySessionId(pid);
     if (!ws) return;
-    try { ws.send(JSON.stringify({ type: 'points_reset_result', payload })); } catch (e) { /* gone */ }
+    try { this._send(ws, { type: 'points_reset_result', payload }); } catch (e) { /* gone */ }
   },
 
   _handlePointsReset(session) {

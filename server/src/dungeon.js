@@ -234,7 +234,7 @@ export const dungeonMethods = {
   _dungeonSend(playerId, obj) {
     const ws = this._wsBySessionId(playerId);
     if (!ws) return;
-    try { ws.send(JSON.stringify(obj)); } catch (e) {}
+    try { this._send(ws, obj); } catch (e) {}
   },
 
   _dungeonError(playerId, code, message) {

@@ -1,6 +1,6 @@
 card: K
-branch: claude/plan-k-12-words (5197; one branch a PR, each begun from main)
-prs: #1822 to #1989, #1981, #1997, #1999 merged; open: #2003 (5197, this branch: sitting 30 mended), #2006 (5193)
+branch: claude/plan-k-12-words (5197, on #2006; one branch a PR)
+prs: #1822 to #1989, #1981, #1997, #1999 merged; open: #2006 (5193), #2003 (5197, this branch, on #2006: mended)
 state: ready
 
 ## Done
@@ -18,7 +18,7 @@ state: ready
 - #2006 5193 (PR 8, never built; 13 waits on it): the send door, send.js
   `_send`; the ~55 helpers through it; counts ride the day's book (`send`,
   8 KB); census 150 -> 93; `sendcount` ON. Then 13 (5198, 5199).
-- #2003 5197: the words rule; sitting 30's findings being mended.
+- #2003 5197: the words rule; sitting 30's findings mended (stacked on #2006).
 - Then the second block: the claims tightened (14).
 - wsClient.js: done for good (told L). index.js, combat.js: 13 and 14.
 

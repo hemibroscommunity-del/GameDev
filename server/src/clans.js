@@ -122,14 +122,14 @@ export const clanMethods = {
     const ws = this._wsBySessionId(playerId);
     if (!ws) return;
     try {
-      ws.send(JSON.stringify({ type: 'clan_state', payload: { clan: clan || null } }));
+      this._send(ws, { type: 'clan_state', payload: { clan: clan || null } });
     } catch (e) {}
   },
 
   _clanError(playerId, text) {
     const ws = this._wsBySessionId(playerId);
     if (!ws) return;
-    try { ws.send(JSON.stringify({ type: 'clan_error', payload: { text } })); } catch (e) {}
+    try { this._send(ws, { type: 'clan_error', payload: { text } }); } catch (e) {}
   },
 
   async _handleClanCreate(session, payload) {

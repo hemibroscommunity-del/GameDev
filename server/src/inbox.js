@@ -667,13 +667,13 @@ export const inboxMethods = {
     const ws = wsOverride || this._wsBySessionId(playerId);
     if (!ws) return;
     try {
-      ws.send(JSON.stringify({
+      this._send(ws, {
         type: 'inbox_delivered',
         payload: {
           entries: entries.map((e) => ({ kind: e.kind, payload: e.payload, note: e.note || '', ...(e.noteT ? { noteT: e.noteT } : {}), source: e.source || '' })),   /* v2.3.5197: and its template (words.js) */
           queued: queued || 0,
         },
-      }));
+      });
     } catch (e) { /* dead socket: the credits are already persisted */ }
   },
 
