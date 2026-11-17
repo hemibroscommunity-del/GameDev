@@ -130,6 +130,8 @@
  * v2.3.5525 (the loading door):
  *  39. `S._farmArtHold = seq;` back in farmTrip.js -> loading-door.test FAIL 2
  *  40. `S._veils = new Map();` in zoneTransitions.js -> FAIL 2
+ * v2.3.5528 (the connection door):
+ *  42. `S._realtimeStatus = 'idle';` back in wsClient.js -> connection-door.test FAIL 2
  * v2.3.5526 (the window door):
  *  41. `S._npcProxLatch = null;` back in BroTown.jsx gameLoop -> window-door.test FAIL 2
  *
@@ -367,6 +369,9 @@ const DOOR_SUITES = Object.freeze({
   /* v2.3.5523: the ride door (ps._ridePid is written beside it, in _rideTo) */
   'server/test/ride-door.test.mjs': { field: 'ps._ride', fn: '_rideTo', holds: '§2: no write of ._ride or ._ridePid in server/src outside _rideTo',
     prop: '_ride', besides: [] },
+  /* v2.3.5528: the connection door */
+  'server/test/connection-door.test.mjs': { field: 'S._realtimeStatus', fn: 'connTo', holds: '§2: no write of S._realtimeStatus in src/ outside connTo',
+    prop: '_realtimeStatus', besides: [] },
   /* v2.3.5526: the window door (its reasons' old fields: the suite's §2) */
   'server/test/window-door.test.mjs': { field: 'S._windows', fn: 'windowTo', holds: '§2: no write of S._windows, nor of a window\'s old field (S._uiBusy, S._npcProxLatch), in src/ outside windowTo',
     prop: '_windows', besides: [] },
