@@ -148,6 +148,7 @@ function makeHandler(c) {
     t2LeaveDrop: T.t2LeaveDrop ? (S) => T.t2LeaveDrop(S, c.clearTimer) : (() => {}),
     t2IgnoreBusy: T.t2IgnoreBusy || (() => false),
     t2Hushed: T.t2Hushed || (() => false),
+    t2LiveTo: T.t2LiveTo,   /* v2.3.5530: the trade's page door, the real one */
   };
   vm.createContext(ctx);
   vm.runInContext('function run(type, payload, S, setTrade2, setChatLog, setRpgState) { switch (type) {'
@@ -231,8 +232,8 @@ check('4d the panel: no Leave Trade sends trade2_cancel alone any more',
   !/onClick=\{\(\) => send\('trade2_cancel'\)\}/.test(pn), (pn.match(/onClick=\{\(\) => send\('trade2_cancel'\)\}/g) || []).length);
 check('4e ...both Leave Trade buttons and the ✕/Cancel guard go through t2Leave',
   (pn.match(/onClick=\{leave /g) || []).length === 2 && /else leave\(\);/.test(pn) && /const leave = \(\) => t2Leave\(S, send,/.test(pn));
-check('4f gameEvents imports its three rules from game/tradeSlot.js',
-  /import \{ t2LeaveDrop, t2IgnoreBusy, t2Hushed \} from '@\/game\/tradeSlot\.js';/.test(ge));
+check('4f gameEvents imports its three rules, and the trade\'s page door (v2.3.5530), from game/tradeSlot.js',
+  /import \{ t2LeaveDrop, t2IgnoreBusy, t2Hushed, t2LiveTo \} from '@\/game\/tradeSlot\.js';/.test(ge));
 
 console.log('\n' + passed + ' passed, ' + failed + ' failed');
 if (failed > 0) { console.log(failed + ' FAILURE(S)'); process.exit(1); }

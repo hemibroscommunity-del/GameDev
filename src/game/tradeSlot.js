@@ -33,6 +33,38 @@
  * gameEvents.js's trade2 cases); S._t2Leave the pending leave's timer;
  * S._t2QuietUntil hushes the worker's late 'declined' to a leave already
  * closed here, so one leave is told once. */
+import { sw } from './switches.js';   /* v2.3.5530: the page's switch reader (no imports of its own) */
+
+/* ═══ v2.3.5530: THE TRADE'S PAGE DOOR -- ONE WRITER OF S._t2Live (card L PR 5) ═══
+   (docs/specs/trade-page-door.md; server/test/trade-page-door.test.mjs)
+   The phone's trade is one field, S._t2Live: none, or the open trade's id
+   (true when the worker sent none).  Written only by t2LiveTo, by a way of
+   TRADE_PAGE_WAYS: open (trade2_state open), close (trade2_state's end, a
+   cancel, a local end: gameEvents.js), rejoin (rejoinSlots.js rejoinClear).
+   The rule is the callers' own: open writes an id, the others none, so
+   nothing a player sees changes.  `?tradedoor=0` writes what a caller asks.
+   Beside it, notes not folded here: the leave's timer and its hush
+   (S._t2Leave, S._t2QuietUntil: t2Leave), the done watch and the local end
+   (S._t2DoneWatch, S._t2LocalEnd), the window itself (React state). */
+export const TRADE_PAGE_WAYS = Object.freeze({ open: 'open', close: 'none', rejoin: 'none' });
+
+export function tradeDoorOff() {
+  return sw('tradedoor');
+}
+
+/* THE ONE WRITER.  True when it wrote. */
+export function t2LiveTo(S, id, way) {
+  if (!S || typeof S !== 'object' || !Object.prototype.hasOwnProperty.call(TRADE_PAGE_WAYS, way)) return false;
+  const open = TRADE_PAGE_WAYS[way] === 'open';
+  if (!tradeDoorOff() && (open ? !(id === true || (typeof id === 'string' && id) || (typeof id === 'number' && Number.isFinite(id))) : id != null)) return false;
+  S._t2Live = open || tradeDoorOff() ? id : null;
+  return true;
+}
+
+/* the trade's phase on this phone (the phase table's words) */
+export function tradePhase(S) {
+  return S && S._t2Live ? 'open' : 'none';
+}
 
 export const T2_LEAVE_WAIT_MS = 3000;
 export const T2_QUIET_MS = 15000;

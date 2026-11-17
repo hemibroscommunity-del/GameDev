@@ -206,7 +206,7 @@ import { allyMomentText } from '@/game/alliance.js'; /* v2.3.3313: the alliance'
 import { monsterShed } from '@/game/monsterNoises.js'; /* v2.3.3340: the mummy's bones rattle as it sheds */
 import { noteLootDrop, notePileShine } from '@/game/dropLines.js'; /* v2.3.3627: a kill's drops, a line of words each over the monster */
 import { noteHitBlow } from '@/game/deathBlow.js'; /* v2.3.3985: the killing blow's direction and size, for the monster's own death */
-import { t2LeaveDrop, t2IgnoreBusy, t2Hushed } from '@/game/tradeSlot.js'; /* v2.3.4362: the trade window never outlives its server */
+import { t2LeaveDrop, t2IgnoreBusy, t2Hushed, t2LiveTo } from '@/game/tradeSlot.js'; /* v2.3.4362: the trade window never outlives its server */
 import { peerFireOut } from '@/game/fireRefuse.js'; /* v2.3.4942: a peer's refused fire, put out */
 import { sameWire } from '@/game/partyEq.js'; /* v2.3.4884: an identical party_state re-echo does not re-render */
 import { act } from '@/game/actions.js';   /* v2.3.5189: the page's requests leave through the action door (card K PR 7) */
@@ -4935,7 +4935,7 @@ export function processGameEvent(type, payload, S, deps) {
               /* v2.3.4362: the worker spoke -- a leave waiting on it stops
                  (game/tradeSlot.js), and the window now shows the invite */
               t2LeaveDrop(S);
-              S._t2Live = null;
+              t2LiveTo(S, null, 'close');   /* v2.3.5530: the trade's page door */
               if (setTrade2) setTrade2({ invite: true, from: payload.from, fromName: payload.fromName || 'Someone', ts: Date.now() });
               if (payload.rejoin) break;   /* v2.3.4382: the worker saying a live invite again after a rejoin (rejoinresend.js) -- heard once already */
               pushDmgPopup(S, S.player.x, S.player.y - 40, '🤝 ' + (payload.fromName || 'Someone') + ' wants to trade!', '#3dd497');
@@ -4966,9 +4966,9 @@ export function processGameEvent(type, payload, S, deps) {
               }
               if (payload.state === 'open' || payload.state === 'invited') {
                 setTrade2(payload);
-                S._t2Live = payload.state === 'open' ? (payload.id || true) : null;   /* v2.3.4362 */
+                t2LiveTo(S, payload.state === 'open' ? (payload.id || true) : null, payload.state === 'open' ? 'open' : 'close');   /* v2.3.4362; v2.3.5530: the trade's page door */
               } else if (payload.state === 'done') {
-                S._t2Live = null;   /* v2.3.4362 */
+                t2LiveTo(S, null, 'close');   /* v2.3.4362; v2.3.5530: the trade's page door */
                 /* v2.3.1235: trade-completion receipt — HOLD the window
                    open and drop the old floating "Trade complete!" world
                    popup (it rendered before the wallet echo and the modal
@@ -5048,7 +5048,7 @@ export function processGameEvent(type, payload, S, deps) {
                    session surviving a failed commit) — out of scope.
                    Every other cancel reason keeps the legacy
                    clear-window + world-popup behavior. */
-                S._t2Live = null;   /* v2.3.4362 */
+                t2LiveTo(S, null, 'close');   /* v2.3.4362; v2.3.5530: the trade's page door */
                 /* v2.3.4362: the worker's late 'declined' to a leave this phone
                    already closed by itself: the window is gone and the words
                    were said once (game/tradeSlot.js t2Hushed) */

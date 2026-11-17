@@ -194,6 +194,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `toolshop` | worker | switch | v2.3.3316 | 2026-10-17 | false | logic |  | no | Takes the tools off the shelf and refuses every buy. |
 | `trade2` | worker | switch | v2.3.4375 | 2026-11-10 | false | logic |  | no | The trade window is off, so the old gift is open again. |
 | `tradedoor` | worker | switch | v2.3.5210 | 2026-11-14 | false | logic |  | no | A finished trade's end can be written again, as the two lines before the trade door would have (nothing does today). |
+| `?tradedoor` | page | switch | v2.3.5530 | 2026-11-17 | =0 | logic |  | no | The phone's trade takes any write its own code asks again (an open with no id, a close that carries one), as the lines before the trade's page door; every caller writes what the door allows today. |
 | `tradeonewrite` | worker | switch | v2.3.4795 | 2026-11-11 | false | logic |  | no | The trade's swap goes back to its old order of writes. |
 | `valuepause` | worker | switch | v2.3.5090 | 2026-11-14 | false | logic |  | no | An action that hands gold or goods on runs even in the minute after the storage refused a save (nothing pauses). |
 | `xfer` | worker | switch | v2.3.5092 | 2026-11-14 | false | logic |  | no | No transfer ledger row (`xfer:`) is written; trades run exactly as before. |
@@ -335,6 +336,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `ride` | worker | switch | v2.3.3776 | 2026-10-29 | false | logic |  | no | Un-advertises riding and ends every ride on the rider's next move. |
 | `?ridecoast` | page | switch | v2.3.5440 | 2026-11-14 | =0, off, false | logic |  | no | The board starts at top speed and stops the moment you let go, as before: no pushes to speed up, no roll-off. |
 | `ridedoor` | worker | switch | v2.3.5523 | 2026-11-17 | false | logic |  | no | A board can be taken by the dead or with no session to tell, and an end written over no ride, as the lines before the ride door could have; _handleRide's refusals and _rideEnd still check first. |
+| `?ridedoor` | page | switch | v2.3.5530 | 2026-11-17 | =0 | logic |  | no | Your board on the phone takes any write its own code asks again (a fresh record over a live one), as the lines before the ride's page door; every caller writes what the door allows today. |
 | `rollwindow` | worker | switch | v2.3.3292 | 2026-10-17 | false | logic |  | no | A roll claim is trusted as before, paid or not. |
 | `safeheal` | worker | switch | v2.3.3569 | 2026-10-22 | false | logic |  | no | The safe ground's heal is the wilds' trickle again. |
 | `serverdead` | worker | switch | v2.3.4373 | 2026-11-10 | false | logic |  | no | A phone's move may write `dead` again (the move's write back). |

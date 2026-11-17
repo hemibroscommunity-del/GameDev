@@ -130,6 +130,9 @@
  * v2.3.5525 (the loading door):
  *  39. `S._farmArtHold = seq;` back in farmTrip.js -> loading-door.test FAIL 2
  *  40. `S._veils = new Map();` in zoneTransitions.js -> FAIL 2
+ * v2.3.5530 (the trade's and the ride's page doors):
+ *  45. `S._t2Live = null;` back in rejoinSlots.js -> trade-page-door.test FAIL 2
+ *  46. `r.on = !!p.on;` back in ride.js rideApply -> ride-page-door.test FAIL 2
  * v2.3.5529 (the duel's and the party's page doors):
  *  43. `S._inDuel = null;` back in rejoinSlots.js -> duel-page-door.test FAIL 2
  *  44. `S._party = payload;` back in gameEvents.js -> party-page-door.test FAIL 2
@@ -371,6 +374,12 @@ const DOOR_SUITES = Object.freeze({
     prop: '_arena', besides: [] },
   /* v2.3.5523: the ride door (ps._ridePid is written beside it, in _rideTo) */
   'server/test/ride-door.test.mjs': { field: 'ps._ride', fn: '_rideTo', holds: '§2: no write of ._ride or ._ridePid in server/src outside _rideTo',
+    prop: '_ride', besides: [] },
+  /* v2.3.5530: the trade's page door */
+  'server/test/trade-page-door.test.mjs': { field: 'S._t2Live', fn: 't2LiveTo', holds: '§2: no write of S._t2Live in src/ outside t2LiveTo',
+    prop: '_t2Live', besides: [] },
+  /* v2.3.5530: the ride's page door (its phase, the record's on: the suite's §2) */
+  'server/test/ride-page-door.test.mjs': { field: 'S._ride', fn: 'rideTo', holds: '§2: no write of S._ride, nor of its on, in src/ outside rideTo',
     prop: '_ride', besides: [] },
   /* v2.3.5529: the duel's page door (its note S._activeDuel: the suite's §2) */
   'server/test/duel-page-door.test.mjs': { field: 'S._inDuel', fn: 'duelTo', holds: '§2: no write of S._inDuel or S._activeDuel in src/ outside duelTo',
