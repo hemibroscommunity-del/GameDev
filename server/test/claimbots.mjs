@@ -265,16 +265,16 @@ export async function honestSword(W, ph, take, opts = {}) {
 }
 /* the liar's sword: every monster inside the judge's reach, every 210 ms (the
    per-monster lane), never shoved (`noKb`), walked to at the move's bound */
-export async function liarSword(W, ph, take) {
+export async function liarSword(W, ph, take, opts = {}) {
   await combatStart(W, ph, 'sword');
-  const reach = () => W.room.PVE_MELEE_RANGE - 1;
+  const reach = () => (W.room._swordReach ? W.room._swordReach() : W.room.PVE_MELEE_RANGE) - 1;   /* v2.3.5548: the judge's reach (swordswing.js) */
   while (!ph.over) {
     const ps = W.ps(PID);
     const inReach = alive(W).filter((m) => dist(m, ps) <= reach());
     if (!inReach.length) {
       const a = alive(W).sort((p, q) => dist(p, ph) - dist(q, ph))[0];
       if (!a) { await ph.wait(500); continue; }
-      await ph.walkTo(() => a.x, () => a.y, { speed: 480, stop: reach() - 20, honest: false });
+      await ph.walkTo(() => a.x, () => a.y, { speed: opts.speed || 480, stop: reach() - 20, honest: false });   /* v2.3.5548: `opts.speed`, the sword's claim alone at an honest walk (the move's claim apart) */
       continue;
     }
     for (const m of inReach) { const r = await claim(W, ph, m, 'melee', { noKb: true }); if (r.killed) take.kills++; }
