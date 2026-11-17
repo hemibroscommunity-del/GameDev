@@ -17,7 +17,7 @@ screen.
 |---|---|
 | `full` | What every device draws today |
 | `light` | A lighter picture, for tests and slow devices: picked only by `?lane=light` |
-| `thirty` | A screen of 30 a second (an iPhone in Low Power Mode): the full lane's row (v2.3.5230: but monsters' art 8 ms a frame, a 30 screen's quarter, as before) until its step's cap (card O PR 13) |
+| `thirty` | A screen of 30 a second (an iPhone in Low Power Mode): the full lane's row (v2.3.5230: but monsters' art 8 ms a frame, a 30 screen's quarter, as before) and a step of three of its frames, 100 ms (v2.3.5233, card O PR 13) |
 
 A device picks `thirty` where its screen runs at 30 a second, else `full` (`pickLane`). Where nothing is known yet: `full`.
 `?lane=<name>` draws a page in that lane, whatever its facts.
@@ -34,7 +34,7 @@ A device picks `thirty` where its screen runs at 30 a second, else `full` (`pick
 | `water` | The sea moves | The sea moves | The sea moves |
 | `queue` | Monsters' art loads 4 ms a frame at most (a 60 screen's quarter) | Monsters' art loads 4 ms a frame at most (a 60 screen's quarter) | Monsters' art loads 8 ms a frame at most (a 30 screen's quarter) |
 | `caches` | Every cache holds what its own cap allows | Every cache holds what its own cap allows | Every cache holds what its own cap allows |
-| `step` | A frame moves the world at most 50 ms (three frames at 60) | A frame moves the world at most 50 ms (three frames at 60) | A frame moves the world at most 50 ms (three frames at 60) |
+| `step` | A frame moves the world at most 50 ms (three frames at 60) | A frame moves the world at most 50 ms (three frames at 60) | A frame moves the world at most 100 ms (three frames at 30): a missed refresh is still its whole ground |
 | `prewarm` | No prewarm ring (not built) | No prewarm ring (not built) | No prewarm ring (not built) |
 
 ## The ladder
@@ -88,10 +88,10 @@ value, the `full` row's.
 | `water` | the sea's waves | `moving`, `still` | `src/rendering/wheelWater.js` | yes | 9 | `?waves` | render |
 | `queue` | the ms a frame the strip queue may take loading monsters' art in play (v2.3.5230: the lane's, never the frame's length; was a quarter of the frame, 3 to 50 ms) | `4`, `8` | `src/rendering/zoneTextures.js` | yes | 10 | `?stripslice` | art |
 | `caches` | the caches' caps, as a share of each cache's own (docs/BUDGETS.md part 3) | `1` | `src/rendering/lookPalette.js`, `src/rendering/gearNumbers.js`, `src/rendering/systems/entityRenderer.js`, `src/rendering/cacheBytes.js` | not yet | 11 | - | look |
-| `step` | the longest step, in ms, one frame may move the world (frameClock.js SMOOTH_MAX_MS; the loop's clamp) | `50` | `src/game/frameClock.js`, `src/ui/BroTown.jsx` | not yet | 13 | `?dtsmooth` | page-thread |
+| `step` | the longest step, in ms, one frame may move the world (frameClock.js SMOOTH_MAX_MS, handed in; the loop's clamp): three of the lane's frames | `50`, `100` | `src/ui/BroTown.jsx` | yes | 13 | `?dtsmooth` | ui |
 | `prewarm` | the prewarm ring (step 3.3, LATER): one value and no reader until 3.3 builds the ring | `0` | none yet | - | - | - | - |
 
-Not yet moved: 2 of 11 knobs with a reader.
+Not yet moved: 1 of 11 knobs with a reader.
 
 ## The overrides
 
@@ -103,6 +103,18 @@ An override pins a knob, over the lane and the ladder; the governor never moves 
 | `program` | `three` | `computer` | a Windows or Mac computer builds programs through ANGLE, whose compilers took minutes over the look palette's; this one was never built there (v2.3.5016) |
 | `look` | `baked` | `windows` | Windows: ANGLE's FXC inlines the look palette's program, the loading screen stood at 75% for 5-10 minutes on the owner's laptop (v2.3.3838) |
 | `look` | `baked` | `mac` | a Mac: ANGLE's Metal inlines as FXC does, and a computer has the memory the palette saves (v2.3.3842) |
+
+The off-ramps: a switch in the address pins its knob (to a step, or to the lane's row: `-`), read through the page's one reader (`src/game/switches.js`).
+
+| Knob | Pinned to | When the address has | Why |
+|---|---|---|---|
+| `program` | `three` | `?onebatch=0` | the three programs, as before the one program |
+| `program` | `one` | `?onebatch=1` | the one program asked for (QA: a software renderer would keep the three) |
+| `look` | `baked` | `?lookpalette=0` | every look baked |
+| `look` | `palette` | `?lookpalette=1` | the look palette asked for (QA: even on Windows) |
+| `water` | `still` | `?nowaves` | the sea still |
+| `rate` | - | `?pace` | the pacer off (`?pace=0`): the rate is read by nothing |
+| `crowd` | - | `?crowd` | a crowd cap of its own (`?crowd=K`): the knob is read by nothing |
 
 ## The game's own drawing programs
 

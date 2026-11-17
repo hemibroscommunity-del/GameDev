@@ -137,7 +137,7 @@ function wantedByAddress() {
        choice itself (the lanes' `look` knob and its overrides: card O PR 8);
        this file reads no navigator.  v2.3.3842: a Mac too (an iPad, with
        touch, keeps it) */
-    const c = lookPaletteChoice(window.location.search || '');
+    const c = lookPaletteChoice();   /* v2.3.5232: the page's address, through its one reader */
     _why = c.why;
     return c.on;
   } catch (e) { return true; }
