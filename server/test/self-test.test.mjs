@@ -316,13 +316,14 @@ const code = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`\\])\/\
     && /selfQueue\('water', _renderer, rts, wants, \(\) => \{\s*_ok = false;[\s\S]{0,140}setWheelWaterMoves\(false\);\s*\}/.test(ww));
   /* every name the page tests or skips is a program the worker's `self` takes */
   const files = ['src/rendering/paletteTex.js', 'src/rendering/sharpPixels.js', 'src/rendering/lightfx/sheenBatch.js', 'src/rendering/lookPalette.js', 'src/rendering/lightfx/shadows.js', 'src/rendering/wheelWater.js',
-    'src/rendering/fillBatch.js', 'src/rendering/lightfx/glint.js'];   /* v2.3.5237: + 14c's */
+    'src/rendering/fillBatch.js', 'src/rendering/lightfx/glint.js',   /* v2.3.5237: + 14c's */
+    'src/rendering/hairClip.js'];   /* v2.3.5238: + 14d's */
   const names = new Set();
   for (const f of files) for (const mm of code(src(f)).matchAll(/self(?:Queue|Skip)\('([a-z]+)'/g)) names.add(mm[1]);
   const progs = src('src/game/drawLanes.js').match(/\{ name: '([a-z]+)', file:/g).map((x) => x.split("'")[1]);
   const stray = [...names].filter((x) => !progs.includes(x));
-  check('7. every program the page tests is one of drawLanes.js PROGRAMS (the worker\'s SELF_PROGRAMS): ' + [...names].sort().join(', '), stray.length === 0 && names.size === 9, { names: [...names], stray });
-  check('7. the lever\'s row names them', /fail:<name>\[,<name>...\] \(one, palette, look, sharp, sheen, shadow, water, fill, glint\)/.test(src('tools/guards/lib/switches.mjs')));
+  check('7. every program the page tests is one of drawLanes.js PROGRAMS (the worker\'s SELF_PROGRAMS): ' + [...names].sort().join(', '), stray.length === 0 && names.size === 10, { names: [...names], stray });
+  check('7. the lever\'s row names them', /fail:<name>\[,<name>...\] \(one, palette, look, sharp, sheen, shadow, water, fill, glint, clip\)/.test(src('tools/guards/lib/switches.mjs')));
 }
 
 /* ── 8. v2.3.5237 (14c): the fill and the glint -- no way back, named ── */
@@ -359,6 +360,29 @@ const code = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`\\])\/\
     && /wants\.push\(\{ want: glintCpu\(pic, SELF_SHEEN, grade\), tol: 4 \}\);/.test(glc) && /selfQueue\('glint', renderer, rts, wants, \(\) => \{\s*\}/.test(glc));
   const progs = src('src/game/drawLanes.js');
   check('8. the card: the fill and the glint have no way back (drawLanes.js PROGRAMS `back: null`)', /name: 'fill',[^\n]*back: null/.test(progs) && /name: 'glint',[^\n]*back: null/.test(progs));
+}
+
+
+/* ── 9. v2.3.5238 (14d): the clip -- its two programs, no way back, named ── */
+{
+  const n = S.SELF_SIZE, pic = S.selfClipRgba();
+  const kept = (w) => { let k = 0; for (let i = 3; i < w.length; i += 4) if (w[i]) k++; return k; };
+  const hat = S.selfClipWant(false), mon = S.selfClipWant(true);
+  /* each colour of the four sits clear of its line (0.5) by a tenth */
+  const clear = [0, 1, 2, 3].every((c) => { const a = S.SELF_CLIP_PAL[c * 4 + 3] / 255, r = S.SELF_CLIP_PAL[c * 4] / 255; return Math.abs(a - 0.5) > 0.1 && Math.abs(a * r - 0.5) > 0.1; });
+  check('9. the clip\'s answers: the hat\'s keeps fewer than the monsters\', each keeps some and drops some, and what it keeps is the picture itself; no colour near a line',
+    clear && kept(hat) > 0 && kept(hat) < kept(mon) && kept(mon) < n * n
+    && [hat, mon].every((w) => { for (let i = 0; i < w.length; i += 4) if (w[i + 3] && [0, 1, 2, 3].some((c) => w[i + c] !== pic[i + c])) return false; return true; }),
+    { hat: kept(hat), mon: kept(mon) });
+  const hc = src('src/rendering/hairClip.js');
+  check('9. the CPU\'s lines are the programs\' own (alpha x red; alpha)',
+    hc.includes('if (outColor.a * outColor.r < 0.5) discard;') && hc.includes('if (outColor.a < 0.5) discard;'));
+  const hcc = code(hc);
+  check('9. the clip: tested once installed, each program through its sprite\'s own batcher; NO way back (its onFail does nothing: named in `self`, drawn as today)',
+    /_installed = true;\s*try \{ clipSelfTest\(r\); \}/.test(hcc)
+    && /if \(alpha\) spr\._btClipAlpha = true; else spr\._btClipMask = true;/.test(hcc)
+    && /selfQueue\('clip', renderer, rts, wants, \(\) => \{\s*\}/.test(hcc));
+  check('9. the card: the clip has no way back (drawLanes.js PROGRAMS `back: null`)', /name: 'clip',[^\n]*back: null/.test(src('src/game/drawLanes.js')));
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);

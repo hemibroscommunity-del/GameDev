@@ -52,10 +52,10 @@ import { remainsName } from '../data/remains.js';
 import { shardByKey } from '../data/shards.js';
 import { coinArtFor } from './coinArt.js';   /* v2.3.3734 */
 import { QUALITY_COLOR } from '../ui/mobile/dash/common.js';   /* v2.3.3746: the gear's grade colours, the armour's own (no imports there) */
+import { sw } from './switches.js';   /* v2.3.5309: the page's one reader (card T) */
 
 const OFF = (() => {
-  try { return typeof location !== 'undefined' && /[?&]droplines=0\b/.test(location.search || ''); }
-  catch (e) { return false; }
+  return sw('droplines');
 })();
 
 /** Are the lines shown (and the dice roll over the monster not)? */
