@@ -223,3 +223,58 @@ report (A); the state ledger and the phase table (L); any server code.
    moved table are M's. A suite under `server/` deploys the worker on
    merge: say so in that PR.
 8. **Tags:** when 5340-5359 run out, ask for a second block.
+
+## Amended by the owner's review (2026-11-17, the owner's "Go")
+
+The session "Grand plan M split review" measured the three files and the
+owner said go to six changes. They overrule the lines above where they
+differ.
+
+1. **M ends at line 7** (the code counted). Line 8 ("the code leaves")
+   leaves this card; tags 5354 to 5359 stay unused. Line 7's count records
+   for each function and method: its code lines, whether it reads `this`,
+   the module state it reaches, the in-file names it reads, the suites
+   that read it. A new card, with a new letter and a fresh session, is
+   written from that count. Measured: only about a tenth of the renderers'
+   code can leave verbatim as leaves (168 top-level functions with no
+   module state, 1,687 lines). The classes are 12,978 lines, and four-lines'
+   IMPORT_CYCLE_FILES has no room, so code can only leave leaf-first.
+2. **Two chains, by file, two sessions.**
+   - **Chain A, session M:** lines 1, 2, 3 (BroTown.jsx), tags 5340, 5341,
+     5342.
+   - **Chain B, session M2** (status `docs/plan/status/M2.md`): lines 4, 5,
+     6, 7 (the renderers; 5 and 7 change no game file), tags 5343 to 5347
+     as below.
+   A chain-B PR may be open while a chain-A PR waits at the gatekeeper.
+   "Never side by side" narrows to the file a PR is in. Shared lines each
+   chain writes in a place of its own: `MOVED` in switch-reader.test.mjs
+   (A's block above B's) and part 2 of T-reads-left.md (A writes the
+   BroTown.jsx rows, B the renderers' rows); systems.mjs and SYSTEMS.md
+   (A: frameSteps in page-thread; B: tables in render or their system).
+   The second PR to touch a shared file merges `main` in after the first
+   lands.
+3. **The tables in two PRs, one a renderer** (tags 5345 entity, 5346
+   effects), not six to eight. Line 5's count (tag 5344) also lists the
+   ~250 lone top-level constants, each marked tuned (a scale, offset or
+   anchor of the art) or not. The tuned ones leave with the tables, by
+   that count. The 7 suites that name a table go with these two PRs.
+4. **Tests converted in one batch.** The 58 suites that read the three
+   files by text are the new card's first PR, not part of each move.
+5. **More steps named (line 2, tag 5341):** every existing single call in
+   the loop becomes a step, grouped: sound (tickWaterAmbience to
+   tickDanceMusic), zone (handleZoneTransitions, updateZoneMechanics,
+   updateDungeonWaves), farm (tickFarmWalk), race and townsfolk (raceTick,
+   townsfolkFrame), monsters (updateMonsterCombat), weapon feel (sword,
+   staff, bow), loot (updateGroundLootPickup), peers (releasePeerDamage),
+   plus settleTapPress and rideStepped. `legacy` is reopened between them
+   and nothing moves. It's the same one PR and the same tests. 5.4's box is
+   not M's to finish; the loop's measured facts go in the census for a later card.
+6. **Small gaps.** `mp-lookarmour` and `mp-itemdrop` are red on `main`: a
+   PR passes with "the same failures as `main`, by name", shown in its
+   words. KNOWN_SECOND 5 (the frame measured by two clocks) and 7 ("is the
+   world in play" asked four ways), and BUDGETS part 3's caches, are not
+   M's: they're held for the later card, named in M's status under Found.
+
+Tags after this: A 5340 to 5342; B 5343 (T's 22 renderer reads), 5344
+(tables and lone constants counted), 5345 (entity tables), 5346 (effects
+tables), 5347 (code counted). 5348 to 5359 are unused.
