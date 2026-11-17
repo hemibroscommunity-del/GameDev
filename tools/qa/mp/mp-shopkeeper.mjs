@@ -413,6 +413,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const readSizes = () => A.page.evaluate(() =>
     ((window.__btNpcSprites && window.__btNpcSprites()) || [])
       .reduce((o, n) => { o[n.id] = Math.round(n.height); return o; }, {}));
+  /* beside him (not in front: his drawer stays shut), where he is drawn */
+  const diego = await A.page.evaluate(() => { const n = ((window._gameState.current || {}).npcs || []).find((q) => q.id === 'shopkeeper_bro'); return n ? { x: n.x, y: n.y } : null; });
+  if (diego) await H.hopTo(A, diego.x + 120, diego.y + 40, { step: 100, gap: 260, tries: 90 }).catch(() => {});
   let sizes = await readSizes();
   for (let t0 = Date.now(); Date.now() - t0 < 30000 && !(sizes.shopkeeper_bro > 0); ) { await A.page.waitForTimeout(500); sizes = await readSizes(); }
   /* v2.3.2052 (owner: "make shopkeeper larger his sprite is bit small"): his
