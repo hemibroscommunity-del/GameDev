@@ -17,6 +17,8 @@
  *   3. THE CENSUS (docs/plan/census/M-tables.md) is what --write makes from
  *      the same scan, but for its line numbers (a line moved elsewhere in a
  *      renderer must not fail every PR): the same names in each list.
+ *      v2.3.5347: but for part 5 too, the code's census, written at a commit
+ *      by tools/dev/render-code-census.mjs; --write keeps it as it finds it.
  *
  * BREAK PROOF (rule 8), each tried by hand once, 2026-11-17:
  *   - a `const _ZZ = { a: 1 };` added to effectsRenderer.js
@@ -41,11 +43,17 @@ import { scanRenderers, scanText, suitesNaming, tunedName, ROOT } from './lib/re
 const TABLES_LINE = 54;   /* its first count, v2.3.5344 (main 17f749b): 30 in entityRenderer.js, 24 in effectsRenderer.js */
 
 const CENSUS = 'docs/plan/census/M-tables.md';
+/* v2.3.5347: part 5 of the page is the code's census (tools/dev/render-code-census.mjs): this guard keeps it and holds the rest */
+const PART5 = '<!-- part 5: the code (tools/dev/render-code-census.mjs --write) -->';
 
 const scan = await scanRenderers();
 
 if (process.argv.includes('--write')) {
-  writeFileSync(join(ROOT, CENSUS), censusPage(scan));
+  /* v2.3.5347: part 5 (the code, tools/dev/render-code-census.mjs) is kept as it is */
+  let had = '';
+  try { had = readFileSync(join(ROOT, CENSUS), 'utf8'); } catch { /* a first write */ }
+  const i = had.indexOf(PART5);
+  writeFileSync(join(ROOT, CENSUS), censusPage(scan) + (i >= 0 ? '\n' + had.slice(i) : ''));
   console.log(`wrote ${CENSUS}: ${scan.tables.length} tables, ${scan.lone.filter((r) => r.tuned).length} tuned of ${scan.lone.length} lone constants`);
   process.exit(0);
 }
@@ -94,8 +102,10 @@ const check = (name, ok, detail) => {
   let page = '';
   try { page = readFileSync(join(ROOT, CENSUS), 'utf8'); } catch { /* missing: fails below */ }
   const strip = (s) => s.replace(/\| \d+ (?=\|)/g, '| L ').replace(/:\d+\b/g, ':L').replace(/line \d+/g, 'line L');
-  check(`3: ${CENSUS} is the scan's (but for line numbers): \`node tools/guards/render-tables.test.mjs --write\``,
-    page !== '' && strip(page) === strip(censusPage(scan)), page === '' ? 'missing' : 'differs');
+  /* v2.3.5347: up to part 5 (the code's census, written at a commit by its own script) */
+  const tablesPart = (t) => { const i = t.indexOf(PART5); return (i >= 0 ? t.slice(0, i) : t).replace(/\n+$/, ''); };
+  check(`3: ${CENSUS} is the scan's (but for line numbers, and part 5): \`node tools/guards/render-tables.test.mjs --write\``,
+    page !== '' && strip(tablesPart(page)) === strip(censusPage(scan).replace(/\n+$/, '')), page === '' ? 'missing' : 'differs');
 }
 
 console.log(failed ? `\n${failed} FAILED` : '\nall green');
