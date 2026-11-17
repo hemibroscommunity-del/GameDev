@@ -1,8 +1,9 @@
 # The gatekeeper's review, sitting 36 (card Z; tag 5674)
 
 Taken 2026-11-17 on `main` 52244a81 (sitting 35 merged: K #2024, L
-#2027, RT #2026, Z #2029). Two cards still run (K and L), told this
-sitting's session at its start (15:37 UTC). Tags bare.
+#2027, RT #2026, Z #2029). K and L were told this sitting's session at
+its start (15:37 UTC), SEC and K2 at 15:53 (the planner named them); K
+is done with #2028. Gathered 15:36 to 16:50 UTC. Tags bare.
 
 ## Heads, merge bases and trees
 
@@ -154,9 +155,11 @@ Then the list: `tools/dev/gatekeeper.mjs` on 52244a81 with #2030 (at
 14cda149), #2028 (30d7681e), #2031 (37bb4911) and #2033 (97af140b), in
 that order: tree e8c01313 (the same as the step-by-step merges); build
 PASS; questline 187/187; precheck the same one timeout and nothing else
-red; `cd server && npm test` alone: NPMTEST. #2030's new head 9d5bd5d6
+red; `cd server && npm test` alone: 482 suites, all green
+(356 s). #2030's new head 9d5bd5d6
 changes only its card against that tree. This PR merged on top of the
-list (one base, 52244a81): GUARDS. `test` green on every listed head.
+list (one base, 52244a81): every guard in `tools/guards/` green
+(34), the phase table 6 `todo` under the line 7. `test` green on every listed head.
 
 No two listed PRs share a file but: the switch table's rows
 (`switches.mjs`, `SWITCHES.md`; #2028 and #2031, each its own line,
@@ -166,8 +169,10 @@ parts of the file, merged clean).
 
 ## Z (this PR, 5674)
 
-The phase table's line 9 -> 7 (`tools/guards/phase-table.test.mjs`
+#2036. The phase table's line 9 -> 7 (`tools/guards/phase-table.test.mjs`
 `TODO_LINE`; 6 fails 7, tried), the count on `main` 52244a81 after L's
 #2027. The plan noted for sitting 35's merges: 4.2 (K #2024, `swordswing`
-and `movetop` ON), 5.3b (L #2027). Documents and the guard's one number:
-no deploy of its own.
+and `movetop` ON), 5.3b (L #2027). `status/RT.md` `done` (the planner's
+message, 16:18 UTC: #2026 merged, the RT session ended). Documents and
+the guard's one number: no deploy of its own. Precheck on its branch:
+only the server suites' timeout and the branch count's WARN.
