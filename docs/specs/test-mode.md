@@ -63,11 +63,11 @@ switch allows it.
   a move's fields held to their form (v2.3.5723, `movement.js` `MOVE_FIELDS`,
   `movefields`); a relay's fields typed and the room's send to joined
   sockets only (v2.3.5724, `relay.js` `RELAY_FORMS`, `relaytyped`);
-  a General Store sell filed under its weapon's own tier, and a refund and
-  its order's delete in one write (v2.3.5801, `market.js`, `mkttier`,
-  `mktheal`);
   the owner's routes with no key and the public reads at the edge (v2.3.5726,
   `wire/door.js`; the worker settings `EDGE_GUARD`, `EDGE_CACHE`).
+- A General Store sell filed under its weapon's own tier, and a refund and
+  its order's delete in one write (v2.3.5801, card RV, `market.js`,
+  `mkttier`, `mktheal`).
 - Every save and payment rule; the login key, the device lock, the lockouts;
   a frozen account.
 - PvP consent and **every check on a hit between players** (pvpbalance.js,
