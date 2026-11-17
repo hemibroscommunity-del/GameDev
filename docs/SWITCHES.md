@@ -188,6 +188,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `goldlog` | worker | switch | v2.3.4903 | 2026-11-12 | false | logic |  | no | The gold log notes nothing. |
 | `goldonesum` | worker | switch | v2.3.4803 | 2026-11-11 | false | logic |  | no | Every gold road goes back on its step-1 sum. |
 | `itemdrop` | worker | switch | v2.3.3473 | 2026-10-18 | false | logic |  | no | Dropping an item on the ground is refused (off). |
+| `jackcheck` | worker | switch | v2.3.5813 | 2026-11-17 | false | logic |  | no | The jackpot's deposit takes after its awaits without asking the purse again, as before (MD-3). |
 | `leftoverheal` | worker | switch | v2.3.5809 | 2026-11-17 | false | logic |  | no | The trade window's weapons and the arena's champion pay, then delete their escrow record in a later write, as before (MS-6). |
 | `loginspin` | worker | switch | v2.3.4285 | 2026-11-05 | false | logic |  | no | Un-advertises the login wheel and refuses every ask. |
 | `mktheal` | worker | switch | v2.3.5801 | 2026-11-17 | false | logic |  | no | A General Store cancel or expiry pays the escrow back, then deletes the order in a later write, as before (MS-4: a restart between, then 48 quiet hours, can pay it twice). |
