@@ -57,7 +57,10 @@
  * (flood.js), the relay's allowlist and its rebuild in the sender's name
  * (relay.js), PRIVILEGED_EVENTS, the origin lock, a web request's body cap
  * (v2.3.5720, wire/door.js BODY_CAP: `bodycap`), the look relay's pace and
- * bytes (v2.3.5721, lookrelay.js LOOK_PACE: `lookpace`), every save and payment rule,
+ * bytes (v2.3.5721, lookrelay.js LOOK_PACE: `lookpace`), a Workshop run's
+ * safe ground (v2.3.5725, dungeon.js: `dungeonground`), the owner's routes
+ * with no key and the public reads at the edge (v2.3.5726, wire/door.js:
+ * the worker settings `EDGE_GUARD`, `EDGE_CACHE`), every save and payment rule,
  * the login key and its lockouts, a frozen account, PvP consent and every
  * check on a hit between PLAYERS (pvpbalance.js), loot ownership, the zone
  * locks, the tool and level gates and a harvest's reach, damage being the

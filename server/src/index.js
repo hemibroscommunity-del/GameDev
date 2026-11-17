@@ -280,7 +280,7 @@ import { moveClaimMethods, guardFacing } from './moveclaims.js'; /* v2.3.4605: w
 import { attackBlocked, slideMove } from './props.js'; /* v2.3.2652: a rock stops a monster's hit; v2.3.2653: and its feet */
 import { staminaRegenMethods } from './staminaregen.js'; /* v2.3.3536: stamina regen worked out by the worker */
 import { fightLockMethods, FIGHT_GATED } from './fightlock.js'; /* v2.3.4510: one fight-lock table */
-import { wireDoorMethods, bodyCapRoute } from './wire/door.js'; /* v2.3.5184: the wire door -- the table's checks before any handler; v2.3.5720: a body's size before any forward (`bodyCapRoute`) */
+import { wireDoorMethods, bodyCapRoute, edgeKeyRefusal, edgeCacheRead } from './wire/door.js'; /* v2.3.5184: the wire door -- the table's checks before any handler; v2.3.5720: a body's size before any forward (`bodyCapRoute`); v2.3.5726: the owner's routes with no key (`edgeKeyRefusal`) and the public reads from the edge's cache (`edgeCacheRead`) */
 import { leaveMethods } from './leave.js'; /* v2.3.4830: the session door -- every way of leaving */
 import { goldMethods } from './gold.js'; /* v2.3.4670: the gold door -- every change to a player's gold */
 import { lifeMethods } from './life.js'; /* v2.3.4820: the life door -- a player's health and life phase */
@@ -312,6 +312,14 @@ const HERB_REGEN_MULT = (DISHES.meal_herb_bread && Number(DISHES.meal_herb_bread
  * throw — `new URL(request.url)` included — because a catch that needs the
  * body to have run is not a catch.
  */
+/* v2.3.5726: a page of the game's own sites (or the machine's own), whatever
+   ORIGIN_LOCK says -- the edge cache's question (wire/door.js edgeCacheRead) */
+const isGameOrigin = (origin, env) => {
+  if (!origin) return false;
+  const og = originAllowed(origin, { ...(env || {}), ORIGIN_LOCK: 'on' });
+  return og.ok && (og.why === 'site' || og.why === 'local');
+};
+
 async function routeHttp(request, env) {
     const url = new URL(request.url);
     const corsHeaders = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' };
@@ -381,7 +389,8 @@ async function routeHttp(request, env) {
     // prototype throwaways).
     if (url.pathname.startsWith('/api/market')) {
       if (!roomName) return noSuchRoom();
-      return env.GAME_ROOM.get(env.GAME_ROOM.idFromName(roomName)).fetch(request);
+      /* v2.3.5726: a public read, not from the game's own pages, from the edge's cache (wire/door.js edgeCacheRead) */
+      return edgeCacheRead(request, url, env, (o) => isGameOrigin(o, env), () => env.GAME_ROOM.get(env.GAME_ROOM.idFromName(roomName)).fetch(request));
     }
 
     /* v2.3.2475: the auction house rides the same route shape as the order
@@ -391,7 +400,8 @@ async function routeHttp(request, env) {
        limited, and retired) independently. */
     if (url.pathname.startsWith('/api/store')) {
       if (!roomName) return noSuchRoom();
-      return env.GAME_ROOM.get(env.GAME_ROOM.idFromName(roomName)).fetch(request);
+      /* v2.3.5726: a public read, not from the game's own pages, from the edge's cache (wire/door.js edgeCacheRead) */
+      return edgeCacheRead(request, url, env, (o) => isGameOrigin(o, env), () => env.GAME_ROOM.get(env.GAME_ROOM.idFromName(roomName)).fetch(request));
     }
 
     if (url.pathname.startsWith('/api/leaderboard')) {
@@ -404,6 +414,14 @@ async function routeHttp(request, env) {
         return new Response(JSON.stringify({ ok: false, error: 'Read-only' }), { status: 405, headers: corsHeaders });
       }
       return env.LEADERBOARD.get(env.LEADERBOARD.idFromName('global')).fetch(request);
+    }
+
+    /* v2.3.5726 (card K2 PR 7): the owner's two surfaces with no key are
+       answered here, the room's own answer, and the room is never woken
+       (wire/door.js edgeKeyRefusal; `EDGE_GUARD = "off"` sends them on) */
+    {
+      const _edge = roomName ? edgeKeyRefusal(request, url.pathname, env) : null;   /* a room it does not make: 'no such room' first, as before */
+      if (_edge) return _edge;
     }
 
     // v2.3.1146: anti-bot evidence surface lives in the GameRoom (the
@@ -421,7 +439,8 @@ async function routeHttp(request, env) {
     // precedent).  Honor ?room= like /ws and /api/market.
     if (url.pathname.startsWith('/api/arena')) {
       if (!roomName) return noSuchRoom();
-      return env.GAME_ROOM.get(env.GAME_ROOM.idFromName(roomName)).fetch(request);
+      /* v2.3.5726: a public read, not from the game's own pages, from the edge's cache (wire/door.js edgeCacheRead) */
+      return edgeCacheRead(request, url, env, (o) => isGameOrigin(o, env), () => env.GAME_ROOM.get(env.GAME_ROOM.idFromName(roomName)).fetch(request));
     }
 
     // v2.3.1143: account-login pre-flight (Login Key check).  Lives in
@@ -4817,7 +4836,13 @@ export class GameRoom {
       }
       return;
     }
-    return this._onMessage(ws, session, msg);
+    /* v2.3.5725 (card K2 PR 6a; the second red team): a frame of its own is
+       caught as a bundle's part is (above): a handler that throws -- an
+       object where it reads a scalar -- drops only that message, logged as
+       the bundle logs it, and never reaches the runtime as the room's own
+       uncaught error. */
+    try { return await this._onMessage(ws, session, msg); }
+    catch (e) { try { console.error('[message] ' + String(msg && msg.type).slice(0, 64) + ' threw:', e && e.message); } catch {} }
   }
 
   /* v2.3.3254: one message, out of a frame of its own or a bundle (above) */
