@@ -74,7 +74,10 @@ function fakeWs(label) {
 }
 function newRoom(state, flags) {
   const room = new GameRoom(state || makeState(), mockEnv);
-  room._liveFlags = flags || {};
+  /* v2.3.5716 (card SEC PR 17): this suite plays the owner's pass and the
+     lock thrown off as they let an OLD key in; with `oldkeyheld` on, the
+     default, neither does -- oldkeyheld.test is the new way's */
+  room._liveFlags = { oldkeyheld: false, ...(flags || {}) };
   return room;
 }
 async function join(room, id, phrase, device, extra) {
@@ -376,7 +379,7 @@ let room2, key2, key2First, h2First;
   const roomK = newRoom();
   const wk = await join(roomK, 'bp_lk_on', OLD, D1, KV);
   const k = keyOf(wk);
-  roomK._liveFlags = { keys2: false };
+  roomK._liveFlags = { oldkeyheld: false, keys2: false };
   const w2 = await join(roomK, 'bp_lk_on', k, D2, KV);
   check('10. ...but a key already made still comes in (the switch locks nobody out)', joined(w2), rejected(w2));
   check('10. key_new is PRIVILEGED (a phone cannot relay one)', PRIVILEGED_EVENTS.has('key_new'));

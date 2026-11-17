@@ -1,6 +1,6 @@
 card: L
 branch: claude/plan-l-37-zone-door (from main)
-prs: #1746 to #2046 (merged), #2052, #2058, #2065 (5535-5537, stacked): ready
+prs: #1746 to #2052 (merged), #2058 (5536), #2065 (5537, on #2058): ready
 state: ready
 
 ## Done

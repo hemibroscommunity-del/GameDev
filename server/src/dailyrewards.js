@@ -534,13 +534,18 @@ export const dailyRewardsMethods = {
      synchronous.  The AFK sweep (tick.js) calls webSocketClose unawaited and
      relies on its cleanup having run when the call returns (afk.test.mjs);
      an unconditional await here deferred all of it a microtask. */
+  /* v2.3.5719: the player's cached record and its marks, dropped without a
+     write -- the leave's forget below, and a character restart's
+     (persistence.js resetclean: a dirty record written back on the restart's
+     leave would put the old character's row on file again) */
+  _drForget(pid) {
+    this._drMap().delete(pid);
+    this._drDirtyMap().delete(pid);
+    if (this.__drNews) this.__drNews.delete(pid);
+    if (this.__drKept) this.__drKept.delete(pid);
+  },
   _drOnClose(pid) {
-    const forget = () => {
-      this._drMap().delete(pid);
-      this._drDirtyMap().delete(pid);
-      if (this.__drNews) this.__drNews.delete(pid);
-      if (this.__drKept) this.__drKept.delete(pid);
-    };
+    const forget = () => this._drForget(pid);
     if (!this._drDirtyMap().has(pid)) { forget(); return null; }
     return this._drSave(pid).catch(() => { /* the counting is all that is at stake */ }).then(forget);
   },

@@ -157,10 +157,34 @@ before.
 - **The key itself.** It stays the same for now. New, longer keys made by the
   server come next.
 
+## An old key never works from a device not on the list (v2.3.5716, card SEC PR 17)
+
+The hold above fell away twice: with `devicelock: false` thrown, and while
+the owner's pass was open. An old key is not a secret, so now
+(`devicelock.js` "AN OLD KEY NEVER WORKS FROM A DEVICE NOT ON THE
+CHARACTER'S LIST"):
+
+- an old key from a device not on the list is refused (`device`) whether the
+  lock is on or off -- the join, the login check and the restart;
+- a pass admits a NEW key only: an old key is not let in on one, and the
+  pass is not spent;
+- a missing list takes no first device even under `oldkeylock: false`.
+
+A listed device with an old key works as today, a new key works from any
+device, and the owner's tools are the same routes; **Give it a new key** is
+the way onto a new device now (OPERATIONS.md). The one first-device case
+left is an explicit empty list, which only a join naming no device writes
+(the suites' characters). Kill switch `oldkeyheld: false`: the lock off and
+the pass as before. Suite: `server/test/oldkeyheld.test.mjs`;
+`device-lock.test` and `login-keys.test` play the pass and the lock off with
+it thrown.
+
 ## The switch
 
 `devicelock: false` in the live flags puts back the join, the login check and
-the restart as they were: nothing is refused. Since v2.3.5584 a matching old
+the restart as they were, for a NEW key and a listed device: since v2.3.5716
+an old key from a device not on the list is still refused (above,
+`oldkeyheld`). Since v2.3.5584 a matching old
 key's device is still written down (above); with `offdevs: false` too,
 nothing is read or written for this.
 

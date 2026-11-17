@@ -1,3 +1,25 @@
+# v2.3.5717 (card SEC PR 18): THE SITE'S PROTECTIVE HEADERS, ON EVERY PAGE.
+# They lived in src/public/_headers, which the build never copied (vite.config.js:
+# root 'src', publicDir '../public'), so production sent none of them.  Here,
+# where Pages reads them (dist/_headers):
+#   - X-Frame-Options and Content-Security-Policy frame-ancestors: no other site
+#     may show the game inside its own page (a page that frames the game can lay
+#     its own buttons over ours).  The repository and its docs name no place the
+#     game is shown inside another site's page.  To allow ONE named site later,
+#     replace both lines' values with that site, e.g.
+#       Content-Security-Policy: frame-ancestors 'self' https://example.com
+#     and delete the X-Frame-Options line (it cannot name a site).
+#   - X-Content-Type-Options: a file is read as the type it is sent as.
+#   - Referrer-Policy: another site is told only our address, never the page.
+# A header has no live switch: a change here is a new build.  A pull request's
+# preview URL serves this file too, so a change shows there first.
+# tools/guards/site-headers.test.mjs fails if src/public/_headers comes back.
+/*
+  X-Frame-Options: DENY
+  Content-Security-Policy: frame-ancestors 'none'
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+
 # v2.3.2330: cache headers for Cloudflare Pages.  Vite copies public/ into
 # dist/ verbatim, which is where Pages reads this from; there was no _headers
 # file anywhere before, so every one of the ~700 assets on a repeat load was
