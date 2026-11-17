@@ -541,6 +541,10 @@ export const joinMethods = {
            has to look this character up */
         const rec = { pfHash: await this._phraseHash(phrase), createdAt: now };
         if (this._deviceLockOn()) { const d = opts && opts.device; rec.devs = d ? [{ d, at: now }] : []; }
+        /* v2.3.5584: and while the lock is off, its device still (devicelock.js
+           "WHILE THE LOCK IS OFF"): no list when it names none, never an
+           empty one, which would hand the character to whoever comes first */
+        else if (opts && opts.device && this._offDevsOn()) rec.devs = [{ d: opts.device, at: now }];
         await this.state.storage.put('auth:' + id, rec);
         /* v2.3.3355: a character made just now -- handed a new key once its
            join is in, and this first key retired at the new one's first use */
@@ -984,6 +988,7 @@ export const joinMethods = {
     // ring.  Await is input-gate-safe (rule 9).
     await this._botfpOnJoin(session, msg);
     session.device = cleanDevice(msg.device);   /* v2.3.4295: the account the login wheel counts (loginspin.js) */
+    await this._ownerDeviceNote(session);   /* v2.3.5627: the owner's own devices, kept (silence.js; a freeze never holds one) */
     this._sigOnJoin(session);   /* v2.3.3731: the network, and a first judgement (botsig.js) */
     /* Load (or bootstrap) the player's server-authoritative
        coins + inventory.  Stored entry wins; if there's no

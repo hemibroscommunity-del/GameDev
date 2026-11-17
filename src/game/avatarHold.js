@@ -25,7 +25,8 @@
  * (BroTown `_wdVeiled`).  S._avatarArtHold holds the bro still under it, as
  * the other holds do.
  *
- * No imports: the caller hands it the wait and the name to show. */
+ * No imports but the loading door (v2.3.5525): the caller hands it the wait and the name to show. */
+import { veilTo } from './veilDoor.js';   /* v2.3.5525: the loading door, the veils' one writer (card L; of no imports but the switch reader) */
 
 export const AVATAR_HOLD_CAP_MS = 20000;   /* the loading screen's own cap on the same preload (IntroVideo hardCap) */
 
@@ -56,7 +57,7 @@ export function holdForAvatarAlso(S, wait) {
 export function holdForAvatar(S, wait, name) {
   if (!S || !wait) return null;
   const h = { t: Date.now(), liftedAt: 0, why: null };
-  S._avatarArtHold = h;
+  veilTo(S, 'avatar', h);   /* v2.3.5525: the loading door */
   let el = null;
   try {
     if (typeof document !== 'undefined' && document.body) {
@@ -76,7 +77,7 @@ export function holdForAvatar(S, wait, name) {
     if (h.liftedAt) return;
     h.liftedAt = Date.now();
     h.why = why;
-    if (S._avatarArtHold === h) S._avatarArtHold = null;
+    if (S._avatarArtHold === h) veilTo(S, 'avatar', null);
     try { if (el) el.remove(); } catch (e) { /* gone */ }
   };
   /* v2.3.3689: more than one wait (holdForAvatarAlso), lifted when every one

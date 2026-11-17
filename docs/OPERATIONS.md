@@ -92,6 +92,11 @@ signature of a duplication exploit, so if you ever see it, look at the
 ```
 curl -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/admin/economy"
 ```
+Since v2.3.5607 it reads ONE PAGE a request (200 player records, then
+the market's orders, then the mail), so a big table never holds the room:
+each answer counts its page only (`part` says which), and its `next` goes
+on the next request, `...economy?after=NEXT`, until `next` is `null`. The
+daily snapshots in `history` are the whole sum, every page.
 
 Everything about one player (their save, whether they're online, their
 backup list). Player ids are the `bp_...` strings:
@@ -174,7 +179,9 @@ curl -X POST -H "Authorization: Bearer YOUR_KEY" -H "Content-Type: application/j
 `/api/admin/overview`'s `deviceLock` counts logins let in, refused, and
 passes used, and `loginKeys` the new keys made and used. If the device lock
 ever gets in honest players' way, the live flag `devicelock: false` turns it
-off (docs/specs/device-lock.md); `keys2: false` stops new keys being handed
+off (docs/specs/device-lock.md; while it is off the devices that play are
+still written down, so turning it back on shuts nobody out: `offdevs`,
+v2.3.5584); `keys2: false` stops new keys being handed
 out, while keys already made keep working (docs/specs/login-keys.md).
 
 ## Hidden settings: the numbers a copier must not read (v2.3.3723)
@@ -246,6 +253,9 @@ key):
 curl -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/admin/dev/botflags"
 curl -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/botstat?flagged=1"
 ```
+(Since v2.3.5607, 200 records a request: add `&after=NEXT` with the
+answer's `next` for the rest, until it is `null`. The Test panel's Bot
+flags has a More button for the same.)
 Everything recorded for one player:
 ```
 curl -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/botstat?id=bp_XXXX"

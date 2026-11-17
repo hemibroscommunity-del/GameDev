@@ -1,6 +1,6 @@
 card: P
-branch: claude/plan-p-26-player-death (5567, on #1955)
-prs: #1943 (5565 ready), #1955 (5566 ready), 5567 ready; #1713, #1715, #1716, #1718, #1719, #1736, #1743, #1745, #1757, #1749, #1763, #1766, #1805, #1806, #1810, #1840, #1846, #1853, #1859, #1868, #1881, #1906, #1918, #1925 (5241-5259, 5560-5564, merged)
+branch: claude/plan-p-28-upload-icons (5569, on #1959)
+prs: #1943 (5565 ready), #1943 (5565), #1955 (5566), #1959 (5567), 5569 ready; #1713, #1715, #1716, #1718, #1719, #1736, #1743, #1745, #1757, #1749, #1763, #1766, #1805, #1806, #1810, #1840, #1846, #1853, #1859, #1868, #1881, #1906, #1918, #1925 (5241-5259, 5560-5564, merged)
 state: ready
 
 ## Done
@@ -13,10 +13,9 @@ state: ready
 
 ## Next
 
-- 5567 `player-death` ready on #1955 (artCache 18.8 -> 17.4, line 81.9 ->
-  80.5). Then 5569 `upload-icons`; the planner's word: stop after it
-  (ore-tiers, props-parts, projectile-sheets wait). #1955 gets main
-  merged once #1943 lands (sitting 24's Z).
+- 5569 `upload-icons` ready on #1959 (artCache 17.4 -> 16.2, line 80.5 ->
+  79.3). Then P stops (planner's word): ore-tiers, props-parts,
+  projectile-sheets wait. #1955 gets main merged once #1943 lands.
 
 ## Found
 

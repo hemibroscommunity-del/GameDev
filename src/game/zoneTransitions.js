@@ -40,6 +40,7 @@ import { playerGroundDy } from '@/rendering/systems/entityRenderer.js'; /* v2.3.
 import { FARM_FROM_WORKSHOP } from '@/data/farmLayout.js';   /* v2.3.3136: the farm you walk */
 import { holdFarmUntilReady } from '@/game/farmTrip.js';
 import { runResets, resetOn } from '@/game/resetOn.js'; /* v2.3.5203: the zone edge's one door runs the state's resets (card L); v2.3.5208: + the world's own */
+import { veilTo } from '@/game/veilDoor.js';   /* v2.3.5525: the loading door, the veils' one writer (card L) */
 import { act } from '@/game/actions.js';   /* v2.3.5188: the page's requests leave through the action door (card K PR 7) */
 
 /* ═══ v2.3.2272: FREE THE ZONE YOU LEFT, ONE BEAT LATE ═══
@@ -298,12 +299,12 @@ function _wheelVeilName() { return (ZONES.wheel && ZONES.wheel.name) || 'BroTown
    frame that would otherwise paint town once before syncTownScenery ran. */
 export function veilWheelTrip(S) {
   if (!wheelTripVeiled(S)) return;
-  S._wheelTripVeil = true;
+  veilTo(S, 'trip', true);   /* v2.3.5525: the loading door */
   showZoneLoadingOverlay(_wheelVeilName());
 }
 function _liftTownVeil(S) {
-  S._townArtHold = null;
-  S._wheelTripVeil = false;
+  veilTo(S, 'town', null);   /* v2.3.5525: the loading door */
+  veilTo(S, 'trip', null);
   if (!S._zoneLoading) hideZoneLoadingOverlay();
 }
 function syncTownScenery(S) {
@@ -311,7 +312,7 @@ function syncTownScenery(S) {
   var trip = wheelTripVeiled(S);
   if (S.currentZone === 'town') {
     if (trip && !S._wheelTripVeil) {
-      S._wheelTripVeil = true;
+      veilTo(S, 'trip', true);   /* v2.3.5525 */
       showZoneLoadingOverlay(_wheelVeilName());
     }
     /* ═══ v2.3.3037: ...AND NOTHING OF TODAY'S TOWN IS LOADED FOR IT ═══
@@ -335,7 +336,7 @@ function syncTownScenery(S) {
     }
     if (!hold) {
       var h = { t: Date.now(), done: false };
-      S._townArtHold = h;
+      veilTo(S, 'town', h);   /* v2.3.5525: the loading door */
       showZoneLoadingOverlay(trip ? _wheelVeilName() : ((ZONES.town && ZONES.town.name) || 'Town'));
       /* The same 15s cap the hub gate races: a hung fetch costs the player
          emoji NPCs, never a frozen screen. */
@@ -349,7 +350,7 @@ function syncTownScenery(S) {
       return;
     }
     if (hold.done || Date.now() - hold.t > 20000) {
-      if (trip) { S._townArtHold = null; return; }        /* v2.3.3025: held for the Wheel */
+      if (trip) { veilTo(S, 'town', null); return; }        /* v2.3.3025: held for the Wheel */
       _liftTownVeil(S);
     }
     return;
@@ -508,7 +509,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
         if (S._zoneLoading) {
           var _zlStale = S.currentZone !== 'town' && !isWorldViewZone(S.currentZone);
           if (!_zlStale && S._zoneLoading.t && Date.now() - S._zoneLoading.t > GATE_STALE_MS) _zlStale = true;   /* v2.3.4400: 50 s, was 20 (the arm's cap can now reach 45: zoneGate.js) */
-          if (_zlStale) { S._zoneLoading = null; hideZoneLoadingOverlay(); }
+          if (_zlStale) { veilTo(S, 'zone', null); hideZoneLoadingOverlay(); }   /* v2.3.5525: the loading door */
         }
         /* v2.3.387: town exits are PROXIMITY zones on the painted
            path-ends (the pink markers), not the map edge.  Transition when
@@ -579,7 +580,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
              kicked load finishes harmlessly in the background and the maps
              it warmed just make the next approach instant. */
           if (S._zoneLoading && (!bestExit || bestExit.zoneId !== S._zoneLoading.toZone)) {
-            S._zoneLoading = null;
+            veilTo(S, 'zone', null);   /* v2.3.5525: the loading door */
             hideZoneLoadingOverlay();
           }
           if (bestExit) {
@@ -755,7 +756,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
               if (_zl && _zl.toZone === _tz) {
                 if (!_zl.done) return; /* still loading — hold frozen at the exit */
                 hideZoneLoadingOverlay();
-                S._zoneLoading = null;
+                veilTo(S, 'zone', null);   /* v2.3.5525: the loading door */
                 if (_zl.from && _zl.from !== 'town' && !isWorldViewZone(_zl.from)) {
                   Promise.resolve(freeZoneMap(_zl.from)).catch(function () {});
                 }
@@ -768,7 +769,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
                 /* fall through: run the entry body once, now that assets are warm */
               } else if (!isZoneMapResident(_tz) || (_tz === 'town' && !townSceneryReady())) {   /* v2.3.2859: town's NPCs + buildings leave with town (its map too, which the first test already covers) */
                 var _zlObj = { toZone: _tz, from: S.currentZone, done: false, t: Date.now() }; /* v2.3.1406: t feeds the 20s failsafe */
-                S._zoneLoading = _zlObj;
+                veilTo(S, 'zone', _zlObj);   /* v2.3.5525: the loading door */
                 if (isWheelTrialZone(_tz)) markLoad('arrival');   /* v2.3.5019: the first time only (the load timer) */
                 var _tzName = (ZONES[_tz] && ZONES[_tz].name) || _tz;
                 showZoneLoadingOverlay(_tzName);
