@@ -41,6 +41,7 @@ import { NML, NML_CENTRE, NML_CENTRES, nmlTierAt, nmlLevelAt, nmlStepLevelAt } f
 import { wheelLong } from '@/game/wheelSize.js';   /* v2.3.3315: the rings of the Wheel the room plays */
 import { setFoeRule } from '@/game/sparTargets.js'; /* v2.3.3268: a player you chose to attack is yours to hit while this rule allows it */
 import { act } from '@/game/actions.js';   /* v2.3.5188: the page's requests leave through the action door (card K PR 7) */
+import { skullTo } from '@/game/skullDoor.js';   /* v2.3.5533: the fight's page door (card L) */
 export { NML, NML_CENTRE, nmlTierAt, nmlLevelAt, nmlStepLevelAt };
 /* v2.3.3315: the middle of the Wheel the room plays (game px) */
 export function nmlCentre() { return NML_CENTRES[wheelLong()] || NML_CENTRE; }
@@ -258,9 +259,10 @@ export function applyNmlSkull(S, payload) {
     }
   }
   S._nmlSelf = { red, white, by, bys, at: now };
-  if (red > 0) { S._pvpSkullType = 'red'; S._pvpSkullUntil = now + red; }
-  else if (white > 0) { S._pvpSkullType = 'white'; S._pvpSkullUntil = now + white; }
-  else { S._pvpSkullType = null; S._pvpSkullUntil = 0; }
+  /* v2.3.5533: through the fight's page door */
+  if (red > 0) skullTo(S, 'red', now + red, 'nml');
+  else if (white > 0) skullTo(S, 'white', now + white, 'nml');
+  else skullTo(S, null, 0, 'nml');
   /* v2.3.3316: the owner -- killed by a player a red skull loses everything,
      killed by a monster everything but what it wears */
   if (red > 0 && !wasRed) nmlSay(S, '☠ You attacked a player: a red skull for 20 minutes of play. Killed by a player with it, you lose everything you carry and wear; killed by a monster, everything but what you wear.');

@@ -1,40 +1,37 @@
 card: Z
-branch: claude/plan-z-sitting-36
-prs: #2036 (this PR), tag 5674, the last line of sitting 36's list (ready)
+branch: claude/plan-z-sitting-37
+prs: #2044 (this PR), tag 5675, the last line of sitting 37's list (ready)
 state: ready
 
 ## Done
-- Sitting 35 merged (`main` 52244a81: K #2024, L #2027, RT #2026, Z
-  #2029). Sitting 36: `census/review-z36.md`. This PR: the phase line
-  9 -> 7 (#2027); the plan noted for sitting 35's merges (4.2: #2024;
-  5.3b: #2027); `status/RT.md` done (the planner: its session ended).
+- Sitting 36 merged (`main` bbd22176). Sitting 37: `census/review-z37.md`.
+  This PR: the phase line 7 -> 6 (#2031); the plan noted (4.2, 5.3b).
 
 ## The list: merge in this order, each "Create a merge commit"
-1 SEC #2030 (5700, card SEC, its block; documents) · 2 K #2028 (5553,
-`cookstart`, OFF) · 3 L #2031 (5531, the arena's page door, ON) · 4 L
-#2033 (5532, a relay's floater held to its form; holds #2031) · 5 Z
-#2036 (this PR). All based on `main`, one base at every step. The
-worker deploys once (K's `server/src/`; L's `server/test/`).
+1 SEC #2032 (5701, a join's id of the id's form; `joinidform`, ON) ·
+2 SEC #2034 (5702, the vault owed; `bankretry`, ON) · 3 SEC #2037 (5703,
+`disable_bigbags` never cuts what is stored) · 4 SEC #2038 (5704, a
+newer worker's fields kept; `newerkeep`, ON) · 5 SEC #2040 (5705, the
+leaderboard held; no switch) · 6 K2 #2035 (5720, a body's size;
+`bodycap`, ON) · 7 K2 #2041 (5721, the look relay paced; `lookpace`, ON)
+· 8 L #2039 (5533, the fight's page door, ON) · 9 Z #2044 (this PR).
+Each SEC PR holds the one before, #2041 holds #2035. All based on
+`main`, one base at every step. The worker deploys once.
 
-## Held
-- None. Late, to sitting 37: SEC #2032 (5701), K2 #2035 (5720).
-
-## Stalled
-- None. Card K: `done` (#2028 its last PR).
+## Held / Stalled
+- None held; none stalled. Late, to sitting 38: SEC #2042, #2043; L #2046.
 
 ## Found
-- `mp-alliance` 3 (the board, an 8 s wait for the worker's list): 13 to
-  15 of 16 since #2022 (sittings 34, 35). No card owns it.
-- With `movetop` ON (#2024) the ride, sprint and potion node suites hold
-  only the flat bound; the bench and #2021's phone runs cover the rest.
-  Card K is done: no card owns it now.
-- #2028, for when `cookstart` goes on: a result the 900 ms floor or the
-  bag's fish check drops has already spent its plan.
-- The phase line 7 -> 6 once L #2031 is merged (sitting 37).
+- `mp-alliance` 3 13-15/16 since #2022; no card owns it.
+- `movetop` ON: the ride, sprint and potion node suites hold only the
+  flat bound; no card. #2033: a damage of `Infinity` draws "-Infinity".
+- #2028, for `cookstart` ON: a result the floor or the fish check drops
+  has spent its plan.
+- SEC's: a join with NO id is let in as `session.id` undefined (join.js).
+- #2038: a known field a save leaves out comes from a newer record.
+- The phase line 6 -> 5 once L #2039 is merged (sitting 38).
 
 ## Needs
-- Relayed by the planner: the owner's "go recommended" for all waiting
-  decisions; `bowshot` ON (K2's PR 8); the harvest's grade a Found.
-  `cookstart` ON is not named yet: the planner's to say. Z decides none.
-- The owner's own still: `reqstamp` and the other cost switches.
-  Z's next tag: 5675.
+- The owner: `cookstart` ON (not yet decided); the cost switches
+  (`reqstamp`, `fullsnap`, `xferescrow`, `resetbook`, `seathold`,
+  `freezedevice`), `.github/`, Cloudflare. Z's next tag: 5676.

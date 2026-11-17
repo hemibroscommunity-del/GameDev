@@ -25,6 +25,7 @@ import { ELEMENT_STATUS } from './elemental.js'; /* v2.3.3513: a weapon's gems a
 import { isVolatilePair } from './weapongem.js'; /* v2.3.3513 */
 import { bagTake } from './bag.js'; /* v2.3.4810: the bag door */
 import { stashGive, stashTake, stashSet, weaponIdOk, weaponIdGive } from './stash.js';   /* v2.3.5281: the stashes' door (card R PR 2); v2.3.5282: a weapon's own id */
+import { WEAPON_STASH_CAP_NEW } from './gearstash.js';   /* v2.3.5703: the stored bag's cut, the normal cap */
 
 export const gearMethods = {
   /* v2.3.4386: `gearresend: false` in the live flags is the way back to the
@@ -178,7 +179,12 @@ export const gearMethods = {
 
   _sanitizeWeaponList(arr, strict) {
     if (!Array.isArray(arr)) return [];
-    return arr.slice(0, this.WEAPON_STASH_CAP)
+    /* v2.3.5703 (card SEC PR 4): a STORED bag (not strict: the join's own
+       record) is cut at the normal cap whatever `disable_bigbags` says -- at
+       the lowered 8 a player's 140 weapons became 8 on file at their next
+       login.  A first join's claim (strict) fills to the room's cap, as a
+       give does.  No kill switch (handoff rule 3's reason). */
+    return arr.slice(0, strict ? this.WEAPON_STASH_CAP : WEAPON_STASH_CAP_NEW)
       .map((w) => this._sanitizeWeapon(w, strict))
       .filter(Boolean);
   },

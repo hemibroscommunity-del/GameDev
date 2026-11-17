@@ -48,6 +48,50 @@ const TOP_TTL_MS = 60000;
 const SWEEP_MAX = 128;
 const HOUR_MS = 3600000;
 
+/* ═══ v2.3.5705: THE BOARD HOLDS WHAT IT KEEPS AND WHAT IT READS (card SEC PR 6) ═══
+   The second red team: a negative `limit` returned nearly every row
+   (`slice(0, -n)`); the kept board's key was the category AS SENT, so every
+   made-up category was the level board under a new key and a full read each
+   time; `updatePlayer` kept `clanTag` and five other fields of the report's
+   client-reported rpgData as sent, of any size; the read listed every
+   `player:` row in one list, and the sweep of stale rows ran after the sort.
+   Now:
+     - `limit` is held to 1 to 100 (BOARD_HOLD.LIMIT_MAX), at the route and in
+       getTop;
+     - the board's real name is worked out before the key (boardName): a
+       category no board reads is the level board's own key;
+     - each kept field is held to its type and a short length (keepRow),
+       well past any honest value, and a row over ROW_MAX bytes is not kept;
+     - the read lists `player:` a page of PAGE rows at a time, and the
+       stale rows it met are swept before the sort.
+   No kill switch: this object keeps no flags and learns the room's only by
+   a field on the room's own report (`bc`, `bs`, `xs`: index.js
+   reportToLeaderboard), and that file is another card's (K2's). */
+/* the legacy boards and the row field each ranks (v2.3.5705: one table, read by boardName too) */
+const LEGACY_KEYS = Object.freeze({ level: 'level', lifeskills: 'lifeTotal', ap: 'ap', kills: 'kills', dungeons: 'dungeons', gold: 'goldEarned', playtime: 'playtime' });
+export const BOARD_HOLD = Object.freeze({ LIMIT_MAX: 100, PAGE: 1000, ROW_MAX: 4096, NAME: 64, COLOR: 32, TAG: 16, SERIES_KEYS: 64, KEY: 32 });
+const wholeN = (v) => { const n = Number(v); return Number.isFinite(n) && n > 0 ? Math.min(Number.MAX_SAFE_INTEGER, Math.floor(n)) : 0; };
+const shortStr = (v, max) => (typeof v === 'string' && v.length <= max ? v : null);
+/** `limit` as a board reads it: a whole number from 1 to 100 (50 when none). */
+export function boardLimit(v) {
+  const n = parseInt(v, 10);
+  return Number.isFinite(n) && n >= 1 ? Math.min(BOARD_HOLD.LIMIT_MAX, n) : (Number.isFinite(n) ? 1 : 50);
+}
+/** A report's series as kept: numbers only, a bounded number of short keys. */
+function keepSeries(series) {
+  const out = {};
+  if (!series || typeof series !== 'object' || Array.isArray(series)) return out;
+  let n = 0;
+  for (const k of Object.keys(series)) {
+    if (n >= BOARD_HOLD.SERIES_KEYS) break;
+    if (k.length > BOARD_HOLD.KEY || k === '__proto__') continue;
+    const v = Number(series[k]);
+    if (!Number.isFinite(v)) continue;
+    out[k] = v; n++;
+  }
+  return out;
+}
+
 /* v2.3.5483: a row's achievement points -- the room's own count when the
    report carries it (a whole number, never below 0), else the blob's */
 const apOf = (data, rpgData) => {
@@ -93,7 +137,7 @@ export class Leaderboard {
 
       if (request.method === 'GET' && path.startsWith('/top')) {
         const category = url.searchParams.get('category') || 'level';
-        const limit = Math.min(100, parseInt(url.searchParams.get('limit')) || 50);
+        const limit = boardLimit(url.searchParams.get('limit'));   /* v2.3.5705: 1 to 100 (a negative one listed nearly every row) */
         const results = await this.getTop(category, limit);
         /* v2.3.5608: `seen: 'hour'`: each row's lastSeen is its hour (getTop) */
         return new Response(JSON.stringify({ ok: true, category, ...(this._exactSeen ? {} : { seen: 'hour' }), results }), { headers: H });
@@ -157,25 +201,31 @@ export class Leaderboard {
     /* v2.3.5484: the points allocated, as the room read its own record
        (statboards.js) -- left off a row whose report carried none */
     const statPoints = cleanStatPoints(data.statPoints);
-    await this.state.storage.put('player:' + playerId, JSON.stringify({
+    /* v2.3.5705: an id of the id's form; every kept field held (BOARD_HOLD) */
+    if (typeof playerId !== 'string' || playerId.length > 64) return;
+    const rd = rpgData && typeof rpgData === 'object' ? rpgData : {};
+    const row = JSON.stringify({
       ...(look ? { look } : {}),
       ...(powerIndex ? { powerIndex } : {}),
       ...(statPoints ? { statPoints } : {}),
-      id: playerId, name: name || 'Anon', color: color || '#5b52ff', level: level || 1,
+      id: playerId, name: shortStr(name, BOARD_HOLD.NAME) || 'Anon', color: shortStr(color, BOARD_HOLD.COLOR) || '#5b52ff', level: wholeN(level) || 1,
       /* v2.3.5483: `ap` is the room's own count (index.js reportToLeaderboard,
          from ps.achievementPoints) -- the blob's only from a report that
          carries none */
-      lifeTotal: rpgData?.lifeTotal || 0, ap: apOf(data, rpgData), kills: rpgData?.kills || 0,
-      dungeons: rpgData?.dungeons || 0, goldEarned: rpgData?.goldEarned || 0, playtime: rpgData?.playtime || 0,
-      clanTag: rpgData?.clanTag || null, lastSeen: ts || Date.now(),
+      lifeTotal: wholeN(rd.lifeTotal), ap: apOf(data, rd), kills: wholeN(rd.kills),
+      dungeons: wholeN(rd.dungeons), goldEarned: wholeN(rd.goldEarned), playtime: wholeN(rd.playtime),
+      clanTag: shortStr(rd.clanTag, BOARD_HOLD.TAG) || null, lastSeen: wholeN(ts) || Date.now(),
       /* v2.3.1671: the per-skill board.  `series` is the SERVER's view —
          combat levels from ps.prog3, life-skill levels from ps.lifeSkills,
          kills from svKills — the same object the on-chain attestation
          signs, so the in-game board and the public ledger can never tell
          different stories.  Stored as a nested object rather than flattened
          columns so a new skill needs no schema change here either. */
-      series: (series && typeof series === 'object') ? series : {},
-    }));
+      series: keepSeries(series),
+    });
+    /* v2.3.5705: a row past its ceiling is not kept (the last one stands) */
+    if (row.length > BOARD_HOLD.ROW_MAX) return;
+    await this.state.storage.put('player:' + playerId, row);
   }
 
   /* ═══ v2.3.4393: A DELETED CHARACTER'S STAND-IN ═══
@@ -254,6 +304,9 @@ export class Leaderboard {
      ranked, `lastSeen` to the hour (unless `exactseen`).  _topRead is the
      board as it always was. */
   async getTop(category, limit) {
+    /* v2.3.5705: the board's real name and a held limit, before the key */
+    category = Leaderboard.boardName(category);
+    limit = boardLimit(limit);
     const exact = !!this._exactSeen;
     const k = String(category) + ':' + String(limit) + (exact ? ':x' : '');
     const now = Date.now();
@@ -276,20 +329,50 @@ export class Leaderboard {
     return rows;
   }
 
+  /* v2.3.5705: a category's board, by its real name: one a board reads, or
+     the level board (the board every other category always fell back to) */
+  static boardName(category) {
+    const c = typeof category === 'string' ? category : '';
+    if (c === 'power' || statOfBoard(c) || Object.prototype.hasOwnProperty.call(Leaderboard.SERIES_CATEGORIES, c)
+      || Object.prototype.hasOwnProperty.call(LEGACY_KEYS, c)) return c;
+    return 'level';
+  }
+
+  /* v2.3.5705: every `player:` row, a page at a time (BOARD_HOLD.PAGE) */
+  async _playerPages(each) {
+    let after = null;
+    for (let guard = 0; guard < 10000; guard++) {
+      const page = await this.state.storage.list({ prefix: 'player:', limit: BOARD_HOLD.PAGE, ...(after !== null ? { startAfter: after } : {}) });
+      let n = 0, last = null;
+      for (const [key, raw] of page) {
+        if (after !== null && key <= after) continue;   /* a storage that ignores startAfter (a test's) */
+        n++; last = key;
+        each(key, raw);
+      }
+      if (n < BOARD_HOLD.PAGE || last === null) return;
+      after = last;
+    }
+  }
+
   async _topRead(category, limit, stale) {
-    const entries = await this.state.storage.list({ prefix: 'player:' });
     const players = []; const now = Date.now(); const STALE = STALE_MS;
     /* v2.3.4393: `lv`, the level on the name plate -- the highest of the
        three combat levels (seriesValue's 'combat'), the stored level for a
        row from before the series -- so every board can print it beside the
        face, whatever it ranks */
     const withLv = (p) => { p.lv = Leaderboard.seriesValue(p, 'combat') || Math.max(1, Math.floor(Number(p.level) || 1)); return p; };
-    for (const [key, raw] of entries) {
+    await this._playerPages((key, raw) => {
       try {
         const p = JSON.parse(raw);
         if (now - (p.lastSeen || 0) < STALE) players.push(withLv(p));
-        else if (stale && stale.length < SWEEP_MAX) stale.push(key);   /* v2.3.5608: on no board: swept (getTop) */
+        else if (stale && stale.length < SWEEP_MAX) stale.push(key);   /* v2.3.5608: on no board: swept */
       } catch {}
+    });
+    /* v2.3.5705: the sweep before the sort (it was after it, in getTop):
+       `boardsweep: false` deletes nothing */
+    if (stale && stale.length && !this._sweepOff) {
+      try { await this.state.storage.delete(stale.slice(0, SWEEP_MAX)); } catch { /* swept next time */ }
+      stale.length = 0;
     }
     /* v2.3.4393: and the deleted characters' stand-ins (markGone) -- on the
        boards the Leaderboards page shows (the series and AP) only.  The
@@ -342,7 +425,7 @@ export class Leaderboard {
         .map((p) => ({ ...p, value: val(p) }));
     }
 
-    const key = { level:'level', lifeskills:'lifeTotal', ap:'ap', kills:'kills', dungeons:'dungeons', gold:'goldEarned', playtime:'playtime' }[category] || 'level';
+    const key = LEGACY_KEYS[category] || 'level';
     players.sort((a, b) => (b[key] || 0) - (a[key] || 0));
     return players.slice(0, limit);
   }
