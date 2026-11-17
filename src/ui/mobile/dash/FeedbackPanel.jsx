@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { COL, panelStyle } from './common.js';
-import { BT_API_BASE } from '@/networking/index.js';
 import { FEEDBACK_CATEGORIES, FEEDBACK_TOPICS } from '@/data/index.js';
+import { act } from '@/game/actions.js';   /* v2.3.5191: the page's requests leave through the action door (card K PR 7) */
 
 /* v2.3.1232: Lantern Slate pass (docs/LANTERN-SLATE-SPEC.md) — tabs
    become the spec segmented control (36px on the #121B20 well track,
@@ -46,11 +46,7 @@ export const FeedbackPanel = () => {
     if (!t || !S || !S.myId || status === 'sending') return;
     setStatus('sending'); setErr('');
     try {
-      const res = await fetch(BT_API_BASE + '/api/feedback/submit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ playerId: S.myId, playerName: S.myName || 'Bro', category, topic, text: t }),
-      });
+      const res = await act('http:/api/feedback/submit', { playerId: S.myId, playerName: S.myName || 'Bro', category, topic, text: t });   /* v2.3.5191: through the action door (actions.js) */
       const d = await res.json().catch(() => ({}));
       if (!d || !d.ok) {
         setStatus('error'); setErr((d && d.error) || 'Could not send. Try again.');
@@ -74,8 +70,9 @@ export const FeedbackPanel = () => {
         background: COL.well, borderRadius: 10, padding: 2,
         border: `1px solid ${COL.border}`,
       }}>
-        <button onClick={() => setTab('submit')} style={tabBtn(tab === 'submit')}>Submit</button>
-        <button onClick={() => setTab('browse')} style={tabBtn(tab === 'browse')}>Browse</button>
+        {/* v2.3.5593: data-fb-tab, the QA hook (mp-panelguard) */}
+        <button onClick={() => setTab('submit')} style={tabBtn(tab === 'submit')} data-fb-tab="submit">Submit</button>
+        <button onClick={() => setTab('browse')} style={tabBtn(tab === 'browse')} data-fb-tab="browse">Browse</button>
       </div>
       {tab === 'submit' ? (
         <>
@@ -166,7 +163,7 @@ const FeedbackBoard = () => {
 
   const load = useCallback(() => {
     setFailed(false);
-    fetch(BT_API_BASE + '/api/feedback/list?sort=' + sort + '&limit=30&offset=0')
+    act('http:/api/feedback/list', {}, { query: 'sort=' + sort + '&limit=30&offset=0' })   /* v2.3.5191: through the action door (actions.js) */
       .then((r) => r.json())
       .then((d) => { if (d && d.ok) setRows(d.tickets || []); else setFailed(true); })
       .catch(() => setFailed(true));
@@ -176,18 +173,19 @@ const FeedbackBoard = () => {
   const vote = (id) => {
     const S = window._gameState && window._gameState.current;
     if (!S || !S.myId) return;
-    fetch(BT_API_BASE + '/api/feedback/vote', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ticketId: id, playerId: S.myId, vote: 'up' }),
-    }).then((r) => r.json()).then((d) => {
+    act('http:/api/feedback/vote', { ticketId: id, playerId: S.myId, vote: 'up' }).then((r) => r.json()).then((d) => {   /* v2.3.5191: through the action door (actions.js) */
       if (!d || !d.ok) return;
       setRows((rs) => (rs || []).map((t) => (t.id === id ? { ...t, up: d.up, down: d.down } : t)));
       setMine((m) => { const n = Object.assign(Object.create(null), m); n[id] = d.myVote; return n; });
     }).catch(() => {});
   };
 
-  const catLabel = (id) => { const c = FEEDBACK_CATEGORIES.find((x) => x.id === id); return c ? plain(c.label) : id; };
+  /* v2.3.5593: every field the board serves is printed as a string (the red
+     team, RT-3 S3: a name kept as an object made React throw, and the whole
+     game's screens went with it; feedback.js serves words now, and this holds
+     whatever an older worker serves) */
+  const catLabel = (id) => { const c = FEEDBACK_CATEGORIES.find((x) => x.id === id); return c ? plain(c.label) : String(id || ''); };
+  const words = (v, none) => String(typeof v === 'string' && v ? v : none);
   const catColor = (id) => { const c = FEEDBACK_CATEGORIES.find((x) => x.id === id); return (c && c.color) || COL.text2; };
 
   return (
@@ -212,9 +210,9 @@ const FeedbackBoard = () => {
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: catColor(t.category), marginBottom: 2 }}>
                   {catLabel(t.category)}
-                  <span style={{ color: COL.muted, fontWeight: 600 }}> · {t.playerName || 'Bro'}</span>
+                  <span style={{ color: COL.muted, fontWeight: 600 }}> · {words(t.playerName, 'Bro')}</span>
                 </div>
-                <div style={{ fontSize: 13, color: COL.text, lineHeight: 1.35, overflowWrap: 'anywhere' }}>{t.text}</div>
+                <div style={{ fontSize: 13, color: COL.text, lineHeight: 1.35, overflowWrap: 'anywhere' }}>{words(t.text, '')}</div>
               </div>
               <button onClick={() => vote(t.id)} aria-label="Up-vote" style={{
                 minWidth: 44, minHeight: 44, borderRadius: 8, cursor: 'pointer', touchAction: 'manipulation',

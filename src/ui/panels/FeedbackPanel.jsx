@@ -1,9 +1,9 @@
 import React from 'react';
 import { BT_AUDIO, FEEDBACK_CATEGORIES, FEEDBACK_TOPICS } from '@/data/index.js';
-import { BT_API_BASE } from '@/networking/index.js';
 import { _asyncToGenerator, _objectSpread, _regenerator, _slicedToArray } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
+import { act } from '@/game/actions.js';   /* v2.3.5191: the page's requests leave through the action door (card K PR 7) */
 /* ═══ FeedbackPanel — submit + browse community feedback tickets ═══ */
 /* v2.3.858: moved verbatim from BroTown.jsx's JSX tree (UI-panel
    decomposition; behavior-frozen). createElement subtree unchanged,
@@ -176,7 +176,7 @@ export function FeedbackPanel(props) {
       });
       if (feedbackTopic) params.set('topic', feedbackTopic);
       if (feedbackCategory) params.set('category', feedbackCategory);
-      fetch(BT_API_BASE + '/api/feedback/list?' + params).then(function (r) {
+      act('http:/api/feedback/list', {}, { query: '' + params }).then(function (r) {   /* v2.3.5191: through the action door (actions.js) */
         return r.json();
       }).then(function (d) {
         if (d.ok) setFeedbackTickets(d.tickets || []);
@@ -305,17 +305,11 @@ export function FeedbackPanel(props) {
               case 0:
                 _context5.p = 0;
                 _context5.n = 1;
-                return fetch(BT_API_BASE + '/api/feedback/vote', {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json'
-                  },
-                  body: JSON.stringify({
+                return act('http:/api/feedback/vote', {   /* v2.3.5191: through the action door (actions.js) */
                     ticketId: t.id,
                     playerId: stateRef.current.myId,
                     vote: 'up'
-                  })
-                });
+                  });
               case 1:
                 res = _context5.v;
                 _context5.n = 2;
@@ -364,17 +358,11 @@ export function FeedbackPanel(props) {
               case 0:
                 _context6.p = 0;
                 _context6.n = 1;
-                return fetch(BT_API_BASE + '/api/feedback/vote', {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json'
-                  },
-                  body: JSON.stringify({
+                return act('http:/api/feedback/vote', {   /* v2.3.5191: through the action door (actions.js) */
                     ticketId: t.id,
                     playerId: stateRef.current.myId,
                     vote: 'down'
-                  })
-                });
+                  });
               case 1:
                 res = _context6.v;
                 _context6.n = 2;
@@ -430,13 +418,13 @@ export function FeedbackPanel(props) {
           color: cat === null || cat === void 0 ? void 0 : cat.color,
           border: '1px solid ' + (cat === null || cat === void 0 ? void 0 : cat.color) + '30'
         }
-      }, (cat === null || cat === void 0 ? void 0 : cat.label) || t.category), /*#__PURE__*/React.createElement("span", {
+      }, (cat === null || cat === void 0 ? void 0 : cat.label) || String(t.category || '')), /*#__PURE__*/React.createElement("span", {
         style: {
           fontSize: 11,
           fontWeight: 600,
           color: '#96A2A0'
         }
-      }, (top === null || top === void 0 ? void 0 : top.label) || t.topic), /*#__PURE__*/React.createElement("span", {
+      }, (top === null || top === void 0 ? void 0 : top.label) || String(t.topic || '')), /*#__PURE__*/React.createElement("span", {
         style: {
           fontSize: 11,
           color: '#96A2A0',
@@ -450,14 +438,15 @@ export function FeedbackPanel(props) {
           lineHeight: 1.4,
           wordBreak: 'break-word'
         }
-      }, t.text), /*#__PURE__*/React.createElement("div", {
+      }, String(t.text || '')), /*#__PURE__*/React.createElement("div", {
         style: {
           fontSize: 11,
           color: '#96A2A0',
           marginTop: 3,
           fontVariantNumeric: 'tabular-nums'
         }
-      }, "by ", t.playerName, " \xB7 👍", t.up, " 👎", t.down)));
+      }, /* v2.3.5593: every field the board serves printed as a string (RT-3 S3: a name kept as an object made React throw) */
+      "by ", String(t.playerName || 'Bro'), " \xB7 👍", Number(t.up) || 0, " 👎", Number(t.down) || 0)));
     }), /*#__PURE__*/React.createElement("button", {
       onClick: function onClick() {
         stateRef.current._fbLastFilter = null;
@@ -578,19 +567,13 @@ export function FeedbackPanel(props) {
           case 1:
             _context7.p = 1;
             _context7.n = 2;
-            return fetch(BT_API_BASE + '/api/feedback/submit', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
+            return act('http:/api/feedback/submit', {   /* v2.3.5191: through the action door (actions.js) */
                 playerId: S.myId,
                 playerName: S.myName,
                 category: feedbackSubmitCategory,
                 topic: feedbackSubmitTopic,
                 text: feedbackText.trim()
-              })
-            });
+              });
           case 2:
             res = _context7.v;
             _context7.n = 3;

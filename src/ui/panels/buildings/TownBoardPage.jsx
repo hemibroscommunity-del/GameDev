@@ -5,6 +5,7 @@ import { pinsOn, togglePin, PIN_CSS, PIN_KEYS } from '@/game/mapPins.js';
 import { rideButtonWanted, isRiding, toggleRide } from '@/game/ride.js';
 import { rideGround } from '@/game/rideGround.js';
 import { Icon, LS, TAP } from './TownBoard.jsx';
+import { act } from '@/game/actions.js';   /* v2.3.5190: the page's requests leave through the action door (card K PR 7) */
 
 /* ═══ v2.3.3801: A TILE'S PAGE, AND THE BOARD'S FOOT ═══
  *
@@ -40,12 +41,12 @@ export function BoardPage(props) {
   const names = props.names;
   const on = pinsOn(S, e.id);
   const sub = boardSub(S, e);
-  const act = boardPinnable(e.id) ? null : actionOf(S, e);
+  const boardAct = boardPinnable(e.id) ? null : actionOf(S, e);   /* v2.3.5190: was `act`, which hid the action door's act() here (its ride's send below) */
   const doAct = function () {
-    if (!act) return;
-    if (act.id === 'quests') { if (props.onDash) props.onDash('quests'); return; }
-    if (act.id === 'ride') {
-      toggleRide(S, Date.now(), function (type, payload) { if (S.channel) S.channel.send({ type: type, payload: payload }); });
+    if (!boardAct) return;
+    if (boardAct.id === 'quests') { if (props.onDash) props.onDash('quests'); return; }
+    if (boardAct.id === 'ride') {
+      toggleRide(S, Date.now(), function (type, payload) { if (S.channel) act(type, payload); });   /* v2.3.5190: through the action door (actions.js) */
       if (props.onClose) props.onClose();
     }
   };
@@ -88,9 +89,9 @@ export function BoardPage(props) {
       {boardPinnable(e.id) ? <div style={{ fontSize: 11.5, color: LS.txt3, lineHeight: 1.4 }}>
         A pin shows on your minimap and the world map, and stays until you lift it.
       </div> : null}
-      {act ? <button type="button" data-board-action={act.id} onClick={doAct}
+      {boardAct ? <button type="button" data-board-action={boardAct.id} onClick={doAct}
         style={Object.assign(btn(), { background: LS.brass, color: '#1B140A', border: '1.5px solid ' + LS.brass })}>
-        {act.label}
+        {boardAct.label}
       </button> : null}
     </div>
   );

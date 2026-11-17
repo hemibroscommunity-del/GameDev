@@ -132,25 +132,67 @@ export const SELF_SHEEN_PAL = Object.freeze([
 /* the shine's numbers this copies (sheenLift.js: the highlight's smoothstep;
    sheenBatch.js SHEEN_CEIL; the side's weight) */
 export const SHEEN_LINES = Object.freeze({ e0: 0.55, e1: 0.96, ceil: 0.92, w: 0.35 });
+/* one pixel lifted: its straight colour after SHEEN_LIFT, and `hi` (the
+   art's highlight mask, which the glint's grade reads too) */
+function liftPixel(c, a, sh, L) {
+  const U = [sh.r, sh.g, sh.b];
+  const art = c.map((v) => clamp01(v / a / 1));
+  const hi = smooth(L.e0, L.e1, 0.299 * art[0] + 0.587 * art[1] + 0.114 * art[2]);
+  const s = sh.k * hi * (L.w + (1 - L.w) * 0.5);
+  const col = [0, 0, 0];
+  for (let k = 0; k < 3; k++) {
+    let v = c[k] / a;
+    const head = Math.max(U[k] * L.ceil - v, 0);
+    v += head * (1 - Math.exp(-(U[k] * s) / Math.max(head, 0.001)));
+    col[k] = Math.min(v, 1);
+  }
+  return { col, hi };
+}
 /** SHEEN_LIFT on one premultiplied RGBA picture (bytes), the sun's side 0,
  *  no figure frame, a white tint; bytes out.  `L`: the shine's numbers (a
  *  test moves one to see the answer can tell). */
 export function sheenLiftCpu(rgba, sh = SELF_SHEEN, L = SHEEN_LINES) {
+  return glintCpu(rgba, sh, null, L);
+}
+/* ── v2.3.5237 (14c) THE GLINT (lightfx/glint.js FRAG, the metal's filter):
+   its sweep's strength 0 (the band's term is multiplied away), no figure
+   frame, the sun's side 0, a white tint -- the shine is SHEEN_LIFT's, as the
+   sheen batcher's -- and, given a grade (one colour, no prism, one half), its
+   highlights lit in the grade's colour: mixed toward the grade at the lifted
+   colour's brightness (x 1.3 + 0.2), by hi x 0.6 x its strength.  An opaque
+   picture never reaches the glow round the art (only where alpha < 1). ── */
+export const SELF_GRADE = Object.freeze([0.2, 0.55, 1.0, 1.0]);   /* a rare piece's blue, at full strength */
+export function glintCpu(rgba, sh = SELF_SHEEN, grade = null, L = SHEEN_LINES) {
   const out = new Uint8Array(rgba.length);
-  const U = [sh.r, sh.g, sh.b];
   for (let i = 0; i < rgba.length; i += 4) {
     const a = rgba[i + 3] / 255;
     if (!(a > 0)) continue;
-    const c = [rgba[i] / 255, rgba[i + 1] / 255, rgba[i + 2] / 255];
-    const art = c.map((v) => clamp01(v / a / 1));
-    const hi = smooth(L.e0, L.e1, 0.299 * art[0] + 0.587 * art[1] + 0.114 * art[2]);
-    const s = sh.k * hi * (L.w + (1 - L.w) * 0.5);
-    for (let k = 0; k < 3; k++) {
-      let col = c[k] / a;
-      const head = Math.max(U[k] * L.ceil - col, 0);
-      col += head * (1 - Math.exp(-(U[k] * s) / Math.max(head, 0.001)));
-      out[i + k] = byte(Math.min(col, 1) * a);
+    const { col, hi } = liftPixel([rgba[i] / 255, rgba[i + 1] / 255, rgba[i + 2] / 255], a, sh, L);
+    if (grade && grade[3] > 0) {
+      const l = 0.299 * col[0] + 0.587 * col[1] + 0.114 * col[2];
+      const t = hi * 0.6 * grade[3];
+      for (let k = 0; k < 3; k++) { const lit = grade[k] * clamp01(l * 1.3 + 0.2); col[k] = col[k] + (lit - col[k]) * t; }
     }
+    for (let k = 0; k < 3; k++) out[i + k] = byte(col[k] * a);
+    out[i + 3] = byte(a);
+  }
+  return out;
+}
+
+/* ── v2.3.5237 (14c) THE FILL (fillBatch.js fillBitGl, the whirlwind's
+   one-colour monster): each pixel's brightness lifted to a grey (0.5 + 0.8
+   x luma, at most 1), its alpha kept, then the template's tint over it.  Its
+   own colours gone: a picture's colours wrong would still show (the grey
+   is their luma). ── */
+export const SELF_FILL_TINT_BYTES = Object.freeze([255, 153, 38]);   /* amber, as the whirlwind's: the sprite's tint goes to the chip as bytes */
+export const SELF_FILL_TINT = Object.freeze(SELF_FILL_TINT_BYTES.map((v) => v / 255));
+export function selfFillWant(rgba = selfRgba(), tint = SELF_FILL_TINT) {
+  const out = new Uint8Array(rgba.length);
+  for (let i = 0; i < rgba.length; i += 4) {
+    const a = rgba[i + 3] / 255;
+    const c = a > 0 ? [rgba[i] / 255 / a, rgba[i + 1] / 255 / a, rgba[i + 2] / 255 / a] : [0, 0, 0];
+    const g = clamp01(0.5 + 0.8 * (0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2]));
+    for (let k = 0; k < 3; k++) out[i + k] = byte(g * a * tint[k]);
     out[i + 3] = byte(a);
   }
   return out;

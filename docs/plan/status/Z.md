@@ -1,36 +1,36 @@
 card: Z
-branch: claude/plan-z-sitting-20
-prs: (this PR), tag 5377, the last line of the list (ready)
+branch: claude/plan-z-sitting-21
+prs: (this PR), tag 5379, the last line of sitting 21's list (ready)
 state: ready
 
 ## Done
-- Sitting 20, reviewed on `main` 29b1a0d, rehearsed on 481bac2 (sitting
-  19 in): the list's tree 1d7b826b: precheck 0 FAIL (2
-  WARN), build, questline 187 of 187; each base `main`, ONE merge base
-  step by step. Review: `census/review-z20.md`. Notes on 4.1, 7.1
-  (sitting 19's merges); no line earned room.
+- Sittings 19, 19b and 20 merged (`main` b2d763a). Sitting 21 (this
+  list), reviewed and rehearsed on `main` b2d763a: `census/review-z21.md`.
+- The plan noted for sitting 20's merges (1.7 begun: O's 14a, 14b; 5.3b:
+  L's page doors, the phase table's line 22 -> 16; 9.5: P's four).
 
-## The list: merge in this order, in one sitting, each "Create a merge commit"
-J2: 1 #1879 · 2 #1888 · 3 #1892 · 4 #1902 · 5 #1904 · 6 #1912 · 7 #1916 ·
-8 #1919 · 9 #1921 · 10 #1924 · R: 11 #1877 · 12 #1887 · 13 #1895 ·
-14 #1898 · 15 #1922 · L: 16 #1876 · 17 #1894 · 18 #1903 · 19 #1910 ·
-O: 20 #1896 · 21 #1915 · P: 22 #1881 · 23 #1906 · 24 #1918 · 25 #1925 ·
-26 this PR. Twelve deploy (11 to 22): back to back. New live flags
-`fullsnap`, `resetbook`, `xferescrow` (all OFF: the owner's costs). New
-page switches `?racedoor`, `?harvestdoor`, `?posedoor`, `?guarddoor`,
-`?selftest`, `?hairmasks`, `?petsheet`, `?capehood`. No stored record of
-a player changes its shape.
+## The list: merge in this order, each "Create a merge commit"
+1 L #1930 (5522, deploys; a draft: "Ready for review" first) ·
+2 O #1929 (5237) · K: 3 #1900 (5188) · 4 #1931 (5189) · 5 #1932 (5190) ·
+6 #1933 (5191) · 7 #1934 (5192) · 8 this PR. K's five are stacked, each
+on the last, all based on `main`: one merge base at every step.
+All seven deploy (each touches `server/test/`, TRAPS §277): back to
+back; only #1930 changes the worker's code. New live flag `arenadoor` (ON).
 
-## Held (expires at sitting 21)
-- Sitting 19's holds stated again (not read here): #1878 (RT-3), #1890,
-  #1897, #1907 (MOD), until a sitting reads their mends.
+## Held (expires at sitting 22)
+- None.
 
 ## Stalled
-- Card K: its session stopped with the allowance; #1900 (7.2) waits for
-  a fresh K session's restack, carrying #1876 (race.js resolved).
+- None. For sitting 22 (arrived after this list closed): T #1935
+  (5308, the switch rows' merge days), L #1936 (5523, the ride door,
+  on #1930), and the heads P, MOD, OPS, RT-1,
+  R and J2 send. Z's next block: 5660 to 5679 (this PR takes it).
 
 ## Found
-- J2: reds on `main` the cards report (`mp-hairstencil`, `mp-palette`,
-  L's list); L, P, O, R: next-PR lows (the review's Found).
-- MOD's #1883 was on sitting 19's list, not merged: still open.
-- T: eight new page rows say `on` 2026-11-15: set each to its merge day.
+- O asks the owner: a fill or a glint that fails its self-test has no way
+  back (drawn as today, named in `self`): switch it off on that chip?
+- T: #1930's switch row says `on` 2026-11-15: set it to its merge day.
+- Sitting 19b's merges (RT-3, MOD, OPS) are no step of the plan's: no
+  note. Earlier Founds (`seathold`, the crash-report key, RT-1's old key
+  derivation, MOD's fold misses) stand.
+- `mp-palette` red on main (card O's Found, sitting 20): still for J2.

@@ -4,6 +4,7 @@ import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHe
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { clanPartyOn } from '@/game/alliance.js';   /* v2.3.3321: clans are parties now */
+import { act } from '@/game/actions.js';   /* v2.3.5190: the page's requests leave through the action door (card K PR 7) */
 /* ═══ ClanPanel — clan create/manage/war screen ═══ */
 /* v2.3.859: moved verbatim from BroTown.jsx's JSX tree (UI-panel
    decomposition; behavior-frozen). createElement subtree unchanged. Props:
@@ -288,11 +289,7 @@ export function ClanPanel(props) {
       }),
       onClick: function onClick() {
         var S = stateRef.current;
-        if (S.channel) S.channel.send({
-          type: 'broadcast',
-          event: 'clan_join_accept',
-          payload: { inviter: _inv.inviter }
-        });
+        if (S.channel) act('clan_join_accept', { inviter: _inv.inviter });   /* v2.3.5190: through the action door (actions.js) */
         S._pendingClanInvite = null;
         pushDmgPopup(S, S.player.x, S.player.y - 30, 'Joining [' + _inv.clanTag + ']...', '#59BF91');
       }
@@ -379,15 +376,11 @@ export function ClanPanel(props) {
            bt_clan).  The local debit+mint below is the legacy-worker
            path only. */
         if (stateRef.current._serverCaps && stateRef.current._serverCaps.clans) {
-          if (stateRef.current.channel) stateRef.current.channel.send({
-            type: 'broadcast',
-            event: 'clan_create',
-            payload: {
-              name: name,
-              tag: tag,
-              color1: CLAN_COLORS[2],
-              color2: CLAN_COLORS[3]
-            }
+          if (stateRef.current.channel) act('clan_create', {   /* v2.3.5190: through the action door (actions.js) */
+            name: name,
+            tag: tag,
+            color1: CLAN_COLORS[2],
+            color2: CLAN_COLORS[3]
           });
           setClanCreateMode(false);
           pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 40, 'Founding [' + tag + ']...', '#a78bfa');
@@ -896,13 +889,9 @@ export function ClanPanel(props) {
          never match.  Send the declare and let the echo set
          S._activeClanWar (gameEvents challenger branch). */
       if (S._serverCaps && S._serverCaps.clans) {
-        if (S.channel) S.channel.send({
-          type: 'broadcast',
-          event: 'clan_war_declare',
-          payload: {
-            defenderTag: target.tag,
-            zone: zone
-          }
+        if (S.channel) act('clan_war_declare', {   /* v2.3.5190: through the action door (actions.js) */
+          defenderTag: target.tag,
+          zone: zone
         });
       } else {
         var war = createClanWar(clanData, target, zone);
@@ -910,14 +899,10 @@ export function ClanPanel(props) {
         war.challenger.members.push(S.myId);
         S._activeClanWar = war;
         /* Broadcast war declaration */
-        if (S.channel) S.channel.send({
-          type: 'broadcast',
-          event: 'clan_war_declare',
-          payload: {
-            war: war,
-            challengerTag: clanData.tag,
-            defenderTag: target.tag
-          }
+        if (S.channel) act('clan_war_declare', {   /* v2.3.5190: through the action door (actions.js) */
+          war: war,
+          challengerTag: clanData.tag,
+          defenderTag: target.tag
         });
       }
       pushDmgPopup(S, S.player.x, S.player.y - 40, 'WAR DECLARED vs [' + target.tag + ']!', '#D95C54');
@@ -985,7 +970,7 @@ export function ClanPanel(props) {
          refusal is exactly the lying UI this change exists to remove.  The
          clan_state {clan:null} echo does all three writebacks. */
       if (S._serverCaps && S._serverCaps.clans) {
-        if (S.channel) S.channel.send({ type: 'broadcast', event: 'clan_leave', payload: {} });
+        if (S.channel) act('clan_leave', {});   /* v2.3.5190: through the action door (actions.js) */
         pushDmgPopup(S, S.player.x, S.player.y - 30, 'Leaving clan...', '#D95C54');
         return;
       }

@@ -17,7 +17,10 @@ await page.evaluate(() => {
 });
 await page.waitForTimeout(8000); // CONTEXT_LOST -> immediate flush at 1.5s + rebuild events
 await browser.close();
-const res = await fetch('http://127.0.0.1:8787/api/feedback/crashes?limit=10').then(r => r.json());
+/* v2.3.5593: the crash feed is the owner's (feedback.js): the local worker's
+   ADMIN_KEY (wrangler dev --var ADMIN_KEY:..., the harness's by default) */
+const KEY = process.env.BT_ADMIN_KEY || 'brotown-headless-qa';
+const res = await fetch('http://127.0.0.1:8787/api/feedback/crashes?limit=10', { headers: { Authorization: 'Bearer ' + KEY } }).then(r => r.json());
 const mine = res.reports.filter(r => r.ua.includes('HeadlessChrome') || r.v !== '?');
 const hit = res.reports.find(r => r.log.some(e => e.kind === 'CONTEXT_LOST') && r.ua !== 'qa-curl');
 console.log('reports on server:', res.count);

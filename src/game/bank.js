@@ -14,6 +14,8 @@
 
    No imports: the Bank's window and the tests read it. */
 
+import { act } from './actions.js';   /* v2.3.5188: the action door (card K PR 7), its only import: it has none of its own, so node still reads this file */
+
 export const BANK_ASK_MS = 4000;
 /* the amount chips, the owner's list: 10, 100 and All */
 export const BANK_CHIPS = Object.freeze([10, 100]);
@@ -38,7 +40,7 @@ function newOpId() {
 /** Ask for the vault (the window does as it opens). */
 export function bankOpen(S) {
   if (!S || !S.channel || !bankOn(S)) return false;
-  try { S.channel.send({ type: 'bank_open', payload: {} }); } catch (e) { return false; }
+  try { act('bank_open', {}); } catch (e) { return false; }   /* v2.3.5188: through the action door (actions.js) */
   return true;
 }
 
@@ -63,7 +65,7 @@ export function bankMove(S, dir, kind, id, n, now) {
   const payload = kind === 'gold' ? { kind, n, opId } : { kind, id, n, opId };
   S._bankPending = { at: t, opId };
   try {
-    S.channel.send({ type: dir === 'in' ? 'bank_deposit' : 'bank_withdraw', payload });
+    act(dir === 'in' ? 'bank_deposit' : 'bank_withdraw', payload);   /* v2.3.5188: through the action door (actions.js) */
   } catch (e) { S._bankPending = null; return false; }
   bump();
   return true;

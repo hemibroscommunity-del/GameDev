@@ -1,13 +1,13 @@
 import { coinArtFor, COIN_ONE } from '@/game/coinArt.js';   /* v2.3.3734: the owner's coin piles */
 import React from 'react';
 import { BLACKSMITH_TIERS, ELEMENTS, MKT_CATEGORIES, MKT_TIERS, MKT_WOOD_TIERS, WEAPON_TYPES, WOODWORKING_TIERS, estimateMktPrice } from '@/data/index.js';
-import { BT_API_BASE } from '@/networking/index.js';
 import { storeEnabled } from '@/ui/storeApi.js';   /* v2.3.2476 */
 import { _asyncToGenerator, _objectSpread, _regenerator, _slicedToArray } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { claimPlace, releasePlace } from '@/game/storeSellTap.js';   /* v2.3.4369: one Place tap at a time */
 import { cue } from '@/game/eventSounds.js';   /* v2.3.3434: the market's moments heard, as the auction house's are */
+import { act } from '@/game/actions.js';   /* v2.3.5191: the page's requests leave through the action door (card K PR 7) */
 /* === ExchangePanel — buildingPanel === 'exchange' sub-panel === */
 /* v2.3.876: extracted verbatim from the buildingPanel === 'exchange'
    clause in BroTown.jsx (the player marketplace: buy/sell orders,
@@ -686,18 +686,7 @@ export function ExchangePanel(props) {
             _context0.p = 5;
             tierLabel = ((_BLACKSMITH_TIERS$mkt = BLACKSMITH_TIERS[mktTier]) === null || _BLACKSMITH_TIERS$mkt === void 0 ? void 0 : _BLACKSMITH_TIERS$mkt.label) || ((_WOODWORKING_TIERS$mk = WOODWORKING_TIERS[mktTier === null || mktTier === void 0 ? void 0 : mktTier.replace('ww_', '')]) === null || _WOODWORKING_TIERS$mk === void 0 ? void 0 : _WOODWORKING_TIERS$mk.label) || mktTier;
             _context0.n = 6;
-            return fetch(BT_API_BASE + '/api/market/place?room=' + _mktRoom(), {
-              method: 'POST',
-              /* v2.3.1178: session token — the worker rejects mutating
-                 economy calls whose playerId isn't backed by the
-                 caller's own state_sync token (item-theft fix). Absent
-                 against old workers (no token in state_sync). */
-              headers: (function () {
-                var _h = { 'Content-Type': 'application/json' };
-                if (S._httpToken) _h['x-bt-auth'] = S._httpToken;
-                return _h;
-              })(),
-              body: JSON.stringify({
+            return act('http:/api/market/place', {   /* v2.3.5191: through the action door (actions.js) */
                 type: mktMode,
                 category: mktCategory,
                 subtype: mktSubtype,
@@ -713,8 +702,7 @@ export function ExchangePanel(props) {
                 tierLabel: tierLabel,
                 playerName: S.myName,
                 playerId: S.myId
-              })
-            });
+              }, { query: 'room=' + _mktRoom() });
           case 6:
             res = _context0.v;
             _context0.n = 7;
@@ -771,7 +759,7 @@ export function ExchangePanel(props) {
             /* Refresh order book from server */
             _context0.p = 9;
             _context0.n = 10;
-            return fetch(BT_API_BASE + '/api/market/orders?category=' + mktCategory + '&subtype=' + mktSubtype + '&tier=' + mktTier + '&room=' + _mktRoom());
+            return act('http:/api/market/orders', {}, { query: 'category=' + mktCategory + '&subtype=' + mktSubtype + '&tier=' + mktTier + '&room=' + _mktRoom() });   /* v2.3.5191: through the action door (actions.js) */
           case 10:
             ob = _context0.v;
             _context0.n = 11;
@@ -836,8 +824,12 @@ export function ExchangePanel(props) {
     var refreshKey = mktMode + mktCategory + mktSubtype + mktTier;
     if (S._mktLastRefresh !== refreshKey) {
       S._mktLastRefresh = refreshKey;
-      var endpoint = mktMode === 'orders' ? BT_API_BASE + '/api/market/my?playerId=' + encodeURIComponent(S.myId) + '&room=' + _mktRoom() : BT_API_BASE + '/api/market/orders?category=' + mktCategory + '&subtype=' + mktSubtype + '&tier=' + mktTier + '&room=' + _mktRoom();
-      fetch(endpoint).then(function (r) {
+      /* v2.3.5191: through the action door (actions.js); a fetch of a URL held in a
+         variable, which the census (action-door §7) never counted */
+      (mktMode === 'orders'
+        ? act('http:/api/market/my', {}, { query: 'playerId=' + encodeURIComponent(S.myId) + '&room=' + _mktRoom() })
+        : act('http:/api/market/orders', {}, { query: 'category=' + mktCategory + '&subtype=' + mktSubtype + '&tier=' + mktTier + '&room=' + _mktRoom() })
+      ).then(function (r) {
         return r.json();
       }).then(function (d) {
         if (d.ok) setMktOrders(d.orders);
@@ -862,7 +854,7 @@ export function ExchangePanel(props) {
     }, "Order Book \u2014 ", ((_BLACKSMITH_TIERS$mkt2 = BLACKSMITH_TIERS[mktTier]) === null || _BLACKSMITH_TIERS$mkt2 === void 0 ? void 0 : _BLACKSMITH_TIERS$mkt2.label) || ((_WOODWORKING_TIERS$mk2 = WOODWORKING_TIERS[mktTier === null || mktTier === void 0 ? void 0 : mktTier.replace('ww_', '')]) === null || _WOODWORKING_TIERS$mk2 === void 0 ? void 0 : _WOODWORKING_TIERS$mk2.label) || mktTier, " ", ((_WEAPON_TYPES$mktSubt = WEAPON_TYPES[mktSubtype]) === null || _WEAPON_TYPES$mktSubt === void 0 ? void 0 : _WEAPON_TYPES$mktSubt.label) || mktSubtype), /*#__PURE__*/React.createElement("button", {
       onClick: function onClick() {
         S._mktLastRefresh = null; /* force refresh */
-        fetch(BT_API_BASE + '/api/market/orders?category=' + mktCategory + '&subtype=' + mktSubtype + '&tier=' + mktTier + '&room=' + _mktRoom()).then(function (r) {
+        act('http:/api/market/orders', {}, { query: 'category=' + mktCategory + '&subtype=' + mktSubtype + '&tier=' + mktTier + '&room=' + _mktRoom() }).then(function (r) {   /* v2.3.5191: through the action door (actions.js) */
           return r.json();
         }).then(function (d) {
           if (d.ok) setMktOrders(d.orders);
@@ -1043,7 +1035,7 @@ export function ExchangePanel(props) {
     }, "Your Active Orders (", filtered.length, ")"), /*#__PURE__*/React.createElement("button", {
       onClick: function onClick() {
         S._mktLastRefresh = null;
-        fetch(BT_API_BASE + '/api/market/my?playerId=' + encodeURIComponent(S.myId) + '&room=' + _mktRoom()).then(function (r) {
+        act('http:/api/market/my', {}, { query: 'playerId=' + encodeURIComponent(S.myId) + '&room=' + _mktRoom() }).then(function (r) {   /* v2.3.5191: through the action door (actions.js) */
           return r.json();
         }).then(function (d) {
           if (d.ok) setMktOrders(d.orders);
@@ -1147,11 +1139,7 @@ export function ExchangePanel(props) {
               case 0:
                 _context1.p = 0;
                 _context1.n = 1;
-                return fetch(BT_API_BASE + '/api/market/cancel?id=' + o.id + '&playerId=' + encodeURIComponent(S.myId) + '&room=' + _mktRoom(), {
-                  method: 'DELETE',
-                  /* v2.3.1178: session token (see /place above). */
-                  headers: S._httpToken ? { 'x-bt-auth': S._httpToken } : undefined
-                });
+                return act('http:/api/market/cancel', {}, { query: 'id=' + o.id + '&playerId=' + encodeURIComponent(S.myId) + '&room=' + _mktRoom() });   /* v2.3.5191: through the action door (actions.js) */
               case 1:
                 res = _context1.v;
                 _context1.n = 2;
@@ -1166,7 +1154,7 @@ export function ExchangePanel(props) {
                   cue('tradeOff');   /* v2.3.3434: called off, as a trade is */
                   /* Refresh */
                   S._mktLastRefresh = null;
-                  fetch(BT_API_BASE + '/api/market/my?playerId=' + encodeURIComponent(S.myId) + '&room=' + _mktRoom()).then(function (r) {
+                  act('http:/api/market/my', {}, { query: 'playerId=' + encodeURIComponent(S.myId) + '&room=' + _mktRoom() }).then(function (r) {   /* v2.3.5191: through the action door (actions.js) */
                     return r.json();
                   }).then(function (d) {
                     if (d.ok) setMktOrders(d.orders);

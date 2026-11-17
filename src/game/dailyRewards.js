@@ -22,6 +22,7 @@
 import { storeToastBus } from '@/ui/mobile/storeToastBus.js';
 import { BT_AUDIO } from '@/data/index.js';
 import { ZONES } from '@/data/zones.js';
+import { act } from '@/game/actions.js';   /* v2.3.5188: the page's requests leave through the action door (card K PR 7) */
 
 let _state = null;
 let _lastSpin = null;   /* { news, at }: the last answer to a spin act, kept apart from `news` */
@@ -81,15 +82,15 @@ export function seasonLive(S) {
 function send(type, payload) {
   const S = gameState();
   if (!S || !S.channel) return false;
-  try { S.channel.send({ type, payload: payload || {} }); return true; } catch (e) { return false; }
+  try { act(type, payload || {}); return true; } catch (e) { return false; }   /* v2.3.5188: through the action door (actions.js) */
 }
 let _spinSeq = 0;
 /** One act on the daily spin: 'spin' (a new lump sum), 'double' (double or
     nothing on the pot) or 'collect' (take the pot). */
-export function askSpin(act) {
+export function askSpin(what) {   /* v2.3.5188: was `act`, which hid the action door's act() in here (the wire's field is still `act`) */
   const S = gameState();
   return send('daily_spin', {
-    act: act === 'double' || act === 'collect' ? act : 'spin',
+    act: what === 'double' || what === 'collect' ? what : 'spin',
     opId: 'spin:' + ((S && S.myId) || 'me') + ':' + Date.now() + ':' + (++_spinSeq),
   });
 }

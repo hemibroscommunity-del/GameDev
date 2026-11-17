@@ -18,6 +18,7 @@ import { pushDmgPopup } from '@/game/combatHelpers.js'; /* v2.3.2123: say why a 
 import { prog3Live } from '@/data/prog3.js'; /* v2.3.4386: the weapon gate asks only whom the worker asks */
 import { syncShieldWorn } from '@/game/shieldWear.js'; /* v2.3.3091: the worker learns the arm */
 import { sendReveal, isUnrevealed, pieceOfTarget } from '@/game/revealBag.js'; /* v2.3.4012: a mystery piece's Reveal */
+import { act } from '@/game/actions.js';   /* v2.3.5191: the page's requests leave through the action door (card K PR 7) */
 
 function persist(R) {
   try { if (typeof window !== 'undefined') localStorage.setItem('bt_rpg', JSON.stringify(R)); } catch (e) {}
@@ -33,7 +34,7 @@ function persist(R) {
 function syncWeaponSlot(msg) {
   const S = getState();
   if (S && S.channel) {
-    try { S.channel.send(msg); } catch (e) {}
+    try { act(msg.type, msg.payload); } catch (e) {}   /* v2.3.5191: through the action door (actions.js) */
   }
 }
 
@@ -176,13 +177,13 @@ export function syncArmorChange(R, opts) {
       const _legsField = (_byRef && (!R.legsArmor || _ref(R.legsArmor)))
         ? { legsArmorRef: _ref(R.legsArmor) }
         : { legsArmor: R.legsArmor || null };
-      S.channel.send({ type: 'stats_update', payload: {
+      act('stats_update', {   /* v2.3.5191: through the action door (actions.js) */
         ..._armorField,
         maxHp: R.maxHp || 100,
         ...(opts && opts.legs ? _legsField : null),
         ...t1StatsPayload(S, R),
         /* v2.3.1155: the five retired T2 stats are off the wire. */
-      }});
+      });
     } catch (e) {}
   }
 }
