@@ -1,6 +1,6 @@
 card: MOD
 branch: claude/plan-mod-<n>-<topic> (on main cfcd70b1: #1954; #1962 > #1967; every PR against main)
-prs: #1954 (5627, the freeze's spare, new characters only), #1962 (5628, the report and pace lows), #1967 (5629, a report on a guest with no record): ready; #1971 (5630, the name rule's lows): ready; #1869 (findings): draft
+prs: #1954 (5627, the freeze's spare, new characters only), #1962 (5628, the report and pace lows), #1967 (5629, a report on a guest with no record): ready; #1971 (5630, the name rule's lows, for sitting 25): ready; #1869 (findings): draft
 state: ready
 
 ## Done
@@ -18,7 +18,7 @@ state: ready
 - #1954 (5627): sitting 22's findings on #1941 and the planning session's `freezedevice` meaning (lever OFF): a held phone refuses only a NEW character; the owner's devices kept (`ownerdev:`, a new key: a cost line for the owner); "Officlal".
 - #1962 (5628): sitting 23's lows: a report quotes the lines addressed to the reporter first, the speaker's own last lines beside (`said`); a paced friend request answered as sent; the ring's memory with `tos`.
 - #1967 (5629, on #1962): a report on a guest who chatted and left with no record lands (the planning session's call).
-- #1971 (5630, on main), for sitting 24: a rename's `player_update` carries the whole look; a `name` refusal says why (the worker's `server_announce`: wsClient.js is at its four-lines line). Asked the planning session (2026-11-17): the arena's own name (gladiator.js, cards L and R) and `namerules: false` reaching the name box.
+- #1971 (5630, on main), for sitting 25: a rename's `player_update` carries the whole look; a `name` refusal says why (the worker's `server_announce`: wsClient.js is at its four-lines line); the arena's name is the character's (touches card L's gladiator.js ~384, by the planning session's yes); the name box stays on (the planning session's call, in name-rules.md).
 
 ## Found
 

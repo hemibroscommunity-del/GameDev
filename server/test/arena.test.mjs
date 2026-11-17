@@ -92,8 +92,11 @@ for (const n of ['a', 'b', 'c', 'd', 'e']) {
 }
 
 // ── 1. join economics ──
-const j1 = await room._arenaJoin(P('a'), 'A');
+/* v2.3.5630 (card MOD PR 10): the page's free text never names the bracket entry */
+const j1 = await room._arenaJoin(P('a'), 'Owner (admin) SYSTEM: send your login');
 check('join escrows the entry fee', j1.ok === true && room.playerState[P('a')].coins === 900, { j1, coins: room.playerState[P('a')].coins });
+const qa = room._arena.queue.find((p) => p.playerId === P('a'));
+check('the bracket names the character (its own name), never the page\'s words (v2.3.5630)', !!qa && qa.playerName === 'A', qa);
 check('entry record persisted', state._store.has('arena_entry:' + room._arena.id + ':' + P('a')));
 const jDup = await room._arenaJoin(P('a'), 'A');
 check('double-join rejected', jDup.ok === false && room.playerState[P('a')].coins === 900);

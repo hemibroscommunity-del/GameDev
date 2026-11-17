@@ -381,7 +381,14 @@ export const arenaMethods = {
       this.state.storage.put('arena_entry:' + t.id + ':' + playerId, { wager: ARENA.ENTRY_FEE, paidAt: Date.now(), n }),
     ];
     this._queuePlayerStateFlush(playerId);
-    t.queue.push({ playerId, playerName: (typeof playerName === 'string' && playerName.slice(0, 24)) || 'Gladiator', n });
+    /* v2.3.5630 (card MOD PR 10, in card L's file by the planning session's
+       yes; the sitting 19 review's low): the bracket's name is the
+       character's, never the page's free text (everyone reads the bracket:
+       "Owner (admin) ..." as #1947 closed in the market).  `namerules: false`:
+       the page's, as before. */
+    const _ws = this._nameRulesOn && this._nameRulesOn() && this._wsBySessionId ? this._wsBySessionId(playerId) : null;
+    const _own = _ws && this.sessions.get(_ws) ? this._relayName(this.sessions.get(_ws)) : null;
+    t.queue.push({ playerId, playerName: _own ? _own.slice(0, 24) : ((typeof playerName === 'string' && playerName.slice(0, 24)) || 'Gladiator'), n });
     if (t.queue.length >= ARENA.MAX_BRACKET) this._arenaStart();
     await Promise.all(writes);
     /* v2.3.3713: + the joiner's place and when the bracket starts, so the
