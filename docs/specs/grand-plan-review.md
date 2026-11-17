@@ -180,6 +180,31 @@ Not taken: opening every PR as a draft at the first push so the gatekeeper
 can find it (each push would then run the paid checks). The brief's list of
 recent branches does the same for nothing.
 
+## Round 4: an outside reader (v2.3.5059)
+
+The owner, 2026-11-17, had another model read the repository and brought
+its seven recommendations: *"I want to see if these are accounted for in
+the plan or if they should be added."* Each was checked in the code first.
+Then: *"Add whatever pieces are worth adding."*
+
+| The recommendation | In the plan | What was done |
+|---|---|---|
+| One shared package for the page and the worker | 6.2, and call 8 (the tables live under `server/src/`) | nothing: 6.2 also keeps server-only numbers out of the page and sends each table's hash, which a shared folder alone does not |
+| One store in place of the 33 `*Bus.js` files | no, on purpose (part 8: no state library) | nothing: 5.3's ledger rows and `resetOn`, 5.3b's window door and `REJOIN_SLOTS` give the tracing without rewriting every window |
+| The loop out of `BroTown.jsx`; the entity renderer split | 5.4, 5.5, 5.8, call 7 | nothing: card M, after the state ledger |
+| Art fixes as data, one generic compositor | pillar 9 for the files; a generic compositor is a rewrite (part 8) | **taken in part: 5.5 moves the renderers' tables out first** |
+| Domain folders for the flat ones | 5.2's map gives every file a system without moving it | nothing: moving about 650 files breaks the suites, the docs and every open branch, and no player sees it |
+| The market, clans and mail out of the room; a repository layer | SERVER-SPLIT-PLAN phase 4 and part 7 (waits for a number) | nothing: the order book was folded INTO the room at v2.3.1118 (handoff rule 9: no cross-room await between a check and its commit); the doors, the key registry and the restart test at every batch hold "one write" |
+| Types at the boundaries; old protocol paths pruned | 5.6 and call 5; 7.4 and part 7's v1 row (counted since card A) | **taken in part: 7.5, the caps leave too** (173 gates, about sixty with no switch row and so no end) |
+
+What the outside reader had wrong, for the next one who reads it:
+`src/state/` is the ledger, not state modules (nothing imports it);
+`bowTorsoCut.js`, `swordTorsoCut.js` and `jogWaist.js` are tables a tool
+writes, already data; `gscopper.js` is a save conversion, not art; the
+page and the worker deploy apart on purpose (the caps), never in lockstep;
+the room's thread goes to each phone's messages, about two thirds
+(SERVER-SPLIT-PLAN), not to the economy's writes.
+
 ## Stale lines the review met in other documents
 
 For a docs session; not changed here.

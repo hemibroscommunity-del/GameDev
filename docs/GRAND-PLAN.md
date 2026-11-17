@@ -683,7 +683,11 @@ nothing known, and a restore copies nothing.
   clock ticks in whole ms). First move: the monsters' step. After 5.2b and
   5.3.
 - [ ] **5.5 [LATER] The two renderers split** along the system map. After
-  5.2b.
+  5.2b. **Tables first** (v2.3.5059): the hand-tuned tables that sit in the
+  two files (scales, offsets, anchors: `BODY_DIR_SCALE` is one) leave as
+  leaf files with no imports, a system's tables a PR, before any code
+  moves. Step 1 counts them, a census. Nothing a player sees changes, and
+  the code-lines line falls (5.1).
 - [ ] **5.6 [LATER] Types on the new walls only**: one `getState()`, the
   action door, the frame's context, the wire folder. As a suite, with
   TypeScript as the server's test tool. Typing the old code is a flood.
@@ -785,6 +789,19 @@ nothing known, and a restore copies nothing.
 - [ ] **7.4 [LATER] The big leftovers**, each the owner's call: protocol v1
   (counted by the SERVER's joins: the page always says 2), dormant systems,
   the old map's last code.
+- [ ] **7.5 [LATER] The caps leave too** (v2.3.5059). A cap ("the worker
+  does X", `state_sync.caps`: 173 in `CAP_GATES`, read in about 430 places
+  on the page) keeps the page's old way for a worker without it. The
+  switch table holds a cap only where the worker reads it as a flag (7.1):
+  about sixty have no row, so no `on` day and no end, and an override can
+  still turn an old page-side way back on where one is left
+  (`docs/specs/liveops.md`, "Caps override"). Step 1, a census whose count
+  only falls: each cap's birth, its switch row if it has one, its reads,
+  and whether its old way settles anything on the page. Then 7.2's rule:
+  four weeks deployed with no override, and the page's old way goes, in
+  7.3's batches; an old way that settles value goes first, as 4.2's. A cap
+  that counts (rows, crops) stays: it is a number, not an old way. A new
+  cap is born as today: either side still ships first.
 
 ### Pillar 8. Keep working here cheap and checked
 
