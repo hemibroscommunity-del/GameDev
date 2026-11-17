@@ -225,6 +225,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 
 | name | side | kind | born | on | thrown | risk | needs | fallback | off |
 |---|---|---|---|---|---|---|---|---|---|
+| `?dyingdoor` | page | switch | v2.3.5534 | 2026-11-17 | =0 | logic |  | no | Your dying seconds on the phone take any start a caller writes (one that is no number), as the lines before the life's page door; every caller writes a number today. |
 | `lifenoheal` | worker | switch | v2.3.4901 | 2026-11-12 | false | logic |  | no | A dying player can be healed again (the life door's step 2a off). |
 | `lifesave` | worker | switch | v2.3.4902 | 2026-11-12 | false | logic |  | no | No life note written or read: the join stands up as v2.3.4374 did. |
 | `xpdecay` | worker | switch | v2.3.3251 | 2026-10-14 | false | logic |  | no | Full XP everywhere again, harvests and fights, cap un-advertised. |
@@ -238,6 +239,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `daybook` | worker | switch | v2.3.5080 | 2026-11-14 | false | logic |  | no | The day's book adds, writes and prunes nothing; what is stored stays and its reader says it is off. |
 | `disable_bigbags` | worker | switch | v2.3.4224 | 2026-11-04 | true | logic |  | no | Thrown, the weapon and gear stashes go back to 8 and 32. |
 | `feedback` | worker | switch | v2.3.5593 | 2026-11-16 | false | logic |  | no | The feedback board takes no posts, votes or crash reports (reading stays): the owner's lever in a flood (read by the Feedback object from the room's flags, once a minute). |
+| `feedbackshare` | worker | switch | v2.3.5706 | 2026-11-17 | false | logic |  | no | The feedback board as before card SEC PR 7: one shared hour for posts, votes and crash reports; the paces by address in memory only; a vote counted before its ticket is looked for; the crash feed a ring of 200 with no byte cut; the list read whole on every ask; the text kept as typed. |
 | `fullsnap` | worker | switch | v2.3.5285 | off | true | logic |  | no | Thrown (true), a player's daily copy carries their vault and pets too (two keys more read a player a day, no row more written), so the owner's restore puts them back with the character; unset or false, the default, the copy is the character alone, as before. |
 | `report` | worker | switch | v2.3.5122 | 2026-11-14 | false | logic |  | no | Un-advertises the field report, so no phone sends its smoothness, and drops any that still comes. |
 | `reportlanes` | worker | switch | v2.3.5221 | 2026-11-14 | false | logic | `report`, `reportspeed` | no | The field report no longer takes a lane but full, the governor's rung or the self-test (caps.report back to 2). |
@@ -356,6 +358,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `boardsweep` | worker | switch | v2.3.5608 | 2026-11-16 | false | logic |  | no | No week-old board row is deleted (said on the room's post to the board object as `bs: 0`): the stale rows stay off every board as before, and stay on file. |
 | `exactseen` | worker | lever | v2.3.5608 |  | true | none |  | no | Thrown (true), the public boards say each player's last-seen time exactly again, with no `seen: 'hour'` word, so the prize draw page reads its window to the millisecond (to run an old draw again exactly). Unset or false, the default: last seen to the hour. |
 | `guestlazy` | worker | switch | v2.3.5610 | 2026-11-17 | false | logic |  | no | A guest's join (no key, no record) writes its rows again: its record twice, its pet book, its login streak and its day's rewards. |
+| `guestquiet` | worker | switch | v2.3.5708 | 2026-11-17 | false | logic |  | no | A fresh guest is reported to the board at its join and on its tracks, and its bot signals (botstat:) are written, before it does anything worth keeping, as before. |
 | `publicreads` | worker | switch | v2.3.5609 | 2026-11-16 | false | logic |  | no | The market's orders, the store's browse and the arena's status walk their book at every read, as before: nothing kept, no address paced. |
 | `rf_spread` | worker | switch | v2.3.5604 | 2026-11-16 | false | logic |  | no | A full room asks every waiting phone to try again in 5 s, however many are knocking (the cadence before); the count is still kept. |
 | `roomhealth` | worker | switch | v2.3.5601 | 2026-11-16 | false | logic |  | no | GET /health/room answers 404 (the room answers its own 404 and the route passes it on); /health is unchanged and nothing in the game changes. |
@@ -605,6 +608,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `power` | worker | switch | v2.3.5481 | 2026-11-14 | false | logic |  | no | Un-advertises the power index: no board report carries one, so the Power board empties as players report and the other boards are as they were. |
 | `race` | worker | switch | v2.3.3525 | 2026-10-20 | false | logic |  | no | Lil Bro's race un-advertised and none started. |
 | `reportring` | worker | switch | v2.3.5623 | 2026-11-15 | false | logic |  | no | A chat report quotes the speaker's last 3 lines in any lane again, not the lines the reporter could have received. |
+| `reqincap` | worker | switch | v2.3.5709 | 2026-11-17 | false | logic |  | no | No ceiling on the friend requests a player receives, as before (the 51st and every one after kept). |
 | `silence` | worker | switch | v2.3.5621 | 2026-11-16 | false | logic |  | no | No silence is checked: every character speaks (the owner's silences are kept, and hold again when it is put back). |
 | `?skulldoor` | page | switch | v2.3.5533 | 2026-11-17 | =0 | logic |  | no | Your skull on the phone takes any write its own code asks again (a kind that is no skull, a time that is no number), as the lines before the fight's page door; only a relayed threat with a malformed countdown is refused today. |
 | `?socialreset` | page | switch | v2.3.5204 | 2026-11-14 | =0 | logic |  | no | A race the worker forgot at a reconnect stays on the phone until its own clock lets it go, as before. |

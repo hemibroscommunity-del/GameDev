@@ -1053,6 +1053,7 @@ export const joinMethods = {
       const _lifeLeft = await this._lifeNoteRead(msg.id, stored, Date.now());
       /* v2.3.5610: a FRESH guest (no key, no record of any kind): its join
          writes none of its rows (guestlazy.js; index.js clears the mark) */
+      if (this._guestQuietEnd) this._guestQuietEnd(msg.id);   /* v2.3.5708: quiet is this join's to decide (a keyed join of the id never is); through the end, which gives the board's clock back */
       if (_keyOut.guest === true && !stored) await this._guestLazyCheck(msg.id);
       /* ═══ v2.3.3138: A NEW CHARACTER STARTS FROM THE SERVER'S DEFAULTS ═══
          Owner, on the farm's review: "Yes fix all of your recommended
@@ -2104,7 +2105,8 @@ export const joinMethods = {
        instead of waiting out the first interval -- and it primes
        session._lbSig, so the next track only writes if something really
        moved. */
-    this.reportToLeaderboard(session, true);
+    if (this._guestQuiet && this._guestQuiet(session.id)) session._lbAt = Infinity;   /* v2.3.5708: a quiet guest is not reported until it does something worth keeping (guestlazy.js) */
+    else this.reportToLeaderboard(session, true);
     /* v2.3.3355: a new Login Key handed to a phone that came with the old
        one, or a new key's first use stamped (loginkeys.js) -- last, so the
        phone has its whole world before it is told; a failure here costs the

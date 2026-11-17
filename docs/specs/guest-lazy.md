@@ -76,3 +76,42 @@ new character, at most 6) and 7c (a guest's join and arrival, 0).
 The phone test `mp-itemdrop` (its finder is a guest tab): 5b ("two minutes
 on, it flashes") is red on `main` too (16/18 on main, 5b and 6a; sitting 21),
 a question about the test (TRAPS §177), not this change.
+
+## v2.3.5708: and quiet until it plays (card SEC PR 9)
+
+The join still reported a fresh guest to the board (join.js's forced
+`reportToLeaderboard`: a `player:` row in the Leaderboard object) and the bot
+signals wrote `botstat:` (botfp.js), about twice a guest, never deleted. Now
+a guest found fresh by the same test is **quiet** from its join until it does
+something worth keeping, which is the first save of its record
+(`persistence.js` `_saveRpg`): no board report at the join or a track (its
+session's `_lbAt` held off, the throttle `reportToLeaderboard` already
+reads, so `index.js` is untouched), and no `botstat:` put (the record stays
+dirty). Ended, the next track reports it and its signals write at their pace,
+as for any player. Every join clears the id's mark first, so a keyed join of
+the same id is never quiet.
+
+| | an idle guest's join and leave | a guest who then plays | a keyed join |
+|---|---|---|---|
+| before | `botstat:`, a board report | as today | reported at once |
+| now | **0 rows, no report** | as today | reported at once |
+
+The owner's sweep: `DELETE /api/botstat?sweep=1` (the owner's key; 404
+without it) takes away, one page of `botstat:` rows a call (`next` to go on),
+each whose character has no `rpg:` record and is not playing now. A
+character with a record keeps its row. No new storage key. Kill switch
+`guestquiet: false`. Suite: `server/test/guestquiet.test.mjs`.
+
+**Sitting 38's review** (two holds and a note, fixed in the same PR):
+- **Evidence is never held back.** A quiet guest's record holding a flag or
+  a cap clamp (`botfp.js` `botfpEvidence`) is written as before, at once
+  and at the leave. Otherwise a bot refused at every strike never earns,
+  never saves, and stays quiet for good, its flags in memory only, lost at
+  a deploy.
+- **An id leaves the quiet set only through `_guestQuietEnd`**, which gives
+  its session the board's clock back. This covers the QUIET_MAX eviction
+  and a later join of the id; the leave drops the id once no socket of it
+  is left (`_guestQuietGone`). Before, an evicted guest who then earned was
+  never reported for the rest of the sitting.
+- **The sweep keeps an orphan row holding evidence**, which the owner's
+  `?flagged=1` review reads.

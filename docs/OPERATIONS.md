@@ -359,7 +359,9 @@ A post's id is each ticket's `id` in `/api/feedback/list?sort=new`. Without
 the key each answers a plain 404 (the key is checked by the game room's admin
 door, the same one that times out an address sending wrong keys). The sweep
 takes every post whose own words are over 4 KB and the old pace rows the
-board no longer reads, and mends a post a bad vote grew (that vote taken out). On a local machine the QA tools
+board no longer reads, and mends a post a bad vote grew (that vote taken out).
+`.../api/feedback/sweep?trim=1` (v2.3.5706) also takes away the posts older
+than the newest 500 and CLEARS the crash feed: read the crash feed first. On a local machine the QA tools
 send the harness's key for the crash feed (`tools/qa/qa-telemetry.mjs` reads
 `BT_ADMIN_KEY`, else the harness's).
 
@@ -532,6 +534,17 @@ curl -X POST -H "Authorization: Bearer YOUR_KEY" \
    Those are never put back: they are another player's too. A piece they
    listed after the backup comes back to them AND stays in its listing, so
    look there and take the listing down if you need to.
+   **Read `moved` too** (v2.3.5710), when it is there: what changed since
+   the backup that the restore will NOT undo. `moved.vault` is what is in
+   their bank now (a backup without the bank leaves it as it is, so gold
+   they banked since is in the bank AND comes back in the purse);
+   `moved.given` lists what they handed to other players since the backup,
+   including what they paid in a trade or at the market (each one's gold,
+   items, pets or gear by id, and who got it: the other player keeps it,
+   and the restored character has it again). `moved.givenSince` says from
+   when; `exact: false` means from the start of the backup's day, so a
+   trade that day may be from before it. If either is there, decide before
+   step 4 whether the restore is still right. No `moved`: nothing moved.
 4. Restore (the same, without `dry`):
 ```
 curl -X POST -H "Authorization: Bearer YOUR_KEY" \

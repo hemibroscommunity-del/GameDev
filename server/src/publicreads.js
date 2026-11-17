@@ -32,7 +32,22 @@
  *
  * KILL SWITCH `publicreads: false` in the live flags: every read walks its
  * book, as before; nothing kept, nothing counted.
- */
+ *
+ * ═══ v2.3.5707 (card SEC PR 8): NO SIDE DOOR ═══
+ * The second red team: a request carrying ANY `Authorization` header,
+ * whatever it said, skipped both the kept answer and the pace (a script
+ * adding `Authorization: x` walked the books as often as it liked); and the
+ * surfaces' other reads (`/api/market/my`, `/api/market/history`,
+ * `/api/store/mine`, `/api/arena/tournament`) were never paced.  Now:
+ *   - the pass-through is for the room's health check alone (`/_room_health`:
+ *     the owner's numbers behind the key, health.js, with its own lockout);
+ *     on the other three surfaces a header changes nothing: a public read is
+ *     kept and paced as one without (none of the three answers by the
+ *     header: market.js, store.js, gladiator.js read their query only);
+ *   - every other GET on the three surfaces is PACED by address as a public
+ *     read is, and never kept (each answers one player's own: their orders,
+ *     their listings, a price history by query, the bracket).
+ * Rides `publicreads` (no switch of its own): off, everything as before. */
 import { requestIp } from './flood.js';
 
 export const PUBLIC_READS = Object.freeze({
@@ -65,6 +80,10 @@ export function surfaceOf(pathname) {
 }
 
 const H = Object.freeze({ 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' });
+/* the pace's answer: 429, try again in a second */
+const tooMany = () => new Response(JSON.stringify({ ok: false, error: 'Too many requests' }), {
+  status: 429, headers: { ...H, 'Retry-After': '1' },
+});
 
 export const publicReadMethods = {
   _prMem() {
@@ -104,11 +123,17 @@ export const publicReadMethods = {
       try { return await serve(); } finally { this._prDrop(surface); }
     }
     const read = PUBLIC_READS.SURFACES[surface];
-    if (!url.pathname.startsWith(read)) return serve();
+    if (!url.pathname.startsWith(read)) {
+      /* v2.3.5707: the surface's other reads, paced (never kept: each is one
+         player's own) */
+      if (surface !== '/_room_health' && this._prOver(request, Date.now())) return tooMany();
+      return serve();
+    }
     /* a request with a key (the owner's numbers: health.js) is never kept,
        never served a kept public answer, and never paced here (the key's
-       own lockout, admin.js) */
-    if (request.headers.get('Authorization')) return serve();
+       own lockout, admin.js).  v2.3.5707: the room's health ALONE -- on the
+       other surfaces a header is no way past the kept answer or the pace */
+    if (surface === '/_room_health' && request.headers.get('Authorization')) return serve();
     const now = Date.now();
     const m = this._prMem();
     const key = url.pathname + url.search;
@@ -116,11 +141,7 @@ export const publicReadMethods = {
     if (kept && now - kept.at < PUBLIC_READS.KEEP_MS) {
       return new Response(kept.body, { status: kept.status, headers: kept.headers || H });
     }
-    if (this._prOver(request, now)) {
-      return new Response(JSON.stringify({ ok: false, error: 'Too many requests' }), {
-        status: 429, headers: { ...H, 'Retry-After': '1' },
-      });
-    }
+    if (this._prOver(request, now)) return tooMany();
     const gen = m.gen[surface] || 0;
     const res = await serve();
     if (!res || res.status !== 200) return res;
