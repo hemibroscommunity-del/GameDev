@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "93355d6e11f2b50884eebb5716661a9d1d3c4eb4",
+  "tree": "a2cf1f65f076569fe1dcdf5a5d922b7738a1d892",
+  "committedAt": "2026-11-17T09:59:36-08:00",
+  "subject": "Merge pull request #2038 from hemibroscommunity-del/claude/plan-sec-5-newerkeep",
+  "files": 8086,
+  "bytes": 959682644,
+  "listingSha256": "dd4c78befe65dfc6ed255ab9321d61beea74d3d8f45ca3080a758be9a7ecc618",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

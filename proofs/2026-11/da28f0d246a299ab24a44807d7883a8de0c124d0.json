@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "da28f0d246a299ab24a44807d7883a8de0c124d0",
+  "tree": "21f7daee62ed9ce7362f740c02c144cf862e9857",
+  "committedAt": "2026-11-17T09:59:39-08:00",
+  "subject": "Merge pull request #2040 from hemibroscommunity-del/claude/plan-sec-6-boardhold",
+  "files": 8087,
+  "bytes": 959699366,
+  "listingSha256": "e3f49fc711178e3299a5bda1e7ba91f096e3f27d294942c8ed853ab30356742b",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

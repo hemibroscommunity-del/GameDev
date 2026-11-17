@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "42a4686333631e3cd1586df8e0849056baad81d9",
+  "tree": "35f2daff32dcfc788b9ecb27108f14c516189a9a",
+  "committedAt": "2026-11-17T09:59:43-08:00",
+  "subject": "Merge pull request #2035 from hemibroscommunity-del/claude/plan-k2-bodycap",
+  "files": 8090,
+  "bytes": 959733051,
+  "listingSha256": "885b73e416ee0b3be2e218fc97cd4c08edd00d9d4877b3e7e8590848fed944b6",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

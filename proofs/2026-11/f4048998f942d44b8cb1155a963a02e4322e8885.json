@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "f4048998f942d44b8cb1155a963a02e4322e8885",
+  "tree": "adf0857c3fc58ff6dbcce9c24e7ef48e907d8277",
+  "committedAt": "2026-11-17T09:59:47-08:00",
+  "subject": "Merge pull request #2041 from hemibroscommunity-del/claude/plan-k2-lookpace",
+  "files": 8091,
+  "bytes": 959756223,
+  "listingSha256": "a83b9a2506504ccdd6fb55f2e071032ce25e8b041ff5b9751fb567f8cf196bfc",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
