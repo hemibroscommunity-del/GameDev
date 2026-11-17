@@ -127,20 +127,34 @@ list everything, restart, and cancel: the goods came back to the new
 character. Now (`persistence.js` "A CHARACTER RESTART STARTS FROM NOTHING"):
 
 - a restart, in game (Settings) or from the character picker, is **refused
-  while a market order (`mkt_order:`) or a store listing (`store_listing:`)
-  names the player** -- found by `playerrestore.js` `betweenOf`, the
-  restore's own search of the records held between players; a live offer or
-  bid on another's listing names the player too (its gold is held there).
-  The words, in `RESET_REFUSED_WORDS` beside the fight's: "Not while you have
-  something on the market: cancel your listings and orders first"; the
-  picker's (`CharacterPicker.jsx`): "This character has something on the
-  market. Nothing was changed: cancel its listings and orders first."
-- the restart also deletes the login streak's row (`daily_rewards:`), in its
-  one delete (v2.3.5709, above).
-- The other records `betweenOf` finds (a duel's wager, an arena stake, the
+  while the market holds something of the player's**: an order in the
+  General Store's book (`mkt_order:`), a listing they sell on the Auction
+  House's shelf (`store_listing:`), or a listing they hold the top bid or an
+  open offer on (that gold is escrowed, and its refund would pay the new
+  character). It asks the room's own indexes (`market.js`
+  `_mktOrderCounts`, `store.js` `_stIndex`), which hold every order and
+  listing; loading them is the read, and the heal, the first market request
+  makes anyway.
+  The words, in `RESET_REFUSED_WORDS` (the fight's is `fightlock.js`
+  `FIGHT_WORDS`): "Not while you have something on the market: cancel your
+  listings, orders and offers first, or wait for an auction you lead to
+  end"; the picker's (`CharacterPicker.jsx`): "This character has something
+  on the market. Nothing was changed: cancel its listings, orders and offers
+  first, or wait for an auction it leads to end."
+- the restart also deletes the daily rewards' row (`daily_rewards:`: the
+  day's spin and its pot, the daily quests, the season's stars), in its one
+  delete (v2.3.5709, above), and forgets its cached copy unwritten
+  (`dailyrewards.js` `_drForget`), or the restart's own leave would write a
+  dirty copy back. The login streak lives in `cadence:login:` and stays.
+- Other records held between players (a duel's wager, an arena stake, the
   weekly pool, a bounty) do not hold a restart: the card names listings and
   orders.
 
-Kill switch `resetclean: false`: neither, as before. Suite:
+Gatekeeper Z40's review of the first build: it asked `playerrestore.js`
+`betweenOf`, which reads one page (200) of each list, so on a busy market the
+player's own listing past it was missed; and the cached daily record was
+written back by the restart's leave. Both are the suite's §5 and §7.
+
+Kill switch `resetclean: false`: none of it, as before. Suite:
 `server/test/resetclean.test.mjs`; `restore.test` §4 and `fight-lock.test` 8d-8e
 play a restart with a listing on file, so they throw it.
