@@ -67,10 +67,16 @@ import { XFER } from './xfer.js';   /* v2.3.5710: the ledger's prefix, read from
    did:
      - `vault`: the vault's gold and items NOW, when the copy does not carry
        the vault (it stays as it is: read it beside `booked`);
-     - `given`: the transfer ledger's rows (XFER.PREFIX, xfer.js) from the
-       copy's day on that name this player as the giver (`from`): when, the
-       road, to whom, the gold and the goods.  At most GIVEN_PAGES pages of
-       GIVEN_PAGE rows read (`givenMore` when there were more).
+     - `given`: what this player handed over since the copy, from the
+       transfer ledger's rows (XFER.PREFIX, xfer.js): as the giver (`from`)
+       the row's own side, and as the other side (`to`) its `price` (a trade
+       window's side b, a market's or auction's buyer: the sitting 38
+       review) -- when, the road, to whom, the gold, the goods and the ids
+       (pets, weapons, gear).  Rows from the copy's own TIME on
+       (`givenSince`: a `prereset-`/`prerestore-` key's time; a daily
+       copy's from `rpgsnap_at:` when it is that day's, else the day's
+       start, `exact: false`).  At most GIVEN_PAGES pages of GIVEN_PAGE rows
+       read (`givenMore` when there were more).
    Nothing moved: no `moved` field, the answer as before.  Reads only: no
    new write, no new lever.  docs/OPERATIONS.md's restore steps say to read
    it.  (An explicit yes in the Test panel is a later PR: it needs the
@@ -96,10 +102,32 @@ export function copyDay(snapKey) {
   if (/^\d{8}$/.test(tail)) return tail;
   const m = /^pre(?:reset|restore)-(\d{10,})$/.exec(tail);
   if (!m) return null;
-  const d = new Date(Number(m[1]));
+  return utcDay(Number(m[1]));
+}
+/* a time's UTC day, yyyymmdd (null: not a time) */
+function utcDay(t) {
+  const d = new Date(t);
   if (!Number.isFinite(d.getTime())) return null;
   const p = (n) => String(n).padStart(2, '0');
   return d.getUTCFullYear() + p(d.getUTCMonth() + 1) + p(d.getUTCDate());
+}
+
+/* v2.3.5710 (the sitting 38 review): the time a `prereset-`/`prerestore-`
+   copy was made, from its key; null for a daily copy (its key holds only
+   the day). */
+export function copyTime(snapKey) {
+  const m = /^pre(?:reset|restore)-(\d{10,})$/.exec(String(snapKey || '').split(':').pop());
+  const t = m ? Number(m[1]) : NaN;
+  return Number.isFinite(t) ? t : null;
+}
+
+/* one side of a ledger row as the answer names it */
+function givenSide(side) {
+  const s = side && typeof side === 'object' ? side : {};
+  const goods = Object.create(null);
+  if (s.goods && typeof s.goods === 'object') for (const k of Object.keys(s.goods)) { const n = wholeCount(s.goods[k]); if (n > 0 && !BAD_KEYS.has(k)) goods[k] = n; }
+  const ids = (Array.isArray(s.ids) ? s.ids : []).filter((x) => typeof x === 'string' && x).slice(0, 64);
+  return { gold: wholeGold(s.gold), goods, ids };
 }
 
 /** v2.3.5710: what moved since the copy that a restore will not rewind:
@@ -116,6 +144,14 @@ export async function movedSince(room, pid, snap, snapKey, vaultNow) {
   }
   const day = copyDay(snapKey);
   const st = room.state.storage;
+  /* the copy's own time: rows before it (the same day) were not since */
+  let since = copyTime(snapKey), exact = since !== null;
+  if (since === null && day) {
+    let at = null;
+    try { at = await st.get('rpgsnap_at:' + pid); } catch (e) { at = null; }
+    if (typeof at === 'number' && Number.isFinite(at) && utcDay(at) === day) { since = at; exact = true; }
+    else since = Date.UTC(+day.slice(0, 4), +day.slice(4, 6) - 1, +day.slice(6, 8));
+  }
   const given = [];
   let more = false, after = null;
   for (let page = 0; page < PLAYER_RESTORE.GIVEN_PAGES; page++) {
@@ -128,15 +164,19 @@ export async function movedSince(room, pid, snap, snapKey, vaultNow) {
     for (const [k, v] of rows) {
       n++; after = k;
       if (day && k < XFER.PREFIX + day) continue;   /* a storage that ignores `start` */
-      if (!v || typeof v !== 'object' || v.from !== pid) continue;
+      if (!v || typeof v !== 'object' || (v.from !== pid && v.to !== pid)) continue;
+      if (since !== null && !(Number(v.at) >= since)) continue;   /* before the copy */
+      /* as the giver, the row's own side; as the other side, its price */
+      const side = v.from === pid ? givenSide(v) : givenSide(v.price);
+      if (!side.gold && !Object.keys(side.goods).length && !side.ids.length) continue;
       if (given.length >= PLAYER_RESTORE.GIVEN_MAX) { more = true; continue; }
-      given.push({ key: k, at: Number(v.at) || 0, road: typeof v.road === 'string' ? v.road : null, to: typeof v.to === 'string' ? v.to : null,
-        gold: wholeGold(v.gold), goods: v.goods && typeof v.goods === 'object' ? v.goods : {} });
+      const other = v.from === pid ? v.to : v.from;
+      given.push({ key: k, at: Number(v.at) || 0, road: typeof v.road === 'string' ? v.road : null, to: typeof other === 'string' ? other : null, ...side });
     }
     if (n < PLAYER_RESTORE.GIVEN_PAGE) break;
     if (page === PLAYER_RESTORE.GIVEN_PAGES - 1) more = true;
   }
-  if (given.length) out.given = given;
+  if (given.length) { out.given = given; if (since !== null) out.givenSince = { at: since, exact }; }
   if (more) out.givenMore = true;
   return Object.keys(out).length ? out : null;
 }

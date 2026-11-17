@@ -536,9 +536,12 @@ curl -X POST -H "Authorization: Bearer YOUR_KEY" \
    the backup that the restore will NOT undo. `moved.vault` is what is in
    their bank now (a backup without the bank leaves it as it is, so gold
    they banked since is in the bank AND comes back in the purse);
-   `moved.given` lists what they handed to other players since the backup
-   (each one's gold, items and who got it: the other player keeps it, and
-   the restored character has it again). If either is there, decide before
+   `moved.given` lists what they handed to other players since the backup,
+   including what they paid in a trade or at the market (each one's gold,
+   items, pets or gear by id, and who got it: the other player keeps it,
+   and the restored character has it again). `moved.givenSince` says from
+   when; `exact: false` means from the start of the backup's day, so a
+   trade that day may be from before it. If either is there, decide before
    step 4 whether the restore is still right. No `moved`: nothing moved.
 4. Restore (the same, without `dry`):
 ```
