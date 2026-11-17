@@ -162,6 +162,36 @@ A key that disappears is also forgotten by the relay. So rejoining the same
 clan, the same tag, is news again, though the leave cleared it on every phone
 (`look-relay.test.mjs` 1l).
 
+## Paced, paid for and cut (v2.3.5721, card K2 PR 2)
+
+The second red team's CRITICAL 2: a relay went out the moment a `track`
+came, outside the relay byte budget, with `rpgData` whole (up to 8 KB, any
+keys). One socket sending a fresh `rpgData` 100 times a second made the
+room send some 755 KB a second to every other phone (`lookpace.test`, on
+main). With `lookpace` on (`lookrelay.js` `LOOK_PACE`):
+
+- **One look relay a socket a second.** A `track` inside the second is held,
+  the latest one winning, and goes at the next slot (one timer a socket).
+  The page sends at most one every 2 s (`BroTown.jsx` `S._lastTrack`), so an
+  honest look is never held.
+- **Paid from the relay byte bucket** (`relay.js` `_relayBytesHave`: 8 KB at
+  once, 2 KB a second after), as a phone's other relays are. One it cannot
+  pay for yet is held, never dropped.
+- **`rpgData` cut to what a page reads of another player** (`RPGDATA_READ`,
+  each field to its form; found by grep in `src/`): weapon, armor, shield,
+  amulet (the equipment sheet; the shield also the slung shield and block
+  pose); lifeTotal, ap, kills, dungeons, goldEarned, playtime, clanTag (the
+  room's live list); clanName, clanColor1 (the clan panel); combat {melee,
+  bow, staff}, farmReady, petInfo {name, species, level, kind, stage, gold},
+  quests, svKills, title, rarest (the Inspect card). Left out: power,
+  vitality, endurance, agility, mind, pvpKills, pvpDeaths, deaths (no page
+  reads them of another player) and anything else. The player's own copy
+  (`session.data`, `playerState`, the leaderboard's report) keeps them all.
+  A text is at most 96 characters (`TEXT_MAX`).
+
+The flood now reaches another phone as 10 relays and some 440 bytes a second.
+`lookpace: false` relays at once and whole, as before.
+
 ## Still to do
 
 - **The phones still SEND `track` every 2 s**: about 0.5 incoming messages a
