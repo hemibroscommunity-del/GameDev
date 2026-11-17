@@ -50,7 +50,8 @@ off, one while on.
 
 - **The cap `reqid`** (`join.js`; `CAP_GATES`): the worker answers once.
   `reqonce: false` takes it away.
-- **The page's one re-send** (`src/game/actions.js`, `RESEND_MS` 1.5 s): with
+- **The page's one re-send** (`src/game/actions.js`, `RESEND_MS` 1.5 s;
+  `RESEND_ROWS`: the store's list, buy, bid and accept): with
   the cap, a route's request the page heard nothing back from (the fetch
   failed, or a 5xx) goes once more with the same id; never a third time, and
   never after the caller's own time limit. Without the cap: one try, as
@@ -69,8 +70,12 @@ off, one while on.
 ## Still open
 
 - An order that matches at once leaves no resting record: its repeat is
-  answered from memory only, so after a restart it reads `Item not in stash`
-  rather than the sale (nothing is sold twice).
+  answered from memory only, so after a restart the same body would place
+  again -- with a weapon at that place, a second sale (the gatekeeper,
+  sitting 27). So the page never re-sends the market's place (`RESEND_ROWS`,
+  v2.3.5546: the store's list, buy, bid and accept only); a player's own
+  second tap is a new request, as before. Naming the weapon by its id (5196)
+  closes it for a sell.
 
 ## What holds it
 

@@ -17,7 +17,8 @@ state: ready
 
 ## Next
 
-- #1981 5194b (5546): the `reqid` cap, the door's one re-send, http.js's
+- #1981 5194b (5546; sitting 27's mend: the re-send only for the store's
+  four, RESEND_ROWS): the `reqid` cap, the door's one re-send, http.js's
   rows (+ `mktwords`), SHAPES part 2; sitting 25's mends (a first that
   threw kept; both ids' stamps; the bank's opId); req-once 37.
 - Card K's PR 9 entry (cards/K.md) still lists 5194b's parts: the planner's.

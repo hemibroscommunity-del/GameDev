@@ -506,6 +506,14 @@ export function setActionTransport(t) { _t = t && typeof t === 'object' ? t : nu
 /* v2.3.5546: how long the door waits before its one re-send of a route's
    request the worker never answered (caps.reqid only) */
 export const RESEND_MS = 1500;
+/* v2.3.5546 (the gatekeeper, sitting 27): the routes the door may re-send --
+   those whose repeat is safe even after the worker restarted and forgot its
+   first answer: a listing finds itself on its own record; a buy, a bid or
+   an accept finds the listing sold or the bid standing.  NOT the market's
+   place (an order that matched at once leaves no record: a re-send after a
+   restart would sell the next weapon) nor the arena's join (its repeat reads
+   "Already queued", an error, while the player is queued). */
+export const RESEND_ROWS = Object.freeze(new Set(['http:/api/store/list', 'http:/api/store/buy', 'http:/api/store/bid', 'http:/api/store/accept']));
 
 /** A request, out of the page.  `opts.query` for a route's query string.
  *  Returns what the transport returns (false: nothing left the page). */
@@ -529,7 +537,7 @@ export function act(name, payload, opts) {
        the same id after RESEND_MS: the worker acts once and answers the first
        answer again (server/src/reqonce.js).  Without the cap: the bytes and the
        one try of before. */
-    const once = r.req && typeof p.reqId === 'string' && typeof _t.reqOnce === 'function' && !!_t.reqOnce();
+    const once = r.req && RESEND_ROWS.has(name) && typeof p.reqId === 'string' && typeof _t.reqOnce === 'function' && !!_t.reqOnce();
     let q = opts && opts.query ? '?' + opts.query : '';
     if (once && r.method === 'DELETE') q += (q ? '&' : '?') + 'reqId=' + encodeURIComponent(p.reqId);
     /* v2.3.5191 (card K PR 7.5, the page's fetches moved here): the bytes the

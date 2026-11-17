@@ -316,23 +316,26 @@ A.weaponStash = [axe(1), axe(2), axe(3)]; A.coins = 1000;
   const { act, setActionTransport, RESEND_MS } = await import('../../src/game/actions.js');
   const realTimeout = globalThis.setTimeout;
   globalThis.setTimeout = (f) => realTimeout(f, 0);
-  const tryOnce = async (capOn, fails) => {
+  const tryOnce = async (capOn, fails, name, body) => {
     const seen = [];
     let n = 0;
     setActionTransport({ send: () => true, token: () => 't', reqOnce: () => capOn,
       http: async (path, init) => { seen.push(JSON.parse(init.body).reqId); n++; if (n <= fails) throw new Error('no answer'); return { status: 200, json: async () => ({ ok: true }) }; } });
     let out = null;
-    try { out = await act('http:/api/store/buy', { listingId: 'x', playerId: 'bp_rq_cap' }); } catch (e) { out = 'threw'; }
+    try { out = await act(name || 'http:/api/store/buy', body || { listingId: 'x', playerId: 'bp_rq_cap' }); } catch (e) { out = 'threw'; }
     return { seen, out };
   };
   const on = await tryOnce(true, 1);
   const off = await tryOnce(false, 1);
   const twice = await tryOnce(true, 2);
+  const place = await tryOnce(true, 1, 'http:/api/market/place', { type: 'sell', category: 'weapon', subtype: 'axe', tierKey: 'mythic', price: 300, playerId: 'bp_rq_cap', stashIndex: 0 });
+  const arena = await tryOnce(true, 1, 'http:/api/arena/join', { playerId: 'bp_rq_cap' });
   globalThis.setTimeout = realTimeout;
   setActionTransport(null);
   check('14: with the cap, a request heard nothing from is sent once more with the SAME id', on.seen.length === 2 && on.seen[0] === on.seen[1] && on.out && on.out.status === 200 && RESEND_MS > 0, on);
   check('14: without it, one try, as before', off.seen.length === 1 && off.out === 'threw', off);
   check('14: ...and only once more, never a third', twice.seen.length === 2 && twice.out === 'threw', twice);
+  check('14: (sitting 27) never the market\'s place, whose at-once match leaves no record a restart could find, nor the arena\'s join', place.seen.length === 1 && place.out === 'threw' && arena.seen.length <= 1, { place, arena });
 }
 
 console.log(failures ? `\n${failures} FAILED` : '\nALL PASS');
