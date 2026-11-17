@@ -48,8 +48,9 @@ import { campfireAtlas, CAMPFIRE_PIX, CAMPFIRE_FLAME_MS } from './campfireFx.js'
 import * as ART from './campfireArt.js';
 import { HEAL_MS } from '../game/wheelBreak.js';
 import { cueAt } from '../game/eventSounds.js'; /* v2.3.3343: a building heard catching */
+import { pageAddress } from '../game/switches.js';   /* v2.3.5317: the page's one read of its address (card T) */
 
-const qs = (() => { try { return new URLSearchParams(window.location.search); } catch (e) { return null; } })();
+const qs = (() => { try { return new URLSearchParams(pageAddress()); } catch (e) { return null; } })();
 /** Does this page draw buildings burning?  (`?nobuildingfire`: no) */
 export function buildingFireOn() { return !(qs && qs.has('nobuildingfire')); }
 

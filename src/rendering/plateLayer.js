@@ -38,8 +38,9 @@
 import { RenderLayer } from 'pixi.js';
 
 import { crowdSwitchOn } from '../game/onePic.js';
+import { pageAddress } from '../game/switches.js';   /* v2.3.5317: the page's one read of its address (card T) */
 
-const _search = typeof location !== 'undefined' ? (location.search || '') : '';
+const _search = pageAddress();
 
 /** The switch: ON (v2.3.4990, owner 2026-11-12: "Turn both switches on by
     default"; it was `?platelayer=1` only in v2.3.4989); `?platelayer=0`

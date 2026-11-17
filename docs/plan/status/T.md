@@ -1,6 +1,6 @@
 card: T
-branch: claude/plan-t-16-reads7 (on #1996's branch; main merged in)
-prs: #1754 ... #1958, #1978 (5301-5311, merged); #1992, #1993 (5312-5313, merged); #1994 5314 (ready); #1996 5315 (ready, on #1994); 5316 (ready, on #1996)
+branch: claude/plan-t-17-reads8 (on #2001's branch; main merged in)
+prs: #1754 ... #1958, #1978 (5301-5311, merged); #1992, #1993 (5312-5313, merged); #1994 5314 (ready); #1996 5315 (ready, on #1994); #2001 5316; 5317 (ready, on #2001)
 state: ready
 
 ## Done
@@ -18,8 +18,8 @@ state: ready
 
 ## Next
 
-- 5316: twenty-eight reads (look); the line 116. Then render;
-  K's and L's files when they end.
+- 5317: forty-five render reads on pageAddress(); the line 71. Then K's
+  and L's files as they end, and the files whose suites pin their text.
 
 ## Found
 
@@ -37,4 +37,4 @@ state: ready
 
 ## Needs
 
-- The gatekeeper: #1994, #1996, then 5316 on them.
+- The gatekeeper: #1994, #1996, #2001, then 5317 on them.

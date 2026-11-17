@@ -44,6 +44,7 @@ import { MONSTER_VARIANTS } from '@/data/monsterVariants.js';
 import { shotThrowerArch } from '@/data/monsterShots.js';
 import { monsterTorsoY } from '@/data/gameSystems.js';
 import { monsterDrawScale } from '@/game/combatHelpers.js';
+import { pageAddress } from '../game/switches.js';   /* v2.3.5317: the page's one read of its address (card T) */
 
 let _cells = null;      /* shape -> Texture, cut from one source */
 
@@ -98,7 +99,7 @@ let _wanted = false;
 export function wantStormSparks(on) { _wanted = !!on; }
 
 function stormOn() {
-  try { return !(typeof location !== 'undefined' && new URLSearchParams(location.search).has('nostormfx')); }
+  try { return !(typeof location !== 'undefined' && new URLSearchParams(pageAddress()).has('nostormfx')); }
   catch (e) { return true; }
 }
 
