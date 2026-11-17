@@ -1719,7 +1719,7 @@ export const joinMethods = {
             this._hpSet(_ps, _ps.maxHp || 100, 'join_stand_up');
             _ps.stamina = _ps.maxStamina || 100;
             _ps.mana = _ps.maxMana || 100;
-            _ps.z = 'town';
+            this._zoneTo(_ps, 'town', 'standup');   /* v2.3.5537: the zone door (zonejudge.js) */
             if (cleanJoinData && typeof cleanJoinData === 'object' && typeof cleanJoinData.z === 'string') cleanJoinData.z = 'town';
             if (typeof this._moveRespawned === 'function') this._moveRespawned(_ps);
           }
