@@ -1,6 +1,6 @@
 card: Z
 branch: claude/plan-z-sitting-40
-prs: #ZPR (this PR), tag 5678, the last line of sitting 40's list (ready)
+prs: #2069 (this PR), tag 5678, the last line of sitting 40's list (ready)
 state: ready
 
 ## Done
@@ -12,7 +12,7 @@ CLAUDE.md §4, REPO-SAFETY words) · 4 SEC #2059 (5715, `gearheld`) · 5 SEC
 #2060 (5716, `oldkeyheld`) · 6 SEC #2061 (5717, the site's headers) · 7
 SEC #2062 (5718, `?rostercookie`) · 8 SEC #2063 (5719, `resetclean`) · 9
 K2 #2066 (5723, `movefields`) · 10 L #2052 (5535, `?dungeondoor`) · 11 Z
-#ZPR (this PR). All on `main`, one base at every step; the worker
+#2069 (this PR). All on `main`, one base at every step; the worker
 deploys once. With #2055-#2063 card SEC is done.
 ## Held / Stalled
 - Held at review, mended this sitting: #2055, #2059, #2063 (census).
