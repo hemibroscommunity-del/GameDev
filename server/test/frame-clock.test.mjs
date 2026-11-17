@@ -118,9 +118,46 @@ check('7. on unless the address says dtsmooth=0', frameSmoothOn('') && frameSmoo
 /* 8 */
 {
   const bt = readFileSync(join(ROOT, 'src/ui/BroTown.jsx'), 'utf8');
-  check('8. the game loop steps by the clock', /var _stepMs = _frameClock \? _frameClock\.step\(_perfDelta\) : _perfDelta;\s*S\._dtScale = Math\.max\(0\.2, Math\.min\(3, \(_stepMs \|\| 16\.667\) \/ 16\.667\)\);/.test(bt));
-  check('8b. ...one clock a loop, none with the off-ramp', /if \(frameSmoothOn\(window\.location\.search \|\| ''\)\) _frameClock = makeFrameClock\(\);/.test(bt));
+  check('8. the game loop steps by the clock', /var _stepMs = _frameClock \? _frameClock\.step\(_perfDelta\) : _perfDelta;\s*S\._dtScale = Math\.max\(0\.2, Math\.min\(_stepCapMs\(\) \/ 16\.667, \(_stepMs \|\| 16\.667\) \/ 16\.667\)\);/.test(bt));   /* v2.3.5233: the lane's cap */
+  check('8b. ...one clock a loop, none with the off-ramp', /if \(frameSmoothOn\(window\.location\.search \|\| ''\)\) _frameClock = makeFrameClock\(undefined, _stepCapMs\);/.test(bt));
   check('8c. ...and nothing else in the loop makes the step from the frame\'s own length', (bt.match(/S\._dtScale = /g) || []).length === 1 && !/S\._dtScale = [^;]*_perfDelta/.test(bt));
+}
+
+/* ── 9. v2.3.5233 (card O PR 13): THE 30 LANE.  The step's cap is the
+   lane's `step` knob, three of its frames: 50 ms at 60, 100 at 30.  A 30
+   screen that misses one refresh draws a 67 ms frame: under 50 it was a
+   break, clamped to 50 by the loop -- 17 ms of ground lost, slow motion; at
+   the thirty lane's 100 it is a step like any other, and the ground the
+   clock moved is the ground covered.  BREAK: the thirty row's `step: 100`
+   made 50 -> FAIL 9a. ── */
+{
+  const D = await import('../../src/game/drawLanes.js');
+  const capFull = D.knobAt('full', 'step'), capThirty = D.knobAt('thirty', 'step');
+  /* a 30 screen: 33.3 ms frames, one refresh missed (66.7), then on again */
+  const raws = [], even = [];
+  for (let i = 0; i < 30; i++) { raws.push(i === 12 ? 66.7 : 33.3); even.push(33.3); }
+  const covered = (cap, list = raws) => {
+    const c = makeFrameClock(SMOOTH_FRAMES, () => cap);
+    let sum = 0;
+    for (const r of list) sum += Math.min(cap, c.step(r));   /* the loop's clamp (BroTown.jsx: _stepCapMs) */
+    return sum;
+  };
+  /* the missed refresh's extra ms against the same screen with none (the
+     mean spends a frame's ms over the next ten: compared once they are spent) */
+  const extra = 66.7 - 33.3;
+  const thirty = covered(capThirty) - covered(capThirty, even), full = covered(capFull) - covered(capFull, even);
+  check('9a. the thirty lane\'s step is three of its frames (100 ms), the full lane\'s 50', capThirty === 100 && capFull === 50, { capThirty, capFull });
+  check('9b. a 30 screen missing one refresh (67 ms): at the thirty lane\'s cap the step covers the whole ground the clock moved, not slow motion', Math.abs(thirty - extra) < 1e-6, { thirty, extra });
+  check('9c. ...where the 60 cap would have lost 17 ms of it (what the lane fixes)', extra - full > 16, { full, extra });
+  const c2 = makeFrameClock(SMOOTH_FRAMES, () => 100);
+  check('9d. the clock asks its cap each frame (a function handed in): 67 ms under a cap of 100 is a step, not a break', c2.step(33.3) > 0 && c2.held() === 1 && c2.step(66.7) < 66.7 && c2.held() === 2);
+  const bt = readFileSync(join(ROOT, 'src/ui/BroTown.jsx'), 'utf8');
+  check('9e. BroTown.jsx hands the lane\'s cap to the clock and clamps the step with the same cap (one line)',
+    /makeFrameClock\(undefined, _stepCapMs\)/.test(bt) && /S\._dtScale = Math\.max\(0\.2, Math\.min\(_stepCapMs\(\) \/ 16\.667, \(_stepMs \|\| 16\.667\) \/ 16\.667\)\);/.test(bt)
+    && /function _stepCapMs\(\) \{ try \{ const v = Number\(laneKnob\('step'\)\);/.test(bt));
+  const ab = readFileSync(join(ROOT, 'src/game/abilities.js'), 'utf8');
+  check('9f. not combat: the dash keeps its own per-frame cap (DASH_MAX_STEP_PX), and no combat file reads the step knob',
+    /Math\.min\(DASH_MAX_STEP_PX, DASH_STEP_PX \* \(S\._dtScale \|\| 1\)\)/.test(bt) && !/laneKnob\('step'\)/.test(ab));
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);

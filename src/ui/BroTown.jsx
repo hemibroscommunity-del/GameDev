@@ -488,6 +488,10 @@ import { quietOn, keepaliveDue } from '@/game/quietPhone.js';   /* v2.3.3254: th
 import { updateSprint, sprintMult, sprintHoldsRegen, sprintDust, sprintOutBreathTurn, stopSprint } from '@/game/sprint.js';
 import { rideMult, rideCheck, isRiding, rideFeel, rideStepped, rideLineDue } from '@/game/ride.js';   /* v2.3.3776: the skateboard (server/src/ride.js); v2.3.5440: its push start and roll-off */
 import { makeFrameClock, frameSmoothOn } from '@/game/frameClock.js';   /* v2.3.4400: a steady step on a steady screen */
+import { laneKnob } from '@/game/drawLanes.js';   /* v2.3.5233 (card O PR 13): the step's cap is the lane's */
+/* the longest step one frame may move the world: three of the lane's frames
+   (laneKnob('step'): 50 ms at 60, 100 at 30); the clock and the clamp read it */
+function _stepCapMs() { try { const v = Number(laneKnob('step')); return v > 0 ? v : 50; } catch (e) { return 50; } }
 import { framePaceOn, makeFramePacer, noteDrawn, whenDrawn, beforeDraw, runBeforeDraw } from '@/game/framePacer.js';   /* v2.3.4400: a steady rate on a screen the game cannot keep up with */
 import { accTrack } from '@/game/accuracy.js';   /* v2.3.4545: the shot counts that ride the track */
 import { noteMade } from '@/debug/madeLog.js';   /* v2.3.4400: a job between frames says its name and its time */
@@ -4866,7 +4870,7 @@ export var BroTown = function BroTown(_ref0) {
     };
     /* v2.3.4400: the steady step (game/frameClock.js); none with `?dtsmooth=0` */
     var _frameClock = null;
-    try { if (frameSmoothOn(window.location.search || '')) _frameClock = makeFrameClock(); } catch (e) { _frameClock = null; }
+    try { if (frameSmoothOn(window.location.search || '')) _frameClock = makeFrameClock(undefined, _stepCapMs); } catch (e) { _frameClock = null; }   /* v2.3.5233: its cap the lane's */
     /* ═══ v2.3.4400: A STEADY RATE ON A FAST SCREEN (game/framePacer.js) ═══
        The owner's iPhone, Safari offering it the screen's own 120 a second,
        twenty-four minutes in: "Still performance issues", "fps ~51  frame
@@ -4939,7 +4943,7 @@ export var BroTown = function BroTown(_ref0) {
            past the 3-frame cap is a break and is taken as it is, as before.
            `?dtsmooth=0`: the old way. */
         var _stepMs = _frameClock ? _frameClock.step(_perfDelta) : _perfDelta;
-        S._dtScale = Math.max(0.2, Math.min(3, (_stepMs || 16.667) / 16.667));
+        S._dtScale = Math.max(0.2, Math.min(_stepCapMs() / 16.667, (_stepMs || 16.667) / 16.667));   /* v2.3.5233: the lane's cap (3 at 60, 6 at 30: card O PR 13) */
         /* v2.3.3017: and how long the frame really was -- past the 3-frame cap a
            step covers less ground than the clock moved, and a jump's crossing
            rule must count what it covers (propFeetBlocked).
