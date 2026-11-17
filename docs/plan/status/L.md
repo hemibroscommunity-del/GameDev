@@ -1,6 +1,6 @@
 card: L
 branch: claude/plan-l-38-fight-door (from main)
-prs: #1746 to #2046 (merged), #2052, #2058, #2065, fight door (5535-5538): ready
+prs: #1746 to #2046 (merged), #2052, #2058, #2065, #2067 (5535-5538, stacked): ready
 state: ready
 
 ## Done
@@ -27,8 +27,9 @@ state: ready
   fishvariants (4a-5: no Inspect on the card; 6c by run: healed before Eat),
   moresounds (setup and 10 every run; 8b, 9a by run: other cues heard),
   deskharvest 5 (a phone's first-harvest hint, read as a computer's), blockface 2 (the block icon's disc: 13 of 560 px blue, on main too),
-  comeback 1, 5 (on main c55c8b59). precheck's 5-min server limit < the suite's ~310 s.
-- bodytake.js ~94 cites a pose row that is none. Dead: S._shieldStamina,
+  comeback 1, 5 (on main c55c8b59). precheck's 5-min limit < the suite's ~450 s.
+- join.js's stand-up to town asks no duel (_duelZoneMoved; duel-zone §7 never
+  counted it). bodytake.js ~94 cites a pose row that is none. Dead: S._shieldStamina,
   S.shieldActive, S._iceAttack, monsterCombat's respawn, playerActions' raiseShield.
 
 ## Needs

@@ -19,6 +19,7 @@ import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { FARM_FROM_WORKSHOP } from '@/data/farmLayout.js';   /* v2.3.3136: the farm you walk */
 import { holdFarmUntilReady } from '@/game/farmTrip.js';
 import { changeZone } from '@/game/zoneTransitions.js';   /* v2.3.4651: the one door (TRAPS §304) */
+import { dungeonTo } from '@/game/dungeonDoor.js';   /* v2.3.5535: the dungeon's page door (card L) */
 export function updateDungeonWaves(S, deps) {
   /* v2.3.1127: server-authoritative dungeon instances.  When the run
      lives on the worker (S._serverDungeon set by the dungeon_started
@@ -73,7 +74,7 @@ export function updateDungeonWaves(S, deps) {
                   S.screenShake = 8;
                 } else {
                   /* No boss — dungeon complete */
-                  S._dungeonComplete = true;
+                  dungeonTo(S, 'complete', { complete: true });   /* v2.3.5535: the dungeon's page door */
                   pushDmgPopup(S, P.x, P.y - 50, 'DUNGEON CLEARED!', '#f5c542');
                   var bonusGold = 20 * cfg.waves;
                   var bonusXp = 50 * cfg.waves;
@@ -85,8 +86,7 @@ export function updateDungeonWaves(S, deps) {
                   S.screenShake = 6;
                   setTimeout(function () {
                     var st = stateRef.current;
-                    st._inDungeon = false;
-                    st._inCustomDungeon = false;
+                    dungeonTo(st, 'leave', { in: false, custom: false });   /* v2.3.5535: the dungeon's page door */
                     st._customDungeonConfig = null;
                     changeZone(st, 'farm_home');   /* v2.3.4651: the one door (TRAPS §304) */
                     updateZoneDimensions('farm_home');
@@ -115,7 +115,7 @@ export function updateDungeonWaves(S, deps) {
                    tile-10 entrance (never on since v2.3.54) ever started one */
             } else if (S._dungeonBossSpawned) {
               /* Boss killed — dungeon complete! */
-              S._dungeonComplete = true;
+              dungeonTo(S, 'complete', { complete: true });   /* v2.3.5535: the dungeon's page door */
               if (S._inCustomDungeon) {
                 /* §DNG — Custom dungeon complete with boss */
                 var _cfg = S._customDungeonConfig;
@@ -136,8 +136,7 @@ export function updateDungeonWaves(S, deps) {
                 } catch (e) {}
                 setTimeout(function () {
                   var st = stateRef.current;
-                  st._inDungeon = false;
-                  st._inCustomDungeon = false;
+                  dungeonTo(st, 'leave', { in: false, custom: false });   /* v2.3.5535: the dungeon's page door */
                   st._customDungeonConfig = null;
                   changeZone(st, 'farm_home');   /* v2.3.4651: the one door (TRAPS §304) */
                   updateZoneDimensions('farm_home');

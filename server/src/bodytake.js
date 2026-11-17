@@ -89,7 +89,7 @@ export const bodyTakeMethods = {
     /* it stands still with its guard down, as a lingering body: nobody holds
        the stick until the phone stands at it (no moment of safety) */
     ps.vx = 0; ps.vy = 0; ps._mvFollow = undefined;
-    ps.blocking = false; ps.blockStartT = 0; ps.dodging = false;
+    this._guardTo(ps, 'lower'); ps.dodging = false;   /* v2.3.5536: the guard door */
     this._exTo(ps, null, 'take'); ps._sprintStep = false;   /* v2.3.5213: the cook door */
     this._poseTo(ps, null, 'take');   /* and stands up: no pose crosses a join (the phone clears its own: rejoinresend's pose row); v2.3.5216: the pose door */
     this.dirtyPlayers.add(id);

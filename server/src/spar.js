@@ -527,7 +527,7 @@ export const sparMethods = {
     if (c) {
       this._lifeTo(ps, 'dying', 'spar_down'); this._hpSet(ps, 0, 'spar_down');   /* v2.3.4820: the life door */
       ps.respawnAt = 0;
-      ps.blocking = false; ps.dodging = false; ps.vx = 0; ps.vy = 0;
+      this._guardTo(ps, 'lower'); ps.dodging = false; ps.vx = 0; ps.vy = 0;   /* v2.3.5536: the guard door */
       if (this._pvpClearStatuses) this._pvpClearStatuses(playerId, ps);
       c.downUntil = now + SPAR.RESPAWN_MS;
       c.shots = []; c.dash = null; c.roll = null; c.shield = null; c.pendingRoll = null; c.pendingShield = null;
@@ -581,7 +581,7 @@ export const sparMethods = {
     const a = (sp && typeof sp.ringAt === 'number') ? (sp.ringAt += Math.PI * 2 / 3) : rnd() * Math.PI * 2;
     ps.x = (ownerPs.x || 0) + Math.cos(a) * SPAR.RING_R;
     ps.y = (ownerPs.y || 0) + Math.sin(a) * SPAR.RING_R;
-    ps.z = ownerPs.z;
+    this._zoneTo(ps, ownerPs.z, 'spar');   /* v2.3.5537: the zone door (zonejudge.js) */
     this._duelZoneMoved(c.id);   /* v2.3.4371: every zone write asks the duel (duel.js); a clone duels nobody */
     ps.vx = 0; ps.vy = 0;
     ps.lastMoveAt = now;
@@ -593,7 +593,7 @@ export const sparMethods = {
     }
     if (revive) { this._lifeTo(ps, 'alive', 'spar_up'); c.downUntil = 0; }
     if (ps.blocking) this._sparRelay(c, { type: 'player_shield', up: false });
-    ps.blocking = false; ps.dodging = false;
+    this._guardTo(ps, 'lower'); ps.dodging = false;   /* v2.3.5536: the guard door */
     this._sparResetAi(c);
     /* the history the next hit is judged against starts here, not where it
        stood before (combat.js reads the newest entry for a clone: rtt 0) */
@@ -855,7 +855,7 @@ export const sparMethods = {
         if (ps.shield && !(ps._guardBrokenUntil && now < ps._guardBrokenUntil) && (ps.stamina || 0) > 0 && !c.roll && !c.dash) {
           c.shield = { since: now, until: now + Math.max(G.SHIELD_MIN_MS, 700) };
           c.sprinting = false;
-          ps.blocking = true; ps.blockStartT = now;
+          this._guardTo(ps, 'raise', now);   /* v2.3.5536: the guard door */
           ps.ba = angTo(ps.x, ps.y, o.x, o.y);
           this._sparRelay(c, { type: 'player_shield', up: true });
         }
@@ -872,7 +872,7 @@ export const sparMethods = {
   _sparLower(c, ps) {
     c.shield = null;
     const was = ps.blocking;
-    ps.blocking = false; ps.blockStartT = 0;
+    this._guardTo(ps, 'lower');   /* v2.3.5536: the guard door */
     if (was) this._sparRelay(c, { type: 'player_shield', up: false });
   },
 
