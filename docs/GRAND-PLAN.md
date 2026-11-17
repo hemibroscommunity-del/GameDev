@@ -361,6 +361,11 @@ devices it waits for: with one player, the table is empty for weeks.
   its own work; `?ladderpass=0`) and #1854 (the strip slice is the lanes'
   `queue` knob, 4 ms, `thirty` 8), merged at sitting 17. The box waits for
   the memory's rung (O's PR 11) (the gatekeeper, sitting 18, tag 5375).*
+  *O's #1985 (5231: the memory's axis, `MEM_LINES` art and gpu; the
+  `caches` knob live, `?govern=0` stops it) and #1991 (5681: read only
+  while the governor judges; sound out of the verdict; a rung waits 35 s),
+  merged at sitting 27. A full memory now frees caches, then the crowd
+  (the gatekeeper, sitting 28, tag 5666).*
 - [ ] **2.4 [NEXT] Off-ramps become overrides of the ladder**, through one
   reader (pillar 7's table).
   *Begun (card O): #1970 (5232: the lanes' off-ramps, `?sheen`,
@@ -509,6 +514,10 @@ play, a number 1.1 can measure.
   The box waits for quest state and experience (R's PRs 5 and 10); the
   world's sum's weapon lows are R's next (review-z25) (the gatekeeper,
   sitting 26, tag 5664).*
+  *R's #1980 (5296: the world's sum reads each leg's stamp, the four lows
+  of review-z25), merged at sitting 27. Open: a store listing's gold and a
+  buy order's `back` leg counted between the credit and the delete
+  (review-z27, R's Found) (the gatekeeper, sitting 28, tag 5666).*
 - [x] **4.4 [NOW] The whole world's sum.** "A purse equals its start plus
   the roads that ran" is true by construction; past copies went through
   legal roads (ore sold 24 times in one bundle). So every road in
@@ -717,6 +726,9 @@ nothing known, and a restore copies nothing.
   *T's #1958 (eleven more reads into the reader; the outside line 212 ->
   201), merged at sitting 24. The box waits for the rest of the page's
   reads (the gatekeeper, sitting 25, tag 5663).*
+  *T's #1978 (5311: `pageAddress()`, seventeen reads; the outside line
+  201 -> 172, with O's twelve), merged at sitting 27. The box waits for
+  the rest of the page's reads (the gatekeeper, sitting 28, tag 5666).*
 - [x] **7.2 [NEXT] The end date** (the owner: yes). For a logic switch: four
   weeks on with no revert, then the old way goes. A device off-ramp stays
   while its risk is live. A fallback stays while its trigger lives: a guard
@@ -766,6 +778,9 @@ nothing known, and a restore copies nothing.
   #1964 (`mp-petsmatter` 5 reads the worker's `FREEZE.CHILL_MS`), the
   tests', merged at sitting 24. The step is open (the gatekeeper, sitting
   25, tag 5663).*
+  *J2's #1984 (`mp-dailyrewards`), #1986 (the finger's tap, the Orders
+  tab) and #1987 (`mp-rotcap`), the tests', merged at sitting 27. The step
+  is open (the gatekeeper, sitting 28, tag 5666).*
 - [ ] **8.2 [NEXT] Traps become guards**, each with a break proof. The count
   that matters is traps held by a proof, not traps of prose.
   *Card V merged, #1724 to #1740: 31 traps held by a proof (25 the rule, 6
@@ -993,6 +1008,9 @@ are cheap now and a rewrite later, and builds no helper feature.
   re-send (K's 5194b), which must not ship until a first try that threw
   after the market's sale was owed is remembered (review-z25) (the
   gatekeeper, sitting 26, tag 5664).*
+  *K's #1989 (5195: every other value request at the wire door, 35 rows),
+  merged at sitting 27. The box waits for the page's re-send (#1981, the
+  store's four only) and a weapon named by its id (K's 5196) (the gatekeeper, sitting 28, tag 5666).*
 - [ ] **11.4 [NEXT] The words rule.** Text a player wrote (a name, chat, a
   shop's note) never sits inside a sentence the game speaks: mail today
   reads "sold to" and then the buyer's name. Such messages carry a template

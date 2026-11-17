@@ -219,7 +219,12 @@ export const bankMethods = {
        phone's opId from an older page: either goes in the vault's `ops`,
        the record's own, so a repeat acts once across a restart too */
     const rid = this._reqIdOf ? this._reqIdOf(p.reqId) : null;
-    const opId = rid || (okOp(p.opId) ? p.opId : null);
+    const phoneOp = okOp(p.opId) ? p.opId : null;
+    /* v2.3.5546 (the gatekeeper, sitting 25): the answer's `opId` stays the
+       phone's own when it sent one (its pending move is matched by it); the
+       vault's `ops` take the request id, and a repeat is found by either */
+    const opKey = rid || phoneOp;
+    const opId = phoneOp || rid;
     const n = wholeN(p.n);
     const id = kind === 'item' ? p.id : null;
     const last = (ok, err) => {
@@ -233,9 +238,9 @@ export const bankMethods = {
     if (!ps || ps.dying || ps.dead || ps.disconnected) return;
     if (v.newer) return this._bankSend(pid, v, last(false, 'newer'));
     if (v.failed) return this._bankSend(pid, v, last(false, 'busy'));   /* the read failed: move nothing, read again next time */
-    if (opId && v.ops.includes(opId)) return this._bankSend(pid, v, last(true, null));
+    if ((rid && v.ops.includes(rid)) || (phoneOp && v.ops.includes(phoneOp))) return this._bankSend(pid, v, last(true, null));
     if (this._bankOff()) return this._bankSend(pid, v, last(false, 'off'));
-    if (!kind || !opId || !n) return this._bankSend(pid, v, last(false, 'bad'));
+    if (!kind || !opKey || !n) return this._bankSend(pid, v, last(false, 'bad'));
     if (kind === 'item' && !okKey(id)) return this._bankSend(pid, v, last(false, 'bad_key'));
     if (!this._bankPlaceOk(ps)) return this._bankSend(pid, v, last(false, 'not_here'));
     if (this._paceTake && !this._paceTake('bank', pid, PACE.BANK)) return this._bankSend(pid, v, last(false, 'busy'));
@@ -275,7 +280,7 @@ export const bankMethods = {
         if (inVault - n > 0) v.items.set(id, inVault - n); else v.items.delete(id);
       }
     }
-    v.ops.push(opId);
+    v.ops.push(opKey);
     if (v.ops.length > BANK.OPS) v.ops.splice(0, v.ops.length - BANK.OPS);
     /* THE ONE WRITE: the bag or purse and the vault, no await between them */
     this._saveRpg(pid, ps);

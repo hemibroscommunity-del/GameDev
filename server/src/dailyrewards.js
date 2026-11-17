@@ -633,7 +633,10 @@ export const dailyRewardsMethods = {
        while the sitting holds it */
     const rid = this._reqIdOf ? this._reqIdOf(payload && payload.reqId) : null;
     const opKey = rid ? 'spinop:' + pid + ':' + rid : (opId ? 'spinop:' + opId : null);
-    if (opKey && await this._opSeen(opKey)) {
+    /* v2.3.5546 (the gatekeeper, sitting 25): a page that sends both ids,
+       re-sent across a deploy, finds the stamp the older worker wrote by its opId */
+    const dup = !!opKey && (await this._opSeen(opKey) || (rid && opId ? await this._opSeen('spinop:' + opId) : false));
+    if (dup) {
       const again = rid ? this._reqRecall(pid, rid) : undefined;
       if (again !== undefined) await this._drSendState(pid, { ...(again || {}), reqId: rid });
       return;
