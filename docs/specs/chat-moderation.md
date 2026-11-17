@@ -225,6 +225,13 @@ design, built here:
   said is not kept): a victim who has walked on to another zone before
   reporting loses the area lines. Left as it is (card K: fine); the room and
   the private lanes never depend on where R stands.
+- **A speaker with no record can be reported** (v2.3.5629, card MOD PR 9;
+  the planning session's call): a guest who chatted and left without earning
+  has no record (card OPS's guestlazy), and the report on it answered
+  `not-found`. A speaker the room heard (its lines in the ring) is reported
+  like any other, under the name its lines were heard by (kept with the
+  ring). An id never heard and never saved is still `not-found`. A friend
+  request to such a guest stays refused.
 - KILL SWITCH `reportring: false`: the last 3 lines, any lane, and the plain
   trim, as before.
 - `server/test/report-ring.test.mjs` (t5-evidence.mjs's proof as a check;

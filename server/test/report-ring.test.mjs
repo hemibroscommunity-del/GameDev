@@ -23,6 +23,9 @@
  *      whispers no longer push the whispers out (the lines addressed to the
  *      reporter first); the speaker's own last lines ride beside (`said`).
  *      Break proof: the old single filter -> FAIL 6.
+ *   7. v2.3.5629: a report on a guest who chatted and left with no record
+ *      lands, with its lines and the name it was heard under; an id never
+ *      heard is still not-found.  Break proof: `heard` taken out -> FAIL 7.
  * Break proofs (2026-11-15, each turned its check red): the plain trim
  * (`chatModTrimAt` returning 0) -> FAIL 4; matching a party line by the
  * reporter's party now (no `tos`) -> FAIL 5.
@@ -141,6 +144,28 @@ const lastReport = () => reports().sort((a, b) => a.at - b.at).pop();
   check('6: ...the room\'s lines fill what is left, in the order said', texts.some((t) => /^hello room/.test(t)) && r.lines.every((l, i) => i === 0 || l.ts >= r.lines[i - 1].ts), texts);
   const said = (r.said || []).map((l) => l.text);
   check('6: beside them, the speaker\'s own last lines in any lane (the card\'s "beside")', said.length === CHATMOD.LEGACY_LINES && said[said.length - 1] === 'aside to fred', said);
+}
+
+/* ── 7. v2.3.5629 (card MOD PR 9; the planning session's call): a report on a speaker with no record ── */
+{
+  clock.advance(3600 * 1000 + 1);
+  const G = fakeWs('G');
+  await join(room, G, 'bp_rr_guest001', { name: 'Gus', data: { x: 100, y: 100, z: 'town', name: 'Gus', hc: '#ffffff' } });
+  await send(G, 'whisper', { to: 'Vicky', text: 'GUEST ABUSE' });
+  /* it leaves without earning: no record on file (card OPS's guestlazy) */
+  delete room.playerState['bp_rr_guest001'];
+  for (const [w, sess] of room.sessions) if (sess && sess.id === 'bp_rr_guest001') room.sessions.delete(w);
+  S._store.delete('rpg:bp_rr_guest001');
+  V.sent.length = 0;
+  await send(V, 'chat_report', { target: 'bp_rr_guest001', reason: 'harassment' });
+  const ack = V.sent.find((m) => m.type === 'chat_report_ack');
+  const r = lastReport();
+  check('7: a report on a guest who chatted and left with no record lands (it answered not-found)', ack && ack.payload.ok === true && r.target === 'bp_rr_guest001', ack && ack.payload);
+  check('7: ...with the evidence the ring kept, and the name it was heard under', r.lines.some((l) => l.text === 'GUEST ABUSE') && r.targetName === 'Gus', { lines: r.lines.map((l) => l.text), name: r.targetName });
+  V.sent.length = 0;
+  await send(V, 'chat_report', { target: 'bp_rr_nobody99', reason: 'harassment' });
+  const none = V.sent.find((m) => m.type === 'chat_report_ack');
+  check('7: an id never heard and never saved is still not-found', none && none.payload.ok === false && none.payload.error === 'not-found', none && none.payload);
 }
 
 clock.restore();
