@@ -124,13 +124,26 @@ export const chainScoreMethods = {
 
   /** v2.3.5712: take one of the day's sends (memory only, the header):
    *  false past SENDS_DAY. */
-  _chainDayTake(now) {
+  _chainDayNow(now) {
     const d = new Date(now);
     const day = d.getUTCFullYear() * 10000 + (d.getUTCMonth() + 1) * 100 + d.getUTCDate();
-    if (!this._chainDay || this._chainDay.day !== day) this._chainDay = { day, n: 0 };
-    if (this._chainDay.n >= CHAIN_SCORE.SENDS_DAY) return false;
-    this._chainDay.n++;
+    if (!this._chainDay || this._chainDay.day !== day) this._chainDay = { day, n: 0, refused: Object.create(null) };
+    if (!this._chainDay.refused) this._chainDay.refused = Object.create(null);
+    return this._chainDay;
+  },
+  _chainDayTake(now) {
+    const day = this._chainDayNow(now);
+    if (day.n >= CHAIN_SCORE.SENDS_DAY) return false;
+    day.n++;
     return true;
+  },
+  /* v2.3.5712 (gatekeeper Z40's review): a place taken and not sent goes
+     back; each refusal is counted for the day, so /chainstatus shows writes
+     that stopped (memory only, as the count) */
+  _chainDayGiveBack() { if (this._chainDay) this._chainDay.n = Math.max(0, this._chainDay.n - 1); },
+  _chainDayRefused(reason, now) {
+    const day = this._chainDayNow(now);
+    day.refused[reason] = (day.refused[reason] || 0) + 1;
   },
 
   /** RPC options for every chain call this module makes (v2.3.1682).  One
@@ -269,7 +282,7 @@ export const chainScoreMethods = {
   async _chainScoreCheckpoint(playerId, ps) {
     if (!playerId || !ps) return { ok: false, reason: 'no-player' };
     if (!this._chainScoreConfigured()) return { ok: false, reason: 'not-configured' };
-    if (!this._chainScoreOn()) return { ok: false, reason: 'switched-off' };   /* v2.3.5712 */
+    if (!this._chainScoreOn()) { this._chainDayRefused('switched-off', Date.now()); return { ok: false, reason: 'switched-off' }; }   /* v2.3.5712 */
 
     const level = ps.level || 0;
     const milestone = this._chainScoreMilestone(level);
@@ -331,8 +344,16 @@ export const chainScoreMethods = {
          so two players' checkpoints can never interleave their
          eth_getTransactionCount reads and collide on the relayer nonce. */
       const res = await this._chainEnqueue(async () => {
+        /* v2.3.5712 (Z40's review): a job waits its turn behind others that
+           each hold the queue for a receipt, 6-60 s: the switch and the day's
+           ceiling are asked again HERE, when it runs, so a backlog queued
+           before `chainscore: false` sends nothing -- and the ceiling before
+           the preflight and nonce read, so a refused job asks the node
+           nothing */
+        if (!this._chainScoreOn()) { this._chainDayRefused('switched-off', Date.now()); return { ok: false, reason: 'switched-off' }; }
+        if (!this._chainDayTake(Date.now())) { this._chainDayRefused('day-ceiling', Date.now()); return { ok: false, reason: 'day-ceiling' }; }
         const pre = await this._chainScorePreflight(priv);
-        if (!pre.ok) return { ok: false, reason: pre.reason };
+        if (!pre.ok) { this._chainDayGiveBack(); return { ok: false, reason: pre.reason }; }
 
         /* v2.3.1682: the attestation nonce is now anchored to the CONTRACT,
            not just DO storage.  The old `stored.nonce + 1` had a cliff: lose
@@ -351,14 +372,15 @@ export const chainScoreMethods = {
             opts: this._chainRpcOptions(),
           });
         } catch (e) {
+          this._chainDayGiveBack();
           return { ok: false, reason: 'nonce-read-failed' };
         }
         const storedNonce = (stored && stored.nonce) || 0;
         const nonce = Math.max(storedNonce, chainNonce) + 1;
 
-        /* v2.3.5712: the day's sends (CHAIN_SCORE header): past them, stored
-           nothing, sent at a level-up after the day turns */
-        if (!this._chainDayTake(Date.now())) return { ok: false, reason: 'day-ceiling' };
+        /* v2.3.5712: the day's place was taken above (CHAIN_SCORE header);
+           the switch asked once more before anything is signed */
+        if (!this._chainScoreOn()) { this._chainDayGiveBack(); this._chainDayRefused('switched-off', Date.now()); return { ok: false, reason: 'switched-off' }; }
         const sent = await sendRecordScore({
           playerId,
           skills,
@@ -370,7 +392,7 @@ export const chainScoreMethods = {
           opts: this._chainRpcOptions(),
           feeMaxWei: CHAIN_SCORE.FEE_MAX_WEI,   /* v2.3.5712: the fee's ceiling */
         });
-        if (!sent.ok && sent.reason === 'fee-over-ceiling' && this._chainDay) this._chainDay.n = Math.max(0, this._chainDay.n - 1);   /* not sent: its place back */
+        if (!sent.ok && sent.reason === 'fee-over-ceiling') { this._chainDayGiveBack(); this._chainDayRefused('fee-over-ceiling', Date.now()); }   /* not sent: its place back */
         return sent.ok ? { ...sent, nonce } : sent;
       });
 
@@ -446,7 +468,8 @@ export const chainScoreMethods = {
       configured: this._chainScoreConfigured(),
       /* v2.3.5712: the switch, and the day's sends so far (memory only) */
       on: this._chainScoreOn(),
-      day: { sends: this._chainDay ? this._chainDay.n : 0, ceiling: CHAIN_SCORE.SENDS_DAY, feeMaxWei: CHAIN_SCORE.FEE_MAX_WEI },
+      day: { sends: this._chainDay ? this._chainDay.n : 0, ceiling: CHAIN_SCORE.SENDS_DAY, feeMaxWei: CHAIN_SCORE.FEE_MAX_WEI,
+        refused: { ...((this._chainDay && this._chainDay.refused) || {}) } },   /* v2.3.5712: the day's refusals by reason (Z40) */
       contract: (this.env && this.env.SCORES_CONTRACT) || '',
       chainId: Number((this.env && this.env.CHAIN_ID) || CHAIN.id),
       rpc: (this.env && this.env.CHAIN_RPC) || CHAIN.rpc,

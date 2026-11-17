@@ -17,9 +17,15 @@
  *      next level-up sends.
  *   4. No new write: a refused checkpoint writes no row, and the day's
  *      count has no row of its own (memory only).
+ *   5. Gatekeeper Z40's probe: five checkpoints queued while the switch is
+ *      on, then `chainscore: false` before their turn: none is sent (each
+ *      job asks again when it runs), and the day's refusals count them.
+ *   6. Past the day's ceiling, a queued job asks the node nothing (the
+ *      ceiling before the preflight and the nonce read).
  *
  * BREAK PROOF (rule 8), tried by hand: main's chainscore.js and
- * chainwriter.js -> FAIL 1, 2, 3.
+ * chainwriter.js -> FAIL 1, 2, 3.  The first build (the switch asked only
+ * when a checkpoint was queued) -> FAIL 5 and 6.
  * Not a phone test: node, a GameRoom on a node stub (chainscore.test's). */
 import { GameRoom } from '../src/index.js';
 import { CHAIN_SCORE } from '../src/chainscore.js';
@@ -113,6 +119,26 @@ const sends = (rpc) => rpc.filter((m) => m === 'eth_sendRawTransaction').length;
   room._liveFlags = {};
   const back = await room._chainScoreCheckpoint('bp_cd_off', player(2));
   check('3. ...back on, the next level-up sends it', back.ok === true && sends(rpc) === 1, back);
+}
+
+/* 5. Z40's probe: a backlog queued before the switch is thrown */
+{
+  const { room, rpc } = mk();
+  room._liveFlags = {};
+  const queued = [1, 2, 3, 4, 5].map((i) => room._chainScoreCheckpoint('bp_cd_q' + i, player(2)));
+  room._liveFlags = { chainscore: false };   /* thrown before any job's turn */
+  const rs = await Promise.all(queued);
+  check('5. five queued while on, then switched off: none is sent', sends(rpc) === 0 && rs.every((r) => r.ok === false && r.reason === 'switched-off'), { sends: sends(rpc), rs: rs.map((r) => r.reason) });
+  check('5. ...and the day\'s refusals count them by reason (what /chainstatus reports)', room._chainDay && room._chainDay.refused && room._chainDay.refused['switched-off'] === 5, room._chainDay);
+}
+
+/* 6. past the ceiling, the node is asked nothing */
+{
+  const { room, rpc } = mk();
+  room._chainDayTake(Date.now());   /* today's count, made */
+  room._chainDay.n = CHAIN_SCORE.SENDS_DAY;
+  const r = await room._chainScoreCheckpoint('bp_cd_full', player(2));
+  check('6. past the day\'s ceiling: day-ceiling, and not one RPC asked', r.ok === false && r.reason === 'day-ceiling' && rpc.length === 0, { r, rpc });
 }
 
 /* 4. no new write */
