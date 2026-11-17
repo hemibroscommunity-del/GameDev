@@ -71,7 +71,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `arrowlane` | worker | switch | v2.3.5540 | 2026-11-14 | false | logic |  | no | Arrows and bolts are back on the plain 210 ms floor: an archer who steps in between shots loses an arrow that lands too soon after the last. |
 | `bigorb` | worker | switch | v2.3.2849 | 2026-09-24 | false | logic |  | no | Un-advertises the staff's big orb: a phone that joins after fires the old three orbs, with no blast. |
 | `?bowfeel` | page | switch | v2.3.4802 | 2026-11-11 | =0 (remembered; =1 forgets) | logic |  | no | The bow's old flick, not its draw, on this device. |
-| `bowshot` | worker | switch | v2.3.5550 | off | true | logic |  | no | An opt-in, off (the owner's to turn on: it changes how combat is judged): thrown (`bowshot: true`), an ordinary bow claim lands only on an arrow -- one whose relay the worker counted at the bow's own rate, or one drawn from that allowance -- each monster once an arrow, 1 + Piercing targets. |
+| `bowshot` | worker | switch | v2.3.5550 | 2026-11-17 | false | logic |  | no | ON since v2.3.5727 (decided for the owner while away, 2026-11-17: "For all decisions waiting on me just go recommended."); thrown (`bowshot: false`), an ordinary bow claim lands without an arrow seen, as before: five claims a second on anything in the bow's reach. |
 | `bowvolley` | worker | switch | v2.3.2808 | 2026-09-24 | false | logic |  | no | Un-advertises the bow's volley: a phone that joins after fires the old single arrow and blast. |
 | `?combatreset` | page | switch | v2.3.5206 | 2026-11-14 | =0 | logic |  | no | A fight you picked, a roll or a lunge, the hit marks on the ground, a kill's XP still waiting and another player's damage numbers still queued carry over a change of place again, each ending on its own clock or its own check, not at the zone door. |
 | `disable_threats` | worker | switch | v2.3.1150 | 2026-07-03 | true | logic |  | no | Thrown, every relayed threat handshake is dropped. |
@@ -382,6 +382,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | name | side | kind | born | on | thrown | risk | needs | fallback | off |
 |---|---|---|---|---|---|---|---|---|---|
 | `?dtsmooth` | page | switch | v2.3.4355 | 2026-11-10 | =0, off, false | logic |  | no | The frame's step is the raw time, not the steady step. |
+| `?framesteps` | page | switch | v2.3.5340 | 2026-11-17 | =0 | logic |  | no | The frame is not marked as named steps: no step times, no step's throw in the crash ring, and window.__btSteps() says off; the loop runs as before. |
 | `govern` | both | switch | v2.3.5222 | 2026-11-14 | off_govern: true (v2.3.5235: every phone, live, the Test panel's list); ?govern=0 (off), =1 (on where `?lane=` holds it) | logic |  | no | The governor no longer moves the ladder: the lane's row, however late the frames. |
 | `?ladderrate` | page | switch | v2.3.5224 | 2026-11-14 | =0, off, false | logic | `govern` | no | The rate as before the ladder: a 60 screen is never paced, whatever the rung. |
 | `?pace` | page | switch | v2.3.4355 | 2026-11-10 | =0, off, false | logic |  | no | No frame pacer: the frames are drawn as the browser calls, as before. |
@@ -554,7 +555,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 |---|---|---|---|---|---|---|---|---|---|
 | `armorforge` | worker | switch | v2.3.3092 | 2026-10-06 | false | logic |  | no | Refuses every armour forge and un-advertises the cap; bars and armour already made are untouched. |
 | `bowdraw` | worker | switch | v2.3.4801 | 2026-11-11 | false | logic |  | no | No bow draw is counted and caps.bowDraw is un-advertised. |
-| `cookstart` | worker | switch | v2.3.5553 | off | true | logic |  | no | An opt-in, off (the owner's to turn on: it changes how a cook is judged): thrown (`cookstart: true`), a cook's result lands only on the plan the worker rolled at its start (the same fish, once), no sooner than its hits and the gesture could be played; one result with no plan a session, for a restart. |
+| `cookstart` | worker | switch | v2.3.5553 | 2026-11-17 | false | logic |  | no | ON since v2.3.5727 (decided for the owner while away, 2026-11-17: "Go recommended on all"); thrown (`cookstart: false`), a cook's result lands as sent, as before: no start, no fire and no gesture asked of it, only the rate and the 900 ms floor. |
 | `cropeat` | worker | switch | v2.3.3537 | 2026-10-21 | false | logic |  | no | No crop is eaten, and caps.cropeat reads false so the bag offers no Eat. |
 | `dropgrades` | worker | switch | v2.3.3952 | 2026-11-03 | false | logic |  | no | A monster drop's grade is rolled on the forge's odds again. |
 | `exdoor` | worker | switch | v2.3.5213 | 2026-11-14 | false | logic |  | no | The claim on a move (cook, fire, mine, chop, fish, a farm step) takes any value a phone sends again, as the line before the cook door did; the game's own claims pass either way. |
@@ -667,6 +668,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 |---|---|---|---|---|---|---|---|---|---|
 | `bodycap` | worker | switch | v2.3.5720 | 2026-11-17 | false | logic |  | no | The room's web routes read a body whole again, of any size, before any route asks who sends (the outer router's own check is the worker setting `BODY_CAP`, not this flag). |
 | `bundle` | worker | switch | v2.3.3254 | 2026-10-15 | false | logic |  | no | Stops advertising message bundles: each phone sends its messages one by one from its next join. |
+| `ceilfair` | worker | switch | v2.3.5728 | 2026-11-17 | false | logic |  | no | A socket's share of the room's ceiling is the plain share again (4,000 over the room's sockets: 33 a second at 120), so a crowd fight's honest phones lose messages while a flood holds the room past it, as before. |
 | `?conndoor` | page | switch | v2.3.5528 | 2026-11-17 | =0 | logic |  | no | The phone's socket phase takes any word a caller writes, as the lines before the connection door (every caller writes a word of the list today). |
 | `?diet` | page | switch | v2.3.3726 | 2026-10-28 (v2.3.3744) | =1 or =0 (kept for the tab) | logic |  | no | Puts this phone on the move diet (=1) or keeps it off (=0), whatever the worker says for everyone. |
 | `disable_weapon_drops` | worker | switch | v2.3.1150 | 2026-07-03 | true | logic |  | no | Thrown, weapon drops stop rolling (caps.weaponDrops stays true, so no phone mints its own). |

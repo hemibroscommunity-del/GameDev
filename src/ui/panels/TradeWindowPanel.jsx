@@ -38,6 +38,7 @@ import { portraitDataUrl, portraitOptsFromPeer, portraitHasSubject } from '../..
 import { OWNER_ICON } from '@/data/ownerIcons.js';   /* v2.3.3481: the trade request's handshake */
 import { gemName, parseGemKey } from '@/data/gems.js';   /* v2.3.3516: gems are bag items */
 import { act } from '@/game/actions.js';   /* v2.3.5190: the page's requests leave through the action door (card K PR 7) */
+import { pageAddress } from '@/game/switches.js';   /* v2.3.5741: the address from the page's one reader (card T2) */
 
 /* === TradeWindowPanel — the two-sided trade window (v2.3.1132) === */
 /* Handoff item H: both players stage items + gold, both confirm, the
@@ -230,7 +231,7 @@ let _tradeSide;
 function tradeLanesCls() {
   if (_tradeSide === undefined) {
     let m = null;
-    try { m = /[?&]tradeside=([01])(?:&|$)/.exec(window.location.search); } catch (e) { /* no window: the default */ }
+    try { m = /[?&]tradeside=([01])(?:&|$)/.exec(pageAddress()); } catch (e) { /* no window: the default */ }   /* v2.3.5741: the address from the page's one reader (card T2) */
     _tradeSide = m ? m[1] : '';
   }
   return 'bt-t2-lanes' + (_tradeSide === '1' ? ' bt-t2-lanes--side' : _tradeSide === '0' ? ' bt-t2-lanes--stack' : '');

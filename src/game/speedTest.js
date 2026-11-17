@@ -52,6 +52,7 @@ import { shadowPrepassOn, setShadowPrepass } from '@/rendering/lightfx/shadows.j
 import { renderDpr, setRenderResLive } from './renderRes.js';
 import { deviceProfile } from './deviceProfile.js';   /* v2.3.4804: the device profile */
 import { drawLane } from './drawLanes.js';   /* v2.3.5221: card O's lanes: the card names this page's */
+import { pageAddress } from './switches.js';   /* v2.3.5740: the page's one reader (card T2) */
 import { holdLadder } from './framePacer.js';   /* v2.3.5222: the ladder held still while it measures */
 import { queueSpeedCard, SPEED_MODELS, speedModel, setSpeedModel, reportOn } from '@/debug/report.js';   /* v2.3.5125: the card is sent */
 
@@ -61,7 +62,7 @@ const LOW_RES = 2;
 
 function stepMs() {
   try {
-    const m = /[?&]speedms=([0-9]+)\b/.exec(location.search || '');
+    const m = /[?&]speedms=([0-9]+)\b/.exec(pageAddress() || '');   /* v2.3.5740: the address from the page's one reader (card T2) */
     if (m) return Math.max(300, Math.min(20000, +m[1]));
   } catch (e) { /* default */ }
   return MEASURE_MS;

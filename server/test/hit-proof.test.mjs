@@ -330,7 +330,10 @@ const fresh = (p) => { delete p.ps._monHitCad; };
 
 // ── 4b. how many a player lands a second, across every monster ──
 {
-  const p = await setup();
+  /* v2.3.5727 (card K2 PR 8): the rate's own arithmetic, with `bowshot:
+     false` -- ON, a bow's claim also needs an arrow the worker saw leave
+     (bowshot.js; claims-gain 2f holds that), and these claims send none */
+  const p = await setup({ bowshot: false });
   place(p, ZONE, 1000, 1000);
   arm(p, ['bow', 'staff', 'sword']);
   p.ps.prog3 = p.ps.prog3 || {}; p.ps.prog3.atk = { bow: {}, staff: {}, sword: {} };
@@ -425,7 +428,7 @@ const fresh = (p) => { delete p.ps._monHitCad; };
   check('4b. a sword\'s swing through a pack of 30 is not limited by the bow\'s rate: its ring takes the swing\'s 24 (swordswing.js)', landed === 24, landed);
 
   /* the switch */
-  const k = await setup({ hitproof: false });
+  const k = await setup({ hitproof: false, bowshot: false });   /* v2.3.5727: the bow's own judge off too (bowshot.js ON): no arrows here */
   place(k, ZONE, 1000, 1000);
   arm(k, ['bow']);
   const kp = [];

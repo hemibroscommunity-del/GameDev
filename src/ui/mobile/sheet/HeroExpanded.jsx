@@ -47,6 +47,7 @@ import { showPointsReset, requestPointsReset, POINTS_RESET_CONFIRM_MS, pointsRes
 import { firstSpendHint } from '../../../game/pointsTips.js'; /* v2.3.3551: after a first spend, the free reset named */
 import { BroCard } from './BroCard.jsx';                                      /* v2.3.4172: the Bro page, as the owner drew it */
 import { act } from '@/game/actions.js';   /* v2.3.5191: the page's requests leave through the action door (card K PR 7) */
+import { sw } from '@/game/switches.js';   /* v2.3.5741: the page's one reader (card T2) */
 
 /* v2.3.1286: Hero expanded — the detailed character sheet.
    v2.3.1295 (ChatGPT round-4, owner-approved): no longer one long
@@ -1987,7 +1988,7 @@ export const HeroExpanded = () => {
                keep them apart fails the title's contrast.  Full strength on a
                small area is the only place both survive.  See prog3.js. */
             const colourOn = (() => {
-              try { return !/[?&]p3colour=0\b/.test(window.location.search); } catch (e) { return true; }
+              try { return !sw('p3colour'); } catch (e) { return true; }   /* v2.3.5741: the page's one reader (card T2) */
             })();
             const CELL_BORDER = '#9AA7AC';
             const CARD_ROW_H = landPane ? 42 : 46;
@@ -2015,7 +2016,7 @@ export const HeroExpanded = () => {
                fifth smaller. `?p3cols=1` renders the same card in ONE column
                with the [+] at its full 60 for the comparison. */
             const forceOneCol = (() => {
-              try { return /[?&]p3cols=1\b/.test(window.location.search); } catch (e) { return false; }
+              try { return sw('p3cols'); } catch (e) { return false; }   /* v2.3.5741: the page's one reader (card T2) */
             })();
             /* ═══ AND TWO COLUMNS NEED A FLOOR ═══
                Measured at 360 and 390 and shipped; mp-statcols then swept 320,
