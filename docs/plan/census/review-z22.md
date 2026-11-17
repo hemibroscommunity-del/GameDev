@@ -15,7 +15,8 @@ T #1935 conflicts with MOD #1909, MOD #1914 and RT-1 #1940
 beside theirs); MOD #1914 also conflicts with MOD #1941 (`invitepace`
 beside `freezedevice`) and with RT-1 #1940 (`invitepace` beside `ip56`).
 The set listed (T, T, L, MOD 5, O) merges clean in order, one merge base
-at every step, tree c999c4b (O's later test-only fix aside). MOD #1909 >
+at every step, tree c999c4b (O's later test-only fix aside): precheck 0 FAIL, build
+PASS, questline 187/187. MOD #1909 >
 #1914 and RT-1 #1940 merge `main` in after it lands (each session told)
 and come to sitting 23.
 
@@ -40,8 +41,8 @@ now read differently: addresses nobody uses).
 ## L #1936 (tag 5523): the ride door
 
 Head d64987c44cfffe02563fd47801fa65051db7fac4, base `main` (it was on
-#1930: one merge base, 607baa2, once #1930 landed). A **draft**: "Ready
-for review" first. `_rideTo` is the one writer of `ps._ride` and
+#1930: one merge base, 607baa2, once #1930 landed); marked ready in the
+sitting, no push. `_rideTo` is the one writer of `ps._ride` and
 `ps._ridePid` in `server/src` (grep: ride.js 113-119 only; no spread
 copies them). A refusal writes neither field. `ridedoor` off: main's writes
 byte for byte. `ride-door.test` 24/0. The `ride` row `todo` -> `door`
@@ -93,5 +94,5 @@ sit a tenth from each line.
 ## Arrived during the sitting: sitting 23
 
 K #1942 (5544, `heapforget` ON), R #1873 (5282, the save shape 21 -> 22:
-its own line; a new head coming), P #1943 (5565, three more stacked on
-it), and MOD #1909 > #1914 and RT-1 #1940 as above.
+its own line), P #1943 (5565, three more stacked on it), OPS #1944
+(5610, `guestlazy`), L #1946 (5524), MOD #1947 (5626, `mktwords`), and MOD #1909 > #1914 and RT-1 #1940 as above.
