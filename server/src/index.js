@@ -5590,6 +5590,7 @@ export class GameRoom {
         // cosmetic; see gladiator.js).
         if (session.id) {
           await this._handleArenaSponsor(session, msg.payload || msg);
+          this._prDrop('/api/arena');   /* v2.3.5613: a socket's write drops the kept status too (publicreads.js; sitting 19b's LOW) */
         }
         break;
 
@@ -5717,13 +5718,22 @@ export class GameRoom {
          unsettled -- and the module carries its own rate limit because an
          explicit case never reaches the relay token bucket. */
       case 'store_offer':
-        if (session.id) await this._handleStoreOffer(session, msg.payload || msg).catch((e) => { console.error('[store]', msg.type, e && e.message); });
+        if (session.id) {
+          await this._handleStoreOffer(session, msg.payload || msg).catch((e) => { console.error('[store]', msg.type, e && e.message); });
+          this._prDrop('/api/store');   /* v2.3.5613: an offer rewrites its listing: the kept browse dropped (publicreads.js; sitting 19b's LOW) */
+        }
         break;
       case 'store_offer_cancel':
-        if (session.id) await this._handleStoreOfferCancel(session, msg.payload || msg).catch((e) => { console.error('[store]', msg.type, e && e.message); });
+        if (session.id) {
+          await this._handleStoreOfferCancel(session, msg.payload || msg).catch((e) => { console.error('[store]', msg.type, e && e.message); });
+          this._prDrop('/api/store');   /* v2.3.5613: an offer rewrites its listing: the kept browse dropped (publicreads.js; sitting 19b's LOW) */
+        }
         break;
       case 'store_offer_reply':
-        if (session.id) await this._handleStoreOfferReply(session, msg.payload || msg).catch((e) => { console.error('[store]', msg.type, e && e.message); });
+        if (session.id) {
+          await this._handleStoreOfferReply(session, msg.payload || msg).catch((e) => { console.error('[store]', msg.type, e && e.message); });
+          this._prDrop('/api/store');   /* v2.3.5613: an offer rewrites its listing: the kept browse dropped (publicreads.js; sitting 19b's LOW) */
+        }
         break;
 
       // v2.3.1323: friends system (friends.js) -- request/accept/decline/
