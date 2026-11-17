@@ -119,7 +119,30 @@ const own = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);
    name thousands), so every run is 'dungeon' */
 const roadEnd = (z) => (typeof z === 'string' && z.startsWith('dungeon:') ? 'dungeon' : String(z));
 
+/* v2.3.5537: THE ZONE DOOR (card L PR 5; docs/specs/zone-door.md).  A
+   player's place on the worker is one field, `ps.z`, written only by
+   _zoneTo, by a way of ZONE_WAYS: a move's (the zone the move's judge let
+   through, or the one it stays in), a respawn's and a join's stand-up (town),
+   the sparring clone's (its owner's).  A place that is no zone
+   (movement.js _validZone) is refused; `zonedoor: false` in the live flags
+   lifts that, as the lines before the door.  Each caller still asks the duel
+   after its write (_duelZoneMoved).  zone-door.test fails a second writer. */
+export const ZONE_WAYS = Object.freeze({ move: 'move', respawn: 'respawn', standup: 'standup', spar: 'spar' });
+
 export const zoneJudgeMethods = {
+  _zoneDoorOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && own(f, 'zonedoor') && !f.zonedoor);
+  },
+
+  /* v2.3.5537: the zone door (above ZONE_WAYS) */
+  _zoneTo(ps, z, way) {
+    if (!ps || typeof ps !== 'object' || !own(ZONE_WAYS, way)) return false;
+    if (!this._zoneDoorOff() && !this._validZone(z)) return false;
+    ps.z = z;
+    return true;
+  },
+
   /* the kill switch: on unless `zonejudge: false` */
   _zoneJudgeOn() {
     const f = this._liveFlags;

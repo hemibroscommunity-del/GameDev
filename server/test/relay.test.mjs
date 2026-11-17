@@ -186,10 +186,12 @@ for (const type of RELAY.TYPES) {
   s.relayTokens = 1; s.relayAt = Date.now();
   room.eventBuffer.length = 0;
   await room.webSocketMessage(ws[A], JSON.stringify({ type: 'zz_not_a_relay', payload: {} }));
-  await room.webSocketMessage(ws[A], JSON.stringify({ type: 'player_jump', payload: { x: 1 } }));
-  await room.webSocketMessage(ws[A], JSON.stringify({ type: 'player_jump', payload: { x: 2 } }));
+  /* v2.3.5724: told apart by `dur`, a jump's own field (`x` is no jump's:
+     relaytyped keeps only the row's fields, relay.js RELAY_FORMS) */
+  await room.webSocketMessage(ws[A], JSON.stringify({ type: 'player_jump', payload: { dur: 1 } }));
+  await room.webSocketMessage(ws[A], JSON.stringify({ type: 'player_jump', payload: { dur: 2 } }));
   check('5. ...and the relay bucket\'s last token still carries a jump, the next one dropped (v2.3.3396)',
-    room.eventBuffer.length === 1 && room.eventBuffer[0].type === 'player_jump' && room.eventBuffer[0].payload.x === 1, room.eventBuffer.map((e) => e.type));
+    room.eventBuffer.length === 1 && room.eventBuffer[0].type === 'player_jump' && room.eventBuffer[0].payload.dur === 1, room.eventBuffer.map((e) => e.type));
 }
 
 // ── 6. the list is the phone's ──

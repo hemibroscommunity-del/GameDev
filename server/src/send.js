@@ -62,12 +62,19 @@ export const sendMethods = {
   },
 
   /* The room's form: every socket but `except`, the frame made once; a dead
-     socket's throw caught (broadcastAll's way). */
+     socket's throw caught (broadcastAll's way).  v2.3.5724 (card K2 PR 5;
+     the second red team): only a socket whose player has JOINED (its
+     session has an id) -- one that opened and never joined was sent the
+     whole room's traffic (every relay, every look, every chat line) and
+     needs none of it: a joining phone is sent the room whole in its
+     state_sync.  `relaytyped: false`: every socket, as before. */
   _sendRoom(msg, except) {
     const s = JSON.stringify(msg);
     const type = msg && msg.type;
-    for (const [ws] of this.sessions) {
+    const joinedOnly = !(this._relayTypedOff && this._relayTypedOff());
+    for (const [ws, ss] of this.sessions) {
       if (ws === except) continue;
+      if (joinedOnly && !(ss && ss.id)) continue;
       try { this._send(ws, s, type); } catch {}
     }
   },
