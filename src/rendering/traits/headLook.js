@@ -25,6 +25,7 @@
  * screen lifts (headLookReady), so a colour shows at once for everyone.
  */
 import { registerLookSheets, preloadLookSheets, lookManifest as setManifest, lookHas, getLookPartFrames } from '../lookPalette.js';
+import { pageAddress } from '../../game/switches.js';   /* v2.3.5316: the page's one reader (card T) */
 
 const SET = 'heads';
 const URL = '/sprites/look/heads/roles.json';
@@ -89,7 +90,7 @@ export function headLookReady() {
 
 /* the oracle (mp-lookheads), only when the address asks for it: `?lookprobe` */
 try {
-  if (typeof window !== 'undefined' && /[?&]lookprobe(=|&|$)/.test(window.location.search || '')) {
+  if (typeof window !== 'undefined' && /[?&]lookprobe(=|&|$)/.test(pageAddress())) {
     import('./headLookProbe.js').then((P) => P.installHeadProbe({ forceOld: (v) => { _forceOld = !!v; } })).catch(() => {});
   }
 } catch (e) { /* no probe */ }

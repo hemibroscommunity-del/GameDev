@@ -627,6 +627,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?starcue` | page | switch | v2.3.3872 | 2026-10-29 | =0 | logic |  | no | No star cue over what to do next. |
 | `?tradeside` | page | value | v2.3.3856 |  | =0 or =1 | logic |  | no | Picks which side the trade window's lanes are on. |
 | `?wdgeterror` | page | switch | v2.3.3450 | 2026-10-18 | present | logic |  | no | The world map's thumbnail asks the chip for errors every time, as before. |
+| `?windowdoor` | page | switch | v2.3.5526 | 2026-11-17 | =0 | logic |  | no | What is open over the world is written to its old fields alone (S._uiBusy, S._npcProxLatch), as the lines before the window door; S._windows is not kept (nothing reads it to draw). |
 
 ## wire
 
@@ -635,6 +636,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `bundle` | worker | switch | v2.3.3254 | 2026-10-15 | false | logic |  | no | Stops advertising message bundles: each phone sends its messages one by one from its next join. |
 | `?diet` | page | switch | v2.3.3726 | 2026-10-28 (v2.3.3744) | =1 or =0 (kept for the tab) | logic |  | no | Puts this phone on the move diet (=1) or keeps it off (=0), whatever the worker says for everyone. |
 | `disable_weapon_drops` | worker | switch | v2.3.1150 | 2026-07-03 | true | logic |  | no | Thrown, weapon drops stop rolling (caps.weaponDrops stays true, so no phone mints its own). |
+| `gidnames` | worker | switch | v2.3.5196 | 2026-11-17 | false | logic |  | no | A weapon in the stash is read by its place alone, as before: a request sent as the stash moved acts on the weapon now at that place (the next one). |
 | `heapforget` | worker | switch | v2.3.5544 | 2026-11-17 | false | logic |  | no | A guest who left stays in the room's maps (a refused strike with its raw zone, the arrow's refusals, the fire's clock, the chat buckets and reports), as before: the red team's RT-1 N11 open again. |
 | `ip56` | worker | switch | v2.3.5584 | 2026-11-17 | false | logic |  | no | The address limits count an IPv6 address by its /64 alone again (a whole /56 is one customer, at three times the /64's line, while on). |
 | `ip64` | worker | switch | v2.3.5581 | 2026-11-16 | false | logic |  | no | The address limits count each IPv6 address apart again, as before (an IPv6 line is one address by its /64 while on). |

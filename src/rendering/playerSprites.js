@@ -25,6 +25,7 @@ import { sliceCropped } from './gearSheets.js';   /* v2.3.2791: the body sheets 
 import { loadWebpOrPng } from './webpImage.js'; /* v2.3.1122: prefer lossless WebP, fall back to PNG */
 import { recolorToolKeyCanvas, recordFishRodMask, TOOL_SPECS } from './toolRecolor.js'; /* v2.3.2761: the fishing rod's pine */
 import { jogPace, legSyncOn, jogStridePx, LEG_WALK_SPEED } from '../game/legSync.js';   /* v2.3.4077: the legs keep pace with the feet */
+import { pageAddress } from '../game/switches.js';   /* v2.3.5317: the page's one read of its address (card T) */
 
 /* v2.3.166: bumped from 128 to 256 per user request.  256 source +
    plain Lanczos (no outline overlay) gives a more naturally-rendered
@@ -393,7 +394,7 @@ export function cycleMs(pose, dir, armored) {
    -> { cyc, base }: his loop now, and unsped by the sprint.  ?legsync=0 is
    the fixed cadences, exactly as before. */
 export { JOG_STRIDE_PX } from '../game/legSync.js';
-export const LEG_SYNC = legSyncOn(typeof location !== 'undefined' ? location.search : '');
+export const LEG_SYNC = legSyncOn(pageAddress());
 export function jogCycle(state, dir, armored, o) {
   return jogPace(state, {
     dir, fixedMs: cycleMs('jog', dir, armored),

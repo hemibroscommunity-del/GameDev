@@ -79,7 +79,7 @@ import { setWheelWaterMoves } from '../game/wheelTrial.js';
 import { isPaletteSource, paletteAtlasSource, paletteOn, makePaletteSource } from './paletteTex.js';   /* v2.3.3190 */
 import { laneKnob, onKnob, seeKnob } from '../game/drawLanes.js';   /* v2.3.5229: the moving sea is a knob of the lanes (card O PR 9) */
 import { selfDraw, selfQueue, selfSkip, selfTestOn, selfRgba, selfIdx, selfPalBytes, selfWaterField, selfWaterWant, SELF_SIZE } from './selfTest.js';   /* v2.3.5236: the self-test at the door (card O PR 14b) */
-import { sw, swValue } from '../game/switches.js';   /* v2.3.5232 (card O PR 12): the passes' switch through the page's one reader */
+import { sw, swValue, pageAddress } from '../game/switches.js';   /* v2.3.5232 (card O PR 12): the passes' switch through the page's one reader */
 
 const VERT = `
 in vec2 aPosition;
@@ -451,7 +451,7 @@ function fragOf(all) {
   return all ? FRAG.replace(WEB_SKIP, '        {') : FRAG;
 }
 let _webAll = false;
-try { if (typeof location !== 'undefined' && /[?&]webskip=0(&|$)/.test(location.search || '')) _webAll = true; } catch (e) { /* the skip */ }
+try { if (typeof location !== 'undefined' && /[?&]webskip=0(&|$)/.test(pageAddress())) _webAll = true; } catch (e) { /* the skip */ }
 let _program = null, _allProgram = null;
 function program(all = _webAll) {
   if (all) {
@@ -521,7 +521,7 @@ function wavesStrength() {
    0 to 2 (1 by default; 0 leaves the water calm, with no web at all) */
 function causticsStrength() {
   try {
-    const m = /(?:^|[?&])caustics=([0-9.]+)(?:&|$)/.exec(window.location.search || '');
+    const m = /(?:^|[?&])caustics=([0-9.]+)(?:&|$)/.exec(pageAddress());
     const k = m ? Number(m[1]) : NaN;
     if (Number.isFinite(k)) return Math.max(0, Math.min(2, k));
   } catch (e) { /* no address */ }
@@ -593,7 +593,7 @@ let _live = null;            /* QA: the WheelWater drawing now, for __btWaves.ex
    `?seacover=0` draws the ground under every quad, as it was;
    `window.__btWaves.cover(on)` live (QA: mp-seacover). */
 let _cover = true;
-try { if (typeof location !== 'undefined' && /[?&]seacover=0(&|$)/.test(location.search || '')) _cover = false; } catch (e) { /* on */ }
+try { if (typeof location !== 'undefined' && /[?&]seacover=0(&|$)/.test(pageAddress())) _cover = false; } catch (e) { /* on */ }
 /* the shader's own numbers (FRAG: d = field.r x 10.625, wet = smoothstep(0.3,
    0.9, d)): a uniform field this far from the shore is water at full strength */
 const WET_ALL_D = 0.9;

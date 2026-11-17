@@ -47,7 +47,7 @@ import { SWITCHES } from './lib/switches.mjs';
 import { blankComments, pageFiles, pageForm, READER_FILE, READER_IMPORT, ROOT } from './lib/switchScan.mjs';
 
 /* the outside reads: only falls */
-const OUTSIDE_LINE = 144;   /* its first count, v2.3.5306: 228 with sitting 17's `?slimewalk` (card P's slimeSprites.js, P still running: not moved), 221 after the first seven reads moved; 212 after v2.3.5309's nine; 201 after v2.3.5310's eleven; 189 after v2.3.5232's twelve (card O PR 12: the lanes' off-ramps); 172 with v2.3.5311's pageAddress() sites (seventeen) ; 161 after v2.3.5313's eleven ; 155 after v2.3.5314's six ; 144 after v2.3.5315's eleven */
+const OUTSIDE_LINE = 71;   /* its first count, v2.3.5306: 228 with sitting 17's `?slimewalk` (card P's slimeSprites.js, P still running: not moved), 221 after the first seven reads moved; 212 after v2.3.5309's nine; 201 after v2.3.5310's eleven; 189 after v2.3.5232's twelve (card O PR 12: the lanes' off-ramps); 172 with v2.3.5311's pageAddress() sites (seventeen) ; 161 after v2.3.5313's eleven ; 155 after v2.3.5314's six ; 144 after v2.3.5315's eleven ; 116 after v2.3.5316's twenty-eight ; 71 after v2.3.5317's forty-five (render, on pageAddress()) */
 
 /* ── the reads moved into the reader: each old test word for word, as a
    function of the address (S) ── */
@@ -100,6 +100,20 @@ const MOVED = Object.freeze([
   { name: 'loudclear', call: 'swHas', file: 'src/rendering/quietClear.js', old: (S) => /[?&]loudclear(=|&|$)/.test(S || '') },
   { name: 'textkeep', call: 'swHas', file: 'src/rendering/textRelease.js', old: (S) => /[?&]textkeep(=|&|$)/.test(S || '') },
   { name: 'poolkeep', call: 'swHas', file: 'src/rendering/texturePoolTrim.js', old: (S) => /[?&]poolkeep(=|&|$)/.test(S || '') },
+  /* v2.3.5316: look (cards H, P done); a look whose row needs ?lookpalette keeps its old test on pageAddress() */
+  { name: 'garmentspecks', call: 'sw', file: 'src/rendering/bodyRecolor.js', old: (S) => /[?&]garmentspecks=0(&|$)/.test(S || '') },
+  { name: 'pickwood', call: 'sw', file: 'src/rendering/bodyRecolor.js', old: (S) => /[?&]pickwood=0(&|$)/.test(S || '') },
+  { name: 'toolsolid', call: 'sw', file: 'src/rendering/bodyRecolor.js', old: (S) => /[?&]toolsolid=(0|off|false)(&|$)/.test(S || '') },
+  { name: 'bakeread', call: 'sw', file: 'src/rendering/bodyRecolor.js', old: (S) => /(^|[?&])bakeread=0(&|$)/.test(S || '') },
+  { name: 'portraitgentle', call: 'sw', file: 'src/rendering/characterPortrait.js', old: (S) => /(^|[?&])portraitgentle=(0|off|false)(&|$)/.test(S || '') },
+  { name: 'gearretry', call: 'sw', file: 'src/rendering/gearSheets.js', old: (S) => /[?&](gearretry|retrylooks)=0\b/.test(S || '') },
+  { name: 'gearpackgentle', call: 'sw', file: 'src/rendering/gearSheets.js', old: (S) => /(^|[?&])gearpackgentle=(0|off|false)(&|$)/.test(S || '') },
+  { name: 'shirtworker', call: 'sw', file: 'src/rendering/gearSheets.js', old: (S) => /(^|[?&])shirtworker=(0|off|false)(&|$)/.test(S || '') },
+  { name: 'sheetfetch', call: 'sw', file: 'src/rendering/lookArmour.js', old: (S) => /(^|[?&])sheetfetch=0(&|$)/.test(S || '') },
+  { name: 'retrylooks', call: 'sw', file: 'src/rendering/lookPalette.js', old: (S) => /[?&]retrylooks=0\b/.test(S || '') },
+  { name: 'traitretry', call: 'sw', file: 'src/rendering/traits/speciesArt.js', old: (S) => /[?&](traitretry|retrylooks)=0\b/.test(S || '') },
+  { name: 'alphaclip', call: 'swHas', file: 'src/rendering/hairClip.js', old: (S) => /[?&]alphaclip\b/.test(S || '') },
+  { name: 'headframes', call: 'swHas', file: 'src/rendering/headFrames.js', old: (S) => /[?&]headframes(=|&|$)/.test(S || '') },
   /* v2.3.5232 (card O PR 12): the lanes' off-ramps (the values -- ?lane, ?govern, ?crowd, ?onebatch, ?lookpalette, ?pixbudget, ?res, ?zoom -- read by swValue, their old patterns held to the value) */
   { name: 'ladderrate', call: 'sw', file: 'src/game/drawLanes.js', old: (S) => /(^|[?&])ladderrate=(0|off|false)(&|$)/.test(typeof S === 'string' ? S : '') },
   { name: 'ladderpix', call: 'sw', file: 'src/game/drawLanes.js', old: (S) => /(^|[?&])ladderpix=(0|off|false)(&|$)/.test(typeof S === 'string' ? S : '') },

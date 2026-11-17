@@ -32,11 +32,12 @@
  * `?noheal` in the address leaves the state as the throw left it, to compare
  * (mp-renderheal). */
 import { STENCIL_MODES } from 'pixi.js';
+import { pageAddress } from '../game/switches.js';   /* v2.3.5317: the page's one read of its address (card T) */
 
 let _heals = 0;
 
 function urlOff() {
-  try { return /[?&]noheal(=|&|$)/.test(window.location.search || ''); } catch (e) { return false; }
+  try { return /[?&]noheal(=|&|$)/.test(pageAddress()); } catch (e) { return false; }
 }
 
 export function healAfterRenderThrow(renderer) {

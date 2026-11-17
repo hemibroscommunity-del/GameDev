@@ -306,6 +306,20 @@ so node tests it and any file may ask it.
   `?poolkeep`; pageAddress() in `picsNumbers.js`): the line 144.
   `keepAsImage.js` keeps `?keepimage`: keep-as-image 7h holds it to no
   imports.
+- v2.3.5316: look (cards H and P done), twenty-eight reads in sixteen
+  files: the line 116. Thirteen ask sw()/swHas() (`?garmentspecks`, `?pickwood`,
+  `?toolsolid`, `?bakeread`, `?portraitgentle`, `?gearretry`,
+  `?gearpackgentle`, `?shirtworker`, `?sheetfetch`, `?retrylooks`,
+  `?traitretry`, `?alphaclip`, `?headframes`). The rest keep their old test
+  on pageAddress(): the looks whose row needs `?lookpalette` (sw() would
+  add that need's meaning: a change, so not here), `?packworker` (its test
+  takes `off` and `false`, its row `=0` alone), and the probes and values
+  (`?lookprobe`, `?lookpalette=1`). `retryLooks.js` and `traits/traitImg.js`
+  keep theirs: loader-retries and picture-door run their text in a vm.
+- v2.3.5317: render (card H done), forty-five reads in thirty-three files
+  under `src/rendering/`, each on pageAddress() with its old test word for
+  word (the meaning cannot change): the line 71. A later PR may turn the
+  single-name ones into sw() asks, each held by `MOVED`.
 
 ## A new switch
 

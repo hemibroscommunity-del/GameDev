@@ -20,6 +20,7 @@ import { Assets, Rectangle, Texture } from 'pixi.js';
 import { loadTrackedStrip, unloadBundle } from './zoneTextures.js';   /* v2.3.5256 */
 import { loadSetLater } from './loadSetLater.js';   /* v2.3.5256: the hit's still, through the picture door */
 import { keepPageCopy } from './picsOnce.js';   /* v2.3.5561: the still never swapped for its strip's file */
+import { pageAddress } from '../game/switches.js';   /* v2.3.5317: the page's one read of its address (card T) */
 
 /* ═══ v2.3.5256: THE SLIMES LOAD AS YOU WALK (card P's backlog, monster-slime) ═══
    The owner, 2026-11-14 ("Go recommended"): the slimes load as you walk in
@@ -40,7 +41,7 @@ import { keepPageCopy } from './picsOnce.js';   /* v2.3.5561: the still never sw
    kept. */
 const WALKING = ['idle', 'shoot', 'hit', 'death'];   /* v2.3.5256: the strips; the rest are SINGLES */
 export const SLIME_WALK = (() => {
-  try { return !/(^|[?&])slimewalk=(0|off|false)(&|$)/.test(window.location.search || ''); } catch (e) { return true; }
+  try { return !/(^|[?&])slimewalk=(0|off|false)(&|$)/.test(pageAddress()); } catch (e) { return true; }
 })();
 
 const FRAME_W = 128;

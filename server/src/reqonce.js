@@ -33,6 +33,10 @@ import { WIRE_IN } from './wire/in.js';   /* v2.3.5195: the door's rows, made fr
 
 export const REQ_ONCE = Object.freeze({
   KEEP: 32,                 /* the last answers kept a player (the bank's ops are 32 too) */
+  /* v2.3.5547 (the gatekeeper, sitting 27): the wire door's own list, beside
+     the routes' answers -- 32 door messages pushed a market or store answer
+     out before its re-send came */
+  DOOR_KEEP: 64,
   MEM_MS: 10 * 60 * 1000,   /* how long a sitting's answer is kept: far past any page's re-send */
   RE: /^[A-Za-z0-9_-]{1,64}$/,   /* SHAPES part 2's form (the wire door's REQ_ID_RE) */
   STAMP: 'oplog:rq:',       /* the lasting stamp, `reqstamp` only */
@@ -65,7 +69,7 @@ export const reqOnceMethods = {
     const rid = this._reqIdOf(p && p.reqId !== undefined ? p.reqId : msg.reqId);
     if (!rid) return false;
     const key = msg.type + ':' + rid;
-    if (this._reqRecall(session.id, key) !== undefined) {
+    if (this._reqRecall(session.id, key, 0, '_reqSeenDoor') !== undefined) {   /* v2.3.5547: its own list */
       session.reqAgain = (session.reqAgain || 0) + 1;
       const w = ws || (this._wsBySessionId && this._wsBySessionId(session.id));
       /* every field again, not the delta (which would be empty: nothing changed) */
@@ -73,7 +77,7 @@ export const reqOnceMethods = {
       if (w && this.playerState && this.playerState[session.id] && this._resendPlayerState) { try { this._resendPlayerState(w, session.id, sent); } catch (e) { /* the next state carries it */ } }
       return true;
     }
-    this._reqRemember(session.id, key, 1);
+    this._reqRemember(session.id, key, 1, 0, '_reqSeenDoor', REQ_ONCE.DOOR_KEEP);
     return false;
   },
 
@@ -96,9 +100,10 @@ export const reqOnceMethods = {
   },
 
   /* this sitting's answer to (pid, rid), or undefined */
-  _reqRecall(pid, rid, now) {
-    if (!pid || !rid || !this._reqSeen) return undefined;
-    const list = this._reqSeen.get(pid);
+  _reqRecall(pid, rid, now, store) {
+    const m = this[store || '_reqSeen'];
+    if (!pid || !rid || !m) return undefined;
+    const list = m.get(pid);
     if (!list) return undefined;
     const t = Number(now) || Date.now();
     const e = list.find((x) => x.id === rid && t - x.ts < REQ_ONCE.MEM_MS);
@@ -106,15 +111,17 @@ export const reqOnceMethods = {
   },
 
   /* keep (pid, rid)'s answer for the sitting: the last KEEP a player */
-  _reqRemember(pid, rid, answer, now) {
+  _reqRemember(pid, rid, answer, now, store, keep) {
     if (!pid || !rid) return;
-    if (!this._reqSeen) this._reqSeen = new Map();   /* keyed by a pid off the wire: a Map (rule 4) */
-    let list = this._reqSeen.get(pid);
-    if (!list) { list = []; this._reqSeen.set(pid, list); }
+    const name = store || '_reqSeen';
+    if (!this[name]) this[name] = new Map();   /* keyed by a pid off the wire: a Map (rule 4) */
+    let list = this[name].get(pid);
+    if (!list) { list = []; this[name].set(pid, list); }
     const at = list.findIndex((x) => x.id === rid);
     if (at >= 0) list.splice(at, 1);
     list.push({ id: rid, ts: Number(now) || Date.now(), answer });
-    if (list.length > REQ_ONCE.KEEP) list.splice(0, list.length - REQ_ONCE.KEEP);
+    const k = keep || REQ_ONCE.KEEP;
+    if (list.length > k) list.splice(0, list.length - k);
   },
 
   _reqForget(pid, rid) {

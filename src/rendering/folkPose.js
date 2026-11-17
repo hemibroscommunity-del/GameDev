@@ -31,6 +31,7 @@ import { lookPose } from './lookPalette.js';
 import { isFolkSkill } from './folkSkill.js';
 import { folkFacing } from '../game/townsfolkWalk.js';
 import { frameCount as playerFrameCount, cycleMs } from './playerSprites.js';
+import { pageAddress } from '../game/switches.js';   /* v2.3.5317: the page's one read of its address (card T) */
 
 const WORK = new Set(['mine', 'fish', 'pickup']);
 /* a loop's length for him, ms: the pickup is the player's half-second grab,
@@ -39,7 +40,7 @@ const WORK_MS = { pickup: 1600 };
 const WORK_FRAMES = { mine: 14, fish: 32, pickup: 29 };
 
 /* `?folkwork=0`: they walk, but stand at their stops (one phone) */
-const _workOff = (() => { try { return /(^|[?&])folkwork=0(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();
+const _workOff = (() => { try { return /(^|[?&])folkwork=0(&|$)/.test(pageAddress()); } catch (e) { return false; } })();
 
 /** The work pose he is at and can be drawn in, or null (stand or walk).  A
  *  skill figure (v2.3.5462) is answered here and its parts asked for by the

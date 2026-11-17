@@ -733,6 +733,10 @@ nothing known, and a restore copies nothing.
   eleven more reads; the outside line 172 -> 161), merged at sitting 28.
   The box waits for the rest of the page's reads (the gatekeeper, sitting
   29, tag 5667).*
+  *T's #1994 (5314: six debug reads; the outside line 161 -> 155) and
+  #1996 (5315: eleven memory reads; 155 -> 144), merged at sitting 29.
+  The box waits for the rest of the page's reads (the gatekeeper, sitting
+  30, tag 5668).*
 - [x] **7.2 [NEXT] The end date** (the owner: yes). For a logic switch: four
   weeks on with no revert, then the old way goes. A device off-ramp stays
   while its risk is live. A fallback stays while its trigger lives: a guard

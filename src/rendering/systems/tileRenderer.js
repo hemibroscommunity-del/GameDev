@@ -17,6 +17,7 @@ import { isWorldTrialZone } from '@/game/worldTrial.js';
 import { townSkippedOnTheWay, wheelTripVeiled } from '@/game/wheelHome.js'; /* v2.3.3037: no map for today's town on the way to the Wheel */
 import { PORTAL_BEAM } from '../fxStrips.js'; /* v2.3.2070: the light shaft over a zone exit */
 import { drawArenaWalls } from '../arenaWalls.js'; /* v2.3.3566: a dungeon walled with the owner's pictures */
+import { pageAddress } from '../../game/switches.js';   /* v2.3.5317: the page's one read of its address (card T) */
 
 const ZONE_LABEL_STYLE = new TextStyle({
   fontFamily: 'Source Sans 3, sans-serif',
@@ -215,7 +216,7 @@ function footprintTexture() {
 const _liveTileRenderers = new Set();
 /* v2.3.3452: `?groundbg=1` keeps the black under the Wheel's ground drawn
    every frame, as it was (_groundBg: THE BLACK UNDER THE GROUND) */
-const GROUND_BG_KEEP = typeof location !== 'undefined' && /[?&]groundbg=1(?:&|$)/.test(location.search || '');
+const GROUND_BG_KEEP = typeof location !== 'undefined' && /[?&]groundbg=1(?:&|$)/.test(pageAddress());
 
 function cssToHex(css) {
   if (typeof css !== 'string') return 0x000000;

@@ -17,6 +17,7 @@ import { garmentBands, inGarmentBand, judgeGarments, GC_PANTS, GC_BOOT, GC_SKIN,
 import { toolWoodMask, solidTool } from './toolWood.js';
 import { upscaleToFrameHeight } from './spriteScale.js';
 import { recolorToolKeyCanvas, toolKeyMask, TOOL_SPECS } from './toolRecolor.js';
+import { sw } from '../game/switches.js';   /* v2.3.5316: the page's one reader (card T) */
 
 export const FRAME_W = 256;
 export const FRAME_H = 256;
@@ -594,7 +595,7 @@ function _clampLegsUnder(d, w, h, FW, greaves, legAll, skinAll) {
    boot-coloured pixel painted the player's colours, wherever it lies on the
    figure (recolorBodyToCanvas, garmentConfine.js).  And, for QA, how many of
    each a bake left in the art's own colour, by sheet. */
-export const GARMENT_SPECKS_OFF = (() => { try { return /[?&]garmentspecks=0(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();
+export const GARMENT_SPECKS_OFF = sw('garmentspecks');
 /* v2.3.3658: a torso strip (a running swing's or shot's top half, drawn over
    the jog legs) is cut at the waist -- at the skin->pants line, BOW_ART_VERSION
    959/960 -- so its only real trousers are the sliver at that cut, within 2-3
@@ -613,11 +614,11 @@ if (typeof window !== 'undefined') {
    painted with the skin (its wood) and the boots (its steel) like everything
    else (recolorBodyToCanvas `toolWood`, toolWood.js).  And, for QA, how many
    of the pickaxe's pixels each mining bake kept, by sheet. */
-const PICK_WOOD_OFF = (() => { try { return /[?&]pickwood=0(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();
+const PICK_WOOD_OFF = sw('pickwood');
 const _pickWoodKept = Object.create(null);
 /* v2.3.3881: `?toolsolid=0`: the pickaxe as the sheet draws it, thin and pale
    (toolWood.js solidTool); and, for QA, the pixels each mining bake painted */
-const TOOL_SOLID_OFF = (() => { try { return /[?&]toolsolid=(0|off|false)(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();
+const TOOL_SOLID_OFF = sw('toolsolid');
 const _toolSolid = Object.create(null);
 if (typeof window !== 'undefined') {
   window.__btPickWood = () => ({ on: !PICK_WOOD_OFF, kept: { ..._pickWoodKept }, solid: TOOL_SOLID_OFF ? null : { ..._toolSolid } });
@@ -673,7 +674,7 @@ let _bakeTag = '';
    every canvas in software already, so it can measure no gain: the phone's
    and a computer's own meter does (`?perf=1`, "between frames: body ...").
    `?bakeread=0` is the old way for one tab, to compare. */
-const _BAKE_READ = (() => { try { return !/(^|[?&])bakeread=0(&|$)/.test(window.location.search || ''); } catch (e) { return true; } })();
+const _BAKE_READ = !sw('bakeread');
 function bakeReadCtx(cv) {
   return _BAKE_READ ? cv.getContext('2d', { willReadFrequently: true }) : cv.getContext('2d');
 }

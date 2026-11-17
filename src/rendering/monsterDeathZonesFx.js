@@ -65,9 +65,10 @@
  */
 import { Container, Sprite, Graphics, Texture, Rectangle } from 'pixi.js';
 import { BEAT_MS, MAX_LIVE, MAX_PIECES, zoneOff } from '@/data/monsterDeathZones.js';
+import { pageAddress } from '../game/switches.js';   /* v2.3.5317: the page's one read of its address (card T) */
 
 const _off = (() => {
-  try { return typeof location !== 'undefined' && /[?&]deathzones=0(?:&|$)/.test(location.search || ''); } catch (e) { return false; }
+  try { return typeof location !== 'undefined' && /[?&]deathzones=0(?:&|$)/.test(pageAddress()); } catch (e) { return false; }
 })();
 /** Zone deaths on (the default; `?deathzones=0` is today's deaths only). */
 export function deathZonesOn() { return !_off; }

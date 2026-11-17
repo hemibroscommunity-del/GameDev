@@ -976,7 +976,8 @@ export const ItemDetailPopup = () => {
                  equip_request convention — the worker swaps its own
                  stash entry and the player_state echo reconciles any
                  order drift. */
-              syncWeaponSlot({ type: 'equip_request', payload: { stashIdx: i, slot: destProp } });
+              /* v2.3.5196 (sitting 30): the id from the weapon itself: the stash above already moved */
+              syncWeaponSlot({ type: 'equip_request', payload: { stashIdx: i, slot: destProp, ...(live && typeof live.gid === 'string' ? { gid: live.gid } : {}) } });
               /* The worker resolves damage from ITS activeSlot, so a swap
                  that only moved the slot locally would keep swinging the
                  old weapon server-side. */

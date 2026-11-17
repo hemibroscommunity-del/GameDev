@@ -11,6 +11,7 @@
 
 import { Assets, Texture } from 'pixi.js';
 import { loadSetLater } from './loadSetLater.js';   /* v2.3.4452: a weapon picture that failed once is asked for again */
+import { pageAddress } from '../game/switches.js';   /* v2.3.5317: the page's one read of its address (card T) */
 
 /* Bump on every weapon-art change so URL-keyed browser/CDN caches
    refetch instead of serving the previous PNG. */
@@ -130,7 +131,7 @@ const BLADE_DETAIL = 2;
 const BODY_TEXEL_WORLD = 2 * 0.421875 * 1.06;   /* ~0.9 world px per body display texel */
 function bladeSoftMul() {
   try {
-    const m = /[?&]bladesoft=([0-9.]+|off|on)\b/.exec(window.location.search);
+    const m = /[?&]bladesoft=([0-9.]+|off|on)\b/.exec(pageAddress());
     if (!m || m[1] === 'on') return BLADE_DETAIL;
     if (m[1] === 'off') return 0;
     return parseFloat(m[1]) || 0;
