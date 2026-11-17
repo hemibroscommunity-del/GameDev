@@ -67,6 +67,11 @@ function check(name, cond, detail) {
 
 const state = makeState();
 const room = new GameRoom(state, mockEnv);
+/* v2.3.5715 (card SEC PR 16): with `gearheld` on, the default, the join
+   takes no armour or legs claim at all (the worker keeps those two live).
+   This suite tests the claim door itself, so its main room plays it open;
+   gearheld.test is the gate's own. */
+await room._liveFlagsEnsure(); room._liveFlags.gearheld = false;
 /* v2.3.2544: kept so sections that stub _wsBySessionId can put it back --
    see the note on the gear-lock stub in section 4b. */
 const _realWsBySessionId = room._wsBySessionId.bind(room);
@@ -371,6 +376,10 @@ let amuletGid = null;
   /* Defense points would otherwise gate the swap; grandfather it by
      equipping the modest piece the server itself minted. */
   room._prog3EquipOk = () => true;
+  /* v2.3.5715: the legacy pieces below are ones the worker holds (gearheld
+     wears only those; gearheld.test is the gate's own) */
+  ps.armorStash = [...(ps.armorStash || []), { name: 'Forged Plate', tierMult: 8 }];
+  ps.legsStash = [...(ps.legsStash || []), { name: 'Greaves', tierMult: 4 }];
 
   await send(room, wsC, { type: 'stats_update', payload: { armor: { name: 'Forged Plate', tierMult: 8, prov: PROV_MINTED } } });
   check('a forged prov mark on stats_update is not believed',
@@ -402,6 +411,8 @@ let amuletGid = null;
   await join(room, ws, PID);
   const ps = room.playerState[PID];
   room._prog3EquipOk = () => true;
+  /* v2.3.5715: the legacy 'Old Plate' below is one the worker holds (gearheld) */
+  ps.armorStash = [...(ps.armorStash || []), { name: 'Old Plate', tierMult: 2 }];
 
   ps._questGrantOverflow = null;
   room._grantQuestItem(ps, { kind: 'armor', name: 'Copper Torso', mat: 'copper', tierMult: 1 }, PID);

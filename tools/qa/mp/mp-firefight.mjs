@@ -174,7 +174,7 @@ async function body({ P, wsPort, rec, OUT, errors, shots }) {
     set.call(inp, k);
     inp.dispatchEvent(new Event('input', { bubbles: true }));
   }, H.ADMIN_KEY);
-  await tapText('Save key on this device');
+  await tapText('Save key');
   await P.page.waitForTimeout(1500);
   await tapText('Finish all quests');
   await P.page.waitForTimeout(2500);

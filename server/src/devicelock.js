@@ -161,6 +161,32 @@ export const deviceLockMethods = {
      spec's "someone already in").  A new key never comes here (it is good
      from any device).  Kill switch `offdevs: false`: nothing recorded while
      the lock is off, as before. */
+  /* ═══ v2.3.5716 (card SEC PR 17): AN OLD KEY NEVER WORKS FROM A DEVICE NOT ON
+     THE CHARACTER'S LIST, WHATEVER THE SWITCH OR THE PASS SAYS ═══
+     The device lock held an old Login Key to its character's devices, but
+     the hold fell away twice: with `devicelock: false` thrown (the join and
+     the account check let any device in) and while the owner's pass was open
+     (any device came in on it with the old key).  An old key is not a secret
+     (the header of "AN OLD KEY NEVER ADDS A DEVICE BY ITSELF" below), so now:
+       - an old key from a device not on the list is refused whether the lock
+         is on or off (_deviceLockJoin, _deviceLockCheck: the decision runs
+         either way);
+       - a pass admits a NEW key only: an old key is not let in on one
+         (_deviceDecide);
+       - a missing list (a character from before the lock the fill never
+         found) takes no first device even under `oldkeylock: false`.
+     A listed device with an old key works as today (no honest device is shut
+     out); a new key is good from any device, as today; the owner's levers are
+     unchanged ("Give it a new key" is the way onto a new device).  The one
+     first-device case left is an explicit EMPTY list, which only a join
+     naming no device writes (the suites' characters; the page always names
+     one).  KILL SWITCH `oldkeyheld: false`: the lock off and the pass as
+     before. */
+  _oldKeyHeldOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && own(f, 'oldkeyheld') && !f.oldkeyheld);
+  },
+
   _offDevsOn() {
     const f = this._liveFlags;
     return !(f && typeof f === 'object' && own(f, 'offdevs') && !f.offdevs);
@@ -194,14 +220,14 @@ export const deviceLockMethods = {
   _deviceDecide(auth, device, now) {
     const devs = auth && Array.isArray(auth.devs) ? auth.devs : [];
     if (device && devs.some((e) => e && e.d === device)) return 'known';
-    if (device && auth && auth.pass && typeof auth.pass.until === 'number' && auth.pass.until > now) return 'pass';
+    if (device && auth && auth.pass && typeof auth.pass.until === 'number' && auth.pass.until > now && !this._oldKeyHeldOn()) return 'pass';   /* v2.3.5716: a pass admits a NEW key only */
     /* v2.3.5582: a character with NO list (one from before the device lock
        whose devices the one-time fill never found) takes no first device
        any more; an explicit empty list -- written only by a join that named
        no device, which the page never sends without (index.js
        getDeviceNonce) -- keeps the old rule (the suites' own characters) */
     const listed = !!auth && Array.isArray(auth.devs);
-    if (!devs.length && !(auth && auth.sealed) && (listed || !this._oldKeyLockOn())) return 'first';
+    if (!devs.length && !(auth && auth.sealed) && (listed || (!this._oldKeyLockOn() && !this._oldKeyHeldOn()))) return 'first';
     return 'refuse';
   },
 
@@ -329,7 +355,7 @@ export const deviceLockMethods = {
   /* The join's half (join.js _verifyJoinAuth, after the key matched):
      true to let it in, 'device' to refuse. */
   async _deviceLockJoin(id, auth, device, now) {
-    if (!this._deviceLockOn()) {
+    if (!this._deviceLockOn() && !this._oldKeyHeldOn()) {   /* v2.3.5716: off, the old key still held to the list */
       /* v2.3.5584: its device still written down (above) */
       if (device && this._offDevsOn()) await this._deviceOffRecord(id, auth, device, now);
       return true;
@@ -349,7 +375,7 @@ export const deviceLockMethods = {
   /* The account requests' half (account.js): the decision without writing
      anything -- 'refuse' when this device could not play the character. */
   async _deviceLockCheck(id, auth, device, now) {
-    if (!this._deviceLockOn()) return 'off';
+    if (!this._deviceLockOn() && !this._oldKeyHeldOn()) return 'off';   /* v2.3.5716 */
     this._dlTally('checks');
     let a = auth;
     if (!Array.isArray(a.devs)) {

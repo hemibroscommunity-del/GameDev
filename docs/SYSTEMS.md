@@ -109,7 +109,7 @@ Telling a person from a script: bot signals, fingerprints, claims that are bound
 The live flags, the admin and dev levers, test mode, feedback.
 
 - **Files**: `server/src/`: liveops, admin, devtools, testmode, feedback
-- **Files**: `src/game/`: testMode, switches, ownerSwitches, feedbackOwner, silenceOwner, renameOwner
+- **Files**: `src/game/`: testMode, switches, ownerSwitches, feedbackOwner, silenceOwner, renameOwner, adminKeyStore
 - **Files**: `server/src/`: restore
 - **Files**: `server/src/`: playerrestore
 - **Doors**: `flagNameOk` in `server/src/liveops.js` (the names a live flag (a kill switch) may take); `_testMode` in `server/src/testmode.js` (the one question an honesty check asks)
@@ -212,7 +212,7 @@ Parties, clans, guilds, friends, chat, emotes, duels, the arena, races, boards.
 The Wheel: zones and their doors, lands, dungeons, No Man's Land, the map, props.
 
 - **Files**: `server/src/`: wheelzone, wheelnear, wheelfaces, wheeltables, wheeldungeon, dungeon, dungeonreward, zonejudge, nomansland, props, eventplace
-- **Files**: `src/game/`: wheelBreak, wheelDungeons, wheelHome, wheelNoticeboard, wheelSize, wheelTownDoors, wheelTrial, worldTrial, worldViewport, zoneGate, zoneMechanics, zoneTransitions, veilDoor, dungeonArt, dungeonClear, dungeonWaves, noMansLand, nmlAsk, nmlExplainOnce, mapPinPlaces, mapPins, pinSlots, buildingRooms, placeSafety, plateSafety, bodyPlace, timeOfDay, season, expoAddress, onePic, bannerReach
+- **Files**: `src/game/`: wheelBreak, wheelDungeons, wheelHome, wheelNoticeboard, wheelSize, wheelTownDoors, wheelTrial, worldTrial, worldViewport, zoneGate, zoneMechanics, zoneTransitions, veilDoor, dungeonDoor, dungeonArt, dungeonClear, dungeonWaves, noMansLand, nmlAsk, nmlExplainOnce, mapPinPlaces, mapPins, pinSlots, buildingRooms, placeSafety, plateSafety, bodyPlace, timeOfDay, season, expoAddress, onePic, bannerReach
 - **Doors**: none named yet
 - **Switches**: [its rows in the switch table](SWITCHES.md#world)
 - **Words**: `wheel`, `zone`, `land`, `dungeon`, `nomansland`, `nml`, `map`, `world`, `town`, `door`, `prop`

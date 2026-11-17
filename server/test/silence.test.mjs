@@ -241,9 +241,9 @@ const wb = await join('bp_mod_kind', 'devkind001');
   /* v2.3.5625 (card MOD PR 5; the sitting 19 review's MEDIUMs): the device's
      characters from botfp's `device:` record, beside the device lock's list */
   const wh = await join('bp_mod_roam', 'devroamhome', room);
-  room._liveFlags.devicelock = false;   /* the laptop reached as a key reaches it: past the device lock, never on its list */
+  room._liveFlags.devicelock = false; room._liveFlags.oldkeyheld = false;   /* v2.3.5716: an old key past the lock (oldkeyheld holds it to the list) */   /* the laptop reached as a key reaches it: past the device lock, never on its list */
   const wl = await join('bp_mod_roam', 'devroamlaptop', room);
-  delete room._liveFlags.devicelock;
+  delete room._liveFlags.devicelock; delete room._liveFlags.oldkeyheld;
   const roamAuth = await room.state.storage.get('auth:bp_mod_roam');
   await room.state.storage.put('auth:bp_mod_roam', { ...(roamAuth || { id: 'bp_mod_roam' }), devs: [{ d: 'devroamhome', at: Date.now() }] });   /* the laptop reached with a new key: never on the list */
   const rec = await room.state.storage.get('device:devroamlaptop');
@@ -253,9 +253,9 @@ const wb = await join('bp_mod_kind', 'devkind001');
   check('6b: a new character on a device the frozen character reached with a new key is refused `frozen` (only the phone it was made on was held)',
     lapAlt.sent.some((m) => m.type === 'join_rejected' && m.reason === 'frozen'), lapAlt.sent.map((m) => m.type).slice(0, 4));
   /* v2.3.5627 (the planning session's call): a held phone refuses only a NEW character */
-  room._liveFlags.devicelock = false;   /* the friend's key on the laptop: past the device lock */
+  room._liveFlags.devicelock = false; room._liveFlags.oldkeyheld = false;   /* v2.3.5716: an old key past the lock (oldkeyheld holds it to the list) */   /* the friend's key on the laptop: past the device lock */
   const friendOn = await join('bp_mod_kind', 'devroamlaptop', room);
-  delete room._liveFlags.devicelock;
+  delete room._liveFlags.devicelock; delete room._liveFlags.oldkeyheld;
   check('6b: an EXISTING character (a friend\'s own) joining from a held phone is never refused `frozen` (only a new character is)',
     !friendOn.sent.some((m) => m.type === 'join_rejected' && m.reason === 'frozen'), friendOn.sent.map((m) => [m.type, m.reason]).slice(0, 4));
   const homeAlt = await join('bp_mod_roam_alt2', 'devroamhome', room);
@@ -263,9 +263,9 @@ const wb = await join('bp_mod_kind', 'devkind001');
   /* the owner's spare, complete the same way: the owner's character on a shared computer, reached with a new key */
   await room.state.storage.put('testmode:bp_mod_boss', { v: 1, on: true, at: Date.now(), name: 'Boss' });
   await join('bp_mod_boss', 'devbossphone', room);
-  room._liveFlags.devicelock = false;
+  room._liveFlags.devicelock = false; room._liveFlags.oldkeyheld = false;   /* v2.3.5716: an old key past the lock (oldkeyheld holds it to the list) */
   await join('bp_mod_boss', 'devshared', room);
-  delete room._liveFlags.devicelock;
+  delete room._liveFlags.devicelock; delete room._liveFlags.oldkeyheld;
   const bossAuth = await room.state.storage.get('auth:bp_mod_boss');
   await room.state.storage.put('auth:bp_mod_boss', { ...(bossAuth || { id: 'bp_mod_boss' }), devs: [{ d: 'devbossphone', at: Date.now() }] });
   await join('bp_mod_boss_alt', 'devshared', room);   /* the owner's own alt, not in test mode */
@@ -282,11 +282,11 @@ const wb = await join('bp_mod_kind', 'devkind001');
   /* v2.3.5627 (card MOD PR 7; sitting 22's review): the owner's own devices are KEPT (`ownerdev:`):
      botfp's record keeps a device's last 8 characters, so the owner's fell off it and the computer was held */
   await room.state.storage.put('testmode:bp_mod_chief', { v: 1, on: true, at: Date.now(), name: 'Chief' });
-  room._liveFlags.devicelock = false;
+  room._liveFlags.devicelock = false; room._liveFlags.oldkeyheld = false;   /* v2.3.5716: an old key past the lock (oldkeyheld holds it to the list) */
   await join('bp_mod_chief', 'devcafe', room);
   await room.state.storage.delete('testmode:bp_mod_chief');   /* no test-mode character's auth names it either */
   for (let i = 0; i < 9; i++) await join('bp_mod_cafe' + i, 'devcafe', room);
-  delete room._liveFlags.devicelock;
+  delete room._liveFlags.devicelock; delete room._liveFlags.oldkeyheld;
   const cafe = await room.state.storage.get('device:devcafe');
   check('6c: (botfp\'s record has forgotten the owner\'s character on the computer: its last 8 only)', !!cafe && !cafe.ids.some((e) => e.id === 'bp_mod_chief'), cafe && cafe.ids.map((e) => e.id));
   check('6c: (the device is kept as the owner\'s: `ownerdev:`)', !!(await room.state.storage.get(SILENCE.OWNER_DEV + 'devcafe')));
@@ -299,10 +299,10 @@ const wb = await join('bp_mod_kind', 'devkind001');
   const put0 = room.state.storage.put.bind(room.state.storage);
   room.state.storage.put = async (k, v) => { if (String(k).startsWith(SILENCE.OWNER_DEV)) puts0.push(k); return put0(k, v); };
   await room.state.storage.put('testmode:bp_mod_chief', { v: 1, on: true, at: Date.now(), name: 'Chief' });
-  room._liveFlags.devicelock = false;
+  room._liveFlags.devicelock = false; room._liveFlags.oldkeyheld = false;   /* v2.3.5716: an old key past the lock (oldkeyheld holds it to the list) */
   await join('bp_mod_chief', 'devcafe', room);
   await join('bp_mod_cafe0', 'devcafe2', room);
-  delete room._liveFlags.devicelock;
+  delete room._liveFlags.devicelock; delete room._liveFlags.oldkeyheld;
   room.state.storage.put = put0;
   check('6c: the mark is written once a device (the owner\'s again: no put), and never for a character not in test mode', puts0.length === 0 && !(await room.state.storage.get(SILENCE.OWNER_DEV + 'devcafe2')), puts0);
   await room.state.storage.delete('testmode:bp_mod_chief');

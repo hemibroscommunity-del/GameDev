@@ -64,12 +64,16 @@ Anyone can do all three, with or without our code.
 2. **Whose: the signature.** With the GitHub command-line tool:
 
    ```
-   gh attestation verify <commit>.json --repo hemibroscommunity-del/GameDev
+   gh attestation verify <commit>.json --repo hemibroscommunity-del/GameDev --source-ref refs/heads/main
    ```
 
    or, without asking GitHub for its copy, add
    `--bundle <commit>.sigstore.json`. It checks the signature was made by a
-   workflow of this repository, and when.
+   workflow of this repository, and when. **`--source-ref refs/heads/main`**
+   (v2.3.5714) also checks WHICH BRANCH signed: without it a signature made
+   by the workflow on any branch -- a pull request's dry run, or a branch a
+   stranger's change could run on -- passes as well; the proof is the one
+   `main` made.
 3. **What: that the fingerprint is the game's files.** In a copy of the
    repository, `node tools/provenance/listing.mjs --verify <commit>.json`
    prints `MATCH`. **Checking without our code:** in a clean download of that

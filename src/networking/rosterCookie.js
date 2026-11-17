@@ -50,7 +50,23 @@
  * short list of forgotten phrases beside the live ones, and a restore skips
  * them.  A phrase that comes BACK (re-entered by key) drops out of the
  * tombstones when it is written — see charRoster's _write.
+ *
+ * ═══ v2.3.5718 (card SEC PR 19): THE KEYS STAY ON THE HOST THAT WROTE THEM ═══
+ * The mirror above is every Login Key the phone holds, for two years, on the
+ * WHOLE registrable domain -- and every preview build is a subdomain of the
+ * same one (`<hash>.gamedev-aix.pages.dev`), running whatever its pull request
+ * says: any preview could read every key a player ever used on the project's
+ * pages.dev address.  So the roster's cookie is now HOST-ONLY (no Domain):
+ * only the exact host that wrote it reads it -- the real site its own, a
+ * preview its own -- and the old wide copy is taken away at the first write.
+ * What is given up is what made a preview's first visit find a character with
+ * no key typed; the real site (brotown.net) keeps its roster as before
+ * (localStorage, and this cookie).  The small flags below (readSharedValue:
+ * "you have seen this") hold no secret and keep the wide scope.
+ * OFF-RAMP `?rostercookie=0` (its row in the switch table): the wide cookie,
+ * as before.
  */
+import { sw } from '../game/switches.js';   /* v2.3.5718: the off-ramp */
 
 const NAME = 'bt_chars';
 
@@ -160,8 +176,17 @@ export function readShared() {
   return { list: list, tomb: tomb };
 }
 
+/* v2.3.5718: the roster's own scope: host-only, unless the off-ramp is thrown */
+function _rosterDomain() {
+  if (sw('rostercookie')) return _domainFor();
+  /* the wide copy an older build wrote goes (one cookie; a no-op once gone) */
+  const wide = _domainFor();
+  if (wide) _set(NAME, '', wide, 0);
+  return null;
+}
+
 export function writeShared(list, tomb) {
-  const d = _domainFor();
+  const d = _rosterDomain();
   let rows = (list || []).slice().sort(function (a, b) { return (b.at || 0) - (a.at || 0); });
   let tombs = (tomb || []).slice(0, TOMB_MAX);
   for (;;) {
