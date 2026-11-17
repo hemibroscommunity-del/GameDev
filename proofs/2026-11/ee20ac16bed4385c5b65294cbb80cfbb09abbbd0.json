@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "ee20ac16bed4385c5b65294cbb80cfbb09abbbd0",
+  "tree": "8b9bf6e355848c1dbf0b554534e16b46db036fa1",
+  "committedAt": "2026-11-17T12:21:27-08:00",
+  "subject": "Merge pull request #2054 from hemibroscommunity-del/claude/plan-sec-12-floodtally",
+  "files": 8106,
+  "bytes": 959907372,
+  "listingSha256": "08c90ca29758e3f9b90a0a94a533384602461b4a8b14657e05d559d89b09c1e0",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

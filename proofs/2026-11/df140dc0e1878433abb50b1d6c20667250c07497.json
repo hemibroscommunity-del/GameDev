@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "df140dc0e1878433abb50b1d6c20667250c07497",
+  "tree": "9440b5871639a177bffb60da683182aa8e3684c6",
+  "committedAt": "2026-11-17T12:21:30-08:00",
+  "subject": "Merge pull request #2051 from hemibroscommunity-del/claude/plan-k2-guards",
+  "files": 8107,
+  "bytes": 959921562,
+  "listingSha256": "729066852263f146bd9aab364b6bd94634c5e08809c44e34f36714bbf3e9026e",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
