@@ -72,6 +72,99 @@ export const RELAY = Object.freeze({
   LOG_FIRST: 20,
 });
 
+/* ═══ v2.3.5724 (card K2 PR 5; the second red team): A RELAY'S FIELDS TYPED ═══
+   A relay was copied with every field the phone put in it, each as sent:
+   `monster_dmg_at`'s `dmg` reached every screen in the zone as text; a
+   `trade_reject` or `duel_decline` carrying `reason: 'paused'` made the
+   other phone say the game's own "Saving is paused" words, and a
+   `pvp_confirmed` its kill words.  Now (`relaytyped`) a relay keeps ONLY
+   the fields its row names (the wire table's `trust`: wire/relays.js),
+   each held to the FORM an honest page sends -- a census of every sender
+   in src/ and every reader (gameEvents.js, wsClient.js), 2026-11-17:
+     id      a player's id: a string of at most 64 (join.js);
+     num     a finite number (within NUM_MAX);   int  a whole one;
+     bool    true or false, or 1 or 0 (four flags go as the number 1:
+             a projectile's retreat, volley and pc, a jump's flip);
+     strN    a string of at most N characters;   strN? the same, or null;
+     text    chat's line: a string, cut to TEXT_MAX here (the chat relay's
+             own sanitiser cuts it again to 200: speech input can pass the
+             box's maxLength, so it is cut, never refused);
+     offer   a trade's offer: a plain object of at most OFFER_KEYS item
+             keys (64 characters) to whole counts >= 0 (trade.js cleans it
+             again at commit);
+     ints2, ints5  an array of exactly 2 or 5 whole numbers.
+   A field out of its form is DROPPED -- the relay still goes.  Only the
+   rebuild's own fields are added (the stamped id and name, as before), and
+   the worker's intercepts that run after it (a trade's, a duel's, a
+   threat's: index.js) add theirs as before.  Fields honest pages send and
+   no page reads (a strike's `blocked`, an action's `reqId`) go no further.
+   wire-hostile.test and relaytyped.test hold the table to the rows. */
+export const RELAY_FORMS = Object.freeze({
+  trade_accept: { target: 'id' },
+  trade_offer: { target: 'id', offer: 'offer' },
+  trade_reject: { target: 'id' },
+  clan_invite: { target: 'id', clanName: 'str32', clanTag: 'str8' },
+  duel_accept: { target: 'id', wager: 'int' },
+  duel_decline: { target: 'id' },
+  duel_request: { target: 'id' },
+  duel_wager_request: { target: 'id', wager: 'int' },
+  pvp_threat: { target: 'id', fromLevel: 'int' },
+  threat_response: { target: 'id', action: 'str16' },
+  chat: { text: 'text', color: 'str32' },
+  emote: { emoji: 'str16', move: 'str16' },
+  campfire_lit: { x: 'num', y: 'num', zone: 'str64', expiresAt: 'num' },
+  campfire_out: {},
+  gather_node: { node: 'str64?', x: 'num', y: 'num', zone: 'str64' },
+  monster_dmg_at: { x: 'num', y: 'num', dmg: 'num', isCrit: 'bool' },
+  player_died_to_monster: { x: 'num', y: 'num' },
+  player_dodge: { kind: 'str16', angle: 'num', dur: 'num', walk: 'bool' },
+  player_hurt_by_monster: { dmg: 'num' },
+  player_jump: { dur: 'num', peak: 'num', flip: 'bool', h0: 'num', v: 'num', g: 'num', ang: 'num' },
+  player_projectile: { ts: 'num', isStaff: 'bool', isSpecial: 'bool', retreat: 'bool', dr: 'num', ga: 'num', big: 'bool',
+    x: 'num', y: 'num', ang: 'num', el: 'str16', life: 'num', speedPx: 'num', delayMs: 'num', volley: 'bool', pc: 'bool',
+    tg: 'id', lp: 'ints2', gf: 'ints5' },
+  player_respawned: {},
+  player_shield: { up: 'bool' },
+  player_swing: { special: 'bool', bash: 'bool', whirl: 'bool', r: 'num', wpn: 'str32', ang: 'num' },
+  pvp_confirmed: { target: 'id', died: 'bool', dmg: 'num', srv: 'bool' },
+  stunned: { target: 'id', duration: 'num' },
+});
+export const RELAY_FORM = Object.freeze({ NUM_MAX: 1e15,   /* above an epoch in ms (a campfire's expiresAt, a shot's ts: ~1.8e12) */ TEXT_MAX: 1000, OFFER_KEYS: 200, KEY_MAX: 64, ID_MAX: 64 });
+
+const isStr = (v, n) => typeof v === 'string' && v.length <= n;
+const isNum = (v) => typeof v === 'number' && Number.isFinite(v) && Math.abs(v) <= RELAY_FORM.NUM_MAX;
+const isInt = (v) => isNum(v) && Math.floor(v) === v;
+const isInts = (v, n) => Array.isArray(v) && v.length === n && v.every(isInt);
+/** One field to its form: the value to keep, or undefined to drop it. */
+export function relayFieldForm(form, v) {
+  switch (form) {
+    case 'id': return isStr(v, RELAY_FORM.ID_MAX) ? v : undefined;
+    case 'num': return isNum(v) ? v : undefined;
+    case 'int': return isInt(v) ? v : undefined;
+    case 'bool': return (v === true || v === false || v === 1 || v === 0) ? v : undefined;
+    case 'text': return typeof v === 'string' ? (v.length > RELAY_FORM.TEXT_MAX ? v.slice(0, RELAY_FORM.TEXT_MAX) : v) : undefined;
+    case 'ints2': return isInts(v, 2) ? v.slice() : undefined;
+    case 'ints5': return isInts(v, 5) ? v.slice() : undefined;
+    case 'offer': {
+      if (!v || typeof v !== 'object' || Array.isArray(v)) return undefined;
+      const keys = Object.keys(v);
+      if (keys.length > RELAY_FORM.OFFER_KEYS) return undefined;
+      const o = {};
+      for (const k of keys) {
+        if (k.length > RELAY_FORM.KEY_MAX || !isInt(v[k]) || v[k] < 0) return undefined;
+        o[k] = v[k];
+      }
+      return o;
+    }
+    default: {
+      const m = /^str(\d+)(\?)?$/.exec(String(form));
+      if (!m) return undefined;
+      if (v === null && m[2]) return null;
+      return isStr(v, +m[1]) ? v : undefined;
+    }
+  }
+}
+
 /* v2.3.5543: each queued relay's bytes, so the tick's drain gives them back
    (_relayDrained).  A WeakMap: nothing is added to the message the phones get */
 const QUEUED = new WeakMap();
@@ -79,6 +172,14 @@ const QUEUED = new WeakMap();
 const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
 
 export const relayMethods = {
+  /* v2.3.5724: `relaytyped: false` in the live flags: a relay keeps every
+     field the phone put in it, and the room's send reaches a socket that
+     never joined, as before (on unless its own falsy value) */
+  _relayTypedOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && own(f, 'relaytyped') && !f.relaytyped);
+  },
+
   /* May a phone relay a message of this type to the others? */
   _relayAllowed(type) {
     if (RELAY.TYPES.has(type)) return true;
@@ -92,7 +193,21 @@ export const relayMethods = {
      wsClient.js channelShim). */
   _relayBuild(session, msg) {
     const src = msg && msg.payload;
-    const p = (src && typeof src === 'object' && !Array.isArray(src)) ? { ...src } : {};
+    let p = (src && typeof src === 'object' && !Array.isArray(src)) ? { ...src } : {};
+    /* v2.3.5724: only the row's fields, each to its form (RELAY_FORMS
+       above); the sender's id and name keys are the worker's (below) */
+    const forms = !this._relayTypedOff() && msg && Object.prototype.hasOwnProperty.call(RELAY_FORMS, msg.type) ? RELAY_FORMS[msg.type] : null;
+    if (forms) {
+      const typed = {};
+      for (const k of Object.keys(forms)) {
+        if (!own(p, k)) continue;
+        const v = relayFieldForm(forms[k], p[k]);
+        if (v !== undefined) typed[k] = v;
+      }
+      for (const k of RELAY.ID_KEYS) if (own(p, k)) typed[k] = true;
+      for (const k of RELAY.NAME_KEYS) if (own(p, k)) typed[k] = true;
+      p = typed;
+    }
     p.id = session.id;
     for (const k of RELAY.ID_KEYS) if (own(p, k)) p[k] = session.id;
     const name = this._relayName(session);
