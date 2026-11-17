@@ -14,11 +14,10 @@ state: ready
 
 ## Next
 
-- 5549 `movetop`, 5550 `bowshot` (3.3 -> 1.60; OFF) merged. 5551 (this
-  branch): `swordswing` and `movetop` ON (the owner, 2026-11-17: "Go
-  recommended"). The bow's reach tried: no gain past the spread. 5553
-  (this branch): `cookstart` OFF (the cook 1.59 -> 0.99). The harvest's
-  grade: a Found, the owner's (the planner).
+- 5549, 5550 merged; 5551 `swordswing`, `movetop` ON ("Go recommended");
+  5553 `cookstart` OFF (the cook 1.59 -> 0.99). The bow's reach: no gain.
+- Asked (the planner): with 5553 `npm test` takes 312 s, over precheck's
+  5-minute cap (the thrown guard 261 s; cookstart's row adds 20 suite runs).
 - Later (the planner): walls on the worker (the Wheel's coast): a new
   system and worker memory, for when real players come.
 - wsClient.js: done for good (told L). index.js, combat.js: 14 still.
