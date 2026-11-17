@@ -4,7 +4,7 @@ prs: #ZPR (this PR), tag 5678, the last line of sitting 40's list (ready)
 state: ready
 
 ## Done
-- `census/review-z40.md`. No tick (nothing of a step merged since 39's).
+- `census/review-z40.md`. No tick (nothing of a step merged since 39).
 ## The list: merge in this order, each "Create a merge commit"
 1 SEC #2055 (5712, the chain's day budget; `chainscore`) · 2 SEC #2056
 (5713, the dev console blanks keys) · 3 SEC #2057 (5714, three guards;
@@ -18,7 +18,8 @@ deploys once. With #2055-#2063 card SEC is done.
 - Held at review, mended this sitting: #2055, #2059, #2063 (census).
   None stalled. To 41: L #2058 (READY; its `guarddoor` row meets
   #2059's `gearheld` in SWITCHES.md), #2065 (meets #2066 in
-  movement.js), #2067: L merges `main` in up the stack after this list.
+  movement.js), #2067: L merges `main` in up the stack after this list;
+  K2 #2068 (`relaytyped`, on #2066; came at 21:06).
 ## Found
 - (a) `mp-alliance` 3 13-15/16 since #2022; no card. (b) `movetop` ON:
   ride, sprint, potion suites hold only the flat bound. (c) #2033: a
@@ -28,13 +29,12 @@ deploys once. With #2055-#2063 card SEC is done.
   `session.id` undefined (join.js). (g) #2038: a known field a save
   leaves out comes from a newer record. (h) Received friend requests
   never expire (friends.js). (i) `mp-movepath`'s two "no worse" checks
-  fail on main's worker. (k) A joiner's state_sync carries `rpgData`. (l) #2060: the Test panel's "Let one
-  new device in" promises what `oldkeyheld` stops (DevPanel.jsx). (m)
-  #2059: the phone adds a 49th chest piece the worker never holds
-  (wsClient.js 4426). (n) #2062: `www.` and the bare domain no longer
-  share the character list (the planner: keep; the owner's to know).
+  fail on main's worker. (k) A joiner's state_sync carries `rpgData`.
+  (l) #2060: the Test panel's "Let one new device in" promises what
+  `oldkeyheld` stops (DevPanel.jsx). (m) #2059: the phone adds a 49th
+  chest piece the worker never holds (wsClient.js 4426). (n) #2062:
+  `www.` and the bare domain no longer share the character list.
 ## Needs
 - The owner: `cookstart` ON (undecided); the cost switches (`reqstamp`,
   `fullsnap`, `xferescrow`, `resetbook`, `seathold`, `freezedevice`),
-  `.github/`, Cloudflare (`EDGE_GUARD`, `EDGE_CACHE`, `BODY_CAP`). Next
-  tag: 5679.
+  `.github/`, Cloudflare (`EDGE_GUARD`, `EDGE_CACHE`, `BODY_CAP`). 5679.

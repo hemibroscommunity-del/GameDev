@@ -228,9 +228,11 @@ says so). The second merges `main` first. With #2065 (meets #2066 in
 `server/src/movement.js`) and #2067, L merges `main` in up the stack
 after this list lands.
 
-## L #2065, #2067 (5537, 5538): to sitting 41
+## L #2065, #2067 (5537, 5538); K2 #2068 (5724): to sitting 41
 
-Marked ready at 20:48, stacked on #2058. Not reviewed this sitting.
+L's two marked ready at 20:48, stacked on #2058. K2's #2068
+(`relaytyped`, b8b5f721, on #2066) came at 21:06, after the planning
+session asked for the list within 15 minutes. Not reviewed this sitting.
 
 ## The rehearsal
 
