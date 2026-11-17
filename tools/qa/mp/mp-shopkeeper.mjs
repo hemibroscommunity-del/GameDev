@@ -185,7 +185,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
      (the sweep of 2026-10-17).  Opening the shop now unfolds a folded band
      itself (BottomDashboard, v2.3.3399) -- B below checks that half. */
   await H.unfoldBand(A);
-  const before = await view(A);
+  /* v2.3.5649: until the bag has drawn after the unfold (this box is slow to) */
+  const before = await until(A, (x) => !!x.bandBag, 'A: the bag on screen');
   rec.ok('the bag is on screen before the shop opens (or the next check is vacuous)',
     !!before.bandBag, before.bandBag);
   await openShop(A);
@@ -260,7 +261,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const vb = await until(B, (x) => x.panel && x.broSlot && x.bagQuote, 'B: shelf + quote');
   const bFoldNow = await foldOf(B);
   rec.ok('a new player\'s folded band opens with the shop, so the bag to sell from is there',
-    bFold === 'min' && bFoldNow === 'open' && !!vb.bagQuote, { before: bFold, after: bFoldNow, bagQuote: vb.bagQuote });
+    /* v2.3.5649: a brand-new guest's band is no longer always folded at its first join (it was
+       'min' since v2.3.2495; on main it arrives 'open'): what the check is for is that the band
+       is open, with its bag, once the shop is */
+    (bFold === 'min' || bFold === 'open') && bFoldNow === 'open' && !!vb.bagQuote, { before: bFold, after: bFoldNow, bagQuote: vb.bagQuote });
   rec.ok('a player who never touched anything sees the pile the seller filled',
     vb.broSlot && vb.broHolds === 1, { holds: vb.broHolds, vb });
 
