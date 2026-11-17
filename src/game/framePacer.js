@@ -318,12 +318,14 @@ const STEPS_KEPT = 8;
 /** Does the governor move the ladder on this page?  `govern=0` no, `govern=1`
  *  yes; else not where the address names a lane (a test's page), else yes. */
 export function governOn(search) {
-  /* v2.3.5232 (card O PR 12): through the page's one reader; a lane named
-     is a value written (`?lane` with none names no lane) */
+  /* v2.3.5232 (card O PR 12): through the page's one reader; `?lane` in
+     the address at all holds the ladder (`?lane=` did, as before; a bare
+     `?lane`, which the old test let through, now holds it too: the reader
+     cannot tell the two apart) */
   const r = typeof search === 'string' ? readerFor(search) : { swValue };
   const g = r.swValue('govern');
   if (g === '0' || g === '1') return g === '1';
-  return !r.swValue('lane');
+  return r.swValue('lane') === null;
 }
 
 /* the frame meter's samples, handed in (perfTracker.js): each(fromT, fn)

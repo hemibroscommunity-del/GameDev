@@ -256,10 +256,20 @@ export const ADDRESS_PINS = Object.freeze([
 function addrPinned(addr) {
   const i = addr.indexOf('=');
   if (i >= 0) return swValue(addr.slice(0, i)) === addr.slice(i + 1);
-  if (addr === 'crowd') return !!swValue('crowd');
+  if (addr === 'crowd') return crowdWord(swValue('crowd'));
   if (addr === 'pace') return sw('pace');
   if (addr === 'nowaves') return sw('nowaves');
   return false;
+}
+/* `?crowd=K` as crowdCap.js crowdFromSearch takes it (a cap of 1-500, or
+   0/all/off for none): a word it ignores pins nothing.  Its copy here, held
+   to crowdFromSearch by off-ramps.test §3 (crowdCap.js imports this file) */
+function crowdWord(raw) {
+  if (raw === null) return false;
+  const v = String(raw).trim().toLowerCase();
+  if (v === 'all' || v === '0' || v === 'off') return true;
+  const n = Math.round(Number(v));
+  return Number.isFinite(n) && n >= 1;
 }
 /** The address pin on this knob on this page, or null. */
 export function addressPinOf(name) {

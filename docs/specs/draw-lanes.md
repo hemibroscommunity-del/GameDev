@@ -160,14 +160,18 @@ and no reader until then); a lane picked by facts beyond `thirty`.
   (`src/game/switches.js`, card T): `?lane`, `?govern`, `?pace`, every
   `?ladder*`, `?crowd`, `?pixbudget`, `?res` (and `?zoom`, in the same
   file), `?onebatch`, `?lookpalette`, and the passes' `?sheenpass`,
-  `?shadowpass`, `?nowaves`. A move changes no address's meaning: the
+  `?shadowpass`, `?nowaves`, and the knobs' other switches (`?sheen`,
+  `?lightfx`, `?waves`, `?stripslice` with `?stripgentle`: the sitting 25
+  gatekeeper). A move changes no address's meaning: the
   switches are held to their old tests by `switch-reader.test` (MOVED), the
   values by `off-ramps.test` §3. The functions keep their `search` argument
   (the tests' address, read by its own reader); none given, the page's.
-  Eight reads of `location.search` gone: T's line 212 to 204.
+  Twelve reads of `location.search` gone (T's line, after main's v2.3.5310: 201 to 189).
+  One change: a bare `?lane` (no value) now holds the ladder as `?lane=` did;
+  the reader cannot tell the two apart.
 - **An off-ramp that fixes its knob pins it** (`ADDRESS_PINS`, beside the
   device's `OVERRIDES`): `?onebatch=0|1` the program, `?lookpalette=0|1` the
-  look, `?nowaves` the water (`still`); `?pace=0` and `?crowd=K` hold the
+  look, `?nowaves` the water (`still`); `?pace=0` and `?crowd=K` (a word `?crowd` takes) hold the
   rate and the crowd at their row (nothing reads them). `pinOf` asks this
   page's address first; `liveKnobs` leaves every pinned knob out, so the
   governor never takes a rung on it. A choice asking as another device

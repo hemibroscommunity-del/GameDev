@@ -79,7 +79,7 @@ import { setWheelWaterMoves } from '../game/wheelTrial.js';
 import { isPaletteSource, paletteAtlasSource, paletteOn, makePaletteSource } from './paletteTex.js';   /* v2.3.3190 */
 import { laneKnob, onKnob, seeKnob } from '../game/drawLanes.js';   /* v2.3.5229: the moving sea is a knob of the lanes (card O PR 9) */
 import { selfDraw, selfQueue, selfSkip, selfTestOn, selfRgba, selfIdx, selfPalBytes, selfWaterField, selfWaterWant, SELF_SIZE } from './selfTest.js';   /* v2.3.5236: the self-test at the door (card O PR 14b) */
-import { sw } from '../game/switches.js';   /* v2.3.5232 (card O PR 12): the passes' switch through the page's one reader */
+import { sw, swValue } from '../game/switches.js';   /* v2.3.5232 (card O PR 12): the passes' switch through the page's one reader */
 
 const VERT = `
 in vec2 aPosition;
@@ -511,7 +511,7 @@ function palProgram(all = _webAll) {
    owner can try it bolder or calmer on a phone, where there is no console) */
 function wavesStrength() {
   try {
-    const m = /(?:^|[?&])waves=([0-9.]+)(?:&|$)/.exec(window.location.search || '');
+    const m = /^([0-9.]+)$/.exec(swValue('waves') || '');   /* v2.3.5232 (card O PR 12): through the page's one reader */
     const k = m ? Number(m[1]) : NaN;
     if (Number.isFinite(k)) return Math.max(0.25, Math.min(3, k));
   } catch (e) { /* no address */ }
