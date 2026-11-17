@@ -220,7 +220,7 @@ check('3d ...and the worker answers a cancel with no trade on file only when the
 
 /* ── 4. the wiring ── */
 const ws = src('src/networking/wsClient.js');
-const sync = ws.indexOf("setParty(null); S._party = null;");
+const sync = ws.indexOf("setParty(null); partyTo(S, null, 'rejoin');");   /* v2.3.5529: the party's page door */
 check('4a wsClient\'s state_sync runs the trade window\'s join rule beside the party',
   sync > 0 && /t2OnStateSync\(S, setTrade2\)/.test(ws.slice(sync, sync + 1200)));
 check('4b ...t2OnStateSync imported from game/tradeSlot.js', /import \{[^}]*\bt2OnStateSync\b[^}]*\} from '@\/game\/tradeSlot\.js';/.test(ws));

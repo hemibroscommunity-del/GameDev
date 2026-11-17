@@ -30,6 +30,7 @@
  * so node can test it (server/test/duel-pending.test.mjs).
  */
 import { lockOntoDuelOpponent } from './duelLock.js';
+import { duelTo } from './duelDoor.js';   /* v2.3.5529: the duel's page door */
 
 /* ═══ v2.3.4628: THE CHALLENGE CARD HAS A CLOCK OF ITS OWN ═══
    The worker holds a challenge for DUEL.CHALLENGE_TTL (server/src/duel.js, 2
@@ -58,14 +59,14 @@ export const DUEL_PENDING = Object.freeze({
  *  Returns the new `_inDuel`. */
 export function enterPendingDuel(S, fromId, fromName, wager, now) {
   const prev = S._inDuel && !S._inDuel.settleBy ? S._inDuel : null;
-  S._inDuel = {
+  duelTo(S, {
     opponent: fromId,
     opponentName: fromName,
     wager: wager || 0,
     startTime: now,
     settleBy: now + DUEL_PENDING.SETTLE_MS,
     prev,
-  };
+  }, 'pending');   /* v2.3.5529: the duel's page door (the note untouched, as before) */
   return S._inDuel;
 }
 
@@ -84,8 +85,7 @@ export function settleOwnAccept(S, payload) {
 function dropPending(S) {
   const d = S._inDuel;
   const foe = String(d.opponent);
-  S._inDuel = d.prev || null;
-  if (S._activeDuel && String(S._activeDuel.partnerId) === foe) S._activeDuel = null;
+  duelTo(S, d.prev || null, 'drop', S._activeDuel && String(S._activeDuel.partnerId) === foe ? null : undefined);   /* v2.3.5529: the duel's page door */
   if (S.lockedTarget && S.lockedTarget.type === 'player' && String(S.lockedTarget.id) === foe) {
     S.lockedTarget = null;
     if (d.prev) lockOntoDuelOpponent(S, d.prev.opponent);
