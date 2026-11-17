@@ -24,7 +24,9 @@
  *   - the timing checks on harvesting and cooking: the too-early strike and
  *     the strike with no start of its own (gathering.js _handleNodeStrike),
  *     the 45 perfect harvests a minute (_ratedHarvestAccuracy), the 45 cooks a
- *     minute and the 900 ms between cooks (cooking.js), and the bot scoring
+ *     minute and the 900 ms between cooks (cooking.js), a cook's result held
+ *     to the cook it started (v2.3.5553, cooking.js _cookStartTake,
+ *     `cookstart`), and the bot scoring
  *     with its 2,400-an-hour caps (botfp.js _botfpOnStrike, _botfpOnCook) --
  *     nothing is scored or flagged; and the server's own bot signals (v2.3.3731,
  *     botsig.js _sigSkip, _sigOnWindup, _sigReverifyOk): nothing measured,

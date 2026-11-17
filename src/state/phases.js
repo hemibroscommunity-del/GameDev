@@ -436,13 +436,15 @@ export const PHASES = [
     note: 'v2.3.5218: the page door (RACE_PAGE_WAYS ask, fail, state, gun, end, dismiss, timeout, forget; the rules are race.js\'s own checks; ?racedoor=0). The phase is the record\'s own `phase`; the gun turns it in place. S._raceLil (Lil Bro\'s run, drawn) is a note beside it: it outlives the race until he is home.',
   },
   {
-    name: 'arena', side: 'page', status: 'todo',
+    name: 'arena', side: 'page', status: 'door',
     what: 'The phone\'s view of the tournament and its own match.',
-    field: null, states: ['none', 'involved', 'fighting'], fn: null, file: null,
+    field: 'S._arenaMatch', states: ['none', 'involved', 'fighting'],
+    fn: 'arenaTo', file: 'src/game/arenaDoor.js',
     clears: [{ edge: 'rejoin', at: 'src/game/rejoinSlots.js rejoinClear' }],
     rejoin: ['arena'],
-    today: [{ field: 'S._arenaMatch' }, { field: 'S._arenaInvolved' }, { field: 'S._arenaTournamentId' }, { field: 'S._arenaStakeBoard' }],
-    note: 'A match rides S._inDuel (the duel\'s row): the rejoin clears it with the duel.',
+    held: { suite: 'server/test/arena-page-door.test.mjs' },
+    notes: ['S._arenaInvolved', 'S._arenaTournamentId'],   /* v2.3.5531: written beside the field by the same call */
+    note: 'v2.3.5531: the door (ARENA_PAGE_WAYS poll; switch ?arenadoor). Its notes S._arenaInvolved and S._arenaTournamentId by the same call; beside it: the stake board (S._arenaStakeBoard, gameEvents.js) and the popup mark (S._arenaNotified). A match rides S._inDuel (the duel\'s row): the rejoin clears it with the duel.',
   },
   {
     name: 'dungeon', side: 'page', status: 'todo',

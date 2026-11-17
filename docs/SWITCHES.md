@@ -536,6 +536,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 |---|---|---|---|---|---|---|---|---|---|
 | `armorforge` | worker | switch | v2.3.3092 | 2026-10-06 | false | logic |  | no | Refuses every armour forge and un-advertises the cap; bars and armour already made are untouched. |
 | `bowdraw` | worker | switch | v2.3.4801 | 2026-11-11 | false | logic |  | no | No bow draw is counted and caps.bowDraw is un-advertised. |
+| `cookstart` | worker | switch | v2.3.5553 | off | true | logic |  | no | An opt-in, off (the owner's to turn on: it changes how a cook is judged): thrown (`cookstart: true`), a cook's result lands only on the plan the worker rolled at its start (the same fish, once), no sooner than its hits and the gesture could be played; one result with no plan a session, for a restart. |
 | `cropeat` | worker | switch | v2.3.3537 | 2026-10-21 | false | logic |  | no | No crop is eaten, and caps.cropeat reads false so the bag offers no Eat. |
 | `dropgrades` | worker | switch | v2.3.3952 | 2026-11-03 | false | logic |  | no | A monster drop's grade is rolled on the forge's odds again. |
 | `exdoor` | worker | switch | v2.3.5213 | 2026-11-14 | false | logic |  | no | The claim on a move (cook, fire, mine, chop, fish, a farm step) takes any value a phone sends again, as the line before the cook door did; the game's own claims pass either way. |
@@ -580,6 +581,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?allydrafts` | page | switch | v2.3.5524 | 2026-11-17 | =0 | logic |  | no | The Saloon's alliance forms keep nothing: a rejoin makes them again empty, what the leader typed lost, as before. |
 | `arenaap` | worker | switch | v2.3.3481 | 2026-10-19 | false | logic |  | no | The arena champion is paid gold alone, no AP, and the cap is un-advertised. |
 | `arenadoor` | worker | switch | v2.3.5522 | 2026-11-17 | false | logic |  | no | The tournament takes any write its own code asks again (an open over one, a start or crown from any phase, a crown with no champion, a clear while it runs), as the lines before the arena door could have; the callers still check each first. |
+| `?arenadoor` | page | switch | v2.3.5531 | 2026-11-17 | =0 | logic |  | no | The phone's arena takes any match its poll asks again (one that is no record), as the line before the arena's page door; the poll writes what the door allows today. |
 | `arenaeatgate` | worker | switch | v2.3.4413 | 2026-11-10 | false | logic |  | no | Eating in an arena match is gated by the match flag alone, as before. |
 | `arenasettleplan` | worker | switch | v2.3.5089 | 2026-11-14 (v2.3.5095) | false | logic |  | no | An arena match's stakes settle in the old order again (the losers stamped first, then each payout in a write of its own): a restart mid-settlement can lose the stakes. On since v2.3.5095 (the owner's yes; two rows a match). |
 | `arenastakeonewrite` | worker | switch | v2.3.4796 | 2026-11-11 | false | logic |  | no | An arena sponsor's stake goes back to its old two writes. |
