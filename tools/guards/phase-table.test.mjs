@@ -130,6 +130,8 @@
  * v2.3.5525 (the loading door):
  *  39. `S._farmArtHold = seq;` back in farmTrip.js -> loading-door.test FAIL 2
  *  40. `S._veils = new Map();` in zoneTransitions.js -> FAIL 2
+ * v2.3.5531 (the arena's page door):
+ *  47. `S3._arenaMatch = null;` back in BroTown.jsx -> arena-page-door.test FAIL 2
  * v2.3.5530 (the trade's and the ride's page doors):
  *  45. `S._t2Live = null;` back in rejoinSlots.js -> trade-page-door.test FAIL 2
  *  46. `r.on = !!p.on;` back in ride.js rideApply -> ride-page-door.test FAIL 2
@@ -375,6 +377,9 @@ const DOOR_SUITES = Object.freeze({
   /* v2.3.5523: the ride door (ps._ridePid is written beside it, in _rideTo) */
   'server/test/ride-door.test.mjs': { field: 'ps._ride', fn: '_rideTo', holds: '§2: no write of ._ride or ._ridePid in server/src outside _rideTo',
     prop: '_ride', besides: [] },
+  /* v2.3.5531: the arena's page door (its notes: the suite's §2) */
+  'server/test/arena-page-door.test.mjs': { field: 'S._arenaMatch', fn: 'arenaTo', holds: '§2: no write of S._arenaMatch, S._arenaInvolved or S._arenaTournamentId in src/ outside arenaTo',
+    prop: '_arenaMatch', besides: [] },
   /* v2.3.5530: the trade's page door */
   'server/test/trade-page-door.test.mjs': { field: 'S._t2Live', fn: 't2LiveTo', holds: '§2: no write of S._t2Live in src/ outside t2LiveTo',
     prop: '_t2Live', besides: [] },
