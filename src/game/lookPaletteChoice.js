@@ -43,6 +43,7 @@
  * file), so node can test it (server/test/look-palette-choice.test.mjs).
  */
 import { laneKnob, pinOf, askingAs } from './drawLanes.js';
+import { readerFor, swValue } from './switches.js';   /* v2.3.5232 (card O PR 12): `?lookpalette` through the page's one reader */
 import { devAsk, onWindows, onMac, useLookChoice } from './deviceProfile.js';
 
 export { onWindows, onMac };
@@ -53,8 +54,9 @@ export { onWindows, onMac };
  *  has the memory), else on.  `{ on, why }`, why 'address' | 'windows' |
  *  'mac' | 'default'.  The search alone: this page's own device. */
 export function lookPaletteChoice(search, ua, platform, touchPoints) {
-  const m = /(^|[?&])lookpalette=([01])(&|$)/.exec(typeof search === 'string' ? search : '');
-  if (m) return { on: m[2] === '1', why: 'address' };
+  /* v2.3.5232: the value through the page's one reader (none handed in: the page's) */
+  const v = typeof search === 'string' ? readerFor(search).swValue('lookpalette') : swValue('lookpalette');
+  if (v === '0' || v === '1') return { on: v === '1', why: 'address' };
   const read = () => {
     const pin = pinOf('look');
     return { on: laneKnob('look') === 'palette', why: pin ? pin.when : 'default' };
