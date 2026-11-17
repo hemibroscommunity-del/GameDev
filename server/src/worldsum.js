@@ -87,7 +87,15 @@ export const READERS = {
     }
   },
   'pets:': (ctx, key, v) => { for (const pet of (v && Array.isArray(v.list) ? v.list : [])) if (pet && typeof pet.id === 'string') ctx.ids.push(['pet', pet.id, key]); },
-  'mkt_order:': (ctx, key, v) => { ctx.gold += orderEscrowGold(v); if (v && v.type === 'sell') holdWeapon(ctx, v.item, key); /* v2.3.5282: a sell order's weapon, by its id */ },
+  'mkt_order:': (ctx, key, v) => {
+    ctx.gold += orderEscrowGold(v);
+    /* v2.3.5282: a sell order's weapon, by its id -- but not once a noted
+       sale's item leg is stamped paid (market.js _mktSettleRun: the weapon
+       is the buyer's now; the record goes when every leg is): as a listing's
+       `goodsPaid` (the gatekeeper's sitting 23, its worldsum.js:90 low) */
+    const paid = !!(v && v.settle && typeof v.id === 'string' && ctx.stamped && ctx.stamped('settle:' + v.id + ':item'));
+    if (v && v.type === 'sell' && !paid) holdWeapon(ctx, v.item, key);
+  },
   'store_listing:': (ctx, key, v) => {
     if (!v) return;
     if (v.kind === 'item' && typeof v.invKey === 'string' && !(v.sale && v.sale.goodsPaid)) add(ctx.goods, v.invKey, Math.max(0, Math.floor(Number(v.qty) || 0)));
@@ -201,6 +209,7 @@ export function count(room, state, readers = READERS) {
     }
   }
   const keys = [...store.keys()].sort();
+  ctx.stamped = (opId) => store.has('oplog:' + opId);   /* v2.3.5282: a stamp on file (a noted sale's leg paid) */
   for (const key of keys) worldAdd(ctx, key, store.get(key), readers);
   const dup = [];
   const seen = new Map();

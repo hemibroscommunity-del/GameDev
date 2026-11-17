@@ -25,11 +25,12 @@
  *   - `if (field === 'weaponStash') weaponIdGive(piece);` deleted from stashGive -> FAIL 2
  *   - `|| seen.has(w.gid)` deleted from weaponIdsAll                 -> FAIL 3 (two share one)
  *   - `('gid' in w && !weaponIdOk(w))` made `'gid' in w`              -> FAIL 5, FAIL 6 (every weapon dropped as gear)
+ *   - worldsum.js's mkt_order `paid` made `false`                       -> FAIL 7 (a paid sale's weapon counted twice)
  */
 import { gearMintId, GID_RE } from '../src/gearprov.js';
 import { stashGive, stashSet, weaponIdOk, weaponIdGive, weaponIdsAll, WEAPON_HANDS } from '../src/stash.js';
 import { RPG_SCHEMA_VERSION, MIGRATIONS, runRpgMigrations } from '../src/migrations.js';
-import { READERS, worldCtx } from '../src/worldsum.js';
+import { READERS, worldCtx, count as worldCount } from '../src/worldsum.js';
 import { makeStorage, openRoom, join, fakeWs, settle } from './testroom.mjs';
 
 let failures = 0, passes = 0;
@@ -153,6 +154,23 @@ const room5 = await openRoom(st5);
     ['inbox:bp_x', [{ kind: 'weapon', payload: { weapon: blade(5, { gid: g() }) } }]]];
   for (const [k, v] of where) { const p = Object.keys(READERS).find((x) => k.startsWith(x)); READERS[p](ctx, k, v); }
   check('7. the world\'s sum counts a weapon by its id in the bag, a listing, a sell order, a trade window and the mail', ctx.ids.filter((x) => x[0] === 'gear').length === 5, ctx.ids);
+}
+
+/* the gatekeeper's sitting 23 (worldsum.js:90): a noted sale whose item leg
+   is paid -- the weapon now in the buyer's mail, the sell order still on file
+   until every leg is -- counts the weapon once, not twice */
+{
+  const w = blade('n', { gid: gearMintId({}) });
+  const order = { id: 'o9', type: 'sell', playerId: 'bp_s', item: { ...w }, price: 5,
+    settle: { v: 1, legs: [{ leg: 'item', to: 'bp_b', weapon: { ...w } }, { leg: 'gold', to: 'bp_s', amount: 5 }] } };
+  const store = new Map([['mkt_order:o9', order], ['inbox:bp_b', [{ kind: 'weapon', payload: { weapon: { ...w } } }]], ['oplog:settle:o9:item', 1]]);
+  const paid = worldCount({ playerState: {} }, store);
+  store.delete('oplog:settle:o9:item'); store.delete('inbox:bp_b');
+  const unpaid = worldCount({ playerState: {} }, store);
+  check('7. a noted sale whose item leg is paid counts its weapon once (the buyer\'s), not twice; unpaid, the order still holds it',
+    paid.dup.length === 0 && unpaid.dup.length === 0, { paid: paid.dup, unpaid: unpaid.dup });
+  store.set('inbox:bp_b', [{ kind: 'weapon', payload: { weapon: { ...w } } }]);
+  check('7. ...and with no stamp, a weapon in both places is still a duplicate (the guard keeps its teeth)', worldCount({ playerState: {} }, store).dup.length === 1);
 }
 
 await settle();
