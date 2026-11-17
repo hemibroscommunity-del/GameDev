@@ -1,19 +1,21 @@
 card: M
-branch: claude/plan-m-2-steps (PR 2, tag 5341; stacked on #2089, base main)
-prs: #2089 (5340): ready, in sitting 42's rehearsal; PR 2 (5341): working
+branch: claude/plan-m-3-reads (PR 3, tag 5342; stacked on PR 2, base main)
+prs: #2089 (5340): merged; PR 2 (5341): pushed, phone runs; PR 3 (5342): built
 state: working
 
 ## Done
 - Chain A only (lines 1-3, BroTown.jsx, tags 5340-5342); chain B is M2
-- PR 1 #2089 (5340): ready, at the gatekeeper
+- PR 1 #2089 (5340): merged (main fcd1ae9)
 
 ## Next
-- PR 2 (5341), more named steps, moves nothing: the ten single calls
-  inside legacy (tap, sound, ride, zone, farm, townsfolk, monsters,
-  weaponFeel, loot, peers) marked `to(a, b)` on their own lines; the guard
-  walks every mark; legacy 1555 -> 1531 code lines; mp-framesteps 19/19,
-  17 steps. after-frame.test 2a takes a mark's index as `\d+` (the
-  planning session's answer; deploys). Running the combat tests.
+- PR 2 (5341), more named steps: ten single calls inside legacy marked
+  `to(a, b)`; legacy 1555 -> 1531; after-frame 2a `\d+` (planner; deploys).
+  Phone: framesteps, manualcombat (+ on main: its 10a), heldcombat,
+  crowdfight, monstermoves running.
+- PR 3 (5342), BroTown.jsx's 16 reads: 13 on sw/swHas (MOVED, chain A's
+  block), 3 rules on pageAddress(); switch-reader check 3 34 -> 18;
+  frame-clock 8b, frame-pacer 10c patterns to pageAddress() (planner's (a);
+  deploys, batched with PR 2).
 
 ## Found
 - tools/dev/precheck.mjs: server-tests' 5-minute limit times out on this
@@ -24,5 +26,5 @@ state: working
   four ways); BUDGETS part 3's caches.
 
 ## Needs
-- The gatekeeper's review of #2089 (sitting 42).
+- PR 2 and PR 3 open after the phone runs; sitting 43 reviews.
 
