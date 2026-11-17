@@ -1,6 +1,6 @@
 card: Z
 branch: claude/plan-z-sitting-41
-prs: Z_PR (this PR), tag 5679, the last line of sitting 41's list (ready)
+prs: #2086 (this PR), tag 5679, the last line of sitting 41's list (ready)
 state: ready
 
 ## Done
