@@ -12,13 +12,14 @@ Every listed PR is based on `main`, with one merge base at every step
 (`git merge-base --all`, each against `main` with the PRs above it merged
 in). The tree after each merge (`git merge-tree`, step by step):
 1 #1984 a57275c5 · 2 #1986 36bcc5ed · 3 #1987 51e5f022 · 4 #1980 ce8ca16a ·
-5 #1978 3af93d09 · 6 #1985 e37d5fa3 · 7 #1988 c7ce9b90.
+5 #1989 78afb48a · 6 #1978 729ccb21 · 7 #1985 257153ff · 8 #1991 9c9796ce ·
+9 #1988 0670f9eb.
 
-Rehearsed (`tools/dev/gatekeeper.mjs`, J2 x3, R, T, O on ee235aaa; the
-merged tree e37d5fa3): precheck PASS (0 FAIL, 1 WARN, 303 s), build PASS,
-questline 187/187 (468 s): all green on the whole. P #1988 on top (tree c7ce9b90): four-lines,
-state-ledger, draw-lanes, switch-reader guards green.
-A first try (with K #1981, the box loaded by four reviewers) failed only
+Rehearsed (`tools/dev/gatekeeper.mjs` on ee235aaa): J2 x3, R, K #1989,
+T, O #1985, P (tree 74e3dd50): precheck PASS (0 FAIL, 305 s), build
+PASS, questline 187/187 (468 s). O #1991 added after #1985, the whole
+list (tree 0670f9eb): precheck PASS (0 FAIL, 2 WARN), build PASS. A
+first try (with K #1981, the box loaded by four reviewers) failed only
 precheck's `server-tests` 5-minute limit (sitting 25's Found, again).
 
 ## J2 #1984 (5645), #1986 (5646), #1987 (5647): the tests'
@@ -87,6 +88,15 @@ resets to its row once. Lows (O hands them to the planning session):
 - a halved frame counts until its 30 s destroy, so a full memory steps
   caches, crowd 1, crowd 2 in about 16 s (§15: 3 steps in 12 verdicts).
 
+## O #1991 (5681): #1985's three lows, mended
+
+READY. Stacked on #1985 (58f81332 merges 47e87551). The memory's count is
+read only while the governor judges (`gov.judging()`, framePacer.js:201);
+sound is out of the verdict (`MEM_LINES` art and gpu only; the planning
+session's word: no rung lowers sound, a sound rung is later work); a
+memory rung waits `MEM_SETTLE_MS` 35 s, past the 30 s deferred destroy.
+frame-pacer 135/0, report 115/0; O: questline + memory-budget 198/198.
+
 ## P #1988 (5571): the hair probes read your own hair
 
 READY (late arrival, 1 line). `_lastHairDisplay` is set where the local
@@ -94,7 +104,13 @@ player's hair is placed, not in `_orderHairOverHat` for every figure: the
 probes `__btHairOrder` and `__btCapeHair` read only it. QA only. Low:
 `status/P.md` on the branch still says 5570, `done`.
 
-## K #1981 (5546) HELD; #1983 (5195) held with it
+## K #1989 (5195): every other value request at the wire door
+
+#1983 as reviewed (fc457d8c) with main ee235aaa merged, free of #1981;
+it differs from that merge only in `status/K.md`. READY with the low
+below. #1983 is closed as replaced.
+
+## K #1981 (5546) HELD (K's mend 2b1eda83 came late: sitting 28)
 
 #1981, MEDIUM: the page's new re-send (actions.js:554, once after 1.5 s on
 a failed fetch or a 5xx) can sell a second weapon after a Durable Object
@@ -109,8 +125,8 @@ off the re-send. Low: `arena/join` is re-sent (actions.js:447) but the
 worker's column is `reqId:'state'`: a lost answer's re-send reads
 "Already queued" (gladiator.js:357) as an error while the player is
 queued (no second fee).
-#1983 READY with a low on its own (fc457d8c, clean on main), but K stacked
-it on #1981 (9affded0) before the hold arrived. Low: door entries share
+#1983/#1989 READY with a low on its own (fc457d8c, clean on main).
+Low: door entries share
 the 32-slot `_reqSeen` list with the market's and store's answers and are
 kept even when refused (reqonce.js:76, KEEP :35): 32 door messages push a
 route's answer out (tried: a second weapon sold after 32 bad
