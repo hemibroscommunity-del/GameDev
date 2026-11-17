@@ -512,6 +512,13 @@ play, a number 1.1 can measure.
   1.42 on the bench, the honest sword unrefused; merged at sitting 33. The
   box waits for the move and the bow judges (the gatekeeper, sitting 34,
   tag 5672).*
+  *K's #2021 (5549, the move's top: the bound refills at the player's own
+  top speed, not a flat 500 px a second; `movetop`, OFF as merged) and
+  #2023 (5550, a bow's claim lands on an arrow the worker saw leave;
+  `bowshot`, OFF), merged at sitting 34: on the bench the move's liar
+  2.56 -> 1.17 and the bow label 3.3 -> 1.60 with each on, the honest
+  walker and archer unrefused. The box waits for the bow's reach, the
+  harvest and the cook (the gatekeeper, sitting 35, tag 5673).*
 - [ ] **4.3 [NEXT] Doors for what is left of value**: experience and
   levels, the stashes, quest state, skill points. A weapon gets an id of its
   own, as gear has.
@@ -676,6 +683,10 @@ nothing known, and a restore copies nothing.
   *L's #2012 (5528, the connection door: `connTo`, `?conndoor`, ON),
   merged at sitting 32: 11 `todo` on `main` 35aa7f7b; the line lowered
   12 -> 11 (the gatekeeper, sitting 33, tag 5671).*
+  *L's #2022 (5529, the duel's and the party's page doors: `duelTo`,
+  `partyTo`; `?dueldoor`, `?partydoor`, ON), merged at sitting 34: 9
+  `todo` on `main` 01b8f33d; the line lowered 11 -> 9 (the gatekeeper,
+  sitting 35, tag 5673).*
 - [ ] **5.4 [LATER] The frame as named steps.** PR 1 moves nothing: the six
   calls the loop already makes, plus one `legacy` step, become the list;
   each counts its errors to the crash ring (a throw in the frame reaches
