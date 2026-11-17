@@ -13,6 +13,13 @@ and status/MOD.md); each session merged 4751cb7 in and sent a new head.
 R #1969, OPS #1975 and P #1976 merge clean as they are. One merge base at
 every step down the list (`git merge-base --all`, step by step).
 
+Rehearsed (`tools/dev/gatekeeper.mjs`, the six in list order on
+4751cb7; the merged tree e659112): precheck PASS (0 FAIL, 4 WARN, 300 s),
+build PASS, questline 187/187 (the five without #1873, tree 79220d2: the
+same, 3 WARN). `test` is green on every listed head. The tree after each
+merge, from `git merge-tree` step by step: 1 89d4b5b · 2 1039f88 ·
+3 8ccdc4e · 4 328c910 · 5 79220d2 · 6 e659112.
+
 ## R #1969 (5295): an arena share keeps its own bound
 
 READY. Shares count against `SHARES_MAX` 128, other ids against `IDS_MAX`
