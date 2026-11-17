@@ -268,6 +268,7 @@ const FORMS = {
   'treenumbers': '0',
   'trial': '',
   'trialhud': '',
+  'veildoor': '0',
   'warmonce': '0',
   'waves': '*',
   'wayback': '',

@@ -125,6 +125,9 @@
  *  36. `this._arena = null;` back in gladiator.js _tickArena -> FAIL 2
  *  37. `t.status = 'running';` back in _arenaStart -> FAIL 2 (the duel
  *      line's besides is the arena door's own, `fn`)
+ * v2.3.5525 (the loading door):
+ *  39. `S._farmArtHold = seq;` back in farmTrip.js -> loading-door.test FAIL 2
+ *  40. `S._veils = new Map();` in zoneTransitions.js -> FAIL 2
  *
  * Run from the repository's root: node tools/guards/phase-table.test.mjs
  * (cd server && npm test runs it with every other guard and suite).
@@ -353,6 +356,9 @@ const DOOR_SUITES = Object.freeze({
   /* v2.3.5522: the arena door (its status writes are the duel line's besides, in _arenaTo) */
   'server/test/arena-door.test.mjs': { field: 'this._arena', fn: '_arenaTo', holds: '§2: no write of this._arena in server/src outside _arenaTo, nor of a tournament\'s status',
     prop: '_arena', besides: [] },
+  /* v2.3.5525: the loading door (its reasons' old fields: the suite's §2) */
+  'server/test/loading-door.test.mjs': { field: 'S._veils', fn: 'veilTo', holds: '§2: no write of S._veils, nor of a veil\'s old field (S._zoneLoading, S._wheelTripVeil, S._townArtHold, S._farmArtHold, S._avatarArtHold), in src/ outside veilTo',
+    prop: '_veils', besides: [] },
   /* v2.3.5521: the guard's page door */
   'server/test/guard-page-door.test.mjs': { field: 'S._shieldUp', fn: 'guardTo', holds: '§2: no write of S._shieldUp in src/ outside guardTo',
     prop: '_shieldUp', besides: [

@@ -680,6 +680,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?tod` | page | lever | v2.3.2703 |  | a phase name or a number (0 to 1) | none |  | no | Sets the time of day. |
 | `?trial` | page | lever | v2.3.2990 |  | present | none |  | no | The world trial's on-screen readout. |
 | `?trialhud` | page | lever | v2.3.2990 |  | present | none |  | no | The world trial's on-screen readout (the same as ?trial). |
+| `?veildoor` | page | switch | v2.3.5525 | 2026-11-17 | =0 | logic |  | no | The world's veils are written to their old fields alone, as the lines before the loading door; S._veils is not kept (nothing reads it to draw). |
 | `?wayback` | page | lever | v2.3.3021 |  | present | none |  | no | The world trial: the way back shown. |
 | `wheel5x` | worker | switch | v2.3.3299 | 2026-10-17 | false | logic |  | no | A room that has not yet chosen plays the short Wheel for its whole life. |
 | `wheeldeep` | worker | switch | v2.3.3013 | 2026-10-03 | false | logic |  | no | A Wheel spawned after it has the first tier's 48 monsters alone. |
