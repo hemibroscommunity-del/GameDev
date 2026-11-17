@@ -21,6 +21,7 @@ import { gemCutKey, gemIcon, gemElementName } from '@/data/gems.js';
 import { coinArtFor } from '@/game/coinArt.js';   /* v2.3.4151: the coins beside the filter */
 import { barNumber } from '@/game/barNumbers.js';   /* v2.3.4151: the coins' badge says a big purse short, as the top bar does */
 import { UnrevealedMark } from '@/ui/reveal/UnrevealedMark.jsx';   /* v2.3.4151: a "?" piece's mark, as on its card */
+import { act } from '@/game/actions.js';   /* v2.3.5191: the page's requests leave through the action door (card K PR 7) */
 
 /* ═══ v2.3.4151: THE GEAR TAB -- YOUR BAG, ONE CARD, YOUR GEAR ═══
  *
@@ -211,7 +212,7 @@ function cellContent(R, id, slots) {
     return { item: it || null, icon: sl && sl.iconSrc, quality: null, name: it ? it.name : 'Cape',
       unequip: it ? () => {
         const S = getState();
-        try { if (S && S.channel) S.channel.send({ type: 'cape_equip', payload: { worn: false } }); } catch (e) { /* offline */ }
+        try { if (S && S.channel) act('cape_equip', { worn: false }); } catch (e) { /* offline */ }   /* v2.3.5191: through the action door (actions.js) */
       } : null,
       rows: [] };
   }

@@ -243,6 +243,7 @@ const a = await join('bp_bd_a', 'devbda', 'Ada');
   const fb = await room._fishBoardEnsure();
   room._fishBoardEnter(fb, 'bp_bd_a', 'Ada', 'trout', 600, null, 2000);
   check('7i ...and its fish too: the stand-in still holds the record', fb.boards.trout.length === 2 && fb.boards.trout[0].gone && fb.boards.trout[0].g === 2400 && fb.boards.trout[1].pid === 'bp_bd_a' && !fb.boards.trout[1].gone, fb.boards.trout);
+  lb._top = null;   /* v2.3.5608: a board is kept a minute (leaderboard.js TOP_TTL_MS); read past it */
   top = await lb.getTop('combat', 50);
   check('7j the ranks hold both: the new life live, the old one gone', top.some((p) => p.id === 'bp_bd_a' && !p.gone) && top.some((p) => p.gone && p.lv === 12), top.map((p) => [p.id, p.gone, p.lv]));
   /* retiring twice changes nothing more */
@@ -378,6 +379,7 @@ const a = await join('bp_bd_a', 'devbda', 'Ada');
   r5.playerState.bp_ap_b.achievementPoints = 55;
   sB._lbAt = Date.now() - r5.LEADERBOARD_MIN_MS - 1000;
   await r5.reportToLeaderboard(sB);
+  L2._top = null;   /* v2.3.5608: a board is kept a minute (leaderboard.js TOP_TTL_MS); read past it */
   check('11d points earned reach the board at the next report, which they make due', (await apBoard())[0][0] === 'bp_ap_b' && (await apBoard())[0][1] === 55, await apBoard());
   sB._lbAt = Date.now() - r5.LEADERBOARD_MIN_MS - 1000;
   const putsBefore = L2.state._puts.length;

@@ -27,6 +27,7 @@ line), every door is in its system's files, and this page is what the table make
 | [bots](#bots) | telling a person from a script: bot signals, fingerprints, claims that are bounded |
 | [liveops](#liveops) | the live flags, the admin and dev levers, test mode, feedback |
 | [server-core](#server-core) | the worker's spine: saving, migrations, the tick, its pace, hidden settings, the room's own row |
+| [ops](#ops) | the room under a crowd and the watch on it: its health for a monitor, the waiting crowd's pace, a seat held, the public boards' and the room's public reads |
 | [combat](#combat) | hitting and being hit: weapons, abilities, the bow, shields, damage, PvP |
 | [monsters](#monsters) | the monsters' lives, moves, status, spawns and the boss |
 | [economy](#economy) | gold, the bag, the bank, the market and shops, trades, drops, chests and daily rewards |
@@ -84,8 +85,8 @@ A sitting: the join, leaving, lingering, the rejoin and what it re-sends.
 
 Who a player is: ids, accounts, the device lock, login keys, the account check, the sites that may open a socket.
 
-- **Files**: `server/src/`: account, devicelock, loginkeys, verify, broverify, origin, httpauth
-- **Files**: `src/game/`: tabIdentity, characterRecord
+- **Files**: `server/src/`: account, devicelock, loginkeys, verify, broverify, origin, httpauth, charname
+- **Files**: `src/game/`: tabIdentity, characterRecord, charName
 - **Files**: everything under `src/ui/account/`
 - **Doors**: none named yet
 - **Switches**: [its rows in the switch table](SWITCHES.md#identity)
@@ -107,7 +108,7 @@ Telling a person from a script: bot signals, fingerprints, claims that are bound
 The live flags, the admin and dev levers, test mode, feedback.
 
 - **Files**: `server/src/`: liveops, admin, devtools, testmode, feedback
-- **Files**: `src/game/`: testMode, switches
+- **Files**: `src/game/`: testMode, switches, ownerSwitches, feedbackOwner, silenceOwner, renameOwner
 - **Files**: `server/src/`: restore
 - **Files**: `server/src/`: playerrestore
 - **Doors**: `flagNameOk` in `server/src/liveops.js` (the names a live flag (a kill switch) may take); `_testMode` in `server/src/testmode.js` (the one question an honesty check asks)
@@ -124,6 +125,16 @@ The worker's spine: saving, migrations, the tick, its pace, hidden settings, the
 - **Switches**: [its rows in the switch table](SWITCHES.md#server-core)
 - **Words**: `persistence`, `migration`, `tick`, `storage`, `save`, `hidden`, `cost-guard`, `costguard`, `daybook`, `roomrow`
 - **Traps**: `server-core`
+
+## ops
+
+The room under a crowd and the watch on it: its health for a monitor, the waiting crowd's pace, a seat held, the public boards' and the room's public reads.
+
+- **Files**: `server/src/`: health, rfspread, seathold, publicreads
+- **Doors**: none named yet
+- **Switches**: [its rows in the switch table](SWITCHES.md#ops)
+- **Words**: `room-health`, `rf-spread`, `seat-hold`, `board-cache`, `public-reads`
+- **Traps**: none
 
 ## combat
 
@@ -188,7 +199,7 @@ Quests, achievements, the codex, pets' book, points.
 
 Parties, clans, guilds, friends, chat, emotes, duels, the arena, races, boards.
 
-- **Files**: `server/src/`: party, clanparty, clans, guilds, alliance, friends, chatlanes, chatmod, chatguard, emotes, boards, arena, gladiator, duel, spar, race, leaderboard, power, statboards
+- **Files**: `server/src/`: party, clanparty, clans, guilds, alliance, friends, chatlanes, chatmod, chatguard, reservednames, silence, emotes, boards, arena, gladiator, duel, spar, race, leaderboard, power, statboards
 - **Files**: `src/game/`: alliance, chat, chatChannel, chatColor, chatMute, emotes, emoteMoves, gesturePose, friendErrors, duelLock, duelPending, partyChip, partyEq, partyMarks, partyRows, peerDot, race, raceDoor, spar, sparTargets, bubbleSkins, boardBumps, dictation
 - **Doors**: none named yet
 - **Switches**: [its rows in the switch table](SWITCHES.md#social)

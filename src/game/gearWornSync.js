@@ -1,5 +1,6 @@
 import { startTransition } from 'react';
 import { getEquip, onEquipChange } from '@/rendering/gearCatalog.js';
+import { sw } from '@/game/switches.js';   /* v2.3.5309: the page's one reader (card T) */
 
 /* === gearWornSync — keep the gearWorn React flag in sync with equipped gear ===
    v2.3.895: extracted verbatim from a BroTown.jsx useEffect (the first
@@ -27,7 +28,7 @@ import { getEquip, onEquipChange } from '@/rendering/gearCatalog.js';
        beat is drawn (docs/specs/held-sweep.md fix 6).  The inventory panel's
        worn toggles follow a frame or two later.
    `?equipredraw=0`: every change set at once, as before. */
-const _NOW = (() => { try { return typeof location !== 'undefined' && /[?&]equipredraw=0\b/.test(location.search || ''); } catch (e) { return false; } })();
+const _NOW = sw('equipredraw');
 function _flags() {
   return { chest: getEquip('chest') !== 'none', legs: getEquip('legs') !== 'none', shirt: getEquip('shirt') !== 'none' };
 }

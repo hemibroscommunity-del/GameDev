@@ -9,6 +9,7 @@ import { dictationClose, dictationOwns } from '../../game/dictation.js';   /* v2
    a lane is spelled (see chatChannel.js on why that matters here). */
 import { ChatChannelChips, lanePlaceholder } from './ChatChannelChips.jsx';
 import { emotesLive } from '../../game/emotes.js';   /* v2.3.3391: the emote picker's door */
+import { act } from '../../game/actions.js';   /* v2.3.5191: the page's requests leave through the action door (card K PR 7) */
 
 // Over-the-character chat bubble. Opens from the bottom-dashboard chat
 // icon, focuses immediately so the soft keyboard appears, and closes when
@@ -48,11 +49,7 @@ const sendThroughGameState = (text) => {
     /* Never swallow the message on an unexpected throw: fall back to the
        plain room broadcast this component used to do on its own. */
     try {
-      if (S.channel) S.channel.send({
-        type: 'broadcast',
-        event: 'chat',
-        payload: { id: S.myId, name: S.myName, text: t, color: S.myColor },
-      });
+      if (S.channel) act('chat', { id: S.myId, name: S.myName, text: t, color: S.myColor });   /* v2.3.5191: through the action door (actions.js) */
     } catch (_e) { /* offline: the local echo below is all there is */ }
     S.chatBubbles[S.myId] = { text: t, ts: Date.now() };
     S.chatLog = [...S.chatLog.slice(-40), {

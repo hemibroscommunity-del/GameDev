@@ -1,36 +1,39 @@
 card: Z
-branch: claude/plan-z-sitting-20
-prs: (this PR), tag 5377, the last line of the list (ready)
+branch: claude/plan-z-sitting-22
+prs: (this PR), tag 5660, the last line of sitting 22's list (ready)
 state: ready
 
 ## Done
-- Sitting 20, reviewed on `main` 29b1a0d, rehearsed on 481bac2 (sitting
-  19 in): the list's tree 1d7b826b: precheck 0 FAIL (2
-  WARN), build, questline 187 of 187; each base `main`, ONE merge base
-  step by step. Review: `census/review-z20.md`. Notes on 4.1, 7.1
-  (sitting 19's merges); no line earned room.
+- Sitting 21 merged (`main` f692b93). Sitting 22 (this list), reviewed and
+  rehearsed on f692b93: `census/review-z22.md`. Plan noted for sitting
+  21's merges (1.7: O's 14c; 5.3b: L's arena door, the line 16 -> 15;
+  5.8: K's 7.2 to 7.6).
 
-## The list: merge in this order, in one sitting, each "Create a merge commit"
-J2: 1 #1879 · 2 #1888 · 3 #1892 · 4 #1902 · 5 #1904 · 6 #1912 · 7 #1916 ·
-8 #1919 · 9 #1921 · 10 #1924 · R: 11 #1877 · 12 #1887 · 13 #1895 ·
-14 #1898 · 15 #1922 · L: 16 #1876 · 17 #1894 · 18 #1903 · 19 #1910 ·
-O: 20 #1896 · 21 #1915 · P: 22 #1881 · 23 #1906 · 24 #1918 · 25 #1925 ·
-26 this PR. Twelve deploy (11 to 22): back to back. New live flags
-`fullsnap`, `resetbook`, `xferescrow` (all OFF: the owner's costs). New
-page switches `?racedoor`, `?harvestdoor`, `?posedoor`, `?guarddoor`,
-`?selftest`, `?hairmasks`, `?petsheet`, `?capehood`. No stored record of
-a player changes its shape.
+## The list: merge in this order, each "Create a merge commit"
+1 T #1935 (5308) · 2 T #1939 (5309, on #1935) · 3 L #1936 (5523) · 4 MOD #1941 (5625) · 5 O #1937 (5238)
+· 6 this PR. All based on `main`, one merge base at every step. Deploys:
+3, 4 and 5 (`server/**`), back to back. New live flag `ridedoor` (ON).
+Rehearsed (T, T, L, MOD 5, O at 360d8bb; a8cc384 moves a test's exit):
+precheck 0 FAIL, build PASS, questline 187/187. This PR is a draft.
 
-## Held (expires at sitting 21)
-- Sitting 19's holds stated again (not read here): #1878 (RT-3), #1890,
-  #1897, #1907 (MOD), until a sitting reads their mends.
+## Held (expires at sitting 23)
+- MOD #1909 > #1914 and RT-1 #1940: no fault, but their switch rows meet
+  T's #1935 (and #1914's meet #1941's) on one line. Each merges the new
+  `main` in after this list lands (sessions told).
 
 ## Stalled
-- Card K: its session stopped with the allowance; #1900 (7.2) waits for
-  a fresh K session's restack, carrying #1876 (race.js resolved).
+- None. For sitting 23 (arrived during this one): K #1942 (5544,
+  `heapforget` ON), R #1873 (5282, the save shape 21 -> 22: its own line),
+  P #1943 (5565), OPS #1944 (5610), L #1946 (5524), MOD #1947 (5626,
+  `mktwords`), and the three above. Z's next tag: 5661.
 
 ## Found
-- J2: reds on `main` the cards report (`mp-hairstencil`, `mp-palette`,
-  L's list); L, P, O, R: next-PR lows (the review's Found).
-- MOD's #1883 was on sitting 19's list, not merged: still open.
-- T: eight new page rows say `on` 2026-11-15: set each to its merge day.
+- MOD #1941 (`freezedevice`, OFF): two faults before the lever is ever
+  thrown (the owner's spare can fall off botfp's 8-character, 30-day
+  record; an existing character is held, not only a new one) and a fold
+  miss ("Officlal"). Sent to MOD.
+- L #1936 (`ridedoor` ON): a session with a non-string id is refused a
+  ride (no phone or bot sends one). For L.
+- O's question stands: a failed fill, glint or clip has no way back.
+- OPS: `mp-itemdrop` 5b red on main; MOD: `mp-lazyfail` red on main;
+  `mp-palette` (sitting 20): all for J2.

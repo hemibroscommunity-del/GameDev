@@ -72,7 +72,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     stopA = H.keepAlive(A, 15000);
     await H.enterWorld(A);
     const inA = await H.waitFor(A, (S) => ({ z: S.currentZone, l: !!S._zoneLoading }), (v) => v.z === 'wheel' && !v.l, { timeout: 120000, label: 'the artist into the world' }).then(() => true).catch(() => false);
-    B = await H.newPlayer(browser, { name: 'Owner', wsPort, webPort, world: 'wheel', viewport: PHONE, touch: true, dpr: 1, init: OWNER, query: 'manual=0' });
+    /* v2.3.5622: not 'Owner' -- the name rules refuse a name that reads as the
+       game's staff (card MOD PR 2); the planning session approved the rename */
+    B = await H.newPlayer(browser, { name: 'Keeper', wsPort, webPort, world: 'wheel', viewport: PHONE, touch: true, dpr: 1, init: OWNER, query: 'manual=0' });
     stopB = H.keepAlive(B, 15000);
     await H.enterWorld(B);
     const inB = await H.waitFor(B, (S) => ({ z: S.currentZone, l: !!S._zoneLoading }), (v) => v.z === 'wheel' && !v.l, { timeout: 120000, label: 'the owner into the world' }).then(() => true).catch(() => false);

@@ -113,6 +113,9 @@ import { statBoardMethods } from './statboards.js';   /* v2.3.5484: a board a sh
 import { accuracyMethods } from './accuracy.js';   /* v2.3.4545: how many of your shots hit, a weapon */
 import { reportMethods, rttWaverNext, reportSiteOf } from './report.js';   /* v2.3.5123: the field report, the worker's side */
 import { roomRowMethods } from './roomrow.js';   /* v2.3.5124: the room's own row in the day's book */
+import { healthMethods, routeRoomHealth } from './health.js';   /* v2.3.5601: the room's own health (card OPS PR 2) */
+import { seatHoldMethods } from './seathold.js';   /* v2.3.5606: a seat held for the player who had it (card OPS PR 7) */
+import { publicReadMethods } from './publicreads.js';   /* v2.3.5609: the room's public reads kept and paced (card OPS PR 10) */
 import { charWatchMethods } from './charwatch.js';   /* v2.3.4545: what players drew, for the owner to look at (the Test panel) */
 import { achievementMethods } from './achievements.js';   /* v2.3.3527 */
 import { killRollMethods } from './killroll.js';   /* v2.3.3209: one roll a kill, each drop its own numbers */
@@ -247,6 +250,8 @@ import { freeSwingMethods } from './freeswing.js'; /* v2.3.4520: the free-swing 
 import { drawGatherMethods } from './drawgather.js'; /* v2.3.4801: the bow's draw and the staff's gather (a shot's share of a full build) */
 import { testModeMethods } from './testmode.js'; /* v2.3.3430: test mode -- the owner's own characters without the honesty checks */
 import { deviceLockMethods } from './devicelock.js'; /* v2.3.3344: a character's login key works on the devices it is played on */
+import { silenceMethods } from './silence.js'; /* v2.3.5621: the owner's silence, and a freeze that holds the device (card MOD) */
+import { charNameMethods } from './charname.js'; /* v2.3.5622: the name rules (card MOD) */
 import { loginKeyMethods } from './loginkeys.js'; /* v2.3.3355: new Login Keys, made by the worker */
 import { pvpLungeMethods } from './pvplunge.js'; /* v2.3.3262: the sword's opening lunge, at a player too */
 import { oneFormulaMethods } from './oneformula.js'; /* v2.3.3260: one formula for every fight -- health, monsters' hits, the hit cap, two specials */
@@ -420,6 +425,14 @@ async function routeHttp(request, env) {
     if (url.pathname.startsWith('/api/admin')) {
       if (!roomName) return noSuchRoom();
       return env.GAME_ROOM.get(env.GAME_ROOM.idFromName(roomName)).fetch(request);
+    }
+
+    /* v2.3.5601: THE ROOM'S OWN HEALTH (health.js; red team RT-2 F3): asks
+       the main room, 3 s at most -- `/health` below never asks it, so a
+       stuck room read "ok" there.  For an uptime monitor. */
+    if (url.pathname === '/health/room') {   /* HEALTH.PATH: the wire table's lister reads the literal */
+      if (!roomName) return noSuchRoom();
+      return routeRoomHealth(env, roomName, corsHeaders, request);
     }
 
     if (url.pathname === '/health') {
@@ -4558,6 +4571,12 @@ export class GameRoom {
     if (!this._liveFlags) {
       try { await this._liveFlagsEnsure(); } catch (e) { console.warn('[liveflags] cold load failed:', e && e.message); }
     }
+    /* v2.3.5601: the room's health for the outer worker's `/health/room`
+       (health.js), after the switches load (its own, `roomhealth`, among
+       them); internal like `/_room_count`: no outside path is forwarded here */
+    if (url.pathname === '/_room_health') {   /* HEALTH.ROOM_PATH */
+      return this._publicReadDo(request, url, () => this._roomHealthFetch(request));   /* v2.3.5609: kept and paced (publicreads.js) */
+    }
     /* v2.3.5184: THE WIRE DOOR for the room's routes (wire/door.js), after
        the switches load and before the first route: a key named like the
        prototype's (a query's name, or at any depth of the JSON body), a body
@@ -4571,16 +4590,19 @@ export class GameRoom {
     }
     // v2.3.1118: marketplace HTTP surface (order book lives in this DO
     // now -- see market.js).  Before the Upgrade check like _room_count.
+    /* v2.3.5609: the three surfaces' public reads kept 3 s and paced by
+       address, a write on a surface dropping what was kept for it
+       (publicreads.js; `publicreads: false` turns it off) */
     if (url.pathname.startsWith('/api/market')) {
-      return this._marketFetch(request);
+      return this._publicReadDo(request, url, () => this._marketFetch(request));
     }
     // v2.3.2475: auction-house HTTP surface -- see store.js.
     if (url.pathname.startsWith('/api/store')) {
-      return this._storeFetch(request);
+      return this._publicReadDo(request, url, () => this._storeFetch(request));
     }
     // v2.3.1126: arena HTTP surface (same fold -- see gladiator.js).
     if (url.pathname.startsWith('/api/arena')) {
-      return this._arenaFetch(request);
+      return this._publicReadDo(request, url, () => this._arenaFetch(request));
     }
     // v2.3.1143: account-login pre-flight -- see account.js.
     if (url.pathname.startsWith('/api/account')) {
@@ -4623,8 +4645,12 @@ export class GameRoom {
     /* v2.3.3723: the hidden settings, read once a worker's life before its
        first socket, so the first harvest already reads the owner's values */
     await this._hiddenEnsure();
-    if (this.sessions.size >= this._roomCap()) {
-      return this._roomFullRefusal(url);
+    /* v2.3.5606: with `seathold: true`, a deploy's roster read once (its
+       seats held 30 s), and a socket let in for each seat held: the join
+       decides who it is for (seathold.js); off, both are nothing */
+    await this._seatHoldLoad(Date.now());
+    if (this.sessions.size >= this._roomCap() + this._seatHeldCount(Date.now())) {
+      return this._roomFullRefusal(url, undefined, request);
     }
     /* v2.3.3274: one address holds at most `ip_sockets` places and opens at
        most `ip_joins_min` sockets a minute (flood.js): the room's places were
@@ -4632,7 +4658,7 @@ export class GameRoom {
        own word (`reason: 'ip'`). */
     const _ip = requestIp(request);
     if (!this._floodIpOk(_ip, Date.now())) {
-      return this._roomFullRefusal(url, 'ip');
+      return this._roomFullRefusal(url, 'ip', request);
     }
     const [client, server] = Object.values(new WebSocketPair());
     this.state.acceptWebSocket(server);
@@ -4795,6 +4821,8 @@ export class GameRoom {
        request id outside SHAPES' form is dropped and counted.  Only what no
        page sends; `wiredoor: false` turns it off.  Synchronous (TRAPS §182). */
     if (this._wireDoor(session, msg)) return;
+    /* v2.3.5621: the owner's silence, its own step after the door (silence.js, card MOD; card K's word) */
+    if (this._silenceDoor(session, msg)) return;
     /* Reset the AFK clock on real input only.  Pong replies are
        keepalive heartbeats, not player activity -- counting them would
        mean the timeout fires only on TCP death, not on AFK players
@@ -5057,6 +5085,8 @@ export class GameRoom {
              face tattoo or species, from a device that holds several, is
              stamped back to this character's own, or to none. */
           this._stampRecordLook(session, clean);
+          /* v2.3.5622: ...and the NAME is the record's too: `track` never renames (charname.js, card MOD; RT-3 S2) */
+          this._stampRecordName(session, clean);
           session.data = { ...session.data, ...clean };
           const _trackPs = this.playerState[session.id];
           if (_trackPs) {
@@ -6303,6 +6333,14 @@ export class GameRoom {
           ...(apOwn !== null ? { ap: apOwn } : {}),
           ...(powerIndex ? { powerIndex } : {}),
           ...(statPoints ? { statPoints } : {}),
+          /* v2.3.5608: the boards' minute of keeping, off (`boardcache:
+             false`): said on the room's own post, so the board object reads
+             no flags of its own and asks the room nothing (leaderboard.js) */
+          ...(this._liveFlags?.boardcache === false ? { bc: 0 } : {}),
+          /* v2.3.5608: the sweep of week-old board rows stopped (`boardsweep: false`) */
+          ...(this._liveFlags?.boardsweep === false ? { bs: 0 } : {}),
+          /* v2.3.5608: the boards' lastSeen exact again (`exactseen: true`, to run an old draw) */
+          ...(this._liveFlags?.exactseen === true ? { xs: 1 } : {}),
         }),
       }));
     } catch {}
@@ -6421,6 +6459,9 @@ Object.assign(GameRoom.prototype, statBoardMethods); /* v2.3.5484: the stat boar
 Object.assign(GameRoom.prototype, accuracyMethods); /* v2.3.4545 */
 Object.assign(GameRoom.prototype, reportMethods); /* v2.3.5123 */
 Object.assign(GameRoom.prototype, roomRowMethods); /* v2.3.5124 */
+Object.assign(GameRoom.prototype, healthMethods); /* v2.3.5601: the room's own health (health.js) */
+Object.assign(GameRoom.prototype, seatHoldMethods); /* v2.3.5606: a seat held (seathold.js) */
+Object.assign(GameRoom.prototype, publicReadMethods); /* v2.3.5609: public reads kept and paced (publicreads.js) */
 Object.assign(GameRoom.prototype, charWatchMethods); /* v2.3.4545 */
 Object.assign(GameRoom.prototype, riseChestMethods); /* v2.3.4453 */
 Object.assign(GameRoom.prototype, achievementMethods); /* v2.3.3527 */
@@ -6531,6 +6572,8 @@ Object.assign(GameRoom.prototype, freeSwingMethods); /* v2.3.4520: the free-swin
 Object.assign(GameRoom.prototype, drawGatherMethods); /* v2.3.4801: the bow's draw and the staff's gather (drawgather.js) */
 Object.assign(GameRoom.prototype, testModeMethods); /* v2.3.3430: test mode (testmode.js) */
 Object.assign(GameRoom.prototype, deviceLockMethods); /* v2.3.3344: a character's login key works on the devices it is played on */
+Object.assign(GameRoom.prototype, silenceMethods); /* v2.3.5621: the owner's silence, and a freeze that holds the device (card MOD) */
+Object.assign(GameRoom.prototype, charNameMethods); /* v2.3.5622: the name rules (card MOD) */
 Object.assign(GameRoom.prototype, loginKeyMethods); /* v2.3.3355: new Login Keys, made by the worker */
 Object.assign(GameRoom.prototype, pvpLungeMethods); /* v2.3.3262: the sword's opening lunge at a player (pvplunge.js) */
 Object.assign(GameRoom.prototype, oneFormulaMethods); /* v2.3.3260: one formula for every fight */

@@ -27,6 +27,7 @@
  */
 import { revealBus } from '@/ui/reveal/revealBus.js';
 import { pushDmgPopup } from '@/game/combatHelpers.js';
+import { act } from '@/game/actions.js';   /* v2.3.5188: the page's requests leave through the action door (card K PR 7) */
 
 /* The rare blue (QUALITY_COLOR.rare, dash/common.js -- not imported: this
    file stays free of the UI tree): a "?" promises "rare or better" and no
@@ -133,7 +134,7 @@ export function sendReveal(S, target, then) {
   const ref = revealRefFor(target);
   if (!ref) return false;
   if (typeof then === 'function') _then.set(keyOf(ref), once(() => { refreshTarget(S, target); then(); }));
-  try { S.channel.send({ type: 'reveal_item', payload: ref }); } catch (e) { _then.delete(keyOf(ref)); return false; }
+  try { act('reveal_item', ref); } catch (e) { _then.delete(keyOf(ref)); return false; }   /* v2.3.5188: through the action door (actions.js) */
   return true;
 }
 
