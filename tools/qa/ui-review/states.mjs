@@ -1518,7 +1518,7 @@ export const STATES = [
         if (!inp) return;
         Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set.call(inp, k);
         inp.dispatchEvent(new Event('input', { bubbles: true }));
-        const b = Array.from(document.querySelectorAll('button')).find((n) => (n.textContent || '').indexOf('Save key on this device') >= 0);
+        const b = Array.from(document.querySelectorAll('button')).find((n) => (n.textContent || '').indexOf('Save key') >= 0);
         if (b) b.click();
       }, H.ADMIN_KEY);
       await wait(P, 1200);
@@ -1560,7 +1560,7 @@ export const STATES = [
         if (!inp) return;
         Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set.call(inp, k);
         inp.dispatchEvent(new Event('input', { bubbles: true }));
-        const b = Array.from(document.querySelectorAll('button')).find((n) => (n.textContent || '').indexOf('Save key on this device') >= 0);
+        const b = Array.from(document.querySelectorAll('button')).find((n) => (n.textContent || '').indexOf('Save key') >= 0);
         if (b) b.click();
       }, H.ADMIN_KEY);
       await wait(P, 1200);
@@ -1605,7 +1605,7 @@ export const STATES = [
         if (!inp) return;
         Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set.call(inp, k);
         inp.dispatchEvent(new Event('input', { bubbles: true }));
-        const b = Array.from(document.querySelectorAll('button')).find((n) => (n.textContent || '').indexOf('Save key on this device') >= 0);
+        const b = Array.from(document.querySelectorAll('button')).find((n) => (n.textContent || '').indexOf('Save key') >= 0);
         if (b) b.click();
       }, H.ADMIN_KEY);
       await wait(P, 1200);
@@ -1657,7 +1657,7 @@ export const STATES = [
         if (!inp) return;
         Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set.call(inp, k);
         inp.dispatchEvent(new Event('input', { bubbles: true }));
-        const b = Array.from(document.querySelectorAll('button')).find((n) => (n.textContent || '').indexOf('Save key on this device') >= 0);
+        const b = Array.from(document.querySelectorAll('button')).find((n) => (n.textContent || '').indexOf('Save key') >= 0);
         if (b) b.click();
       }, H.ADMIN_KEY);
       await wait(P, 1200);

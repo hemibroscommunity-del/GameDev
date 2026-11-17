@@ -60,6 +60,8 @@ switch allows it.
   cap (v2.3.5720, `wire/door.js` `BODY_CAP`, `bodycap`); the look relay's
   pace, bytes and fields (v2.3.5721, `lookrelay.js` `LOOK_PACE`, `lookpace`);
   a Workshop run's safe ground (v2.3.5725, `dungeon.js`, `dungeonground`);
+  a move's fields held to their form (v2.3.5723, `movement.js` `MOVE_FIELDS`,
+  `movefields`);
   the owner's routes with no key and the public reads at the edge (v2.3.5726,
   `wire/door.js`; the worker settings `EDGE_GUARD`, `EDGE_CACHE`).
 - Every save and payment rule; the login key, the device lock, the lockouts;

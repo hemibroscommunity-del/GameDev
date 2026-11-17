@@ -15,6 +15,7 @@ import { openSoundStudio } from '../../game/soundStudio.js';   /* v2.3.3523: eve
 import { CLIENT_SAVERS, clientOffNow } from '../../game/clientOff.js';   /* v2.3.3755: the Memory savers row */
 import { expoAddressFlags, expoAddressWords } from '../../game/expoAddress.js';   /* v2.3.4158: the expo's one-Wi-Fi switch */
 import { oneBandActive, setOneBand } from '../oneBand.js';   /* v2.3.4072: the one dashboard (v2.3.4152: the row is its off switch) */
+import { loadAdminKey, saveAdminKey, forgetAdminKey, pageStores } from '../../game/adminKeyStore.js';   /* v2.3.5718: the key for the session, or remembered on this device */
 
 /* v2.3.3525: the tour's steps, in order, for "Tour: jump to" (the worker's
    /dev/tour checks each is one) */
@@ -57,7 +58,9 @@ const DEV_PET_LANDS = [
  * cheater can say too.  Without the owner's key this panel is scaffolding —
  * the worker answers 401, or 404 when no key is configured at all.
  *
- * The key is typed once and kept in localStorage on the owner's own device.
+ * The key is typed once and kept for the browser session (v2.3.5718), or, with
+ * the "Remember on this device" tick, in localStorage on the owner's own device
+ * (game/adminKeyStore.js).
  * It is never bundled, never sent anywhere but the worker's admin routes,
  * and clearing it is one button.
  *
@@ -72,7 +75,6 @@ const DEV_PET_LANDS = [
  * (v2.3.4802: the zone warp, "stand me at the door", went with the old map.)
  */
 
-const KEY_LS = 'bt_dev_key';
 
 /* ═══ v2.3.2440: AN ADMIN CALL THAT NEVER ANSWERS ═══
  *
@@ -413,7 +415,9 @@ const SPAR_SKILL_ROWS = [
 ];
 
 export const DevPanel = ({ onClose }) => {
-  const [key, setKey] = useState(() => { try { return localStorage.getItem(KEY_LS) || ''; } catch (e) { return ''; } });
+  const [key, setKey] = useState(() => loadAdminKey(pageStores()).key);
+  /* v2.3.5718: kept for this session unless the owner ticks "Remember on this device" */
+  const [rememberKey, setRememberKey] = useState(false);
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
@@ -818,11 +822,11 @@ export const DevPanel = ({ onClose }) => {
   const saveKey = () => {
     const k = draft.trim();
     if (!k) return;
-    try { localStorage.setItem(KEY_LS, k); } catch (e) {}
+    saveAdminKey(pageStores(), k, rememberKey);
     setKey(k); setDraft(''); setMsg('');
   };
   const forgetKey = () => {
-    try { localStorage.removeItem(KEY_LS); } catch (e) {}
+    forgetAdminKey(pageStores());
     setKey(''); setState(null); setMsg('Key cleared from this device.');
   };
 
@@ -964,9 +968,15 @@ export const DevPanel = ({ onClose }) => {
               style={{ width: '100%', boxSizing: 'border-box', background: COL.well, color: COL.text,
                 border: '1px solid ' + COL.border, borderRadius: 8, padding: '11px 10px', marginBottom: 8, minHeight: 44 }}
             />
-            <button type="button" style={btn(true)} onClick={saveKey}>Save key on this device</button>
+            {/* v2.3.5718: for this session by default; the tick keeps it on this device */}
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 44, color: COL.text, fontSize: 14, touchAction: 'manipulation' }}>
+              <input type="checkbox" checked={rememberKey} onChange={(e) => setRememberKey(e.target.checked)}
+                style={{ width: 22, height: 22, touchAction: 'manipulation' }} />
+              Remember on this device
+            </label>
+            <button type="button" style={btn(true)} onClick={saveKey}>Save key</button>
             <div style={{ color: COL.muted, fontSize: 12 }}>
-              Stored only in this browser. Set the key in Cloudflare → Workers → brotown-server → Settings → Variables (see OPERATIONS.md).
+              Kept in this tab until it closes, unless you tick Remember on this device (your own phone only). Set the key in Cloudflare → Workers → brotown-server → Settings → Variables (see OPERATIONS.md).
             </div>
           </>
         )}
