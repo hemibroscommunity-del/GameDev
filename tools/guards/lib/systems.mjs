@@ -206,7 +206,7 @@ export const SYSTEMS = Object.freeze({
     what: 'the Wheel: zones and their doors, lands, dungeons, No Man\'s Land, the map, props',
     files: [
       f('server/src', 'wheelzone|wheelnear|wheelfaces|wheeltables|wheeldungeon|dungeon|dungeonreward|zonejudge|nomansland|props|eventplace'),
-      f('src/game', 'wheelBreak|wheelDungeons|wheelHome|wheelNoticeboard|wheelSize|wheelTownDoors|wheelTrial|worldTrial|worldViewport|zoneGate|zoneMechanics|zoneTransitions|dungeonArt|dungeonClear|dungeonWaves|noMansLand|nmlAsk|nmlExplainOnce|mapPinPlaces|mapPins|pinSlots|buildingRooms|placeSafety|plateSafety|bodyPlace|timeOfDay|season|expoAddress|onePic|bannerReach'),
+      f('src/game', 'wheelBreak|wheelDungeons|wheelHome|wheelNoticeboard|wheelSize|wheelTownDoors|wheelTrial|worldTrial|worldViewport|zoneGate|zoneMechanics|zoneTransitions|veilDoor|dungeonArt|dungeonClear|dungeonWaves|noMansLand|nmlAsk|nmlExplainOnce|mapPinPlaces|mapPins|pinSlots|buildingRooms|placeSafety|plateSafety|bodyPlace|timeOfDay|season|expoAddress|onePic|bannerReach'),
     ],
     words: ['wheel', 'zone', 'land', 'dungeon', 'nomansland', 'nml', 'map', 'world', 'town', 'door', 'prop'],
     traps: ['world'],

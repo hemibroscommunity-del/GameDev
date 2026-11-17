@@ -11,7 +11,7 @@
  */
 export const SYSTEM = 'movement';
 export const ROWS = [
-  { field: '_avatarArtHold', system: 'movement', lifetime: 'sitting', suggested: 'never', born: 'fly src/game/avatarHold.js holdForAvatar', twoFiles: '', noRead: false, noSet: false, phase: null, flag: false, writers: ['src/game/avatarHold.js'] },
+  { field: '_avatarArtHold', system: 'movement', lifetime: 'sitting', suggested: 'never', born: 'never', twoFiles: '', noRead: false, noSet: true, phase: null, flag: false, writers: [] },
   { field: '_climb', system: 'movement', lifetime: 'zone', reset: 'value null', suggested: 'zone', born: 'fly src/game/climbActions.js climbBegin', twoFiles: '2+', noRead: false, noSet: false, phase: null, flag: false, writers: ['src/game/climbActions.js', 'src/ui/BroTown.jsx'] },
   { field: '_climbDrop', system: 'movement', lifetime: 'zone', reset: 'value null', suggested: 'zone', born: 'fly src/game/climbActions.js leaveRises', twoFiles: '2+', noRead: false, noSet: false, phase: null, flag: false, writers: ['src/game/climbActions.js', 'src/ui/BroTown.jsx'] },
   { field: '_flipCount', system: 'movement', lifetime: 'sitting', suggested: 'never', born: 'fly src/game/jumpActions.js triggerFlip', twoFiles: '', noRead: 'tests', noSet: false, phase: null, flag: false, writers: ['src/game/jumpActions.js'] },

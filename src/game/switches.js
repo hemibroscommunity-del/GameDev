@@ -273,6 +273,7 @@ const FORMS = {
   'trial': '',
   'trialhud': '',
   'uploadicons': '0',
+  'veildoor': '0',
   'warmonce': '0',
   'waves': '*',
   'wayback': '',
