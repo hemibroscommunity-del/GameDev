@@ -279,6 +279,15 @@ so node tests it and any file may ask it.
   `?heaplean`, `?folkbake`) and ui (`?playvwlive`, `?dev`):
   the line 201. A read that hands its address to a rule (`q == null ?
   location.search : q`) or parses a value stays for a later PR.
+- v2.3.5311: `pageAddress()`, the reader's one read of the address, for a
+  rule handed the whole address (`killXpOn(search)`, `q ?? address`) or
+  parsing a value (`?tod=`, `?halloween=`, `?tapms=`, `?avatarholdms=`):
+  the planning session's answer, 2026-11-17. The site calls it, so the
+  string, and every answer, is unchanged (the guard's check 5 holds it to
+  the address as written). Fifteen sites in files no card holds: the
+  line 184. `manualCombat.js`, `weaponFeel.js` and `pinSlots.js` keep
+  theirs: their suites (manual-combat 10a, weapon-feel 8a, map-pin 9i) hold
+  each to no imports.
 
 ## A new switch
 

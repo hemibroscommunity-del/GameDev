@@ -1,7 +1,7 @@
 card: T
 branch: claude/plan-t-11-reads3 (one branch a PR, each begun from main once the one before merged)
-prs: #1754 ... #1889, #1935, #1939, #1958 (5301-5310, merged)
-state: stalled
+prs: #1754 ... #1889, #1935, #1939, #1958 (5301-5310, merged); 5311 pageAddress (ready)
+state: ready
 
 ## Done
 
@@ -19,7 +19,8 @@ state: stalled
 
 ## Next
 
-- 5311 waits on the question under Needs.
+- 5311: pageAddress() in the reader; 15 sites call it; the line 184.
+  Then the reads in files held by running cards, as each card is done.
 
 ## Found
 
@@ -31,10 +32,9 @@ state: stalled
   (a value on the page) is a need the reader cannot resolve.
 - `?bandbeat` stays: held-sweep.test 10a pins its text (card H's test).
 
+- manualCombat.js, weaponFeel.js, pinSlots.js keep their address reads: their
+  suites (manual-combat 10a, weapon-feel 8a, map-pin 9i) require no imports.
+
 ## Needs
 
-- The planning session: the free files' last reads hand the whole address to
-  a rule (`killXpOn(location.search)`, `q ?? location.search`) or parse a
-  value (`?tod=`, `?halloween=`). Recommended: switches.js exports
-  `pageAddress()` (the one read) and those sites call it; meaning unchanged.
-  Or should each rule ask `readerFor(q).sw(name)` instead?
+- The gatekeeper: 5311's PR.

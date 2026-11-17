@@ -17,6 +17,8 @@
  *      blanked).  Card T's PRs 7 on lower it as reads move in.
  *   4. The page's reader follows its address: a page may change its own
  *      (history.replaceState), and the reader answers for it as it is now.
+ *   5. pageAddress() (v2.3.5311) is the address as written, '' with no
+ *      page: the sites that hand the whole address to a rule call it.
  *
  * BREAK PROOF (rule 8), tried by hand once, 2026-11-14:
  *   - `?nmlask`'s old test made to also take `off` (/[?&]nmlask=(0|off)/):
@@ -32,6 +34,8 @@
  *   - `?gearretry` (it needs `?retrylooks`) listed as moved
  *                                        -> FAIL 1 (?retrylooks=0: old false,
  *                                           reader true)
+ *   - pageAddress() made to lower-case the address (2026-11-17)
+ *                                        -> FAIL 5 (?tod=dusk&TOD=x)
  *
  * Run from the repository's root: node tools/guards/switch-reader.test.mjs
  * (cd server && npm test runs it with every other guard and suite).
@@ -43,7 +47,7 @@ import { SWITCHES } from './lib/switches.mjs';
 import { blankComments, pageFiles, pageForm, READER_FILE, READER_IMPORT, ROOT } from './lib/switchScan.mjs';
 
 /* the outside reads: only falls */
-const OUTSIDE_LINE = 201;   /* its first count, v2.3.5306: 228 with sitting 17's `?slimewalk` (card P's slimeSprites.js, P still running: not moved), 221 after the first seven reads moved; 212 after v2.3.5309's nine; 201 after v2.3.5310's eleven */
+const OUTSIDE_LINE = 184;   /* its first count, v2.3.5306: 228 with sitting 17's `?slimewalk` (card P's slimeSprites.js, P still running: not moved), 221 after the first seven reads moved; 212 after v2.3.5309's nine; 201 after v2.3.5310's eleven; 184 after v2.3.5311's pageAddress() sites */
 
 /* ── the reads moved into the reader: each old test word for word, as a
    function of the address (S) ── */
@@ -149,6 +153,23 @@ const src = new Map(files.map((f) => [f, readFileSync(join(ROOT, f), 'utf8')]));
   }
   check(`3: reads of location.search outside the reader: ${n}, the line ${OUTSIDE_LINE} (it only falls: a read moves into src/game/switches.js)`, n <= OUTSIDE_LINE, where.slice(-12));
   if (n < OUTSIDE_LINE) console.log(`     (room: ${n} under the line ${OUTSIDE_LINE}; the gatekeeper may lower it)`);
+}
+
+/* 5. v2.3.5311: pageAddress() is the address itself (the sites that hand the
+   whole address to a rule call it: the planning session's answer), and ''
+   with no page.  An address it changed would change every such rule. */
+{
+  const { pageAddress } = await import(pathToFileURL(join(ROOT, READER_FILE)).href);
+  const had = Object.getOwnPropertyDescriptor(globalThis, 'location');
+  const bad = [];
+  for (const S of ['', '?a=1&b', '?tod=dusk&TOD=x', '?x=%20y&&', '?halloween=on&tapms=40']) {
+    Object.defineProperty(globalThis, 'location', { value: { search: S }, configurable: true, writable: true });
+    if (pageAddress() !== S) bad.push(`${S}: ${pageAddress()}`);
+  }
+  delete globalThis.location;
+  if (pageAddress() !== '') bad.push(`no page: ${pageAddress()}`);
+  if (had) Object.defineProperty(globalThis, 'location', had);
+  check('5: pageAddress() is the address as written, and \'\' with no page', bad.length === 0, bad);
 }
 
 /* 4. the page's reader follows its address when the page changes it

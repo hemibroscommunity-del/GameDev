@@ -33,8 +33,9 @@ import { BT_AUDIO } from '@/data/index.js';
 import { cueAt } from '@/game/eventSounds.js'; /* v2.3.3343: a mended object heard */
 import { wheelInfo } from './wheelTrial.js';
 import { wheelMaterialOf, materialInfo } from '@/data/wheelMaterials.js';
+import { pageAddress } from './switches.js';   /* v2.3.5311: the page's one read of its address (card T) */
 
-const qs = (() => { try { return new URLSearchParams(window.location.search); } catch (e) { return null; } })();
+const qs = (() => { try { return new URLSearchParams(pageAddress()); } catch (e) { return null; } })();
 const qnum = (k, d) => { const v = qs && qs.get(k); const n = v != null ? Number(v) : NaN; return Number.isFinite(n) && n >= 0 ? n : d; };
 
 /* How long a broken object stays broken: a few minutes (owner).  `?repairms=`
