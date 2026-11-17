@@ -1,21 +1,31 @@
 card: SEC
-branch: claude/plan-sec-<n>-<topic> (one a PR, each from main)
-prs: #2030 (5700, the card): ready
+branch: claude/plan-sec-<n>-<topic> (one a PR; PR 2 on PR 1's branch until #2030 merges)
+prs: #2030 (5700, the card): ready; #2032 (5701, the join's id form): ready
 state: ready
 
 ## Done
 
-- PR 1 (5700, #2030): the card, this file and the block SEC (ready).
+- PR 1 (5700, #2030): the card, this file and the block SEC (ready, sent to sitting 36).
+- PR 2 (5701, #2032): a join's id is 1 to 64 of A-Z a-z 0-9 _ or refused as a
+  magic name is (join.js `joinIdMalformed`; switch `joinidform`; suite
+  `joinid.test`, red on main: 58 FAIL; a one-item list `['bp_x']` wrote
+  `auth:bp_x`, a real character's own key).
 
 ## Next
 
-- PR 1 (5700): the card, this file and the block `SEC` in
-  `tools/dev/tag-blocks.json`. Then PR 2 (5701): a join's id held to its form.
+- PR 3 (5702): a refused vault write owed, written with the character's
+  next save in one put; the leave writes both (bank.js, persistence.js,
+  leave.js, linger.js).
 
 ## Found
 
-- Nothing yet.
+- A join with NO id is let in as `session.id` undefined: a body under
+  `playerState.undefined` and a `cadence:login:undefined` row, shared by
+  every such join (join.js; PR 2's card covers an id present only).
+- PR 14's first half (the relay's damage popup, gameEvents.js) is card
+  L's file: handed to L, who takes it as its tag 5532 (L, 2026-11-17).
+  PR 14 builds only the dev console's half.
 
 ## Needs
 
-- Nothing yet.
+- Nothing open.
