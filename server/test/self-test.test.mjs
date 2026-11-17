@@ -353,13 +353,15 @@ const code = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`\\])\/\
   };
   check('8. the CPU\'s copies match the fill\'s and the glint\'s own lines', Object.values(mirror).every(Boolean), mirror);
   const fbc = code(fb), glc = code(gl);
-  check('8. the fill: tested once built, in the whirlwind\'s amber; NO way back (its onFail does nothing: named in `self`, drawn as today)',
-    /if \(_built\) fillSelfTest\(renderer\);/.test(fbc) && /selfQueue\('fill', renderer, rt, selfFillWant\(\), \(\) => \{\s*\}/.test(fbc));
-  check('8. the glint: tested once a renderer where its filter is warmed, alone and with a grade (allowed 4); NO way back',
+  check('8. the fill: tested once built, in the whirlwind\'s amber; v2.3.5239: wrong, it falls back alone as `?fill=0` (fillBatchOn false: no one-colour glow)',
+    /if \(_built\) fillSelfTest\(renderer\);/.test(fbc) && /selfQueue\('fill', renderer, rt, selfFillWant\(\), \(\) => \{ _selfOff = true; \}/.test(fbc)
+    && /export const fillBatchOn = \(\) => _on && !_selfOff;/.test(fbc));
+  check('8. the glint: tested once a renderer where its filter is warmed, alone and with a grade (allowed 4); v2.3.5239: wrong, every piece it filtered drawn plain (the shine in the frame kept)',
     /if \(ok && !_selfTested\.has\(renderer\)\) \{ _selfTested\.add\(renderer\); glintSelfTest\(renderer\); \}/.test(glc)
-    && /wants\.push\(\{ want: glintCpu\(pic, SELF_SHEEN, grade\), tol: 4 \}\);/.test(glc) && /selfQueue\('glint', renderer, rts, wants, \(\) => \{\s*\}/.test(glc));
+    && /wants\.push\(\{ want: glintCpu\(pic, SELF_SHEEN, grade\), tol: 4 \}\);/.test(glc) && /selfQueue\('glint', renderer, rts, wants, \(\) => \{ _selfOff = true; \}/.test(glc)
+    && /if \(_selfOff\) \{ const f1 = this\._on\.get\(spr\); if \(f1\) \{ this\._release\(spr, f1\); this\._on\.delete\(spr\); \} continue; \}/.test(glc));
   const progs = src('src/game/drawLanes.js');
-  check('8. the card: the fill and the glint have no way back (drawLanes.js PROGRAMS `back: null`)', /name: 'fill',[^\n]*back: null/.test(progs) && /name: 'glint',[^\n]*back: null/.test(progs));
+  check('8. v2.3.5239: the fill and the glint have their way back in drawLanes.js PROGRAMS', /name: 'fill',[^\n]*back: 'no one-colour glow'/.test(progs) && /name: 'glint',[^\n]*back: 'the filtered pieces plain'/.test(progs));
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);
