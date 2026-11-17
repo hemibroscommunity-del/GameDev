@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "75aff251ec6e36a063576195ca090f21f103425f",
+  "tree": "c3c82cdb0734ee4248f21ea56a7bee94c827d339",
+  "committedAt": "2026-11-17T11:07:22-08:00",
+  "subject": "Merge pull request #2046 from hemibroscommunity-del/claude/plan-l-34-life-page",
+  "files": 8104,
+  "bytes": 959887696,
+  "listingSha256": "6db5f166162296960e81edaa2ba861a78b7a40a2d2df868998b7f94696c5fbb1",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

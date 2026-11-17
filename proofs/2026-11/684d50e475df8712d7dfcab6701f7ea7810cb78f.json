@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "684d50e475df8712d7dfcab6701f7ea7810cb78f",
+  "tree": "93de454647f8b6ef8e792e59cdb24289977e5efd",
+  "committedAt": "2026-11-17T11:07:01-08:00",
+  "subject": "Merge pull request #2047 from hemibroscommunity-del/claude/plan-sec-10-resetone",
+  "files": 8099,
+  "bytes": 959843753,
+  "listingSha256": "7fe32ea72c2918750c8fc4054abe8d670c0b9a5e757041a647fad88c8c447c95",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
