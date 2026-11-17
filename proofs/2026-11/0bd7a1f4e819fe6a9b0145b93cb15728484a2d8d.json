@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "0bd7a1f4e819fe6a9b0145b93cb15728484a2d8d",
+  "tree": "1039f8813d436a37d3cbfb48afaca7f286ada56d",
+  "committedAt": "2026-11-16T19:22:03-08:00",
+  "subject": "Merge pull request #1971 from hemibroscommunity-del/claude/plan-mod-10-namelows",
+  "files": 8024,
+  "bytes": 959155581,
+  "listingSha256": "d76db3bb3f9903f28032da4c341c6cbf80afa6943e937529e7896560583fdc66",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
