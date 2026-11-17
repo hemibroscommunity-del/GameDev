@@ -15,7 +15,7 @@ state: ready
 ## Next
 
 - #2018 5548: the sword's reach and swing, `swordswing` OFF. 5549 (this
-  branch): the move's top, `movetop` OFF (gain 2.56 -> 0.80). Next: the bow.
+  branch): the move's top, `movetop` OFF (gain 2.56 -> 1.17). Next: the bow.
 - Later (the planner): walls on the worker (the Wheel's coast): a new
   system and worker memory, for when real players come.
 - wsClient.js: done for good (told L). index.js, combat.js: 13 and 14.
@@ -31,6 +31,6 @@ state: ready
 ## Needs
 
 - The owner: turn on `swordswing` (a cheat's sword 2.96 -> 1.42) and
-  `movetop` (its move 2.56 -> 0.80)? Honest play the same with each on.
+  `movetop` (its move 2.56 -> 1.17)? Honest play the same with each on.
 - The owner: `reqstamp` (a lasting stamp row a request with no record of
   its own: a store buy, a cancel, an offer; pruned at 48 h): on or off.

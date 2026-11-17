@@ -23,6 +23,7 @@ worker itself stores, the way the page works out the walk (`BroTown.jsx`):
 - x the fastest amulet's move bonus (1.065: the amulet's bonus is the
   page's, so its largest is allowed);
 - x the path tile's lift (1.1);
+- x a jump's flip, its air time (1.45, `game/jump.js`);
 - x 1.15 headroom for a frame's wobble;
 - and then what every bound already reads: a speed buff the worker sold, the
   move stat, the skateboard, and the sprint where it is paid for.
@@ -42,7 +43,19 @@ refused, as before.
 | | Off (today) | On |
 |---|---|---|
 | The honest walker and sprinter | as before | the same, no refusal on any disturbance |
-| The move's cheat, its gain | 2.56 | **0.80** |
+| The move's cheat, its gain | 2.56 | **1.17** |
+
+**Phone tests with it on** (a local run, before the flip's 1.45 was added: a tighter bound than this): `sprint` 38/38, `townride` 10/10,
+`rollhit` 5/5, `questline` 187/187. `movepath` 10/11: its "no worse in
+BroTown" check reads the worker's copy against the phone, and the harness
+walks in hops faster than a real walk (485 px a second with it off), so with
+the player's own top the copy trails those hops (mean 6.8 -> 12.1 px). A
+real walk stays inside the bound. `desklunge` (8/12) is red on main too
+(card L's Found: 1 to 4 of 12 by run).
+
+The suites that test the flat 500 itself (`move-budget`, `move-path` 5b,
+`ride` 3, `sprint`'s bound) fail with the switch thrown, by design; its
+row in the switch table lists them.
 
 ## Later (not built)
 

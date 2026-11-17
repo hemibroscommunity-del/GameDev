@@ -131,7 +131,8 @@ export const MOVE_BUDGET = Object.freeze({
    (BroTown.jsx: SPEED 2.5 a frame, 150 px a second, x calcMoveSpeed's
    agility and swiftness, the same numbers the worker stores), x the most
    an amulet adds (it is the page's: its largest, AMULET_MAX), x the path
-   tile's lift (TILE_MAX), x HEADROOM for a frame's wobble -- and then the
+   tile's lift (TILE_MAX), x a jump's flip (FLIP_MAX), x HEADROOM for a
+   frame's wobble -- and then the
    multipliers every bound already reads (a buff the worker sold, the move
    stat, the ride; the sprint where it is billed).  Slower things (sand,
    water, a raised shield, a drawn bow) only slow. */
@@ -139,6 +140,7 @@ export const MOVE_TOP = Object.freeze({
   WALK_PX: 150,       /* SPEED (2.5, gameSystems.js) x 60 frames a second */
   AMULET_MAX: 1.065,  /* the fastest amulet's move bonus (the 500's own audit note) */
   TILE_MAX: 1.1,      /* the path tile (BroTown.jsx terrainMult) */
+  FLIP_MAX: 1.45,     /* a jump's flip, its air time (game/jump.js 1 + FLIP_BOOST_MAX) */
   HEADROOM: 1.15,
 });
 /* the page's calcMoveSpeed(agility, swiftness) / 5 (gameSystems.js), from the
@@ -310,7 +312,7 @@ export const movementMethods = {
     /* v2.3.5549: with `movetop: true`, the 500 is this player's own top (MOVE_TOP above): folded into the
        multiplier every MOVE bound reads (the budget, the follow, the glide, the join's judge); a bow's
        or a staff's reach (hitproof.js, `reach: true`) keeps its run as it was */
-    const _topK = this._moveTopOn() && !(opts && opts.reach) ? (MOVE_TOP.WALK_PX * moveTopStatK(ps) * MOVE_TOP.AMULET_MAX * MOVE_TOP.TILE_MAX * MOVE_TOP.HEADROOM) / MOVE_BUDGET.SPEED_PX : 1;
+    const _topK = this._moveTopOn() && !(opts && opts.reach) ? (MOVE_TOP.WALK_PX * moveTopStatK(ps) * MOVE_TOP.AMULET_MAX * MOVE_TOP.TILE_MAX * MOVE_TOP.FLIP_MAX * MOVE_TOP.HEADROOM) / MOVE_BUDGET.SPEED_PX : 1;
     return { spdCap: _spdCap, moveMult: _moveMult * _rideK * _topK };
   },
 
