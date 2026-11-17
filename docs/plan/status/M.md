@@ -1,6 +1,6 @@
 card: M
 branch: claude/plan-m-2-steps (PR 2, tag 5341; stacked on #2089, base main)
-prs: #2089 (5340): ready (sitting 42); PR 2 (5341): working
+prs: #2089 (5340): ready, in sitting 42's rehearsal; PR 2 (5341): working
 state: working
 
 ## Done
@@ -12,7 +12,8 @@ state: working
   inside legacy (tap, sound, ride, zone, farm, townsfolk, monsters,
   weaponFeel, loot, peers) marked `to(a, b)` on their own lines; the guard
   walks every mark; legacy 1555 -> 1531 code lines; mp-framesteps 19/19,
-  17 steps. Running manualcombat, heldcombat, crowdfight, monstermoves.
+  17 steps. after-frame.test 2a takes a mark's index as `\d+` (the
+  planning session's answer; deploys). Running the combat tests.
 
 ## Found
 - tools/dev/precheck.mjs: server-tests' 5-minute limit times out on this
@@ -24,5 +25,4 @@ state: working
 
 ## Needs
 - The gatekeeper's review of #2089 (sitting 42).
-- Planning session: may after-frame.test 2a take a mark's index as `\d+`
-  (render and afterFrame become steps 15 and 16)? Asked 2026-11-17.
+
