@@ -313,16 +313,16 @@ clean).
 ## The list
 
 1 #1889 (T) · 2 #1875 · 3 #1882 · 4 #1885 (RT-1, drafts: ready first) ·
-5 #1899 · 6 #1923 (K) · 7 #1883 (MOD's card) · 8 this PR; each "Create a
-merge commit", in one sitting, before UTC midnight if it can be. Five
-deploy the worker (#1875, #1882, #1885, #1899, #1923: `server/`): back to
-back. #1889 is tools, #1883 and this PR words and guards: none deploys.
-New live flags `ip64`, `oldkeylock`, `adminlock`, `relaybytes` (all ON);
-they meet on no line (each row in its place by name; the whole merges
-clean, step by step). No stored record changes its shape. No page switch.
+5 #1899 · 6 #1923 (K) · 7 this PR (#1926); each "Create a merge commit".
+Merged 2026-11-16 as written: `main` 481bac2, tree d6be4cce. MOD's card
+#1883 was the list's seventh as sent, and was DROPPED before any merge:
+its branch moved, and the new head carried #1878 and #1890 (MOD restacked
+it into its own line); it went with 19a, below. Five deployed the worker
+(#1875, #1882, #1885, #1899, #1923). New live flags `ip64`, `oldkeylock`,
+`adminlock`, `relaybytes` (all ON). No stored record changed its shape.
 
-Held: RT-3's and MOD's line (#1878, #1890, #1897, #1907), the findings
-above; it goes with 19b once mended and re-read.
+Held then: RT-3's and MOD's line (#1878, #1890, #1897, #1907), the findings
+above; mended, it is 19a (below).
 
 ## The whole
 
@@ -342,3 +342,82 @@ Rehearsed with `tools/dev/gatekeeper.mjs` from `main` 29b1a0d:
 The heads: #1889 4334b6d, #1875 a26f901, #1882 0bea51a, #1885 4c3507b,
 #1899 05e9f35, #1923 0a086cc, #1883 95fe266. Each base is `main`, and each
 `test` check is green on its head.
+
+## Sitting 19a and 19b (the same review, after sitting 20 landed)
+
+Taken 2026-11-16 on `main` 2fcc767 (sitting 20's 26 PRs in, after
+sitting 19's list). At the planning session's word, one list: RT-3's and
+MOD's line, mended (19a), then card OPS's line (19b), then the
+gatekeeper's own PR (tag 5378). Each line was restacked by its session on
+2fcc767 (merges only).
+
+**19a, the mends read by the gatekeeper.** #1878: an id over 64 is refused
+before anything is stored; the hour's row budget is one storage row read
+once a wake and written with each write it counts (a wake no longer
+refills it; at most 7,200 rows a day, now true); voters a null-prototype
+map; the owner's key asked of the room's admin door (#1885's time-out
+counts it); list and sweep a page of 100 at a time, the sweep mending a
+report a bad vote grew. #1890: the fold refuses the easy spellings (a
+digit beside the word, accents, a dotless i, small capitals, joined words,
+plurals) and passes Dev, Modesto, Bro Townsend (LOW, MOD's next: BroTovvn,
+a Cherokee A, Admln still pass). #1897: `freezedevice` a lever, OFF; its
+gets 128 at a time; `minutes` a whole number or left out; `silenced:` left
+by a restore (sitting 20's restore table). #1907: a guest's or keyless
+join's name tidied by the rule or 'Anon'; a new `bp_` join's own name
+checked; no character with a record refused; combining marks after a
+letter allowed, the Hangul fillers refused; `mp-ownerwatch`'s owner
+'Keeper' (the planning session's word). Its earlier HIGH and MEDIUM are
+closed.
+
+**19b, card OPS: the findings of 2026-11-15 and their mends, read.**
+- #1874 (5600): the card, words.
+- #1880 (5601, `roomhealth`): `/health/room` says up or down in public; the
+  numbers only with the owner's key (the room's door and its time-out).
+  Its earlier LOWs (unpaced, too much said) closed with #1920.
+- #1886 (5604, `rf_spread`): counts only `?rf=1` refusals, an address at
+  most once a second (the LOW: one client set every waiter's wait to 30 s,
+  closed; a suite check goes red without it).
+- #1908 (5606, `seathold`): lands OFF; OFF changes nothing (verified). Its
+  MEDIUM (the gate cannot tell a seat's holder from a stranger) and its
+  MEDIUM-LOW (the cap exceeded by held seats) are NOT mended: written into
+  its switch row, its header, its spec and OPS's Needs as "not to be
+  turned on until mended". The cost when on stays the owner's.
+- #1891 (5602): the confirm, a refusal and the server's error show under
+  the Set button; OPERATIONS says how to reach the Test panel when the
+  owner's own character is refused (`?guest=1`).
+- #1872 (5588): the rollback's step 2 gives the same way in.
+- #1893 (5603): a 500 or 502 reads as the server's error and keeps the
+  post; the owner-key exemption is named in action-door.test §7b and its
+  spec (no longer held by a regex's gap).
+- #1905 (5605): reads GET's `on` (a thrown `silence` shows none running).
+- #1913 (5608, `boardcache`, lever `exactseen` OFF; new `boardsweep` ON),
+  read by the gatekeeper: each board's answer kept a minute; `playtime`
+  only on its own board; `lastSeen` to the hour on the public boards (RT-3
+  P1); the read deletes `player:` rows a week stale. MEDIUM (rule) mended:
+  the delete had no switch of its own (`boardcache: false` kept it):
+  `boardsweep: false` deletes nothing (board-cache 3b). The gatekeeper's
+  reading, for the owner: the rows it deletes are a derived copy, rebuilt
+  whole at the player's next report and already off every board after a
+  week; nothing anyone was shown is lost.
+- #1917 (OPS's rename row), read: it sends exactly #1907's route
+  (`POST /api/admin/rename {playerId, name, force}`) and reads its answer.
+- #1920 (5609, `publicreads`), read: the market's, store's and arena's
+  public reads and `/health/room` kept 3 s and paced (10 a second an
+  address); any HTTP write on a surface drops what was kept; a keyed ask
+  passes through. LOW: a socket write (a store offer, `arena_sponsor`) or
+  the server's own settling does not drop it: a list up to 3 s stale.
+
+**The 19 list, merged as one:** RT-3 and MOD: 1 #1878 · 2 #1890 · 3 #1883
+· 4 #1897 · 5 #1907; OPS: 6 #1874 · 7 #1880 · 8 #1886 · 9 #1908 · 10 #1891
+· 11 #1872 · 12 #1893 · 13 #1905 · 14 #1913 · 15 #1917 · 16 #1920; 17
+this PR. ONE merge base each, step by step; the whole merges clean.
+Nine deploy the worker (#1878, #1890, #1897, #1907, #1880, #1886, #1908,
+#1913, #1920: `server/`, counted step by step): back to back. The list's
+tree, the sixteen merged: 78797c12 (MOD's five alone: e10f62b7). Decided for the owner while away: `feedback: false` closes the
+board, never its protections; crash reports 30 an hour an address; the
+staff list without "Dev"; silence ON, the device rule a lever OFF; names
+not migrated, not unique, 1 to 20 with underscores; `boardsweep` ON (the
+reading above); `/health/room` says up or down only. Costs (the owner's):
+`seathold` when turned on (at most 5,760 writes a day); none other adds a
+pace (the board's rows capped at 7,200 a day across wakes). For the owner's
+own words: `.github/workflows/crash-report.yml` needs the key.

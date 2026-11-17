@@ -38,6 +38,19 @@
  * PRELOADING IS LAW does not cover it; but a window must never hitch a
  * fight).  docs/specs/worker-code-diet.md.
  */
+/* ═══ v2.3.5593: A WINDOW THAT THROWS TAKES ONLY ITSELF DOWN ═══
+ * The red team (2026-11-14, RT-3 S3, docs/security/rt3-findings.md): the page
+ * had no error boundary anywhere, and React unmounts the WHOLE root on an
+ * error nothing catches -- so one bad value in one window (a feedback ticket
+ * whose name was an object, posted by anyone on the internet) blanked every
+ * screen of the game for whoever opened Feedback.  Every window made here
+ * now draws inside PanelGuard: a window that throws is replaced by the same
+ * card as a window whose script could not come, in its own words ("This
+ * window hit a problem"), with Reload and Close; the game plays on under it,
+ * and the error goes to the crash feed (crashTrap.js recordCrash 'panel').
+ * Opened again, the window is drawn afresh.  Not a switch: it changes nothing
+ * while no window throws.
+ */
 import React from 'react';
 import { clientOffAtLoad } from '../game/clientOff.js';   /* v2.3.3755 */
 import { createPortal } from 'react-dom';
@@ -54,7 +67,7 @@ const LAZY_RETRY_MS = 1500;
 const _loaded = [];        /* the names of the windows whose code has come */
 const _failed = [];        /* ...and those whose code could not come (v2.3.3736) */
 const _named = [];         /* every window made here */
-const _cards = { shown: 0, closed: 0 };   /* v2.3.3736: "Couldn't open this" cards shown and closed (QA) */
+const _cards = { shown: 0, closed: 0, caught: 0 };   /* v2.3.3736: "Couldn't open this" cards shown and closed (QA); v2.3.5593: windows that threw, caught */
 /* the probe the memory tests read: is the switch on, and which windows' code
    has come (tools/qa/mp's membudget and the lazy-code check) */
 try { if (typeof window !== 'undefined') window.__btLazyCode = { on: CODE_LAZY, loaded: () => _loaded.slice(), named: () => _named.slice(), failed: () => _failed.slice(), cards: _cards }; } catch (e) { /* no page */ }
@@ -103,7 +116,9 @@ export function lazyPanel(load, name, close, quiet) {
         });
       return () => { live = false; clearTimeout(timer); };
     }, []);
-    if (mod) return React.createElement(mod[name], props);
+    /* v2.3.5593: drawn inside its guard (PanelGuard, below) */
+    if (mod) return React.createElement(PanelGuard, { name, quiet, onClose: close ? () => { try { close(props); } catch (e) { /* closed */ } } : null },
+      React.createElement(mod[name], props));
     if (!failed || quiet) return null;
     return React.createElement(CantOpen, { onClose: close ? () => { try { close(props); } catch (e) { /* closed */ } } : null });
   }
@@ -119,7 +134,24 @@ export function lazyPanel(load, name, close, quiet) {
    nothing in it.  On the page's body (a portal), not where the window would
    have stood: a fixed box inside a moved or scaled panel (the dashboard's
    band, a building's card) is placed by that panel, not the screen. */
-function CantOpen({ onClose }) {
+/* v2.3.5593: a window that threw (PanelGuard): the same card, an error
+   caught and kept in the crash feed, nothing else stopped */
+class PanelGuard extends React.Component {
+  constructor(props) { super(props); this.state = { broke: false }; }
+  static getDerivedStateFromError() { return { broke: true }; }
+  componentDidCatch(err) {
+    _cards.caught++;
+    const what = this.props.name + ': ' + String((err && err.message) || err).slice(0, 300);
+    try { import('../debug/crashTrap.js').then((ct) => { ct.recordCrash('panel', what); }).catch(() => {}); } catch (e) { /* the card still shows */ }
+  }
+  render() {
+    if (!this.state.broke) return this.props.children;
+    if (this.props.quiet) return null;
+    return React.createElement(CantOpen, { onClose: this.props.onClose, broke: true });
+  }
+}
+
+function CantOpen({ onClose, broke }) {
   const [gone, setGone] = React.useState(false);
   React.useEffect(() => { _cards.shown++; }, []);
   if (gone) return null;
@@ -128,15 +160,16 @@ function CantOpen({ onClose }) {
   const btn = { touchAction: 'manipulation', minHeight: 40, padding: '8px 16px', borderRadius: 10, border: '1px solid #c9a24a',
     background: '#2b2116', color: '#f4e6c4', font: 'inherit', fontWeight: 700, cursor: 'pointer' };
   return createPortal(React.createElement('div', {
-    'data-lazy-cantopen': '1',
+    'data-lazy-cantopen': broke ? 'threw' : '1',   /* v2.3.5593: 'threw', a window PanelGuard caught */
     role: 'alertdialog',
     style: { position: 'fixed', left: b.x + b.w / 2, top: b.y + b.h / 2, transform: 'translate(-50%, -50%)', zIndex: 9000,
       width: Math.min(300, Math.max(200, b.w - 32)), boxSizing: 'border-box', padding: '16px 18px', borderRadius: 14,
       background: 'rgba(20, 15, 10, 0.94)', border: '1px solid #c9a24a', color: '#f4e6c4', textAlign: 'center',
       touchAction: 'manipulation', boxShadow: '0 6px 24px rgba(0,0,0,0.5)' },
   },
-  React.createElement('div', { style: { fontWeight: 700, fontSize: 16, marginBottom: 6 } }, "Couldn't open this"),
-  React.createElement('div', { style: { fontSize: 14, lineHeight: 1.35, marginBottom: 14 } }, 'Reload the game to get the newest version.'),
+  React.createElement('div', { style: { fontWeight: 700, fontSize: 16, marginBottom: 6 } }, broke ? 'This window hit a problem' : "Couldn't open this"),
+  React.createElement('div', { style: { fontSize: 14, lineHeight: 1.35, marginBottom: 14 } },
+    broke ? 'Close it and open it again, or reload the game.' : 'Reload the game to get the newest version.'),
   React.createElement('div', { style: { display: 'flex', gap: 10, justifyContent: 'center' } },
     /* each acts on the lift, as the game's own controls do (swallowTapClick,
        TRAPS §247: the card is gone before the tap's click lands on the game
