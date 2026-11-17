@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "54ed5445e8ca82d2216750a5da7de2b7a2fe1388",
+  "tree": "d605da791a83a8fccb6429bcaa14874f21317e4e",
+  "committedAt": "2026-11-17T15:13:32-08:00",
+  "subject": "Merge pull request #2087 from hemibroscommunity-del/claude/t2-reads-wire",
+  "files": 8172,
+  "bytes": 960406256,
+  "listingSha256": "2f37453f61a1874469523d86a5f2932f0972e7ad6c99c4bcd6b1942eac46d2e5",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

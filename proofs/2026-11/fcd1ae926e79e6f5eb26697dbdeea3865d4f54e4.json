@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "fcd1ae926e79e6f5eb26697dbdeea3865d4f54e4",
+  "tree": "a78c0cfadccaf883a0e60fe0d86c15168373ace6",
+  "committedAt": "2026-11-17T15:13:45-08:00",
+  "subject": "Merge pull request #2089 from hemibroscommunity-del/claude/plan-m-1-framesteps",
+  "files": 8181,
+  "bytes": 960502168,
+  "listingSha256": "84be9e5faba9651f0ccde32e299a9a06d15c934aa6cd861c13222ceb9dec165e",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
