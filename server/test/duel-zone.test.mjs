@@ -217,16 +217,19 @@ check('0. both start in town', psA().z === 'town' && psB().z === 'town', [psA().
    `this.playerState[id] = {...}`, spar.js's clones).  Each must call
    `_duelZoneMoved(` within the next few lines, or this fails -- the four
    the sweep counted (movement.js, join.js, index.js's respawn, spar.js) and
-   any new one. */
+   any new one.  v2.3.5537: a `ps.z =` is the zone door's alone
+   (zonejudge.js _zoneTo, zone-door.test), so a writer is a call of the door
+   or a new record; the door's own line asks nothing (its callers do). */
 {
   const dir = new URL('../src/', import.meta.url);
-  const WRITE = /\b(?:ps|mps|qps|ownerPs|playerState\[[^\]]+\])\.z\s*=(?!=)|this\.playerState\[[^\]]+\]\s*=\s*\{/;
+  const WRITE = /\b(?:ps|mps|qps|ownerPs|playerState\[[^\]]+\])\.z\s*=(?!=)|this\.playerState\[[^\]]+\]\s*=\s*\{|this\._zoneTo\((?!_ps\b)/;   /* the join's stand-up (`_ps`) was never counted: L's Found */
+  const DOOR = (f, ln) => f === 'zonejudge.js' && /^\s*ps\.z = z;/.test(ln);
   const NEAR = 12;
   const writers = [], missing = [];
   for (const f of srcFiles()) {   /* v2.3.5060: in depth, a folder's files too (src-walk.mjs) */
     const lines = readFileSync(new URL(f, dir), 'utf8').split('\n');
     lines.forEach((ln, i) => {
-      if (/^\s*(\/\/|\*|\/\*)/.test(ln) || !WRITE.test(ln)) return;
+      if (/^\s*(\/\/|\*|\/\*)/.test(ln) || !WRITE.test(ln) || DOOR(f, ln)) return;
       writers.push(f + ':' + (i + 1));
       if (!lines.slice(i, i + NEAR + 1).some((l) => l.includes('_duelZoneMoved('))) missing.push(f + ':' + (i + 1));
     });

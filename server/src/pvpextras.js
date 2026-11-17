@@ -521,9 +521,7 @@ export const pvpExtrasMethods = {
         drain = Math.max(1, Math.round(BLOCK_STAMINA_COST * this._blockStaminaMult(targetPs)));
         targetPs.stamina = Math.max(0, targetPs.stamina - drain);
         if (targetPs.stamina <= 0) {
-          targetPs.blocking = false;
-          targetPs.blockStartT = 0;
-          targetPs._guardBrokenUntil = now + this.GUARD_BREAK_MS;
+          this._guardTo(targetPs, 'break', now);   /* v2.3.5536: the guard door */
         }
         this._queuePlayerStateFlush(targetId);
       }
