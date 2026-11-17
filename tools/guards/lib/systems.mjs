@@ -59,8 +59,9 @@ export const SYSTEMS = Object.freeze({
     /* v2.3.5061 (card N): server/src/wire/, the wire table (one row a message or route) */
     files: [f('server/src', 'index|relay|bundle|clientoff|flood'), re('^server/src/wire/'), re('^src/networking/'), f('src/game', 'clientOff|clientOffApply|blockedAsks|workerClock|t1Sync|tooFar'),
       f('src/game', 'actions'),   /* v2.3.5185 (card K): the action door, the one way a request leaves the page */
+      f('server/src', 'heapforget'),   /* v2.3.5544 (card K, RT-1 N11): the room forgets who left */
     ],
-    words: ['wire', 'protocol', 'relay', 'caps', 'bundle', 'privileged', 'clientoff', 'flood'],
+    words: ['wire', 'protocol', 'relay', 'caps', 'bundle', 'privileged', 'clientoff', 'flood', 'heap-forget'],
     traps: ['wire'],
     doors: [
       /* v2.3.5184 (the gatekeeper, sitting 13): the two lists are made from the wire table now (lists.js, card K PR 1) */
@@ -122,9 +123,9 @@ export const SYSTEMS = Object.freeze({
      guard: server-core's and liveops' include suites that fail under the
      guard's preload with any flag (tick-pace, cold-flags; card T's Found). */
   ops: {
-    what: 'the room under a crowd and the watch on it: its health for a monitor, the waiting crowd\'s pace, a seat held, the public boards\' and the room\'s public reads',
-    files: [f('server/src', 'health|rfspread|seathold|publicreads')],   /* v2.3.5609: publicreads */
-    words: ['room-health', 'rf-spread', 'seat-hold', 'board-cache', 'public-reads'],   /* v2.3.5608: board-cache (leaderboard.js stays social's file) */
+    what: 'the room under a crowd and the watch on it: its health for a monitor, the waiting crowd\'s pace, a seat held, the public boards\' and the room\'s public reads, a guest\'s join',
+    files: [f('server/src', 'health|rfspread|seathold|publicreads|guestlazy')],   /* v2.3.5609: publicreads; v2.3.5610: guestlazy */
+    words: ['room-health', 'rf-spread', 'seat-hold', 'board-cache', 'public-reads', 'guest-lazy'],   /* v2.3.5608: board-cache (leaderboard.js stays social's file) */
     traps: [],
     doors: [],
   },

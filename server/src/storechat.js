@@ -264,7 +264,7 @@ export const storeChatMethods = {
     /* Remembered BEFORE any delivery decision: a DM is the lane where the
        nastiest things get said, and the report path can only quote lines the
        server actually saw (chatmod.js, v2.3.1981). */
-    this._chatModRemember(me, text, this.playerState[me] && this.playerState[me].z, 'dm');
+    this._chatModRemember(me, text, this.playerState[me] && this.playerState[me].z, 'dm', amSeller ? buyerId : rec.sellerId);   /* v2.3.5623: whom it was for */
 
     await this._scPut(listingId, doc);
 
