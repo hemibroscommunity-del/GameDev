@@ -710,6 +710,9 @@ nothing known, and a restore copies nothing.
   *L's #2039 (5533, the fight's page door: `skullTo`, `?skulldoor`, ON),
   merged at sitting 37: 5 `todo` on `main` 357eae05; the line lowered
   6 -> 5 (the gatekeeper, sitting 38, tag 5676).*
+  *L's #2046 (5534, the life's page door: `dyingTo`, `?dyingdoor`, ON),
+  merged at sitting 38: 4 `todo` on `main` 9e228210; the line lowered
+  5 -> 4 (the gatekeeper, sitting 39, tag 5677).*
 - [ ] **5.4 [LATER] The frame as named steps.** PR 1 moves nothing: the six
   calls the loop already makes, plus one `legacy` step, become the list;
   each counts its errors to the crash ring (a throw in the frame reaches
