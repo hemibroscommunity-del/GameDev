@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "77499878990b8e64657ee79fc4d7ffb90b5975c7",
+  "tree": "fee7b5fe0c1fb2bdbd4d68899852c97bde014e3c",
+  "committedAt": "2026-11-17T11:06:50-08:00",
+  "subject": "Merge pull request #2042 from hemibroscommunity-del/claude/plan-sec-7-feedshare",
+  "files": 8096,
+  "bytes": 959808896,
+  "listingSha256": "04b0b7db7f76f314fe747507bda9da7e67920a6ba2137036d042faf886c4b5d6",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

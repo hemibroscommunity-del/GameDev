@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "e5faba30c922ba38f0d51532c7245bf7580f9a94",
+  "tree": "65b573267c2adf1f3ff405753cf1ae0aeaf5337b",
+  "committedAt": "2026-11-17T11:06:57-08:00",
+  "subject": "Merge pull request #2045 from hemibroscommunity-del/claude/plan-sec-9-guestquiet",
+  "files": 8098,
+  "bytes": 959840540,
+  "listingSha256": "097a9bf02c2b1710169cd4ae58e884380055c6b724d52ef3468edab528acf4ea",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

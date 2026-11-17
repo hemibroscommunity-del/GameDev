@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "d53fceafd931115f162e33fe5f51c592530322d0",
+  "tree": "8c1ad6dbae5d12bb30ce2ec3d441886def3d1290",
+  "committedAt": "2026-11-17T11:06:54-08:00",
+  "subject": "Merge pull request #2043 from hemibroscommunity-del/claude/plan-sec-8-sidedoor",
+  "files": 8097,
+  "bytes": 959817044,
+  "listingSha256": "d48b9ae4c39fdc69a11a0724090c0eb0b7c40428706a8b7a4ceaf5fb9b940ca8",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
