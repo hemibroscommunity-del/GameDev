@@ -20,8 +20,8 @@ Rehearsed (`tools/dev/gatekeeper.mjs` on 35aa7f7b) with the three above
 and this branch's census and phase-line commit (b589da3b): tree a7893f03
 (the same as the step-by-step merges); build PASS; precheck 0 FAIL but
 the server suites' 5-minute limit under load (the settled one), so
-`cd server && npm test` was run alone in the merged tree: SERVER_RESULT;
-questline QUESTLINE_RESULT. Earlier, R #2017 with this branch alone: tree
+`cd server && npm test` was run alone in the merged tree: 476 suites, all green (323 s);
+questline 187/187. Earlier, R #2017 with this branch alone: tree
 bf0365dd, build PASS, questline green. No two listed PRs share a file.
 `test` green on every listed head.
 
