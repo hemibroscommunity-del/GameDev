@@ -823,6 +823,18 @@ export const inboxMethods = {
      (_weaponStashRoom, the test _applyCreditToPs's stash door makes), else
      it waits in the mail -- either way with the caller's record in the same
      run.  A piece or a pet still answers null. */
+  /* v2.3.5809 (card RV, MS-6): a payment that ends an escrow record and that
+     record's delete in ONE write (inbox.js _creditWith), at the trade
+     window's weapons (trade2.js) and the arena's champion (gladiator.js): a
+     restart between the two left a record only the payment's stamp
+     explained, and the 48 h prune could outrun the sweep that reads it
+     (TRAPS §146).  `leftoverheal: false` in the live flags: the payment,
+     then the delete, as before. */
+  _leftoverHealOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'leftoverheal') && !f.leftoverheal);
+  },
+
   /* v2.3.5803 (MS-3): goods credited in the dying seconds are shielded
      from the respawn's wipe (_applyCreditToPs).  `dyingkeep: false`: off. */
   _dyingKeepOn() {
