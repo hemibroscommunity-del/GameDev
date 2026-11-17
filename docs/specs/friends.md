@@ -73,3 +73,11 @@ server never interprets `aw`.
 - `friend_request` does a storage read for offline targets — keep it
   behind the join gate (it is; `session.id` required).
 - Never notify on decline; silent-drop forged accepts (no oracle).
+
+## v2.3.5709: a ceiling on requests received (card SEC PR 10)
+
+Nothing bounded the requests a player RECEIVES: every made-up id could add
+one to a player's record. At 50 pending (`FRIENDS.REQ_IN_MAX`), a new one is
+answered `target-full`, the answer a full friends list gives, and nothing is
+kept. Kill switch `reqincap: false`. Suite: `server/test/resetone.test.mjs`
+§3.

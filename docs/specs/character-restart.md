@@ -104,3 +104,18 @@ skills, quests, codex/bestiary caches) resets.
 `server/test/persistence.test.mjs` §7: no-op without confirm, blob
 deleted + snapshot written + ack + eviction, auth survives, rejoin
 bootstraps fresh Level 1.
+
+## v2.3.5709: one write (card SEC PR 10)
+
+The records that go with the character were sixteen separate awaited
+deletes, so the room restarting between any two (a deploy, an eviction)
+left a new level-1 character holding the old vault, farm and pets. Now
+`persistence.js` `_resetCharacterData` gathers every key first (the quest
+stamps' one list is the only read) and deletes the character's record and
+all of them in ONE synchronous run with the econ book's puts, nothing
+awaited between: the old character on file whole, or none of it. The same
+rows as before (`rpg:`, `bank:`, the quest stamps, `gear_prov:`, `farm:`,
+`aponce:`, `pets:`, `codex:`, `fishlog:`, `achv:`, `testmode:`, `life:`);
+today's order board is kept, as before. No switch (the card: the shape of a
+delete, not a way of the game). Suite: `server/test/resetone.test.mjs` (the
+restart killed before each of its batches in turn).

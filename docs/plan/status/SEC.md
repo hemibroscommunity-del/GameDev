@@ -1,6 +1,6 @@
 card: SEC
 branch: claude/plan-sec-<n>-<topic> (stacked: each PR on the one before until it merges)
-prs: #2030 (5700): merged; #2032 (5701), #2034 (5702), #2037 (5703), #2038 (5704): sitting 37; #2040 (5705): sitting 37; #2042 (5706), #2043 (5707): CI; PR 9 (5708): working
+prs: #2030 (5700): merged; #2032 (5701), #2034 (5702), #2037 (5703), #2038 (5704): sitting 37; #2040 (5705): sitting 37; #2042 (5706): sitting 38; #2043 (5707), #2045 (5708): CI; PR 10 (5709): working
 state: working
 
 ## Done
@@ -20,12 +20,13 @@ state: working
 
 - PR 8 (5707, #2043): a header no side door past the public reads' pace;
   the four other reads paced (11 FAIL on main).
-- PR 9 (5708): an idle guest writes no row and sends no board report until
+- PR 9 (5708, #2045): an idle guest writes no row and sends no board report until
   its first save; the owner's sweep of orphan `botstat:` (`guestquiet`; 3 FAIL).
 
 ## Next
 
-- PR 9's suite and PR; then PR 10 (5709): a restart in one run; 50 requests in.
+- PR 10 (5709): a restart's deletes in one run; 50 requests received at most
+  (`reqincap`; 2 FAIL on main). Its suite and PR; then PR 11 (5710).
 
 ## Found
 

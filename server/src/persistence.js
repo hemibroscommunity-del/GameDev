@@ -571,110 +571,51 @@ export const persistenceMethods = {
        deletes, nothing awaited between (handoff rule 5): a restart between
        can never book one without the other.  Off, everything is as before. */
     const gone = await this._resetGone(pid);
+    /* ═══ v2.3.5709 (card SEC PR 10): THE RESTART IS ONE WRITE ═══
+       The records that go with the character were sixteen separate awaited
+       deletes: the room restarting between any two (a deploy, an eviction)
+       left a new level-1 character holding the old vault, farm and pets.
+       Now every key is gathered first (the quest stamps' one list is the
+       only read), and the character's record and all of them go in ONE
+       synchronous run with the econ book's puts, nothing awaited between
+       (handoff rule 5): the old character on file whole, or none of it.
+       The same rows as before, fewer awaits.  Why each goes (their own
+       notes, kept): the vault, v2.3.3785; the quest stamps, v2.3.2421 (a
+       restarted character walking the tutorial found its old stamp and
+       dropped its bow in silence); the gear record, v2.3.2537 (an old gid
+       came back provable, then sellable); the farm, v2.3.3127 (a Farming-10
+       life's beds paid into a level-1 character); the prize marks,
+       v2.3.3488; the pets, v2.3.3120; the codex, v2.3.3209; the fish log,
+       v2.3.4036 (its rows on the biggest-fish boards stay); the
+       achievements, v2.3.3527; test mode, v2.3.3430 (a new character starts
+       with every honesty check on); a death's note, v2.3.4902.  Kept, as
+       before: today's order board (`farmorders:`, v2.3.3134: its done flags
+       are the day's limit).  No switch: the shape of a delete, not a way of
+       the game (the card). */
+    let stamps = [];
+    try {
+      const stale = await this.state.storage.list({ prefix: 'oplog:questitem:' + pid + ':' });
+      stamps = [...stale.keys()];
+    } catch (e) { /* best-effort: the stamps only ever cause a re-grant to be skipped, never a double pay */ }
+    const keys = ['rpg:' + pid, ...(gone ? [] : ['bank:' + pid]), ...stamps,
+      'gear_prov:' + pid, 'farm:' + pid, 'aponce:' + pid, 'pets:' + pid, 'codex:' + pid,
+      'fishlog:' + pid, 'achv:' + pid, 'testmode:' + pid, 'life:' + pid];
     try {
       booked.put();
       if (gone) { this.state.storage.put(GONE_KEY, gone); this.state.storage.delete('bank:' + pid); }
-      await this.state.storage.delete('rpg:' + pid);
+      /* a delete a key, every one issued before anything is awaited: one run,
+         so the runtime commits them together */
+      await Promise.all(keys.map((k) => this.state.storage.delete(k)));
     } catch (e) {}   /* v2.3.5094: an empty room's book in the delete's own run (`econresetput`) */
-    /* ═══ v2.3.2421: AND THE QUEST-REWARD STAMPS GO WITH THE CHARACTER ═══
-       v2.3.2420 made an unfittable quest weapon ride _creditPlayer into
-       inbox:<pid> under a deterministic opId stamped in oplog: (rule 5), so a
-       reconnect converges instead of minting a second bow. Those stamps are
-       keyed by PLAYER ID -- which a restart does not change, because the
-       passphrase IS the character.
-
-       So without this, a restarted character walks the tutorial again, turns
-       tut_1 in, and the credit finds its own stamp from the PREVIOUS life,
-       returns 'dup', and drops the bow and staff in silence. That is exactly
-       the bug v2.3.2420 was written to fix, reintroduced for the one player
-       who already hit it hard enough to restart -- which is the owner, and
-       which is how this was found.
-
-       Deleting is the honest repair rather than adding a generation counter:
-       a restarted character HAS received nothing, so the correct state of its
-       payout journal is empty. Scoped to `questitem:` and to this pid, so no
-       other producer's idempotency is touched. Bounded -- a handful of quests
-       times a couple of weapons -- and best-effort: a failed sweep must not
-       block the wipe, since the stamps only ever cause a re-grant to be
-       skipped, never a double-pay. */
-    try {
-      const stale = await this.state.storage.list({ prefix: 'oplog:questitem:' + pid + ':' });
-      for (const k of stale.keys()) { try { await this.state.storage.delete(k); } catch (e) {} }
-    } catch (e) { /* best-effort, as above */ }
-    /* ═══ v2.3.2537: AND THE GEAR RECORD GOES WITH THE CHARACTER ═══
-       v2.3.2534 gave every minted piece an id and a row in
-       `gear_prov:<pid>` (gearprov.js).  Rows are keyed by PLAYER ID, which a
-       restart does not change -- the passphrase IS the character -- so
-       without this the ledger outlives the wipe with every row intact.
-
-       On the fresh join it loads full, and anything naming an old gid is
-       rebuilt from the record and comes back marked `minted` on a brand-new
-       level-1 character.  An honest player never sees it (a browser that
-       restarts clears its own copy), but two tabs share one identity by
-       design: restart in one tab and the other still holds the old wardrobe
-       and hands it straight back.  Nothing is MULTIPLIED -- it is gear you
-       did once own -- but it comes back PROVABLE, and v2.3.2536 turns
-       provable into sellable on a character that is supposed to be starting
-       over.
-
-       Deleted rather than generation-counted for the same reason the quest
-       stamps above are: a restarted character has been minted nothing, so
-       the correct state of its record book is empty.  The in-memory cache
-       goes too -- webSocketClose would drop it when the socket below
-       finishes closing, but the reset must not depend on that timing (the
-       same belt-and-braces argument as the playerState delete below). */
-    try { await this.state.storage.delete('gear_prov:' + pid); } catch (e) { /* best-effort, as above */ }
+    /* the caches, without a flush (a flush would write the old record
+       straight back) */
     this._gearProvForget(pid);
-    /* v2.3.3785: and the vault goes with the character (bank.js): a restart
-       is a new character, and "deleted forever" means its bank too */
-    if (!gone) { try { await this.state.storage.delete('bank:' + pid); } catch (e) { /* best-effort, as above */ } }   /* v2.3.5285: booked, it went with the character's run */
     if (this._bankForget) this._bankForget(pid);
-    /* ═══ v2.3.3127: AND THE FARM GOES WITH THE CHARACTER ═══
-       `farm:<pid>` (farm.js) is keyed by player id too, so without this a
-       restarted level-1 character inherited every bed and whatever grew in
-       them.  Its first join said "6 beds are ready", and the harvest (which
-       asks no level) paid a Farming-10 life's Cloudpetals and their XP into
-       a character that is supposed to begin again (review finding).  A
-       restart resets items, gold and skills (docs/specs/character-restart.md),
-       and the beds were bought with them.  The next open hands out the free
-       deed again. */
-    try { await this.state.storage.delete('farm:' + pid); } catch (e) { /* best-effort, as above */ }
-    /* v2.3.3488: and the once-a-character prize marks (`aponce:<pid>`,
-       inbox.js AP_ONCE): a restarted character has been paid nothing, and
-       starts again from no points (docs/specs/character-restart.md) */
-    try { await this.state.storage.delete('aponce:' + pid); } catch (e) { /* best-effort, as above */ }
-    /* v2.3.3134: today's order board (`farmorders:<pid>`, farmorders.js) is
-       KEPT, as the guild claims are.  Its done flags are the day's limit: the
-       first cut deleted it here, and one player id could deliver the day's
-       three orders again after every restart (review).  The restarted
-       character sees the old board until midnight, then its own. */
-    /* v2.3.3120: and the pets record (petbook.js), for the same reason: it is
-       keyed by player id, and a restarted character has caught nothing.  The
-       cache goes WITHOUT a flush (a flush would write the old record straight
-       back), and so do the trap marks' times (trapping.js). */
-    try { await this.state.storage.delete('pets:' + pid); } catch (e) { /* best-effort, as above */ }
     this._petbookForget(pid);
     this._trapForget(pid);
-    /* v2.3.3209: and the monster codex (codex.js): a restarted character has
-       killed nothing, so it knows nothing.  Its cache goes without a flush too
-       (a flush would write the old counts straight back). */
-    try { await this.state.storage.delete('codex:' + pid); } catch (e) { /* best-effort, as above */ }
     this._codexForget(pid);
-    /* v2.3.4036: and the fish log (fishlog.js): a restarted character has
-       caught nothing to weigh.  Its rows on the biggest-fish boards stay --
-       a record is a record of a moment, as the Ace board's are. */
-    try { await this.state.storage.delete('fishlog:' + pid); } catch (e) { /* best-effort, as above */ }
     this._fishlogForget(pid);
-    /* v2.3.3527: and the achievements (achievements.js): a restarted character
-       has earned none -- its AP went with the rpg blob above */
-    try { await this.state.storage.delete('achv:' + pid); } catch (e) { /* best-effort, as above */ }
     this._achvForget(pid);
-    /* v2.3.3430: and test mode (testmode.js): a restarted character starts as
-       a new player would, every honesty check on.  The Test panel turns it on
-       again in one tap. */
-    try { await this.state.storage.delete('testmode:' + pid); } catch (e) { /* best-effort, as above */ }
-    /* v2.3.4902: a death's note (life.js LIFE_NOTE) goes with the character */
-    try { await this.state.storage.delete('life:' + pid); } catch (e) { /* best-effort, as above */ }
     /* v2.3.3284: and the party, which lasts now (party.js): a restarted
        character has joined nothing.  Before the socket closes, so the rest
        of the party is told at once. */
