@@ -32,8 +32,10 @@
  * on (`resetsOn(system)`).  Read at the edge, never cached; each by its
  * literal name in resetSwitches() below, where card T's scanner reads it.
  *
- * No imports: node tests it directly.
+ * One import, ./switches.js (the page's one reader), which has none of its
+ * own: node tests it directly (v2.3.5740, card T2).
  */
+import { pageAddress } from './switches.js';
 
 export const RESET_EDGES = Object.freeze(['zone', 'death', 'rejoin']);
 
@@ -69,7 +71,7 @@ function resetSwitches(search) {
 /** A system's switch: false when the page says `?<system>reset=0`. */
 export function resetsOn(system) {
   try {
-    const search = typeof location !== 'undefined' && location && location.search;
+    const search = pageAddress();   /* v2.3.5740: the address from the page's one reader (card T2) */
     if (!search) return true;
     const on = resetSwitches(search);
     return Object.prototype.hasOwnProperty.call(on, system) ? on[system] : true;

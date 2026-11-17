@@ -33,13 +33,14 @@ import { deskWords } from '@/game/deskWords.js';   /* v2.3.4105: E beside someon
 import { folkDisplayName } from '@/data/folkNames.js';   /* v2.3.4105: ...by the name his plate wears */
 import { fineInput } from './deviceProfile.js';   /* v2.3.4804: the device profile */
 import { act } from '@/game/actions.js';   /* v2.3.5192: the page's requests leave through the action door (card K PR 7) */
+import { sw } from '@/game/switches.js';   /* v2.3.5740: the page's one reader (card T2) */
 /* v2.3.4105: aceFlipBus, shopBus, npcSpeaks and mayorSaysNext left with E's
    talk (runTalk): a tap on him answers each (BroTown.jsx tapNpcAtCss) */
 
 /* v2.3.3711: `?dbltap=0` -- the double tap's roll off, for a tab (the owner's
    to keep or not: a quick double nudge of W rolls now) */
 function dblTapOn() {
-  try { return !(typeof location !== 'undefined' && /[?&]dbltap=0(?:&|$)/.test(location.search)); } catch (_e) { return true; }
+  try { return !sw('dbltap'); } catch (_e) { return true; }   /* v2.3.5740: the page's one reader (card T2) */
 }
 
 /**
