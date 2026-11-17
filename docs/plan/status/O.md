@@ -1,5 +1,5 @@
 card: O
-branch: claude/plan-o-13-thirty (one branch a PR; begun from main, main 4751cb7a merged in)
+branch: claude/plan-o-13-thirty (one branch a PR; on #1970's head, as sitting 25's gatekeeper asked)
 prs: #1787, #1792, #1794, #1800, #1814, #1815, #1832, #1841, #1836, #1850, #1854, #1896, #1915, #1929, #1937, #1952 (merged); #1970 (5232), #1974 (5233): ready; #1977 (5680): ready
 state: ready
 
@@ -31,6 +31,7 @@ state: ready
   `phases.js` (`ladder`); `DOOR_SUITES` (frame-pacer).
 - A suite importing `src/rendering/**` stands in for `pixi.js` (CI installs
   only server/'s packages). Traps §225, §259: names now in `deviceProfile.js`.
+- PR 12 leaves BroTown.jsx's `framePaceOn(location.search)` (not O's file).
 - `mp-palette` is red on main 3876051 (4 of 15: shadow bases 6 of 13 and
   23 of 40; water 1364 px), the same with 14a: for card Z.
 

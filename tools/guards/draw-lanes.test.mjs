@@ -45,10 +45,11 @@
 import { readFileSync, writeFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import {
-  KNOBS, KNOB_NAMES, LANES, LANE_NAMES, AXES, AXIS_NAMES, LIGHT_AT, PROGRAMS, PROGRAM_NAMES, OVERRIDES, DEV_ASKS,
+  KNOBS, KNOB_NAMES, LANES, LANE_NAMES, AXES, AXIS_NAMES, LIGHT_AT, PROGRAMS, PROGRAM_NAMES, OVERRIDES, DEV_ASKS, ADDRESS_PINS,
   knobAt, ladderDepth, pickLane, DEFAULT_LANE,
 } from '../../src/game/drawLanes.js';
 import { systemOf, placeFiles, ROOT } from './lib/systems.mjs';
+import { SWITCHES } from './lib/switches.mjs';   /* v2.3.5232: the off-ramps name page switches */
 
 /* the census line: knobs with a reader not yet read through laneKnob.  Only
    falls, with each knob's PR (card O's 4 to 13); the gatekeeper alone lowers it */
@@ -141,6 +142,13 @@ export function makePage() {
     L.push('|---|---|---|---|');
     for (const o of OVERRIDES) L.push(`| \`${o.knob}\` | \`${o.value}\` | ${o.when ? '`' + o.when + '`' : '-'} | ${cell(o.why)} |`);
   }
+  /* v2.3.5232 (card O PR 12): the off-ramps, through the page's one reader */
+  L.push('');
+  L.push('The off-ramps: a switch in the address pins its knob (to a step, or to the lane\'s row: `-`), read through the page\'s one reader (`src/game/switches.js`).');
+  L.push('');
+  L.push('| Knob | Pinned to | When the address has | Why |');
+  L.push('|---|---|---|---|');
+  for (const o of ADDRESS_PINS) L.push(`| \`${o.knob}\` | ${o.value === null ? '-' : '`' + o.value + '`'} | \`?${o.addr}\` | ${cell(o.why)} |`);
   L.push('');
   L.push('## The game\'s own drawing programs');
   L.push('');
@@ -289,6 +297,10 @@ const placed = placeFiles();
   const off = OVERRIDES.filter((o) => !o || !KNOBS[o.knob] || !KNOBS[o.knob].steps.includes(o.value) || typeof o.why !== 'string' || !o.why
     || (o.when !== undefined && !DEV_ASKS.includes(o.when))).map((o) => JSON.stringify(o));
   check(`8: every override pins a knob of the table to one of its steps, says why, and asks a question of DEV_ASKS (${OVERRIDES.length})`, off.length === 0, off);
+  /* v2.3.5232: each off-ramp pins a knob of the table to a step (or its row), says why, and names a switch of the page's table */
+  const rows = new Set(SWITCHES.filter((r) => r.side !== 'worker').map((r) => r.name.replace(/^\?/, '')));
+  const bad = ADDRESS_PINS.filter((o) => !KNOBS[o.knob] || !(o.value === null || KNOBS[o.knob].steps.includes(o.value)) || !o.why || !rows.has(o.addr.split('=')[0])).map((o) => JSON.stringify(o));
+  check(`8: every off-ramp pins a knob of the table (a step, or its row), says why, and names a page switch (${ADDRESS_PINS.length})`, bad.length === 0, bad);
 }
 
 /* ── 9. every file named exists ── */

@@ -573,8 +573,8 @@ _liveKnobs(null);   /* v2.3.5224: from here, today's live knobs */
   const fp = strip(readFileSync(join(ROOT, 'src/game/framePacer.js'), 'utf8'));
   /* v2.3.5235: and the owner's switch's list (clientOff.js), a leaf too */
   const co = strip(readFileSync(join(ROOT, 'src/game/clientOff.js'), 'utf8'));
-  check('17b. the pacer imports the lanes\' table and the owner\'s switches alone (leaves with no imports)', [...fp.matchAll(/^import .* from '([^']+)';/gm)].map((m) => m[1]).join() === './drawLanes.js,./clientOff.js'
-    && ![...dl.matchAll(/^import /gm)].length && ![...co.matchAll(/^import /gm)].length);
+  check('17b. the pacer imports the lanes\' table, the page\'s one reader and the owner\'s switches alone (leaves: the table imports the reader alone, v2.3.5232)', [...fp.matchAll(/^import .* from '([^']+)';/gm)].map((m) => m[1]).join() === './drawLanes.js,./switches.js,./clientOff.js'
+    && [...dl.matchAll(/^import .* from '([^']+)';/gm)].map((m) => m[1]).join() === './switches.js' && ![...co.matchAll(/^import /gm)].length);
   const pt = readFileSync(join(ROOT, 'src/debug/perfTracker.js'), 'utf8');
   check('17c. the frame meter hands the pacer its samples by a setter (no import into the pacer)', /useFrameSamples\(eachSince, busyIn\);/.test(pt));
   const st = readFileSync(join(ROOT, 'src/game/speedTest.js'), 'utf8');
