@@ -26,8 +26,8 @@
  *     the strike with no start of its own (gathering.js _handleNodeStrike),
  *     the 45 perfect harvests a minute (_ratedHarvestAccuracy), the 45 cooks a
  *     minute and the 900 ms between cooks (cooking.js), a cook's result held
- *     to the cook it started (v2.3.5553, cooking.js _cookStartTake,
- *     `cookstart`), and the bot scoring
+ *     to the cook it started (v2.3.5553, cooking.js _cookStartOk,
+ *     `cookstart`, ON since v2.3.5727), and the bot scoring
  *     with its 2,400-an-hour caps (botfp.js _botfpOnStrike, _botfpOnCook) --
  *     nothing is scored or flagged; and the server's own bot signals (v2.3.3731,
  *     botsig.js _sigSkip, _sigOnWindup, _sigReverifyOk): nothing measured,
@@ -61,7 +61,8 @@
  * safe ground (v2.3.5725, dungeon.js: `dungeonground`), a move's fields held
  * to their form (v2.3.5723, movement.js MOVE_FIELDS: `movefields`), a relay's
  * fields typed and the room's send to joined sockets only (v2.3.5724,
- * relay.js RELAY_FORMS: `relaytyped`), the owner's routes
+ * relay.js RELAY_FORMS: `relaytyped`), the room ceiling's honest floor
+ * (v2.3.5728, flood.js HONEST_PER_S: `ceilfair`), the owner's routes
  * with no key and the public reads at the edge (v2.3.5726, wire/door.js:
  * the worker settings `EDGE_GUARD`, `EDGE_CACHE`), every save and payment rule,
  * the login key and its lockouts, a frozen account, PvP consent and every
