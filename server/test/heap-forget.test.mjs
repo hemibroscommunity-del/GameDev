@@ -14,12 +14,14 @@
  *      them is a HEAP_FORGET row kept past the leave, or one of BOUNDED (a
  *      cap of its own).  A new map keyed by a player fails here.
  *   4. THE HEAP: 1,000 guests, each a 7 KB strike, in and out; after a
- *      full collection the room grew under 2.5 KB a guest (it was ~7 KB more,
- *      the zone).
+ *      full collection at least half the zone is forgotten a guest (off - on
+ *      >= 3,500 B) and the room grew under 4 KB a guest (it was ~7 KB more,
+ *      the zone).  v2.3.5725: the line measured on CI's runner (below).
  *   5. THE SWITCH: `heapforget: false` keeps the record whole and forgets
  *      nothing, as before.
  * Break proofs (tried by hand): the _heapForget call out of leave.js -> 1
- * to 4 red; _heapClip returning `extra` -> 1 red; the sweep's time test
+ * to 4 red (v2.3.5725, again with the new lines: on 8,027, off 7,848, the
+ * forgotten -179: both of 4's lines red); _heapClip returning `extra` -> 1 red; the sweep's time test
  * inverted -> 2 red. */
 import v8 from 'node:v8';
 import vm from 'node:vm';
@@ -153,7 +155,25 @@ async function perGuest(flags, n) {
   const on = await perGuest(null, N);
   const off = await perGuest({ heapforget: false }, N);
   console.log('   the room a guest:', { on, off });
-  check('4: 1,000 guests in and out, each a 7 KB strike: the room grows under 2.5 KB a guest', on < 2560, { on, off });
+  /* v2.3.5725 (card K2; sitting 38's Found, the planning session): THE LINE
+     MEASURED, NOT RAISED.  The check is there to catch the ZONE kept: some
+     7 KB a guest (BIG and its id), which `heapforget: false` shows.  The
+     absolute figure a guest leaves is the runner's as much as the room's:
+     here (node 22, 4 cores) `on` read 247, 643, 1,543 in three runs; on
+     CI's runner 2,563, 2,571 and 2,573 (runs 44147025437, 44147020446,
+     44158898401), over the old 2,560 line, and `off` 7,119 to 8,423 here,
+     7,923 and 8,327 there.  So:
+       FORGOTTEN  off - on, the zone the room no longer keeps: at least half
+                  of it (3,500 B).  Measured 5,350 to 5,756 on CI, 5,576 to
+                  8,176 here; with the forget broken (the break proof below)
+                  on is off and this is about 0, so it goes red whatever the
+                  runner;
+       CEILING    on < 4 KB a guest: anything ELSE a guest leaves behind (a
+                  new map keyed by a player that nothing forgets; part 3
+                  names them one by one) still shows; 1.5 KB above CI's
+                  highest reading, 2.5 KB above this box's. */
+  check('4: 1,000 guests in and out, each a 7 KB strike: at least half the zone forgotten a guest (off - on >= 3,500 B)', off - on >= 3500, { on, off, forgotten: off - on });
+  check('4: ...and the room grows under 4 KB a guest', on < 4096, { on, off });
   check('4: ...where it grew by the zone, some 7 KB, before (`heapforget: false`)', off > 6000, { on, off });
 }
 
