@@ -13,7 +13,8 @@ each merge:
 
 1 K #2024 fe1297b0b43e5c23f19a7d57847bdeb17544ea8d -> 72a2f75571700a54e74ee580358fdc2c77cadf17
 2 L #2027 679e99ace270943d914539e02aacb244497e3aa0 -> c4b358d0849a7481ee4f576464e1dbc9b92e70e8
-3 Z (this PR): its head and tree are in the list (`status/Z.md`).
+3 RT #2026 a75ba2af1025a574eca0c0990e234e33bf03213d -> @@T3@@
+4 Z (this PR): its head and tree are in the list (`status/Z.md`).
 
 #2024 was built on #2021 and #2023, both now on `main`. Rehearsed at
 c778c680 (one base 5594e52d, tree a8c82322); at 14:44 K sent fe1297b0:
@@ -97,9 +98,43 @@ and the ride (L's message at 14:51 UTC; based on `main`, holding
 - After it lands the phase line can go 9 -> 7 (sitting 36: only a
   merged count is ticked).
 
+## RT #2026 (5059): two pieces of an outside review into the plan
+
+READY (documents only: step 3). No card's: the planning side's own plan
+edit, its tag from that side's own run (5055 to 5058 merged before; 5059
+unused on `main`), its status file `status/RT.md` (`ready`); open, not a
+draft since 14:34, `test` green on a75ba2af (holding `main` 01b8f33d).
+Three files: `GRAND-PLAN.md` (5.5 gains "tables first": the renderers'
+hand-tuned tables leave as leaf files before any code moves; a new 7.5
+[LATER] "the caps leave too": a census of the 173 caps, then 7.2's
+four-week rule), `docs/specs/grand-plan-review.md` (round 4, the seven
+recommendations), `status/RT.md`. It quotes the owner, 2026-11-17: "Add
+whatever pieces are worth adding". Not rehearsed (documents); merges
+clean with this PR (they touch the plan in different places). No deploy.
+- For the owner: 7.5 is new plan scope. The PR quotes your words; a
+  gatekeeper cannot check them. Merge it if those are yours.
+
 ## The rehearsal
 
-@@GK@@
+`tools/dev/gatekeeper.mjs` on 01b8f33d with #2024 (at c778c680, its
+first head) alone: tree a8c82322; build PASS; questline 187/187;
+precheck 0 FAIL but the server suites' 5-minute limit under load (the
+settled one, sittings 33 and 34), so `cd server && npm test` was run
+alone in that tree: 478 suites, all green (325 s). #2024's new head
+fe1297b0 changes only comments, a spec table and K's status against that
+tree; `test-mode` and `send-door` (the suites that read `testmode.js`)
+green on its tree 72a2f755.
+
+Then the list: #2024 (fe1297b0) and #2027 in that order: tree c4b358d0
+(the same as the step-by-step merges); build PASS; questline 187/187;
+precheck the same one timeout and nothing else red (its one WARN the
+branch count); `cd server && npm test` alone: 480 suites, all green
+(368 s). This PR merged on top (one base, 01b8f33d): every guard in
+`tools/guards/` green (34), the phase table 7 `todo` under the line 9.
+`test` green on every listed head. No two listed PRs share a file but
+the switch table's rows (`switches.mjs`, `SWITCHES.md`: each its own
+line, merged clean) and this PR's `phase-table.test.mjs` with #2027
+(another part of the file, merged clean).
 
 ## Z (this PR, 5673)
 
