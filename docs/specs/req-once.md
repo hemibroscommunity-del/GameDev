@@ -105,3 +105,10 @@ the first's outcome.
 
 `server/test/req-once-door.test.mjs` holds it (its break proof in its header).
 
+## Not on the public reads (v2.3.5725, card K2 PR 6c)
+
+A market order keeps the request id that made it (`reqId`, for the repeat
+check), but the two public reads (`/api/market/orders` and `/my`) leave it
+out (`market.js` `mktPublicOrders`): anyone may read the book and anyone's
+list by its id, and no page reads `reqId` there. No switch: nothing reads it
+(`three-guards.test` c).
