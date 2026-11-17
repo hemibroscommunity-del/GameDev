@@ -17,17 +17,18 @@ state: ready
 - 5549 `movetop`, 5550 `bowshot` (3.3 -> 1.60; OFF) merged. 5551 (this
   branch): `swordswing` and `movetop` ON (the owner, 2026-11-17: "Go
   recommended"). The bow's reach tried: no gain past the spread. 5553
-  (this branch): `cookstart` OFF (the cook 1.59 -> 0.99). Next: the
-  harvest's grade (1.86): a question to the planner.
+  (this branch): `cookstart` OFF (the cook 1.59 -> 0.99). The harvest's
+  grade: a Found, the owner's (the planner).
 - Later (the planner): walls on the worker (the Wheel's coast): a new
   system and worker memory, for when real players come.
 - wsClient.js: done for good (told L). index.js, combat.js: 14 still.
 
 ## Found
 
+- The harvest's grade (1.86): the phone's own timing score; a bot times
+  perfectly, so the worker has nothing to check. Capping perfects or paying
+  them less changes honest play: the owner's (the planner: leave it).
 - A kept quest hand-in gets a fresh request id on its rejoin send.
-- One sprint step's bill is capped at 1 s (STEP_MAX_MS), on or off.
-- A sell order's tierKey is the seller's claim, not the escrowed weapon's.
 - #1949: a socket at 95/s is never closed (550 drops / 10 s < 600), and
   the full room's 33/s share sits at a crowd fight's 35-40/s: the owner's.
 
