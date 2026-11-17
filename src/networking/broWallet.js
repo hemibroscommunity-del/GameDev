@@ -24,6 +24,8 @@
  * bundle-size cost, and nothing new in the dependency tree.
  */
 
+import { act } from '../game/actions.js';   /* v2.3.5189: the action door (card K PR 7): a table of the page's own, no imports of its own, no bundle cost */
+
 /* Round-trip states the UI renders.  `pending` covers both the wallet prompt
    and the chain read; they are one wait from the player's point of view. */
 export const BRO_IDLE = 'idle';
@@ -129,9 +131,9 @@ export async function verifyBro(S, tokenId, opts = {}) {
         const signature = await window.ethereum.request({
           method: 'personal_sign', params: [msg.message, from],
         });
-        S.channel.send({ type: 'broadcast', event: 'bro_verify', payload: countMode
+        act('bro_verify', countMode   /* v2.3.5189: through the action door (actions.js) */
           ? (hasWorn ? { count: 1, tokenId: wornId, signature } : { count: 1, signature })
-          : { tokenId: Number(tokenId), signature } });
+          : { tokenId: Number(tokenId), signature });
       } catch (e) {
         /* 4001 is the EIP-1193 code for "user rejected" — not an error worth
            an alarming message. */
@@ -150,7 +152,7 @@ export async function verifyBro(S, tokenId, opts = {}) {
 
   timer = setTimeout(() => finish({ ok: false, reason: 'Timed out waiting for the wallet or the chain.' }), timeoutMs);
   try {
-    S.channel.send({ type: 'broadcast', event: 'bro_nonce', payload: {} });
+    act('bro_nonce', {});   /* v2.3.5189: through the action door (actions.js) */
   } catch {
     return finish({ ok: false, reason: 'Not connected.' }), done;
   }
