@@ -14,11 +14,55 @@
 # A header has no live switch: a change here is a new build.  A pull request's
 # preview URL serves this file too, so a change shows there first.
 # tools/guards/site-headers.test.mjs fails if src/public/_headers comes back.
+#
+# v2.3.5820 (card SEC2, the owner's outside audit of 2026-11-17): three more.
+#   - Strict-Transport-Security: a browser that has been here once goes
+#     straight to https:// for a year, so a coffee-shop network cannot catch
+#     the first plain-http request and answer it itself.  includeSubDomains
+#     holds api.brotown.net (the worker) the same way; every name under
+#     brotown.net is served by Cloudflare over https.  NOT `preload`: that
+#     asks the browsers to build the rule in for good, months to undo, and is
+#     the owner's call (hstspreload.org) once this has run a while.
+#   - Permissions-Policy: the camera, microphone, location, payments, USB and
+#     motion sensors are switched off for the page and anything it frames.
+#     The game uses none of them (census 2026-11-17).  NOT switched off,
+#     because the game uses them: fullscreen and the orientation lock
+#     (BroTown.jsx), the clipboard, the share sheet, vibrate, autoplay.
+#   - Content-Security-Policy-Report-Only: the list of places the page may
+#     load from, REPORT-ONLY: a browser that sees something off the list
+#     still loads it and writes a warning in the console.  The audit's own
+#     advice: never switch a full policy on blind, a wrong line is a black
+#     screen.  Each source, and why (census 2026-11-17):
+#       script  'self'; Turnstile (challenges.cloudflare.com, verify.js);
+#               the hash is index.html's one inline handler, the font
+#               preload's onload (it moves the sheet in without blocking);
+#               'unsafe-eval' because PixiJS 8 builds its shader code with
+#               new Function and REFUSES TO START without it (AbstractRenderer:
+#               "does not allow unsafe-eval"): the audit's own script-src
+#               'self' is a black screen.  Dropping it means importing
+#               pixi.js/unsafe-eval first, a renderer change of its own;
+#       style   'self', inline (index.html's loading screen, React), the
+#               Google Fonts sheet;  font: fonts.gstatic.com;
+#       img     'self', data: (game.css), blob: (bakes, keepAsImage) and any
+#               https: (a bro's NFT picture, through wsrv.nl or its host);
+#       media   'self', data: (GameApp's silent wav), blob:;
+#       connect 'self', the worker (https and wss api.brotown.net), the NFT
+#               catalogue (raw.githubusercontent.com), Turnstile;
+#       worker  'self' (png8Worker, bodyBakeWorker, the ground worker);
+#       frame   Turnstile's box;  object none;  base and form 'self'.
+#     frame-ancestors stays in the enforced line above (a report-only policy
+#     cannot carry it).  To switch it on: test it on a preview URL (the
+#     console shows "[Report Only]" warnings, none expected), then rename
+#     the header to Content-Security-Policy and fold the frame-ancestors line
+#     in.  docs/plan/cards/SEC2.md has the steps.
 /*
   X-Frame-Options: DENY
   Content-Security-Policy: frame-ancestors 'none'
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()
+  Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-hashes' 'sha256-1jAmyYXcRq6zFldLe/GCgIDJBiOONdXjTLgEFMDnDSM=' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob:; connect-src 'self' https://api.brotown.net wss://api.brotown.net https://raw.githubusercontent.com https://challenges.cloudflare.com; worker-src 'self' blob:; frame-src https://challenges.cloudflare.com; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'
 
 # v2.3.2330: cache headers for Cloudflare Pages.  Vite copies public/ into
 # dist/ verbatim, which is where Pages reads this from; there was no _headers

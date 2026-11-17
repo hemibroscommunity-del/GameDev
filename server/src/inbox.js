@@ -199,6 +199,9 @@ export const inboxMethods = {
       /* v2.3.5802 (MD-1): the next kept range at or past the cursor: this
          page stops at its start, or starts after its end */
       let keepEnd = null;
+      /* one kept range a page: right while KEEP holds one word (or ranges
+         that never interleave with a page's other keys); a second word
+         would need the fill below to stop at the next range too */
       if (this._riseKeepOn && this._riseKeepOn()) {
         for (const w of OP_PRUNE.KEEP) {
           const lo = 'oplog:' + w, hi = lo + '\uffff';

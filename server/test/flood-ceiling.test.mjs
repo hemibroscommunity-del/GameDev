@@ -16,11 +16,14 @@
  *   4. THROUGH THE WIRE: past the ceiling a flooder's message reaches no
  *      handler; a socket under its share is answered.
  *   5. THE SWITCH: `roomceiling: false` takes them all, as before.
+ *   6. v2.3.5728 (`ceilfair`): a socket's share never under the honest rate
+ *      (FLOOD.HONEST_PER_S): a crowd fight's phones at 40 a second, with the
+ *      room past its ceiling, lose nothing.
  * Break proofs (tried by hand): the share test removed (every message past
  * the ceiling dropped) -> 2 and 4 red (honest phones lose messages); a
  * socket's count never reset by the second -> 1 red. */
 import { FLOOD } from '../src/flood.js';
-import { makeStorage, openRoom, fakeWs, join, settle } from './testroom.mjs';
+import { makeStorage, openRoom, fakeWs, join, settle, seededClock } from './testroom.mjs';
 
 let failures = 0;
 function check(name, cond, detail) {
@@ -96,6 +99,12 @@ function second(room, groups, t) {
 
 /* ── 4. through the wire ── */
 {
+  /* v2.3.5728: on the test's clock -- on the machine's, the wall second
+     could turn between setting the room's count and the two messages, and
+     the check passed by its escape (CI, #2055 571379ef: so `roomceiling`'s
+     listed fail did not fail).  Now the second cannot turn */
+  const clock = seededClock({ start: T0 + 500 }).install();
+  try {
   const room = await openRoom(makeStorage());
   const ws = fakeWs('w1'); await join(room, ws, 'bp_wire1');
   const ws2 = fakeWs('w2'); await join(room, ws2, 'bp_wire2');
@@ -109,7 +118,38 @@ function second(room, groups, t) {
   other.roomSec = sec; other.roomN = 0;
   await room.webSocketMessage(ws, JSON.stringify({ type: 'heap_burn' })); await settle();
   await room.webSocketMessage(ws2, JSON.stringify({ type: 'heap_burn' })); await settle();
-  check('4: past the ceiling, a socket over its share reaches no handler; one under it does', Math.floor(Date.now() / 1000) !== sec || (reached.length === 1 && reached[0] === 'bp_wire2'), reached);
+  check('4: past the ceiling, a socket over its share reaches no handler; one under it does', Math.floor(Date.now() / 1000) === sec && reached.length === 1 && reached[0] === 'bp_wire2', reached);
+  } finally { clock.restore(); }
+}
+
+/* ── 6. v2.3.5728 (card K2 PR 9, `ceilfair`): A CROWD FIGHT'S HONEST PHONES
+   ARE NEVER DROPPED.  120 sockets (the room's cap): 60 flooders at 110 a
+   second hold the room past its ceiling, and 60 phones in a crowd fight
+   send 40 a second -- over the plain share (4,000 / 120 = 33), under the
+   honest floor (FLOOD.HONEST_PER_S).  Red on main: the honest phones lost
+   messages every second, and those drops counted toward their close. */
+{
+  const run = async (flags) => {
+    const room = await openRoom(makeStorage(), flags);
+    const flood = { socks: sockets(room, 60, 'f'), rate: 110 };
+    const honest = { socks: sockets(room, 60, 'c'), rate: 40 };
+    let worst = 0, hs = 0, ht = 0, hc = 0, fs = 0, ft = 0, fc = 0;
+    for (let i = 0; i < 12; i++) {
+      const r = second(room, [flood, honest], T0 + i * 1000);
+      worst = Math.max(worst, r.taken[0] + r.taken[1]);
+      fs += r.sent[0]; ft += r.taken[0]; fc += r.closed[0];
+      hs += r.sent[1]; ht += r.taken[1]; hc += r.closed[1];
+    }
+    return { worst, hs, ht, hc, fs, ft, fc };
+  };
+  const on = await run(null);
+  check('6: 60 phones in a crowd fight at 40 a second (over the plain share of 33), the room past its ceiling: none dropped, none closed', on.hs > 0 && on.ht === on.hs && on.hc === 0, on);
+  /* (when a flooder is CLOSED is MSG_CLOSE_AFTER's, unchanged: card K's
+     Found on #1949, the owner's question) */
+  check('6: ...the flooders still lose the rest of each second', on.ft < 0.6 * on.fs, on);
+  check('6: ...and the room takes at most twice its ceiling a second', on.worst <= 2 * FLOOD.ROOM_MSG_PER_S, on);
+  const off = await run({ ceilfair: false });
+  check('6: `ceilfair: false`: the plain share, as before (the crowd fight\'s phones lose messages)', off.ht < off.hs, off);
 }
 
 /* ── 5. the switch ── */
