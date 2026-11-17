@@ -1,6 +1,6 @@
 card: L
 branch: claude/plan-l-28-connection-door (on #2010)
-prs: #1746 to #2000 (merged), #2010 (5527), 5528 (this branch, on #2010): ready
+prs: #1746 to #2000 (merged), #2010 (5527), #2012 (5528, on #2010): ready
 state: ready
 
 ## Done
