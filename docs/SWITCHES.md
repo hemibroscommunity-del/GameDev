@@ -338,6 +338,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?legsync` | page | switch | v2.3.4077 | 2026-11-03 | =0 | logic |  | no | The legs keep their old fixed cadences, not synced to the speed. |
 | `monsterroll` | worker | switch | v2.3.3300 | 2026-10-17 | false | logic |  | no | A monster gets no roll i-frames (the way before v2.3.3300). |
 | `movebudget` | worker | switch | v2.3.3325 | 2026-10-17 | false | logic |  | no | The move budget off: the per-message 80, the refusals and the three bypasses as before. |
+| `movefields` | worker | switch | v2.3.5723 | 2026-11-17 | false | logic |  | no | A move's facing, worn pieces and velocity are stored as sent and ticked to everyone near, any size or shape, and an object with no toString makes the move's signature throw, as before. |
 | `?movementreset` | page | switch | v2.3.5204 | 2026-11-14 | =0 | logic |  | no | A climb and a swim end a frame after a change of place again, on their own off-the-Wheel checks, not at the zone door. |
 | `movepath` | worker | switch | v2.3.3726 | 2026-10-28 (v2.3.3744) | false | logic |  | no | No glide from the next tick; every phone is told to send every move again. |
 | `movetop` | worker | switch | v2.3.5549 | 2026-11-17 | false | logic |  | no | ON since v2.3.5551 (the owner, 2026-11-17: "Go recommended"); thrown (`movetop: false`), every player is held to the flat 500 px a second again, as before. |

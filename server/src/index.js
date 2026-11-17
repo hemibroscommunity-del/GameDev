@@ -4728,13 +4728,21 @@ export class GameRoom {
      (v2.3.1726).  `dead` is deliberately absent: dying is something that
      happens TO you, and a corpse should age out like anything else. */
   _moveActivitySig(msg) {
-    const n = (v) => (Number.isFinite(+v) ? Math.round(+v) : 0);
+    /* v2.3.5723 (card K2 PR 4; the second red team): read only a plain
+       string, number or boolean -- an object whose `toString` is no function
+       (`{"toString": 1}`, valid JSON) made `+v` and the string join throw
+       here, before the move's handler, and the whole move was lost.  The
+       signature of every honest move is the same as before.  `movefields:
+       false`: read as before. */
+    const plain = this._moveFieldsOn && this._moveFieldsOn();
+    const sc = (v) => (!plain || v === null || v === undefined || typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean' ? v : '');
+    const n = (v) => { v = sc(v); return Number.isFinite(+v) ? Math.round(+v) : 0; };
     return n(msg.x) + ',' + n(msg.y) + ',' +
-      (msg.d || '') + ',' + (msg.f || '') + ',' +
-      (msg.z || '') + ',' + (msg.ex || '') + ',' +
+      (sc(msg.d) || '') + ',' + (sc(msg.f) || '') + ',' +
+      (sc(msg.z) || '') + ',' + (sc(msg.ex) || '') + ',' +
       (msg.blocking ? 1 : 0) + ',' + (msg.dodging ? 1 : 0) + ',' +
-      (Number.isFinite(+msg.ba) ? Math.round(+msg.ba * 20) : '') + ',' +
-      (msg.eqc || '') + ',' + (msg.eql || '') + ',' + (msg.eqs || '');
+      (Number.isFinite(+sc(msg.ba)) ? Math.round(+sc(msg.ba) * 20) : '') + ',' +
+      (sc(msg.eqc) || '') + ',' + (sc(msg.eql) || '') + ',' + (sc(msg.eqs) || '');
   }
 
   /* v2.3.1970: sanitise a room-chat relay in place (see CHAT_RELAY
