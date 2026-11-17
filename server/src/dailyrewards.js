@@ -628,7 +628,16 @@ export const dailyRewardsMethods = {
     ps._lastDailySpinAt = now;
     const act = payload && (payload.act === 'double' || payload.act === 'collect') ? payload.act : 'spin';
     const opId = payload && typeof payload.opId === 'string' && payload.opId.length <= 96 ? payload.opId : null;
-    if (opId && await this._opSeen('spinop:' + opId)) return;
+    /* v2.3.5194: the request id first, kept with the pid (reqonce.js); the
+       phone's opId from an older page.  A repeat gets the first answer again
+       while the sitting holds it */
+    const rid = this._reqIdOf ? this._reqIdOf(payload && payload.reqId) : null;
+    const opKey = rid ? 'spinop:' + pid + ':' + rid : (opId ? 'spinop:' + opId : null);
+    if (opKey && await this._opSeen(opKey)) {
+      const again = rid ? this._reqRecall(pid, rid) : undefined;
+      if (again !== undefined) await this._drSendState(pid, { ...(again || {}), reqId: rid });
+      return;
+    }
     const rec = await this._drLoad(pid);
     if (!rec || !this.playerState[pid]) return;
     if (rec.sp.day !== dayOf(now)) {
@@ -685,7 +694,8 @@ export const dailyRewardsMethods = {
     if (news && news.top) {
       try { if (this._achvOnSpinTop && this.playerState[pid]) this._achvOnSpinTop(pid, this.playerState[pid]); } catch (e) { /* never break a spin */ }
     }
-    if (opId) await this._opStamp('spinop:' + opId);
+    if (opKey) await this._opStamp(opKey);
+    if (rid) { this._reqRemember(pid, rid, news || null); news = { ...(news || {}), reqId: rid }; }   /* v2.3.5194: the answer, for a repeat, and its echo */
     await this._drSave(pid);
     /* v2.3.4393: a pot lost to a double is a record too (boards.js: the
        biggest losses), after the run is saved */

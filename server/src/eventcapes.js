@@ -604,7 +604,15 @@ export const eventCapeMethods = {
     if (!ps) return;
     if (ps.dying || ps.dead || ps.disconnected) return;
     /* Idempotency: a retried redeem on a flaky phone must not grant twice. */
-    if (opId && typeof opId === 'string' && await this._opSeen('capered:' + opId)) return;
+    /* v2.3.5194: the request id first, kept with the pid (reqonce.js); the
+       phone's opId from an older page.  A repeat's answer is the bag again */
+    const rid = this._reqIdOf ? this._reqIdOf(payload && payload.reqId) : null;
+    const opKey = rid ? 'capered:' + session.id + ':' + rid : (opId && typeof opId === 'string' ? 'capered:' + opId : null);
+    if (opKey && await this._opSeen(opKey)) {
+      const ws0 = rid ? this._wsBySessionId(session.id) : null;
+      if (ws0) this._sendPlayerState(ws0, session.id);
+      return;
+    }
     /* precheck's proto-safety heuristic flags this plain {} -- it is safe here
        and the reason is the LINE ORDER above, not the object: _capeForTicket
        has already rejected invKey unless it exactly equals a ticket string in
@@ -634,7 +642,7 @@ export const eventCapeMethods = {
        one issued ticket.  Ledger and bag now land together; the stamp after
        them only guards a retry, and a retry finds the ticket gone. */
     this._saveRpg(session.id, ps);
-    if (opId && typeof opId === 'string') await this._opStamp('capered:' + opId);
+    if (opKey) await this._opStamp(opKey);
     const ws = this._wsBySessionId(session.id);
     if (ws) this._sendPlayerState(ws, session.id);
   },

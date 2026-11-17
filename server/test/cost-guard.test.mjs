@@ -27,6 +27,9 @@
  *      as it likes writes a bounded number of rows -- a shield on and off
  *      200 times in 2 s, a weapon in and out of a trade window 100 times
  *      (they wrote 200 and ~250);
+ *  22. v2.3.5194: a request's id writes no row while `reqstamp` is off (a
+ *      market order's rides its own row); on, ONE stamp row a request with
+ *      no record of its own (reqonce.js).
  *  10. v2.3.3513: a gem set into a weapon writes the record once, and a
  *      refused ask writes nothing (weapongem.js);
  *  11. v2.3.3981: one ore a bar -- smelting or hardening all writes the
@@ -842,6 +845,37 @@ const FAST = 110;
   console.log('     21. a match\'s stakes (2 v 3): off ' + JSON.stringify(off) + ', on ' + JSON.stringify(on));
   check('21. xferescrow off (the default): a match\'s stakes write no xfer: row', off.xfer === 0 && off.writes > 0, off);
   check(`21. xferescrow on: ONE row more a losing stake (${off.writes} -> ${on.writes}: 3), none a winning one`, on.xfer === 3 && on.writes === off.writes + 3, { off, on });
+}
+
+/* ── 22. a request's id, `reqstamp` off and on (v2.3.5194, reqonce.js) ───────
+   A market order's id rides the order's own row; a request with no record of
+   its own (a market cancel here) keeps its answer for the sitting and writes
+   nothing more, unless `reqstamp` is on: ONE stamp row a request. */
+{
+  const measure = async (flags, rid) => {
+    const { room, state } = await makeRoom();
+    room._liveFlags = Object.assign({}, room._liveFlags, flags || {});
+    const a = 'cg_rq_a';
+    state.store.set('rpg:' + a, { _v: 21, coins: 0, level: 5, inventory: {} });
+    await join(room, a);
+    room.playerState[a].weaponStash = [{ name: 'Cg Axe', tierMult: 1, dmg: 5 }];
+    await room._mktEnsureIndex();
+    const body = { type: 'sell', category: 'weapon', subtype: 'axe', tierKey: 'mythic', price: 300, playerId: a, stashIndex: 0 };
+    const w0 = state.writes.length;
+    const placed = rid ? await room._reqOnce(a, rid, () => room._mktPlaceOrder(body, rid), { record: true }) : await room._mktPlaceOrder(body);
+    const id = placed && placed.order && placed.order.id;
+    if (rid) await room._reqOnce(a, rid + 'c', () => room._mktCancelOrder(id, a));
+    else await room._mktCancelOrder(id, a);
+    for (let i = 0; i < 4; i++) await new Promise((r) => setTimeout(r, 2));
+    const w = state.writes.slice(w0);
+    return { writes: w.length, stamps: w.filter((k) => k.startsWith('oplog:rq:')).length, byPrefix: byPrefix(w) };
+  };
+  const plain = await measure(null, null);
+  const off = await measure(null, 'rq-cg-1');
+  const on = await measure({ reqstamp: true }, 'rq-cg-1');
+  console.log('     22. a market order and its cancel: no id ' + JSON.stringify(plain) + ', an id ' + JSON.stringify(off) + ', reqstamp on ' + JSON.stringify(on));
+  check('22. a request id with reqstamp off (the default): the rows of no id, no stamp row', off.writes === plain.writes && off.stamps === 0 && plain.writes > 0, { plain, off });
+  check(`22. reqstamp on: ONE row more, the cancel's stamp (the order's id rides its own row) (${off.writes} -> ${on.writes})`, on.stamps === 1 && on.writes === off.writes + 1, { off, on });
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);

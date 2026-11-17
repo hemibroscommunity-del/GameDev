@@ -104,7 +104,17 @@ export const dailyChestMethods = {
     if (this._chestOff()) return;                          /* switched off: the chest waits */
     const ps = this.playerState[session.id];
     if (!ps || ps.dying || ps.dead || ps.disconnected) return;
-    if (opId && typeof opId === 'string' && await this._opSeen('chestop:' + opId)) return;
+    /* v2.3.5194: the request id first, kept with the pid (reqonce.js); the
+       phone's opId from an older page.  A repeat gets the first answer
+       again while the sitting holds it */
+    const rid = this._reqIdOf ? this._reqIdOf(payload && payload.reqId) : null;
+    const opKey = rid ? 'chestop:' + session.id + ':' + rid : (opId && typeof opId === 'string' ? 'chestop:' + opId : null);
+    if (opKey && await this._opSeen(opKey)) {
+      const again = rid ? this._reqRecall(session.id, rid) : undefined;
+      const ws0 = again ? this._wsBySessionId(session.id) : null;
+      if (ws0) { try { ws0.send(JSON.stringify({ type: 'chest_opened', payload: { ...again, reqId: rid } })); } catch (e) { /* the bag says it */ } }
+      return;
+    }
     /* v2.3.4881: no chest -- the bag goes back to the phone (refusal door) */
     if (!ps.inventory || (ps.inventory[CHEST.KEY] || 0) <= 0) return this._refusalEcho(session, ['inventory']);   /* ownership */
 
@@ -129,7 +139,8 @@ export const dailyChestMethods = {
       /* v2.3.4840: the worker's armour stash too (gearstash.js _gearStashLiveAdd) */
       if (this._gearStashLiveAdd) this._gearStashLiveAdd(ps, prize.piece.slot, prize.piece, 'gear_chest');   /* v2.3.5281: its road */
     }
-    if (opId && typeof opId === 'string') await this._opStamp('chestop:' + opId);
+    if (opKey) await this._opStamp(opKey);
+    if (rid) this._reqRemember(session.id, rid, { prize, streak });   /* v2.3.5194: the answer, for a repeat */
     /* v2.3.3527: an Elite or Godly piece is an achievement (achievements.js),
        after the await so its record goes out with this save */
     try { if (prize.kind === 'armor' && this._achvOnPiece) this._achvOnPiece(session.id, ps, prize.piece, 'chest'); } catch (e) { /* never break a chest */ }
@@ -137,7 +148,7 @@ export const dailyChestMethods = {
 
     const ws = this._wsBySessionId(session.id);
     if (ws) {
-      try { ws.send(JSON.stringify({ type: 'chest_opened', payload: { prize, streak } })); } catch (e) { /* the credit is saved */ }
+      try { ws.send(JSON.stringify({ type: 'chest_opened', payload: { prize, streak, ...(rid ? { reqId: rid } : {}) } })); } catch (e) { /* the credit is saved */ }
       this._sendPlayerState(ws, session.id);
     }
     return prize;
