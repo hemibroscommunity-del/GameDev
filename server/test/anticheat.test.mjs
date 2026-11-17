@@ -323,6 +323,8 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
   check('stats_update: T1 fields in the same message still land', psA.power === 3, psA.power);
 
   // Armor: tierMult clamps to 8, Leather Armor rejected outright.
+  /* v2.3.5715: a piece the worker holds, as its clamp makes it (gearheld wears only those) */
+  psA.armorStash = [...(psA.armorStash || []), { name: 'Forged Blob', tierMult: 8 }];
   room._handleStatsUpdate(room.sessions.get(wsA), { armor: { name: 'Forged Blob', tierMult: 999 } });
   check('stats_update: armor tierMult clamps to 8', psA.armor && psA.armor.tierMult === 8, psA.armor);
   room._handleStatsUpdate(room.sessions.get(wsA), { armor: { name: 'Leather Armor', tierMult: 1 } });
