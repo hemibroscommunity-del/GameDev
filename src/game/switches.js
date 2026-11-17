@@ -52,6 +52,7 @@ const FORMS = {
   'voicecap': '0|off',
   'allydrafts': '0',
   'alphaclip': '',
+  'arenadoor': '0',
   'audioreset': '0',
   'avatarholdms': '*',
   'bakeread': '0',

@@ -297,6 +297,28 @@ if (!GAINS_ONLY) {
   const BOWSHOT_LINE = 1.60;
   check(`2f: the bow's liar: gain ${br.gain} off, ${gOn.toFixed(2)} with \`bowshot: true\` (its line ${BOWSHOT_LINE}, the bar ${BAR}; the rest is the bow's reach)`, gOn <= BOWSHOT_LINE + SPREAD.bowlabel && gOn < br.gain, { on: gOn });
 }
+/* v2.3.5553 (card K, step 4.2): A COOK IS A COOK THE WORKER STARTED
+   (cooking.js _cookStartTake; an opt-in, `cookstart: true`, the owner's to
+   turn on).  With it on, the honest cook takes what it took and meets no
+   refusal on any disturbance; the liar it meets -- the start, then the
+   result at the plan's quickest, no fire and no gesture -- and its gain. */
+if (!GAINS_ONLY) {
+  const cc = CLAIMS.find((c) => c.id === 'cook');
+  const cr = rows.find((r) => r.c.id === 'cook');
+  const ms = (cc.minutes || GAIN_MIN) * B.MIN;
+  const ON = { cookstart: true };
+  const h = cc.honest[0];
+  const r = await runBot(cc, h, { ms, flags: ON });
+  const v = perHour(cc, valueOf(cc, r.take), r.ms);
+  const refused = [...r.refusals.slice(0, 1)];
+  for (const d of DISTURBANCES) { const x = await runBot(cc, h, { d, ms: DIST_S * 1000, flags: ON }); if (x.refusals.length) refused.push(d.id + ': ' + x.refusals[0]); }
+  check(`2h: \`cookstart: true\`: the honest cook takes what it took (${Math.round(v)} an hour, off ${Math.round(cr.best.v)}) and meets no refusal on any disturbance`, Math.round(v) === Math.round(cr.best.v) && !refused.length, { refused: refused.slice(0, 4) });
+  const bare = await runBot(cc, cc.liar, { ms, flags: ON });
+  const lOn = await runBot(cc, ['the liar, a start before each result, at the plan\'s quickest', B.cook, { liar: true, start: true }], { ms, flags: ON });
+  const gBare = perHour(cc, valueOf(cc, bare.take), bare.ms) / Math.max(v, 1e-9);
+  const gOn = perHour(cc, valueOf(cc, lOn.take), lOn.ms) / Math.max(v, 1e-9);
+  check(`2h: the cook's liar: gain ${cr.gain} off; with \`cookstart: true\` the bare request ${gBare.toFixed(2)}, the started one ${gOn.toFixed(2)} (the bar ${BAR})`, gOn <= BAR && gBare < 0.05, { bare: gBare, on: gOn });
+}
 for (const r of rows) {
   const line = LINES[r.c.id];
   check(`3: ${r.c.id}: its gain ${r.gain} is within its line ${line} and its spread ${SPREAD[r.c.id]} (${r.gain <= BAR ? 'under' : 'over'} the bar ${BAR})`, r.gain <= line + SPREAD[r.c.id] + 1e-9, { honest: Math.round(r.best.v), liar: Math.round(r.liar.v) });

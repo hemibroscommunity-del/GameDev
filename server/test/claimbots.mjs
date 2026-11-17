@@ -475,7 +475,7 @@ export async function harvester(W, ph, take, { mix, liar = false }) {
 /* ══════════ THE COOK ══════════ */
 const CPID = 'bp_bench_c';
 export const cookRec = () => rec({ inventory: { fish_minnow: 5000, wood_pine_log: 200 }, lifeSkills: { cooking: { level: 10, xp: 0 } } });
-export async function cook(W, ph, take, { liar = false }) {
+export async function cook(W, ph, take, { liar = false, start = false }) {
   ph.x = 0; ph.y = 0; ph.z = 'town';
   await W.join(CPID, { x: 100, y: 100, z: 'town' }, ph);
   ph.x = 100; ph.y = 100;
@@ -483,6 +483,22 @@ export async function cook(W, ph, take, { liar = false }) {
   const cooked = () => (W.ps(CPID) && W.ps(CPID).inventory && W.ps(CPID).inventory.cooked_fish_minnow) || 0;
   while (!ph.over) {
     const c0 = cooked();
+    if (liar && start) {
+      /* v2.3.5553: the liar `cookstart` meets -- the start, then the result at
+         the plan's quickest (each beat after the first, at the judge's slack),
+         no fire and no gesture */
+      const ws = W.ws[CPID]; const n0 = ws.sent.length;
+      const st = await ph.send({ type: 'extraction_start', payload: { skill: 'cooking', fishKey: 'fish_minnow', hitSeq: ++seq } });
+      if (!st) continue;
+      await ph.back();
+      const plan = ws.sent.slice(n0).filter((m) => m.type === 'gather_hits').pop();
+      const hits = plan && plan.payload && Array.isArray(plan.payload.hits) ? plan.payload.hits.length : 2;
+      await ph.wait((Math.max(0, hits - 1) * 650 + 1510) * 0.7 + 1);
+      const sent = await ph.send({ type: 'cook_request', payload: { fishKey: 'fish_minnow', kind: 'cooked' } });
+      if (sent) take.cooked += Math.max(0, cooked() - c0);
+      await ph.wait(60000 / 45 + 1);
+      continue;
+    }
     if (liar) {
       const sent = await ph.send({ type: 'cook_request', payload: { fishKey: 'fish_minnow', kind: 'cooked' } });
       if (sent) take.cooked += Math.max(0, cooked() - c0);
