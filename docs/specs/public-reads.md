@@ -28,9 +28,11 @@ room.)
   read (a place, a buy, a cancel, a list, a bid, a join, a leave) drops every
   answer kept for it, before and after it runs: the player who acted reads
   their own act at once. A read begun before a write is not kept after it
-  (a count of writes per surface). A change the room makes by itself (an
-  order expiring, an arena round moving on, a store offer taken over the
-  socket) shows within 3 s.
+  (a count of writes per surface). The socket's writes on a surface drop
+  it too (v2.3.5613, sitting 19b's LOW: a store offer, its cancel and its
+  reply; an arena sponsorship; they were up to 3 s stale). A change the
+  room makes by itself (an order expiring, an arena round moving on) shows
+  within 3 s.
 - **Paced.** A read that would wake the room (not kept) counts against its
   address (flood.js `requestIp`: Cloudflare's stamp; absent locally, and
   loopback never counted). Past 10 in one second (`PER_S`): 429 with

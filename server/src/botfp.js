@@ -30,6 +30,7 @@
  * unless env.ADMIN_KEY is configured AND presented. */
 
 import { hydrateSig } from './botsig.js';   /* v2.3.3731: the server's own signals ride the botstat record */
+import { ownerCursor } from './liveops.js';   /* v2.3.5607: the owner's reads, a page at a time */
 
 /* v2.3.3723: every threshold, weight, flag score, fleet limit and hour cap in
    this table is a PUBLIC PLACEHOLDER now (docs/specs/hidden-settings.md).  The
@@ -631,15 +632,16 @@ export const botfpMethods = {
       return new Response(JSON.stringify({ id, botstat: merged }), { headers });
     }
     if (url.searchParams.get('flagged') === '1') {
+      /* v2.3.5607: a page of the stored records at a time (liveops.js
+         _ownerPage; red team RT-2 F9: it listed every `botstat:` row at once) */
       const out = [];
-      const listing = await this.state.storage.list({ prefix: 'botstat:' });
-      for (const [k, v] of listing) {
+      const { page, next } = await this._ownerPage('botstat:', ownerCursor(url.searchParams.get('after')));
+      for (const [k, v] of page) {
         if (v && Array.isArray(v.flags) && v.flags.length > 0) {
           out.push({ id: k.slice('botstat:'.length), flags: v.flags, counters: v.counters, updatedAt: v.updatedAt });
-          if (out.length >= 50) break;
         }
       }
-      return new Response(JSON.stringify({ flagged: out }), { headers });
+      return new Response(JSON.stringify({ flagged: out, next }), { headers });
     }
     return new Response(JSON.stringify({ usage: '/api/botstat?id=<playerId> | /api/botstat?flagged=1' }), { headers });
   },
@@ -654,19 +656,33 @@ export const botfpMethods = {
      only for a player who is here: botstat keeps none, and the character
      record has none to read.  Read-only; a flag still changes nothing in the
      game (the owner's 2026-07-03 "flag, never act"). */
+  /* v2.3.5607: the first page only, as a list (the suites' and older callers' form) */
   async _botfpFlaggedList(limit) {
     const cap = Math.max(1, Math.min(100, Math.floor(Number(limit)) || 50));
+    return (await this._botfpFlaggedPage(null)).flagged.slice(0, cap);
+  },
+
+  /* v2.3.5607: A PAGE AT A TIME (card OPS PR 8; red team RT-2 F9: every
+     `botstat:` row was listed at once).  At most OWNER_PAGE stored records
+     a request, after the id `after` (liveops.js _ownerPage), and `next` for
+     the page after (null: the last).  A record in memory joins the page
+     whose ids hold it -- after `after`, and up to `next` (to the end on the
+     last page) -- so every player is on exactly one page.  Newest flag first
+     within the page; the panel sorts what it holds. */
+  async _botfpFlaggedPage(after) {
     const byId = new Map();
-    let listing = null;
-    try { listing = await this.state.storage.list({ prefix: 'botstat:' }); } catch (e) { listing = null; }
-    if (listing) {
-      for (const [k, v] of listing) {
+    let page = null, next = null;
+    try { ({ page, next } = await this._ownerPage('botstat:', ownerCursor(after))); } catch (e) { page = null; next = null; }
+    if (page) {
+      for (const [k, v] of page) {
         if (v && Array.isArray(v.flags) && v.flags.length) byId.set(k.slice('botstat:'.length), { stored: v });
       }
     }
+    const lo = ownerCursor(after);
     if (this._botfp) {
       for (const [id, rec] of this._botfp) {
         if (!rec || !Array.isArray(rec.flags) || !rec.flags.length) continue;
+        if ((lo !== null && id <= lo) || (next !== null && id > next)) continue;   /* another page's */
         const e = byId.get(id) || {};
         e.live = rec;
         byId.set(id, e);
@@ -693,7 +709,7 @@ export const botfpMethods = {
       });
     }
     out.sort((a, b) => ((b.last && b.last.at) || 0) - ((a.last && a.last.at) || 0));
-    return out.slice(0, cap);
+    return { flagged: out, next };
   },
 
   /* v2.3.3323: a TEST flag on a player who is here, for the Test panel's

@@ -485,15 +485,17 @@ export const adminMethods = {
       }
 
       if (request.method === 'GET' && path === '/economy') {
-        // v2.3.1150: aggregation factored into _economySnapshot
-        // (liveops.js) so the daily metrics tripwire shares it.  Every
-        // table it reads is paged (v2.3.2438, v2.3.3368), so its memory
-        // stays bounded; its time still grows with the tables.
-        const s = await this._economySnapshot();
+        // v2.3.1150: aggregation factored into liveops.js so the daily
+        // metrics tripwire shares it.  v2.3.5607: ONE PAGE A REQUEST
+        // (_economyPart; card OPS PR 8, red team RT-2 F9): `?after=` the
+        // `next` the page before gave; each answer counts its page.
+        const s = await this._economyPart(url.searchParams.get('after'));
+        if (!s.ok) return json(s, 400);
         // Tripwire surface: last 7 daily snapshots + day-over-day
         // delta; alert when |Δ totalGold| exceeds ALERT_PCT (a sudden
-        // supply jump is the dupe-exploit signature).
-        const all = await this.state.storage.list({ prefix: 'metrics:' });
+        // supply jump is the dupe-exploit signature).  The daily
+        // records are a ring of METRICS_KEEP (30): bounded all the same.
+        const all = await this.state.storage.list({ prefix: 'metrics:', limit: 60 });
         const days = [...all.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1)).slice(-7)
           .map(([k, v]) => ({ day: k.slice(8), ...v }));
         let delta = null;

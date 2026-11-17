@@ -365,8 +365,18 @@ await req('DELETE', '/api/admin/flags?name=disable_threats');
 
   // the same counts through the owner's /economy, paged the same way
   s9._store._listLog = [];
-  const eco = await r9._economySnapshot();
+  /* v2.3.5607: one page a request (_economyPart): walked here, its pages added up */
+  const eco = { market: { openOrders: 0, escrowedGold: 0 }, inbox: { inboxes: 0, pendingEntries: 0 }, calls: 0 };
+  for (let cur = null; ;) {
+    const pg = await r9._economyPart(cur);
+    eco.calls++;
+    if (pg.market) { eco.market.openOrders += pg.market.openOrders; eco.market.escrowedGold += pg.market.escrowedGold; }
+    if (pg.inbox) { eco.inbox.inboxes += pg.inbox.inboxes; eco.inbox.pendingEntries += pg.inbox.pendingEntries; }
+    if (!pg.next || eco.calls > 50) break;
+    cur = pg.next;
+  }
   const log2 = s9._store._listLog;
+  check('7b. /economy reads one page a request (one list a call)', log2.length === eco.calls, { lists: log2.length, calls: eco.calls });
   check('7b. /economy\'s snapshot counts the buy orders\' gold and the open orders', eco.market.escrowedGold === buyGold && eco.market.openOrders === ORDERS, eco.market);
   check('7b. ...and the mail', eco.inbox.inboxes === BOXES && eco.inbox.pendingEntries === entries, eco.inbox);
   check('7b. ...every list it made carried a limit', log2.length > 0 && log2.every((l) => l.limit > 0), log2);
