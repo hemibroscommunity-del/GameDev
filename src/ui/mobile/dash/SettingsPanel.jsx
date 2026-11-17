@@ -10,6 +10,7 @@ import { TRAIL_STYLES, getTrailStyle, setTrailStyle, GROUND_PATH } from '@/game/
 import { DASH_SIDES, getDashSidePref, setDashSidePref } from '@/game/dashSidePref.js'; /* v2.3.2177 */
 import { onIOS } from '../../../game/deviceProfile.js';   /* v2.3.4804: the device profile */
 import { act } from '@/game/actions.js';   /* v2.3.5191: the page's requests leave through the action door (card K PR 7) */
+import { sw } from '@/game/switches.js';   /* v2.3.5741: the page's one reader (card T2) */
 
 /* v2.3.1232: Lantern Slate pass (docs/LANTERN-SLATE-SPEC.md) — 44px
    setting rows, and the switch grows to a 46×26 touchable pill: track
@@ -109,7 +110,7 @@ const readLevel = (key) => {
    (GameApp mounts the overlay behind the same test), so a normal player was
    shown a switch that did nothing -- and a line about a "floating D button"
    that is not there. */
-const DEV_MODE = typeof window !== 'undefined' && /[?&]dev=1\b/.test(window.location.search);
+const DEV_MODE = sw('dev');   /* v2.3.5741: the page's one reader (card T2) */
 
 export const SettingsPanel = () => {
   const [, force] = useState(0);

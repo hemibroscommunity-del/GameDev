@@ -23,7 +23,11 @@
  *      weapon), `perfectbow: false` (the bow's part only), `fs: 1`
  *      (`?swingbonus=0`: none), `freeswing: false`;
  *   7. a device off the trial meets today exactly: its relays keep nothing,
- *      its named arrows land as unnamed ones, its sword is the 210 ms lane. */
+ *      its named arrows land as unnamed ones, its sword is the 210 ms lane. *
+ * v2.3.5727 (card K2 PR 8): every room here with `bowshot: false` -- ON, a
+ * bow's claim also needs an arrow the worker saw leave (bowshot.js;
+ * claims-gain 2f holds that), and these claims send none: this suite
+ * measures its own judge alone. */
 import { readFileSync } from 'node:fs';
 import { GameRoom } from '../src/index.js';
 import { FREE_SWING } from '../src/freeswing.js';
@@ -58,7 +62,7 @@ const mockEnv = { LEADERBOARD: { idFromName: () => 'x', get: () => ({ fetch: asy
 function fakeWs() { return { sent: [], send(s) { this.sent.push(JSON.parse(s)); }, close() {} }; }
 
 const room = new GameRoom(makeState(), mockEnv);
-room._liveFlags = {};
+room._liveFlags = { bowshot: false };
 async function join(id, extra) {
   const ws = fakeWs();
   room.sessions.set(ws, { id: null, name: 'Anon', data: {}, rtt: 0, lastPing: 0, lastRecv: T });
@@ -127,10 +131,10 @@ const arrow = (p, m, sw) => hit(p, m, { slot: 'ranged', element: null, sw });
     FREE_SWING.PERFECT_EARLY_MS === 60 && FREE_SWING.PERFECT_LATE_MS === 300 && FREE_SWING.PERFECT_MANA === 0.125 && FREE_SWING.FULL_SWING_BONUS === 0.12, FREE_SWING);
   check('1. `perfectbow` is a lower-case name the operator\'s route takes, on unless written false', flagNameOk('perfectbow') && room._perfectBowOn());
   check('1. caps.perfectStrike is advertised (the phone draws its bar only against a worker that judges it)', caps.perfectStrike === 1, caps);
-  room._liveFlags = { freeswing: false };
+  room._liveFlags = { bowshot: false, freeswing: false };
   const j = await join('bp_pf_capoff', { fs: 2 });
   const c2 = (j.ws.sent.find((x) => x.type === 'state_sync') || {}).caps || {};
-  room._liveFlags = {};
+  room._liveFlags = { bowshot: false };
   check('1. ...and not under `freeswing: false` (no trial, no bar)', c2.perfectStrike === undefined, c2);
   const mc = read('../../src/game/manualCombat.js');
   check('1. MIRROR: the phone\'s glint is the worker\'s window (manualCombat.js PERFECT_EARLY_MS / PERFECT_LATE_MS)',
@@ -338,35 +342,35 @@ check('4. a new character\'s flicked bow cycle is the phone\'s 371 ms', BCYC ===
 
 // ── 6. the switches ──
 {
-  room._liveFlags = { freeswingbonus: false };
+  room._liveFlags = { bowshot: false, freeswingbonus: false };
   const s = swordAt(P2, 1.0);
   check('6. `freeswingbonus: false`: a sword swing on the cycle is a plain full hit, no mana, nothing said', s.d === 100 && P2.ps.mana === 0 && s.ev.payload.pf === undefined, { d: s.d, mana: P2.ps.mana });
   arm(P2, 'ranged'); T += 10000;
   let m = monster(P2, 120);
   await shoot(P2); T += BCYC; let sb = await shoot(P2); T += 100;
   check('6. ...and a bow shot on the cycle', arrow(P2, m, sb) === 100 && P2.ps.mana === 0 && hitEv().payload.pf === undefined);
-  room._liveFlags = { perfectbow: false };
+  room._liveFlags = { bowshot: false, perfectbow: false };
   arm(P2, 'ranged'); T += 10000;
   m = monster(P2, 120);
   await shoot(P2); T += BCYC; sb = await shoot(P2); T += 100;
   check('6. `perfectbow: false`: the bow\'s shot on the cycle is plain, and nothing is kept for it', arrow(P2, m, sb) === 100 && hitEv().payload.pf === undefined && P2.ps._pfb === undefined);
   const s2 = swordAt(P2, 1.0);
   check('6. ...the sword\'s perfect strike is untouched by it', s2.d === 112 && s2.ev.payload.pf === 1);
-  room._liveFlags = {};
+  room._liveFlags = { bowshot: false };
   const s1 = swordAt(P1, 1.0);
   check('6. `fs: 1` (the phone\'s `?swingbonus=0`): a swing on the cycle is a plain full hit, no mana', s1.d === 100 && P1.ps.mana === 0 && s1.ev.payload.pf === undefined);
   arm(P1, 'ranged'); T += 10000;
   m = monster(P1, 120);
   await shoot(P1); T += BCYC; sb = await shoot(P1); T += 100;
   check('6. ...and its bow too', arrow(P1, m, sb) === 100 && hitEv().payload.pf === undefined);
-  room._liveFlags = { freeswing: false };
+  room._liveFlags = { bowshot: false, freeswing: false };
   const sf = swordAt(P2, 1.0);
   arm(P2, 'ranged'); T += 10000;
   m = monster(P2, 120);
   await shoot(P2); T += BCYC; sb = await shoot(P2); T += 100;
   const bf = arrow(P2, m, sb);
   check('6. `freeswing: false`: neither weapon\'s attack is judged (the untried sword, today\'s bow)', sf.d === 100 && sf.ev.payload.pf === undefined && bf === 100 && P2.ps._pfb === undefined);
-  room._liveFlags = {};
+  room._liveFlags = { bowshot: false };
 }
 
 // ── 7. a device off the trial meets today exactly ──

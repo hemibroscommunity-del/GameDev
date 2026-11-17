@@ -18,6 +18,8 @@ import { FISH_TIERS, FISH_HEAL, COOKING_RECIPES, SHOP_ITEMS, DISHES, DIEGO_SHELF
 /* v2.3.3133: the most players the one-bite clocks keep before a prune drops
    the ones that can no longer hold anyone back (_pvpHealPrune). */
 const PVP_HEAL_CLOCKS_MAX = 512;
+/* v2.3.5538: the fight door's ways (_fightTo) */
+export const FIGHT_WAYS = Object.freeze({ open: 'open', exchange: 'exchange', heal: 'heal', prune: 'prune', forget: 'forget' });
 
 /* v2.3.3130: the timers -- and their magnitudes -- each slot owns
    (_clearBuffSlot).  A magnitude listed here goes with its timer, never
@@ -656,37 +658,74 @@ export const cookingMethods = {
     return true;
   },
 
-  _pvpHealClock(id) {
-    if (!this._pvpHealClocks) this._pvpHealClocks = new Map();
-    let c = this._pvpHealClocks.get(id);
-    if (!c) {
-      if (this._pvpHealClocks.size >= PVP_HEAL_CLOCKS_MAX) this._pvpHealPrune(Date.now());
-      c = { pvpAt: 0, healAt: 0 };
-      this._pvpHealClocks.set(id, c);
+  /* ═══ v2.3.5538: THE FIGHT DOOR (card L PR 5; docs/specs/fight-door.md) ═══
+     A player's fight with another player is a clock, not a field: the fight
+     lock (fightlock.js) and the bite rule derive it at each ask from the
+     duel, this room's clock (`pvpAt`, within PVP_HEAL.WINDOW_MS), the red
+     skull and the place.  The clock's one store is `this._pvpHealClocks`
+     (id -> { pvpAt, healAt }), written only by _fightTo, by a way of
+     FIGHT_WAYS: open (a clock at zero, for a reader), exchange (a hit
+     between two players: both sides' pvpAt), heal (a heal eaten at once:
+     healAt), prune (the clocks that hold nobody back, when the map is full),
+     forget (a sparring clone gone).  An id that is no string is refused;
+     `fightdoor: false` lifts that.  fight-door.test fails a second writer. */
+  _fightDoorOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'fightdoor') && !f.fightdoor);
+  },
+
+  _fightTo(way, ids, now) {
+    if (!Object.prototype.hasOwnProperty.call(FIGHT_WAYS, way)) return false;
+    const t = typeof now === 'number' && Number.isFinite(now) ? now : Date.now();
+    if (way === 'prune') {
+      if (!this._pvpHealClocks) return true;
+      const keep = Math.max(PVP_HEAL.WINDOW_MS, PVP_HEAL.GAP_MS);
+      for (const [k, c] of this._pvpHealClocks) {
+        if (t - c.pvpAt >= keep && t - c.healAt >= keep) this._pvpHealClocks.delete(k);
+      }
+      return true;
     }
-    return c;
+    const list = Array.isArray(ids) ? ids : [ids];
+    if (!list.length || (!this._fightDoorOff() && !list.every((id) => typeof id === 'string' && id.length > 0))) return false;
+    if (way === 'forget') {
+      if (this._pvpHealClocks) for (const id of list) this._pvpHealClocks.delete(id);
+      return true;
+    }
+    if (!this._pvpHealClocks) this._pvpHealClocks = new Map();
+    for (const id of list) {
+      let c = this._pvpHealClocks.get(id);
+      if (!c) {
+        if (this._pvpHealClocks.size >= PVP_HEAL_CLOCKS_MAX) this._fightTo('prune', null, Date.now());
+        c = { pvpAt: 0, healAt: 0 };
+        this._pvpHealClocks.set(id, c);
+      }
+      if (way === 'exchange') c.pvpAt = t;
+      else if (way === 'heal') c.healAt = t;
+    }
+    return true;
+  },
+
+  /* a player's clock, made at zero if it is not there (through the door) */
+  _pvpHealClock(id) {
+    this._fightTo('open', id);
+    return this._pvpHealClocks ? this._pvpHealClocks.get(id) : undefined;
   },
 
   /* A clock that can no longer hold anyone back is dropped: past the fight
      window AND the gap.  Run only when the map is full, so it costs nothing
-     in the common case. */
+     in the common case.  v2.3.5538: the fight door's prune way. */
   _pvpHealPrune(now) {
-    const keep = Math.max(PVP_HEAL.WINDOW_MS, PVP_HEAL.GAP_MS);
-    for (const [k, c] of this._pvpHealClocks) {
-      if (now - c.pvpAt >= keep && now - c.healAt >= keep) this._pvpHealClocks.delete(k);
-    }
+    this._fightTo('prune', null, now);
   },
 
   /* A hit between two players (combat.js _resolvePvPAttack): both sides. */
   _notePvpExchange(a, b, now) {
-    const t = typeof now === 'number' ? now : Date.now();
-    this._pvpHealClock(a).pvpAt = t;
-    this._pvpHealClock(b).pvpAt = t;
+    this._fightTo('exchange', [a, b], now);
   },
 
   /* A heal eaten at once, by any of its roads. */
   _noteInstantHeal(id, now) {
-    this._pvpHealClock(id).healAt = typeof now === 'number' ? now : Date.now();
+    this._fightTo('heal', id, now);
   },
 
   /* v2.3.3133: the rule's kill switch, read the meals' way.  caps.pvpheal
@@ -929,7 +968,11 @@ export const cookingMethods = {
 
   /* ═══ v2.3.5553: A COOK IS A COOK THE WORKER STARTED (grand plan 4.2, the
      cook's result; card K PR 14; docs/specs/cook-start.md) ═══
-     An opt-in, OFF (`cookstart: true`, the owner's to turn on).  The bench
+     Landed an opt-in, OFF; ON since v2.3.5727 (card K2 PR 8; decided for the
+     owner while away by the planning session, on the owner's words of
+     2026-11-17: "Go recommended on all"); `cookstart: false` in the live
+     flags is its kill switch (on unless its own falsy value, as
+     `swordswing`).  The bench
      (claims-gain.test, `cook`) found `cook_request` alone worth 1.59 times
      an honest cook: no start, no fire, no gesture was asked of it.  An
      honest page starts every cook (`extraction_start`, skill 'cooking':
@@ -944,21 +987,26 @@ export const cookingMethods = {
      character is left as it is (testmode.js). */
   _cookStartOn() {
     const f = this._liveFlags;
-    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'cookstart') && f.cookstart === true);
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'cookstart') && !f.cookstart);
   },
-  _cookStartTake(ps, fishKey, now, session) {
+  /* v2.3.5727 (sitting 36's review, Found (c)): the judge is split in two.
+     _cookStartOk only LOOKS (it spends nothing); _cookStartTake spends the
+     plan (or the session's one no-plan result) and runs only after the
+     900 ms floor and the bag's fish check have passed too, so a result
+     those drop no longer spends its plan. */
+  _cookStartOk(ps, fishKey, now, session) {
     const c = ps && ps._cookHits;
     /* no plan at all: the worker restarted mid-cook (its memory wiped, the
        player joined again) -- one such result a session, never two */
-    if (!c) {
-      if (session && !session._cookNoPlan) { session._cookNoPlan = true; return true; }
-      return false;
-    }
+    if (!c) return !!session && !session._cookNoPlan;
     if (c.used || c.fishKey !== fishKey || !Array.isArray(c.hits)) return false;
     const min = (Math.max(0, c.hits.length - 1) * COOK_START.HIT_MS + COOK_START.CYCLE_MS) * COOK_START.SLACK;
-    if (now - (Number(c.rolledAt) || 0) < min) return false;
-    c.used = true;
-    return true;
+    return now - (Number(c.rolledAt) || 0) >= min;
+  },
+  _cookStartTake(ps, session) {
+    const c = ps && ps._cookHits;
+    if (c) c.used = true;
+    else if (session) session._cookNoPlan = true;
   },
   _handleCookRequest(session, payload) {
     if (!session || !session.id) return;
@@ -981,8 +1029,11 @@ export const cookingMethods = {
       if (ws) this._sendPlayerState(ws, session.id);
       return;
     }
-    /* v2.3.5553: a result on a cook the worker started (`cookstart`, OFF) */
-    if (this._cookStartOn() && !(typeof this._testMode === 'function' && this._testMode(ps)) && !this._cookStartTake(ps, fishKey, Date.now(), session)) {
+    /* v2.3.5553: a result on a cook the worker started (`cookstart`; ON since
+       v2.3.5727).  v2.3.5727: only looked at here; spent below, once the
+       floor and the fish check pass too */
+    const cookStart = this._cookStartOn() && !(typeof this._testMode === 'function' && this._testMode(ps));
+    if (cookStart && !this._cookStartOk(ps, fishKey, Date.now(), session)) {
       const ws = this._wsBySessionId(session.id);
       if (ws) this._sendPlayerState(ws, session.id);
       return;
@@ -1029,6 +1080,7 @@ export const cookingMethods = {
       if (ws) this._sendPlayerState(ws, session.id);
       return;
     }
+    if (cookStart) this._cookStartTake(ps, session);   /* v2.3.5727: the plan spent only now (Found (c)) */
     ps._lastCookAt = nowCk;
     ps._cookHits = null;   /* v2.3.2956: the cook's hits are spent with its fish (gathering.js _planCookHits) */
     bagTake(ps.inventory, fishKey, 1, 'cook_fish_used'); /* v2.3.4810: the bag door */

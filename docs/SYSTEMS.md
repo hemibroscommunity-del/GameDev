@@ -301,7 +301,7 @@ What kind of device this is and how much it can draw: the profile, resolution, t
 
 The page's one thread: the frame's pace and clock, what holds the page.
 
-- **Files**: `src/game/`: framePacer, frameClock, renderFrame, heapBurn, buildWatch
+- **Files**: `src/game/`: framePacer, frameClock, frameSteps, renderFrame, heapBurn, buildWatch
 - **Files**: `src/ui/`: afterFrame
 - **Doors**: `beforeDraw` in `src/game/framePacer.js` (a read that waits for the graphics chip runs at the top of a frame)
 - **Switches**: [its rows in the switch table](SWITCHES.md#page-thread)
