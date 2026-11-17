@@ -47,7 +47,7 @@ import { SWITCHES } from './lib/switches.mjs';
 import { blankComments, pageFiles, pageForm, READER_FILE, READER_IMPORT, ROOT } from './lib/switchScan.mjs';
 
 /* the outside reads: only falls */
-const OUTSIDE_LINE = 65;   /* its first count, v2.3.5306: 228 with sitting 17's `?slimewalk` (card P's slimeSprites.js, P still running: not moved), 221 after the first seven reads moved; 212 after v2.3.5309's nine; 201 after v2.3.5310's eleven; 189 after v2.3.5232's twelve (card O PR 12: the lanes' off-ramps); 172 with v2.3.5311's pageAddress() sites (seventeen) ; 161 after v2.3.5313's eleven ; 155 after v2.3.5314's six ; 144 after v2.3.5315's eleven ; 116 after v2.3.5316's twenty-eight ; 71 after v2.3.5317's forty-five (render, on pageAddress()) ; 65 after v2.3.5740's six (card T2: the game's) */
+const OUTSIDE_LINE = 59;   /* its first count, v2.3.5306: 228 with sitting 17's `?slimewalk` (card P's slimeSprites.js, P still running: not moved), 221 after the first seven reads moved; 212 after v2.3.5309's nine; 201 after v2.3.5310's eleven; 189 after v2.3.5232's twelve (card O PR 12: the lanes' off-ramps); 172 with v2.3.5311's pageAddress() sites (seventeen) ; 161 after v2.3.5313's eleven ; 155 after v2.3.5314's six ; 144 after v2.3.5315's eleven ; 116 after v2.3.5316's twenty-eight ; 71 after v2.3.5317's forty-five (render, on pageAddress()) ; 65 after v2.3.5740's six (card T2: the game's) ; 59 after v2.3.5741's six (card T2: the screens, the townsfolk's pictures) */
 
 /* ── the reads moved into the reader: each old test word for word, as a
    function of the address (S) ── */
@@ -126,6 +126,12 @@ const MOVED = Object.freeze([
   { name: 'stripgentle', call: 'sw', file: 'src/rendering/zoneTextures.js', old: (S) => /(^|[?&])stripgentle=(0|off|false)(&|$)/.test(S || '') },
   /* v2.3.5740 (card T2 PR 1): the game's six (the rest on pageAddress(): ?jumpms, ?nmlaskms, ?speedms, ride's rideCoastOn, resetOn's resetSwitches) */
   { name: 'dbltap', call: 'sw', file: 'src/game/desktopControls.js', old: (S) => /[?&]dbltap=0(?:&|$)/.test(S) },
+  /* v2.3.5741 (card T2 PR 2): the screens and the townsfolk's pictures (?tradeside, a value, on pageAddress()) */
+  { name: 'dev', call: 'sw', file: 'src/ui/mobile/dash/SettingsPanel.jsx', old: (S) => /[?&]dev=1\b/.test(S) },
+  { name: 'p3colour', call: 'sw', file: 'src/ui/mobile/sheet/HeroExpanded.jsx', old: (S) => /[?&]p3colour=0\b/.test(S) },
+  { name: 'p3cols', call: 'sw', file: 'src/ui/mobile/sheet/HeroExpanded.jsx', old: (S) => /[?&]p3cols=1\b/.test(S) },
+  { name: 'npcheads', call: 'sw', file: 'src/rendering/npcSprites.js', old: (S) => /[?&]npcheads=0(&|$)/.test(S || '') },
+  { name: 'coinflip', call: 'sw', file: 'src/rendering/npcSprites.js', old: (S) => /[?&]coinflip=0(&|$)/.test(S || '') },
 ]);
 
 /* v2.3.5306 (the gatekeeper's low, sitting 18): and each switch its row
