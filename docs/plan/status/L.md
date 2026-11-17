@@ -1,6 +1,6 @@
 card: L
 branch: claude/plan-l-32-relay-popup (from main)
-prs: #1746 to #2027 (merged), #2031 (5531), 5532 relay popup (this branch): ready
+prs: #1746 to #2027 (merged), #2031 (5531), #2033 (5532): ready
 state: ready
 
 ## Done
