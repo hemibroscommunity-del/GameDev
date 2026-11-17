@@ -2853,7 +2853,9 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   const SC = await import('../src/charname.js');
   const SR = await import('../src/reservednames.js');
   const PC = await import('../../src/game/charName.js');
-  const names = ['Scribe', 'Bro Man', 'D\'Arcy', 'Jean-Luc', 'Zo\u00eb', 'Al', 'A', 'xxxxxxxxxxxxxxxxxxxxx', 'Bro\u202eHi', 'Bro\u200bMan', 'Bro\nMan', 'Bro \ud83d\ude00', '<b>Bro</b>', 'BroTown Team', 'Admin', '0wner', 'Adm1n', 'A d m i n', '\u0410dmin', 'xX_Bro_Town_Xx', 'Modest', 'Devin', 'Teammate', 'System', 'GM', 'Support'];
+  const names = ['Scribe', 'Bro Man', 'D\'Arcy', 'Jean-Luc', 'Zo\u00eb', 'Al', 'A', 'xxxxxxxxxxxxxxxxxxxxx', 'Bro\u202eHi', 'Bro\u200bMan', 'Bro\nMan', 'Bro \ud83d\ude00', '<b>Bro</b>', 'BroTown Team', 'Admin', '0wner', 'Adm1n', 'A d m i n', '\u0410dmin', 'xX_Bro_Town_Xx', 'Modest', 'Devin', 'Teammate', 'System', 'GM', 'Support',
+    /* v2.3.5622 (the sitting 19 review): the folding's two lists, marks after a letter, the Hangul fillers */
+    'Admin2', 'Owner1', 'Mod7', '\u00c1dmin', 'Own\u00e9r', 'M\u00f8d', 'Adm\u0131n', '\u1d00\u1d05\u1d0d\u026a\u0274', 'AdminTeam', 'RealOwner', 'Game Master', 'Owners', 'GMs', 'GM7', 'Bro Town', 'BroTownTeam', 'BroTown Staff', 'Dev', 'Dev Patel', 'Bro Townsend', 'GM Bob', '\u0930\u093e\u0939\u0941\u0932', '\u0e2a\u0e21\u0e0a\u0e32\u0e22', 'Jose\u0301', '\u3164', 'Bro\u3164Man', 'Bro\u115fMan', 'Bro\uffa0Man'];
   const off = names.filter((n) => JSON.stringify(SC.checkCharName(n)) !== JSON.stringify(PC.checkCharName(n)));
   check('names: the page\'s name box and the worker allow and refuse the same names, for the same reason', off.length === 0, off.map((n) => [n, SC.checkCharName(n), PC.checkCharName(n)]));
   check('names: the same words on the staff list', JSON.stringify(SR.RESERVED_NAME_WORDS) === JSON.stringify(PC.RESERVED_NAME_WORDS), { worker: SR.RESERVED_NAME_WORDS, page: PC.RESERVED_NAME_WORDS });

@@ -15,6 +15,18 @@
  *      `player_update` to everyone; the rule holds, `force` lets a staff word
  *      through for the owner; without the key, refused.
  *   5. `namerules: false`: a new name is taken as before, and `track` passes.
+ * v2.3.5622, the sitting 19 review:
+ *   6. (HIGH) A session with no character record never had its name asked:
+ *      S2's string passed as the join's own name (a) with a guest's id, and
+ *      (b) with a bp_ id whose data names nobody.  Now (a) is named by the
+ *      rule or 'Anon', and (b) is refused `name`.
+ *   1b. A mark after a letter is a letter's part (Devanagari, Thai, an
+ *      accent written apart); the Hangul fillers (letters that draw nothing)
+ *      are refused.
+ * Break proofs (2026-11-16, each turned its check red): the join's new
+ * block taken out -> FAIL 6a; `_charNameRefuse` reading the data's name only
+ * -> FAIL 6b; the old [\p{L}\p{N} '_-] rule -> FAIL 1b (the marks); the
+ * default-ignorable test taken out -> FAIL 1b (the fillers).
  */
 import { makeStorage, openRoom, fakeWs, baseSession, settle, seededClock, mockEnv } from './testroom.mjs';
 import { checkCharName, CHAR_NAME } from '../src/charname.js';
@@ -38,6 +50,16 @@ function check(name, cond, detail) {
   check('1: a line break never survives (collapsed to a space)', checkCharName('Bro\nMan').name === 'Bro Man', checkCharName('Bro\nMan'));
   const whys = Object.entries(bad).filter(([n, w]) => n !== 'Bro\nMan' && checkCharName(n).why !== w).map(([n, w]) => [n, w, checkCharName(n).why]);
   check('1: each refusal says why', whys.length === 0, whys);
+}
+
+/* ── 1b. marks after a letter; the fillers (v2.3.5622, the sitting 19 review) ── */
+{
+  const marked = ['\u0930\u093e\u0939\u0941\u0932', '\u0e2a\u0e21\u0e0a\u0e32\u0e22', 'Jose\u0301', '\u092a\u094d\u0930\u093f\u092f\u093e'];
+  const markFail = marked.filter((n) => !checkCharName(n).name);
+  check('1b: a name with marks after its letters passes (Devanagari, Thai, an accent written apart: they were "No emoji or symbols")', markFail.length === 0, markFail);
+  const fillers = ['\u3164', 'Bro\u3164Man', 'Bro\u115fMan', 'Bro\u1160Man', 'Bro\uffa0Man', '\u3164\u3164\u3164'];
+  const fillPass = fillers.filter((n) => checkCharName(n).name);
+  check('1b: a name with a Hangul filler (a letter that draws nothing) is refused', fillPass.length === 0, fillPass);
 }
 
 const KEY = 'owner-key-names';
@@ -113,6 +135,28 @@ const refusedName = (ws) => ws.sent.find((m) => m.type === 'join_rejected' && m.
   check('4: the rule holds for the owner too (an emoji refused), but `force` lets a staff word through (the owner\'s own character)',
     bad.status === 400 && staff.status === 400 && forced.ok && forced.name === 'Owner', { bad: bad.status, staff: staff.status, forced });
   void wT;
+}
+
+/* ── 6. a session with no record: the join's own name (v2.3.5622, the sitting 19 review, HIGH) ── */
+{
+  const evil = 'Owner\u202e (admin)\u200b SYSTEM';
+  /* (a) a guest's id: no character, no record */
+  const wg = fakeWs('guest_nm_evil1');
+  room.sessions.set(wg, baseSession());
+  await room.webSocketMessage(wg, JSON.stringify({ type: 'join', id: 'guest_nm_evil1', name: evil, protocolVersion: 2, ws: [1, 5], data: { x: 100, y: 100, z: 'town', name: evil } }));
+  await settle();
+  const gs = room.sessions.get(wg);
+  const gps = room.playerState['guest_nm_evil1'];
+  check('6a: a guest\'s join named with S2\'s string is named by the rule or \'Anon\' (it stood as sent, for every peer and the board)',
+    !!gs && !/[\u200b\u202e]|owner|admin|system/i.test(gs.name + '|' + ((gs.data && gs.data.name) || '') + '|' + ((gps && gps.name) || '')), { name: gs && gs.name, data: gs && gs.data && gs.data.name, ps: gps && gps.name });
+  /* (b) a bp_ id whose data names nobody: the join's own name */
+  const wb = fakeWs('bp_nm_blank001');
+  room.sessions.set(wb, baseSession());
+  await room.webSocketMessage(wb, JSON.stringify({ type: 'join', id: 'bp_nm_blank001', name: evil, phrase: 'p-blank', protocolVersion: 2, ws: [1, 5],
+    device: { id: 'devblank' }, data: { x: 100, y: 100, z: 'town', name: '', hc: '#ffffff' } }));
+  await settle();
+  const rb = refusedName(wb);
+  check('6b: a bp_ join whose data names nobody, its own name S2\'s string, is refused `name` (the join\'s name was never asked)', !!rb, wb.sent.filter((m) => m.type === 'join_rejected'));
 }
 
 /* ── 5. the kill switch ── */

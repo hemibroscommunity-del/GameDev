@@ -32,7 +32,17 @@ let in (the account check, Turnstile, is off). The About panel promises
   (`_silenceEnsure`), so the check a message makes is a Map read; a deploy
   keeps them (they are rows).
 
-## A freeze holds the device
+## A freeze holds the device (the owner's lever, OFF until turned on)
+
+- **OFF by default** (the sitting 19 review, the planning session's call):
+  `freezedevice: true` in the live flags turns it on, from the Test panel's
+  live switches. It can hold the OWNER out today (a `?guest=1` alt shares the
+  main's phone id; a device reached with a new key is never recorded in
+  `devs`), and "a freeze blocks the device" is the owner's decision; the
+  next PR makes its devices right (botfp's `device:<devId>` record) before
+  anyone turns it on.
+- The frozen characters' records are read 128 a get (`SILENCE.GET_MAX`, the
+  runtime's most: 129 freezes threw, and the read failed open).
 
 - A join from a device a frozen character has played on (`auth:<pid>.devs`,
   `devicelock.js`) is refused `frozen` (close 4004, which the phone never
@@ -53,7 +63,7 @@ let in (the account check, Turnstile, is off). The About panel promises
 | | |
 |---|---|
 | `GET` | every silence still running |
-| `POST {playerId, minutes, note}` | silence a character (`minutes` 0: until lifted; at most a year) |
+| `POST {playerId, minutes, note}` | silence a character (`minutes` left out: until lifted; else a whole number from 1 to a year, anything else refused 400: the sitting 19 review, -60 and 0.5 were until lifted) |
 | `DELETE ?id=` | lift it |
 
 Each is logged in `admin_log`. The Test panel's buttons (Silence for a
@@ -64,7 +74,8 @@ holds `DevPanel.jsx`, routed by the planning session.
 
 - `silence: false`: no silence is checked; every character speaks (the rows
   are kept, and hold again when it is put back).
-- `freezedevice: false`: a freeze holds the frozen character only, as before.
+- `freezedevice` is the owner's LEVER: unset or false (the default) a freeze
+  holds the frozen character only, as before; `true` turns the device half on.
 
 ## Not here (card MOD's later PRs, or the owner's)
 
@@ -78,7 +89,9 @@ then); the name rules (PR 2); what a reporter received (PR 3); invite pace
 told once, others speak; it plays on; lifted, run out, kept across a deploy;
 the switch; a new character on a frozen phone refused (t4-ban.mjs's proof),
 another phone let in, the owner's phone spared, `freezedevice: false`,
-unfreeze. Break proofs (by hand, 2026-11-15): the router line removed, the
+unfreeze; the lever OFF by default, 129 freezes read 128 a get, `minutes`
+refused unless a positive whole number (the sitting 19 review, each with its
+break proof in the suite's header). Break proofs (by hand, 2026-11-15): the router line removed, the
 join hook removed, the owner's phone not spared, the switch ignored: each
 turns its checks red; the first build's one-minute
 cache of the frozen devices let a new character in for a minute (check 6
