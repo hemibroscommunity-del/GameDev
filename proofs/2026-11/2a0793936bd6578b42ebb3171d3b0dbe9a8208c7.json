@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "2a0793936bd6578b42ebb3171d3b0dbe9a8208c7",
+  "tree": "368901691c737b95e49f6f7a3cb2c6fe791c6513",
+  "committedAt": "2026-11-16T16:49:43-08:00",
+  "subject": "Merge pull request #1939 from hemibroscommunity-del/claude/plan-t-9-reads1",
+  "files": 7987,
+  "bytes": 958495415,
+  "listingSha256": "e0ad820c8ed743b0a2c3815486228c117f1d78965f15c442926178e3fe4af25f",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
