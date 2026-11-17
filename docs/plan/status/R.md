@@ -1,5 +1,5 @@
 card: R
-branch: claude/plan-r-15-share-lows (one branch a PR, each begun from main)
+branch: claude/plan-r-14-weapon-reader (#1960), claude/plan-r-15-share-lows (#1969); one a PR, each from main
 prs: #1819, #1823, #1825, #1844, #1862, #1847, #1877, #1887, #1895, #1898, #1922, #1961: merged; #1960 (5294), #1969 (5295): ready; #1873 (5282): held
 state: ready
 
