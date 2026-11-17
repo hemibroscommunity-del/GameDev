@@ -11,6 +11,7 @@ import { BT_AUDIO } from '@/data/gameDisplay.js';   /* v2.3.2827: the smith's cl
 import { peerShare, cue } from '@/game/eventSounds.js';   /* v2.3.3343: another player's axe, heard; v2.3.3874: + cue, the smith's hammer */
 import { sparkZigzag } from '@/game/shockSpark.js';   /* v2.3.3518: a shock's spark, drawn as a bolt */
 import { recordCrash } from '@/debug/crashTrap.js';   /* v2.3.3689: crowns.json's failure, logged */
+import { sw, swHas, pageAddress } from '@/game/switches.js'   /* v2.3.5343: the page's one reader of its address (card M, PR 4) */
 import { Assets, BitmapFont, BitmapText, Cache, CanvasTextMetrics, Container, DynamicBitmapFont, FillGradient, Graphics, Matrix, Rectangle, Sprite, Text, Texture, TextStyle } from 'pixi.js';
 import { LockReticle, nearestInMeleeReach } from '@/rendering/lockReticle.js';   /* v2.3.3876: the lock you chose wears a reticle */
 import { keepOnGpuOnly, emptyOnceDrawn } from '../gpuOnly.js';   /* v2.3.3088: pictures kept on the graphics chip only; v2.3.3698: or once drawn */
@@ -119,7 +120,7 @@ registerLookSheets('standin', '/sprites/look/standin/roles.json');
    public/sprites/look/standinlegs/), and a body under greaves is a look's row
    like any other.  Still baked the old way: a body with a drawing on it, and
    any look the palette atlas has no row for. */
-const LEGS_LOOK_OFF = (() => { try { return /(^|[?&])legslook=(0|off|false)(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();
+const LEGS_LOOK_OFF = (() => { try { return /(^|[?&])legslook=(0|off|false)(&|$)/.test(pageAddress()); } catch (e) { return false; } })();
 if (!LEGS_LOOK_OFF) registerLookSheets('standinlegs', '/sprites/look/standinlegs/roles.json');
 const _standInSheet = (url) => String(url || '').replace(/^.*\//, '').replace(/\.png.*$/, '');
 /* `legs`: the body as it is under greaves (the 'standinlegs' set) */
@@ -687,7 +688,7 @@ const PEER_SEAT_MATCH_PX = 32;
 /* v2.3.3640: `?standinlegs=0` -- the sword and bow bodies keep their legs
    under greaves, as before (_noteGreavesShape); `__btStandInLegs.set(on)`
    flips it on a running page, for a test to compare one frame both ways */
-const STANDIN_LEGS_OFF = (() => { try { return /[?&]standinlegs=0(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();
+const STANDIN_LEGS_OFF = (() => { try { return sw('standinlegs'); } catch (e) { return false; } })();
 let _standInLegsUse = !STANDIN_LEGS_OFF;
 const GEAR_STRIP_TWIN = { chop: { suffix: '-220', frames: 12 } };
 
@@ -911,14 +912,14 @@ const FIRE_LOG_BAND = [340, 480];
    `?firelegless=0` keeps his legs under the greaves, the game as it was;
    `window.__btFireLegless()` says which way your figure was baked and how
    many pixels went. */
-const FIRE_LEGLESS_OFF = (() => { try { return /[?&]firelegless=0(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();
-const FIRE_LOG_OFF = (() => { try { return /[?&]firelog=0(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();
+const FIRE_LEGLESS_OFF = (() => { try { return sw('firelegless'); } catch (e) { return false; } })();
+const FIRE_LOG_OFF = (() => { try { return sw('firelog'); } catch (e) { return false; } })();
 let _fireLogWood = -1;
 if (typeof window !== 'undefined') window.__btFireLog = () => ({ on: !FIRE_LOG_OFF, wood: _fireLogWood });
 /* v2.3.3684: the lit key pixels within FIRE_LOG_LIT_REACH of the key itself;
    `?firelit=0` leaves them pink, the game as it was */
 const FIRE_LOG_LIT_REACH = 4;
-const FIRE_LOG_LIT_OFF = (() => { try { return /[?&]firelit=0(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();
+const FIRE_LOG_LIT_OFF = (() => { try { return sw('firelit'); } catch (e) { return false; } })();
 function _litLogKey(fd, w, h, key) {
   const lit = new Uint8Array(w * h);
   let any = 0;
@@ -1407,7 +1408,7 @@ const DMG_CRIT_FONT_PX = 38;
    `_updateDamageNumbers` ("HOW BIG, AND HOW HIGH"). */
 function readDmgScale() {
   try {
-    const q = new URLSearchParams(window.location.search).get('dmgscale');
+    const q = new URLSearchParams(pageAddress()).get('dmgscale');
     const v = q == null ? NaN : parseFloat(q);
     if (isFinite(v)) return Math.min(3, Math.max(1, v));
   } catch (e) { /* no window: the default */ }
@@ -1494,14 +1495,9 @@ const POPUP_Z_MIN = 0.25, POPUP_Z_MAX = 3;   /* a sanity bound (a near-zero scal
    picks the bow pose's facing with them), and the switch that leaves the
    between-shots grip as it was -- see _predictBowGrip */
 const BOW_AIM_SECTORS = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'];
-const BOW_GRIP_GUESS_OFF = (() => {
-  try { return typeof location !== 'undefined' && /[?&]gripguess=0\b/.test(location.search || ''); }
-  catch (e) { return false; }
-})();
-const POPUP_WORLD = (() => {
-  try { return typeof location !== 'undefined' && /[?&]popupworld\b/.test(location.search || ''); }
-  catch (e) { return false; }
-})();
+/* v2.3.5343: the reader cannot throw (it catches its own), so no try */
+const BOW_GRIP_GUESS_OFF = typeof location !== 'undefined' && sw('gripguess');
+const POPUP_WORLD = typeof location !== 'undefined' && swHas('popupworld');
 function popupZoomK(S) {
   const w = S && S._worldScaleX;
   if (POPUP_WORLD || !(w > 0.01)) return 1;
@@ -2628,7 +2624,7 @@ const ORE_SPLIT_MS = 350;
    machine, where a screenshot takes longer than the pieces last (mp-tierore) */
 const ORE_BREAK_LIE_MS = (() => {
   try {
-    const m = /(?:^|[?&])orebreakms=(\d+)/.exec(window.location.search || '');
+    const m = /(?:^|[?&])orebreakms=(\d+)/.exec(pageAddress());
     if (m) return Math.min(60000, Math.max(100, Number(m[1])));
   } catch (e) { /* no page: the default */ }
   return 900;
@@ -2760,10 +2756,7 @@ const DMG_WORD_PAGE_PX = 1024;
    sans-serif, every cell's ink against its own frame).  At 12 every cell
    keeps 3 px or more clear, on the same one page. */
 const DMG_WORD_PAD = 12;
-const DMG_WORDS_ON = (() => {
-  try { return !(typeof location !== 'undefined' && /[?&]dmgwords=0\b/.test(location.search || '')); }
-  catch (e) { return true; }
-})();
+const DMG_WORDS_ON = !(typeof location !== 'undefined' && sw('dmgwords'));   /* v2.3.5343: the reader cannot throw */
 /* v2.3.3088: the install is a function, run again for a rebuilt renderer once
    the pages' canvases have been let go of (prewarmDmgFontPipe, gpuOnly.js). */
 const DMG_ALL_CHARS = [['0', '9'], ['A', 'Z'], ['a', 'z'], '+-. !'];
@@ -3247,11 +3240,11 @@ const BEAM_SLOTS = [
   [{ dx: 0, h: 1, ph: 0 }, { dx: -12, h: 0.72, ph: 2.1 }, { dx: 12, h: 0.84, ph: 4.2 }],
 ];
 const LOOT_BEAMS_MAX = 36;     /* beams drawn at once: a pile past it waits for one to go */
-const BEAM_ON = (() => { try { return new URLSearchParams(window.location.search).get('lootbeam') !== '0'; } catch (e) { return true; } })();
+const BEAM_ON = (() => { try { return !sw('lootbeam'); } catch (e) { return true; } })();
 /* v2.3.3878: a burn (a fire goblin's, a flame gem's) is the burning building's
    own fire on whoever burns (buildingFire.js PersonFire), as standing in a
    burning heap is; `?burnfire=0` draws the old flames, for one phone */
-const BURN_BLAZE = (() => { try { return new URLSearchParams(window.location.search).get('burnfire') !== '0'; } catch (e) { return true; } })();
+const BURN_BLAZE = (() => { try { return !sw('burnfire'); } catch (e) { return true; } })();
 const PEER_FIRES = 6;   /* other players burning in the building's flames at once; past it, the drawn flames */
 /* v2.3.3916: a thin column: a bright core, soft edges, fading out toward its
    top.  v2.3.4124: twice as wide, its edges falling off softly (the light,
@@ -3331,7 +3324,7 @@ const LAND_S = 1.0;
    about half a second, each item a touch after the one before), and only
    when it is down does the pile's beam rise (BEAM_AT_S, below).
    `?lootpop=0`: the v2.3.2771 fall and two hops, for one phone. */
-const LOOT_POP = (() => { try { return new URLSearchParams(window.location.search).get('lootpop') !== '0'; } catch (e) { return true; } })();
+const LOOT_POP = (() => { try { return !sw('lootpop'); } catch (e) { return true; } })();
 const POP_H = 44;          /* from the body, world px over the pile's foot */
 const POP_JUMP = 16;       /* the little hop up as it leaves the body */
 const POP_DELAY_S = 0.08;  /* the last item leaves this much after the first */

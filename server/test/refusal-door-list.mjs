@@ -193,7 +193,7 @@ export const ALLOW = {
     "if (typeof fishKey !== 'string' || !fishKey.startsWith('fish_'))": "shape",
     "if (!this._cookRateOk(ps))": "rate",
     "if (bot.drop)": "bot",
-    "if (this._cookStartOn() && !(typeof this._testMode === 'function' && this._testMode(ps)) && !this._cookStartTake(ps, fishKey, Date.now(), session))": "rate",   /* v2.3.5553: a result on no cook started (cookstart, opt-in), as the rate's drop */
+    "if (cookStart && !this._cookStartOk(ps, fishKey, Date.now(), session))": "rate",   /* v2.3.5553: a result on no cook started (cookstart; ON since v2.3.5727, its check split from its spend), as the rate's drop */
     "if (ps._lastCookAt && (nowCk - ps._lastCookAt) < COOK_FLOOR_MS && !this._testMode(ps))": "rate",
     "if ((ps.inventory[fishKey] || 0) <= 0)": "delta: the phone predicts no bag change on the channel path, only its popup (#1537 refuted it)",
   },

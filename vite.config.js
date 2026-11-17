@@ -4,6 +4,7 @@ import path from 'path';
 import { execSync } from 'child_process';
 import { readFileSync, readdirSync } from 'fs';
 import { asciiOnly } from './tools/dev/ascii-only.mjs';
+import { stripHtmlComments } from './tools/dev/strip-html-comments.mjs';   /* v2.3.5820 */
 
 const safeExec = (cmd) => {
   try { return execSync(cmd, { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim(); }
@@ -85,6 +86,22 @@ export default defineConfig({
           .replaceAll('__GAME_VERSION__', GAME_VERSION)
           .replaceAll('__BUILD_SHA__', GIT_SHA + GIT_DIRTY);
       },
+    },
+    {
+      /* v2.3.5820 (card SEC2, the owner's outside audit of 2026-11-17): THE
+         SHIPPED PAGE CARRIES NO HTML COMMENTS.  src/index.html's notes (the
+         why of each line: owner quotes, file paths, old tags) went out to
+         every visitor, ~2.5 KB of the first file a phone loads, and told a
+         stranger how the build is laid out.  They stay in the source, where
+         they are the project's memory; the build drops them.  The version
+         badge is a <div>, not a comment, and stays.  Build only (`npm run
+         dev` keeps them).  Safe as a plain pattern because index.html has
+         no inline script and no "<!--" inside an attribute or a <style>:
+         tools/guards/site-headers.test.mjs holds both, and builds the page
+         through this function to prove nothing but comments goes. */
+      name: 'strip-html-comments',
+      apply: 'build',
+      transformIndexHtml: { order: 'post', handler: stripHtmlComments },
     },
     {
       /* v2.3.1718: emit dist/version.json so a RUNNING client can notice it
