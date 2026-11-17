@@ -185,18 +185,17 @@ export const PHASES = [
     note: 'v2.3.5212: the door (PARTY_WAYS load, join, clan, leave, disband; a member stands in the party\'s own list; live flag partydoor). The leave marks the member away, it does not remove them (partykeep). A rejoin re-sends the roster (join.js _partyOnRejoin, before rejoinresend.js existed).',
   },
   {
-    name: 'ride', side: 'worker', status: 'todo',
+    name: 'ride', side: 'worker', status: 'door',
     what: 'The skateboard: on or off, ended for a reason (RIDE.WHY).',
-    field: null, states: ['off', 'on'], fn: null, file: null,
+    field: 'ps._ride', states: ['off', 'on'],
+    fn: '_rideTo', file: 'server/src/ride.js',
     clears: [
       { edge: 'end', at: 'server/src/ride.js _rideEnd' },
       { edge: 'death', at: 'server/src/index.js _handlePlayerDeath' },
     ],
     rejoin: 'none: the worker stores nothing and a join is off the board (the ride slot\'s why: the phone clears its own)',
-    today: [
-      { field: 'ps._ride', file: 'server/src/ride.js', writers: ['server/src/ride.js _handleRide', 'server/src/ride.js _rideEnd'] },
-    ],
-    note: 'Nearly a door already: every end goes through _rideEnd, and _handleRide is the start. The worker stores nothing, so a join is off the board (the slot\'s why).',
+    held: { suite: 'server/test/ride-door.test.mjs' },
+    note: 'v2.3.5523: the door (RIDE_WAYS board, end; a board is the living\'s alone and tells a session, ps._ridePid written beside it; an end only of a ride that is on; live flag ridedoor). Every end goes through _rideEnd, the start through _handleRide. The worker stores nothing, so a join is off the board (the slot\'s why).',
   },
   {
     name: 'harvest', side: 'worker', status: 'door',

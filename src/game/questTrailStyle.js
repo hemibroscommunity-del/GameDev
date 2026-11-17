@@ -26,6 +26,7 @@
  * The same shape as chatChannel.js (v2.3.2139) and for the same reason: a
  * preference with more than one reader gets exactly one home.
  */
+import { sw } from './switches.js';   /* v2.3.5309: the page's one reader (card T) */
 
 const KEY = 'brotown_quest_path';
 
@@ -48,7 +49,7 @@ const KEY = 'brotown_quest_path';
  * the player last left them (a stored choice is never rewritten).
  * mp-pathstyle tests it that way.  GROUND_PATH is the one switch. */
 export const GROUND_PATH = (() => {
-  try { return new URLSearchParams(window.location.search).has('questpath'); } catch (e) { return false; }
+  return sw('questpath');
 })();
 
 /* Ordered as they appear in Settings.  `hint` is the one line under the row --
