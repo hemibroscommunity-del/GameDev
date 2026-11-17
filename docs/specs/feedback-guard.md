@@ -124,3 +124,48 @@ look-alikes, no joined reading, and a substring match, which refuses "Modest").
 - `tools/qa/mp/mp-panelguard.mjs`: a window whose script throws (the card,
   the game playing on, Close, drawn afresh), and a board served with objects
   in it by an older worker (the rows, no card, no page error).
+
+## v2.3.5706: the hour, shared (card SEC PR 7)
+
+The second red team found that one kind of write could spend the board's
+whole hour, and that the paces forgot an address when the object slept.
+`server/src/feedback.js` ("THE HOUR, SHARED"; suite
+`server/test/feedshare.test.mjs`):
+
+- **Each kind has its share of the hour**: posts 30, votes 45, crash reports
+  60 (`FEEDBACK_PACE.SHARE`; 90 + 90 + 120 = the 300 rows of `ROWS_HOUR`).
+  A flood of votes stops at the vote share, and a bug report and a crash
+  report still land beside it.
+- **One address is held well under each share** (`SHARE_ADDR`: posts 5,
+  votes 15, crash reports 15, counted in the hour's row). Sitting 38's
+  review found the first shares (votes 30, crash 30) no bigger than one
+  address's own limits, so one address toggling its vote or sending crash
+  reports with fresh ids shut that kind for everyone; crash reports have
+  the most room now, for a bad release's wave.
+- **The counts by address are in the hour's own row** (`_rows_hour`'s `a`,
+  at most 400 addresses, the oldest go), with each kind's count (`k`): a
+  wake or a deploy no longer refills them. No new row: the row the budget
+  already writes with every write.
+- **A vote looks its ticket up first**: a vote on none counts nothing.
+- **The crash feed is cut by its bytes** (128 KB; one row held 1.2 MB of 200
+  big reports on the old code): a full feed drops its oldest half. The
+  owner's sweep **with `?trim=1`** (`DELETE /sweep?trim=1`) clears it.
+- **The list's answer is kept 30 s**, and any write here (a post, a vote, a
+  take-down, the sweep) clears it, so a poster sees their post at once. It
+  serves the **newest 500 tickets**; the owner's sweep with `?trim=1` takes
+  away the tickets older than those (the board has held a few hundred in all
+  its life, so none today). A plain sweep, the Test panel's, does what its
+  words say and no more (oversized posts, old pace rows): sitting 38's
+  review, the owner would tap it to mend a row and lose the crash reports
+  unread.
+- **The text goes through the name's cleaner** (`feedbackWords`): no hidden
+  or direction characters, spaces collapsed (the panels draw no line breaks,
+  so a report reads the same), and, as a chat line, a run of one character
+  past 6 and emoji past 6 cut. A ticket kept before is served cleaned.
+
+**Kill switch `feedbackshare: false`** in the live flags, read with the
+board's `feedback` switch (the room's flags, at most once a minute; on until
+read): every one of these off, the board as before. It is read BEFORE the
+share is checked, after the paces in memory (so a write they refuse still
+never asks the room): thrown while a share is full, it releases it (sitting
+38's review: read only after a write the share let through, it could not). `feedback.test` §11 plays the old one shared budget with it thrown.
