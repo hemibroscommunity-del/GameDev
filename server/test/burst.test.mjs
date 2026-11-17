@@ -500,6 +500,7 @@ const setEligible = () => {
        (Found the hard way: the first draft of this sample measured 300
        swings and 250 of them were misses.) */
     if (ps._monHitCad) ps._monHitCad.delete(victim.id);
+    ps._ss = undefined;   /* v2.3.5551: the sword's swing too (swordswing.js, ON): the next swing a cycle later */
     victim.x = ps.x + 10; victim.y = ps.y;
     const before = victim.hp;
     room._handleMonsterDamage(session, { monsterId: victim.id, zone: 'meadow', slot: 'melee' });

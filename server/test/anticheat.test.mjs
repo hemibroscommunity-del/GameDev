@@ -1353,7 +1353,7 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
   /* ...and the converse: a client-claimed `dead` must NOT lock a player
      out of combat the server believes they are alive for. */
   psM.dying = false; psM.dead = true; psM.disconnected = false;
-  delete psM._monHitCad;
+  delete psM._monHitCad; psM._ss = undefined;
   await room.webSocketMessage(wsM, JSON.stringify({
     type: 'monster_damage', payload: { monsterId: tgt.id, zone: 'meadow', slot: 'melee' },
   }));
@@ -1363,7 +1363,7 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
 
   /* Alive, in zone, in range -- must still work. */
   psM.dead = false; psM.dying = false; psM.disconnected = false;
-  delete psM._monHitCad;
+  delete psM._monHitCad; psM._ss = undefined;
   await room.webSocketMessage(wsM, JSON.stringify({
     type: 'monster_damage', payload: { monsterId: tgt.id, zone: 'meadow', slot: 'melee' },
   }));
@@ -1381,7 +1381,7 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
   psM.dead = false; psM.dying = false; psM.disconnected = false;
   psM.z = 'meadow'; psM.x = tgt.x + 1300; psM.y = tgt.y;
   psM.rangedWeapon = { type: 'bow', tierMult: 1 };
-  tgt.hp = hp0; delete psM._monHitCad;
+  tgt.hp = hp0; delete psM._monHitCad; psM._ss = undefined;
   await room.webSocketMessage(wsM, JSON.stringify({
     type: 'monster_damage', payload: { monsterId: tgt.id, zone: 'meadow', slot: 'ranged' },
   }));
@@ -1393,14 +1393,14 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
      for (hitproof.js): inside the paid swipe's window the chip keeps the
      Wheel's old 3,600 px; with no special paid for, a bow claim is held to
      the bow's own reach -- 2,600 px is past it. */
-  psM.x = tgt.x + 2600; tgt.hp = hp0; delete psM._monHitCad; psM._pveSpec = undefined;
+  psM.x = tgt.x + 2600; tgt.hp = hp0; delete psM._monHitCad; psM._ss = undefined; psM._pveSpec = undefined;
   await room.webSocketMessage(wsM, JSON.stringify({
     type: 'monster_damage', payload: { monsterId: tgt.id, zone: 'meadow', slot: 'ranged', noKb: true },
   }));
   check('monster_damage: a "chip" from 2,600 px with no bow special paid for is refused (the bow\'s own reach, v2.3.3334)',
     tgt.hp === hp0, { hp: tgt.hp, hp0 });
   room._pveSpecialPaid(psM, Date.now());
-  delete psM._monHitCad;
+  delete psM._monHitCad; psM._ss = undefined;
   await room.webSocketMessage(wsM, JSON.stringify({
     type: 'monster_damage', payload: { monsterId: tgt.id, zone: 'meadow', slot: 'ranged', noKb: true },
   }));
@@ -1408,7 +1408,7 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
     tgt.hp < hp0, { hp: tgt.hp, hp0 });
 
   /* Melee still bounded -- the one job proximity keeps. */
-  psM.x = tgt.x + 900; tgt.hp = hp0; delete psM._monHitCad;
+  psM.x = tgt.x + 900; tgt.hp = hp0; delete psM._monHitCad; psM._ss = undefined;
   await room.webSocketMessage(wsM, JSON.stringify({
     type: 'monster_damage', payload: { monsterId: tgt.id, zone: 'meadow', slot: 'melee' },
   }));

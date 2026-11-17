@@ -110,7 +110,7 @@ const hitEvents = () => room.eventBuffer.filter((e) => e.type === 'monster_hit')
    fixed at `r` -- returns the monster_hit events it made. */
 async function hit(m, r, extra) {
   NOW += 1000;
-  if (ps()._monHitCad) ps()._monHitCad.clear();
+  if (ps()._monHitCad) ps()._monHitCad.clear(); ps()._ss = undefined;   /* v2.3.5551: + the sword's swing (swordswing.js, ON) */
   ps().x = m.x; ps().y = m.y; ps().z = WHEEL_ZONE; ps().activeSlot = 'melee';
   room.eventBuffer.length = 0;
   const real = Math.random;
@@ -301,6 +301,11 @@ park();
 }
 
 // ── 6. Shock: the spark ──
+/* v2.3.5551: these hits keep their monsters still with a sword's `noKb`, which
+   only `swordswing: false` still believes (swordswing.js): the spark's
+   geometry is measured on that path, the flags put back at section 7 */
+const _flags6 = room._liveFlags;
+room._liveFlags = Object.assign({}, _flags6 || {}, { swordswing: false });
 park();
 {
   /* every hit here leaves the struck monster where it stood (`noKb`, the
@@ -381,7 +386,7 @@ park();
   EL.applyElementStatus(m3, 'storm', PID, 0, NOW, 1);
   ps().weapon = sword();
   NOW += 1000;
-  if (ps()._monHitCad) ps()._monHitCad.clear();
+  if (ps()._monHitCad) ps()._monHitCad.clear(); ps()._ss = undefined;   /* v2.3.5551: + the sword's swing (swordswing.js, ON) */
   ps().x = X0 - 5; ps().y = Y0; ps().z = WHEEL_ZONE;
   room.eventBuffer.length = 0;
   const realR = Math.random;
@@ -394,6 +399,7 @@ park();
     m3.x - X0 >= 20 && !!sp3 && sp3.monsterId === back.id, { x: m3.x, sp3 });
 }
 
+room._liveFlags = _flags6;   /* v2.3.5551: section 6's switch put back */
 // ── 7. Nothing written ──
 park();
 {
