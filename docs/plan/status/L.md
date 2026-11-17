@@ -1,6 +1,6 @@
 card: L
 branch: claude/plan-l-24-ally-drafts (each PR on main, main merged in)
-prs: #1746 to #1910 (merged), #1930 (5522, ready), #1936 (5523, ready, on #1930), 5524 ally drafts (this branch, from main)
+prs: #1746 to #1910 (merged), #1930 (5522, ready), #1936 (5523, ready, on #1930), #1946 (5524, ready)
 state: ready
 
 ## Done
