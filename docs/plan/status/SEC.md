@@ -33,8 +33,7 @@ state: working
 - A join with NO id is let in as `session.id` undefined: a body under
   `playerState.undefined` and a `cadence:login:undefined` row, shared by
   every such join (join.js; PR 2's card covers an id present only).
-- PR 14's popup half (gameEvents.js) is card L's: its #2033 (5532), merged.
-- The hub: the planning session ("Grand plan · planning session (part 2)").
+- PR 14's popup half (gameEvents.js): card L's #2033 (5532), merged. Hub: the planning session.
 
 ## Needs
 
