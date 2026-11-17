@@ -65,6 +65,7 @@ why: a QA tag, a direction, an input's source, a setting.
 | `dungeon` | worker | a run's `inst.runPhase` (active, boss, done); the old `state` and `bossSpawned` written by the door | `_dungeonTo` (`dungeon.js`, v2.3.5215) | `dungeon-door.test` §2, and the guard's tree |
 | `pose` | worker | a held pose, `ps.po` (none, or one of `POSE.IDS`) | `_poseTo` (`poses.js`, v2.3.5216) | `pose-door.test` §2, and the guard's tree |
 | `race` | worker | a player's race, `ps._race` (on, or none; the countdown and the running are times on it) | `_raceTo` (`race.js`, v2.3.5217) | `race-door.test` §2, and the guard's tree |
+| `arena` | worker | the Gladiator tournament, `this._arena` (none; gathering, running, complete: its record's own `status`) | `_arenaTo` (`gladiator.js`, v2.3.5522) | `arena-door.test` §2, and the guard's tree (its status writes: the duel line's `besides`, in `_arenaTo`) |
 | `race` | page | the phone's race, `S._race` (none; asked, count, run, done: its record's own `phase`) | `raceTo` (`raceDoor.js`, v2.3.5218) | `race-page-door.test` §2, and the guard's tree |
 | `pose` | page | the phone's own held pose, `S._pose` (standing, or its record: posing) | `poseTo` (`poseDoor.js`, v2.3.5520) | `pose-page-door.test` §2, and the guard's tree |
 | `guard` | page | your shield on the phone, `S._shieldUp` (down, up) | `guardTo` (`guardDoor.js`, v2.3.5521) | `guard-page-door.test` §2, and the guard's tree (a peer's copy and the renderers' posed copies are `besides`) |

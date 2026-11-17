@@ -7,6 +7,7 @@ import { partyRows, memberOffline, seenAgo } from '../../game/partyRows.js';   /
 import { allyTagShown } from '@/game/alliance.js';   /* v2.3.3313: an alliance's tag in the strip's head */
 import { LIST_KEY, ATTN_MS, KICK_ARM_MS, PIP_COLOR, pipOf, partyAttention, listOpen } from '../../game/partyChip.js';   /* v2.3.3768: the strip folds to a chip */
 import { deskWords } from '@/game/deskWords.js';   /* v2.3.3768: "tap" reads "click" on a computer */
+import { act } from '@/game/actions.js';   /* v2.3.5190: the page's requests leave through the action door (card K PR 7) */
 /* v2.3.3279: the window's marks were emoji (🎟️ 👑 💀 📍), drawn differently on
    every phone; the owner drew them (tools/ui/cut-small-icons.py). */
 function partyMark(src, size, title) {
@@ -124,7 +125,7 @@ export function PartyHUD(props) {
   if (!party || !S) return null;
   function send(event, payload) {
     try {
-      if (S.channel) S.channel.send({ type: 'broadcast', event: event, payload: payload || {} });
+      if (S.channel) act(event, payload || {});   /* v2.3.5190: through the action door (actions.js) */
     } catch (e) {}
   }
 

@@ -7,6 +7,7 @@ import { BT_AUDIO } from '@/data/index.js';
 import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: the duel heard beginning */
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
+import { act } from '@/game/actions.js';   /* v2.3.5190: the page's requests leave through the action door (card K PR 7) */
 /* === DuelRequestPanel — the incoming duel-request modal === */
 /* v2.3.891: extracted verbatim from the duelRequest JSX subtree in
    BroTown.jsx (the incoming PvP duel-challenge popup: accept or
@@ -50,13 +51,9 @@ export function DuelRequestPanel(props) {
      inert -- only a ✕ to remove. */
   var decline = function decline() {
     var S2 = stateRef.current;
-    if (S2.channel) S2.channel.send({
-      type: 'broadcast',
-      event: 'duel_decline',
-      payload: {
-        target: duelRequest.fromId,
-        from: S2.myId
-      }
+    if (S2.channel) act('duel_decline', {   /* v2.3.5190: through the action door (actions.js) */
+      target: duelRequest.fromId,
+      from: S2.myId
     });
     setDuelRequest(null);
   };
@@ -204,15 +201,11 @@ export function DuelRequestPanel(props) {
     },
     onClick: function onClick() {
       var S2 = stateRef.current;
-      if (S2.channel) S2.channel.send({
-        type: 'broadcast',
-        event: 'duel_accept',
-        payload: {
-          target: duelRequest.fromId,
-          from: S2.myId,
-          fromName: S2.myName,
-          wager: duelRequest.wager || 0
-        }
+      if (S2.channel) act('duel_accept', {   /* v2.3.5190: through the action door (actions.js) */
+        target: duelRequest.fromId,
+        from: S2.myId,
+        fromName: S2.myName,
+        wager: duelRequest.wager || 0
       });
       /* v2.3.4361: PENDING until the worker's settled echo comes back
          (src/game/duelPending.js): a refused or unanswered accept is dropped

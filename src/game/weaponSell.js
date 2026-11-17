@@ -16,11 +16,13 @@
  *
  * No imports: node tests it (server/test/weapon-sell.test.mjs). */
 
+import { act } from './actions.js';   /* v2.3.5188: the action door (card K PR 7), its only import: it has none of its own, so node still reads this file */
+
 /** Ask the worker to sell the weapon at bag place `si`.  True when the
     channel took the message (only `false` or a throw means dropped). */
 export function askSellWeapon(S, si) {
   if (!S || !S.channel || typeof S.channel.send !== 'function') return false;
-  try { return S.channel.send({ type: 'sell_weapon', payload: { stashIdx: si } }) !== false; } catch (e) { return false; }
+  try { return act('sell_weapon', { stashIdx: si }) !== false; } catch (e) { return false; }   /* v2.3.5188: through the action door (actions.js) */
 }
 
 /** The page's prediction of a sale the worker heard: the weapon off the

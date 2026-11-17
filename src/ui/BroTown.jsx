@@ -654,6 +654,7 @@ import { tooFarWord, tooFarPlace } from '@/game/tooFar.js';   /* v2.3.3990: "Too
 import { idleChatMay, idleChatTimer, inTownAt } from '@/game/townChatter.js';   /* v2.3.4040: the townsfolk's idle lines: in town, near, rarely */
 import QuestCard from '@/ui/QuestCard.jsx';   /* v2.3.3918: the pinned quest card, top left */
 import { fineInput, computerFrame } from '../game/deviceProfile.js';   /* v2.3.4804: the device profile */
+import { act } from '@/game/actions.js';   /* v2.3.5192: the page's requests leave through the action door (card K PR 7, the last of the family) */
 
 /* ═══ v2.3.2062: THE MANA DRAUGHT'S FLOOR, IN CLIENT FRAMES ═══
  * The server holds the surge as a flat amount PER REGEN TICK (660 ms); this
@@ -3590,75 +3591,72 @@ export var BroTown = function BroTown(_ref0) {
          Stamped before, a stats_update dropped in a Wi-Fi blip was never sent
          again -- the signature already matched -- so the worker kept the old
          armour, stats or skill tracks until something else changed. */
-      const _went = S.channel.send({
-        type: 'stats_update',
-        payload: {
-          /* maxHp / maxStamina / maxMana ignored by worker since v2.3.79
-             -- server tracks raw stats below and computes its own maxes
-             from the formula.  Kept on the wire for backward compat with
-             any older worker that hasn't been deployed yet. */
-          maxHp: rpgState.maxHp || 100,
-          maxStamina: rpgState.maxStamina || 100,
-          maxMana: rpgState.maxMana || 100,
-          /* Equipment-derived (still client-trusted because amulet
-             store isn't server-migrated yet). */
-          def: def,
-          amuletHpRegen: amuletHpRegen,
-          amuletStaminaRegen: amuletStaminaRegen,
-          /* v2.3.236: armor object (or null on unequip) -- worker
-             clamps tierMult and re-derives the pools.  Without this the
-             armorStash flow is purely local and the worker's ps.armor
-             stays stale.
-             v2.3.1697: it matters MORE now, not less.  ps.armor used to
-             feed maxHp (_armorHp, retired this version); it now feeds
-             _armorDrMult, which decides how hard every incoming hit
-             lands — a stale ps.armor is the difference between taking
-             56 and taking 100. */
-          armor: rpgState.armor || null,
-          /* Raw stats — worker clamps each to level * 10 + 20.  Cheater
-             pushing R.vitality = 99999 gets clamped on the server,
-             which then recomputes maxHp from the clamped value.  T1
-             use-trained increments + amulet stat bonuses still land.
+      const _went = act('stats_update', {   /* v2.3.5192: through the action door (actions.js) */
+        /* maxHp / maxStamina / maxMana ignored by worker since v2.3.79
+           -- server tracks raw stats below and computes its own maxes
+           from the formula.  Kept on the wire for backward compat with
+           any older worker that hasn't been deployed yet. */
+        maxHp: rpgState.maxHp || 100,
+        maxStamina: rpgState.maxStamina || 100,
+        maxMana: rpgState.maxMana || 100,
+        /* Equipment-derived (still client-trusted because amulet
+           store isn't server-migrated yet). */
+        def: def,
+        amuletHpRegen: amuletHpRegen,
+        amuletStaminaRegen: amuletStaminaRegen,
+        /* v2.3.236: armor object (or null on unequip) -- worker
+           clamps tierMult and re-derives the pools.  Without this the
+           armorStash flow is purely local and the worker's ps.armor
+           stays stale.
+           v2.3.1697: it matters MORE now, not less.  ps.armor used to
+           feed maxHp (_armorHp, retired this version); it now feeds
+           _armorDrMult, which decides how hard every incoming hit
+           lands — a stale ps.armor is the difference between taking
+           56 and taking 100. */
+        armor: rpgState.armor || null,
+        /* Raw stats — worker clamps each to level * 10 + 20.  Cheater
+           pushing R.vitality = 99999 gets clamped on the server,
+           which then recomputes maxHp from the clamped value.  T1
+           use-trained increments + amulet stat bonuses still land.
 
-             v2.3.1630: ...but ONLY once this client actually KNOWS them.
-             These five are the client's to report and the server's to
-             store, which means an uninformed client reporting 0 is
-             indistinguishable from a real reset -- that is precisely
-             the new-device character wipe audit C-2 describes.  The
-             server-side guard (grids.js, v2.3.1624) only protects
-             against workers that HAVE it; a rollback below that version,
-             or any worker still deploying, is unprotected, and it is
-             this client that would do the wiping.  So the honest gate
-             lives here too: no seed, no report.  The keys are OMITTED
-             rather than zeroed, because _handleStatsUpdate skips absent
-             keys (`typeof payload[s] === 'number'`), so an omission is
-             a true no-op on every worker version ever shipped.
-             _t1Seeded is set when the localStorage cache carried stats
-             or when a player_state echo delivered them (wsClient.js). */
-          ...t1StatsPayload(stateRef.current, rpgState),
-          /* v2.3.1155: the five retired T2 stats are off the wire —
-             the worker ignores the keys either way. */
-          /* v2.3.912: per-weapon-category build channels.  The worker clamps
-             each value to [0,99] and applies the damage + crit channels in its
-             authoritative damage roll, so spent build points speed up real
-             kills (not just client prediction). */
-          weaponSpecs: rpgState.weaponSpecs || {},
-          /* v2.3.1021: weapon/defense skill track -- reported so the worker
-             persists trained levels / points / channels (durable across
-             reconnect + device).  Worker clamps; pure store-and-echo. */
-          weaponSkills: rpgState.weaponSkills || {},
-          weaponUnspent: rpgState.weaponUnspent || {},
-          defenseSkill: rpgState.defenseSkill || { level: 0, xp: 0 },
-          defenseUnspent: (typeof rpgState.defenseUnspent === 'number') ? rpgState.defenseUnspent : 0,
-          defenseSpec: rpgState.defenseSpec || {},
-          /* v2.3.1154: HP/Endurance grid track.  Worker clamps [0,50]
-             per channel PLUS the grid budget (sum <= governing stat);
-             vigor/stamina feed its authoritative pool recompute. */
-          hpSpec: rpgState.hpSpec || {},
-          hpUnspent: (typeof rpgState.hpUnspent === 'number') ? rpgState.hpUnspent : 0,
-          enduranceSpec: rpgState.enduranceSpec || {},
-          enduranceUnspent: (typeof rpgState.enduranceUnspent === 'number') ? rpgState.enduranceUnspent : 0,
-        },
+           v2.3.1630: ...but ONLY once this client actually KNOWS them.
+           These five are the client's to report and the server's to
+           store, which means an uninformed client reporting 0 is
+           indistinguishable from a real reset -- that is precisely
+           the new-device character wipe audit C-2 describes.  The
+           server-side guard (grids.js, v2.3.1624) only protects
+           against workers that HAVE it; a rollback below that version,
+           or any worker still deploying, is unprotected, and it is
+           this client that would do the wiping.  So the honest gate
+           lives here too: no seed, no report.  The keys are OMITTED
+           rather than zeroed, because _handleStatsUpdate skips absent
+           keys (`typeof payload[s] === 'number'`), so an omission is
+           a true no-op on every worker version ever shipped.
+           _t1Seeded is set when the localStorage cache carried stats
+           or when a player_state echo delivered them (wsClient.js). */
+        ...t1StatsPayload(stateRef.current, rpgState),
+        /* v2.3.1155: the five retired T2 stats are off the wire —
+           the worker ignores the keys either way. */
+        /* v2.3.912: per-weapon-category build channels.  The worker clamps
+           each value to [0,99] and applies the damage + crit channels in its
+           authoritative damage roll, so spent build points speed up real
+           kills (not just client prediction). */
+        weaponSpecs: rpgState.weaponSpecs || {},
+        /* v2.3.1021: weapon/defense skill track -- reported so the worker
+           persists trained levels / points / channels (durable across
+           reconnect + device).  Worker clamps; pure store-and-echo. */
+        weaponSkills: rpgState.weaponSkills || {},
+        weaponUnspent: rpgState.weaponUnspent || {},
+        defenseSkill: rpgState.defenseSkill || { level: 0, xp: 0 },
+        defenseUnspent: (typeof rpgState.defenseUnspent === 'number') ? rpgState.defenseUnspent : 0,
+        defenseSpec: rpgState.defenseSpec || {},
+        /* v2.3.1154: HP/Endurance grid track.  Worker clamps [0,50]
+           per channel PLUS the grid budget (sum <= governing stat);
+           vigor/stamina feed its authoritative pool recompute. */
+        hpSpec: rpgState.hpSpec || {},
+        hpUnspent: (typeof rpgState.hpUnspent === 'number') ? rpgState.hpUnspent : 0,
+        enduranceSpec: rpgState.enduranceSpec || {},
+        enduranceUnspent: (typeof rpgState.enduranceUnspent === 'number') ? rpgState.enduranceUnspent : 0,
       });
       if (_went !== false) S._lastStatsUpdateSig = _sig;
     } catch (e) {}
@@ -5058,8 +5056,8 @@ export var BroTown = function BroTown(_ref0) {
           /* Tell the server we're dead (move builder reads hp<=0 as
              dead) and broadcast the death so remotes render us prone. */
           if (S.channel) {
-            try { S.channel.send({ type: 'broadcast', event: 'move', payload: { x: P.x, y: P.y, z: S.currentZone, vx: 0, vy: 0 } }); } catch (e) {}
-            try { S.channel.send({ type: 'broadcast', event: 'player_died_to_monster', payload: { id: S.myId, x: P.x, y: P.y } }); } catch (e) {}
+            try { act('move', { x: P.x, y: P.y, z: S.currentZone, vx: 0, vy: 0 }); } catch (e) {}   /* v2.3.5192: through the action door (actions.js) */
+            try { act('player_died_to_monster', { id: S.myId, x: P.x, y: P.y }); } catch (e) {}   /* v2.3.5192: through the action door (actions.js) */
           }
           /* v2.3.4363: no gold taken.  It was 10% off the gold SHOWN (and
              cached); the worker never takes it, and a v2 delta never re-sends
@@ -5232,8 +5230,7 @@ export var BroTown = function BroTown(_ref0) {
         if (S._whirlWindup) {
           try {
             tickWhirlWindup(S, Date.now(), function () {
-              if (S.channel) S.channel.send({ type: 'broadcast', event: 'move',
-                payload: { x: S.player.x, y: S.player.y, z: S.currentZone, vx: S.player.vx || 0, vy: S.player.vy || 0 } });
+              if (S.channel) act('move', { x: S.player.x, y: S.player.y, z: S.currentZone, vx: S.player.vx || 0, vy: S.player.vy || 0 });   /* v2.3.5192: through the action door (actions.js) */
             });
           } catch (e) { S._whirlWindup = null; }
         }
@@ -5293,8 +5290,7 @@ export var BroTown = function BroTown(_ref0) {
                  passthrough flushes it ahead of the cast (v2.3.1765) and
                  WebSocket ordering does the rest. */
               try {
-                if (S.channel) S.channel.send({ type: 'broadcast', event: 'move',
-                  payload: { x: S.player.x, y: S.player.y, z: S.currentZone, vx: 0, vy: 0 } });
+                if (S.channel) act('move', { x: S.player.x, y: S.player.y, z: S.currentZone, vx: 0, vy: 0 });   /* v2.3.5192: through the action door (actions.js) */
               } catch (e) {}
               try { applyAbilityStrike(S, _ds.kind, _ds.targetId, _ds.pid != null ? { pid: _ds.pid } : undefined /* v2.3.3262: a lunge at a player names them */); } catch (e) { /* a failed strike must not stop the frame */ }
             } else if (!strike) {
@@ -5897,7 +5893,7 @@ export var BroTown = function BroTown(_ref0) {
           var _hbY = P.y + playerGroundDy(S.currentZone, P.x, P.y);
           var _hbNow = Date.now();
           if (heapBurnStep(S, burningAt(P.x, _hbY) >= 0, true, _hbNow) && S.channel) {
-            try { S.channel.send({ type: 'heap_burn' }); } catch (e) { /* the next frame asks again */ }
+            try { act('heap_burn'); } catch (e) { /* the next frame asks again */ }   /* v2.3.5192: through the action door (actions.js) */
           }
         }
         /* v2.3.1110: PUSH-OUT -- _monBlock only stops the player moving
@@ -6846,9 +6842,9 @@ export var BroTown = function BroTown(_ref0) {
              the receiver drops anything from another zone (gameEvents), the
              same rule v2.3.1748 had to add for four other effects. */
           try {
-            if (S.channel) S.channel.send({ type: 'broadcast', event: 'campfire_lit', payload: {
-              id: S.myId, x: _cfX, y: _cfY, zone: S.currentZone, expiresAt: S._campfire.expiresAt,   /* v2.3.2846: the fire's own ground point */
-            } });
+            if (S.channel) act('campfire_lit', {   /* v2.3.5192: through the action door (actions.js) */
+            id: S.myId, x: _cfX, y: _cfY, zone: S.currentZone, expiresAt: S._campfire.expiresAt,   /* v2.3.2846: the fire's own ground point */
+          });
           } catch (e) {}
         }
         /* v2.3.1431 (owner: "the minnow isn't getting cooked"): the fire
@@ -7344,7 +7340,7 @@ export var BroTown = function BroTown(_ref0) {
                       loot._petPickupPending = true;
                       loot._petSentAt = Date.now();
                       if (S.channel) {
-                        try { S.channel.send({ type: 'loot_pickup', payload: { lootId: loot.lootId, zone: S.currentZone, viaPet: true } }); } catch (e) {}
+                        try { act('loot_pickup', { lootId: loot.lootId, zone: S.currentZone, viaPet: true }); } catch (e) {}   /* v2.3.5192: through the action door (actions.js) */
                       }
                     }
                     return true; /* keep pile until the loot_credit despawns it */
@@ -7818,13 +7814,9 @@ export var BroTown = function BroTown(_ref0) {
           var cWin = war.challenger.score > war.defender.score ? war.challenger.tag : war.defender.score > war.challenger.score ? war.defender.tag : 'tie';
           war.winner = cWin;
           /* Broadcast war end */
-          if (S.channel) S.channel.send({
-            type: 'broadcast',
-            event: 'clan_war_end',
-            payload: {
-              warId: war.id,
-              winner: cWin
-            }
+          if (S.channel) act('clan_war_end', {   /* v2.3.5192: through the action door (actions.js) */
+            warId: war.id,
+            winner: cWin
           });
           /* Award rewards */
           var isWinner = S._clanData && cWin === S._clanData.tag;
@@ -8052,9 +8044,9 @@ export var BroTown = function BroTown(_ref0) {
             S._lastGatherNodeId = _gnId;
             S._lastGatherNodeAt = now;
             try {
-              S.channel.send({ type: 'broadcast', event: 'gather_node', payload: {
-                id: S.myId, node: _gnId, x: _gnRef.x, y: _gnRef.y, zone: S.currentZone || 'town',
-              } });
+              act('gather_node', {   /* v2.3.5192: through the action door (actions.js) */
+              id: S.myId, node: _gnId, x: _gnRef.x, y: _gnRef.y, zone: S.currentZone || 'town',
+            });
             } catch (e) {}
           }
         } else if (_exCode !== 'chop') {
@@ -8147,29 +8139,25 @@ export var BroTown = function BroTown(_ref0) {
                 bcastVx = Math.cos(S._dodgeRoll.angle) * 6;
                 bcastVy = Math.sin(S._dodgeRoll.angle) * 6;
               }
-              S.channel.send({
-                type: 'broadcast',
-                event: 'move',
-                payload: {
-                  i: S.myId,
-                  x: Math.round(P.x * 10) / 10,
-                  y: Math.round(P.y * 10) / 10,
-                  d: P.dir,
-                  f: S._renderFacing || null,
-                  z: S.currentZone || 'town',
-                  vx: Math.round(bcastVx * 100),
-                  vy: Math.round(bcastVy * 100),
-                  /* v2.3.599: carry equipped gear so remote clients reflect
-                     armour on/off live (the renderer reads other.equip; it was
-                     only set at join/state_sync, so armour removal never showed
-                     for others).  Short ids, cheap. Standing-still changes ride
-                     the 2s `track` below + the player_update remap. */
-                  eqc: getEquip('chest'),
-                  eql: getEquip('legs'),
-                  eqs: getEquip('shoulders'),
-                  /* v2.3.1092: current harvest activity (null when not gathering). */
-                  ex: _exCode
-                }
+              act('move', {   /* v2.3.5192: through the action door (actions.js) */
+                i: S.myId,
+                x: Math.round(P.x * 10) / 10,
+                y: Math.round(P.y * 10) / 10,
+                d: P.dir,
+                f: S._renderFacing || null,
+                z: S.currentZone || 'town',
+                vx: Math.round(bcastVx * 100),
+                vy: Math.round(bcastVy * 100),
+                /* v2.3.599: carry equipped gear so remote clients reflect
+                   armour on/off live (the renderer reads other.equip; it was
+                   only set at join/state_sync, so armour removal never showed
+                   for others).  Short ids, cheap. Standing-still changes ride
+                   the 2s `track` below + the player_update remap. */
+                eqc: getEquip('chest'),
+                eql: getEquip('legs'),
+                eqs: getEquip('shoulders'),
+                /* v2.3.1092: current harvest activity (null when not gathering). */
+                ex: _exCode
               });
               S._lastBroadcastEx = _exCode;
               if (_exCode) S._lastExBroadcast = now;
@@ -9189,7 +9177,7 @@ export var BroTown = function BroTown(_ref0) {
       var _arenaBusy = !!(S3._arenaMatch || S3._arenaInvolved);
       if (Date.now() - S3._arenaLastBgPoll > (_arenaBusy ? ARENA_POLL_INTERVAL : ARENA_IDLE_POLL_INTERVAL)) {
         S3._arenaLastBgPoll = Date.now();
-        fetch(BT_API_BASE + '/api/arena/status?playerId=' + encodeURIComponent(S3.myId)).then(function (r) {
+        act('http:/api/arena/status', {}, { query: 'playerId=' + encodeURIComponent(S3.myId) }).then(function (r) {   /* v2.3.5192: through the action door (actions.js) */
           return r.json();
         }).then(function (d) {
           if (!d.ok) return;
@@ -9868,7 +9856,7 @@ export var BroTown = function BroTown(_ref0) {
          mutation so a throw on send can't leave the client short a log the
          worker still holds. */
       if (S.channel) {
-        try { S.channel.send({ type: 'firemaking_request', payload: { invKey: key } }); } catch (e) {}
+        try { act('firemaking_request', { invKey: key }); } catch (e) {}   /* v2.3.5192: through the action door (actions.js) */
       }
       R.inventory[key] -= 1;
       if (R.inventory[key] <= 0) delete R.inventory[key];
@@ -9928,7 +9916,7 @@ export var BroTown = function BroTown(_ref0) {
         R.inventory[key] -= 1;
         if (R.inventory[key] <= 0) delete R.inventory[key];
         if (S.channel) {
-          try { S.channel.send({ type: 'eat_request', payload: { invKey: key } }); } catch (e) {}
+          try { act('eat_request', { invKey: key }); } catch (e) {}   /* v2.3.5192: through the action door (actions.js) */
         }
         pushDmgPopup(S, S.player.x, S.player.y - 30, 'Ate ' + _meal.name, '#D8A94D');
         cue('munch');   /* v2.3.3462: the owner's munch (a beep(), silent since v2.3.1103) */
@@ -9983,7 +9971,7 @@ export var BroTown = function BroTown(_ref0) {
              tiebreaker" -- true reasoning about the wrong premise, because
              there is no echo when nothing is sent. */
       if (S.channel) {
-        try { S.channel.send({ type: 'eat_request', payload: { invKey: key } }); } catch (e) {}
+        try { act('eat_request', { invKey: key }); } catch (e) {}   /* v2.3.5192: through the action door (actions.js) */
       }
       pushDmgPopup(S, S.player.x, S.player.y - 30, '+' + toDisplayDamage(actual) + ' HP', '#59BF91');   /* v2.3.2520: display scale */
       /* v2.3.3131: or the stew; v2.3.3537: or a crop, by its name */
@@ -10081,7 +10069,7 @@ export var BroTown = function BroTown(_ref0) {
     /* Tell the worker about the slot change so the persisted value
        is fresh on the next reconnect / fresh session. */
     if (S2.channel) {
-      try { S2.channel.send({ type: 'set_active_slot', payload: { slot: nextSlot } }); } catch (e) {}
+      try { act('set_active_slot', { slot: nextSlot }); } catch (e) {}   /* v2.3.5192: through the action door (actions.js) */
     }
     setRpgState(_objectSpread({}, S2.rpg));
     var wpnName = nextSlot === 'melee' ? (_S2$rpg$weapon = S2.rpg.weapon) === null || _S2$rpg$weapon === void 0 ? void 0 : _S2$rpg$weapon.name : nextSlot === 'ranged' ? (_S2$rpg$rangedWeapon = S2.rpg.rangedWeapon) === null || _S2$rpg$rangedWeapon === void 0 ? void 0 : _S2$rpg$rangedWeapon.name : 'Staff';
@@ -10114,7 +10102,7 @@ export var BroTown = function BroTown(_ref0) {
        the computer's weapon bar (WeaponBar.jsx) runs this same pick. */
     S2._userCycledSlot = true;
     if (S2.channel) {
-      try { S2.channel.send({ type: 'set_active_slot', payload: { slot: slot } }); } catch (e) {}
+      try { act('set_active_slot', { slot: slot }); } catch (e) {}   /* v2.3.5192: through the action door (actions.js) */
     }
     setRpgState(_objectSpread({}, S2.rpg));
     var wpnName = slot === 'melee' ? (_S2$rpg$weapon2 = S2.rpg.weapon) === null || _S2$rpg$weapon2 === void 0 ? void 0 : _S2$rpg$weapon2.name : slot === 'ranged' ? (_S2$rpg$rangedWeapon2 = S2.rpg.rangedWeapon) === null || _S2$rpg$rangedWeapon2 === void 0 ? void 0 : _S2$rpg$rangedWeapon2.name : 'Staff';
@@ -15572,7 +15560,7 @@ export var BroTown = function BroTown(_ref0) {
         if (S.channel) {
           var _recipeIdx = COOKING_RECIPES.indexOf(best);
           if (_recipeIdx >= 0) {
-            try { S.channel.send({ type: 'cook_recipe', payload: _fieldMeals ? { recipeIdx: _recipeIdx, carry: true } : { recipeIdx: _recipeIdx } }); } catch (e2) {}
+            try { act('cook_recipe', _fieldMeals ? { recipeIdx: _recipeIdx, carry: true } : { recipeIdx: _recipeIdx }); } catch (e2) {}   /* v2.3.5192: through the action door (actions.js) */
           }
         }
         /* Consume ingredients */

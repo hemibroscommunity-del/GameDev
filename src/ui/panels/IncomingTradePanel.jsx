@@ -5,6 +5,7 @@ import { BT_AUDIO } from '@/data/index.js';
 import { _slicedToArray } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
+import { act } from '@/game/actions.js';   /* v2.3.5190: the page's requests leave through the action door (card K PR 7) */
 /* === IncomingTradePanel — the incomingTrade modal === */
 /* v2.3.885: extracted verbatim from the incomingTrade && rpgState JSX
    subtree in BroTown.jsx (the inbound trade-request popup: review the
@@ -200,14 +201,10 @@ export function IncomingTradePanel(props) {
          duplication engine (the sender was never debited).  v2.3.4915: it
          is gone: the goods and the gold are the worker's (CLAUDE.md §5). */
       /* Notify sender */
-      if (S.channel) S.channel.send({
-        type: 'broadcast',
-        event: 'trade_accept',
-        payload: {
-          from: S.myId,
-          target: incomingTrade.from,
-          offer: incomingTrade.offer
-        }
+      if (S.channel) act('trade_accept', {   /* v2.3.5190: through the action door (actions.js) */
+        from: S.myId,
+        target: incomingTrade.from,
+        offer: incomingTrade.offer
       });
       pushDmgPopup(S, S.player.x, S.player.y - 30, 'Trade accepted!', '#59BF91');
       BT_AUDIO.collect();
@@ -229,13 +226,9 @@ export function IncomingTradePanel(props) {
     },
     onClick: function onClick() {
       var S = stateRef.current;
-      if (S.channel) S.channel.send({
-        type: 'broadcast',
-        event: 'trade_reject',
-        payload: {
-          from: S.myId,
-          target: incomingTrade.from
-        }
+      if (S.channel) act('trade_reject', {   /* v2.3.5190: through the action door (actions.js) */
+        from: S.myId,
+        target: incomingTrade.from
       });
       setIncomingTrade(null);
     }

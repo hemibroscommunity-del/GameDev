@@ -21,6 +21,9 @@
  */
 import { readFileSync } from 'node:fs';
 import { GameRoom } from '../src/index.js';
+import { setActionTransport } from '../../src/game/actions.js';   /* v2.3.5188: the page's sends leave through the action door (card K PR 7.2): its transport is the stand-in phone's channel */
+/* v2.3.5188: the door's transport is this phone's channel (none: nothing leaves, as with no connection) */
+const via = (S) => { setActionTransport(S && S.channel ? { send: (m) => S.channel.send(m) } : null); return S; };
 
 let passed = 0, failed = 0;
 function check(name, cond, detail) {
@@ -73,6 +76,7 @@ const S = {
     },
   },
 };
+via(S);   /* v2.3.5188: one phone, one channel, all suite long */
 /* the worker's frames to the phone go through the real handler; the phone's
    frames to the worker go in order, as a socket carries them */
 async function pump() {

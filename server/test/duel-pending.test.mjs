@@ -24,6 +24,7 @@
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import { GameRoom } from '../src/index.js';
+import { act, setActionTransport } from '../../src/game/actions.js';   /* v2.3.5190: the panel's send goes through the action door (act) */
 
 let passed = 0, failed = 0;
 function check(name, cond, detail) {
@@ -111,7 +112,7 @@ const geFrom = GE.indexOf("case 'duel_accept':");
 const geTo = GE.indexOf("case 'pvp_threat':", geFrom);
 const duelCases = GE.slice(geFrom, geTo);
 const PANEL = src('src/ui/panels/DuelRequestPanel.jsx');
-const accIdx = PANEL.indexOf("event: 'duel_accept'");
+const accIdx = PANEL.indexOf("act('duel_accept'");   /* v2.3.5190: the send goes through the action door (act) */
 const onClickIdx = PANEL.lastIndexOf('onClick: function onClick()', accIdx);
 const acceptBody = cutBraces(PANEL, onClickIdx);
 
@@ -122,6 +123,7 @@ const ctx = vm.createContext({
   pushDmgPopup: (S, x, y, text) => popups.push(text),
   cue: () => {}, dropShield: () => {}, BT_AUDIO: { _now: () => 0 },
   String, Date,
+  act,   /* v2.3.5190: the Accept's send leaves through the action door */
 });
 const onEvent = vm.runInContext(`(function (type, payload, S) { switch (type) { ${duelCases} } })`, ctx);
 const tapAccept = vm.runInContext(`(function (stateRef, duelRequest, setDuelRequest) { ${acceptBody} })`, ctx);
@@ -136,7 +138,10 @@ function phone() {
     lockedTarget: null, _inDuel: null, _activeDuel: null,
   };
 }
-const accept = (S, fromId = FOE) => tapAccept({ current: S }, { fromId, fromName: 'Foe', wager: 0 }, () => {});
+const accept = (S, fromId = FOE) => {
+  setActionTransport({ send: (m) => S.channel.send(m) });   /* v2.3.5190: the door's transport is this phone's channel */
+  return tapAccept({ current: S }, { fromId, fromName: 'Foe', wager: 0 }, () => {});
+};
 const ownEcho = (fromId = FOE) => ({ from: ME, id: ME, target: fromId, fromName: 'Me', wager: 0, settled: true });
 const frame = (S, now) => (has('dropUnsettledDuel') ? P.dropUnsettledDuel(S, now) : false);
 const SETTLE = (P.DUEL_PENDING && P.DUEL_PENDING.SETTLE_MS) || 8000;
