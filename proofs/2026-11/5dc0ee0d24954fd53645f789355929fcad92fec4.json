@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "5dc0ee0d24954fd53645f789355929fcad92fec4",
+  "tree": "d4a87588cffda6b89057c42a297afb75faf82638",
+  "committedAt": "2026-11-16T23:51:28-08:00",
+  "subject": "Merge pull request #1992 from hemibroscommunity-del/claude/plan-t-12-lows",
+  "files": 8033,
+  "bytes": 959317105,
+  "listingSha256": "e1b5a6c47845b8d04b895a73462c2014f2bf2c2aef490fcd1f4ae242eedad38b",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
