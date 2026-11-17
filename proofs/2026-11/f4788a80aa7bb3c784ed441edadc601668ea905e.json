@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "f4788a80aa7bb3c784ed441edadc601668ea905e",
+  "tree": "f8c83a616c73eb72e391a486b9a19211d5d473df",
+  "committedAt": "2026-11-17T08:50:27-08:00",
+  "subject": "Merge pull request #2028 from hemibroscommunity-del/claude/plan-k-14f-cookstart",
+  "files": 8077,
+  "bytes": 959608785,
+  "listingSha256": "10310d2bc6034a1ddd4db05be6034a6b0a89429dd40f848114ad126e76a1bd41",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
