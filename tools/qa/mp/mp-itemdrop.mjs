@@ -50,7 +50,7 @@ async function dropThroughCard(P, key, n, shot) {
   const tile = await P.page.$(`[data-inv-key="${key}"]`);
   if (!tile) return { step: 'tile' };
   await tile.dispatchEvent('pointerup');
-  const drop = await P.page.waitForSelector('button[data-item-drop=""]', { timeout: 6000 }).catch(() => null);
+  const drop = await P.page.waitForSelector('button[data-item-drop=""]', { state: 'attached', timeout: 20000 }).catch(() => null);
   if (!drop) return { step: 'drop button' };
   /* the card's row of buttons, each wholly inside the card and on one line */
   const row = await P.page.evaluate(() => {
@@ -66,8 +66,20 @@ async function dropThroughCard(P, key, n, shot) {
   });
   if (shot) await shot(P, 'card-' + key);
   await drop.click();
-  const sheet = await P.page.waitForSelector('[data-drop-sheet]', { timeout: 6000 }).catch(() => null);
-  if (!sheet) return { step: 'sheet', row };
+  const sheet = await P.page.waitForSelector('[data-drop-sheet]', { state: 'attached', timeout: 20000 }).catch(() => null);
+  /* v2.3.5652: 'attached', not Playwright's 'visible': the sheet is in the page while it still slides in
+     (this box draws a few frames a second, TRAPS §200); the clicks below wait for it to be actionable */
+  if (!sheet) {
+    const top = await P.page.evaluate(() => {
+      const b = document.querySelector('button[data-item-drop=""]');
+      if (!b) return { btn: false, sheets: !!document.querySelector('[data-drop-sheet]') };
+      const r = b.getBoundingClientRect();
+      const e = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+      return { btn: true, rect: [Math.round(r.x), Math.round(r.y), Math.round(r.width), Math.round(r.height)], vh: window.innerHeight,
+        top: e ? (e.tagName + '.' + String(e.className).slice(0, 40) + ' ' + (e.textContent || '').trim().slice(0, 20)) : null, same: e === b || b.contains(e) };
+    });
+    return { step: 'sheet', row, top };
+  }
   for (let i = 1; i < n; i++) {
     const more = await P.page.$('[data-drop-more]');
     if (!more) return { step: 'more', row };
@@ -180,22 +192,33 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const m5 = await waitDrop(A, (ps) => ps.some((p) => p.key === 'ore_copper_ore' && p.picture));
     const p5 = (m5 || []).find((p) => p.key === 'ore_copper_ore');
     rec.ok('5a one copper ore dropped through the card ("Drop it"), drawn as the ore\'s picture with no count', r5.step === 'done' && r5.label === 'Drop it' && !!p5 && /ore/.test(p5.url || '') && p5.count === null, { r5, p5 });
+    /* v2.3.5652: the watcher beside it before it is aged, in view and past the magnet (50 px, the
+       pickup 20): his screen never listed it from where he had been left (a 150 px walk away) */
+    if (p5) await H.hopTo(B, p5.x + 110, p5.y + 15, { step: 50 });
+    if (p5) await waitDrop(B, (ps) => ps.some((q) => q.lootId === p5.lootId), 20000);
     await H.devOp(wsPort, 'dropage', aId, { ms: 121000 });
-    const flashB = await waitDrop(B, (ps) => ps.some((p) => p.lootId === (p5 && p5.lootId) && p.flashing));
-    const flashA = await waitDrop(A, (ps) => ps.some((p) => p.lootId === (p5 && p5.lootId) && p.flashing));
-    /* on and off: sample its alpha for a second and a half */
-    const alphas = { A: new Set(), B: new Set() };
-    for (let i = 0; i < 12; i++) {
-      for (const [k, P] of [['A', A], ['B', B]]) {
-        const ps = await drops(P);
-        const p = (ps || []).find((q) => q.lootId === (p5 && p5.lootId));
-        if (p && p.alpha != null) alphas[k].add(p.alpha);
-      }
-      await A.page.waitForTimeout(110);
-    }
+    /* v2.3.5652: no wait for "flashing" first: it flashes for ten seconds and a wait of up to 15 s
+       on each screen ate them (the alpha read below shows the flash itself) */
+    /* on and off: its alpha read on every frame the page draws, both screens at once, until both
+       the lit and the dim half have been seen (at most 8 s of the ten it flashes for): this box
+       draws a few frames a second, so a count of reads by the clock misses one half (TRAPS §200) */
+    const sample = (P) => P.page.evaluate((id) => new Promise((resolve) => {
+      const seen = new Set(), t0 = Date.now();
+      const step = () => {
+        const ps = window.__btDrops ? window.__btDrops().piles : [];
+        const q = (ps || []).find((x) => x.lootId === id);
+        if (q && q.alpha != null) seen.add(q.alpha);
+        const arr = [...seen];
+        if ((arr.some((x) => x >= 0.9) && arr.some((x) => x <= 0.3)) || Date.now() - t0 > 8000) resolve(arr);
+        else requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    }), p5 && p5.lootId);
+    const [sa, sb] = await Promise.all([sample(A), sample(B)]);
+    const alphas = { A: new Set(sa), B: new Set(sb) };
     const onOff = (s) => [...s].some((a) => a >= 0.9) && [...s].some((a) => a <= 0.3);
     await shot(B, '5-flashing');
-    rec.ok('5b two minutes on, it flashes on both screens: on and off', !!flashA && !!flashB && onOff(alphas.A) && onOff(alphas.B),
+    rec.ok('5b two minutes on, it flashes on both screens: on and off', onOff(alphas.A) && onOff(alphas.B),
       { A: [...alphas.A], B: [...alphas.B] });
     const end5A = await waitDrop(A, (ps) => !ps.some((p) => p.lootId === (p5 && p5.lootId)), 20000);
     const end5B = await waitDrop(B, (ps) => !ps.some((p) => p.lootId === (p5 && p5.lootId)), 20000);
