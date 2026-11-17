@@ -18,9 +18,12 @@ its decline and the request again had no pace either.
   held. Kept in its own map (`_t2InviteCardAt`), not `_t2Invites`: a cancel
   deletes the invite, and open-cancel-open was the 100 cards.
 - **Friends** (`friends.js` `_handleFriendRequest`): one new request card a
-  player to the same target per `FRIENDS.REQUEST_REPEAT_MS` (5 s), dropped
-  before it is written or sent; the answers before it (already friends, a
-  duplicate request, too many requests) are unchanged.
+  player to the same target per `FRIENDS.REQUEST_REPEAT_MS` (5 s); a repeat
+  inside the window is ANSWERED AS SENT (v2.3.5628, sitting 23's review: it
+  was dropped with no answer): the request is recorded and both lists
+  synced, only the target's card (its popup and sound) is held. The answers
+  before it (already friends, a duplicate request, too many requests) are
+  unchanged.
 - Both maps are capped (`PACE_KEYS`, 2,000; the oldest go first), so they
   need no clearing on leave.
 - **KILL SWITCH `invitepace: false`** in the live flags: every card goes, as

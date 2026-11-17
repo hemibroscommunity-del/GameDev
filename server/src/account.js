@@ -22,7 +22,7 @@
 
 import { cleanDevice } from './devicelock.js'; /* v2.3.3344: the device a key is used from */
 import { newKeyOf } from './loginkeys.js';   /* v2.3.3355: new Login Keys, made by the worker */
-import { ipKey } from './flood.js';   /* v2.3.5581: an IPv6 address counted by its /64 */
+import { ipKey, ip56Key, IP56 } from './flood.js';   /* v2.3.5581: an IPv6 address counted by its /64; v2.3.5584: and its /56 */
 
 // Exact port of the client's passphraseToId (src/networking/index.js).
 // 32-bit rolling hash with |0 truncation, Math.abs, base36, then the
@@ -130,21 +130,34 @@ export const accountMethods = {
     /* v2.3.5581: an IPv6 line is one address here too (flood.js ipKey):
        a new address of its /64 for every try was a fresh 20 a minute
        (red team RT-1, N4).  `ip64: false` counts each address apart. */
+    /* v2.3.5584: ...and a whole /56 is one customer, at IP56.TIMES the
+       line (flood.js ip56Key; `ip56: false` the /64 line alone) */
+    const wide = (typeof this._ip56On !== 'function' || this._ip56On()) ? ip56Key(ip) : null;
     if (typeof this._ip64On !== 'function' || this._ip64On()) ip = ipKey(ip);
-    const ipRec = this._acctIp.get(ip);
-    if (!ipRec || now - ipRec.windowStart > ACCOUNT.IP_WINDOW_MS) {
-      // Lazy prune: reuse the reset moment to drop other expired
-      // entries so the map can't grow unboundedly between deploys.
-      if (this._acctIp.size > 500) {
-        for (const [k, v] of this._acctIp) {
-          if (now - v.windowStart > ACCOUNT.IP_WINDOW_MS) this._acctIp.delete(k);
+    /* each key's tries this window: both looked at before either is
+       counted, so a try refused by one counts in neither (a noisy /64
+       never fills its /56 for the household's other lines) */
+    const triesOf = (k) => {
+      const rec = this._acctIp.get(k);
+      return (!rec || now - rec.windowStart > ACCOUNT.IP_WINDOW_MS) ? 0 : rec.count;
+    };
+    if (triesOf(ip) >= ACCOUNT.IP_MAX_ATTEMPTS) return { ok: false, settled: true, reason: 'rate' };
+    if (wide && triesOf(wide) >= ACCOUNT.IP_MAX_ATTEMPTS * IP56.TIMES) return { ok: false, settled: true, reason: 'rate' };
+    const bump = (k) => {
+      const rec = this._acctIp.get(k);
+      if (!rec || now - rec.windowStart > ACCOUNT.IP_WINDOW_MS) {
+        // Lazy prune: reuse the reset moment to drop other expired
+        // entries so the map can't grow unboundedly between deploys.
+        if (this._acctIp.size > 500) {
+          for (const [kk, v] of this._acctIp) {
+            if (now - v.windowStart > ACCOUNT.IP_WINDOW_MS) this._acctIp.delete(kk);
+          }
         }
-      }
-      this._acctIp.set(ip, { count: 1, windowStart: now });
-    } else {
-      ipRec.count += 1;
-      if (ipRec.count > ACCOUNT.IP_MAX_ATTEMPTS) return { ok: false, settled: true, reason: 'rate' };
-    }
+        this._acctIp.set(k, { count: 1, windowStart: now });
+      } else rec.count += 1;
+    };
+    bump(ip);
+    if (wide) bump(wide);
 
     /* ═══ v2.3.3355: A NEW LOGIN KEY (loginkeys.js) ═══
        Its character is found by its fingerprint's index, never worked out

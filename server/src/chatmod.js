@@ -27,7 +27,9 @@
  * (rule 16).  `_chatModRemember` records each line as `_sanitizeChatRelay`
  * (index.js) / `_handlePartyChat` (party.js) finished sanitising it —
  * clamped, control-stripped, sender stamped from the session — and a
- * report attaches the last CONTEXT_LINES of those.  A report message
+ * report attaches those the reporter could have received (REPORT_LINES,
+ * the lines addressed to them first; v2.3.5623, v2.3.5628) and, beside them,
+ * the speaker's last LEGACY_LINES in any lane (`said`).  A report message
  * therefore carries only WHO and WHY; nothing a client types can end up
  * in the operator's evidence, so a report cannot be used to plant words
  * in somebody else's mouth.
@@ -235,6 +237,11 @@ export const chatModMethods = {
     const prev = this.chatSeen.get(pid);
     if (prev) this.chatSeen.delete(pid);
     const arr = prev || [];
+    /* v2.3.5629: the speaker's name as the room showed it, kept with its
+       lines, so a report on a speaker who has left (a guest with no record)
+       still names it */
+    const _ps = this.playerState && this.playerState[pid];
+    if (_ps && typeof _ps.name === 'string' && _ps.name) arr.n = _ps.name;
     const line = { text, ts: Date.now(), zone: zone || null, lane: lane || 'room', to: typeof to === 'string' && to ? to : null };
     if (Array.isArray(tos) && tos.length) line.tos = tos.slice(0, CHATMOD.TOS_MAX);
     arr.push(line);
@@ -277,9 +284,18 @@ export const chatModMethods = {
          who has walked on loses those; a party line, its hearers when said
          (`tos`), so leaving the party first keeps it */
       const myZone = this.playerState[reporter] ? this.playerState[reporter].z : null;
-      picked = recent.filter((l) => l.to === reporter
-        || (l.lane === 'party' && (l.tos ? l.tos.includes(reporter) : !!partyId && l.to === partyId))
-        || (l.lane === 'room' && !l.to) || (l.lane === 'area' && !l.to && l.zone && l.zone === myZone)).slice(-CHATMOD.REPORT_LINES);
+      /* v2.3.5628 (card MOD PR 8; sitting 23's review): the lines ADDRESSED
+         to the reporter (a whisper, a friend's message, a shop thread, the
+         reporter's party) come first, the room's and the area's fill what is
+         left: ten harmless public lines after two abusive whispers pushed the
+         whispers out of the report (RT-3 S4's flush again).  In the order
+         they were said. */
+      const direct = recent.filter((l) => l.to === reporter
+        || (l.lane === 'party' && (l.tos ? l.tos.includes(reporter) : !!partyId && l.to === partyId)));
+      const pub = recent.filter((l) => (l.lane === 'room' && !l.to) || (l.lane === 'area' && !l.to && l.zone && l.zone === myZone));
+      const mine = direct.slice(-CHATMOD.REPORT_LINES);
+      const room = CHATMOD.REPORT_LINES - mine.length > 0 ? pub.slice(-(CHATMOD.REPORT_LINES - mine.length)) : [];
+      picked = mine.concat(room).sort((a, b) => a.ts - b.ts);
     } else {
       picked = recent.slice(-CHATMOD.LEGACY_LINES);
     }
@@ -290,6 +306,9 @@ export const chatModMethods = {
     const ps = this.playerState[pid];
     if (ps && ps.name) return ps.name;
     for (const [, s] of this.sessions) { if (s.id === pid) return s.name || 'Bro'; }
+    /* v2.3.5629: a speaker who has left, by the name its lines were heard under */
+    const heard = this.chatSeen && this.chatSeen.get(pid);
+    if (heard && typeof heard.n === 'string' && heard.n) return heard.n;
     /* Offline: fall back to the requester's CLAIM, clamped.  Display-only
        and only ever shown back to the person who typed it (their own mute
        list), exactly the friends.js reqOut precedent — it never reaches a
@@ -410,7 +429,14 @@ export const chatModMethods = {
        existence test friends.js runs, for the same reason: a report on an
        id nobody has ever held is noise in the operator's queue. */
     const targetPs = this.playerState[target];
-    if (!targetPs && !(await this.state.storage.get('rpg:' + target))) {
+    /* v2.3.5629 (card MOD PR 9; the planning session's call, 2026-11-17):
+       or a speaker the room HEARD -- its lines are in the ring.  A guest who
+       chatted and left without earning has no record (card OPS's guestlazy),
+       and the report on it answered `not-found`: the abuse it typed was
+       kept, and nobody could file it.  An id never heard and never saved is
+       still `not-found`. */
+    const heard = this._reportRingOn() && !!(this.chatSeen && this.chatSeen.has(target));   /* `reportring: false`: as before */
+    if (!targetPs && !heard && !(await this.state.storage.get('rpg:' + target))) {
       return this._chatModSend(me, 'chat_report_ack', { ok: false, error: 'not-found' });
     }
     const gate = this._chatModReportGate(me, target);
@@ -433,6 +459,10 @@ export const chatModMethods = {
       targetOnline: !!targetPs,
       /* Server's copy of what was actually said (see the header). */
       lines: this._chatModRecentLines(target, me),   /* v2.3.5623: what the reporter could have received */
+      /* v2.3.5628 (card MOD PR 8; sitting 23's review: the card says
+         "beside the speaker's own lines"): and the speaker's own last
+         LEGACY_LINES, any lane, as a report held before PR 3 */
+      said: this._reportRingOn() ? this._chatModRecentLines(target) : undefined,
     };
     await this.state.storage.put('chat_report:' + id, rec);
     this._chatModSend(me, 'chat_report_ack', { ok: true, id, lines: rec.lines.length, settled: true });

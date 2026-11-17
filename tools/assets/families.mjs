@@ -140,8 +140,10 @@ export const ASSET_FAMILIES = Object.freeze([
     { tool: 'public/tools/weapon-anchor.html', draw: 'none', note: 'a stale copy: the game reads weapons/handles.json' }),
   fam('player-naked', 'supplied', 'public/sprites/player-naked/*.png',
     { draw: 'file', loader: 'src/rendering/systems/entityRenderer.js', px: 'frame 256x256', note: 'loaded behind the loading screen; nothing reads the texture' }),
-  fam('player-death', 'supplied', 'public/sprites/players/*.png',
-    { draw: 'file', loader: 'src/rendering/playerDeathSprites.js', px: 'frame 128x128', note: 'only when deathCrumble has no corpse' }),
+  fam('player-death', 'supplied', 'public/sprites/players/death-v1.png',
+    { draw: 'file', loader: 'src/rendering/playerDeathSprites.js', px: 'frame 128x128', note: 'only when deathCrumble has no corpse; v2.3.5567: drawn from its twin where colour numbers are drawn (player-death-twins); this with ?deathstrip=0' }),
+  fam('player-death-twins', 'made', 'public/sprites/players/*.p256.png',
+    { tool: 'tools/art/reduce256.mjs', sources: 'beside', draw: 'numbers', loader: 'src/rendering/p256.js', px: 'frame 128x128', note: 'v2.3.5567, card P\'s backlog: the death strip read from its 256-colour twin by default (38k colours cut to 256, moved 0.009 OKLab); listed in src/data/p256Files.js; ?deathstrip=0' }),
 
   /* ── armour and clothes: public/sprites/gear/ ── */
   fam('gear-belt', 'made', 'public/sprites/gear/belt/*/*.png',
@@ -334,7 +336,7 @@ export const ASSET_FAMILIES = Object.freeze([
   fam('tree-tiers', 'made', 'public/sprites/trees/wood-*.png',
     { tool: 'tools/world/add-tree-art.mjs', sources: 'assets/prop-source/trees/trees-{a,b}.png', draw: 'file', loader: ER, px: 'art law' }),
   fam('world-fish-spot', 'made', 'public/sprites/world/fish-spot-627.webp',
-    { tool: 'unknown', sources: 'public/sprites/world/fish-spot.webp', draw: 'file', loader: ER, note: 'a sharp lanczos3 twin; v2.3.5565: drawn from its own twin where colour numbers are drawn (world-fish-spot-twins); this with ?fishspot=0' }),
+    { tool: 'unknown', sources: 'public/sprites/world/fish-spot.webp', draw: 'file', loader: 'src/rendering/systems/effectsRenderer.js', note: 'a sharp lanczos3 twin; v2.3.5565: drawn from its own twin where colour numbers are drawn (world-fish-spot-twins); this with ?fishspot=0' }),
   fam('world-fish-spot-twins', 'made', 'public/sprites/world/fish-spot-627.p256.png',
     { tool: 'tools/art/reduce256.mjs', sources: 'beside', draw: 'numbers', loader: 'src/rendering/p256.js', px: 'art law', note: 'v2.3.5565, card P\'s backlog: the pond under a fishing spot read from its 256-colour twin by default (32k colours cut to 256, moved 0.008 OKLab), padded to 628 px by one see-through column on its right (p256.js reads no twin needing padding); listed in src/data/p256Files.js; ?fishspot=0' }),
   fam('world-sprites-retired', 'made', ['public/sprites/trees/tree-{flame,frost,stone,storm,venom,water,wind,pine-940}.webp', 'public/sprites/world/{ore-vein-627,ore-vein-break}.webp', 'public/sprites/world/ore-vein-*-418.webp', 'public/sprites/{cook,fish,joystick,wood}/*.webp', 'public/sprite-preview-candidates/*.png'],
@@ -494,7 +496,9 @@ export const ASSET_FAMILIES = Object.freeze([
   fam('icons-made-dom', 'made', ['public/icons/ui/soc-{block,duel,friend,mute,party,report,trade}.webp', 'public/icons/ui/buff-rested.webp', 'public/icons/ui/homestead-preview.webp', 'public/icons/ui/nav-dashboard.png'],
     { tool: ['tools/ui/cut-rank-trophies.py', 'tools/ui/slice-social-icons.mjs', 'tools/ui/make-rested-badge.py', 'tools/ui/make-homestead-preview.mjs', 'tools/ui/make-dash-bag-icon.mjs'], sources: 'assets/icons-source/{rank-trophies-2026-11-09/rank-trophies.png,sheet-social.png}, public/ui/controls/sleep.webp, the farm\'s art, public/icons/ui/{nav-inventory,combat-*}.webp', draw: 'dom', loader: 'src/ui/' }),
   fam('icons-from-uploads-world', 'supplied', ['public/icons/ui/blocks-{mp,stam}.webp', 'public/icons/ui/verified-bro-small.webp'],
-    { draw: 'file', loader: ['src/rendering/fxStrips.js', 'src/rendering/systems/entityRenderer.js'], note: 'tools/slice_block_bars.py, tools/build-verified-badge.mjs from the owner\'s pictures, not kept' }),
+    { draw: 'file', loader: ['src/rendering/fxStrips.js', 'src/rendering/systems/entityRenderer.js'], note: 'tools/slice_block_bars.py, tools/build-verified-badge.mjs from the owner\'s pictures, not kept; v2.3.5569: drawn from their twins where colour numbers are drawn (icons-from-uploads-world-twins); these with ?uploadicons=0, and the profile\'s <img> of the badge' }),
+  fam('icons-from-uploads-world-twins', 'made', 'public/icons/ui/{blocks-{mp,stam},verified-bro-small}.p256.png',
+    { tool: 'tools/art/reduce256.mjs', sources: 'beside', draw: 'numbers', loader: 'src/rendering/p256.js', note: 'v2.3.5569, card P\'s backlog: the block strips and the Bro badge read from their 256-colour twins by default (2.5k-38k colours cut to 256, moved 0.005-0.006 OKLab), the stamina strip padded to 1640 px past its last frame; listed in src/data/p256Files.js; ?uploadicons=0' }),
   fam('icons-verified-full', 'supplied', 'public/icons/ui/verified-bro.webp', { draw: 'none', note: 'only the -small copy is drawn' }),
   fam('icons-frames-3x', 'made', 'public/icons/ui/{recessed-well,toolbar-button-{danger,danger-pressed,inactive,pressed,primary-brass,selected}}-3x.webp',
     { tool: 'tools/webp_icons.py', sources: 'the *-3x.png of the same name (removed by the tool; their maker unrecorded)', draw: 'dom', loader: 'src/styles/game.css' }),
@@ -505,7 +509,9 @@ export const ASSET_FAMILIES = Object.freeze([
   fam('icons-svg-unwired', 'supplied', 'public/icons/ui/{chip-frame-*,recessed-well,toolbar-button-danger,toolbar-button-danger-pressed,toolbar-button-frame-only,toolbar-button-primary-brass}.svg',
     { draw: 'none' }),
   fam('hud-bars', 'made', ['public/{icons/ui/{bar-hp,bar-mp,bar-stam,nml-ask-duel}.webp,ui/bars/hp-{frame,full}.png}', 'public/ui/bars/node-full-green.png'],
-    { tool: ['unknown', 'tools/ui/green-node-bar.sh'], draw: 'file', loader: 'src/rendering/systems/entityRenderer.js', note: 'the bars over heads (_HUD_BAR_FILES); node-full-green a hue turn of hp-full' }),
+    { tool: ['unknown', 'tools/ui/green-node-bar.sh'], draw: 'file', loader: 'src/rendering/systems/entityRenderer.js', note: 'the bars over heads (_HUD_BAR_FILES); node-full-green a hue turn of hp-full; v2.3.5566: the six bars drawn from their twins where colour numbers are drawn (hud-bars-twins); these with ?hudbars=0' }),
+  fam('hud-bars-twins', 'made', 'public/{icons/ui/bar-{hp,mp,stam},ui/bars/{hp-frame,hp-full,node-full-green}}.p256.png',
+    { tool: 'tools/art/reduce256.mjs', sources: 'beside', draw: 'numbers', loader: 'src/rendering/p256.js', px: 'art law', note: 'v2.3.5566, card P\'s backlog: the bars over heads read from their 256-colour twins by default (2.3k-8.5k colours cut to 256, moved 0.001-0.004 OKLab), the health bar\'s three padded to 364 px by one see-through column on the right; listed in src/data/p256Files.js; ?hudbars=0' }),
 
   /* ── the page's own pictures: public/ui/ ── */
   fam('ui-daily-chest', 'made', 'public/ui/chest/daily-chest-strip.webp',

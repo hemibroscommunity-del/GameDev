@@ -20,6 +20,7 @@ import { BT_AUDIO, generateZoneMap, updateZoneDimensions } from '@/data/index.js
 import { FARM_ARRIVE } from '@/data/farmLayout.js';
 import { rememberFarmTrip } from '@/game/wheelTownDoors.js';
 import { showZoneLoadingOverlay, hideZoneLoadingOverlay, releaseLeftZoneArt, changeZone } from '@/game/zoneTransitions.js';   /* v2.3.4414: + the flip and its wipe */
+import { veilTo } from '@/game/veilDoor.js';   /* v2.3.5525: the loading door (card L) */
 import { farmArtReady } from '@/rendering/farmWorld.js';
 import { isZoneMapResident } from '@/rendering/tiledMaps.js';
 import { farmFigureReady } from '@/rendering/standIns.js';
@@ -95,11 +96,11 @@ export function holdFarmUntilReady(S) {
   const seq = ++_seq;
   const load = import('@/rendering/preloadAnimations.js').then((m) => m.preloadZoneAssets('farm_home'));
   if (farmReady()) { load.catch(() => {}); return; }
-  S._farmArtHold = seq;
+  veilTo(S, 'farm', seq);   /* v2.3.5525: the loading door */
   showZoneLoadingOverlay((ZONES.farm_home && ZONES.farm_home.name) || 'Your Farm');
   Promise.race([load.catch(() => null), new Promise((r) => setTimeout(r, FARM_HOLD_CAP_MS))]).then(() => {
     if (S._farmArtHold !== seq) return;
-    S._farmArtHold = null;
+    veilTo(S, 'farm', null);
     /* the screen is one element for every zone change: lift it only if no
        other one has taken it over meanwhile */
     if (S.currentZone === 'farm_home' && !S._zoneLoading && !S._townArtHold && !S._netHold) hideZoneLoadingOverlay();

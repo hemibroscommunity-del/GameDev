@@ -41,6 +41,10 @@
  * _accDayAdd): a test-mode character's shots and hits are left out of the
  * owner's totals a day -- the owner's testing is not the players' aim.  It
  * turns nothing off: the character's own accuracy is counted as anyone's.
+ * And another (v2.3.5627, silence.js _ownerDeviceNote): a device a
+ * test-mode character joins from is kept as the owner's (`ownerdev:`), so a
+ * freeze's device rule never holds the owner's own phone.  It turns nothing
+ * off either.
  *
  * WHAT IT LEAVES ON, for everyone, the test-mode character included: the
  * flood and message budgets, the join window and the per-address limits

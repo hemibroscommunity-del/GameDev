@@ -125,7 +125,7 @@ export const SYSTEMS = Object.freeze({
   ops: {
     what: 'the room under a crowd and the watch on it: its health for a monitor, the waiting crowd\'s pace, a seat held, the public boards\' and the room\'s public reads, a guest\'s join',
     files: [f('server/src', 'health|rfspread|seathold|publicreads|guestlazy')],   /* v2.3.5609: publicreads; v2.3.5610: guestlazy */
-    words: ['room-health', 'rf-spread', 'seat-hold', 'board-cache', 'public-reads', 'guest-lazy'],   /* v2.3.5608: board-cache (leaderboard.js stays social's file) */
+    words: ['room-health', 'rf-spread', 'seat-hold', 'board-cache', 'public-reads', 'guest-lazy', 'owner-pages'],   /* v2.3.5608: board-cache (leaderboard.js stays social's file); v2.3.5607: owner-pages (the reads stay their systems' files) */
     traps: [],
     doors: [],
   },
@@ -206,7 +206,7 @@ export const SYSTEMS = Object.freeze({
     what: 'the Wheel: zones and their doors, lands, dungeons, No Man\'s Land, the map, props',
     files: [
       f('server/src', 'wheelzone|wheelnear|wheelfaces|wheeltables|wheeldungeon|dungeon|dungeonreward|zonejudge|nomansland|props|eventplace'),
-      f('src/game', 'wheelBreak|wheelDungeons|wheelHome|wheelNoticeboard|wheelSize|wheelTownDoors|wheelTrial|worldTrial|worldViewport|zoneGate|zoneMechanics|zoneTransitions|dungeonArt|dungeonClear|dungeonWaves|noMansLand|nmlAsk|nmlExplainOnce|mapPinPlaces|mapPins|pinSlots|buildingRooms|placeSafety|plateSafety|bodyPlace|timeOfDay|season|expoAddress|onePic|bannerReach'),
+      f('src/game', 'wheelBreak|wheelDungeons|wheelHome|wheelNoticeboard|wheelSize|wheelTownDoors|wheelTrial|worldTrial|worldViewport|zoneGate|zoneMechanics|zoneTransitions|veilDoor|dungeonArt|dungeonClear|dungeonWaves|noMansLand|nmlAsk|nmlExplainOnce|mapPinPlaces|mapPins|pinSlots|buildingRooms|placeSafety|plateSafety|bodyPlace|timeOfDay|season|expoAddress|onePic|bannerReach'),
     ],
     words: ['wheel', 'zone', 'land', 'dungeon', 'nomansland', 'nml', 'map', 'world', 'town', 'door', 'prop'],
     traps: ['world'],

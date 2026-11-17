@@ -84,6 +84,24 @@ SCOPE.push({ dir: 'sprites/pets', only: /^pet-sheet\.png$/, always: true });
    nothing in the code changes; the drawing sits half a texel left (0.1 world
    px at tier 1). */
 SCOPE.push({ dir: 'sprites/world', only: /^fish-spot-627\.webp$/, always: true, pad4: true });
+/* v2.3.5566 (card P's backlog, hud-bars): the bars over heads
+   (entityRenderer.js _HUD_BAR_FILES): the mana and stamina pills and the HP
+   pill (1444 px wide, 5.6k-7.9k colours), and the owner's health bar, its
+   empty frame, its red fill and the harvest bar's green (363 px, 2.3k-3.5k
+   colours: padded to 364 as the fish spot's pond, their drawing spanning
+   columns 7-356).  Not the duel ask's small icon (SMALL_TEX, 0.02 MB). */
+SCOPE.push({ dir: 'icons/ui', only: /^bar-(hp|mp|stam)\.webp$/, always: true });
+SCOPE.push({ dir: 'ui/bars', only: /^(hp-frame|hp-full|node-full-green)\.png$/, always: true, pad4: true });
+/* v2.3.5567 (card P's backlog, player-death): the owner's death strip
+   (playerDeathSprites.js, 21 frames of 128 px), the fallback drawn when the
+   bones' explosion (deathCrumble.js) has no corpse: 38k colours, cut to 256. */
+SCOPE.push({ dir: 'sprites/players', only: /^death-v1\.png$/, always: true });
+/* v2.3.5569 (card P's backlog, icons-from-uploads-world): the owner's
+   five-block stamina and mana strips (fxStrips.js BLOCK_BARS, six frames of
+   273 px each) and the verified Bro badge over a name (entityRenderer.js
+   BRO_BADGE_URL), 2.5k-28k colours, cut to 256.  The stamina strip is 1638
+   px wide: its twin is padded to 1640 (`pad4`), past its last frame. */
+SCOPE.push({ dir: 'icons/ui', only: /^(blocks-(mp|stam)|verified-bro-small)\.webp$/, always: true, pad4: true });
 /* v2.3.5564 (card P's backlog, cape-hood): a cape's hood's hair masks, cut
    from its facings (tools/cape/split-cape-hood.py): two colours, exact.  Not
    the hood halves (sitting 20, the planning session's answer (a)): a cape is

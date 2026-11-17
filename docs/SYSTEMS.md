@@ -134,7 +134,7 @@ The room under a crowd and the watch on it: its health for a monitor, the waitin
 - **Files**: `server/src/`: health, rfspread, seathold, publicreads, guestlazy
 - **Doors**: none named yet
 - **Switches**: [its rows in the switch table](SWITCHES.md#ops)
-- **Words**: `room-health`, `rf-spread`, `seat-hold`, `board-cache`, `public-reads`, `guest-lazy`
+- **Words**: `room-health`, `rf-spread`, `seat-hold`, `board-cache`, `public-reads`, `guest-lazy`, `owner-pages`
 - **Traps**: none
 
 ## combat
@@ -212,7 +212,7 @@ Parties, clans, guilds, friends, chat, emotes, duels, the arena, races, boards.
 The Wheel: zones and their doors, lands, dungeons, No Man's Land, the map, props.
 
 - **Files**: `server/src/`: wheelzone, wheelnear, wheelfaces, wheeltables, wheeldungeon, dungeon, dungeonreward, zonejudge, nomansland, props, eventplace
-- **Files**: `src/game/`: wheelBreak, wheelDungeons, wheelHome, wheelNoticeboard, wheelSize, wheelTownDoors, wheelTrial, worldTrial, worldViewport, zoneGate, zoneMechanics, zoneTransitions, dungeonArt, dungeonClear, dungeonWaves, noMansLand, nmlAsk, nmlExplainOnce, mapPinPlaces, mapPins, pinSlots, buildingRooms, placeSafety, plateSafety, bodyPlace, timeOfDay, season, expoAddress, onePic, bannerReach
+- **Files**: `src/game/`: wheelBreak, wheelDungeons, wheelHome, wheelNoticeboard, wheelSize, wheelTownDoors, wheelTrial, worldTrial, worldViewport, zoneGate, zoneMechanics, zoneTransitions, veilDoor, dungeonArt, dungeonClear, dungeonWaves, noMansLand, nmlAsk, nmlExplainOnce, mapPinPlaces, mapPins, pinSlots, buildingRooms, placeSafety, plateSafety, bodyPlace, timeOfDay, season, expoAddress, onePic, bannerReach
 - **Doors**: none named yet
 - **Switches**: [its rows in the switch table](SWITCHES.md#world)
 - **Words**: `wheel`, `zone`, `land`, `dungeon`, `nomansland`, `nml`, `map`, `world`, `town`, `door`, `prop`

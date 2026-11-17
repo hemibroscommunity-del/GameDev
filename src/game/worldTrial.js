@@ -71,6 +71,7 @@ import { setAlwaysDay } from './timeOfDay.js';
 import { setClosedDoorZones, setWheelDoorsOpen } from '../data/gameSystems.js';   /* v2.3.3029: today's town's doors, out of reach with no way back; v2.3.3032: and the Wheel's own */
 import { wheelArtStats } from '../rendering/wheelMonsterArt.js';   /* v2.3.2989: the monsters' looks, loaded as you walk toward them */
 import { wheelLong, onWheelLong, wheelSizeTold } from './wheelSize.js';   /* v2.3.3315: which Wheel the room plays */
+import { sw } from './switches.js';   /* v2.3.5310: the page's one reader (card T) */
 
 export const WORLD_TRIAL_ZONE = 'worldview';
 /* v2.3.2978: the Wheel's own zone, where the server stands each element
@@ -376,7 +377,7 @@ async function preloadWheel() {
     try {
       const day = await import('./townsfolkDay.js');
       /* `?folkbake=0`: baked when first met, as before (mp-townride's comparison) */
-      const ahead = !/(^|[?&])folkbake=0(&|$)/.test((typeof location !== 'undefined' && location.search) || '');
+      const ahead = !sw('folkbake');
       if (day.folkWalkWanted() && ahead) {
         const er = await import('../rendering/systems/entityRenderer.js');
         const tw = await import('./townsfolkWalk.js');

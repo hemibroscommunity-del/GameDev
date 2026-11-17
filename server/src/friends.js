@@ -143,19 +143,27 @@ export const friendsMethods = {
       return this._friendsSend(from, 'friend_error', { reason: 'target-full', target });
     }
     /* v2.3.5624: one NEW request card to the same target per
-       REQUEST_REPEAT_MS, dropped silently before it is written or sent (a
+       REQUEST_REPEAT_MS: a repeat's card is held (v2.3.5628: the request still recorded and answered; a
        request, its cancel and the request again: party.js's rule; the
        answers above -- already friends, a duplicate -- stay as they were).
        KILL SWITCH `invitepace: false` in the live flags. */
+    /* v2.3.5628 (card MOD PR 8; sitting 23's review): a repeat inside the
+       window is ANSWERED AS SENT, as the card says -- the request is
+       recorded and both lists synced as ever -- only its card (the target's
+       popup and sound) is held.  It was dropped silently: the sender's page
+       had no answer. */
+    let _held = false;
     const _f = this._liveFlags;
     if (!(_f && typeof _f === 'object' && Object.prototype.hasOwnProperty.call(_f, 'invitepace') && !_f.invitepace)) {
       if (!this._friendReqAt) this._friendReqAt = new Map();   /* 'from>target' -> ts: capped, oldest first */
       const _k = from + '>' + target, _now = Date.now();
       const _was = this._friendReqAt.get(_k);
-      if (_was && _now - _was < FRIENDS.REQUEST_REPEAT_MS) return;
-      this._friendReqAt.delete(_k);
-      this._friendReqAt.set(_k, _now);
-      while (this._friendReqAt.size > FRIENDS.PACE_KEYS) this._friendReqAt.delete(this._friendReqAt.keys().next().value);
+      if (_was && _now - _was < FRIENDS.REQUEST_REPEAT_MS) _held = true;
+      else {
+        this._friendReqAt.delete(_k);
+        this._friendReqAt.set(_k, _now);
+        while (this._friendReqAt.size > FRIENDS.PACE_KEYS) this._friendReqAt.delete(this._friendReqAt.keys().next().value);
+      }
     }
     const now = Date.now();
     /* reqOut name is client-supplied DISPLAY data for the requester's
@@ -165,7 +173,7 @@ export const friendsMethods = {
     theirs.reqIn[from] = { name: this._friendsNameOf(from), at: now };
     await this._friendsPut(from, mine);
     await this._friendsPut(target, theirs);
-    this._friendsSend(target, 'friend_request_in', { from, fromName: theirs.reqIn[from].name, at: now });
+    if (!_held) this._friendsSend(target, 'friend_request_in', { from, fromName: theirs.reqIn[from].name, at: now });   /* v2.3.5628: a held repeat has no card */
     await this._friendsSyncTo(from);
     if (online) await this._friendsSyncTo(target);
   },
