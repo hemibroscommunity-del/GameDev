@@ -280,7 +280,7 @@ import { moveClaimMethods, guardFacing } from './moveclaims.js'; /* v2.3.4605: w
 import { attackBlocked, slideMove } from './props.js'; /* v2.3.2652: a rock stops a monster's hit; v2.3.2653: and its feet */
 import { staminaRegenMethods } from './staminaregen.js'; /* v2.3.3536: stamina regen worked out by the worker */
 import { fightLockMethods, FIGHT_GATED } from './fightlock.js'; /* v2.3.4510: one fight-lock table */
-import { wireDoorMethods, bodyCapRoute } from './wire/door.js'; /* v2.3.5184: the wire door -- the table's checks before any handler; v2.3.5720: a body's size before any forward (`bodyCapRoute`) */
+import { wireDoorMethods, bodyCapRoute, edgeKeyRefusal } from './wire/door.js'; /* v2.3.5184: the wire door -- the table's checks before any handler; v2.3.5720: a body's size before any forward (`bodyCapRoute`); v2.3.5726: the owner's routes with no key (`edgeKeyRefusal`) */
 import { leaveMethods } from './leave.js'; /* v2.3.4830: the session door -- every way of leaving */
 import { goldMethods } from './gold.js'; /* v2.3.4670: the gold door -- every change to a player's gold */
 import { lifeMethods } from './life.js'; /* v2.3.4820: the life door -- a player's health and life phase */
@@ -404,6 +404,14 @@ async function routeHttp(request, env) {
         return new Response(JSON.stringify({ ok: false, error: 'Read-only' }), { status: 405, headers: corsHeaders });
       }
       return env.LEADERBOARD.get(env.LEADERBOARD.idFromName('global')).fetch(request);
+    }
+
+    /* v2.3.5726 (card K2 PR 7): the owner's two surfaces with no key are
+       answered here, the room's own answer, and the room is never woken
+       (wire/door.js edgeKeyRefusal; `EDGE_GUARD = "off"` sends them on) */
+    {
+      const _edge = roomName ? edgeKeyRefusal(request, url.pathname, env) : null;   /* a room it does not make: 'no such room' first, as before */
+      if (_edge) return _edge;
     }
 
     // v2.3.1146: anti-bot evidence surface lives in the GameRoom (the

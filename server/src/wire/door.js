@@ -300,6 +300,49 @@ export function wireDoorRouteRow(pathname, method, rows = WIRE_DOOR_ROWS.ROUTES)
   return rows.has(b) ? b : '';
 }
 
+/* ═══ v2.3.5726 (card K2 PR 7; the planning session's addendum, 2026-11-17):
+   THE OWNER'S ROUTES REFUSED AT THE EDGE WHEN THEY CARRY NO KEY ═══
+   `/api/admin*` and `/api/botstat*` woke the room for every request, a key
+   or none, and the room refused one with no key (admin.js _adminAuth,
+   botfp.js _botfpAdminFetch).  The outer router now gives that same answer
+   itself, before any object is asked:
+     - /api/admin* with no `Authorization: Bearer <something>`: 404 `Not
+       found` when the worker has no ADMIN_KEY (the surface does not exist),
+       else 401 `Unauthorized` -- the room's own two answers, byte for byte;
+     - /api/botstat* with neither `Authorization: Bearer` nor `x-admin-key`:
+       the room's plain `Not found` 404.
+   A request WITH a header goes to the room as before, which checks the key
+   and counts a wrong one toward its time-out.  `EDGE_GUARD = "off"` (the
+   worker's setting, as ORIGIN_LOCK; absent means on) sends every one on. */
+export const EDGE_GUARD = Object.freeze({
+  ADMIN: '/api/admin',
+  BOTSTAT: '/api/botstat',
+});
+
+const bearerOf = (request) => {
+  const a = request.headers.get('Authorization') || '';
+  return a.startsWith('Bearer ') && a.length > 7;
+};
+
+/** The outer router's answer for an owner's route that carries no key, or
+ *  null to go on (index.js `routeHttp`). */
+export function edgeKeyRefusal(request, pathname, env) {
+  if (String((env && env.EDGE_GUARD) || 'on').trim().toLowerCase() === 'off') return null;
+  if (request.method === 'OPTIONS') return null;
+  /* the router's own tests (startsWith), so exactly what it would forward */
+  if (pathname.startsWith(EDGE_GUARD.ADMIN)) {
+    if (bearerOf(request)) return null;
+    const H = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' };
+    if (!(env && env.ADMIN_KEY)) return new Response(JSON.stringify({ ok: false, error: 'Not found' }), { status: 404, headers: H });
+    return new Response(JSON.stringify({ ok: false, error: 'Unauthorized' }), { status: 401, headers: H });
+  }
+  if (pathname.startsWith(EDGE_GUARD.BOTSTAT)) {
+    if (bearerOf(request) || request.headers.get('x-admin-key')) return null;
+    return new Response('Not found', { status: 404 });
+  }
+  return null;
+}
+
 /* ── the room's methods (index.js mixes them in) ── */
 export const wireDoorMethods = {
   /* count and (the first few) log a refusal.  v2.3.5184 (the gatekeeper,
