@@ -108,12 +108,23 @@ export async function run({ browser, wsPort, webPort, rec }) {
        else fails (TRAPS §67).  Not locator.tap(): it waits for a button to
        stop moving, and the Enter button breathes. */
     const fingerTap = async (sel, text) => {
-      const at = await A.page.evaluate(({ s, t }) => {
+      const where = () => A.page.evaluate(({ s, t }) => {
         const e = Array.from(document.querySelectorAll(s)).find((q) => !t || (q.textContent || '').includes(t));
         if (!e) return null;
         const r = e.getBoundingClientRect();
         return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
       }, { s: sel, t: text || null });
+      /* v2.3.5646: where it is read twice running, 200 ms apart -- a panel still sliding in
+         (this box draws a few frames a second, TRAPS §200) takes the finger to where the
+         button was; the Enter button only breathes (its middle holds) */
+      let at = await where();
+      for (let i = 0; at && i < 15; i++) {
+        await A.page.waitForTimeout(200);
+        const again = await where();
+        const held = !!again && Math.abs(again.x - at.x) < 1 && Math.abs(again.y - at.y) < 1;
+        at = again;
+        if (held) break;
+      }
       if (!at) return false;
       await A.page.touchscreen.tap(at.x, at.y);
       return true;
