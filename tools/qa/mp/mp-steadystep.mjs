@@ -49,8 +49,8 @@ function wobble(n) {
 }
 const q = (a, p) => { const v = [...a].sort((x, y) => x - y); return v[Math.min(v.length - 1, Math.floor(v.length * p))]; };
 
-async function ride(browser, wsPort, webPort, rec, label, query, seq) {
-  const P = await H.newPlayer(browser, { name: 'step' + (query ? 'old' : 'new'), wsPort, webPort, world: 'wheel', viewport: PHONE, touch: true, dpr: 1, query });
+async function ride(browser, wsPort, webPort, rec, label, query, seq, name) {
+  const P = await H.newPlayer(browser, { name: name || ('step' + (query ? 'old' : 'new')), wsPort, webPort, world: 'wheel', viewport: PHONE, touch: true, dpr: 1, query });
   try {
     await H.enterWorld(P);
     const ok = await H.waitFor(P, (S) => ({ z: S.currentZone, l: !!S._zoneLoading }), (v) => v.z === 'wheel' && !v.l, { timeout: 120000, label: 'into the Wheel' }).then(() => true).catch(() => false);
@@ -126,4 +126,22 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`as it ships: never more than ${(a.worst * 100).toFixed(1)}% out (at most 6%), ${(a.hop * 100).toFixed(1)}% from one frame to the next (at most 10%)`,
     a.worst <= 0.06 && a.hop <= 0.1, a);
   rec.ok(`both cover the same ground a frame on the whole -- ${a.mean} and ${b.mean} game px (within 3%: nobody is faster)`, Math.abs(a.mean - b.mean) / b.mean <= 0.03, { a: a.mean, b: b.mean });
+
+  /* v2.3.5233 (card O PR 13): THE 30 LANE.  A 30 screen (an iPhone in Low
+     Power Mode) that misses a refresh every 15 frames: a 67 ms frame.  The
+     thirty lane's step is three of its frames (100 ms), so the missed
+     refresh is covered whole -- the ground a ms the 60 screen covers; the
+     full lane's 50 ms cap, on the same screen, loses 17 ms a miss (slow
+     motion). */
+  const seq30 = [];
+  for (let k = 0; k < 600; k++) seq30.push(k % 15 === 14 ? 2000 / 30 : 1000 / 30);
+  const t30 = await ride(browser, wsPort, webPort, rec, 'a 30 screen, the thirty lane (?lane=thirty)', 'lane=thirty', seq30, 'stepthirty');
+  const f30 = await ride(browser, wsPort, webPort, rec, 'the same 30 screen, the full lane\'s cap (?lane=full)', 'lane=full', seq30, 'stepfull');
+  if (!t30 || !f30) return;
+  const perMs = (rows) => rows.reduce((s, r) => s + r.d, 0) / rows.reduce((s, r) => s + r.raw, 0);
+  const at60 = perMs(now), th = perMs(t30), fu = perMs(f30);
+  console.log(`    ground a ms: 60 ${at60.toFixed(4)}, 30 thirty lane ${th.toFixed(4)}, 30 full lane's cap ${fu.toFixed(4)}`);
+  rec.ok(`at 30 a second, missing a refresh every 15 frames, the thirty lane covers the ground a ms the 60 screen does (${th.toFixed(4)} against ${at60.toFixed(4)}, within 3%): not slow motion`,
+    Math.abs(th - at60) / at60 <= 0.03, { th, at60 });
+  rec.ok(`...where the full lane's 50 ms cap loses ground on the same screen (${fu.toFixed(4)}: at least 2% less)`, fu < th * 0.98, { fu, th });
 }

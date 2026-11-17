@@ -86,7 +86,7 @@ check("lookPalette.js imports the choice", /import \{ lookPaletteChoice \} from 
 /* v2.3.5228: the search alone -- this page's device, asked of the profile */
 const code = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`\\])\/\/[^\n]*/g, '$1');
 check('its switch is the choice, with the search alone (this page\'s device, asked of the profile), and lookPalette.js reads no navigator',
-  /lookPaletteChoice\(window\.location\.search \|\| ''\)/.test(lp) && /const _wanted = wantedByAddress\(\);/.test(lp) && !/navigator/.test(code(lp)));
+  /lookPaletteChoice\(\);/.test(lp) && /const _wanted = wantedByAddress\(\);/.test(lp) && !/navigator/.test(code(lp)));
 check('the program is built only when wanted (the prewarm asks _wanted first)', /function prewarmProgram\(\) \{\s*const r = paletteRendererOf\(\);\s*if \(!_wanted \|\|/.test(lp));
 check('the QA probe says why', /why: _why/.test(lp));
 

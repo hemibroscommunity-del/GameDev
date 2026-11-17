@@ -116,6 +116,7 @@ import { BatcherPipe, BufferImageSource, Container, Filter, GlProgram, Matrix, M
 import { selfDraw, selfQueue, selfSkip, selfTestOn, selfShadeRgba, selfShadeWant, SELF_SHADE, SELF_SIZE } from '../selfTest.js';   /* v2.3.5236: the self-test at the door (card O PR 14b) */
 import { profileAtU } from '../propGround.js';
 import { healAfterRenderThrow } from '../renderHeal.js';   /* v2.3.3458: a pre-pass that throws leaves nothing open */
+import { sw } from '../../game/switches.js';   /* v2.3.5232 (card O PR 12): the passes' switch through the page's one reader */
 
 /* v2.3.3149: on unless `?shadowlock=0` (see the header) -- read once */
 let _lockOn = null;
@@ -134,7 +135,7 @@ const SNAP_OLD = _q(/[?&]shadowsnap=1\b/);
 const HP_ON = !_q(/[?&]shadowhp=0\b/);
 /* v2.3.3458: `?shadowpass` -- the filter in the middle of the frame, as it
    was (see the header); setShadowPrepass flips it live, for this page only */
-let _prepassOn = !_q(/[?&]shadowpass\b/);
+let _prepassOn = !sw('shadowpass');   /* v2.3.5232 (card O PR 12): through the page's one reader */
 /* the room round the screen the pieces' picture keeps, a side, in CSS px: the
    filter's own `padding`, so a piece just off the screen still softens its
    edge as it did */

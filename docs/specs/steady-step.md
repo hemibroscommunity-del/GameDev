@@ -112,3 +112,31 @@ phone's strip (`?perf=1`) tells them apart since this change:
   dropped frame. The owner's third ride read 46 frames a second for a moment
   with a tutorial card on screen; that is a separate thing to look at if it
   comes back.
+
+## The 30 lane (v2.3.5233, card O PR 13, grand plan 2.5)
+
+- **The cap is the lane's**: three of its frames. The lanes' `step` knob
+  (`drawLanes.js`): 50 ms in the full and light lanes, 100 in `thirty`
+  (named by the pacer wherever the refresh reads 30: Low Power Mode). Read
+  in `BroTown.jsx` alone (`_stepCapMs`), handed to the clock
+  (`makeFrameClock(undefined, _stepCapMs)`: `frameClock.js` keeps no
+  imports, its cap may be a function asked each frame) and the same cap
+  clamps `_dtScale` (3 at 60, 6 at 30).
+- **Why**: at 30 a missed refresh is a 67 ms frame. Under the old 50 it was
+  a break, clamped to 50: 17 ms of ground lost each time, slow motion. At
+  100 it is a step like any other; the ground the clock moved is covered.
+  A 60 screen that only ever makes twos reads as 30 and takes this lane,
+  which is what its frames are.
+- **The worker's move budget is the ceiling, and a 100 ms step fits it**:
+  the fastest honest walk (~441 px/s) covers 44 px in 100 ms, inside
+  `MOVE_BUDGET`'s 500 px/s refill and 3 s burst (and the old per-message 80
+  under `movebudget: false`). No server change.
+- **Not combat**: the dash keeps its own per-frame cap (`DASH_MAX_STEP_PX`),
+  and the swing's clock and the bow's sight read no step cap. A projectile
+  steps at most the old clamp's 3 (`projectiles.js` `_combatDt`,
+  `COMBAT_DT_MAX`): its sweep cap (200 px over 144) and the trail's guard
+  (260) assume it, and at 6 an arrow would step past a monster on a long
+  frame (the gatekeeper's sitting 25).
+- `?dtsmooth=0` stays the old way: no clock, and the clamp the old 50 ms.
+- Held by `frame-clock.test` §9 (a 30 screen missing one refresh covers its
+  whole ground; the 60 cap would lose 17 ms) and `mp-steadystep`'s 30 rides.
