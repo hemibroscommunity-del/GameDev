@@ -23,8 +23,9 @@
  */
 import { Container, Sprite, Texture, Cache } from 'pixi.js';
 import { keepAsImage } from './keepAsImage.js';
+import { pageAddress } from '../game/switches.js';   /* v2.3.5317: the page's one read of its address (card T) */
 
-const qs = (() => { try { return new URLSearchParams(window.location.search); } catch (e) { return null; } })();
+const qs = (() => { try { return new URLSearchParams(pageAddress()); } catch (e) { return null; } })();
 const qnum = (k, d) => { const v = qs && qs.get(k); const n = v != null ? Number(v) : NaN; return Number.isFinite(n) && n >= 0 ? n : d; };
 
 export const SOOT = Object.freeze({

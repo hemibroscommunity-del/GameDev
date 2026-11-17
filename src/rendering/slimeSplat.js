@@ -25,12 +25,13 @@
  */
 import { Container, Sprite } from 'pixi.js';
 import { SPLAT_MS, splatPose } from '@/game/slimeSplatPose.js';
+import { pageAddress } from '../game/switches.js';   /* v2.3.5317: the page's one read of its address (card T) */
 
 export { SPLAT_MS };
 
 const _on = (() => {
   try {
-    const v = typeof location !== 'undefined' ? new URLSearchParams(location.search || '').get('slimesplat') : null;
+    const v = typeof location !== 'undefined' ? new URLSearchParams(pageAddress()).get('slimesplat') : null;
     return v === '1';   /* v2.3.4197: OFF by default, the old eruption is back; ?slimesplat=1 plays the squash */
   } catch (e) { return false; }
 })();

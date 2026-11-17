@@ -316,6 +316,10 @@ so node tests it and any file may ask it.
   takes `off` and `false`, its row `=0` alone), and the probes and values
   (`?lookprobe`, `?lookpalette=1`). `retryLooks.js` and `traits/traitImg.js`
   keep theirs: loader-retries and picture-door run their text in a vm.
+- v2.3.5317: render (card H done), forty-five reads in thirty-three files
+  under `src/rendering/`, each on pageAddress() with its old test word for
+  word (the meaning cannot change): the line 71. A later PR may turn the
+  single-name ones into sw() asks, each held by `MOVED`.
 
 ## A new switch
 

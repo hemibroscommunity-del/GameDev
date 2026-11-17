@@ -67,7 +67,7 @@ import { SELF_STAND_IN_FIELDS, PEER_STAND_IN_MAPS } from './lightfx/casters.js';
    `?headframes` in the address: without it, not even fetched */
 let _headFrames = null;
 try {
-  if (typeof window !== 'undefined' && /[?&]headframes(=|&|$)/.test((window.location && window.location.search) || '')) {
+  if (typeof window !== 'undefined' && /[?&]headframes(=|&|$)/.test(pageAddress())) {
     import('./headFrames.js').then((m) => { _headFrames = m; }).catch(() => {});
   }
 } catch (e) { /* QA only */ }
@@ -79,6 +79,7 @@ import { getEyeStyle } from './traits/eyeStyleCatalog.js';
 import { recordCrash } from '../debug/crashTrap.js';   /* v2.3.3017: a frame that will not draw is reported, and rebuilt */
 import { PeerImpostors } from './peerImpostor.js';   /* v2.3.4885: one picture per standing player in a crowd (?onepic=1) */
 import { PlateLayers } from './plateLayer.js';   /* v2.3.4989: other players' name plates drawn after the figures (?platelayer=1) */
+import { pageAddress } from '../game/switches.js';   /* v2.3.5317: the page's one read of its address (card T) */
 installBatchIdsLean();   /* v2.3.5007: once, as the renderer loads (batchIdsLean.js) */
 installFieldLean();   /* v2.3.5007: and fieldLean.js */
 
@@ -220,7 +221,7 @@ const _playerGround = { x: NaN, y: NaN };
 /* v2.3.3775: the world's ground kept on a return (forceRefresh, below):
    `?groundkeep=0` or the live flag off_groundkeep rebuilds it as before; the
    counts are the QA probe window.__btGroundKeep (mp-groundkeep) */
-const _groundKeepOffUrl = (() => { try { return /[?&]groundkeep=(0|off|false)(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();
+const _groundKeepOffUrl = (() => { try { return /[?&]groundkeep=(0|off|false)(&|$)/.test(pageAddress()); } catch (e) { return false; } })();
 function groundKeepOn() { return !_groundKeepOffUrl && !clientOff('groundkeep'); }
 /* ...and never after a loss: wsClient's resume has a third way here -- the
    context lost when it looked, restored 1.5 s later, then forceRefresh (not a
@@ -293,7 +294,7 @@ let _camSnapOff = null;
 function camSnapOn() {
   if (_camSnapOff === null) {
     _camSnapOff = false;
-    try { if (typeof location !== 'undefined' && /[?&]camsnap=0\b/.test(location.search || '')) _camSnapOff = true; } catch (e) { /* on */ }
+    try { if (typeof location !== 'undefined' && /[?&]camsnap=0\b/.test(pageAddress())) _camSnapOff = true; } catch (e) { /* on */ }
   }
   return !_camSnapOff;
 }
@@ -310,7 +311,7 @@ if (typeof window !== 'undefined') {
    worker must wait for its word (game/wheelTrial.js).  Nothing else reads it. */
 function qaPixiDelay() {
   try {
-    const m = typeof location !== 'undefined' && /[?&]pixidelay=(\d+)/.exec(location.search || '');
+    const m = typeof location !== 'undefined' && /[?&]pixidelay=(\d+)/.exec(pageAddress());
     return m ? Math.min(20000, +m[1]) : 0;
   } catch (e) { return 0; }
 }
@@ -416,7 +417,7 @@ export async function initPixiRenderer(canvas) {
      wind, snow, motes (systems/ambientFx.js). */
   const ambientFx = new AmbientFx(layers);
   /* v2.3.221: FPS counter only mounts with ?dev=1. */
-  const _devUI = typeof window !== 'undefined' && /[?&]dev=1\b/.test(window.location.search);
+  const _devUI = typeof window !== 'undefined' && /[?&]dev=1\b/.test(pageAddress());
   /* v2.3.1781: minimap lives in the screen-space `hud` layer so it never
      inherits the world's camera transform or WORLD_ZOOM scale. */
   const minimap = new MinimapRenderer(layers.hud, app);

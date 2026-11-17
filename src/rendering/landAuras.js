@@ -114,10 +114,11 @@ import {
   LAND_AURAS, AURA_MAX, PER_MAX, AURA_VIEW_IN, AURA_VIEW_OUT, AURA_TEX,
   auraLandOf, auraPartsFor, auraPoolPlan, auraRampAt, auraFade,
 } from '../data/landAuras.js';   /* v2.3.3511: the table, as data */
+import { pageAddress } from '../game/switches.js';   /* v2.3.5317: the page's one read of its address (card T) */
 
 export { LAND_AURAS, AURA_MAX, PER_MAX, auraLandOf };
 export const AURAS_ON = (() => {
-  try { return !/(^|[?&])noauras(&|$)/.test(window.location.search || ''); } catch (e) { return true; }
+  try { return !/(^|[?&])noauras(&|$)/.test(pageAddress()); } catch (e) { return true; }
 })();
 
 /* ── the textures: made behind the Wheel's loading screen, freed on leaving ── */

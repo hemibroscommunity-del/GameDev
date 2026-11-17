@@ -46,6 +46,7 @@
  * import effectsRenderer (the fxStrips.js precedent). */
 import { Container, Sprite, Texture } from 'pixi.js';
 import { ELEMENTS } from '@/data/elements.js';
+import { pageAddress } from '../game/switches.js';   /* v2.3.5317: the page's one read of its address (card T) */
 
 /* Centre of the crystal head in the staff icon (Wizard Staff2.png, 64x64),
    measured off its alpha: the white claw spans rows 12-24, cols 40-55.  One
@@ -93,7 +94,7 @@ const TIP_FRESH_MS = 250;
    same pooled glow sprites as every light here (nothing loaded, nothing
    made per hit), over the monster (the front glows).  `?magicburst=0`: the
    crash as it was, for one phone. */
-const BURST_ON = (() => { try { return new URLSearchParams(window.location.search).get('magicburst') !== '0'; } catch (e) { return true; } })();
+const BURST_ON = (() => { try { return new URLSearchParams(pageAddress()).get('magicburst') !== '0'; } catch (e) { return true; } })();
 const BURST_MS = 340, BIG_BURST_MS = 540;   /* a bang, then gone */
 const BURST_R = 42, BIG_BURST_R = 96;       /* its fireball's full reach, world px (the bolt is ~16 across) */
 /* A launch offset bigger than this means the published crystal is not this
