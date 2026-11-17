@@ -1,7 +1,9 @@
 /* A BOW'S CLAIM IS AN ARROW THE WORKER SAW LEAVE -- v2.3.5550 (grand plan
  * step 4.2, a sword's claim labelled a bow's, TRAPS §329; card K PR 14;
- * docs/specs/bow-shot.md).  OFF: the owner's to turn on (`bowshot: true` in
- * the live flags), since it changes how combat is judged.
+ * docs/specs/bow-shot.md).  ON since v2.3.5727 (card K2 PR 8; decided for
+ * the owner while away by the planning session, on the owner's words of
+ * 2026-11-17: "For all decisions waiting on me just go recommended.");
+ * `bowshot: false` in the live flags is its kill switch.
  *
  * The bench (claims-gain.test, `bowlabel`) found a `ranged` claim worth 3.91
  * times an honest archer's take: with a bow worn, the worker believed five
@@ -42,10 +44,12 @@ export const BOW_SHOT = Object.freeze({
 const own = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);
 
 export const bowShotMethods = {
-  /* an opt-in, off: only `bowshot: true` turns it on */
+  /* v2.3.5727: ON (decided for the owner while away, the planning session,
+     2026-11-17); `bowshot: false` is its kill switch (on unless its own
+     falsy value, as `swordswing`) */
   _bowShotOn() {
     const f = this._liveFlags;
-    return !!(f && typeof f === 'object' && own(f, 'bowshot') && f.bowshot === true);
+    return !(f && typeof f === 'object' && own(f, 'bowshot') && !f.bowshot);
   },
   _bowShotState(ps) {
     return ps._bs || (ps._bs = { tokens: BOW_SHOT.BURST, t: 0, q: [] });
