@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "322e79e0cf0549e3fba91a889901e044de473db0",
+  "tree": "27b71c8577ca6340dbd5a06918db6fa07f89987c",
+  "committedAt": "2026-11-17T14:57:43-08:00",
+  "subject": "Merge pull request #2088 from hemibroscommunity-del/claude/plan-sec2-site-hardening",
+  "files": 8136,
+  "bytes": 960203286,
+  "listingSha256": "cd05a501ccc51286245ceb5473d63d13e11f7f2d2c700d984f725ae68a679f75",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
