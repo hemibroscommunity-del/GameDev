@@ -1,20 +1,18 @@
 card: M
-branch: claude/plan-m-1-framesteps (PR 1, tag 5340; from main)
-prs: #2089 (5340): ready (L done; main bdfa8734 merged in)
-state: ready
+branch: claude/plan-m-2-steps (PR 2, tag 5341; stacked on #2089, base main)
+prs: #2089 (5340): ready (sitting 42); PR 2 (5341): working
+state: working
 
 ## Done
 - Chain A only (lines 1-3, BroTown.jsx, tags 5340-5342); chain B is M2
-- (none merged yet)
+- PR 1 #2089 (5340): ready, at the gatekeeper
 
 ## Next
-- PR 1 (5340), the frame as a list, moves nothing: src/game/frameSteps.js,
-  the marks in gameLoop, 'frame-step' quiet in crashTrap, `?framesteps=0`,
-  tools/guards/frame-steps.test.mjs (legacy's census 1555 code lines),
-  tools/qa/mp/mp-framesteps.mjs (19/19). Phone runs beside main's: all green.
-  after-frame.test 2a accepts the step marks (the planning session's
-  answer, 2026-11-17; server/test: the merge deploys the worker).
-  The card as amended by the owner's review (f8df9ed5) committed here.
+- PR 2 (5341), more named steps, moves nothing: the ten single calls
+  inside legacy (tap, sound, ride, zone, farm, townsfolk, monsters,
+  weaponFeel, loot, peers) marked `to(a, b)` on their own lines; the guard
+  walks every mark; legacy 1555 -> 1531 code lines; mp-framesteps 19/19,
+  17 steps. Running manualcombat, heldcombat, crowdfight, monstermoves.
 
 ## Found
 - tools/dev/precheck.mjs: server-tests' 5-minute limit times out on this
@@ -25,4 +23,6 @@ state: ready
   four ways); BUDGETS part 3's caches.
 
 ## Needs
-- The gatekeeper's review of PR 1 (sitting 42).
+- The gatekeeper's review of #2089 (sitting 42).
+- Planning session: may after-frame.test 2a take a mark's index as `\d+`
+  (render and afterFrame become steps 15 and 16)? Asked 2026-11-17.

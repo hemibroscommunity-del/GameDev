@@ -4904,7 +4904,10 @@ export var BroTown = function BroTown(_ref0) {
        the next real upload, never sends alone).  Nothing moves: a throw still
        ends the frame as before.  The probe: window.__btSteps().  `?framesteps=0`:
        no marks, no ring entry, the loop as it was.  A line added inside
-       legacy turns tools/guards/frame-steps.test.mjs red (its census only falls). */
+       legacy turns tools/guards/frame-steps.test.mjs red (its census only falls).
+       v2.3.5341 (card M PR 2): each single call inside legacy is a step too
+       (tap, sound, ride, zone, farm, townsfolk, monsters, weaponFeel, loot,
+       peers), marked `to(a, b)` on its own line: nothing moved. */
     var _steps = sw('framesteps') ? null : makeFrameSteps({ report: function (name, msg) { recordCrash('frame-step', name + ': ' + msg); } });
     if (typeof window !== 'undefined') window.__btSteps = function () { return _steps ? _steps.read() : { on: false }; };
     var _gameLoop = function gameLoop(_rafT) {
@@ -5037,7 +5040,7 @@ export var BroTown = function BroTown(_ref0) {
            still held past its window is the attack now -- before the sprint,
            the walk, the fight and the drawing read S.autoAttack this frame
            (game/tapJump.js settleTapPress) */
-        settleTapPress(S, Date.now());
+        if (_steps) _steps.to(0, 1); settleTapPress(S, Date.now()); if (_steps) _steps.to(1, 0);   /* v2.3.5341: the step `tap` (game/frameSteps.js) */
 
         /* ═══ Defensive death-flow catch ═══
            The "rich" death handlers (server monster_attack ~2272, local
@@ -5432,12 +5435,12 @@ export var BroTown = function BroTown(_ref0) {
            same frame, with the water's own splash. */
         var _jNow = Date.now();
         var _jLanded = tickJump(S, _jNow, _playerDead);
-        tickWaterAmbience(S, _jNow);   /* v2.3.3343: the river heard on its banks (game/waterAmbience.js) */
+        if (_steps) _steps.to(0, 2); tickWaterAmbience(S, _jNow);   /* v2.3.5341: the step `sound`, to tickDanceMusic; v2.3.3343: the river heard on its banks (game/waterAmbience.js) */
         tickTownAmbience(S, _jNow);   /* v2.3.3434: the Blacksmith's anvil near the forge (game/townAmbience.js) */
         tickAmbientBeds(S, _jNow);   /* v2.3.3462: the sea from its shore, BroTown's crowd, a fire's crackle (game/ambientBeds.js) */
         tickRideSound(S, _jNow);   /* v2.3.3791: your skateboard's wheels while you ride (game/rideSound.js) */
         tickHeartbeat(S, _jNow);   /* v2.3.3462: under a quarter of your health (game/ownSounds.js) */
-        tickDanceMusic(S);   /* v2.3.3462: your dance takes the music deck (game/moveSounds.js) */
+        tickDanceMusic(S); if (_steps) _steps.to(2, 0);   /* v2.3.3462: your dance takes the music deck (game/moveSounds.js) */
         var _inAir = !!S._jump;
         var _swEv = _inAir ? null : updateWheelSwim(S, Date.now(), isWheelTrialZone(S.currentZone),
           playerGroundDy(S.currentZone, P.x, P.y));
@@ -5721,7 +5724,7 @@ export var BroTown = function BroTown(_ref0) {
         var _step = finalSpd * (S._dtScale || 1);
         var nx = P.x + dx * _step;
         var ny = P.y + dy * _step;
-        rideStepped(S, P.x, P.y, nx, ny);   /* v2.3.5440: judged next frame: a step a wall or the Mayor gate stopped ends the roll */
+        if (_steps) _steps.to(0, 3); rideStepped(S, P.x, P.y, nx, ny); if (_steps) _steps.to(3, 0);   /* v2.3.5341: the step `ride`; v2.3.5440: judged next frame: a step a wall or the Mayor gate stopped ends the roll */
 
         /* Store velocity for facing/mirroring code */
         P.vx = dx * finalSpd;
@@ -5998,7 +6001,7 @@ export var BroTown = function BroTown(_ref0) {
            Phase 6, behavior-frozen). ptx/pty/_zone are intentionally the
            PRE-transition values and stay in this scope — the water check
            below keeps reading them, same as the inline code. */
-        handleZoneTransitions(S, ptx, pty, _zone, W, H);
+        if (_steps) _steps.to(0, 4); handleZoneTransitions(S, ptx, pty, _zone, W, H);   /* v2.3.5341: the step `zone`, to updateDungeonWaves */
 
         /* v2.3.788: the WASTELAND fence-climb block that lived here was
            removed with the rest of the Lawless Land content (owner decision,
@@ -6015,7 +6018,7 @@ export var BroTown = function BroTown(_ref0) {
         /* §14.1 Dungeon wave progression — v2.3.810: moved verbatim to
            src/game/dungeonWaves.js (REBUILD-PLAN Phase 8, slice 2). Custom
            §DNG dungeons are live; the standard tile-10 path is dormant. */
-        updateDungeonWaves(S, { stateRef: stateRef, setRpgState: setRpgState });
+        updateDungeonWaves(S, { stateRef: stateRef, setRpgState: setRpgState }); if (_steps) _steps.to(4, 0);
 
         /* ═══ v2.3.1778: THE ENTRANCES ARE BACK, BECAUSE THE ART SHIPPED ═══
            v2.3.823 removed them: "the town buildings have no in-game art yet,
@@ -6100,7 +6103,7 @@ export var BroTown = function BroTown(_ref0) {
            The one your boots stand in reach of and its next step (the stick's
            picture, E, a tap), and a step under way -- its sounds, its end, or
            your walking away from it (game/farmWalk.js) */
-        tickFarmWalk(S, Date.now());
+        if (_steps) _steps.to(0, 5); tickFarmWalk(S, Date.now()); if (_steps) _steps.to(5, 0);   /* v2.3.5341: the step `farm` */
 
 
         /* Revive harvested gather nodes whose respawnAt has elapsed.
@@ -7447,14 +7450,14 @@ export var BroTown = function BroTown(_ref0) {
 
         /* v2.3.3525: Lil Bro's race -- the countdown's beats, the gun, the end
            (game/race.js) */
-        raceTick(S, Date.now());
+        if (_steps) _steps.to(0, 6); raceTick(S, Date.now());   /* v2.3.5341: the step `townsfolk`, to townsfolkFrame */
         /* v2.3.4058: the townsfolk's day in the Wheel's BroTown -- where each is
            on his loop, by the clock (game/townsfolkDay.js) */
         var _fwZone = ZONES[S.currentZone];
         townsfolkFrame(S, Date.now(), { on: isWheelTrialZone(S.currentZone) && folkWalkWanted() && lookFolkOn(), chains: QUEST_CHAINS,
           feetX: P.x, feetY: P.y + playerGroundDy(S.currentZone, P.x, P.y), talking: !!S._uiBusy,
           grid: (S._tiledWalkable && S._tiledWalkable[S.currentZone]) || null, worldW: _fwZone ? _fwZone.w * TILE : 0, worldH: _fwZone ? _fwZone.h * TILE : 0,
-          boxes: zoneBlockers(S.currentZone) });
+          boxes: zoneBlockers(S.currentZone) }); if (_steps) _steps.to(6, 0);
         /* Update NPCs — §19.1 companion follow + quest interaction + wander */
         var _npcTown = null;   /* v2.3.4040: the safe ground, read once a frame when an idle line asks */
         if (S.npcs) {
@@ -7651,18 +7654,18 @@ export var BroTown = function BroTown(_ref0) {
            verbatim to src/game/monsterCombat.js (REBUILD-PLAN Phase 8,
            slice 3). activeWpn is the outer game-loop weapon (distinct from
            the block-internal _activeWpn); React setters via deps. */
-        updateMonsterCombat(S, { activeWpn: activeWpn, setRpgState: setRpgState, setLevelUpMsg: setLevelUpMsg });
+        if (_steps) _steps.to(0, 7); updateMonsterCombat(S, { activeWpn: activeWpn, setRpgState: setRpgState, setLevelUpMsg: setLevelUpMsg }); if (_steps) _steps.to(7, 8);   /* v2.3.5341: the steps `monsters`, then `weaponFeel` */
         /* v2.3.4800: the sword's feel, once a frame after the combat step: the
            blade's readiness (the glint), the cut's arc once the swing has its
            angle (game/swordFeel.js; the timing bar's call stood here) */
         swordFeelFrame(S, Date.now());
         staffFeelFrame(S, Date.now(), BT_AUDIO);   /* v2.3.4803: the staff's gather -- its stage, its hum, the orb the renderer draws */
-        bowFeelFrame(S, Date.now());   /* v2.3.4802: the bow's draw -- its bend and line, the creak's pitch, the click as it settles, the pose */
+        bowFeelFrame(S, Date.now()); if (_steps) _steps.to(8, 9);   /* v2.3.5341: then `loot`; v2.3.4802: the bow's draw -- its bend and line, the creak's pitch, the click as it settles, the pose */
 
         /* Pick up ground loot — walk over it */
         /* v2.3.812: the ~347-line ground-loot pickup block moved verbatim to
            src/game/groundLoot.js (REBUILD-PLAN Phase 8, slice 4). */
-        updateGroundLootPickup(S, { pixiRef: pixiRef, setRpgState: setRpgState, setLevelUpMsg: setLevelUpMsg });
+        updateGroundLootPickup(S, { pixiRef: pixiRef, setRpgState: setRpgState, setLevelUpMsg: setLevelUpMsg }); if (_steps) _steps.to(9, 0);
 
         /* §3.2 HP regeneration — OOC: 1.5%/s after 5s no damage. Restoration scales. */
         if (S.rpg && S.lastDamageTaken && Date.now() - S.lastDamageTaken > 5000) {
@@ -7735,7 +7738,7 @@ export var BroTown = function BroTown(_ref0) {
            frame.  Date.now() is hoisted out of the inner loop. */
         /* Release any queued peer damage numbers at a live cadence before
            the TTL prune (smooth-peer-damage-numbers.md). */
-        releasePeerDamage(S, Date.now());
+        if (_steps) _steps.to(0, 10); releasePeerDamage(S, Date.now()); if (_steps) _steps.to(10, 0);   /* v2.3.5341: the step `peers` */
         if (S.dmgNumbers && S.dmgNumbers.length) {
           var _dn = S.dmgNumbers;
           var _dnNow = Date.now();
@@ -8451,19 +8454,19 @@ export var BroTown = function BroTown(_ref0) {
         /* ── Screen-shake / facing / footstep / interp / remote-projectile:
            v2.3.814: moved verbatim to src/game/visualSystems.js
            (REBUILD-PLAN Phase 8, slice 6). ── */
-        if (_steps) { _steps.end(0); _steps.begin(1); } updateVisualSystems(S); if (_steps) _steps.end(1);   /* v2.3.5340: legacy ends; the steps */
+        if (_steps) { _steps.end(0); _steps.begin(11); } updateVisualSystems(S); if (_steps) _steps.end(11);   /* v2.3.5340: legacy ends; the steps */
 
         /* ── Arrow projectile simulation — v2.3.813: moved verbatim to
            src/game/projectiles.js (REBUILD-PLAN Phase 8, slice 5). ── */
-        if (_steps) _steps.begin(2); updateArrows(S, { setRpgState: setRpgState, setLevelUpMsg: setLevelUpMsg }); if (_steps) _steps.end(2);
+        if (_steps) _steps.begin(12); updateArrows(S, { setRpgState: setRpgState, setLevelUpMsg: setLevelUpMsg }); if (_steps) _steps.end(12);
 
         /* ── Slime projectile simulation — v2.3.813: moved verbatim to
            src/game/projectiles.js (REBUILD-PLAN Phase 8, slice 5). ── */
-        if (_steps) _steps.begin(3); updateSlimeProjectiles(S); if (_steps) _steps.end(3);
+        if (_steps) _steps.begin(13); updateSlimeProjectiles(S); if (_steps) _steps.end(13);
 
         /* ── State cleanup flags — v2.3.815: moved verbatim to
            src/game/stateCleanup.js (REBUILD-PLAN Phase 8, slice 7). ── */
-        if (_steps) _steps.begin(4); updateStateCleanup(S); if (_steps) _steps.end(4);
+        if (_steps) _steps.begin(14); updateStateCleanup(S); if (_steps) _steps.end(14);
 
         /* ══════════════════════════════════════════════════════════
            ── RENDER ── PixiJS only.  The Canvas 2D fallback path was
@@ -8480,11 +8483,11 @@ export var BroTown = function BroTown(_ref0) {
            src/game/renderFrame.js (v2.3.816, REBUILD-PLAN Phase 8 slice 8).
            Frame-timing values (_perfNow/_perfDelta) computed at loop top
            are passed in; perfTracker recording lives in the module now. */
-        if (_steps) _steps.begin(5); renderFrame(S, { pixiRef: pixiRef, canvas: canvas, nfts: nfts, perfNow: _perfNow, perfDelta: _perfDelta }); if (_steps) _steps.end(5);
+        if (_steps) _steps.begin(15); renderFrame(S, { pixiRef: pixiRef, canvas: canvas, nfts: nfts, perfNow: _perfNow, perfDelta: _perfDelta }); if (_steps) _steps.end(15);
         /* v2.3.4360: the page's marks on things IN the world (the first
            steps' box and arrow on Mayor Bro) are moved now, from the camera
            this frame was drawn with (ui/afterFrame.js) */
-        if (_steps) _steps.begin(6); runAfterFrame(S); if (_steps) _steps.end(6);
+        if (_steps) _steps.begin(16); runAfterFrame(S); if (_steps) _steps.end(16);
       } catch (gameLoopErr) {
         /* v2.3.5340: the step that was open threw: counted, its first throw to the ring */
         var _stepThrew = _steps ? _steps.fault(gameLoopErr) : null;
