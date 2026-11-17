@@ -515,6 +515,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | name | side | kind | born | on | thrown | risk | needs | fallback | off |
 |---|---|---|---|---|---|---|---|---|---|
 | `bodytake` | worker | switch | v2.3.4455 | 2026-11-10 | false | logic |  | no | A second login taking over mid-fight no longer keeps the body (the v2.3.4432 way), and caps.bodyTake is un-advertised. |
+| `joinplace` | worker | switch | v2.3.5722 | 2026-11-17 | false | logic | `lastplace` | no | A join that names no place is left where the fresh state puts it, with no move clock, so its first move is judged from nothing, as before. |
 | `joinstandup` | worker | switch | v2.3.4374 | 2026-11-10 | false | logic |  | no | The join restores 0 health and the sweep kills again, as before. |
 | `lastplace` | worker | switch | v2.3.3327 | 2026-10-18 | false | logic | `movebudget` | no | Every join takes its place again, and the first move after it is free. |
 | `linger` | worker | switch | v2.3.3260 | 2026-10-15 | false | logic |  | no | Every leaver leaves at once again; a lingering body ends on the next sweep. |
