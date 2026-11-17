@@ -20,9 +20,10 @@ state: working
 
 ## Next
 
-- #1929 (5237, 14c, ready): the fill and the glint, named in `self`.
-- 14d (5238, open, on #1929): the clip's two programs, named in `self`.
-- PR 11 (caches) waits for card P; 12 for card T's PR 6; 13 for card SK.
+- #1929 (5237, 14c, ready): fill, glint; 14d (5238, on #1929): the clip.
+- 5239 (after 14d; the planner for the owner): a failed fill or glint falls
+  back alone (CLAUDE.md §7), not drawn as today.
+- PR 11 waits for card P; 12 for card T's PR 6; 13 for card SK.
 
 ## Found
 
@@ -36,5 +37,4 @@ state: working
 
 ## Needs
 
-- Owner: fill, glint, clip: no way back, a failed one named and drawn as
-  today. Switch off instead (clip: `?alphaclip`)? 14d took spare 5238.
+- The clip's way back too (`?alphaclip`, the alpha mask) in 5239? Asked.
