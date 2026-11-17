@@ -1,7 +1,7 @@
 card: M
 branch: claude/plan-m-1-framesteps (PR 1, tag 5340; from main)
-prs: PR 1 (5340): built, held until card L's #2052, #2058, #2065, #2067 are on main
-state: working
+prs: PR 1 (5340): ready (L done; main bdfa8734 merged in)
+state: ready
 
 ## Done
 - Chain A only (lines 1-3, BroTown.jsx, tags 5340-5342); chain B is M2
@@ -25,6 +25,4 @@ state: working
   four ways); BUDGETS part 3's caches.
 
 ## Needs
-- Card L done (its #2052, #2058, #2065, #2067 merged) before PR 1 opens
-  (the planning session's answer 1). No open PR touches BroTown.jsx today
-  (checked 2026-11-17).
+- The gatekeeper's review of PR 1 (sitting 42).
