@@ -11,12 +11,20 @@ before it is reported). Later arrivals go to sitting 27. Tags written bare.
 O #1970 ff5fff64 and O #1974 9f7da1b4 (which merges #1970's head:
 stacked) are based on `main`, each with one merge base step by step
 (4751cb7a for #1970 on 3ac8691f; ff5fff64 for #1974 once #1970 lands).
-O #1977 (04e0f2d8) conflicts with the pair on `docs/plan/status/O.md`;
+O #1977 conflicted with the pair on `docs/plan/status/O.md`; O stacked
+it on #1974 (head 1f6801c0 merges 9f7da1b4): one merge base, 9f7da1b4;
 T #1978 (5a2d3ff4, main 3ac8691f merged in) conflicts with #1970 on
 `tools/guards/switch-reader.test.mjs`'s `OUTSIDE_LINE` (189 against 184:
 each counts its own moves). Each merges clean on `main` alone.
 
-REHEARSAL
+Rehearsed (`tools/dev/gatekeeper.mjs`, #1970 then #1974 on 3ac8691f; the
+merged tree 317b3c19): build PASS, questline 187/187 (549 s). precheck
+FAIL on its `server-tests` 5-minute limit only, the box loaded by two
+reviewers' suites (sitting 25's Found); the suite run alone on the same
+tree: 470 suites, all green, 277 s. #1977 on top (tree 882e4666, words, a
+ledger row and the blocks file): self-test 49/49, draw-lanes and
+state-ledger guards green. The tree after each merge, from
+`git merge-tree` step by step: 1 07e93181 · 2 317b3c19 · 3 882e4666.
 
 ## O #1970 (5232): the off-ramps through the reader
 
@@ -57,7 +65,7 @@ the old clamp again (50 ms). frame-clock 28/28. Lows:
 Card check: a ledger row (`hairClip.js` `_selfOff` in `src/state/look.js`),
 words (self-test spec, mp-selftest header, PROGRAMS' clip `back`, LANES.md)
 and O's second block in `tag-blocks.json` (`[5680, 5699]`, `nextBlock`
-5700). No behaviour change. Conflicts with #1970/#1974 on O's status file.
+5700). No behaviour change. Stacked on #1974 (1f6801c0); listed third.
 
 ## T #1978 (5311): `pageAddress()`
 
