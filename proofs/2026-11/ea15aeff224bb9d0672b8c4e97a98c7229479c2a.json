@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "ea15aeff224bb9d0672b8c4e97a98c7229479c2a",
+  "tree": "6cc593eb1ad2f331bb4b74ab00273d31a65366b2",
+  "committedAt": "2026-11-16T17:41:01-08:00",
+  "subject": "Merge pull request #1947 from hemibroscommunity-del/claude/plan-mod-6-marketwords",
+  "files": 7990,
+  "bytes": 958547090,
+  "listingSha256": "5b26c758ffd655a1b2407be134ec8fa9b5416009f7c002df76720573f1a60707",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
