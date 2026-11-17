@@ -15362,8 +15362,7 @@ export class EntityRenderer {
         _placeSpecies(display, getSpecies(), getSkin(), pose, dir, mirror, frameIdx, bodyScale);   /* v2.3.2682: under the eye style */
         _placeEyeStyle(display, getEyeStyle(), getEyeColor(), pose, dir, mirror, frameIdx, bodyScale);   /* v2.3.2643: under the eyewear; v2.3.2645: + the eye colour */
         _placeEyewear(display, getEyewear(), getEyewearColor(), pose, dir, mirror, frameIdx, bodyScale);   /* v2.3.2361; v2.3.2424 + colour */
-        _placeHair(display, getHair(), getHairColor(), getHeadwear(), pose, dir, mirror, frameIdx, bodyScale);
-        _lastHairDisplay = display;   /* v2.3.5571: the probes read the LOCAL player's hair, not the last figure drawn (a peer or a townsperson drawn after read all-false) */
+        _placeHair(display, getHair(), getHairColor(), getHeadwear(), pose, dir, mirror, frameIdx, bodyScale); _lastHairDisplay = display;   /* v2.3.5571: the probes read the LOCAL player's hair, not the last figure drawn (a peer or a townsperson drawn after read all-false) */
         _crownOverride = null;
         _watchOwnHead(display, pose, dir, mirror);   /* v2.3.3689: a piece hidden where it ships, asked for again and logged */
         if (HEAD_FRAMES_ON) display._btHeadAt = { pose, dir, mirror, frameIdx };   /* v2.3.3860: the head-frame count's context (headFrames.js, `?headframes` only) */
