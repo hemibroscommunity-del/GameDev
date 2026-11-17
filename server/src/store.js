@@ -775,7 +775,7 @@ export const storeMethods = {
          stash".  Harmless here only because that path refuses an
          out-of-range index; a third kind arriving into a branch that
          SPLICED first would have been an escrow of the wrong goods. */
-      const idx = Math.floor(Number(body.stashIndex));
+      const idx = Math.floor(Number(this._gidPlace(ps, body.stashIndex, body.gid)));   /* v2.3.5196: by its id when sent (gidnames.js) */
       if (!Number.isFinite(idx) || idx < 0 || !Array.isArray(ps.weaponStash) || idx >= ps.weaponStash.length) {
         return { ok: false, settled: true, error: 'Item not in stash' };
       }

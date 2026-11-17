@@ -38,6 +38,7 @@ import {
 import { PAL_FILL_BATCHER } from './paletteTex.js';   /* v2.3.3715 */
 import { isPaletteSource } from './paletteDraw.js';
 import { selfDraw, selfQueue, selfSkip, selfTestOn, selfRgba, selfFillWant, SELF_FILL_TINT_BYTES, SELF_SIZE } from './selfTest.js';   /* v2.3.5237: the self-test at the door (card O PR 14c) */
+import { pageAddress } from '../game/switches.js';   /* v2.3.5317: the page's one read of its address (card T) */
 
 export const FILL_BATCHER = 'fill';
 
@@ -46,7 +47,7 @@ let _urlOff = false;
 let _selfOff = false;   /* v2.3.5239: its self-test found it wrong: drawn as `?fill=0` (card O PR 15) */
 let _pinned = 0;
 let _built = false;
-try { if (typeof location !== 'undefined' && /[?&]fill=0\b/.test(location.search)) _urlOff = true; } catch (e) { /* on */ }
+try { if (typeof location !== 'undefined' && /[?&]fill=0\b/.test(pageAddress())) _urlOff = true; } catch (e) { /* on */ }
 
 /* after the texture read (premultiplied), before the template's tint: the
    pixel's luma, lifted, as a grey of its own alpha -- its shape and light,

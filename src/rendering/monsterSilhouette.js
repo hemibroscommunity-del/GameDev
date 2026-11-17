@@ -42,6 +42,7 @@
 import { Container, Sprite, Matrix, Texture } from 'pixi.js';
 import { hairClipStencilOn } from './hairClip.js';
 import { paletteClipMade, paletteOn, makePaletteSource } from './paletteTex.js';
+import { pageAddress } from '../game/switches.js';   /* v2.3.5317: the page's one read of its address (card T) */
 
 export const MAX = 4;
 export const ALPHA = 0.5;
@@ -50,7 +51,7 @@ export const COVER_MIN = 0.35;
 export const KEEP_MS = 1500;
 
 let _on = true;
-try { if (typeof location !== 'undefined' && /[?&]nosilhouette\b/.test(location.search || '')) _on = false; } catch (e) { /* on */ }
+try { if (typeof location !== 'undefined' && /[?&]nosilhouette\b/.test(pageAddress())) _on = false; } catch (e) { /* on */ }
 /* the probe's list of what each frame drew, kept only where the QA asks
    (its pages set __btProbe before the game loads): nothing made a frame */
 const _probe = typeof window !== 'undefined' && !!window.__btProbe;

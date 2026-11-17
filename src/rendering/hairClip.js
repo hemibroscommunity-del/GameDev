@@ -48,13 +48,14 @@ import { selfDraw, selfQueue, selfSkip, selfTestOn, selfClipRgba, selfClipWant, 
 import { PAL_CLIP_BATCHER, PAL_HAIR_CLIP_BATCHER } from './paletteTex.js';   /* v2.3.3707: a colour-numbers picture's stencil shape; v2.3.5562: a hair mask's */
 import { isPaletteSource } from './paletteDraw.js';
 import { clipRoute } from './clipRoute.js';   /* v2.3.5239: the stencil or the alpha mask, a silhouette at a time */
+import { swHas } from '../game/switches.js';   /* v2.3.5316: the page's one reader (card T) */
 
 export const CLIP_BATCHER = 'bt-clip';
 /* v2.3.3707: a coloured picture's shape, for the monsters' silhouettes */
 export const ALPHA_CLIP_BATCHER = 'bt-clip-alpha';
 
 let _alpha = false;     /* `?alphaclip`: the alpha mask, as it was */
-try { if (typeof location !== 'undefined' && /[?&]alphaclip\b/.test(location.search || '')) _alpha = true; } catch (e) { /* stencil */ }
+if (swHas('alphaclip')) _alpha = true;
 let _installed = false;
 let _selfOff = false;   /* v2.3.5239: the clip's programs failed their self-test: pictures to the alpha mask (clipRoute.js) */
 let _maxTex = 0;

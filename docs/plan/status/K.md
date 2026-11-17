@@ -1,6 +1,6 @@
 card: K
 branch: claude/plan-k-<n>-<topic> (one branch a PR, each begun from main)
-prs: #1822, #1820, #1826, #1829, #1831, #1838, #1842, #1861, #1848, #1899, #1923, #1900, #1931-#1934, #1942, #1949, #1972, #1989 merged; ready: #1981 (5194b, 5546, this branch)
+prs: #1822, #1820, #1826, #1829, #1831, #1838, #1842, #1861, #1848, #1899, #1923, #1900, #1931-#1934, #1942, #1949, #1972, #1989, #1981 merged; ready: #1997 (5196), #1999 (5547, this branch, on #1997)
 state: ready
 
 ## Done
@@ -17,11 +17,9 @@ state: ready
 
 ## Next
 
-- #1981 5194b (5546): the `reqid` cap, the door's one re-send (the store's
-  four only, sitting 27's mend), http.js's rows, SHAPES part 2.
-- #1989 5195 (merged): every other value request at the wire door.
-- Lows: the door's entries need their own memory list (sitting 27).
-- Then 5196, 5197. The move's walls; the sword's reach; the bow claim.
+- #1997 5196 (`gidnames` ON): a weapon named by its id beside its place.
+- #1999 5547: the wire door's own memory list (sitting 27's low).
+- Then 5197 (the words rule). The move's walls; the sword's reach; the bow.
 
 ## Found
 

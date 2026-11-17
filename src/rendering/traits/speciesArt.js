@@ -27,6 +27,7 @@ import { releaseCanvasSource } from '../releaseCanvasTexture.js';   /* v2.3.3074
 import { keepAsImage } from '../keepAsImage.js';   /* v2.3.3606 */
 import { skinTarget, retintSkinPixels, poseSkinTarget } from '../playerSkins.js';   /* v2.3.2861: + poseSkinTarget */
 import { SPECIES_CATALOG } from './speciesCatalog.js';
+import { sw } from '../../game/switches.js';   /* v2.3.5316: the page's one reader (card T) */
 
 /* This folder's own cache-buster -- bump it when the species art changes.
    Not the shared TRAIT_VER: that one moves for sweeps of the other trait art.
@@ -62,7 +63,7 @@ function _url(id, path, round) { return `/sprites/traits/species/${id}/${path}?v
 const SPECIES_RETRY_LATER_MS = [5000, 10000, 20000, 40000, 60000];
 const SPECIES_RETRY_ROUNDS = 10;
 let _retryOn = true;
-try { if (typeof location !== 'undefined' && /[?&](traitretry|retrylooks)=0\b/.test(location.search || '')) _retryOn = false; } catch (e) { /* on */ }
+if (sw('traitretry')) _retryOn = false;
 function _gaveUp(art) {
   if (!_retryOn || !art.missing.length || (art.rounds || 0) >= SPECIES_RETRY_ROUNDS) return;
   art.retryAt = Date.now() + SPECIES_RETRY_LATER_MS[Math.min(art.rounds || 0, SPECIES_RETRY_LATER_MS.length - 1)];

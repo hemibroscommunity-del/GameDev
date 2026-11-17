@@ -282,6 +282,7 @@ const FORMS = {
   'weaponretry': '0',
   'webskip': '0',
   'wheelwhole': '',
+  'windowdoor': '0',
   'wirereset': '0',
   'worldicons': '0',
   'worldreset': '0',

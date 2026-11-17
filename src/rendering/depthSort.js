@@ -45,6 +45,7 @@
    The visible result is the same, and the blast radius is a fraction.
    ═══════════════════════════════════════════════════════════════════════ */
 import { groundLineAt } from './propGround.js';
+import { pageAddress } from '../game/switches.js';   /* v2.3.5317: the page's one read of its address (card T) */
 
 /* Hysteresis, in world pixels, on the front/back decision.
 
@@ -133,7 +134,7 @@ export function groundOf(c) {
    anything else asks for.  When the order has changed, every key goes
    through the setter as before, and Pixi sorts.  The same draw order, frame
    for frame.  `?zindexall` writes every key through the setter, to compare. */
-const ZINDEX_ALL = typeof location !== 'undefined' && /[?&]zindexall\b/.test(location.search || '');
+const ZINDEX_ALL = typeof location !== 'undefined' && /[?&]zindexall\b/.test(pageAddress());
 const _keys = [];
 /* probe only (the QA harness's __btProbe): how many sorts were left quiet */
 const _probe = typeof window !== 'undefined' && window.__btProbe ? (window.__btDepthQuiet = { quiet: 0, loud: 0 }) : null;

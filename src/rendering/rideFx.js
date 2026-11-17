@@ -30,6 +30,7 @@ import { Assets, Sprite, Texture } from 'pixi.js';
 import { figureFeetUnits, figureFeetY } from './systems/entityRenderer.js';
 import { SKATEBOARD_ART } from '../data/skateboardArt.js';
 import { boardBumpAt } from '../game/boardBumps.js';   /* v2.3.3995: the bumps in the road */
+import { pageAddress } from '../game/switches.js';   /* v2.3.5317: the page's one read of its address (card T) */
 
 const V = '?v=2.3.3776';
 const URL_OF = {
@@ -98,7 +99,7 @@ const ROLL_MIN_PX = 0.3;         /* a frame's step that counts as rolling (the b
 /* `?boardroll=0` in the address: the board as it was, no spots and no dip
    (one tab, to compare; v2.3.3995: and no bumps) */
 const BOARD_ROLL = (() => {
-  try { return !/(^|[?&])boardroll=(0|off|false)(&|$)/.test(window.location.search || ''); } catch (e) { return true; }
+  try { return !/(^|[?&])boardroll=(0|off|false)(&|$)/.test(pageAddress()); } catch (e) { return true; }
 })();
 
 export class RideFx {

@@ -26,8 +26,9 @@
  * draws for 30 s lets its frames go (lookPalette.js sweep).
  */
 import { registerLookSheets, getLookPartFrames, lookHas, lookSheenOn, lookSheenState, lookPaletteWanted, lookSetsSettled, preloadLookSheets, whenLookKnown } from './lookPalette.js';
+import { pageAddress } from '../game/switches.js';   /* v2.3.5316: the page's one reader (card T) */
 
-const _wanted = (() => { try { return !/(^|[?&])weaponlook=0(&|$)/.test(window.location.search || ''); } catch (e) { return true; } })();
+const _wanted = (() => { try { return !/(^|[?&])weaponlook=0(&|$)/.test(pageAddress()); } catch (e) { return true; } })();
 /* its own load, when this module came after the loading screen began
    (registerLookSheets then loads it apart: weaponLookDecided waits) */
 const _reg = _wanted ? registerLookSheets('weapons', '/sprites/look/weapons/roles.json') : Promise.resolve(false);

@@ -29,6 +29,7 @@ import { QuestPanel } from './panels/QuestPanel.jsx';
 import RaceHud from './mobile/RaceHud.jsx'; /* v2.3.3525: Lil Bro's race on the screen */
 import DungeonClearHud from './mobile/DungeonClearHud.jsx'; /* v2.3.3556: after a dungeon's clear, 30 s to pick up the loot */
 import { raceTick, raceHeld, raceDriveNpc } from '@/game/race.js'; /* v2.3.3525: Lil Bro's race (server/src/race.js judges it) */
+import { windowTo } from '@/game/windowDoor.js';   /* v2.3.5526: the window door, what is open over the world (card L) */
 import { townsfolkFrame, townsfolkStep, folkWalkWanted } from '@/game/townsfolkDay.js';   /* v2.3.4058: the townsfolk walk around and work */
 import { lookFolkOn } from '@/rendering/lookFolk.js';   /* v2.3.4058: only while they are drawn live */
 import { restOn, requestRest, wellRestedLeft } from '@/game/rest.js'; /* v2.3.3539: a real rest at the Hotel or your farm's bed (server/src/rest.js) */
@@ -3479,7 +3480,7 @@ export var BroTown = function BroTown(_ref0) {
     || showPlayerList || showDungeonCreator || showTrade || incomingTrade || trade2
     || duelRequest || threatIncoming || inspectPlayer || chatOpen || showEmotes || showInfo
     || showIntro || showWelcome || showMayorGreeting || showTourPrompt || showNameModal);   /* v2.3.3481: `|| cookMinigame` went with the Cookhouse's fish game */
-  stateRef.current._uiBusy = _anyPanelOpen;
+  windowTo(stateRef.current, 'panel', _anyPanelOpen);   /* v2.3.5526: the window door (S._uiBusy for its readers) */
   /* v2.3.2085: and out to the chrome mounted OUTSIDE this tree.  GameApp's
      WorldChatFeed has no path to this React state (its own comment says so),
      and its scrollable list was sitting over the inspect card's Trade button
@@ -7109,7 +7110,7 @@ export var BroTown = function BroTown(_ref0) {
                town (zone change nulls S.npcs), or by the quest becoming
                claimable under your feet. */
             if (!S.npcs || !_npcZone(S.currentZone) || _ld > NPC_PROX_CLEAR
-              || (_pn === _latched.npc && _pqReady && !_latched.ready)) S._npcProxLatch = null;
+              || (_pn === _latched.npc && _pqReady && !_latched.ready)) windowTo(S, 'npc', null);   /* v2.3.5526: the window door */
           }
           /* v2.3.3583: only with ?npcprox -- a townsperson talks on a tap */
           if (NPC_PROX_OPENS && _pn && !S._npcProxLatch && _npcZone(S.currentZone)) {
@@ -7131,7 +7132,7 @@ export var BroTown = function BroTown(_ref0) {
                a tap or E (both still answer).  Every other giver as before. */
             var _pQuiet = !!(_pq && _pn.quietProgress && _pq.status === QUEST_STATUS.active && !_pqReady);
             if (_pOk && _pq && !_pQuiet) {
-              S._npcProxLatch = { npc: _pn, ready: _pqReady };
+              windowTo(S, 'npc', { npc: _pn, ready: _pqReady });   /* v2.3.5526 */
               setQuestPanel({ npc: _pn.name, quest: _pq.quest, status: _pq.status, npcRef: _pn });
             /* v2.3.2620: ACE IS TAP-ONLY, and deliberately not here.  He had a
                proximity opener like the two above (v2.3.2618); the owner asked
@@ -7150,7 +7151,7 @@ export var BroTown = function BroTown(_ref0) {
                  "close enough, not in combat, nothing else open". The latch is
                  what stops it reopening every frame after you close it while
                  still standing next to him. */
-              S._npcProxLatch = { npc: _pn, ready: false };
+              windowTo(S, 'npc', { npc: _pn, ready: false });   /* v2.3.5526 */
               shopBus.setOpen(true);
               npcSpeaks(S, _pn);   /* v2.3.3462: he greets you (game/npcVoices.js) */
             }
@@ -10729,7 +10730,7 @@ export var BroTown = function BroTown(_ref0) {
       /* v2.3.1701: a TAP arms the same latch the proximity opener uses, so
          closing a dialogue you opened by hand while standing on him does not
          get one straight back from the loop. Both doors, one latch. */
-      S._npcProxLatch = { npc: npc, ready: _npcQuestReady(S, npcQ) };
+      windowTo(S, 'npc', { npc: npc, ready: _npcQuestReady(S, npcQ) });   /* v2.3.5526: the window door */
       setQuestPanel({ npc: npc.name, quest: npcQ.quest, status: npcQ.status, npcRef: npc });
       return _mark('quest');
     }
@@ -10752,7 +10753,7 @@ export var BroTown = function BroTown(_ref0) {
       /* The latch matters here too: without it the per-frame proximity
          opener reopens the shop the instant you close it while still
          standing inside its radius -- the loop v2.3.1701 exists to stop. */
-      S._npcProxLatch = { npc: npc, ready: false };
+      windowTo(S, 'npc', { npc: npc, ready: false });   /* v2.3.5526 */
       try { shopBus.setOpen(true); } catch (_e) {}
       return _mark('shop');
     }
