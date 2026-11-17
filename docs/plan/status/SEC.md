@@ -33,8 +33,7 @@ state: working
   `playerState.undefined` and a `cadence:login:undefined` row, shared by
   every such join (join.js; PR 2's card covers an id present only).
 - PR 14's popup half (gameEvents.js) is card L's: its #2033 (5532), merged.
-- The hub is the planning session ("Grand plan · planning session (part
-  2)"); the orchestrator that wrote this card has ended.
+- The hub: the planning session ("Grand plan · planning session (part 2)").
 
 ## Needs
 
