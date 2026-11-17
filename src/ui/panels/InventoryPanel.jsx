@@ -960,7 +960,8 @@ export function InventoryPanel(props) {
              a town screen, so the equip never reached the worker (see
              ItemDetailPopup's syncWeaponSlot note). */
           if (_Seq.channel) {
-            try { act('equip_request', { stashIdx: si, slot: swIsRanged ? 'rangedWeapon' : 'weapon' }); } catch (e) {}   /* v2.3.5190: through the action door (actions.js) */
+            /* v2.3.5196 (sitting 30): the id from the weapon itself: the stash above already holds the old one at `si` */
+            try { act('equip_request', { stashIdx: si, slot: swIsRanged ? 'rangedWeapon' : 'weapon', ...(swapWpn && typeof swapWpn.gid === 'string' ? { gid: swapWpn.gid } : {}) }); } catch (e) {}   /* v2.3.5190: through the action door (actions.js) */
           }
         }
         setRpgState(_objectSpread({}, R));

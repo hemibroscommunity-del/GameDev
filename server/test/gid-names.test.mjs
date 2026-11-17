@@ -15,6 +15,7 @@
  *      door adds the id of the weapon at the place it sends (GID_PLACE).
  *   5. THE SWITCH: `gidnames: false` -- the place alone, as before.
  */
+import { readFileSync } from 'node:fs';
 import { makeStorage, openRoom, fakeWs, join, settle } from './testroom.mjs';
 
 let failures = 0;
@@ -88,11 +89,16 @@ async function player(flags, pid) {
   const stash = [W(1, 'gp1.k.0001'), W(2, 'gp2.k.0002')];
   setActionTransport({ send: (m) => { sent.push(m); return true; }, token: () => null, weaponGid: (i) => (stash[i] && stash[i].gid) || null });
   act('sell_weapon', { stashIdx: 1 });
+  act('equip_request', { stashIdx: 0, slot: 'weapon', gid: 'gp9.k.0009' });   /* the caller's own id (it took it before its stash moved) */
   act('smith_salvage', { field: 'weaponStash', idx: 0, sig: 's' });
   act('smith_salvage', { field: 'chest', gid: 'gear-1', sig: 's' });
   setActionTransport(null);
   const p = sent.map((m) => m.payload);
-  check('4: the action door adds the id of the weapon at the place it sends, and only for a stash weapon', p[0].gid === 'gp2.k.0002' && p[1].gid === 'gp1.k.0001' && p[2].gid === 'gear-1' && Object.keys(GID_PLACE).length === 9, p);
+  check('4: the action door adds the id of the weapon at the place it sends, and only for a stash weapon', p[0].gid === 'gp2.k.0002' && p[2].gid === 'gp1.k.0001' && p[3].gid === 'gear-1' && Object.keys(GID_PLACE).length === 9, p);
+  check('4: (sitting 30) an id the caller gives is kept, never looked up again', p[1].gid === 'gp9.k.0009', p[1]);
+  /* the three equips move the page's stash BEFORE they send (the swap is drawn at once): each takes the id from the weapon itself */
+  const eq = ['src/ui/mobile/dash/equipActions.js', 'src/ui/mobile/dash/ItemDetailPopup.jsx', 'src/ui/panels/InventoryPanel.jsx'].map((f) => readFileSync(new URL('../../' + f, import.meta.url), 'utf8'));
+  check('4: (sitting 30) every equip that moves its stash first sends the id it took from the weapon', /equip_request', payload: \{ stashIdx: idx, slot, \.\.\.\(live && typeof live\.gid/.test(eq[0]) && /equip_request', payload: \{ stashIdx: i, slot: destProp, \.\.\.\(live && typeof live\.gid/.test(eq[1]) && /act\('equip_request', \{ stashIdx: si, slot: [^}]*\.\.\.\(swapWpn && typeof swapWpn\.gid/.test(eq[2]));
 }
 
 /* ── 5. the switch ── */

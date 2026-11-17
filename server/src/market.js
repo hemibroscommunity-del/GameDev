@@ -32,8 +32,8 @@
  * expiry; bounty boards deferred; direct self-trades never enter the
  * price history (the matcher already skips same-player orders). */
 
-import { reqOnceMethods } from './reqonce.js';
-import { gidNamesMethods } from './gidnames.js';   /* v2.3.5196: a weapon named by its id (card K PR 11) */   /* v2.3.5194: a repeat acts once (card K PR 9) */
+import { reqOnceMethods } from './reqonce.js';   /* v2.3.5194: a repeat acts once (card K PR 9) */
+import { gidNamesMethods } from './gidnames.js';   /* v2.3.5196: a weapon named by its id (card K PR 11) */
 import { swordToGreatsword } from './swordconvert.js';   /* v2.3.3895: a sword's order is rewritten once as a greatsword */
 import { oldGreatswordToMetal } from './gscopper.js';   /* v2.3.3980: ...and a wooden or base-less greatsword's as a metal one */
 import { BLACKSMITH_TIER_LABELS, WOODWORKING_TIER_LABELS } from './data.js';   /* v2.3.3980: a converted sell order's tier label; v2.3.5626: every order's */
