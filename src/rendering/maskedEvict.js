@@ -21,8 +21,10 @@
  * held is the worn set's, the least recently drawn of those.
  *
  * A key is `uid|worn|dilate` (entityRenderer _maskedKey), `worn` the pieces in
- * the order every worn list is built, `chest:<id>,legs:<id>`.  No imports: the
+ * the order every worn list is built, `chest:<id>,legs:<id>`.  No imports but
+ * the lanes' table (v2.3.5231: itself none but the page's reader): the
  * server's suites run it in node (worn-bake.test.mjs). */
+import { laneKnob, onKnob } from '../game/drawLanes.js';
 
 /* the worn set as a key spells it, from the slots' worn ids */
 export function wornSigOf(chest, legs) {
@@ -42,4 +44,35 @@ export function pickEvictKey(keys, wornSig) {
     if (s.slice(a + 1, b) !== wornSig) return k;
   }
   return first;
+}
+
+/* ═══ v2.3.5231 (card O PR 11): THE CAP IS A SHARE OF ITS OWN ═══
+   The lanes' `caches` knob (drawLanes.js): 1, or 0.5 on the memory axis's
+   first rung (a full memory: the report's count over the memory check's
+   lines, framePacer.js).  A rung taken trims at once (onCachesTrim): the
+   frames let go of are picked as ever (pickEvictKey: the least recently
+   drawn of any armour but yours), each dropped as entityRenderer drops it
+   (destroyed 30 s on, so a sprite still showing one re-points first); a
+   frame let go of is baked again when it is drawn.  Given back, the cap is
+   its own. */
+/** The cap now: `cap` (MASKED_CAP) times the lanes' share, at least 1. */
+export function maskedCap(cap) {
+  let v = 1;
+  try { v = Number(laneKnob('caches')); } catch (e) { v = 1; }
+  return Math.max(1, Math.round(cap * (v > 0 && v <= 1 ? v : 1)));
+}
+/** Let go of frames until the cache is at its cap now: `evictKey()` names
+ *  the one to go, `drop(old)` lets its texture go. */
+export function trimMasked(cache, cap, evictKey, drop) {
+  const c = maskedCap(cap);
+  while (cache.size > c) {
+    const k = evictKey();
+    const old = cache.get(k);
+    cache.delete(k);
+    try { drop(old); } catch (e) { /* gone */ }
+  }
+}
+/** fn() runs when the share moves (a memory rung taken or given back). */
+export function onCachesTrim(fn) {
+  try { onKnob('caches', () => { try { fn(); } catch (e) { /* the next bake trims */ } }); } catch (e) { /* no lanes: the whole cap */ }
 }

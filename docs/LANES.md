@@ -69,7 +69,15 @@ a loading screen or a tab's return.
 | 1 | `pixels` | A quarter fewer pixels (a little softer) |
 | 2 | `pixels` | Half the pixels (softer) |
 
-Every rung of both axes: 9 (the report's `rung` counts the rungs taken at once).
+### Waiting for the graphics chip
+
+| Rung | Knob | What a player sees |
+|---|---|---|
+| 1 | `caches` | A full memory: each cache holds half its own cap, its oldest let go |
+| 2 | `crowd` | The 30 nearest other players drawn |
+| 3 | `crowd` | The 15 nearest other players drawn |
+
+Every rung of both axes: 12 (the report's `rung` counts the rungs taken at once).
 
 ## The knobs, and who reads each
 
@@ -87,11 +95,11 @@ value, the `full` row's.
 | `shadows` | the light and the shadows | `on`, `off` | `src/rendering/lightfx/lightFx.js` | yes | 9 | `?lightfx` | render |
 | `water` | the sea's waves | `moving`, `still` | `src/rendering/wheelWater.js` | yes | 9 | `?waves` | render |
 | `queue` | the ms a frame the strip queue may take loading monsters' art in play (v2.3.5230: the lane's, never the frame's length; was a quarter of the frame, 3 to 50 ms) | `4`, `8` | `src/rendering/zoneTextures.js` | yes | 10 | `?stripslice` | art |
-| `caches` | the caches' caps, as a share of each cache's own (docs/BUDGETS.md part 3) | `1` | `src/rendering/lookPalette.js`, `src/rendering/gearNumbers.js`, `src/rendering/systems/entityRenderer.js`, `src/rendering/cacheBytes.js` | not yet | 11 | - | look |
+| `caches` | the caches' caps, as a share of each cache's own (docs/BUDGETS.md part 3) | `1`, `0.5` | `src/rendering/gearNumbers.js`, `src/rendering/maskedEvict.js` | yes | 11 | - | look |
 | `step` | the longest step, in ms, one frame may move the world (frameClock.js SMOOTH_MAX_MS, handed in; the loop's clamp): three of the lane's frames | `50`, `100` | `src/ui/BroTown.jsx` | yes | 13 | `?dtsmooth` | ui |
 | `prewarm` | the prewarm ring (step 3.3, LATER): one value and no reader until 3.3 builds the ring | `0` | none yet | - | - | - | - |
 
-Not yet moved: 1 of 11 knobs with a reader.
+Not yet moved: 0 of 11 knobs with a reader.
 
 ## The overrides
 

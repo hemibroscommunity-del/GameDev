@@ -39,9 +39,9 @@ const LC = await import('../../src/game/lookPaletteChoice.js');
   const at = (s) => { globalThis.location.search = s; D._liveKnobs(null); return { live: D.liveKnobs().slice(), program: D.laneKnob('program'), look: D.laneKnob('look'), water: D.laneKnob('water') }; };
   const none = at('');
   const all = at('?onebatch=0&lookpalette=0&nowaves&pace=0&crowd=20');
-  check('1. with no off-ramp, every ladder knob is live (rate, pixels, crowd, shine, shadows, water)', JSON.stringify(none.live) === JSON.stringify(['rate', 'pixels', 'crowd', 'shine', 'shadows', 'water']), none);
+  check('1. with no off-ramp, every ladder knob is live (rate, pixels, crowd, shine, shadows, water, caches)', JSON.stringify(none.live) === JSON.stringify(['rate', 'pixels', 'crowd', 'shine', 'shadows', 'water', 'caches']), none);
   check('1. `?onebatch=0`, `?lookpalette=0`, `?nowaves` pin the three programs, every look baked, the sea still; `?pace=0`, `?crowd=20` take the rate and the crowd off the ladder (with the water)',
-    all.program === 'three' && all.look === 'baked' && all.water === 'still' && JSON.stringify(all.live) === JSON.stringify(['pixels', 'shine', 'shadows']), all);
+    all.program === 'three' && all.look === 'baked' && all.water === 'still' && JSON.stringify(all.live) === JSON.stringify(['pixels', 'shine', 'shadows', 'caches']), all);
   const one = at('?onebatch=1&lookpalette=1');
   check('1. `?onebatch=1`, `?lookpalette=1` pin the one program and the palette', one.program === 'one' && one.look === 'palette', one);
   const pin = (s, k) => { globalThis.location.search = s; return D.addressPinOf(k); };
