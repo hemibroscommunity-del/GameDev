@@ -18,7 +18,7 @@ the edge; worker settings `EDGE_GUARD`, `EDGE_CACHE`, on) · 4 Z #2064 (this PR)
 ## Held / Stalled
 - None held (#2054 held at review, fixed by SEC); none stalled. To 40:
   L #2052 (clean; its switch row meets #2051's), #2058, #2065; SEC
-  #2055-#2057; K2 #2066.
+  #2055-#2063; K2 #2066.
 
 ## Found
 - (a) `mp-alliance` 3 13-15/16 since #2022; no card. (b) `movetop` ON:

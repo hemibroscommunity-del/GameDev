@@ -144,7 +144,8 @@ Late, to sitting 40: L #2052 (5535; reviewed clean, merges the new `main`
 in after #2051), #2058 (5536, the worker's guard door) and #2065 (5537,
 the worker's zone door), in that order (`status/L.md`); SEC #2055 (5712), #2056 (5713), #2057 (5714; CLAUDE.md
 §4 and REPO-SAFETY words, nothing in `.github/` or `wrangler.toml`),
-stacked on #2054; K2's #2066 (5723, `movefields`, index.js; on #2053).
+stacked on #2054, then #2059 to #2063 (5715 to 5719; #2062 and #2063
+carry new words, which their items allow), stacked on #2057; K2's #2066 (5723, `movefields`, index.js; on #2053).
 
 No two listed PRs share a file but: K2's stack (`status/K2.md`,
 `index.js`, `dungeon.js`, `market.js`, `testmode.js`, the switch table:
