@@ -6110,7 +6110,7 @@ export function setupWebSocket(ctx) {
     };
     S.channel = channelShim;
     /* v2.3.5185: the shim is the action door's transport (src/game/actions.js act) */
-    setActionTransport({ send: function (m) { return channelShim.send(m); }, http: function (path, init) { return fetch(API_BASE + path, init); }, token: function () { return S._httpToken || null; } });
+    setActionTransport({ send: function (m) { return channelShim.send(m); }, http: function (path, init) { return fetch(API_BASE + path, init); }, token: function () { return S._httpToken || null; }, reqOnce: function () { return !!(S._serverCaps && S._serverCaps.reqid); } });   /* v2.3.5546: the worker answers a repeat once (caps.reqid): the door may re-send */
     connect();
     return function () {
       stopBatchTimer();

@@ -92,8 +92,8 @@ export const reqOnceMethods = {
   /* THE ROUTES' WAY (the market's and the store's): `run()` once for
      (pid, rid), its answer kept and echoed.  A repeat while the first still
      runs waits for the same answer; a repeat after it gets it again.  A
-     first that threw is forgotten (nothing acted, as far as this knows:
-     the repeat runs).  With `reqstamp`, a repeat the sitting has forgotten
+     first that threw is kept as `interrupted`: it may have acted, so it
+     never runs again (v2.3.5546).  With `reqstamp`, a repeat the sitting has forgotten
      (a restart) and whose stamp is on file answers `repeat: true` -- only
      for a request with no record of its own (`opts.record`: the order or
      listing it made answers instead, and no stamp is written). */
@@ -113,7 +113,17 @@ export const reqOnceMethods = {
     try { p = Promise.resolve(run()); } catch (e) { p = Promise.reject(e); }
     this._reqRemember(pid, rid, p);
     let answer;
-    try { answer = await p; } catch (e) { this._reqForget(pid, rid); throw e; }
+    /* v2.3.5546 (the gatekeeper, sitting 25): a first that THREW is kept,
+       never run again -- it may have acted before it threw (the market's
+       matched sale is owed once its taker's escrow and settle note are on
+       disk: market.js _mktOwe finishes it), so a re-send of the same id is
+       answered INTERRUPTED (not settled: the page reads its orders and
+       listings), never a second sale */
+    try { answer = await p; } catch (e) {
+      const cut = { ok: false, settled: false, interrupted: true, error: 'Interrupted -- check your orders' };
+      this._reqRemember(pid, rid, cut);
+      throw e;
+    }
     this._reqRemember(pid, rid, answer);
     if (stamp && answer && answer.ok) {
       try { await this.state.storage.put(REQ_ONCE.STAMP + pid + ':' + rid, Date.now()); } catch (e) { /* the sitting's memory still holds it */ }

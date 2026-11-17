@@ -22,7 +22,15 @@
  *      lost.
  *  10. THE SWITCHES: `reqonce: false` -- a repeat acts twice, as before;
  *      `reqstamp` OFF writes no stamp row, ON a repeat the sitting has
- *      forgotten (a store buy, no record of its own) answers `repeat`. */
+ *      forgotten (a store buy, no record of its own) answers `repeat`.
+ *  5194b (the gatekeeper's review, sitting 25):
+ *  11. A FIRST THAT THREW (it may have acted: a matched sale is owed) is kept,
+ *      and its re-send answers `interrupted`, never runs again.
+ *  12. The store's bid and accept, the offer's cancel and the seller's reply.
+ *  13. A re-send with both ids across a deploy finds the old opId stamp; the
+ *      bank's answer keeps the phone's opId.
+ *  14. The cap `reqid`, and the action door's ONE re-send with the same id
+ *      behind it (src/game/actions.js). */
 import { GameRoom } from '../src/index.js';
 import { CHEST } from '../src/dailychest.js';
 import { REQ_ONCE } from '../src/reqonce.js';
@@ -229,6 +237,102 @@ A.weaponStash = [axe(1), axe(2), axe(3)]; A.coins = 1000;
   r2._reqSeen = new Map();
   const again = await route(r2, ws2, 'POST', '/api/store/buy', { listingId: L.listing.id, playerId: 'bp_rq_t', reqId: 'rq-buy-9' });
   check('10: `reqstamp` on: its row written, and a repeat the sitting forgot answers `repeat`', T.store.has(REQ_ONCE.STAMP + 'bp_rq_t:rq-buy-9') && again.ok === true && again.repeat === true && again.reqId === 'rq-buy-9', again);
+}
+
+/* ── 11. 5194b: a first that threw is kept, never run again ── */
+{
+  const S = makeStore();
+  const r = await openRoom(S);
+  const w = await join(r, 'bp_rq_th');
+  const P = r.playerState['bp_rq_th'];
+  P.weaponStash = [axe(1), axe(2)];
+  const real = r._mktPlaceOrder.bind(r);
+  let runs = 0;
+  r._mktPlaceOrder = async (body, rid) => { runs++; await real(body, rid); throw new Error('cut after the sale was owed'); };
+  const a = await route(r, w, 'POST', '/api/market/place', sellBody('bp_rq_th', 'rq-th-1'));
+  const b = await route(r, w, 'POST', '/api/market/place', sellBody('bp_rq_th', 'rq-th-1'));
+  check('11: a place that threw after acting: its re-send runs nothing again and answers `interrupted`', runs === 1 && P.weaponStash.length === 1 && a.ok === false && b.interrupted === true && b.reqId === 'rq-th-1', { runs, stash: P.weaponStash.length, a, b });
+}
+
+/* ── 12. 5194b: the store's bid and accept, the offer's reply and cancel ── */
+{
+  const S = makeStore();
+  const r = await openRoom(S);
+  const ws = await join(r, 'bp_rq_s1'); const wb = await join(r, 'bp_rq_b1'); const wc = await join(r, 'bp_rq_c1');
+  const Sx = r.playerState['bp_rq_s1'], Bx = r.playerState['bp_rq_b1'], Cx = r.playerState['bp_rq_c1'];
+  Sx.weaponStash = [axe(1), axe(2)]; Bx.coins = 2000; Cx.coins = 2000;
+  const L = await route(r, ws, 'POST', '/api/store/list', { playerId: 'bp_rq_s1', kind: 'weapon', stashIndex: 0, price: 500 });
+  const g0 = Bx.coins;
+  const d1 = await route(r, wb, 'POST', '/api/store/bid', { listingId: L.listing.id, playerId: 'bp_rq_b1', amount: 100, reqId: 'rq-bid-1' });
+  const d2 = await route(r, wb, 'POST', '/api/store/bid', { listingId: L.listing.id, playerId: 'bp_rq_b1', amount: 100, reqId: 'rq-bid-1' });
+  check('12: a bid twice: its gold escrowed once, the same answer', d1.ok === d2.ok && Bx.coins >= g0 - 100 && Bx.coins <= g0 && JSON.stringify(d1.listing) === JSON.stringify(d2.listing) && d2.reqId === 'rq-bid-1', { d1, d2, coins: Bx.coins });
+  const a1 = await route(r, ws, 'POST', '/api/store/accept', { listingId: L.listing.id, playerId: 'bp_rq_s1', reqId: 'rq-acc-1' });
+  const a2 = await route(r, ws, 'POST', '/api/store/accept', { listingId: L.listing.id, playerId: 'bp_rq_s1', reqId: 'rq-acc-1' });
+  check('12: an accept twice: the same answer again', JSON.stringify({ ...a1, reqId: 0 }) === JSON.stringify({ ...a2, reqId: 0 }) && a2.reqId === 'rq-acc-1', { a1, a2 });
+  const L2 = await route(r, ws, 'POST', '/api/store/list', { playerId: 'bp_rq_s1', kind: 'weapon', stashIndex: 0, price: 500 });
+  await msg(r, wc, 'store_offer', { listingId: L2.listing.id, gold: 60, reqId: 'rq-of-2' });
+  const c0 = Cx.coins;
+  wc.sent.length = 0;
+  await msg(r, wc, 'store_offer_cancel', { listingId: L2.listing.id, reqId: 'rq-ofc-1' });
+  await msg(r, wc, 'store_offer_cancel', { listingId: L2.listing.id, reqId: 'rq-ofc-1' });
+  const oc = wc.sent.filter((m) => m.type === 'store_offer_state' || m.type === 'store_offer_error');
+  check('12: an offer\'s cancel twice: refunded once, the first answer again', Cx.coins <= c0 + 60 && oc.length === 2 && JSON.stringify(oc[0].payload) === JSON.stringify(oc[1].payload), { c0, coins: Cx.coins, oc });
+  await msg(r, wc, 'store_offer', { listingId: L2.listing.id, gold: 70, reqId: 'rq-of-3' });
+  ws.sent.length = 0;
+  await msg(r, ws, 'store_offer_reply', { listingId: L2.listing.id, buyerId: 'bp_rq_c1', reply: 'accept', reqId: 'rq-rep-1' });
+  await msg(r, ws, 'store_offer_reply', { listingId: L2.listing.id, buyerId: 'bp_rq_c1', reply: 'accept', reqId: 'rq-rep-1' });
+  const rp = ws.sent.filter((m) => m.type === 'store_offer_state' || m.type === 'store_offer_error');
+  check('12: the seller\'s reply twice: the first answer again, echoed', rp.length === 2 && JSON.stringify(rp[0].payload) === JSON.stringify(rp[1].payload) && rp[1].payload.reqId === 'rq-rep-1', rp);
+}
+
+/* ── 13. 5194b: both ids across a deploy; the bank's answer keeps the phone's opId ── */
+{
+  const S = makeStore();
+  const r = await openRoom(S);
+  const w = await join(r, 'bp_rq_d1');
+  const P = r.playerState['bp_rq_d1'];
+  P.inventory = P.inventory || {}; P.inventory[CHEST.KEY] = 1;
+  S.store.set('oplog:chestop:ck-old-1', Date.now());   /* an older worker stamped this open by the phone's opId */
+  await msg(r, w, 'chest_open', { invKey: CHEST.KEY, opId: 'ck-old-1', reqId: 'rq-chest-9' });
+  check('13: a chest re-sent with both ids after a deploy finds the old stamp: nothing opened', P.inventory[CHEST.KEY] === 1, P.inventory[CHEST.KEY]);
+  r._bankPlaceOk = () => true; r._paceTake = () => true;
+  P.coins = 100;
+  await msg(r, w, 'bank_deposit', { kind: 'gold', n: 5, opId: 'bk-ph-1', reqId: 'rq-bk-9' });
+  const last = w.sent.filter((m) => m.type === 'bank_state').pop();
+  const lj = JSON.stringify(last || {});
+  check('13: a bank move with both ids answers the phone\'s own opId, and echoes the request id', lj.includes('"opId":"bk-ph-1"') && lj.includes('"reqId":"rq-bk-9"'), last);
+}
+
+/* ── 14. 5194b: the cap, and the page's one re-send behind it ── */
+{
+  const S = makeStore();
+  const r1 = await openRoom(S);
+  const w1 = await join(r1, 'bp_rq_cap');
+  const ss1 = w1.sent.find((m) => m.type === 'state_sync');
+  const r2 = await openRoom(makeStore(), { reqonce: false });
+  const w2 = await join(r2, 'bp_rq_cap2');
+  const ss2 = w2.sent.find((m) => m.type === 'state_sync');
+  check('14: caps.reqid says the worker answers once; `reqonce: false` takes it away', ss1 && ss1.caps && ss1.caps.reqid === 1 && ss2 && ss2.caps && ss2.caps.reqid === undefined, { a: ss1 && ss1.caps && ss1.caps.reqid, b: ss2 && ss2.caps && ss2.caps.reqid });
+  const { act, setActionTransport, RESEND_MS } = await import('../../src/game/actions.js');
+  const realTimeout = globalThis.setTimeout;
+  globalThis.setTimeout = (f) => realTimeout(f, 0);
+  const tryOnce = async (capOn, fails) => {
+    const seen = [];
+    let n = 0;
+    setActionTransport({ send: () => true, token: () => 't', reqOnce: () => capOn,
+      http: async (path, init) => { seen.push(JSON.parse(init.body).reqId); n++; if (n <= fails) throw new Error('no answer'); return { status: 200, json: async () => ({ ok: true }) }; } });
+    let out = null;
+    try { out = await act('http:/api/store/buy', { listingId: 'x', playerId: 'bp_rq_cap' }); } catch (e) { out = 'threw'; }
+    return { seen, out };
+  };
+  const on = await tryOnce(true, 1);
+  const off = await tryOnce(false, 1);
+  const twice = await tryOnce(true, 2);
+  globalThis.setTimeout = realTimeout;
+  setActionTransport(null);
+  check('14: with the cap, a request heard nothing from is sent once more with the SAME id', on.seen.length === 2 && on.seen[0] === on.seen[1] && on.out && on.out.status === 200 && RESEND_MS > 0, on);
+  check('14: without it, one try, as before', off.seen.length === 1 && off.out === 'threw', off);
+  check('14: ...and only once more, never a third', twice.seen.length === 2 && twice.out === 'threw', twice);
 }
 
 console.log(failures ? `\n${failures} FAILED` : '\nALL PASS');
