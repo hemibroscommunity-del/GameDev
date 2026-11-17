@@ -13,6 +13,40 @@ import { cleanStatPoints, statOfBoard } from './statboards.js';   /* v2.3.5484: 
 /* a player not seen for this long is off the boards (and a deleted
    character's stand-in, counted from the day it was deleted) */
 const STALE_MS = 7 * 86400000;
+/* ═══ v2.3.5608: THE BOARDS, KEPT A MINUTE AND SWEPT (card OPS PR 9; red team RT-2 F8, RT-3 P1) ═══
+   getTop listed EVERY `player:` row for EVERY request: a row is written for
+   every player who ever joined and was never deleted (the 7 days only
+   filtered it out as it was read), and the route is public.  Measured in
+   process (docs/security/rt2-probes/boardtop.mjs, the real class): 20,000
+   rows ~55 ms and ~10 MB a request, 50,000 ~115 ms and ~25 MB, against the
+   object's 128 MB.  Now:
+     - each board's answer (a category and a limit) is kept TOP_TTL_MS and
+       served again; a new row shows within that minute;
+     - the read that makes it deletes the `player:` rows past STALE_MS it met,
+       at most SWEEP_MAX a pass (the storage's own limit on one delete): they
+       were on no board, and a player who comes back writes theirs again at
+       their next join;
+     - a row says `playtime` only on the playtime board, where it is the
+       number ranked (RT-3 P1: what anyone could read of everyone);
+     - a row's `lastSeen` is said to the HOUR, and the answer says so
+       (`seen: 'hour'`): a time refreshed every ten minutes, for every
+       player, on a public route, was a live "who plays, and when" (RT-3
+       P1).  Its one reader that needs it, the prize draw page
+       (public/tools/draw.html), reads the contest's window by the hour,
+       rounded outward, when the board says `seen: 'hour'`;
+   Kill switch `boardcache: false` (the room's live flags, said on the room's
+   own posts as `bc: 0`: this object keeps no flags and asks the room
+   nothing): read every time, as before; the sweep and the fields stay.
+   Kill switch `boardsweep: false` (said as `bs: 0`; sitting 19b's
+   gatekeeper: a delete is not undone, so it stops in one tap): no row is
+   deleted; the stale rows stay off every board as before.  (The rows are a
+   derived cache: rebuilt whole at the player's next report.)
+   Lever `exactseen: true` (said as `xs: 1`): the exact `lastSeen` back, and
+   no `seen` word, so the draw page reads to the millisecond, as every draw
+   before this did: to run an old draw again exactly. */
+const TOP_TTL_MS = 60000;
+const SWEEP_MAX = 128;
+const HOUR_MS = 3600000;
 
 /* v2.3.5483: a row's achievement points -- the room's own count when the
    report carries it (a whole number, never below 0), else the blob's */
@@ -61,7 +95,8 @@ export class Leaderboard {
         const category = url.searchParams.get('category') || 'level';
         const limit = Math.min(100, parseInt(url.searchParams.get('limit')) || 50);
         const results = await this.getTop(category, limit);
-        return new Response(JSON.stringify({ ok: true, category, results }), { headers: H });
+        /* v2.3.5608: `seen: 'hour'`: each row's lastSeen is its hour (getTop) */
+        return new Response(JSON.stringify({ ok: true, category, ...(this._exactSeen ? {} : { seen: 'hour' }), results }), { headers: H });
       }
 
       return new Response(JSON.stringify({ ok: false, error: 'Not found' }), { status: 404, headers: H });
@@ -82,6 +117,7 @@ export class Leaderboard {
     return ids;
   }
   async fillFaces(faces) {
+    this._top = null;   /* v2.3.5608: the faces filled show at once (once a worker's life) */
     if (!faces || typeof faces !== 'object') return 0;
     let n = 0;
     for (const pid of Object.keys(faces).slice(0, 200)) {
@@ -101,6 +137,15 @@ export class Leaderboard {
 
   async updatePlayer(data) {
     const { playerId, name, color, level, rpgData, ts, series } = data;
+    /* v2.3.5608: the room's word on the boards' keeping (`boardcache`) */
+    if (data && Object.prototype.hasOwnProperty.call(data, 'bc')) this._cacheOff = data.bc === 0;
+    else if (data && data.playerId) this._cacheOff = false;
+    /* v2.3.5608: the sweep of week-old rows (`boardsweep`), the same way */
+    if (data && Object.prototype.hasOwnProperty.call(data, 'bs')) this._sweepOff = data.bs === 0;
+    else if (data && data.playerId) this._sweepOff = false;
+    /* v2.3.5608: and on the exact last-seen (`exactseen`), the same way */
+    if (data && Object.prototype.hasOwnProperty.call(data, 'xs')) this._exactSeen = data.xs === 1;
+    else if (data && data.playerId) this._exactSeen = false;
     if (!playerId) return;
     /* v2.3.4393: the face, as a look (boards.js FACE_KEYS: short ids, never
        an image) -- left off a row whose report carried none */
@@ -147,6 +192,7 @@ export class Leaderboard {
      of rows here that can never be written again).  Put before delete: a
      crash between leaves both, and the old row ages out as it always did. */
   async markGone(data) {
+    this._top = null;   /* v2.3.5608: a character gone is never served from a kept board (rare: a delete) */
     const playerId = data && data.playerId;
     if (!playerId || typeof playerId !== 'string') return false;
     const at = Math.floor(Number(data.ts) || Date.now());
@@ -203,7 +249,34 @@ export class Leaderboard {
     return s[Leaderboard.SERIES_CATEGORIES[category]] || 0;
   }
 
+  /* v2.3.5608: the board as served: kept TOP_TTL_MS (unless `boardcache`
+     is off), the stale rows the read met swept, `playtime` only where it is
+     ranked, `lastSeen` to the hour (unless `exactseen`).  _topRead is the
+     board as it always was. */
   async getTop(category, limit) {
+    const exact = !!this._exactSeen;
+    const k = String(category) + ':' + String(limit) + (exact ? ':x' : '');
+    const now = Date.now();
+    if (!this._top) this._top = new Map();
+    const kept = this._top.get(k);
+    if (!this._cacheOff && kept && now - kept.at < TOP_TTL_MS) return kept.rows;
+    const stale = [];
+    const rows = (await this._topRead(category, limit, stale)).map((r) => {
+      const o = { ...r };
+      if (category !== 'playtime') delete o.playtime;
+      if (!exact && typeof o.lastSeen === 'number') o.lastSeen = Math.floor(o.lastSeen / HOUR_MS) * HOUR_MS;
+      return o;
+    });
+    /* `boardsweep: false`: nothing deleted (the rows stay off the boards) */
+    if (stale.length && !this._sweepOff) { try { await this.state.storage.delete(stale.slice(0, SWEEP_MAX)); } catch { /* swept next time */ } }
+    if (!this._cacheOff) {
+      this._top.set(k, { at: now, rows });
+      if (this._top.size > 256) this._top.delete(this._top.keys().next().value);   /* a cap: categories x limits */
+    }
+    return rows;
+  }
+
+  async _topRead(category, limit, stale) {
     const entries = await this.state.storage.list({ prefix: 'player:' });
     const players = []; const now = Date.now(); const STALE = STALE_MS;
     /* v2.3.4393: `lv`, the level on the name plate -- the highest of the
@@ -211,7 +284,13 @@ export class Leaderboard {
        row from before the series -- so every board can print it beside the
        face, whatever it ranks */
     const withLv = (p) => { p.lv = Leaderboard.seriesValue(p, 'combat') || Math.max(1, Math.floor(Number(p.level) || 1)); return p; };
-    for (const [, raw] of entries) { try { const p = JSON.parse(raw); if (now - (p.lastSeen || 0) < STALE) players.push(withLv(p)); } catch {} }
+    for (const [key, raw] of entries) {
+      try {
+        const p = JSON.parse(raw);
+        if (now - (p.lastSeen || 0) < STALE) players.push(withLv(p));
+        else if (stale && stale.length < SWEEP_MAX) stale.push(key);   /* v2.3.5608: on no board: swept (getTop) */
+      } catch {}
+    }
     /* v2.3.4393: and the deleted characters' stand-ins (markGone) -- on the
        boards the Leaderboards page shows (the series and AP) only.  The
        legacy columns keep to live characters: `level` is what the contest

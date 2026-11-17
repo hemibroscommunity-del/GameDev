@@ -85,6 +85,7 @@ export const ROWS = Object.freeze({
       c('moves-out', 'server/src/tick.js'),          /* the near circle, the slim roster */
     ],
   },
+  ops: { reads: [], spends: {}, controls: [] },   /* v2.3.5601 (card OPS): the health route reads memory and writes nothing */
   combat: { reads: [], spends: {}, controls: [] },
   monsters: { reads: [], spends: {}, controls: [] },
   economy: { reads: [], spends: { rows: null }, controls: [] },

@@ -40,6 +40,39 @@ The record, the live session and the player's state, a `player_update` to
 everyone; the board's row follows at its next report. The rule holds; `force`
 lets a staff word through (the owner's own character). Logged in `admin_log`.
 
+## The sitting 19 review's mends (v2.3.5622, 2026-11-16)
+
+- **A session with no character record** (HIGH): its name came from the
+  join as sent (`sanitizeDisplayName` keeps a direction override and a
+  zero-width space), so S2's string passed (a) with a guest's or keyless id
+  and (b) with a bp_ id whose data names nobody, to every peer, room chat and
+  the board. Now (a) is TIDIED by the rule (`charname.js tidyCharName`: what
+  it refuses taken out, so "Bro<line break>killer" is "Bro killer", cut to
+  20, and a staff name stays out) or named `Anon` (`join.js`, both the
+  session's name and its data's), and (b) is refused `name`
+  (`_charNameRefuse` reads the data's name, or the join's own when the data
+  names nobody).
+- **A mark after a letter is the letter's** (`\p{L}\p{M}*`): Devanagari, Thai
+  and an accent written apart were "No emoji or symbols". The staff fold
+  (NFKD) is only for the staff comparison, never for what is allowed.
+- **A character that draws nothing is refused** (`\p{Default_Ignorable_Code_Point}`:
+  the Hangul fillers U+3164, U+115F, U+1160 and U+FFA0 are letters that draw
+  nothing).
+- **The staff fold** is the feedback board's (`reservednames.js`, #1890:
+  accents, a dotless i, small capitals, digits beside letters, CamelCase,
+  two words; "Dev" off the list, GM and `brotown` only as their own words),
+  and the page's copy carries it whole (`src/game/charName.js`, mirror-audit
+  with both lists).
+- `tools/qa/mp/mp-ownerwatch.mjs` named its owner phone `Owner`, which the
+  name box now refuses: it is `Keeper` (outside the card; the planning
+  session approved it). Two node suites joined a bp_ id whose data names
+  nobody under a name that reads as staff (`silence.test`'s 'mod_troll',
+  `spar.test`'s 'bp_spar_owner'): their test names changed, nothing else.
+- Left for the next PR (the planning session's lows): the rename's
+  `player_update` without `hg`/`fr`; `namerules: false` not reaching the
+  name box; a `name` refusal shows no words on the phone; the arena's own
+  name.
+
 ## Switch
 
 `namerules: false`: a new name is taken as before (any characters, 64 at

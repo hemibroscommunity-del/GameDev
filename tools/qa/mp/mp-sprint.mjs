@@ -69,7 +69,15 @@ const LAYOUT = (P) => P.page.evaluate(() => {
     }
   }
   return { vw: innerWidth, vh: innerHeight, btn: r(btn), label: r(lab), ring: ringEl ? +ringEl.getAttribute('stroke-width') : null,
-    state: btn ? btn.getAttribute('data-sprint') : null, disc: r(disc), stick: r(stick), others,
+    /* v2.3.5437 (card J2): the disc's BOX, not its picture.  Sideways with the band folded the disc is drawn at 0.85
+       from its foot (game.css html.bt-band-side .bt-rjoy-zone; mp-oneband), its box and the controls round it where they
+       were: Sprint stands RCTL_GAP over the box, so over the picture it read 24 px (10 + 94 x 0.15), red on main each run.
+       The box: the picture's centre and foot, its unscaled size (offsetWidth); upright the two are the same */
+    state: btn ? btn.getAttribute('data-sprint') : null, disc: (() => {
+      const d = r(disc); if (!d) return d;
+      const ow = disc.offsetWidth || d.w, cx = (d.l + d.r) / 2;
+      return { l: cx - ow / 2, t: d.b - ow, r: cx + ow / 2, b: d.b, w: ow, h: ow, drawn: d.w };
+    })(), stick: r(stick), others,
     /* v2.3.3920: on | off | tired, the glow ring, the stamina arc (its lit
        share) and its track's colour */
     sstate: btn ? btn.getAttribute('data-sprint-state') : null,

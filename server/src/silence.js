@@ -37,12 +37,22 @@
  *
  * The owner's routes (admin.js's key, the same final-404 chain as
  * devicelock.js's): GET /api/admin/silence (every silence), POST
- * /api/admin/silence {playerId, minutes, note} (minutes 0: until lifted),
+ * /api/admin/silence {playerId, minutes, note} (minutes left out: until
+ * lifted; else a positive whole number, at most MINUTES_MAX),
  * DELETE /api/admin/silence?id=.  Each logged in `admin_log`.
  *
- * KILL SWITCHES in the live flags: `silence: false` (no silence is checked:
- * every character speaks; the rows are kept) and `freezedevice: false` (a
- * freeze holds the character only, as before).
+ * KILL SWITCH in the live flags: `silence: false` (no silence is checked:
+ * every character speaks; the rows are kept).
+ * THE OWNER'S LEVER `freezedevice: true` (the sitting 19 review, the planning
+ * session's call): the device half is OFF until the owner turns it on, a
+ * freeze holding the character only, as before.  It can hold the OWNER out
+ * (a ?guest=1 alt shares the main's phone; a device reached with a new key is
+ * never recorded), so it waits for the owner's decision and for its next PR
+ * (its devices from botfp's `device:` record, the owner's spare complete).
+ * The sitting 19 review also: the frozen characters' records are read 128 a
+ * get (the runtime's most: 129 freezes threw, and it failed open), and a
+ * silence's `minutes` is a positive whole number or left out (-60 and 0.5
+ * were "until lifted").
  */
 
 import { WIRE_IN } from './wire/in.js';
@@ -69,6 +79,7 @@ export const SILENCE = Object.freeze({
   FROZEN_TTL_MS: 60000,
   /* the most frozen characters read for their devices (the owner's freezes: a handful) */
   FROZEN_MAX: 500,
+  GET_MAX: 128,   /* v2.3.5621: the keys one storage.get takes (the runtime's limit) */
 });
 
 /** When the silence ends, in words a player reads. */
@@ -80,14 +91,14 @@ export function silenceUntilWords(until) {
 }
 
 export const silenceMethods = {
-  /* the kill switches: `silence: false` and `freezedevice: false` in the live flags */
+  /* the kill switch `silence: false`, and the owner's lever `freezedevice: true` (OFF unset) */
   _silenceOn() {
     const f = this._liveFlags;
     return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'silence') && !f.silence);
   },
   _freezeDeviceOn() {
     const f = this._liveFlags;
-    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'freezedevice') && !f.freezedevice);
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'freezedevice') && f.freezedevice === true);
   },
 
   /* every silence, into memory, once a room's life (and again after a failed read) */
@@ -156,8 +167,9 @@ export const silenceMethods = {
     if (this._frozenDev && sig === this._frozenSig && t - this._frozenDevAt < SILENCE.FROZEN_TTL_MS) return this._frozenDev;
     const devsOf = async (ids) => {
       const out = [];
-      if (ids.length) {
-        const auths = await this.state.storage.get(ids.map((id) => 'auth:' + id));
+      /* v2.3.5621 (the sitting 19 review): GET_MAX a get, the runtime's most */
+      for (let i = 0; i < ids.length; i += SILENCE.GET_MAX) {
+        const auths = await this.state.storage.get(ids.slice(i, i + SILENCE.GET_MAX).map((id) => 'auth:' + id));
         for (const a of auths.values()) for (const d of (a && Array.isArray(a.devs) ? a.devs : [])) if (d && typeof d.d === 'string') out.push(d.d);
       }
       return out;
@@ -210,7 +222,13 @@ export const silenceMethods = {
       try { body = await request.json(); } catch (e) { body = null; }
       const id = body && typeof body.playerId === 'string' ? body.playerId.trim().slice(0, 64) : '';
       if (!id) return json({ ok: false, error: 'playerId required' }, 400);
-      const minutes = Math.max(0, Math.min(SILENCE.MINUTES_MAX, Math.floor(Number(body.minutes) || 0)));
+      /* v2.3.5621 (the sitting 19 review): left out is until lifted; else a
+         positive whole number of minutes (-60 and 0.5 were until lifted) */
+      const given = body.minutes !== undefined && body.minutes !== null;
+      if (given && !(Number.isInteger(body.minutes) && body.minutes > 0 && body.minutes <= SILENCE.MINUTES_MAX)) {
+        return json({ ok: false, error: 'minutes: a whole number from 1 to ' + SILENCE.MINUTES_MAX + ', or left out for until lifted' }, 400);
+      }
+      const minutes = given ? body.minutes : 0;
       const note = typeof body.note === 'string' ? body.note.slice(0, SILENCE.NOTE_MAX) : '';
       const rec = { until: minutes ? now + minutes * 60000 : 0, note, at: now };
       await this.state.storage.put(SILENCE.KEY + id, rec);

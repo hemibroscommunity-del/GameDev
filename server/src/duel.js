@@ -31,6 +31,7 @@
  * opId-idempotent, and the stale-escrow sweep checks the pot's oplog
  * stamp before refunding (a crash between pot-credit and escrow-delete
  * cannot double-pay). */
+import { xferEscrowOn, xferDuelPot } from './xfer.js';   /* v2.3.5290: the pot's ledger row (card R PR 11; `xferescrow`, OFF by default) */
 
 export const DUEL = {
   CHALLENGE_TTL: 120000,   // 2 min to accept a challenge
@@ -313,7 +314,18 @@ export const duelMethods = {
       // pot-stamp check in the stale-escrow sweep.
       (async () => {
         try {
-          await this._creditPlayer(winnerId, { opId: 'duelpot:' + duel.id, source: 'duel', kind: 'gold', payload: { amount: duel.wager * 2 }, note: 'duel won' });
+          /* v2.3.5290 (card R PR 11): with `xferescrow` on, the transfer
+             ledger's row rides the pot's own run (inbox.js _creditWith: the
+             credit, its stamp and the row, one write); off (the default),
+             the pot pays exactly as before.  Each credit written out whole:
+             the credit guards read its opId at the call (opid-audit,
+             gold-door §8) */
+          if (xferEscrowOn(this)) {
+            await this._creditWith(winnerId, { opId: 'duelpot:' + duel.id, source: 'duel', kind: 'gold', payload: { amount: duel.wager * 2 }, note: 'duel won' },
+              () => { const p = xferDuelPot(this, duel, winnerId, loserId, how); return p ? [p] : []; });
+          } else {
+            await this._creditPlayer(winnerId, { opId: 'duelpot:' + duel.id, source: 'duel', kind: 'gold', payload: { amount: duel.wager * 2 }, note: 'duel won' });
+          }
           await this.state.storage.delete('duelEscrow:' + duel.id);
         } catch (e) { /* sweep repairs */ }
       })();
