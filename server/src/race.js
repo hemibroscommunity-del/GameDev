@@ -97,7 +97,46 @@ export function segDist(ax, ay, bx, by, px, py) {
 
 const has = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);
 
+/* ═══ v2.3.5217: THE RACE DOOR -- A RACE'S ONE WRITER (card L PR 5) ═══
+   (docs/specs/race-door.md; held by server/test/race-door.test.mjs and the
+   phase table's guard, tools/guards/phase-table.test.mjs)
+   A race's phase is ONE field, `ps._race`: the race on (its record), or
+   none.  The countdown and the running are times on the record (`t0`, the
+   gun; `endBy`, Lil Bro's time and the grace), not phases of their own.
+   Written only by _raceTo, by a way of RACE_WAYS -- `start`
+   (_handleRaceStart) and `end` (_raceEnd: the finish, late, a false start,
+   a death or a leave of the Wheel at the next move).  The door's rule: a
+   race on carries its gun and its deadline after it, so the next move can
+   always end it ('late'); every start builds both, so nothing a player
+   sees changes.  `racedoor: false` in the live flags writes any record a
+   caller asks, as the old line would have.  A start over a race already on
+   replaces it, as before (the start's own `soon` spaces them).  No join
+   way: "a race lost to a reconnect is a race run again" -- the join makes
+   the body afresh. */
+export const RACE_WAYS = Object.freeze({ start: 'on', end: 'none' });
+
 export const raceMethods = {
+  /* v2.3.5217: the race door's kill switch (live flag `racedoor: false`) */
+  _raceDoorOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && has(f, 'racedoor') && !f.racedoor);
+  },
+
+  /* v2.3.5217: THE ONE WRITER of a player's race.  `race` is the record for
+     `start`, null for `end`.  True when it wrote. */
+  _raceTo(ps, race, way) {
+    if (!ps || typeof ps !== 'object' || !has(RACE_WAYS, way)) return false;
+    if (RACE_WAYS[way] === 'none') {
+      if (race !== null) return false;
+      ps._race = null;
+      return true;
+    }
+    if (!race || typeof race !== 'object') return false;
+    if (!this._raceDoorOff() && !(Number.isFinite(race.t0) && Number.isFinite(race.endBy) && race.endBy > race.t0)) return false;
+    ps._race = race;
+    return true;
+  },
+
   /* The kill switch, the house way (smelting.js _smeltOff) */
   _raceOff() {
     const f = this._liveFlags;
@@ -137,7 +176,7 @@ export const raceMethods = {
     const lilMs = lilLapMs();
     const t0 = now + RACE.COUNTDOWN_MS;
     ps._raceStartedAt = now;
-    ps._race = { t0, next: 0, lilMs, endBy: t0 + lilMs + RACE.GRACE_MS };
+    this._raceTo(ps, { t0, next: 0, lilMs, endBy: t0 + lilMs + RACE.GRACE_MS }, 'start');   /* v2.3.5217: the race door */
     const abs = (p) => [cx + p[0], cy + p[1]];
     const state = {
       in: RACE.COUNTDOWN_MS, lilMs, speed: RACE.LIL_SPEED, flagR: RACE.FLAG_R,
@@ -179,7 +218,7 @@ export const raceMethods = {
   },
 
   _raceEnd(pid, ps, result) {
-    ps._race = null;
+    this._raceTo(ps, null, 'end');   /* v2.3.5217: the race door */
     if (result.won) {
       let moved = false;
       try { moved = !!this._creditQuestObjective(pid, 'race'); } catch (e) { /* the win stands */ }

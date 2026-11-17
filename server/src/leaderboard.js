@@ -37,6 +37,10 @@ const STALE_MS = 7 * 86400000;
    Kill switch `boardcache: false` (the room's live flags, said on the room's
    own posts as `bc: 0`: this object keeps no flags and asks the room
    nothing): read every time, as before; the sweep and the fields stay.
+   Kill switch `boardsweep: false` (said as `bs: 0`; sitting 19b's
+   gatekeeper: a delete is not undone, so it stops in one tap): no row is
+   deleted; the stale rows stay off every board as before.  (The rows are a
+   derived cache: rebuilt whole at the player's next report.)
    Lever `exactseen: true` (said as `xs: 1`): the exact `lastSeen` back, and
    no `seen` word, so the draw page reads to the millisecond, as every draw
    before this did: to run an old draw again exactly. */
@@ -136,6 +140,9 @@ export class Leaderboard {
     /* v2.3.5608: the room's word on the boards' keeping (`boardcache`) */
     if (data && Object.prototype.hasOwnProperty.call(data, 'bc')) this._cacheOff = data.bc === 0;
     else if (data && data.playerId) this._cacheOff = false;
+    /* v2.3.5608: the sweep of week-old rows (`boardsweep`), the same way */
+    if (data && Object.prototype.hasOwnProperty.call(data, 'bs')) this._sweepOff = data.bs === 0;
+    else if (data && data.playerId) this._sweepOff = false;
     /* v2.3.5608: and on the exact last-seen (`exactseen`), the same way */
     if (data && Object.prototype.hasOwnProperty.call(data, 'xs')) this._exactSeen = data.xs === 1;
     else if (data && data.playerId) this._exactSeen = false;
@@ -260,7 +267,8 @@ export class Leaderboard {
       if (!exact && typeof o.lastSeen === 'number') o.lastSeen = Math.floor(o.lastSeen / HOUR_MS) * HOUR_MS;
       return o;
     });
-    if (stale.length) { try { await this.state.storage.delete(stale.slice(0, SWEEP_MAX)); } catch { /* swept next time */ } }
+    /* `boardsweep: false`: nothing deleted (the rows stay off the boards) */
+    if (stale.length && !this._sweepOff) { try { await this.state.storage.delete(stale.slice(0, SWEEP_MAX)); } catch { /* swept next time */ } }
     if (!this._cacheOff) {
       this._top.set(k, { at: now, rows });
       if (this._top.size > 256) this._top.delete(this._top.keys().next().value);   /* a cap: categories x limits */

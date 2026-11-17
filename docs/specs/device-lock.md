@@ -79,6 +79,31 @@ The bot checks already read it.
 `devlock:filled {at, chars, devices}` marks the one-time fill done, so a later
 worker never scans again.
 
+## An old key never adds a device by itself (v2.3.5582)
+
+The red team (RT-1, findings N1 and N9) worked out old keys from their
+characters' public ids: an old key's id carries the key's first two words and
+a 31-bit hash of the whole, so a key is found offline in a fraction of a
+second. The device lock held it to the character's devices, except where the
+character had no list: the first device to come in was taken, the thief's, who
+was then handed a new key and the player shut out.
+
+- **A character with no device list** (one from before the lock whose devices
+  the one-time fill never found) takes no first device any more: an old key
+  from any device is refused `device` (close 4016, never `auth`), the login
+  check answers `device: 'unknown'` and the restart refuses. The owner's pass
+  is the way in, for the owner's own characters and test mode as for everyone.
+- **An explicit empty list** keeps the first-device rule. Only a registering
+  join that named no device writes one, and the page always names one
+  (`getDeviceNonce` makes one even with storage blocked), so no player's
+  character has one; the server suites' characters do.
+- **A listed device, a pass, a new key:** unchanged.
+- **The lockout** (five wrong keys lock an id for a minute, and ids are
+  public): its rightful holder -- the right old key from a device this
+  character may be played on now -- goes through, at the join and at the login
+  check. Anyone else is still `locked`.
+- **Kill switch `oldkeylock: false`:** both as before.
+
 ## What it doesn't cover
 
 - **The fill misses some devices.** On a device with several characters, the

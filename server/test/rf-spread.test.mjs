@@ -6,9 +6,11 @@
  *   1. under PER_S refusals a second the answer is 5 s, as before;
  *   2. over it, retryMs = 5 s x rate / PER_S, never over the phone's 30 s;
  *   3. the count is the last WINDOW_S seconds: a quiet room is back to 5 s;
- *   4. through the room: a full room's refusal (the `?rf=1` socket and an old
- *      client's 503 alike) is counted, and its `room_full` carries the scaled
- *      retryMs; the answer's other fields are as room-full.md has them;
+ *   4. through the room: a full room's `?rf=1` refusal is counted, and its
+ *      `room_full` carries the scaled retryMs; the answer's other fields are
+ *      as room-full.md has them.  Mended for sitting 19b: an old client's 503
+ *      is never counted, and an address at most once a second (one client
+ *      sending 240 a second, with or without `?rf=1`, sets nobody's wait);
  *   5. `rf_spread: false`: 5 s whatever the crowd (and the count still kept,
  *      so turning it on again acts at once);
  *   6. the crowd's settling point: W phones obeying it, each knocking once
@@ -68,18 +70,31 @@ const knock = (room, perS, seconds, from) => {
   const url = new URL('https://worker.example/ws?room=brotown-1&rf=1');
   let res = room._roomFullRefusal(url);
   check('4. a full room answers room_full (101) with 5 s while the crowd is small', res.status === 101 && sent.length === 1 && sent[0].type === 'room_full' && sent[0].retryMs === 5000 && sent[0].reason === 'full' && sent[0].cap === 1, sent[0]);
-  /* 100 a second for 10 s, a third of them old clients (the 503) */
+  /* v2.3.5604 (mend): ONE client, 240 a second for 10 s, half of them old-client 503s */
+  const from = (ip) => new Request('https://worker.example/ws', { headers: { 'CF-Connecting-IP': ip } });
+  const old503 = new URL('https://worker.example/ws?room=brotown-1');
+  for (let s = 0; s < 10; s++) for (let i = 0; i < 240; i++) {
+    now = T0 + 1000 + s * 1000 + Math.floor(i * 4);
+    room._roomFullRefusal(i % 2 ? old503 : url, undefined, from('198.51.100.7'));
+  }
+  sent.length = 0;
+  room._roomFullRefusal(url);
+  check('4. one client knocking 240 a second (with and without ?rf=1) sets nobody\'s wait: 5 s', sent.length === 1 && sent[0].retryMs === 5000 && rfRate(room, now) <= 1.2, { sent: sent[0], rate: rfRate(room, now) });
+  /* 100 phones a second for 10 s, each its own address, and as many old-client 503s */
+  now += 11000;
   for (let s = 0; s < 10; s++) for (let i = 0; i < 100; i++) {
-    now = T0 + 1000 + s * 1000 + i * 10;
-    room._roomFullRefusal(i % 3 === 0 ? new URL('https://worker.example/ws?room=brotown-1') : url);
+    now = now - (now % 1000) + 1000 * (i === 0 ? 1 : 0) + (i * 9);
+    room._roomFullRefusal(url, undefined, from('203.0.113.' + i));
+    room._roomFullRefusal(old503, undefined, from('192.0.2.' + i));
   }
   sent.length = 0;
   res = room._roomFullRefusal(url);
-  check('4. 100 a second (old clients\' 503 counted too): room_full asks for ~12.5 s', sent.length === 1 && sent[0].retryMs >= 12500 && sent[0].retryMs <= 12700, sent[0]);
+  check('4. 100 phones a second (the old 503s not counted): room_full asks for ~12.5 s', sent.length === 1 && sent[0].retryMs >= 12000 && sent[0].retryMs <= 12800, { sent: sent[0], rate: rfRate(room, now) });
   check('4. ...an old client still gets the byte-identical 503', room._roomFullRefusal(new URL('https://worker.example/ws')).status === 503);
   sent.length = 0;
-  room._roomFullRefusal(url, 'ip');
-  check('4. the address limit\'s refusal (reason ip) is counted and scaled the same', sent[0] && sent[0].reason === 'ip' && sent[0].retryMs >= 12500, sent[0]);
+  room._roomFullRefusal(url, 'ip', from('203.0.113.250'));
+  check('4. the address limit\'s refusal (reason ip) is counted and scaled the same', sent[0] && sent[0].reason === 'ip' && sent[0].retryMs >= 12000, sent[0]);
+  check('4. an address counts once a second (rfNote)', (() => { const r = {}; for (let i = 0; i < 50; i++) rfNote(r, T0 + i, '10.0.0.1'); rfNote(r, T0 + 5, '10.0.0.2'); rfNote(r, T0 + 1500, '10.0.0.1'); return Math.round(rfRate(r, T0 + 1500) * RF_SPREAD.WINDOW_S) === 3; })());
 
   /* ── 5. the switch ── */
   room._liveFlags.rf_spread = false;

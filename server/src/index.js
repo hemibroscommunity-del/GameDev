@@ -251,6 +251,8 @@ import { freeSwingMethods } from './freeswing.js'; /* v2.3.4520: the free-swing 
 import { drawGatherMethods } from './drawgather.js'; /* v2.3.4801: the bow's draw and the staff's gather (a shot's share of a full build) */
 import { testModeMethods } from './testmode.js'; /* v2.3.3430: test mode -- the owner's own characters without the honesty checks */
 import { deviceLockMethods } from './devicelock.js'; /* v2.3.3344: a character's login key works on the devices it is played on */
+import { silenceMethods } from './silence.js'; /* v2.3.5621: the owner's silence, and a freeze that holds the device (card MOD) */
+import { charNameMethods } from './charname.js'; /* v2.3.5622: the name rules (card MOD) */
 import { loginKeyMethods } from './loginkeys.js'; /* v2.3.3355: new Login Keys, made by the worker */
 import { pvpLungeMethods } from './pvplunge.js'; /* v2.3.3262: the sword's opening lunge, at a player too */
 import { oneFormulaMethods } from './oneformula.js'; /* v2.3.3260: one formula for every fight -- health, monsters' hits, the hit cap, two specials */
@@ -431,7 +433,7 @@ async function routeHttp(request, env) {
        stuck room read "ok" there.  For an uptime monitor. */
     if (url.pathname === '/health/room') {   /* HEALTH.PATH: the wire table's lister reads the literal */
       if (!roomName) return noSuchRoom();
-      return routeRoomHealth(env, roomName, corsHeaders);
+      return routeRoomHealth(env, roomName, corsHeaders, request);
     }
 
     if (url.pathname === '/health') {
@@ -4574,7 +4576,7 @@ export class GameRoom {
        (health.js), after the switches load (its own, `roomhealth`, among
        them); internal like `/_room_count`: no outside path is forwarded here */
     if (url.pathname === '/_room_health') {   /* HEALTH.ROOM_PATH */
-      return this._roomHealthFetch();
+      return this._publicReadDo(request, url, () => this._roomHealthFetch(request));   /* v2.3.5609: kept and paced (publicreads.js) */
     }
     /* v2.3.5184: THE WIRE DOOR for the room's routes (wire/door.js), after
        the switches load and before the first route: a key named like the
@@ -4649,7 +4651,7 @@ export class GameRoom {
        decides who it is for (seathold.js); off, both are nothing */
     await this._seatHoldLoad(Date.now());
     if (this.sessions.size >= this._roomCap() + this._seatHeldCount(Date.now())) {
-      return this._roomFullRefusal(url);
+      return this._roomFullRefusal(url, undefined, request);
     }
     /* v2.3.3274: one address holds at most `ip_sockets` places and opens at
        most `ip_joins_min` sockets a minute (flood.js): the room's places were
@@ -4657,7 +4659,7 @@ export class GameRoom {
        own word (`reason: 'ip'`). */
     const _ip = requestIp(request);
     if (!this._floodIpOk(_ip, Date.now())) {
-      return this._roomFullRefusal(url, 'ip');
+      return this._roomFullRefusal(url, 'ip', request);
     }
     const [client, server] = Object.values(new WebSocketPair());
     this.state.acceptWebSocket(server);
@@ -4820,6 +4822,8 @@ export class GameRoom {
        request id outside SHAPES' form is dropped and counted.  Only what no
        page sends; `wiredoor: false` turns it off.  Synchronous (TRAPS §182). */
     if (this._wireDoor(session, msg)) return;
+    /* v2.3.5621: the owner's silence, its own step after the door (silence.js, card MOD; card K's word) */
+    if (this._silenceDoor(session, msg)) return;
     /* Reset the AFK clock on real input only.  Pong replies are
        keepalive heartbeats, not player activity -- counting them would
        mean the timeout fires only on TCP death, not on AFK players
@@ -5085,6 +5089,8 @@ export class GameRoom {
              face tattoo or species, from a device that holds several, is
              stamped back to this character's own, or to none. */
           this._stampRecordLook(session, clean);
+          /* v2.3.5622: ...and the NAME is the record's too: `track` never renames (charname.js, card MOD; RT-3 S2) */
+          this._stampRecordName(session, clean);
           session.data = { ...session.data, ...clean };
           const _trackPs = this.playerState[session.id];
           if (_trackPs) {
@@ -6163,6 +6169,10 @@ export class GameRoom {
           msg.from = session.id;
           /* v2.3.3265: your sparring clones see your specials coming (spar.js) */
           if (this._spars && this._spars.size) this._sparSeen(session.id, msg);
+          /* v2.3.5543 (RT-1 N10): a relay's bytes -- one too big, a socket past
+             its byte budget, the queue past its cap: dropped, counted
+             (relay.js _relayBytesDrop; `relaybytes: false` lets all in) */
+          if (this._relayBytesDrop(session, msg, Date.now())) break;
           this.eventBuffer.push(msg);
         }
         break;
@@ -6331,6 +6341,8 @@ export class GameRoom {
              false`): said on the room's own post, so the board object reads
              no flags of its own and asks the room nothing (leaderboard.js) */
           ...(this._liveFlags?.boardcache === false ? { bc: 0 } : {}),
+          /* v2.3.5608: the sweep of week-old board rows stopped (`boardsweep: false`) */
+          ...(this._liveFlags?.boardsweep === false ? { bs: 0 } : {}),
           /* v2.3.5608: the boards' lastSeen exact again (`exactseen: true`, to run an old draw) */
           ...(this._liveFlags?.exactseen === true ? { xs: 1 } : {}),
         }),
@@ -6565,6 +6577,8 @@ Object.assign(GameRoom.prototype, freeSwingMethods); /* v2.3.4520: the free-swin
 Object.assign(GameRoom.prototype, drawGatherMethods); /* v2.3.4801: the bow's draw and the staff's gather (drawgather.js) */
 Object.assign(GameRoom.prototype, testModeMethods); /* v2.3.3430: test mode (testmode.js) */
 Object.assign(GameRoom.prototype, deviceLockMethods); /* v2.3.3344: a character's login key works on the devices it is played on */
+Object.assign(GameRoom.prototype, silenceMethods); /* v2.3.5621: the owner's silence, and a freeze that holds the device (card MOD) */
+Object.assign(GameRoom.prototype, charNameMethods); /* v2.3.5622: the name rules (card MOD) */
 Object.assign(GameRoom.prototype, loginKeyMethods); /* v2.3.3355: new Login Keys, made by the worker */
 Object.assign(GameRoom.prototype, pvpLungeMethods); /* v2.3.3262: the sword's opening lunge at a player (pvplunge.js) */
 Object.assign(GameRoom.prototype, oneFormulaMethods); /* v2.3.3260: one formula for every fight */
