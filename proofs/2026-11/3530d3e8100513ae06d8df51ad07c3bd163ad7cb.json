@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "3530d3e8100513ae06d8df51ad07c3bd163ad7cb",
+  "tree": "89d4b5b297014b330aac4c8d1f864450ae997bde",
+  "committedAt": "2026-11-16T19:21:49-08:00",
+  "subject": "Merge pull request #1969 from hemibroscommunity-del/claude/plan-r-15-share-lows",
+  "files": 8024,
+  "bytes": 959151340,
+  "listingSha256": "61cce7887381e2c74a1fb9ee874a08e8bbd561349660e36d9e9d3bb81979c878",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
