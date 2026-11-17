@@ -435,6 +435,9 @@ play, a number 1.1 can measure.
   then 2 KB a second, the room's queue 256 KB; `relaybytes`, ON; the red
   team's RT-1 N10), merged at sitting 19 (the gatekeeper, sitting 20, tag
   5377).*
+  *K's #1942 (the room forgets who left: `heapforget`, ON) and #1949 (the
+  room's ceiling on messages in, a share of 4000/s a socket; `roomceiling`,
+  ON, a cap), merged at sitting 23 (the gatekeeper, sitting 24, tag 5662).*
 - [ ] **4.1b [NEXT] The send door**: one `_send` (132 places write to a
   socket today), counting bytes by type.
 - [ ] **4.2 [NEXT] Claims, bounded.** "No claims" can be met by calling a
@@ -720,6 +723,9 @@ nothing known, and a restore copies nothing.
   red on `main` (ownersounds, deathzones, hitsound, race, desklunge,
   bowprops, fishvariants, moresounds), and J2's next is `mp-partychip`
   (the gatekeeper, sitting 18, tag 5375).*
+  *J2's #1948 (`mp-palette`'s two phones read ground lines alike, the
+  test's), merged at sitting 23. The step is open (the gatekeeper, sitting
+  24, tag 5662).*
 - [ ] **8.2 [NEXT] Traps become guards**, each with a break proof. The count
   that matters is traps held by a proof, not traps of prose.
   *Card V merged, #1724 to #1740: 31 traps held by a proof (25 the rule, 6
@@ -816,6 +822,9 @@ the memory a family holds as the game draws it.
   *Card P: #1881 (a pack's loss), #1906 (the hair masks), #1918 (the pets)
   and #1925 (the cape's hood), merged at sitting 20. The step is open (the
   gatekeeper, sitting 21, tag 5379).*
+  *Card P: #1943 (the pond's twin, `?fishspot`; `artCache` 84.5 -> 83.0),
+  merged at sitting 23. The step is open (the gatekeeper, sitting 24, tag
+  5662).*
 - [ ] **9.6 [LATER] An address that changes with the content**, by a
   `?h=` lookup (the client builds a hundred sprite addresses as it runs;
   renaming files would break them). A wrong hash on art that loads in play
@@ -872,6 +881,10 @@ punishes by itself.
   fee, hold and pace 0) and its guard, merged at sitting 13. The box waits
   for the escrow roads' ledger (R's PR 11) and for an `xfer` row to name
   its writer (review-z13's low) (the gatekeeper, sitting 14, tag 5371).*
+  *R's #1961 (the arena's stakes write ledger rows; `xferescrow` still
+  OFF), merged at sitting 23. Before the flag is thrown: R's 5295 (the
+  `share:` ids counted as items, `IDS_MAX` 32) (the gatekeeper, sitting 24,
+  tag 5662).*
 - [ ] **10.6 [NEXT] What an honest player's trouble looks like.** Each
   signal lists what changes it without any cheating: the frame rate, the
   line's delay, a deploy, a hidden tab. Every Low Power iPhone shares one
