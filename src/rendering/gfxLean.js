@@ -31,6 +31,7 @@
  * Memory savers row, from the next load (game/clientOff.js).
  */
 import { clientOffAtLoad } from '../game/clientOff.js';
+import { sw } from '../game/switches.js';   /* v2.3.5315: the page's one reader (card T) */
 
 /* numbers in the points' array below which a drawing is left alone (2,000
    points): the batched ones are under 400, and a small one is not worth it */
@@ -38,7 +39,7 @@ const MIN = 4000;
 
 const _off = (() => {
   try {
-    if (typeof location !== 'undefined' && /[?&]gfxlean=(0|off|false)(&|$)/.test(location.search || '')) return true;
+    if (sw('gfxlean')) return true;
     return clientOffAtLoad('gfxlean');
   } catch (e) { return false; }
 })();
