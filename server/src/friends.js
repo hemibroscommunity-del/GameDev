@@ -47,6 +47,26 @@ export const FRIENDS = {
      the paces held, at most PACE_KEYS (the oldest go first) */
   REQUEST_REPEAT_MS: 5000,
   PACE_KEYS: 2000,
+  /* v2.3.5811 (card RV, SEC-F4): a request received this long ago and never
+     answered is let go, where the record is written anyway (never a write
+     of its own); the 50 ceiling (REQ_IN_MAX) then refills by itself */
+  REQ_IN_TTL_MS: 30 * 86400000,
+};
+
+/* v2.3.5811 (card RV): `friendfix: false` in the live flags, the kill switch
+   for ACC-5 and SEC-F4 below (lower case, on unless written false) */
+const friendFixOn = (room) => {
+  const f = room && room._liveFlags;
+  return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'friendfix') && !f.friendfix);
+};
+/* the requests a doc RECEIVED that have run out, let go (in place) */
+const dropStale = (doc, now) => {
+  if (!doc || !doc.reqIn) return;
+  for (const k of Object.keys(doc.reqIn)) {
+    const r = doc.reqIn[k];
+    const at = r && typeof r.at === 'number' ? r.at : 0;
+    if (now - at > FRIENDS.REQ_IN_TTL_MS) delete doc.reqIn[k];
+  }
 };
 
 const ownKeys = (o) => (o ? Object.keys(o) : []);
@@ -140,6 +160,10 @@ export const friendsMethods = {
       if (!blob) return this._friendsSend(from, 'friend_error', { reason: 'not-found', target });
     }
     const theirs = await this._friendsDoc(target);
+    /* v2.3.5811 (card RV, SEC-F4): a request received a month ago and never
+       answered is let go before the ceiling is asked: the target's record is
+       written just below, so no write of its own */
+    if (friendFixOn(this)) dropStale(theirs, Date.now());
     if (ownKeys(theirs.list).length >= FRIENDS.LIST_MAX) {
       return this._friendsSend(from, 'friend_error', { reason: 'target-full', target });
     }
@@ -197,6 +221,17 @@ export const friendsMethods = {
     const db = await this._friendsDoc(b);
     const now = Date.now();
     const nameOfB = da.reqIn[b].name || this._friendsNameOf(b);
+    /* ═══ v2.3.5811 (card RV, ACC-5): BOTH SIDES, OR NEITHER ═══
+       Each side was added only while its own list had room, so a list that
+       filled between the request and the accept made a friendship of one
+       side: that side could message the other for ever (a DM asks only the
+       sender's list), and the other could not remove them (a remove asks
+       only the remover's).  Now a full list on either side refuses the
+       accept and keeps the request, with the answer a full list already
+       has.  `friendfix: false`: as before. */
+    if (friendFixOn(this) && (ownKeys(da.list).length >= FRIENDS.LIST_MAX || ownKeys(db.list).length >= FRIENDS.LIST_MAX)) {
+      return this._friendsSend(a, 'friend_error', { reason: 'target-full', target: b });
+    }
     delete da.reqIn[b]; delete da.reqOut[b];
     delete db.reqOut[a]; delete db.reqIn[a];
     if (ownKeys(da.list).length < FRIENDS.LIST_MAX) da.list[b] = { name: nameOfB, since: now };
@@ -236,7 +271,20 @@ export const friendsMethods = {
     const fid = payload && payload.fid;
     if (!me || !fid || typeof fid !== 'string') return;
     const mine = await this._friendsDoc(me);
-    if (!mine.list[fid]) return;
+    if (!mine.list[fid]) {
+      /* v2.3.5811 (card RV, ACC-5): a friendship of ONE side (made before the
+         accept above held both) is ended by the side it names too: the one
+         who could not remove it was the one being messaged.  Only when the
+         other side's list still holds this player; nothing else changes. */
+      if (!friendFixOn(this) || fid.length > 64) return;
+      const theirs1 = await this._friendsDoc(fid);
+      if (!theirs1.list[me]) return;
+      delete theirs1.list[me];
+      await this._friendsPut(fid, theirs1);
+      await this._friendsSyncTo(me);
+      if (this.playerState[fid]) await this._friendsSyncTo(fid);
+      return;
+    }
     delete mine.list[fid];
     const theirs = await this._friendsDoc(fid);
     delete theirs.list[me];
