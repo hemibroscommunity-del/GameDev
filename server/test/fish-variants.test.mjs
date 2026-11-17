@@ -174,11 +174,15 @@ const A = await join(wsA, 'bp_fv_a', 'Angler');
 {
   A.inventory = { fish_trout_albino: 1, fish_salmon_large: 1 };
   A._lastCookAt = 0; A._cookHistory = [];
+  /* v2.3.5727: `cookstart` is ON (card K2 PR 8), and these two results start
+     no cook: the suffix is read with the cook's start judge off */
+  room._liveFlags = { cookstart: false };
   await send(wsA, { type: 'cook_request', payload: { fishKey: 'fish_trout_albino', kind: 'cooked' } });
   A._lastCookAt = 0;
   await send(wsA, { type: 'cook_request', payload: { fishKey: 'fish_salmon_large', kind: 'cooked' } });
   check('4a a cooked albino trout is cooked_fish_trout_albino, a cooked large salmon cooked_fish_salmon_large',
     A.inventory.cooked_fish_trout_albino === 1 && A.inventory.cooked_fish_salmon_large === 1 && !A.inventory.fish_trout_albino && !A.inventory.cooked_fish_trout, A.inventory);
+  room._liveFlags = {};
 }
 
 // ── 5. A LARGE FISH HEALS DOUBLE ─────────────────────────────────────────────

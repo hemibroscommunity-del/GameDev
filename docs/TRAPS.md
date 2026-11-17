@@ -84,6 +84,8 @@ this, and its review bought 1,999 coins and 392,500 from Diego through
 it; the copy is `Object.create(null)` now (`_withoutRpgClaims`, join.js).
 **Receipt:** CLAUDE.md AI-session protocol; `docs/DEV-TOOLS.md`.
 
+Held by: tools/guards/traps-saves.test.mjs (tag 5761).
+
 ## 7. Treating the GDD / ARCHITECTURE.md as build specs
 
 **Tempting:** they're detailed, authoritative-looking design docs —
@@ -194,6 +196,8 @@ them in the same pass, or the next audit finds the one you walked past.
 Closed with `_sanitizeJoinData` (join.js), same allowlist shape;
 `anticheat.test.mjs` §8.
 
+Held by: tools/guards/traps-wire.test.mjs (tag 5762).
+
 ## 14. Switching `clipsHair` on because a hat has a mask folder
 
 **Tempting:** `make_hairmask.py --all-with-masks` treats the presence of a
@@ -301,6 +305,8 @@ and consumed nothing: the worker's blob still read `{ wood_oak: 2 }`
 after the fire was lit. The unit suite could not see it, because the
 missing piece was between the two things it mocks. Caught by
 `tools/qa/mp/mp-authority.mjs`, which asks the worker.
+
+Held by: tools/guards/action-door.test.mjs (tag 5764).
 
 ## 19. Reading "PvP is opt-in" as "PvP hits who you aimed at"
 
@@ -1113,6 +1119,8 @@ WORKER'S blob through the admin API rather than on client state — a test that
 checked the client would have passed throughout the bug.
 
 ---
+
+Held by: tools/guards/traps-wire.test.mjs (tag 5762).
 
 ## §33 — A test that reads a field the game does not have asserts nothing (v2.3.2078)
 
@@ -1990,6 +1998,8 @@ place cannot reproduce this.
 **Related:** §21 (an instrument that measures the wrong quantity reports green).
 
 ---
+
+Held by: tools/guards/traps-phone-memory.test.mjs (tag 5763).
 
 ## §50 — A derived-geometry reservation outlives the things it reserved (v2.3.2320)
 
@@ -3205,6 +3215,8 @@ the worker catches up — or forever, if that deploy failed. precheck's
 `ready-caps` check refuses the push unless every required name is already in
 the base branch's caps literal. Never require a cap you just added.
 
+Held by: tools/guards/traps-wire.test.mjs (tag 5762).
+
 ## 76. "It's wrapped in try/catch and fire-and-forget, so it can't block anything" (v2.3.2438)
 
 **Tempting:** the daily economy snapshot is kicked from the join handler as
@@ -3235,6 +3247,8 @@ Never on the join path at all — a join starts the tick, and the slot follows.
 The second thing to check when the room "isn't answering" is how big the
 prefixes have grown since the code was written: the code was months old; the
 data was new.
+
+Held by: tools/guards/traps-saves.test.mjs (tag 5761).
 
 ## 77. A `busy` flag over a fetch with no timeout is a dead panel (v2.3.2440)
 
@@ -5549,6 +5563,8 @@ release what it baked, not only what a zone change clears. And "it is freed"
 is a claim about what still REACHES the object, so prove it with a count after
 a forced GC (mp-bakeleak), not by reading the release.
 
+Held by: tools/guards/traps-phone-memory.test.mjs (tag 5763).
+
 ## 140. "Hide it from the renderer and it is gone" (v2.3.3145)
 
 **The plausible move.** Something the player should not see yet -- a resource
@@ -5778,6 +5794,8 @@ await. Both land or neither does, and a stamp can never stand for a payment
 that did not happen. inbox.test's crash storage (it drops every put after a
 named key) is the way to test it.
 
+Held by: tools/guards/traps-money.test.mjs (tag 5760).
+
 ## 148. "The row exists, so the player can sell it" (v2.3.3164)
 
 **The plausible move.** The gear ledger's row is the proof a piece is yours
@@ -5822,6 +5840,8 @@ no rate limit: 200 refusals sent 200 copies of the pile to each bystander.
 siblings have (`ps.dying || ps.dead || ps.disconnected`, the gear lock, a
 cooldown). Only a change that happened is news to everyone; a refusal
 answers the asker.
+
+Held by: tools/guards/traps-money.test.mjs (tag 5760).
 
 ## 151. "The hook already excludes duel kills" (v2.3.3168)
 
@@ -6166,6 +6186,8 @@ off by that difference under load; with the pacer it is off by about 2 ms
 until the thread is full.  And a Node test that captures the tick from
 `setInterval` must never see the interval set again (`WebSocketPair` is the
 runtime check, `tickpace.js`).
+
+Held by: tools/guards/traps-frame.test.mjs (tag 5764).
 
 ## 171. "mp-wheelbreak's arrows stick, so the bow shoots props" (v2.3.3206)
 
@@ -6665,6 +6687,8 @@ set it actually computes (here `_QUEST_KEEP_SPEC()` and `_GATHER_TOOL_KEYS()`)
 rather than reading its name. A family match grows with every quest that names
 a family.
 
+Held by: tools/guards/traps-money.test.mjs (tag 5760).
+
 ## 189. "Another player's stand-in can share yours: it is the same figure" (v2.3.3314)
 
 **Tempting:** a pose that swaps the body for a painted figure (the cook, the
@@ -6826,6 +6850,8 @@ error in the page sends a report) and the safety net (the test takes the
 context bare first): on main without it the report took the canvas and the minimap
 covered the screen; now the renderer's context every time, the minimap in its
 box.
+
+Held by: tools/guards/traps-frame.test.mjs (tag 5764).
 
 ## 195. "A socket with no Origin is a forger's: refuse it" (v2.3.3312)
 
@@ -7243,6 +7269,8 @@ one shows the device screen (src/ui/DeviceScreen.js).
 refused device counts as a wrong key" (24 of 24 deliberate breaks caught), and
 mp-devicelock refuses a new phone with the code, its key kept, and lets it in
 after the owner's pass.
+
+Held by: tools/guards/traps-saves.test.mjs (tag 5761).
 
 ## 210. "The figure is at (world - camera) x scale on the screen" (v2.3.3407)
 
@@ -7712,6 +7740,8 @@ they did; `?onebatch=1` tests the one program here anyway.
 
 **v2.3.3894:** every chip now keeps the three programs unless the address asks
 for the one (§260): on the owner's iPhone the one program lost a bro's legs.
+
+Held by: server/test/one-program.test.mjs (tag 5764).
 
 ## 226. "Route it in my own wrapper: I installed it last, so it runs last" (v2.3.3459)
 
@@ -8567,6 +8597,8 @@ then every facing again; a hat whose southwest file failed every try, back once
 it can be had) -- and with `QA_HK_EXPECT=blank` the build before: blank after
 the wipe, blank after the rebuild, the hat never back.
 
+Held by: tools/guards/traps-phone-memory.test.mjs (tag 5763).
+
 ## 254. "Spread the base style and change what differs" (v2.3.3633)
 
 **The move.** A Pixi text style is derived from a shared one the way a plain
@@ -8597,6 +8629,8 @@ changing them is a change to how they look.
 
 **Receipt:** `mp-textrelease` (a family built both ways, and two real trips
 to a fight with and without `?textkeep`).
+
+Held by: tools/guards/traps-phone-memory.test.mjs (tag 5763).
 
 ## 255. "Fill the gap with something neutral" (v2.3.3640)
 
@@ -8785,6 +8819,8 @@ fixes and said "Everything looks fine to me make 1 program the default": it is
 the default on phones and tablets now (`docs/specs/one-batch.md`). The rule
 stands for the next program: the owner's phone is the judge, not this box.
 
+Held by: server/test/one-program.test.mjs (tag 5764).
+
 ## 261. "A mixed-grade set can't be one figure, so draw it as its pieces" (v2.3.3953)
 
 **The move.** A matched set jogs as ONE full-set figure on the body sprite
@@ -8878,6 +8914,8 @@ never close a line with its handlers still attached.
 
 **Receipt:** `server/test/socket-one.test.mjs` (17 of 30 fail on the old
 code); docs/specs/socket-one-line.md.
+
+Held by: tools/guards/traps-wire.test.mjs (tag 5762).
 
 ## 265. "Remember the picked weapon by its place in the stash" (v2.3.4369)
 
@@ -9103,6 +9141,8 @@ stamp too.
 
 **Receipt:** `points-reset` §8; docs/specs/points-reset.md.
 
+Held by: tools/guards/traps-saves.test.mjs (tag 5761).
+
 ## 277. "This fix is phone-only, so merging it disconnects nobody" (v2.3.4381)
 
 **The move.** A pull request changes only the phone's code and adds its test
@@ -9296,6 +9336,8 @@ uneven 51, and is less work.
 **Receipt:** `frame-pacer` suite, `mp-steadypace`, `mp-peerarrive`,
 docs/specs/frame-pacer.md.
 
+Held by: tools/guards/traps-frame.test.mjs (tag 5764).
+
 ## 283. "It slows by the blacksmith, so it is the blacksmith" (v2.3.4400)
 
 **The move.** A player reports a slowdown at a place or beside a character
@@ -9359,6 +9401,8 @@ friend refusal reason gets its sentence in `src/game/friendErrors.js`
 maps keyed by player id, not arrays: "listed twice" cannot happen, so do not
 add an `includes` check to `_friendAcceptCore`. **Receipt:** `friend-errors.test`.
 
+Held by: tools/guards/traps-wire.test.mjs (tag 5762).
+
 ## 286. "Same name and same strength, so the same armour piece" (v2.3.4386)
 
 **Tempting:** after a reconnect the phone matches its armour to the server's
@@ -9420,6 +9464,8 @@ the taker's. Anything that removes a death pile from `this.loot` calls
 `_deathPileGone(pile)` (today the pickup, `_tickLoot`, `_dungeonCleanup`), or
 the pile comes back at the next start. **Receipt:** `death-pile-saved.test`
 §7 (every crash point), cost-guard §13; switch `deathpilesave`.
+
+Held by: tools/guards/traps-money.test.mjs (tag 5760).
 
 ## 291. "A pile's windows are worker times, compare them with the clock" (v2.3.4383)
 
@@ -9498,6 +9544,8 @@ no file uses, listed in `docs/specs/one-socket.md`'s table (a failed join is
 4013). An old phone reads an unknown code as an ordinary drop.
 **Receipt:** `session-exits.test` §1.
 
+Held by: tools/guards/traps-wire.test.mjs (tag 5762).
+
 ## 298. "The player is offline, so the admin may write their record" (v2.3.4413)
 
 **Tempting:** a restore checks that the player has no socket. **Wrong:** a
@@ -9506,6 +9554,8 @@ saves when it goes, over the backup just restored. **The rule.** An admin
 write over a player's record waits for the player to be out of the ROOM:
 check `playerState[pid]`, not only `_wsBySessionId`. **Receipt:**
 `session-exits.test`; docs/OPERATIONS.md.
+
+Held by: tools/guards/traps-saves.test.mjs (tag 5761).
 
 ## 299. "Its cleanup runs when it closes" (v2.3.4411)
 
@@ -9553,6 +9603,8 @@ asks again (`pageDropDue`, 5 s; the ground's pieces already did this).
 only turned every failure into "fulfilled", so the loading report (§12's
 check) could never show a miss. **The rule.** Settle the promises as they
 are (`preloadReport.js` `settleGroups`). **Receipt:** `renderer-life.test`.
+
+Held by: tools/guards/traps-frame.test.mjs (tag 5764).
 
 ## 304. "Set `S.currentZone` and clear what you left" (v2.3.4414)
 
@@ -9614,6 +9666,8 @@ held in escrow. **The rule.** Drop only a still-waiting bet
 (`_serverStake && !_placed`), matched by `targetId`, and nothing on
 `already-staked` (`src/game/arenaStakes.js`). **Receipt:**
 `silent-refusals.test` §2.
+
+Held by: tools/guards/traps-money.test.mjs (tag 5760).
 
 ## 309. "A second login is a takeover: build the character afresh where the new phone says" (v2.3.4432)
 
@@ -9753,6 +9807,8 @@ so two new caps never touch the same line. Do not reflow the old long line
 while you are there (that conflicts with everyone). **Receipt:** precheck
 `cap-registry` holds that the two lists agree; the line rule is review's.
 
+Held by: tools/guards/traps-wire.test.mjs (tag 5762).
+
 ## 317. "The art is 256 colours and the game holds it as numbers, so loading it is cheap" (v2.3.4470)
 
 **The move.** A picture is a 256-colour file on disk and one byte a pixel in
@@ -9888,6 +9944,8 @@ writes is never the fix. Test it on `inbox.test` §8c's batch storage,
 restarting before every batch. #1521 also lists a stack, takes a raise and
 marks a buy-now `sale.paid` this way. Off-ramp: the flag `ahonewrite: false`
 (the old order, holes included). **Receipt:** `store-onewrite.test`.
+
+Held by: tools/guards/traps-money.test.mjs (tag 5760).
 
 ## 322. "A leftover with a stamp is done: delete it" (v2.3.4505)
 
@@ -10165,6 +10223,8 @@ cap that then falls back; and `lookSetsSettled()` for the sets, which also
 waits for a set registered after the loading screen began.
 **Receipt:** `mp-lookgear` ("the walking armour's RGBA is not on the chip").
 
+Held by: tools/guards/traps-phone-memory.test.mjs (tag 5763).
+
 ## 341. "Let each of them go: `for (const t of frames) t.destroy(false)`" (v2.3.5011)
 
 **The plausible move.** A cache of Textures over one shared picture (a look
@@ -10186,6 +10246,8 @@ of a 2,000-listener source took 34.6 ms one by one and 1.6 ms in one pass.
 `src/rendering/bulkTexDestroy.js destroyTextures(list)`: each source's list
 rebuilt once (server/test/bulk-tex-destroy.test.mjs). A single Texture now and
 then is fine as it is.
+
+Held by: tools/guards/traps-phone-memory.test.mjs (tag 5763).
 
 ## 342. "The test can't find the button: the game lost it" (v2.3.5439)
 

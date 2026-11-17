@@ -1,8 +1,10 @@
 # A bow's claim is an arrow the worker saw leave (v2.3.5550)
 
 Grand plan step 4.2, "a sword's claim labelled a bow's" (TRAPS §329); card K
-PR 14. An opt-in switch, `bowshot`, landing **OFF**: turning it on is the
-owner's choice, because it changes how combat is judged.
+PR 14. A switch, `bowshot`, that landed **OFF** (the owner's choice); **ON
+since v2.3.5727** (card K2 PR 8), decided for the owner while away by the
+planning session on the owner's words of 2026-11-17: *"For all decisions
+waiting on me just go recommended."* `bowshot: false` turns it off.
 
 ## Why
 
@@ -62,5 +64,7 @@ with the switch off reads 3.3 (it read 3.76 against the 495 ms archer).
 
 ## Switch
 
-`bowshot: true` in the live flags turns it on; absent or `false`, the bow is
-judged as before.
+On unless `bowshot: false` in the live flags (v2.3.5727); thrown, the bow is
+judged as before it. With it on (the default), the bench's bow gain is 1.60
+(claims-gain 3, `bowlabel`'s line 3.3 -> 1.6); off, 3.34 (claims-gain 2f,
+its off side explicit).
