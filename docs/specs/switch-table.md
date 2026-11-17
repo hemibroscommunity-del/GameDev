@@ -301,6 +301,11 @@ so node tests it and any file may ask it.
   four-lines (an import is one over), tests-by-system keeps a new suite
   from naming it, and five of its reads are read in its text by
   sound-fold 3c and sound-cues 18f, 18i, 21a.
+- v2.3.5315: memory (`?canvascheck`, `?gfxlean`, `?gpucopies`, `?heaptrim`,
+  `?held`, `?treenumbers`, `?nopalette`, `?loudclear`, `?textkeep`,
+  `?poolkeep`; pageAddress() in `picsNumbers.js`): the line 144.
+  `keepAsImage.js` keeps `?keepimage`: keep-as-image 7h holds it to no
+  imports.
 
 ## A new switch
 

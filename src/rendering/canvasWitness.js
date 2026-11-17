@@ -56,9 +56,10 @@
  * `?canvascheck=0` turns the check off (the game as it was); QA:
  * window.__btCanvasWitness() (the witnesses and the last check).
  *
- * No imports. */
+ * No imports but the import-free switches.js (v2.3.5315). */
+import { sw } from '../game/switches.js';   /* v2.3.5315: the page's one reader (card T) */
 
-export const CANVAS_CHECK_OFF = typeof location !== 'undefined' && /[?&]canvascheck=0\b/.test(location.search || '');
+export const CANVAS_CHECK_OFF = sw('canvascheck');
 
 /* the most witnesses kept (dead ones are dropped first, then the oldest) */
 const MAX_WITNESSES = 4000;
