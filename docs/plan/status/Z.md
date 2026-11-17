@@ -24,7 +24,8 @@ no stored shape.
 
 ## Stalled
 - None. Not yet in: K 5196, 5197 (and `_reqSeen` slots); L's window door;
-  J2's shopkeeper; R 5293 (after K's 5196/5197): sitting 29.
+  J2's shopkeeper; R 5293 (after K's 5196/5197); T #1994 (5314, stacked
+  on #1993, came after the rehearsal): sitting 29.
   Z's next tag: 5667.
 
 ## Found

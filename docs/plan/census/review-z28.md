@@ -16,8 +16,10 @@ in). `test` green on each head. The tree after each merge:
 Rehearsed (`tools/dev/gatekeeper.mjs` on 7b629a91), K #1981 + T #1992
 (tree d4a87588): build PASS, questline 187/187, precheck 1 FAIL only
 `server-tests`' 5-minute limit; the server suite by itself in that tree:
-471 suites all green (282 s). Then T #1993 on top (tree ad17f467): see
-the list's line for its numbers. A first run was lost to a container
+471 suites all green (282 s). Then T #1993 on top (tree ad17f467):
+build PASS, questline 187/187, precheck OK (0 FAIL, 4 WARN: K's unopened
+k-10 branch also carries 5546; eventcapes.js:348,550 proto-safety, on
+`main` already). T #1994 (5314) came after: sitting 29. A first run was lost to a container
 restart; T's 48b25487 (`const search` reassigned: no build) was replaced
 by c937d7d8 before it was rehearsed.
 
