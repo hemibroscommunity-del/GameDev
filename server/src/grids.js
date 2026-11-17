@@ -1049,7 +1049,10 @@ export const gridMethods = {
          than copied so the describe path and the name path cannot drift
          into gating differently -- which is the bug shape that would let
          the new lane skip the defence-point check nobody re-read. */
-      if (this._gridsApplyArmor(session, ps, 'armor', newArmor)) statsChanged = true;
+      /* v2.3.5715 (gearheld, gearstash.js): a described piece the worker
+         does not hold is not worn; what is worn stays, sent back */
+      if (newArmor && this._gearHeldOn && this._gearHeldOn() && !this._gearHeld(ps, 'armor', newArmor)) this._gearHeldRefuse(session);
+      else if (this._gridsApplyArmor(session, ps, 'armor', newArmor)) statsChanged = true;
     }
     /* ═══ v2.3.1701: THE LEGS SLOT RIDES THE SAME LANE ═══
        `ps.legsArmor` has existed since v2.3.1679 (it is half of
@@ -1087,7 +1090,9 @@ export const gridMethods = {
           return o;
         });
       }
-      if (this._gridsApplyArmor(session, ps, 'legsArmor', newLegs)) statsChanged = true;
+      /* v2.3.5715: the same gate (gearheld) */
+      if (newLegs && this._gearHeldOn && this._gearHeldOn() && !this._gearHeld(ps, 'legsArmor', newLegs)) this._gearHeldRefuse(session);
+      else if (this._gridsApplyArmor(session, ps, 'legsArmor', newLegs)) statsChanged = true;
     }
     if (statsChanged) {
       // v2.3.910: stats grew -> derived combat level may have risen; refill

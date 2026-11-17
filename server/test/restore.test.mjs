@@ -221,7 +221,10 @@ const sumNow = (r, st) => count(r, st);
 /* ══════════ 4. THE RESTART ══════════ */
 async function restart(flags) {
   const st = makeStorage(seed(null, true));
-  const r = await room(st, flags);
+  /* v2.3.5719 (card SEC PR 20): the seed's listing (store_listing:l1) names P,
+     and `resetclean` holds a restart while one does; this section's subject is
+     the world's sum, so the restart is played with it thrown */
+  const r = await room(st, { resetclean: false, ...(flags || {}) });
   const ws = await join(r, fakeWs('p'), P, { loginTaken: true });
   await settle();
   const start = sumNow(r, st);
@@ -245,7 +248,7 @@ async function restart(flags) {
 {
   /* the restart's run: a crash there keeps neither the booking nor the deletes */
   const st = makeStorage(seed(null, true));
-  const r = await room(st, { resetbook: true });
+  const r = await room(st, { resetbook: true, resetclean: false });   /* v2.3.5719: the seed's listing names P (above) */
   const ws = await join(r, fakeWs('p'), P, { loginTaken: true });
   await settle();
   const put = st.storage.put;
