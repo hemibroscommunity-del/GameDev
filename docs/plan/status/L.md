@@ -1,6 +1,6 @@
 card: L
 branch: claude/plan-l-25-loading-door (each PR on main, main merged in)
-prs: #1746 to #1930 (merged), #1936 (5523), #1946 (5524), 5525 (this branch): ready
+prs: #1746 to #1930 (merged), #1936 (5523), #1946 (5524), #1956 (5525): ready
 state: ready
 
 ## Done
