@@ -914,7 +914,7 @@ export const movementMethods = {
       /* v2.3.5723: each field to its form (MOVE_FIELDS above; `movefields`) */
       const _mf = this._moveFieldsOn();
       if (msg.d !== undefined && msg.d !== null && (!_mf || _mfFacing(msg.d))) ps.d = msg.d;
-      ps.z = newZone;
+      this._zoneTo(ps, newZone, 'move');   /* v2.3.5537: the zone door (zonejudge.js) */
       /* v2.3.4371: a duel split across zones starts the away clock (duel.js) */
       if (zoneChanged) this._duelZoneMoved(session.id);
       /* v2.3.4640: a run's pass is used by the step in (zonejudge.js) */
@@ -971,13 +971,14 @@ export const movementMethods = {
            difference between a guard break and a suggestion. */
         const _wasBlocking = !!ps.blocking;
         const _guardBroken = ps._guardBrokenUntil && Date.now() < ps._guardBrokenUntil;
-        ps.blocking = _guardBroken ? false : !!msg.blocking;
         /* v2.3.4605: ...and a raise parries only after PARRY_REARM_MS with
            the guard down on the worker -- a quicker one blocks, unstamped
-           (moveclaims.js `parryrearm`; a down-up bundle parried every blow) */
+           (moveclaims.js `parryrearm`; a down-up bundle parried every blow).
+           v2.3.5536: written through the guard door (moveclaims.js
+           _guardTo); a guard held up is not written again. */
         const _raiseAt = Date.now();
-        if (ps.blocking && !_wasBlocking) ps.blockStartT = this._parryRearmed(ps, _raiseAt) ? _raiseAt : 0;
-        else if (!ps.blocking) ps.blockStartT = 0;
+        if (!_guardBroken && msg.blocking) { if (!_wasBlocking) this._guardTo(ps, 'raise', this._parryRearmed(ps, _raiseAt) ? _raiseAt : 0); }
+        else this._guardTo(ps, 'lower');
         this._guardDownNote(ps, _raiseAt);
       }
       /* v2.3.1705: the shield's facing angle, for the directional block
