@@ -647,7 +647,12 @@ nothing known, and a restore copies nothing.
   #1796, #1801 merged at sitting 11: `resetOn` at the zone and rejoin
   doors, rows sitting 468 -> 233 (the gatekeeper, sitting 12,
   v2.3.5369).*
-- [ ] **5.3b [NEXT] The phase table** (the owner, 2026-11-13: every implicit
+  *Card L done at sitting 41 (its last, #2067). On `main` bdfa8734 the
+  rows sitting with a suggestion are 233 (`state-ledger` 7, at its line;
+  `render` 118 and `ui` 88 of them, the files cards M and M2 hold). The
+  box waits for those rows; no card owns them yet (the gatekeeper,
+  sitting 42; carried by sitting 43, tag 5032).*
+- [x] **5.3b [NEXT] The phase table** (the owner, 2026-11-13: every implicit
   state machine explicit, through one door). Every state machine one row:
   its one field, its states, the one function that changes it, what clears
   it, what a rejoin re-sends (`REJOIN_SLOTS`). A guard fails a second
@@ -716,6 +721,11 @@ nothing known, and a restore copies nothing.
   *L's #2052 (5535, the dungeon's page door: `dungeonTo`, `?dungeondoor`,
   ON), merged at sitting 40: 3 `todo` on `main` cc4815a8; the line lowered
   4 -> 3 (the gatekeeper, sitting 41, tag 5679).*
+  *L's #2058 (5536, the guard door: `guardStateOf`, `guarddoor`), #2065
+  (5537, the zone door: `_zoneTo`, `zonedoor`) and #2067 (5538, the fight
+  door: `_fightTo`, `fightdoor`), all ON, merged at sitting 41: 0 `todo`
+  on `main` bdfa8734, 37 rows `door`; the line lowered 3 -> 0, the census
+  strict. Card L done. Ticked by the gatekeeper, sitting 42, carried by sitting 43 (tag 5032).*
 - [ ] **5.4 [LATER] The frame as named steps.** PR 1 moves nothing: the six
   calls the loop already makes, plus one `legacy` step, become the list;
   each counts its errors to the crash ring (a throw in the frame reaches
