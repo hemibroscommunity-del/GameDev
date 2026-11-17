@@ -113,3 +113,14 @@ Your call:
   code at first. The owner chose ChatGPT's pictures instead: the prompts are in
   `docs/art/DUNGEON-ART-PROMPTS.md` (v2.3.3561), and the Goo Grotto's are in
   the game since v2.3.3566 ([dungeon-art.md](dungeon-art.md)).
+
+## A Workshop run starts on safe ground (v2.3.5725, card K2 PR 6b)
+
+A `dungeon_start` that names no mouth (the Workshop's own config) was taken
+wherever the player stood: one out in a land, mid-fight, stepped into a run
+of its own and out of the fight (the second red team). The page's Workshop
+is on the farm (`gameDisplay.js` `FARM_SPOTS.workshop`), so in the Wheel only
+a forged start names no mouth: such a start is now refused off the Wheel's
+safe ground (`_wheelSafeAt`), with the door's own `not-now` words. A mouth's
+start, the farm and today's town are as before. `dungeonground: false` in
+the live flags takes it anywhere again (`three-guards.test` b).
