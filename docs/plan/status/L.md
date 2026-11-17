@@ -1,6 +1,6 @@
 card: L
-branch: claude/plan-l-34-life-page (from main)
-prs: #1746 to #2039 (merged), #2046 (5534): ready
+branch: claude/plan-l-38-fight-door (from main)
+prs: #1746 to #2046 (merged), #2052, #2058, #2065, fight door (5535-5538): ready
 state: ready
 
 ## Done
@@ -8,16 +8,15 @@ state: ready
 - PR 1, 2 (#1746, #1748): the ledger's guard; the phase table and guard.
 - PR 3, 4 (5203 to 5209, #1767 to #1803): `resetOn` at the zone and rejoin
   doors; the resets, 484 -> 233 rows.
-- PR 5, 5210-5217, 5522-5523: the worker's trade, duel, party, cook, harvest+
-  fishing, dungeon, pose, race, arena, ride doors; the page's (5218-5219,
-  5520-5521, 5525-5534): race, harvest+cook+fishing, pose, guard, veils, windows,
-  connection, duel, party, trade, ride, arena, fight (skull), life (dying).
+- PR 5, 5210-5217, 5522-5523, 5536-5538: the worker's trade, duel, party, cook,
+  harvest+fishing, dungeon, pose, race, arena, ride, guard, zone, fight doors; the
+  page's (5218-5219, 5520-5521, 5525-5535): race, harvest+cook+fishing, pose, guard,
+  veils, windows, connection, duel, party, trade, ride, arena, fight, life, dungeon.
 - 5524: alliance drafts outlive a rejoin (J2). 5532: relay floater's form (SEC).
 
 ## Next
 
-- Next: the page half left (dungeon), grouped
-  by file. Guard (worker) waits for K2's index.js PRs (planner, 15:52).
+- None: no todo row is left once these four land. Then: done.
 
 ## Found
 

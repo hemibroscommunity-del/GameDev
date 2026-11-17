@@ -485,7 +485,7 @@ export const sparMethods = {
     if (ps && this._pvpClearStatuses) this._pvpClearStatuses(id, ps);
     if (ps && ps.blocking) this._sparRelay(c, { type: 'player_shield', up: false });
     if (this._abilPending) this._abilPending.delete(id);
-    if (this._pvpHealClocks) this._pvpHealClocks.delete(id);
+    this._fightTo('forget', id);   /* v2.3.5538: the fight door (cooking.js) */
     delete this.playerState[id];
     delete this.stateHistory[id];
     this.dirtyPlayers.delete(id);

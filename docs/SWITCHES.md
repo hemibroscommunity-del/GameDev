@@ -76,6 +76,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?combatreset` | page | switch | v2.3.5206 | 2026-11-14 | =0 | logic |  | no | A fight you picked, a roll or a lunge, the hit marks on the ground, a kill's XP still waiting and another player's damage numbers still queued carry over a change of place again, each ending on its own clock or its own check, not at the zone door. |
 | `disable_threats` | worker | switch | v2.3.1150 | 2026-07-03 | true | logic |  | no | Thrown, every relayed threat handshake is dropped. |
 | `elemup` | worker | switch | v2.3.3518 | 2026-10-20 | false | logic |  | no | Un-advertises the element bonus and takes it away. |
+| `fightdoor` | worker | switch | v2.3.5538 | 2026-11-17 | false | logic |  | no | A fight clock can be written under an id that is no string, as the lines before the fight door could have; every caller passes a session's id. |
 | `fightlockarmor` | worker | switch | v2.3.4582 | 2026-11-11 | false | logic |  | no | Armour put on or taken off in a fight is no longer refused. |
 | `fightlockdoor` | worker | switch | v2.3.4510 | 2026-11-10 | false | logic |  | no | A dungeon's mouth and the party pull are no longer locked in a fight. |
 | `fightlockequip` | worker | switch | v2.3.4510 | 2026-11-10 | false | logic |  | no | A spare weapon or shield put on in a fight is no longer refused. |
