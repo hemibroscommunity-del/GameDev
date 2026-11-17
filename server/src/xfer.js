@@ -83,6 +83,13 @@ export const XFER = Object.freeze({
   PRUNE_PAGE: 32,
   GOODS_MAX: 64,
   IDS_MAX: 32,
+  /* v2.3.5295 (card R PR 15; the gatekeeper's sitting 23): an arena stake's
+     row carries each winning sponsor's part as an id, `share:<sid>:<n>`
+     (xferArenaStakes), and a match can have more winning sponsors than
+     IDS_MAX: their own bound, above the room's MAX_PLAYERS (120), so every
+     share fits and the rows still add up to the pool. */
+  SHARES_MAX: 128,
+  SHARE: 'share:',
   KEY_MAX: 64,
   /** The roads between players that write a row, one a settlement
    *  (v2.3.5280: PLAYER_ROADS' rows whose ledger is `xfer`). */
@@ -91,6 +98,13 @@ export const XFER = Object.freeze({
    *  PLAYER_ROADS' rows whose ledger is `kill`). */
   KILLS: Object.freeze(playerRoadsBy('kill')),
 });
+
+/** v2.3.5295: an id that is a winning sponsor's part of an arena stake
+ *  (`share:<sid>:<n>`), not a thing that moved: the owner's card counts no
+ *  item for it (econcard.js itemsOf). */
+export function xferIsShare(id) {
+  return typeof id === 'string' && id.startsWith(XFER.SHARE);
+}
 
 /** The UTC day of `ts`, 'yyyymmdd' (daybook.js's, so a day's rows and its
  *  book agree). */
@@ -139,9 +153,12 @@ function sideOf(gives, ids, cut) {
     goods[k] = c; n++;
   }
   const list = [];
+  let things = 0, shares = 0;   /* v2.3.5295: a share counts against its own bound (SHARES_MAX) */
   for (const x of (Array.isArray(ids) ? ids : [])) {
     if (typeof x !== 'string' || !x || x.length > XFER.KEY_MAX) { cut.v = true; continue; }
-    if (list.length >= XFER.IDS_MAX) { cut.v = true; break; }
+    const share = xferIsShare(x);
+    if (share ? shares >= XFER.SHARES_MAX : things >= XFER.IDS_MAX) { cut.v = true; continue; }
+    if (share) shares++; else things++;
     list.push(x);
   }
   return { gold: whole(g._gold), goods: { ...goods }, ids: list };
@@ -332,7 +349,7 @@ export function xferArenaStakes(room, { tid, matchId, winnerId, losers, gains } 
   losers.forEach((x, j) => {
     if (!x || typeof x.sponsorId !== 'string') return;
     const ids = [];
-    for (const [sid, n] of parts[j]) if (n > 0) ids.push('share:' + sid + ':' + n);
+    for (const [sid, n] of parts[j]) if (n > 0) ids.push(XFER.SHARE + sid + ':' + n);
     const p = xferRow(room, { road: 'arena_stakes', id: 'as-' + mid + '-' + x.sponsorId, from: x.sponsorId, to: winnerId, gives: { _gold: x.amount }, ids, price: {}, by: null });
     if (p) out.push(p);
   });

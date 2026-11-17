@@ -612,6 +612,12 @@ export const storeMethods = {
         const pid = body && body.playerId;
         if (!this._httpAuthCheck(pid, request)) return deny();
         if (/^\/(list|buy|bid)/.test(path) && this._valuePaused && this._valuePaused()) return this._valuePauseHttp(H);   /* v2.3.5090: a listing, a purchase or a bid waits while saves are refused (valuepause.js) */
+        /* v2.3.5194: a repeat of the same request id acts once and gets the
+           first answer again (reqonce.js); none: as before */
+        const _rid = this._reqIdOf(body && body.reqId);
+        if (_rid && /^\/(list|buy|bid|accept)/.test(path)) {
+          return new Response(JSON.stringify(await this._reqOnce(pid, _rid, () => this._stPostRun(path, body, pid, _rid), { record: path.startsWith('/list') })), { headers: H });
+        }
         let result;
         if (path.startsWith('/list')) result = await this._stCreateListing(body);
         /* v2.3.3183: a purchase or a bid moves gold to another player or into
@@ -628,7 +634,9 @@ export const storeMethods = {
       if (request.method === 'DELETE' && path.startsWith('/cancel')) {
         const pid = url.searchParams.get('playerId');
         if (!this._httpAuthCheck(pid, request)) return deny();
-        const result = await this._stCancel(url.searchParams.get('id'), pid);
+        const _rid = this._reqIdOf(url.searchParams.get('reqId'));   /* v2.3.5194: a cancel's id rides its query */
+        const _cancel = () => this._stCancel(url.searchParams.get('id'), pid);
+        const result = _rid ? await this._reqOnce(pid, _rid, _cancel) : await _cancel();
         return new Response(JSON.stringify(result), { headers: H });
       }
       return new Response(JSON.stringify({ ok: false, error: 'Not found' }), { status: 404, headers: H });
@@ -678,9 +686,24 @@ export const storeMethods = {
      is short an item nothing names (market.js's v2.3.1971 incident —
      "escrow that can't be written is escrow that never existed").  Hence
      the unwind below. */
-  async _stCreateListing(body) {
+  /* v2.3.5194: the POST's four, as the router runs them, for _reqOnce */
+  async _stPostRun(path, body, pid, rid) {
+    if (path.startsWith('/list')) return this._stCreateListing(body, rid);
+    if ((path.startsWith('/buy') || path.startsWith('/bid')) && this._bagLockedByFight && this._bagLockedByFight(pid)) {
+      return { ok: false, settled: true, error: 'Not while you are fighting a player' };
+    }
+    if (path.startsWith('/buy')) return this._stBuyNow(body.listingId, pid);
+    if (path.startsWith('/bid')) return this._stPlaceBid(body.listingId, pid, body.amount);
+    return this._stAcceptBid(body.listingId, pid);
+  },
+
+  async _stCreateListing(body, rid) {
     const { playerId, kind, price } = body || {};
     if (!playerId) return { ok: false, settled: true, error: 'Missing fields' };
+    /* v2.3.5194: the request's id is kept on the listing it makes, in the
+       same put: a repeat the sitting has forgotten (a restart) finds its
+       listing still up and gets it back, escrowing nothing again */
+    if (rid) for (const r of this._stIndex.values()) if (r.sellerId === playerId && r.reqId === rid) return { ok: true, settled: true, listing: this._stPublic(r), repeat: true };
     const p = Math.floor(Number(price) || 0);
     if (!(p >= 1 && p <= STORE.MAX_PRICE)) return { ok: false, settled: true, error: 'Invalid price' };
     /* v2.3.2531: 'gear' joins the roster, and it is gated on its OWN
@@ -848,6 +871,7 @@ export const storeMethods = {
         : this._stDisplay(kind, invKey, weapon),
       askPrice: p,
       createdAt: now,
+      ...(rid ? { reqId: rid } : {}),   /* v2.3.5194: the request that made it (reqonce.js) */
       expiresAt: now + STORE.LISTING_EXPIRY,
       bidSeq: 0,
       topBid: null,
