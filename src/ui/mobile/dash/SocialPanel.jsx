@@ -4,6 +4,7 @@ import { getFriendRows, lastSeenText, getBlocked, removeFriend as modelRemove, b
 import { friendPortrait } from '../sheet/friendPortraits.js';
 import { friendsSrv } from '../sheet/friendsSync.js';            /* v2.3.1324 */
 import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
+import { act } from '@/game/actions.js';   /* v2.3.5191: the page's requests leave through the action door (card K PR 7) */
 
 /* v2.3.1232: Lantern Slate pass.  v2.3.1297 (round-5): Blocked behind
    overflow, inline action strip, honest empty/reconnect states.
@@ -127,7 +128,7 @@ export const SocialPanel = () => {
   const reqOut = doc ? Object.keys(doc.reqOut) : [];
 
   const sendFriend = (event, payload) => {
-    try { if (S && S.channel) S.channel.send({ type: 'broadcast', event, payload }); } catch (_e) {}
+    try { if (S && S.channel) act(event, payload); } catch (_e) {}   /* v2.3.5191: through the action door (actions.js) */
   };
 
   const allRows = getFriendRows(S);
@@ -164,7 +165,7 @@ export const SocialPanel = () => {
   const invite = (fid) => {
     try {
       if (S && S.channel) {
-        S.channel.send({ type: 'broadcast', event: 'party_invite', payload: { target: fid } });
+        act('party_invite', { target: fid });   /* v2.3.5191: through the action door (actions.js) */
       }
     } catch (_e) {}
     setOpenRow(null);

@@ -1,6 +1,6 @@
 card: T
-branch: claude/plan-t-7-cold (one branch a PR, each begun from main once the one before merged)
-prs: #1754, #1768, #1816, #1817, #1837, #1863 (5301-5306, merged); #1889 (5307, ready)
+branch: claude/plan-t-9-reads1 (one branch a PR, each begun from the one before)
+prs: #1754, #1768, #1816, #1817, #1837, #1863, #1889 (5301-5307, merged); #1935 the `on` days (5308, ready); 5309 reads moved (ready, on #1935)
 state: ready
 
 ## Done
@@ -13,13 +13,13 @@ state: ready
   needs and readers (check 11); the thrown run (thrown.mjs, a preload).
 - PR 5 (5305, #1837): the end date (`on`, `--due`, the fallback hold).
 - PR 6 (5306, #1863): the page's one reader, src/game/switches.js; its guard.
+- 5307 (#1889): the thrown run's preload changes nothing by itself.
 
 ## Next
 
-- #1889 (5307): the thrown run's preload changes nothing by itself (a module
-  hook; no early load, no game function replaced): every server suite
-  passes with a flag nothing reads (`--none`), two canaries on every PR.
-  The planning session's finding. Then the reads moved (5308 on).
+- 5309: nine reads moved (quests, skills, economy, townsfolk, audio); the
+  outside line 221 -> 212 (5308 also sets
+  `arenadoor`, sitting 21, to 2026-11-17). Then 5310: ui and world reads in free files.
 
 ## Found
 
@@ -37,4 +37,4 @@ state: ready
 
 ## Needs
 
-- The gatekeeper: #1889 (first in sitting 19).
+- The gatekeeper: #1935 (5308), then 5309 on it (sitting 21).

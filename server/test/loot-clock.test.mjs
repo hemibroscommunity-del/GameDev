@@ -185,7 +185,7 @@ check('5a the pet vacuum asks mayAsk, with the player\'s dying (it asked through
   !!petBlock && /mayAsk\(loot, S\.myId, Date\.now\(\), \{ dying: !!S\._dying \}\)/.test(petBlock));
 check('5b ...and keeps no copy of the recipient gate', !!petBlock && !/_petFFA/.test(petBlock) && !/recipients\.includes/.test(petBlock));
 check('5c the hand asks mayAsk before it sends', /mayAsk\(loot, S\.myId, Date\.now\(\), \{ dying: !!S\._dying \}\)/.test(gl)
-  && gl.indexOf('mayAsk(loot, S.myId') < gl.indexOf("type: 'loot_pickup'"));
+  && gl.indexOf('mayAsk(loot, S.myId') < gl.indexOf("act('loot_pickup'"));   /* v2.3.5188: the send goes through the action door (act) */
 check('5d ...and reads whose pile it is from the same rule', /amLootRecipient\(loot, S\.myId, Date\.now\(\)\)/.test(gl) && !/var _deathFFA/.test(gl));
 check('5e both import game/lootAsk.js', /from '@\/game\/lootAsk\.js'/.test(gl) && /from '@\/game\/lootAsk\.js'/.test(bt));
 

@@ -20,6 +20,7 @@
 /* v2.3.3401: relative, so the bake (tools/world/bake-wheel-spawns.mjs, in
    Node) keeps tall things out of the way of each tree as it is drawn */
 import { TREE_ART, TREE_ART_V } from '../data/treeArt.js';
+import { sw } from './switches.js';   /* v2.3.5309: the page's one reader (card T) */
 
 /* 2 picture px a game px (public/tools/style/bible.js PIXEL.gamePxPerArtPx) */
 export const TREE_PX = 0.5;
@@ -152,7 +153,7 @@ export function treeReachBox(node) {
    behind `?fade` there).  `?treefade=0` keeps them solid. */
 export const TREE_SEE_ALPHA = 0.42, TREE_SEE_MS = 110;
 export const TREE_FADE = (() => {
-  try { return !/(^|[?&])treefade=0(&|$)/.test(window.location.search || ''); } catch (e) { return true; }
+  return !sw('treefade');
 })();
 /** True when someone whose boots are at (px, fy) and whose body is bodyH tall
  *  stands behind this tree with its crown over them. */

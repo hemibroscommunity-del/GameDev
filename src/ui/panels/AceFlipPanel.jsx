@@ -6,6 +6,7 @@ import { portraitDataUrl, portraitOptsFromPeer, portraitHasSubject } from '@/ren
 import { thumbFor, ITEM_NAMES, TICKET_KEY_PREFIX } from '@/ui/mobile/dash/InventoryPanel.jsx';
 import { peerCosmeticsFromWire } from '@/networking/peerCosmetics.js';
 import { npcArtUrl } from '@/rendering/npcSprites.js';   /* v2.3.3580: his head, a Hemi Bros portrait now, at the townsfolk's cache-bust */
+import { act } from '@/game/actions.js';   /* v2.3.5190: the page's requests leave through the action door (card K PR 7) */
 
 /* ═══ v2.3.2618: ACE'S COIN FLIP ═══
  *
@@ -293,7 +294,7 @@ export function AceFlipPanel() {
        the worker can answer */
     try { BT_AUDIO.sfxAhead('flip'); } catch (_a) { /* sound only */ }
     try {
-      st.channel.send({ type: 'broadcast', event: 'ace_flip_request', payload: { stake: stake } });
+      act('ace_flip_request', { stake: stake });   /* v2.3.5190: through the action door (actions.js) */
       try { BT_AUDIO.play(TOSS_SFX, TOSS_OPTS); } catch (_s) { /* never hold a bet on a sound */ }
     } catch (e) { aceFlipBus.setPending(false); }
   };
@@ -326,7 +327,7 @@ export function AceFlipPanel() {
     aceFlipBus.setPending(true);
     try { BT_AUDIO.sfxAhead('flip'); } catch (_a) { /* sound only (v2.3.5006, as the gold flip's) */ }
     try {
-      S.channel.send({ type: 'broadcast', event: 'ace_item_flip_request', payload: { items: out } });
+      act('ace_item_flip_request', { items: out });   /* v2.3.5190: through the action door (actions.js) */
       try { BT_AUDIO.play(TOSS_SFX, TOSS_OPTS); } catch (_s) { /* never hold a bet on a sound */ }
     } catch (e) { aceFlipBus.setPending(false); }
   };
@@ -341,7 +342,7 @@ export function AceFlipPanel() {
            join and after each flip, so another player's record set while this
            dialog sat open would otherwise not be here. */
         if (id === 'records' && itemsOk && S && S.channel) {
-          try { S.channel.send({ type: 'broadcast', event: 'ace_board_request', payload: {} }); } catch (e) {}
+          try { act('ace_board_request', {}); } catch (e) {}   /* v2.3.5190: through the action door (actions.js) */
         }
       },
       style: {

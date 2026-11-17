@@ -44,6 +44,7 @@ import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js';
 import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: traps made, and the pet's ward, heard */
 import { NOISE_OF } from '@/game/monsterNoises.js';   /* v2.3.3434: a pet answers in its kind's voice */
 import { MONSTER_NOISE_CLIPS } from '@/data/monsterNoiseClips.js';
+import { act } from '@/game/actions.js';   /* v2.3.5188: the page's requests leave through the action door (card K PR 7) */
 
 /* ── the shakes, drawn by trapFx.js and timed here (the popups, the sounds
    and the card wait for the animation they belong to) ── */
@@ -162,7 +163,7 @@ export function armTrap(S) {
     return false;
   }
   if (v.kind !== 'ready' || !S.channel) return false;
-  try { S.channel.send({ type: 'trap_arm', payload: { monsterId: v.monsterId } }); } catch (e) { return false; }
+  try { act('trap_arm', { monsterId: v.monsterId }); } catch (e) { return false; }   /* v2.3.5188: through the action door (actions.js) */
   trapState(S).pending = { monsterId: v.monsterId, at: Date.now() };
   S._trapArms = (S._trapArms || 0) + 1;
   bump(S);

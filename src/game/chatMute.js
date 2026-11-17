@@ -26,6 +26,8 @@
    feature, and against a new one they are a harmless second filter over
    a stream the worker has already filtered. */
 
+import { act } from './actions.js';   /* v2.3.5188: the action door (card K PR 7), its only import: it has none of its own, so node still reads this file */
+
 var MUTE_KEY = 'bt_muted';
 /* One-time upload of mutes made before this browser ever met a
    chatMute-capable worker — the friends `bt_friendsMigrated` precedent.
@@ -158,10 +160,7 @@ var _kept = new Map();   /* targetId -> { on, name, sent } */
 
 function _sendMute(S, targetId, on, name) {
   try {
-    return S.channel.send({
-      type: 'broadcast', event: 'chat_mute',
-      payload: { target: targetId, on: !!on, name: name || '' },
-    }) === true;
+    return act('chat_mute', { target: targetId, on: !!on, name: name || '' }) === true;   /* v2.3.5188: through the action door (actions.js) */
   } catch (e) { return false; }
 }
 
@@ -189,10 +188,7 @@ export function setMuted(S, targetId, on, name) {
 export function reportPlayer(S, targetId, reason) {
   if (!targetId || !chatMuteSettled(S)) return false;
   try {
-    S.channel.send({
-      type: 'broadcast', event: 'chat_report',
-      payload: { target: targetId, reason: reason || 'other' },
-    });
+    act('chat_report', { target: targetId, reason: reason || 'other' });   /* v2.3.5188: through the action door (actions.js) */
   } catch (e) { return false; }
   return true;
 }
@@ -232,10 +228,7 @@ export function applyServerMuteList(payload, S) {
     for (var j = 0; j < local.length && sent < MIGRATE_MAX; j++) {
       if (byId[local[j]]) continue;
       try {
-        S.channel.send({
-          type: 'broadcast', event: 'chat_mute',
-          payload: { target: local[j], on: true, name: '' },
-        });
+        act('chat_mute', { target: local[j], on: true, name: '' });   /* v2.3.5188: through the action door (actions.js) */
       } catch (e) {}
       sent++;
       /* Keep it locally until the worker's echo confirms it, so the
