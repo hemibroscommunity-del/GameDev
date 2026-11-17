@@ -55,7 +55,26 @@ byte for byte. `ride-door.test` 24/0. The `ride` row `todo` -> `door`
 ## MOD #1941 (tag 5625): the freeze's devices, words outside the lanes, the name fold
 
 Head 9d91841f0ca7f6deb4637d4393122b8accc3c21e, base `main`, one merge
-base. MOD_RESULT
+base. Nothing stored changes shape (`_frozenL` is memory only). The
+server's name fold and the page's are the same code and agree on every
+probe. A device with no `device:` record falls back to `auth.devs`.
+`silence`, `charname`, `mirror-audit` green. **Not held:** the two
+freeze findings bite only with the owner's lever `freezedevice` thrown,
+and it is OFF (unset). Sent to MOD, to fix before the lever is ever asked:
+
+- `silence.js` ~256 with `botfp.js` ~258: the `device:` record keeps the
+  last 8 characters and drops any not seen in 30 days, so the owner's
+  test-mode character can fall off a phone's record, and that phone is
+  then held (probe: 8 test alts on one computer, one frozen, the owner's
+  other alt refused `frozen`).
+- The row says "refuses any NEW character"; `_frozenDeviceIs` never asks
+  whether the character is new. A friend's existing character on a phone
+  the frozen player once used with a new key is refused (it was not
+  before #1941).
+- `together` (reservednames.js ~88, charName.js ~56): cl->d runs before
+  l->i, so "Officlal" passes while "Offlcial" is refused (a miss, both
+  sides agree).
+- MOD's status dropped the name rule's lows from Next without a word.
 
 ## O #1937 (tag 5238, 14d): the clip
 
