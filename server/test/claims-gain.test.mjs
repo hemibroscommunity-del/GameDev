@@ -41,8 +41,8 @@ import * as B from './claimbots.mjs';
 const BAR = 1.5;
 /* today's gains (main 82fb78d, the default seed): a line only falls */
 const LINES = {
-  reach: 1.42, bowlabel: 1.6, guard: 1.37, cookshield: 0.67, move: 1.17, harvest: 1.86, cook: 1.59, quest: 1, sale: 1, local: 1,
-};   /* v2.3.5727: bowlabel 3.3 -> 1.6 (`bowshot` ON, card K2 PR 8: decided for the owner while away, 2026-11-17); v2.3.5551: reach 2.96 -> 1.42 (`swordswing` ON), move 2.56 -> 1.17 (`movetop` ON): the owner's yes, 2026-11-17; v2.3.5550: bowlabel 3.76 -> 3.3 (the flicking archer, an honest way the free-swing trial plays); v2.3.5541: move 4.35 -> 2.56 (the sprint mark, ON: the run goes on through the grace, and the sprint's bound only for what is billed; review-z16) */
+  reach: 1.42, bowlabel: 1.6, guard: 1.37, cookshield: 0.67, move: 1.17, harvest: 1.86, cook: 0, quest: 1, sale: 1, local: 1,
+};   /* v2.3.5727: bowlabel 3.3 -> 1.6 (`bowshot` ON) and cook 1.59 -> 0 (`cookstart` ON), card K2 PR 8: decided for the owner while away, 2026-11-17; v2.3.5551: reach 2.96 -> 1.42 (`swordswing` ON), move 2.56 -> 1.17 (`movetop` ON): the owner's yes, 2026-11-17; v2.3.5550: bowlabel 3.76 -> 3.3 (the flicking archer, an honest way the free-swing trial plays); v2.3.5541: move 4.35 -> 2.56 (the sprint mark, ON: the run goes on through the grace, and the sprint's bound only for what is billed; review-z16) */
 /* each gain's spread over five other seeds (CLAIMS_SEED=a..e, --gains:
    the highest less the lowest, rounded up), measured 2026-11-14.  A gain
    fails only past its line by more than its spread, so a change elsewhere in
@@ -104,7 +104,7 @@ const CLAIMS = [
     take: 'ore', world: { tickMs: 200, recs: () => ({ bp_bench_h: B.harvestRec() }) },
     honest: [['a phone\'s grades (45% perfect, 44% good: the bot lab\'s guess)', B.harvester, { mix: PHONE_MIX }], ['a computer holding E (never perfect)', B.harvester, { mix: { perfect: 0, good: 1 } }]],
     liar: ['every strike perfect, at the earliest the worker takes it', B.harvester, { liar: true }] },
-  { id: 'cook', what: 'the cook\'s result', judge: 'the phone\'s `kind` on `cook_request` (cooking.js): no fire, no start and no gesture are asked of it, only 45 a minute and 2,400 an hour',
+  { id: 'cook', what: 'the cook\'s result', judge: 'the phone\'s `kind` on `cook_request` (cooking.js): with `cookstart` (ON since v2.3.5727) only on the plan its start rolled, once, no sooner than its hits and the gesture; 45 a minute and 2,400 an hour',
     take: 'cooked', world: { tickMs: 1000, recs: () => ({ bp_bench_c: B.cookRec() }) }, minutes: 60,
     honest: [['the honest cook: a fire, the start, its hits and the gesture', B.cook, {}]],
     liar: ['`cook_request` alone, at 45 a minute', B.cook, { liar: true }] },
@@ -303,26 +303,31 @@ if (!GAINS_ONLY) {
   check(`2f: the bow's liar: gain ${br.gain} off, ${gOn.toFixed(2)} with \`bowshot: true\` (its line ${BOWSHOT_LINE}, the bar ${BAR}; the rest is the bow's reach)`, gOn <= BOWSHOT_LINE + SPREAD.bowlabel && gOn < gOff, { on: gOn, off: gOff });
 }
 /* v2.3.5553 (card K, step 4.2): A COOK IS A COOK THE WORKER STARTED
-   (cooking.js _cookStartTake; an opt-in, `cookstart: true`, the owner's to
-   turn on).  With it on, the honest cook takes what it took and meets no
-   refusal on any disturbance; the liar it meets -- the start, then the
-   result at the plan's quickest, no fire and no gesture -- and its gain. */
+   (cooking.js _cookStartOk / _cookStartTake).  ON since v2.3.5727 (card K2
+   PR 8; the owner, 2026-11-17: "Go recommended on all"), so its off side is
+   explicit here (`cookstart: false`), as 2f's `bowshot`.  With it on, the
+   honest cook takes what it took off and meets no refusal on any
+   disturbance; the liar it meets -- the start, then the result at the plan's
+   quickest, no fire and no gesture -- and its gain. */
 if (!GAINS_ONLY) {
   const cc = CLAIMS.find((c) => c.id === 'cook');
-  const cr = rows.find((r) => r.c.id === 'cook');
   const ms = (cc.minutes || GAIN_MIN) * B.MIN;
-  const ON = { cookstart: true };
+  const ON = { cookstart: true }, OFF = { cookstart: false };
   const h = cc.honest[0];
+  const offRun = await runBot(cc, h, { ms, flags: OFF });
+  const vOff = perHour(cc, valueOf(cc, offRun.take), offRun.ms);
   const r = await runBot(cc, h, { ms, flags: ON });
   const v = perHour(cc, valueOf(cc, r.take), r.ms);
   const refused = [...r.refusals.slice(0, 1)];
   for (const d of DISTURBANCES) { const x = await runBot(cc, h, { d, ms: DIST_S * 1000, flags: ON }); if (x.refusals.length) refused.push(d.id + ': ' + x.refusals[0]); }
-  check(`2h: \`cookstart: true\`: the honest cook takes what it took (${Math.round(v)} an hour, off ${Math.round(cr.best.v)}) and meets no refusal on any disturbance`, Math.round(v) === Math.round(cr.best.v) && !refused.length, { refused: refused.slice(0, 4) });
+  check(`2h: \`cookstart: true\`: the honest cook takes what it took (${Math.round(v)} an hour, off ${Math.round(vOff)}) and meets no refusal on any disturbance`, Math.round(v) === Math.round(vOff) && !refused.length, { refused: refused.slice(0, 4) });
+  const bareOff = await runBot(cc, cc.liar, { ms, flags: OFF });
+  const gOff = perHour(cc, valueOf(cc, bareOff.take), bareOff.ms) / Math.max(vOff, 1e-9);
   const bare = await runBot(cc, cc.liar, { ms, flags: ON });
   const lOn = await runBot(cc, ['the liar, a start before each result, at the plan\'s quickest', B.cook, { liar: true, start: true }], { ms, flags: ON });
   const gBare = perHour(cc, valueOf(cc, bare.take), bare.ms) / Math.max(v, 1e-9);
   const gOn = perHour(cc, valueOf(cc, lOn.take), lOn.ms) / Math.max(v, 1e-9);
-  check(`2h: the cook's liar: gain ${cr.gain} off; with \`cookstart: true\` the bare request ${gBare.toFixed(2)}, the started one ${gOn.toFixed(2)} (the bar ${BAR})`, gOn <= BAR && gBare < 0.05, { bare: gBare, on: gOn });
+  check(`2h: the cook's liar: gain ${gOff.toFixed(2)} with \`cookstart: false\`; with it on the bare request ${gBare.toFixed(2)}, the started one ${gOn.toFixed(2)} (the bar ${BAR})`, gOn <= BAR && gBare < 0.05 && gOff > gBare, { bare: gBare, on: gOn, off: gOff });
 }
 for (const r of rows) {
   const line = LINES[r.c.id];
