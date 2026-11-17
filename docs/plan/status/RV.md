@@ -1,18 +1,18 @@
 card: RV
 branch: claude/rv-review
-prs: PR 1 (5800, ready once pushed)
-state: working
+prs: #2072 (5800, ready)
+state: ready
 
 ## Done
 
-- PR 1 (5800): the review, `docs/plan/census/RV-review.md`: every road
+- #2072 (5800): the review, `docs/plan/census/RV-review.md`: every road
   of GOLD_ROADS (47), BAG_ROADS (71), STASH_ROADS (36), PLAYER_ROADS (14)
   and ESCROW_PLACES (12), every account and social row of the wire table.
   Findings: 2 high (market.js), 6 medium, the rest low. No code.
 
 ## Next
 
-- PR 2 (5801): `market.js`, MS-2 and MS-4 (`mkttier`, `mktheal`).
+- PR 2 (5801): `market.js`, MS-2 and MS-4 (`mkttier`, `mktheal`), started.
 
 ## Found
 
