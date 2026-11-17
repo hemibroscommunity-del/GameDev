@@ -18,9 +18,8 @@ state: ready
 - PR 8 (5808): loginkeys.js SEC-F5 (`oldkeyheld`).
 - PR 9 (5809): MS-5, MS-6 (`offerpend`, `leftoverheal`).
 - PR 11 (5811): friends.js ACC-5, SEC-F4 (`friendfix`).
-- PR 14 (5814): S6, S7 (`cleanmore`, `namestaff`). PR 15 (5815): `rewindsays`.
-- PR 16 (5816) pass words; 13 (5813) jackpot; 18 (5818) the sum's buy leg;
-  17 (5817) `/mine`'s bids to the asker only (`minebids`, the planner's a).
+- 14 (5814) `cleanmore`, `namestaff`; 15 `rewindsays`; 16 pass words;
+  13 jackpot; 18 the sum's buy leg; 17 `/mine`'s bids to the asker (`minebids`).
   Then S3 and `track` (after card L's index.js).
 
 ## Found
