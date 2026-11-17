@@ -31,26 +31,28 @@ of `main` since, and its row's move, read here). Documents and tools (step
 - The live flags: `mkttier`, `mktheal` (RV #2083), `ceilfair` (K2
   #2081), `framesteps` (M #2089): rows apart in `switches.mjs`; merged
   clean in this order.
-- `docs/plan/status/U2.md`, `status/M2.md`: see the list's lines 7 and 15.
+- `docs/plan/status/U2.md`, `status/M2.md`: see the list's lines 9 and 15.
 
 ## Heads, merge bases and trees
 
 Every listed PR is based on `main` (`base.ref`), open, not a draft (M
 #2089 was marked ready at the close), with one merge base at every step
 (`git merge-base --all`, each against `main` with the PRs above it merged
-in as merge commits). The tree after each merge:
+in as merge commits). K2 first (the planning session: #2081 mends the
+flood-ceiling race that failed main's deploy of sitting 41's batch,
+8b8b5a87, Found (q)). The tree after each merge:
 
-1 V2 #2076 01aae45d49764d0deadee934f83275be9b19cfb6 -> 43fa0615c6550a45ff60608f1106d546d4244877 (base bdfa8734)
-2 V2 #2077 226899899b16bc4f70cdd414994d1a2dcd270b43 -> 27561b80188a6a7572e3c869690fbb3ac67a9fc4 (base 01aae45d)
-3 V2 #2078 a358c41403f5bec7cd4a61c9fa8e4ac6cfccb4da -> 5d52e05e655d401b5f1c03c8b518f9608278339d (base 22689989)
-4 V2 #2079 cfb1bfebf7364a11c6404a99cb9369d87b17157a -> f265d1c7986bff19f284c769d69a9bf07e6b9618 (base a358c414)
-5 V2 #2080 159ee39645dd041442cd1240569e7ac4afe81530 -> db5be342b64660e3a63dbab40ea04dd3e2255692 (base cfb1bfeb)
-6 U2 #2074 0476ecf1ea385df90bdeec91b11c8b09e44319de -> e1dd22a5ccade15cb35097dc3f7e1836a814007a (base bdfa8734)
-7 U2 #2082 1a8d5af1410d9abb74eae5f23295b3f246845f54 -> 2ef8a4d7df7b164b9c96b475696bc1f2bd484cc4 (base 0476ecf1)
-8 RV #2072 7ffbf8bbd9fa8003f73371abab86e60158b6f065 -> 4232192f72ef55f754f9dab4ad6f5f9ca5794aa7 (base bdfa8734)
-9 RV #2083 9eda755913ed864cf1912d6940fbcd30ab546168 -> 5d6197dbafd555576c3fc42f5a405841158022f3 (base 7ffbf8bb)
-10 K2 #2073 bb37229db1fb08f39d8f4439b34118f37b154a41 -> 339cf732c7b641c36299697b5b5806aaafaef106 (base bdfa8734)
-11 K2 #2081 bc3bbdae5d2b73395d956c462a5f79498b59c9fb -> c9108e9fac68879f317f9f3ed750a5f671da80e6 (base bb37229d)
+1 K2 #2073 bb37229db1fb08f39d8f4439b34118f37b154a41 -> fdcffef02ee0625c9544409aa13e555ac89ba8df (base bdfa8734)
+2 K2 #2081 bc3bbdae5d2b73395d956c462a5f79498b59c9fb -> 893b4f6bac028265b09542138752336667a3319c (base bb37229d)
+3 V2 #2076 01aae45d49764d0deadee934f83275be9b19cfb6 -> 9a05e91d5dcaf6e198e415ba9332fef9bb7ce6de (base bdfa8734)
+4 V2 #2077 226899899b16bc4f70cdd414994d1a2dcd270b43 -> a72dfefe0e50403835fc9a044139d16334dadb28 (base 01aae45d)
+5 V2 #2078 a358c41403f5bec7cd4a61c9fa8e4ac6cfccb4da -> 105146f5146d9d534c19dfbdc55b2df8c8a67e7d (base 22689989)
+6 V2 #2079 cfb1bfebf7364a11c6404a99cb9369d87b17157a -> 8afdd88dbb9778d5d0fb966620ff5739d6c51ea8 (base a358c414)
+7 V2 #2080 159ee39645dd041442cd1240569e7ac4afe81530 -> 4579f4f092f0a46cc681ec834cbfa2b464a8e587 (base cfb1bfeb)
+8 U2 #2074 0476ecf1ea385df90bdeec91b11c8b09e44319de -> 35ce839317da6ea7861d66db7f0e5e5a85677d32 (base bdfa8734)
+9 U2 #2082 1a8d5af1410d9abb74eae5f23295b3f246845f54 -> 66da3734d4381973c97ad86f0eeb75c8f8afeb23 (base 0476ecf1)
+10 RV #2072 7ffbf8bbd9fa8003f73371abab86e60158b6f065 -> c14467b00974710758d9b3ef19542ae8f57e3676 (base bdfa8734)
+11 RV #2083 9eda755913ed864cf1912d6940fbcd30ab546168 -> c9108e9fac68879f317f9f3ed750a5f671da80e6 (base 7ffbf8bb)
 12 T2 #2071 fd0c7b9203a18eba25e7e328e64413b24d2b4ba0 -> 580837b507b95a88f00ad16ef46656879b291bd8 (base bdfa8734)
 13 T2 #2075 996f5e7ba8e2c73316910990d4ca9a729bc8dcdc -> 6e3844226f85ab3deb43f1e729098434eab4a319 (base fd0c7b92)
 14 T2 #2087 af969303ed52c355444f8a0e3581655ad4d262ad -> 321864d7c27e7bd55a608d2f1ab8de4a61940bf5 (base 996f5e7b)
