@@ -41,8 +41,9 @@
 import { clientOffAtLoad } from '../game/clientOff.js';   /* v2.3.3755; v2.3.3770: relative, so node's checks can load it (check-hairmask-parity imports the renderer) */
 import { Cache, Texture } from 'pixi.js';
 import { laterRounds, RETRY_LATER_MS, RETRY_ROUNDS } from './retryLooks.js';   /* v2.3.4452: a blank chip copy's restore asked for again */
+import { pageAddress } from '../game/switches.js';   /* v2.3.5313: the page's one reader (card T) */
 
-const _q = (() => { try { return typeof location !== 'undefined' ? (location.search || '') : ''; } catch (e) { return ''; } })();
+const _q = pageAddress();
 /* v2.3.3715: on by default (the owner, 2026-10-28: "I think including the new
    memory change work by default would be better. I can always revert the
    change if I don't like it or it doesn't work well."); `?onecopy=0` is the

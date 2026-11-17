@@ -49,6 +49,9 @@ const GEAR_FIELDS = ['armor', 'legsArmor', 'shield', 'amulet', 'weapon', 'ranged
    own gid (stash.js): counted by id, as gear is, in one place */
 const STASH_FIELDS = ['weaponStash', 'armorStash', 'legsStash', 'shieldStash', 'gearStash', 'amuletStash'];
 /* a weapon held in a place, by its id (v2.3.5282) */
+/* v2.3.5296: a stamp on file (count() sets ctx.stamped from the store; a
+   paged count without one reads every stamp as absent, as before) */
+const stampedAt = (ctx, opId) => !!(ctx && typeof ctx.stamped === 'function' && ctx.stamped(opId));
 const holdWeapon = (ctx, w, where) => { if (w && typeof w === 'object' && typeof w.gid === 'string' && w.gid) ctx.ids.push(['gear', w.gid, where]); };
 function holdGear(ctx, rec, where) {
   for (const f of GEAR_FIELDS) { const p = rec && rec[f]; if (p && typeof p === 'object' && typeof p.gid === 'string' && p.gid) ctx.ids.push(['gear', p.gid, where]); }
@@ -93,15 +96,33 @@ export const READERS = {
        sale's item leg is stamped paid (market.js _mktSettleRun: the weapon
        is the buyer's now; the record goes when every leg is): as a listing's
        `goodsPaid` (the gatekeeper's sitting 23, its worldsum.js:90 low) */
-    const paid = !!(v && v.settle && typeof v.id === 'string' && ctx.stamped && ctx.stamped('settle:' + v.id + ':item'));
-    if (v && v.type === 'sell' && !paid) holdWeapon(ctx, v.item, key);
+    /* v2.3.5296 (card R PR 16; the gatekeeper's sitting 25, low 3): the
+       stamp is read whether the sale carries a note or not (`mktsettle:
+       false` pays the legs by the same opIds, the order still on file until
+       its delete); and a BUY order a sell taker crossed holds the taker's
+       weapon only in its note (legs[0]), until that leg is paid */
+    if (!v) return;
+    const paid = typeof v.id === 'string' && stampedAt(ctx, 'settle:' + v.id + ':item');
+    if (paid) return;
+    if (v.type === 'sell') holdWeapon(ctx, v.item, key);
+    else if (v.type === 'buy' && v.settle && Array.isArray(v.settle.legs) && v.settle.legs[0] && v.settle.legs[0].leg === 'item') holdWeapon(ctx, v.settle.legs[0].weapon, key);
   },
   'store_listing:': (ctx, key, v) => {
     if (!v) return;
-    if (v.kind === 'item' && typeof v.invKey === 'string' && !(v.sale && v.sale.goodsPaid)) add(ctx.goods, v.invKey, Math.max(0, Math.floor(Number(v.qty) || 0)));
-    if (v.kind === 'gear' && v.gear && typeof v.gear.gid === 'string') ctx.ids.push(['gear', v.gear.gid, key]);
-    if (v.kind === 'weapon' && !(v.sale && v.sale.goodsPaid)) holdWeapon(ctx, v.weapon, key);   /* v2.3.5282 */
-    if (v.kind === 'pet' && v.pet && typeof v.pet.id === 'string') ctx.ids.push(['pet', v.pet.id, key]);
+    /* v2.3.5296 (card R PR 16; the gatekeeper's sitting 25, low 1): nothing
+       in src/ writes `sale.goodsPaid`, so the listing's goods were counted
+       until its delete even once they were paid out.  The goods have left
+       once their stamp is on file: the buyer's (`store:<id>:goods`,
+       store.js's settle) or the seller's own back (`store:<id>:refund`,
+       _stRelease) -- every kind of goods, not the weapon alone */
+    const gone = !!(v.sale && v.sale.goodsPaid) || (typeof v.id === 'string'
+      && (stampedAt(ctx, 'store:' + v.id + ':goods') || stampedAt(ctx, 'store:' + v.id + ':refund')));
+    if (!gone) {
+      if (v.kind === 'item' && typeof v.invKey === 'string') add(ctx.goods, v.invKey, Math.max(0, Math.floor(Number(v.qty) || 0)));
+      if (v.kind === 'gear' && v.gear && typeof v.gear.gid === 'string') ctx.ids.push(['gear', v.gear.gid, key]);
+      if (v.kind === 'weapon') holdWeapon(ctx, v.weapon, key);   /* v2.3.5282 */
+      if (v.kind === 'pet' && v.pet && typeof v.pet.id === 'string') ctx.ids.push(['pet', v.pet.id, key]);
+    }
     if (v.topBid && Number(v.topBid.amount) > 0) ctx.gold += Math.floor(Number(v.topBid.amount));
     for (const o of Object.values(v.offers || {})) if (o && Number(o.gold) > 0) ctx.gold += Math.floor(Number(o.gold));
     if (v.sale && v.sale.paid && !v.sale.goldPaid) ctx.gold += Math.max(0, Math.floor(Number(v.sale.price) || 0));
@@ -111,7 +132,16 @@ export const READERS = {
   'arena_stake:': (ctx, key, v) => { ctx.gold += Math.max(0, Math.floor(Number(v && v.amount) || 0)); },
   'bounty:': (ctx, key, v) => { ctx.gold += Math.max(0, Math.floor(Number(v && v.amount) || 0)); },
   'jackpot:draw': (ctx, key, v) => { ctx.gold += Math.max(0, Math.floor(Number(v && v.pool) || 0)); },
-  'trade2wpn:': (ctx, key, v) => { holdWeapon(ctx, v && v.weapon, key); /* v2.3.5282: a weapon in a trade window, or owed after it, by its id */ },
+  'trade2wpn:': (ctx, key, v) => {
+    /* v2.3.5282: a weapon in a trade window, or owed after it, by its id.
+       v2.3.5296 (card R PR 16; sitting 25, low 2): not once it is delivered
+       or refunded -- its stamp on file, the record not yet deleted
+       (trade2.js: credit first, delete last) */
+    if (!v) return;
+    const tail = ':' + v.pid + ':' + v.seq;
+    if (typeof v.sid === 'string' && (stampedAt(ctx, 'trade2:' + v.sid + ':wpndeliver' + tail) || stampedAt(ctx, 'trade2:' + v.sid + ':wpnrefund' + tail))) return;
+    holdWeapon(ctx, v.weapon, key);
+  },
   'death_pile:': (ctx, key, v) => {
     /* a pile is counted once: from the ground while the room holds it, from
        its row only before the room has restored it */

@@ -134,9 +134,15 @@ export const KNOBS = Object.freeze({
   },
   caches: {
     what: 'the caches\' caps, as a share of each cache\'s own (docs/BUDGETS.md part 3)',
-    steps: Object.freeze([1]),
-    say: Object.freeze(['Every cache holds what its own cap allows']),
-    reader: { files: Object.freeze(['src/rendering/lookPalette.js', 'src/rendering/gearNumbers.js', 'src/rendering/systems/entityRenderer.js', 'src/rendering/cacheBytes.js']), moved: false }, pr: 11, switch: '', system: 'look',
+    steps: Object.freeze([1, 0.5]),
+    say: Object.freeze(['Every cache holds what its own cap allows', 'A full memory: each cache holds half its own cap, its oldest let go']),
+    /* v2.3.5231 (card O PR 11): read where a cap frees memory -- the
+       walking armour's sheets and frames (gearNumbers.js), the masked body
+       frames (maskedEvict.js, entityRenderer.js's cache).  Not
+       lookPalette.js's DIR_CAP (the atlas's 8 KB directory: fewer slots free
+       nothing and send later sheets to a texture each) nor cacheBytes.js
+       (the art line's counting rule, no cap): the spec, "Not here". */
+    reader: { files: Object.freeze(['src/rendering/gearNumbers.js', 'src/rendering/maskedEvict.js']), moved: true }, pr: 11, switch: '', system: 'look',
   },
   step: {
     what: 'the longest step, in ms, one frame may move the world (frameClock.js SMOOTH_MAX_MS, handed in; the loop\'s clamp): three of the lane\'s frames',
@@ -192,6 +198,15 @@ export const AXES = Object.freeze({
   pixels: Object.freeze([
     Object.freeze({ knob: 'pixels', to: 1 }),
     Object.freeze({ knob: 'pixels', to: 2 }),
+  ]),
+  /* v2.3.5231 (card O PR 11; the planner's, 2026-11-17): THE MEMORY'S OWN
+     AXIS -- a full memory frees caches, then the crowd, never resizes; a
+     late frame never takes it (the work axis is the work's).  The crowd's
+     rungs are the work axis's too: a knob takes the deeper of its axes. */
+  mem: Object.freeze([
+    Object.freeze({ knob: 'caches', to: 1 }),
+    Object.freeze({ knob: 'crowd', to: 1 }),
+    Object.freeze({ knob: 'crowd', to: 2 }),
   ]),
 });
 export const AXIS_NAMES = Object.freeze(Object.keys(AXES));
@@ -383,7 +398,7 @@ export function drawLane(cls) {
 }
 
 /* ── v2.3.5222: the rung, the governor's alone ── */
-const ROW = Object.freeze({ work: 0, chip: 0, pixels: 0 });
+const ROW = Object.freeze({ work: 0, chip: 0, pixels: 0, mem: 0 });
 /* the governor's (setRung): rungs taken on each axis.  v2.3.5222 (the
    gatekeeper's sitting 12): a property of a module object, not a module
    `let` -- card L's phase guard reads a door's writes off the syntax tree as
@@ -468,12 +483,13 @@ export function rungDepth(r) {
 /** THE ONE WRITER of the rung: the governor's (framePacer.js), never another
  *  file's.  Each axis held to its rungs.  Subscribed knobs are told.
  *  v2.3.5225: three axes (the pixels' own). */
-export function setRung(work, chip, pixels) {
+export function setRung(work, chip, pixels, mem) {
   const w = Math.max(0, Math.min(AXES.work.length, Math.floor(Number(work) || 0)));
   const c = Math.max(0, Math.min(AXES.chip.length, Math.floor(Number(chip) || 0)));
   const p = Math.max(0, Math.min(AXES.pixels.length, Math.floor(Number(pixels) || 0)));
-  if (w === LANE._rung.work && c === LANE._rung.chip && p === LANE._rung.pixels) return LANE._rung;
-  LANE._rung = w === 0 && c === 0 && p === 0 ? ROW : Object.freeze({ work: w, chip: c, pixels: p });
+  const m = Math.max(0, Math.min(AXES.mem.length, Math.floor(Number(mem) || 0)));   /* v2.3.5231: the memory's own */
+  if (w === LANE._rung.work && c === LANE._rung.chip && p === LANE._rung.pixels && m === (LANE._rung.mem | 0)) return LANE._rung;
+  LANE._rung = w === 0 && c === 0 && p === 0 && m === 0 ? ROW : Object.freeze({ work: w, chip: c, pixels: p, mem: m });
   _tell();
   return LANE._rung;
 }

@@ -32,10 +32,11 @@
 import { noteMade } from '../debug/madeLog.js';
 import { worldReady } from '../ui/loadingGate.js';
 import { cores } from '../game/deviceProfile.js';   /* v2.3.5227: the device asked in one place (card O PR 7) */
+import { pageAddress } from '../game/switches.js';   /* v2.3.5313: the page's one reader (card T) */
 
 const _OFF = (() => {
   try {
-    const q = (typeof location !== 'undefined' && location.search) || '';
+    const q = pageAddress();
     if (/[?&]bodyworker=0(&|$)/.test(q)) return 'address';
     if (/[?&](garmentspecks=0|pickwood=0|toolsolid=(0|off|false)|bakeread=0)(&|$)/.test(q)) return 'old-bake';
   } catch (e) { /* on */ }

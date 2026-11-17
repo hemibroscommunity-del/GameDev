@@ -16,7 +16,8 @@
  * `?halloween=1` / `?halloween=0` in the address forces it either way for a
  * tab (tests, and the owner trying it out of season).
  *
- * No imports, so it can be read in node. */
+ * No imports but the import-free switches.js, so it can be read in node. */
+import { pageAddress } from './switches.js';   /* v2.3.5311: the page's one read of its address (card T) */
 
 export const HALLOWEEN = Object.freeze({
   /* the first and last days, month 1-12 */
@@ -29,7 +30,7 @@ function forced() {
   if (_forced !== undefined) return _forced;
   _forced = null;
   try {
-    const m = /[?&]halloween=(1|0|on|off)\b/.exec(globalThis.location ? globalThis.location.search : '');
+    const m = /[?&]halloween=(1|0|on|off)\b/.exec(pageAddress());
     if (m) _forced = m[1] === '1' || m[1] === 'on';
   } catch (e) { /* no address: the calendar decides */ }
   return _forced;

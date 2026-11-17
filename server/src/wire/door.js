@@ -205,10 +205,12 @@ export const wireDoorMethods = {
   /* The router's door: true when the message was refused here and must go no
      further.  Synchronous, so a bundle's parts still finish in order (TRAPS
      §182). */
-  _wireDoor(session, msg) {
+  _wireDoor(session, msg, ws) {
     if (this._wireDoorOff && this._wireDoorOff()) return false;
     const why = wireDoorJudge(msg);
-    if (!why) return false;
+    /* v2.3.5195 (card K PR 10): past the checks, a repeat of a request id the
+       player sent before reaches no handler (reqonce.js _reqOnceDoor) */
+    if (!why) return !!(this._reqOnceDoor && this._reqOnceDoor(session, msg, ws));
     if (session) session.wireDoor = (session.wireDoor || 0) + 1;
     const type = msg && typeof msg.type === 'string' ? msg.type : '';
     this._wireDoorCount(type && WIRE_DOOR_ROWS.SOCKET.has(type) ? type : '(no row)', why, type || '(no type)');

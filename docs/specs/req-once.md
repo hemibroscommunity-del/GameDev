@@ -46,17 +46,62 @@ off, one while on.
   acts again, as before (the five still read an older phone's `opId`).
 - `reqstamp: true`: the lasting stamp above (off by default).
 
-## Not done here (5194b, once the files other cards hold are free)
+## 5194b: the page re-sends, and the review's mends (v2.3.5546)
 
-- The cap `reqid` (`join.js`, `CAP_GATES`) that tells the page the worker
-  answers once; only then may the action door re-send a timed-out request
-  with the same id (`src/game/actions.js`), and send a DELETE's id in its
-  query.
-- The market's and the store's rows of the wire table (`wire/http.js`): their
-  `reqId` column `none` -> `reqId`, and `reqId` in their `trust`.
-- `docs/SHAPES.md` part 2's "Where it is remembered" row, for each request.
+- **The cap `reqid`** (`join.js`; `CAP_GATES`): the worker answers once.
+  `reqonce: false` takes it away.
+- **The page's one re-send** (`src/game/actions.js`, `RESEND_MS` 1.5 s;
+  `RESEND_ROWS`: the store's list, buy, bid and accept): with
+  the cap, a route's request the page heard nothing back from (the fetch
+  failed, or a 5xx) goes once more with the same id; never a third time, and
+  never after the caller's own time limit. Without the cap: one try, as
+  before. (A DELETE's id would ride its query; the two cancels are not
+  request rows, so the page sends none: a repeat finds the order gone.)
+- **The wire table**: the market's place and the store's list, buy, bid and
+  accept read `reqId` (`wire/http.js`), and the place names `mktwords` (its
+  label and seller's name read only with it off: card MOD #1947).
+- **The gatekeeper's review (sitting 25)**: a first that threw is kept as
+  `interrupted` and never runs again (a matched sale may already be owed);
+  a re-send with both ids across a deploy finds the older stamp by its opId
+  (the chest, the cape, the spin); the bank's answer keeps the phone's own
+  opId.
+- `docs/SHAPES.md` part 2 says each.
+
+## Still open
+
+- An order that matches at once leaves no resting record: its repeat is
+  answered from memory only, so after a restart the same body would place
+  again -- with a weapon at that place, a second sale (the gatekeeper,
+  sitting 27). So the page never re-sends the market's place (`RESEND_ROWS`,
+  v2.3.5546: the store's list, buy, bid and accept only); a player's own
+  second tap is a new request, as before. Naming the weapon by its id (5196)
+  closes it for a sell.
 
 ## What holds it
 
 `server/test/req-once.test.mjs`, and its break proof (the market's place with
 the id ignored sells the next weapon); `cost-guard.test` §22.
+
+## 5195: every other value request, at the wire door (v2.3.5195)
+
+Card K PR 10. The other 31 socket rows a player may start whose `doesWhat`
+holds `value-out` or `final` (a weapon sold or forged, a cook, a gamble, a
+shop's buy and sell, a trade's staged weapon, a report...) read `reqId`
+through ONE step, not 31 handlers: the wire door (`wire/door.js`
+`_wireDoor`, after its checks) asks `reqonce.js` `_reqOnceDoor`. A message
+whose id the player sent before (the sitting's memory, `_reqSeen`) reaches no
+handler and is answered the player's state again (every field, not the
+delta): what these rows change. The first is remembered before its handler
+runs: a socket's messages run one at a time, so its repeat finds it whatever
+the first's outcome.
+
+- The rows that keep their own record and answer (5194: the bank's two, the
+  chest, the cape, the spin, the auction house's three offers) are left to
+  them (`REQ_OWN`); the door's list is made from the table (`reqDoorTypes`).
+- Left `none`, with its reason (`req-once-door.test` §4): the account
+  reset's route, which knows no player until it has read the phrase.
+- It sits behind the wire door: `wiredoor: false` or `reqonce: false` turns
+  it off.
+
+`server/test/req-once-door.test.mjs` holds it (its break proof in its header).
+

@@ -21,6 +21,7 @@
  * (v2.3.3712: one, game/jump.js, which has none itself.)
  */
 import { jumpAirborne } from './jump.js';   /* v2.3.3712: a tap in the air attacks nothing */
+import { pageAddress } from './switches.js';   /* v2.3.5311: the page's one read of its address (card T) */
 
 /* ═══ v2.3.3712: THE TAP ATTACKS NOW -- THE JUMP IS THE BUTTON'S ═══
  *
@@ -79,7 +80,7 @@ export function tapFreeMaxMs() {
   if (_tapMs !== undefined) return _tapMs;
   _tapMs = TAP_FREE_MAX_MS;
   try {
-    var m = /(?:^|[?&])tapms=(\d+)/.exec((typeof window !== 'undefined' && window.location && window.location.search) || '');
+    var m = /(?:^|[?&])tapms=(\d+)/.exec(pageAddress());
     if (m) _tapMs = Math.max(200, Math.min(10000, +m[1]));
   } catch (e) { /* no window */ }
   return _tapMs;
@@ -197,7 +198,7 @@ export function tapActIcon(kind) {
 export function jumpButtonWanted(search) {
   try {
     var q = search != null ? search
-      : ((typeof window !== 'undefined' && window.location && window.location.search) || '');
+      : (pageAddress());
     return !/(?:^|[?&])jumpbtn=0(?:&|$)/.test(q);
   } catch (e) {
     return true;

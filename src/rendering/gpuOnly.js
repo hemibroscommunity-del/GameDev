@@ -42,7 +42,8 @@
  * window.__btTrimVerify (mp-geartrim compares the cropped strips' canvases
  * byte by byte).  QA: window.__btGpuOnly.
  */
-export const KEEP_GPU_COPIES = typeof location !== 'undefined' && /[?&]gpucopies\b/.test(location.search || '');
+import { swHas } from '../game/switches.js';   /* v2.3.5315: the page's one reader (card T) */
+export const KEEP_GPU_COPIES = swHas('gpucopies');
 const keepCopies = () => KEEP_GPU_COPIES || (typeof window !== 'undefined' && window.__btTrimVerify === true);
 /* v2.3.3699: the same answer for heldNumbers.js */
 export const gpuCopiesKept = keepCopies;

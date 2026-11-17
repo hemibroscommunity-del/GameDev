@@ -34,7 +34,7 @@ import { landLook, hexRgb } from '../data/wheelLands.js';   /* v2.3.3024: each l
 import { wheelLong, noteWheelBuilt } from './wheelSize.js';   /* v2.3.3315: which Wheel the room plays */
 import { clientOffAtLoad } from './clientOff.js';   /* v2.3.3755: the Test panel's Memory savers */
 import { fillOrder } from './zoneGate.js';   /* v2.3.4400: the gate's pieces, nearest the arrival first */
-import { sw, swHas } from './switches.js';   /* v2.3.5310: the page's one reader (card T) */
+import { sw, swHas, pageAddress } from './switches.js';   /* v2.3.5310: the page's one reader (card T); v2.3.5311 its address */
 
 const ROW_KEEP = 160;          /* walk-grid rows kept made, a byte a cell (v2.3.3315: 1.8 KB today, 7 KB on the long Wheel; a JS array was ~14 KB and would be ~58) */
 /* v2.3.3298: the Wheel's walls come a block at a time (the worker's 'block':
@@ -339,8 +339,7 @@ export function wheelStart() {
     /* v2.3.2948: the address, so `?trial=wheel&edgepieces` can bring back
        the edge pieces, put away (public/tools/world/core/ground.js) --
        v2.3.2955: and `?trial=wheel&blends` the blends, put away too */
-    let search = '';
-    try { search = window.location.search || ''; } catch (e) { /* no page */ }
+    let search = pageAddress();   /* v2.3.5312: let: the Memory savers' row below adds to it */
     /* v2.3.3755: the lean ground builder (on unless `groundlean=0`, ground-
        worker.js) turned off in what the worker is told when the Test panel's
        Memory savers row turned it off, from this load (clientOff.js) */

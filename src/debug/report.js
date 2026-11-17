@@ -84,13 +84,28 @@ import { perfTracker } from './perfTracker.js';
 import { busyIn } from './busyBeat.js';
 import { holdOf } from './holdNames.js';
 import { lastDeath, glLostCount, setMarkWhere } from './crashTrap.js';
-import { devClass } from '../game/deviceProfile.js';
+import { devClass, fineInput } from '../game/deviceProfile.js';
 import { drawLane, rungDepth } from '../game/drawLanes.js';   /* v2.3.5221: card O's lanes; v2.3.5222 the rung */
 import { selfFailures } from '../rendering/selfTest.js';   /* v2.3.5234: the self-test's failures, the report's `self` (card O PR 14a) */
 import { CLIENT_SAVERS, clientOff } from '../game/clientOff.js';
-import { PACE_BREAK_MS, lateOver } from '../game/framePacer.js';   /* v2.3.5222: the pacer's one rule of a late frame */
+import { PACE_BREAK_MS, lateOver, useMemCount } from '../game/framePacer.js';   /* v2.3.5222: the pacer's one rule of a late frame; v2.3.5231 the memory's count */
+/* ═══ v2.3.5231 (card O PR 11): THE GAME'S OWN COUNT OF ITS MEMORY, HANDED
+   TO THE PACER (the memory's verdict, framePacer.js memOver) -- the same
+   three reads as the report's `mem`: the art from files, the chip's
+   textures, the decoded sound, in MB.  The chip's only on a phone or a
+   tablet (deviceProfile.js: no fine pointer): a computer's screen-sized
+   pictures are no fault (the planner's, 2026-11-17). ── */
+function memCount() {
+  if (typeof window === 'undefined') return null;
+  const t = window.__btTex && window.__btTex();
+  const g = fineInput() ? null : (window.__btGpuTex && window.__btGpuTex());
+  const d = window.BT_AUDIO && window.BT_AUDIO.decodedMB && window.BT_AUDIO.decodedMB();
+  return [Number(t && t.mb) || 0, g ? Number(g.mb) || 0 : null, Number(d && d.mb) || 0];
+}
+try { useMemCount(memCount); } catch (e) { /* no pacer: no verdict */ }
 import { wheelHere } from '../game/wheelTrial.js';
 import { act } from '../game/actions.js';   /* v2.3.5189: the page's requests leave through the action door (card K PR 7) */
+import { sw } from '../game/switches.js';   /* v2.3.5314: the page's one reader (card T) */
 
 export const REPORT = Object.freeze({
   V: 1,
@@ -205,7 +220,7 @@ const _w = (v) => Math.max(0, Math.round(Number(v) || 0));
 
 /** The switch: on unless this device turned it off, or `?report=0`. */
 export function reportOn() {
-  try { if (typeof window !== 'undefined' && /(^|[?&])report=0(&|$)/.test(window.location.search || '')) return false; } catch (e) { /* on */ }
+  if (sw('report')) return false;
   try { return !(typeof localStorage !== 'undefined' && localStorage.getItem(OFF_KEY) === 'off'); } catch (e) { return true; }
 }
 /** The About panel's switch, kept on this device. */

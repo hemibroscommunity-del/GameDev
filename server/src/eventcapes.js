@@ -608,7 +608,10 @@ export const eventCapeMethods = {
        phone's opId from an older page.  A repeat's answer is the bag again */
     const rid = this._reqIdOf ? this._reqIdOf(payload && payload.reqId) : null;
     const opKey = rid ? 'capered:' + session.id + ':' + rid : (opId && typeof opId === 'string' ? 'capered:' + opId : null);
-    if (opKey && await this._opSeen(opKey)) {
+    /* v2.3.5546 (the gatekeeper, sitting 25): a page that sends both ids,
+       re-sent across a deploy, finds the stamp the older worker wrote by its opId */
+    const dup = !!opKey && (await this._opSeen(opKey) || (rid && typeof opId === 'string' && opId ? await this._opSeen('capered:' + opId) : false));
+    if (dup) {
       const ws0 = rid ? this._wsBySessionId(session.id) : null;
       if (ws0) this._sendPlayerState(ws0, session.id);
       return;

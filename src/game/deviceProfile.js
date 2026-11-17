@@ -38,7 +38,8 @@
  * (a touchscreen laptop, an iPad with a trackpad, a small window), listed in
  * docs/specs/device-profile.md.
  *
- * No imports but the lanes' table (v2.3.5221; it has none), so node can test
+ * No imports but the lanes' table (v2.3.5221; it has none) and the import-free
+ * switches.js (v2.3.5313), so node can test
  * it (server/test/device-profile.test.mjs).  v2.3.5228: the look palette's
  * choice (lookPaletteChoice.js) asks its Windows and Mac HERE, so it is handed
  * in (useLookChoice), never imported: one way only.
@@ -48,6 +49,7 @@
    file has no imports: node tests it).  v2.3.5228: and the answers to its
    overrides' questions (useDevAsk) */
 import { useDevClass, useDevAsk } from './drawLanes.js';
+import { pageAddress } from './switches.js';   /* v2.3.5313: the page's one reader (card T) */
 
 /* the two media questions, written once (game.css carries the same two in
    its @media rules; device-profile.test holds them to it) */
@@ -196,8 +198,7 @@ export function useLookChoice(fn) { _lookChoice = typeof fn === 'function' ? fn 
  *  test's card; QA). */
 export function deviceProfile() {
   const n = navFacts();
-  let search = '';
-  try { search = typeof window !== 'undefined' ? window.location.search || '' : ''; } catch (e) { search = ''; }
+  const search = pageAddress();
   let palette = null;
   try { palette = _lookChoice ? _lookChoice(search, n.ua, n.platform, n.touch) : null; } catch (e) { palette = null; }
   return {

@@ -109,7 +109,10 @@ export const dailyChestMethods = {
        again while the sitting holds it */
     const rid = this._reqIdOf ? this._reqIdOf(payload && payload.reqId) : null;
     const opKey = rid ? 'chestop:' + session.id + ':' + rid : (opId && typeof opId === 'string' ? 'chestop:' + opId : null);
-    if (opKey && await this._opSeen(opKey)) {
+    /* v2.3.5546 (the gatekeeper, sitting 25): a page that sends both ids,
+       re-sent across a deploy, finds the stamp the older worker wrote by its opId */
+    const dup = !!opKey && (await this._opSeen(opKey) || (rid && typeof opId === 'string' && opId ? await this._opSeen('chestop:' + opId) : false));
+    if (dup) {
       const again = rid ? this._reqRecall(session.id, rid) : undefined;
       const ws0 = again ? this._wsBySessionId(session.id) : null;
       if (ws0) { try { ws0.send(JSON.stringify({ type: 'chest_opened', payload: { ...again, reqId: rid } })); } catch (e) { /* the bag says it */ } }

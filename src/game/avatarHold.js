@@ -27,6 +27,7 @@
  *
  * No imports but the loading door (v2.3.5525): the caller hands it the wait and the name to show. */
 import { veilTo } from './veilDoor.js';   /* v2.3.5525: the loading door, the veils' one writer (card L; of no imports but the switch reader) */
+import { pageAddress } from './switches.js';   /* v2.3.5311: the page's one read of its address (card T) */
 
 export const AVATAR_HOLD_CAP_MS = 20000;   /* the loading screen's own cap on the same preload (IntroVideo hardCap) */
 
@@ -34,7 +35,7 @@ export const AVATAR_HOLD_CAP_MS = 20000;   /* the loading screen's own cap on th
    longer than the cap: mp-joinflicker waits for the pictures themselves */
 function _capMs() {
   try {
-    const m = /[?&]avatarholdms=(\d+)/.exec((typeof location !== 'undefined' && location.search) || '');
+    const m = /[?&]avatarholdms=(\d+)/.exec(pageAddress());
     if (m) return Math.max(1000, Math.min(180000, Number(m[1])));
   } catch (e) { /* the cap */ }
   return AVATAR_HOLD_CAP_MS;

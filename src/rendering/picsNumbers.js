@@ -38,8 +38,9 @@ import { clientOffAtLoad } from '../game/clientOff.js';   /* v2.3.3755; v2.3.377
 import { numbersOf } from './heldNumbers.js';
 import { Sprite, Texture } from 'pixi.js';
 import { paletteOn, paletteStride, paletteRowTake, paletteRowWrite, paletteRowGive, makePaletteSourceOnRow, paletteFillProgram, paletteProgramLinked } from './paletteTex.js';
+import { pageAddress } from '../game/switches.js';   /* v2.3.5315: the page's one reader (card T) */
 
-const _q = (() => { try { return typeof location !== 'undefined' ? (location.search || '') : ''; } catch (e) { return ''; } })();
+const _q = pageAddress();
 /* on by default (the owner, 2026-10-28, picsOnce.js); `?picnumbers=0` is the
    game as it was */
 /* v2.3.3755: ...or the Test panel's Memory savers row, from the next load (game/clientOff.js) */

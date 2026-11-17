@@ -82,14 +82,14 @@ check(`3c. the rule alone keeps them too (${ruleOnly.worn} of 177)`, ruleOnly.wo
 /* 4. the wiring */
 {
   const er = readFileSync(ROOT + 'src/rendering/systems/entityRenderer.js', 'utf8');
-  check('4a. the renderer takes the rule from maskedEvict.js', /import \{ wornSigOf, pickEvictKey \} from '\.\.\/maskedEvict\.js'/.test(er));
-  check('4b. _storeBake lets go by the rule, at MASKED_CAP (900)',
-    /const MASKED_CAP = 900;/.test(er) && /while \(_maskedBodyCache\.size > MASKED_CAP\) \{\s*const k0 = _maskedEvictKey\(\);/.test(er)
+  check('4a. the renderer takes the rule from maskedEvict.js', /import \{ wornSigOf, pickEvictKey, maskedCap, trimMasked, onCachesTrim \} from '\.\.\/maskedEvict\.js'/.test(er));
+  check('4b. _storeBake lets go by the rule, at MASKED_CAP (900) times the lanes\' share (v2.3.5231: maskedEvict.js trimMasked)',
+    /const MASKED_CAP = 900;/.test(er) && /trimMasked\(_maskedBodyCache, MASKED_CAP, _maskedEvictKey, _maskedDrop\);/.test(er)
     && /const _maskedEvictKey = \(\) => pickEvictKey\(_maskedBodyCache\.keys\(\), _localWornSig\(\)\);/.test(er)
     && !/while \(_maskedBodyCache\.size > 900\)/.test(er));
   check('4c. the spare sets are baked only into room the cache has',
     /const spare = set\.worn\.map\(\(w\) => w\[0\] \+ ':' \+ w\[1\]\)\.join\(','\) !== wornSig;/.test(er)
-    && /if \(spare && _maskedBodyCache\.size >= MASKED_CAP && !_maskedBodyCache\.has\(_maskedKey\(tex, worn, 6\)\)\) \{ _spareSkipped\+\+; continue; \}/.test(er));
+    && /if \(spare && _maskedBodyCache\.size >= maskedCap\(MASKED_CAP\) && !_maskedBodyCache\.has\(_maskedKey\(tex, worn, 6\)\)\) \{ _spareSkipped\+\+; continue; \}/.test(er));
   check('4d. the worn list is built chest, then legs, everywhere the key is made', !/for \(const (_?sl|_sl) of \['legs', 'chest'\]\)/.test(er));
 }
 

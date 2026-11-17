@@ -279,6 +279,33 @@ so node tests it and any file may ask it.
   `?heaplean`, `?folkbake`) and ui (`?playvwlive`, `?dev`):
   the line 201. A read that hands its address to a rule (`q == null ?
   location.search : q`) or parses a value stays for a later PR.
+- v2.3.5311: `pageAddress()`, the reader's one read of the address, for a
+  rule handed the whole address (`killXpOn(search)`, `q ?? address`) or
+  parsing a value (`?tod=`, `?halloween=`, `?tapms=`, `?avatarholdms=`):
+  the planning session's answer, 2026-11-17. The site calls it, so the
+  string, and every answer, is unchanged (the guard's check 5 holds it to
+  the address as written). Seventeen reads in sixteen files no card holds
+  (the line 172, with card O's PR 12 moving twelve beside them). `manualCombat.js`, `weaponFeel.js` and `pinSlots.js` keep
+  theirs: their suites (manual-combat 10a, weapon-feel 8a, map-pin 9i) hold
+  each to no imports.
+- v2.3.5313 (cards A, G, H, O and P done, their files free; the planning
+  session's word): preload (`?warmonce`,
+  `?banners`, and pageAddress() in `picsOnce.js`), world (pageAddress() in
+  `worldViewport.js`, two) and art (`?sharp`, `?figround`, pageAddress() in
+  `bodyBake.js`, `p256.js`, `stripRead.js`), and `deviceProfile.js`'s
+  address: the line 161. `?foldgentle` stays in `soundFold.js`:
+  sound-fold.test 4e reads its test in the file's text.
+- v2.3.5314: debug (`?dev` in `crashTrap.js`, two; `?report`;
+  pageAddress() in `debugBus.js` and `perfHud.js`, two): the line 155.
+  `src/data/gameDisplay.js`'s eight stay: it is at its line in
+  four-lines (an import is one over), tests-by-system keeps a new suite
+  from naming it, and five of its reads are read in its text by
+  sound-fold 3c and sound-cues 18f, 18i, 21a.
+- v2.3.5315: memory (`?canvascheck`, `?gfxlean`, `?gpucopies`, `?heaptrim`,
+  `?held`, `?treenumbers`, `?nopalette`, `?loudclear`, `?textkeep`,
+  `?poolkeep`; pageAddress() in `picsNumbers.js`): the line 144.
+  `keepAsImage.js` keeps `?keepimage`: keep-as-image 7h holds it to no
+  imports.
 
 ## A new switch
 

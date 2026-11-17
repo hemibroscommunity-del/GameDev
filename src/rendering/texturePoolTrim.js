@@ -26,13 +26,14 @@
  * `?poolkeep` in the address keeps the pool as Pixi ships it, to compare. */
 import { TexturePool } from 'pixi.js';
 import { bindGroupFixOn } from './bindGroupFix.js';
+import { swHas } from '../game/switches.js';   /* v2.3.5315: the page's one reader (card T) */
 
 const IDLE_MS = 30000;
 let _installed = false;
 const _stats = { swept: 0, sweptMB: 0, lastSweep: 0 };
 
 function urlOff() {
-  try { return /[?&]poolkeep(=|&|$)/.test(window.location.search || ''); } catch (e) { return false; }
+  return swHas('poolkeep');
 }
 
 export function installTexturePoolTrim() {

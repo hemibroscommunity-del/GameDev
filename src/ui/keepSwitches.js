@@ -13,14 +13,15 @@
  * Everything else rides along, `guest` (which browser identity this tab is)
  * among it, as before.  An audit of every address read in src (the PR's
  * list) found no other word that acts once or destroys anything.
- * No imports: node can test it (server/test/keep-switches.test.mjs). */
+ * No imports but the import-free switches.js: node can test it (server/test/keep-switches.test.mjs). */
+import { pageAddress } from '../game/switches.js';   /* v2.3.5311: the page's one read of its address (card T) */
 export const DOOR_WORDS = Object.freeze(['create', 'login', 'noresume', 'play']);
 
 /** '?a=1&b' (or '') -- `search` the page's (window.location.search by
     default), `add` [[name, value], ...] set first (the door's own word). */
 export function keptQuery(search, add) {
   let s = search;
-  if (s === undefined) { try { s = typeof window !== 'undefined' ? window.location.search : ''; } catch (e) { s = ''; } }
+  if (s === undefined) s = pageAddress();
   let q;
   try { q = new URLSearchParams(s || ''); } catch (e) { q = new URLSearchParams(''); }
   for (const w of DOOR_WORDS) q.delete(w);
