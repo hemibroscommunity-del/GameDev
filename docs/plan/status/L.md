@@ -1,6 +1,6 @@
 card: L
-branch: claude/plan-l-35-dungeon-page (from main)
-prs: #1746 to #2046 (merged), #2052 (5535): ready
+branch: claude/plan-l-38-fight-door (from main)
+prs: #1746 to #2052 (merged), #2058, #2065, #2067 (5536-5538, stacked): ready
 state: ready
 
 ## Done
@@ -8,16 +8,15 @@ state: ready
 - PR 1, 2 (#1746, #1748): the ledger's guard; the phase table and guard.
 - PR 3, 4 (5203 to 5209, #1767 to #1803): `resetOn` at the zone and rejoin
   doors; the resets, 484 -> 233 rows.
-- PR 5, 5210-5217, 5522-5523: the worker's trade, duel, party, cook, harvest+
-  fishing, dungeon, pose, race, arena, ride doors; the page's (5218-5219,
-  5520-5521, 5525-5535): race, harvest+cook+fishing, pose, guard, veils, windows,
-  connection, duel, party, trade, ride, arena, fight, life, dungeon.
+- PR 5, 5210-5217, 5522-5523, 5536-5538: the worker's trade, duel, party, cook,
+  harvest+fishing, dungeon, pose, race, arena, ride, guard, zone, fight doors; the
+  page's (5218-5219, 5520-5521, 5525-5535): race, harvest+cook+fishing, pose, guard,
+  veils, windows, connection, duel, party, trade, ride, arena, fight, life, dungeon.
 - 5524: alliance drafts outlive a rejoin (J2). 5532: relay floater's form (SEC).
 
 ## Next
 
-- Page halves done (5533-5535). Left: the worker's guard door, after K2's
-  index.js PRs (planner, 15:52); then the zone and fight rows on the worker.
+- None: no todo row is left once these four land. Then: done.
 
 ## Found
 
@@ -28,8 +27,9 @@ state: ready
   fishvariants (4a-5: no Inspect on the card; 6c by run: healed before Eat),
   moresounds (setup and 10 every run; 8b, 9a by run: other cues heard),
   deskharvest 5 (a phone's first-harvest hint, read as a computer's), blockface 2 (the block icon's disc: 13 of 560 px blue, on main too),
-  comeback 1, 5 (on main c55c8b59). precheck's 5-min server limit < the suite's ~310 s.
-- bodytake.js ~94 cites a pose row that is none. Dead: S._shieldStamina,
+  comeback 1, 5 (on main c55c8b59). precheck's 5-min limit < the suite's ~450 s.
+- join.js's stand-up to town asks no duel (_duelZoneMoved; duel-zone §7 never
+  counted it). bodytake.js ~94 cites a pose row that is none. Dead: S._shieldStamina,
   S.shieldActive, S._iceAttack, monsterCombat's respawn, playerActions' raiseShield.
 
 ## Needs
