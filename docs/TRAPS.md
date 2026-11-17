@@ -84,6 +84,8 @@ this, and its review bought 1,999 coins and 392,500 from Diego through
 it; the copy is `Object.create(null)` now (`_withoutRpgClaims`, join.js).
 **Receipt:** CLAUDE.md AI-session protocol; `docs/DEV-TOOLS.md`.
 
+Held by: tools/guards/traps-saves.test.mjs (tag 5761).
+
 ## 7. Treating the GDD / ARCHITECTURE.md as build specs
 
 **Tempting:** they're detailed, authoritative-looking design docs —
@@ -3235,6 +3237,8 @@ Never on the join path at all — a join starts the tick, and the slot follows.
 The second thing to check when the room "isn't answering" is how big the
 prefixes have grown since the code was written: the code was months old; the
 data was new.
+
+Held by: tools/guards/traps-saves.test.mjs (tag 5761).
 
 ## 77. A `busy` flag over a fetch with no timeout is a dead panel (v2.3.2440)
 
@@ -7250,6 +7254,8 @@ refused device counts as a wrong key" (24 of 24 deliberate breaks caught), and
 mp-devicelock refuses a new phone with the code, its key kept, and lets it in
 after the owner's pass.
 
+Held by: tools/guards/traps-saves.test.mjs (tag 5761).
+
 ## 210. "The figure is at (world - camera) x scale on the screen" (v2.3.3407)
 
 **Tempting:** a point in the world is drawn at `(x - camera.x) * scale`, so
@@ -9109,6 +9115,8 @@ stamp too.
 
 **Receipt:** `points-reset` §8; docs/specs/points-reset.md.
 
+Held by: tools/guards/traps-saves.test.mjs (tag 5761).
+
 ## 277. "This fix is phone-only, so merging it disconnects nobody" (v2.3.4381)
 
 **The move.** A pull request changes only the phone's code and adds its test
@@ -9514,6 +9522,8 @@ saves when it goes, over the backup just restored. **The rule.** An admin
 write over a player's record waits for the player to be out of the ROOM:
 check `playerState[pid]`, not only `_wsBySessionId`. **Receipt:**
 `session-exits.test`; docs/OPERATIONS.md.
+
+Held by: tools/guards/traps-saves.test.mjs (tag 5761).
 
 ## 299. "Its cleanup runs when it closes" (v2.3.4411)
 
