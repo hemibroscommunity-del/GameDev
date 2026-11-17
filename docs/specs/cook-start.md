@@ -37,6 +37,9 @@ is (`testmode.js`).
 | The cheat's bare `cook_request` | 1.59 | **0.00** |
 | The cheat that starts each cook and sends the result at the plan's quickest | (n/a) | **0.99** |
 
+**Phone tests with it on** (a local run): `hitladder` 50/50, `fishvariants`
+19/19, `questline` 187/187.
+
 ## Switch
 
 `cookstart: true` in the live flags turns it on; absent or `false`, a cook is
