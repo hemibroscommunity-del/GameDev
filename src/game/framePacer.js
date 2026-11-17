@@ -50,6 +50,7 @@
  * lanes' table, itself import-free), and node still tests it.
  */
 import { AXES, AXIS_NAMES, knobAt, knobSeen, drawLane, ladderRung, setRung, rungDepth, laneKnob, liveKnobs, ladderRateOn as laneRateOn } from './drawLanes.js';
+import { readerFor, sw, swValue } from './switches.js';   /* v2.3.5232 (card O PR 12): the off-ramps through the page's one reader */
 import { clientOff } from './clientOff.js';   /* v2.3.5235: the owner's switch for every phone (`govern`): a leaf with no imports */
 
 /* a refresh shorter than this is a fast screen (over about 70 a second) */
@@ -90,7 +91,7 @@ export function ladderRateOn(search) {
 
 /** Is the pacer on?  The address: `pace=0` (or off, false) is the old way. */
 export function framePaceOn(search) {
-  return !/(^|[?&])pace=(0|off|false)(&|$)/.test(typeof search === 'string' ? search : '');
+  return !(typeof search === 'string' ? readerFor(search).sw('pace') : sw('pace'));   /* v2.3.5232: the page's one reader */
 }
 
 /** The screen's refresh, in ms, from the gaps between the browser's calls
@@ -149,7 +150,7 @@ export function makeFramePacer(opts) {
      Read again where the rung or the lane can change: after the governor's
      verdict and at a veil.  `?ladderrate=0` is the rate as before (opts:
      the tests' { rateOn }). */
-  const rateOn = opts && opts.rateOn !== undefined ? !!opts.rateOn : ladderRateOn(_search());
+  const rateOn = opts && opts.rateOn !== undefined ? !!opts.rateOn : ladderRateOn();
   let rateAt = PACE_FLOOR_MS;
   const readRate = () => {
     try { const a = laneKnob('rate'); rateAt = typeof a === 'number' && a > 0 ? a : PACE_FLOOR_MS; } catch (e) { rateAt = PACE_FLOOR_MS; }
@@ -317,10 +318,14 @@ const STEPS_KEPT = 8;
 /** Does the governor move the ladder on this page?  `govern=0` no, `govern=1`
  *  yes; else not where the address names a lane (a test's page), else yes. */
 export function governOn(search) {
-  const s = typeof search === 'string' ? search : '';
-  const m = /(?:^|[?&])govern=([01])(?:&|$)/.exec(s);
-  if (m) return m[1] === '1';
-  return !/(?:^|[?&])lane=/.test(s);
+  /* v2.3.5232 (card O PR 12): through the page's one reader; `?lane` in
+     the address at all holds the ladder (`?lane=` did, as before; a bare
+     `?lane`, which the old test let through, now holds it too: the reader
+     cannot tell the two apart) */
+  const r = typeof search === 'string' ? readerFor(search) : { swValue };
+  const g = r.swValue('govern');
+  if (g === '0' || g === '1') return g === '1';
+  return r.swValue('lane') === null;
 }
 
 /* the frame meter's samples, handed in (perfTracker.js): each(fromT, fn)
@@ -381,9 +386,6 @@ export function lateSplit(samples, lateMs, busyIn) {
   return { late, work, chip };
 }
 
-function _search() {
-  try { return (typeof location !== 'undefined' && location.search) || ''; } catch (e) { return ''; }
-}
 /* the kept rungs, by lane: { full: [work, chip], ... } (a convenience) */
 function _pageStore() {
   return {
@@ -398,7 +400,7 @@ function _pageStore() {
  */
 export function makeGovernor(opts) {
   const o = opts || {};
-  const on = o.on !== undefined ? !!o.on : governOn(_search());
+  const on = o.on !== undefined ? !!o.on : governOn();
   const store = o.store !== undefined ? o.store : _pageStore();
   let lane = null;              /* the lane its rung is kept for; null: none loaded yet (a veil loads it) */
   let bad = 0, trial = false, wasUp = false, changedAt = 0, upWait = UP_WAIT_MS;

@@ -19,7 +19,7 @@ state: ready
 
 ## Next
 
-- 5311: pageAddress() in the reader; 15 sites call it; the line 184.
+- 5311: pageAddress() in the reader; 17 reads call it; the line 172 (with O's 12).
   Then the reads in files held by running cards, as each card is done.
 
 ## Found

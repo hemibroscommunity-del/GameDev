@@ -284,8 +284,8 @@ so node tests it and any file may ask it.
   parsing a value (`?tod=`, `?halloween=`, `?tapms=`, `?avatarholdms=`):
   the planning session's answer, 2026-11-17. The site calls it, so the
   string, and every answer, is unchanged (the guard's check 5 holds it to
-  the address as written). Fifteen sites in files no card holds: the
-  line 184. `manualCombat.js`, `weaponFeel.js` and `pinSlots.js` keep
+  the address as written). Seventeen reads in fifteen files no card holds
+  (the line 172, with card O's PR 12 moving twelve beside them). `manualCombat.js`, `weaponFeel.js` and `pinSlots.js` keep
   theirs: their suites (manual-combat 10a, weapon-feel 8a, map-pin 9i) hold
   each to no imports.
 
