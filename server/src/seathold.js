@@ -303,7 +303,18 @@ export const seatHoldMethods = {
     const seat = typeof raw === 'string' && raw.length > 0 && raw.length <= 64 && held.has(raw) ? raw : null;
     if (seat) {
       let claimed = false;
-      for (const [, s] of this.sessions) if (s && s.seat === seat) { claimed = true; break; }
+      for (const [, s] of this.sessions) {
+        if (!s || s.seat !== seat) continue;
+        /* v2.3.5730 (card RV's ACC-3, `joinguard`, join.js): a claim whose
+           socket has not joined passes to the NEWEST socket naming the seat.
+           An id is public: a socket that named a held seat and never joined
+           kept its holder out until the hold ran out (and could knock again
+           for it).  The old socket is a stranger's from now on (its join is
+           judged as one); the holder's own join still comes in on its held
+           id, whichever socket it is on (_seatJoinRefused). */
+        if (!s.id && this._joinGuardOn && this._joinGuardOn()) { s.seat = null; continue; }
+        claimed = true; break;
+      }
       if (!claimed) return { ok: this.sessions.size < cap + held.size, seat };
     }
     return { ok: this.sessions.size + held.size < cap + spare, seat: null };
