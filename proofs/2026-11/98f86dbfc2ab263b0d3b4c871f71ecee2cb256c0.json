@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "98f86dbfc2ab263b0d3b4c871f71ecee2cb256c0",
+  "tree": "d05ea1e2e3145df9bc36cbed0d6353dd7f1c9269",
+  "committedAt": "2026-11-16T18:30:52-08:00",
+  "subject": "Merge pull request #1959 from hemibroscommunity-del/claude/plan-p-26-player-death",
+  "files": 8013,
+  "bytes": 958906162,
+  "listingSha256": "f6c0ee1a69e36d892972c80ff87ab43f48631a43d1b0edbdbe68682ba28d8097",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

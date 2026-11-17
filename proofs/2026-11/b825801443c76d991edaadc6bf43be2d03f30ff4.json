@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "b825801443c76d991edaadc6bf43be2d03f30ff4",
+  "tree": "5661ad74041f802d077d95e0470e1a285c4972b6",
+  "committedAt": "2026-11-16T18:31:10-08:00",
+  "subject": "Merge pull request #1956 from hemibroscommunity-del/claude/plan-l-25-loading-door",
+  "files": 8019,
+  "bytes": 959034913,
+  "listingSha256": "5b8681452a12e44089e5eddb853d768a59194ea37aaf34e38314964852cf8653",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

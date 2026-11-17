@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "82617657fd5141f306aa685a81b9fa77ba516f29",
+  "tree": "83fb1efe92313320b676c100c96022e49d6260c7",
+  "committedAt": "2026-11-16T18:31:34-08:00",
+  "subject": "Merge pull request #1940 from hemibroscommunity-del/claude/rt1-ip56",
+  "files": 8020,
+  "bytes": 959065628,
+  "listingSha256": "834505e14dd914fc6ef2b6a1b6088839518eddfcf803ba23d07ac812ba8b8918",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

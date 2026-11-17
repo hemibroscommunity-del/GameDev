@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "6ad4d225d5c6ff1ee1aa42bc0912eaf5253fbdbe",
+  "tree": "784805fb193522a2865e6bc0437eb23fbb9ab979",
+  "committedAt": "2026-11-16T18:30:46-08:00",
+  "subject": "Merge pull request #1955 from hemibroscommunity-del/claude/plan-p-25-hud-bars",
+  "files": 8012,
+  "bytes": 958797345,
+  "listingSha256": "8d4a27c494e64cab73b346904928b3470c69a3932156197b48d2d6712afef37a",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
