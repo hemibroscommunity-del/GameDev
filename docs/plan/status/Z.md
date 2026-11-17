@@ -24,7 +24,7 @@ back; only #1930 changes the worker's code. New live flag `arenadoor` (ON).
 - None. For sitting 22 (arrived after this list closed): T #1935
   (5308, the switch rows' merge days), L #1936 (5523, the ride door,
   on #1930), and the heads P, MOD, OPS, RT-1,
-  R and J2 send.
+  R and J2 send. Z's next block: 5660 to 5679 (this PR takes it).
 
 ## Found
 - O asks the owner: a fill or a glint that fails its self-test has no way
