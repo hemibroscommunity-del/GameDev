@@ -11,9 +11,8 @@ state: ready
   #1895, the duel pot's row), PR 10 (5289, #1898), PR 12 (5291, #1922).
 - Merged, sitting 23: PR 13 (5292, #1961, which replaced #1950): the
   arena's stakes' ledger rows.
-- PR 3 (5282, #1873, HELD by sitting 23): a roll-back past it lost every
-  weapon carrying a gid (no schema gate outside `rpg:`). Waits for PR 14
-  deployed; a later sitting.
+- PR 3 (5282, #1873, HELD by sitting 23: a roll-back past it lost weapons
+  carrying a gid). A later sitting, once PR 14 is deployed.
 - PR 14 (5294, #1960, sitting 24): the tolerant weapon reader, first
   (gear.js, gearprov.js GID_RE); deploys before #1873.
 - PR 15 (5295, #1969, sitting 24): #1961's two lows (a share's own bound,
