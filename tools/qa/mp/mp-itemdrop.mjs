@@ -67,7 +67,17 @@ async function dropThroughCard(P, key, n, shot) {
   if (shot) await shot(P, 'card-' + key);
   await drop.click();
   const sheet = await P.page.waitForSelector('[data-drop-sheet]', { timeout: 6000 }).catch(() => null);
-  if (!sheet) return { step: 'sheet', row };
+  if (!sheet) {
+    const top = await P.page.evaluate(() => {
+      const b = document.querySelector('button[data-item-drop=""]');
+      if (!b) return { btn: false, sheets: !!document.querySelector('[data-drop-sheet]') };
+      const r = b.getBoundingClientRect();
+      const e = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+      return { btn: true, rect: [Math.round(r.x), Math.round(r.y), Math.round(r.width), Math.round(r.height)], vh: window.innerHeight,
+        top: e ? (e.tagName + '.' + String(e.className).slice(0, 40) + ' ' + (e.textContent || '').trim().slice(0, 20)) : null, same: e === b || b.contains(e) };
+    });
+    return { step: 'sheet', row, top };
+  }
   for (let i = 1; i < n; i++) {
     const more = await P.page.$('[data-drop-more]');
     if (!more) return { step: 'more', row };
