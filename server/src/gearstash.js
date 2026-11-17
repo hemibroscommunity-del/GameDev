@@ -495,6 +495,7 @@ export const gearStashMethods = {
   },
   /** the describe path's refusal: what is worn stays, and is sent back */
   _gearHeldRefuse(session) {
+    if (this._gearResendOff && this._gearResendOff()) return;   /* `gearresend: false`: silent, as the other refusals */
     const w = session && this._wsBySessionId(session.id);
     if (w) this._resendPlayerState(w, session.id, ['armor', 'legsArmor']);
   },
