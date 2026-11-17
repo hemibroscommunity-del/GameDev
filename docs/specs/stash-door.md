@@ -108,6 +108,30 @@ Now `player-roads.test` §8 holds that every `xfer` row's key is a `move`
 road it names, or it names its `writer` (`'file fn'`) and that file calls
 it.
 
+## The weapon reader, before a weapon's own id (v2.3.5294, card R PR 14)
+
+Card R PR 3 (tag 5282, #1873) gives every weapon its own `gid`. The
+gatekeeper's sitting 23 held it: a worker rolled back past it read any `gid`
+as gear (`gear.js _isGearNotWeapon`), so `_sanitizeWeapon` gave nothing and
+the weapon was lost on every road that reads one through it (the mail, which
+consumed it; a market sell order's or an auction listing's weapon, paid by
+the mail; a trade window's weapon; and, with `newersave: false`, the join's
+load of hand and bag). A save's shape number guards `rpg:` only, not those
+records.
+
+So the reader ships first, as its own PR, and deploys before 5282:
+
+- **Gear is `prov`, or a gid the minter did not write.** Every piece of gear
+  the worker mints carries `prov` beside its `gid`; a weapon never does. A
+  weapon carrying a well-formed `gid` (`gearprov.js GID_RE`, the minter's
+  form) is a weapon.
+- **The sanitizer keeps a well-formed `gid`** on the worker's own copy; a
+  phone's claim (strict) never names one, and keeps its weapon.
+
+Nothing a player has today carries such an id, so nothing changes until 5282
+lands; a roll-back from 5282 to this worker or later then loses nothing.
+`weapon-reader.test` holds it (two break proofs).
+
 ## A weapon's own id (v2.3.5282, card R PR 3)
 
 Every weapon carries `gid` (SHAPES part 2), made by the one minter gear
@@ -134,6 +158,9 @@ has (`gearprov.js` `gearMintId`; `_gearProvMintId` is it). The field is
   the bag, a listing, a sell order, a trade window and the mail.
 - **The record's shape changed** (a weapon on `rpg:` gains `gid`): the
   schema is 22, so a worker rolled back past this one refuses the record at
-  the join (handoff rule 1) instead of saving its weapons without ids.
+  the join (handoff rule 1). The shape number guards `rpg:` only: the mail,
+  a sell order, a listing and a trade window's weapon are kept whole by the
+  reader that shipped first (v2.3.5294, the section above), on any worker
+  from that one on (the gatekeeper's sitting 23).
 
 `server/test/weapon-id.test.mjs` holds it.

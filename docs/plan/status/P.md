@@ -1,7 +1,7 @@
 card: P
-branch: claude/plan-p-23-cape-hood (#1918's head: the line for sitting 20)
-prs: #1713, #1715, #1716, #1718, #1719, #1736, #1743, #1745, #1757, #1749, #1763, #1766, #1805, #1806, #1810, #1840, #1846, #1853, #1859, #1868 (5241-5259, 5560, merged); #1881 (5561), #1906 (5562), #1918 (5563), #1925 (5564) ready
-state: working
+branch: claude/plan-p-28-upload-icons (5569, on #1959)
+prs: #1943 (5565 ready), #1943 (5565), #1955 (5566), #1959 (5567), 5569 ready; #1713, #1715, #1716, #1718, #1719, #1736, #1743, #1745, #1757, #1749, #1763, #1766, #1805, #1806, #1810, #1840, #1846, #1853, #1859, #1868, #1881, #1906, #1918, #1925 (5241-5259, 5560-5564, merged)
+state: ready
 
 ## Done
 
@@ -13,12 +13,9 @@ state: working
 
 ## Next
 
-- #1881 > #1906 > #1918 > #1925 in sitting 20, with its lows mended
-  (#1925: the hood's masks only, answer (a)); main merged once 19 lands.
-- Held (the lean restart: no new building), built and measured, not
-  opened: 5565 `world-fish-spot`, 5566 `hud-bars`, 5567 `player-death`,
-  5569 `icons-from-uploads-world`; then `ore-tiers`, `props-parts`,
-  `projectile-sheets` by the card.
+- 5569 `upload-icons` ready on #1959 (artCache 17.4 -> 16.2, line 80.5 ->
+  79.3). Then P stops (planner's word): ore-tiers, props-parts,
+  projectile-sheets wait. #1955 gets main merged once #1943 lands.
 
 ## Found
 
@@ -29,7 +26,7 @@ state: working
   hood's halves and the facings (5568, dropped) stay pictures (1.5 MB; a
   road later: the colour-numbers program given the figure's reads).
 - `mp-hairstencil` is red on main (7/13 at 29b1a0de2: its probe finds no
-  hair), the same in this line; it runs with the masks as pictures now.
+  hair); it runs with the masks as pictures now.
 - `tools/make_pet_sheet.py` runs no reduce256: a new pet, an empty twin.
 
 ## Needs

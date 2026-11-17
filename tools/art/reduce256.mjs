@@ -75,6 +75,33 @@ const SCOPE = [
    (petSprites.js, tools/make_pet_sheet.py), on the loading screen for
    everyone: 80k colours, cut to 256. */
 SCOPE.push({ dir: 'sprites/pets', only: /^pet-sheet\.png$/, always: true });
+/* v2.3.5565 (card P's backlog, world-fish-spot): the pond under a fishing
+   spot (effectsRenderer.js NODE_SPRITE_SOURCES), 627 px square.  p256.js
+   reads no twin whose width is not a multiple of four, so its twin is padded
+   here, once (`pad4`): one see-through column on its right, where the pond
+   never reaches (its drawing spans columns 112-511), the picture itself
+   untouched.  It is drawn at anchor (0.5, 0.5) and scaled by its height, so
+   nothing in the code changes; the drawing sits half a texel left (0.1 world
+   px at tier 1). */
+SCOPE.push({ dir: 'sprites/world', only: /^fish-spot-627\.webp$/, always: true, pad4: true });
+/* v2.3.5566 (card P's backlog, hud-bars): the bars over heads
+   (entityRenderer.js _HUD_BAR_FILES): the mana and stamina pills and the HP
+   pill (1444 px wide, 5.6k-7.9k colours), and the owner's health bar, its
+   empty frame, its red fill and the harvest bar's green (363 px, 2.3k-3.5k
+   colours: padded to 364 as the fish spot's pond, their drawing spanning
+   columns 7-356).  Not the duel ask's small icon (SMALL_TEX, 0.02 MB). */
+SCOPE.push({ dir: 'icons/ui', only: /^bar-(hp|mp|stam)\.webp$/, always: true });
+SCOPE.push({ dir: 'ui/bars', only: /^(hp-frame|hp-full|node-full-green)\.png$/, always: true, pad4: true });
+/* v2.3.5567 (card P's backlog, player-death): the owner's death strip
+   (playerDeathSprites.js, 21 frames of 128 px), the fallback drawn when the
+   bones' explosion (deathCrumble.js) has no corpse: 38k colours, cut to 256. */
+SCOPE.push({ dir: 'sprites/players', only: /^death-v1\.png$/, always: true });
+/* v2.3.5569 (card P's backlog, icons-from-uploads-world): the owner's
+   five-block stamina and mana strips (fxStrips.js BLOCK_BARS, six frames of
+   273 px each) and the verified Bro badge over a name (entityRenderer.js
+   BRO_BADGE_URL), 2.5k-28k colours, cut to 256.  The stamina strip is 1638
+   px wide: its twin is padded to 1640 (`pad4`), past its last frame. */
+SCOPE.push({ dir: 'icons/ui', only: /^(blocks-(mp|stam)|verified-bro-small)\.webp$/, always: true, pad4: true });
 /* v2.3.5564 (card P's backlog, cape-hood): a cape's hood's hair masks, cut
    from its facings (tools/cape/split-cape-hood.py): two colours, exact.  Not
    the hood halves (sitting 20, the planning session's answer (a)): a cape is
@@ -99,6 +126,16 @@ SCOPE.push({ dir: 'sprites/pets', only: /^pet-sheet\.png$/, always: true });
   }
 }
 
+/* v2.3.5565: a picture widened to a multiple of four by see-through columns
+   on its right (SCOPE's `pad4`); the columns it has are kept as they are */
+function padRight(w, h, d) {
+  const W = Math.ceil(w / 4) * 4;
+  if (W === w) return { w, d, pad: 0 };
+  const o = new Uint8Array(W * h * 4);
+  for (let y = 0; y < h; y++) o.set(d.subarray(y * w * 4, (y + 1) * w * 4), y * W * 4);
+  return { w: W, d: o, pad: W - w };
+}
+
 function colourCount(d) {
   const s = new Set();
   for (let i = 0; i < d.length; i += 4) s.add(d[i + 3] ? ((d[i] << 24) | (d[i + 1] << 16) | (d[i + 2] << 8) | d[i + 3]) >>> 0 : 0);
@@ -114,9 +151,11 @@ for (const s of SCOPE) {
   for (const f of fs.readdirSync(dir).sort()) {
     if (!/\.(png|webp)$/i.test(f) || /\.p256\.png$/i.test(f) || (s.skip && s.skip.test(f)) || (s.only && !s.only.test(f))) continue;
     const rel = `/${s.dir}/${f}`;
-    const { w, h, d } = readRgba(path.join(PUB, rel));
-    const colours = colourCount(d);
+    const src = readRgba(path.join(PUB, rel));
+    const colours = colourCount(src.d);
     if (colours <= 256 && !s.always) { console.log(`  as it is  ${rel} (${colours} colours)`); continue; }
+    const { w, d, pad } = s.pad4 ? padRight(src.w, src.h, src.d) : { w: src.w, d: src.d, pad: 0 };
+    const h = src.h;
     const t0 = Date.now();
     const q = onColours([{ w, h, d }]);
     const r = { idx: q.idx[0], pal: q.pal, n: q.n, err: q.err };
@@ -127,9 +166,9 @@ for (const s of SCOPE) {
       /* read back: exactly the colours written (the game's own reader) */
       await verifyPng(fs.readFileSync(path.join(PUB, twin)), r.idx, r.pal, w, h, twin);
     }
-    out[rel] = { twin, w, h, colours, n: r.n, err: +r.err.toFixed(4) };
+    out[rel] = { twin, w, h, colours, n: r.n, err: +r.err.toFixed(4), ...(pad ? { pad } : {}) };
     hard.push({ rel, twin, w, h, colours, err: r.err, d, r });
-    console.log(`  256       ${rel} ${w}x${h}: ${colours} colours -> ${r.n}, moved ${r.err.toFixed(4)} (OKLab), `
+    console.log(`  256       ${rel} ${w}x${h}${pad ? ` (padded by ${pad})` : ''}: ${colours} colours -> ${r.n}, moved ${r.err.toFixed(4)} (OKLab), `
       + `${Math.round(fs.statSync(path.join(PUB, rel)).size / 1024)} KB -> ${Math.round(bytes.length / 1024)} KB, ${Date.now() - t0} ms`);
   }
 }
@@ -138,7 +177,8 @@ const js = `/* GENERATED by tools/art/reduce256.mjs (v2.3.3728) -- never by hand
  * Every picture the game reads on 256 colours from its twin beside it
  * (docs/specs/pictures-256.md): the address the game asks for (no query) ->
  * the twin's, its size, the original's colours, the colours used and how far
- * its pixels moved (OKLab, alpha-weighted mean). */
+ * its pixels moved (OKLab, alpha-weighted mean); \`pad\`, the see-through
+ * columns a twin was widened by on its right (v2.3.5565). */
 export const P256_FILES = Object.freeze(${JSON.stringify(out, null, 1).replace(/\n\s*/g, ' ')});
 `;
 if (!DRY) fs.writeFileSync(path.join(REPO, 'src/data/p256Files.js'), js);

@@ -127,10 +127,14 @@ export const gearMethods = {
        bag on the next join and can be listed, staged or delivered nowhere. */
     if (this._isGearNotWeapon(w)) return null;
     const out = { ...w };
-    /* v2.3.5282: a weapon's own id is the worker's (stash.js): a phone's
-       claim never names one, and a malformed one is dropped (the door gives
-       it a new one); a well-formed one is kept, whatever road it came by */
-    if (strict || !weaponIdOk(out)) delete out.gid;
+    /* v2.3.5294 (card R PR 14): THE TOLERANT READER.  Card R PR 3 (tag
+       5282) gives every weapon its own `gid`, minted by the worker.  This
+       worker comes first, so that a roll-back from that one to this one
+       keeps such a weapon, its id included, on every road it reads: the
+       mail, a market sell order, an auction listing, a trade window's
+       weapon, the join's load.  A phone's claim (strict) never names an id,
+       and a malformed one is dropped (gear stays gear: _isGearNotWeapon) */
+    if (strict || !weaponIdOk(out)) delete out.gid;   /* v2.3.5282: stash.js weaponIdOk (GID_RE) */
     out.tierMult = (typeof out.tierMult === 'number' && out.tierMult > 0)
       ? Math.min(8, out.tierMult) : 1;
     if (strict) {
@@ -302,12 +306,15 @@ export const gearMethods = {
      So a weapon-bag or weapon-slot entry carrying one came there through the
      hole above. */
   _isGearNotWeapon(w) {
-    /* v2.3.5282: a weapon carries its own `gid` now (stash.js), so a gid
-       alone no longer says gear.  A piece of gear the worker minted carries
-       `prov` beside its gid, always (gearprov.js _gearProvRecord), and a
-       weapon never does; a gid the minter did not write (a phone's) is not a
-       weapon's either.  So: gear is `prov`, or a gid not well-formed. */
-    return !!(w && typeof w === 'object' && ('prov' in w || ('gid' in w && !weaponIdOk(w))));
+    /* v2.3.5294 (card R PR 14): a gid alone no longer says gear.  Card R PR 3
+       (tag 5282) gives every weapon its own, and a worker rolled back past
+       it read every such weapon as gear and dropped it (the gatekeeper's
+       sitting 23: the mail consumed, a sell order's or a listing's weapon
+       lost, the join's load emptying hand and bag).  A piece of gear the
+       worker minted carries `prov` beside its gid, always (_gearProvRecord),
+       and a weapon never does; a gid the minter did not write is not a
+       weapon's either.  So gear is `prov`, or a gid not well-formed. */
+    return !!(w && typeof w === 'object' && ('prov' in w || ('gid' in w && !weaponIdOk(w))));   /* v2.3.5282: stash.js weaponIdOk (GID_RE) */
   },
 
   // ═══ v2.3.1661: THE server equip gate (PROGRESSION-REDESIGN §6) ═══

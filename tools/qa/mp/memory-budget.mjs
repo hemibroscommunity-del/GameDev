@@ -351,8 +351,45 @@
  * 24.2); `gpu` at its highest 77.8-77.9; atlas 143-150 rows, never full.
  * By the census, cape-hood 1.50 -> 0.93 MB at the fight (the masks 0.18 on
  * the chip, the halves 0.75 in the page). */
+/* v2.3.5565, the backlog's `world-fish-spot`: the pond under a fishing spot
+ * (effectsRenderer.js NODE_SPRITE_SOURCES; the picture a spot is drawn from, loaded for the world
+ * and kept) read from its 256-colour twin as colour numbers (p256.js,
+ * `?fishspot=0` the picture; the twin padded to 628 px by one see-through
+ * column).  Three runs on main (b2d763a93): `artCache` at the fight
+ * 21.4 -> 19.9, so its line 84.5 -> 83.0, LOWERED by the 1.5 MB saved;
+ * `buffers` 23.8-23.9 at its highest (line 24.2); `gpu` at its highest
+ * 77.0-80.5; atlas 135-148 rows, never full.  By the census, world-fish-spot
+ * 1.50 -> 0.38 MB at the fight. */
+/* v2.3.5566, the backlog's `hud-bars`: the bars over heads (the HP, mana and
+ * stamina pills, the health bar and the harvest bar; entityRenderer.js
+ * _HUD_BAR_FILES, loaded for everyone and kept) read from their 256-colour
+ * twins as colour numbers (p256.js, `?hudbars=0` the pictures; the health
+ * bar's three padded to 364 px by one see-through column).  Three runs
+ * stacked on the fish spot's (main f692b93a): `artCache` at the fight
+ * 19.9 -> 18.8, so its line 83.0 -> 81.9, LOWERED by the 1.1 MB saved;
+ * `buffers` 23.9-24.0 at its highest (line 24.2); `gpu` at its highest
+ * 79.4-82.7; atlas 135-153 rows, never full.  By the census, hud-bars
+ * 1.43 -> 0.39 MB at the fight. */
+/* v2.3.5567, the backlog's `player-death`: the death strip (drawn when the
+ * bones' explosion has no corpse; playerDeathSprites.js, loaded for everyone
+ * and kept) read from its 256-colour twin as colour numbers (p256.js,
+ * `?deathstrip=0` the picture).  Three runs stacked on the bars' (main
+ * 8149d61e): `artCache` at the fight 18.8 -> 17.4, so its line 81.9 -> 80.5,
+ * LOWERED by the 1.4 MB saved; `buffers` 24.0-24.2 at its highest (at its
+ * line 24.2, not over); `gpu` at its highest 75.5-79.8; atlas 142-155 rows,
+ * never full.  By the census, player-death 1.31 -> 0.33 MB at the fight. */
+/* v2.3.5569, the backlog's `icons-from-uploads-world`: the five-block stamina
+ * and mana strips and the verified Bro badge over a name (fxStrips.js,
+ * entityRenderer.js; loaded for everyone and kept) read from their 256-colour
+ * twins as colour numbers (p256.js, `?uploadicons=0` the pictures; the
+ * stamina strip padded to 1640 px past its last frame).  Three runs stacked
+ * on the death strip's (main 8149d61e): `artCache` at the fight 17.4 -> 16.2,
+ * so its line 80.5 -> 79.3, LOWERED by the 1.2 MB saved; `buffers` 24.1-24.2
+ * at its highest (at its line 24.2, not over); `gpu` at its highest
+ * 77.0-82.3; atlas 150-158 rows, never full.  By the census,
+ * icons-from-uploads-world 1.25 -> 0.31 MB at the fight. */
 export const MEMORY_BUDGET = {
-  artCache: { name: 'art loaded from files', mb: 84.5, measured: 21.4,   /* v2.3.3702: 156 -> 112; v2.3.5246: 112 -> 109.1, LOWERED by the portraits let go of (2.9 MB); v2.3.5247: 109.1 -> 107.0, Ace's coin strips (2.1 MB); v2.3.5248: 107.0 -> 101.4, the trees as numbers (5.6 MB); v2.3.5249: 101.4 -> 98.3, the made effects as numbers (3.1 MB); v2.3.5250: 98.3 -> 97.1, the world's icons (1.2 MB); v2.3.5252: 97.1 -> 95.1, the whirlwind as numbers (2.0 MB); v2.3.5256: 95.1 -> 90.6, the slimes' strips loaded as you walk (4.5 MB), see the header; v2.3.5258: 90.6 -> 88.6, the element marks as numbers (2.0 MB, measured on its own at 95.1 -> 93.1), see the header; v2.3.5562: 88.6 -> 86.7, the hats' hair masks as numbers (1.9 MB), see the header; v2.3.5563: 86.7 -> 85.2, the pet sheet as numbers (1.5 MB), see the header; v2.3.5564: 85.2 -> 84.5, the hood's hair masks as numbers (0.7 MB), see the header */
+  artCache: { name: 'art loaded from files', mb: 79.3, measured: 16.2,   /* v2.3.3702: 156 -> 112; v2.3.5246: 112 -> 109.1, LOWERED by the portraits let go of (2.9 MB); v2.3.5247: 109.1 -> 107.0, Ace's coin strips (2.1 MB); v2.3.5248: 107.0 -> 101.4, the trees as numbers (5.6 MB); v2.3.5249: 101.4 -> 98.3, the made effects as numbers (3.1 MB); v2.3.5250: 98.3 -> 97.1, the world's icons (1.2 MB); v2.3.5252: 97.1 -> 95.1, the whirlwind as numbers (2.0 MB); v2.3.5256: 95.1 -> 90.6, the slimes' strips loaded as you walk (4.5 MB), see the header; v2.3.5258: 90.6 -> 88.6, the element marks as numbers (2.0 MB, measured on its own at 95.1 -> 93.1), see the header; v2.3.5562: 88.6 -> 86.7, the hats' hair masks as numbers (1.9 MB), see the header; v2.3.5563: 86.7 -> 85.2, the pet sheet as numbers (1.5 MB), see the header; v2.3.5564: 85.2 -> 84.5, the hood's hair masks as numbers (0.7 MB), see the header; v2.3.5565: 84.5 -> 83.0, the fishing spot's pond as numbers (1.5 MB), see the header; v2.3.5566: 83.0 -> 81.9, the bars over heads as numbers (1.1 MB), see the header; v2.3.5567: 81.9 -> 80.5, the death strip as numbers (1.4 MB), see the header; v2.3.5569: 80.5 -> 79.3, the block strips and the Bro badge as numbers (1.2 MB), see the header */
     what: 'pictures loaded from files, decoded (the asset cache, window.__btTex) -- its highest at the fight, the monsters\' looks loaded' },
   gpu: { name: 'textures on the graphics chip', mb: 115, measured: 95.0,   /* v2.3.4058: 105 -> 115, approved by the owner 2026-11-03, see the header */
     what: 'textures on the graphics chip (window.__btGpuTex) -- including what was drawn in the last minute, which Pixi unloads after 60 s unused' },

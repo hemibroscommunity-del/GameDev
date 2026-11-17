@@ -54,7 +54,7 @@
  *      NOT_A_MACHINE                                       -> FAIL 5
  *   5. the `race` worker row deleted -> FAIL 1 (4 stays green: the page's
  *      `race` row still carries the wire's name)
- *   6. TODO_LINE one under the count (14; tag 5660)          -> FAIL 7
+ *   6. TODO_LINE one under the count (13; tag 5661)          -> FAIL 7
  * v2.3.5203 (the gatekeeper's sitting 8, its two holes), each tried by hand:
  *   7. `_sneakJoin(ws,\n msg) { ... s.phase = 'joined' }` at the end of
  *      join.js's joinMethods (its parameters over two lines)  -> FAIL 2
@@ -127,6 +127,9 @@
  *      line's besides is the arena door's own, `fn`)
  * v2.3.5523 (the ride door):
  *  38. `ps._ride = true;` back in ride.js _handleRide -> FAIL 2
+ * v2.3.5525 (the loading door):
+ *  39. `S._farmArtHold = seq;` back in farmTrip.js -> loading-door.test FAIL 2
+ *  40. `S._veils = new Map();` in zoneTransitions.js -> FAIL 2
  *
  * Run from the repository's root: node tools/guards/phase-table.test.mjs
  * (cd server && npm test runs it with every other guard and suite).
@@ -159,8 +162,10 @@ const fileNamed = (name) => {
    v2.3.5379 (the gatekeeper, sitting 21, main b2d763a): 22 -> 16, the count
    since card L's page doors (#1894, #1903, #1910).
    Tag 5660 (the gatekeeper, sitting 22, main f692b93): 16 -> 15, the count
-   since card L's arena door (#1930). */
-export const TODO_LINE = 15;
+   since card L's arena door (#1930).
+   Tag 5661 (the gatekeeper, sitting 23, main 8149d61): 15 -> 14, the count
+   since card L's ride door (#1936). */
+export const TODO_LINE = 14;
 
 /* the machines every side must have a row for: SHAPES part 5's names and
    step 5.3b's list (the plan's own `dungeon`, `connection`, `loading`,
@@ -360,6 +365,9 @@ const DOOR_SUITES = Object.freeze({
   /* v2.3.5523: the ride door (ps._ridePid is written beside it, in _rideTo) */
   'server/test/ride-door.test.mjs': { field: 'ps._ride', fn: '_rideTo', holds: '§2: no write of ._ride or ._ridePid in server/src outside _rideTo',
     prop: '_ride', besides: [] },
+  /* v2.3.5525: the loading door (its reasons' old fields: the suite's §2) */
+  'server/test/loading-door.test.mjs': { field: 'S._veils', fn: 'veilTo', holds: '§2: no write of S._veils, nor of a veil\'s old field (S._zoneLoading, S._wheelTripVeil, S._townArtHold, S._farmArtHold, S._avatarArtHold), in src/ outside veilTo',
+    prop: '_veils', besides: [] },
   /* v2.3.5521: the guard's page door */
   'server/test/guard-page-door.test.mjs': { field: 'S._shieldUp', fn: 'guardTo', holds: '§2: no write of S._shieldUp in src/ outside guardTo',
     prop: '_shieldUp', besides: [

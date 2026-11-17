@@ -22,6 +22,7 @@
 import { setWheelArrival, wheelIsHome } from './worldTrial.js';
 import { wantWheelSpawn } from './wheelHome.js';
 import { veilWheelTrip } from './zoneTransitions.js';
+import { sw } from './switches.js';   /* v2.3.5310: the page's one reader (card T) */
 
 /* Can this tab be placed?  Said in the join (`tb: 1`): a tab that takes the
    trip into the Wheel on the way in (`?trial=off` does not). */
@@ -64,7 +65,7 @@ export function bodyPlaceHolds(S) {
    `?bodyhere=0`: the old way, for one phone. */
 const NEAR_PX = 200, FAR_PX = 3000;
 function bodyHereOff() {
-  try { return new URLSearchParams(window.location.search).get('bodyhere') === '0'; } catch (e) { return false; }
+  return sw('bodyhere');
 }
 export function bodyPlaceHere(S, x, y, d) {
   const P = S && S.player;

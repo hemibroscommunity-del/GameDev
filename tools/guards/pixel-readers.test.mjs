@@ -35,11 +35,13 @@
  *      and `export const g = () => new WheelShatter(null);`           -> FAIL 2
  *   4. hotArrowFx.js: `export const A_ZZ = '/sprites/fx/portal-beam.webp';`
  *      added at its end                                                -> FAIL 4
+ *   3c (v2.3.5565, 2026-11-15): p256.js FISH_SPOT widened to match
+ *      `/world/objects/buildings-1.png` as well                       -> FAIL 3c
  *
  * Run from the repository's root: node tools/guards/pixel-readers.test.mjs
  * (cd server && npm test runs it with every other guard and suite).
  */
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { ROOT } from './lib/fourLines.mjs';
 import { codeOf } from './lib/codeOnly.mjs';
@@ -94,6 +96,8 @@ const READERS = {
    reads that picture through, and why the pack never comes first. */
 const NAMES_PACKED = {
   'effectsRenderer.js': '_tightPopupIcon cuts the heart popup and the eight element marks (v2.3.5258) through readSourceRect as they load (_loadPopupIcon), before they are ever drawn: p256.js packs only what the chip already has. Its other page-copy reads are the chop strip (_cropChop) and the bakes\' probe (__btFxBakes), neither a p256 picture.',
+  /* v2.3.5566; v2.3.5569 the badge */
+  'entityRenderer.js': '_HUD_BAR_FILES names the HP, mana and stamina pills (hud-bars), and BRO_BADGE_URL the verified Bro badge (icons-from-uploads-world), which p256.js packs; it never reads their pixels: its page-copy reads are the masked bodies\' bakes and their QA probes, the body, gear, belt and rod sheets it bakes from, a frame\'s cache entry let go, and a probe that names a texture\'s file by its address (no pixel)',
 };
 
 /* The shatter's callers, and where each one's pictures come from. */
@@ -167,8 +171,13 @@ check('the rule reads as p256.js means it (an obsidian ore icon is packed; a roc
   ];
   check(`3a. the trap's box is TRAP_ICON_URL (${trap || 'not found'}), loaded by effectsRenderer.js for trapFx.js`, handed);
   check(`3b. effectsRenderer.js shatters only the rocks (ORE_TEX: ${ore.length} pictures)`, oreOnly && ore.length > 0);
-  check('3c. wheelObjects.js shatters the Wheel\'s objects, under /world/objects/, which no p256 pattern or twin names',
-    objects.length === 1 && !patterns.filter(Boolean).some((x) => /world/.test(x.re.source)) && !Object.keys(P256_FILES).some((k) => k.startsWith('/world/')));
+  /* v2.3.5565: held by the pictures' own addresses (every one in the
+     folder), not by a pattern's spelling: the fish spot's pond, packed since
+     5565, lives under /sprites/world/ and is no Wheel object */
+  const objPics = readdirSync(join(ROOT, 'public/world/objects')).filter((f) => /\.(png|webp)$/i.test(f)).map((f) => '/world/objects/' + f);
+  check(`3c. wheelObjects.js shatters the Wheel's objects, under /world/objects/ (${objPics.length} pictures), which no p256 pattern or twin names`,
+    objects.length === 1 && objPics.length > 0 && !objPics.some((a) => packedBy(a)) && !Object.keys(P256_FILES).some((k) => k.startsWith('/world/objects/')),
+    objPics.filter((a) => packedBy(a)).slice(0, 5));
   const bad = cuts.filter((c) => packedBy(c.a)).map((c) => `${c.who}: ${bare(c.a)} (${packedBy(c.a)})`);
   check(`3. no picture the shatter cuts is one p256.js packs (${cuts.length} pictures: a packed one is found empty and never breaks)`, bad.length === 0, bad);
 }

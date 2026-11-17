@@ -20,7 +20,12 @@
  *   7. the one-time fill from the device records and the bot statistics;
  *   8. a fill that fails lets the join through and is tried again later;
  *   9. the kill switch; the overview;
- *  10. every place a key is checked asks the device (a scan). */
+ *  10. every place a key is checked asks the device (a scan);
+ *  11. (v2.3.5584) while the lock is off, a matching old key's device is
+ *      still written down (never on a sealed record, a list-less one after
+ *      the fill), so turning it back on shuts its player out of nothing and
+ *      does not hand it to whichever device comes first; `offdevs: false`
+ *      the way back. */
 import { readFileSync } from 'node:fs';
 import { srcFiles } from './src-walk.mjs';
 import { GameRoom } from '../src/index.js';
@@ -164,8 +169,8 @@ const authOf = (room, id) => room.state._store.get('auth:' + id);
 {
   const { accountPassphraseToId } = await import('../src/account.js');
   /* a character from before the new keys: no device list (the fill found
-     none), the fill long done -- the red team's takeover: its old key is
-     worked out from its public id, and a thief's device came in first */
+     none), the fill long done -- the red team's takeover: someone else
+     holds its old key, and a thief's device came in first */
   const KEY = 'raven-solar-jet-nexus-42';
   const KID = accountPassphraseToId(KEY);
   const state = makeState();
@@ -418,9 +423,10 @@ const authOf = (room, id) => room.state._store.get('auth:' + id);
 
 // ── 9. the kill switch and the overview ──
 {
-  const room = newRoom(null, { devicelock: false });
+  /* v2.3.5584: `offdevs: false` too -- the lock off records nothing (§11) */
+  const room = newRoom(null, { devicelock: false, offdevs: false });
   await join(room, 'bp_devlock_k', 'k-key-1', D1);
-  check('9. `devicelock: false`: a new character keeps no list (as before)', authOf(room, 'bp_devlock_k').devs === undefined);
+  check('9. `devicelock: false` (and `offdevs: false`): a new character keeps no list (as before)', authOf(room, 'bp_devlock_k').devs === undefined);
   const w = await join(room, 'bp_devlock_k', 'k-key-1', D2);
   check('9. ...and another device plays it', joined(w));
   const { accountPassphraseToId } = await import('../src/account.js');
@@ -437,6 +443,94 @@ const authOf = (room, id) => room.state._store.get('auth:' + id);
   const ov = await res.json();
   const dl = ov.deviceLock || (ov.overview && ov.overview.deviceLock);
   check('9. the overview counts known devices and refusals', dl && dl.on === true && dl.known >= 1 && dl.refused >= 1, dl);
+}
+
+// ── 11. v2.3.5584: while the lock is off, its devices are still written down ──
+{
+  const OFF = { devicelock: false };
+  const room = newRoom(null, OFF);
+  const state = room.state;
+  const d = (id) => (authOf(room, id).devs || []).map((e) => e.d).join();
+  /* a character made while it is off, then played from a new phone */
+  await join(room, 'bp_off_a', 'off-a-key', D1);
+  check('11. lock off: a new character is registered with its device', d('bp_off_a') === 'phone1abc', authOf(room, 'bp_off_a'));
+  const w2 = await join(room, 'bp_off_a', 'off-a-key', D2);
+  check('11. ...a new phone plays it (nothing refused while off)', joined(w2));
+  check('11. ...and is written down', d('bp_off_a') === 'phone1abc,phone2xyz', authOf(room, 'bp_off_a'));
+  const putsBefore = state.puts.length;
+  await join(room, 'bp_off_a', 'off-a-key', D2);
+  check('11. ...a join from a listed device writes nothing for it (cost-guard)',
+    !state.puts.slice(putsBefore).includes('auth:bp_off_a'), state.puts.slice(putsBefore));
+  check('11. ...the overview counts what was recorded while off', room._deviceLockInfo().off === 1, room._deviceLockInfo());
+  /* no device named: no list at all, never an empty one */
+  await join(room, 'bp_off_n', 'off-n-key');
+  check('11. a new character with no device named keeps NO list (never an empty one)', authOf(room, 'bp_off_n').devs === undefined, authOf(room, 'bp_off_n'));
+
+  /* turned back on: the owner's phones in, a stranger's refused */
+  room._liveFlags = {};
+  check('11. back on: the phone first played while off is in', joined(await join(room, 'bp_off_a', 'off-a-key', D2)));
+  const s1 = await join(room, 'bp_off_a', 'off-a-key', { id: 'stranger01' });
+  check('11. back on: a stranger\'s device with the key is refused \'device\', not taken first', rejected(s1) && rejected(s1).reason === 'device');
+  room._liveFlags = { oldkeylock: false };
+  const s2 = await join(room, 'bp_off_a', 'off-a-key', { id: 'stranger02' });
+  check('11. ...even with `oldkeylock: false` (its list is not empty)', rejected(s2) && rejected(s2).reason === 'device');
+  room._liveFlags = {};
+  const n1 = await join(room, 'bp_off_n', 'off-n-key', { id: 'stranger03' });
+  check('11. back on: the no-device character takes no first device either (no list, the fill done: the owner\'s pass)',
+    rejected(n1) && rejected(n1).reason === 'device' && authOf(room, 'bp_off_n').devs === undefined, authOf(room, 'bp_off_n'));
+}
+{
+  /* a character from before the lock (no list), the fill done: played while
+     off, it is listed, and is not shut out when the lock comes back */
+  const state = makeState();
+  const room = newRoom(state, { devicelock: false });
+  state._store.set(DEVICE_LOCK.FILLED_KEY, { at: 1, chars: 0, devices: 0 });
+  state._store.set('auth:bp_off_old', { pfHash: await room._phraseHash('off-old-key'), createdAt: 1 });
+  await join(room, 'bp_off_old', 'off-old-key', D1);
+  check('11. a list-less old character played while off: its device listed', (authOf(room, 'bp_off_old').devs || []).map((e) => e.d).join() === 'phone1abc', authOf(room, 'bp_off_old'));
+  room._liveFlags = {};
+  check('11. ...back on, its player is in on that phone (not shut out)', joined(await join(room, 'bp_off_old', 'off-old-key', D1)));
+  check('11. ...and another device refused', rejected(await join(room, 'bp_off_old', 'off-old-key', D2)).reason === 'device');
+}
+{
+  /* the fill not yet run: it runs first, and its devices are kept */
+  const state = makeState();
+  const room = newRoom(state, { devicelock: false });
+  state._store.set('auth:bp_off_f', { pfHash: await room._phraseHash('off-f-key'), createdAt: 1 });
+  state._store.set('device:oldphone7', { ids: [{ id: 'bp_off_f', lastSeen: 5 }] });
+  await join(room, 'bp_off_f', 'off-f-key', D1);
+  check('11. a list-less record while off waits for the fill: the device it knew and the new one both listed',
+    (authOf(room, 'bp_off_f').devs || []).map((e) => e.d).join() === 'oldphone7,phone1abc' && state._store.has(DEVICE_LOCK.FILLED_KEY), authOf(room, 'bp_off_f'));
+  /* a fill that fails: nothing recorded */
+  const st2 = makeState();
+  const r2 = newRoom(st2, { devicelock: false });
+  st2._store.set('auth:bp_off_g', { pfHash: await r2._phraseHash('off-g-key'), createdAt: 1 });
+  st2.failList = true;
+  const wg = await join(r2, 'bp_off_g', 'off-g-key', D1);
+  check('11. ...a fill that fails while off: in, and nothing recorded', joined(wg) && authOf(r2, 'bp_off_g').devs === undefined, authOf(r2, 'bp_off_g'));
+}
+{
+  /* the owner's Forget while off: the seal stands; a pass is not spent */
+  const room = newRoom(null, { devicelock: false });
+  await join(room, 'bp_off_s', 'off-s-key', D1);
+  await admin(room, '/device-forget', { playerId: 'bp_off_s' });
+  const ws = await join(room, 'bp_off_s', 'off-s-key', D2);
+  check('11. a sealed record while off: in (the lock is off), its device NOT written down', joined(ws) && !(authOf(room, 'bp_off_s').devs || []).length && authOf(room, 'bp_off_s').sealed === true, authOf(room, 'bp_off_s'));
+  room._liveFlags = {};
+  check('11. ...back on, that device is refused: the seal waits for the owner\'s pass', rejected(await join(room, 'bp_off_s', 'off-s-key', D2)).reason === 'device');
+  await admin(room, '/device-pass', { playerId: 'bp_off_s' });
+  room._liveFlags = { devicelock: false };
+  await join(room, 'bp_off_s', 'off-s-key', D2);
+  check('11. a pass is not spent while off', !!(authOf(room, 'bp_off_s').pass), authOf(room, 'bp_off_s'));
+}
+{
+  /* the switch: `offdevs: false` records nothing, as before */
+  const state = makeState();
+  const room = newRoom(state, { devicelock: false, offdevs: false });
+  await join(room, 'bp_off_x', 'off-x-key', D1);
+  const before = state.puts.length;
+  await join(room, 'bp_off_x', 'off-x-key', D2);
+  check('11. `offdevs: false`: no list made, and a new phone writes nothing', authOf(room, 'bp_off_x').devs === undefined && !state.puts.slice(before).includes('auth:bp_off_x'), authOf(room, 'bp_off_x'));
 }
 
 // ── 10. every key check asks the device ──

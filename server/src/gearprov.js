@@ -84,7 +84,9 @@ export function gearMintId(ledger) {
   return 'g' + Date.now().toString(36) + '.' + seq.toString(36) + '.' + rnd;
 }
 /* a gid as the minter writes it (a weapon's is held to this at every load
-   and every give: anything else is minted again) */
+   and every give: anything else is minted again).  v2.3.5294 (card R PR 14)
+   put it here first, for the weapon reader (gear.js) that shipped before
+   5282: one definition. */
 export const GID_RE = /^g[0-9a-z]{1,12}\.[0-9a-z]{1,10}\.[0-9a-z]{4}$/;
 
 export const GEAR_PROV_KEY = (playerId) => 'gear_prov:' + playerId;
