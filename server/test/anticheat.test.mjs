@@ -496,12 +496,17 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
   ps.inventory = { fish_minnow: N + 10 };
   ps._cookHistory = [];
   const wsZ = [...room.sessions.entries()].find(([, s]) => s.id === 'pz')[0];
+  /* v2.3.5727: `cookstart` is ON (card K2 PR 8), and these results start no
+     cook: the rate is read with the start's judge off (cookstart-on.test) */
+  const _flags7 = room._liveFlags;
+  room._liveFlags = { ...(_flags7 || {}), cookstart: false };
   for (let i = 0; i < N + 5; i++) {
     ps._lastCookAt = 0; // isolate the rate limit from the v2.3.1167 floor
     await room.webSocketMessage(wsZ, JSON.stringify({ type: 'cook_request', payload: { fishKey: 'fish_minnow', kind: 'cooked' } }));
   }
   check(`cook: only ${N} requests per minute consume fish`, ps.inventory.fish_minnow === 10, ps.inventory.fish_minnow);
   check(`cook: cooked output matches the ${N} accepted`, ps.inventory.cooked_fish_minnow === N, ps.inventory.cooked_fish_minnow);
+  room._liveFlags = _flags7;
   check(`cook: the limit never fires on an honest hand (${N}/min > 60000 / ${HONEST_CYCLE_MIN_MS} ms = ${(60000 / HONEST_CYCLE_MIN_MS).toFixed(1)}/min)`,
     N > 60000 / HONEST_CYCLE_MIN_MS, { limit: N, honestMs: HONEST_CYCLE_MIN_MS });
 
