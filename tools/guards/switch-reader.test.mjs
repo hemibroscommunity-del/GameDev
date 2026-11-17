@@ -45,10 +45,10 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { SWITCHES } from './lib/switches.mjs';
 import { blankComments, pageFiles, pageForm, READER_FILE, READER_IMPORT, ROOT } from './lib/switchScan.mjs';
-import { filesOf } from './lib/filesOf.mjs';   /* v2.3.5343: a big file found by its system (tests-by-system: no suite names one by its path) */
+import { filesOf } from './lib/filesOf.mjs';   /* v2.3.5742: a big file found by its system (tests-by-system 2); v2.3.5343: and the two renderers (inSystem below) */
 
 /* the outside reads: only falls */
-const OUTSIDE_LINE = 71;   /* its first count, v2.3.5306: 228 with sitting 17's `?slimewalk` (card P's slimeSprites.js, P still running: not moved), 221 after the first seven reads moved; 212 after v2.3.5309's nine; 201 after v2.3.5310's eleven; 189 after v2.3.5232's twelve (card O PR 12: the lanes' off-ramps); 172 with v2.3.5311's pageAddress() sites (seventeen) ; 161 after v2.3.5313's eleven ; 155 after v2.3.5314's six ; 144 after v2.3.5315's eleven ; 116 after v2.3.5316's twenty-eight ; 71 after v2.3.5317's forty-five (render, on pageAddress()) */
+const OUTSIDE_LINE = 34;   /* its first count, v2.3.5306: 228 with sitting 17's `?slimewalk` (card P's slimeSprites.js, P still running: not moved), 221 after the first seven reads moved; 212 after v2.3.5309's nine; 201 after v2.3.5310's eleven; 189 after v2.3.5232's twelve (card O PR 12: the lanes' off-ramps); 172 with v2.3.5311's pageAddress() sites (seventeen) ; 161 after v2.3.5313's eleven ; 155 after v2.3.5314's six ; 144 after v2.3.5315's eleven ; 116 after v2.3.5316's twenty-eight ; 71 after v2.3.5317's forty-five (render, on pageAddress()) ; 65 after v2.3.5740's six (card T2: the game's) ; 59 after v2.3.5741's six (card T2: the screens, the townsfolk's pictures) ; 56 after v2.3.5742's three (card T2: the connection's) ; 34 after v2.3.5343's twenty-two (card M chain B: the two renderers; the gatekeeper's sitting 42) */
 
 /* v2.3.5343: a moved read in a big file (the four lines' own: BroTown.jsx,
    the two renderers) names its file through its system, never its path
@@ -131,6 +131,17 @@ const MOVED = Object.freeze([
   { name: 'shadowpass', call: 'sw', file: 'src/rendering/lightfx/shadows.js', old: (S) => /[?&]shadowpass\b/.test(S || '') },
   { name: 'sheenpass', call: 'sw', file: 'src/rendering/lightfx/sheenBatch.js', old: (S) => /[?&]sheenpass(=|&|$)/.test(S || '') },
   { name: 'stripgentle', call: 'sw', file: 'src/rendering/zoneTextures.js', old: (S) => /(^|[?&])stripgentle=(0|off|false)(&|$)/.test(S || '') },
+  /* v2.3.5740 (card T2 PR 1): the game's six (the rest on pageAddress(): ?jumpms, ?nmlaskms, ?speedms, ride's rideCoastOn, resetOn's resetSwitches) */
+  { name: 'dbltap', call: 'sw', file: 'src/game/desktopControls.js', old: (S) => /[?&]dbltap=0(?:&|$)/.test(S) },
+  /* v2.3.5741 (card T2 PR 2): the screens and the townsfolk's pictures (?tradeside, a value, on pageAddress()) */
+  { name: 'dev', call: 'sw', file: 'src/ui/mobile/dash/SettingsPanel.jsx', old: (S) => /[?&]dev=1\b/.test(S) },
+  { name: 'p3colour', call: 'sw', file: 'src/ui/mobile/sheet/HeroExpanded.jsx', old: (S) => /[?&]p3colour=0\b/.test(S) },
+  { name: 'p3cols', call: 'sw', file: 'src/ui/mobile/sheet/HeroExpanded.jsx', old: (S) => /[?&]p3cols=1\b/.test(S) },
+  { name: 'npcheads', call: 'sw', file: 'src/rendering/npcSprites.js', old: (S) => /[?&]npcheads=0(&|$)/.test(S || '') },
+  { name: 'coinflip', call: 'sw', file: 'src/rendering/npcSprites.js', old: (S) => /[?&]coinflip=0(&|$)/.test(S || '') },
+  /* v2.3.5742 (card T2 PR 3): the connection's three (?diet and ?room, values, on pageAddress()) */
+  /* the connection's file is a big file: found by its system (tests-by-system 2: a suite reads code by system, never a big file's path) */
+  { name: 'wheelwhole', call: 'sw', file: filesOf('wire').find((f) => f.endsWith('/wsClient.js')), old: (S) => /[?&]wheelwhole(?:[=&]|$)/.test(S) },
   /* v2.3.5343 (card M PR 4, chain B): the two renderers' single-name switches; their six other reads (a need, a value, two names) on pageAddress() with the old test in place.  `!(... !== '0')` is the old ON test turned to the read's OFF, word for word */
   { name: 'standinlegs', call: 'sw', file: inSystem('render', 'effectsRenderer.js'), old: (S) => /[?&]standinlegs=0(&|$)/.test(S || '') },
   { name: 'firelegless', call: 'sw', file: inSystem('render', 'effectsRenderer.js'), old: (S) => /[?&]firelegless=0(&|$)/.test(S || '') },

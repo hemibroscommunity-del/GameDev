@@ -2614,9 +2614,7 @@ export const combatMethods = {
           /* Guard broken by the hit itself.  Latched the same way the hold
              drain latches it (movement.js), or the client's next packet
              would re-raise the shield a few milliseconds later. */
-          targetPs.blocking = false;
-          targetPs.blockStartT = 0;
-          targetPs._guardBrokenUntil = Date.now() + this.GUARD_BREAK_MS;
+          this._guardTo(targetPs, 'break');   /* v2.3.5536: the guard door */
         }
         this._queuePlayerStateFlush(targetId);
       }

@@ -70,7 +70,7 @@ import { MOVE_DIET, dietMayWait, steadyMove, MOVE_PATH, pathWaits, pathTurned } 
    (sessionStorage), so the owner's own phone stays on the path it asked for */
 const DIET_ASK = (function () {
   try {
-    var q = new URLSearchParams(window.location.search).get('diet');
+    var q = new URLSearchParams(pageAddress()).get('diet');   /* v2.3.5742: the address from the page's one reader (card T2) */
     if (q === '1' || q === '0') { try { sessionStorage.setItem('bt_diet', q); } catch (e) { /* private mode */ } return q; }
     return sessionStorage.getItem('bt_diet');
   } catch (e) { return null; }   /* no page: a test */
@@ -255,6 +255,7 @@ import { saveRpgSoon, cancelRpgSave } from '@/game/rpgSave.js'; /* v2.3.2330: th
 import { noteMoveCaps } from '@/game/monsterMoves.js';   /* v2.3.4011 */
 import { t2OnStateSync } from '@/game/tradeSlot.js';   /* v2.3.4362: the trade window never outlives its server */
 import { rejoinClear, duelResume } from '@/game/rejoinSlots.js';   /* v2.3.4382: a rejoin clears the duel and trade the worker says again */
+import { sw, pageAddress } from '@/game/switches.js';   /* v2.3.5742: the page's one reader (card T2) */
 /* v2.3.3689: what your head wears and its colours, as one string -- the
    state_sync record apply tells BroTown when it changed (the 'bt-own-look'
    event: the new pieces prepared, the veil waiting for them) */
@@ -374,11 +375,10 @@ export function setupWebSocket(ctx) {
     var API_BASE = WS_BASE.replace(/^wss:/, 'https:').replace(/^ws:/, 'http:');
     var WS_URL = null;
     async function resolveRoom() {
-      try {
-        var p = new URLSearchParams(window.location.search);
-        var urlRoom = (p.get('room') || '').trim();
-        if (urlRoom) return urlRoom;
-      } catch (e) {}
+      /* v2.3.5742: the address from the page's one reader (card T2); its try
+         gone: pageAddress() never throws, nor URLSearchParams on a string */
+      var urlRoom = (new URLSearchParams(pageAddress()).get('room') || '').trim();
+      if (urlRoom) return urlRoom;
       try {
         var res = await fetch(API_BASE + '/api/lobby');
         if (res.ok) {
@@ -733,7 +733,7 @@ export function setupWebSocket(ctx) {
              other one whole as it comes into reach (server/src/wheelnear.js,
              `mw` below); `?wheelwhole` asks for every one, as before.  Old
              workers ignore it. */
-          wn: (function () { try { return /[?&]wheelwhole(?:[=&]|$)/.test(location.search) ? undefined : 1; } catch (e) { return 1; } })(),
+          wn: (function () { try { return sw('wheelwhole') ? undefined : 1; } catch (e) { return 1; }   /* v2.3.5742: the page's one reader (card T2) */ })(),
           /* v2.3.3315: the Wheels this phone draws (src/game/wheelSize.js):
              the worker keeps a phone that does not draw the one it plays out
              of harm.  Old workers ignore it. */
