@@ -23,17 +23,14 @@ state: stalled
 
 ## Found
 
-- The table is now the one list of switch names for card A's `sw` (the
-  report) and card K's `flag` (the wire table): each is to read it.
+- The table is the one list of names for A's `sw` and K's `flag`.
 - New switch rows need `on`; a page row also `--write` (the reader's forms).
 - Card B's map files src/game/crowdCap.js under `monsters`; `?crowd` caps players.
-- Rule 4's sample: `ahonewrite` thrown beside store-heal-wait.test's own
-  `storehealwait: false` fails its check 2 (two switches off, not one).
+- Rule 4: `ahonewrite` thrown fails store-heal-wait.test check 2 (two off).
 - Card O's knobs stay O's reads (step 2.4): `?pixbudget`, `?res`,
   `?onebatch`, `?lookpalette`, `?pace`, `?crowd`, the passes'; and `govern`
   (a value on the page) is a need the reader cannot resolve.
-- `?bandbeat` stays outside: server/test/held-sweep.test.mjs 10a pins its
-  regex in BottomDashboard.jsx's text (card H's test).
+- `?bandbeat` stays: held-sweep.test 10a pins its text (card H's test).
 
 ## Needs
 
