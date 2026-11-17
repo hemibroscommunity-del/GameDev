@@ -1,6 +1,6 @@
 card: K
 branch: claude/plan-k-14b-movetop (5549, the second block 5540-5559)
-prs: #1822 to #2006, #2003, #2013, #2014 merged; open: #2018 (5548), 5549 (this branch)
+prs: #1822 to #2006, #2003, #2013, #2014, #2018 merged; open: #2021 (5549, this branch)
 state: ready
 
 ## Done
@@ -14,8 +14,9 @@ state: ready
 
 ## Next
 
-- #2018 5548: the sword's reach and swing, `swordswing` OFF. 5549 (this
-  branch): the move's top, `movetop` OFF (gain 2.56 -> 1.17). Next: the bow.
+- 5548 (#2018, merged): the sword's reach and swing, `swordswing` OFF.
+  5549 (#2021, this branch): the move's top, `movetop` OFF (gain 2.56 ->
+  1.17). Next: the bow.
 - Later (the planner): walls on the worker (the Wheel's coast): a new
   system and worker memory, for when real players come.
 - wsClient.js: done for good (told L). index.js, combat.js: 13 and 14.

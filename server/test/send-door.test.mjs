@@ -18,8 +18,9 @@
  *   6. INTO THE BOOK: the counts ride a put the book makes anyway, and the
  *      Test panel's route reads what is not yet folded.
  *   7. THE SWITCH: `sendcount: false` -- the frames the same, nothing counted.
- *   8. THE CENSUS (rule 3: its line only falls): a raw `.send(` in server/src
- *      outside send.js.  Card K PR 13 moves the rest; at 0 it turns strict.
+ *   8. THE CENSUS, STRICT (v2.3.5671, the gatekeeper, sitting 33; the plan's
+ *      rule 3): a raw `.send(` in server/src outside send.js fails.  Card K
+ *      PR 13 (#2013, #2014) took it 93 -> 0; a frame leaves through `_send`.
  * Break proof (tried by hand): `_send` writing `s + ' '` -> 1 and 3 red; a
  * helper put back to `ws.send(JSON.stringify(` -> 4 and 8 red. */
 import { readFileSync, readdirSync } from 'node:fs';
@@ -185,10 +186,12 @@ function body(src, name) {
   check('7: `sendcount: false`: the frame the same, nothing counted', ws.raw[0] === JSON.stringify(msg) && tally(r7, 'off_probe')[0] === 0);
 }
 
-/* ── 8. the census ── */
-const LINE = 0;   /* v2.3.5193: 150 on main 78f70f4a (140 `.send(JSON.stringify` and 10 of frames made first); 57 moved behind the helpers.
-                      v2.3.5198 (card K PR 13, batch 1): every file no card holds, 65 more: 28 left, all in the second batch's (cooking, dungeon, gathering, gladiator, join, persistence, prog3, quests).
-                      v2.3.5199 (batch 2): those 28: 0, the door the one place a frame is written (the gatekeeper makes it strict) */
+/* ── 8. the census, strict ── */
+/* v2.3.5193: 150 on main 78f70f4a (140 `.send(JSON.stringify` and 10 of frames made first); 57 moved behind the helpers.
+   v2.3.5198 (card K PR 13, batch 1): every file no card holds, 65 more: 28 left.
+   v2.3.5199 (batch 2): those 28: 0, the door the one place a frame is written.
+   v2.3.5671 (the gatekeeper, sitting 33, after #2013 and #2014 merged on main 35aa7f7b): strict, no line --
+   any raw socket write outside send.js fails (`this._send`, `room._send`, or `sendOutside` before a room). */
 {
   const found = [];
   const walk = (dir) => {
@@ -202,7 +205,7 @@ const LINE = 0;   /* v2.3.5193: 150 on main 78f70f4a (140 `.send(JSON.stringify`
     }
   };
   walk('../src/');
-  check(`8: raw socket writes outside send.js (${found.length}) are at or under the line (${LINE})`, found.length <= LINE, found.slice(0, 40));
+  check(`8: no raw socket write outside send.js (strict; ${found.length} found): write through _send`, found.length === 0, found.slice(0, 40));
 }
 
 await settle();

@@ -202,6 +202,31 @@ if (stepOff) check(`2b: the stepping archer keeps every arrow; with \`arrowlane:
     check(`2c: the sprint mark: the move's liar takes ${Math.round(on.liar.v)} px an hour with \`sprintmark: true\`, and ${Math.round(offV)} as it lands (off)`, offV > on.liar.v * 1.1, { on: on.liar.v, off: offV });
   }
 }
+/* v2.3.5548 (card K, step 4.2): THE SWORD'S SWING (swordswing.js; an
+   opt-in, `swordswing: true`, the owner's to turn on).  With it on, the
+   honest sword takes exactly what it took and meets no refusal on any
+   disturbance; and the sword's own claim -- its liar at an honest walk, the
+   move's claim (its 480 px a second) apart -- falls under the bar. */
+if (!GAINS_ONLY) {
+  const rc = CLAIMS.find((c) => c.id === 'reach');
+  const ms = GAIN_MIN * B.MIN;
+  const ON = { swordswing: true };
+  const hOff = rows.find((r) => r.c.id === 'reach').hon[0];
+  const hOn = await runBot(rc, rc.honest[0], { ms, flags: ON });
+  const hOnV = perHour(rc, valueOf(rc, hOn.take), hOn.ms);
+  const ssDist = [];
+  for (const d of DISTURBANCES) { const r = await runBot(rc, rc.honest[0], { d, ms: DIST_S * 1000, flags: ON }); if (r.refusals.length) ssDist.push(d.id + ': ' + r.refusals[0]); }
+  check(`2d: \`swordswing: true\`: the honest sword takes what it took (${Math.round(hOnV)} kills an hour, off ${Math.round(hOff.v)}) and meets no refusal on any disturbance`, Math.round(hOnV) === Math.round(hOff.v) && !hOn.refusals.length && !ssDist.length, { on: hOnV, off: hOff.v, refused: [...hOn.refusals.slice(0, 2), ...ssDist] });
+  const walk = ['every monster in reach at an honest walk (150 px a second)', B.liarSword, { speed: B.WALK }];
+  const lOff = await runBot(rc, walk, { ms });
+  const lOn = await runBot(rc, walk, { ms, flags: ON });
+  const gOff = perHour(rc, valueOf(rc, lOff.take), lOff.ms) / Math.max(hOff.v, 1e-9);
+  const gOn = perHour(rc, valueOf(rc, lOn.take), lOn.ms) / Math.max(hOnV, 1e-9);
+  check(`2d: the sword's own claim (its liar at an honest walk): gain ${gOff.toFixed(2)} off, ${gOn.toFixed(2)} with \`swordswing: true\` (the bar ${BAR})`, gOn <= BAR && gOff > gOn, { off: gOff, on: gOn });
+  /* the whole liar (its walk at the move's bound) with it on: what is left is the move's claim (the next judge) */
+  const fOn = await runBot(rc, rc.liar, { ms, flags: ON });
+  console.log(`     2d: the whole liar with \`swordswing: true\`: gain ${(perHour(rc, valueOf(rc, fOn.take), fOn.ms) / Math.max(hOnV, 1e-9)).toFixed(2)} (off ${rows.find((r) => r.c.id === 'reach').gain}); the rest is the move's claim`);
+}
 /* v2.3.5549 (card K, step 4.2): THE MOVE'S TOP (movement.js MOVE_TOP; an
    opt-in, `movetop: true`, the owner's to turn on).  With it on, the honest
    walker and sprinter take exactly what they took and meet no refusal on
