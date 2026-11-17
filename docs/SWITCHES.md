@@ -202,10 +202,11 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | name | side | kind | born | on | thrown | risk | needs | fallback | off |
 |---|---|---|---|---|---|---|---|---|---|
 | `broCount` | worker | switch | v2.3.3255 | 2026-10-15 | false | logic |  | no | The phone falls back to the worn-Bro check instead of counting a wallet's Bros (links and counts stored keep showing). |
-| `devicelock` | worker | switch | v2.3.3344 | 2026-10-18 | false | logic |  | no | The join, the login check and the restart as they were: no device lock read or written. |
+| `devicelock` | worker | switch | v2.3.3344 | 2026-10-18 | false | logic |  | no | The join, the login check and the restart as they were: nothing refused (a matching old key's device is still written down unless offdevs is false too). |
 | `disable_verify` | worker | switch | v2.3.3275 | 2026-10-16 | true | logic |  | no | Thrown, the account check (Turnstile) is not asked at the join. |
 | `keys2` | worker | switch | v2.3.3355 | 2026-10-18 | false | logic |  | no | No new login key is handed out (keys already made still work). |
 | `namerules` | worker | switch | v2.3.5622 | 2026-11-16 | false | logic |  | no | A new character's name is taken as before (any characters, 64 at most) and `track` may rename; the owner's rename stays. |
+| `offdevs` | worker | switch | v2.3.5584 | 2026-11-17 | false | logic |  | no | While the device lock is off, nothing is written down for it again, as before (a matching old key's device recorded while on, so the lock can come back without shutting a player out or handing the character to whichever device comes first; a key holder can still push the player's devices off its list of 12 while it is off). |
 | `oldkeylock` | worker | switch | v2.3.5582 | 2026-11-16 | false | logic |  | no | An old login key may take the first device of a character with no device list again, and the five-wrong-keys lock shuts out even its rightful holder on its own device, as before. |
 | `?tabid` | page | switch | v2.3.4521 | 2026-11-11 | =0 | logic |  | no | This phone takes the old road: the shared slot at every join, not its tab's own id. |
 
@@ -635,6 +636,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?diet` | page | switch | v2.3.3726 | 2026-10-28 (v2.3.3744) | =1 or =0 (kept for the tab) | logic |  | no | Puts this phone on the move diet (=1) or keeps it off (=0), whatever the worker says for everyone. |
 | `disable_weapon_drops` | worker | switch | v2.3.1150 | 2026-07-03 | true | logic |  | no | Thrown, weapon drops stop rolling (caps.weaponDrops stays true, so no phone mints its own). |
 | `heapforget` | worker | switch | v2.3.5544 | 2026-11-17 | false | logic |  | no | A guest who left stays in the room's maps (a refused strike with its raw zone, the arrow's refusals, the fire's clock, the chat buckets and reports), as before: the red team's RT-1 N11 open again. |
+| `ip56` | worker | switch | v2.3.5584 | 2026-11-17 | false | logic |  | no | The address limits count an IPv6 address by its /64 alone again (a whole /56 is one customer, at three times the /64's line, while on). |
 | `ip64` | worker | switch | v2.3.5581 | 2026-11-16 | false | logic |  | no | The address limits count each IPv6 address apart again, as before (an IPv6 line is one address by its /64 while on). |
 | `ip_joins_min` | worker | value | v2.3.3274 |  | a number, 0 to 10000 | logic |  | no | Joins an address may make a minute (0 to 10000; 0 is no limit). |
 | `ip_sockets` | worker | value | v2.3.3274 |  | a number, 0 to 1000 | logic |  | no | Sockets an address may hold at once (0 to 1000; 0 is no limit). |

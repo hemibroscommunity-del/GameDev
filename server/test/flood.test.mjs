@@ -16,6 +16,7 @@
  *      a second join on a socket closes it, leaving no ghost;
  *   5. addresses: so many sockets, so many opens a minute, each a live flag,
  *      none locally; 5b (v2.3.5581) an IPv6 address counted by its /64;
+ *      5c (v2.3.5584) and by its /56, at IP56.TIMES the line;
  *   6. writes: a mute that changes nothing writes nothing; toggles are paced
  *      and the held change is written at the flush; a stat flood writes the
  *      burst and then rides the regen window; the same slot again writes
@@ -25,7 +26,7 @@
  *      frozen, full, reset or a linger.
  */
 import worker, { GameRoom } from '../src/index.js';
-import { FLOOD, PACE, ROOMS, roomNameFor, requestIp, ipKey } from '../src/flood.js';
+import { FLOOD, PACE, ROOMS, roomNameFor, requestIp, ipKey, ip56Key, IP56 } from '../src/flood.js';
 import { CHAT_LANES } from '../src/chatlanes.js';
 
 let passed = 0, failed = 0;
@@ -347,6 +348,58 @@ const sessionOf = (room, ws) => room.sessions.get(ws);
     if (res.status === 101 && lastPair && !lastPair[1].closed) { opens++; r2.sessions.delete(lastPair[1]); }
   }
   check('5b. IP_JOINS_PER_MIN opens a minute from one /64, the rest refused', opens === FLOOD.IP_JOINS_PER_MIN, opens);
+}
+
+/* ═══ 5c. v2.3.5584: a whole /56 is one customer (red team RT-1, ip56) ═══
+   A line given a /56 has 256 /64s: rotating them took sixteen places in
+   each.  The /56 holds IP56.TIMES the /64's line between its blocks. */
+{
+  const eq = (a, b, name) => check('5c. ip56Key ' + name, ip56Key(a) === b, { got: ip56Key(a), want: b });
+  eq('2001:db8:1:2::1', '2001:db8:1:0::/56', 'keeps three groups and the top half of the fourth');
+  eq('2001:db8:1:ab12::1', '2001:db8:1:ab00::/56', 'drops the low half of the fourth');
+  eq('2001:0DB8:0001:00ff:aaaa:bbbb:cccc:dddd', '2001:db8:1:0::/56', 'reads a full address, any case, leading zeros');
+  eq('2001:db8::1', '2001:db8:0:0::/56', 'fills the gap of ::');
+  eq('fe80::1%eth0', 'fe80:0:0:0::/56', 'drops a zone');
+  eq('::ffff:203.0.113.9', null, 'an IPv4 address written as IPv6 has none');
+  eq('203.0.113.9', null, 'IPv4 has none');
+  eq('2001:db8::1::2', null, 'what it cannot read has none');
+  check('5c. ip56Key leaves a non-string alone', ip56Key(null) === null && ip56Key(undefined) === null);
+  check('5c. two /64s of one /56 share its key', ip56Key('2001:db8:9:1::5') === ip56Key('2001:db8:9:fe::5'));
+
+  const WIDE = FLOOD.IP_SOCKETS * IP56.TIMES;
+  const { room } = makeRoom();
+  room._liveFlags = { ip_joins_min: 0 };
+  const open = async (ip) => {
+    lastPair = null;
+    const res = await room.fetch(wsRequest('?rf=1', { 'CF-Connecting-IP': ip }));
+    const ok = res.status === 101 && lastPair && !lastPair[1].closed;
+    return { ok, srv: lastPair && lastPair[1] };
+  };
+  /* a new /64 of the /56 every four sockets: no /64 near its own line */
+  let inWide = 0, refused = null;
+  for (let i = 0; i < WIDE + 4; i++) {
+    const r = await open('2001:db8:9:' + (Math.floor(i / 4) + 1).toString(16) + '::' + (i + 1).toString(16));
+    if (r.ok) inWide++; else if (!refused) refused = r.srv && r.srv.sent[0];
+  }
+  check('5c. one /56, a new /64 every few sockets: IP_SOCKETS x IP56.TIMES let in, the rest refused "ip"',
+    inWide === WIDE && refused && refused.type === 'room_full' && refused.reason === 'ip', { inWide, refused });
+  check('5c. the next /56 is another customer', (await open('2001:db8:9:100::1')).ok);
+  check('5c. an IPv4 address is counted as before', (await open('203.0.113.201')).ok);
+  room._liveFlags = { ip56: false, ip_joins_min: 0 };
+  check('5c. ip56 false counts the /64 alone again', (await open('2001:db8:9:ee::1')).ok);
+
+  /* the opens a minute are kept by the /56 too (socket limit off) */
+  const { room: r2 } = makeRoom();
+  r2._liveFlags = { ip_sockets: 0 };
+  const WIDE_OPENS = FLOOD.IP_JOINS_PER_MIN * IP56.TIMES;
+  let opens = 0;
+  for (let i = 0; i < WIDE_OPENS + 5; i++) {
+    lastPair = null;
+    const res = await r2.fetch(wsRequest('?rf=1', { 'CF-Connecting-IP': '2001:db8:a:' + (Math.floor(i / 5) + 1).toString(16) + '::1' }));
+    if (res.status === 101 && lastPair && !lastPair[1].closed) { opens++; r2.sessions.delete(lastPair[1]); }
+  }
+  check('5c. IP_JOINS_PER_MIN x IP56.TIMES opens a minute from one /56, the rest refused', opens === WIDE_OPENS, opens);
+  check('5c. a /64 refused for its /56 counted nothing for itself', (r2._ipOpens.get(ipKey('2001:db8:a:ff::1')) || []).length <= 5);
 }
 
 /* ═══ 6. writes ═══ */
