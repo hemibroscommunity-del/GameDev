@@ -172,6 +172,7 @@ export const lingerMethods = {
        (state-machine sweep V3, S1-4).  Kept on a resume (`quiet`): the join
        that follows reads it back (achievements.js _achvLoadOnJoin). */
     if (!quiet && this._achvForget) this._achvForget(id);
+    if (!quiet && this._heapForget) this._heapForget(id);   /* v2.3.5544 (RT-1 N11): the room's maps keyed by them, as the close drops them (heapforget.js) */
     delete this.stateHistory[id];
     /* v2.3.3322: the extraction record outlives the body, as it outlives a
        socket (index.js webSocketClose; gathering.js HARVEST_PROOF) */

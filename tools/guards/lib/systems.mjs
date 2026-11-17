@@ -59,8 +59,9 @@ export const SYSTEMS = Object.freeze({
     /* v2.3.5061 (card N): server/src/wire/, the wire table (one row a message or route) */
     files: [f('server/src', 'index|relay|bundle|clientoff|flood'), re('^server/src/wire/'), re('^src/networking/'), f('src/game', 'clientOff|clientOffApply|blockedAsks|workerClock|t1Sync|tooFar'),
       f('src/game', 'actions'),   /* v2.3.5185 (card K): the action door, the one way a request leaves the page */
+      f('server/src', 'heapforget'),   /* v2.3.5544 (card K, RT-1 N11): the room forgets who left */
     ],
-    words: ['wire', 'protocol', 'relay', 'caps', 'bundle', 'privileged', 'clientoff', 'flood'],
+    words: ['wire', 'protocol', 'relay', 'caps', 'bundle', 'privileged', 'clientoff', 'flood', 'heap-forget'],
     traps: ['wire'],
     doors: [
       /* v2.3.5184 (the gatekeeper, sitting 13): the two lists are made from the wire table now (lists.js, card K PR 1) */
@@ -195,7 +196,7 @@ export const SYSTEMS = Object.freeze({
       /* v2.3.5480 (card PW): + power, the boards' power index; v2.3.5484: + statboards;
          v2.3.5218 (card L): + raceDoor, the race's page door; v2.3.5594: + reservednames (a name that reads as staff); v2.3.5621: + silence (card MOD) */
       f('server/src', 'party|clanparty|clans|guilds|alliance|friends|chatlanes|chatmod|chatguard|reservednames|silence|emotes|boards|arena|gladiator|duel|spar|race|leaderboard|power|statboards'),
-      f('src/game', 'alliance|chat|chatChannel|chatColor|chatMute|emotes|emoteMoves|gesturePose|friendErrors|duelLock|duelPending|partyChip|partyEq|partyMarks|partyRows|peerDot|race|raceDoor|spar|sparTargets|bubbleSkins|boardBumps|dictation'),
+      f('src/game', 'alliance|allyDrafts|chat|chatChannel|chatColor|chatMute|emotes|emoteMoves|gesturePose|friendErrors|duelLock|duelPending|partyChip|partyEq|partyMarks|partyRows|peerDot|race|raceDoor|spar|sparTargets|bubbleSkins|boardBumps|dictation'),
     ],
     words: ['party', 'clan', 'guild', 'alliance', 'friend', 'chat', 'emote', 'duel', 'arena', 'gladiator', 'spar', 'race', 'board', 'leaderboard', 'social'],
     traps: ['social'],
