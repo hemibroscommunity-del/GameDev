@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "735be0baff89a8fea92461b3d5a44f87a3f55970",
+  "tree": "d88d646f7f57744e7d32ab3699a87b7a74b8e53c",
+  "committedAt": "2026-11-16T17:41:25-08:00",
+  "subject": "Merge pull request #1943 from hemibroscommunity-del/claude/plan-p-24-fish-spot",
+  "files": 7994,
+  "bytes": 958609142,
+  "listingSha256": "1e505bf85818306cfaeab55adef71cec33eafc768135c00cc7ef1ccee9fae6d7",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

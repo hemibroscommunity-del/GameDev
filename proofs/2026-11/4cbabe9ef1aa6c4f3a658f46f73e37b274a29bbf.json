@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "4cbabe9ef1aa6c4f3a658f46f73e37b274a29bbf",
+  "tree": "dbba69b3fdb8852c8347669d32a3eb15e817de0c",
+  "committedAt": "2026-11-16T17:42:22-08:00",
+  "subject": "Merge pull request #1944 from hemibroscommunity-del/claude/plan-ops-11-guestlazy",
+  "files": 8005,
+  "bytes": 958684426,
+  "listingSha256": "df62c71dc6ea3c728747c748504ce2c28d4bba18fe4e8f7d09ed48ce7a8bc3ab",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

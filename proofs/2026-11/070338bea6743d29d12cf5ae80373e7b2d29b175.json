@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "070338bea6743d29d12cf5ae80373e7b2d29b175",
+  "tree": "05173a4aa29f354f9379e29914002a0942875565",
+  "committedAt": "2026-11-16T17:41:19-08:00",
+  "subject": "Merge pull request #1948 from hemibroscommunity-del/claude/plan-j2-22-palette",
+  "files": 7992,
+  "bytes": 958553493,
+  "listingSha256": "5566874aaf60b9410aeaacbb5022526138274ebe5504dfc22e58c31a4ccb98f9",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

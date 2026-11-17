@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "5f67ecbd83fcac317fe17d8633b547650a953a89",
+  "tree": "9f59b2d6cd2f1757c0e0c83fd38733bd9676ade4",
+  "committedAt": "2026-11-16T17:41:47-08:00",
+  "subject": "Merge pull request #1949 from hemibroscommunity-del/claude/plan-k-n5-ceiling",
+  "files": 7999,
+  "bytes": 958639298,
+  "listingSha256": "a58402f6a8f2b9d31904f2b83156e274641aaf85bb25fe89db9bf2196113ad60",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

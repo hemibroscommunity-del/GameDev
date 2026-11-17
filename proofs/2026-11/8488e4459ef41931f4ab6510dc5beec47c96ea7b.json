@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "8488e4459ef41931f4ab6510dc5beec47c96ea7b",
+  "tree": "0cc4366ee1c17c4d4b260cc8bf007c5c4b3f94d6",
+  "committedAt": "2026-11-16T17:42:10-08:00",
+  "subject": "Merge pull request #1914 from hemibroscommunity-del/claude/plan-mod-4-invitepace",
+  "files": 8002,
+  "bytes": 958665716,
+  "listingSha256": "45df23863195f76dc6a0321135fb0cca2ae9f38087f33b3c557c4cce970c9d1a",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

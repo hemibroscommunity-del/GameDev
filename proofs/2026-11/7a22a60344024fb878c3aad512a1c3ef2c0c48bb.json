@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "7a22a60344024fb878c3aad512a1c3ef2c0c48bb",
+  "tree": "a49f27842bb8cf9487be66d04c3e5d8dd6ce55c2",
+  "committedAt": "2026-11-16T17:42:28-08:00",
+  "subject": "Merge pull request #1961 from hemibroscommunity-del/claude/plan-r-13b-arena-stakes",
+  "files": 8005,
+  "bytes": 958700635,
+  "listingSha256": "73bf95d753c566878fc9f1cb48b67e6a2af90538e1885e7f95edb4fb02ef3e1a",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
