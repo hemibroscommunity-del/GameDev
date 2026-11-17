@@ -113,7 +113,8 @@ import { Filter, Matrix, Rectangle } from 'pixi.js';
 import { weaponMaterial } from '../traits/materialTints.js';
 import { gearArt, gearMaterial } from '../gearVariants.js';
 import { getEquip } from '../gearCatalog.js';
-import { Sprite, Texture } from 'pixi.js';   /* v2.3.2904: the loading-screen warm-up (prewarmGlintPipe) */
+import { Sprite, Texture, BufferImageSource, RenderTexture } from 'pixi.js';   /* v2.3.2904: the loading-screen warm-up (prewarmGlintPipe); v2.3.5237: its self-test */
+import { selfDraw, selfQueue, selfSkip, selfTestOn, selfSheenRgba, glintCpu, SELF_SHEEN, SELF_GRADE, SELF_SIZE } from '../selfTest.js';   /* v2.3.5237: the self-test at the door (card O PR 14c) */
 import { SHEEN_LIFT } from './sheenLift.js';   /* v2.3.3453: the sheen's lines, shared with sheenBatch.js */
 import { sheenBatchOn, sheenParams } from './sheenBatch.js';   /* v2.3.3453: the shine drawn in the frame */
 import { isSharpPiece } from '../sharpPixels.js';
@@ -362,7 +363,44 @@ export function prewarmGlintPipe(renderer) {
   if (ok) _warmStats.ok++;
   if (ok && f && !_warmFilters.length) _warmFilters.push(f);   /* one is enough; a second loading screen does not stack them */
   else if (f) { try { f.destroy(); } catch (e) { /* best-effort; the shared program is never destroyed with it */ } }
+  if (ok && !_selfTested.has(renderer)) { _selfTested.add(renderer); glintSelfTest(renderer); }
   return ok;
+}
+
+/* ═══ v2.3.5237: THE SELF-TEST AT THE DOOR (card O PR 14c; selfTest.js) ═══
+   Built, the glint's filter draws the shine's known picture twice -- its
+   sweep's strength 0, the sun's side 0, no figure frame, a white tint: the
+   shine alone (SHEEN_LIFT, as the sheen batcher's), then with a rare
+   piece's grade (its highlights lit blue) -- held to the CPU's answer
+   (selfTest.js glintCpu), a channel allowed 4 (a phone's half precision).
+   THERE IS NO WAY BACK (drawLanes.js PROGRAMS `back: null`): a wrong
+   picture is named in the report's `self` and the shine is drawn as today.
+   Once a renderer (a second loading screen warms again: one test). */
+const _selfTested = new WeakSet();
+function glintSelfTest(renderer) {
+  if (!selfTestOn()) { selfSkip('glint', 'no self-test on this page (?selftest=0)'); return; }
+  const t0 = performance.now();
+  const pic = selfSheenRgba();
+  const rts = [], wants = [];
+  for (const grade of [null, SELF_GRADE]) {
+    let spr = null, f = null;
+    try {
+      f = makeGlintFilter();
+      const u = f.resources.glintUniforms.uniforms;
+      u.uProgress = 0; u.uStrength = 0; u.uSheen = SELF_SHEEN.k;
+      u.uColor[0] = SELF_SHEEN.r; u.uColor[1] = SELF_SHEEN.g; u.uColor[2] = SELF_SHEEN.b;
+      if (grade) { for (let k = 0; k < 4; k++) u.uGrade[k] = grade[k]; u.uPrism = 0; }
+      const src = new BufferImageSource({ resource: pic, width: SELF_SIZE, height: SELF_SIZE, alphaMode: 'premultiplied-alpha', label: 'bt-glint-selftest' });
+      spr = new Sprite(new Texture({ source: src }));
+      spr.filters = [f];
+      rts.push(selfDraw(renderer, spr, RenderTexture));
+      wants.push({ want: glintCpu(pic, SELF_SHEEN, grade), tol: 4 });
+    } catch (e) { /* what was drawn is judged; the rest unread */ }
+    try { if (spr) { spr.filters = null; spr.destroy({ texture: true, textureSource: true }); } } catch (e) { /* gone */ }
+    try { if (f) f.destroy(); } catch (e) { /* the shared program stays */ }
+  }
+  if (!rts.length) { rts.push(null); wants.push(glintCpu(pic)); }
+  selfQueue('glint', renderer, rts, wants, () => { /* no way back: named in `self`, drawn as today */ }, performance.now() - t0);
 }
 
 /* The shine colour of each metal: steel white, iron cooler, copper warm. */
