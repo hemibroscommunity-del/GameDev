@@ -1,9 +1,9 @@
-# The self-test at the door (v2.3.5234, v2.3.5236, v2.3.5237)
+# The self-test at the door (v2.3.5234, v2.3.5236, v2.3.5237, v2.3.5238)
 
 Card O's PR 14 (grand plan step 1.7), in three parts: 14a (v2.3.5234) the
 frame, the one program and the colour numbers; 14b (v2.3.5236) the look
 program, the sharp read, the shine in the frame, the shadows' shade and the
-moving water; 14c (v2.3.5237) the fill and the glint; 14d the clip. The code:
+moving water; 14c (v2.3.5237) the fill and the glint; 14d (v2.3.5238) the clip. The code:
 `src/rendering/selfTest.js` (the frame, every picture and every answer);
 each program's own file for where its picture is drawn and its one way
 back. The checks: `server/test/self-test.test.mjs` and
@@ -208,7 +208,29 @@ question (card O's status, Needs).
 About 4 ms more behind the loading screen; every program's tests together
 76.8 ms on that run (the shade's first build 50 of it, as in 14b).
 
-## 14d (to come)
+## 14d: the clip (v2.3.5238)
 
-- 14d: the clip, tested and named in `self` (after card P's #1906 and
-  #1918, now merged).
+`hairClip.js`'s two programs draw the stencil's shapes: the hat's and the
+hood's (`batch-clip`, a white silhouette: kept where alpha x red is at
+least half) and the monsters' behind a thing (`batch-clip-alpha`, the
+thing's own colours: kept where alpha is at least half). Once installed
+(`installHairClip`, after the app is made), each draws the clip's picture
+(`selfClipRgba`: four premultiplied colours, none within a tenth of either
+line) **as a picture**, not into the stencil, so what it keeps is seen: its
+sprite marked as that program's shape answers its own batcher. The answer
+(`selfClipWant`): the picture where kept, nothing elsewhere. A program that
+discarded nothing, or everything, or the wrong colours, draws another
+picture.
+
+- **No way back in the card's list** (`back: null`): a wrong picture is
+  named in `self` and the clip drawn as today. `?alphaclip` (the alpha
+  mask, as it was) could be one; that is asked in card O's status, Needs.
+- Not tested where it is not installed (no WebGL2, or `?alphaclip`):
+  `skipped`, saying why.
+- `?selftest=fail:clip`: `mp-selftest` page 13.
+
+### What 14d costs (measured 2026-11-17, `mp-selftest`, unthrottled)
+
+The clip: drawn 26.7 ms (both programs' first build: until now they were
+built on the first hat or silhouette in play), read 0.2 ms. Every program's
+tests together 77.8 ms on that run.
