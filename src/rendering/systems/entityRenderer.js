@@ -4,6 +4,7 @@
  */
 import { feelTint } from '../../game/weaponFeel.js';   /* v2.3.4800: the sword's blade, dull right after a swing */
 import { tickSmithing } from '@/game/smithing.js';   /* v2.3.2827: the smith borrows the mining swing */
+import { sw, swHas, pageAddress } from '@/game/switches.js'   /* v2.3.5343: the page's one reader of its address (card M, PR 4) */
 import { Assets, Cache, ColorMatrixFilter, Container, Graphics, Rectangle, Sprite, Text, TextStyle, Texture } from 'pixi.js';
 import { readbackFrames } from '../photoSheet.js';   /* v2.3.2987: the stat scene's roll and jog, one readback */
 import { getNpcTexture, getNpcWalkFrame, hasNpcWalk, getPropFrame, propFrameCount, wheelNpcPhotosHeld, loadWheelNpcArt } from '../npcSprites.js'; /* v2.3.1672: NPC figure art; v2.3.2046: walking NPCs; v2.3.2061: animated props */
@@ -102,7 +103,7 @@ import { installArmourProbe } from '../lookArmourProbe.js';   /* v2.3.3752: QA, 
 import { getEyeColor } from '../traits/eyeColorCatalog.js';   /* v2.3.1930: eye colour is per-player now, so every draw names whose eyes it means */
 /* v2.3.3860: QA, `?headframes` only: the head-frame count's context is set on
    each figure (headFrames.js, loaded by pixiRenderer only then) */
-const HEAD_FRAMES_ON = typeof window !== 'undefined' && /[?&]headframes(=|&|$)/.test((window.location && window.location.search) || '');
+const HEAD_FRAMES_ON = typeof window !== 'undefined' && swHas('headframes');
 import { DISPLAY_DS, bakeDisplayCanvas } from '../spriteScale.js'; /* v2.3.1120: display-texture downscale + lockstep transform compensation; v2.3.2325: bakeDisplayCanvas, because the masked bake needs the EXACT-TEXEL 2x inverse, not the smooth one */
 import { buildScale, getBuildHeight, getBuildFrame } from '../traits/buildCatalog.js'; /* v2.3.1953: height x frame render scale */
 import { getCapeTexture, getCapeHoodTexture, getCapeHoodMaskTexture } from '../capeSprites.js'; /* v2.3.2023: the cosmetic cape; v2.3.2186: its hood half + the hair clip */
@@ -518,7 +519,7 @@ let _frontLayerRef = null;
 /* v2.3.3241: `?nopeercull` is the peer loop as it was, to compare: every other
    player in the Wheel drawn wherever they stand (PEER_FAR_MARGIN in
    _updateOtherPlayers), and moved back into the entity layer every frame */
-const _noPeerCull = typeof location !== 'undefined' && /[?&]nopeercull\b/.test(location.search || '');
+const _noPeerCull = typeof location !== 'undefined' && swHas('nopeercull');
 /* v2.3.3241: the crowd cap's K -- the owner's 50, or `?crowd=K` (`?crowd=all`
    draws everyone); `?nopeercull` draws everyone too (src/game/crowdCap.js).
    v2.3.5226 (card O PR 6): asked each frame -- the lane's crowd at the
@@ -1063,10 +1064,10 @@ const _traitCache = {};  // `${category}/${id}` -> { tex:{east,...}, meta, loadS
    `?traitretry=0` is the game as it was. */
 const TRAIT_RETRY_LATER_MS = [5000, 10000, 20000, 40000, 60000];
 let _traitRetryOn = true;
-try { if (typeof location !== 'undefined' && /[?&]traitretry=0\b/.test(location.search || '')) _traitRetryOn = false; } catch (e) { /* on */ }
+try { if (typeof location !== 'undefined' && /[?&]traitretry=0\b/.test(pageAddress())) _traitRetryOn = false; } catch (e) { /* on */ }
 /* v2.3.3865: P1's off-ramp for every art loader that asks again (`?retrylooks=0`), read here too */
 let _looksRetryOn = true;
-try { if (typeof location !== 'undefined' && /[?&]retrylooks=0\b/.test(location.search || '')) _looksRetryOn = false; } catch (e) { /* on */ }
+try { if (typeof location !== 'undefined' && sw('retrylooks')) _looksRetryOn = false; } catch (e) { /* on */ }
 function _traitGaveUp(e) {
   if (!_traitRetryOn || !_looksRetryOn) return;   /* v2.3.3865: + P1's shared `?retrylooks=0` */
   const n = e.retries || 0;
@@ -3674,7 +3675,7 @@ async function _runLookBake(job) {
    the page's (mp-lookarmour runs the full oracle this way and samples the
    worker): the same bake (lookBake.js) here, as the old path's no-worker
    bake is (_maskedBodyFrame). */
-const _lookInlineAddr = (() => { try { return /(^|[?&])lookinline(=1)?(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();   /* QA: BT_QA_QUERY=lookinline */
+const _lookInlineAddr = (() => { try { return /(^|[?&])lookinline(=1)?(&|$)/.test(pageAddress()); } catch (e) { return false; } })();   /* QA: BT_QA_QUERY=lookinline */
 const _lookInline = () => typeof window !== 'undefined' && (window.__btLookBakeInline === true || (_lookInlineAddr && window.__btLookBakeInline !== false));
 const _lookSheetsHere = new Map();
 const _mkCpuCanvas = (w, h) => {
@@ -3777,7 +3778,7 @@ function _placeLookResidue(display, on, tex, forTex) {
 }
 /* v2.3.3752: the armoured look's oracle (mp-lookarmour), on a page that asks for it only */
 try {
-  if (typeof window !== 'undefined' && /(^|[?&])(lookpalette=1|lookprobe(=1)?)(&|$)/.test(window.location.search || '')) {
+  if (typeof window !== 'undefined' && /(^|[?&])(lookpalette=1|lookprobe(=1)?)(&|$)/.test(pageAddress())) {
     installArmourProbe({ getBodyFrame, getLookBodyEntries, getFrame, getGearFrame, playerFrameCount,
       maskedFrame: (t, w, d, p) => _maskedBodyFrame(t, w, d, p), fullsetCovers: (w, p, d) => _fullsetCoversBake(w, p, d),
       /* the masked bake's own picture over the body the numbers draw (the
@@ -4266,7 +4267,7 @@ function _dirsFacingFirst() {
  * for a drawn player in one of the three source facings the flipped one.
  * Fishing is south only and never flipped (getFishFrame).  `?flipbake=0` is
  * the game as it was (mp-armourflash shows both). */
-const _FLIPBAKE_OFF = typeof location !== 'undefined' && /[?&]flipbake=0\b/.test(location.search || '');   /* the game as it was */
+const _FLIPBAKE_OFF = typeof location !== 'undefined' && sw('flipbake');   /* the game as it was */
 function _prewarmArts(pose, dir) {
   const a = localBodyArt(false);
   if (_FLIPBAKE_OFF || pose === 'fish' || MIRRORED_SOURCE_DIRS.indexOf(dir) < 0) return [a];
@@ -4932,13 +4933,13 @@ function _chestFrameOf(worn) {
 const FISH_SKIN_DARK = 70, FISH_SKIN_LIGHT = 165, FISH_STEEL_LO = 0.15, FISH_STEEL_HI = 0.85, FISH_STEEL_INK = 45;
 const FISH_RIM_MIN = 55;   /* the rim's red channel at least this: the outline's is lower */
 const FISH_PINE_RG = 60;   /* red over green past this is skin, not the pine rod (toolRecolor's pine: 46 at most) */
-const _FISH_GRIP_OVER_PLATE = (() => { try { return new URLSearchParams(location.search).get('fishgrip') === '1'; } catch (e) { return false; } })();
+const _FISH_GRIP_OVER_PLATE = (() => { try { return sw('fishgrip'); } catch (e) { return false; } })();
 /* v2.3.3657: `?fishgriptrousers=1` -- the grip lifts the trousers over the
    greaves again, as before (THE GRIP LIFTS THE HAND, NOT THE TROUSERS);
    `window.__btFishGripTrousers(on)` flips it on a running page (mp-fisharmour
    compares one frame both ways): the overlays made so far are forgotten, not
    destroyed, as one may be on screen this frame (QA only, a test page) */
-let _FISH_GRIP_TROUSERS = (() => { try { return new URLSearchParams(location.search).get('fishgriptrousers') === '1'; } catch (e) { return false; } })();
+let _FISH_GRIP_TROUSERS = (() => { try { return sw('fishgriptrousers'); } catch (e) { return false; } })();
 if (typeof window !== 'undefined') {
   window.__btFishGripTrousers = (on) => {
     _FISH_GRIP_TROUSERS = !!on;
