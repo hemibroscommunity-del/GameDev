@@ -699,7 +699,7 @@ export const joinMethods = {
       /* v2.3.5621: a device a frozen character played on is frozen too, a new
          character on it included (silence.js, card MOD; before the key, so a
          refused join writes nothing) */
-      if (await this._frozenDeviceRefuse(ws, cleanDevice(msg.device))) return;
+      if (await this._frozenDeviceRefuse(ws, cleanDevice(msg.device), typeof msg.id === 'string' ? msg.id : null)) return;   /* v2.3.5625: and the character it names (the owner's spare) */
       /* v2.3.3275: the account check (verify.js) -- asked only of a character
          that does not exist yet, and only when the owner has turned it on. */
       /* v2.3.3344: ...and the device the join came from (devicelock.js) */

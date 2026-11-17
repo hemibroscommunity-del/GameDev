@@ -24,6 +24,9 @@
  * node does not run are read from their source).
  */
 import { readFileSync } from 'node:fs';
+import { act, setActionTransport } from '../../src/game/actions.js';   /* v2.3.5188: the page's sends leave through the action door (card K PR 7.2): its transport is the stand-in phone's channel */
+/* v2.3.5188: the door's transport is this phone's channel (none: nothing leaves, as with no connection) */
+const via = (S) => { setActionTransport(S && S.channel ? { send: (m) => S.channel.send(m) } : null); return S; };
 
 let passed = 0, failed = 0;
 function check(name, cond, detail) {
@@ -50,11 +53,11 @@ function block(text, start) {
 const wd = src('src/game/wheelDungeons.js');
 const enterBody = block(wd, 'export function enterWheelDungeon(S, id) {');
 check('1a enterWheelDungeon found in wheelDungeons.js', !!enterBody);
-const enter = new Function('wheelDungeonOpen', 'BT_AUDIO', 'Date', 'return function (S, id) {' + enterBody + '};');
+const enter = new Function('wheelDungeonOpen', 'BT_AUDIO', 'Date', 'act', 'return function (S, id) {' + enterBody + '};');   /* v2.3.5188: + act, the action door (its send) */
 function tryEnter(extra) {
   const sent = [];
   const S = Object.assign({ channel: { send: (m) => sent.push(m) }, _wheelDoorAskedAt: 1000 }, extra);
-  const r = enter(() => true, { enterBuilding() {} }, { now: () => 5000 })(S, 'goo_grotto');
+  const r = enter(() => true, { enterBuilding() {} }, { now: () => 5000 }, act)(via(S), 'goo_grotto');
   return { r, sent: sent.length };
 }
 const plain = tryEnter({});

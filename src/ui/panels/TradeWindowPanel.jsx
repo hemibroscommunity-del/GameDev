@@ -37,6 +37,7 @@ import { petList, petbookOn } from '@/game/petBook.js';
 import { portraitDataUrl, portraitOptsFromPeer, portraitHasSubject } from '../../rendering/characterPortrait.js';
 import { OWNER_ICON } from '@/data/ownerIcons.js';   /* v2.3.3481: the trade request's handshake */
 import { gemName, parseGemKey } from '@/data/gems.js';   /* v2.3.3516: gems are bag items */
+import { act } from '@/game/actions.js';   /* v2.3.5190: the page's requests leave through the action door (card K PR 7) */
 
 /* === TradeWindowPanel — the two-sided trade window (v2.3.1132) === */
 /* Handoff item H: both players stage items + gold, both confirm, the
@@ -715,7 +716,7 @@ export function TradeWindowPanel(props) {
   }, []);
   const prevConfirmRef = useRef(null);
   const send = (event, payload) => {
-    try { S.channel.send({ type: 'broadcast', event, payload: payload || {} }); } catch (e) {}
+    try { act(event, payload || {}); } catch (e) {}   /* v2.3.5190: through the action door (actions.js) */
   };
   /* ═══ v2.3.4362: LEAVING A TRADE NEVER WAITS FOREVER ═══
      ✕, Cancel and Leave Trade sent trade2_cancel and waited for the worker's

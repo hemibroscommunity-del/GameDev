@@ -8,6 +8,7 @@ import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { actionBus } from '../actionBus.js';
 import { getState } from './common.js';
 import { WEAPON_KEYS } from '@/game/deskKeys.js';
+import { act } from '@/game/actions.js';   /* v2.3.5191: the page's requests leave through the action door (card K PR 7) */
 
 /* ═══ v2.3.4151: THE COMPUTER'S WEAPON BAR ═══
    The owner, playing on a computer: "The weapon equipping system is
@@ -61,7 +62,7 @@ export const WeaponBar = ({ R, w, row }) => {
                 const S = getState();
                 if (S && S.rpg) {
                   S.rpg.activeSlot = cell.active;
-                  try { if (S.channel) S.channel.send({ type: 'set_active_slot', payload: { slot: cell.active } }); } catch (err) { /* offline */ }
+                  try { if (S.channel) act('set_active_slot', { slot: cell.active }); } catch (err) { /* offline */ }   /* v2.3.5191: through the action door (actions.js) */
                 }
               }
             }}

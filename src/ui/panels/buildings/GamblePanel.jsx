@@ -6,6 +6,7 @@ import { _objectSpread } from '@/lib/babelHelpers.js';
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { DailySpin } from './DailySpin.jsx'; /* v2.3.3140: the free daily spin */
 import { OWNER_ICON } from '@/data/ownerIcons.js'; /* v2.3.3481: the jackpot's sack of gold */
+import { act } from '@/game/actions.js';   /* v2.3.5190: the page's requests leave through the action door (card K PR 7) */
 /* === GamblePanel — buildingPanel === 'gamble' sub-panel === */
 /* v2.3.880: extracted verbatim from the buildingPanel === 'gamble'
    clause in BroTown.jsx (the casino: coin-flip bet + jackpot deposit).
@@ -221,11 +222,7 @@ export function GamblePanel(props) {
              the roll and the gold are the worker's (CLAUDE.md §5). */
           if (stateRef.current._serverCaps && stateRef.current._serverCaps.gamble) {
             if (stateRef.current.channel) {
-              stateRef.current.channel.send({
-                type: 'broadcast',
-                event: 'gamble_request',
-                payload: { wager: wager }
-              });
+              act('gamble_request', { wager: wager });   /* v2.3.5190: through the action door (actions.js) */
             }
             return;
           }
@@ -300,11 +297,7 @@ export function GamblePanel(props) {
                (the page's own debit and pool) is gone. */
             if (stateRef.current._serverCaps && stateRef.current._serverCaps.jackpot) {
               if (stateRef.current.channel) {
-                stateRef.current.channel.send({
-                  type: 'broadcast',
-                  event: 'jackpot_deposit',
-                  payload: { amount: amt }
-                });
+                act('jackpot_deposit', { amount: amt });   /* v2.3.5190: through the action door (actions.js) */
                 if (!R._compStats) R._compStats = createDefaultCompStats();
                 R._compStats.jackpotDeposited += amt; /* label-only tally */
                 BT_AUDIO.beep(500, 0.06, 0.08, 'sine');

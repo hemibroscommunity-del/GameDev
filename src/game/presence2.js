@@ -33,6 +33,8 @@
  * No imports: node-tested (server/test/presence2.test.mjs reads it as text).
  */
 
+import { act } from './actions.js';   /* v2.3.5188: the action door (card K PR 7), its only import: it has none of its own, so node still reads this file */
+
 export const PRESENCE2_CLIENT = Object.freeze({
   /* the open map's repeat (the worker keeps a watch MAP_WATCH_MS, 8 s) */
   MAP_HEARTBEAT_MS: 4000,
@@ -133,7 +135,7 @@ export function applyOnlineList(S, on, now, makePeer) {
 /** The world map opened (true), is still open (true again), or shut (false). */
 export function sendMapWatch(S, on) {
   if (!presence2On(S) || !S.channel || typeof S.channel.send !== 'function') return false;
-  try { S.channel.send({ type: 'map_watch', on: !!on }); } catch (e) { return false; }
+  try { act('map_watch', { on: !!on }); } catch (e) { return false; }   /* v2.3.5188: through the action door (actions.js) */
   S._mapWatchSent = { on: !!on, at: Date.now() };
   return true;
 }
