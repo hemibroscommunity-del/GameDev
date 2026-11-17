@@ -27,6 +27,7 @@
 
 import { deskWideActive, DESK_SHEET_W } from '../deskWide.js';   /* v2.3.3687 */
 import { oneBandActive } from '../oneBand.js';                   /* v2.3.4072 */
+import { sw } from '../../game/switches.js';   /* v2.3.5310: the page's one reader (card T) */
 
 const PHONE_FALLBACK_W = 390;
 const PHONE_FALLBACK_H = 844;
@@ -51,7 +52,7 @@ function shell() {
    that keeps anything (the observer starts on the first read with the shell
    mounted).  `?playvwlive=1`: the old way, measured on every read, for one
    tab. */
-const _live = (() => { try { return /(^|[?&])playvwlive=1(&|$)/.test(window.location.search || ''); } catch (e) { return true; } })();
+const _live = sw('playvwlive');
 let _vw = -1, _vh = -1, _sw = -1, _sh = -1, _ro = null, _roEl = null, _wired = false;
 const _sizes = { reads: 0, measured: 0 };
 function _clear() { _vw = -1; _vh = -1; _sw = -1; _sh = -1; }
