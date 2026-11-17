@@ -59,14 +59,12 @@ const msg = async (room, ws, type, payload) => { await room.webSocketMessage(ws,
 
 /* ── 4. the table ── */
 const LEFT = Object.freeze({
-  'http:/api/market/place': 'card K PR 9b (#1981) turns it, with the page\'s re-send behind its cap',
-  'http:/api/store/list': 'card K PR 9b (#1981) turns it, the same way',
   'http:/api/account/reset': 'the route knows no player until it has read the phrase; the page asks twice before it sends, and a repeat resets the fresh character it made',
 });
 {
   const rows = [...WIRE_IN, ...WIRE_HTTP].filter((r) => r.dir === 'in' && (r.doesWhat || []).some((d) => d === 'value-out' || d === 'final') && !['system', 'owner', 'never'].includes(r.mayStart));
   const none = rows.filter((r) => r.reqId === 'none').map((r) => r.name);
-  check('4: no row a player may start that moves value is `none`, but LEFT (each with its reason)', none.every((n) => LEFT[n]), none);
+  check('4: no row a player may start that moves value is `none`, but LEFT (each with its reason)', none.every((n) => LEFT[n]) && Object.keys(LEFT).every((n) => none.includes(n)), none);
 }
 
 /* ── 5. the switch ── */
