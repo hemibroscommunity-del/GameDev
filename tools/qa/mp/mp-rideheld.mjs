@@ -43,10 +43,11 @@ const ring = (G) => {
    HELD_MAX     the most pieces of ground held on the ring: 77 measured (67 and 70 as it was; 86 before the trim
                 behind the board) -- the planning session's condition (2026-11-18): a line at the ride's
                 measured peak, so it cannot creep;
-   GPU_MAX_MB   the graphics chip's total at its highest on the ring: 78.2 measured (76.9 and 80.7 as it was: the
-                chip's total moves 2 to 4 MB run to run with the town's other pictures).  The game's own peak is
+   GPU_MAX_MB   the graphics chip's total at its highest on the ring: 78.2 and 81.4 measured in two runs (76.9 and
+                80.7 as it was: the chip's total moves 2 to 4 MB run to run with the town's other pictures), so
+                the line is the higher with that much room.  The game's own peak is
                 mp-membudget's tour on foot, 78 to 82 against its 109.3 line: the ride does not raise it. */
-const MISSING_MAX = 8, HELD_MAX = 80, GPU_MAX_MB = 82;
+const MISSING_MAX = 8, HELD_MAX = 80, GPU_MAX_MB = 84;
 
 /* one ring on the board, the ground read every 250 ms of the page's clock */
 async function ringOnce(P, G) {
