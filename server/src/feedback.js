@@ -388,7 +388,9 @@ export class Feedback {
     /* v2.3.5593 (the sitting 19 review): a map with no prototype, so a vote
        under `__proto__` is recorded like any other (on a plain {} it was
        never kept, and that address's votes all counted) */
-    ticket.voters = Object.assign(Object.create(null), ticket.voters && typeof ticket.voters === 'object' ? ticket.voters : {});
+    const wasVoters = ticket.voters;
+    ticket.voters = Object.create(null);   /* v2.3.6040: no plain {} on the way in either (TRAPS §6) */
+    if (wasVoters && typeof wasVoters === 'object') Object.assign(ticket.voters, wasVoters);
     const prev = ticket.voters[playerId];
 
     // Remove previous vote
@@ -707,8 +709,9 @@ export class Feedback {
       let t = null;
       try { t = typeof raw === 'string' ? JSON.parse(raw) : null; } catch { t = null; }
       if (!t || typeof t !== 'object') { if (typeof raw !== 'string' || raw.length > FEEDBACK_PACE.BIG_ROW) { await this.state.storage.delete(k); big++; } return; }
-      const voters = t.voters && typeof t.voters === 'object' ? t.voters : {};
-      const own = JSON.stringify({ ...t, voters: {} });
+      /* v2.3.6040: neither stand-in a plain {} (TRAPS §6): the stored voters are keyed by player ids */
+      const voters = t.voters && typeof t.voters === 'object' ? t.voters : Object.create(null);
+      const own = JSON.stringify({ ...t, voters: Object.create(null) });
       if (own.length > FEEDBACK_PACE.BIG_ROW || (typeof t.playerId === 'string' && t.playerId.length > FEEDBACK_PACE.ID_MAX)) { await this.state.storage.delete(k); big++; return; }
       const kept = Object.create(null);
       let up = 0, down = 0, dropped = 0;

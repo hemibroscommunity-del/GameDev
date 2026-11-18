@@ -29,6 +29,8 @@
  * BREAK PROOF (rule 8), each tried by hand in a scratch copy, then undone:
  *   §49   snowmanSprites.js: `for (const k in PHASE_SHEETS) PHASE_SHEETS[k].length = 0;`
  *         gone from unloadSnowmanSprites (the strips are handed to loadStrip) -> FAIL §49
+         slimeSprites.js: the `kept:` mark taken off `_stillSet`            -> FAIL §49 (v2.3.6041)
+         slimeSprites.js: `_stillSet = null;` added to unloadSlimeSprites   -> FAIL §49 (the mark lies)
  *   §139  fishTopEvict.js: `tex.source.destroy();` in releaseFishTop      -> FAIL §139
  *   §253  dropIcons.js: a new function that makes a canvas               -> FAIL §253
  *   §254  entityRenderer.js: one more spread style in drawNodeHpBar      -> FAIL §254
@@ -75,21 +77,32 @@ const PAGE = [...code.keys()];
 const UNLOAD_KNOWN = {
   'unloadVariantSprites: _variantLoadKicked': 'monsterVariantSprites.js: a flag, not a container: the variant look is asked once a page',
   'freeTownScenery: _done': 'npcSprites.js: the scenery\'s once-a-page flags',
-  'unloadSlimeSprites: singlesPromise': 'slimeSprites.js: the singles\' load, kept across visits',
-  'unloadSlimeSprites: _stillSet': 'slimeSprites.js: the still frames, kept across visits',
   /* no unload: kept for the page's life (the player's own, a pet's, a cape's, a shield's, a weapon's) */
   'capeSprites (no unload): _sets': 'capes: the page\'s life', 'petSprites (no unload): _tex': 'pets', 'petSprites (no unload): _loading': 'pets',
   'petSprites (no unload): _frames': 'pets', 'playerSprites (no unload): loadPromise': 'the player\'s own sheets',
   'shieldSprites (no unload): loadPromise': 'shields', 'shieldSprites (no unload): _set': 'shields',
   'weaponSprites (no unload): loadPromise': 'weapons',
 };
+/* v2.3.6041 (card V6 PR 2): a container its module keeps for the page's life
+   on purpose, beside an unload that lets the rest go, says so where it is
+   declared: `kept:<why>` in a comment on its own line (slimeSprites.js: the
+   splat, the orb and the hit's still, loaded once behind the first loading
+   screen; an unload that dropped them would lose them for the sitting).  Read
+   as a list: a marked name its unload DOES empty fails (the mark would lie),
+   a mark in a module with no unload fails (that is the census's own row), and
+   the marks are counted under a line a new one raises in its own PR, saying
+   why. */
+const KEPT_LINE = 2;
 {
+  let keptMarks = 0;
+  const keptLies = [];
   const mods = [...new Set(systemNames().flatMap((s) => filesOf(s)))].filter((f) => /^src\/.*\/[\w$]+Sprites\.js$/.test(f)).sort();
   check(`§49: the page's *Sprites.js modules are found by system (${mods.length})`, mods.length >= 15, mods.length);
   const found = new Set();
   let unloads = 0;
   for (const f of mods) {
-    const src = readFileSync(join(ROOT, f), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"\\])\/\/[^\n]*/g, '$1');
+    const raw = readFileSync(join(ROOT, f), 'utf8');
+    const src = raw.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"\\])\/\/[^\n]*/g, '$1');
     const decl = [...src.matchAll(/^(?:export\s+)?(?:let|const|var)\s+([\w$]+)\s*=\s*(?:\[|\{|new Map|new Set|Object\.create\(null\)|null\s*;)/gm)].map((x) => x[1]);
     const filled = decl.filter((n) => {
       const rest = src.replace(new RegExp('^(?:export\\s+)?(?:let|const|var)\\s+' + n.replace(/\$/g, '\\$') + '\\s*=', 'm'), '');
@@ -106,10 +119,19 @@ const UNLOAD_KNOWN = {
     for (const n of filled) {
       const e = n.replace(/\$/g, '\\$');
       const emptied = new RegExp('(?<![\\w$.])' + e + '(?:\\s*=[^=]|\\.length\\s*=\\s*0|\\.clear\\(|\\.splice\\(|\\[[^\\]]*\\]\\s*=)|delete\\s+' + e + '\\[|(?:of|in|keys\\(|values\\(|entries\\()\\s*\\(?\\s*' + e + '\\b').test(body);
+      const declLine = (new RegExp('^(?:export\\s+)?(?:let|const|var)\\s+' + e + '\\s*=.*$', 'm').exec(raw) || [''])[0];
+      const kept = /\bkept:\s*\S/.test(declLine);
+      if (kept) {
+        keptMarks++;
+        if (emptied || !unl.length) keptLies.push(label + ': ' + n + (emptied ? ' (its unload empties it)' : ' (no unload)'));
+        continue;
+      }
       if (!emptied || !unl.length) found.add(label + ': ' + n);
     }
   }
   check(`§49: their unloads are read (${unloads})`, unloads >= 10, unloads);
+  check('§49: a `kept:` mark is true: its unload leaves it, in a module with an unload', keptLies.length === 0, keptLies);
+  check(`§49: the \`kept:\` marks (${keptMarks}) are at or under their line ${KEPT_LINE} (a new one raises it, saying why)`, keptMarks <= KEPT_LINE, keptMarks);
   census('§49', 'containers a *Sprites.js loader fills that its unload leaves full (or with no unload)', found, UNLOAD_KNOWN);
 }
 

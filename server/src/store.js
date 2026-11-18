@@ -584,6 +584,24 @@ export const storeMethods = {
      room, every mutating response carries `settled: true` (rule 19) and
      every mutating request carries the caller's own session token
      (httpauth.js — a public playerId was never authentication, v2.3.1178). */
+  /* v2.3.5817 (card RV): `minebids: false` in the live flags, the kill switch */
+  _mineBidsOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'minebids') && !f.minebids);
+  },
+  /* the asker is `pid`'s live session: its token as the query's `t`, held as
+     httpauth.js _httpAuthCheck holds a POST's header (the query only: a GET
+     here answers by its query, as publicreads.js's v2.3.5707 note says) */
+  _mineAuth(pid, request, url) {
+    if (!pid || typeof pid !== 'string' || !this.sessions) return false;
+    let s = null;
+    for (const [, x] of this.sessions) if (x && x.id === pid) { s = x; break; }
+    if (!s) return false;
+    const t = (url && url.searchParams.get('t')) || '';
+    if (t) return !!s.httpToken && t === s.httpToken;
+    return !s.httpAuthEnforced;
+  },
+
   async _storeFetch(request) {
     const url = new URL(request.url);
     const path = url.pathname.replace('/api/store', '');
@@ -599,10 +617,19 @@ export const storeMethods = {
       }
       if (request.method === 'GET' && path.startsWith('/mine')) {
         const pid = url.searchParams.get('playerId');
+        /* ═══ v2.3.5817 (card RV, step 11.5; RT-3 P1): A PLAYER'S BIDS, TO THAT PLAYER ONLY ═══
+           Anyone could ask for any player's bids (what they bid on, how much,
+           when) with a player id, which every board shows.  Now `bidding`
+           comes back only to a request carrying that player's live session
+           token (`t`, the query field the page's door adds: a header on a GET
+           costs a phone a preflight), checked as httpauth.js checks a POST's
+           header; else it is empty.  The listings stay (each is on the public
+           browse anyway).  `minebids: false` in the live flags: as before. */
+        const _bidsOk = !this._mineBidsOn() || this._mineAuth(pid, request, url);
         const mine = [];
         for (const rec of this._stIndex.values()) if (rec.sellerId === pid) mine.push(this._stPublic(rec));
         const bidding = [];
-        for (const rec of this._stIndex.values()) {
+        if (_bidsOk) for (const rec of this._stIndex.values()) {
           if (rec.topBid && rec.topBid.bidderId === pid && rec.sellerId !== pid) bidding.push(this._stPublic(rec));
         }
         mine.sort((a, b) => b.createdAt - a.createdAt);

@@ -101,7 +101,15 @@
  * to the name rule (v2.3.5814, chatguard.js, petbook.js, alliance.js:
  * `cleanmore`, `namestaff`); the rewind's plan names the owner's login acts since
  * its time (v2.3.5815, restore.js: `rewindsays`); the jackpot's deposit asks
- * the purse again after its awaits (v2.3.5813, cadence.js: `jackcheck`).
+ * the purse again after its awaits (v2.3.5813, cadence.js: `jackcheck`); the
+ * Auction House's `/mine` shows a player's bids only to that player's own
+ * session (v2.3.5817, store.js: `minebids`); a join's shield and cosmetic
+ * claims merged only when the ledger backs them (v2.3.5812, gearstash.js:
+ * `shieldclaim`); a daily spin's and the login spin's paid
+ * mark in the credit's own run (v2.3.5810, dailyrewards.js, loginspin.js:
+ * `paidmark`); a `track`'s avatar, colour and look words in the game's own
+ * forms (v2.3.5819, lookform.js: `lookform`); the daily chest's stamp and
+ * save in one write (v2.3.6021, dailychest.js, under `paidmark`).
  *
  * WHO CAN TURN IT ON.  Only the admin key, through the Test panel's
  * POST /api/admin/dev/testmode {playerId, on} (devtools.js), which the owner's

@@ -397,7 +397,7 @@ export const sparMethods = {
       z: ownerPs.z, d: 'down', f: 'south', vx: 0, vy: 0,
       disconnected: false, dodging: false, blocking: false, blockStartT: 0,
       name: W.name, lastMoveAt: Date.now(), lastDamageAt: 0,
-      _buffs: {}, _spar: { owner: ownerId, weapon },
+      _buffs: Object.create(null), _spar: { owner: ownerId, weapon },   /* v2.3.6040: a buff map with no prototype (TRAPS §6) */
     });
     this._lifeTo(ps, 'alive', 'spar_clone_new');   /* v2.3.4820: the life door (was dead: false, dying: false in the assign) */
     if (typeof this._prog3Recompute === 'function') this._prog3Recompute(ps);

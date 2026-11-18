@@ -85,6 +85,7 @@ export const INFRA = Object.freeze({
   _sigOnMove: 'bot signals: they count, they never refuse (botsig.js)',
   _sigOnHit: 'bot signals', _sigOnStart: 'bot signals', _sigOnStrike: 'bot signals', _sigOnCook: 'bot signals', _sigOnAbility: 'bot signals',
   _accShots: 'telemetry stamps on `track`', _clanStampTag: 'telemetry stamps on `track`', _capeStamp: 'telemetry stamps on `track`',
+  _clanOf: 'v2.3.5819: reads the clan registry for `track`\'s look stamp (lookform.js lookStamp); refuses nothing',
   _achvStamp: 'telemetry stamps on `track`', _levelStamp: 'telemetry stamps on `track`', _stampRecordLook: 'telemetry stamps on `track`', _stampRecordName: 'the record\'s name stamped on `track` (v2.3.5622, card MOD)',
   _lookRelay: 'tells the others a look changed (lookrelay.js)',
   _swingDropsGuard: 'lowers the guard on a swing (moveclaims.js); refuses nothing',
