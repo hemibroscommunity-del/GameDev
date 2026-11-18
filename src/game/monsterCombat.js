@@ -58,6 +58,7 @@ import { saveRpgSoon } from '@/game/rpgSave.js'; /* v2.3.1356 */
 import { monsterHitSfx } from '@/game/hitSounds.js'; /* v2.3.3001: a hit sounds like the monster's material */
 import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: the missing sounds, from recordings already in the game */
 import { isWheelSwimming } from '@/game/wheelSwim.js'; /* v2.3.3003: no fighting while you swim */
+import { climbRefused } from '@/game/climbActions.js';   /* v2.3.6080: nor on the vines, as the tap (TRAPS §293) */
 import { jumpAirborne } from '@/game/jump.js'; /* v2.3.3017: nor in the air */
 import { tapAttackWaiting, tapAttackDone, tapSwingAim } from '@/game/tapJump.js'; /* v2.3.3712: a tap on the right stick asks for one attack */
 import { swordFeelContact } from '@/game/swordFeel.js';   /* v2.3.4800: the cut's weight at contact */
@@ -1661,7 +1662,12 @@ export function updateMonsterCombat(S, deps) {
              worker's).  null: the held staff, exactly as before. */
           var _sfFire = staffFireWaiting(S, Date.now());
           if (_sfFire !== null) _wantAtk = _sfFire;
-          if (_wantAtk && (_mcOn || !_flickWait) && !S._shieldUp && !isWheelSwimming(S) && !isDazed(S, Date.now()) && !jumpAirborne(S) /* v2.3.3017: a held attack waits for the landing */ && S.rpg && _eqWpn && Date.now() - S.swingTimer >= (_sfFire !== null ? STAFF_FEEL.GAP_MS : effectiveSwingCd + _staffCdExtra)) {
+          /* v2.3.6080 (TRAPS §293, card V7): and the tap's two the held start
+             lacked, in the tap's order (playerActions swingAttack): not while
+             a life skill's pose plays (S._extraction) and not on the vines
+             (climbRefused, swimRefused's other half).  A held attack swung or
+             shot through both.  Silent, like the daze test: the press says why. */
+          if (_wantAtk && (_mcOn || !_flickWait) && !S._shieldUp && !S._extraction && !climbRefused(S) && !isWheelSwimming(S) && !isDazed(S, Date.now()) && !jumpAirborne(S) /* v2.3.3017: a held attack waits for the landing */ && S.rpg && _eqWpn && Date.now() - S.swingTimer >= (_sfFire !== null ? STAFF_FEEL.GAP_MS : effectiveSwingCd + _staffCdExtra)) {
             /* Loot pickup freeze suppresses auto-swing — keeps the
                0.5s pickup animation clean instead of mid-swing. */
             var _lootSwingBlock = S._lootFreezeUntil && Date.now() < S._lootFreezeUntil;
