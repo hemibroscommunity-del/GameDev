@@ -277,6 +277,7 @@ const FORMS = {
   'tod': '*',
   'toolsolid': '0|off|false',
   'townchat': '0',
+  'townparts': '0',
   'townsfolkreset': '0',
   'tradedoor': '0',
   'tradeside': '*',
