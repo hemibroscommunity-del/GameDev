@@ -2705,8 +2705,20 @@ function _prewarmBake(bodyTex, worn, dilate, poseInfo, rank) {
   job.done = new Promise((res) => { job.resolve = res; });
   _bakeByKey.set(key, job);
   _bakeQueue.push(job);
-  _pumpBakes();
+  _pumpSoon();
   return job.done;
+}
+/* v2.3.6205 (card EN PR 6; HB's row 23, `_runLookBake > reply`, 24.5 ms at a
+   peer on budget-android): a job's page part -- its inputs, the sheets and the
+   job posted to the worker -- ran inside whatever asked for it: the renderer's
+   frame, a peer's prewarm slice, or (most) the worker's answer to the job
+   before, together with lookArmour.js's reading of that answer, all one task.
+   Now the queue starts each job in a task of its own (one timer, whoever asks
+   first), so the answer, the next job and the frame are each their own.  The
+   same jobs in the same order: picked by rank when they start, as before. */
+let _pumpTimer = 0;
+function _pumpSoon() {
+  if (!_pumpTimer) _pumpTimer = setTimeout(() => { _pumpTimer = 0; _pumpBakes(); }, 0);
 }
 function _pumpBakes() {
   while (_bakeBusy < _BAKE_BUSY_MAX && _bakeQueue.length) {
@@ -2721,7 +2733,7 @@ function _pumpBakes() {
       _bakeBusy--;
       _bakeByKey.delete(job.key);
       job.resolve(job.reply);   /* v2.3.3752: a look job's answer (lookArmour.js); undefined for the others */
-      _pumpBakes();
+      _pumpSoon();   /* v2.3.6205: the next job in a task of its own */
     });
   }
 }
@@ -2801,7 +2813,7 @@ function _lookBake(j) {
   job.done = new Promise((res) => { job.resolve = res; });
   _bakeByKey.set(key, job);
   _bakeQueue.push(job);
-  _pumpBakes();
+  _pumpSoon();
   return { done: job.done, raise: (r) => { if (r > job.rank) job.rank = r; } };
 }
 setLookArmourBaker(_lookBake);
