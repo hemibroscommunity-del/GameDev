@@ -936,8 +936,8 @@ nothing known, and a restore copies nothing.
   minutes; a timeout says so), #2181 (`listcap` check 1's race), #2183
   (`arena.test`'s hour boundary), merged at sitting 46; card TL done.
   RD's itemdrop 5b (#2191) merged at sitting 46. The step is open: RD's
-  crowdfight, manualcombat 10a and `mp-jumpbtn` (the gatekeeper, sitting
-  47, tag 6261).*
+  crowdfight (manualcombat 10a and `mp-jumpbtn`, #2204 and #2205, on
+  sitting 47's list) (the gatekeeper, sitting 47, tag 6261).*
 - [ ] **8.2 [NEXT] Traps become guards**, each with a break proof. The count
   that matters is traps held by a proof, not traps of prose.
   *Card V merged, #1724 to #1740: 31 traps held by a proof (25 the rule, 6

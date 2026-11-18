@@ -8,8 +8,11 @@ their new heads as they mended. Tags bare.
 Reviews in full (`server/` or `src/`), by the angles of `/repo-review`,
 each finding put to its own disproof against the code: HB #2199, #2201,
 #2202; FX #2194 (a verbatim proof), #2200, #2203 (a verbatim proof of its
-two moves, then its seven keeps). Documents and tools (step 3): TL's
-#2197 (folded into this PR and closed).
+two moves, then its seven keeps). Tests only (step 3, and each run on the
+merged tree): RD #2204, #2205. TL's #2197 is folded into this PR (close
+it). Waiting for sitting 48: EN's PR 3 (6202, not green by the cut; it
+deploys: a new `server/test/folk-sheets.test.mjs`), RD's crowdfight
+(6181), FX's and HB's next.
 
 ## Findings
 
@@ -81,6 +84,20 @@ two moves, then its seven keeps). Documents and tools (step 3): TL's
 - Opened with its base on #2200's branch: retargeted to `main` before it
   is merged (FX asked, 10:40).
 
+### RD #2204 (6182, `mp-manualcombat` 10a), #2205 (6183, `mp-jumpbtn` 2b): none blocking
+
+- #2204: since v2.3.4802 a computer's bow is drawn while the button is
+  held and looses at the release (`docs/specs/bow-feel.md` "A computer"):
+  10a now reads that promise, one arrow at the release, none on the
+  press or while held (the phase `drawing`), none after; the old
+  press-shoots check kept for `?bowfeel=0`. Still checks something real.
+- #2205: sideways over the folded band (`bt-band-side`) the disc is laid
+  out at 94 and drawn at 0.85 (v2.3.4152, `docs/specs/one-band.md` part
+  3): the check wants the drawn size there, 84/94 elsewhere.
+- Both change `docs/plan/status/RD.md` to the same text: either order.
+- On the whole tree (lines 1-8, `60e6847210`): `mp-jumpbtn` 29 of 29
+  (with HB #2199's kept window sizes), `mp-manualcombat` 44 of 44.
+
 ## The rehearsal (main e898c0c7)
 
 Each line merged into `main` with every line above it (a merge commit, as
@@ -89,22 +106,29 @@ the tree after that merge.
 
 | line | PR | head | tree after | bases |
 |---|---|---|---|---|
-| 1 | #2199 | `3853e35b64` | `45118863a1` | 1 |
-| 2 | #2201 | `3ccd2d5905f8535cd8ca602965874cb9bc823bd7` | `855b113a02` | 1 |
-| 3 | #2202 | `f93c531f6ccc534c0f136370e3a033a883b9047e` | `fb3312ade9` | 1 |
-| 4 | #2194 | `9f82789856863add0df3f38095c9c64194cbb798` | `2fbada07ad` | 1 |
-| 5 | #2200 | `5cd685bf88228535dda090dae0fc1bbb84b7ce7d` | `995aca004b` | 1 |
-| 6 | #2203 | `39612de311c0a98217a573a7887c6312d05134cf` | `d6a51bf492` | 1 |
+| 1 | #2204 | `d189ce53e4aa33066dd03bfec47c3dbcddeec98e` | `696a5a4468` | 1 |
+| 2 | #2205 | `8bf51efa5000ce920c2e889de393b0e22afb1428` | `08d3ea0040` | 1 |
+| 3 | #2199 | `3853e35b644d3faab8c1655227d55d80f7882994` | `99d4b7c545` | 1 |
+| 4 | #2201 | `3ccd2d5905f8535cd8ca602965874cb9bc823bd7` | `a3060331a6` | 1 |
+| 5 | #2202 | `f93c531f6ccc534c0f136370e3a033a883b9047e` | `f4c2532191` | 1 |
+| 6 | #2194 | `9f82789856863add0df3f38095c9c64194cbb798` | `f188651327` | 1 |
+| 7 | #2200 | `5cd685bf88228535dda090dae0fc1bbb84b7ce7d` | `8fe59e2e3e` | 1 |
+| 8 | #2203 | `39612de311c0a98217a573a7887c6312d05134cf` | `60e6847210` | 1 |
+| 9 | Z | this PR | its own | 1 |
+
+The checks below ran on lines 3-8 first, then 1-2 added on top; the last
+tree is the same (`60e6847210`) in either order. Every PR's base is
+`main`. No tag above is on `main`.
 
 ## The checks on the whole
 
-- Lines 1-3 (`node tools/dev/gatekeeper.mjs`, tree `fb3312ade9`): build
+- HB's three (`node tools/dev/gatekeeper.mjs`, tree `fb3312ade9`): build
   green; `questline` 187 of 187 (478 s); precheck past the tool's own
   15-minute cap (the server suite alone takes about 12 here), so:
-- precheck on lines 1-5 (tree `995aca004b`), uncapped: OK TO PUSH, 0
+- precheck on HB's three, #2194 and #2200 (tree `995aca004b`), uncapped: OK TO PUSH, 0
   FAIL (server-tests: every suite green; eslint clean; cap-registry,
   look-parity, plan-status green).
-- Line 6 on top (tree `d6a51bf492`): `canvas-pictures`, `four-lines`,
+- #2203 on top (tree `d6a51bf492`): `canvas-pictures`, `four-lines`,
   `frame-steps`, `render-tables` green; M-tables part 5 current but for
   its commit stamp; `npm run build` green; `node tools/qa/mp/run.mjs
   questline` 187 of 187 (471 s).
