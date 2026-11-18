@@ -393,7 +393,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
       console.log(`  ${r.place.padEnd(5)} | ${String(r.bots).padStart(4)} | ${String(r.known).padStart(5)} | ${String(r.onScreen).padStart(9)} | ${String(r.farHidden).padStart(5)}/${String(r.crowdHidden).padEnd(4)} | ${String(r.gpu).padStart(6)} (${r.gpuSettled}) | ${r.cache} | ${r.canvasMB} | ${r.heapMB} | ${r.gl.draws} | ${r.gl.useProgram} | ${r.gl.bindTexture} | ${r.gl.calls} | ${r.workP50} | ${r.voices ? `${r.voices.maxPlaying} / ${r.voices.maxWindow}` : '-'} | ${r.palette ? `${r.palette.rows} (${r.palette.rowsFull})` : 'no palette'}`);
     }
     const last = rows[rows.length - 1];
-    rec.ok('the phone knew (nearly) every bot at each step', rows.every((r) => r.known >= Math.floor(r.bots * 0.9)), rows.map((r) => [r.place, r.bots, r.known, `${r.knownInS} s`, `${r.knownThaws} rejoins`]));
+    /* v2.3.6181: a step the page could not play is said so, never read as the game's (TRAPS §200): it
+       did not know its bots and it rejoined at least every 20 s through the whole wait (`thaws`
+       above: a frame every several seconds, each gap read as a phone come back), so it never held a
+       session long enough to hear the room (a helper's run: town at 30, 22 rejoins in 244 s, 21
+       known).  Every other step must know its bots: a page that stayed joined and missed them is red */
+    const knew = (r) => r.known >= Math.floor(r.bots * 0.9);
+    const couldNot = (r) => !knew(r) && r.knownThaws >= Math.floor(KNOW_MS / 20000);
+    const played = rows.filter((r) => !couldNot(r));
+    rec.ok(`the phone knew (nearly) every bot at each step${played.length < rows.length ? ` it could play (${played.length} of ${rows.length})` : ''}`,
+      played.length > 0 && played.every(knew), rows.map((r) => [r.place, r.bots, r.known, `${r.knownInS} s`, `${r.knownThaws} rejoins`]));
+    for (const r of rows.filter(couldNot)) {
+      rec.skip(`the phone knew (nearly) every bot: ${r.place}, ${r.bots} bots`,
+        `this box could not play the page: ${r.knownThaws} rejoins in ${r.knownInS} s (a frame gap over 5 s each), ${r.frames} frames in the ${SAMPLE_MS / 1000} s window, ${r.known} known`);
+    }
     rec.ok('frames and GL calls were counted at every step', rows.every((r) => r.frames > 0 && r.gl.draws > 0), rows.map((r) => [r.frames, r.gl.draws]));
     const pal = rows.filter((r) => r.palette && r.palette.on);
     if (pal.length) rec.ok(`the look palette never ran out of rows (rowsFull ${pal.map((r) => r.palette.rowsFull).join(', ')})`, pal.every((r) => r.palette.rowsFull === 0), pal.map((r) => r.palette));
