@@ -11,7 +11,9 @@ renderers are free (part 11's "never side by side").
   2026-11-18: 7486 player-facing strings. 2164 are already in a table
   (`src/data/*`, `deskWords()`), 4941 are written in place on the page, and
   381 are written in place on the worker. 2990 of all of them are `?`
-  (unclear, counted). 446 screens.
+  (unclear, counted). 446 screens. (Re-measured at 06:40 UTC after the
+  day's merges: 4953 and 384, the guard's lines; the screens below are the
+  first count's.)
 - **The guard**: `tools/guards/player-words.test.mjs` (card WD PR 2). The two
   in-place counts may only fall (`PAGE_LINE`, `SERVER_LINE`), and a new
   player-facing "Wheel" or "remnant" always fails.
