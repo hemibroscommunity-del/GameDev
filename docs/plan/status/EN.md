@@ -1,6 +1,6 @@
 card: EN
 branch: claude/plan-en-4-canvas (6203; 6200-6202 merged)
-prs: #2189 6200, #2195 6201, #2207 6202 (all merged), 6203 (checks)
+prs: #2189 6200, #2195 6201, #2207 6202 (all merged), 6203 (draft, CI)
 state: working
 
 ## Done
@@ -14,9 +14,10 @@ state: working
 
 ## Next
 
-- 6203: the five canvas pictures through the memory law (keepAsImage for
-  the masked frames and fishing overlays, keepOnGpuOnly for the armour
-  probe's reference): census 41 -> 36. Then PRs 5-8 (HB's holds).
+- 6203 open: the five canvas pictures through the memory law (keepAsImage,
+  once the bakes are quiet, for the masked frames and fishing overlays;
+  keepOnGpuOnly for the armour probe's reference): census 41 -> 36.
+  Then PRs 5-8 (HB's holds).
 
 ## Found
 
@@ -25,6 +26,7 @@ state: working
 - On this box, red on main as on 6203 (not EN's): `wornbake` (58-60 of 177
   frames baked in time), `fisharmour` a/b (no gauntlet px), `bakeleak`'s
   baseline guard, `heldsweep` peer/armour (`screen-check` 303 > 260).
+- `state-census.mjs --check` fails on main too (the state page): no guard runs it.
 - Re-baking the folk's 35 sheets took 78-88 s on this box (worker),
   so a free-and-re-bake road meets them plain: not taken.
 
