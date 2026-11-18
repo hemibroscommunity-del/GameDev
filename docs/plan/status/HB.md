@@ -1,7 +1,7 @@
 card: HB
 branch: claude/plan-hb-5-afterpaint
-prs: #2188 (6240), #2199 (6241), #2201 (6242), #2202 (6243): merged; #2209 (6244, the door prompt after the paint): draft
-state: working
+prs: #2188 (6240), #2199 (6241), #2201 (6242), #2202 (6243), #2209 (6244): all merged
+state: done
 
 ## Done
 
@@ -15,14 +15,10 @@ state: working
 
 ## Next
 
-- #2209 to green, then its head to sitting 48.
-- Then, under the same `?afterpaint` (no new row): the quest coach
-  (QuestCoach.jsx: the [view] layout effect's coachFollow > worldRect >
-  mayorScreenRect, step > measure's reads; render's fixedBox), the band's
-  tap (BroTown resize()'s visualViewport read; NavRail/OneBandColumns
-  mount measures), the taps (rE > tapResourceAtClient > clientToCanvas);
-  then ui:GearTab (FX's find: 19.6 ms at lands/fight); pack-page's read
-  after FX's #2200 (p256.js) is on main.  Card tags 6245 onward.
+- Nothing: the card is done (#2209 merged at sitting 48; marked done by
+  the gatekeeper, sitting 49). Its next list (the quest coach, the band's
+  tap, the taps, GearTab, p256.js's read on a worker, then `other: R > J`)
+  is card HB2's (block 6280 to 6299).
 
 ## Found
 
@@ -30,7 +26,7 @@ state: working
   against whatever runs (perfTracker.js `wrapped`): a hold's length is
   real, its split by function looser.
 - mp-jumpbtn red on main: "sideways 844: 2b" wants the disc 94 px, it is
-  80 (tools/qa/mp/mp-jumpbtn.mjs:166).
+  80 (tools/qa/mp/mp-jumpbtn.mjs:166). Green on main since RD's #2205.
 - mp-membudget's heap line (38.5 MB) is within main's own noise (38.3-38.8).
 - mp-mayordoor red on main: parts 2-3 (the board button in the Earth
   Forest; a click on a bro in No man's land), 5 of 12; part 1 passes.
