@@ -98,7 +98,8 @@
  */
 import React, { useEffect, useRef, useState } from 'react';
 import { nmlHere, nmlFirst, nmlSteps, NML_RED } from '@/game/noMansLand.js';   /* v2.3.3690: + nmlFirst, where it starts */
-import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
+import { SAY } from '@/data/say/nmlBadge.js';   /* v2.3.6346: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say, sayPieces } from '@/game/say.js';   /* v2.3.6346: a plain row goes through deskWords (v2.3.3615: "tap" reads "click" on a computer) */
 import { infoPopupBus } from './infoPopupBus.js';
 import { nmlExplainHit, _nmlForget } from '@/game/nmlExplainOnce.js';
 import { placeState, placeLines, bagRiskCount } from '@/game/placeSafety.js';   /* v2.3.3974: Safe / PvP / Outlaw */
@@ -126,7 +127,7 @@ export function NmlSkull({ size = 18, color = NML_RED }) {
    was against an older one (first 2) */
 export function nmlLevels(n, first = 1) {
   const tier = n + (first || 1) - 1;
-  return `Lv ${5 * tier - 4}–${5 * tier}`;
+  return say(SAY, 'nmlBadge.levels', { lo: 5 * tier - 4, hi: 5 * tier });
 }
 
 /* your own skull, minutes of play left (applyNmlSkull keeps {red, white, at}:
@@ -161,35 +162,38 @@ export function openNmlInfo(S, lvl, opts) {
   const lead = opts && opts.lead;
   const skull = nmlSkullLeft(S, Date.now());
   const n = lvl;
-  const lv = (k) => `${k} level${k === 1 ? '' : 's'}`;
+  const lv = (k) => say(SAY, 'nmlBadge.within', { n: k });
   const plain = liveLines(S, n);
   infoPopupBus.open({
-    title: nmlSteps(S) ? `No man's land ${n} · Lv ${n + 5 * (nmlFirst(S) - 1)} monsters` : `No man's land ${n} · ${nmlLevels(n, nmlFirst(S))}`,   /* v2.3.3767: the number IS the monster level (caps.nmlsteps) */
+    title: nmlSteps(S) ? say(SAY, 'nmlBadge.titleSteps', { ring: n, lv: n + 5 * (nmlFirst(S) - 1) }) : say(SAY, 'nmlBadge.title', { ring: n, levels: nmlLevels(n, nmlFirst(S)) }),   /* v2.3.3767: the number IS the monster level (caps.nmlsteps) */
     body: (
       <div data-nml-info={n} data-place-info={plain.st.kind}>
         {lead && <div data-nml-lead="" style={{ marginBottom: 8, fontWeight: 800, color: NML_RED }}>{lead}</div>}
         {/* v2.3.3974: the plain words, your numbers in them */}
         <div data-place-lead="" style={{ marginBottom: 6, fontWeight: 800, color: plain.st.kind === 'outlaw' ? NML_RED : '#F2D58C' }}>{plain.lead}</div>
         {plain.more && <div data-place-risk="" style={{ marginBottom: 10 }}>{plain.more}</div>}
-        <div style={{ marginBottom: 6, fontWeight: 700, opacity: 0.85 }}>The rules</div>
+        <div style={{ marginBottom: 6, fontWeight: 700, opacity: 0.85 }}>{say(SAY, 'nmlBadge.rules')}</div>
         <ul style={{ margin: 0, paddingLeft: 18 }}>
-          <Line><b>Who:</b> players within {lv(n)} of yours, while they stand in No man's land too. The lower of your two numbers counts, and it grows the further you go from town. Your party never.</Line>
+          <Line>{sayPieces(SAY, 'nmlBadge.who', { label: <b key="label">{say(SAY, 'nmlBadge.whoLabel')}</b>, within: lv(n) })}</Line>
           {/* v2.3.3253: attacking is a choice (game/nmlAsk.js); v2.3.3316: a
               swing at them asks too, as a shot through them does */}
-          <Line><b>How:</b> {deskWords('tap a player, or swing or shoot at them, and choose ')}<b>Attack</b>. Until you do, your blows never hurt them.</Line>
+          <Line>{sayPieces(SAY, 'nmlBadge.how', { label: <b key="label">{say(SAY, 'nmlBadge.howLabel')}</b>, attack: <b key="attack">{say(SAY, 'nmlBadge.attack')}</b> })}</Line>
           {/* v2.3.3530: the skulls come with the window's Attack (nomansland.js _handleNmlAttack) */}
-          <Line><b>Attack first:</b> you become an <span style={{ color: NML_RED, fontWeight: 800 }}>outlaw</span> (a red skull) for 20 minutes of play, starting over with every hit. Beaten by a player then, you lose <b>everything</b>, worn gear too; killed by a monster, everything but what you wear.</Line>
+          <Line>{sayPieces(SAY, 'nmlBadge.first', { label: <b key="label">{say(SAY, 'nmlBadge.firstLabel')}</b>,
+            outlaw: <span key="outlaw" style={{ color: NML_RED, fontWeight: 800 }}>{say(SAY, 'nmlBadge.outlawWord')}</span>,
+            everything: <b key="everything">{say(SAY, 'nmlBadge.everything')}</b> })}</Line>
           {/* v2.3.3528/3530: hitting back goes through the window too, and gives no red skull */}
-          <Line><b>Get attacked:</b> a <b>white skull</b>. {deskWords('To hit back, swing, shoot or tap them and choose ')}<b>Attack</b> once: hitting back never makes you an outlaw.</Line>
-          <Line><b>Keep things safe:</b> the Bank in BroTown holds gold and things, out of reach of any death. Diego sells a lost tool back.</Line>
+          <Line>{sayPieces(SAY, 'nmlBadge.attacked', { label: <b key="label">{say(SAY, 'nmlBadge.attackedLabel')}</b>,
+            skull: <b key="skull">{say(SAY, 'nmlBadge.whiteSkull')}</b>, attack: <b key="attack">{say(SAY, 'nmlBadge.attack')}</b> })}</Line>
+          <Line>{sayPieces(SAY, 'nmlBadge.safe', { label: <b key="label">{say(SAY, 'nmlBadge.safeLabel')}</b> })}</Line>
         </ul>
-        <div style={{ marginTop: 6 }}>Walk back toward BroTown to leave.</div>
+        <div style={{ marginTop: 6 }}>{say(SAY, 'nmlBadge.leave')}</div>
       </div>
     ),
     note: skull
       ? (skull.type === 'red'
-        ? `You carry a red skull: ${skull.min} min of play left.`
-        : `You carry a white skull: ${skull.min} min of play left.`)
+        ? say(SAY, 'nmlBadge.redSkull', { min: skull.min })
+        : say(SAY, 'nmlBadge.whiteSkullLeft', { min: skull.min }))
       : undefined,
     nml: true,   /* v2.3.3825: a hit closes it (NmlBadge's clock) */
   });
@@ -202,12 +206,12 @@ export function openPlaceInfo(S, lvl) {
   const plain = liveLines(S, 0);
   const name = placeName(S);
   infoPopupBus.open({
-    title: plain.st.kind === 'outlaw' ? 'Outlaw' : `${name} · Safe`,
+    title: plain.st.kind === 'outlaw' ? say(SAY, 'nmlBadge.outlaw') : say(SAY, 'nmlBadge.safeTitle', { place: name }),
     body: (
       <div data-place-info={plain.st.kind}>
         <div data-place-lead="" style={{ marginBottom: 6, fontWeight: 800, color: plain.st.kind === 'outlaw' ? NML_RED : '#8FD89A' }}>{plain.lead}</div>
         {plain.more && <div data-place-risk="" style={{ marginBottom: 8 }}>{plain.more}</div>}
-        <div>Out past the safe ground is No man's land, where other players can attack you. The minimap's name plate says so there, in red; tap it for who can attack you.</div>
+        <div>{say(SAY, 'nmlBadge.pastSafe')}</div>
       </div>
     ),
   });
@@ -270,8 +274,8 @@ function PlateTap({ getS, risk }) {
     <button type="button" data-plate-tap={kind}
       {...(risk.nml ? { 'data-nml-badge': risk.nml, 'data-nml-at': 'plate' } : {})}
       aria-label={kind === 'outlaw'
-        ? `Outlaw: you attacked a player first, ${risk.redMin} minutes left. ${deskWords('Tap')} for what it means.`
-        : `No man's land ${risk.nml}: players can attack you here. ${deskWords('Tap')} for what it means.`}
+        ? say(SAY, 'nmlBadge.plateOutlaw', { min: risk.redMin })
+        : say(SAY, 'nmlBadge.plateNml', { ring: risk.nml })}
       onPointerDown={(e) => e.stopPropagation()}
       onTouchStart={(e) => e.stopPropagation()}
       onClick={open}
