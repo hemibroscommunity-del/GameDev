@@ -50,6 +50,7 @@ const FORMS = {
   'soundgate': '0|off|false|no',
   'viewcap': '0',
   'voicecap': '0|off',
+  'afterpaint': '0',
   'allydrafts': '0',
   'alphaclip': '',
   'arenadoor': '0',

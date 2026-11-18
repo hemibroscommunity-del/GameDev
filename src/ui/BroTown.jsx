@@ -182,10 +182,36 @@ import { pushHudPopup, playerScreenPoint } from './XpFlyOverlay.jsx';
    the prompt (a position: fixed button) is placed there when it renders (its ref), measured from
    where fixed 0,0 really is (a computer's #root contains it; a phone's is the window).  The
    world's controls are at the band's edge: nothing over them.  No head point yet: the CSS place. */
+/* ═══ v2.3.6244: PLACED AT THE TOP OF THE NEXT FRAME, NOT IN REACT'S COMMIT (card HB PR 5; `?afterpaint=0`) ═══
+   placeOverHead is the prompt's ref, made anew at every render of BroTown: React let go of the old one and called
+   the new one at EVERY commit while the prompt was up, and each call measured the canvas, the prompt and every
+   button on the page (getBoundingClientRect, getComputedStyle), right after React had changed the page: the
+   browser laid the whole page out there, in the commit.  That is the debt list's `other: R > J` (J2's find; 39.2
+   ms on budget-android at `town`, its line 16: docs/plan/census/HB-holds.md row 11).  Now the ref only asks for
+   the placing, once a frame, at the top of the next one (requestAnimationFrame), where the page the browser has
+   just drawn is already laid out and the reads cost little.  The prompt is placed a frame later than before:
+   the first time it shows it waits hidden for that frame (never a frame at the wrong place), after that it
+   keeps its place until the next frame's.  Decided for the owner while away (the planning session, 2026-11-18),
+   ON by default; `?afterpaint=0` places it in the commit, as before.  The same switch covers the coach's and the
+   band's measures (card HB's next PRs). */
+var AFTER_PAINT = (function () { try { return !sw('afterpaint'); } catch (e) { return true; } })();
 function placeOverHead(stateRef) {
   return function (el) {
+    if (!el) return;
+    if (!AFTER_PAINT || typeof requestAnimationFrame !== 'function') { placeOverHeadNow(el, stateRef); return; }
+    if (el.__btPlaceRaf) return;   /* one placing a frame, however many commits */
+    if (!el.__btPlaced) el.style.visibility = 'hidden';   /* first shown: when placed */
+    el.__btPlaceRaf = requestAnimationFrame(function () {
+      el.__btPlaceRaf = 0;
+      if (!el.isConnected) return;
+      placeOverHeadNow(el, stateRef);
+      el.__btPlaced = true;
+      el.style.visibility = '';
+    });
+  };
+}
+function placeOverHeadNow(el, stateRef) {
     try {
-      if (!el) return;
       var S = stateRef && stateRef.current;
       var p = playerScreenPoint(S);
       if (!p) return;
@@ -228,7 +254,6 @@ function placeOverHead(stateRef) {
         el.style.top = Math.round(top) + 'px';
       }
     } catch (e) { /* the CSS place stands */ }
-  };
 }
 
 /* v2.3.1745: how long the QUEST ACCEPTED! / QUEST COMPLETED! banner stays
