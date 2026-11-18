@@ -75,6 +75,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `bowvolley` | worker | switch | v2.3.2808 | 2026-09-24 | false | logic |  | no | Un-advertises the bow's volley: a phone that joins after fires the old single arrow and blast. |
 | `?combatreset` | page | switch | v2.3.5206 | 2026-11-14 | =0 | logic |  | no | A fight you picked, a roll or a lunge, the hit marks on the ground, a kill's XP still waiting and another player's damage numbers still queued carry over a change of place again, each ending on its own clock or its own check, not at the zone door. |
 | `disable_threats` | worker | switch | v2.3.1150 | 2026-07-03 | true | logic |  | no | Thrown, every relayed threat handshake is dropped. |
+| `duelpace` | worker | switch | v2.3.5805 | 2026-11-17 | false | logic |  | no | Every duel challenge is relayed (the relay bucket its only bound), to anyone, muted or not, and a decline of nothing with its reason, as before (S1, S4). |
 | `elemup` | worker | switch | v2.3.3518 | 2026-10-20 | false | logic |  | no | Un-advertises the element bonus and takes it away. |
 | `fightdoor` | worker | switch | v2.3.5538 | 2026-11-17 | false | logic |  | no | A fight clock can be written under an id that is no string, as the lines before the fight door could have; every caller passes a session's id. |
 | `fightlockarmor` | worker | switch | v2.3.4582 | 2026-11-11 | false | logic |  | no | Armour put on or taken off in a fight is no longer refused. |
@@ -175,6 +176,8 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `disable_event_capes` | worker | switch | v2.3.2028 | 2026-08-27 | true | logic |  | no | Thrown, the event's capes stop dropping. |
 | `disable_offer_sweep_all` | worker | switch | v2.3.4412 | 2026-11-10 | true | logic |  | no | Thrown, the store's offer sweep goes back to the old first-20 pass. |
 | `?droplines` | page | switch | v2.3.3627 | 2026-10-27 | =0 | logic |  | no | No drop lines in the chat for what a kill drops. |
+| `duelonewrite` | worker | switch | v2.3.5805 | 2026-11-17 | false | logic |  | no | A duel's pot is paid in one write and its escrow record deleted in the next, as before (MS-6: a restart between leaves a record only the pot's stamp explains). |
+| `dyingkeep` | worker | switch | v2.3.5803 | 2026-11-17 | false | logic |  | no | Goods credited to a player in the dying seconds are wiped by the respawn, as before (MS-3: a trade confirmed after a death pays and keeps nothing). |
 | `econ` | worker | switch | v2.3.5085 | 2026-11-14 | false | logic |  | no | Nothing is counted into a character's minted and burned (`_econ`) or the day's book's economy part; gold and items move as before. |
 | `econresetput` | worker | switch | v2.3.5094 | 2026-11-14 (v2.3.5095) | false | logic |  | no | A character's restart with nobody in the room no longer writes today's book at once: the owner's card may read it as a loss until a later count. On since v2.3.5095 (the owner's yes; one put a restart in an empty room). |
 | `?equipredraw` | page | switch | v2.3.5046 | 2026-11-14 | =0 | logic |  | no | A change of worn gear is set all at once again, not in pieces a frame apart. |
@@ -185,11 +188,17 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `goldlog` | worker | switch | v2.3.4903 | 2026-11-12 | false | logic |  | no | The gold log notes nothing. |
 | `goldonesum` | worker | switch | v2.3.4803 | 2026-11-11 | false | logic |  | no | Every gold road goes back on its step-1 sum. |
 | `itemdrop` | worker | switch | v2.3.3473 | 2026-10-18 | false | logic |  | no | Dropping an item on the ground is refused (off). |
+| `leftoverheal` | worker | switch | v2.3.5809 | 2026-11-17 | false | logic |  | no | The trade window's weapons and the arena's champion pay, then delete their escrow record in a later write, as before (MS-6). |
 | `loginspin` | worker | switch | v2.3.4285 | 2026-11-05 | false | logic |  | no | Un-advertises the login wheel and refuses every ask. |
+| `mktheal` | worker | switch | v2.3.5801 | 2026-11-17 | false | logic |  | no | A General Store cancel or expiry pays the escrow back, then deletes the order in a later write, as before (MS-4: a restart between, then 48 quiet hours, can pay it twice). |
 | `mktsettle` | worker | switch | v2.3.4505 | 2026-11-10 | false | logic |  | no | A market leftover with a settle note is healed the old way. |
+| `mkttier` | worker | switch | v2.3.5801 | 2026-11-17 | false | logic |  | no | A General Store sell is filed under the category, kind and tier its request names, as before (MS-2: a cheap blade can fill a better tier's buy order). |
 | `mktwords` | worker | switch | v2.3.5626 | 2026-11-17 | false | logic |  | no | A market order's tier label and seller name are the page's free text again, as before (the worker's own tier label and the character's name while on). |
+| `nmlonewrite` | worker | switch | v2.3.5804 | 2026-11-17 | false | logic |  | no | No man's land pays the killer a credit a piece, in writes after the victim's save, as before (MS-1: a restart between loses the loot). |
+| `offerpend` | worker | switch | v2.3.5809 | 2026-11-17 | false | logic |  | no | An Auction House offer's Yes does not wait for a bid half made, as before (MS-5). |
 | `revealbag` | worker | switch | v2.3.3951 | 2026-11-03 | false | logic |  | no | Un-advertises the bag's reveal and brings back the at-once reveal. |
 | `risechest` | worker | switch | v2.3.4438 | 2026-11-10 | false | logic |  | no | The rise chest's cap goes and an ask is answered off. |
+| `risekeep` | worker | switch | v2.3.5802 | 2026-11-17 | false | logic |  | no | The oplog prune deletes the rise chest's stamps at 48 h, as before (MD-1: the same character opens the chest again every two days). |
 | `salvage` | worker | switch | v2.3.3141 | 2026-10-07 | false | logic |  | no | Un-advertises salvage and refuses both acts. |
 | `season` | worker | switch | v2.3.3400 | 2026-10-18 | true | logic |  | no | Thrown (true), the dropped season comes back on the free spin. |
 | `storeGear` | worker | switch | v2.3.2528 | 2026-09-15 | false | logic |  | no | Un-advertises gear in the store and stops it taking a listing. |
@@ -231,6 +240,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 
 | name | side | kind | born | on | thrown | risk | needs | fallback | off |
 |---|---|---|---|---|---|---|---|---|---|
+| `deadtake` | worker | switch | v2.3.5920 | 2026-11-17 | false | logic |  | no | A body in its dying seconds may cook, swap armour and buy at the pet house again, as before card V3 (TRAPS §150).  Not switched: the farm and salvage refuse it whatever the switch says (they did before, in silence) and now answer `dead`. |
 | `?dyingdoor` | page | switch | v2.3.5534 | 2026-11-17 | =0 | logic |  | no | Your dying seconds on the phone take any start a caller writes (one that is no number), as the lines before the life's page door; every caller writes a number today. |
 | `lifenoheal` | worker | switch | v2.3.4901 | 2026-11-12 | false | logic |  | no | A dying player can be healed again (the life door's step 2a off). |
 | `lifesave` | worker | switch | v2.3.4902 | 2026-11-12 | false | logic |  | no | No life note written or read: the join stands up as v2.3.4374 did. |
@@ -247,6 +257,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `feedback` | worker | switch | v2.3.5593 | 2026-11-16 | false | logic |  | no | The feedback board takes no posts, votes or crash reports (reading stays): the owner's lever in a flood (read by the Feedback object from the room's flags, once a minute). |
 | `feedbackshare` | worker | switch | v2.3.5706 | 2026-11-17 | false | logic |  | no | The feedback board as before card SEC PR 7: one shared hour for posts, votes and crash reports; the paces by address in memory only; a vote counted before its ticket is looked for; the crash feed a ring of 200 with no byte cut; the list read whole on every ask; the text kept as typed. |
 | `fullsnap` | worker | switch | v2.3.5285 | off | true | logic |  | no | Thrown (true), a player's daily copy carries their vault and pets too (two keys more read a player a day, no row more written), so the owner's restore puts them back with the character; unset or false, the default, the copy is the character alone, as before. |
+| `listcap` | worker | switch | v2.3.5960 | 2026-11-17 | false | logic |  | no | Every storage list of the room reads its whole prefix in one read again (the sweeps, the registries, a player's copies, the aim and metric days, the arena's stakes and plans, the owner's pages), as before card V5; a sweep is then one page. The Leaderboard and the old Marketplace page always (no flag reaches them). |
 | `report` | worker | switch | v2.3.5122 | 2026-11-14 | false | logic |  | no | Un-advertises the field report, so no phone sends its smoothness, and drops any that still comes. |
 | `reportlanes` | worker | switch | v2.3.5221 | 2026-11-14 | false | logic | `report`, `reportspeed` | no | The field report no longer takes a lane but full, the governor's rung or the self-test (caps.report back to 2). |
 | `reportspeed` | worker | switch | v2.3.5127 | 2026-11-14 | false | logic | `report` | no | The Speed test's card is no longer taken (caps.report back to 1); the smoothness reports carry on. |
@@ -573,6 +584,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `hardenwoodskill` | worker | switch | v2.3.3481 | 2026-10-19 | false | logic |  | no | Bows and staffs are gated on Blacksmithing again for hardening. |
 | `harvestdoor` | worker | switch | v2.3.5214 | 2026-11-14 | false | logic |  | no | A gather record without its start time is written again, as the line before the harvest door did (no start builds one today); the sweep could never end such a record. |
 | `?harvestdoor` | page | switch | v2.3.5219 | 2026-11-16 | =0 | logic |  | no | The phone's harvest takes any write its own code asks again (a start over one in flight, the window opened early, a strike before it opens), as the lines before the page door could have; the callers still check each first. |
+| `harvestgrade` | worker | switch | v2.3.5900 | off | true | logic |  | no | An opt-in, off as merged (the owner's to turn on: card K4): thrown (`harvestgrade: true`), a harvest's perfect is believed only at or after the time an honest gesture takes (the plan's hits, the settle and the 1.2 s floor) and at most 15 in any 20 strikes, else paid as good (harvestgrade.js). |
 | `harvestproof` | worker | switch | v2.3.3322 | 2026-10-17 | false | logic |  | no | The old permissive strike and the old perfect, at once. |
 | `hitladder` | worker | switch | v2.3.3229 | 2026-10-14 | false | logic |  | no | The harvest's hit dice go back to 1..level, cap un-advertised. |
 | `meals` | worker | switch | v2.3.3130 | 2026-10-07 | false | logic |  | no | Only the old instant recipes cook; dishes in bags still eat. |
@@ -613,6 +625,8 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `freezedevice` | worker | lever | v2.3.5621 |  | true | none |  | no | Thrown (true), a freeze also refuses a NEW character (no login, no record yet) made on a phone the frozen character has played on, by the game's own device record; never an existing character's join, never a phone one of the owner's own characters has joined from (kept for good), nor a join naming one. Unset or false, the default, a freeze holds the frozen character only, as before. |
 | `invitepace` | worker | switch | v2.3.5624 | 2026-11-15 | false | logic |  | no | A trade invite card and a friend request card go every time again (no 5-second pace a target). |
 | `leaderidleat` | worker | switch | v2.3.4378 | 2026-11-10 | false | logic |  | no | The party leader's idle clock counts only a `seen` above 0, as before. |
+| `?lookform` | page | switch | v2.3.5807 | 2026-11-17 | =0 | logic |  | no | Another player's avatar and colour are drawn whatever they hold, as before (S2: a picture of their choosing, or an address of theirs every phone that looked fetched from). |
+| `mutehides` | worker | switch | v2.3.5806 | 2026-11-17 | false | logic |  | no | A whisper to a player who muted you is answered with silence (a name nobody holds: no-such-player), and a party invite reaches them, as before (S8). |
 | `partydoor` | worker | switch | v2.3.5212 | 2026-11-14 | false | logic |  | no | A player can be put in a party that does not list them, as the lines before the party door could have (nothing does today). |
 | `?partydoor` | page | switch | v2.3.5529 | 2026-11-17 | =0 | logic |  | no | The phone's party takes any write its own code asks again (a roster that is no record, a clear that writes one), as the lines before the party's page door; every caller writes what the door allows today. |
 | `partykeep` | worker | switch | v2.3.3276 | 2026-10-17 | false | logic |  | no | Parties are not kept: the old cap and the away window remove a dropped member. |
@@ -626,6 +640,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?socialreset` | page | switch | v2.3.5204 | 2026-11-14 | =0 | logic |  | no | A race the worker forgot at a reconnect stays on the phone until its own clock lets it go, as before. |
 | `spar` | worker | switch | v2.3.3265 | 2026-10-16 | false | logic |  | no | No sparring clones: every live clone goes on the next tick and the cap is withdrawn. |
 | `statboards` | worker | switch | v2.3.5484 | 2026-11-14 | false | logic |  | no | Un-advertises the stat boards: no board report carries the points allocated, so those boards empty as players report; every other board is as it was. |
+| `storemute` | worker | switch | v2.3.5806 | 2026-11-17 | false | logic |  | no | A muted sender's shop-thread line is stored and shown when the thread is opened, as before (S5: the mute held the live send only). |
 
 ## townsfolk
 

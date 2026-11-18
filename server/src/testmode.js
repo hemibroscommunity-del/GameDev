@@ -24,7 +24,10 @@
  *     as it says;
  *   - the timing checks on harvesting and cooking: the too-early strike and
  *     the strike with no start of its own (gathering.js _handleNodeStrike),
- *     the 45 perfect harvests a minute (_ratedHarvestAccuracy), the 45 cooks a
+ *     the 45 perfect harvests a minute (_ratedHarvestAccuracy), a perfect held
+ *     to an honest gesture's time and to 15 in any 20 strikes (v2.3.5900,
+ *     gathering.js _harvestGraded, harvestgrade.js, `harvestgrade`, an opt-in,
+ *     OFF as merged: asked through the strike's `_tm`), the 45 cooks a
  *     minute and the 900 ms between cooks (cooking.js), a cook's result held
  *     to the cook it started (v2.3.5553, cooking.js _cookStartOk,
  *     `cookstart`, ON since v2.3.5727), and the bot scoring
@@ -75,6 +78,24 @@
  * locks, the tool and level gates and a harvest's reach, damage being the
  * worker's own roll, and the admin key itself.  A test-mode character can
  * still only do what its phone does; it is simply not doubted.
+ * Also left on, for everyone (v2.3.5801, card RV): a General Store sell
+ * filed under its weapon's own tier, and a refund and its order's delete in
+ * one write (market.js: `mkttier`, `mktheal`); the rise chest's stamp kept
+ * for good by the oplog prune (v2.3.5802, inbox.js OP_PRUNE.KEEP: `risekeep`);
+ * goods credited in the dying seconds kept through the respawn (v2.3.5803,
+ * inbox.js _applyCreditToPs: `dyingkeep`); No man's land's killer paid in
+ * the victim's own write (v2.3.5804, nomansland.js _nmlOnDeath: `nmlonewrite`);
+ * a duel challenge's cards paced and a muted challenger unheard, a decline
+ * only of a real challenge, the pot and its escrow's delete one write
+ * (v2.3.5805, duel.js: `duelpace`, `duelonewrite`); a muted sender's shop-thread
+ * line not shown on open, and a player who mutes you away to you
+ * (v2.3.5806, storechat.js, chatlanes.js, party.js: `storemute`, `mutehides`);
+ * a player's avatar and colour in the game's own forms on the board and on
+ * the page (v2.3.5807, lookform.js, src/game/lookForm.js: `?lookform=0`); an
+ * old key's after-join check held while `oldkeyheld` is (v2.3.5808, loginkeys.js);
+ * an offer's Yes waits for a bid half made, and a payment and its escrow's
+ * delete one write (v2.3.5809, storeoffer.js, trade2.js, gladiator.js:
+ * `offerpend`, `leftoverheal`).
  *
  * WHO CAN TURN IT ON.  Only the admin key, through the Test panel's
  * POST /api/admin/dev/testmode {playerId, on} (devtools.js), which the owner's

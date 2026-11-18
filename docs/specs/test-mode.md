@@ -40,6 +40,7 @@ switch allows it.
 | A strike before its window (too early) | gathering.js `_handleNodeStrike` | paid |
 | A strike with no start of its own | gathering.js `_handleNodeStrike` (`HARVEST_PROOF`) | paid |
 | 45 perfect harvests a minute | gathering.js `_ratedHarvestAccuracy` | no limit |
+| A harvest's perfect held to an honest gesture's time and to 15 in any 20 strikes (v2.3.5900, `harvestgrade`, an opt-in, OFF as merged) | gathering.js `_harvestGraded` (harvestgrade.js) | paid as sent |
 | Bot scoring and its 2,400-an-hour caps | botfp.js `_botfpOnStrike`, `_botfpOnCook` | not scored, flagged or capped |
 | The server's own bot signals (v2.3.3731) | botsig.js `_sigSkip`, `_sigOnWindup`, `_sigReverifyOk` | nothing measured, flagged or re-checked (the network signal and the Turnstile re-check included) |
 | 45 cooks a minute, 900 ms between cooks | cooking.js `_cookRateOk`, `_handleCookRequest` | no limit |
@@ -71,6 +72,24 @@ switch allows it.
   (v2.3.5731, `eventplace.js` `duelPlaceOf`, `duelquiet`);
   the owner's routes with no key and the public reads at the edge (v2.3.5726,
   `wire/door.js`; the worker settings `EDGE_GUARD`, `EDGE_CACHE`).
+- A General Store sell filed under its weapon's own tier, and a refund and
+  its order's delete in one write (v2.3.5801, card RV, `market.js`,
+  `mkttier`, `mktheal`); the rise chest's stamp kept for good by the oplog
+  prune (v2.3.5802, `inbox.js` `OP_PRUNE.KEEP`, `risekeep`); goods credited
+  in the dying seconds kept through the respawn (v2.3.5803, `inbox.js`
+  `_applyCreditToPs`, `dyingkeep`); No man's land's killer paid in the
+  victim's own write (v2.3.5804, `nomansland.js` `_nmlOnDeath`, `nmlonewrite`);
+  a duel challenge's cards paced and a muted challenger unheard, a decline
+  only of a real challenge, the pot and its escrow's delete one write
+  (v2.3.5805, `duel.js`, `duelpace`, `duelonewrite`); a muted sender's
+  shop-thread line not shown on open, and a player who mutes you away
+  to you (v2.3.5806, `storechat.js`, `chatlanes.js`, `party.js`, `storemute`,
+  `mutehides`); a player's avatar and colour in the game's own forms on the
+  board and on the page (v2.3.5807, `lookform.js`, `src/game/lookForm.js`,
+  `?lookform=0`); an old key's after-join check held while `oldkeyheld` is
+  (v2.3.5808, `loginkeys.js`); an offer's Yes waits for a bid half made, and
+  a payment and its escrow's delete one write (v2.3.5809, `storeoffer.js`,
+  `trade2.js`, `gladiator.js`, `offerpend`, `leftoverheal`).
 - Every save and payment rule; the login key, the device lock, the lockouts;
   a frozen account.
 - PvP consent and **every check on a hit between players** (pvpbalance.js,

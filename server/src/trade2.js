@@ -47,6 +47,7 @@ import { PACE } from './flood.js';   /* v2.3.3293: the weapon lane's pace */
 import { bagTake } from './bag.js'; /* v2.3.4810: the bag door */
 import { xferTradeWindow } from './xfer.js'; /* v2.3.5092: the transfer ledger */
 import { stashGive, stashTake, stashSet } from './stash.js';   /* v2.3.5281: the stashes' door (card R PR 2) */
+import { LISTCAP } from './liveops.js';   /* v2.3.5960: a sweep's page (card V5) */
 import { wordsNote } from './words.js';   /* v2.3.5197: the words rule -- the trade's mail sentence is a template and its parts */
 
 export const TRADE2 = {
@@ -456,6 +457,11 @@ export const trade2Methods = {
       /* v2.3.4795: the weapons are now delivered, or owed on file; an owed
          one goes by mail (its stamp in the mailbox's write), then its record */
       for (const c of wpnOwed) {
+        /* v2.3.5809 (card RV, MS-6): the mail and the record's delete, one write (`leftoverheal`) */
+        if (this._leftoverHealOn()) {
+          await this._creditWith(c.pid, { ...c.entry, opId: 'trade2:' + s.id + ':wpndeliver:' + c.from + ':' + c.seq }, () => [this.state.storage.delete('trade2wpn:' + c.from + ':' + c.seq)]);
+          continue;
+        }
         await this._creditPlayer(c.pid, { ...c.entry, opId: 'trade2:' + s.id + ':wpndeliver:' + c.from + ':' + c.seq });
         await this.state.storage.delete('trade2wpn:' + c.from + ':' + c.seq);
       }
@@ -777,6 +783,14 @@ export const trade2Methods = {
           await this.state.storage.delete('trade2wpn:' + pid + ':' + entry.seq);
           continue;
         }
+        /* v2.3.5809 (card RV, MS-6): the refund and the record's delete, one write (`leftoverheal`) */
+        if (this._leftoverHealOn()) {
+          await this._creditWith(pid, {
+            opId: 'trade2:' + s.id + ':wpnrefund:' + pid + ':' + entry.seq,
+            source: 'trade', kind: 'weapon', payload: { weapon: entry.weapon }, note: 'trade cancelled',
+          }, () => [this.state.storage.delete('trade2wpn:' + pid + ':' + entry.seq)]);
+          continue;
+        }
         await this._creditPlayer(pid, {
           opId: 'trade2:' + s.id + ':wpnrefund:' + pid + ':' + entry.seq,
           source: 'trade', kind: 'weapon', payload: { weapon: entry.weapon }, note: 'trade cancelled',
@@ -791,12 +805,19 @@ export const trade2Methods = {
   // pattern).  A deploy wipes the in-memory session while escrowed
   // weapons persist in storage; refund any record with no live session,
   // skipping ones already delivered (rule 6).
+  /* v2.3.5960 (card V5; TRAPS §76): a page a call, its cursor in memory,
+     the next page an event of its own (_duelEscrowSweep's walk) */
   async _trade2WpnSweep() {
     const now = Date.now();
-    if (this._lastT2WpnSweep && now - this._lastT2WpnSweep < 300000) return;
-    this._lastT2WpnSweep = now;
+    const j = this._t2WpnSweepWalk || (this._t2WpnSweepWalk = { after: null, busy: false, timer: null });
+    if (j.busy) return;
+    if (!j.after) {
+      if (this._lastT2WpnSweep && now - this._lastT2WpnSweep < 300000) return;
+      this._lastT2WpnSweep = now;
+    }
+    j.busy = true;
     try {
-      const recs = await this.state.storage.list({ prefix: 'trade2wpn:' });
+      const recs = await this._listPage('trade2wpn:', j, LISTCAP.SWEEP);
       for (const [k, rec] of recs) {
         if (!rec || !rec.pid) { await this.state.storage.delete(k); continue; }
         const live = this._t2SessionFor(rec.pid);
@@ -813,6 +834,16 @@ export const trade2Methods = {
            'dup' with no stamp on file is a delivery still running: leave the
            record to it. */
         if (typeof rec.to === 'string' && rec.to) {
+          /* v2.3.5809 (card RV, MS-6): the delivery and the record's delete,
+             one write (`leftoverheal`); a delivery still running answers
+             'dup' with nothing written, and the record is left to it */
+          if (this._leftoverHealOn()) {
+            await this._creditWith(rec.to, {
+              opId: 'trade2:' + rec.sid + ':wpndeliver:' + rec.pid + ':' + rec.seq, source: 'trade', kind: 'weapon', payload: { weapon: rec.weapon },
+              note: typeof rec.note === 'string' ? rec.note.slice(0, 80) : 'trade',
+            }, () => [this.state.storage.delete(k)]);
+            continue;
+          }
           const got = await this._creditPlayer(rec.to, {
             opId: 'trade2:' + rec.sid + ':wpndeliver:' + rec.pid + ':' + rec.seq, source: 'trade', kind: 'weapon', payload: { weapon: rec.weapon },
             note: typeof rec.note === 'string' ? rec.note.slice(0, 80) : 'trade',
@@ -821,12 +852,21 @@ export const trade2Methods = {
           await this.state.storage.delete(k);
           continue;
         }
+        if (this._leftoverHealOn()) {   /* v2.3.5809: one write */
+          await this._creditWith(rec.pid, {
+            opId: 'trade2:' + rec.sid + ':wpnrefund:' + rec.pid + ':' + rec.seq,
+            source: 'trade', kind: 'weapon', payload: { weapon: rec.weapon }, note: 'trade voided (server restart)',
+          }, () => [this.state.storage.delete(k)]);
+          continue;
+        }
         await this._creditPlayer(rec.pid, {
           opId: 'trade2:' + rec.sid + ':wpnrefund:' + rec.pid + ':' + rec.seq,
           source: 'trade', kind: 'weapon', payload: { weapon: rec.weapon }, note: 'trade voided (server restart)',
         });
         await this.state.storage.delete(k);
       }
-    } catch (e) { /* best-effort */ }
+    } catch (e) { j.after = null; /* best-effort: the next walk starts again */ }
+    finally { j.busy = false; }
+    this._listNext(j, () => this._trade2WpnSweep());
   },
 };

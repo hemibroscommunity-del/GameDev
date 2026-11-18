@@ -549,6 +549,13 @@ export const noMansLandMethods = {
     } catch (e) { /* the next send will carry it */ }
   },
 
+  /* v2.3.5804 (MS-1): `nmlonewrite: false` in the live flags pays the
+     killer a credit a piece, as before (_nmlOnDeath) */
+  _nmlOneWriteOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'nmlonewrite') && !f.nmlonewrite);
+  },
+
   _nmlSave(id, ps) {
     const s = ps && ps._nml;
     if (!s || !id) return;
@@ -711,13 +718,19 @@ export const noMansLandMethods = {
     const killerSession = to && this._sessionById ? this._sessionById(to) : null;
     const lost = { weapons: 0, gear: [], worn: [], coins: 0 };
     let n = 0;
+    /* v2.3.5804 (card RV PR 5, MS-1): gathered, then paid at the end (below) */
+    const owed = [];
     const credit = (kind, payload, note) => {
       if (!to || !this._creditPlayer) return;
       /* one id per piece of this one death (its time and its place in the
          list): a retry of the same credit pays once, never twice */
-      const seq = n++;
+      owed.push({ seq: n++, kind, payload, note });
+    };
+    /* each credit written out whole at its call, its op id a literal word
+       (opid-audit, gold-door §8: the money guards read it there) */
+    const payOne = (o) => {
       try {
-        const p = this._creditPlayer(to, { opId: 'nmlloot:' + playerId + ':' + now + ':' + seq, source: 'nml', kind, payload, note });
+        const p = this._creditPlayer(to, { opId: 'nmlloot:' + playerId + ':' + now + ':' + o.seq, source: 'nml', kind: o.kind, payload: o.payload, note: o.note });
         if (p && typeof p.catch === 'function') p.catch(() => {});
       } catch (e) { /* the piece is gone either way: a loss, never a duplicate */ }
     };
@@ -821,6 +834,35 @@ export const noMansLandMethods = {
     if (to) this._goldSet(ps, 0, 'nml_loss'); /* v2.3.4670: the gold door */
     else this._goldSet(ps, 0, 'nml_lost');
     if (lost.coins) credit('gold', { amount: lost.coins }, 'No man\'s land');
+    /* ═══ v2.3.5804 (card RV PR 5, MS-1): THE KILLER PAID IN THE VICTIM'S OWN WRITE ═══
+       The victim's purse and stashes are emptied here and saved by the
+       death (index.js _handlePlayerDeath's _saveRpg, the same synchronous
+       run: no await between this hook and that save), but the killer was
+       paid by a credit a piece, each awaiting its stamp's read first, so in
+       LATER writes: a restart between (every merge touching server/
+       restarts the room) left the victim at nothing and the killer unpaid,
+       and nothing on file said what was owed.  Now the gold and the weapons
+       go to a killer who is in the room in ONE synchronous run
+       (inbox.js _creditLiveTogether: applied, the killer saved, each stamp
+       issued), which is the victim's save's run too, so the two commit
+       together.  The same op ids as before.  What that run cannot carry
+       keeps the old road, a credit a piece: a piece of gear (its provenance
+       row is read first), a killer no longer in the room, a weapon stash
+       without room.  `nmlonewrite: false`: every piece by the old road. */
+    if (owed.length) {
+      let rest = owed;
+      if (this._nmlOneWriteOn() && this._creditLiveTogether && this.playerState[to]) {
+        const now1 = owed.filter((e) => e.kind === 'gold' || e.kind === 'weapon');
+        if (now1.length) {
+          const run = this._creditLiveTogether(now1.map((o) => ({ pid: to, entry: { opId: 'nmlloot:' + playerId + ':' + now + ':' + o.seq, source: 'nml', kind: o.kind, payload: o.payload, note: o.note } })), [], null);
+          if (run) {
+            if (typeof run.catch === 'function') run.catch(() => {});
+            rest = owed.filter((e) => !(e.kind === 'gold' || e.kind === 'weapon'));
+          }
+        }
+      }
+      for (const o of rest) payOne(o);
+    }
     this._nmlSave(playerId, ps);
     /* tell the victim's game what went, so it clears its own copies.
        v2.3.3316: `named` -- the gear list names every piece taken, a red
