@@ -38,6 +38,7 @@
  */
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
+import { readSystem } from '../../tools/guards/lib/filesOf.mjs';   /* the renderer read by system, never by its path (tests-by-system) */
 
 let passed = 0, failed = 0;
 function check(name, cond, detail) {
@@ -117,7 +118,8 @@ const ticks = (from, to, d, every = 100) => { const a = []; for (let t = from; t
 
 /* 5. the renderer's call sites */
 {
-  const ER = src('src/rendering/systems/entityRenderer.js');
+  /* whichever file of `render` draws the townsfolk's let-go (filesOf.mjs) */
+  const ER = [...readSystem('render').values()].find((t) => /\nfunction _folkSheetsStep\(/.test(t)) || '';
   const own = cut(ER, '_folkSheetsStep');
   check("5. the switch is read through the page's reader: `!sw('folksheets')`", /const _FOLK_SHEETS_ON = !sw\('folksheets'\);/.test(ER));
   check('5. _folkSheetsStep asks the leaf with the switch and lets go of each key once (a Set of the keys the draw asks)',
