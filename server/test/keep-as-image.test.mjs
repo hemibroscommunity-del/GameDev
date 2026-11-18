@@ -22,6 +22,7 @@
  *      catalogs and the species builds every piece they recolour, and a piece
  *      given up on is tried again later while worn. */
 import { readFileSync } from 'fs';
+import { readSystem } from '../../tools/guards/lib/filesOf.mjs';   /* v2.3.5345: a moved table found by its system (card M) */
 
 let failures = 0;
 function check(name, cond, detail) {
@@ -175,7 +176,8 @@ const ER = src('src/rendering/systems/entityRenderer.js');
   check('7c: _ensureTraitLoaded starts the later round when its time comes, meta and facings', /e\.retryAt && Date\.now\(\) >= e\.retryAt/.test(ens) && /_fetchTraitMeta\(e, category, id, 0, e\.retries\)/.test(ens) && /_loadTraitDir\(e, category, id, dir, 0, e\.retries\)/.test(ens), null);
   const meta = ER.slice(ER.indexOf('function _fetchTraitMeta('), ER.indexOf('/* v2.3.1305: per-direction trait load'));
   check('7d: a meta.json given up on is marked too, and a later round is never answered from a cache', /e\.metaGaveUp = true; _traitGaveUp\(e\)/.test(meta) && /&g=\$\{round\}/.test(meta) && /&g=\$\{round\}/.test(load), null);
-  const sched = /const TRAIT_RETRY_LATER_MS = \[5000, 10000, 20000, 40000, 60000\]/.test(ER);
+  /* v2.3.5345: the rounds' table left the renderer for look's tables (src/rendering/tables/, card M): found by its system */
+  const sched = /const TRAIT_RETRY_LATER_MS = \[5000, 10000, 20000, 40000, 60000\]/.test([...readSystem('look').values()].join('\n'));
   check('7e: the later rounds: 5 s, 10, 20, 40, then every minute; ?traitretry=0 the game as it was', sched && /traitretry=0/.test(ER), null);
 }
 for (const f of ['hairColorCatalog', 'hatColorCatalog', 'facialHairColorCatalog', 'eyewearColorCatalog', 'eyeStyleColorCatalog', 'shirtColorCatalog']) {

@@ -11,5 +11,5 @@
  */
 export const SYSTEM = 'life';
 export const ROWS = [
-  { field: '_deathCard', system: 'life', lifetime: 'sitting', suggested: 'death', born: 'fly src/game/deathCard.js noteDeath', twoFiles: '', noRead: false, noSet: false, phase: null, flag: false, writers: ['src/game/deathCard.js'] },
+  { field: '_deathCard', system: 'life', lifetime: 'sitting', reset: 'kept: the death\'s own record, made at the death (noteDeath) and taken at the respawn by deathLine (respawn.js) for the chat\'s line; the page has no death door, and a reset there would drop the card it is', suggested: 'death', born: 'fly src/game/deathCard.js noteDeath', twoFiles: '', noRead: false, noSet: false, phase: null, flag: false, writers: ['src/game/deathCard.js'] },
 ];

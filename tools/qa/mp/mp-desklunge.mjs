@@ -19,6 +19,7 @@
  *   5. no page errors.
  */
 import * as H from './harness.mjs';
+import * as GS from '../../../src/data/gameSystems.js';   /* v2.3.5846: the sword's swing gap, the game's own sum */
 export const lane = 'full';
 
 const DESK = { width: 1280, height: 800 };
@@ -101,7 +102,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     /* ── 1 ── the game's own lock, a click on empty ground */
     const m1 = ms[0];
-    await H.hopTo(P, m1.x, m1.y + 170, { tries: 30 });
+    /* v2.3.5846: on DRY ground beside him.  170 px south of the nearest
+       snowman was sometimes the sea: swimming, the game refuses every swing and
+       lunge and says "Swimming!" over your head (combatHelpers swimRefused) --
+       the probe read the popup and the "denied" on main, and all four of 1-3
+       red with them, by run.  The first of eight stands around him where the
+       game, once he is there, does not have him swimming (S._wheelSwim, the
+       state swimRefused reads: wheelSwim.js isWheelSwimming). */
+    let stand = null;
+    for (const [dx, dy] of [[0, 170], [170, 0], [-170, 0], [0, -170], [120, 120], [-120, 120], [120, -120], [-120, -120]]) {
+      await H.hopTo(P, m1.x + dx, m1.y + dy, { tries: 30 });
+      await P.page.waitForTimeout(800);
+      if (await H.readState(P, (S) => !(S._wheelSwim && S._wheelSwim.on))) { stand = { dx, dy }; break; }
+    }
+    rec.ok(`on dry ground beside the snowman, not swimming (${stand ? stand.dx + ', ' + stand.dy + ' px off him' : 'every stand round him was water'}; guard)`, !!stand, stand);
+    if (!stand) return;
     const auto = await H.waitFor(P, (S) => {
       const lt = S.lockedTarget;
       return lt && lt.type === 'monster' ? { id: String(lt.id), src: lt.src || null } : null;
@@ -116,6 +131,32 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.mouse.click(emptyPt.x, emptyPt.y, { delay: PRESS_MS });
     await P.page.waitForTimeout(700);
     const r1 = await readWatch(P);
+    /* ── 3 ── inside the cooldown a click swings, no dash.
+       v2.3.5846: made at once, before the wait for the worker's HP below: that
+       wait (up to 4 s) outlasted the 2.5 s cooldown on this box, and the
+       "inside the cooldown" click lunged again (red by run on main: a dash and
+       a fresh cooldown).  Its cooldown read just before it says it was inside. */
+    /* ...and a swing is wanted only if the sword's own gap between swings had
+       passed: the lunge's strike stamps S.swingTimer when it ARRIVES, and a
+       click inside the gap swings at nothing, the game's rule (playerActions.js
+       swingAttack).  On this box the dash's travel took up to 1.4 s of frames,
+       so the strike's gap (600 ms) could end after the lunge's 2.5 s cooldown,
+       and a click aimed between the two (even with 320 ms of it left) landed
+       after it and lunged: no moment is both, there.  So the click goes at
+       once, well inside the cooldown, and the swing is asked for when the gap
+       (the game's own sum, from its own table) had passed. */
+    const rpg3 = await H.readState(P, (S) => S.rpg);
+    const gap3 = GS.SWING_COOLDOWN * GS.swingCooldownMult(rpg3) * GS.weaponSwingMult(rpg3 && rpg3.activeSlot);
+    const at3 = await P.page.evaluate(() => {
+      const S = window._gameState.current, st = window.__btAbilityStatus ? window.__btAbilityStatus('sworddash') : null;
+      return { age: Date.now() - (S.swingTimer || 0), cd: st ? st.cdLeft : 0 };
+    });
+    const cd3 = at3.cd, swingDue = at3.age > gap3;
+    const r3pt = await pagePoint(P, me1.x - 110, me1.y + 70);
+    await watch(P);
+    await P.page.mouse.click(r3pt.x, r3pt.y, { delay: PRESS_MS });
+    await P.page.waitForTimeout(500);
+    const r3 = await readWatch(P);
     let hp1b = hp1;
     for (let i = 0; i < 20 && hp1b === hp1; i++) { await P.page.waitForTimeout(200); hp1b = await hpOf(P, t1); }
     rec.ok(`1. the game's own lock (${auto ? auto.src : 'none'}), a click on empty ground (${emptyPt.canvas ? 'the canvas' : 'NOT the canvas'}, press: ${r1.press}) lunges at it: the dash left for ${r1.dash && r1.dash.target} (the lock's ${t1})`,
@@ -125,14 +166,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`1. ...and the click that ended the press kept the lock on it, a deliberate one now (${JSON.stringify(r1.lock)})`,
       !!r1.lock && r1.lock.id === t1 && r1.lock.src === 'tap', r1.lock);
 
-    /* ── 3 ── inside the cooldown a click swings, no dash */
-    const r3pt = await pagePoint(P, me1.x - 110, me1.y + 70);
-    await watch(P);
-    await P.page.mouse.click(r3pt.x, r3pt.y, { delay: PRESS_MS });
-    await P.page.waitForTimeout(500);
-    const r3 = await readWatch(P);
-    rec.ok(`3. inside the lunge's cooldown a click swings as before, no dash (${JSON.stringify({ dash: r3.dash, swung: r3.swung, cd: r3.cd })})`,
-      !r3.dash && r3.press === 'attack' && r3.swung, r3);
+    rec.ok(`3. inside the lunge's cooldown (${cd3} ms left) a click swings as before${swingDue ? '' : ' (inside the sword\'s own gap: no swing due)'}, no dash (${JSON.stringify({ dash: r3.dash, swung: r3.swung, cd: r3.cd })})`,
+      cd3 > 0 && !r3.dash && r3.press === 'attack' && (!swingDue || r3.swung), { r3, at3, gap3 });
 
     /* ── 2 ── a click ON a snowman: the lunge goes to the one clicked */
     await lungeReady(P);

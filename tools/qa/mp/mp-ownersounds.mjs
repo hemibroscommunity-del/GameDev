@@ -118,19 +118,25 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const ev = (type, payload) => cues((a) => { window.__btDispatch({ type: a.type, payload: a.payload }); return true; }, { type, payload });
 
   /* ── 1. your hurt grunt ── */
-  const blow = (extra) => P.page.evaluate((extra) => {
+  /* v2.3.5844: `twice` lands a second blow in the same breath (one page call):
+     two calls could be more than HURT_GAP_MS (700 ms) apart on a loaded box,
+     and the fourth "on its heels" grunted (red 1 of 3 runs) */
+  const blow = (extra, twice) => P.page.evaluate(({ extra, twice }) => {
     const S = window._gameState.current;
-    window.__btDispatch({ type: 'monster_attack', payload: Object.assign({
+    const one = () => window.__btDispatch({ type: 'monster_attack', payload: Object.assign({
       monsterId: 'qa-own', targetId: S.myId, dmg: 40, dmgTaken: 40, zone: S.currentZone, hp: Math.round(S.rpg.hp),
       attackerX: S.player.x + 24, attackerY: S.player.y, ability: 'qa' }, extra) });
-    const L = window.__btCues.stats.log;
-    return L.length ? L[L.length - 1].name : null;
-  }, extra);
+    const last = () => { const L = window.__btCues.stats.log; return L.length ? L[L.length - 1].name : null; };
+    one();
+    const a = last();
+    if (!twice) return a;
+    one();
+    return [a, last()];
+  }, { extra, twice: !!twice });
   await P.page.evaluate(() => { window.__btCues.reset(); window.__btOwnSounds.reset(); });
   const g1 = await blow({}); await P.page.waitForTimeout(800);
   const g2 = await blow({}); await P.page.waitForTimeout(800);
-  const g3 = await blow({});
-  const g4 = await blow({});   /* on its heels */
+  const [g3, g4] = await blow({}, true);   /* the fourth on its heels */
   const grunts = await P.page.evaluate(() => window.__btCues.stats.log.filter((c) => /^hurt[ABC]$/.test(c.name)).map((c) => c.name));
   rec.ok(`1a. three blows 0.8 s apart: three grunts (${grunts.join(', ')}; two to choose from), never the same twice running; a fourth on its heels: none`,
     grunts.length === 3 && grunts[0] !== grunts[1] && grunts[1] !== grunts[2], { g1, g2, g3, g4, grunts });
@@ -181,7 +187,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* the admin view's `live` has no maxHp: the saved blob's is the worker's (mp-quickeat) */
   const a0 = await H.adminPlayer(wsPort, myId).catch(() => null);
   const maxHp = a0 && a0.rpg ? a0.rpg.maxHp : null;
-  await H.devOp(wsPort, 'vitals', myId, { heal: false, god: true, godMinutes: 30, hp: Math.max(1, (maxHp || 300) - 60) });
+  /* v2.3.5844: a third of his health, not 60 short of full: the worker's own
+     regen gave the 60 back in the seconds this waits for the button (measured
+     on main: 240 of 250 when the button was found, 250 -- the button gone,
+     quickEatView null -- when the tap landed), so the tap ate nothing and no
+     munch played, run after run.  A minnow heals 100: still short of full. */
+  await H.devOp(wsPort, 'vitals', myId, { heal: false, god: true, godMinutes: 30, hp: Math.max(1, Math.round((maxHp || 300) / 3)) });
   const btnAt = await H.waitFor(P, () => {
     const el = document.querySelector('.bt-quickeat-btn');
     if (!el) return null;
@@ -296,26 +307,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const ace = await npcAt('Ace');
   let tapped = null, aceVoice = [];
   if (ace) {
-    await H.hopTo(P, ace.x + 36, ace.y + 30);
-    await P.page.waitForTimeout(900);
-    /* where he is on the screen once the camera has settled (mp-moresounds' way) */
-    const screenOf = (wx, wy) => P.page.evaluate(({ wx, wy }) => {
-      const S = window._gameState.current, c = document.querySelector('canvas'), r = c.getBoundingClientRect();
-      return { x: r.left + (wx - S.camera.x) * (S._worldScaleX || 1), y: r.top + (wy - S.camera.y) * (S._worldScaleY || 1) };
-    }, { wx, wy });
-    let scr = null;
-    for (let i = 0; i < 25; i++) {
-      const n = await npcAt('Ace');
-      const cur = n ? await screenOf(n.x, n.y - 26) : null;
-      if (cur && scr && Math.abs(cur.x - scr.x) < 1.5 && Math.abs(cur.y - scr.y) < 1.5) break;
-      scr = cur;
-      await P.page.waitForTimeout(120);
-    }
+    /* v2.3.5844: reached and tapped the harness's way (H.approachNpc, CLAUDE.md
+       §6), not a hop and one hand-made tap: on this slow box a frame drawn
+       between a touch's start and end makes a tap a hold, and talkToNpc tries
+       three times (red 1 of 2 runs of this branch, a helper session's: "no tap") */
     await P.page.evaluate(() => { window.__btCues.reset(); window.__btNpcVoices.reset(); });
     const t0 = await P.page.evaluate(() => Date.now());
-    if (scr) await P.page.touchscreen.tap(scr.x, scr.y);
-    await P.page.waitForTimeout(700);
-    tapped = await P.page.evaluate((t0) => { const r = window.__btNpcTap; return r && r.ts >= t0 - 50 ? r : null; }, t0);
+    await H.approachNpc(P, 'card_sharp');
+    tapped = await P.page.evaluate((t0) => { const r = window.__btNpcTap; return r && r.ts >= t0 - 50 && r.npc === 'Ace' ? r : null; }, t0);
     aceVoice = await P.page.evaluate(() => window.__btCues.stats.log.filter((c) => /^npcVoice\d$/.test(c.name)).map((c) => ({ name: c.name, k: c.k, played: c.played })));
     await P.page.evaluate(() => { const b = document.querySelector('[aria-label^="Close"], .bt-inspect-close'); if (b) b.click(); });
   }
@@ -326,13 +325,35 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* v2.3.3664: a line popping up over a townsperson is QUIET now -- the owner:
      the hums "should play when you begin talking to someone or taking a
      quest" (game/npcVoices.js); in town one came every few seconds */
+  /* v2.3.5844: beside a townsperson first: an idle line is said only within
+     IDLE_REACH (350 px, townChatter.js) of you, and here only Ace stands that
+     near (the rest 880 px and more, measured), who walks his day's path after
+     9a -- 0 lines by run when he had walked off.  Standing near is not talking
+     (a tap is: CLAUDE.md §6). */
+  const ace9b = await npcAt('Ace');
+  if (ace9b) { await H.hopTo(P, ace9b.x + 60, ace9b.y + 40); await P.page.waitForTimeout(500); }
   const chatter = await P.page.evaluate(async () => {
     const S = window._gameState.current, V = window.__btNpcVoices;
     window.__btCues.reset();
     const n0 = V.st.speaks;
     for (const n of S.npcs || []) n.chatTimer = 0;   /* every townsperson says a line now */
-    await new Promise((r) => setTimeout(r, 1500));
-    const lines = (S.npcs || []).filter((n) => n.chatBubble && Date.now() - n.chatBubble.ts < 2000).length;
+    /* v2.3.5844: ...and the town's one-line-in-20-s gap opened (townChatter.js
+       idleChatMay, v2.3.4040: one idle line town-wide every 20 s): with only
+       the timers zeroed, a line said in the last 20 s (Ace's, 9a) held every
+       other back, and 0 lines popped up by run on main */
+    S._idleChatAt = null;
+    /* v2.3.5844: until a line HAS popped up (8 s at most), not 1.5 s of the
+       wall clock: the townsfolk's clocks run by frames (16.7 ms x dt a frame),
+       and on this box Ace's ran 2.4 s in 12.7 s of wall time (measured), so
+       the 1.5 s could hold no turn of his at all (TRAPS §200).  The hums are
+       counted over the whole wait. */
+    const t0 = Date.now();
+    let lines = 0;
+    while (Date.now() - t0 < 8000) {
+      await new Promise((r) => setTimeout(r, 100));
+      lines = (S.npcs || []).filter((n) => n.chatBubble && n.chatBubble.ts >= t0).length;
+      if (lines >= 1) { await new Promise((r) => setTimeout(r, 300)); break; }
+    }
     const hums = window.__btCues.stats.log.filter((c) => /^npcVoice\d$|^lilBroHmm$/.test(c.name)).length;
     return { lines, hums, speaks: V.st.speaks - n0 };
   });

@@ -90,6 +90,7 @@
  * either -- the record waits. */
 import { WHEEL } from './wheelzone.js';
 import { RARE_GEM_KEY } from './data.js';
+import { paceAt, paceStamp } from './pacekeep.js';   /* v2.3.5921: the pace kept across a rejoin (TRAPS §276) */
 
 const DAY_MS = 86400000;
 
@@ -1126,8 +1127,10 @@ export const dailyRewardsMethods = {
     const ps = this.playerState[pid];
     if (!ps) return;
     const now = this._drNow();
-    if (ps._lastRewardsGetAt && now - ps._lastRewardsGetAt < 800) return;
-    ps._lastRewardsGetAt = now;
+    /* v2.3.5921 (card V3, TRAPS §276; `pacekeep`): kept across a rejoin */
+    const getAt = paceAt(this, pid, ps, '_lastRewardsGetAt');
+    if (getAt && now - getAt < 800) return;
+    ps._lastRewardsGetAt = paceStamp(this, pid, ps, '_lastRewardsGetAt', now, 800);
     const rec = await this._drLoad(pid);
     if (!rec) return;
     if (await this._drRollover(pid, rec, now)) await this._drSave(pid);

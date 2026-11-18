@@ -71,6 +71,8 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `arrowlane` | worker | switch | v2.3.5540 | 2026-11-14 | false | logic |  | no | Arrows and bolts are back on the plain 210 ms floor: an archer who steps in between shots loses an arrow that lands too soon after the last. |
 | `bigorb` | worker | switch | v2.3.2849 | 2026-09-24 | false | logic |  | no | Un-advertises the staff's big orb: a phone that joins after fires the old three orbs, with no blast. |
 | `?bowfeel` | page | switch | v2.3.4802 | 2026-11-11 | =0 (remembered; =1 forgets) | logic |  | no | The bow's old flick, not its draw, on this device. |
+| `bowpath` | worker | switch | v2.3.5904 | off | true | logic | `bowshot` | no | An opt-in, off as merged (the owner's to turn on: card K4 PR 5); thrown (`bowpath: true`), a bow's claim on an arrow seen lands only for a monster near that arrow's line (its relay's x, y and angle; the side measured to the monster's body) and no sooner than the arrow could have flown there; and (v2.3.5905) caps.bowPath tells a phone to send its bow relay at release, with the line it flies. |
+| `bowreach` | worker | switch | v2.3.5901 | 2026-11-18 | false | logic | `bowshot` | no | ON (decided for the owner while away, 2026-11-18: card K4 PR 2); thrown (`bowreach: false`), a bow's claim on an arrow seen lands from wherever the archer stands now (the hit test's reach, a second of the run on top), and a claim with no arrow seen takes only bowshot's allowance, as before. |
 | `bowshot` | worker | switch | v2.3.5550 | 2026-11-17 | false | logic |  | no | ON since v2.3.5727 (decided for the owner while away, 2026-11-17: "For all decisions waiting on me just go recommended."); thrown (`bowshot: false`), an ordinary bow claim lands without an arrow seen, as before: five claims a second on anything in the bow's reach. |
 | `bowvolley` | worker | switch | v2.3.2808 | 2026-09-24 | false | logic |  | no | Un-advertises the bow's volley: a phone that joins after fires the old single arrow and blast. |
 | `?combatreset` | page | switch | v2.3.5206 | 2026-11-14 | =0 | logic |  | no | A fight you picked, a roll or a lunge, the hit marks on the ground, a kill's XP still waiting and another player's damage numbers still queued carry over a change of place again, each ending on its own clock or its own check, not at the zone door. |
@@ -514,10 +516,13 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?sheen` | page | switch | v2.3.2736 | 2026-09-24 (v2.3.2887) | =1, =0, on or off | logic |  | no | Turns the sheen on gear on or off. |
 | `?sheenpass` | page | switch | v2.3.3453 | 2026-10-18 | present | chip |  | no | The sheen is drawn without its batch. |
 | `?shieldretry` | page | switch | v2.3.4431 | 2026-11-10 | =0 | logic | `?retrylooks` | no | Shield sheets that failed are not asked for again. |
+| `?shotimage` | page | switch | v2.3.5982 | 2026-11-18 | =0 | memory |  | no | The monsters' thrown goo and fire are drawn from their two canvases, kept in the page as before, not from images of them. |
 | `?slimesplat` | page | switch | v2.3.4127 | off | =0 or =1 | logic |  | no | The slime's splat turned off (=0) or on (=1) for this phone. |
 | `?slimewalk` | page | switch | v2.3.5256 | 2026-11-14 | =0, off, false | memory |  | no | The slimes' sheets load behind the first loading screen and are kept, as before, not as a slime comes near. |
 | `?sootms` | page | lever | v2.3.3679 |  | a number of ms | none |  | no | QA: soot marks lie this long. |
 | `?standinlegs` | page | switch | v2.3.3640 | 2026-10-27 | =0 | logic |  | no | The sword and bow bodies keep their legs under greaves, as before. |
+| `?teechip` | page | switch | v2.3.5981 | 2026-11-18 | =0 | memory | `?plaintee` | no | The tee's standing and jogging sheets are sent to the graphics chip at the loading screen, as before, though a phone draws them from the colour numbers. |
+| `?townparts` | page | switch | v2.3.5983 | 2026-11-18 | =0 | memory |  | no | The retired town's hanging signs, crates and flags load behind the world's loading screen every session, as before, not only with that town. |
 | `?traitretry` | page | switch | v2.3.3606 | 2026-10-26 | =0 | logic | `?retrylooks` | no | A trait picture that failed is not asked for again. |
 | `?uploadicons` | page | switch | v2.3.5569 | 2026-11-17 | =0 | memory |  | no | The five-block stamina and mana strips and the verified Bro badge over a name are drawn from their full-colour pictures, as before, not from their 256-colour twins. |
 | `?waves` | page | value | v2.3.3019 |  | a number, 0.25 to 3 | logic |  | no | The water's motion this many times as strong. |
@@ -556,6 +561,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `lingeracc` | worker | switch | v2.3.4921 | 2026-11-12 | false | logic |  | no | A lingering player's unwritten shot and hit counts (the accuracy record) are left in memory, as before. |
 | `max_players` | worker | value | v2.3.1982 |  | a number, 1 to the ceiling | logic |  | no | The room's cap on players, never above its bandwidth ceiling. |
 | `nearjoin` | worker | switch | v2.3.3276 | 2026-10-17 | false | logic |  | no | New joins get the whole snapshot again, cap off. |
+| `pacekeep` | worker | switch | v2.3.5921 | 2026-11-18 | false | logic |  | no | Eight request paces (the dice, a drop, the gamble, the ace flips, the rewards' read, salvage, the race's start, a rest) are the socket's alone again: a rejoin forgets them (TRAPS §276), as before card V3. |
 | `presence2` | worker | switch | v2.3.3250 | 2026-10-14 | false | logic |  | no | Un-advertises presence 2: every phone back on the v2.3.3246 roster. |
 | `quiet` | worker | switch | v2.3.3254 | 2026-10-15 | false | logic |  | no | Un-advertises the quiet phone: each phone as before from its next join. |
 | `refusejoined` | worker | switch | v2.3.4921 | 2026-11-12 | false | logic |  | no | A refused session is dropped only, not taken out of the world. |
@@ -591,6 +597,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?harvestdoor` | page | switch | v2.3.5219 | 2026-11-16 | =0 | logic |  | no | The phone's harvest takes any write its own code asks again (a start over one in flight, the window opened early, a strike before it opens), as the lines before the page door could have; the callers still check each first. |
 | `harvestgrade` | worker | switch | v2.3.5900 | off | true | logic |  | no | An opt-in, off as merged (the owner's to turn on: card K4): thrown (`harvestgrade: true`), a harvest's perfect is believed only at or after the time an honest gesture takes (the plan's hits, the settle and the 1.2 s floor) and at most 15 in any 20 strikes, else paid as good (harvestgrade.js). |
 | `harvestproof` | worker | switch | v2.3.3322 | 2026-10-17 | false | logic |  | no | The old permissive strike and the old perfect, at once. |
+| `harvestshard` | worker | switch | v2.3.5903 | 2026-11-18 | false | logic |  | no | ON (card K4 PR 4; TRAPS §154); thrown (`harvestshard: false`), a harvest's shard key is built from whatever zone its node names, as before (a runtime zone mints a key that is no item). |
 | `hitladder` | worker | switch | v2.3.3229 | 2026-10-14 | false | logic |  | no | The harvest's hit dice go back to 1..level, cap un-advertised. |
 | `meals` | worker | switch | v2.3.3130 | 2026-10-07 | false | logic |  | no | Only the old instant recipes cook; dishes in bags still eat. |
 | `nodehp` | worker | switch | v2.3.3251 | 2026-10-14 | false | logic |  | no | Every node back on 5 x (tier + 1), cap un-advertised. |

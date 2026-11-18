@@ -130,6 +130,24 @@ const OWNER_KEY_FILE = 'src/ui/panels/DevPanel.jsx';
   const routeless = fetches.filter((x) => !EXCEPT(x) && x.path && x.path !== '/api/store' && !routeRows.some((n) => ACTIONS[n].path === x.path.replace(/\/$/, '') || ACTIONS[n].path.startsWith(x.path.replace(/\/$/, '') + '/')));
   check(`2: every route the page fetches (${fetches.length}, less the exceptions) has a row`, routeless.length === 0, routeless.map((x) => x.path + ' (' + x.f + ':' + x.line + ')'));
 }
+/* v2.3.5882 (card K3 PR 3): a route named through a wrapper is a row too.
+   storeApi.js's post(route, ...) hands its route to act(); storeListPet said
+   '/list', no row, and act() refused every pet listing in silence.  So every
+   post('...') there, and every 'http:/...' written anywhere on the page (a
+   door name: one slash, never a URL's two), names a row.  Break proof: post('/list', ...) back in storeApi.js turns it red */
+{
+  const STORE_API = 'src/ui/storeApi.js';
+  const has = (n) => Object.prototype.hasOwnProperty.call(ACTIONS, n);
+  const bad = [];
+  const sa = SRC.get(STORE_API) || '';
+  let posts = 0;
+  for (const m of sa.matchAll(/\bpost\(\s*'([^']*)'/g)) { posts++; if (!has(m[1])) bad.push(m[1] + ' (' + STORE_API + ':' + lineOf(sa, m.index) + ')'); }
+  for (const [f, s] of SRC) {
+    if (f === 'src/game/actions.js') continue;
+    for (const m of s.matchAll(/'(http:\/(?!\/)[^'\s]*)'/g)) if (!has(m[1])) bad.push(m[1] + ' (' + f + ':' + lineOf(s, m.index) + ')');
+  }
+  check(`2c: every route a wrapper names (${posts} post() in ${STORE_API}) and every 'http:/...' on the page is a row`, posts > 0 && bad.length === 0, bad);
+}
 
 /* ── 7b (v2.3.5603, sitting 19b's gatekeeper): the owner's key's way out,
    named: `fetchWithTimeout` with the API's base only in the Test panel, whose

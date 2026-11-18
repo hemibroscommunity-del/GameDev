@@ -345,7 +345,8 @@ export const eventCapeMethods = {
    *  `_resolveMonsterKill` directly grants the ticket -- so what was missing
    *  was never a fix, it was a window. */
   _capePublicStatus() {
-    const out = { live: !!(this._capeEventOpen && this._capeEventOpen()), capes: {} };
+    /* v2.3.6040: the capes map has no prototype (TRAPS §6), as the admin route's below */
+    const out = { live: !!(this._capeEventOpen && this._capeEventOpen()), capes: Object.create(null) };
     for (const id of Object.keys(EVENT_CAPES)) {
       const def = EVENT_CAPES[id];
       const led = (this._capeLedgers && this._capeLedgers[id]) || null;
@@ -543,11 +544,12 @@ export const eventCapeMethods = {
 
     if (request.method === 'GET') {
       await this._capeLedgersLoad();
-      /* Plain {} is safe here and the reason is the SOURCE of the keys: they
-         come from Object.keys(EVENT_CAPES), our own constants, never from the
-         request.  Contrast the DELETE below, where the cape name IS supplied
-         by the caller and needs the hasOwnProperty guard. */
-      const out = {};
+      /* The keys come from Object.keys(EVENT_CAPES), our own constants, never
+         from the request.  Contrast the DELETE below, where the cape name IS
+         supplied by the caller and needs the hasOwnProperty guard.
+         v2.3.6040: no prototype all the same (TRAPS §6): the rule is the map's
+         form, not an argument about where today's keys come from. */
+      const out = Object.create(null);
       for (const id of Object.keys(EVENT_CAPES)) {
         const def = EVENT_CAPES[id];
         const led = (this._capeLedgers && this._capeLedgers[id]) || { issued: [], redeemed: [] };
