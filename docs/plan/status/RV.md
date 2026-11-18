@@ -1,5 +1,5 @@
 card: RV
-branch: claude/rv-shieldclaim (PR 12, stacked on claude/rv-minebids)
+branch: claude/rv-devicewords (6020, stacked on claude/rv-shieldclaim)
 prs: #2072, #2083, #2091, #2094 (heads to sitting 43); PRs 5-18 built
 state: ready
 
@@ -21,7 +21,8 @@ state: ready
 - PR 11 (5811): friends.js ACC-5, SEC-F4 (`friendfix`).
 - 14 (5814) `cleanmore`, `namestaff`; 15 `rewindsays`; 16 pass words;
   13 jackpot; 18 the sum's buy leg; 17 `/mine`'s bids to the asker (`minebids`);
-  12 (5812) SEC-F2, a join's shield claim only if minted (`shieldclaim`).
+  12 (5812) SEC-F2, a join's shield claim only if minted (`shieldclaim`);
+  6020 the players' device words (block 6020-6039 added after #2097).
   Then S3 and `track` (after card L's index.js).
 
 ## Found
@@ -29,7 +30,6 @@ state: ready
 - For card K2: ACC-1, ACC-2, SEC-F1, ACC-3, S2's join (PR 11), duelquiet.
 - For `index.js` (K2, then card L): S2's `track` half, S3's board report.
 - For card L (`wsClient.js`): SEC-F3. For the planner: the players' device
-  words (DeviceScreen.js, AccountLoginForm.jsx): ruled, a PR of RV's own.
 - `mktsettle: false` + a re-listed noted order loses the taker's escrow
   on its cancel (market.js; read, not shown).
 
