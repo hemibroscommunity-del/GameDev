@@ -1,6 +1,6 @@
 card: HB
 branch: claude/plan-hb-5-afterpaint
-prs: #2188 (6240), #2199 (6241), #2201 (6242), #2202 (6243): merged; #? (6244, the door prompt after the paint): draft
+prs: #2188 (6240), #2199 (6241), #2201 (6242), #2202 (6243): merged; #2209 (6244, the door prompt after the paint): draft
 state: working
 
 ## Done
@@ -30,6 +30,9 @@ state: working
   2b" wants the disc 94 px sideways, it is 80 (tools/qa/mp/mp-jumpbtn.mjs:166).
 - mp-membudget's heap line (38.5 MB) is within the noise of main itself:
   main read 38.8 (fail) and 38.3, this branch 38.5 and 38.2.
+
+- mp-mayordoor is red on main too: parts 2-3 (the board button in the Earth
+  Forest, a click on a bro in No man's land), 5 of 12; part 1 passes.
 
 ## Needs
 
