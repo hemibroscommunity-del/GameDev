@@ -35,6 +35,29 @@ function giverExists(quest) {
    R._quests + QUEST_CHAINS — accepting/turning-in stays with the NPCs
    (server-authoritative quest_accept / quest_turn_in, v2.3.782). */
 export function deriveQuestLog(S) {
+  const { active, done } = questRows(S, true);   /* v2.3.6285: the loop below, shared with readyQuestCount */
+
+  /* NEXT UP: for each quest-giving NPC, the first incomplete quest that
+     is not yet accepted — the same selection the NPC dialogue uses.
+     v2.3.3944: worked out by deriveQuestOffers (below), which the quest
+     journal reads untrimmed. */
+  const upcoming = deriveQuestOffers(S);
+  /* v2.3.1681 (owner: "must finish one to begin another").  One at a time is
+     now stated rather than implied: while ANY quest is active there is no
+     offer at all, so the log shows the job you have, not the next one queued
+     behind it.  getNpcQuest already walks each giver's chain in order, so a
+     turn-in is what reveals the next offer.
+     v2.3.1669's Mayor-Bro-first sort is gone — with the giver filter above,
+     every quest still standing is his, so there is nothing left to sort. */
+  if (active.length) upcoming.length = 0;
+  else upcoming.length = Math.min(upcoming.length, 1);
+
+  return { active, upcoming, done };
+}
+
+/* v2.3.6285: the quests in hand (active, with whether each is ready) and, with `withDone`, the ones turned in: the
+   loop deriveQuestLog always had, alone, so readyQuestCount reads the same rows without the offers */
+function questRows(S, withDone) {
   const R = (S && S.rpg) || {};
   const qs = R._quests || {};
 
@@ -64,27 +87,11 @@ export function deriveQuestLog(S) {
         try { ready = !!quest.check(R, S); } catch (_e) { ready = false; }
       }
       active.push({ quest, ready });
-    } else if (st === QUEST_STATUS.turnedIn) {
+    } else if (withDone && st === QUEST_STATUS.turnedIn) {
       done.push(quest);
     }
   }
-
-  /* NEXT UP: for each quest-giving NPC, the first incomplete quest that
-     is not yet accepted — the same selection the NPC dialogue uses.
-     v2.3.3944: worked out by deriveQuestOffers (below), which the quest
-     journal reads untrimmed. */
-  const upcoming = deriveQuestOffers(S);
-  /* v2.3.1681 (owner: "must finish one to begin another").  One at a time is
-     now stated rather than implied: while ANY quest is active there is no
-     offer at all, so the log shows the job you have, not the next one queued
-     behind it.  getNpcQuest already walks each giver's chain in order, so a
-     turn-in is what reveals the next offer.
-     v2.3.1669's Mayor-Bro-first sort is gone — with the giver filter above,
-     every quest still standing is his, so there is nothing left to sort. */
-  if (active.length) upcoming.length = 0;
-  else upcoming.length = Math.min(upcoming.length, 1);
-
-  return { active, upcoming, done };
+  return { active, done };
 }
 
 /* ═══ v2.3.3944: EVERY OFFER, FOR THE JOURNAL ═══
@@ -128,8 +135,14 @@ export { trackedQuestId, setTrackedQuest } from '../../../game/trackedQuest.js';
 
 /* Toolbar badge feed: READY turn-ins only (round-5: available quests
    alone never badge). */
+/* ═══ v2.3.6285: THE QUESTS DOT COUNTS ONLY WHAT IT SHOWS (card HB2 PR 6) ═══
+   The band asks this on every redraw (BottomDashboard.jsx's dots), and it built the whole quest log to count it:
+   the done list, and every giver's next offer (deriveQuestOffers, a walk over the townsfolk), thrown away
+   (`BottomDashboard > readyQuestCount > deriveQuestLog > deriveQuestOffers`, 20 to 40 ms holds on budget-android:
+   docs/plan/census/HB-holds.md row 35).  Now it walks deriveQuestLog's own loop (questRows) for the active quests
+   alone: the same rows by the same rules, so the same number. */
 export function readyQuestCount(S) {
-  try { return deriveQuestLog(S).active.filter(a => a.ready).length; } catch { return 0; }
+  try { return questRows(S, false).active.filter(a => a.ready).length; } catch { return 0; }
 }
 
 /* One reward string, shared by every quest row. */
