@@ -137,6 +137,28 @@ async function uTurn(P, G) {
   });
 }
 
+/* ── v2.3.6383: STOP AND GO (the gatekeeper's sitting 52 on #2253) ──
+   A ride of short pushes with a pause after each, the way a player taps along: the side behind is left and taken
+   back as the board slows and starts.  Counts the pieces asked for and let go before they came (`dropped`). */
+const GO_PX = 300, GO_N = 8, GO_PAUSE_MS = 700;
+async function stopAndGo(P, G) {
+  const [x0, y0] = ring(G)[0];
+  await H.glideTo(P, x0 - GO_PX * GO_N / 2, y0, { speed: 2500, timeoutMs: 120000 }).catch(() => {});
+  await P.page.waitForTimeout(4000);
+  const on = await P.page.evaluate(() => { const b = window.__btRideBtn && window.__btRideBtn(); return !!(b && b.on); });
+  if (!on) {
+    await P.page.keyboard.press('z');
+    await H.waitFor(P, () => window.__btRideBtn && window.__btRideBtn(), (v) => v && v.on === true, { timeout: 8000, label: 'on the board' }).catch(() => null);
+  }
+  const d0 = await P.page.evaluate(() => ({ d: (window.__btGroundCover() || {}).dropped || 0, l: window.__btWorldTrial.stats.loads }));
+  for (let k = 1; k <= GO_N; k++) {
+    await H.glideTo(P, x0 - GO_PX * GO_N / 2 + GO_PX * k, y0, { speed: RIDE_PX_S, timeoutMs: 60000 });
+    await P.page.waitForTimeout(GO_PAUSE_MS);
+  }
+  const d1 = await P.page.evaluate(() => ({ d: (window.__btGroundCover() || {}).dropped || 0, l: window.__btWorldTrial.stats.loads }));
+  return { pieces: d1.l - d0.l, dropped: d1.d - d0.d };
+}
+
 export async function run({ browser, wsPort, webPort, rec }) {
   const query = process.env.BT_RH_QUERY || '';
   const P = await H.newPlayer(browser, { name: 'rh', wsPort, webPort, world: 'wheel', viewport: PHONE, touch: true, dpr: 1, query });
@@ -153,10 +175,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const cold = await ringOnce(P, G);
     const warm = await ringOnce(P, G);
     const turn = await uTurn(P, G);
+    const go = await stopAndGo(P, G);
     console.log(`  query: ${query || '(as it ships)'}${H.PROFILE ? ', profile ' + H.PROFILE.name : ''}`);
     console.log('  cold ring:', JSON.stringify(cold));
     console.log('  warm ring:', JSON.stringify(warm));
     console.log('  the way back from a U-turn:', JSON.stringify(turn));
+    console.log('  stop and go:', JSON.stringify(go));
     rec.ok(`the rings laid ground on the board (guard): ${cold.pieces} and ${warm.pieces} pieces, got off ${cold.offs + warm.offs} times`,
       cold.pieces >= 20 && warm.pieces >= 20, { cold, warm });
     /* the lines: as it ships, on this box plain (a slowed profile's numbers go to the census, never a line; with

@@ -169,10 +169,10 @@ function groundSendOn(S) {
    (TRAIL_IN of the look ahead's reach), and stays so until it all but stops
    rolling that way (TRAIL_OUT): a stick wobbling round the threshold, a
    stop-and-go ride or a correction from the worker no longer flips it frame
-   to frame.  And behind, the ground is laid UNDER_PAD past the view but KEPT
-   to MARGIN past it -- exactly where the ground is laid when the side is not
-   left behind -- so a flip either way never asks again for a column it has
-   just let go, nor lets go a column it has just asked for. */
+   to frame: a column behind is let go once as the side is left, and asked
+   for again only when the board has truly turned.  (Kept to MARGIN behind as
+   well, so even a flip would never re-ask, it held 86 pieces on the ring,
+   over mp-rideheld's line of 80 -- the memory first: not done.) */
 const TRAIL_IN = 1 / 4, TRAIL_OUT = 1 / 8;
 function inFlightMax(S) {
   return groundSendOn(S) ? RIDE_IN_FLIGHT : MAX_IN_FLIGHT;
@@ -389,9 +389,8 @@ export class WheelGround {
       if (best) this._relay(best.i + ',' + best.j, best, info);
     }
 
-    /* v2.3.6382: less behind the board; v2.3.6383: kept to MARGIN past the view there (the side behind, above) */
-    const kL = T.L ? MARGIN - UNDER_PAD : KEEP_PX, kR = T.R ? MARGIN - UNDER_PAD : KEEP_PX;
-    const kT = T.T ? MARGIN - UNDER_PAD : KEEP_PX, kB = T.B ? MARGIN - UNDER_PAD : KEEP_PX;
+    const kL = T.L ? 0 : KEEP_PX, kR = T.R ? 0 : KEEP_PX;   /* v2.3.6382: none behind the board */
+    const kT = T.T ? 0 : KEEP_PX, kB = T.B ? 0 : KEEP_PX;
     const k0 = Math.floor((nx0 - kL) / cs), k1 = Math.floor((nx1 + kR) / cs);
     const l0 = Math.floor((ny0 - kT) / cs), l1 = Math.floor((ny1 + kB) / cs);
     let resident = 0, short = 0;
