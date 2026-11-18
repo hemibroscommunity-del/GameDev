@@ -1,5 +1,5 @@
 card: RV
-branch: claude/rv-paidmark (PR 10, 5810, stacked on claude/rv-devicewords)
+branch: claude/rv-looktrack (5819, stacked on claude/rv-paidmark)
 prs: #2109-#2123 open (ready, sitting 44); #2072, #2083, #2091, #2094 merged
 state: ready
 
@@ -22,14 +22,12 @@ state: ready
   13 jackpot; 18 the sum's buy leg; 17 `/mine`'s bids to the asker (`minebids`);
   12 (5812) SEC-F2, a join's shield claim only if minted (`shieldclaim`);
   6020 the players' device words (RV's block 6020+, registered by sitting 44).
-- PR 10 (5810) `paidmark`, built on the owner's yes. Next: 6021 market's list;
-  S3 and `track` (index.js); the dead-player takes (`deadtake`).
+- PR 10 (5810) `paidmark` (the owner's yes); 5819 S2's track half, S3
+  (`lookform`). Next: 6021 market's list (after #2102); `deadtake`.
 
 ## Found
 
 - For card K2: ACC-1, ACC-2, SEC-F1, ACC-3, S2's join (PR 11), duelquiet.
-- For `index.js` (card L done: RV next, telling K2 the lines): S2's `track`
-  half, S3's board report.
 - For card L (`wsClient.js`): SEC-F3.
 - `mktsettle: false` + a re-listed noted order loses the taker's escrow
   on its cancel (market.js; read, not shown).

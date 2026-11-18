@@ -101,7 +101,8 @@
  * claims merged only when the ledger backs them (v2.3.5812, gearstash.js:
  * `shieldclaim`); a daily spin's, the login spin's and a season tier's paid
  * mark in the credit's own run (v2.3.5810, dailyrewards.js, loginspin.js:
- * `paidmark`).
+ * `paidmark`); a `track`'s avatar, colour and look words in the game's own
+ * forms (v2.3.5819, lookform.js: `lookform`).
  *
  * WHO CAN TURN IT ON.  Only the admin key, through the Test panel's
  * POST /api/admin/dev/testmode {playerId, on} (devtools.js), which the owner's
