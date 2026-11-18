@@ -24,7 +24,7 @@
 // never collapses the sheet — play with menus open (v2.3.1307); the
 // combat chrome rides above the open sheet keyed off --sheet-h.
 
-import { playIsLandscape } from './playViewport.js'; /* v2.3.2173: the bag-pane tourniquet below */
+import { playIsLandscape, bandResize } from './playViewport.js'; /* v2.3.2173: the bag-pane tourniquet below; v2.3.6241: + bandResize */
 
 const listeners = new Set();
 const emit = () => {
@@ -42,7 +42,8 @@ const emit = () => {
      returns before touching the canvas, so the extra event costs a
      comparison -- cheaper than this file knowing which orientation it is
      in. */
-  try { window.dispatchEvent(new Event('resize')); } catch (e) { /* ignore */ }
+  /* v2.3.6241: marked as the band's (playViewport.js bandResize): the kept sizes stand (card HB PR 2) */
+  try { bandResize(); } catch (e) { /* ignore */ }
 };
 
 /* v2.3.1312 (round-8; retagged from 1311 — #288 claimed it first):

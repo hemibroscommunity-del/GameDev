@@ -1,39 +1,36 @@
 card: Z
-branch: claude/plan-z-sitting-46
-prs: this PR (tag 6260), the last line of sitting 46's list (ready)
+branch: claude/plan-z-sitting-48
+prs: this PR (tag 6262), the last line of sitting 48's list (ready)
 state: ready
 
 ## Done
-- `census/review-z46.md`. 5.4 ticked (M), 5.8 ticked (K3); 5.5's note.
-  Blocks CAP, LG, WD, TL, RD, EN, FX, HB; Z 6260-6279; `nextBlock` 6280.
-  K3, V7, M, V6, V3 done. Lines: frame-steps 1531, switch-reader 17,
-  render-tables 0. Part 9: "Decided for the owner while away".
+- `census/review-z48.md`. Notes on 8.1 (RD), 5.5 (FX), 3.1 (HB); part
+  9: EN's folksheets, HB's afterpaint. Card RD's last PR on the list.
 ## The list: merge in this order, each "Create a merge commit"
-1 P2 #2185 · 2 M2 #2186 · 3 HB #2188 · 4 TL #2175 · 5 LG #2170 · 6 RD
-#2191 (once its test is green) · 7-8 TL #2181, #2183 · 9-10 LG #2178,
-#2184 · 11-15 K4 #2168, #2176, #2177, #2182, #2187 · 16-17 K2 #2169,
-#2173 · 18-21 RV #2164, #2165, #2193, #2192 · 22-23 CS #2139, #2152
-(CS merges `main` once 21 lands) · 24-25 EN #2189, #2195 · 26 FX #2190
-(merges `main` once 25 lands, re-generates M-tables.md) · 27-28 CAP
-#2172, #2174 · 29-31 WD #2171, #2179, #2180 (WD re-lands 4995/385 once
-23 lands) · 32 Z. On `main` b5669a5b, one base at every step. 7-26
-deploy the worker: merge them one after another. Drafts (K4, RD) are
-marked ready first; a line merges only on a green `test`. Heads, trees:
-the census.
-## Held / To 47
-- None held. To 47: FX #2194 (6221, based on FX's branch), anything
-  opened after the cut.
+1 RD #2208 (crowdfight; tests) · 2 EN #2207 (`?folksheets`; DEPLOYS) ·
+3 HB #2209 (`?afterpaint`) · 4 Z. On `main` 586b0a7b, one base at every
+step, every base `main`. Heads, trees: the census.
+## Held / To 49
+- None held. To 49: anything opened after the cut; EN 6203, HB's next.
 ## Found
-- 45's (a)-(ad) carried. New: (ae) a precheck that times out leaves
-  `switches-thrown` running as an orphan (TL's Found, seen here). (af)
-  elemental2 "restore clamps at maxMana" red once under `duelpace` thrown
-  (#2151's CI): watch. (ag) canvas-witness 8b reads only a comment (M).
-  (ah) mp-membudget heap/buffers over their lines on a session box, CI
-  fine (FX, P2). (ai) WD: 96 "tap" words outside deskWords(). (aj)
-  arena.test's hour boundary (TL #2183 mends it).
+- 46's and 47's carried. New or restated: RD: a device drawing under 1
+  frame per 5 s rejoins forever (wsClient.js `_aliveTimer`,
+  `RESYNC_AWAY_MS`): a game question, the owner's. HB: `mp-mayordoor`
+  parts 2-3 red on main (5 of 12): no card owns it. FX/EN:
+  mp-membudget's heap (38.5) and buffers lines at their edge on main on
+  session boxes, CI fine. The gatekeeper's tool caps precheck at 15 min
+  (tools/dev/gatekeeper.mjs), under the server suite's ~12 plus the
+  rest: seen again here (its precheck "timed out", no red). WD's 96
+  "tap" words outside deskWords(). canvas-witness 8b reads only a
+  comment. CS's stale "off by default" comments and the Set-a-switch
+  chips (ownerSwitches.js) not listing the six. TL's run.mjs orphans on
+  precheck's timeout. elemental2 maxMana under duelpace: watch. EN's
+  comments name tools/guards/folk-sheets.test.mjs (it is server/test).
+  RD's, EN's and HB's status lines lag their ready PRs. New:
+  `switches-thrown` red once under load (joinidform, login-keys 12h,
+  883 s), green alone in 45 s: watch.
 ## Needs
-- Decided for the owner while away (the planning session): K4 #2168
-  `harvestgrade`, `bowpath` ON; #2187 `botscoresave` ON (writes only for
-  a script's record); CAP's settles-value reading; LG's rung 5 later.
+- Decided for the owner while away (the planning session): EN's
+  folksheets ON (`?folksheets=0`); HB's afterpaint ON (`?afterpaint=0`).
 - Owner's own: `.github/`, Cloudflare; wind-dunes.mp3's source; SEC2's
   report form needing a public repository.

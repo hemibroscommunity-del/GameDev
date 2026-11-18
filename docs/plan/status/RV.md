@@ -1,7 +1,7 @@
 card: RV
 branch: claude/rv-spinpace (6024, stacked on claude/rv-mktcancel; sitting 46's order)
-prs: #2164 (6022), #2165 (6023), #2193 (6025), #2192 (6024) at sitting 46
-state: ready
+prs: #2072-#2141 merged; #2164, #2165, #2193, #2192: merged at sitting 46
+state: done
 
 ## Done
 
@@ -11,7 +11,7 @@ state: ready
   away: a reset never frees the rise chest (the planner's ruling);
   `_deviceFill` a census note only, not built.
 
-## Open
+## Merged at sitting 46 (the card done; marked by the gatekeeper, sitting 47)
 
 - #2164 (6022): the dying take nothing in the money's four (`deadtake`,
   V3's): the arena's stake, the Auction House's offer, the gift, the
@@ -22,12 +22,12 @@ state: ready
   order's first taker paid back before its delete (`mktback`).
 - #2192 (6024, this, on #2193): the daily spin's pace kept by the room
   across a rejoin (`pacekeep`, V3's); traps-saves §276 18 -> 17.
-- Sitting 46's order: #2164, #2165, #2193, #2192.
 
 ## Found
 
 - For card K2: ACC-1, ACC-2, SEC-F1, ACC-3, S2's join (PR 11), duelquiet.
-- For card L (`wsClient.js`): SEC-F3.
+- For card L (`wsClient.js`): SEC-F3 (card L is done: recorded by the
+  gatekeeper, sitting 47, as owned by no card).
 
 ## Needs
 

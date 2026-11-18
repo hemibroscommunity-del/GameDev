@@ -39,7 +39,7 @@ import { dashMinBus } from './dashMinBus.js';
 import { dashboardPanelBus } from './dashboardPanelBus.js';
 import { shopBus } from './shopBus.js';
 import { tradeBagBus } from './tradeBagBus.js';
-import { playIsLandscape } from './playViewport.js';
+import { playIsLandscape, winVw, winVh } from './playViewport.js';   /* v2.3.6241: + winVw, winVh */
 import { fineInput } from '../../game/deviceProfile.js';   /* v2.3.4804: the device profile */
 
 export const ONE_BAND_SIDE_MAX_H = 500;
@@ -68,7 +68,9 @@ function wantSideways() {
   if (typeof window === 'undefined' || !oneBandActive()) return false;
   let fine = false;
   fine = fineInput();   /* v2.3.4804: the device profile */
-  return bandSidewaysShape(window.innerWidth, window.innerHeight, fine);
+  /* v2.3.6241: the window's size kept till the browser resizes it (playViewport.js winVw): the band's own
+     resize events ran this inside the tap, and the read laid the page out there (card HB PR 2) */
+  return bandSidewaysShape(winVw(), winVh(), fine);
 }
 
 let _side = null;

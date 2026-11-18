@@ -179,3 +179,6 @@ export function _dmgSig(fonts) {
   }
   return out || null;
 }
+
+/* the fonts in Pixi's cache now (a missing one as null) */
+export const _dmgFontsNow = () => _dmgFontNames().map((n) => (Cache.has(n + '-bitmap') ? Cache.get(n + '-bitmap') : null));

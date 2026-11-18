@@ -255,6 +255,8 @@ export const ASSET_FAMILIES = Object.freeze([
     { tool: 'tools/gear/make-pine-arrow.mjs', sources: 'tools/gear/src-art/arrow-pine.png', draw: 'file', loader: ER }),
   fam('projectile-sheets', 'made', 'public/sprites/projectiles/{magic-bolt,magic-special,sword-slash}-v1.webp',
     { tool: ['tools/process_magic_bolt_sheet.py', 'tools/process_special_sheets.py'], sources: 'assets/icons-source/sheet-{magic-bolt,magic-special,sword-slash}.png', draw: 'file', loader: ER, px: 'frames 4 across' }),
+  fam('projectile-sheets-twins', 'made', 'public/sprites/projectiles/{magic-bolt,magic-special,sword-slash}-v1.p256.png',
+    { tool: 'tools/art/reduce256.mjs', sources: 'beside', draw: 'numbers', loader: 'src/rendering/p256.js', px: 'frames 4 across', note: 'v2.3.6222, card FX PR 3: the staff\'s bolt and special and the sword\'s slash read from their 256-colour twins by default (16k-51k colours cut to 256, moved 0.005-0.019 OKLab); listed in src/data/p256Files.js; ?p256=0' }),
   fam('projectile-arrow-special', 'made', 'public/sprites/projectiles/arrow-special-v1.webp',
     { tool: 'tools/process_special_sheets.py', sources: 'assets/icons-source/sheet-arrow-special.png', draw: 'none', note: 'the hot arrow is drawn instead' }),
   fam('tool-gestures', 'made', 'public/sprites/tools/{axe,pickaxe,reel}-gesture-v1.webp',
