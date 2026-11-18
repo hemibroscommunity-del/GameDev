@@ -86,7 +86,10 @@ const gateOk = (room) => !!(room._seatGate && room._seatGate(URL0, Date.now()).o
 
 /* ── 3. a played character at a full room ── */
 {
-  const room = await openRoom(makeStorage(), { max_players: 4 });   /* guests: 2 */
+  /* v2.3.6000 (card CS): `seathold` is on by default now; `made` drops the
+     played character, whose seat would be held a minute: this section is the
+     guests' share, so the hold is thrown off (§8 plays the two together) */
+  const room = await openRoom(makeStorage(), { max_players: 4, seathold: false });   /* guests: 2 */
   await made(room, 'bp_gs_played', 'p-played');
   const g1 = await joinAs(room, 'g1', 'bp_gs_ga');
   const g2 = await joinAs(room, 'g2', 'bp_gs_gb');
@@ -102,7 +105,7 @@ const gateOk = (room) => !!(room._seatGate && room._seatGate(URL0, Date.now()).o
   check('3. ...the other guest stays, and the room is at its cap', inRoom(room, 'bp_gs_ga') && !fullSaid(g1) && room.sessions.size === 4, room.sessions.size);
 }
 {
-  const room = await openRoom(makeStorage(), { max_players: 2 });
+  const room = await openRoom(makeStorage(), { max_players: 2, seathold: false });   /* v2.3.6000: as above (with the hold, the played character's own seat lets it in: §5) */
   await made(room, 'bp_gs_played', 'p-played');
   const g1 = await joinAs(room, 'g1', 'bp_gs_ga');
   const k = await joinAs(room, 'k', 'bp_gs_kk', 'p-kk');
