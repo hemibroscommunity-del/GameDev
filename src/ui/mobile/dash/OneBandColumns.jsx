@@ -15,6 +15,7 @@
  * hands it the same box. */
 
 import React, { useLayoutEffect, useRef, useState } from 'react';
+import { AFTER_PAINT } from '../../afterPaint.js';   /* v2.3.6281: the first read off the commit (card HB2 PR 2) */
 import { DashColumns } from './DashColumns.jsx';
 import { oneBandLayout } from '../sheet/sheetGeometry.js';
 
@@ -29,8 +30,14 @@ export function OneBandColumns({ R }) {
       if (!(w > 0 && h > 0)) return;
       setBox((b) => (b && b.w === w && b.h === h ? b : { w, h }));
     };
-    read();
+    /* ═══ v2.3.6281: NOT MEASURED IN THE COMMIT (card HB2 PR 2; `?afterpaint`) ═══
+       The first read ran here, in React's commit of the band that put the columns in: the first read after React
+       changed the page, so the browser laid the whole page out there (docs/plan/census/HB-holds.md row 3,
+       `OneBandColumns read`).  The ResizeObserver tells the size on observe, after the browser's own layout, where
+       the read costs nothing: under `?afterpaint` (ON) that is the first read, and the columns are drawn a frame
+       later.  With no ResizeObserver, or `?afterpaint=0`: read here, as before. */
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(read) : null;
+    if (!AFTER_PAINT || !ro) read();
     if (ro) ro.observe(el);
     else window.addEventListener('resize', read);
     return () => { if (ro) ro.disconnect(); else window.removeEventListener('resize', read); };
