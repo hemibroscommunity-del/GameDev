@@ -2311,6 +2311,8 @@ let _spareSkipped = 0;   /* spare-set frames not baked for want of room (QA: __b
    for KEEP_QUIET_MS, then a few go each KEEP_GAP_MS.  A source destroyed
    meanwhile (an eviction) is passed over by keepAsImage itself. */
 const KEEP_QUIET_MS = 2000, KEEP_PER_SLICE = 4, KEEP_GAP_MS = 250;
+/* the source Texture.from(canvas) parked in Pixi's Cache for `cv`, or null */
+const _cachedSourceOf = (cv) => { try { const t = Cache.has(cv) ? Cache.get(cv) : null; return (t && t.source) || null; } catch (e) { return null; } };
 const _keepQueue = [];
 let _keepTimer = 0, _keepLastAsk = 0;
 function _afterBakes(fn) {
@@ -4248,9 +4250,11 @@ function _fishTopFrame(bodyTex, rodTex, plate) {
     ctx.putImageData(img, 0, 0);
     /* v2.3.6203: made once (the putImageData above), only ever drawn, and kept in
        _fishTopCache past a renderer rebuild: an image of itself (keepAsImage.js),
-       once the bakes are quiet (_afterBakes); Texture.from(cv) is Pixi's one
-       source for this canvas, the one the next line wraps */
-    { const _src = Texture.from(cv).source; _afterBakes(() => keepAsImage(_src, Cache, { quiet: true })); }
+       once the bakes are quiet (_afterBakes).  Its source then is the one the
+       next line makes, found by the canvas in Pixi's Cache (Texture.from keys it
+       so: TRAPS §139), not made a second time here (TRAPS §250's count); gone
+       from the Cache (let go of meanwhile), nothing is kept */
+    _afterBakes(() => keepAsImage(_cachedSourceOf(cv), Cache, { quiet: true }));
     const tex = new Texture({ source: Texture.from(cv).source });
     /* v2.3.4157: kept, and the least recently drawn past the cap let go of
        for good: off its sprites, then its source, Cache entry and canvas */
