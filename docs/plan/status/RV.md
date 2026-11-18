@@ -1,5 +1,5 @@
 card: RV
-branch: claude/rv-passwords (PR 16, stacked on claude/rv-rewind)
+branch: claude/rv-jackpot (PR 13, stacked on claude/rv-passwords)
 prs: #2072, #2083 (sitting 42); #2091, #2094 (ready); PRs 5-11 built, in their runs
 state: ready
 
@@ -7,7 +7,7 @@ state: ready
 
 - #2072 (5800): the review, `docs/plan/census/RV-review.md`.
 - #2083 (5801): market.js MS-2 (`mkttier`), MS-4 (`mktheal`).
-- #2091 (5802): the rise chest (`risekeep`); #2094 (5803): `dyingkeep`.
+- #2091 (5802), #2094 (5803).
 
 ## Next (built, each red on main first; full runs one at a time)
 
@@ -18,9 +18,9 @@ state: ready
 - PR 8 (5808): loginkeys.js SEC-F5 (`oldkeyheld`).
 - PR 9 (5809): MS-5, MS-6 (`offerpend`, `leftoverheal`).
 - PR 11 (5811): friends.js ACC-5, SEC-F4 (`friendfix`).
-- PR 14 (5814): S6, S7 (`cleanmore`, `namestaff`). 7 FAIL on main.
-- PR 15 (5815): the rewind names login acts since (`rewindsays`).
-- PR 16 (5816): the Test panel's pass words. Then S3, `track` (after L).
+- PR 14 (5814): S6, S7 (`cleanmore`, `namestaff`). PR 15 (5815): `rewindsays`.
+- PR 16 (5816): the pass words. PR 13 (5813): the jackpot re-check.
+  Then S3 and `track` (after card L's index.js).
 
 ## Found
 

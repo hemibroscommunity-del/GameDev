@@ -156,6 +156,12 @@ export const cadenceMethods = {
     };
   },
 
+  /* v2.3.5813 (MD-3): the kill switch, lower case, on unless written false */
+  _jackCheckOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'jackcheck') && !f.jackcheck);
+  },
+
   async _handleJackpotDeposit(session, payload) {
     // v2.3.1150: live-ops kill switch -- deposits stop cold, nothing
     // debited (the pool and existing entries are untouched and the
@@ -174,6 +180,17 @@ export const cadenceMethods = {
     await this._jackpotMaybeResolve();
     const period = this._cadencePeriodWeekly();
     const draw = (await this.state.storage.get('jackpot:draw')) || { period, pool: 0, entries: {} };
+    /* ═══ v2.3.5813 (card RV, MD-3): THE PURSE ASKED AGAIN AFTER THE AWAITS ═══
+       The purse was checked above, before two storage awaits, and the gold
+       door clamps a short take to what is there: had the purse fallen
+       meanwhile, the tickets were granted in full for less gold.  Nothing can
+       come between today (every await is storage, the input gate shut), but
+       it is the shape the shop's re-check closed (v2.3.4900): the same live
+       player, and the purse, asked again, with the refusal above.
+       `jackcheck: false` in the live flags: as before. */
+    if (this._jackCheckOn()) {
+      if (this.playerState[session.id] !== ps || ps.dying || ps.dead || (ps.coins || 0) < amount) return this._refusalEcho(session, ['coins']);
+    }
     // Single gated event (rule 8): debit live state + grow the pool,
     // both committed by the same event's output gate.  No opId needed
     // -- a resent deposit is legitimately a new deposit.
