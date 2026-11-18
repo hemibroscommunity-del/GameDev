@@ -9,7 +9,9 @@
  * A leaf imports nothing from the renderers (four-lines' IMPORT_CYCLE_FILES
  * has no room): only what the renderer itself imported, from the same files. */
 import { sw } from '@/game/switches.js';
-import { PILE_R } from '../tables/economy.js';
+import { PILE_R, BEAM_TEX_W, BEAM_TEX_H } from '../tables/economy.js';
+import { Texture, Cache } from 'pixi.js';
+import { keepAsImage } from '../keepAsImage.js';   /* v2.3.6223: the beam's and the mote's pictures, kept as images */
 
 export const _hexTint = (h) => { const n = parseInt(String(h || '').replace('#', ''), 16); return Number.isFinite(n) ? n : 0xffffff; };
 /* ═══ v2.3.4124: LOOT POPS OUT OF THE MONSTER, THEN THE BEAM RISES ═══
@@ -71,4 +73,61 @@ export function pileLayout(l, keys) {
   }
   l._layout = out; l._layoutSig = sig;
   return out;
+}
+
+export const MOTE_TEX = 8;
+/* v2.3.3916: a thin column: a bright core, soft edges, fading out toward its
+   top.  v2.3.4124: twice as wide, its edges falling off softly (the light,
+   not a stripe), the same picture stretched wider for the halo */
+export function makeBeamTexture() {
+  if (typeof document === 'undefined') return null;
+  const W = BEAM_TEX_W, H = BEAM_TEX_H;
+  const cv = document.createElement('canvas');
+  cv.width = W; cv.height = H;
+  const g = cv.getContext('2d');
+  const across = g.createLinearGradient(0, 0, W, 0);
+  across.addColorStop(0, 'rgba(255,255,255,0)');
+  across.addColorStop(0.15, 'rgba(255,255,255,0.08)');
+  across.addColorStop(0.3, 'rgba(255,255,255,0.4)');
+  across.addColorStop(0.42, 'rgba(255,255,255,0.85)');
+  across.addColorStop(0.5, 'rgba(255,255,255,1)');
+  across.addColorStop(0.58, 'rgba(255,255,255,0.85)');
+  across.addColorStop(0.7, 'rgba(255,255,255,0.4)');
+  across.addColorStop(0.85, 'rgba(255,255,255,0.08)');
+  across.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = across;
+  g.fillRect(0, 0, W, H);
+  /* ...faded toward the top: the light thinning into the air */
+  g.globalCompositeOperation = 'destination-in';
+  const up = g.createLinearGradient(0, 0, 0, H);
+  up.addColorStop(0, 'rgba(255,255,255,0)');
+  up.addColorStop(0.45, 'rgba(255,255,255,0.6)');
+  up.addColorStop(1, 'rgba(255,255,255,1)');
+  g.fillStyle = up;
+  g.fillRect(0, 0, W, H);
+  /* v2.3.6223 (card FX PR 4, CLAUDE.md §8 "a picture made on a canvas"):
+     kept as an image of itself (keepAsImage.js), so the canvas goes now
+     and a rebuilt renderer or an emptied canvas (TRAPS §250) still draws
+     it.  The renderer's _gpuWaiting stays behind it: if the image fails,
+     the canvas is let go once drawn, as before. */
+  const t = Texture.from(cv);   /* its canvas let go once drawn: _gpuWaiting */
+  keepAsImage(t.source, Cache);
+  return t;
+}
+/* v2.3.4124: a mote of light, a soft round dot */
+export function makeMoteTexture() {
+  if (typeof document === 'undefined') return null;
+  const N = MOTE_TEX, c = N / 2;
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = N;
+  const g = cv.getContext('2d');
+  const rg = g.createRadialGradient(c, c, 0, c, c, c);
+  rg.addColorStop(0, 'rgba(255,255,255,1)');
+  rg.addColorStop(0.45, 'rgba(255,255,255,0.5)');
+  rg.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = rg;
+  g.fillRect(0, 0, N, N);
+  const t = Texture.from(cv);
+  keepAsImage(t.source, Cache);   /* v2.3.6223: as the beam's, above */
+  return t;
 }

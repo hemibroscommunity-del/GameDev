@@ -15,6 +15,7 @@ import { sw, pageAddress } from '@/game/switches.js'   /* v2.3.5343: the page's 
 import { Assets, BitmapText, Cache, CanvasTextMetrics, Container, FillGradient, Graphics, Matrix, Rectangle, Sprite, Text, Texture, TextStyle } from 'pixi.js';
 import { LockReticle, nearestInMeleeReach } from '@/rendering/lockReticle.js';   /* v2.3.3876: the lock you chose wears a reticle */
 import { keepOnGpuOnly, emptyOnceDrawn } from '../gpuOnly.js';   /* v2.3.3088: pictures kept on the graphics chip only; v2.3.3698: or once drawn */
+import { keepAsImage } from '../keepAsImage.js';   /* v2.3.6223: the effects' small minted pictures, kept as images (card FX PR 4) */
 import { emptyHeldOnceDrawn } from '../heldNumbers.js';   /* v2.3.3699: the monsters' strips, held as colour numbers once drawn; v2.3.5250: and a popup kept as numbers, read for its cut */
 import { readbackFrames } from '../photoSheet.js';   /* v2.3.2987: the stat scene's photographs, one readback */
 
@@ -421,7 +422,7 @@ import { HARD_DOT_R } from '../tables/monsters.js';   /* v2.3.5346: the monsters
 import { EMOTE_POP_PX } from '../tables/social.js';   /* v2.3.5346: the social system's hand-tuned tables, moved verbatim (card M) */
 import { LOOT_SCALE, LOOT_Z, DROP_GROW, BEAM_H_PX, BEAM_W_PX, BEAM_TEX_W, BEAM_TEX_H, BEAM_HALO_W, MOTE_PX, LOOT_BEAMS_BY_RANK, BEAM_SLOTS, RARE_KINDS, POP_H, POP_BOUNCE_H, HOP_KEYS } from '../tables/economy.js';   /* v2.3.5346: the economy system's hand-tuned tables, moved verbatim (card M) */
 import { _swingBehind, _projSrcPx, readDmgScale, _mixHex, DMG_BMP_FONT, DMG_WORD_FONT, DMG_WORDS_ON, _installOneDmgFont, _dmgFontNames, _dmgSig, _dmgFontsNow } from '../leaves/effects-combat.js';   /* v2.3.6220: the combat system's leaves, moved verbatim (card FX) */   /* v2.3.6221: + _dmgFontsNow */
-import { _hexTint, LOOT_POP, _hash, landAgeOf, applySquash, pileLayout } from '../leaves/effects-economy.js';   /* v2.3.6220: the economy system's leaves, moved verbatim (card FX) */   /* v2.3.6221: + pileLayout */
+import { _hexTint, LOOT_POP, _hash, landAgeOf, applySquash, pileLayout, MOTE_TEX, makeBeamTexture, makeMoteTexture } from '../leaves/effects-economy.js';   /* v2.3.6220: the economy system's leaves, moved verbatim (card FX) */   /* v2.3.6221: + pileLayout */   /* v2.3.6223: + MOTE_TEX, makeBeamTexture, makeMoteTexture */
 import { _localBuild, _peerBuild, _standInSheet, _probeStandInSkin, _dressedKeyOf, _shirtLookOf, _standInColourKey, _twinWouldDiffer, LEGS_LOOK_OFF, _standInLook, _legsLookHas, _peerStandInColours, _localStandInColourKey } from '../leaves/effects-look.js';   /* v2.3.6220: the look system's leaves, moved verbatim (card FX) */   /* v2.3.6221: + LEGS_LOOK_OFF, _standInLook, _legsLookHas, _peerStandInColours, _localStandInColourKey */
 import { _peerNotDrawn, clearIfDrawn } from '../leaves/effects-render.js';   /* v2.3.6220: the render system's leaves, moved verbatim (card FX) */
 import { _chopArtAsymmetric, _peerChopArt, _chopKeyMask, COOK_FW, COOK_FH, _loadStandInImg, _bakeCookSplit, placeFarmFigProxy, makeFarmFigProxy, chopStandInSpot, cookStandInSpot, FIRE_FW, FIRE_FH, _fireFrameShift, _litLogKey, _figBytes, _crossedFrame } from '../leaves/effects-skills.js';   /* v2.3.6220: the skills system's leaves, moved verbatim (card FX) */
@@ -1414,6 +1415,7 @@ function debrisDotTex() {
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, 32, 32);
   _DEBRIS_DOT_TEX = Texture.from(c);
+  keepAsImage(_DEBRIS_DOT_TEX.source, Cache);   /* v2.3.6223 (card FX PR 4): the debris dot, made once and never drawn into again, kept as an image of itself: a rebuilt renderer and an emptied canvas still draw it (TRAPS §250) */
   return _DEBRIS_DOT_TEX;
 }
 /* ═══ v2.3.2217: the thrown snowball's IMPACT ═══
@@ -1569,6 +1571,7 @@ function propSlashTex() {
     if (h >= 2) { ctx.fillStyle = 'rgba(255,255,255,1)'; ctx.fillRect(x, cy - h + 1, 1, 1); }
   }
   _PROP_SLASH_TEX = Texture.from(c);
+  keepAsImage(_PROP_SLASH_TEX.source, Cache);   /* v2.3.6223 (card FX PR 4): the slash mark, made once and never drawn into again, kept as an image of itself: a rebuilt renderer and an emptied canvas still draw it (TRAPS §250) */
   return _PROP_SLASH_TEX;
 }
 /* v2.3.2731: a wood SPLINTER off a snapped arrow -- a pale sliver with a dark
@@ -1582,6 +1585,7 @@ function splinterTex() {
   ctx.fillStyle = 'rgba(226,190,130,1)'; ctx.fillRect(0, 0, 7, 2);
   ctx.fillStyle = 'rgba(70,44,22,0.9)'; ctx.fillRect(1, 2, 7, 1);
   _SPLINTER_TEX = Texture.from(c);
+  keepAsImage(_SPLINTER_TEX.source, Cache);   /* v2.3.6223 (card FX PR 4): the splinter, made once and never drawn into again, kept as an image of itself: a rebuilt renderer and an emptied canvas still draw it (TRAPS §250) */
   return _SPLINTER_TEX;
 }
 const SNAP_G = 0.13;          /* the 1/2-g term, 60Hz frame units (DEBRIS_GRAV's posture) */
@@ -1627,6 +1631,7 @@ function hardDotTex() {
   ctx.fillStyle = '#ffffff';
   ctx.beginPath(); ctx.arc(8, 8, HARD_DOT_R, 0, Math.PI * 2); ctx.fill();
   _HARD_DOT_TEX = Texture.from(c);
+  keepAsImage(_HARD_DOT_TEX.source, Cache);   /* v2.3.6223 (card FX PR 4): the hard dot, made once and never drawn into again, kept as an image of itself: a rebuilt renderer and an emptied canvas still draw it (TRAPS §250) */
   return _HARD_DOT_TEX;
 }
 
@@ -1650,6 +1655,7 @@ function groundDecalTex() {
   };
   blob(32, 32, 20); blob(20, 40, 10); blob(46, 26, 8); blob(40, 46, 6);
   _GROUND_DECAL_TEX = Texture.from(c);
+  keepAsImage(_GROUND_DECAL_TEX.source, Cache);   /* v2.3.6223 (card FX PR 4): the ground decal, made once and never drawn into again, kept as an image of itself: a rebuilt renderer and an emptied canvas still draw it (TRAPS §250) */
   return _GROUND_DECAL_TEX;
 }
 
@@ -2342,7 +2348,7 @@ const BEAM_HALO_A = 0.34;      /* ...and this bright, before the flicker */
 const BEAM_FLICKER = 0.12;     /* how much the brightness trembles */
 const BEAM_PULSE_HZ = 0.45;    /* the slow swell of the light */
 const BEAM_MOTES = 3;          /* motes drifting up a pile's beams (plus one a beam past the first) */
-const MOTE_TEX = 8;
+/* v2.3.6223: MOTE_TEX (read by a leaf there) moved verbatim to ../leaves/effects-economy.js (card FX) */
 /* each beam of a pile: across from its middle (world px), its height (of
    BEAM_H_PX) and its shimmer's phase, so two side by side never pulse as one */
 const LOOT_BEAMS_MAX = 36;     /* beams drawn at once: a pile past it waits for one to go */
@@ -2352,52 +2358,8 @@ const BEAM_ON = (() => { try { return !sw('lootbeam'); } catch (e) { return true
    burning heap is; `?burnfire=0` draws the old flames, for one phone */
 const BURN_BLAZE = (() => { try { return !sw('burnfire'); } catch (e) { return true; } })();
 const PEER_FIRES = 6;   /* other players burning in the building's flames at once; past it, the drawn flames */
-/* v2.3.3916: a thin column: a bright core, soft edges, fading out toward its
-   top.  v2.3.4124: twice as wide, its edges falling off softly (the light,
-   not a stripe), the same picture stretched wider for the halo */
-function makeBeamTexture() {
-  if (typeof document === 'undefined') return null;
-  const W = BEAM_TEX_W, H = BEAM_TEX_H;
-  const cv = document.createElement('canvas');
-  cv.width = W; cv.height = H;
-  const g = cv.getContext('2d');
-  const across = g.createLinearGradient(0, 0, W, 0);
-  across.addColorStop(0, 'rgba(255,255,255,0)');
-  across.addColorStop(0.15, 'rgba(255,255,255,0.08)');
-  across.addColorStop(0.3, 'rgba(255,255,255,0.4)');
-  across.addColorStop(0.42, 'rgba(255,255,255,0.85)');
-  across.addColorStop(0.5, 'rgba(255,255,255,1)');
-  across.addColorStop(0.58, 'rgba(255,255,255,0.85)');
-  across.addColorStop(0.7, 'rgba(255,255,255,0.4)');
-  across.addColorStop(0.85, 'rgba(255,255,255,0.08)');
-  across.addColorStop(1, 'rgba(255,255,255,0)');
-  g.fillStyle = across;
-  g.fillRect(0, 0, W, H);
-  /* ...faded toward the top: the light thinning into the air */
-  g.globalCompositeOperation = 'destination-in';
-  const up = g.createLinearGradient(0, 0, 0, H);
-  up.addColorStop(0, 'rgba(255,255,255,0)');
-  up.addColorStop(0.45, 'rgba(255,255,255,0.6)');
-  up.addColorStop(1, 'rgba(255,255,255,1)');
-  g.fillStyle = up;
-  g.fillRect(0, 0, W, H);
-  return Texture.from(cv);   /* its canvas let go once drawn: _gpuWaiting */
-}
-/* v2.3.4124: a mote of light, a soft round dot */
-function makeMoteTexture() {
-  if (typeof document === 'undefined') return null;
-  const N = MOTE_TEX, c = N / 2;
-  const cv = document.createElement('canvas');
-  cv.width = cv.height = N;
-  const g = cv.getContext('2d');
-  const rg = g.createRadialGradient(c, c, 0, c, c, c);
-  rg.addColorStop(0, 'rgba(255,255,255,1)');
-  rg.addColorStop(0.45, 'rgba(255,255,255,0.5)');
-  rg.addColorStop(1, 'rgba(255,255,255,0)');
-  g.fillStyle = rg;
-  g.fillRect(0, 0, N, N);
-  return Texture.from(cv);
-}
+/* v2.3.6223: makeBeamTexture moved verbatim to ../leaves/effects-economy.js (card FX) */
+/* v2.3.6223: makeMoteTexture moved verbatim to ../leaves/effects-economy.js (card FX) */
 /* v2.3.6220: _hexTint moved verbatim to ../leaves/effects-economy.js (card FX) */
 const DROP_ICON_WORLD = 40 * DROP_GROW;
 /* ...and its count, in the owner label's type (_renderOwnerLabel), a size up */
