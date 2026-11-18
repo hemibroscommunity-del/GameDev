@@ -98,3 +98,26 @@ export function npcWalkCell(npc, dir, phase) {
   return Math.floor(phase / Math.max(1, stride / cycle)) % cycle;
 }
 export const CAPTURE_SHEET = Object.freeze({ west: 'east', northwest: 'northeast', southeast: 'southwest' });
+
+/* ── v2.3.6202: the townsfolk's baked sheets off the chip far from town (card EN PR 3) ──
+   The decision entityRenderer.js _folkSheetsStep asks each frame, here so a
+   node suite can play it (tools/guards/folk-sheets.test.mjs), the switch on
+   and thrown.  `st` is { onChip, farSince }, changed in place; `nearest` the
+   nearest townsperson's distance past the view's half-diagonal, Infinity when
+   none was measured (a dungeon, a zone between: neither far nor near, held).
+   True on the one frame the chip copies are to be let go of: every one
+   FOLK_SHEETS_FREE_PX past the view for FOLK_SHEETS_FREE_MS.  Back within the
+   distance, they are on the chip again as each is drawn (Pixi re-uploads). */
+export const FOLK_SHEETS_FREE_PX = 2000;    /* world px past the view's half-diagonal (the memory check's fight: ~3200) */
+export const FOLK_SHEETS_FREE_MS = 10000;   /* that far for this long */
+export function folkSheetsStep(st, on, now, nearest) {
+  if (!on) return false;
+  if (nearest === Infinity || nearest <= FOLK_SHEETS_FREE_PX) {
+    st.farSince = 0;
+    if (nearest !== Infinity) st.onChip = true;
+    return false;
+  }
+  if (!st.farSince) { st.farSince = now; return false; }
+  if (st.onChip && now - st.farSince > FOLK_SHEETS_FREE_MS) { st.onChip = false; return true; }
+  return false;
+}

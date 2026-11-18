@@ -169,7 +169,7 @@ import { _idleYield, _idleYieldSoon, _nextFrameP, _prewarmMasks, prewarmDirs } f
 import { _hideExceptDeep, drawnAsContent } from '../leaves/entity-render.js';   /* v2.3.6200: its leaves (card EN) */
 import { _placeStandaloneTrait, hideStandInCape } from '../leaves/entity-skills.js';   /* v2.3.6200: its leaves (card EN) */
 import { _chatBubbleUp } from '../leaves/entity-social.js';   /* v2.3.6200: its leaves (card EN) */
-import { CAPTURE_SHEET, NPC_BRO_MULT, NPC_SCALE_MULT, _drawQuestBadge, _folkBodyPx, npcDirFromDelta, npcFigureHeight, npcFigureSize, npcSpriteScale, npcStandFrame, npcWalkCell } from '../leaves/entity-townsfolk.js';   /* v2.3.6200: its leaves (card EN) */
+import { CAPTURE_SHEET, NPC_BRO_MULT, NPC_SCALE_MULT, _drawQuestBadge, _folkBodyPx, folkSheetsStep, npcDirFromDelta, npcFigureHeight, npcFigureSize, npcSpriteScale, npcStandFrame, npcWalkCell } from '../leaves/entity-townsfolk.js';   /* v2.3.6200: its leaves (card EN) */
 import { RES_BAR_MAX_W, RES_BLOCK_H, RES_FADE_MS, RES_HOLD_MS, RES_SRC_CELL, RES_SRC_PITCH, _barScaleX, _barSrcW, _barWidth, _drawResourceBar, _hexOf, _resGlideProgress, _setPillType, plateBandFor, threatSkullPhase } from '../leaves/entity-ui.js';   /* v2.3.6200: its leaves (card EN) */
 export { bandScale, plateBandFor } from '../leaves/entity-ui.js';   /* v2.3.6200: exported as before */
 export { hideSkillTraits } from '../leaves/entity-skills.js';   /* v2.3.6201: exported as before */
@@ -521,7 +521,9 @@ const FOLK_FAR_MARGIN = 300;
    MB of them on the chip at the memory check's fights in the Flame Fields,
    where no townsperson is drawn (MEMORY IS BUDGETED: art is freed where you
    leave it).  Now, once every townsperson has been FOLK_SHEETS_FREE_PX past
-   the view's half-diagonal for FOLK_SHEETS_FREE_MS, the chip copies of his
+   the view's half-diagonal for FOLK_SHEETS_FREE_MS (folkSheetsStep in
+   leaves/entity-townsfolk.js, which tools/guards/folk-sheets.test.mjs
+   plays), the chip copies of his
    sheets are let go of (playerSkins.js unloadBodySheets, the keys his own
    draw would ask: bodyKeysAsked).  The baked pictures stay in the page: a
    facing drawn again on the way back is sent up at its first draw, as it was
@@ -531,26 +533,15 @@ const FOLK_FAR_MARGIN = 300;
    `?folksheets=0` keeps them on the chip, as before.  `window.__btFolkSheets()`
    on QA pages: how many times let go of, how many sheets, and the nearest
    townsperson's distance past the view. */
-const FOLK_SHEETS_FREE_PX = 2000;    /* world px past the view's half-diagonal (the memory check's fight: ~3200) */
-const FOLK_SHEETS_FREE_MS = 10000;   /* that far for this long */
-const _FOLK_SHEETS_ON = !sw('folksheets');
+const _FOLK_SHEETS_ON = !sw('folksheets');   /* the decision and its distances: leaves/entity-townsfolk.js folkSheetsStep */
 let _folkJobs = null;   /* the jobs the loading screen baked (prewarmFolkBodies) */
 const _folkSheets = { onChip: true, farSince: 0, frees: 0, unloaded: 0, nearest: Infinity };
 function _folkSheetsStep(now, nearest) {
   _folkSheets.nearest = nearest;
-  if (!_FOLK_SHEETS_ON || !_folkJobs) return;
-  if (nearest === Infinity || nearest <= FOLK_SHEETS_FREE_PX) {
-    _folkSheets.farSince = 0;
-    if (nearest !== Infinity) _folkSheets.onChip = true;   /* sent up again as each is drawn */
-    return;
-  }
-  if (!_folkSheets.farSince) { _folkSheets.farSince = now; return; }
-  if (_folkSheets.onChip && now - _folkSheets.farSince > FOLK_SHEETS_FREE_MS) {
-    const jobs = _folkJobs;
-    _folkSheets.unloaded += unloadBodySheets(new Set(bodyKeysAsked(() => { prewarmFolkBodies(jobs); })));   /* a key asked by several jobs, once */
-    _folkSheets.frees++;
-    _folkSheets.onChip = false;
-  }
+  if (!_folkJobs || !folkSheetsStep(_folkSheets, _FOLK_SHEETS_ON, now, nearest)) return;
+  const jobs = _folkJobs;
+  _folkSheets.unloaded += unloadBodySheets(new Set(bodyKeysAsked(() => { prewarmFolkBodies(jobs); })));   /* a key asked by several jobs, once */
+  _folkSheets.frees++;
 }
 if (typeof window !== 'undefined') {
   window.__btFolkSheets = () => ({ on: _FOLK_SHEETS_ON, jobs: _folkJobs ? _folkJobs.length : 0, onChip: _folkSheets.onChip,
