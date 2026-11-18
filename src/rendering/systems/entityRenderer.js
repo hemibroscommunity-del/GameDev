@@ -533,12 +533,12 @@ const FOLK_FAR_MARGIN = 300;
    `?folksheets=0` holds them for the visit, as before.  `window.__btFolkSheets()`
    on QA pages: held, frees, bakes, a bake that landed after a townsperson
    came near enough to be drawn (late), and the nearest one's distance. */
-const FOLK_SHEETS_FREE_PX = 6000;    /* world px past the view's half-diagonal */
+const FOLK_SHEETS_FREE_PX = 2000;    /* world px past the view's half-diagonal (the memory check's fight: ~3200) */
 const FOLK_SHEETS_FREE_MS = 20000;   /* that far for this long */
-const FOLK_SHEETS_BAKE_PX = 3000;    /* 10 s and more on a board at a sprint (2 x 1.33 x 150 px/s) */
+const FOLK_SHEETS_BAKE_PX = 1500;    /* asked again here: 1200 px before he has a figure (FOLK_FAR_MARGIN) */
 const _FOLK_SHEETS_ON = !sw('folksheets');
 let _folkJobs = null;   /* the jobs the loading screen baked (prewarmFolkBodies) */
-const _folkSheets = { held: true, farSince: 0, frees: 0, freed: 0, bakes: 0, late: 0, bakedAt: 0, askedAt: 0, nearest: Infinity };
+const _folkSheets = { held: true, farSince: 0, frees: 0, freed: 0, bakes: 0, late: 0, bakedAt: 0, askedAt: 0, bakeMs: 0, nearest: Infinity };
 function _folkSheetsStep(S, now, nearest) {
   _folkSheets.nearest = nearest;
   if (!_FOLK_SHEETS_ON || !_folkJobs) return;
@@ -563,14 +563,15 @@ function _folkSheetsStep(S, now, nearest) {
   if (!_folkSheets.held && (nearest < FOLK_SHEETS_BAKE_PX || _home)) {
     _folkSheets.held = true;
     _folkSheets.bakes++;
-    _folkSheets.askedAt = now;
+    const t0 = performance.now();
+    _folkSheets.askedAt = t0;
     _folkSheets.bakedAt = 0;
-    prewarmFolkBodies(_folkJobs).then(() => { _folkSheets.bakedAt = performance.now(); });
+    prewarmFolkBodies(_folkJobs).then(() => { _folkSheets.bakedAt = performance.now(); _folkSheets.bakeMs = Math.max(_folkSheets.bakeMs, Math.round(_folkSheets.bakedAt - t0)); });
   }
 }
 if (typeof window !== 'undefined') {
   window.__btFolkSheets = () => ({ on: _FOLK_SHEETS_ON, jobs: _folkJobs ? _folkJobs.length : 0, held: _folkSheets.held, frees: _folkSheets.frees,
-    freed: _folkSheets.freed, bakes: _folkSheets.bakes, late: _folkSheets.late, nearest: Math.round(_folkSheets.nearest) });
+    freed: _folkSheets.freed, bakes: _folkSheets.bakes, late: _folkSheets.late, bakeMs: _folkSheets.bakeMs, nearest: Math.round(_folkSheets.nearest) });
 }
 /* ═══ v2.3.3520: A TOWNSPERSON WHO STANDS, STANDS ═══
    The owner: "Ace" is "stuck in one walking frame", with his shadow apart
