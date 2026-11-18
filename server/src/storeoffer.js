@@ -434,14 +434,19 @@ export const storeOfferMethods = {
     if (!me) return;
     const listingId = this._scListingId(payload && payload.listingId);
     if (!listingId) return;
-    /* v2.3.6022 (card RV, TRAPS §150; `deadtake`, life.js): an offer's gold is
-       an escrow debit -- not from a body in its dying seconds (answered with
-       the offer's own error, so the phone drops its guess) */
-    { const _op = this.playerState[me]; if (_op && lifeOf(_op) !== LIFE.ALIVE && this._deadTakeOn()) return this._soSend(me, 'store_offer_error', { listingId, error: 'Not while you are down' }); }
     /* v2.3.5194: a repeat of the same request id acts once and gets the
        first answer again, echoed (reqonce.js); none: as before */
     const rid = this._reqIdOf ? this._reqIdOf(payload && payload.reqId) : null;
-    const run = () => this._stOfferPlace(listingId, me, payload && payload.gold);
+    /* v2.3.6022 (card RV, TRAPS §150; `deadtake`, life.js): an offer's gold is
+       an escrow debit -- not from a body in its dying seconds (answered with
+       the offer's own error, so the phone drops its guess).  Inside the run
+       (sitting 45's review): a resend of an offer placed before the death
+       gets its first answer, and the refusal echoes the request id */
+    const run = () => {
+      const _op = this.playerState[me];
+      if (_op && lifeOf(_op) !== LIFE.ALIVE && this._deadTakeOn()) return { ok: false, error: 'Not while you are down' };
+      return this._stOfferPlace(listingId, me, payload && payload.gold);
+    };
     const r = rid ? await this._reqOnce(me, rid, run) : await run();
     const echo = rid ? { reqId: rid } : {};
     if (!r.ok) this._soSend(me, 'store_offer_error', { listingId, error: r.error, ...echo });

@@ -10,6 +10,7 @@
  *
  *   1. the arena: a dying backer's stake refused (`down`), no gold taken;
  *   2. the Auction House: a dying player's offer refused, no gold taken;
+ *      2b. a resend of one placed before the death gets its first answer;
  *   3. the gift trade: a dying sender's gift not taken (the accepter refused);
  *   4. the trade window: an Accept with a dying side cancelled, nothing taken;
  *   5. `deadtake: false`: each as before (taken).
@@ -63,6 +64,25 @@ async function offer(flags) {
   await settleN(4);
   return { taken: c0 - W.coins(A), err: W.sent(A, 'store_offer_error').map((e) => e.error) };
 }
+/* v2.3.6022 (sitting 45's review): the refusal sits inside the request-once
+   run -- an offer placed alive and re-sent (same reqId) after the death gets
+   its first answer back, taken once; a new one while dying is refused with
+   its reqId echoed */
+async function offerAgain() {
+  const W = await world(null);
+  await W.room._stEnsureIndex();
+  W.room._stIndex.set('L_rvd_2', { id: 'L_rvd_2', sellerId: B, sellerName: 'B', kind: 'item', askPrice: 500, createdAt: Date.now(), expiresAt: Date.now() + 864e5, disp: { name: 'Stick' } });
+  const c0 = W.coins(A);
+  await W.room._handleStoreOffer({ id: A }, { listingId: 'L_rvd_2', gold: 200, reqId: 'rvdOffer1' });
+  await settleN(4);
+  W.dying(A);
+  await W.room._handleStoreOffer({ id: A }, { listingId: 'L_rvd_2', gold: 200, reqId: 'rvdOffer1' });
+  await W.room._handleStoreOffer({ id: A }, { listingId: 'L_rvd_2', gold: 300, reqId: 'rvdOffer2' });
+  await settleN(4);
+  const states = W.sent(A, 'store_offer_state').filter((p) => p.reqId === 'rvdOffer1');
+  const errs = W.sent(A, 'store_offer_error');
+  return { taken: c0 - W.coins(A), firstAgain: states.length, errOne: errs.filter((e) => e.reqId === 'rvdOffer1').length, errTwo: errs.filter((e) => e.reqId === 'rvdOffer2').map((e) => e.error) };
+}
 async function gift(flags) {
   const W = await world(flags);
   await W.room._interceptTrade(A, { type: 'trade_offer', payload: { target: B, fromName: 'A', offer: { _gold: 100 } } });
@@ -97,6 +117,10 @@ async function window2(flags) {
   check('2. the Auction House: a dying player\'s offer refused, no gold taken', o.taken === 0 && o.err.includes('Not while you are down'), o);
   check('3. the gift trade: a dying sender\'s gift not taken', g.taken === 0, g);
   check('4. the trade window: an Accept with a dying side takes nothing', w.taken === 0, w);
+}
+{
+  const r = await offerAgain();
+  check('2b. an offer placed alive, re-sent after the death: its first answer again (taken once); a new one refused with its reqId', r.taken === 200 && r.firstAgain === 2 && r.errOne === 0 && r.errTwo.includes('Not while you are down'), r);
 }
 {
   const a = await arena({ deadtake: false }), o = await offer({ deadtake: false }), g = await gift({ deadtake: false, giftclosed: false }), w = await window2({ deadtake: false });
