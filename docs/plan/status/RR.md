@@ -1,6 +1,6 @@
 card: RR
-branch: claude/plan-rr-3-firststeps (one PR a branch, claude/plan-rr-*)
-prs: #2251 (6300): ready; #2256 (6301, on #2251): ready; (6302) firststeps: opening (on #2256)
+branch: claude/plan-rr-4-recoverpay (one PR a branch, claude/plan-rr-*)
+prs: #2251 (6300), #2256 (6301): sitting 52; #2258 (6302): sitting 53; (6303) recoverpay: opening (on #2258)
 state: ready
 
 ## Done
@@ -11,14 +11,17 @@ state: ready
 - #2256 (6301) mayordoor, the TEST's: `H.keepAlive` (the phone idled out in
   part 1); part 3's spot quiet when the clicks come; a copy read standing
   still; the monster clicked where drawn (up to 3 tries). 5 of 5 green.
-- (6302) firststeps 6, the TEST's: the CLOSE arrow (guideArrow.js, since
+- #2258 (6302) firststeps 6, the TEST's: the CLOSE arrow (guideArrow.js, since
   v2.3.4343) is one of the first quest's; 5 of 5 green (46/46).
 - skateboard (SB's red): 30/30 three times alone on main 1cd3fced: not
   reproduced; asked SB for its command.
 
+- (6303) recoverpay, the TEST's: step B's reload keeps `lane=`
+  (H.withLane); 5 of 5 green (28/28).
+
 ## Next
-- recoverpay (6303, made): 5 runs; then waterfrog (part 6 hangs) and
-  hairstencil (3 parts) from HB2: run alone.
+- waterfrog (part 6 hangs) and hairstencil (3 parts) from HB2: run alone;
+  then deskkeys, quietphone, headframes, desklunge, cuelevels traced.
 
 ## Found
 - precheck's server-tests cap is already 20 min (TL's #2175), not 5; the
