@@ -271,6 +271,7 @@ import { tickPaceMethods } from './tickpace.js'; /* v2.3.3202: the world keeps i
 import { steadyMoversMethods } from './steadymovers.js'; /* v2.3.3203: a player walking steadily is sent less often */
 import { bundleParts } from './bundle.js'; /* v2.3.3254: several messages in one frame (the quiet phone) */
 import { lookRelayMethods } from './lookrelay.js'; /* v2.3.3240: a player's look relayed when it changes, not every 2 s */
+import { lookStamp } from './lookform.js'; /* v2.3.5819: a track's look in the game's own forms (card RV, S2 and S3) */
 import { nearJoinMethods } from './nearjoin.js'; /* v2.3.3276: a join is told the players around it; a look comes when its player does */
 import { wheelNearMethods } from './wheelnear.js'; /* v2.3.3318: into the Wheel with only the monsters around you */
 import { xpDecayMethods } from './xpdecay.js'; /* v2.3.3251: XP fades for what is 5+ levels below you, harvests and fights */
@@ -4902,9 +4903,14 @@ export class GameRoom {
        is a bare timer), but the AWAY flag it carries does -- see below.
        Everything else -- attacks, harvest strikes, zone changes, chat,
        panel actions -- is input and stamps the clock. */
-    if (msg.type === 'pong' || msg.type === 'report') {
+    if (msg.type === 'pong' || msg.type === 'report' || msg.type === 'map_watch' || msg.type === 'acc_request') {
       /* keepalive, never activity -- v2.3.5127: nor the field report, a timer's (report.js): an idle tab sends
-         one every five minutes and must still be let go of */
+         one every five minutes and must still be let go of.
+         v2.3.6043 (card V6 PR 4; card V4's §24 census): nor the open World map's
+         `map_watch` (presence2.js, every MAP_HEARTBEAT_MS while it is open) or the
+         Journey page's `acc_request` (accuracy.js, every 15 s while it is open):
+         both timers, so a tab left on the map or the Journey page was never let
+         go of.  The tap that opens either is still seen: `track`'s aw:0 below. */
     } else if (msg.type === 'track') {
       /* `track` is a 2 s telemetry timer, so its ARRIVAL says nothing.
          Its `aw` flag does: the client stamps _lastInputAt from
@@ -5144,6 +5150,10 @@ export class GameRoom {
           this._stampRecordLook(session, clean);
           /* v2.3.5622: ...and the NAME is the record's too: `track` never renames (charname.js, card MOD; RT-3 S2) */
           this._stampRecordName(session, clean);
+          /* v2.3.5819 (card RV, S2's track half and S3; lookform.js lookStamp):
+             `avatar`, `color` and the look's `rpgData` words in the game's own
+             forms, its clan tag and name the registry's.  `lookform: false`: as before */
+          { const _lf = this._liveFlags; if (!(_lf && typeof _lf === 'object' && Object.prototype.hasOwnProperty.call(_lf, 'lookform') && !_lf.lookform)) lookStamp(clean, this._clanOf ? this._clanOf(session.id) : null, !!this._clans); }
           session.data = { ...session.data, ...clean };
           const _trackPs = this.playerState[session.id];
           if (_trackPs) {

@@ -2,11 +2,13 @@
  *
  * Grand plan step 4.2: the harvest's grade, the phone's own score of its
  * gesture, was believed whenever it came with a fingerprint (a perfect mined
- * ore pays two).  `harvestgrade: true` (an opt-in, OFF as merged) holds it:
+ * ore pays two).  `harvestgrade` (OFF as merged at v2.3.5900; ON by default
+ * since v2.3.5906, `harvestgrade: false` its kill switch) holds it:
  *
- *   1. the reader: off with no flag and with `harvestgrade: false`, on only
- *      with `true`; the cap `harvestGrade` advertised only while on;
- *   2. off (as merged): a perfect sent at once after its hits is paid two,
+ *   1. the reader (v2.3.5906): on with no flag and with `true`, off only with
+ *      `harvestgrade: false` (v2.3.5900 had it off with no flag); the cap
+ *      `harvestGrade` advertised only while on;
+ *   2. off (`harvestgrade: false`): a perfect sent at once after its hits is paid two,
  *      as before;
  *   3. on: the same perfect is paid as good (one ore), counted
  *      (`gradeEarly`), the node spent and the strike paid -- never refused;
@@ -80,15 +82,15 @@ const caps = (T) => { const s = T.ws.sent.find((m) => m.type === 'state_sync'); 
 /* ── 1. the reader and the cap ── */
 {
   const a = await setup(), b = await setup({ harvestgrade: false }), c = await setup({ harvestgrade: true });
-  check('1. `harvestgrade` is off with no flag and with `false`, on with `true`', a.room._harvestGradeOn() === false && b.room._harvestGradeOn() === false && c.room._harvestGradeOn() === true);
-  check('1. ...the cap `harvestGrade` advertised only while on', caps(a).harvestGrade === undefined && caps(c).harvestGrade === 1, { off: caps(a).harvestGrade, on: caps(c).harvestGrade });
+  check('1. `harvestgrade` is on with no flag and with `true`, off with `false` (v2.3.5906: ON by default)', a.room._harvestGradeOn() === true && b.room._harvestGradeOn() === false && c.room._harvestGradeOn() === true);
+  check('1. ...the cap `harvestGrade` advertised only while on', caps(b).harvestGrade === undefined && caps(a).harvestGrade === 1 && caps(c).harvestGrade === 1, { off: caps(b).harvestGrade, on: caps(a).harvestGrade });
 }
 
 /* ── 2. off: an early perfect is paid two, as before ── */
 {
-  const T = await setup();
+  const T = await setup({ harvestgrade: false });
   const r = await T.harvest('perfect', T.soonest);
-  check('2. off (as merged): a perfect sent at once after its hits is paid two', r.why === 'paid' && r.paid === 2, r);
+  check('2. off (`harvestgrade: false`): a perfect sent at once after its hits is paid two', r.why === 'paid' && r.paid === 2, r);
 }
 
 /* ── 3, 4. on: the time ── */

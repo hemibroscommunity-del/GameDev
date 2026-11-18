@@ -400,6 +400,49 @@ for (const sc of SCEN) {
     check('4. ...rolled forward: the maker keeps the refund, the taker gets the escrow back, nothing twice (T500 M300W, empty book)',
       a.gold === INITIAL_GOLD && a.wCount === 1 && a.sig === 'T500 M300W book:', a);
   }
+
+  /* v2.3.6025 (card RV's Found; `mktback`): the old rule re-listed a note,
+     and then -- uncut -- the maker cancelled it, it expired, or a new taker
+     met it.  Each deleted the record, its note with it, and nothing else
+     named the first taker's escrow (taken at the crossing): it was gone.
+     Now the taker's escrow goes home before the delete, by the note's own
+     opId (`settle:<id>:back`, the heal's), so a later roll forward pays it
+     at most once. */
+  const lastWord = {
+    cancel: { want: 'T500 M300W book:', go: async (r, id) => { await r._mktCancelOrder(id, M); } },
+    expire: { want: 'T500 M300W book:', go: async (r) => {
+      for (const [, b] of r._mktIndex) for (const o of [...b.buys, ...b.sells]) o.expires = 0;
+      r._mktLastSweep = 0;
+      await r._mktSweep();
+    } },
+    /* the same taker buys it again at its price, under the old rule */
+    match: { want: 'T400W M400 book:', go: async (r) => { await r._mktPlaceOrder(clone(ORD({ type: 'buy', price: 100, playerId: T }))); } },
+  };
+  for (const [how, w] of Object.entries(lastWord)) {
+    for (const flags of [OFF, { mktsettle: false, mktback: false }]) {
+      const back = flags.mktback !== false;
+      const c = await crossing(sc, store, 1);
+      const s3 = mkState(c.store);
+      const r3 = mkRoom(s3, flags);
+      await joinOn(r3, T); await joinOn(r3, M);
+      await r3._mktEnsureIndex();
+      const noted = [...c.store].find(([k, v]) => k.startsWith('mkt_order:') && v.settle);
+      const id = noted ? noted[1].id : 'none';
+      await w.go(r3, id);
+      await settleIo();
+      const fwd = await wake(s3._store, 'shop', OFF);
+      const a = audit(fwd.r2, fwd.s2);
+      if (back) {
+        check(`4c (${how}). a re-listed note under the old rule, ${how === 'match' ? 'met by a new buy' : how === 'cancel' ? 'cancelled' : 'expired'}: the first taker's escrow goes home too (${w.want}, ${INITIAL_GOLD} gold, one weapon)`,
+          a.gold === INITIAL_GOLD && a.wCount === 1 && a.sig === w.want, a);
+        const rolled = await wake(fwd.s2._store, 'scan');
+        const b = audit(rolled.r2, rolled.s2);
+        check(`4c (${how}). ...then rolled forward (switch on): nothing paid twice`, b.gold === INITIAL_GOLD && b.wCount === 1 && b.sig === w.want, b);
+      } else {
+        check(`4c (${how}). \`mktback: false\`: as before, the first taker's 120 gone with the note`, a.gold === INITIAL_GOLD - 120, a);
+      }
+    }
+  }
 }
 
 /* ── 5. a leg that throws inside one worker's life ── */

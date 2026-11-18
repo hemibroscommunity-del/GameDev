@@ -85,6 +85,7 @@ export const INFRA = Object.freeze({
   _sigOnMove: 'bot signals: they count, they never refuse (botsig.js)',
   _sigOnHit: 'bot signals', _sigOnStart: 'bot signals', _sigOnStrike: 'bot signals', _sigOnCook: 'bot signals', _sigOnAbility: 'bot signals',
   _accShots: 'telemetry stamps on `track`', _clanStampTag: 'telemetry stamps on `track`', _capeStamp: 'telemetry stamps on `track`',
+  _clanOf: 'v2.3.5819: reads the clan registry for `track`\'s look stamp (lookform.js lookStamp); refuses nothing',
   _achvStamp: 'telemetry stamps on `track`', _levelStamp: 'telemetry stamps on `track`', _stampRecordLook: 'telemetry stamps on `track`', _stampRecordName: 'the record\'s name stamped on `track` (v2.3.5622, card MOD)',
   _lookRelay: 'tells the others a look changed (lookrelay.js)',
   _swingDropsGuard: 'lowers the guard on a swing (moveclaims.js); refuses nothing',
@@ -124,7 +125,7 @@ export const ALLOW = {
   '_handleDice': {
     "if (this._diceOff())": "off",
     "if (!ask)": "shape",
-    "if (ps._diceAt && now - ps._diceAt < DICE.GAP_MS)": "rate",
+    "if (diceAt && now - diceAt < DICE.GAP_MS)": "rate",   /* v2.3.5921: the pace kept by the room across a rejoin (pacekeep.js) */
   },
   '_handlePointsReset': {
     "if (!ps || ps.dead || ps.dying || !ps.prog3 || typeof ps.prog3 !== 'object')": "norec dead",
@@ -223,12 +224,12 @@ export const ALLOW = {
     "if (this._chestOff())": "off",
   },
   '_handleRewardsGet': {
-    "if (ps._lastRewardsGetAt && now - ps._lastRewardsGetAt < 800)": "rate",
+    "if (getAt && now - getAt < 800)": "rate",   /* v2.3.5921: pacekeep.js */
     "if (!rec)": "err",
   },
   '_handleDailySpin': {
     "if (this._spinOff())": "off",
-    "if (ps._lastDailySpinAt && now - ps._lastDailySpinAt < SPIN.COOLDOWN_MS)": "rate",
+    "if (spinAt && now - spinAt < SPIN.COOLDOWN_MS)": "rate",   /* v2.3.6024: pacekeep.js */
     "if (!rec || !this.playerState[pid])": "err norec",
   },
   '_handleDailyReroll': {
@@ -464,14 +465,14 @@ export const ALLOW = {
   },
   '_handleGambleRequest': {
     "if (!Number.isFinite(wager) || wager < 10 || wager > 10000)": "shape",
-    "if (ps._lastGambleAt && now - ps._lastGambleAt < 2000)": "rate",
+    "if (gambleAt && now - gambleAt < 2000)": "rate",   /* v2.3.5921: pacekeep.js */
   },
   '_handleAceFlipRequest': {
     "if (!Number.isFinite(stake) || stake < ACE_FLIP.MIN_STAKE)": "shape",
-    "if (ps._lastAceFlipAt && now - ps._lastAceFlipAt < ACE_FLIP.COOLDOWN_MS)": "rate",
+    "if (coinFlipAt && now - coinFlipAt < ACE_FLIP.COOLDOWN_MS)": "rate",   /* v2.3.5921: pacekeep.js */
   },
   '_handleAceItemFlipRequest': {
-    "if (ps._lastAceFlipAt && now - ps._lastAceFlipAt < ACE_ITEMS.COOLDOWN_MS)": "rate",
+    "if (flipAt && now - flipAt < ACE_ITEMS.COOLDOWN_MS)": "rate",   /* v2.3.5921: pacekeep.js */
     "if (!want || typeof want !== 'object')": "shape",
     "if (!ps.inventory || typeof ps.inventory !== 'object')": "norec",
   },

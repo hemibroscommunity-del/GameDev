@@ -31,6 +31,7 @@ import { requestIp } from './flood.js';   /* v2.3.5604 (mend): a refusal counted
 import { questLoad } from './queststate.js';   /* v2.3.5284: quest state's door (card R PR 5) */
 import { xpSet } from './xp.js';   /* v2.3.5289: experience and levels' door (card R PR 10) */
 import { tidyCharName } from './charname.js';   /* v2.3.5622: a name with no record held to the rule (the sitting 19 review) */
+import { lookColor, lookAvatar } from './lookform.js';   /* v2.3.5733 (card RV's S2, the join's half): a look's colour and avatar held to their forms */
 
 /* ═══ v2.3.1627: the JOIN DATA ALLOWLIST ═══
  *
@@ -86,6 +87,24 @@ const MAGIC_IDS = new Set([...Object.getOwnPropertyNames(Object.prototype), 'pro
    test/joinid.test.mjs).  Undefined and null are a join with no id (today's
    way, not this gate's).  KILL SWITCH `joinidform: false`. */
 const JOIN_ID_FORM = /^[A-Za-z0-9_]{1,64}$/;
+/* ═══ v2.3.5733: A JOIN'S COLOUR AND AVATAR HELD TO THEIR FORMS (card K2 PR
+   14; card RV's review, S2, the join's half; `lookjoin`) ═══
+ * `color` and `avatar` were any text, cut to length, sent to every phone and
+ * drawn there as a CSS colour and an <img>: a player could make every phone
+ * that drew them fetch from a server of theirs (lookform.js says how).  With
+ * `lookjoin` on (the default; decided for the owner while away, the planning
+ * session on the owner's words of 2026-11-17: "Go recommended on all"), a
+ * join's `color` must be a hex colour and its `avatar` the page's own proxied
+ * address (lookform.js lookColor, lookAvatar); a value off its form is
+ * dropped, as a missing one is, and an empty one is left as it was.  A
+ * character record's stored look is held to the same forms when it is laid
+ * over the join (a look stored before this is not drawn).  An honest page
+ * never sends another form.  `lookjoin: false`: as before. */
+const LOOK_JOIN_FORMS = Object.freeze({ color: lookColor, avatar: lookAvatar });
+function lookJoinBad(k, v) {
+  const f = Object.prototype.hasOwnProperty.call(LOOK_JOIN_FORMS, k) ? LOOK_JOIN_FORMS[k] : null;
+  return !!f && typeof v === 'string' && v !== '' && !f(v);
+}
 function joinIdMalformed(flags, id) {
   if (id === undefined || id === null) return joinGuardOn(flags);   /* v2.3.5730: a join with no id (SEC-F1), behind `joinguard` */
   if (flags && typeof flags === 'object' && Object.prototype.hasOwnProperty.call(flags, 'joinidform') && !flags.joinidform) return false;
@@ -381,6 +400,12 @@ export const joinMethods = {
     return this._flagNum('max_players', this.MAX_PLAYERS, 1, this.MAX_PLAYERS);
   },
 
+  /* v2.3.5733: `lookjoin` -- on unless its own falsy value (as `swordswing`) */
+  _lookJoinOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'lookjoin') && !f.lookjoin);
+  },
+
   /* v2.3.5730: `joinguard`, read by seathold.js too (ACC-3) */
   _joinGuardOn() {
     const f = this._liveFlags;
@@ -493,6 +518,8 @@ export const joinMethods = {
          exactly 256 hex characters, so a 64-char cut means no print at all
          rather than a degraded one.  512 keeps them inside the same bound
          `avatar` already established. */
+      /* v2.3.5733: a colour or avatar off its form is dropped (`lookjoin`) */
+      if (lookJoinBad(k, v) && this._lookJoinOn()) continue;
       const _cap = cosmeticCap(k);
       if (typeof v === 'string') out[k] = v.length > _cap ? v.slice(0, _cap) : v;
       else if (typeof v === 'number' && Number.isFinite(v)) out[k] = v;
@@ -953,8 +980,9 @@ export const joinMethods = {
         /* Stored look wins.  Applied onto the sanitized copy so every
            downstream reader — playerState, peer broadcast, state_sync —
            sees one consistent character with no second code path. */
+        const _lookOn = this._lookJoinOn();   /* v2.3.5733: a stored colour or avatar held to its form too */
         for (const k of JOIN_COSMETIC_KEYS) {
-          if (session.char.look[k] !== undefined) cleanJoinData[k] = session.char.look[k];
+          if (session.char.look[k] !== undefined && !(_lookOn && lookJoinBad(k, session.char.look[k]))) cleanJoinData[k] = session.char.look[k];
         }
         /* v2.3.2690: ...and the record's ABSENCE wins too -- a look key it
            does not have is blank, whatever this device says (RECORD_LOOK_KEYS). */
@@ -2047,9 +2075,9 @@ export const joinMethods = {
         reqid: this._reqOnceOff() ? undefined : 1,
         /* v2.3.5196 (card K PR 11): A WEAPON NAMED BY ITS ID (gidnames.js): the nine requests that take a weapon from the stash read its `gid` beside its place, and refuse when the two disagree -- so the page sends it (src/game/actions.js GID_PLACE).  `gidnames: false` un-advertises it, and the place alone is read */
         gidnames: this._gidNamesOff() ? undefined : 1,
-        /* v2.3.5900 (card K4 PR 1, step 4.2): THE HARVEST'S GRADE, JUDGED (harvestgrade.js): a perfect believed only after an honest gesture's time and at most 15 in any 20 strikes, else paid as good.  An opt-in, OFF as merged (the live flag harvestgrade set true, the owner's); advertised only while on.  The Test panel's "This worker" reads it, and (v2.3.5902) the phone says the grade paid when it differs from the one it showed (wsClient.js harvest_credit) */
+        /* v2.3.5900 (card K4 PR 1, step 4.2): THE HARVEST'S GRADE, JUDGED (harvestgrade.js): a perfect believed only after an honest gesture's time and at most 15 in any 20 strikes, else paid as good.  ON since v2.3.5906 (the owner's "Go recommended"; the live flag harvestgrade set false turns it off); advertised only while on.  The Test panel's "This worker" reads it, and (v2.3.5902) the phone says the grade paid when it differs from the one it showed (wsClient.js harvest_credit) */
         harvestGrade: this._harvestGradeOn() ? 1 : undefined,
-        /* v2.3.5905 (card K4 PR 6): THE BOW'S PATH (bowshot.js, `bowpath`, an opt-in, OFF as merged): a phone told this sends its arrow's relay at RELEASE with the line it flies, the line the worker then holds each claim to.  Advertised only while on */
+        /* v2.3.5905 (card K4 PR 6): THE BOW'S PATH (bowshot.js, `bowpath`, ON since v2.3.5906; off with the live flag bowpath set false): a phone told this sends its arrow's relay at RELEASE with the line it flies, the line the worker then holds each claim to.  Advertised only while on */
         bowPath: this._bowPathOn() ? 1 : undefined,
         accuracy: this._accOn() /* v2.3.4545: ACCURACY (accuracy.js) -- the phone numbers its basic shots a weapon and sends the counts on `track` (`ac`) and each hit's shot (`sn`); `acc_request` answers `acc_state`; `accuracy: false` in liveflags un-advertises it and counts nothing -- lower case, a kill switch */ },
       // v2.3.1178: this session's private economy-endpoint token.
