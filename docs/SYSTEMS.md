@@ -141,6 +141,7 @@ The room under a crowd and the watch on it: its health for a monitor, the waitin
 
 Hitting and being hit: weapons, abilities, the bow, shields, damage, PvP.
 
+- **Files**: `src/rendering/tables/`: combat
 - **Files**: `server/src/`: combat, hits, abilities, accuracy, burst, freeswing, fightlock, killroll, threat, telegraph, elemental, oneformula, statcap, arrowblast, swordconvert, shieldwear, shieldgem, weapongem, amulet, pvpbalance, pvpextras, pvplunge
 - **Files**: `src/game/`: abilities, accuracy, combatHelpers, manualCombat, targeting, projectiles, bowDraw, bowFeel, bowVolley, swordFeel, staffFeel, weaponFeel, deathBlow, dodge, elemHits, elemWindup, killRoll, killXp, pvpSwing, shieldCopies, shieldGem, shieldToggle, guardDoor, shieldWear, arrowEdge, whirlCatch, deskShield, weaponGem, weaponSlots, amuletGem, apChip, peerShots, shotGround, shockSpark, stormSparks, waterAttack
 - **Doors**: `_monsterHit` in `server/src/hits.js` (MONSTER_HITS: every monster hit on a player)
@@ -152,6 +153,7 @@ Hitting and being hit: weapons, abilities, the bow, shields, damage, PvP.
 
 The monsters' lives, moves, status, spawns and the boss.
 
+- **Files**: `src/rendering/tables/`: monsters
 - **Files**: `server/src/`: monsterlife, monstermoves, monsterstatus, slimeboss, spawnscale, wheelspawns, wheelspawns1, aggrogrid
 - **Files**: `src/game/`: monsterCarry, monsterCodex, monsterCombat, monsterMoves, monsterNoises, monsterStrips, slimeBlast, slimeSplatPose, crowdCap
 - **Doors**: none named yet
@@ -233,6 +235,7 @@ Moving: steps, sprinting, jumping, climbing, riding, swimming, resting.
 
 The townspeople: their days, walks, talk and reactions.
 
+- **Files**: `src/rendering/tables/`: townsfolk
 - **Files**: `src/game/`: townsfolkDay, townsfolkReact, townsfolkWalk, townChatter, mayorTalk, interactions, poseDoor
 - **Doors**: none named yet
 - **Switches**: [its rows in the switch table](SWITCHES.md#townsfolk)
@@ -319,6 +322,7 @@ What the page holds: pictures kept on the chip or as images, colour numbers, tri
 
 What loads behind the loading screen, and what loads later on purpose.
 
+- **Files**: `src/rendering/tables/`: preload
 - **Files**: `src/rendering/`: preloadAnimations, preloadReport, chestPreload, controlsPreload, gestureCuePreload, levelUpBurstPreload, loginSpinPreload, questArtPreload, statDemoPreload, xpBarPreload, zoneBannerPreload, loadSetLater, warmOnce, picsOnce
 - **Files**: `src/ui/`: loadingGate, lazyPanel, lazyPanels
 - **Doors**: `preloadWorldAnimations` in `src/rendering/preloadAnimations.js` (every animation and sprite loads behind the loading screen)
@@ -340,6 +344,7 @@ Loading art in play: strips of 256 colours, the readers off the page's thread, b
 
 How a character looks: traits, the look palette, garments, heads, gear on the body.
 
+- **Files**: `src/rendering/tables/`: look
 - **Files**: everything under `src/rendering/traits/`
 - **Files**: everything under `src/rendering/lookSets/`
 - **Files**: `src/rendering/`: lookArmour, lookArmourProbe, lookBake, lookExpand, lookFolk, lookPalette, lookPaletteProbe, lookShirt, lookShirtFrame, lookShirtProbe, lookUnpack, hemiLook, hemiBust, hemiBustCore, hemiAtlasIndex, characterPortrait, traitThumbs, gearBake, gearCatalog, gearLookFrame, gearLookProbe, gearNumbers, gearSheets, gearVariants, gearVersion, gearWalkFrame, weaponLookFrame, bodyRecolor, toolRecolor, garmentConfine, hairClip, headCrowns, headFrames, flipHead, earAnchors, earSides, eyeBlankMask, eyeMask, standInGarb, standInInk, standIns, retryLooks, capeSprites, playerSkins, nftAvatars
@@ -353,6 +358,7 @@ How a character looks: traits, the look palette, garments, heads, gear on the bo
 
 Drawing the world: the Pixi renderer, the entity and effects renderers, light, fx.
 
+- **Files**: `src/rendering/tables/`: render
 - **Rest of**: `src/rendering/`
 - **Doors**: none named yet
 - **Switches**: [its rows in the switch table](SWITCHES.md#render)
@@ -363,6 +369,7 @@ Drawing the world: the Pixi renderer, the entity and effects renderers, light, f
 
 The screens: BroTown.jsx, the band and its panels, windows, banners.
 
+- **Files**: `src/rendering/tables/`: ui
 - **Files**: `src/game/`: windowDoor
 - **Rest of**: `src/ui/`
 - **Rest of**: `src/styles/`

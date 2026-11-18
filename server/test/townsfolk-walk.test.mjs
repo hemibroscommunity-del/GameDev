@@ -87,7 +87,8 @@ const { WHEEL_TOWNSFOLK } = await import('../../src/data/wheelBuildingDoors.js')
   const none = W.folkAt(null, 0, t);
   check('1g no stops: his spot', none.dx === 0 && none.dy === 0 && !none.walking);
   check('1h the eight facings are the renderer\'s names (+y south)', W.folkFacing(1, 0) === 'east' && W.folkFacing(0, 1) === 'south' && W.folkFacing(-1, -1) === 'northwest' && W.folkFacing(0, -1) === 'north'
-    && /const NPC_DIRS_8 = \['east', 'southeast', 'south', 'southwest',\s*'west', 'northwest', 'north', 'northeast'\];/.test(src('src/rendering/systems/entityRenderer.js')));
+    /* v2.3.5345: the renderer's facings left for townsfolk's tables (src/rendering/tables/, card M): found by its system */
+    && /const NPC_DIRS_8 = \['east', 'southeast', 'south', 'southwest',\s*'west', 'northwest', 'north', 'northeast'\];/.test([...readSystem('townsfolk').values()].join('\n')));
 }
 
 /* ── 2. who ──────────────────────────────────────────────────────────────── */
