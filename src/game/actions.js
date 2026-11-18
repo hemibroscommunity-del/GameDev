@@ -438,7 +438,7 @@ export const ACTIONS = Object.freeze({
   'http:/api/market/place': A('http', { req: 1, auth: 1, method: 'POST', path: '/api/market/place' }),
   'http:/api/market/cancel': A('http', { auth: 1, method: 'DELETE', path: '/api/market/cancel' }),
   'http:/api/store/browse': A('http', { method: 'GET', path: '/api/store/browse' }),
-  'http:/api/store/mine': A('http', { method: 'GET', path: '/api/store/mine' }),
+  'http:/api/store/mine': A('http', { method: 'GET', path: '/api/store/mine', authQuery: 1 }),   /* v2.3.5817 (card RV): its bids only to its own player, the token as a query field (a GET with a header costs a preflight) */
   'http:/api/store/list': A('http', { req: 1, auth: 1, method: 'POST', path: '/api/store/list' }),
   'http:/api/store/buy': A('http', { req: 1, auth: 1, method: 'POST', path: '/api/store/buy' }),
   'http:/api/store/bid': A('http', { req: 1, auth: 1, method: 'POST', path: '/api/store/bid' }),
@@ -563,6 +563,14 @@ export function act(name, payload, opts) {
        one try of before. */
     const once = r.req && RESEND_ROWS.has(name) && typeof p.reqId === 'string' && typeof _t.reqOnce === 'function' && !!_t.reqOnce();
     let q = opts && opts.query ? '?' + opts.query : '';
+    /* v2.3.5817 (card RV, step 11.5): a GET row that reads the session's
+       token (`authQuery`) gets it as the query field `t`, never a header (the
+       comment below: a header on a GET costs a phone a preflight); a worker
+       that does not read it ignores it */
+    if (r.authQuery && r.method === 'GET') {
+      const qt = typeof _t.token === 'function' ? _t.token() : null;
+      if (qt) q += (q ? '&' : '?') + 't=' + encodeURIComponent(qt);
+    }
     if (once && r.method === 'DELETE') q += (q ? '&' : '?') + 'reqId=' + encodeURIComponent(p.reqId);
     /* v2.3.5191 (card K PR 7.5, the page's fetches moved here): the bytes the
        page sent before.  A GET is a plain request -- no headers, its fields in

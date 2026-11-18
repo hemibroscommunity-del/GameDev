@@ -446,27 +446,26 @@ const outerName = (f, p) => {
     /* a moment field written on a monster anywhere in the page: by its name */
     const MOMENT_RE = /(?<![\w$.])(?:m|mon|monster|mm|_m|tm|mob)\.(_[A-Za-z][\w$]*(?:At|Start|From|Until|Clock|Played|WasAlive|Mine))=(?!=)/g;
     /* v2.3.5942: moment-named fields on no list today (each under Found: a
-       fresh object drops it, which ends the clock early rather than replay) */
+       fresh object drops it, which ends the clock early rather than replay).
+       v2.3.6082 (card V7): the three wind-ups are carried now (CARRY_ALIVE);
+       each of the ten left says why a fresh object losing it is harmless. */
     const MOMENT_KNOWN = {
-      _chargeUntil: 'monsterCombat.js: the phone\'s own charge clock',
-      _chaseUntil: 'monsterCombat.js, projectiles.js: the phone\'s own chase clock',
-      _hitAnimStart: 'monsterCombat.js, projectiles.js: a hit\'s flinch',
-      _hitSndAt: 'hitSounds.js: a hit sound\'s spacing',
-      _kbUntil: 'monsterCombat.js, projectiles.js: a knock-back',
-      _noiseAt: 'monsterNoises.js: a noise\'s spacing',
-      _shootAnimStart: 'monsterCombat.js: a shot\'s pose',
-      _stunUntil: 'monsterCombat.js, zoneMechanics.js: a stun',
-      _telegraphUntil: 'monsterCombat.js: the phone\'s own wind-up',
-      _tgFrom: 'entityRenderer.js: a telegraph\'s start',
-      _tgUntil: 'entityRenderer.js: a telegraph\'s end',
-      _throwReleaseAt: 'monsterMoveEvents.js: a throw\'s release',
-      _transformStart: 'monsterVariants.js, gameEvents.js: a transform (cleared by monsterNewLife)',
+      _chargeUntil: 'monsterCombat.js: the phone\'s own AI\'s charge (a zone it models, which the worker never re-pushes); a fresh object stops charging, no replay',
+      _chaseUntil: 'monsterCombat.js, projectiles.js: the phone\'s own AI\'s chase after a hit; a fresh object goes back to its leash, no replay',
+      _hitAnimStart: 'monsterCombat.js, projectiles.js, gameEvents.js: a hit\'s flinch (400-600 ms); a fresh object ends it early, the next hit flinches again',
+      _hitSndAt: 'hitSounds.js: the spacing between hit sounds; a fresh object at worst lets one echo through',
+      _kbUntil: 'monsterCombat.js, projectiles.js: the phone\'s own 200 ms knock-back; a fresh object stands where the worker puts it',
+      _noiseAt: 'monsterNoises.js: the spacing between a monster\'s calls; a fresh object at worst calls once more',
+      _shootAnimStart: 'monsterCombat.js, gameEvents.js: an attack pose (its _shootAnimEnd beside it is not carried either); a fresh object stands, the hit still lands',
+      _stunUntil: 'monsterCombat.js, zoneMechanics.js: a stun; the worker\'s tick sends it again (md.st, wsClient.js) on the next frame',
+      _throwReleaseAt: 'monsterMoveEvents.js: a throw\'s release frame, read only within its _shootAnimStart: goes with the pose',
+      _transformStart: 'monsterVariants.js, gameEvents.js: a transform\'s shimmer (cleared by monsterNewLife); a fresh object built mid-shimmer ends it early, it never plays again',
     };
     const fields = new Set();
     for (const f of SRC) for (const x of C(f).matchAll(MOMENT_RE)) fields.add(x[1]);
     const off = new Set([...fields].filter((k) => !listed.has(k)));
     check(`§245: the moment fields written on monsters are found (${fields.size}), ${fields.size - off.size} on monsterCarry.js's lists`, fields.size >= 10 && fields.size > off.size);
-    census('§245', 'moment fields on no carry list (a new one goes on CARRY_ALIVE/CARRY_DEAD/PHONE_NEW_LIFE in the same change)', off, MOMENT_KNOWN, 13);
+    census('§245', 'moment fields on no carry list (a new one goes on CARRY_ALIVE/CARRY_DEAD/PHONE_NEW_LIFE in the same change)', off, MOMENT_KNOWN, 10);   /* v2.3.6082: 13 -> 10 (card V7) */
     /* the carry itself, across its four cases, every listed field */
     const bad = [];
     for (const [alive, list] of [[true, CARRY_ALIVE], [false, CARRY_DEAD]]) for (const k of list) {
@@ -634,7 +633,8 @@ const outerName = (f, p) => {
   /* 1. every test of a socket send's answer reads `!== false` / `=== false` */
   const SEND = /(?<![\w$.])(?:act|[\w$]*\.channel\.send|channelShim\.send)\(/g;
   const TRUTHY_KNOWN = {
-    _sendMute: 'chatMute.js: `=== true`; the channel answers nothing (undefined) on some paths that DID send, so such a mute is kept and sent again on the rejoin (harmless, but not the rule)',
+    /* v2.3.6082 (card V7, the planning session's reading (b)): kept, with why */
+    _sendMute: 'chatMute.js: `=== true`, on purpose: server/test/mute-kept.test.mjs 6c pins it (v2.3.4402), and the mute\'s path (a broadcast) answers only true (sent) or false (dropped), so both readings agree; the undefined answers are other ways (wsOut)',
   };
   const found = new Set();
   let tested = 0;

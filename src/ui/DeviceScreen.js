@@ -57,12 +57,23 @@ function stamp(open, code, mode) {
    a new key the owner took back, or an old key retired.  The way on is a key
    from the owner ("Give it a new key") typed at the door, so this mode has a
    button to the door's Login Key form as well. */
+/* ═══ v2.3.6020 (card RV, the players' device words; decided for the owner
+   while away) ═══
+   Since v2.3.5716 (`oldkeyheld`, devicelock.js) an old key never works from
+   a device not on the character's list, and the owner's pass lets no old key
+   in: "ask the owner to let this device in" sent a player to a door that
+   stays shut.  A new Login Key works from any device -- the one on the
+   Account card of a device they play on, or one the owner gives ("Give it a
+   new key") -- so the words say that, and the device mode shows the door's
+   Login Key button too (Try again stays: with `oldkeyheld` off, a pass works
+   as before). */
 const COPY = {
   device: {
     title: 'This character is played on another device',
-    text: 'A character can only be played on a device it was played on before. '
-      + 'To play it here, ask the game\u2019s owner to let this device in, and give them this code:',
-    after: 'Once they have, tap Try again within 30 minutes.',
+    text: 'A character can only be played on a device it was played on before, or with its new Login Key. '
+      + 'To play it here, use the Login Key on the Account card of a device you play it on, '
+      + 'or ask the game\u2019s owner for one and give them this code:',
+    after: 'Then tap Use a Login Key and type it.',
   },
   key: {
     title: 'This Login Key no longer works',
@@ -126,12 +137,13 @@ export function showDeviceScreen(code, opts) {
       document.body.appendChild(el);
     }
     el.querySelector('.bt-dv-code').textContent = c;
-    /* v2.3.3355: the words for this mode, the door's button only for a key */
+    /* v2.3.3355: the words for this mode */
     const t = COPY[mode];
     el.querySelector('.bt-dv-title').textContent = t.title;
     el.querySelector('.bt-dv-text').textContent = t.text;
     el.querySelector('.bt-dv-after').textContent = t.after;
-    el.querySelector('.bt-dv-door').style.display = mode === 'key' ? '' : 'none';
+    /* v2.3.6020: both modes now (a new key is the way in for either) */
+    el.querySelector('.bt-dv-door').style.display = '';
     el.setAttribute('data-mode', mode);
   } catch (e) { /* DOM unavailable */ }
   stamp(true, c, mode);

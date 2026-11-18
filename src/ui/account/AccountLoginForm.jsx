@@ -21,7 +21,9 @@ const ERROR_COPY = {
   same: "You're already playing as this character.",
   /* v2.3.3344: the right key, from a device the character was never played on
      (server/src/devicelock.js) -- the code is the player's id, for the owner */
-  device: 'This character can only be played on a device it was played on before. To play it here, ask the game\u2019s owner to let this device in, and give them this code:',
+  /* v2.3.6020 (card RV): an old key is never let in on a new device now
+     (`oldkeyheld`); a new Login Key is the way (DeviceScreen.js says why) */
+  device: 'This character can only be played on a device it was played on before, or with its new Login Key. Use the Login Key on the Account card of a device you play it on, or ask the game\u2019s owner for one and give them this code:',
   /* v2.3.3355: an old key whose character has a new one now (a new character's
      first key, or the owner's "Give it a new key"; server/src/loginkeys.js) */
   keychanged: 'This character has a new Login Key now. Use the new one: it\u2019s on the Account card of a device you play it on, or the game\u2019s owner can give you one.',
