@@ -846,14 +846,30 @@ if (changedClient.length) {
 /* v2.3.5022: and for a guard (tools/guards/*.test.mjs), which npm test runs too */
 const changedGuards = changed.filter((f) => f.startsWith('tools/guards/'));
 if (changedServer.length || changedClient.length || changedGuards.length) {
-  const r = spawnSync('npm', ['test'], { cwd: join(root, 'server'), encoding: 'utf8', timeout: 5 * 60 * 1000, maxBuffer: 64 * 1024 * 1024 });
+  /* v2.3.6160 (card TL): the cap fits the suite.  It was 5 minutes, and on
+     these 4-vCPU boxes the whole `npm test` now takes longer than that
+     (guards/switches-thrown alone measured 430-718 s), so every card's
+     precheck said "server-tests ... exited timeout" -- read as a red test
+     when no suite had failed, only the clock had run out.  The cap is now
+     SERVER_TESTS_CAP_S, 20 minutes: the whole run measured 610 s here
+     (switches-thrown 543 s of it), and that one suite has measured 718 s on
+     another of these boxes, so 1200 s is about 2x the run and 1.5x the
+     slowest suite plus the rest.  A timeout says so in plain words:
+     still a FAIL (a suite that never finished proved nothing, and a hung one
+     must not pass), but never a "test failed". */
+  const SERVER_TESTS_CAP_S = 20 * 60;
+  const r = spawnSync('npm', ['test'], { cwd: join(root, 'server'), encoding: 'utf8', timeout: SERVER_TESTS_CAP_S * 1000, maxBuffer: 64 * 1024 * 1024 });
+  const timedOut = !!(r.error && r.error.code === 'ETIMEDOUT');
   if (r.status === 0) add('PASS', 'server-tests', 'cd server && npm test — all suites green');
-  else {
+  else if (timedOut) {
+    const tail = ((r.stdout || '') + (r.stderr || '')).trim().split('\n').slice(-5).join('\n    ');
+    add('FAIL', 'server-tests', `timed out after ${SERVER_TESTS_CAP_S} s; the suite did not finish (no suite was seen to fail: this box was too slow or a suite hung -- run \`cd server && npm test\` alone to see which). Its last lines:\n    ${tail}`);
+  } else {
     /* v2.3.3302: npm test runs every suite now and ends on the list of the
        ones that failed (server/test/run.mjs) -- the last 30 lines are that
        list and the FAIL lines above it */
     const tail = ((r.stdout || '') + (r.stderr || '')).trim().split('\n').slice(-30).join('\n    ');
-    add('FAIL', 'server-tests', `cd server && npm test exited ${r.status ?? 'timeout'}:\n    ${tail}`);
+    add('FAIL', 'server-tests', `cd server && npm test exited ${r.status ?? ('on signal ' + (r.signal || (r.error && r.error.code) || '?'))}:\n    ${tail}`);
   }
 } else {
   add('PASS', 'server-tests', 'no server/, src/ or tools/guards/ changes — suite skipped');
