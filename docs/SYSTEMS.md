@@ -98,7 +98,7 @@ Who a player is: ids, accounts, the device lock, login keys, the account check, 
 
 Telling a person from a script: bot signals, fingerprints, claims that are bounded.
 
-- **Files**: `server/src/`: botfp, botsig, botstats, charwatch, hitproof, moveclaims, swordswing, bowshot
+- **Files**: `server/src/`: botfp, botsig, botstats, charwatch, hitproof, moveclaims, swordswing, bowshot, harvestgrade
 - **Doors**: none named yet
 - **Switches**: [its rows in the switch table](SWITCHES.md#bots)
 - **Words**: `bot`, `antibot`, `anticheat`, `charwatch`, `hitproof`, `moveclaim`
@@ -200,8 +200,8 @@ Quests, achievements, the codex, pets' book, points.
 
 Parties, clans, guilds, friends, chat, emotes, duels, the arena, races, boards.
 
-- **Files**: `server/src/`: party, clanparty, clans, guilds, alliance, friends, chatlanes, chatmod, chatguard, reservednames, silence, emotes, boards, arena, gladiator, duel, spar, race, leaderboard, power, statboards
-- **Files**: `src/game/`: alliance, allyDrafts, duelDoor, partyDoor, arenaDoor, skullDoor, chat, chatChannel, chatColor, chatMute, emotes, emoteMoves, gesturePose, friendErrors, duelLock, duelPending, partyChip, partyEq, partyMarks, partyRows, peerDot, race, raceDoor, spar, sparTargets, bubbleSkins, boardBumps, dictation
+- **Files**: `server/src/`: party, clanparty, clans, guilds, alliance, friends, chatlanes, chatmod, chatguard, reservednames, silence, emotes, boards, arena, gladiator, duel, spar, race, leaderboard, power, statboards, lookform
+- **Files**: `src/game/`: lookForm, alliance, allyDrafts, duelDoor, partyDoor, arenaDoor, skullDoor, chat, chatChannel, chatColor, chatMute, emotes, emoteMoves, gesturePose, friendErrors, duelLock, duelPending, partyChip, partyEq, partyMarks, partyRows, peerDot, race, raceDoor, spar, sparTargets, bubbleSkins, boardBumps, dictation
 - **Doors**: none named yet
 - **Switches**: [its rows in the switch table](SWITCHES.md#social)
 - **Words**: `party`, `clan`, `guild`, `alliance`, `friend`, `chat`, `emote`, `duel`, `arena`, `gladiator`, `spar`, `race`, `board`, `leaderboard`, `social`

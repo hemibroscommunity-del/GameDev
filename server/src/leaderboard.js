@@ -9,6 +9,7 @@
 import { boardFace, goneId } from './boards.js';   /* v2.3.4393: a face on each row, and the deleted stand-ins */
 import { POWER, cleanPowerIndex } from './power.js';   /* v2.3.5481: the power index on a row, and its board (card PW) */
 import { cleanStatPoints, statOfBoard } from './statboards.js';   /* v2.3.5484: the stat boards (card PW) */
+import { lookColor } from './lookform.js';   /* v2.3.5807 (card RV, S2): a row's colour a colour */
 
 /* a player not seen for this long is off the boards (and a deleted
    character's stand-in, counted from the day it was deleted) */
@@ -209,7 +210,7 @@ export class Leaderboard {
       ...(look ? { look } : {}),
       ...(powerIndex ? { powerIndex } : {}),
       ...(statPoints ? { statPoints } : {}),
-      id: playerId, name: shortStr(name, BOARD_HOLD.NAME) || 'Anon', color: shortStr(color, BOARD_HOLD.COLOR) || '#5b52ff', level: wholeN(level) || 1,
+      id: playerId, name: shortStr(name, BOARD_HOLD.NAME) || 'Anon', color: lookColor(shortStr(color, BOARD_HOLD.COLOR)) || '#5b52ff' /* v2.3.5807 (card RV, S2): a colour only (lookform.js) */, level: wholeN(level) || 1,
       /* v2.3.5483: `ap` is the room's own count (index.js reportToLeaderboard,
          from ps.achievementPoints) -- the blob's only from a report that
          carries none */

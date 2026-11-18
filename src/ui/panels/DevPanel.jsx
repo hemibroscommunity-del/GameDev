@@ -332,6 +332,7 @@ const CAP_GATES = [
   'power' /* v2.3.5502 (card LB): the power index's version, a number (card PW, #1776) -- Overall and the Power column on the Leaderboards, from each row's powerIndex of that version */,
   'statboards' /* v2.3.5502 (card LB): a count -- how many stat boards the worker ranks (card PW, #1781): the Leaderboards' Stats group shows that many */,
   'gidnames' /* v2.3.5196: a weapon named by its id beside its place (server/src/gidnames.js; the action door's GID_PLACE) -- lower case, a kill switch */,
+  'harvestGrade' /* v2.3.5900 (card K4): the harvest's grade judged (server/src/harvestgrade.js): a perfect only after an honest gesture's time, at most 15 in 20 -- an opt-in, `harvestgrade: true` (CAP_OPT_IN) */,
   'reqid' /* v2.3.5546: a repeat acts once (server/src/reqonce.js): the action door may re-send a request it heard nothing from, with the same id -- lower case, a kill switch (`reqonce`) */,
   'accuracy' /* v2.3.4545: shots and hits a weapon (server/src/accuracy.js): the phone numbers its basic shots and the Journey page shows how many hit -- lower case, a kill switch */,
 ];
@@ -342,7 +343,7 @@ const CAP_GATES = [
    false there means the kill switch really is thrown. */
 /* v2.3.3755: and `clientoff`, the list of memory savers turned off -- empty
    (the default) is every saver on */
-const CAP_OPT_IN = new Set(['pathall', 'clientoff']);
+const CAP_OPT_IN = new Set(['pathall', 'clientoff', 'harvestGrade' /* v2.3.5900: the owner's to turn on */]);
 
 /* Plain language for the ones whose absence the owner has actually reported
    as a bug.  Deliberately NOT a full glossary: a made-up description is
