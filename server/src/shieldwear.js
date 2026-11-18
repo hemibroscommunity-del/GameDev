@@ -57,6 +57,7 @@
  * and No man's land takes no shield on an ordinary loss again. */
 import { GEAR_PROV_FIELD } from './gearprov.js';
 import { stashGive, stashTake, stashSet } from './stash.js';   /* v2.3.5281: the stashes' door (card R PR 2) */
+import { lifeOf, LIFE } from './life.js';   /* v2.3.5920: the dead take nothing (life.js _deadTakeOn; TRAPS §150) */
 
 export const SHIELD_WEAR = Object.freeze({
   /* the longest id or signature the worker reads */
@@ -96,7 +97,8 @@ export const shieldWearMethods = {
   },
 
   /* shield_wear: which shield is on the arm.  Returns 'worn' | 'none' |
-     'same' | 'unknown' | 'fight' (v2.3.4510, the fight lock) | null (refused
+     'same' | 'unknown' | 'fight' (v2.3.4510, the fight lock) | 'dead'
+     (v2.3.5920, the dying seconds) | null (refused
      outright) -- for the tests; the game is answered by the player_state
      echo, as for armour. */
   _handleShieldWear(session, payload) {
@@ -124,6 +126,15 @@ export const shieldWearMethods = {
     if (worn && same(worn)) {
       ps._shieldKnown = true;
       return 'same';
+    }
+    /* v2.3.5920 (card V3, TRAPS §150; `deadtake`, life.js): no shield put on
+       in the dying seconds -- it leaves the bag list, which the death's loss
+       reads.  Nothing moves; the worn shield goes back (the phone keeps what
+       its own arm holds: a piece the worker already holds is not added twice,
+       wsClient.js), so this answers without undoing anything there. */
+    if (lifeOf(ps) !== LIFE.ALIVE && this._deadTakeOn()) {
+      this._refusalEcho(session, ['shield']);
+      return 'dead';
     }
     /* from the bag: that ONE copy leaves it */
     let piece = null;
