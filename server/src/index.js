@@ -118,6 +118,7 @@ import { reportMethods, rttWaverNext, reportSiteOf } from './report.js';   /* v2
 import { roomRowMethods } from './roomrow.js';   /* v2.3.5124: the room's own row in the day's book */
 import { healthMethods, routeRoomHealth } from './health.js';   /* v2.3.5601: the room's own health (card OPS PR 2) */
 import { seatHoldMethods } from './seathold.js';   /* v2.3.5606: a seat held for the player who had it (card OPS PR 7) */
+import { usageMethods } from './usagemeter.js';   /* v2.3.6001: the usage meter, in memory only (card CS PR 2) */
 import { publicReadMethods } from './publicreads.js';   /* v2.3.5609: the room's public reads kept and paced (card OPS PR 10) */
 import { guestLazyMethods } from './guestlazy.js';   /* v2.3.5610: a guest's join writes nothing (card OPS PR 11) */
 import { charWatchMethods } from './charwatch.js';   /* v2.3.4545: what players drew, for the owner to look at (the Test panel) */
@@ -6543,6 +6544,7 @@ Object.assign(GameRoom.prototype, reportMethods); /* v2.3.5123 */
 Object.assign(GameRoom.prototype, roomRowMethods); /* v2.3.5124 */
 Object.assign(GameRoom.prototype, healthMethods); /* v2.3.5601: the room's own health (health.js) */
 Object.assign(GameRoom.prototype, seatHoldMethods); /* v2.3.5606: a seat held (seathold.js) */
+Object.assign(GameRoom.prototype, usageMethods); /* v2.3.6001: the usage meter (usagemeter.js) */
 Object.assign(GameRoom.prototype, publicReadMethods); /* v2.3.5609: public reads kept and paced (publicreads.js) */
 Object.assign(GameRoom.prototype, guestLazyMethods); /* v2.3.5610: a guest's join writes nothing (guestlazy.js) */
 Object.assign(GameRoom.prototype, charWatchMethods); /* v2.3.4545 */

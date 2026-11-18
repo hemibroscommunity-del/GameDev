@@ -43,8 +43,8 @@
  *    flight (projectiles.js plants it at BOW_RANGE_PX x Range), and this
  *    bound is that flight plus its slack.
  *
- * 4. THE PATH (v2.3.5904, card K4 PR 5; `bowpath`, an opt-in, OFF as
- *    merged): what is left of the bench's bow gain is not reach but a claim
+ * 4. THE PATH (v2.3.5904, card K4 PR 5; `bowpath`, ON since v2.3.5906,
+ *    its kill switch `bowpath: false`): what is left of the bench's bow gain is not reach but a claim
  *    naming its monster when it LANDS -- a liar never wastes an arrow in
  *    flight on a monster that died first.  With `bowpath: true` an arrow
  *    seen keeps its relay's line (its own x, y when within
@@ -116,11 +116,13 @@ export const bowShotMethods = {
     const f = this._liveFlags;
     return this._bowShotOn() && !(f && typeof f === 'object' && own(f, 'bowreach') && !f.bowreach);
   },
-  /* v2.3.5904: the path's switch (THE PATH above): an opt-in, `bowpath:
-     true`, and only with `bowshot` */
+  /* v2.3.5904: the path's switch (THE PATH above), only with `bowshot`.
+     v2.3.5906 (card K4 PR 7): ON by default (the owner, 2026-11-18: "Go
+     recommended for anything waiting on me"); `bowpath: false` is its kill
+     switch */
   _bowPathOn() {
     const f = this._liveFlags;
-    return this._bowShotOn() && !!(f && typeof f === 'object' && f.bowpath === true);
+    return this._bowShotOn() && !(f && typeof f === 'object' && own(f, 'bowpath') && !f.bowpath);
   },
   /* v2.3.5904: a relay's line -- its own x, y when near the worker's copy of
      the archer (a phone's place a move ahead), else the copy; its angle */
@@ -142,7 +144,7 @@ export const bowShotMethods = {
     /* v2.3.5905: THE BODY -- the nearest of the line to the monster's body,
        its feet (dy) up H px (dy - H); the side is linear along it, so zero
        where it changes sign, else the nearer end */
-    const H = m._dungeonBoss || m.boss ? BOW_SHOT.PATH_BOSS_BODY_PX : BOW_SHOT.PATH_BODY_PX;
+    const H = m._dungeonBoss ? BOW_SHOT.PATH_BOSS_BODY_PX : BOW_SHOT.PATH_BODY_PX;   /* v2.3.5906: the worker's own mark (no worker monster carries `boss`) */
     const s0 = dy * shot.p.c - dx * shot.p.s, s1 = (dy - H) * shot.p.c - dx * shot.p.s;
     const side = (s0 <= 0) !== (s1 <= 0) ? 0 : Math.min(Math.abs(s0), Math.abs(s1));
     if (along < -BOW_SHOT.PATH_BACK_PX) return false;
