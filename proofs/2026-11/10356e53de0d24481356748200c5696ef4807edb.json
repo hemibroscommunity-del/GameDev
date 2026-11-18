@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "10356e53de0d24481356748200c5696ef4807edb",
+  "tree": "6fe3eb0cd21f12993f64539ee73fb3708c208c85",
+  "committedAt": "2026-11-18T11:34:14-08:00",
+  "subject": "Merge pull request #2227 from hemibroscommunity-del/claude/plan-wd3-1-guard",
+  "files": 8369,
+  "bytes": 962956168,
+  "listingSha256": "6e74ff86aac5202d5290adc5c2c5d110ef4529a367ab585bc8f9e4fc745e2e51",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

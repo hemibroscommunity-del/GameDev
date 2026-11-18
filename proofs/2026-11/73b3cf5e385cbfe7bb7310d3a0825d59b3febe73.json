@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "73b3cf5e385cbfe7bb7310d3a0825d59b3febe73",
+  "tree": "b6905c821283abb725af4cd4a15aab5d247dd762",
+  "committedAt": "2026-11-18T11:35:01-08:00",
+  "subject": "Merge pull request #2231 from hemibroscommunity-del/claude/plan-wd3-4-hero",
+  "files": 8380,
+  "bytes": 962983173,
+  "listingSha256": "d211a44153b5711436ff20f8b514203065ea6ab67c042246ad492d45e977aec1",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

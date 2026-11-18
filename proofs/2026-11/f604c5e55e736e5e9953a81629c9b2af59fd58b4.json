@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "f604c5e55e736e5e9953a81629c9b2af59fd58b4",
+  "tree": "f27038d14c861d5ce51df698f1d00c389c52824c",
+  "committedAt": "2026-11-18T11:34:30-08:00",
+  "subject": "Merge pull request #2229 from hemibroscommunity-del/claude/plan-wd3-2-daily",
+  "files": 8373,
+  "bytes": 962965980,
+  "listingSha256": "5dbeb4fe79556131ef4d9f62170b7459b9ed19fa75abee4fbacaf6057dd3294c",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
