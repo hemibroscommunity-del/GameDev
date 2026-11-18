@@ -91,7 +91,7 @@ export const WIRE_HTTP = [
     note: ['v2.3.5609 (card OPS PR 10): an answer kept 3 s (a write on the surface drops it); past 10 reads a second that wake the room from one address, 429 with Retry-After: 1 (publicreads.js; publicreads: false turns it off)'] },
   { name: 'http:/api/store/mine', dir: 'in', at: 'store.js _storeFetch', wayIn: 'http', envelope: 'http',
     phase: ['none checked'], mayStart: 'helper', doesWhat: ['reads'], reqId: 'harmless',
-    trust: { playerId: 'request', room: 'request', t: 'request' }, absent: 'default: no playerId gives both lists empty; v2.3.5817: no `t` (or not the session\'s) gives `bidding` empty',
+    trust: { playerId: 'request', room: 'request', t: 'request' }, absent: 'default: no playerId gives both lists empty; default: v2.3.5817, no `t` (or not the session\'s) gives `bidding` empty',
     bad: ['taken'], answer: 'http' },
   { name: 'http:/api/store/list', dir: 'in', at: 'store.js _stCreateListing', wayIn: 'http', envelope: 'http',
     phase: ['session:joined', 'fight:!in'], mayStart: 'helper', doesWhat: ['value-out'], reqId: 'reqId',
