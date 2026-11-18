@@ -124,6 +124,8 @@ import { jumpActive, jumpFrame, jumpPhase, flipFrame } from '@/game/jump.js';   
 import { rideLook } from '@/game/ride.js';   /* v2.3.3776: a rider stands sideways, and pushes now and then */
 import { recordCrash } from '../../debug/crashTrap.js'; /* v2.3.1305: trait-sheet load-failure telemetry */
 import { keepAsImage } from '../keepAsImage.js';   /* v2.3.3606: a head piece kept as an image of itself */
+import { keepOnGpuOnly } from '../gpuOnly.js';   /* v2.3.6203: the armour probe's reference, on the chip only */
+import { paletteRendererOf } from '../paletteTex.js';   /* v2.3.6203: ...the probe's own renderer */
 import { TRAIT_LOAD_TIMEOUT_MS } from '../traits/traitImg.js';   /* v2.3.3689: a stalled head piece is asked for again */
 import { loadSetLater } from '../loadSetLater.js';   /* v2.3.4415: the bars over heads asked for again until in */
 import { timeLimit } from '../retryLooks.js';   /* v2.3.4452: a stalled hair mask or placement table counts as failed */
@@ -2307,12 +2309,17 @@ function _cropBakedFrame(dc) {
   const fw = dc.width, fh = dc.height;
   let packed = null;
   try { packed = packTrimmed(dc, fw, fh, 1); } catch (e) { packed = null; }
-  if (!packed) return Texture.from(dc);
+  /* v2.3.6203: each kept as an image of itself (keepAsImage.js, quiet: one
+     already on the chip is not sent again): made once, only ever drawn, and
+     kept in _maskedBodyCache past a renderer rebuild, which an emptied canvas
+     (keepOnGpuOnly) would not survive; `?keepimage=0` keeps the canvas */
+  if (!packed) { const t0 = Texture.from(dc); keepAsImage(t0.source, Cache, { quiet: true }); return t0; }
   const c = packed.cells[0];
   const src = Texture.from(packed.canvas).source;   /* cached: __btTex counts it */
   const t = new Texture({ source: src, frame: new Rectangle(c.ax, c.ay, c.w, c.h),
     orig: new Rectangle(0, 0, fw, fh), trim: new Rectangle(c.tx, c.ty, c.w, c.h) });
   if (dc !== packed.canvas) { try { dc.width = 0; dc.height = 0; } catch (e) { /* not ours */ } }
+  keepAsImage(src, Cache, { quiet: true });
   return t;
 }
 /* v2.3.2874: _histMedian and the bake's scratch buffers moved to maskedBake.js with the bake. */
@@ -2345,7 +2352,7 @@ if (typeof window !== 'undefined') {
     const out = [];
     for (const t of _maskedBodyCache.values()) {
       const r = t && t.source && t.source.resource;
-      if (!r || !r.getContext) continue;
+      if (!r) continue;   /* v2.3.6203: a canvas or, kept as an image of itself, an <img>: drawGearFrame draws either */
       try {
         /* v2.3.2872: the WHOLE frame, drawn back from its crop, so a cropped
            bake fingerprints the same as the uncropped one it replaced */
@@ -2894,6 +2901,9 @@ try {
         if (!r || !r.display) return null;
         const t = Texture.from(r.display);
         t.source.autoGenerateMipmaps = true;
+        /* v2.3.6203: read back through the probe's own renderer (extract), never
+           its canvas: on the chip only (gpuOnly.js) */
+        keepOnGpuOnly(paletteRendererOf(), t.source);
         return t;
       },
       lookJob: (entries, worn, pi) => lookArmourJob(entries, worn, pi),
@@ -4211,6 +4221,9 @@ function _fishTopFrame(bodyTex, rodTex, plate) {
     }
     ctx.putImageData(img, 0, 0);
     const tex = new Texture({ source: Texture.from(cv).source });
+    /* v2.3.6203: made once (the putImageData above), only ever drawn, and kept in
+       _fishTopCache past a renderer rebuild: an image of itself (keepAsImage.js) */
+    keepAsImage(tex.source, Cache, { quiet: true });
     /* v2.3.4157: kept, and the least recently drawn past the cap let go of
        for good: off its sprites, then its source, Cache entry and canvas */
     storeFishTop(_fishTopCache, key, tex, FISH_TOP_CAP, _releaseFishTop);

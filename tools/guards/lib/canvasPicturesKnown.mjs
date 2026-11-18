@@ -26,7 +26,6 @@ export const KNOWN = Object.freeze({
   'src/rendering/staffCastFx.js': 2,
   'src/rendering/systems/ambientFx.js': 1,
   'src/rendering/systems/effectsRenderer.js': 8,
-  'src/rendering/systems/entityRenderer.js': 5,
   'src/rendering/systems/tileRenderer.js': 1,
   'src/rendering/systems/wheelMinimap.js': 2,
   'src/rendering/weaponSprites.js': 1,

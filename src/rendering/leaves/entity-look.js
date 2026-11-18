@@ -7,7 +7,8 @@
  * IMPORT_CYCLE_FILES has no room).  The census: part 5 of
  * docs/plan/census/M-tables.md (tools/dev/render-code-census.mjs).
  */
-import { Assets, Rectangle, Texture } from 'pixi.js';
+import { Assets, Cache, Rectangle, Texture } from 'pixi.js';
+import { keepAsImage } from '../keepAsImage.js';   /* v2.3.6203 */
 import { BODY_CELL_MID, BODY_DIR_SCALE, BODY_ROWS, FULLSET_CROWN, JOG_EW_HAT_TUNE, LOCAL_BODY_SCALE, NECK_ROWS, PLAYER_SIZE_MULT, STAND_HAT_TUNE, _CAPE_HOOD_DX_K, _CAPE_HOOD_TILT_K, _CAPE_JOG_DX, _CAPE_JOG_TILT, _CAPE_PIVOT_Y } from '../tables/look.js';
 import { artHasInk, sanitizeShirtArt } from '../traits/playerArt.js';
 import { gearArt, gearMaterial, gearTint } from '../gearVariants.js';
@@ -250,6 +251,7 @@ export const _localWornSig = () => wornSigOf(getEquip('chest'), getEquip('legs')
    sat, orig = the whole display frame. */
 export function _croppedTexture(cv, c) {
   const src = Texture.from(cv).source;   /* cached: __btTex counts it, eviction removes it (see _storeBake) */
+  keepAsImage(src, Cache, { quiet: true });   /* v2.3.6203: an image of itself, as _cropBakedFrame's (card EN PR 4) */
   return new Texture({ source: src, frame: new Rectangle(0, 0, c.w, c.h),
     orig: new Rectangle(0, 0, c.fw, c.fh), trim: new Rectangle(c.tx, c.ty, c.w, c.h) });
 }
