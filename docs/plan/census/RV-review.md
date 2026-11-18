@@ -156,6 +156,7 @@ player sees changes except the wrong thing the finding is.
 | 15 | 5815 | `restore.js` | ACC-4, the owner's call decided by recommendation: the rewind's plan names the owner's login acts since its time (a new key, a device forgotten, a pass, a silence and its lifting), read from the admin log before the do | `rewindsays` |
 | 16 | 5816 | `src/ui/panels/DevPanel.jsx` | SEC-F6: the pass's words match `oldkeyheld` (a new key only) | none (words) |
 | 14 | 5814 | `chatguard.js`, `petbook.js`, `alliance.js`, `charname.js` (the switch) | S6 (braille blanks, annotation marks, loose tags; a tag flag kept); S7 (a NEW pet name, alliance name or tag held to the character name's rule: nothing that draws nothing, no stacked marks, no staff words; a stored one never touched, and, sitting 44's review decided for the owner while away, an alliance whose stored name now reads as staff keeps it and may change its tag) | `cleanmore`, `namestaff` |
+| — | 6022 | `gladiator.js`, `storeoffer.js`, `trade.js`, `trade2.js` | The planning session's item (c): the four money handlers V3 left on traps-money §150 for RV (the arena's stake, the Auction House's offer, the gift trade's sender, the trade window's Accept) took from a body in its dying seconds; each now reads the life phase. MS-3's trade window half closed. §150's census 4 -> 1 | `deadtake` (V3's, reused) |
 
 The switch names are a first choice, checked free in the switch table at
 each PR. A PR whose fix turns out to need a new write, a new message or a

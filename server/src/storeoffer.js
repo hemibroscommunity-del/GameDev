@@ -76,6 +76,7 @@ export const STORE_OFFER = {
    words from the id, so a reply cannot carry anything a player typed. */
 import { PACE } from './flood.js';   /* v2.3.3274: the "let me think" mark is written at a pace */
 import { xferAuctionSale } from './xfer.js';   /* v2.3.5293: a sale's ledger row (card R PR 17; `xferescrow`, OFF by default) */
+import { lifeOf, LIFE } from './life.js';   /* v2.3.6022 (card RV): the dead take nothing (life.js _deadTakeOn; TRAPS §150) */
 
 export const OFFER_REPLIES = ['yes', 'think', 'no'];
 
@@ -433,6 +434,10 @@ export const storeOfferMethods = {
     if (!me) return;
     const listingId = this._scListingId(payload && payload.listingId);
     if (!listingId) return;
+    /* v2.3.6022 (card RV, TRAPS §150; `deadtake`, life.js): an offer's gold is
+       an escrow debit -- not from a body in its dying seconds (answered with
+       the offer's own error, so the phone drops its guess) */
+    { const _op = this.playerState[me]; if (_op && lifeOf(_op) !== LIFE.ALIVE && this._deadTakeOn()) return this._soSend(me, 'store_offer_error', { listingId, error: 'Not while you are down' }); }
     /* v2.3.5194: a repeat of the same request id acts once and gets the
        first answer again, echoed (reqonce.js); none: as before */
     const rid = this._reqIdOf ? this._reqIdOf(payload && payload.reqId) : null;
