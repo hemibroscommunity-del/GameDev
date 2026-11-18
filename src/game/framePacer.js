@@ -342,7 +342,7 @@ let _samples = null, _busyIn = null;
    everywhere; the chip's only where deviceProfile.js says a phone or a
    tablet (a computer's screen-sized pictures are no fault: the counter hands
    in no chip count there).  Read at most every MEM_READ_MS. */
-export const MEM_LINES = Object.freeze({ artCache: 79.3, gpu: 114.3 });   /* v2.3.5981: gpu 115 -> 114.3 with the memory check's line (card P2) */
+export const MEM_LINES = Object.freeze({ artCache: 79.3, gpu: 109.3 });   /* v2.3.5981: gpu 115 -> 114.3 with the memory check's line (card P2); v2.3.6202: 114.3 -> 109.3 with it (card EN PR 3, the planning session's yes) */
 export const MEM_READ_MS = 5000;
 /* v2.3.5681 (the gatekeeper's sitting 27): the wait between memory rungs,
    past the masked frames' 30 s deferred destroy (maskedEvict.js) */
