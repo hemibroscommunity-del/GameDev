@@ -1,6 +1,6 @@
 card: FX
-branch: claude/plan-fx-1-effects-leaves
-prs: #2190 6220 (ready)
+branch: claude/plan-fx-2-effects-leaves (stacked on claude/plan-fx-1-effects-leaves)
+prs: #2190 6220 (ready), 6221 (working: draft)
 state: ready
 
 ## Done
@@ -14,8 +14,11 @@ state: ready
 
 ## Next
 
-- 6221 (stacked on 6220): the 7 level-1 leaves + LEGS_LOOK_OFF,
-  MSG_MAX_LINES. Built locally; opened once 6220 is up.
+- 6221 (stacked on #2190): the 7 level-1 leaves + LEGS_LOOK_OFF and
+  MSG_MAX_LINES, verbatim (61 statements in all, 0 not verbatim);
+  held-sweep 9 re-keyed; npm test 566 green after it, questline 187/187,
+  membudget all green. Ready once CI is.
+- Then 6222 (ore numbers, projectile twins), then 6223 (canvas makers).
 
 ## Found
 
