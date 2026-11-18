@@ -2,6 +2,8 @@ import React, { useSyncExternalStore } from 'react';
 import { COL } from './common.js';
 import { dailyRewardsBus, questsLive, spinLive, seasonLive, claimableTiers } from '@/game/dailyRewards.js';
 import { useScrollTap } from '../sheet/scrollTap.js'; /* the card sits in the Quests scroller */
+import { SAY } from '@/data/say/dailyCard.js';   /* v2.3.6341: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';
 
 /* ═══ v2.3.3140: THE DAILY REWARDS CARD, AT THE TOP OF QUESTS ═══
  * The way into the Daily Rewards window (DailyRewardsWindow.jsx): where a
@@ -28,16 +30,16 @@ export const DailyRewardsCard = () => {
   const spinReady = sLive && st.spin && st.spin.on && (st.spin.open || (!st.spin.locked && (st.spin.ready || st.spin.extra > 0)));
   const warm = claim > 0 || spinReady;
   const bits = [];
-  if (qLive && dq.on !== false) bits.push(dq.locked ? 'Daily quests: soon' : done + '/' + (list.length || 3) + ' daily quests');
-  if (seLive && st.season) bits.push('★ ' + st.season.st);
-  if (claim > 0) bits.push(claim + ' to claim');
+  if (qLive && dq.on !== false) bits.push(dq.locked ? say(SAY, 'dailyCard.questsSoon') : say(SAY, 'dailyCard.quests', { done, all: list.length || 3 }));
+  if (seLive && st.season) bits.push(say(SAY, 'dailyCard.stars', { stars: st.season.st }));
+  if (claim > 0) bits.push(say(SAY, 'dailyCard.toClaim', { count: claim }));
   else if (spinReady) {
     const sp = st.spin;
-    bits.push(sp.ready ? 'free spin ready' : (sp.open ? 'spin going' : sp.extra + ' bonus spin' + (sp.extra === 1 ? '' : 's')));
+    bits.push(sp.ready ? say(SAY, 'dailyCard.spinReady') : (sp.open ? say(SAY, 'dailyCard.spinGoing') : say(SAY, 'dailyCard.spinExtra', { n: sp.extra })));
   }
   /* v2.3.3400: with the quests put away and the season dropped, a day whose
      spin is taken had nothing left to say: the streak says it */
-  if (!bits.length) bits.push(((st.streak && st.streak.n) || 1) + '-day streak');
+  if (!bits.length) bits.push(say(SAY, 'dailyCard.streak', { days: (st.streak && st.streak.n) || 1 }));
   return (
     <button type="button" data-daily-card-open="1" data-warm={warm ? '1' : '0'}
       {...scrollTap(() => dailyRewardsBus.openWindow(claim > 0 ? 'season' : 'today'))}
@@ -50,7 +52,7 @@ export const DailyRewardsCard = () => {
       }}>
       <span aria-hidden="true" style={{ flex: 'none', fontSize: 20, lineHeight: 1, color: COL.gold }}>★</span>
       <span style={{ flex: 1, minWidth: 0 }}>
-        <span style={{ display: 'block', fontSize: 13.5, fontWeight: 700 }}>Daily rewards</span>
+        <span style={{ display: 'block', fontSize: 13.5, fontWeight: 700 }}>{say(SAY, 'dailyCard.title')}</span>
         <span style={{ display: 'block', fontSize: 11.5, color: COL.text2, marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {bits.join(' · ')}
         </span>

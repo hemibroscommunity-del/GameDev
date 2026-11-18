@@ -5,6 +5,8 @@ import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: the wheel's ticks */
 import {
   dailyRewardsBus, spinLive, questsLive, seasonLive, askSpin, coinsShort, untilText,
 } from '@/game/dailyRewards.js';
+import { SAY } from '@/data/say/dailySpin.js';   /* v2.3.6341: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';
 
 /* ═══ v2.3.3140: THE FREE DAILY SPIN, AT THE GAMBLING DEN ═══
  *
@@ -350,7 +352,7 @@ export function DailySpin() {
     const big = prizes.slice(-3);
     const bigW = big.reduce((t, p) => t + (p.w || 0), 0);
     if (tot > 0 && bigW > 0 && top.w > 0) {
-      rare = 'Rare: 1 in ' + fmt(Math.round(tot / bigW)) + ' lands ' + fmt(big[0].c) + '+, 1 in ' + fmt(Math.round(tot / top.w)) + ' the ' + fmt(top.c) + ' jackpot.';
+      rare = say(SAY, 'dailySpin.rare', { bigOdds: fmt(Math.round(tot / bigW)), big: fmt(big[0].c), topOdds: fmt(Math.round(tot / top.w)), top: fmt(top.c) });
     }
   }
   const act = actRef.current;
@@ -359,40 +361,40 @@ export function DailySpin() {
   /* the words beside the wheel */
   let line;
   let tone = LS.txt2;
-  if (shown && shown.timeout) line = 'The wheel didn\'t hear back. Nothing was spent — try again.';
-  else if (shown && shown.refused === 'none') line = 'No spins left today.';
-  else if (shown && shown.refused === 'open') line = 'Take your pot or double it first.';
-  else if (shown && shown.refused === 'limit') line = 'That\'s the house limit — take it!';
-  else if (shown && shown.refused === 'locked') line = 'Hand in Mayor Bro\'s first quest to unlock the free spin.';
-  else if (shown && shown.refused) line = 'Nothing to take.';
-  else if (running && act === 'collect') line = 'Taking ' + fmt(sp.pot) + '…';
-  else if (running && act === 'double') line = 'Double or nothing…';
-  else if (running) line = 'Spinning…';
-  else if (shown && shown.act === 'spin') { line = (shown.jackpot ? 'JACKPOT! ' : 'You won ') + fmt(shown.pot) + ' coins!'; tone = LS.win; }
-  else if (shown && shown.act === 'double' && shown.won && shown.top) { line = 'Doubled! ' + fmt(shown.pot) + ' — the house limit, paid!'; tone = LS.win; }
-  else if (shown && shown.act === 'double' && shown.won) { line = 'Doubled! ' + fmt(shown.pot) + ' coins.'; tone = LS.win; }
-  else if (shown && shown.act === 'double') { line = 'Lost it all — ' + fmt(shown.lost) + ' coins.'; tone = LS.lose; }
-  else if (shown && shown.act === 'collect') { line = '+' + fmt(shown.paid) + ' coins!'; tone = LS.win; }
-  else if (potOpen) line = 'Your pot: ' + fmt(sp.pot) + ' coins.';
-  else if (locked) line = 'Hand in Mayor Bro\'s first quest to unlock the free spin.';
-  else if (sp.ready) line = 'Free today! Spin for a lump sum of coins.';
-  else if (sp.extra > 0) line = 'You have ' + sp.extra + ' bonus spin' + (sp.extra === 1 ? '' : 's') + '.';
-  else line = 'Today\'s spin is done.';
+  if (shown && shown.timeout) line = say(SAY, 'dailySpin.timeout');
+  else if (shown && shown.refused === 'none') line = say(SAY, 'dailySpin.refusedNone');
+  else if (shown && shown.refused === 'open') line = say(SAY, 'dailySpin.refusedOpen');
+  else if (shown && shown.refused === 'limit') line = say(SAY, 'dailySpin.refusedLimit');
+  else if (shown && shown.refused === 'locked') line = say(SAY, 'dailySpin.locked');
+  else if (shown && shown.refused) line = say(SAY, 'dailySpin.refused');
+  else if (running && act === 'collect') line = say(SAY, 'dailySpin.taking', { pot: fmt(sp.pot) });
+  else if (running && act === 'double') line = say(SAY, 'dailySpin.doubling');
+  else if (running) line = say(SAY, 'dailySpin.spinning');
+  else if (shown && shown.act === 'spin') { line = say(SAY, shown.jackpot ? 'dailySpin.jackpot' : 'dailySpin.won', { pot: fmt(shown.pot) }); tone = LS.win; }
+  else if (shown && shown.act === 'double' && shown.won && shown.top) { line = say(SAY, 'dailySpin.doubledTop', { pot: fmt(shown.pot) }); tone = LS.win; }
+  else if (shown && shown.act === 'double' && shown.won) { line = say(SAY, 'dailySpin.doubled', { pot: fmt(shown.pot) }); tone = LS.win; }
+  else if (shown && shown.act === 'double') { line = say(SAY, 'dailySpin.lost', { lost: fmt(shown.lost) }); tone = LS.lose; }
+  else if (shown && shown.act === 'collect') { line = say(SAY, 'dailySpin.paid', { paid: fmt(shown.paid) }); tone = LS.win; }
+  else if (potOpen) line = say(SAY, 'dailySpin.pot', { pot: fmt(sp.pot) });
+  else if (locked) line = say(SAY, 'dailySpin.locked');
+  else if (sp.ready) line = say(SAY, 'dailySpin.ready');
+  else if (sp.extra > 0) line = say(SAY, 'dailySpin.extra', { n: sp.extra });
+  else line = say(SAY, 'dailySpin.done');
 
   /* the small line under it */
   let sub;
-  if (potOpen && sp.canDouble) sub = 'Take it, or double or nothing: 50% to make it ' + fmt(sp.pot * 2) + ', 50% to lose it.';
-  else if (potOpen) sub = 'The house limit is ' + fmt(sp.limit) + '. Take it!';
+  if (potOpen && sp.canDouble) sub = say(SAY, 'dailySpin.subDouble', { twice: fmt(sp.pot * 2) });
+  else if (potOpen) sub = say(SAY, 'dailySpin.subLimit', { limit: fmt(sp.limit) });
   else if (locked && !running) sub = rare;
-  else if (!canStart && !running) sub = 'Next free spin in ' + untilText(st.resetAt, st) + '.';
+  else if (!canStart && !running) sub = say(SAY, 'dailySpin.subNext', { until: untilText(st.resetAt, st) });
   else sub = rare;
 
   let label;
-  if (running && act === 'spin') label = 'Spinning…';
-  else if (locked) label = 'Unlocks with the first quest';
-  else if (sp.ready) label = 'Spin · free';
-  else if (sp.extra > 0) label = 'Use a bonus spin (' + sp.extra + ')';
-  else label = 'Next free spin in ' + untilText(st.resetAt, st);
+  if (running && act === 'spin') label = say(SAY, 'dailySpin.spinning');
+  else if (locked) label = say(SAY, 'dailySpin.btnLocked');
+  else if (sp.ready) label = say(SAY, 'dailySpin.btnFree');
+  else if (sp.extra > 0) label = say(SAY, 'dailySpin.btnBonus', { n: sp.extra });
+  else label = say(SAY, 'dailySpin.btnNext', { until: untilText(st.resetAt, st) });
 
   const streakPct = Math.round(((Number(live.mult) || 1) - 1) * 100);
   const btnBase = {
@@ -405,11 +407,11 @@ export function DailySpin() {
     <div data-daily-spin={potOpen ? 'open' : (locked ? 'locked' : (sp.ready ? 'ready' : (sp.extra > 0 ? 'bonus' : 'done')))}
       style={{ marginBottom: 12, paddingBottom: 12, borderBottom: '1px solid ' + LS.border }}>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.14em', color: LS.txt3 }}>Free daily spin</div>
+        <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.14em', color: LS.txt3 }}>{say(SAY, 'dailySpin.title')}</div>
         {st.streak && st.streak.n > 1 && (
           <div data-spin-streak={st.streak.n} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: LS.txt2, fontVariantNumeric: 'tabular-nums' }}>
             <img src="/icons/ui/elem-flame.webp" alt="" draggable={false} style={{ width: 14, height: 14, objectFit: 'contain' }} />
-            {st.streak.n}-day streak{streakPct > 0 ? ' · +' + streakPct + '%' : ''}
+            {say(SAY, 'dailySpin.streak', { days: st.streak.n })}{streakPct > 0 ? say(SAY, 'dailySpin.streakBonus', { pct: streakPct }) : ''}
           </div>
         )}
       </div>
@@ -418,7 +420,7 @@ export function DailySpin() {
         <div style={{ flex: 1, minWidth: 0 }}>
           {potOpen && (
             <div data-spin-pot={sp.pot} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.12em', color: LS.txt3 }}>Pot</span>
+              <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.12em', color: LS.txt3 }}>{say(SAY, 'dailySpin.potLabel')}</span>
               <img src={coinArtFor(sp.pot) /* v2.3.3734: the pot, its pile */} alt="" draggable={false} style={{ width: 18, height: 18, objectFit: 'contain' }} />
               <span style={{ fontSize: 22, fontWeight: 800, color: LS.brass, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{fmt(sp.pot)}</span>
             </div>
@@ -438,7 +440,7 @@ export function DailySpin() {
             disabled={running}
             onClick={() => ask('collect')}
             style={{ ...btnBase, ...(running ? off : { cursor: 'pointer' }) }}>
-            Take {fmt(sp.pot)}
+            {say(SAY, 'dailySpin.take', { pot: fmt(sp.pot) })}
           </button>
           <button
             type="button"
@@ -451,10 +453,10 @@ export function DailySpin() {
             }}>
             {sp.canDouble ? (
               <>
-                <span style={{ display: 'block' }}>Double or nothing</span>
-                <span style={{ display: 'block', fontSize: 11, fontWeight: 600, opacity: 0.85, marginTop: 1 }}>50% for {fmt(sp.pot * 2)}</span>
+                <span style={{ display: 'block' }}>{say(SAY, 'dailySpin.double')}</span>
+                <span style={{ display: 'block', fontSize: 11, fontWeight: 600, opacity: 0.85, marginTop: 1 }}>{say(SAY, 'dailySpin.doubleFor', { twice: fmt(sp.pot * 2) })}</span>
               </>
-            ) : 'House limit'}
+            ) : say(SAY, 'dailySpin.houseLimit')}
           </button>
         </div>
       ) : (
@@ -471,7 +473,7 @@ export function DailySpin() {
       )}
       {sp.extra > 0 && (potOpen || sp.ready) && (
         <div style={{ fontSize: 11.5, color: LS.txt3, textAlign: 'center', marginTop: 4 }}>
-          {sp.extra} bonus spin{sp.extra === 1 ? '' : 's'} saved for later
+          {say(SAY, 'dailySpin.saved', { n: sp.extra })}
         </div>
       )}
       {/* v2.3.3400: with the season dropped and the quests put away there is
@@ -488,7 +490,7 @@ export function DailySpin() {
           fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
         }}>
         {/* v2.3.3400: the daily quests are put away; the button is the season's */}
-        {questsLive() ? (seasonLive() ? 'Daily quests & season' : 'Daily quests') : 'Season rewards'} <span aria-hidden="true" style={{ color: LS.brass }}>›</span>
+        {say(SAY, questsLive() ? (seasonLive() ? 'dailySpin.openBoth' : 'dailySpin.openQuests') : 'dailySpin.openSeason')} <span aria-hidden="true" style={{ color: LS.brass }}>›</span>
       </button>
       )}
     </div>
