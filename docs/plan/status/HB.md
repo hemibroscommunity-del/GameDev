@@ -1,7 +1,7 @@
 card: HB
 branch: claude/plan-hb-2-bandsize
-prs: #2188 (6240, the map): ready; #2199 (6241, the band's geometry): draft
-state: working
+prs: #2188 (6240, the map): merged; #2199 (6241, the band's geometry): ready
+state: ready
 
 ## Done
 
