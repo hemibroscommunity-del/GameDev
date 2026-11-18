@@ -40,6 +40,26 @@ S2's join half (avatar and colour held to their form) came after RV's
 
 Nothing new is written or sent: each refusal is one a phone already reads.
 
+## Left open (sitting 44's review of #2103)
+
+- **A keyless stranger playing a `bp_` record with no key.** The seeded
+  `bp_` record above registers "as before" only while nobody plays it. If
+  a keyless join is playing that id, the rightful keyed join is refused
+  `key`, and the stranger stays until it leaves. A `bp_` record with no
+  key is a character from before keys (or a suite's seed); none is known
+  in play.
+- **A keyless join naming an online guest's id still replaces the
+  guest**, as before. A guest has no key, so there is nothing to tell the
+  two apart; ACC-1 stops only the takeover by a key, which then locked the
+  guest out.
+- **ACC-3's claim, with `seathold` on.** With one socket a seat gone, one
+  public held id named on many sockets can fill every held slot until
+  those sockets are swept at the join window. `seathold` is off in
+  production.
+- **ACC-2, a keyless `bp_` join with an old `char:` row.** Since it makes
+  no `char:` row, it no longer reads one either, so a stored name and look
+  are not applied to a keyless join. A keyed join reads it as before.
+
 ## Tests
 
 `join-guard.test` (11 FAIL on main). Two older checks read the old way with

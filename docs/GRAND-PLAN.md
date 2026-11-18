@@ -739,24 +739,33 @@ nothing known, and a restore copies nothing.
   door: `_fightTo`, `fightdoor`), all ON, merged at sitting 41: 0 `todo`
   on `main` bdfa8734, 37 rows `door`; the line lowered 3 -> 0, the census
   strict. Card L done. Ticked by the gatekeeper, sitting 42, carried by sitting 43 (tag 5032).*
-- [ ] **5.4 [LATER] The frame as named steps.** PR 1 moves nothing: the six
+- [x] **5.4 [LATER] The frame as named steps.** PR 1 moves nothing: the six
   calls the loop already makes, plus one `legacy` step, become the list;
   each counts its errors to the crash ring (a throw in the frame reaches
   only the console today) and its time summed over 600 frames (Safari's
   clock ticks in whole ms). First move: the monsters' step. After 5.2b and
   5.3.
+  *Card M: #2089 (the list, 17 steps; the crash ring's `frame-step`),
+  #2127 (ten single calls inside legacy named, legacy 1555 -> 1531) and
+  #2131 (BroTown.jsx's 16 reads through the page's one reader) merged
+  (the last two at sitting 45); the lines lowered (frame-steps 1531,
+  switch-reader 17). Ticked by the gatekeeper, sitting 46 (tag 6260).*
 - [ ] **5.5 [LATER] The two renderers split** along the system map. After
   5.2b. **Tables first** (v2.3.5059): the hand-tuned tables that sit in the
   two files (scales, offsets, anchors: `BODY_DIR_SCALE` is one) leave as
   leaf files with no imports, a system's tables a PR, before any code
   moves. Step 1 counts them, a census. Nothing a player sees changes, and
   the code-lines line falls (5.1).
+  *Tables done (card M2: #2144, #2145, every table left; render-tables'
+  line 54 -> 0) and the code counted (#2146, part 5 of M-tables.md),
+  merged at sitting 45. The box waits for the code to leave (cards EN
+  and FX) (the gatekeeper, sitting 46, tag 6260).*
 - [ ] **5.6 [LATER] Types on the new walls only**: one `getState()`, the
   action door, the frame's context, the wire folder. As a suite, with
   TypeScript as the server's test tool. Typing the old code is a flood.
 - [ ] **5.7 [NEXT] Close the open hand.** `window._gameState` and
   `_gameFns` are not on a player's page; QA's probes attach under a token.
-- [ ] **5.8 [NEXT] The action door.** `src/game/actions.js`: one function a
+- [x] **5.8 [NEXT] The action door.** `src/game/actions.js`: one function a
   request row; a guard fails a send from anywhere else (150 places pass one
   allowlist today). Each call carries the request id. It is also where a
   helper would act (pillar 11), so it is built once.
@@ -772,6 +781,9 @@ nothing known, and a restore copies nothing.
   `act()`, a family a PR; the census 105 -> 4 sends, fetches 0), merged at
   sitting 21. The box waits for the last 4 sends (the gatekeeper,
   sitting 22, tag 5660).*
+  *Card K3: #2099 (nmlAsk.js's three) and #2104 (LoginSpinWindow.jsx's
+  one, with its request id) merged: the action door's line 0 sends,
+  0 fetches. Ticked by the gatekeeper, sitting 46 (tag 6260).*
 - [x] **5.9 [NOW] Pins.** PixiJS at an exact version; the places the game
   patches its inside, one table with a test.
   *Merged: #1702 (card B), PixiJS at 8.17.1, `tools/guards/pixi-pins.test.mjs`.*
@@ -1334,6 +1346,24 @@ happen in one sitting a day; and a play window with no deploy follows it.
     DECIDED (2026-11-14): *"Yes you can say the art assets were generated
     by ChatGPT."* The uploads at the top are sprite-sheet sources, some
     outdated by newer designs.
+
+**Decided for the owner while away** (the planning session, by
+`docs/plan/README.md`'s "While the owner is away"; each behind its switch,
+to read when you are back; recorded by the gatekeeper, sitting 46, tag 6260):
+
+- The harvest's grade and the bow's path ON for everyone (card K4,
+  #2168; your "Go recommended"). Off with `harvestgrade: false` or
+  `bowpath: false` in the live flags.
+- A bot score kept through a deploy (card K4, #2187, `botscoresave` ON):
+  a rise of the score is written with the strike or cook that made it.
+  For a person's play the score never rises, so nothing more is written;
+  a scripted player's record is written at most about 5 times more before
+  its flag, then about 7 times an hour while it sits under the line. Never
+  a write a move, never a timer. Off with `botscoresave: false`.
+- The caps census (card CAP) reads `questTrack`, `meals` and `prog3` as
+  "settles value" (they go first when the caps leave, 7.5).
+- The league's rung 5 (a model driving the browser) is left for later
+  (card LG; 10.7).
 
 **Yours outside the code:** two-step login on GitHub and Cloudflare, and
 the wallet key that deployed the scores contract kept safe; a spending
