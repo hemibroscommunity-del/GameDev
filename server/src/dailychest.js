@@ -142,12 +142,23 @@ export const dailyChestMethods = {
       /* v2.3.4840: the worker's armour stash too (gearstash.js _gearStashLiveAdd) */
       if (this._gearStashLiveAdd) this._gearStashLiveAdd(ps, prize.piece.slot, prize.piece, 'gear_chest');   /* v2.3.5281: its road */
     }
-    if (opKey) await this._opStamp(opKey);
+    /* ═══ v2.3.6021 (card RV; V4's Found): THE STAMP AND THE SAVE, ONE WRITE ═══
+       The open's stamp was awaited on its own and the record (the key taken,
+       the prize given) saved after it: a restart between left the stamp
+       saying "opened" over a record that never was -- a re-sent open was a
+       'dup' answered with nothing, the prize lost (and the inverse order the
+       repeat).  Now both are started in one synchronous run, so they commit
+       together (handoff rule 5; the MD-2 family, its switch: `paidmark`). */
+    const _oneWrite = !!opKey && !!(this._paidMarkOn && this._paidMarkOn());
+    if (opKey && !_oneWrite) await this._opStamp(opKey);
     if (rid) this._reqRemember(session.id, rid, { prize, streak });   /* v2.3.5194: the answer, for a repeat */
     /* v2.3.3527: an Elite or Godly piece is an achievement (achievements.js),
        after the await so its record goes out with this save */
     try { if (prize.kind === 'armor' && this._achvOnPiece) this._achvOnPiece(session.id, ps, prize.piece, 'chest'); } catch (e) { /* never break a chest */ }
-    this._saveRpg(session.id, ps);
+    if (_oneWrite) {
+      const _w = [this._opStamp(opKey), this._saveRpg(session.id, ps)];
+      await Promise.all(_w);
+    } else this._saveRpg(session.id, ps);
 
     const ws = this._wsBySessionId(session.id);
     if (ws) {

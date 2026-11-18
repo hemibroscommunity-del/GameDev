@@ -100,7 +100,9 @@ switch allows it.
   `shieldclaim`); a daily spin's, the login spin's and a season tier's paid
   mark in the credit's own run (v2.3.5810, `dailyrewards.js`,
   `loginspin.js`, `paidmark`); a `track`'s avatar, colour and look words in
-  the game's own forms (v2.3.5819, `lookform.js`, `lookform`).
+  the game's own forms (v2.3.5819, `lookform.js`, `lookform`); the daily
+  chest's stamp and save in one write (v2.3.6021, `dailychest.js`, under
+  `paidmark`).
 - Every save and payment rule; the login key, the device lock, the lockouts;
   a frozen account.
 - PvP consent and **every check on a hit between players** (pvpbalance.js,
