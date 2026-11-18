@@ -10,7 +10,8 @@
  * The same on one iPhone's blip: Safari drops the socket whenever the app
  * goes to the background.
  *
- * With `seathold: true` in the live flags:
+ * With `seathold` on (v2.3.6000, card CS: ON by default, the owner's word;
+ * `seathold: false` in the live flags turns it off):
  *   - a JOINED player whose socket closes (`close`, `error`: a drop, never a
  *     kick, the AFK sweep, a flood or a reset) holds a seat for HOLD_MS;
  *   - the room keeps who is in as one key, `seats` (the joined ids, at most
@@ -54,7 +55,8 @@
  * Without the seat on the address (a phone from before), a holder is let in
  * as a stranger would be.
  *
- * BUILT OFF: on only when `seathold` is `true`.  On, it costs at most one
+ * BUILT OFF; ON by default since v2.3.6000 (card CS, the owner, 2026-11-17:
+ * "I think turn all of them on then we monitor usage cost").  On, it costs at most one
  * small write every 15 s while the roster changes (5,760 a day at the very
  * most, ~17 cents a month at Cloudflare's $1 a million; a quiet room writes
  * nothing), and a pace that writes more is the owner's word.  Off: no hold, no read, no
@@ -104,10 +106,11 @@ export const SEAT_HOLD = Object.freeze({
   CLOSE_CODE: 4009,    /* join.js ROOM_FULL.CLOSE_CODE */
 });
 
-/** `seathold: true` in the live flags: on.  Unset or anything else: off. */
+/** v2.3.6000: ON by default (card CS, the owner, 2026-11-17: "I think turn all of them on then we monitor usage cost");
+ *  `seathold: false` in the live flags: off.  Unset or anything else: on. */
 export function seatHoldOn(room) {
   const f = room && room._liveFlags;
-  return !!(f && typeof f === 'object' && f[SEAT_HOLD.FLAG] === true);
+  return !(f && typeof f === 'object' && f[SEAT_HOLD.FLAG] === false);
 }
 
 export const seatHoldMethods = {

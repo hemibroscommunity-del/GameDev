@@ -75,7 +75,7 @@ The socket and the messages: the router, the relay, the client's connection and 
 
 A sitting: the join, leaving, lingering, the rejoin and what it re-sends.
 
-- **Files**: `server/src/`: join, leave, linger, lastplace, rejoinresend, nearjoin, presence2
+- **Files**: `server/src/`: join, leave, linger, lastplace, pacekeep, rejoinresend, nearjoin, presence2
 - **Files**: `src/game/`: rejoinSlots, resumeListeners, quietPhone, nearJoin, presence2, stateCleanup
 - **Doors**: `_playerLeaves` in `server/src/leave.js` (LEAVE_WAYS: the one way a session leaves); `REJOIN_SLOTS` in `src/game/rejoinSlots.js` (what the phone clears at state_sync, with the worker's re-send)
 - **Switches**: [its rows in the switch table](SWITCHES.md#session)
@@ -108,8 +108,8 @@ Telling a person from a script: bot signals, fingerprints, claims that are bound
 
 The live flags, the admin and dev levers, test mode, feedback.
 
-- **Files**: `server/src/`: liveops, admin, devtools, testmode, feedback
-- **Files**: `src/game/`: testMode, switches, ownerSwitches, feedbackOwner, silenceOwner, renameOwner, adminKeyStore
+- **Files**: `server/src/`: liveops, admin, devtools, testmode, feedback, usagemeter
+- **Files**: `src/game/`: testMode, switches, ownerSwitches, feedbackOwner, silenceOwner, renameOwner, adminKeyStore, usageMeter
 - **Files**: `server/src/`: restore
 - **Files**: `server/src/`: playerrestore
 - **Doors**: `flagNameOk` in `server/src/liveops.js` (the names a live flag (a kill switch) may take); `_testMode` in `server/src/testmode.js` (the one question an honesty check asks)

@@ -510,6 +510,10 @@ check('...and BOTH players can duel again afterwards',
    record's delete are one write now, a few turns sooner than the old
    credit-then-delete, which this section's counts happened to outrun) */
 for (let i = 0; i < 20; i++) await new Promise((r) => setTimeout(r, 0));
+/* v2.3.6000 (card CS): and `xferescrow`, on by default, pays it through
+   _creditWith with its ledger row: a real beat more, or it lands on this
+   section's 500 (a=550) */
+await new Promise((r) => setTimeout(r, 20));
 psA.dying = false; psA.dead = false; psB.dying = false; psB.dead = false;
 psA.coins = 500; psB.coins = 500;
 psA.z = 'town'; psB.z = 'meadow';

@@ -21,7 +21,7 @@
  *   9. THE WORLD'S SUM: through 1-4, gold and weapons are neither made nor
  *      lost.
  *  10. THE SWITCHES: `reqonce: false` -- a repeat acts twice, as before;
- *      `reqstamp` OFF writes no stamp row, ON a repeat the sitting has
+ *      `reqstamp: false` writes no stamp row; unset (ON since v2.3.6000) a repeat the sitting has
  *      forgotten (a store buy, no record of its own) answers `repeat`.
  *  5194b (the gatekeeper's review, sitting 25):
  *  11. A FIRST THAT THREW (it may have acted: a matched sale is owed) is kept,
@@ -226,9 +226,21 @@ A.weaponStash = [axe(1), axe(2), axe(3)]; A.coins = 1000;
   await route(r, w, 'POST', '/api/market/place', sellBody('bp_rq_c', 'rq-x'));
   await route(r, w, 'POST', '/api/market/place', sellBody('bp_rq_c', 'rq-x'));
   check('10: `reqonce: false`: a repeat acts twice, as before', C.weaponStash.length === 0, C.weaponStash.length);
-  check('10: `reqstamp` off (the default): no stamp row was written', ![...W.store.keys()].some((k) => k.startsWith(REQ_ONCE.STAMP)));
+  /* v2.3.6000 (card CS): `reqstamp` is ON by default (the owner, 2026-11-17:
+     "I think turn all of them on then we monitor usage cost"); `reqstamp:
+     false` turns it off */
+  {
+    const F = makeStore();
+    const r3 = await openRoom(F, { reqstamp: false });
+    const fs1 = await join(r3, 'bp_rq_fs'); const fs2 = await join(r3, 'bp_rq_ft');
+    r3.playerState['bp_rq_fs'].weaponStash = [axe(4)];
+    r3.playerState['bp_rq_ft'].coins = 1000;
+    const L3 = await route(r3, fs1, 'POST', '/api/store/list', { playerId: 'bp_rq_fs', kind: 'weapon', stashIndex: 0, price: 100 });
+    const B3 = await route(r3, fs2, 'POST', '/api/store/buy', { listingId: L3.listing.id, playerId: 'bp_rq_ft', reqId: 'rq-buy-8' });
+    check('10: `reqstamp: false`: the buy went through, and no stamp row was written', !!L3.listing && !!B3 && B3.ok === true && ![...F.store.keys()].some((k) => k.startsWith(REQ_ONCE.STAMP)), { buy: B3, stamps: [...F.store.keys()].filter((k) => k.startsWith(REQ_ONCE.STAMP)) });
+  }
   const T = makeStore();
-  const r2 = await openRoom(T, { reqstamp: true });
+  const r2 = await openRoom(T, {});   /* v2.3.6000: no flag, the default: on */
   const ws1 = await join(r2, 'bp_rq_s'); const ws2 = await join(r2, 'bp_rq_t');
   r2.playerState['bp_rq_s'].weaponStash = [axe(3)];
   r2.playerState['bp_rq_t'].coins = 1000;
@@ -236,7 +248,7 @@ A.weaponStash = [axe(1), axe(2), axe(3)]; A.coins = 1000;
   await route(r2, ws2, 'POST', '/api/store/buy', { listingId: L.listing.id, playerId: 'bp_rq_t', reqId: 'rq-buy-9' });
   r2._reqSeen = new Map();
   const again = await route(r2, ws2, 'POST', '/api/store/buy', { listingId: L.listing.id, playerId: 'bp_rq_t', reqId: 'rq-buy-9' });
-  check('10: `reqstamp` on: its row written, and a repeat the sitting forgot answers `repeat`', T.store.has(REQ_ONCE.STAMP + 'bp_rq_t:rq-buy-9') && again.ok === true && again.repeat === true && again.reqId === 'rq-buy-9', again);
+  check('10: `reqstamp` unset (on, the default since v2.3.6000): its row written, and a repeat the sitting forgot answers `repeat`', T.store.has(REQ_ONCE.STAMP + 'bp_rq_t:rq-buy-9') && again.ok === true && again.repeat === true && again.reqId === 'rq-buy-9', again);
 }
 
 /* ── 11. 5194b: a first that threw is kept, never run again ── */

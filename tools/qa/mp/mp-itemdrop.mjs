@@ -27,6 +27,11 @@ import * as H from './harness.mjs';
 export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
+/* v2.3.6180: the phones at dpr 1 (the harness's touch default is 2): two pages drawn in software on
+   this box at dpr 2 managed about 0.6 frames a second, 6 frames in the pile's ten seconds of
+   flashing, all of them lit in 1 run of 5 (5b, a flash of 2.5 to 7 a second).  Nothing here is
+   read in device pixels (the probes are world px, the card's buttons CSS px) */
+const DPR = 1;
 
 const drops = (P) => P.page.evaluate(() => (window.__btDrops ? window.__btDrops().piles : null));
 const held = (P, key) => P.page.evaluate((k) => {
@@ -112,8 +117,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   mkdirSync(OUT, { recursive: true });
   const shot = (P, name) => P.page.screenshot({ path: join(OUT, `itemdrop-${name}.png`) }).catch(() => {});
   const errs = [];
-  const A = await H.newPlayer(browser, { name: 'Dropper', wsPort, webPort, world: 'wheel', viewport: PHONE, touch: true });
-  const B = await H.newPlayer(browser, { name: 'Finder', wsPort, webPort, world: 'wheel', viewport: PHONE, touch: true, guest: true });
+  const A = await H.newPlayer(browser, { name: 'Dropper', wsPort, webPort, world: 'wheel', viewport: PHONE, touch: true, dpr: DPR });
+  const B = await H.newPlayer(browser, { name: 'Finder', wsPort, webPort, world: 'wheel', viewport: PHONE, touch: true, dpr: DPR, guest: true });
   for (const P of [A, B]) P.page.on('pageerror', (e) => errs.push(P.name + ': ' + String(e && e.message || e).slice(0, 200)));
   await H.enterWorld(A);
   await H.enterWorld(B);
@@ -193,33 +198,55 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const p5 = (m5 || []).find((p) => p.key === 'ore_copper_ore');
     rec.ok('5a one copper ore dropped through the card ("Drop it"), drawn as the ore\'s picture with no count', r5.step === 'done' && r5.label === 'Drop it' && !!p5 && /ore/.test(p5.url || '') && p5.count === null, { r5, p5 });
     /* v2.3.5652: the watcher beside it before it is aged, in view and past the magnet (50 px, the
-       pickup 20): his screen never listed it from where he had been left (a 150 px walk away) */
+       pickup 20).  v2.3.6180: no wait for his screen to list it first: it is still in its private
+       minute, which the worker sends to nobody else (itemdrop.js _pileHiddenFrom; check 1g), so
+       that wait always ran its 20 s out, and it is the reveal at the age below that brings it */
     if (p5) await H.hopTo(B, p5.x + 110, p5.y + 15, { step: 50 });
-    if (p5) await waitDrop(B, (ps) => ps.some((q) => q.lootId === p5.lootId), 20000);
-    await H.devOp(wsPort, 'dropage', aId, { ms: 121000 });
+    /* v2.3.6180: aged to three seconds short of its flashing, by the dropper's own reading of its
+       clocks, never a flat 121 s: the hop above and the walk to the card take tens of seconds on
+       this box, so 121 s on a pile already that old put it past its END (130 s), and the worker told
+       the room of it and let it go in the same loot tick (index.js _tickLoot: the reveal, then the
+       expiry).  The watcher never drew it and the dropper drew at most a frame of it lit
+       (J3-reds.md, {"A":[1],"B":[]}); 5c passed on a pile that had never flashed.  Three seconds
+       short: its private minute is long over (it ends 60 s before the flash), so the reveal brings
+       it to the watcher's screen and his picture of it loads while it is still lit; aged to its
+       flash itself, his first frames of it could all fall in the flash's dim half (1 run of 5:
+       B [0.18]) */
+    const pre5 = (await drops(A) || []).find((q) => q.lootId === (p5 && p5.lootId)) || null;
+    const ageBy = pre5 && pre5.flashInMs > 3000 ? Math.round(pre5.flashInMs - 3000) : 118000;
+    const aged5 = await H.devOp(wsPort, 'dropage', aId, { ms: ageBy });
     /* v2.3.5652: no wait for "flashing" first: it flashes for ten seconds and a wait of up to 15 s
        on each screen ate them (the alpha read below shows the flash itself) */
     /* on and off: its alpha read on every frame the page draws, both screens at once, until both
-       the lit and the dim half have been seen (at most 8 s of the ten it flashes for): this box
-       draws a few frames a second, so a count of reads by the clock misses one half (TRAPS §200) */
+       the lit and the dim half have been seen: this box draws a few frames a second, so a count of
+       reads by the clock misses one half (TRAPS §200).  v2.3.6180: read only on frames where the
+       screen has it flashing (the probe's `flashing`, dropFlashing on the phone's clock), so the
+       lit half is the flash's own, never the steady pile before it; and read to the pile's own
+       end (it leaves the screen ten seconds into the flash), not an 8 s window of the wall clock,
+       20 s at most */
     const sample = (P) => P.page.evaluate((id) => new Promise((resolve) => {
       const seen = new Set(), t0 = Date.now();
+      let had = false, frames = 0, flashFrames = 0;
       const step = () => {
         const ps = window.__btDrops ? window.__btDrops().piles : [];
         const q = (ps || []).find((x) => x.lootId === id);
-        if (q && q.alpha != null) seen.add(q.alpha);
+        frames++;
+        if (q) had = true;
+        if (q && q.flashing && q.alpha != null) { seen.add(q.alpha); flashFrames++; }
         const arr = [...seen];
-        if ((arr.some((x) => x >= 0.9) && arr.some((x) => x <= 0.3)) || Date.now() - t0 > 8000) resolve(arr);
-        else requestAnimationFrame(step);
+        if ((arr.some((x) => x >= 0.9) && arr.some((x) => x <= 0.3)) || (had && !q) || Date.now() - t0 > 20000) {
+          resolve({ alphas: arr, frames, flashFrames, ended: had && !q });
+        } else requestAnimationFrame(step);
       };
       requestAnimationFrame(step);
     }), p5 && p5.lootId);
     const [sa, sb] = await Promise.all([sample(A), sample(B)]);
-    const alphas = { A: new Set(sa), B: new Set(sb) };
+    console.log(`    5b frames (all / flashing / to its end): dropper ${sa.frames}/${sa.flashFrames}/${sa.ended}, watcher ${sb.frames}/${sb.flashFrames}/${sb.ended}`);
+    const alphas = { A: new Set(sa.alphas), B: new Set(sb.alphas) };
     const onOff = (s) => [...s].some((a) => a >= 0.9) && [...s].some((a) => a <= 0.3);
     await shot(B, '5-flashing');
     rec.ok('5b two minutes on, it flashes on both screens: on and off', onOff(alphas.A) && onOff(alphas.B),
-      { A: [...alphas.A], B: [...alphas.B] });
+      { A: [...alphas.A], B: [...alphas.B], frames: { A: [sa.frames, sa.flashFrames, sa.ended], B: [sb.frames, sb.flashFrames, sb.ended] }, ageBy, aged: aged5, before: pre5 && { flashInMs: pre5.flashInMs, goneInMs: pre5.goneInMs } });
     const end5A = await waitDrop(A, (ps) => !ps.some((p) => p.lootId === (p5 && p5.lootId)), 20000);
     const end5B = await waitDrop(B, (ps) => !ps.some((p) => p.lootId === (p5 && p5.lootId)), 20000);
     rec.ok('5c ...and ten seconds later it is gone from both screens, in nobody\'s bag',
@@ -227,10 +254,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
         && await held(A, 'ore_copper_ore') === 1 && await held(B, 'ore_copper_ore') === 0, { end5A, end5B });
 
     /* ── 6. WALK AWAY, WALK BACK: YOURS AGAIN ── */
-    await dropThroughCard(A, 'fish_trout', 1);
+    const r6 = await dropThroughCard(A, 'fish_trout', 1);
     const m6 = await waitDrop(A, (ps) => ps.some((p) => p.key === 'fish_trout'));
     const p6 = (m6 || []).find((p) => p.key === 'fish_trout');
-    rec.ok('6a a trout dropped (the bag 2 -> 1)', !!p6 && await held(A, 'fish_trout') === 1, p6);
+    /* v2.3.6180: a red names its step: the card's (r6), and whether its ask left (the wire's item_drop count) */
+    const last6 = p6 ? null : { asks: (await H.wireCounts(A)).item_drop || 0, zone: await H.readState(A, (S) => S.currentZone) };
+    rec.ok('6a a trout dropped (the bag 2 -> 1)', !!p6 && await held(A, 'fish_trout') === 1, { p6, r6, last6, trout: await held(A, 'fish_trout'), piles: m6 });
     if (p6) {
       await H.hopTo(A, p6.x - 110, p6.y + 15, { step: 50 });
       await A.page.waitForTimeout(800);

@@ -49,7 +49,7 @@ const root = new URL('../../', import.meta.url);
 
 /* ── 3. each metal bakes its own waist ── */
 {
-  const er = readFileSync(new URL('src/rendering/systems/entityRenderer.js', root), 'utf8');
+  const er = readFileSync(new URL('src/rendering/systems/entityRenderer.js', root), 'utf8') + readFileSync(new URL('src/rendering/leaves/entity-look.js', root), 'utf8');   /* v2.3.6200: + its leaves (card EN) */
   const key = /function _maskedKey\(bodyTex, worn, dilate\) \{\s*return [^;]*worn\.map\(w => w\.k\)/.test(er);
   check('3a the bake\'s cache key holds the worn ids (chest:copperplate, chest:ironplate)', key);
   const wornK = (er.match(/k: _?sl \+ ':' \+ _?it/g) || []).length;
