@@ -1,6 +1,6 @@
 card: RV
-branch: claude/rv-market (PR 2, stacked on claude/rv-review)
-prs: #2072 (5800, ready: sitting 42, after #2070 and #2071); PR 2 (5801, ready)
+branch: claude/rv-dying (PR 4, stacked on claude/rv-risechest)
+prs: #2072, #2083 (5800, 5801: sitting 42); PR 3 (5802, ready); PR 4 (5803, working)
 state: ready
 
 ## Done
@@ -12,9 +12,11 @@ state: ready
 
 ## Next
 
-- PR 2 (5801, ready): `market.js`, `inbox.js`: MS-2 (`mkttier`), MS-4
+- #2083 (5801, ready): `market.js`, `inbox.js`: MS-2 (`mkttier`), MS-4
   (`mktheal`). `market-own-place.test`: 10 FAIL on main, green here.
-- Then PR 3 (5802): `risechest.js`, `inbox.js`'s prune (MD-1, `risekeep`).
+- PR 3 (5802, ready): the chest's stamp kept for good (MD-1, `risekeep`).
+- PR 4 (5803): goods credited in the dying seconds kept (MS-3,
+  `dyingkeep`, `inbox.js` only). `dying-keep.test`: 4 FAIL without it.
 
 ## Found
 

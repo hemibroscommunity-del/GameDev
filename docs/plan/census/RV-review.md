@@ -136,7 +136,7 @@ player sees changes except the wrong thing the finding is.
 |---|---|---|---|---|
 | 2 | 5801 | `market.js`, `inbox.js` (`_creditWith`) | MS-2 (a sell filed under its weapon's own tier and kind); MS-4 (a refund and its order's delete in one write: `inbox.js` `_creditWith` learns a weapon) | `mkttier`, `mktheal` |
 | 3 | 5802 | `risechest.js`, `inbox.js` (the prune) | MD-1 (the chest's stamp is the record and is kept: the prune passes over its range, no new row) | `risekeep` |
-| 4 | 5803 | `trade2.js`, `inbox.js` | MS-3 (a dying side refuses the confirm; a goods credit to a dying player waits in the mail) | `dyingmail` |
+| 4 | 5803 | `inbox.js` | MS-3 (goods credited in the dying seconds join the death's shield, which the respawn keeps; no refusal, nothing new on screen) | `dyingkeep` |
 | 5 | 5804 | `nomansland.js` | MS-1 (the killer paid in the victim's own write) | `nmlonewrite` |
 | 6 | 5805 | `duel.js` | S1 (a challenge paced 5 s a pair, to a target that is here, in one place), S4 (a decline only of a real challenge, its words the worker's), MS-6's duel pot | `duelpace` |
 | 6b | 5806 | `storechat.js` | S5 (a muted sender's lines neither stored nor shown) | `storemute` |
