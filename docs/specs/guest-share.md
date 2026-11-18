@@ -59,6 +59,14 @@ idle for a minute may be shown the full room's screen to make way for a
 played character. A guest past the share sees the full room's screen, as it
 would at the cap.
 
+**Only on a spare socket** (v2.3.5732, card K2 PR 13). The share's
+refusals past the cap apply only while a guest is idle, which is when the
+gate opens spare sockets. With no guest idle, a join past the cap (a race at
+the gate, or a suite's join made by hand) is judged as it was before
+`guestshare`. The first version refused it, so with `seathold` thrown off,
+seat-hold.test's held player and stranger got `room_full` (card CS's
+report). `flood-guestshare.test` 8 holds it.
+
 ## The load benches
 
 Their bots join as keyless guests, so each bench turns `guestshare` off

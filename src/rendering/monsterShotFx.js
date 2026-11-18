@@ -44,7 +44,9 @@
  * pixels on the slime's own grid, and every sprite comes out of one of two
  * textures, so the whole effect batches.
  */
-import { Container, Rectangle, Sprite, Texture } from 'pixi.js';
+import { Cache, Container, Rectangle, Sprite, Texture } from 'pixi.js';
+import { keepAsImage } from './keepAsImage.js';   /* v2.3.5982: the atlas kept as an image of itself (card P2) */
+import { sw } from '../game/switches.js';   /* v2.3.5982: `?shotimage=0` */
 import {
   ART_PX, DIRS, GOO_PHASES, FIRE_PHASES, FIRE_BURST_FRAMES, GOO_SPLASH_FRAMES, FIRE_RAMP,
   gooFrame, gooShine, fireFrame, fireBurstFrame, scorchMark, gooPuddle, gooSplashFrame, smallPieces, softGlow,
@@ -91,6 +93,21 @@ let _atlasPromise = null;
 /* Pack minted images into one canvas (shelf packing, 1px gutters) and cut a
    Texture for each.  Returns a { tex, ax, ay } per image, where ax/ay is the
    image's anchor as a fraction, ready for sprite.anchor. */
+/* ═══ v2.3.5982: THE ATLAS KEPT AS AN IMAGE OF ITSELF ═══
+   Card P2's memory backlog (docs/plan/census/P2-memory.md, row 10): the two
+   atlases' canvases (1024 x 376 and 1024 x 49 at the memory check's fight,
+   1.7 MB) were drawn into once, here, and kept in the page for good: read by
+   nothing but Pixi's upload.  Each is turned into a PNG of itself
+   (keepAsImage.js: the texture's source swapped to the <img>, the same size,
+   so every frame cut from it is unchanged) and its canvas let go of.  An
+   <img> survives what a canvas does not (iPhone Safari emptying a canvas, a
+   black screen's rebuild uploading again), so nothing is made again for a
+   rebuilt renderer.  Behind the loading screen: preloadMonsterShots waits
+   for both images and decodes them, so the first ball's upload decodes
+   nothing (the preloading law).  `?shotimage=0` keeps the canvases. */
+const _asImage = !sw('shotimage');
+const _keeps = [];
+
 function packImages(list, smooth) {
   const W = 1024;
   const order = list.map((it, i) => i).sort((a, b) => list[b].img.h - list[a].img.h);
@@ -114,6 +131,7 @@ function packImages(list, smooth) {
   const base = Texture.from(cv);
   if (base.source) {
     try { base.source.scaleMode = smooth ? 'linear' : 'nearest'; } catch (e) { /* older pixi */ }
+    if (_asImage) _keeps.push(keepAsImage(base.source, Cache));
   }
   return list.map((it, i) => ({
     tex: new Texture({ source: base.source, frame: new Rectangle(pos[i][0], pos[i][1], it.img.w, it.img.h) }),
@@ -181,6 +199,13 @@ export function preloadMonsterShots() {
       glow,
       bytes: 1024 * (cut[0] ? cut[0].tex.source.height : 0) * 4,
     };
+    /* v2.3.5982: both kept as images and decoded before the gate opens (a
+       failed keep keeps its canvas, as before) */
+    const kept = await Promise.all(_keeps.splice(0));
+    await Promise.all([cut[0], glow].map((c, i) => {
+      const img = kept[i] && c && c.tex.source && c.tex.source.resource;
+      return img && typeof img.decode === 'function' ? img.decode().catch(() => {}) : null;
+    }));
   })().catch(() => { _atlas = null; });
   return _atlasPromise;
 }

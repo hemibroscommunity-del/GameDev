@@ -366,7 +366,7 @@ const LIST = {
     asPicture: ['retry', 1, "an object page loaded whole: a failed page is dropped and asked again (pageDropDue, TRAPS §302); no time limit"],
   },
   'src/rendering/wheelSignposts.js': { loadOne: ['once', 1, "the signposts' land icons: no time limit, no retry"] },
-  'src/rendering/worldLife.js': { preloadWorldLife: ['once', 1, "the props' moving parts: no time limit, no retry"] },
+  'src/rendering/worldLife.js': { loadWorldLifeParts: ['once', 1, "the props' moving parts: no time limit, no retry (v2.3.5983: moved from preloadWorldLife, loaded with the retired town)"] },
   /* v2.3.5003: held only near its land, loaded as you walk toward it: a time limit and a retry of its own */
   'src/rendering/zoneBannerPreload.js': { warm: ['own', 1, "a land's banner, warmed and held near its land: a failure at WARM_LIMIT_MS (20 s), asked again FAIL_RETRY_MS later while you are near; one not there plays the plaque alone"] },
   'src/rendering/zoneTextures.js': {

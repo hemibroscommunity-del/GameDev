@@ -172,7 +172,7 @@ import { maybeShowWelcome } from '@/game/welcomeBanner.js';
 import { worldReady, whenWorldReady } from '@/ui/loadingGate.js';   /* v2.3.4136: nothing for the world while a loading screen is up */
 import { checkWitnesses, noteCheckActed, EMPTIED_NEED, CANVAS_CHECK_OFF } from '@/rendering/canvasWitness.js'; /* v2.3.3701: a black screen's rebuild asks first whether Safari emptied the pictures */
 /* v2.3.3890: a second loss inside a rebuild's 5 s is owed a rebuild (window._rebuildRenderer); `?owedrebuild=0` drops it, as before */
-const OWED_REBUILD_OFF = (function () { try { return /[?&]owedrebuild=0\b/.test(window.location.search || ''); } catch (e) { return false; } })();
+const OWED_REBUILD_OFF = (function () { try { return sw('owedrebuild'); } catch (e) { return false; } })();   /* v2.3.5342: the page's one reader (game/switches.js) */
 import { markWorldIn, skipTutorial, worldInMs } from '@/ui/onboardingPace.js'; /* v2.3.2766: one onboarding voice at a time; v2.3.2890 + the welcome plate's Skip tutorial */
 import { BUILD_INFO } from './BuildBadge.jsx';
 import { pushHudPopup, playerScreenPoint } from './XpFlyOverlay.jsx';
@@ -497,7 +497,7 @@ import { laneKnob } from '@/game/drawLanes.js';   /* v2.3.5233 (card O PR 13): t
 function _stepCapMs() { try { const v = Number(laneKnob('step')); return v > 0 ? v : 50; } catch (e) { return 50; } }
 import { framePaceOn, makeFramePacer, noteDrawn, whenDrawn, beforeDraw, runBeforeDraw } from '@/game/framePacer.js';   /* v2.3.4400: a steady rate on a screen the game cannot keep up with */
 import { makeFrameSteps } from '@/game/frameSteps.js';   /* v2.3.5340: the frame as named steps (grand plan 5.4, card M) */
-import { sw } from '@/game/switches.js';   /* v2.3.5340: the page's one reader of its switches (`?framesteps=0`) */
+import { sw, swHas, pageAddress } from '@/game/switches.js';   /* v2.3.5340: the page's one reader of its switches (`?framesteps=0`); v2.3.5342: every read of the address */
 import { accTrack } from '@/game/accuracy.js';   /* v2.3.4545: the shot counts that ride the track */
 import { noteMade } from '@/debug/madeLog.js';   /* v2.3.4400: a job between frames says its name and its time */
 import { setStripPlay } from '@/rendering/zoneTextures.js';   /* v2.3.4400: a look that loads as you walk is unpacked between frames */
@@ -1023,7 +1023,7 @@ var NPC_TAP_REACH = 300;
    (v2.3.2050).  Ace was tap-only already (v2.3.2620).  `?npcprox` brings the
    walk-up opener back for a tab, to compare. */
 var NPC_PROX_OPENS = (function () {
-  try { return new URLSearchParams(window.location.search).has('npcprox'); } catch (e) { return false; }
+  try { return swHas('npcprox'); } catch (e) { return false; }   /* v2.3.5342: the page's one reader */
 })();
 
 /* ═══ v2.3.2975: MAYOR BRO IN THE WHEEL'S BROTOWN ═══
@@ -1195,7 +1195,7 @@ export var BroTown = function BroTown(_ref0) {
        localStorage is unavailable (some private-mode configurations). */
     myId: (function () {
       try {
-        if (/[?&]guest=1\b/.test(window.location.search)) return Math.random().toString(36).slice(2, 10);
+        if (sw('guest')) return Math.random().toString(36).slice(2, 10);   /* v2.3.5342: the page's one reader */
         var _pf = localStorage.getItem('bt_passphrase');
         /* ═══ v2.3.2110: BEFORE MINTING A KEY, ASK IF THIS IS REALLY A NEW DEVICE ═══
            Owner: "the continue button ... right now it shows empty each time an
@@ -1229,7 +1229,7 @@ export var BroTown = function BroTown(_ref0) {
        here).  A guest's id sends no key, so it has none. */
     _tabKey: (function () {
       try {
-        if (/[?&]guest=1\b/.test(window.location.search)) return null;
+        if (sw('guest')) return null;   /* v2.3.5342 */
         return localStorage.getItem('bt_passphrase');
       } catch (e) { return null; }
     })(),
@@ -2434,7 +2434,7 @@ export var BroTown = function BroTown(_ref0) {
      backed out of. */
   var backToMenu = function backToMenu() {
     try {
-      if (/[?&]create=1\b/.test(window.location.search)) {
+      if (sw('create')) {   /* v2.3.5342: the page's one reader */
         var _u = new URL(window.location.href);
         _u.searchParams.delete('create');
         window.history.replaceState(null, '', _u.pathname + _u.search + _u.hash);
@@ -4875,7 +4875,7 @@ export var BroTown = function BroTown(_ref0) {
     };
     /* v2.3.4400: the steady step (game/frameClock.js); none with `?dtsmooth=0` */
     var _frameClock = null;
-    try { if (frameSmoothOn(window.location.search || '')) _frameClock = makeFrameClock(undefined, _stepCapMs); } catch (e) { _frameClock = null; }   /* v2.3.5233: its cap the lane's */
+    try { if (frameSmoothOn(pageAddress())) _frameClock = makeFrameClock(undefined, _stepCapMs); } catch (e) { _frameClock = null; }   /* v2.3.5233: its cap the lane's */
     /* ═══ v2.3.4400: A STEADY RATE ON A FAST SCREEN (game/framePacer.js) ═══
        The owner's iPhone, Safari offering it the screen's own 120 a second,
        twenty-four minutes in: "Still performance issues", "fps ~51  frame
@@ -4884,7 +4884,7 @@ export var BroTown = function BroTown(_ref0) {
        game draws on a whole number of refreshes it can keep to; every other
        screen is every refresh, as ever.  `?pace=0`: the old way. */
     var _framePacer = null, _paceEvery = 1;
-    try { if (framePaceOn(window.location.search || '')) _framePacer = makeFramePacer(); } catch (e) { _framePacer = null; }
+    try { if (framePaceOn(pageAddress())) _framePacer = makeFramePacer(); } catch (e) { _framePacer = null; }   /* v2.3.5342: the address from the page's one reader */
     /* the frame meter's line and QA (mp-steadypace): the screen's rate, and every how many refreshes a frame is drawn */
     if (typeof window !== 'undefined') window.__btPace = function () { return _framePacer ? _framePacer.read() : null; };
     /* v2.3.4400: a monster's look that loads as you walk is unpacked a few ms a frame (zoneTextures.js): this frame's
@@ -4904,7 +4904,10 @@ export var BroTown = function BroTown(_ref0) {
        the next real upload, never sends alone).  Nothing moves: a throw still
        ends the frame as before.  The probe: window.__btSteps().  `?framesteps=0`:
        no marks, no ring entry, the loop as it was.  A line added inside
-       legacy turns tools/guards/frame-steps.test.mjs red (its census only falls). */
+       legacy turns tools/guards/frame-steps.test.mjs red (its census only falls).
+       v2.3.5341 (card M PR 2): each single call inside legacy is a step too
+       (tap, sound, ride, zone, farm, townsfolk, monsters, weaponFeel, loot,
+       peers), marked `to(a, b)` on its own line: nothing moved. */
     var _steps = sw('framesteps') ? null : makeFrameSteps({ report: function (name, msg) { recordCrash('frame-step', name + ': ' + msg); } });
     if (typeof window !== 'undefined') window.__btSteps = function () { return _steps ? _steps.read() : { on: false }; };
     var _gameLoop = function gameLoop(_rafT) {
@@ -5037,7 +5040,7 @@ export var BroTown = function BroTown(_ref0) {
            still held past its window is the attack now -- before the sprint,
            the walk, the fight and the drawing read S.autoAttack this frame
            (game/tapJump.js settleTapPress) */
-        settleTapPress(S, Date.now());
+        if (_steps) _steps.to(0, 1); settleTapPress(S, Date.now()); if (_steps) _steps.to(1, 0);   /* v2.3.5341: the step `tap` (game/frameSteps.js) */
 
         /* ═══ Defensive death-flow catch ═══
            The "rich" death handlers (server monster_attack ~2272, local
@@ -5432,12 +5435,12 @@ export var BroTown = function BroTown(_ref0) {
            same frame, with the water's own splash. */
         var _jNow = Date.now();
         var _jLanded = tickJump(S, _jNow, _playerDead);
-        tickWaterAmbience(S, _jNow);   /* v2.3.3343: the river heard on its banks (game/waterAmbience.js) */
+        if (_steps) _steps.to(0, 2); tickWaterAmbience(S, _jNow);   /* v2.3.5341: the step `sound`, to tickDanceMusic; v2.3.3343: the river heard on its banks (game/waterAmbience.js) */
         tickTownAmbience(S, _jNow);   /* v2.3.3434: the Blacksmith's anvil near the forge (game/townAmbience.js) */
         tickAmbientBeds(S, _jNow);   /* v2.3.3462: the sea from its shore, BroTown's crowd, a fire's crackle (game/ambientBeds.js) */
         tickRideSound(S, _jNow);   /* v2.3.3791: your skateboard's wheels while you ride (game/rideSound.js) */
         tickHeartbeat(S, _jNow);   /* v2.3.3462: under a quarter of your health (game/ownSounds.js) */
-        tickDanceMusic(S);   /* v2.3.3462: your dance takes the music deck (game/moveSounds.js) */
+        tickDanceMusic(S); if (_steps) _steps.to(2, 0);   /* v2.3.3462: your dance takes the music deck (game/moveSounds.js) */
         var _inAir = !!S._jump;
         var _swEv = _inAir ? null : updateWheelSwim(S, Date.now(), isWheelTrialZone(S.currentZone),
           playerGroundDy(S.currentZone, P.x, P.y));
@@ -5721,7 +5724,7 @@ export var BroTown = function BroTown(_ref0) {
         var _step = finalSpd * (S._dtScale || 1);
         var nx = P.x + dx * _step;
         var ny = P.y + dy * _step;
-        rideStepped(S, P.x, P.y, nx, ny);   /* v2.3.5440: judged next frame: a step a wall or the Mayor gate stopped ends the roll */
+        if (_steps) _steps.to(0, 3); rideStepped(S, P.x, P.y, nx, ny); if (_steps) _steps.to(3, 0);   /* v2.3.5341: the step `ride`; v2.3.5440: judged next frame: a step a wall or the Mayor gate stopped ends the roll */
 
         /* Store velocity for facing/mirroring code */
         P.vx = dx * finalSpd;
@@ -5998,7 +6001,7 @@ export var BroTown = function BroTown(_ref0) {
            Phase 6, behavior-frozen). ptx/pty/_zone are intentionally the
            PRE-transition values and stay in this scope — the water check
            below keeps reading them, same as the inline code. */
-        handleZoneTransitions(S, ptx, pty, _zone, W, H);
+        if (_steps) _steps.to(0, 4); handleZoneTransitions(S, ptx, pty, _zone, W, H);   /* v2.3.5341: the step `zone`, to updateDungeonWaves */
 
         /* v2.3.788: the WASTELAND fence-climb block that lived here was
            removed with the rest of the Lawless Land content (owner decision,
@@ -6015,7 +6018,7 @@ export var BroTown = function BroTown(_ref0) {
         /* §14.1 Dungeon wave progression — v2.3.810: moved verbatim to
            src/game/dungeonWaves.js (REBUILD-PLAN Phase 8, slice 2). Custom
            §DNG dungeons are live; the standard tile-10 path is dormant. */
-        updateDungeonWaves(S, { stateRef: stateRef, setRpgState: setRpgState });
+        updateDungeonWaves(S, { stateRef: stateRef, setRpgState: setRpgState }); if (_steps) _steps.to(4, 0);
 
         /* ═══ v2.3.1778: THE ENTRANCES ARE BACK, BECAUSE THE ART SHIPPED ═══
            v2.3.823 removed them: "the town buildings have no in-game art yet,
@@ -6100,7 +6103,7 @@ export var BroTown = function BroTown(_ref0) {
            The one your boots stand in reach of and its next step (the stick's
            picture, E, a tap), and a step under way -- its sounds, its end, or
            your walking away from it (game/farmWalk.js) */
-        tickFarmWalk(S, Date.now());
+        if (_steps) _steps.to(0, 5); tickFarmWalk(S, Date.now()); if (_steps) _steps.to(5, 0);   /* v2.3.5341: the step `farm` */
 
 
         /* Revive harvested gather nodes whose respawnAt has elapsed.
@@ -7447,14 +7450,14 @@ export var BroTown = function BroTown(_ref0) {
 
         /* v2.3.3525: Lil Bro's race -- the countdown's beats, the gun, the end
            (game/race.js) */
-        raceTick(S, Date.now());
+        if (_steps) _steps.to(0, 6); raceTick(S, Date.now());   /* v2.3.5341: the step `townsfolk`, to townsfolkFrame */
         /* v2.3.4058: the townsfolk's day in the Wheel's BroTown -- where each is
            on his loop, by the clock (game/townsfolkDay.js) */
         var _fwZone = ZONES[S.currentZone];
         townsfolkFrame(S, Date.now(), { on: isWheelTrialZone(S.currentZone) && folkWalkWanted() && lookFolkOn(), chains: QUEST_CHAINS,
           feetX: P.x, feetY: P.y + playerGroundDy(S.currentZone, P.x, P.y), talking: !!S._uiBusy,
           grid: (S._tiledWalkable && S._tiledWalkable[S.currentZone]) || null, worldW: _fwZone ? _fwZone.w * TILE : 0, worldH: _fwZone ? _fwZone.h * TILE : 0,
-          boxes: zoneBlockers(S.currentZone) });
+          boxes: zoneBlockers(S.currentZone) }); if (_steps) _steps.to(6, 0);
         /* Update NPCs — §19.1 companion follow + quest interaction + wander */
         var _npcTown = null;   /* v2.3.4040: the safe ground, read once a frame when an idle line asks */
         if (S.npcs) {
@@ -7651,18 +7654,18 @@ export var BroTown = function BroTown(_ref0) {
            verbatim to src/game/monsterCombat.js (REBUILD-PLAN Phase 8,
            slice 3). activeWpn is the outer game-loop weapon (distinct from
            the block-internal _activeWpn); React setters via deps. */
-        updateMonsterCombat(S, { activeWpn: activeWpn, setRpgState: setRpgState, setLevelUpMsg: setLevelUpMsg });
+        if (_steps) _steps.to(0, 7); updateMonsterCombat(S, { activeWpn: activeWpn, setRpgState: setRpgState, setLevelUpMsg: setLevelUpMsg }); if (_steps) _steps.to(7, 8);   /* v2.3.5341: the steps `monsters`, then `weaponFeel` */
         /* v2.3.4800: the sword's feel, once a frame after the combat step: the
            blade's readiness (the glint), the cut's arc once the swing has its
            angle (game/swordFeel.js; the timing bar's call stood here) */
         swordFeelFrame(S, Date.now());
         staffFeelFrame(S, Date.now(), BT_AUDIO);   /* v2.3.4803: the staff's gather -- its stage, its hum, the orb the renderer draws */
-        bowFeelFrame(S, Date.now());   /* v2.3.4802: the bow's draw -- its bend and line, the creak's pitch, the click as it settles, the pose */
+        bowFeelFrame(S, Date.now()); if (_steps) _steps.to(8, 9);   /* v2.3.5341: then `loot`; v2.3.4802: the bow's draw -- its bend and line, the creak's pitch, the click as it settles, the pose */
 
         /* Pick up ground loot — walk over it */
         /* v2.3.812: the ~347-line ground-loot pickup block moved verbatim to
            src/game/groundLoot.js (REBUILD-PLAN Phase 8, slice 4). */
-        updateGroundLootPickup(S, { pixiRef: pixiRef, setRpgState: setRpgState, setLevelUpMsg: setLevelUpMsg });
+        updateGroundLootPickup(S, { pixiRef: pixiRef, setRpgState: setRpgState, setLevelUpMsg: setLevelUpMsg }); if (_steps) _steps.to(9, 0);
 
         /* §3.2 HP regeneration — OOC: 1.5%/s after 5s no damage. Restoration scales. */
         if (S.rpg && S.lastDamageTaken && Date.now() - S.lastDamageTaken > 5000) {
@@ -7735,7 +7738,7 @@ export var BroTown = function BroTown(_ref0) {
            frame.  Date.now() is hoisted out of the inner loop. */
         /* Release any queued peer damage numbers at a live cadence before
            the TTL prune (smooth-peer-damage-numbers.md). */
-        releasePeerDamage(S, Date.now());
+        if (_steps) _steps.to(0, 10); releasePeerDamage(S, Date.now()); if (_steps) _steps.to(10, 0);   /* v2.3.5341: the step `peers` */
         if (S.dmgNumbers && S.dmgNumbers.length) {
           var _dn = S.dmgNumbers;
           var _dnNow = Date.now();
@@ -8381,7 +8384,7 @@ export var BroTown = function BroTown(_ref0) {
              pointer is on the screen NOW (deskPointerAngle), so walking with
              the mouse still keeps it on the pointer.  `?shieldaim=mouse`:
              the pointer always, monsters or not (the owner's to choose). */
-          if (S._shieldAimMouse == null) S._shieldAimMouse = shieldFollowsPointerAlways(typeof window !== 'undefined' ? window.location.search : '');
+          if (S._shieldAimMouse == null) S._shieldAimMouse = shieldFollowsPointerAlways(pageAddress());   /* v2.3.5342: the page's one reader */
           var _sta = S._shieldAimMouse ? null : shieldTargetAngle(S);
           var _spa = deskPointerAngle(S);
           S._shieldAngle = _sta != null ? _sta : (_spa != null ? _spa : S._mouseAimAngle);
@@ -8451,19 +8454,19 @@ export var BroTown = function BroTown(_ref0) {
         /* ── Screen-shake / facing / footstep / interp / remote-projectile:
            v2.3.814: moved verbatim to src/game/visualSystems.js
            (REBUILD-PLAN Phase 8, slice 6). ── */
-        if (_steps) { _steps.end(0); _steps.begin(1); } updateVisualSystems(S); if (_steps) _steps.end(1);   /* v2.3.5340: legacy ends; the steps */
+        if (_steps) { _steps.end(0); _steps.begin(11); } updateVisualSystems(S); if (_steps) _steps.end(11);   /* v2.3.5340: legacy ends; the steps */
 
         /* ── Arrow projectile simulation — v2.3.813: moved verbatim to
            src/game/projectiles.js (REBUILD-PLAN Phase 8, slice 5). ── */
-        if (_steps) _steps.begin(2); updateArrows(S, { setRpgState: setRpgState, setLevelUpMsg: setLevelUpMsg }); if (_steps) _steps.end(2);
+        if (_steps) _steps.begin(12); updateArrows(S, { setRpgState: setRpgState, setLevelUpMsg: setLevelUpMsg }); if (_steps) _steps.end(12);
 
         /* ── Slime projectile simulation — v2.3.813: moved verbatim to
            src/game/projectiles.js (REBUILD-PLAN Phase 8, slice 5). ── */
-        if (_steps) _steps.begin(3); updateSlimeProjectiles(S); if (_steps) _steps.end(3);
+        if (_steps) _steps.begin(13); updateSlimeProjectiles(S); if (_steps) _steps.end(13);
 
         /* ── State cleanup flags — v2.3.815: moved verbatim to
            src/game/stateCleanup.js (REBUILD-PLAN Phase 8, slice 7). ── */
-        if (_steps) _steps.begin(4); updateStateCleanup(S); if (_steps) _steps.end(4);
+        if (_steps) _steps.begin(14); updateStateCleanup(S); if (_steps) _steps.end(14);
 
         /* ══════════════════════════════════════════════════════════
            ── RENDER ── PixiJS only.  The Canvas 2D fallback path was
@@ -8480,11 +8483,11 @@ export var BroTown = function BroTown(_ref0) {
            src/game/renderFrame.js (v2.3.816, REBUILD-PLAN Phase 8 slice 8).
            Frame-timing values (_perfNow/_perfDelta) computed at loop top
            are passed in; perfTracker recording lives in the module now. */
-        if (_steps) _steps.begin(5); renderFrame(S, { pixiRef: pixiRef, canvas: canvas, nfts: nfts, perfNow: _perfNow, perfDelta: _perfDelta }); if (_steps) _steps.end(5);
+        if (_steps) _steps.begin(15); renderFrame(S, { pixiRef: pixiRef, canvas: canvas, nfts: nfts, perfNow: _perfNow, perfDelta: _perfDelta }); if (_steps) _steps.end(15);
         /* v2.3.4360: the page's marks on things IN the world (the first
            steps' box and arrow on Mayor Bro) are moved now, from the camera
            this frame was drawn with (ui/afterFrame.js) */
-        if (_steps) _steps.begin(6); runAfterFrame(S); if (_steps) _steps.end(6);
+        if (_steps) _steps.begin(16); runAfterFrame(S); if (_steps) _steps.end(16);
       } catch (gameLoopErr) {
         /* v2.3.5340: the step that was open threw: counted, its first throw to the ring */
         var _stepThrew = _steps ? _steps.fault(gameLoopErr) : null;
@@ -8696,7 +8699,7 @@ export var BroTown = function BroTown(_ref0) {
        back see-through everywhere -- which a drawn frame never is, the canvas
        is cleared opaque -- was not copied, and is taken the old way
        (_wdThumbCollect).  `?wdgeterror` asks every time, as before. */
-    var WD_GETERROR_EVERY = /[?&]wdgeterror\b/.test(window.location.search || '');
+    var WD_GETERROR_EVERY = swHas('wdgeterror');   /* v2.3.5342: the page's one reader */
     var _WD_CLEAR = new Float32Array([0, 0, 0, 0]);
     function _wdThumbAsk(cv) {
       var gl = _wdGl(cv);   /* v2.3.3313: never cv.getContext (above) */
@@ -9002,7 +9005,7 @@ export var BroTown = function BroTown(_ref0) {
                the picker until the next join.  Free — this block is already
                throttled to one write per 30s, and the same guest guard
                applies for the same reason. */
-            if (!/[?&]guest=1\b/.test(window.location.search)) {
+            if (!sw('guest')) {   /* v2.3.5342 */
               var _hbPf = _tabRowKey(S);   /* v2.3.4606: this tab's own row, never the slot's */
               /* v2.3.3355: and a new key's id -- only the one a join got in
                  with (wsClient.js `_joinedId`): S.myId on a page that started
@@ -12159,7 +12162,7 @@ export var BroTown = function BroTown(_ref0) {
          boot check below would find no character and route to the door,
          which would put the player back on the screen they just answered. */
       var _forceCreate = false;
-      try { _forceCreate = /[?&]create=1\b/.test(window.location.search); } catch (e) { _forceCreate = false; }
+      try { _forceCreate = sw('create'); } catch (e) { _forceCreate = false; }   /* v2.3.5342 */
       /* ═══ v2.3.3046: A KEY THAT ALREADY HAS A CHARACTER IS NOT SENT TO THE CREATOR ═══
          The flag is set by the door AFTER it mints a fresh key, so a key that
          is already in this device's roster -- joinTown writes it there the
@@ -12186,7 +12189,7 @@ export var BroTown = function BroTown(_ref0) {
         return;
       }
       var _forceLogin = false;
-      try { _forceLogin = /[?&]login=1\b/.test(window.location.search); } catch (e) { _forceLogin = false; }
+      try { _forceLogin = sw('login'); } catch (e) { _forceLogin = false; }   /* v2.3.5342 */
       if (_forceLogin) {
         if (alive) setBootPhase('login');
         try { window.__btBootRoute = 'login-forced'; } catch (e) {}
@@ -12413,7 +12416,7 @@ export var BroTown = function BroTown(_ref0) {
        values onto a throwaway would just be confusing. */
     var _cachedRpg = null;
     try {
-      if (!/[?&]guest=1\b/.test(window.location.search)) {
+      if (!sw('guest')) {   /* v2.3.5342 */
         _cachedRpg = JSON.parse(localStorage.getItem('bt_rpg'));
       }
     } catch (e) {}
@@ -12463,7 +12466,7 @@ export var BroTown = function BroTown(_ref0) {
        Stamping here would write the throwaway's name and level onto the real
        character's row — the row the player later taps to continue. */
     try {
-      if (!/[?&]guest=1\b/.test(window.location.search)) {
+      if (!sw('guest')) {   /* v2.3.5342 */
         var _rosterPf = _tabRowKey(S);   /* v2.3.4606: this tab's own row */
         /* v2.3.3355: no id here -- the join is not in yet, and S.myId may be
            a guess for a new key (the heartbeat keeps the one it got in with) */
@@ -12532,8 +12535,7 @@ export var BroTown = function BroTown(_ref0) {
        readable. */
     var _skipIntro = false;
     try {
-      var _p = new URLSearchParams(window.location.search);
-      if (_p.get('debug') === '1') _skipIntro = true;
+      if (sw('debug')) _skipIntro = true;   /* v2.3.5342: the page's one reader */
     } catch (e) {}
     /* Kick off the full avatar-asset preload now (equip is finalized at this
        point) so the intro overlay can hold until it's flicker-free. */
@@ -12576,7 +12578,7 @@ export var BroTown = function BroTown(_ref0) {
     var wanted = false;
     var _spot = null;   /* v2.3.3574 */
     try {
-      if (/[?&]noresume=1\b/.test(window.location.search)) return;
+      if (sw('noresume')) return;   /* v2.3.5342 */
       wanted = sessionStorage.getItem('bt_resume_now') === '1';
       sessionStorage.removeItem('bt_resume_now');
       /* v2.3.3574: where a pictures-emptied reload left the bro (_recoveryReload

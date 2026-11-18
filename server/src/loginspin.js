@@ -131,14 +131,27 @@ export const loginSpinMethods = {
       await this._loginSpinSave(acct, rec);
     }
     if (rec.paid || !rec.pid) return;
-    if (rec.pot > 0) {
-      await this._creditPlayer(rec.pid, {
-        opId: 'loginspin:' + acct + ':' + rec.day, source: 'dailyspin', kind: 'gold',
-        payload: { amount: rec.pot }, note: 'Free daily spin',
-      });
+    /* v2.3.5810 (card RV PR 10, MD-2; dailyrewards.js _paidMarkOn): the paid
+       mark rides the credit's own run -- the save that followed it is that
+       put now, so no more rows, and a restart can no longer split them */
+    if (rec.pot > 0 && this._paidMarkOn && this._paidMarkOn()) {
+      rec.paid = true;
+      try {
+        await this._creditWith(rec.pid, {
+          opId: 'loginspin:' + acct + ':' + rec.day, source: 'dailyspin', kind: 'gold',
+          payload: { amount: rec.pot }, note: 'Free daily spin',
+        }, () => [this._loginSpinSave(acct, rec)]);
+      } catch (e) { rec.paid = false; throw e; }
+    } else {
+      if (rec.pot > 0) {
+        await this._creditPlayer(rec.pid, {
+          opId: 'loginspin:' + acct + ':' + rec.day, source: 'dailyspin', kind: 'gold',
+          payload: { amount: rec.pot }, note: 'Free daily spin',
+        });
+      }
+      rec.paid = true;
+      try { await this._loginSpinSave(acct, rec); } catch (e) { /* the oplog holds the payment */ }
     }
-    rec.paid = true;
-    try { await this._loginSpinSave(acct, rec); } catch (e) { /* the oplog holds the payment */ }
     /* v2.3.4393: a pot paid is a record (boards.js: the daily spin's biggest
        wins) -- after the gold is the player's, and never allowed to cost it */
     if (rec.pot > 0) { try { if (this._spinBoardRecord) await this._spinBoardRecord(rec.pid, rec.pot, true, rec.k, { name: rec.nm, lv: rec.lv }); } catch (e) { /* a record, never the pot */ } }
