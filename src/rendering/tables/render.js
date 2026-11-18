@@ -16,3 +16,12 @@ const PET_DRAW_K = 0.85;   /* v2.3.3120: see _updatePet */
 const SECTORS = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'];
 
 export { PET_DRAW_K, SECTORS };
+
+/* ── from effectsRenderer.js (v2.3.5346) ── */
+
+const PRINT_W = 32;        /* world px across a PAIR -- a stride, not a boot.
+                              40 first, which rendered at 54% of the visible
+                              body height (~74 world px) and read as clown
+                              feet; 32 is ~43% and still reads at phone size. */
+
+export { PRINT_W };

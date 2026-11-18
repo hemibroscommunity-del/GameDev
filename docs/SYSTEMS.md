@@ -165,6 +165,7 @@ The monsters' lives, moves, status, spawns and the boss.
 
 Gold, the bag, the bank, the market and shops, trades, drops, chests and daily rewards.
 
+- **Files**: `src/rendering/tables/`: economy
 - **Files**: `server/src/`: gold, bag, bank, market, marketplace, shop, store, storechat, storegear, storeoffer, trade, trade2, xfer, econcard, worldsum, valuepause, inbox, itemdrop, deathpile, gearstash, stash, gear, gearprov, salvage, gamble, dice, dailychest, dailyrewards, risechest, revealbag, loginspin, eventcapes
 - **Files**: `server/src/`: playerroads
 - **Files**: `src/game/`: bank, itemDrop, groundLoot, lootAsk, dropLines, dropLook, storeAnswer, storeSellTap, tradeSlot, weaponSell, salvage, postOffice, revealBag, dice, dailyRewards, bossChest, loginSpinWheel, coinArt, spinBoard, gearWornSync, arenaStakes, econCard
@@ -177,6 +178,7 @@ Gold, the bag, the bank, the market and shops, trades, drops, chests and daily r
 
 The life skills: gathering, cooking, smithing, the farm, fishing, trapping.
 
+- **Files**: `src/rendering/tables/`: skills
 - **Files**: `server/src/`: gathering, cooking, smelting, armorforge, forgeladder, farm, farmorders, fishlog, trapping, hardening, hardenedwood, drawgather, firetrail, gscopper, shardcrack, gems
 - **Files**: `src/game/`: smithing, forgeTabs, farmFeedback, farmTrip, farmWalk, farmWork, fishWeigh, trapping, tierOre, tierTrees, drawGather, lifeSkillRewards, harvestDoor, quickEat, fightFood, mastery, shardCrack, fireRefuse
 - **Doors**: none named yet
@@ -202,6 +204,7 @@ Quests, achievements, the codex, pets' book, points.
 
 Parties, clans, guilds, friends, chat, emotes, duels, the arena, races, boards.
 
+- **Files**: `src/rendering/tables/`: social
 - **Files**: `server/src/`: party, clanparty, clans, guilds, alliance, friends, chatlanes, chatmod, chatguard, reservednames, silence, emotes, boards, arena, gladiator, duel, spar, race, leaderboard, power, statboards, lookform
 - **Files**: `src/game/`: lookForm, alliance, allyDrafts, duelDoor, partyDoor, arenaDoor, skullDoor, chat, chatChannel, chatColor, chatMute, emotes, emoteMoves, gesturePose, friendErrors, duelLock, duelPending, partyChip, partyEq, partyMarks, partyRows, peerDot, race, raceDoor, spar, sparTargets, bubbleSkins, boardBumps, dictation
 - **Doors**: none named yet

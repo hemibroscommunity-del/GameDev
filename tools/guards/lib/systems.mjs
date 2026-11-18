@@ -151,7 +151,7 @@ export const SYSTEMS = Object.freeze({
   },
   economy: {
     what: 'gold, the bag, the bank, the market and shops, trades, drops, chests and daily rewards',
-    files: [
+    files: [f('src/rendering/tables', 'economy') /* v2.3.5346: its hand-tuned tables (card M) */,
       f('server/src', 'gold|bag|bank|market|marketplace|shop|store|storechat|storegear|storeoffer|trade|trade2|xfer|econcard|worldsum|valuepause|inbox|itemdrop|deathpile|gearstash|stash|gear|gearprov|salvage|gamble|dice|dailychest|dailyrewards|risechest|revealbag|loginspin|eventcapes'),
       f('server/src', 'playerroads'),   /* v2.3.5280 (card R): the roads between players, one table */
       f('src/game', 'bank|itemDrop|groundLoot|lootAsk|dropLines|dropLook|storeAnswer|storeSellTap|tradeSlot|weaponSell|salvage|postOffice|revealBag|dice|dailyRewards|bossChest|loginSpinWheel|coinArt|spinBoard|gearWornSync|arenaStakes|econCard'),
@@ -165,7 +165,7 @@ export const SYSTEMS = Object.freeze({
   },
   skills: {
     what: 'the life skills: gathering, cooking, smithing, the farm, fishing, trapping',
-    files: [
+    files: [f('src/rendering/tables', 'skills') /* v2.3.5346: its hand-tuned tables (card M) */,
       f('server/src', 'gathering|cooking|smelting|armorforge|forgeladder|farm|farmorders|fishlog|trapping|hardening|hardenedwood|drawgather|firetrail|gscopper|shardcrack|gems'),
       f('src/game', 'smithing|forgeTabs|farmFeedback|farmTrip|farmWalk|farmWork|fishWeigh|trapping|tierOre|tierTrees|drawGather|lifeSkillRewards|harvestDoor|quickEat|fightFood|mastery|shardCrack|fireRefuse'),
     ],
@@ -192,7 +192,7 @@ export const SYSTEMS = Object.freeze({
   },
   social: {
     what: 'parties, clans, guilds, friends, chat, emotes, duels, the arena, races, boards',
-    files: [
+    files: [f('src/rendering/tables', 'social') /* v2.3.5346: its hand-tuned tables (card M) */,
       /* v2.3.5480 (card PW): + power, the boards' power index; v2.3.5484: + statboards;
          v2.3.5218 (card L): + raceDoor, the race's page door; v2.3.5594: + reservednames (a name that reads as staff); v2.3.5621: + silence (card MOD);
          v2.3.5807 (card RV): + lookform / lookForm, a player's avatar and colour in the game's own forms (the boards, the friends list) */

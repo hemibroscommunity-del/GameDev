@@ -357,7 +357,8 @@ const { WHEEL_TOWNSFOLK } = await import('../../src/data/wheelBuildingDoors.js')
 {
   /* effectsRenderer's lines, found in the render system's files, never by the
      big file's path (tools/guards/tests-by-system.test.mjs: it will be split) */
-  const er = [...readSystem('render').values()].join('\n');
+  /* v2.3.5346: + skills, where the trades' stand-in heights went (src/rendering/tables/skills.js, card M) */
+  const er = [...readSystem('render').values(), ...readSystem('skills').values()].join('\n');
   const fs6 = src('src/rendering/folkSkill.js');
   const set = src('src/rendering/lookSets/skills.js');
   /* 6a: effectsRenderer's numbers, copied (folkSkill.js cannot import it: it is
