@@ -1,38 +1,34 @@
 card: Z
-branch: claude/plan-z-sitting-47
-prs: this PR (tag 6261), the last line of sitting 47's list (ready)
+branch: claude/plan-z-sitting-48
+prs: this PR (tag 6262), the last line of sitting 48's list (ready)
 state: ready
 
 ## Done
-- `census/review-z47.md`. 4.2 ticked (K2, K4), 10.6 ticked (LG); notes
-  on 7.5 (CAP), 8.1 (TL, RD), 8.8 (WD), 10.7 (LG). K4, LG, TL, RV, CAP,
-  WD, CS done (TL's #2197 folded in: close it). Part 9: EN's folksheets,
-  FX's buffers line.
+- `census/review-z48.md`. Notes on 8.1 (RD), 5.5 (FX), 3.1 (HB); part
+  9: EN's folksheets, HB's afterpaint. Card RD's last PR on the list.
 ## The list: merge in this order, each "Create a merge commit"
-1-2 RD #2204, #2205 (tests; once each `test` is green and marked ready)
-· 3-5 HB #2199, #2201, #2202 · 6-8 FX #2194, #2200, #2203 · 9 Z. On
-`main` e898c0c7, one base at every step, every base `main`. 5 and 6
-DEPLOY the worker (a file in `server/test` each): merge them one after
-the other. Heads, trees: the census.
-## Held / To 48
-- None held. To 48: EN PR 3 (6202, not green by the cut; deploys), RD's
-  crowdfight (6181), anything opened after the cut.
+1 RD #2208 (crowdfight; tests) · 2 EN #2207 (`?folksheets`; DEPLOYS) ·
+3 HB #2209 (`?afterpaint`) · 4 Z. On `main` 586b0a7b, one base at every
+step, every base `main`. Heads, trees: the census.
+## Held / To 49
+- None held. To 49: anything opened after the cut; EN 6203, HB's next.
 ## Found
-- 46's (a)-(aj) carried. Recorded here: CS's stale "OFF by default" in
-  specs and comments (duel.js, gladiator.js, market.js, store.js,
-  storeoffer.js, playerroads.js, req-once.md, seat-hold.md ...) and the
-  Set-a-switch chips (ownerSwitches.js) not listing the six. TL's
-  run.mjs orphans when precheck's timeout kills `npm test` (seen again
-  here). LG's K4 rows: mended by K4's #2176, #2177, #2182, #2187; LG's
-  rung 2 missed by every detector (LG PR 2). RV's SEC-F3 (`wsClient.js`):
-  card L is done, no card owns it. WD's 96 "tap" words outside
-  deskWords(). canvas-witness 8b reads only a comment. mp-membudget
-  heap/buffers over on session boxes, CI fine. elemental2 maxMana under
-  duelpace: watch. New: the gatekeeper's tool caps precheck at 15 min,
-  under the server suite's ~12 plus the rest (tools/dev/gatekeeper.mjs).
+- 46's and 47's carried. New or restated: RD: a device drawing under 1
+  frame per 5 s rejoins forever (wsClient.js `_aliveTimer`,
+  `RESYNC_AWAY_MS`): a game question, the owner's. HB: `mp-mayordoor`
+  parts 2-3 red on main (5 of 12): no card owns it. FX/EN:
+  mp-membudget's heap (38.5) and buffers lines at their edge on main on
+  session boxes, CI fine. The gatekeeper's tool caps precheck at 15 min
+  (tools/dev/gatekeeper.mjs), under the server suite's ~12 plus the
+  rest: seen again here (its precheck "timed out", no red). WD's 96
+  "tap" words outside deskWords(). canvas-witness 8b reads only a
+  comment. CS's stale "off by default" comments and the Set-a-switch
+  chips (ownerSwitches.js) not listing the six. TL's run.mjs orphans on
+  precheck's timeout. elemental2 maxMana under duelpace: watch. EN's
+  comments name tools/guards/folk-sheets.test.mjs (it is server/test).
+  RD's, EN's and HB's status lines lag their ready PRs.
 ## Needs
 - Decided for the owner while away (the planning session): EN's
-  folksheets ON (`?folksheets=0`, sitting 48); FX #2200's buffers line
-  24.2 -> 24.8 for a net 1.7 MB saving.
+  folksheets ON (`?folksheets=0`); HB's afterpaint ON (`?afterpaint=0`).
 - Owner's own: `.github/`, Cloudflare; wind-dunes.mp3's source; SEC2's
   report form needing a public repository.
