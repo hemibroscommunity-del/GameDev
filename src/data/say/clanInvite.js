@@ -1,6 +1,6 @@
 /* v2.3.6320: the clan invite card's words (src/ui/panels/ClanInviteCard.jsx;
    docs/specs/player-words.md, wave W0, the pilot).  One leaf file a screen, no
-   imports: every key starts with its screen's name, and server/test/say.test
+   imports: every key starts with its screen's name, and tools/guards/say.test
    fails a key two files define. */
 export const SAY = Object.freeze({
   'clanInvite.title': 'Clan invite',
