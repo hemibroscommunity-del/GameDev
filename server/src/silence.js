@@ -134,7 +134,7 @@ export const silenceMethods = {
     if (this._silences) return this._silences;
     const m = new Map();
     try {
-      const rows = await this.state.storage.list({ prefix: SILENCE.KEY });
+      const rows = await this._listAll(SILENCE.KEY);   /* v2.3.5960: a page an await (card V5; TRAPS §76) */
       for (const [k, v] of rows) if (v && typeof v === 'object') m.set(k.slice(SILENCE.KEY.length), v);
       this._silences = m;
     } catch (e) { return m; }
