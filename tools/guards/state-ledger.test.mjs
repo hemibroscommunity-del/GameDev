@@ -111,8 +111,10 @@ import { stateCensus, CENSUS_SCRIPT } from './lib/fourLines.mjs';
 export const UNLISTED_LINE = 22;
 /* v2.3.5203 (card L PR 3): the rows card D suggests a reset for that are
    still `sitting` with no `kept:` (484 at main 75946b7's ledgers).  Each of
-   card L's reset PRs lowers it with what it decides (its card's PR 4). */
-export const SITTING_LINE = 233;
+   card L's reset PRs lowers it with what it decides (its card's PR 4).
+   v2.3.6060 (card U3): 233 -> 206, the last 27 rows outside ui and render
+   (cards M and M2 hold those 206). */
+export const SITTING_LINE = 206;
 
 const LIVE = process.argv.includes('--live');
 const PAGE_ONLY = process.argv.includes('--page');

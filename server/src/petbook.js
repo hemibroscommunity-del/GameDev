@@ -49,6 +49,7 @@
  * anyone's pets away.
  */
 import { trapLevelOf } from './trapping.js';
+import { nameReadsAsStaff } from './reservednames.js';   /* v2.3.5814 (card RV, S7): a new pet name's staff words */
 import { lifeOf, LIFE } from './life.js';   /* v2.3.5920: the dead take nothing (life.js _deadTakeOn; TRAPS §150) */
 
 export const PETS_KEY = (playerId) => 'pets:' + playerId;
@@ -736,6 +737,14 @@ export const petbookMethods = {
       if (!pet) return 'no-pet';
       const name = cleanPetName(payload && payload.name);
       if (!name) return 'bad-name';
+      /* v2.3.5814 (card RV, S7; the owner's call, decided while away: "Go
+         recommended on all"): a NEW name is held to the character name's
+         rule too -- nothing that draws nothing (the Hangul filler is a
+         letter), and nothing that reads as the game or its staff
+         (reservednames.js) -- with the refusal a bad name already has.  A
+         name already given is never touched (cleanPetName on load is as
+         before).  `namestaff: false` in the live flags: as before. */
+      if (this._nameStaffOn && this._nameStaffOn() && (/\p{Default_Ignorable_Code_Point}/u.test(name) || nameReadsAsStaff(name))) return 'bad-name';
       if (pet.name !== name) renamed = pet.id;
       pet.name = name;
       return null;

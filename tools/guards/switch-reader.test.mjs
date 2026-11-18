@@ -142,6 +142,22 @@ const MOVED = Object.freeze([
   /* v2.3.5742 (card T2 PR 3): the connection's three (?diet and ?room, values, on pageAddress()) */
   /* the connection's file is a big file: found by its system (tests-by-system 2: a suite reads code by system, never a big file's path) */
   { name: 'wheelwhole', call: 'sw', file: filesOf('wire').find((f) => f.endsWith('/wsClient.js')), old: (S) => /[?&]wheelwhole(?:[=&]|$)/.test(S) },
+  /* v2.3.5342 (card M PR 3, chain A): BroTown.jsx's single-name switches, a row a read in the file's order (`?guest`
+     five reads, `?create` two), each old test word for word; its three rules handed the whole address
+     (frameSmoothOn, framePaceOn, shieldFollowsPointerAlways) on pageAddress() */
+  { name: 'owedrebuild', call: 'sw', file: inSystem('ui', 'BroTown.jsx'), old: (S) => /[?&]owedrebuild=0\b/.test(S || '') },
+  { name: 'npcprox', call: 'swHas', file: inSystem('ui', 'BroTown.jsx'), old: (S) => new URLSearchParams(S).has('npcprox') },
+  { name: 'guest', call: 'sw', file: inSystem('ui', 'BroTown.jsx'), old: (S) => /[?&]guest=1\b/.test(S) },
+  { name: 'guest', call: 'sw', file: inSystem('ui', 'BroTown.jsx'), old: (S) => /[?&]guest=1\b/.test(S) },
+  { name: 'create', call: 'sw', file: inSystem('ui', 'BroTown.jsx'), old: (S) => /[?&]create=1\b/.test(S) },
+  { name: 'wdgeterror', call: 'swHas', file: inSystem('ui', 'BroTown.jsx'), old: (S) => /[?&]wdgeterror\b/.test(S || '') },
+  { name: 'guest', call: 'sw', file: inSystem('ui', 'BroTown.jsx'), old: (S) => /[?&]guest=1\b/.test(S) },
+  { name: 'create', call: 'sw', file: inSystem('ui', 'BroTown.jsx'), old: (S) => /[?&]create=1\b/.test(S) },
+  { name: 'login', call: 'sw', file: inSystem('ui', 'BroTown.jsx'), old: (S) => /[?&]login=1\b/.test(S) },
+  { name: 'guest', call: 'sw', file: inSystem('ui', 'BroTown.jsx'), old: (S) => /[?&]guest=1\b/.test(S) },
+  { name: 'guest', call: 'sw', file: inSystem('ui', 'BroTown.jsx'), old: (S) => /[?&]guest=1\b/.test(S) },
+  { name: 'debug', call: 'sw', file: inSystem('ui', 'BroTown.jsx'), old: (S) => new URLSearchParams(S).get('debug') === '1' },
+  { name: 'noresume', call: 'sw', file: inSystem('ui', 'BroTown.jsx'), old: (S) => /[?&]noresume=1\b/.test(S) },
   /* v2.3.5343 (card M PR 4, chain B): the two renderers' single-name switches; their six other reads (a need, a value, two names) on pageAddress() with the old test in place.  `!(... !== '0')` is the old ON test turned to the read's OFF, word for word */
   { name: 'standinlegs', call: 'sw', file: inSystem('render', 'effectsRenderer.js'), old: (S) => /[?&]standinlegs=0(&|$)/.test(S || '') },
   { name: 'firelegless', call: 'sw', file: inSystem('render', 'effectsRenderer.js'), old: (S) => /[?&]firelegless=0(&|$)/.test(S || '') },

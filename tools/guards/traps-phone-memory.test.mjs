@@ -137,7 +137,7 @@ const CANVAS_KNOWN = {
   cropToPaint: 1, ctx2d: 1, display: 1, downscaleByFactor: 1, drawCharacterPortrait: 3, drawIcon: 2, drawSourceRect: 1, dressShirtStrip: 1,
   fetchSheet: 1, fileKeyMask: 1, fitSymbol: 2, footprintTexture: 1, gearNumbersCanvas: 1, glowTex: 1, greyed: 1, headPixelsTick: 1,
   hemiBustUrl: 1, loadOne: 1, loadSheet: 1, loadStepIcon: 1, lootBeamTexture: 1, mintCampfireAtlas: 1, mintFxSheet: 1, mintGrottoFx: 1,
-  packImages: 1, packTrimmedCore: 2, paletteThumb: 1, portraitDataUrl: 2, processToTransparent: 1, readbackFrames: 1, recolorBodyToCanvas: 2,
+  packTrimmedCore: 2, paletteThumb: 1, portraitDataUrl: 2, processToTransparent: 1, readbackFrames: 1, recolorBodyToCanvas: 2,
   recolorHairToCanvas: 1, recordFishRodMask: 1, renderTraitCanvas: 1, run: 4, runJob: 1, sameCut: 2, shrink: 3, softBake: 2, source: 10,
   sqTex: 1, stampHeadInk: 1, stampShirtArt: 3, stripDetachedComponents: 1, tex: 1, toolRecoloredCanvas: 1, upscaleToFrameHeight: 1,
 };

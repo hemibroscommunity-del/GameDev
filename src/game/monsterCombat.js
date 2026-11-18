@@ -45,7 +45,7 @@ import { rollMonsterShard } from '@/data/shards.js';
 import { addBuildUse, applyMeleeLifesteal, clearSwingHitFlags, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, isPlayerDead, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint, spawnHitDebris /* v2.3.2200; v2.3.2843: its decal twin is retired here */, dropLocalRemnantOnce /* v2.3.2233 */, rangedAimAngle, bowGripPoint /* v2.3.2543 */, BOW_SPECIAL_QUEUE_MS /* v2.3.2473 */, propSwingHit /* v2.3.2730 */, shotGroundDy /* v2.3.3206: a shot's ground is under the boots */ } from '@/game/combatHelpers.js';
 import { accShot, accSn } from './accuracy.js';   /* v2.3.4545: a basic shot is numbered, and its hits claim its number (accuracy) */
 import { updateTargeting } from '@/game/targeting.js'; /* v2.3.2243 */
-import { firstSightHit, shotLowAim, lowAimAlong, arrowSureReachPast, shotAimAt, nmlSightAsk } from '@/game/projectiles.js'; /* v2.3.2473: the bow's on-target gate reads the hit test's own radii; v2.3.3206: + the low thing a shot is aimed at; v2.3.3528: + No man's land's ask on an empty line */
+import { firstSightHit, shotLowAim, lowAimAlong, arrowSureReachPast, shotAimAt, nmlSightAsk, relayShot } from '@/game/projectiles.js'; /* v2.3.2473: the bow's on-target gate reads the hit test's own radii; v2.3.3206: + the low thing a shot is aimed at; v2.3.3528: + No man's land's ask on an empty line */
 import { shotTargetId } from '@/game/peerShots.js'; /* v2.3.3266: the player a shot is aimed at, for the others' screens */
 import { isStaggered } from '@/game/elemHits.js'; /* v2.3.4387: nor a held attack while a parry has you staggered */
 import { specialAttack } from '@/game/playerActions.js'; /* v2.3.2473: a queued bow special fires from the fire site */
@@ -58,6 +58,7 @@ import { saveRpgSoon } from '@/game/rpgSave.js'; /* v2.3.1356 */
 import { monsterHitSfx } from '@/game/hitSounds.js'; /* v2.3.3001: a hit sounds like the monster's material */
 import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: the missing sounds, from recordings already in the game */
 import { isWheelSwimming } from '@/game/wheelSwim.js'; /* v2.3.3003: no fighting while you swim */
+import { climbRefused } from '@/game/climbActions.js';   /* v2.3.6080: nor on the vines, as the tap (TRAPS §293) */
 import { jumpAirborne } from '@/game/jump.js'; /* v2.3.3017: nor in the air */
 import { tapAttackWaiting, tapAttackDone, tapSwingAim } from '@/game/tapJump.js'; /* v2.3.3712: a tap on the right stick asks for one attack */
 import { swordFeelContact } from '@/game/swordFeel.js';   /* v2.3.4800: the cut's weight at contact */
@@ -1661,7 +1662,12 @@ export function updateMonsterCombat(S, deps) {
              worker's).  null: the held staff, exactly as before. */
           var _sfFire = staffFireWaiting(S, Date.now());
           if (_sfFire !== null) _wantAtk = _sfFire;
-          if (_wantAtk && (_mcOn || !_flickWait) && !S._shieldUp && !isWheelSwimming(S) && !isDazed(S, Date.now()) && !jumpAirborne(S) /* v2.3.3017: a held attack waits for the landing */ && S.rpg && _eqWpn && Date.now() - S.swingTimer >= (_sfFire !== null ? STAFF_FEEL.GAP_MS : effectiveSwingCd + _staffCdExtra)) {
+          /* v2.3.6080 (TRAPS §293, card V7): and the tap's two the held start
+             lacked, in the tap's order (playerActions swingAttack): not while
+             a life skill's pose plays (S._extraction) and not on the vines
+             (climbRefused, swimRefused's other half).  A held attack swung or
+             shot through both.  Silent, like the daze test: the press says why. */
+          if (_wantAtk && (_mcOn || !_flickWait) && !S._shieldUp && !S._extraction && !climbRefused(S) && !isWheelSwimming(S) && !isDazed(S, Date.now()) && !jumpAirborne(S) /* v2.3.3017: a held attack waits for the landing */ && S.rpg && _eqWpn && Date.now() - S.swingTimer >= (_sfFire !== null ? STAFF_FEEL.GAP_MS : effectiveSwingCd + _staffCdExtra)) {
             /* Loot pickup freeze suppresses auto-swing — keeps the
                0.5s pickup animation clean instead of mid-swing. */
             var _lootSwingBlock = S._lootFreezeUntil && Date.now() < S._lootFreezeUntil;
@@ -1933,8 +1939,8 @@ export function updateMonsterCombat(S, deps) {
                   _rangeMult: isStaff ? 1 : bowRangeMult(S.rpg)   /* v2.3.4862: was x depthK (v2.3.2790), gone with the old map's dunes */
                 });
                 /* Broadcast projectile to other players */
-                /* v2.3.5187: through the action door (actions.js) */
-                act('player_projectile', {
+                /* v2.3.5187: through the action door (actions.js); v2.3.5905: a bow's at its release against caps.bowPath (projectiles.js relayShot) */
+                relayShot(S, isStaff, {
                   id: S.myId, x: Math.round(P.x), y: Math.round(P.y), ang: arrAngle, isStaff: isStaff, ts: _shotTs,
                   /* v2.3.2919: the shot's ELEMENT.  Your own arrow is tipped in
                      your weapon's element colour and your bolt glows in it

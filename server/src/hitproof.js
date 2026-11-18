@@ -91,6 +91,14 @@ export const HIT_PROOF = Object.freeze({
   /* the time an arrow's claim is behind the archer: its 0.47 s flight and
      the claim's trip, at the fastest honest run */
   ARROW_RUN_S: 1,
+  /* v2.3.5901 (card K4 PR 2): a claim on an arrow the worker saw leave
+     (bowshot.js) is held to the arrow's own flight from where the archer
+     stood at its relay -- no run: what the archer did after does not move
+     the arrow.  On top of ARROW_SLACK_PX: the archer's copy a move behind
+     on a slow phone (4 frames a second, a sprint: 166 px) and the monster's
+     own steps and shoves between the arrow landing and the claim's
+     arrival */
+  ARROW_ORIGIN_SLACK_PX: 250,
   /* a staff bolt is held to its caster (projectiles.js): its 14 px start,
      the 130 px hit radius, a move behind */
   STAFF_SLACK_PX: 250,
@@ -200,12 +208,24 @@ export const hitProofMethods = {
     if (slot === 'ranged' && this._pveVolleyLive(ps, now)) return WHEEL.RANGED_MAX;
     const k = typeof this._moveSpeedK === 'function' ? this._moveSpeedK(ps, { reach: true }) : { spdCap: 1, moveMult: 1 };   /* v2.3.5549: the run as it was, whatever `movetop` */
     const run = MOVE_BUDGET.SPEED_PX * k.spdCap * k.moveMult * SPRINT.MULT;
-    const cat = slot === 'staff' ? 'staff' : 'bow';
-    const mult = (ps && ps.prog3)
-      ? 1 + PROG3.ATK.range.max * prog3StatValue(ps, 'range', cat, null)
-      : HIT_PROOF.LEGACY_RANGE_MAX;
+    const mult = this._hitRangeMult(ps, slot === 'staff' ? 'staff' : 'bow');
     if (slot === 'staff') return HIT_PROOF.ARROW_PX * mult + HIT_PROOF.STAFF_SLACK_PX + run * HIT_PROOF.STAFF_RUN_S;
     return HIT_PROOF.ARROW_PX * mult + HIT_PROOF.ARROW_SLACK_PX + run * HIT_PROOF.ARROW_RUN_S;
+  },
+
+  /* the Range stat's multiple of a bow's or staff's reach (an older
+     character without prog3: the Longshot channel's cap) */
+  _hitRangeMult(ps, cat) {
+    return (ps && ps.prog3)
+      ? 1 + PROG3.ATK.range.max * prog3StatValue(ps, 'range', cat, null)
+      : HIT_PROOF.LEGACY_RANGE_MAX;
+  },
+  /* v2.3.5901 (card K4 PR 2): how far a bow's claim on an arrow seen may be
+     from where the archer stood at its relay (bowshot.js _bowShotTake): the
+     arrow's flight (it plants at BOW_RANGE_PX x Range, projectiles.js), the
+     body and a move behind (ARROW_SLACK_PX), and ARROW_ORIGIN_SLACK_PX */
+  _hitArrowReach(ps) {
+    return HIT_PROOF.ARROW_PX * this._hitRangeMult(ps, 'bow') + HIT_PROOF.ARROW_SLACK_PX + HIT_PROOF.ARROW_ORIGIN_SLACK_PX;
   },
 
   /* 4. The bow's Piercing (an older character's channel, the worker's own
