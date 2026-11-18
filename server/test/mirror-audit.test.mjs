@@ -1835,7 +1835,7 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
 
   const sprites = readFileSync(new URL('../../src/rendering/playerSprites.js', import.meta.url), 'utf8');
   const fx = readFileSync(new URL('../../src/rendering/systems/effectsRenderer.js', import.meta.url), 'utf8');
-  const ent = readFileSync(new URL('../../src/rendering/systems/entityRenderer.js', import.meta.url), 'utf8');
+  const ent = readFileSync(new URL('../../src/rendering/systems/entityRenderer.js', import.meta.url), 'utf8') + readFileSync(new URL('../../src/rendering/leaves/entity-combat.js', import.meta.url), 'utf8');   /* v2.3.6200: + its leaves (card EN) */
   const pixi = readFileSync(new URL('../../src/rendering/pixiRenderer.js', import.meta.url), 'utf8');
   check('gather hits: the pick\'s loop is still 650 ms (playerSprites MINE_DURATION_MS = GATHER_SWING.mining.ms)',
     /const MINE_DURATION_MS = 650;/.test(sprites) && CLIENT_GATHER_SWING.mining.ms === 650);
