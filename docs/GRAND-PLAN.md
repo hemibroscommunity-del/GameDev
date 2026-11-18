@@ -263,9 +263,13 @@ way: build the table from what exists, add the test, move no behaviour.
   not a week-to-week difference.
 - [ ] **1.4 [LATER] Real engines, on demand**: `playable` in Playwright's
   WebKit and Firefox. Engines, not chips.
-- [ ] **1.5 [NEXT] Two slow profiles** from switches that exist ("a budget
+- [x] **1.5 [NEXT] Two slow profiles** from switches that exist ("a budget
   Android", "an old laptop on a hotel's line"); the `light` lane's sweeps
   run under them.
+  *Merged: card O2's #2098 and #2108 (5860, 5861): `tools/qa/profiles.mjs`
+  (budget-android, hotel-laptop), and heldsweep, desksmooth and phoneframe
+  read the profile (the gatekeeper, sitting 45, tag 5034). The owner's full
+  run, #2148, is on sitting 45's list.*
 - [x] **1.6 [NOW] The room's own row**, in the day's book (10.4): the tick's
   95th, rows written, saves refused, joins by protocol version, restarts.
   *Merged: #1708 (card A), `server/src/roomrow.js` into the `room` part
@@ -907,6 +911,9 @@ nothing known, and a restore copies nothing.
   *Card V merged, #1724 to #1740: 31 traps held by a proof (25 the rule, 6
   one case; its status names what is left for the next card). The step is
   open: most traps are still prose.*
+  *Card V4 merged, #2106, #2124, #2125, #2126 (5940-5943): 62 of 63 traps
+  held by the rule, each with a break proof (`docs/plan/census/V4-traps.md`;
+  the gatekeeper, sitting 45). V6 and V7 carry on; still open.*
 - [ ] **8.3 [LATER] Docs by system**, with an index that keeps every §.
 - [x] **8.6 [NOW] The shapes page** (`docs/SHAPES.md`, rule 2): the actor,
   the ids, the roads' classes, the report's sinks, the wire's columns, the

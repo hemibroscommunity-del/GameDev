@@ -36,6 +36,7 @@ import { isWorldViewZone } from '@/data/zones.js'; /* v2.3.2978: 'worldview', or
 import { harvestTo } from '@/game/harvestDoor.js'; /* v2.3.5219: the harvest's page door, the one writer of S._extraction (card L PR 5) */
 import { freeZoneMap, isZoneMapResident, preloadStartZoneMap } from '@/rendering/tiledMaps.js'; /* v2.3.1405: map eviction + sync residency check; v2.3.2859: + town's own map */
 import { loadTownScenery, freeTownScenery, townSceneryReady, townSceneryLoading } from '@/rendering/npcSprites.js'; /* v2.3.2859: town's NPCs + buildings load and free with town */
+import { loadWorldLifeParts } from '@/rendering/worldLife.js'; /* v2.3.5983: the retired town's signs and flags load with its scenery */
 import { playerGroundDy } from '@/rendering/systems/entityRenderer.js'; /* v2.3.2999: the Wheel's grid is read at your boots */
 import { FARM_FROM_WORKSHOP } from '@/data/farmLayout.js';   /* v2.3.3136: the farm you walk */
 import { holdFarmUntilReady } from '@/game/farmTrip.js';
@@ -344,6 +345,7 @@ function syncTownScenery(S) {
       Promise.race([
         Promise.all([
           Promise.resolve(loadTownScenery()).catch(function () {}),
+          Promise.resolve(loadWorldLifeParts()).catch(function () {}),   /* v2.3.5983: the town's signs and flags (worldLife.js) */
           Promise.resolve(preloadStartZoneMap('town')).catch(function () {}),
         ]),
         new Promise(function (r) { setTimeout(r, 15000); }),
@@ -428,6 +430,8 @@ export function clearZoneLocalFx(S) {
   S._bashDash = null;
   S._dashStrike = null;
   S._fxBursts = [];
+  S._dropLines = [];   /* v2.3.6060 (card U3): a kill's drop lines float at the old place's world px on the new map (the renderer lets their views go with the list) */
+  if (S._trap) S._trap.mark = null;   /* v2.3.6060: the trap's mark is the old place's monster's (its card and the springs stay: they end on their own clocks) */
 }
 
 /* ═══ v2.3.5208: WHAT FLEW AND FELL IN THE PLACE YOU LEAVE (card L) ═══

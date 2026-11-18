@@ -332,7 +332,7 @@ const room = () => Object.create(GameRoom.prototype);
   const PLACE = /(?:zone|land|home)(?:Id)?$|^z$/i;
   /* by function, with why */
   const PLACE_KNOWN = {
-    _rollHarvestShard: 'gathering.js: `shard_` + the node\'s zone, ungated (its caller passes a Wheel node\'s home, else the node\'s zone or the room\'s): Found',
+    /* v2.3.5903 (card K4 PR 4): `_rollHarvestShard` came off -- gated on ZONES now (gathering.js) */
     _dungeonComplete: 'dungeon.js: `wheel_` + the dungeon\'s home is a key of lifeSkills.dungeonClears, not an item (the instance\'s cfg is the dungeon table\'s row)',
   };
   const found = new Set();

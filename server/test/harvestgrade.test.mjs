@@ -19,6 +19,8 @@
  *      good (`gradeShare`), and once the window has room again, two;
  *   7. on: the run outlives a reconnect (it is the bot record's);
  *   8. on, a test-mode character: neither rule (as the too-early check);
+ *   (v2.3.5902: 3 and 4 also read `harvest_credit`'s grade paid and qty,
+ *   which the phone shows when it differs from the grade it showed);
  *   9. the pure judge: a good or ok claim passes untouched and is counted
  *      in the run; a recovery strike (no start: `earliest` null) is held to
  *      the share alone.
@@ -95,10 +97,15 @@ const caps = (T) => { const s = T.ws.sent.find((m) => m.type === 'state_sync'); 
   const r = await T.harvest('perfect', T.soonest);
   check('3. on: the same perfect is paid as good -- one ore, the strike paid, never refused', r.why === 'paid' && r.paid === 1 && T.ore.alive === false, r);
   check('3. ...and counted in the bot record (`gradeEarly`)', T.counters().gradeEarly === 1, T.counters());
+  /* v2.3.5902: the phone is told what was paid (it showed "PERFECT!" and x2) */
+  const hc = [...T.ws.sent].reverse().find((m) => m.type === 'harvest_credit');
+  check('3. ...and `harvest_credit` tells the phone the grade paid (`grade: good`, `qty: 1`)', !!hc && hc.payload.grade === 'good' && hc.payload.qty === 1, hc && hc.payload);
   const s = await T.harvest('perfect', (ex) => T.floorOf(ex) - 1);
   check('4. on: a perfect 1 ms before the floor (hits + settle + the gesture\'s 1.2 s, less the slack) is paid good', s.paid === 1 && T.counters().gradeEarly === 2, { paid: s.paid, hits: s.ex.hits });
   const t = await T.harvest('perfect', T.floorOf);
   check('4. ...and at the floor, paid two: the earliest an honest phone could send it', t.why === 'paid' && t.paid === 2 && T.counters().gradeEarly === 2, { paid: t.paid, floor: T.floorOf(t.ex) });
+  const hc2 = [...T.ws.sent].reverse().find((m) => m.type === 'harvest_credit');
+  check('4. ...told as paid (`grade: perfect`, `qty: 2`)', !!hc2 && hc2.payload.grade === 'perfect' && hc2.payload.qty === 2, hc2 && hc2.payload);
   const g = await T.harvest('good', T.soonest);
   check('4. a good sent at once is paid as it was (the judge holds the perfect only)', g.why === 'paid' && g.paid === 1, g);
 }

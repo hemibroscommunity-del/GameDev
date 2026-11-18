@@ -8,11 +8,11 @@
 import { registerLookSheets, registerLookKind, getLookPartFrame, lookHas, lookPaletteWanted } from './lookPalette.js';
 import { shirtRowEntries, SHIRT_GLSL, SHIRT_TILE_MAX } from './lookShirt.js';
 import { artHash, sideForDir } from './traits/playerArt.js';
-import { getGearFrame, getShirtLookFrame, gearSheetLoad } from './gearSheets.js';
+import { getGearFrame, getShirtLookFrame, gearSheetLoad, setGearDrawnElsewhere } from './gearSheets.js';
 import { parsePattern } from './traits/patternCatalog.js';
 import { clientOff } from '../game/clientOff.js';   /* v2.3.3790: the Test panel's live off switch */
 import { installShirtProbe } from './lookShirtProbe.js';
-import { pageAddress } from '../game/switches.js';   /* v2.3.5316: the page's one reader (card T) */
+import { pageAddress, sw } from '../game/switches.js';   /* v2.3.5316: the page's one reader (card T); v2.3.5981: + sw */
 
 /* v2.3.3790: the dressed tee's own off switches (the rest of the look palette
    as it is): `?lookshirt=0` for one phone, and the Test panel's Memory savers
@@ -91,6 +91,30 @@ export function getLookShirtFrame(item, pose, dir, frameIdx, look) {
   const d = dressOf(look.tint || null, look.pattern || null, look.art || null);
   return getLookPartFrame('shirt', sheet, frameIdx, d.entries, { key: d.key, mirror: dressed && !!look.mirror, asDrawn: !dressed });
 }
+
+/* ═══ v2.3.5981: THE TEE'S RGBA STANDING AND JOGGING IS NOT SENT TO THE CHIP ═══
+   Card P2's memory backlog (docs/plan/census/P2-memory.md, row 5).  The
+   loading screen sends every gear sheet gearSheets.js built to the graphics
+   chip (entityRenderer.js uploadGearTextures), so a first turn pays no
+   upload, and Pixi 8.17 collects none of them (a texture's
+   autoGarbageCollect is false unless it says so): there they stay for the
+   visit.  Where the plain tee is drawn from the numbers (above: its body is,
+   a phone's), and every printed or patterned tee is, its stand and jog
+   sheets are never drawn from the RGBA: 1.6 MB on the chip at the memory
+   check's fight for nothing.  So they are not sent; their RGBA stays loaded
+   for the CPU's readers.  A tee drawn from its RGBA after all (a body not
+   from the numbers this frame, the Test panel's live `lookshirt` off) sends
+   its sheet at its first draw, as the walking armour's does where the shine
+   is not built (gearWalkFrame.js).  The tee's other poses (hit, roll, mine,
+   fish, pick up) have no sheets of numbers and are sent as before.
+   `?teechip=0` sends them all, as before. */
+const _teeChip = !sw('teechip');
+setGearDrawnElsewhere((key) => {
+  if (!_teeChip || !_wanted || !_plainTee || !lookPaletteWanted()) return false;
+  const p = key.split('/');
+  return p.length === 4 && p[0] === 'shirt' && p[1] === 'tshirt' && (p[2] === 'stand' || p[2] === 'jog')
+    && lookHas('shirt', p[2] + '-' + p[3]);
+});
 
 /* the shirt oracle's probe (mp-lookshirts), on a page that asks for it only */
 try {

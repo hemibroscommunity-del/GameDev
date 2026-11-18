@@ -19,9 +19,27 @@
  *   render      renderFrame           (game/renderFrame.js)
  *   afterFrame  runAfterFrame         (ui/afterFrame.js)
  *
- * THE MARKS.  `begin(i)` and `end(i)`, by the step's index: two clock reads a
- * step, no closure and no object made per frame (the sums are typed arrays
- * made once: a frame makes no garbage).  `begin(0)` starts a frame.  The time
+ * v2.3.5341 (card M PR 2, the owner's review item 5): every single call in
+ * legacy is a step of its own, grouped, in its place: legacy is closed before
+ * it and opened again after it (still ONE step, its time summed).  Nothing
+ * moves.
+ *
+ *   tap         settleTapPress            (game/tapJump.js)
+ *   sound       tickWaterAmbience to tickDanceMusic (the six ambience ticks)
+ *   ride        rideStepped               (game/ride.js)
+ *   zone        handleZoneTransitions, updateZoneMechanics, updateDungeonWaves
+ *   farm        tickFarmWalk              (game/farmWalk.js)
+ *   townsfolk   raceTick, townsfolkFrame  (game/race.js, game/townsfolkDay.js)
+ *   monsters    updateMonsterCombat       (game/monsterCombat.js)
+ *   weaponFeel  swordFeelFrame, staffFeelFrame, bowFeelFrame
+ *   loot        updateGroundLootPickup    (game/groundLoot.js)
+ *   peers       releasePeerDamage
+ *
+ * THE MARKS.  `begin(i)` and `end(i)`, by the step's index, and `to(a, b)`:
+ * a ends, b begins, on ONE clock read (legacy's way in and out of the steps
+ * inside it).  No closure and no object made per frame (the sums are typed
+ * arrays made once: a frame makes no garbage).  `begin(0)` starts a frame;
+ * legacy opened again by `to(k, 0)` is the same frame and the same run.  The time
  * is summed over WINDOW (600) frames, and the last whole window's sums are
  * kept beside the window being summed: Safari's clock ticks in whole ms, so
  * one frame's reading of a small step is 0 or 1, and only a sum says
@@ -46,17 +64,30 @@
  * NO IMPORTS: node tests it (tools/guards/frame-steps.test.mjs).
  */
 
-/** The steps, in the loop's order: the name, and the call it wraps (legacy
- *  wraps the body before them).  tools/guards/frame-steps.test.mjs holds the
+/** The steps, in the loop's order: the name, and the calls it wraps (legacy
+ *  wraps the body before the six at the end, the steps inside it aside).  tools/guards/frame-steps.test.mjs holds the
  *  loop to this list: each call between its own step's marks, in this order. */
 export const STEPS = [
-  { name: 'legacy', call: null },
-  { name: 'visual', call: 'updateVisualSystems' },
-  { name: 'arrows', call: 'updateArrows' },
-  { name: 'slime', call: 'updateSlimeProjectiles' },
-  { name: 'cleanup', call: 'updateStateCleanup' },
-  { name: 'render', call: 'renderFrame' },
-  { name: 'afterFrame', call: 'runAfterFrame' },
+  { name: 'legacy', calls: [] },
+  /* v2.3.5341: inside legacy, each between `to(0, k)` (or the step before's
+     `to(k - 1, k)`) and `to(k, ...)` */
+  { name: 'tap', calls: ['settleTapPress'], inLegacy: true },
+  { name: 'sound', calls: ['tickWaterAmbience', 'tickTownAmbience', 'tickAmbientBeds', 'tickRideSound', 'tickHeartbeat', 'tickDanceMusic'], inLegacy: true },
+  { name: 'ride', calls: ['rideStepped'], inLegacy: true },
+  { name: 'zone', calls: ['handleZoneTransitions', 'updateZoneMechanics', 'updateDungeonWaves'], inLegacy: true },
+  { name: 'farm', calls: ['tickFarmWalk'], inLegacy: true },
+  { name: 'townsfolk', calls: ['raceTick', 'townsfolkFrame'], inLegacy: true },
+  { name: 'monsters', calls: ['updateMonsterCombat'], inLegacy: true },
+  { name: 'weaponFeel', calls: ['swordFeelFrame', 'staffFeelFrame', 'bowFeelFrame'], inLegacy: true },
+  { name: 'loot', calls: ['updateGroundLootPickup'], inLegacy: true },
+  { name: 'peers', calls: ['releasePeerDamage'], inLegacy: true },
+  /* the six at the loop's end, each between `begin(k)` and `end(k)` */
+  { name: 'visual', calls: ['updateVisualSystems'] },
+  { name: 'arrows', calls: ['updateArrows'] },
+  { name: 'slime', calls: ['updateSlimeProjectiles'] },
+  { name: 'cleanup', calls: ['updateStateCleanup'] },
+  { name: 'render', calls: ['renderFrame'] },
+  { name: 'afterFrame', calls: ['runAfterFrame'] },
 ];
 export const STEP_NAMES = STEPS.map(function (s) { return s.name; });
 
@@ -95,6 +126,15 @@ export function makeFrameSteps(opts) {
     cur[i] += now() - at[i];
     if (open === i) open = -1;
   }
+  /* v2.3.5341: a ends and b begins on one clock read; legacy opened again is
+     not a new run (its runs are the frames) */
+  function to(a, b) {
+    var t = now();
+    cur[a] += t - at[a];
+    at[b] = t;
+    open = b;
+    if (b !== 0) runs[b]++;
+  }
   /** the loop's catch: the open step threw.  Its time so far is counted, the
    *  throw counted, and its first throw reported.  Returns the step's name. */
   function fault(err) {
@@ -123,5 +163,5 @@ export function makeFrameSteps(opts) {
       open: open < 0 ? null : STEPS[open].name,
     };
   }
-  return { begin: begin, end: end, fault: fault, read: read };
+  return { begin: begin, end: end, to: to, fault: fault, read: read };
 }
