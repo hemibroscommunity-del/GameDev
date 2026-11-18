@@ -1,6 +1,6 @@
 card: CAP
 branch: claude/plan-cap-1-census (one PR a branch, claude/plan-cap-*)
-prs: #2172 (6100) census: working (draft, waiting on CI)
+prs: #2172 (6100) census, PR 2 (6101) guard: working (drafts, waiting on CI)
 state: working
 
 ## Done
@@ -9,8 +9,11 @@ state: working
   value, 3 `?` (questTrack, meals, prog3), 62 with no switch row, 10 count,
   160 old page ways, 315 reads.
 
+- PR 2 (6101): the guard, tools/guards/caps-census.test.mjs (stacked on
+  #2172): the 160 old ways may only fall; break proof run every time.
+
 ## Next
-- PR 2 (6101): the guard, tools/guards/caps-census.test.mjs, once PR 1 is in.
+- Both PRs: ready when CI is green.
 
 ## Found
 - `?`: questTrack (the page counts quest kills, claims them at join), meals
