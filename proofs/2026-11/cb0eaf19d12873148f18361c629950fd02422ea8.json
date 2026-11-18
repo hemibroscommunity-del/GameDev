@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "cb0eaf19d12873148f18361c629950fd02422ea8",
+  "tree": "e548b158e15d985f7106b9741765acd40d739996",
+  "committedAt": "2026-11-18T15:16:41-08:00",
+  "subject": "Merge pull request #2256 from hemibroscommunity-del/claude/plan-rr-2-mayordoor",
+  "files": 8450,
+  "bytes": 963217898,
+  "listingSha256": "ad4792509e7f0d0492fde6914cd6c5e3e277acd3ee4de00437838abf59e5db8c",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

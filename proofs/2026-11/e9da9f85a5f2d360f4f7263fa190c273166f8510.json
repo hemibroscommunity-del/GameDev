@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "e9da9f85a5f2d360f4f7263fa190c273166f8510",
+  "tree": "c51578a750a7fde5db33419bde44eae4adcf498a",
+  "committedAt": "2026-11-18T15:17:18-08:00",
+  "subject": "Merge pull request #2253 from hemibroscommunity-del/claude/plan-sb-3-groundsend",
+  "files": 8451,
+  "bytes": 963241548,
+  "listingSha256": "a91c6d3685048efe0fecf5e13ac5ee74d7343bdaad7e519daf5649ccb68453cd",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

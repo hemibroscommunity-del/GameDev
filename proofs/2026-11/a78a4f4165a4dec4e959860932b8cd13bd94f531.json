@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "a78a4f4165a4dec4e959860932b8cd13bd94f531",
+  "tree": "516eb86d206cc8bdcdd69a922bdf0c96d901957c",
+  "committedAt": "2026-11-18T15:16:50-08:00",
+  "subject": "Merge pull request #2252 from hemibroscommunity-del/claude/plan-lr-3-refreeze",
+  "files": 8450,
+  "bytes": 963217482,
+  "listingSha256": "a427e8847b10175fda29ecc56b8c8875eda6737f8f8a991c20cf233b3e566c43",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

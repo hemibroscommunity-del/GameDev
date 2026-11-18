@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "9b4185789df3240130a670a1395c29fcc2499111",
+  "tree": "f04d55ee2e7356609de02153be63c57db61f899c",
+  "committedAt": "2026-11-18T15:17:28-08:00",
+  "subject": "Merge pull request #2255 from hemibroscommunity-del/claude/plan-en-5-peerprewarm",
+  "files": 8451,
+  "bytes": 963243712,
+  "listingSha256": "a9bd76d25a00e56c095077843451d891ea0a491841cf231aef04ca08da117b93",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
