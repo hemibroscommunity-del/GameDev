@@ -84,6 +84,13 @@ export const riseChestMethods = {
     const f = this._liveFlags;
     return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'risechest') && !f.risechest);
   },
+  /* v2.3.5802 (card RV, MD-1): the chest's stamp is its record, kept by the
+     oplog prune (inbox.js OP_PRUNE.KEEP).  `risekeep: false` in the live
+     flags: pruned at 48 h as before, and the chest pays again after it */
+  _riseKeepOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'risekeep') && !f.risekeep);
+  },
   /* the cap: on, and this room plays the Wheel the faces were baked for */
   _riseChestOn() {
     if (this._riseChestOff()) return false;
@@ -117,7 +124,12 @@ export const riseChestMethods = {
       return;
     }
     /* once a character: _creditPlayer reads the stamp and pays with it in one
-       run (inbox.js); a second ask finds the stamp */
+       run (inbox.js); a second ask finds the stamp.
+       v2.3.5802 (card RV, MD-1): and FOR GOOD.  The stamp was the only
+       record, and the oplog prune deletes stamps 48 h old, so the same
+       character opened the chest again every two days (TRAPS §146).  The
+       prune now passes over `risechest:` stamps (inbox.js OP_PRUNE.KEEP):
+       no new row, the one this payment already writes kept. */
     const res = await this._creditPlayer(pid, {
       opId: 'risechest:' + pid + ':' + r.id,
       source: 'risechest', kind: 'gold', payload: { amount: coins },
