@@ -14,6 +14,8 @@ state: working
 - (none yet)
 
 ## Needs
-- Asked the planning session (2026-11-18): Q1 may say.js go in systems.mjs's
-  `desktop` list (unsorted 11 -> 12 otherwise); Q2 sayPieces() for a sentence
-  with bold parts. Built on both recommendations meanwhile.
+- Nothing. Answered by the planning session, 2026-11-18: Q1 yes (`say` in
+  systems.mjs's `desktop` list, docs/SYSTEMS.md re-written); Q2 yes
+  (sayPieces); Q3 yes (a server/test check that reads a screen's words by
+  text is re-pointed to its src/data/say file, one line each, in a PR marked
+  "DEPLOYS: server/test" for the gatekeeper to batch; no server/src edits).
