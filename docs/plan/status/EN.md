@@ -1,6 +1,6 @@
 card: EN
 branch: claude/plan-en-1-leaves
-prs: 6200 (working)
+prs: 6200 (draft, checks running)
 state: working
 
 ## Done
