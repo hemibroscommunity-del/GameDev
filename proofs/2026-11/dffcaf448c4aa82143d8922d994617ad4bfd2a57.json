@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "dffcaf448c4aa82143d8922d994617ad4bfd2a57",
+  "tree": "73a0ed72c06dbe5de28a4ca28f52907359e7e8ff",
+  "committedAt": "2026-11-18T00:31:58-08:00",
+  "subject": "Merge pull request #2170 from hemibroscommunity-del/claude/plan-lg-1-honest-trouble",
+  "files": 8279,
+  "bytes": 961626567,
+  "listingSha256": "0189d0a2a05af56d163b048b13bd179b386a9c735040872e28e507492af96917",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
