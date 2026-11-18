@@ -39,6 +39,8 @@ import { OWNER_ICON } from '@/data/ownerIcons.js';   /* v2.3.3481: the trade req
 import { gemName, parseGemKey } from '@/data/gems.js';   /* v2.3.3516: gems are bag items */
 import { act } from '@/game/actions.js';   /* v2.3.5190: the page's requests leave through the action door (card K PR 7) */
 import { pageAddress } from '@/game/switches.js';   /* v2.3.5741: the address from the page's one reader (card T2) */
+import { SAY } from '@/data/say/tradeWindow.js';   /* v2.3.6323: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';
 
 /* === TradeWindowPanel — the two-sided trade window (v2.3.1132) === */
 /* Handoff item H: both players stage items + gold, both confirm, the
@@ -120,7 +122,7 @@ const emojiFor = (k) => ITEM_EMOJI[k] || farmLookFor(k) || (parseGemKey(k) ? '�
 const labelFor = (k) => farmName(k) || gemName(k) || remainsName(k) || k.replace(/^(fish|cooked_fish|wood|ore|herb)_/, '').replace(/_/g, ' ');   /* v2.3.3525: + "remains" */
 /* v2.3.1235: batch-4 state-correction — hoisted from the component so
    the row renderer can use it (was a local const; same expression). */
-const wpnName = (w) => (w && w.weapon && w.weapon.name) || 'Weapon';
+const wpnName = (w) => (w && w.weapon && w.weapon.name) || say(SAY, 'tradeWindow.weaponFallback');
 
 /* v2.3.1232: shared header icon (evt-trade) with emoji fallback — the
    SkillsPanel onError pattern. */
@@ -246,7 +248,7 @@ function TradeDrawer({ title, titleColor, onClose, children, kind, icon }) {
       style={DRAWER_FRAME}>
       <div onClick={(e) => e.stopPropagation()} style={{ position: 'relative' }}>
         {/* v2.3.3407: Esc presses it, as it does every window's ✕ (game/deskKeys.js) */}
-        {onClose && <button className="bt-t2-close" aria-label="Close" onClick={onClose}
+        {onClose && <button className="bt-t2-close" aria-label={say(SAY, 'tradeWindow.close')} onClick={onClose}
           data-esc="" data-key="Esc" data-key-at="hang">✕</button>}
         {/* v2.3.2297: a hook on the title, because the receipt now CHANGES it
             mid-card and "the title says X" was otherwise only readable as the
@@ -453,17 +455,17 @@ function StagedRow({ glyph, name, qty, have, rarityLabel, rarityColor, rarityTie
           other site, which on a well resolves to the dark ramp via --w-*. */}
       {qty != null && onInc && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 2, flex: 'none' }}>
-          <button aria-label={'One fewer ' + name} onClick={onDec} disabled={qty <= 0}
+          <button aria-label={say(SAY, 'tradeWindow.oneFewer', { name })} onClick={onDec} disabled={qty <= 0}
             className="bt-t2-sq">−</button>
           <div style={{ minWidth: 40, textAlign: 'center', fontSize: 12, fontWeight: 700, color: ink.text, fontVariantNumeric: 'tabular-nums' }}>
             {qty}<span style={{ color: ink.muted, fontWeight: 400 }}>/{have}</span>
           </div>
-          <button aria-label={'One more ' + name} onClick={onInc} disabled={have != null && qty >= have}
+          <button aria-label={say(SAY, 'tradeWindow.oneMore', { name })} onClick={onInc} disabled={have != null && qty >= have}
             className="bt-t2-sq">+</button>
         </div>
       )}
       {onRemove && (
-        <button aria-label={'Remove ' + name} onClick={onRemove} className="bt-t2-sq bt-t2-sq--x">✕</button>
+        <button aria-label={say(SAY, 'tradeWindow.remove', { name })} onClick={onRemove} className="bt-t2-sq bt-t2-sq--x">✕</button>
       )}
     </div>
   );
@@ -510,8 +512,8 @@ function OfferRows({ offer, weapons, pets, empty, onRemoveItem, onRemoveWeapon, 
       {petRows.map((pt) => (
         <StagedRow key={'p' + pt.id} rowKey={'p:' + pt.id}
           glyph={pt.missing ? '❔' : <PetPortrait pet={pt} size={26} />}
-          name={pt.missing ? 'A pet no longer offered' : worldSafeText(petDisplayName(pt))}
-          rarityLabel={pt.missing ? null : (pt.name ? petKindName(pt.kind, pt.stage) + ' · ' : '') + 'Lv ' + (pt.lv || 1) + (pt.gold ? ' · Golden' : '')}
+          name={pt.missing ? say(SAY, 'tradeWindow.petGone') : worldSafeText(petDisplayName(pt))}
+          rarityLabel={pt.missing ? null : (pt.name ? petKindName(pt.kind, pt.stage) + ' · ' : '') + say(SAY, 'tradeWindow.petLevel', { lv: pt.lv || 1 }) + (pt.gold ? say(SAY, 'tradeWindow.petGoldenTail') : '')}
           rarityColor={pt.gold ? '#EAC675' : null}
           onRemove={onRemovePet ? () => onRemovePet(pt.id) : null} ink={ink} />
       ))}
@@ -523,7 +525,7 @@ function OfferRows({ offer, weapons, pets, empty, onRemoveItem, onRemoveWeapon, 
       {gold > 0 && (
         <div className="bt-t2-row" data-trade-row="_gold" style={{ minHeight: 36 }}>
           <div className="bt-t2-plate"><GoldIcon amount={gold} /></div>
-          <div style={{ flex: 1, fontSize: 12, color: ink.name }}>Gold</div>
+          <div style={{ flex: 1, fontSize: 12, color: ink.name }}>{say(SAY, 'tradeWindow.goldRow')}</div>
           <div style={{ fontSize: 14, fontWeight: 700, color: ink.gold, fontVariantNumeric: 'tabular-nums' }}>{gold}{goldSuffix || ''}</div>
         </div>
       )}
@@ -1018,7 +1020,7 @@ export function TradeWindowPanel(props) {
          v2.3.2297: the title moves with the card. Once the sent lane has
          folded away, "Trade complete" is describing a card that is now showing
          exactly one thing, and naming that thing is the point of folding. */
-      <TradeDrawer title={recPhase === 'collapsed' ? ((_otherName || 'They') + ' gave you') : 'Trade complete ✓'}
+      <TradeDrawer title={recPhase === 'collapsed' ? say(SAY, 'tradeWindow.receiptGaveYou', { name: _otherName || say(SAY, 'tradeWindow.receiptThey') }) : say(SAY, 'tradeWindow.receiptTitle')}
         titleColor="#55B98A" onClose={() => setTrade2(null)}>
           {/* v2.3.2282: RECEIVED on top, SENT on the bottom -- see the lane-order
               note on the review screen. Your own pile is the bottom one on all
@@ -1030,7 +1032,7 @@ export function TradeWindowPanel(props) {
           <div className={theirLaneCls} style={theirWell}>
             <div className="bt-t2-lane-hdr" style={{ color: theirInk.muted }}>
               <Face src={theirFace} name={_otherName} onLight />
-              <span className="bt-t2-lane-name">You received</span>
+              <span className="bt-t2-lane-name">{say(SAY, 'tradeWindow.received')}</span>
             </div>
             {/* v2.3.2297: data-recv-well is what the toss walks for rows -- the
                 SENT lane has rows too, and they are not going anywhere. */}
@@ -1039,7 +1041,7 @@ export function TradeWindowPanel(props) {
                   in a .bt-t2-items well, and a well states its own ramp in CSS
                   -- so the two lanes read the same WELL_INK default and each
                   resolves it against the tint it is actually on. */}
-              <OfferRows offer={r.received} weapons={r.receivedWeapons} pets={r.receivedPets} empty="Nothing" goldSuffix="G" />
+              <OfferRows offer={r.received} weapons={r.receivedWeapons} pets={r.receivedPets} empty={say(SAY, 'tradeWindow.nothing')} goldSuffix={say(SAY, 'tradeWindow.goldSuffix')} />
             </div>
           </div>
           {/* v2.3.2297: the sent lane gets its beat and then folds. It is
@@ -1050,11 +1052,11 @@ export function TradeWindowPanel(props) {
             <div style={{ minHeight: 0, overflow: 'hidden' }}>
               <div className={myLaneCls} style={myWell}>
                 <div className="bt-t2-lane-hdr" style={{ color: '#8D9B98' }}>
-                  <Face src={portraitStore.get()} name="You" />
-                  <span className="bt-t2-lane-name">You sent</span>
+                  <Face src={portraitStore.get()} name={say(SAY, 'tradeWindow.you')} />
+                  <span className="bt-t2-lane-name">{say(SAY, 'tradeWindow.sent')}</span>
                 </div>
                 <div className="bt-t2-items">
-                  <OfferRows offer={r.sent} weapons={r.sentWeapons} pets={r.sentPets} empty="Nothing" goldSuffix="G" />
+                  <OfferRows offer={r.sent} weapons={r.sentWeapons} pets={r.sentPets} empty={say(SAY, 'tradeWindow.nothing')} goldSuffix={say(SAY, 'tradeWindow.goldSuffix')} />
                 </div>
               </div>
             </div>
@@ -1063,9 +1065,9 @@ export function TradeWindowPanel(props) {
               screen's -- same reason, and the two have to agree or "the totals
               are bold" is true on one screen and not the other. */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-            <span style={{ ...laneHeader, marginBottom: 0, fontWeight: 800, color: '#B6C1BE' }}>Balance</span>
+            <span style={{ ...laneHeader, marginBottom: 0, fontWeight: 800, color: '#B6C1BE' }}>{say(SAY, 'tradeWindow.balance')}</span>
             <GoldIcon amount={liveCoins} />
-            <span style={{ fontSize: 15, fontWeight: 800, color: '#F4F0E7', fontVariantNumeric: 'tabular-nums' }}>{liveCoins}G</span>
+            <span style={{ fontSize: 15, fontWeight: 800, color: '#F4F0E7', fontVariantNumeric: 'tabular-nums' }}>{liveCoins}{say(SAY, 'tradeWindow.goldSuffix')}</span>
           </div>
       </TradeDrawer>
     );
@@ -1082,12 +1084,12 @@ export function TradeWindowPanel(props) {
      failed commit) — out of scope. */
   if (trade2.state === 'failed') {
     return (
-      <TradeDrawer title="Trade" onClose={() => setTrade2(null)}>
+      <TradeDrawer title={say(SAY, 'tradeWindow.title')} onClose={() => setTrade2(null)}>
           <div style={{ borderRadius: 10, border: '1px solid #D8635D', background: 'transparent', color: '#D8635D', fontSize: 12, fontWeight: 700, padding: '10px 12px' }}>
-            Trade failed — nothing was exchanged
+            {say(SAY, 'tradeWindow.failed')}
             {/* v2.3.3122: and, for a pet, why */}
-            {/^pet-gone/.test(String(trade2.reason || '')) ? <div style={{ fontWeight: 400, marginTop: 4 }}>A pet in it could no longer be traded.</div> : null}
-            {/^pets-full/.test(String(trade2.reason || '')) ? <div style={{ fontWeight: 400, marginTop: 4 }}>There was no room in a collection for the pets.</div> : null}
+            {/^pet-gone/.test(String(trade2.reason || '')) ? <div style={{ fontWeight: 400, marginTop: 4 }}>{say(SAY, 'tradeWindow.failedPetGone')}</div> : null}
+            {/^pets-full/.test(String(trade2.reason || '')) ? <div style={{ fontWeight: 400, marginTop: 4 }}>{say(SAY, 'tradeWindow.failedPetsFull')}</div> : null}
           </div>
       </TradeDrawer>
     );
@@ -1101,16 +1103,16 @@ export function TradeWindowPanel(props) {
          did not, so a dismissed invite used to leave the other player
          waiting on a request nobody had actually refused. */
       /* v2.3.3481: the owner's handshake leads it (their icon pick 3) */
-      <TradeDrawer kind="invite" title={`${trade2.fromName} wants to trade`} icon={OWNER_ICON.tradeHandshake}>
+      <TradeDrawer kind="invite" title={say(SAY, 'tradeWindow.inviteTitle', { name: trade2.fromName })} icon={OWNER_ICON.tradeHandshake}>
           <div style={{ display: 'flex', gap: 6 }}>
             <button
               style={{ ...primaryBtn, flex: 1, padding: '7px 0' }}
               onClick={() => send('trade2_open', { target: trade2.from })}
-            >Open trade</button>
+            >{say(SAY, 'tradeWindow.open')}</button>
             <button
               style={{ ...secondaryBtn, flex: 1, padding: '7px 0' }}
               onClick={() => { send('trade2_cancel'); setTrade2(null); }}
-            >Decline</button>
+            >{say(SAY, 'tradeWindow.decline')}</button>
           </div>
       </TradeDrawer>
     );
@@ -1119,14 +1121,14 @@ export function TradeWindowPanel(props) {
   // ── Waiting for the other side to open ──
   if (trade2.state === 'invited') {
     return (
-      <TradeDrawer title="Trade" onClose={() => { send('trade2_cancel'); setTrade2(null); }}>
+      <TradeDrawer title={say(SAY, 'tradeWindow.title')} onClose={() => { send('trade2_cancel'); setTrade2(null); }}>
           {/* v2.3.1235: batch-4 rollout — waiting state stays readable
               secondary text (text-2 token). */}
-          <div style={{ fontSize: 12, color: '#B6C1BE' }}>Trade request sent — waiting…</div>
+          <div style={{ fontSize: 12, color: '#B6C1BE' }}>{say(SAY, 'tradeWindow.requestSent')}</div>
           <button
             style={{ ...secondaryBtn, marginTop: 10, width: '100%', padding: '6px 0' }}
             onClick={() => { send('trade2_cancel'); setTrade2(null); }}
-          >Cancel</button>
+          >{say(SAY, 'tradeWindow.cancel')}</button>
       </TradeDrawer>
     );
   }
@@ -1296,13 +1298,13 @@ export function TradeWindowPanel(props) {
     const lines = (offer, wpns, pets) => {
       const out = Object.entries(offer)
         .filter(([k, v]) => k !== '_gold' && v > 0)
-        .map(([k, v]) => ({ key: k, text: `${labelFor(k)} x${v}` }));
+        .map(([k, v]) => ({ key: k, text: say(SAY, 'tradeWindow.reviewItem', { name: labelFor(k), qty: v }) }));
       (wpns || []).forEach((w) => out.push({ key: null, text: wpnName(w), glyph: '⚔️' }));
       /* v2.3.3122: each pet by name, kind and level, its picture beside it */
       (pets || []).forEach((pt) => out.push(pt.missing
-        ? { key: null, text: 'A pet no longer offered', glyph: '❔' }
-        : { key: null, pet: pt, text: (pt.name ? worldSafeText(pt.name) + ' (' + petKindName(pt.kind, pt.stage) + ', Lv ' + (pt.lv || 1) + (pt.gold ? ', Golden' : '') + ')'
-          : petKindName(pt.kind, pt.stage) + ', Lv ' + (pt.lv || 1) + (pt.gold ? ', Golden' : '')) }));
+        ? { key: null, text: say(SAY, 'tradeWindow.petGone'), glyph: '❔' }
+        : { key: null, pet: pt, text: (pt.name ? say(SAY, 'tradeWindow.reviewPetNamed', { name: worldSafeText(pt.name), kind: petKindName(pt.kind, pt.stage), lv: pt.lv || 1, golden: pt.gold ? say(SAY, 'tradeWindow.reviewPetGolden') : '' })
+          : say(SAY, 'tradeWindow.reviewPet', { kind: petKindName(pt.kind, pt.stage), lv: pt.lv || 1, golden: pt.gold ? say(SAY, 'tradeWindow.reviewPetGolden') : '' })) }));
       return out;
     };
     const myLines = lines(mine, myWpn, myPets), theirLines = lines(theirs, otherWpn, otherPets);
@@ -1333,7 +1335,7 @@ export function TradeWindowPanel(props) {
             boundary is the div. */}
         <div className="bt-t2-items">
         {ls.length === 0 && gold === 0 && (
-          <div style={{ fontSize: 12, color: WELL_INK.muted }}>Nothing</div>
+          <div style={{ fontSize: 12, color: WELL_INK.muted }}>{say(SAY, 'tradeWindow.nothing')}</div>
         )}
         {/* v2.3.2296: the Confirm screen's lines are line items too, so they
             take the same frame the live window's and the receipt's do -- the
@@ -1351,7 +1353,7 @@ export function TradeWindowPanel(props) {
              so a find-and-replace on the other hex misses this line and leaves
              1.40:1 gold on the one screen whose job is to be read. */
           <div className="bt-t2-row" style={{ minHeight: 30, gap: 6, fontSize: 13, color: WELL_INK.gold, fontWeight: 700, lineHeight: 1.5 }}>
-            {chip(<GoldIcon amount={gold} />)}<span>{gold} gold</span>
+            {chip(<GoldIcon amount={gold} />)}<span>{say(SAY, 'tradeWindow.reviewGold', { n: gold })}</span>
           </div>
         )}
         </div>
@@ -1379,7 +1381,7 @@ export function TradeWindowPanel(props) {
             sentence -- which is what the row it is summing does one line above.
             Weight without contrast is not emphasis; it is the same grey, thicker. */}
         <div data-trade-subtotal="" style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, fontWeight: 800, color: ink.name, marginTop: 7, paddingTop: 0 }}>
-          <span>{ls.length} item{ls.length === 1 ? '' : 's'}</span>
+          <span>{say(SAY, 'tradeWindow.reviewCount', { n: ls.length })}</span>
           {gold > 0 && (<><span style={{ color: ink.muted, fontWeight: 700 }}>·</span><GoldIcon amount={gold} /><span style={{ color: ink.gold, fontVariantNumeric: 'tabular-nums' }}>{gold}</span></>)}
         </div>
       </div>
@@ -1395,7 +1397,7 @@ export function TradeWindowPanel(props) {
          `leaveAsk`, and this screen never rendered the leave-confirm strip,
          so a scrim tap mid-review did nothing at all and the player had no
          way out but Back. The strip is rendered below now. */
-      <TradeDrawer title={`Confirm with ${otherName}`} onClose={requestLeave}>
+      <TradeDrawer title={say(SAY, 'tradeWindow.reviewTitle', { name: otherName })} onClose={requestLeave}>
           {/* ═══ v2.3.2282: YOUR OWN PILE IS ALWAYS THE BOTTOM ONE ═══
               Owner: "swap places so that your 'you give' is on bottom and 'you
               receive' is on top ... This way it's consistent across all 3 trade
@@ -1424,20 +1426,20 @@ export function TradeWindowPanel(props) {
               RECEIVE is still on top (CSS order), as v2.3.2282 put it.  Each
               call still carries its own label, tone, well and ink. */}
           <div className={tradeLanesCls()} data-trade-lanes=""><div className="bt-t2-lanes-in">
-          {side('YOU GIVE', myLines, myGold, '#D8635D', myWell, myInk,
-            <Face src={portraitStore.get()} name="You" />)}
-          {side('YOU RECEIVE', theirLines, theirGold, 'var(--ui-positive-on-invert, #1C5A40)', theirWell, theirInk,
+          {side(say(SAY, 'tradeWindow.youGive'), myLines, myGold, '#D8635D', myWell, myInk,
+            <Face src={portraitStore.get()} name={say(SAY, 'tradeWindow.you')} />)}
+          {side(say(SAY, 'tradeWindow.youReceive'), theirLines, theirGold, 'var(--ui-positive-on-invert, #1C5A40)', theirWell, theirInk,
             <Face src={theirFace} name={otherName} onLight />)}
           </div></div>
           {bigGold && !goldAck && (
             /* Owner: "large currency amounts trigger an explicit confirmation
                to catch typos." */
             <div style={{ fontSize: 12, color: '#D8A94D', marginBottom: 8, lineHeight: 1.45 }}>
-              That is a large amount of gold. Check the numbers, then tap Accept twice.
+              {say(SAY, 'tradeWindow.bigGold')}
             </div>
           )}
           {theyConfirmed && (
-            <div style={{ fontSize: 12, color: '#55B98A', marginBottom: 6 }}>{otherName} has accepted — waiting on you.</div>
+            <div style={{ fontSize: 12, color: '#55B98A', marginBottom: 6 }}>{say(SAY, 'tradeWindow.theyAccepted', { name: otherName })}</div>
           )}
           {/* v2.3.2280: the leave-confirm strip the ✕/scrim has been setting
               since v2.3.1235 without anything rendering it here. Same markup
@@ -1446,16 +1448,16 @@ export function TradeWindowPanel(props) {
               inside its own scroll body. */}
           {leaveAsk && (
             <div style={{ borderRadius: 10, border: '1px solid rgba(229,237,233,.11)', background: '#111E23', padding: 8, marginBottom: 8 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: '#F4F0E7', marginBottom: 6 }}>Leave this trade?</div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#F4F0E7', marginBottom: 6 }}>{say(SAY, 'tradeWindow.leaveAsk')}</div>
               <div style={{ display: 'flex', gap: 6 }}>
                 <button
                   style={{ ...secondaryBtn, flex: 1, padding: '6px 0' }}
                   onClick={() => setLeaveAsk(false)}
-                >Keep Trading</button>
+                >{say(SAY, 'tradeWindow.keepTrading')}</button>
                 <button
                   style={{ flex: 1, padding: '6px 0', minHeight: 44, borderRadius: 10, fontSize: 13, fontWeight: 700, border: '1px solid #D8635D', background: 'transparent', color: '#D8635D', cursor: 'pointer' }}
                   onClick={leave /* v2.3.4362: was send('trade2_cancel') alone */}
-                >Leave Trade</button>
+                >{say(SAY, 'tradeWindow.leave')}</button>
               </div>
             </div>
           )}
@@ -1474,20 +1476,20 @@ export function TradeWindowPanel(props) {
                 if (bigGold && !goldAck) { setGoldAck(true); return; }
                 send('trade2_confirm');
               }}
-            >{iConfirmed ? 'Accepted ✓ — waiting'
-              : coolLeft > 0 ? `Wait ${Math.ceil(coolLeft / 1000)}s…`
-              : (bigGold && !goldAck) ? 'Accept (large trade)'
-              : 'Accept'}</button>
+            >{iConfirmed ? say(SAY, 'tradeWindow.accepted')
+              : coolLeft > 0 ? say(SAY, 'tradeWindow.wait', { s: Math.ceil(coolLeft / 1000) })
+              : (bigGold && !goldAck) ? say(SAY, 'tradeWindow.acceptLarge')
+              : say(SAY, 'tradeWindow.accept')}</button>
             <button
               style={{ flex: 1, padding: '8px 0', minHeight: 44, borderRadius: 10, fontSize: 13, fontWeight: 700, border: '1px solid rgba(229,237,233,.20)', background: '#293B41', color: '#F4F0E7', cursor: 'pointer' }}
               onClick={() => send('trade2_ready', { ready: false })}
-            >Back</button>
+            >{say(SAY, 'tradeWindow.back')}</button>
           </div>
           {/* v2.3.3183: the worker takes no trade while either of you is in a
               fight with a player (server nomansland.js _bagLockedByFight) */}
           {trade2.reason === 'fight' && (
             <div data-t2-fight="1" style={{ fontSize: 12, color: '#D8635D', marginTop: 6, textAlign: 'center' }}>
-              Not while one of you is fighting a player. Try again in a few seconds.
+              {say(SAY, 'tradeWindow.fight')}
             </div>
           )}
           {/* v2.3.5090: nor in the minute after the storage refused a save (server
@@ -1495,7 +1497,7 @@ export function TradeWindowPanel(props) {
               stays open and the same Accept settles after */}
           {trade2.reason === 'paused' && (
             <div data-t2-paused="1" style={{ fontSize: 12, color: '#D8635D', marginTop: 6, textAlign: 'center' }}>
-              Saving is paused for a moment, try again.
+              {say(SAY, 'tradeWindow.paused')}
             </div>
           )}
           {/* ═══ v2.3.2293: BOTH FOOTERS REMOVED ═══
@@ -1533,7 +1535,7 @@ export function TradeWindowPanel(props) {
     /* v2.3.2280: the frame this state introduced is now TradeDrawer, shared
        with the other five states -- see the shell above. Same markup, same
        numbers; the ✕ still routes through requestLeave (v2.3.1235 §7). */
-    <TradeDrawer title={`Trading with ${otherName}`} onClose={requestLeave}>
+    <TradeDrawer title={say(SAY, 'tradeWindow.tradingWith', { name: otherName })} onClose={requestLeave}>
 
         {/* ═══ v2.3.3856: YOUR OFFER ON THE LEFT, THEIRS ON THE RIGHT ═══
             The owner: "for trade window I'd prefer a side by side layout of
@@ -1557,13 +1559,13 @@ export function TradeWindowPanel(props) {
             icons the owner drew into the lane art, lifted out so the header
             they belong to can say something different on each screen. */}
         <div className="bt-t2-lane-hdr" style={{ color: '#8D9B98' }}>
-          <Face src={portraitStore.get()} name="You" />
-          <span className="bt-t2-lane-name">You offer</span>
+          <Face src={portraitStore.get()} name={say(SAY, 'tradeWindow.you')} />
+          <span className="bt-t2-lane-name">{say(SAY, 'tradeWindow.youOffer')}</span>
           {/* v2.3.2293: the hint half of this ternary is gone with the rest of
               the explainers, but the span is NOT deleted -- its other half is a
               live read of the server's confirm flag. It renders only when there
               is a flag to report. */}
-          {iConfirmed && <span className="bt-t2-lane-hint" style={{ color: '#55B98A' }}>Confirmed ✓</span>}
+          {iConfirmed && <span className="bt-t2-lane-hint" style={{ color: '#55B98A' }}>{say(SAY, 'tradeWindow.confirmed')}</span>}
         </div>
           {/* v2.3.1235: batch-4 state-correction §3/§4 — my rows render my
               staging mirror with Remove controls (existing trade2_set /
@@ -1576,7 +1578,7 @@ export function TradeWindowPanel(props) {
             onRemoveItem={removeItem}
             onRemoveWeapon={(seq) => send('trade2_unstage_weapon', { seq })}
             onRemovePet={(id) => sendPets(myPetIds.filter((x) => x !== id))}
-            empty={bagEmpty ? 'Your bag is empty' : 'Nothing staged yet'} />
+            empty={bagEmpty ? say(SAY, 'tradeWindow.bagEmpty') : say(SAY, 'tradeWindow.nothingStaged')} />
           </div>
 
         {/* ═══ v2.3.2149: THE IN-WINDOW BAG TRAY IS GONE ═══
@@ -1596,7 +1598,7 @@ export function TradeWindowPanel(props) {
         {weaponLane && stash.length > 0 && (
           <div style={{ marginBottom: 8 }}>
             <div style={{ ...laneHeader, color: '#8D9B98' }}>
-              Your weapons {myWpn.length >= T2_WPN_MAX ? '· max ' + T2_WPN_MAX : ''}
+              {say(SAY, 'tradeWindow.yourWeapons')} {myWpn.length >= T2_WPN_MAX ? say(SAY, 'tradeWindow.atMax', { n: T2_WPN_MAX }) : ''}
             </div>
             <div className="ls-scrollbody" style={{ display: 'flex', flexWrap: 'wrap', gap: 4, maxHeight: 88, overflowY: 'auto' }}>
               {stash.map((w, i) => (w && w.unrevealed) ? null /* v2.3.4012: a "?" is revealed before it is traded (game/revealBag.js) */ : (
@@ -1612,7 +1614,7 @@ export function TradeWindowPanel(props) {
                     /* v2.3.1235: batch-4 rollout — corrected disabled token. */
                     color: myWpn.length >= T2_WPN_MAX ? '#667875' : '#9A76D3',
                   }}
-                >⚔️ {w.name || 'Weapon'}</button>
+                >⚔️ {w.name || say(SAY, 'tradeWindow.weaponFallback')}</button>
               ))}
             </div>
           </div>
@@ -1621,7 +1623,7 @@ export function TradeWindowPanel(props) {
         {petLane && myTradeable.length > 0 && (
           <div style={{ marginBottom: 8 }} data-trade-pet-picker="1">
             <div style={{ ...laneHeader, color: '#8D9B98' }}>
-              Your pets {myPetIds.length >= PET_TRADE_MAX ? '· max ' + PET_TRADE_MAX : ''}
+              {say(SAY, 'tradeWindow.yourPets')} {myPetIds.length >= PET_TRADE_MAX ? say(SAY, 'tradeWindow.atMax', { n: PET_TRADE_MAX }) : ''}
             </div>
             <div className="ls-scrollbody" style={{ display: 'flex', flexWrap: 'wrap', gap: 4, maxHeight: 96, overflowY: 'auto' }}>
               {myTradeable.map((p) => (
@@ -1636,7 +1638,7 @@ export function TradeWindowPanel(props) {
                     border: '1px solid rgba(126,224,168,.35)', background: 'rgba(126,224,168,.10)',
                     color: myPetIds.length >= PET_TRADE_MAX ? '#667875' : '#7EE0A8',
                   }}
-                ><PetPortrait pet={p} size={22} />{worldSafeText(petDisplayName(p))} · Lv {p.lv || 1}</button>
+                ><PetPortrait pet={p} size={22} />{say(SAY, 'tradeWindow.petChip', { name: worldSafeText(petDisplayName(p)), lv: p.lv || 1 })}</button>
               ))}
             </div>
           </div>
@@ -1646,7 +1648,7 @@ export function TradeWindowPanel(props) {
           <GoldIcon amount={stage._gold || 0} />
           {/* v2.3.1235: batch-4 rollout — section-header ramp 11/700 .14em
               muted. */}
-          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: '#8D9B98' }}>Gold</span>
+          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: '#8D9B98' }}>{say(SAY, 'tradeWindow.goldHeader')}</span>
           {/* v2.3.1235: batch-4 state-correction §5 — numeric mobile keypad
               (inputMode/pattern); the clamp to [0, coins] before the
               existing trade2_set send was already here (input hygiene). */}
@@ -1665,7 +1667,7 @@ export function TradeWindowPanel(props) {
             }}
             style={{ width: 76, padding: '6px 8px', borderRadius: 8, border: '1px solid rgba(229,237,233,.11)' /* v2.3.1235: batch-4 rollout — well trough + brass tokens */, background: '#111E23', color: '#D8AA58', fontSize: 16 /* v2.3.1233b: iOS zoom guard */, fontWeight: 700, fontVariantNumeric: 'tabular-nums', textAlign: 'right', outline: 'none' }}
           />
-          <span style={{ fontSize: 11, color: '#8D9B98', fontVariantNumeric: 'tabular-nums' }}>of {coins}</span>
+          <span style={{ fontSize: 11, color: '#8D9B98', fontVariantNumeric: 'tabular-nums' }}>{say(SAY, 'tradeWindow.ofCoins', { n: coins })}</span>
           {/* v2.3.2286: inline, NOT under the ladder. As its own item in the
               chip row it wrapped to a second line and stretched full width --
               which read as a primary button and, worse, cost ~48px of a drawer
@@ -1697,8 +1699,8 @@ export function TradeWindowPanel(props) {
                  a red run that says nothing about the thing being measured. */
               data-gold-mode={goldMinus ? 'sub' : 'add'}
               aria-label={goldMinus
-                ? 'Presets subtract gold. Tap to make them add again.'
-                : 'Presets add gold. Tap to make them subtract.'}
+                ? say(SAY, 'tradeWindow.presetsSubtract')
+                : say(SAY, 'tradeWindow.presetsAdd')}
               onClick={() => setGoldMinus((v) => !v)}
               style={{
                 /* v2.3.2292: ONE GLYPH, and it names the ACTION rather than the
@@ -1736,7 +1738,7 @@ export function TradeWindowPanel(props) {
           )}
           {(stage._gold || 0) > 0 && (
             <button
-              aria-label="Offer no gold"
+              aria-label={say(SAY, 'tradeWindow.offerNoGold')}
               onClick={() => { const next = { ...stage }; delete next._gold; pushStage(next); }}
               style={{
                 flex: '0 0 auto',
@@ -1745,7 +1747,7 @@ export function TradeWindowPanel(props) {
                 border: '1px solid rgba(229,237,233,.20)',
                 background: '#293B41', color: '#B6C1BE',
               }}
-            >Clear</button>
+            >{say(SAY, 'tradeWindow.clear')}</button>
           )}
         </div>
 
@@ -1790,8 +1792,8 @@ export function TradeWindowPanel(props) {
                 key={amt}
                 disabled={over}
                 aria-label={goldMinus
-                  ? ('Take back ' + amt + ' gold from your offer')
-                  : ('Offer ' + amt + ' more gold')}
+                  ? say(SAY, 'tradeWindow.takeBack', { n: amt })
+                  : say(SAY, 'tradeWindow.offerMore', { n: amt })}
                 onClick={() => {
                   if (over) return;
                   const next = { ...stage };
@@ -1836,7 +1838,7 @@ export function TradeWindowPanel(props) {
             travel with the fill, and a header that changes side changes ramp. */}
         <div className="bt-t2-lane-hdr" style={{ color: theirInk.muted }}>
           <Face src={theirFace} name={otherName} onLight />
-          <span className="bt-t2-lane-name">{otherName} offers</span>
+          <span className="bt-t2-lane-name">{say(SAY, 'tradeWindow.theyOffer', { name: otherName })}</span>
 
           {/* v2.3.2280: under the two-stage flow `confirmed` is only ever set
               on the REVIEW screen, so at the offer stage this header showed
@@ -1845,8 +1847,8 @@ export function TradeWindowPanel(props) {
               server state from the same trade2_state echo (trade2.js _t2Wire)
               -- a direct read, not a guess. */}
           {/* and the same for the green: #55B98A is ~2:1 on the light card. */}
-          {theyConfirmed ? <span className="bt-t2-lane-hint" style={{ color: 'var(--ui-positive-on-invert, #1C5A40)' }}>confirmed ✓</span>
-            : theyReady ? <span className="bt-t2-lane-hint" style={{ color: 'var(--ui-positive-on-invert, #1C5A40)' }}>ready ✓</span> : null}
+          {theyConfirmed ? <span className="bt-t2-lane-hint" style={{ color: 'var(--ui-positive-on-invert, #1C5A40)' }}>{say(SAY, 'tradeWindow.theyConfirmed')}</span>
+            : theyReady ? <span className="bt-t2-lane-hint" style={{ color: 'var(--ui-positive-on-invert, #1C5A40)' }}>{say(SAY, 'tradeWindow.theyReady')}</span> : null}
         </div>
         {/* v2.3.1235: batch-4 rollout — offer wells onto the corrected well
             token #111E23 + .11 hairline (×3 below, incl. the item tray).
@@ -1866,7 +1868,7 @@ export function TradeWindowPanel(props) {
               well, so text picks up the ramp for the ground it is standing on
               whichever lane the well happens to be in. */}
           <div className="bt-t2-items">
-            <OfferRows offer={trade2.offers[otherId]} weapons={otherWpn} pets={otherPets} empty="Nothing staged yet" />
+            <OfferRows offer={trade2.offers[otherId]} weapons={otherWpn} pets={otherPets} empty={say(SAY, 'tradeWindow.nothingStaged')} />
           </div>
         </div>
         </div></div>
@@ -1879,7 +1881,7 @@ export function TradeWindowPanel(props) {
             relayed. */}
         {offerChanged && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, borderRadius: 8, border: '1px solid rgba(89,159,229,.35)', background: 'rgba(89,159,229,.10)', color: '#599FE5', fontSize: 11, fontWeight: 600, padding: '6px 8px', marginBottom: 8 }}>
-            Offer changed — review and confirm again
+            {say(SAY, 'tradeWindow.offerChanged')}
           </div>
         )}
 
@@ -1889,16 +1891,16 @@ export function TradeWindowPanel(props) {
             trade2_cancel send. */}
         {leaveAsk && (
           <div style={{ borderRadius: 10, border: '1px solid rgba(229,237,233,.11)', background: '#111E23', padding: 8, marginBottom: 8 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: '#F4F0E7', marginBottom: 6 }}>Leave this trade?</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#F4F0E7', marginBottom: 6 }}>{say(SAY, 'tradeWindow.leaveAsk')}</div>
             <div style={{ display: 'flex', gap: 6 }}>
               <button
                 style={{ ...secondaryBtn, flex: 1, padding: '6px 0' }}
                 onClick={() => setLeaveAsk(false)}
-              >Keep Trading</button>
+              >{say(SAY, 'tradeWindow.keepTrading')}</button>
               <button
                 style={{ flex: 1, padding: '6px 0', minHeight: 44, borderRadius: 10, fontSize: 13, fontWeight: 700, border: '1px solid #D8635D', background: 'transparent', color: '#D8635D', cursor: 'pointer' }}
                 onClick={leave /* v2.3.4362: was send('trade2_cancel') alone */}
-              >Leave Trade</button>
+              >{say(SAY, 'tradeWindow.leave')}</button>
             </div>
           </div>
         )}
@@ -1919,7 +1921,7 @@ export function TradeWindowPanel(props) {
                 color: confirmDisabled ? '#8D9B98' : iReady ? '#55B98A' : '#172126',
               }}
               onClick={() => { if (!confirmDisabled) send('trade2_ready', { ready: !iReady }); }}
-            >{confirmDisabled ? 'Add an item or gold' : iReady ? 'Ready ✓ — waiting' : 'Ready to trade'}</button>
+            >{confirmDisabled ? say(SAY, 'tradeWindow.addSomething') : iReady ? say(SAY, 'tradeWindow.readyWaiting') : say(SAY, 'tradeWindow.ready')}</button>
           ) : (
           <button
             disabled={confirmDisabled /* v2.3.1235: batch-4 state-correction §3 — real disabled while BOTH sides are fully empty */}
@@ -1941,19 +1943,19 @@ export function TradeWindowPanel(props) {
               opacity: 1,
             }}
             onClick={() => { if (!iConfirmed) send('trade2_confirm'); }}
-          >{confirmDisabled ? 'Add an item or gold' : iConfirmed ? 'Confirmed ✓' : 'Confirm trade'}</button>
+          >{confirmDisabled ? say(SAY, 'tradeWindow.addSomething') : iConfirmed ? say(SAY, 'tradeWindow.confirmed') : say(SAY, 'tradeWindow.confirmTrade')}</button>
           )}
           <button
             style={{ flex: 1, padding: '8px 0', minHeight: 44, borderRadius: 10, fontSize: 13, fontWeight: 700, border: '1px solid rgba(229,237,233,.20)', background: '#293B41', color: '#F4F0E7', cursor: 'pointer' }}
             onClick={requestLeave /* v2.3.1235: batch-4 state-correction §7 — routes through the leave guard; [Leave Trade] fires the same trade2_cancel send */}
-          >Cancel</button>
+          >{say(SAY, 'tradeWindow.cancel')}</button>
         </div>
         {/* v2.3.1235: batch-4 state-correction §6 — waiting line while my
             confirm is locked and theirs isn't (both read from the last
             server echo; both-confirmed never renders here — the server's
             'done' echo is consumed by gameEvents.js, see wire map). */}
         {iConfirmed && !theyConfirmed && (
-          <div style={{ fontSize: 11, color: '#B6C1BE', marginTop: 6 }}>Waiting for {otherName}…</div>
+          <div style={{ fontSize: 11, color: '#B6C1BE', marginTop: 6 }}>{say(SAY, 'tradeWindow.waitingFor', { name: otherName })}</div>
         )}
     </TradeDrawer>
   );
