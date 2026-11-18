@@ -1,11 +1,11 @@
 card: FX
-branch: claude/plan-fx-4-canvas-makers (on fx-3, on fx-2, on fx-1)
-prs: #2190 6220 (ready), #2194 6221 (ready), #2200 6222 (draft), 6223 (draft)
+branch: claude/plan-fx-4-canvas-makers (the top; fx-2 and fx-3 under it)
+prs: #2190 6220 (merged), #2194 6221 (ready), #2200 6222 (draft), 6223 (draft)
 state: ready
 
 ## Done
 
-- #2190 (6220), ready: 40 level-0 leaves + 12 constants moved verbatim
+- #2190 (6220), merged 2026-11-18 (sitting 46): 40 level-0 leaves + 12 constants moved verbatim
   to src/rendering/leaves/effects-*.js; 6 suites re-keyed; main ed1abc20
   merged in (EN's #2189/#2195), M-tables.md re-generated (sitting 46).
 - #2194 (6221), ready: the 7 level-1 leaves + 2 constants; held-sweep 9.
@@ -21,8 +21,8 @@ state: ready
 
 ## Next
 
-- The card's four PRs are open. Merge main up the stack as each lands;
-  retarget #2194, #2200, 6223 to main as their base merges (sitting 47).
+- main (with #2190) merged up the stack; #2194 retargeted to main.
+  #2200 and 6223 retarget as their base merges (sitting 47).
 
 ## Found
 
