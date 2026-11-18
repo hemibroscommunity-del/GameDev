@@ -32,7 +32,8 @@
 import { extensions, ExtensionType, LoaderParserPriority, Texture, Rectangle, Cache, loadTextures } from 'pixi.js';
 import { P256_FILES } from '../data/p256Files.js';
 import { picNumbersOn, stripAsNumbers, stripRowsAsk, stripPlanAnswered, stripPlanDone } from './picsNumbers.js';   /* v2.3.6284: + the rows' plan */
-import { stripReadOn, readWhole } from './stripRead.js';   /* v2.3.6284: the twin read off the page's thread (card HB2 PR 5) */
+import { stripReadOn, readWhole, deflateOnWorker } from './stripRead.js';   /* v2.3.6284: the twin read, and its numbers packed, off the page's thread (card HB2 PR 5) */
+import { inflateRawSync } from './inflateRaw.js';   /* v2.3.6284: a raw pack unpacked where the browser has no deflate-raw */
 import { isPaletteSource } from './paletteDraw.js';
 import { paletteDecided } from './paletteTex.js';
 import { addPictureRestorer } from './picsOnce.js';
@@ -370,19 +371,43 @@ async function deflate(u8) {
   const stream = new Blob([u8]).stream().pipeThrough(new CompressionStream('deflate'));
   return new Uint8Array(await new Response(stream).arrayBuffer());
 }
-async function inflate(u8) {
+async function inflate(u8, raw, n) {
+  /* v2.3.6284: a pack the worker made is raw DEFLATE (checked there to come back: stripRead.js deflateOnWorker) */
+  if (raw) {
+    try {
+      const stream = new Blob([u8]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+      return new Uint8Array(await new Response(stream).arrayBuffer());
+    } catch (e) { const u = inflateRawSync(u8, n); if (!u) throw e; return u; }   /* no deflate-raw here: the page's own inflater */
+  }
   const stream = new Blob([u8]).stream().pipeThrough(new DecompressionStream('deflate'));
   return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+/* ═══ v2.3.6284: PACKED ON THE READER'S WORKER, NOT ON THE PAGE (card HB2 PR 5) ═══
+   The once-a-second pack deflated each twin's numbers on the page (`wrapped > pack > deflate`: the Blob's copy and
+   the compressor's work in the page's turn, 24.1 ms on budget-android, 19.8 on hotel-laptop: docs/plan/census/
+   HB-holds.md row 16).  Now a copy of them goes to the strip reader's worker, which deflates them and checks each
+   comes back as the very bytes (framePack.js's way); the page keeps its own until the pack is back, as before.  No
+   worker, or `?stripworker=0`: deflated on the page, as before. */
+async function packBytes(idx) {
+  if (stripReadOn()) {
+    const r = await deflateOnWorker([idx.slice()]);
+    if (r && r.zs) return { z: r.zs[0], raw: true };
+    if (r && r.no) return { z: null, raw: false };
+  }
+  let z = null;
+  try { z = await deflate(idx); } catch (e) { z = null; }
+  return { z, raw: false };
 }
 const isPacked = (src) => !!(src && src.__btPack && src.__btPack.z);
 async function pack(src, renderer) {
   const idx = src.resource;
   if (!idx || !idx.length || src.__btPack) return;
   src.__btPack = { z: null, n: idx.length, busy: true };
-  let z = null;
-  try { z = await deflate(idx); } catch (e) { z = null; }
+  let z = null, raw = false;
+  try { const b = await packBytes(idx); z = b.z; raw = b.raw; } catch (e) { z = null; }   /* v2.3.6284: on the worker */
   const P = src.__btPack;
   P.busy = false;
+  P.raw = raw;
   /* given up: nothing to pack it with, the source gone, or it changed or left
      this chip meanwhile */
   if (!z || src.destroyed || src.resource !== idx || !(src._gpuData && src._gpuData[renderer.uid])) { src.__btPack = null; if (!z) _pk.failed++; return; }
@@ -400,7 +425,7 @@ export function unpack(src) {
   if (!isPacked(src)) return Promise.resolve(true);
   const P = src.__btPack;
   if (P.out) return P.out;
-  P.out = inflate(P.z).then((idx) => {
+  P.out = inflate(P.z, P.raw, P.n).then((idx) => {
     if (src.destroyed) return false;
     if (idx.length !== P.n) { _pk.failed++; return false; }
     src.resource = idx;
