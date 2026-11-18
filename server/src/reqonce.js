@@ -18,9 +18,10 @@
  *     (`_reqSeen`, the last KEEP a player, for MEM_MS; heapforget.js ages it
  *     out), a request still running answered by the same promise;
  *   - a lasting stamp row for the requests with no record of their own
- *     (`oplog:rq:<pid>:<reqId>`, pruned with the oplog at 48 h) is built OFF
+ *     (`oplog:rq:<pid>:<reqId>`, pruned with the oplog at 48 h) was built OFF
  *     behind the live flag `reqstamp`: a cost question for the owner (a row a
- *     request: cost-guard holds it at 0 while off).
+ *     request).  v2.3.6000 (card CS): ON by default, the owner's word; off
+ *     with `reqstamp: false` (cost-guard holds its row a request).
  *
  * Either side ships first: a request with no reqId is served as today, and
  * the five that read the phone's `opId` (the bank's two, the chest, the cape,
@@ -86,11 +87,12 @@ export const reqOnceMethods = {
     return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'reqonce') && !f.reqonce);
   },
 
-  /* the lasting stamp row: OFF unless `reqstamp: true` (the owner's cost
-     question), and off with `reqonce: false` (its need) */
+  /* the lasting stamp row: ON by default since v2.3.6000 (card CS, the
+     owner, 2026-11-17: "I think turn all of them on then we monitor usage cost"), off with `reqstamp: false` in the live flags,
+     and off with `reqonce: false` (its need) */
   _reqStampOn() {
     const f = this._liveFlags;
-    return !!(f && typeof f === 'object' && f.reqstamp === true && f.reqonce !== false);
+    return !(f && typeof f === 'object' && (f.reqstamp === false || f.reqonce === false));
   },
 
   /* a request's id in its form, or null (off: always null) */
