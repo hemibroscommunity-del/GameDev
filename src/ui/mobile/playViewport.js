@@ -55,7 +55,11 @@ function shell() {
 const _live = sw('playvwlive');
 let _vw = -1, _vh = -1, _sw = -1, _sh = -1, _ro = null, _roEl = null, _wired = false;
 const _sizes = { reads: 0, measured: 0 };
-function _clear() { _vw = -1; _vh = -1; _sw = -1; _sh = -1; }
+function _clear(e) {
+  /* v2.3.6241: the band's own resize (bandResize below) moves neither the window nor the shell: kept (card HB PR 2) */
+  if (e && e.btBand === true) return;
+  _vw = -1; _vh = -1; _sw = -1; _sh = -1;
+}
 function _wire(el) {
   if (_live || typeof window === 'undefined') return;
   if (!_wired) {
@@ -90,7 +94,67 @@ function _dims() {
   }
   return { vw: _vw, vh: _vh, sw: _sw, sh: _sh };
 }
-if (typeof window !== 'undefined') window.__btPlaySizes = () => ({ ..._sizes, kept: !_live && !!_ro });   /* QA */
+if (typeof window !== 'undefined') window.__btPlaySizes = () => ({ ..._sizes, kept: !_live && !!_ro, win: { ..._winSizes, kept: _winWired } });   /* QA */
+
+/* ═══ v2.3.6241: THE WINDOW'S OWN SIZE, KEPT TILL THE WINDOW MOVES (card HB PR 2) ═══
+   The controls' geometry asked window.innerWidth on every render
+   (ShieldButton.jsx pillNarrow, weaponPillAnchor; bandSideways.js
+   wantSideways; JumpButton's prompt), and that read lays the whole page out
+   there and then when anything changed: opening a window or folding the band
+   on budget-android, 61 to 114 ms held, most of it the first such read after
+   React put the window in (docs/plan/census/HB-holds.md rows 3, 7, 13).
+   The window's size changes only with a resize the BROWSER sends; the band's
+   own `resize` events (dashMinBus.set, dashboardPanelBus's emit: one geometry
+   path for BroTown's resize()) are a script's, `isTrusted` false, and cannot
+   move it.  So these two numbers are kept from read to read, and cleared only
+   by a resize, a turn or a visual-viewport change the browser sent; the first
+   read after one measures, as before.  Wired when this file loads, before any
+   listener that reads them (they import this file), and in the capture phase,
+   so a resize's own listeners read the new size.  The play column's numbers
+   above are not these: they still clear on every resize (the band's included).
+   `?playvwlive=1`: measured on every read, as before, for one tab. */
+let _ww = -1, _wh = -1, _winWired = false;
+const _winSizes = { reads: 0, measured: 0 };
+function _winClear(e) {
+  if (e && e.isTrusted === false) return;   /* a script's resize: the window did not move */
+  _ww = -1; _wh = -1;
+}
+if (!_live && typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+  try {
+    window.addEventListener('resize', _winClear, true);
+    window.addEventListener('orientationchange', _winClear, true);
+    if (window.visualViewport) window.visualViewport.addEventListener('resize', _winClear);
+    _winWired = true;
+  } catch (e) { _winWired = false; /* measured on every read instead */ }
+}
+function _win() {
+  _winSizes.reads++;
+  if (!_winWired) { _winSizes.measured++; return { w: window.innerWidth, h: window.innerHeight }; }
+  if (_ww < 0) { _winSizes.measured++; _ww = window.innerWidth; _wh = window.innerHeight; }
+  return { w: _ww, h: _wh };
+}
+/** v2.3.6241: the band's one geometry path (dashMinBus.set, dashboardPanelBus's emit): a `resize` for BroTown's
+ *  resize() and the band's own listeners, marked as the band's.  Folding the band or opening a page moves no
+ *  size kept here: the window moves only with the browser's resize, the shell (#root) with the window and the
+ *  computer's wide class (game.css; deskWide.js and dashSidePref.js send their own, unmarked, which clear).
+ *  So every listener reads the kept sizes instead of laying the page out inside the tap (61 to 114 ms on
+ *  budget-android, docs/plan/census/HB-holds.md row 7).  `?playvwlive=1` measures every read, as before. */
+export function bandResize() {
+  if (typeof window === 'undefined') return;
+  let ev = null;
+  try { ev = new Event('resize'); ev.btBand = true; } catch (e) { ev = null; }
+  if (ev) window.dispatchEvent(ev);
+}
+/** window.innerWidth, kept till the browser resizes the window (0 off a page). */
+export function winVw() {
+  if (typeof window === 'undefined') return 0;
+  return _win().w;
+}
+/** window.innerHeight, kept the same way. */
+export function winVh() {
+  if (typeof window === 'undefined') return 0;
+  return _win().h;
+}
 
 export function playVw() {
   if (typeof window === 'undefined') return PHONE_FALLBACK_W;
