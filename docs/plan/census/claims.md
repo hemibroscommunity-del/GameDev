@@ -39,6 +39,10 @@ The spread is the gain's highest less its lowest over five other seeds (`CLAIMS_
 - `move`: the honest walker: 150 px a second, point to point: 538,534; the liar over it: **1.27**.
 - `harvest`: a computer holding E (never perfect): 313; the liar over it: **2.49**.
 
+## The harvest's grade, judged (`harvestgrade`, OFF as merged)
+
+v2.3.5900 (card K4 PR 1; `server/src/harvestgrade.js`): with `harvestgrade: true` a perfect is believed only at or after the earliest an honest gesture could make it (the plan's hits, the settle and the 1.2 s gesture floor) and at most 15 in any 20 strikes; a perfect refused is paid as good. The honest harvesters take what they took with it off and meet no refusal on any disturbance (a perfect of theirs paid as good counts as one). The liar: **1.86** as merged; with it on, the plain liar (every strike perfect at the earliest) **0.93**, the graded one (perfect at the gesture's floor while its 15 in 20 last, else good at once) **1.46**, 614 ore an hour. Its line, `HARVESTGRADE_LINE`, only falls. The share changes what a player whose every gesture is perfect is paid (three in four: 1.75 ore a strike for 2), so the switch is the owner's.
+
 ## Claims with no number yet, and why
 
 - **gold taken on the page in two panels** (`pagegold`): FurniturePanel.jsx and DungeonCreatorPanel.jsx lower the gold on the page and send no message: the worker has no furniture or pack record and takes and pays nothing, so an honest phone and a liar keep the same purse. Nothing reaches the worker for a bot to send: the bench cannot reach it in node (the panels' own fix is the page's).

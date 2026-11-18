@@ -240,6 +240,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 
 | name | side | kind | born | on | thrown | risk | needs | fallback | off |
 |---|---|---|---|---|---|---|---|---|---|
+| `deadtake` | worker | switch | v2.3.5920 | 2026-11-17 | false | logic |  | no | A body in its dying seconds may cook, swap armour and buy at the pet house again, as before card V3 (TRAPS §150).  Not switched: the farm and salvage refuse it whatever the switch says (they did before, in silence) and now answer `dead`. |
 | `?dyingdoor` | page | switch | v2.3.5534 | 2026-11-17 | =0 | logic |  | no | Your dying seconds on the phone take any start a caller writes (one that is no number), as the lines before the life's page door; every caller writes a number today. |
 | `lifenoheal` | worker | switch | v2.3.4901 | 2026-11-12 | false | logic |  | no | A dying player can be healed again (the life door's step 2a off). |
 | `lifesave` | worker | switch | v2.3.4902 | 2026-11-12 | false | logic |  | no | No life note written or read: the join stands up as v2.3.4374 did. |
@@ -256,6 +257,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `feedback` | worker | switch | v2.3.5593 | 2026-11-16 | false | logic |  | no | The feedback board takes no posts, votes or crash reports (reading stays): the owner's lever in a flood (read by the Feedback object from the room's flags, once a minute). |
 | `feedbackshare` | worker | switch | v2.3.5706 | 2026-11-17 | false | logic |  | no | The feedback board as before card SEC PR 7: one shared hour for posts, votes and crash reports; the paces by address in memory only; a vote counted before its ticket is looked for; the crash feed a ring of 200 with no byte cut; the list read whole on every ask; the text kept as typed. |
 | `fullsnap` | worker | switch | v2.3.5285 | off | true | logic |  | no | Thrown (true), a player's daily copy carries their vault and pets too (two keys more read a player a day, no row more written), so the owner's restore puts them back with the character; unset or false, the default, the copy is the character alone, as before. |
+| `listcap` | worker | switch | v2.3.5960 | 2026-11-17 | false | logic |  | no | Every storage list of the room reads its whole prefix in one read again (the sweeps, the registries, a player's copies, the aim and metric days, the arena's stakes and plans, the owner's pages), as before card V5; a sweep is then one page. The Leaderboard and the old Marketplace page always (no flag reaches them). |
 | `report` | worker | switch | v2.3.5122 | 2026-11-14 | false | logic |  | no | Un-advertises the field report, so no phone sends its smoothness, and drops any that still comes. |
 | `reportlanes` | worker | switch | v2.3.5221 | 2026-11-14 | false | logic | `report`, `reportspeed` | no | The field report no longer takes a lane but full, the governor's rung or the self-test (caps.report back to 2). |
 | `reportspeed` | worker | switch | v2.3.5127 | 2026-11-14 | false | logic | `report` | no | The Speed test's card is no longer taken (caps.report back to 1); the smoothness reports carry on. |
@@ -542,6 +544,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | name | side | kind | born | on | thrown | risk | needs | fallback | off |
 |---|---|---|---|---|---|---|---|---|---|
 | `bodytake` | worker | switch | v2.3.4455 | 2026-11-10 | false | logic |  | no | A second login taking over mid-fight no longer keeps the body (the v2.3.4432 way), and caps.bodyTake is un-advertised. |
+| `joinguard` | worker | switch | v2.3.5730 | 2026-11-17 | false | logic |  | no | ON since v2.3.5730 (card RV's review: ACC-1, ACC-2, SEC-F1, ACC-3; decided for the owner while away, 2026-11-17: "Go recommended on all"); thrown (`joinguard: false`), a key registers a guest's id and takes its record, a guest on a made-up bp_ id writes a char: row, a join with no id is let in as undefined, and a socket that named a held seat and never joined keeps its claim, as before. |
 | `joinplace` | worker | switch | v2.3.5722 | 2026-11-17 | false | logic | `lastplace` | no | A join that names no place is left where the fresh state puts it, with no move clock, so its first move is judged from nothing, as before. |
 | `joinstandup` | worker | switch | v2.3.4374 | 2026-11-10 | false | logic |  | no | The join restores 0 health and the sweep kills again, as before. |
 | `lastplace` | worker | switch | v2.3.3327 | 2026-10-18 | false | logic | `movebudget` | no | Every join takes its place again, and the first move after it is free. |
@@ -582,6 +585,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `hardenwoodskill` | worker | switch | v2.3.3481 | 2026-10-19 | false | logic |  | no | Bows and staffs are gated on Blacksmithing again for hardening. |
 | `harvestdoor` | worker | switch | v2.3.5214 | 2026-11-14 | false | logic |  | no | A gather record without its start time is written again, as the line before the harvest door did (no start builds one today); the sweep could never end such a record. |
 | `?harvestdoor` | page | switch | v2.3.5219 | 2026-11-16 | =0 | logic |  | no | The phone's harvest takes any write its own code asks again (a start over one in flight, the window opened early, a strike before it opens), as the lines before the page door could have; the callers still check each first. |
+| `harvestgrade` | worker | switch | v2.3.5900 | off | true | logic |  | no | An opt-in, off as merged (the owner's to turn on: card K4): thrown (`harvestgrade: true`), a harvest's perfect is believed only at or after the time an honest gesture takes (the plan's hits, the settle and the 1.2 s floor) and at most 15 in any 20 strikes, else paid as good (harvestgrade.js). |
 | `harvestproof` | worker | switch | v2.3.3322 | 2026-10-17 | false | logic |  | no | The old permissive strike and the old perfect, at once. |
 | `hitladder` | worker | switch | v2.3.3229 | 2026-10-14 | false | logic |  | no | The harvest's hit dice go back to 1..level, cap un-advertised. |
 | `meals` | worker | switch | v2.3.3130 | 2026-10-07 | false | logic |  | no | Only the old instant recipes cook; dishes in bags still eat. |
