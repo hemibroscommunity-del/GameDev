@@ -1,6 +1,6 @@
 card: EN
 branch: claude/plan-en-5-peerprewarm (6204; 6203 #2234 on plan-en-4-canvas)
-prs: #2189 6200, #2195 6201, #2207 6202 (merged), #2234 6203 (ready), 6204 (checks)
+prs: #2189 6200, #2195 6201, #2207 6202, #2234 6203 (merged), 6204 (draft, CI)
 state: working
 
 ## Done
