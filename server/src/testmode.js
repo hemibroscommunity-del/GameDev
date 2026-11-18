@@ -81,7 +81,8 @@
  * one write (market.js: `mkttier`, `mktheal`); the rise chest's stamp kept
  * for good by the oplog prune (v2.3.5802, inbox.js OP_PRUNE.KEEP: `risekeep`);
  * goods credited in the dying seconds kept through the respawn (v2.3.5803,
- * inbox.js _applyCreditToPs: `dyingkeep`).
+ * inbox.js _applyCreditToPs: `dyingkeep`); No man's land's killer paid in
+ * the victim's own write (v2.3.5804, nomansland.js _nmlOnDeath: `nmlonewrite`).
  *
  * WHO CAN TURN IT ON.  Only the admin key, through the Test panel's
  * POST /api/admin/dev/testmode {playerId, on} (devtools.js), which the owner's
