@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "0025a2cfc7413d591c907e3b8138bf633e28c85c",
+  "tree": "19816ebc1ba7f548b112bf3443396476be5f0236",
+  "committedAt": "2026-11-18T03:23:51-08:00",
+  "subject": "Merge pull request #2204 from hemibroscommunity-del/claude/plan-rd-3-manualcombat",
+  "files": 8339,
+  "bytes": 962766373,
+  "listingSha256": "5349d9873668ea2d609c840c53b51921fa0d7d6c29e8763fabc096e3ce189dce",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
