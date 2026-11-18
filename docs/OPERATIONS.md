@@ -848,6 +848,29 @@ The eight savers, in the panel's words:
 (Each is one live flag, `off_<name>`, shown in **Live flags** below; the
 Message diet has its own row, with **Off for everyone** as its switch.)
 
+## Watching the cost (v2.3.6001)
+
+Cloudflare bills the server for the rows it writes and reads in its
+storage, and for the messages it handles. You turned the six cost switches
+on (2026-11-17: "I think turn all of them on then we monitor usage cost");
+this is how you watch.
+
+- **The usage meter** (the Test panel, **Show usage**): the rows the server
+  wrote and read and the messages it sent, today (UTC) and since it last
+  started, the biggest kinds of each, and the six switches' own rows apart.
+  It estimates the day's writes from the pace so far against the plans'
+  included rows: the free plan about 100,000 rows written a day, the paid
+  plan 50 million a month. It counts in the server's memory only (it writes
+  nothing itself), so an update or a quiet spell that puts the server away
+  starts it again from 0; it says since when it counts. The live switch
+  `usagemeter` set to `false` stops the counting.
+- **The truth is Cloudflare's own page**: the Cloudflare dashboard, Workers &
+  Pages, brotown-server, **Metrics**, and your account's **Billing** for
+  what is charged. The meter is a guide for the day; the dashboard is what you pay.
+
+If a number looks too high, the meter's "most written" list names the kind
+of row, and any of the six switches turns off from the phone (below).
+
 ## Live switches (flags) — change the game without a deploy
 
 Flags take effect immediately for everyone, survive deploys, and are

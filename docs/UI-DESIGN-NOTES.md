@@ -1978,6 +1978,24 @@ Screens: dev-econ-card
 
 Sources: src/ui/panels/EconCard.jsx, src/game/econCard.js, server/src/econcard.js, server/src/worldsum.js, server/test/econ-card.test.mjs, server/src/daybook.js, docs/plan/cards/E.md (PR 12).
 
+## The usage meter (the Test panel)
+Screens: dev-usage-meter
+
+**What it is for:** The owner's watch on what the game costs to run, after turning the six cost switches on (2026-11-17: "I think turn all of them on then we monitor usage cost"): the rows the server wrote and read and the messages it sent, today (UTC) and since it last started, with an estimate of the day's writes against the plans' included rows. Only the owner sees it: a box of the Test panel, keyed with the admin key (v2.3.6001, card CS PR 2).
+
+**Decisions, and why:**
+- **A box of the Test panel, below the economy card**, drawn only when "Show usage" is tapped: opening the panel reads nothing, and nothing a player sees changes.
+- **Counted in the server's memory, never written** (the card: no storage write for the meter itself), read through one admin route (`GET /dev/usage`). So it starts again at an update, and the box says since when it counts: "counted since 09:12 UTC (the server started then)".
+- **The estimate is of rows written only**, the number the plans' included usage is told in (free about 100,000 a day, paid 50 million a month), spread over the part of the day counted; no estimate from under ten minutes ("Too early"). Reads and messages are shown as counts, not priced.
+- **Cloudflare's own page is named as the truth** (Workers & Pages, brotown-server, Metrics; Billing), right under the estimate: the meter is a guide, not the bill.
+- **The six switches each get a line in plain words** (what its rows are), today's rows written and read, and the way to turn any off (Live flags, Set a switch): the owner turned them on to watch them.
+- **The biggest kinds first** (`rpg:`, `oplog:` ...), six of each: the names are the storage's own, the owner's way to ask a session "why so many `rpg:` writes?".
+
+**Still open:**
+- A day's total is lost at an update (memory only): Cloudflare's Metrics keep the whole history.
+
+Sources: src/ui/panels/UsageMeter.jsx, src/game/usageMeter.js, server/src/usagemeter.js, server/test/usage-meter.test.mjs, tools/guards/usage-meter-page.test.mjs, docs/plan/cards/CS.md (PR 2).
+
 ## The Test panel sets a switch
 Screens: dev-set-switch
 
