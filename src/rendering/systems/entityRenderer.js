@@ -2831,6 +2831,14 @@ async function _runLookBake(job) {
     if (bt && bt.source && bt.source.resource) beltTex = bt; else beltPending = true;
   }
   const [belt, ...inps] = await Promise.all([beltTex ? frameInput(beltTex) : null, ...worn.map(w => frameInput(w.tex))]);
+  /* v2.3.6205 (card EN PR 6, row 23): the rest -- the gear sheets and the job
+     posted -- in a task of its own too.  Its inputs' promises settle in other
+     tasks (a belt cut on the page resolves in its own), so it ran as a
+     microtask at the end of whichever came next: on the slow profile a
+     React redraw's, 13 to 44 ms together (`_runLookBake > _sendGearSheets`).
+     The worker check below comes after the wait, so a worker let go meanwhile
+     is seen as before. */
+  await new Promise((r) => setTimeout(r, 0));
   const _close = () => { for (const x of [belt, ...inps]) { try { if (x && x.bm) x.bm.close(); } catch (e) { /* gone */ } } };
   /* a piece whose sheet is not in yet would be baked as if not worn: asked again later */
   if (inps.some((x) => !x) || wk !== _bakeWorker) { _close(); job.reply = { err: wk !== _bakeWorker ? 'worker let go' : 'gear not loaded' }; return; }   /* v2.3.5050: a worker let go meanwhile, as _runBake */
