@@ -1,6 +1,6 @@
 card: RV
 branch: claude/rv-chestonce (6021, stacked on claude/rv-looktrack)
-prs: #2109-#2123 open (ready, sitting 44); #2072, #2083, #2091, #2094 merged
+prs: #2109-#2114 (sitting 44); #2115-#2123, #2132, #2133, #2141 (sitting 45)
 state: ready
 
 ## Done
