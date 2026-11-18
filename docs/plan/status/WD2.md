@@ -1,7 +1,7 @@
 card: WD2
-branch: claude/plan-wd2-1-say (one PR a branch, claude/plan-wd2-*)
-prs: PR 1 (6320) W0 pilot: working
-state: working
+branch: claude/plan-wd2-1-say (one PR a branch, claude/plan-wd2-*, each stacked on the last)
+prs: #2211 (6320) ready; PRs 2-11 (6321-6330) stacked, base main
+state: ready
 
 ## Done
 - (none merged yet)
