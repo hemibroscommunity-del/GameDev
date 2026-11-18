@@ -1,7 +1,7 @@
 card: L
 branch: claude/plan-l-38-fight-door (from main)
-prs: #1746 to #2052 (merged), #2058, #2065, #2067 (5536-5538, stacked): ready
-state: ready
+prs: #1746 to #2067 (all merged; the last three at sitting 41)
+state: done
 
 ## Done
 
@@ -16,7 +16,7 @@ state: ready
 
 ## Next
 
-- None: no todo row is left once these four land. Then: done.
+- None: card done (the gatekeeper, sitting 42: 0 `todo` on main bdfa8734).
 
 ## Found
 
