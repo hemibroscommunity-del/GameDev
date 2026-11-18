@@ -430,8 +430,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
        most of what comes on screen is new ground, and `ridewalk` (asked for only) walks the same ring at a walk's
        speed, to tell what the board's speed adds (docs/plan/census/SB-ride.md).  Both start from the ring's first
        point, reached before the profiler starts. */
-    for (const [name, label, board] of [['ride', 'on the board round the safe ground', true], ['ridewalk', 'the same ring walked', false]]) {
-      if (!WANT.includes(name)) continue;
+    /* in the order asked (BT_HS_STATIONS=ridewalk,ride walks first): the first round a page goes meets the world's art
+       down the line for the first time, the second finds it come (the first sample: 105 pieces laid riding first, 678
+       walking after) */
+    const RINGS = { ride: ['on the board round the safe ground', true], ridewalk: ['the same ring walked', false] };
+    for (const name of WANT.filter((w) => RINGS[w])) {
+      const [label, board] = RINGS[name];
       await H.glideTo(A, RING(G)[0][0], RING(G)[0][1], { speed: 2500, timeoutMs: 120000 }).catch(() => {});
       await A.page.waitForTimeout(5000);
       await station(name, label, () => ringOnce(A, G, board));
