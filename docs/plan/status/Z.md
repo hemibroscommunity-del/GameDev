@@ -1,39 +1,40 @@
 card: Z
-branch: claude/plan-z-sitting-50
-prs: WD2 #2211, #2213-#2223 (ready); this PR (tag 6264), the last line of sitting 50's list
+branch: claude/plan-z-sitting-51
+prs: SB #2228; WD3 #2227, #2229-#2243; EN #2234; HB2 #2224; LR #2226 (ready); this PR (tag 6265), the last line of sitting 51's list
 state: ready
 
 ## Done
-- `census/review-z50.md`: WD2's 12 PRs checked against the card,
-  reviewed (4 finders, 14 screens: the phone's words identical), merge
-  bases counted (one each), rehearsed on `main` aaeb5ccc: build PASS,
-  questline 187/187, precheck 0 FAIL (by hand; the tool's cap cut it).
-  Nothing merged since 49 but its own docs: nothing to tick.
+- `census/review-z51.md`: 19 PRs checked against their cards; #2224 and
+  #2234 reviewed in full, WD3's 15 by 6 word checkers (the phone's words
+  identical); merge bases one each; rehearsed on `main` 7569a0c0: REHEARSAL_LINE.
+  Blocks WD3 6340, LR 6360, SB 6380 registered (nextBlock 6400); WD2 done.
 ## The list: merge in this order, "Create a merge commit", in one go
-1 #2211 (6320)  2 #2213 (6321, DEPLOYS)  3 #2214  4 #2215 (6323, DEPLOYS)
-5 #2216  6 #2217  7 #2218  8 #2219  9 #2220  10 #2221
-11 #2222 (6330, DEPLOYS)  12 #2223 (6331)  13 Z (this PR).
-The stack fixes the order, so the three deploys cannot sit side by side;
-merged in one go the deploy queue makes it at most two, same worker code.
-## Held / To 51
-- None held. To 51: HB2 6280 (branch 3f72925e, no PR); RR 6300 (census
-  batch 3 of 8); EN 6203 (copperwaist red 2 of 4, fish-top-evict).
-- Old drafts, listed (not closed): #1870, #1869, #1867, #1415, #1211.
+1 #2228 (SB 6380)  2 #2227 (WD3 6340, DEPLOYS)  3 #2229  4 #2230  5 #2231
+6 #2232  7 #2233  8 #2235  9 #2236  10 #2237  11 #2238  12 #2239  13 #2240
+14 #2241  15 #2242  16 #2243 (WD3 6354)  17 #2234 (EN 6203)
+18 #2224 (HB2 6280)  19 #2226 (LR 6360, the guard closes the list)  20 Z.
+One deploy (#2227's server/test). #2224 before #2226: LR's re-freeze
+(--write, 365 -> 337) follows once both are on main.
+## Held / To 52
+- None held. To 52: HB2 #2244 (6281, draft; merges main after WD3:
+  BroCard, dash InventoryPanel, QuestJournalPage clash), LR PR 2 (6361),
+  WD3 6355-6356, SB 6381 onward (`atlasrow` parked), RR, EN 6204.
 ## Found
-- 46-49 carried: wsClient.js `_aliveTimer` rejoin loop (card RR's);
-  `mp-mayordoor` parts 2-3 red on main (no card); mp-membudget's heap and
-  buffers lines at their edge on session boxes; gatekeeper.mjs's 15-min
-  precheck cap (hit again: no card owns the tool); canvas-witness 8b reads
-  only a comment; CS's stale "off by default" comments and the Set-a-switch
-  chips; TL's run.mjs orphans; elemental2 maxMana under duelpace; EN's
-  comments naming tools/guards/folk-sheets.test.mjs; `switches-thrown`
-  once under load. Cleared: WD2's comments naming server/test/say.test.
-- New: say.test §7 checks single-quoted keys only, and 4 more mends
-  (review-z50.md): WD2's 12 PRs are spent, so they go to the next words
-  card (WD3).
+- 46-50 carried: wsClient `_aliveTimer` rejoin loop (RR's); `mp-mayordoor`
+  2-3 red on main (no card); mp-membudget heap line at its edge (EN saw
+  38.5-39.1); gatekeeper.mjs's 15-min precheck cap (861-889 s here, no
+  card); canvas-witness 8b; CS's comments and chips; TL's run.mjs orphans;
+  elemental2 maxMana; `switches-thrown` once under load.
+- New: `mp-firststeps` part 6 red on main (HB2's find; tools/qa/mp: RR's);
+  `state-census.mjs --check` red on main, no guard runs it (EN's find);
+  SB: the board outruns the ground (79% pop-ins on budget-android: a thing
+  seen, asked), stripRead's worker remade after 4 s idle (now SB's).
+- Mends sent, no hold: SB `RING_R` from the geometry; EN `_keepQueue` cap
+  (its 6204); LR prints frame-top functions also called elsewhere.
+- Old drafts (#1870 #1869 #1867 #1415 #1211): already closed on GitHub.
 ## Needs
-- Decided for the owner while away, carried: EN's folksheets ON
-  (`?folksheets=0`); HB's afterpaint ON (`?afterpaint=0`).
+- Decided for the owner while away: SB `groundsend` ON (`?groundsend=0`,
+  a later PR); carried: EN `folksheets` ON, HB `afterpaint` ON. Parked:
+  SB `atlasrow` (0.3 ms). Computer "tap" -> "click": review-z51.md.
 - Owner's own: `.github/`, Cloudflare; wind-dunes.mp3's source; SEC2's
-  report form needing a public repository; RR's full 388-scenario sweep
-  (a sample now).
+  report form; RR's full 388-scenario sweep (a sample now).
