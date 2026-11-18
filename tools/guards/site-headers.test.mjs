@@ -115,6 +115,12 @@ const expires = Date.parse(field('Expires'));
 check('6: public/.well-known/security.txt names a Contact', /^(https:\/\/|mailto:)/.test(field('Contact')), field('Contact'));
 check('6: ...and its Expires has not passed (renew it: at most a year ahead)', Number.isFinite(expires) && expires > Date.now(), field('Expires'));
 if (Number.isFinite(expires) && expires - Date.now() < 60 * 864e5) console.log('WARN 6: security.txt expires within 60 days: move Expires on (at most a year ahead)');
+/* v2.3.5821 (card SEC2 PR 2): the feedback panel's "report it privately"
+   link is the same address, so changing one without the other fails here
+   (break proof 2026-11-17: the panel's URL changed by one letter -> FAIL 6). */
+const fbPanel = readFileSync(join(ROOT, 'src', 'ui', 'mobile', 'dash', 'FeedbackPanel.jsx'), 'utf8');
+const fbUrl = (/SECURITY_REPORT_URL\s*=\s*'([^']+)'/.exec(fbPanel) || [])[1] || '';
+check('6: ...and the feedback panel sends a security hole to that same Contact', !!fbUrl && fbUrl === field('Contact') && /href=\{SECURITY_REPORT_URL\}/.test(fbPanel), { panel: fbUrl, contact: field('Contact') });
 
 /* 7: the comment stripper takes comments and nothing else */
 const out = stripHtmlComments(html);
