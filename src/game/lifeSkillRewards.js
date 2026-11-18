@@ -583,6 +583,7 @@ function applyFishingReward(S, node, result, deps) {
         var _np = { id: node.id, zone: S.currentZone, accuracy: accuracy };
         if (_swipeFp) _np.swipeFp = _swipeFp;
         act('node_strike', _np);   /* v2.3.5188: through the action door (actions.js) */
+        S._strikeShown = { id: node.id, accuracy: accuracy };   /* v2.3.5902: the grade this phone showed (wsClient harvest_credit) */
       } catch (e) {}
     }
     /* Inventory grant for the resource itself (fish_clownfish, etc.).
@@ -700,6 +701,7 @@ function applyWoodReward(S, node, result, deps) {
         var _np = { id: node.id, zone: S.currentZone, accuracy: accuracy };
         if (_swipeFp) _np.swipeFp = _swipeFp;
         act('node_strike', _np);   /* v2.3.5188: through the action door (actions.js) */
+        S._strikeShown = { id: node.id, accuracy: accuracy };   /* v2.3.5902: the grade this phone showed (wsClient harvest_credit) */
       } catch (e) {}
     }
     /* Resource inventory grant on the worker when authoritative;
@@ -797,6 +799,7 @@ function applyMiningReward(S, node, result, deps) {
         var _np = { id: node.id, zone: S.currentZone, accuracy: accuracy };
         if (_swipeFp) _np.swipeFp = _swipeFp;
         act('node_strike', _np);   /* v2.3.5188: through the action door (actions.js) */
+        S._strikeShown = { id: node.id, accuracy: accuracy };   /* v2.3.5902: the grade this phone showed (wsClient harvest_credit) */
       } catch (e) {}
     }
     /* Resource inventory grant on the worker when authoritative;

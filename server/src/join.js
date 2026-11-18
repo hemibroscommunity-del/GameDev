@@ -1997,7 +1997,7 @@ export const joinMethods = {
         reqid: this._reqOnceOff() ? undefined : 1,
         /* v2.3.5196 (card K PR 11): A WEAPON NAMED BY ITS ID (gidnames.js): the nine requests that take a weapon from the stash read its `gid` beside its place, and refuse when the two disagree -- so the page sends it (src/game/actions.js GID_PLACE).  `gidnames: false` un-advertises it, and the place alone is read */
         gidnames: this._gidNamesOff() ? undefined : 1,
-        /* v2.3.5900 (card K4 PR 1, step 4.2): THE HARVEST'S GRADE, JUDGED (harvestgrade.js): a perfect believed only after an honest gesture's time and at most 15 in any 20 strikes, else paid as good.  An opt-in, OFF as merged (the live flag harvestgrade set true, the owner's); advertised only while on.  The phone changes nothing on it: the Test panel's "This worker" reads it */
+        /* v2.3.5900 (card K4 PR 1, step 4.2): THE HARVEST'S GRADE, JUDGED (harvestgrade.js): a perfect believed only after an honest gesture's time and at most 15 in any 20 strikes, else paid as good.  An opt-in, OFF as merged (the live flag harvestgrade set true, the owner's); advertised only while on.  The Test panel's "This worker" reads it, and (v2.3.5902) the phone says the grade paid when it differs from the one it showed (wsClient.js harvest_credit) */
         harvestGrade: this._harvestGradeOn() ? 1 : undefined,
         accuracy: this._accOn() /* v2.3.4545: ACCURACY (accuracy.js) -- the phone numbers its basic shots a weapon and sends the counts on `track` (`ac`) and each hit's shot (`sn`); `acc_request` answers `acc_state`; `accuracy: false` in liveflags un-advertises it and counts nothing -- lower case, a kill switch */ },
       // v2.3.1178: this session's private economy-endpoint token.

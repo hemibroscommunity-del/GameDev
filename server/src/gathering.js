@@ -1406,9 +1406,11 @@ export const gatheringMethods = {
    *  perfect refused is paid `good` and counted in the bot record (botfp.js
    *  _botfpGradeNote).  The run of grades is the player's bot record's
    *  (botfp.js _botfpGradeRun: a reconnect keeps it, a deploy forgets it). */
-  _harvestGraded(session, ps, claimed, earliest, now, tm) {
+  _harvestGraded(session, claimed, earliest, now, tm) {
     if (tm || typeof this._harvestGradeOn !== 'function' || !this._harvestGradeOn()) return claimed;
-    const j = harvestGradeJudge(claimed, now, earliest, this._botfpGradeRun(session.id, now));
+    const T = typeof this._hid === 'function' ? this._hid() : null;   /* v2.3.5902: the share from the hidden settings (hidden.js) */
+    const j = harvestGradeJudge(claimed, now, earliest, this._botfpGradeRun(session.id, now),
+      T ? { of: T.GRADE_SHARE_OF, max: T.GRADE_SHARE_MAX } : null);
     if (j.why && typeof this._botfpGradeNote === 'function') this._botfpGradeNote(session.id, j.why, now);
     return j.grade;
   },
@@ -1629,7 +1631,7 @@ export const gatheringMethods = {
     /* v2.3.5900: the grade judged (harvestgrade.js: a perfect no sooner than
        an honest gesture could make it, and at most 15 in any 20 strikes);
        `harvestgrade: true` only, never a test-mode character's */
-    const gradedAccuracy = this._harvestGraded(session, ps, bot.accuracy, gradeEarliest, now, _tm);
+    const gradedAccuracy = this._harvestGraded(session, bot.accuracy, gradeEarliest, now, _tm);   /* v2.3.5902: no `ps` (unused; the gatekeeper's sitting 44) */
     const ratedAccuracy = this._ratedHarvestAccuracy(ps, gradedAccuracy);
     const invKey = this._harvestInvKey(n.nodeType, n.tierLvl);
     this._strikeRefused(session, 'paid', { invKey, nodeType: n.nodeType });
@@ -1699,6 +1701,13 @@ export const gatheringMethods = {
             shard,
             /* v2.3.4036: the fish's key and variant, for the catch's words */
             ...(fishCaught ? { fish: fishCaught } : {}),
+            /* v2.3.5902 (card K4; the gatekeeper's sitting 44): the grade
+               this strike was PAID at and what it paid -- the phone showed
+               its own grade when it swung ("PERFECT!", "x2") and, against a
+               worker with `harvestgrade` on (caps.harvestGrade), says what
+               was paid when the two differ (wsClient.js harvest_credit) */
+            grade: ratedAccuracy,
+            qty: yieldQty,
           },
         });
       } catch (e) {}
