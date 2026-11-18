@@ -11,9 +11,10 @@ state: working
 ## Next
 
 - PR 2 (6381, `?atlasrow=0`, row approved): paletteTex.js sends the one
-  changed atlas row, not the whole 256 KB atlas (branch
-  claude/plan-sb-2-atlasrow; mp-rideheld proves the chip's atlas
-  byte for byte). Then PR 3: a piece's first upload ahead (`?groundsend=0`).
+  changed atlas row (0.15 ms a send on budget-android against 0.43: small,
+  the census says so); mp-rideheld proves the chip's atlas byte for byte.
+  Then: the board outrunning the ground (pop-ins), the strip reader's
+  worker remade, framePack _pack -- each timed directly first.
 
 ## Found
 
@@ -27,4 +28,5 @@ state: working
 
 ## Needs
 
-- The planning session: the Found's first line (a later SB PR?).
+- Nothing (the planning session, 17:42: pop-ins, stripRead, framePack are
+  card SB's; switch rows asked first).

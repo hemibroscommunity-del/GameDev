@@ -77,12 +77,19 @@ Resolved by each hold's own call path (`BT_HS_STACKS=1`). Three kinds:
 | plain | ride, warm | 4, 30 ms, 9.7 | 4, 22 ms, 8.2 | 2, 13 ms, 6.4 |
 | plain | walk, cold | 8, 50 ms, 11.6 | 7, 34 ms, 6.7 | 4, 26 ms, 8.6 |
 
-**The atlas is the ground's worst, everywhere it lays at speed**: about half
-of the ground's held time, and the longest single hold. Then a piece's first
-upload. Both are sends to this box's SOFTWARE graphics chip, many times
-slower than a phone's (held-sweep.md): the ranking carries over, the ms do
-not. The plain box's ground holds are all under the line (12.2 ms the
-longest, a hold the atlas shared).
+**Read these as stretches, not as the sends' own time.** A hold is an
+unbroken run of the page busy outside the frame, named by the call path with
+the most samples in it; on a slowed box several jobs run back to back (a
+worker's reply, a piece placed, a garbage collection, a band redraw), and the
+whole run is the hold. The atlas's own time was then measured directly
+(`paletteTex.js` `atlasRowSent`'s clock, `mp-rideheld`, PR 2's branch): the
+whole atlas sent holds the page **0.08 ms** a send on the plain box (2.3 ms
+the longest of 983) and **0.43 ms on budget-android** (4.5 ms the longest of
+425). So the 21.3 ms "atlas" hold was some 0.4 ms of the atlas inside 21 ms of
+other work. The ground's own sends are a sliver of the ride's holds, not
+their cause; card SB's PR 2 (a row of 1 KB sent alone: 0.03 and 0.15 ms a
+send) is worth that sliver only. The same caution holds for every row below:
+the ms is the stretch's, the path is its biggest part.
 
 ## Every family over the line on the ride, worst first
 
@@ -104,10 +111,10 @@ four rides. A family the tour already lists keeps its own line (`gc` 60,
 | 9 | 23.4 | 1 | `stop$2 > terminate`, and `job > ask$2 > worker$1 > Worker` (16.9, walking) | `rendering/stripRead.js` `stop` / `worker`: the strip reader's worker let go after 4 s idle (`IDLE_MS`) and made again for the next look; a ride meets looks seconds apart | list (no card holds stripRead.js) |
 | 10 | 22.1 | 1 | `tick$1 > guideState > harvestCoachWanted > loadTeach` | `game/deskTeachState.js` / `ui/guideArrow.js` `loadTeach` | **HB2** |
 | 11 | 21.7 | 14 | `R > J` / `R > S2` (React, no game name) | listed (16): over it at budget-android's ride, 21.7 | **HB2** (its debt row) |
-| 12 | **21.3** | 4 | **the atlas** (above) | `rendering/paletteTex.js` `takeRow` | **SB** (PR 2) |
+| 12 | 21.3 (the atlas's own: 0.43 a send, 4.5 the longest) | 4 | **the atlas** (above) | `rendering/paletteTex.js` `takeRow` | **SB** (PR 2) |
 | 13 | 19.6 | 15 | `server-message`: `ws.onmessage`, `_w$2.onmessage` (the readers' replies) | `networking/wsClient.js` `ws.onmessage`; the strip reader's `onmessage` | RR / list (HB-holds row 15) |
 | 14 | 18.3 | 14 | `ui:GearTab`, `BottomDashboard`, `VitalBar`, `BandKeys` redrawn | `src/ui/**` band components | **HB2** (GearTab, its PR 4) / list |
-| 15 | **17.4** | 3 | **a piece's first upload** (above) | `rendering/wheelGround.js` `_toGpu` | **SB** (PR 3) |
+| 15 | 17.4 (a stretch: its own share not yet timed) | 3 | **a piece's first upload** (above) | `rendering/wheelGround.js` `_toGpu` | **SB** (PR 3) |
 | 16 | 17.9 | 4 | `strip-made` (`_stripOfNumbers`; `tick2 > requestAnimationFrame`) | `rendering/zoneTextures.js` `_stripOfNumbers`, `stripRows.js` | list |
 | 17 | 15.5 | 8 | `_runLine > _pack > _bandBytes` / `_cellBytes` | `rendering/framePack.js` (a monster strip kept deflated a frame at a time, v2.3.5257) | list |
 | 18 | 15.6 | 1 | `sweepPicsOnceTurn` | `rendering/picsOnce.js` (seen before: this box's pauses, held-budget.mjs 5049) | list |
@@ -123,16 +130,22 @@ outside, past the town's folk.
 
 ## What it means for card SB
 
-- The ground's two sends are the ride's 12th and 15th worst on budget-android,
-  and the worst of what card SB holds. **PR 2 (6381): the atlas's row
-  sent alone** (the same colours on the chip, a row of 1 KB in place of
-  256 KB; `?atlasrow=0`). **PR 3: a piece's first upload ahead of the
-  rider and a few a frame** (`?groundsend=0`).
-- **The ride will stay over the line on budget-android after card SB's
-  PRs**: what is over it there first is HB2's (p256's pack, the strip read
-  back, the quest route, React), the garbage collector and the unnamed
-  timers. The ride station's line (`held-budget.mjs` `STATION_LINES.ride`)
+- The ground is NOT what holds the ride: its sends are a sliver of the
+  stretches named after them (the atlas: 0.43 ms a send on budget-android,
+  measured directly). **PR 2 (6381, `?atlasrow=0`)** still sends a row of
+  1 KB in place of the 256 KB atlas (a third of the time, the same colours
+  on the chip, byte for byte): small, and said so. A piece's first upload
+  is timed directly before any PR 3 is opened for it.
+- **What holds the ride on budget-android is mostly others' work**: HB2's
+  (p256's pack, the strip read back, the quest route, React and the band's
+  redraws), the garbage collector, the unnamed timers, the worker's
+  messages. The ride station's line (`held-budget.mjs` `STATION_LINES.ride`)
   is the general 12 ms, which the plain box meets today.
-- The board outrunning the ground (pieces on screen unlaid: the overview's
-  plan colours) is something a player SEES, not a hold: a question for the
-  planning session, not a fix here.
+- **What the board does that walking does not: it outruns the ground** on a
+  slow machine (pieces on screen before they are laid, the overview's plan
+  colours shown there: 79% riding warm on budget-android). The planning
+  session's answer (2026-11-18): in scope, likely part of the owner's
+  "grainy"; a later SB PR may look further ahead / lay faster while riding,
+  memory not up, no hold over the line. Also card SB's now: the strip
+  reader's worker let go and remade (row 9) and framePack.js `_pack`
+  (row 17), timed directly first.
