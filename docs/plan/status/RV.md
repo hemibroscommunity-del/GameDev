@@ -28,8 +28,9 @@ state: ready
 ## Found
 
 - For card K2: ACC-1, ACC-2, SEC-F1, ACC-3, S2's join (PR 11), duelquiet.
-- For `index.js` (K2, then card L): S2's `track` half, S3's board report.
-- For card L (`wsClient.js`): SEC-F3. For the planner: the players' device
+- For `index.js` (card L done: RV next, telling K2 the lines): S2's `track`
+  half, S3's board report.
+- For card L (`wsClient.js`): SEC-F3.
 - `mktsettle: false` + a re-listed noted order loses the taker's escrow
   on its cancel (market.js; read, not shown).
 
