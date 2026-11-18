@@ -1160,7 +1160,11 @@ export function QuestCoach(props) {
      the selection loop, and TRAPS §41 for why the hold has to be taken before
      the anchor is measured. */
   const discHoldRef = React.useRef({ id: null, sides: [] });
-  const doneRef = React.useRef(loadDone());
+  /* v2.3.6280: read once, at the mount.  `React.useRef(loadDone())` read localStorage and the shared cookie at EVERY
+     render to make a value the ref then threw away (it keeps its first): the coach is drawn again with every redraw
+     of the game's page, `QuestCoach > loadDone > sharedDone` 56 ms twice on budget-android (card HB2 PR 1) */
+  const doneRef = React.useRef(null);
+  if (doneRef.current === null) doneRef.current = loadDone();
   const ringRef = React.useRef(null);
   const arcRef = React.useRef(null);
   /* v2.3.4360: the ring's holder, the card, and what the follow keeps (above) */
@@ -1783,11 +1787,12 @@ export function QuestCoach(props) {
   }, []);
   /* ...from where React has just drawn them: both back to nothing, the new
      `base`, and at once the move for where he is now -- all before the
-     paint, so neither shows a frame at a stale place.  v2.3.6280: under
-     `?afterpaint` the move for where he is now waits for the next frame the
-     game draws (the listener above): asked here, his place measured the page
-     in the commit (`coachFollow > worldRect`, docs/plan/census/HB-holds.md
-     row 12), so the ring shows one frame where the walk found him */
+     paint, so neither shows a frame at a stale place.  v2.3.6280: his place
+     here measured the page in the commit (`coachFollow > worldRect >
+     mayorScreenRect`, docs/plan/census/HB-holds.md row 12): under
+     `?afterpaint` it reads the canvas's place and the window's size as
+     mayorScreen.js keeps them (measured again at the top of a frame), and
+     the chatTap ring the same (canvasPlace), so nothing here measures */
   React.useLayoutEffect(function () {
     const f = followRef.current, el = followElRef.current, card = cardRef.current;
     const L = view ? LESSONS.find(function (l) { return l.id === view.id; }) : null;
@@ -1796,7 +1801,7 @@ export function QuestCoach(props) {
     f.dx = 0; f.dy = 0; f.cx = 0; f.cy = 0;
     if (!view || !L || typeof L.worldRect !== 'function' || !(view.rect.width > 0)) { f.L = null; f.base = null; return; }
     f.L = L; f.base = view.rect;
-    if (!AFTER_PAINT) coachFollow(f, el, card, stateRef && stateRef.current);
+    coachFollow(f, el, card, stateRef && stateRef.current);
   }, [view]);
 
   if (!view) return null;
