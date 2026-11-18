@@ -132,7 +132,7 @@ literal wrapped in `Object.freeze` (a call).
 <!-- part 5: the code (tools/dev/render-code-census.mjs --write) -->
 ## 5. The code, counted (v2.3.5347)
 
-Written by `node tools/dev/render-code-census.mjs --write` at e5d175bc; the rules are
+Written by `node tools/dev/render-code-census.mjs --write` at 83802d33; the rules are
 `tools/guards/lib/renderCode.mjs`'s header. Moves nothing. A **leaf** is a
 top-level function that reads no `this` and reaches no module state; its
 **level** is 0 when it reads no other in-file function, else one more than
