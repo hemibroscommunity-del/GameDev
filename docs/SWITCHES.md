@@ -504,6 +504,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?sootms` | page | lever | v2.3.3679 |  | a number of ms | none |  | no | QA: soot marks lie this long. |
 | `?standinlegs` | page | switch | v2.3.3640 | 2026-10-27 | =0 | logic |  | no | The sword and bow bodies keep their legs under greaves, as before. |
 | `?teechip` | page | switch | v2.3.5981 | 2026-11-18 | =0 | memory | `?plaintee` | no | The tee's standing and jogging sheets are sent to the graphics chip at the loading screen, as before, though a phone draws them from the colour numbers. |
+| `?townparts` | page | switch | v2.3.5983 | 2026-11-18 | =0 | memory |  | no | The retired town's hanging signs, crates and flags load behind the world's loading screen every session, as before, not only with that town. |
 | `?traitretry` | page | switch | v2.3.3606 | 2026-10-26 | =0 | logic | `?retrylooks` | no | A trait picture that failed is not asked for again. |
 | `?uploadicons` | page | switch | v2.3.5569 | 2026-11-17 | =0 | memory |  | no | The five-block stamina and mana strips and the verified Bro badge over a name are drawn from their full-colour pictures, as before, not from their 256-colour twins. |
 | `?waves` | page | value | v2.3.3019 |  | a number, 0.25 to 3 | logic |  | no | The water's motion this many times as strong. |
