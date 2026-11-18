@@ -215,6 +215,7 @@ import { partyTo } from '@/game/partyDoor.js';   /* v2.3.5529: the party's page 
 import { dungeonTo } from '@/game/dungeonDoor.js';   /* v2.3.5535: the dungeon's page door, your run (card L) */
 import { skullTo } from '@/game/skullDoor.js';   /* v2.3.5533: the fight's page door, your skull's one writer (card L) */
 import { dyingTo } from '@/game/dyingDoor.js';   /* v2.3.5534: the life's page door, your dying seconds (card L) */
+import { pageAddress } from '@/game/switches.js';   /* v2.3.5743: the page's one reader (card T2) */
 
 /* v2.3.1107: angle -> 8-way compass, same SECTORS convention as
    entityRenderer (atan2(dy,dx) -> 'east' when dx>0).  Used to reconcile a
@@ -3220,7 +3221,7 @@ export function processGameEvent(type, payload, S, deps) {
                        XP the bar took for it, flown from here to the bar (game/
                        killXp.js), or the moment it lands if it is still on its way */
                     try {
-                      if (killXpOn(typeof location !== 'undefined' ? location.search : '')) {
+                      if (killXpOn(pageAddress())) {   /* v2.3.5743: the address from the page's one reader (card T2) */
                         var _kxF = killXpOnKill(S, payload, Date.now());
                         if (_kxF) flyKillXp(S, _kxF);
                       }
