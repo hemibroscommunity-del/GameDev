@@ -16,8 +16,8 @@
  *      nothing taken (they refused before, in silence: not behind the
  *      switch); alive each takes;
  *   5. salvage and essence: the same; alive each works;
- *   6. a shield put on: nothing moves (`dead`), the shield sent again; alive
- *      it leaves the bag list;
+ *   6. a shield put on is NOT refused (sitting 44: the phone owns the arm,
+ *      and the loss already ran at the death);
  *   7. the pet house: `not-now`, no gold taken; alive it buys;
  *   8. `deadtake: false`: a dying pet house buy takes the gold, as before;
  *      a dying farm buy is still refused (it was before the card). */
@@ -185,22 +185,19 @@ const forge = async (recipe) => {
   check('5. ...refused with `deadtake: false` too (it refused before the card)', !!r && r.ok === false && r.reason === 'dead', r);
 }
 
-// ── 6. a shield put on ──
+// ── 6. a shield put on: NOT refused, on purpose (sitting 44) ──
+/* the phone owns which shield is on the arm (shieldwear.js "NO GATES"): a
+   refusal would leave it showing the swap, and the death's loss already ran
+   at the death (index.js _handlePlayerDeath).  traps-money §150 lists it. */
 {
   const shield = { name: 'Iron Shield', gearBase: 'iron', tierMult: 1, tier: 2 };
   const sig = [shield.name, shield.gearBase, shield.tierMult, shield.tier].join('|');
   ps.shield = null;
   ps.shieldStash = [{ ...shield }];
   t.die();
-  t.ws.sent.length = 0;
   const a = room._handleShieldWear(t.session, { sig });
-  check('6. a dying shield put on: nothing moves', a === 'dead' && !ps.shield && ps.shieldStash.length === 1, { a, shield: ps.shield, stash: ps.shieldStash });
-  check('6. ...answered: the shield sent again', sentState(), t.ws.sent.map((m) => m.type));
+  check('6. a dying shield put on still moves (the phone\'s word, as before)', a === 'worn' && !!ps.shield && ps.shieldStash.length === 0, { a, shield: ps.shield, stash: ps.shieldStash });
   t.live();
-  ps.shield = null;
-  ps.shieldStash = [{ ...shield }];
-  const b = room._handleShieldWear(t.session, { sig });
-  check('6. alive, it leaves the bag list for the arm', b === 'worn' && !!ps.shield && ps.shieldStash.length === 0, { b, shield: ps.shield, stash: ps.shieldStash });
 }
 
 // ── 7. the pet house ──

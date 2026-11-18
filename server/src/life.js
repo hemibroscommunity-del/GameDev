@@ -217,15 +217,15 @@ export const lifeMethods = {
 
   /** v2.3.5920 (card V3, TRAPS §150): THE DEAD TAKE NOTHING.  Nine handlers
       that take from a player read no life phase where V2's guard looks
-      (traps-money §150).  Four took in the dying seconds -- a cook's fish,
-      an armour swap's stash, a shield put on, the pet house's price -- and
-      the respawn or the loss then worked on a bag the dying seconds had
-      changed: each now asks `lifeOf(ps)` (this door's reader) and refuses
+      (traps-money §150).  Three took in the dying seconds -- a cook's fish,
+      an armour swap's stash, the pet house's price -- and the respawn then
+      worked on a bag the dying seconds had changed: each now asks `lifeOf(ps)` (this door's reader) and refuses
       with the answer its client already knows, behind this switch.  The
       farm's three and salvage's two refused already, in silence, in a
       helper the guard cannot see; they read it in the handler now, answered,
       and not behind the switch (it changes nothing they did).
-      On unless `deadtake: false` in the live flags: the four take as before. */
+      On unless `deadtake: false` in the live flags: the three take as before.  (A shield put
+      on stays the phone's word, refused by nobody: traps-money §150's list.) */
   _deadTakeOn() {
     const f = this && this._liveFlags;
     return !(f && typeof f === 'object' && own(f, 'deadtake') && !f.deadtake);
