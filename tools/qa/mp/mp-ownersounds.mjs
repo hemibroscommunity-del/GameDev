@@ -181,7 +181,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* the admin view's `live` has no maxHp: the saved blob's is the worker's (mp-quickeat) */
   const a0 = await H.adminPlayer(wsPort, myId).catch(() => null);
   const maxHp = a0 && a0.rpg ? a0.rpg.maxHp : null;
-  await H.devOp(wsPort, 'vitals', myId, { heal: false, god: true, godMinutes: 30, hp: Math.max(1, (maxHp || 300) - 60) });
+  /* v2.3.5844: a third of his health, not 60 short of full: the worker's own
+     regen gave the 60 back in the seconds this waits for the button (measured
+     on main: 240 of 250 when the button was found, 250 -- the button gone,
+     quickEatView null -- when the tap landed), so the tap ate nothing and no
+     munch played, run after run.  A minnow heals 100: still short of full. */
+  await H.devOp(wsPort, 'vitals', myId, { heal: false, god: true, godMinutes: 30, hp: Math.max(1, Math.round((maxHp || 300) / 3)) });
   const btnAt = await H.waitFor(P, () => {
     const el = document.querySelector('.bt-quickeat-btn');
     if (!el) return null;
@@ -331,6 +336,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
     window.__btCues.reset();
     const n0 = V.st.speaks;
     for (const n of S.npcs || []) n.chatTimer = 0;   /* every townsperson says a line now */
+    /* v2.3.5844: ...and the town's one-line-in-20-s gap opened (townChatter.js
+       idleChatMay, v2.3.4040: one idle line town-wide every 20 s): with only
+       the timers zeroed, a line said in the last 20 s (Ace's, 9a) held every
+       other back, and 0 lines popped up by run on main */
+    S._idleChatAt = null;
     await new Promise((r) => setTimeout(r, 1500));
     const lines = (S.npcs || []).filter((n) => n.chatBubble && Date.now() - n.chatBubble.ts < 2000).length;
     const hums = window.__btCues.stats.log.filter((c) => /^npcVoice\d$|^lilBroHmm$/.test(c.name)).length;
