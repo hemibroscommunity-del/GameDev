@@ -1,6 +1,6 @@
 card: WD2
-branch: claude/plan-wd2-10-clan (one PR a branch, claude/plan-wd2-*, each stacked on the last)
-prs: #2211 (6320), PR 2 (6321), PR 3 (6322), PR 4 (6323), PR 5 (6324), PR 6 (6325), PR 7 (6326), PR 8 (6327), PR 9 (6328), PR 10 (6329) -- open as drafts, stacked
+branch: claude/plan-wd2-11-pets (one PR a branch, claude/plan-wd2-*, each stacked on the last)
+prs: #2211 (6320), PR 2 (6321), PR 3 (6322), PR 4 (6323), PR 5 (6324), PR 6 (6325), PR 7 (6326), PR 8 (6327), PR 9 (6328), PR 10 (6329), PR 11 (6330) -- open as drafts, stacked
 state: working
 
 ## Done
@@ -14,6 +14,7 @@ state: working
 - PR 8 (6327) : LeaderboardPanel (both files)
 - PR 9 (6328) : SmithyPanel
 - PR 10 (6329) : ClanPanel (both files)
+- PR 11 (6330) : PetsPanel; DEPLOYS (desk-words 5)
 
 ## Next
 - the PRs above opened one at a time as each passes precheck; then DailySpin + GameApp (6331), and the report of what is left per wave

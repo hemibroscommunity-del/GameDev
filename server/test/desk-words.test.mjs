@@ -96,7 +96,7 @@ function check(name, cond, detail) {
     /* (v2.3.3944: the ready banner's "Find him in town and tap him" is the journal's NOW now: "You have it all: hand it in to ...") */
     ['src/ui/mobile/dash/SocialPanel.jsx', /deskWords\('Tap another player/],
     ['src/ui/mobile/dash/ClanPanel.jsx', /deskWords\('Make a party: pick a player and tap/],
-    ['src/ui/mobile/dash/PetsPanel.jsx', /deskWords\('No pets yet\./],
+    ['src/ui/mobile/dash/PetsPanel.jsx', /sayPieces\(SAY, 'pets\.emptyHow'/],   /* v2.3.6330: its words in the table; say() runs deskWords on a plain row (tools/guards/say.test 2, card WD2) */
   ];
   const missing = calls.filter(([p, re]) => !re.test(R(p))).map(([p]) => p);
   check('5: the quest plate, the townsfolk\'s window, the quest windows, the coach, the codex card, the chat box and the Friends, party and Pets pages call it', missing.length === 0, missing);
