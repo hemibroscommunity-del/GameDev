@@ -595,8 +595,8 @@ export const dailyRewardsMethods = {
      player who is here (the player_state echo carries them) and mails them
      to one who is not.  Returns the coins paid (0 for none). */
   /* ═══ v2.3.5810 (card RV PR 10, MD-2): THE PAID MARK IN THE CREDIT'S OWN RUN ═══
-     The pot's credit was one write and its "paid" mark (`sp.open = 0`, a
-     season tier's grant, the login spin's `paid`) a later one.  A restart
+     The pot's credit was one write and its "paid" mark (`sp.open = 0`, the
+     login spin's `paid`) a later one.  A restart
      between left the pot open; the next pay was the oplog's 'dup' -- until
      the 48 h prune (inbox.js _opPruneMaybe) took the stamp, after which the
      same pot paid again (TRAPS §146: the oplog is not the record).  Now the
@@ -971,9 +971,16 @@ export const dailyRewardsMethods = {
          and for the season-end mail, which is what makes them unable to both
          pay (opid-audit wants the literal prefix inline) */
       try {
-        /* v2.3.5810 (paidmark, _spinPay above): the tier, already marked
-           claimed (se.cl), is put with each grant's credit, in its run */
-        const markWith = this._paidMarkOn() ? () => [this.state.storage.put(DAILY.KEY + pid, rec)] : null;
+        /* v2.3.5810 (paidmark, _spinPay above): NOT for a season's grants
+           (sitting 45's review).  A claim marks every tier it claims (se.cl)
+           before the first grant -- all of them at once for "claim all" --
+           so putting the record with the first grant's credit wrote every
+           tier claimed while one was paid, and a restart there lost the
+           rest for good.  Left as it was: the caller saves after all the
+           grants, and a restart before that leaves nothing marked, so a
+           claim again converges on each grant's stamp.  (The season is
+           off by default: _seOff.) */
+        const markWith = null;
         if (gr.kind === 'coins') {
           if (markWith) await this._creditWith(pid, { opId: 'season:' + pid + ':' + s + ':' + t + ':' + g, source: 'season', kind: 'gold', payload: { amount: gr.n }, note }, markWith);
           else await this._creditPlayer(pid, { opId: 'season:' + pid + ':' + s + ':' + t + ':' + g, source: 'season', kind: 'gold', payload: { amount: gr.n }, note });
