@@ -959,12 +959,21 @@ export const arenaMethods = {
         /* v2.3.5084: `house`, the part of the prize the house added (a mint);
            the rest is the entries held, paid on (an escrow): ONE payout that
            carries both amounts (SHAPES part 3, edge 3; gold.js MAIL_CLASSES) */
-        await this._creditPlayer(champion.playerId, { opId: 'arenapot:' + tid, source: 'arena', kind: 'gold', payload: { amount: prize, house: topUp > 0 ? topUp : 0 }, note: 'Gladiator Arena champion' });
+        /* v2.3.5809 (card RV, MS-6): the pot and every entry's delete in ONE
+           write (inbox.js _creditWith; `leftoverheal`): the entries were
+           deleted one write each after the pot, and a restart between left
+           entries only the pot's stamp explained (the prune could outrun the
+           sweep that reads it, which then refunded every entry on top of the
+           pot) */
+        const _oneWrite = this._leftoverHealOn && this._leftoverHealOn();
+        if (_oneWrite) await this._creditWith(champion.playerId, { opId: 'arenapot:' + tid, source: 'arena', kind: 'gold', payload: { amount: prize, house: topUp > 0 ? topUp : 0 }, note: 'Gladiator Arena champion' },
+          () => entrants.map((pid) => this.state.storage.delete('arena_entry:' + tid + ':' + pid)));
+        else await this._creditPlayer(champion.playerId, { opId: 'arenapot:' + tid, source: 'arena', kind: 'gold', payload: { amount: prize, house: topUp > 0 ? topUp : 0 }, note: 'Gladiator Arena champion' });
         /* v2.3.3527: and the Gladiator achievement, its own credit (inbox.js
            `achv`): it stays queued until the champion's achievements record is
            loaded, while the gold above never waits on it */
         if (apOn && !this._achvOff()) await this._creditPlayer(champion.playerId, { opId: 'arenaachv:' + tid, source: 'arena', kind: 'achv', payload: { id: 'gladiator' }, note: 'Gladiator Arena champion' });
-        for (const pid of entrants) await this.state.storage.delete('arena_entry:' + tid + ':' + pid);
+        if (!_oneWrite) for (const pid of entrants) await this.state.storage.delete('arena_entry:' + tid + ':' + pid);
       } catch (e) { /* sweep repairs */ }
     })();
     // Clear the tournament after a grace period for the client's

@@ -86,7 +86,9 @@ switch allows it.
   `mutehides`); a player's avatar and colour in the game's own forms on the
   board and on the page (v2.3.5807, `lookform.js`, `src/game/lookForm.js`,
   `?lookform=0`); an old key's after-join check held while `oldkeyheld` is
-  (v2.3.5808, `loginkeys.js`).
+  (v2.3.5808, `loginkeys.js`); an offer's Yes waits for a bid half made, and
+  a payment and its escrow's delete one write (v2.3.5809, `storeoffer.js`,
+  `trade2.js`, `gladiator.js`, `offerpend`, `leftoverheal`).
 - Every save and payment rule; the login key, the device lock, the lockouts;
   a frozen account.
 - PvP consent and **every check on a hit between players** (pvpbalance.js,

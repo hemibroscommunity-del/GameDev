@@ -142,7 +142,7 @@ player sees changes except the wrong thing the finding is.
 | 6b | 5806 | `storechat.js`, `chatlanes.js`, `party.js`, `chatmod.js` (the switches) | S5 (a muted sender's lines not shown on open, still stored as the haggle's record); S8's decided part (a player who mutes you reads as away: a whisper's and a party invite's answer) | `storemute`, `mutehides` |
 | 7 | 5807 | `server/src/lookform.js` (new, the forms), `leaderboard.js`, `src/game/lookForm.js` (new, the page's copy), `PlayerIcon.jsx`, `InspectPlayerPanel.jsx`, `LeaderboardPanel.jsx`, `SocialPanel.jsx` | S2 (the board keeps `color` only as a colour; the page draws an `avatar` only in the proxy form it builds, a `color` only as a hex colour). The join's half is card K2's (its PR 11 imports `lookform.js`); `track`'s and S3 wait for `index.js` (a later RV PR) | `?lookform=0` (page); the board's switch comes with `index.js`'s half (the board learns flags only from the room's report) |
 | 8 | 5808 | `loginkeys.js` | SEC-F5 | `oldkeyheld` (the existing one) |
-| 9 | 5809 | `storeoffer.js`, `gladiator.js`, `trade2.js` | MS-5; MS-6's arena and trade leftovers | `leftoverheal` |
+| 9 | 5809 | `storeoffer.js`, `gladiator.js`, `trade2.js`, `inbox.js` (the switch) | MS-5 (a Yes waits for a bid or an offer half made); MS-6's arena and trade leftovers (the payment and its escrow's delete one write) | `offerpend`, `leftoverheal` |
 | 10 | 5810 | `dailyrewards.js`, `loginspin.js` | MD-2 (the paid mark in the credit's own run) | `paidmark` |
 | 11 | 5811 | `gearstash.js` | SEC-F2 (once shown) | `gearheld` (the existing one) if it fits |
 | 12 | 5812 | `friends.js` | ACC-5, SEC-F4 | `friendfix` |

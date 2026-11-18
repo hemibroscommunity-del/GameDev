@@ -1,5 +1,5 @@
 card: RV
-branch: claude/rv-loginkeys (PR 8, stacked on claude/rv-lookform)
+branch: claude/rv-leftovers (PR 9, stacked on claude/rv-loginkeys)
 prs: #2072, #2083 (sitting 42); #2091, #2094 (ready); PRs 5, 6, 6b (5804-5806) in their runs
 state: ready
 
@@ -23,6 +23,7 @@ state: ready
 - PR 7 (5807): `lookform.js`, the board, the page (S2; `?lookform=0`).
   `lookform.test`: 3 FAIL on main. S3 and `track`'s half wait for index.js.
 - PR 8 (5808): loginkeys.js SEC-F5 (`oldkeyheld`). 1 FAIL on main.
+- PR 9 (5809): MS-5, MS-6 (`offerpend`, `leftoverheal`). 3 FAIL on main.
 
 ## Found
 

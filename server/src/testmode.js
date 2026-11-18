@@ -90,7 +90,10 @@
  * (v2.3.5806, storechat.js, chatlanes.js, party.js: `storemute`, `mutehides`);
  * a player's avatar and colour in the game's own forms on the board and on
  * the page (v2.3.5807, lookform.js, src/game/lookForm.js: `?lookform=0`); an
- * old key's after-join check held while `oldkeyheld` is (v2.3.5808, loginkeys.js).
+ * old key's after-join check held while `oldkeyheld` is (v2.3.5808, loginkeys.js);
+ * an offer's Yes waits for a bid half made, and a payment and its escrow's
+ * delete one write (v2.3.5809, storeoffer.js, trade2.js, gladiator.js:
+ * `offerpend`, `leftoverheal`).
  *
  * WHO CAN TURN IT ON.  Only the admin key, through the Test panel's
  * POST /api/admin/dev/testmode {playerId, on} (devtools.js), which the owner's
