@@ -299,7 +299,7 @@ const rect = (set, x0, y0, x1, y1, c = 1) => { for (let y = y0; y <= y1; y++) fo
 
 /* ── 9. the sword and bow bodies under greaves ── */
 {
-  const fx = src('src/rendering/systems/effectsRenderer.js');
+  const fx = src('src/rendering/systems/effectsRenderer.js') + '\n' + src('src/rendering/leaves/effects-look.js');   /* v2.3.6221: LEGS_LOOK_OFF moved verbatim to the look leaf (card FX) */
   const set = src('src/rendering/lookSets/standinlegs.js');
   let roles = null;
   try { roles = JSON.parse(src('public/sprites/look/standinlegs/roles.json')); } catch (e) { roles = null; }
