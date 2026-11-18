@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "5e68f5ed3d350b9991982d806591cbbe4caca66e",
+  "tree": "226b967b93e9a4007d60a2292d1fa2925e30a42a",
+  "committedAt": "2026-11-18T05:10:06-08:00",
+  "subject": "Merge pull request #2208 from hemibroscommunity-del/claude/plan-rd-2-crowdfight",
+  "files": 8340,
+  "bytes": 962783327,
+  "listingSha256": "c0fdc3a0772fd25302f2a59d566d1d6714a158469800949cb8e12e42acb9dc2d",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
