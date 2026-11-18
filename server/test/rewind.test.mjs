@@ -388,6 +388,35 @@ async function playedRoom(flags) {
   check('6. ...and does, with the plan\'s token', done.status === 200 && dj.ok && typeof dj.undo === 'string' && st.aborted.length === 1, dj);
 }
 
+/* ══════════ 7. v2.3.5815 (card RV, ACC-4): WHAT THE OWNER DID TO LOGINS SINCE ══════════
+   A key taken back, a device forgotten, a pass, a silence or its lifting
+   since the time chosen come undone with the rest (`auth:`, `keyidx:`,
+   `silenced:` go back): the plan names each, from the admin log, read before
+   the do (the log goes back too).  `rewindsays: false`: as before. */
+for (const says of [true, false]) {
+  const { room } = await playedRoom(says ? {} : { rewindsays: false });
+  clock.advance(60000);
+  await room._adminLog({ op: 'freeze', playerId: 'bp_rw_b' });          /* before: not named */
+  clock.advance(1000);
+  const tAt = Date.now();
+  clock.advance(1000);
+  await room._adminLog({ op: 'key-new', playerId: 'bp_rw_a' });
+  await room._adminLog({ op: 'device-forget', playerId: 'bp_rw_b' });
+  await room._adminLog({ op: 'silence', playerId: 'bp_rw_a', minutes: 60 });
+  await room._adminLog({ op: 'grant', playerId: 'bp_rw_a' });           /* not a login act */
+  await settle();
+  clock.advance(1000);
+  const p = await rewindPlan(room, { at: tAt });
+  const a = p.alsoBack || {};
+  if (says) {
+    const ops = (a.since || []).map((e) => e.op + ':' + e.playerId);
+    check('7. the plan names the owner\'s login acts since the time chosen (a new key, a device forgotten, a silence), and nothing before it or of another kind',
+      p.ok && ops.join(',') === 'key-new:bp_rw_a,device-forget:bp_rw_b,silence:bp_rw_a' && /gave a new key to bp_rw_a/.test(a.words) && /forgot a device of bp_rw_b/.test(a.words) && /silenced bp_rw_a/.test(a.words), { ops, words: a.words });
+  } else {
+    check('7. `rewindsays: false`: no `since`, and the words as before', p.ok && a.since === undefined && !/since that time comes undone/.test(a.words || ''), a);
+  }
+}
+
 clock.restore();
 console.log('\n' + passes + ' passed, ' + failures + ' failed');
 if (failures) { console.log('rewind: FAILED'); process.exit(1); }
