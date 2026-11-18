@@ -3189,18 +3189,32 @@ function _peerPrewarmIfChanged(display, sig, bodyFor, gearIds) {
 /* v2.3.3752: the same for a peer drawn from the numbers (lookArmour.js):
    their stand and jog frames asked of the worker, one at a time, in the
    background, when what they wear or how they look changes */
+/* ═══ v2.3.6204: ...A FEW MS AT A TIME (card EN PR 5; HB's census row 37) ═══
+   `await lookArmourPrewarm` gave the page back only when a frame was still
+   on the worker: one already decided (or decided on the spot) answers with a
+   promise already settled, so the loop went on in the same task, and a peer
+   coming into view in armour held the page for the whole walk over his ~150
+   frames, each `gearDrawFrame` and `lookArmourFrame` (its `matOf`,
+   `lookFrames`) on the page: 40 ms at the peer station on budget-android,
+   20.6 on hotel-laptop (docs/plan/census/HB-holds.md).  The picture is the
+   worker's already (CLAUDE.md §7's order: what is left on the page is the
+   frame's decision), so the walk now gives the page back at the next frame
+   once PEER_LOOK_SLICE_MS of it has run, as uploadBakedTextures does. */
+const PEER_LOOK_SLICE_MS = 4;
 async function _peerLookPrewarmIfChanged(display, sig, entriesFor, gearIds) {
   if (display._peerLookSig === sig) return;
   display._peerLookSig = sig;
   if (!_peerWorkerOk() || !gearIds.length) return;
   _peerBakeStats.queuedSets++;
   const DIRS = ['south', 'east', 'north', 'northeast', 'southwest'];
+  let t0 = performance.now();
   for (const pose of ['stand', 'jog']) {
     for (const dir of DIRS) {
       const ents = entriesFor(pose, dir);
       if (!ents) continue;
       const fc = playerFrameCount(pose, dir) || 1;
       for (let f = 0; f < fc; f++) {
+        if (performance.now() - t0 >= PEER_LOOK_SLICE_MS) { await _nextFrameP(); t0 = performance.now(); }   /* v2.3.6204 */
         if (display.destroyed || display._peerLookSig !== sig) return;   /* gone, or changed again */
         const worn = [];
         for (const [sl, it] of gearIds) {
