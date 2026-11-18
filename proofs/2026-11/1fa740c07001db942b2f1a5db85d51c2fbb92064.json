@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "1fa740c07001db942b2f1a5db85d51c2fbb92064",
+  "tree": "59a91496644e6b939251bfce6866e5cfae28ba37",
+  "committedAt": "2026-11-18T01:16:39-08:00",
+  "subject": "Merge pull request #2139 from hemibroscommunity-del/claude/plan-cs-1-switches-on",
+  "files": 8299,
+  "bytes": 961866574,
+  "listingSha256": "b7cd0b190177f77ad9a22d58a6e8185496ce31eace0dd810fdaa30de7357b153",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
