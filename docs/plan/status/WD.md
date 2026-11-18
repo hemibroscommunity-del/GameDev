@@ -1,6 +1,6 @@
 card: WD
 branch: claude/plan-wd-1-census (one PR a branch, claude/plan-wd-*)
-prs: PR 1 (6140) census: working
+prs: #2171 (6140) census: working
 state: working
 
 ## Done
