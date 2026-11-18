@@ -15,12 +15,11 @@ state: working
   it takes in a step's new bots late or never though the worker sent them
   all; at worst it answers nothing for 55+ min. The wait is 240 s; a step
   that missed its bots on so slow a page is a skip; a step past 15 min
-  ends the run as a skip; every other step must know its bots. Runs of
-  ea9ba39: four green so far (here and three helper sessions; skips
-  named), the fifth running.
+  ends the run as a skip; every other step must know its bots. Five runs
+  of ea9ba39 green (here and four helper sessions), 5 skips named in all.
 
 ## Next
-- crowdfight's fifth run (a helper session), then its PR.
+- Nothing: 6181 waits for the gatekeeper. Then: done.
 
 ## Found
 - wsClient.js _aliveTimer: a page drawing a frame less often than every
