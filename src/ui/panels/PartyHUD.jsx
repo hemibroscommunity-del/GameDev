@@ -8,6 +8,8 @@ import { allyTagShown } from '@/game/alliance.js';   /* v2.3.3313: an alliance's
 import { LIST_KEY, ATTN_MS, KICK_ARM_MS, PIP_COLOR, pipOf, partyAttention, listOpen } from '../../game/partyChip.js';   /* v2.3.3768: the strip folds to a chip */
 import { deskWords } from '@/game/deskWords.js';   /* v2.3.3768: "tap" reads "click" on a computer */
 import { act } from '@/game/actions.js';   /* v2.3.5190: the page's requests leave through the action door (card K PR 7) */
+import { SAY } from '@/data/say/partyHud.js';   /* v2.3.6342: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';
 /* v2.3.3279: the window's marks were emoji (🎟️ 👑 💀 📍), drawn differently on
    every phone; the owner drew them (tools/ui/cut-small-icons.py). */
 function partyMark(src, size, title) {
@@ -177,9 +179,9 @@ export function PartyHUD(props) {
       src: "/icons/ui/evt-party.webp", alt: "", draggable: false,
       style: { width: 24, height: 24, objectFit: 'contain' },
       onError: function onError(e) { e.currentTarget.replaceWith(document.createTextNode('🎟️')); }
-    }), /*#__PURE__*/React.createElement("span", null, "Party Invite")), /*#__PURE__*/React.createElement("div", {
+    }), /*#__PURE__*/React.createElement("span", null, say(SAY, 'partyHud.inviteTitle'))), /*#__PURE__*/React.createElement("div", {
       style: { fontSize: 12, color: '#B9C1BF', marginBottom: 8 }
-    }, party.fromName, " invites you", party.partySize > 1 ? ' (' + party.partySize + ' in party)' : ''), /*#__PURE__*/React.createElement("div", {
+    }, say(SAY, 'partyHud.invites', { name: party.fromName }), party.partySize > 1 ? say(SAY, 'partyHud.inviteSize', { size: party.partySize }) : ''), /*#__PURE__*/React.createElement("div", {
       style: { display: 'flex', gap: 6 }
     }, /*#__PURE__*/React.createElement("button", {
       style: Object.assign({}, _btnBase, {
@@ -194,7 +196,7 @@ export function PartyHUD(props) {
            either way. */
         setParty(null);
       }
-    }, "Join"), /*#__PURE__*/React.createElement("button", {
+    }, say(SAY, 'partyHud.join')), /*#__PURE__*/React.createElement("button", {
       style: Object.assign({}, _btnBase, {
         /* v2.3.1232: raised secondary decline */
         flex: 1, padding: '8px 0', minHeight: 44, borderRadius: 11,
@@ -206,7 +208,7 @@ export function PartyHUD(props) {
         send('party_decline', { target: party.from });
         setParty(null);
       }
-    }, "Decline"))), document.body);
+    }, say(SAY, 'partyHud.decline')))), document.body);
   }
 
   if (!party.members || !party.members.length) return null;
@@ -225,7 +227,7 @@ export function PartyHUD(props) {
      (server alliance.js; party_state's `ally` is the worker's word) */
   /* v2.3.3321: ...and a former clan wears its tag below 20 too (clanparty.js) */
   var _allyA = party.ally && (party.ally.on || (party.ally.clan && allyTagShown(party.ally.tag))) ? party.ally : null;
-  var _allyHead = _allyA ? (allyTagShown(_allyA.tag) ? '[' + allyTagShown(_allyA.tag) + ']' : 'ALLIANCE') : null;
+  var _allyHead = _allyA ? (allyTagShown(_allyA.tag) ? '[' + allyTagShown(_allyA.tag) + ']' : say(SAY, 'partyHud.allianceHead')) : null;
 
   var _head = _allyHead ? (_allyA.on ? 'alliance' : 'clan') : 'party';
   var open = listOpen(pinned, attnUntil, Date.now());
@@ -243,7 +245,7 @@ export function PartyHUD(props) {
       type: 'button',
       'data-party-chip': 'folded',
       'aria-expanded': 'false',
-      'aria-label': deskWords('Party, ' + party.members.length + ' of ' + maxN + ': tap to see who'),
+      'aria-label': say(SAY, 'partyHud.chipLabel', { count: party.members.length, max: maxN }),   /* v2.3.6342: was deskWords on the built line; say() puts its "tap" right the same way */
       title: deskWords('Tap to see your party'),
       onClick: function (e) { e.stopPropagation(); writePinned(true); setPinned(true); },
       style: Object.assign({}, _btnBase, {
@@ -257,7 +259,7 @@ export function PartyHUD(props) {
     }, partyMark(SMALL_ICON.partyMember, 16, 'party'),
     /* the tag of an alliance or a former clan; nothing for a plain party
        (the mark says party) -- data-party-head as the list's head says it */
-    React.createElement("span", { 'data-party-head': _head, style: _allyHead ? null : { display: 'none' } }, _allyHead || 'PARTY'),
+    React.createElement("span", { 'data-party-head': _head, style: _allyHead ? null : { display: 'none' } }, _allyHead || say(SAY, 'partyHud.partyHead')),
     React.createElement("span", null, party.members.length, "/", maxN),
     React.createElement("span", { style: { display: 'flex', gap: 3, marginLeft: 1 } }, view.rows.map(function (m) {
       var k = m.id === myId ? null : pipOf(m);
@@ -294,16 +296,16 @@ export function PartyHUD(props) {
     type: 'button',
     'data-party-fold': '',
     'aria-expanded': 'true',
-    'aria-label': 'Fold the party list',
+    'aria-label': say(SAY, 'partyHud.fold'),
     onClick: fold,
     style: Object.assign({}, _btnBase, {
       /* 32 px to tap, drawn in the 24 px row (the margins give it back) */
       background: 'none', padding: '0 8px 0 0', minHeight: 32, margin: '-4px 0', display: 'flex', alignItems: 'center', touchAction: 'manipulation',
       fontSize: 11, fontWeight: 600, letterSpacing: '.12em', color: '#D8A85F', fontVariantNumeric: 'tabular-nums'
     })
-  }, partyMark(SMALL_ICON.partyMember, 16, 'party'), /*#__PURE__*/React.createElement("span", { 'data-party-head': _head, style: { marginRight: 5 } }, _allyHead || "PARTY", " "), party.members.length, "/", maxN,
+  }, partyMark(SMALL_ICON.partyMember, 16, 'party'), /*#__PURE__*/React.createElement("span", { 'data-party-head': _head, style: { marginRight: 5 } }, _allyHead || say(SAY, 'partyHud.partyHead'), " "), party.members.length, "/", maxN,
     React.createElement("span", { 'aria-hidden': 'true', style: { marginLeft: 5, fontSize: 10, letterSpacing: 0, color: '#96A2A0' } }, "\u25B4")), /*#__PURE__*/React.createElement("button", {
-    title: "Leave party",
+    title: say(SAY, 'partyHud.leave'),
     'data-party-leave': leaveArmedAt ? 'armed' : '',
     style: Object.assign({}, _btnBase, {
       touchAction: 'manipulation',
@@ -337,11 +339,11 @@ export function PartyHUD(props) {
     }, m.id === party.leader ? partyMark(SMALL_ICON.partyLeader, 15, 'leader') : null,
       m.dead ? partyMark(SMALL_ICON.partyDown, 15, 'down') : null, m.name), /*#__PURE__*/React.createElement("span", {
       style: { fontSize: 11, color: '#96A2A0', fontVariantNumeric: 'tabular-nums' }
-    }, "Lv", m.level), iAmLeader && m.id !== myId && (function () {
+    }, say(SAY, 'partyHud.level', { lv: m.level })), iAmLeader && m.id !== myId && (function () {
       /* v2.3.3768: two taps, as the ✖ Leave: the first says "Kick?" */
       var armed = !!kickArmed && kickArmed === m.id;
       return /*#__PURE__*/React.createElement("button", {
-        title: "Kick",
+        title: say(SAY, 'partyHud.kick'),
         'data-party-kick': armed ? 'armed' : '',
         style: Object.assign({}, _btnBase, {
           touchAction: 'manipulation',
@@ -354,7 +356,7 @@ export function PartyHUD(props) {
           if (armed) { setKickArmed(null); send('party_kick', { target: m.id }); return; }
           setKickArmed(m.id);
         }
-      }, armed ? "Kick?" : "✕");
+      }, armed ? say(SAY, 'partyHud.kickAsk') : "✕");
     })()), /* v2.3.3284: an offline member has no health to show */ !m.off && /*#__PURE__*/React.createElement("div", {
       style: {
         /* v2.3.1232: spec bar track */
@@ -371,10 +373,10 @@ export function PartyHUD(props) {
       }
     })), (offline || zoneName) && /*#__PURE__*/React.createElement("div", {
       style: { fontSize: 11, color: '#96A2A0', marginTop: 1 }
-    }, m.off ? ('offline' + (seenAgo(m.seen) ? ' · ' + seenAgo(m.seen) : '')) : m.away ? 'away — reconnecting…' : React.createElement(React.Fragment, null, partyMark(SMALL_ICON.partyAway, 13, 'elsewhere'), zoneName)));
+    }, m.off ? (seenAgo(m.seen) ? say(SAY, 'partyHud.offlineSeen', { ago: seenAgo(m.seen) }) : say(SAY, 'partyHud.offline')) : m.away ? say(SAY, 'partyHud.away') : React.createElement(React.Fragment, null, partyMark(SMALL_ICON.partyAway, 13, 'elsewhere'), zoneName)));
   }), view.more > 0 && /*#__PURE__*/React.createElement("div", {
     'data-party-more': view.more,
     style: { fontSize: 11, color: '#96A2A0', marginTop: 3, fontVariantNumeric: 'tabular-nums' }
-  }, "+", view.more, " more · ", view.online, " online"));
+  }, say(SAY, 'partyHud.more', { more: view.more, online: view.online })));
 }
 
