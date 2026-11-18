@@ -62,6 +62,9 @@ const KNOW_MS = 240000;
    A step that runs past it is said so as a skip, and the run ends there (TRAPS §200).  The longest
    step measured that finished: about 8 minutes (240 s to know 30 bots, 170 s of memory reading) */
 const STEP_CAP_MS = 15 * 60000;
+/* v2.3.6181: a page whose one-line read takes this long (the middle of a step's wait) has its thread
+   held by its frames: the steps it played here read 0.5-1.4 s, the one it could not 5-13 s */
+const SLOW_READ_MS = 3000;
 const STALLED = Symbol('stalled');
 function capped(p, ms) {
   let timer = null;
@@ -219,8 +222,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* v2.3.6181: the page's own rejoins after a frame gap it reads as a phone come back (wsClient.js
      _resumeRecover 'thaw', RESYNC_AWAY_MS 5 s), counted from its crash line: on this box a dpr-3 page
      among 30 bots draws a frame every few seconds and rejoins every 5-20 s (card RD) */
-  const thaws = { n: 0 };
+  const thaws = { n: 0, sockets: 0 };
   P.page.on('console', (m) => { if (/resume-resync thaw away/.test(m.text())) thaws.n++; });
+  /* ...and the sockets it opens, counted here: its crash line comes late from a page this slow (a
+     helper's reading: a new socket every 6-30 s while the line counted one) */
+  P.page.on('websocket', () => { thaws.sockets++; });
   const out = { query: QUERY, steps: STEPS, rows: [] };
   let stopAlive = false;
   let stalled = null;   /* v2.3.6181: the step the page stopped answering in (STEP_CAP_MS) */
@@ -290,18 +296,22 @@ export async function run({ browser, wsPort, webPort, rec }) {
       for (const want of STEPS) {
         if (want > have) { bots.add(want - have); have = want; }
         const stepRow = await capped((async () => {
-          const t0 = Date.now(), thaws0 = thaws.n;
+          const t0 = Date.now(), thaws0 = thaws.n, sockets0 = thaws.sockets;
+          const reads = [];   /* v2.3.6181: how long the page took to answer a one-line read */
           let known = 0;
           /* v2.3.6181: until the page knows them, up to KNOW_MS, not 60 s of the wall clock (TRAPS §200):
              a starved page hears its ticks late and rejoins on every long frame (`thaws` above), and on
              this box the step to 30 bots took the page about 100 s (card RD's readings: 20 known for the
              whole of the old minute, all 30 at 98 s).  How long, and how many rejoins, go in the row */
           while (Date.now() - t0 < KNOW_MS) {
+            const r0 = Date.now();
             known = await H.readState(P, (S) => Object.keys(S.others || {}).length);
+            reads.push(Date.now() - r0);
             if (known >= Math.floor(want * 0.95)) break;
             await P.page.waitForTimeout(1000);
           }
-          const knownInS = Math.round((Date.now() - t0) / 1000), knownThaws = thaws.n - thaws0;
+          const knownInS = Math.round((Date.now() - t0) / 1000), knownThaws = thaws.n - thaws0, knownSockets = thaws.sockets - sockets0;
+          const readMs = q(reads, 0.5);
           /* every look seen and baked, the fighters at their monsters */
           await P.page.waitForTimeout(place === 'fight' ? 12000 : 6000);
           /* the window: frames, GL calls and voices; the phone fights too */
@@ -365,7 +375,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
           const sg = await settledGpu(P);
           mem.gpuSettled = sg ? sg.mb : null;
           const row = {
-            place, bots: want, known: w.known, knownInS, knownThaws, thawsSoFar: thaws.n, onScreen: w.near, farHidden: w.farHidden, crowdHidden: w.crowdHidden, monstersNear: w.monsters,
+            place, bots: want, known: w.known, knownInS, knownThaws, knownSockets, readMs, thawsSoFar: thaws.n, onScreen: w.near, farHidden: w.farHidden, crowdHidden: w.crowdHidden, monstersNear: w.monsters,
             gpu: mem.gpu, gpuSettled: mem.gpuSettled, gpuByKind: sg ? sg.byKind : null, gpuTop: groupGpu(sg),
             cache: mem.cache, canvasMB: mem.canvasMB, canvasN: mem.canvasN, decodedMB: mem.decodedMB, heapMB: mem.heapMB, buffersMB: mem.buffersMB,
             frames: w.frames, workP50: q(w.work, 0.5), workP95: q(w.work, 0.95), gl: w.gl,
@@ -426,22 +436,26 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }
     const last = rows[rows.length - 1];
     /* v2.3.6181: a step the page could not play is said so, never read as the game's (TRAPS §200): it
-       did not know its bots and it rejoined at least every 20 s through the whole wait (`thaws`
-       above: a frame every several seconds, each gap read as a phone come back), so it never held a
-       session long enough to hear the room (a helper's run: town at 30, 22 rejoins in 244 s, 21
-       known).  Every other step must know its bots: a page that stayed joined and missed them is red */
+       did not know its bots, and its own thread was too busy to: a one-line read took SLOW_READ_MS or
+       more (the middle one), or it rejoined at least every 20 s through the wait (`thaws` above: each
+       frame gap over 5 s read as a phone come back).  Card RD's reading of such a step: the worker
+       SENT the page all 30 bots (every name in the frames it got), but its reads took 5-13 s, its
+       socket was made again every 6-30 s, and each new one went before its state was taken in, so
+       20 stayed known for minutes.  Every other step must know its bots: a page that answered and
+       stayed joined, and still missed them, is red */
     const knew = (r) => r.known >= Math.floor(r.bots * 0.9);
-    const couldNot = (r) => !knew(r) && r.knownThaws >= Math.floor(KNOW_MS / 20000);
+    const couldNot = (r) => !knew(r) && (r.readMs >= SLOW_READ_MS || r.knownThaws >= Math.floor(KNOW_MS / 20000)
+      || r.knownSockets >= Math.floor(KNOW_MS / 20000));
     const played = rows.filter((r) => !couldNot(r));
     rec.ok(`the phone knew (nearly) every bot at each step${played.length < rows.length ? ` it could play (${played.length} of ${rows.length})` : ''}`,
-      (played.length > 0 || !!stalled) && played.every(knew), rows.map((r) => [r.place, r.bots, r.known, `${r.knownInS} s`, `${r.knownThaws} rejoins`]));
+      (played.length > 0 || !!stalled) && played.every(knew), rows.map((r) => [r.place, r.bots, r.known, `${r.knownInS} s`, `reads ${r.readMs} ms`, `${r.knownSockets} sockets`, `${r.knownThaws} rejoins`]));
     if (stalled) {
       rec.skip(`the phone knew (nearly) every bot: ${stalled.place}, ${stalled.bots} bots, and every step after`,
         `this box could not play the page: it answered nothing for ${STEP_CAP_MS / 60000} minutes (${stalled.at}; ${stalled.thaws != null ? stalled.thaws + ' rejoins so far' : ''}), its thread waiting on the graphics process`);
     }
     for (const r of rows.filter(couldNot)) {
       rec.skip(`the phone knew (nearly) every bot: ${r.place}, ${r.bots} bots`,
-        `this box could not play the page: ${r.knownThaws} rejoins in ${r.knownInS} s (a frame gap over 5 s each), ${r.frames} frames in the ${SAMPLE_MS / 1000} s window, ${r.known} known`);
+        `this box could not play the page: a one-line read took ${r.readMs} ms, ${r.knownSockets} sockets and ${r.knownThaws} rejoins in ${r.knownInS} s, ${r.frames} frames in the ${SAMPLE_MS / 1000} s window, ${r.known} known`);
     }
     rec.ok('frames and GL calls were counted at every step', rows.every((r) => r.frames > 0 && r.gl.draws > 0), rows.map((r) => [r.frames, r.gl.draws]));
     const pal = rows.filter((r) => r.palette && r.palette.on);
