@@ -1,18 +1,16 @@
 card: LR
-branch: claude/plan-lr-1-guard
-prs: #2226 (6360, draft till green)
+branch: claude/plan-lr-2-spec
+prs: #2226 (6360), (6361) working
 state: working
 
 ## Done
 
-- (none merged yet)
+- #2226 (6360): the guard, tools/guards/layout-reads.test.mjs; its scan
+  and its frozen list (lib/): 365 reads listed in 72 files. About 1 s.
 
 ## Next
 
-- PR 1 (6360): tools/guards/layout-reads.test.mjs, lib/layoutReads.mjs
-  (the scan), lib/layoutReadsKnown.mjs (the frozen list): 365 reads listed
-  in 72 files (391 found: 22 in the 4 measure helpers, 4 in a
-  ResizeObserver's callback). About a second.
+- PR 2 (6361): docs/specs/layout-reads.md, CLAUDE.md §7 line, §8 row.
 
 ## Found
 
