@@ -640,7 +640,13 @@ delete room._liveFlags.shardcrack;   /* v2.3.3516: the crack back on (above §9)
   await join(wsc1, PIDC, {});                    // a character on file
   const claimed = { name: 'Wood Shield flame', gearBase: 'wood', tierMult: 0.001, tier: 'common', gem: 'flame' };
   const wsc2 = fakeWs('c2');
+  /* v2.3.5812 (card RV PR 12): a claim with no ledger id is not merged at
+     all now (`shieldclaim`); this section is the extract's own gate on a
+     claimed piece, so it plays the old open claim (shield-claim.test is the
+     claim's gate) */
+  await room._liveFlagsEnsure(); room._liveFlags.shieldclaim = false;
   await join(wsc2, PIDC, { rpgShieldStash: [claimed] });
+  delete room._liveFlags.shieldclaim;
   const pc = room.playerState[PIDC];
   pc.coins = 100;
   pc.lifeSkills = pc.lifeSkills || {};

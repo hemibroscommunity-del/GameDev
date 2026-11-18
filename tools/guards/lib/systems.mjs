@@ -90,7 +90,7 @@ export const SYSTEMS = Object.freeze({
   },
   bots: {
     what: 'telling a person from a script: bot signals, fingerprints, claims that are bounded',
-    files: [f('server/src', 'botfp|botsig|botstats|charwatch|hitproof|moveclaims|swordswing|bowshot')],   /* v2.3.5548: the sword's swing, a bounded claim; v2.3.5550: a bow's claim an arrow seen */
+    files: [f('server/src', 'botfp|botsig|botstats|charwatch|hitproof|moveclaims|swordswing|bowshot|harvestgrade')],   /* v2.3.5548: the sword's swing, a bounded claim; v2.3.5550: a bow's claim an arrow seen; v2.3.5900: the harvest's grade judged */
     words: ['bot', 'antibot', 'anticheat', 'charwatch', 'hitproof', 'moveclaim'],
     traps: [],
     doors: [],
@@ -131,7 +131,7 @@ export const SYSTEMS = Object.freeze({
   },
   combat: {
     what: 'hitting and being hit: weapons, abilities, the bow, shields, damage, PvP',
-    files: [
+    files: [f('src/rendering/tables', 'combat') /* v2.3.5345: its hand-tuned tables (card M) */,
       f('server/src', 'combat|hits|abilities|accuracy|burst|freeswing|fightlock|killroll|threat|telegraph|elemental|oneformula|statcap|arrowblast|swordconvert|shieldwear|shieldgem|weapongem|amulet|pvpbalance|pvpextras|pvplunge'),
       f('src/game', 'abilities|accuracy|combatHelpers|manualCombat|targeting|projectiles|bowDraw|bowFeel|bowVolley|swordFeel|staffFeel|weaponFeel|deathBlow|dodge|elemHits|elemWindup|killRoll|killXp|pvpSwing|shieldCopies|shieldGem|shieldToggle|guardDoor|shieldWear|arrowEdge|whirlCatch|deskShield|weaponGem|weaponSlots|amuletGem|apChip|peerShots|shotGround|shockSpark|stormSparks|waterAttack'),
     ],
@@ -141,7 +141,7 @@ export const SYSTEMS = Object.freeze({
   },
   monsters: {
     what: 'the monsters\' lives, moves, status, spawns and the boss',
-    files: [
+    files: [f('src/rendering/tables', 'monsters') /* v2.3.5345: its hand-tuned tables (card M) */,
       f('server/src', 'monsterlife|monstermoves|monsterstatus|slimeboss|spawnscale|wheelspawns|wheelspawns1|aggrogrid'),
       f('src/game', 'monsterCarry|monsterCodex|monsterCombat|monsterMoves|monsterNoises|monsterStrips|slimeBlast|slimeSplatPose|crowdCap'),
     ],
@@ -151,7 +151,7 @@ export const SYSTEMS = Object.freeze({
   },
   economy: {
     what: 'gold, the bag, the bank, the market and shops, trades, drops, chests and daily rewards',
-    files: [
+    files: [f('src/rendering/tables', 'economy') /* v2.3.5346: its hand-tuned tables (card M) */,
       f('server/src', 'gold|bag|bank|market|marketplace|shop|store|storechat|storegear|storeoffer|trade|trade2|xfer|econcard|worldsum|valuepause|inbox|itemdrop|deathpile|gearstash|stash|gear|gearprov|salvage|gamble|dice|dailychest|dailyrewards|risechest|revealbag|loginspin|eventcapes'),
       f('server/src', 'playerroads'),   /* v2.3.5280 (card R): the roads between players, one table */
       f('src/game', 'bank|itemDrop|groundLoot|lootAsk|dropLines|dropLook|storeAnswer|storeSellTap|tradeSlot|weaponSell|salvage|postOffice|revealBag|dice|dailyRewards|bossChest|loginSpinWheel|coinArt|spinBoard|gearWornSync|arenaStakes|econCard'),
@@ -165,7 +165,7 @@ export const SYSTEMS = Object.freeze({
   },
   skills: {
     what: 'the life skills: gathering, cooking, smithing, the farm, fishing, trapping',
-    files: [
+    files: [f('src/rendering/tables', 'skills') /* v2.3.5346: its hand-tuned tables (card M) */,
       f('server/src', 'gathering|cooking|smelting|armorforge|forgeladder|farm|farmorders|fishlog|trapping|hardening|hardenedwood|drawgather|firetrail|gscopper|shardcrack|gems'),
       f('src/game', 'smithing|forgeTabs|farmFeedback|farmTrip|farmWalk|farmWork|fishWeigh|trapping|tierOre|tierTrees|drawGather|lifeSkillRewards|harvestDoor|quickEat|fightFood|mastery|shardCrack|fireRefuse'),
     ],
@@ -192,11 +192,12 @@ export const SYSTEMS = Object.freeze({
   },
   social: {
     what: 'parties, clans, guilds, friends, chat, emotes, duels, the arena, races, boards',
-    files: [
+    files: [f('src/rendering/tables', 'social') /* v2.3.5346: its hand-tuned tables (card M) */,
       /* v2.3.5480 (card PW): + power, the boards' power index; v2.3.5484: + statboards;
-         v2.3.5218 (card L): + raceDoor, the race's page door; v2.3.5594: + reservednames (a name that reads as staff); v2.3.5621: + silence (card MOD) */
-      f('server/src', 'party|clanparty|clans|guilds|alliance|friends|chatlanes|chatmod|chatguard|reservednames|silence|emotes|boards|arena|gladiator|duel|spar|race|leaderboard|power|statboards'),
-      f('src/game', 'alliance|allyDrafts|duelDoor|partyDoor|arenaDoor|skullDoor|chat|chatChannel|chatColor|chatMute|emotes|emoteMoves|gesturePose|friendErrors|duelLock|duelPending|partyChip|partyEq|partyMarks|partyRows|peerDot|race|raceDoor|spar|sparTargets|bubbleSkins|boardBumps|dictation'),
+         v2.3.5218 (card L): + raceDoor, the race's page door; v2.3.5594: + reservednames (a name that reads as staff); v2.3.5621: + silence (card MOD);
+         v2.3.5807 (card RV): + lookform / lookForm, a player's avatar and colour in the game's own forms (the boards, the friends list) */
+      f('server/src', 'party|clanparty|clans|guilds|alliance|friends|chatlanes|chatmod|chatguard|reservednames|silence|emotes|boards|arena|gladiator|duel|spar|race|leaderboard|power|statboards|lookform'),
+      f('src/game', 'lookForm|alliance|allyDrafts|duelDoor|partyDoor|arenaDoor|skullDoor|chat|chatChannel|chatColor|chatMute|emotes|emoteMoves|gesturePose|friendErrors|duelLock|duelPending|partyChip|partyEq|partyMarks|partyRows|peerDot|race|raceDoor|spar|sparTargets|bubbleSkins|boardBumps|dictation'),
     ],
     words: ['party', 'clan', 'guild', 'alliance', 'friend', 'chat', 'emote', 'duel', 'arena', 'gladiator', 'spar', 'race', 'board', 'leaderboard', 'social'],
     traps: ['social'],
@@ -224,7 +225,7 @@ export const SYSTEMS = Object.freeze({
   },
   townsfolk: {
     what: 'the townspeople: their days, walks, talk and reactions',
-    files: [f('src/game', 'townsfolkDay|townsfolkReact|townsfolkWalk|townChatter|mayorTalk|interactions|poseDoor')],
+    files: [f('src/rendering/tables', 'townsfolk') /* v2.3.5345: its hand-tuned tables (card M) */, f('src/game', 'townsfolkDay|townsfolkReact|townsfolkWalk|townChatter|mayorTalk|interactions|poseDoor')],
     words: ['townsfolk', 'npc', 'mayor', 'folk'],
     traps: [],
     doors: [],
@@ -284,7 +285,7 @@ export const SYSTEMS = Object.freeze({
   },
   preload: {
     what: 'what loads behind the loading screen, and what loads later on purpose',
-    files: [f('src/rendering', 'preloadAnimations|preloadReport|chestPreload|controlsPreload|gestureCuePreload|levelUpBurstPreload|loginSpinPreload|questArtPreload|statDemoPreload|xpBarPreload|zoneBannerPreload|loadSetLater|warmOnce|picsOnce'), f('src/ui', 'loadingGate|lazyPanel|lazyPanels')],
+    files: [f('src/rendering/tables', 'preload') /* v2.3.5345: its hand-tuned tables (card M) */, f('src/rendering', 'preloadAnimations|preloadReport|chestPreload|controlsPreload|gestureCuePreload|levelUpBurstPreload|loginSpinPreload|questArtPreload|statDemoPreload|xpBarPreload|zoneBannerPreload|loadSetLater|warmOnce|picsOnce'), f('src/ui', 'loadingGate|lazyPanel|lazyPanels')],
     words: ['preload', 'loading', 'lazy', 'warm'],
     traps: ['preload'],
     doors: [{ name: 'preloadWorldAnimations', file: 'src/rendering/preloadAnimations.js', what: 'every animation and sprite loads behind the loading screen' }],
@@ -298,14 +299,14 @@ export const SYSTEMS = Object.freeze({
   },
   look: {
     what: 'how a character looks: traits, the look palette, garments, heads, gear on the body',
-    files: [re('^src/rendering/traits/'), re('^src/rendering/lookSets/'), f('src/rendering', 'lookArmour|lookArmourProbe|lookBake|lookExpand|lookFolk|lookPalette|lookPaletteProbe|lookShirt|lookShirtFrame|lookShirtProbe|lookUnpack|hemiLook|hemiBust|hemiBustCore|hemiAtlasIndex|characterPortrait|traitThumbs|gearBake|gearCatalog|gearLookFrame|gearLookProbe|gearNumbers|gearSheets|gearVariants|gearVersion|gearWalkFrame|weaponLookFrame|bodyRecolor|toolRecolor|garmentConfine|hairClip|headCrowns|headFrames|flipHead|earAnchors|earSides|eyeBlankMask|eyeMask|standInGarb|standInInk|standIns|retryLooks|capeSprites|playerSkins|nftAvatars'), f('server/src', 'lookrelay|poses')],
+    files: [f('src/rendering/tables', 'look') /* v2.3.5345: its hand-tuned tables (card M) */, re('^src/rendering/traits/'), re('^src/rendering/lookSets/'), f('src/rendering', 'lookArmour|lookArmourProbe|lookBake|lookExpand|lookFolk|lookPalette|lookPaletteProbe|lookShirt|lookShirtFrame|lookShirtProbe|lookUnpack|hemiLook|hemiBust|hemiBustCore|hemiAtlasIndex|characterPortrait|traitThumbs|gearBake|gearCatalog|gearLookFrame|gearLookProbe|gearNumbers|gearSheets|gearVariants|gearVersion|gearWalkFrame|weaponLookFrame|bodyRecolor|toolRecolor|garmentConfine|hairClip|headCrowns|headFrames|flipHead|earAnchors|earSides|eyeBlankMask|eyeMask|standInGarb|standInInk|standIns|retryLooks|capeSprites|playerSkins|nftAvatars'), f('server/src', 'lookrelay|poses')],
     words: ['look', 'trait', 'hair', 'head', 'garment', 'cape', 'armour', 'armor', 'skin', 'stand-in', 'standin', 'portrait'],
     traps: ['look'],
     doors: [],
   },
   render: {
     what: 'drawing the world: the Pixi renderer, the entity and effects renderers, light, fx',
-    files: [],
+    files: [f('src/rendering/tables', 'render') /* v2.3.5345: its hand-tuned tables (card M) */],
     rest: [re('^src/rendering/')],
     words: ['render', 'draw', 'fx', 'pixi', 'batch', 'light', 'camera'],
     traps: ['render'],
@@ -313,7 +314,7 @@ export const SYSTEMS = Object.freeze({
   },
   ui: {
     what: 'the screens: BroTown.jsx, the band and its panels, windows, banners',
-    files: [f('src/game', 'windowDoor')],
+    files: [f('src/rendering/tables', 'ui') /* v2.3.5345: its hand-tuned tables (card M) */, f('src/game', 'windowDoor')],
     rest: [re('^src/ui/'), re('^src/styles/')],
     words: ['ui', 'panel', 'window', 'band', 'banner', 'screen', 'dash', 'sheet', 'popup'],
     traps: ['ui'],

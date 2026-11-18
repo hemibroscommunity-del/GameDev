@@ -196,6 +196,7 @@ export const LISTCAP = Object.freeze({
   PAGE: 128,        /* the keys a page (the runtime's delete takes 128 keys a call) */
   SWEEP: 32,        /* a page of a sweep whose every key awaits its own reads and writes (a refund) */
   NEXT_MS: 10,      /* a walk's next page, an event of its own this long after */
+  OWNER: 2048,      /* v2.3.5961: the most an owner's page reads of a prefix (its answer says `more` past it) */
 });
 
 export const liveopsMethods = {
@@ -261,12 +262,15 @@ export const liveopsMethods = {
   },
 
   /** v2.3.5960: a whole prefix, a page an await (a registry the room keeps
-   *  whole in memory: each read bounded, the set the one it holds anyway). */
-  async _listAll(prefix) {
+   *  whole in memory: each read bounded, the set the one it holds anyway).
+   *  v2.3.5961: `max` stops it after the page that reaches `max` keys (an
+   *  owner's page: LISTCAP.OWNER), `info.more` then true. */
+  async _listAll(prefix, max, info) {
     const out = new Map();
     const cur = { after: null };
     do {
       for (const [k, v] of await this._listPage(prefix, cur)) out.set(k, v);
+      if (max && out.size >= max && cur.after) { if (info) info.more = true; break; }
     } while (cur.after);
     return out;
   },
@@ -337,6 +341,17 @@ export const liveopsMethods = {
   _capeOffKeptOff() {
     const f = this._liveFlags;
     return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'capeoffkept') && !f.capeoffkept);
+  },
+
+  /* v2.3.5900 (card K4 PR 1, step 4.2): THE HARVEST'S GRADE, JUDGED
+     (harvestgrade.js) -- an opt-in, OFF as merged: `harvestgrade: true`
+     holds a perfect to the time an honest gesture takes and to 15 in any 20
+     strikes; absent or false, every perfect is believed as before (the
+     perfect rate and botfp's checks only).  The owner's to turn on: the
+     share changes what a player whose every gesture is perfect is paid. */
+  _harvestGradeOn() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && f.harvestgrade === true);
   },
 
   // Synchronous by design (hot paths).  v2.3.4376: the cache is loaded
@@ -553,7 +568,12 @@ export const liveopsMethods = {
       // Prune the ring.  yyyymmdd keys sort lexicographically =
       // chronologically, so dropping the smallest keys is dropping the
       // oldest days.
-      const all = await this.state.storage.list({ prefix: 'metrics:' });
+      /* v2.3.5961 (card V5; TRAPS §76): the newest METRICS_KEEP + a page,
+         one read (the accuracy days' way): past a full page, the older go
+         on the days after.  `listcap: false`: every day, as before. */
+      const mopts = { prefix: 'metrics:' };
+      if (!this._listCapOff()) { mopts.reverse = true; mopts.limit = LIVEOPS.METRICS_KEEP + LISTCAP.PAGE; }
+      const all = await this.state.storage.list(mopts);
       if (all.size > LIVEOPS.METRICS_KEEP) {
         const keys = [...all.keys()].sort();
         await this.state.storage.delete(keys.slice(0, all.size - LIVEOPS.METRICS_KEEP));

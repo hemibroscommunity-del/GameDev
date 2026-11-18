@@ -69,17 +69,10 @@ for (const f of FILES) M(f);
 
 /* ── §6: a plain {} near an id-shaped index ── */
 
-/* Stepped in today, `function: variable` (precheck has warned on each when its file changed) */
-const PROTO_KNOWN = {
-  '_watchWipe: data': 'charwatch.js',
-  '_capePublicStatus: capes': 'eventcapes.js',
-  '_capeAdminRoute: out': 'eventcapes.js',
-  'vote: ticket.voters': 'feedback.js (the Feedback object)',
-  'sweep: voters': 'feedback.js (the Feedback object)',
-  '_partyStore: p.meta[pid]': 'party.js',
-  '_partyOnRejoin: p.meta[playerId]': 'party.js',
-  '_sparSpawn: _buffs': 'spar.js',
-};
+/* v2.3.6040 (card V6 PR 1): the eight stepped in on 2026-11-17 are maps with no
+   prototype now, each with a '__proto__' / 'constructor' case in
+   server/test/proto-maps.test.mjs: the list is empty and its line 0 */
+const PROTO_KNOWN = {};
 {
   const pre = readFileSync(join(ROOT, 'tools/dev/precheck.mjs'), 'utf8');
   const def = /const idIndex = (\/.+\/);\n/.exec(pre);
@@ -105,21 +98,17 @@ const PROTO_KNOWN = {
     }
   }
   check(`§6: the scan reads the places precheck's rule matches (${marked} marked proto-ok)`, marked >= 10, marked);
-  census('§6', 'plain {} literals near an id-shaped index, not marked proto-ok', found, PROTO_KNOWN, 8);
+  census('§6', 'plain {} literals near an id-shaped index, not marked proto-ok', found, PROTO_KNOWN, 0);
 }
 
 /* ── §76: every storage.list names a limit; none on the join path ── */
 
-/* `function: prefix`, stepped in today: each one a whole prefix in one read */
+/* `function: prefix`, stepped in today: each one a whole prefix in one read.
+   v2.3.5961 (card V5 PR 2): the other thirteen read a page now (liveops.js
+   _listPage, _listAll; leaderboard.js _pages; marketplace.js's own loop);
+   the one left is in a file card V5 may not write: */
 const LIST_KNOWN = {
-  '_accAdminDays: accday:': 'accuracy.js, the owner\'s page',
-  '_adminFetch: rpgsnap:': 'admin.js, the owner\'s page (one player\'s copies)',
-  '_chainScoreAdminRoute: chain_score:': 'chainscore.js, the owner\'s page', '_chatModAdminRoute: chat_report:': 'chatmod.js, the owner\'s page',
-  '_arenaBroadcastStakeBoard: arena_stake:': 'gladiator.js (one tournament)', '_arenaPlanScan: arena_settle:': 'gladiator.js',
-  '_arenaSettleStakes: arena_stake:': 'gladiator.js (one match)', '_topRead: gone:': 'leaderboard.js (the Leaderboard object)',
-  'faceless: player:': 'leaderboard.js (the Leaderboard object)', 'markGone: gone:': 'leaderboard.js (the Leaderboard object)',
-  '_metricsMaybe: metrics:': 'liveops.js (the trap\'s own: off the join since)', '_mktEnsureIndex: mkt_order:': 'market.js',
-  '_ensureIndex: order:': 'marketplace.js (the old Marketplace object)', '_resetCharacterData: oplog:questitem:': 'persistence.js (one player\'s)',
+  '_mktEnsureIndex: mkt_order:': 'market.js: card RV\'s file (card V5 PR 2 left it: the General Store\'s book, read whole once a worker\'s life)',
 };
 /* the listed ones a join reaches today (the trap's "never on the join path"): only falls */
 /* v2.3.5960 (card V5 PR 1): the eleven read a page now (liveops.js _listPage,
@@ -161,8 +150,8 @@ for (const f of FILES) {
       found.add((fn ? fn.name : '(top)') + ': ' + named);
     }
   }
-  check(`§76: the scan reads every storage.list of the worker (${lists})`, lists >= 30, lists);   /* v2.3.5960: 40 -> 30, the sweeps read through liveops.js _listPage */
-  census('§76', 'storage.list calls that name no limit', found, LIST_KNOWN, 14);   /* v2.3.5960: 25 -> 14 (card V5 PR 1) */
+  check(`§76: the scan reads every storage.list of the worker (${lists})`, lists >= 20, lists);   /* v2.3.5960: 40 -> 30, the sweeps read through liveops.js _listPage; v2.3.5961: -> 20 */
+  census('§76', 'storage.list calls that name no limit', found, LIST_KNOWN, 1);   /* v2.3.5960: 25 -> 14 (card V5 PR 1); v2.3.5961: -> 1 (PR 2) */
   /* the join's reach: this.* calls from _handleJoin, eight deep */
   const reach = new Set();
   const q = [['_handleJoin', 0]];

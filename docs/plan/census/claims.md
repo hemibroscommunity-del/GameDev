@@ -19,7 +19,7 @@ On main 82fb78d, seeded, 4 simulated minutes a run (the cook's an hour).
 | Claim | The judge | The take | Honest | Liar | Gain | Its spread | Over 1.5 |
 |---|---|---|---|---|---|---|---|
 | the sword's reach (`reach`) | a melee hit is taken from `PVE_MELEE_RANGE` (400 px, index.js; combat.js _handleMonsterDamage), and a miss never reaches the worker | kills an hour | 360 (the honest sword: in to 90 px, a swing every 600 ms) | 510 (every monster within 399 px, each every 210 ms (its lane), unshoved (`noKb`)) | **1.42** | 0.56 | no |
-| a sword's claim labelled a bow's (TRAPS §329) (`bowlabel`) | `slot: 'ranged'` with a bow worn takes the bow's reach (1,490 px, hitproof.js) and five claims a second, and never lowers the guard | kills an hour | 675 (the flicking archer: in to 600 px, a shot every 371 ms (the free-swing trial's flicked bow)) | 1,077 (standing, five `ranged` claims a second over everything in the bow's reach) | **1.6** | 0.23 | yes |
+| a sword's claim labelled a bow's (TRAPS §329) (`bowlabel`) | `slot: 'ranged'` with a bow worn: five claims a second (hitproof.js), each on an arrow the worker saw leave at the bow's rate (`bowshot`), within the arrow's flight of where it left (`bowreach`, 1,075 px for a new character; with no arrow seen, the hit test's 1,490 px for one claim in 3 s), and never lowers the guard | kills an hour | 750 (the flicking archer: in to 600 px, a shot every 371 ms (the free-swing trial's flicked bow)) | 1,048 (standing, an arrow's relay and a `ranged` claim on everything in reach, five a second (the bow's rate holds it)) | **1.4** | 0.23 | no |
 | the guard beyond #1530's limits (`guard`) | `blocking` is believed with no shield worn (movement.js), and a guard sent with each swing stays up through it (moveclaims.js) | damage taken an hour | 84,339 (the honest sword, its guard down while it swings) | 61,380 (each swing sent with a raised guard pointed at its target, no shield) | **1.37** | 0.49 | no |
 | the cooking shield beyond #1530's limits (`cookshield`) | `ex: 'cook'` is believed at a fire the worker saw lit, with no fish (moveclaims.js _cookShieldHolds): 3 s after any attack, 120 px from where it began | damage taken a kill | 224 (the honest sword, its guard down while it swings) | 335 (its own fire by the field; after each kill `ex: 'cook'` with no fish, the 3 s re-arm waited out) | **0.67** | 0.29 | no |
 | the move (`move`) | `MOVE_BUDGET`: 500 px a second and a 3 s burst (movement.js), the sprint mark (sprint.js), and no walls on the worker | px of ground an hour | 585,017 (the honest sprinter: 3 s sprinting (every move marked), 0.8 s walking, again) | 685,545 (point to point at 660 px a second, every other step marked a sprint) | **1.17** | 0.01 | no |
@@ -33,11 +33,23 @@ The spread is the gain's highest less its lowest over five other seeds (`CLAIMS_
 
 ### The other honest ways
 
-- `bowlabel`: the honest archer: in to 600 px, a shot every 495 ms, each claim when its arrow lands: 569; the liar over it: **1.89**.
-- `bowlabel`: the honest sword: 329; the liar over it: **3.27**.
-- `bowlabel`: the stepping archer: a shot every 495 ms, running in (250 px a second) while its arrows fly: 330; the liar over it: **3.26**.
+- `bowlabel`: the honest archer: in to 600 px, a shot every 495 ms, each claim when its arrow lands: 645; the liar over it: **1.63**.
+- `bowlabel`: the honest sword: 329; the liar over it: **3.18**.
+- `bowlabel`: the stepping archer: a shot every 495 ms, running in (250 px a second) while its arrows fly: 270; the liar over it: **3.88**.
 - `move`: the honest walker: 150 px a second, point to point: 538,534; the liar over it: **1.27**.
 - `harvest`: a computer holding E (never perfect): 313; the liar over it: **2.49**.
+
+## The harvest's grade, judged (`harvestgrade`, OFF as merged)
+
+v2.3.5900 (card K4 PR 1; `server/src/harvestgrade.js`): with `harvestgrade: true` a perfect is believed only at or after the earliest an honest gesture could make it (the plan's hits, the settle and the 1.2 s gesture floor) and at most 15 in any 20 strikes; a perfect refused is paid as good. The honest harvesters take what they took with it off and meet no refusal on any disturbance (a perfect of theirs paid as good counts as one). The liar: **1.86** as merged; with it on, the plain liar (every strike perfect at the earliest) **0.93**, the graded one (perfect at the gesture's floor while its 15 in 20 last, else good at once) **1.46**, 614 ore an hour. Its line, `HARVESTGRADE_LINE`, only falls. The share changes what a player whose every gesture is perfect is paid (three in four: 1.75 ore a strike for 2), so the switch is the owner's.
+
+## The bow's reach, from where the arrow left (`bowreach`, ON)
+
+v2.3.5901 (card K4 PR 2; `server/src/bowshot.js`): a claim on an arrow the worker saw leave lands only with the monster within the arrow's own flight of where the archer stood at its relay (675 px x Range, and 400 px of slack: 1,075 px for a new character), not the hit test's 1,490 px from where the archer stands now; a claim with no arrow seen gets 3, and one more every 3 s. The honest archers take what they took with it off and meet no refusal on any disturbance. The bow's own claim (its liar at an honest walk): **1.44** off, **1.40** on; the whole liar (walking at 480 px a second, the move's claim) **1.44** off, **1.40** on; the liar sending no relays **0.12**. What is left is not the reach but the claim naming its monster when it lands, so no arrow is ever wasted in flight: the bow's path below (`bowpath`). (v2.3.5905: the honest archers' arrows fly the real 1,440 px a second here, not 480.)
+
+## The bow's path (`bowpath`, OFF as merged)
+
+v2.3.5904 (card K4 PR 5; `server/src/bowshot.js`): with `bowpath: true` a claim on an arrow seen lands only for a monster near that arrow's line (its relay's x, y and angle -- since v2.3.5905 the relay goes at release, with the line the arrow flies, against a worker advertising caps.bowPath: 200 px beside it measured to the monster's body, its feet up 130 px, a boss's 260, and the landing's 8 degree turn) and no sooner than the arrow could have flown there (1,440 px a second x Range, less 300 ms). Every honest archer takes what it took with it off and meets no refusal on any disturbance. The bow's liar with it on: the path's liar (each relay aimed at a monster that still needs arrows, each claim when its arrow could have landed, on its line) **1.20**; the relay-and-claim liar **0.56**. Its line, `BOWPATH_LINE`, only falls. OFF until the owner says, as it holds every bow claim to a line the phone's own aim makes.
 
 ## Claims with no number yet, and why
 

@@ -104,10 +104,12 @@ async function tryJoin(id, flags) {
     const r = await tryJoin(id);
     check(`2. ${label}: joins`, r.joined && r.kept && !r.refused && !!r.room.playerState[id], { sent: r.ws.sent.map((m) => m.type).slice(0, 6) });
   }
-  /* a join with no id, or a null one, is today's: not this gate's */
+  /* a join with no id, or a null one, is not this gate's: v2.3.5730, it is
+     `joinguard`'s (card K2 PR 11, SEC-F1; join-guard.test 2), so it is read
+     here with that switch off */
   for (const id of ['(absent)', null]) {
-    const r = await tryJoin(id);
-    check(`2. an id ${id === null ? 'of null' : 'absent'}: not refused here (today's way)`, !r.refused, { sent: r.ws.sent.map((m) => m.type).slice(0, 6) });
+    const r = await tryJoin(id, { joinguard: false });
+    check(`2. an id ${id === null ? 'of null' : 'absent'}: not refused here (today's way, \`joinguard: false\`)`, !r.refused, { sent: r.ws.sent.map((m) => m.type).slice(0, 6) });
   }
   /* the magic names still meet their own gate (they fit the form) */
   for (const id of ['__proto__', 'constructor', 'toString']) {

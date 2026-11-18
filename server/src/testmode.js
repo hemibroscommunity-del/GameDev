@@ -24,7 +24,10 @@
  *     as it says;
  *   - the timing checks on harvesting and cooking: the too-early strike and
  *     the strike with no start of its own (gathering.js _handleNodeStrike),
- *     the 45 perfect harvests a minute (_ratedHarvestAccuracy), the 45 cooks a
+ *     the 45 perfect harvests a minute (_ratedHarvestAccuracy), a perfect held
+ *     to an honest gesture's time and to 15 in any 20 strikes (v2.3.5900,
+ *     gathering.js _harvestGraded, harvestgrade.js, `harvestgrade`, an opt-in,
+ *     OFF as merged: asked through the strike's `_tm`), the 45 cooks a
  *     minute and the 900 ms between cooks (cooking.js), a cook's result held
  *     to the cook it started (v2.3.5553, cooking.js _cookStartOk,
  *     `cookstart`, ON since v2.3.5727), and the bot scoring
@@ -38,7 +41,9 @@
  *     specials in 1.2 s) and the 400 px melee and 3,600 px Wheel reach; the
  *     sword's swing and its 150 px reach and believed shove (v2.3.5548,
  *     swordswing.js, `swordswing`) and a bow's claim held to an arrow seen
- *     (v2.3.5550, bowshot.js, `bowshot`), both asked in combat.js;
+ *     (v2.3.5550, bowshot.js, `bowshot`; within it its reach from where the
+ *     arrow left, v2.3.5901 `bowreach`, and its path, v2.3.5904 `bowpath`),
+ *     both asked in combat.js;
  *   - the order of the first quests (quests.js _questBarred, v2.3.3179: the
  *     'first' and 'order' rules; a quest nobody can give is still refused);
  *   - the dodge-roll window against a player's blow (movement.js _rollOn,
@@ -64,7 +69,8 @@
  * relay.js RELAY_FORMS: `relaytyped`), the room ceiling's honest floor
  * (v2.3.5728, flood.js HONEST_PER_S: `ceilfair`), a guest's share of the
  * places, a played character's seat and an IPv6 /48 counted (v2.3.5729,
- * seathold.js GUEST_SHARE, flood.js ip48Key: `guestshare`), the owner's routes
+ * seathold.js GUEST_SHARE, flood.js ip48Key: `guestshare`), a join taking
+ * only what is its own (v2.3.5730, join.js, seathold.js: `joinguard`), the owner's routes
  * with no key and the public reads at the edge (v2.3.5726, wire/door.js:
  * the worker settings `EDGE_GUARD`, `EDGE_CACHE`), every save and payment rule,
  * the login key and its lockouts, a frozen account, PvP consent and every
@@ -77,7 +83,33 @@
  * one write (market.js: `mkttier`, `mktheal`); the rise chest's stamp kept
  * for good by the oplog prune (v2.3.5802, inbox.js OP_PRUNE.KEEP: `risekeep`);
  * goods credited in the dying seconds kept through the respawn (v2.3.5803,
- * inbox.js _applyCreditToPs: `dyingkeep`).
+ * inbox.js _applyCreditToPs: `dyingkeep`); No man's land's killer paid in
+ * the victim's own write (v2.3.5804, nomansland.js _nmlOnDeath: `nmlonewrite`);
+ * a duel challenge's cards paced and a muted challenger unheard, a decline
+ * only of a real challenge, the pot and its escrow's delete one write
+ * (v2.3.5805, duel.js: `duelpace`, `duelonewrite`); a muted sender's shop-thread
+ * line not shown on open, and a player who mutes you away to you
+ * (v2.3.5806, storechat.js, chatlanes.js, party.js: `storemute`, `mutehides`);
+ * a player's avatar and colour in the game's own forms on the board and on
+ * the page (v2.3.5807, lookform.js, src/game/lookForm.js: `?lookform=0`); an
+ * old key's after-join check held while `oldkeyheld` is (v2.3.5808, loginkeys.js);
+ * an offer's Yes waits for a bid half made, and a payment and its escrow's
+ * delete one write (v2.3.5809, storeoffer.js, trade2.js, gladiator.js:
+ * `offerpend`, `leftoverheal`); a friendship both sides or neither, and a request
+ * nobody answers let go after 30 days (v2.3.5811, friends.js: `friendfix`); the
+ * cleaner's blank and hidden characters, and a new pet or alliance name held
+ * to the name rule (v2.3.5814, chatguard.js, petbook.js, alliance.js:
+ * `cleanmore`, `namestaff`); the rewind's plan names the owner's login acts since
+ * its time (v2.3.5815, restore.js: `rewindsays`); the jackpot's deposit asks
+ * the purse again after its awaits (v2.3.5813, cadence.js: `jackcheck`); the
+ * Auction House's `/mine` shows a player's bids only to that player's own
+ * session (v2.3.5817, store.js: `minebids`); a join's shield and cosmetic
+ * claims merged only when the ledger backs them (v2.3.5812, gearstash.js:
+ * `shieldclaim`); a daily spin's and the login spin's paid
+ * mark in the credit's own run (v2.3.5810, dailyrewards.js, loginspin.js:
+ * `paidmark`); a `track`'s avatar, colour and look words in the game's own
+ * forms (v2.3.5819, lookform.js: `lookform`); the daily chest's stamp and
+ * save in one write (v2.3.6021, dailychest.js, under `paidmark`).
  *
  * WHO CAN TURN IT ON.  Only the admin key, through the Test panel's
  * POST /api/admin/dev/testmode {playerId, on} (devtools.js), which the owner's

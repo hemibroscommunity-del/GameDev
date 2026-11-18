@@ -505,6 +505,11 @@ check('...and BOTH players can duel again afterwards',
  * unwinnable, because combat.js walks only the attacker's own zone.  The
  * refusal has to land BEFORE the escrow, and has to be visible: both
  * players pressed a button. */
+/* v2.3.5805 (card RV, MS-6): §12's pot is paid fire-and-forget; let it
+   land before this section counts coins and escrow records (the pot and its
+   record's delete are one write now, a few turns sooner than the old
+   credit-then-delete, which this section's counts happened to outrun) */
+for (let i = 0; i < 20; i++) await new Promise((r) => setTimeout(r, 0));
 psA.dying = false; psA.dead = false; psB.dying = false; psB.dead = false;
 psA.coins = 500; psB.coins = 500;
 psA.z = 'town'; psB.z = 'meadow';

@@ -82,3 +82,119 @@ budget-android also had a known hold that left no note: `screen-check` 18.8 ms a
 lands (holdNames.js MADE_AS).
 
 On both profiles, nothing on the debt list grew past its own line.
+
+## The full run (v2.3.5862, card O2 PR 3; the owner said yes, 2026-11-18)
+
+Run 2026-11-18 00:31-01:29 UTC on fresh builds from main 3750ba4, one browser
+job at a time. It took 58 minutes, builds included:
+
+| scenario | how | hotel-laptop | budget-android |
+|---|---|---|---|
+| desksmooth | `BT_DS_PARTS=quiet,throttle,both,slowline,profile` | 626 s | 663 s |
+| phoneframe | the four scenes at dpr 3 | 385 s | 442 s |
+| heldsweep | all 8 stations | 637 s | 732 s |
+
+**Read desksmooth with care.** Under a profile, every part carries the
+profile's throttle and its `/world/` line. A part's own line replaces the
+profile's while the part runs. So:
+- the "quiet" parts are the profile at three window sizes, judged against the
+  unslowed work lines (on budget-android they fail those lines at x4: a fault
+  of the run, not of the game);
+- the part labelled "x4" ran at the profile's own rate (it slows only when the
+  harness does not).
+
+### desksmooth: what is over
+
+| | hotel-laptop | budget-android |
+|---|---|---|
+| the loading screen lifts with ground short of its picture (`/world/` line) | 30 of 50 short, every window, the gate held 40-42 s | 38 of 50 short, the gate held 17-18 s |
+| the same, with ground alone on the line (the `slowline` part, `/world/ground/:150:200`) | lifts whole (0 short, gate 22.5 s) | lifts whole |
+| a walk across town | 1 object late (every window) | none late |
+| work a frame, judged at the page's own slowing (profile and x4 parts) | within the lines (8.3-11 ms) | within the lines (17.8-22.3 ms) |
+
+The ground waits for its pictures well when it has the line to itself.
+When the world's other art shares the line, the gate lets go with most of
+the town in plain colour.
+
+### phoneframe at dpr 3 (fps is this box's software drawing)
+
+| profile | scene | fps | tile | entity | effects | app |
+|---|---|---|---|---|---|---|
+| hotel-laptop | BroTown, standing | 1.6 | 1.27 | 2.29 | 1.33 | 3.77 |
+| hotel-laptop | BroTown, walking | 1.8 | 0.77 | 2.94 | 1.22 | 5.32 |
+| hotel-laptop | Flame Fields, fighting | 2.4 | 0.68 | 1.52 | 1.44 | 4.38 |
+| hotel-laptop | Flame Fields, walking | 2.2 | 0.66 | 1.99 | 1.41 | 4.83 |
+| budget-android | BroTown, standing | 1.4 | 1.31 | 5.11 | 3.20 | 7.21 |
+| budget-android | BroTown, walking | 1.4 | 1.65 | 7.49 | 2.72 | 11.01 |
+| budget-android | Flame Fields, fighting | 2.3 | 1.27 | 3.36 | 2.65 | 8.83 |
+| budget-android | Flame Fields, walking | 2.0 | 0.83 | 4.20 | 2.72 | 9.54 |
+
+On both profiles at dpr 3 the guard "reached the Flame Fields' first
+monsters" failed: the walk to them timed out at 1.4-2.4 fps. 21 monsters
+were measured all the same.
+
+### heldsweep, all 8 stations: over the line
+
+The lines are `held-budget.mjs`: 12 ms a job outside the frame, 16 ms of the
+game's own code inside one, 45 ms at a window.
+
+**hotel-laptop**: 14 over. Two of them are on the debt list and grew past
+their own lines:
+- `screen-check` 303.7 ms > 260 (peer, 3 times);
+- the frame itself 88.6 ms > 70 (armour, 2 times).
+
+The 12 new ones:
+
+| family | longest ms | where | times |
+|---|---|---|---|
+| server-message | 29.4 | armour | 4 |
+| other: (anonymous) | 27.7 | armour | 4 |
+| other: wrapped > rememberChar | 26.0 | armour | 2 |
+| portrait | 24.2 | armour | 1 |
+| other: wrapped > flushInputBuffer | 23.2 | armour | 1 |
+| masked-bake | 21.3 | peer | 1 |
+| other: playerScreenPoint | 20.9 | town | 1 |
+| other: wrapped > pack | 19.8 | town | 2 |
+| other: step2 > measure | 17.0 | peer | 2 |
+| other: wrapped > tick$1 | 16.4 | armour | 2 |
+| other: wrapped > tick2 | 14.5 | lands | 2 |
+| other: wrapped | 14.2 | armour | 3 |
+
+**budget-android**: 39 over. Two are on the debt list and grew past their own
+lines:
+- the frame itself 153.3 ms > 70 (armour, 13 times);
+- `R > J` 36.7 ms > 16 (town, 16 times).
+
+The 37 new ones, the worst first:
+
+| family | longest ms | where | times |
+|---|---|---|---|
+| other: jg > Ek | 113.5 | windows | 2 |
+| other: loop2 > draw$1 | 108.1 | windows | 2 |
+| other: measure2 | 72.9 | windows | 1 |
+| other: onPointerUp > set | 64.1 | folk | 5 |
+| other: wrapped > _poll | 52.0 | armour | 2 |
+| portrait | 40.1 | armour | 3 |
+| other: QuestCoach | 37.4 | peer | 1 |
+| other: coachFollow > worldRect | 35.7 | armour | 1 |
+| other: jumpAnchor > weaponPillTopPx | 35.2 | armour | 7 |
+| other: dispatchEvent | 34.6 | fight | 3 |
+| server-message | 33.0 | lands | 37 |
+| pack-page | 28.3 | town | 4 |
+| other: wrapped > sweepPicsOnceTurn | 27.6 | armour | 6 |
+| other: wrapped > tick$1 | 26.8 | armour | 8 |
+| other: wrapped | 25.4 | lands | 22 |
+| other: BroTown2 | 25.3 | armour | 3 |
+| other: (anonymous) | 24.6 | fight | 13 |
+| other: _runLookBake > reply | 24.5 | peer | 1 |
+| other: wrapped > tick2 | 24.3 | lands | 4 |
+| gear-sheet | 22.8 | peer | 1 |
+
+The rest (13.8-22.5 ms): rS2, step2 > measure, step2, rE2, the GearTab
+redrawn x13, strip-made, window.__btTex, _pack > _deflateAll, wrapped > pack,
+rE2 > onClick, _sprite > _source x14, _resumeRecover, loadLook, the
+BottomDashboard redrawn x7, the GearCellView redrawn, tapResourceAtClient,
+tick2.
+
+On both profiles every known hold left a note (no gaps in the full run; the
+sample's `screen-check` gap did not come back).

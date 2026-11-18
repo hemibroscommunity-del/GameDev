@@ -130,6 +130,24 @@ const OWNER_KEY_FILE = 'src/ui/panels/DevPanel.jsx';
   const routeless = fetches.filter((x) => !EXCEPT(x) && x.path && x.path !== '/api/store' && !routeRows.some((n) => ACTIONS[n].path === x.path.replace(/\/$/, '') || ACTIONS[n].path.startsWith(x.path.replace(/\/$/, '') + '/')));
   check(`2: every route the page fetches (${fetches.length}, less the exceptions) has a row`, routeless.length === 0, routeless.map((x) => x.path + ' (' + x.f + ':' + x.line + ')'));
 }
+/* v2.3.5882 (card K3 PR 3): a route named through a wrapper is a row too.
+   storeApi.js's post(route, ...) hands its route to act(); storeListPet said
+   '/list', no row, and act() refused every pet listing in silence.  So every
+   post('...') there, and every 'http:/...' written anywhere on the page (a
+   door name: one slash, never a URL's two), names a row.  Break proof: post('/list', ...) back in storeApi.js turns it red */
+{
+  const STORE_API = 'src/ui/storeApi.js';
+  const has = (n) => Object.prototype.hasOwnProperty.call(ACTIONS, n);
+  const bad = [];
+  const sa = SRC.get(STORE_API) || '';
+  let posts = 0;
+  for (const m of sa.matchAll(/\bpost\(\s*'([^']*)'/g)) { posts++; if (!has(m[1])) bad.push(m[1] + ' (' + STORE_API + ':' + lineOf(sa, m.index) + ')'); }
+  for (const [f, s] of SRC) {
+    if (f === 'src/game/actions.js') continue;
+    for (const m of s.matchAll(/'(http:\/(?!\/)[^'\s]*)'/g)) if (!has(m[1])) bad.push(m[1] + ' (' + f + ':' + lineOf(s, m.index) + ')');
+  }
+  check(`2c: every route a wrapper names (${posts} post() in ${STORE_API}) and every 'http:/...' on the page is a row`, posts > 0 && bad.length === 0, bad);
+}
 
 /* ── 7b (v2.3.5603, sitting 19b's gatekeeper): the owner's key's way out,
    named: `fetchWithTimeout` with the API's base only in the Test panel, whose
@@ -229,7 +247,7 @@ const OWNER_KEY_FILE = 'src/ui/panels/DevPanel.jsx';
    PR 7's first, v2.3.5187: from here the rows are the ways, held by §1 to §5) ── */
 
 /* ── 7. the census: sends and fetches outside the door ── */
-const LINE = { sends: 1, fetches: 0 };   /* v2.3.5187: 203 less PR 7.1's 57; v2.3.5188: less PR 7.2's 41; v2.3.5189: less PR 7.3's 17; v2.3.5190: less PR 7.4's 44; v2.3.5191: less PR 7.5's 22 sends and 24 fetches (the fetch left: BroTown's, 7.6; LoginSpinWindow.jsx waits for card T's #1863); v2.3.5192: less PR 7.6's 18 sends (BroTown.jsx's 17, the ride key's) and 1 fetch; the 4 left: nmlAsk.js and LoginSpinWindow.jsx, after card T's #1863; v2.3.5880: less nmlAsk.js's 3 (card K3 PR 1); the 1 left: LoginSpinWindow.jsx's, K3 PR 2 */
+const LINE = { sends: 0, fetches: 0 };   /* v2.3.5187: 203 less PR 7.1's 57; v2.3.5188: less PR 7.2's 41; v2.3.5189: less PR 7.3's 17; v2.3.5190: less PR 7.4's 44; v2.3.5191: less PR 7.5's 22 sends and 24 fetches (the fetch left: BroTown's, 7.6; LoginSpinWindow.jsx waits for card T's #1863); v2.3.5192: less PR 7.6's 18 sends (BroTown.jsx's 17, the ride key's) and 1 fetch; the 4 left: nmlAsk.js and LoginSpinWindow.jsx, after card T's #1863; v2.3.5880: less nmlAsk.js's 3 (card K3 PR 1); the 1 left: LoginSpinWindow.jsx's, K3 PR 2; v2.3.5881: less LoginSpinWindow.jsx's 1 (card K3 PR 2): none left */
 {
   let sends = 0; const byFile = new Map();
   for (const [f, s] of SRC) {

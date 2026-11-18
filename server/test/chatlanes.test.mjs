@@ -192,8 +192,13 @@ check('...and still reaches everyone else',
 clear(m1, m2);
 await rm2.webSocketMessage(m2, JSON.stringify({ type: 'whisper', payload: { to: 'Muter', text: 'let me in' } }));
 check('a muted whisper is dropped', ofType(m1, 'whisper').length === 0, types(m1));
-check('...and the sender is NOT told, so a harasser cannot confirm a hit',
-  ofType(m2, 'whisper_error').length === 0, types(m2));
+/* v2.3.5806 (card RV, S8; `mutehides`): the sender cannot confirm a hit --
+   and silence was itself the tell, since a name nobody holds is answered
+   `no-such-player`.  Now the muter reads as away: the very answer a player
+   who is not here gets. */
+const _gone = ofType(m2, 'whisper_error');
+check('...and the sender is told only what a name nobody holds is told (no-such-player), so a harasser cannot confirm a hit',
+  _gone.length === 1 && _gone[0].payload && _gone[0].payload.reason === 'no-such-player', _gone);
 
 /* -- 8. forgery (rule 13) -- */
 check('area_chat is privileged, so a client cannot inject it', PRIVILEGED_EVENTS.has('area_chat'));

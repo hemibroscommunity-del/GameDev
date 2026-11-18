@@ -27,6 +27,11 @@
  *   7.  A session inside the window is left alone and gets its ping.
  *   8.  Keepalives alone do not save a session from the sweep -- the
  *       end-to-end statement of the owner's bug.
+ *   9.  v2.3.6043 (card V6 PR 4): the open World map's `map_watch` and the
+ *       Journey page's `acc_request` are timers too: neither resets the
+ *       clock, and a tab left on the map, the Journey page open, is swept.
+ *       Break proof: either one taken out of the router's keepalive
+ *       condition (index.js) -> FAIL 9.
  *
  * Never starts startTickLoop (real 22 ms interval) -- _tickPingAndAfk is
  * invoked directly, the tick.test.mjs convention.
@@ -203,6 +208,30 @@ check('a chat message DOES reset the clock',
   room._tickPingAndAfk(Date.now());
   check('...so the idle character is logged out', !room.sessions.has(ghost));
   check('...and the world stops showing it', !room.playerState['bp_afk_c']);
+}
+
+// ── 9. v2.3.6043: the map's and the Journey page's timers are heartbeats ──
+check('an open World map\'s `map_watch` does NOT reset the clock',
+  (await probe({ type: 'map_watch', on: true })) === false && (await probe({ type: 'map_watch', on: false })) === false);
+check('...nor does the Journey page\'s `acc_request`',
+  (await probe({ type: 'acc_request' })) === false);
+{
+  const left = fakeWs('left');
+  await join(left, 'bp_afk_d');
+  const g = room.sessions.get(left);
+  await room.webSocketMessage(left, JSON.stringify(like({ x: 200, y: 200 })));
+  const t0 = Date.now() - (room.IDLE_TIMEOUT_MS + 5000);
+  g.lastRecv = t0;
+  /* two minutes of the map left open and the Journey page's ask, with the keepalives */
+  for (let i = 0; i < 24; i++) {
+    await room.webSocketMessage(left, JSON.stringify({ type: 'map_watch', on: true }));
+    if (i % 3 === 0) await room.webSocketMessage(left, JSON.stringify({ type: 'acc_request' }));
+    await room.webSocketMessage(left, JSON.stringify(like({ x: 200, y: 200 })));
+  }
+  check('a tab left on the World map, the Journey page asking, keeps the AFK clock where it was',
+    g.lastRecv === t0, { was: t0, now: g.lastRecv });
+  room._tickPingAndAfk(Date.now());
+  check('...so it is logged out', !room.sessions.has(left) && !room.playerState['bp_afk_d']);
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

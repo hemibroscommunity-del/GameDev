@@ -65,6 +65,7 @@
 
 import { MUTABLE_RELAY_TYPES } from './wire/lists.js';   /* v2.3.5182: from the wire table */
 import { PACE } from './flood.js';   /* v2.3.3274: the mute list is written at a pace */
+import { LISTCAP } from './liveops.js';   /* v2.3.5961: an owner's page's most (card V5) */
 import { WIRE_DOOR } from './wire/door.js';   /* v2.3.5184: the names no player id is (the wire door's) */
 
 export const CHATMOD = {
@@ -167,6 +168,20 @@ export const chatModMethods = {
     if (!muterId || !speakerId || !this.chatMutes) return false;
     const set = this.chatMutes.get(muterId);
     return !!(set && set.has(speakerId));
+  },
+
+  /* v2.3.5806 (card RV): two kill switches beside the mute they extend
+     (lower case, on unless written false).  `storemute`: a muted sender's
+     shop-thread line is not shown on open (storechat.js, S5).
+     `mutehides`: a player who mutes you reads as away to you, for a whisper
+     and a party invite (chatlanes.js, party.js; S8, the owner's call). */
+  _storeMuteOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'storemute') && !f.storemute);
+  },
+  _muteHidesOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'mutehides') && !f.mutehides);
   },
 
   /* The server-stamped sender of a RELAYED event.  `from` is written by
@@ -481,7 +496,10 @@ export const chatModMethods = {
       const rawLimit = parseInt(url.searchParams.get('limit') || '50', 10);
       const limit = Math.max(1, Math.min(CHATMOD.ADMIN_LIST_MAX, Number.isFinite(rawLimit) ? rawLimit : 50));
       const filter = url.searchParams.get('target') || '';
-      const all = await this.state.storage.list({ prefix: 'chat_report:' });
+      /* v2.3.5961 (card V5; TRAPS §76): a page an await, LISTCAP.OWNER at
+         most; past it the answer says `more` (the rest after a dismissal) */
+      const info = {};
+      const all = await this._listAll('chat_report:', LISTCAP.OWNER, info);
       const cutoff = Date.now() - CHATMOD.RETAIN_MS;
       const stale = [];
       let rows = [];
@@ -515,7 +533,7 @@ export const chatModMethods = {
         /* connected now: a session of theirs (admin.js's own test for a kick) */
         r.onlineNow = !!(typeof r.target === 'string' && this._wsBySessionId(r.target));
       }
-      return json({ ok: true, total: rows.length, pruned: stale.length, reports: page });
+      return json({ ok: true, total: rows.length, pruned: stale.length, reports: page, ...(info.more ? { more: true } : {}) });
     }
     if (request.method === 'DELETE' && path === '/reports') {
       const id = url.searchParams.get('id');

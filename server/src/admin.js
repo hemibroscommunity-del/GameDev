@@ -608,7 +608,7 @@ export const adminMethods = {
         const auth2 = await this.state.storage.get('auth:' + id);
         const frozen = await this.state.storage.get('frozen:' + id);
         const inbox = await this.state.storage.get('inbox:' + id);
-        const snaps = await this.state.storage.list({ prefix: 'rpgsnap:' + id + ':' });
+        const snaps = await this._listPage('rpgsnap:' + id + ':', null, SNAPSHOT.LIST);   /* v2.3.5961: one page (card V5; the ring is 14 at most) */
         const ps = this.playerState[id];
         return json({
           ok: true,

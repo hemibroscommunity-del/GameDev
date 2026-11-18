@@ -332,7 +332,7 @@ const room = () => Object.create(GameRoom.prototype);
   const PLACE = /(?:zone|land|home)(?:Id)?$|^z$/i;
   /* by function, with why */
   const PLACE_KNOWN = {
-    _rollHarvestShard: 'gathering.js: `shard_` + the node\'s zone, ungated (its caller passes a Wheel node\'s home, else the node\'s zone or the room\'s): Found',
+    /* v2.3.5903 (card K4 PR 4): `_rollHarvestShard` came off -- gated on ZONES now (gathering.js) */
     _dungeonComplete: 'dungeon.js: `wheel_` + the dungeon\'s home is a key of lifeSkills.dungeonClears, not an item (the instance\'s cfg is the dungeon table\'s row)',
   };
   const found = new Set();
@@ -537,7 +537,7 @@ const WRITE_RE = /(?<![\w$])(storage\.put|_opStamp|_saveRpg|_creditPlayer|_credi
   const TAKE = /(?<![\w$])(?:_goldTake|bagTake|stashTake|_escrowDebitGold|_escrowTakeItem|_escrowDebitGoldTogether)\(/g;
   /* by function: how many awaited credits after its takes today, with why */
   const CREDIT_KNOWN = {
-    _handleTrade2Confirm: [5, 'trade2.js: the fallback when _creditLiveTogether cannot run (a side\'s state gone) and the weapons\' delivery past the run'],
+    _handleTrade2Confirm: [6, 'trade2.js: the fallback when _creditLiveTogether cannot run (a side\'s state gone) and the weapons\' delivery past the run (v2.3.5809, card RV: that delivery is written in two branches of `leftoverheal`, the mail with its record\'s delete in one write, or the old two; only one runs, so no credit more)'],
     _interceptTrade: [2, 'trade.js: the gift trade\'s fallback when _creditLiveTogether cannot run'],
     _mktPlaceOrder: [3, 'market.js: a crossing order\'s settlement credits (the store\'s escrow, held by market-settle.test)'],
     _stCreateListing: [1, 'store.js: an unwind of a listing that failed to write, giving back what was taken'],

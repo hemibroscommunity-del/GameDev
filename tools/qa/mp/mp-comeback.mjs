@@ -90,8 +90,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }
     const walking = await H.readState(P, (S) => ({ sx: S.stickX, held: !!S._lJoyHeld }));
     const x0 = await H.readState(P, (S) => S.player.x);
-    await P.page.waitForTimeout(600);
-    const x1 = await H.readState(P, (S) => S.player.x);
+    /* v2.3.5841: walking until he HAS walked 20 px, up to 8 s, not for 0.6 s of
+       the wall clock: the bro moves by frames, and this box draws a few a second
+       (TRAPS §200) -- 15 px in 0.6 s on main, run after run, with the stick full
+       on (sx 1).  The check is that the page let go of the stick, not his pace. */
+    const x1 = await H.waitFor(P, (S) => S.player.x, (x) => x - x0 > 20, { timeout: 8000, label: 'walking 20 px' })
+      .catch(() => H.readState(P, (S) => S.player.x));
     /* no touchEnd: the app switched mid-press */
     await P.page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
     await P.page.waitForTimeout(300);
@@ -102,7 +106,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const xa = await H.readState(P, (S) => S.player.x);
     await P.page.waitForTimeout(700);
     const xb = await H.readState(P, (S) => S.player.x);
-    rec.ok(`1. a held stick (walking: ${Math.round(x1 - x0)} px in 0.6 s) is let go of when the page goes away: no stick, no walking (${Math.round(xb - xa)} px after), "${after.rel && after.rel.held.join('+')}" released`,
+    rec.ok(`1. a held stick (walking: ${Math.round(x1 - x0)} px) is let go of when the page goes away: no stick, no walking (${Math.round(xb - xa)} px after), "${after.rel && after.rel.held.join('+')}" released`,
       walking.sx > 0.2 && x1 - x0 > 20 && after.sx === 0 && after.sy === 0 && !after.held && Math.abs(xb - xa) < 3
         && !!after.rel && after.rel.held.includes('stick') && after.stale >= 1, { walking, after });
     /* the finger's own end, late, changes nothing */
@@ -167,9 +171,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     /* ── 5. frozen for seconds, no visibility event at all ── */
     const before5 = await P.page.evaluate(() => ({ sockets: window.__qaSockets.length, kick: window.BT_AUDIO._kickUntil || 0 }));
+    /* v2.3.5841: the thaw is waited for until the kick is armed AGAIN (newer than
+       before5's): check 4's return left one armed for KICK_ARMED_MS (20 s), so
+       `kick > 0` was true at once, read before GameApp's 1 s beat had seen the
+       gap and re-armed it (red by run on main: thaw.kick === before5.kick) */
     await P.page.evaluate(() => { const t = Date.now(); while (Date.now() - t < 6500) { /* the page frozen */ } });
     const thaw = await H.waitFor(P, () => ({ sockets: window.__qaSockets.length, kick: window.BT_AUDIO._kickUntil || 0, hold: !!window._gameState.current._netHold,
-      st: window._gameState.current._realtimeStatus }), (v) => v.sockets > 0 && v.kick > 0 && v.st === 'connected', { timeout: 20000, label: 'the thaw noticed' }).catch(() => null);
+      st: window._gameState.current._realtimeStatus }), (v) => v.sockets > 0 && v.kick > before5.kick && v.st === 'connected', { timeout: 20000, label: 'the thaw noticed' }).catch(() => null);
     const kinds5 = await crashKinds(P);
     const after5 = await H.waitFor(P, () => ({ sockets: window.__qaSockets.length, st: window._gameState.current._realtimeStatus, hold: !!window._gameState.current._netHold }),
       (v) => v.sockets > before5.sockets && v.st === 'connected' && !v.hold, { timeout: 30000, label: 'rejoined after the thaw' }).catch(() => null);

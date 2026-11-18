@@ -34,6 +34,7 @@ and the hour caps moved in.
 | anti-bot, the flag | `FLAG_AT`, `FLAG_MIN_GAP_MS`, `STARTLESS_FLAG_AT` |
 | anti-bot, the fleet | `FLEET_MIN_IDS`, `FLEET_ACTIVE_MIN`, `FLEET_ACTIVE_STRIKES` |
 | the hour caps | `HARVEST_HOUR_CAP`, `COOK_HOUR_CAP` |
+| the harvest grade judge (v2.3.5902, `harvestgrade`) | `GRADE_SHARE_OF`, `GRADE_SHARE_MAX` (at most MAX perfects believed in any OF strikes; harvestgrade.js) |
 
 **Not hidden:** `BOTFP`'s plumbing (ring sizes, map caps, `PUT_MIN_MS`, the
 device id lengths). They are memory and cost, not a line a bot could aim at,
