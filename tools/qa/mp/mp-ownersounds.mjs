@@ -319,6 +319,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* v2.3.3664: a line popping up over a townsperson is QUIET now -- the owner:
      the hums "should play when you begin talking to someone or taking a
      quest" (game/npcVoices.js); in town one came every few seconds */
+  /* v2.3.5844: beside a townsperson first: an idle line is said only within
+     IDLE_REACH (350 px, townChatter.js) of you, and here only Ace stands that
+     near (the rest 880 px and more, measured), who walks his day's path after
+     9a -- 0 lines by run when he had walked off.  Standing near is not talking
+     (a tap is: CLAUDE.md §6). */
+  const ace9b = await npcAt('Ace');
+  if (ace9b) { await H.hopTo(P, ace9b.x + 60, ace9b.y + 40); await P.page.waitForTimeout(500); }
   const chatter = await P.page.evaluate(async () => {
     const S = window._gameState.current, V = window.__btNpcVoices;
     window.__btCues.reset();
