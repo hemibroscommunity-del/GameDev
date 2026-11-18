@@ -331,8 +331,8 @@ const CAP_GATES = [
   'power' /* v2.3.5502 (card LB): the power index's version, a number (card PW, #1776) -- Overall and the Power column on the Leaderboards, from each row's powerIndex of that version */,
   'statboards' /* v2.3.5502 (card LB): a count -- how many stat boards the worker ranks (card PW, #1781): the Leaderboards' Stats group shows that many */,
   'gidnames' /* v2.3.5196: a weapon named by its id beside its place (server/src/gidnames.js; the action door's GID_PLACE) -- lower case, a kill switch */,
-  'bowPath' /* v2.3.5905 (card K4): the bow's path (server/src/bowshot.js): a claim held to its arrow's line, the relay sent at release -- an opt-in, `bowpath: true` (CAP_OPT_IN) */,
-  'harvestGrade' /* v2.3.5900 (card K4): the harvest's grade judged (server/src/harvestgrade.js): a perfect only after an honest gesture's time, at most 15 in 20 -- an opt-in, `harvestgrade: true` (CAP_OPT_IN) */,
+  'bowPath' /* v2.3.5905 (card K4): the bow's path (server/src/bowshot.js): a claim held to its arrow's line, the relay sent at release -- ON since v2.3.5906, off with `bowpath: false` */,
+  'harvestGrade' /* v2.3.5900 (card K4): the harvest's grade judged (server/src/harvestgrade.js): a perfect only after an honest gesture's time, at most 15 in 20 -- ON since v2.3.5906, off with `harvestgrade: false` */,
   'reqid' /* v2.3.5546: a repeat acts once (server/src/reqonce.js): the action door may re-send a request it heard nothing from, with the same id -- lower case, a kill switch (`reqonce`) */,
   'accuracy' /* v2.3.4545: shots and hits a weapon (server/src/accuracy.js): the phone numbers its basic shots and the Journey page shows how many hit -- lower case, a kill switch */,
 ];
@@ -343,7 +343,7 @@ const CAP_GATES = [
    false there means the kill switch really is thrown. */
 /* v2.3.3755: and `clientoff`, the list of memory savers turned off -- empty
    (the default) is every saver on */
-const CAP_OPT_IN = new Set(['pathall', 'clientoff', 'harvestGrade' /* v2.3.5900: the owner's to turn on */, 'bowPath' /* v2.3.5905: the owner's to turn on */]);
+const CAP_OPT_IN = new Set(['pathall', 'clientoff']);   /* v2.3.5906: harvestGrade and bowPath left it: ON by default (card K4 PR 7) */
 
 /* Plain language for the ones whose absence the owner has actually reported
    as a bug.  Deliberately NOT a full glossary: a made-up description is
@@ -787,8 +787,10 @@ export const DevPanel = ({ onClose }) => {
     const id = devCode.trim();
     if (!id) return;
     const j = await call('/device-pass', { playerId: id });
-    if (j) setMsg('One new device can join ' + id + ' until '
-      + new Date(j.until).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + '. Ask its player to tap Try again.');
+    /* v2.3.5816 (card RV, SEC-F6): with `oldkeyheld` on (the default) the pass
+       admits no old key: the words say so, and the way that works */
+    if (j) setMsg('A pass is open for ' + id + ' until '
+      + new Date(j.until).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + '. It lets an old key in only while oldkeyheld is off; otherwise give it a new key.');
   }, [call, devCode]);
   const forgetDevices = useCallback(async () => {
     const id = devCode.trim();
@@ -1463,8 +1465,12 @@ export const DevPanel = ({ onClose }) => {
             {/* ═══ v2.3.3344: PLAYER LOGINS ═══  See the note by letDeviceIn. */}
             <div style={label}>Player logins</div>
             <div style={{ color: COL.muted, fontSize: 12, marginBottom: 7, lineHeight: 1.4 }}>
-              A character can be played only on devices it was played on before. To move one to a new
-              device, ask its player for the code their screen shows.
+              {/* v2.3.5816 (card RV, SEC-F6; the owner's call, decided while away: "Go recommended
+                  on all"): since v2.3.5716 (`oldkeyheld`) a pass lets no old key in, and a new key
+                  needs none, so the way onto a new device is a new key */}
+              A character's old key works only on devices it was played on before. To move one to a
+              new device, ask its player for the code their screen shows and give it a new key (below):
+              a new key works on any device.
             </div>
             <input
               data-devlock-code="1"
@@ -1476,7 +1482,7 @@ export const DevPanel = ({ onClose }) => {
             />
             <button type="button" data-devlock-pass="1" style={btn(false)} disabled={busy || !devCode.trim()}
               onClick={letDeviceIn}>
-              Let one new device in (30 min)
+              Let one new device in (30 min; only with oldkeyheld off)
             </button>
             <button type="button" data-devlock-forget="1"
               style={{ ...btn(false), borderColor: COL.danger, color: COL.danger }}
@@ -1485,7 +1491,7 @@ export const DevPanel = ({ onClose }) => {
             </button>
             <div style={{ color: COL.muted, fontSize: 12, marginBottom: 4, lineHeight: 1.4 }}>
               Forget is for a character someone else got into: whoever is playing it is put out, and
-              nobody can play it until you let one device in.
+              nobody can play it until you give it a new key.
             </div>
             {/* v2.3.3355: the full reset, its key shown once */}
             <button type="button" data-devlock-newkey="1"

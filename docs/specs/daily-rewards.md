@@ -469,3 +469,44 @@ since). Leaving the season on fails four of the new checks. Sections 2-8 and
 on a phone: no quest and no season anywhere in the window, no Season tab, no
 quest toast, no star from the spin, no button past the Den's spin, the card's
 words.
+
+## v2.3.5810: the paid mark in the credit's own run (card RV PR 10)
+
+The review's MD-2 (`docs/plan/census/RV-review.md`): the daily spin's pot,
+the login spin and a season tier's grants were credited in one write and
+marked paid (`sp.open = 0`, `paid`, the tier in `se.cl`) in a later one. A
+restart between left the pot open beside its payment's stamp; once the 48 h
+prune took the stamp (TRAPS §146), the same pot paid again. Now the marked
+record is put in the credit's own run (`inbox.js` `_creditWith`):
+
+- the daily record (`daily_rewards:`) rides a spin pot's credit: ONE row
+  more a payout (the caller still saves it after), the owner's yes
+  (2026-11-18, "Yes to all"; `cost-guard.test` §24);
+- NOT a season's grants (sitting 45's review): a claim marks every tier it
+  claims before the first grant, so the record put with that first grant
+  wrote all of them claimed with one paid, and a restart there lost the rest.
+  The season keeps its old order (the caller saves after every grant; a
+  restart before leaves nothing marked, and a claim again converges on each
+  grant's stamp). The season is off by default;
+- the login spin's `lspin:` record rides its credit, and the save that
+  followed it goes: no row more.
+
+Kill switch `paidmark: false` in the live flags: the old order. Suite:
+`server/test/paid-mark.test.mjs`.
+
+## v2.3.6024: the spin's pace outlives a rejoin (card RV; TRAPS §276)
+
+- **What was wrong.** `_handleDailySpin` paces a player's asks by
+  `SPIN.COOLDOWN_MS` (450 ms), stamped on `ps._lastDailySpinAt`. Every join
+  rebuilds `ps`, so a script that closed and reopened its socket between asks
+  was never paced. Each ask past the pace reads the player's rewards record
+  from storage and answers.
+- **Now** the stamp is also kept by the room, by player id, in memory only
+  (`pacekeep.js`, card V3's #2128, which kept eight such paces and left this
+  one to card RV). A rebuilt `ps` reads the room's copy. Nothing new is
+  written.
+- **Kill switch:** `pacekeep: false` (V3's) makes all nine paces the
+  socket's alone again.
+- Test: `server/test/spin-pace.test.mjs` (a spin, a rejoin, a spin inside the
+  pace, past it, the switch). On main before it, the spin inside the pace is
+  answered. `rejoin-pace.test` now counts nine fields.

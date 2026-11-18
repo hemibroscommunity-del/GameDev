@@ -152,7 +152,7 @@ export const charWatchMethods = {
       if (ps) for (const k of wiped) delete ps[k];
       /* null, not delete: the peer merge is Object.assign, so a falsy VALUE is the only way to clear a key across
          the wire; with the build keys every player_update must carry (clans.js, lookrelay.js) */
-      const data = {};
+      const data = Object.create(null);   /* v2.3.6040: no prototype (TRAPS §6): its keys are DRAWING_KEYS, and a map that cannot be fooled stays one if they ever are not */
       for (const k of wiped) data[k] = null;
       if (session.data && session.data.hg) data.hg = session.data.hg;
       if (session.data && session.data.fr) data.fr = session.data.fr;

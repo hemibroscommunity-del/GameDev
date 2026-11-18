@@ -148,7 +148,7 @@ export function loadSlimeSprites() {
 /** v2.3.5256: the splat and the orb, global (behind the first loading
  *  screen, kept), on the walking road; `?slimewalk=0` loads them with the
  *  rest (loadSlimeSprites). */
-let singlesPromise = null;
+let singlesPromise = null;   /* kept: the splat and the orb, global for the page's life; unloadSlimeSprites lets only the strips go (v2.3.6041, TRAPS §49) */
 export function loadSlimeSingles() {
   if (!singlesPromise) singlesPromise = Promise.all(Object.keys(SHEETS).filter((k) => !WALKING.includes(k)).map(loadSheet).concat(loadHitStill()));
   return singlesPromise;
@@ -168,7 +168,7 @@ export function loadSlimeSingles() {
    so a request that fails or never answers is asked for again, later, while
    the films ask for it (its 20 s limit and retryLooks.js's rounds). */
 const _still = { hit: null };
-let _stillSet = null;
+let _stillSet = null;   /* kept: the hit's still, cut once and kept for the page's life (v2.3.6041, TRAPS §49) */
 function loadHitStill() {
   /* the strip's file, its first frame cut and kept; the rest let go */
   if (!_stillSet) _stillSet = loadSetLater({ files: { hit: SHEETS.hit.url }, into: _still, load: async (url) => {

@@ -344,14 +344,14 @@ export const liveopsMethods = {
   },
 
   /* v2.3.5900 (card K4 PR 1, step 4.2): THE HARVEST'S GRADE, JUDGED
-     (harvestgrade.js) -- an opt-in, OFF as merged: `harvestgrade: true`
-     holds a perfect to the time an honest gesture takes and to 15 in any 20
-     strikes; absent or false, every perfect is believed as before (the
-     perfect rate and botfp's checks only).  The owner's to turn on: the
-     share changes what a player whose every gesture is perfect is paid. */
+     (harvestgrade.js): holds a perfect to the time an honest gesture takes
+     and to 15 in any 20 strikes.  v2.3.5906 (card K4 PR 7): ON by default
+     (the owner, 2026-11-18: "Go recommended for anything waiting on me");
+     `harvestgrade: false` is its kill switch: every perfect believed as
+     before (the perfect rate and botfp's checks only). */
   _harvestGradeOn() {
     const f = this._liveFlags;
-    return !!(f && typeof f === 'object' && f.harvestgrade === true);
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'harvestgrade') && !f.harvestgrade);
   },
 
   // Synchronous by design (hot paths).  v2.3.4376: the cache is loaded

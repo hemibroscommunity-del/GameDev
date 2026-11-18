@@ -40,7 +40,10 @@ function makeState(store = new Map()) {
      takes no armour or legs claim at all (the worker keeps those two live).
      This suite tests the claim door itself, so every room it opens plays it
      open; gearheld.test is the gate's own. */
-  if (!store.has('liveflags')) store.set('liveflags', { gearheld: false });
+  /* v2.3.5812 (card RV PR 12): and with `shieldclaim` on, a shield or cosmetic
+     claim only when the ledger backs it; the same open door here
+     (shield-claim.test is the gate's own) */
+  if (!store.has('liveflags')) store.set('liveflags', { gearheld: false, shieldclaim: false });
   return {
     storage: {
       get: async (k) => store.get(k),

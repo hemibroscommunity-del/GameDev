@@ -431,10 +431,25 @@ swap pushed the invented piece into the stash. With the live stash above
   a forged elite chest merged it, stamped the record, and the describe path
   wore it (it then took a fifth of each blow). The one honest loss: a piece only a phone
   made before the worker kept the stash live. The shield, cosmetic and amulet
-  lists are still merged (answered by the planning session): the worker keeps
-  no live copy of those, so stopping their merge would lose a piece earned
-  this session. The grade backfill (v2.3.2527, above) no longer runs for
-  armour and legs either.
+  lists were left merged (answered by the planning session then: "the worker
+  keeps no live copy of those"). The grade backfill (v2.3.2527, above) no
+  longer runs for armour and legs either.
+- **v2.3.5812 (card RV PR 12, SEC-F2): a shield or cosmetic claim only when
+  the ledger backs it** (`shieldclaim`). The note above was already untrue
+  for shields: since v2.3.3091 (`shieldwear.js`) every road that hands one
+  out leaves it on the worker (the quest's Pine Shield in `ps.shield`, a
+  sale, a refund and No man's land's loot in `ps.shieldStash` through the
+  mail), and no honest road gives a shield to the phone alone. So the join
+  merges a shield claim only when it resolves to the player's own ledger
+  (`prov` minted, rebuilt from the ledger's copy) and is not a copy of the
+  shield already worn; no cosmetic is ever minted, so no cosmetic claim is
+  merged (nothing on the worker reads that list; the worn look rides every
+  move). The amulet list has no claim at all (no seed key). The honest loss,
+  decided for the owner while away at RV's recommendation: a legacy shield
+  (no id, from before the ledger, v2.3.2534) that only ever sat on a phone
+  and was never in its bag at any join since v2.3.2527. The phone keeps it;
+  the worker just does not adopt it (No man's land takes no shield that
+  session, and no gem goes in it). What is on file is never touched.
 - What is already worn or stashed on file is untouched. With the live stash
   off (`armorstashlive: false`) the worker has no stash to ask and the gate
   stands aside.

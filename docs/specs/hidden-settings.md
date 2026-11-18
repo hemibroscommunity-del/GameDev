@@ -31,7 +31,7 @@ and the hour caps moved in.
 | anti-bot, per harvest | `ENT_FLOOR`, `TV_FLOOR`, `VC_FLOOR`, `SYNTH_MIN_FLOORS` |
 | anti-bot, over many | `EVAL_EVERY`, `COLLAPSE_MIN_N`, `ENT_VAR_FLOOR`, `VC_VAR_FLOOR`, `INTERVAL_MAX_MS`, `INTERVAL_MIN_N`, `INTERVAL_CV_FLOOR` |
 | anti-bot, the score | `SCORE_SYNTH`, `SCORE_REPLAY`, `SCORE_COLLAPSE`, `SCORE_INTERVAL`, `SCORE_HALF_LIFE_MS` |
-| anti-bot, the flag | `FLAG_AT`, `FLAG_MIN_GAP_MS`, `STARTLESS_FLAG_AT` |
+| anti-bot, the flag | `FLAG_AT`, `FLAG_MIN_GAP_MS`, `STARTLESS_FLAG_AT`, `STARTLESS_WINDOW_MS`, `STARTLESS_JOIN_GRACE_MS` (v2.3.5907) |
 | anti-bot, the fleet | `FLEET_MIN_IDS`, `FLEET_ACTIVE_MIN`, `FLEET_ACTIVE_STRIKES` |
 | the hour caps | `HARVEST_HOUR_CAP`, `COOK_HOUR_CAP` |
 | the harvest grade judge (v2.3.5902, `harvestgrade`) | `GRADE_SHARE_OF`, `GRADE_SHARE_MAX` (at most MAX perfects believed in any OF strikes; harvestgrade.js) |

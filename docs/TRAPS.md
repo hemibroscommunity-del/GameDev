@@ -86,7 +86,9 @@ this, and its review bought 1,999 coins and 392,500 from Diego through
 it; the copy is `Object.create(null)` now (`_withoutRpgClaims`, join.js).
 **Receipt:** CLAUDE.md AI-session protocol; `docs/DEV-TOOLS.md`.
 
-Held by: tools/guards/traps-saves.test.mjs (tag 5761).
+Held by: tools/guards/traps-saves.test.mjs (tag 5761); its list of
+plain `{}` stepped in is empty since tag 6040, each site's case in
+`server/test/proto-maps.test.mjs`.
 
 ## 7. Treating the GDD / ARCHITECTURE.md as build specs
 
@@ -2005,7 +2007,11 @@ place cannot reproduce this.
 
 ---
 
-Held by: tools/guards/traps-phone-memory.test.mjs (tag 5763).
+Held by: tools/guards/traps-phone-memory.test.mjs (tag 5763). Since tag
+6041 a container kept for the page's life beside an unload says so where
+it is declared (`kept:<why>`, counted under a line; slimeSprites.js's
+singles and still), and `server/test/slime-unload.test.mjs` runs that
+unload: the strips go, the singles stay and are never asked again.
 
 ## §50 — A derived-geometry reservation outlives the things it reserved (v2.3.2320)
 
@@ -9654,7 +9660,9 @@ no file uses, listed in `docs/specs/one-socket.md`'s table (a failed join is
 4013). An old phone reads an unknown code as an ordinary drop.
 **Receipt:** `session-exits.test` §1.
 
-Held by: tools/guards/traps-wire.test.mjs (tag 5762).
+Held by: tools/guards/traps-wire.test.mjs (tag 5762); every code has
+its row in one-socket.md since tag 6042, and the guard's list of codes
+with none is empty.
 
 ## 298. "The player is offline, so the admin may write their record" (v2.3.4413)
 

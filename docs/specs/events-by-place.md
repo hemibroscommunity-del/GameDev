@@ -225,3 +225,28 @@ Ten bugs put in on purpose each fail the suite:
 
 `load.mjs --relays` (the fighters send a phone's swing or arrow with each
 blow) and `--events` (what the probes' ticks carry, by type) are new.
+
+## A duel's frames, to its two players alone (v2.3.5731, `duelquiet`)
+
+Card K2 PR 12, from card RV's review. A switch, `duelquiet`, **ON**:
+decided for the owner while away by the planning session, on the owner's
+words of 2026-11-17: *"Go recommended on all."* `duelquiet: false` turns
+it off.
+
+A duel's challenge, wager, accept and decline (`duel_request`,
+`duel_wager_request`, `duel_accept`, `duel_decline`) went to every phone in
+the room. That covered the relays and the worker's own declines. A phone
+acts on one only when `payload.target` is its own id (gameEvents.js), so the
+others were sent frames they threw away, after they could read who
+challenged whom, and for how much.
+
+Now each is placed (`duelPlaceOf`) for its target and the sender the room
+stamped on the relay (`ev.from`, never a payload's word), with `only`:
+`eventHeardBy` gives it to those two and no one else, whatever the zone or
+distance. The accepter needs its own settled accept (duel-pending.test 1,
+src/game/duelPending.js). A frame with no target stays room-wide. This holds
+with `eventplace: false` too.
+
+Nothing a player sees changes; fewer frames are sent.
+`relay-duelquiet.test` holds it (10 FAIL on main).
+

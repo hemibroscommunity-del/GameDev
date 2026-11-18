@@ -60,6 +60,7 @@
  * group 'botsig'); BOTSIG below holds the public placeholders. */
 import { WATCH_HOOKS } from './wire/lists.js';   /* v2.3.5182: the watch column */
 import { histNew, histAdd, histTotal, histSpread } from './botstats.js';
+import { GATHER_HITS } from './gathering.js';   /* v2.3.5909: a cook's planned hits, off its beat */
 
 export const BOTSIG = {
   // ── aimed: the walk to a harvest ──
@@ -67,6 +68,7 @@ export const BOTSIG = {
   AIM_STRAIGHT_PX: 0.75,    // every place on it within this of its line
   AIM_MISS_PX: 1.5,         // ...and the line within this of the node's centre
   AIM_KEY_DEG: 0.5,         // a heading this close to one of the keyboard's 8 is not judged
+  AIM_MIN_PLACES: 4,        // v2.3.5908: places on the chord, its ends included, before it is judged (card LG's A1)
   AIM_MIN_N: 40,
   AIM_SHARE: 0.5,           // aimed runs over all judged runs
   // ── gesture: start to strike, beyond the planned hits (log bins, 8 an octave) ──
@@ -79,6 +81,7 @@ export const BOTSIG = {
   // ── reflex: a monster's wind-up to the step away, dodge or shield ──
   REACT_WINDOW_MS: 1500,
   REACT_QUICK_MS: 120,      // after the measured round trip
+  REACT_WAVER_K: 2,         // v2.3.5908: the round trip's floor is it less this many times its waver (card LG's A2)
   REACT_MIN_N: 20,
   REACT_QUICK_SHARE: 0.6,
   // ── rooted: hits from one spot ──
@@ -187,6 +190,12 @@ export function judgeApproach(path, tx, ty, T) {
     if (Math.hypot(P.x - path[i].x, P.y - path[i].y) >= T.AIM_CHORD_PX) { qi = i; break; }
   }
   if (qi < 0) return null;
+  /* v2.3.5908 (card K4 PR 9; card LG's A1, docs/specs/honest-trouble.md):
+     a run with no place between its ends was `straight` by default -- with
+     the move diet (`movepath`: a steady walk sends a move every ~200 ms,
+     ~30 px) two places span the 40 px chord and nothing is tested.  Fewer
+     than AIM_MIN_PLACES on the chord: not judged, like a keyboard's heading */
+  if (path.length - qi < (T.AIM_MIN_PLACES || BOTSIG.AIM_MIN_PLACES)) return null;
   const Q = path[qi];
   const dx = P.x - Q.x, dy = P.y - Q.y, L = Math.hypot(dx, dy);
   const ux = dx / L, uy = dy / L;
@@ -330,7 +339,16 @@ export const botsigMethods = {
   _sigReact(session, now, w) {
     this._sigWU.delete(session.id);
     const T = hid(this);
-    const dt = now - w.at - (Number(session.rtt) || 0);
+    /* v2.3.5908 (card K4 PR 9; card LG's A2): the line's FLOOR, never its
+       average -- session.rtt is smoothed, so a quick trip after slow ones
+       (jitter) took too much off and read an honest answer as quick.  The
+       round trip less REACT_WAVER_K times its waver (index.js keeps both on
+       every pong: report.js rttWaverNext), so jitter only ever adds to the
+       reaction; with no waver measured, the round trip as before */
+    const rtt = Number(session.rtt) || 0;
+    const waver = Number(session.rttWaver);
+    const floor = Number.isFinite(waver) && waver > 0 ? Math.max(0, rtt - (T.REACT_WAVER_K != null ? T.REACT_WAVER_K : BOTSIG.REACT_WAVER_K) * waver) : rtt;
+    const dt = now - w.at - floor;
     if (now - w.at > T.REACT_WINDOW_MS) return;   /* no answer in time: not a reaction */
     const rec = this._sigOf(session.id, now);
     if (!rec) return;
@@ -422,9 +440,21 @@ export const botsigMethods = {
     if (!rec) return;
     const T = hid(this);
     const sig = rec.sig;
-    const gap = sig.cookAt ? now - sig.cookAt : 0;
+    /* v2.3.5909 (card K4 PR 10; card LG's league, #2178: rung 1's cook was
+       missed by every detector): the beat took no account of the hits the
+       worker planned for this cook (gathering.js _planCookHits; still on the
+       player, as this runs before the cook is handled), so a script waiting
+       exactly its plan spread over six bins as the dice varied it.  Its
+       planned swings come off the gap, as the gesture's do (_sigOnStrike's
+       openDelayBase): what is left is the gesture and the pause, the part a
+       person varies and a script does not */
+    const ps = this.playerState && this.playerState[session.id];
+    const plan = ps && ps._cookHits && Array.isArray(ps._cookHits.hits) ? ps._cookHits.hits.length : 0;
+    const planned = plan > 1 ? (plan - 1) * GATHER_HITS.MS.cooking : 0;
+    const raw = sig.cookAt ? now - sig.cookAt : 0;
+    const gap = raw - planned;
     sig.cookAt = now;
-    if (gap > 0 && gap <= T.COOK_GAP_MAX_MS) histAdd(sig.cook, gap, BOTSIG.HIST_LO_COOK, BOTSIG.HIST_PER, BOTSIG.COUNT_CAP);
+    if (gap > 0 && raw <= T.COOK_GAP_MAX_MS) histAdd(sig.cook, gap, BOTSIG.HIST_LO_COOK, BOTSIG.HIST_PER, BOTSIG.COUNT_CAP);
     this._sigActive(sig, now, T);
     this._sigMeasured(session.id, rec, now, true);
   },
