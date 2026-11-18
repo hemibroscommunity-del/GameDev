@@ -2001,7 +2001,11 @@ place cannot reproduce this.
 
 ---
 
-Held by: tools/guards/traps-phone-memory.test.mjs (tag 5763).
+Held by: tools/guards/traps-phone-memory.test.mjs (tag 5763). Since tag
+6041 a container kept for the page's life beside an unload says so where
+it is declared (`kept:<why>`, counted under a line; slimeSprites.js's
+singles and still), and `server/test/slime-unload.test.mjs` runs that
+unload: the strips go, the singles stay and are never asked again.
 
 ## §50 — A derived-geometry reservation outlives the things it reserved (v2.3.2320)
 
