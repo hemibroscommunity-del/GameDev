@@ -398,12 +398,22 @@
  * at the highest; `gpu` at its highest 77.8-78.8 (main 78.9-82.1).  `buffers`
  * read 23.9, 24.0 and 24.3 against its 24.2: main read 24.2 at it all three
  * times (the census), and nothing here adds to the page's buffers. */
+/* v2.3.5982 (card P2's backlog, census row 10): the monsters' thrown goo
+ * and fire atlases (monsterShotFx.js, 1024 x 376 and 1024 x 49) kept as
+ * images of themselves (keepAsImage.js, `?shotimage=0` the canvases), their
+ * canvases let go of.  Three runs stacked on 5981: `canvases` at its highest
+ * 15.4 -> 13.7, so its line 56 -> 54.3, LOWERED by the 1.7 MB saved;
+ * `artCache` 16.2 -> 14.5 too (Pixi's Cache held the canvas), its line left
+ * at 79.3 (the frame pacer's quality line: the planning session).  `heap`
+ * read 38.9, 38.4 and 38.4 against its 38.5 (main 38.1-38.5: the line at
+ * its edge on main; nothing here keeps more than two <img>s); `buffers`
+ * 24.2, 24.1, 24.0. */
 export const MEMORY_BUDGET = {
   artCache: { name: 'art loaded from files', mb: 79.3, measured: 16.2,   /* v2.3.3702: 156 -> 112; v2.3.5246: 112 -> 109.1, LOWERED by the portraits let go of (2.9 MB); v2.3.5247: 109.1 -> 107.0, Ace's coin strips (2.1 MB); v2.3.5248: 107.0 -> 101.4, the trees as numbers (5.6 MB); v2.3.5249: 101.4 -> 98.3, the made effects as numbers (3.1 MB); v2.3.5250: 98.3 -> 97.1, the world's icons (1.2 MB); v2.3.5252: 97.1 -> 95.1, the whirlwind as numbers (2.0 MB); v2.3.5256: 95.1 -> 90.6, the slimes' strips loaded as you walk (4.5 MB), see the header; v2.3.5258: 90.6 -> 88.6, the element marks as numbers (2.0 MB, measured on its own at 95.1 -> 93.1), see the header; v2.3.5562: 88.6 -> 86.7, the hats' hair masks as numbers (1.9 MB), see the header; v2.3.5563: 86.7 -> 85.2, the pet sheet as numbers (1.5 MB), see the header; v2.3.5564: 85.2 -> 84.5, the hood's hair masks as numbers (0.7 MB), see the header; v2.3.5565: 84.5 -> 83.0, the fishing spot's pond as numbers (1.5 MB), see the header; v2.3.5566: 83.0 -> 81.9, the bars over heads as numbers (1.1 MB), see the header; v2.3.5567: 81.9 -> 80.5, the death strip as numbers (1.4 MB), see the header; v2.3.5569: 80.5 -> 79.3, the block strips and the Bro badge as numbers (1.2 MB), see the header */
     what: 'pictures loaded from files, decoded (the asset cache, window.__btTex) -- its highest at the fight, the monsters\' looks loaded' },
   gpu: { name: 'textures on the graphics chip', mb: 114.3, measured: 95.0,   /* v2.3.4058: 105 -> 115, approved by the owner 2026-11-03, see the header; v2.3.5981: 115 -> 114.3, the tee's stand and jog sheets not sent (0.73 MB), see the header */
     what: 'textures on the graphics chip (window.__btGpuTex) -- including what was drawn in the last minute, which Pixi unloads after 60 s unused' },
-  canvases: { name: 'pictures the game draws itself', mb: 56, measured: 49.7,   /* v2.3.3699: 96 -> 88; v2.3.3702: 88 -> 56, see the header */
+  canvases: { name: 'pictures the game draws itself', mb: 54.3, measured: 49.7,   /* v2.3.3699: 96 -> 88; v2.3.3702: 88 -> 56, see the header; v2.3.5982: 56 -> 54.3, the goo atlas kept as images (1.7 MB) */
     what: 'pictures the game draws itself, held in 2D canvases (every one still reachable)' },
   sound: { name: 'decoded sound', mb: 22, measured: 18.1,   /* v2.3.3664: 30 -> 32; v2.3.3706: 32 -> 29; v2.3.5006: 29 -> 22, LOWERED to lock in the four sounds decoded ahead instead of pinned (main read 23.0-23.2, this 18.1), see the header */
     what: 'sound decoded into memory (music streams from its file and is not in it, v2.3.3073)' },
