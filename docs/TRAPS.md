@@ -5241,6 +5241,19 @@ passes), or a late piece faded in so it reads as a reveal. Not a bigger
 pieces are on screen before they are laid", its legs' `popIns`, `loads` and
 `sumMs` (worker ms) in the log.
 
+**2026-11-18, card SB (v2.3.6382): on the skateboard it was not the limit.**
+`mp-rideheld` rides a ring round BroTown's safe ground at the board's 300
+game px a second. With three in flight the worker sat idle a third of the
+ring (busy 66-69%, 61-86 ms a piece) while 83-93% of the pieces came on
+screen before they were laid; with six in flight on the board only
+(`RIDE_IN_FLIGHT`, `?groundsend=0` the old way) it was busy 73-79% and the
+view's unlaid share fell 19.3 -> 3.1% (this box plain) and 33.5 -> 8.0%
+(budget-android). The walk above stays as it is: three in flight on foot,
+where the worker is the limit. And the board's longer reach (AHEAD_GROW 2,
+v2.3.3843) became too much once the worker kept up: on a fast lap it held 83
+pieces and 89 MB on the chip, so with six in flight the board looks ahead
+1.5 times a walk (`AHEAD_GROW_SEND`).
+
 
 ## 129. A hue test on a near-black pixel says whatever it likes (v2.3.3010)
 
