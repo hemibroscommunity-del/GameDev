@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "00d0ce79e8843019f919fb6cb79320b437543417",
+  "tree": "34845c886e32f0713efca6ab6d7bb62fba4bab65",
+  "committedAt": "2026-11-17T21:49:09-08:00",
+  "subject": "Merge pull request #2147 from hemibroscommunity-del/claude/plan-k4-4-harvestshard",
+  "files": 8252,
+  "bytes": 961375471,
+  "listingSha256": "c1733c56126adb537ff2b7f042f4d4d195dd6d8748521bfd011fb36f7de2324c",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

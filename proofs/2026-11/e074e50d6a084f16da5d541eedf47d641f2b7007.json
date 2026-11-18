@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "e074e50d6a084f16da5d541eedf47d641f2b7007",
+  "tree": "1e2f07b82f2fbe62e41d049148fd0ffc0e9fbeb9",
+  "committedAt": "2026-11-17T21:48:59-08:00",
+  "subject": "Merge pull request #2140 from hemibroscommunity-del/claude/plan-k4-3-gradeshown",
+  "files": 8251,
+  "bytes": 961371287,
+  "listingSha256": "5cb8fe9e76b5f617f9205ac5a978701687eac3893e1dbc808891ac88e6d22b99",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

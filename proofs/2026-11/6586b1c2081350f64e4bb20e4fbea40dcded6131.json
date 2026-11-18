@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "6586b1c2081350f64e4bb20e4fbea40dcded6131",
+  "tree": "9cbc61bd6fe85ddb20d9716159fcf427c9d53559",
+  "committedAt": "2026-11-17T21:49:51-08:00",
+  "subject": "Merge pull request #2115 from hemibroscommunity-del/claude/rv-friends",
+  "files": 8254,
+  "bytes": 961418414,
+  "listingSha256": "14019004f981ce0a04d399570b391dc5ac139bd4e440c8500cc05132be207801",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

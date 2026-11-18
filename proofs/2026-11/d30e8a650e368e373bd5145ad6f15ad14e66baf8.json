@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "d30e8a650e368e373bd5145ad6f15ad14e66baf8",
+  "tree": "215a2fe27065fac822ab419a379a4ce91af6742d",
+  "committedAt": "2026-11-17T21:53:07-08:00",
+  "subject": "Merge pull request #2120 from hemibroscommunity-del/claude/rv-worldsum",
+  "files": 8258,
+  "bytes": 961446014,
+  "listingSha256": "3f7c8cdf40f10da5b6a210bc5967ab2d0ca724f3da91ef3d55343747171605a0",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "60bb3a3a9015185d9a25e587e08c705157d37a89",
+  "tree": "e60820d645467613844b47a7ffdcbed592a3923c",
+  "committedAt": "2026-11-17T21:50:12-08:00",
+  "subject": "Merge pull request #2117 from hemibroscommunity-del/claude/rv-rewind",
+  "files": 8255,
+  "bytes": 961435602,
+  "listingSha256": "6f5de1e1af6b04c0bb8d848bf92f2d58979e248234d5f702135a5ac05ab192a3",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

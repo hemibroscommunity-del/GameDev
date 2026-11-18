@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "8bdcde4b949ac3a3df12c8214f488ccd9f2199aa",
+  "tree": "4c6cbea65f7fead5f2e6cfd7b2e28ed9a92f91e9",
+  "committedAt": "2026-11-17T21:47:23-08:00",
+  "subject": "Merge pull request #2142 from hemibroscommunity-del/claude/plan-p2-2-lookidle",
+  "files": 8238,
+  "bytes": 961239172,
+  "listingSha256": "d5312ec0e65267d183010ca7d6bc6538d2a85dd4886066fcbc685e15e3313fbb",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

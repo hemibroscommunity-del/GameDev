@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "aa1ad4ce474958ab1f8eca9ed12b1bfd78be1a35",
+  "tree": "17631a0c591f633de703c943a6196fe99d18078d",
+  "committedAt": "2026-11-17T21:47:53-08:00",
+  "subject": "Merge pull request #2127 from hemibroscommunity-del/claude/plan-m-2-steps",
+  "files": 8238,
+  "bytes": 961255280,
+  "listingSha256": "0dd599fb3514087c9505c4ff3f679013e6ccebc1d02e27e15b19b06487e70cbd",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

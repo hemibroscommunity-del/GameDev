@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "40a2a04102ac645ee2e33d276c2822ae305bc595",
+  "tree": "61c57c7660df4cc2ad3a75a3099e0739c2e8de25",
+  "committedAt": "2026-11-17T21:48:38-08:00",
+  "subject": "Merge pull request #2146 from hemibroscommunity-del/claude/plan-m2-8-code-census",
+  "files": 8250,
+  "bytes": 961345111,
+  "listingSha256": "8831000ae54ba1e65732afa799fb15dce31f2a759fbd147c89128c38f83725b4",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

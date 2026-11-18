@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "3d4231192a234f9fb23a11fc2e7f6ef4a6fceda4",
+  "tree": "c6cc28a7c250f5afe7b780ba285bb871f8c3f043",
+  "committedAt": "2026-11-17T21:53:16-08:00",
+  "subject": "Merge pull request #2121 from hemibroscommunity-del/claude/rv-minebids",
+  "files": 8259,
+  "bytes": 961455244,
+  "listingSha256": "16d1ba77f5a92e7d268939c11be24f2ab2ca7bb560ec29902438f41789749760",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "a3fd6f0b2a1befcc5a8d96cd4b89bc1623279f56",
+  "tree": "2bb04d4e5ed2e15d5cb7d451bfee3600b4fde8df",
+  "committedAt": "2026-11-17T21:50:22-08:00",
+  "subject": "Merge pull request #2118 from hemibroscommunity-del/claude/rv-passwords",
+  "files": 8256,
+  "bytes": 961438018,
+  "listingSha256": "31eaef525c183535650d1f656dadeb25c7aac55edfd1d296a72d80379da7665c",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

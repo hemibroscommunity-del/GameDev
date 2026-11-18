@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "3e9c591b1df200f86530e83b11bdd4f2d419b9c4",
+  "tree": "163e61d4d98eed678bced6cd8b46e6e3b71edf5c",
+  "committedAt": "2026-11-17T21:47:33-08:00",
+  "subject": "Merge pull request #2150 from hemibroscommunity-del/claude/plan-p2-3-shotatlas",
+  "files": 8238,
+  "bytes": 961243653,
+  "listingSha256": "d85742da2f1bd7383950eb22afc316acf23f59c147837eafe7502dfcdea33be8",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

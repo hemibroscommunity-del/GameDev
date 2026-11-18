@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "574e545eb624d6eaf632d7ba4a267fa334830f6f",
+  "tree": "82afa5609903de090f6482817e36a73e1deb289d",
+  "committedAt": "2026-11-17T21:48:27-08:00",
+  "subject": "Merge pull request #2145 from hemibroscommunity-del/claude/plan-m2-7-effects-tables",
+  "files": 8248,
+  "bytes": 961268798,
+  "listingSha256": "cf577a7c8c9a9c3eaba15890f6753970245948adc9378a9132a6a7ea90b0ad1c",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

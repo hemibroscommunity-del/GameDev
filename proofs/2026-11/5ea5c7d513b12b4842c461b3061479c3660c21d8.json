@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "5ea5c7d513b12b4842c461b3061479c3660c21d8",
+  "tree": "344935554b0871bcb020498071d0a6f6ab88f676",
+  "committedAt": "2026-11-17T21:50:34-08:00",
+  "subject": "Merge pull request #2119 from hemibroscommunity-del/claude/rv-jackpot",
+  "files": 8257,
+  "bytes": 961442656,
+  "listingSha256": "8ce60c31364c4cb28ebc3f55b6b0b26fe18ca20db4022455bf481a116c5a017a",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

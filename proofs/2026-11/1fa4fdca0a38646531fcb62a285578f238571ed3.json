@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "1fa4fdca0a38646531fcb62a285578f238571ed3",
+  "tree": "a259b1dbcf9e8f9b03907b79ffaf815891ccf7cd",
+  "committedAt": "2026-11-17T21:53:44-08:00",
+  "subject": "Merge pull request #2123 from hemibroscommunity-del/claude/rv-devicewords",
+  "files": 8261,
+  "bytes": 961472717,
+  "listingSha256": "8136ce91fafa762ebe1058dc99526f85a202f4c35225223f9990a23e20d48cd8",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

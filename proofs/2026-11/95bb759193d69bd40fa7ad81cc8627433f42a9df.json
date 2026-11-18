@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "95bb759193d69bd40fa7ad81cc8627433f42a9df",
+  "tree": "0fad23e802745b31adac6cb68cad7dfd1450b17f",
+  "committedAt": "2026-11-17T21:53:28-08:00",
+  "subject": "Merge pull request #2122 from hemibroscommunity-del/claude/rv-shieldclaim",
+  "files": 8260,
+  "bytes": 961468857,
+  "listingSha256": "c03f0180e45a3496b59e58505c1326019259b6f1a4be53ac8872da5f1594c930",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

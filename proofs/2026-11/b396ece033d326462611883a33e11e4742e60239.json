@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "b396ece033d326462611883a33e11e4742e60239",
+  "tree": "d038951ce1984334e4a7da2ca467efbf90342d56",
+  "committedAt": "2026-11-17T21:48:49-08:00",
+  "subject": "Merge pull request #2129 from hemibroscommunity-del/claude/plan-k4-2-bowreach",
+  "files": 8251,
+  "bytes": 961365354,
+  "listingSha256": "4b6c9634eb714172fd2afe04b9aad0b0ecff74dee7b405b939fb899f945349f1",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

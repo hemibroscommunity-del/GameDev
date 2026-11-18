@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "4f04de8fe86789918979a0238d9f877066398d24",
+  "tree": "87502970fad2fbc62103f67e644f7c7ba8a61443",
+  "committedAt": "2026-11-17T21:49:30-08:00",
+  "subject": "Merge pull request #2162 from hemibroscommunity-del/claude/plan-k4-6-bowline",
+  "files": 8253,
+  "bytes": 961401477,
+  "listingSha256": "2b932a33463537af45c3bc4903a588283ee319774b0dbc1b821449dd60ca994a",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
