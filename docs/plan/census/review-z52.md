@@ -110,7 +110,10 @@ EN, 40/40 twice (the third run stopped for time).
 
 1. main + #2251 + #2252 + #2253 (fd2a169a): tree ecdcf9d3. precheck 0
    FAIL (873 s), build, questline 187/187.
-2. main + #2251 + #2256 + #2252 + #2253 (a978e2e4) + #2255: REHEARSAL2.
+2. main + #2251 + #2256 + #2252 + #2253 (a978e2e4) + #2255: tree
+   360da6d9. precheck 0 FAIL (860 s), build, questline 187/187.
+   (`gatekeeper.mjs` could not fetch; each branch was fetched by hand just
+   before, at the heads above.)
 
 ## Step 5b: what GitHub will merge
 
