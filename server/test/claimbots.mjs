@@ -361,6 +361,61 @@ export async function liarBowLabel(W, ph, take, opts = {}) {
   }
   take.xp = fightTake(W.ws[PID]);
 }
+/* v2.3.5904 (card K4 PR 5): THE LIAR THE BOW'S PATH MEETS (bowshot.js,
+   `bowpath`): each relay at the bow's own rate (its cycle), aimed at the
+   nearest monster in reach that still needs arrows -- its hp over what the
+   arrows already in flight at it will take, by the damage it has seen --
+   and each claim when the arrow could have landed (at 1,440 px a second,
+   the phone's own), on the monster it was aimed at or, that one dead,
+   another on its line: the most a judge holding each claim to its arrow's
+   line and flight accepts, with the liar's whole knowledge of the room */
+export async function liarBowPath(W, ph, take, opts = {}) {
+  await combatStart(W, ph, 'bow');
+  const flying = [];
+  let next = ph.pageNow, dmg = 0, dmgN = 0;
+  const side = (f, m) => { const dx = m.x - f.x, dy = m.y - f.y, a = dx * Math.cos(f.ang) + dy * Math.sin(f.ang); return { a, s: Math.abs(dy * Math.cos(f.ang) - dx * Math.sin(f.ang)) }; };
+  while (!ph.over) {
+    const ps = W.ps(PID);
+    if (!ps) { await ph.wait(200); continue; }
+    const reach = Math.min(W.room._hitReach(ps, 'ranged', ph.now), W.room._hitArrowReach(ps)) - 1;
+    const speed = 1440 * W.room._hitRangeMult(ps, 'bow');
+    if (ph.pageNow >= next) {
+      const est = dmgN ? dmg / dmgN : 8;
+      const inReach = alive(W).filter((m) => dist(m, ps) <= reach).sort((p, q) => dist(p, ps) - dist(q, ps));
+      const t = inReach.find((m) => m.hp > flying.filter((f) => f.id === m.id).length * est);
+      if (!t) {
+        if (!inReach.length && !flying.length) {
+          const a = alive(W).sort((p, q) => dist(p, ph) - dist(q, ph))[0];
+          if (!a) { await ph.wait(500); continue; }
+          await ph.walkTo(() => a.x, () => a.y, { speed: opts.speed || 480, stop: reach - 40, honest: false });
+          next = Math.max(next, ph.pageNow);
+          continue;
+        }
+        next = ph.pageNow + 50;
+      } else {
+        const ang = Math.atan2(t.y - ps.y, t.x - ps.x);
+        await ph.send({ type: 'player_projectile', payload: { x: Math.round(ps.x), y: Math.round(ps.y), ang, isStaff: false, ts: Math.round(ph.pageNow) } });
+        flying.push({ id: t.id, x: ps.x, y: ps.y, ang, land: ph.pageNow + (dist(t, ps) / speed) * 1000 + 5 });
+        next = ph.pageNow + W.room._pfBowCycleMs(ps) + 1;
+      }
+    }
+    flying.sort((a, b) => a.land - b.land);
+    const due = Math.min(next, flying.length ? flying[0].land : Infinity);
+    if (due > ph.pageNow) await ph.wait(due - ph.pageNow);
+    while (flying.length && flying[0].land <= ph.pageNow) {
+      const f = flying.shift();
+      let m = liveOf(W, f.id);
+      if (!m || !hurtable(m)) m = alive(W).find((x) => { const o = side(f, x); return o.a > 0 && o.s < 150 + o.a * 0.1 && dist(x, f) <= reach; }) || null;
+      if (!m) continue;
+      const hp0 = m.hp;
+      const r = await claim(W, ph, m, 'ranged', { noKb: true });
+      const m1 = liveOf(W, m.id);
+      if (r.landed && m1 && m1.alive) { dmg += hp0 - m1.hp; dmgN++; }
+      if (r.killed) take.kills++;
+    }
+  }
+  take.xp = fightTake(W.ws[PID]);
+}
 /* the guard: the honest sword's fight with the monsters striking, its guard
    down while it swings; the liar sends each blow with a raised guard pointed
    at its target, and wears no shield */

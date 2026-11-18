@@ -76,6 +76,7 @@ async function setup(flags) {
   t.relay();
   t.mons[1].x = reach + 5;
   const s = t.room._bowShotState(t.ps);
+  s.lost = BOW_SHOT.LOST_BURST; s.lostT = T;   /* v2.3.5904: full and refilled now, so the read is the spend alone (whatever the claims before spent) */
   const lost0 = s.lost;
   check('3. the monster past that flight: the arrow does not fit, the claim falls to the no-arrow allowance (one spent)', t.drop('m_b') === false && s.lost <= lost0 - 1 + 1e-9, { lost0, lost: s.lost });
   check('3. ...the arrow seen keeps its target left for a monster it reaches', s.q.some((x) => x.o && !x.ids));

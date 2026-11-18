@@ -43,19 +43,42 @@
  *    flight (projectiles.js plants it at BOW_RANGE_PX x Range), and this
  *    bound is that flight plus its slack.
  *
+ * 4. THE PATH (v2.3.5904, card K4 PR 5; `bowpath`, an opt-in, OFF as
+ *    merged): what is left of the bench's bow gain is not reach but a claim
+ *    naming its monster when it LANDS -- a liar never wastes an arrow in
+ *    flight on a monster that died first.  With `bowpath: true` an arrow
+ *    seen keeps its relay's line (its own x, y when within
+ *    hitproof's ARROW_ORIGIN_SLACK_PX of the worker's copy, else the copy;
+ *    and its `ang`), and a claim lands on it only for a monster near that
+ *    line (PATH_SIDE_PX: the body, the monster's steps since; plus the
+ *    landing's own turn, tan 8 deg, projectiles.js LAND_TURN_ARROW, a px of
+ *    it a px out) and no sooner than the arrow could have flown there
+ *    (ARROW_PX_S x Range, less PATH_TIME_SLACK_MS: the relay rides the
+ *    batch).  A bow's arrow flies straight on its release line (projectiles
+ *    .js v2.3.2261: only a staff's bolt steers), so the line is the arrow's.
+ *
  * Left as they are: a paid special's claims and everything inside its window
  * (the volley's stuck arrows' chips, its burning patch: hitproof.js
  * _pveVolleyLive), a staff's bolts, a test-mode character, and a player's
  * arrow at a player.  NOTHING IS PERSISTED: `_bs` lives on the player state.
  */
 import { FREE_SWING } from './freeswing.js';
+import { HIT_PROOF } from './hitproof.js';   /* v2.3.5904: the origin's slack, for a relay's line (THE PATH) */
 
 export const BOW_SHOT = Object.freeze({
   BURST: 2,        /* the allowance's top: an arrow, and one the network delayed */
   RETREAT_SLACK_MS: 500,   /* a paid retreat's arrow may come this long after its roll ends */
   LOST_BURST: 3,   /* v2.3.5901: claims with no arrow seen (a relay lost) in hand... */
   LOST_MS: 3000,   /* ...and one back this often */
-  KEPT: 8,         /* the arrows kept to judge claims by: no clock on them, so a claim a hidden tab held
+  KEPT: 8,
+  /* v2.3.5904 (THE PATH): how far beside its line an arrow's monster may be
+     (px), the landing's turn a px out, the arrow's speed (projectiles.js
+     ARROW_SPEED_PX 24 a frame at 60, x Range) and the time's slack */
+  PATH_SIDE_PX: 200,
+  PATH_TURN: 0.14,
+  PATH_BACK_PX: 150,
+  ARROW_PX_S: 1440,
+  PATH_TIME_SLACK_MS: 300,         /* the arrows kept to judge claims by: no clock on them, so a claim a hidden tab held
                       (its arrow's relay before the hold, the claim after) still finds its arrow; banked
                       arrows buy a script KEPT hits at most, each paid at the bow's rate */
 });
@@ -78,6 +101,35 @@ export const bowShotMethods = {
   _bowReachOn() {
     const f = this._liveFlags;
     return this._bowShotOn() && !(f && typeof f === 'object' && own(f, 'bowreach') && !f.bowreach);
+  },
+  /* v2.3.5904: the path's switch (THE PATH above): an opt-in, `bowpath:
+     true`, and only with `bowshot` */
+  _bowPathOn() {
+    const f = this._liveFlags;
+    return this._bowShotOn() && !!(f && typeof f === 'object' && f.bowpath === true);
+  },
+  /* v2.3.5904: a relay's line -- its own x, y when near the worker's copy of
+     the archer (a phone's place a move ahead), else the copy; its angle */
+  _bowShotLine(ps, payload) {
+    const ang = Number(payload.ang);
+    if (!Number.isFinite(ang) || typeof ps.x !== 'number' || typeof ps.y !== 'number') return null;
+    let x = Number(payload.x), y = Number(payload.y);
+    const lim = HIT_PROOF.ARROW_ORIGIN_SLACK_PX;
+    if (!Number.isFinite(x) || !Number.isFinite(y) || (x - ps.x) * (x - ps.x) + (y - ps.y) * (y - ps.y) > lim * lim) { x = ps.x; y = ps.y; }
+    return { x, y, c: Math.cos(ang), s: Math.sin(ang) };
+  },
+  /* v2.3.5904: may a claim on monster `m` at `now` land on `shot` by its
+     line?  A shot with no line (one drawn from the allowance, a paid
+     retreat's) or no monster to measure, yes */
+  _bowShotOnPath(ps, shot, m, now) {
+    if (!shot.p || !m || typeof m.x !== 'number' || typeof m.y !== 'number') return true;
+    const dx = m.x - shot.p.x, dy = m.y - shot.p.y;
+    const along = dx * shot.p.c + dy * shot.p.s;
+    const side = Math.abs(dy * shot.p.c - dx * shot.p.s);
+    if (along < -BOW_SHOT.PATH_BACK_PX) return false;
+    if (side > BOW_SHOT.PATH_SIDE_PX + Math.max(0, along) * BOW_SHOT.PATH_TURN) return false;
+    const speed = BOW_SHOT.ARROW_PX_S * this._hitRangeMult(ps, 'bow');
+    return now >= shot.at + (Math.max(0, along - BOW_SHOT.PATH_BACK_PX) / speed) * 1000 - BOW_SHOT.PATH_TIME_SLACK_MS;
   },
   /* where the archer stands now, as an arrow's origin (the worker's copy) */
   _bowShotOrigin(ps) {
@@ -123,7 +175,9 @@ export const bowShotMethods = {
       if (st.q.length > BOW_SHOT.KEPT) st.q.shift();
       return;
     }
-    this._bowShotCount(ps, sw, null, now, this._bowReachOn() ? this._bowShotOrigin(ps) : null);
+    const shot = this._bowShotCount(ps, sw, null, now, this._bowReachOn() ? this._bowShotOrigin(ps) : null);
+    /* v2.3.5904: and its line, with `bowpath` (THE PATH) */
+    if (shot && this._bowPathOn()) shot.p = this._bowShotLine(ps, payload);
   },
   /* one arrow from the allowance (refilled at the bow's own rate), or null */
   _bowShotCount(ps, sw, key, now, o) {
@@ -154,9 +208,10 @@ export const bowShotMethods = {
     /* v2.3.5901: THE REACH -- only an arrow whose flight from where it left
        reaches the monster (bowshot's arrows: a relay's) */
     const reachOn = this._bowReachOn();
-    const m = reachOn ? this._bowShotMonster(ps, id) : null;
+    const pathOn = this._bowPathOn();   /* v2.3.5904: THE PATH */
+    const m = (reachOn || pathOn) ? this._bowShotMonster(ps, id) : null;
     const reach = reachOn ? this._hitArrowReach(ps) : 0;
-    const fits = (x) => !reachOn || this._bowShotReaches(ps, x, m, reach);
+    const fits = (x) => (!reachOn || this._bowShotReaches(ps, x, m, reach)) && (!pathOn || this._bowShotOnPath(ps, x, m, now));
     const named = (typeof sw === 'number' && Number.isFinite(sw)) ? live.find((x) => x.sw === sw && fits(x)) : null;
     const shot = named || live.find((x) => !(x.ids && (x.ids.has(key) || x.ids.size >= cap)) && fits(x));
     /* no arrow seen with a target left: its relay was lost (a dropped line,
@@ -172,9 +227,9 @@ export const bowShotMethods = {
       }
       /* v2.3.5901: ...from its own small allowance too, so a script
          sending no relays keeps no reach it lost (THE REACH) */
-      if (reachOn && !this._bowShotLostHas(s, now)) return false;
+      if ((reachOn || pathOn) && !this._bowShotLostHas(s, now)) return false;   /* v2.3.5904: the path's too */
       const drawn = !!this._bowShotCount(ps, null, key, now);
-      if (drawn && reachOn) s.lost -= 1;
+      if (drawn && (reachOn || pathOn)) s.lost -= 1;
       return drawn;
     }
     if (!shot.ids) shot.ids = new Set();
