@@ -21,7 +21,10 @@
  *      across its /56s, and each address refusal is counted for the owner's
  *      overview (`floodTally.ip`);
  *   7. `guestshare: false`: guests past the share come in, no spare socket,
- *      no guest moved, the /48 not counted.
+ *      no guest moved, the /48 not counted;
+ *   8. (v2.3.5732) past the cap with no guest idle -- no spare socket open --
+ *      a join is not this door's: a played character's and a fresh one's
+ *      come in as before (CS's report: seat-hold with `seathold` off).
  *
  * Red on main (v2.3.5728): 1, 2, 3, 4, 5 and 6 (none of it is there). */
 import { makeStorage, openRoom, fakeWs, baseSession, settle } from './testroom.mjs';
@@ -107,9 +110,12 @@ const gateOk = (room) => !!(room._seatGate && room._seatGate(URL0, Date.now()).o
   const g1 = await joinAs(room, 'g1', 'bp_gs_ga');
   const k = await joinAs(room, 'k', 'bp_gs_kk', 'p-kk');
   void k;
-  /* the guest active: a played character on a socket past the cap is refused */
+  /* the guest active: no spare socket, so the gate holds at the cap; a join
+     that came past it another way (as here, by hand) moves no guest
+     (v2.3.5732: and is not this door's: see 8) */
+  check('3. an active guest: no spare socket (the gate holds at the cap)', !gateOk(room));
   const p = await joinAs(room, 'p', 'bp_gs_played', 'p-played');
-  check('3. an active guest is never moved: the played character is refused room_full', !!fullSaid(p) && !synced(p) && inRoom(room, 'bp_gs_ga') && !fullSaid(g1), p.sent.map((m) => m.type));
+  check('3. ...and an active guest is never moved', inRoom(room, 'bp_gs_ga') && !fullSaid(g1), p.sent.map((m) => m.type));
 }
 
 /* ── 4. on a spare socket: a wrong key, a fresh character, a guest ── */
@@ -178,6 +184,23 @@ const gateOk = (room) => !!(room._seatGate && room._seatGate(URL0, Date.now()).o
   let n = 0;
   for (let b = 0; b < 4; b++) for (let i = 0; i < 16; i++) { room.sessions.set(fakeWs('w' + n), { ...baseSession(), ip: `2001:db8:cc:${(b * 256 + i).toString(16)}::${++n}` }); }
   check('7. ...and the /48 is not counted', room._floodIpOk('2001:db8:cc:400::1', Date.now()) === true);
+}
+
+/* ── 8. v2.3.5732: past the cap with no guest idle, a join is not this door's ──
+   The gate opens spare sockets only while a guest is idle.  With none idle,
+   a join past the cap (a suite's, by hand; a race at the gate) is judged as
+   before `guestshare` -- with `seathold` thrown off, seat-hold.test's held
+   player was refused room_full here (CS's report). */
+{
+  const st8 = makeStorage();
+  const room = await openRoom(st8, { max_players: 2, seathold: false });
+  await made(room, 'bp_gs_back', 'p-back');
+  await joinAs(room, 'k1', 'bp_gs_k1', 'p-k1');
+  await joinAs(room, 'k2', 'bp_gs_k2', 'p-k2');
+  const back = await joinAs(room, 'b', 'bp_gs_back', 'p-back');
+  check('8. at the cap with no guest idle, a played character\'s join past it is not refused here (as before)', synced(back) && !fullSaid(back), back.sent.map((m) => m.type).slice(0, 4));
+  const fresh = await joinAs(room, 'f', 'bp_gs_new8', 'p-new8');
+  check('8. ...nor a fresh character\'s', synced(fresh) && !fullSaid(fresh), fresh.sent.map((m) => m.type).slice(0, 4));
 }
 
 console.log(failed === 0 ? '\nALL PASS (' + passed + ')' : '\n' + failed + ' FAILURE(S)');

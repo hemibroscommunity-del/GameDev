@@ -93,6 +93,13 @@ export function tidyCharName(raw) {
 const own = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);
 
 export const charNameMethods = {
+  /* v2.3.5814 (card RV, S7): `namestaff: false` in the live flags -- a new
+     pet name and a new alliance name or tag are no longer held to this rule
+     (petbook.js, alliance.js) */
+  _nameStaffOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'namestaff') && !f.namestaff);
+  },
   /* the kill switch: `namerules: false` in the live flags */
   _nameRulesOn() {
     const f = this._liveFlags;

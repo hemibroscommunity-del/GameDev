@@ -263,9 +263,15 @@ export const seatHoldMethods = {
     if (sess.seat || held.has(id)) return false;
     const { taken, guests } = this._guestTaken(ws, id, held);
     const cap = this._roomCap();
+    /* v2.3.5732: past the cap, a join is this door's only on a SPARE socket
+       -- the gate opens those only while a guest is idle (_guestSpare).  With
+       none idle, a join past the cap is judged as before `guestshare` (CS's
+       report: with `seathold` thrown off, seat-hold.test's held player and
+       stranger were refused room_full here) */
+    const spare = taken >= cap && !!this._guestIdleNewest(now);
     let refuse = false;
-    if (!keyed) refuse = guests >= this._guestCap() || taken >= cap;
-    else if (taken >= cap) {
+    if (!keyed) refuse = guests >= this._guestCap() || spare;
+    else if (spare) {
       let rec = null;
       try { rec = await this.state.storage.get('auth:' + id); } catch (e) { rec = null; }
       if (rec) sess._guestBump = true;

@@ -22,6 +22,7 @@
  * RIDE_MULT MIRRORS the worker's RIDE.MULT (mirror-audit.test.mjs).
  */
 import { sw, pageAddress } from './switches.js';   /* v2.3.5530: the page's switch reader (no imports of its own); v2.3.5740: + its address (card T2) */
+import { resetOn } from './resetOn.js';   /* v2.3.6060 (card U3): the ride's rejoin clear, seen at the rejoin's one door */
 
 /* ═══ v2.3.5530: THE RIDE'S PAGE DOOR -- ONE WRITER OF S._ride (card L PR 5) ═══
    (docs/specs/ride-page-door.md; server/test/ride-page-door.test.mjs)
@@ -244,6 +245,10 @@ export function rideOffLine(why, verb) {
 export function clearRide(S) {
   if (S) rideTo(S, null, 'forget');   /* v2.3.5530: the ride's page door */
 }
+/* v2.3.6060 (card U3): registered at the rejoin's one door too (rejoinClear),
+   so the state ledger sees the ride's rejoin reset; wsClient's own call at
+   state_sync (REJOIN_SLOTS 'ride') stays, and a second forget is nothing */
+resetOn('rejoin', clearRide, 'movement');
 
 /* ═══ v2.3.3776: HOW A RIDER STANDS -- SIDEWAYS, WITH A PUSH ═══
  * The owner: "I also don't know if it's better to just use the idle bro

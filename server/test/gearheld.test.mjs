@@ -8,7 +8,8 @@
  *   2. A character re-equipping a piece the worker holds (in its stash, by
  *      the describe path) still can: worn, and taken from the stash.
  *   3. A record's join takes no armour or legs claims, captured or not
- *      (the worker keeps those two live); a shield claim is still merged.
+ *      (the worker keeps those two live); since v2.3.5812 (`shieldclaim`) an
+ *      unbacked shield claim is not merged either.
  *      Gatekeeper Z40's probe: an UNCAPTURED record (the honest usual, since
  *      the worker adds every piece itself) joining with a forged elite chest
  *      and then describing it wears nothing, and is not stamped captured.
@@ -79,11 +80,14 @@ const describe = async (room, ws, payload) => { await room.webSocketMessage(ws, 
   const claims = { rpgArmorStash: [copper(), eliteChest()], rpgLegsStash: [eliteLegs()], rpgShieldStash: [{ name: 'Pine Shield', gearBase: 'wood', tierMult: 1, tier: 't1' }] };
   const { ps } = await world('bp_gh_join', record({ armorStash: [copper()], armor: { name: 'Iron Plate', gearBase: 'iron', tierMult: 3, tier: 't3' } }), null, claims);
   check('3. a captured record\'s join takes no more armour or legs claims', ps.armorStash.length === 1 && ps.armorStash[0].name === 'Copper Plate' && ps.legsStash.length === 0, { a: ps.armorStash.map((g) => g.name), l: ps.legsStash.map((g) => g.name) });
-  check('3. ...a shield claim is still merged (the worker keeps no live shield stash)', ps.shieldStash.length === 1, ps.shieldStash);
+  /* v2.3.5812 (card RV PR 12, `shieldclaim`): the worker does keep the
+     shield live (shieldwear.js, v2.3.3091), so a shield claim the ledger
+     does not back is not merged either (shield-claim.test is that gate's) */
+  check('3. ...a shield claim the ledger does not back is not merged either (shieldclaim)', ps.shieldStash.length === 0, ps.shieldStash);
   check('4. what is already worn and stashed on file is untouched', ps.armor && ps.armor.name === 'Iron Plate' && ps.armorStash[0].name === 'Copper Plate', { armor: ps.armor });
   const fresh = await world('bp_gh_fresh', record({ gearStashCaptured: false }), null, { rpgArmorStash: [copper()], rpgShieldStash: [{ name: 'Pine Shield', gearBase: 'wood', tierMult: 1, tier: 't1' }] });
   check('3. a record not yet captured takes no armour claim either', fresh.ps.armorStash.length === 0, fresh.ps.armorStash);
-  check('3. ...and its shield claim is still merged', fresh.ps.shieldStash.length === 1, fresh.ps.shieldStash);
+  check('3. ...nor its unbacked shield claim (shieldclaim)', fresh.ps.shieldStash.length === 0, fresh.ps.shieldStash);
 }
 
 /* 3. Z40's probe: an uncaptured record, a forged chest at the join, then the describe */

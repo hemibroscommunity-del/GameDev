@@ -232,7 +232,6 @@ function _probeStandInSkin(key, cv, opts) {
    See _bakeChopStrips and _peerChopFrames.  The three canvases this figure
    carries -- it keeps its painted trousers, so the trouser drawings have no
    garment of the player's to sit on. */
-const CHOP_INK_KEYS = ['tattooFace', 'tattoo', 'tattooArm'];
 const PEER_CHOP_IDLE_MS = 15000;    /* released this long after the last frame that drew one */
 const GPU_WAIT_MS = 500;            /* v2.3.3698: how often the weapon bodies waiting to be drawn are looked at (emptyOnceDrawn) */
 /** Would the pre-flipped bake differ from the plain one?  Only when a drawing
@@ -286,7 +285,6 @@ const COOK_FW = 213, COOK_FH = 220;
    this many (_peerStandInInk). */
 const PEER_INK_CAP = 2;             /* drawn peers' layers held at once */
 const PEER_INK_IDLE_MS = 15000;     /* released this long after the last frame that drew one */
-const COOK_URL = { body: '/sprites/skills/cook-strip.webp', legless: '/sprites/skills/cook-strip-legless.webp' };
 /* v2.3.3314: `ms`, when given, gives up after that long -- a request that
    never answers would otherwise hold its caller's pending flag for good
    (_peerFigFrames, which passes it; the other callers wait as before). */
@@ -325,10 +323,6 @@ import { drawTelegraphShape } from './telegraphShapes.js';   /* v2.3.4011: the m
    the same number or the pool draws entries the cleaner has already dropped
    (or worse, keeps sprites for entries that will never be cleaned). */
 export const PRINT_TTL_MS = 9000;
-const PRINT_W = 32;        /* world px across a PAIR -- a stride, not a boot.
-                              40 first, which rendered at 54% of the visible
-                              body height (~74 world px) and read as clown
-                              feet; 32 is ~43% and still reads at phone size. */
 const PRINT_ALPHA = 0.55;  /* pressed snow, not paint */
 
 import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, BLOCK_ARC_HALF, cleaveArcBonus, hasGatherTool, gatherNodeHpFor /* v2.3.3035: a timer harvest's bar reads the node's HP; v2.3.3251: by its type */, TARGET_PERIMETER_PX /* v2.3.2243 */, monsterBodyOffsetY /* v2.3.2246: the attack caret clears the head */, monsterMeleeHitRadius /* v2.3.2251: sizes the ground ring to the body */, bossSizeK /* v2.3.3556: ...and a dungeon boss's, at its size */, BOW_RANGE_PX, bowRangeMult /* v2.3.2448: the sight stream ends where the arrow does */, meleeRangeMult /* v2.3.2592: the reach ring and the aim preview grow with the RANGE stat */ } from '@/data/index.js';
@@ -391,13 +385,6 @@ import { HotArrowFx, HOT_LEN, buildHotArrowArt, hotArrowReady, hotArrowArt, smou
 import { HitMaterialFx } from '../hitMaterialFx.js';              /* v2.3.2843: what a monster is made of, when it is hit */
 import { burnT0, burnLifeMs } from '@/game/bowVolley.js';           /* v2.3.2848: a volley's arrows smoulder on its clock; v2.3.2849: for its own length */
 
-/* v2.3.1784: the 8-way compass, module scope.  An identical list already
-   existed as a local inside _updateRemoteBowShots; the slung shield needs it
-   too, and two copies of a fixed ordering is how a facing table drifts.  Must
-   stay in the same order as entityRenderer's SECTORS — S._renderFacing is
-   published from there. */
-const SECTORS8 = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'];
-
 /* ═══ v2.3.2516: WHICH SWINGS THE BODY OCCLUDES ═══
  * Owner (D7, backlog triage 2026-09-14 §5.8): the greatsword at southwest goes
  * behind the body "for jog/idle AND for the attack swing -- it is in the right
@@ -433,105 +420,6 @@ function _swingBehind(sheetKey, facing8) {
   return sheetKey === 'north' || facing8 === 'southwest';
 }
 
-/* The drawn body height the slung shield's 72px was measured against — the
-   fallback entityRenderer publishes for S._swordBodyH.  The stand-in scales
-   itself to the avatar's real per-facing height, so the shield divides by this
-   to ride along instead of staying one fixed size while the figure changes. */
-const STANDIN_REF_BODY_H = 84;
-
-/* ═══ v2.3.2273: THE CHOPPER'S HEIGHT, IN ONE PLACE THIS TIME ═══
- *
- * Owner: "Woodcutting animation character is a bit too small increase by 10%."
- * 95 -> 104.5.  Previous tunes on this same number: 84 -> 112 (v2.3.1348,
- * +33%, owner), 112 -> 95 (v2.3.1476, -15%, owner).
- *
- * IT IS A CONSTANT NOW BECAUSE THE LITERAL EXISTED TWICE AND DRIFTED.  The
- * local chopper (_updateExtractionCue) and the one other players see
- * (_updateRemoteExtraction's SPEC table) each carried their own copy, and the
- * note beside the second one records what that cost: v2.3.1476 took the local
- * figure to 95 and did not touch the copy, so for ~230 versions every peer's
- * lumberjack rendered 18% larger than your own -- invisible to single-client
- * QA, which is why it survived that long.  The comment there asks the next
- * person to remember; a shared constant means they do not have to.
- *
- * Everything on the figure derives from this one number -- the body scale
- * (h/220), the gear-layer scale (h/<the layer texture's own height>) and the
- * head traits, which read |sprite.scale.y| -- so armour and hat keep their
- * proportions for free.
- * COOK_H and the firemaking FH are deliberately NOT folded in: the owner asked
- * for woodcutting only, and those two are already independent.
- *
- * ═══ v2.3.3146: 104.5 -> 136.8, THE WALKING FIGURE'S OWN SIZE ═══
- * The owner: "The character's appearance changes during resource gathering
- * activities.  It needs to stay consistent", then, offered "The lumberjack is
- * still drawn about 25% smaller than your walking character ... want me to
- * match him to your walking size?": "Yes fix all".
- *
- * Every tune above was by eye, and every one was made against a walking
- * figure that is drawn PLAYER_SIZE_MULT (1.25, entityRenderer, v2.3.1821) on
- * its CONTAINER -- a factor no stand-in carries, as it is drawn on the
- * effects layer.  Measured instead (the same rows the walking body is sized
- * by, entityRenderer BODY_ROWS / nominalStandFigure):
- *   - walking: crown to boots 105.7 world px in all five sheets (stand-south
- *     189 art px x 1.061 x 0.421875 x 1.25), the head 51 art px wide = 28.5;
- *   - the lumberjack upright (strip frames 17-23, the end of every swing):
- *     painted head top 49 to boots 218 = 170 of his 220, and his head 46 wide.
- *     At 104.5 that is 80.8 px tall -- 76% of you -- with a 21.9 px head.
- * 136.8 makes both match at once: 105.7 px tall and a 28.6 px head (100%
- * each), so the painting's own proportions agree with the walking body's.
- * (Upright figures are matched by HEIGHT -- this one and FIRE_STANDIN_H --
- * and the crouching cook by his head, COOK_STANDIN_H.)
- * Your hair, hat and beard follow (they read |sprite.scale.y|; the head-to-
- * head ratio _skillTraitMul.chop is unchanged), and so does the axe -- see
- * CHOP_OFFSET, which moves with it so the blade bites where it always did.
- * mp-gatherlook measures both heights on a phone. */
-export const CHOP_STANDIN_H = 136.8;
-
-/* ═══ v2.3.2607: THE COOK GROWS 5%, ON BOTH SCREENS ═══
- *
- * Owner: "Cooking animation about 5% too small."
- *
- * 62 -> 65.1.  WHAT THE NUMBER IS RELATIVE TO, because it is not a percentage
- * of anything obvious: it is the cook's DRAWN HEIGHT IN WORLD PIXELS, and the
- * scale that reaches the sprite is `h / 220` -- 220 being the cook strip's own
- * frame height (`cook-strip.webp`, 213x220 cells).  So this is 62/220 = 0.282
- * becoming 65.1/220 = 0.296, and every layer that copies the body's transform
- * (shirt, chest, legs, head traits) follows for free.
- *
- * v2.3.1710 set 62 by measurement rather than taste: the cook is a CROUCH, so
- * matching silhouettes made the figure wrong, and the head is what the eye
- * reads -- the cook's is 85 art px against the standing body's 51, which put
- * COOK_H 82 at 31.7px of head beside a 22.6px avatar.  62 landed it at 24.0px.
- * 65.1 puts it at 25.2px against that same 22.6px avatar: still the closest a
- * chunkier crouched painting gets, now 11% over instead of 6% under.  Nothing
- * clips -- the sprite is a downscale of a 220px cell either way, it is anchored
- * (0.5, 1) at the fire, and it grows upward into open ground.
- *
- * ── AND THIS IS WHY IT IS A SHARED CONSTANT NOW ──
- * There were TWO 62s.  This one, and a literal `h: 62` in the remote stand-in's
- * SPEC table, whose own comment carries the warning: chop drifted when
- * v2.3.1476 moved the local figure and not the copy, and for ~230 versions
- * every peer's lumberjack rendered 18% larger than your own -- invisible to
- * single-client QA, which is why it survived that long.  v2.3.2273 closed that
- * for chop by making both sites read CHOP_STANDIN_H; the same note then said
- * "cook and fire still carry literals and still carry this warning."
- *
- * A 5% bump written into the local site alone is EXACTLY that bug again: the
- * owner's own cook grows, every other player's stays where it was, and the one
- * client that could notice is the one that cannot see it.  So the two sites now
- * read one number, and the next resize cannot land on one figure only.
- *
- * ═══ v2.3.3146: 65.1 -> 73.9, YOUR HEAD'S SIZE ═══
- * The owner: "It needs to stay consistent" -- "Yes fix all".  The "22.6px
- * avatar" above is the walking head BEFORE v2.3.1821 drew the walking figure
- * PLAYER_SIZE_MULT (1.25) bigger on its container, which no stand-in carries:
- * the head the cook stands beside is 28.5 px now (51 art px x 1.061 x
- * 0.421875 x 1.25), so his 25.2 was 12% UNDER it, not 11% over -- which is
- * what the owner's "about 5% too small" was seeing.  He crouches, so it is
- * the head that is matched, as v2.3.1710 did: 85 art px x 73.9/220 = 28.6.
- * The pan follows (COOK_PAN_DX is a share of this). */
-export const COOK_STANDIN_H = 73.9;
-
 /* ═══ v2.3.3439: THE FARMER'S SIZE, ONE NUMBER ═══
  * The farmer's three moves (src/data/farmAnims.js) are cut so his head, ears
  * to ears at the eyes, is FARM_ANIM_HEAD (64) px wide in every strip -- the
@@ -557,13 +445,6 @@ export { FARM_ANIM_HEAD_WORLD };
 const FARM_MIN_BLOB = 12;
 /* the trait keys (crowns, multipliers, the gathering layer) of the three */
 const FARM_POSES = new Set(Object.keys(FARM_ANIMS).map((a) => FARM_ANIMS[a].pose));
-/* v2.3.3439: the garments each move ships, cut from the owner's dressed
-   sheets -- the only shirt, plate and greaves art the game has, which every
-   recolour (copper, iron...) resolves to (gearArtSafe), as at the cook */
-const FARM_GEAR = [['shirt', 'tshirt'], ['chest', 'steelplate'], ['legs', 'steelgreaves']];
-/* v2.3.3439: another player's farmer's sprites, in their layer order
-   (_drawPeerFarmer): body, greaves, shirt, plate, tool */
-const FARM_PEER_LAYERS = ['body', 'legs', 'shirt', 'chest', 'prop'];
 /* v2.3.3697: a move's crown, the middle of its frames' (FARM_ANIMS `crowns`,
    frame px): the farmer's shade and shine are fitted to it, not to a head that
    bobs with the swing (_updateFarmWork, FITTED TO HIM) */
@@ -599,15 +480,6 @@ function makeFarmFigProxy(layer, label) {
   return px;
 }
 
-/* The pan hangs to the cook's RIGHT and has to stay over the flames, so its
- * offset tracks the figure's height.  Held as a FRACTION of that height rather
- * than as pixels: v2.3.1429 and v2.3.1710 each had to remember to rescale an
- * 11px literal by hand (the second one wrote the arithmetic out --
- * `14 * 62/82 = 10.6`), and a constant that must be edited in step with another
- * constant is the same shape as the drift above.  11/62 is that literal
- * measured against the art it was tuned on. */
-export const COOK_PAN_DX = 11 / 62;
-
 /* ═══ v2.3.2915: WHERE THE LUMBERJACK AND THE COOK STAND -- ONE ANSWER ═══
  *
  * Owner: "check all other broadcasted player animations to make sure they
@@ -628,12 +500,6 @@ export const COOK_PAN_DX = 11 / 62;
  * from their campfire_lit).  The zone curve is sampled at the spot, as the
  * local placers always did (v2.3.2287) -- the figure stands at the tree, which
  * on a perspective zone is a different point on the curve from the player. */
-/* v2.3.3146: 30 -> 44, with the lumberjack's size (CHOP_STANDIN_H 104.5 ->
-   136.8).  He is scaled about his feet, so the axe reaches further: at the
-   strike frame (21, CHOP_STRIKE_K) the blade's middle is 94.5 art px out from
-   his anchor -- 45 px at the old size, 59 at the new -- and standing 14 px
-   further off keeps it biting the trunk exactly where it always did. */
-export const CHOP_OFFSET = 44;   /* px from the trunk to the figure's centre */
 /* v2.3.3345: ...for a trunk as broad as the old pine's.  Each wood's tree is
    its own picture now, from the slim pine to the broad gnarled hardwood, so
    the figure stands off by the trunk's own width (game/tierTrees.js
@@ -690,7 +556,6 @@ const PEER_SEAT_MATCH_PX = 32;
    flips it on a running page, for a test to compare one frame both ways */
 const STANDIN_LEGS_OFF = (() => { try { return sw('standinlegs'); } catch (e) { return false; } })();
 let _standInLegsUse = !STANDIN_LEGS_OFF;
-const GEAR_STRIP_TWIN = { chop: { suffix: '-220', frames: 12 } };
 
 /* The chop layers' frame width, 2880 / 12.  It is the argument _gearStripFrame
    IGNORES while chop has a twin (it cuts that pose by frame count instead), and
@@ -738,8 +603,6 @@ const SHIRT_PATTERN_K = { chop: 170 / 94.5, cook: 85 / 25.5, fire: 381 / 94.5 / 
   /* v2.3.3439: the farmer's three, matched by the head as the cook is: his
      FARM_ANIM_HEAD over the walking head in the 128 sheet */
   farmhoe: FARM_ANIM_HEAD / 25.5, farmwater: FARM_ANIM_HEAD / 25.5, farmkneel: FARM_ANIM_HEAD / 25.5 };
-/* the cook's shirt is one garment, pinned (COOK_SHIRT_FRAME): only it is baked */
-const DRESSED_ONE_FRAME = { cook: 22 };
 /* v2.3.3439: a dressed strip's cache key -- one place, as the farm waits for
    its own (_warmFarmDressed) and lets them go (_freeFarm) */
 function _dressedKeyOf(item, pose, dir, look, tint, mirror) {
@@ -788,6 +651,14 @@ import { WaterAttackFx } from '../waterAttackFx.js';   /* v2.3.4355: the water f
 import { ElemWindupFx } from '../elemWindup.js';   /* v2.3.3619: a monster's element, seen as it winds up */
 import { SootMarks } from '../sootMarks.js';   /* v2.3.3679: a slime's blast leaves soot */
 import { mcNumberScale } from '@/game/manualCombat.js';   /* v2.3.4520: a light free swing's number is smaller */
+import { CHOP_INK_KEYS, COOK_URL, STANDIN_REF_BODY_H, CHOP_STANDIN_H, COOK_STANDIN_H, FARM_GEAR, FARM_PEER_LAYERS, COOK_PAN_DX, CHOP_OFFSET, GEAR_STRIP_TWIN, DRESSED_ONE_FRAME, FIRE_STANDIN_H, FIRE_FEET_ROW, FIRE_LOG_BAND, FIRE_GEAR_REG, NODE_SPRITE_HEIGHT_BASE, NODE_SPRITE_ANCHOR_Y, NODE_ART_BASE, NODE_HPBAR_AT, NODE_LABEL_TOP, CAMPFIRE_HPBAR_GAP, NODE_TIER_TINT, SMITH_ANVIL_W, SMITH_ANVIL_X, SMITH_ANVIL_FOOT, SMITH_FACE_Y } from '../tables/skills.js';   /* v2.3.5346: the skills system's hand-tuned tables, moved verbatim (card M) */
+import { PRINT_W } from '../tables/render.js';   /* v2.3.5346: the render system's hand-tuned tables, moved verbatim (card M) */
+import { SECTORS8, DMG_LIFT, BOW_AIM_SECTORS, MAGIC_BOLT_ANCHOR, SWORD_FEEL_FLIP, JET_LEN_PX, SNOWBALL_BURST_H, PROP_SLASH_LEN, DMG_STROKE_PX, DMG_WORD_PAD } from '../tables/combat.js';   /* v2.3.5346: the combat system's hand-tuned tables, moved verbatim (card M) */
+import { _STAND_IN_TRAIT_KEYS } from '../tables/look.js';   /* v2.3.5346: the look system's hand-tuned tables, moved verbatim (card M) */
+import { HARD_DOT_R } from '../tables/monsters.js';   /* v2.3.5346: the monsters system's hand-tuned tables, moved verbatim (card M) */
+import { EMOTE_POP_PX } from '../tables/social.js';   /* v2.3.5346: the social system's hand-tuned tables, moved verbatim (card M) */
+import { LOOT_SCALE, LOOT_Z, DROP_GROW, BEAM_H_PX, BEAM_W_PX, BEAM_TEX_W, BEAM_TEX_H, BEAM_HALO_W, MOTE_PX, LOOT_BEAMS_BY_RANK, BEAM_SLOTS, RARE_KINDS, POP_H, POP_BOUNCE_H, HOP_KEYS, PILE_R } from '../tables/economy.js';   /* v2.3.5346: the economy system's hand-tuned tables, moved verbatim (card M) */
+export { CHOP_STANDIN_H, COOK_STANDIN_H, COOK_PAN_DX, CHOP_OFFSET, FIRE_STANDIN_H };   /* v2.3.5346: still the renderer's exports (moved to ../tables/) */
 
 /* v2.3.1713: the firemaking strip's frame box, shared by the body bake, the
    gear layers, the trait crowns and the remote stand-in — they all slice the
@@ -805,34 +676,6 @@ import { mcNumberScale } from '@/game/manualCombat.js';   /* v2.3.4520: a light 
    the same 2.327 (it multiplies sp.scale.y, which fell 0.7 -> 0.3008, to size
    the player's hat), and _updateRemoteExtraction divided by a hardcoded 220. */
 const FIRE_FW = 384, FIRE_FH = 512;
-/* ═══ v2.3.3146: THE FIRE-LIGHTER'S HEIGHT, ONE NUMBER, YOUR SIZE ═══
-   The owner: "It needs to stay consistent" -- "Yes fix all".  The figure's
-   drawn height for its 512 px cell was a literal 154 in two places (your own
-   figure, and the SPEC row other players' are drawn from) -- the shape of the
-   chop drift CHOP_STANDIN_H's note tells.  One shared number now, and that
-   number is your size, matched as the lumberjack is, by HEIGHT (he stands at
-   the start): his standing frame 0, head top 28 to his boots (FIRE_FEET_ROW
-   408), is 381 art px -- 114.6 world px at 154 against your 105.7 (8% over),
-   105.7 at 142.  His head, 104 art px at its widest against the walking
-   head's 51 (28.5 world px: 51 x 1.061 x 0.421875 x 1.25), comes to 28.8.
-   The campfire's pixel grid (campfireFx PIX) was matched to this strip only
-   roughly (2.4 against its 2.53) and stays. */
-export const FIRE_STANDIN_H = 142;
-/* ═══ v2.3.2846: THE FIRE-LIGHTER STOOD 77 PX IN THE AIR ═══
-   Found filming the new campfire: the moment you tap "Light fire" your figure
-   jumps up by about its own height's worth of ground and drops back when the
-   strip ends.  The strip was planted with its FRAME BOTTOM at your position +6
-   ("the foot offset"), on the belief that your position is your feet.  It is
-   your hips: the walking body is frame-centred and its boots are drawn
-   standFootDy() below it (52 px on a flat zone).  And the strip's own boots are
-   not at its frame bottom either -- the owner's 384x512 cells carry the log and
-   its shadow beneath them.  The sword and bow stand-ins had this exact bug and
-   were fixed by planting on the body's measured feet (S._swordFootY,
-   entityRenderer); the fire-lighter, local and remote, never was.
-   FIRE_FEET_ROW is the boots' soles in the standing frame 0, measured on
-   firemaking-strip.webp (row 408 of 512).  The figure is planted so that row
-   lands on your boots. */
-const FIRE_FEET_ROW = 408;
 /* v2.3.1749: ONE firemaking cadence.  Owner: "for firemaking speed up the
    animation by about 3x so it doesn't look as choppy" — 200ms/frame is a 5fps
    slideshow; 67 is ~15fps.  Module-level because the local figure
@@ -878,25 +721,6 @@ function _fireFrameShift(fi, sx, sy) {
   const o = FIRE_FRAME_OFF[fi] || FIRE_FRAME_OFF[0];
   return [(FIRE_FW / 2 - FIRE_FIGURE_X + o[0]) * sx, o[1] * sy];
 }
-/* ═══ v2.3.3660: THE FIRE-LIGHTER'S LOG IS WOOD ═══
-   The owner, 2026-10-27: "check all the animations for ghost remnants ... or
-   areas for cleanup".  mp-ghostaudit's fire-lighter lit his fire on a hot pink
-   log.  firemaking-strip.webp holds the pipeline's magenta KEY for the log, as
-   the lumberjack's axe and the angler's rod do, and v2.3.2761 gave those two
-   their materials but left the log ("firemaking is being rebuilt as code-drawn
-   fire in another session", toolRecolor.js's header).  That rebuild drew the
-   campfire that burns AFTER the light; the strip kept its log, so every player
-   lit every fire on a magenta log, in all eight frames (about 10,000 px of each
-   384 x 512 frame).  It is TOOL_SPECS.log's bark now, each pixel placed on the
-   material's ramp by its brightness, so the painted shading stays.
-   AFTER the skin and clothes, and only where the FILE has the key (toolRecolor's
-   `onlyMask`, the rod's lesson, v2.3.2854): the key test is a hue window, and
-   the trousers the clothes bake paints can sit in it -- pink (214,112,168) is
-   hue 327 at saturation 0.48.  The key lies in rows 356-464 of every frame
-   (measured over all eight), so only a band round them is read.  `?firelog=0`
-   keeps the magenta, for a test's before; `window.__btFireLog()` says how many
-   pixels the last bake made wood. */
-const FIRE_LOG_BAND = [340, 480];
 /* ═══ v2.3.3684: UNDER GREAVES, THE FIRE-LIGHTER HAS NO LEGS OF HIS OWN ═══
    The owner: "remove pants (olive green) those should not be showing frame 6
    is particularly bad - armor legs need to shift leftward".  His body kneels
@@ -1197,12 +1021,6 @@ function _isGatheringStandIn(skillKey) {
     || FARM_POSES.has(skillKey);   /* v2.3.3439: the farmer's three, in the same layer and capeless */
 }
 
-/* Place the cape and then drop its BACK half under the stand-in body.  The
-   re-seat is per frame and guarded: the swing re-orders its weapon every frame
-   too (_orderSwingWeapon), and the index it wants moves as sprites are shown
-   and hidden, so reading the body's live index is the only thing that stays
-   correct through that. */
-const _STAND_IN_TRAIT_KEYS = ['capeBack', 'hair', 'beard', 'capeHood', 'capeHoodMask', 'species', 'eyestyle', 'eyewear', 'hat', 'hairMask'];   /* v2.3.2361: + eyewear, over the hood and under the hat -- this order IS the z-order when the set changes layer; v2.3.2643: + eyestyle, just under the eyewear; v2.3.2682: + species, just under the eye style */
 /* v2.3.2190: QA probe.  A headless run cannot read the WebGL canvas, and the
    two facts that matter here are not visible in a screenshot anyway: whether
    the panels are UNDER the stand-in body, and whether the hood is the split's
@@ -1345,23 +1163,6 @@ if (typeof window !== 'undefined') {
   window.__btStandInTintsReset = () => { for (const k of Object.keys(_standInTints)) delete _standInTints[k]; };
 }
 
-const FIRE_GEAR_REG = {
-  shirt: {
-    scale: 0.85,
-    off: [[48, -89], [8, -50], [20, -47], [55, -64], [67, -50], [56, -52], [57, -56], [46, -103]],
-  },
-  chest: {
-    scale: 0.90,
-    off: [[39, -79], [18, 27], [42, 13], [35, 23], [84, 11], [75, 10], [59, 9], [42, -69]],
-  },
-  /* v2.3.3669: frames 3-7 re-aligned (frames 0-2 as fitted): see "THE GREAVES
-     ALIGNED" in the header above */
-  legs: {
-    scale: 0.90,
-    off: [[28, -7], [23, 8], [89, 48], [43, 4], [54, 15], [51, 13], [35, 8], [43, 6]],   /* v2.3.3684: frame 6 under the plate, 20 left and 4 up (FIRE_LEGLESS_OFF's header) */
-  },
-};
-
 /* Popup icons (XP badge, gold coin, sword/arrow/spell for damage by weapon
    type). Loaded async — entries appear in the registry once each PNG is
    ready. Until then, popups render text-only and the icon is skipped. */
@@ -1416,13 +1217,6 @@ function readDmgScale() {
 }
 export const DMG_SCALE = readDmgScale();
 if (typeof window !== 'undefined') window.__btDmgScale = DMG_SCALE;   /* QA: mp-dmgsize */
-/* Each number spawns its CENTRE a fixed 34 px over the band (entityRenderer
-   POPUP_BAR_CLEAR, combatHelpers HERO_POPUP_CLEAR), which was worked out for a
-   21 px number whose spawn pop (1.6x) reaches 16.8 px below its centre (v2.3.1638).
-   A bigger glyph reaches further, so its centre is lifted by this much of the
-   extra size -- 0.9 puts the popped glyph's bottom edge exactly as far over the
-   bar as the old number's was, for a plain hit and for a crit alike. */
-const DMG_LIFT = 0.9;
 /* Marks that say "this number is a hit": the weapons, the heart and the elements
    (the XP and gold marks belong to pay-outs). */
 const DMG_MARK_ICONS = new Set(['sword', 'arrow', 'spell', 'crit', 'heart'].concat(Object.keys(ELEM_ICON_SRC)));
@@ -1491,10 +1285,6 @@ const MSG_FONT_PX = DMG_FONT_PX * DMG_SCALE;
    draws them in the world as before, to compare. */
 const POPUP_ZOOM = 0.606;
 const POPUP_Z_MIN = 0.25, POPUP_Z_MAX = 3;   /* a sanity bound (a near-zero scale from a mid-rebuild frame), never a design term */
-/* v2.3.3399: the aim's eight sectors, in entityRenderer's SECTORS order (it
-   picks the bow pose's facing with them), and the switch that leaves the
-   between-shots grip as it was -- see _predictBowGrip */
-const BOW_AIM_SECTORS = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'];
 /* v2.3.5343: the reader cannot throw (it catches its own), so no try */
 const BOW_GRIP_GUESS_OFF = typeof location !== 'undefined' && sw('gripguess');
 const POPUP_WORLD = typeof location !== 'undefined' && swHas('popupworld');
@@ -1680,7 +1470,6 @@ Promise.all(Object.values(ZONE_SHARDS).map((s) =>
    pivoting the tail.  Until the strip resolves, the old circle draw
    is the fallback so an in-flight load never blanks live bolts. */
 const MAGIC_BOLT_FRAMES = [];
-const MAGIC_BOLT_ANCHOR = { x: 0.688, y: 0.534 };
 const MAGIC_BOLT_FRAME_MS = 90;
 /* v2.3.3499: the owner's box trap picture, for the trap in the world
    (trapFx.js) -- the same file the TRAP pop-up, the bag and the Traps tab show
@@ -1796,7 +1585,6 @@ const SWORD_SLASH = { frames: [], anchor: { x: 0.5, y: 0.5 } };
    sweeps the other way for the front and back views (swordFeel.js
    swordCutDir; _updateSwordSwing). */
 export const SWORD_FEEL_AUTHORED_DIR = -1;
-const SWORD_FEEL_FLIP = { south: ['south', true], 'south|m': ['south', false], north: ['north', true], 'north|m': ['north', false] };
 
 /* ═══ v2.3.1825: THE PINE ARROW ═══
  * Owner: "You can use this art for the pine arrow."
@@ -1977,11 +1765,6 @@ const JET_STREAM = { tex: null };
 _fxLoad('/sprites/effects/jet-stream-v1.png?v=2.3.2398').then((tex) => {
   if (tex && tex.source) JET_STREAM.tex = tex;
 }).catch((err) => console.warn('[jet-stream] load failed', err));
-/* Trailing length in world px — derived above; NOT a whole-flight streak.  One
-   that spanned launch-to-head would grow to the full 675 px range, and then
-   every arrow in a volley would paint the same solid band: the failure mode is
-   a smear that reads as clutter rather than as a line. */
-const JET_LEN_PX = 190;
 /* ═══ v2.3.2448: THE JET STREAM IS OFF ═══
    Owner: "Disable the new jet stream effect" -- in the same breath as asking
    for the sight stream back at the arrow's full length, which is the trade
@@ -2156,7 +1939,6 @@ export function ensureArrowBlastTex() {
 
 const SNOWBALL_BURST = { frames: [], url: '/sprites/effects/snowball-burst-v1.png?v=2.3.2217' };
 const SNOWBALL_BURST_MS = 420;    /* ~52ms a frame — a snowball, not a bomb */
-const SNOWBALL_BURST_H = 44;      /* drawn height in world px; the ball is 16 */
 /* Loaded PER ZONE, not at startup: only frost has snowmen, and a module-scope
    _fxLoad would join the global manifest and spend the iPhone's startup budget
    on a strip most sessions never see (CLAUDE.md's zone-asset exception).
@@ -2289,7 +2071,6 @@ const SNAP_G = 0.13;          /* the 1/2-g term, 60Hz frame units (DEBRIS_GRAV's
 const SNAP_REST_MS = 420;     /* lying there... */
 const SNAP_FADE_MS = 380;     /* ...then gone */
 const SNAP_MAX = 10;
-const PROP_SLASH_LEN = 30;       /* drawn world px along the cut */
 const PROP_SLASHES_PER_PROP = 5;  /* a rock that has been hacked at shows the last five */
 /* v2.3.2995: on the Wheel's objects, an arrow stays in and a bolt leaves a
    mark -- the newest few on any one object, and so many altogether */
@@ -2321,7 +2102,6 @@ const SCORCH_GLOW_MS = 1800;      /* a burn mark's heat fading off it */
  * telegraph shapes stay on the Graphics: they are single digits a frame and
  * genuinely need geometry. */
 let _HARD_DOT_TEX = null;
-const HARD_DOT_R = 7;
 function hardDotTex() {
   if (_HARD_DOT_TEX) return _HARD_DOT_TEX;
   const c = document.createElement('canvas');
@@ -2495,26 +2275,6 @@ for (const { lvl, url } of oreArtSources()) {
   _fxLoad(url).then((tex) => { if (tex) ORE_TEX[lvl] = tex; })
     .catch((err) => console.warn('[ore-art] load failed', url, err));
 }
-/* Target render heights in world px at tierStep 1, scaled up with tier.
-   v2.3.1275: +50% (was tree 112 / fishSpot 88 / oreVein 88) — owner's
-   size experiment scales resources with the 50%-bigger monsters.  The
-   ore-break animation derives from these too (_spawnOreBreak). */
-const NODE_SPRITE_HEIGHT_BASE = { tree: 168, fishSpot: 132 };   /* v2.3.3345: a tree's and a rock's are their own pictures' */
-const NODE_SPRITE_ANCHOR_Y = { tree: 1.0, fishSpot: 0.5, oreVein: 1.0 };
-/* ═══ v2.3.2748: WHERE THE ART MEETS THE GROUND, as a fraction of the frame ═══
-   The sprites are anchored at their FRAME's bottom (node.y), and the frames
-   have transparent margin below the art: the pine's lowest solid row is at
-   0.839 of its frame, the ore's at 0.737 (measured off the webp's alpha, and
-   the same numbers BroTown's NODE_ART collision boxes were cut from).  So the
-   trunk a player walks up to is ~27 world px NORTH of node.y on a tier-1
-   tree, and sorting on node.y put the canopy over anyone standing in the
-   gap -- in front of the trunk, drawn behind it.  The depth pass reads
-   `_groundDy` to lift the tree's line up to its drawn base.
-   v2.3.3345: a tree's base is its own picture's (game/tierTrees.js: the foot
-   stands TREE_FOOT_DY, 27, north of node.y, where this 0.839 put it at tier
-   1), and so is a rock's (game/tierOre.js oreGeom) -- nothing is a fraction
-   here any more. */
-const NODE_ART_BASE = {};
 /* v2.3.2956: where a node's HP bar hangs, as a fraction of its frame --
    measured off the same webps' alpha (>40): the pine's crown tops out at
    0.103, the ore's rock bottoms out at its ground line (NODE_ART_BASE), the
@@ -2538,20 +2298,6 @@ const NODE_ART_BASE = {};
    veins' 418 px art has the copper one's proportions), `under` the bar below
    that line, `gap` 10 (v2.3.2956's: the miner's boots hang just below the
    ore's base, and a 4 px gap let them clip the number). */
-/* v2.3.3345: a tree's `f` is gone -- its crown's top is its own picture's
-   (game/tierTrees.js treeGeom), only the gap is here; and a rock's, whose
-   base is its own picture's (game/tierOre.js oreGeom) */
-const NODE_HPBAR_AT = {
-  tree:     { gap: 4 },
-  oreVein:  { gap: 10, under: true },
-  fishSpot: { f: 0.349, gap: 4 },
-};
-/* v2.3.3040: the TOP of each resource's art, as a fraction of its frame, for
-   the label over it (_nodeLabelAt): the crown and the pond's water as above,
-   and the rock's top (alpha >50% off ore-vein-627; the iron and black steel
-   veins' 418 px art has its proportions, 93/418).  v2.3.3345: a tree's is its
-   own picture's top (treeGeom), and a rock's (oreGeom). */
-const NODE_LABEL_TOP = { fishSpot: 0.349 };
 /* ...and a cook's, UNDER the campfire (owner: "Make it appear for cooking
    too").  The one resource whose bar is not over it (v2.3.3035): the cook
    leans right over his fire, the pan in the flames (cookStandInSpot, 11.5
@@ -2561,7 +2307,6 @@ const NODE_LABEL_TOP = { fishSpot: 0.349 };
    the cook plants his boots at +8 below it, so the bar's top goes `gap` world
    px under the ground point, scaled by the zone's perspective like the fire
    and the cook themselves. */
-const CAMPFIRE_HPBAR_GAP = 14;
 Promise.all(Object.entries(NODE_SPRITE_SOURCES).map(([k, path]) =>
   _fxLoad(path).then((tex) => { NODE_SPRITE_TEX[k] = tex; })
 )).catch((err) => console.warn('[node-sprites] load failed', err));
@@ -2590,7 +2335,6 @@ Promise.all(Object.entries(NODE_SPRITE_SOURCES).map(([k, path]) =>
    bark already its log's colour, and each metal its own rock (ORE_TEX); the
    four colour-mapped veins (2.8 MB decoded) are not loaded any more.  The
    ore that pops out of a broken rock is still its own (ORE_ICON_TIER_TEX). */
-const NODE_TIER_TINT = {};
 const ORE_ICON_TIER_TEX = {};
 for (const [lvl, path] of [[6, '/icons/items/ore-iron.webp'], [11, '/icons/items/ore-black-steel.webp'],
   [16, '/icons/items/ore-titanium.webp'], [21, '/icons/items/ore-obsidian.webp']]) {   /* v2.3.3094 */
@@ -2659,7 +2403,6 @@ _fxLoad('/icons/items/ore-copper.webp').then((tex) => {
    re-commission. */
 
 /* the outline of a classic-Text number at DMG_FONT_PX; a damage number scales it (v2.3.3033) */
-const DMG_STROKE_PX = 3;
 const DMG_STYLE = new TextStyle({
   fontFamily: 'Source Sans 3, sans-serif',
   fontSize: 14,
@@ -2755,7 +2498,6 @@ const DMG_WORD_PAGE_PX = 1024;
    'K' and 'M' (their ink reaches their cell's edge: measured in Chromium's
    sans-serif, every cell's ink against its own frame).  At 12 every cell
    keeps 3 px or more clear, on the same one page. */
-const DMG_WORD_PAD = 12;
 const DMG_WORDS_ON = !(typeof location !== 'undefined' && sw('dmgwords'));   /* v2.3.5343: the reader cannot throw */
 /* v2.3.3088: the install is a function, run again for a rebuilt renderer once
    the pages' canvases have been let go of (prewarmDmgFontPipe, gpuOnly.js). */
@@ -2990,7 +2732,6 @@ function bandWithEmote(band, who) {
    EMOTE_POP_FONT and scaled to EMOTE_POP_PX on the SCREEN, twice the chat's
    14 px -- it is a picture, read at a glance */
 const EMOTE_POP_FONT = 40;
-const EMOTE_POP_PX = 30;
 /* ═══ v2.3.3395: HALLOWEEN WEEK'S SPEECH BUBBLES (game/season.js) ═══
    The fun & social plan's "spooky bubble skin", drawn in code (no picture to
    load): a night-purple bubble ringed in pumpkin orange, its words cream,
@@ -3145,51 +2886,6 @@ function _trimBakeCache(cache, owner) {
   }
 }
 
-/* ═══ v2.3.2316: GROUND LOOT AT TWICE THE SIZE ═══
- * Owner: "sprite size for monster loot while on the ground increase by 2x
- * (includes coin too)."
- *
- * ONE multiplier at module scope rather than five edited numbers, because the
- * sizes it scales live in five branches -- the slime splat, a variant's own
- * remnantsScalePx, the snowman's remnants, the standalone coin pile, and the
- * coin that rides ON a monster's remnants (this method). That last one is the
- * one a hunt-and-edit pass misses: it is in a different method from the other
- * four, and it is the coin the owner actually sees on a monster drop.
- *
- * PURELY VISUAL, checked rather than assumed: the pickup radius is a
- * hard-coded 20 world px in groundLoot.js (`lDist < 20`) and the magnet range
- * 50, neither derived from these numbers. So nothing here moves collection
- * range -- the one way a size change could quietly become a gameplay change.
- * WORLD px, like everything on the loot layer, so it scales with zoom exactly
- * as the old size did. */
-const LOOT_SCALE = 2;
-
-/* ═══ v2.3.2771: A PILE LANDS, ITS RAREST THING ON TOP ═══
- * Owner: "Make it so loot from monster drops kind of bounces when it first
- * lands (each item independently).  Show rarer items in top in terms of drop
- * rate if overlap.  Show 'RARE DROP!' message if there's a rare item in the
- * pile and have it just give a faint white shine upward from its position."
- *
- * DRAW ORDER IS DROP RATE.  The loot layer sorts by zIndex, and each kind of
- * thing on a pile takes the slot its rarity earns (server rates, index.js /
- * data.js): the remains and the coins come with nearly every kill, a zone
- * shard with 10%, a weapon with 0.05-3% (by monster level), the rare gem with
- * 0.5%, an iron armour piece with 0.2%.  Rarer draws over commoner, on one
- * pile or where two piles overlap; labels over all items, names over labels.
- * The ground rings stay underneath everything, as the glow they are. */
-const LOOT_Z = {
-  ring: -10, remnant: 0, coin: 10, coinLabel: 11, shard: 20,
-  weapon: 30, gem: 40, armor: 50, beam: 55, label: 60, owner: 70, rareText: 80,
-};
-/* v2.3.3473: a dropped item's picture, in world px (a bro is ~106 tall): a
-   good deal bigger than a rare drop's icon (~26), as it is the whole pile.
-   v2.3.3499: 40 -> 60, the owner: "Make dropped items 50% larger (hard to
-   see)" -- its shadow, stand-in and count with it (all are shares of it), the
-   count's type 16 -> 22, and the picture made at 128 px (dropIcons.js) so it
-   is as sharp at the new size.  A dead player's pile (_updateGroundLoot's
-   death branch) grows by the same DROP_GROW.  The pickup and magnet reach are
-   groundLoot.js's own numbers and do not move. */
-const DROP_GROW = 1.5;
 /* ═══ v2.3.3916: THIN BEAMS OF LIGHT RISE FROM YOUR PILE ═══
    The owner, 2026-11-02: "Redo the loot drop lighting. Instead of the glow I
    just want it to be thin beams of vertical light shining upwards."  This
@@ -3218,27 +2914,14 @@ const DROP_GROW = 1.5;
    both pictures are made with the renderer (its constructor), not on first
    use, and kept on the graphics chip only. */
 const BEAM_RISE_S = 0.3;       /* from the pile's foot to its full height, once it has landed */
-const BEAM_H_PX = 200;         /* the tallest beam, world px (a pile is ~60 tall) */
-const BEAM_W_PX = 12;          /* v2.3.4124: twice v2.3.3916's 6 (a pile is ~60 across) */
 const BEAM_A = 0.85;           /* its alpha, before the flicker */
-const BEAM_TEX_W = 16, BEAM_TEX_H = 128;
-const BEAM_HALO_W = 3.2;       /* the halo, this many times the core's width... */
 const BEAM_HALO_A = 0.34;      /* ...and this bright, before the flicker */
 const BEAM_FLICKER = 0.12;     /* how much the brightness trembles */
 const BEAM_PULSE_HZ = 0.45;    /* the slow swell of the light */
 const BEAM_MOTES = 3;          /* motes drifting up a pile's beams (plus one a beam past the first) */
-const MOTE_PX = 5;             /* a mote's size, world px */
 const MOTE_TEX = 8;
-/* rank (dropLines RARITY_TIERS / GRADE_WORDS): 0 Normal, 1 Uncommon,
-   2 Rare (a gem, a mystery gear piece), 3 Very rare */
-const LOOT_BEAMS_BY_RANK = [1, 1, 2, 3];
 /* each beam of a pile: across from its middle (world px), its height (of
    BEAM_H_PX) and its shimmer's phase, so two side by side never pulse as one */
-const BEAM_SLOTS = [
-  [{ dx: 0, h: 1, ph: 0 }],
-  [{ dx: -7, h: 1, ph: 0 }, { dx: 7, h: 0.78, ph: 2.1 }],
-  [{ dx: 0, h: 1, ph: 0 }, { dx: -12, h: 0.72, ph: 2.1 }, { dx: 12, h: 0.84, ph: 4.2 }],
-];
 const LOOT_BEAMS_MAX = 36;     /* beams drawn at once: a pile past it waits for one to go */
 const BEAM_ON = (() => { try { return !sw('lootbeam'); } catch (e) { return true; } })();
 /* v2.3.3878: a burn (a fire goblin's, a flame gem's) is the burning building's
@@ -3302,9 +2985,6 @@ const DROP_COUNT_STYLE = new TextStyle({
   fill: '#ffffff',
   stroke: { color: '#000000', width: 4 },
 });
-/* A rare item is anything rarer than 1 in 100 -- the weapon, gem and armour
-   lanes.  What earns the RARE DROP! call and the shine. */
-const RARE_KINDS = { weapon: true, gem: true, armor: true };
 
 /* ═══ THE LANDING ═══
  * Each item falls from its own height, lands, and takes two shrinking hops --
@@ -3325,12 +3005,10 @@ const LAND_S = 1.0;
    when it is down does the pile's beam rise (BEAM_AT_S, below).
    `?lootpop=0`: the v2.3.2771 fall and two hops, for one phone. */
 const LOOT_POP = (() => { try { return !sw('lootpop'); } catch (e) { return true; } })();
-const POP_H = 44;          /* from the body, world px over the pile's foot */
 const POP_JUMP = 16;       /* the little hop up as it leaves the body */
 const POP_DELAY_S = 0.08;  /* the last item leaves this much after the first */
 const POP_ARC_S = 0.32;    /* out of the body and down to the ground */
 const POP_BOUNCE_S = 0.15; /* its one bounce */
-const POP_BOUNCE_H = 7;
 const POP_LAND_S = POP_DELAY_S + POP_ARC_S + POP_BOUNCE_S;   /* ~0.55 s: settled */
 /* the beam rises once the pile is down: its first contact, the last item's */
 const BEAM_AT_S = LOOT_POP ? POP_DELAY_S + POP_ARC_S : 0;
@@ -3363,7 +3041,6 @@ function lootPop(l, key, age, n) {
   }
   return _NO_HOP;
 }
-const HOP_KEYS = { remnant: 0, coin: 1, shard: 2, weapon: 3, gem: 4, armor: 5 };
 const _NO_HOP = { dy: 0, sq: 0, rot: 0, out: 1 };
 const _hash = (x) => { const v = Math.sin(x) * 43758.5453; return v - Math.floor(v); };
 /* v2.3.4124: the age the landing (and the beam after it) plays at.  YOUR pile
@@ -3425,7 +3102,6 @@ function lootHop(l, key, age, n = 0) {
    circle is squashed vertically (x 0.55) because the ground is seen at an
    angle.  A lone item stays in the middle.  Keys are the items present, so
    the layout is rebuilt only when the pile's contents change (a claim). */
-const PILE_R = 26;
 function pileLayout(l, keys) {
   const sig = keys.join(',');
   if (l._layoutSig === sig && l._layout) return l._layout;
@@ -3464,15 +3140,6 @@ const SMITH_ANVIL = { tex: null };
 _fxLoad('/sprites/fx/smith-anvil.webp?v=2.3.3493').then((tex) => {
   if (tex && tex.source) SMITH_ANVIL.tex = tex;
 }).catch((err) => console.warn('[smith-anvil] load failed', err));
-/* Where it stands, in the smith effect's own units (x SMITH_SCALE = world px,
-   around the point SMITH_ANVIL_DX/DY from the player): its base's middle and
-   foot where the old drawn block stood, over the rock painted under the
-   mining pose's boots, and wide enough to hide it (~73 world px); the face the
-   hot bar lies on and the sparks fly from, the top of the painted face. */
-const SMITH_ANVIL_W = 52;
-const SMITH_ANVIL_X = -4;
-const SMITH_ANVIL_FOOT = 17;
-const SMITH_FACE_Y = -17;
 /* the forge fire's tongues are drawn once at this height and stretched */
 const SMITH_FLAME_H0 = 40;
 
