@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "0c533f72dead085b92e855f2796b7e05aa78b4a3",
+  "tree": "9a20b0d4c9f0f3c95dd235bb6ad5ccb557a9b6c5",
+  "committedAt": "2026-11-18T01:18:10-08:00",
+  "subject": "Merge pull request #2171 from hemibroscommunity-del/claude/plan-wd-1-census",
+  "files": 8324,
+  "bytes": 962550156,
+  "listingSha256": "ca3eb52090e3da8a10b9f81c8a9ebfaff41c142ad5b77a74048de05450a0b865",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

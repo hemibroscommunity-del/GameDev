@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "c7b673d01f02ac18ed262ed3f97e027350384843",
+  "tree": "4731297b4591eba0a6fcb64e66b3c36e1111edbd",
+  "committedAt": "2026-11-18T01:17:09-08:00",
+  "subject": "Merge pull request #2189 from hemibroscommunity-del/claude/plan-en-1-leaves",
+  "files": 8315,
+  "bytes": 961916192,
+  "listingSha256": "db6048cc290a1f96396c08a8ee2aff2978bc7ad0c60b2f5cb284bc5b3d754370",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

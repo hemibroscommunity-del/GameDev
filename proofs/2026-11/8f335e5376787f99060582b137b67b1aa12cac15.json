@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "8f335e5376787f99060582b137b67b1aa12cac15",
+  "tree": "d81ea0c6b7b09dac1aee71ef2fb6c5cd99f3d45a",
+  "committedAt": "2026-11-18T01:16:53-08:00",
+  "subject": "Merge pull request #2152 from hemibroscommunity-del/claude/plan-cs-2-usage-meter",
+  "files": 8304,
+  "bytes": 961908763,
+  "listingSha256": "00cb09d79538744aac733558ea9f148703f2d4f17dfce2e3ea57bda8d81fcccc",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

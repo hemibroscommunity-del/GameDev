@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "5bef4575c71415713b629d2e28780130fb4f96fc",
+  "tree": "b071b083046cb663788880378c4a0c32dce41200",
+  "committedAt": "2026-11-18T01:18:00-08:00",
+  "subject": "Merge pull request #2174 from hemibroscommunity-del/claude/plan-cap-2-guard",
+  "files": 8320,
+  "bytes": 961980928,
+  "listingSha256": "2dbb464a3714dd6fa23af15ff198fa2c801836743df1ab4264c6ccf88eafd83b",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
