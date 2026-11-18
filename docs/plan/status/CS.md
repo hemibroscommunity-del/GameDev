@@ -12,7 +12,8 @@ state: ready
   GET /dev/usage), the Test panel's Usage box, OPERATIONS "Watching the
   cost".  Files outside the card, as the planning session allowed
   (2026-11-18): index.js (the mixin), roomrow.js and send.js (one count
-  each; K2 told), DevPanel.jsx (one line), src/ui/panels/UsageMeter.jsx.
+  each; K2 told), DevPanel.jsx (one line), src/ui/panels/UsageMeter.jsx,
+  and one `in` row in K2's server/src/wire/http.js (/dev/usage).
 
 ## Next
 
@@ -32,4 +33,5 @@ state: ready
 
 ## Needs
 
-- The gatekeeper's list: #2139 first, then PR 2 (stacked on it).
+- The gatekeeper's list: #2139 first, then PR 2 (stacked on it), PR 2
+  after K2's PRs that touch server/src/wire/http.js (the planning session).
