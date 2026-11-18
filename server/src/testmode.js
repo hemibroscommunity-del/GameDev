@@ -99,7 +99,7 @@
  * Auction House's `/mine` shows a player's bids only to that player's own
  * session (v2.3.5817, store.js: `minebids`); a join's shield and cosmetic
  * claims merged only when the ledger backs them (v2.3.5812, gearstash.js:
- * `shieldclaim`); a daily spin's, the login spin's and a season tier's paid
+ * `shieldclaim`); a daily spin's and the login spin's paid
  * mark in the credit's own run (v2.3.5810, dailyrewards.js, loginspin.js:
  * `paidmark`).
  *
