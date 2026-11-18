@@ -1,5 +1,5 @@
 import React from 'react';
-import { GearTab } from './GearTab.jsx';
+import { GearTabDeferred } from './GearTab.jsx';   /* v2.3.6283: the tab drawn beside the game's redraw (GearTab.jsx's foot; card HB2 PR 4) */
 import { WeaponBar } from './WeaponBar.jsx';
 import { combatSkillLevel as _combatSkillLevel } from './combatSkill.js';
 
@@ -30,7 +30,7 @@ import { combatSkillLevel as _combatSkillLevel } from './combatSkill.js';
    no more (the box decides).  v2.3.4151: nor is `box`, the one band's
    measured box (?oneband=1, OneBandColumns.jsx, v2.3.4072) -- the Gear tab
    measures the same box itself. */
-export const DashColumns = ({ R, desk }) => <GearTab R={R} desk={!!desk} />;
+export const DashColumns = ({ R, desk }) => <GearTabDeferred R={R} desk={!!desk} />;
 
 /* v2.3.3769's chips at the foot of every page on a computer, now the weapon
    bar (WeaponBar.jsx); the name stays for BottomDashboard. */
