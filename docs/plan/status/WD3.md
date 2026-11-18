@@ -1,6 +1,6 @@
 card: WD3
-branch: claude/plan-wd3-14-help (one PR a branch, claude/plan-wd3-N-<what>, each stacked on the last, base main)
-prs: #2227 (6340), #2229 (6341), #2230 (6342), #2231 (6343), #2232 (6344), #2233 (6345); PR 7-15 (6346-6354, working), PR 14 (6353, working)
+branch: claude/plan-wd3-15-account (one PR a branch, claude/plan-wd3-N-<what>, each stacked on the last, base main)
+prs: #2227 (6340), #2229 (6341), #2230 (6342), #2231 (6343), #2232 (6344), #2233 (6345); PR 7-15 (6346-6354, working), PR 14 (6353, working), PR 15 (6354, working)
 state: working
 
 ## Done (in place on the page 4120 -> ...; worker 385 unchanged)
@@ -8,9 +8,13 @@ state: working
 - PR 2-6 (6341-6345): daily rewards (4 screens) -> 3987; arena/alliance (3) -> 3901; hero sheet (4) -> 3818; dashboard/More (5) -> 3677; social (6) -> 3568.
 - PR 7-13 (6346-6352): world map/halls/NML (5) -> 3439; crafting (6) -> 3309; shops (5) -> 3201; bag (5) -> 3113; quests (6) -> 3050; records (5) -> 2987; games (6) -> 2906.
 - PR 14 (6353): help: ControlsTutorial, KeyboardHintsPanel, InfoPanel, InfoPopup -> 2842.
+- PR 15 (6354): account: AccountLoginForm, AccountKeyCard, AccountPanel (RenameRow: the Test panel's); -> 2800.
 
 ## Next
-- PR 15: the next screens of W1, biggest first (one system a PR).
+- Card's 15 PRs done (stop line). Left per wave, in place: W1 721 in 93 screens
+  (GameApp 51 dev console, QuestCoach 48 and GearTab 42 held by HB2, EconCard 31,
+  DungeonCreatorPanel 30, ExchangePanel 30, ...); W2 375; W3 1212; W4 328;
+  W5 164 (BroTown + the two renderers); W6 385 (the worker).
 
 ## Found
 - "tap" now "click" on a computer (CLAUDE.md §7; phone unchanged): DailyRewardsWindow swap hint; InspectCard hint; SocialPanel 'No friends yet...'; InspectPlayerPanel 'Friends — tap to remove'; NmlBadge place line; NmlAskCard 2 aria-labels; InventoryPanel 'No pets...'.
@@ -21,6 +25,7 @@ state: working
 - A missing part now shows '' where a `+` join showed "undefined" (normal data unaffected).
 - No player-facing "Wheel" or "remnant" met.
 - "tap" now "click": ControlsTutorial 5 step bodies (the tour never chose by device).
+- Left for a test: AccountLoginForm's 'device' refusal (device-words). ControlsTutorial's two bodyManual lines (manual-combat 10q); InfoPopup 'Add points with +' (owner-notes 4).
 
 ## Needs
 - GameApp's and RenameRow's words need NOT_SHOWN/DEV_FILES in tools/dev/words-census.mjs (outside my card): asked the planning session.
