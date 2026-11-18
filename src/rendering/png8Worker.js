@@ -28,6 +28,10 @@
  *                   fileW, fileH } or { id, ok: false, error } -- unpacked on
  *                   the page then, as before
  *
+ * v2.3.6284 (card HB2 PR 5): `whole: true` with a strip's message -- a
+ * picture loaded whole (p256.js's twins of the effects and icons): the file
+ * numbered as it is, no crop (stripPack.js `whole`); fw and fh are the file's.
+ *
  * v2.3.5004: and a palette PNG the page holds as a Blob (no fetch: the
  * level-up burst's frames, stripRead.js readPaletteBlob):
  *
@@ -85,6 +89,7 @@ self.onmessage = async (ev) => {
       if (!pr.ok) throw new Error('strip ' + pr.status);
       const dec = await decodePng8(new Uint8Array(await pr.arrayBuffer()), undefined, 1);
       if (!dec) throw new Error('not a palette PNG');
+      if (m.whole) { m.fw = dec.w; m.fh = dec.h; m.n = 1; dec.whole = true; }   /* v2.3.6284: a picture whole, its own size */
       const out = packStripNumbers(dec, m.fw, m.fh, m.n || 0);
       if (!out) throw new Error('not a strip of ' + m.fw + ' x ' + m.fh + ' frames');
       /* v2.3.5044: the page sent its bundle's rows of colours (picsNumbers.js

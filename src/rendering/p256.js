@@ -31,7 +31,9 @@
  * Probe: window.__btP256(). */
 import { extensions, ExtensionType, LoaderParserPriority, Texture, Rectangle, Cache, loadTextures } from 'pixi.js';
 import { P256_FILES } from '../data/p256Files.js';
-import { picNumbersOn, stripAsNumbers } from './picsNumbers.js';
+import { picNumbersOn, stripAsNumbers, stripRowsAsk, stripPlanAnswered, stripPlanDone } from './picsNumbers.js';   /* v2.3.6284: + the rows' plan */
+import { stripReadOn, readWhole, deflateOnWorker } from './stripRead.js';   /* v2.3.6284: the twin read, and its numbers packed, off the page's thread (card HB2 PR 5) */
+import { inflateRawSync } from './inflateRaw.js';   /* v2.3.6284: a raw pack unpacked where the browser has no deflate-raw */
 import { isPaletteSource } from './paletteDraw.js';
 import { paletteDecided } from './paletteTex.js';
 import { addPictureRestorer } from './picsOnce.js';
@@ -180,7 +182,7 @@ const WANTED = !NO_TWINS && (ALL_TWINS || FX_MADE_ON || WORLD_ICONS_ON || FX_SHE
 /* (never while QA compares cropped strips against their files: __btTrimVerify) */
 export function p256On() { return WANTED && picNumbersOn(); }
 
-const _stats = { strips: 0, pictures: 0, asOriginal: 0, readMs: 0, undecided: 0 };
+const _stats = { strips: 0, pictures: 0, asOriginal: 0, readMs: 0, undecided: 0, offPage: 0 };   /* v2.3.6284: offPage, the twins read on the worker */
 
 function pathOf(url) {
   let p = String(url || '');
@@ -297,7 +299,31 @@ export const p256LoadParser = {
     if (!twin) return loadTextures.load(url, asset, loader);
     const t0 = typeof performance !== 'undefined' ? performance.now() : 0;
     let src = null, w = 0, h = 0;
-    try {
+    /* ═══ v2.3.6284: THE TWIN'S OWN NUMBERS, READ OFF THE PAGE'S THREAD (card HB2 PR 5) ═══
+       A twin is a 256-colour file: one byte a pixel and its list of colours.  It was loaded as a picture, drawn on a
+       canvas and every pixel read back on the page to find the numbers the file held all along
+       (`p256LoadParser.load > stripAsNumbers > numbersOf > getImageData`: 27.4 ms on budget-android at `town`,
+       docs/plan/census/HB-holds.md row 16; the effects and icons load in play).  Now, as a monster's strip is
+       (zoneTextures.js loadTrackedStrip, CLAUDE.md §7), the strip reader's worker fetches and reads the file whole
+       (stripRead.js readWhole: no crop) and numbers it for the bundle's row of colours as it reads (the rows told
+       as the read starts); the page only puts it on its row.  A colour partly see-through keeps the file's own RGB
+       where the canvas gave it back rounded a step through its premultiplied store: drawn, the same picture
+       (stripPack.js's header).  No worker, a file it cannot read, a QA verify page, or `?stripworker=0`: the
+       canvas, as before. */
+    if (stripReadOn() && !(typeof window !== 'undefined' && window.__btPicNumVerify === true)) {
+      const bundle = bundleOf(url);
+      let rows = null, plan = null;
+      try {
+        const m = await readWhole(twin, () => { rows = stripRowsAsk(bundle); return rows && rows.send; });
+        if (m && m.onRow && rows) { plan = m.onRow; plan.asked = rows; stripPlanAnswered(bundle, plan); }
+        if (m) {
+          src = stripAsNumbers(bundle, null, String(url), { w: m.w, h: m.h, idx: m.idx, pal: m.pal, onRow: m.onRow });
+          if (src) { w = m.w; h = m.h; _stats.offPage++; }
+        }
+      } catch (e) { src = null; }
+      if (plan) stripPlanDone(bundle, plan);
+    }
+    if (!src) try {
       const img = await loadImage(twin);
       w = img.naturalWidth; h = img.naturalHeight;
       const cv = document.createElement('canvas');
@@ -345,19 +371,43 @@ async function deflate(u8) {
   const stream = new Blob([u8]).stream().pipeThrough(new CompressionStream('deflate'));
   return new Uint8Array(await new Response(stream).arrayBuffer());
 }
-async function inflate(u8) {
+async function inflate(u8, raw, n) {
+  /* v2.3.6284: a pack the worker made is raw DEFLATE (checked there to come back: stripRead.js deflateOnWorker) */
+  if (raw) {
+    try {
+      const stream = new Blob([u8]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+      return new Uint8Array(await new Response(stream).arrayBuffer());
+    } catch (e) { const u = inflateRawSync(u8, n); if (!u) throw e; return u; }   /* no deflate-raw here: the page's own inflater */
+  }
   const stream = new Blob([u8]).stream().pipeThrough(new DecompressionStream('deflate'));
   return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+/* ═══ v2.3.6284: PACKED ON THE READER'S WORKER, NOT ON THE PAGE (card HB2 PR 5) ═══
+   The once-a-second pack deflated each twin's numbers on the page (`wrapped > pack > deflate`: the Blob's copy and
+   the compressor's work in the page's turn, 24.1 ms on budget-android, 19.8 on hotel-laptop: docs/plan/census/
+   HB-holds.md row 16).  Now a copy of them goes to the strip reader's worker, which deflates them and checks each
+   comes back as the very bytes (framePack.js's way); the page keeps its own until the pack is back, as before.  No
+   worker, or `?stripworker=0`: deflated on the page, as before. */
+async function packBytes(idx) {
+  if (stripReadOn()) {
+    const r = await deflateOnWorker([idx.slice()]);
+    if (r && r.zs) return { z: r.zs[0], raw: true };
+    if (r && r.no) return { z: null, raw: false };
+  }
+  let z = null;
+  try { z = await deflate(idx); } catch (e) { z = null; }
+  return { z, raw: false };
 }
 const isPacked = (src) => !!(src && src.__btPack && src.__btPack.z);
 async function pack(src, renderer) {
   const idx = src.resource;
   if (!idx || !idx.length || src.__btPack) return;
   src.__btPack = { z: null, n: idx.length, busy: true };
-  let z = null;
-  try { z = await deflate(idx); } catch (e) { z = null; }
+  let z = null, raw = false;
+  try { const b = await packBytes(idx); z = b.z; raw = b.raw; } catch (e) { z = null; }   /* v2.3.6284: on the worker */
   const P = src.__btPack;
   P.busy = false;
+  P.raw = raw;
   /* given up: nothing to pack it with, the source gone, or it changed or left
      this chip meanwhile */
   if (!z || src.destroyed || src.resource !== idx || !(src._gpuData && src._gpuData[renderer.uid])) { src.__btPack = null; if (!z) _pk.failed++; return; }
@@ -375,7 +425,7 @@ export function unpack(src) {
   if (!isPacked(src)) return Promise.resolve(true);
   const P = src.__btPack;
   if (P.out) return P.out;
-  P.out = inflate(P.z).then((idx) => {
+  P.out = inflate(P.z, P.raw, P.n).then((idx) => {
     if (src.destroyed) return false;
     if (idx.length !== P.n) { _pk.failed++; return false; }
     src.resource = idx;
