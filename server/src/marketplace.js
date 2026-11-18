@@ -32,15 +32,26 @@ export class Marketplace {
     this.index = new Map();
     this.playerOrderCounts = new Map();
     const now = Date.now();
-    const entries = await this.state.storage.list({ prefix: 'order:' });
+    /* v2.3.5961 (card V5; TRAPS §76): a page at a time (128 keys), every
+       order read as before; the expired deleted a page's worth a call (the
+       runtime's delete takes 128 keys).  The old Marketplace object stays
+       only for its binding: no live flag reaches it, so no switch. */
     const expired = [];
-    for (const [key, raw] of entries) {
-      let o;
-      try { o = JSON.parse(raw); } catch { expired.push(key); continue; }
-      if (o.expires <= now) { expired.push(key); continue; }
-      this._addToIndex(o);
+    let after = null;
+    for (let guard = 0; guard < 10000; guard++) {
+      const entries = await this.state.storage.list({ prefix: 'order:', limit: 128, ...(after !== null ? { startAfter: after } : {}) });
+      let n = 0;
+      for (const [key, raw] of entries) {
+        if (after !== null && key <= after) continue;   /* a storage that ignores startAfter */
+        n++; after = key;
+        let o;
+        try { o = JSON.parse(raw); } catch { expired.push(key); continue; }
+        if (o.expires <= now) { expired.push(key); continue; }
+        this._addToIndex(o);
+      }
+      if (n < 128) break;
     }
-    if (expired.length) await this.state.storage.delete(expired);
+    for (let i = 0; i < expired.length; i += 128) await this.state.storage.delete(expired.slice(i, i + 128));
   }
 
   _addToIndex(o) {
