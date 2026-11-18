@@ -51,6 +51,7 @@ import {
 } from './chainwriter.js';
 import { CHAIN, rpcCall } from './onchain.js';
 import { PROG3 } from './prog3.js';
+import { LISTCAP } from './liveops.js';   /* v2.3.5961: an owner's page's most (card V5) */
 
 /* The life skills the game tracks server-side.  Mirrors LIFE_SKILLS in
    src/data/lifeSkills.js — if that list grows, add it here and the chain
@@ -523,10 +524,14 @@ export const chainScoreMethods = {
     } else {
       /* Room-scale prefix list (the /economy precedent): count + newest. */
       try {
-        const all = await this.state.storage.list({ prefix: 'chain_score:' });
+        /* v2.3.5961 (card V5; TRAPS §76): a page an await, LISTCAP.OWNER at
+           most; past it `writesMore` (the count and the newest are of those read) */
+        const info = {};
+        const all = await this._listAll('chain_score:', LISTCAP.OWNER, info);
         let newest = null;
         for (const [, v] of all) if (!newest || (v.at || 0) > (newest.at || 0)) newest = v;
         out.writes = all.size;
+        if (info.more) out.writesMore = true;
         out.lastWrite = newest ? {
           milestone: newest.milestone, level: newest.level, txHash: newest.txHash, at: newest.at,
           explorer: newest.txHash ? CHAIN.explorer + '/tx/' + newest.txHash : null,
