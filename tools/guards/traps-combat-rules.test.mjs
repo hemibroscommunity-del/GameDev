@@ -387,15 +387,15 @@ const PVP = oneDef(DS, '_pvpAllowed');
   check(`§24: the page's timers are read (${timers}) and what they send found (${[...sent.keys()].join(', ')})`, timers >= 20 && sent.has('report'), [...sent.keys()]);
   /* Stepped in today: each under Found in lane B's notes */
   const TIMER_KNOWN = {
-    map_watch: 'WorldMapOverlay.jsx: the open World map says so every MAP_HEARTBEAT_MS (presence2.js sendMapWatch); the worker stamps the AFK clock on it, so a tab left with the map open is never swept: FOUND',
-    acc_request: 'JourneyPanel.jsx: the Journey panel asks for the accuracy every 15 s while open (accuracy.js askAccuracy); it stamps the AFK clock the same: FOUND',
+    /* v2.3.6043 (card V6 PR 4): map_watch and acc_request are the router's
+       heartbeats now (index.js _onMessage, beside pong and report): both off */
     bank_open: 'BankPanel.jsx: the bank asks again every 3 s while a read has failed (bank.js bankOpen), only while open: a retry, but it stamps',
     loginspin_ask: 'LoginSpinWindow.jsx: the login spin asks on a timer until its window opens (loadingGate.js), once a sitting',
     join: 'wsClient.js: the thaw watch (_aliveTimer) recovers a page that was frozen (_resumeRecover, _forceRejoin): a new session, its clock new',
     set_active_slot: 'wsClient.js: the same recovery re-sends the weapon slot after its rejoin',
   };
   const found = new Set([...sent.keys()].filter((t) => !excluded.has(t) && !judged.has(t)));
-  census('§24', 'messages the page sends on a timer that stamp the AFK clock', found, TIMER_KNOWN, 6);
+  census('§24', 'messages the page sends on a timer that stamp the AFK clock', found, TIMER_KNOWN, 4);
   /* the sweep's close code is one the page does not reconnect on */
   const T = oneDef(DS, '_tickPingAndAfk');
   const sweep = T ? bodyC(T) : '';
