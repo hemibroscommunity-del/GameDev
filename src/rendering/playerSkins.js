@@ -714,6 +714,7 @@ export function getBodyFrame(skinId, pantsId, shoesId, pose, dir, frameIdx, shir
   const _art = bodyArtSeg(_dirArt) ? _dirArt : null;
   if (!skinT && !pantsT && !shoesT && !shirtT && !eye && !_art && !blank) return getFrame(pose, dir, frameIdx);
   const sheetKey = bodySheetKey(skinId, pantsId, shoesId, shirtT, shirtKey, eye && eye.id, pose, dir, _art, blank && blank.id);
+  if (_askOnly) { _askOnly.push(sheetKey); return null; }   /* v2.3.6202: only which sheet (bodyKeysAsked): nothing baked */
   const entry = _bodySheets[sheetKey];
   if (entry === undefined) { const _bp = buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eye && eye.t, _art, blank && blank.rects); if (_buildSink) _buildSink.push(_bp); return getFrame(pose, dir, frameIdx); }
   if (entry === 'loading' || !entry.length) { if (entry !== 'loading') _bodyLater.due(sheetKey); return getFrame(pose, dir, frameIdx); }   /* v2.3.3882 */
@@ -801,6 +802,44 @@ if (typeof window !== 'undefined') {
     }
     return out;
   };
+}
+
+/* ═══ v2.3.6202: A BAKED SHEET'S CHIP COPY LET GO OF WHERE IT IS NOT DRAWN (card EN PR 3) ═══
+   The townsfolk whose looks the shared numbers refuse (an eye style that
+   blanks the eyes, a drawing: lookBodyRefused) are drawn from whole sheets
+   baked a pose and facing behind the world's loading screen (entityRenderer.js
+   prewarmFolkBodies: 35 sheets at main 5ea5c7d's memory check), each sent to
+   the graphics chip the first time it is drawn and, before this, kept there
+   for the visit: the memory check's fights in the Flame Fields, where no
+   townsperson is drawn, held 13 to 14 MB of `blob:` sheets on the chip by the
+   second trip.  Now the renderer, far from town, lets go of their CHIP copies
+   only (Pixi's TextureSource.unload: "as soon as it is required for rendering,
+   it will be re-uploaded"): the baked pictures stay in the page, so nothing is
+   baked or loaded again and the loading screen's work stands (PRELOADING IS
+   LAW); a facing drawn again is sent up at its first draw, as on first sight
+   today.  (A first road let the sheets go and baked them again on the way
+   back: on this box a re-bake of the 35 took 78-88 s, so a townsperson was
+   met plain three times in three, and the asset cache grew 3.2 MB a trip.)
+   bodyKeysAsked(fn) runs `fn`, which asks for frames exactly as the renderer
+   does, and answers the sheet keys it asked for, baking nothing and touching
+   no sheet: the same key, so this cannot spell it a second way.
+   unloadBodySheets(keys) sends the chip copies of those baked home. */
+let _askOnly = null;
+export function bodyKeysAsked(fn) {
+  const out = [];
+  _askOnly = out;
+  try { fn(); } finally { _askOnly = null; }
+  return out;
+}
+export function unloadBodySheets(keys) {
+  let n = 0;
+  for (const key of keys) {
+    const entry = _bodySheets[key];
+    const src = Array.isArray(entry) && entry[0] && entry[0].source;   /* not 'loading', given up on or gone */
+    if (!src || src.destroyed) continue;
+    try { src.unload(); n++; } catch (e) { /* kept on the chip */ }
+  }
+  return n;
 }
 
 /* ═══ v2.3.3716: THE STAND AND JOG FRAMES FROM THE NUMBERS (on; `?lookpalette=0` off) ═══

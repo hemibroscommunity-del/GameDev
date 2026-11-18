@@ -469,6 +469,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?fishgriptrousers` | page | switch | v2.3.3657 | 2026-10-27 | =1 | logic |  | no | The fishing grip lifts the trousers too. |
 | `?fishspot` | page | switch | v2.3.5565 | 2026-11-17 | =0 | memory |  | no | The pond under a fishing spot is drawn from its full-colour picture, as before, not from its 256-colour twin. |
 | `?flipbake` | page | switch | v2.3.3577 | 2026-10-23 | =0 | logic |  | no | Flipped facings are not baked from their source, as before. |
+| `?folksheets` | page | switch | v2.3.6202 | 2026-11-18 | =0 | memory | `lookfolk` | no | The townsfolk's baked body sheets (the few looks the shared numbers refuse) stay on the graphics chip for the whole visit once drawn, as before; on, their chip copies are let go of far from town and sent up again as each is drawn (card EN PR 3). |
 | `?folkskills` | page | switch | v2.3.5462 | 2026-11-14 | =0 | memory | `lookfolk` | folkSkillReady in src/rendering/folkSkill.js | The townsfolk work in card TF PR 1's poses again (Chef Blaze and Woodworker Bro the pickup, Farmer Bro standing), and the trades' figures (the `skills` look set) are not loaded. |
 | `?folkwork` | page | switch | v2.3.3949 | 2026-11-03 | =0 | logic |  | no | The townsfolk walk but stand at their stops, not work. |
 | `?framepack` | page | switch | v2.3.5257 | 2026-11-14 | =0, off, false | memory |  | no | A monster strip's colour numbers are kept whole in the page once on the chip, as before, not deflated a frame at a time. |

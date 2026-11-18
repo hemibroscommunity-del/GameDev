@@ -72,7 +72,7 @@ import { getSpeciesBuild, preloadSpeciesArt } from '../traits/speciesArt.js';   
 import { getColoredEyeStyleTextures, coloredEyeStyleReady } from '../traits/eyeStyleColorCatalog.js';   /* v2.3.2645; v2.3.4368 + ready */
 import { getHair, HAIR_CATALOG } from '../traits/hairCatalog.js';
 import { getLookShirtFrame } from '../lookShirtFrame.js';   /* v2.3.3751: the tee from the look palette */
-import { getSkin, getPants, getShoes, getBodyFrame, getPickupHeadFrame, preloadBodyVariant, localBodyArt, getFishFrame, MIRRORED_SOURCE_DIRS, getLookBodyFrame, getLookBodyEntries, awaitBodyBuilds, lookBodyRefused } from '../playerSkins.js';   /* v2.3.1940: + the local player's drawn pants/tattoo; v2.3.2854: + the inked fish frame; v2.3.3716: + the look-palette frame */
+import { getSkin, getPants, getShoes, getBodyFrame, getPickupHeadFrame, preloadBodyVariant, localBodyArt, getFishFrame, MIRRORED_SOURCE_DIRS, getLookBodyFrame, getLookBodyEntries, awaitBodyBuilds, lookBodyRefused, bodyKeysAsked, unloadBodySheets } from '../playerSkins.js';   /* v2.3.1940: + the local player's drawn pants/tattoo; v2.3.2854: + the inked fish frame; v2.3.3716: + the look-palette frame */
 import { lookPaletteWanted, lookPaletteOn } from '../lookPalette.js';   /* v2.3.3716: on unless `?lookpalette=0`; v2.3.3809: + drawing now */
 import { lookFolkOn, folkFaceOverride } from '../lookFolk.js';   /* v2.3.3809: the townsfolk drawn live */
 import { folkWorkPose, folkWorkFrame, folkStandFacing, folkStride } from '../folkPose.js';   /* v2.3.4058: the townsfolk at work */
@@ -169,7 +169,7 @@ import { _idleYield, _idleYieldSoon, _nextFrameP, _prewarmMasks, prewarmDirs } f
 import { _hideExceptDeep, drawnAsContent } from '../leaves/entity-render.js';   /* v2.3.6200: its leaves (card EN) */
 import { _placeStandaloneTrait, hideStandInCape } from '../leaves/entity-skills.js';   /* v2.3.6200: its leaves (card EN) */
 import { _chatBubbleUp } from '../leaves/entity-social.js';   /* v2.3.6200: its leaves (card EN) */
-import { CAPTURE_SHEET, NPC_BRO_MULT, NPC_SCALE_MULT, _drawQuestBadge, _folkBodyPx, npcDirFromDelta, npcFigureHeight, npcFigureSize, npcSpriteScale, npcStandFrame, npcWalkCell } from '../leaves/entity-townsfolk.js';   /* v2.3.6200: its leaves (card EN) */
+import { CAPTURE_SHEET, NPC_BRO_MULT, NPC_SCALE_MULT, _drawQuestBadge, _folkBodyPx, folkSheetsStep, npcDirFromDelta, npcFigureHeight, npcFigureSize, npcSpriteScale, npcStandFrame, npcWalkCell } from '../leaves/entity-townsfolk.js';   /* v2.3.6200: its leaves (card EN) */
 import { RES_BAR_MAX_W, RES_BLOCK_H, RES_FADE_MS, RES_HOLD_MS, RES_SRC_CELL, RES_SRC_PITCH, _barScaleX, _barSrcW, _barWidth, _drawResourceBar, _hexOf, _resGlideProgress, _setPillType, plateBandFor, threatSkullPhase } from '../leaves/entity-ui.js';   /* v2.3.6200: its leaves (card EN) */
 export { bandScale, plateBandFor } from '../leaves/entity-ui.js';   /* v2.3.6200: exported as before */
 export { hideSkillTraits } from '../leaves/entity-skills.js';   /* v2.3.6201: exported as before */
@@ -514,6 +514,39 @@ if (typeof window !== 'undefined') {
 /* v2.3.3809: a townsperson drawn live has no figure this far past the view
    (world px beyond its half-diagonal: _updateNPCs) */
 const FOLK_FAR_MARGIN = 300;
+/* ═══ v2.3.6202: THE TOWNSFOLK'S BAKED SHEETS OFF THE CHIP FAR FROM TOWN (card EN PR 3) ═══
+   The few townsfolk whose looks the shared numbers refuse are drawn from
+   sheets baked behind the loading screen (prewarmFolkBodies), each sent to
+   the graphics chip at its first draw and kept there for the visit: 13 to 14
+   MB of them on the chip at the memory check's fights in the Flame Fields,
+   where no townsperson is drawn (MEMORY IS BUDGETED: art is freed where you
+   leave it).  Now, once every townsperson has been FOLK_SHEETS_FREE_PX past
+   the view's half-diagonal for FOLK_SHEETS_FREE_MS (folkSheetsStep in
+   leaves/entity-townsfolk.js, which tools/guards/folk-sheets.test.mjs
+   plays), the chip copies of his
+   sheets are let go of (playerSkins.js unloadBodySheets, the keys his own
+   draw would ask: bodyKeysAsked).  The baked pictures stay in the page: a
+   facing drawn again on the way back is sent up at its first draw, as it was
+   the first time he was met, with nothing baked or loaded again.  The
+   player's own sheets are never among them (their keys are his look's).
+   Nobody measured (a dungeon, a zone between) is neither far nor near.
+   `?folksheets=0` keeps them on the chip, as before.  `window.__btFolkSheets()`
+   on QA pages: how many times let go of, how many sheets, and the nearest
+   townsperson's distance past the view. */
+const _FOLK_SHEETS_ON = !sw('folksheets');   /* the decision and its distances: leaves/entity-townsfolk.js folkSheetsStep */
+let _folkJobs = null;   /* the jobs the loading screen baked (prewarmFolkBodies) */
+const _folkSheets = { onChip: true, farSince: 0, frees: 0, unloaded: 0, nearest: Infinity };
+function _folkSheetsStep(now, nearest) {
+  _folkSheets.nearest = nearest;
+  if (!_folkJobs || !folkSheetsStep(_folkSheets, _FOLK_SHEETS_ON, now, nearest)) return;
+  const jobs = _folkJobs;
+  _folkSheets.unloaded += unloadBodySheets(new Set(bodyKeysAsked(() => { prewarmFolkBodies(jobs); })));   /* a key asked by several jobs, once */
+  _folkSheets.frees++;
+}
+if (typeof window !== 'undefined') {
+  window.__btFolkSheets = () => ({ on: _FOLK_SHEETS_ON, jobs: _folkJobs ? _folkJobs.length : 0, onChip: _folkSheets.onChip,
+    frees: _folkSheets.frees, unloaded: _folkSheets.unloaded, nearest: Math.round(_folkSheets.nearest) });
+}
 /* ═══ v2.3.3520: A TOWNSPERSON WHO STANDS, STANDS ═══
    The owner: "Ace" is "stuck in one walking frame", with his shadow apart
    from him.  The Wheel's townsfolk never walk (pathRadius 0), and a still
@@ -1604,6 +1637,7 @@ export function remoteBodyArt(other, mirror) { return _remoteBodyArt(other, mirr
    the townsfolk are not drawn live (their photographs: nothing to bake). */
 export function prewarmFolkBodies(jobs) {
   if (!lookFolkOn() || !jobs || !jobs.length) return Promise.resolve(0);
+  _folkJobs = jobs;   /* v2.3.6202: the keys whose chip copies go far from town (_folkSheetsStep) */
   return awaitBodyBuilds(() => {
     for (const j of jobs) {
       const look = npcLookAsPeer(npcLookByName(j.name));
@@ -15619,6 +15653,7 @@ export class EntityRenderer {
   _updateNPCs(S, now) {
     const npcs = S.npcs || [];
     const activeIds = new Set();
+    let _folkNearest = Infinity;   /* v2.3.6202: past the view's half-diagonal, the nearest townsperson (_folkSheetsStep) */
 
     for (const npc of npcs) {
       if (!npc.alive) continue;
@@ -15832,8 +15867,10 @@ export class EntityRenderer {
              half-diagonal + FOLK_FAR_MARGIN has no figure: it is destroyed,
              and made again when he comes near -- a few are on a screen. */
           const _cam = S.camera, _vw = S._viewW, _vh = S._viewH;
+          const _past = (_cam && _vw > 0 && _vh > 0) ? Math.hypot(npc.x - (_cam.x + _vw / 2), npc.y - (_cam.y + _vh / 2)) - Math.hypot(_vw, _vh) / 2 : 0;   /* v2.3.6202: named, for _folkSheetsStep */
+          if (_past < _folkNearest) _folkNearest = _past;
           const _far = !!(_cam && _vw > 0 && _vh > 0)
-            && Math.hypot(npc.x - (_cam.x + _vw / 2), npc.y - (_cam.y + _vh / 2)) > Math.hypot(_vw, _vh) / 2 + FOLK_FAR_MARGIN;
+            && _past > FOLK_FAR_MARGIN;
           if (_far) {
             if (display._folk) {
               display.removeChild(display._folk);
@@ -16208,6 +16245,7 @@ export class EntityRenderer {
         this.npcDisplays.delete(id);
       }
     }
+    _folkSheetsStep(now, _folkNearest);   /* v2.3.6202 */
   }
 
   /* Combat-bar HUD above the player sprite (v2.3.107).  Three
