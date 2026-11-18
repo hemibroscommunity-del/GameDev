@@ -15,6 +15,8 @@ import { QuestSkillChip, QuestTradeChip } from './questArt.jsx'; /* v2.3.3030: t
 import { questAction, tradeChoices } from '@/game/tour.js'; /* v2.3.3525: the tour's buttons */
 import { requestRace } from '@/game/race.js'; /* v2.3.3525: Lil Bro's Race! */
 import { shopBus } from '../mobile/shopBus.js'; /* v2.3.3583: a giver who keeps a shop, his shop (game/tour.js questAction) */
+import { SAY } from '@/data/say/questPanel.js';   /* v2.3.6350: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';
 
 /* v2.3.3030: how long the claim's confirmation ("Rewards claimed!") stays
    before he offers his next quest -- long enough for the coins and the items
@@ -97,9 +99,9 @@ export function XpChooser(props) {
   var xp = props.xp, xpCat = props.xpCat, setXpCat = props.setXpCat;
   return React.createElement("div", { className: 'bt-qw-green' },
     React.createElement("div", { className: 'bt-qw-green-head' },
-      React.createElement("b", { className: 'bt-xp-payout' }, '+' + xp + ' XP'),
+      React.createElement("b", { className: 'bt-xp-payout' }, say(SAY, 'questPanel.xpPayout', { xp: xp })),
       ' ',
-      React.createElement("span", { 'data-xp-caption': '' }, 'Choose where to train it')),
+      React.createElement("span", { 'data-xp-caption': '' }, say(SAY, 'questPanel.xpHow'))),
     React.createElement("div", { className: 'bt-qw-chips' }, PROG3_SKILL_META.map(function (sk) {
       return React.createElement(QuestSkillChip, {
         key: sk.key, skill: sk.key, label: sk.label, selected: xpCat === sk.key,
@@ -124,12 +126,12 @@ export function TradeChooser(props) {
       React.createElement("b", { className: 'bt-xp-payout' }, To + '!'),
       ' ',
       React.createElement("span", { 'data-xp-caption': '' },
-        choices.length ? 'Pick the pine one he swaps' : 'Bring a Pine Bow or Pine Staff')),
+        say(SAY, choices.length ? 'questPanel.tradePick' : 'questPanel.tradeBring'))),
     React.createElement("div", { className: 'bt-qw-chips' }, ['bow', 'staff'].map(function (t) {
       var c = choices.filter(function (x) { return x.type === t; })[0];
       return React.createElement(QuestTradeChip, {
         key: t, type: t, selected: pick === t, disabled: !c,
-        label: (t === 'bow' ? 'Bow' : 'Staff') + (c && c.where === 'hand' ? ' (held)' : ''),
+        label: say(SAY, t === 'bow' ? 'questPanel.tradeBow' : 'questPanel.tradeStaff') + (c && c.where === 'hand' ? say(SAY, 'questPanel.tradeHeld') : ''),
         onClick: function () { setPick(t); },
       });
     })));
@@ -344,7 +346,7 @@ export function QuestPanel(props) {
       npcName: questPanel.quest.npc,
       text: _speech,
       action: _action,
-      ctaLabel: _isOffer ? 'See the quest' : (_canTurnIn ? 'Claim reward' : 'Close'),
+      ctaLabel: _isOffer ? say(SAY, 'questPanel.seeQuest') : say(SAY, _canTurnIn ? 'questPanel.claimReward' : 'questPanel.close'),
       /* v2.3.2289: lock the backdrop only on the face that leads to a payout.
          An offer stays dismissible (nothing is owed yet) and so does a
          progress check-in (there is nothing to lose and its CTA is 'Close'). */

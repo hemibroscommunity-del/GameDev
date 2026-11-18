@@ -4,6 +4,8 @@ import { INV, FONT } from './inventoryStyles.js';
 import { InventoryTile } from './InventoryTile.jsx';
 import { ItemTooltip, SalvageToast } from './ItemTooltip.jsx';
 import { EquippedTab } from './EquippedTab.jsx';
+import { SAY } from '@/data/say/inventorySurface.js';   /* v2.3.6349: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';
 
 const useBusVersion = () => {
   const [, setV] = useState(0);
@@ -12,11 +14,11 @@ const useBusVersion = () => {
 
 const SortSheet = ({ current, onPick, onCancel }) => {
   const opts = [
-    ['newestFirst', 'Newest first'],
-    ['oldestFirst', 'Oldest first'],
-    ['tierHigh',    'Tier (high to low)'],
-    ['tierLow',     'Tier (low to high)'],
-    ['alpha',       'Alphabetical'],
+    ['newestFirst', say(SAY, 'inventorySurface.newestFirst')],
+    ['oldestFirst', say(SAY, 'inventorySurface.oldestFirst')],
+    ['tierHigh',    say(SAY, 'inventorySurface.tierHigh')],
+    ['tierLow',     say(SAY, 'inventorySurface.tierLow')],
+    ['alpha',       say(SAY, 'inventorySurface.alpha')],
   ];
   return (
     <div onClick={onCancel} style={{
@@ -53,12 +55,12 @@ const InventoryTab = ({ onItemTap }) => {
 
   // Layer 0 chips (subset). Layer 1+ shows all owned categories.
   const allChips = [
-    { id: 'all',     label: 'All' },
-    { id: 'weapons', label: 'Weapons' },
-    { id: 'armor',   label: 'Armor' },
-    { id: 'gems',    label: 'Gems' },
-    { id: 'potions', label: 'Potions' },
-    { id: 'other',   label: 'Other' },
+    { id: 'all',     label: say(SAY, 'inventorySurface.all') },
+    { id: 'weapons', label: say(SAY, 'inventorySurface.weapons') },
+    { id: 'armor',   label: say(SAY, 'inventorySurface.armor') },
+    { id: 'gems',    label: say(SAY, 'inventorySurface.gems') },
+    { id: 'potions', label: say(SAY, 'inventorySurface.potions') },
+    { id: 'other',   label: say(SAY, 'inventorySurface.other') },
   ];
   const visibleChips = layer1
     ? allChips
@@ -66,8 +68,8 @@ const InventoryTab = ({ onItemTap }) => {
 
   const items = inventoryBus.filteredItems();
   const sortLabel = {
-    newestFirst: 'Newest first', oldestFirst: 'Oldest first',
-    tierHigh: 'Tier (high to low)', tierLow: 'Tier (low to high)', alpha: 'Alphabetical',
+    newestFirst: say(SAY, 'inventorySurface.newestFirst'), oldestFirst: say(SAY, 'inventorySurface.oldestFirst'),
+    tierHigh: say(SAY, 'inventorySurface.tierHigh'), tierLow: say(SAY, 'inventorySurface.tierLow'), alpha: say(SAY, 'inventorySurface.alpha'),
   }[inventoryBus.state.sort];
 
   return (
@@ -107,7 +109,7 @@ const InventoryTab = ({ onItemTap }) => {
         }}>
           <span style={{ fontSize: 11, color: 'rgba(238, 242, 235, 0.50)' }}>{sortLabel}</span>
           <span onClick={() => setSortOpen(true)}
-            style={{ fontSize: 11, color: 'rgba(238, 242, 235, 0.65)', cursor: 'pointer' }}>Sort ▾</span>
+            style={{ fontSize: 11, color: 'rgba(238, 242, 235, 0.65)', cursor: 'pointer' }}>{say(SAY, 'inventorySurface.sort')}</span>
         </div>
       )}
 
@@ -120,7 +122,7 @@ const InventoryTab = ({ onItemTap }) => {
           <div style={{
             padding: 24, textAlign: 'center', color: INV.textMuted,
             fontFamily: FONT.sans, fontSize: 13,
-          }}>{inventoryBus.state.search ? 'No matches' : 'Nothing here yet'}</div>
+          }}>{inventoryBus.state.search ? say(SAY, 'inventorySurface.noMatches') : say(SAY, 'inventorySurface.nothingYet')}</div>
         ) : (
           <div style={{
             display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6,
@@ -144,7 +146,7 @@ const InventoryTab = ({ onItemTap }) => {
           <input
             value={inventoryBus.state.search}
             onChange={e => inventoryBus.setSearch(e.target.value)}
-            placeholder="Search"
+            placeholder={say(SAY, 'inventorySurface.search')}
             style={{
               flex: 1, background: 'transparent', border: 'none', outline: 'none',
               color: INV.textPrimary, fontFamily: FONT.sans, fontSize: 13,
@@ -232,7 +234,7 @@ export const InventorySurface = () => {
                 color: active ? '#fff' : 'rgba(238, 242, 235, 0.62)',
                 fontFamily: FONT.sans, fontSize: 14, fontWeight: active ? 500 : 400,
               }}>
-                {t === 'inventory' ? 'Inventory' : 'Equipped'}
+                {t === 'inventory' ? say(SAY, 'inventorySurface.inventory') : say(SAY, 'inventorySurface.equipped')}
                 {t === 'inventory' && (
                   <span style={{ fontFamily: FONT.mono, fontSize: 12, color: 'rgba(238, 242, 235, 0.55)' }}>{totalCount}</span>
                 )}
