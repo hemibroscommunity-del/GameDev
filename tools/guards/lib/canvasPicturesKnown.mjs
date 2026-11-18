@@ -20,7 +20,6 @@ export const KNOWN = Object.freeze({
   'src/rendering/lookPaletteProbe.js': 2,
   'src/rendering/lootIcons.js': 2,
   'src/rendering/monsterRecolor.js': 1,
-  'src/rendering/monsterShotFx.js': 1,
   'src/rendering/nftAvatars.js': 2,
   'src/rendering/nodeLabels.js': 2,
   'src/rendering/playerSkins.js': 1,

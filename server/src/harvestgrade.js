@@ -40,7 +40,10 @@
  * to and a strike with no fingerprint is paid (botfp.js) -- never refused:
  * the node is spent and the ore and experience paid as for any good strike.
  * Counted in the player's bot record (botfp.js _botfpGradeNote: `gradeEarly`,
- * `gradeShare`) for the admin view.
+ * `gradeShare`) for the admin view.  v2.3.5902: and told to the phone, which
+ * showed "PERFECT!" and "x2" when it swung: `harvest_credit` carries the grade
+ * paid (`grade`, `qty`), and a phone against a worker advertising
+ * caps.harvestGrade says what was paid when it differs (wsClient.js).
  *
  * Not asked: a recovery strike (no start of its own: gathering.js
  * HARVEST_PROOF, at most one a player in ten minutes) has no record to time,
@@ -55,6 +58,9 @@
  * Plain functions (no `this`): gathering.js calls them with the room's
  * numbers, and the switch is liveops.js _harvestGradeOn. */
 
+/* v2.3.5902: SHARE_OF and SHARE_MAX are the PUBLIC placeholders of the hidden
+   settings GRADE_SHARE_OF and GRADE_SHARE_MAX (hidden.js): the owner's own
+   values live there.  SLACK_MS is the phone's own clocks, not a secret. */
 export const HARVEST_GRADE = {
   SLACK_MS: 100,
   SHARE_OF: 20,
@@ -77,16 +83,21 @@ export function harvestGradeEarliest(ex, c) {
  *  `earliest` from harvestGradeEarliest (null: not timed); `run` the
  *  player's last grades (1 a perfect, 0 any other), changed in place.
  *  Returns { grade, why } -- why 'early', 'share' or null. */
-export function harvestGradeJudge(claimed, now, earliest, run) {
+export function harvestGradeJudge(claimed, now, earliest, run, share) {
+  /* v2.3.5902: the share's two numbers from the hidden settings (hidden.js
+     GRADE_SHARE_OF, GRADE_SHARE_MAX; gathering.js passes the room's), these
+     the public placeholders */
+  const of = (share && share.of) || HARVEST_GRADE.SHARE_OF;
+  const max = (share && share.max) || HARVEST_GRADE.SHARE_MAX;
   let grade = claimed;
   let why = null;
   if (grade === 'perfect' && earliest != null && now < earliest) { grade = 'good'; why = 'early'; }
   if (grade === 'perfect') {
     let n = 0;
-    for (let i = Math.max(0, run.length - (HARVEST_GRADE.SHARE_OF - 1)); i < run.length; i++) n += run[i];
-    if (n >= HARVEST_GRADE.SHARE_MAX) { grade = 'good'; why = 'share'; }
+    for (let i = Math.max(0, run.length - (of - 1)); i < run.length; i++) n += run[i];
+    if (n >= max) { grade = 'good'; why = 'share'; }
   }
   run.push(grade === 'perfect' ? 1 : 0);
-  if (run.length > HARVEST_GRADE.SHARE_OF) run.splice(0, run.length - HARVEST_GRADE.SHARE_OF);
+  if (run.length > of) run.splice(0, run.length - of);
   return { grade, why };
 }

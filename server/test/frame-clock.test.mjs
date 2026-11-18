@@ -119,7 +119,8 @@ check('7. on unless the address says dtsmooth=0', frameSmoothOn('') && frameSmoo
 {
   const bt = readFileSync(join(ROOT, 'src/ui/BroTown.jsx'), 'utf8');
   check('8. the game loop steps by the clock', /var _stepMs = _frameClock \? _frameClock\.step\(_perfDelta\) : _perfDelta;\s*S\._dtScale = Math\.max\(0\.2, Math\.min\(\(_frameClock \? _stepCapMs\(\) : 50\) \* 3 \/ 50, \(_stepMs \|\| 16\.667\) \/ 16\.667\)\);/.test(bt));   /* v2.3.5233: the lane's cap */
-  check('8b. ...one clock a loop, none with the off-ramp', /if \(frameSmoothOn\(window\.location\.search \|\| ''\)\) _frameClock = makeFrameClock\(undefined, _stepCapMs\);/.test(bt));
+  /* v2.3.5342: the address from the page's one reader (game/switches.js pageAddress; card M PR 3, the planning session's answer) */
+  check('8b. ...one clock a loop, none with the off-ramp', /if \(frameSmoothOn\(pageAddress\(\)\)\) _frameClock = makeFrameClock\(undefined, _stepCapMs\);/.test(bt));
   check('8c. ...and nothing else in the loop makes the step from the frame\'s own length', (bt.match(/S\._dtScale = /g) || []).length === 1 && !/S\._dtScale = [^;]*_perfDelta/.test(bt));
 }
 

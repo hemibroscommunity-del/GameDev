@@ -231,7 +231,7 @@ function _rescueDisplacedArmor(S, slot, stashKey, incoming) {
 import { resendKeptQuests } from '@/game/questKept.js'; /* v2.3.4641: quest taps dropped while down */
 import { settleHandIns } from '@/game/questHandIn.js'; /* v2.3.4940: a refused hand-in's counters taken back */
 import { applyLocalRespawn } from '@/game/respawn.js'; /* v2.3.1822 */
-import { applyGatherHits } from '@/game/lifeSkillRewards.js'; /* v2.3.2956: the worker's gathering hits */
+import { applyGatherHits, harvestCreditShown } from '@/game/lifeSkillRewards.js'; /* v2.3.2956: the worker's gathering hits; v2.3.5902: a harvest's credit shown */
 import { applyNmlSkull, applyNmlLoss, applyNmlTake, nmlPeerSkull, applyNmlLock, nmlLockAskShow } from '@/game/noMansLand.js'; /* v2.3.3058: No man's land; v2.3.3316: + what your kill took */
 import { canBePlaced, onBodyPlace, bodyPlaceDue } from '@/game/bodyPlace.js'; /* v2.3.4455: a relaunch mid-fight lands at the body */
 import { freeSwingAsk } from '@/game/manualCombat.js'; /* v2.3.4520: the free-swing trial, asked for in the join */
@@ -3513,10 +3513,7 @@ export function setupWebSocket(ctx) {
                  formula. */
               if (!msg.payload || !S.rpg) break;
               var hc = msg.payload;
-              if (hc.shard) {
-                var _pickedHShard = shardByKey(hc.shard);
-                pushDmgPopup(S, S.player.x, S.player.y - 54, '+ ' + (_pickedHShard ? _pickedHShard.label : 'Shard'), (_pickedHShard && _pickedHShard.color) || '#cce6ff');
-              }
+              harvestCreditShown(S, hc);   /* v2.3.5902: the shard rolled, and the grade paid where it is not the one shown (lifeSkillRewards.js) */
               /* v2.3.4036: a rare fish says so -- "An albino Trout!", "A LARGE
                  Salmon!" (server fishlog.js rolls it; the bag's echo carries
                  the key) -- against a worker that rolls them */

@@ -1,40 +1,40 @@
 card: RV
-branch: claude/rv-leftovers (PR 9, stacked on claude/rv-loginkeys)
-prs: #2072, #2083 (sitting 42); #2091, #2094 (ready); PRs 5, 6, 6b (5804-5806) in their runs
+branch: claude/rv-names (PR 14, stacked on claude/rv-friends)
+prs: #2072, #2083 (sitting 42); #2091, #2094 (ready); PRs 5-11 built, in their runs
 state: ready
 
 ## Done
 
-- #2072 (5800): the review, `docs/plan/census/RV-review.md` (every road
-  and every account and social row read; 2 high, 6 medium, the rest low).
+- #2072 (5800): the review, `docs/plan/census/RV-review.md`.
 - #2083 (5801): market.js MS-2 (`mkttier`), MS-4 (`mktheal`).
-- #2091 (5802): the rise chest's stamp kept for good (MD-1, `risekeep`).
-- #2094 (5803): goods credited in the dying seconds kept (MS-3,
-  `dyingkeep`).
+- #2091 (5802): the rise chest's stamp kept for good (`risekeep`).
+- #2094 (5803): goods in the dying seconds kept (`dyingkeep`).
 
-## Next
+## Next (built, each red on main first; full runs one at a time)
 
-- PR 5 (5804): No man's land's killer paid in the victim's own write
-  (MS-1, `nmlonewrite`). `nml-onewrite.test`: 1 FAIL on main.
-- PR 6 (5805): duel.js: S1, S4, MS-6's pot (`duelpace`, `duelonewrite`).
-  `duel-pace.test`: 6 FAIL on main. `duelquiet` is K2's (eventplace.js).
-- PR 6b (5806): a muted line not shown on open; a muter away to you
-  (`storemute`, `mutehides`). `store-mute.test`: 4 FAIL on main.
+- PR 5 (5804): No man's land, one write (`nmlonewrite`).
+- PR 6 (5805): duel.js S1, S4, MS-6 (`duelpace`, `duelonewrite`).
+- PR 6b (5806): mute holds on open; a muter away (`storemute`, `mutehides`).
 - PR 7 (5807): `lookform.js`, the board, the page (S2; `?lookform=0`).
-  `lookform.test`: 3 FAIL on main. S3 and `track`'s half wait for index.js.
-- PR 8 (5808): loginkeys.js SEC-F5 (`oldkeyheld`). 1 FAIL on main.
-- PR 9 (5809): MS-5, MS-6 (`offerpend`, `leftoverheal`). 3 FAIL on main.
+- PR 8 (5808): loginkeys.js SEC-F5 (`oldkeyheld`).
+- PR 9 (5809): MS-5, MS-6 (`offerpend`, `leftoverheal`).
+- PR 11 (5811): friends.js ACC-5, SEC-F4 (`friendfix`).
+- PR 14 (5814): S6, S7 (`cleanmore`, `namestaff`). 7 FAIL on main.
+- Then: the rewind's words, the pass words, S3 and `track` (after L).
 
 ## Found
 
-- For card K2 (`join.js`, `seathold.js`): ACC-1, ACC-2, SEC-F1, ACC-3, and
-  S2's join half (K2's PR 11).
+- For card K2: ACC-1, ACC-2, SEC-F1, ACC-3, S2's join half (its PR 11);
+  `duelquiet` (its PR 12).
 - For `index.js` (K2, then card L): S2's `track` half, S3's board report.
 - For card L (`wsClient.js`): SEC-F3, the 49th chest piece.
-- `mktsettle: false` + a re-listed noted order: its cancel loses the
-  taker's escrow even with no restart (market.js; read, not shown).
+- `mktsettle: false` + a re-listed noted order loses the taker's escrow
+  on its cancel (market.js; read, not shown).
 
 ## Needs
 
+- MD-2 (5810) needs a second put of the daily record per payout: the
+  owner's (a write), or later a way without one.
+- SEC-F2 (claimed shields worn): closing it can drop a phone-only shield,
+  the owner's call (census part 2).
 - #2072: merge main in again once T2's #2071 lands (every block kept).
-- PR 7's `index.js` half waits for card L's #2058, #2065, #2067 on main.

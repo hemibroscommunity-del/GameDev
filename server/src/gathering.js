@@ -81,7 +81,8 @@ import { xpDecayMult, xpAfterDecay } from './xpdecay.js'; /* v2.3.3251: XP fades
 import { parseGemKey } from './gems.js';   /* v2.3.3516: gems are kept through a death (_keptThroughDeath) */
 import { bagGive } from './bag.js'; /* v2.3.4810: the bag door */
 import { xpGive, xpLevelUp, xpMake } from './xp.js';   /* v2.3.5289: experience and levels' door (card R PR 10) */
-import { harvestGradeEarliest, harvestGradeJudge } from './harvestgrade.js';   /* v2.3.5900: the grade judged (card K4 PR 1; `harvestgrade`, OFF) */
+import { harvestGradeEarliest, harvestGradeJudge } from './harvestgrade.js';
+import { ZONES } from './data.js';   /* v2.3.5903: a harvest's shard only for a zone that has one (TRAPS §154) */   /* v2.3.5900: the grade judged (card K4 PR 1; `harvestgrade`, OFF) */
 
 export const GATHER_HITS = {
   MS: { mining: 650, woodcutting: 540, fishing: 650, cooking: 650 },
@@ -770,7 +771,22 @@ export const gatheringMethods = {
   // can't force shard drops.
   _rollHarvestShard(zoneId) {
     if (Math.random() >= 0.33) return null;
+    /* v2.3.5903 (card K4 PR 4; V4's Found, TRAPS §154): only a zone that HAS
+       a shard -- ZONES' keys, each with its shard_<zone> item -- as the kill's
+       roll since v2.3.3170 (index.js _rollShardForKill).  The key was built
+       from whatever zone the node named, so a node in a runtime zone (a
+       dungeon instance's 'dungeon:<id>') would mint a key that is no item:
+       the game cannot name or draw it, and Diego's pricer buys each new one
+       at its empty-pile price.  Checked AFTER the roll, so a harvest draws
+       exactly the random numbers it always did.  `harvestshard: false` in
+       the live flags: the key built as before. */
+    if (!this._harvestShardOff() && !Object.prototype.hasOwnProperty.call(ZONES, zoneId)) return null;
     return 'shard_' + zoneId;
+  },
+  /* v2.3.5903: the kill switch above, the lower-case way (TRAPS §117) */
+  _harvestShardOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'harvestshard') && !f.harvestshard);
   },
 
   // Mirror of computeOpenDelay() in src/data/gameSystems.js, sans the
@@ -1406,9 +1422,11 @@ export const gatheringMethods = {
    *  perfect refused is paid `good` and counted in the bot record (botfp.js
    *  _botfpGradeNote).  The run of grades is the player's bot record's
    *  (botfp.js _botfpGradeRun: a reconnect keeps it, a deploy forgets it). */
-  _harvestGraded(session, ps, claimed, earliest, now, tm) {
+  _harvestGraded(session, claimed, earliest, now, tm) {
     if (tm || typeof this._harvestGradeOn !== 'function' || !this._harvestGradeOn()) return claimed;
-    const j = harvestGradeJudge(claimed, now, earliest, this._botfpGradeRun(session.id, now));
+    const T = typeof this._hid === 'function' ? this._hid() : null;   /* v2.3.5902: the share from the hidden settings (hidden.js) */
+    const j = harvestGradeJudge(claimed, now, earliest, this._botfpGradeRun(session.id, now),
+      T ? { of: T.GRADE_SHARE_OF, max: T.GRADE_SHARE_MAX } : null);
     if (j.why && typeof this._botfpGradeNote === 'function') this._botfpGradeNote(session.id, j.why, now);
     return j.grade;
   },
@@ -1629,7 +1647,7 @@ export const gatheringMethods = {
     /* v2.3.5900: the grade judged (harvestgrade.js: a perfect no sooner than
        an honest gesture could make it, and at most 15 in any 20 strikes);
        `harvestgrade: true` only, never a test-mode character's */
-    const gradedAccuracy = this._harvestGraded(session, ps, bot.accuracy, gradeEarliest, now, _tm);
+    const gradedAccuracy = this._harvestGraded(session, bot.accuracy, gradeEarliest, now, _tm);   /* v2.3.5902: no `ps` (unused; the gatekeeper's sitting 44) */
     const ratedAccuracy = this._ratedHarvestAccuracy(ps, gradedAccuracy);
     const invKey = this._harvestInvKey(n.nodeType, n.tierLvl);
     this._strikeRefused(session, 'paid', { invKey, nodeType: n.nodeType });
@@ -1699,6 +1717,13 @@ export const gatheringMethods = {
             shard,
             /* v2.3.4036: the fish's key and variant, for the catch's words */
             ...(fishCaught ? { fish: fishCaught } : {}),
+            /* v2.3.5902 (card K4; the gatekeeper's sitting 44): the grade
+               this strike was PAID at and what it paid -- the phone showed
+               its own grade when it swung ("PERFECT!", "x2") and, against a
+               worker with `harvestgrade` on (caps.harvestGrade), says what
+               was paid when the two differ (wsClient.js harvest_credit) */
+            grade: ratedAccuracy,
+            qty: yieldQty,
           },
         });
       } catch (e) {}
