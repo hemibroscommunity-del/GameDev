@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "87957d7f576c63ab52ba5c1d3bcc2a472b21f2d2",
+  "tree": "3997947ad5ec69e6560ac977ab4f9869932751f1",
+  "committedAt": "2026-11-18T11:37:21-08:00",
+  "subject": "Merge pull request #2242 from hemibroscommunity-del/claude/plan-wd3-14-help",
+  "files": 8433,
+  "bytes": 963085147,
+  "listingSha256": "e5a68e2859da7292bc750d947bf953f389b1e463c5309529de60a26b46b611cf",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
