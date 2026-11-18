@@ -75,6 +75,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `bowvolley` | worker | switch | v2.3.2808 | 2026-09-24 | false | logic |  | no | Un-advertises the bow's volley: a phone that joins after fires the old single arrow and blast. |
 | `?combatreset` | page | switch | v2.3.5206 | 2026-11-14 | =0 | logic |  | no | A fight you picked, a roll or a lunge, the hit marks on the ground, a kill's XP still waiting and another player's damage numbers still queued carry over a change of place again, each ending on its own clock or its own check, not at the zone door. |
 | `disable_threats` | worker | switch | v2.3.1150 | 2026-07-03 | true | logic |  | no | Thrown, every relayed threat handshake is dropped. |
+| `duelpace` | worker | switch | v2.3.5805 | 2026-11-17 | false | logic |  | no | Every duel challenge is relayed (the relay bucket its only bound), to anyone, muted or not, and a decline of nothing with its reason, as before (S1, S4). |
 | `elemup` | worker | switch | v2.3.3518 | 2026-10-20 | false | logic |  | no | Un-advertises the element bonus and takes it away. |
 | `fightdoor` | worker | switch | v2.3.5538 | 2026-11-17 | false | logic |  | no | A fight clock can be written under an id that is no string, as the lines before the fight door could have; every caller passes a session's id. |
 | `fightlockarmor` | worker | switch | v2.3.4582 | 2026-11-11 | false | logic |  | no | Armour put on or taken off in a fight is no longer refused. |
@@ -175,6 +176,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `disable_event_capes` | worker | switch | v2.3.2028 | 2026-08-27 | true | logic |  | no | Thrown, the event's capes stop dropping. |
 | `disable_offer_sweep_all` | worker | switch | v2.3.4412 | 2026-11-10 | true | logic |  | no | Thrown, the store's offer sweep goes back to the old first-20 pass. |
 | `?droplines` | page | switch | v2.3.3627 | 2026-10-27 | =0 | logic |  | no | No drop lines in the chat for what a kill drops. |
+| `duelonewrite` | worker | switch | v2.3.5805 | 2026-11-17 | false | logic |  | no | A duel's pot is paid in one write and its escrow record deleted in the next, as before (MS-6: a restart between leaves a record only the pot's stamp explains). |
 | `dyingkeep` | worker | switch | v2.3.5803 | 2026-11-17 | false | logic |  | no | Goods credited to a player in the dying seconds are wiped by the respawn, as before (MS-3: a trade confirmed after a death pays and keeps nothing). |
 | `econ` | worker | switch | v2.3.5085 | 2026-11-14 | false | logic |  | no | Nothing is counted into a character's minted and burned (`_econ`) or the day's book's economy part; gold and items move as before. |
 | `econresetput` | worker | switch | v2.3.5094 | 2026-11-14 (v2.3.5095) | false | logic |  | no | A character's restart with nobody in the room no longer writes today's book at once: the owner's card may read it as a loss until a later count. On since v2.3.5095 (the owner's yes; one put a restart in an empty room). |

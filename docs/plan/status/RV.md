@@ -1,6 +1,6 @@
 card: RV
-branch: claude/rv-nml (PR 5, stacked on claude/rv-dying)
-prs: #2072, #2083 (sitting 42); #2091 (5802, ready); PR 4 (5803, ready soon); PR 5 (5804, working)
+branch: claude/rv-duel (PR 6, stacked on claude/rv-nml)
+prs: #2072, #2083 (sitting 42); #2091 (5802); PRs 4-6 (5803-5805) in their runs
 state: ready
 
 ## Done
@@ -19,6 +19,8 @@ state: ready
   `dyingkeep`, `inbox.js` only). `dying-keep.test`: 4 FAIL without it.
 - PR 5 (5804): No man's land's killer paid in the victim's own write
   (MS-1, `nmlonewrite`). `nml-onewrite.test`: 1 FAIL on main.
+- PR 6 (5805): duel.js: S1, S4, MS-6's pot (`duelpace`, `duelonewrite`).
+  `duel-pace.test`: 6 FAIL on main. `duelquiet` sent to K2 (relay.js).
 
 ## Found
 

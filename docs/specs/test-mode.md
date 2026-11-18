@@ -77,7 +77,10 @@ switch allows it.
   prune (v2.3.5802, `inbox.js` `OP_PRUNE.KEEP`, `risekeep`); goods credited
   in the dying seconds kept through the respawn (v2.3.5803, `inbox.js`
   `_applyCreditToPs`, `dyingkeep`); No man's land's killer paid in the
-  victim's own write (v2.3.5804, `nomansland.js` `_nmlOnDeath`, `nmlonewrite`).
+  victim's own write (v2.3.5804, `nomansland.js` `_nmlOnDeath`, `nmlonewrite`);
+  a duel challenge's cards paced and a muted challenger unheard, a decline
+  only of a real challenge, the pot and its escrow's delete one write
+  (v2.3.5805, `duel.js`, `duelpace`, `duelonewrite`).
 - Every save and payment rule; the login key, the device lock, the lockouts;
   a frozen account.
 - PvP consent and **every check on a hit between players** (pvpbalance.js,
