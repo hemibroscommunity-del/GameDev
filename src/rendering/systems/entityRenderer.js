@@ -2311,21 +2311,30 @@ let _spareSkipped = 0;   /* spare-set frames not baked for want of room (QA: __b
    for KEEP_QUIET_MS, then a few go each KEEP_GAP_MS.  A source destroyed
    meanwhile (an eviction) is passed over by keepAsImage itself. */
 const KEEP_QUIET_MS = 2000, KEEP_PER_SLICE = 4, KEEP_GAP_MS = 250;
+/* v2.3.6204 (gatekeeper sitting 51's mend; CLAUDE.md §7, "a cache has a cap"):
+   under steady baking the quiet never comes, and the queue only grew, each
+   entry holding its source.  Now it holds KEEP_MAX at most (past it the oldest
+   is passed over and stays a canvas, as before v2.3.6203), and an entry asked
+   for more than KEEP_LONGEST_MS ago is kept even mid-burst, a slice at a time */
+const KEEP_MAX = 600, KEEP_LONGEST_MS = 15000;
 /* the source Texture.from(canvas) parked in Pixi's Cache for `cv`, or null */
 const _cachedSourceOf = (cv) => { try { const t = Cache.has(cv) ? Cache.get(cv) : null; return (t && t.source) || null; } catch (e) { return null; } };
 const _keepQueue = [];
 let _keepTimer = 0, _keepLastAsk = 0;
 function _afterBakes(fn) {
-  _keepQueue.push(fn);
   _keepLastAsk = performance.now();
+  _keepQueue.push({ fn, at: _keepLastAsk });
+  if (_keepQueue.length > KEEP_MAX) _keepQueue.shift();   /* v2.3.6204: the oldest stays a canvas */
   if (!_keepTimer) _keepTimer = setTimeout(_keepDrain, KEEP_QUIET_MS);
 }
 function _keepDrain() {
   _keepTimer = 0;
-  const wait = KEEP_QUIET_MS - (performance.now() - _keepLastAsk);
-  if (wait > 0) { _keepTimer = setTimeout(_keepDrain, wait); return; }
+  const now = performance.now();
+  const wait = KEEP_QUIET_MS - (now - _keepLastAsk);
+  /* v2.3.6204: not quiet yet, unless the oldest has waited KEEP_LONGEST_MS */
+  if (wait > 0 && !(_keepQueue.length && now - _keepQueue[0].at > KEEP_LONGEST_MS)) { _keepTimer = setTimeout(_keepDrain, Math.min(wait, KEEP_GAP_MS * 4)); return; }
   for (let n = 0; n < KEEP_PER_SLICE && _keepQueue.length; n++) {
-    try { _keepQueue.shift()(); } catch (e) { /* kept as a canvas */ }
+    try { _keepQueue.shift().fn(); } catch (e) { /* kept as a canvas */ }
   }
   if (_keepQueue.length) _keepTimer = setTimeout(_keepDrain, KEEP_GAP_MS);
 }
@@ -3189,18 +3198,34 @@ function _peerPrewarmIfChanged(display, sig, bodyFor, gearIds) {
 /* v2.3.3752: the same for a peer drawn from the numbers (lookArmour.js):
    their stand and jog frames asked of the worker, one at a time, in the
    background, when what they wear or how they look changes */
+/* ═══ v2.3.6204: ...A FEW MS AT A TIME (card EN PR 5; HB's census row 37) ═══
+   `await lookArmourPrewarm` gave the page back only when a frame was still
+   on the worker: one already decided (or decided on the spot) answers with a
+   promise already settled, so the loop went on in the same task, and a peer
+   coming into view in armour held the page for the whole walk over his ~150
+   frames, each `gearDrawFrame` and `lookArmourFrame` (its `matOf`,
+   `lookFrames`) on the page: 40 ms at the peer station on budget-android,
+   20.6 on hotel-laptop (docs/plan/census/HB-holds.md).  The picture is the
+   worker's already (CLAUDE.md §7's order: what is left on the page is the
+   frame's decision), so the walk now gives the page back once
+   PEER_LOOK_SLICE_MS of it has run, in a task of its own (a timeout, as
+   uploadBakedTextures' unbudgeted pass does): a requestAnimationFrame resume
+   ran each slice in the same task as the game's frame. */
+const PEER_LOOK_SLICE_MS = 4;
 async function _peerLookPrewarmIfChanged(display, sig, entriesFor, gearIds) {
   if (display._peerLookSig === sig) return;
   display._peerLookSig = sig;
   if (!_peerWorkerOk() || !gearIds.length) return;
   _peerBakeStats.queuedSets++;
   const DIRS = ['south', 'east', 'north', 'northeast', 'southwest'];
+  let t0 = performance.now();
   for (const pose of ['stand', 'jog']) {
     for (const dir of DIRS) {
       const ents = entriesFor(pose, dir);
       if (!ents) continue;
       const fc = playerFrameCount(pose, dir) || 1;
       for (let f = 0; f < fc; f++) {
+        if (performance.now() - t0 >= PEER_LOOK_SLICE_MS) { await new Promise((r) => setTimeout(r, 0)); t0 = performance.now(); }   /* v2.3.6204: a task of its own, not the frame's */
         if (display.destroyed || display._peerLookSig !== sig) return;   /* gone, or changed again */
         const worn = [];
         for (const [sl, it] of gearIds) {
