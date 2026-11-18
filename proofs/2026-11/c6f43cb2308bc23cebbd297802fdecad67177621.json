@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "c6f43cb2308bc23cebbd297802fdecad67177621",
+  "tree": "e46c8f794637497c04e9eb62797ce4c7b340b151",
+  "committedAt": "2026-11-18T08:39:18-08:00",
+  "subject": "Merge pull request #2216 from hemibroscommunity-del/claude/plan-wd2-5-skills",
+  "files": 8354,
+  "bytes": 962867403,
+  "listingSha256": "19434f6ba606777d3ff5b760997c943abf046c63bdd22c882fc440bae4a3865d",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

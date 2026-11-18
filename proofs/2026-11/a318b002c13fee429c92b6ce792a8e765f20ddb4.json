@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "a318b002c13fee429c92b6ce792a8e765f20ddb4",
+  "tree": "db3309156e8afdd74404b3ed5147cb3324ad8219",
+  "committedAt": "2026-11-18T08:38:50-08:00",
+  "subject": "Merge pull request #2213 from hemibroscommunity-del/claude/plan-wd2-2-itemcard",
+  "files": 8351,
+  "bytes": 962846642,
+  "listingSha256": "ca515e01d2139d4a115f8aa35e946732cdc46ae351fdd5262988746d3f62124c",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

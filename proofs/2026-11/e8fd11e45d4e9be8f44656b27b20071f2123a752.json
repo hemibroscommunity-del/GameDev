@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "e8fd11e45d4e9be8f44656b27b20071f2123a752",
+  "tree": "bc86077bd37fac2a54272fab8dcf6fa980825c5f",
+  "committedAt": "2026-11-18T08:39:27-08:00",
+  "subject": "Merge pull request #2217 from hemibroscommunity-del/claude/plan-wd2-6-hero",
+  "files": 8355,
+  "bytes": 962875174,
+  "listingSha256": "b5a076f580668eea1d7d0f0e286e336621d955229e59199345a707482a56e4c7",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

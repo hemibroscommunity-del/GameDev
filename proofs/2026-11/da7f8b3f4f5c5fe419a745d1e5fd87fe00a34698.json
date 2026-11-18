@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "da7f8b3f4f5c5fe419a745d1e5fd87fe00a34698",
+  "tree": "aadd66d179be3faa4e852b28799f067a9e6049b3",
+  "committedAt": "2026-11-18T08:39:00-08:00",
+  "subject": "Merge pull request #2214 from hemibroscommunity-del/claude/plan-wd2-3-paint",
+  "files": 8352,
+  "bytes": 962854172,
+  "listingSha256": "f37ac304a06533082f769c4efb38b44cec58f67d11d777f285b156bacd67ee05",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
