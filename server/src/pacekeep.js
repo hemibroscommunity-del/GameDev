@@ -36,7 +36,7 @@
  * KILL SWITCH (lower case): `pacekeep: false` in the live flags -- nothing
  * kept or read from the room: each pace is the socket's alone, as before.
  *
- * No imports: node tests it directly (server/test/pace-keep.test.mjs). */
+ * No imports: node tests it directly (server/test/rejoin-pace.test.mjs). */
 export const PACE_KEEP = Object.freeze({
   CAP: 1000,   /* as lastplace.js's LAST_PLACE.MAX: far past a room's players */
   /* the fields kept, by why (traps-saves §276's `pace` rows) */
