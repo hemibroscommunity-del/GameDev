@@ -249,9 +249,11 @@ export const _localWornSig = () => wornSigOf(getEquip('chest'), getEquip('legs')
 /* v2.3.2904: the same Texture around a crop made elsewhere (the worker's
    cropFrame): one cell at 0,0, so frame = the whole canvas, trim = where it
    sat, orig = the whole display frame. */
-export function _croppedTexture(cv, c) {
+export function _croppedTexture(cv, c, later) {
   const src = Texture.from(cv).source;   /* cached: __btTex counts it, eviction removes it (see _storeBake) */
-  keepAsImage(src, Cache, { quiet: true });   /* v2.3.6203: an image of itself, as _cropBakedFrame's (card EN PR 4) */
+  /* v2.3.6203: kept as an image of itself once the bakes are quiet (`later`:
+     the renderer's _afterBakes), as _cropBakedFrame's (card EN PR 4) */
+  if (later) later(() => keepAsImage(src, Cache, { quiet: true }));
   return new Texture({ source: src, frame: new Rectangle(0, 0, c.w, c.h),
     orig: new Rectangle(0, 0, c.fw, c.fh), trim: new Rectangle(c.tx, c.ty, c.w, c.h) });
 }
