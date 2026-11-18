@@ -3,7 +3,7 @@
  * unchanged but for the placing after the paint (`?afterpaint`, below), so BroTown.jsx's lines only fall
  * (tools/guards/four-lines.test.mjs). */
 import { playerScreenPoint } from './XpFlyOverlay.jsx';
-import { sw } from '../game/switches.js';   /* the page's one reader of its switches */
+import { AFTER_PAINT } from './afterPaint.js';   /* v2.3.6280: the switch's one reader (card HB2) */
 
 /* v2.3.4303, the owner: the prompt that appears when you walk near a building's door shows right
    above your character (over the bro's head) so it cannot be missed, in every layout.  The
@@ -23,7 +23,6 @@ import { sw } from '../game/switches.js';   /* the page's one reader of its swit
    keeps its place until the next frame's.  Decided for the owner while away (the planning session, 2026-11-18),
    ON by default; `?afterpaint=0` places it in the commit, as before.  The same switch covers the coach's and the
    band's measures (card HB's next PRs). */
-const AFTER_PAINT = (function () { try { return !sw('afterpaint'); } catch (e) { return true; } })();
 export function placeOverHead(stateRef) {
   return function (el) {
     if (!el) return;
