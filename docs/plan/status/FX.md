@@ -1,35 +1,38 @@
 card: FX
-branch: claude/plan-fx-2-effects-leaves (stacked on claude/plan-fx-1-effects-leaves)
-prs: #2190 6220 (ready), 6221 (working: draft)
+branch: claude/plan-fx-4-canvas-makers (the top; fx-2 and fx-3 under it)
+prs: #2190 6220 (merged), #2194 6221 (ready), #2200 6222 (draft), 6223 (draft)
 state: ready
 
 ## Done
 
-- #2190 (6220), ready: CI green at 381dc69 (test, playable,
-  memory-budget, lint-build). 40 level-0 leaves (census at 5ea5c7d5) + 12 constants they
-  read moved verbatim to src/rendering/leaves/effects-{look,skills,combat,
-  ui,economy,render,social}.js (52 statements, 0 not verbatim); 6 suites
-  re-keyed (planning session's Q2 (A)); npm test 557 green, questline
-  187/187, membudget as main (heap/buffers on their lines on main too).
+- #2190 (6220), merged 2026-11-18 (sitting 46): 40 level-0 leaves + 12 constants moved verbatim
+  to src/rendering/leaves/effects-*.js; 6 suites re-keyed; main ed1abc20
+  merged in (EN's #2189/#2195), M-tables.md re-generated (sitting 46).
+- #2194 (6221), ready: the 7 level-1 leaves + 2 constants; held-sweep 9.
+- #2200 (6222): ore rocks as numbers, projectile twins; artCache 13.4 ->
+  11.2 (line kept 79.3 with framePacer.js's copy: Q8), buffers line 24.2
+  -> 24.8 (net 1.7 MB less); tierore 74/74, magicburst 7/7.
+- 6223: the 7 canvas makers kept as images (keepAsImage); beam and mote
+  moved to the economy leaf; canvas-pictures 49 -> 41; effectsRenderer.js
+  has no leaf left at any level. lootbeam 10/10, wheelbreak 30/30,
+  membudget 11/11, questline 187/187.
+- heldsweep sample (lands, fight) on the whole stack: 6/6 (main: 5/6,
+  ui:GearTab 19.6 ms over).
 
 ## Next
 
-- 6221 (stacked on #2190): the 7 level-1 leaves + LEGS_LOOK_OFF and
-  MSG_MAX_LINES, verbatim (61 statements in all, 0 not verbatim);
-  held-sweep 9 re-keyed; npm test 566 green after it, questline 187/187,
-  membudget all green. Ready once CI is.
-- Then 6222 (ore numbers, projectile twins), then 6223 (canvas makers).
+- main (with #2190) merged up the stack; #2194 retargeted to main.
+  #2200 and 6223 retarget as their base merges (sitting 47).
 
 ## Found
 
 - mp-membudget fails on main on this box: heap 38.3-39.2 (line 38.5),
   buffers 24.2-24.3 (line 24.2), three runs. Not FX's lines.
-- precheck's server-tests times out here (the suite takes 11-13 min):
-  npm test run alone instead.
+- heldsweep's lands/fight sample on main (ed1abc20): ui:GearTab 19.6 ms
+  over its 12 ms line. Not FX's.
+- precheck's server-tests sometimes times out here (the suite takes
+  11-13 min): npm test run alone instead.
 
 ## Needs
 
-- #2190 clashes with EN's #2189 in M-tables.md: EN merges first; main
-  merged in when gatekeeper 46 asks (planning session, 2026-11-18).
-- 6222: answered (part 6): files outside approved, existing off-ramps
-  ?treenumbers=0 / ?p256=0, buffers measured both ways.
+- Nothing. The gatekeeper's sittings for the merges.
