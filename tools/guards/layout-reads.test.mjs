@@ -110,6 +110,19 @@ if (process.argv.includes('--write')) {
     + 'a ResizeObserver; after the paint), never a new row of ' + KNOWN_PATH : undefined);
 }
 
+/* the frame's top: its functions also called elsewhere, named (the
+   gatekeeper's sitting 51: a first reading in a render, or the `?afterpaint=0`
+   off-ramp, is allowed; a reviewer reads the line) */
+if (reads.elsewhere.length) {
+  const seen = new Map();
+  for (const e of reads.elsewhere) {
+    const k = e.file.replace(/^src\//, '') + ' > ' + e.name;
+    seen.set(k, (seen.get(k) || []).concat(e.from));
+  }
+  console.log('     note: ' + seen.size + ' function(s) measured at the top of the frame are called outside it too: '
+    + [...seen].map(([k, v]) => k + ' (from ' + [...new Set(v)].join(', ') + ')').join('; '));
+}
+
 /* 2. the count line only falls */
 {
   const n = sum(t);

@@ -7,7 +7,9 @@
  * must lay the WHOLE page out there and then, in the middle of the script
  * (docs/plan/census/HB-holds.md, "By cause": 58 to 114 ms on a slow phone).
  *
- *   readsOf(files, read?)  -> [{ file, fn, kind, approved }]
+ *   readsOf(files, read?)  -> [{ file, fn, kind, approved }], and on it
+ *     `.elsewhere`: [{ file, name, from }] each call of a frame-top function
+ *     made outside the frame's top (printed by the guard, not failed)
  *     every read in the code (esbuild's output: no comments; strings
  *     blanked by maskCode, so a name in a string or a comment is never
  *     one), with the function it sits in and its KIND (the name read:
@@ -233,8 +235,23 @@ function functionsOf(m) {
       if (w) topNames.add(w[1]);
     }
   }
-  for (const f of out) if (f.name && topNames.has(f.name)) top.push([f.a, f.b]);
-  return { fns: out, ro, top };
+  const topFns = out.filter((f) => f.name && topNames.has(f.name));
+  for (const f of topFns) top.push([f.a, f.b]);
+  /* the gatekeeper's sitting 51: such a function counts wherever ELSE it is
+     called (a render's first reading, the switch's off-ramp), so each call
+     of it outside the frame's top is named, never silently passed */
+  const elsewhere = [];
+  for (const name of new Set(topFns.map((f) => f.name))) {
+    const reN = new RegExp('(?<![\\w$.])' + name.replace(/\$/g, '\\$') + '\\(', 'g');
+    let c;
+    while ((c = reN.exec(m))) {
+      const p = c.index;
+      if (/function\s*$/.test(m.slice(Math.max(0, p - 12), p))) continue;   /* its own `function name(` */
+      if (top.some(([a, b]) => a < p && p < b)) continue;
+      elsewhere.push({ name, from: namedAt(out, p) });
+    }
+  }
+  return { fns: out, ro, top, elsewhere };
 }
 
 function namedAt(fns, p) {
@@ -251,7 +268,7 @@ export function readsOf(files = layoutFiles(), read = (f) => readFileSync(join(R
   const src = new Map(files.map((f) => [f, read(f)]));
   const named = files.filter((f) => WORDS.test(src.get(f)));
   const code = compile(named, (f) => src.get(f));
-  const out = [];
+  const out = [], elsewhere = [];
   for (const f of named) {
     const m = maskCode(code.get(f));
     let fr = null;
@@ -270,7 +287,9 @@ export function readsOf(files = layoutFiles(), read = (f) => readFileSync(join(R
         out.push({ file: f, fn, kind, approved });
       }
     }
+    if (fr) for (const e of fr.elsewhere) elsewhere.push({ file: f, ...e });
   }
+  out.elsewhere = elsewhere;   /* frame-top functions also called outside the frame's top */
   return out;
 }
 
