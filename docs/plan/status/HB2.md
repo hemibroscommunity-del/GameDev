@@ -1,5 +1,5 @@
 card: HB2
-branch: claude/plan-hb2-2-band (and -3-taps, -4-geartab, -5-p256)
+branch: claude/plan-hb2-2-band
 prs: #2224 (6280): ready; 6281, 6282, 6283: opening (stacked); 6284: draft
 state: ready
 
