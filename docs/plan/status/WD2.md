@@ -1,6 +1,6 @@
 card: WD2
-branch: claude/plan-wd2-6-hero (one PR a branch, claude/plan-wd2-*, each stacked on the last)
-prs: #2211 (6320), PR 2 (6321), PR 3 (6322), PR 4 (6323), PR 5 (6324), PR 6 (6325) -- open as drafts, stacked
+branch: claude/plan-wd2-7-codex (one PR a branch, claude/plan-wd2-*, each stacked on the last)
+prs: #2211 (6320), PR 2 (6321), PR 3 (6322), PR 4 (6323), PR 5 (6324), PR 6 (6325), PR 7 (6326) -- open as drafts, stacked
 state: working
 
 ## Done
@@ -10,6 +10,7 @@ state: working
 - PR 4 (6323) : TradeWindowPanel; DEPLOYS (owner-icons 3b)
 - PR 5 (6324) : SkillsPanel (both files)
 - PR 6 (6325) : HeroExpanded
+- PR 7 (6326) : MonsterCodex
 
 ## Next
 - the PRs above opened one at a time as each passes precheck; then DailySpin + GameApp (6331), and the report of what is left per wave
