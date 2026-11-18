@@ -1,6 +1,6 @@
 card: WD3
-branch: claude/plan-wd3-10-bag (one PR a branch, claude/plan-wd3-N-<what>, each stacked on the last, base main)
-prs: PR 1 (6340, working), PR 2 (6341, working), PR 3 (6342, working), PR 4 (6343, working), PR 5 (6344, working), PR 6 (6345, working), PR 7 (6346, working), PR 8 (6347, working), PR 9 (6348, working), PR 10 (6349, working)
+branch: claude/plan-wd3-11-quests (one PR a branch, claude/plan-wd3-N-<what>, each stacked on the last, base main)
+prs: PR 1 (6340, working), PR 2 (6341, working), PR 3 (6342, working), PR 4 (6343, working), PR 5 (6344, working), PR 6 (6345, working), PR 7 (6346, working), PR 8 (6347, working), PR 9 (6348, working), PR 10 (6349, working), PR 11 (6350, working)
 state: working
 
 ## Done (in place on the page 4120 -> ...; worker 385 unchanged)
@@ -14,9 +14,10 @@ state: working
 - PR 8 (6347): crafting: FeedSeedPanel, EnchantPanel, ShardCrackPanel, WoodworkPanel, GemWorksPanel, GemcutPanel; -> 3309.
 - PR 9 (6348): shops: StoreChatPanel, StorePanel, BankPanel, ShopkeeperPanel, VendorPanel (ExchangePanel left: store-sell-tap runs its body); -> 3201.
 - PR 10 (6349): the bag: ItemTooltip, InventoryPanel x2, InventorySurface, ChestReveal; -> 3113.
+- PR 11 (6350): quests: QuestJournalPage, QuestOfferPanel, QuestCard, QuestsPanel, QuestPanel, QuestDetailPanel; -> 3050.
 
 ## Next
-- PR 11: the next screens of W1, biggest first (one system a PR).
+- PR 12: the next screens of W1, biggest first (one system a PR).
 
 ## Found
 - "tap" now "click" on a computer (CLAUDE.md §7; phone unchanged): DailyRewardsWindow 'Not your thing? Tap ↻ to swap...'.
