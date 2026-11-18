@@ -753,30 +753,9 @@ export class MonsterShotFx {
     const counts = { drop: 0, ember: 0, smoke: 0 };
     for (const p of this._parts) counts[p.kind] = (counts[p.kind] || 0) + 1;
     const layerOf = (s) => (s && s.parent ? (s.parent === this.particleLayer ? 'particles' : s.parent === this.groundLayer ? 'ground' : s.parent === this.entityLayer ? 'entities' : (s.parent.label || 'other')) : null);
-    /* v2.3.5982: what each atlas is drawn from now (an image of itself, or
-       its canvas) and how many of its pixels are lit -- read on a scratch
-       canvas here, in this QA probe only, never in play */
-    const lit = (src) => {
-      const r = src && src.resource;
-      if (!r) return null;
-      const w = r.naturalWidth || r.width || 0, h = r.naturalHeight || r.height || 0;
-      let n = null;
-      try {
-        const cv = document.createElement('canvas');
-        cv.width = w; cv.height = h;
-        const g = cv.getContext('2d');
-        g.drawImage(r, 0, 0);
-        const d = g.getImageData(0, 0, w, h).data;
-        n = 0;
-        for (let i = 3; i < d.length; i += 4) if (d[i]) n++;
-        cv.width = 0; cv.height = 0;
-      } catch (e) { /* unread */ }
-      return { from: r.tagName ? String(r.tagName).toLowerCase() : 'canvas', w, h, lit: n };
-    };
     return {
       ready: !!_atlas,
       atlasBytes: _atlas ? _atlas.bytes : 0,
-      atlases: _atlas ? [lit(_atlas.pieces.shadow && _atlas.pieces.shadow.tex.source), lit(_atlas.glow && _atlas.glow.tex.source)] : null,
       shots: [...this._shots.values()].map((rec) => ({
         ownerId: rec.sp.ownerId || null, arch: rec.look.arch, style: rec.look.style, tint: rec.look.tint,
         px: +(((rec.look.style === 'fire' ? rec.set.Rh : rec.set.R) * 2 * ART_PX)).toFixed(1),
