@@ -4,6 +4,8 @@ import { dashMinBus } from '../dashMinBus.js';
 import { swallowTapClick } from '../../swallowTapClick.js';
 import { bandCloseW } from '../sheet/sheetGeometry.js';   /* v2.3.4172: CLOSE's width, kept by the row; v2.3.4393: 48 under 375 px */
 import { playVw } from '../playViewport.js';
+import { SAY } from '@/data/say/bandGrip.js';   /* v2.3.6344: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';
 
 /* ═══ v2.3.4172: THE SLIM HANDLE ON THE BAND'S TOP EDGE ═══
    The owner adopted this from the review of his dashboard: "remove the large
@@ -48,9 +50,9 @@ export const BandGrip = ({ min, expanded }) => (
     type="button"
     className="bt-band-grip"
     data-dash-fold={min ? 'min' : 'open'}
-    aria-label={min ? 'Expand dashboard' : 'Minimize dashboard'}
+    aria-label={say(SAY, min ? 'bandGrip.expand' : 'bandGrip.minimize')}
     aria-expanded={!min}
-    title={min ? 'Expand dashboard' : 'Minimize dashboard'}
+    title={say(SAY, min ? 'bandGrip.expand' : 'bandGrip.minimize')}
     onPointerDown={(e) => e.stopPropagation()}
     onPointerUp={(e) => {
       e.stopPropagation();
@@ -124,7 +126,7 @@ export const BandClose = ({ min, expanded, h }) => (
     type="button"
     className="bt-chisel bt-chisel--chip bt-band-close"
     data-dash-close={min ? 'min' : 'open'}
-    aria-label={min ? 'Expand dashboard' : (expanded ? 'Close' : 'Minimize dashboard')}
+    aria-label={say(SAY, min ? 'bandGrip.expand' : (expanded ? 'bandGrip.close' : 'bandGrip.minimize'))}
     aria-expanded={!min}
     onPointerDown={(e) => e.stopPropagation()}
     onPointerUp={(e) => {
@@ -156,5 +158,5 @@ export const BandClose = ({ min, expanded, h }) => (
       touchAction: 'manipulation',
       WebkitTapHighlightColor: 'transparent',
     }}
-  >{min ? 'OPEN' : 'CLOSE'}</button>
+  >{say(SAY, min ? 'bandGrip.openWord' : 'bandGrip.closeWord')}</button>
 );
