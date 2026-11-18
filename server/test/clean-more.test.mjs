@@ -22,6 +22,8 @@
  *      (bad-name); "Biscuit": taken;
  *   3. a new alliance name "BroTown Staff", stacked marks, the tag "GM":
  *      refused; an honest name and tag: allowed by the rule;
+ *   3e. (sitting 44's review) only a CHANGED name or tag: a stored one that
+ *      now reads as staff keeps its name and may change its tag;
  *   4. the switches off: as before.
  *
  * Red on main before this change: 7 checks fail (1a, 1b, 1c, 2a, 2b, 3a, 3c).
@@ -84,6 +86,11 @@ async function petAnswer(r, name) {
   check('3b. "BroTown Staff" and the tag "GM" read as staff', nameReadsAsStaff('BroTown Staff') && nameReadsAsStaff('GM'));
   check('3c. stacked marks and a blank filler are refused by the alliance rule\'s pattern', /\p{Default_Ignorable_Code_Point}|\p{M}{3,}/u.test('Ab́́́cd') && /\p{Default_Ignorable_Code_Point}|\p{M}{3,}/u.test('ㅤTeam') && guarded);
   check('3d. an honest alliance name and tag pass it', !nameReadsAsStaff('River Wolves') && !nameReadsAsStaff('RWLF'));
+  /* sitting 44's review (decided for the owner while away): only a name or
+     tag that CHANGES is held to it -- a stored "Team Bro" keeps its name and
+     may change its tag -- and the marks are counted after NFC */
+  const grand = /name !== a\.name && \([\s\S]{0,120}nameReadsAsStaff\(name\)/.test(src) && /tag !== a\.tag && nameReadsAsStaff\(tag\)/.test(src) && /normalize\('NFC'\)/.test(src);
+  check('3e. only a changed name or tag is held to the rule (a stored one is grandfathered); marks counted after NFC', grand);
 }
 
 await settle();
