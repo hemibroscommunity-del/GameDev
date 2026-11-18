@@ -1,6 +1,6 @@
 card: HB
 branch: claude/plan-hb-3-reportmem
-prs: #2188 (6240, the map): merged; #2199 (6241, the band's geometry): ready; #? (6242, the report's memory read): draft
+prs: #2188 (6240, the map): merged; #2199 (6241, the band's geometry): ready; #2201 (6242, the report's memory read): draft
 state: working
 
 ## Done
