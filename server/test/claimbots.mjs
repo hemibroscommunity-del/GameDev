@@ -341,12 +341,16 @@ export async function liarBowLabel(W, ph, take, opts = {}) {
   await combatStart(W, ph, 'bow');
   while (!ph.over) {
     const ps = W.ps(PID);
-    const reach = W.room._hitReach ? W.room._hitReach(ps, 'ranged', ph.now) - 1 : 1489;
+    /* v2.3.5901: with the bow's reach (bowshot.js, `bowreach`) a claim on an
+       arrow seen is held to the arrow's flight from where it left: the liar
+       that sends its relays stands that far off */
+    const full = W.room._hitReach ? W.room._hitReach(ps, 'ranged', ph.now) - 1 : 1489;
+    const reach = opts.shots && W.room._bowReachOn && W.room._bowReachOn() ? Math.min(full, W.room._hitArrowReach(ps) - 1) : full;
     const inReach = alive(W).filter((m) => dist(m, ps) <= reach).sort((p, q) => dist(p, ps) - dist(q, ps));
     if (!inReach.length) {
       const a = alive(W).sort((p, q) => dist(p, ph) - dist(q, ph))[0];
       if (!a) { await ph.wait(500); continue; }
-      await ph.walkTo(() => a.x, () => a.y, { speed: 480, stop: reach - 40, honest: false });
+      await ph.walkTo(() => a.x, () => a.y, { speed: opts.speed || 480, stop: reach - 40, honest: false });   /* v2.3.5901: `opts.speed`, the bow's claim alone at an honest walk (the move's claim apart, as 2d's sword) */
       continue;
     }
     for (const m of inReach.slice(0, 5)) {
