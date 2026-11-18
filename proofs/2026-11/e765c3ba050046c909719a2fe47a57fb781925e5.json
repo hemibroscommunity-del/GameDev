@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "e765c3ba050046c909719a2fe47a57fb781925e5",
+  "tree": "d6a51bf492a7b0266bf0a67223189fe4fe881a61",
+  "committedAt": "2026-11-18T03:14:20-08:00",
+  "subject": "Merge pull request #2203 from hemibroscommunity-del/claude/plan-fx-4-canvas-makers",
+  "files": 8339,
+  "bytes": 962764362,
+  "listingSha256": "8414f51b53046142fd8fd038d4a76141e8af45362c01d26304b79fe324545c73",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

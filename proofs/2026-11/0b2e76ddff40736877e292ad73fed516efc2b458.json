@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "0b2e76ddff40736877e292ad73fed516efc2b458",
+  "tree": "fb3312ade9864316769ce00d71c2810079823a50",
+  "committedAt": "2026-11-18T03:13:51-08:00",
+  "subject": "Merge pull request #2202 from hemibroscommunity-del/claude/plan-hb-4-pacermem",
+  "files": 8336,
+  "bytes": 962638743,
+  "listingSha256": "af5729e60d52e0c3402b470d6b28cb1e7a5d03eb938df56e758a14b9990defeb",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

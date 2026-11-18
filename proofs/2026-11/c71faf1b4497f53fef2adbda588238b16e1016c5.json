@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "c71faf1b4497f53fef2adbda588238b16e1016c5",
+  "tree": "995aca004b3ea9c95b4c0c2313fd56b587a5c551",
+  "committedAt": "2026-11-18T03:14:11-08:00",
+  "subject": "Merge pull request #2200 from hemibroscommunity-del/claude/plan-fx-3-ore-projectiles",
+  "files": 8339,
+  "bytes": 962762337,
+  "listingSha256": "d68017e7e28101f5c557e9995ac3f798c04544a008bd3d8784e6338e69ef14dd",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
