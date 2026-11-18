@@ -8,16 +8,16 @@ yet: this is the count a later card moves into one table (`docs/specs/player-wor
 
 | | strings |
 |---|---|
-| player-facing, all | 7486 |
+| player-facing, all | 7501 |
 | ...in a table (`src/data/*`, `deskWords()`) | 2164 |
-| ...written in place on the page | 4941 |
-| ...written in place on the worker (`server/src`) | 381 |
-| ...sure (`yes`) / unclear, counted (`?`) | 4496 / 2990 |
-| developer-only (Test panel, `src/debug`, mock data): not player-facing, total only | 3110 |
+| ...written in place on the page | 4953 |
+| ...written in place on the worker (`server/src`) | 384 |
+| ...sure (`yes`) / unclear, counted (`?`) | 4509 / 2992 |
+| developer-only (Test panel, `src/debug`, mock data): not player-facing, total only | 3132 |
 | flag: "Wheel" a player reads | 1 |
 | flag: "remnant(s)" a player reads | 0 |
-| flag: "tap" outside `deskWords()` | 96 |
-| files read | 1163 |
+| flag: "tap" outside `deskWords()` | 97 |
+| files read | 1173 |
 
 ## How it reads
 
@@ -100,12 +100,12 @@ One row a screen (a file under `src/ui/`; the rest by its folder), largest first
 | FeedSeedPanel | 1 | 34 | 0 | 0 | 3 | 0 | 0 | 0 |
 | FeedbackPanel | 2 | 34 | 0 | 0 | 9 | 0 | 0 | 0 |
 | game: dailyRewards | 1 | 34 | 0 | 0 | 34 | 0 | 0 | 0 |
+| server: restore | 1 | 0 | 0 | 34 | 0 | 0 | 0 | 0 |
 | EnchantPanel | 1 | 33 | 0 | 0 | 25 | 0 | 0 | 0 |
 | NmlBadge | 1 | 29 | 4 | 0 | 2 | 0 | 0 | 1 |
 | StorePanel | 1 | 31 | 2 | 0 | 12 | 0 | 0 | 0 |
 | SettingsPanel | 1 | 31 | 1 | 0 | 1 | 0 | 0 | 1 |
 | ShardCrackPanel | 1 | 32 | 0 | 0 | 4 | 0 | 0 | 0 |
-| server: restore | 1 | 0 | 0 | 32 | 0 | 0 | 0 | 0 |
 | EconCard | 1 | 31 | 0 | 0 | 2 | 0 | 0 | 0 |
 | StoreChatPanel | 1 | 31 | 0 | 0 | 5 | 0 | 0 | 0 |
 | AboutPanel | 1 | 30 | 0 | 0 | 0 | 0 | 0 | 0 |
@@ -166,6 +166,7 @@ One row a screen (a file under `src/ui/`; the rest by its folder), largest first
 | T2Panel | 1 | 15 | 0 | 0 | 2 | 0 | 0 | 0 |
 | game: bank | 1 | 15 | 0 | 0 | 11 | 0 | 0 | 0 |
 | game: clientOff | 1 | 15 | 0 | 0 | 0 | 0 | 0 | 0 |
+| game: frameSteps | 1 | 15 | 0 | 0 | 0 | 0 | 0 | 1 |
 | networking: broWallet | 1 | 15 | 0 | 0 | 7 | 0 | 0 | 0 |
 | QuestOfferPanel | 1 | 14 | 0 | 0 | 4 | 0 | 0 | 0 |
 | RaceHud | 1 | 14 | 0 | 0 | 0 | 0 | 0 | 0 |
@@ -189,6 +190,7 @@ One row a screen (a file under `src/ui/`; the rest by its folder), largest first
 | data: wheelStageLooks | 1 | 0 | 13 | 0 | 0 | 0 | 0 | 0 |
 | game: emoteMoves | 1 | 13 | 0 | 0 | 0 | 0 | 0 | 0 |
 | game: gesturePose | 1 | 13 | 0 | 0 | 13 | 0 | 0 | 0 |
+| game: lifeSkillRewards | 1 | 13 | 0 | 0 | 9 | 0 | 0 | 0 |
 | game: noMansLand | 1 | 13 | 0 | 0 | 13 | 0 | 0 | 0 |
 | game: silenceOwner | 1 | 13 | 0 | 0 | 5 | 0 | 0 | 1 |
 | game: tour | 1 | 13 | 0 | 0 | 11 | 0 | 0 | 0 |
@@ -196,14 +198,13 @@ One row a screen (a file under `src/ui/`; the rest by its folder), largest first
 | gearSellReason | 1 | 13 | 0 | 0 | 9 | 0 | 0 | 0 |
 | server: spar | 1 | 0 | 0 | 13 | 0 | 0 | 0 | 0 |
 | CookPanel | 1 | 11 | 1 | 0 | 11 | 0 | 0 | 0 |
+| DeviceScreen | 1 | 12 | 0 | 0 | 6 | 0 | 0 | 2 |
 | ElemStatusChips | 1 | 12 | 0 | 0 | 0 | 0 | 0 | 0 |
 | EquippedTab | 1 | 11 | 1 | 0 | 0 | 0 | 0 | 0 |
 | SilenceButtons | 1 | 12 | 0 | 0 | 1 | 0 | 0 | 1 |
 | TownBoardPage | 1 | 12 | 0 | 0 | 0 | 0 | 0 | 0 |
 | TrapCatchCard | 1 | 12 | 0 | 0 | 0 | 0 | 0 | 0 |
-| game: lifeSkillRewards | 1 | 12 | 0 | 0 | 8 | 0 | 0 | 0 |
 | game: renameOwner | 1 | 12 | 0 | 0 | 9 | 0 | 0 | 1 |
-| DeviceScreen | 1 | 11 | 0 | 0 | 6 | 0 | 0 | 2 |
 | JourneyPanel | 1 | 10 | 1 | 0 | 5 | 0 | 0 | 0 |
 | PinCards | 1 | 10 | 1 | 0 | 2 | 0 | 0 | 0 |
 | QuestsPanel | 1 | 10 | 1 | 0 | 0 | 0 | 0 | 0 |
@@ -237,6 +238,7 @@ One row a screen (a file under `src/ui/`; the rest by its folder), largest first
 | data: shards | 1 | 0 | 9 | 0 | 0 | 0 | 0 | 0 |
 | deskTeach | 1 | 9 | 0 | 0 | 7 | 0 | 0 | 0 |
 | game: charName | 1 | 9 | 0 | 0 | 2 | 0 | 0 | 0 |
+| game: friendErrors | 1 | 9 | 0 | 0 | 9 | 0 | 0 | 0 |
 | game: ride | 1 | 9 | 0 | 0 | 9 | 0 | 0 | 0 |
 | rendering: lookPalette | 1 | 9 | 0 | 0 | 5 | 0 | 0 | 0 |
 | rendering: patternCatalog | 1 | 9 | 0 | 0 | 0 | 0 | 0 | 0 |
@@ -248,7 +250,6 @@ One row a screen (a file under `src/ui/`; the rest by its folder), largest first
 | TrapsTab | 1 | 8 | 0 | 0 | 3 | 0 | 0 | 0 |
 | data: elemWindup | 1 | 0 | 8 | 0 | 0 | 0 | 0 | 0 |
 | game: characterRecord | 1 | 8 | 0 | 0 | 8 | 0 | 0 | 0 |
-| game: friendErrors | 1 | 8 | 0 | 0 | 8 | 0 | 0 | 0 |
 | game: rest | 1 | 8 | 0 | 0 | 4 | 0 | 0 | 0 |
 | rendering: eyewearCatalog | 1 | 8 | 0 | 0 | 0 | 0 | 0 | 0 |
 | rendering: hairCatalog | 1 | 8 | 0 | 0 | 0 | 0 | 0 | 0 |
@@ -279,7 +280,6 @@ One row a screen (a file under `src/ui/`; the rest by its folder), largest first
 | data: hardenCosts | 1 | 0 | 6 | 0 | 6 | 0 | 0 | 0 |
 | data: salvage | 1 | 0 | 6 | 0 | 3 | 0 | 0 | 0 |
 | game: dropLines | 1 | 6 | 0 | 0 | 0 | 0 | 0 | 0 |
-| game: frameSteps | 1 | 6 | 0 | 0 | 0 | 0 | 0 | 0 |
 | game: killRoll | 1 | 6 | 0 | 0 | 6 | 0 | 0 | 0 |
 | game: mayorTalk | 1 | 6 | 0 | 0 | 6 | 0 | 0 | 0 |
 | game: nmlAsk | 1 | 6 | 0 | 0 | 1 | 0 | 0 | 3 |
@@ -423,6 +423,7 @@ One row a screen (a file under `src/ui/`; the rest by its folder), largest first
 | server: inbox | 1 | 0 | 0 | 2 | 0 | 0 | 0 | 0 |
 | server: index | 1 | 0 | 0 | 2 | 0 | 0 | 0 | 0 |
 | server: killroll | 1 | 0 | 0 | 2 | 0 | 0 | 0 | 0 |
+| server: loginspin | 1 | 0 | 0 | 2 | 0 | 0 | 0 | 0 |
 | server: risechest | 1 | 0 | 0 | 2 | 0 | 0 | 0 | 0 |
 | server: skillpoints | 1 | 0 | 0 | 2 | 0 | 0 | 0 | 0 |
 | server: testmode | 1 | 0 | 0 | 2 | 0 | 0 | 0 | 0 |
@@ -482,7 +483,6 @@ One row a screen (a file under `src/ui/`; the rest by its folder), largest first
 | server: econcard | 1 | 0 | 0 | 1 | 0 | 0 | 0 | 0 |
 | server: fightlock | 1 | 0 | 0 | 1 | 0 | 0 | 0 | 0 |
 | server: leaderboard | 1 | 0 | 0 | 1 | 0 | 0 | 0 | 0 |
-| server: loginspin | 1 | 0 | 0 | 1 | 0 | 0 | 0 | 0 |
 | server: migrations | 1 | 0 | 0 | 1 | 0 | 0 | 0 | 0 |
 | server: origin | 1 | 0 | 0 | 1 | 0 | 0 | 0 | 0 |
 | server: publicreads | 1 | 0 | 0 | 1 | 0 | 0 | 0 | 0 |
@@ -498,7 +498,7 @@ One row a screen (a file under `src/ui/`; the rest by its folder), largest first
 
 CLAUDE.md §1: on screen it is "BroTown", the "World map", "the world". Not fixed here (card WD moves no words).
 
-- `src/ui/BroTown.jsx:9045` (BroTown (the game page), ?) `the Wheel's ground gone,`
+- `src/ui/BroTown.jsx:9048` (BroTown (the game page), ?) `the Wheel's ground gone,`
 
 ## Flag: "remnant(s)" a player reads
 
@@ -525,8 +525,8 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `src/ui/mobile/DailyRewardsWindow.jsx:240` (DailyRewardsWindow, yes) `Not your thing? Tap ↻ to swap one quest for another (once a day).`
 - `src/ui/panels/DesignGallery.jsx:149` (DesignGallery, yes) `Tap one to put it on your`
 - `src/ui/panels/DesignGallery.jsx:149` (DesignGallery, yes) `. It replaces what is there — one tap of Undo brings it back.`
-- `src/ui/DeviceScreen.js:65` (DeviceScreen, ?) `Once they have, tap Try again within 30 minutes.`
-- `src/ui/DeviceScreen.js:70` (DeviceScreen, ?) `Then tap Use a Login Key and type the new one.`
+- `src/ui/DeviceScreen.js:76` (DeviceScreen, ?) `Then tap Use a Login Key and type it.`
+- `src/ui/DeviceScreen.js:81` (DeviceScreen, ?) `Then tap Use a Login Key and type the new one.`
 - `src/ui/GameApp.jsx:659` (GameApp, ?) `tap logging ON — tap a monster, watch console`
 - `src/ui/GameApp.jsx:660` (GameApp, ?) `tap logging OFF`
 - `src/ui/GameApp.jsx:661` (GameApp, ?) `tap <on\|off>`
@@ -584,6 +584,7 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `src/data/gameSystems.js:8308` (data: gameSystems, ?) `I won again! Tap Race! to try again. Farmer Bro's Zoom Juice makes you run faster, so d...`
 - `src/data/gameSystems.js:8309` (data: gameSystems, ?) `wins for me! Don't give up. Drink Zoom Juice from your Bag and sprint the whole way. Ta...`
 - `src/data/trapping.js:377` (data: trapping, yes) `Tap again to confirm`
+- `src/game/frameSteps.js:74` (game: frameSteps, yes) `tap`
 - `src/game/nmlAsk.js:391` (game: nmlAsk, yes) `tap`
 - `src/game/nmlAsk.js:400` (game: nmlAsk, yes) `tap`
 - `src/game/nmlAsk.js:496` (game: nmlAsk, yes) `tap`
@@ -666,22 +667,22 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `src/ui/account/AccountLoginForm.jsx:19` P? `Login isn't available right now — try again later.`
 - `src/ui/account/AccountLoginForm.jsx:20` P? `That doesn’t look like a Login Key.`
 - `src/ui/account/AccountLoginForm.jsx:21` P? `You're already playing as this character.`
-- `src/ui/account/AccountLoginForm.jsx:24` P? `This character can only be played on a device it was played on before. To play it here,...`
-- `src/ui/account/AccountLoginForm.jsx:27` P? `This character has a new Login Key now. Use the new one: it’s on the Account card of a ...`
-- `src/ui/account/AccountLoginForm.jsx:144` P `Found it!`
-- `src/ui/account/AccountLoginForm.jsx:147` P `Continue as your`
-- `src/ui/account/AccountLoginForm.jsx:147` P `Lv`
-- `src/ui/account/AccountLoginForm.jsx:147` P `character`
-- `src/ui/account/AccountLoginForm.jsx:151` P `The character currently on this device will be signed out. Its Login Key is`
-- `src/ui/account/AccountLoginForm.jsx:152` P `— save it first if you ever want to come back to it.`
-- `src/ui/account/AccountLoginForm.jsx:166` P `Switching…`
-- `src/ui/account/AccountLoginForm.jsx:166` P `Continue`
-- `src/ui/account/AccountLoginForm.jsx:176` P `Cancel`
-- `src/ui/account/AccountLoginForm.jsx:195` P `Continue a character from another device`
-- `src/ui/account/AccountLoginForm.jsx:202` P `type your Login Key…`
-- `src/ui/account/AccountLoginForm.jsx:230` P `Joining…`
-- `src/ui/account/AccountLoginForm.jsx:230` P `Checking…`
-- `src/ui/account/AccountLoginForm.jsx:230` P `Log in`
+- `src/ui/account/AccountLoginForm.jsx:26` P? `This character can only be played on a device it was played on before, or with its new ...`
+- `src/ui/account/AccountLoginForm.jsx:29` P? `This character has a new Login Key now. Use the new one: it’s on the Account card of a ...`
+- `src/ui/account/AccountLoginForm.jsx:146` P `Found it!`
+- `src/ui/account/AccountLoginForm.jsx:149` P `Continue as your`
+- `src/ui/account/AccountLoginForm.jsx:149` P `Lv`
+- `src/ui/account/AccountLoginForm.jsx:149` P `character`
+- `src/ui/account/AccountLoginForm.jsx:153` P `The character currently on this device will be signed out. Its Login Key is`
+- `src/ui/account/AccountLoginForm.jsx:154` P `— save it first if you ever want to come back to it.`
+- `src/ui/account/AccountLoginForm.jsx:168` P `Switching…`
+- `src/ui/account/AccountLoginForm.jsx:168` P `Continue`
+- `src/ui/account/AccountLoginForm.jsx:178` P `Cancel`
+- `src/ui/account/AccountLoginForm.jsx:197` P `Continue a character from another device`
+- `src/ui/account/AccountLoginForm.jsx:204` P `type your Login Key…`
+- `src/ui/account/AccountLoginForm.jsx:232` P `Joining…`
+- `src/ui/account/AccountLoginForm.jsx:232` P `Checking…`
+- `src/ui/account/AccountLoginForm.jsx:232` P `Log in`
 
 ### AccountPanel (10)
 
@@ -960,124 +961,124 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `src/ui/BroTown.jsx:4297` P? `already owed`
 - `src/ui/BroTown.jsx:4347` P? `pictures read back empty (`
 - `src/ui/BroTown.jsx:4349` P? `pictures emptied at a black screen --`
-- `src/ui/BroTown.jsx:5086` P? `YOU DIED`
-- `src/ui/BroTown.jsx:5135` P `Fists`
-- `src/ui/BroTown.jsx:5760` P? `Resting... (3s)`
-- `src/ui/BroTown.jsx:5771` P? `Fully Rested!`
-- `src/ui/BroTown.jsx:5772` P? `+10% XP for 30 min`
-- `src/ui/BroTown.jsx:6845` P `Campfire`
-- `src/ui/BroTown.jsx:7399` P? `BAG FULL -> sold`
-- `src/ui/BroTown.jsx:7411` P? `PET -> sold`
-- `src/ui/BroTown.jsx:7416` P `G`
-- `src/ui/BroTown.jsx:7560` T `I have a task for you! Tap me.`
-- `src/ui/BroTown.jsx:7833` P `ended`
-- `src/ui/BroTown.jsx:7854` P? `War ended in a TIE!`
-- `src/ui/BroTown.jsx:7854` P? `WAR WON!`
-- `src/ui/BroTown.jsx:7854` P? `War lost...`
-- `src/ui/BroTown.jsx:9045` P? `the Wheel's ground gone,`
-- `src/ui/BroTown.jsx:9048` P? `% lit, strike`
-- `src/ui/BroTown.jsx:9069` P? `black on first join, still dark after rebuild -- reloading into game`
-- `src/ui/BroTown.jsx:9073` P? `world dark 20s despite rebuild -- reloading into game`
-- `src/ui/BroTown.jsx:9231` P? `ARENA MATCH! vs`
-- `src/ui/BroTown.jsx:9450` P? `Pull back and let go`
-- `src/ui/BroTown.jsx:9450` P? `Flick to shoot`
-- `src/ui/BroTown.jsx:9450` P? `Swipe to swing`
-- `src/ui/BroTown.jsx:9568` P? `Zzz... Stats restored!`
-- `src/ui/BroTown.jsx:9569` P? `Well Rested +10% XP (30min)`
-- `src/ui/BroTown.jsx:9642` P? `Need raw fish`
-- `src/ui/BroTown.jsx:9893` P? `Lighting fire…`
-- `src/ui/BroTown.jsx:9947` P? `HP full`
-- `src/ui/BroTown.jsx:9996` P? `cooked fish`
-- `src/ui/BroTown.jsx:10619` P? `button, a[href], input, select, textarea, label, summary,`
-- `src/ui/BroTown.jsx:10620` P? `[role="button"], [role="tab"], [role="link"], [role="menuitem"], [role="option"],`
-- `src/ui/BroTown.jsx:10621` P? `[role="checkbox"], [role="switch"], [role="slider"], [data-bag-key], [data-gear]`
-- `src/ui/BroTown.jsx:10727` P? `Too far away!`
-- `src/ui/BroTown.jsx:10738` P? `Too far away!`
-- `src/ui/BroTown.jsx:10782` P? `has nothing for you right now`
-- `src/ui/BroTown.jsx:11187` P `You`
-- `src/ui/BroTown.jsx:11972` P? `held by a finger the page never saw lift, let go (`
-- `src/ui/BroTown.jsx:12371` P `Please pinch-out to reset zoom (back to 100%) before starting.`
-- `src/ui/BroTown.jsx:12374` P `Anon`
-- `src/ui/BroTown.jsx:12641` P? `recovery reload`
-- `src/ui/BroTown.jsx:12641` P? `fresh snapshot`
-- `src/ui/BroTown.jsx:12964` P? `Dismiss tour prompt`
-- `src/ui/BroTown.jsx:12996` P? `New here? Want a quick tour?`
-- `src/ui/BroTown.jsx:13022` P? `Start tour`
-- `src/ui/BroTown.jsx:13044` P? `No thanks`
-- `src/ui/BroTown.jsx:13763` P? `Achievement Unlocked`
-- `src/ui/BroTown.jsx:13926` P? `🏡 Your Farm`
-- `src/ui/BroTown.jsx:13930` P? `· 🌟 Well Rested`
-- `src/ui/BroTown.jsx:13984` P? `🏡 Your Farm — Safe Zone`
-- `src/ui/BroTown.jsx:14095` P? `Welcome! Use the LEFT STICK to move around.`
-- `src/ui/BroTown.jsx:14095` P? `Nice! Now SWIPE the screen to dodge roll!`
-- `src/ui/BroTown.jsx:14095` P? `Great dodge! Hold the RIGHT STICK to attack enemies.`
-- `src/ui/BroTown.jsx:14095` P? `First kill! Head to the edge of town to explore the wild.`
-- `src/ui/BroTown.jsx:14095` P? `Explore! Walk to the edge of town to enter a combat zone.`
-- `src/ui/BroTown.jsx:14095` P? `Out in the wild! Monsters here are tougher. Reach Level 3 to prove yourself.`
-- `src/ui/BroTown.jsx:14095` P? `Tutorial complete! The world is yours — explore every zone!`
-- `src/ui/BroTown.jsx:14232` P? `SKILL UP!`
-- `src/ui/BroTown.jsx:14232` P? `LEVEL UP!`
-- `src/ui/BroTown.jsx:14270` P? `Keep at it — better yields and faster gathers`
-- `src/ui/BroTown.jsx:14273` P? `Training — keep using this style`
-- `src/ui/BroTown.jsx:14274` P? `You got stronger! HP · Stamina · Mana refilled`
-- `src/ui/BroTown.jsx:14371` P? `QUEST COMPLETED!`
-- `src/ui/BroTown.jsx:14372` P? `QUEST REWARD`
-- `src/ui/BroTown.jsx:14380` P? `QUEST ACCEPTED!`
-- `src/ui/BroTown.jsx:14435` P? `Skip tutorial`
-- `src/ui/BroTown.jsx:14459` P `Cursed`
-- `src/ui/BroTown.jsx:14462` P `-30% dmg`
-- `src/ui/BroTown.jsx:14469` P `Bleed`
-- `src/ui/BroTown.jsx:14488` P `x`
-- `src/ui/BroTown.jsx:14498` P `Mana`
-- `src/ui/BroTown.jsx:14501` P `Surge`
-- `src/ui/BroTown.jsx:14508` P `Regen`
-- `src/ui/BroTown.jsx:14511` P `x2 rest`
-- `src/ui/BroTown.jsx:14518` P `Resist`
-- `src/ui/BroTown.jsx:14536` P `% XP`
-- `src/ui/BroTown.jsx:14547` P `Rested`
-- `src/ui/BroTown.jsx:14550` P `+10% combat XP`
-- `src/ui/BroTown.jsx:14563` P `Speed`
-- `src/ui/BroTown.jsx:14566` P `x`
-- `src/ui/BroTown.jsx:14644` P? `items scattered in`
-- `src/ui/BroTown.jsx:14644` P? `s to recover!`
-- `src/ui/BroTown.jsx:14702` P? `Max 3 snowmen!`
-- `src/ui/BroTown.jsx:14711` P? `Snowman placed!`
-- `src/ui/BroTown.jsx:14828` P? `Raft built! Sail across water.`
-- `src/ui/BroTown.jsx:14832` P? `🚣 Build Raft (`
-- `src/ui/BroTown.jsx:14839` P? `🚣 Raft ready`
-- `src/ui/BroTown.jsx:14898` P? `Torch lit! (2 min)`
-- `src/ui/BroTown.jsx:14902` P? `🔥 Light Torch (`
-- `src/ui/BroTown.jsx:14916` P? `🔊 Echo! 2× aggro`
-- `src/ui/BroTown.jsx:14946` P `Throw Snowball`
-- `src/ui/BroTown.jsx:14976` P `Build Snowman (disabled)`
-- `src/ui/BroTown.jsx:14988` P? `snow (have`
-- `src/ui/BroTown.jsx:15000` P? `Snowman built!`
-- `src/ui/BroTown.jsx:15018` P `Ride Sled`
-- `src/ui/BroTown.jsx:15018` P `Craft Sled (`
-- `src/ui/BroTown.jsx:15037` P? `wood (have`
-- `src/ui/BroTown.jsx:15051` P? `Sled crafted!`
-- `src/ui/BroTown.jsx:15107` P? `Already have a raft!`
-- `src/ui/BroTown.jsx:15136` P? `Raft built!`
-- `src/ui/BroTown.jsx:15140` P? `🚣 Raft Ready`
-- `src/ui/BroTown.jsx:15140` P? `🪵 Build Raft (`
-- `src/ui/BroTown.jsx:15184` P? `Torch already lit!`
-- `src/ui/BroTown.jsx:15216` P? `Torch lit!`
-- `src/ui/BroTown.jsx:15220` P? `🪵 Light Torch (`
-- `src/ui/BroTown.jsx:15228` P? `⚠️ Dark! Monsters hear you.`
-- `src/ui/BroTown.jsx:15374` P? `Shut for now`
-- `src/ui/BroTown.jsx:15400` P? `😴 Sleep (Restore All + Well Rested Buff)`
-- `src/ui/BroTown.jsx:15426` P? `🏗️ Dungeon Workshop`
-- `src/ui/BroTown.jsx:15460` P? `the dungeon`
-- `src/ui/BroTown.jsx:15499` P? `🐾 Pet House`
-- `src/ui/BroTown.jsx:15513` P? `🪑 Furniture Workshop`
-- `src/ui/BroTown.jsx:15706` P? `Snowman placed!`
-- `src/ui/BroTown.jsx:15817` P? `Raft built! You can cross water.`
-- `src/ui/BroTown.jsx:15821` P? `🚣 Build Raft (`
-- `src/ui/BroTown.jsx:15834` P? `🚣 Raft Ready`
-- `src/ui/BroTown.jsx:15881` P? `Torch lit! (2min)`
-- `src/ui/BroTown.jsx:15885` P? `🔥 Light Torch (`
-- `src/ui/BroTown.jsx:15912` P? `📢 ECHO: 2× aggro`
-- `src/ui/BroTown.jsx:15912` P? `📢 Echo: quiet`
+- `src/ui/BroTown.jsx:5089` P? `YOU DIED`
+- `src/ui/BroTown.jsx:5138` P `Fists`
+- `src/ui/BroTown.jsx:5763` P? `Resting... (3s)`
+- `src/ui/BroTown.jsx:5774` P? `Fully Rested!`
+- `src/ui/BroTown.jsx:5775` P? `+10% XP for 30 min`
+- `src/ui/BroTown.jsx:6848` P `Campfire`
+- `src/ui/BroTown.jsx:7402` P? `BAG FULL -> sold`
+- `src/ui/BroTown.jsx:7414` P? `PET -> sold`
+- `src/ui/BroTown.jsx:7419` P `G`
+- `src/ui/BroTown.jsx:7563` T `I have a task for you! Tap me.`
+- `src/ui/BroTown.jsx:7836` P `ended`
+- `src/ui/BroTown.jsx:7857` P? `War ended in a TIE!`
+- `src/ui/BroTown.jsx:7857` P? `WAR WON!`
+- `src/ui/BroTown.jsx:7857` P? `War lost...`
+- `src/ui/BroTown.jsx:9048` P? `the Wheel's ground gone,`
+- `src/ui/BroTown.jsx:9051` P? `% lit, strike`
+- `src/ui/BroTown.jsx:9072` P? `black on first join, still dark after rebuild -- reloading into game`
+- `src/ui/BroTown.jsx:9076` P? `world dark 20s despite rebuild -- reloading into game`
+- `src/ui/BroTown.jsx:9234` P? `ARENA MATCH! vs`
+- `src/ui/BroTown.jsx:9453` P? `Pull back and let go`
+- `src/ui/BroTown.jsx:9453` P? `Flick to shoot`
+- `src/ui/BroTown.jsx:9453` P? `Swipe to swing`
+- `src/ui/BroTown.jsx:9571` P? `Zzz... Stats restored!`
+- `src/ui/BroTown.jsx:9572` P? `Well Rested +10% XP (30min)`
+- `src/ui/BroTown.jsx:9645` P? `Need raw fish`
+- `src/ui/BroTown.jsx:9896` P? `Lighting fire…`
+- `src/ui/BroTown.jsx:9950` P? `HP full`
+- `src/ui/BroTown.jsx:9999` P? `cooked fish`
+- `src/ui/BroTown.jsx:10622` P? `button, a[href], input, select, textarea, label, summary,`
+- `src/ui/BroTown.jsx:10623` P? `[role="button"], [role="tab"], [role="link"], [role="menuitem"], [role="option"],`
+- `src/ui/BroTown.jsx:10624` P? `[role="checkbox"], [role="switch"], [role="slider"], [data-bag-key], [data-gear]`
+- `src/ui/BroTown.jsx:10730` P? `Too far away!`
+- `src/ui/BroTown.jsx:10741` P? `Too far away!`
+- `src/ui/BroTown.jsx:10785` P? `has nothing for you right now`
+- `src/ui/BroTown.jsx:11190` P `You`
+- `src/ui/BroTown.jsx:11975` P? `held by a finger the page never saw lift, let go (`
+- `src/ui/BroTown.jsx:12374` P `Please pinch-out to reset zoom (back to 100%) before starting.`
+- `src/ui/BroTown.jsx:12377` P `Anon`
+- `src/ui/BroTown.jsx:12643` P? `recovery reload`
+- `src/ui/BroTown.jsx:12643` P? `fresh snapshot`
+- `src/ui/BroTown.jsx:12966` P? `Dismiss tour prompt`
+- `src/ui/BroTown.jsx:12998` P? `New here? Want a quick tour?`
+- `src/ui/BroTown.jsx:13024` P? `Start tour`
+- `src/ui/BroTown.jsx:13046` P? `No thanks`
+- `src/ui/BroTown.jsx:13765` P? `Achievement Unlocked`
+- `src/ui/BroTown.jsx:13928` P? `🏡 Your Farm`
+- `src/ui/BroTown.jsx:13932` P? `· 🌟 Well Rested`
+- `src/ui/BroTown.jsx:13986` P? `🏡 Your Farm — Safe Zone`
+- `src/ui/BroTown.jsx:14097` P? `Welcome! Use the LEFT STICK to move around.`
+- `src/ui/BroTown.jsx:14097` P? `Nice! Now SWIPE the screen to dodge roll!`
+- `src/ui/BroTown.jsx:14097` P? `Great dodge! Hold the RIGHT STICK to attack enemies.`
+- `src/ui/BroTown.jsx:14097` P? `First kill! Head to the edge of town to explore the wild.`
+- `src/ui/BroTown.jsx:14097` P? `Explore! Walk to the edge of town to enter a combat zone.`
+- `src/ui/BroTown.jsx:14097` P? `Out in the wild! Monsters here are tougher. Reach Level 3 to prove yourself.`
+- `src/ui/BroTown.jsx:14097` P? `Tutorial complete! The world is yours — explore every zone!`
+- `src/ui/BroTown.jsx:14234` P? `SKILL UP!`
+- `src/ui/BroTown.jsx:14234` P? `LEVEL UP!`
+- `src/ui/BroTown.jsx:14272` P? `Keep at it — better yields and faster gathers`
+- `src/ui/BroTown.jsx:14275` P? `Training — keep using this style`
+- `src/ui/BroTown.jsx:14276` P? `You got stronger! HP · Stamina · Mana refilled`
+- `src/ui/BroTown.jsx:14373` P? `QUEST COMPLETED!`
+- `src/ui/BroTown.jsx:14374` P? `QUEST REWARD`
+- `src/ui/BroTown.jsx:14382` P? `QUEST ACCEPTED!`
+- `src/ui/BroTown.jsx:14437` P? `Skip tutorial`
+- `src/ui/BroTown.jsx:14461` P `Cursed`
+- `src/ui/BroTown.jsx:14464` P `-30% dmg`
+- `src/ui/BroTown.jsx:14471` P `Bleed`
+- `src/ui/BroTown.jsx:14490` P `x`
+- `src/ui/BroTown.jsx:14500` P `Mana`
+- `src/ui/BroTown.jsx:14503` P `Surge`
+- `src/ui/BroTown.jsx:14510` P `Regen`
+- `src/ui/BroTown.jsx:14513` P `x2 rest`
+- `src/ui/BroTown.jsx:14520` P `Resist`
+- `src/ui/BroTown.jsx:14538` P `% XP`
+- `src/ui/BroTown.jsx:14549` P `Rested`
+- `src/ui/BroTown.jsx:14552` P `+10% combat XP`
+- `src/ui/BroTown.jsx:14565` P `Speed`
+- `src/ui/BroTown.jsx:14568` P `x`
+- `src/ui/BroTown.jsx:14646` P? `items scattered in`
+- `src/ui/BroTown.jsx:14646` P? `s to recover!`
+- `src/ui/BroTown.jsx:14704` P? `Max 3 snowmen!`
+- `src/ui/BroTown.jsx:14713` P? `Snowman placed!`
+- `src/ui/BroTown.jsx:14830` P? `Raft built! Sail across water.`
+- `src/ui/BroTown.jsx:14834` P? `🚣 Build Raft (`
+- `src/ui/BroTown.jsx:14841` P? `🚣 Raft ready`
+- `src/ui/BroTown.jsx:14900` P? `Torch lit! (2 min)`
+- `src/ui/BroTown.jsx:14904` P? `🔥 Light Torch (`
+- `src/ui/BroTown.jsx:14918` P? `🔊 Echo! 2× aggro`
+- `src/ui/BroTown.jsx:14948` P `Throw Snowball`
+- `src/ui/BroTown.jsx:14978` P `Build Snowman (disabled)`
+- `src/ui/BroTown.jsx:14990` P? `snow (have`
+- `src/ui/BroTown.jsx:15002` P? `Snowman built!`
+- `src/ui/BroTown.jsx:15020` P `Ride Sled`
+- `src/ui/BroTown.jsx:15020` P `Craft Sled (`
+- `src/ui/BroTown.jsx:15039` P? `wood (have`
+- `src/ui/BroTown.jsx:15053` P? `Sled crafted!`
+- `src/ui/BroTown.jsx:15109` P? `Already have a raft!`
+- `src/ui/BroTown.jsx:15138` P? `Raft built!`
+- `src/ui/BroTown.jsx:15142` P? `🚣 Raft Ready`
+- `src/ui/BroTown.jsx:15142` P? `🪵 Build Raft (`
+- `src/ui/BroTown.jsx:15186` P? `Torch already lit!`
+- `src/ui/BroTown.jsx:15218` P? `Torch lit!`
+- `src/ui/BroTown.jsx:15222` P? `🪵 Light Torch (`
+- `src/ui/BroTown.jsx:15230` P? `⚠️ Dark! Monsters hear you.`
+- `src/ui/BroTown.jsx:15376` P? `Shut for now`
+- `src/ui/BroTown.jsx:15402` P? `😴 Sleep (Restore All + Well Rested Buff)`
+- `src/ui/BroTown.jsx:15428` P? `🏗️ Dungeon Workshop`
+- `src/ui/BroTown.jsx:15462` P? `the dungeon`
+- `src/ui/BroTown.jsx:15501` P? `🐾 Pet House`
+- `src/ui/BroTown.jsx:15515` P? `🪑 Furniture Workshop`
+- `src/ui/BroTown.jsx:15708` P? `Snowman placed!`
+- `src/ui/BroTown.jsx:15819` P? `Raft built! You can cross water.`
+- `src/ui/BroTown.jsx:15823` P? `🚣 Build Raft (`
+- `src/ui/BroTown.jsx:15836` P? `🚣 Raft Ready`
+- `src/ui/BroTown.jsx:15883` P? `Torch lit! (2min)`
+- `src/ui/BroTown.jsx:15887` P? `🔥 Light Torch (`
+- `src/ui/BroTown.jsx:15914` P? `📢 ECHO: 2× aggro`
+- `src/ui/BroTown.jsx:15914` P? `📢 Echo: quiet`
 
 ### BuildBadge (2)
 
@@ -1444,19 +1445,20 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `src/ui/panels/DesignGallery.jsx:175` P `on your`
 - `src/ui/panels/DesignGallery.jsx:192` P `Cancel`
 
-### DeviceScreen (11)
+### DeviceScreen (12)
 
-- `src/ui/DeviceScreen.js:62` P `This character is played on another device`
-- `src/ui/DeviceScreen.js:63` P `A character can only be played on a device it was played on before.`
-- `src/ui/DeviceScreen.js:64` P `To play it here, ask the game’s owner to let this device in, and give them this code:`
-- `src/ui/DeviceScreen.js:65` P? `Once they have, tap Try again within 30 minutes.`
-- `src/ui/DeviceScreen.js:68` P `This Login Key no longer works`
-- `src/ui/DeviceScreen.js:69` P `Ask the game’s owner for a new Login Key, and give them this code:`
-- `src/ui/DeviceScreen.js:70` P? `Then tap Use a Login Key and type the new one.`
-- `src/ui/DeviceScreen.js:96` P? `Copy the code`
-- `src/ui/DeviceScreen.js:99` P? `Copy the code`
-- `src/ui/DeviceScreen.js:107` P? `Try again`
-- `src/ui/DeviceScreen.js:119` P? `Use a Login Key`
+- `src/ui/DeviceScreen.js:72` P `This character is played on another device`
+- `src/ui/DeviceScreen.js:73` P `A character can only be played on a device it was played on before, or with its new Log...`
+- `src/ui/DeviceScreen.js:74` P `To play it here, use the Login Key on the Account card of a device you play it on,`
+- `src/ui/DeviceScreen.js:75` P `or ask the game’s owner for one and give them this code:`
+- `src/ui/DeviceScreen.js:76` P? `Then tap Use a Login Key and type it.`
+- `src/ui/DeviceScreen.js:79` P `This Login Key no longer works`
+- `src/ui/DeviceScreen.js:80` P `Ask the game’s owner for a new Login Key, and give them this code:`
+- `src/ui/DeviceScreen.js:81` P? `Then tap Use a Login Key and type the new one.`
+- `src/ui/DeviceScreen.js:107` P? `Copy the code`
+- `src/ui/DeviceScreen.js:110` P? `Copy the code`
+- `src/ui/DeviceScreen.js:118` P? `Try again`
+- `src/ui/DeviceScreen.js:130` P? `Use a Login Key`
 
 ### DuelRequestPanel (6)
 
@@ -2900,63 +2902,63 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 
 ### PetsPanel (57)
 
-- `src/ui/mobile/dash/PetsPanel.jsx:67` P `caught`
-- `src/ui/mobile/dash/PetsPanel.jsx:67` P `Not caught`
-- `src/ui/mobile/dash/PetsPanel.jsx:67` P `Not tried`
-- `src/ui/mobile/dash/PetsPanel.jsx:69` P `tries`
-- `src/ui/mobile/dash/PetsPanel.jsx:70` P `golden`
-- `src/ui/mobile/dash/PetsPanel.jsx:71` P `Biggest`
-- `src/ui/mobile/dash/PetsPanel.jsx:137` P `in your collection`
-- `src/ui/mobile/dash/PetsPanel.jsx:139` P `With you:`
-- `src/ui/mobile/dash/PetsPanel.jsx:139` P `No pet out with you`
-- `src/ui/mobile/dash/PetsPanel.jsx:139` P `· Trapping`
-- `src/ui/mobile/dash/PetsPanel.jsx:150` P `Your pets are not ready yet. Try again after you rejoin.`
-- `src/ui/mobile/dash/PetsPanel.jsx:153` T `No pets yet. Make box traps at the Woodworker, target a monster out in the lands, tap`
-- `src/ui/mobile/dash/PetsPanel.jsx:153` P `TRAP`
-- `src/ui/mobile/dash/PetsPanel.jsx:153` P `, then kill it. About one try in a hundred at best, and every try pays Trapping XP.`
-- `src/ui/mobile/dash/PetsPanel.jsx:166` P `Your Pet House holds`
-- `src/ui/mobile/dash/PetsPanel.jsx:166` P `, as many as it can.`
-- `src/ui/mobile/dash/PetsPanel.jsx:179` P `Buy room for`
-- `src/ui/mobile/dash/PetsPanel.jsx:179` P `more pets for`
-- `src/ui/mobile/dash/PetsPanel.jsx:179` P `gold`
-- `src/ui/mobile/dash/PetsPanel.jsx:180` P `Pet House: room for`
-- `src/ui/mobile/dash/PetsPanel.jsx:180` P `more pets,`
+- `src/ui/mobile/dash/PetsPanel.jsx:68` P `caught`
+- `src/ui/mobile/dash/PetsPanel.jsx:68` P `Not caught`
+- `src/ui/mobile/dash/PetsPanel.jsx:68` P `Not tried`
+- `src/ui/mobile/dash/PetsPanel.jsx:70` P `tries`
+- `src/ui/mobile/dash/PetsPanel.jsx:71` P `golden`
+- `src/ui/mobile/dash/PetsPanel.jsx:72` P `Biggest`
+- `src/ui/mobile/dash/PetsPanel.jsx:138` P `in your collection`
+- `src/ui/mobile/dash/PetsPanel.jsx:140` P `With you:`
+- `src/ui/mobile/dash/PetsPanel.jsx:140` P `No pet out with you`
+- `src/ui/mobile/dash/PetsPanel.jsx:140` P `· Trapping`
+- `src/ui/mobile/dash/PetsPanel.jsx:151` P `Your pets are not ready yet. Try again after you rejoin.`
+- `src/ui/mobile/dash/PetsPanel.jsx:154` T `No pets yet. Make box traps at the Woodworker, target a monster out in the lands, tap`
+- `src/ui/mobile/dash/PetsPanel.jsx:154` P `TRAP`
+- `src/ui/mobile/dash/PetsPanel.jsx:154` P `, then kill it. About one try in a hundred at best, and every try pays Trapping XP.`
+- `src/ui/mobile/dash/PetsPanel.jsx:167` P `Your Pet House holds`
+- `src/ui/mobile/dash/PetsPanel.jsx:167` P `, as many as it can.`
+- `src/ui/mobile/dash/PetsPanel.jsx:180` P `Buy room for`
+- `src/ui/mobile/dash/PetsPanel.jsx:180` P `more pets for`
 - `src/ui/mobile/dash/PetsPanel.jsx:180` P `gold`
-- `src/ui/mobile/dash/PetsPanel.jsx:180` P `(you have`
-- `src/ui/mobile/dash/PetsPanel.jsx:184` P `Buy`
-- `src/ui/mobile/dash/PetsPanel.jsx:185` P `Keep`
-- `src/ui/mobile/dash/PetsPanel.jsx:188` P `More room`
-- `src/ui/mobile/dash/PetsPanel.jsx:195` P `. It waits at the Auction House until it sells, and comes back if it does not.`
-- `src/ui/mobile/dash/PetsPanel.jsx:218` P `Lv`
-- `src/ui/mobile/dash/PetsPanel.jsx:220` P `With you`
-- `src/ui/mobile/dash/PetsPanel.jsx:221` P `Golden`
-- `src/ui/mobile/dash/PetsPanel.jsx:222` P `Big`
-- `src/ui/mobile/dash/PetsPanel.jsx:237` P `when out`
-- `src/ui/mobile/dash/PetsPanel.jsx:245` P `Works at Lv`
-- `src/ui/mobile/dash/PetsPanel.jsx:245` P `until your Trapping reaches`
-- `src/ui/mobile/dash/PetsPanel.jsx:252` P `Save`
-- `src/ui/mobile/dash/PetsPanel.jsx:256` P `Release`
-- `src/ui/mobile/dash/PetsPanel.jsx:256` P `for good?`
+- `src/ui/mobile/dash/PetsPanel.jsx:181` P `Pet House: room for`
+- `src/ui/mobile/dash/PetsPanel.jsx:181` P `more pets,`
+- `src/ui/mobile/dash/PetsPanel.jsx:181` P `gold`
+- `src/ui/mobile/dash/PetsPanel.jsx:181` P `(you have`
+- `src/ui/mobile/dash/PetsPanel.jsx:185` P `Buy`
+- `src/ui/mobile/dash/PetsPanel.jsx:186` P `Keep`
+- `src/ui/mobile/dash/PetsPanel.jsx:189` P `More room`
+- `src/ui/mobile/dash/PetsPanel.jsx:196` P `. It waits at the Auction House until it sells, and comes back if it does not.`
+- `src/ui/mobile/dash/PetsPanel.jsx:219` P `Lv`
+- `src/ui/mobile/dash/PetsPanel.jsx:221` P `With you`
+- `src/ui/mobile/dash/PetsPanel.jsx:222` P `Golden`
+- `src/ui/mobile/dash/PetsPanel.jsx:223` P `Big`
+- `src/ui/mobile/dash/PetsPanel.jsx:238` P `when out`
+- `src/ui/mobile/dash/PetsPanel.jsx:246` P `Works at Lv`
+- `src/ui/mobile/dash/PetsPanel.jsx:246` P `until your Trapping reaches`
+- `src/ui/mobile/dash/PetsPanel.jsx:253` P `Save`
 - `src/ui/mobile/dash/PetsPanel.jsx:257` P `Release`
-- `src/ui/mobile/dash/PetsPanel.jsx:258` P `Keep`
-- `src/ui/mobile/dash/PetsPanel.jsx:262` P `Put away`
-- `src/ui/mobile/dash/PetsPanel.jsx:262` P `Take out`
-- `src/ui/mobile/dash/PetsPanel.jsx:263` P `Rename`
-- `src/ui/mobile/dash/PetsPanel.jsx:264` P `Release`
-- `src/ui/mobile/dash/PetsPanel.jsx:267` P `2-16 letters, numbers, spaces, - or '`
-- `src/ui/mobile/dash/PetsPanel.jsx:284` P `Sell at the Auction House`
-- `src/ui/mobile/dash/PetsPanel.jsx:289` P `Price in gold`
-- `src/ui/mobile/dash/PetsPanel.jsx:297` P `Listed for`
-- `src/ui/mobile/dash/PetsPanel.jsx:297` P `gold`
-- `src/ui/mobile/dash/PetsPanel.jsx:298` P `Not listed`
-- `src/ui/mobile/dash/PetsPanel.jsx:299` P `List`
-- `src/ui/mobile/dash/PetsPanel.jsx:313` P `The pet with you picks up loot from further away`
-- `src/ui/mobile/dash/PetsPanel.jsx:313` P `, and softens what its own land's monsters do to you`
-- `src/ui/mobile/dash/PetsPanel.jsx:313` P `. Pets are never lost, not even in No man's land.`
-- `src/ui/mobile/dash/PetsPanel.jsx:320` P `Journal`
-- `src/ui/mobile/dash/PetsPanel.jsx:321` P `of`
-- `src/ui/mobile/dash/PetsPanel.jsx:321` P `caught`
-- `src/ui/mobile/dash/PetsPanel.jsx:331` P `Each land's monsters become its pet. Past level 20 they come in the land's second colours.`
+- `src/ui/mobile/dash/PetsPanel.jsx:257` P `for good?`
+- `src/ui/mobile/dash/PetsPanel.jsx:258` P `Release`
+- `src/ui/mobile/dash/PetsPanel.jsx:259` P `Keep`
+- `src/ui/mobile/dash/PetsPanel.jsx:263` P `Put away`
+- `src/ui/mobile/dash/PetsPanel.jsx:263` P `Take out`
+- `src/ui/mobile/dash/PetsPanel.jsx:264` P `Rename`
+- `src/ui/mobile/dash/PetsPanel.jsx:265` P `Release`
+- `src/ui/mobile/dash/PetsPanel.jsx:268` P `2-16 letters, numbers, spaces, - or '`
+- `src/ui/mobile/dash/PetsPanel.jsx:285` P `Sell at the Auction House`
+- `src/ui/mobile/dash/PetsPanel.jsx:290` P `Price in gold`
+- `src/ui/mobile/dash/PetsPanel.jsx:307` P `Listed for`
+- `src/ui/mobile/dash/PetsPanel.jsx:307` P `gold`
+- `src/ui/mobile/dash/PetsPanel.jsx:308` P `Not listed`
+- `src/ui/mobile/dash/PetsPanel.jsx:309` P `List`
+- `src/ui/mobile/dash/PetsPanel.jsx:323` P `The pet with you picks up loot from further away`
+- `src/ui/mobile/dash/PetsPanel.jsx:323` P `, and softens what its own land's monsters do to you`
+- `src/ui/mobile/dash/PetsPanel.jsx:323` P `. Pets are never lost, not even in No man's land.`
+- `src/ui/mobile/dash/PetsPanel.jsx:330` P `Journal`
+- `src/ui/mobile/dash/PetsPanel.jsx:331` P `of`
+- `src/ui/mobile/dash/PetsPanel.jsx:331` P `caught`
+- `src/ui/mobile/dash/PetsPanel.jsx:341` P `Each land's monsters become its pet. Past level 20 they come in the land's second colours.`
 
 ### PinCards (11)
 
@@ -6934,16 +6936,25 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 
 - `src/game/framePacer.js:505` P `pending`
 
-### game: frameSteps (6)
+### game: frameSteps (15)
 
-- `src/game/frameSteps.js:53` P `legacy`
-- `src/game/frameSteps.js:54` P `visual`
-- `src/game/frameSteps.js:55` P `arrows`
-- `src/game/frameSteps.js:56` P `slime`
-- `src/game/frameSteps.js:57` P `cleanup`
-- `src/game/frameSteps.js:58` P `render`
+- `src/game/frameSteps.js:71` P `legacy`
+- `src/game/frameSteps.js:74` P `tap`
+- `src/game/frameSteps.js:75` P `sound`
+- `src/game/frameSteps.js:76` P `ride`
+- `src/game/frameSteps.js:77` P `zone`
+- `src/game/frameSteps.js:78` P `farm`
+- `src/game/frameSteps.js:79` P `townsfolk`
+- `src/game/frameSteps.js:80` P `monsters`
+- `src/game/frameSteps.js:82` P `loot`
+- `src/game/frameSteps.js:83` P `peers`
+- `src/game/frameSteps.js:85` P `visual`
+- `src/game/frameSteps.js:86` P `arrows`
+- `src/game/frameSteps.js:87` P `slime`
+- `src/game/frameSteps.js:88` P `cleanup`
+- `src/game/frameSteps.js:89` P `render`
 
-### game: friendErrors (8)
+### game: friendErrors (9)
 
 - `src/game/friendErrors.js:19` P? `You and`
 - `src/game/friendErrors.js:19` P? `are already friends.`
@@ -6951,8 +6962,9 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `src/game/friendErrors.js:21` P? `'s friends list is full, so the request was not sent.`
 - `src/game/friendErrors.js:22` P? `is not on your friends list any more, so your message was not sent.`
 - `src/game/friendErrors.js:23` P? `That player could not be found, so the friend request was not sent.`
-- `src/game/friendErrors.js:26` P? `Your friend request did not go through.`
-- `src/game/friendErrors.js:36` P? `That player`
+- `src/game/friendErrors.js:25` P? `Your friends list is full. Remove a friend to accept this request.`
+- `src/game/friendErrors.js:28` P? `Your friend request did not go through.`
+- `src/game/friendErrors.js:38` P? `That player`
 
 ### game: gesturePose (13)
 
@@ -7006,20 +7018,21 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 
 - `src/game/levelCelebration.js:141` P `HP · Stamina · Mana refilled`
 
-### game: lifeSkillRewards (12)
+### game: lifeSkillRewards (13)
 
 - `src/game/lifeSkillRewards.js:254` P `waiting`
 - `src/game/lifeSkillRewards.js:340` P `waiting`
 - `src/game/lifeSkillRewards.js:358` P `Requires`
 - `src/game/lifeSkillRewards.js:358` P `Lv`
-- `src/game/lifeSkillRewards.js:635` P? `Fishing XP`
-- `src/game/lifeSkillRewards.js:640` P? `Fishing Level`
-- `src/game/lifeSkillRewards.js:744` P? `Woodcutting XP`
-- `src/game/lifeSkillRewards.js:748` P? `Woodcutting Level`
-- `src/game/lifeSkillRewards.js:804` P? `Copper Ore`
-- `src/game/lifeSkillRewards.js:837` P? `Mining XP`
-- `src/game/lifeSkillRewards.js:841` P? `Mining Level`
-- `src/game/lifeSkillRewards.js:864` P? `Cooking XP`
+- `src/game/lifeSkillRewards.js:636` P? `Fishing XP`
+- `src/game/lifeSkillRewards.js:641` P? `Fishing Level`
+- `src/game/lifeSkillRewards.js:746` P? `Woodcutting XP`
+- `src/game/lifeSkillRewards.js:750` P? `Woodcutting Level`
+- `src/game/lifeSkillRewards.js:807` P? `Copper Ore`
+- `src/game/lifeSkillRewards.js:840` P? `Mining XP`
+- `src/game/lifeSkillRewards.js:844` P? `Mining Level`
+- `src/game/lifeSkillRewards.js:869` P? `Paid as`
+- `src/game/lifeSkillRewards.js:888` P? `Cooking XP`
 
 ### game: loadTimes (14)
 
@@ -7085,17 +7098,17 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 
 ### game: monsterCombat (11)
 
-- `src/game/monsterCombat.js:114` P `Unarmed`
-- `src/game/monsterCombat.js:881` P? `Defense Lv`
-- `src/game/monsterCombat.js:1122` P? `DEATH SAVE!`
-- `src/game/monsterCombat.js:1241` P? `YOU DIED`
-- `src/game/monsterCombat.js:1244` P? `Items scattered!`
-- `src/game/monsterCombat.js:1244` P? `s to recover`
-- `src/game/monsterCombat.js:2778` P? `New Bestiary Entry!`
-- `src/game/monsterCombat.js:2955` P `XP`
-- `src/game/monsterCombat.js:2977` P? `RARE DROP!`
-- `src/game/monsterCombat.js:3115` P? `Gold Nugget!`
-- `src/game/monsterCombat.js:3122` P? `Critical hit!`
+- `src/game/monsterCombat.js:115` P `Unarmed`
+- `src/game/monsterCombat.js:882` P? `Defense Lv`
+- `src/game/monsterCombat.js:1123` P? `DEATH SAVE!`
+- `src/game/monsterCombat.js:1242` P? `YOU DIED`
+- `src/game/monsterCombat.js:1245` P? `Items scattered!`
+- `src/game/monsterCombat.js:1245` P? `s to recover`
+- `src/game/monsterCombat.js:2784` P? `New Bestiary Entry!`
+- `src/game/monsterCombat.js:2961` P `XP`
+- `src/game/monsterCombat.js:2983` P? `RARE DROP!`
+- `src/game/monsterCombat.js:3121` P? `Gold Nugget!`
+- `src/game/monsterCombat.js:3128` P? `Critical hit!`
 
 ### game: nmlAsk (6)
 
@@ -7211,11 +7224,11 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 
 ### game: projectiles (5)
 
-- `src/game/projectiles.js:1071` P `land`
-- `src/game/projectiles.js:1076` P `prop`
-- `src/game/projectiles.js:1076` P `land`
-- `src/game/projectiles.js:2333` P `XP`
-- `src/game/projectiles.js:2916` P? `Defense Lv`
+- `src/game/projectiles.js:1094` P `land`
+- `src/game/projectiles.js:1099` P `prop`
+- `src/game/projectiles.js:1099` P `land`
+- `src/game/projectiles.js:2357` P `XP`
+- `src/game/projectiles.js:2940` P? `Defense Lv`
 
 ### game: questCard (3)
 
@@ -7377,15 +7390,15 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 
 ### game: ride (9)
 
-- `src/game/ride.js:219` P? `strike a pose`
-- `src/game/ride.js:221` P? `set a trap`
-- `src/game/ride.js:230` P? `Off the board: boards stay in BroTown.`
-- `src/game/ride.js:232` P? `Knocked off the board!`
-- `src/game/ride.js:233` P? `Off the board to`
-- `src/game/ride.js:234` P? `Off the board for the duel.`
-- `src/game/ride.js:236` P? `Boards are put away for now.`
-- `src/game/ride.js:237` P? `Boards are for BroTown only.`
-- `src/game/ride.js:238` P? `Not now: finish what you are doing first.`
+- `src/game/ride.js:220` P? `strike a pose`
+- `src/game/ride.js:222` P? `set a trap`
+- `src/game/ride.js:231` P? `Off the board: boards stay in BroTown.`
+- `src/game/ride.js:233` P? `Knocked off the board!`
+- `src/game/ride.js:234` P? `Off the board to`
+- `src/game/ride.js:235` P? `Off the board for the duel.`
+- `src/game/ride.js:237` P? `Boards are put away for now.`
+- `src/game/ride.js:238` P? `Boards are for BroTown only.`
+- `src/game/ride.js:239` P? `Not now: finish what you are doing first.`
 
 ### game: salvage (18)
 
@@ -7718,19 +7731,19 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 
 ### game: zoneTransitions (13)
 
-- `src/game/zoneTransitions.js:624` P `Speak to Mayor Bro first`
-- `src/game/zoneTransitions.js:625` P `He's outside the Mayor's House — he'll arm you`
-- `src/game/zoneTransitions.js:629` P? `Speak to Mayor Bro first`
-- `src/game/zoneTransitions.js:672` P `is not on your map yet`
-- `src/game/zoneTransitions.js:673` P `Mayor Bro will send you when it is time`
-- `src/game/zoneTransitions.js:677` P? `Not yet`
-- `src/game/zoneTransitions.js:717` P `is Lv`
-- `src/game/zoneTransitions.js:718` P `Walk in again to enter`
-- `src/game/zoneTransitions.js:722` P? `is Lv`
-- `src/game/zoneTransitions.js:722` P? `! Walk in again to enter`
-- `src/game/zoneTransitions.js:1217` P? `World View`
-- `src/game/zoneTransitions.js:1278` P? `Exited dungeon`
-- `src/game/zoneTransitions.js:1349` P? `Exited dungeon`
+- `src/game/zoneTransitions.js:628` P `Speak to Mayor Bro first`
+- `src/game/zoneTransitions.js:629` P `He's outside the Mayor's House — he'll arm you`
+- `src/game/zoneTransitions.js:633` P? `Speak to Mayor Bro first`
+- `src/game/zoneTransitions.js:676` P `is not on your map yet`
+- `src/game/zoneTransitions.js:677` P `Mayor Bro will send you when it is time`
+- `src/game/zoneTransitions.js:681` P? `Not yet`
+- `src/game/zoneTransitions.js:721` P `is Lv`
+- `src/game/zoneTransitions.js:722` P `Walk in again to enter`
+- `src/game/zoneTransitions.js:726` P? `is Lv`
+- `src/game/zoneTransitions.js:726` P? `! Walk in again to enter`
+- `src/game/zoneTransitions.js:1221` P? `World View`
+- `src/game/zoneTransitions.js:1282` P? `Exited dungeon`
+- `src/game/zoneTransitions.js:1353` P? `Exited dungeon`
 
 ### gearFlash (1)
 
@@ -8150,47 +8163,47 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `src/networking/wsClient.js:3467` P? `BURNED TO DEATH`
 - `src/networking/wsClient.js:3467` P? `YOU DIED`
 - `src/networking/wsClient.js:3471` P? `Your bag is safe`
-- `src/networking/wsClient.js:3554` P? `No log to light`
-- `src/networking/wsClient.js:3580` P? `Gem shattered!`
-- `src/networking/wsClient.js:3590` P? `Gem Cutting Lv`
-- `src/networking/wsClient.js:3815` P? `Quest Armor`
-- `src/networking/wsClient.js:3877` P `In your bag — equip it on your legs`
-- `src/networking/wsClient.js:3878` P `In your bag — your chest slot was already full`
-- `src/networking/wsClient.js:3904` P? `ON-CHAIN ✓ Lv`
-- `src/networking/wsClient.js:4022` P `Anon`
-- `src/networking/wsClient.js:4074` P `Anon`
-- `src/networking/wsClient.js:4323` P `G`
-- `src/networking/wsClient.js:4372` P? `+ RARE GEM`
-- `src/networking/wsClient.js:4478` P? `G (sold, stash full)`
-- `src/networking/wsClient.js:4725` P `gone`
-- `src/networking/wsClient.js:4880` P? `Too many wrong Login Keys tried for this character. Trying again in`
-- `src/networking/wsClient.js:4912` P? `joined BroTown!`
-- `src/networking/wsClient.js:4953` P? `You were away, so your character logged out.`
-- `src/networking/wsClient.js:4953` P? `I'm back`
-- `src/networking/wsClient.js:4959` P? `This account connected from another window.`
-- `src/networking/wsClient.js:4959` P? `Play here instead`
-- `src/networking/wsClient.js:5039` P? `One quick check`
-- `src/networking/wsClient.js:5044` P? `That didn't go through. One more try:`
-- `src/networking/wsClient.js:5045` P? `Before your character is made, BroTown checks that a person is here.`
-- `src/networking/wsClient.js:5051` P? `Try again`
-- `src/networking/wsClient.js:5064` P? `The check couldn't load. Check your connection and try again.`
-- `src/networking/wsClient.js:5079` P? `The check didn't go through. Try again.`
-- `src/networking/wsClient.js:5082` P? `The check couldn't start. Try again.`
-- `src/networking/wsClient.js:5093` P? `The check couldn't load. Check your connection and try again.`
-- `src/networking/wsClient.js:5188` P? `still connecting after`
-- `src/networking/wsClient.js:5193` P `silent`
-- `src/networking/wsClient.js:5193` P `s`
-- `src/networking/wsClient.js:5195` P `no answer`
-- `src/networking/wsClient.js:5195` P `s after a settled action`
-- `src/networking/wsClient.js:5206` P? `, forcing rejoin`
-- `src/networking/wsClient.js:5226` P? `dead pipe`
-- `src/networking/wsClient.js:5226` P? `resume resync`
-- `src/networking/wsClient.js:5336` P? `pictures read back empty (`
-- `src/networking/wsClient.js:5338` P? `pictures emptied while away --`
-- `src/networking/wsClient.js:5412` P? `: context LOST on resume, waiting for restore`
-- `src/networking/wsClient.js:6104` P? `idle timeout`
-- `src/networking/wsClient.js:6107` P? `You were away, so your character logged out.`
-- `src/networking/wsClient.js:6107` P? `I'm back`
+- `src/networking/wsClient.js:3551` P? `No log to light`
+- `src/networking/wsClient.js:3577` P? `Gem shattered!`
+- `src/networking/wsClient.js:3587` P? `Gem Cutting Lv`
+- `src/networking/wsClient.js:3812` P? `Quest Armor`
+- `src/networking/wsClient.js:3874` P `In your bag — equip it on your legs`
+- `src/networking/wsClient.js:3875` P `In your bag — your chest slot was already full`
+- `src/networking/wsClient.js:3901` P? `ON-CHAIN ✓ Lv`
+- `src/networking/wsClient.js:4019` P `Anon`
+- `src/networking/wsClient.js:4071` P `Anon`
+- `src/networking/wsClient.js:4320` P `G`
+- `src/networking/wsClient.js:4369` P? `+ RARE GEM`
+- `src/networking/wsClient.js:4475` P? `G (sold, stash full)`
+- `src/networking/wsClient.js:4722` P `gone`
+- `src/networking/wsClient.js:4877` P? `Too many wrong Login Keys tried for this character. Trying again in`
+- `src/networking/wsClient.js:4909` P? `joined BroTown!`
+- `src/networking/wsClient.js:4950` P? `You were away, so your character logged out.`
+- `src/networking/wsClient.js:4950` P? `I'm back`
+- `src/networking/wsClient.js:4956` P? `This account connected from another window.`
+- `src/networking/wsClient.js:4956` P? `Play here instead`
+- `src/networking/wsClient.js:5036` P? `One quick check`
+- `src/networking/wsClient.js:5041` P? `That didn't go through. One more try:`
+- `src/networking/wsClient.js:5042` P? `Before your character is made, BroTown checks that a person is here.`
+- `src/networking/wsClient.js:5048` P? `Try again`
+- `src/networking/wsClient.js:5061` P? `The check couldn't load. Check your connection and try again.`
+- `src/networking/wsClient.js:5076` P? `The check didn't go through. Try again.`
+- `src/networking/wsClient.js:5079` P? `The check couldn't start. Try again.`
+- `src/networking/wsClient.js:5090` P? `The check couldn't load. Check your connection and try again.`
+- `src/networking/wsClient.js:5185` P? `still connecting after`
+- `src/networking/wsClient.js:5190` P `silent`
+- `src/networking/wsClient.js:5190` P `s`
+- `src/networking/wsClient.js:5192` P `no answer`
+- `src/networking/wsClient.js:5192` P `s after a settled action`
+- `src/networking/wsClient.js:5203` P? `, forcing rejoin`
+- `src/networking/wsClient.js:5223` P? `dead pipe`
+- `src/networking/wsClient.js:5223` P? `resume resync`
+- `src/networking/wsClient.js:5333` P? `pictures read back empty (`
+- `src/networking/wsClient.js:5335` P? `pictures emptied while away --`
+- `src/networking/wsClient.js:5409` P? `: context LOST on resume, waiting for restore`
+- `src/networking/wsClient.js:6101` P? `idle timeout`
+- `src/networking/wsClient.js:6104` P? `You were away, so your character logged out.`
+- `src/networking/wsClient.js:6104` P? `I'm back`
 
 ### playerProfile (6)
 
@@ -8319,43 +8332,43 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 
 ### rendering: effectsRenderer (16)
 
-- `src/rendering/systems/effectsRenderer.js:2834` P? `Source Sans 3, sans-serif`
-- `src/rendering/systems/effectsRenderer.js:2872` P? `let go`
-- `src/rendering/systems/effectsRenderer.js:2941` P? `-0 BLOCK Dodge!`
-- `src/rendering/systems/effectsRenderer.js:2942` P? `🛡️🔥 Defense Lv 0`
-- `src/rendering/systems/effectsRenderer.js:5253` P? `a tree in reach`
-- `src/rendering/systems/effectsRenderer.js:5254` P? `a campfire in reach`
-- `src/rendering/systems/effectsRenderer.js:5259` P? `a campfire lit`
-- `src/rendering/systems/effectsRenderer.js:5265` P? `the farm`
-- `src/rendering/systems/effectsRenderer.js:5271` P? `lighting a fire`
-- `src/rendering/systems/effectsRenderer.js:5274` P? `a log in the bag`
-- `src/rendering/systems/effectsRenderer.js:5283` P? `another player`
-- `src/rendering/systems/effectsRenderer.js:10522` P? `'s loot`
-- `src/rendering/systems/effectsRenderer.js:10682` P `RARE DROP!`
-- `src/rendering/systems/effectsRenderer.js:11074` P? `Rare Gem`
-- `src/rendering/systems/effectsRenderer.js:15338` P `dressed:`
-- `src/rendering/systems/effectsRenderer.js:18070` P `dressed:`
+- `src/rendering/systems/effectsRenderer.js:2576` P? `Source Sans 3, sans-serif`
+- `src/rendering/systems/effectsRenderer.js:2614` P? `let go`
+- `src/rendering/systems/effectsRenderer.js:2683` P? `-0 BLOCK Dodge!`
+- `src/rendering/systems/effectsRenderer.js:2684` P? `🛡️🔥 Defense Lv 0`
+- `src/rendering/systems/effectsRenderer.js:4920` P? `a tree in reach`
+- `src/rendering/systems/effectsRenderer.js:4921` P? `a campfire in reach`
+- `src/rendering/systems/effectsRenderer.js:4926` P? `a campfire lit`
+- `src/rendering/systems/effectsRenderer.js:4932` P? `the farm`
+- `src/rendering/systems/effectsRenderer.js:4938` P? `lighting a fire`
+- `src/rendering/systems/effectsRenderer.js:4941` P? `a log in the bag`
+- `src/rendering/systems/effectsRenderer.js:4950` P? `another player`
+- `src/rendering/systems/effectsRenderer.js:10189` P? `'s loot`
+- `src/rendering/systems/effectsRenderer.js:10349` P `RARE DROP!`
+- `src/rendering/systems/effectsRenderer.js:10741` P? `Rare Gem`
+- `src/rendering/systems/effectsRenderer.js:15005` P `dressed:`
+- `src/rendering/systems/effectsRenderer.js:17737` P `dressed:`
 
 ### rendering: entityRenderer (18)
 
-- `src/rendering/systems/entityRenderer.js:1260` P? `asked {…}s`
-- `src/rendering/systems/entityRenderer.js:1261` P? `retry in {…}s`
-- `src/rendering/systems/entityRenderer.js:1262` P? `meta gave up`
-- `src/rendering/systems/entityRenderer.js:1262` P? `no meta`
-- `src/rendering/systems/entityRenderer.js:1307` P `asked again`
-- `src/rendering/systems/entityRenderer.js:1307` P `{…} {…} {…}s [{…}]{…}`
-- `src/rendering/systems/entityRenderer.js:3459` P `worker error`
-- `src/rendering/systems/entityRenderer.js:3643` P `no worker`
-- `src/rendering/systems/entityRenderer.js:3656` P `worker let go`
-- `src/rendering/systems/entityRenderer.js:3657` P `gear numbers not sent`
-- `src/rendering/systems/entityRenderer.js:3692` P `no sheet`
-- `src/rendering/systems/entityRenderer.js:3934` P `worker stuck`
-- `src/rendering/systems/entityRenderer.js:7845` P `LV`
-- `src/rendering/systems/entityRenderer.js:16788` P `stand-in has its own arm`
-- `src/rendering/systems/entityRenderer.js:16919` P `shield down`
-- `src/rendering/systems/entityRenderer.js:17427` P `pet`
-- `src/rendering/systems/entityRenderer.js:18411` P `1 quest available`
-- `src/rendering/systems/entityRenderer.js:18619` P `round`
+- `src/rendering/systems/entityRenderer.js:1149` P? `asked {…}s`
+- `src/rendering/systems/entityRenderer.js:1150` P? `retry in {…}s`
+- `src/rendering/systems/entityRenderer.js:1151` P? `meta gave up`
+- `src/rendering/systems/entityRenderer.js:1151` P? `no meta`
+- `src/rendering/systems/entityRenderer.js:1196` P `asked again`
+- `src/rendering/systems/entityRenderer.js:1196` P `{…} {…} {…}s [{…}]{…}`
+- `src/rendering/systems/entityRenderer.js:2924` P `worker error`
+- `src/rendering/systems/entityRenderer.js:3108` P `no worker`
+- `src/rendering/systems/entityRenderer.js:3121` P `worker let go`
+- `src/rendering/systems/entityRenderer.js:3122` P `gear numbers not sent`
+- `src/rendering/systems/entityRenderer.js:3157` P `no sheet`
+- `src/rendering/systems/entityRenderer.js:3399` P `worker stuck`
+- `src/rendering/systems/entityRenderer.js:7187` P `LV`
+- `src/rendering/systems/entityRenderer.js:16052` P `stand-in has its own arm`
+- `src/rendering/systems/entityRenderer.js:16183` P `shield down`
+- `src/rendering/systems/entityRenderer.js:16691` P `pet`
+- `src/rendering/systems/entityRenderer.js:17675` P `1 quest available`
+- `src/rendering/systems/entityRenderer.js:17883` P `round`
 
 ### rendering: eyeColorCatalog (4)
 
@@ -8568,7 +8581,7 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 
 ### rendering: monsterShotFx (1)
 
-- `src/rendering/monsterShotFx.js:612` P `land`
+- `src/rendering/monsterShotFx.js:637` P `land`
 
 ### rendering: nodeLabels (1)
 
@@ -8663,7 +8676,7 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 
 ### rendering: preloadAnimations (1)
 
-- `src/rendering/preloadAnimations.js:217` P? `the farm`
+- `src/rendering/preloadAnimations.js:220` P? `the farm`
 
 ### rendering: raceFlags (1)
 
@@ -8787,7 +8800,7 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 
 ### server: alliance (1)
 
-- `server/src/alliance.js:521` S `alliance war vs [`
+- `server/src/alliance.js:539` S `alliance war vs [`
 
 ### server: amulet (1)
 
@@ -8821,8 +8834,8 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 
 ### server: cadence (2)
 
-- `server/src/cadence.js:232` S `Weekly jackpot —`
-- `server/src/cadence.js:232` S `ticket(s) of`
+- `server/src/cadence.js:249` S `Weekly jackpot —`
+- `server/src/cadence.js:249` S `ticket(s) of`
 
 ### server: chainwriter (1)
 
@@ -8830,11 +8843,11 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 
 ### server: charname (5)
 
-- `server/src/charname.js:120` S `Name refused:`
-- `server/src/charname.js:120` S `pick another name`
-- `server/src/charname.js:143` S `playerId required`
-- `server/src/charname.js:147` S `name refused:`
-- `server/src/charname.js:149` S `no such character`
+- `server/src/charname.js:127` S `Name refused:`
+- `server/src/charname.js:127` S `pick another name`
+- `server/src/charname.js:150` S `playerId required`
+- `server/src/charname.js:154` S `name refused:`
+- `server/src/charname.js:156` S `no such character`
 
 ### server: charwatch (3)
 
@@ -8861,10 +8874,10 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 
 ### server: dailyrewards (4)
 
-- `server/src/dailyrewards.js:604` S `Daily spin`
-- `server/src/dailyrewards.js:862` S `Daily quest`
-- `server/src/dailyrewards.js:870` S `Daily quest`
-- `server/src/dailyrewards.js:1056` S `no record`
+- `server/src/dailyrewards.js:619` S `Daily spin`
+- `server/src/dailyrewards.js:887` S `Daily quest`
+- `server/src/dailyrewards.js:895` S `Daily quest`
+- `server/src/dailyrewards.js:1093` S `no record`
 
 ### server: data (8)
 
@@ -8900,8 +8913,8 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 
 ### server: eventcapes (2)
 
-- `server/src/eventcapes.js:577` S `name a real cape: ?cape=`
-- `server/src/eventcapes.js:580` S `this voids tickets people may have won — add &confirm=yes`
+- `server/src/eventcapes.js:579` S `name a real cape: ?cape=`
+- `server/src/eventcapes.js:582` S `this voids tickets people may have won — add &confirm=yes`
 
 ### server: farm (2)
 
@@ -8924,8 +8937,8 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `server/src/feedback.js:359` S `Invalid vote`
 - `server/src/feedback.js:364` S `Ticket not found`
 - `server/src/feedback.js:383` S `Ticket not found`
-- `server/src/feedback.js:522` S `No such ticket`
 - `server/src/feedback.js:524` S `No such ticket`
+- `server/src/feedback.js:526` S `No such ticket`
 
 ### server: fightlock (1)
 
@@ -8974,11 +8987,11 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 
 ### server: hidden (5)
 
-- `server/src/hidden.js:229` S `the settings could not be read; try again`
-- `server/src/hidden.js:232` S `stored by a newer worker; not written over`
-- `server/src/hidden.js:242` S `unknown setting`
-- `server/src/hidden.js:256` S `unknown setting`
-- `server/src/hidden.js:264` S `GET, POST or DELETE`
+- `server/src/hidden.js:233` S `the settings could not be read; try again`
+- `server/src/hidden.js:236` S `stored by a newer worker; not written over`
+- `server/src/hidden.js:246` S `unknown setting`
+- `server/src/hidden.js:260` S `unknown setting`
+- `server/src/hidden.js:268` S `GET, POST or DELETE`
 
 ### server: inbox (2)
 
@@ -8987,8 +9000,8 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 
 ### server: index (2)
 
-- `server/src/index.js:352` S `no such room`
-- `server/src/index.js:5288` S `Shop unavailable`
+- `server/src/index.js:353` S `no such room`
+- `server/src/index.js:5293` S `Shop unavailable`
 
 ### server: killroll (2)
 
@@ -9008,9 +9021,10 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `server/src/liveops.js:621` S `flag budget exhausted (`
 - `server/src/liveops.js:659` S `text required`
 
-### server: loginspin (1)
+### server: loginspin (2)
 
-- `server/src/loginspin.js:137` S `Free daily spin`
+- `server/src/loginspin.js:142` S `Free daily spin`
+- `server/src/loginspin.js:149` S `Free daily spin`
 
 ### server: market (24)
 
@@ -9107,7 +9121,7 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 
 - `server/src/reqonce.js:170` S `Interrupted -- check your orders`
 
-### server: restore (32)
+### server: restore (34)
 
 - `server/src/restore.js:94` S `The room's way back is off: set 'roomrewind: true' in the live flags to use it (and bac...`
 - `server/src/restore.js:116` S `The whole room as it was at`
@@ -9116,31 +9130,33 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `server/src/restore.js:119` S `: every save, trade, purchase and reward since, for everyone.`
 - `server/src/restore.js:120` S `player(s) in the room now are disconnected and come back to that time:`
 - `server/src/restore.js:120` S `Nobody is in the room now.`
-- `server/src/restore.js:151` S `These go back too, being in the same storage: the live flags, the freezes, the login ke...`
-- `server/src/restore.js:152` S `The flags now:`
-- `server/src/restore.js:152` S `. Frozen now:`
-- `server/src/restore.js:154` S `a login key handed out or a device admitted since is refused (give that character a new...`
-- `server/src/restore.js:163` S `bookmark: the one an earlier answer gave`
-- `server/src/restore.js:167` S `say when: minutesAgo, at (ms), or bookmark`
-- `server/src/restore.js:168` S `when: a number`
-- `server/src/restore.js:169` S `when: a time before now`
-- `server/src/restore.js:170` S `when: within the last 30 days`
-- `server/src/restore.js:196` S `This storage keeps no earlier times.`
-- `server/src/restore.js:203` S `The storage could not give an earlier time:`
-- `server/src/restore.js:205` S `The storage gave no bookmark.`
-- `server/src/restore.js:217` S `A dry run: nothing has changed. It would RESTORE`
-- `server/src/restore.js:217` S `It would LOSE`
-- `server/src/restore.js:219` S `It would close`
-- `server/src/restore.js:219` S `connection(s) and restart the room. Keep 'now': the plan run again with {bookmark: now}...`
-- `server/src/restore.js:220` S `To go ahead, send {step: "do", token, confirm: "`
-- `server/src/restore.js:231` S `No plan with that token: make the plan first.`
-- `server/src/restore.js:234` S `Nothing done. Type the time back exactly as the plan wrote it: confirm: "`
-- `server/src/restore.js:236` S `That plan is too old: make it again.`
-- `server/src/restore.js:261` S `The storage refused the restore:`
-- `server/src/restore.js:261` S `. Nothing was put back; the players reconnect into the room as it is.`
-- `server/src/restore.js:264` S `Done. RESTORED:`
-- `server/src/restore.js:264` S `The room restarts now.`
-- `server/src/restore.js:265` S `KEEP 'undo': the plan run again with {bookmark: undo} puts back everything up to this m...`
+- `server/src/restore.js:173` S `These go back too, being in the same storage: the live flags, the freezes, the login ke...`
+- `server/src/restore.js:174` S `The flags now:`
+- `server/src/restore.js:174` S `. Frozen now:`
+- `server/src/restore.js:176` S `a login key handed out or a device admitted since is refused (give that character a new...`
+- `server/src/restore.js:178` S `What you did to logins since that time comes undone too (do it again after):`
+- `server/src/restore.js:179` S `You did nothing to logins since that time (no key taken back, device forgotten or silen...`
+- `server/src/restore.js:189` S `bookmark: the one an earlier answer gave`
+- `server/src/restore.js:193` S `say when: minutesAgo, at (ms), or bookmark`
+- `server/src/restore.js:194` S `when: a number`
+- `server/src/restore.js:195` S `when: a time before now`
+- `server/src/restore.js:196` S `when: within the last 30 days`
+- `server/src/restore.js:222` S `This storage keeps no earlier times.`
+- `server/src/restore.js:229` S `The storage could not give an earlier time:`
+- `server/src/restore.js:231` S `The storage gave no bookmark.`
+- `server/src/restore.js:243` S `A dry run: nothing has changed. It would RESTORE`
+- `server/src/restore.js:243` S `It would LOSE`
+- `server/src/restore.js:245` S `It would close`
+- `server/src/restore.js:245` S `connection(s) and restart the room. Keep 'now': the plan run again with {bookmark: now}...`
+- `server/src/restore.js:246` S `To go ahead, send {step: "do", token, confirm: "`
+- `server/src/restore.js:257` S `No plan with that token: make the plan first.`
+- `server/src/restore.js:260` S `Nothing done. Type the time back exactly as the plan wrote it: confirm: "`
+- `server/src/restore.js:262` S `That plan is too old: make it again.`
+- `server/src/restore.js:287` S `The storage refused the restore:`
+- `server/src/restore.js:287` S `. Nothing was put back; the players reconnect into the room as it is.`
+- `server/src/restore.js:290` S `Done. RESTORED:`
+- `server/src/restore.js:290` S `The room restarts now.`
+- `server/src/restore.js:291` S `KEEP 'undo': the plan run again with {bookmark: undo} puts back everything up to this m...`
 
 ### server: revealbag (4)
 
@@ -9220,56 +9236,56 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 
 ### server: store (50)
 
-- `server/src/store.js:591` S `Not authorized`
-- `server/src/store.js:628` S `Not while you are fighting a player`
-- `server/src/store.js:633` S `Not found`
-- `server/src/store.js:644` S `Not found`
-- `server/src/store.js:695` S `Not while you are fighting a player`
-- `server/src/store.js:704` S `Missing fields`
-- `server/src/store.js:710` S `Invalid price`
-- `server/src/store.js:719` S `Invalid kind`
-- `server/src/store.js:721` S `Gear cannot be listed right now`
-- `server/src/store.js:725` S `Not in game`
-- `server/src/store.js:727` S `Not while you are fighting a player`
-- `server/src/store.js:731` S `Store is full`
-- `server/src/store.js:746` S `Invalid item`
-- `server/src/store.js:749` S `Invalid quantity`
-- `server/src/store.js:763` S `You do not have that`
-- `server/src/store.js:769` S `You do not have that`
-- `server/src/store.js:782` S `Item not in stash`
-- `server/src/store.js:786` S `Item not in stash`
-- `server/src/store.js:831` S `That pet cannot be sold (`
-- `server/src/store.js:833` S `That pet cannot be sold (no-pet)`
-- `server/src/store.js:899` S `listing failed`
-- `server/src/store.js:917` S `That listing is gone`
-- `server/src/store.js:918` S `Someone is buying that right now`
-- `server/src/store.js:919` S `That listing is being taken down`
-- `server/src/store.js:920` S `That is your own listing`
-- `server/src/store.js:922` S `Not in game`
-- `server/src/store.js:923` S `Not enough gold`
-- `server/src/store.js:948` S `Not enough gold`
-- `server/src/store.js:960` S `Not enough gold`
-- `server/src/store.js:985` S `That listing is gone`
-- `server/src/store.js:986` S `Someone is buying that right now`
-- `server/src/store.js:987` S `That listing is being taken down`
-- `server/src/store.js:988` S `That is your own listing`
-- `server/src/store.js:990` S `Invalid bid`
-- `server/src/store.js:993` S `Bid at least`
-- `server/src/store.js:995` S `Not in game`
-- `server/src/store.js:996` S `Not enough gold`
-- `server/src/store.js:1006` S `Not enough gold`
-- `server/src/store.js:1020` S `outbid on`
-- `server/src/store.js:1037` S `That listing is gone`
-- `server/src/store.js:1038` S `Not yours`
-- `server/src/store.js:1039` S `Someone is buying that right now`
-- `server/src/store.js:1040` S `That listing is being taken down`
-- `server/src/store.js:1041` S `No bids yet`
-- `server/src/store.js:1081` S `bid returned on`
-- `server/src/store.js:1138` S `bid returned on`
-- `server/src/store.js:1162` S `Missing params`
-- `server/src/store.js:1164` S `That listing is gone`
-- `server/src/store.js:1165` S `Not yours`
-- `server/src/store.js:1166` S `Someone is buying that right now`
+- `server/src/store.js:609` S `Not authorized`
+- `server/src/store.js:655` S `Not while you are fighting a player`
+- `server/src/store.js:660` S `Not found`
+- `server/src/store.js:671` S `Not found`
+- `server/src/store.js:722` S `Not while you are fighting a player`
+- `server/src/store.js:731` S `Missing fields`
+- `server/src/store.js:737` S `Invalid price`
+- `server/src/store.js:746` S `Invalid kind`
+- `server/src/store.js:748` S `Gear cannot be listed right now`
+- `server/src/store.js:752` S `Not in game`
+- `server/src/store.js:754` S `Not while you are fighting a player`
+- `server/src/store.js:758` S `Store is full`
+- `server/src/store.js:773` S `Invalid item`
+- `server/src/store.js:776` S `Invalid quantity`
+- `server/src/store.js:790` S `You do not have that`
+- `server/src/store.js:796` S `You do not have that`
+- `server/src/store.js:809` S `Item not in stash`
+- `server/src/store.js:813` S `Item not in stash`
+- `server/src/store.js:858` S `That pet cannot be sold (`
+- `server/src/store.js:860` S `That pet cannot be sold (no-pet)`
+- `server/src/store.js:926` S `listing failed`
+- `server/src/store.js:944` S `That listing is gone`
+- `server/src/store.js:945` S `Someone is buying that right now`
+- `server/src/store.js:946` S `That listing is being taken down`
+- `server/src/store.js:947` S `That is your own listing`
+- `server/src/store.js:949` S `Not in game`
+- `server/src/store.js:950` S `Not enough gold`
+- `server/src/store.js:975` S `Not enough gold`
+- `server/src/store.js:987` S `Not enough gold`
+- `server/src/store.js:1012` S `That listing is gone`
+- `server/src/store.js:1013` S `Someone is buying that right now`
+- `server/src/store.js:1014` S `That listing is being taken down`
+- `server/src/store.js:1015` S `That is your own listing`
+- `server/src/store.js:1017` S `Invalid bid`
+- `server/src/store.js:1020` S `Bid at least`
+- `server/src/store.js:1022` S `Not in game`
+- `server/src/store.js:1023` S `Not enough gold`
+- `server/src/store.js:1033` S `Not enough gold`
+- `server/src/store.js:1047` S `outbid on`
+- `server/src/store.js:1064` S `That listing is gone`
+- `server/src/store.js:1065` S `Not yours`
+- `server/src/store.js:1066` S `Someone is buying that right now`
+- `server/src/store.js:1067` S `That listing is being taken down`
+- `server/src/store.js:1068` S `No bids yet`
+- `server/src/store.js:1108` S `bid returned on`
+- `server/src/store.js:1165` S `bid returned on`
+- `server/src/store.js:1189` S `Missing params`
+- `server/src/store.js:1191` S `That listing is gone`
+- `server/src/store.js:1192` S `Not yours`
+- `server/src/store.js:1193` S `Someone is buying that right now`
 
 ### server: storeoffer (20)
 
@@ -9296,8 +9312,8 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 
 ### server: testmode (2)
 
-- `server/src/testmode.js:162` S `playerId required`
-- `server/src/testmode.js:217` S `could not read the list`
+- `server/src/testmode.js:178` S `playerId required`
+- `server/src/testmode.js:233` S `could not read the list`
 
 ### server: threat (1)
 
@@ -9412,9 +9428,9 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 
 ### storeApi (3)
 
-- `src/ui/storeApi.js:143` P `No answer from the store`
-- `src/ui/storeApi.js:151` P `No answer from the store`
-- `src/ui/storeApi.js:191` P `No answer from the store`
+- `src/ui/storeApi.js:147` P `No answer from the store`
+- `src/ui/storeApi.js:155` P `No answer from the store`
+- `src/ui/storeApi.js:195` P `No answer from the store`
 
 ### storeChatBus (8)
 
