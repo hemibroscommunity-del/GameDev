@@ -1,7 +1,7 @@
 card: WD
 branch: claude/plan-wd-3-spec (one PR a branch, claude/plan-wd-*)
-prs: #2171 (6140) census, #2179 (6141) guard, PR 3 (6142) spec: drafts, CI pending
-state: working
+prs: #2171 (6140) census, #2179 (6141) guard, #2180 (6142) spec: ready (merge in that order)
+state: ready
 
 ## Done
 - (nothing merged yet)
@@ -12,11 +12,12 @@ state: working
 
 - PR 2 (6141) #2179: tools/guards/player-words.test.mjs, lines 4941 / 381;
   the break proofs fail as they should.
-- PR 3 (6142): docs/specs/player-words.md, the table's shape and the order
+- PR 3 (6142) #2180: docs/specs/player-words.md, the table's shape and the order
   of moves: all 446 screens named, in waves W0 to W6 and "stays".
 
 ## Next
-- Each PR marked ready when its `test` is green; then state: ready.
+- Nothing: all three are green and wait for the gatekeeper. Then: done.
+  #2179 and #2180 carry the PRs before them (stacked branches).
 
 ## Found
 - "Wheel" a player may read: one row, `?`, src/ui/BroTown.jsx:9045 (the
