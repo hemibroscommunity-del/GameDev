@@ -13,8 +13,11 @@
  *     one), with the function it sits in and its KIND (the name read:
  *     `clientWidth`, `getBoundingClientRect`, ...).  `approved` is the way
  *     it is allowed without a list row: 'helper' (APPROVED below, the
- *     measure helpers) or 'observer' (inside a `new ResizeObserver(...)`'s
- *     callback, which the browser calls right after its own layout).
+ *     measure helpers), 'observer' (inside a `new ResizeObserver(...)`'s
+ *     callback, which the browser calls right after its own layout) or
+ *     'frame-top' (in a function handed to framePacer.js `beforeDraw`, or a
+ *     function of its file that one calls by name: the top of the game's
+ *     frame, where the page the browser just drew is laid out).
  *
  * THE FUNCTION a read sits in is the innermost NAMED one: `function name`,
  * a method `name(...) {`, or an arrow or `function` given a name
@@ -67,8 +70,8 @@ export const APPROVED = [
     why: 'the play column\'s and the window\'s size, kept; cleared by a resize or a turn, the column\'s re-read by its ResizeObserver (v2.3.4875). playVw() / playVh() / playIsLandscape() read it' },
   { file: 'src/ui/mobile/playViewport.js', fn: '_win',
     why: 'the window\'s own size, kept till the BROWSER resizes it (a script\'s `resize`, isTrusted false, never clears it: v2.3.6241, HB PR 2). winVw() / winVh() read it' },
-  { file: 'src/ui/mayorScreen.js', fn: 'canvasBox',
-    why: 'the canvas\'s place on the page, kept; measured again on a resize, a turn, its ResizeObserver, or after RECT_MS (v2.3.4470)' },
+  { file: 'src/ui/mayorScreen.js', fn: 'canvasBox', alias: '_measureBox',
+    why: 'the canvas\'s place on the page, kept; measured again on a resize, a turn, its ResizeObserver, or after RECT_MS (v2.3.4470); card HB2 (#2224, v2.3.6280) moves the measuring into `_measureBox`, run at the top of the frame' },
   { file: 'src/ui/doorPrompt.js', fn: 'placeOverHeadNow',
     why: 'measured at the top of the next frame (requestAnimationFrame), where the page the browser just drew is laid out (`?afterpaint`, v2.3.6244, HB PR 5)' },
 ];
@@ -206,7 +209,32 @@ function functionsOf(m) {
     }
     if (best) ro.push([best.a, best.b]);
   }
-  return { fns: out, ro };
+  /* v2.3.6360: THE TOP OF THE GAME'S FRAME (framePacer.js `beforeDraw`,
+     CLAUDE.md §7's place for a read): a function handed to `beforeDraw(` (a
+     callback, or a function of this file by its name), and a function of this
+     file it calls by name (`beforeDraw(function () { p = readCoachPage(); })`),
+     with every function inside them.  Card HB2 moves the coach's reads there
+     (#2224, `?afterpaint`); the gatekeeper's sitting 51 asked for the rule. */
+  const top = [];
+  const topNames = new Set();
+  const reBD = /(?<![\w$.])beforeDraw\(/g;
+  while ((x = reBD.exec(m))) {
+    const at = x.index + x[0].length;
+    let best = null;
+    for (const f of out) if (f.start >= at && f.start < at + 12 && (!best || f.b > best.b)) best = f;
+    if (best && !best.name) {
+      top.push([best.a, best.b]);
+      const body = m.slice(best.a, best.b);
+      const reCall = /(?<![\w$.])([A-Za-z_$][\w$]*)\(/g;
+      let c;
+      while ((c = reCall.exec(body))) topNames.add(c[1]);
+    } else {
+      const w = /^\s*([A-Za-z_$][\w$]*)\s*[,)]/.exec(m.slice(at, at + 80));
+      if (w) topNames.add(w[1]);
+    }
+  }
+  for (const f of out) if (f.name && topNames.has(f.name)) top.push([f.a, f.b]);
+  return { fns: out, ro, top };
 }
 
 function namedAt(fns, p) {
@@ -236,8 +264,9 @@ export function readsOf(files = layoutFiles(), read = (f) => readFileSync(join(R
         const fn = namedAt(fr.fns, p);
         const kind = K.kind ? K.kind(x) : x[1];
         let approved = '';
-        if (APPROVED.some((a) => a.file === f && a.fn === fn)) approved = 'helper';
+        if (APPROVED.some((a) => a.file === f && (a.fn === fn || a.alias === fn))) approved = 'helper';
         else if (fr.ro.some(([a, b]) => a < p && p < b)) approved = 'observer';
+        else if (fr.top.some(([a, b]) => a < p && p < b)) approved = 'frame-top';
         out.push({ file: f, fn, kind, approved });
       }
     }

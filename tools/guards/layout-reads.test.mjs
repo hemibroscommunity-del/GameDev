@@ -11,8 +11,10 @@
  * when it is written.  It fails:
  *
  *   1. a read (lib/layoutReads.mjs finds them: every .js/.jsx under src/) that
- *      is neither in an APPROVED place (the measure helpers, or a
- *      ResizeObserver's callback) nor within its row of the frozen list
+ *      is neither in an APPROVED place (the measure helpers, a
+ *      ResizeObserver's callback, or the top of the game's frame: a function
+ *      handed to framePacer.js `beforeDraw`, and a function of its file it
+ *      calls by name) nor within its row of the frozen list
  *      (lib/layoutReadsKnown.mjs: file, function, kind, how many);
  *   2. the list's reads over LINE (the census's count: it only falls; a fix
  *      that takes reads away runs `--write`, which lowers the rows and LINE in
@@ -21,8 +23,10 @@
  *      THE way: a helper renamed or moved is the spec's change too);
  *   4. its own break proof, played every run on scratch files beside the real
  *      ones: a `clientWidth` in a component's render and a measure in a
- *      function named like a helper in another file must fail 1; a read in a
- *      ResizeObserver's callback, one in a comment and one in a string must not.
+ *      function named like a helper in another file, and one beside a
+ *      `beforeDraw` but not in it, must fail 1; a read in a ResizeObserver's
+ *      callback, in a `beforeDraw` callback or a function it calls, one in a
+ *      comment and one in a string must not.
  *
  * BREAK PROOF (rule 8), tried by hand on scratch edits, 2026-11-18 (and put back):
  *   a. src/ui/mobile/dash/NavRail.jsx, in NavRail's render, before its
@@ -35,6 +39,9 @@
  *      (and its caller)                                         -> FAIL 1, 2, 3
  *   e. src/ui/fixedBox.js: its last `w.innerWidth` taken out: passes, "room:
  *      365 -> 364", and `--write` takes its row off and LINE to 364.
+ *   f. (v2.3.6360, the gatekeeper's sitting 51: main + HB2's #2224 merged)
+ *      QuestCoach.jsx's beforeDraw callback: `p = readCoachPage()` -> `p =
+ *      null` (its reads no longer at the top of the frame)            -> FAIL 1
  *   (and check 4 plays the scratch cases every run.)
  *
  *   node tools/guards/layout-reads.test.mjs            the verdict
@@ -93,9 +100,10 @@ if (process.argv.includes('--write')) {
 /* 1. no read outside the ways and the list */
 {
   const o = over(t);
-  check('1. every layout read is in a measure helper, a ResizeObserver\'s callback, or its row of the list ('
+  check('1. every layout read is in a measure helper, a ResizeObserver\'s callback, the top of the frame, or its row of the list ('
     + reads.length + ' reads: ' + reads.filter((r) => r.approved === 'helper').length + ' in the helpers, '
-    + reads.filter((r) => r.approved === 'observer').length + ' in an observer, ' + sum(t) + ' listed)',
+    + reads.filter((r) => r.approved === 'observer').length + ' in an observer, '
+    + reads.filter((r) => r.approved === 'frame-top').length + ' at the top of the frame, ' + sum(t) + ' listed)',
   o.length === 0,
   o.length ? 'a new read of the page\'s layout: ' + say(o)
     + '.  Measure through the ways in docs/specs/layout-reads.md (a kept size: playViewport.js winVw/playVw; '
@@ -121,8 +129,8 @@ if (process.argv.includes('--write')) {
   for (const a of APPROVED) {
     let src = '';
     try { src = readFileSync(join(ROOT, a.file), 'utf8'); } catch { /* gone */ }
-    const re = new RegExp('(?:function\\s+' + a.fn + '\\s*\\(|(?:const|let|var)\\s+' + a.fn + '\\s*=)');
-    if (!re.test(src)) gone.push(a.file + ' > ' + a.fn);
+    const has = (fn) => new RegExp('(?:function\\s+' + fn + '\\s*\\(|(?:const|let|var)\\s+' + fn + '\\s*=)').test(src);
+    if (!has(a.fn) && !(a.alias && has(a.alias))) gone.push(a.file + ' > ' + a.fn);
   }
   check('3. the ' + APPROVED.length + ' measure helpers are in their files', gone.length === 0,
     'gone: ' + gone.join('; ') + ' (lib/layoutReads.mjs APPROVED and docs/specs/layout-reads.md "The ways" change with it)');
@@ -134,19 +142,25 @@ if (process.argv.includes('--write')) {
     'src/ui/panels/ZzLayoutProof.jsx':
       '/* el.clientWidth in a comment is no read */\n'
       + 'export function ZzProof({ r }) { const w = r.current ? r.current.clientWidth : 0; const s = "getBoundingClientRect()"; return <div style={{ width: w }}>{s}</div>; }\n'
-      + 'export function zzWatch(el, keep) { const ro = new ResizeObserver(() => { keep(el.clientWidth); }); ro.observe(el); return ro; }\n',
+      + 'export function zzWatch(el, keep) { const ro = new ResizeObserver(() => { keep(el.clientWidth); }); ro.observe(el); return ro; }\n'
+      + 'function zzRead(el) { return el.getBoundingClientRect(); }\n'
+      + 'function zzLate(el) { return el.offsetHeight; }\n'
+      + 'export function zzAsk(el, keep) { beforeDraw(function () { keep(zzRead(el), el.clientHeight); }); return zzLate(el); }\n',
     'src/ui/ZzNamedLikeAHelper.js':
       'export function canvasBox(c) { return c.getBoundingClientRect(); }\n',
   };
   const scratch = Object.keys(S);
   const r2 = readsOf(files.concat(scratch), (f) => (S[f] !== undefined ? S[f] : readFileSync(join(ROOT, f), 'utf8')));
   const o2 = over(tally(r2)).map((x) => x.k);
-  const want = ['src/ui/panels/ZzLayoutProof.jsx|ZzProof|clientWidth', 'src/ui/ZzNamedLikeAHelper.js|canvasBox|getBoundingClientRect'];
+  const want = ['src/ui/panels/ZzLayoutProof.jsx|ZzProof|clientWidth', 'src/ui/ZzNamedLikeAHelper.js|canvasBox|getBoundingClientRect',
+    'src/ui/panels/ZzLayoutProof.jsx|zzLate|offsetHeight'];
   const extra = r2.filter((r) => scratch.includes(r.file));
   const observed = extra.filter((r) => r.approved === 'observer').length;
-  const ok = want.every((k) => o2.includes(k)) && extra.length === 3 && observed === 1;
-  check('4. the break proof: a clientWidth in a render and a helper\'s name in another file fail 1; '
-    + 'an observer\'s read, a comment and a string do not', ok,
+  const topped = extra.filter((r) => r.approved === 'frame-top').length;
+  const ok = want.every((k) => o2.includes(k)) && o2.filter((k) => k.includes('Zz')).length === 3
+    && extra.length === 6 && observed === 1 && topped === 2;
+  check('4. the break proof: a clientWidth in a render, a helper\'s name in another file and a read beside a '
+    + 'beforeDraw (not in it) fail 1; an observer\'s read, a beforeDraw\'s (and its function\'s), a comment and a string do not', ok,
   JSON.stringify({ over: o2.filter((k) => k.includes('Zz')), found: extra.map((r) => r.fn + ':' + r.kind + ':' + (r.approved || '-')) }));
 }
 

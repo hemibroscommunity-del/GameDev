@@ -27,6 +27,9 @@ state: working
 - No general "measure after the paint" helper exists in src/ (doorPrompt's
   is the door prompt's own): a `measureAfterPaint(el, fn)` would be HB2's.
 - Precheck needs no line: a tools/guards file runs by itself (run.mjs).
+- Sitting 51: with HB2's #2224 merged the guard went red (reads moved to
+  the frame's top). Now a `beforeDraw` callback (framePacer.js, CLAUDE.md
+  §7's place) and the functions it calls by name are a way: merged 337/365.
 
 ## Needs
 
