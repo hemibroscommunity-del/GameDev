@@ -1,0 +1,71 @@
+/* v2.3.6349: the Equipment window's words (src/ui/panels/InventoryPanel.jsx; docs/specs/player-words.md, wave W1) */
+export const SAY = Object.freeze({
+  /* the title and the caption */
+  'inventoryPanel.equipment': 'Equipment',
+  'inventoryPanel.active': 'Active: {slot}',
+  'inventoryPanel.ranged': 'Ranged',
+  'inventoryPanel.melee': 'Melee',
+  'inventoryPanel.coins': '{coins}g',
+  /* the weapons */
+  'inventoryPanel.meleeWeapon': 'Melee Weapon',
+  'inventoryPanel.rangedWeapon': 'Ranged Weapon',
+  'inventoryPanel.activeBadge': 'ACTIVE',
+  'inventoryPanel.mult': '× mult',
+  'inventoryPanel.hardnessShort': 'H{hardness}',
+  'inventoryPanel.dmg': 'DMG: ',
+  'inventoryPanel.spd': 'SPD: ',
+  'inventoryPanel.rng': 'RNG: ',
+  'inventoryPanel.dps': 'DPS: ',
+  'inventoryPanel.element1': 'E1: {element} ({status})',
+  'inventoryPanel.element2': 'E2: {element} ({status})',
+  'inventoryPanel.volatile': 'VOLATILE +30%',
+  'inventoryPanel.volatileShort': 'VOL',
+  'inventoryPanel.noElements': 'No elements',
+  /* the worn armour */
+  'inventoryPanel.wornArmor': 'WORN ARMOR',
+  'inventoryPanel.steelPlate': 'Steel Plate',
+  'inventoryPanel.chest': 'Chest',
+  'inventoryPanel.steelGreaves': 'Steel Greaves',
+  'inventoryPanel.legs': 'Legs',
+  'inventoryPanel.tShirt': 'T-Shirt',
+  'inventoryPanel.underArmor': 'Chest · under armor',
+  'inventoryPanel.equip': 'Equip',
+  'inventoryPanel.unequip': 'Unequip',
+  'inventoryPanel.noArmor': 'No Armor',
+  'inventoryPanel.attuned': 'Attuned: {attunement}',
+  'inventoryPanel.noAttunement': 'No attunement',
+  /* the amulet */
+  'inventoryPanel.amulet': '{tier} Amulet',
+  'inventoryPanel.simple': 'Simple',
+  'inventoryPanel.gem': '{gem} gem',
+  'inventoryPanel.noGem': 'No gem — visit the Enchanter to slot one',
+  'inventoryPanel.noAmulet': 'No Amulet',
+  'inventoryPanel.craftAmulet': 'Craft at Blacksmith from gold bars (nuggets: {nuggets}/{perBar}, bars: {bars})',
+  /* the shield */
+  'inventoryPanel.basic': 'Basic',
+  'inventoryPanel.noBonuses': 'No bonuses yet',
+  'inventoryPanel.noShield': 'No Shield',
+  'inventoryPanel.craftShield': 'Craft at the Blacksmith from ore',
+  /* the golden ticket */
+  'inventoryPanel.goldenTicket': 'Golden Ticket',
+  'inventoryPanel.openTicket': 'Open Golden Ticket',
+  /* the food */
+  'inventoryPanel.food': 'Food ({count})',
+  'inventoryPanel.eatFish': '{fish} ×{qty} (+{heal}HP)',
+  'inventoryPanel.healed': '+{heal} HP',
+  /* the weapon stash */
+  'inventoryPanel.stash': 'Weapon Stash ({count}/{max})',
+  'inventoryPanel.stashEmpty': 'Empty. Weapon drops are auto-stashed here for comparison.',
+  'inventoryPanel.needReq': 'Need {label} {req} (have {have})',
+  'inventoryPanel.notSold': 'Not sold: no connection',
+  'inventoryPanel.sold': '+{gold}G',
+  'inventoryPanel.sell': 'Sell ({gold}g)',
+  /* the codex */
+  'inventoryPanel.codex': 'Codex: {count} collisions discovered',
+  /* the pets */
+  'inventoryPanel.pets': 'Pets: {count}/{max}',
+  'inventoryPanel.trapping': 'Trapping Lv{level}',
+  'inventoryPanel.noPets': 'No pets. Weaken a monster to <20% HP then tap 🪤 to capture!',
+  'inventoryPanel.petLevel': 'Lv{level} {archetype}',
+  'inventoryPanel.petHow': 'Tap a pet to set active. Active pet follows you and auto-collects loot within {radius}px.',
+});
