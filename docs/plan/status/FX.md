@@ -1,6 +1,6 @@
 card: FX
 branch: claude/plan-fx-3-ore-projectiles (on fx-2, on fx-1)
-prs: #2190 6220 (ready), #2194 6221 (draft, CI), 6222 (draft)
+prs: #2190 6220 (ready), #2194 6221 (ready), #2200 6222 (draft)
 state: ready
 
 ## Done
@@ -18,7 +18,8 @@ state: ready
   held-sweep 9 re-keyed; questline 187/187, membudget all green.
 - 6222 (on #2194): ore rocks as numbers, projectile twins; artCache
   13.4 -> 11.2, buffers line 24.2 -> 24.8 (net 1.7 MB less); tierore
-  74/74, magicburst 7/7, questline 187/187.
+  74/74, magicburst 7/7, questline 187/187. artCache kept 79.3 in both
+  copies (planning session's Q8); the twins' asset-door rows added.
 - Then 6223 (the canvas makers, §253).
 
 ## Found
@@ -32,5 +33,5 @@ state: ready
 
 - #2190 clashes with EN's #2189 in M-tables.md: EN merges first; main
   merged in when gatekeeper 46 asks (planning session, 2026-11-18).
-- Q8 (planning session): lower artCache 79.3 -> 77.1 with framePacer.js
-  MEM_LINES's copy (frame-pacer.test 23a), or keep 79.3 as v2.3.5982 did?
+- #2190: merge main in once EN's #2195 lands, re-generate M-tables.md
+  (gatekeeper 46). #2194, #2200: retarget to main after #2190 (sitting 47).
