@@ -82,7 +82,7 @@ import { deviceProfile, rendererName, devAsk } from '../game/deviceProfile.js'; 
 import { laneKnob, pinOf, askingAs } from '../game/drawLanes.js';   /* v2.3.5228: one program or three is the lanes' `program` knob (card O PR 8) */
 import { readerFor, swValue } from '../game/switches.js';   /* v2.3.5232 (card O PR 12): `?onebatch` through the page's one reader */
 import { selfDraw, selfDrop, selfQueue, selfSkip, selfPending, selfIdx, selfPalBytes, selfRgba, selfSharpWant, selfTestOn, SELF_SIZE } from './selfTest.js';   /* v2.3.5234: the self-test at the door (card O PR 14a); v2.3.5236 the sharp read's answer (14b) */
-import { swHas } from '../game/switches.js';   /* v2.3.5315: the page's one reader (card T) */
+import { swHas, sw } from '../game/switches.js';   /* v2.3.5315: the page's one reader (card T); v2.3.6381: + sw (`?atlasrow=0`) */
 export { isPaletteSource, drawSourceRect, paletteRegionRGBA } from './paletteDraw.js';
 
 export const PAL_BATCHER = 'bt-palette';
@@ -128,6 +128,76 @@ function atlas() {
   return _atlas;
 }
 export function paletteAtlasSource() { return atlas().source; }
+
+/* ═══ v2.3.6381: A ROW OF THE ATLAS SENT, NOT THE WHOLE ATLAS (card SB PR 2) ═══
+   The owner, 2026-11-18, on the skateboard: "sometimes it freezes just for
+   tiny fractions of a second while it loads."  Every picture kept as colour
+   numbers takes a row of the atlas for its colours (takeRow), and a row was
+   written by `source.update()` -- which Pixi answers at once by sending the
+   WHOLE atlas to the graphics chip again (GlTextureSystem.onSourceUpdate:
+   256 x 256 colours, 256 KB) for the 1 KB that changed.  Each ground piece
+   laid takes a row, and the board lays them twice as often as a walk: the
+   ride's ring walked on budget-android (mp-heldsweep `ridewalk`,
+   docs/plan/census/SB-ride.md) found it the ground's biggest cost, 24 holds,
+   193 ms in all, up to 13.7 ms.  Now only the row goes (texSubImage2D of one
+   row, at its place): the same colours on the chip, byte for byte.
+   The whole atlas is still sent, as before, where the row cannot be: the
+   atlas not on a chip yet (its first send carries every row), on more than
+   one renderer (a rebuild's two), its chip's copy a different size, a lost
+   context, or a throw.  `?atlasrow=0`: the whole atlas every time. */
+let _rowsSent = 0, _wholeSent = 0;
+/* QA (mp-rideheld): the atlas as the chip holds it, read back through a framebuffer of its own (exact bytes, no
+   blend), against the page's copy, row by row up to the last row ever taken.  Null where it cannot be read.  Called
+   by a test, never by the game. */
+if (typeof window !== 'undefined') {
+  window.__btAtlasSame = () => {
+    const A = _atlas, r = _renderer;
+    if (!A || !r || !r.gl || A.source.destroyed) return null;
+    const glT = A.source._gpuData && A.source._gpuData[r.uid];
+    if (!glT || !glT.texture) return null;
+    const gl = r.gl, was = gl.getParameter(gl.FRAMEBUFFER_BINDING), fb = gl.createFramebuffer();
+    try {
+      gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, glT.texture, 0);
+      if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) return null;
+      const rows = A.next, buf = new Uint8Array(ATLAS_W * Math.max(1, rows) * 4);
+      gl.readPixels(0, 0, ATLAS_W, Math.max(1, rows), gl.RGBA, gl.UNSIGNED_BYTE, buf);
+      let diffRows = 0, diffBytes = 0;
+      for (let y = 0; y < rows; y++) {
+        let d = 0;
+        for (let i = y * ATLAS_W * 4, e = i + ATLAS_W * 4; i < e; i++) if (buf[i] !== A.data[i]) d++;
+        if (d) { diffRows++; diffBytes += d; }
+      }
+      return { rows, diffRows, diffBytes, rowsSent: _rowsSent, wholeSent: _wholeSent };
+    } catch (e) {
+      return { error: String((e && e.message) || e) };
+    } finally {
+      gl.bindFramebuffer(gl.FRAMEBUFFER, was);
+      gl.deleteFramebuffer(fb);
+    }
+  };
+}
+function atlasRowSent(A, row) {
+  const src = A.source;
+  const whole = () => { _wholeSent++; src.update(); };
+  if (sw('atlasrow')) return whole();
+  const r = _renderer, gd = src._gpuData;
+  const ids = gd ? Object.keys(gd).filter((k) => gd[k]) : [];
+  if (!ids.length) return;   /* on no chip yet: its first send is the whole of it, this row included */
+  if (!r || !r.gl || !r.texture || ids.length !== 1 || ids[0] !== String(r.uid)) return whole();
+  try {
+    const gl = r.gl, ts = r.texture, glT = gd[ids[0]];
+    if (!glT || !glT.texture || glT.width !== ATLAS_W || glT.height !== ATLAS_ROWS) return whole();
+    if (typeof gl.isContextLost === 'function' && gl.isContextLost()) return whole();
+    /* bound as Pixi binds a texture it sends (onSourceUpdate), so its record of what is bound stays true */
+    gl.bindTexture(glT.target, glT.texture);
+    ts._boundTextures[ts._activeTextureLocation] = src;
+    if (ts._premultiplyAlpha) { ts._premultiplyAlpha = false; gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false); }
+    const o = row * ATLAS_W * 4;
+    gl.texSubImage2D(glT.target, 0, 0, row, ATLAS_W, 1, glT.format, glT.type, A.data.subarray(o, o + ATLAS_W * 4));
+    _rowsSent++;
+  } catch (e) { whole(); }
+}
 function takeRow(rgba) {
   const A = atlas();
   const row = A.free.length ? A.free.pop() : (A.next < ATLAS_ROWS ? A.next++ : -1);
@@ -136,7 +206,7 @@ function takeRow(rgba) {
   A.data.fill(0, o, o + ATLAS_W * 4);
   A.data.set(rgba.subarray(0, Math.min(rgba.length, ATLAS_W * 4)), o);
   A.used++;
-  A.source.update();
+  atlasRowSent(A, row);   /* v2.3.6381: the row, not the whole atlas */
   return row;
 }
 function giveRow(row) {
@@ -1138,7 +1208,8 @@ if (typeof window !== 'undefined') {
     return { ..._stats, on: paletteOn(), wanted: _wanted, ok: _ok, webgl2: webgl2(_renderer),
       live: n, livePieces: pieces, livePages: pages, liveMB: +(bytes / 1048576).toFixed(2),
       liveFarm: farm, liveFarmMB: +(farmBytes / 1048576).toFixed(2),
-      rowsUsed: _atlas ? _atlas.used : 0, rowsMax: ATLAS_ROWS };
+      rowsUsed: _atlas ? _atlas.used : 0, rowsMax: ATLAS_ROWS,
+      rowsSent: _rowsSent, wholeSent: _wholeSent };   /* v2.3.6381: a row sent alone, the whole atlas sent (mp-atlasrow) */
   };
 }
 
@@ -1156,7 +1227,7 @@ export function paletteRowTake() {
   if (row < 0) { _stats.rowsFull++; return -1; }
   A.data.fill(0, row * ATLAS_W * 4, (row + 1) * ATLAS_W * 4);
   A.used++;
-  A.source.update();
+  atlasRowSent(A, row);   /* v2.3.6381 */
   return row;
 }
 /** The row's colours (`rgba`, 4 bytes each, premultiplied) written again. */
@@ -1164,7 +1235,7 @@ export function paletteRowWrite(row, rgba) {
   if (!_atlas || row < 0) return;
   const o = row * ATLAS_W * 4;
   _atlas.data.set(rgba.subarray(0, Math.min(rgba.length, ATLAS_W * 4)), o);
-  _atlas.source.update();
+  atlasRowSent(_atlas, row);   /* v2.3.6381 */
 }
 export function paletteRowGive(row) { giveRow(row); }
 
