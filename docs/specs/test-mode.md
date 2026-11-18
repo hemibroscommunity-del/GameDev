@@ -101,7 +101,8 @@ switch allows it.
   claims merged only when the ledger backs them (v2.3.5812, `gearstash.js`,
   `shieldclaim`); a daily spin's and the login spin's paid
   mark in the credit's own run (v2.3.5810, `dailyrewards.js`,
-  `loginspin.js`, `paidmark`).
+  `loginspin.js`, `paidmark`); a `track`'s avatar, colour and look words in
+  the game's own forms (v2.3.5819, `lookform.js`, `lookform`).
 - Every save and payment rule; the login key, the device lock, the lockouts;
   a frozen account.
 - PvP consent and **every check on a hit between players** (pvpbalance.js,
