@@ -1,6 +1,6 @@
 card: EN
-branch: claude/plan-en-4-canvas (6203; 6200-6202 merged)
-prs: #2189 6200, #2195 6201, #2207 6202 (all merged), 6203 (draft, CI)
+branch: claude/plan-en-5-peerprewarm (6204; 6203 #2234 on plan-en-4-canvas)
+prs: #2189 6200, #2195 6201, #2207 6202 (merged), #2234 6203 (ready), 6204 (checks)
 state: working
 
 ## Done
@@ -14,10 +14,10 @@ state: working
 
 ## Next
 
-- 6203 open: the five canvas pictures through the memory law (keepAsImage,
-  once the bakes are quiet, for the masked frames and fishing overlays;
-  keepOnGpuOnly for the armour probe's reference): census 41 -> 36.
-  Then PRs 5-8 (HB's holds).
+- 6204: HB's row 37, a peer's look prewarm in 4 ms slices, each its own
+  task (budget-android, peer: main 25.4 ms x13 in 1 run of 3; PR 0 in 2);
+  plus Z51's mend of 6203: the PNG queue capped (600), drained after 15 s.
+  Then 6205 (row 23), 6206 (row 33), 6207 (the frame's folk).
 
 ## Found
 
