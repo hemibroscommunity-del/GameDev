@@ -1,34 +1,40 @@
 card: HB
-branch: claude/plan-hb-4-pacermem
-prs: #2188 (6240, the map): merged; #2199 (6241, the band's geometry): ready; #2201 (6242, the report's memory read): draft; #2202 (6243, the pacer's memory read): draft
+branch: claude/plan-hb-5-afterpaint
+prs: #2188 (6240), #2199 (6241), #2201 (6242), #2202 (6243): merged; #2209 (6244, the door prompt after the paint): draft
 state: working
 
 ## Done
 
-- PR 1 (6240): docs/plan/census/HB-holds.md: O2's families over the line,
-  resolved on an unminified build of main under both profiles (heldsweep
-  all 8 stations x2, full paths), owners HB / EN / FX / list / box.
+- #2188 (6240): docs/plan/census/HB-holds.md, O2's families resolved.
+- #2199 (6241): the window's size kept; the band's own resize marked.
+- #2201 (6242): the field report reads the chip's total (__btGpuMb).
+- #2202 (6243): the pacer's count too; frame-pacer.test 23c widened.
+- #2209 (6244): the door prompt placed after the paint (`?afterpaint`,
+  decided for the owner while away; its switch row; mp-afterpaint).
+- Measured, not opened (no fall): the map's name widths; the figure's frame 0.
 
 ## Next
 
-- PR 4 (6243): the pacer's count reads the total alone; frame-pacer.test
-  23c widened (the planning session's one-off yes).  Then the next HB
-  family by size.
-- Measured, not opened: the World map's names' widths cached and its
-  boxes kept (branch claude/plan-hb-3-maplabels, local): the longest
-  hold is the first draw's cold measuring, the redraws are drawing.
+- #2209 to green, then its head to sitting 48.
+- Then, under the same `?afterpaint` (no new row): the quest coach
+  (QuestCoach.jsx: the [view] layout effect's coachFollow > worldRect >
+  mayorScreenRect, step > measure's reads; render's fixedBox), the band's
+  tap (BroTown resize()'s visualViewport read; NavRail/OneBandColumns
+  mount measures), the taps (rE > tapResourceAtClient > clientToCanvas);
+  then ui:GearTab (FX's find: 19.6 ms at lands/fight); pack-page's read
+  after FX's #2200 (p256.js) is on main.  Card tags 6245 onward.
 
 ## Found
 
 - Under BT_QA_CPU_THROTTLE the profiler counts the throttle's pauses
-  against whatever function runs (perfTracker.js `wrapped`, the long-task
-  observer): a hold's length is real, its split by function looser.
-
-- mp-jumpbtn fails on main (the same as on this branch): "sideways 844:
-  2b" wants the disc 94 px sideways, it is 80 (tools/qa/mp/mp-jumpbtn.mjs:166).
-- mp-membudget's heap line (38.5 MB) is within the noise of main itself:
-  main read 38.8 (fail) and 38.3, this branch 38.5 and 38.2.
+  against whatever runs (perfTracker.js `wrapped`): a hold's length is
+  real, its split by function looser.
+- mp-jumpbtn red on main: "sideways 844: 2b" wants the disc 94 px, it is
+  80 (tools/qa/mp/mp-jumpbtn.mjs:166).
+- mp-membudget's heap line (38.5 MB) is within main's own noise (38.3-38.8).
+- mp-mayordoor red on main: parts 2-3 (the board button in the Earth
+  Forest; a click on a bro in No man's land), 5 of 12; part 1 passes.
 
 ## Needs
 
-- Nothing yet.
+- Nothing.
