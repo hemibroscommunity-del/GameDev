@@ -1,6 +1,6 @@
 card: EN
 branch: claude/plan-en-1-leaves
-prs: #2189 6200 (ready), 6201 (working, on #2189)
+prs: #2189 6200 (ready), #2195 6201 (draft, on #2189), 6202 (reading)
 state: working
 
 ## Done
@@ -11,9 +11,8 @@ state: working
 
 ## Next
 
-- 6201 (stacked on #2189): main's level 1-3 leaves (19 functions, 4
-  constants) to the same leaf files, verbatim; `_mkCpuCanvas` stays (it
-  reads `_mkBakeCanvas`, kept for PR 4).
+- 6202: the townsfolk's jog sheets (P2-memory row 2): measuring what the
+  folk's baked body sheets hold (playerSkins.js `_bodySheets`, no cap).
 
 ## Found
 
@@ -24,3 +23,6 @@ state: working
 - (none: the planning session answered constants, suites and systems.mjs,
   2026-11-18). Planning session is now part 6
   (session_01LccHam7XmUNAHQrA1CjiNH); heads go to gatekeeper sitting 46.
+- 6202, asked part 6 once (2026-11-18): may it edit playerSkins.js's
+  `_bodySheets` cache (and playerSprites.js `loadSheet`'s), add a
+  `?folksheets=0` row to switches.mjs, and lower memory-budget.mjs's line?
