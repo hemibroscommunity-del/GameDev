@@ -241,7 +241,7 @@ export const botfpMethods = {
     const now = now_();
     const rec = this._botfpRecord(id, now);
     rec.joinedAt = now;   /* v2.3.5907: a startless strike just after a join is a dropped socket's (memory only) */
-    rec.joinGraceUsed = false;
+    rec.joinReplaySpent = false;
 
     // device nonce: random localStorage token + coarse env hash — not PII.
     const dev = msg && msg.device;
@@ -555,8 +555,8 @@ export const botfpMethods = {
     this._botfpDecay(rec, t);
     rec.counters.startless = (rec.counters.startless || 0) + 1;
     rec.dirty = true;
-    const fresh = !rec.joinGraceUsed && typeof rec.joinedAt === 'number' && t - rec.joinedAt < T.STARTLESS_JOIN_GRACE_MS;
-    if (fresh) rec.joinGraceUsed = true;
+    const fresh = !rec.joinReplaySpent && typeof rec.joinedAt === 'number' && t - rec.joinedAt < T.STARTLESS_JOIN_GRACE_MS;
+    if (fresh) rec.joinReplaySpent = true;
     if (!Array.isArray(rec.startlessWin)) rec.startlessWin = [];
     const win = rec.startlessWin;
     while (win.length && t - win[0] >= T.STARTLESS_WINDOW_MS) win.shift();
