@@ -1,5 +1,5 @@
 card: RV
-branch: claude/rv-minebids (PR 17, stacked on claude/rv-worldsum)
+branch: claude/rv-shieldclaim (PR 12, stacked on claude/rv-minebids)
 prs: #2072, #2083, #2091, #2094 (heads to sitting 43); PRs 5-18 built
 state: ready
 
@@ -20,7 +20,8 @@ state: ready
 - PR 9 (5809): MS-5, MS-6 (`offerpend`, `leftoverheal`).
 - PR 11 (5811): friends.js ACC-5, SEC-F4 (`friendfix`).
 - 14 (5814) `cleanmore`, `namestaff`; 15 `rewindsays`; 16 pass words;
-  13 jackpot; 18 the sum's buy leg; 17 `/mine`'s bids to the asker (`minebids`).
+  13 jackpot; 18 the sum's buy leg; 17 `/mine`'s bids to the asker (`minebids`);
+  12 (5812) SEC-F2, a join's shield claim only if minted (`shieldclaim`).
   Then S3 and `track` (after card L's index.js).
 
 ## Found
@@ -35,5 +36,4 @@ state: ready
 ## Needs
 
 - MD-2 (5810): a second put a payout; the planner asks the owner. Held.
-- SEC-F2: ruled, built behind its own switch at RV's recommendation.
 - #2072: merge main in again once T2's #2071 lands (every block kept).

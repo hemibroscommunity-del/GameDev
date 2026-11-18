@@ -101,6 +101,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `pvpextras` | worker | switch | v2.3.3264 | 2026-10-15 | false | logic | `oneformula`, `pvpbalance` | no | Takes every PvP extra off players at once. |
 | `pvplunge` | worker | switch | v2.3.3262 | 2026-10-15 | false | logic |  | no | No lunge at a player: caps.pvplunge false and the dazed gates off. |
 | `?shieldaim` | page | value | v2.3.3845 |  | =mouse | logic |  | no | On a computer, the shield's guard always follows the pointer. |
+| `shieldclaim` | worker | switch | v2.3.5812 | 2026-11-18 | false | logic |  | no | A join merges the phone's shield and cosmetic claims whatever they are (shape-checked only), as before (SEC-F2: a modified phone can give a character a shield the worker never handed out). |
 | `shieldgem` | worker | switch | v2.3.3187 | 2026-10-12 | false | logic |  | no | Un-advertises the shield gem and refuses every ask. |
 | `shieldwear` | worker | switch | v2.3.3091 | 2026-10-06 | false | logic |  | no | Un-advertises shield wear, ignores every report, and No man's land takes no shield on a loss. |
 | `shockspark` | worker | switch | v2.3.3518 | 2026-10-20 | false | logic |  | no | Un-advertises the storm gem's spark and sparks nothing. |
