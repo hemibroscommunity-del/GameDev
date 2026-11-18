@@ -143,21 +143,16 @@ const LIFE_RE = /\.(?:dying|dead|life)(?![\w$])|(?<![\w$])lifeOf\(/;
 /* Stepped in today, by the handler `_onMessage` calls: each under Found in
    docs/plan/status/V2.md, for the card whose file it is */
 const LIFE_KNOWN = {
-  _handleCookRequest: 'cooking.js: takes the raw fish',
-  _handleStatsUpdate: 'grids.js: the armour grid\'s stash take (_gridsApplyArmor > _gearStashLiveTake)',
-  _handleFarmAct: 'farm.js: seeds and the farm\'s takes',
-  _handleFarmOrder: 'farm.js: an order\'s goods',
-  _handleFarmBuy: 'farm.js: a plot or a seed\'s price',
-  _handleSmithSalvage: 'salvage: the piece and its provenance',
-  _handleEssenceApply: 'an essence from the bag',
-  _handleShieldWear: 'shieldwear.js: a shield from the stash',
+  /* v2.3.5920 (card V3 PR 1): cooking, grids' armour, the farm's three,
+     salvage, essence and the pet house read it now (life.js _deadTakeOn,
+     `deadtake`); the four below shield wear are card RV's (money and trades) */
+  _handleShieldWear: 'shieldwear.js: a shield put on in the dying seconds is not refused, on purpose (sitting 44): the phone owns which shield is on the arm, so a refusal leaves it showing the swap, and the loss already ran at the death (index.js _handlePlayerDeath)',
   _handleArenaSponsor: 'the arena\'s stake (escrow debit)',
   _handleStoreOffer: 'the Auction House\'s offer (escrow debit)',
-  _handlePetHouseBuy: 'the pet house\'s price',
   _interceptTrade: 'trade.js: the gift trade\'s debit',
   _handleTrade2Confirm: 'trade2.js: the trade window\'s Accept checks `disconnected` only; the opening (_handleTrade2Open) checks dying and dead',
 };
-const LIFE_LINE = 13;
+const LIFE_LINE = 5;
 {
   const wire = filesOf('wire').filter((f) => f.startsWith('server/src/'));
   const router = wire.find((f) => /(?:^|[,{}\s;])(?:async\s+)?_onMessage\(/.test(M(f)));

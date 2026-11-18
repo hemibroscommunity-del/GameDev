@@ -27,6 +27,7 @@
  *         precheck.mjs: `const idIndex` renamed                         -> FAIL §6 (precheck's rule read)
  *   §76   daybook.js bookRead: `limit: want` gone                       -> FAIL §76
  *         join.js: `this._metricsMaybe(Date.now());` beside the sweeps -> FAIL §76 join
+ *         liveops.js _listPage: `opts.limit = ...` gone                 -> FAIL §76 (v2.3.5960)
  *   §209  join.js: the device refusal's reason made 'auth'             -> FAIL §209
  *   §276  dice.js _handleDice: a refusal on `ps._diceDayAt`            -> FAIL §276
  *   §298  playerrestore.js playerRestore: the playerState refusal gone -> FAIL §298
@@ -109,25 +110,17 @@ const PROTO_KNOWN = {
 
 /* ── §76: every storage.list names a limit; none on the join path ── */
 
-/* `function: prefix`, stepped in today: each one a whole prefix in one read */
+/* `function: prefix`, stepped in today: each one a whole prefix in one read.
+   v2.3.5961 (card V5 PR 2): the other thirteen read a page now (liveops.js
+   _listPage, _listAll; leaderboard.js _pages; marketplace.js's own loop);
+   the one left is in a file card V5 may not write: */
 const LIST_KNOWN = {
-  '_accAdminDays: accday:': 'accuracy.js, the owner\'s page', '_accDayFlush: accday:': 'accuracy.js',
-  '_adminFetch: rpgsnap:': 'admin.js, the owner\'s page (one player\'s copies)', '_rpgSnapshotMaybe: rpgsnap:': 'admin.js (one player\'s copies)',
-  '_chainScoreAdminRoute: chain_score:': 'chainscore.js, the owner\'s page', '_chatModAdminRoute: chat_report:': 'chatmod.js, the owner\'s page',
-  '_clansEnsure: clan:': 'clans.js', '_clansEnsure: clan_war:': 'clans.js',
-  '_duelEscrowSweep: duelEscrow:': 'duel.js', '_arenaBroadcastStakeBoard: arena_stake:': 'gladiator.js (one tournament)',
-  '_arenaEntrySweep: arena_entry:': 'gladiator.js', '_arenaPlanScan: arena_settle:': 'gladiator.js',
-  '_arenaSettleStakes: arena_stake:': 'gladiator.js (one match)', '_arenaStakeSweep: arena_settle:': 'gladiator.js',
-  '_arenaStakeSweep: arena_stake:': 'gladiator.js', '_topRead: gone:': 'leaderboard.js (the Leaderboard object)',
-  'faceless: player:': 'leaderboard.js (the Leaderboard object)', 'markGone: gone:': 'leaderboard.js (the Leaderboard object)',
-  '_metricsMaybe: metrics:': 'liveops.js (the trap\'s own: off the join since)', '_mktEnsureIndex: mkt_order:': 'market.js',
-  '_ensureIndex: order:': 'marketplace.js (the old Marketplace object)', '_resetCharacterData: oplog:questitem:': 'persistence.js (one player\'s)',
-  '_silenceEnsure: silence:': 'silence.js', '_bountySweep: bounty:': 'threat.js', '_trade2WpnSweep: trade2wpn:': 'trade2.js',
+  '_mktEnsureIndex: mkt_order:': 'market.js: card RV\'s file (card V5 PR 2 left it: the General Store\'s book, read whole once a worker\'s life)',
 };
 /* the listed ones a join reaches today (the trap's "never on the join path"): only falls */
-const JOIN_KNOWN = ['_accDayFlush: accday:', '_rpgSnapshotMaybe: rpgsnap:', '_clansEnsure: clan:', '_clansEnsure: clan_war:',
-  '_duelEscrowSweep: duelEscrow:', '_arenaEntrySweep: arena_entry:', '_arenaStakeSweep: arena_settle:', '_arenaStakeSweep: arena_stake:',
-  '_silenceEnsure: silence:', '_bountySweep: bounty:', '_trade2WpnSweep: trade2wpn:'];
+/* v2.3.5960 (card V5 PR 1): the eleven read a page now (liveops.js _listPage,
+   _listAll; TRAPS §76): none is left, and none may come back */
+const JOIN_KNOWN = [];
 const defs = new Map();
 for (const f of FILES) {
   const m = masked.get(f);
@@ -164,8 +157,8 @@ for (const f of FILES) {
       found.add((fn ? fn.name : '(top)') + ': ' + named);
     }
   }
-  check(`§76: the scan reads every storage.list of the worker (${lists})`, lists >= 40, lists);
-  census('§76', 'storage.list calls that name no limit', found, LIST_KNOWN, 25);
+  check(`§76: the scan reads every storage.list of the worker (${lists})`, lists >= 20, lists);   /* v2.3.5960: 40 -> 30, the sweeps read through liveops.js _listPage; v2.3.5961: -> 20 */
+  census('§76', 'storage.list calls that name no limit', found, LIST_KNOWN, 1);   /* v2.3.5960: 25 -> 14 (card V5 PR 1); v2.3.5961: -> 1 (PR 2) */
   /* the join's reach: this.* calls from _handleJoin, eight deep */
   const reach = new Set();
   const q = [['_handleJoin', 0]];
@@ -179,8 +172,8 @@ for (const f of FILES) {
   const onJoin = new Set([...found].filter((k) => reach.has(k.slice(0, k.indexOf(':')))));
   const freshJoin = [...onJoin].filter((k) => !JOIN_KNOWN.includes(k));
   check(`§76: unbounded lists the join reaches: ${onJoin.size}, none new (the trap: never on the join path)`, freshJoin.length === 0, freshJoin);
-  check(`§76: the listed join ones are still reached (a moved one comes off JOIN_KNOWN) and number ${JOIN_KNOWN.length} or fewer than 11`,
-    JOIN_KNOWN.every((k) => onJoin.has(k)) && JOIN_KNOWN.length <= 11, JOIN_KNOWN.filter((k) => !onJoin.has(k)));
+  check(`§76: the listed join ones are still reached (a moved one comes off JOIN_KNOWN) and number ${JOIN_KNOWN.length}, at or under 0`,
+    JOIN_KNOWN.every((k) => onJoin.has(k)) && JOIN_KNOWN.length <= 0, JOIN_KNOWN.filter((k) => !onJoin.has(k)));
 }
 
 /* ── §209: who sends reason 'auth' ── */
