@@ -479,9 +479,15 @@ restart between left the pot open beside its payment's stamp; once the 48 h
 prune took the stamp (TRAPS §146), the same pot paid again. Now the marked
 record is put in the credit's own run (`inbox.js` `_creditWith`):
 
-- the daily record (`daily_rewards:`) rides a spin pot's credit and each
-  season grant's: ONE row more a payout (the caller still saves it after),
-  the owner's yes (2026-11-18, "Yes to all"; `cost-guard.test` §24);
+- the daily record (`daily_rewards:`) rides a spin pot's credit: ONE row
+  more a payout (the caller still saves it after), the owner's yes
+  (2026-11-18, "Yes to all"; `cost-guard.test` §24);
+- NOT a season's grants (sitting 45's review): a claim marks every tier it
+  claims before the first grant, so the record put with that first grant
+  wrote all of them claimed with one paid, and a restart there lost the rest.
+  The season keeps its old order (the caller saves after every grant; a
+  restart before leaves nothing marked, and a claim again converges on each
+  grant's stamp). The season is off by default;
 - the login spin's `lspin:` record rides its credit, and the save that
   followed it goes: no row more.
 

@@ -14,7 +14,9 @@
  *      beside its payment's stamp;
  *   3. ...and paid once, the gold on the player once;
  *   4. `paidmark: false`: the old order (a cut between leaves the stamp
- *      beside an open pot, and an unpaid login spin).
+ *      beside an open pot, and an unpaid login spin);
+ *   5. (sitting 45's review) a season's "claim all" cut after its first
+ *      write loses no tier: the season is left out of paidmark.
  *
  * Red on main before this change: checks 1, 2 and 3 fail (on main the pot's
  * record is saved only by its caller, after the pay).
@@ -87,6 +89,39 @@ async function loginCut(flags, cut) {
     const b = await loginCut({ paidmark: false }, cut); if (b.unpaid && b.stamp) left2 = true;
   }
   check('4. `paidmark: false`: the old order (a cut between leaves the stamp beside an open pot, and an unpaid login spin)', left1 && left2, { left1, left2 });
+}
+
+/* ── 5. (sitting 45's review) a season's "claim all" cut after its first
+   write: no tier is lost -- the season is left out of paidmark, so nothing
+   is marked on file until every grant is paid, and a claim again pays what
+   is left (each grant once, by its stamp) ── */
+{
+  const FLAGS = { season: true };
+  const st = makeStorage();
+  const room = await openRoom(st, FLAGS);
+  const ws = fakeWs('s');
+  await join(room, ws, P, { loginTaken: true });
+  if (room.tickInterval) { clearInterval(room.tickInterval); room.tickInterval = null; }
+  await settleN(3);
+  const rec = await room._drLoad(P);
+  await room._drRollover(P, rec, room._drNow());
+  rec.se.st = 999999;   /* every tier reached */
+  await room._drSave(P);
+  await settleN(2);
+  const want = DAILY.SEASON.TIERS.reduce((n, g) => n + g.filter((x) => x.kind === 'coins' || x.kind === 'item').length, 0);
+  st.crashAt(st.batches() + 1);
+  try { await room._handleSeasonClaim({ id: P }, { all: true }); } catch (e) { /* a crashed write */ }
+  await settleN(6);
+  /* the restart: a new room on what was written */
+  const st2 = makeStorage(new Map(st._store));
+  const room2 = await openRoom(st2, FLAGS);
+  await join(room2, fakeWs('s2'), P, { loginTaken: true });
+  if (room2.tickInterval) { clearInterval(room2.tickInterval); room2.tickInterval = null; }
+  await settleN(3);
+  await room2._handleSeasonClaim({ id: P }, { all: true });
+  await settleN(6);
+  const stamps = [...st2._store.keys()].filter((k) => k.startsWith('oplog:season:' + P + ':')).length;
+  check('5. a season "claim all" cut after its first write: a claim again pays every grant (none lost)', stamps === want, { stamps, want });
 }
 
 console.log(failures ? `\n${failures} FAILED` : '\nALL PASS');
