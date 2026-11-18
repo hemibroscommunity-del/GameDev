@@ -43,3 +43,10 @@ export function withLane(url, lane = TEST_LANE, govern = false) {
   const sep = qAt < 0 ? '?' : (head.endsWith('?') || head.endsWith('&') ? '' : '&');
   return head + sep + add + hash;
 }
+
+/** v2.3.5860 (card O2 PR 1): the lane a page plays under a slow profile
+ *  (tools/qa/profiles.mjs, BT_QA_PROFILE): the profile's, in place of the
+ *  scenario's own; `lane` itself with no profile. */
+export function profileLane(lane, profile) {
+  return profile && typeof profile.lane === 'string' && profile.lane ? profile.lane : lane;
+}

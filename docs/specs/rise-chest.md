@@ -47,6 +47,11 @@ then a jump course near BroTown.
     stamp (`oplog:`) and the coins go in one run, so a retry, a second tab or
     a worker that has forgotten everything all answer `got`. No new storage
     key.
+    v2.3.5802 (card RV, MD-1): the stamp is the only record, and the oplog
+    prune deleted stamps 48 h old, so the same character opened the chest
+    again every two days. The prune now passes over `risechest:` stamps
+    (`inbox.js` `OP_PRUNE.KEEP`): kept for good, no new row. `risekeep:
+    false` prunes them as before (`risechest-keep.test`).
   - The amount is `RISE_CHEST.COINS` by the rise's id. It is a number every
     player reads over the chest, so it is not a hidden setting.
 - **Cap and switch**: `caps.risechest` (said only on the long Wheel); the
