@@ -1,15 +1,18 @@
 card: WD
-branch: claude/plan-wd-1-census (one PR a branch, claude/plan-wd-*)
-prs: #2171 (6140) census: working
+branch: claude/plan-wd-2-guard (one PR a branch, claude/plan-wd-*)
+prs: #2171 (6140) census: working; PR 2 (6141) guard: working (draft)
 state: working
 
 ## Done
 - (nothing merged yet)
 
-## Next
-- PR 1 (6140): tools/dev/words-census.mjs and docs/plan/census/words.md.
+- PR 1 (6140) #2171: tools/dev/words-census.mjs, docs/plan/census/words.md.
   Totals: 7486 player-facing (2164 in a table, 4941 in place on the page,
   381 on the worker); 2990 of them `?`; 3110 developer-only apart.
+
+## Next
+- PR 2 (6141): tools/guards/player-words.test.mjs, lines 4941 / 381; the
+  break proofs fail as they should. Then PR 3 (6142), the spec.
 
 ## Found
 - "Wheel" a player may read: one row, `?`, src/ui/BroTown.jsx:9045 (the

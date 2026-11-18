@@ -5,6 +5,8 @@
  *   node tools/dev/words-census.mjs --write    write the page
  *   node tools/dev/words-census.mjs --check    exit 1 if the page on disk is not what this prints
  *   node tools/dev/words-census.mjs --json     the totals and every row, as JSON
+ *   node tools/dev/words-census.mjs --lines    the counts the guard holds, and every "Wheel" /
+ *                                              "remnant" row (v2.3.6141: tools/guards/player-words.test.mjs)
  *
  * WHY.  The plan's 8.8: "every word a player reads in one table".  Before a
  * later card moves a single word, this counts them: every string a player can
@@ -537,7 +539,7 @@ export function census(opts = {}) {
     tap: rows.filter((r) => r.tap).length,
     files: clientFiles.length + serverFiles.length,
   };
-  return { rows, totals: t };
+  return { rows, totals: t, clientFiles, serverFiles };
 }
 
 /* ── the page ── */
@@ -650,7 +652,11 @@ const isMain = process.argv[1] && pathResolve(process.argv[1]) === fileURLToPath
 if (isMain) {
   const arg = process.argv[2] || '';
   const c = census();
-  if (arg === '--json') {
+  if (arg === '--lines') {
+    // v2.3.6141: what tools/guards/player-words.test.mjs holds, as it would write it
+    console.log('in place on the page: ' + c.totals.place + '   on the worker: ' + c.totals.server);
+    for (const r of c.rows.filter((x) => x.wheel || x.remnant)) console.log('  ' + JSON.stringify({ value: r.value }) + ',   // ' + r.file + ':' + r.line);
+  } else if (arg === '--json') {
     process.stdout.write(JSON.stringify(c, null, 1) + '\n');
   } else if (arg === '--write') {
     writeFileSync(join(ROOT, PAGE), page(c) + '\n');
