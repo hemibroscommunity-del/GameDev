@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "ea3f27ad5fb3281b5651fa5194fe5ed7705a0d99",
+  "tree": "82b06a87a7114bdfa73638134414263797311c97",
+  "committedAt": "2026-11-17T18:52:59-08:00",
+  "subject": "Merge pull request #2110 from hemibroscommunity-del/claude/rv-duel",
+  "files": 8224,
+  "bytes": 961131510,
+  "listingSha256": "1430688d6b690873819899998da860a55c5e5ef2c697eb6fc6ee81e1e18f603e",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

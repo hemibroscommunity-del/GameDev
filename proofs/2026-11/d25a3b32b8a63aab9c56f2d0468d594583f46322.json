@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "d25a3b32b8a63aab9c56f2d0468d594583f46322",
+  "tree": "53eb2a2824f5a6e34bed6f35a734737afa22692a",
+  "committedAt": "2026-11-17T18:53:08-08:00",
+  "subject": "Merge pull request #2111 from hemibroscommunity-del/claude/rv-storemute",
+  "files": 8225,
+  "bytes": 961143509,
+  "listingSha256": "74a3722ff24f724b9aff167db7e2b0c1835e83674141c393ec7ad848eda264d7",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

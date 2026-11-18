@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "c94ba580e68dc67d6213e5bf7d49e0f047091e15",
+  "tree": "566d5680fd586ca88c2c780c4d6f9b63cd67f69d",
+  "committedAt": "2026-11-17T18:53:17-08:00",
+  "subject": "Merge pull request #2112 from hemibroscommunity-del/claude/rv-lookform",
+  "files": 8228,
+  "bytes": 961157762,
+  "listingSha256": "05b768845a95b1fd536120aac2b6a8be851130273852383389cc32ae15e5cc6d",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

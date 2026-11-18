@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "8dd8212c7e04d90a2f6903d1b5ecb4d3666f946a",
+  "tree": "64ed44ca17aafc659801b74a5e0d144287686f9d",
+  "committedAt": "2026-11-17T18:53:26-08:00",
+  "subject": "Merge pull request #2113 from hemibroscommunity-del/claude/rv-loginkeys",
+  "files": 8229,
+  "bytes": 961161425,
+  "listingSha256": "135104b7057934305f5eb8b8db4aa6f5fe18ebafa6364bb4a732f83578310fd4",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

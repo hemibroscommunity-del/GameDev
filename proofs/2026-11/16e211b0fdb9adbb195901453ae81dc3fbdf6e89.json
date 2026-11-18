@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "16e211b0fdb9adbb195901453ae81dc3fbdf6e89",
+  "tree": "e53b075229f8260e093fe6e14707832c2139ee97",
+  "committedAt": "2026-11-17T18:52:49-08:00",
+  "subject": "Merge pull request #2109 from hemibroscommunity-del/claude/rv-nml",
+  "files": 8223,
+  "bytes": 961117680,
+  "listingSha256": "5d4bab6d0ca21539e5175c1e4f02a140ecdb04ec6a3daf27f52ed53511d5d46b",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
