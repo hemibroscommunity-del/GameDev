@@ -69,6 +69,20 @@ const dropStale = (doc, now) => {
   }
 };
 
+/* v2.3.5811 (Z44's review): ...and the requests a doc SENT that have run
+   out, the same way: the target's copy goes by dropStale above (written
+   where the target's record is), so the sender's own copy goes where the
+   sender's record is written -- on their next request -- or it held one of
+   their REQ_OUT_MAX slots, and a repeat to the same player, for good */
+const dropStaleOut = (doc, now) => {
+  if (!doc || !doc.reqOut) return;
+  for (const k of Object.keys(doc.reqOut)) {
+    const r = doc.reqOut[k];
+    const at = r && typeof r.at === 'number' ? r.at : 0;
+    if (now - at > FRIENDS.REQ_IN_TTL_MS) delete doc.reqOut[k];
+  }
+};
+
 const ownKeys = (o) => (o ? Object.keys(o) : []);
 const cleanName = (v, fallback) => {
   if (typeof v !== 'string') return fallback;
@@ -147,6 +161,9 @@ export const friendsMethods = {
     if (mine.list[target]) {
       return this._friendsSend(from, 'friend_error', { reason: 'already-friends', target });
     }
+    /* v2.3.5811 (Z44's review): a request of mine that ran out is let go
+       first (dropStaleOut above; my record is written below on a new one) */
+    if (friendFixOn(this)) dropStaleOut(mine, Date.now());
     if (mine.reqOut[target]) return; // duplicate request: idempotent no-op
     /* Crossing requests = mutual intent -> auto-accept. */
     if (mine.reqIn[target]) return this._friendAcceptCore(from, target);
@@ -229,7 +246,12 @@ export const friendsMethods = {
        only the remover's).  Now a full list on either side refuses the
        accept and keeps the request, with the answer a full list already
        has.  `friendfix: false`: as before. */
-    if (friendFixOn(this) && (ownKeys(da.list).length >= FRIENDS.LIST_MAX || ownKeys(db.list).length >= FRIENDS.LIST_MAX)) {
+    if (friendFixOn(this) && ownKeys(da.list).length >= FRIENDS.LIST_MAX) {
+      /* v2.3.5811 (Z44's review): the accepter's OWN list full says so, not
+         "their list is full" (src/game/friendErrors.js `own-full`) */
+      return this._friendsSend(a, 'friend_error', { reason: 'own-full', target: b });
+    }
+    if (friendFixOn(this) && ownKeys(db.list).length >= FRIENDS.LIST_MAX) {
       return this._friendsSend(a, 'friend_error', { reason: 'target-full', target: b });
     }
     delete da.reqIn[b]; delete da.reqOut[b];
