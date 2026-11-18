@@ -56,8 +56,9 @@
  * L's, is on main).  The market and the auction house join in a later PR,
  * after card K's 5194/5196/5197; the arena's stakes did at v2.3.5292, below
  * (the file table's order, the planning session's (b)).  A row a wagered
- * duel is more rows a day, so it is OFF until the owner says:
- * `xferescrow: true` in the live flags (xferEscrowOn).  Off, the duel pays
+ * duel is more rows a day, so it was OFF until the owner said (v2.3.6000,
+ * card CS: ON by default; `xferescrow: false` in the live flags turns it off;
+ * xferEscrowOn).  Off, the duel pays
  * exactly as before, through _creditPlayer; on, through _creditWith, the
  * pot's credit and its row in one run.
  *
@@ -125,12 +126,13 @@ export function xferKey(day, id) {
   return XFER.PREFIX + day + ':' + id;
 }
 
-/** v2.3.5290: an escrow road's row only with `xferescrow: true` in the
- *  live flags (OFF by default: more rows a day, the owner's call). */
+/** v2.3.5290: an escrow road's row (more rows a day, the owner's call).
+ *  v2.3.6000: ON by default (card CS, the owner, 2026-11-17: "I think turn all of them on then we monitor usage cost");
+ *  `xferescrow: false` in the live flags turns it off. */
 export function xferEscrowOn(room) {
   const f = room && room._liveFlags;
   if (xferOff(room)) return false;   /* rule 4: off with the ledger it needs (`xfer: false`) */
-  return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'xferescrow') && f.xferescrow === true);
+  return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'xferescrow') && f.xferescrow === false);
 }
 
 /** `xfer: false` in the live flags. */

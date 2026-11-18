@@ -763,6 +763,10 @@ export const devToolsMethods = {
       const r = await econCardRead(this, new URL(request.url).searchParams.get('days') || 1);
       return json(r, r.ok ? 200 : 500);
     }
+    /* v2.3.6001: THE USAGE METER (usagemeter.js, card CS PR 2): the rows written and read and the messages
+       sent since the room started and today (UTC), by kind, the six cost switches' named apart.  Memory only,
+       read-only; the Test panel's "Usage" box (UsageMeter.jsx). */
+    if (request.method === 'GET' && path === '/dev/usage') return json(this._usageRead(Date.now()));
     /* v2.3.4545: EVERY PLAYER'S ACCURACY, a day (accuracy.js) -- the Test panel's "Accuracy" box.  Read-only. */
     if (request.method === 'GET' && path === '/dev/accuracy') {
       const r = await this._accAdminDays(new URL(request.url).searchParams.get('days') || 14);

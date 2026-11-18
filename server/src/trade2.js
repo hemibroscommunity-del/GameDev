@@ -49,6 +49,7 @@ import { xferTradeWindow } from './xfer.js'; /* v2.3.5092: the transfer ledger *
 import { stashGive, stashTake, stashSet } from './stash.js';   /* v2.3.5281: the stashes' door (card R PR 2) */
 import { LISTCAP } from './liveops.js';   /* v2.3.5960: a sweep's page (card V5) */
 import { wordsNote } from './words.js';   /* v2.3.5197: the words rule -- the trade's mail sentence is a template and its parts */
+import { lifeOf, LIFE } from './life.js';   /* v2.3.6022 (card RV): the dead take nothing (life.js _deadTakeOn; TRAPS §150) */
 
 export const TRADE2 = {
   INVITE_TTL: 60000,    // open-toward-you offer lifetime
@@ -320,6 +321,10 @@ export const trade2Methods = {
     // await storage but input gates hold peers off the whole time).
     const psA = this.playerState[s.a], psB = this.playerState[s.b];
     if (!psA || !psB || psA.disconnected || psB.disconnected) return this._t2Cancel(s, 'party-gone');
+    /* v2.3.6022 (card RV, TRAPS §150; `deadtake`, life.js): the Accept takes
+       from both sides -- not from a body in its dying seconds (the opening
+       checks it; the Accept only `disconnected`).  Cancelled as a side gone */
+    if ((lifeOf(psA) !== LIFE.ALIVE || lifeOf(psB) !== LIFE.ALIVE) && this._deadTakeOn()) return this._t2Cancel(s, 'party-gone');
     const sides = [
       { id: s.a, ps: psA, gives: s.offers[s.a] || {}, getsFrom: s.b },
       { id: s.b, ps: psB, gives: s.offers[s.b] || {}, getsFrom: s.a },

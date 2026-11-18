@@ -8,16 +8,16 @@ yet: this is the count a later card moves into one table (`docs/specs/player-wor
 
 | | strings |
 |---|---|
-| player-facing, all | 7501 |
+| player-facing, all | 7544 |
 | ...in a table (`src/data/*`, `deskWords()`) | 2164 |
-| ...written in place on the page | 4953 |
-| ...written in place on the worker (`server/src`) | 384 |
-| ...sure (`yes`) / unclear, counted (`?`) | 4509 / 2992 |
+| ...written in place on the page | 4995 |
+| ...written in place on the worker (`server/src`) | 385 |
+| ...sure (`yes`) / unclear, counted (`?`) | 4529 / 3015 |
 | developer-only (Test panel, `src/debug`, mock data): not player-facing, total only | 3132 |
 | flag: "Wheel" a player reads | 1 |
 | flag: "remnant(s)" a player reads | 0 |
 | flag: "tap" outside `deskWords()` | 97 |
-| files read | 1173 |
+| files read | 1186 |
 
 ## How it reads
 
@@ -124,6 +124,7 @@ One row a screen (a file under `src/ui/`; the rest by its folder), largest first
 | statSim | 1 | 26 | 0 | 0 | 9 | 0 | 0 | 0 |
 | LoginSpinWindow | 1 | 24 | 1 | 0 | 0 | 0 | 0 | 0 |
 | game: farmFeedback | 1 | 25 | 0 | 0 | 17 | 0 | 0 | 0 |
+| game: usageMeter | 1 | 25 | 0 | 0 | 19 | 0 | 0 | 0 |
 | data: buildings | 1 | 0 | 24 | 0 | 0 | 0 | 0 | 0 |
 | server: gladiator | 1 | 0 | 0 | 24 | 0 | 0 | 0 | 0 |
 | server: market | 1 | 0 | 0 | 24 | 0 | 0 | 0 | 0 |
@@ -136,11 +137,11 @@ One row a screen (a file under `src/ui/`; the rest by its folder), largest first
 | ShopkeeperPanel | 1 | 19 | 2 | 0 | 0 | 0 | 0 | 0 |
 | WoodworkPanel | 1 | 21 | 0 | 0 | 1 | 0 | 0 | 0 |
 | equipModel | 1 | 21 | 0 | 0 | 4 | 0 | 0 | 0 |
+| server: storeoffer | 1 | 0 | 0 | 21 | 0 | 0 | 0 | 0 |
 | GuildPanel | 2 | 20 | 0 | 0 | 15 | 0 | 0 | 0 |
 | controlSkin | 1 | 20 | 0 | 0 | 20 | 0 | 0 | 0 |
 | game: deathCard | 1 | 20 | 0 | 0 | 15 | 0 | 0 | 0 |
 | guideArrow | 1 | 16 | 4 | 0 | 16 | 0 | 0 | 8 |
-| server: storeoffer | 1 | 0 | 0 | 20 | 0 | 0 | 0 | 0 |
 | InspectPlayerPanel | 1 | 19 | 0 | 0 | 16 | 0 | 0 | 1 |
 | InventorySurface | 1 | 19 | 0 | 0 | 8 | 0 | 0 | 0 |
 | game: mastery | 1 | 19 | 0 | 0 | 7 | 0 | 0 | 0 |
@@ -152,10 +153,10 @@ One row a screen (a file under `src/ui/`; the rest by its folder), largest first
 | game: worldTrial | 1 | 18 | 0 | 0 | 17 | 0 | 0 | 0 |
 | heroModel | 1 | 18 | 0 | 0 | 12 | 0 | 0 | 0 |
 | mapGlyphs | 1 | 18 | 0 | 0 | 0 | 0 | 0 | 0 |
-| rendering: entityRenderer | 1 | 18 | 0 | 0 | 4 | 0 | 0 | 0 |
 | rendering: paletteTex | 1 | 18 | 0 | 0 | 17 | 0 | 0 | 0 |
 | AchievementsPanel | 1 | 16 | 1 | 0 | 0 | 0 | 0 | 0 |
 | NmlAskCard | 1 | 17 | 0 | 0 | 3 | 0 | 0 | 2 |
+| UsageMeter | 1 | 17 | 0 | 0 | 4 | 0 | 0 | 0 |
 | GamblePanel | 1 | 16 | 0 | 0 | 16 | 0 | 0 | 0 |
 | InfoPanel | 1 | 16 | 0 | 0 | 5 | 0 | 0 | 0 |
 | ZoneHeader | 1 | 16 | 0 | 0 | 3 | 0 | 0 | 0 |
@@ -178,6 +179,7 @@ One row a screen (a file under `src/ui/`; the rest by its folder), largest first
 | game: placeSafety | 1 | 14 | 0 | 0 | 14 | 0 | 0 | 0 |
 | game: race | 1 | 14 | 0 | 0 | 14 | 0 | 0 | 0 |
 | game: weaponGem | 1 | 14 | 0 | 0 | 12 | 0 | 0 | 0 |
+| rendering: entityRenderer | 1 | 14 | 0 | 0 | 0 | 0 | 0 | 0 |
 | server: playerroads | 1 | 0 | 0 | 14 | 0 | 0 | 0 | 0 |
 | BodyInk | 1 | 13 | 0 | 0 | 0 | 0 | 0 | 1 |
 | ChestReveal | 1 | 13 | 0 | 0 | 6 | 0 | 0 | 0 |
@@ -339,6 +341,7 @@ One row a screen (a file under `src/ui/`; the rest by its folder), largest first
 | lazyPanel | 1 | 4 | 0 | 0 | 4 | 0 | 0 | 0 |
 | networking: index | 1 | 4 | 0 | 0 | 0 | 0 | 0 | 0 |
 | rendering: body | 1 | 4 | 0 | 0 | 0 | 0 | 0 | 0 |
+| rendering: entity-look | 1 | 4 | 0 | 0 | 4 | 0 | 0 | 0 |
 | rendering: eyeColorCatalog | 1 | 4 | 0 | 0 | 0 | 0 | 0 | 0 |
 | rendering: hairColorCatalog | 1 | 4 | 0 | 0 | 0 | 0 | 0 | 0 |
 | rendering: lookArmourProbe | 1 | 4 | 0 | 0 | 0 | 0 | 0 | 0 |
@@ -3948,6 +3951,26 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `src/ui/panels/UpdateBanner.jsx:67` P? `↻ New version available`
 - `src/ui/panels/UpdateBanner.jsx:70` P? `This tab is running an older build. Reload to join everyone else.`
 
+### UsageMeter (17)
+
+- `src/ui/panels/UsageMeter.jsx:27` P `The usage meter is switched OFF (the usagemeter flag): nothing is being counted.`
+- `src/ui/panels/UsageMeter.jsx:27` P `Usage: counted in the server's memory.`
+- `src/ui/panels/UsageMeter.jsx:41` P `Rows written`
+- `src/ui/panels/UsageMeter.jsx:42` P? `Most written`
+- `src/ui/panels/UsageMeter.jsx:43` P `Rows read`
+- `src/ui/panels/UsageMeter.jsx:44` P? `Most read`
+- `src/ui/panels/UsageMeter.jsx:45` P `Messages sent`
+- `src/ui/panels/UsageMeter.jsx:46` P? `Most sent`
+- `src/ui/panels/UsageMeter.jsx:51` P `Usage (the server's rows and messages)`
+- `src/ui/panels/UsageMeter.jsx:53` P `Rows the server wrote and read, and messages it sent, today (UTC) and since it last sta...`
+- `src/ui/panels/UsageMeter.jsx:56` P `Reload usage`
+- `src/ui/panels/UsageMeter.jsx:56` P `Show usage`
+- `src/ui/panels/UsageMeter.jsx:64` P `The truth is Cloudflare's own page: Workers & Pages, brotown-server, Metrics; and Billing.`
+- `src/ui/panels/UsageMeter.jsx:67` P? `Since the server started`
+- `src/ui/panels/UsageMeter.jsx:68` P `The six cost switches, today`
+- `src/ui/panels/UsageMeter.jsx:73` P `read`
+- `src/ui/panels/UsageMeter.jsx:79` P `Any of them turns off in Live flags, Set a switch: its name, then off.`
+
 ### VendorPanel (18)
 
 - `src/ui/panels/buildings/VendorPanel.jsx:104` P? `Auction House`
@@ -7224,11 +7247,11 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 
 ### game: projectiles (5)
 
-- `src/game/projectiles.js:1094` P `land`
-- `src/game/projectiles.js:1099` P `prop`
-- `src/game/projectiles.js:1099` P `land`
-- `src/game/projectiles.js:2357` P `XP`
-- `src/game/projectiles.js:2940` P? `Defense Lv`
+- `src/game/projectiles.js:1105` P `land`
+- `src/game/projectiles.js:1110` P `prop`
+- `src/game/projectiles.js:1110` P `land`
+- `src/game/projectiles.js:2370` P `XP`
+- `src/game/projectiles.js:2954` P? `Defense Lv`
 
 ### game: questCard (3)
 
@@ -7656,6 +7679,34 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `src/game/trapping.js:338` P `now`
 - `src/game/trapping.js:395` P `is Lv`
 - `src/game/trapping.js:423` P `Ward`
+
+### game: usageMeter (25)
+
+- `src/game/usageMeter.js:30` P `reqstamp`
+- `src/game/usageMeter.js:30` P? `a stamp a shop or market request, so a repeat is answered once`
+- `src/game/usageMeter.js:31` P `xferescrow`
+- `src/game/usageMeter.js:31` P? `a ledger row a duel pot, losing stake, market or Auction House sale`
+- `src/game/usageMeter.js:32` P `resetbook`
+- `src/game/usageMeter.js:32` P? `a row a character restart, for the world's sum`
+- `src/game/usageMeter.js:33` P `seathold`
+- `src/game/usageMeter.js:33` P? `who is in, at most every 15 seconds while it changes`
+- `src/game/usageMeter.js:34` P `fullsnap`
+- `src/game/usageMeter.js:34` P? `reads only: the vault and pets in each daily copy`
+- `src/game/usageMeter.js:35` P `freezedevice`
+- `src/game/usageMeter.js:35` P? `reads only: a new character's phone checked while someone is frozen`
+- `src/game/usageMeter.js:69` P? `No usage counted yet.`
+- `src/game/usageMeter.js:71` P? `rows written today, counted since`
+- `src/game/usageMeter.js:71` P? `the day began (00:00 UTC)`
+- `src/game/usageMeter.js:71` P? `(the server started then)`
+- `src/game/usageMeter.js:72` P? `Too early to estimate the whole day: try again in a few minutes.`
+- `src/game/usageMeter.js:74` P? `At this pace, about`
+- `src/game/usageMeter.js:74` P? `rows a day.`
+- `src/game/usageMeter.js:75` P? `Free plan:`
+- `src/game/usageMeter.js:75` P? `of its about`
+- `src/game/usageMeter.js:75` P? `rows written a day.`
+- `src/game/usageMeter.js:76` P? `Paid plan:`
+- `src/game/usageMeter.js:76` P? `of its`
+- `src/game/usageMeter.js:76` P? `rows written a month.`
 
 ### game: weaponGem (14)
 
@@ -8349,26 +8400,29 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `src/rendering/systems/effectsRenderer.js:15005` P `dressed:`
 - `src/rendering/systems/effectsRenderer.js:17737` P `dressed:`
 
-### rendering: entityRenderer (18)
+### rendering: entity-look (4)
 
-- `src/rendering/systems/entityRenderer.js:1149` P? `asked {…}s`
-- `src/rendering/systems/entityRenderer.js:1150` P? `retry in {…}s`
-- `src/rendering/systems/entityRenderer.js:1151` P? `meta gave up`
-- `src/rendering/systems/entityRenderer.js:1151` P? `no meta`
-- `src/rendering/systems/entityRenderer.js:1196` P `asked again`
-- `src/rendering/systems/entityRenderer.js:1196` P `{…} {…} {…}s [{…}]{…}`
-- `src/rendering/systems/entityRenderer.js:2924` P `worker error`
-- `src/rendering/systems/entityRenderer.js:3108` P `no worker`
-- `src/rendering/systems/entityRenderer.js:3121` P `worker let go`
-- `src/rendering/systems/entityRenderer.js:3122` P `gear numbers not sent`
-- `src/rendering/systems/entityRenderer.js:3157` P `no sheet`
-- `src/rendering/systems/entityRenderer.js:3399` P `worker stuck`
-- `src/rendering/systems/entityRenderer.js:7187` P `LV`
-- `src/rendering/systems/entityRenderer.js:16052` P `stand-in has its own arm`
-- `src/rendering/systems/entityRenderer.js:16183` P `shield down`
-- `src/rendering/systems/entityRenderer.js:16691` P `pet`
-- `src/rendering/systems/entityRenderer.js:17675` P `1 quest available`
-- `src/rendering/systems/entityRenderer.js:17883` P `round`
+- `src/rendering/leaves/entity-look.js:44` P? `asked {…}s`
+- `src/rendering/leaves/entity-look.js:45` P? `retry in {…}s`
+- `src/rendering/leaves/entity-look.js:46` P? `meta gave up`
+- `src/rendering/leaves/entity-look.js:46` P? `no meta`
+
+### rendering: entityRenderer (14)
+
+- `src/rendering/systems/entityRenderer.js:1051` P `asked again`
+- `src/rendering/systems/entityRenderer.js:1051` P `{…} {…} {…}s [{…}]{…}`
+- `src/rendering/systems/entityRenderer.js:2560` P `worker error`
+- `src/rendering/systems/entityRenderer.js:2733` P `no worker`
+- `src/rendering/systems/entityRenderer.js:2746` P `worker let go`
+- `src/rendering/systems/entityRenderer.js:2747` P `gear numbers not sent`
+- `src/rendering/systems/entityRenderer.js:2775` P `no sheet`
+- `src/rendering/systems/entityRenderer.js:3000` P `worker stuck`
+- `src/rendering/systems/entityRenderer.js:6130` P `LV`
+- `src/rendering/systems/entityRenderer.js:14448` P `stand-in has its own arm`
+- `src/rendering/systems/entityRenderer.js:14579` P `shield down`
+- `src/rendering/systems/entityRenderer.js:15087` P `pet`
+- `src/rendering/systems/entityRenderer.js:16071` P `1 quest available`
+- `src/rendering/systems/entityRenderer.js:16279` P `round`
 
 ### rendering: eyeColorCatalog (4)
 
@@ -8830,7 +8884,7 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 
 ### server: botfp (1)
 
-- `server/src/botfp.js:787` S `planted from the Test panel, not evidence`
+- `server/src/botfp.js:845` S `planted from the Test panel, not evidence`
 
 ### server: cadence (2)
 
@@ -8874,10 +8928,10 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 
 ### server: dailyrewards (4)
 
-- `server/src/dailyrewards.js:619` S `Daily spin`
-- `server/src/dailyrewards.js:887` S `Daily quest`
-- `server/src/dailyrewards.js:895` S `Daily quest`
-- `server/src/dailyrewards.js:1093` S `no record`
+- `server/src/dailyrewards.js:620` S `Daily spin`
+- `server/src/dailyrewards.js:891` S `Daily quest`
+- `server/src/dailyrewards.js:899` S `Daily quest`
+- `server/src/dailyrewards.js:1097` S `no record`
 
 ### server: data (8)
 
@@ -8952,30 +9006,30 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 
 ### server: gladiator (24)
 
-- `server/src/gladiator.js:211` S `Not authorized`
-- `server/src/gladiator.js:217` S `Not while you are fighting a player`
-- `server/src/gladiator.js:228` S `Not authorized`
-- `server/src/gladiator.js:236` S `Results are server-observed now`
-- `server/src/gladiator.js:247` S `Not found`
-- `server/src/gladiator.js:334` S `Missing playerId`
-- `server/src/gladiator.js:339` S `Not in game`
-- `server/src/gladiator.js:350` S `Tournament in progress`
-- `server/src/gladiator.js:350` S `Tournament just ended`
-- `server/src/gladiator.js:357` S `No open queue`
-- `server/src/gladiator.js:358` S `Already queued`
-- `server/src/gladiator.js:402` S `No open queue`
-- `server/src/gladiator.js:404` S `Not queued`
-- `server/src/gladiator.js:716` S `your cut of a sponsorship pool`
-- `server/src/gladiator.js:717` S `sponsorship paid off`
-- `server/src/gladiator.js:719` S `claimed a failed sponsorship`
-- `server/src/gladiator.js:763` S `your cut of a sponsorship pool`
-- `server/src/gladiator.js:766` S `sponsorship paid off`
-- `server/src/gladiator.js:770` S `claimed a failed sponsorship`
-- `server/src/gladiator.js:969` S `Gladiator Arena champion`
-- `server/src/gladiator.js:971` S `Gladiator Arena champion`
+- `server/src/gladiator.js:212` S `Not authorized`
+- `server/src/gladiator.js:218` S `Not while you are fighting a player`
+- `server/src/gladiator.js:229` S `Not authorized`
+- `server/src/gladiator.js:237` S `Results are server-observed now`
+- `server/src/gladiator.js:248` S `Not found`
+- `server/src/gladiator.js:335` S `Missing playerId`
+- `server/src/gladiator.js:340` S `Not in game`
+- `server/src/gladiator.js:351` S `Tournament in progress`
+- `server/src/gladiator.js:351` S `Tournament just ended`
+- `server/src/gladiator.js:358` S `No open queue`
+- `server/src/gladiator.js:359` S `Already queued`
+- `server/src/gladiator.js:403` S `No open queue`
+- `server/src/gladiator.js:405` S `Not queued`
+- `server/src/gladiator.js:720` S `your cut of a sponsorship pool`
+- `server/src/gladiator.js:721` S `sponsorship paid off`
+- `server/src/gladiator.js:723` S `claimed a failed sponsorship`
+- `server/src/gladiator.js:767` S `your cut of a sponsorship pool`
+- `server/src/gladiator.js:770` S `sponsorship paid off`
+- `server/src/gladiator.js:774` S `claimed a failed sponsorship`
+- `server/src/gladiator.js:973` S `Gladiator Arena champion`
 - `server/src/gladiator.js:975` S `Gladiator Arena champion`
-- `server/src/gladiator.js:1016` S `arena voided (server restart)`
-- `server/src/gladiator.js:1116` S `sponsorship voided (server restart)`
+- `server/src/gladiator.js:979` S `Gladiator Arena champion`
+- `server/src/gladiator.js:1020` S `arena voided (server restart)`
+- `server/src/gladiator.js:1120` S `sponsorship voided (server restart)`
 
 ### server: hardenedwood (5)
 
@@ -8987,11 +9041,11 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 
 ### server: hidden (5)
 
-- `server/src/hidden.js:233` S `the settings could not be read; try again`
-- `server/src/hidden.js:236` S `stored by a newer worker; not written over`
-- `server/src/hidden.js:246` S `unknown setting`
-- `server/src/hidden.js:260` S `unknown setting`
-- `server/src/hidden.js:268` S `GET, POST or DELETE`
+- `server/src/hidden.js:237` S `the settings could not be read; try again`
+- `server/src/hidden.js:240` S `stored by a newer worker; not written over`
+- `server/src/hidden.js:250` S `unknown setting`
+- `server/src/hidden.js:264` S `unknown setting`
+- `server/src/hidden.js:272` S `GET, POST or DELETE`
 
 ### server: inbox (2)
 
@@ -9000,8 +9054,8 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 
 ### server: index (2)
 
-- `server/src/index.js:353` S `no such room`
-- `server/src/index.js:5293` S `Shop unavailable`
+- `server/src/index.js:354` S `no such room`
+- `server/src/index.js:5299` S `Shop unavailable`
 
 ### server: killroll (2)
 
@@ -9028,30 +9082,30 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 
 ### server: market (24)
 
-- `server/src/market.js:314` S `Not authorized`
-- `server/src/market.js:328` S `Not authorized`
-- `server/src/market.js:335` S `Not found`
-- `server/src/market.js:369` S `Missing fields`
-- `server/src/market.js:379` S `Invalid price`
-- `server/src/market.js:380` S `Invalid type`
-- `server/src/market.js:394` S `Missing fields`
-- `server/src/market.js:398` S `Invalid element`
-- `server/src/market.js:402` S `Not in game`
-- `server/src/market.js:406` S `Not while you are fighting a player`
-- `server/src/market.js:409` S `Max 10 orders`
-- `server/src/market.js:417` S `Item not in stash`
-- `server/src/market.js:420` S `Item not in stash`
-- `server/src/market.js:447` S `Not enough gold`
-- `server/src/market.js:559` S `price improvement`
-- `server/src/market.js:605` S `listing failed`
-- `server/src/market.js:617` S `listing failed`
-- `server/src/market.js:623` S `Missing params`
-- `server/src/market.js:625` S `Not found`
-- `server/src/market.js:626` S `Not yours`
-- `server/src/market.js:633` S `Not found`
-- `server/src/market.js:765` S `price improvement`
-- `server/src/market.js:771` S `order returned`
-- `server/src/market.js:772` S `order returned`
+- `server/src/market.js:332` S `Not authorized`
+- `server/src/market.js:346` S `Not authorized`
+- `server/src/market.js:353` S `Not found`
+- `server/src/market.js:387` S `Missing fields`
+- `server/src/market.js:397` S `Invalid price`
+- `server/src/market.js:398` S `Invalid type`
+- `server/src/market.js:412` S `Missing fields`
+- `server/src/market.js:416` S `Invalid element`
+- `server/src/market.js:420` S `Not in game`
+- `server/src/market.js:424` S `Not while you are fighting a player`
+- `server/src/market.js:427` S `Max 10 orders`
+- `server/src/market.js:435` S `Item not in stash`
+- `server/src/market.js:438` S `Item not in stash`
+- `server/src/market.js:465` S `Not enough gold`
+- `server/src/market.js:577` S `price improvement`
+- `server/src/market.js:625` S `listing failed`
+- `server/src/market.js:637` S `listing failed`
+- `server/src/market.js:643` S `Missing params`
+- `server/src/market.js:645` S `Not found`
+- `server/src/market.js:646` S `Not yours`
+- `server/src/market.js:653` S `Not found`
+- `server/src/market.js:811` S `price improvement`
+- `server/src/market.js:817` S `order returned`
+- `server/src/market.js:818` S `order returned`
 
 ### server: marketplace (9)
 
@@ -9075,13 +9129,13 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 
 ### server: playerrestore (7)
 
-- `server/src/playerrestore.js:323` S `dry is true or false`
-- `server/src/playerrestore.js:325` S `playerId + a matching snapKey required`
-- `server/src/playerrestore.js:328` S `player online -- kick first`
-- `server/src/playerrestore.js:331` S `player still in the world (a body left in a fight stays up to 20 seconds) -- wait 20 se...`
-- `server/src/playerrestore.js:348` S `A newer worker wrote`
-- `server/src/playerrestore.js:359` S `The vault would change with no character to book it on: restore a copy that holds the c...`
-- `server/src/playerrestore.js:366` S `Nothing written: this is what the restore would do.`
+- `server/src/playerrestore.js:335` S `dry is true or false`
+- `server/src/playerrestore.js:337` S `playerId + a matching snapKey required`
+- `server/src/playerrestore.js:340` S `player online -- kick first`
+- `server/src/playerrestore.js:343` S `player still in the world (a body left in a fight stays up to 20 seconds) -- wait 20 se...`
+- `server/src/playerrestore.js:360` S `A newer worker wrote`
+- `server/src/playerrestore.js:371` S `The vault would change with no character to book it on: restore a copy that holds the c...`
+- `server/src/playerrestore.js:378` S `Nothing written: this is what the restore would do.`
 
 ### server: playerroads (14)
 
@@ -9119,7 +9173,7 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 
 ### server: reqonce (1)
 
-- `server/src/reqonce.js:170` S `Interrupted -- check your orders`
+- `server/src/reqonce.js:172` S `Interrupted -- check your orders`
 
 ### server: restore (34)
 
@@ -9172,7 +9226,7 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 
 ### server: salvage (1)
 
-- `server/src/salvage.js:88` S `Black Steel`
+- `server/src/salvage.js:89` S `Black Steel`
 
 ### server: shop (26)
 
@@ -9205,13 +9259,13 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 
 ### server: silence (7)
 
-- `server/src/silence.js:163` S `You can't`
-- `server/src/silence.js:163` S `give names others read`
-- `server/src/silence.js:163` S `right now: the owner has silenced this character`
-- `server/src/silence.js:324` S `playerId required`
-- `server/src/silence.js:329` S `minutes: a whole number from 1 to`
-- `server/src/silence.js:329` S `, or left out for until lifted`
-- `server/src/silence.js:343` S `id required`
+- `server/src/silence.js:166` S `You can't`
+- `server/src/silence.js:166` S `give names others read`
+- `server/src/silence.js:166` S `right now: the owner has silenced this character`
+- `server/src/silence.js:329` S `playerId required`
+- `server/src/silence.js:334` S `minutes: a whole number from 1 to`
+- `server/src/silence.js:334` S `, or left out for until lifted`
+- `server/src/silence.js:348` S `id required`
 
 ### server: skillpoints (2)
 
@@ -9287,33 +9341,34 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 - `server/src/store.js:1192` S `Not yours`
 - `server/src/store.js:1193` S `Someone is buying that right now`
 
-### server: storeoffer (20)
+### server: storeoffer (21)
 
-- `server/src/storeoffer.js:141` S `That listing has ended`
-- `server/src/storeoffer.js:142` S `That is your own listing`
-- `server/src/storeoffer.js:143` S `That listing is being sold`
-- `server/src/storeoffer.js:145` S `Offer a whole number of gold`
-- `server/src/storeoffer.js:146` S `Slow down a moment`
-- `server/src/storeoffer.js:151` S `This listing already has as many offers as it can hold`
-- `server/src/storeoffer.js:162` S `offer replaced on`
-- `server/src/storeoffer.js:178` S `Not enough gold`
-- `server/src/storeoffer.js:219` S `Not in game`
-- `server/src/storeoffer.js:225` S `Not enough gold`
-- `server/src/storeoffer.js:242` S `offer replaced on`
-- `server/src/storeoffer.js:290` S `That listing has ended`
-- `server/src/storeoffer.js:292` S `You have no offer on that`
-- `server/src/storeoffer.js:309` S `That listing has ended`
-- `server/src/storeoffer.js:310` S `That is not your listing`
-- `server/src/storeoffer.js:311` S `Unknown reply`
-- `server/src/storeoffer.js:312` S `That listing is being sold`
-- `server/src/storeoffer.js:322` S `Someone is buying that right now`
-- `server/src/storeoffer.js:327` S `No offer to answer`
-- `server/src/storeoffer.js:354` S `No offer to answer`
+- `server/src/storeoffer.js:142` S `That listing has ended`
+- `server/src/storeoffer.js:143` S `That is your own listing`
+- `server/src/storeoffer.js:144` S `That listing is being sold`
+- `server/src/storeoffer.js:146` S `Offer a whole number of gold`
+- `server/src/storeoffer.js:147` S `Slow down a moment`
+- `server/src/storeoffer.js:152` S `This listing already has as many offers as it can hold`
+- `server/src/storeoffer.js:163` S `offer replaced on`
+- `server/src/storeoffer.js:179` S `Not enough gold`
+- `server/src/storeoffer.js:220` S `Not in game`
+- `server/src/storeoffer.js:226` S `Not enough gold`
+- `server/src/storeoffer.js:243` S `offer replaced on`
+- `server/src/storeoffer.js:291` S `That listing has ended`
+- `server/src/storeoffer.js:293` S `You have no offer on that`
+- `server/src/storeoffer.js:310` S `That listing has ended`
+- `server/src/storeoffer.js:311` S `That is not your listing`
+- `server/src/storeoffer.js:312` S `Unknown reply`
+- `server/src/storeoffer.js:313` S `That listing is being sold`
+- `server/src/storeoffer.js:323` S `Someone is buying that right now`
+- `server/src/storeoffer.js:328` S `No offer to answer`
+- `server/src/storeoffer.js:355` S `No offer to answer`
+- `server/src/storeoffer.js:447` S `Not while you are down`
 
 ### server: testmode (2)
 
-- `server/src/testmode.js:178` S `playerId required`
-- `server/src/testmode.js:233` S `could not read the list`
+- `server/src/testmode.js:188` S `playerId required`
+- `server/src/testmode.js:243` S `could not read the list`
 
 ### server: threat (1)
 
@@ -9321,11 +9376,11 @@ CLAUDE.md §7 Desktop: words a computer player reads say "click", through `deskW
 
 ### server: trade2 (5)
 
-- `server/src/trade2.js:761` S `unstaged from trade`
-- `server/src/trade2.js:790` S `trade cancelled`
-- `server/src/trade2.js:796` S `trade cancelled`
-- `server/src/trade2.js:858` S `trade voided (server restart)`
-- `server/src/trade2.js:864` S `trade voided (server restart)`
+- `server/src/trade2.js:766` S `unstaged from trade`
+- `server/src/trade2.js:795` S `trade cancelled`
+- `server/src/trade2.js:801` S `trade cancelled`
+- `server/src/trade2.js:863` S `trade voided (server restart)`
+- `server/src/trade2.js:869` S `trade voided (server restart)`
 
 ### server: wheeldungeon (3)
 

@@ -280,7 +280,7 @@ await section(4, async () => {
 
 /* ── 5. a hat's hair mask ── */
 await section(5, async () => {
-  const ER = src('src/rendering/systems/entityRenderer.js');
+  const ER = src('src/rendering/systems/entityRenderer.js') + src('src/rendering/leaves/entity-look.js');   /* v2.3.6200: + its leaves (card EN) */
   const code = [cut(ER, '_ensureHairMaskLoaded'), cut(ER, '_takeHairMask'), cut(ER, '_loadHairMaskDir')].join('\n');
   check('5a the hair mask\'s loader is found', /function _loadHairMaskDir/.test(code) && /function _takeHairMask/.test(code));
   const clock = fakeClock();

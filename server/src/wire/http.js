@@ -455,6 +455,8 @@ export const WIRE_HTTP = [
   { name: 'http:/api/admin/dev/econcard', dir: 'in', at: 'econcard.js econCardRead', wayIn: 'admin',
     envelope: 'http', phase: ['none checked'], mayStart: 'owner', doesWhat: ['reads'], reqId: 'harmless',
     trust: { days: 'request' }, absent: 'default: no days is 1', bad: ['clamped'], answer: 'http' },
+  /* v2.3.6001 (card CS, PR 2; the planning session's yes, 2026-11-18): the usage meter, read -- memory only (usagemeter.js) */
+  { name: 'http:/api/admin/dev/usage', dir: 'in', at: 'usagemeter.js _usageRead', wayIn: 'admin', envelope: 'http', phase: ['none checked'], mayStart: 'owner', doesWhat: ['reads'], reqId: 'harmless', trust: {}, absent: 'default: no fields read', bad: [], answer: 'http' },
   { name: 'http:/api/admin/dev/lookseen', dir: 'in', at: 'charwatch.js _watchSeen', wayIn: 'admin',
     envelope: 'http', phase: ['none checked'], mayStart: 'owner', doesWhat: ['own'], reqId: 'harmless',
     trust: {}, absent: 'default: an unreadable body is an empty one', bad: [], answer: 'http' },
