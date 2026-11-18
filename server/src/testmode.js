@@ -109,9 +109,14 @@
  * mark in the credit's own run (v2.3.5810, dailyrewards.js, loginspin.js:
  * `paidmark`); a `track`'s avatar, colour and look words in the game's own
  * forms (v2.3.5819, lookform.js: `lookform`); the daily chest's stamp and
- * save in one write (v2.3.6021, dailychest.js, under `paidmark`); the daily
- * spin's pace kept by the room across a rejoin (v2.3.6024, dailyrewards.js,
- * under V3's `pacekeep`).
+ * save in one write (v2.3.6021, dailychest.js, under `paidmark`); a body in
+ * its dying seconds stakes, offers and trades nothing (v2.3.6022, gladiator.js,
+ * storeoffer.js, trade.js, trade2.js, under V3's `deadtake`); the General
+ * Store's book read a page an await and the room's only once whole
+ * (v2.3.6023, market.js, the page under V5's `listcap`); a re-listed noted
+ * order's first taker paid back before its delete under `mktsettle: false`
+ * (v2.3.6025, market.js: `mktback`); the daily spin's pace kept by the room
+ * across a rejoin (v2.3.6024, dailyrewards.js, under V3's `pacekeep`).
  *
  * WHO CAN TURN IT ON.  Only the admin key, through the Test panel's
  * POST /api/admin/dev/testmode {playerId, on} (devtools.js), which the owner's

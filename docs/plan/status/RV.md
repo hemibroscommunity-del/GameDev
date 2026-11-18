@@ -1,6 +1,6 @@
 card: RV
-branch: claude/rv-spinpace (6024, on main)
-prs: #2164 (6022), #2165 (6023) at sitting 46; 6024 (this)
+branch: claude/rv-spinpace (6024, stacked on claude/rv-mktcancel; sitting 46's order)
+prs: #2164 (6022), #2165 (6023), #2193 (6025), #2192 (6024) at sitting 46
 state: ready
 
 ## Done
@@ -18,17 +18,16 @@ state: ready
   trade window's Accept; traps-money §150 4 -> 1.
 - #2165 (6023, on #2164): the General Store's book a page an await, the
   room's once whole (`listcap`, V5's); TRAPS §76 1 -> 0.
-- 6024 (this): the daily spin's pace kept by the room across a rejoin
-  (`pacekeep`, V3's); traps-saves §276 18 -> 17.
-- Next (the planning session, part 6): 6025, `mktsettle: false` and a
-  re-listed noted order's cancel (market.js, on #2165), test first.
+- #2193 (6025, on #2165): under `mktsettle: false`, a re-listed noted
+  order's first taker paid back before its delete (`mktback`).
+- #2192 (6024, this, on #2193): the daily spin's pace kept by the room
+  across a rejoin (`pacekeep`, V3's); traps-saves §276 18 -> 17.
+- Sitting 46's order: #2164, #2165, #2193, #2192.
 
 ## Found
 
 - For card K2: ACC-1, ACC-2, SEC-F1, ACC-3, S2's join (PR 11), duelquiet.
 - For card L (`wsClient.js`): SEC-F3.
-- `mktsettle: false` + a re-listed noted order loses the taker's escrow
-  on its cancel (market.js; read, not shown): 6025.
 
 ## Needs
 
