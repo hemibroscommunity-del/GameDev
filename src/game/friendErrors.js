@@ -21,6 +21,8 @@ export const FRIEND_ERROR_WORDS = {
   'target-full': (who) => who + "'s friends list is full, so the request was not sent.",
   'not-friends': (who) => who + ' is not on your friends list any more, so your message was not sent.',
   'not-found': () => 'That player could not be found, so the friend request was not sent.',
+  /* v2.3.5811 (card RV): an accept refused because YOUR list is full */
+  'own-full': () => 'Your friends list is full. Remove a friend to accept this request.',
 };
 
 const FALLBACK = 'Your friend request did not go through.';

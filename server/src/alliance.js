@@ -326,11 +326,18 @@ export const allianceMethods = {
        or its staff ("BroTown Staff", the tag "GM") -- with the refusals they
        already have.  A name or tag already stored is never touched.
        `namestaff: false` in the live flags: as before. */
-    if (this._nameStaffOn && this._nameStaffOn()) {
-      if (/\p{Default_Ignorable_Code_Point}|\p{M}{3,}/u.test(name) || nameReadsAsStaff(name)) return this._allyError(pid, 'bad-name');
-      if (nameReadsAsStaff(tag)) return this._allyError(pid, 'bad-tag');
-    }
+    /* v2.3.5814 (sitting 44's review; decided for the owner while away): a
+       name or tag only when it CHANGES -- an alliance whose stored name now
+       reads as staff ("Team Bro") keeps it and may still change its tag; a
+       new name or a rename to such a word is refused.  The marks are counted
+       after NFC, as the character name's rule counts them (charname.js). */
     const a = p.ally;
+    if (this._nameStaffOn && this._nameStaffOn()) {
+      let _nfc = name;
+      try { _nfc = name.normalize('NFC'); } catch (e) { /* as it is */ }
+      if (name !== a.name && (/\p{Default_Ignorable_Code_Point}|\p{M}{3,}/u.test(_nfc) || nameReadsAsStaff(name))) return this._allyError(pid, 'bad-name');
+      if (tag !== a.tag && nameReadsAsStaff(tag)) return this._allyError(pid, 'bad-tag');
+    }
     if (a.name === name && a.tag === tag) return this._partyBroadcast(p);
     if (a.name && a.renamedAt && now - a.renamedAt < ALLIANCE.RENAME_MS) {
       return this._allyError(pid, 'rename-wait', { ms: a.renamedAt + ALLIANCE.RENAME_MS - now });
