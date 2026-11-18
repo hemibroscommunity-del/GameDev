@@ -66,6 +66,8 @@ a lone rejoin left the duel 'active' forever and blocked BOTH players
 from any new duel. Anything per-participant needs a per-player map.
 **Receipt:** duel `away` map, v2.3.1175 (#220); `docs/specs/duels.md`.
 
+Held by: tools/guards/traps-combat-rules.test.mjs (tag 5941).
+
 ## 6. Plain `{}` keyed by client-supplied ids
 
 **Tempting:** `const clocks = {}` is idiomatic JS. **Wrong:** a
@@ -349,6 +351,8 @@ duel or not. Pinned by `server/test/party.test.mjs` §11 and
 `tools/qa/mp/mp-party.mjs` (whose control taps the SAME player after the
 party breaks up, so a lock-free pass cannot be a missed click).
 
+Held by: tools/guards/traps-combat-rules.test.mjs (tag 5941).
+
 ## 20. Fixing an invisible overlay by raising its z-index
 
 **Tempting:** your new overlay measured onto the right control, at the
@@ -550,6 +554,8 @@ stay evicted (close 4006 → banner, no reconnect).
 **Receipt:** `server/src/index.js` `_moveActivitySig`,
 `server/src/tick.js` `_tickPingAndAfk`, `test/afk.test.mjs`,
 `tools/qa/mp/mp-afk.mjs`.
+
+Held by: tools/guards/traps-combat-rules.test.mjs (tag 5941).
 
 ---
 
@@ -4407,6 +4413,8 @@ arrow fly at the ridge and reads what the RENDERER drew. With the old calls
 restored it fails exactly as reported: the ball drawn to y 645 (the player's
 side), the arrow to y 8 (the map's top edge).
 
+Held by: tools/guards/traps-combat-rules.test.mjs (tag 5941).
+
 ## 102. A timed screenshot sequence on the QA box is not timed (v2.3.2700)
 
 **Tempting:** take `page.screenshot` at 60, 150, 260 and 900ms after an event
@@ -5864,6 +5872,8 @@ the answer along (`_duelKill`). Test a hook through the call site that runs
 it, never by calling it alone with state the call site would already have
 changed.
 
+Held by: tools/guards/traps-combat-rules.test.mjs (tag 5941).
+
 ## 152. "The challenge's number is authoritative" (v2.3.3168)
 
 **The plausible move.** A duel's stake comes from the server's own record of
@@ -5953,6 +5963,8 @@ existed.
 
 **The rule.** Build the whole collection, then act on it. Code that can call
 back into itself must never see a half-built list.
+
+Held by: tools/guards/traps-combat-rules.test.mjs (tag 5941).
 
 ## 158. "Only the server writes that slot" (v2.3.3172)
 
@@ -6575,6 +6587,8 @@ review measured it on the real room code: five sword hits, no damage.
 change what happens to it inside a bound the worker set itself: a window it
 opened, a cost it charged, a cooldown it keeps. Look at every `ps.X = !!msg.X`
 that another path reads as protection.
+
+Held by: tools/guards/traps-combat-rules.test.mjs (tag 5941).
 
 ## 184. "The input gate holds a trade together" (v2.3.3294)
 
@@ -8104,6 +8118,8 @@ by the map's east edge (`ground`, 431 ms); `mp-bowedge`, which fails on the
 build before the rule (0 damage by the edge, 3 arrows at a snowman off the
 screen) and passes with it.
 
+Held by: tools/guards/traps-combat-rules.test.mjs (tag 5941).
+
 ## 238. "Require that check on main" (v2.3.3491)
 
 **The plausible move.** Protecting `main`, make every CI check a required
@@ -8160,6 +8176,8 @@ shot at nothing, at a prop, or steered off its target keeps the parallel line.
 with it, and `server/test/shot-ground.test.mjs` §4 (the frost ridge in its own
 numbers: the parallel line enters the ridge, boots to feet passes it).
 
+Held by: tools/guards/traps-combat-rules.test.mjs (tag 5941).
+
 ## 240. "Put the gem on the page's weapon" (v2.3.3513)
 
 **The plausible move.** A test (or a tool) that needs a weapon with an element
@@ -8185,6 +8203,8 @@ claim path, for an emergency, not for a test.
 **Receipt:** `server/test/weapon-gem.test.mjs` §7 (a claim of frost on a flame
 weapon burns; a claim of flame on a plain one does nothing) and `mp-weapongem`
 step 6; `mp-pvpextras` passes with `H.weaponGem`.
+
+Held by: tools/guards/traps-combat-rules.test.mjs (tag 5941).
 
 ## 241. "A target the shot cannot hit is not on its line" (v2.3.3515)
 
@@ -8470,6 +8490,8 @@ new kind of zone gets its box there. Never `_getZoneConfig` alone.
 
 **Receipt:** `grotto-party.test.mjs` §5: a sword hit at the west wall and the
 north edge, every shove's call, and a split by the bottom wall.
+
+Held by: tools/guards/traps-combat-rules.test.mjs (tag 5941).
 
 ## 250. "The picture is on its canvas, so it is there when it is needed" (v2.3.3574)
 
@@ -9109,6 +9131,8 @@ a rollback or `prog3FromLegacy` to turn it into power.
 
 **Receipt:** `grids.test` (the prog3 block); docs/specs/build-skill-progression.md.
 
+Held by: tools/guards/traps-combat-rules.test.mjs (tag 5941).
+
 ## 274. "`seen > 0 &&` skips the members we know nothing about" (v2.3.4378)
 
 **The move.** The party's 7-day leader clock counts only leaders seen at least
@@ -9525,6 +9549,8 @@ swing never told the other players (`player_swing`), and the held loop kept
 swinging while staggered. **The rule.** Anything a swing must do goes in both
 starts. **Receipt:** `swing-shown.test`.
 
+Held by: tools/guards/traps-combat-rules.test.mjs (tag 5941).
+
 ## 294. "`now` is set in the loop, so the block can read it" (v2.3.4388)
 
 **Tempting:** use the game loop's `now` in a block of the loop. **Wrong:**
@@ -9559,6 +9585,8 @@ the worker's `blocked` flag is the only block (`shieldCopies.js`
 `localBlockApplies`): no arc test there. `player_shield` is room-wide on
 purpose (§176): gate only its SOUND on `_peerInZone`. **Receipt:**
 `shield-guard.test`; switch `monsterguardbreak`.
+
+Held by: tools/guards/traps-combat-rules.test.mjs (tag 5941).
 
 ## 297. "Close with the code that is nearest" (v2.3.4413)
 
@@ -9753,6 +9781,8 @@ The record is memory only (`ps._entryGraceAt`). A test that enters places
 back to back and expects a grace each time clears `ps._entryGraceAt` first
 (`dungeon-live.test` 5b does). It protects the other player, so it never
 asks `_testMode`. **Receipt:** `fight-dodges.test`; switch `entrygrace`.
+
+Held by: tools/guards/traps-combat-rules.test.mjs (tag 5941).
 
 ## 312. "The phone shows Claim only after a clear, so the quest is checked" (v2.3.4441)
 
@@ -10038,6 +10068,8 @@ the worker counts one swing every 100 ms (`MIN_SWING_GAP_MS`); the 50 ms
 between is the network's wobble. **Receipt:** `free-swing.test`,
 `manual-combat.test` §13, `mp-freeswing`.
 
+Held by: tools/guards/traps-combat-rules.test.mjs (tag 5941).
+
 ## 326. "Scale the hit by its share and it is fair" (v2.3.4520)
 
 **Tempting:** a light swing (the free-swing trial, `?manual=3`) deals its
@@ -10073,6 +10105,8 @@ send `ws: [1, 5]`. They draw the short Wheel inside the long room on purpose,
 and their places are in the short Wheel's numbers; a test or a bot still
 sends `[1, 5]` (§196). Fixed in #1526; off-ramp `wheelstep: false`.
 **Receipt:** `world-size.test`.
+
+Held by: tools/guards/traps-combat-rules.test.mjs (tag 5941).
 
 ## 328. "A raised shield with no facing is an old phone: keep the all-round block" (v2.3.4605)
 
