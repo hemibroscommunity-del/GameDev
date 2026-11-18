@@ -1,40 +1,39 @@
 card: Z
-branch: claude/plan-z-sitting-51
-prs: SB #2228; WD3 #2227, #2229-#2243, #2246, #2248; EN #2234; HB2 #2224; LR #2226, #2245 (ready); this PR (tag 6265), the last line
+branch: claude/plan-z-sitting-52
+prs: RR #2251, #2256; LR #2252; HB2 #2254, #2257; SB #2253; EN #2255 (ready); this PR (tag 6266), the last line
 state: ready
 
 ## Done
-- `census/review-z51.md`: 22 PRs checked against their cards; #2224 and
-  #2234 reviewed in full, WD3's 16 screens PRs by 6 word checkers and by
-  hand (the phone's words identical); merge bases one each; rehearsed on
-  `main` 7569a0c0, tree 42d5402f: precheck 0 FAIL, build, questline 187.
-  Blocks WD3 6340, LR 6360, SB 6380 registered (nextBlock 6400); WD2 done.
+- `census/review-z52.md`: 7 PRs checked against their cards; #2253, #2255,
+  #2254 and #2257 reviewed (SB's mends folded into #2253 at a978e2e4);
+  merge bases one each, step by step; rehearsed on `main` 1cd3fced:
+  REHEARSAL3. Deploys 44381829545 and 44382339345: success. WD3 done.
 ## The list: merge in this order, "Create a merge commit", in one go
-1 #2228 (SB 6380)  2 #2227 (WD3 6340, DEPLOYS)  3 #2229  4 #2230  5 #2231
-6 #2232  7 #2233  8 #2235  9 #2236  10 #2237  11 #2238  12 #2239  13 #2240
-14 #2241  15 #2242  16 #2243  17 #2246  18 #2248 (WD3 6356, DEPLOYS)
-19 #2234 (EN 6203)  20 #2224 (HB2 6280)  21 #2226 (LR 6360)  22 #2245
-(LR 6361)  23 Z.  The stacks fix the order; the deploy queue makes it at
-most two deploys, same worker code. LR re-freezes after #2224 lands.
-## Held / To 52
-- None held. To 52: HB2 #2244 (6281, draft; merges main after WD3:
-  BroCard, dash InventoryPanel, QuestJournalPage clash); LR's re-freeze;
-  SB 6381 onward (`atlasrow` parked); RR; EN 6204.
+1 #2251 (RR 6300)  2 #2256 (RR 6301, stacked on #2251)  3 #2252 (LR 6362)
+4 #2254 (HB2 6284)  5 #2253 (SB 6382, head a978e2e4)  6 #2255 (EN 6204)
+7 #2257 (HB2 6285)  8 Z (6266).  No server file: nothing deploys.
+## Held / To 53
+- None held at close. #2253 was held 21:32-22:23 at SB's word (its ride's
+  peak 89 MB on a fast lap) and came back at a978e2e4 (look ahead 1.5x).
+- To 53: HB2 #2244, #2247, #2249 (6281-6283; drafts, merge main first:
+  WD3's words); mark LR and SB done once #2252 and #2253 merge; RR's
+  next (the reds to trace, the slow checks, the rejoin loop); EN 6205 on.
 ## Found
-- 46-50 carried: wsClient `_aliveTimer` rejoin loop (RR's); `mp-mayordoor`
-  2-3 red on main (no card); mp-membudget heap line at its edge (EN saw
-  38.5-39.1); gatekeeper.mjs's 15-min precheck cap (861-889 s here, no
-  card); canvas-witness 8b; CS's comments and chips; TL's run.mjs orphans;
-  elemental2 maxMana; `switches-thrown` once under load.
-- New: `mp-firststeps` part 6 red on main (HB2's find; tools/qa/mp: RR's);
-  `state-census.mjs --check` red on main, no guard runs it (EN's find);
-  SB: the board outruns the ground (79% pop-ins on budget-android: a thing
-  seen, asked), stripRead's worker remade after 4 s idle (now SB's).
-- Mends, no hold: SB `RING_R` from the geometry; EN `_keepQueue` cap (its
-  6204). Old drafts #1870 #1869 #1867 #1415 #1211: closed on GitHub.
+- `mp-membudget`'s heap line 38.5 MB: red on main about half the time
+  here (38.4-38.8), the merged tree 38.5-39.3; no card owns it (the
+  planning session's call: a card to bring it down, or a re-measured line).
+- `mp-skateboard`: green alone on #2253's head (30/30) and on main (RR);
+  SB's earlier red was a busy box. Not a red on main.
+- RR's census: recoverpay, firststeps 6, deskkeys, headframes, quietphone,
+  desklunge, cuelevels 3, brocard 4 and geartab sideways (HB2's screens),
+  waterfrog hangs (part 6), hairstencil 3 parts: RR's to trace.
+- 46-51 carried: gatekeeper.mjs's 15-min precheck cap (860-873 s here;
+  RR's 3); `state-census --check` red on main (EN's find); the rejoin
+  loop (RR's last). gatekeeper.mjs could not fetch here (branches fetched
+  by hand first).
 ## Needs
-- Decided for the owner while away: SB `groundsend` ON (`?groundsend=0`,
-  a later PR); carried: EN `folksheets` ON, HB `afterpaint` ON. Parked:
-  SB `atlasrow` (0.3 ms). Computer "tap" -> "click": review-z51.md.
+- Decided for the owner while away: SB `groundsend` ON (`?groundsend=0`):
+  the board's look ahead 1.5x, the ride's memory at or under the on-foot
+  peak (re-decided from "+3.4 MB" on SB's re-measure). Parked: `atlasrow`.
 - Owner's own: `.github/`, Cloudflare; wind-dunes.mp3's source; SEC2's
   report form; RR's full 388-scenario sweep (a sample now).

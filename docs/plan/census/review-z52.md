@@ -21,7 +21,8 @@ Runs 44381829545 (10356e53) and 44382339345 (a756a519) of
 | SB | #2253 the ground keeps up with the board (`?groundsend`) | 6382 | fd2a169a, then a978e2e4 | held at SB's own word 21:32, back with a978e2e4 (below) |
 | EN | #2255 a peer's look prewarm a few ms at a time; the PNG queue capped | 6204 | 325d1fbe | ready, every check green |
 | HB2 | #2244 #2247 #2249 (6281-6283) | | ae77a66e ba5fb191 35c44898 | drafts, `dirty` (main to merge: WD3's words) all sitting |
-| HB2 | #2254 p256 on the worker | 6284 | 50d38b58 | draft all sitting |
+| HB2 | #2254 p256's twins read and packed on the worker | 6284 | 50d38b58 | every check green; marked ready by the planning session 22:34 (HB2 reported it ready to it) |
+| HB2 | #2257 the Quests dot without building the offers | 6285 | 4d8171a0 | every check green; marked ready by the planning session 22:34 |
 
 ## Step 3: each against its card
 
@@ -52,6 +53,19 @@ Runs 44381829545 (10356e53) and 44382339345 (a756a519) of
   the planning session in this PR). The card's numbers are the share of
   the view not yet drawn rather than ms: SB-ride.md found the board
   outrunning the ground, not a hold.
+- **HB2 #2254**: `p256.js`, `stripRead.js` (`readWhole`), `png8Worker.js`
+  (`whole`), `stripPack.js` (`dec.whole` skips the crop): card HB2's 5,
+  p256's read and its once-a-second pack off the page (the pack 27.2 ms x5
+  -> 11.3 ms x3 on budget-android; the read's `getImageData` gone, the row
+  left). No new switch (`?stripworker=0` already the off-ramp). It does
+  NOT close 3.1: `pack-page` left the debt list at card P's 5253; the last
+  `ours` row is `other: R > J`. No status-file change (HB2 mends it on its
+  next push, the planning session).
+- **HB2 #2257**: `src/ui/mobile/sheet/questModel.js` only: card HB2's
+  "then any HB family left over its line", HB-holds row 35. The band's
+  Quests dot counted by `deriveQuestLog`'s own loop (`questRows`) instead
+  of the whole log with every giver's offers; the same rows by the same
+  rules. Nothing a player sees.
 - **EN #2255**: `entityRenderer.js`, `census/M-tables.md` (re-made), the
   status file; card EN's 5 (HB's row 37) and sitting 51's mend (the
   `_keepQueue` cap). Row 37's holds: 25.4 ms x13 on main, none in 2 of 2
@@ -106,6 +120,27 @@ drawn into again, and the failing guard reads the EQUIPPED ids, not
 pixels. Settled here: `mp-copperwaist` on main + RR + LR + SB (fd2a169a) +
 EN, 40/40 twice (the third run stopped for time).
 
+**HB2 #2254 (src/rendering/p256.js and the strip reader).** No server:
+A to E and G clean by inspection. F: the canvas read stays as the
+fallback (no worker, a file it cannot read, `__btPicNumVerify`,
+`?stripworker=0`); `inflateRawSync` and the rows' plan helpers already on
+main; the twin's read joins the strips' one line on the worker (an effect
+may wait behind a monster's strip: no picture is shown unready either
+way); a pack the worker refuses gives up as a failed deflate did.
+Partly see-through colours keep the file's RGB, not the canvas's
+premultiplied round trip (the strip reader's documented rule).
+
+**HB2 #2257 (questModel.js).** A pure split: `deriveQuestOffers` has no
+side effect a count relied on (it writes nothing); `deriveQuestLog`
+returns the same three lists.
+
+**The memory check's heap line (no PR's alone).** `mp-membudget` on this
+box, each run its own build: main 38.7 (red) and 38.4; main + #2251 +
+#2256 + #2252 + #2253 + #2255 39.3 (red), 38.5, 39.3 (red); its line 38.5.
+Main is red on it about half the time here; the merged tree reads perhaps
+0.5 MB higher, inside the same scatter. Each PR's own `memory-budget`
+check is green. Not a hold; named below (Found).
+
 ## Step 5: the rehearsal (`tools/dev/gatekeeper.mjs`)
 
 1. main + #2251 + #2252 + #2253 (fd2a169a): tree ecdcf9d3. precheck 0
@@ -133,4 +168,8 @@ once #2251 lands.
   sideways: RR's to trace (brocard and geartab are HB2's screens).
 - `mp-waterfrog` hangs (part 6) and `mp-hairstencil` 3 parts (the planning
   session's list; RR's file).
-- EN's `mp-membudget` heap at its edge (38.3 of 38.5 MB; one run 38.7).
+- `mp-membudget`'s heap line (38.5 MB) is red on main about half the
+  time on a session box (38.4 to 38.8 here; EN, HB2 and SB saw 38.3 to
+  39.1), and the night's merged tree reads up to 39.3. No card owns it:
+  the line's owner (the planning session) decides whether a card brings
+  the heap down or the line is re-measured with its why.
