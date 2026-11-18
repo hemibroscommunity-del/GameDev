@@ -1,6 +1,6 @@
 card: HB
 branch: claude/plan-hb-holds
-prs: #? (6240, the map): ready
+prs: #2188 (6240, the map): ready
 state: ready
 
 ## Done
