@@ -85,7 +85,8 @@ switch allows it.
   to you (v2.3.5806, `storechat.js`, `chatlanes.js`, `party.js`, `storemute`,
   `mutehides`); a player's avatar and colour in the game's own forms on the
   board and on the page (v2.3.5807, `lookform.js`, `src/game/lookForm.js`,
-  `?lookform=0`).
+  `?lookform=0`); an old key's after-join check held while `oldkeyheld` is
+  (v2.3.5808, `loginkeys.js`).
 - Every save and payment rule; the login key, the device lock, the lockouts;
   a frozen account.
 - PvP consent and **every check on a hit between players** (pvpbalance.js,

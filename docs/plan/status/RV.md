@@ -1,5 +1,5 @@
 card: RV
-branch: claude/rv-lookform (PR 7, stacked on claude/rv-storemute)
+branch: claude/rv-loginkeys (PR 8, stacked on claude/rv-lookform)
 prs: #2072, #2083 (sitting 42); #2091, #2094 (ready); PRs 5, 6, 6b (5804-5806) in their runs
 state: ready
 
@@ -22,6 +22,7 @@ state: ready
   (`storemute`, `mutehides`). `store-mute.test`: 4 FAIL on main.
 - PR 7 (5807): `lookform.js`, the board, the page (S2; `?lookform=0`).
   `lookform.test`: 3 FAIL on main. S3 and `track`'s half wait for index.js.
+- PR 8 (5808): loginkeys.js SEC-F5 (`oldkeyheld`). 1 FAIL on main.
 
 ## Found
 
