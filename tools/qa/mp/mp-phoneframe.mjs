@@ -31,6 +31,7 @@
  *   BT_PF_QUERY='nopalette' ...    # extra address switches for the page
  *   BT_PF_SCENES=town,fight ...    # only these scenes (town, townwalk, townride, townacross, fight, landwalk; the two skateboard scenes only when named)
  *   BT_QA_CPU_THROTTLE=4 ...       # a slower phone
+ *   BT_QA_PROFILE=budget-android   # a slow machine whole: its throttle, its line, its lane (tools/qa/profiles.mjs; v2.3.5861)
  *
  * Writes tools/qa/mp/out/phoneframe.json (every number and the profiles' top
  * lists) and prints a summary. */
@@ -431,7 +432,7 @@ async function measure({ browser, wsPort, webPort, rec, maps, query: q0 }) {
   const P = await H.newPlayer(browser, { name: 'frame', wsPort, webPort, viewport: PHONE, touch: true, dpr: DPR, world: 'wheel', query,
     init: amb ? (() => { window.__btAmbienceOff = false; }) : null });
   const QUERY = query;
-  const out = { query: q0, dpr: DPR, sceneMs: SCENE_MS, throttle: Number(process.env.BT_QA_CPU_THROTTLE) || 1, maps: maps.size, scenes: [] };
+  const out = { query: q0, dpr: DPR, sceneMs: SCENE_MS, throttle: Number(process.env.BT_QA_CPU_THROTTLE) || 1, profile: H.PROFILE ? H.PROFILE.name : null, maps: maps.size, scenes: [] };   /* v2.3.5861: the slow profile (card O2 PR 2) */
   let stopAlive = null;
   try {
     await H.enterWorld(P);
@@ -654,8 +655,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
       if (out) runs.push(out);
     }
   }
-  writeFileSync(join(OUT, 'phoneframe.json'), JSON.stringify(runs.length === 1 ? runs[0] : { runs }, null, 1));
-  console.log(`\n  wrote ${join(OUT, 'phoneframe.json')}`);
+  /* v2.3.5861 (card O2 PR 2): under a slow profile (BT_QA_PROFILE) its own file */
+  const FILE = H.PROFILE ? `phoneframe-${H.PROFILE.name}.json` : 'phoneframe.json';
+  writeFileSync(join(OUT, FILE), JSON.stringify(runs.length === 1 ? runs[0] : { runs }, null, 1));
+  console.log(`\n  wrote ${join(OUT, FILE)}`);
   if (VARIANTS) {
     console.log(`\n  ════ the variants, dpr ${DPR}: frames a second and the frame interval (median) by scene ════`);
     for (const o of runs) {
