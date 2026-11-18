@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "c04ee0a7dfe45d904f385bcccd8861dc4bb3348b",
+  "tree": "fd5ba3ce354eaf73d7a9a46caf13b4cc39fbfab8",
+  "committedAt": "2026-11-18T11:35:46-08:00",
+  "subject": "Merge pull request #2235 from hemibroscommunity-del/claude/plan-wd3-7-world",
+  "files": 8396,
+  "bytes": 963020216,
+  "listingSha256": "ce7eb252422f14ac709c9b82682c351f0360a65a5189a786915bf96edd9906f6",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

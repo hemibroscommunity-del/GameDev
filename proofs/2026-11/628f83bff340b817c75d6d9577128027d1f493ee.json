@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "628f83bff340b817c75d6d9577128027d1f493ee",
+  "tree": "10616b439d1968bc2aa05e9fa608f705211e1115",
+  "committedAt": "2026-11-18T11:35:15-08:00",
+  "subject": "Merge pull request #2232 from hemibroscommunity-del/claude/plan-wd3-5-dash",
+  "files": 8385,
+  "bytes": 962996458,
+  "listingSha256": "94183fc7388efc9df7e244446acf0f4310a538966cb611dc483c6fdec8743d97",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

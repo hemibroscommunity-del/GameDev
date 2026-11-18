@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "d9ea3b9bb634ee87a6a1d85b4db55c45da6895b5",
+  "tree": "50862bfbd04e460022c2ff61e82364ebfcf087b7",
+  "committedAt": "2026-11-18T11:35:30-08:00",
+  "subject": "Merge pull request #2233 from hemibroscommunity-del/claude/plan-wd3-6-social",
+  "files": 8391,
+  "bytes": 963009491,
+  "listingSha256": "8b14293285977d6996aa6934905826b536c37268bd406512fc36e091c9c1c9a4",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
