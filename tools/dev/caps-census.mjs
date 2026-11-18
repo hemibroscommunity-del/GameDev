@@ -70,7 +70,9 @@ export const COUNTS = Object.freeze({
 });
 
 /* Whether the page's old way (a worker without the cap) settles value on the
-   page: SETTLES, at the end of this file (a long table). */
+   page: SETTLES, at the end of this file (a long table).  Three were `?`
+   (questTrack, meals, prog3): the planning session read them as value, the
+   safe side (they go first, with care); each row says so. */
 
 /* ── the scanner (the guard imports it) ─────────────────────────────────── */
 
@@ -415,7 +417,7 @@ export const SETTLES = Object.freeze({
   killroll: ['no', 'false: the codex shows each drop rolled on its own'],
   laststand: ['no', 'false: the Last Stand row shows inactive (SOON)'],
   loginspin: ['no', 'false: hides the daily spin button and never asks'],
-  meals: ['?', 'false: the old instant cook heals R.hp on the page; the worker echo overwrites it'],
+  meals: ['value', 'was ?, read as value by the planning session: the old instant cook heals R.hp on the page'],
   milestonesRetired: ['no', 'false: predicts the old stamina bar and Burst gate for display'],
   monsterhold: ['no', 'false: the Enchanter and item words describe the old lock'],
   monstermoves: ['no', 'false: draws no monster move warnings'],
@@ -450,7 +452,7 @@ export const SETTLES = Object.freeze({
   pointsreset: ['no', 'false: hides the Reset button'],
   potionBag: ['no', 'false: hides the Drink button and sends nothing'],
   presence2: ['no', 'false: keeps the old ghost sweep presence roster'],
-  prog3: ['?', 'false: the old recalc sets level and max pools from page-trained stats; the echo overwrites'],
+  prog3: ['value', 'was ?, read as value by the planning session: the old recalc sets level and pools on the page'],
   prog3Chan: ['no', 'false: shows one shared points total; the worker judges spends'],
   prog3elem: ['no', 'false: hides new stat rows and shows the global elemental stat'],
   prog3rel: ['no', 'false: stat readouts predict the old linear math'],
@@ -461,7 +463,7 @@ export const SETTLES = Object.freeze({
   pvpextras: ['no', 'false: area moves target no player'],
   pvpheal: ['no', 'false: the page holds no bite back; the worker decides'],
   pvplunge: ['no', 'false: the lunge does not target a player'],
-  questTrack: ['?', 'false: the page counts quest kills itself and claims them at join; quest progress, not coins'],
+  questTrack: ['value', 'was ?, read as value by the planning session: the page counts quest kills and claims them at join'],
   quiet: ['no', 'false: phone sends moves and keepalives as before'],
   race: ['no', 'false: hides Lil Bro\'s Race button and course'],
   reqid: ['no', 'false: requests go without the once-only request id'],
