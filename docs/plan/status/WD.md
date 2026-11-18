@@ -7,13 +7,13 @@ state: ready
 - (nothing merged yet)
 
 - PR 1 (6140) #2171: tools/dev/words-census.mjs, docs/plan/census/words.md.
-  Totals (main, 06:40 UTC): 7501 player-facing (2164 in a table, 4953 in
-  place on the page, 384 on the worker); 2992 `?`; 3132 developer-only apart.
+  Totals (main 891b850c): 7544 player-facing (2164 in a table, 4995 in
+  place on the page, 385 on the worker); 3015 `?`; 3132 developer-only apart.
 
-- PR 2 (6141) #2179: tools/guards/player-words.test.mjs, lines 4953 / 384 (re-measured: main moved);
+- PR 2 (6141) #2179: tools/guards/player-words.test.mjs, lines 4995 / 385 (re-landed on main 891b850c);
   the break proofs fail as they should.
 - PR 3 (6142) #2180: docs/specs/player-words.md, the table's shape and the order
-  of moves: all 446 screens named, in waves W0 to W6 and "stays".
+  of moves: all 449 screens named, in waves W0 to W6 and "stays".
 
 ## Next
 - Nothing: all three are green and wait for the gatekeeper. Then: done.

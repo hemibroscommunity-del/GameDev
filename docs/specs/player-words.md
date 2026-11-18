@@ -11,8 +11,8 @@ renderers are free (part 11's "never side by side").
   2026-11-18: 7486 player-facing strings. 2164 are already in a table
   (`src/data/*`, `deskWords()`), 4941 are written in place on the page, and
   381 are written in place on the worker. 2990 of all of them are `?`
-  (unclear, counted). 446 screens. (Re-measured at 06:40 UTC after the
-  day's merges: 4953 and 384, the guard's lines; the screens below are the
+  (unclear, counted). 446 screens (449 on main 891b850c, all named below). (Re-measured on main 891b850c after the
+  day's merges: 4995 and 385, the guard's lines; the screens below are the
   first count's.)
 - **The guard**: `tools/guards/player-words.test.mjs` (card WD PR 2). The two
   in-place counts may only fall (`PAGE_LINE`, `SERVER_LINE`), and a new
@@ -154,7 +154,7 @@ it moved (a sample).
   `src/data/say/clanInvite.js`, the census's `isTable` line, and the move of
   `ClanInviteCard` (5 words, `src/ui/panels/ClanInviteCard.jsx`). This proves
   the shape before anything big moves.
-- **W1, the windows** (`src/ui/**/*.jsx`, BroTown.jsx aside): 144 screens,
+- **W1, the windows** (`src/ui/**/*.jsx`, BroTown.jsx aside): 145 screens,
   largest first. These are the panels a player opens. A screen moves only
   when no running card holds its file.
 - **W2, the screens' helpers** (`src/ui/**/*.js` and screens split over
@@ -162,11 +162,11 @@ it moved (a sample).
   linger screens, the sheet's models): 33 screens.
 - **W3, the game's rules and the socket** (`src/game/*`, `src/networking/*`,
   `src/lib/*`): toasts, chat and system lines, refusals the page writes for
-  a worker's code. 104 screens. `gameEvents.js` and `wsClient.js` move only
+  a worker's code. 105 screens. `gameEvents.js` and `wsClient.js` move only
   when no running card holds them.
 - **W4, the drawing** (`src/rendering/**`, the renderers aside): Pixi
   `Text`s and labels. The look catalogs go to the census's `TABLE_FILES` as
-  above. 60 screens.
+  above. 61 screens.
 - **W5, the big files, last**: `src/ui/BroTown.jsx`, `entityRenderer.js`,
   `effectsRenderer.js`. Each waits until every card that holds it is `done`
   (card M's split moves their code: these move AFTER the split, one system
@@ -182,9 +182,10 @@ it moved (a sample).
 unclear ones among them. The counts are from 2026-11-18's census (a moving
 PR reads its own from `--lines`).
 
-#### W1 (144 screens, 2899 in place)
+#### W1 (145 screens, 2899 in place)
 
 | # | screen | in place | ? | files it touches |
+| 145 | UsageMeter | 17 | 4 | `src/ui/panels/UsageMeter.jsx` (new on main 891b850c) |
 |---|---|---|---|---|
 | 1 | ItemDetailPopup | 129 | 29 | `src/ui/mobile/dash/ItemDetailPopup.jsx` |
 | 2 | PlayerPaint | 102 | 20 | `src/ui/panels/PlayerPaint.jsx` |
@@ -369,9 +370,10 @@ PR reads its own from `--lines`).
 | 32 | uiSfxDelegate | 1 | 1 | `src/ui/uiSfxDelegate.js` |
 | 33 | zoneTitle | 1 | 0 | `src/ui/mobile/zoneTitle.js` |
 
-#### W3 (104 screens, 1176 in place)
+#### W3 (105 screens, 1176 in place)
 
 | # | screen | in place | ? | files it touches |
+| 105 | game: usageMeter | 25 | 19 | `src/game/usageMeter.js` (new on main 891b850c) |
 |---|---|---|---|---|
 | 1 | networking: gameEvents | 106 | 98 | `src/networking/gameEvents.js` |
 | 2 | game: drawLanes | 68 | 44 | `src/game/drawLanes.js` |
@@ -478,9 +480,10 @@ PR reads its own from `--lines`).
 | 103 | game: wheelTrial | 1 | 0 | `src/game/wheelTrial.js` |
 | 104 | networking: rosterCookie | 1 | 1 | `src/networking/rosterCookie.js` |
 
-#### W4 (60 screens, 324 in place)
+#### W4 (61 screens, 324 in place)
 
 | # | screen | in place | ? | files it touches |
+| 61 | rendering: entity-look | 4 | 4 | `src/rendering/leaves/entity-look.js` (new on main 891b850c) |
 |---|---|---|---|---|
 | 1 | rendering: designCatalog | 44 | 0 | `src/rendering/traits/designCatalog.js` |
 | 2 | rendering: headwearCatalog | 39 | 0 | `src/rendering/traits/headwearCatalog.js` |
@@ -668,5 +671,5 @@ PR reads its own from `--lines`).
 - `tools/guards/player-words.test.mjs` (card WD PR 2): the counts only fall,
   and a new "Wheel" or "remnant" always fails.
 - `node tools/dev/words-census.mjs --check`: the census page is the scan's.
-- This plan names every screen in the census (446). Before a move starts,
+- This plan names every screen in the census (449 on main 891b850c). Before a move starts,
   its card re-reads the census, so a screen added since is named in its wave.
