@@ -3,6 +3,7 @@ import { LIFE_SKILLS } from '@/data/index.js';
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 import { myAllyTag } from '@/game/alliance.js';   /* v2.3.3321: the tag a player wears is their alliance's or former clan's */
 import { act } from '@/game/actions.js';   /* v2.3.5191: the page's requests leave through the action door (card K PR 7) */
+import { drawColor } from '@/game/lookForm.js';   /* v2.3.5807 (card RV, S2): a row's colour drawn only as a colour */
 
 /* ═══ LeaderboardPanel — top-50 rankings per category ═══ */
 /* v2.3.856: moved verbatim from BroTown.jsx's JSX tree (UI-panel
@@ -338,7 +339,7 @@ export function LeaderboardPanel(props) {
           width: 26,
           height: 26,
           borderRadius: 13,
-          background: e.color || '#293B41' /* v2.3.1235: batch-2 rollout — raised-token fallback (gold fallback read as a rank accent) */,
+          background: drawColor(e.color, '#293B41') /* v2.3.5807 (card RV, S2): lookForm.js; v2.3.1235: batch-2 rollout — raised-token fallback (gold fallback read as a rank accent) */,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',

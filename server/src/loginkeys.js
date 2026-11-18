@@ -141,7 +141,11 @@ export const loginKeyMethods = {
        forgotten since (Forget), puts the join out (above). */
     if (out.via === 'old') {
       if (auth.oldGone) { await this._authPutOut(ws, 'key'); return; }
-      if (this._deviceLockOn() && this._deviceDecide(auth, device, now) === 'refuse') {
+      /* v2.3.5808 (card RV, SEC-F5): held while EITHER guard is on, as the
+         join's own check is (devicelock.js _deviceLockJoin, v2.3.5716): with
+         `devicelock: false` and `oldkeyheld` on, a device forgotten while the
+         join ran was let stay.  `oldkeyheld: false` too: as before. */
+      if ((this._deviceLockOn() || (this._oldKeyHeldOn && this._oldKeyHeldOn())) && this._deviceDecide(auth, device, now) === 'refuse') {
         await this._authPutOut(ws, 'device');
         return;
       }
