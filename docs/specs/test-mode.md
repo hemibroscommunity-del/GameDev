@@ -90,7 +90,10 @@ switch allows it.
   a payment and its escrow's delete one write (v2.3.5809, `storeoffer.js`,
   `trade2.js`, `gladiator.js`, `offerpend`, `leftoverheal`); a friendship both
   sides or neither, and a request nobody answers let go after 30 days
-  (v2.3.5811, `friends.js`, `friendfix`).
+  (v2.3.5811, `friends.js`, `friendfix`); the cleaner's blank and hidden
+  characters, and a new pet or alliance name held to the name rule
+  (v2.3.5814, `chatguard.js`, `petbook.js`, `alliance.js`, `cleanmore`,
+  `namestaff`).
 - Every save and payment rule; the login key, the device lock, the lockouts;
   a frozen account.
 - PvP consent and **every check on a hit between players** (pvpbalance.js,

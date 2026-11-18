@@ -623,6 +623,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `boards2` | worker | switch | v2.3.4355 | 2026-11-10 | false | logic |  | no | Un-advertises the boards with faces: records no spin, stamps no face or level, retires no row. |
 | `chatguard` | worker | switch | v2.3.3396 | 2026-10-18 | false | logic |  | no | All three chat guards off: chat and emotes spend the relay bucket again, nothing filtered or cleaned. |
 | `clanparty` | worker | switch | v2.3.3321 | 2026-10-17 | false | logic | `partykeep` | no | No clan is turned into a party; clans work as they did. |
+| `cleanmore` | worker | switch | v2.3.5814 | 2026-11-17 | false | logic |  | no | The chat cleaner passes braille blanks, the annotation marks and loose tag characters, as before (S6). |
 | `dueldoor` | worker | switch | v2.3.5211 | 2026-11-14 | false | logic |  | no | A resolved duel's end can be written again, as the line before the duel door would have (nothing does today). |
 | `?dueldoor` | page | switch | v2.3.5529 | 2026-11-17 | =0 | logic |  | no | The phone's duel takes any write its own code asks again (a duel with no opponent, an end that leaves one), as the lines before the duel's page door; every caller writes what the door allows today. |
 | `duelzone` | worker | switch | v2.3.4371 | 2026-11-10 | false | logic |  | no | No zone starts a duel's clock (one running is cleared at the next zone write). |
@@ -634,6 +635,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `leaderidleat` | worker | switch | v2.3.4378 | 2026-11-10 | false | logic |  | no | The party leader's idle clock counts only a `seen` above 0, as before. |
 | `?lookform` | page | switch | v2.3.5807 | 2026-11-17 | =0 | logic |  | no | Another player's avatar and colour are drawn whatever they hold, as before (S2: a picture of their choosing, or an address of theirs every phone that looked fetched from). |
 | `mutehides` | worker | switch | v2.3.5806 | 2026-11-17 | false | logic |  | no | A whisper to a player who muted you is answered with silence (a name nobody holds: no-such-player), and a party invite reaches them, as before (S8). |
+| `namestaff` | worker | switch | v2.3.5814 | 2026-11-17 | false | logic |  | no | A new pet name, alliance name or tag is held only to its own form, as before: blank names and staff words pass (S7). |
 | `partydoor` | worker | switch | v2.3.5212 | 2026-11-14 | false | logic |  | no | A player can be put in a party that does not list them, as the lines before the party door could have (nothing does today). |
 | `?partydoor` | page | switch | v2.3.5529 | 2026-11-17 | =0 | logic |  | no | The phone's party takes any write its own code asks again (a roster that is no record, a clear that writes one), as the lines before the party's page door; every caller writes what the door allows today. |
 | `partykeep` | worker | switch | v2.3.3276 | 2026-10-17 | false | logic |  | no | Parties are not kept: the old cap and the away window remove a dropped member. |
