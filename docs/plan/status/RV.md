@@ -1,6 +1,6 @@
 card: RV
-branch: claude/rv-looktrack (5819, stacked on claude/rv-paidmark)
-prs: #2109-#2123 open (ready, sitting 44); #2072, #2083, #2091, #2094 merged
+branch: claude/rv-chestonce (6021, stacked on claude/rv-looktrack)
+prs: #2109-#2114 (sitting 44); #2115-#2123, #2132, #2133, #2141 (sitting 45)
 state: ready
 
 ## Done
@@ -23,7 +23,8 @@ state: ready
   12 (5812) SEC-F2, a join's shield claim only if minted (`shieldclaim`);
   6020 the players' device words (RV's block 6020+, registered by sitting 44).
 - PR 10 (5810) `paidmark` (the owner's yes); 5819 S2's track half, S3
-  (`lookform`). Next: 6021 market's list (after #2102); `deadtake`.
+  (`lookform`); 6021 the chest's stamp and save one write. Next: V4's
+  `_deviceFill`; market's list (after #2102); `deadtake`.
 
 ## Found
 
