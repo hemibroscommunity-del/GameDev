@@ -45,6 +45,7 @@ import { worldTrialLeft } from '../game/worldTrial.js';
 import { WheelWater } from './wheelWater.js';   /* v2.3.3019: the water moves */
 import { paletteOn, makePaletteSource, paletteStats } from './paletteTex.js';   /* v2.3.3190: pieces as colour numbers */
 import { isRiding, RIDE_MULT } from '../game/ride.js';   /* v2.3.3843: further ahead of the board */
+import { sw } from '../game/switches.js';   /* v2.3.6382: `?groundsend=0` */
 
 const MAX_IN_FLIGHT = 3;
 const MARGIN = 96;
@@ -137,6 +138,29 @@ const AHEAD_MAX = 480;
    what they did.  Behind you nothing changes (KEEP_PX: freed where you
    leave, the memory law). */
 const AHEAD_GROW = 2;
+/* ═══ v2.3.6382: THE GROUND KEPT AHEAD OF THE BOARD (card SB) ═══
+   The owner, 2026-11-18, on the board: "I notice 'grainy' feeling ... where
+   sometimes it freezes just for tiny fractions of a second while it loads."
+   mp-heldsweep's `ride` (docs/plan/census/SB-ride.md) found the board
+   outrunning the ground: on its ring round the safe ground, 36% of the
+   pieces came on screen before they were laid (this box plain, warm; 79% on
+   budget-android), the overview's plan colours shown there until they came
+   -- while the ground's worker sat idle a third of the ring (mp-rideheld:
+   65 ms a piece, busy 67%).  It was not too slow; it was not asked: at most
+   MAX_IN_FLIGHT pieces are asked at a time, and asked only in a frame, so a
+   slow frame (a hitch, this box's few a second) left the worker with
+   nothing to do while the board went on.
+   On the board, RIDE_IN_FLIGHT may be asked at a time.  What is asked is
+   what the board's look ahead (above) already wants -- nothing laid that
+   would not be, nothing kept that would not be (the memory: KEEP_PX and the
+   view decide what stays, as before); only sooner.  On foot, as before.
+   `?groundsend=0`: MAX_IN_FLIGHT riding too. */
+const RIDE_IN_FLIGHT = 6;
+let _sendOff = null;
+function inFlightMax(S) {
+  if (_sendOff === null) _sendOff = sw('groundsend');   /* read once: the address does not change in play */
+  return !_sendOff && isRiding(S) ? RIDE_IN_FLIGHT : MAX_IN_FLIGHT;
+}
 /* Pieces the zone gate laid round the arrival and this view never took (a
    wide desktop view is shaped differently from the phone's) are let go this
    long after arriving, rather than held until the worker stops. */
@@ -316,14 +340,15 @@ export class WheelGround {
     /* what is on screen first, then nearest where the camera is heading */
     want.sort((a, b) => a.on - b.on || a.d - b.d);
     if (jumped) want.length = 0;
+    const most = inFlightMax(S);   /* v2.3.6382: more on the board */
     for (const w of want) {
       /* a piece laid ahead by the zone gate costs nothing to take */
-      if (this.inFlight >= MAX_IN_FLIGHT && !wheelIsWarm(w.i, w.j)) continue;
+      if (this.inFlight >= most && !wheelIsWarm(w.i, w.j)) continue;
       this._load(w.i, w.j, info, w.on === 0);
     }
     /* v2.3.2959: then, with room to spare, a short piece whose picture has
        come -- on screen first */
-    if (!this.relays && this.inFlight < MAX_IN_FLIGHT) {
+    if (!this.relays && this.inFlight < most) {
       let best = null, bestOn = false;
       for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
         const rec = this.pieces.get(i + ',' + j);
