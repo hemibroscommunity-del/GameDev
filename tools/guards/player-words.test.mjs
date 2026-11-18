@@ -36,9 +36,9 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { census, ROOT } from '../dev/words-census.mjs';
 
-/* The census's counts on main, 2026-11-18 06:40 UTC (card WD PR 1, #2171, re-measured after the day's merges). */
-export const PAGE_LINE = 4953;
-export const SERVER_LINE = 384;
+/* The census's counts on main 891b850c, 2026-11-18 09:20 UTC (card WD PR 1, #2171; re-landed after CS #2152 and RV #2164, as gatekeeper sitting 46 asked). */
+export const PAGE_LINE = 4995;
+export const SERVER_LINE = 385;
 
 /* The "Wheel" / "remnant" rows the census found: `node tools/dev/words-census.mjs --lines`. */
 export const KNOWN = [
