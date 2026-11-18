@@ -1,7 +1,7 @@
 card: CS
 branch: claude/plan-cs-2-usage-meter (PR 2, stacked on #2139)
-prs: #2139 (6000) ready; PR 2 (6001) ready
-state: ready
+prs: #2139 (6000), #2152 (6001): both merged
+state: done
 
 ## Done
 
@@ -17,7 +17,8 @@ state: ready
 
 ## Next
 
-- The card is done once both merge.
+- Nothing: the card is done (both merged at sitting 46; marked done by
+  the gatekeeper, sitting 47).
 
 ## Found
 
@@ -33,5 +34,4 @@ state: ready
 
 ## Needs
 
-- The gatekeeper's list: K2's #2136, then #2139, then PR 2 (stacked), PR 2
-  after K2's PRs that touch server/src/wire/http.js (the planning session).
+- Nothing.

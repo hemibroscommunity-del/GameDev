@@ -1,7 +1,7 @@
 card: LG
 branch: claude/plan-lg-3-replay (PR 3, 6122)
-prs: #2170 (6120) ready, #2178 (6121) ready, #2184 (6122) ready
-state: ready
+prs: #2170 (6120), #2178 (6121), #2184 (6122): all merged
+state: done
 
 ## Done
 
@@ -14,8 +14,10 @@ state: ready
 
 ## Next
 
-- Nothing: all three PRs green and ready, in order (#2170, #2178, #2184,
-  each stacked on the one before). The card is done once they merge.
+- Nothing: the card is done (all three merged at sitting 46; marked done
+  by the gatekeeper, sitting 47). Rung 5 left for later (decided for the
+  owner while away). The K4 rows below were mended by K4's #2176, #2177,
+  #2182, #2187 (sitting 46).
 
 ## Found
 

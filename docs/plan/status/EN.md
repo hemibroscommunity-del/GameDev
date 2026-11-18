@@ -1,6 +1,6 @@
 card: EN
 branch: claude/plan-en-3-folksheets (6202; 6200 on plan-en-1-leaves, 6201 on plan-en-2-leaves)
-prs: #2189 6200 (merged), #2195 6201 (merged), 6202 (draft, CI)
+prs: #2189 6200 (merged), #2195 6201 (merged), #2207 6202 (draft), 6203 (working)
 state: working
 
 ## Done
@@ -14,7 +14,8 @@ state: working
 
 - 6202 open: chip copies of the folk's baked sheets let go far from town
   (`?folksheets=0`), gpu line 114.3 -> 109.3, folk-sheets.test (DEPLOYS).
-  Sitting 48: merge main after FX's #2194/#2200/#2203, re-generate M-tables.
+  Main merged in after FX's #2194/#2200/#2203, M-tables re-generated.
+- 6203: the five canvas pictures (keepAsImage / keepOnGpuOnly), census 49 -> 44.
 
 ## Found
 
@@ -26,7 +27,7 @@ state: working
 ## Needs
 
 - (none: the planning session answered constants, suites and systems.mjs,
-  2026-11-18). Planning session is now part 6
-  (session_01LccHam7XmUNAHQrA1CjiNH); heads go to gatekeeper sitting 46.
+  2026-11-18). Planning session is now part 7
+  (session_01LccHaivkofvyigGL4fgBWZ); it starts sitting 48 with #2207.
 - 6202: part 6's yeses (playerSkins.js, one switch row, the gpu line,
   framePacer.js MEM_LINES, src/state ledgers, server/test/folk-sheets).

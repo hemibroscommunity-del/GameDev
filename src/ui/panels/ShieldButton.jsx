@@ -3,6 +3,7 @@ import { TARGET_PERIMETER_PX } from '@/data/index.js';
 import { toggleShield, shieldButtonLive } from '@/game/shieldToggle.js';
 import { Skin, BlockFace, pressOn, pressOff, useReadyFlash } from './controlSkin.jsx'; /* v2.3.3018: the owner's mockup; v2.3.3522: the owner's shield on Block */
 import { WHEEL_MINI_PX } from '@/ui/wheelMiniSize.js';   /* v2.3.3986: the minimap's side on a phone, in one place */
+import { winVw } from '@/ui/mobile/playViewport.js';   /* v2.3.6241: the window's width, kept (card HB PR 2) */
 
 /* ═══ v2.3.2242: THE SHIELD BUTTON ═══
  *
@@ -268,7 +269,7 @@ export function blockAnchor(isLandscape) {
   var jl = jumpAnchor(isLandscape);
   var right = jl.right + jl.size + BLOCK_JUMP_SIDE;
   if (isLandscape) return { size: col.size, right: right, bottomPx: BLOCK_BAND_BOTTOM - col.size - CTL_GAP };
-  var vw = (typeof window !== 'undefined' && window.innerWidth) || 390;
+  var vw = winVw() || 390;   /* v2.3.6241: kept till the window moves (playViewport.js winVw), not measured each render */
   /* ═══ v2.3.4130: UPRIGHT, BESIDE JUMP AT ITS FOOT, OVER THE WEAPON PILL ═══
      Jump turned west over the weapon pill (jumpAnchor); Block stays beside it
      on its left, BLOCK_JUMP_SIDE of air, their feet level -- WPILL_AIR over
@@ -670,7 +671,7 @@ export function ctlColumn(isLandscape) {
   var base = isLandscape ? 54 : 48;
   var discW = isLandscape ? RBTN.wLand : RBTN.w;
   var dR = discRight(isLandscape);   /* v2.3.3740 */
-  var vw = (typeof window !== 'undefined' && window.innerWidth) || 390;
+  var vw = winVw() || 390;   /* v2.3.6241: kept till the window moves (playViewport.js winVw), not measured each render */
   /* How much clear room there is between the movement zone's right edge
      (a fixed 50% of the VIEWPORT in both orientations -- TouchControls'
      [data-joyzone] layers) and the disc's left edge. */
@@ -789,13 +790,13 @@ export const PILL_NARROW_VW = 360;
 export const WPILL_MIN = 32;
 function pillNarrow(isLandscape) {
   if (isLandscape) return false;
-  var vw = (typeof window !== 'undefined' && window.innerWidth) || 390;
+  var vw = winVw() || 390;   /* v2.3.6241: kept till the window moves (playViewport.js winVw), not measured each render */
   return vw < PILL_NARROW_VW;
 }
 export function weaponPillAnchor(isLandscape) {
   var well = WPILL.well, left = null;
   if (pillNarrow(isLandscape)) {
-    var vw = (typeof window !== 'undefined' && window.innerWidth) || 390;
+    var vw = winVw() || 390;   /* v2.3.6241: kept till the window moves (playViewport.js winVw), not measured each render */
     var col = ctlColumn(false);
     left = BELL_RIGHT_PX + WPILL_AIR;
     var right = vw - discRight(false) - col.size - WPILL_AIR;   /* Block's left edge, under the disc, less the air */

@@ -154,7 +154,11 @@ const bakedCover = (P, id) => P.page.evaluate(async ({ nid, FW, ROW, REST }) => 
   };
   const img = await load('/sprites/player/mine-south.png');
   const sheet = pix(img);
-  const vsrc = vein.texture.source.resource;
+  /* v2.3.6222: a rock kept as colour numbers (paletteLoad.js) holds no picture
+     to draw: its file, by the address its source keeps (`label`) */
+  const _vr = vein.texture.source.resource;
+  const vsrc = (typeof HTMLImageElement !== 'undefined' && _vr instanceof HTMLImageElement) || (typeof HTMLCanvasElement !== 'undefined' && _vr instanceof HTMLCanvasElement) || (typeof ImageBitmap !== 'undefined' && _vr instanceof ImageBitmap)
+    ? _vr : await load(vein.texture.source.label);
   const vd = pix(vsrc);
   const VW = vsrc.width, VH = vsrc.height;
   const frames = Math.floor(img.width / FW);

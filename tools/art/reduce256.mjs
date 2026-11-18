@@ -102,6 +102,12 @@ SCOPE.push({ dir: 'sprites/players', only: /^death-v1\.png$/, always: true });
    BRO_BADGE_URL), 2.5k-28k colours, cut to 256.  The stamina strip is 1638
    px wide: its twin is padded to 1640 (`pad4`), past its last frame. */
 SCOPE.push({ dir: 'icons/ui', only: /^(blocks-(mp|stam)|verified-bro-small)\.webp$/, always: true, pad4: true });
+/* v2.3.6222 (card FX PR 3, projectile-sheets): the staff's bolt, the staff's
+   special and the sword's slash (effectsRenderer.js, four frames each, loaded
+   whole and framed), 20k-63k colours, cut to 256.  Widths 868, 888 and 408:
+   multiples of four already.  Not the arrows (arrow-pine.png has its own
+   reader; arrow-special is not loaded while HOT_SPECIAL_ARROW draws it). */
+SCOPE.push({ dir: 'sprites/projectiles', only: /^(magic-bolt|magic-special|sword-slash)-v1\.webp$/, always: true });
 /* v2.3.5564 (card P's backlog, cape-hood): a cape's hood's hair masks, cut
    from its facings (tools/cape/split-cape-hood.py): two colours, exact.  Not
    the hood halves (sitting 20, the planning session's answer (a)): a cape is

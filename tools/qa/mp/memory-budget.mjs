@@ -408,6 +408,22 @@
  * read 38.9, 38.4 and 38.4 against its 38.5 (main 38.1-38.5: the line at
  * its edge on main; nothing here keeps more than two <img>s); `buffers`
  * 24.2, 24.1, 24.0. */
+/* v2.3.6222 (card FX PR 3; card P2's census row 9, its Found): the five
+ * ore rocks read as colour numbers, the trees' way (paletteLoad.js,
+ * `?treenumbers=0` the pictures), and the three projectile sheets (the
+ * staff's bolt and special, the sword's slash) from their 256-colour twins
+ * (p256.js PROJ_SHEETS, `?p256=0` the pictures).  Three runs stacked on
+ * #2194 (main's code, moved): `artCache` at its highest 13.4 -> 11.2 (main
+ * read 13.4 in three runs), 2.2 MB saved (the census said 2.1); its line
+ * left at 79.3, as v2.3.5982 left it: the frame pacer steps quality on a
+ * copy of it (framePacer.js MEM_LINES, frame-pacer.test 23a), a change in
+ * play that waits for the planning session's word; `buffers` 24.2-24.3 (main, three runs) ->
+ * 24.7, 24.8, 24.7, so its line 24.2 -> 24.8, RAISED by the numbers kept in
+ * the page (0.5 MB; the highest read 24.8) as artCache fell 2.2 (net 1.7
+ * less in the page; the planning session's yes, 2026-11-18, "raise buffers only if the
+ * net saving is clearly larger").  `gpu` 78.5-81.3 (main 79.2-80.9), its
+ * line unchanged; `heap` 38.5-38.6 (main 38.3-39.2: the line at its edge on
+ * main, as v2.3.5982 found). */
 /* v2.3.6202 (card EN PR 3; P2's census row 2): the townsfolk whose looks the
  * shared numbers refuse are drawn from sheets baked behind the loading screen
  * (35 at the check's town), each sent to the chip at its first draw and, before
@@ -423,7 +439,7 @@
  * against its 38.5, and 38.8, 38.5 with the switch thrown: the line at its
  * edge on main (P2's census), not this change.  `artCache` 13.4 as main. */
 export const MEMORY_BUDGET = {
-  artCache: { name: 'art loaded from files', mb: 79.3, measured: 16.2,   /* v2.3.3702: 156 -> 112; v2.3.5246: 112 -> 109.1, LOWERED by the portraits let go of (2.9 MB); v2.3.5247: 109.1 -> 107.0, Ace's coin strips (2.1 MB); v2.3.5248: 107.0 -> 101.4, the trees as numbers (5.6 MB); v2.3.5249: 101.4 -> 98.3, the made effects as numbers (3.1 MB); v2.3.5250: 98.3 -> 97.1, the world's icons (1.2 MB); v2.3.5252: 97.1 -> 95.1, the whirlwind as numbers (2.0 MB); v2.3.5256: 95.1 -> 90.6, the slimes' strips loaded as you walk (4.5 MB), see the header; v2.3.5258: 90.6 -> 88.6, the element marks as numbers (2.0 MB, measured on its own at 95.1 -> 93.1), see the header; v2.3.5562: 88.6 -> 86.7, the hats' hair masks as numbers (1.9 MB), see the header; v2.3.5563: 86.7 -> 85.2, the pet sheet as numbers (1.5 MB), see the header; v2.3.5564: 85.2 -> 84.5, the hood's hair masks as numbers (0.7 MB), see the header; v2.3.5565: 84.5 -> 83.0, the fishing spot's pond as numbers (1.5 MB), see the header; v2.3.5566: 83.0 -> 81.9, the bars over heads as numbers (1.1 MB), see the header; v2.3.5567: 81.9 -> 80.5, the death strip as numbers (1.4 MB), see the header; v2.3.5569: 80.5 -> 79.3, the block strips and the Bro badge as numbers (1.2 MB), see the header */
+  artCache: { name: 'art loaded from files', mb: 79.3, measured: 16.2,   /* v2.3.3702: 156 -> 112; v2.3.5246: 112 -> 109.1, LOWERED by the portraits let go of (2.9 MB); v2.3.5247: 109.1 -> 107.0, Ace's coin strips (2.1 MB); v2.3.5248: 107.0 -> 101.4, the trees as numbers (5.6 MB); v2.3.5249: 101.4 -> 98.3, the made effects as numbers (3.1 MB); v2.3.5250: 98.3 -> 97.1, the world's icons (1.2 MB); v2.3.5252: 97.1 -> 95.1, the whirlwind as numbers (2.0 MB); v2.3.5256: 95.1 -> 90.6, the slimes' strips loaded as you walk (4.5 MB), see the header; v2.3.5258: 90.6 -> 88.6, the element marks as numbers (2.0 MB, measured on its own at 95.1 -> 93.1), see the header; v2.3.5562: 88.6 -> 86.7, the hats' hair masks as numbers (1.9 MB), see the header; v2.3.5563: 86.7 -> 85.2, the pet sheet as numbers (1.5 MB), see the header; v2.3.5564: 85.2 -> 84.5, the hood's hair masks as numbers (0.7 MB), see the header; v2.3.5565: 84.5 -> 83.0, the fishing spot's pond as numbers (1.5 MB), see the header; v2.3.5566: 83.0 -> 81.9, the bars over heads as numbers (1.1 MB), see the header; v2.3.5567: 81.9 -> 80.5, the death strip as numbers (1.4 MB), see the header; v2.3.5569: 80.5 -> 79.3, the block strips and the Bro badge as numbers (1.2 MB), see the header; v2.3.6222: left at 79.3 though the ore rocks and the projectile sheets as numbers saved 2.2 MB (the frame pacer's copy, framePacer.js MEM_LINES), see the header */
     what: 'pictures loaded from files, decoded (the asset cache, window.__btTex) -- its highest at the fight, the monsters\' looks loaded' },
   gpu: { name: 'textures on the graphics chip', mb: 109.3, measured: 95.0,   /* v2.3.4058: 105 -> 115, approved by the owner 2026-11-03, see the header; v2.3.5981: 115 -> 114.3, the tee's stand and jog sheets not sent (0.73 MB), see the header; v2.3.6202: 114.3 -> 109.3, the townsfolk's baked sheets off the chip far from town (5.0 MB), see the header */
     what: 'textures on the graphics chip (window.__btGpuTex) -- including what was drawn in the last minute, which Pixi unloads after 60 s unused' },
@@ -433,7 +449,7 @@ export const MEMORY_BUDGET = {
     what: 'sound decoded into memory (music streams from its file and is not in it, v2.3.3073)' },
   heap: { name: 'the page\'s JavaScript objects', mb: 38.5, measured: 36.4,   /* v2.3.3595: 32 -> 33; v2.3.3657: 33 -> 34; v2.3.3807: 34 -> 36; v2.3.4005: 36 -> 38; v2.3.4080: 38 -> 37.5; v2.3.4483: 37.5 -> 38.5; v2.3.5007: unchanged, measured 37.7 -> 36.4 by the heap trim, see the header */
     what: 'the page\'s JavaScript objects' },
-  buffers: { name: 'the page\'s raw data buffers', mb: 24.2, measured: 23.5,   /* v2.3.3703: 24 -> 22, see the header; v2.3.5248: 22 -> 23.4, RAISED by the trees' colour numbers moved here (1.40 MB) as artCache fell 5.6 (net 4.2 less); v2.3.5250: 23.4 -> 23.7, the world's icons' numbers (0.30 MB) as artCache fell 1.2 (net 0.9 less); v2.3.5252: 23.7 -> 24.2, the whirlwind's numbers (0.50 MB) as artCache fell 2.0 (net 1.5 less), see the header */
+  buffers: { name: 'the page\'s raw data buffers', mb: 24.8, measured: 23.5,   /* v2.3.3703: 24 -> 22, see the header; v2.3.5248: 22 -> 23.4, RAISED by the trees' colour numbers moved here (1.40 MB) as artCache fell 5.6 (net 4.2 less); v2.3.5250: 23.4 -> 23.7, the world's icons' numbers (0.30 MB) as artCache fell 1.2 (net 0.9 less); v2.3.5252: 23.7 -> 24.2, the whirlwind's numbers (0.50 MB) as artCache fell 2.0 (net 1.5 less), see the header; v2.3.6222: 24.2 -> 24.8, the rocks' and the projectile sheets' numbers (0.5 MB) as artCache fell 2.2 (net 1.7 less), see the header */
     what: 'the page\'s raw data buffers (ArrayBuffers), and the text of its scripts, which the same reading counts (v2.3.3703)' },
   workers: { name: 'the background workers', mb: 36, measured: 30.5,
     what: 'the background workers (the ground builder): their objects and buffers' },

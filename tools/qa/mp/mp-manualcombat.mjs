@@ -34,7 +34,9 @@
  *      a sword still a stroke.
  * And a computer (1280 x 800, a mouse):
  *  10. each click is one arrow at the cursor, however long the button is
- *      held; the right click arms the special; a sword's click swings.
+ *      held (v2.3.6182: drawn while held, loosed at the release: the bow's
+ *      feel, docs/specs/bow-feel.md); the right click arms the special; a
+ *      sword's click swings.
  *  11. no page errors.
  * Pictures: tools/qa/mp/out/manualcombat-*.png.
  */
@@ -407,15 +409,29 @@ async function desk({ browser, wsPort, webPort, rec, OUT }) {
     await wait(P, 400);
     await resetShots(P);
     await P.page.evaluate(() => window.__ready(60));
+    /* v2.3.6182: since v2.3.4802 a computer's bow in the game's own combat (the free swing, a worker with
+       caps.bowDraw) is DRAWN: the left button held draws, the cursor aims, and its RELEASE looses the one
+       arrow (docs/specs/bow-feel.md "A computer"; bowFeel.js bowFeelDeskDown / bowFeelDeskUp).  So the
+       promise read here is one arrow a click, made at the release, none while held however long; the
+       press-shoots rule (v2.3.4395) is kept for a page where the bow's feel is off (`?bowfeel=0`) */
+    const feel = await P.page.evaluate(() => (window.__btBowFeel ? window.__btBowFeel() : null));
+    const drawn = !!(feel && feel.on);
     await P.page.mouse.down();
-    const n10a = await settleShots(P, 1);
+    const n10a = drawn ? (await wait(P, 1200), await shotsNow(P)) : await settleShots(P, 1);
+    const phaseHeld = await P.page.evaluate(() => (window.__btBowFeel ? window.__btBowFeel().phase : null));
     await wait(P, 1500);              /* held: three intervals and more */
     const heldN = await shotsNow(P);
     await P.page.mouse.up();
+    const upN = drawn ? await settleShots(P, 1) : (await wait(P, 600), await shotsNow(P));
     await wait(P, 600);
-    const upN = await shotsNow(P);
-    rec.ok(`10a a computer: a click is ONE arrow at the cursor (${n10a}), however long the button is held (${heldN}) and whatever its release (${upN})`,
-      at.desk && n10a === 1 && heldN === 1 && upN === 1, { at, n10a, heldN, upN });
+    const afterN = await shotsNow(P);
+    if (drawn) {
+      rec.ok(`10a a computer: a click is ONE arrow at the cursor, loosed at the release (${upN}): none on the press (${n10a}) or while held, drawing (${heldN}, ${phaseHeld}), and no second after (${afterN})`,
+        at.desk && n10a === 0 && phaseHeld === 'drawing' && heldN === 0 && upN === 1 && afterN === 1, { at, drawn, n10a, phaseHeld, heldN, upN, afterN });
+    } else {
+      rec.ok(`10a a computer (the bow's feel off): a click is ONE arrow at the cursor (${n10a}), however long the button is held (${heldN}) and whatever its release (${upN})`,
+        at.desk && n10a === 1 && heldN === 1 && upN === 1 && afterN === 1, { at, drawn, feel, n10a, heldN, upN, afterN });
+    }
     await P.page.evaluate(() => window.__ready(60));
     await P.page.mouse.down(); await P.page.mouse.up();
     const n10b = await settleShots(P, 2);
