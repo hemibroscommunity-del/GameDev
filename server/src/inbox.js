@@ -40,6 +40,14 @@ export const OP_PRUNE = {
   TTL_MS: 172800000,     // 48h, unchanged
   INTERVAL_MS: 3600000,  // one full sweep per hour, unchanged
   SLOT_MS: 3000,         // one page every 3s while the room is occupied
+  /* v2.3.5802 (card RV, MD-1): the stamps the sweep passes over, by the
+     first word of their op id: each is the only record that a thing paid
+     once a character was paid, so it is kept for good (TRAPS §146: "the
+     oplog is not the record" -- here it is the record, so it is not
+     pruned).  The sweep never even reads them: a page lists up to the
+     range and the next starts after it.  `risekeep: false` prunes them as
+     before. */
+  KEEP: Object.freeze(['risechest:']),
 };
 
 /* ═══ v2.3.3488: ACHIEVEMENT POINTS PAID ONCE A CHARACTER ═══
@@ -188,7 +196,29 @@ export const inboxMethods = {
     try {
       const opts = { prefix: 'oplog:', limit: OP_PRUNE.PAGE };
       if (job.after) opts.startAfter = job.after;
-      const entries = await this.state.storage.list(opts);
+      /* v2.3.5802 (MD-1): the next kept range at or past the cursor: this
+         page stops at its start, or starts after its end */
+      let keepEnd = null;
+      /* one kept range a page: right while KEEP holds one word (or ranges
+         that never interleave with a page's other keys); a second word
+         would need the fill below to stop at the next range too */
+      if (this._riseKeepOn && this._riseKeepOn()) {
+        for (const w of OP_PRUNE.KEEP) {
+          const lo = 'oplog:' + w, hi = lo + '\uffff';
+          if (job.after && job.after >= hi) continue;
+          if (job.after && job.after >= lo) { opts.startAfter = hi; continue; }
+          opts.end = lo; keepEnd = hi;
+          break;
+        }
+      }
+      let entries = await this.state.storage.list(opts);
+      /* v2.3.5802: a page that stopped short at a kept range is filled from
+         after it, in the same call (still one page of keys at most) */
+      if (keepEnd && entries.size < OP_PRUNE.PAGE) {
+        const more = await this.state.storage.list({ prefix: 'oplog:', startAfter: keepEnd, limit: OP_PRUNE.PAGE - entries.size });
+        entries = new Map([...entries, ...more]);
+        keepEnd = null;
+      }
       const stale = [];
       let last = null;
       for (const [k, ts] of entries) {
@@ -463,6 +493,26 @@ export const inboxMethods = {
       if (Object.prototype.hasOwnProperty.call(Object.prototype, k)) return true;
       if (!ps.inventory) ps.inventory = {};
       bagGive(ps.inventory, k, Math.max(1, Math.floor(p.count || 1)), 'mail_item', undefined, entry); /* v2.3.4810: the bag door; v2.3.5084: the payout, counted by its own class */
+      /* ═══ v2.3.5803 (card RV, MS-3): GOODS THAT LAND IN THE DYING SECONDS ARE KEPT ═══
+         A player is still a live recipient in the five seconds between a
+         death and the respawn, and the respawn runs the second, unconditional
+         wipe (index.js _tickPlayerRespawn -> _wipeInventoryOnDeath): whatever
+         a credit put in the bag then was taken out again.  A trade window
+         both sides had readied, confirmed by the other side after a death to
+         a monster, took the dead side's gold and wiped the goods it paid for;
+         an Auction House or market leg landing then, the same.  The death
+         pile's pickup has refused a dying player since v2.3.3476; a credit is
+         not refused (it is paid for), so it is SHIELDED instead: added to the
+         death's shield, which the respawn wipe keeps (never more than the bag
+         still holds, the v2.3.3169 cap, so nothing comes back twice).  A copy:
+         the shield the death froze may be the loot record's own object.
+         `dyingkeep: false` in the live flags: wiped at the respawn, as before. */
+      if (ps.dying && this._dyingKeepOn()) {
+        const sh = Object.create(null);
+        if (ps._deathShield && typeof ps._deathShield === 'object') for (const kk of Object.keys(ps._deathShield)) sh[kk] = ps._deathShield[kk];
+        sh[k] = Math.max(0, Math.floor(Number(sh[k]) || 0)) + Math.max(1, Math.floor(p.count || 1));
+        ps._deathShield = sh;
+      }
       return true;
     }
     if (entry.kind === 'weapon') {
@@ -770,9 +820,21 @@ export const inboxMethods = {
      Gold and stackable items only, the kinds that always land (a weapon, a
      piece or a pet may have to wait in the mail for room): any other kind
      answers null and does nothing.  _creditPlayer is unchanged for its other
-     callers. */
+     callers.
+     v2.3.5801 (card RV, MS-4: the General Store's refund and its order's
+     delete): a WEAPON too.  It lands live only when the stash has room
+     (_weaponStashRoom, the test _applyCreditToPs's stash door makes), else
+     it waits in the mail -- either way with the caller's record in the same
+     run.  A piece or a pet still answers null. */
+  /* v2.3.5803 (MS-3): goods credited in the dying seconds are shielded
+     from the respawn's wipe (_applyCreditToPs).  `dyingkeep: false`: off. */
+  _dyingKeepOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'dyingkeep') && !f.dyingkeep);
+  },
+
   async _creditWith(playerId, entry, also) {
-    if (!entry || (entry.kind !== 'gold' && entry.kind !== 'item') || typeof also !== 'function') return null;
+    if (!entry || (entry.kind !== 'gold' && entry.kind !== 'item' && entry.kind !== 'weapon') || typeof also !== 'function') return null;
     const opId = entry.opId;
     if (opId) {
       if (!this._opInFlight) this._opInFlight = new Set();
@@ -785,7 +847,7 @@ export const inboxMethods = {
         return 'dup';
       }
       const ps = this.playerState[playerId];
-      if (ps) {
+      if (ps && (entry.kind !== 'weapon' || this._weaponStashRoom(ps) > 0)) {   /* v2.3.5801: a weapon only into room */
         const writes = [...(also() || [])];
         this._applyCreditToPs(ps, entry, playerId);
         writes.push(this._saveRpg(playerId, ps), this._opStamp(opId));

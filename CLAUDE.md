@@ -403,33 +403,33 @@ spec. Add a line here only for a new RULE every session must follow.
 
 | If you add... | ...in the same PR |
 |---|---|
-| an animation or sprite | its loader in `preloadWorldAnimations` (per zone: `preloadZoneAssets`, freed on exit); a body pose through `mp-ghostaudit` |
-| a message the server sends | its `out` row in the wire table (`PRIVILEGED_EVENTS` is made from it); the client's direct switch |
-| a relay a phone sends | its `relay` row in the wire table (`RELAY.TYPES` is made from it) |
-| a request the page makes | its row in `src/game/actions.js` (the action door) |
-| a server behaviour | a cap the client gates on (`CAP_GATES`) and a lower-case kill switch |
-| a `?name=` or a live flag | its row in the switch table (`tools/guards/lib/switches.mjs`; `node tools/guards/switches.test.mjs --write`) |
-| a storage key | ARCHITECTURE-HANDOFF's rule-2 registry table (precheck `storage-keys`); its marks; a player's key, its place in `RESTORE_WAYS` (`storagemarks.js`; `restore.test`) |
-| a monster hit on players | its row in `MONSTER_HITS` (`hits.js`) |
-| a way to change a player's gold | its row in `GOLD_ROADS` (`gold.js`) and its line in `gold-door.test`'s `EXPECT` |
-| a way to change a bag count, a stash, a player's hp, or to leave | its row in `BAG_ROADS`, `STASH_ROADS`, `HP_ROADS` or `LEAVE_WAYS`, and its line in that door's test |
-| a way to change a player's build points | its row in `POINT_ROADS` (`skillpoints.js`), and its line in `skillpoints-door.test`'s `EXPECT` |
-| a way to change a quest's state, progress or kept lists | its row in `QUEST_ROADS` (`queststate.js`) and one call that names it |
-| a way to change experience or a level | its row in `XP_ROADS` (`xp.js`) and one call that names it |
-| an honesty check | `_testMode(ps)` and its three lists |
-| a refusal in the hit test | the same in the bow's sight gate (TRAPS §236) |
-| a field on the tick | both tick builders (`tick-share.test`) |
-| a sound | its Sound Studio label and its `CREDITS.md` row |
-| a screen or window | `states.mjs` and `UI-DESIGN-NOTES.md`; `data-esc` on its ✕; any key in `deskKeys.js` |
-| a phone test | `world: 'wheel'` (and `wide: true` on a computer); its file `mp-<name>.mjs` (no line in run.mjs); its `lane` |
-| a picture made on a canvas | `keepOnGpuOnly`, `keepAsImage` or colour numbers (the memory law) |
-| a monster, or any art that loads as you walk | 256-colour palette PNGs (`tools/art/strip256.mjs --shared`), loaded through `loadTrackedStrip` (`strip-door.test`) |
-| a stored look key | its restore and its blank (precheck `look-parity`, `look-blank`) |
-| a domain players use | `ORIGINS` (wrangler.toml: the owner approves) |
-| a change to the Wheel's plan or objects | a re-bake of both Wheels |
-| anything the memory check reads more of | the line raised, with the MB and why in the PR body |
-| a bake, a load in play, or a redraw on a timer | off the page's thread (the palette, offline, a worker; `startTransition`); `mp-heldsweep` within its budget |
-| a server-only number a copier would value | a row in the hidden settings (`hidden.js` `HIDDEN_SPEC`) with a public placeholder |
+| an animation or sprite | its loader in `preloadWorldAnimations` (per zone: `preloadZoneAssets`, freed on exit); a body pose through `mp-ghostaudit` (test: `preload-census`; the pose, `mp-ghostaudit`) |
+| a message the server sends | its `out` row in the wire table (`PRIVILEGED_EVENTS` is made from it); the client's direct switch (test: `wire-audit`, `wire-table`) |
+| a relay a phone sends | its `relay` row in the wire table (`RELAY.TYPES` is made from it) (test: `action-door`, `wire-table`) |
+| a request the page makes | its row in `src/game/actions.js` (the action door) (test: `action-door`) |
+| a server behaviour | a cap the client gates on (`CAP_GATES`) and a lower-case kill switch (test: `cap-gates`, `caps-audit`, `liveops` §8e) |
+| a `?name=` or a live flag | its row in the switch table (`tools/guards/lib/switches.mjs`; `node tools/guards/switches.test.mjs --write`) (test: `switches`) |
+| a storage key | ARCHITECTURE-HANDOFF's rule-2 registry table (precheck `storage-keys`); its marks; a player's key, its place in `RESTORE_WAYS` (`storagemarks.js`; `restore.test`) (test: `storage-keys`, `storage-marks`, `restore`) |
+| a monster hit on players | its row in `MONSTER_HITS` (`hits.js`) (test: `hit-door`) |
+| a way to change a player's gold | its row in `GOLD_ROADS` (`gold.js`) and its line in `gold-door.test`'s `EXPECT` (test: `gold-door`) |
+| a way to change a bag count, a stash, a player's hp, or to leave | its row in `BAG_ROADS`, `STASH_ROADS`, `HP_ROADS` or `LEAVE_WAYS`, and its line in that door's test (test: `bag-door`, `stash-door`, `life-door`, `session-door`) |
+| a way to change a player's build points | its row in `POINT_ROADS` (`skillpoints.js`), and its line in `skillpoints-door.test`'s `EXPECT` (test: `skillpoints-door`) |
+| a way to change a quest's state, progress or kept lists | its row in `QUEST_ROADS` (`queststate.js`) and one call that names it (test: `quest-door`) |
+| a way to change experience or a level | its row in `XP_ROADS` (`xp.js`) and one call that names it (test: `xp-door`) |
+| an honesty check | `_testMode(ps)` and its three lists (test: `test-mode` §8) |
+| a refusal in the hit test | the same in the bow's sight gate (TRAPS §236) (by hand: geometry, browser only) |
+| a field on the tick | both tick builders (`tick-share.test`) (test: `tick-share`) |
+| a sound | its Sound Studio label and its `CREDITS.md` row (test: `sound-cues` §12, `sound-credits`) |
+| a screen or window | `states.mjs` and `UI-DESIGN-NOTES.md`; `data-esc` on its ✕; any key in `deskKeys.js` (test: `screens-listed`, `desk-keys`) |
+| a phone test | `world: 'wheel'` (and `wide: true` on a computer); its file `mp-<name>.mjs` (no line in run.mjs); its `lane` (test: `old-map`, `scenario-lanes`, `phone-test-wide`) |
+| a picture made on a canvas | `keepOnGpuOnly`, `keepAsImage` or colour numbers (the memory law) (test: `canvas-pictures`) |
+| a monster, or any art that loads as you walk | 256-colour palette PNGs (`tools/art/strip256.mjs --shared`), loaded through `loadTrackedStrip` (`strip-door.test`) (test: `strip-door`) |
+| a stored look key | its restore and its blank (precheck `look-parity`, `look-blank`) (test: `look-keys`) |
+| a domain players use | `ORIGINS` (wrangler.toml: the owner approves) (by hand: outside the repository) |
+| a change to the Wheel's plan or objects | a re-bake of both Wheels (test: `wheel-bakes`) |
+| anything the memory check reads more of | the line raised, with the MB and why in the PR body (test: `mp-membudget`, every PR) |
+| a bake, a load in play, or a redraw on a timer | off the page's thread (the palette, offline, a worker; `startTransition`); `mp-heldsweep` within its budget (by hand: hours-long browser sweep) |
+| a server-only number a copier would value | a row in the hidden settings (`hidden.js` `HIDDEN_SPEC`) with a public placeholder (by hand: a copier's judgment) |
 
 ## 9. Where things are
 
