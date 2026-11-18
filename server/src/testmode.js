@@ -65,7 +65,9 @@
  * to their form (v2.3.5723, movement.js MOVE_FIELDS: `movefields`), a relay's
  * fields typed and the room's send to joined sockets only (v2.3.5724,
  * relay.js RELAY_FORMS: `relaytyped`), the room ceiling's honest floor
- * (v2.3.5728, flood.js HONEST_PER_S: `ceilfair`), the owner's routes
+ * (v2.3.5728, flood.js HONEST_PER_S: `ceilfair`), a guest's share of the
+ * places, a played character's seat and an IPv6 /48 counted (v2.3.5729,
+ * seathold.js GUEST_SHARE, flood.js ip48Key: `guestshare`), the owner's routes
  * with no key and the public reads at the edge (v2.3.5726, wire/door.js:
  * the worker settings `EDGE_GUARD`, `EDGE_CACHE`), every save and payment rule,
  * the login key and its lockouts, a frozen account, PvP consent and every
@@ -73,6 +75,12 @@
  * locks, the tool and level gates and a harvest's reach, damage being the
  * worker's own roll, and the admin key itself.  A test-mode character can
  * still only do what its phone does; it is simply not doubted.
+ * Also left on, for everyone (v2.3.5801, card RV): a General Store sell
+ * filed under its weapon's own tier, and a refund and its order's delete in
+ * one write (market.js: `mkttier`, `mktheal`); the rise chest's stamp kept
+ * for good by the oplog prune (v2.3.5802, inbox.js OP_PRUNE.KEEP: `risekeep`);
+ * goods credited in the dying seconds kept through the respawn (v2.3.5803,
+ * inbox.js _applyCreditToPs: `dyingkeep`).
  *
  * WHO CAN TURN IT ON.  Only the admin key, through the Test panel's
  * POST /api/admin/dev/testmode {playerId, on} (devtools.js), which the owner's

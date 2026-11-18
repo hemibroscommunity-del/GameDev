@@ -718,6 +718,10 @@ export const joinMethods = {
          character on it included (silence.js, card MOD; before the key, so a
          refused join writes nothing) */
       if (await this._frozenDeviceRefuse(ws, cleanDevice(msg.device), typeof msg.id === 'string' ? msg.id : null)) return;   /* v2.3.5625: and the character it names (the owner's spare) */
+      /* v2.3.5729: a guest's share of the places, and a full room's spare
+         socket (seathold.js, `guestshare`; card K2 PR 10) -- BEFORE the key,
+         whose check writes a new character's `auth:` row (sitting 43's F2) */
+      if (await this._guestSharePre(ws, msg)) return;
       /* v2.3.3275: the account check (verify.js) -- asked only of a character
          that does not exist yet, and only when the owner has turned it on. */
       /* v2.3.3344: ...and the device the join came from (devicelock.js) */
@@ -780,6 +784,10 @@ export const joinMethods = {
       }
       /* v2.3.5622: a NEW character's name by the rule (charname.js, card MOD), before it is made */
       if (await this._charNameRefuse(ws, msg.id, msg.data, msg.name)) return;   /* v2.3.5622: the join's own name too, when its data has none */
+      /* v2.3.5729: a played character's seat at a full room (seathold.js,
+         `guestshare`; card K2 PR 10) -- after the key, so a wrong one moves
+         no guest */
+      if (this._guestShareRefused(ws, msg.id)) return;
     }
     /* ═══ v2.3.3260: YOUR BODY IS STILL IN THE FIGHT ═══
        A player who left within 10 s of a hit between players leaves their

@@ -57,7 +57,7 @@ const ARRIVAL = { x: 21504, y: 21792 };
 async function build(nj) {
   const room = new GameRoom(mockState(), mockEnv);
   room.MAX_PLAYERS = N + 20;
-  room._liveFlags = { nearjoin: nj };
+  room._liveFlags = { nearjoin: nj, guestshare: false };   /* v2.3.5729: its bots join as keyless guests, so `guestshare` (seathold.js) is off here: a guest may hold only half the places */
   let tickFn = null;
   const realSetInterval = globalThis.setInterval;
   globalThis.setInterval = (fn, ms) => { if (ms === room.TICK_RATE && !tickFn) { tickFn = fn; return 1; } return realSetInterval(fn, ms); };
