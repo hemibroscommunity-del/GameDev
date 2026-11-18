@@ -652,11 +652,14 @@ export const dailyRewardsMethods = {
     const ps = this.playerState[pid];
     if (!ps || ps.dying || ps.dead || ps.disconnected) return;
     const now = this._drNow();
-    if (ps._lastDailySpinAt && now - ps._lastDailySpinAt < SPIN.COOLDOWN_MS) return;
+    /* v2.3.6024 (card RV, TRAPS §276; `pacekeep`, V3's): kept across a
+       rejoin, as the rewards' read below is (pacekeep.js) */
+    const spinAt = paceAt(this, pid, ps, '_lastDailySpinAt');
+    if (spinAt && now - spinAt < SPIN.COOLDOWN_MS) return;
     /* stamped for EVERY ask past this line, a refused one too -- otherwise a
        client with no spins left could have the worker read storage and answer
        as fast as it can send */
-    ps._lastDailySpinAt = now;
+    ps._lastDailySpinAt = paceStamp(this, pid, ps, '_lastDailySpinAt', now, SPIN.COOLDOWN_MS);
     const act = payload && (payload.act === 'double' || payload.act === 'collect') ? payload.act : 'spin';
     const opId = payload && typeof payload.opId === 'string' && payload.opId.length <= 96 ? payload.opId : null;
     /* v2.3.5194: the request id first, kept with the pid (reqonce.js); the

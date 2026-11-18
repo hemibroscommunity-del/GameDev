@@ -98,10 +98,11 @@ async function acrossRejoin(P, label, field, gapMs, prep, ask, took) {
   check('2. another player\'s id reads nothing', paceAt(room, 'bp_y', {}, '_diceAt') === 0);
   const d = {};
   check('2. a field not of the eight is never read or kept', paceAt(room, 'bp_x', d, 'until') === 0 && d.until === undefined
-    && (paceStamp(room, 'bp_x', d, '_lastDailySpinAt', 1, 1), d._lastDailySpinAt === undefined));
+    && (paceStamp(room, 'bp_x', d, '_notAPace', 1, 1), d._notAPace === undefined));   /* v2.3.6024: the daily spin is a field now */
   paceStamp(room, '__proto__', {}, '_dropAt', 1000, 400);
   check('2. a `__proto__` id is just an id', room._paceKeep.get('__proto__')._dropAt === 1000 && paceAt(room, '__proto__', {}, '_dropAt') === 1000);
-  check('2. the eight fields are the §276 pace rows less the daily spin', PACE_KEEP.FIELDS.length === 8 && !PACE_KEEP.FIELDS.includes('_lastDailySpinAt'));
+  /* v2.3.6024 (card RV): the daily spin is the ninth (server/test/spin-pace.test.mjs) */
+  check('2. the nine fields are the §276 pace rows, the daily spin among them', PACE_KEEP.FIELDS.length === 9 && PACE_KEEP.FIELDS.includes('_lastDailySpinAt'));
 
   const big = { _liveFlags: {} };
   for (let i = 0; i < PACE_KEEP.CAP; i++) paceStamp(big, 'bp_' + i, {}, '_restAt', 1000 + i, i % 2 ? 1e9 : 10);
