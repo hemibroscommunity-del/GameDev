@@ -175,7 +175,10 @@ device, and the owner's tools are the same routes; **Give it a new key** is
 the way onto a new device now (OPERATIONS.md). The one first-device case
 left is an explicit empty list, which only a join naming no device writes
 (the suites' characters). Kill switch `oldkeyheld: false`: the lock off and
-the pass as before. Suite: `server/test/oldkeyheld.test.mjs`;
+the pass as before. v2.3.5808 (card RV, SEC-F5): the check right after the
+join (`loginkeys.js` `_keysAfterJoinNow`: a device forgotten while the join
+ran puts it out) asks the same two (it asked `devicelock` alone;
+`oldkey-afterjoin.test`). Suite: `server/test/oldkeyheld.test.mjs`;
 `device-lock.test` and `login-keys.test` play the pass and the lock off with
 it thrown.
 

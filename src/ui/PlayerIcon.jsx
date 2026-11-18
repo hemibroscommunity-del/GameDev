@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { portraitDataUrl, portraitOptsFromPeer } from '@/rendering/characterPortrait.js';
 import { peerCosmeticsFromWire } from '@/networking/peerCosmetics.js';
+import { drawAvatar, drawColor } from '@/game/lookForm.js';   /* v2.3.5807 (card RV, S2): another player's avatar and colour only in the game's own forms */
 
 /* ═══ v2.3.2622: THE PLAYER'S ACTUAL FACE, NOT A LETTER ═══
  *
@@ -99,7 +100,14 @@ function portraitFor(look, onReady) {
  * proportions inside -- the ring, the letter -- scale with it, because a
  * 1.5px ring on an 18px disc reads as a smudge.
  */
-export function PlayerIcon({ name, color, avatar, look, size = 24, title }) {
+export function PlayerIcon({ name, color: rawColor, avatar: rawAvatar, look, size = 24, title }) {
+  /* v2.3.5807 (card RV, S2): a picture or a colour another player set is
+     drawn only in the forms the game makes (src/game/lookForm.js): a `data:`
+     picture or an address of their own was drawn here, and every phone that
+     showed this icon fetched from it.  Off the form: the bust or the letter,
+     as for a player with none.  `?lookform=0`: as before. */
+  const avatar = drawAvatar(rawAvatar);
+  const color = drawColor(rawColor, null);
   const px = Math.max(12, Math.round(Number(size) || 24));
   /* A counter, not the url: the url lives in the module cache, and bumping a
      number is what tells React to read it again once the composite lands. */

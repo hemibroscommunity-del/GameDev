@@ -29,6 +29,9 @@ import { act } from '@/game/actions.js';   /* v2.3.5191: the page's requests lea
 /* Labels without their leading emoji: the Lantern Slate chips are text. */
 const plain = (label) => String(label || '').replace(/^[^A-Za-z0-9]+\s*/, '');
 const SUBMIT_MAX = 500;   /* mirrors server/src/feedback.js FEEDBACK_TEXT_MAX */
+/* v2.3.5821: where a security hole is reported privately: public/.well-known/
+   security.txt's Contact (the owner's choice, 2026-11-17), the same address. */
+const SECURITY_REPORT_URL = 'https://github.com/hemibroscommunity-del/GameDev/security/advisories/new';
 
 export const FeedbackPanel = () => {
   const [tab, setTab] = useState('submit');
@@ -143,6 +146,33 @@ export const FeedbackPanel = () => {
                 touchAction: 'manipulation',
                 opacity: !text.trim() ? 0.55 : 1,
               }}>{status === 'sending' ? 'Sending…' : status === 'sent' ? 'Sent' : 'Send'}</button>
+          </div>
+          {/* ═══ v2.3.5821 (card SEC2 PR 2): A CHEAT GOES PRIVATELY, NOT ON THE BOARD ═══
+              The owner, 2026-11-17, on the board and the new security.txt:
+              ordinary bugs stay here, and a security hole goes to GitHub's
+              private reporting ("Yes").  The board is public (/list answers
+              anyone, players vote), so a way to cheat posted here is read by
+              every player before it is fixed.  A footnote under Send: the
+              box stays first in view (v2.3.3481) and nothing above it moves.
+              The address is security.txt's Contact, held equal by
+              tools/guards/site-headers.test.mjs §6.  No "tap" or "click":
+              the words read the same on a phone and a computer. */}
+          {/* padding under it, not margin: the panel's last line sat on the
+              screen's bottom edge, cut (a margin at the end of a scroller is
+              not always scrolled to; padding is) */}
+          <div style={{ fontSize: 11, lineHeight: 1.4, color: COL.muted, margin: '10px 2px 0', paddingBottom: 14 }} data-fb-security="">
+            Found a cheat or a security hole? This board is public, so please{' '}
+            <a
+              href={SECURITY_REPORT_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              onPointerUp={(e) => e.stopPropagation()}
+              style={{
+                color: COL.accent, fontWeight: 700, textDecoration: 'underline',
+                /* a taller target than the 11 px line, without moving it */
+                display: 'inline-block', padding: '8px 0', margin: '-8px 0',
+                touchAction: 'manipulation',
+              }}>report it privately on GitHub</a>{' '}instead.
           </div>
         </>
       ) : (
