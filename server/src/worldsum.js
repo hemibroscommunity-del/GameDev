@@ -23,7 +23,7 @@
  * v2.3.5285 (card R PR 6): A RECORD'S END.  A character a restart deletes
  * took what it held with it, and its own count (`_econ`) went too: the sum
  * read it as value gone with no burn written (card K's hostile census:
- * `character_reset`, gold -5000).  With `resetbook: true` in the live flags
+ * `character_reset`, gold -5000).  With `resetbook` on (v2.3.6000: ON by default; `resetbook: false` turns it off)
  * the restart books it into `econ_gone` (goneAdd, in the deletes' own run):
  * what it held as burned, its own minted and burned kept.  That record holds
  * nothing; NET_READERS reads its count, so the sum over the whole store
@@ -91,7 +91,16 @@ export const READERS = {
   },
   'pets:': (ctx, key, v) => { for (const pet of (v && Array.isArray(v.list) ? v.list : [])) if (pet && typeof pet.id === 'string') ctx.ids.push(['pet', pet.id, key]); },
   'mkt_order:': (ctx, key, v) => {
-    ctx.gold += orderEscrowGold(v);
+    /* v2.3.5818 (card R's Found, routed to card RV): a noted BUY order a sell
+       taker crossed holds its gold until the gold leg is paid (market.js
+       _mktSettleRun: the seller's `settle:<id>:gold`); the record goes when
+       every leg is.  It was counted as escrow after that leg's stamp too, so
+       between the stamp and the delete the price stood twice in the sum, in
+       the seller's purse and here (a false surplus a restart there kept on
+       file).  Not once its stamp is on file, as a sell order's weapon is not
+       once its item leg is (below). */
+    const goldPaid = !!(v && v.type === 'buy' && typeof v.id === 'string' && stampedAt(ctx, 'settle:' + v.id + ':gold'));
+    if (!goldPaid) ctx.gold += orderEscrowGold(v);
     /* v2.3.5282: a sell order's weapon, by its id -- but not once a noted
        sale's item leg is stamped paid (market.js _mktSettleRun: the weapon
        is the buyer's now; the record goes when every leg is): as a listing's

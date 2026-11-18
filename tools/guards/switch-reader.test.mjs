@@ -48,7 +48,7 @@ import { blankComments, pageFiles, pageForm, READER_FILE, READER_IMPORT, ROOT } 
 import { filesOf } from './lib/filesOf.mjs';   /* v2.3.5742: a big file found by its system (tests-by-system 2); v2.3.5343: and the two renderers (inSystem below) */
 
 /* the outside reads: only falls */
-const OUTSIDE_LINE = 33;   /* its first count, v2.3.5306: 228 with sitting 17's `?slimewalk` (card P's slimeSprites.js, P still running: not moved), 221 after the first seven reads moved; 212 after v2.3.5309's nine; 201 after v2.3.5310's eleven; 189 after v2.3.5232's twelve (card O PR 12: the lanes' off-ramps); 172 with v2.3.5311's pageAddress() sites (seventeen) ; 161 after v2.3.5313's eleven ; 155 after v2.3.5314's six ; 144 after v2.3.5315's eleven ; 116 after v2.3.5316's twenty-eight ; 71 after v2.3.5317's forty-five (render, on pageAddress()) ; 65 after v2.3.5740's six (card T2: the game's) ; 59 after v2.3.5741's six (card T2: the screens, the townsfolk's pictures) ; 56 after v2.3.5742's three (card T2: the connection's) ; 34 after v2.3.5343's twenty-two (card M chain B: the two renderers; the gatekeeper's sitting 42) ; 33 after v2.3.5743's one (card T2: the kill's XP fly, on pageAddress(); census part 1 closed) */
+const OUTSIDE_LINE = 17;   /* its first count, v2.3.5306: 228 with sitting 17's `?slimewalk` (card P's slimeSprites.js, P still running: not moved), 221 after the first seven reads moved; 212 after v2.3.5309's nine; 201 after v2.3.5310's eleven; 189 after v2.3.5232's twelve (card O PR 12: the lanes' off-ramps); 172 with v2.3.5311's pageAddress() sites (seventeen) ; 161 after v2.3.5313's eleven ; 155 after v2.3.5314's six ; 144 after v2.3.5315's eleven ; 116 after v2.3.5316's twenty-eight ; 71 after v2.3.5317's forty-five (render, on pageAddress()) ; 65 after v2.3.5740's six (card T2: the game's) ; 59 after v2.3.5741's six (card T2: the screens, the townsfolk's pictures) ; 56 after v2.3.5742's three (card T2: the connection's) ; 34 after v2.3.5343's twenty-two (card M chain B: the two renderers; the gatekeeper's sitting 42) ; 33 after v2.3.5743's one (card T2: the kill's XP fly, on pageAddress(); census part 1 closed) ; 17 after v2.3.5342's sixteen (card M chain A: BroTown.jsx; the gatekeeper's sitting 46, v2.3.6260) */
 
 /* v2.3.5343: a moved read in a big file (the four lines' own: BroTown.jsx,
    the two renderers) names its file through its system, never its path
@@ -164,11 +164,11 @@ const MOVED = Object.freeze([
   { name: 'firelog', call: 'sw', file: inSystem('render', 'effectsRenderer.js'), old: (S) => /[?&]firelog=0(&|$)/.test(S || '') },
   { name: 'firelit', call: 'sw', file: inSystem('render', 'effectsRenderer.js'), old: (S) => /[?&]firelit=0(&|$)/.test(S || '') },
   { name: 'gripguess', call: 'sw', file: inSystem('render', 'effectsRenderer.js'), old: (S) => /[?&]gripguess=0\b/.test(S || '') },
-  { name: 'popupworld', call: 'swHas', file: inSystem('render', 'effectsRenderer.js'), old: (S) => /[?&]popupworld\b/.test(S || '') },
-  { name: 'dmgwords', call: 'sw', file: inSystem('render', 'effectsRenderer.js'), old: (S) => /[?&]dmgwords=0\b/.test(S || '') },
+  { name: 'popupworld', call: 'swHas', file: 'src/rendering/leaves/effects-ui.js' /* v2.3.6220: moved verbatim with popupZoomK (card FX) */, old: (S) => /[?&]popupworld\b/.test(S || '') },
+  { name: 'dmgwords', call: 'sw', file: 'src/rendering/leaves/effects-combat.js' /* v2.3.6220: moved verbatim with _dmgFontNames (card FX) */, old: (S) => /[?&]dmgwords=0\b/.test(S || '') },
   { name: 'lootbeam', call: 'sw', file: inSystem('render', 'effectsRenderer.js'), old: (S) => !(new URLSearchParams(S).get('lootbeam') !== '0') },
   { name: 'burnfire', call: 'sw', file: inSystem('render', 'effectsRenderer.js'), old: (S) => !(new URLSearchParams(S).get('burnfire') !== '0') },
-  { name: 'lootpop', call: 'sw', file: inSystem('render', 'effectsRenderer.js'), old: (S) => !(new URLSearchParams(S).get('lootpop') !== '0') },
+  { name: 'lootpop', call: 'sw', file: 'src/rendering/leaves/effects-economy.js' /* v2.3.6220: moved verbatim with landAgeOf (card FX) */, old: (S) => !(new URLSearchParams(S).get('lootpop') !== '0') },
   { name: 'headframes', call: 'swHas', file: inSystem('render', 'entityRenderer.js'), old: (S) => /[?&]headframes(=|&|$)/.test(S || '') },
   { name: 'nopeercull', call: 'swHas', file: inSystem('render', 'entityRenderer.js'), old: (S) => /[?&]nopeercull\b/.test(S || '') },
   { name: 'retrylooks', call: 'sw', file: inSystem('render', 'entityRenderer.js'), old: (S) => /[?&]retrylooks=0\b/.test(S || '') },

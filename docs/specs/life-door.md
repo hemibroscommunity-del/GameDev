@@ -143,3 +143,28 @@ storage):
 - the switch;
 - the pure note's edge cases;
 - a restart deletes the note.
+
+## The money's four (v2.3.6022, card RV; TRAPS §150)
+
+V3's `deadtake` (v2.3.5920) taught seven handlers to read the life phase
+before a take; four were left on traps-money §150's census for card RV, each
+taking gold or goods from a body in its dying seconds:
+
+- the arena's stake (`gladiator.js _handleArenaSponsor`): refused `down`,
+  "Not while you are down", nothing taken;
+- the Auction House's offer (`storeoffer.js _handleStoreOffer`): refused with
+  the same words, nothing taken;
+- the gift trade (`trade.js _interceptTrade`): a dying sender's gift is not
+  taken, and the accepter hears the refusal it already knows;
+- the trade window's Accept (`trade2.js _handleTrade2Confirm`): a dying side
+  cancels the window (`party-gone`, the words a phone already shows), nothing
+  taken from either side.
+
+Each asks `lifeOf(ps) !== LIFE.ALIVE` and `this._deadTakeOn()`, so
+`deadtake: false` puts all eleven back as they were. No write, message or
+stored shape is new. §150's census falls 4 to 1; the one left,
+`_handleShieldWear`, is on purpose (sitting 44).
+
+Test: `server/test/dead-take-money.test.mjs`. On main 7f0fb20f its checks 1 to
+4 fail (each took from the dying body); with the change all pass, and check 5
+(`deadtake: false`) shows the old behaviour.

@@ -91,7 +91,7 @@ export const WIRE_HTTP = [
     note: ['v2.3.5609 (card OPS PR 10): an answer kept 3 s (a write on the surface drops it); past 10 reads a second that wake the room from one address, 429 with Retry-After: 1 (publicreads.js; publicreads: false turns it off)'] },
   { name: 'http:/api/store/mine', dir: 'in', at: 'store.js _storeFetch', wayIn: 'http', envelope: 'http',
     phase: ['none checked'], mayStart: 'helper', doesWhat: ['reads'], reqId: 'harmless',
-    trust: { playerId: 'request', room: 'request' }, absent: 'default: no playerId gives both lists empty',
+    trust: { playerId: 'request', room: 'request', t: 'request' }, absent: 'default: no playerId gives both lists empty; default: v2.3.5817, no `t` (or not the session\'s) gives `bidding` empty',
     bad: ['taken'], answer: 'http' },
   { name: 'http:/api/store/list', dir: 'in', at: 'store.js _stCreateListing', wayIn: 'http', envelope: 'http',
     phase: ['session:joined', 'fight:!in'], mayStart: 'helper', doesWhat: ['value-out'], reqId: 'reqId',
@@ -455,6 +455,8 @@ export const WIRE_HTTP = [
   { name: 'http:/api/admin/dev/econcard', dir: 'in', at: 'econcard.js econCardRead', wayIn: 'admin',
     envelope: 'http', phase: ['none checked'], mayStart: 'owner', doesWhat: ['reads'], reqId: 'harmless',
     trust: { days: 'request' }, absent: 'default: no days is 1', bad: ['clamped'], answer: 'http' },
+  /* v2.3.6001 (card CS, PR 2; the planning session's yes, 2026-11-18): the usage meter, read -- memory only (usagemeter.js) */
+  { name: 'http:/api/admin/dev/usage', dir: 'in', at: 'usagemeter.js _usageRead', wayIn: 'admin', envelope: 'http', phase: ['none checked'], mayStart: 'owner', doesWhat: ['reads'], reqId: 'harmless', trust: {}, absent: 'default: no fields read', bad: [], answer: 'http' },
   { name: 'http:/api/admin/dev/lookseen', dir: 'in', at: 'charwatch.js _watchSeen', wayIn: 'admin',
     envelope: 'http', phase: ['none checked'], mayStart: 'owner', doesWhat: ['own'], reqId: 'harmless',
     trust: {}, absent: 'default: an unreadable body is an empty one', bad: [], answer: 'http' },

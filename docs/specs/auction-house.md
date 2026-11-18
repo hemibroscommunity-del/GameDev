@@ -60,10 +60,18 @@ has to answer — handoff rule 9). Every mutating request carries the
 caller's own session token (`x-bt-auth`, `httpauth.js`); every mutating
 response carries `settled: true` (rule 19).
 
+v2.3.5817 (card RV, PR 17): `/mine`'s `bidding` is the asker's own. A player
+id is on every board, so anyone could ask one player's whole list of bids
+(what, how much, when) in one call. Now `bidding` comes back only to a
+request carrying that player's session token as `t` (the page's action door
+adds it to this GET's query: no header, so no preflight); an old phone that
+never declared the token is answered as `httpauth.js` answers its POSTs.
+The listings stay (each is on the browse). `minebids: false`: as before.
+
 | Method + path | Body / query | Answers |
 |---|---|---|
 | `GET /api/store/browse` | `cat`, `cursor`, `limit` | `{ok, listings[], nextCursor, total}` |
-| `GET /api/store/mine` | `playerId` | `{ok, listings[], bidding[]}` |
+| `GET /api/store/mine` | `playerId`, `t` (v2.3.5817) | `{ok, listings[], bidding[]}`; `bidding` only when `t` is that player's live session token, else `[]` (`minebids`) |
 | `POST /api/store/list` | `{playerId, kind:'item'\|'weapon'\|'gear', invKey+qty \| stashIndex \| field+sel+hint, price}` | `{ok, settled, listing}` |
 | `POST /api/store/buy` | `{playerId, listingId}` | `{ok, settled, bought, price}` |
 | `POST /api/store/bid` | `{playerId, listingId, amount}` | `{ok, settled, bid, amount}` |

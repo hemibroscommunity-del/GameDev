@@ -20,6 +20,12 @@
  *   5. `dyingkeep: false`: wiped at the respawn, as before.
  *
  * Red on main before this change: checks 1, 2a, 2b and 3a fail.
+ *
+ * v2.3.6022 (card RV, `deadtake` in the money's four): the trade window's
+ * Accept now refuses a dying side, so check 1's trade completes only with
+ * `deadtake: false` (it runs so: the shield is still what keeps a credit
+ * that lands then); 1b, the default: the window is cancelled, nothing paid,
+ * nothing moved.
  */
 import { makeStorage, openRoom, fakeWs, join, settle, seededClock } from './testroom.mjs';
 import { bagTake } from '../src/bag.js';
@@ -69,12 +75,16 @@ async function tradeCase(flags) {
     await respawn(room, clock);
     const live = own(room.playerState[A].inventory, 'shard_ember');
     const disk = own((st._store.get('rpg:' + A) || {}).inventory, 'shard_ember');
-    return { paid, live, disk, alive: !room.playerState[A].dying };
+    const pb = room.playerState['bp_rvtrade01'];   /* v2.3.6022: the other side, for 1b */
+    return { paid, live, disk, alive: !room.playerState[A].dying, bGold: pb.coins, bShards: own(pb.inventory, 'shard_ember') };
   } finally { clock.restore(); }
 }
 {
-  const r = await tradeCase(null);
+  /* v2.3.6022: the Accept refuses a dying side unless `deadtake` is off */
+  const r = await tradeCase({ deadtake: false });
   check('1. the trade confirmed after a death: paid 1000, the 50 shards kept through the respawn, live and on file', r.paid === 0 && r.alive && r.live === 50 && r.disk === 50, r);
+  const d = await tradeCase(null);
+  check('1b. (v2.3.6022, `deadtake`) the other side\'s confirm after the death cancels the window: the 1000 kept, no shards, the other side\'s 50 shards and 0 gold as they were', d.paid === 1000 && d.alive && d.live === 0 && d.bGold === 0 && d.bShards === 50, d);
 }
 
 /* ── 2 to 4. credits straight to a player ── */

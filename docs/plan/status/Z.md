@@ -1,38 +1,39 @@
 card: Z
-branch: claude/plan-z-sitting-44
-prs: this PR (tag 5033), line 20 of sitting 44's list (ready)
+branch: claude/plan-z-sitting-46
+prs: this PR (tag 6260), the last line of sitting 46's list (ready)
 state: ready
 
 ## Done
-- `census/review-z44.md`. 6.1 ticked (U2's four merged). Blocks: RV
-  6020-6039, V6 6040, U3 6060; `nextBlock` 6080.
+- `census/review-z46.md`. 5.4 ticked (M), 5.8 ticked (K3); 5.5's note.
+  Blocks CAP, LG, WD, TL, RD, EN, FX, HB; Z 6260-6279; `nextBlock` 6280.
+  K3, V7, M, V6, V3 done. Lines: frame-steps 1531, switch-reader 17,
+  render-tables 0. Part 9: "Decided for the owner while away".
 ## The list: merge in this order, each "Create a merge commit"
-1 P2 #2101 · 2 O2 #2108 · 3-6 V4 #2106, #2124, #2125, #2126 · 7 V3 #2100
-· 8-9 V5 #2102, #2107 · 10 K2 #2103 · 11 K4 #2105 · 12-17 RV #2109 to
-#2114 · 18 SEC2 #2096 · 19 K3 #2104 · 20 Z (this PR). On `main` 3750ba4a,
-one base at every step (heads and trees in `census/review-z44.md`). 7 to
-17 deploy the worker: merge them one after another. A line whose `test`
-was still running at 01:03 merges only once it is green; a red one stops
-its stack there.
-## Held / To 45
-- RV #2115 (medium: a dropped friend request leaves the sender's
-  `reqOut` for good), and so #2116 to #2123 above it; #2116 mended as
-  decided (stored names kept). #2119 meets K2's `joinguard` row: RV merges
-  `main` after line 10.
-- To 45 (late, unreviewed): M #2127, V3 #2128, K4 #2129, K3 #2130.
+1 P2 #2185 · 2 M2 #2186 · 3 HB #2188 · 4 TL #2175 · 5 LG #2170 · 6 RD
+#2191 (once its test is green) · 7-8 TL #2181, #2183 · 9-10 LG #2178,
+#2184 · 11-15 K4 #2168, #2176, #2177, #2182, #2187 · 16-17 K2 #2169,
+#2173 · 18-21 RV #2164, #2165, #2193, #2192 · 22-23 CS #2139, #2152
+(CS merges `main` once 21 lands) · 24-25 EN #2189, #2195 · 26 FX #2190
+(merges `main` once 25 lands, re-generates M-tables.md) · 27-28 CAP
+#2172, #2174 · 29-31 WD #2171, #2179, #2180 (WD re-lands 4995/385 once
+23 lands) · 32 Z. On `main` b5669a5b, one base at every step. 7-26
+deploy the worker: merge them one after another. Drafts (K4, RD) are
+marked ready first; a line merges only on a green `test`. Heads, trees:
+the census.
+## Held / To 47
+- None held. To 47: FX #2194 (6221, based on FX's branch), anything
+  opened after the cut.
 ## Found
-- 41's (a)-(q), 42's (r)-(t), 43's (u)-(w) carried. New: (x) precheck's
-  5-minute server-tests cap (precheck.mjs:849) is under the suite here
-  (800 s, `switches-thrown` 678 s): every card reports it; W's file. (y)
-  `manualcombat` 10a red on `main` 3750ba4a (card M's report; owner of
-  the scenario: J3). (z) V4's Found: §154, §161, §219, §184 (in
-  `V4-traps.md`). (aa) The questline is red under a load of 19 on this box
-  and green alone (TRAPS §200): one browser job at a time.
+- 45's (a)-(ad) carried. New: (ae) a precheck that times out leaves
+  `switches-thrown` running as an orphan (TL's Found, seen here). (af)
+  elemental2 "restore clamps at maxMana" red once under `duelpace` thrown
+  (#2151's CI): watch. (ag) canvas-witness 8b reads only a comment (M).
+  (ah) mp-membudget heap/buffers over their lines on a session box, CI
+  fine (FX, P2). (ai) WD: 96 "tap" words outside deskWords(). (aj)
+  arena.test's hour boundary (TL #2183 mends it).
 ## Needs
-- Decided by the owner (~00:28, "Yes to all"): MD-2 `paidmark` ON (RV PR
-  10); P2's `lookidle` ON with `?lookidle=0`; O2's full profile run.
-- Before `harvestgrade` is turned on: the phone shows "PERFECT x2" when
-  the worker pays good (K4; census).
-- Owner's own: `.github/`, Cloudflare; the source of
-  `public/audio/ambient/wind-dunes.mp3`; whether the repository stays
-  public (SEC2's report form needs it).
+- Decided for the owner while away (the planning session): K4 #2168
+  `harvestgrade`, `bowpath` ON; #2187 `botscoresave` ON (writes only for
+  a script's record); CAP's settles-value reading; LG's rung 5 later.
+- Owner's own: `.github/`, Cloudflare; wind-dunes.mp3's source; SEC2's
+  report form needing a public repository.

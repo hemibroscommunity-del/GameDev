@@ -40,7 +40,7 @@ switch allows it.
 | A strike before its window (too early) | gathering.js `_handleNodeStrike` | paid |
 | A strike with no start of its own | gathering.js `_handleNodeStrike` (`HARVEST_PROOF`) | paid |
 | 45 perfect harvests a minute | gathering.js `_ratedHarvestAccuracy` | no limit |
-| A harvest's perfect held to an honest gesture's time and to 15 in any 20 strikes (v2.3.5900, `harvestgrade`, an opt-in, OFF as merged) | gathering.js `_harvestGraded` (harvestgrade.js) | paid as sent |
+| A harvest's perfect held to an honest gesture's time and to 15 in any 20 strikes (v2.3.5900, `harvestgrade`, ON since v2.3.5906) | gathering.js `_harvestGraded` (harvestgrade.js) | paid as sent |
 | Bot scoring and its 2,400-an-hour caps | botfp.js `_botfpOnStrike`, `_botfpOnCook` | not scored, flagged or capped |
 | The server's own bot signals (v2.3.3731) | botsig.js `_sigSkip`, `_sigOnWindup`, `_sigReverifyOk` | nothing measured, flagged or re-checked (the network signal and the Turnstile re-check included) |
 | 45 cooks a minute, 900 ms between cooks | cooking.js `_cookRateOk`, `_handleCookRequest` | no limit |
@@ -68,7 +68,10 @@ switch allows it.
   a guest's share of the places, a played character's seat and an IPv6 /48
   counted (v2.3.5729, `seathold.js` `GUEST_SHARE`, `flood.js` `ip48Key`,
   `guestshare`); a join taking only what is its own (v2.3.5730, `join.js`,
-  `seathold.js`, `joinguard`);
+  `seathold.js`, `joinguard`); a duel's frames to its two players alone
+  (v2.3.5731, `eventplace.js` `duelPlaceOf`, `duelquiet`); a join's colour
+  and avatar held to their forms (v2.3.5733, `join.js`, `lookform.js`,
+  `lookjoin`);
   the owner's routes with no key and the public reads at the edge (v2.3.5726,
   `wire/door.js`; the worker settings `EDGE_GUARD`, `EDGE_CACHE`).
 - A General Store sell filed under its weapon's own tier, and a refund and
@@ -95,7 +98,23 @@ switch allows it.
   (v2.3.5814, `chatguard.js`, `petbook.js`, `alliance.js`, `cleanmore`,
   `namestaff`); the rewind's plan names the owner's login acts since its time
   (v2.3.5815, `restore.js`, `rewindsays`); the jackpot's deposit asks the
-  purse again after its awaits (v2.3.5813, `cadence.js`, `jackcheck`).
+  purse again after its awaits (v2.3.5813, `cadence.js`, `jackcheck`); the
+  Auction House's `/mine` shows a player's bids only to that player's own
+  session (v2.3.5817, `store.js`, `minebids`); a join's shield and cosmetic
+  claims merged only when the ledger backs them (v2.3.5812, `gearstash.js`,
+  `shieldclaim`); a daily spin's and the login spin's paid
+  mark in the credit's own run (v2.3.5810, `dailyrewards.js`,
+  `loginspin.js`, `paidmark`); a `track`'s avatar, colour and look words in
+  the game's own forms (v2.3.5819, `lookform.js`, `lookform`); the daily
+  chest's stamp and save in one write (v2.3.6021, `dailychest.js`, under
+  `paidmark`); a body in its dying seconds stakes, offers and trades nothing
+  (v2.3.6022, `gladiator.js`, `storeoffer.js`, `trade.js`, `trade2.js`, under
+  V3's `deadtake`); the General Store's book read a page an await and the
+  room's only once whole (v2.3.6023, `market.js`, the page under V5's
+  `listcap`); a re-listed noted order's first taker paid back before its
+  delete under `mktsettle: false` (v2.3.6025, `market.js`, `mktback`); the
+  daily spin's pace kept by the room across a rejoin (v2.3.6024,
+  `dailyrewards.js`, under V3's `pacekeep`).
 - Every save and payment rule; the login key, the device lock, the lockouts;
   a frozen account.
 - PvP consent and **every check on a hit between players** (pvpbalance.js,

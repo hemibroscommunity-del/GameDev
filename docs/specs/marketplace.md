@@ -165,3 +165,50 @@ What it does now (`server/src/market.js`):
 - **The trap**: a sale's "paid" lives in its stamps only while they live
   (TRAPS §146). Write what is owed with the escrow that pays for it, and
   finish it before anything prunes the stamps.
+
+## The book's rebuild reads a page an await (v2.3.6023, card RV; TRAPS §76)
+
+- **What was wrong.** `_mktEnsureIndex` (once a worker's life, on the first
+  shop request) was the room's last `storage.list` with no limit: every
+  order in one read. Worse, it made the room's book BEFORE the read, so a
+  second request while the read was under way (a second shop page, an order
+  placed) found a book with nothing in it: an order matched against nothing,
+  and every player's order count read as zero (the ten-order cap let one
+  more through). A failed read left that empty book for the worker's life.
+- **Now** (the clans' shape, card V5): `_mktIndexLoad` reads the book a page
+  an await (`liveops.js _listAll`, `LISTCAP.PAGE`) into maps of its own that
+  become the room's only once whole. A second caller waits for the same read.
+  A failed read throws to its caller and leaves no book, so the next one reads
+  it.
+- **What it costs.** The same rows read, in pages of `LISTCAP.PAGE`; nothing
+  written; no message.
+- **Kill switch**: `listcap: false` (card V5's, reused) reads the book in one
+  list again. The wait for the one read has no switch (the clans' has none):
+  turned off, it is only the empty book again.
+- Test: `server/test/market-pages.test.mjs` (a book of three pages; two
+  callers at once; a failed read; the switch). On main before it fails 6 of
+  its 9 checks: one list with no limit, the second caller met 0 of the
+  orders, the failed read left an empty book. The census: traps-saves §76,
+  its list now empty, its line 0.
+
+## A re-listed note's first taker goes home (v2.3.6025, card RV)
+
+- **What was wrong.** With `mktsettle: false` (an older worker's rule), the
+  book's rebuild puts a maker whose record carries a sale's note back on sale,
+  its note unread. Then its cancel, its expiry or a new taker meeting it
+  deleted the record, and the note with it. The first taker's escrow, taken
+  at the crossing, was named nowhere else and was lost: 120 of 800 gold in
+  the test.
+- **Now** `_mktTakerHome` pays the first taker's escrow back before such a
+  delete, by the heal's own opId (`settle:<id>:back`), so a roll forward
+  that finds the record still there pays it at most once. This applies only
+  to a whole note this worker reads, and only where the old rule refunded or
+  sold the maker. A stamped leg is still the old rule's limit, unchanged.
+- **What it costs.** One credit more, only on this path (the switch off and
+  a noted leftover). Nothing on any other path.
+- **Kill switch:** `mktback: false` restores the old behaviour, the delete
+  alone.
+- Test: `market-settle.test` section 4c. A cancel, an expiry and a new match,
+  each under the old rule and then rolled forward. On the code before it,
+  the "goes home" checks fail at 680 gold. Here they pass at 800, with
+  nothing paid twice, and `mktback: false` shows the old loss.

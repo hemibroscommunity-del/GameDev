@@ -61,6 +61,7 @@
 
 import { QUALITY_GRADES } from './data.js';   /* v2.3.2527 -- see sanitizeGearPiece */
 import { stashGive, stashTake, stashSet } from './stash.js';   /* v2.3.5281: the stashes' door (card R PR 2) */
+import { PROV_MINTED } from './gearprov.js';   /* v2.3.5812: a claim the ledger backs (shieldclaim, below) */
 
 /* Per-list ceiling.  The client has NO cap on these four lists today
    (equipActions.js caps weaponStash alone, at WEAPON_STASH_MAX = 8), so
@@ -489,6 +490,40 @@ export const gearStashMethods = {
      untouched.  With the live stash off (`armorstashlive: false`) the worker
      holds no stash to ask, and the gate stands aside.
      KILL SWITCH `gearheld: false`: the describe path and the join as before. */
+  /* ═══ v2.3.5812 (card RV PR 12, SEC-F2): A JOIN'S SHIELD AND COSMETIC CLAIMS, ONLY WHAT THE LEDGER BACKS ═══
+     gearheld (v2.3.5715, above) closed the armour and legs claims; the
+     shield and cosmetic lists were left open because "the worker keeps no
+     live copy of those" (gear-stash.md, the planning session's answer then).
+     That was already untrue: since v2.3.3091 (shieldwear.js) every road that
+     hands out a shield leaves it on the worker -- the quest's Pine Shield in
+     `ps.shield` (quests.js _grantQuestItem, its ledger row minted), a sale,
+     a refund and No man's land's loot in `ps.shieldStash` through the mail
+     (storegear.js _stGearApplyCredit) -- and no honest road gives a shield to
+     the phone alone (the blacksmith stopped forging them at v2.3.2826).  So
+     a claimed shield the worker never handed out is one a modified phone
+     made up.  Now the join merges a shield claim only when it resolves to
+     this player's own ledger (`prov` minted: rebuilt from the ledger's copy,
+     whatever the claim said), and never a copy of the one already worn (its
+     twin would come back as a wearable legacy piece through _gearProvDedupe).
+     Cosmetic claims are never minted (no road mints one), so none is merged:
+     the worker's copy of that list stays what is on file, and nothing on the
+     worker reads it (the worn look rides every move: eqc/eql/eqs).
+     What a forged shield bought was little (blocking never reads it; it
+     cannot be sold, listed or salvaged), but Shield Bash asks only for a
+     shield, and the record grew by whatever was claimed.
+     THE HONEST LOSS (decided for the owner while away, at RV's
+     recommendation): a legacy shield (no id: a Wood Shield from before
+     v2.3.1676, a Pine Shield or a forged one from before the ledger,
+     v2.3.2534) that sat only on a phone and was never in its bag at any join
+     since v2.3.2527 (the merge ran every join, so one that was is on file).
+     The phone keeps it in its own bag; the worker just does not adopt it:
+     No man's land takes no shield that session and a gem can't be slotted
+     in it.  What is already on file is never touched.
+     KILL SWITCH `shieldclaim: false` in the live flags: the old merge. */
+  _shieldClaimOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'shieldclaim') && !f.shieldclaim);
+  },
   _gearHeldOn() {
     const f = this._liveFlags;
     return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'gearheld') && !f.gearheld) && this._gearStashLiveOn();
@@ -602,6 +637,7 @@ export const gearStashMethods = {
        it was. */
     const report = { truncated: false };
     const claimsClosed = this._gearHeldOn();   /* v2.3.5715: captured or not (Z40's review, above) */
+    const shieldClaimOn = this._shieldClaimOn();   /* v2.3.5812: SEC-F2 (above) */
     for (const f of GEAR_STASH_FIELDS) {
       const slot = GEAR_STASH_PROV_SLOT[f];
       /* v2.3.2534: every entry, ours and theirs, goes through the provenance
@@ -637,7 +673,14 @@ export const gearStashMethods = {
            sanitizeCosmeticEntry rebuild a whitelisted object and would drop
            it.  Same predicate, same place in the flow, same effect. */
         if (raw.length > gearStashCap()) report.truncated = true;
-        claimed.set(f, this._gearProvResolveList(playerId, slot, raw.slice(0, gearStashCap()), strictSan));
+        let list = this._gearProvResolveList(playerId, slot, raw.slice(0, gearStashCap()), strictSan);
+        /* v2.3.5812 (shieldclaim, above): a shield or cosmetic claim only
+           when this player's ledger backs it, never the worn shield's twin */
+        if (shieldClaimOn && (f === 'shieldStash' || f === COSMETIC_FIELD)) {
+          const wornGid = ps.shield && typeof ps.shield === 'object' && typeof ps.shield.gid === 'string' ? ps.shield.gid : null;
+          list = list.filter((g) => g && g.prov === PROV_MINTED && !(wornGid && g.gid === wornGid));
+        }
+        claimed.set(f, list);
       }
     }
     let took = 0;

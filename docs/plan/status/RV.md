@@ -1,40 +1,34 @@
 card: RV
-branch: claude/rv-jackpot (PR 13, stacked on claude/rv-passwords)
-prs: #2072, #2083 (sitting 42); #2091, #2094 (ready); PRs 5-11 built, in their runs
+branch: claude/rv-spinpace (6024, stacked on claude/rv-mktcancel; sitting 46's order)
+prs: #2164 (6022), #2165 (6023), #2193 (6025), #2192 (6024) at sitting 46
 state: ready
 
 ## Done
 
-- #2072 (5800): the review, `docs/plan/census/RV-review.md`.
-- #2083 (5801): market.js MS-2 (`mkttier`), MS-4 (`mktheal`).
-- #2091 (5802), #2094 (5803).
+- Merged: #2072 (5800) the review; #2083 (5801); #2091 (5802), #2094
+  (5803); sitting 44's #2109-#2114 (5804-5809); sitting 45's
+  #2115-#2123, #2132, #2133, #2141 (5810-5819, 6020, 6021). Decided while
+  away: a reset never frees the rise chest (the planner's ruling);
+  `_deviceFill` a census note only, not built.
 
-## Next (built, each red on main first; full runs one at a time)
+## Open
 
-- PR 5 (5804): No man's land, one write (`nmlonewrite`).
-- PR 6 (5805): duel.js S1, S4, MS-6 (`duelpace`, `duelonewrite`).
-- PR 6b (5806): mute holds on open; a muter away (`storemute`, `mutehides`).
-- PR 7 (5807): `lookform.js`, the board, the page (S2; `?lookform=0`).
-- PR 8 (5808): loginkeys.js SEC-F5 (`oldkeyheld`).
-- PR 9 (5809): MS-5, MS-6 (`offerpend`, `leftoverheal`).
-- PR 11 (5811): friends.js ACC-5, SEC-F4 (`friendfix`).
-- PR 14 (5814): S6, S7 (`cleanmore`, `namestaff`). PR 15 (5815): `rewindsays`.
-- PR 16 (5816): the pass words. PR 13 (5813): the jackpot re-check.
-  Then S3 and `track` (after card L's index.js).
+- #2164 (6022): the dying take nothing in the money's four (`deadtake`,
+  V3's): the arena's stake, the Auction House's offer, the gift, the
+  trade window's Accept; traps-money §150 4 -> 1.
+- #2165 (6023, on #2164): the General Store's book a page an await, the
+  room's once whole (`listcap`, V5's); TRAPS §76 1 -> 0.
+- #2193 (6025, on #2165): under `mktsettle: false`, a re-listed noted
+  order's first taker paid back before its delete (`mktback`).
+- #2192 (6024, this, on #2193): the daily spin's pace kept by the room
+  across a rejoin (`pacekeep`, V3's); traps-saves §276 18 -> 17.
+- Sitting 46's order: #2164, #2165, #2193, #2192.
 
 ## Found
 
 - For card K2: ACC-1, ACC-2, SEC-F1, ACC-3, S2's join (PR 11), duelquiet.
-- For `index.js` (K2, then card L): S2's `track` half, S3's board report.
-- For card L (`wsClient.js`): SEC-F3. For the planner: the players' device
-  words (DeviceScreen.js, AccountLoginForm.jsx) still say "ask the owner".
-- `mktsettle: false` + a re-listed noted order loses the taker's escrow
-  on its cancel (market.js; read, not shown).
+- For card L (`wsClient.js`): SEC-F3.
 
 ## Needs
 
-- MD-2 (5810) needs a second put of the daily record per payout: the
-  owner's (a write), or later a way without one.
-- SEC-F2 (claimed shields worn): closing it can drop a phone-only shield,
-  the owner's call (census part 2).
-- #2072: merge main in again once T2's #2071 lands (every block kept).
+- Nothing.

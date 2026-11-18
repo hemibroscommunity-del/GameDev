@@ -90,6 +90,7 @@
  * either -- the record waits. */
 import { WHEEL } from './wheelzone.js';
 import { RARE_GEM_KEY } from './data.js';
+import { paceAt, paceStamp } from './pacekeep.js';   /* v2.3.5921: the pace kept across a rejoin (TRAPS §276) */
 
 const DAY_MS = 86400000;
 
@@ -594,15 +595,40 @@ export const dailyRewardsMethods = {
      whatever was doubled in between.  `_creditPlayer` lands the coins on a
      player who is here (the player_state echo carries them) and mails them
      to one who is not.  Returns the coins paid (0 for none). */
+  /* ═══ v2.3.5810 (card RV PR 10, MD-2): THE PAID MARK IN THE CREDIT'S OWN RUN ═══
+     The pot's credit was one write and its "paid" mark (`sp.open = 0`, the
+     login spin's `paid`) a later one.  A restart
+     between left the pot open; the next pay was the oplog's 'dup' -- until
+     the 48 h prune (inbox.js _opPruneMaybe) took the stamp, after which the
+     same pot paid again (TRAPS §146: the oplog is not the record).  Now the
+     record, marked, is put in the credit's own run (inbox.js _creditWith).
+     For the daily record that is ONE row more a payout (the caller still
+     saves it as before): the owner's yes, 2026-11-18, "Yes to all".  The
+     login spin's mark moves into the run and its later save goes, so it
+     writes no more rows.  KILL SWITCH `paidmark: false`: the old order. */
+  _paidMarkOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'paidmark') && !f.paidmark);
+  },
   async _spinPay(pid, rec, why) {
     const sp = rec.sp;
     const amount = Math.max(0, Math.floor(sp.pot || 0));
     if (!sp.open || !(amount > 0)) return 0;
-    const r = await this._creditPlayer(pid, {
+    const entry = {
       opId: 'spinpot:' + pid + ':' + (sp.run || 'x'),
       source: 'dailyspin', kind: 'gold', payload: { amount },
       note: 'Daily spin' + (why ? ' (' + why + ')' : ''),
-    });
+    };
+    let r;
+    if (this._paidMarkOn()) {
+      /* v2.3.5810: closed first, and the closed record put in the pay's run */
+      sp.open = 0;
+      try {
+        r = await this._creditWith(pid, { ...entry, opId: 'spinpot:' + pid + ':' + (sp.run || 'x') }, () => [this.state.storage.put(DAILY.KEY + pid, rec)]);
+      } catch (e) { sp.open = 1; throw e; }
+    } else {
+      r = await this._creditPlayer(pid, { ...entry, opId: 'spinpot:' + pid + ':' + (sp.run || 'x') });
+    }
     sp.open = 0;
     /* v2.3.4393: a pot paid is a record (boards.js: the daily spin's biggest
        wins) -- once, not for a 'dup', and never allowed to cost the pay */
@@ -626,11 +652,14 @@ export const dailyRewardsMethods = {
     const ps = this.playerState[pid];
     if (!ps || ps.dying || ps.dead || ps.disconnected) return;
     const now = this._drNow();
-    if (ps._lastDailySpinAt && now - ps._lastDailySpinAt < SPIN.COOLDOWN_MS) return;
+    /* v2.3.6024 (card RV, TRAPS §276; `pacekeep`, V3's): kept across a
+       rejoin, as the rewards' read below is (pacekeep.js) */
+    const spinAt = paceAt(this, pid, ps, '_lastDailySpinAt');
+    if (spinAt && now - spinAt < SPIN.COOLDOWN_MS) return;
     /* stamped for EVERY ask past this line, a refused one too -- otherwise a
        client with no spins left could have the worker read storage and answer
        as fast as it can send */
-    ps._lastDailySpinAt = now;
+    ps._lastDailySpinAt = paceStamp(this, pid, ps, '_lastDailySpinAt', now, SPIN.COOLDOWN_MS);
     const act = payload && (payload.act === 'double' || payload.act === 'collect') ? payload.act : 'spin';
     const opId = payload && typeof payload.opId === 'string' && payload.opId.length <= 96 ? payload.opId : null;
     /* v2.3.5194: the request id first, kept with the pid (reqonce.js); the
@@ -946,10 +975,22 @@ export const dailyRewardsMethods = {
          and for the season-end mail, which is what makes them unable to both
          pay (opid-audit wants the literal prefix inline) */
       try {
+        /* v2.3.5810 (paidmark, _spinPay above): NOT for a season's grants
+           (sitting 45's review).  A claim marks every tier it claims (se.cl)
+           before the first grant -- all of them at once for "claim all" --
+           so putting the record with the first grant's credit wrote every
+           tier claimed while one was paid, and a restart there lost the
+           rest for good.  Left as it was: the caller saves after all the
+           grants, and a restart before that leaves nothing marked, so a
+           claim again converges on each grant's stamp.  (The season is
+           off by default: _seOff.) */
+        const markWith = null;
         if (gr.kind === 'coins') {
-          await this._creditPlayer(pid, { opId: 'season:' + pid + ':' + s + ':' + t + ':' + g, source: 'season', kind: 'gold', payload: { amount: gr.n }, note });
+          if (markWith) await this._creditWith(pid, { opId: 'season:' + pid + ':' + s + ':' + t + ':' + g, source: 'season', kind: 'gold', payload: { amount: gr.n }, note }, markWith);
+          else await this._creditPlayer(pid, { opId: 'season:' + pid + ':' + s + ':' + t + ':' + g, source: 'season', kind: 'gold', payload: { amount: gr.n }, note });
         } else if (gr.kind === 'item') {
-          await this._creditPlayer(pid, { opId: 'season:' + pid + ':' + s + ':' + t + ':' + g, source: 'season', kind: 'item', payload: { invKey: gr.key, count: gr.n }, note });
+          if (markWith) await this._creditWith(pid, { opId: 'season:' + pid + ':' + s + ':' + t + ':' + g, source: 'season', kind: 'item', payload: { invKey: gr.key, count: gr.n }, note }, markWith);
+          else await this._creditPlayer(pid, { opId: 'season:' + pid + ':' + s + ':' + t + ':' + g, source: 'season', kind: 'item', payload: { invKey: gr.key, count: gr.n }, note });
         } else if (gr.kind === 'spin') {
           rec.sp.extra = Math.min(SPIN.EXTRA_MAX, rec.sp.extra + gr.n);
         } else if (gr.kind === 'freeze') {
@@ -1089,8 +1130,10 @@ export const dailyRewardsMethods = {
     const ps = this.playerState[pid];
     if (!ps) return;
     const now = this._drNow();
-    if (ps._lastRewardsGetAt && now - ps._lastRewardsGetAt < 800) return;
-    ps._lastRewardsGetAt = now;
+    /* v2.3.5921 (card V3, TRAPS §276; `pacekeep`): kept across a rejoin */
+    const getAt = paceAt(this, pid, ps, '_lastRewardsGetAt');
+    if (getAt && now - getAt < 800) return;
+    ps._lastRewardsGetAt = paceStamp(this, pid, ps, '_lastRewardsGetAt', now, 800);
     const rec = await this._drLoad(pid);
     if (!rec) return;
     if (await this._drRollover(pid, rec, now)) await this._drSave(pid);

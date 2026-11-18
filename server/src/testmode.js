@@ -27,7 +27,7 @@
  *     the 45 perfect harvests a minute (_ratedHarvestAccuracy), a perfect held
  *     to an honest gesture's time and to 15 in any 20 strikes (v2.3.5900,
  *     gathering.js _harvestGraded, harvestgrade.js, `harvestgrade`, an opt-in,
- *     OFF as merged: asked through the strike's `_tm`), the 45 cooks a
+ *     ON since v2.3.5906: asked through the strike's `_tm`), the 45 cooks a
  *     minute and the 900 ms between cooks (cooking.js), a cook's result held
  *     to the cook it started (v2.3.5553, cooking.js _cookStartOk,
  *     `cookstart`, ON since v2.3.5727), and the bot scoring
@@ -70,7 +70,10 @@
  * (v2.3.5728, flood.js HONEST_PER_S: `ceilfair`), a guest's share of the
  * places, a played character's seat and an IPv6 /48 counted (v2.3.5729,
  * seathold.js GUEST_SHARE, flood.js ip48Key: `guestshare`), a join taking
- * only what is its own (v2.3.5730, join.js, seathold.js: `joinguard`), the owner's routes
+ * only what is its own (v2.3.5730, join.js, seathold.js: `joinguard`), a
+ * duel's frames to its two players alone (v2.3.5731, eventplace.js
+ * duelPlaceOf: `duelquiet`), a join's colour and avatar held to their forms
+ * (v2.3.5733, join.js, lookform.js: `lookjoin`), the owner's routes
  * with no key and the public reads at the edge (v2.3.5726, wire/door.js:
  * the worker settings `EDGE_GUARD`, `EDGE_CACHE`), every save and payment rule,
  * the login key and its lockouts, a frozen account, PvP consent and every
@@ -101,7 +104,22 @@
  * to the name rule (v2.3.5814, chatguard.js, petbook.js, alliance.js:
  * `cleanmore`, `namestaff`); the rewind's plan names the owner's login acts since
  * its time (v2.3.5815, restore.js: `rewindsays`); the jackpot's deposit asks
- * the purse again after its awaits (v2.3.5813, cadence.js: `jackcheck`).
+ * the purse again after its awaits (v2.3.5813, cadence.js: `jackcheck`); the
+ * Auction House's `/mine` shows a player's bids only to that player's own
+ * session (v2.3.5817, store.js: `minebids`); a join's shield and cosmetic
+ * claims merged only when the ledger backs them (v2.3.5812, gearstash.js:
+ * `shieldclaim`); a daily spin's and the login spin's paid
+ * mark in the credit's own run (v2.3.5810, dailyrewards.js, loginspin.js:
+ * `paidmark`); a `track`'s avatar, colour and look words in the game's own
+ * forms (v2.3.5819, lookform.js: `lookform`); the daily chest's stamp and
+ * save in one write (v2.3.6021, dailychest.js, under `paidmark`); a body in
+ * its dying seconds stakes, offers and trades nothing (v2.3.6022, gladiator.js,
+ * storeoffer.js, trade.js, trade2.js, under V3's `deadtake`); the General
+ * Store's book read a page an await and the room's only once whole
+ * (v2.3.6023, market.js, the page under V5's `listcap`); a re-listed noted
+ * order's first taker paid back before its delete under `mktsettle: false`
+ * (v2.3.6025, market.js: `mktback`); the daily spin's pace kept by the room
+ * across a rejoin (v2.3.6024, dailyrewards.js, under V3's `pacekeep`).
  *
  * WHO CAN TURN IT ON.  Only the admin key, through the Test panel's
  * POST /api/admin/dev/testmode {playerId, on} (devtools.js), which the owner's

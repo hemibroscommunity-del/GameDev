@@ -17,7 +17,8 @@
  *      `freezedevice: false` lets it in; an unfreeze lifts it.
  * v2.3.5621, the sitting 19 review: the device half is the owner's LEVER,
  * OFF until `freezedevice: true` (unset, a new character on a frozen phone
- * is let in); 129 freezes and more are read 128 a get (one get threw, and
+ * is let in; v2.3.6000, card CS: ON by default, the owner's word, off with
+ * `freezedevice: false`); 129 freezes and more are read 128 a get (one get threw, and
  * it failed open); `minutes` is a positive whole number or left out (-60,
  * 0.5, 0 and a string are refused).  Break proofs (2026-11-16, each turned
  * its check red): the lever read as before (on unless false) -> FAIL 6 (OFF
@@ -189,14 +190,19 @@ const wb = await join('bp_mod_kind', 'devkind001');
 
 /* ── 6. a freeze holds the device (t4-ban.mjs's proof): the owner's lever ── */
 {
-  /* v2.3.5621 (the sitting 19 review): OFF until the owner turns it on */
+  /* v2.3.5621 (the sitting 19 review): OFF until the owner turns it on.
+     v2.3.6000 (card CS): the owner turned it on, 2026-11-17 ("I think turn all
+     of them on then we monitor usage cost"): ON by default, off with
+     `freezedevice: false`, thrown here */
+  room._liveFlags.freezedevice = false;
   const wpre = await join('bp_mod_pre', 'devpre', room);
   await admin('POST', '/freeze', { playerId: 'bp_mod_pre', note: 'x' }, KEY);
   const preAlt = await join('bp_mod_pre_alt', 'devpre', room);
-  check('6: the device half lands OFF: unset, a new character on a frozen character\'s phone is let in', !preAlt.sent.some((m) => m.type === 'join_rejected'), preAlt.sent.map((m) => m.type).slice(0, 4));
+  check('6: `freezedevice: false`: a new character on a frozen character\'s phone is let in', !preAlt.sent.some((m) => m.type === 'join_rejected'), preAlt.sent.map((m) => m.type).slice(0, 4));
   await admin('DELETE', '/freeze?id=bp_mod_pre', null, KEY);
   void wpre;
-  room._liveFlags.freezedevice = true;
+  delete room._liveFlags.freezedevice;   /* v2.3.6000: unset, the default: on */
+  check('6: unset, the device half is on (the default since v2.3.6000)', room._freezeDeviceOn() === true);
   const wv = await join('bp_mod_villain', 'devvillain', room);
   check('6: (the villain plays on its phone)', room.sessions.has(wv) && !wv.closed);
   const fr = await (await admin('POST', '/freeze', { playerId: 'bp_mod_villain', note: 'harassment' }, KEY)).json();

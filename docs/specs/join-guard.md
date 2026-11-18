@@ -5,8 +5,8 @@ ACC-1, ACC-2, SEC-F1 and ACC-3. A switch, `joinguard`, **ON**: decided for
 the owner while away by the planning session, on the owner's words of
 2026-11-17: *"Go recommended on all."* `joinguard: false` turns it off.
 
-S2's join half (avatar and colour held to their form in
-`_sanitizeJoinData`) waits for RV's `lookform.js` and comes after it.
+S2's join half (avatar and colour held to their form) came after RV's
+`lookform.js`, with its own switch: see "A join's colour and avatar" below.
 
 ## What it does
 
@@ -40,6 +40,26 @@ S2's join half (avatar and colour held to their form in
 
 Nothing new is written or sent: each refusal is one a phone already reads.
 
+## Left open (sitting 44's review of #2103)
+
+- **A keyless stranger playing a `bp_` record with no key.** The seeded
+  `bp_` record above registers "as before" only while nobody plays it. If
+  a keyless join is playing that id, the rightful keyed join is refused
+  `key`, and the stranger stays until it leaves. A `bp_` record with no
+  key is a character from before keys (or a suite's seed); none is known
+  in play.
+- **A keyless join naming an online guest's id still replaces the
+  guest**, as before. A guest has no key, so there is nothing to tell the
+  two apart; ACC-1 stops only the takeover by a key, which then locked the
+  guest out.
+- **ACC-3's claim, with `seathold` on.** With one socket a seat gone, one
+  public held id named on many sockets can fill every held slot until
+  those sockets are swept at the join window. `seathold` is off in
+  production.
+- **ACC-2, a keyless `bp_` join with an old `char:` row.** Since it makes
+  no `char:` row, it no longer reads one either, so a stored name and look
+  are not applied to a keyless join. A keyed join reads it as before.
+
 ## Tests
 
 `join-guard.test` (11 FAIL on main). Two older checks read the old way with
@@ -50,3 +70,29 @@ the switch off: `joinid.test` 2 (a join with no id) and `seat-hold.test` 6
 
 On unless `joinguard: false` in the live flags. Thrown, all four are as
 before.
+
+## A join's colour and avatar, held to their forms (v2.3.5733, `lookjoin`)
+
+Card K2 PR 14: card RV's S2, the join's half. RV's `lookform.js` (#2112)
+says why. A player's `color` and `avatar` were any text, cut to length,
+sent to every phone and drawn as a CSS colour and an `<img>`, so a player
+could make every phone that drew them fetch from a server of theirs.
+
+A switch, `lookjoin`, **ON**: decided for the owner while away by the
+planning session, on the owner's words of 2026-11-17: *"Go recommended on
+all."* `lookjoin: false` turns it off.
+
+- In `_sanitizeJoinData`, a join's `color` must be a hex colour (`#rgb` to
+  `#rrggbbaa`, `lookColor`), and its `avatar` the page's own proxied
+  address (`https://wsrv.nl/?url=...`, `lookAvatar`, src/networking/index.js
+  `wsrvUrl`). A value off its form is dropped, as a missing one is.
+- An empty value is left as it was.
+- A character record's stored look is held to the same forms when it is
+  laid over the join. A bad stored avatar or colour is not drawn; the
+  phone's own, if it is good, stays.
+
+An honest page never sends another form. The `track` relay's half is RV's
+(`lookStamp`, index.js).
+
+`join-lookform.test` holds it (6 FAIL on main).
+

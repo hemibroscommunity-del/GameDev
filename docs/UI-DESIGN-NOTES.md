@@ -173,7 +173,7 @@ Screens: login-door, more-account
 - It is a character select, not an account manager (owner: "it currently feels like an account-management modal, not a character-selection screen", v2.3.2193): no delete button and no Create card ("Remove the delete character button from this menu.", "Remove the create bro from there."). Each card's ••• holds Restart at level 1 and Remove from this device (frees a slot; the Login Key still brings the bro back), and both need you to type "yes" (owner's request, v2.3.2194). The "This device is full" card points there in those words (v2.3.3481).
 - The key box is folded to one line, "Playing on another device? USE LOGIN KEY" (owner: "The Login Key input is consuming almost half the panel despite being an occasional action."). A key typed at the door joins at once (owner: "make it so that when you enter your character key you just immediately join the game", v2.3.1823). It is checked with the server first, so a typo can neither wipe this device's key nor quietly make a fresh level-1 bro (v2.3.1143).
 - Login Keys are now eight short words made by the server (the owner chose "8 short words", v2.3.3355), shown as eight numbered words, good on any device. Older short keys work only on devices the character was played on (v2.3.3344).
-- A refused key is never treated as a wrong key and never makes a new character. The right old key on a new device shows "This character is played on another device" with a code to send the owner, Copy and Try again; the owner lets one device in for 30 minutes (the owner chose recovery through their own tool). A key the owner took back shows "This Login Key no longer works" and a way to type a new one. Too many wrong guesses by anyone only makes the phone wait a minute and retry.
+- A refused key is never treated as a wrong key and never makes a new character. The right old key on a new device shows "This character is played on another device" with a code to send the owner, Copy, Use a Login Key and Try again. Since v2.3.5716 (`oldkeyheld`) an old key is never let in on a new device, so the words send the player to a new Login Key (the Account card of a device they play on, or one the owner gives); Try again stays for a pass with `oldkeyheld` off (card RV, decided for the owner while away). A key the owner took back shows "This Login Key no longer works" and a way to type a new one. Too many wrong guesses by anyone only makes the phone wait a minute and retry.
 - In game: More → "Login Key" tile ("Save it — it is your only way back"), promoted from three taps deep in Settings (v2.3.2038; owner: "is the character key retrievable once inside the game?") and named for the key, which is what someone about to wipe a browser looks for. The page: the key with Copy, "This Login Key is the only way to get your character back ... There is no email recovery.", then a form to continue another bro, which here asks "Continue as your Lv N character?" because it signs this one out.
 - The in-world exit says what it does: one bro, "Leave the world?" / Log Out (red); two or more, "Switch bro?" / Switch Bro, not red, "This one is saved", opening onto the bro list (v2.3.2421). **Since v2.3.4123 it always logs out** (the owner, 2026-11-03: "Change just the exit door icon on top left to "logout" (bring to splash screen) not switch character"): **since v2.3.4221 a pill that says LOGOUT** (the owner, 2026-11-04: "The top left button needs to just say 'logout' as a pill button."; the dashboard CLOSE pill's font, weight, tracking and colour, no door picture; aria-label "Log out" and the hook `.bt-zone-header__logout` kept), labelled "Log out", the same confirm ("Leave the world?", red Log Out, "Your bro is saved"), and it lands on the splash screen whatever number of bros the device holds. A device with several bros picks another there: Continue opens the list of bros.
 - Nothing pops up at login: the daily chest is gone (owner: "I find the login page with the chest intrusive", v2.3.3140).
@@ -1977,6 +1977,24 @@ Screens: dev-econ-card
 - Cases waiting, for card Q.
 
 Sources: src/ui/panels/EconCard.jsx, src/game/econCard.js, server/src/econcard.js, server/src/worldsum.js, server/test/econ-card.test.mjs, server/src/daybook.js, docs/plan/cards/E.md (PR 12).
+
+## The usage meter (the Test panel)
+Screens: dev-usage-meter
+
+**What it is for:** The owner's watch on what the game costs to run, after turning the six cost switches on (2026-11-17: "I think turn all of them on then we monitor usage cost"): the rows the server wrote and read and the messages it sent, today (UTC) and since it last started, with an estimate of the day's writes against the plans' included rows. Only the owner sees it: a box of the Test panel, keyed with the admin key (v2.3.6001, card CS PR 2).
+
+**Decisions, and why:**
+- **A box of the Test panel, below the economy card**, drawn only when "Show usage" is tapped: opening the panel reads nothing, and nothing a player sees changes.
+- **Counted in the server's memory, never written** (the card: no storage write for the meter itself), read through one admin route (`GET /dev/usage`). So it starts again at an update, and the box says since when it counts: "counted since 09:12 UTC (the server started then)".
+- **The estimate is of rows written only**, the number the plans' included usage is told in (free about 100,000 a day, paid 50 million a month), spread over the part of the day counted; no estimate from under ten minutes ("Too early"). Reads and messages are shown as counts, not priced.
+- **Cloudflare's own page is named as the truth** (Workers & Pages, brotown-server, Metrics; Billing), right under the estimate: the meter is a guide, not the bill.
+- **The six switches each get a line in plain words** (what its rows are), today's rows written and read, and the way to turn any off (Live flags, Set a switch): the owner turned them on to watch them.
+- **The biggest kinds first** (`rpg:`, `oplog:` ...), six of each: the names are the storage's own, the owner's way to ask a session "why so many `rpg:` writes?".
+
+**Still open:**
+- A day's total is lost at an update (memory only): Cloudflare's Metrics keep the whole history.
+
+Sources: src/ui/panels/UsageMeter.jsx, src/game/usageMeter.js, server/src/usagemeter.js, server/test/usage-meter.test.mjs, tools/guards/usage-meter-page.test.mjs, docs/plan/cards/CS.md (PR 2).
 
 ## The Test panel sets a switch
 Screens: dev-set-switch
