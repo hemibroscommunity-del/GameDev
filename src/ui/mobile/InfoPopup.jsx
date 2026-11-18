@@ -1,6 +1,8 @@
 import React from 'react';
 import { infoPopupBus } from './infoPopupBus.js';
 import { swallowTapClick } from '../swallowTapClick.js';   /* v2.3.3560 */
+import { SAY } from '@/data/say/infoPopup.js';   /* v2.3.6353: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';
 
 /* ═══ THE "WHAT IS THIS?" POPUP (v2.3.2131) ═══
  *
@@ -186,7 +188,7 @@ export const InfoPopup = () => {
         );
       })}
       {cur.capped && (
-        <div style={{ marginTop: 4, fontSize: 11, color: COL.muted }}>At its cap — no more points can go here.</div>
+        <div style={{ marginTop: 4, fontSize: 11, color: COL.muted }}>{say(SAY, 'infoPopup.capped')}</div>
       )}
     </div>
   )}
@@ -220,7 +222,7 @@ export const InfoPopup = () => {
           <div key={o.key} role="button"
             data-infopopup-lane={o.key}
             aria-pressed={on}
-            aria-label={`${o.label}, ${o.pts} point${o.pts === 1 ? '' : 's'} to spend`}
+            aria-label={say(SAY, 'infoPopup.lane', { label: o.label, n: o.pts })}
             onPointerUp={(e) => { e.stopPropagation(); if (!on && cur.lanes.onPick) cur.lanes.onPick(o.key); }}
             onClick={(e) => e.stopPropagation()}
             style={{
@@ -308,7 +310,7 @@ export const InfoPopup = () => {
           maxHeight: '100%',
           display: 'flex', flexDirection: 'column', minHeight: 0,
         }}>
-        <button type="button" aria-label="Close" onPointerUp={close} data-infopopup-x
+        <button type="button" aria-label={say(SAY, 'infoPopup.close')} onPointerUp={close} data-infopopup-x
           data-esc="up" data-key="Esc" data-key-at="hang"   /* v2.3.3407: its Esc, shown (game/deskKeys.js) */
           style={{
             position: 'absolute', top: 6, right: 6,
@@ -393,7 +395,7 @@ export const InfoPopup = () => {
                   background: '#59BF91', transition: 'width .12s ease-out',
                 }} />
               </div>
-              <span style={{ flex: 'none', fontSize: 10, fontWeight: 900, letterSpacing: '.08em', color: COL.muted }}>MAX</span>
+              <span style={{ flex: 'none', fontSize: 10, fontWeight: 900, letterSpacing: '.08em', color: COL.muted }}>{say(SAY, 'infoPopup.max')}</span>
             </div>
           )}
           {cur.chips && cur.chips.length > 0 && (
@@ -522,14 +524,14 @@ export const InfoPopup = () => {
              the width -- the x, the scrim and Escape still close it, which
              keeps three of v2.3.2131's four ways out on a spend window. */
           <div data-infopopup-stepper style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: 6, marginTop: cur.spentNote ? 8 : 12 }}>
-            <StepBtn label="One fewer point" glyph="−" disabled={stepN <= 0 || spending} onStep={() => stepBy(-1)} />
+            <StepBtn label={say(SAY, 'infoPopup.fewer')} glyph="−" disabled={stepN <= 0 || spending} onStep={() => stepBy(-1)} />
             <span data-infopopup-count={stepN} aria-live="polite"
               style={{
                 flex: 'none', minWidth: 30, textAlign: 'center',
                 fontSize: 18, fontWeight: 900, color: COL.text,
                 fontVariantNumeric: 'tabular-nums',
               }}>{stepN}</span>
-            <StepBtn label="One more point" glyph="+" disabled={stepN >= stepMax || spending} onStep={() => stepBy(1)} />
+            <StepBtn label={say(SAY, 'infoPopup.more')} glyph="+" disabled={stepN >= stepMax || spending} onStep={() => stepBy(1)} />
             <button type="button"
               data-infopopup-action
               data-infopopup-spending={spending ? '1' : undefined}
@@ -546,7 +548,7 @@ export const InfoPopup = () => {
                 cursor: (spending || stepN < 1) ? 'default' : 'pointer', touchAction: 'manipulation',
                 /* v2.3.3522: waiting on the worker -- the same gold, quieter */
                 opacity: spending ? 0.6 : 1,
-              }}>{spending ? 'Spending…' : stepN < 1 ? 'Add points with +' : `Spend ${stepN} point${stepN === 1 ? '' : 's'}`}</button>
+              }}>{spending ? say(SAY, 'infoPopup.spending') : stepN < 1 ? 'Add points with +' : say(SAY, 'infoPopup.spend', { n: stepN })}</button>
           </div>
         ) : (
         <div style={{ flex: 'none', display: 'flex', gap: 8, marginTop: 12 }}>
@@ -584,7 +586,7 @@ export const InfoPopup = () => {
               border: `1px solid ${COL.border}`, borderRadius: 9,
               fontSize: 12.5, fontWeight: 800, cursor: 'pointer',
               touchAction: 'manipulation',
-            }}>Got it</button>
+            }}>{say(SAY, 'infoPopup.gotIt')}</button>
         </div>
         )}
       </div>

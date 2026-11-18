@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { COL, panelStyle, getState } from './common.js';
+import { SAY } from '@/data/say/selfPanel.js';   /* v2.3.6351: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';
 
 /* v2.3.1232: Lantern Slate pass (docs/LANTERN-SLATE-SPEC.md) — stat
    tiles become quiet #19252A cells with the stat-*.webp icons (same
@@ -47,7 +49,7 @@ export const SelfPanel = () => {
       <img src="/icons/ui/panel-self.webp" alt="" draggable={false}
         style={{ width: 40, height: 40, objectFit: 'contain', opacity: 0.4, margin: '0 auto' /* v2.3.1233: img{display:block} in game.css defeats textAlign centering */ }}
         onError={(e) => { e.currentTarget.replaceWith(document.createTextNode('🪪')); }} />
-      <div style={{ fontSize: 13, fontWeight: 700, color: COL.text2, marginTop: 6 }}>No profile.</div>
+      <div style={{ fontSize: 13, fontWeight: 700, color: COL.text2, marginTop: 6 }}>{say(SAY, 'selfPanel.noProfile')}</div>
     </div>
   </div>;
 
@@ -56,9 +58,9 @@ export const SelfPanel = () => {
   /* v2.3.1235: batch-1 rollout — ⚔/🛡/🐾 prefixes were decorative emoji
      in chrome (banned by the locked contract); plain text labels carry
      the same meaning. */
-  if (profile.weapon?.name) carry.push(`Weapon: ${profile.weapon.name}`);
-  if (profile.armor?.name)  carry.push(`Armor: ${profile.armor.name}`);
-  if (profile.pet?.name)    carry.push(`Pet: ${profile.pet.name}`);
+  if (profile.weapon?.name) carry.push(say(SAY, 'selfPanel.weapon', { name: profile.weapon.name }));
+  if (profile.armor?.name)  carry.push(say(SAY, 'selfPanel.armor', { name: profile.armor.name }));
+  if (profile.pet?.name)    carry.push(say(SAY, 'selfPanel.pet', { name: profile.pet.name }));
 
   return (
     <div style={panelStyle}>
@@ -92,19 +94,19 @@ export const SelfPanel = () => {
             {profile.clanTag && <span style={{ color: COL.muted, marginLeft: 6, fontSize: 12, fontWeight: 600 }}>[{profile.clanTag}]</span>}
           </div>
           <div style={{ fontSize: 12, color: COL.muted, fontVariantNumeric: 'tabular-nums' }}>
-            Lv {profile.level} · {profile.archetype || 'wanderer'}
-            {profile.pole ? ` · ${profile.pole}` : ''}
+            {say(SAY, 'selfPanel.levelLine', { level: profile.level, archetype: profile.archetype || say(SAY, 'selfPanel.wanderer') })}
+            {profile.pole ? say(SAY, 'selfPanel.pole', { pole: profile.pole }) : ''}
           </div>
         </div>
       </div>
 
       {/* Stat tiles */}
       <div style={{ display: 'flex', gap: 4, marginBottom: 10, padding: '0 8px' }}>
-        <StatTile label="POW" iconSrc="/icons/ui/stat-power.webp"     glyph="⚔" value={st.power ?? 0} />
-        <StatTile label="VIT" iconSrc="/icons/ui/stat-vitality.webp"  glyph="♥" value={st.vitality ?? 0} />
-        <StatTile label="END" iconSrc="/icons/ui/stat-endurance.webp" glyph="🛡" value={st.endurance ?? 0} />
-        <StatTile label="AGI" iconSrc="/icons/ui/stat-agility.webp"   glyph="🏃" value={st.agility ?? 0} />
-        <StatTile label="MND" iconSrc="/icons/ui/stat-mind.webp"      glyph="✨" value={st.mind ?? 0} />
+        <StatTile label={say(SAY, 'selfPanel.pow')} iconSrc="/icons/ui/stat-power.webp"     glyph="⚔" value={st.power ?? 0} />
+        <StatTile label={say(SAY, 'selfPanel.vit')} iconSrc="/icons/ui/stat-vitality.webp"  glyph="♥" value={st.vitality ?? 0} />
+        <StatTile label={say(SAY, 'selfPanel.end')} iconSrc="/icons/ui/stat-endurance.webp" glyph="🛡" value={st.endurance ?? 0} />
+        <StatTile label={say(SAY, 'selfPanel.agi')} iconSrc="/icons/ui/stat-agility.webp"   glyph="🏃" value={st.agility ?? 0} />
+        <StatTile label={say(SAY, 'selfPanel.mnd')} iconSrc="/icons/ui/stat-mind.webp"      glyph="✨" value={st.mind ?? 0} />
       </div>
 
       {/* Carrying */}

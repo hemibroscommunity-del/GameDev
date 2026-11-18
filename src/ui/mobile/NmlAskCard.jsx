@@ -67,6 +67,8 @@ import { nmlAskCurrent, nmlAskSubscribe, nmlAskAnswer, nmlAskClose, nmlAskMs, nm
 import { NmlSkull, openNmlInfo } from './NmlBadge.jsx';
 import { infoPopupBus } from './infoPopupBus.js';
 import { wheelMiniBox } from '@/ui/wheelMiniSize.js';   /* v2.3.3986: the minimap's side, twice as big on a computer */
+import { SAY } from '@/data/say/nmlAsk.js';   /* v2.3.6346: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';
 
 /* the small "i" on the skull's corner */
 function InfoDot({ size = 13 }) {
@@ -243,7 +245,7 @@ export default function NmlAskCard({ stateRef }) {
   if (ask.locked) { try { lockMin = Math.ceil(nmlLockedOut(S, ask.id) / 60000); } catch (e) { lockMin = 0; } }
   if (ask.locked && lockMin > 0) {
     return createPortal(
-      <div data-nml-ask="locked" data-nml-ask-id={ask.id} data-nml-ask-at={pl.at} role="dialog" aria-label={`${ask.name} beat you`}
+      <div data-nml-ask="locked" data-nml-ask-id={ask.id} data-nml-ask-at={pl.at} role="dialog" aria-label={say(SAY, 'nmlAsk.beatYou', { name: ask.name })}
         onPointerDown={stop} onTouchStart={stop} onMouseDown={stop} onClick={stop}
         style={{
           position: 'fixed', left: pl.left, top: pl.top, zIndex: Z_ABOVE_DASH_PROMPT,
@@ -252,19 +254,19 @@ export default function NmlAskCard({ stateRef }) {
           boxShadow: '0 14px 30px rgba(4,7,9,.38)', color: '#F7F2E7', textAlign: 'left',
         }}>
         <div data-nml-ask-name="" style={{ fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-          {ask.name} beat you.
+          {say(SAY, 'nmlAsk.beatYouLine', { name: ask.name })}
         </div>
         <div data-nml-ask-locked="" style={{ fontSize: 12, color: '#B9C1BF', marginTop: 2, lineHeight: 1.35 }}>
-          {"You can't attack them for "}{lockMin}{lockMin === 1 ? ' more minute.' : ' more minutes.'}
+          {say(SAY, 'nmlAsk.lockedFor', { n: lockMin })}
         </div>
         <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
-          <button type="button" data-nml-ask-rematch="" onClick={answer('rematch')} style={Object.assign({}, BTN, SECONDARY)}>Ask for a rematch</button>
+          <button type="button" data-nml-ask-rematch="" onClick={answer('rematch')} style={Object.assign({}, BTN, SECONDARY)}>{say(SAY, 'nmlAsk.rematch')}</button>
         </div>
       </div>,
       document.body
     );
   }
-  const title = back ? `Hit back ${ask.name}?` : `Attack ${ask.name}?`;
+  const title = say(SAY, back ? 'nmlAsk.hitBack' : 'nmlAsk.attackName', { name: ask.name });
   return createPortal(
     <div data-nml-ask={ask.why} data-nml-ask-id={ask.id} data-nml-ask-at={pl.at} data-nml-ask-stacked={pl.stacked ? '1' : undefined}
       data-nml-ask-back={back ? '1' : undefined} role="dialog" aria-label={title}
@@ -278,8 +280,8 @@ export default function NmlAskCard({ stateRef }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 2, minHeight: 36 }}>
         <button type="button" data-nml-ask-info="" onClick={info}
           aria-label={back
-            ? "Hitting back the player who attacked you gives you no red skull. Tap for what No man's land means."
-            : "Attacking a player gives you a red skull. Tap for what No man's land means."}
+            ? say(SAY, 'nmlAsk.infoBack')
+            : say(SAY, 'nmlAsk.info')}
           style={{
             position: 'relative', flex: 'none', width: 40, height: 36, padding: 0, margin: 0,
             background: 'transparent', border: 0, cursor: 'pointer', touchAction: 'manipulation',
@@ -291,19 +293,19 @@ export default function NmlAskCard({ stateRef }) {
         <div data-nml-ask-name="" style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {title}
         </div>
-        <div style={{ flex: 'none', marginLeft: 6, fontSize: 10, fontWeight: 600, color: '#B9C1BF', fontVariantNumeric: 'tabular-nums' }}>Lv {ask.lv}</div>
+        <div style={{ flex: 'none', marginLeft: 6, fontSize: 10, fontWeight: 600, color: '#B9C1BF', fontVariantNumeric: 'tabular-nums' }}>{say(SAY, 'nmlAsk.level', { lv: ask.lv })}</div>
       </div>
       <div style={{ display: 'flex', gap: 6, marginTop: 2, paddingLeft: 4 }}>
-        <button type="button" data-nml-ask-attack="" onClick={answer('attack')} style={Object.assign({}, BTN, ATTACK)}>Attack</button>
-        {hasParty && <button type="button" data-nml-ask-party="" onClick={answer('party')} style={Object.assign({}, BTN, SECONDARY)}>Party</button>}
+        <button type="button" data-nml-ask-attack="" onClick={answer('attack')} style={Object.assign({}, BTN, ATTACK)}>{say(SAY, 'nmlAsk.attack')}</button>
+        {hasParty && <button type="button" data-nml-ask-party="" onClick={answer('party')} style={Object.assign({}, BTN, SECONDARY)}>{say(SAY, 'nmlAsk.party')}</button>}
         {/* v2.3.4988: the player card's Trade (game/nmlAsk.js nmlTradeOpen) -- on a tap's window, and gone if they turn out to be attacking you */}
-        {trades && !back && <button type="button" data-nml-ask-trade="" onClick={answer('trade')} style={Object.assign({}, BTN, SECONDARY)}>Trade</button>}
-        <button type="button" data-nml-ask-ignore="" onClick={answer('ignore')} style={Object.assign({}, BTN, QUIET)}>Ignore</button>
+        {trades && !back && <button type="button" data-nml-ask-trade="" onClick={answer('trade')} style={Object.assign({}, BTN, SECONDARY)}>{say(SAY, 'nmlAsk.trade')}</button>}
+        <button type="button" data-nml-ask-ignore="" onClick={answer('ignore')} style={Object.assign({}, BTN, QUIET)}>{say(SAY, 'nmlAsk.ignore')}</button>
       </div>
       {/* v2.3.3770: you beat them, and they are locked out from you: let them have another go */}
       {ask.lockedIn && (
         <div style={{ display: 'flex', marginTop: 6, paddingLeft: 4 }}>
-          <button type="button" data-nml-ask-allow="" onClick={answer('allow')} style={Object.assign({}, BTN, SECONDARY, { flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' })}>Let {ask.name} attack you again</button>
+          <button type="button" data-nml-ask-allow="" onClick={answer('allow')} style={Object.assign({}, BTN, SECONDARY, { flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' })}>{say(SAY, 'nmlAsk.allow', { name: ask.name })}</button>
         </div>
       )}
     </div>,

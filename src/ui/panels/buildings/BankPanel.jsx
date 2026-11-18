@@ -1,6 +1,7 @@
 import { coinArtFor, COIN_ONE } from '@/game/coinArt.js';   /* v2.3.3734: the owner's coin piles */
 import React, { useEffect, useState } from 'react';
-import { deskWords } from '@/game/deskWords.js';   /* v2.3.3785: "tap" reads "click" on a computer */
+import { SAY } from '@/data/say/bank.js';   /* v2.3.6348: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';   /* v2.3.6348: a plain row goes through deskWords (v2.3.3785: "tap" reads "click" on a computer) */
 import { bankOn, bankOpen, bankMove, bankBusy, bankSubscribe, bankLastWords, bankAmount, BANK_CHIPS } from '@/game/bank.js';   /* v2.3.3785: the vault */
 import { thumbFor, iconFor, ITEM_NAMES } from '@/ui/mobile/dash/InventoryPanel.jsx';   /* v2.3.3785: the bag's own pictures and names */
 
@@ -61,11 +62,11 @@ function BankReadOnly(props) {
   var _rpgState$armor, _rpgState$rangedWeapo, _rpgState$weapon;
   /* v2.3.1232: display-only string temps (identical optional chains to
      the pre-restyle inline expressions) so the 'None' state can dim. */
-  var meleeName = ((_rpgState$weapon = rpgState.weapon) === null || _rpgState$weapon === void 0 ? void 0 : _rpgState$weapon.name) || 'None';
-  var rangedName = ((_rpgState$rangedWeapo = rpgState.rangedWeapon) === null || _rpgState$rangedWeapo === void 0 ? void 0 : _rpgState$rangedWeapo.name) || 'None';
-  var armorName = ((_rpgState$armor = rpgState.armor) === null || _rpgState$armor === void 0 ? void 0 : _rpgState$armor.name) || 'None';
+  var meleeName = ((_rpgState$weapon = rpgState.weapon) === null || _rpgState$weapon === void 0 ? void 0 : _rpgState$weapon.name) || say(SAY, 'bank.none');
+  var rangedName = ((_rpgState$rangedWeapo = rpgState.rangedWeapon) === null || _rpgState$rangedWeapo === void 0 ? void 0 : _rpgState$rangedWeapo.name) || say(SAY, 'bank.none');
+  var armorName = ((_rpgState$armor = rpgState.armor) === null || _rpgState$armor === void 0 ? void 0 : _rpgState$armor.name) || say(SAY, 'bank.none');
   /* v2.3.3785: the worn shield too (lane A's judge pass: the list left it out) */
-  var shieldName = (rpgState.shield && rpgState.shield.name) || 'None';
+  var shieldName = (rpgState.shield && rpgState.shield.name) || say(SAY, 'bank.none');
   var gearRow = function gearRow(label, value, isLast) {
     return React.createElement("div", {
       style: {
@@ -75,11 +76,11 @@ function BankReadOnly(props) {
       }
     }, React.createElement("span", { style: { fontSize: 12, color: LS.txt3 } }, label),
     React.createElement("span", {
-      style: { fontSize: 13 /* v2.3.1235: batch-3 rollout — body 13, no half-sizes */, fontWeight: 600, textAlign: 'right', color: value === 'None' ? LS.dis : LS.txt1 }
+      style: { fontSize: 13 /* v2.3.1235: batch-3 rollout — body 13, no half-sizes */, fontWeight: 600, textAlign: 'right', color: value === say(SAY, 'bank.none') ? LS.dis : LS.txt1 }
     }, value));
   };
   return React.createElement("div", { style: LS_WRAP },
-    lsHeader('bank', '🏦', "Bank", "Vault & equipment"),
+    lsHeader('bank', '🏦', say(SAY, 'bank.title'), say(SAY, 'bank.subtitleOld')),
     React.createElement("div", { style: LS_BODY },
       /* v2.3.1235: state-correction — the old copy claimed gold is "always
          safe", contradicting the actual death rule (monsterCombat.js:
@@ -92,15 +93,15 @@ function BankReadOnly(props) {
          line now says what the window is, with no promise; the death rule
          for gold is the line under the gold. */
       React.createElement("div", { style: { fontSize: 12, color: LS.txt2, marginBottom: 12, lineHeight: 1.5 } },
-        "Your gold and what you wear. Nothing can be stored here yet."),
-      React.createElement("div", { style: LS_MOD }, "Gold on hand"),
+        say(SAY, 'bank.oldIntro')),
+      React.createElement("div", { style: LS_MOD }, say(SAY, 'bank.goldOnHand')),
       React.createElement("div", {
         style: {
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
           minHeight: 44, padding: '8px 12px', borderRadius: 8,
           background: LS.wellSoft, border: '1px solid ' + LS.wellBorder, marginBottom: 4
         }
-      }, React.createElement("span", { style: { fontSize: 13 /* v2.3.1235: batch-3 rollout — body 13, no half-sizes */, color: LS.txt2 } }, "Gold"),
+      }, React.createElement("span", { style: { fontSize: 13 /* v2.3.1235: batch-3 rollout — body 13, no half-sizes */, color: LS.txt2 } }, say(SAY, 'bank.gold')),
       lsGold(rpgState.coins, 18, rpgState.coins)),
       /* v2.3.2343: the worker owns coins and charges no death penalty, so
          the "10% is lost on death" line promised a loss that never happened
@@ -111,14 +112,14 @@ function BankReadOnly(props) {
          anything takes it too (nomansland.js _nmlOnDeath: ps.coins = 0
          whenever the kill is the rule's or the skull is red). */
       React.createElement("div", { style: { fontSize: 11, color: LS.txt3, marginBottom: 12 } },
-        "Kept when you die, unless a player kills you in No man's land or you die with a red skull."),
-      React.createElement("div", { style: LS_MOD }, "Equipped"),
+        say(SAY, 'bank.goldKept')),
+      React.createElement("div", { style: LS_MOD }, say(SAY, 'bank.equipped')),
       React.createElement("div", {
         style: { borderRadius: 8, background: LS.wellSoft, border: '1px solid ' + LS.wellBorder }
-      }, gearRow('Melee', meleeName, false),
-      gearRow('Bow' /* v2.3.3481: was 'Ranged' -- the bow slot, named as the Gem Works' Set gems and the hero sheet name it (the 2026-10-19 UI review) */, rangedName, false),
-      gearRow('Armor', armorName, false),
-      gearRow('Shield', shieldName, true))));
+      }, gearRow(say(SAY, 'bank.slotMelee'), meleeName, false),
+      gearRow(say(SAY, 'bank.slotBow') /* v2.3.3481: was 'Ranged' -- the bow slot, named as the Gem Works' Set gems and the hero sheet name it (the 2026-10-19 UI review) */, rangedName, false),
+      gearRow(say(SAY, 'bank.slotArmor'), armorName, false),
+      gearRow(say(SAY, 'bank.slotShield'), shieldName, true))));
 }
 
 /* ═══ v2.3.3785: THE VAULT ═══
@@ -135,7 +136,7 @@ function itemName(key) {
   if (!key) return '';
   if (ITEM_NAMES[key]) return ITEM_NAMES[key];
   return String(key)
-    .replace(/^cooked_fish_/, 'Cooked ').replace(/^burnt_/, 'Burnt ').replace(/^fish_/, '')
+    .replace(/^cooked_fish_/, say(SAY, 'bank.itemCooked')).replace(/^burnt_/, say(SAY, 'bank.itemBurnt')).replace(/^fish_/, '')
     .replace(/^wood_/, '').replace(/^ore_/, '').replace(/^shard_/, '')
     .replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
@@ -157,7 +158,7 @@ function Tile(props) {
   const { ikey, n, sel, onTap, side, dim } = props;
   const thumb = thumbFor(ikey);
   return React.createElement("button", {
-    type: 'button', title: itemName(ikey) + ' x' + n,
+    type: 'button', title: say(SAY, 'bank.tileTitle', { name: itemName(ikey), count: n }),
     "data-bank-tile": side, "data-bank-key": ikey,
     onClick: dim ? undefined : onTap,
     style: {
@@ -193,15 +194,15 @@ function AmountRow(props) {
       key: c, type: 'button', "data-bank-chip": c, onClick: () => go(c), disabled: off(c),
       style: { ...BTN, ...(off(c) ? BTN_OFF : null) } }, c)),
     React.createElement("button", { type: 'button', "data-bank-chip": 'all', onClick: () => go(max), disabled: off(max),
-      style: { ...BTN, ...(off(max) ? BTN_OFF : null) } }, 'All'),
+      style: { ...BTN, ...(off(max) ? BTN_OFF : null) } }, say(SAY, 'bank.all')),
     React.createElement("input", {
-      type: 'text', inputMode: 'numeric', pattern: '[0-9]*', placeholder: 'Amount', value: typed,
-      "data-bank-typed": testid, "aria-label": label + ' amount',
+      type: 'text', inputMode: 'numeric', pattern: '[0-9]*', placeholder: say(SAY, 'bank.amount'), value: typed,
+      "data-bank-typed": testid, "aria-label": say(SAY, 'bank.amountLabel', { label }),
       onChange: (e) => setTyped(e.target.value.replace(/[^0-9]/g, '').slice(0, 10)),
       onKeyDown: (e) => { if (e.key === 'Enter' && typedN) { go(typedN); setTyped(''); } },
       style: INPUT }),
     React.createElement("button", { type: 'button', "data-bank-go": testid, onClick: () => { go(typedN); setTyped(''); }, disabled: off(typedN),
-      style: { ...BTN_MAIN, ...(off(typedN) ? BTN_OFF : null) } }, 'OK')));
+      style: { ...BTN_MAIN, ...(off(typedN) ? BTN_OFF : null) } }, say(SAY, 'bank.ok'))));
 }
 
 function BankVault(props) {
@@ -240,45 +241,45 @@ function BankVault(props) {
   const closed = b && (!b.on || !b.ok);
   const failed = !!(b && b.failed);
   return React.createElement("div", { style: LS_WRAP, "data-bank-vault": b ? (failed ? 'failed' : closed ? 'closed' : 'open') : 'loading' },
-    lsHeader('bank', '🏦', "Bank", "Your vault"),
+    lsHeader('bank', '🏦', say(SAY, 'bank.title'), say(SAY, 'bank.subtitle')),
     React.createElement("div", { style: LS_BODY },
       React.createElement("div", { style: { fontSize: 12, color: LS.txt2, marginBottom: 10, lineHeight: 1.5 } },
-        failed ? "The vault could not be opened just now. Trying again… What is in it stays safe."
-          : closed ? "The vault is closed for now. What is in it stays safe."
+        failed ? say(SAY, 'bank.failed')
+          : closed ? say(SAY, 'bank.closed')
           /* v2.3.3785: what goes in and why, plainly (the orchestrator, for the
              owner: so nobody is surprised that a sword stays in the bag) */
-          : deskWords("Safe from death: what is in the vault stays here when you die. Materials, food and gold go in; weapons, armour and tools stay with you. Tap an item to put it in or take it out.")),
+          : say(SAY, 'bank.intro')),
       /* ── gold ── */
-      React.createElement("div", { style: LS_MOD }, "Gold"),
+      React.createElement("div", { style: LS_MOD }, say(SAY, 'bank.gold')),
       React.createElement("div", { style: { ...well, marginBottom: 12 } },
         React.createElement("div", { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 } },
-          React.createElement("span", { style: { fontSize: 13, color: LS.txt2 } }, "On you ", lsGold(coins.toLocaleString('en-US'), 15, coins)),
-          React.createElement("span", { "data-bank-gold": b && !failed ? b.gold : '', style: { fontSize: 13, color: LS.txt2 } }, "In the vault ", lsGold(b && !failed ? b.gold.toLocaleString('en-US') : '…', 15, b && !failed ? b.gold : 0))),
-        b && !closed ? React.createElement(AmountRow, { label: 'Put in', max: coins, busy, testid: 'gold-in', act: (n) => move('in', 'gold', null, n) }) : null,
-        b && !closed ? React.createElement(AmountRow, { label: 'Take out', max: b.gold, busy, testid: 'gold-out', act: (n) => move('out', 'gold', null, n) }) : null),
+          React.createElement("span", { style: { fontSize: 13, color: LS.txt2 } }, say(SAY, 'bank.onYou'), lsGold(coins.toLocaleString('en-US'), 15, coins)),
+          React.createElement("span", { "data-bank-gold": b && !failed ? b.gold : '', style: { fontSize: 13, color: LS.txt2 } }, say(SAY, 'bank.inVault'), lsGold(b && !failed ? b.gold.toLocaleString('en-US') : '…', 15, b && !failed ? b.gold : 0))),
+        b && !closed ? React.createElement(AmountRow, { label: say(SAY, 'bank.putIn'), max: coins, busy, testid: 'gold-in', act: (n) => move('in', 'gold', null, n) }) : null,
+        b && !closed ? React.createElement(AmountRow, { label: say(SAY, 'bank.takeOut'), max: b.gold, busy, testid: 'gold-out', act: (n) => move('out', 'gold', null, n) }) : null),
       /* ── the line for the last move ── */
       words ? React.createElement("div", { "data-bank-last": words.ok ? 'ok' : 'no', style: { fontSize: 12, fontWeight: 600, color: words.ok ? '#7FC9A0' : '#E0A070', margin: '-4px 0 10px' } }, words.text) : null,
       /* ── a stack chosen: how many ── */
       sel && selN > 0 && b && !closed ? React.createElement("div", { "data-bank-pick": sel.side, style: { ...well, marginBottom: 12, border: '1px solid ' + LS.brass } },
         React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: LS.txt1 } },
-          itemName(sel.key), React.createElement("span", { style: { color: LS.txt3, fontWeight: 600 } }, '  x' + selN)),
-        React.createElement(AmountRow, { label: sel.side === 'bag' ? 'Put in' : 'Take out', max: selN, busy, testid: 'item-' + sel.side,
+          itemName(sel.key), React.createElement("span", { style: { color: LS.txt3, fontWeight: 600 } }, say(SAY, 'bank.pickCount', { count: selN }))),
+        React.createElement(AmountRow, { label: say(SAY, sel.side === 'bag' ? 'bank.putIn' : 'bank.takeOut'), max: selN, busy, testid: 'item-' + sel.side,
           act: (n) => { move(sel.side === 'bag' ? 'in' : 'out', 'item', sel.key, n); setSel(null); } })) : null,
       /* ── the vault ── */
-      React.createElement("div", { style: LS_MOD }, "The vault ", React.createElement("span", { style: { letterSpacing: 0, textTransform: 'none' } }, b && !failed ? '(' + vault.length + ' of ' + b.slots + ')' : '')),
+      React.createElement("div", { style: LS_MOD }, say(SAY, 'bank.vaultHead'), React.createElement("span", { style: { letterSpacing: 0, textTransform: 'none' } }, b && !failed ? say(SAY, 'bank.vaultSlots', { used: vault.length, slots: b.slots }) : '')),
       React.createElement("div", { style: { ...well, marginBottom: 12 } },
         vault.length ? React.createElement("div", { style: grid }, vault.map((it) => React.createElement(Tile, {
           key: it.key, ikey: it.key, n: it.n, side: 'vault', dim: closed || busy,
           sel: !!(sel && sel.side === 'vault' && sel.key === it.key), onTap: () => tap('vault', it.key, it.n) })))
-          : React.createElement("div", { style: { fontSize: 12, color: LS.txt3 } }, b && !failed ? "Nothing in the vault yet." : "Opening the vault…")),
+          : React.createElement("div", { style: { fontSize: 12, color: LS.txt3 } }, b && !failed ? say(SAY, 'bank.vaultEmpty') : say(SAY, 'bank.vaultOpening'))),
       /* ── your bag ── */
-      React.createElement("div", { style: LS_MOD }, "Your bag"),
+      React.createElement("div", { style: LS_MOD }, say(SAY, 'bank.bagHead')),
       React.createElement("div", { style: well },
         bag.length ? React.createElement("div", { style: grid }, bag.map((it) => React.createElement(Tile, {
           key: it.key, ikey: it.key, n: it.n, side: 'bag', dim: closed || busy || noBank.has(it.key),
           sel: !!(sel && sel.side === 'bag' && sel.key === it.key), onTap: () => tap('bag', it.key, it.n) })))
-          : React.createElement("div", { style: { fontSize: 12, color: LS.txt3 } }, "Your bag is empty."),
-        noBank.size ? React.createElement("div", { style: { fontSize: 11, color: LS.txt3, marginTop: 6 } }, "Tools stay in your bag.") : null)));
+          : React.createElement("div", { style: { fontSize: 12, color: LS.txt3 } }, say(SAY, 'bank.bagEmpty')),
+        noBank.size ? React.createElement("div", { style: { fontSize: 11, color: LS.txt3, marginTop: 6 } }, say(SAY, 'bank.toolsStay')) : null)));
 }
 
 export function BankPanel(props) {

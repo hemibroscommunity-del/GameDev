@@ -10,6 +10,8 @@ import { ITEM_NAMES, iconFor, thumbFor } from '@/ui/mobile/dash/InventoryPanel.j
 import { FARM_ART } from '@/data/farmArt.js';   /* v2.3.3136: the owner's farm pictures */
 import { farmArtUrl } from '@/data/farmArtUrl.js';
 import { warpToFarm } from '@/game/farmTrip.js';
+import { SAY } from '@/data/say/feedSeed.js';   /* v2.3.6347: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';
 
 /* ═══ v2.3.3127: THE FEED & SEED, A REAL FARM ═══
  *
@@ -99,9 +101,9 @@ function farmSummary(view, now) {
     if (p && p.s === 'planted') { if (now >= p.readyAt) ready += 1; else growing += 1; } else waiting += 1;
   }
   const parts = [];
-  if (ready) parts.push(ready + ' ready to harvest');
-  if (growing) parts.push(growing + ' growing');
-  if (waiting) parts.push(waiting + (waiting === 1 ? ' bed' : ' beds') + ' to plant');
+  if (ready) parts.push(say(SAY, 'feedSeed.ready', { n: ready }));
+  if (growing) parts.push(say(SAY, 'feedSeed.growing', { n: growing }));
+  if (waiting) parts.push(say(SAY, 'feedSeed.toPlant', { n: waiting }));
   return { ready, text: parts.join(' · ') };
 }
 
@@ -179,7 +181,7 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
     /* The trip FarmPanel always made (v2.3.877 / v2.3.3032 / v2.3.3136):
        v2.3.4366, the buildings' one copy of it (game/farmTrip.js) */
     warpToFarm(S2);
-    pushDmgPopup(S2, P2.x, P2.y - 40, 'Your Farm', '#59BF91');
+    pushDmgPopup(S2, P2.x, P2.y - 40, say(SAY, 'feedSeed.popupFarm'), '#59BF91');
     try { BT_AUDIO.beep(500, 0.08, 0.1, 'sine'); } catch (e) { /* sound only */ }
     setBuildingPanel(null);
   };
@@ -187,13 +189,13 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
   /* What the last answer did, or why not (a buy's or an order's). */
   let status = null;
   if (pending) status = { text: '…', color: C.mute };
-  else if (last && last.err && !(last.did && last.did.n > 0)) status = { text: FARM_ERR_TEXT[last.err] || 'Could not', color: C.bad };
+  else if (last && last.err && !(last.did && last.did.n > 0)) status = { text: FARM_ERR_TEXT[last.err] || say(SAY, 'feedSeed.couldNot'), color: C.bad };
   else if (last && last.did && last.did.n > 0) {
     const d = last.did;
     if (d.op === 'harvest' && d.items) {
-      status = { text: Object.keys(d.items).map((k) => '+' + d.items[k] + ' ' + farmItemName(k)).join(' · ') + (d.xp ? ' · +' + d.xp + ' XP' : ''), color: C.good };
-    } else if (d.op === 'buy') status = { text: '+' + d.n + ' ' + farmItemName(d.item), color: C.good };
-    else if (d.op === 'order') status = { text: 'Delivered · +' + d.gold + ' gold · +' + d.xp + ' XP', color: C.good };   /* v2.3.3134 */
+      status = { text: Object.keys(d.items).map((k) => say(SAY, 'feedSeed.got', { count: d.items[k], item: farmItemName(k) })).join(' · ') + (d.xp ? say(SAY, 'feedSeed.harvestXp', { xp: d.xp }) : ''), color: C.good };
+    } else if (d.op === 'buy') status = { text: say(SAY, 'feedSeed.got', { count: d.n, item: farmItemName(d.item) }), color: C.good };
+    else if (d.op === 'order') status = { text: say(SAY, 'feedSeed.delivered', { gold: d.gold, xp: d.xp }), color: C.good };   /* v2.3.3134 */
   }
 
   return (
@@ -203,9 +205,9 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 44px 10px 14px' }}>
         <Icon src="/icons/ui/skill-farming.webp?v=2.3.1224" size={30} />
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: '.10em', textTransform: 'uppercase', color: C.text }}>Feed &amp; Seed</div>
+          <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: '.10em', textTransform: 'uppercase', color: C.text }}>{say(SAY, 'feedSeed.title')}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
-            <span data-farm-level={lvl} style={{ fontSize: 12, fontWeight: 800, color: C.brass }}>Farming {lvl}</span>
+            <span data-farm-level={lvl} style={{ fontSize: 12, fontWeight: 800, color: C.brass }}>{say(SAY, 'feedSeed.level', { lvl })}</span>
             <div style={{ flex: 1, height: 6, borderRadius: 3, background: C.well, overflow: 'hidden' }}>
               <div style={{ width: `${pct * 100}%`, height: '100%', background: 'linear-gradient(90deg,#C9923E,#EAC675)' }} />
             </div>
@@ -220,11 +222,11 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
           border: `2px solid ${C.brass}`, color: C.text, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
           fontSize: 17, fontWeight: 900, letterSpacing: '.04em', textTransform: 'uppercase', touchAction: 'manipulation' }}>
           <Icon src="/icons/ui/bldg-farm.webp" size={40} />
-          Visit Your Farm
+          {say(SAY, 'feedSeed.visit')}
         </button>
         {!closed && summary && summary.text ? (
           <div style={{ marginTop: 8 }}>
-            <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '.1em', textTransform: 'uppercase', color: C.mute }}>Your plots</div>
+            <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '.1em', textTransform: 'uppercase', color: C.mute }}>{say(SAY, 'feedSeed.plots')}</div>
             <div data-farm-summary={summary.ready} style={{ fontSize: 12.5, fontWeight: 700, color: summary.ready ? C.good : C.sub, marginTop: 2 }}>
               {summary.text}
             </div>
@@ -233,8 +235,8 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
       </div>
       {/* tabs */}
       {!closed && <div style={{ display: 'flex', gap: 3, margin: '0 12px 10px', padding: 3, borderRadius: 10, background: C.well }}>
-        {[{ id: 'seeds', label: 'Buy', g: FARM_LOOK.seed }]
-          .concat(ordersOn ? [{ id: 'orders', label: 'Deliver', g: '\uD83D\uDCDC' }] : []).map((t) => (
+        {[{ id: 'seeds', label: say(SAY, 'feedSeed.tabBuy'), g: FARM_LOOK.seed }]
+          .concat(ordersOn ? [{ id: 'orders', label: say(SAY, 'feedSeed.tabDeliver'), g: '\uD83D\uDCDC' }] : []).map((t) => (
           <button key={t.id} data-farm-tab={t.id} onClick={() => setTab(t.id)}
             style={{ flex: 1, minHeight: 44, border: 'none', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
@@ -248,13 +250,13 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
       <div style={{ padding: '0 12px 12px' }}>
         {!closed && (
           <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '.1em', textTransform: 'uppercase', color: C.mute, margin: '0 0 6px' }}>
-            {tab === 'orders' ? 'What you can deliver for gold' : 'What you can buy'}
+            {say(SAY, tab === 'orders' ? 'feedSeed.canDeliver' : 'feedSeed.canBuy')}
           </div>
         )}
         {closed && (
           <div data-farm-status="closed" style={{ padding: '24px 0 8px', textAlign: 'center' }}>
             <div style={{ color: C.text, fontSize: 14, fontWeight: 800 }}>{FARM_ERR_TEXT.off}</div>
-            <div style={{ color: C.sub, fontSize: 12, marginTop: 6 }}>Your beds keep growing.</div>
+            <div style={{ color: C.sub, fontSize: 12, marginTop: 6 }}>{say(SAY, 'feedSeed.bedsGrow')}</div>
           </div>
         )}
         {!closed && tab === 'seeds' && (
@@ -268,7 +270,7 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
                 gold chip two lines tall. */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
               <span data-farm-key="1" style={{ fontSize: 11, color: C.sub, display: 'inline-flex', alignItems: 'center', gap: 3, flexWrap: 'wrap' }}>
-                {'⏱ grow · ' + FARM_LOOK.water + ' watered · ' + FARM_LOOK.harvest + ' harvest ·'}<Icon src={FARM_COMPOST_ICON} size={13} />{'with compost'}
+                {say(SAY, 'feedSeed.key', { water: FARM_LOOK.water, harvest: FARM_LOOK.harvest })}<Icon src={FARM_COMPOST_ICON} size={13} />{say(SAY, 'feedSeed.keyCompost')}
               </span>
               <Chip icon={coinArtFor(coins)} color={C.brass}>{coins}</Chip>
             </div>
@@ -293,14 +295,14 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
             })}
             <ShopRow item={FARM.COMPOST} look={FARM_LOOK.compost} pic="compost-bin" icon={FARM_COMPOST_ICON} name="Compost" have={compost} price={FARM.COMPOST_PRICE}
               coins={coins} pending={pending} onBuy={(n) => farmBus.buy(S, FARM.COMPOST, n)}>
-              <Chip color={C.good}>+50% harvest</Chip>
+              <Chip color={C.good}>{say(SAY, 'feedSeed.compostBoost')}</Chip>
             </ShopRow>
             {/* v2.3.3135: the crops still to come, one line a level -- twelve
                 locked rows stood between a new farmer and the compost. */}
             {lockedLevels.map((l) => (
               <div key={l} data-farm-locked={l} style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', padding: '8px 0',
                 borderTop: `1px solid ${C.line}`, fontSize: 12, color: C.sub }}>
-                <span style={{ fontWeight: 800, color: C.mute }}>{'🔒 Farming ' + l}</span>
+                <span style={{ fontWeight: 800, color: C.mute }}>{say(SAY, 'feedSeed.lockedLevel', { lvl: l })}</span>
                 {crops.filter((id) => FARM.CROPS[id].lvl === l).map((id) => (
                   <span key={id} data-farm-locked-crop={id} style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
                     <ItemPic src={farmCropIcon(id)} item={FARM.CROPS[id].item} size={20} />{FARM.CROPS[id].name}
@@ -331,15 +333,15 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
                   <div style={{ color: C.text, fontWeight: 800 }}>{FARM_ERR_TEXT['orders-closed']}</div>
                 ) : last && last.err && last.op === 'open' && !pending ? (
                   <>
-                    <div style={{ color: C.bad, marginBottom: 10 }}>{FARM_ERR_TEXT[last.err] || 'Could not'}</div>
-                    {last.err !== 'off' && last.err !== 'newer' && <button onClick={() => farmBus.open(S)} style={{ ...btn(true), minHeight: 44, padding: '0 18px' }}>Try again</button>}
+                    <div style={{ color: C.bad, marginBottom: 10 }}>{FARM_ERR_TEXT[last.err] || say(SAY, 'feedSeed.couldNot')}</div>
+                    {last.err !== 'off' && last.err !== 'newer' && <button onClick={() => farmBus.open(S)} style={{ ...btn(true), minHeight: 44, padding: '0 18px' }}>{say(SAY, 'feedSeed.tryAgain')}</button>}
                   </>
-                ) : 'Opening the orders…'}
+                ) : say(SAY, 'feedSeed.opening')}
               </div>
             ) : (
               <>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: C.sub }}>Today's orders</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: C.sub }}>{say(SAY, 'feedSeed.today')}</span>
                   <Chip icon={coinArtFor(coins)} color={C.brass}>{coins}</Chip>
                 </div>
                 {board.list.map((o, i) => {
@@ -358,30 +360,30 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
                       {thumbFor(o.key) ? <Icon src={thumbFor(o.key)} size={26} /> : <Glyph g={iconFor(o.key)} size={26} />}
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 13, fontWeight: 800, color: o.done ? C.mute : C.text }}>
-                          {o.n + ' × ' + (ITEM_NAMES[o.key] || 'Goods')}
+                          {o.n + ' × ' + (ITEM_NAMES[o.key] || say(SAY, 'feedSeed.goods'))}
                         </div>
                         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 4 }}>
-                          <Chip color={have >= o.n ? C.good : C.sub}>{'You have ' + have}</Chip>
+                          <Chip color={have >= o.n ? C.good : C.sub}>{say(SAY, 'feedSeed.youHave', { count: have })}</Chip>
                           <Chip icon={coinArtFor(o.gold)} color={C.brass}>{'+' + o.gold}</Chip>
                           <Chip icon={XP} color="#9FD3F0">{'+' + o.xp}</Chip>
                         </div>
                       </div>
                       {o.done ? (
-                        <span style={{ fontSize: 12, fontWeight: 800, color: C.good, minWidth: 76, textAlign: 'center' }}>Delivered ✓</span>
+                        <span style={{ fontSize: 12, fontWeight: 800, color: C.good, minWidth: 76, textAlign: 'center' }}>{say(SAY, 'feedSeed.orderDone')}</span>
                       ) : (
                         <button data-farm-deliver={i} disabled={!can} onClick={() => farmBus.order(S, i)}
                           style={{ ...btn(can), minHeight: 44, minWidth: 76, padding: '0 10px', fontSize: 12 }}>
-                          Deliver
+                          {say(SAY, 'feedSeed.deliver')}
                         </button>
                       )}
                     </div>
                   );
                 })}
                 <div data-farm-orders-reset="1" style={{ marginTop: 8, fontSize: 12, color: C.mute }}>
-                  {boardOld ? 'New orders are on their way…' : 'New orders in ' + farmTimeLeft(Math.max(0, board.resetsAt - now))}
+                  {boardOld ? say(SAY, 'feedSeed.newSoon') : say(SAY, 'feedSeed.newIn', { time: farmTimeLeft(Math.max(0, board.resetsAt - now)) })}
                 </div>
                 {boardOld && last && last.err && last.op === 'open' && !pending && last.err !== 'off' && last.err !== 'newer' ? (
-                  <button onClick={() => farmBus.open(S)} style={{ ...btn(true), minHeight: 44, padding: '0 18px', marginTop: 6 }}>Try again</button>
+                  <button onClick={() => farmBus.open(S)} style={{ ...btn(true), minHeight: 44, padding: '0 18px', marginTop: 6 }}>{say(SAY, 'feedSeed.tryAgain')}</button>
                 ) : null}
                 {status && last && ((last.did && last.did.op === 'order') || last.op === 'order') ? (
                   <div data-farm-status="1" style={{ marginTop: 6, fontSize: 12, fontWeight: 700, color: status.color }}>{status.text}</div>

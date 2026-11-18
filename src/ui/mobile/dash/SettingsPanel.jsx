@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
+import { SAY } from '@/data/say/settingsPanel.js';   /* v2.3.6344: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say, sayPieces } from '@/game/say.js';   /* v2.3.6344: a plain row goes through deskWords (v2.3.3615: "tap" reads "click" on a computer) */
 import { notificationsMuted, setNotificationsMuted } from '../modalGuardBus.js'; /* v2.3.2147 */
 import { COL, panelStyle } from './common.js';
 import { BT_AUDIO } from '@/data/index.js';   /* v2.3.2820: see toggleAudio */
@@ -158,7 +159,7 @@ export const SettingsPanel = () => {
   useEffect(() => {
     const onRefused = (e) => {
       if (reloadTimerRef.current) { clearTimeout(reloadTimerRef.current); reloadTimerRef.current = null; }
-      setRefusedWords((e && e.detail && e.detail.message) || 'Not while you are fighting a player');
+      setRefusedWords((e && e.detail && e.detail.message) || say(SAY, 'settingsPanel.refusedWhy'));
       setResetStage('refused');
     };
     window.addEventListener('bt-reset-refused', onRefused);
@@ -241,24 +242,23 @@ export const SettingsPanel = () => {
   if (resetStage === 'confirm' || resetStage === 'sending' || resetStage === 'connecting' || resetStage === 'offline' || resetStage === 'refused') {
     return (
       <div style={{ ...panelStyle, display: 'flex', flexDirection: 'column', gap: 12, padding: '16px 12px' }}>
-        <div style={{ fontSize: 16, fontWeight: 700, color: COL.danger }}>Restart Character?</div>
+        <div style={{ fontSize: 16, fontWeight: 700, color: COL.danger }}>{say(SAY, 'settingsPanel.restartTitle')}</div>
         {resetStage === 'sending' ? (
-          <div style={{ fontSize: 13.5, color: COL.text, lineHeight: 1.5 }}>Restarting…</div>
+          <div style={{ fontSize: 13.5, color: COL.text, lineHeight: 1.5 }}>{say(SAY, 'settingsPanel.restarting')}</div>
         ) : resetStage === 'connecting' ? (
-          <div style={{ fontSize: 13.5, color: COL.text, lineHeight: 1.5 }}>Connecting to the game server…</div>
+          <div style={{ fontSize: 13.5, color: COL.text, lineHeight: 1.5 }}>{say(SAY, 'settingsPanel.connectingServer')}</div>
         ) : resetStage === 'refused' ? (
           <div data-qa="reset-refused" style={{ fontSize: 13.5, color: COL.text, lineHeight: 1.5 }}>
-            {refusedWords}. Nothing was changed: try again once the fight is over.
+            {say(SAY, 'settingsPanel.refused', { why: refusedWords })}
           </div>
         ) : resetStage === 'offline' ? (
           <div style={{ fontSize: 13.5, color: COL.text, lineHeight: 1.5 }}>
-            Can&apos;t restart right now — no connection to the game server. Try again in a moment.
+            {say(SAY, 'settingsPanel.offline')}
           </div>
         ) : (
           <div style={{ fontSize: 13.5, color: COL.text, lineHeight: 1.5 }}>
-            Your character starts over at <b>Level 1</b>. All items, gold, skills and
-            quest progress are <b style={{ color: COL.danger }}>deleted forever</b>.
-            Your name, login key and friends are kept.
+            {sayPieces(SAY, 'settingsPanel.confirmBody', { level: <b key="level">{say(SAY, 'settingsPanel.confirmLevel')}</b>,
+              gone: <b key="gone" style={{ color: COL.danger }}>{say(SAY, 'settingsPanel.confirmGone')}</b> })}
           </div>
         )}
         <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
@@ -270,7 +270,7 @@ export const SettingsPanel = () => {
               border: `1px solid ${COL.borderStrong}`, fontFamily: 'inherit', fontSize: 14, fontWeight: 600,
               opacity: resetStage === 'sending' ? 0.5 : 1,
             }}
-          >Keep playing</button>
+          >{say(SAY, 'settingsPanel.keepPlaying')}</button>
           <button
             onPointerUp={(e) => { e.stopPropagation(); if (resetStage === 'confirm') confirmReset(); else if (resetStage === 'refused') setResetStage('confirm'); }}
             style={{
@@ -279,7 +279,7 @@ export const SettingsPanel = () => {
               color: resetStage === 'confirm' ? '#fff' : COL.muted,
               border: `1px solid ${COL.danger}`, fontFamily: 'inherit', fontSize: 14, fontWeight: 700,
             }}
-          >{resetStage === 'sending' ? 'Restarting…' : resetStage === 'connecting' ? 'Connecting…' : 'Restart at Lv 1'}</button>
+          >{say(SAY, resetStage === 'sending' ? 'settingsPanel.restarting' : resetStage === 'connecting' ? 'settingsPanel.connecting' : 'settingsPanel.restartGo')}</button>
         </div>
       </div>
     );
@@ -287,9 +287,9 @@ export const SettingsPanel = () => {
 
   return (
     <div style={panelStyle}>
-      <Toggle label="Audio" value={audio} onChange={toggleAudio} />
-      <VolumeRow label="Music" hook="music" value={musicVol} disabled={!audio} onChange={(v) => setVol('music', v)} />
-      <VolumeRow label="Effects" hook="sfx" value={sfxVol} disabled={!audio} onChange={(v) => setVol('sfx', v)} />
+      <Toggle label={say(SAY, 'settingsPanel.audio')} value={audio} onChange={toggleAudio} />
+      <VolumeRow label={say(SAY, 'settingsPanel.music')} hook="music" value={musicVol} disabled={!audio} onChange={(v) => setVol('music', v)} />
+      <VolumeRow label={say(SAY, 'settingsPanel.effects')} hook="sfx" value={sfxVol} disabled={!audio} onChange={(v) => setVol('sfx', v)} />
       {DEV_MODE && <Toggle label="Debug overlay (D)" value={debug} onChange={toggleDebug} />}
       {/* ═══ v2.3.2141: THE QUEST PATH ═══
           Owner: "Add an option to turn off the path guide for the quest.
@@ -302,7 +302,7 @@ export const SettingsPanel = () => {
           with `?questpath` */}
       {GROUND_PATH && (
         <ChoiceRow
-          label="Quest path"
+          label={say(SAY, 'settingsPanel.questPath')}
           options={TRAIL_STYLES}
           value={trail}
           onChange={(id) => { setTrail(setTrailStyle(id)); }}
@@ -320,7 +320,7 @@ export const SettingsPanel = () => {
           Landscape-only, and it says so rather than appearing inert to
           somebody reading Settings in portrait. */}
       <ChoiceRow
-        label="Landscape menu side"
+        label={say(SAY, 'settingsPanel.menuSide')}
         hook="dashside"
         minW={56}
         options={DASH_SIDES}
@@ -359,13 +359,13 @@ export const SettingsPanel = () => {
           A mute switch is worth less than being able to walk. So it lives here
           with the other session settings, one tap from More, where it cannot
           take a gesture from anything. */}
-      <LinkRow label={notificationsMuted()
-        ? deskWords('Notifications — SILENCED, tap to turn them back on')
-        : 'Notifications — silence all of them'}
+      <LinkRow label={say(SAY, notificationsMuted()
+        ? 'settingsPanel.notifSilenced'
+        : 'settingsPanel.notifSilence')}
         onTap={() => { setNotificationsMuted(!notificationsMuted()); force((n) => n + 1); }} />
-      <LinkRow label="Login Key — save it, or continue a character"
+      <LinkRow label={say(SAY, 'settingsPanel.loginKey')}
         onTap={() => dashboardPanelBus.push('account')} />
-      <LinkRow label="Controls — replay the tutorial"
+      <LinkRow label={say(SAY, 'settingsPanel.controls')}
         onTap={() => controlsTutorialBus.open()} />
       {/* v2.3.2159: the way back to a dismissed install hint — everything
           cut is one tap away.  iOS Safari in the browser only: launched
@@ -379,18 +379,18 @@ export const SettingsPanel = () => {
           if (!ios || standalone) return null;
         } catch (e) { return null; }
         return (
-          <LinkRow label="Play full screen — hide the browser bar"
+          <LinkRow label={say(SAY, 'settingsPanel.fullScreen')}
             onTap={() => { installHintBus.open(); dashboardPanelBus.toBar(); }} />
         );
       })()}
-      <LinkRow label="Feedback — message the developers"
+      <LinkRow label={say(SAY, 'settingsPanel.feedback')}
         onTap={() => dashboardPanelBus.push('feedback')} />
       {/* v2.3.2820: privacy, rules and credits, one tap from Settings. */}
-      <LinkRow label="About — privacy, rules and credits"
+      <LinkRow label={say(SAY, 'settingsPanel.about')}
         onTap={() => dashboardPanelBus.push('about')} />
       {/* v2.3.1347: destructive row — red label, drills into the
           in-panel confirmation screen above (owner playtest request). */}
-      <LinkRow label="Restart character — start over at Level 1"
+      <LinkRow label={say(SAY, 'settingsPanel.restartRow')}
         danger
         onTap={() => setResetStage('confirm')} />
       {DEV_MODE && (

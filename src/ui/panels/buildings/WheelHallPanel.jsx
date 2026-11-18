@@ -1,6 +1,7 @@
 import { coinArtFor } from '@/game/coinArt.js';   /* v2.3.3734: the owner's coin piles */
 import React from 'react';
-import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
+import { SAY } from '@/data/say/hallPanel.js';   /* v2.3.6346: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';   /* v2.3.6346: a plain row goes through deskWords (v2.3.3615: "tap" reads "click" on a computer) */
 import { WHEEL_HALLS } from '@/data/wheelBuildingDoors.js';
 import { mailList, mailAge } from '@/game/postOffice.js';
 import { ITEM_NAMES } from '@/ui/mobile/dash/InventoryPanel.jsx';   /* v2.3.3481: the mail names items as the bag does */
@@ -85,19 +86,19 @@ function guildHall(props) {
      so and opens the clan window's pointer to the Saloon */
   if (clanPartyOn(S)) {
     return [
-      row('clan', '/icons/ui/panel-clan.webp', '🏰', 'Party', 'Make a party in the Saloon; at 20 active members it is an alliance', props.onClan, false),
-      row('guild', '/icons/ui/panel-guild.webp', '🏛', 'Skill guilds', 'Your rank in each life skill’s guild, and its quests', props.onGuild),
+      row('clan', '/icons/ui/panel-clan.webp', '🏰', say(SAY, 'hallPanel.party'), say(SAY, 'hallPanel.partySub'), props.onClan, false),
+      row('guild', '/icons/ui/panel-guild.webp', '🏛', say(SAY, 'hallPanel.guilds'), say(SAY, 'hallPanel.guildsSub'), props.onGuild),
     ];
   }
   var clan = S._clanData || null;
   var inv = S._pendingClanInvite;
   var invLive = !clan && inv && Date.now() - inv.ts < 120000;
-  var clanSub = clan ? '[' + (clan.tag || '?') + '] ' + (clan.name || 'Your clan')
-    : invLive ? 'Invite waiting: [' + inv.clanTag + '] ' + (inv.clanName || '') + ', from ' + inv.fromName
-    : 'Make a clan, or join one when a clan leader invites you';
+  var clanSub = clan ? say(SAY, 'hallPanel.clanName', { tag: clan.tag || '?', name: clan.name || say(SAY, 'hallPanel.yourClan') })
+    : invLive ? say(SAY, 'hallPanel.clanInvite', { tag: inv.clanTag, name: inv.clanName || '', from: inv.fromName })
+    : say(SAY, 'hallPanel.clanNone');
   return [
-    row('clan', '/icons/ui/panel-clan.webp', '🏰', clan ? 'Your clan' : 'Clans', clanSub, props.onClan, invLive),
-    row('guild', '/icons/ui/panel-guild.webp', '🏛', 'Skill guilds', 'Your rank in each life skill’s guild, and its quests', props.onGuild),
+    row('clan', '/icons/ui/panel-clan.webp', '🏰', say(SAY, clan ? 'hallPanel.yourClan' : 'hallPanel.clans'), clanSub, props.onClan, invLive),
+    row('guild', '/icons/ui/panel-guild.webp', '🏛', say(SAY, 'hallPanel.guilds'), say(SAY, 'hallPanel.guildsSub'), props.onGuild),
   ];
 }
 
@@ -106,7 +107,7 @@ function postOffice(props) {
   var mail = mailList(S).slice(0, 12);
   var now = Date.now();
   return [
-    <div key="mod" style={LS_MOD}>Your mail</div>,
+    <div key="mod" style={LS_MOD}>{say(SAY, 'hallPanel.mailHead')}</div>,
     <div key="mail" data-hall-mail={mail.length}
       style={{ background: LS.well, border: '1px solid ' + LS.border, borderRadius: 10, padding: mail.length ? '4px 0' : '12px', maxHeight: 220, overflowY: 'auto' }}>
       {mail.length ? mail.map(function (m, i) {
@@ -114,7 +115,7 @@ function postOffice(props) {
            "2× Garden Stew": an item the bag has a name for is named so
            (postOffice.js keeps its key and count); the rest, and a line kept
            before this version, read the line's own words. */
-        var what = m.key && ITEM_NAMES[m.key] ? m.n + '× ' + ITEM_NAMES[m.key] : m.what;
+        var what = m.key && ITEM_NAMES[m.key] ? say(SAY, 'hallPanel.mailItem', { n: m.n, name: ITEM_NAMES[m.key] }) : m.what;
         return (
           <div key={i} data-mail-line="" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 12px', borderTop: i ? '1px solid ' + LS.border : 'none' }}>
             {m.kind === 'gold' ? icon(coinArtFor(m.amount), '🪙', 18) /* v2.3.3734: the pile for the gold */ : icon('/icons/ui/evt-mail.webp', '📫', 18)}
@@ -127,11 +128,11 @@ function postOffice(props) {
         );
       }) : (
         <div style={{ fontSize: 12.5, color: LS.txt2, lineHeight: 1.45 }}>
-          Nothing yet this visit. Sales, refunds, trade payouts and rewards come here, and so does anything that arrived while you were away.
+          {say(SAY, 'hallPanel.mailEmpty')}
         </div>
       )}
     </div>,
-    row('messages', '/icons/ui/soc-friend.webp', '💬', 'Messages from friends', 'Write to a friend. They read it when they next come in.', props.onMessages),
+    row('messages', '/icons/ui/soc-friend.webp', '💬', say(SAY, 'hallPanel.messages'), say(SAY, 'hallPanel.messagesSub'), props.onMessages),
   ];
 }
 
@@ -161,18 +162,18 @@ function hotel(props) {
     <div key="now" data-hotel-rested={left > 0 ? 1 : 0}
       style={{ background: LS.well, border: '1px solid ' + LS.border, borderRadius: 10, padding: '10px 12px', fontSize: 12.5, lineHeight: 1.45, color: left > 0 ? LS.positive : LS.txt2 }}>
       {left > 0
-        ? 'You are Well Rested: +' + REST_XP_PCT + '% combat XP for ' + restLeftWords(left) + ' more.'
-        : 'A night here fills your health, stamina and mana, and makes you Well Rested: +' + REST_XP_PCT + '% combat XP for ' + mins + ' minutes. Free.'}
+        ? say(SAY, 'hallPanel.rested', { pct: REST_XP_PCT, left: restLeftWords(left) })
+        : say(SAY, 'hallPanel.restOffer', { pct: REST_XP_PCT, mins: mins })}
     </div>,
-    row('rest', '/ui/controls/sleep.webp?v=2.3.3526', '🛏', 'Rest',
-      left > 0 ? 'Rest again to start the ' + mins + ' minutes over' : 'Full health, stamina and mana, then Well Rested', props.onRest),
+    row('rest', '/ui/controls/sleep.webp?v=2.3.3526', '🛏', say(SAY, 'hallPanel.rest'),
+      left > 0 ? say(SAY, 'hallPanel.restAgain', { mins: mins }) : say(SAY, 'hallPanel.restSub'), props.onRest),
   ];
 }
 
 function sheriff(props) {
   return [
-    row('duel', '/icons/ui/soc-duel.webp', '⚔️', 'Duel a player', deskWords('Pick a player, then tap Duel on their card'), props.onPlayers),
-    row('arena', '/icons/ui/evt-duel.webp', '🏟', 'The arena', 'Sign up for the gladiator arena', props.onArena),
+    row('duel', '/icons/ui/soc-duel.webp', '⚔️', say(SAY, 'hallPanel.duel'), say(SAY, 'hallPanel.duelSub'), props.onPlayers),
+    row('arena', '/icons/ui/evt-duel.webp', '🏟', say(SAY, 'hallPanel.arena'), say(SAY, 'hallPanel.arenaSub'), props.onArena),
   ];
 }
 
@@ -223,14 +224,14 @@ export function SaloonPanel(props) {
      inviting you.  It says what it does now.  And with no party it comes
      FIRST, above the words on how a party works: held sideways it started
      below the screen's edge under them. */
-  var inviteRow = row('party', '/icons/ui/soc-party.webp', '🍺', 'Invite a player', deskWords('Pick a player, then tap Invite to Party on their card'), props.onPlayers);
+  var inviteRow = row('party', '/icons/ui/soc-party.webp', '🍺', say(SAY, 'hallPanel.invite'), say(SAY, 'hallPanel.inviteSub'), props.onPlayers);
   return (
     <div style={LS_WRAP} data-saloon="">
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 40px 12px 16px', background: LS.strip, borderBottom: '1px solid ' + LS.border }}>
         {icon('/icons/ui/bldg-tavern.webp', '🍺', 26)}
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.10em', color: LS.txt1 }}>Saloon</div>
-          <div style={{ fontSize: 11, color: LS.txt3, marginTop: 1 }}>Team up with other bros</div>
+          <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.10em', color: LS.txt1 }}>{say(SAY, 'hallPanel.saloon')}</div>
+          <div style={{ fontSize: 11, color: LS.txt3, marginTop: 1 }}>{say(SAY, 'hallPanel.saloonSub')}</div>
         </div>
       </div>
       <div style={LS_BODY}>
@@ -238,7 +239,7 @@ export function SaloonPanel(props) {
             war, and the board (AlliancePart.jsx; caps.alliance only) -- FIRST,
             as an alliance's list of members runs to 50 rows */}
         <AlliancePart stateRef={props.stateRef} party={party} />
-        <div style={LS_MOD}>Your party</div>
+        <div style={LS_MOD}>{say(SAY, 'hallPanel.yourParty')}</div>
         {!members.length ? inviteRow : null}
         <div data-saloon-party={members.length}
           style={{ background: LS.well, border: '1px solid ' + LS.border, borderRadius: 10, padding: members.length ? '4px 0' : '12px' }}>
@@ -246,17 +247,17 @@ export function SaloonPanel(props) {
             return (
               <div key={m.id || i} data-party-member="" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 12px', borderTop: i ? '1px solid ' + LS.border : 'none' }}>
                 <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: 700, color: LS.txt1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {m.id === S.myId ? 'You' : (m.name || 'Bro')}{party.leader === m.id ? ' · leader' : ''}
+                  {m.id === S.myId ? say(SAY, 'hallPanel.you') : (m.name || say(SAY, 'hallPanel.bro'))}{party.leader === m.id ? say(SAY, 'hallPanel.leader') : ''}
                 </span>
-                {(m.off || m.away) ? <span data-party-offline="" style={{ fontSize: 11.5, color: LS.txt3 }}>offline</span> : null}
-                <span style={{ fontSize: 12, color: LS.txt2, fontVariantNumeric: 'tabular-nums' }}>Lv {m.level || 1}</span>
+                {(m.off || m.away) ? <span data-party-offline="" style={{ fontSize: 11.5, color: LS.txt3 }}>{say(SAY, 'hallPanel.offline')}</span> : null}
+                <span style={{ fontSize: 12, color: LS.txt2, fontVariantNumeric: 'tabular-nums' }}>{say(SAY, 'hallPanel.level', { lv: m.level || 1 })}</span>
               </div>
             );
           }) : (
             <div style={{ fontSize: 12.5, color: LS.txt2, lineHeight: 1.45 }}>
               {keeps
-                ? "You're not in a party. Up to 50 bros can team up and stay together until they leave: you see each other's health, talk on the party chat, and go into dungeons four at a time."
-                : "You're not in a party. Up to four bros can team up: you see each other's health, talk on the party chat, and go into dungeons together."}
+                ? say(SAY, 'hallPanel.noPartyKeeps')
+                : say(SAY, 'hallPanel.noParty')}
             </div>
           )}
         </div>

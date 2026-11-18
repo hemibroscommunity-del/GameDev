@@ -8,6 +8,8 @@ import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: the duel heard beginn
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { act } from '@/game/actions.js';   /* v2.3.5190: the page's requests leave through the action door (card K PR 7) */
+import { SAY } from '@/data/say/duelRequest.js';   /* v2.3.6345: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say, sayPieces } from '@/game/say.js';
 /* === DuelRequestPanel — the incoming duel-request modal === */
 /* v2.3.891: extracted verbatim from the duelRequest JSX subtree in
    BroTown.jsx (the incoming PvP duel-challenge popup: accept or
@@ -67,7 +69,7 @@ export function DuelRequestPanel(props) {
       setDuelRequest(function (cur) { return cur === duelRequest ? null : cur; });
       try {
         var S3 = stateRef.current;
-        if (S3 && S3.player) pushDmgPopup(S3, S3.player.x, S3.player.y - 40, 'Duel challenge expired', '#c9b48a');
+        if (S3 && S3.player) pushDmgPopup(S3, S3.player.x, S3.player.y - 40, say(SAY, 'duelRequest.expired'), '#c9b48a');
       } catch (e) { /* the card is gone either way */ }
     }, duelCardLeftMs(duelRequest, Date.now()));
     return function () { clearTimeout(t); };
@@ -131,17 +133,18 @@ export function DuelRequestPanel(props) {
     onError: function onError(e) {
       e.currentTarget.replaceWith(document.createTextNode('⚔️'));
     }
-  }), /*#__PURE__*/React.createElement("span", null, "Duel Challenge")), /*#__PURE__*/React.createElement("div", {
+  }), /*#__PURE__*/React.createElement("span", null, say(SAY, 'duelRequest.title'))), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 13, /* v2.3.1235: challenger line */
       color: '#B6C1BE',
       marginBottom: 4
     }
-  }, /*#__PURE__*/React.createElement("b", {
+  }, sayPieces(SAY, 'duelRequest.challenges', { name: /*#__PURE__*/React.createElement("b", {
+    key: "name",
     style: {
       color: '#F4F0E7'
     }
-  }, duelRequest.fromName), " challenges you!"), duelRequest.wager > 0 && /*#__PURE__*/React.createElement("div", {
+  }, duelRequest.fromName) })), duelRequest.wager > 0 && /*#__PURE__*/React.createElement("div", {
     style: {
       /* v2.3.1232: gold amount = icon + 14/700 tabular brass */
       display: 'flex',
@@ -165,7 +168,7 @@ export function DuelRequestPanel(props) {
     onError: function onError(e) {
       e.currentTarget.replaceWith(document.createTextNode('💰'));
     }
-  }), /*#__PURE__*/React.createElement("span", null, "Wager: ", duelRequest.wager, "g (winner takes all)")), /*#__PURE__*/React.createElement("div", {
+  }), /*#__PURE__*/React.createElement("span", null, say(SAY, 'duelRequest.wager', { wager: duelRequest.wager }))), /*#__PURE__*/React.createElement("div", {
     style: {
       /* v2.3.1235: Checkpoint B — consent/rules line 11px muted → 12px
          secondary with readable leading. */
@@ -180,7 +183,7 @@ export function DuelRequestPanel(props) {
        says so now, and names the wager only when the line above shows one.
        The promises are the server's (v2.3.1121): consensual, no reputation
        penalty, no item loss. */
-  duelRequest.wager > 0 ? "Duels are consensual. No reputation penalty. The loser pays the wager. No item loss." : "Duels are consensual. No wager, no item loss, no reputation penalty."), /*#__PURE__*/React.createElement("div", {
+  say(SAY, duelRequest.wager > 0 ? 'duelRequest.rulesWager' : 'duelRequest.rulesNoWager')), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 8
@@ -220,7 +223,7 @@ export function DuelRequestPanel(props) {
       cue('duelStart');   /* v2.3.3343: was a beep() -- silent */
       try { BT_AUDIO._uiSpecificAt = BT_AUDIO._now(); } catch (e) { /* the Accept button's click yields to it */ }
     }
-  }, "Accept", duelRequest.wager > 0 ? ' (' + duelRequest.wager + 'g)' : ''), /*#__PURE__*/React.createElement("button", {
+  }, duelRequest.wager > 0 ? say(SAY, 'duelRequest.acceptWager', { wager: duelRequest.wager }) : say(SAY, 'duelRequest.accept')), /*#__PURE__*/React.createElement("button", {
     style: {
       /* v2.3.1235: raised secondary decline, strong hairline */
       flex: 0.6,
@@ -235,5 +238,5 @@ export function DuelRequestPanel(props) {
       cursor: 'pointer'
     },
     onClick: decline
-  }, "Decline")))), document.body);
+  }, say(SAY, 'duelRequest.decline'))))), document.body);
 }
