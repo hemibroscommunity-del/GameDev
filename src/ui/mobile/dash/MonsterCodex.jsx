@@ -1,5 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
+import { SAY } from '@/data/say/monsterCodex.js';   /* v2.3.6326: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say, sayPieces } from '@/game/say.js';   /* v2.3.6326: a plain row's "tap" reads "click" on a computer, as deskWords did here */
 import { COL, getState, QUALITY_COLOR, QUALITY_LABEL, QUALITY_PRISM, qualityInk } from './common.js';
 import { PetPortrait } from '@/ui/petPortrait.jsx';
 import { CODEX_KINDS, CODEX_ENTRIES, CODEX_ELEMENTS, CODEX_OPEN_AT, CODEX_ROADS, codexFactsAt } from '@/data/monsterCodex.js';
@@ -61,7 +62,7 @@ function landName(home) {
   return (ZONES[home] && ZONES[home].name) || home;
 }
 function oneLevels(levels) {
-  return levels[0] === levels[1] ? 'Lv ' + levels[0] : 'Lv ' + levels[0] + '–' + levels[1];
+  return levels[0] === levels[1] ? say(SAY, 'monsterCodex.levelsOne', { lo: levels[0] }) : say(SAY, 'monsterCodex.levelsRange', { lo: levels[0], hi: levels[1] });
 }
 /* the first stage's levels and the elder form's, from the Wheel's own range
    (petStageOf: 20 levels a stage) */
@@ -74,8 +75,8 @@ function stageBands() {
 function wayThere(home) {
   for (const gate of Object.keys(WHEEL_GATE_ROADS)) {
     const [straight, fork] = WHEEL_GATE_ROADS[gate];
-    if (home === straight) return 'Leave BroTown by its ' + gate + ' gate and follow ' + CODEX_ROADS[home] + ' straight on.';
-    if (home === fork) return 'Leave BroTown by its ' + gate + ' gate on ' + CODEX_ROADS[straight] + ', then take ' + CODEX_ROADS[home] + ' where it forks off.';
+    if (home === straight) return say(SAY, 'monsterCodex.wayStraight', { gate, road: CODEX_ROADS[home] });
+    if (home === fork) return say(SAY, 'monsterCodex.wayFork', { gate, road: CODEX_ROADS[straight], fork: CODEX_ROADS[home] });
   }
   return null;
 }
@@ -191,13 +192,13 @@ function Card({ kind, n, fresh, onOpen, wrap, big }) {
           textAlign: 'center', minWidth: 0, minHeight: 'clamp(150px, 22vh, 210px)', fontFamily: 'inherit', color: COL.text, cursor: 'pointer', touchAction: 'manipulation' }}>
         <span style={{ position: 'relative', flex: 'none', width: 72, height: 72, display: 'grid', placeItems: 'center' }}>
           <PetPortrait pet={{ kind, stage: 1 }} size={72} shadow={!known} />
-          {fresh ? <span style={{ position: 'absolute', top: -4, left: -8, padding: '0 4px', borderRadius: 999, background: '#2E7D6F', color: '#E9FFF8', fontSize: 9.5, fontWeight: 900, letterSpacing: '.05em', lineHeight: '13px' }}>NEW</span> : null}
+          {fresh ? <span style={{ position: 'absolute', top: -4, left: -8, padding: '0 4px', borderRadius: 999, background: '#2E7D6F', color: '#E9FFF8', fontSize: 9.5, fontWeight: 900, letterSpacing: '.05em', lineHeight: '13px' }}>{say(SAY, 'monsterCodex.cardNew')}</span> : null}
         </span>
         <span style={{ minWidth: 0, width: '100%', display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <span data-cx-card-name style={{ ...line, fontSize: 14, fontWeight: 800, color: known ? COL.text : COL.text2 }}>{known ? e.name : '???'}</span>
+          <span data-cx-card-name style={{ ...line, fontSize: 14, fontWeight: 800, color: known ? COL.text : COL.text2 }}>{known ? e.name : say(SAY, 'monsterCodex.unknownName')}</span>
           <span style={{ ...line, fontSize: 11.5, color: COL.muted }}>{landName(e.home)}</span>
           <span style={{ ...line, fontSize: 12, fontWeight: 800, color: known ? '#7EE0A8' : COL.muted, fontVariantNumeric: 'tabular-nums' }}>
-            {known ? n + ' defeated' : 'Not met yet'}
+            {known ? say(SAY, 'monsterCodex.cardKills', { n }) : say(SAY, 'monsterCodex.cardNotMet')}
           </span>
         </span>
       </button>
@@ -210,13 +211,13 @@ function Card({ kind, n, fresh, onOpen, wrap, big }) {
         textAlign: 'left', minWidth: 0, minHeight: 44, fontFamily: 'inherit', color: COL.text, cursor: 'pointer', touchAction: 'manipulation' }}>
       <span style={{ position: 'relative', flex: 'none', width: 34, height: 34, display: 'grid', placeItems: 'center' }}>
         <PetPortrait pet={{ kind, stage: 1 }} size={34} shadow={!known} />
-        {fresh ? <span style={{ position: 'absolute', top: -2, left: -1, padding: '0 3px', borderRadius: 999, background: '#2E7D6F', color: '#E9FFF8', fontSize: 8, fontWeight: 900, letterSpacing: '.05em', lineHeight: '11px' }}>NEW</span> : null}
+        {fresh ? <span style={{ position: 'absolute', top: -2, left: -1, padding: '0 3px', borderRadius: 999, background: '#2E7D6F', color: '#E9FFF8', fontSize: 8, fontWeight: 900, letterSpacing: '.05em', lineHeight: '11px' }}>{say(SAY, 'monsterCodex.cardNew')}</span> : null}
       </span>
       <span style={{ minWidth: 0, flex: 1, display: 'flex', flexDirection: 'column' }}>
-        <span data-cx-card-name style={{ ...line, fontSize: 12, fontWeight: 800, color: known ? COL.text : COL.text2 }}>{known ? e.name : '???'}</span>
+        <span data-cx-card-name style={{ ...line, fontSize: 12, fontWeight: 800, color: known ? COL.text : COL.text2 }}>{known ? e.name : say(SAY, 'monsterCodex.unknownName')}</span>
         <span style={{ ...line, fontSize: 9.5, color: COL.muted }}>{landName(e.home)}</span>
         <span style={{ ...line, fontSize: 10.5, fontWeight: 800, color: known ? '#7EE0A8' : COL.muted, fontVariantNumeric: 'tabular-nums' }}>
-          {known ? n + ' defeated' : 'Not met yet'}
+          {known ? say(SAY, 'monsterCodex.cardKills', { n }) : say(SAY, 'monsterCodex.cardNotMet')}
         </span>
       </span>
     </button>
@@ -241,7 +242,7 @@ function Header({ kind, e, n, n2, elder }) {
       <Frame size={40} edge={GOLD_EDGE}><PetPortrait pet={{ kind, stage: elder ? 2 : 1 }} size={36} /></Frame>
       <div style={{ minWidth: 0, flex: 1 }}>
         <div data-cx-kills style={{ fontSize: 11, color: COL.muted, fontVariantNumeric: 'tabular-nums' }}>
-          {n} defeated{n2 ? ' · ' + n2 + ' past Lv 20' : ''}
+          {say(SAY, 'monsterCodex.pageKills', { n })}{n2 ? say(SAY, 'monsterCodex.pageKillsElder', { n: n2 }) : ''}
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 3 }}>
           <Pill attr="level">{landLevelsText()}</Pill>
@@ -260,7 +261,7 @@ function Header({ kind, e, n, n2, elder }) {
    (`position: sticky`, its own opaque ground so the table passes under it),
    and "‹ All monsters", which was a 40 px row of its own above the header,
    is its first button.  `reveal` keeps what a tap brings up just under it. */
-const TABS = [['drops', 'Drops'], ['info', 'Info'], ['locations', 'Locations']];
+const TABS = [['drops', say(SAY, 'monsterCodex.tabDrops')], ['info', say(SAY, 'monsterCodex.tabInfo')], ['locations', say(SAY, 'monsterCodex.tabLocations')]];
 /* ═══ v2.3.3972: THE NAME AND THE BUTTONS ON ONE ROW ═══
    The owner: "Move the 'all monsters, drops, info, and locations' row of
    buttons to be in the same row it talks about the monster title (In this
@@ -274,7 +275,7 @@ const TABS = [['drops', 'Drops'], ['info', 'Info'], ['locations', 'Locations']];
    tooltip, so the name keeps ~60 px or more; a long name wraps to two lines
    in the bar's height rather than push the buttons off. */
 const BACK_WORDS_MIN_VW = 350;
-const TAB_SHORT = { drops: 'Drops', info: 'Info', locations: 'Where' };
+const TAB_SHORT = { drops: say(SAY, 'monsterCodex.tabDropsShort'), info: say(SAY, 'monsterCodex.tabInfoShort'), locations: say(SAY, 'monsterCodex.tabLocationsShort') };
 const TAB_ICON = {
   drops: 'M5.6 2.4h4.8L9.2 4.7c2.5 1.2 4 3.6 4 6.1 0 1.9-1.6 2.7-5.2 2.7s-5.2-.8-5.2-2.7c0-2.5 1.5-4.9 4-6.1zM6.6 4.7h2.8',
   info: 'M8 1.8a6.2 6.2 0 1 0 0 12.4a6.2 6.2 0 1 0 0-12.4zM8 7.2v4.4M8 4.7v.2',
@@ -297,10 +298,10 @@ function Tabs({ tab, setTab, onBack, name }) {
         /* v2.3.3972: 40 px buttons in a bar no taller than the old 34 px
            ones' (41 px): a tapped tab's first rows stay in view under it */
         padding: '1px 0 0', margin: 0 }}>
-      <button onClick={onBack} data-cx-back aria-label="All monsters" title="All monsters"
+      <button onClick={onBack} data-cx-back aria-label={say(SAY, 'monsterCodex.backLabel')} title={say(SAY, 'monsterCodex.backLabel')}
         style={{ ...btn, flex: 'none', minWidth: words ? 36 : 28, fontSize: 22, lineHeight: 1, padding: words ? '0 6px' : 0,
           border: '1px solid rgba(229,237,233,.18)', color: COL.accent, background: 'rgba(11,22,27,.45)' }}>
-        ‹{words ? <span style={{ fontSize: 12.5 }}>All</span> : null}</button>
+        ‹{words ? <span style={{ fontSize: 12.5 }}>{say(SAY, 'monsterCodex.backShort')}</span> : null}</button>
       <div data-cx-name style={{ minWidth: 0, flex: 1, fontSize: words ? 16 : 13, fontWeight: 900, lineHeight: 1.1, color: COL.text,
         display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', padding: '0 2px' }}>{name}</div>
       {TABS.map(([id, label]) => {
@@ -408,9 +409,9 @@ function DropsTab({ rows, sel, onPick, shared }) {
         boxShadow: 'inset 0 1px 0 rgba(255,255,255,.04)' }}>
       <div data-cx-drops-head style={{ display: 'grid', gridTemplateColumns: cols, gap: 6, alignItems: 'center', padding: '4px 9px 3px', background: HEAD_BG,
         borderBottom: '1px solid rgba(229,237,233,.14)', ...SECTION, fontSize: 11, color: '#CBD5D2' }}>
-        <span style={{ gridColumn: '1 / span 2' }}>Item</span>
-        {narrow ? null : <span>Type</span>}
-        <span data-cx-roll-head style={{ gridColumn: narrow ? '3' : '4 / span 2', justifySelf: 'end', display: 'inline-flex', alignItems: 'center', gap: 5 }}><Dice h={12} />Roll</span>
+        <span style={{ gridColumn: '1 / span 2' }}>{say(SAY, 'monsterCodex.dropsItemHead')}</span>
+        {narrow ? null : <span>{say(SAY, 'monsterCodex.dropsTypeHead')}</span>}
+        <span data-cx-roll-head style={{ gridColumn: narrow ? '3' : '4 / span 2', justifySelf: 'end', display: 'inline-flex', alignItems: 'center', gap: 5 }}><Dice h={12} />{say(SAY, 'monsterCodex.dropsRollHead')}</span>
       </div>
       <div style={{ padding: 2 }}>
         {rows.map((r, i) => {
@@ -444,7 +445,7 @@ function DropsTab({ rows, sel, onPick, shared }) {
                 </span>
               ) : <>{name}{type}{bar}</>}
               <span data-cx-roll-cell style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', minWidth: 0, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-                <span data-cx-roll={r.from ? r.from + '-' + r.to : 'always'} style={{ fontSize: 13.5, fontWeight: 800, lineHeight: 1.1, color: '#FFFFFF' }}>{rollRange(r) || 'Always'}</span>
+                <span data-cx-roll={r.from ? r.from + '-' + r.to : 'always'} style={{ fontSize: 13.5, fontWeight: 800, lineHeight: 1.1, color: '#FFFFFF' }}>{rollRange(r) || say(SAY, 'monsterCodex.dropsAlways')}</span>
                 <span data-cx-pct style={{ fontSize: 12, fontWeight: 700, lineHeight: 1.1, color: '#B3BEBB' }}>({r.pct})</span>
               </span>
             </button>
@@ -456,10 +457,12 @@ function DropsTab({ rows, sel, onPick, shared }) {
         <div data-cx-dice-key={shared ? 'shared' : 'own'} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <Dice h={13} />
           {shared
-            ? <span>Each kill rolls once, 1–{n0(CODEX_ROLL_SIDES)}. The item whose numbers it lands on drops{free ? <>; <span data-cx-free={free} style={{ whiteSpace: 'nowrap' }}>{n0(free)}–{n0(CODEX_ROLL_SIDES)}</span> drops nothing more</> : null}.</span>
-            : <span>Each kill rolls 1–{n0(CODEX_ROLL_SIDES)} for every item. A roll in its range drops it.</span>}
+            ? <span>{sayPieces(SAY, 'monsterCodex.diceShared', { sides: n0(CODEX_ROLL_SIDES),
+                free: free ? <React.Fragment key="free">{sayPieces(SAY, 'monsterCodex.diceFree', {
+                  range: <span key="range" data-cx-free={free} style={{ whiteSpace: 'nowrap' }}>{n0(free)}–{n0(CODEX_ROLL_SIDES)}</span> })}</React.Fragment> : null })}</span>
+            : <span>{say(SAY, 'monsterCodex.diceOwn', { sides: n0(CODEX_ROLL_SIDES) })}</span>}
         </div>
-        <div style={{ marginTop: 2 }}>{deskWords('Tap an item to see what it is and the grades it can roll.')}</div>
+        <div style={{ marginTop: 2 }}>{say(SAY, 'monsterCodex.dropsHint')}</div>
       </div>
     </div>
   );
@@ -488,7 +491,7 @@ function ItemCard({ kind, e, r, onClose }) {
   return (
     <div data-cx-item={r.id}
       style={{ position: 'relative', border: '1px solid ' + GOLD_EDGE, borderRadius: 12, padding: '10px 10px 10px', background: 'linear-gradient(#1A2B31, #13232A)' }}>
-      <button onClick={onClose} data-cx-item-close aria-label="Close"
+      <button onClick={onClose} data-cx-item-close aria-label={say(SAY, 'monsterCodex.itemClose')}
         data-esc="" data-key="Esc" data-key-at="hang"   /* v2.3.3407: Esc presses it (game/deskKeys.js) */
         style={{ position: 'absolute', top: 6, right: 6, width: 40, height: 40, borderRadius: 9, border: '1px solid rgba(229,237,233,.28)',
           background: 'rgba(11,22,27,.6)', color: COL.text, fontFamily: 'inherit', fontSize: 20, fontWeight: 700, cursor: 'pointer', touchAction: 'manipulation' }}>✕</button>
@@ -509,7 +512,7 @@ function ItemCard({ kind, e, r, onClose }) {
       <div style={{ fontSize: 13, lineHeight: 1.45, color: COL.text, margin: '10px 0 0', paddingBottom: 9, borderBottom: '1px solid ' + COL.divider }}>{r.desc}</div>
 
       <div data-cx-found style={{ padding: '8px 0 9px', borderBottom: '1px solid ' + COL.divider }}>
-        <div style={SECTION}>Found from</div>
+        <div style={SECTION}>{say(SAY, 'monsterCodex.itemFoundFrom')}</div>
         <div style={{ display: 'flex', gap: 9, alignItems: 'center', marginTop: 6 }}>
           <Frame size={44}><PetPortrait pet={{ kind, stage: 1 }} size={40} /></Frame>
           <div style={{ minWidth: 0 }}>
@@ -524,22 +527,22 @@ function ItemCard({ kind, e, r, onClose }) {
       </div>
 
       <div style={{ padding: '8px 0 9px', borderBottom: r.graded ? '1px solid ' + COL.divider : 'none' }}>
-        <div style={SECTION}>Base drop chance</div>
+        <div style={SECTION}>{say(SAY, 'monsterCodex.itemBaseChance')}</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 5 }}>
           <img src="/icons/ui/bldg-gamble.webp" alt="" draggable={false} style={{ width: 40, height: 40, objectFit: 'contain', flex: 'none' }} />
           <div data-cx-base style={{ fontSize: 28, fontWeight: 900, color: COL.text, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{r.pct}</div>
           <div style={{ fontSize: 12, lineHeight: 1.35, color: COL.text2, minWidth: 0 }}>
-            (chance for this item to drop)<br /><span style={{ color: COL.muted }}>{r.chanceNote}</span>
+            {say(SAY, 'monsterCodex.itemChanceNote')}<br /><span style={{ color: COL.muted }}>{r.chanceNote}</span>
             {/* v2.3.3209: its dice, as the table shows them */}
             {r.from ? <><br /><span data-cx-card-roll={r.from + '-' + r.to} style={{ color: COL.muted }}>
-              drops on a roll of {rollRange(r)} out of {n0(CODEX_ROLL_SIDES)}</span></> : null}
+              {say(SAY, 'monsterCodex.itemRoll', { range: rollRange(r), sides: n0(CODEX_ROLL_SIDES) })}</span></> : null}
           </div>
         </div>
       </div>
 
       {r.graded ? (
         <div data-cx-rarity style={{ padding: '8px 0 4px' }}>
-          <div style={SECTION}>Possible rarity <span style={{ letterSpacing: 0, textTransform: 'none', fontWeight: 600, color: COL.muted }}>(rolls after drop)</span></div>
+          <div style={SECTION}>{say(SAY, 'monsterCodex.itemRarity')} <span style={{ letterSpacing: 0, textTransform: 'none', fontWeight: 600, color: COL.muted }}>{say(SAY, 'monsterCodex.itemRarityNote')}</span></div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 7, marginTop: 7 }}>
             {codexGrades().map((g) => <GradeTile key={g.q} q={g.q} p={g.p} icon={r.icon} />)}
           </div>
@@ -623,27 +626,27 @@ function InfoTab({ kind, e, S, elder, setElder }) {
           ))}
         </div>
       )}
-      <Fact fact="page" title="What it does">
+      <Fact fact="page" title={say(SAY, 'monsterCodex.factWhat')}>
         <div style={{ fontSize: 13, lineHeight: 1.4, color: COL.text }}>{e.what}</div>
       </Fact>
-      <Fact fact="element" title={'Element · ' + (el ? el.name : '')}>
+      <Fact fact="element" title={say(SAY, 'monsterCodex.factElement', { name: el ? el.name : '' })}>
         <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
           {el ? <img src={el.icon} alt="" draggable={false} style={{ width: 30, height: 30, objectFit: 'contain', flex: 'none' }} /> : null}
           <div style={{ fontSize: 13, lineHeight: 1.4, color: COL.text }}>
             <b style={{ color: (look && look.color) || COL.text }}>{el ? el.status : ''}.</b> {el ? el.effect : ''}
-            <div style={{ fontSize: 11.5, color: COL.text2, marginTop: 3 }}>A pet from {landName(e.home)}, out with you, softens it.</div>
+            <div style={{ fontSize: 11.5, color: COL.text2, marginTop: 3 }}>{say(SAY, 'monsterCodex.factPet', { land: landName(e.home) })}</div>
           </div>
         </div>
       </Fact>
-      <Fact fact="special" title={'Special attack · ' + e.special.name}>
+      <Fact fact="special" title={say(SAY, 'monsterCodex.factSpecial', { name: e.special.name })}>
         <div style={{ fontSize: 13, lineHeight: 1.4, color: COL.text }}>{e.special.text}</div>
-        <div style={{ fontSize: 12, lineHeight: 1.35, color: '#B9E4C9', marginTop: 4 }}><b>Tip:</b> {e.special.tip}</div>
+        <div style={{ fontSize: 12, lineHeight: 1.35, color: '#B9E4C9', marginTop: 4 }}><b>{say(SAY, 'monsterCodex.factTip')}</b> {e.special.tip}</div>
       </Fact>
-      <Fact fact="story" title="Its story">
+      <Fact fact="story" title={say(SAY, 'monsterCodex.factStory')}>
         {e.story.map((para, i) => <p key={i} style={{ fontSize: 13, lineHeight: 1.45, color: COL.text, margin: i ? '5px 0 0' : 0 }}>{para}</p>)}
       </Fact>
       {e.elder && (
-        <Fact fact="elder" title={'Elder form · ' + e.elder.name} gold>
+        <Fact fact="elder" title={say(SAY, 'monsterCodex.factElder', { name: e.elder.name })} gold>
           <div style={{ fontSize: 13, lineHeight: 1.4, color: COL.text }}>{e.elder.text}</div>
         </Fact>
       )}
@@ -669,26 +672,27 @@ function LocationsTab({ kind, e }) {
   const road = wayThere(e.home);
   return (
     <div data-cx-locations={kind}>
-      <LocRow attr="land" title="Its land"
+      <LocRow attr="land" title={say(SAY, 'monsterCodex.locLand')}
         icon={look && look.icon ? <img src={look.icon} alt="" draggable={false} style={{ width: 28, height: 28, objectFit: 'contain' }} /> : null}>
-        <b style={{ color: (look && look.color) || COL.text }}>{landName(e.home)}</b>, {landLevelsText()}: the weakest at the land's near end by BroTown, stronger the further out you go.
+        {sayPieces(SAY, 'monsterCodex.locLandText', {
+          land: <b key="land" style={{ color: (look && look.color) || COL.text }}>{landName(e.home)}</b>, levels: landLevelsText() })}
       </LocRow>
-      <LocRow attr="levels" title="Before the first pass" icon={<Frame size={30}><PetPortrait pet={{ kind, stage: 1 }} size={28} /></Frame>}>
-        {e.name}, {oneLevels(bands.first)}.
+      <LocRow attr="levels" title={say(SAY, 'monsterCodex.locFirst')} icon={<Frame size={30}><PetPortrait pet={{ kind, stage: 1 }} size={28} /></Frame>}>
+        {say(SAY, 'monsterCodex.locFirstText', { name: e.name, levels: oneLevels(bands.first) })}
       </LocRow>
       {bands.elder && e.elder ? (
-        <LocRow attr="elder" title="Past the first pass" icon={<Frame size={30} edge="rgba(234,198,117,.5)"><PetPortrait pet={{ kind, stage: 2 }} size={28} /></Frame>}>
-          {e.elder.name}, its elder form, {oneLevels(bands.elder)}.
+        <LocRow attr="elder" title={say(SAY, 'monsterCodex.locElder')} icon={<Frame size={30} edge="rgba(234,198,117,.5)"><PetPortrait pet={{ kind, stage: 2 }} size={28} /></Frame>}>
+          {say(SAY, 'monsterCodex.locElderText', { name: e.elder.name, levels: oneLevels(bands.elder) })}
         </LocRow>
       ) : null}
       {road ? (
-        <LocRow attr="road" title="The way there" icon={<span style={{ color: COL.accent }}><Glyph type="Road" size={24} /></span>}>
+        <LocRow attr="road" title={say(SAY, 'monsterCodex.locRoad')} icon={<span style={{ color: COL.accent }}><Glyph type="Road" size={24} /></span>}>
           {road}
         </LocRow>
       ) : null}
       {e.dungeon ? (
-        <LocRow attr="dungeon" title="Dungeon" icon={<span style={{ color: COL.accent }}><Glyph type="Weapon" size={24} /></span>}>
-          {e.dungeon.charAt(0).toUpperCase() + e.dungeon.slice(1)}, in {landName(e.home)}: {oneLevels(e.dungeonLevels)}, in waves, its land's monsters with a boss at the end.
+        <LocRow attr="dungeon" title={say(SAY, 'monsterCodex.locDungeon')} icon={<span style={{ color: COL.accent }}><Glyph type="Weapon" size={24} /></span>}>
+          {say(SAY, 'monsterCodex.locDungeonText', { dungeon: e.dungeon.charAt(0).toUpperCase() + e.dungeon.slice(1), land: landName(e.home), levels: oneLevels(e.dungeonLevels) })}
         </LocRow>
       ) : null}
     </div>
@@ -732,14 +736,14 @@ function Page({ kind, S, onBack }) {
          so it keeps its own */}
       {!known ? (
         <button onClick={onBack} data-cx-back style={{ minHeight: 40, padding: '0 10px 0 4px', background: 'transparent', border: 'none', color: COL.accent,
-          fontFamily: 'inherit', fontSize: 13, fontWeight: 800, cursor: 'pointer', touchAction: 'manipulation' }}>‹ All monsters</button>
+          fontFamily: 'inherit', fontSize: 13, fontWeight: 800, cursor: 'pointer', touchAction: 'manipulation' }}>{say(SAY, 'monsterCodex.backButton')}</button>
       ) : null}
       {!known ? (
         <div style={{ textAlign: 'center', padding: '10px 0 4px' }}>
           <div style={{ display: 'grid', placeItems: 'center' }}><PetPortrait pet={{ kind, stage: 1 }} size={96} shadow /></div>
-          <div data-cx-name style={{ fontSize: 18, fontWeight: 900, color: COL.text2, marginTop: 6 }}>???</div>
-          <div style={{ fontSize: 13, fontWeight: 700, color: COL.text2, marginTop: 6 }}>Defeat one to open its page.</div>
-          <div style={{ fontSize: 12, color: COL.muted, marginTop: 3 }}>It lives in {landName(e.home)}.</div>
+          <div data-cx-name style={{ fontSize: 18, fontWeight: 900, color: COL.text2, marginTop: 6 }}>{say(SAY, 'monsterCodex.unknownName')}</div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: COL.text2, marginTop: 6 }}>{say(SAY, 'monsterCodex.lockedHint')}</div>
+          <div style={{ fontSize: 12, color: COL.muted, marginTop: 3 }}>{say(SAY, 'monsterCodex.lockedHome', { land: landName(e.home) })}</div>
         </div>
       ) : open ? (
         <ItemCard kind={kind} e={e} r={open} onClose={() => setCard(null)} />
@@ -791,14 +795,14 @@ export function MonsterCodex({ open = null, setOpen = () => {} } = {}) {
   return (
     <div ref={grid} data-cx-grid={met} data-cx-narrow={narrow ? 1 : 0} data-cx-big={big ? 1 : 0}>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', margin: '1px 2px 4px' }}>
-        <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.10em', textTransform: 'uppercase', color: COL.muted }}>Monsters of the world</div>{/* v2.3.3552: never "Wheel" to a player */}
-        <div style={{ fontSize: 11, color: COL.text2, fontVariantNumeric: 'tabular-nums' }}>{met} of {CODEX_KINDS.length} met</div>
+        <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.10em', textTransform: 'uppercase', color: COL.muted }}>{say(SAY, 'monsterCodex.listTitle')}</div>{/* v2.3.3552: never "Wheel" to a player */}
+        <div style={{ fontSize: 11, color: COL.text2, fontVariantNumeric: 'tabular-nums' }}>{say(SAY, 'monsterCodex.listMet', { met, total: CODEX_KINDS.length })}</div>
       </div>
       {!(c && c.known) && !codexLive(S) ? (
-        <div data-cx-note="old" style={{ fontSize: 12, color: COL.muted, margin: '0 2px 8px' }}>The codex starts counting your kills after the next game update.</div>
+        <div data-cx-note="old" style={{ fontSize: 12, color: COL.muted, margin: '0 2px 8px' }}>{say(SAY, 'monsterCodex.noteOld')}</div>
       ) : null}
       {c && c.unavailable ? (
-        <div data-cx-note="unavailable" style={{ fontSize: 12, color: COL.muted, margin: '0 2px 8px' }}>Your codex can't be read right now. It will be back.</div>
+        <div data-cx-note="unavailable" style={{ fontSize: 12, color: COL.muted, margin: '0 2px 8px' }}>{say(SAY, 'monsterCodex.noteUnavailable')}</div>
       ) : null}
       {/* v2.3.3215: three across, all nine on a phone's sheet at once; two
          across in a narrow one, their words wrapping (sideways) */}
@@ -806,7 +810,7 @@ export function MonsterCodex({ open = null, setOpen = () => {} } = {}) {
         {rows.map((r) => <Card key={r.k} kind={r.k} n={r.counts[0]} fresh={r.fresh} onOpen={setOpen} wrap={narrow} big={big} />)}
       </div>
       <div style={{ fontSize: big ? 12.5 : 11, color: COL.muted, lineHeight: 1.4, marginTop: big ? 12 : 8 }}>
-        Defeat one of a kind to open its whole page: everything it drops, what it does, its story and where it lives. Kills in a party count for everyone in it.
+        {say(SAY, 'monsterCodex.listHint')}
       </div>
     </div>
   );
