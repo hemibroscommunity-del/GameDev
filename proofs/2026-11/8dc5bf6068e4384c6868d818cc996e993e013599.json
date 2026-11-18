@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "8dc5bf6068e4384c6868d818cc996e993e013599",
+  "tree": "fb24408df04c461679c392d8cda7c1fa3cb5047c",
+  "committedAt": "2026-11-17T20:02:20-08:00",
+  "subject": "Merge pull request #2157 from hemibroscommunity-del/claude/plan-j3-4-race",
+  "files": 8234,
+  "bytes": 961208166,
+  "listingSha256": "6800255a87b741bf96bdb17e5d7b5e4a3956f94527ee68c62c3f6077d394a020",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "1be946570ad4510362c75fe1fbedd285f53ae790",
+  "tree": "ef1cebfea43daf98f4337d1c63cdeeb246429e8d",
+  "committedAt": "2026-11-17T20:02:12-08:00",
+  "subject": "Merge pull request #2156 from hemibroscommunity-del/claude/plan-j3-3-hitsound",
+  "files": 8234,
+  "bytes": 961207122,
+  "listingSha256": "fd8c4b3d207c6ee437f0b7009ccb76827fec4db372123f15c35cf60d63ec07a6",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "0b17f2c5d8c1e05f411cdd722de8e12e650b1002",
+  "tree": "a6ba4b60725a46a0bf6b3b886036381e482691ba",
+  "committedAt": "2026-11-17T20:27:30-08:00",
+  "subject": "Merge pull request #2158 from hemibroscommunity-del/claude/plan-j3-5-ownersounds",
+  "files": 8234,
+  "bytes": 961209745,
+  "listingSha256": "1a131665166f33214931ef460b3e0e1e6480e93fcc6a8f8a5ecbbdcd280607a5",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

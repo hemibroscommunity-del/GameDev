@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "d6e72e7fd9633bb2eff27e78dc2e7df388d76b82",
+  "tree": "8d04899e355beb85a3a67afc27579d5772656de5",
+  "committedAt": "2026-11-17T20:27:41-08:00",
+  "subject": "Merge pull request #2159 from hemibroscommunity-del/claude/plan-j3-6-bowprops",
+  "files": 8234,
+  "bytes": 961210301,
+  "listingSha256": "52dbf67eba032b6bf3cb80e8dbedae310330b86ad435d314c20165d4c39659d8",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

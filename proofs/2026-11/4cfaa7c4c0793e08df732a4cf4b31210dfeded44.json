@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "4cfaa7c4c0793e08df732a4cf4b31210dfeded44",
+  "tree": "add5091631270b9e3bcff5d8f7a2f6da4932af08",
+  "committedAt": "2026-11-17T20:02:02-08:00",
+  "subject": "Merge pull request #2155 from hemibroscommunity-del/claude/plan-j3-2-comeback",
+  "files": 8234,
+  "bytes": 961206282,
+  "listingSha256": "156b836436028cab7230bc1bd938896f2330f4093a77ee4a410fdc960d7649da",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "17d18deb41492362ab1aaf1ed4a40a068d0a2add",
+  "tree": "8388bc3d3a825e107f124759b523b0a1c74f9fb3",
+  "committedAt": "2026-11-17T20:01:53-08:00",
+  "subject": "Merge pull request #2154 from hemibroscommunity-del/claude/plan-j3-1-census",
+  "files": 8234,
+  "bytes": 961205551,
+  "listingSha256": "9e98c9f3961c27d0780bb481504596fd57fc50162e910066795accc088c2c12e",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
