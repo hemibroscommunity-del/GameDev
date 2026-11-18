@@ -23,7 +23,7 @@ committed) and its numbers are quoted.
 | `race` | 1 red | 1 red | the TEST's (stale cells) | 5843 |
 | `ownersounds` | 3 red | 3, 9b red | the TEST's (regen; the chat gap) | 5844 |
 | `bowprops` | H red | H red | the TEST's (the view is wider) | 5845 |
-| `desklunge` | 4 red | green | see below | see below |
+| `desklunge` | 4 red | green | the TEST's (the sea; wall clock) | 5846 |
 | `itemdrop` | 5b red | (J2's runs) | a GAME question (J2's) | Needs |
 
 ## The causes
@@ -88,9 +88,25 @@ width" is from a narrower view, so the 460 px stand is on screen and the
 guard refused every run. Fix: stand at max(460, half + 80) px (502 today),
 inside the bow's 675.
 
-### `desklunge`
+### `desklunge` (red 1 of 2; then 6 of 11 runs of a copy with readings)
 
-PENDING
+Two causes, both the TEST's:
+
+- 1, 2, 3 all red together (round 1; 5 of the 11): every click did
+  nothing: no swing, no dash, the cooldown 0, though the lunge was ready
+  (`visible, equipped, afford, cdLeft 0`) and the press read `attack`.
+  Read at the click (the run that read it): the popup "Swimming!" and
+  the cue `denied`. The test
+  stood him 170 px south of the nearest snowman, and that spot was
+  sometimes the sea: swimming, the game refuses every swing and lunge
+  (`combatHelpers.js swimRefused`), by design. Fix: the first of eight
+  stands round the snowman whose ground the game says is dry
+  (`__btSwimAt`, `swimFx.js`), and a guard that he is not swimming there.
+- 3 alone red (1 of the 11): "inside the lunge's cooldown" lunged
+  again (a dash, a fresh 2.3 s cooldown). The click came after the wait
+  for the worker's HP (up to 4 s of the wall clock), longer than the 2.5 s
+  cooldown on this box (TRAPS §200). Fix: the click at once after the
+  lunge, before that wait, its cooldown read just before it (> 0).
 
 ### `itemdrop` 5b: a GAME question (J2's Found), not run as a fix here
 
