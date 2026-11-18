@@ -55,7 +55,11 @@ function shell() {
 const _live = sw('playvwlive');
 let _vw = -1, _vh = -1, _sw = -1, _sh = -1, _ro = null, _roEl = null, _wired = false;
 const _sizes = { reads: 0, measured: 0 };
-function _clear() { _vw = -1; _vh = -1; _sw = -1; _sh = -1; }
+function _clear(e) {
+  /* v2.3.6241: the band's own resize (bandResize below) moves neither the window nor the shell: kept (card HB PR 2) */
+  if (e && e.btBand === true) return;
+  _vw = -1; _vh = -1; _sw = -1; _sh = -1;
+}
 function _wire(el) {
   if (_live || typeof window === 'undefined') return;
   if (!_wired) {
@@ -128,6 +132,18 @@ function _win() {
   if (!_winWired) { _winSizes.measured++; return { w: window.innerWidth, h: window.innerHeight }; }
   if (_ww < 0) { _winSizes.measured++; _ww = window.innerWidth; _wh = window.innerHeight; }
   return { w: _ww, h: _wh };
+}
+/** v2.3.6241: the band's one geometry path (dashMinBus.set, dashboardPanelBus's emit): a `resize` for BroTown's
+ *  resize() and the band's own listeners, marked as the band's.  Folding the band or opening a page moves no
+ *  size kept here: the window moves only with the browser's resize, the shell (#root) with the window and the
+ *  computer's wide class (game.css; deskWide.js and dashSidePref.js send their own, unmarked, which clear).
+ *  So every listener reads the kept sizes instead of laying the page out inside the tap (61 to 114 ms on
+ *  budget-android, docs/plan/census/HB-holds.md row 7).  `?playvwlive=1` measures every read, as before. */
+export function bandResize() {
+  if (typeof window === 'undefined') return;
+  let ev = null;
+  try { ev = new Event('resize'); ev.btBand = true; } catch (e) { ev = null; }
+  if (ev) window.dispatchEvent(ev);
 }
 /** window.innerWidth, kept till the browser resizes the window (0 off a page). */
 export function winVw() {

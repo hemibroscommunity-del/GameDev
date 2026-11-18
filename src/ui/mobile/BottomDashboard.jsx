@@ -75,7 +75,7 @@ import { QuestsPanel }        from './dash/QuestsPanel.jsx';
 import { QuestDetailPanel }   from './dash/QuestDetailPanel.jsx'; /* v2.3.1298 */
 import { T2Panel, requestT2Category } from './dash/T2Panel.jsx';
 import { SpendPointConfirm }   from './dash/SpendPointConfirm.jsx';
-import { playVw, playVh, playIsLandscape } from './playViewport.js'; /* v2.3.2157: the band has a sideways shape */
+import { playVw, playVh, playIsLandscape, winVh } from './playViewport.js'; /* v2.3.2157: the band has a sideways shape; v2.3.6241: + winVh */
 import { dashMinBus } from './dashMinBus.js';
 import { shopBus } from './shopBus.js';          /* v2.3.3399: a window that sells from the bag unfolds it */
 import { tradeBagBus } from './tradeBagBus.js';
@@ -722,7 +722,7 @@ export const BottomDashboard = () => {
      navRowFills): the one band, not a phone on its side, buttons at their
      ceiling -- a tablet, a computer.  A phone's row is unchanged. */
   const navFillNow = () => oneBandActive() && !bandSideways()
-    && navRowFills(playVw(), typeof window !== 'undefined' ? window.innerHeight : 844);
+    && navRowFills(playVw(), typeof window !== 'undefined' ? (winVh() || 844) : 844);   /* v2.3.6241: winVh, kept (card HB PR 2) */
   const [navFill, setNavFill] = useState(navFillNow);
   useEffect(() => {
     const onR = () => {
@@ -904,7 +904,10 @@ export const BottomDashboard = () => {
   }));
   useEffect(() => {
     const vv = window.visualViewport;
-    const recompute = () => {
+    const recompute = (e) => {
+      /* v2.3.6241: the band's own resize (playViewport.js bandResize) moves neither the window nor the play column,
+         so these heights stand; it ran here inside the tap, laying the page out (card HB PR 2) */
+      if (e && e.btBand === true) return;
       const vw = playVw();   /* v2.3.1715 */
       const vh = vv ? vv.height : window.innerHeight;
       if (vv && window.innerHeight - vh > 100) return; /* keyboard up */
