@@ -19,6 +19,7 @@ Runs 44381829545 (10356e53) and 44382339345 (a756a519) of
 | RR | #2256 mp-mayordoor, the test's | 6301 | eaaca384 | ready, every check green; STACKED on #2251 (its three docs) |
 | LR | #2252 the layout-read list lowered 365 -> 337 | 6362 | 5dd874c6 | ready, every check green |
 | SB | #2253 the ground keeps up with the board (`?groundsend`) | 6382 | fd2a169a, then a978e2e4 | held at SB's own word 21:32, back with a978e2e4 (below) |
+| RR | #2258 mp-firststeps 6, the test's | 6302 | 26dc9778 | ready 23:11, after the close: sitting 53 (stacked on #2256) |
 | EN | #2255 a peer's look prewarm a few ms at a time; the PNG queue capped | 6204 | 325d1fbe | ready, every check green |
 | HB2 | #2244 #2247 #2249 (6281-6283) | | ae77a66e ba5fb191 35c44898 | drafts, `dirty` (main to merge: WD3's words) all sitting |
 | HB2 | #2254 p256's twins read and packed on the worker | 6284 | 50d38b58 | every check green; marked ready by the planning session 22:34 (HB2 reported it ready to it) |

@@ -15,7 +15,8 @@ state: ready
 ## Held / To 53
 - None held at close. #2253 was held 21:32-22:23 at SB's word (its ride's
   peak 89 MB on a fast lap) and came back at a978e2e4 (look ahead 1.5x).
-- To 53: HB2 #2244, #2247, #2249 (6281-6283; drafts, merge main first:
+- To 53: RR #2258 (6302, mp-firststeps; ready 23:11, after the close;
+  stacked on #2256); HB2 #2244, #2247, #2249 (6281-6283; drafts, merge main first:
   WD3's words); mark LR and SB done once #2252 and #2253 merge; RR's
   next (the reds to trace, the slow checks, the rejoin loop); EN 6205 on.
 ## Found
