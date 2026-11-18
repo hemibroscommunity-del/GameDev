@@ -143,9 +143,9 @@ player sees changes except the wrong thing the finding is.
 | 7 | 5807 | `server/src/lookform.js` (new, the forms), `leaderboard.js`, `src/game/lookForm.js` (new, the page's copy), `PlayerIcon.jsx`, `InspectPlayerPanel.jsx`, `LeaderboardPanel.jsx`, `SocialPanel.jsx` | S2 (the board keeps `color` only as a colour; the page draws an `avatar` only in the proxy form it builds, a `color` only as a hex colour). The join's half is card K2's (its PR 11 imports `lookform.js`); `track`'s and S3 wait for `index.js` (a later RV PR) | `?lookform=0` (page); the board's switch comes with `index.js`'s half (the board learns flags only from the room's report) |
 | 8 | 5808 | `loginkeys.js` | SEC-F5 | `oldkeyheld` (the existing one) |
 | 9 | 5809 | `storeoffer.js`, `gladiator.js`, `trade2.js`, `inbox.js` (the switch) | MS-5 (a Yes waits for a bid or an offer half made); MS-6's arena and trade leftovers (the payment and its escrow's delete one write) | `offerpend`, `leftoverheal` |
-| 10 | 5810 | `dailyrewards.js`, `loginspin.js` | MD-2 (the paid mark in the credit's own run) | `paidmark` |
-| 11 | 5811 | `gearstash.js` | SEC-F2 (once shown) | `gearheld` (the existing one) if it fits |
-| 12 | 5812 | `friends.js` | ACC-5, SEC-F4 | `friendfix` |
+| 10 | 5810 | `dailyrewards.js`, `loginspin.js` | MD-2 (the paid mark in the credit's own run). **Not built yet:** the daily record would be put twice for a payout (once in the credit's run, once by the caller's own save), a new write; it waits until it can be done without one, or the owner says | `paidmark` |
+| 11 | 5811 | `friends.js`, `src/game/friendErrors.js` (`own-full`'s words) | ACC-5 (an accept is both sides or neither; a one-sided friendship ended by the side it names), SEC-F4 (a request received 30 days ago let go where the record is written anyway; and, sitting 44's review, the sender's own copy let go on their next request, so it holds no slot or repeat; an accepter's own full list answers `own-full`) | `friendfix` |
+| — | — | `gearstash.js` | SEC-F2: read, not built. A join's shield and cosmetic claims are still merged each join, but a claimed piece has no `gid`, so it is `legacy`: never sellable or tradeable (`gearprov.js` `_gearSellable`), no money in it; the gap is wearing a shield the worker never handed out. Closing it can drop an honest phone-only shield, a player's item: **the owner's call** | — |
 | 13 | 5813 | `cadence.js` (+ a door guard) | MD-3, MD-4 | `jackcheck` |
 | 14 | 5814 | `chatguard.js`, `petbook.js`, `alliance.js` | S6, S7's invisible characters | `cleanmore` |
 
