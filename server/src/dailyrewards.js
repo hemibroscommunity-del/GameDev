@@ -594,15 +594,40 @@ export const dailyRewardsMethods = {
      whatever was doubled in between.  `_creditPlayer` lands the coins on a
      player who is here (the player_state echo carries them) and mails them
      to one who is not.  Returns the coins paid (0 for none). */
+  /* ═══ v2.3.5810 (card RV PR 10, MD-2): THE PAID MARK IN THE CREDIT'S OWN RUN ═══
+     The pot's credit was one write and its "paid" mark (`sp.open = 0`, the
+     login spin's `paid`) a later one.  A restart
+     between left the pot open; the next pay was the oplog's 'dup' -- until
+     the 48 h prune (inbox.js _opPruneMaybe) took the stamp, after which the
+     same pot paid again (TRAPS §146: the oplog is not the record).  Now the
+     record, marked, is put in the credit's own run (inbox.js _creditWith).
+     For the daily record that is ONE row more a payout (the caller still
+     saves it as before): the owner's yes, 2026-11-18, "Yes to all".  The
+     login spin's mark moves into the run and its later save goes, so it
+     writes no more rows.  KILL SWITCH `paidmark: false`: the old order. */
+  _paidMarkOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'paidmark') && !f.paidmark);
+  },
   async _spinPay(pid, rec, why) {
     const sp = rec.sp;
     const amount = Math.max(0, Math.floor(sp.pot || 0));
     if (!sp.open || !(amount > 0)) return 0;
-    const r = await this._creditPlayer(pid, {
+    const entry = {
       opId: 'spinpot:' + pid + ':' + (sp.run || 'x'),
       source: 'dailyspin', kind: 'gold', payload: { amount },
       note: 'Daily spin' + (why ? ' (' + why + ')' : ''),
-    });
+    };
+    let r;
+    if (this._paidMarkOn()) {
+      /* v2.3.5810: closed first, and the closed record put in the pay's run */
+      sp.open = 0;
+      try {
+        r = await this._creditWith(pid, { ...entry, opId: 'spinpot:' + pid + ':' + (sp.run || 'x') }, () => [this.state.storage.put(DAILY.KEY + pid, rec)]);
+      } catch (e) { sp.open = 1; throw e; }
+    } else {
+      r = await this._creditPlayer(pid, { ...entry, opId: 'spinpot:' + pid + ':' + (sp.run || 'x') });
+    }
     sp.open = 0;
     /* v2.3.4393: a pot paid is a record (boards.js: the daily spin's biggest
        wins) -- once, not for a 'dup', and never allowed to cost the pay */
@@ -946,10 +971,22 @@ export const dailyRewardsMethods = {
          and for the season-end mail, which is what makes them unable to both
          pay (opid-audit wants the literal prefix inline) */
       try {
+        /* v2.3.5810 (paidmark, _spinPay above): NOT for a season's grants
+           (sitting 45's review).  A claim marks every tier it claims (se.cl)
+           before the first grant -- all of them at once for "claim all" --
+           so putting the record with the first grant's credit wrote every
+           tier claimed while one was paid, and a restart there lost the
+           rest for good.  Left as it was: the caller saves after all the
+           grants, and a restart before that leaves nothing marked, so a
+           claim again converges on each grant's stamp.  (The season is
+           off by default: _seOff.) */
+        const markWith = null;
         if (gr.kind === 'coins') {
-          await this._creditPlayer(pid, { opId: 'season:' + pid + ':' + s + ':' + t + ':' + g, source: 'season', kind: 'gold', payload: { amount: gr.n }, note });
+          if (markWith) await this._creditWith(pid, { opId: 'season:' + pid + ':' + s + ':' + t + ':' + g, source: 'season', kind: 'gold', payload: { amount: gr.n }, note }, markWith);
+          else await this._creditPlayer(pid, { opId: 'season:' + pid + ':' + s + ':' + t + ':' + g, source: 'season', kind: 'gold', payload: { amount: gr.n }, note });
         } else if (gr.kind === 'item') {
-          await this._creditPlayer(pid, { opId: 'season:' + pid + ':' + s + ':' + t + ':' + g, source: 'season', kind: 'item', payload: { invKey: gr.key, count: gr.n }, note });
+          if (markWith) await this._creditWith(pid, { opId: 'season:' + pid + ':' + s + ':' + t + ':' + g, source: 'season', kind: 'item', payload: { invKey: gr.key, count: gr.n }, note }, markWith);
+          else await this._creditPlayer(pid, { opId: 'season:' + pid + ':' + s + ':' + t + ':' + g, source: 'season', kind: 'item', payload: { invKey: gr.key, count: gr.n }, note });
         } else if (gr.kind === 'spin') {
           rec.sp.extra = Math.min(SPIN.EXTRA_MAX, rec.sp.extra + gr.n);
         } else if (gr.kind === 'freeze') {

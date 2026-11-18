@@ -174,11 +174,31 @@ try harder:
 
 ## Close codes
 
+Every code of 4000 and up the worker closes with has its row (v2.3.6042,
+card V6: TRAPS §297's guard, `tools/guards/traps-wire.test.mjs`, fails a
+code with none). The reason in brackets is the close's own words; most
+codes follow a message (`join_rejected`, `room_full`, `linger_wait`) that
+the phone reads first, and the code alone is enough if that message is
+lost. The phone's side is `wsClient.js`'s `onclose`.
+
 | Code | Meaning | What the client does |
 |---|---|---|
+| 4003 | the join's key or id refused (`auth`; `join_rejected` reason `auth`), join.js | the key screen (the old key kept beside, or the way to the door); a fresh identity once only on `?tabid=0`, then stops (`rejected`); never a loop (v2.3.1181, v2.3.4606) |
+| 4004 | the character frozen by the owner (`frozen`): a join refused, the Test panel's freeze (admin.js), or a silenced character's own join (silence.js) | stops, no reconnect; "Account frozen" |
+| 4005 | the character reset (`character reset`, persistence.js), after `character_reset_done` | nothing: the reset's own handler reloads the page |
+| 4006 | away too long (`idle timeout`: the worker's AFK sweep in tick.js, or the phone's own idle logout) | stops; "You were away, so your character logged out." and "I'm back" |
+| 4008 | put out by the owner (`admin_kick`, admin.js `/kick`) | an ordinary reconnect on its backoff (no row of its own in `onclose`) |
+| 4009 | the room is full (`room full`, after `room_full`; join.js, seathold.js) | the full screen, retrying on its own pace until a seat frees |
+| 4010 | the character's body is still in a fight (`linger`, after `linger_wait`; linger.js) | the linger screen, then joins again when the body goes |
 | 4011 | no join within the window, or a second join on the socket | an ordinary reconnect on its backoff (an unknown code) |
 | 4012 | too many messages | the same |
 | 4013 | the join failed on the server (it threw; v2.3.4413, was 4010) | the same |
+| 4014 | the account check is wanted first (`verify`, after `join_rejected` reason `verify`; verify.js) | Cloudflare Turnstile's gate, then joins with its token |
+| 4015 | not one of the game's own sites (`play at brotown.net`, after `join_rejected` reason `origin`; origin.js) | the origin screen, with the link home; no reconnect |
+| 4016 | the right key from a device this character was never played on (`device`; devicelock.js) | the device screen; no reconnect |
+| 4017 | a Login Key that is not this character's, or a retired one (`key`; loginkeys.js, sent by devicelock.js's put-out) | the key screen (or back to the old key kept beside it) |
+| 4018 | too many wrong Login Keys for this character (`locked`, after `join_rejected` reason `locked` with its wait; loginkeys.js) | waits out the lock (at most 2 min), then joins again |
+| 4023 | the character's name refused (`name`, after `join_rejected` reason `name` and a "Name refused" line; charname.js) | stops (an unknown reason is fatal): the phone's name box runs the same rule first, so an honest player never meets it |
 
 None is one the client reads as idle (4006), frozen (4004), full (4009),
 reset (4005) or a linger (4010); flood.test.mjs §7 pins that, and
