@@ -422,6 +422,12 @@ outside the profile.
   which card HB2 takes after its 6284. Card HB is done (#2209 merged at
   sitting 48); card HB2 carries its next list (the gatekeeper, sitting 49,
   tag 6263).*
+  *Merged at sitting 51: HB2's #2224 (the quest coach measured after the
+  paint, `?afterpaint`), LR's #2226 and #2245 (`layout-reads.test`: a new
+  read of the page's layout is refused on every PR, its list 365 and only
+  falling; `docs/specs/layout-reads.md`), SB's #2228 (mp-heldsweep's
+  `ride` station, `census/SB-ride.md`). `other: R > J` is still on the
+  list: 3.1 stays open (the gatekeeper, sitting 52, tag 6266).*
 - [ ] **3.2 [LATER] One queue for work that is not this frame's**, with
   priorities. It takes nothing while the frames are late or the pacer is
   trying a step up. Work put off (after a fight, at a veil) joins it one a
@@ -990,6 +996,11 @@ nothing known, and a restore copies nothing.
   screens' words into `src/data/say/`; the in-place line 4995 -> 4120
   (worker 385 unchanged). Card WD2 done; card WD3 carries W1 on (the
   gatekeeper, sitting 51, tag 6265).*
+  *Wave W1 carried on (card WD3), merged at sitting 51: #2227 the guard's
+  mends, #2229 to #2243 fifteen PRs of screens' words, #2246 the census's
+  NOT_SHOWN and #2248 ExchangePanel; the in-place line 4120 -> 2710.
+  Card WD3 done; no WD4 is started (the planning session: cleanup cards
+  wait) (the gatekeeper, sitting 52, tag 6266).*
 
 (8.4 of version 1 is part 11's advice; 8.5 is wave 0.)
 
@@ -1437,6 +1448,13 @@ to read when you are back; recorded by the gatekeeper, sitting 46, tag 6260):
   list once it is green).
 - Card HB's `?afterpaint` ON for everyone (`?afterpaint=0` the
   off-ramp), as its PRs come.
+- On the skateboard the ground keeps up with the board, ON for everyone
+  (card SB, #2253, `?groundsend=0` the off-ramp): the share of the view
+  not yet drawn while riding 19.3 -> 3.1% (this box), 33.5 -> 8.0% (a
+  slow Android); riding holds about 3.4 MB more at worst, under the
+  on-foot peak the memory check already allows. Its smaller sibling
+  (`?atlasrow`, 0.3 ms a send) is parked, not built (recorded by the
+  gatekeeper, sitting 52, tag 6266).
 - The memory check's `buffers` line raised 24.2 -> 24.8 MB as `artCache`
   fell 2.2 MB (net 1.7 MB less in the page): the ore rocks and the
   projectile sheets as colour numbers (card FX, #2200; `?treenumbers=0`

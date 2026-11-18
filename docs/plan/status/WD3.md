@@ -1,7 +1,7 @@
 card: WD3
 branch: claude/plan-wd3-17-exchange (one PR a branch, claude/plan-wd3-N-<what>, each stacked on the last, base main)
-prs: #2227 (6340), #2229-#2233 (6341-6345), #2235-#2243 (6346-6354) in order; PR 16 (6355), PR 17 (6356, working)
-state: working
+prs: #2227, #2229 to #2243, #2246, #2248 (tags 6340 to 6356): all merged (sitting 51)
+state: done
 
 ## Done (in place on the page 4120 -> ...; worker 385 unchanged)
 - PR 1 (6340): the guard's mends (say.test 6-9, desk-words 5b, LoginScreen's comment).
