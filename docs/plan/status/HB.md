@@ -1,7 +1,7 @@
 card: HB
-branch: claude/plan-hb-holds
-prs: #2188 (6240, the map): ready
-state: ready
+branch: claude/plan-hb-2-bandsize
+prs: #2188 (6240, the map): ready; 6241: working
+state: working
 
 ## Done
 
@@ -11,9 +11,12 @@ state: ready
 
 ## Next
 
-- PR 2 (6241): the worst HB family: the band's geometry measured in
-  React's commit and in the synthetic resize (pillNarrow, wantSideways,
-  NavRail measure, OneBandColumns read; jg > Ek, onPointerUp > set).
+- PR 2 (6241): the band's geometry: the window's size kept
+  (playViewport.js winVw/winVh, cleared only by a trusted resize), the
+  band's own resize marked (bandResize) so the play sizes stand through
+  it.  Measuring under budget-android: the 200 ms renders' forced layouts
+  (jumpAnchor) go; the tap's layout moves to the next reader (BroTown
+  resize's visualViewport read, the mount measures).
 
 ## Found
 
