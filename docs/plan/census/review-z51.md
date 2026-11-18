@@ -16,8 +16,10 @@ Tags bare.
 | HB2 | #2224 the quest coach after the paint | 6280 | 0d0faa25 | every check green; marked ready by the planning session (HB2 said ready at 16:49, in a long browser batch; its status file's `working` line is stale) |
 | LR | #2226 the layout-reads guard | 6360 | ee639b1b | ready (a38f55b4, then 81121cd1, then ee639b1b this sitting: below) |
 | WD3 | #2229 #2230 #2231 #2232 #2233 | 6341 to 6345 | ef44a135 6ceae277 74b08bf8 8b5499f2 aaaa48a9 | stacked on #2227, each base `main`; `test` green |
-| WD3 | #2235 #2236 #2237 #2238 #2239 #2240 #2241 #2242 #2243 | 6346 to 6354 | a01bfe92 0943a1e5 1aaaafb6 30c7bc75 d652194f d2aa9aba e4292767 943f6141 af55a7e6 | stacked on #2233; WD3_CI |
+| WD3 | #2235 #2236 #2237 #2238 #2239 #2240 #2241 #2242 #2243 | 6346 to 6354 | a01bfe92 0943a1e5 1aaaafb6 30c7bc75 d652194f d2aa9aba e4292767 943f6141 af55a7e6 | stacked on #2233; `test` green on each (WD3's messages, 18:44 to 18:52) |
 | EN | #2234 five canvas pictures (§253) | 6203 | 57c8d0fb | ready, every check green (main merged in); its status file's `working` line is stale (EN would not push to keep the checks) |
+| WD3 | #2246 census NOT_SHOWN; #2248 ExchangePanel | 6355, 6356 | 13b4ed61, b1d87538 | stacked on #2243, ready, `test` green; #2248 DEPLOYS (server/test store-sell-tap) |
+| LR | #2245 the spec and the rule | 6361 | 0e5ce0c8 | stacked on #2226, ready, `test` green; its status file's line is stale (LR fixes it in its re-freeze push) |
 | HB2 | #2244 (6281, the band) | | ae77a66e | draft: sitting 52 |
 
 ## Step 3: each against its card
@@ -49,6 +51,18 @@ Tags bare.
   in-place line falls at each PR (on #2227's 4120: 3901 at #2230, 3677 at
   #2232, 3568 at #2233, 3201 at #2237, 2987 at #2240, 2800 at #2243): the
   card's 15 PRs.
+- **WD3 #2246, #2248** (on the planning session's answer, named in each
+  PR): #2246 `tools/dev/words-census.mjs` NOT_SHOWN (the dev console's
+  `debugBus.cmd` words) and the Test panel's RenameRow in DEV_FILES,
+  `player-words.test` 5 its break proof (the line 2800 -> 2740); #2248
+  ExchangePanel's words (44 rows, each byte-identical to the old literal,
+  U+203A and U+2014 by code point; none says "tap"; the only part not a
+  number is an element name or a tier/type label, fixed data), and
+  `server/test/store-sell-tap` given the table and `say` (**DEPLOYS**);
+  the line 2740 -> 2710. WD3: 17 PRs, 4120 -> 2710.
+- **LR #2245**: `docs/specs/layout-reads.md`, the CLAUDE.md §7 line and the
+  §8 row (the owner asked for this guard, 2026-11-18), the status file:
+  the card's PR 2.
 - **EN #2234**: files the card's (entityRenderer.js, its leaf
   entity-look.js, the canvas census line 5 -> 0, the state ledgers' rows
   with the planning session's yes, M-tables re-made); tag 6203; done
@@ -176,9 +190,9 @@ to report it every run rather than fail it.
 ## Step 5b: what GitHub will merge
 
 Every PR's base is `main`. From `main` 7569a0c0, merging each with a merge
-commit in the list's order (SB, WD3's 16, EN, HB2, LR), every branch had
-ONE merge base with the `main` above it, and none conflicted (the tree
-b3441060). The WD3 stack never merged `main` in; EN's merged `main`
+commit in the list's order (SB, WD3's 18, EN, HB2, LR's 2), every branch
+had ONE merge base with the `main` above it, and none conflicted (the tree
+42d5402f; without #2246, #2248, #2245: b3441060). The WD3 stack never merged `main` in; EN's merged `main`
 7569a0c0 (one base still).
 
 ## Step 5: the rehearsal
@@ -187,8 +201,10 @@ REHEARSAL
 
 ## The deploys
 
-Only #2227 changes `server/**` (`server/test/desk-words`): one deploy, of
-the same worker code (the merged tree's only `server/` file).
+#2227 (`server/test/desk-words`) and #2248 (`server/test/store-sell-tap`)
+change `server/**`: the merged tree's only `server/` files, tests only.
+The stack fixes their order; merged in one go the deploy workflow's
+concurrency group makes it at most two deploys of the same worker code.
 
 ## The old drafts
 
