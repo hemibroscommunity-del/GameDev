@@ -7,7 +7,7 @@ state: ready
 - `census/review-z51.md`: 22 PRs checked against their cards; #2224 and
   #2234 reviewed in full, WD3's 16 screens PRs by 6 word checkers and by
   hand (the phone's words identical); merge bases one each; rehearsed on
-  `main` 7569a0c0: REHEARSAL_LINE.
+  `main` 7569a0c0, tree 42d5402f: precheck 0 FAIL, build, questline 187.
   Blocks WD3 6340, LR 6360, SB 6380 registered (nextBlock 6400); WD2 done.
 ## The list: merge in this order, "Create a merge commit", in one go
 1 #2228 (SB 6380)  2 #2227 (WD3 6340, DEPLOYS)  3 #2229  4 #2230  5 #2231

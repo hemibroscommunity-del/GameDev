@@ -4,7 +4,7 @@ Taken 2026-11-18 on `main` 7569a0c0 (sitting 50 fully merged; its deploy
 green). The cards running came from the planning session
 (session_01LccHaivkofvyigGL4fgBWZ); the heads from each card's own message
 to this sitting (session_01LccHakf5J8KwtUDPncuTxD), checked against GitHub.
-The list was kept open while PRs turned ready (17:53 to about 19:50 UTC).
+The list was kept open while PRs turned ready (17:53 to 19:35 UTC).
 Tags bare.
 
 ## What was open
@@ -197,7 +197,21 @@ had ONE merge base with the `main` above it, and none conflicted (the tree
 
 ## Step 5: the rehearsal
 
-REHEARSAL
+`node tools/dev/gatekeeper.mjs`, four runs on `main` 7569a0c0 as the
+batch grew (the box shared with the word checkers at times):
+
+| run | branches | tree | precheck | build | questline |
+|---|---|---|---|---|---|
+| 1 | HB2 #2224 | c3217d05 | PASS, 0 FAIL (889 s) | PASS | PASS 187/187 |
+| 2 | SB, WD3 #2227, HB2, LR (81121cd1) | b4500ac7 | PASS, 0 FAIL (861 s) | PASS | PASS 187/187 |
+| 3 | SB, WD3's 16 to #2243, EN, HB2, LR ee639b1b | b3441060 | PASS, 0 FAIL (838 s) | PASS | PASS 187/187 |
+| 4 | the whole list: + WD3 #2246, #2248, LR #2245 | **42d5402f** | PASS, 0 FAIL, 2 WARN (834 s) | PASS | PASS 187/187 |
+
+The WARNs: `version-tag` sees 6280 on `claude/plan-hb2-2-band` (HB2's
+#2244, stacked on #2224, carries its commits: nothing to renumber) and
+the usual "branches pushed in the last 48h". Run 4's tree is the same as
+step 5b's merge by hand. Precheck ran 834 to 889 s against the tool's
+900 s cap (carried, no card owns the tool).
 
 ## The deploys
 
