@@ -12,6 +12,8 @@ import { TRAP_ICON_URL } from '@/rendering/controlsPreload.js';
 import { OWNER_ICON } from '@/data/ownerIcons.js';
 import { C, ITEMS_V, COIN, XP, Icon, Cost, Chip, Lock, Btn, Row } from './BenchParts.jsx';
 import { act } from '@/game/actions.js';   /* v2.3.5190: the page's requests leave through the action door (card K PR 7) */
+import { SAY } from '@/data/say/woodwork.js';   /* v2.3.6347: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say as sayWords, sayPieces } from '@/game/say.js';   /* v2.3.6347: `say` here is the window's popup (below) */
 
 /* ═══ v2.3.3667: THE WOODWORKER, REBUILT AFTER THE BLACKSMITH ═══
  *
@@ -51,7 +53,7 @@ import { act } from '@/game/actions.js';   /* v2.3.5190: the page's requests lea
 
 const BOW_ICON = '/icons/items/bow.webp' + ITEMS_V;
 const STAFF_ICON = '/icons/items/staff.webp' + ITEMS_V;
-const TYPE_WORD = { bow: 'Bow', staff: 'Staff' };
+const TYPE_WORD = { bow: sayWords(SAY, 'woodwork.bow'), staff: sayWords(SAY, 'woodwork.staff') };
 const SLOT_OF = { bow: 'rangedWeapon', staff: 'staffWeapon' };
 const H_ODDS = [80, 20, 5, 1, 0.5];
 
@@ -64,11 +66,11 @@ export function WoodworkPanel({ rpgState, stateRef }) {
   const lvl = ww.level || 1;
 
   const tabs = [
-    { id: 'bow', label: 'Bow', icon: BOW_ICON },
-    { id: 'staff', label: 'Staff', icon: STAFF_ICON },
-    (S._serverCaps && S._serverCaps.hardenedwood) && { id: 'hardwood', label: 'Hardened', icon: thumbFor('hardened_pine') },
-    (S._serverCaps && S._serverCaps.harden) && { id: 'upgrade', label: 'Upgrade', icon: OWNER_ICON.smithHammer.src },
-    (S._serverCaps && S._serverCaps.trapcraft) && { id: 'traps', label: 'Traps', icon: TRAP_ICON_URL },
+    { id: 'bow', label: sayWords(SAY, 'woodwork.tabBow'), icon: BOW_ICON },
+    { id: 'staff', label: sayWords(SAY, 'woodwork.tabStaff'), icon: STAFF_ICON },
+    (S._serverCaps && S._serverCaps.hardenedwood) && { id: 'hardwood', label: sayWords(SAY, 'woodwork.tabHardened'), icon: thumbFor('hardened_pine') },
+    (S._serverCaps && S._serverCaps.harden) && { id: 'upgrade', label: sayWords(SAY, 'woodwork.tabUpgrade'), icon: OWNER_ICON.smithHammer.src },
+    (S._serverCaps && S._serverCaps.trapcraft) && { id: 'traps', label: sayWords(SAY, 'woodwork.tabTraps'), icon: TRAP_ICON_URL },
   ].filter(Boolean);
   /* the tab is kept on S, as the old window kept its choice (`_wwType`) */
   const [tabWant, setTabState] = React.useState(() => (S._wwType && tabs.some((t) => t.id === S._wwType)) ? S._wwType : tabs[0].id);
@@ -130,9 +132,9 @@ export function WoodworkPanel({ rpgState, stateRef }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 44px 10px 14px', flex: 'none' }}>
         <Icon src="/icons/ui/skill-woodworking.webp?v=2.3.1224" size={30} />
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: '.10em', textTransform: 'uppercase', color: C.text }}>Woodworker</div>
+          <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: '.10em', textTransform: 'uppercase', color: C.text }}>{sayWords(SAY, 'woodwork.title')}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
-            <span data-woodwork-level={lvl} style={{ fontSize: 12, fontWeight: 800, color: C.brass }}>Lv {lvl}</span>
+            <span data-woodwork-level={lvl} style={{ fontSize: 12, fontWeight: 800, color: C.brass }}>{sayWords(SAY, 'woodwork.level', { lvl })}</span>
             <div style={{ flex: 1, height: 6, borderRadius: 3, background: C.well, overflow: 'hidden' }}>
               <div style={{ width: `${pct * 100}%`, height: '100%', background: 'linear-gradient(90deg,#C9923E,#EAC675)' }} />
             </div>
@@ -183,8 +185,8 @@ function CraftTab({ S, R, inv, coins, lvl, ask, busy, type }) {
       {cur && (
         <div data-ww-holding={cur.gearBase || ''} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: C.mute, margin: '0 2px 8px' }}>
           <Icon src={icon} size={18} />
-          <span>Holding <b style={{ color: C.sub }}>{weaponDisplayName(cur)}</b></span>
-          {stashFull && <Lock>Weapon bag full</Lock>}
+          <span>{sayPieces(SAY, 'woodwork.holding', { name: <b key="name" style={{ color: C.sub }}>{weaponDisplayName(cur)}</b> })}</span>
+          {stashFull && <Lock>{sayWords(SAY, 'woodwork.bagFull')}</Lock>}
         </div>
       )}
       {shown.map((key) => {
@@ -213,9 +215,9 @@ function CraftTab({ S, R, inv, coins, lvl, ask, busy, type }) {
             }, {
               kind: 'craft',
               sig: () => { const w = S.rpg && S.rpg[slot]; return w ? w.gearBase + ':' + w.type + ':' + (S.rpg.weaponStash || []).length : ''; },
-              done: 'Made ' + name + '!', fail: 'Could not make it',
-            })}>{skillOk ? 'Make' : 'Locked'}</Btn>}>
-            {!skillOk && <Lock>Woodworking {wt.minLvl}</Lock>}
+              done: sayWords(SAY, 'woodwork.made', { name }), fail: sayWords(SAY, 'woodwork.couldNot'),
+            })}>{sayWords(SAY, skillOk ? 'woodwork.make' : 'woodwork.locked')}</Btn>}>
+            {!skillOk && <Lock>{sayPieces(SAY, 'woodwork.needSkill', { lvl: wt.minLvl })}</Lock>}
             {skillOk && !meets && <Lock>{req.prog3 ? req.label : (STAT_LABELS[req.stat] || req.stat)} {req.value}</Lock>}
             <Cost icon={thumbFor(resKey)} have={have} need={resNeed} />
             <Cost icon={COIN} have={coins} need={wt.goldCost} />
@@ -256,28 +258,28 @@ function UpgradeTab({ S, R, coins, lvl, ask, busy }) {
     const keep = !!SC.hardenkeep;
     rows.push(
       <Row key={type} data-harden-row={type} data-harden-gate={byWood ? 'woodworking:' + needLvl : 'blacksmithing'}
-        icon={type === 'bow' ? BOW_ICON : STAFF_ICON} badge={'H' + h}
-        title={maxed ? weaponDisplayName(w) + ' · max' : weaponDisplayName(w) + ' · H' + h + ' → H' + (h + 1)}
+        icon={type === 'bow' ? BOW_ICON : STAFF_ICON} badge={sayWords(SAY, 'woodwork.hardness', { h })}
+        title={maxed ? sayWords(SAY, 'woodwork.titleMax', { name: weaponDisplayName(w) }) : sayWords(SAY, 'woodwork.titleStep', { name: weaponDisplayName(w), h, next: h + 1 })}
         action={!maxed && <Btn on={skillOk && coins >= hc.gold && matsOk && !busy} primary data-harden-go={type} onClick={() => ask('harden-' + type, {
           type: 'broadcast', event: 'harden_weapon', payload: { slot },
         }, {
           kind: 'harden',
           /* harden_result (gameEvents) says win or lose; this only clears the busy state */
           sig: () => { const x = S.rpg && S.rpg[slot]; return x ? String(x.hardness || 0) + ':' + (x.temper || 0) + ':' + (S.rpg.coins || 0) + ':' + (hc.material ? ((S.rpg.inventory || {})[hc.material] || 0) : '') : ''; },
-        })}>Harden</Btn>}>
-        {!maxed && !skillOk && <Lock>Woodworking {needLvl}</Lock>}
+        })}>{sayWords(SAY, 'woodwork.harden')}</Btn>}>
+        {!maxed && !skillOk && <Lock>{sayPieces(SAY, 'woodwork.needSkill', { lvl: needLvl })}</Lock>}
         {!maxed && hc.material && <span data-harden-mat={hc.material} style={{ display: 'contents' }}><Cost icon={thumbFor(hc.material)} have={haveMats} need={hc.amount} /></span>}
         {!maxed && <Cost icon={COIN} have={coins} need={hc.gold} />}
         {!maxed && <Chip color={H_ODDS[h] >= 20 ? C.good : '#E5B36A'}>{H_ODDS[h]}%</Chip>}
         {/* v2.3.3529: against caps.hardenkeep a failure keeps the level, the
             gold and the hardened wood still spent; an older worker drops it
             back */}
-        {!maxed && h > 0 && <Chip color={C.mute}>{keep ? 'Fail keeps H' + h : 'Fail → H0'}</Chip>}
+        {!maxed && h > 0 && <Chip color={C.mute}>{keep ? sayWords(SAY, 'woodwork.failKeeps', { h }) : sayWords(SAY, 'woodwork.failDrops')}</Chip>}
       </Row>,
     );
   }
   if (!rows.length) {
-    return <div style={{ padding: '18px 8px', textAlign: 'center', color: C.mute, fontSize: 13 }}>Hold a bow or a staff to upgrade it.</div>;
+    return <div style={{ padding: '18px 8px', textAlign: 'center', color: C.mute, fontSize: 13 }}>{sayWords(SAY, 'woodwork.holdOne')}</div>;
   }
   return <div>{rows}</div>;
 }

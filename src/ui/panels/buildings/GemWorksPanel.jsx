@@ -2,6 +2,8 @@ import React from 'react';
 import { GemcutPanel } from './GemcutPanel.jsx';
 import { EnchantPanel } from './EnchantPanel.jsx';
 import { shardCrackOnServer } from '@/game/shardCrack.js'; /* v2.3.3516: the tabs' lines */
+import { SAY } from '@/data/say/gemWorks.js';   /* v2.3.6347: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';
 
 /* ═══ v2.3.3259: THE GEM WORKS -- CUTTING AND SETTING, ONE WINDOW ═══
  *
@@ -43,15 +45,15 @@ var LS_WRAP = { margin: -20, background: LS.panel, borderRadius: 14, overflow: '
 var TABS_BAR = { display: 'flex', gap: 6, background: LS.strip, borderBottom: '1px solid ' + LS.border };
 
 var TABS = [
-  { key: 'gemcut', label: 'Cut gems', desc: 'Raw to polished' },
-  { key: 'enchant', label: 'Set gems', desc: 'Polished into gear' }
+  { key: 'gemcut', label: say(SAY, 'gemWorks.cut'), desc: say(SAY, 'gemWorks.cutRaw') },
+  { key: 'enchant', label: say(SAY, 'gemWorks.set'), desc: say(SAY, 'gemWorks.setPolished') }
 ];
 /* v2.3.3516: against a worker that cracks shards (caps.shardcrack) the first
    tab cracks shards and combines raw gems (ShardCrackPanel.jsx) -- the gem
    plan's "Shards to gems" and "Gems into gear".  The tab names stay. */
 var TABS_CRACK = [
-  { key: 'gemcut', label: 'Cut gems', desc: 'Shards to gems' },
-  { key: 'enchant', label: 'Set gems', desc: 'Gems into gear' }
+  { key: 'gemcut', label: say(SAY, 'gemWorks.cut'), desc: say(SAY, 'gemWorks.cutShards') },
+  { key: 'enchant', label: say(SAY, 'gemWorks.set'), desc: say(SAY, 'gemWorks.setGems') }
 ];
 
 export function GemWorksPanel(props) {

@@ -145,8 +145,8 @@ check('7i no browser menu over the game on a computer (text fields and links kee
   /addEventListener\('contextmenu', onContextMenu\)/.test(ctl) && /input, textarea/.test(ctl) && /onContextMenu: function onContextMenu\(e\) \{[\s\S]{0,900}?e\.preventDefault\(\);\s*\}/.test(bro));
 check('7j the right button is the special, shield or no shield (v2.3.4323)',
   /var _deskRightPress = function \(S\) \{[\s\S]{0,500}doSpecialAttack\(\);\s*return 'special';/.test(bro) && !/var _deskRightPress = function \(S\) \{[\s\S]{0,500}_desktopShieldOn/.test(bro));
-check('7k the item card names Q for the block (v2.3.4323), not the right button', /Press Q to block/.test(src('src/ui/mobile/dash/ItemDetailPopup.jsx'))
-  && !/right-click to block/.test(src('src/ui/mobile/dash/ItemDetailPopup.jsx')));
+check('7k the item card names Q for the block (v2.3.4323), not the right button', /Press Q to block/.test(src('src/ui/mobile/dash/ItemDetailPopup.jsx') + src('src/data/say/itemDetail.js'))   /* v2.3.6321: its words moved to the table (card WD2) */
+  && !/right-click to block/.test(src('src/ui/mobile/dash/ItemDetailPopup.jsx') + src('src/data/say/itemDetail.js')));
 check('7l the Element Burst button wears F', /data-key="F"/.test(src('src/ui/mobile/ElementBurstButton.jsx')));
 
 /* ── 8. the combos' rules ── */

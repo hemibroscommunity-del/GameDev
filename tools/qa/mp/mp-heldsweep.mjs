@@ -37,6 +37,8 @@
  *   NODE_OPTIONS=--max-old-space-size=8192 npx vite build --minify false --outDir dist-prof && mv src/dist-prof dist-prof
  *   QA_DIST=dist-prof node tools/qa/mp/run.mjs heldsweep
  *   BT_HS_STATIONS=town,lands   only these (see STATION_NAMES)
+ *   BT_HS_STATIONS=ride,ridewalk   the board's ring round the safe ground, and the same ring walked
+ *                               (v2.3.6380, card SB; docs/plan/census/SB-ride.md)
  *   BT_QA_PROFILE=budget-android ...   a slow machine (tools/qa/profiles.mjs; v2.3.5861,
  *                               card O2 PR 2): the report is heldsweep-<profile>.json,
  *                               the budget judged as written (a slowed page's holds
@@ -85,7 +87,9 @@ export const lane = 'full';
 const PHONE = { width: 430, height: 932 };
 /* v2.3.5861 (card O2 PR 2): under a slow profile (BT_QA_PROFILE) the report is its own file, and says which */
 const REPORT_FILE = H.PROFILE ? `heldsweep-${H.PROFILE.name}.json` : 'heldsweep.json';
-const STATION_NAMES = ['stand', 'town', 'lands', 'fight', 'windows', 'folk', 'peer', 'armour'];
+const STATION_NAMES = ['stand', 'town', 'ride', 'lands', 'fight', 'windows', 'folk', 'peer', 'armour'];   /* v2.3.6380: + ride (card SB) */
+/* v2.3.6380 (card SB PR 1): played only when asked for (BT_HS_STATIONS), never in the whole tour: `ridewalk`, the
+   ride's ring walked, to compare with the ride */
 const WANT = (process.env.BT_HS_STATIONS || STATION_NAMES.join(',')).split(',').map((s) => s.trim()).filter(Boolean);
 
 /* ── the families: whose work a stack is.  First match wins; `key` is what the budget lists. ── */
@@ -289,6 +293,42 @@ export function noteGaps(stations, known, line) {
   return gaps.sort((a, b) => b.ms - a.ms);
 }
 
+/* ── v2.3.6380 (card SB PR 1): the ride's ring ──
+   RING_R game px round the Wheel's centre (inside the safe ground, wheelspawns.js WHEEL_SAFE_R 2937: the board gets
+   you off at its edge), RING_N points, closed.  The board's speed is the walk's x RIDE_MULT (game/ride.js), 150 and
+   300 game px a second (wheelGround.js AHEAD_GROW's note).  A glide, as mp-townride and `town` ride: no walls, the
+   same path every run; the board is checked at every point and got on again if it was left (the water: counted) */
+const RING_R = 2200, RING_N = 16, WALK_PX_S = 150, RIDE_PX_S = 300;
+const RING = (G) => {
+  const out = [];
+  for (let k = 0; k <= RING_N; k++) {
+    const a = Math.PI / 2 + (k / RING_N) * Math.PI * 2;
+    out.push([Math.round(G.cx + Math.cos(a) * RING_R), Math.round(G.cy + Math.sin(a) * RING_R)]);
+  }
+  return out;
+};
+const onBoard = (P) => P.page.evaluate(() => { const b = window.__btRideBtn && window.__btRideBtn(); return !!(b && b.on); }).catch(() => false);
+async function ringOnce(P, G, board) {
+  const st0 = await P.page.evaluate(() => { const s = window.__btWorldTrial && window.__btWorldTrial.stats; return s ? { loads: s.loads, popIns: s.popIns } : null; }).catch(() => null);
+  let offs = 0, glides = 0;
+  const t0 = Date.now();
+  for (const [x, y] of RING(G).slice(1)) {
+    if (board && !(await onBoard(P))) {
+      if (glides) offs++;
+      await P.page.keyboard.press('z');
+      await H.waitFor(P, () => window.__btRideBtn && window.__btRideBtn(), (v) => v && v.on === true, { timeout: 8000, label: 'on the board' }).catch(() => null);
+    }
+    if (await H.glideTo(P, x, y, { speed: board ? RIDE_PX_S : WALK_PX_S, timeoutMs: 120000 })) glides++;
+  }
+  const secs = (Date.now() - t0) / 1000;
+  if (board && (await onBoard(P))) await P.page.keyboard.press('z');
+  const st1 = await P.page.evaluate(() => { const s = window.__btWorldTrial && window.__btWorldTrial.stats; return s ? { loads: s.loads, popIns: s.popIns } : null; }).catch(() => null);
+  /* the pieces of ground laid on the ring, and those that came on screen before they were (wheelGround.js popIns) */
+  const pieces = st0 && st1 ? st1.loads - st0.loads : null;
+  return { glides, offs, ringSecs: Math.round(secs), pieces, perSec: pieces != null ? +(pieces / Math.max(1, secs)).toFixed(2) : null,
+    popIns: st0 && st1 ? st1.popIns - st0.popIns : null };
+}
+
 /* ── small helpers of the tour ── */
 const tapSel = (P, sel, id, fx = 0.5, fy = 0.5) => P.page.evaluate(({ sel, id, fx, fy }) => {
   const el = document.querySelector(sel);
@@ -381,6 +421,25 @@ export async function run({ browser, wsPort, webPort, rec }) {
       }
       await A.page.keyboard.press('z');
     });
+
+    /* ═══ v2.3.6380: THE RIDE (card SB PR 1) ═══
+       The owner, 2026-11-18: "I notice 'grainy' feeling when on a skateboard playing on my phone where sometimes it
+       freezes just for tiny fractions of a second while it loads."  The board rolls at twice a walk (game/ride.js
+       RIDE_MULT), so it reaches new ground twice as often.  `town` rides through the town's middle, among its
+       townsfolk and object pages; this rides a fixed ring round BroTown's safe ground at the board's speed, where
+       most of what comes on screen is new ground, and `ridewalk` (asked for only) walks the same ring at a walk's
+       speed, to tell what the board's speed adds (docs/plan/census/SB-ride.md).  Both start from the ring's first
+       point, reached before the profiler starts. */
+    /* in the order asked (BT_HS_STATIONS=ridewalk,ride walks first): the first round a page goes meets the world's art
+       down the line for the first time, the second finds it come (the first sample: 105 pieces laid riding first, 678
+       walking after) */
+    const RINGS = { ride: ['on the board round the safe ground', true], ridewalk: ['the same ring walked', false] };
+    for (const name of WANT.filter((w) => RINGS[w])) {
+      const [label, board] = RINGS[name];
+      await H.glideTo(A, RING(G)[0][0], RING(G)[0][1], { speed: 2500, timeoutMs: 120000 }).catch(() => {});
+      await A.page.waitForTimeout(5000);
+      await station(name, label, () => ringOnce(A, G, board));
+    }
 
     /* the edge of every land: its monsters' looks load as you come (wheelMonsterArt.js) */
     const lands = Object.keys(G.W.byId || {});

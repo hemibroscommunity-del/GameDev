@@ -7,6 +7,8 @@ import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { DailySpin } from './DailySpin.jsx'; /* v2.3.3140: the free daily spin */
 import { OWNER_ICON } from '@/data/ownerIcons.js'; /* v2.3.3481: the jackpot's sack of gold */
 import { act } from '@/game/actions.js';   /* v2.3.5190: the page's requests leave through the action door (card K PR 7) */
+import { SAY } from '@/data/say/gamble.js';   /* v2.3.6352: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';
 /* === GamblePanel — buildingPanel === 'gamble' sub-panel === */
 /* v2.3.880: extracted verbatim from the buildingPanel === 'gamble'
    clause in BroTown.jsx (the casino: coin-flip bet + jackpot deposit).
@@ -99,7 +101,7 @@ export function GamblePanel(props) {
     /* v2.3.3481: the 2026-10-19 UI review -- the subtitle promised coin
        flips, but this window holds the spin, the gold wager below and the
        jackpot; the coin flip is Ace's own window, from Ace outside. */
-    lsHeader('gamble', '🎰', "Gambling Den", "Free daily spin, a gold wager & the weekly jackpot"),
+    lsHeader('gamble', '🎰', say(SAY, 'gamble.title'), say(SAY, 'gamble.subtitle')),
     React.createElement("div", {
       ref: scrollBodyRef,
       onScroll: measureFade,
@@ -113,19 +115,19 @@ export function GamblePanel(props) {
         /* v2.3.1235: state-correction §7 — the top balance is labelled
            ("Your gold: 75G"), never a bare unexplained number. */
         style: { display: 'inline-flex', alignItems: 'center', gap: 6 }
-      }, React.createElement("span", { style: { fontSize: 12, color: LS.txt2 } }, "Your gold:"),
-      lsGold(Number(rpgState.coins || 0).toLocaleString() + 'G', 16, rpgState.coins) /* v2.3.1235: batch-3 rollout — key numbers are 16-18/700 tabular; v2.3.3481: with its thousands separator, "2,550G", as the top bar and every other window (the 2026-10-19 UI review) */),
+      }, React.createElement("span", { style: { fontSize: 12, color: LS.txt2 } }, say(SAY, 'gamble.yourGold')),
+      lsGold(say(SAY, 'gamble.balance', { gold: Number(rpgState.coins || 0).toLocaleString() }), 16, rpgState.coins) /* v2.3.1235: batch-3 rollout — key numbers are 16-18/700 tabular; v2.3.3481: with its thousands separator, "2,550G", as the top bar and every other window (the 2026-10-19 UI review) */),
       React.createElement("span", { style: { fontSize: 12, color: LS.txt2, fontVariantNumeric: 'tabular-nums' } },
-        rpgState.achievementPoints || 0, " AP") /* v2.3.1235: batch-3 rollout — ⭐ dropped, no emoji in chrome */),
+        say(SAY, 'gamble.ap', { ap: rpgState.achievementPoints || 0 })) /* v2.3.1235: batch-3 rollout — ⭐ dropped, no emoji in chrome */),
       /* v2.3.3481: the 2026-10-19 UI review -- the free spin above has its
          own "Double or nothing" at 50% (dailyrewards.js DOUBLE_CHANCE), and
          this wager was headed the same at 40% (gamble.js settles it at
          0.40). Both numbers were right; the heading and the line now say
          this one is a separate bet of your own gold. */
-      React.createElement("div", { style: LS_MOD }, "Wager \xB7 Double or Nothing"),
+      React.createElement("div", { style: LS_MOD }, say(SAY, 'gamble.wagerTitle')),
       React.createElement("div", {
         style: { fontSize: 11, color: LS.txt3, marginBottom: 8, lineHeight: 1.5 }
-      }, "A separate bet with your own gold: 40% chance to double it, 60% chance to lose it."),
+      }, say(SAY, 'gamble.wagerHow')),
       React.createElement("div", {
         style: { display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }
       }, [10, 50, 100, 500, 1000, 5000].filter(function (v) {
@@ -165,7 +167,7 @@ export function GamblePanel(props) {
             border: stateRef.current._gambleWager === amt ? '1px solid ' + LS.brass : '1px solid ' + LS.border,
             color: stateRef.current._gambleWager === amt ? LS.brass : LS.txt2
           }
-        }, amt, "g"));
+        }, say(SAY, 'gamble.wagerChip', { amount: amt })));
       })), stateRef.current._gambleResult && Date.now() - stateRef.current._gambleResult.ts < 3000 && /*#__PURE__*/React.createElement("div", {
         style: {
           padding: 8,
@@ -183,7 +185,7 @@ export function GamblePanel(props) {
           border: stateRef.current._gambleResult.won ? '1px solid #55B98A' : '1px solid #D8635D',
           color: stateRef.current._gambleResult.won ? '#55B98A' : '#D8635D'
         }
-      }, stateRef.current._gambleResult.won ? 'WON! +' + stateRef.current._gambleResult.amount + 'g' : 'LOST! -' + stateRef.current._gambleResult.amount + 'g'), /*#__PURE__*/React.createElement("button", {
+      }, say(SAY, stateRef.current._gambleResult.won ? 'gamble.won' : 'gamble.lost', { amount: stateRef.current._gambleResult.amount })), /*#__PURE__*/React.createElement("button", {
         /* v2.3.1235: batch-3 rollout — the surface's single gold
            primary adopts the shared .button-primary recipe (game.css)
            instead of a flat brass fill; 10px radius (11 is off the
@@ -226,11 +228,11 @@ export function GamblePanel(props) {
             }
             return;
           }
-          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'The table is closed', '#D95C54');
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, say(SAY, 'gamble.tableClosed'), '#D95C54');
         }
-      }, stateRef.current._gambleWager ? "Roll \xB7 " + stateRef.current._gambleWager + "G" : "Select a wager") /* v2.3.1235: state-correction §7 — never a "—g" placeholder: "Select a wager" until a chip is picked, then "Roll · 10G" */,
+      }, stateRef.current._gambleWager ? say(SAY, 'gamble.roll', { wager: stateRef.current._gambleWager }) : say(SAY, 'gamble.pickWager')) /* v2.3.1235: state-correction §7 — never a "—g" placeholder: "Select a wager" until a chip is picked, then "Roll · 10G" */,
       React.createElement("div", { style: LS_DIV }),
-      React.createElement("div", { style: LS_MOD }, "Weekly Jackpot"),
+      React.createElement("div", { style: LS_MOD }, say(SAY, 'gamble.jackpotTitle')),
       /* v2.3.3481: the 2026-10-19 UI review -- the line said "10% house cut"
          and "one random winner", and the worker does neither: a deposit is
          50-5,000 in steps of 50, each 50 one ticket, and the week's draw
@@ -240,7 +242,7 @@ export function GamblePanel(props) {
          what it does; no cut was added (that would be a new rule). */
       React.createElement("div", {
         style: { fontSize: 11, color: LS.txt3, marginBottom: 6, lineHeight: 1.5 }
-      }, "Every 50G you put in is one ticket. Each week one ticket wins the whole pot. The house takes nothing."),
+      }, say(SAY, 'gamble.jackpotHow')),
       React.createElement("div", {
         /* v2.3.3481: the owner's sack of gold beside the pool (their icon pick
            5: the one gold prize in the game with no picture); the line's words
@@ -252,7 +254,7 @@ export function GamblePanel(props) {
         width: OWNER_ICON.jackpotSack.w, height: OWNER_ICON.jackpotSack.h, "data-jackpot-sack": "",
         style: { width: OWNER_ICON.jackpotSack.w, height: OWNER_ICON.jackpotSack.h, objectFit: 'contain', flex: 'none' },
         onError: function onError(e) { e.currentTarget.style.display = 'none'; }
-      }), React.createElement("span", null, stateRef.current._jackpotPool || '???', "g")) /* v2.3.1235: batch-3 rollout — 🏆 dropped, no emoji in chrome */,
+      }), React.createElement("span", null, say(SAY, 'gamble.pool', { pool: stateRef.current._jackpotPool || '???' }))) /* v2.3.1235: batch-3 rollout — 🏆 dropped, no emoji in chrome */,
       /* v2.3.3481: the same review -- "Your deposits this week" read the
          browser's own tally (_compStats.jackpotDeposited, which nothing ever
          resets for a new week); the worker's count of YOUR tickets in this
@@ -260,7 +262,7 @@ export function GamblePanel(props) {
          deposit (gameEvents.js S._jackpotTickets, emptied at the draw). */
       React.createElement("div", {
         style: { fontSize: 11, color: LS.txt3, textAlign: 'center', marginBottom: 8, fontVariantNumeric: 'tabular-nums' }
-      }, "Your tickets this week: ", stateRef.current._jackpotTickets || 0, " \xB7 Min deposit: ", JACKPOT_MIN_DEPOSIT, "g"),
+      }, say(SAY, 'gamble.tickets', { tickets: stateRef.current._jackpotTickets || 0, min: JACKPOT_MIN_DEPOSIT })),
       React.createElement("div", {
         style: { display: 'flex', gap: 6 }
       }, [50, 100, 500, 1000].filter(function (v) {
@@ -304,9 +306,9 @@ export function GamblePanel(props) {
               }
               return;
             }
-            pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'The jackpot is closed', '#D95C54');
+            pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, say(SAY, 'gamble.jackpotClosed'), '#D95C54');
           }
-        }, "Deposit ", amt, "G" /* v2.3.1235: state-correction §7 — verb + amount ("Deposit 50G", not a bare "50g") */);
+        }, say(SAY, 'gamble.deposit', { amount: amt }) /* v2.3.1235: state-correction §7 — verb + amount ("Deposit 50G", not a bare "50g") */);
       })),
       rpgState.coins < JACKPOT_MIN_DEPOSIT && React.createElement("div", {
         /* v2.3.1235: state-correction §7 — when no deposit chip is
@@ -315,9 +317,9 @@ export function GamblePanel(props) {
            Same read (coins vs the JACKPOT_MIN_DEPOSIT floor = the
            smallest chip) the filter and the handler guard use. */
         style: { fontSize: 12, color: '#D8635D', textAlign: 'center', fontVariantNumeric: 'tabular-nums' }
-      }, "Need ", JACKPOT_MIN_DEPOSIT, "G"),
+      }, say(SAY, 'gamble.need', { min: JACKPOT_MIN_DEPOSIT })),
       React.createElement("div", { style: LS_DIV }),
-      React.createElement("div", { style: LS_MOD }, "Gambling Stats"),
+      React.createElement("div", { style: LS_MOD }, say(SAY, 'gamble.statsTitle')),
       React.createElement("div", {
         style: { padding: 10, borderRadius: 8, background: LS.wellSoft, border: '1px solid ' + LS.wellBorder }
       }, /*#__PURE__*/React.createElement("div", {
@@ -329,31 +331,31 @@ export function GamblePanel(props) {
           gap: 4,
           fontVariantNumeric: 'tabular-nums'
         }
-      }, /*#__PURE__*/React.createElement("span", null, "Total wagered:"), /*#__PURE__*/React.createElement("span", {
+      }, /*#__PURE__*/React.createElement("span", null, say(SAY, 'gamble.statWagered')), /*#__PURE__*/React.createElement("span", {
         style: {
           color: LS.txt1,
           fontWeight: 700,
           textAlign: 'right'
         }
-      }, ((_rpgState$_compStats2 = rpgState._compStats) === null || _rpgState$_compStats2 === void 0 ? void 0 : _rpgState$_compStats2.totalGambled) || 0, "g"), /*#__PURE__*/React.createElement("span", null, "Total won:"), /*#__PURE__*/React.createElement("span", {
+      }, say(SAY, 'gamble.statGold', { gold: ((_rpgState$_compStats2 = rpgState._compStats) === null || _rpgState$_compStats2 === void 0 ? void 0 : _rpgState$_compStats2.totalGambled) || 0 })), /*#__PURE__*/React.createElement("span", null, say(SAY, 'gamble.statWon')), /*#__PURE__*/React.createElement("span", {
         style: {
           color: '#55B98A' /* v2.3.1235: batch-3 rollout — approved positive token */,
           fontWeight: 700,
           textAlign: 'right'
         }
-      }, ((_rpgState$_compStats3 = rpgState._compStats) === null || _rpgState$_compStats3 === void 0 ? void 0 : _rpgState$_compStats3.totalGambleWon) || 0, "g"), /*#__PURE__*/React.createElement("span", null, "Total lost:"), /*#__PURE__*/React.createElement("span", {
+      }, say(SAY, 'gamble.statGold', { gold: ((_rpgState$_compStats3 = rpgState._compStats) === null || _rpgState$_compStats3 === void 0 ? void 0 : _rpgState$_compStats3.totalGambleWon) || 0 })), /*#__PURE__*/React.createElement("span", null, say(SAY, 'gamble.statLost')), /*#__PURE__*/React.createElement("span", {
         style: {
           color: '#D8635D' /* v2.3.1235: batch-3 rollout — approved danger token */,
           fontWeight: 700,
           textAlign: 'right'
         }
-      }, ((_rpgState$_compStats4 = rpgState._compStats) === null || _rpgState$_compStats4 === void 0 ? void 0 : _rpgState$_compStats4.totalGambleLost) || 0, "g"), /*#__PURE__*/React.createElement("span", null, "Net:"), /*#__PURE__*/React.createElement("span", {
+      }, say(SAY, 'gamble.statGold', { gold: ((_rpgState$_compStats4 = rpgState._compStats) === null || _rpgState$_compStats4 === void 0 ? void 0 : _rpgState$_compStats4.totalGambleLost) || 0 })), /*#__PURE__*/React.createElement("span", null, say(SAY, 'gamble.statNet')), /*#__PURE__*/React.createElement("span", {
         style: {
           color: (((_rpgState$_compStats5 = rpgState._compStats) === null || _rpgState$_compStats5 === void 0 ? void 0 : _rpgState$_compStats5.totalGambleWon) || 0) - (((_rpgState$_compStats6 = rpgState._compStats) === null || _rpgState$_compStats6 === void 0 ? void 0 : _rpgState$_compStats6.totalGambleLost) || 0) >= 0 ? '#55B98A' : '#D8635D' /* v2.3.1235: batch-3 rollout — approved positive/danger tokens */,
           fontWeight: 700,
           textAlign: 'right'
         }
-      }, (((_rpgState$_compStats7 = rpgState._compStats) === null || _rpgState$_compStats7 === void 0 ? void 0 : _rpgState$_compStats7.totalGambleWon) || 0) - (((_rpgState$_compStats8 = rpgState._compStats) === null || _rpgState$_compStats8 === void 0 ? void 0 : _rpgState$_compStats8.totalGambleLost) || 0), "g"))),
+      }, say(SAY, 'gamble.statGold', { gold: (((_rpgState$_compStats7 = rpgState._compStats) === null || _rpgState$_compStats7 === void 0 ? void 0 : _rpgState$_compStats7.totalGambleWon) || 0) - (((_rpgState$_compStats8 = rpgState._compStats) === null || _rpgState$_compStats8 === void 0 ? void 0 : _rpgState$_compStats8.totalGambleLost) || 0) })))),
       React.createElement("div", {
         /* v2.3.1235: state-correction §10 — sticky 24px bottom fade
            (last child of the scroll body); the gradient resolves to

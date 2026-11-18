@@ -1,0 +1,42 @@
+/* v2.3.6347: the Enchanter's words (src/ui/panels/buildings/EnchantPanel.jsx; docs/specs/player-words.md, wave W1) */
+export const SAY = Object.freeze({
+  /* the header and what the bench does */
+  'enchant.title': 'Enchanter',
+  'enchant.level': 'Enchanting Lv{lvl}',
+  'enchant.intro': 'Slot polished gems into gear with open gem slots.',
+  'enchant.xpOwed': 'Gems you made pay 400 Enchanting XP when set: {owed} still to come.',
+  'enchant.xpHow': 'Gems you make pay 400 Enchanting XP when set. Bought, traded or taken-out gems pay none.',
+  /* a weapon's section */
+  'enchant.melee': 'Melee',
+  'enchant.bow': 'Bow',
+  'enchant.staff': 'Staff',
+  'enchant.none': 'None',
+  'enchant.common': 'Common',
+  'enchant.volatile': '⚡VOLATILE',
+  'enchant.slots': 'Gem slots: {used}/{max} used',
+  'enchant.slotsNone': ' · Craft slotted gear at the Blacksmith or Woodworker first',
+  'enchant.slotsSecond': ' · Req Enchanting Lv20 for 2nd slot',
+  'enchant.chooseFirst': 'Choose a polished gem for Slot 1:',
+  'enchant.chooseSecond': 'Choose a polished gem for Slot 2 (Fusion):',
+  'enchant.volatileTip': 'Volatile combo requires Fusion-Compatible gear base',
+  'enchant.needsFusion': 'Needs Fusion-Compatible gear!',
+  'enchant.enchanted': '{elem} enchanted!',
+  'enchant.levelUp': 'Enchanting Lv{lvl}!',
+  'enchant.noGems': 'No polished gems',
+  'enchant.locked': 'Locked',
+  'enchant.noSlot': 'No open gem slot',
+  'enchant.takingOut': 'Taking out…',
+  'enchant.takeOut': 'Take out',
+  'enchant.outCost': '{cost} gold · the gem comes back',
+  /* the amulet */
+  'enchant.amulet': 'Amulet',
+  'enchant.gemName': '{gem} gem',
+  'enchant.amuletSlotted': 'Slotted: {gem}. Slot a new gem to replace (old gem lost).',
+  'enchant.amuletEmpty': 'Slot a polished gem to activate the amulet.',
+  'enchant.noAmulet': '📿 Craft an amulet at the Blacksmith to slot gems here.',
+  /* the shield */
+  'enchant.shield': 'Shield',
+  'enchant.shieldSlotted': 'Slotted: {gem}. Slot new gem to replace.',
+  'enchant.shieldEmpty': 'Slot a polished gem for defensive power.',
+  'enchant.noShield': 'No shield equipped. Wear one to slot defensive gems here.',
+});

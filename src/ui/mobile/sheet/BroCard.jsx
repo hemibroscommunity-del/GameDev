@@ -18,6 +18,8 @@ import { clanPartyOn } from '@/game/alliance.js';
 import { NAV_KEYS } from '@/game/deskKeys.js';   /* L, worn by the Life Skills row on a computer */
 import { infoPopupBus } from '../infoPopupBus.js';
 import { statInfo } from '../infoGlossary.js';
+import { SAY } from '@/data/say/broCard.js';   /* v2.3.6343: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say, sayPieces } from '@/game/say.js';
 
 /* ═══ v2.3.4172: THE BRO PAGE, AS THE OWNER DREW IT ═══
  * The owner, of the first cut (your own Inspect card): "I'll need to change
@@ -204,7 +206,7 @@ export const BroCard = ({ points, onPoints }) => {
 
   let p = null;
   try { p = profileFromSelf(S); } catch (e) { p = null; }
-  const name = (p && p.name) || 'You';
+  const name = (p && p.name) || say(SAY, 'broCard.you');
   const level = levelOf(R);
   const ap = achvApTotal(S);
   let sum = null;
@@ -231,16 +233,15 @@ export const BroCard = ({ points, onPoints }) => {
   const farmInfo = () => {
     try {
       infoPopupBus.open({
-        title: 'Homestead',
-        body: (plots > 0 ? `${plots} plot${plots === 1 ? '' : 's'} ready to harvest. ` : 'Nothing ready to harvest yet. ')
-          + 'Your farm is reached from the Feed & Seed in BroTown: walk in its door to plant, water and harvest.',
+        title: say(SAY, 'broCard.homestead'),
+        body: plots > 0 ? say(SAY, 'broCard.farmReady', { n: plots }) : say(SAY, 'broCard.farmNone'),
       });
     } catch (e) { /* no popup: the count says it */ }
   };
 
   const stats = broWeaponStats(R, weapon);
   const skills = WEAPON_SKILLS.map((sk) => ({ s: sk, k: combatSkillState(R, sk) }));
-  const clanWords = clan ? `${clan.name || clan.tag} [${clan.tag}]` : (party ? 'No party' : 'No clan');
+  const clanWords = clan ? `${clan.name || clan.tag} [${clan.tag}]` : say(SAY, party ? 'broCard.noParty' : 'broCard.noClan');
   const wLabel = (BRO_WEAPONS.find((w) => w.cat === stats.cat) || BRO_WEAPONS[0]).label;
 
   /* ── LEFT: you ── */
@@ -250,13 +251,13 @@ export const BroCard = ({ points, onPoints }) => {
         <span className="bt-bro2-face"><img src={portraitSrc(S)} alt="" draggable={false} />
           <span className="bt-bro2-who">
             <b className="bt-bro2-name" data-bro-name="">{name}</b>
-            <span className="bt-bro2-lv" data-bro-level={level}>Lv {level}</span>
+            <span className="bt-bro2-lv" data-bro-level={level}>{say(SAY, 'broCard.level', { level })}</span>
           </span>
         </span>
       </div>
       {title ? (
         <button type="button" className="bt-bro2-ribbon" data-bro-title={title.id}
-          aria-label={`Title: ${title.text}. Change`} onClick={stop(apOn ? openTitles : openAchv)}>
+          aria-label={say(SAY, 'broCard.titleAria', { title: title.text })} onClick={stop(apOn ? openTitles : openAchv)}>
           <span className="bt-bro2-ribbon-in">
             {title.iconSrc ? <img src={title.iconSrc} alt="" draggable={false} /> : null}
             <span>{title.text}</span>
@@ -264,32 +265,32 @@ export const BroCard = ({ points, onPoints }) => {
         </button>
       ) : (
         <button type="button" className="bt-bro2-notitle" data-bro-title="none"
-          aria-label="No title. Choose one" onClick={stop(apOn ? openTitles : openAchv)}>No title</button>
+          aria-label={say(SAY, 'broCard.noTitleAria')} onClick={stop(apOn ? openTitles : openAchv)}>{say(SAY, 'broCard.noTitle')}</button>
       )}
       <button type="button" className="bt-bro2-line" data-bro-clan={clan ? clan.tag : 'none'}
-        aria-label={(clan ? 'Clan: ' + clanWords : clanWords) + '. Open'} onClick={stop(openClan)}>
+        aria-label={say(SAY, clan ? 'broCard.clanAria' : 'broCard.clanNoneAria', { clan: clanWords })} onClick={stop(openClan)}>
         <img src={ICON.clan} alt="" draggable={false} />
         <span className={clan ? '' : 'is-none'}>
           {clan ? <>{clan.name || clan.tag} <em>[{clan.tag}]</em></> : clanWords}
         </span>
       </button>
       <button type="button" className="bt-bro2-line is-ap" data-bro-ap={ap}
-        aria-label={`${fmt(ap)} Achievement Points. Open Achievements`} onClick={stop(openAchv)}>
+        aria-label={say(SAY, 'broCard.apAria', { ap: fmt(ap) })} onClick={stop(openAchv)}>
         <span className="bt-bro2-star" aria-hidden="true">{'★'}</span>
-        <span><b>{compactCount(ap)}</b> AP</span>
+        <span>{sayPieces(SAY, 'broCard.ap', { ap: <b key="ap">{compactCount(ap)}</b> })}</span>
       </button>
       <div className="bt-bro2-tiles">
         <button type="button" className="bt-bro2-tile" data-bro-tile="achievements"
           data-bro-achv-tile={sum ? `${sum.earned}/${sum.total}` : ''}
-          aria-label={sum ? `Achievements: ${sum.earned} of ${sum.total}. Open` : 'Achievements. Open'}
+          aria-label={sum ? say(SAY, 'broCard.achvTileAria', { earned: sum.earned, total: sum.total }) : say(SAY, 'broCard.achvTileAriaNone')}
           onClick={stop(openAchv)}>
           <img src={ICON.achv} alt="" draggable={false} />
-          <span>Achievements</span>
+          <span>{say(SAY, 'broCard.achievements')}</span>
           <b>{sum ? `${sum.earned} / ${sum.total}` : '–'}</b>
         </button>
         <div className="bt-bro2-tile" data-bro-tile="kills" data-bro-kills={kills || 0}>
           <img src={ICON.kills} alt="" draggable={false} />
-          <span>Lifetime Kills</span>
+          <span>{say(SAY, 'broCard.lifetimeKills')}</span>
           <b>{compactCount(kills || 0)}</b>
         </div>
       </div>
@@ -301,7 +302,7 @@ export const BroCard = ({ points, onPoints }) => {
     <section className="bt-bro2-panel bt-bro2-stats" data-bro-panel="stats" data-bro-weapon={stats.cat} data-bro-has={stats.has ? 1 : 0}>
       {/* the three combat skills (v2.3.4172, above): a tile picks its
           weapon; the picked one wears the gold edge (aria-pressed) */}
-      <div className="bt-bro2-skills" role="group" aria-label="Combat skills">
+      <div className="bt-bro2-skills" role="group" aria-label={say(SAY, 'broCard.combatSkills')}>
         {skills.map(({ s: sk, k }) => {
           const cat = k.cat || 'sword';
           const on = cat === stats.cat;
@@ -317,18 +318,18 @@ export const BroCard = ({ points, onPoints }) => {
                 'data-xpthresh': k.p3cat && k.xp ? Math.round(k.xp.thresh) : undefined,
                 'data-bro-xpopen': open ? '' : undefined,
                 'data-bro-xpnum': open && k.xp ? `${Math.round(k.xp.prog)}/${Math.round(k.xp.thresh)}` : undefined,
-                'aria-label': `${sk.label} level ${k.lvl}`
-                  + (k.xp ? `, ${Math.round(k.xp.prog)} of ${Math.round(k.xp.thresh)} XP` : ', fully levelled')
-                  + `: show ${(BRO_WEAPONS.find((w) => w.cat === cat) || BRO_WEAPONS[0]).label} stats`,
+                'aria-label': k.xp
+                  ? say(SAY, 'broCard.skillAriaXp', { skill: sk.label, lvl: k.lvl, prog: Math.round(k.xp.prog), thresh: Math.round(k.xp.thresh), weapon: (BRO_WEAPONS.find((w) => w.cat === cat) || BRO_WEAPONS[0]).label })
+                  : say(SAY, 'broCard.skillAriaMax', { skill: sk.label, lvl: k.lvl, weapon: (BRO_WEAPONS.find((w) => w.cat === cat) || BRO_WEAPONS[0]).label }),
               }}
               style={{ minHeight: cols === 1 ? 72 : 80, padding: '5px 3px 4px', gap: 3 }}
               onTap={() => tapSkill(cat)} />
           );
         })}
       </div>
-      <div className="bt-bro2-sec" aria-hidden="true"><i /><span>Combat Stats</span><i /></div>
+      <div className="bt-bro2-sec" aria-hidden="true"><i /><span>{say(SAY, 'broCard.combatStats')}</span><i /></div>
       {stats.has ? null : (
-        <div className="bt-bro2-none" data-bro-noweapon={stats.cat}>No {wLabel.toLowerCase()} equipped</div>
+        <div className="bt-bro2-none" data-bro-noweapon={stats.cat}>{say(SAY, 'broCard.noWeapon', { weapon: wLabel.toLowerCase() })}</div>
       )}
       <div className="bt-bro2-list">
         {stats.rows.map((r) => (
@@ -347,30 +348,30 @@ export const BroCard = ({ points, onPoints }) => {
   const right = (
     <section className="bt-bro2-panel bt-bro2-rows" data-bro-panel="rows">
       {apOn ? (
-        <Row id="achievements" icon={ICON.achv} title="Achievements" n={sum ? sum.earned : 0}
-          sub={sum ? `${sum.earned} of ${sum.total}` : null} onTap={openAchv} />
+        <Row id="achievements" icon={ICON.achv} title={say(SAY, 'broCard.achievements')} n={sum ? sum.earned : 0}
+          sub={sum ? say(SAY, 'broCard.achvSub', { earned: sum.earned, total: sum.total }) : null} onTap={openAchv} />
       ) : null}
-      <Row id="skills" icon={ICON.life} title="Life Skills" n={lifeTotal} dot={lifeNew}
-        sub={`Total level ${fmt(lifeTotal)}`} onTap={() => go('skills')}
+      <Row id="skills" icon={ICON.life} title={say(SAY, 'broCard.lifeSkills')} n={lifeTotal} dot={lifeNew}
+        sub={say(SAY, 'broCard.lifeSub', { total: fmt(lifeTotal) })} onTap={() => go('skills')}
         extra={{ 'data-key': NAV_KEYS.skills, 'data-key-at': 'inline' }} />
       {/* data-section="Build": the guide arrow ("Tap Points") and the points
           bubbles aim here; the Points window opens over the card and its
           close comes back */}
-      <Row id="points" icon={ICON.points} title="Points" n={n} live={n > 0}
-        sub={n > 0 ? `${fmt(n)} to spend` : 'All spent'} onTap={() => { if (onPoints) onPoints(); }}
+      <Row id="points" icon={ICON.points} title={say(SAY, 'broCard.points')} n={n} live={n > 0}
+        sub={n > 0 ? say(SAY, 'broCard.pointsSub', { n: fmt(n) }) : say(SAY, 'broCard.pointsSpent')} onTap={() => { if (onPoints) onPoints(); }}
         extra={{ 'data-section': 'Build', 'data-bro-spend': n }} />
       {/* the Gear tab (openGear above): what you wear, and your bag beside it */}
-      <Row id="equipment" icon={ICON.equip} title="Equipment" n={worn}
-        sub={`${worn} of ${slots} worn`} onTap={openGear} extra={{ 'data-bro-gear': '' }} />
+      <Row id="equipment" icon={ICON.equip} title={say(SAY, 'broCard.equipment')} n={worn}
+        sub={say(SAY, 'broCard.equipSub', { worn, slots })} onTap={openGear} extra={{ 'data-bro-gear': '' }} />
       {/* no window for the farm away from it: the count, and a tap says where */}
-      <Row id="homestead" icon={ICON.farm} title="Homestead" n={plots} chevron={false}
-        sub={plots > 0 ? `${plots} plot${plots === 1 ? '' : 's'} ready` : 'Nothing ready'} onTap={farmInfo} />
-      <Row id="pet" icon={ICON.pet} title="Pet" sub={pet ? pet.customName : 'No pet'} onTap={() => go('pets')} />
+      <Row id="homestead" icon={ICON.farm} title={say(SAY, 'broCard.homestead')} n={plots} chevron={false}
+        sub={plots > 0 ? say(SAY, 'broCard.plotsReady', { n: plots }) : say(SAY, 'broCard.nothingReady')} onTap={farmInfo} />
+      <Row id="pet" icon={ICON.pet} title={say(SAY, 'broCard.pet')} sub={pet ? pet.customName : say(SAY, 'broCard.noPet')} onTap={() => go('pets')} />
       {apOn ? (
-        <Row id="titles" icon={ICON.titles} title="Titles" n={sum ? sum.earned : 0}
-          sub={`${sum ? sum.earned : 0} unlocked`} onTap={openTitles} />
+        <Row id="titles" icon={ICON.titles} title={say(SAY, 'broCard.titles')} n={sum ? sum.earned : 0}
+          sub={say(SAY, 'broCard.titlesSub', { n: sum ? sum.earned : 0 })} onTap={openTitles} />
       ) : null}
-      <Row id="clan" icon={ICON.clan} title={party ? 'Party' : 'Clan'} sub={clanWords} onTap={openClan} />
+      <Row id="clan" icon={ICON.clan} title={say(SAY, party ? 'broCard.party' : 'broCard.clan')} sub={clanWords} onTap={openClan} />
     </section>
   );
 

@@ -283,7 +283,7 @@ Touch and the controls on a phone.
 
 A computer: keys, clicks, the wide window and its words.
 
-- **Files**: `src/game/`: deskCombos, deskKeyList, deskKeys, deskTeachState, deskWords, desktopControls, dashSidePref
+- **Files**: `src/game/`: deskCombos, deskKeyList, deskKeys, deskTeachState, deskWords, desktopControls, dashSidePref, say
 - **Files**: `src/ui/`: deskTeach, deskWide
 - **Doors**: `NAV_KEYS` in `src/game/deskKeys.js` (every key a computer player presses lives here, worn by its button (data-key))
 - **Switches**: [its rows in the switch table](SWITCHES.md#desktop)

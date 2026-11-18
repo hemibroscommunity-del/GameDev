@@ -1,0 +1,61 @@
+/* v2.3.6331: the character creator's words (src/ui/panels/NameModal.jsx; docs/specs/player-words.md, wave W1) */
+export const SAY = Object.freeze({
+  /* each trait's name, as its option strip and colour row are announced */
+  'nameModal.hairType': 'Hair',
+  'nameModal.hatType': 'Hats',
+  'nameModal.eyewearType': 'Eyewear',
+  'nameModal.eyesType': 'Eyes',
+  'nameModal.skinType': 'Skin Tone',
+  'nameModal.speciesType': 'Bro type',
+  'nameModal.beardType': 'Beard',
+  'nameModal.shirtType': 'Shirts',
+  'nameModal.pantsType': 'Pants',
+  'nameModal.shoesType': 'Shoes',
+  /* the ink card under a tab: its picture's name */
+  'nameModal.shirtPaint': 'Pattern or draw on this shirt',
+  'nameModal.pantsPaint': 'Pattern or draw on these pants',
+  'nameModal.skinPaint': 'Tattoo your body or face',
+  'nameModal.shoesPaint': 'Pattern these shoes',
+  /* the tabs */
+  'nameModal.speciesTab': 'Bro type',
+  'nameModal.hairTab': 'Hair',
+  'nameModal.hatTab': 'Hats',
+  'nameModal.skinTab': 'Skin',
+  'nameModal.eyesTab': 'Eyes',
+  'nameModal.eyewearTab': 'Eyewear',
+  'nameModal.beardTab': 'Beard',
+  'nameModal.shirtTab': 'Shirt',
+  'nameModal.pantsTab': 'Pants',
+  'nameModal.shoesTab': 'Shoes',
+  'nameModal.buildTab': 'Build',
+  /* the stage */
+  'nameModal.logoAlt': 'BroTown',
+  'nameModal.previewTitle': 'Live preview — tap to zoom',
+  /* the name */
+  'nameModal.nameHeading': 'BRO NAME',
+  'nameModal.namePlaceholder': { phone: 'Tap to name', desk: 'Type a name' },
+  'nameModal.randomNameTitle': 'Random name',
+  'nameModal.randomNameLabel': 'Generate a random name',
+  'nameModal.nameReady': '✓ Ready to go',
+  'nameModal.nameTooShort': 'At least 2 characters',
+  /* the actions */
+  'nameModal.randomize': 'Randomize Bro',
+  'nameModal.resetTitle': 'Back to the look you started with',
+  'nameModal.reset': 'Reset',
+  'nameModal.enterLabel': 'Enter BroTown',
+  'nameModal.enter': 'Enter BroTown',
+  'nameModal.backLabel': 'Back to the main menu',
+  'nameModal.back': 'Back',
+  'nameModal.hemiAlt': 'Hemi Bros',
+  'nameModal.version': 'v{game}',
+  /* the trait picker */
+  'nameModal.panelTitle': 'Trait Picker',
+  'nameModal.tabsLabel': 'Appearance category',
+  'nameModal.stripLabel': '{label} options',
+  'nameModal.defaultColor': 'Default',
+  'nameModal.colorsLabel': '{label} colors',
+  /* the ink card's tools */
+  'nameModal.inkEraser': 'Eraser, and open the editor',
+  'nameModal.inkColour': 'Colour {i}, and open the editor',
+  'nameModal.brushWidth': 'Brush {n} wide, and open the editor',
+});

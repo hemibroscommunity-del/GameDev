@@ -1,0 +1,48 @@
+/* v2.3.6345: the player card's words (src/ui/panels/InspectPlayerPanel.jsx; docs/specs/player-words.md, wave W1) */
+export const SAY = Object.freeze({
+  /* what the card's actions say over your head */
+  'inspectPlayer.partySent': 'Party invite sent',
+  'inspectPlayer.duelSent': 'Duel sent',
+  'inspectPlayer.friendRemoved': 'Removed friend',
+  'inspectPlayer.friendSent': 'Friend request sent!',
+  'inspectPlayer.threatCooldown': 'Threat on cooldown',
+  'inspectPlayer.threatIssued': 'Threat issued!',
+  'inspectPlayer.clanSent': 'Clan invite sent',
+  'inspectPlayer.unmuted': 'Unmuted',
+  'inspectPlayer.mutedStored': 'Muted — their chat stops here',
+  'inspectPlayer.mutedLocal': 'Muted',
+  'inspectPlayer.unblocked': 'Unblocked',
+  'inspectPlayer.noBlockLawless': 'Can\'t block in lawless zone!',
+  'inspectPlayer.blockedNote': 'Blocked: no chat, emotes or requests from them',
+  /* the head */
+  'inspectPlayer.close': 'Close',
+  'inspectPlayer.inspectLabel': 'Inspect {name}',
+  'inspectPlayer.inspectTitle': 'Inspect',
+  'inspectPlayer.level': 'LV {lv}',
+  'inspectPlayer.inParty': 'In party',
+  'inspectPlayer.friend': 'Friend',
+  /* the tiles */
+  'inspectPlayer.invite': 'Invite to Party',
+  'inspectPlayer.trade': 'Trade',
+  'inspectPlayer.friendsTitle': 'Friends — tap to remove',
+  'inspectPlayer.addFriendTitle': 'Add friend',
+  'inspectPlayer.friendTile': 'Friend',
+  'inspectPlayer.addFriend': 'Add Friend',
+  'inspectPlayer.duel': 'Duel',
+  'inspectPlayer.threat': 'Threat',
+  'inspectPlayer.clanInvite': 'Invite to [{tag}]',
+  /* the safety row */
+  'inspectPlayer.muted': 'Muted',
+  'inspectPlayer.mute': 'Mute',
+  'inspectPlayer.blocked': 'Blocked',
+  'inspectPlayer.block': 'Block',
+  'inspectPlayer.reported': 'Reported',
+  'inspectPlayer.report': 'Report',
+  /* the report's reasons */
+  'inspectPlayer.reportWhy': 'Why are you reporting {name}?',
+  'inspectPlayer.reportCancel': 'Cancel',
+  'inspectPlayer.reasonSpam': 'Spam',
+  'inspectPlayer.reasonAbuse': 'Abuse',
+  'inspectPlayer.reasonHarassment': 'Harassment',
+  'inspectPlayer.reasonCheating': 'Cheating',
+});
