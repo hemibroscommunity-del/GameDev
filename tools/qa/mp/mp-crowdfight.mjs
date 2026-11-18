@@ -53,6 +53,8 @@ const PHONE = { width: 390, height: 844 };
 const STEPS = (process.env.BT_CF_STEPS || '10,20,30').split(',').map(Number).filter((n) => n >= 0);
 const PLACES = (process.env.BT_CF_PLACES || 'town,fight').split(',').filter((p) => p === 'town' || p === 'fight');
 const SAMPLE_MS = +(process.env.BT_CF_SAMPLE_MS || 6000);
+/* v2.3.6181: how long the page is given to know a step's bots (the wait ends as soon as it does) */
+const KNOW_MS = 240000;
 const QUERY = process.env.BT_CF_QUERY || '';
 
 /* 30 looks, all different: the creator's catalogs (playerSkins.js SKIN_ /
@@ -200,6 +202,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
      until the rebuild) -- the whole line, and what the dead sprites are */
   const threw = [];
   P.page.on('console', (m) => { const t = m.text(); if (/\[pixi-render\] app\.render threw/.test(t) && threw.length < 3) threw.push(t.slice(0, 3000)); });
+  /* v2.3.6181: the page's own rejoins after a frame gap it reads as a phone come back (wsClient.js
+     _resumeRecover 'thaw', RESYNC_AWAY_MS 5 s), counted from its crash line: on this box a dpr-3 page
+     among 30 bots draws a frame every few seconds and rejoins every 5-20 s (card RD) */
+  const thaws = { n: 0 };
+  P.page.on('console', (m) => { if (/resume-resync thaw away/.test(m.text())) thaws.n++; });
   const out = { query: QUERY, steps: STEPS, rows: [] };
   let stopAlive = false;
   let bots = null;
@@ -263,13 +270,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
       let have = 0;
       for (const want of STEPS) {
         if (want > have) { bots.add(want - have); have = want; }
-        const t0 = Date.now();
+        const t0 = Date.now(), thaws0 = thaws.n;
         let known = 0;
-        while (Date.now() - t0 < 60000) {
+        /* v2.3.6181: until the page knows them, up to KNOW_MS, not 60 s of the wall clock (TRAPS §200):
+           a starved page hears its ticks late and rejoins on every long frame (`thaws` above), and on
+           this box the step to 30 bots took the page about 100 s (card RD's readings: 20 known for the
+           whole of the old minute, all 30 at 98 s).  How long, and how many rejoins, go in the row */
+        while (Date.now() - t0 < KNOW_MS) {
           known = await H.readState(P, (S) => Object.keys(S.others || {}).length);
           if (known >= Math.floor(want * 0.95)) break;
           await P.page.waitForTimeout(1000);
         }
+        const knownInS = Math.round((Date.now() - t0) / 1000), knownThaws = thaws.n - thaws0;
         /* every look seen and baked, the fighters at their monsters */
         await P.page.waitForTimeout(place === 'fight' ? 12000 : 6000);
         /* the window: frames, GL calls and voices; the phone fights too */
@@ -333,7 +345,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const sg = await settledGpu(P);
         mem.gpuSettled = sg ? sg.mb : null;
         const row = {
-          place, bots: want, known: w.known, onScreen: w.near, farHidden: w.farHidden, crowdHidden: w.crowdHidden, monstersNear: w.monsters,
+          place, bots: want, known: w.known, knownInS, knownThaws, thawsSoFar: thaws.n, onScreen: w.near, farHidden: w.farHidden, crowdHidden: w.crowdHidden, monstersNear: w.monsters,
           gpu: mem.gpu, gpuSettled: mem.gpuSettled, gpuByKind: sg ? sg.byKind : null, gpuTop: groupGpu(sg),
           cache: mem.cache, canvasMB: mem.canvasMB, canvasN: mem.canvasN, decodedMB: mem.decodedMB, heapMB: mem.heapMB, buffersMB: mem.buffersMB,
           frames: w.frames, workP50: q(w.work, 0.5), workP95: q(w.work, 0.95), gl: w.gl,
@@ -381,7 +393,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       console.log(`  ${r.place.padEnd(5)} | ${String(r.bots).padStart(4)} | ${String(r.known).padStart(5)} | ${String(r.onScreen).padStart(9)} | ${String(r.farHidden).padStart(5)}/${String(r.crowdHidden).padEnd(4)} | ${String(r.gpu).padStart(6)} (${r.gpuSettled}) | ${r.cache} | ${r.canvasMB} | ${r.heapMB} | ${r.gl.draws} | ${r.gl.useProgram} | ${r.gl.bindTexture} | ${r.gl.calls} | ${r.workP50} | ${r.voices ? `${r.voices.maxPlaying} / ${r.voices.maxWindow}` : '-'} | ${r.palette ? `${r.palette.rows} (${r.palette.rowsFull})` : 'no palette'}`);
     }
     const last = rows[rows.length - 1];
-    rec.ok('the phone knew (nearly) every bot at each step', rows.every((r) => r.known >= Math.floor(r.bots * 0.9)), rows.map((r) => [r.place, r.bots, r.known]));
+    rec.ok('the phone knew (nearly) every bot at each step', rows.every((r) => r.known >= Math.floor(r.bots * 0.9)), rows.map((r) => [r.place, r.bots, r.known, `${r.knownInS} s`, `${r.knownThaws} rejoins`]));
     rec.ok('frames and GL calls were counted at every step', rows.every((r) => r.frames > 0 && r.gl.draws > 0), rows.map((r) => [r.frames, r.gl.draws]));
     const pal = rows.filter((r) => r.palette && r.palette.on);
     if (pal.length) rec.ok(`the look palette never ran out of rows (rowsFull ${pal.map((r) => r.palette.rowsFull).join(', ')})`, pal.every((r) => r.palette.rowsFull === 0), pal.map((r) => r.palette));
