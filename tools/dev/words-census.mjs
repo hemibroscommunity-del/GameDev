@@ -655,7 +655,7 @@ if (isMain) {
   if (arg === '--lines') {
     // v2.3.6141: what tools/guards/player-words.test.mjs holds, as it would write it
     console.log('in place on the page: ' + c.totals.place + '   on the worker: ' + c.totals.server);
-    for (const r of c.rows.filter((x) => x.wheel || x.remnant)) console.log('  ' + JSON.stringify({ file: r.file, value: r.value }) + ',   // :' + r.line);
+    for (const r of c.rows.filter((x) => x.wheel || x.remnant)) console.log('  ' + JSON.stringify({ value: r.value }) + ',   // ' + r.file + ':' + r.line);
   } else if (arg === '--json') {
     process.stdout.write(JSON.stringify(c, null, 1) + '\n');
   } else if (arg === '--write') {

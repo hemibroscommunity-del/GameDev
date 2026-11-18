@@ -11,7 +11,8 @@
  *   2. the words written in place on the worker are no more than SERVER_LINE;
  *   3. a player-facing "Wheel" (a capital W: the world's code name) or
  *      "remnant(s)" fails ALWAYS, the rows the census found aside (KNOWN,
- *      matched by file and words, never by line, so an edit above them does
+ *      matched by their words, never by line or by a big file's path
+ *      (tests-by-system), so an edit above them does
  *      not trip it).  CLAUDE.md §1: players read "BroTown", "the world",
  *      "Remains";
  *   4. its own break proof, played every run: a scratch file with a new
@@ -41,7 +42,7 @@ export const SERVER_LINE = 381;
 
 /* The "Wheel" / "remnant" rows the census found: `node tools/dev/words-census.mjs --lines`. */
 export const KNOWN = [
-  { file: 'src/ui/BroTown.jsx', value: "the Wheel's ground gone, " },   // the dark-screen watchdog's crash note (`?`: most likely never shown)
+  { value: "the Wheel's ground gone, " },   // the game page's dark-screen watchdog, its crash note (`?`: most likely never shown)
 ];
 
 const RERUN = 'node tools/dev/words-census.mjs --write (the page\'s diff names each new row)';
@@ -56,7 +57,7 @@ const check = (name, ok, detail) => {
 export function verdict(c, lines = { page: PAGE_LINE, server: SERVER_LINE }) {
   const t = c.totals;
   const PL = lines.page, SL = lines.server;
-  const known = (r) => KNOWN.some((k) => k.file === r.file && k.value === r.value);
+  const known = (r) => KNOWN.some((k) => k.value === r.value);
   const bad = c.rows.filter((r) => (r.wheel || r.remnant) && !known(r));
   return [
     [1, t.place <= PL, 'words written in place on the page: ' + t.place + ' (line ' + PL + ')'

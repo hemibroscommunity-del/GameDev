@@ -1,6 +1,6 @@
 card: WD
 branch: claude/plan-wd-2-guard (one PR a branch, claude/plan-wd-*)
-prs: #2171 (6140) census: working; PR 2 (6141) guard: working
+prs: #2171 (6140) census: working; PR 2 (6141) guard: working (draft)
 state: working
 
 ## Done
