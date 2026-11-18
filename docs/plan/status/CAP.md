@@ -1,6 +1,6 @@
 card: CAP
 branch: claude/plan-cap-1-census (one PR a branch, claude/plan-cap-*)
-prs: PR 1 (6100) census: opening
+prs: #2172 (6100) census: working (draft, waiting on CI)
 state: working
 
 ## Done
