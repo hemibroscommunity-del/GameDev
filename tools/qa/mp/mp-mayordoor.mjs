@@ -34,6 +34,8 @@
  * v2.3.3899: the Town Hall's door opens nothing (the owner: "Remove the town
  * hall menu for now"); its board opens at the square's noticeboard, "Read
  * THE TOWN BOARD" and E.
+ * v2.3.6301: every bro keeps a real keystroke every 20 s (H.keepAlive), so
+ * the phone waiting through part 1 is not logged out for idling.
  * Pictures: tools/qa/mp/out/mayordoor-*.png.
  */
 import * as H from './harness.mjs';
@@ -55,6 +57,14 @@ async function into(browser, wsPort, webPort, name, opts) {
     { timeout: 150000, label: name + ' into the world' }).catch(() => null);
   await H.closeNpcDialogue(P).catch(() => {});
   await P.page.addStyleTag({ content: '*:has(> [data-coach-dismiss]) { visibility: hidden !important; }' }).catch(() => {});
+  /* v2.3.6301 (card RR; docs/plan/census/RR-reds.md): a real keystroke every
+     20 s, so no bro idles out.  The phone (C) waits through part 1 (about 3
+     minutes on a session box) and the page logs itself out after two minutes
+     with no real input (wsClient's idle logout): its picture at part 2 said
+     "You were away, so your character logged out", its quest_accept and hops
+     never reached the worker, and parts 2 and 3 (5 of 12) failed on a phone
+     the worker no longer had.  The loop ends when the page closes. */
+  H.keepAlive(P);
   return P;
 }
 /* put the bro at an offset from a townsperson (mp-questprox's place) */
