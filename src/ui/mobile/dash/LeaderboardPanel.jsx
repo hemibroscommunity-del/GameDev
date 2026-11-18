@@ -8,6 +8,8 @@ import { aceFlipBus } from '../aceFlipBus.js';
 import { PROG3_BODY_META, PROG3_ATK_META } from '@/data/prog3.js';   /* v2.3.5502: the stat boards' labels and icons, the Bro tab's */
 import { useBoxSize, railHeading, FOOT_FADE } from './railKit.js';   /* v2.3.4394: the measuring and the headings this page and the Quests page share */
 import { act } from '@/game/actions.js';   /* v2.3.5191: the page's requests leave through the action door (card K PR 7) */
+import { SAY } from '@/data/say/leaderboard.js';   /* v2.3.6327: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';
 
 /* v2.3.1671: a TRADITIONAL HISCORES BOARD — one ranking per skill.
    Owner: "a traditional high scores system that ranks each skill... I want
@@ -119,13 +121,13 @@ const U = '/icons/ui/';
 /* the boards the worker answers from `series` (leaderboard.js
    SERIES_CATEGORIES): the weapons' boards draw the power table */
 const BATTLE = [
-  { id: 'power', label: 'Overall', full: 'Overall power', art: 'tile-crown', table: 'power', needs: 'power' },
-  { id: 'melee', label: 'Melee', art: 'tile-sword', table: 'power', rank: 'melee' },
-  { id: 'bow', label: 'Bow', art: 'tile-bow', table: 'power', rank: 'bow' },
-  { id: 'magic', label: 'Magic', art: 'tile-staff', table: 'power', rank: 'magic' },
+  { id: 'power', label: say(SAY, 'leaderboard.overallBoard'), full: say(SAY, 'leaderboard.overallFull'), art: 'tile-crown', table: 'power', needs: 'power' },
+  { id: 'melee', label: say(SAY, 'leaderboard.meleeBoard'), art: 'tile-sword', table: 'power', rank: 'melee' },
+  { id: 'bow', label: say(SAY, 'leaderboard.bowBoard'), art: 'tile-bow', table: 'power', rank: 'bow' },
+  { id: 'magic', label: say(SAY, 'leaderboard.magicBoard'), art: 'tile-staff', table: 'power', rank: 'magic' },
   /* 'combat' is the level on the name plate: the highest of the three
      weapons (leaderboard.js seriesValue, v2.3.3538's one level) */
-  { id: 'combat', label: 'Level', icon: [U + 'hero/rec-xp.webp', 256, 30, 40, 226, 215], table: 'power', rank: 'lv' },
+  { id: 'combat', label: say(SAY, 'leaderboard.levelBoard'), icon: [U + 'hero/rec-xp.webp', 256, 30, 40, 226, 215], table: 'power', rank: 'lv' },
 ];
 /* v2.3.5502: THE STAT BOARDS (card PW, #1781: server/src/statboards.js
    STAT_BOARD_IDS, in its order), each the points a player put in one shared
@@ -137,26 +139,26 @@ const BATTLE = [
 const STAT_ORDER = ['def', 'hp', 'dodge', 'stam', 'eres', 'mana', 'move', 'dmg'];
 const STAT_BOARDS = STAT_ORDER.map((k) => {
   const m = k === 'dmg' ? PROG3_ATK_META.find((r) => r.key === 'dmg') : PROG3_BODY_META.find((r) => r.key === k);
-  return { id: 'pts_' + k, label: k === 'dmg' ? 'Damage' : (m && m.label) || k, full: (k === 'dmg' ? 'Damage' : (m && m.label) || k) + ' points', icon: m && m.iconSrc, table: 'stat' };
+  return { id: 'pts_' + k, label: k === 'dmg' ? say(SAY, 'leaderboard.damageBoard') : (m && m.label) || k, full: say(SAY, 'leaderboard.statFull', { stat: k === 'dmg' ? say(SAY, 'leaderboard.damageBoard') : (m && m.label) || k }), icon: m && m.iconSrc, table: 'stat' };
 });
-const KILLS = { id: 'kills', label: 'Kills', icon: [U + 'hero/rec-kills.webp', 256, 0, 9, 256, 246] };
-const AP_CAT = { id: 'ap', label: 'AP', full: 'Achievement points', icon: ['/icons/achievements/achievements.webp', 150, 37, 21, 113, 129] };
+const KILLS = { id: 'kills', label: say(SAY, 'leaderboard.killsBoard'), icon: [U + 'hero/rec-kills.webp', 256, 0, 9, 256, 246] };
+const AP_CAT = { id: 'ap', label: say(SAY, 'leaderboard.apBoard'), full: say(SAY, 'leaderboard.apFull'), icon: ['/icons/achievements/achievements.webp', 150, 37, 21, 113, 129] };
 const SKILLS = [
-  { id: 'woodcutting',  label: 'Woodcutting', icon: [U + 'skill-woodcutting.webp?v=2.3.1224', 256, 52, 32, 204, 221] },
-  { id: 'fishing',      label: 'Fishing',     icon: [U + 'skill-fishing.webp?v=2.3.1224', 256, 55, 40, 200, 216] },
-  { id: 'mining',       label: 'Mining',      icon: [U + 'skill-mining.webp?v=2.3.1224', 256, 48, 52, 208, 223] },
-  { id: 'farming',      label: 'Farming',     icon: [U + 'skill-farming.webp?v=2.3.1224', 256, 65, 73, 190, 223] },
-  { id: 'cooking',      label: 'Cooking',     icon: [U + 'skill-cooking.webp?v=2.3.1224', 256, 41, 39, 215, 215] },
-  { id: 'blacksmithing', label: 'Smithing', full: 'Blacksmithing', icon: [U + 'skill-blacksmithing.webp?v=2.3.1224', 256, 37, 33, 215, 221] },
-  { id: 'woodworking',  label: 'Woodworking', icon: [U + 'skill-woodworking.webp?v=2.3.1224', 256, 33, 66, 223, 222] },
-  { id: 'gemCutting',   label: 'Gem Cutting', icon: [U + 'skill-gemcutting.webp?v=2.3.1224', 256, 48, 57, 207, 209] },
-  { id: 'enchanting',   label: 'Enchanting',  icon: [U + 'skill-enchanting.webp?v=2.3.1224', 256, 55, 42, 201, 204] },
-  { id: 'trapping',     label: 'Trapping',    icon: [U + 'skill-trapping.webp?v=2.3.3331', 256, 43, 64, 213, 215] },
+  { id: 'woodcutting',  label: say(SAY, 'leaderboard.woodcuttingBoard'), icon: [U + 'skill-woodcutting.webp?v=2.3.1224', 256, 52, 32, 204, 221] },
+  { id: 'fishing',      label: say(SAY, 'leaderboard.fishingBoard'), icon: [U + 'skill-fishing.webp?v=2.3.1224', 256, 55, 40, 200, 216] },
+  { id: 'mining',       label: say(SAY, 'leaderboard.miningBoard'), icon: [U + 'skill-mining.webp?v=2.3.1224', 256, 48, 52, 208, 223] },
+  { id: 'farming',      label: say(SAY, 'leaderboard.farmingBoard'), icon: [U + 'skill-farming.webp?v=2.3.1224', 256, 65, 73, 190, 223] },
+  { id: 'cooking',      label: say(SAY, 'leaderboard.cookingBoard'), icon: [U + 'skill-cooking.webp?v=2.3.1224', 256, 41, 39, 215, 215] },
+  { id: 'blacksmithing', label: say(SAY, 'leaderboard.smithingBoard'), full: say(SAY, 'leaderboard.smithingFull'), icon: [U + 'skill-blacksmithing.webp?v=2.3.1224', 256, 37, 33, 215, 221] },
+  { id: 'woodworking',  label: say(SAY, 'leaderboard.woodworkingBoard'), icon: [U + 'skill-woodworking.webp?v=2.3.1224', 256, 33, 66, 223, 222] },
+  { id: 'gemCutting',   label: say(SAY, 'leaderboard.gemCuttingBoard'), icon: [U + 'skill-gemcutting.webp?v=2.3.1224', 256, 48, 57, 207, 209] },
+  { id: 'enchanting',   label: say(SAY, 'leaderboard.enchantingBoard'), icon: [U + 'skill-enchanting.webp?v=2.3.1224', 256, 55, 42, 201, 204] },
+  { id: 'trapping',     label: say(SAY, 'leaderboard.trappingBoard'), icon: [U + 'skill-trapping.webp?v=2.3.3331', 256, 43, 64, 213, 215] },
 ];
 /* the records: each asked of the room, not this page's fetch */
-const SPIN_CAT = { id: 'spin', label: 'Daily spin', kind: 'spin', icon: [U + 'prize-wheel.webp?v=2.3.3481', 102, 0, 0, 102, 110] };
-const FLIP_CAT = { id: 'flip', label: 'Coin flip', kind: 'flip', icon: [U + 'cur-gold.webp', 256, 34, 32, 221, 223] };
-const FISH_CAT = { id: 'fish', label: 'Biggest fish', kind: 'fish', icon: ['/icons/items/fish-trout.webp', 128, 1, 25, 127, 102] };
+const SPIN_CAT = { id: 'spin', label: say(SAY, 'leaderboard.spinBoard'), kind: 'spin', icon: [U + 'prize-wheel.webp?v=2.3.3481', 102, 0, 0, 102, 110] };
+const FLIP_CAT = { id: 'flip', label: say(SAY, 'leaderboard.flipBoard'), kind: 'flip', icon: [U + 'cur-gold.webp', 256, 34, 32, 221, 223] };
+const FISH_CAT = { id: 'fish', label: say(SAY, 'leaderboard.fishBoard'), kind: 'fish', icon: ['/icons/items/fish-trout.webp', 128, 1, 25, 127, 102] };
 
 /** A board's picture in a `px` box: the file scaled so its opaque box fills
  *  the box, centred.  v2.3.5501: a board with `art` wears its tile from the
@@ -206,11 +208,11 @@ export function boardList(S) {
   return [
     { title: 'Ranks' },
     ...BATTLE.filter((b) => !b.needs || power),
-    ...(stats.length ? [{ sec: 'Stats' }, ...stats] : []),
+    ...(stats.length ? [{ sec: say(SAY, 'leaderboard.statsHeading') }, ...stats] : []),
     { divider: 'more' },
     KILLS, ...(caps.achievements ? [AP_CAT] : []),
-    ...(records.length ? [{ sec: 'Records' }, ...records] : []),
-    { sec: 'Skills' }, ...SKILLS,
+    ...(records.length ? [{ sec: say(SAY, 'leaderboard.recordsHeading') }, ...records] : []),
+    { sec: say(SAY, 'leaderboard.skillsHeading') }, ...SKILLS,
   ];
 }
 
@@ -275,12 +277,12 @@ const tableOf = (board, power, narrow, view) => {
     /* a skill's record is its level, a plain number under the skill's name:
        the row's "Lv" is the name plate's, never a second "Lv" (v2.3.4393's
        rule, BoardRow.jsx) */
-    return [['lv', 'Lv', 32], ['record', board.id === 'ap' ? 'AP' : board.id === 'kills' ? 'Kills' : board.label, board.id === 'ap' || board.id === 'kills' ? 54 : 66]];
+    return [['lv', say(SAY, 'leaderboard.lvHead'), 32], ['record', board.id === 'ap' ? say(SAY, 'leaderboard.apHead') : board.id === 'kills' ? say(SAY, 'leaderboard.killsHead') : board.label, board.id === 'ap' || board.id === 'kills' ? 54 : 66]];
   }
   const total = ['total', power ? 'Power' : 'Total', power ? 40 : 36];
   const styles = [['melee', 'melee', power ? 26 : 24], ['bow', 'bow', power ? 26 : 24], ['magic', 'magic', power ? 26 : 24]];
-  if (!narrow) return [['lv', 'Lv', 32], total, ...styles];
-  return view === 'styles' ? [['lv', 'Lv', 32], ...styles] : [['lv', 'Lv', 32], total];
+  if (!narrow) return [['lv', say(SAY, 'leaderboard.lvHead'), 32], total, ...styles];
+  return view === 'styles' ? [['lv', say(SAY, 'leaderboard.lvHead'), 32], ...styles] : [['lv', say(SAY, 'leaderboard.lvHead'), 32], total];
 };
 /* the narrow table's first view: the weapons' boards rank one of the three */
 const firstView = (board) => (board.rank === 'melee' || board.rank === 'bow' || board.rank === 'magic' ? 'styles' : 'total');
@@ -351,8 +353,8 @@ function podiumValue(board, r, power) {
     return { text: num(p[key]) };
   }
   const v = Math.floor(Number(board.id === 'ap' ? r.ap : (r.value ?? r.score)) || 0);
-  return board.id === 'ap' ? { text: num(v) + ' AP' } : board.id === 'kills' ? { text: num(v) + (v === 1 ? ' kill' : ' kills') }
-    : board.table === 'stat' ? { text: num(v) + (v === 1 ? ' pt' : ' pts') } : { text: num(v) };
+  return board.id === 'ap' ? { text: say(SAY, 'leaderboard.apValue', { v: num(v) }) } : board.id === 'kills' ? { text: v === 1 ? say(SAY, 'leaderboard.killValue', { v: num(v) }) : say(SAY, 'leaderboard.killsValue', { v: num(v) }) }
+    : board.table === 'stat' ? { text: v === 1 ? say(SAY, 'leaderboard.ptValue', { v: num(v) }) : say(SAY, 'leaderboard.ptsValue', { v: num(v) }) } : { text: num(v) };
 }
 
 /* a podium name's size: its own width measured once (a canvas's measureText
@@ -390,12 +392,12 @@ function Podium({ rows, faces, k, meId, board, power }) {
         const W = Math.round(sw * k), Hh = Math.round(sh * k);
         if (!r) return <span key={place} aria-hidden="true" style={{ width: W, height: Hh, flex: 'none' }} />;
         const gone = !!r.gone;
-        const name = r.name || r.id || 'Bro';
+        const name = r.name || r.id || say(SAY, 'leaderboard.unnamed');
         const pv = podiumValue(board, r, power);
         const facePx = Math.round(Hh * 0.33);
         return (
           <div key={place} data-lb-podium-place={place} data-lb-podium-mine={meId && r.id === meId ? '1' : undefined}
-            role="img" aria-label={`Rank ${place}: ${name}, ${pv.text || 'level ' + pv.lv}${gone ? ', a deleted character' : ''}`}
+            role="img" aria-label={say(SAY, 'leaderboard.podiumLabel', { place, name, value: pv.text || say(SAY, 'leaderboard.podiumLevel', { lv: pv.lv }), gone: gone ? say(SAY, 'leaderboard.podiumGone') : '' })}
             style={{ position: 'relative', flex: 'none', width: W, height: Hh, marginBottom: place === 1 ? 0 : 6 * k }}>
             <img src={LB_ART(art)} alt="" draggable={false} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block', filter: gone ? 'grayscale(1)' : 'none' }} />
             <span style={{ position: 'absolute', left: '50%', top: '29%', transform: 'translateX(-50%)' }}>
@@ -425,13 +427,13 @@ function Podium({ rows, faces, k, meId, board, power }) {
 
 /* the owner's own reading of the rating (2026-11-14, through the planning
    session): what a tap on the Power head says, one line */
-const POWER_HINT = '400 points ahead = 10\u00d7 likelier to win';
+const POWER_HINT = say(SAY, 'leaderboard.powerHint');
 
 /** one head cell: a weapon's icon, or its word */
 function HeadCell({ k, head, hint, setHint }) {
   if (WEAPON_ICON[head]) {
     return (
-      <span data-lb-head-col={k} title={head === 'melee' ? 'Melee' : head === 'bow' ? 'Bow' : 'Magic'} style={{ display: 'flex', justifyContent: 'flex-end' }}>
+      <span data-lb-head-col={k} title={head === 'melee' ? say(SAY, 'leaderboard.meleeTitle') : head === 'bow' ? say(SAY, 'leaderboard.bowTitle') : say(SAY, 'leaderboard.magicTitle')} style={{ display: 'flex', justifyContent: 'flex-end' }}>
         <img src={WEAPON_ICON[head]} alt={head} draggable={false} style={{ width: 15, height: 15, objectFit: 'contain', display: 'block' }} />
       </span>
     );
@@ -449,7 +451,7 @@ function HeadCell({ k, head, hint, setHint }) {
     );
   }
   return (
-    <span data-lb-head-col={k} title={k === 'total' && head === 'Total' ? 'Melee, Bow and Magic levels added up' : undefined}
+    <span data-lb-head-col={k} title={k === 'total' && head === 'Total' ? say(SAY, 'leaderboard.totalTitle') : undefined}
       style={{ textAlign: k === 'lv' ? 'center' : 'right', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{head}</span>
   );
 }
@@ -475,9 +477,9 @@ function TableHead({ table, hint, setHint, swap, hintHere }) {
           column, so the rating's reading is a small "?" at the end of the
           Player head (`hintHere`), its target 44 px tall */}
       <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minWidth: 0 }}>
-        <span>Player</span>
+        <span>{say(SAY, 'leaderboard.playerHead')}</span>
         {hintHere ? (
-          <button type="button" data-lb-power-head="" aria-expanded={!!hint} aria-label="What Power means" title={POWER_HINT}
+          <button type="button" data-lb-power-head="" aria-expanded={!!hint} aria-label={say(SAY, 'leaderboard.powerHintButton')} title={POWER_HINT}
             onClick={() => setHint(!hint)} style={{
               position: 'relative', width: 16, height: 16, padding: 0, margin: '0 2px 0 0', borderRadius: 8, boxSizing: 'border-box',
               border: `1px solid ${hint ? COL.accent : COL.edgeWarm}`, background: 'transparent', color: hint ? COL.accent : COL.text2,
@@ -489,7 +491,7 @@ function TableHead({ table, hint, setHint, swap, hintHere }) {
       </span>
       <HeadCell k={lv[0]} head={lv[1]} />
       {swap ? (
-        <button type="button" data-lb-swap={swap.view} aria-label={swap.view === 'styles' ? 'Show the total' : 'Show Melee, Bow and Magic'}
+        <button type="button" data-lb-swap={swap.view} aria-label={swap.view === 'styles' ? say(SAY, 'leaderboard.showTotal') : say(SAY, 'leaderboard.showStyles')}
           onClick={swap.onSwap} style={{
             position: 'relative', gridColumn: '4 / -1', display: 'grid', gridTemplateColumns: rest.map((c) => c[2] + 'px').join(' '), columnGap: 3,
             alignItems: 'center', height: 20, margin: '0 -5px 0 0', padding: '0 4px 0 0', boxSizing: 'border-box',
@@ -505,7 +507,7 @@ function TableHead({ table, hint, setHint, swap, hintHere }) {
       <div data-lb-power-hint="" role="note" style={{
         padding: '4px 8px', fontSize: 11.5, fontWeight: 700, color: COL.text, background: COL.well,
         borderBottom: `1px solid ${COL.divider}`, textAlign: 'right',
-      }}>Power: {POWER_HINT}</div>
+      }}>{say(SAY, 'leaderboard.powerHintLine', { hint: POWER_HINT })}</div>
     ) : null}
     </>
   );
@@ -554,8 +556,8 @@ function RankBoard({ board, podium, w }) {
   const rows = (boards[cat] || []).filter((r) => cat !== 'ap' || Math.floor(Number(r && r.ap) || 0) > 0);
   const faces = useBoardFaces(rows);
   if (rows.length === 0) {
-    return <BoardEmpty text={loading ? 'Loading…' : cat === 'ap' ? 'Nobody has achievement points yet.' : cat === 'kills' ? 'Nobody has a kill yet.'
-      : board.table === 'stat' ? 'Nobody has put points in this yet.' : 'Nobody has trained this yet.'} />;
+    return <BoardEmpty text={loading ? say(SAY, 'leaderboard.loading') : cat === 'ap' ? say(SAY, 'leaderboard.emptyAp') : cat === 'kills' ? say(SAY, 'leaderboard.emptyKills')
+      : board.table === 'stat' ? say(SAY, 'leaderboard.emptyStat') : say(SAY, 'leaderboard.emptySkill')} />;
   }
   const narrow = board.table === 'power' && w > 0 && w < WIDE_TABLE;
   const table = tableOf(board, power, narrow, view);
@@ -598,7 +600,7 @@ function WinLossBoard({ id, wins, losses, side, setSide, amountOf, lineOf, state
   return (
     <div data-winloss-board={id} data-winloss-side={side}>
       <div role="tablist" style={{ display: 'flex', gap: 6, padding: '0 4px 2px' }}>
-        {[['wins', 'Biggest wins'], ['losses', 'Biggest losses']].map(([k, label]) => (
+        {[['wins', say(SAY, 'leaderboard.winsTab')], ['losses', say(SAY, 'leaderboard.lossesTab')]].map(([k, label]) => (
           <button key={k} type="button" role="tab" aria-selected={side === k} data-winloss-tab={k} onClick={() => setSide(k)} style={{ ...chipHit, flex: '1 1 0', justifyContent: 'center' }}>
             <span style={{ ...chip(side === k), width: '100%', justifyContent: 'center', boxSizing: 'border-box' }}>{label}</span>
           </button>
@@ -627,12 +629,12 @@ function SpinBoard({ side, setSide }) {
   }, []);
   const S = getState();
   const sb = S && S._spinBoard;
-  const state = !sb ? 'Loading…' : sb.off ? "The spin's records are closed for now." : sb.unavailable ? "The records can't be read right now." : null;
+  const state = !sb ? say(SAY, 'leaderboard.loading') : sb.off ? say(SAY, 'leaderboard.spinClosed') : sb.unavailable ? say(SAY, 'leaderboard.spinUnreadable') : null;
   return (
     <WinLossBoard id="spin" side={side} setSide={setSide} wins={sb && sb.wins} losses={sb && sb.losses} state={state}
       amountOf={(r) => r.n} lineOf={spinRowLine}
-      emptyWin="Nobody has taken a pot from the daily spin yet."
-      emptyLoss="Nobody has lost a pot to double or nothing yet." />
+      emptyWin={say(SAY, 'leaderboard.spinEmptyWin')}
+      emptyLoss={say(SAY, 'leaderboard.spinEmptyLoss')} />
   );
 }
 
@@ -652,9 +654,9 @@ function FlipBoard({ side, setSide }) {
   const b = aceFlipBus.board || {};
   return (
     <WinLossBoard id="flip" side={side} setSide={setSide} wins={(b.wins || []).filter(Boolean)} losses={(b.losses || []).filter(Boolean)}
-      amountOf={(r) => r.amount} lineOf={(r, won) => (won ? 'Won from Ace on one flip' : 'Lost to Ace on one flip')}
-      emptyWin="Nobody has won a flip against Ace yet."
-      emptyLoss="Nobody has lost a flip to Ace yet." />
+      amountOf={(r) => r.amount} lineOf={(r, won) => (won ? say(SAY, 'leaderboard.flipWonLine') : say(SAY, 'leaderboard.flipLostLine'))}
+      emptyWin={say(SAY, 'leaderboard.flipEmptyWin')}
+      emptyLoss={say(SAY, 'leaderboard.flipEmptyLoss')} />
   );
 }
 
@@ -680,11 +682,11 @@ function Pill({ b, on, row }) {
 /** "RANKS" between the two laurels (the second mockup's title) */
 function Title() {
   return (
-    <div data-lb-title="" role="heading" aria-level={2} aria-label="Ranks" style={{
+    <div data-lb-title="" role="heading" aria-level={2} aria-label={say(SAY, 'leaderboard.ranksLabel')} style={{
       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3, height: 34, flex: 'none',
     }}>
       <img src={LB_ART('laurel-left')} alt="" aria-hidden="true" draggable={false} style={{ width: 15, height: 'auto', display: 'block' }} />
-      <span style={{ fontSize: 15, fontWeight: 900, letterSpacing: '.08em', color: '#F2C462', textShadow: '0 1px 2px rgba(0,0,0,.8)' }}>RANKS</span>
+      <span style={{ fontSize: 15, fontWeight: 900, letterSpacing: '.08em', color: '#F2C462', textShadow: '0 1px 2px rgba(0,0,0,.8)' }}>{say(SAY, 'leaderboard.ranksTitle')}</span>
       <img src={LB_ART('laurel-right')} alt="" aria-hidden="true" draggable={false} style={{ width: 15, height: 'auto', display: 'block' }} />
     </div>
   );
@@ -760,7 +762,7 @@ export const LeaderboardPanel = () => {
       /* each side fades at its own foot (below): the page itself does not scroll */
       WebkitMaskImage: 'none', maskImage: 'none',
     }}>
-      <div ref={navRef} data-lb-rail="" role="tablist" aria-label="Leaderboards" aria-orientation="vertical" style={{
+      <div ref={navRef} data-lb-rail="" role="tablist" aria-label={say(SAY, 'leaderboard.listLabel')} aria-orientation="vertical" style={{
         flex: 'none', width: RAIL_W, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain', touchAction: 'pan-y',
         padding: '0 4px 18px 0', boxSizing: 'border-box', borderRight: `1px solid ${COL.divider}`,
         WebkitMaskImage: FOOT_FADE, maskImage: FOOT_FADE,
