@@ -40,6 +40,7 @@ switch allows it.
 | A strike before its window (too early) | gathering.js `_handleNodeStrike` | paid |
 | A strike with no start of its own | gathering.js `_handleNodeStrike` (`HARVEST_PROOF`) | paid |
 | 45 perfect harvests a minute | gathering.js `_ratedHarvestAccuracy` | no limit |
+| A harvest's perfect held to an honest gesture's time and to 15 in any 20 strikes (v2.3.5900, `harvestgrade`, an opt-in, OFF as merged) | gathering.js `_harvestGraded` (harvestgrade.js) | paid as sent |
 | Bot scoring and its 2,400-an-hour caps | botfp.js `_botfpOnStrike`, `_botfpOnCook` | not scored, flagged or capped |
 | The server's own bot signals (v2.3.3731) | botsig.js `_sigSkip`, `_sigOnWindup`, `_sigReverifyOk` | nothing measured, flagged or re-checked (the network signal and the Turnstile re-check included) |
 | 45 cooks a minute, 900 ms between cooks | cooking.js `_cookRateOk`, `_handleCookRequest` | no limit |
@@ -66,7 +67,8 @@ switch allows it.
   ceiling's honest floor (v2.3.5728, `flood.js` `HONEST_PER_S`, `ceilfair`);
   a guest's share of the places, a played character's seat and an IPv6 /48
   counted (v2.3.5729, `seathold.js` `GUEST_SHARE`, `flood.js` `ip48Key`,
-  `guestshare`);
+  `guestshare`); a join taking only what is its own (v2.3.5730, `join.js`,
+  `seathold.js`, `joinguard`);
   the owner's routes with no key and the public reads at the edge (v2.3.5726,
   `wire/door.js`; the worker settings `EDGE_GUARD`, `EDGE_CACHE`).
 - A General Store sell filed under its weapon's own tier, and a refund and
