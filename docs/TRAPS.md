@@ -86,7 +86,9 @@ this, and its review bought 1,999 coins and 392,500 from Diego through
 it; the copy is `Object.create(null)` now (`_withoutRpgClaims`, join.js).
 **Receipt:** CLAUDE.md AI-session protocol; `docs/DEV-TOOLS.md`.
 
-Held by: tools/guards/traps-saves.test.mjs (tag 5761).
+Held by: tools/guards/traps-saves.test.mjs (tag 5761); its list of
+plain `{}` stepped in is empty since tag 6040, each site's case in
+`server/test/proto-maps.test.mjs`.
 
 ## 7. Treating the GDD / ARCHITECTURE.md as build specs
 
