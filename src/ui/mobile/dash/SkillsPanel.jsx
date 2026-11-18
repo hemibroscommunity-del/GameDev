@@ -8,6 +8,8 @@ import { SKILL_GATHER, SKILL_CRAFT, SKILL_ROSTER, skillUnlocks, markSkillsSeen, 
 import { xpDecayOn } from '../../../data/xpDecay.js'; /* v2.3.3251: the XP fade's lines */
 import { skillDetailBus } from '../sheet/skillDetailBus.js';
 import { panelVw } from '../playViewport.js'; /* v2.3.2173: the sheet's width, not the shell's */
+import { SAY } from '@/data/say/skills.js';   /* v2.3.6324: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';
 
 /* v2.3.1224: roster corrected to the canonical 10 LIFE_SKILLS (owner
    directive).  v2.3.1286 (nav-system): 3-column card grid on the shared
@@ -106,7 +108,7 @@ export const SkillsPanel = () => {
             color: COL.text2, fontSize: 12, fontWeight: 700,
             fontFamily: 'inherit', cursor: 'pointer', padding: '2px 4px 6px 0',
             touchAction: 'manipulation',
-          }}>‹ All skills</button>
+          }}>{say(SAY, 'skills.back')}</button>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
           {sd.iconSrc
             ? <img src={sd.iconSrc} alt="" draggable={false}
@@ -115,38 +117,38 @@ export const SkillsPanel = () => {
             : <span style={{ fontSize: 30 }}>{sd.icon}</span>}
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 15, fontWeight: 800, color: COL.text }}>{sd.name}</div>
-            <div style={{ fontSize: 12, fontWeight: 700, color: COL.text2, fontVariantNumeric: 'tabular-nums' }}>Level {lvl}</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: COL.text2, fontVariantNumeric: 'tabular-nums' }}>{say(SAY, 'skills.detailLevel', { lvl })}</div>
           </div>
         </div>
         <div style={{ height: 6, borderRadius: 999, background: '#0A1318', border: '1px solid rgba(229,237,233,.10)', overflow: 'hidden', marginBottom: 3 }}>
           <div style={{ width: pct + '%', height: '100%', background: COL.xp }} />
         </div>
         <div style={{ fontSize: 11, color: COL.text2, fontVariantNumeric: 'tabular-nums', marginBottom: 6 }}>
-          {xp} / {need} XP · {Math.max(0, need - xp)} XP to Lv {lvl + 1}
+          {say(SAY, 'skills.detailXp', { xp, need, left: Math.max(0, need - xp), next: lvl + 1 })}
         </div>
         {hitsOn && <div data-hit-odds={lvl} style={{ display: 'contents' }}>
-          {row('Each hit', gatherHitOddsText(lvl, ladder))}
-          {row(`At Lv ${lvl + 1}`, gatherHitOddsText(lvl + 1, ladder))}
+          {row(say(SAY, 'skills.eachHit'), gatherHitOddsText(lvl, ladder))}
+          {row(say(SAY, 'skills.nextLevelHit', { lvl: lvl + 1 }), gatherHitOddsText(lvl + 1, ladder))}
         </div>}
         {/* v2.3.3251: which resources pay full XP at this level, and the
             nearest that pay less (xpDecay.js) -- only against a worker that
             fades it (caps.xpdecay) */}
         {fade && <div data-xp-fade={lvl} style={{ display: 'contents' }}>
-          {row('Full XP', fade.full.length ? fade.full.join(', ') : 'Nothing at your level')}
-          {fade.less.length > 0 && row('Less XP', fade.less.slice(0, 2).map(x => `${x.name} ${xpShareText(x.share)}`).join(' · ') + (fade.less.length > 2 ? ' …' : ''))}
+          {row(say(SAY, 'skills.fullXp'), fade.full.length ? fade.full.join(', ') : say(SAY, 'skills.fullXpNone'))}
+          {fade.less.length > 0 && row(say(SAY, 'skills.lessXp'), fade.less.slice(0, 2).map(x => `${x.name} ${xpShareText(x.share)}`).join(' · ') + (fade.less.length > 2 ? ' …' : ''))}
         </div>}
-        {un && un.current.length > 0 && row('Unlocked', un.current.join(', '))}
-        {un && un.next && row('Next unlock', `${un.next.name} at Lv ${un.next.lvl}`)}
-        {un && un.later && row('Later', `${un.later.name} at Lv ${un.later.lvl}`)}
-        {sd.passive && row('Benefit', sd.passive(lvl))}
-        {sd.timerPassive && !hitsOn && row('Benefit', sd.timerPassive(lvl))}
-        {sd.where && row('Found at', sd.where)}
+        {un && un.current.length > 0 && row(say(SAY, 'skills.unlocked'), un.current.join(', '))}
+        {un && un.next && row(say(SAY, 'skills.nextUnlock'), say(SAY, 'skills.unlockAt', { name: un.next.name, lvl: un.next.lvl }))}
+        {un && un.later && row(say(SAY, 'skills.later'), say(SAY, 'skills.unlockAt', { name: un.later.name, lvl: un.later.lvl }))}
+        {sd.passive && row(say(SAY, 'skills.benefit'), sd.passive(lvl))}
+        {sd.timerPassive && !hitsOn && row(say(SAY, 'skills.benefit'), sd.timerPassive(lvl))}
+        {sd.where && row(say(SAY, 'skills.foundAt'), sd.where)}
         <div style={{ fontSize: 11.5, color: COL.text2, lineHeight: 1.4, paddingTop: 6 }}>
           {deskWords(sd.earnHint)}
         </div>
         {!un && (
           <div style={{ fontSize: 11, color: COL.muted, lineHeight: 1.4, paddingTop: 4 }}>
-            Higher levels improve results and unlock new content as it's added.
+            {say(SAY, 'skills.noUnlocks')}
           </div>
         )}
       </div>
@@ -186,7 +188,7 @@ export const SkillsPanel = () => {
     const iconPx = desk ? Math.min(76, Math.round(66 * (sd.iconScale || 1))) : Math.min(44, Math.round(38 * (sd.iconScale || 1)));
     return (
       <button key={sd.key} data-skill={sd.key} className="bt-skill-app"
-        aria-label={`${sd.name}, level ${lvl}`}
+        aria-label={say(SAY, 'skills.tileLabel', { name: sd.name, lvl })}
         onPointerUp={(e) => {
           e.stopPropagation();
           skillDetailBus.select(sd.key);
@@ -220,7 +222,7 @@ export const SkillsPanel = () => {
             color: COL.text, background: '#121B20',
             border: `1px solid ${hexA(acc, 0.75)}`, borderRadius: 8,
             fontVariantNumeric: 'tabular-nums', pointerEvents: 'none',
-          }}>{`Lv ${lvl}`}</span>
+          }}>{say(SAY, 'skills.levelChip', { lvl })}</span>
           {/* a level-up not yet looked at: the dashboard's brass dot */}
           {fresh.indexOf(sd.key) >= 0 && <span data-skill-new="1" aria-hidden="true" style={{
             position: 'absolute', top: -3, left: -3, width: 9, height: 9, borderRadius: '50%',
@@ -250,7 +252,7 @@ export const SkillsPanel = () => {
           <span data-skill-xp="" style={{
             display: 'block', fontSize: 10.5, fontWeight: 600, lineHeight: '12px', color: COL.text2,
             fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
-          }}>{`${Math.floor(sk.xp || 0)} / ${need} XP`}</span>
+          }}>{say(SAY, 'skills.tileXp', { xp: Math.floor(sk.xp || 0), need })}</span>
         ) : null}
       </button>
     );

@@ -416,6 +416,12 @@ outside the profile.
   #2201 and #2202 (the report's and the pacer's memory read as the chip's
   total alone), merged at sittings 46 and 47 (the gatekeeper, sitting
   48, tag 6262).*
+  *Corrected: the note above calling `pack-page` "the one row left `ours`"
+  is stale. `pack-page` has been off `KNOWN` since card P's 5253
+  (`tools/qa/mp/held-budget.mjs`); the last `ours` row is `other: R > J`,
+  which card HB2 takes after its 6284. Card HB is done (#2209 merged at
+  sitting 48); card HB2 carries its next list (the gatekeeper, sitting 49,
+  tag 6263).*
 - [ ] **3.2 [LATER] One queue for work that is not this frame's**, with
   priorities. It takes nothing while the frames are late or the pacer is
   trying a step up. Work put off (after a fight, at a veil) joins it one a
@@ -1235,8 +1241,12 @@ are cheap now and a rewrite later, and builds no helper feature.
   words outside `words.js`, its `KNOWN` rows by file and words; inbox
   entries gain `noteT`), merged at sitting 31 (the gatekeeper, sitting
   32, tag 5670).*
-- [ ] **11.5 [NEXT] Found on the way**: `/api/store/mine?playerId=` shows
+- [x] **11.5 [NEXT] Found on the way**: `/api/store/mine?playerId=` shows
   anyone's bids; public reads wake the one room with no pace.
+  *Ticked: card RV's #2121 (5817: the Auction House's `/mine` shows a
+  player's bids only to that player, `store.js` `_mineAuth`, its wire row
+  `minebids`) and card SEC's #2043 (5707: the public reads' pace has no
+  side door), both merged (the gatekeeper, sitting 49, tag 6263).*
 - [ ] **11.6 [LATER] The game's public facts**, made in the build from the
   shared tables (6.2), in players' words, with a version: so an assistant
   answers "how do I get X" from the truth and not from a stale page. A
