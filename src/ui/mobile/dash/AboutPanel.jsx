@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { COL, panelStyle } from './common.js';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { reportOn, setReportOn } from '../../../debug/report.js';   /* v2.3.5122: the smoothness report's switch */
+import { SAY } from '@/data/say/aboutPanel.js';   /* v2.3.6344: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say, sayPieces } from '@/game/say.js';
 
 /* ═══ v2.3.2820: ABOUT, PRIVACY, RULES, CREDITS ═══
  * The 2026-09-24 demo audit: a public demo with no privacy notice, no rules
@@ -45,18 +47,12 @@ const ul = { margin: 0, paddingLeft: 18 };
 const SmoothRow = () => {
   const [on, setOn] = useState(() => reportOn());
   return (
-    <Li><b style={{ color: COL.text }}>Smoothness reports</b> — every few minutes
-      while you play: how smoothly the game ran (frame times, what made it
-      stutter), the memory it used, which part of the world you were in, how
-      many players were near, and what the screen and graphics of your device
-      can do (never its name or model). They carry no name, character or
-      account, are added up with the reports of every other player, and are
-      kept for 60 days.{' '}
+    <Li>{sayPieces(SAY, 'aboutPanel.smooth', { what: <b key="what" style={{ color: COL.text }}>{say(SAY, 'aboutPanel.smoothWhat')}</b> })}{' '}
       <button type="button" data-report-switch={on ? 'on' : 'off'}
         onClick={() => { setReportOn(!on); setOn(!on); }}
         style={{ minHeight: 32, padding: '0 10px', margin: '4px 0 0', fontSize: 12, fontWeight: 700, borderRadius: 8,
           border: '1px solid ' + COL.accent, background: 'transparent', color: COL.accent, touchAction: 'manipulation', cursor: 'pointer' }}>
-        {on ? 'On: turn off' : 'Off: turn on'}
+        {say(SAY, on ? 'aboutPanel.smoothOn' : 'aboutPanel.smoothOff')}
       </button>
     </Li>
   );
@@ -64,71 +60,43 @@ const SmoothRow = () => {
 
 export const AboutPanel = () => (
   <div style={panelStyle} data-about="">
-    <Section title="BroTown">
-      An early demo of an online action RPG. Everything you do is saved on our
-      server, so the world is shared with everyone playing. It is a work in
-      progress: things change, break and get fixed often, and progress may be
-      reset while the demo runs.
+    <Section title={say(SAY, 'aboutPanel.gameTitle')}>
+      {say(SAY, 'aboutPanel.gameBody')}
     </Section>
 
-    <Section title="What we keep, and why">
+    <Section title={say(SAY, 'aboutPanel.keepTitle')}>
       <ul style={ul}>
-        <Li><b style={{ color: COL.text }}>Your character</b> — its name, look,
-          level, items and gold, so you can come back to it.</Li>
-        <Li><b style={{ color: COL.text }}>A scrambled copy of your Login Key</b> —
-          so only you can open your character. We never store the key itself.</Li>
-        <Li><b style={{ color: COL.text }}>A device id</b> — a random id and a
-          rough summary of your browser and screen, to spot cheating and bot
-          accounts. It stays on our server and is not shared.</Li>
-        <Li><b style={{ color: COL.text }}>Crash reports</b> — the error message
-          and your browser type when the game breaks, so we can fix it.</Li>
-        <Li><b style={{ color: COL.text }}>Feedback you send</b> — it appears on the
-          public Feedback board with your character's name.</Li>
-        <Li><b style={{ color: COL.text }}>Reported chat</b> — if someone reports a
-          chat message, we keep that message so it can be reviewed.</Li>
-        <Li><b style={{ color: COL.text }}>A wallet address</b> — only if you choose
-          to link one to verify a Hemi Bro.</Li>
+        <Li>{sayPieces(SAY, 'aboutPanel.keepCharacter', { what: <b key="what" style={{ color: COL.text }}>{say(SAY, 'aboutPanel.keepCharacterWhat')}</b> })}</Li>
+        <Li>{sayPieces(SAY, 'aboutPanel.keepKey', { what: <b key="what" style={{ color: COL.text }}>{say(SAY, 'aboutPanel.keepKeyWhat')}</b> })}</Li>
+        <Li>{sayPieces(SAY, 'aboutPanel.keepDevice', { what: <b key="what" style={{ color: COL.text }}>{say(SAY, 'aboutPanel.keepDeviceWhat')}</b> })}</Li>
+        <Li>{sayPieces(SAY, 'aboutPanel.keepCrash', { what: <b key="what" style={{ color: COL.text }}>{say(SAY, 'aboutPanel.keepCrashWhat')}</b> })}</Li>
+        <Li>{sayPieces(SAY, 'aboutPanel.keepFeedback', { what: <b key="what" style={{ color: COL.text }}>{say(SAY, 'aboutPanel.keepFeedbackWhat')}</b> })}</Li>
+        <Li>{sayPieces(SAY, 'aboutPanel.keepChat', { what: <b key="what" style={{ color: COL.text }}>{say(SAY, 'aboutPanel.keepChatWhat')}</b> })}</Li>
+        <Li>{sayPieces(SAY, 'aboutPanel.keepWallet', { what: <b key="what" style={{ color: COL.text }}>{say(SAY, 'aboutPanel.keepWalletWhat')}</b> })}</Li>
         <SmoothRow />
       </ul>
       <div style={{ marginTop: 6 }}>
-        No ads, no selling your data, no email or real name required. Chat is
-        seen by other players in real time.
+        {say(SAY, 'aboutPanel.keepNot')}
       </div>
     </Section>
 
-    <Section title="Rules">
+    <Section title={say(SAY, 'aboutPanel.rulesTitle')}>
       <ul style={ul}>
-        <Li>Be decent in chat. Harassment, hate and spam get muted or removed.</Li>
-        <Li>No cheating, bots, or exploiting bugs. Report bugs instead.</Li>
-        <Li>Keep your Login Key private — anyone with it can play your character.</Li>
-        <Li>BroTown is meant for players aged 13 and over.</Li>
-        <Li>The demo is provided as-is, and characters or items may be changed or
-          reset while it is being built.</Li>
+        <Li>{say(SAY, 'aboutPanel.ruleDecent')}</Li>
+        <Li>{say(SAY, 'aboutPanel.ruleCheat')}</Li>
+        <Li>{say(SAY, 'aboutPanel.ruleKey')}</Li>
+        <Li>{say(SAY, 'aboutPanel.ruleAge')}</Li>
+        <Li>{say(SAY, 'aboutPanel.ruleAsIs')}</Li>
       </ul>
     </Section>
 
-    <Section title="Credits">
-      A Hemi Bros game. Most art and all music were made for this
-      game with AI tools (OpenAI image generation, Suno). The townsfolk's
-      portraits are built from the art of the Hemi Bros collection, made by an
-      artist or team based in Mongolia. Sound effects come from
-      Pixabay and Freesound creators, including floraphonic,
-      freesound_community, matthewvakaliuk73627 and litupsubway. Footsteps
-      (cut into single steps and levelled) from Freesound.org: "Walking Through
-      Snow" by Percy Duke (CC BY 3.0); "Running, Ice, A" by InspectorJ,
-      www.jshaw.co.uk (CC BY 4.0); and steps by Ali_6868, qubodup, BlondPanda,
-      lukiacostello, jazzkdh, notarget and Phil25. The farm's, the forge's,
-      the Woodworker's, a door's, a fire's, the coins', the bag's and Lil
-      Bro's sounds (cut and levelled) from Freesound.org by anthousai,
-      triqystudio, roses1401, manuelaurreaf, 16hpanskadvorakova_aneta, wdomino,
-      wyronroberth, theboulder3400, mavom22, frostnox and heyheytheree. Fonts: Baloo 2,
-      Press Start 2P and Source Sans 3 (SIL Open Font License). Built with
-      React, PixiJS, Vite and Cloudflare Workers.
+    <Section title={say(SAY, 'aboutPanel.creditsTitle')}>
+      {say(SAY, 'aboutPanel.credits')}
     </Section>
 
     <button onClick={() => dashboardPanelBus.push('feedback')} className="button-primary"
       style={{ minHeight: 44, padding: '0 18px', fontSize: 13, touchAction: 'manipulation', width: '100%' }}>
-      Questions or problems? Send feedback
+      {say(SAY, 'aboutPanel.feedback')}
     </button>
   </div>
 );

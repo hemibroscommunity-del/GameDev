@@ -18,6 +18,8 @@ import { achvLive, achvSummary } from '@/game/achievements.js';   /* v2.3.3527: 
 import { ACHV_MEDAL_SRC } from '@/data/achievements.js';   /* v2.3.3527: its medal, the owner's */
 import { openWorldMap } from '../../WorldMapOverlay.jsx';   /* v2.3.4172: More -> Map opens the World map */
 import { notifUnread } from '../notifBus.js';               /* v2.3.4172: the bell's count, on its tile */
+import { SAY } from '@/data/say/morePanel.js';   /* v2.3.6344: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';
 
 // v2.3.1224: swapped to the UI Bible icon set (docs/UI-BIBLE.md Part 4,
 // sliced by tools/process_icon_sheets.py); every tile has a real icon.
@@ -40,9 +42,9 @@ import { notifUnread } from '../notifBus.js';               /* v2.3.4172: the be
    cooking/fishing/mining tree in here, spelling it out costs one word and
    removes the ambiguity for good. */
 export const TILES = [
-  { id: 'quests',      src: '/icons/ui/panel-quests.webp?v=2.3.1224',      label: 'Quests',   glyph: '📜', group: 'Progress',  iconScale: 1 },
-  { id: 'skills',      src: '/icons/ui/nav-lifeskills.webp?v=2.3.1331',    label: 'Life Skills', glyph: '⛏', group: 'Progress', iconScale: 1 },
-  { id: 'journey',     src: '/icons/ui/journey.webp?v=2.3.1224',           label: 'Journey',  glyph: '🛤', group: 'Progress',  iconScale: 1.18 },
+  { id: 'quests',      src: '/icons/ui/panel-quests.webp?v=2.3.1224',      label: say(SAY, 'morePanel.labelQuests'),   glyph: '📜', group: 'Progress',  iconScale: 1 },
+  { id: 'skills',      src: '/icons/ui/nav-lifeskills.webp?v=2.3.1331',    label: say(SAY, 'morePanel.labelSkills'), glyph: '⛏', group: 'Progress', iconScale: 1 },
+  { id: 'journey',     src: '/icons/ui/journey.webp?v=2.3.1224',           label: say(SAY, 'morePanel.labelJourney'),  glyph: '🛤', group: 'Progress',  iconScale: 1.18 },
   /* v2.3.3773: Journey is a page again -- the Character page's records,
      moved here (JourneyPanel.jsx) -- and its tile stands beside Achievements
      rather than giving way to it (the grid's note below). */
@@ -58,18 +60,18 @@ export const TILES = [
      than a six-across tile's ~56 (v2.3.2173's "the labels are getting cut
      off"), so a soft hyphen lets it break "Achieve-" / "ments" on two lines
      where it has to, and only there (sideways the tile is wide enough). */
-  { id: 'achievements', src: ACHV_MEDAL_SRC,                               label: 'Achievements', soft: 'Achieve\u00ADments', glyph: '🏆', group: 'Progress', iconScale: 1 },
-  { id: 'encyclopedia', src: '/icons/ui/panel-encyclopedia.webp?v=2.3.1224', label: 'Codex',  glyph: '📚', group: 'Progress',  iconScale: 1 },
+  { id: 'achievements', src: ACHV_MEDAL_SRC,                               label: say(SAY, 'morePanel.labelAchievements'), soft: say(SAY, 'morePanel.softAchievements'), glyph: '🏆', group: 'Progress', iconScale: 1 },
+  { id: 'encyclopedia', src: '/icons/ui/panel-encyclopedia.webp?v=2.3.1224', label: say(SAY, 'morePanel.labelCodex'),  glyph: '📚', group: 'Progress',  iconScale: 1 },
   /* v2.3.4393: the Leaderboards' tile is gone -- they have a button of their
      own on the dashboard's row (BottomDashboard RAIL_ORDER: the owner's "make
      room for a new 'leaderboards' button on the dashboard"), as Quests and the
      Codex left when they got theirs (v2.3.4172). */
   /* v2.3.4172: "Social", the owner's word for More's friends row (the page is
      your friends and their messages; the party is its Party tile beside it) */
-  { id: 'social',      src: '/icons/ui/nav-friends.webp?v=2.3.1224',      label: 'Social',   glyph: '👥', group: 'Community', iconScale: 1 },
-  { id: 'clan',        src: '/icons/ui/panel-clan.webp?v=2.3.1224',        label: 'Clan',     glyph: '🛡', group: 'Community', iconScale: 1 },
-  { id: 'guild',       src: '/icons/ui/panel-guild.webp?v=2.3.1224',       label: 'Guild',    glyph: '⚒', group: 'Community', iconScale: 1 },
-  { id: 'settings',    src: '/icons/ui/panel-settings.webp?v=2.3.1224',    label: 'Settings', glyph: '⚙', group: 'System',    iconScale: 1, iconFilter: 'brightness(1.18) contrast(1.05)' },
+  { id: 'social',      src: '/icons/ui/nav-friends.webp?v=2.3.1224',      label: say(SAY, 'morePanel.labelSocial'),   glyph: '👥', group: 'Community', iconScale: 1 },
+  { id: 'clan',        src: '/icons/ui/panel-clan.webp?v=2.3.1224',        label: say(SAY, 'morePanel.labelClan'),     glyph: '🛡', group: 'Community', iconScale: 1 },
+  { id: 'guild',       src: '/icons/ui/panel-guild.webp?v=2.3.1224',       label: say(SAY, 'morePanel.labelGuild'),    glyph: '⚒', group: 'Community', iconScale: 1 },
+  { id: 'settings',    src: '/icons/ui/panel-settings.webp?v=2.3.1224',    label: say(SAY, 'morePanel.labelSettings'), glyph: '⚙', group: 'System',    iconScale: 1, iconFilter: 'brightness(1.18) contrast(1.05)' },
   /* v2.3.2038 (owner: "is the character key retrievable once inside the
      game?").  It WAS -- More -> Settings -> Account has been wired through
      the panel registry since v2.3.1291 and a headless walk reaches it -- but
@@ -88,7 +90,7 @@ export const TILES = [
      lands in the empty tenth cell and nothing above it moves. */
   /* v2.3.4172: "Account" -- Log out / Switch character first, then the Login
      Key (the owner's review: "Switch character / logout: More → Account") */
-  { id: 'account',     src: '/icons/ui/panel-account.webp?v=2.3.2038',     label: 'Account',  glyph: '🔑', group: 'System',    iconScale: 1 },
+  { id: 'account',     src: '/icons/ui/panel-account.webp?v=2.3.2038',     label: say(SAY, 'morePanel.labelAccount'),  glyph: '🔑', group: 'System',    iconScale: 1 },
   /* ═══ v2.3.4172: THE OWNER'S MORE: MAP, NOTIFICATIONS, FEEDBACK, ABOUT ═══
      His list: "More: map, social features, settings, account, character
      switching", and from the review "The notification bell could also move to
@@ -96,16 +98,16 @@ export const TILES = [
      WorldMapOverlay); Notifications is what the bell held; Feedback and About
      were rows inside Settings and get tiles of their own (the brief's list).
      The bell and About are drawn, not pictures (`svg`): nothing to load. */
-  { id: 'map',         src: '/icons/ui/nav-map.webp?v=2.3.1224',          label: 'Map',      glyph: '🗺', group: 'World',     iconScale: 1 },
-  { id: 'notifications', svg: 'bell',                                     label: 'Notifications', soft: 'Notifi\u00ADcations', glyph: '🔔', group: 'System', iconScale: 1 },
-  { id: 'feedback',    src: '/icons/ui/panel-feedback.webp?v=2.3.1232',   label: 'Feedback', glyph: '📝', group: 'System',    iconScale: 1 },
-  { id: 'about',       svg: 'about',                                      label: 'About',    glyph: 'ℹ', group: 'System',    iconScale: 1 },
+  { id: 'map',         src: '/icons/ui/nav-map.webp?v=2.3.1224',          label: say(SAY, 'morePanel.labelMap'),      glyph: '🗺', group: 'World',     iconScale: 1 },
+  { id: 'notifications', svg: 'bell',                                     label: say(SAY, 'morePanel.labelNotifications'), soft: say(SAY, 'morePanel.softNotifications'), glyph: '🔔', group: 'System', iconScale: 1 },
+  { id: 'feedback',    src: '/icons/ui/panel-feedback.webp?v=2.3.1232',   label: say(SAY, 'morePanel.labelFeedback'), glyph: '📝', group: 'System',    iconScale: 1 },
+  { id: 'about',       svg: 'about',                                      label: say(SAY, 'morePanel.labelAbout'),    glyph: 'ℹ', group: 'System',    iconScale: 1 },
   /* v2.3.3120: the Pets page (docs/PET-TRAPPING-PLAN.md: "More -> Pets, with
      the paw-print icon"), beside Life Skills, whose Trapping it belongs to */
   /* v2.3.3526: the owner's sheet's orange paw ("Go recommended on everything":
      the review page's card 11, "Sheet's is clearer"; tools/ui/cut-owner-icons.py)
      -- the brown one was muddy at 30 px on the dark tile */
-  { id: 'pets',        src: '/icons/ui/pets-paw.webp?v=2.3.3526',          label: 'Pets',     glyph: '🐾', group: 'Progress',  iconScale: 1 },
+  { id: 'pets',        src: '/icons/ui/pets-paw.webp?v=2.3.3526',          label: say(SAY, 'morePanel.labelPets'),     glyph: '🐾', group: 'Progress',  iconScale: 1 },
 ];
 
 /* v2.3.1299 (round-6): one short LIVE status line per destination —
@@ -124,13 +126,14 @@ function statusFor(id, S) {
       const cs = R._compStats || {};
       const kills = Number(R.svKills ?? cs.monstersKilled ?? cs.kills ?? 0) || 0;
       const duels = Number(cs.duelsWon ?? 0) || 0;
-      return `${kills.toLocaleString()} kill${kills === 1 ? '' : 's'} · ${duels} duel${duels === 1 ? '' : 's'} won`;
+      return say(SAY, 'morePanel.journey', { kills: say(SAY, 'morePanel.journeyKills', { n: kills, kills: kills.toLocaleString() }),
+        duels: say(SAY, 'morePanel.journeyDuels', { n: duels, duels }) });
     }
     /* v2.3.3527: the worker's count (game/achievements.js), real state as
        every line here */
     case 'achievements': {
       const sum = achvSummary(S);
-      return `${sum.earned} of ${sum.total} earned`;
+      return say(SAY, 'morePanel.achievements', { earned: sum.earned, total: sum.total });
     }
     case 'encyclopedia': {
       /* v2.3.3209: the monster codex -- the monsters met and the pages with
@@ -138,25 +141,25 @@ function statusFor(id, S) {
          list nothing wrote) */
       const met = CODEX_KINDS.filter((k) => codexCounts(S, k)[0] >= CODEX_TIERS.page).length;
       const fresh = codexFreshCount(S);
-      if (fresh > 0) return `${fresh} new in the codex`;
-      return met > 0 ? `${met} of ${CODEX_KINDS.length} monsters met` : 'Learn about the monsters you defeat';
+      if (fresh > 0) return say(SAY, 'morePanel.codexFresh', { fresh });
+      return met > 0 ? say(SAY, 'morePanel.codexMet', { met, total: CODEX_KINDS.length }) : say(SAY, 'morePanel.codexNone');
     }
     /* v2.3.1641: same rule as every line above — real state only. */
     case 'quests': {
       const ready = readyQuestCount(S);
-      return ready > 0 ? `${ready} ready to turn in` : 'Track your quests';
+      return ready > 0 ? say(SAY, 'morePanel.questsReady', { ready }) : say(SAY, 'morePanel.questsNone');
     }
     case 'skills':
-      return hasUnseenLevelUps(R) ? 'New level-ups to view' : 'Cooking · Fishing · Mining';
+      return say(SAY, hasUnseenLevelUps(R) ? 'morePanel.skillsNew' : 'morePanel.skillsNone');
     case 'social': {
       try {
         const actionable = friendsSrv.requestsIn().length + friendsSrv.unreadTotal();
-        if (actionable > 0) return `${actionable} waiting`;
+        if (actionable > 0) return say(SAY, 'morePanel.socialWaiting', { count: actionable });
         const rows = getFriendRows(S);
         const online = rows.filter(r => r.online).length;
-        if (online > 0) return `${online} online`;
-        return rows.length > 0 ? `${rows.length} friend${rows.length === 1 ? '' : 's'}` : 'Add friends · direct messages';
-      } catch (_e) { return 'Add friends · direct messages'; }
+        if (online > 0) return say(SAY, 'morePanel.socialOnline', { count: online });
+        return rows.length > 0 ? say(SAY, 'morePanel.socialFriends', { n: rows.length }) : say(SAY, 'morePanel.socialNone');
+      } catch (_e) { return say(SAY, 'morePanel.socialNone'); }
     }
     case 'clan': {
       /* v2.3.3481: the 2026-10-19 UI review -- once clans are parties
@@ -167,37 +170,37 @@ function statusFor(id, S) {
       if (clanPartyOn(S)) {
         const p = S && S._party && S._party.state === 'open' ? S._party : null;
         const n = p && Array.isArray(p.members) ? p.members.length : 0;
-        return p ? `Your party · ${n} member${n === 1 ? '' : 's'}` : 'Make a party in the Saloon';   /* v2.3.4217: the owner: "clans are parties now" meant nothing to players */
+        return p ? say(SAY, 'morePanel.clanParty', { n }) : say(SAY, 'morePanel.clanNoParty');   /* v2.3.4217: the owner: "clans are parties now" meant nothing to players */
       }
       const c = S?._clanData;
-      return c && (c.name || c.tag) ? (c.name || c.tag) : 'Not joined · player clans';
+      return c && (c.name || c.tag) ? (c.name || c.tag) : say(SAY, 'morePanel.clanNone');
     }
     case 'guild': {
       /* v2.3.3066: every player is in every skill guild, ranked by the skill's
          level; `R.guild` / `S._guild`, read here before, is set by nothing, so
          this said "Not joined" to everyone (dash/GuildPanel.jsx) */
       const best = bestGuildRank(R);
-      return best ? `${best.rank.title} · ${best.guild.name}` : 'Novice in every skill guild';
+      return best ? say(SAY, 'morePanel.guildRank', { rank: best.rank.title, guild: best.guild.name }) : say(SAY, 'morePanel.guildNone');
     }
     /* v2.3.3120: real state, like every line above */
     case 'pets': {
       const n = S && S._petBook && Array.isArray(S._petBook.list) ? S._petBook.list.length : 0;
-      return n > 0 ? `${n} pet${n === 1 ? '' : 's'}` : 'Trap a monster to tame it';
+      return n > 0 ? say(SAY, 'morePanel.pets', { n }) : say(SAY, 'morePanel.petsNone');
     }
-    case 'settings': return 'Sound · Controls · Login Key · Feedback · Privacy';   /* v2.3.2820: + volume sliders and the About page */
+    case 'settings': return say(SAY, 'morePanel.settings');   /* v2.3.2820: + volume sliders and the About page */
     /* v2.3.2038: real state, like every line above -- a guest tab genuinely
        has no key, and saying "save it somewhere safe" there would be a lie. */
     /* v2.3.4172 */
-    case 'map': return 'The world map: the lands, the town, your quest';
+    case 'map': return say(SAY, 'morePanel.map');
     case 'notifications': {
       const n = notifUnread(S);
-      return n > 0 ? `${n} new` : 'World chat and the game\u2019s news';
+      return n > 0 ? say(SAY, 'morePanel.notifNew', { count: n }) : say(SAY, 'morePanel.notifNone');
     }
-    case 'feedback': return 'Tell the developer what you think';
-    case 'about': return 'About the game, privacy, rules and credits';
+    case 'feedback': return say(SAY, 'morePanel.feedback');
+    case 'about': return say(SAY, 'morePanel.about');
     case 'account': {
-      try { return getBtPassphrase() ? 'Log out · switch bro · save your Login Key' : 'Log out · guest tab, no key'; }
-      catch (_e) { return 'Log out · switch bro · save your Login Key'; }
+      try { return getBtPassphrase() ? say(SAY, 'morePanel.accountKey') : say(SAY, 'morePanel.accountGuest'); }
+      catch (_e) { return say(SAY, 'morePanel.accountKey'); }
     }
     default: return '';
   }
@@ -283,7 +286,7 @@ const tile = (id) => TILES.find(t => t.id === id);
    says so.  Under the kill switch (`clanparty: false`) clans are clans again
    and it says Clan, as the page does.  The id stays 'clan' (TRAPS §29: tests
    and the panel registry key on it). */
-const labelFor = (t, S) => (t.id === 'clan' && clanPartyOn(S) ? 'Party' : t.label);
+const labelFor = (t, S) => (t.id === 'clan' && clanPartyOn(S) ? say(SAY, 'morePanel.labelParty') : t.label);
 
 /* v2.3.1299 (ChatGPT round-6, owner-approved): expanded More = a
    STATUS HUB.  Progress: three status cards; Community: two wider
@@ -395,7 +398,7 @@ export const MorePanel = () => {
                  and asserts nothing. */
               data-more-tile={id}
               onPointerUp={(e) => { e.stopPropagation(); open(id); }}
-              title={`${labelFor(t, S)} — ${statusFor(id, S)}`}
+              title={say(SAY, 'morePanel.tileTitle', { label: labelFor(t, S), status: statusFor(id, S) })}
               style={{
                 ...cardBase,
                 flexDirection: 'column', gap: desk ? 6 : 2, padding: narrow ? '2px 2px' : (desk ? '8px 8px' : '4px 2px'),
