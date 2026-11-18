@@ -235,6 +235,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 
 | name | side | kind | born | on | thrown | risk | needs | fallback | off |
 |---|---|---|---|---|---|---|---|---|---|
+| `deadtake` | worker | switch | v2.3.5920 | 2026-11-17 | false | logic |  | no | A body in its dying seconds may cook, swap armour and buy at the pet house again, as before card V3 (TRAPS §150).  Not switched: the farm and salvage refuse it whatever the switch says (they did before, in silence) and now answer `dead`. |
 | `?dyingdoor` | page | switch | v2.3.5534 | 2026-11-17 | =0 | logic |  | no | Your dying seconds on the phone take any start a caller writes (one that is no number), as the lines before the life's page door; every caller writes a number today. |
 | `lifenoheal` | worker | switch | v2.3.4901 | 2026-11-12 | false | logic |  | no | A dying player can be healed again (the life door's step 2a off). |
 | `lifesave` | worker | switch | v2.3.4902 | 2026-11-12 | false | logic |  | no | No life note written or read: the join stands up as v2.3.4374 did. |
