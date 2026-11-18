@@ -68,17 +68,10 @@ for (const f of FILES) M(f);
 
 /* ── §6: a plain {} near an id-shaped index ── */
 
-/* Stepped in today, `function: variable` (precheck has warned on each when its file changed) */
-const PROTO_KNOWN = {
-  '_watchWipe: data': 'charwatch.js',
-  '_capePublicStatus: capes': 'eventcapes.js',
-  '_capeAdminRoute: out': 'eventcapes.js',
-  'vote: ticket.voters': 'feedback.js (the Feedback object)',
-  'sweep: voters': 'feedback.js (the Feedback object)',
-  '_partyStore: p.meta[pid]': 'party.js',
-  '_partyOnRejoin: p.meta[playerId]': 'party.js',
-  '_sparSpawn: _buffs': 'spar.js',
-};
+/* v2.3.6040 (card V6 PR 1): the eight stepped in on 2026-11-17 are maps with no
+   prototype now, each with a '__proto__' / 'constructor' case in
+   server/test/proto-maps.test.mjs: the list is empty and its line 0 */
+const PROTO_KNOWN = {};
 {
   const pre = readFileSync(join(ROOT, 'tools/dev/precheck.mjs'), 'utf8');
   const def = /const idIndex = (\/.+\/);\n/.exec(pre);
@@ -104,7 +97,7 @@ const PROTO_KNOWN = {
     }
   }
   check(`§6: the scan reads the places precheck's rule matches (${marked} marked proto-ok)`, marked >= 10, marked);
-  census('§6', 'plain {} literals near an id-shaped index, not marked proto-ok', found, PROTO_KNOWN, 8);
+  census('§6', 'plain {} literals near an id-shaped index, not marked proto-ok', found, PROTO_KNOWN, 0);
 }
 
 /* ── §76: every storage.list names a limit; none on the join path ── */

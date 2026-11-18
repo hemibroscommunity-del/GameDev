@@ -236,7 +236,7 @@ export const partyMethods = {
   _partyStore(p) {
     const meta = Object.create(null);   /* keyed by player ids: a '__proto__' must store (the party meta lesson, v2.3.1185) */
     for (const pid of p.members) {
-      const m = p.meta[pid] || (p.meta[pid] = {});
+      const m = p.meta[pid] || (p.meta[pid] = Object.create(null));   /* v2.3.6040: a member's own fields, no prototype either (TRAPS §6) */
       /* v2.3.3313: an online member's level as it is now -- the alliance's
          row counts levels from what is stored (alliance.js allyRowOf) */
       const ps = this.playerState[pid];
@@ -637,7 +637,7 @@ export const partyMethods = {
       if (!this.playerState[playerId]) return;
     }
     if (!p) return;
-    const meta = p.meta[playerId] || (p.meta[playerId] = {});
+    const meta = p.meta[playerId] || (p.meta[playerId] = Object.create(null));   /* v2.3.6040: as _partyStore's (TRAPS §6) */
     delete meta.awaySince;
     if (this._partyKeepOn()) {
       /* name and level for the list, and `seen` for the alliance's count of
