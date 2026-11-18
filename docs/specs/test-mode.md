@@ -64,8 +64,17 @@ switch allows it.
   `movefields`); a relay's fields typed and the room's send to joined
   sockets only (v2.3.5724, `relay.js` `RELAY_FORMS`, `relaytyped`); the room
   ceiling's honest floor (v2.3.5728, `flood.js` `HONEST_PER_S`, `ceilfair`);
+  a guest's share of the places, a played character's seat and an IPv6 /48
+  counted (v2.3.5729, `seathold.js` `GUEST_SHARE`, `flood.js` `ip48Key`,
+  `guestshare`);
   the owner's routes with no key and the public reads at the edge (v2.3.5726,
   `wire/door.js`; the worker settings `EDGE_GUARD`, `EDGE_CACHE`).
+- A General Store sell filed under its weapon's own tier, and a refund and
+  its order's delete in one write (v2.3.5801, card RV, `market.js`,
+  `mkttier`, `mktheal`); the rise chest's stamp kept for good by the oplog
+  prune (v2.3.5802, `inbox.js` `OP_PRUNE.KEEP`, `risekeep`); goods credited
+  in the dying seconds kept through the respawn (v2.3.5803, `inbox.js`
+  `_applyCreditToPs`, `dyingkeep`).
 - Every save and payment rule; the login key, the device lock, the lockouts;
   a frozen account.
 - PvP consent and **every check on a hit between players** (pvpbalance.js,

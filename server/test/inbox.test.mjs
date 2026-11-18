@@ -522,10 +522,15 @@ await room.state.storage.delete('oplog:old'); // don't leak into later checks
   const r2 = await room._opPruneMaybe();
   const r3 = await room._opPruneMaybe();
   check('page 2 reports more to do, page 3 (short) reports done', r2 === true && r3 === false, { r2, r3 });
-  check('every page listed with the page limit and a cursor after the first', state._store._listLog.every((l, i) => l.limit === OP_PRUNE.PAGE && (i === 0 ? !l.startAfter : !!l.startAfter)), state._store._listLog);
+  /* v2.3.5802 (card RV, MD-1): a page that stops short at a kept range
+     (OP_PRUNE.KEEP, the rise chest's stamps) is filled from after it in the
+     same call: that second list is the same page's, its limit what is left */
+  const _fill = (l) => !!l.startAfter && OP_PRUNE.KEEP.some((w) => l.startAfter === 'oplog:' + w + '\uffff');
+  const _pages = state._store._listLog.filter((l) => !_fill(l));
+  check('every page listed with the page limit and a cursor after the first', _pages.every((l, i) => l.limit === OP_PRUNE.PAGE && (i === 0 ? !l.startAfter : !!l.startAfter)), state._store._listLog);
   check('all stale keys gone after three pages', [...state._store.keys()].filter((k) => k.startsWith('oplog:bulk:')).length === 0);
   check('the fresh key survived the whole sweep', state._store.has('oplog:zz-fresh'));
-  check('a completed sweep arms the hourly anchor (fourth call is a no-op)', (await room._opPruneMaybe()) === false && state._store._listLog.length === 3, state._store._listLog.length);
+  check('a completed sweep arms the hourly anchor (fourth call is a no-op)', (await room._opPruneMaybe()) === false && state._store._listLog.filter((l) => !_fill(l)).length === 3, state._store._listLog.length);
   check('the sweep reported its work', room._opPruneLast && room._opPruneLast.pages === 3 && room._opPruneLast.deleted === N, room._opPruneLast);
   // THE JOIN PATH: a drain must not list the oplog at all.
   room._lastOpPrune = 0; room._opPrune = null;
