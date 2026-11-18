@@ -1,7 +1,7 @@
 card: RR
 branch: claude/plan-rr-1-census (one PR a branch, claude/plan-rr-*)
-prs: (6300) the census: opening; (6301) mayordoor: running its 5
-state: working
+prs: #2251 (6300, the census): ready; (6301) mayordoor: running its 5
+state: ready
 
 ## Done
 - (nothing merged yet)
