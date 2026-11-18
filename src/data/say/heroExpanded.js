@@ -1,7 +1,7 @@
 /* v2.3.6325: the Bro sheet's words (src/ui/mobile/sheet/HeroExpanded.jsx: its
    Equipment and Points windows; docs/specs/player-words.md, wave W1).  One leaf
    file a screen, no imports: every key starts with its screen's name, and
-   server/test/say.test fails a key two files define. */
+   tools/guards/say.test fails a key two files define. */
 export const SAY = Object.freeze({
   /* a stat's points, with or without its cap (ptsOf) */
   'heroExpanded.statPoints': { one: '{n} point', other: '{n} points' },
