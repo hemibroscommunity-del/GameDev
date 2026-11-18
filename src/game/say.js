@@ -27,7 +27,7 @@
  * player wrote it (deskWords runs on the row BEFORE the parts go in).
  *
  * A MISSING KEY returns the key itself ('clanInvite.title'), so a fault is
- * seen on screen and never shown as an empty button (server/test/say.test
+ * seen on screen and never shown as an empty button (tools/guards/say.test
  * also fails a key a screen reads that its table lacks).
  *
  * sayPieces() is for a sentence with a styled part inside it (a name in
@@ -37,7 +37,7 @@
  * did.  (v2.3.6320: the spec's say() returns text; this is its pieces form,
  * asked of the planning session with the pilot.)
  *
- * No imports but deskWords.js, so node tests it (server/test/say.test.mjs).
+ * No imports but deskWords.js, so node tests it (tools/guards/say.test.mjs).
  */
 import { deskWords, onComputer } from './deskWords.js';
 
