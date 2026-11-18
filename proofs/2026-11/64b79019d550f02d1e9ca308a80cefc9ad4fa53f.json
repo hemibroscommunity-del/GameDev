@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "64b79019d550f02d1e9ca308a80cefc9ad4fa53f",
+  "tree": "60e6847210db6a872188fac2ed5744ec2ce1156a",
+  "committedAt": "2026-11-18T03:24:01-08:00",
+  "subject": "Merge pull request #2205 from hemibroscommunity-del/claude/plan-rd-4-jumpbtn",
+  "files": 8339,
+  "bytes": 962767011,
+  "listingSha256": "c279b8f4e22bf09d6b386d981e07b4d094cafc7c984079f30064388dddce84cd",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
