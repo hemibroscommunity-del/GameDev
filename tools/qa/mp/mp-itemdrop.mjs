@@ -248,10 +248,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
         && await held(A, 'ore_copper_ore') === 1 && await held(B, 'ore_copper_ore') === 0, { end5A, end5B });
 
     /* ── 6. WALK AWAY, WALK BACK: YOURS AGAIN ── */
-    await dropThroughCard(A, 'fish_trout', 1);
+    const r6 = await dropThroughCard(A, 'fish_trout', 1);
     const m6 = await waitDrop(A, (ps) => ps.some((p) => p.key === 'fish_trout'));
     const p6 = (m6 || []).find((p) => p.key === 'fish_trout');
-    rec.ok('6a a trout dropped (the bag 2 -> 1)', !!p6 && await held(A, 'fish_trout') === 1, p6);
+    /* v2.3.6180: a red names its step: the card's (r6) and the worker's answer (applyItemDropResult's _dropLast) */
+    const last6 = p6 ? null : await A.page.evaluate(() => { const S = window._gameState.current; return { dropLast: S._dropLast || null, now: Date.now(), zone: S.currentZone }; });
+    rec.ok('6a a trout dropped (the bag 2 -> 1)', !!p6 && await held(A, 'fish_trout') === 1, { p6, r6, last6, trout: await held(A, 'fish_trout'), piles: m6 });
     if (p6) {
       await H.hopTo(A, p6.x - 110, p6.y + 15, { step: 50 });
       await A.page.waitForTimeout(800);
