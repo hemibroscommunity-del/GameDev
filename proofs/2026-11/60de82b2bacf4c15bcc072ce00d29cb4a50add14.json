@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "60de82b2bacf4c15bcc072ce00d29cb4a50add14",
+  "tree": "4b49f8b223246b89755be7e247f2132a5cbd237f",
+  "committedAt": "2026-11-18T11:38:26-08:00",
+  "subject": "Merge pull request #2234 from hemibroscommunity-del/claude/plan-en-4-canvas",
+  "files": 8437,
+  "bytes": 963100689,
+  "listingSha256": "8bcd3e0dc89c47a35533606ca2ac439bdf96ec9eafb733481a6e6c4e51b276ea",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

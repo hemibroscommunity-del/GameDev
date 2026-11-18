@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "55289f1a3e1287ea8ff1a013f11f7b53acc494ea",
+  "tree": "42d5402f94a6984024949d7168ca7c5a5c6dcb66",
+  "committedAt": "2026-11-18T11:39:16-08:00",
+  "subject": "Merge pull request #2245 from hemibroscommunity-del/claude/plan-lr-2-spec",
+  "files": 8446,
+  "bytes": 963185918,
+  "listingSha256": "f72f986f04fd7ef409665a79f7d8e967a790f804d43bb7a44b25913e33f0bca2",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

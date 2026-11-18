@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "0e2984b3179b7ce2e0e8a6cd8ce9d83ca9fd1610",
+  "tree": "de4b079fa836b4e30251d613c4701a228134f38f",
+  "committedAt": "2026-11-18T11:38:43-08:00",
+  "subject": "Merge pull request #2224 from hemibroscommunity-del/claude/plan-hb2-1-coach",
+  "files": 8440,
+  "bytes": 963115156,
+  "listingSha256": "72bda0bf81689e6631d83d8769ccff3e8f2026f1ee9b02e88a0c8f7ecd83c52c",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
