@@ -287,7 +287,13 @@ const ps = room.playerState[PID];
   /* v2.3.5715 (card SEC PR 16, gearheld): the join takes no armour or legs
      claim at all now, so the forged "?" rides a shield claim, a lane that
      still merges */
+  /* v2.3.5812 (card RV PR 12): a shield claim with no ledger id is not
+     merged at all now (`shieldclaim`); this check is the claim lane's own
+     "?" strip, so it plays that lane open (shield-claim.test is the gate's) */
+  const _scWas = room._liveFlags.shieldclaim;
+  room._liveFlags.shieldclaim = false;
   await join(room, wsF, 'bp_reveal_f', { rpgShieldStash: [{ name: 'Iron Buckler', mat: 'iron', slot: 'shield', tierMult: 2, unrevealed: true }] }, { rb: 1 });
+  if (_scWas === undefined) delete room._liveFlags.shieldclaim; else room._liveFlags.shieldclaim = _scWas;
   const fs = room.playerState.bp_reveal_f.shieldStash || [];
   check('7. a forged "?" in a join claim (no id) lands as a plain piece', fs.length === 1 && !fs[0].unrevealed, fs);
 }

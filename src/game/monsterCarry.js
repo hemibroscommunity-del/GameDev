@@ -23,6 +23,13 @@
 export const CARRY_ALIVE = [
   '_fxWasAlive', '_spawnFxAt', 'renderX', 'renderY', '_hitByMeAt', '_bandEngagedAt',
   '_stuckArrows', '_popFrom', '_burstFrom', '_burstUntil', '_burstScale',
+  /* v2.3.6082 (TRAPS §245, card V7): the wind-ups.  A re-push in the middle
+     of one cut it short: the telegraph's throb (`_tgFrom`/`_tgUntil`, the
+     worker's monster_ability windup, drawn by entityRenderer and
+     elemWindup) and the red ring (`_telegraphUntil`, drawn by
+     effectsRenderer at `_telegraphRange`, with `_telegraphAngle` set beside
+     it).  Kept within one life, never across a death, as the rest. */
+  '_tgFrom', '_tgUntil', '_telegraphUntil', '_telegraphAngle', '_telegraphRange',
 ];
 export const CARRY_DEAD = [
   '_fxWasAlive', '_spawnFxAt', '_slimeDeathStart', '_snowmanDeathStart', '_burstClock',

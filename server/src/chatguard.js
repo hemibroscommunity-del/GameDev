@@ -100,6 +100,21 @@ const MARK = /\p{M}/u;
 const LOOSE_JOINER = /(?<![^\s\u200D])\u200D|\u200D(?![^\s\u200D])/gu;
 /* something you can see: not a space, a combining mark or a format character */
 const VISIBLE = /[^\s\p{M}\p{Cf}]/u;
+/* ═══ v2.3.5814 (card RV, S6): THREE MORE WAYS TO SAY NOTHING ═══
+   The review found a line the cleaner passed that shows nothing or hides
+   something: a line of braille blanks (U+2800, a "letter" that draws
+   nothing: a blank bubble), the interlinear annotation marks U+FFF9 to
+   U+FFFB (never typed: they hide text between them), and the Unicode tag
+   characters U+E0001, U+E0020 to U+E007F outside the one place they belong,
+   a region's flag after the black flag U+1F3F4 (where they are kept, so a
+   subdivision flag still draws).  Taken out (the annotations, the loose
+   tags) or not counted as something to see (the blank).  The Arabic number
+   signs U+0600 to U+0605 stay: Arabic writing uses them.
+   `cleanmore: false` in the live flags (the room's _chatGuardClean): as
+   before. */
+const ANNOTATION = /[\uFFF9-\uFFFB]/g;
+const LOOSE_TAG = /(?<!\u{1F3F4}[\u{E0020}-\u{E007E}]*)[\u{E0001}\u{E0020}-\u{E007F}]/gu;
+const VISIBLE_MORE = /[^\s\p{M}\p{Cf}\u2800]/u;
 
 const ZWJ = '\u200D';
 const VS16 = '\uFE0F';
@@ -172,15 +187,16 @@ function capEmoji(s, max) {
    short runs into one too long -- "aaa😀aaaa" with the 😀 past the cap, or
    accents either side of a dropped emoji.  Cleaning a cleaned line changes
    nothing (the suite holds that over thousands of random lines). */
-export function cleanChatText(text) {
+export function cleanChatText(text, more = true) {
   if (typeof text !== 'string' || !text) return '';
   let s = text.replace(LONE_SURROGATE, '').replace(INVISIBLE, '');
+  if (more) s = s.replace(ANNOTATION, '').replace(LOOSE_TAG, '');   /* v2.3.5814 (S6) */
   s = capEmoji(s, CHAT_GUARD.EMOJI_MAX);
   s = s.replace(LOOSE_JOINER, '');
   s = s.replace(STACKED_MARKS, '$1');
   s = s.replace(LONG_RUN, (run, ch) => ch.repeat(CHAT_GUARD.RUN_MAX));
   s = s.replace(/\s+/g, ' ').trim();
-  return VISIBLE.test(s) ? s : '';
+  return (more ? VISIBLE_MORE : VISIBLE).test(s) ? s : '';
 }
 
 /* What the repeat filter compares: the cleaned line, lower case, its spaces
@@ -204,7 +220,13 @@ export const chatGuardMethods = {
   /* A lane's text, cleaned -- or untouched under the kill switch. */
   _chatGuardClean(text) {
     if (this._chatGuardOff()) return text;
-    return cleanChatText(text);
+    return cleanChatText(text, this._cleanMoreOn());
+  },
+  /* v2.3.5814 (card RV, S6): `cleanmore: false` in the live flags: the
+     cleaner as before (the three additions above off) */
+  _cleanMoreOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'cleanmore') && !f.cleanmore);
   },
 
   /* This connection's allowance and repeat memory, made on first use. */

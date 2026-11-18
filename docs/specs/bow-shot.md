@@ -68,3 +68,25 @@ On unless `bowshot: false` in the live flags (v2.3.5727); thrown, the bow is
 judged as before it. With it on (the default), the bench's bow gain is 1.60
 (claims-gain 3, `bowlabel`'s line 3.3 -> 1.6); off, 3.34 (claims-gain 2f,
 its off side explicit).
+
+## The reach and the path (card K4, v2.3.5901 and v2.3.5904-5905)
+
+- **`bowreach`** (ON; `bowreach: false` turns it off, and it turns off with
+  `bowshot`): a claim on an arrow seen lands only with the monster within the
+  arrow's own flight of where the archer stood at its relay (hitproof.js
+  `_hitArrowReach`: 675 px x Range + 400 px of slack), not the hit test's
+  reach from where the archer stands now. A claim with no arrow seen gets 3,
+  then one every 3 s. claims-gain 2g.
+- **`bowpath`** (an opt-in, OFF as merged; the owner's): a claim on an arrow
+  seen lands only for a monster near that arrow's line (200 px beside it,
+  measured to the monster's body: its feet up 130 px, a boss's 260; plus the
+  landing's 8 degree turn) and no sooner than the arrow could have flown
+  there (1,440 px a second x Range, less 300 ms). While it is on the worker
+  advertises `caps.bowPath`, and a phone told it sends a bow arrow's relay at
+  RELEASE with the line the arrow flies (projectiles.js `relayShot`): the
+  line was set at release, a frame or more after the fire the relay used to
+  leave at, and a held aim moves on in between (the gatekeeper's sitting 45).
+  Turning it on therefore also moves every bow relay ~110 ms later (the
+  bow's nock) for phones on the new page, and watchers draw the arrow on the
+  line it flies. claims-gain 2j: the path's liar 1.20; every honest archer,
+  its arrows at the real 1,440 px a second, unrefused on every disturbance.

@@ -87,7 +87,8 @@ const { WHEEL_TOWNSFOLK } = await import('../../src/data/wheelBuildingDoors.js')
   const none = W.folkAt(null, 0, t);
   check('1g no stops: his spot', none.dx === 0 && none.dy === 0 && !none.walking);
   check('1h the eight facings are the renderer\'s names (+y south)', W.folkFacing(1, 0) === 'east' && W.folkFacing(0, 1) === 'south' && W.folkFacing(-1, -1) === 'northwest' && W.folkFacing(0, -1) === 'north'
-    && /const NPC_DIRS_8 = \['east', 'southeast', 'south', 'southwest',\s*'west', 'northwest', 'north', 'northeast'\];/.test(src('src/rendering/systems/entityRenderer.js')));
+    /* v2.3.5345: the renderer's facings left for townsfolk's tables (src/rendering/tables/, card M): found by its system */
+    && /const NPC_DIRS_8 = \['east', 'southeast', 'south', 'southwest',\s*'west', 'northwest', 'north', 'northeast'\];/.test([...readSystem('townsfolk').values()].join('\n')));
 }
 
 /* ── 2. who ──────────────────────────────────────────────────────────────── */
@@ -356,7 +357,8 @@ const { WHEEL_TOWNSFOLK } = await import('../../src/data/wheelBuildingDoors.js')
 {
   /* effectsRenderer's lines, found in the render system's files, never by the
      big file's path (tools/guards/tests-by-system.test.mjs: it will be split) */
-  const er = [...readSystem('render').values()].join('\n');
+  /* v2.3.5346: + skills, where the trades' stand-in heights went (src/rendering/tables/skills.js, card M) */
+  const er = [...readSystem('render').values(), ...readSystem('skills').values()].join('\n');
   const fs6 = src('src/rendering/folkSkill.js');
   const set = src('src/rendering/lookSets/skills.js');
   /* 6a: effectsRenderer's numbers, copied (folkSkill.js cannot import it: it is

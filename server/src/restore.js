@@ -131,7 +131,28 @@ function restoreLose(room, at, now) {
    freezes as they are NOW (the flags' one record; the freezes one list of a
    few rows), so the owner can set again what was set since. */
 const ALSO_FROZEN_MAX = 100;
-async function alsoBack(room, st) {
+/* ═══ v2.3.5815 (card RV, ACC-4; the owner's call, decided while away: "Go
+   recommended on all"): AND WHAT THE OWNER DID TO LOGINS SINCE ═══
+   The words named the freezes to set again, but not the owner's login acts:
+   a key taken back ("Give it a new key"), a device forgotten, a pass, a
+   silence or its lifting since the time chosen all come undone with the rest
+   (`auth:`, `keyidx:`, `silenced:` go back), so a key taken from an intruder
+   works again.  The admin log names them, with their times; it goes back too,
+   so it is read here, BEFORE the do.  Only for a time (`at`): an undo's
+   bookmark names none.  `rewindsays: false` in the live flags: as before.
+   Words in the owner's Test panel only. */
+const SINCE_OPS = Object.freeze(['key-new', 'device-forget', 'device-pass', 'silence', 'unsilence', 'unfreeze']);
+const SINCE_WORDS = Object.freeze({ 'key-new': 'gave a new key to', 'device-forget': 'forgot a device of', 'device-pass': 'let a new device in for', silence: 'silenced', unsilence: 'lifted the silence on', unfreeze: 'unfroze' });
+async function sinceAt(room, st, at) {
+  const f = room && room._liveFlags;
+  if (f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'rewindsays') && !f.rewindsays) return null;
+  if (typeof at !== 'number' || !Number.isFinite(at)) return null;
+  let log = [];
+  try { const l = st && typeof st.get === 'function' ? await st.get('admin_log') : null; if (Array.isArray(l)) log = l; } catch (e) { log = []; }
+  return log.filter((e) => e && typeof e === 'object' && typeof e.ts === 'number' && e.ts > at && SINCE_OPS.includes(e.op))
+    .map((e) => ({ op: e.op, playerId: typeof e.playerId === 'string' ? e.playerId.slice(0, 64) : '', ts: e.ts }));
+}
+async function alsoBack(room, st, at) {
   /* the flags as STORED: the record that goes back (the flags route writes
      every change to it), read whole as the storage holds it */
   let flags = {};
@@ -144,6 +165,7 @@ async function alsoBack(room, st) {
     const m = st && typeof st.list === 'function' ? await st.list({ prefix: 'frozen:', limit: ALSO_FROZEN_MAX }) : null;
     if (m) frozen = [...m.keys()].map((k) => k.slice('frozen:'.length));
   } catch (e) { frozen = []; }
+  const since = await sinceAt(room, st, at);   /* v2.3.5815 */
   const names = Object.keys(flags).sort();
   const flagWords = names.length ? names.slice(0, 60).map((k) => k + '=' + JSON.stringify(flags[k])).join(', ') + (names.length > 60 ? ', ...' : '') : 'none';
   return {
@@ -151,7 +173,11 @@ async function alsoBack(room, st) {
     words: 'These go back too, being in the same storage: the live flags, the freezes, the login keys and the devices admitted, and the announcement.'
       + ' The flags now: ' + flagWords + '. Frozen now: ' + (frozen.length ? frozen.join(', ') + (frozen.length >= ALSO_FROZEN_MAX ? ', ...' : '') : 'nobody') + '.'
       + ' After it: re-throw any switch, and freeze again anyone frozen, since that time; set `roomrewind: true` again for the undo (it goes back to off if it was set after then);'
-      + ' a login key handed out or a device admitted since is refused (give that character a new key: /api/admin/key-new); the announcement may be an older one.',
+      + ' a login key handed out or a device admitted since is refused (give that character a new key: /api/admin/key-new); the announcement may be an older one.'
+      + (since === null ? '' : since.length
+        ? ' What you did to logins since that time comes undone too (do it again after): ' + since.slice(0, 30).map((e) => SINCE_WORDS[e.op] + ' ' + (e.playerId || '?')).join('; ') + (since.length > 30 ? '; ...' : '') + '.'
+        : ' You did nothing to logins since that time (no key taken back, device forgotten or silence).'),
+    ...(since === null ? {} : { since }),
   };
 }
 
@@ -209,7 +235,7 @@ export async function rewindPlan(room, body, now = Date.now()) {
   const confirm = rewindConfirm(t);
   room._rewind = { token, target, confirm, at: t.at === undefined ? null : t.at, made: now };
   const rl = restoreLose(room, room._rewind.at, now);
-  const also = await alsoBack(room, st);
+  const also = await alsoBack(room, st, room._rewind.at);   /* v2.3.5815: the time, for what was done since */
   return {
     ok: true, step: 'plan', dryRun: true, at: room._rewind.at, target, now: here, sockets, players, token, confirm,
     restore: rl.restore, lose: rl.lose, alsoBack: also,
@@ -237,7 +263,7 @@ export async function rewindDo(room, body, now = Date.now()) {
   /* what it restores and what it loses, written into the answer before it acts */
   const rl = restoreLose(room, p.at, now);
   const st = room.state.storage;
-  const also = await alsoBack(room, st);
+  const also = await alsoBack(room, st, p.at);   /* v2.3.5815 */
   /* 1. every socket told and closed; a player leaves through the leave door
      (admin.js _adminPutOut: the close, the leaving with its save, the
      session gone), so the undo below holds their last state */

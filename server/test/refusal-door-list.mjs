@@ -85,6 +85,7 @@ export const INFRA = Object.freeze({
   _sigOnMove: 'bot signals: they count, they never refuse (botsig.js)',
   _sigOnHit: 'bot signals', _sigOnStart: 'bot signals', _sigOnStrike: 'bot signals', _sigOnCook: 'bot signals', _sigOnAbility: 'bot signals',
   _accShots: 'telemetry stamps on `track`', _clanStampTag: 'telemetry stamps on `track`', _capeStamp: 'telemetry stamps on `track`',
+  _clanOf: 'v2.3.5819: reads the clan registry for `track`\'s look stamp (lookform.js lookStamp); refuses nothing',
   _achvStamp: 'telemetry stamps on `track`', _levelStamp: 'telemetry stamps on `track`', _stampRecordLook: 'telemetry stamps on `track`', _stampRecordName: 'the record\'s name stamped on `track` (v2.3.5622, card MOD)',
   _lookRelay: 'tells the others a look changed (lookrelay.js)',
   _swingDropsGuard: 'lowers the guard on a swing (moveclaims.js); refuses nothing',
@@ -113,7 +114,7 @@ export const SWALLOWED = Object.freeze({
 
 /* The list's size when it was frozen (v2.3.4791).  Lower these as lines come
    off; raising one is a decision the PR names. */
-export const FROZEN = Object.freeze({ listed: 277, known: 0 });   /* v2.3.5805: +4, a duel challenge's pace, mute and target-here, and a decline of nothing (duel.js, duelpace; card RV PR 6, S1 and S4); v2.3.5553: +1, a cook's result on no cook started (cooking.js, cookstart; card K, step 4.2) as the rate's; v2.3.5550: +1, a bow's claim with no arrow (bowshot.js, opt-in; card K, step 4.2) as the lanes' `rate`; v2.3.5548: +1, the sword's swing (swordswing.js, opt-in; card K, step 4.2) as the lanes' `rate`; v2.3.5194: -2, the chest's and the spin's repeat answered the first answer again (reqonce.js; card K PR 9); v2.3.5628: -1, the friend request's pace answers as sent (card MOD PR 8); v2.3.5624: +1, the friend request's pace (friends.js; card MOD PR 4, RT-3 S5), as the party invite's `rate`; v2.3.5543: +1, the relay's byte bounds beside the count's (relay.js; RT-1 N10; card K); v2.3.5540: +1, the archer's lane's own drop beside the plain floor's (combat.js; card K, step 4.2); v2.3.4801: +1, the draw and gather's quiet drop (drawgather.js); v2.3.4880: -22, the workshop answers (forge, amulet forge, gem cut, smelter, armour forge); v2.3.4881: -14, the points, the chest, the capes and the reroll; v2.3.4882: -4, the purses; v2.3.4883: -6, the weapon stash; v2.3.4884: the heap burn's 4 recoded `fight`, the fire's 1 off; v2.3.4885: -2, the last three answer (party accept, trade2's weapon cap, the relay trade's run-out offer; and a party accept with no invite map, after a deploy), two right silences beside them named */
+export const FROZEN = Object.freeze({ listed: 278, known: 0 });   /* v2.3.5811: +1, a friend remove's one-sided end (friends.js, friendfix; card RV PR 11): "not on your list" became two exits, neither side holding the other; v2.3.5805: +4, a duel challenge's pace, mute and target-here, and a decline of nothing (duel.js, duelpace; card RV PR 6, S1 and S4); v2.3.5553: +1, a cook's result on no cook started (cooking.js, cookstart; card K, step 4.2) as the rate's; v2.3.5550: +1, a bow's claim with no arrow (bowshot.js, opt-in; card K, step 4.2) as the lanes' `rate`; v2.3.5548: +1, the sword's swing (swordswing.js, opt-in; card K, step 4.2) as the lanes' `rate`; v2.3.5194: -2, the chest's and the spin's repeat answered the first answer again (reqonce.js; card K PR 9); v2.3.5628: -1, the friend request's pace answers as sent (card MOD PR 8); v2.3.5624: +1, the friend request's pace (friends.js; card MOD PR 4, RT-3 S5), as the party invite's `rate`; v2.3.5543: +1, the relay's byte bounds beside the count's (relay.js; RT-1 N10; card K); v2.3.5540: +1, the archer's lane's own drop beside the plain floor's (combat.js; card K, step 4.2); v2.3.4801: +1, the draw and gather's quiet drop (drawgather.js); v2.3.4880: -22, the workshop answers (forge, amulet forge, gem cut, smelter, armour forge); v2.3.4881: -14, the points, the chest, the capes and the reroll; v2.3.4882: -4, the purses; v2.3.4883: -6, the weapon stash; v2.3.4884: the heap burn's 4 recoded `fight`, the fire's 1 off; v2.3.4885: -2, the last three answer (party accept, trade2's weapon cap, the relay trade's run-out offer; and a party accept with no invite map, after a deploy), two right silences beside them named */
 
 /* handler -> { guard: 'code[ code...][: note]' } */
 export const ALLOW = {
@@ -124,7 +125,7 @@ export const ALLOW = {
   '_handleDice': {
     "if (this._diceOff())": "off",
     "if (!ask)": "shape",
-    "if (ps._diceAt && now - ps._diceAt < DICE.GAP_MS)": "rate",
+    "if (diceAt && now - diceAt < DICE.GAP_MS)": "rate",   /* v2.3.5921: the pace kept by the room across a rejoin (pacekeep.js) */
   },
   '_handlePointsReset': {
     "if (!ps || ps.dead || ps.dying || !ps.prog3 || typeof ps.prog3 !== 'object')": "norec dead",
@@ -223,7 +224,7 @@ export const ALLOW = {
     "if (this._chestOff())": "off",
   },
   '_handleRewardsGet': {
-    "if (ps._lastRewardsGetAt && now - ps._lastRewardsGetAt < 800)": "rate",
+    "if (getAt && now - getAt < 800)": "rate",   /* v2.3.5921: pacekeep.js */
     "if (!rec)": "err",
   },
   '_handleDailySpin': {
@@ -447,7 +448,10 @@ export const ALLOW = {
   },
   '_handleFriendRemove': {
     "if (!me || !fid || typeof fid !== 'string')": "norec shape",
-    "if (!mine.list[fid])": "noop",
+    /* v2.3.5811 (card RV, friendfix): a remove of one not on your list now
+       ends a friendship of one side; these two are its "nothing to end" */
+    "if (!friendFixOn(this) || fid.length > 64)": "noop: not on your list (friendfix off, or an id longer than any friend's)",
+    "if (!theirs1.list[me])": "noop: neither side holds the other",
   },
   '_handleFriendDm': {
     "if (!from || !to || typeof to !== 'string' || typeof text !== 'string')": "norec shape",
@@ -461,14 +465,14 @@ export const ALLOW = {
   },
   '_handleGambleRequest': {
     "if (!Number.isFinite(wager) || wager < 10 || wager > 10000)": "shape",
-    "if (ps._lastGambleAt && now - ps._lastGambleAt < 2000)": "rate",
+    "if (gambleAt && now - gambleAt < 2000)": "rate",   /* v2.3.5921: pacekeep.js */
   },
   '_handleAceFlipRequest': {
     "if (!Number.isFinite(stake) || stake < ACE_FLIP.MIN_STAKE)": "shape",
-    "if (ps._lastAceFlipAt && now - ps._lastAceFlipAt < ACE_FLIP.COOLDOWN_MS)": "rate",
+    "if (coinFlipAt && now - coinFlipAt < ACE_FLIP.COOLDOWN_MS)": "rate",   /* v2.3.5921: pacekeep.js */
   },
   '_handleAceItemFlipRequest': {
-    "if (ps._lastAceFlipAt && now - ps._lastAceFlipAt < ACE_ITEMS.COOLDOWN_MS)": "rate",
+    "if (flipAt && now - flipAt < ACE_ITEMS.COOLDOWN_MS)": "rate",   /* v2.3.5921: pacekeep.js */
     "if (!want || typeof want !== 'object')": "shape",
     "if (!ps.inventory || typeof ps.inventory !== 'object')": "norec",
   },
