@@ -4,6 +4,8 @@ import React from 'react';
 import { setMuted, blockedIdOf } from '@/game/chatMute.js'; /* v2.3.3391: + blockedIdOf */
 import { unblockPlayer } from '../mobile/sheet/friendsModel.js'; /* v2.3.4365: the one writer of the block list */
 import { drawColor } from '@/game/lookForm.js';   /* v2.3.5807 (card RV, S2): a friend's colour drawn only as a colour */
+import { SAY } from '@/data/say/socialPanel.js';   /* v2.3.6345: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';
 
 /* ═══ SocialPanel — friends / muted / blocked lists ═══ */
 /* v2.3.860: moved verbatim from BroTown.jsx's JSX tree (UI-panel
@@ -123,17 +125,17 @@ export function SocialPanel(props) {
       letterSpacing: '.10em',
       color: '#F4F0E7'
     }
-  }, "Social")), /*#__PURE__*/React.createElement("div", {
+  }, say(SAY, 'socialPanel.title'))), /*#__PURE__*/React.createElement("div", {
     style: {
       marginBottom: 14
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: sectionHeadStyle
-  }, "Friends (", friendsList.length, ")"), /*#__PURE__*/React.createElement("div", {
+  }, say(SAY, 'socialPanel.friends', { count: friendsList.length })), /*#__PURE__*/React.createElement("div", {
     style: wellStyle
   }, friendsList.length === 0 && /*#__PURE__*/React.createElement("div", {
     style: emptyStyle
-  }, "No friends yet. Tap a player and add them!"), friendsList.map(function (f) {
+  }, say(SAY, 'socialPanel.noFriends')), friendsList.map(function (f) {
     var _stateRef$current26, _f$name;
     var online = (_stateRef$current26 = stateRef.current) === null || _stateRef$current26 === void 0 || (_stateRef$current26 = _stateRef$current26.others) === null || _stateRef$current26 === void 0 ? void 0 : _stateRef$current26[f.id];
     return /*#__PURE__*/React.createElement("div", {
@@ -187,7 +189,7 @@ export function SocialPanel(props) {
         fontSize: 11,
         color: '#8D9B98'
       }
-    }, online ? 'Online · ' + online.zone : 'Offline')),
+    }, online ? say(SAY, 'socialPanel.online', { zone: online.zone }) : say(SAY, 'socialPanel.offline'))),
     /* v2.3.1744: the friends-list TP is gone with the inspect card's one
        (owner: "remove it").  This copy was the worse of the two: the row
        right above it prints the friend's ZONE, and the button wrote their
@@ -229,17 +231,17 @@ export function SocialPanel(props) {
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: sectionHeadStyle
-  }, "Blocked (", blockedList.length, ")"), /*#__PURE__*/React.createElement("div", {
+  }, say(SAY, 'socialPanel.blocked', { count: blockedList.length })), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12 /* v2.3.1235: batch-2 rollout — descriptive copy floor is 12 */,
       color: '#8D9B98',
       marginBottom: 6
     }
-  }, "Blocked players can't chat, attack, trade, or duel you."), /*#__PURE__*/React.createElement("div", {
+  }, say(SAY, 'socialPanel.blockedNote')), /*#__PURE__*/React.createElement("div", {
     style: wellStyle
   }, blockedList.length === 0 && /*#__PURE__*/React.createElement("div", {
     style: emptyStyle
-  }, "Nobody blocked."), blockedList.map(function (entry) {
+  }, say(SAY, 'socialPanel.nobodyBlocked')), blockedList.map(function (entry) {
     var _stateRef$current27;
     /* v2.3.3391: an entry is a plain id or {id, name} (the friends list's,
        chatMute.js) -- `bid.slice` threw on the second */
@@ -286,20 +288,20 @@ export function SocialPanel(props) {
            copy back erased blocks made elsewhere since the page loaded */
         setBlockedList(unblockPlayer(null, bid));
       }
-    }, "Unblock"));
+    }, say(SAY, 'socialPanel.unblock')));
   }))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     style: sectionHeadStyle
-  }, "Muted (", mutedList.length, ")"), /*#__PURE__*/React.createElement("div", {
+  }, say(SAY, 'socialPanel.muted', { count: mutedList.length })), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12 /* v2.3.1235: batch-2 rollout — descriptive copy floor is 12 */,
       color: '#8D9B98',
       marginBottom: 6
     }
-  }, "Muted players' messages don't reach you. Saved to your account, so it follows you between devices. They can still interact with you."), /*#__PURE__*/React.createElement("div", {
+  }, say(SAY, 'socialPanel.mutedNote')), /*#__PURE__*/React.createElement("div", {
     style: wellStyle
   }, mutedList.length === 0 && /*#__PURE__*/React.createElement("div", {
     style: emptyStyle
-  }, "Nobody muted."), mutedList.map(function (mid) {
+  }, say(SAY, 'socialPanel.nobodyMuted')), mutedList.map(function (mid) {
     var _stateRef$current28;
     var o = (_stateRef$current28 = stateRef.current) === null || _stateRef$current28 === void 0 || (_stateRef$current28 = _stateRef$current28.others) === null || _stateRef$current28 === void 0 ? void 0 : _stateRef$current28[mid];
     var name = (o === null || o === void 0 ? void 0 : o.name) || mid.slice(0, 12) + '...';
@@ -345,6 +347,6 @@ export function SocialPanel(props) {
            nothing — the worker would still be dropping the lines. */
         setMutedList(setMuted(stateRef.current, mid, false));
       }
-    }, "Unmute"));
+    }, say(SAY, 'socialPanel.unmute')));
   })))));
 }
