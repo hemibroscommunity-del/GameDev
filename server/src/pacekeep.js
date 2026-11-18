@@ -18,7 +18,8 @@
  *   - paceAt(room, pid, ps, field): the stamp the pace compares with (0:
  *     none), the room's copy filled in for a rebuilt `ps`;
  *   - paceStamp(room, pid, ps, field, now, gapMs): the request taken: the
- *     stamp on `ps` and in the room, kept until `now + gapMs`.
+ *     room's copy, kept until `now + gapMs`; it returns `now`, which the
+ *     caller writes on `ps` by name.
  *
  * BOUNDED.  One entry a player id, a field each (Object.create(null): the
  * fields are this file's callers' own names, never the wire's), with the
@@ -37,7 +38,7 @@
  *
  * No imports: node tests it directly (server/test/pace-keep.test.mjs). */
 export const PACE_KEEP = Object.freeze({
-  CAP: 4096,
+  CAP: 1000,   /* as lastplace.js's LAST_PLACE.MAX: far past a room's players */
   /* the fields kept, by why (traps-saves §276's `pace` rows) */
   FIELDS: Object.freeze(['_diceAt', '_dropAt', '_lastAceFlipAt', '_lastGambleAt', '_lastRewardsGetAt', '_lastSalvageAt', '_raceStartedAt', '_restAt']),
 });
@@ -66,12 +67,13 @@ export function paceAt(room, pid, ps, field) {
   return Number(ps[field]) || 0;
 }
 
-/** The request taken at `now`: its stamp on `ps`, and kept by the room until
-    `now + gapMs` (the longest it paces anything). */
+/** The request taken at `now`: kept by the room until `now + gapMs` (the
+    longest it paces anything).  Returns `now`, which the caller writes on
+    `ps` by name (`ps._diceAt = paceStamp(...)`), so the stamp is still a
+    memory-only field of `ps` where traps-server-word §2 reads it. */
 export function paceStamp(room, pid, ps, field, now, gapMs) {
-  if (!ps || !FIELD.has(field)) return;
-  ps[field] = now;
-  if (typeof pid !== 'string' || !pid || !room || !paceKeepOn(room)) return;
+  if (!ps || !FIELD.has(field)) return now;
+  if (typeof pid !== 'string' || !pid || !room || !paceKeepOn(room)) return now;
   const m = keepOf(room);
   let k = m.get(pid);
   if (k) m.delete(pid);
@@ -86,4 +88,5 @@ export function paceStamp(room, pid, ps, field, now, gapMs) {
   k[field] = now;
   k.until = Math.max(k.until, now + Math.max(0, Number(gapMs) || 0));
   m.set(pid, k);
+  return now;
 }

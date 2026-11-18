@@ -172,7 +172,7 @@ export const salvageMethods = {
     /* v2.3.5921 (card V3, TRAPS §276; `pacekeep`): kept across a rejoin */
     const salvAt = paceAt(this, session.id, ps, '_lastSalvageAt');
     if (salvAt && now - salvAt < SALVAGE.COOLDOWN_MS) return null;
-    paceStamp(this, session.id, ps, '_lastSalvageAt', now, SALVAGE.COOLDOWN_MS);
+    ps._lastSalvageAt = paceStamp(this, session.id, ps, '_lastSalvageAt', now, SALVAGE.COOLDOWN_MS);
     if (!ps.inventory || typeof ps.inventory !== 'object') ps.inventory = {}; // proto-ok: v2.3.4810: every key written here is SALVAGE's own (a bar, essenceKey, or a key parseEssenceKey accepted)
     return ps;
   },

@@ -216,7 +216,7 @@ export const gambleMethods = {
        true one goes back (the refusal door; only the asker's own bag, no
        oracle) */
     if (!kinds || total <= 0) return this._refusalEcho(session, ['inventory']);
-    paceStamp(this, session.id, ps, '_lastAceFlipAt', now, ACE_ITEMS.COOLDOWN_MS);
+    ps._lastAceFlipAt = paceStamp(this, session.id, ps, '_lastAceFlipAt', now, ACE_ITEMS.COOLDOWN_MS);
     const won = Math.random() < ACE_ITEMS.WIN_CHANCE;
     for (const k of Object.keys(staked)) {
       if (won) {
@@ -263,7 +263,7 @@ export const gambleMethods = {
     const now = Date.now();
     const coinFlipAt = paceAt(this, session.id, ps, '_lastAceFlipAt');   /* v2.3.5921: kept across a rejoin */
     if (coinFlipAt && now - coinFlipAt < ACE_FLIP.COOLDOWN_MS) return;
-    paceStamp(this, session.id, ps, '_lastAceFlipAt', now, ACE_FLIP.COOLDOWN_MS);
+    ps._lastAceFlipAt = paceStamp(this, session.id, ps, '_lastAceFlipAt', now, ACE_FLIP.COOLDOWN_MS);
     const won = Math.random() < ACE_FLIP.WIN_CHANCE;
     /* v2.3.4670: the gold door -- `coins` was this purse read the door's
        orZero way, two lines up, with nothing between to change it */
@@ -303,7 +303,7 @@ export const gambleMethods = {
     if (gambleAt && now - gambleAt < 2000) return;
     /* v2.3.4882: more than the purse -- the true coins go back (refusal door) */
     if ((ps.coins || 0) < wager) return this._refusalEcho(session, ['coins']);
-    paceStamp(this, session.id, ps, '_lastGambleAt', now, 2000);
+    ps._lastGambleAt = paceStamp(this, session.id, ps, '_lastGambleAt', now, 2000);
     const won = Math.random() < 0.40; // GAMBLE_WIN_CHANCE mirror
     if (won) this._goldGive(ps, wager, 'gamble_win'); /* v2.3.4670: the gold door */
     else this._goldTake(ps, wager, 'gamble_loss');

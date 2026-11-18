@@ -88,8 +88,8 @@ async function acrossRejoin(P, label, field, gapMs, prep, ask, took) {
 {
   const room = { _liveFlags: {} };
   const a = {};
-  paceStamp(room, 'bp_x', a, '_diceAt', 1000, 5000);
-  check('2. a stamp is on ps and in the room', a._diceAt === 1000 && room._paceKeep instanceof Map && room._paceKeep.get('bp_x')._diceAt === 1000);
+  a._diceAt = paceStamp(room, 'bp_x', a, '_diceAt', 1000, 5000);
+  check('2. a stamp is kept by the room, and returned for ps (its caller writes it by name)', a._diceAt === 1000 && room._paceKeep instanceof Map && room._paceKeep.get('bp_x')._diceAt === 1000);
   check('2. ...its entry has no prototype (the fields are the callers\' own names)', Object.getPrototypeOf(room._paceKeep.get('bp_x')) === null);
   const b = {};
   check('2. a rebuilt ps (the field unset) reads the room\'s copy, written onto it', paceAt(room, 'bp_x', b, '_diceAt') === 1000 && b._diceAt === 1000);
@@ -113,7 +113,7 @@ async function acrossRejoin(P, label, field, gapMs, prep, ask, took) {
   check('2. ...then the oldest, and it stays at CAP', big._paceKeep.size === PACE_KEEP.CAP && !big._paceKeep.has('bp_1') && big._paceKeep.has('bp_more' + (PACE_KEEP.CAP - 1)), big._paceKeep.size);
   const off = { _liveFlags: { pacekeep: false } };
   const e = {};
-  paceStamp(off, 'bp_x', e, '_diceAt', 7, 5000);
+  e._diceAt = paceStamp(off, 'bp_x', e, '_diceAt', 7, 5000);
   check('2. switched off: the stamp on ps only, nothing kept', e._diceAt === 7 && !off._paceKeep);
   const src = readFileSync(new URL('../src/pacekeep.js', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
   check('2. the keep writes nothing to storage (memory only: no new row)', !/storage|_saveRpg|\.put\(/.test(src));

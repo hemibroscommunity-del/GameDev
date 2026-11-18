@@ -82,7 +82,7 @@ export const diceMethods = {
        rejoin -- the room keeps it by player id (pacekeep.js) */
     const diceAt = paceAt(this, sid, ps, '_diceAt');
     if (diceAt && now - diceAt < DICE.GAP_MS) return;
-    paceStamp(this, sid, ps, '_diceAt', now, DICE.GAP_MS);
+    ps._diceAt = paceStamp(this, sid, ps, '_diceAt', now, DICE.GAP_MS);
     const value = fairInt(ask.sides, this._diceRand);
     this.eventBuffer.push({
       type: 'dice_roll',

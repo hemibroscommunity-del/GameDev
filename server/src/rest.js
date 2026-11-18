@@ -121,7 +121,7 @@ export const restMethods = {
     if (restAt && now - restAt < REST.GAP_MS) {
       return answer({ ok: false, err: 'soon', wait: REST.GAP_MS - (now - restAt) });
     }
-    paceStamp(this, pid, ps, '_restAt', now, REST.GAP_MS);
+    ps._restAt = paceStamp(this, pid, ps, '_restAt', now, REST.GAP_MS);
     if (typeof ps.maxHp === 'number') this._hpSet(ps, ps.maxHp, 'rest');   /* v2.3.4820: the life door */
     if (typeof ps.maxStamina === 'number') ps.stamina = ps.maxStamina;
     if (typeof ps.maxMana === 'number') ps.mana = ps.maxMana;

@@ -178,7 +178,7 @@ export const raceMethods = {
     if (!(typeof ps.x === 'number' && typeof ps.y === 'number') || Math.hypot(ps.x - sx, ps.y - sy) > RACE.START_R) return refuse('far');
     const lilMs = lilLapMs();
     const t0 = now + RACE.COUNTDOWN_MS;
-    paceStamp(this, pid, ps, '_raceStartedAt', now, RACE.START_GAP_MS);
+    ps._raceStartedAt = paceStamp(this, pid, ps, '_raceStartedAt', now, RACE.START_GAP_MS);
     this._raceTo(ps, { t0, next: 0, lilMs, endBy: t0 + lilMs + RACE.GRACE_MS }, 'start');   /* v2.3.5217: the race door */
     const abs = (p) => [cx + p[0], cy + p[1]];
     const state = {

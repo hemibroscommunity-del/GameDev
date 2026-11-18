@@ -1093,7 +1093,7 @@ export const dailyRewardsMethods = {
     /* v2.3.5921 (card V3, TRAPS §276; `pacekeep`): kept across a rejoin */
     const getAt = paceAt(this, pid, ps, '_lastRewardsGetAt');
     if (getAt && now - getAt < 800) return;
-    paceStamp(this, pid, ps, '_lastRewardsGetAt', now, 800);
+    ps._lastRewardsGetAt = paceStamp(this, pid, ps, '_lastRewardsGetAt', now, 800);
     const rec = await this._drLoad(pid);
     if (!rec) return;
     if (await this._drRollover(pid, rec, now)) await this._drSave(pid);

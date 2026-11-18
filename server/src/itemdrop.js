@@ -125,7 +125,7 @@ export const itemDropMethods = {
        saved -- no await between, so nothing can see it in both places */
     bagTake(inv, ask.key, qty, 'item_drop'); /* v2.3.4810: the bag door */
     const pile = this._dropPile(session, ps, ask.key, qty, now);
-    paceStamp(this, sid, ps, '_dropAt', now, ITEM_DROP.GAP_MS);
+    ps._dropAt = paceStamp(this, sid, ps, '_dropAt', now, ITEM_DROP.GAP_MS);
     this._saveRpg(sid, ps);
 
     /* to the dropper alone: the pile, the bag, the answer */
