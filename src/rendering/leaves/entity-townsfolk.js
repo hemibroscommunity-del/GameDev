@@ -7,8 +7,9 @@
  * IMPORT_CYCLE_FILES has no room).  The census: part 5 of
  * docs/plan/census/M-tables.md (tools/dev/render-code-census.mjs).
  */
-import { NPC_DIRS_8, NPC_SPRITE_SCALE, QUEST_BADGE_R } from '../tables/townsfolk.js';
+import { NPC_DIRS_8, NPC_FRAME_FEET_Y, NPC_FRAME_TOP_Y, NPC_SPRITE_SCALE, NPC_WALK_PX_PER_FRAME, QUEST_BADGE_R } from '../tables/townsfolk.js';
 import { PLAYER_SIZE_MULT } from '../tables/look.js';
+import { jogStride } from '../playerSprites.js';
 
 /* ── v2.3.6200: level 0 ── */
 export const NPC_BRO_MULT = PLAYER_SIZE_MULT;
@@ -82,3 +83,18 @@ export function _drawQuestBadge(g, fill, check) {
     g.stroke({ width: 3, color: 0xFFFFFF, cap: 'round', join: 'round' });
   }
 }
+
+/* ── v2.3.6201: main's level 1 ── */
+/** Height of the drawn figure above the NPC's feet, in world px.
+ *  v2.3.3580: times his figure's size in its cell (npcFigureSize). */
+export const npcFigureHeight = (src, npc) => npcSpriteScale(src) * (NPC_FRAME_FEET_Y - NPC_FRAME_TOP_Y) * npcFigureSize(npc);
+export function npcWalkCell(npc, dir, phase) {
+  const w = npc && npc.walk;
+  const cycle = w && Number.isInteger(w.cycle) && w.cycle > 0 ? w.cycle : 0;
+  if (!cycle) return Math.floor(phase / NPC_WALK_PX_PER_FRAME);
+  const sheet = CAPTURE_SHEET[dir] || dir;
+  const k = (NPC_SCALE_MULT[npc.sprite] || NPC_BRO_MULT) / PLAYER_SIZE_MULT * npcFigureSize(npc);
+  const stride = jogStride(sheet) * k;   /* v2.3.4077: the player's measured stride (playerSprites jogStride) */
+  return Math.floor(phase / Math.max(1, stride / cycle)) % cycle;
+}
+export const CAPTURE_SHEET = Object.freeze({ west: 'east', northwest: 'northeast', southeast: 'southwest' });

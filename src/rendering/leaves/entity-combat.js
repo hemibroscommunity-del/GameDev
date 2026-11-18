@@ -8,8 +8,14 @@
  * docs/plan/census/M-tables.md (tools/dev/render-code-census.mjs).
  */
 import { AIM_CARET, AIM_CARET_EDGE, AIM_CARET_HOT } from '../aimCaret.js';
-import { BLOCK_ARM_CUT, BLOCK_ARM_FACING } from '../blockArm.js';
-import { BLOCK_ARM_SHOULDER, GRIP_HOLE_FACINGS, GRIP_NUDGE_X } from '../tables/combat.js';
+import { BLOCK_ARM_CUT, BLOCK_ARM_FACING, blockArmSleeveTexture, blockArmTexture } from '../blockArm.js';
+import { BLOCK_ARM_SHOULDER, GRIP_HOLE_FACINGS, GRIP_NUDGE_X, SOUTH_BLOCK_OFFHAND, SOUTH_BLOCK_OFFHAND_BY_TYPE } from '../tables/combat.js';
+import { gearTint } from '../gearVariants.js';
+import { getEquip } from '../gearCatalog.js';
+import { getGearFrame } from '../gearSheets.js';
+import { getWeaponHandle } from '../playerAnchors.js';
+import { getWeaponTexture, hasWeapon, weaponFitH } from '../weaponSprites.js';
+import { weaponTint } from '../traits/materialTints.js';
 
 /* ── v2.3.6200: level 0 ── */
 /* v2.3.2925: display px the carried greatsword shifts right while its grip
@@ -184,4 +190,191 @@ export function _orderPeerHeldShield(display, facingIdx) {
     target = shIdx < top ? top - 1 : top;
   }
   if (shIdx !== target) display.setChildIndex(sh, target);
+}
+
+/* ── v2.3.6201: main's level 1 ── */
+export function selfGathering(S) {
+  const ex = S && S._extraction;
+  return !!(ex && (ex.status === 'waiting' || ex.status === 'ready')) && !selfCorpseUp(S);
+}
+/* Aimed down and out, so the blade leaves the silhouette below the shield
+ * instead of climbing across the face.
+ * v2.3.1882: 0.72pi -> 0.28pi, which is the SAME angle mirrored about the
+ * vertical (pi - 0.72pi).  It has to move with the grip: "down and out" is
+ * defined relative to which side he holds it on, and a blade still sweeping
+ * down-LEFT from a grip that is now on the RIGHT would be pointing back
+ * across his own chest — the one direction this constant exists to avoid. */
+export const SOUTH_BLOCK_OFFHAND_AIM = Math.PI * 0.28;
+export function _placeSouthBlockWeapon(display, wpn, bobY, quiet) {   /* v2.3.2920: + quiet, for a peer (no local probe) */
+  const spr = display && display._weaponSprite;
+  clearGripHole(spr);   /* v2.3.2911: the carried pose's fist hole is not this pose's */
+  if (!spr || !wpn || !wpn.type) return false;
+  /* THE SAME OBJECT HE WAS JUST CARRYING.  A greatsword and a bow have
+     per-facing held art, and their single-icon fallbacks are something else
+     entirely — `greatsword` is keyed to Sword1.webp, which is the bamboo
+     pole.  The first cut of this took the neutral icon and a bro holding a
+     copper greatsword raised his shield and was holding a gold stick.  Same
+     resolution the stand-in path uses (effectsRenderer), and south is a
+     canonical facing so there is no mirror to reconcile. */
+  const perFacing = (wpn.type === 'greatsword' || wpn.type === 'bow');
+  const artDir = (perFacing && hasWeapon(wpn.type, wpn.gearBase, 'south')) ? 'south' : null;
+  if (!hasWeapon(wpn.type, wpn.gearBase, artDir)) return false;
+  const tex = getWeaponTexture(wpn.type, wpn.gearBase, artDir);
+  if (!tex) return false;
+  if (spr.texture !== tex) spr.texture = tex;
+  const tw = tex.width || 64, th = tex.height || 64;
+  /* handles.json has no bare `greatsword` — its grips are per-facing — and
+     the generic greatsword icon IS the sword's file, so the sword's grip is
+     the same point on the same art.  (Same fallback the stand-in path needs;
+     without it the sprite pivots on its frame's bottom edge and the blade
+     hangs off the chest at an angle nothing asked for.) */
+  const grip = getWeaponHandle(wpn.type, wpn.gearBase, artDir)
+            || (wpn.type === 'greatsword' ? getWeaponHandle('sword', wpn.gearBase, null) : null);
+  if (grip) spr.anchor.set(grip[0] / tw, grip[1] / th);
+  else spr.anchor.set(0.5, 1);
+  const over = SOUTH_BLOCK_OFFHAND_BY_TYPE[wpn.type] || null;
+  const targetH = (over && over.px) ? over.px
+                : wpn.type === 'greatsword' ? 44
+                : wpn.type === 'bow' ? 34
+                : (wpn.type === 'sword' && wpn.gearBase === 'wood') ? 36
+                : 26;
+  /* v2.3.2910: size by weaponFitH, not th -- the widened greatsword's canvas
+     is taller than its blade is long (weaponSprites.js SHEETS). */
+  const k = targetH / Math.max(8, weaponFitH(wpn.type, wpn.gearBase, artDir, th));
+  spr.scale.set(k, k);
+  /* Every weapon icon runs grip-to-tip along the same diagonal (see
+     BLOCK_OFFHAND_ART_ANG), so one constant turns "point it this way" into a
+     rotation.  A staff is reflected about the horizon for the same reason it
+     is on the stand-in: its far end is the HEAD, and head-down is a broom. */
+  const artAng = -Math.PI / 4;
+  if (artDir) {
+    /* Art posed for this facing already knows which way the blade goes;
+       rotating it would only fight the drawing. */
+    spr.rotation = 0;
+  } else {
+    const aim = (wpn.type === 'staff') ? -SOUTH_BLOCK_OFFHAND_AIM : SOUTH_BLOCK_OFFHAND_AIM;
+    spr.rotation = aim - artAng;
+  }
+  spr.tint = weaponTint(wpn.type, wpn.gearBase);
+  spr.alpha = 1;
+  spr.x = (over && typeof over.x === 'number') ? over.x : SOUTH_BLOCK_OFFHAND.x;
+  spr.y = ((over && typeof over.y === 'number') ? over.y : SOUTH_BLOCK_OFFHAND.y) + (bobY || 0);
+  spr.visible = true;
+  /* UNDER THE SHIELD.  setChildIndex removes then re-inserts, so the target
+     depends on which side the container starts from: from above, the shield
+     does not move and the container goes to shIdx; from below, the shield
+     slides down one during the removal and it goes to shIdx-1.  The
+     already-there check keeps it stable rather than ratcheting a slot a
+     frame. */
+  const wc = display._weaponContainer, sh = display._shieldSprite;
+  if (wc && sh && sh.visible) {
+    const shIdx = display.getChildIndex(sh);
+    const wi = display.getChildIndex(wc);
+    if (wi !== shIdx - 1) display.setChildIndex(wc, wi < shIdx ? shIdx - 1 : shIdx);
+  }
+  if (!quiet && typeof window !== 'undefined') {
+    window.__btSouthBlockWeapon = {
+      on: true, type: wpn.type, gearBase: wpn.gearBase || null,
+      x: spr.x, y: spr.y, px: targetH, rotation: spr.rotation,
+      gripped: !!grip, artDir, posed: !!artDir,
+      /* The whole request in two numbers: the weapon's slot and the
+         shield's.  Lower means drawn first means occluded. */
+      wcIdx: wc ? display.getChildIndex(wc) : -1,
+      shieldIdx: (sh && sh.visible) ? display.getChildIndex(sh) : -1,
+      shieldVisible: !!(sh && sh.visible),
+    };
+  }
+  return true;
+}
+export function _placeBlockArm(display, facing, bodyH, bobY, peer) {   /* v2.3.2920: + peer {tex, chest} -- their arm, their sleeve, no local probe */
+  const spr = display._blockArmSprite;
+  const sleeve = display._blockArmSleeve;
+  const group = display._blockArmGroup;
+  if (sleeve) sleeve.visible = false;
+  if (!spr) return null;
+  const map = BLOCK_ARM_FACING[facing];
+  const anchor = BLOCK_ARM_SHOULDER[facing];
+  const tex = map && (peer ? peer.tex : blockArmTexture(map[0]));
+  const cut = map && BLOCK_ARM_CUT[map[0]];
+  if (!map || !anchor || !tex || !cut) {
+    if (peer) { if (group) group.visible = false; }
+    else _hideBlockArm(display, { facing, hasSheet: !!map, hasArt: !!tex });
+    return null;
+  }
+
+  const mirror = map[1];
+  /* 188 is the bow sheet's crown-to-foot figure height, the same constant the
+     bow stand-in divides by. */
+  const sc = (bodyH || 84) / 188;
+  spr.texture = tex;
+  spr.scale.set(mirror ? -sc : sc, sc);
+  /* anchor is (0,0), so position the frame corner such that the cut's shoulder
+     point lands on the body's shoulder.  Mirroring flips which edge the
+     shoulder is measured from. */
+  const sx = mirror ? -sc : sc;
+  spr.x = anchor[0] - cut.shoulder[0] * sx;
+  spr.y = anchor[1] + (bobY || 0) - cut.shoulder[1] * sc;
+  spr.tint = 0xffffff;
+  spr.alpha = 1;
+  spr.visible = true;
+  if (group) group.visible = true;
+
+  /* v2.3.1789: the sleeve rides the arm — same rect, same transform, drawn
+     straight over it, so a copper plate reaches out with the arm instead of
+     stopping at the shoulder.  Tinted by the piece's material for the same
+     reason every other gear draw site is (v2.3.1757): a recoloured set shares
+     its donor's texture and the colour is applied here. */
+  if (sleeve) {
+    const worn = peer ? peer.chest : getEquip('chest');
+    const sleeveTex = blockArmSleeveTexture(map[0], worn, getGearFrame);
+    if (sleeveTex) {
+      sleeve.texture = sleeveTex;
+      sleeve.scale.set(spr.scale.x, spr.scale.y);
+      sleeve.x = spr.x;
+      sleeve.y = spr.y;
+      sleeve.tint = gearTint(worn);
+      sleeve.alpha = 1;
+      sleeve.visible = true;
+    }
+  }
+
+  /* Z-ORDER: the arm group goes DIRECTLY BENEATH the shield, so the boss covers
+     the hand rather than the hand being painted across the shield face.  It has
+     to happen per frame, because the in-hand shield's own z-rule slides
+     _shieldSprite up and down the child list by facing — a fixed build-order
+     position for the arm is right on some facings and wrong on the rest.
+     (Caught by mp-blockarm: the arm sat at index 25 with the shield at 8.)
+
+     setChildIndex removes then re-inserts, so the target depends on which side
+     the group starts from: from above, the shield does not move and the group
+     goes to shIdx; from below, the shield slides down one during the removal
+     and the group goes to shIdx-1.  The "already there" check keeps it stable
+     rather than ratcheting a slot per frame. */
+  const shieldSpr = display._shieldSprite;
+  if (group && shieldSpr) {
+    const shIdx = display.getChildIndex(shieldSpr);
+    const gi = display.getChildIndex(group);
+    if (gi !== shIdx - 1) display.setChildIndex(group, gi < shIdx ? shIdx - 1 : shIdx);
+  }
+
+  /* Where the hand ended up, for the shield to sit in. */
+  const hand = _blockHandPoint(facing, bodyH, bobY);   /* v2.3.2920: one formula, shared with a peer's shield */
+
+  /* QA probe (mp-blockarm) — a headless run cannot read the WebGL canvas. */
+  if (!peer) try {
+    window.__btBlockArm = {
+      on: true, facing, sheet: map[0], mirror,
+      armVisible: spr.visible,
+      armW: spr.texture ? spr.texture.width : 0,
+      armH: spr.texture ? spr.texture.height : 0,
+      sleeveVisible: !!(sleeve && sleeve.visible),
+      sleeveW: (sleeve && sleeve.visible && sleeve.texture) ? sleeve.texture.width : 0,
+      sleeveTint: (sleeve && sleeve.visible) ? sleeve.tint : null,
+      worn: getEquip('chest'),
+      hand,
+      armIdx: group ? display.getChildIndex(group) : display.getChildIndex(spr),
+      shieldIdx: display._shieldSprite ? display.getChildIndex(display._shieldSprite) : -1,
+    };
+  } catch (e) { /* never breaks the frame */ }
+  return hand;
 }

@@ -13,8 +13,8 @@ fails a page that is not the scan's (line numbers aside). The tables line
 | tables (counted) | 0 | 0 |
 | written into (apart) | 14 | 15 |
 | handed on (apart) | 10 | 14 |
-| frozen (a call: apart) | 3 | 2 |
-| lone constants | 69 | 83 |
+| frozen (a call: apart) | 2 | 2 |
+| lone constants | 67 | 83 |
 | ...tuned (leave with the tables) | 0 | 0 |
 
 Suites that name a counted table or a tuned constant by its text: 0 (). They move with the two table PRs (the owner's review, 2026-11-17).
@@ -60,7 +60,7 @@ leave with their renderer's tables.
 
 ## 3. The other lone constants (stay)
 
-- entityRenderer.js: `WARD_RING_MS`:135, `COLLISION_GLOW_RANGE_PX`:178, `SKULL_RED_TINT`:183, `HUD_BAR_VER`:188, `PEER_HPBAR_HOLD_MS`:237, `NOTICE_MS`:245, `HPBAR_FLASH_MS`:257, `POPUP_BAR_CLEAR`:267, `SPAWN_FX_MS`:282, `BOSS_SEE_THROUGH`:303, `FOLK_FAR_MARGIN`:518, `TRAIT_NFT_ID`:778, `TRAIT_VER`:785, `HEAD_WATCH_MS`:1017, `BODY_DATA_TIMEOUT_MS`:1093, `MASKED_CAP`:2253, `_BAKE_BUSY_MAX`:2635, `_BAKE_STUCK_MS`:3014, `_LOCAL_PATIENCE_MS`:3027, `FISH_TOP_CAP`:3922, `FISH_SKIN_DARK`:3929, `FISH_SKIN_LIGHT`:3929, `FISH_STEEL_LO`:3929, `FISH_STEEL_HI`:3929, `FISH_STEEL_INK`:3929, `FISH_RIM_MIN`:3930, `FISH_PINE_RG`:3931, `HAIR_MASK_ROUNDS`:4270, `SWORD_SWING_MS`:4525, `BOW_SHOT_MS`:4530, `BOW_RELEASE_MS`:4535, `HP_RING_BAND`:4928, `HP_RING_TRACK`:4931, `HP_RING_CENTER_FILL`:4932, `HP_TIER_GREEN`:4933, `HP_TIER_YELLOW`:4933, `HP_TIER_ORANGE`:4933, `HP_TIER_RED`:4933, `HP_RING_OUTLINE`:4934, `HP_GHOST_WHITE`:4935, `HP_GHOST_DRAIN`:4936, `HP_GHOST_DRAIN_M`:4937, `HP_GHOST_HOLD_MS`:4940, `SWING_ANIM_MS`:5038, `THROW_RELEASE_GRACE_MS`:5061, `PLATE_INK`:5549, `PLATE_FILL_ALPHA`:5680, `PLATE_NAME_FILL`:5690, `PLATE_NAME_WEIGHT`:5697, `PLATE_BORDER_ALPHA`:5704, `PLATE_LEVEL_STROKE`:5769, `PLATE_ALARM_FILL`:5787, `PLATE_ALARM_FILL_ALPHA`:5813, `PLATE_ALARM_NAME_FILL`:5814, `PLATE_ALARM_NAME_WEIGHT`:5815, `PLATE_BOSS_FILL`:5825, `PLATE_BOSS_FILL_ALPHA`:5826, `PLATE_ALARM_LEVEL_FILL`:5835, `PLATE_ENGAGED_MS`:5839, `BRO_BADGE_URL`:5994, `PLATE_SCALE_MIN`:6182, `PLATE_SCALE_MAX`:6183, `CUE_ZOOM_MAX`:6194, `SOUTH_BLOCK_OFFHAND_ENABLED`:6547, `SOUTH_BLOCK_OFFHAND_AIM`:6555, `RES_BAR_MAX_W`:7775, `RES_SLIDE_MS`:7778, `RES_TRACK`:7783, `RES_BORDER_COL`:7784
+- entityRenderer.js: `WARD_RING_MS`:135, `COLLISION_GLOW_RANGE_PX`:179, `SKULL_RED_TINT`:184, `HUD_BAR_VER`:189, `PEER_HPBAR_HOLD_MS`:238, `NOTICE_MS`:246, `HPBAR_FLASH_MS`:258, `POPUP_BAR_CLEAR`:268, `SPAWN_FX_MS`:283, `BOSS_SEE_THROUGH`:304, `FOLK_FAR_MARGIN`:516, `TRAIT_NFT_ID`:767, `TRAIT_VER`:774, `HEAD_WATCH_MS`:1006, `BODY_DATA_TIMEOUT_MS`:1082, `MASKED_CAP`:2231, `_BAKE_BUSY_MAX`:2613, `_BAKE_STUCK_MS`:2992, `_LOCAL_PATIENCE_MS`:3005, `FISH_TOP_CAP`:3900, `FISH_SKIN_DARK`:3907, `FISH_SKIN_LIGHT`:3907, `FISH_STEEL_LO`:3907, `FISH_STEEL_HI`:3907, `FISH_STEEL_INK`:3907, `FISH_RIM_MIN`:3908, `FISH_PINE_RG`:3909, `HAIR_MASK_ROUNDS`:4248, `SWORD_SWING_MS`:4503, `BOW_SHOT_MS`:4508, `BOW_RELEASE_MS`:4513, `HP_RING_BAND`:4889, `HP_RING_TRACK`:4892, `HP_RING_CENTER_FILL`:4893, `HP_TIER_GREEN`:4894, `HP_TIER_YELLOW`:4894, `HP_TIER_ORANGE`:4894, `HP_TIER_RED`:4894, `HP_RING_OUTLINE`:4895, `HP_GHOST_WHITE`:4896, `HP_GHOST_DRAIN`:4897, `HP_GHOST_DRAIN_M`:4898, `HP_GHOST_HOLD_MS`:4901, `SWING_ANIM_MS`:4999, `THROW_RELEASE_GRACE_MS`:5022, `PLATE_INK`:5422, `PLATE_FILL_ALPHA`:5553, `PLATE_NAME_FILL`:5563, `PLATE_NAME_WEIGHT`:5570, `PLATE_BORDER_ALPHA`:5577, `PLATE_LEVEL_STROKE`:5642, `PLATE_ALARM_FILL`:5660, `PLATE_ALARM_FILL_ALPHA`:5686, `PLATE_ALARM_NAME_FILL`:5687, `PLATE_ALARM_NAME_WEIGHT`:5688, `PLATE_BOSS_FILL`:5698, `PLATE_BOSS_FILL_ALPHA`:5699, `PLATE_ALARM_LEVEL_FILL`:5708, `PLATE_ENGAGED_MS`:5712, `BRO_BADGE_URL`:5867, `PLATE_SCALE_MIN`:6055, `PLATE_SCALE_MAX`:6056, `CUE_ZOOM_MAX`:6067, `SOUTH_BLOCK_OFFHAND_ENABLED`:6420, `RES_SLIDE_MS`:7449, `RES_TRACK`:7454, `RES_BORDER_COL`:7455
 - effectsRenderer.js: `BLOCK_POSE_FRAME`:69, `PEER_CHOP_IDLE_MS`:235, `GPU_WAIT_MS`:236, `COOK_FW`:283, `COOK_FH`:283, `PEER_INK_CAP`:286, `PEER_INK_IDLE_MS`:287, `PRINT_TTL_MS`:325, `PRINT_ALPHA`:326, `FARM_MIN_BLOB`:445, `PEER_CHOP_REACH`:523, `PEER_COOK_REACH`:524, `PEER_GATHER_NODE_TTL_MS`:525, `PEER_SEAT_MATCH_PX`:530, `CHOP_GEAR_FW`:565, `DRESSED_MAX`:598, `FIRE_FW`:678, `FIRE_FH`:678, `FIRE_FRAME_MS`:685, `FIRE_LOG_LIT_REACH`:745, `PEER_FIG_BUDGET`:861, `PEER_FIG_IDLE_MS`:869, `PEER_FIG_LOAD_MS`:877, `PEER_FIG_RETRY_MS`:878, `PEER_GREAVES_WAIT_MS`:879, `GEAR_STRIP_TIMEOUT_MS`:880, `DMG_FONT_PX`:1185, `DMG_CRIT_FONT_PX`:1186, `POPUP_ZOOM`:1286, `POPUP_Z_MIN`:1287, `POPUP_Z_MAX`:1287, `MSG_WRAP_W`:1310, `MSG_WRAP_SCREEN`:1311, `MSG_MAX_LINES`:1312, `MSG_EDGE_PX`:1313, `DMG_CRIT_COLOR`:1368, `MAGIC_BOLT_FRAME_MS`:1473, `HOT_SPECIAL_ARROW`:1569, `SWORD_FEEL_AUTHORED_DIR`:1587, `JET_STREAM_ENABLED`:1782, `JET_LINGER_MS`:1783, `JET_ALPHA`:1787, `JET_MAX`:1791, `FX_BURST_MS`:1847, `SLIME_WAVE_MS`:1921, `ARROW_BLAST_MS`:1922, `ARROW_BLAST_D`:1923, `SNOWBALL_BURST_MS`:1941, `SNAP_G`:2070, `SNAP_REST_MS`:2071, `SNAP_FADE_MS`:2072, `SNAP_MAX`:2073, `PROP_SLASHES_PER_PROP`:2074, `PROP_ARROWS_PER_PROP`:2077, `PROP_SCORCHES_PER_PROP`:2078, `PROP_MARKS_MAX`:2079, `SCORCH_GLOW_MS`:2080, `ORE_SPLIT_MS`:2366, `ORE_POP_LATE_MS`:2379, `DMG_BMP_FONT`:2441, `DMG_BMP_BAKE_PX`:2463, `DMG_WORD_FONT`:2492, `DMG_WORD_BAKE_PX`:2493, `DMG_WORD_PAGE_PX`:2494, `NPC_BUBBLE_REACH`:2723, `EMOTE_POP_FONT`:2734, `REMOTE_BAKE_CACHE_MAX`:2839, `BEAM_RISE_S`:2916, `BEAM_A`:2917, `BEAM_HALO_A`:2918, `BEAM_FLICKER`:2919, `BEAM_PULSE_HZ`:2920, `BEAM_MOTES`:2921, `MOTE_TEX`:2922, `LOOT_BEAMS_MAX`:2925, `PEER_FIRES`:2931, `LAND_S`:2997, `POP_JUMP`:3008, `POP_DELAY_S`:3009, `POP_ARC_S`:3010, `POP_BOUNCE_S`:3011, `SMITH_FLAME_H0`:3144, `WHIRL_CATCH_MAX`:3162
 
 ## 4. Apart: not counted, they stay
@@ -71,20 +71,20 @@ literal wrapped in `Object.freeze` (a call).
 
 | name | file | line | why | suites that read it |
 |---|---|---|---|---|
-| `_propsDrawn` | entityRenderer.js | 373 | written: assigned (line 15883) | - |
-| `_fgDrawn` | entityRenderer.js | 379 | written: assigned (line 15982) | - |
-| `_traitCache` | entityRenderer.js | 834 | written: assigned (line 862) | - |
-| `_bakeWorkerStats` | entityRenderer.js | 2558 | written: counted (line 2639) | - |
-| `_bakeQueue` | entityRenderer.js | 2631 | written: .push() (line 2651) | - |
-| `_localBakeStats` | entityRenderer.js | 2997 | written: counted (line 2727) | - |
-| `_localMisses` | entityRenderer.js | 3026 | written: .shift() (line 3056) | - |
-| `_peerBakeStats` | entityRenderer.js | 3078 | written: counted (line 3099) | - |
-| `_peerQueue` | entityRenderer.js | 3080 | written: .splice() (line 3134) | - |
-| `prewarmProgress` | entityRenderer.js | 3279 | written: assigned (line 3348) | - |
-| `_hairMaskCache` | entityRenderer.js | 4227 | written: assigned (line 4232) | loader-retries |
-| `_standInHairClip` | entityRenderer.js | 4541 | written: assigned (line 4585) | - |
-| `_traitTex` | entityRenderer.js | 4781 | written: assigned (line 4805) | - |
-| `_mannequinTex` | entityRenderer.js | 4788 | written: assigned (line 4814) | - |
+| `_propsDrawn` | entityRenderer.js | 374 | written: assigned (line 15408) | - |
+| `_fgDrawn` | entityRenderer.js | 380 | written: assigned (line 15507) | - |
+| `_traitCache` | entityRenderer.js | 823 | written: assigned (line 851) | - |
+| `_bakeWorkerStats` | entityRenderer.js | 2536 | written: counted (line 2617) | - |
+| `_bakeQueue` | entityRenderer.js | 2609 | written: .push() (line 2629) | - |
+| `_localBakeStats` | entityRenderer.js | 2975 | written: counted (line 2705) | - |
+| `_localMisses` | entityRenderer.js | 3004 | written: .shift() (line 3034) | - |
+| `_peerBakeStats` | entityRenderer.js | 3056 | written: counted (line 3077) | - |
+| `_peerQueue` | entityRenderer.js | 3058 | written: .splice() (line 3112) | - |
+| `prewarmProgress` | entityRenderer.js | 3257 | written: assigned (line 3326) | - |
+| `_hairMaskCache` | entityRenderer.js | 4205 | written: assigned (line 4210) | loader-retries |
+| `_standInHairClip` | entityRenderer.js | 4519 | written: assigned (line 4563) | - |
+| `_traitTex` | entityRenderer.js | 4742 | written: assigned (line 4766) | - |
+| `_mannequinTex` | entityRenderer.js | 4749 | written: assigned (line 4775) | - |
 | `_fxPreload` | effectsRenderer.js | 26 | written: .push() (line 70) | loader-retries |
 | `_combatTrimStats` | effectsRenderer.js | 74 | written: assigned (line 14884) | loader-retries |
 | `_standInTrimStats` | effectsRenderer.js | 95 | written: assigned (line 166) | - |
@@ -100,16 +100,16 @@ literal wrapped in `Object.freeze` (a call).
 | `ORE_TEX` | effectsRenderer.js | 2273 | written: assigned (line 2275) | pixel-readers |
 | `ORE_ICON_TIER_TEX` | effectsRenderer.js | 2338 | written: assigned (line 2341) | - |
 | `SMITH_ANVIL` | effectsRenderer.js | 3139 | written: assigned (line 3141) | - |
-| `_staffTipOut` | entityRenderer.js | 140 | handed on: an argument (line 11653) | - |
-| `_hudBarTex` | entityRenderer.js | 189 | handed on: in a literal (line 224) | renderer-life |
-| `NODE_HPBAR_PARTS` | entityRenderer.js | 610 | handed on: aliased (line 651) | - |
-| `JOG_EW_HAIR_TUNE` | entityRenderer.js | 1257 | handed on: returned (line 1259) | - |
-| `_BASE_DIRS` | entityRenderer.js | 3287 | handed on: an argument (line 2924) | - |
-| `PLAYER_HP_NUM_STYLE` | entityRenderer.js | 4911 | handed on: in a literal (line 667) | - |
-| `HP_RING_MAX_STYLE` | entityRenderer.js | 4941 | handed on: in a literal (line 7318) | - |
-| `MONSTER_HP_NUM_STYLE` | entityRenderer.js | 4949 | handed on: in a literal (line 5222) | - |
-| `_STAND_SOUTH` | entityRenderer.js | 5453 | handed on: an argument (line 5455) | - |
-| `PLATE_BAND` | entityRenderer.js | 5716 | handed on: in a literal (line 6510) | - |
+| `_staffTipOut` | entityRenderer.js | 140 | handed on: an argument (line 11178) | - |
+| `_hudBarTex` | entityRenderer.js | 190 | handed on: in a literal (line 225) | renderer-life |
+| `NODE_HPBAR_PARTS` | entityRenderer.js | 599 | handed on: aliased (line 640) | - |
+| `JOG_EW_HAIR_TUNE` | entityRenderer.js | 1246 | handed on: returned (line 1248) | - |
+| `_BASE_DIRS` | entityRenderer.js | 3265 | handed on: an argument (line 2902) | - |
+| `PLAYER_HP_NUM_STYLE` | entityRenderer.js | 4872 | handed on: in a literal (line 656) | - |
+| `HP_RING_MAX_STYLE` | entityRenderer.js | 4902 | handed on: in a literal (line 7010) | - |
+| `MONSTER_HP_NUM_STYLE` | entityRenderer.js | 4910 | handed on: in a literal (line 5183) | - |
+| `_STAND_SOUTH` | entityRenderer.js | 5346 | handed on: an argument (line 5348) | - |
+| `PLATE_BAND` | entityRenderer.js | 5589 | handed on: in a literal (line 6383) | - |
 | `_emoteIds` | effectsRenderer.js | 64 | handed on: aliased (line 9767) | - |
 | `_emoteSrcs` | effectsRenderer.js | 64 | handed on: aliased (line 9767) | - |
 | `_emoteEms` | effectsRenderer.js | 64 | handed on: aliased (line 9767) | - |
@@ -124,16 +124,15 @@ literal wrapped in `Object.freeze` (a call).
 | `DMG_DIGIT_CHARS` | effectsRenderer.js | 2505 | handed on: an argument (line 2532) | - |
 | `_NO_HOP` | effectsRenderer.js | 3044 | handed on: returned (line 3016) | - |
 | `_AT_MIDDLE` | effectsRenderer.js | 3121 | handed on: aliased (line 10312) | loot-clock |
-| `_PEER_WORN_SLOTS` | entityRenderer.js | 3129 | frozen | - |
-| `CAPTURE_FACING` | entityRenderer.js | 5322 | frozen | - |
-| `CAPTURE_SHEET` | entityRenderer.js | 5326 | frozen | - |
+| `_PEER_WORN_SLOTS` | entityRenderer.js | 3107 | frozen | - |
+| `CAPTURE_FACING` | entityRenderer.js | 5283 | frozen | - |
 | `PEER_FIG_EST` | effectsRenderer.js | 866 | frozen | - |
 | `GOO_HOLD` | effectsRenderer.js | 3168 | frozen | - |
 
 <!-- part 5: the code (tools/dev/render-code-census.mjs --write) -->
 ## 5. The code, counted (v2.3.5347)
 
-Written by `node tools/dev/render-code-census.mjs --write` at 055aaab5; the rules are
+Written by `node tools/dev/render-code-census.mjs --write` at 6f81ab2c; the rules are
 `tools/guards/lib/renderCode.mjs`'s header. Moves nothing. A **leaf** is a
 top-level function that reads no `this` and reaches no module state; its
 **level** is 0 when it reads no other in-file function, else one more than
@@ -141,173 +140,153 @@ the highest leaf it reads (a function reading a non-leaf has no level).
 
 | | functions | their code lines | leaves | leaf lines | with a level | methods | method lines |
 |---|---|---|---|---|---|---|---|
-| entityRenderer.js | 134 | 2968 | 62 | 899 | 32 | 20 | 4486 |
+| entityRenderer.js | 115 | 2684 | 43 | 615 | 13 | 20 | 4486 |
 | effectsRenderer.js | 81 | 776 | 50 | 366 | 49 | 195 | 8488 |
 
 ### The order of the moves: leaves, level by level (largest first in each)
 
-- level 0: 68 functions, 621 code lines
-- level 1: 12 functions, 70 code lines
-- level 2: 1 functions, 77 code lines
+- level 0: 54 functions, 434 code lines
+- level 1: 8 functions, 50 code lines
 
 ### Every function and method
 
 | name | file | line | code | this | level | module state | in-file names | suites |
 |---|---|---|---|---|---|---|---|---|
-| `_ensureHudBarTextures` | entityRenderer.js | 227 | 1 | - | 0 | - | `_hudBarLoads` | renderer-life |
-| `_crowdK` | entityRenderer.js | 396 | 1 | - | 0 | - | `_noPeerCull` | crowd-cap |
-| `npcFigureHeight` | entityRenderer.js | 514 | 1 | - | 0 | - | - | - |
-| `npcWalkCell` | entityRenderer.js | 536 | 9 | - | 0 | - | `CAPTURE_SHEET` | - |
-| `_hpFillTexFor` | entityRenderer.js | 588 | 17 | - | - | `_hudBarTex` | - | - |
-| `_nodeHpBarHide` | entityRenderer.js | 611 | 7 | - | - | `NODE_HPBAR_PARTS` | - | - |
-| `drawNodeHpBar` | entityRenderer.js | 649 | 99 | - | - | `NAME_STYLE`, `NODE_HPBAR_PARTS`, `PLAYER_HP_NUM_STYLE`, `_hudBarTex` | `HPBAR_FLASH_MS`, `HP_GHOST_DRAIN_M`, `HP_GHOST_HOLD_MS`, `HP_GHOST_WHITE`, `MONSTER_HPBAR_H`, `PLAYER_HPBAR_H`, `_ensureHudBarTextures`, `_hpFillTexFor`, `_nodeHpBarHide` | traps-phone-memory |
-| `_traitGaveUp` | entityRenderer.js | 852 | 5 | - | - | `_looksRetryOn`, `_traitRetryOn` | - | keep-as-image |
-| `_ensureTraitLoaded` | entityRenderer.js | 857 | 26 | - | - | `_traitCache` | `_fetchTraitMeta`, `_loadTraitDir` | keep-as-image |
-| `_fetchTraitMeta` | entityRenderer.js | 891 | 13 | - | - | - | `TRAIT_VER`, `_traitGaveUp`, `_traitMetaLean` | keep-as-image, picture-door, traps-page-rules |
-| `_traitMetaLean` | entityRenderer.js | 915 | 6 | - | - | `TRAIT_META_DOC` | - | - |
-| `_loadTraitDir` | entityRenderer.js | 926 | 31 | - | - | - | `TRAIT_VER`, `_traitGaveUp` | keep-as-image |
-| `_ensureHeadwearLoaded` | entityRenderer.js | 995 | 1 | - | - | - | `_ensureTraitLoaded` | keep-as-image |
-| `_ensureFacialHairLoaded` | entityRenderer.js | 996 | 1 | - | - | - | `_ensureTraitLoaded` | - |
-| `_ensureEyewearLoaded` | entityRenderer.js | 997 | 1 | - | - | - | `_ensureTraitLoaded` | - |
-| `_ensureEyeStyleLoaded` | entityRenderer.js | 998 | 1 | - | - | - | `_ensureTraitLoaded` | - |
-| `_ensureHairLoaded` | entityRenderer.js | 999 | 1 | - | - | - | `_ensureTraitLoaded` | - |
-| `_traitKick` | entityRenderer.js | 1021 | 12 | - | - | - | `_fetchTraitMeta`, `_headWatch`, `_loadTraitDir` | - |
-| `_watchOwnHead` | entityRenderer.js | 1033 | 36 | - | - | `_traitCache` | `HEAD_WATCH_MS`, `_fetchTraitMeta`, `_headWatch`, `_traitKick` | - |
-| `_fetchLimited` | entityRenderer.js | 1095 | 9 | - | 0 | - | - | loader-retries, picture-door, traps-page-rules |
-| `_ensureBodyData` | entityRenderer.js | 1104 | 32 | - | - | `_bodyAnchors`, `_bodyDataPromise`, `_bodyDataRounds`, `_bodyTops`, `_looksRetryOn`, `_traitRetryOn` | `BODY_DATA_TIMEOUT_MS`, `TRAIT_VER`, `_fetchLimited` | loader-retries, picture-door, traps-page-rules |
-| `_hatHairFit` | entityRenderer.js | 1196 | 6 | - | - | - | `_ensureHairLoaded` | - |
-| `_hatTune` | entityRenderer.js | 1232 | 9 | - | - | `_folkHatDy256`, `_qaHatDy256` | `_hatHairFit` | - |
-| `hairPoseTune` | entityRenderer.js | 1258 | 3 | - | - | `JOG_EW_HAIR_TUNE` | - | - |
-| `_placeTrait` | entityRenderer.js | 1272 | 59 | - | - | `_crownOverride` | `_ensureBodyData`, `_lookupBodyTop` | - |
-| `_placeHeadwear` | entityRenderer.js | 1443 | 8 | - | - | - | `_ensureHeadwearLoaded`, `_hatTune`, `_placeTrait` | - |
-| `_placeFacialHair` | entityRenderer.js | 1458 | 8 | - | - | - | `_ensureFacialHairLoaded`, `_placeTrait`, `hairPoseTune` | - |
-| `_placeEyewear` | entityRenderer.js | 1482 | 8 | - | - | - | `_ensureEyewearLoaded`, `_placeTrait`, `hairPoseTune` | - |
-| `_placeEyeStyle` | entityRenderer.js | 1514 | 8 | - | - | - | `_ensureEyeStyleLoaded`, `_placeTrait`, `hairPoseTune` | - |
-| `_placeSpecies` | entityRenderer.js | 1539 | 22 | - | - | `_crownOverride` | `_placeTrait` | - |
-| `_shirtLook` | entityRenderer.js | 1604 | 5 | - | 0 | - | - | townsfolk-walk |
-| `remoteBodyArt` | entityRenderer.js | 1616 | 1 | - | - | - | `_remoteBodyArt` | - |
-| `prewarmFolkBodies` | entityRenderer.js | 1627 | 14 | - | - | - | `_remoteBodyArt` | folk-bakes, townsfolk-walk, traps-page-rules |
-| `_remoteBodyArt` | entityRenderer.js | 1648 | 14 | - | - | `_bodyArtMemo` | - | folk-bakes |
-| `_placeCape` | entityRenderer.js | 1778 | 69 | - | - | - | `_lookupBodyTop` | - |
-| `_placeGear` | entityRenderer.js | 1965 | 67 | - | - | `_lastGearDisplay` | - | - |
-| `_bodyRegionTex` | entityRenderer.js | 2106 | 13 | - | - | `_regionTexCache` | `REGION_ROWS` | - |
-| `_bandTex` | entityRenderer.js | 2135 | 16 | - | - | `_bandTexCache` | - | - |
-| `_placeBand` | entityRenderer.js | 2157 | 13 | - | - | - | `_bandTex` | - |
-| `_placeSouthBlockLegs` | entityRenderer.js | 2205 | 33 | - | - | - | `_localMaskedFrame`, `_placeBand` | traps-page-rules |
-| `_maskedEvictKey` | entityRenderer.js | 2254 | 1 | - | - | `_maskedBodyCache` | - | worn-bake |
-| `_maskedDrop` | entityRenderer.js | 2265 | 4 | - | 0 | - | - | worn-bake |
-| `_mkBakeCanvas` | entityRenderer.js | 2293 | 1 | - | 0 | - | - | - |
-| `_cropBakedFrame` | entityRenderer.js | 2294 | 12 | - | 0 | - | - | - |
-| `_maskedBodyFrame` | entityRenderer.js | 2449 | 9 | - | - | - | `_maskedBodyFrameInner` | - |
-| `_maskedBodyFrameInner` | entityRenderer.js | 2461 | 24 | - | - | `_maskedBodyCache` | `_gearReadable`, `_mkBakeCanvas`, `_storeBake` | worn-bake |
-| `_sendRod` | entityRenderer.js | 2551 | 6 | - | - | `_rodSent` | - | - |
-| `_getBakeWorker` | entityRenderer.js | 2559 | 30 | - | - | `_bakeJobs`, `_bakeWorker`, `_bakeWorkerDead` | - | - |
-| `_gearReadable` | entityRenderer.js | 2600 | 3 | - | 0 | - | - | worn-bake |
-| `_prewarmBake` | entityRenderer.js | 2636 | 19 | - | - | `_bakeByKey`, `_bakeQueue`, `_bakeWorkerStats`, `_maskedBodyCache` | `_getBakeWorker`, `_maskedBodyFrame`, `_pumpBakes` | - |
-| `_pumpBakes` | entityRenderer.js | 2655 | 16 | - | - | `_bakeBusy`, `_bakeByKey`, `_bakeQueue`, `_bakeStartedAt` | `_BAKE_BUSY_MAX`, `_runBake` | - |
-| `_runBake` | entityRenderer.js | 2672 | 46 | - | - | `_bakeJobs`, `_bakeSeq`, `_bakeStartedAt`, `_bakeWorker`, `_bakeWorkerStats`, `_localBakeStats`, `_maskedBodyCache` | `_getBakeWorker`, `_maskedBodyFrame`, `_maskedFailed`, `_mkBakeCanvas`, `_runLookBake`, `_sendRod`, `_storeBake` | worn-bake |
-| `_lookBake` | entityRenderer.js | 2736 | 15 | - | - | `_bakeByKey`, `_bakeQueue` | `_getBakeWorker`, `_pumpBakes`, `_runLookBakeInline` | - |
-| `_runLookBake` | entityRenderer.js | 2752 | 31 | - | - | `_bakeJobs`, `_bakeSeq`, `_bakeStartedAt`, `_bakeWorker`, `_bakeWorkerStats`, `_localBakeStats` | `_getBakeWorker`, `_sendRod` | - |
-| `_mkCpuCanvas` | entityRenderer.js | 2786 | 6 | - | 1 | - | `_mkBakeCanvas` | - |
-| `_runLookBakeInline` | entityRenderer.js | 2792 | 35 | - | - | `_bakeWorkerStats`, `_lookSheetsHere` | `_gearReadable`, `_mkBakeCanvas`, `_mkCpuCanvas` | worn-bake |
-| `_placeLookResidue` | entityRenderer.js | 2832 | 37 | - | 0 | - | - | - |
-| `_maskedFailed` | entityRenderer.js | 3004 | 4 | - | - | `_maskedFails` | - | - |
-| `_maskedRetryInline` | entityRenderer.js | 3008 | 1 | - | - | `_maskedFails` | - | - |
-| `_bakeWorkerWatch` | entityRenderer.js | 3015 | 11 | - | - | `_bakeBusy`, `_bakeJobs`, `_bakeStartedAt`, `_bakeWorker`, `_bakeWorkerStats`, `_rodSent` | `_BAKE_STUCK_MS` | - |
-| `_localMaskedFrame` | entityRenderer.js | 3029 | 19 | - | - | `_bakeBusy`, `_bakeByKey`, `_bakeStartedAt`, `_localBakeStats`, `_localEpoch`, `_localMissKey`, `_localMisses`, `_maskedBodyCache` | `_LOCAL_PATIENCE_MS`, `_bakeWorkerWatch`, `_getBakeWorker`, `_maskedBodyFrame`, `_maskedRetryInline`, `_prewarmBake` | - |
-| `_peerWorkerOk` | entityRenderer.js | 3082 | 1 | - | - | - | `_getBakeWorker` | - |
-| `_peerBakeSoon` | entityRenderer.js | 3084 | 6 | - | - | `_maskedBodyCache`, `_peerPending` | `_prewarmBake` | - |
-| `_peerMaskedFrame` | entityRenderer.js | 3092 | 23 | - | - | `_maskedBodyCache`, `_peerBakeStats`, `_peerPending` | `_bakeWorkerWatch`, `_maskedBodyFrame`, `_maskedRetryInline`, `_peerBakeSoon`, `_peerWorkerOk`, `_prewarmBake` | - |
-| `_peerPrewarmIfChanged` | entityRenderer.js | 3130 | 9 | - | - | `_peerBakeStats`, `_peerQueue`, `_peerRunning` | `_peerWorkerOk`, `_runPeerQueue` | - |
-| `_peerLookPrewarmIfChanged` | entityRenderer.js | 3142 | 24 | - | - | `_peerBakeStats` | `_peerWorkerOk` | - |
-| `_runPeerQueue` | entityRenderer.js | 3166 | 32 | - | - | `_maskedBodyCache`, `_peerBakeStats`, `_peerPending`, `_peerQueue`, `_peerRunning` | `_prewarmBake` | - |
-| `_storeBake` | entityRenderer.js | 3202 | 8 | - | - | `_maskedBodyCache` | `MASKED_CAP`, `_cropBakedFrame`, `_maskedDrop`, `_maskedEvictKey` | worn-bake |
-| `_dirsFacingFirst` | entityRenderer.js | 3288 | 4 | - | - | `_BASE_DIRS`, `_localBakeDir` | - | - |
-| `_prewarmArts` | entityRenderer.js | 3313 | 6 | - | 0 | - | `_FLIPBAKE_OFF` | owner-notes-2026-10-22 |
-| `planPrewarmProgress` | entityRenderer.js | 3347 | 12 | - | - | `prewarmProgress` | `_catalogWornSets`, `_prewarmArts` | - |
-| `_ownedIds` | entityRenderer.js | 3404 | 13 | - | - | `_ownedRpg` | - | - |
-| `_catalogWornSets` | entityRenderer.js | 3417 | 21 | - | - | - | `_ownedIds` | - |
-| `_noteOwnedGear` | entityRenderer.js | 3447 | 12 | - | - | `_ownedAt`, `_ownedRpg`, `_ownedSig` | `_ownedIds`, `prewarmAltWornSets` | - |
-| `uploadBakedTextures` | entityRenderer.js | 3478 | 20 | - | - | `_maskedBodyCache`, `_uploadedSources` | - | - |
-| `uploadGearTextures` | entityRenderer.js | 3508 | 17 | - | - | `_uploadedSources` | - | - |
-| `registerPrewarmRenderer` | entityRenderer.js | 3536 | 1 | - | - | `_prewarmRenderer` | - | - |
-| `prewarmMaskedBodyFrames` | entityRenderer.js | 3538 | 71 | - | - | `prewarmProgress` | `_dirsFacingFirst`, `_getBakeWorker`, `_prewarmArts`, `_prewarmBake` | traps-page-rules |
-| `prewarmAltWornSets` | entityRenderer.js | 3646 | 78 | - | - | `_altPrewarmSeq`, `_maskedBodyCache`, `_spareSkipped`, `prewarmProgress` | `MASKED_CAP`, `_catalogWornSets`, `_dirsFacingFirst`, `_getBakeWorker`, `_prewarmArts`, `_prewarmBake` | traps-page-rules |
-| `_schedulePrewarm` | entityRenderer.js | 3794 | 13 | - | - | `_equipPrewarmAgain`, `_equipPrewarmRunning`, `_equipPrewarmTimer`, `_prewarmRenderer` | `prewarmMaskedBodyFrames`, `uploadBakedTextures` | - |
-| `_placeBodyRegions` | entityRenderer.js | 3819 | 19 | - | - | - | `REGION_ROWS`, `_bodyRegionTex` | - |
-| `_placePickupHead` | entityRenderer.js | 3854 | 26 | - | 0 | - | - | - |
-| `_releaseFishTop` | entityRenderer.js | 3924 | 1 | - | - | `_fishTopShown` | - | fish-top-evict |
-| `_fishTopFrame` | entityRenderer.js | 3959 | 160 | - | - | `_FISH_GRIP_TROUSERS`, `_fishTopCache` | `FISH_PINE_RG`, `FISH_RIM_MIN`, `FISH_SKIN_DARK`, `FISH_SKIN_LIGHT`, `FISH_STEEL_HI`, `FISH_STEEL_INK`, `FISH_STEEL_LO`, `FISH_TOP_CAP`, `_FISH_GRIP_OVER_PLATE`, `_gearReadable`, `_releaseFishTop` | fish-top-evict, traps-page-rules |
-| `_placeFishHead` | entityRenderer.js | 4211 | 13 | - | - | `_fishTopShown` | `_fishTopFrame` | fish-top-evict |
-| `_ensureHairMaskLoaded` | entityRenderer.js | 4228 | 24 | - | - | `_hairMaskCache` | `_loadHairMaskDir` | loader-retries |
-| `_loadHairMaskDir` | entityRenderer.js | 4271 | 10 | - | - | `_looksRetryOn`, `_traitRetryOn` | `HAIR_MASK_ROUNDS`, `TRAIT_VER` | loader-retries, picture-door |
-| `_clipHairToHat` | entityRenderer.js | 4288 | 25 | - | - | - | `_ensureHairMaskLoaded`, `_ensureHeadwearLoaded`, `_hatTune`, `_placeTrait` | - |
-| `_placeHair` | entityRenderer.js | 4334 | 10 | - | - | - | `_clipHairToHat`, `_ensureHairLoaded`, `_placeTrait`, `hairPoseTune` | - |
-| `_placeStandaloneCapeLayer` | entityRenderer.js | 4459 | 16 | - | 0 | - | - | - |
-| `placeStandInCape` | entityRenderer.js | 4489 | 30 | - | - | - | `_lookupBodyTop`, `_placeStandaloneCapeLayer` | - |
-| `_clipStandInHair` | entityRenderer.js | 4572 | 38 | - | - | `_standInHairClip` | `_ensureHairMaskLoaded`, `_ensureHeadwearLoaded` | - |
-| `monsterDisplayMap` | entityRenderer.js | 4630 | 1 | - | - | `_monsterDisplaysRef` | - | - |
-| `monsterBodySprite` | entityRenderer.js | 4632 | 6 | - | - | `_monsterDisplaysRef` | - | - |
-| `placeSkillTraits` | entityRenderer.js | 4644 | 24 | - | - | - | `_clipStandInHair`, `_ensureEyeStyleLoaded`, `_ensureEyewearLoaded`, `_ensureFacialHairLoaded`, `_ensureHairLoaded`, `_ensureHeadwearLoaded`, `_hatHairFit` | - |
-| `placeSkillTraitsFor` | entityRenderer.js | 4700 | 24 | - | - | - | `_clipStandInHair`, `_ensureEyeStyleLoaded`, `_ensureEyewearLoaded`, `_ensureFacialHairLoaded`, `_ensureHairLoaded`, `_ensureHeadwearLoaded`, `_hatHairFit` | townsfolk-walk |
-| `hideSkillTraits` | entityRenderer.js | 4733 | 12 | - | 0 | - | - | - |
-| `_lookupHeadBox` | entityRenderer.js | 4754 | 8 | - | - | `_bodyAnchors` | - | - |
-| `_lookupStandHeadBox` | entityRenderer.js | 4767 | 5 | - | - | `_bodyAnchors` | - | - |
-| `_lookupBodyTop` | entityRenderer.js | 4776 | 4 | - | - | `_bodyTops` | - | traps-page-rules |
-| `_ensureTraitTextures` | entityRenderer.js | 4795 | 28 | - | - | `_mannequinTex`, `_traitLoadStarted`, `_traitMeta`, `_traitTex` | `TRAIT_NFT_ID`, `TRAIT_VER` | picture-door |
-| `preloadTraits` | entityRenderer.js | 4843 | 40 | - | - | - | `_ensureBodyData`, `_ensureHairMaskLoaded`, `_ensureHudBarTextures`, `_ensureTraitLoaded`, `_ensureTraitTextures` | look-load |
-| `createMonsterDisplay` | entityRenderer.js | 5079 | 55 | - | - | `MONSTER_HP_NUM_STYLE` | `_attachNamePill` | - |
-| `_feetOffsetUnits` | entityRenderer.js | 5327 | 6 | - | 0 | - | - | - |
-| `standFootDy` | entityRenderer.js | 5344 | 5 | - | 0 | - | - | farmwalk |
-| `standShadeSpan` | entityRenderer.js | 5363 | 5 | - | 0 | - | - | - |
-| `fittedShadeSpan` | entityRenderer.js | 5380 | 8 | - | 0 | - | - | - |
-| `nominalStandFigure` | entityRenderer.js | 5388 | 6 | - | 0 | - | - | - |
-| `figureSwimLine` | entityRenderer.js | 5404 | 9 | - | 0 | - | - | - |
-| `figureFeetY` | entityRenderer.js | 5417 | 5 | - | 1 | - | `_feetOffsetUnits` | - |
-| `figureFeetUnits` | entityRenderer.js | 5438 | 3 | - | 1 | - | `_feetOffsetUnits` | - |
-| `playerGroundDy` | entityRenderer.js | 5454 | 3 | - | - | `_STAND_SOUTH` | `_feetOffsetUnits` | - |
-| `selfGathering` | entityRenderer.js | 5467 | 4 | - | 0 | - | - | - |
-| `_applyBuildScale` | entityRenderer.js | 5471 | 11 | - | 1 | - | `_feetOffsetUnits` | - |
-| `_attachNamePill` | entityRenderer.js | 5850 | 56 | - | - | `PLATE_BAND` | `PLATE_LEVEL_STROKE` | traps-page-rules |
-| `_iconSet` | entityRenderer.js | 6007 | 2 | - | 0 | - | - | loader-retries |
-| `preloadBroBadge` | entityRenderer.js | 6011 | 7 | - | - | `_broBadgeSet`, `_broBadgeTex` | `BRO_BADGE_URL`, `_broBadgeGot`, `_iconSet` | loader-retries |
-| `_broBadgeTexture` | entityRenderer.js | 6021 | 7 | - | - | `_broBadgeSet`, `_broBadgeTex` | `BRO_BADGE_URL` | loader-retries |
-| `preloadSmallIconTextures` | entityRenderer.js | 6037 | 4 | - | - | `_smallSet` | `_iconSet`, `_smallTexHeld` | small-icons |
-| `_smallTex` | entityRenderer.js | 6041 | 10 | - | - | `_smallSet` | `_smallTexHeld` | small-icons |
-| `_bindSmallTex` | entityRenderer.js | 6053 | 6 | - | - | - | `_smallTex` | small-icons |
-| `preloadQuestPinTextures` | entityRenderer.js | 6073 | 4 | - | - | `_pinSet` | `_iconSet`, `_pinTexHeld` | owner-icons |
-| `_questPinTex` | entityRenderer.js | 6077 | 10 | - | - | `_pinSet` | `_pinTexHeld` | owner-icons |
-| `setPlateZoom` | entityRenderer.js | 6196 | 5 | - | - | `_cueZoom`, `_plateWorldScale` | `CUE_ZOOM_MAX` | - |
-| `_fitPlateToZoom` | entityRenderer.js | 6205 | 15 | - | - | `_plateWorldScale` | `PLATE_SCALE_MAX`, `PLATE_SCALE_MIN` | - |
-| `_updateNamePill` | entityRenderer.js | 6243 | 53 | - | - | - | `_broBadgeTexture`, `_drawPlateCapsule`, `_fitPlateToZoom` | folk-names |
-| `_drawPlateCapsule` | entityRenderer.js | 6341 | 98 | - | - | `PLATE_BAND` | `PLATE_ALARM_FILL`, `PLATE_ALARM_FILL_ALPHA`, `PLATE_ALARM_LEVEL_FILL`, `PLATE_ALARM_NAME_FILL`, `PLATE_ALARM_NAME_WEIGHT`, `PLATE_BORDER_ALPHA`, `PLATE_BOSS_FILL`, `PLATE_BOSS_FILL_ALPHA`, `PLATE_FILL_ALPHA`, `PLATE_INK`, `PLATE_LEVEL_STROKE`, `PLATE_NAME_FILL`, `PLATE_NAME_WEIGHT`, `_bindSmallTex`, `_broBadgeTexture` | dungeon-clear |
-| `_placeSouthBlockWeapon` | entityRenderer.js | 6556 | 53 | - | 0 | - | `SOUTH_BLOCK_OFFHAND_AIM` | - |
-| `_placeBlockArm` | entityRenderer.js | 6645 | 63 | - | 0 | - | - | - |
-| `createPlayerDisplay` | entityRenderer.js | 6738 | 298 | - | - | `HP_RING_MAX_STYLE`, `NAME_STYLE`, `PLAYER_HP_NUM_STYLE` | `_attachNamePill`, `_smallTex` | traps-page-rules, traps-phone-memory |
-| `createOtherPlayerDisplay` | entityRenderer.js | 7393 | 167 | - | - | `NAME_STYLE`, `PLAYER_HP_NUM_STYLE` | `_attachNamePill`, `_smallTex` | traps-page-rules, traps-phone-memory |
-| `_barScaleX` | entityRenderer.js | 7776 | 1 | - | 0 | - | `RES_BAR_MAX_W` | - |
-| `_barWidth` | entityRenderer.js | 7777 | 1 | - | 1 | - | `_barScaleX` | - |
-| `_drawResourceBar` | entityRenderer.js | 7788 | 77 | - | 2 | - | `RES_BLOCK_H`, `_barScaleX`, `_barWidth` | - |
-| `EntityRenderer.constructor` | entityRenderer.js | 7955 | 16 | yes | - | `_frontLayerRef`, `_monsterDisplaysRef` | - | art-holds, elem-windup, farmwalk, fish-top-evict, held-numbers, keep-as-image, loader-retries, loot-clock, mirror-audit, owner-icons, picture-door, storm-eye, tick, water-frog, phase-table, traps-page-rules, traps-phone-memory |
-| `EntityRenderer.update` | entityRenderer.js | 7988 | 12 | yes | - | - | `_noteOwnedGear` | drop-lines, elem-windup, fire-strip, keep-as-image, mirror-audit, owner-icons, renderer-life, storm-eye, water-frog |
-| `EntityRenderer._updateMonsters` | entityRenderer.js | 8004 | 1086 | yes | - | `SPAWN_WHITE_FILTER`, `STATUS_TO_ELEMENT`, `_cueZoom`, `_hudBarTex` | `BOSS_SEE_THROUGH`, `HPBAR_FLASH_MS`, `HP_GHOST_DRAIN_M`, `HP_GHOST_HOLD_MS`, `HP_GHOST_WHITE`, `MONSTER_HPBAR_H`, `NOTICE_MS`, `PLATE_ENGAGED_MS`, `POPUP_BAR_CLEAR`, `SPAWN_FX_MS`, `THROW_RELEASE_GRACE_MS`, `_bindSmallTex`, `_ensureHudBarTextures`, `_hpFillTexFor`, `_updateNamePill`, `createMonsterDisplay` | traps-page-rules |
-| `EntityRenderer._drawPeerHpBar` | entityRenderer.js | 10374 | 84 | - | - | `PLAYER_HP_NUM_STYLE`, `_hudBarTex` | `HPBAR_FLASH_MS`, `HP_GHOST_DRAIN_M`, `HP_GHOST_HOLD_MS`, `HP_GHOST_WHITE`, `PEER_BAR_H`, `PEER_BAR_W`, `PEER_BAR_Y`, `PEER_HPBAR_HOLD_MS`, `PLAYER_HPBAR_H`, `_ensureHudBarTextures`, `_hpFillTexFor` | - |
-| `EntityRenderer.peerAlwaysDrawn` | entityRenderer.js | 10490 | 11 | - | - | - | `PEER_HPBAR_HOLD_MS` | - |
-| `EntityRenderer._updateOtherPlayers` | entityRenderer.js | 10502 | 907 | yes | - | `_crownOverride`, `_lastPeerWeaponSprite`, `_plateWorldScale`, `_staffTipOut` | `BOW_SHOT_MS`, `HEAD_FRAMES_ON`, `PEER_BAR_H`, `PEER_BAR_W`, `PEER_BAR_Y`, `PEER_HPBAR_HOLD_MS`, `SKULL_RED_TINT`, `SOUTH_BLOCK_OFFHAND_ENABLED`, `SWING_ANIM_MS`, `SWORD_SWING_MS`, `_CROWD_ALL_SHOWN`, `_PEER_WORN_SLOTS`, `_applyBuildScale`, `_bindSmallTex`, `_crowdK`, `_feetOffsetUnits`, `_noPeerCull`, `_peerLookPrewarmIfChanged`, `_peerMaskedFrame`, `_peerPrewarmIfChanged`, `_placeBlockArm`, `_placeCape`, `_placeEyeStyle`, `_placeEyewear`, `_placeFacialHair`, `_placeFishHead`, `_placeGear`, `_placeHair`, `_placeHeadwear`, `_placeLookResidue`, `_placePickupHead`, `_placeSouthBlockWeapon`, `_placeSpecies`, `_remoteBodyArt`, `_shirtLook`, `_smallTex`, `_updateNamePill`, `createOtherPlayerDisplay`, `playerGroundDy` | traps-page-rules |
-| `EntityRenderer._updatePlayer` | entityRenderer.js | 12133 | 1369 | yes | - | `_crownOverride`, `_lastHairDisplay`, `_lastWeaponSprite`, `_localBakeDir`, `_localBakeStats`, `_localEpoch`, `_selfDisplayRef`, `_staffTipOut` | `BOW_SHOT_MS`, `COLLISION_GLOW_RANGE_PX`, `HEAD_FRAMES_ON`, `PLAYER_BAND_Y`, `SKULL_RED_TINT`, `SOUTH_BLOCK_OFFHAND_ENABLED`, `SWING_ANIM_MS`, `SWORD_SWING_MS`, `_applyBuildScale`, `_bindSmallTex`, `_ensureBodyData`, `_ensureEyewearLoaded`, `_ensureFacialHairLoaded`, `_ensureHairLoaded`, `_ensureHeadwearLoaded`, `_feetOffsetUnits`, `_localMaskedFrame`, `_placeBlockArm`, `_placeCape`, `_placeEyeStyle`, `_placeEyewear`, `_placeFacialHair`, `_placeFishHead`, `_placeGear`, `_placeHair`, `_placeHeadwear`, `_placeLookResidue`, `_placePickupHead`, `_placeSouthBlockLegs`, `_placeSouthBlockWeapon`, `_placeSpecies`, `_shirtLook`, `_updateNamePill`, `_watchOwnHead`, `createPlayerDisplay`, `playerGroundDy`, `selfGathering` | traps-page-rules |
-| `EntityRenderer.capturePoseFrames` | entityRenderer.js | 15359 | 115 | yes | - | `_localBakeDir` | `CAPTURE_FACING`, `CAPTURE_SHEET`, `createPlayerDisplay` | - |
-| `EntityRenderer.setCaptureRenderer` | entityRenderer.js | 15509 | 1 | yes | - | - | - | - |
-| `EntityRenderer._updatePet` | entityRenderer.js | 15535 | 65 | yes | - | `NAME_STYLE` | `WARD_RING_MS` | traps-phone-memory |
-| `EntityRenderer._posePet` | entityRenderer.js | 15630 | 28 | - | - | - | - | - |
-| `EntityRenderer._updatePeerPets` | entityRenderer.js | 15677 | 53 | yes | - | - | - | - |
-| `EntityRenderer.peerPetsDrawn` | entityRenderer.js | 15739 | 10 | yes | - | - | - | - |
-| `EntityRenderer.petDrawn` | entityRenderer.js | 15753 | 11 | yes | - | - | - | - |
-| `EntityRenderer._updateProps` | entityRenderer.js | 15779 | 67 | yes | - | `_entityLayerRef`, `_propsDrawn` | - | - |
-| `EntityRenderer._updateForeground` | entityRenderer.js | 15945 | 44 | yes | - | `_fgDrawn` | - | - |
-| `EntityRenderer._drawFolk` | entityRenderer.js | 16005 | 72 | - | - | `_folkHatDy256` | `HEAD_FRAMES_ON`, `_feetOffsetUnits`, `_placeCape`, `_placeEyeStyle`, `_placeEyewear`, `_placeFacialHair`, `_placeGear`, `_placeHair`, `_placeHeadwear`, `_placeSpecies`, `_remoteBodyArt`, `_shirtLook`, `createOtherPlayerDisplay`, `placeSkillTraitsFor` | townsfolk-walk, traps-page-rules |
-| `EntityRenderer._updateNPCs` | entityRenderer.js | 16094 | 305 | yes | - | `NAME_STYLE` | `FOLK_FAR_MARGIN`, `_attachNamePill`, `_bindSmallTex`, `_npcDrawn`, `_questPinTex`, `_smallTex`, `_updateNamePill`, `npcFigureHeight`, `npcWalkCell` | traps-page-rules, traps-phone-memory |
-| `EntityRenderer._updatePlayerHud` | entityRenderer.js | 16700 | 215 | yes | - | `_hudBarTex` | `HPBAR_FLASH_MS`, `HP_GHOST_DRAIN`, `HP_GHOST_HOLD_MS`, `HP_GHOST_WHITE`, `PLAYER_BAND_Y`, `PLAYER_HPBAR_H`, `RES_BAR_MAX_W`, `RES_BLOCK_H`, `RES_EN_Y`, `_barWidth`, `_drawResourceBar`, `_ensureHudBarTextures`, `_hpFillTexFor`, `selfGathering` | traps-page-rules |
-| `EntityRenderer.clear` | entityRenderer.js | 17106 | 15 | yes | - | - | - | drop-lines, dungeon-clear, elem-windup, farmwalk, gpu-only, look-relay, mirror-audit, picture-door, renderer-life, storm-eye, tick, townsfolk-walk, water-frog, weapon-feel, zone-leftovers, phase-table, traps-phone-memory |
+| `_ensureHudBarTextures` | entityRenderer.js | 228 | 1 | - | 0 | - | `_hudBarLoads` | renderer-life |
+| `_crowdK` | entityRenderer.js | 397 | 1 | - | 0 | - | `_noPeerCull` | crowd-cap |
+| `_hpFillTexFor` | entityRenderer.js | 577 | 17 | - | - | `_hudBarTex` | - | - |
+| `_nodeHpBarHide` | entityRenderer.js | 600 | 7 | - | - | `NODE_HPBAR_PARTS` | - | - |
+| `drawNodeHpBar` | entityRenderer.js | 638 | 99 | - | - | `NAME_STYLE`, `NODE_HPBAR_PARTS`, `PLAYER_HP_NUM_STYLE`, `_hudBarTex` | `HPBAR_FLASH_MS`, `HP_GHOST_DRAIN_M`, `HP_GHOST_HOLD_MS`, `HP_GHOST_WHITE`, `MONSTER_HPBAR_H`, `PLAYER_HPBAR_H`, `_ensureHudBarTextures`, `_hpFillTexFor`, `_nodeHpBarHide` | traps-phone-memory |
+| `_traitGaveUp` | entityRenderer.js | 841 | 5 | - | - | `_looksRetryOn`, `_traitRetryOn` | - | keep-as-image |
+| `_ensureTraitLoaded` | entityRenderer.js | 846 | 26 | - | - | `_traitCache` | `_fetchTraitMeta`, `_loadTraitDir` | keep-as-image |
+| `_fetchTraitMeta` | entityRenderer.js | 880 | 13 | - | - | - | `TRAIT_VER`, `_traitGaveUp`, `_traitMetaLean` | keep-as-image, picture-door, traps-page-rules |
+| `_traitMetaLean` | entityRenderer.js | 904 | 6 | - | - | `TRAIT_META_DOC` | - | - |
+| `_loadTraitDir` | entityRenderer.js | 915 | 31 | - | - | - | `TRAIT_VER`, `_traitGaveUp` | keep-as-image |
+| `_ensureHeadwearLoaded` | entityRenderer.js | 984 | 1 | - | - | - | `_ensureTraitLoaded` | keep-as-image |
+| `_ensureFacialHairLoaded` | entityRenderer.js | 985 | 1 | - | - | - | `_ensureTraitLoaded` | - |
+| `_ensureEyewearLoaded` | entityRenderer.js | 986 | 1 | - | - | - | `_ensureTraitLoaded` | - |
+| `_ensureEyeStyleLoaded` | entityRenderer.js | 987 | 1 | - | - | - | `_ensureTraitLoaded` | - |
+| `_ensureHairLoaded` | entityRenderer.js | 988 | 1 | - | - | - | `_ensureTraitLoaded` | - |
+| `_traitKick` | entityRenderer.js | 1010 | 12 | - | - | - | `_fetchTraitMeta`, `_headWatch`, `_loadTraitDir` | - |
+| `_watchOwnHead` | entityRenderer.js | 1022 | 36 | - | - | `_traitCache` | `HEAD_WATCH_MS`, `_fetchTraitMeta`, `_headWatch`, `_traitKick` | - |
+| `_fetchLimited` | entityRenderer.js | 1084 | 9 | - | 0 | - | - | loader-retries, picture-door, traps-page-rules |
+| `_ensureBodyData` | entityRenderer.js | 1093 | 32 | - | - | `_bodyAnchors`, `_bodyDataPromise`, `_bodyDataRounds`, `_bodyTops`, `_looksRetryOn`, `_traitRetryOn` | `BODY_DATA_TIMEOUT_MS`, `TRAIT_VER`, `_fetchLimited` | loader-retries, picture-door, traps-page-rules |
+| `_hatHairFit` | entityRenderer.js | 1185 | 6 | - | - | - | `_ensureHairLoaded` | - |
+| `_hatTune` | entityRenderer.js | 1221 | 9 | - | - | `_folkHatDy256`, `_qaHatDy256` | `_hatHairFit` | - |
+| `hairPoseTune` | entityRenderer.js | 1247 | 3 | - | - | `JOG_EW_HAIR_TUNE` | - | - |
+| `_placeTrait` | entityRenderer.js | 1261 | 59 | - | - | `_crownOverride` | `_ensureBodyData`, `_lookupBodyTop` | - |
+| `_placeHeadwear` | entityRenderer.js | 1432 | 8 | - | - | - | `_ensureHeadwearLoaded`, `_hatTune`, `_placeTrait` | - |
+| `_placeFacialHair` | entityRenderer.js | 1447 | 8 | - | - | - | `_ensureFacialHairLoaded`, `_placeTrait`, `hairPoseTune` | - |
+| `_placeEyewear` | entityRenderer.js | 1471 | 8 | - | - | - | `_ensureEyewearLoaded`, `_placeTrait`, `hairPoseTune` | - |
+| `_placeEyeStyle` | entityRenderer.js | 1503 | 8 | - | - | - | `_ensureEyeStyleLoaded`, `_placeTrait`, `hairPoseTune` | - |
+| `_placeSpecies` | entityRenderer.js | 1528 | 22 | - | - | `_crownOverride` | `_placeTrait` | - |
+| `remoteBodyArt` | entityRenderer.js | 1594 | 1 | - | - | - | `_remoteBodyArt` | - |
+| `prewarmFolkBodies` | entityRenderer.js | 1605 | 14 | - | - | - | `_remoteBodyArt` | folk-bakes, townsfolk-walk, traps-page-rules |
+| `_remoteBodyArt` | entityRenderer.js | 1626 | 14 | - | - | `_bodyArtMemo` | - | folk-bakes |
+| `_placeCape` | entityRenderer.js | 1756 | 69 | - | - | - | `_lookupBodyTop` | - |
+| `_placeGear` | entityRenderer.js | 1943 | 67 | - | - | `_lastGearDisplay` | - | - |
+| `_bodyRegionTex` | entityRenderer.js | 2084 | 13 | - | - | `_regionTexCache` | `REGION_ROWS` | - |
+| `_bandTex` | entityRenderer.js | 2113 | 16 | - | - | `_bandTexCache` | - | - |
+| `_placeBand` | entityRenderer.js | 2135 | 13 | - | - | - | `_bandTex` | - |
+| `_placeSouthBlockLegs` | entityRenderer.js | 2183 | 33 | - | - | - | `_localMaskedFrame`, `_placeBand` | traps-page-rules |
+| `_maskedEvictKey` | entityRenderer.js | 2232 | 1 | - | - | `_maskedBodyCache` | - | worn-bake |
+| `_maskedDrop` | entityRenderer.js | 2243 | 4 | - | 0 | - | - | worn-bake |
+| `_mkBakeCanvas` | entityRenderer.js | 2271 | 1 | - | 0 | - | - | - |
+| `_cropBakedFrame` | entityRenderer.js | 2272 | 12 | - | 0 | - | - | - |
+| `_maskedBodyFrame` | entityRenderer.js | 2427 | 9 | - | - | - | `_maskedBodyFrameInner` | - |
+| `_maskedBodyFrameInner` | entityRenderer.js | 2439 | 24 | - | - | `_maskedBodyCache` | `_gearReadable`, `_mkBakeCanvas`, `_storeBake` | worn-bake |
+| `_sendRod` | entityRenderer.js | 2529 | 6 | - | - | `_rodSent` | - | - |
+| `_getBakeWorker` | entityRenderer.js | 2537 | 30 | - | - | `_bakeJobs`, `_bakeWorker`, `_bakeWorkerDead` | - | - |
+| `_gearReadable` | entityRenderer.js | 2578 | 3 | - | 0 | - | - | worn-bake |
+| `_prewarmBake` | entityRenderer.js | 2614 | 19 | - | - | `_bakeByKey`, `_bakeQueue`, `_bakeWorkerStats`, `_maskedBodyCache` | `_getBakeWorker`, `_maskedBodyFrame`, `_pumpBakes` | - |
+| `_pumpBakes` | entityRenderer.js | 2633 | 16 | - | - | `_bakeBusy`, `_bakeByKey`, `_bakeQueue`, `_bakeStartedAt` | `_BAKE_BUSY_MAX`, `_runBake` | - |
+| `_runBake` | entityRenderer.js | 2650 | 46 | - | - | `_bakeJobs`, `_bakeSeq`, `_bakeStartedAt`, `_bakeWorker`, `_bakeWorkerStats`, `_localBakeStats`, `_maskedBodyCache` | `_getBakeWorker`, `_maskedBodyFrame`, `_maskedFailed`, `_mkBakeCanvas`, `_runLookBake`, `_sendRod`, `_storeBake` | worn-bake |
+| `_lookBake` | entityRenderer.js | 2714 | 15 | - | - | `_bakeByKey`, `_bakeQueue` | `_getBakeWorker`, `_pumpBakes`, `_runLookBakeInline` | - |
+| `_runLookBake` | entityRenderer.js | 2730 | 31 | - | - | `_bakeJobs`, `_bakeSeq`, `_bakeStartedAt`, `_bakeWorker`, `_bakeWorkerStats`, `_localBakeStats` | `_getBakeWorker`, `_sendRod` | - |
+| `_mkCpuCanvas` | entityRenderer.js | 2764 | 6 | - | 1 | - | `_mkBakeCanvas` | - |
+| `_runLookBakeInline` | entityRenderer.js | 2770 | 35 | - | - | `_bakeWorkerStats`, `_lookSheetsHere` | `_gearReadable`, `_mkBakeCanvas`, `_mkCpuCanvas` | worn-bake |
+| `_placeLookResidue` | entityRenderer.js | 2810 | 37 | - | 0 | - | - | - |
+| `_maskedFailed` | entityRenderer.js | 2982 | 4 | - | - | `_maskedFails` | - | - |
+| `_maskedRetryInline` | entityRenderer.js | 2986 | 1 | - | - | `_maskedFails` | - | - |
+| `_bakeWorkerWatch` | entityRenderer.js | 2993 | 11 | - | - | `_bakeBusy`, `_bakeJobs`, `_bakeStartedAt`, `_bakeWorker`, `_bakeWorkerStats`, `_rodSent` | `_BAKE_STUCK_MS` | - |
+| `_localMaskedFrame` | entityRenderer.js | 3007 | 19 | - | - | `_bakeBusy`, `_bakeByKey`, `_bakeStartedAt`, `_localBakeStats`, `_localEpoch`, `_localMissKey`, `_localMisses`, `_maskedBodyCache` | `_LOCAL_PATIENCE_MS`, `_bakeWorkerWatch`, `_getBakeWorker`, `_maskedBodyFrame`, `_maskedRetryInline`, `_prewarmBake` | - |
+| `_peerWorkerOk` | entityRenderer.js | 3060 | 1 | - | - | - | `_getBakeWorker` | - |
+| `_peerBakeSoon` | entityRenderer.js | 3062 | 6 | - | - | `_maskedBodyCache`, `_peerPending` | `_prewarmBake` | - |
+| `_peerMaskedFrame` | entityRenderer.js | 3070 | 23 | - | - | `_maskedBodyCache`, `_peerBakeStats`, `_peerPending` | `_bakeWorkerWatch`, `_maskedBodyFrame`, `_maskedRetryInline`, `_peerBakeSoon`, `_peerWorkerOk`, `_prewarmBake` | - |
+| `_peerPrewarmIfChanged` | entityRenderer.js | 3108 | 9 | - | - | `_peerBakeStats`, `_peerQueue`, `_peerRunning` | `_peerWorkerOk`, `_runPeerQueue` | - |
+| `_peerLookPrewarmIfChanged` | entityRenderer.js | 3120 | 24 | - | - | `_peerBakeStats` | `_peerWorkerOk` | - |
+| `_runPeerQueue` | entityRenderer.js | 3144 | 32 | - | - | `_maskedBodyCache`, `_peerBakeStats`, `_peerPending`, `_peerQueue`, `_peerRunning` | `_prewarmBake` | - |
+| `_storeBake` | entityRenderer.js | 3180 | 8 | - | - | `_maskedBodyCache` | `MASKED_CAP`, `_cropBakedFrame`, `_maskedDrop`, `_maskedEvictKey` | worn-bake |
+| `_dirsFacingFirst` | entityRenderer.js | 3266 | 4 | - | - | `_BASE_DIRS`, `_localBakeDir` | - | - |
+| `_prewarmArts` | entityRenderer.js | 3291 | 6 | - | 0 | - | `_FLIPBAKE_OFF` | owner-notes-2026-10-22 |
+| `planPrewarmProgress` | entityRenderer.js | 3325 | 12 | - | - | `prewarmProgress` | `_catalogWornSets`, `_prewarmArts` | - |
+| `_ownedIds` | entityRenderer.js | 3382 | 13 | - | - | `_ownedRpg` | - | - |
+| `_catalogWornSets` | entityRenderer.js | 3395 | 21 | - | - | - | `_ownedIds` | - |
+| `_noteOwnedGear` | entityRenderer.js | 3425 | 12 | - | - | `_ownedAt`, `_ownedRpg`, `_ownedSig` | `_ownedIds`, `prewarmAltWornSets` | - |
+| `uploadBakedTextures` | entityRenderer.js | 3456 | 20 | - | - | `_maskedBodyCache`, `_uploadedSources` | - | - |
+| `uploadGearTextures` | entityRenderer.js | 3486 | 17 | - | - | `_uploadedSources` | - | - |
+| `registerPrewarmRenderer` | entityRenderer.js | 3514 | 1 | - | - | `_prewarmRenderer` | - | - |
+| `prewarmMaskedBodyFrames` | entityRenderer.js | 3516 | 71 | - | - | `prewarmProgress` | `_dirsFacingFirst`, `_getBakeWorker`, `_prewarmArts`, `_prewarmBake` | traps-page-rules |
+| `prewarmAltWornSets` | entityRenderer.js | 3624 | 78 | - | - | `_altPrewarmSeq`, `_maskedBodyCache`, `_spareSkipped`, `prewarmProgress` | `MASKED_CAP`, `_catalogWornSets`, `_dirsFacingFirst`, `_getBakeWorker`, `_prewarmArts`, `_prewarmBake` | traps-page-rules |
+| `_schedulePrewarm` | entityRenderer.js | 3772 | 13 | - | - | `_equipPrewarmAgain`, `_equipPrewarmRunning`, `_equipPrewarmTimer`, `_prewarmRenderer` | `prewarmMaskedBodyFrames`, `uploadBakedTextures` | - |
+| `_placeBodyRegions` | entityRenderer.js | 3797 | 19 | - | - | - | `REGION_ROWS`, `_bodyRegionTex` | - |
+| `_placePickupHead` | entityRenderer.js | 3832 | 26 | - | 0 | - | - | - |
+| `_releaseFishTop` | entityRenderer.js | 3902 | 1 | - | - | `_fishTopShown` | - | fish-top-evict |
+| `_fishTopFrame` | entityRenderer.js | 3937 | 160 | - | - | `_FISH_GRIP_TROUSERS`, `_fishTopCache` | `FISH_PINE_RG`, `FISH_RIM_MIN`, `FISH_SKIN_DARK`, `FISH_SKIN_LIGHT`, `FISH_STEEL_HI`, `FISH_STEEL_INK`, `FISH_STEEL_LO`, `FISH_TOP_CAP`, `_FISH_GRIP_OVER_PLATE`, `_gearReadable`, `_releaseFishTop` | fish-top-evict, traps-page-rules |
+| `_placeFishHead` | entityRenderer.js | 4189 | 13 | - | - | `_fishTopShown` | `_fishTopFrame` | fish-top-evict |
+| `_ensureHairMaskLoaded` | entityRenderer.js | 4206 | 24 | - | - | `_hairMaskCache` | `_loadHairMaskDir` | loader-retries |
+| `_loadHairMaskDir` | entityRenderer.js | 4249 | 10 | - | - | `_looksRetryOn`, `_traitRetryOn` | `HAIR_MASK_ROUNDS`, `TRAIT_VER` | loader-retries, picture-door |
+| `_clipHairToHat` | entityRenderer.js | 4266 | 25 | - | - | - | `_ensureHairMaskLoaded`, `_ensureHeadwearLoaded`, `_hatTune`, `_placeTrait` | - |
+| `_placeHair` | entityRenderer.js | 4312 | 10 | - | - | - | `_clipHairToHat`, `_ensureHairLoaded`, `_placeTrait`, `hairPoseTune` | - |
+| `_placeStandaloneCapeLayer` | entityRenderer.js | 4437 | 16 | - | 0 | - | - | - |
+| `placeStandInCape` | entityRenderer.js | 4467 | 30 | - | - | - | `_lookupBodyTop`, `_placeStandaloneCapeLayer` | - |
+| `_clipStandInHair` | entityRenderer.js | 4550 | 38 | - | - | `_standInHairClip` | `_ensureHairMaskLoaded`, `_ensureHeadwearLoaded` | - |
+| `monsterDisplayMap` | entityRenderer.js | 4608 | 1 | - | - | `_monsterDisplaysRef` | - | - |
+| `monsterBodySprite` | entityRenderer.js | 4610 | 6 | - | - | `_monsterDisplaysRef` | - | - |
+| `placeSkillTraits` | entityRenderer.js | 4622 | 24 | - | - | - | `_clipStandInHair`, `_ensureEyeStyleLoaded`, `_ensureEyewearLoaded`, `_ensureFacialHairLoaded`, `_ensureHairLoaded`, `_ensureHeadwearLoaded`, `_hatHairFit` | - |
+| `placeSkillTraitsFor` | entityRenderer.js | 4678 | 24 | - | - | - | `_clipStandInHair`, `_ensureEyeStyleLoaded`, `_ensureEyewearLoaded`, `_ensureFacialHairLoaded`, `_ensureHairLoaded`, `_ensureHeadwearLoaded`, `_hatHairFit` | townsfolk-walk |
+| `_lookupHeadBox` | entityRenderer.js | 4715 | 8 | - | - | `_bodyAnchors` | - | - |
+| `_lookupStandHeadBox` | entityRenderer.js | 4728 | 5 | - | - | `_bodyAnchors` | - | - |
+| `_lookupBodyTop` | entityRenderer.js | 4737 | 4 | - | - | `_bodyTops` | - | traps-page-rules |
+| `_ensureTraitTextures` | entityRenderer.js | 4756 | 28 | - | - | `_mannequinTex`, `_traitLoadStarted`, `_traitMeta`, `_traitTex` | `TRAIT_NFT_ID`, `TRAIT_VER` | picture-door |
+| `preloadTraits` | entityRenderer.js | 4804 | 40 | - | - | - | `_ensureBodyData`, `_ensureHairMaskLoaded`, `_ensureHudBarTextures`, `_ensureTraitLoaded`, `_ensureTraitTextures` | look-load |
+| `createMonsterDisplay` | entityRenderer.js | 5040 | 55 | - | - | `MONSTER_HP_NUM_STYLE` | `_attachNamePill` | - |
+| `playerGroundDy` | entityRenderer.js | 5347 | 3 | - | - | `_STAND_SOUTH` | - | - |
+| `_attachNamePill` | entityRenderer.js | 5723 | 56 | - | - | `PLATE_BAND` | `PLATE_LEVEL_STROKE` | traps-page-rules |
+| `_iconSet` | entityRenderer.js | 5880 | 2 | - | 0 | - | - | loader-retries |
+| `preloadBroBadge` | entityRenderer.js | 5884 | 7 | - | - | `_broBadgeSet`, `_broBadgeTex` | `BRO_BADGE_URL`, `_broBadgeGot`, `_iconSet` | loader-retries |
+| `_broBadgeTexture` | entityRenderer.js | 5894 | 7 | - | - | `_broBadgeSet`, `_broBadgeTex` | `BRO_BADGE_URL` | loader-retries |
+| `preloadSmallIconTextures` | entityRenderer.js | 5910 | 4 | - | - | `_smallSet` | `_iconSet`, `_smallTexHeld` | small-icons |
+| `_smallTex` | entityRenderer.js | 5914 | 10 | - | - | `_smallSet` | `_smallTexHeld` | small-icons |
+| `_bindSmallTex` | entityRenderer.js | 5926 | 6 | - | - | - | `_smallTex` | small-icons |
+| `preloadQuestPinTextures` | entityRenderer.js | 5946 | 4 | - | - | `_pinSet` | `_iconSet`, `_pinTexHeld` | owner-icons |
+| `_questPinTex` | entityRenderer.js | 5950 | 10 | - | - | `_pinSet` | `_pinTexHeld` | owner-icons |
+| `setPlateZoom` | entityRenderer.js | 6069 | 5 | - | - | `_cueZoom`, `_plateWorldScale` | `CUE_ZOOM_MAX` | - |
+| `_fitPlateToZoom` | entityRenderer.js | 6078 | 15 | - | - | `_plateWorldScale` | `PLATE_SCALE_MAX`, `PLATE_SCALE_MIN` | - |
+| `_updateNamePill` | entityRenderer.js | 6116 | 53 | - | - | - | `_broBadgeTexture`, `_drawPlateCapsule`, `_fitPlateToZoom` | folk-names |
+| `_drawPlateCapsule` | entityRenderer.js | 6214 | 98 | - | - | `PLATE_BAND` | `PLATE_ALARM_FILL`, `PLATE_ALARM_FILL_ALPHA`, `PLATE_ALARM_LEVEL_FILL`, `PLATE_ALARM_NAME_FILL`, `PLATE_ALARM_NAME_WEIGHT`, `PLATE_BORDER_ALPHA`, `PLATE_BOSS_FILL`, `PLATE_BOSS_FILL_ALPHA`, `PLATE_FILL_ALPHA`, `PLATE_INK`, `PLATE_LEVEL_STROKE`, `PLATE_NAME_FILL`, `PLATE_NAME_WEIGHT`, `_bindSmallTex`, `_broBadgeTexture` | dungeon-clear |
+| `createPlayerDisplay` | entityRenderer.js | 6430 | 298 | - | - | `HP_RING_MAX_STYLE`, `NAME_STYLE`, `PLAYER_HP_NUM_STYLE` | `_attachNamePill`, `_smallTex` | traps-page-rules, traps-phone-memory |
+| `createOtherPlayerDisplay` | entityRenderer.js | 7085 | 167 | - | - | `NAME_STYLE`, `PLAYER_HP_NUM_STYLE` | `_attachNamePill`, `_smallTex` | traps-page-rules, traps-phone-memory |
+| `EntityRenderer.constructor` | entityRenderer.js | 7480 | 16 | yes | - | `_frontLayerRef`, `_monsterDisplaysRef` | - | art-holds, elem-windup, farmwalk, fish-top-evict, held-numbers, keep-as-image, loader-retries, loot-clock, mirror-audit, owner-icons, picture-door, storm-eye, tick, water-frog, phase-table, traps-page-rules, traps-phone-memory |
+| `EntityRenderer.update` | entityRenderer.js | 7513 | 12 | yes | - | - | `_noteOwnedGear` | drop-lines, elem-windup, fire-strip, keep-as-image, mirror-audit, owner-icons, renderer-life, storm-eye, water-frog |
+| `EntityRenderer._updateMonsters` | entityRenderer.js | 7529 | 1086 | yes | - | `SPAWN_WHITE_FILTER`, `STATUS_TO_ELEMENT`, `_cueZoom`, `_hudBarTex` | `BOSS_SEE_THROUGH`, `HPBAR_FLASH_MS`, `HP_GHOST_DRAIN_M`, `HP_GHOST_HOLD_MS`, `HP_GHOST_WHITE`, `MONSTER_HPBAR_H`, `NOTICE_MS`, `PLATE_ENGAGED_MS`, `POPUP_BAR_CLEAR`, `SPAWN_FX_MS`, `THROW_RELEASE_GRACE_MS`, `_bindSmallTex`, `_ensureHudBarTextures`, `_hpFillTexFor`, `_updateNamePill`, `createMonsterDisplay` | traps-page-rules |
+| `EntityRenderer._drawPeerHpBar` | entityRenderer.js | 9899 | 84 | - | - | `PLAYER_HP_NUM_STYLE`, `_hudBarTex` | `HPBAR_FLASH_MS`, `HP_GHOST_DRAIN_M`, `HP_GHOST_HOLD_MS`, `HP_GHOST_WHITE`, `PEER_BAR_H`, `PEER_BAR_W`, `PEER_BAR_Y`, `PEER_HPBAR_HOLD_MS`, `PLAYER_HPBAR_H`, `_ensureHudBarTextures`, `_hpFillTexFor` | - |
+| `EntityRenderer.peerAlwaysDrawn` | entityRenderer.js | 10015 | 11 | - | - | - | `PEER_HPBAR_HOLD_MS` | - |
+| `EntityRenderer._updateOtherPlayers` | entityRenderer.js | 10027 | 907 | yes | - | `_crownOverride`, `_lastPeerWeaponSprite`, `_plateWorldScale`, `_staffTipOut` | `BOW_SHOT_MS`, `HEAD_FRAMES_ON`, `PEER_BAR_H`, `PEER_BAR_W`, `PEER_BAR_Y`, `PEER_HPBAR_HOLD_MS`, `SKULL_RED_TINT`, `SOUTH_BLOCK_OFFHAND_ENABLED`, `SWING_ANIM_MS`, `SWORD_SWING_MS`, `_CROWD_ALL_SHOWN`, `_PEER_WORN_SLOTS`, `_bindSmallTex`, `_crowdK`, `_noPeerCull`, `_peerLookPrewarmIfChanged`, `_peerMaskedFrame`, `_peerPrewarmIfChanged`, `_placeCape`, `_placeEyeStyle`, `_placeEyewear`, `_placeFacialHair`, `_placeFishHead`, `_placeGear`, `_placeHair`, `_placeHeadwear`, `_placeLookResidue`, `_placePickupHead`, `_placeSpecies`, `_remoteBodyArt`, `_smallTex`, `_updateNamePill`, `createOtherPlayerDisplay`, `playerGroundDy` | traps-page-rules |
+| `EntityRenderer._updatePlayer` | entityRenderer.js | 11658 | 1369 | yes | - | `_crownOverride`, `_lastHairDisplay`, `_lastWeaponSprite`, `_localBakeDir`, `_localBakeStats`, `_localEpoch`, `_selfDisplayRef`, `_staffTipOut` | `BOW_SHOT_MS`, `COLLISION_GLOW_RANGE_PX`, `HEAD_FRAMES_ON`, `PLAYER_BAND_Y`, `SKULL_RED_TINT`, `SOUTH_BLOCK_OFFHAND_ENABLED`, `SWING_ANIM_MS`, `SWORD_SWING_MS`, `_bindSmallTex`, `_ensureBodyData`, `_ensureEyewearLoaded`, `_ensureFacialHairLoaded`, `_ensureHairLoaded`, `_ensureHeadwearLoaded`, `_localMaskedFrame`, `_placeCape`, `_placeEyeStyle`, `_placeEyewear`, `_placeFacialHair`, `_placeFishHead`, `_placeGear`, `_placeHair`, `_placeHeadwear`, `_placeLookResidue`, `_placePickupHead`, `_placeSouthBlockLegs`, `_placeSpecies`, `_updateNamePill`, `_watchOwnHead`, `createPlayerDisplay`, `playerGroundDy` | traps-page-rules |
+| `EntityRenderer.capturePoseFrames` | entityRenderer.js | 14884 | 115 | yes | - | `_localBakeDir` | `CAPTURE_FACING`, `createPlayerDisplay` | - |
+| `EntityRenderer.setCaptureRenderer` | entityRenderer.js | 15034 | 1 | yes | - | - | - | - |
+| `EntityRenderer._updatePet` | entityRenderer.js | 15060 | 65 | yes | - | `NAME_STYLE` | `WARD_RING_MS` | traps-phone-memory |
+| `EntityRenderer._posePet` | entityRenderer.js | 15155 | 28 | - | - | - | - | - |
+| `EntityRenderer._updatePeerPets` | entityRenderer.js | 15202 | 53 | yes | - | - | - | - |
+| `EntityRenderer.peerPetsDrawn` | entityRenderer.js | 15264 | 10 | yes | - | - | - | - |
+| `EntityRenderer.petDrawn` | entityRenderer.js | 15278 | 11 | yes | - | - | - | - |
+| `EntityRenderer._updateProps` | entityRenderer.js | 15304 | 67 | yes | - | `_entityLayerRef`, `_propsDrawn` | - | - |
+| `EntityRenderer._updateForeground` | entityRenderer.js | 15470 | 44 | yes | - | `_fgDrawn` | - | - |
+| `EntityRenderer._drawFolk` | entityRenderer.js | 15530 | 72 | - | - | `_folkHatDy256` | `HEAD_FRAMES_ON`, `_placeCape`, `_placeEyeStyle`, `_placeEyewear`, `_placeFacialHair`, `_placeGear`, `_placeHair`, `_placeHeadwear`, `_placeSpecies`, `_remoteBodyArt`, `createOtherPlayerDisplay`, `placeSkillTraitsFor` | townsfolk-walk, traps-page-rules |
+| `EntityRenderer._updateNPCs` | entityRenderer.js | 15619 | 305 | yes | - | `NAME_STYLE` | `FOLK_FAR_MARGIN`, `_attachNamePill`, `_bindSmallTex`, `_npcDrawn`, `_questPinTex`, `_smallTex`, `_updateNamePill` | traps-page-rules, traps-phone-memory |
+| `EntityRenderer._updatePlayerHud` | entityRenderer.js | 16225 | 215 | yes | - | `_hudBarTex` | `HPBAR_FLASH_MS`, `HP_GHOST_DRAIN`, `HP_GHOST_HOLD_MS`, `HP_GHOST_WHITE`, `PLAYER_BAND_Y`, `PLAYER_HPBAR_H`, `RES_EN_Y`, `_ensureHudBarTextures`, `_hpFillTexFor` | traps-page-rules |
+| `EntityRenderer.clear` | entityRenderer.js | 16631 | 15 | yes | - | - | - | drop-lines, dungeon-clear, elem-windup, farmwalk, gpu-only, look-relay, mirror-audit, picture-door, renderer-life, storm-eye, tick, townsfolk-walk, water-frog, weapon-feel, zone-leftovers, phase-table, traps-phone-memory |
 | `_localBuild` | effectsRenderer.js | 56 | 1 | - | 0 | - | - | - |
 | `_peerBuild` | effectsRenderer.js | 57 | 1 | - | 0 | - | - | - |
 | `_peerNotDrawn` | effectsRenderer.js | 62 | 1 | - | 0 | - | - | - |

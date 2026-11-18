@@ -7,11 +7,12 @@
  * IMPORT_CYCLE_FILES has no room).  The census: part 5 of
  * docs/plan/census/M-tables.md (tools/dev/render-code-census.mjs).
  */
-import { BLOCK_GEOM } from '../fxStrips.js';
+import { BLOCK_BARS, BLOCK_GEOM, blocksFor } from '../fxStrips.js';
 import { PLAYER_SIZE_MULT } from '../tables/look.js';
 import { PVP_THREAT_CONSENT_MS } from '@/data/gameSystems.js';
-import { RES_BAR_H, RES_BAR_W, RES_GHOST_HEX, RES_SPENT_GAP } from '../tables/ui.js';
+import { RES_BAR_H, RES_BAR_W, RES_BLOCK_W, RES_GHOST_HEX, RES_SPENT_GAP } from '../tables/ui.js';
 import { xpDecayMult } from '@/data/xpDecay.js';
+import { Sprite } from 'pixi.js';
 
 /* ── v2.3.6200: level 0 ── */
 /* v2.3.1193: threat-skull phase (docs/specs/threats.md, "Skull
@@ -163,4 +164,177 @@ export function _drawResourceSpent(label, gfx, kind, y, alpha) {
   label.y = y + RES_BAR_H / 2;
   label.alpha = alpha;
   label.visible = true;
+}
+
+/* ── v2.3.6201: main's level 1 ── */
+export const RES_BAR_MAX_W = 118;
+export const _barScaleX = (n) => Math.min(RES_BLOCK_W / RES_SRC_CELL, RES_BAR_MAX_W / _barSrcW(n));
+
+/* ── v2.3.6201: main's level 2 ── */
+export const _barWidth = (n) => Math.round(_barScaleX(n) * _barSrcW(n));
+
+/* ── v2.3.6201: main's level 3 ── */
+/* v2.3.1896b: the gap has to clear BOTH borders, not just the bar.  At
+   +3 the MP border's bottom edge (y + H + BORDER) landed 1px BELOW the
+   energy border's top (y - BORDER) and the two rounded outlines merged into
+   one lozenge — visible the moment they were photographed together.  Bar +
+   two borders + 3px of real air. */
+/* v2.3.1896c: derived from RES_MP_Y, not from a repeated literal.  It said
+   `40 + ...` while MP moved to 52, so the energy bar climbed INTO the MP bar
+   and clipped its readout — caught in the screenshot, not by the suite, which
+   only asserts enY > mpY and was still true.  Deriving it makes the two
+   impossible to separate again. */
+/* v2.3.2300: the block sheet's own aspect. His frames are 273x98, so a bar
+   drawn 76 wide is 27 tall -- taller than the 20 the old bar plus its keyline
+   occupied, which is why RES_EN_Y is re-derived below rather than left at a
+   number tuned for the old one. 76 keeps the width the owner has been looking
+   at since v2.3.1896c; the height follows the art rather than being squashed
+   into the old slot, because five blocks squeezed to 16px stop reading as five
+   things. */
+export const RES_BLOCK_H = Math.round(RES_BLOCK_W * 98 / 273);
+/* One bar.  Returns its alpha, so the caller can decide about the plate. */
+export function _drawResourceBar(gfx, sprite, kind, cur, max, y, now, n) {
+  const m = Math.max(1, max || 1);
+  const v = Math.max(0, Math.min(m, cur || 0));
+  /* Seed on the first frame so arriving at partial MP does not read as a
+     spend and flash the bar for nothing — the same trap the HP ring hit at
+     v2.3.1682. */
+  if (gfx._resLast == null) {
+    gfx._resLast = v; gfx._resSpentAt = 0; gfx._resFrom = v;
+    gfx._resSpentAmt = 0;
+    gfx._resGlideAt = 0; gfx._resGlideBase = 0;
+  }
+  if (v < gfx._resLast - 0.01) {
+    /* Was the bar still on screen when this spend landed?  Read BEFORE
+       _resSpentAt is overwritten below — it is the whole test. */
+    const _prevSince = now - (gfx._resSpentAt || 0);
+    const _wasUp = !!gfx._resSpentAt && _prevSince <= RES_HOLD_MS + RES_FADE_MS;
+    gfx._resFrom = gfx._resLast;         /* re-base the chunk on every spend */
+    /* The FADE still re-arms on every spend — that is the owner's original
+       rule ("disappear after 2 seconds if no further mp is used").  Only the
+       GLIDE is now continuous across the burst. */
+    gfx._resGlideBase = _wasUp ? _resGlideProgress(gfx, now) : 0;
+    gfx._resGlideAt = now;
+    gfx._resSpentAt = now;
+    /* v2.3.1897: LATCHED here, not recomputed per frame.  Mana and stamina
+       regenerate server-side, so a regen tick arrives as a rise and lands in
+       the refill branch below — recomputed each frame, the "-N" would blink
+       out the first time the server topped you up, which inside a 2s hold is
+       most of the time.  The chunk can afford that (it is gone in 420ms); a
+       number the player is still reading cannot.  A further spend re-latches,
+       matching the chunk, which also shows only the newest spend. */
+    /* v2.3.1900 (owner: "Successive expenditures of mp and energy are treated
+       cumulatively (numbers keep adding up the more you spend) I just want
+       the expended amount"): the number is THIS spend, not a running total.
+       v2.3.1899 accumulated, which was the wrong answer to a real problem —
+       so keep the guard and drop the total.
+
+       The real problem: mana arrives fractional under town regen (77 -> 77.1
+       -> 90 -> 90.1), so a sub-half-unit dip counts as a spend by the 0.01
+       test above and Math.round()s to ZERO.  Overwriting blindly with that
+       BLANKED a live number mid-glide while its bar stayed up (caught at
+       t=1460 in the three-cast trace).  So a drop that does not round to at
+       least 1 leaves the displayed amount alone: real costs are whole
+       numbers, and anything under a unit is regen jitter, not an expenditure
+       worth announcing.  It still re-arms the bar, which is the pre-existing
+       behaviour of the 0.01 test and not this change's business. */
+    const _rounded = Math.round(gfx._resLast - v);
+    if (_rounded >= 1) gfx._resSpentAmt = _rounded;
+    else if (!_wasUp) gfx._resSpentAmt = 0;
+  } else if (v > gfx._resLast + 0.01) {
+    gfx._resFrom = v;                    /* refill: no chunk, and no reveal */
+  }
+  gfx._resLast = v;
+
+  const since = now - (gfx._resSpentAt || 0);
+  let alpha = 0;
+  if (gfx._resSpentAt) {
+    if (since <= RES_HOLD_MS) alpha = 1;
+    else if (since <= RES_HOLD_MS + RES_FADE_MS) alpha = 1 - (since - RES_HOLD_MS) / RES_FADE_MS;
+  }
+  /* ═══ v2.3.2300: FIVE BLOCKS, NOT A PROPORTIONAL BAR ═══
+     Owner: "instead of seeing tiny percentages and trying to do mental math
+     each time stamina or mana is used, I want just 5 blocks (with thick borders
+     between them but all connected inside a rectangle)."
+
+     Everything ABOVE this line is untouched -- the spend detection, the
+     hold-then-fade clock, the re-arm on a second spend. That is the behaviour
+     v2.3.1895-1900 tuned with the owner over five rounds and none of it was
+     what he is complaining about. What changes is only what gets DRAWN, so the
+     bars still appear on a spend, hold for a second, fade by two, and hold
+     their reserved positions.
+
+     THE GRAPHICS STOPS DRAWING AND KEEPS ITS JOB. Every `_res*` field the
+     probe publishes and the death-reset sweep clears lives on this object, and
+     moving that bookkeeping onto the sprite would mean touching both the
+     revive path and the keep-list. It is the state; the sprite is the view.
+
+     THE SLIDING CHUNK AND THE "-N" ARE GONE with the proportional fill. They
+     existed to make a fraction legible as a quantity ("how much of the bar just
+     left"), which is precisely the mental arithmetic being removed -- and with
+     a block readout the answer is visible without a number, because a whole
+     block goes out. Their bookkeeping is nulled rather than left stale, so the
+     probe reports the absence rather than the last value from before the swap. */
+  gfx.clear();
+  gfx._resSlideT = 1;
+  gfx._resSpentT = 1;
+  gfx._resGhostX = null; gfx._resGhostW = 0;
+  gfx._resSpentAmt = 0;
+  if (alpha <= 0.01) {
+    gfx.alpha = 0;
+    if (sprite) { sprite.visible = false; sprite.alpha = 0; }
+    return 0;
+  }
+  gfx.alpha = alpha;
+  if (sprite) {
+    const parts = BLOCK_BARS[kind] && BLOCK_BARS[kind].parts;
+    const N = Math.max(1, Math.floor(n || 5));
+    const lit = blocksFor(v, m, N);
+    /* No sheet (a 404, or a frame before the preload settled) means no bar --
+       NOT a half-drawn one. The preloading law makes the second case a bug
+       rather than a state to design for, and the manifest awaits these; this
+       is the honest degradation for the first. */
+    if (parts) {
+      const k = _barScaleX(N);
+      const W = _barWidth(N);
+      const L = -W / 2;          /* the container sits at x=0, so the bar grows
+                                    symmetrically about the player's centre --
+                                    this is what preserves the anchor(0.5, 0)
+                                    semantics the single sprite used to have. */
+      sprite.x = 0;
+      sprite.y = y;
+      sprite.alpha = alpha;
+      sprite.visible = true;
+
+      const capW = BLOCK_GEOM.cap * k;
+      sprite._capL.x = L;            sprite._capL.width = capW;  sprite._capL.height = RES_BLOCK_H;
+      sprite._mid.x = L + capW;      sprite._mid.width = Math.max(0, W - capW * 2); sprite._mid.height = RES_BLOCK_H;
+      sprite._capR.x = L + W - capW; sprite._capR.width = capW;  sprite._capR.height = RES_BLOCK_H;
+
+      /* v2.3.2302: cells are POOLED, never destroyed when N changes. N moves
+         on a level-up, an allocation and a respec -- all of which can happen
+         mid-fight -- and `new Sprite()` on the frame the sixth block arrives
+         is a hitch on the one frame the player is actually watching the bar.
+         Grow to fit, then hide the surplus. */
+      while (sprite._cells.length < N) {
+        const c = new Sprite(parts.empty);
+        c.anchor.set(0, 0);
+        sprite.addChild(c);
+        sprite._cells.push(c);
+      }
+      for (let i = 0; i < sprite._cells.length; i++) {
+        const c = sprite._cells[i];
+        if (i >= N) { c.visible = false; continue; }
+        const tex = i < lit ? parts.lit : parts.empty;
+        if (c.texture !== tex) c.texture = tex;
+        c.x = L + k * (BLOCK_GEOM.first + RES_SRC_PITCH * i);
+        c.width = BLOCK_GEOM.cellW * k;
+        c.height = RES_BLOCK_H;
+        c.visible = true;
+      }
+    } else {
+      sprite.visible = false;
+    }
+  }
+  return alpha;
 }
