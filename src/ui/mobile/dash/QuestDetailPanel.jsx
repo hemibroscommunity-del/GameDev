@@ -5,6 +5,8 @@ import { questDetailBus } from '../sheet/questDetailBus.js';
 import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
 import { questJournalPage, questById } from '../sheet/questJournalModel.js';   /* v2.3.3944: the journal's page */
 import { QuestJournalPage, useJournalTap } from './QuestJournalPage.jsx';
+import { SAY } from '@/data/say/questDetail.js';   /* v2.3.6350: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';
 
 /* v2.3.1298 (ChatGPT round-5 Quests): the focused quest page — pushed into
    the sheet from any quest row (and, since F1, from the pinned quest card).
@@ -45,7 +47,7 @@ export const QuestDetailPanel = () => {
   const page = questById(qid) ? questJournalPage(S, qid) : null;
 
   if (!page) {
-    return <div style={panelStyle}><div style={{ padding: 20, color: COL.text2, fontSize: 15 }}>Quest not found.</div></div>;
+    return <div style={panelStyle}><div style={{ padding: 20, color: COL.text2, fontSize: 15 }}>{say(SAY, 'questDetail.notFound')}</div></div>;
   }
   const inHand = page.status === 'active' || page.status === 'ready';
   const tracked = trackedQuestId() === page.id;
@@ -72,12 +74,12 @@ export const QuestDetailPanel = () => {
             cursor: 'pointer',
             touchAction: 'manipulation',
           }}
-        >{tracked ? deskWords('★ Tracked — tap to untrack') : '☆ Track this quest'}</button>
+        >{tracked ? deskWords('★ Tracked — tap to untrack') : say(SAY, 'questDetail.track')}</button>
       )}
       {/* v2.3.3522: what tracking does, said once it is on */}
       {inHand && tracked && (
         <div data-quest-track-note="" style={{ fontSize: 14, color: COL.text2, padding: '6px 2px 0', textAlign: 'center' }}>
-          Your map's gold star follows this quest.
+          {say(SAY, 'questDetail.trackNote')}
         </div>
       )}
       <div style={{ height: 26 }} />
