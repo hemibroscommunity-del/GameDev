@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { COL } from './common.js';
+import { AFTER_PAINT } from '../../afterPaint.js';   /* v2.3.6281: the first measure off the commit (card HB2 PR 2) */
 
 /* ═══ v2.3.4394: A PAGE THAT IS A LIST BESIDE WHAT IT OPENS ═══
  * The Leaderboards (v2.3.4393) and the Quests page (v2.3.4394) are the same
@@ -22,9 +23,12 @@ export function useBoxSize() {
       const r = el.getBoundingClientRect();
       setSize((old) => (Math.abs(old[0] - r.width) < 1 && Math.abs(old[1] - r.height) < 1 ? old : [Math.round(r.width), Math.round(r.height)]));
     };
-    read();
     let ro = null;
     try { ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(read) : null; } catch (_e) { ro = null; }
+    /* v2.3.6281 (card HB2 PR 2; `?afterpaint`): the first measure from the observer (told on observe, after the
+       browser's own layout), not here right after React put the window in, where the first read lays the whole page
+       out (the band's mount measures: docs/plan/census/HB-holds.md rows 3, 5).  `?afterpaint=0`: here too. */
+    if (!AFTER_PAINT || !ro) read();
     if (ro) ro.observe(el);
     else window.addEventListener('resize', read);
     return () => { if (ro) ro.disconnect(); else window.removeEventListener('resize', read); };
