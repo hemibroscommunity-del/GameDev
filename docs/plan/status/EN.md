@@ -23,6 +23,7 @@ state: working
 - (none: the planning session answered constants, suites and systems.mjs,
   2026-11-18). Planning session is now part 6
   (session_01LccHam7XmUNAHQrA1CjiNH); heads go to gatekeeper sitting 46.
-- 6202, asked part 6 once (2026-11-18): may it edit playerSkins.js's
-  `_bodySheets` cache (and playerSprites.js `loadSheet`'s), add a
-  `?folksheets=0` row to switches.mjs, and lower memory-budget.mjs's line?
+- 6202, answered by part 6 (2026-11-18): yes to road A (playerSkins.js
+  `_bodySheets` cap + release; playerSprites.js `loadSheet` only if it
+  grows), one `?folksheets=0` row in switches.mjs (this PR only), and
+  memory-budget.mjs's gpu line.
