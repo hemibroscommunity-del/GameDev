@@ -229,17 +229,27 @@ export const threatMethods = {
    * no worse.  No refund path: the bounty is a FINE, not a returnable
    * escrow, so there is nothing to pay back and no double-pay risk (the
    * payout's own opId stamp guards that). */
+  /* v2.3.5960 (card V5; TRAPS §76): a page a call (liveops.js LISTCAP.PAGE),
+     its cursor in memory, the next page an event of its own (duel.js
+     _duelEscrowSweep's walk) */
   async _bountySweep() {
     const now = Date.now();
-    if (this._lastBountySweep && now - this._lastBountySweep < 300000) return;
-    this._lastBountySweep = now;
+    const j = this._bountySweepWalk || (this._bountySweepWalk = { after: null, busy: false, timer: null });
+    if (j.busy) return;
+    if (!j.after) {
+      if (this._lastBountySweep && now - this._lastBountySweep < 300000) return;
+      this._lastBountySweep = now;
+    }
+    j.busy = true;
     try {
-      const bounties = await this.state.storage.list({ prefix: 'bounty:' });
+      const bounties = await this._listPage('bounty:', j);
       for (const [k, rec] of bounties) {
         if (now - ((rec && rec.ts) || 0) < THREAT.BOUNTY_STALE_MS) continue;
         await this.state.storage.delete(k);
       }
-    } catch (e) { /* best-effort */ }
+    } catch (e) { j.after = null; /* best-effort: the next walk starts again */ }
+    finally { j.busy = false; }
+    this._listNext(j, () => this._bountySweep());
   },
 
   /* Gear-lock gate for the equip-mutating handlers.  Returns true when
