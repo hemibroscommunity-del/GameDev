@@ -66,6 +66,9 @@ switch allows it.
   ceiling's honest floor (v2.3.5728, `flood.js` `HONEST_PER_S`, `ceilfair`);
   the owner's routes with no key and the public reads at the edge (v2.3.5726,
   `wire/door.js`; the worker settings `EDGE_GUARD`, `EDGE_CACHE`).
+- A General Store sell filed under its weapon's own tier, and a refund and
+  its order's delete in one write (v2.3.5801, card RV, `market.js`,
+  `mkttier`, `mktheal`).
 - Every save and payment rule; the login key, the device lock, the lockouts;
   a frozen account.
 - PvP consent and **every check on a hit between players** (pvpbalance.js,

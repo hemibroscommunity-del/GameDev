@@ -770,9 +770,14 @@ export const inboxMethods = {
      Gold and stackable items only, the kinds that always land (a weapon, a
      piece or a pet may have to wait in the mail for room): any other kind
      answers null and does nothing.  _creditPlayer is unchanged for its other
-     callers. */
+     callers.
+     v2.3.5801 (card RV, MS-4: the General Store's refund and its order's
+     delete): a WEAPON too.  It lands live only when the stash has room
+     (_weaponStashRoom, the test _applyCreditToPs's stash door makes), else
+     it waits in the mail -- either way with the caller's record in the same
+     run.  A piece or a pet still answers null. */
   async _creditWith(playerId, entry, also) {
-    if (!entry || (entry.kind !== 'gold' && entry.kind !== 'item') || typeof also !== 'function') return null;
+    if (!entry || (entry.kind !== 'gold' && entry.kind !== 'item' && entry.kind !== 'weapon') || typeof also !== 'function') return null;
     const opId = entry.opId;
     if (opId) {
       if (!this._opInFlight) this._opInFlight = new Set();
@@ -785,7 +790,7 @@ export const inboxMethods = {
         return 'dup';
       }
       const ps = this.playerState[playerId];
-      if (ps) {
+      if (ps && (entry.kind !== 'weapon' || this._weaponStashRoom(ps) > 0)) {   /* v2.3.5801: a weapon only into room */
         const writes = [...(also() || [])];
         this._applyCreditToPs(ps, entry, playerId);
         writes.push(this._saveRpg(playerId, ps), this._opStamp(opId));

@@ -134,7 +134,7 @@ player sees changes except the wrong thing the finding is.
 
 | PR | Tag | Files | Findings | Switch |
 |---|---|---|---|---|
-| 2 | 5801 | `market.js` | MS-2 (a sell filed under its weapon's own tier and kind); MS-4 (the scan finishes a refunded order before the prune can outrun it) | `mkttier`, `mktheal` |
+| 2 | 5801 | `market.js`, `inbox.js` (`_creditWith`) | MS-2 (a sell filed under its weapon's own tier and kind); MS-4 (a refund and its order's delete in one write: `inbox.js` `_creditWith` learns a weapon) | `mkttier`, `mktheal` |
 | 3 | 5802 | `risechest.js`, `inbox.js` (the prune) | MD-1 (the chest's stamp is the record and is kept: the prune passes over its range, no new row) | `risekeep` |
 | 4 | 5803 | `trade2.js`, `inbox.js` | MS-3 (a dying side refuses the confirm; a goods credit to a dying player waits in the mail) | `dyingmail` |
 | 5 | 5804 | `nomansland.js` | MS-1 (the killer paid in the victim's own write) | `nmlonewrite` |
@@ -163,6 +163,23 @@ gate (MD-1); who sees a duel challenge (S1); staff words in pet and
 alliance names (S7); presence on the map and the whisper's answer (S8);
 whether bids are private (`/store/mine`); the rewind's words (ACC-4); the
 Test panel's pass words (SEC-F6); a block the server keeps (card Q).
+
+### The owner's calls, decided by RV's recommendation (v2.3.5801)
+
+The owner, 2026-11-17, by the planning session: *"Go recommended on all"*.
+Each is built behind its own switch in the PR named, under "Decided for the
+owner while away" in that PR's words. Never decided this way: anything that
+adds a write or a cost, or deletes a player's record or items.
+
+| Call | RV's recommendation | Where | Switch |
+|---|---|---|---|
+| The rise chest's quest gate (MD-1) | **No gate.** Paid once a character for good (PR 3), the chest is 400 coins a new character can take once, the same kind as the start gold; a fleet of throwaways is RT-3 B1's question (the account check, card Q), not one chest's. Nothing is built. | none | none |
+| Who sees a duel challenge (S1) | **The target alone.** A bystander's phone already drops a challenge not addressed to it (`gameEvents.js`: `payload.target === S.myId`), so nobody sees a change; the room stops hearing "X challenged Y for N gold" and the worker sends fewer messages. Built if `duel.js` can send it directly through the send door without touching `relay.js` (K2's); else listed for K2. | PR 6 | `duelquiet` |
+| Staff words in pet and alliance names (S7) | **Refused, as a character's name is** (`charname.js` `nameReadsAsStaff`, its own refusal words). A pet named "Mod" is refused as a character named "Mod" already is. | PR 14 | `namestaff` |
+| Presence on the map, and the whisper's answer (S8) | **The map stays** (it is the feature). **A player who muted you reads as away to you**: a whisper to them answers `no-such-player`, a party invite `target-gone`, as for someone not here, so a muted harasser cannot test whether they are on. | PR 6b | `mutehides` |
+| Whether bids are private (`/api/store/mine`) | **Leave as is.** The public browse shows each listing's top bidder by design (the Auction House is an open auction); hiding one route hides nothing. | none | none |
+| The rewind's words (ACC-4) | **Say it.** The rewind's plan lists the owner's own login actions since the time chosen (a key taken back, a device forgotten, a silence), read from the admin log before the rewind (the log goes back too), and tells the owner to repeat them, as it already does for freezes. Words in the owner's Test panel only. | `restore.js`, a PR of its own | `rewindsays` |
+| The Test panel's pass words (SEC-F6) | **Match the rule.** "Let one new device in" says what `oldkeyheld` allows now: the next new key from any device, never an old key. Words in the owner's Test panel only. | `DevPanel.jsx`, a PR of its own (asked of the planning session: the file is card A's and L's list) | none (words) |
 
 ## Appendix A. What was read, row by row
 
