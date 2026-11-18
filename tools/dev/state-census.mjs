@@ -1722,7 +1722,8 @@ const SUGGESTED = {
     'rendering/playerDeathSprites.js': { never: 'state' },
     'rendering/playerSkins.js': {
       never: `
-        _bodySheets _buildSink _fishFollows _pickupHeadSheets _headTrimStats _headTrimFrames _artPrewarmT`,
+        _bodySheets _buildSink _fishFollows _pickupHeadSheets _headTrimStats _headTrimFrames _artPrewarmT
+        _askOnly`,   /* v2.3.6202 (card EN): only while bodyKeysAsked runs */
     },
     'rendering/playerSprites.js': { never: 'manifest loadPromise' },
     'rendering/propGround.js': { never: '_canvas _ctx _budgetFrame' },
@@ -1771,7 +1772,8 @@ const SUGGESTED = {
         _prewarmRenderer _altPrewarmSeq _equipPrewarmTimer _equipPrewarmRunning _equipPrewarmAgain _fishTopCache
         _FISH_GRIP_TROUSERS _hairMaskCache _lastHairDisplay _standInHairClip _monsterDisplaysRef _traitTex
         _mannequinTex _traitMeta _traitLoadStarted _broBadgeTex _broBadgeSet _smallTexHeld _smallSet _pinTexHeld
-        _pinSet _plateWorldScale _cueZoom`,
+        _pinSet _plateWorldScale _cueZoom
+        _folkJobs _folkSheets _keepQueue _keepTimer _keepLastAsk`,   /* v2.3.6202/6203 (card EN): the page's, never reset */
       zone: `
         _npcDrawn _lastPeerWeaponSprite _peerQueue`,
     },
