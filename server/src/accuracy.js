@@ -51,6 +51,8 @@
  *
  * Suite: server/test/accuracy.test.mjs.  Spec: docs/specs/accuracy.md. */
 
+import { LISTCAP } from './liveops.js';   /* v2.3.5960: the old days' page (card V5) */
+
 export const ACC = Object.freeze({
   V: 1,
   SLOTS: Object.freeze(['melee', 'ranged', 'staff']),
@@ -301,14 +303,23 @@ export const accuracyMethods = {
       for (const [pid, e] of this._accBook) if (!e.dirty && !(this.playerState && this.playerState[pid])) this._accBook.delete(pid);
     }
     /* and the days past DAY_KEEP go, once a worker's life a day */
+    /* v2.3.5960 (card V5; TRAPS §76): the newest DAY_KEEP + LISTCAP.PAGE
+       days, one read on a flush the join may reach: the kept ones and a page
+       of those past them to drop (the runtime's delete takes 128 keys).  A
+       full page leaves the day unpruned, so the next flush drops the next
+       page, older; the same days are kept in the end.  `listcap: false`:
+       every day in one read, as before. */
     const today = accDay(Date.now());
     if (this._accPrunedDay !== today) {
       this._accPrunedDay = today;
       try {
-        const days = await this.state.storage.list({ prefix: 'accday:' });
+        const opts = { prefix: 'accday:' };
+        if (!this._listCapOff()) { opts.reverse = true; opts.limit = ACC.DAY_KEEP + LISTCAP.PAGE; }
+        const days = await this.state.storage.list(opts);
         const keys = [...days.keys()].sort();
         const drop = keys.slice(0, Math.max(0, keys.length - ACC.DAY_KEEP));
         if (drop.length) await this.state.storage.delete(drop);
+        if (opts.limit && days.size >= opts.limit) this._accPrunedDay = null;   /* more past the page: the next flush */
       } catch (err) { /* next day */ }
     }
   },

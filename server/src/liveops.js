@@ -176,6 +176,28 @@ export function flagNameOk(name) {
   return typeof name === 'string' && (LIVEOPS.FLAG_NAME_RE.test(name) || LIVEOPS.CAMEL_SWITCHES.includes(name));
 }
 
+/* ═══ v2.3.5960: STORAGE LISTS WITH A LIMIT (card V5 PR 1; TRAPS §76) ═══
+   A `storage.list()` with no limit reads a whole prefix in one await, and a
+   storage await holds the room's input gate for all of it (handoff rule 9):
+   nobody is answered, the join that started it included, until it ends.  The
+   prefixes grow with players; the code was written when they were small.  So
+   every list on the join's path reads a page:
+     - a SWEEP (an orphan's refund, a stale record's delete) walks its prefix
+       a page an event: `_listPage` reads the page after the walk's cursor
+       (kept in memory, `{ after }`), and `_listNext` runs the next page as an
+       event of its own, NEXT_MS on, so the room answers everyone between two
+       pages and a join never waits on more than one;
+     - a REGISTRY the room holds whole in memory (the clans, the silences)
+       is read by `_listAll`, a page an await until the prefix ends: each read
+       is bounded, and the set is the one the room keeps anyway.
+   `listcap: false` in the live flags reads every prefix whole in one list,
+   as before (a sweep is then one page: its walk ends at once). */
+export const LISTCAP = Object.freeze({
+  PAGE: 128,        /* the keys a page (the runtime's delete takes 128 keys a call) */
+  SWEEP: 32,        /* a page of a sweep whose every key awaits its own reads and writes (a refund) */
+  NEXT_MS: 10,      /* a walk's next page, an event of its own this long after */
+});
+
 export const liveopsMethods = {
   async _liveFlagsEnsure() {
     if (this._liveFlags) return this._liveFlags;
@@ -211,6 +233,53 @@ export const liveopsMethods = {
   _daybookOff() {
     const f = this._liveFlags;
     return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'daybook') && !f.daybook);
+  },
+
+  /* v2.3.5960: the lists' limit's kill switch (LISTCAP above), the lower-case
+     way: `listcap: false` reads every prefix whole again */
+  _listCapOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'listcap') && !f.listcap);
+  },
+
+  /** v2.3.5960: one page of `prefix`, after the walk's cursor `cur.after`
+   *  (`cur` null: the first page).  `cur.after` is left at the page's last
+   *  key while more may follow, null once the prefix has ended.  With
+   *  `listcap: false`, the whole prefix in one read. */
+  async _listPage(prefix, cur, limit) {
+    const opts = { prefix };
+    if (!this._listCapOff()) {
+      opts.limit = limit || LISTCAP.PAGE;
+      if (cur && cur.after) opts.startAfter = cur.after;
+    }
+    const page = await this.state.storage.list(opts);
+    let last = null;
+    for (const k of page.keys()) last = k;
+    const more = !!(opts.limit && last && page.size >= opts.limit);
+    if (cur) cur.after = more ? last : null;
+    return page;
+  },
+
+  /** v2.3.5960: a whole prefix, a page an await (a registry the room keeps
+   *  whole in memory: each read bounded, the set the one it holds anyway). */
+  async _listAll(prefix) {
+    const out = new Map();
+    const cur = { after: null };
+    do {
+      for (const [k, v] of await this._listPage(prefix, cur)) out.set(k, v);
+    } while (cur.after);
+    return out;
+  },
+
+  /** v2.3.5960: a sweep's next page, an event of its own (the room answers
+   *  between pages), while its walk `j` has more (its cursor, unless the
+   *  caller says); one timer a walk. */
+  _listNext(j, run, more) {
+    if (!j || !(more === undefined ? j.after : more) || j.timer) return;
+    j.timer = setTimeout(() => {
+      j.timer = null;
+      Promise.resolve().then(run).catch(() => { /* the walk's own catch ends it */ });
+    }, LISTCAP.NEXT_MS);
   },
 
   /* v2.3.5123: the field report's kill switch (report.js), the same way:
