@@ -1,6 +1,6 @@
 card: HB
 branch: claude/plan-hb-5-afterpaint
-prs: #2188 (6240): merged; #2199 (6241), #2201 (6242), #2202 (6243): ready; #? (6244, the door prompt after the paint): draft
+prs: #2188 (6240), #2199 (6241), #2201 (6242), #2202 (6243): merged; #? (6244, the door prompt after the paint): draft
 state: working
 
 ## Done
