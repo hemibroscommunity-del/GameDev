@@ -1,7 +1,7 @@
 card: CAP
 branch: claude/plan-cap-1-census (one PR a branch, claude/plan-cap-*)
-prs: #2172 (6100) census, #2174 (6101) guard: working (ready; main merged in for sitting 46)
-state: working
+prs: #2172 (6100) census, #2174 (6101) guard: both merged
+state: done
 
 ## Done
 - PR 1 (6100): the census, docs/plan/census/caps.md, written by
@@ -12,7 +12,8 @@ state: working
   #2172): the old ways may only fall; break proof run every time.
 
 ## Next
-- Both PRs ready when CI is green; then done.
+- Nothing: the card is done (both merged at sitting 46; marked done by
+  the gatekeeper, sitting 47).
 
 ## Found
 - (none outside the card)

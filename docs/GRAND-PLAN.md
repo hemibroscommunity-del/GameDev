@@ -488,7 +488,7 @@ play, a number 1.1 can measure.
   33 (`main` ea7df6b0): every frame leaves through `_send`, and a raw
   `.send(` outside `send.js` fails `send-door.test` 8. Ticked (the
   gatekeeper, sitting 34, tag 5672).*
-- [ ] **4.2 [NEXT] Claims, bounded.** "No claims" can be met by calling a
+- [x] **4.2 [NEXT] Claims, bounded.** "No claims" can be met by calling a
   loose check a judge. So each bounded claim carries its **gain**: a
   maximal liar's take an hour over an honest player's, measured by a house
   bot written for it. Every gain at most 1.5, in `npm test`; and an honest
@@ -541,6 +541,14 @@ play, a number 1.1 can measure.
   K done. `bowshot` ON is the owner's yes (card K2's PR 8). The box waits
   for the bow's reach, the harvest and `cookstart` ON (the gatekeeper,
   sitting 37, tag 5675).*
+  *Card K2's #2073 (`bowshot`, `cookstart` ON) and card K4's eleven PRs
+  (#2105 to #2187: the harvest's grade, the bow's reach and path, all ON;
+  LG's findings on `startless`, `aimed`, `reflex`, the cook's beat and a
+  deploy halfway mended) merged, the last five at sitting 46: on `main`
+  e898c0c7 every gain in `claims-gain.test` is at or under 1.5 (reach
+  1.42, bowlabel 1.2, guard 1.37, move 1.17, harvest 1.46, cook 0), the
+  honest bots unrefused; each judge off with its `false`. Cards K2 and K4
+  done. Ticked by the gatekeeper, sitting 47 (tag 6261).*
 - [x] **4.3 [NEXT] Doors for what is left of value**: experience and
   levels, the stashes, quest state, skill points. A weapon gets an id of its
   own, as gear has.
@@ -882,6 +890,12 @@ nothing known, and a restore copies nothing.
   7.3's batches; an old way that settles value goes first, as 4.2's. A cap
   that counts (rows, crops) stays: it is a number, not an old way. A new
   cap is born as today: either side still ships first.
+  *Step 1 merged at sitting 46 (card CAP): #2172, the census
+  (`docs/plan/census/caps.md` by `tools/dev/caps-census.mjs`: 174 caps,
+  12 settle value, 62 with no switch row, 10 count, 162 old page ways),
+  and #2174, its guard (`caps-census.test`: the old ways only fall). Card
+  CAP done. The box waits for 7.2's four weeks and the batches (the
+  gatekeeper, sitting 47, tag 6261).*
 
 ### Pillar 8. Keep working here cheap and checked
 
@@ -918,6 +932,12 @@ nothing known, and a restore copies nothing.
   *J2's #1984 (`mp-dailyrewards`), #1986 (the finger's tap, the Orders
   tab) and #1987 (`mp-rotcap`), the tests', merged at sitting 27. The step
   is open (the gatekeeper, sitting 28, tag 5666).*
+  *Card TL (the tools side): #2175 (precheck's server-tests cap 5 -> 20
+  minutes; a timeout says so), #2181 (`listcap` check 1's race), #2183
+  (`arena.test`'s hour boundary), merged at sitting 46; card TL done.
+  RD's itemdrop 5b (#2191) merged at sitting 46. The step is open: RD's
+  crowdfight, manualcombat 10a and `mp-jumpbtn` (the gatekeeper, sitting
+  47, tag 6261).*
 - [ ] **8.2 [NEXT] Traps become guards**, each with a break proof. The count
   that matters is traps held by a proof, not traps of prose.
   *Card V merged, #1724 to #1740: 31 traps held by a proof (25 the rule, 6
@@ -939,6 +959,13 @@ nothing known, and a restore copies nothing.
 - [ ] **8.8 [NEXT] Things the owner does not see**: a practice copy of the
   server before real players; every word a player reads in one table; a
   screen for support (lost keys, a wrong flag).
+  *The words, step 1 (card WD), merged at sitting 46: #2171 the census
+  (`docs/plan/census/words.md`: 7544 player-facing, 2164 in a table, 4995
+  in place on the page, 385 on the worker), #2179 its guard
+  (`player-words.test`, lines 4995 / 385, only fall), #2180 the spec
+  (`docs/specs/player-words.md`: the table's shape, 449 screens in waves
+  W0 to W6). Card WD done. The box waits for the waves, the practice copy
+  and the support screen (the gatekeeper, sitting 47, tag 6261).*
 
 (8.4 of version 1 is part 11's advice; 8.5 is wave 0.)
 
@@ -1096,11 +1123,15 @@ punishes by itself.
   `main` fcd1ae92 (card R done). Turning a fee, hold or pace up, and
   throwing `xferescrow`, stay the owner's calls. Ticked by the gatekeeper,
   sitting 43 (tag 5032).*
-- [ ] **10.6 [NEXT] What an honest player's trouble looks like.** Each
+- [x] **10.6 [NEXT] What an honest player's trouble looks like.** Each
   signal lists what changes it without any cheating: the frame rate, the
   line's delay, a deploy, a hidden tab. Every Low Power iPhone shares one
   rhythm, and every deploy starts every session in the same second: both
   read as a fleet of bots unless the signal knows.
+  *Card LG's #2170 (`docs/specs/honest-trouble.md`: every signal, its
+  line, the honest trouble that moves it, the detector's rule), merged at
+  sitting 46; its findings mended by K4's #2176, #2177 (sitting 46).
+  Ticked by the gatekeeper, sitting 47 (tag 6261).*
 - [ ] **10.7 [NEXT] The league**, tools only. The house's own bots, each
   rung harder: a script on the wire; one with noise; the real page driven
   by a script; a person's recorded play replayed; a model driving the
@@ -1108,6 +1139,14 @@ punishes by itself.
   was frozen. Replays run at 60, 30, 20 and 4 frames a second and through a
   deploy. `npm test` fails when a person's trace is flagged or an easy rung
   is missed.
+  *Card LG's #2178 (rungs 1-2, `score.mjs`, `league.test`, `npm run
+  league`) and #2184 (rungs 3-4: the page driven by a script, a person's
+  play replayed; the honest trace passes at 60/30/20/4 fps and through a
+  deploy), merged at sitting 46, with K4's #2182, #2187 for the cook's
+  beat and a deploy halfway. Card LG done. Rung 5 (a model driving the
+  browser) left for later, decided for the owner while away; rung 2 was
+  missed by every detector at LG's PR 2 (LG's Found). The box waits for
+  rung 5 (the gatekeeper, sitting 47, tag 6261).*
 - [ ] **10.8 [NEXT] The owner's play is the first human record.** With the
   owner's yes: the first ten active minutes of a sitting, one row, labelled
   human. Test mode runs the checks in shadow and records "would refuse",
@@ -1364,6 +1403,14 @@ to read when you are back; recorded by the gatekeeper, sitting 46, tag 6260):
   "settles value" (they go first when the caps leave, 7.5).
 - The league's rung 5 (a model driving the browser) is left for later
   (card LG; 10.7).
+- The townsfolk's jog sheets' chip copies unloaded ON for everyone (card
+  EN, PR 3, `?folksheets=0` the off-ramp, a memory saver; on sitting 47's
+  list once it is green).
+- The memory check's `buffers` line raised 24.2 -> 24.8 MB as `artCache`
+  fell 2.2 MB (net 1.7 MB less in the page): the ore rocks and the
+  projectile sheets as colour numbers (card FX, #2200; `?treenumbers=0`
+  and `?p256=0` the pictures). `artCache`'s line stays 79.3 (the frame
+  pacer's copy of it waits for your word).
 
 **Yours outside the code:** two-step login on GitHub and Cloudflare, and
 the wallet key that deployed the scores contract kept safe; a spending

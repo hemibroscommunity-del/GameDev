@@ -1,11 +1,9 @@
 card: WD
 branch: claude/plan-wd-3-spec (one PR a branch, claude/plan-wd-*)
-prs: #2171 (6140) census, #2179 (6141) guard, #2180 (6142) spec: ready (merge in that order)
-state: ready
+prs: #2171 (6140) census, #2179 (6141) guard, #2180 (6142) spec: all merged
+state: done
 
 ## Done
-- (nothing merged yet)
-
 - PR 1 (6140) #2171: tools/dev/words-census.mjs, docs/plan/census/words.md.
   Totals (main 891b850c): 7544 player-facing (2164 in a table, 4995 in
   place on the page, 385 on the worker); 3015 `?`; 3132 developer-only apart.
@@ -16,8 +14,8 @@ state: ready
   of moves: all 449 screens named, in waves W0 to W6 and "stays".
 
 ## Next
-- Nothing: all three are green and wait for the gatekeeper. Then: done.
-  #2179 and #2180 carry the PRs before them (stacked branches).
+- Nothing: the card is done (all three merged at sitting 46; marked done
+  by the gatekeeper, sitting 47).
 
 ## Found
 - "Wheel" a player may read: one row, `?`, src/ui/BroTown.jsx:9045 (the
