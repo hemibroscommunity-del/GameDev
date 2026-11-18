@@ -49,6 +49,7 @@
  * anyone's pets away.
  */
 import { trapLevelOf } from './trapping.js';
+import { lifeOf, LIFE } from './life.js';   /* v2.3.5920: the dead take nothing (life.js _deadTakeOn; TRAPS §150) */
 
 export const PETS_KEY = (playerId) => 'pets:' + playerId;
 
@@ -769,6 +770,9 @@ export const petbookMethods = {
       if (Math.floor(Number(payload.cap)) !== rec.cap) return 'stale';
       const price = petHousePrice(rec.cap);
       if (!ps || !(price > 0) || !(Math.floor(Number(ps.coins) || 0) >= price)) return 'no-gold';
+      /* v2.3.5920 (card V3, TRAPS §150; `deadtake`, life.js): nothing bought
+         in the dying seconds ("Not right now") */
+      if (lifeOf(ps) !== LIFE.ALIVE && this._deadTakeOn()) return 'not-now';
       this._goldTake(ps, price, 'pet_house'); /* v2.3.4670: the gold door */
       rec.cap = Math.min(PETBOOK.CAP_MAX, rec.cap + PETBOOK.HOUSE_STEP);
       this._saveRpg(pid, ps);
