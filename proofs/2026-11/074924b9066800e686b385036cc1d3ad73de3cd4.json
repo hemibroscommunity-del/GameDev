@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "074924b9066800e686b385036cc1d3ad73de3cd4",
+  "tree": "eb1000aa81fdd785f525e943b545c5a319cb6324",
+  "committedAt": "2026-11-18T05:10:17-08:00",
+  "subject": "Merge pull request #2207 from hemibroscommunity-del/claude/plan-en-3-folksheets",
+  "files": 8341,
+  "bytes": 962802416,
+  "listingSha256": "a1e21cf91e48024ef0bf52954cd50ab9e876f0ca770a3d479f27ed0da5b43e0f",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

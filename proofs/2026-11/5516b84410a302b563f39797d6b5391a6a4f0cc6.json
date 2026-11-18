@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "5516b84410a302b563f39797d6b5391a6a4f0cc6",
+  "tree": "5f66aceb4926d14c3f5c85fc8409f95835baf9ca",
+  "committedAt": "2026-11-18T05:10:28-08:00",
+  "subject": "Merge pull request #2209 from hemibroscommunity-del/claude/plan-hb-5-afterpaint",
+  "files": 8343,
+  "bytes": 962811390,
+  "listingSha256": "767ffa105eb3de6677096d24b5ea11a4a569a870c1c27fdd9959fc68f4641398",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
