@@ -1,6 +1,6 @@
 card: WD3
-branch: claude/plan-wd3-15-account (one PR a branch, claude/plan-wd3-N-<what>, each stacked on the last, base main)
-prs: #2227 (6340), #2229 (6341), #2230 (6342), #2231 (6343), #2232 (6344), #2233 (6345); PR 7-15 (6346-6354, working), PR 14 (6353, working), PR 15 (6354, working)
+branch: claude/plan-wd3-16-census (one PR a branch, claude/plan-wd3-N-<what>, each stacked on the last, base main)
+prs: #2227 (6340), #2229-#2233 (6341-6345), #2235-#2243 (6346-6354) in order; PR 16 (6355, working)
 state: working
 
 ## Done (in place on the page 4120 -> ...; worker 385 unchanged)
@@ -9,10 +9,11 @@ state: working
 - PR 7-13 (6346-6352): world map/halls/NML (5) -> 3439; crafting (6) -> 3309; shops (5) -> 3201; bag (5) -> 3113; quests (6) -> 3050; records (5) -> 2987; games (6) -> 2906.
 - PR 14 (6353): help: ControlsTutorial, KeyboardHintsPanel, InfoPanel, InfoPopup -> 2842.
 - PR 15 (6354): account: AccountLoginForm, AccountKeyCard, AccountPanel (RenameRow: the Test panel's); -> 2800.
+- PR 16 (6355, the planning session's answer): census NOT_SHOWN (the dev console, by its call) and RenameRow in DEV_FILES; -> 2740.
 
 ## Next
-- Card's 15 PRs done (stop line). Left per wave, in place: W1 721 in 93 screens
-  (GameApp 51 dev console, QuestCoach 48 and GearTab 42 held by HB2, EconCard 31,
+- Card's 15 PRs done (stop line). Left per wave, in place: W1 661 in 92 screens
+  ( QuestCoach 48 and GearTab 42 held by HB2, EconCard 31,
   DungeonCreatorPanel 30, ExchangePanel 30, ...); W2 375; W3 1212; W4 328;
   W5 164 (BroTown + the two renderers); W6 385 (the worker).
 
@@ -28,4 +29,4 @@ state: working
 - Left for a test: AccountLoginForm's 'device' refusal (device-words). ControlsTutorial's two bodyManual lines (manual-combat 10q); InfoPopup 'Add points with +' (owner-notes 4).
 
 ## Needs
-- GameApp's and RenameRow's words need NOT_SHOWN/DEV_FILES in tools/dev/words-census.mjs (outside my card): asked the planning session.
+- Nothing. Planning session 2026-11-18: 6355 census lines; 6356 ExchangePanel with store-sell-tap's stubs (DEPLOYS).
