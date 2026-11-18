@@ -16,7 +16,7 @@
  *      not laid over the join, a good one is;
  *   6. `lookjoin: false`: as before (cut to length, kept).
  *
- * Red on main (v2.3.5732): 1, 2, 4 and 5. */
+ * Red on main (93cfca9f): 1, 2, 4 and 5. */
 import { makeStorage, openRoom, fakeWs, baseSession, settle } from './testroom.mjs';
 
 let passed = 0, failed = 0;
