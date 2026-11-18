@@ -41,8 +41,8 @@ import * as B from './claimbots.mjs';
 const BAR = 1.5;
 /* today's gains (main 82fb78d, the default seed): a line only falls */
 const LINES = {
-  reach: 1.42, bowlabel: 1.4, guard: 1.37, cookshield: 0.67, move: 1.17, harvest: 1.86, cook: 0, quest: 1, sale: 1, local: 1,
-};   /* v2.3.5905: bowlabel 1.55 -> 1.4 (the honest archers' arrows at the real 1,440 px a second, not 480: card K4 PR 6); v2.3.5901: bowlabel 1.6 -> 1.55 (`bowreach` ON: a claim held to its arrow's flight from where it left; card K4 PR 2, decided for the owner while away, 2026-11-18); v2.3.5727: bowlabel 3.3 -> 1.6 (`bowshot` ON) and cook 1.59 -> 0 (`cookstart` ON), card K2 PR 8: decided for the owner while away, 2026-11-17; v2.3.5551: reach 2.96 -> 1.42 (`swordswing` ON), move 2.56 -> 1.17 (`movetop` ON): the owner's yes, 2026-11-17; v2.3.5550: bowlabel 3.76 -> 3.3 (the flicking archer, an honest way the free-swing trial plays); v2.3.5541: move 4.35 -> 2.56 (the sprint mark, ON: the run goes on through the grace, and the sprint's bound only for what is billed; review-z16) */
+  reach: 1.42, bowlabel: 1.2, guard: 1.37, cookshield: 0.67, move: 1.17, harvest: 1.46, cook: 0, quest: 1, sale: 1, local: 1,
+};   /* v2.3.5906: bowlabel 1.4 -> 1.2 and harvest 1.86 -> 1.46 (`bowpath` and `harvestgrade` ON by default, each row's liar the maximal one under them: card K4 PR 7, the owner's "Go recommended"); v2.3.5905: bowlabel 1.55 -> 1.4 (the honest archers' arrows at the real 1,440 px a second, not 480: card K4 PR 6); v2.3.5901: bowlabel 1.6 -> 1.55 (`bowreach` ON: a claim held to its arrow's flight from where it left; card K4 PR 2, decided for the owner while away, 2026-11-18); v2.3.5727: bowlabel 3.3 -> 1.6 (`bowshot` ON) and cook 1.59 -> 0 (`cookstart` ON), card K2 PR 8: decided for the owner while away, 2026-11-17; v2.3.5551: reach 2.96 -> 1.42 (`swordswing` ON), move 2.56 -> 1.17 (`movetop` ON): the owner's yes, 2026-11-17; v2.3.5550: bowlabel 3.76 -> 3.3 (the flicking archer, an honest way the free-swing trial plays); v2.3.5541: move 4.35 -> 2.56 (the sprint mark, ON: the run goes on through the grace, and the sprint's bound only for what is billed; review-z16) */
 /* each gain's spread over five other seeds (CLAIMS_SEED=a..e, --gains:
    the highest less the lowest, rounded up), measured 2026-11-14.  A gain
    fails only past its line by more than its spread, so a change elsewhere in
@@ -66,6 +66,10 @@ const BOWREACH_LINE = 1.40;   /* v2.3.5905: 1.55 -> 1.40, the honest archers' ar
 const BOWPATH_LINE = 1.20;   /* v2.3.5905: 1.33 -> 1.20, the same */
 const BOWPATH_LIAR = 'the path\'s liar: each relay aimed at a monster that still needs arrows, each claim when its arrow could have landed, on its line';
 const GRADED = 'the graded liar: perfect at the gesture\'s floor while its 15 in 20 last, else good at once';
+/* v2.3.5906: the liars each judge was first measured against, by name (the
+   main rows now carry the maximal liar under the defaults) */
+const SHOTS_LIAR = ['standing, an arrow\'s relay and a `ranged` claim on everything in reach, five a second (the bow\'s rate holds it)', B.liarBowLabel, { shots: true }];
+const PLAIN_HARVEST_LIAR = ['every strike perfect, at the earliest the worker takes it', B.harvester, { liar: true }];
 const GAIN_MIN = 4;
 const DIST_S = 30;
 const WRITE = process.argv.includes('--write');
@@ -92,7 +96,7 @@ const CLAIMS = [
     honest: [['the honest sword: in to 90 px, a swing every 600 ms', B.honestSword]],
     liar: ['every monster within 399 px, each every 210 ms (its lane), unshoved (`noKb`)', B.liarSword],
     plant: PLANT === 'reach' ? (room) => { room.PVE_MELEE_RANGE = 800; } : null },
-  { id: 'bowlabel', what: 'a sword\'s claim labelled a bow\'s (TRAPS §329)', judge: '`slot: \'ranged\'` with a bow worn: five claims a second (hitproof.js), each on an arrow the worker saw leave at the bow\'s rate (`bowshot`), within the arrow\'s flight of where it left (`bowreach`, 1,075 px for a new character; with no arrow seen, the hit test\'s 1,490 px for one claim in 3 s), and never lowers the guard',
+  { id: 'bowlabel', what: 'a sword\'s claim labelled a bow\'s (TRAPS §329)', judge: '`slot: \'ranged\'` with a bow worn: five claims a second (hitproof.js), each on an arrow the worker saw leave at the bow\'s rate (`bowshot`), within the arrow\'s flight of where it left (`bowreach`, 1,075 px for a new character; with no arrow seen, the hit test\'s 1,490 px for one claim in 3 s), near its line and after its flight (`bowpath`, ON since v2.3.5906), and never lowers the guard',
     take: 'kills', world: COMBAT,
     honest: [['the honest archer: in to 600 px, a shot every 495 ms, each claim when its arrow lands', B.honestBow], ['the honest sword', B.honestSword],
       /* v2.3.5540: the archer who steps in between shots (combat.js's archer's lane, `arrowlane`) */
@@ -100,7 +104,8 @@ const CLAIMS = [
       /* v2.3.5550: the free-swing trial's flicked bow (freeswing.js _pfBowCycleMs: 371 ms for a new character), an honest way the trial's phones play */
       ['the flicking archer: in to 600 px, a shot every 371 ms (the free-swing trial\'s flicked bow)', B.honestBow, { gap: 371 }]],
     /* v2.3.5901: the liar the bow's reach meets (`bowreach`, ON): an arrow's relay before each claim, standing at the arrow's flight; without relays it keeps the old reach for one claim in 3 s (2g) */
-    liar: ['standing, an arrow\'s relay and a `ranged` claim on everything in reach, five a second (the bow\'s rate holds it)', B.liarBowLabel, { shots: true }] },
+    /* v2.3.5906: with `bowpath` ON by default the maximal liar is the path's (2j); the relay-and-claim liar is SHOTS_LIAR (2f, 2g) */
+    liar: [BOWPATH_LIAR, B.liarBowPath, {}] },
   { id: 'guard', what: 'the guard beyond #1530\'s limits', judge: '`blocking` is believed with no shield worn (movement.js), and a guard sent with each swing stays up through it (moveclaims.js)',
     take: 'hurt', less: true, world: COMBAT,
     honest: [['the honest sword, its guard down while it swings', B.honestSword]],
@@ -116,10 +121,11 @@ const CLAIMS = [
       /* v2.3.5541: the sprint mark's honest bot (sprint.js, `sprintmark`) */
       ['the honest sprinter: 3 s sprinting (every move marked), 0.8 s walking, again', B.mover, { speed: B.WALK, sprinter: true }]],
     liar: ['point to point at 660 px a second, every other step marked a sprint', B.mover, { speed: 660, sprintHole: true }] },
-  { id: 'harvest', what: 'the harvest\'s grade', judge: 'the phone\'s `accuracy` on `node_strike` (gathering.js), believed when its swipe looks a person\'s (botfp.js); a perfect pays 2 ore',
+  { id: 'harvest', what: 'the harvest\'s grade', judge: 'the phone\'s `accuracy` on `node_strike` (gathering.js), believed when its swipe looks a person\'s (botfp.js) and, with `harvestgrade` (ON since v2.3.5906), no sooner than an honest gesture and at most 15 in any 20 strikes; a perfect pays 2 ore',
     take: 'ore', world: { tickMs: 200, recs: () => ({ bp_bench_h: B.harvestRec() }) },
     honest: [['a phone\'s grades (45% perfect, 44% good: the bot lab\'s guess)', B.harvester, { mix: PHONE_MIX }], ['a computer holding E (never perfect)', B.harvester, { mix: { perfect: 0, good: 1 } }]],
-    liar: ['every strike perfect, at the earliest the worker takes it', B.harvester, { liar: true }] },
+    /* v2.3.5906: with `harvestgrade` ON by default the maximal liar is the graded one (2i); the plain one is PLAIN_HARVEST_LIAR */
+    liar: [GRADED, B.harvester, { liar: true, graded: true }] },
   { id: 'cook', what: 'the cook\'s result', judge: 'the phone\'s `kind` on `cook_request` (cooking.js): with `cookstart` (ON since v2.3.5727) only on the plan its start rolled, once, no sooner than its hits and the gesture; 45 a minute and 2,400 an hour',
     take: 'cooked', world: { tickMs: 1000, recs: () => ({ bp_bench_c: B.cookRec() }) }, minutes: 60,
     honest: [['the honest cook: a fire, the start, its hits and the gesture', B.cook, {}]],
@@ -296,7 +302,7 @@ if (!GAINS_ONLY) {
 if (!GAINS_ONLY) {
   const bc = CLAIMS.find((c) => c.id === 'bowlabel');
   const ms = GAIN_MIN * B.MIN;
-  const ON = { bowshot: true }, OFF = { bowshot: false };
+  const ON = { bowshot: true, bowpath: false }, OFF = { bowshot: false };   /* v2.3.5906: bowshot and its reach alone, the path pinned off */
   const same = [], refused = [];
   let bestOn = 0, bestOff = 0;
   for (const h of bc.honest) {
@@ -342,35 +348,37 @@ let bowReach = null;
 if (!GAINS_ONLY) {
   const bc = CLAIMS.find((c) => c.id === 'bowlabel');
   const ms = GAIN_MIN * B.MIN;
-  const OFF = { bowreach: false };
+  const OFF = { bowreach: false, bowpath: false };
+  const G_ON = { bowpath: false };   /* v2.3.5906: the reach alone, the path (ON by default) pinned off */
   const same = [], refused = [];
   let bestOn = 0, bestOff = 0;
   for (const h of bc.honest) {
     const offRun = await runBot(bc, h, { ms, flags: OFF });
     const off = perHour(bc, valueOf(bc, offRun.take), offRun.ms);
     bestOff = Math.max(bestOff, off);
-    const r = await runBot(bc, h, { ms });
+    const r = await runBot(bc, h, { ms, flags: G_ON });
     const v = perHour(bc, valueOf(bc, r.take), r.ms);
     bestOn = Math.max(bestOn, v);
     if (Math.round(v) !== Math.round(off)) same.push(h[0] + ': ' + Math.round(off) + ' -> ' + Math.round(v));
     refused.push(...r.refusals.slice(0, 1));
     if (h[1] !== B.honestBow) continue;
-    for (const d of DISTURBANCES) { const x = await runBot(bc, h, { d, ms: DIST_S * 1000 }); if (x.refusals.length) refused.push(h[0] + ' / ' + d.id + ': ' + x.refusals[0]); }
+    for (const d of DISTURBANCES) { const x = await runBot(bc, h, { d, ms: DIST_S * 1000, flags: G_ON }); if (x.refusals.length) refused.push(h[0] + ' / ' + d.id + ': ' + x.refusals[0]); }
   }
   check(`2g: \`bowreach\` (ON): the honest archers take what they took with it off and meet no refusal on any disturbance`, !same.length && !refused.length, { same, refused: refused.slice(0, 4) });
   const g = (r, best) => perHour(bc, valueOf(bc, r.take), r.ms) / Math.max(best, 1e-9);
   const walk = ['the liar at an honest walk (150 px a second), an arrow\'s relay before each claim', B.liarBowLabel, { shots: true, speed: B.WALK }];
-  const wOn = g(await runBot(bc, walk, { ms }), bestOn);
+  const wOn = g(await runBot(bc, walk, { ms, flags: G_ON }), bestOn);
   const wOff = g(await runBot(bc, walk, { ms, flags: OFF }), bestOff);
-  const fOn = g(await runBot(bc, bc.liar, { ms }), bestOn);
-  const fOff = g(await runBot(bc, bc.liar, { ms, flags: OFF }), bestOff);
-  const bare = g(await runBot(bc, ['the liar sending no relays', B.liarBowLabel, {}], { ms }), bestOn);
+  const fOn = g(await runBot(bc, SHOTS_LIAR, { ms, flags: G_ON }), bestOn);
+  const fOff = g(await runBot(bc, SHOTS_LIAR, { ms, flags: OFF }), bestOff);
+  const bare = g(await runBot(bc, ['the liar sending no relays', B.liarBowLabel, {}], { ms, flags: G_ON }), bestOn);
   bowReach = { walkOn: wOn, walkOff: wOff, on: fOn, off: fOff, bare };
   check(`2g: the bow's own claim (its liar at an honest walk): gain ${wOff.toFixed(2)} with \`bowreach: false\`, ${wOn.toFixed(2)} on (its line ${BOWREACH_LINE}, the bar ${BAR})`, wOn <= BOWREACH_LINE + 0.005 && wOn < wOff, bowReach);
   check(`2g: the whole liar (its walk at 480 px a second, the move's claim): ${fOff.toFixed(2)} off, ${fOn.toFixed(2)} on; with no relays ${bare.toFixed(2)}`, fOn < fOff && bare < 0.5, bowReach);
 }
 /* v2.3.5904 (card K4 PR 5, step 4.2): THE BOW'S PATH (bowshot.js; an
-   opt-in, `bowpath: true`, OFF as merged: the owner's to turn on).  With it
+   `bowpath`, OFF as merged at v2.3.5904, ON by default since v2.3.5906:
+   `bowpath: false` its kill switch).  With it
    on, every honest archer (the stepping one and the flicking one too) takes
    exactly what it took with it off and meets no refusal on any disturbance;
    the liar it meets (claimbots.mjs liarBowPath: each relay aimed at a
@@ -387,7 +395,7 @@ if (!GAINS_ONLY) {
   const same = [], refused = [];
   let bestOn = 0;
   for (const h of bc.honest) {
-    const offRun = await runBot(bc, h, { ms });
+    const offRun = await runBot(bc, h, { ms, flags: { bowpath: false } });   /* v2.3.5906: its off side explicit (ON by default) */
     const off = perHour(bc, valueOf(bc, offRun.take), offRun.ms);
     const r = await runBot(bc, h, { ms, flags: ON });
     const v = perHour(bc, valueOf(bc, r.take), r.ms);
@@ -400,7 +408,7 @@ if (!GAINS_ONLY) {
   check(`2j: \`bowpath: true\`: every honest archer takes what it took and meets no refusal on any disturbance`, !same.length && !refused.length, { same, refused: refused.slice(0, 4) });
   const g = (r) => perHour(bc, valueOf(bc, r.take), r.ms) / Math.max(bestOn, 1e-9);
   const path = g(await runBot(bc, [BOWPATH_LIAR, B.liarBowPath, {}], { ms, flags: ON }));
-  const shots = g(await runBot(bc, bc.liar, { ms, flags: ON }));
+  const shots = g(await runBot(bc, SHOTS_LIAR, { ms, flags: ON }));
   bowPath = { path, shots };
   check(`2j: with \`bowpath: true\` the path's liar ${path.toFixed(2)} (its line ${BOWPATH_LINE}, the bar ${BAR}), the relay-and-claim liar ${shots.toFixed(2)}`, path <= BAR && path <= BOWPATH_LINE + 0.005 && shots < 1, bowPath);
 }
@@ -432,8 +440,8 @@ if (!GAINS_ONLY) {
   check(`2h: the cook's liar: gain ${gOff.toFixed(2)} with \`cookstart: false\`; with it on the bare request ${gBare.toFixed(2)}, the started one ${gOn.toFixed(2)} (the bar ${BAR})`, gOn <= BAR && gBare < 0.05 && gOff > gBare, { bare: gBare, on: gOn, off: gOff });
 }
 /* v2.3.5900 (card K4 PR 1, step 4.2): THE HARVEST'S GRADE, JUDGED
-   (harvestgrade.js; an opt-in, `harvestgrade: true`, OFF as merged: the
-   owner's to turn on).  With it on, both honest harvesters (the phone's
+   (harvestgrade.js; OFF as merged at v2.3.5900, ON by default since
+   v2.3.5906: `harvestgrade: false` its kill switch).  With it on, both honest harvesters (the phone's
    grades, the computer's held key) take exactly what they took with it off
    and meet no refusal on any disturbance -- a perfect of theirs paid as good
    is one (claimbots.mjs harvester) -- and the maximal liar falls under the
@@ -452,7 +460,7 @@ if (!GAINS_ONLY) {
   const same = [], refused = [];
   let bestOn = 0, bestOff = 0;
   for (const h of hc.honest) {
-    const offRun = await runBot(hc, h, { ms });
+    const offRun = await runBot(hc, h, { ms, flags: { harvestgrade: false } });   /* v2.3.5906: its off side explicit (ON by default) */
     const off = perHour(hc, valueOf(hc, offRun.take), offRun.ms);
     bestOff = Math.max(bestOff, off);
     const r = await runBot(hc, h, { ms, flags: ON });
@@ -463,9 +471,9 @@ if (!GAINS_ONLY) {
     for (const d of DISTURBANCES) { const x = await runBot(hc, h, { d, ms: DIST_S * 1000, flags: ON }); if (x.refusals.length) refused.push(h[0] + ' / ' + d.id + ': ' + x.refusals[0]); }
   }
   check(`2i: \`harvestgrade: true\`: the honest harvesters take what they took and meet no refusal on any disturbance`, !same.length && !refused.length, { same, refused: refused.slice(0, 4) });
-  const lOff = await runBot(hc, hc.liar, { ms });
+  const lOff = await runBot(hc, PLAIN_HARVEST_LIAR, { ms, flags: { harvestgrade: false } });
   const gOff = perHour(hc, valueOf(hc, lOff.take), lOff.ms) / Math.max(bestOff, 1e-9);
-  const plain = await runBot(hc, hc.liar, { ms, flags: ON });
+  const plain = await runBot(hc, PLAIN_HARVEST_LIAR, { ms, flags: ON });
   const graded = await runBot(hc, [GRADED, B.harvester, { liar: true, graded: true }], { ms, flags: ON });
   const gPlain = perHour(hc, valueOf(hc, plain.take), plain.ms) / Math.max(bestOn, 1e-9);
   const gGraded = perHour(hc, valueOf(hc, graded.take), graded.ms) / Math.max(bestOn, 1e-9);
@@ -473,7 +481,7 @@ if (!GAINS_ONLY) {
   harvestGradeOn = { off: gOff, plain: gPlain, graded: gGraded, on: gOn, liar: perHour(hc, valueOf(hc, graded.take), graded.ms) };
   /* 1.46 on main fcd1ae9 (the default seed; 1.33 to 1.58 over seeds a to e,
      the honest phone's own luck over its twenty strikes) */
-  check(`2i: the harvest's liar: gain ${gOff.toFixed(2)} as merged (off); with \`harvestgrade: true\` the plain liar ${gPlain.toFixed(2)}, the graded one ${gGraded.toFixed(2)} (its line ${HARVESTGRADE_LINE}, the bar ${BAR})`, gOn <= BAR && gOn <= HARVESTGRADE_LINE + 0.005 && gOn < gOff, harvestGradeOn);
+  check(`2i: the harvest's liar: gain ${gOff.toFixed(2)} with \`harvestgrade: false\`; with \`harvestgrade: true\` the plain liar ${gPlain.toFixed(2)}, the graded one ${gGraded.toFixed(2)} (its line ${HARVESTGRADE_LINE}, the bar ${BAR})`, gOn <= BAR && gOn <= HARVESTGRADE_LINE + 0.005 && gOn < gOff, harvestGradeOn);
 }
 for (const r of rows) {
   const line = LINES[r.c.id];
@@ -517,9 +525,9 @@ if (WRITE) {
     ...rows.filter((r) => r.hon.length > 1).flatMap((r) => r.hon.filter((h) => h !== r.best).map((h) => `- \`${r.c.id}\`: ${esc(h.who)}: ${n0(h.v)}; the liar over it: **${(r.c.less ? h.v / Math.max(r.liar.v, 1) : r.liar.v / Math.max(h.v, 1e-9)).toFixed(2)}**.`)),
     '',
     ...(harvestGradeOn ? [
-      '## The harvest\'s grade, judged (`harvestgrade`, OFF as merged)',
+      '## The harvest\'s grade, judged (`harvestgrade`, ON since v2.3.5906)',
       '',
-      `v2.3.5900 (card K4 PR 1; \`server/src/harvestgrade.js\`): with \`harvestgrade: true\` a perfect is believed only at or after the earliest an honest gesture could make it (the plan's hits, the settle and the 1.2 s gesture floor) and at most 15 in any 20 strikes; a perfect refused is paid as good. The honest harvesters take what they took with it off and meet no refusal on any disturbance (a perfect of theirs paid as good counts as one). The liar: **${harvestGradeOn.off.toFixed(2)}** as merged; with it on, the plain liar (every strike perfect at the earliest) **${harvestGradeOn.plain.toFixed(2)}**, the graded one (perfect at the gesture's floor while its 15 in 20 last, else good at once) **${harvestGradeOn.graded.toFixed(2)}**, ${n0(harvestGradeOn.liar)} ore an hour. Its line, \`HARVESTGRADE_LINE\`, only falls. The share changes what a player whose every gesture is perfect is paid (three in four: 1.75 ore a strike for 2), so the switch is the owner's.`,
+      `v2.3.5900 (card K4 PR 1; \`server/src/harvestgrade.js\`): with \`harvestgrade: true\` a perfect is believed only at or after the earliest an honest gesture could make it (the plan's hits, the settle and the 1.2 s gesture floor) and at most 15 in any 20 strikes; a perfect refused is paid as good. The honest harvesters take what they took with it off and meet no refusal on any disturbance (a perfect of theirs paid as good counts as one). The liar: **${harvestGradeOn.off.toFixed(2)}** as merged; with it on, the plain liar (every strike perfect at the earliest) **${harvestGradeOn.plain.toFixed(2)}**, the graded one (perfect at the gesture's floor while its 15 in 20 last, else good at once) **${harvestGradeOn.graded.toFixed(2)}**, ${n0(harvestGradeOn.liar)} ore an hour. Its line, \`HARVESTGRADE_LINE\`, only falls. The share changes what a player whose every gesture is perfect is paid (three in four: 1.75 ore a strike for 2). ON by default since v2.3.5906 (the owner's "Go recommended"); \`harvestgrade: false\` turns it off.`,
       '',
     ] : []),
     ...(bowReach ? [
@@ -529,9 +537,9 @@ if (WRITE) {
       '',
     ] : []),
     ...(bowPath ? [
-      '## The bow\'s path (`bowpath`, OFF as merged)',
+      '## The bow\'s path (`bowpath`, ON since v2.3.5906)',
       '',
-      `v2.3.5904 (card K4 PR 5; \`server/src/bowshot.js\`): with \`bowpath: true\` a claim on an arrow seen lands only for a monster near that arrow's line (its relay's x, y and angle -- since v2.3.5905 the relay goes at release, with the line the arrow flies, against a worker advertising caps.bowPath: 200 px beside it measured to the monster's body, its feet up 130 px, a boss's 260, and the landing's 8 degree turn) and no sooner than the arrow could have flown there (1,440 px a second x Range, less 300 ms). Every honest archer takes what it took with it off and meets no refusal on any disturbance. The bow's liar with it on: the path's liar (each relay aimed at a monster that still needs arrows, each claim when its arrow could have landed, on its line) **${bowPath.path.toFixed(2)}**; the relay-and-claim liar **${bowPath.shots.toFixed(2)}**. Its line, \`BOWPATH_LINE\`, only falls. OFF until the owner says, as it holds every bow claim to a line the phone's own aim makes.`,
+      `v2.3.5904 (card K4 PR 5; \`server/src/bowshot.js\`): with \`bowpath: true\` a claim on an arrow seen lands only for a monster near that arrow's line (its relay's x, y and angle -- since v2.3.5905 the relay goes at release, with the line the arrow flies, against a worker advertising caps.bowPath: 200 px beside it measured to the monster's body, its feet up 130 px, a boss's 260, and the landing's 8 degree turn) and no sooner than the arrow could have flown there (1,440 px a second x Range, less 300 ms). Every honest archer takes what it took with it off and meets no refusal on any disturbance. The bow's liar with it on: the path's liar (each relay aimed at a monster that still needs arrows, each claim when its arrow could have landed, on its line) **${bowPath.path.toFixed(2)}**; the relay-and-claim liar **${bowPath.shots.toFixed(2)}**. Its line, \`BOWPATH_LINE\`, only falls. ON by default since v2.3.5906 (the owner's "Go recommended"); \`bowpath: false\` turns it off.`,
       '',
     ] : []),
     '## Claims with no number yet, and why',

@@ -27,7 +27,7 @@
  *     the 45 perfect harvests a minute (_ratedHarvestAccuracy), a perfect held
  *     to an honest gesture's time and to 15 in any 20 strikes (v2.3.5900,
  *     gathering.js _harvestGraded, harvestgrade.js, `harvestgrade`, an opt-in,
- *     OFF as merged: asked through the strike's `_tm`), the 45 cooks a
+ *     ON since v2.3.5906: asked through the strike's `_tm`), the 45 cooks a
  *     minute and the 900 ms between cooks (cooking.js), a cook's result held
  *     to the cook it started (v2.3.5553, cooking.js _cookStartOk,
  *     `cookstart`, ON since v2.3.5727), and the bot scoring
