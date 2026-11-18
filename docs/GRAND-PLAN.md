@@ -411,6 +411,11 @@ outside the profile.
   its why and next: the door prompt measured inside React's commit),
   merged at sitting 17: the step is one row further from done, honestly
   (the gatekeeper, sitting 18, tag 5375).*
+  *Card HB (O2's profiles, outside the renderers): #2188 (the map,
+  `census/HB-holds.md`), #2199 (the band's geometry measured once),
+  #2201 and #2202 (the report's and the pacer's memory read as the chip's
+  total alone), merged at sittings 46 and 47 (the gatekeeper, sitting
+  48, tag 6262).*
 - [ ] **3.2 [LATER] One queue for work that is not this frame's**, with
   priorities. It takes nothing while the frames are late or the pacer is
   trying a step up. Work put off (after a fight, at a veil) joins it one a
@@ -768,6 +773,11 @@ nothing known, and a restore copies nothing.
   line 54 -> 0) and the code counted (#2146, part 5 of M-tables.md),
   merged at sitting 45. The box waits for the code to leave (cards EN
   and FX) (the gatekeeper, sitting 46, tag 6260).*
+  *Card FX's code left: #2194 (the level-1 leaves), #2200 (the ore rocks
+  and projectile sheets as colour numbers), #2203 (the seven canvas
+  makers kept as images; no leaf left in `effectsRenderer.js`), merged at
+  sitting 47 with EN's #2189 and #2195 before them. The box waits for
+  what the two files still hold (the gatekeeper, sitting 48, tag 6262).*
 - [ ] **5.6 [LATER] Types on the new walls only**: one `getState()`, the
   action door, the frame's context, the wire folder. As a suite, with
   TypeScript as the server's test tool. Typing the old code is a flood.
@@ -938,6 +948,9 @@ nothing known, and a restore copies nothing.
   RD's itemdrop 5b (#2191) merged at sitting 46. The step is open: RD's
   crowdfight (manualcombat 10a and `mp-jumpbtn`, #2204 and #2205, on
   sitting 47's list) (the gatekeeper, sitting 47, tag 6261).*
+  *RD's #2204 (manualcombat 10a) and #2205 (`mp-jumpbtn` 2b), the tests',
+  merged at sitting 47. The step is open: RD's crowdfight (#2208, tag
+  6181) (the gatekeeper, sitting 48, tag 6262).*
 - [ ] **8.2 [NEXT] Traps become guards**, each with a break proof. The count
   that matters is traps held by a proof, not traps of prose.
   *Card V merged, #1724 to #1740: 31 traps held by a proof (25 the rule, 6
@@ -1403,9 +1416,12 @@ to read when you are back; recorded by the gatekeeper, sitting 46, tag 6260):
   "settles value" (they go first when the caps leave, 7.5).
 - The league's rung 5 (a model driving the browser) is left for later
   (card LG; 10.7).
-- The townsfolk's jog sheets' chip copies unloaded ON for everyone (card
-  EN, PR 3, `?folksheets=0` the off-ramp, a memory saver; on sitting 47's
+- The townsfolk's baked sheets' chip copies let go of far from town, ON
+  for everyone (card EN, #2207, `?folksheets=0` the off-ramp, a memory
+  saver: the memory check's chip line 114.3 -> 109.3 MB; on sitting 48's
   list once it is green).
+- Card HB's `?afterpaint` ON for everyone (`?afterpaint=0` the
+  off-ramp), as its PRs come.
 - The memory check's `buffers` line raised 24.2 -> 24.8 MB as `artCache`
   fell 2.2 MB (net 1.7 MB less in the page): the ore rocks and the
   projectile sheets as colour numbers (card FX, #2200; `?treenumbers=0`
