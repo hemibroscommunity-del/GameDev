@@ -75,6 +75,8 @@ const seed = (now) => ({
 /* one busy day, against one fresh room: P joins with a record on file and
    stays; `others` more join and leave; then P cooks once */
 async function busyDay(flags) {
+  /* v2.3.6000 (card CS): `seathold` (on by default) would hold each drop's seat a minute and fill the room before the map's cap */
+  flags = { seathold: false, ...(flags || {}) };
   const state = makeState();
   const room = new GameRoom(state, mockEnv);
   const join = async (ws, id) => {

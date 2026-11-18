@@ -45,6 +45,7 @@
  */
 
 import { bagTake } from './bag.js'; /* v2.3.4810: the bag door */
+import { paceAt, paceStamp } from './pacekeep.js';   /* v2.3.5921: the pace kept across a rejoin (TRAPS §276) */
 
 export const ITEM_DROP = Object.freeze({
   /* only the dropper sees it, and only they may take it back */
@@ -114,7 +115,9 @@ export const itemDropMethods = {
     const inv = ps.inventory;
     const have = inv && typeof inv === 'object' && own(inv, ask.key) ? Math.floor(Number(inv[ask.key]) || 0) : 0;
     if (have < 1) return no('none');
-    if (ps._dropAt && now - ps._dropAt < ITEM_DROP.GAP_MS) return no('slow');
+    /* v2.3.5921 (card V3, TRAPS §276; `pacekeep`): kept across a rejoin */
+    const dropAt = paceAt(this, sid, ps, '_dropAt');
+    if (dropAt && now - dropAt < ITEM_DROP.GAP_MS) return no('slow');
     if (this._dropsLiveOf(sid) >= ITEM_DROP.MAX_LIVE) return no('too-many');
     const qty = Math.min(ask.qty, have);
 
@@ -122,7 +125,7 @@ export const itemDropMethods = {
        saved -- no await between, so nothing can see it in both places */
     bagTake(inv, ask.key, qty, 'item_drop'); /* v2.3.4810: the bag door */
     const pile = this._dropPile(session, ps, ask.key, qty, now);
-    ps._dropAt = now;
+    ps._dropAt = paceStamp(this, sid, ps, '_dropAt', now, ITEM_DROP.GAP_MS);
     this._saveRpg(sid, ps);
 
     /* to the dropper alone: the pile, the bag, the answer */

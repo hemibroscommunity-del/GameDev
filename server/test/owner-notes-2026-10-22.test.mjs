@@ -57,7 +57,7 @@ check('1: only a monster the catch names wears it, and only while the wind-up is
     && W.whirlCatchFlash(S, m, until + 51) === -1
     && W.whirlCatchFlash({ _whirlCatch: S._whirlCatch }, m, 1500) === -1   /* the ring gone */
     && W.whirlCatchFlash({}, m, 1500) === -1 && W.whirlCatchFlash(null, m, 1500) === -1);
-const ent = read('src/rendering/systems/entityRenderer.js');
+const ent = read('src/rendering/systems/entityRenderer.js') + read('src/rendering/leaves/entity-monsters.js') + read('src/rendering/leaves/entity-preload.js');   /* v2.3.6200: + its leaves (card EN) */
 check('1: entityRenderer draws it over every monster body, after every branch has posed it, its own tint untouched',
   /_whirlGlow\(display, whirlCatchFlash\(S, m, now\)\);/.test(ent)
     && /import \{ whirlCatchFlash, whirlTintAt, WHIRL_GLOW_ALPHA \} from '\.\.\/\.\.\/game\/whirlCatch\.js'/.test(ent)
