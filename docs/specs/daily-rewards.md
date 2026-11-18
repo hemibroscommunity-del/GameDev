@@ -469,3 +469,21 @@ since). Leaving the season on fails four of the new checks. Sections 2-8 and
 on a phone: no quest and no season anywhere in the window, no Season tab, no
 quest toast, no star from the spin, no button past the Den's spin, the card's
 words.
+
+## v2.3.5810: the paid mark in the credit's own run (card RV PR 10)
+
+The review's MD-2 (`docs/plan/census/RV-review.md`): the daily spin's pot,
+the login spin and a season tier's grants were credited in one write and
+marked paid (`sp.open = 0`, `paid`, the tier in `se.cl`) in a later one. A
+restart between left the pot open beside its payment's stamp; once the 48 h
+prune took the stamp (TRAPS §146), the same pot paid again. Now the marked
+record is put in the credit's own run (`inbox.js` `_creditWith`):
+
+- the daily record (`daily_rewards:`) rides a spin pot's credit and each
+  season grant's: ONE row more a payout (the caller still saves it after),
+  the owner's yes (2026-11-18, "Yes to all"; `cost-guard.test` §24);
+- the login spin's `lspin:` record rides its credit, and the save that
+  followed it goes: no row more.
+
+Kill switch `paidmark: false` in the live flags: the old order. Suite:
+`server/test/paid-mark.test.mjs`.
