@@ -285,10 +285,12 @@ const room = () => Object.create(GameRoom.prototype);
     _spawnDeathPile: 'the pile: held - shield (the property below)',
     _handlePlayerDeath: 'sets the shield at the death (`_deathRecoveryShield`): what a pickup handed over in the last second',
     _tickPlayerRespawn: 'clears it at the respawn, once the wipe has run: one death, one shield',
+    /* v2.3.5940: card RV's #2094 (v2.3.5803, `dyingkeep`), merged while this card was open */
+    _applyCreditToPs: 'adds a credit landed in the dying seconds to a COPY of the shield; the wipe still keeps min(shield, held), so nothing comes back twice',
   };
   const readers = new Set();
   for (const f of code.keys()) for (const x of masked.get(f).matchAll(/\._deathShield(?![\w$])/g)) { const fn = namedAt(f, x.index); readers.add(fn ? fn.name : '(top)'); }
-  census('§153', 'functions that read or write the death shield (each in the property below, or why)', readers, SHIELD_READERS, 4);
+  census('§153', 'functions that read or write the death shield (each in the property below, or why)', readers, SHIELD_READERS, 5);
   const r = room();
   const ok = ['_wipeInventoryOnDeath', '_spawnDeathPile', '_keptThroughDeath'].every((n) => typeof r[n] === 'function');
   check('§153: the death\'s wipe and pile are methods of the worker', ok);
