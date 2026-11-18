@@ -72,7 +72,7 @@ import { getSpeciesBuild, preloadSpeciesArt } from '../traits/speciesArt.js';   
 import { getColoredEyeStyleTextures, coloredEyeStyleReady } from '../traits/eyeStyleColorCatalog.js';   /* v2.3.2645; v2.3.4368 + ready */
 import { getHair, HAIR_CATALOG } from '../traits/hairCatalog.js';
 import { getLookShirtFrame } from '../lookShirtFrame.js';   /* v2.3.3751: the tee from the look palette */
-import { getSkin, getPants, getShoes, getBodyFrame, getPickupHeadFrame, preloadBodyVariant, localBodyArt, getFishFrame, MIRRORED_SOURCE_DIRS, getLookBodyFrame, getLookBodyEntries, awaitBodyBuilds, lookBodyRefused } from '../playerSkins.js';   /* v2.3.1940: + the local player's drawn pants/tattoo; v2.3.2854: + the inked fish frame; v2.3.3716: + the look-palette frame */
+import { getSkin, getPants, getShoes, getBodyFrame, getPickupHeadFrame, preloadBodyVariant, localBodyArt, getFishFrame, MIRRORED_SOURCE_DIRS, getLookBodyFrame, getLookBodyEntries, awaitBodyBuilds, lookBodyRefused, bodyKeysAsked, releaseBodySheets } from '../playerSkins.js';   /* v2.3.1940: + the local player's drawn pants/tattoo; v2.3.2854: + the inked fish frame; v2.3.3716: + the look-palette frame */
 import { lookPaletteWanted, lookPaletteOn } from '../lookPalette.js';   /* v2.3.3716: on unless `?lookpalette=0`; v2.3.3809: + drawing now */
 import { lookFolkOn, folkFaceOverride } from '../lookFolk.js';   /* v2.3.3809: the townsfolk drawn live */
 import { folkWorkPose, folkWorkFrame, folkStandFacing, folkStride } from '../folkPose.js';   /* v2.3.4058: the townsfolk at work */
@@ -514,6 +514,64 @@ if (typeof window !== 'undefined') {
 /* v2.3.3809: a townsperson drawn live has no figure this far past the view
    (world px beyond its half-diagonal: _updateNPCs) */
 const FOLK_FAR_MARGIN = 300;
+/* ═══ v2.3.6202: THE TOWNSFOLK'S BAKED SHEETS, LET GO OF FAR FROM TOWN (card EN PR 3) ═══
+   The few townsfolk whose looks the shared numbers refuse are drawn from
+   sheets baked behind the loading screen (prewarmFolkBodies: 35 of them,
+   about 14 MB at main 5ea5c7d) and were held the whole visit, sent to the
+   chip facing by facing as each was first drawn and never let go: 5.7, 13.1,
+   14.3 MB of them on the chip at the memory check's three fights, where no
+   townsperson is drawn (MEMORY IS BUDGETED: art is freed where you leave
+   it).  Now, once every townsperson has been FOLK_SHEETS_FREE_PX past the
+   view's half-diagonal for FOLK_SHEETS_FREE_MS, his sheets are let go of
+   (playerSkins.js releaseBodySheets, the keys his own draw would ask:
+   bodyKeysAsked); and the moment one comes within FOLK_SHEETS_BAKE_PX they
+   are asked for again, on the body bake's worker as at the loading screen,
+   while he is still far off screen: past FOLK_FAR_MARGIN he has no figure
+   at all, so nothing is drawn from a sheet still baking.  The gap between the
+   two is the hysteresis, so a walk along the line does not bake twice.  The
+   player's own sheets are never among them (their keys are his look's).
+   `?folksheets=0` holds them for the visit, as before.  `window.__btFolkSheets()`
+   on QA pages: held, frees, bakes, a bake that landed after a townsperson
+   came near enough to be drawn (late), and the nearest one's distance. */
+const FOLK_SHEETS_FREE_PX = 6000;    /* world px past the view's half-diagonal */
+const FOLK_SHEETS_FREE_MS = 20000;   /* that far for this long */
+const FOLK_SHEETS_BAKE_PX = 3000;    /* 10 s and more on a board at a sprint (2 x 1.33 x 150 px/s) */
+const _FOLK_SHEETS_ON = !sw('folksheets');
+let _folkJobs = null;   /* the jobs the loading screen baked (prewarmFolkBodies) */
+const _folkSheets = { held: true, farSince: 0, frees: 0, freed: 0, bakes: 0, late: 0, bakedAt: 0, askedAt: 0, nearest: Infinity };
+function _folkSheetsStep(S, now, nearest) {
+  _folkSheets.nearest = nearest;
+  if (!_FOLK_SHEETS_ON || !_folkJobs) return;
+  /* a death respawns you in BroTown (respawn.js): asked for again while the
+     death card is up, not when he is suddenly on screen */
+  const _home = selfCorpseUp(S);
+  /* no townsperson measured (a dungeon, a zone between): neither far nor near,
+     held as it is, so a way back through a door never finds them gone */
+  if (nearest === Infinity && !_home) { _folkSheets.farSince = 0; return; }
+  if (nearest > FOLK_SHEETS_FREE_PX && !_home) {
+    if (!_folkSheets.farSince) _folkSheets.farSince = now;
+    else if (_folkSheets.held && now - _folkSheets.farSince > FOLK_SHEETS_FREE_MS) {
+      const jobs = _folkJobs;
+      const keys = bodyKeysAsked(() => { prewarmFolkBodies(jobs); });
+      _folkSheets.freed += releaseBodySheets(keys);
+      _folkSheets.frees++;
+      _folkSheets.held = false;
+    }
+    return;
+  }
+  _folkSheets.farSince = 0;
+  if (!_folkSheets.held && (nearest < FOLK_SHEETS_BAKE_PX || _home)) {
+    _folkSheets.held = true;
+    _folkSheets.bakes++;
+    _folkSheets.askedAt = now;
+    _folkSheets.bakedAt = 0;
+    prewarmFolkBodies(_folkJobs).then(() => { _folkSheets.bakedAt = performance.now(); });
+  }
+}
+if (typeof window !== 'undefined') {
+  window.__btFolkSheets = () => ({ on: _FOLK_SHEETS_ON, jobs: _folkJobs ? _folkJobs.length : 0, held: _folkSheets.held, frees: _folkSheets.frees,
+    freed: _folkSheets.freed, bakes: _folkSheets.bakes, late: _folkSheets.late, nearest: Math.round(_folkSheets.nearest) });
+}
 /* ═══ v2.3.3520: A TOWNSPERSON WHO STANDS, STANDS ═══
    The owner: "Ace" is "stuck in one walking frame", with his shadow apart
    from him.  The Wheel's townsfolk never walk (pathRadius 0), and a still
@@ -1604,6 +1662,7 @@ export function remoteBodyArt(other, mirror) { return _remoteBodyArt(other, mirr
    the townsfolk are not drawn live (their photographs: nothing to bake). */
 export function prewarmFolkBodies(jobs) {
   if (!lookFolkOn() || !jobs || !jobs.length) return Promise.resolve(0);
+  _folkJobs = jobs;   /* v2.3.6202: asked again on the way back (_folkSheetsStep) */
   return awaitBodyBuilds(() => {
     for (const j of jobs) {
       const look = npcLookAsPeer(npcLookByName(j.name));
@@ -15619,6 +15678,7 @@ export class EntityRenderer {
   _updateNPCs(S, now) {
     const npcs = S.npcs || [];
     const activeIds = new Set();
+    let _folkNearest = Infinity;   /* v2.3.6202: past the view's half-diagonal, the nearest townsperson (_folkSheetsStep) */
 
     for (const npc of npcs) {
       if (!npc.alive) continue;
@@ -15832,8 +15892,10 @@ export class EntityRenderer {
              half-diagonal + FOLK_FAR_MARGIN has no figure: it is destroyed,
              and made again when he comes near -- a few are on a screen. */
           const _cam = S.camera, _vw = S._viewW, _vh = S._viewH;
+          const _past = (_cam && _vw > 0 && _vh > 0) ? Math.hypot(npc.x - (_cam.x + _vw / 2), npc.y - (_cam.y + _vh / 2)) - Math.hypot(_vw, _vh) / 2 : 0;   /* v2.3.6202: named, for _folkSheetsStep */
+          if (_past < _folkNearest) _folkNearest = _past;
           const _far = !!(_cam && _vw > 0 && _vh > 0)
-            && Math.hypot(npc.x - (_cam.x + _vw / 2), npc.y - (_cam.y + _vh / 2)) > Math.hypot(_vw, _vh) / 2 + FOLK_FAR_MARGIN;
+            && _past > FOLK_FAR_MARGIN;
           if (_far) {
             if (display._folk) {
               display.removeChild(display._folk);
@@ -16208,6 +16270,11 @@ export class EntityRenderer {
         this.npcDisplays.delete(id);
       }
     }
+    /* v2.3.6202: a bake asked for on the way back that had not landed when one
+       came near enough to have a figure (QA: __btFolkSheets().late) */
+    if (_folkSheets.askedAt && !_folkSheets.bakedAt && _folkNearest <= FOLK_FAR_MARGIN) { _folkSheets.late++; _folkSheets.askedAt = 0; }
+    if (_folkSheets.bakedAt) _folkSheets.askedAt = 0;
+    _folkSheetsStep(S, now, _folkNearest);
   }
 
   /* Combat-bar HUD above the player sprite (v2.3.107).  Three

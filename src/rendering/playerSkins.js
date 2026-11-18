@@ -714,6 +714,7 @@ export function getBodyFrame(skinId, pantsId, shoesId, pose, dir, frameIdx, shir
   const _art = bodyArtSeg(_dirArt) ? _dirArt : null;
   if (!skinT && !pantsT && !shoesT && !shirtT && !eye && !_art && !blank) return getFrame(pose, dir, frameIdx);
   const sheetKey = bodySheetKey(skinId, pantsId, shoesId, shirtT, shirtKey, eye && eye.id, pose, dir, _art, blank && blank.id);
+  if (_askOnly) { _askOnly.push(sheetKey); return null; }   /* v2.3.6202: only which sheet (bodyKeysAsked): nothing baked */
   const entry = _bodySheets[sheetKey];
   if (entry === undefined) { const _bp = buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eye && eye.t, _art, blank && blank.rects); if (_buildSink) _buildSink.push(_bp); return getFrame(pose, dir, frameIdx); }
   if (entry === 'loading' || !entry.length) { if (entry !== 'loading') _bodyLater.due(sheetKey); return getFrame(pose, dir, frameIdx); }   /* v2.3.3882 */
@@ -801,6 +802,44 @@ if (typeof window !== 'undefined') {
     }
     return out;
   };
+}
+
+/* ═══ v2.3.6202: A BAKED SHEET LET GO OF WHERE IT IS NOT DRAWN (card EN PR 3) ═══
+   The townsfolk whose looks the shared numbers refuse (an eye style that
+   blanks the eyes, a drawing: lookBodyRefused) are drawn from a whole sheet
+   baked a pose and facing (35 sheets, about 14 MB, at main 5ea5c7d's memory
+   check), baked behind the world's loading screen (entityRenderer.js
+   prewarmFolkBodies) and, before this, held for the whole visit: on the chip
+   too once each facing was first drawn, so the memory check's fight read
+   5.7, 13.1, 14.3 MB of them, trip by trip, in the Flame Fields where no
+   townsperson is drawn.  The renderer now lets them go far from town and asks
+   for them again on the way back, well before he is on screen
+   (entityRenderer.js _folkSheetsStep; `?folksheets=0` holds them as before).
+   bodyKeysAsked(fn) runs `fn`, which asks for frames exactly as the renderer
+   does, and answers the sheet keys it asked for, baking nothing and touching
+   no sheet: the same key, so the release cannot spell it a second way.
+   releaseBodySheets(keys) lets go of those that are baked, each source
+   destroyed 30 s later (_pickupHeadCap's guard: nothing is killed in a frame
+   that may still draw it); a key asked for again bakes afresh. */
+let _askOnly = null;
+export function bodyKeysAsked(fn) {
+  const out = [];
+  _askOnly = out;
+  try { fn(); } finally { _askOnly = null; }
+  return out;
+}
+export function releaseBodySheets(keys) {
+  let n = 0;
+  for (const key of keys) {
+    const entry = _bodySheets[key];
+    if (!Array.isArray(entry) || !entry.length) continue;   /* 'loading', given up on, or gone */
+    delete _bodySheets[key];
+    _bodyLater.forget(key);
+    const src = entry[0] && entry[0].source;
+    if (src) setTimeout(() => { try { releaseCanvasSource(src); } catch (e) { /* already gone */ } }, 30000);
+    n++;
+  }
+  return n;
 }
 
 /* ═══ v2.3.3716: THE STAND AND JOG FRAMES FROM THE NUMBERS (on; `?lookpalette=0` off) ═══
