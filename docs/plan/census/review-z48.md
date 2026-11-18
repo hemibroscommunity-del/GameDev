@@ -24,8 +24,15 @@ Merged in that order on 586b0a7b: clean (EN's and HB's switch rows in
 - `tools/dev/gatekeeper.mjs` RD EN: build PASS, `questline` PASS;
   precheck FAIL as "900 s, timed out or killed": the tool's own cap
   (Z47's Found), not a branch's red.
-- By hand, RD + EN + HB on 586b0a7b (merge 135c74f9): RESULT_PRECHECK;
-  `npm run build` RESULT_BUILD; `questline` RESULT_QUEST.
+- By hand, RD + EN + HB on 586b0a7b (merge 135c74f9), no cap: precheck
+  1 FAIL, `server-tests`: 579 of 580 suites green, `guards/switches-thrown`
+  red once (`joinidform` thrown, `login-keys.test` 12h) after 883 s on a
+  loaded box (4 at a time); alone on the same tree (`--only joinidform`)
+  all green in 45 s. None of the three touches the login or the worker's
+  code; each PR's own `test` is green on GitHub. A load flake: Found, not
+  a hold. WARNs: the branch list; `look-roles` (EN's `playerSkins.js`;
+  EN's `role-bake.mjs --check`: a fresh bake). `npm run build` PASS;
+  `questline` 187 of 187.
 
 ## Findings
 

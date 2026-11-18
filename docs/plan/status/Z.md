@@ -26,7 +26,9 @@ step, every base `main`. Heads, trees: the census.
   chips (ownerSwitches.js) not listing the six. TL's run.mjs orphans on
   precheck's timeout. elemental2 maxMana under duelpace: watch. EN's
   comments name tools/guards/folk-sheets.test.mjs (it is server/test).
-  RD's, EN's and HB's status lines lag their ready PRs.
+  RD's, EN's and HB's status lines lag their ready PRs. New:
+  `switches-thrown` red once under load (joinidform, login-keys 12h,
+  883 s), green alone in 45 s: watch.
 ## Needs
 - Decided for the owner while away (the planning session): EN's
   folksheets ON (`?folksheets=0`); HB's afterpaint ON (`?afterpaint=0`).
