@@ -10,7 +10,8 @@
  * presses (1440 x 900, the game in its centred column):
  *   1. the dashboard's six buttons wear I P J L K O, the minimap's open
  *      button M beside its "tap me" mark, the keys strip lists 1-3 and no
- *      longer lies under the bell;
+ *      longer lies under the bell (v2.3.6304: since v2.3.4263 the band's own
+ *      list, `[data-band-keys]`, in the strip's place);
  *   2. each key opens its page and closes it again; I is the bag (back to
  *      rest, and at rest it folds the band away and back); B is the emotes
  *      (v2.3.3391's key), the chat box's smiley wears it, and the picker's ✕
@@ -42,7 +43,8 @@
  *       it up, a toggle, and the next right press lowers it; with a snowman
  *       near it faces the snowman -- mp-shieldtoggle has the rest);
  *   8d. with no shield on the arm, the right button is the special, as it was;
- *   8e. D tapped twice quickly rolls; once, or twice slowly, does not;
+ *   8e. D tapped twice quickly rolls; once, or twice slowly, does not
+ *       (v2.3.6304: "quickly" by the page's own key times, DBL_TAP_MS);
  *   8f. a double click on a snowman, the bow in hand, ends locked on it (two
  *       single clicks used to lock and let go); with the sword it lunges at it;
  *   8g. no page errors.
@@ -50,6 +52,9 @@
 import * as H from './harness.mjs';
 import { join } from 'node:path';   /* v2.3.3986: the minimap's picture */
 import { mkdirSync } from 'node:fs';
+/* v2.3.6304: the minimap's sizes, the game's own (step 8) */
+import { DBL_TAP_MS } from '../../../src/game/deskCombos.js';   /* v2.3.6304: step 8e's window, the game's own */
+import { WHEEL_MINI_PX, WHEEL_MINI_BAND_K, WHEEL_MINI_DESK_K, WHEEL_MINI_WINDOW, WHEEL_MINI_DESK_WINDOW } from '../../../src/ui/wheelMiniSize.js';
 export const lane = 'full';
 const OUT = join(H.REPO, 'tools/qa/mp/out');
 
@@ -114,72 +119,56 @@ async function runKeys({ browser, wsPort, webPort, rec }) {
     rec.ok('the minimap wears M, just right of its "tap me" mark',
       shown(mapCap) && mapCap.key === 'M' && !!mark && parseFloat(mapCap.left) >= mark.x + mark.w
         && parseFloat(mapCap.left) <= mark.x + mark.w + 8 && Math.abs(parseFloat(mapCap.top) - mark.y) <= 2, { mapCap, mark });
-    const strip = await P.page.evaluate(() => {
-      const s = document.querySelector('.bt-kb-hints');
+    /* ═══ v2.3.6304 (card RR; docs/plan/census/RR-reds.md): THE BAND'S OWN KEYS ═══
+       Since v2.3.4263 (the owner: "For desktop add the short list of
+       shortcuts to the extra dashboard area on the right"), a computer under
+       the one band (the default) lists its keys IN the band
+       (KeyboardHintsPanel.jsx BandKeys, `[data-band-keys]`), with its own ⌨
+       heading that H and a click fold and open, and the floating strip and
+       its chip are not drawn at all (bandKeysActive).  Steps 1, 1b and 1c
+       read that strip (`.bt-kb-hints`, `.bt-kb-chip`), so they were red on
+       every run: they ask the same things of the list that stands in its
+       place -- 1, 2 and 3 on it, clear of the bell, on the screen; the ⌨
+       heading lit, what a click there reaches, one click folds it, one more
+       opens it; on a window with no room beside the game, still in the band
+       -- and that the old strip and chip are gone, as promised. */
+    const bandKeys = () => P.page.evaluate(() => {
+      const el = document.querySelector('[data-band-keys]'), head = el && el.querySelector('.bt-band-keys-head');
       const bell = document.querySelector('[data-world-chat-toggle]');
-      const r = s && s.getBoundingClientRect(), b = bell && bell.getBoundingClientRect();
-      const col = document.getElementById('root').getBoundingClientRect();
-      const keys = s ? Array.from(s.querySelectorAll('kbd')).map((k) => k.textContent) : [];
-      return { keys, left: r && Math.round(r.left), right: r && Math.round(r.right), top: r && Math.round(r.top),
-        colLeft: Math.round(col.left), place: s && s.getAttribute('data-kb-place'), bellRight: b && Math.round(b.right),
-        overlap: !!(r && b && b.width && r.left < b.right && r.right > b.left && r.top < b.bottom && r.bottom > b.top) };
-    });
-    rec.ok('the keys strip lists 1, 2 and 3 (v2.3.3847: was 1-3), and lies clear of the bell', ['1', '2', '3'].every((k) => strip.keys.includes(k)) && !strip.overlap, strip);
-    /* v2.3.3526 (the owner's "Go recommended" on the review's "move the keys
-       strip into the black margin beside the game"): on this window it is in
-       the margin, wholly left of the game's column and on the screen */
-    rec.ok('...in the black margin beside the game: wholly left of the column, every row on the screen',
-      strip.place === 'side' && strip.right <= strip.colLeft - 8 && strip.left >= 0 && strip.top >= 0, strip);
-
-    /* ── 1b. v2.3.3470: THE ⌨ STAYS BESIDE THE OPEN STRIP ──
-       The owner: "once the computer controls are open it's hidden behind the
-       shortcut keys the menu shows. Move it over so you can still see where to
-       click it to hide it again".  On main the strip REPLACED the ⌨ in its
-       corner.  Now: the ⌨ is there while the strip is open, clear of the
-       strip and the bell, inside the game's column, the thing a click at its
-       middle reaches; one click hides the strip, one more brings it back. */
-    const kbState = () => P.page.evaluate(() => {
-      const chip = document.querySelector('.bt-kb-chip'), s = document.querySelector('.bt-kb-hints');
-      const bell = document.querySelector('[data-world-chat-toggle]'), root = document.getElementById('root');
-      const R = (el) => { if (!el) return null; const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0 ? { l: r.left, r: r.right, t: r.top, b: r.bottom } : null; };
-      const c = R(chip), st = R(s && getComputedStyle(s).display !== 'none' ? s : null), b = R(bell), col = R(root);
-      const ov = (a, z) => !!(a && z && a.l < z.r && a.r > z.l && a.t < z.b && a.b > z.t);
+      const R = (n) => { if (!n) return null; const r = n.getBoundingClientRect(); return r.width > 0 && r.height > 0 ? { l: r.left, r: r.right, t: r.top, b: r.bottom } : null; };
+      const box = R(el), b = R(bell), h = R(head);
+      const ov = (x, z) => !!(x && z && x.l < z.r && x.r > z.l && x.t < z.b && x.b > z.t);
       let onTop = false;
-      if (c) { const at = document.elementFromPoint((c.l + c.r) / 2, (c.t + c.b) / 2); onTop = !!(at && (at === chip || chip.contains(at))); }
-      /* v2.3.3526: drawn in the margin (data-kb-place="side") the ⌨ and the
-         rows are wholly LEFT of the column; drawn in it, inside it, as before */
-      const side = !!chip && chip.getAttribute('data-kb-place') === 'side';
-      const inCol = (a) => !!(a && col && a.l >= col.l && a.r <= col.r);
-      const inMargin = (a) => !!(a && col && a.l >= 0 && a.r <= col.l);
-      return { chip: c, strip: !!st, open: chip ? chip.getAttribute('data-open') : null, onStrip: ov(c, st), onBell: ov(c, b), onTop, side,
-        placed: side ? inMargin(c) && (!st || inMargin(st)) : inCol(c) && (!st || !!(col && st.l >= col.l - 0.5 && st.r <= col.r + 0.5)),
-        at: c ? [Math.round((c.l + c.r) / 2), Math.round((c.t + c.b) / 2)] : null };
+      if (h) { const at = document.elementFromPoint((h.l + h.r) / 2, (h.t + h.b) / 2); onTop = !!(at && (at === head || head.contains(at))); }
+      const keys = el ? Array.from(el.querySelectorAll('.bt-band-keys-list kbd')).map((k) => k.textContent) : [];
+      return { state: el ? el.getAttribute('data-band-keys') : null, keys, box, overBell: ov(box, b),
+        onScreen: !!box && box.l >= 0 && box.t >= 0 && box.r <= innerWidth && box.b <= innerHeight,
+        headKey: head ? (head.querySelector('kbd') || {}).textContent || null : null, lit: head ? head.getAttribute('aria-expanded') : null,
+        onTop, at: h ? [Math.round((h.l + h.r) / 2), Math.round((h.t + h.b) / 2)] : null,
+        oldStrip: !!document.querySelector('.bt-kb-hints'), oldChip: !!document.querySelector('.bt-kb-chip') };
     });
-    const kb1 = await kbState();
-    rec.ok('the ⌨ is still on screen beside the open strip: lit, clear of the strip and the bell, in the margin beside the game with it, and what a click there reaches',
-      kb1.strip && !!kb1.chip && kb1.open === '1' && !kb1.onStrip && !kb1.onBell && kb1.side && kb1.placed && kb1.onTop, kb1);
-    if (kb1.at) await P.page.mouse.click(kb1.at[0], kb1.at[1]);
+    const bk1 = await bandKeys();
+    rec.ok('the band\'s keys list (v2.3.4263) lists 1, 2 and 3, and lies clear of the bell, on the screen',
+      bk1.state === 'open' && ['1', '2', '3'].every((k) => bk1.keys.includes(k)) && !bk1.overBell && bk1.onScreen, bk1);
+    rec.ok('...and the floating strip and its ⌨ chip are not drawn beside it (bandKeysActive)', !bk1.oldStrip && !bk1.oldChip, bk1);
+    rec.ok('its ⌨ heading wears H, lit while the list is open, and is what a click there reaches',
+      bk1.headKey === 'H' && bk1.lit === 'true' && bk1.onTop && !!bk1.at, bk1);
+    if (bk1.at) await P.page.mouse.click(bk1.at[0], bk1.at[1]);
     await P.page.waitForTimeout(400);
-    const kb2 = await kbState();
-    if (kb2.at) await P.page.mouse.click(kb2.at[0], kb2.at[1]);
+    const bk2 = await bandKeys();
+    if (bk2.at) await P.page.mouse.click(bk2.at[0], bk2.at[1]);
     await P.page.waitForTimeout(400);
-    const kb3 = await kbState();
-    rec.ok('...one click on it hides the strip (the ⌨ stays, unlit), one more brings the strip back',
-      !kb2.strip && !!kb2.chip && kb2.open === '0' && kb3.strip && kb3.open === '1', { kb2, kb3 });
-
-    /* ── 1c. v2.3.3526: A WINDOW WITH NO ROOM BESIDE THE GAME ──
-       1000 x 1200: the column is 654 px wide and the margins 173, under the
-       190 the strip needs, so it is drawn in the column, as before, the ⌨
-       with it; back to this window, it goes back to the margin -- each the
-       moment the window changes. */
+    const bk3 = await bandKeys();
+    rec.ok('...one click on it folds the list to its heading (unlit), one more opens it again',
+      bk2.state === 'folded' && bk2.lit === 'false' && bk2.keys.length === 0 && bk3.state === 'open' && bk3.lit === 'true' && bk3.keys.length > 0, { bk2, bk3 });
     await P.page.setViewportSize({ width: 1000, height: 1200 });
     await P.page.waitForTimeout(900);
-    const kbNarrow = await kbState();
+    const bkNarrow = await bandKeys();
     await P.page.setViewportSize(DESK);
     await P.page.waitForTimeout(900);
-    const kbWide = await kbState();
-    rec.ok('...on a window with no room beside the game (1000 x 1200) the strip and the ⌨ are in the column, and back in the margin on this one',
-      kbNarrow.strip && !kbNarrow.side && kbNarrow.placed && kbWide.strip && kbWide.side && kbWide.placed, { kbNarrow, kbWide });
+    const bkWide = await bandKeys();
+    rec.ok('...on a window with no room beside the game (1000 x 1200) the list is still in the band, open and on the screen, and so on this one again',
+      bkNarrow.state === 'open' && bkNarrow.onScreen && !bkNarrow.oldStrip && bkWide.state === 'open' && bkWide.onScreen && !bkWide.oldStrip, { bkNarrow, bkWide });
 
     /* ── 2. EACH KEY ITS PAGE, AND AGAIN TO CLOSE IT ── */
     for (const [id, k] of [['quests', 'J'], ['hero', 'P'], ['encyclopedia', 'K'], ['more', 'O']]) {
@@ -453,11 +442,18 @@ async function runLayout({ browser, wsPort, webPort, rec }) {
       /* v2.3.4152: twice as big in the side column's layout (?oneband=0);
          under the band (the default) the world is a third shorter and the
          minimap stays a phone's 132 px (wheelMiniSize.js) */
-      const K = lay.band ? 1 : 2, BOX = 132 * K, WIN = lay.band ? 3200 : 4800;
-      rec.ok(`8. the minimap is ${K === 2 ? 'twice as big on a computer' : 'a phone\'s size under the band'}: ${mm && mm.box} x ${mm && mm.h} px (k ${mm && mm.k}), ${mm && mm.window} game px across, flush right in the canvas, the world map's button over it (${mm && mm.btn && mm.btn.w} x ${mm && mm.btn && mm.btn.h}), its plate inside it`,
-        !!mm && mm.k === K && mm.box === BOX && mm.h === BOX && mm.window === WIN && Math.abs(mm.scale - BOX / WIN) < 1e-9
-          && Math.abs(mm.rect.left + mm.rect.w - mm.canvasRight) <= 1 && mm.rect.w === BOX && mm.rect.mark
-          && Math.abs(mm.btn.l - mm.rect.left) <= 1 && Math.abs(mm.btn.t - mm.rect.top) <= 1 && mm.btn.w === BOX && mm.btn.h === BOX
+      /* v2.3.6304 (card RR): and since v2.3.4263 (the owner: "Make the
+         desktop version of the minimap somewhat larger") a computer under the
+         band draws it WHEEL_MINI_BAND_K (1.35x: 178 px), the window still a
+         phone's 3,200 game px (src/ui/wheelMiniSize.js, read here, never
+         typed); the check wanted the phone's 132 px and was red every run.
+         The button's size is a whole px (178 of 178.2): held within 1. */
+      const K = lay.band ? WHEEL_MINI_BAND_K : WHEEL_MINI_DESK_K, BOX = WHEEL_MINI_PX * K, WIN = lay.band ? WHEEL_MINI_WINDOW : WHEEL_MINI_DESK_WINDOW;
+      const near = (a, b) => Math.abs(a - b) <= 0.01, px1 = (a, b) => Math.abs(a - b) <= 1;
+      rec.ok(`8. the minimap is ${K === WHEEL_MINI_DESK_K ? 'twice as big on a computer' : `${K}x a phone's under the band`}: ${mm && mm.box} x ${mm && mm.h} px (k ${mm && mm.k}), ${mm && mm.window} game px across, flush right in the canvas, the world map's button over it (${mm && mm.btn && mm.btn.w} x ${mm && mm.btn && mm.btn.h}), its plate inside it`,
+        !!mm && mm.k === K && near(mm.box, BOX) && near(mm.h, BOX) && mm.window === WIN && Math.abs(mm.scale - BOX / WIN) < 1e-9
+          && Math.abs(mm.rect.left + mm.rect.w - mm.canvasRight) <= 1 && near(mm.rect.w, BOX) && mm.rect.mark
+          && Math.abs(mm.btn.l - mm.rect.left) <= 1 && Math.abs(mm.btn.t - mm.rect.top) <= 1 && px1(mm.btn.w, BOX) && px1(mm.btn.h, BOX)
           && !!mm.plate && mm.plate.top >= mm.rect.top + mm.mapBottom && mm.plate.top + mm.plate.height <= mm.rect.top + mm.rect.h, mm);
       const r = mm && mm.rect;
       mkdirSync(OUT, { recursive: true });
@@ -596,17 +592,39 @@ async function runLayout({ browser, wsPort, webPort, rec }) {
 
     /* ── 8e. A DIRECTION TAPPED TWICE ── */
     await P.page.waitForTimeout(1200);
-    const d0 = await look(P);
-    /* two taps as quick as a player's (this box's round trips are slow: no
-       waits between them), each key's own time read off its event */
+    /* v2.3.6304 (card RR; TRAPS §200): the page's own clock decides whether
+       a pair WAS quick.  The game rolls on a second tap of a direction within
+       DBL_TAP_MS (250 ms, src/game/deskCombos.js), read off each key's own
+       event; on a session box two key presses with nothing between them
+       reached the page 294 ms apart (every run), so it never saw a double
+       tap and the check went red.  Up to three pairs are tried; a pair the
+       page received within DBL_TAP_MS must roll (a FAIL if it does not); if
+       none came that quickly, the box could not play the step: a SKIP that
+       names the gaps it measured.  The single tap and the slow pair are
+       checked as before, either way. */
     await P.page.evaluate(() => {
       window.__dkTaps = [];
       window.addEventListener('keydown', (e) => { if (!e.repeat) window.__dkTaps.push([e.key, Math.round(e.timeStamp)]); }, true);
     });
-    await P.page.keyboard.down('d'); await P.page.keyboard.up('d');
-    await P.page.keyboard.down('d'); await P.page.keyboard.up('d');
-    await P.page.waitForTimeout(60);
-    const d1 = await look(P);
+    const d0 = await look(P);
+    let d1 = d0, quickGap = null;
+    const gaps = [];
+    for (let tryN = 0; tryN < 3 && quickGap == null; tryN++) {
+      if (tryN) await P.page.waitForTimeout(1500);
+      const before = await look(P);
+      const n0 = await P.page.evaluate(() => window.__dkTaps.length);
+      /* two taps as quick as a player's (this box's round trips are slow: no
+         waits between them), each key's own time read off its event */
+      await P.page.keyboard.down('d'); await P.page.keyboard.up('d');
+      await P.page.keyboard.down('d'); await P.page.keyboard.up('d');
+      await P.page.waitForTimeout(60);
+      const after = await look(P);
+      const pair = await P.page.evaluate((n) => window.__dkTaps.slice(n).filter((t) => t[0] === 'd').slice(0, 2), n0);
+      const gap = pair.length === 2 ? pair[1][1] - pair[0][1] : null;
+      gaps.push(gap);
+      if (gap != null && gap <= DBL_TAP_MS) { quickGap = gap; d1 = after; d1.from = before.rolls; }
+      else d1 = after;
+    }
     await P.page.waitForTimeout(1500);
     await P.page.keyboard.press('d', { delay: 40 });
     await P.page.waitForTimeout(500);
@@ -616,9 +634,15 @@ async function runLayout({ browser, wsPort, webPort, rec }) {
     await P.page.keyboard.press('a', { delay: 40 });
     await P.page.waitForTimeout(400);
     const d3 = await look(P);
-    rec.ok(`8e. D tapped twice quickly rolls (rolls ${d0.rolls} -> ${d1.rolls}); one more tap, or A twice slowly, does not (${d2.rolls}, ${d3.rolls})`,
-      d1.rolls === d0.rolls + 1 && d2.rolls === d1.rolls && d3.rolls === d1.rolls, { d0: d0.rolls, d1: [d1.rolls, d1.roll], d2: d2.rolls, d3: d3.rolls,
-        taps: await P.page.evaluate(() => window.__dkTaps || []) });
+    const taps = await P.page.evaluate(() => window.__dkTaps || []);
+    if (quickGap == null) {
+      rec.skip(`8e. D tapped twice quickly rolls`, `the page received every pair slower than DBL_TAP_MS (${DBL_TAP_MS} ms): ${gaps.join(', ')} ms apart -- this box could not play the step (TRAPS §200)`);
+    } else {
+      rec.ok(`8e. D tapped twice quickly (${quickGap} ms apart, within ${DBL_TAP_MS}) rolls (rolls ${d1.from} -> ${d1.rolls})`,
+        d1.rolls === d1.from + 1, { d0: d0.rolls, d1: [d1.from, d1.rolls, d1.roll], gaps, taps });
+    }
+    rec.ok(`8e. ...one more tap, or A twice slowly, does not roll (${d1.rolls} -> ${d2.rolls}, ${d3.rolls})`,
+      d2.rolls === d1.rolls && d3.rolls === d1.rolls, { d1: d1.rolls, d2: d2.rolls, d3: d3.rolls, taps });
 
     /* ── 8f. A DOUBLE CLICK ON A SNOWMAN ── */
     await H.equipWeapon(P, 'bow', 'rangedWeapon', 'ranged').catch(() => null);
