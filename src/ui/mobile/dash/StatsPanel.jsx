@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { COL, panelStyle, getState } from './common.js';
 import { toDisplayHp } from '../../../data/gameSystems.js'; /* v2.3.2521: the display scale */
+import { SAY } from '@/data/say/statsPanel.js';   /* v2.3.6351: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';
 
 /* v2.3.1232: Lantern Slate pass (docs/LANTERN-SLATE-SPEC.md) — the flat
    label:value dump becomes a real readout: VITALS as spec meters
@@ -101,32 +103,32 @@ export const StatsPanel = () => {
 
   return (
     <div style={panelStyle}>
-      <div style={secHdr}>Vitals</div>
+      <div style={secHdr}>{say(SAY, 'statsPanel.vitals')}</div>
       {/* v2.3.2521: this HP readout was missed by v2.3.2520's display scale,
           so the Stats tab said "100 / 100" while the Hero sheet said
           "20 / 20" for the same character one tap away.  toDisplayHp is the
           right helper (ceil, so 1 HP left never reads 0) and it matches what
           VitalBar and the stat screen already print.  MP and Stamina stay
           RAW on purpose — mana and stamina are not scaled (§5.8's default). */}
-      <Meter label="HP"      cur={toDisplayHp(R.hp ?? 0)} max={toDisplayHp(R.maxHp ?? 1)} color={COL.hp} />
-      <Meter label="MP"      cur={R.mana ?? 0}    max={R.maxMana ?? 1}    color={COL.mp} />
-      <Meter label="Stamina" cur={R.stamina ?? 0} max={R.maxStamina ?? 1} color={COL.stam} />
+      <Meter label={say(SAY, 'statsPanel.hp')} cur={toDisplayHp(R.hp ?? 0)} max={toDisplayHp(R.maxHp ?? 1)} color={COL.hp} />
+      <Meter label={say(SAY, 'statsPanel.mp')} cur={R.mana ?? 0}    max={R.maxMana ?? 1}    color={COL.mp} />
+      <Meter label={say(SAY, 'statsPanel.stamina')} cur={R.stamina ?? 0} max={R.maxStamina ?? 1} color={COL.stam} />
 
-      <div style={secHdr}>Attributes</div>
+      <div style={secHdr}>{say(SAY, 'statsPanel.attributes')}</div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 4, padding: '0 8px' }}>
-        <StatCell label="POW" iconSrc="/icons/ui/stat-power.webp"     glyph="⚔" value={R.power ?? 0} />
-        <StatCell label="VIT" iconSrc="/icons/ui/stat-vitality.webp"  glyph="♥" value={R.vitality ?? 0} />
-        <StatCell label="END" iconSrc="/icons/ui/stat-endurance.webp" glyph="🛡" value={R.endurance ?? 0} />
-        <StatCell label="AGI" iconSrc="/icons/ui/stat-agility.webp"   glyph="🏃" value={R.agility ?? 0} />
-        <StatCell label="MND" iconSrc="/icons/ui/stat-mind.webp"      glyph="✨" value={R.mind ?? 0} />
+        <StatCell label={say(SAY, 'statsPanel.pow')} iconSrc="/icons/ui/stat-power.webp"     glyph="⚔" value={R.power ?? 0} />
+        <StatCell label={say(SAY, 'statsPanel.vit')} iconSrc="/icons/ui/stat-vitality.webp"  glyph="♥" value={R.vitality ?? 0} />
+        <StatCell label={say(SAY, 'statsPanel.end')} iconSrc="/icons/ui/stat-endurance.webp" glyph="🛡" value={R.endurance ?? 0} />
+        <StatCell label={say(SAY, 'statsPanel.agi')} iconSrc="/icons/ui/stat-agility.webp"   glyph="🏃" value={R.agility ?? 0} />
+        <StatCell label={say(SAY, 'statsPanel.mnd')} iconSrc="/icons/ui/stat-mind.webp"      glyph="✨" value={R.mind ?? 0} />
       </div>
 
-      <div style={secHdr}>Record</div>
-      <Row label="Level"       value={R.level ?? 1} />
-      <Row label="XP"          value={R.xp ?? 0} />
-      <Row label="Kills"       value={cs.kills ?? 0} />
-      <Row label="Deaths"      value={cs.deaths ?? 0} />
-      <Row label="Gold earned" value={(cs.totalGoldEarned ?? 0).toLocaleString()} />
+      <div style={secHdr}>{say(SAY, 'statsPanel.record')}</div>
+      <Row label={say(SAY, 'statsPanel.level')} value={R.level ?? 1} />
+      <Row label={say(SAY, 'statsPanel.xp')} value={R.xp ?? 0} />
+      <Row label={say(SAY, 'statsPanel.kills')} value={cs.kills ?? 0} />
+      <Row label={say(SAY, 'statsPanel.deaths')} value={cs.deaths ?? 0} />
+      <Row label={say(SAY, 'statsPanel.goldEarned')} value={(cs.totalGoldEarned ?? 0).toLocaleString()} />
     </div>
   );
 };
