@@ -549,6 +549,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `lastplace` | worker | switch | v2.3.3327 | 2026-10-18 | false | logic | `movebudget` | no | Every join takes its place again, and the first move after it is free. |
 | `linger` | worker | switch | v2.3.3260 | 2026-10-15 | false | logic |  | no | Every leaver leaves at once again; a lingering body ends on the next sweep. |
 | `lingeracc` | worker | switch | v2.3.4921 | 2026-11-12 | false | logic |  | no | A lingering player's unwritten shot and hit counts (the accuracy record) are left in memory, as before. |
+| `lookjoin` | worker | switch | v2.3.5733 | 2026-11-17 | false | logic |  | no | ON since v2.3.5733 (card RV's S2, the join's half; decided for the owner while away, 2026-11-17: "Go recommended on all"); thrown (`lookjoin: false`), a join's colour and avatar are any text cut to length, as before, and a stored look is laid over the join whatever it holds. |
 | `max_players` | worker | value | v2.3.1982 |  | a number, 1 to the ceiling | logic |  | no | The room's cap on players, never above its bandwidth ceiling. |
 | `nearjoin` | worker | switch | v2.3.3276 | 2026-10-17 | false | logic |  | no | New joins get the whole snapshot again, cap off. |
 | `presence2` | worker | switch | v2.3.3250 | 2026-10-14 | false | logic |  | no | Un-advertises presence 2: every phone back on the v2.3.3246 roster. |

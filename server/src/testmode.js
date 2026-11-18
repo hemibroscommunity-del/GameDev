@@ -68,7 +68,9 @@
  * (v2.3.5728, flood.js HONEST_PER_S: `ceilfair`), a guest's share of the
  * places, a played character's seat and an IPv6 /48 counted (v2.3.5729,
  * seathold.js GUEST_SHARE, flood.js ip48Key: `guestshare`), a join taking
- * only what is its own (v2.3.5730, join.js, seathold.js: `joinguard`), the owner's routes
+ * only what is its own (v2.3.5730, join.js, seathold.js: `joinguard`), a
+ * join's colour and avatar held to their forms (v2.3.5733, join.js,
+ * lookform.js: `lookjoin`), the owner's routes
  * with no key and the public reads at the edge (v2.3.5726, wire/door.js:
  * the worker settings `EDGE_GUARD`, `EDGE_CACHE`), every save and payment rule,
  * the login key and its lockouts, a frozen account, PvP consent and every
