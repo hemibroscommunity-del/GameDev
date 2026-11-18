@@ -13,7 +13,9 @@
  *      character not in test mode, let through for one in it, refused again
  *      with the kill switch -- moving (the budget, the follow, the reconnect's
  *      judge), harvesting (too early, no start, the perfect rate, the bot's
- *      hour cap and scoring), cooking (the rate, the 900 ms floor, the bot's
+ *      hour cap and scoring; v2.3.5900: the grade's judge, `harvestgrade`,
+ *      asked through the strike's `_tm` in gathering.js, held in
+ *      harvestgrade.test §8), cooking (the rate, the 900 ms floor, the bot's
  *      cap), a hit on a monster (the weapon, the reach, the lanes), the quest
  *      order, the roll window;
  *   8. and what it leaves on: the tool and level gates and a harvest's reach,
@@ -484,6 +486,8 @@ const lastOf = (ws, type) => { for (let i = ws.sent.length - 1; i >= 0; i--) if 
     return srcFiles().filter(   /* v2.3.5060: in depth, a folder's files too (src-walk.mjs) */
       (f) => /_testMode\(/.test(fs.readFileSync(new URL(f, dir), 'utf8')));
   });
+  /* v2.3.5900: gathering.js asks for the grade's judge too (_harvestGraded,
+     through the strike's `_tm`): harvestgrade.js itself asks nothing */
   const expect = ['accuracy.js' /* v2.3.4545: not a check -- a test character is left out of the owner's accuracy totals a day */, 'botfp.js', 'botsig.js' /* v2.3.3731 */, 'combat.js', 'cooking.js', 'gathering.js', 'join.js', 'lastplace.js', 'movement.js', 'quests.js', 'silence.js' /* v2.3.5627: not a check -- a test-mode character's device is kept as the owner's, never held by a freeze */, 'testmode.js'];
   check('8. the checks that ask are the listed ones, and only those (a new one is said in testmode.js\'s header)',
     JSON.stringify(all.sort()) === JSON.stringify(expect), all);
