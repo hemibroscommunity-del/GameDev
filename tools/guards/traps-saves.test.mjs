@@ -106,10 +106,10 @@ const PROTO_KNOWN = {};
 /* `function: prefix`, stepped in today: each one a whole prefix in one read.
    v2.3.5961 (card V5 PR 2): the other thirteen read a page now (liveops.js
    _listPage, _listAll; leaderboard.js _pages; marketplace.js's own loop);
-   the one left is in a file card V5 may not write: */
-const LIST_KNOWN = {
-  '_mktEnsureIndex: mkt_order:': 'market.js: card RV\'s file (card V5 PR 2 left it: the General Store\'s book, read whole once a worker\'s life)',
-};
+   the one left was in a file card V5 might not write.  v2.3.6023 (card RV):
+   the General Store's book reads a page an await too (market.js
+   _mktIndexLoad, _listAll): none is left, and none may come back */
+const LIST_KNOWN = {};
 /* the listed ones a join reaches today (the trap's "never on the join path"): only falls */
 /* v2.3.5960 (card V5 PR 1): the eleven read a page now (liveops.js _listPage,
    _listAll; TRAPS §76): none is left, and none may come back */
@@ -151,7 +151,7 @@ for (const f of FILES) {
     }
   }
   check(`§76: the scan reads every storage.list of the worker (${lists})`, lists >= 20, lists);   /* v2.3.5960: 40 -> 30, the sweeps read through liveops.js _listPage; v2.3.5961: -> 20 */
-  census('§76', 'storage.list calls that name no limit', found, LIST_KNOWN, 1);   /* v2.3.5960: 25 -> 14 (card V5 PR 1); v2.3.5961: -> 1 (PR 2) */
+  census('§76', 'storage.list calls that name no limit', found, LIST_KNOWN, 0);   /* v2.3.5960: 25 -> 14 (card V5 PR 1); v2.3.5961: -> 1 (PR 2); v2.3.6023: -> 0 (card RV) */
   /* the join's reach: this.* calls from _handleJoin, eight deep */
   const reach = new Set();
   const q = [['_handleJoin', 0]];
