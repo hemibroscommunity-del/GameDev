@@ -27,6 +27,11 @@ import * as H from './harness.mjs';
 export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
+/* v2.3.6180: the phones at dpr 1 (the harness's touch default is 2): two pages drawn in software on
+   this box at dpr 2 managed about 0.6 frames a second, 6 frames in the pile's ten seconds of
+   flashing, all of them lit in 1 run of 5 (5b, a flash of 2.5 to 7 a second).  Nothing here is
+   read in device pixels (the probes are world px, the card's buttons CSS px) */
+const DPR = 1;
 
 const drops = (P) => P.page.evaluate(() => (window.__btDrops ? window.__btDrops().piles : null));
 const held = (P, key) => P.page.evaluate((k) => {
@@ -112,8 +117,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   mkdirSync(OUT, { recursive: true });
   const shot = (P, name) => P.page.screenshot({ path: join(OUT, `itemdrop-${name}.png`) }).catch(() => {});
   const errs = [];
-  const A = await H.newPlayer(browser, { name: 'Dropper', wsPort, webPort, world: 'wheel', viewport: PHONE, touch: true });
-  const B = await H.newPlayer(browser, { name: 'Finder', wsPort, webPort, world: 'wheel', viewport: PHONE, touch: true, guest: true });
+  const A = await H.newPlayer(browser, { name: 'Dropper', wsPort, webPort, world: 'wheel', viewport: PHONE, touch: true, dpr: DPR });
+  const B = await H.newPlayer(browser, { name: 'Finder', wsPort, webPort, world: 'wheel', viewport: PHONE, touch: true, dpr: DPR, guest: true });
   for (const P of [A, B]) P.page.on('pageerror', (e) => errs.push(P.name + ': ' + String(e && e.message || e).slice(0, 200)));
   await H.enterWorld(A);
   await H.enterWorld(B);
@@ -236,6 +241,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       requestAnimationFrame(step);
     }), p5 && p5.lootId);
     const [sa, sb] = await Promise.all([sample(A), sample(B)]);
+    console.log(`    5b frames (all / flashing / to its end): dropper ${sa.frames}/${sa.flashFrames}/${sa.ended}, watcher ${sb.frames}/${sb.flashFrames}/${sb.ended}`);
     const alphas = { A: new Set(sa.alphas), B: new Set(sb.alphas) };
     const onOff = (s) => [...s].some((a) => a >= 0.9) && [...s].some((a) => a <= 0.3);
     await shot(B, '5-flashing');
