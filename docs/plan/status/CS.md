@@ -24,18 +24,13 @@ state: ready
 - precheck's server-tests step (a 5-minute cap, tools/dev/precheck.mjs)
   times out on this 4-core box: `npm test` alone takes ~8 minutes, 7 of them
   guards/switches-thrown.  The suite passes when run by itself.
-- K2's PR 13 (5732) mends guestshare's refusal in seathold.js: once it
-  lands, seat-hold.test thrown (`seathold: false`) runs on past §3, and
-  `seathold`'s thrownFails (switches.mjs) is re-listed by whichever lands
-  second; K2 also edits flood-guestshare.test §3 (both hold my lines).
+- #2139 holds K2's #2136 (merged in, the gatekeeper's sitting 45): it
+  lands after #2136; `seathold`'s thrownFails is listed on it.
 - ownerSwitches.js's Set-a-switch chips do not list the six; typing the
   name works (src/game/, not this card's files).
 
 ## Needs
 
-- PR 1: the gatekeeper's list.  It changes K2's flood-guestshare.test
-  (§3, §4: `seathold: false`, told to K2).
-- PR 2: answered by the planning session (2026-11-18): a new
-  src/ui/panels/UsageMeter.jsx and one line in DevPanel.jsx; one counting
-  call each in roomrow.js's wrapper and send.js's door (told to K2); the
-  meter in a new server/src/usagemeter.js, read by GET /dev/usage.
+- PR 1: the gatekeeper's list, after K2's #2136.  It changes K2's
+  flood-guestshare.test (§3, §4: `seathold: false`, told to K2).
+- PR 2: its files outside the card answered by the planning session.
