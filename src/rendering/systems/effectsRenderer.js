@@ -77,28 +77,11 @@ if (typeof window !== 'undefined') {
    Never for a drawing (stamped per player) or under greaves (the legs are cut
    by their shape). */
 registerLookSheets('standin', '/sprites/look/standin/roles.json');
-/* ═══ v2.3.4470: ...AND UNDER GREAVES TOO (on; `?legslook=0` off) ═══
-   The whole-game sweep of what holds the page (docs/specs/held-sweep.md) found
-   its longest holds in the one stand-in still baked for every look: the
-   sword's and the bow's body under greaves -- 110 to 140 ms a sheet the first
-   time an armoured player swung beside you, 608 ms when your own greaves went
-   on.  The cut under greaves is the same for every look (the greaves' one
-   shape, the art's own legs), so the eight whole-body sheets are kept once
-   more as the bake leaves them under greaves (lookSets/standinlegs.js,
-   public/sprites/look/standinlegs/), and a body under greaves is a look's row
-   like any other.  Still baked the old way: a body with a drawing on it, and
-   any look the palette atlas has no row for. */
-const LEGS_LOOK_OFF = (() => { try { return /(^|[?&])legslook=(0|off|false)(&|$)/.test(pageAddress()); } catch (e) { return false; } })();
+/* v2.3.6221: LEGS_LOOK_OFF (read by a leaf there) moved verbatim to ../leaves/effects-look.js (card FX) */
 if (!LEGS_LOOK_OFF) registerLookSheets('standinlegs', '/sprites/look/standinlegs/roles.json');
 /* v2.3.6220: _standInSheet moved verbatim to ../leaves/effects-look.js (card FX) */
-/* `legs`: the body as it is under greaves (the 'standinlegs' set) */
-function _standInLook(url, skin, pants, shoes, legs) {
-  if (!lookPaletteWanted()) return null;
-  return getLookPartFrames(legs ? 'standinlegs' : 'standin', _standInSheet(url),
-    [[1, skinTarget(skin) || DEFAULT_SKIN_TARGET], [2, pantsTarget(pants)], [3, shoesTarget(shoes)]]);
-}
-/* is this sheet's body under greaves kept as numbers? */
-const _legsLookHas = (url) => !LEGS_LOOK_OFF && lookPaletteOn() && lookHas('standinlegs', _standInSheet(url));
+/* v2.3.6221: _standInLook moved verbatim to ../leaves/effects-look.js (card FX) */
+/* v2.3.6221: _legsLookHas moved verbatim to ../leaves/effects-look.js (card FX) */
 
 function _sliceStandIn(cv, fw, fh, n, statKey, keepCanvas) {
   /* QA only (mp-geartrim sets it before the game loads): keep the whole bake
@@ -237,7 +220,7 @@ import { getShirtColor, shirtFill, onShirtColorChange } from '../traits/shirtCol
 import { recolorBodyToCanvas, recolorStandInSkin, recolorStandInSkinSplit, DEFAULT_SKIN_TARGET, bodyArtSeg, skinTarget, pantsTarget, shoesTarget, getSkin, getPants, getShoes, onSkinChange, onPantsChange, onShoesChange, localBodyArt, artForFacing } from '../playerSkins.js'; /* v2.3.1710: + the skin-only stand-in recolour (the cook); v2.3.2429: + the player's own drawings; v2.3.2856: + the split bake (the cook's drawings on a layer) */
 import { onArtChange, artHasInk, artHash, sanitizeShirtArt, sideForDir, getShirtArt } from '../traits/playerArt.js';   /* v2.3.3146: + the shirt's sides, for the dressed stand-in shirts */   /* v2.3.2429; v2.3.2431 the symmetry gate; v2.3.2855 a peer's drawings on the lumberjack */
 import { onPatternChange, getPattern, sanitizePattern } from '../traits/patternCatalog.js';   /* v2.3.3146: + the shirt's pattern, yours and a peer's */
-import { STANDIN_GARB_K, localGarb, peerGarb, onGarbChange } from '../standInGarb.js';   /* v2.3.4037: the trouser and shoe patterns and the trouser print on every stand-in */
+import { STANDIN_GARB_K, localGarb, onGarbChange } from '../standInGarb.js';   /* v2.3.4037: the trouser and shoe patterns and the trouser print on every stand-in */
 import { dressShirtStrip } from '../gearBake.js';   /* v2.3.3146: the walking shirt's own dressing (composeShirt), on the stand-ins' strips; v2.3.5014: through gearBake.js, which the body bake's worker runs too */   /* v2.3.2429; v2.3.2431 the symmetry gate */
 import { getGearFrame, packTrimmed, registerGearSource, unregisterGearSource, subTexture, loadCroppedStrip } from '../gearSheets.js';   /* v2.3.2774: + the cropper and the upload hook for the combat strips; v2.3.3074: + its release */
 import { peerEntSprites } from '../artHolds.js';   /* v2.3.4416: every sprite of a peer who left, the gear too */
@@ -249,7 +232,7 @@ import { upscaleToFrameHeight } from '../spriteScale.js'; /* v2.3.1112: restore 
 import { AIM_CARET, AIM_CARET_EDGE } from '../aimCaret.js'; /* v2.3.1799 */
 import { rangedAimAngle, bowGripPoint, orbCrashFx /* v2.3.2991: the staff's crash, filmed for the stat scene */, isPlayerDead /* v2.3.2996 */ } from '@/game/combatHelpers.js'; /* v2.3.2320: the bow sight line uses the SAME ladder the arrow does; v2.3.2543: ...from the same ORIGIN, too */
 import { backShieldPlacement, applyBackShield, BACK_SHIELD_PX } from '../backShield.js'; /* v2.3.1784 */
-import { registerLookSheets, getLookPartFrames, lookPaletteWanted, lookPaletteOn, lookHas, preloadLookSheets, whenLookKnown } from '../lookPalette.js';   /* v2.3.3757: the stand-ins from the numbers */
+import { registerLookSheets, lookPaletteOn, lookHas, preloadLookSheets, whenLookKnown } from '../lookPalette.js';   /* v2.3.3757: the stand-ins from the numbers */
 import { gearStripFrames, gearLookDecided } from '../gearLookFrame.js';   /* v2.3.4998: the combat poses' armour from the numbers */
 import { gearDrawFrame } from '../gearWalkFrame.js';   /* v2.3.4999: the jogging greaves from the numbers */
 import { weaponStripFrames, weaponLookDecided, weaponLookWanted } from '../weaponLookFrame.js';   /* v2.3.5002: the swing's blade and the bow's draw from the numbers */
@@ -436,14 +419,14 @@ import { SECTORS8, DMG_LIFT, BOW_AIM_SECTORS, MAGIC_BOLT_ANCHOR, SWORD_FEEL_FLIP
 import { _STAND_IN_TRAIT_KEYS } from '../tables/look.js';   /* v2.3.5346: the look system's hand-tuned tables, moved verbatim (card M) */
 import { HARD_DOT_R } from '../tables/monsters.js';   /* v2.3.5346: the monsters system's hand-tuned tables, moved verbatim (card M) */
 import { EMOTE_POP_PX } from '../tables/social.js';   /* v2.3.5346: the social system's hand-tuned tables, moved verbatim (card M) */
-import { LOOT_SCALE, LOOT_Z, DROP_GROW, BEAM_H_PX, BEAM_W_PX, BEAM_TEX_W, BEAM_TEX_H, BEAM_HALO_W, MOTE_PX, LOOT_BEAMS_BY_RANK, BEAM_SLOTS, RARE_KINDS, POP_H, POP_BOUNCE_H, HOP_KEYS, PILE_R } from '../tables/economy.js';   /* v2.3.5346: the economy system's hand-tuned tables, moved verbatim (card M) */
-import { _swingBehind, _projSrcPx, readDmgScale, _mixHex, DMG_BMP_FONT, DMG_WORD_FONT, DMG_WORDS_ON, _installOneDmgFont, _dmgFontNames, _dmgSig } from '../leaves/effects-combat.js';   /* v2.3.6220: the combat system's leaves, moved verbatim (card FX) */
-import { _hexTint, LOOT_POP, _hash, landAgeOf, applySquash } from '../leaves/effects-economy.js';   /* v2.3.6220: the economy system's leaves, moved verbatim (card FX) */
-import { _localBuild, _peerBuild, _standInSheet, _probeStandInSkin, _dressedKeyOf, _shirtLookOf, _standInColourKey, _twinWouldDiffer } from '../leaves/effects-look.js';   /* v2.3.6220: the look system's leaves, moved verbatim (card FX) */
+import { LOOT_SCALE, LOOT_Z, DROP_GROW, BEAM_H_PX, BEAM_W_PX, BEAM_TEX_W, BEAM_TEX_H, BEAM_HALO_W, MOTE_PX, LOOT_BEAMS_BY_RANK, BEAM_SLOTS, RARE_KINDS, POP_H, POP_BOUNCE_H, HOP_KEYS } from '../tables/economy.js';   /* v2.3.5346: the economy system's hand-tuned tables, moved verbatim (card M) */
+import { _swingBehind, _projSrcPx, readDmgScale, _mixHex, DMG_BMP_FONT, DMG_WORD_FONT, DMG_WORDS_ON, _installOneDmgFont, _dmgFontNames, _dmgSig, _dmgFontsNow } from '../leaves/effects-combat.js';   /* v2.3.6220: the combat system's leaves, moved verbatim (card FX) */   /* v2.3.6221: + _dmgFontsNow */
+import { _hexTint, LOOT_POP, _hash, landAgeOf, applySquash, pileLayout } from '../leaves/effects-economy.js';   /* v2.3.6220: the economy system's leaves, moved verbatim (card FX) */   /* v2.3.6221: + pileLayout */
+import { _localBuild, _peerBuild, _standInSheet, _probeStandInSkin, _dressedKeyOf, _shirtLookOf, _standInColourKey, _twinWouldDiffer, LEGS_LOOK_OFF, _standInLook, _legsLookHas, _peerStandInColours, _localStandInColourKey } from '../leaves/effects-look.js';   /* v2.3.6220: the look system's leaves, moved verbatim (card FX) */   /* v2.3.6221: + LEGS_LOOK_OFF, _standInLook, _legsLookHas, _peerStandInColours, _localStandInColourKey */
 import { _peerNotDrawn, clearIfDrawn } from '../leaves/effects-render.js';   /* v2.3.6220: the render system's leaves, moved verbatim (card FX) */
 import { _chopArtAsymmetric, _peerChopArt, _chopKeyMask, COOK_FW, COOK_FH, _loadStandInImg, _bakeCookSplit, placeFarmFigProxy, makeFarmFigProxy, chopStandInSpot, cookStandInSpot, FIRE_FW, FIRE_FH, _fireFrameShift, _litLogKey, _figBytes, _crossedFrame } from '../leaves/effects-skills.js';   /* v2.3.6220: the skills system's leaves, moved verbatim (card FX) */
 import { bandWithEmote } from '../leaves/effects-social.js';   /* v2.3.6220: the social system's leaves, moved verbatim (card FX) */
-import { POPUP_ZOOM, POPUP_WORLD, popupZoomK, MSG_WRAP_W, msgWrapW, msgLines, _tightPopupIcon, isAsciiOnly } from '../leaves/effects-ui.js';   /* v2.3.6220: the ui system's leaves, moved verbatim (card FX) */
+import { POPUP_ZOOM, POPUP_WORLD, popupZoomK, MSG_WRAP_W, msgWrapW, _tightPopupIcon, isAsciiOnly, wrapMessage } from '../leaves/effects-ui.js';   /* v2.3.6220: the ui system's leaves, moved verbatim (card FX) */   /* v2.3.6221: + wrapMessage (and MSG_MAX_LINES, which only it reads) */
 export { chopStandInSpot, cookStandInSpot };   /* v2.3.6220: still the renderer's exports (moved to ../leaves/) */
 export { CHOP_STANDIN_H, COOK_STANDIN_H, COOK_PAN_DX, CHOP_OFFSET, FIRE_STANDIN_H };   /* v2.3.5346: still the renderer's exports (moved to ../tables/) */
 
@@ -613,18 +596,8 @@ const PEER_FIG_RETRY_MS = 15000;
 const PEER_GREAVES_WAIT_MS = 3000;
 const GEAR_STRIP_TIMEOUT_MS = 20000;   /* v2.3.4452: a stand-in's gear strip that has not answered has failed (TRAPS §257) */
 /* v2.3.6220: _standInColourKey moved verbatim to ../leaves/effects-look.js (card FX) */
-/** A peer's colours as their own screen bakes them -- through the gates every
- *  recolour passes (skinTarget & co.), from the ids relayed on the wire. */
-function _peerStandInColours(o) {
-  const skinT = skinTarget(o && o.skin) || DEFAULT_SKIN_TARGET;
-  const pantsT = pantsTarget(o && o.pants), shoesT = shoesTarget(o && o.shoes);
-  const garb = peerGarb(o);   /* v2.3.4037 */
-  return { skinT, pantsT, shoesT, garb, key: _standInColourKey(skinT, pantsT, shoesT, garb) };
-}
-/** Yours as you wear them now -- the stores, not the last bake. */
-function _localStandInColourKey() {
-  return _standInColourKey(skinTarget(getSkin()) || DEFAULT_SKIN_TARGET, pantsTarget(getPants()), shoesTarget(getShoes()), localGarb());   /* v2.3.4037: + the garb */
-}
+/* v2.3.6221: _peerStandInColours moved verbatim to ../leaves/effects-look.js (card FX) */
+/* v2.3.6221: _localStandInColourKey moved verbatim to ../leaves/effects-look.js (card FX) */
 /* v2.3.6220: _figBytes moved verbatim to ../leaves/effects-skills.js (card FX) */
 
 /* ═══ v2.3.1723: PER-FRAME GEAR REGISTRATION for the firemaking pose ═══
@@ -950,26 +923,12 @@ const BOW_GRIP_GUESS_OFF = typeof location !== 'undefined' && sw('gripguess');
 /* v2.3.6220: popupZoomK moved verbatim to ../leaves/effects-ui.js (card FX) */
 /* v2.3.6220: MSG_WRAP_W (read by a leaf there) moved verbatim to ../leaves/effects-ui.js (card FX) */
 /* v2.3.6220: MSG_WRAP_SCREEN (read by a leaf there) moved verbatim to ../leaves/effects-ui.js (card FX) */
-const MSG_MAX_LINES = 4;
+/* v2.3.6221: MSG_MAX_LINES (read by a leaf there) moved verbatim to ../leaves/effects-ui.js (card FX) */
 const MSG_EDGE_PX = 12;
 if (typeof window !== 'undefined') window.__btMsgFont = { px: MSG_FONT_PX, wrap: MSG_WRAP_W, edge: MSG_EDGE_PX, zoom: POPUP_ZOOM, world: POPUP_WORLD };   /* QA: mp-dmgsize */
 /* v2.3.6220: msgWrapW moved verbatim to ../leaves/effects-ui.js (card FX) */
 /* v2.3.6220: msgLines moved verbatim to ../leaves/effects-ui.js (card FX) */
-/* Wrap a message's freshly made Text / BitmapText (at its resting scale, so
-   `width` is popup px) if it is wider than `maxW` (msgWrapW).  Returns its lines. */
-function wrapMessage(text, plain, maxW) {
-  if (!(text.width > maxW) || plain.indexOf('\n') >= 0) return 1;
-  const words = plain.split(' ').filter(Boolean);
-  const most = Math.min(MSG_MAX_LINES, words.length);
-  if (most < 2) return 1;   /* one long word: nowhere to break it */
-  /* centred lines -- the glyph atlas's text is made left-aligned; one line is the same either way */
-  if (text.style && text.style.align !== 'center') text.style.align = 'center';
-  let n = Math.max(2, Math.min(most, Math.ceil(text.width / maxW)));
-  for (;; n++) {
-    text.text = msgLines(words, n).join('\n');
-    if (n >= most || text.width <= maxW) return n;
-  }
-}
+/* v2.3.6221: wrapMessage moved verbatim to ../leaves/effects-ui.js (card FX) */
 /* v2.3.2212 (owner: "change the damage color to a light yellow when it's a
    crit").  Was the gold #f5c542 / amber #fbbf24 pair -- two shades for one
    event, and both close enough to the game's general gold accent (level-ups,
@@ -2030,8 +1989,7 @@ function _installDmgFont(family) {
     _installOneDmgFont(DMG_WORD_FONT, DMG_WORD_BAKE_PX, DMG_ALL_CHARS, family, DMG_WORD_PAGE_PX, DMG_WORD_PAD)];
 }
 /* v2.3.6220: _dmgFontNames moved verbatim to ../leaves/effects-combat.js (card FX) */
-/* the fonts in Pixi's cache now (a missing one as null) */
-const _dmgFontsNow = () => _dmgFontNames().map((n) => (Cache.has(n + '-bitmap') ? Cache.get(n + '-bitmap') : null));
+/* v2.3.6221: _dmgFontsNow moved verbatim to ../leaves/effects-combat.js (card FX) */
 /* v2.3.3088: WHICH FACE THE ATLAS WAS DRAWN IN.  The install runs as this
    module loads -- before the page's web fonts have arrived (index.html loads
    them display=swap), so the glyphs are normally the browser's own sans-serif,
@@ -2530,35 +2488,7 @@ function lootHop(l, key, age, n = 0) {
   const out = 1 - (1 - u) * (1 - u);
   return { dy: A * env * c, sq, rot, out };
 }
-/* v2.3.2771 squash; v2.3.2772 and tilt.  Rotation is WRITTEN every call
-   (0 once settled) so a pile never keeps a stale lean. */
-/* ═══ v2.3.2773: A PILE SPREADS OUT, IT DOES NOT STACK ═══
-   Owner: "Instead of a vertical line can you make the loot spread out a bit
-   within a proximal circle."  The coin, shard and rare items used to sit in a
-   column over the remains (coin 10 px up, shard 24, rare icons 30).  Each now
-   has its own spot in a small circle around the pile's middle -- a sunflower
-   (golden-angle) spiral from a per-pile starting angle, so two piles never
-   look stamped from one template and no two items land on the same spot.  The
-   rarest go nearest the middle (they are what you are walking over for); the
-   circle is squashed vertically (x 0.55) because the ground is seen at an
-   angle.  A lone item stays in the middle.  Keys are the items present, so
-   the layout is rebuilt only when the pile's contents change (a claim). */
-function pileLayout(l, keys) {
-  const sig = keys.join(',');
-  if (l._layoutSig === sig && l._layout) return l._layout;
-  if (l._landSeed == null) l._landSeed = Math.random();
-  const out = Object.create(null);
-  const n = keys.length;
-  const a0 = l._landSeed * Math.PI * 2;
-  for (let i = 0; i < n; i++) {
-    if (n === 1) { out[keys[i]] = { ox: 0, oy: 0 }; continue; }
-    const a = a0 + i * 2.39996;   /* the golden angle */
-    const r = PILE_R * (0.4 + 0.6 * Math.sqrt((i + 0.5) / n)) * (0.85 + 0.3 * _hash(l._landSeed * 37 + i * 4.1));
-    out[keys[i]] = { ox: Math.cos(a) * r, oy: Math.sin(a) * r * 0.55 };
-  }
-  l._layout = out; l._layoutSig = sig;
-  return out;
-}
+/* v2.3.6221: pileLayout moved verbatim to ../leaves/effects-economy.js (card FX) */
 const _AT_MIDDLE = { ox: 0, oy: 0 };
 /* v2.3.6220: applySquash moved verbatim to ../leaves/effects-economy.js (card FX) */
 

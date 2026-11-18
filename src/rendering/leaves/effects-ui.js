@@ -123,3 +123,20 @@ export function isAsciiOnly(s) {
   }
   return true;
 }
+
+export const MSG_MAX_LINES = 4;
+/* Wrap a message's freshly made Text / BitmapText (at its resting scale, so
+   `width` is popup px) if it is wider than `maxW` (msgWrapW).  Returns its lines. */
+export function wrapMessage(text, plain, maxW) {
+  if (!(text.width > maxW) || plain.indexOf('\n') >= 0) return 1;
+  const words = plain.split(' ').filter(Boolean);
+  const most = Math.min(MSG_MAX_LINES, words.length);
+  if (most < 2) return 1;   /* one long word: nowhere to break it */
+  /* centred lines -- the glyph atlas's text is made left-aligned; one line is the same either way */
+  if (text.style && text.style.align !== 'center') text.style.align = 'center';
+  let n = Math.max(2, Math.min(most, Math.ceil(text.width / maxW)));
+  for (;; n++) {
+    text.text = msgLines(words, n).join('\n');
+    if (n >= most || text.width <= maxW) return n;
+  }
+}
