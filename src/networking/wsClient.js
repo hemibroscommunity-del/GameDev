@@ -94,7 +94,6 @@ import { revealBus } from '@/ui/reveal/revealBus.js'; /* v2.3.1925 */
 import { applyCharacterRecord, hasStoredCharacter, publishCharRecord } from '@/game/characterRecord.js'; /* v2.3.1814: the stored name+look */
 import { toDisplayDamage } from '@/data/gameSystems.js'; /* v2.3.2520: the display damage scale */
 import { setGrottoParty, setWeaponStashMax } from '@/data/gameSystems.js'; /* v2.3.3579: the Mayor's Goo Grotto aside */
-import { MINIGAME_REWARDS } from '@/data/gameSystems.js'; /* v2.3.5902: the grade paid's words (harvest_credit) */
 import { WHEEL_DUNGEON_PARTY } from '@/data/wheelDungeons.js'; /* v2.3.3579 */
 import { setOneFormulaEnabled, setOneLevelEnabled, setGearOnLevel } from '@/data/oneFormula.js'; /* v2.3.3260: one formula for every fight; v2.3.3538: one level; v2.3.3544: gear on level */
 import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, RARITY_TIERS, ZONE_RESOURCES, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions, setGridCapsEnabled, setT2SimpleEnabled, setT2BenchEnabled, setProg3Enabled, setProg3XEnabled, setProg3ElemEnabled /* v2.3.2512 */, setProg3SharedEnabled /* v2.3.2592 */, setProg3RelEnabled /* v2.3.2680 */, setStatCapFree /* v2.3.3578 */, setGearQEnabled /* v2.3.2664 */, setFishHealEnabled /* v2.3.3260 */, setAbilitiesEnabled, abilityRejectText, setElemBurstEnabled, setBlockScaleEnabled, setMilestonesRetired /* v2.3.2662 */, PROG3_SKILL_META /* v2.3.2790 */ } from '@/data/index.js';
@@ -232,7 +231,7 @@ function _rescueDisplacedArmor(S, slot, stashKey, incoming) {
 import { resendKeptQuests } from '@/game/questKept.js'; /* v2.3.4641: quest taps dropped while down */
 import { settleHandIns } from '@/game/questHandIn.js'; /* v2.3.4940: a refused hand-in's counters taken back */
 import { applyLocalRespawn } from '@/game/respawn.js'; /* v2.3.1822 */
-import { applyGatherHits } from '@/game/lifeSkillRewards.js'; /* v2.3.2956: the worker's gathering hits */
+import { applyGatherHits, harvestCreditShown } from '@/game/lifeSkillRewards.js'; /* v2.3.2956: the worker's gathering hits; v2.3.5902: a harvest's credit shown */
 import { applyNmlSkull, applyNmlLoss, applyNmlTake, nmlPeerSkull, applyNmlLock, nmlLockAskShow } from '@/game/noMansLand.js'; /* v2.3.3058: No man's land; v2.3.3316: + what your kill took */
 import { canBePlaced, onBodyPlace, bodyPlaceDue } from '@/game/bodyPlace.js'; /* v2.3.4455: a relaunch mid-fight lands at the body */
 import { freeSwingAsk } from '@/game/manualCombat.js'; /* v2.3.4520: the free-swing trial, asked for in the join */
@@ -3514,10 +3513,7 @@ export function setupWebSocket(ctx) {
                  formula. */
               if (!msg.payload || !S.rpg) break;
               var hc = msg.payload;
-              if (hc.shard) {
-                var _pickedHShard = shardByKey(hc.shard);
-                pushDmgPopup(S, S.player.x, S.player.y - 54, '+ ' + (_pickedHShard ? _pickedHShard.label : 'Shard'), (_pickedHShard && _pickedHShard.color) || '#cce6ff');
-              }
+              harvestCreditShown(S, hc);   /* v2.3.5902: the shard rolled, and the grade paid where it is not the one shown (lifeSkillRewards.js) */
               /* v2.3.4036: a rare fish says so -- "An albino Trout!", "A LARGE
                  Salmon!" (server fishlog.js rolls it; the bag's echo carries
                  the key) -- against a worker that rolls them */
@@ -3525,19 +3521,6 @@ export function setupWebSocket(ctx) {
                 var _fw = fishCatchWords(hc.fish.v, hc.fish.sp);
                 if (_fw) { pushDmgPopup(S, S.player.x, S.player.y - 62, _fw, hc.fish.v === 'large' ? '#F2C14E' : '#F6D9E4'); try { BT_AUDIO.collect(); } catch (e) {} }
               }
-              /* v2.3.5902 (card K4): THE GRADE PAID.  The phone showed its own
-                 grade when it swung ("PERFECT!", "Copper Ore x2", the XP);
-                 against a worker that judges it (caps.harvestGrade:
-                 server/src/harvestgrade.js, the live flag `harvestgrade`) a
-                 perfect may be paid as good -- so when the grade paid is
-                 not the grade shown, say what was paid.  The bag and the
-                 XP bar follow player_state as ever. */
-              if (hc.grade && S._serverCaps && S._serverCaps.harvestGrade && S._strikeShown
-                && S._strikeShown.id === hc.nodeId && S._strikeShown.accuracy !== hc.grade && MINIGAME_REWARDS[hc.grade]) {
-                var _paid = MINIGAME_REWARDS[hc.grade];
-                pushDmgPopup(S, S.player.x, S.player.y - 70, 'Paid as ' + _paid.label + (hc.qty > 1 ? ' x' + hc.qty : '') + ' +' + (hc.xpAmt || 0) + ' XP', _paid.color);
-              }
-              if (hc.nodeId && S._strikeShown && S._strikeShown.id === hc.nodeId) S._strikeShown = null;
               if (hc.leveled && hc.skillName) {
                 var _sklEmoji = hc.skillName === 'fishing' ? '🎣' : hc.skillName === 'woodcutting' ? '🪓' : '⛏';
                 var _sklLabel = hc.skillName.charAt(0).toUpperCase() + hc.skillName.slice(1);

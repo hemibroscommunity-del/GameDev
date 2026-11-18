@@ -848,6 +848,27 @@ function applyMiningReward(S, node, result, deps) {
     try { localStorage.setItem('bt_rpg', JSON.stringify(R)); } catch (e) {}
 }
 
+/* v2.3.5902 (card K4): A HARVEST'S CREDIT SHOWN (wsClient.js harvest_credit).
+   The shard the worker rolled (moved here from wsClient.js, unchanged), and
+   THE GRADE PAID: the phone showed its own grade when it swung ("PERFECT!",
+   "Copper Ore x2", the XP: the apply functions above, which keep it in
+   S._strikeShown); against a worker that judges it (caps.harvestGrade:
+   server/src/harvestgrade.js, the live flag `harvestgrade`) a perfect may be
+   paid as good, so when the grade paid is not the one shown, say what was
+   paid.  The bag and the XP bar follow player_state as ever. */
+export function harvestCreditShown(S, hc) {
+    if (hc.shard) {
+      var _pickedHShard = shardByKey(hc.shard);
+      pushDmgPopup(S, S.player.x, S.player.y - 54, '+ ' + (_pickedHShard ? _pickedHShard.label : 'Shard'), (_pickedHShard && _pickedHShard.color) || '#cce6ff');
+    }
+    var shown = S._strikeShown;
+    if (!shown || shown.id !== hc.nodeId) return;
+    S._strikeShown = null;
+    var paid = hc.grade && MINIGAME_REWARDS[hc.grade];
+    if (!paid || shown.accuracy === hc.grade || !(S._serverCaps && S._serverCaps.harvestGrade)) return;
+    pushDmgPopup(S, S.player.x, S.player.y - 70, 'Paid as ' + paid.label + (hc.qty > 1 ? ' x' + hc.qty : '') + ' +' + (hc.xpAmt || 0) + ' XP', paid.color);
+}
+
 /* v2.3.4421: ONE number for a cooked dish's XP: the popup read "+40" while
    the worker (cooking.js _handleCookRequest) and the fallback below pay 200
    (the state-machine sweep, V9a G4-10).  Exported for silent-refusals.test,
