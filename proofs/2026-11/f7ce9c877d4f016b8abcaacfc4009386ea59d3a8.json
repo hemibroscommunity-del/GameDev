@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "f7ce9c877d4f016b8abcaacfc4009386ea59d3a8",
+  "tree": "799083817c957a34d9ef2535b1d9d6b9ba41fa12",
+  "committedAt": "2026-11-18T11:36:01-08:00",
+  "subject": "Merge pull request #2236 from hemibroscommunity-del/claude/plan-wd3-8-craft",
+  "files": 8402,
+  "bytes": 963031575,
+  "listingSha256": "04d78d4683d919969b0a227ac0a299b3e37c2ee5ff0752a3b4795e78fb89ea38",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
