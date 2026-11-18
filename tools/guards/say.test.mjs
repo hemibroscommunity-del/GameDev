@@ -20,8 +20,8 @@
  *      case; no key in two files (the spec's "ONE table"); every row is
  *      words or a { phone, desk } / { one, other } form of words;
  *   7. THE READERS: a screen that imports a table reads only keys that table
- *      has (a literal key in `say(SAY, '...')` / `sayPieces(SAY, '...')`),
- *      and reads it through say.js.
+ *      has (every `'<screen>.<what>'` literal in the file, v2.3.6321: a key
+ *      a ternary chooses too), and reads it through say.js.
  *
  * BREAK PROOF (rule 8), tried by hand on scratch edits, 2026-11-18:
  *   - src/ui/panels/ClanInviteCard.jsx: 'clanInvite.accept' -> 'clanInvite.acept'  -> FAIL 7
@@ -157,12 +157,16 @@ const tables = Object.create(null);   // screen -> SAY
     const table = tables[m[1]];
     if (!table) { bad.push(f + ': imports a table that is not there (' + m[1] + ')'); continue; }
     if (!/from\s*['"][^'"]*game\/say\.js['"]/.test(src)) bad.push(f + ': reads its table without say.js');
-    for (const k of src.matchAll(/\bsay(?:Pieces)?\(\s*SAY\s*,\s*'([^']+)'/g)) {
+    /* v2.3.6321: every '<screen>.<what>' written in the file, not only the
+       first argument of a call: a key chosen by a ternary
+       (`say(SAY, on ? 'x.unequip' : 'x.equip')`) is read all the same */
+    const keys = new Set([...src.matchAll(new RegExp("'(" + m[1] + "\\.[A-Za-z0-9]+)'", 'g'))].map((k) => k[1]));
+    for (const k of keys) {
       reads++;
-      if (!Object.prototype.hasOwnProperty.call(table, k[1])) bad.push(f + ': reads ' + k[1] + ', not in ' + SAY_DIR + '/' + m[1] + '.js');
+      if (!Object.prototype.hasOwnProperty.call(table, k)) bad.push(f + ': reads ' + k + ', not in ' + SAY_DIR + '/' + m[1] + '.js');
     }
   }
-  check('7. the readers: ' + readers + ' screen(s), ' + reads + ' reads, each a key its table has', bad.length === 0 && readers > 0, bad);
+  check('7. the readers: ' + readers + ' screen(s), ' + reads + ' keys named, each one its table has', bad.length === 0 && readers > 0, bad);
 }
 
 process.exit(failed ? 1 : 0);

@@ -59,8 +59,10 @@ import {
      (equipModel) owns that lookup now. */
   recalcDerived,
 } from '../../../data/gameSystems.js';
-import { fineInput } from '../../../game/deviceProfile.js';   /* v2.3.4804: the device profile */
+/* v2.3.6321: the device profile's fineInput is asked by say.js now (the block hint's { phone, desk } row) */
 import { act } from '@/game/actions.js';   /* v2.3.5191: the page's requests leave through the action door (card K PR 7) */
+import { SAY } from '@/data/say/itemDetail.js';   /* v2.3.6321: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';
 
 /* v2.3.3516: the card's line for a gem, a shard with a gem in it, or the Rare
    Gem -- null for anything else */
@@ -69,8 +71,8 @@ function gemCardInfo(key, SR) {
   const crack = !!caps.shardcrack;
   const g = parseGemKey(key);
   if (g && g.raw) {
-    return crack ? RAW_PER_GEM + ' make a ' + gemElementName(g.element) + ' Gem at the Gem Works'
-      : 'Cut into a ' + gemElementName(g.element) + ' Gem at the Gem Works';
+    return crack ? say(SAY, 'itemDetail.rawMakes', { n: RAW_PER_GEM, element: gemElementName(g.element) })
+      : say(SAY, 'itemDetail.rawCut', { element: gemElementName(g.element) });
   }
   if (g) {
     /* v2.3.3518: what the worker does: water's softer blows, storm's spark,
@@ -79,15 +81,15 @@ function gemCardInfo(key, SR) {
     const weight = { elemup: has && !!SR._serverCaps.elemup, soakhit: has && !!SR._serverCaps.soakhit, shockspark: has && !!SR._serverCaps.shockspark };
     const does = isWeaponGem(g.element) ? weaponGemEffect(g.element, !!caps.monsterhold, weight) : '';
     const edge = isWeaponGem(g.element) ? weaponGemEdge(g.element, weight) : '';
-    return 'Set into your gear at the Gem Works' + (does ? ' · on a weapon: ' + does.charAt(0).toLowerCase() + does.slice(1) : '')
+    return say(SAY, 'itemDetail.gemSet') + (does ? say(SAY, 'itemDetail.gemOnWeapon', { does: does.charAt(0).toLowerCase() + does.slice(1) }) : '')
       + (edge ? ' · ' + edge : '');
   }
   if (crack && typeof key === 'string' && key.indexOf('shard_') === 0 && Object.prototype.hasOwnProperty.call(SHARD_GEM_ELEMENT, key.slice(6))) {
     const ls = SR && SR.rpg && SR.rpg.lifeSkills && SR.rpg.lifeSkills.gemCutting;
     const lvl = ls && typeof ls === 'object' ? ls.level : 1;
-    return 'Crack at the Gem Works: ' + shardCrackChance(lvl) + '% hold a Raw ' + gemElementName(SHARD_GEM_ELEMENT[key.slice(6)]) + ' Gem';
+    return say(SAY, 'itemDetail.shardCrack', { chance: shardCrackChance(lvl), element: gemElementName(SHARD_GEM_ELEMENT[key.slice(6)]) });
   }
-  if (crack && key === 'rare_gem') return 'Cut into any elemental gem at the Gem Works';
+  if (crack && key === 'rare_gem') return say(SAY, 'itemDetail.rareGem');
   return null;
 }
 
@@ -106,8 +108,8 @@ function armorReqText(ar, S) {
   if (!req) return '';
   /* v2.3.3544: "Needs level 5" where armour asks your level (gear.js
      _gearOnLevel); Defense points against an older worker */
-  if (req.stat === 'level') return ' · Needs level ' + req.req + (req.met ? '' : ' (you are ' + req.have + ')');
-  return ' · Needs ' + req.req + ' Defense' + (req.met ? '' : ' (you have ' + req.have + ')');
+  if (req.stat === 'level') return say(SAY, 'itemDetail.needsLevel', { req: req.req }) + (req.met ? '' : say(SAY, 'itemDetail.youAre', { have: req.have }));
+  return say(SAY, 'itemDetail.needsDefense', { req: req.req }) + (req.met ? '' : say(SAY, 'itemDetail.youHave', { have: req.have }));
 }
 
 /* v2.3.1313 (ChatGPT round-8 §8): comparison line for stash cards —
@@ -121,10 +123,10 @@ function statDelta(d, unit, decimals) {
   if (!isFinite(d)) return null;
   const rounded = decimals ? Number(d.toFixed(decimals)) : Math.round(d);
   const sep = unit.startsWith('%') ? '' : ' '; /* "+5% Block", "+2.4 DPS" */
-  if (rounded === 0) return { text: 'Same ' + unit.replace(/^% /, '').trim() + ' as equipped', tone: 0 };
+  if (rounded === 0) return { text: say(SAY, 'itemDetail.sameAs', { unit: unit.replace(/^% /, '').trim() }), tone: 0 };
   const mag = decimals ? Math.abs(rounded).toFixed(decimals) : Math.abs(rounded);
   return {
-    text: (rounded > 0 ? '+' : '−') + mag + sep + unit + ' vs equipped',
+    text: say(SAY, 'itemDetail.vsEquipped', { sign: rounded > 0 ? '+' : '−', mag, sep, unit }),
     tone: rounded > 0 ? 1 : -1,
   };
 }
@@ -185,9 +187,11 @@ function shieldThumb(shield) {
    that is really there. */
 /* v2.3.3711: on a computer the guard is the RIGHT MOUSE BUTTON held now (the
    owner's layout: BroTown onMouseDown; Q is the special), so the card says so */
+/* v2.3.6321: a { phone, desk } row of the words table now: say.js asks the
+   same (pointer:fine) through deskWords.js's onComputer (the device profile's
+   fineInput), so the card names the same control on each */
 function shieldBlockHint() {
-  const fine = fineInput();   /* v2.3.4804: the device profile */
-  return fine ? 'Press Q to block' : 'Tap Block in a fight to raise it';
+  return say(SAY, 'itemDetail.blockHint');
 }
 
 /* Which weapon slot does a `type` belong in. */
@@ -228,7 +232,7 @@ function resolveTarget(target) {
     let info = null;
     /* v2.3.3260: the same heal in any fight (one formula; the first cut of this
        version printed a quarter-size bite for a fight with a player here) */
-    const healLine = (heal) => '+' + toDisplayDamage(heal) + ' HP when eaten';
+    const healLine = (heal) => say(SAY, 'itemDetail.healLine', { hp: toDisplayDamage(heal) });
     /* v2.3.1207: calcDisplayHeal (getFishHealAmount × HP-grid Recovery,
        ceil'd) — the server's _handleEatRequest math, so the promised
        number matches the heal the player_state echo delivers. */
@@ -257,55 +261,55 @@ function resolveTarget(target) {
        its level (farmCrops.js CROP_HEAL), only against a worker that eats it
        (caps.cropeat, read directly: caps-audit) */
     const cropHeal = (SR && SR._serverCaps && SR._serverCaps.cropeat) ? farmCropHeal(key) : 0;
-    if (isTicket) info = 'Open it to claim your cape';
-    else if (isChest) info = 'Open it for a prize — usually coins, sometimes fish, a rare gem or armour';
+    if (isTicket) info = say(SAY, 'itemDetail.ticket');
+    else if (isChest) info = say(SAY, 'itemDetail.prizeChest');
     /* v2.3.2109: it IS a control now (owner: "I wanted ability to equip and
        unequip the cape"). Ownership is still the ledger's answer -- the worker
        refuses a toggle from anyone who did not win one -- but whether it is on
        your back is yours. The line reports the live state so the button below
        is never the only thing saying which way round it is. */
     else if (isCapeItemKey(key)) {
-      info = capeIsWorn() ? 'Worn — a contest prize' : 'A contest prize, in your bag';
+      info = capeIsWorn() ? say(SAY, 'itemDetail.capeWorn') : say(SAY, 'itemDetail.capeInBag');
     }
     else if (isCookedFish) info = healLine(calcDisplayHeal(SR && SR.rpg, key));   /* v2.3.2520: display scale; v2.3.3260: and in a fight with a player */
     /* v2.3.3130: what eating or drinking it does, and the one-of-each rule.
        v2.3.3131: a dish eaten at once (the Garden Stew) is a heal, said the
        cooked fish's way. */
     else if (dish && dish.buff === 'heal') info = healLine(calcDisplayHeal(SR && SR.rpg, key));
-    else if (dish) info = dish.desc + (dish.slot === 'meal' ? ' · replaces your meal' : ' · replaces your brew');
+    else if (dish) info = say(SAY, dish.slot === 'meal' ? 'itemDetail.replacesMeal' : 'itemDetail.replacesBrew', { desc: dish.desc });
     else if (cropHeal > 0) info = healLine(cropHeal);   /* v2.3.3537 */
-    else if (isRawFish) info = 'Cook over a campfire';
-    else if (isBurnt) info = 'Inedible';
+    else if (isRawFish) info = say(SAY, 'itemDetail.rawFish');
+    else if (isBurnt) info = say(SAY, 'itemDetail.burnt');
     /* v2.3.3139: a log the Woodworker hardens says so, as ore says where it
        smelts -- and hardened wood says what it is for */
     else if (isLog && SR && SR._serverCaps && SR._serverCaps.hardenedwood && HARDENED_WOOD_BY_LOG[key]) {
       /* v2.3.3981: one log a piece with caps.onetoone, five without */
       const hw = hardenedWoodRecipe(HARDENED_WOOD_BY_LOG[key], !!SR._serverCaps.onetoone);
-      info = 'Light a campfire, or harden ' + hw.logCost + ' into ' + hw.name + ' at the Woodworker';
+      info = say(SAY, 'itemDetail.logHarden', { n: hw.logCost, name: hw.name });
     }
-    else if (isLog) info = 'Light a campfire to cook at';
+    else if (isLog) info = say(SAY, 'itemDetail.log');
     else if (Object.prototype.hasOwnProperty.call(HARDENED_WOOD_RECIPES, key)) {
       const hw = hardenedWoodRecipe(key, !!(SR && SR._serverCaps && SR._serverCaps.onetoone));   /* v2.3.3981 */
       info = (SR && SR._serverCaps && SR._serverCaps.hardenmats)
-        ? 'Hardens a ' + hw.logName.replace(/ (Log|Wood)$/, '').toLowerCase() + ' bow or staff at the Woodworker'
-        : 'Made from ' + hw.logCost + ' ' + logWord(hw, hw.logCost);
+        ? say(SAY, 'itemDetail.hardens', { log: hw.logName.replace(/ (Log|Wood)$/, '').toLowerCase() })
+        : say(SAY, 'itemDetail.madeFrom', { n: hw.logCost, log: logWord(hw, hw.logCost) });
     }
     /* v2.3.2822: say where the ore goes and where the bar came from -- the
        smelt lives in the Blacksmith, which nothing in the bag pointed at. */
     else if (SR && SR._serverCaps && SR._serverCaps.smelting && SMELT_ORE_TO_BAR[key]) {
       const r = smeltRecipe(SMELT_ORE_TO_BAR[key], !!SR._serverCaps.onetoone);   /* v2.3.3981: one ore a bar with the cap */
-      info = 'Smelt ' + r.oreCost + ' into a ' + r.name + ' at the Blacksmith';
+      info = say(SAY, 'itemDetail.smelt', { n: r.oreCost, name: r.name });
     }
     /* v2.3.3092: and where a bar goes -- the Blacksmith's Armor tab */
-    else if (SMELT_RECIPES[key] && SR && SR._serverCaps && SR._serverCaps.armorforge) info = 'Forge into armor at the Blacksmith';
-    else if (SMELT_RECIPES[key]) { const r = smeltRecipe(key, !!(SR && SR._serverCaps && SR._serverCaps.onetoone)); info = 'Smelted from ' + r.oreCost + ' ' + r.oreName; }   /* v2.3.3981 */
+    else if (SMELT_RECIPES[key] && SR && SR._serverCaps && SR._serverCaps.armorforge) info = say(SAY, 'itemDetail.forge');
+    else if (SMELT_RECIPES[key]) { const r = smeltRecipe(key, !!(SR && SR._serverCaps && SR._serverCaps.onetoone)); info = say(SAY, 'itemDetail.smeltedFrom', { n: r.oreCost, ore: r.oreName }); }   /* v2.3.3981 */
     /* v2.3.3141: an essence -- where it is used, and on what */
     else if (essenceInfo(key) && SR && SR._serverCaps && SR._serverCaps.salvage) info = essenceInfo(key);
     /* v2.3.3516: what a shard, a raw gem, a gem and the Rare Gem are for --
        the Gem Works, which nothing in the bag pointed at (data/gems.js,
        data/shards.js; the crack's words only against a worker that cracks) */
     else if (gemCardInfo(key, SR)) info = gemCardInfo(key, SR);
-    else if (count > 0) info = 'Quantity: ' + count;
+    else if (count > 0) info = say(SAY, 'itemDetail.quantity', { n: count });
     return {
       lockKey: key,
       thumb: thumbFor(key),
@@ -386,8 +390,8 @@ function resolveTarget(target) {
       lockKey,
       thumb: weaponThumb(wpn),
       glyph: null,
-      name: wpn.name || 'Weapon',
-      info: range ? ('Damage ' + range.dmgText + ' · DPS ' + range.dps) : null,
+      name: wpn.name || say(SAY, 'itemDetail.weapon'),
+      info: range ? say(SAY, 'itemDetail.damage', { dmg: range.dmgText, dps: range.dps }) : null,
       desc: tierLabel(wpn) + ' · ' + (wpn.type || '').charAt(0).toUpperCase() + (wpn.type || '').slice(1),
       actions: { unequip: true },
     };
@@ -399,9 +403,9 @@ function resolveTarget(target) {
       lockKey: 'shield',
       thumb: shieldThumb(sh),
       glyph: '\u{1F6E1}',
-      name: sh.name || 'Shield',
+      name: sh.name || say(SAY, 'itemDetail.shield'),
       info: shieldBlockHint(),   /* v2.3.3481: was 'Hold to block' (see shieldBlockHint) */
-      desc: (sh.gearBase === 'wood' ? 'Wooden' : tierLabel(sh)) + ' · Shield',
+      desc: say(SAY, 'itemDetail.shieldDesc', { tier: sh.gearBase === 'wood' ? say(SAY, 'itemDetail.wooden') : tierLabel(sh) }),
       actions: { unequip: true },
     };
   }
@@ -418,14 +422,14 @@ function resolveTarget(target) {
        while a sword is active) — same slot the Equip button swaps. */
     const eqWpn = SW && SW.rpg && SW.rpg[slotFor(wpn.type)];
     const delta = eqWpn
-      ? statDelta(calcDisplayDps(SW.rpg, wpn) - calcDisplayDps(SW.rpg, eqWpn), 'DPS', 1)
+      ? statDelta(calcDisplayDps(SW.rpg, wpn) - calcDisplayDps(SW.rpg, eqWpn), say(SAY, 'itemDetail.unitDps'), 1)
       : null;
     return {
       lockKey: 'stashWeapon_' + (target.index || 0),
       thumb: weaponThumb(wpn),
       glyph: null,
-      name: wpn.name || 'Weapon',
-      info: range ? ('Damage ' + range.dmgText + ' · DPS ' + range.dps) : null,
+      name: wpn.name || say(SAY, 'itemDetail.weapon'),
+      info: range ? say(SAY, 'itemDetail.damage', { dmg: range.dmgText, dps: range.dps }) : null,
       delta,
       desc: tierLabel(wpn) + ' · ' + (wpn.type || '').charAt(0).toUpperCase() + (wpn.type || '').slice(1),
       /* v2.3.2476: a stash weapon is the other half of what the store can
@@ -443,16 +447,16 @@ function resolveTarget(target) {
     const SS = getState();
     const eqSh = SS && SS.rpg && SS.rpg.shield;
     const delta = eqSh
-      ? statDelta((calcBlockReduction(0, sh) - calcBlockReduction(0, eqSh)) * 100, '% Block', 0)
+      ? statDelta((calcBlockReduction(0, sh) - calcBlockReduction(0, eqSh)) * 100, say(SAY, 'itemDetail.unitBlock'), 0)
       : null;
     return {
       lockKey: 'stashShield_' + (target.index || 0),
       thumb: shieldThumb(sh),
       glyph: '\u{1F6E1}',
-      name: sh.name || 'Shield',
+      name: sh.name || say(SAY, 'itemDetail.shield'),
       info: shieldBlockHint(),   /* v2.3.3481: was 'Hold to block' (see shieldBlockHint) */
       delta,
-      desc: (sh.gearBase === 'wood' ? 'Wooden' : tierLabel(sh)) + ' · Shield',
+      desc: say(SAY, 'itemDetail.shieldDesc', { tier: sh.gearBase === 'wood' ? say(SAY, 'itemDetail.wooden') : tierLabel(sh) }),
       /* v2.3.2531: Sell -- the store can take gear now (store phase 3,
          server/src/storegear.js).  Its OWN cap, not the store's: an older
          worker refuses `kind: 'gear'`, so an ungated button would take the
@@ -487,9 +491,9 @@ function resolveTarget(target) {
          the copper torso. */
       thumb: `${armorIconFor('chest', ar && ar.mat)}${ITEMS_V}`,
       glyph: '\u{1F9BA}',
-      name: ar.name || 'Armor',
-      info: Math.round(dr * 100) + '% damage reduced',
-      desc: (ar.gearBase === 'wood' ? 'Leather' : tierLabel(ar)) + ' · Chest',
+      name: ar.name || say(SAY, 'itemDetail.armor'),
+      info: say(SAY, 'itemDetail.drLine', { pct: Math.round(dr * 100) }),
+      desc: say(SAY, 'itemDetail.chestDesc', { tier: ar.gearBase === 'wood' ? say(SAY, 'itemDetail.leather') : tierLabel(ar) }),
       actions: { unequip: true },
     };
   }
@@ -505,7 +509,7 @@ function resolveTarget(target) {
        whole numbers would render a real upgrade as "+0%". */
     const eqAr = S && S.rpg && S.rpg.armor;
     const delta = eqAr
-      ? statDelta((dr - getArmorPieceDr(eqAr, 'chest')) * 100, '% Damage Reduced', 1)
+      ? statDelta((dr - getArmorPieceDr(eqAr, 'chest')) * 100, say(SAY, 'itemDetail.unitDr'), 1)
       : null;
     return {
       lockKey: 'stashArmor_' + (target.index || 0),
@@ -516,10 +520,10 @@ function resolveTarget(target) {
          v2.3.1758: ...and both read the piece's own metal. */
       thumb: `${armorIconFor('chest', ar && ar.mat)}${ITEMS_V}`,
       glyph: '\u{1F9BA}',
-      name: ar.name || 'Armor',
-      info: Math.round(dr * 100) + '% damage reduced',
+      name: ar.name || say(SAY, 'itemDetail.armor'),
+      info: say(SAY, 'itemDetail.drLine', { pct: Math.round(dr * 100) }),
       delta,
-      desc: (ar.gearBase === 'wood' ? 'Leather' : tierLabel(ar)) + ' · Chest' + reqText,
+      desc: say(SAY, 'itemDetail.chestDesc', { tier: ar.gearBase === 'wood' ? say(SAY, 'itemDetail.leather') : tierLabel(ar) }) + reqText,
       /* v2.3.2531: Sell -- the store can take gear now (store phase 3,
          server/src/storegear.js).  Its OWN cap, not the store's: an older
          worker refuses `kind: 'gear'`, so an ungated button would take the
@@ -546,18 +550,18 @@ function resolveTarget(target) {
     const dr = getArmorPieceDr(ar, 'legs');
     const eqLegs = S && S.rpg && S.rpg.legsArmor;
     const delta = eqLegs
-      ? statDelta((dr - getArmorPieceDr(eqLegs, 'legs')) * 100, '% Damage Reduced', 1)
+      ? statDelta((dr - getArmorPieceDr(eqLegs, 'legs')) * 100, say(SAY, 'itemDetail.unitDr'), 1)
       : null;
     return {
       lockKey: 'stashLegs_' + (target.index || 0),
       thumb: `${armorIconFor('legs', ar && ar.mat)}${ITEMS_V}`, /* v2.3.1758 */
       glyph: '\u{1F456}',
-      name: ar.name || 'Greaves',
-      info: Math.round(dr * 100) + '% damage reduced',
+      name: ar.name || say(SAY, 'itemDetail.greaves'),
+      info: say(SAY, 'itemDetail.drLine', { pct: Math.round(dr * 100) }),
       delta,
       /* Quest armour carries no gearBase, so tierLabel is empty for it —
          don't render a leading separator for a tier it does not have. */
-      desc: (tierLabel(ar) ? tierLabel(ar) + ' · ' : '') + 'Armor · Legs' + reqText,
+      desc: (tierLabel(ar) ? tierLabel(ar) + ' · ' : '') + say(SAY, 'itemDetail.legsDesc') + reqText,
       /* v2.3.2531: Sell -- the store can take gear now (store phase 3,
          server/src/storegear.js).  Its OWN cap, not the store's: an older
          worker refuses `kind: 'gear'`, so an ungated button would take the
@@ -579,8 +583,8 @@ function resolveTarget(target) {
       thumb: gearThumb(target.gearId),
       glyph: target.slot === 'chest' ? '\u{1F9BA}' : '\u{1F456}',
       name: gearName(target.slot, target.gearId),
-      info: 'Worn armor',
-      desc: 'Steel · ' + (target.slot === 'chest' ? 'Chest' : 'Legs'),
+      info: say(SAY, 'itemDetail.wornArmor'),
+      desc: say(SAY, 'itemDetail.steelDesc', { slot: say(SAY, target.slot === 'chest' ? 'itemDetail.slotChest' : 'itemDetail.slotLegs') }),
       actions: { unequip: true },
     };
   }
@@ -592,8 +596,8 @@ function resolveTarget(target) {
       thumb: gearThumb(g.gearId),
       glyph: g.slot === 'chest' ? '\u{1F9BA}' : '\u{1F456}',
       name: g.name || gearName(g.slot, g.gearId),
-      info: 'In bag',
-      desc: 'Steel · ' + (g.slot === 'chest' ? 'Chest' : 'Legs'),
+      info: say(SAY, 'itemDetail.inBag'),
+      desc: say(SAY, 'itemDetail.steelDesc', { slot: say(SAY, g.slot === 'chest' ? 'itemDetail.slotChest' : 'itemDetail.slotLegs') }),
       /* v2.3.2531: Sell -- the store can take gear now (store phase 3,
          server/src/storegear.js).  Its OWN cap, not the store's: an older
          worker refuses `kind: 'gear'`, so an ungated button would take the
@@ -638,7 +642,7 @@ function gearSellCard(target) {
 /* Catalog display name for a gear slot item id. */
 function gearName(slot, gearId) {
   const c = (GEAR_CATALOG[slot] || []).find((g) => g.id === gearId);
-  return (c && c.name) || 'Armor';
+  return (c && c.name) || say(SAY, 'itemDetail.armor');
 }
 /* v2.3.1325: painted item set for the worn-gear pieces. */
 function gearThumb(gearId) {
@@ -655,13 +659,13 @@ function prettyName(key) {
   /* v2.3.2103: the prize of a public contest read as "Goldticket Crimson"
      out of the key-derived branch below -- which is what the owner was
      looking at when he had to ask whether an item in his own bag was it. */
-  if (isTicketKey(key)) return 'Golden Ticket';
+  if (isTicketKey(key)) return say(SAY, 'itemDetail.goldenTicket');
   /* v2.3.2107: 'cape_crimson' out of the key-derived branch reads "Cape
      Crimson". The catalog already names it properly for the character sheet;
      the bag says the same thing. */
   if (isCapeItemKey(key)) {
     const id = String(key).slice('cape_'.length);
-    return id.charAt(0).toUpperCase() + id.slice(1) + ' Cape';
+    return say(SAY, 'itemDetail.capeName', { colour: id.charAt(0).toUpperCase() + id.slice(1) });
   }
   return key
     .replace(/^cooked_fish_/, 'Cooked ')
@@ -892,7 +896,7 @@ export const ItemDetailPopup = () => {
 
     if (slot === 'weapon') {
       const active = R2.activeSlot || 'melee';
-      title = 'WEAPON'; /* melee/ranged/staff all share this slot */
+      title = say(SAY, 'itemDetail.pickWeapon'); /* melee/ranged/staff all share this slot */
       const prop = active === 'ranged' ? 'rangedWeapon' : active === 'staff' ? 'staffWeapon' : 'weapon';
       /* ═══ v2.3.1687: ALL THREE WEAPONS, NOT JUST THE ACTIVE SLOT'S ═══
          Owner: "the old behavior of choosing among the 3 primary weapons
@@ -913,8 +917,8 @@ export const ItemDetailPopup = () => {
         const base = [tierLabel(w), (WEAPON_TYPES[w.type] && WEAPON_TYPES[w.type].label) || w.type].filter(Boolean).join(' ');
         return {
           key: 'w' + (w.name || w.type || '') + R2.weaponStash.indexOf(w) + (on ? 'E' : ''),
-          name: w.name || ((tierLabel(w) || '') + ' ' + (w.type || 'weapon')).trim(),
-          sub: [base, dr ? 'DMG ' + dr.dmgText + ' · DPS ' + dr.dps : null].filter(Boolean).join(' · '),
+          name: w.name || ((tierLabel(w) || '') + ' ' + (w.type || say(SAY, 'itemDetail.weaponWord'))).trim(),
+          sub: [base, dr ? say(SAY, 'itemDetail.dmgRow', { dmg: dr.dmgText, dps: dr.dps }) : null].filter(Boolean).join(' · '),
           iconSrc: weaponThumb(w), glyph: '⚔️', on,
           toggle: () => {
             /* v2.3.1687: three cases now that every weapon is listed, not
@@ -994,12 +998,12 @@ export const ItemDetailPopup = () => {
       }
       for (const w of R2.weaponStash) { if (w) rows.push(mkRow(w, false)); }
     } else if (slot === 'shield') {
-      title = 'SHIELD';
+      title = say(SAY, 'itemDetail.pickShield');
       if (!R2.shieldStash) R2.shieldStash = [];
       const mkRow = (sh, on) => ({
         key: 'sh' + (sh.name || '') + R2.shieldStash.indexOf(sh) + (on ? 'E' : ''),
-        name: sh.name || ((tierLabel(sh) || 'Wood') + ' Shield'),
-        sub: ((tierLabel(sh) || 'Wood') + ' shield · raise to block').trim(), iconSrc: shieldThumb(sh), glyph: '🛡️', on,
+        name: sh.name || say(SAY, 'itemDetail.shieldName', { tier: tierLabel(sh) || say(SAY, 'itemDetail.wood') }),
+        sub: say(SAY, 'itemDetail.shieldSub', { tier: tierLabel(sh) || say(SAY, 'itemDetail.wood') }).trim(), iconSrc: shieldThumb(sh), glyph: '🛡️', on,
         toggle: () => {
           /* v2.3.2877: owner -- "the shield needs the same 'equip' sound as
              when you equip things like sword and bow.  Right now it just makes
@@ -1021,9 +1025,9 @@ export const ItemDetailPopup = () => {
       if (R2.shield) rows.push(mkRow(R2.shield, true));
       for (const sh of R2.shieldStash) rows.push(mkRow(sh, false));
     } else if (slot === 'chest' || slot === 'legs') {
-      title = slot === 'chest' ? 'CHEST' : 'LEGS';
+      title = say(SAY, slot === 'chest' ? 'itemDetail.pickChest' : 'itemDetail.pickLegs');
       if (!R2.gearStash) R2.gearStash = [];
-      const sub = slot === 'chest' ? 'Plate armor · chest · raises defense' : 'Plate greaves · legs · raises defense';
+      const sub = say(SAY, slot === 'chest' ? 'itemDetail.chestSub' : 'itemDetail.legsSub');
       const mkGearRow = (gearId, on, stashObj) => ({
         key: slot + gearId + (on ? 'E' : 's' + (stashObj ? R2.gearStash.indexOf(stashObj) : 'c')),
         name: gearName(slot, gearId), sub, iconSrc: gearThumb(gearId), on,
@@ -1139,7 +1143,7 @@ export const ItemDetailPopup = () => {
       if (slot === 'chest') {
         const shirtOn = getEquip('shirt') !== 'none';
         rows.push({
-          key: 'shirt', name: 'T-Shirt', sub: 'Cloth shirt · worn under armor',
+          key: 'shirt', name: say(SAY, 'itemDetail.shirt'), sub: say(SAY, 'itemDetail.shirtSub'),
           iconSrc: `/icons/items/cloth-shirt.webp${ITEMS_V}`, on: shirtOn, /* v2.3.1325 */
           /* v2.3.1070: drive the MASTER shirt store (setShirt) so the swing
              renderer -- which reads getShirt() -- sees the change; setEquip
@@ -1186,7 +1190,7 @@ export const ItemDetailPopup = () => {
             boxShadow: r.on ? 'none' : 'inset 0 1px 0 rgba(255,255,255,0.25), 0 2px 6px rgba(0,0,0,0.22)',
             fontFamily: 'inherit',
             cursor: 'pointer', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
-          }}>{r.on ? 'Unequip' : 'Equip'}</button>
+          }}>{say(SAY, r.on ? 'itemDetail.unequip' : 'itemDetail.equip')}</button>
       </div>
     );
 
@@ -1228,7 +1232,7 @@ export const ItemDetailPopup = () => {
           {/* v2.3.1232: 11/600 uppercase section header + raised hairline close chip */}
           <div style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, marginBottom: 5 }}>
             <span style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#96A2A0' }}>{title}</span>
-            <button type="button" aria-label="Close" onPointerUp={(e) => { e.stopPropagation(); swallowTapClick(e); itemDetailBus.close(); }}
+            <button type="button" aria-label={say(SAY, 'itemDetail.close')} onPointerUp={(e) => { e.stopPropagation(); swallowTapClick(e); itemDetailBus.close(); }}
               /* v2.3.3560: ...and the tap's click, sent once the card is gone,
                  is eaten: it landed on the world under the ✕ (swallowTapClick.js) */
               /* v2.3.3407: Esc presses it -- by pointerup, its own gesture
@@ -1244,12 +1248,12 @@ export const ItemDetailPopup = () => {
               }}>✕</button>
           </div>
           {rows.length === 0
-            ? <div style={{ fontSize: 11, color: '#96A2A0', padding: '4px 2px' }}>Nothing to equip here.</div>
+            ? <div style={{ fontSize: 11, color: '#96A2A0', padding: '4px 2px' }}>{say(SAY, 'itemDetail.nothing')}</div>
             : <div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column', gap: 6, overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch', scrollSnapType: 'y mandatory' }}>
                 {rows.map(row)}
               </div>}
           {rows.length > 1 && (
-            <div style={{ flex: '0 0 auto', marginTop: 4, textAlign: 'center', fontSize: 11, fontWeight: 600, letterSpacing: 0.4, color: '#96A2A0', pointerEvents: 'none', userSelect: 'none' }}>⌄ swipe · {rows.length} items</div>
+            <div style={{ flex: '0 0 auto', marginTop: 4, textAlign: 'center', fontSize: 11, fontWeight: 600, letterSpacing: 0.4, color: '#96A2A0', pointerEvents: 'none', userSelect: 'none' }}>{say(SAY, 'itemDetail.swipe', { n: rows.length })}</div>
           )}
         </div>
       </div>
@@ -1325,7 +1329,7 @@ export const ItemDetailPopup = () => {
             fontFamily: 'inherit',
             cursor: (on || canEquip) ? 'pointer' : 'default',
             WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
-          }}>{on ? 'Unequip' : 'Equip'}</button>
+          }}>{say(SAY, on ? 'itemDetail.unequip' : 'itemDetail.equip')}</button>
       </div>
     );
     return (
@@ -1347,16 +1351,16 @@ export const ItemDetailPopup = () => {
           }}>
           {/* v2.3.1232: 11/600 uppercase section header */}
           <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#96A2A0', marginBottom: 5 }}>
-            Chest — Layers
+            {say(SAY, 'itemDetail.chestLayers')}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
             {/* v2.3.1758: the metal of whichever piece this row is about —
                 the worn one, or the one waiting in the bag. */}
             {layerRow('armor', `${armorIconFor('chest', (armorOn ? R2.armor : stashedChest) && (armorOn ? R2.armor : stashedChest).mat)}${ITEMS_V}`,
-              armorOn ? ((R2.armor && R2.armor.name) || 'Armor') : (stashedChest ? (stashedChest.name || 'Armor') : 'No chest armor'),
-              'Armor · top layer', armorOn, !!stashedChest, toggleArmor)}
+              armorOn ? ((R2.armor && R2.armor.name) || say(SAY, 'itemDetail.armor')) : (stashedChest ? (stashedChest.name || say(SAY, 'itemDetail.armor')) : say(SAY, 'itemDetail.noChest')),
+              say(SAY, 'itemDetail.armorTop'), armorOn, !!stashedChest, toggleArmor)}
             {layerRow('shirt', `/icons/items/cloth-shirt.webp${ITEMS_V}`,
-              'T-Shirt', 'Clothing · under armor', shirtOn, true, toggleShirt)}
+              say(SAY, 'itemDetail.shirt'), say(SAY, 'itemDetail.shirtUnder'), shirtOn, true, toggleShirt)}
           </div>
         </div>
       </div>
@@ -1413,7 +1417,7 @@ export const ItemDetailPopup = () => {
           }}>
           {/* v2.3.1232: 11/600 uppercase section header */}
           <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#96A2A0', marginBottom: 5 }}>
-            Legs
+            {say(SAY, 'itemDetail.legsTitle')}
           </div>
           {/* v2.3.1232: same Lantern row language as the chest-layers picker —
               44pt action row, brass Equip / destructive Unequip. */}
@@ -1423,12 +1427,12 @@ export const ItemDetailPopup = () => {
             background: on ? '#243137' : '#19252A',
             border: `1px solid ${on ? '#D8A85F' : 'rgba(238, 242, 235, .14)'}`,
           }}>
-            <img src={`${armorIconFor('legs', (on ? (R2 && R2.legsArmor) : stashedLegs) && (on ? (R2 && R2.legsArmor) : stashedLegs).mat)}${ITEMS_V}`} alt="Greaves" draggable={false} /* v2.3.1758 */
+            <img src={`${armorIconFor('legs', (on ? (R2 && R2.legsArmor) : stashedLegs) && (on ? (R2 && R2.legsArmor) : stashedLegs).mat)}${ITEMS_V}`} alt={say(SAY, 'itemDetail.greaves')} draggable={false} /* v2.3.1758 */
               style={{ width: 24, height: 24, imageRendering: 'pixelated',
                 filter: on ? 'none' : 'grayscale(1) brightness(.6)', userSelect: 'none' }} />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: on ? '#F7F2E7' : '#B9C1BF', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{on ? ((R2 && R2.legsArmor && R2.legsArmor.name) || 'Greaves') : (stashedLegs ? (stashedLegs.name || 'Greaves') : 'No greaves')}</div>
-              <div style={{ fontSize: 11, color: '#96A2A0' }}>Armor · legs</div>{/* v2.3.1239: 10px font floor (was 9) */}
+              <div style={{ fontSize: 11, fontWeight: 700, color: on ? '#F7F2E7' : '#B9C1BF', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{on ? ((R2 && R2.legsArmor && R2.legsArmor.name) || say(SAY, 'itemDetail.greaves')) : (stashedLegs ? (stashedLegs.name || say(SAY, 'itemDetail.greaves')) : say(SAY, 'itemDetail.noGreaves'))}</div>
+              <div style={{ fontSize: 11, color: '#96A2A0' }}>{say(SAY, 'itemDetail.armorLegs')}</div>{/* v2.3.1239: 10px font floor (was 9) */}
             </div>
             <button type="button"
               onPointerUp={(e) => { e.stopPropagation(); toggleLegs(); }}
@@ -1440,7 +1444,7 @@ export const ItemDetailPopup = () => {
                 fontFamily: 'inherit',
                 cursor: 'pointer',
                 WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
-              }}>{on ? 'Unequip' : 'Equip'}</button>
+              }}>{say(SAY, on ? 'itemDetail.unequip' : 'itemDetail.equip')}</button>
           </div>
         </div>
       </div>
@@ -1512,7 +1516,7 @@ export const ItemDetailPopup = () => {
   const onSellConfirm = async () => {
     if (sellInFlight.current) return;   /* v2.3.2507: one tap, one listing */
     const price = Math.floor(Number(sellPrice) || 0);
-    if (!(price >= 1)) { setSellErr('Put a price on it first'); return; }
+    if (!(price >= 1)) { setSellErr(say(SAY, 'itemDetail.noPrice')); return; }
     let body;
     /* ═══ v2.3.2531: A GEAR PIECE IS NAMED, NOT INDEXED ═══
        The weapon branch below sends an index because `weaponStash` is the
@@ -1535,7 +1539,7 @@ export const ItemDetailPopup = () => {
     if (gearSell) {
       const g = gearSell;
       const piece = target[g.prop];
-      if (!piece) { setSellErr('That piece moved — open it again'); return; }
+      if (!piece) { setSellErr(say(SAY, 'itemDetail.pieceMoved')); return; }
       /* v2.3.2551: refuse locally for the two answers we can be SURE of,
          so an outfit layer or a pre-receipts plate never travels only to
          come back refused.  The worker checks this again and is the truth
@@ -1560,7 +1564,7 @@ export const ItemDetailPopup = () => {
       const S2 = getState();
       const stash = (S2 && S2.rpg && S2.rpg.weaponStash) || [];
       const idx = resolveStashIdx(stash, target.wpn, target.index);
-      if (idx < 0) { setSellErr('That weapon moved — open it again'); return; }
+      if (idx < 0) { setSellErr(say(SAY, 'itemDetail.weaponMoved')); return; }
       body = { kind: 'weapon', stashIndex: idx, price };
     } else {
       const qty = Math.max(1, Math.min(sellMax, Math.floor(Number(sellQty) || 1)));
@@ -1616,7 +1620,7 @@ export const ItemDetailPopup = () => {
          and after a tap; fall back to the worker's sentence when it is
          newer than we are and knows a reason we do not. */
       const why = (r && r.reason) ? gearSellReasonText(r.reason) : '';
-      setSellErr(why || (r && r.error) || 'The store could not take it');
+      setSellErr(why || (r && r.error) || say(SAY, 'itemDetail.storeRefused'));
     }
   };
   /* v2.3.2637: closing a window, which is the owner's other ui-close case.
@@ -1694,14 +1698,14 @@ export const ItemDetailPopup = () => {
           <span style={{
             fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.12em',
             color: '#F0C878', opacity: locked ? 1 : 0,
-          }}>Anchored</span>
+          }}>{say(SAY, 'itemDetail.anchored')}</span>
           {/* v2.3.3481: the 2026-10-19 UI review -- a 26 px chip is under the
               44 px touch floor.  .bt-card-pin (game.css) grows the PRESS to
               44 x 44 with an invisible ::before, inside the card's 10 px
               padding and clear of the portrait well, so it looks the same. */}
           <button type="button" className="bt-card-pin"
-            aria-label={locked ? 'Unpin from the top of the bag' : 'Pin to the top of the bag'}
-            title={locked ? 'Unpin from the top of the bag' : 'Pin to the top of the bag'}
+            aria-label={say(SAY, locked ? 'itemDetail.unpin' : 'itemDetail.pin')}
+            title={say(SAY, locked ? 'itemDetail.unpin' : 'itemDetail.pin')}
             onPointerUp={(e) => { e.stopPropagation(); onToggleLock(); }}
             style={{
               position: 'relative',   /* v2.3.3481: holds the ::before tap ring */
@@ -1814,7 +1818,7 @@ export const ItemDetailPopup = () => {
           {/* v2.3.3407: Esc presses it, and on a computer it says so after its
               X (game/deskKeys.js; game.css [data-key]) */}
           <button onClick={onClose} className={buttonClass()} style={buttonStyle()}
-            data-esc="" data-key="Esc" data-key-at="inline">X</button>
+            data-esc="" data-key="Esc" data-key-at="inline">{say(SAY, 'itemDetail.closeX')}</button>
         </div>
 
         {actions.sell && !sellOpen && !!sellWhy && (
@@ -1839,11 +1843,11 @@ export const ItemDetailPopup = () => {
             display: 'flex', flexDirection: 'column', gap: 6,
           }}>
             <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.08em', color: COL.muted }}>
-              Drop on the ground
+              {say(SAY, 'itemDetail.dropTitle')}
             </div>
             {sellMax > 1 && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ flex: 1, fontSize: 12, color: COL.text }}>How many</span>
+                <span style={{ flex: 1, fontSize: 12, color: COL.text }}>{say(SAY, 'itemDetail.howMany')}</span>
                 <button type="button" data-drop-less="" onClick={() => setDropQty((q) => Math.max(1, (Math.floor(Number(q)) || 1) - 1))}
                   style={stepStyle}>−</button>
                 <span data-drop-qty={dropN} style={{ minWidth: 34, textAlign: 'center', fontSize: 13, fontWeight: 700, color: '#F7F2E7', fontVariantNumeric: 'tabular-nums' }}>
@@ -1851,18 +1855,18 @@ export const ItemDetailPopup = () => {
                 </span>
                 <button type="button" data-drop-more="" onClick={() => setDropQty((q) => Math.min(sellMax, (Math.floor(Number(q)) || 1) + 1))}
                   style={stepStyle}>+</button>
-                <button type="button" data-drop-all="" onClick={() => setDropQty(sellMax)} style={{ ...stepStyle, width: 'auto', padding: '0 8px', fontSize: 11 }}>All</button>
+                <button type="button" data-drop-all="" onClick={() => setDropQty(sellMax)} style={{ ...stepStyle, width: 'auto', padding: '0 8px', fontSize: 11 }}>{say(SAY, 'itemDetail.all')}</button>
               </div>
             )}
             <div style={{ fontSize: 11, color: COL.muted, lineHeight: 1.4 }}>
-              Only you can see it for a minute, then anyone can pick it up. At two minutes it starts flashing, then it's gone.
+              {say(SAY, 'itemDetail.dropRule')}
             </div>
             <div style={{ display: 'flex', gap: 6 }}>
               <button onClick={onDropConfirm} data-drop-confirm=""
                 className={buttonClass('danger')} style={buttonStyle('danger')}>
-                {dropN > 1 ? 'Drop ' + dropN : 'Drop it'}
+                {dropN > 1 ? say(SAY, 'itemDetail.dropN', { n: dropN }) : say(SAY, 'itemDetail.dropIt')}
               </button>
-              <button onClick={() => setDropOpen(false)} className={buttonClass()} style={buttonStyle()}>Back</button>
+              <button onClick={() => setDropOpen(false)} className={buttonClass()} style={buttonStyle()}>{say(SAY, 'itemDetail.back')}</button>
             </div>
           </div>
         )}
@@ -1880,11 +1884,11 @@ export const ItemDetailPopup = () => {
             display: 'flex', flexDirection: 'column', gap: 6,
           }}>
             <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.08em', color: COL.muted }}>
-              Sell in the Auction House
+              {say(SAY, 'itemDetail.sellTitle')}
             </div>
             {sellMax > 1 && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ flex: 1, fontSize: 12, color: COL.text }}>How many</span>
+                <span style={{ flex: 1, fontSize: 12, color: COL.text }}>{say(SAY, 'itemDetail.howMany')}</span>
                 <button type="button" onClick={() => setSellQty((q) => Math.max(1, (Math.floor(Number(q)) || 1) - 1))}
                   style={stepStyle}>−</button>
                 <span style={{ minWidth: 34, textAlign: 'center', fontSize: 13, fontWeight: 700, color: '#F7F2E7', fontVariantNumeric: 'tabular-nums' }}>
@@ -1892,11 +1896,11 @@ export const ItemDetailPopup = () => {
                 </span>
                 <button type="button" onClick={() => setSellQty((q) => Math.min(sellMax, (Math.floor(Number(q)) || 1) + 1))}
                   style={stepStyle}>+</button>
-                <button type="button" onClick={() => setSellQty(sellMax)} style={{ ...stepStyle, width: 'auto', padding: '0 8px', fontSize: 11 }}>All</button>
+                <button type="button" onClick={() => setSellQty(sellMax)} style={{ ...stepStyle, width: 'auto', padding: '0 8px', fontSize: 11 }}>{say(SAY, 'itemDetail.all')}</button>
               </div>
             )}
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ flex: 1, fontSize: 12, color: COL.text }}>Price in gold</span>
+              <span style={{ flex: 1, fontSize: 12, color: COL.text }}>{say(SAY, 'itemDetail.price')}</span>
               <input type="number" inputMode="numeric" value={sellPrice} placeholder="0"
                 onChange={(e) => setSellPrice(e.target.value)}
                 style={{
@@ -1907,14 +1911,14 @@ export const ItemDetailPopup = () => {
             </div>
             {sellErr && <div style={{ fontSize: 11, fontWeight: 600, color: COL.danger }}>{sellErr}</div>}
             <div style={{ fontSize: 11, color: COL.muted, lineHeight: 1.4 }}>
-              It leaves your bag now and comes back in a week if nobody buys it.
+              {say(SAY, 'itemDetail.sellRule')}
             </div>
             <div style={{ display: 'flex', gap: 6 }}>
               <button onClick={onSellConfirm} disabled={sellBusy}
                 className={buttonClass('primary')} style={{ ...buttonStyle('primary'), opacity: sellBusy ? 0.5 : 1 }}>
-                {sellBusy && !sellErr ? 'Listing…' : 'Put it up'}
+                {say(SAY, sellBusy && !sellErr ? 'itemDetail.listing' : 'itemDetail.putUp')}
               </button>
-              <button onClick={() => { setSellOpen(false); setSellErr(''); }} className={buttonClass()} style={buttonStyle()}>Back</button>
+              <button onClick={() => { setSellOpen(false); setSellErr(''); }} className={buttonClass()} style={buttonStyle()}>{say(SAY, 'itemDetail.back')}</button>
             </div>
           </div>
         )}
