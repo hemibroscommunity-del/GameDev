@@ -33,6 +33,7 @@
  * stays shut and the farm's bed rests on the phone as before), rests nobody
  * and pays no Well Rested XP.
  */
+import { paceAt, paceStamp } from './pacekeep.js';   /* v2.3.5921: the pace kept across a rejoin (TRAPS §276) */
 
 const has = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);
 
@@ -113,11 +114,14 @@ export const restMethods = {
     const now = Date.now();
     if (this._restInFight(pid, ps, now)) return answer({ ok: false, err: 'fight' });
     /* in memory only: a reconnect lets one rest through early, which costs a
-       row and nothing else */
-    if (ps._restAt && now - ps._restAt < REST.GAP_MS) {
-      return answer({ ok: false, err: 'soon', wait: REST.GAP_MS - (now - ps._restAt) });
+       row and nothing else -- v2.3.5921 (card V3, TRAPS §276; `pacekeep`):
+       no longer: the room keeps the stamp by player id (pacekeep.js), still
+       in memory only (a deploy forgets it) */
+    const restAt = paceAt(this, pid, ps, '_restAt');
+    if (restAt && now - restAt < REST.GAP_MS) {
+      return answer({ ok: false, err: 'soon', wait: REST.GAP_MS - (now - restAt) });
     }
-    ps._restAt = now;
+    paceStamp(this, pid, ps, '_restAt', now, REST.GAP_MS);
     if (typeof ps.maxHp === 'number') this._hpSet(ps, ps.maxHp, 'rest');   /* v2.3.4820: the life door */
     if (typeof ps.maxStamina === 'number') ps.stamina = ps.maxStamina;
     if (typeof ps.maxMana === 'number') ps.mana = ps.maxMana;

@@ -42,6 +42,7 @@
  * replaces the last.  `race: false` in the live flags un-advertises it
  * (caps.race) and starts none.
  */
+import { paceAt, paceStamp } from './pacekeep.js';   /* v2.3.5921: the pace kept across a rejoin (TRAPS §276) */
 
 export const RACE = Object.freeze({
   QUEST: 'race_1',
@@ -169,13 +170,15 @@ export const raceMethods = {
     const q = ps._quests && has(ps._quests, RACE.QUEST) ? ps._quests[RACE.QUEST] : null;
     if (q !== 'active') return refuse('quest');
     const now = Date.now();
-    if (ps._raceStartedAt && now - ps._raceStartedAt < RACE.START_GAP_MS) return refuse('soon');
+    /* v2.3.5921 (card V3, TRAPS §276; `pacekeep`): kept across a rejoin */
+    const startedAt = paceAt(this, pid, ps, '_raceStartedAt');
+    if (startedAt && now - startedAt < RACE.START_GAP_MS) return refuse('soon');
     const [cx, cy] = this._raceCentre();
     const sx = cx + RACE.START[0], sy = cy + RACE.START[1];
     if (!(typeof ps.x === 'number' && typeof ps.y === 'number') || Math.hypot(ps.x - sx, ps.y - sy) > RACE.START_R) return refuse('far');
     const lilMs = lilLapMs();
     const t0 = now + RACE.COUNTDOWN_MS;
-    ps._raceStartedAt = now;
+    paceStamp(this, pid, ps, '_raceStartedAt', now, RACE.START_GAP_MS);
     this._raceTo(ps, { t0, next: 0, lilMs, endBy: t0 + lilMs + RACE.GRACE_MS }, 'start');   /* v2.3.5217: the race door */
     const abs = (p) => [cx + p[0], cy + p[1]];
     const state = {

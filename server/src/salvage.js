@@ -77,6 +77,7 @@ import { gemGive } from './gems.js'; /* v2.3.3516: gems live in the bag */
 import { bagGive, bagTake } from './bag.js'; /* v2.3.4810: the bag door */
 import { stashGive, stashTake, stashSet } from './stash.js';   /* v2.3.5281: the stashes' door (card R PR 2) */
 import { lifeOf, LIFE } from './life.js';   /* v2.3.5920: the dead take nothing (life.js _deadTakeOn; TRAPS §150) */
+import { paceAt, paceStamp } from './pacekeep.js';   /* v2.3.5921: the pace kept across a rejoin (TRAPS §276) */
 
 export const SALVAGE = Object.freeze({
   /* metal id (the armour's `mat`, materialTints.js) -> its bar (smelting.js),
@@ -168,8 +169,10 @@ export const salvageMethods = {
        the guard reading the handlers for it could not see it */
     if (!ps || ps.disconnected) return null;
     const now = Date.now();
-    if (ps._lastSalvageAt && now - ps._lastSalvageAt < SALVAGE.COOLDOWN_MS) return null;
-    ps._lastSalvageAt = now;
+    /* v2.3.5921 (card V3, TRAPS §276; `pacekeep`): kept across a rejoin */
+    const salvAt = paceAt(this, session.id, ps, '_lastSalvageAt');
+    if (salvAt && now - salvAt < SALVAGE.COOLDOWN_MS) return null;
+    paceStamp(this, session.id, ps, '_lastSalvageAt', now, SALVAGE.COOLDOWN_MS);
     if (!ps.inventory || typeof ps.inventory !== 'object') ps.inventory = {}; // proto-ok: v2.3.4810: every key written here is SALVAGE's own (a bar, essenceKey, or a key parseEssenceKey accepted)
     return ps;
   },

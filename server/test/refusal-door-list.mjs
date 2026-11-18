@@ -124,7 +124,7 @@ export const ALLOW = {
   '_handleDice': {
     "if (this._diceOff())": "off",
     "if (!ask)": "shape",
-    "if (ps._diceAt && now - ps._diceAt < DICE.GAP_MS)": "rate",
+    "if (diceAt && now - diceAt < DICE.GAP_MS)": "rate",   /* v2.3.5921: the pace kept by the room across a rejoin (pacekeep.js) */
   },
   '_handlePointsReset': {
     "if (!ps || ps.dead || ps.dying || !ps.prog3 || typeof ps.prog3 !== 'object')": "norec dead",
@@ -223,7 +223,7 @@ export const ALLOW = {
     "if (this._chestOff())": "off",
   },
   '_handleRewardsGet': {
-    "if (ps._lastRewardsGetAt && now - ps._lastRewardsGetAt < 800)": "rate",
+    "if (getAt && now - getAt < 800)": "rate",   /* v2.3.5921: pacekeep.js */
     "if (!rec)": "err",
   },
   '_handleDailySpin': {
@@ -461,14 +461,14 @@ export const ALLOW = {
   },
   '_handleGambleRequest': {
     "if (!Number.isFinite(wager) || wager < 10 || wager > 10000)": "shape",
-    "if (ps._lastGambleAt && now - ps._lastGambleAt < 2000)": "rate",
+    "if (gambleAt && now - gambleAt < 2000)": "rate",   /* v2.3.5921: pacekeep.js */
   },
   '_handleAceFlipRequest': {
     "if (!Number.isFinite(stake) || stake < ACE_FLIP.MIN_STAKE)": "shape",
-    "if (ps._lastAceFlipAt && now - ps._lastAceFlipAt < ACE_FLIP.COOLDOWN_MS)": "rate",
+    "if (coinFlipAt && now - coinFlipAt < ACE_FLIP.COOLDOWN_MS)": "rate",   /* v2.3.5921: pacekeep.js */
   },
   '_handleAceItemFlipRequest': {
-    "if (ps._lastAceFlipAt && now - ps._lastAceFlipAt < ACE_ITEMS.COOLDOWN_MS)": "rate",
+    "if (flipAt && now - flipAt < ACE_ITEMS.COOLDOWN_MS)": "rate",   /* v2.3.5921: pacekeep.js */
     "if (!want || typeof want !== 'object')": "shape",
     "if (!ps.inventory || typeof ps.inventory !== 'object')": "norec",
   },

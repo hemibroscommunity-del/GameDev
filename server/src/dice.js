@@ -23,6 +23,7 @@
  * `caps.dice` false at a phone's next join (it then sends "/roll" as the plain
  * line it always was).
  */
+import { paceAt, paceStamp } from './pacekeep.js';   /* v2.3.5921: the pace kept across a rejoin (TRAPS §276) */
 
 export const DICE = Object.freeze({
   /* one roll or flip this often a player (src/game/dice.js DICE_GAP_MS,
@@ -77,8 +78,11 @@ export const diceMethods = {
     const ask = diceAsk(msg);
     if (!ask) return;
     const now = Date.now();
-    if (ps._diceAt && now - ps._diceAt < DICE.GAP_MS) return;
-    ps._diceAt = now;
+    /* v2.3.5921 (card V3, TRAPS §276; `pacekeep`): the pace outlives a
+       rejoin -- the room keeps it by player id (pacekeep.js) */
+    const diceAt = paceAt(this, sid, ps, '_diceAt');
+    if (diceAt && now - diceAt < DICE.GAP_MS) return;
+    paceStamp(this, sid, ps, '_diceAt', now, DICE.GAP_MS);
     const value = fairInt(ask.sides, this._diceRand);
     this.eventBuffer.push({
       type: 'dice_roll',

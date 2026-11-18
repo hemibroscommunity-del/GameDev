@@ -25,6 +25,7 @@
 import { TICKET_PREFIX } from './eventcapes.js';
 import { retireRows } from './boards.js';   /* v2.3.4393: the deleted stand-ins */
 import { bagGive, bagTake } from './bag.js'; /* v2.3.4810: the bag door */
+import { paceAt, paceStamp } from './pacekeep.js';   /* v2.3.5921: the pace kept across a rejoin (TRAPS §276) */
 
 /* ═══ v2.3.2618: ACE'S COIN FLIP ═══
  * Owner: "You can triple your money or lose 3x of your bag (you can only bet
@@ -179,7 +180,10 @@ export const gambleMethods = {
     const ps = this.playerState[session.id];
     if (!ps || ps.dying || ps.dead || ps.disconnected) return;
     const now = Date.now();
-    if (ps._lastAceFlipAt && now - ps._lastAceFlipAt < ACE_ITEMS.COOLDOWN_MS) return;
+    /* v2.3.5921 (card V3, TRAPS §276; `pacekeep`): the flips' pace outlives
+       a rejoin (pacekeep.js) */
+    const flipAt = paceAt(this, session.id, ps, '_lastAceFlipAt');
+    if (flipAt && now - flipAt < ACE_ITEMS.COOLDOWN_MS) return;
     const want = payload && payload.items;
     if (!want || typeof want !== 'object') return;
     if (!ps.inventory || typeof ps.inventory !== 'object') return;
@@ -212,7 +216,7 @@ export const gambleMethods = {
        true one goes back (the refusal door; only the asker's own bag, no
        oracle) */
     if (!kinds || total <= 0) return this._refusalEcho(session, ['inventory']);
-    ps._lastAceFlipAt = now;
+    paceStamp(this, session.id, ps, '_lastAceFlipAt', now, ACE_ITEMS.COOLDOWN_MS);
     const won = Math.random() < ACE_ITEMS.WIN_CHANCE;
     for (const k of Object.keys(staked)) {
       if (won) {
@@ -257,8 +261,9 @@ export const gambleMethods = {
        refusal door; the asker's own coins are no probe oracle) */
     if (risk > coins) return this._refusalEcho(session, ['coins']);
     const now = Date.now();
-    if (ps._lastAceFlipAt && now - ps._lastAceFlipAt < ACE_FLIP.COOLDOWN_MS) return;
-    ps._lastAceFlipAt = now;
+    const coinFlipAt = paceAt(this, session.id, ps, '_lastAceFlipAt');   /* v2.3.5921: kept across a rejoin */
+    if (coinFlipAt && now - coinFlipAt < ACE_FLIP.COOLDOWN_MS) return;
+    paceStamp(this, session.id, ps, '_lastAceFlipAt', now, ACE_FLIP.COOLDOWN_MS);
     const won = Math.random() < ACE_FLIP.WIN_CHANCE;
     /* v2.3.4670: the gold door -- `coins` was this purse read the door's
        orZero way, two lines up, with nothing between to change it */
@@ -294,10 +299,11 @@ export const gambleMethods = {
     const wager = Math.floor(Number(payload && payload.wager));
     if (!Number.isFinite(wager) || wager < 10 || wager > 10000) return;
     const now = Date.now();
-    if (ps._lastGambleAt && now - ps._lastGambleAt < 2000) return;
+    const gambleAt = paceAt(this, session.id, ps, '_lastGambleAt');   /* v2.3.5921: kept across a rejoin (TRAPS §276) */
+    if (gambleAt && now - gambleAt < 2000) return;
     /* v2.3.4882: more than the purse -- the true coins go back (refusal door) */
     if ((ps.coins || 0) < wager) return this._refusalEcho(session, ['coins']);
-    ps._lastGambleAt = now;
+    paceStamp(this, session.id, ps, '_lastGambleAt', now, 2000);
     const won = Math.random() < 0.40; // GAMBLE_WIN_CHANCE mirror
     if (won) this._goldGive(ps, wager, 'gamble_win'); /* v2.3.4670: the gold door */
     else this._goldTake(ps, wager, 'gamble_loss');
