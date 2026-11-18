@@ -85,6 +85,10 @@ between them does not buy a fresh allowance.
 - **Mute is per-recipient** (`chatmod.js`), applied before the send rather
   than after. A muted **whisper** is silent to the sender on purpose — telling
   them would confirm to a harasser that they had reached someone.
+  v2.3.5806 (card RV, S8; `mutehides`): silence was itself the tell, since a
+  name nobody holds is answered `no-such-player`. A player who mutes you now
+  reads as away to you: the whisper gets that same answer, and a party invite
+  `target-gone` with no card on their screen.
 - **Nothing is stored.** Chat is ephemeral (rule 11); the rate-limit buckets
   are in memory and a deploy wipes them (rule 12), which is correct.
 - **No overhead bubble for a whisper**, at either end. The bubble is drawn

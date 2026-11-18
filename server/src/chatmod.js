@@ -170,6 +170,20 @@ export const chatModMethods = {
     return !!(set && set.has(speakerId));
   },
 
+  /* v2.3.5806 (card RV): two kill switches beside the mute they extend
+     (lower case, on unless written false).  `storemute`: a muted sender's
+     shop-thread line is not shown on open (storechat.js, S5).
+     `mutehides`: a player who mutes you reads as away to you, for a whisper
+     and a party invite (chatlanes.js, party.js; S8, the owner's call). */
+  _storeMuteOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'storemute') && !f.storemute);
+  },
+  _muteHidesOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'mutehides') && !f.mutehides);
+  },
+
   /* The server-stamped sender of a RELAYED event.  `from` is written by
      the default branch of webSocketMessage (index.js) from the session,
      so it is unforgeable; payload.id is the client's claim and is

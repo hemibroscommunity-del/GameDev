@@ -194,9 +194,10 @@ export const SYSTEMS = Object.freeze({
     what: 'parties, clans, guilds, friends, chat, emotes, duels, the arena, races, boards',
     files: [f('src/rendering/tables', 'social') /* v2.3.5346: its hand-tuned tables (card M) */,
       /* v2.3.5480 (card PW): + power, the boards' power index; v2.3.5484: + statboards;
-         v2.3.5218 (card L): + raceDoor, the race's page door; v2.3.5594: + reservednames (a name that reads as staff); v2.3.5621: + silence (card MOD) */
-      f('server/src', 'party|clanparty|clans|guilds|alliance|friends|chatlanes|chatmod|chatguard|reservednames|silence|emotes|boards|arena|gladiator|duel|spar|race|leaderboard|power|statboards'),
-      f('src/game', 'alliance|allyDrafts|duelDoor|partyDoor|arenaDoor|skullDoor|chat|chatChannel|chatColor|chatMute|emotes|emoteMoves|gesturePose|friendErrors|duelLock|duelPending|partyChip|partyEq|partyMarks|partyRows|peerDot|race|raceDoor|spar|sparTargets|bubbleSkins|boardBumps|dictation'),
+         v2.3.5218 (card L): + raceDoor, the race's page door; v2.3.5594: + reservednames (a name that reads as staff); v2.3.5621: + silence (card MOD);
+         v2.3.5807 (card RV): + lookform / lookForm, a player's avatar and colour in the game's own forms (the boards, the friends list) */
+      f('server/src', 'party|clanparty|clans|guilds|alliance|friends|chatlanes|chatmod|chatguard|reservednames|silence|emotes|boards|arena|gladiator|duel|spar|race|leaderboard|power|statboards|lookform'),
+      f('src/game', 'lookForm|alliance|allyDrafts|duelDoor|partyDoor|arenaDoor|skullDoor|chat|chatChannel|chatColor|chatMute|emotes|emoteMoves|gesturePose|friendErrors|duelLock|duelPending|partyChip|partyEq|partyMarks|partyRows|peerDot|race|raceDoor|spar|sparTargets|bubbleSkins|boardBumps|dictation'),
     ],
     words: ['party', 'clan', 'guild', 'alliance', 'friend', 'chat', 'emote', 'duel', 'arena', 'gladiator', 'spar', 'race', 'board', 'leaderboard', 'social'],
     traps: ['social'],
