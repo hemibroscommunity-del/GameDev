@@ -5,9 +5,10 @@
  * `cleanup`, `render`, `afterFrame`.  The probe window.__btSteps() reads
  * them.  A phone plays BroTown three times:
  *
- *   - upright (390 x 844) and sideways (844 x 390), as it ships: the seven
- *     steps in order, each run every frame, each with time summed, no throws,
- *     no step left open between frames;
+ *   - upright (390 x 844) and sideways (844 x 390), as it ships: the steps
+ *     in order (seven; v2.3.5341: seventeen, the ten inside legacy named),
+ *     each run every frame, each with time summed, no throws, no step left
+ *     open between frames;
  *   - upright with `?framesteps=0`: the probe says off (no marks are made).
  *
  * This box draws a few frames a second (TRAPS §200): nothing here is timed
@@ -20,7 +21,9 @@
 import * as H from './harness.mjs';
 export const lane = 'full';
 
-const WANT = ['legacy', 'visual', 'arrows', 'slime', 'cleanup', 'render', 'afterFrame'];
+/* v2.3.5341 (card M PR 2): + the ten steps inside legacy, in their places */
+const WANT = ['legacy', 'tap', 'sound', 'ride', 'zone', 'farm', 'townsfolk', 'monsters', 'weaponFeel', 'loot', 'peers',
+  'visual', 'arrows', 'slime', 'cleanup', 'render', 'afterFrame'];
 const UPRIGHT = { width: 390, height: 844 };
 const SIDEWAYS = { width: 844, height: 390 };
 const FRAMES = 120;   /* the page's own frames the sums are read after, at least */
@@ -58,7 +61,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     console.log(`    ${label}: ${JSON.stringify(r)}`);
     rec.ok(`${label}: the probe is on`, first.on === true, first);
     if (!r) continue;
-    rec.ok(`${label}: seven steps, in order (${r.names.join(', ')})`, JSON.stringify(r.names) === JSON.stringify(WANT), r.names);
+    rec.ok(`${label}: ${WANT.length} steps, in order (${r.names.join(', ')})`, JSON.stringify(r.names) === JSON.stringify(WANT), r.names);
     rec.ok(`${label}: ${r.now.frames + r.frames} frames summed; every step ran every frame (runs ${r.runs.join(', ')})`,
       r.runs.every((n) => n === r.runs[0]) && r.runs[0] >= FRAMES, r.runs);
     rec.ok(`${label}: each step with time (${WANT.map((n, i) => n + ' ' + r.now.ms[i]).join(', ')} ms)`, enough && r.now.ms.every((v) => v > 0), r.now.ms);

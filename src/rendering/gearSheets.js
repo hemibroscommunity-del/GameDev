@@ -1160,9 +1160,17 @@ export function unregisterGearSource(source) { if (source) _extraSources.delete(
      - the jog chain belt, which is never put on a sprite at all (the masked
        bake copies its colours: entityRenderer.js, v2.3.1347).
    `?gearwalk=0` puts the walking armour back on this list (its predicate
-   answers false); the belt is left off in every case. */
+   answers false); the belt is left off in every case.
+   v2.3.5981 (card P2, the memory backlog): a third kind, the tee standing
+   and jogging where it is drawn from the numbers (lookShirtFrame.js sets its
+   own predicate).  So a module's predicate is ADDED to the one before, never
+   put in its place: a key either says is drawn elsewhere is not sent. */
 let _drawnElsewhere = null;
-export function setGearDrawnElsewhere(fn) { _drawnElsewhere = typeof fn === 'function' ? fn : null; }
+export function setGearDrawnElsewhere(fn) {
+  if (typeof fn !== 'function') return;
+  const before = _drawnElsewhere;
+  _drawnElsewhere = before ? (key) => before(key) || fn(key) : fn;
+}
 const _upStats = { asked: 0, sent: 0, belt: 0, numbers: 0 };
 export function getLoadedGearSources() {
   const sources = new Set(_extraSources);

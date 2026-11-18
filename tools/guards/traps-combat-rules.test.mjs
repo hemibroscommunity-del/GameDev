@@ -67,6 +67,7 @@
  *   §293  playerActions.js swingAttack: `S._swingBcastPending = true` gone     -> FAIL §293 effects (held S._swingBcastPending)
  *         monsterCombat.js: `&& !isStaggered(S, Date.now())` gone from the held gate -> FAIL §293 refusals (staggerRefused)
  *         playerActions.js: `swingAttack` renamed                              -> FAIL §293 starts found
+ *         monsterCombat.js: `!S._extraction && ` gone from the held gate       -> FAIL §293 refusals (_extraction) (v2.3.6080)
  *   §296  gameEvents.js: `!_srvResolved` in place of localBlockApplies         -> FAIL §296 (gameEvents.js processGameEvent)
  *   §311  movement.js _handleMove: the grace written before the give gate's if -> FAIL §311 (_handleMove _zoneEntryGraceUntil)
  *         movement.js: `_entryGraceGive` renamed                               -> FAIL §311 gates
@@ -738,8 +739,15 @@ const PVP = oneDef(DS, '_pvpAllowed');
   const FREEZE = /_skillFrozen|_skillFreezeOff\(|\.prog3(?![\w$])/;
   const KNOWN_TRACK = {
     '_handleStatsUpdate: payload.weaponSpecs||payload.weaponSkills': 'grids.js: recomputes the max pools from the STORED tracks (computeCanonicalPools); a frozen report changed none of them, nothing healed or saved',
-    '_handleStatsUpdate: payload.weaponUnspent': 'grids.js: a prog3 character\'s reported unspent weapon points are still stored (sanitised, not frozen): FOUND, the owner\'s question',
-    '_handleStatsUpdate: payload.defenseUnspent': 'grids.js: the same for the unspent defence points (clamped 0..999, not frozen): FOUND, the owner\'s question',
+    /* v2.3.6083 (card V7 PR 4, step 1 read): harmless, so no freeze.  On a
+       prog3 character a stored unspent count buys nothing: no worker path
+       spends it (the legacy specs it would buy are gated off for prog3 at
+       _t2Flat and the point helpers, and _clampBuildTotal holds them to
+       COMBAT_BUILD_CEILING, never to an unspent count), prog3FromLegacy never reads it, and the join
+       only restores it to the same field.  Only the retired T2 panel shows
+       it, a system nothing reads (heroSectionBus.js). */
+    '_handleStatsUpdate: payload.weaponUnspent': 'grids.js: a prog3 character\'s reported unspent weapon points are stored (sanitised): harmless, no worker path spends them and prog3FromLegacy never reads them (card V7)',
+    '_handleStatsUpdate: payload.defenseUnspent': 'grids.js: the same for the unspent defence points (clamped 0..999): harmless, nothing on the worker spends or converts them (card V7)',
   };
   const found = new Set();
   let reads = 0;
@@ -783,8 +791,10 @@ const PVP = oneDef(DS, '_pvpAllowed');
     const et = effects(tap), eh = effects(h);
     /* the differences on purpose (or found): each under Found in lane B's notes */
     const ONE_START = {
-      'tap swordFeelSwing()': 'the sword\'s feel (swordFeel.js) is the tapped stroke\'s: ASK THE OWNER whether a held swing should flash it too',
-      'held tapAttackDone()': 'the held loop ends a tap-to-attack it carried on (v2.3.3712); the tapped start has none to end',
+      /* v2.3.6080 (card V7): kept tap-only on purpose -- a held swing that
+         flashed the sword's feel is a visible change, the owner's eye */
+      'tap swordFeelSwing()': 'the sword\'s feel (swordFeel.js) is the tapped stroke\'s, kept so (card V7): a held swing flashing it is a visible feel change, the owner\'s eye',
+      'held tapAttackDone()': 'the held loop ends a tap-to-attack it carried on (v2.3.3712); the tapped start has none to end (by design: nothing to fix)',
     };
     const diff = new Set([...[...et].filter((e) => !eh.has(e) && e !== 'now()' ).map((e) => 'tap ' + e), ...[...eh].filter((e) => !et.has(e)).map((e) => 'held ' + e)].filter((e) => !/ (?:Date|now)\(\)$/.test(e)));
     census('§293', 'what one start of a swing does and the other does not', diff, ONE_START, 2);
@@ -792,11 +802,10 @@ const PVP = oneDef(DS, '_pvpAllowed');
     const TWIN = {
       isPlayerDead: /isPlayerDead\(/, swimRefused: /isWheelSwimming\(/, dazeRefused: /isDazed\(/, staggerRefused: /isStaggered\(/,
       airRefused: /jumpAirborne\(/, _playerStunUntil: /_playerStunUntil/,
+      /* v2.3.6080 (card V7): the two the held start lacked, now over it */
+      _extraction: /!S\._extraction(?![\w$])/, climbRefused: /!climbRefused\(S\)/,
     };
-    const NO_TWIN = {
-      _extraction: 'the tapped swing refuses during an extraction (S._extraction); the held loop has no such test: ASK whether a held attack may swing then',
-      climbRefused: 'swimRefused also refuses on the vines (climbRefused); the held loop asks isWheelSwimming only',
-    };
+    const NO_TWIN = {};
     const fnBody = bodyM({ f: tap.f, fn: innerFn(tap.F.fns, tap.bl[0] + 1) || { a: tap.bl[0], b: tap.bl[1] } });
     const pre = fnBody.slice(0, fnBody.indexOf('S.swingTimer=Date.now()'));
     const refusals = new Set([...pre.matchAll(/(?<![\w$.])([\w$]*Refused|isPlayerDead)\(|S\.(_extraction|_playerStunUntil)(?![\w$])/g)].map((x) => x[1] || x[2]));
@@ -804,7 +813,7 @@ const PVP = oneDef(DS, '_pvpAllowed');
     const over = condsAt(h.F, h.bl[0] + 1).join(' ');
     const missing = new Set([...refusals].filter((r) => !(TWIN[r] && TWIN[r].test(over))));
     check(`§293: the tapped start's refusals are read (${[...refusals].join(', ')})`, refusals.size >= 6, [...refusals]);
-    census('§293', 'refusals of the tapped swing with no twin over the held start', missing, NO_TWIN, 2);
+    census('§293', 'refusals of the tapped swing with no twin over the held start', missing, NO_TWIN, 0);   /* v2.3.6080: 2 -> 0 (card V7) */
   }
 }
 

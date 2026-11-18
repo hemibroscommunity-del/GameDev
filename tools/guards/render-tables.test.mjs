@@ -17,6 +17,8 @@
  *   3. THE CENSUS (docs/plan/census/M-tables.md) is what --write makes from
  *      the same scan, but for its line numbers (a line moved elsewhere in a
  *      renderer must not fail every PR): the same names in each list.
+ *      v2.3.5347: but for part 5 too, the code's census, written at a commit
+ *      by tools/dev/render-code-census.mjs; --write keeps it as it finds it.
  *
  * BREAK PROOF (rule 8), each tried by hand once, 2026-11-17:
  *   - a `const _ZZ = { a: 1 };` added to effectsRenderer.js
@@ -33,7 +35,7 @@
  *   node tools/guards/render-tables.test.mjs --write   write the census page
  * (cd server && npm test runs it with every other guard and suite).
  */
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { scanRenderers, scanText, suitesNaming, tunedName, ROOT } from './lib/renderTables.mjs';
 
@@ -41,11 +43,17 @@ import { scanRenderers, scanText, suitesNaming, tunedName, ROOT } from './lib/re
 const TABLES_LINE = 54;   /* its first count, v2.3.5344 (main 17f749b): 30 in entityRenderer.js, 24 in effectsRenderer.js */
 
 const CENSUS = 'docs/plan/census/M-tables.md';
+/* v2.3.5347: part 5 of the page is the code's census (tools/dev/render-code-census.mjs): this guard keeps it and holds the rest */
+const PART5 = '<!-- part 5: the code (tools/dev/render-code-census.mjs --write) -->';
 
 const scan = await scanRenderers();
 
 if (process.argv.includes('--write')) {
-  writeFileSync(join(ROOT, CENSUS), censusPage(scan));
+  /* v2.3.5347: part 5 (the code, tools/dev/render-code-census.mjs) is kept as it is */
+  let had = '';
+  try { had = readFileSync(join(ROOT, CENSUS), 'utf8'); } catch { /* a first write */ }
+  const i = had.indexOf(PART5);
+  writeFileSync(join(ROOT, CENSUS), censusPage(scan) + (i >= 0 ? '\n' + had.slice(i) : ''));
   console.log(`wrote ${CENSUS}: ${scan.tables.length} tables, ${scan.lone.filter((r) => r.tuned).length} tuned of ${scan.lone.length} lone constants`);
   process.exit(0);
 }
@@ -94,12 +102,27 @@ const check = (name, ok, detail) => {
   let page = '';
   try { page = readFileSync(join(ROOT, CENSUS), 'utf8'); } catch { /* missing: fails below */ }
   const strip = (s) => s.replace(/\| \d+ (?=\|)/g, '| L ').replace(/:\d+\b/g, ':L').replace(/line \d+/g, 'line L');
-  check(`3: ${CENSUS} is the scan's (but for line numbers): \`node tools/guards/render-tables.test.mjs --write\``,
-    page !== '' && strip(page) === strip(censusPage(scan)), page === '' ? 'missing' : 'differs');
+  /* v2.3.5347: up to part 5 (the code's census, written at a commit by its own script) */
+  const tablesPart = (t) => { const i = t.indexOf(PART5); return (i >= 0 ? t.slice(0, i) : t).replace(/\n+$/, ''); };
+  check(`3: ${CENSUS} is the scan's (but for line numbers, and part 5): \`node tools/guards/render-tables.test.mjs --write\``,
+    page !== '' && strip(tablesPart(page)) === strip(censusPage(scan).replace(/\n+$/, '')), page === '' ? 'missing' : 'differs');
 }
 
 console.log(failed ? `\n${failed} FAILED` : '\nall green');
 process.exit(failed ? 1 : 0);
+
+/* the leaf files under src/rendering/tables/ and the names each exports */
+function movedOut() {
+  const dir = join(ROOT, 'src/rendering/tables');
+  let files = [];
+  try { files = readdirSync(dir).filter((f) => f.endsWith('.js')).sort(); } catch { return []; }
+  return files.map((f) => {
+    const t = readFileSync(join(dir, f), 'utf8');
+    const names = [...t.matchAll(/^export const (\w+)/gm)].map((m) => m[1])
+      .concat(...[...t.matchAll(/^export \{([^}]*)\}/gm)].map((m) => m[1].split(',').map((x) => x.trim()).filter(Boolean)));
+    return [`src/rendering/tables/${f}`, names];
+  });
+}
 
 /* ── the census page ── */
 function censusPage(s) {
@@ -135,7 +158,7 @@ function censusPage(s) {
   L.push('## The systems, and their order (largest first)');
   L.push('');
   L.push('A counted table\'s system is read by hand from what it draws');
-  L.push('(`TABLE_SYSTEM` in the lib). The tables leave in two PRs, one a renderer');
+  L.push('(`SYSTEM_BY_HAND` in the lib). The tables leave in two PRs, one a renderer');
   L.push('(tag 5345 entityRenderer.js, 5346 effectsRenderer.js); in each, the');
   L.push('systems go in this order, a system\'s tables together.');
   L.push('');
@@ -150,6 +173,17 @@ function censusPage(s) {
     for (const [sys, e] of [...by].sort((a, b) => b[1].lines - a[1].lines || b[1].n - a[1].n || a[0].localeCompare(b[0]))) L.push(`| ${f} | ${sys} | ${e.n} | ${e.lines} |`);
   }
   L.push('');
+  /* v2.3.5345: what has left, file by file (the leaf files' own exports) */
+  const gone = movedOut();
+  if (gone.length) {
+    L.push('## 0. Moved out (src/rendering/tables/)');
+    L.push('');
+    L.push('Each moved verbatim with its comment block and imported back by the same');
+    L.push('name; the PR that moved it showed each deep-equal to its literal before.');
+    L.push('');
+    for (const [f, names] of gone) L.push(`- \`${f}\` (${names.length}): ${names.map((n) => '`' + n + '`').join(', ')}`);
+    L.push('');
+  }
   L.push('## 1. The tables (counted)');
   L.push('');
   L.push('| name | file | line | lines | system | names tables | suites that read it |');
@@ -161,9 +195,9 @@ function censusPage(s) {
   L.push('Marked by the name\'s words (`TUNED_WORDS`, none of `UNTUNED_WORDS`). They');
   L.push('leave with their renderer\'s tables.');
   L.push('');
-  L.push('| name | file | line | suites that read it |');
-  L.push('|---|---|---|---|');
-  for (const r of tuned) L.push(`| \`${r.name}\` | ${short(r.file)} | ${r.line} | ${su(r.name)} |`);
+  L.push('| name | file | line | system | suites that read it |');
+  L.push('|---|---|---|---|---|');
+  for (const r of tuned) L.push(`| \`${r.name}\` | ${short(r.file)} | ${r.line} | ${r.byHand ? r.system : '(not read yet)'} | ${su(r.name)} |`);
   L.push('');
   L.push('## 3. The other lone constants (stay)');
   L.push('');

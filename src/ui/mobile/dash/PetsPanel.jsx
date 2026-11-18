@@ -4,6 +4,7 @@ import { PetPortrait } from '@/ui/petPortrait.jsx';
 import { petDisplayName, petKindName, petEffectiveLevel, cleanPetName, PET_NAME, PET_BIG_AT, PET_KINDS, worldSafeText, petKindOfOld, petXpView, petTradeView, TRAP_WORDS, petWardView, petHousePrice, PET_HOUSE } from '@/data/trapping.js';
 import { ELEM_ICON_SRC } from '@/game/elemHits.js';   /* v2.3.3123: the ward's element */
 import { storePetsEnabled, storeListPet } from '@/ui/storeApi.js';   /* v2.3.3122: sell a pet at the auction house */
+import { claimSell, releaseSell } from '@/game/storeAnswer.js';   /* v2.3.5882: a pet's listing, one tap at a time (TRAPS §265) */
 import { petbookOn, petList, activePet, sendPetActive, sendPetName, sendPetRelease, pethouseOn, sendPetHouseBuy } from '@/game/petBook.js';
 import { trapLevel, petlevelsOn, petwardsOn } from '@/game/trapping.js';
 import { ZONES } from '@/data/zones.js';
@@ -291,8 +292,17 @@ export const PetsPanel = () => {
                             style={{ flex: 1, minWidth: 0, minHeight: 40, padding: '0 10px', borderRadius: 10, fontSize: 16, fontFamily: 'inherit',
                               background: COL.well, color: COL.text, border: '1px solid ' + COL.borderStrong }} />
                           <Btn on={pr >= 1 && !sellBusy} primary data-pet-list={p.id} onClick={async () => {
+                            /* v2.3.5882 (card K3 PR 3): the store's one-tap lock, held
+                               by the pet's id until the answer (TRAPS §265; as
+                               ItemDetailPopup's sale).  sellBusy is a render away, so
+                               two taps in one frame both sent; a second tap while the
+                               listing is out now sends nothing.  Freed on every
+                               answer, refusal or error */
+                            const lk = 'pet:' + p.id;
+                            if (!claimSell(lk, Date.now())) return;
                             setSellBusy(true);
-                            const r = await storeListPet(p.id, pr);
+                            let r = null;
+                            try { r = await storeListPet(p.id, pr); } finally { releaseSell(lk); }
                             setSellBusy(false);
                             if (r && r.ok) { setSellMsg({ ok: true, text: 'Listed for ' + pr + ' gold' }); setSelling(null); setOpen(null); }
                             else setSellMsg({ ok: false, text: (r && r.reason && TRAP_WORDS[r.reason]) || (r && r.error) || 'Not listed' });

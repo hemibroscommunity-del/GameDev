@@ -66,6 +66,7 @@ import { PROP_LIGHTS } from './worldFx.js';
 import { SHADE, formShadeOn } from './formShade.js';
 import { readArtBottoms } from './propGround.js';
 import { npcArtUrl } from './npcSprites.js';
+import { sw } from '../game/switches.js';   /* v2.3.5983: `?townparts=0` */
 import { forEachWheelSwayer, forEachWheelFlag } from './wheelObjects.js';   /* v2.3.3000: the Wheel's trees and bushes sway; v2.3.3382: and the Town Hall's flag waves */
 import { forEachGrottoSwayer } from './grottoFx.js';   /* v2.3.3567: and the Goo Grotto's ferns */
 
@@ -187,13 +188,39 @@ function mintFxSheet() {
   FX.streak = cut(80, 16, 3, 16);
 }
 
-/** Load the cut building pieces and mint the effect textures.  Awaited by
- *  the intro gate (preloadWorldAnimations): town is a resident hub, so its
- *  buildings' pieces are global like the buildings themselves. */
-export function preloadWorldLife() {
-  if (_ready) return _ready;
-  _ready = (async () => {
-    try { mintFxSheet(); } catch (e) { console.warn('[worldLife] fx mint failed', e && e.message); }
+/** Mint the effect textures, and load the cut building pieces where the
+ *  retired town will be seen.  Awaited by the intro gate
+ *  (preloadWorldAnimations).
+ *  v2.3.5983 (card P2's memory backlog, docs/plan/census/P2-memory.md row 9):
+ *  every building with pieces (propParts.js: the forge, the auction house,
+ *  the bank, the mayor's house) is the retired town's (worldProps.js,
+ *  `zone: 'town'`), and a session in the world never stands there: the two
+ *  sheets, 1.1 MB decoded at the memory check's fight, were loaded behind the
+ *  gate for nothing.  So the gate loads them only where it loads the town's
+ *  own scenery (`withParts`: preloadAnimations.js, not townSkippedOnTheWay),
+ *  and every other way into the retired town loads them with its scenery,
+ *  behind that town's own veil (loadWorldLifeParts: preloadZoneAssets and
+ *  zoneTransitions.js's syncTownScenery).  A building whose pieces have not
+ *  loaded waits for them before it is drawn with them (_updateBuildings), as
+ *  on a cold start.  Once loaded they are kept, as before.  `?townparts=0`
+ *  loads them at the gate every session, as before. */
+export function preloadWorldLife(withParts = true) {
+  if (!_ready) {
+    _ready = (async () => {
+      try { mintFxSheet(); } catch (e) { console.warn('[worldLife] fx mint failed', e && e.message); }
+      return true;
+    })();
+  }
+  return (withParts || !_partsSkipOn) ? Promise.all([_ready, loadWorldLifeParts()]).then(() => true) : _ready;
+}
+
+const _partsSkipOn = !sw('townparts');
+let _parts = null;
+/** The buildings' cut pieces (the hanging signs and crates on one sheet, the
+ *  flags on another).  Idempotent: one load a page, kept. */
+export function loadWorldLifeParts() {
+  if (_parts) return _parts;
+  _parts = (async () => {
     const sheets = Object.create(null);
     await Promise.allSettled(Object.keys(PROP_PART_SHEETS).map(async (k) => {
       const sh = PROP_PART_SHEETS[k];
@@ -216,7 +243,7 @@ export function preloadWorldLife() {
     }
     return true;
   })();
-  return _ready;
+  return _parts;
 }
 
 /* ─────────────────────────── the wind ─────────────────────────── */
