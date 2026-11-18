@@ -1787,11 +1787,14 @@ _fxPreload.push(treesWhenReady().then(() => Promise.allSettled(treeArtSources().
    vein, its four colour-mapped twins and their break strip held ~8 MB.
    v2.3.3443: 1.2 MB, every rock cut 1.4x (tools/world/add-ore-art.mjs
    ORE_GROW) so that copper hides the miner's shirt's hem as the old vein did. */
+/* v2.3.6222 (card FX PR 3, ore-tiers): asked on the trees' wait, so they are
+   read as their numbers, a byte a pixel (paletteLoad.js, the rocks' note):
+   1.1 MB held as pictures in the page at the memory check's fight.  Still on
+   the loading screen's gate: the wait is pushed as it starts.
+   `?treenumbers=0`: pictures, as before. */
 const ORE_TEX = {};
-for (const { lvl, url } of oreArtSources()) {
-  _fxLoad(url).then((tex) => { if (tex) ORE_TEX[lvl] = tex; })
-    .catch((err) => console.warn('[ore-art] load failed', url, err));
-}
+_fxPreload.push(treesWhenReady().then(() => Promise.allSettled(oreArtSources().map(({ lvl, url }) => _fxLoad(url).then((tex) => { if (tex) ORE_TEX[lvl] = tex; })
+  .catch((err) => console.warn('[ore-art] load failed', url, err))))));
 /* v2.3.2956: where a node's HP bar hangs, as a fraction of its frame --
    measured off the same webps' alpha (>40): the pine's crown tops out at
    0.103, the ore's rock bottoms out at its ground line (NODE_ART_BASE), the

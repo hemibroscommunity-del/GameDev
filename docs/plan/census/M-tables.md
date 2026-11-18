@@ -61,7 +61,7 @@ leave with their renderer's tables.
 ## 3. The other lone constants (stay)
 
 - entityRenderer.js: `WARD_RING_MS`:135, `COLLISION_GLOW_RANGE_PX`:179, `SKULL_RED_TINT`:184, `HUD_BAR_VER`:189, `PEER_HPBAR_HOLD_MS`:238, `NOTICE_MS`:246, `HPBAR_FLASH_MS`:258, `POPUP_BAR_CLEAR`:268, `SPAWN_FX_MS`:283, `BOSS_SEE_THROUGH`:304, `FOLK_FAR_MARGIN`:516, `TRAIT_NFT_ID`:767, `TRAIT_VER`:774, `HEAD_WATCH_MS`:1006, `BODY_DATA_TIMEOUT_MS`:1082, `MASKED_CAP`:2231, `_BAKE_BUSY_MAX`:2613, `_BAKE_STUCK_MS`:2992, `_LOCAL_PATIENCE_MS`:3005, `FISH_TOP_CAP`:3900, `FISH_SKIN_DARK`:3907, `FISH_SKIN_LIGHT`:3907, `FISH_STEEL_LO`:3907, `FISH_STEEL_HI`:3907, `FISH_STEEL_INK`:3907, `FISH_RIM_MIN`:3908, `FISH_PINE_RG`:3909, `HAIR_MASK_ROUNDS`:4248, `SWORD_SWING_MS`:4503, `BOW_SHOT_MS`:4508, `BOW_RELEASE_MS`:4513, `HP_RING_BAND`:4889, `HP_RING_TRACK`:4892, `HP_RING_CENTER_FILL`:4893, `HP_TIER_GREEN`:4894, `HP_TIER_YELLOW`:4894, `HP_TIER_ORANGE`:4894, `HP_TIER_RED`:4894, `HP_RING_OUTLINE`:4895, `HP_GHOST_WHITE`:4896, `HP_GHOST_DRAIN`:4897, `HP_GHOST_DRAIN_M`:4898, `HP_GHOST_HOLD_MS`:4901, `SWING_ANIM_MS`:4999, `THROW_RELEASE_GRACE_MS`:5022, `PLATE_INK`:5422, `PLATE_FILL_ALPHA`:5553, `PLATE_NAME_FILL`:5563, `PLATE_NAME_WEIGHT`:5570, `PLATE_BORDER_ALPHA`:5577, `PLATE_LEVEL_STROKE`:5642, `PLATE_ALARM_FILL`:5660, `PLATE_ALARM_FILL_ALPHA`:5686, `PLATE_ALARM_NAME_FILL`:5687, `PLATE_ALARM_NAME_WEIGHT`:5688, `PLATE_BOSS_FILL`:5698, `PLATE_BOSS_FILL_ALPHA`:5699, `PLATE_ALARM_LEVEL_FILL`:5708, `PLATE_ENGAGED_MS`:5712, `BRO_BADGE_URL`:5867, `PLATE_SCALE_MIN`:6055, `PLATE_SCALE_MAX`:6056, `CUE_ZOOM_MAX`:6067, `SOUTH_BLOCK_OFFHAND_ENABLED`:6420, `RES_SLIDE_MS`:7449, `RES_TRACK`:7454, `RES_BORDER_COL`:7455
-- effectsRenderer.js: `BLOCK_POSE_FRAME`:37, `PEER_CHOP_IDLE_MS`:140, `GPU_WAIT_MS`:141, `PEER_INK_CAP`:166, `PEER_INK_IDLE_MS`:167, `PRINT_TTL_MS`:186, `PRINT_ALPHA`:187, `FARM_MIN_BLOB`:272, `PEER_CHOP_REACH`:299, `PEER_COOK_REACH`:300, `PEER_GATHER_NODE_TTL_MS`:301, `PEER_SEAT_MATCH_PX`:306, `CHOP_GEAR_FW`:341, `DRESSED_MAX`:374, `FIRE_FRAME_MS`:440, `PEER_FIG_BUDGET`:578, `PEER_FIG_IDLE_MS`:586, `PEER_FIG_LOAD_MS`:594, `PEER_FIG_RETRY_MS`:595, `PEER_GREAVES_WAIT_MS`:596, `GEAR_STRIP_TIMEOUT_MS`:597, `DMG_FONT_PX`:866, `DMG_CRIT_FONT_PX`:867, `MSG_EDGE_PX`:927, `DMG_CRIT_COLOR`:937, `MAGIC_BOLT_FRAME_MS`:1017, `HOT_SPECIAL_ARROW`:1113, `SWORD_FEEL_AUTHORED_DIR`:1131, `JET_STREAM_ENABLED`:1326, `JET_LINGER_MS`:1327, `JET_ALPHA`:1331, `JET_MAX`:1335, `FX_BURST_MS`:1391, `SLIME_WAVE_MS`:1449, `ARROW_BLAST_MS`:1450, `ARROW_BLAST_D`:1451, `SNOWBALL_BURST_MS`:1469, `SNAP_G`:1587, `SNAP_REST_MS`:1588, `SNAP_FADE_MS`:1589, `SNAP_MAX`:1590, `PROP_SLASHES_PER_PROP`:1591, `PROP_ARROWS_PER_PROP`:1594, `PROP_SCORCHES_PER_PROP`:1595, `PROP_MARKS_MAX`:1596, `SCORCH_GLOW_MS`:1597, `ORE_SPLIT_MS`:1883, `ORE_POP_LATE_MS`:1896, `DMG_BMP_BAKE_PX`:1968, `DMG_WORD_BAKE_PX`:1971, `DMG_WORD_PAGE_PX`:1972, `NPC_BUBBLE_REACH`:2160, `EMOTE_POP_FONT`:2165, `REMOTE_BAKE_CACHE_MAX`:2270, `BEAM_RISE_S`:2336, `BEAM_A`:2337, `BEAM_HALO_A`:2338, `BEAM_FLICKER`:2339, `BEAM_PULSE_HZ`:2340, `BEAM_MOTES`:2341, `MOTE_TEX`:2342, `LOOT_BEAMS_MAX`:2345, `PEER_FIRES`:2351, `LAND_S`:2417, `POP_JUMP`:2419, `POP_DELAY_S`:2420, `POP_ARC_S`:2421, `POP_BOUNCE_S`:2422, `SMITH_FLAME_H0`:2510, `WHIRL_CATCH_MAX`:2516
+- effectsRenderer.js: `BLOCK_POSE_FRAME`:37, `PEER_CHOP_IDLE_MS`:140, `GPU_WAIT_MS`:141, `PEER_INK_CAP`:166, `PEER_INK_IDLE_MS`:167, `PRINT_TTL_MS`:186, `PRINT_ALPHA`:187, `FARM_MIN_BLOB`:272, `PEER_CHOP_REACH`:299, `PEER_COOK_REACH`:300, `PEER_GATHER_NODE_TTL_MS`:301, `PEER_SEAT_MATCH_PX`:306, `CHOP_GEAR_FW`:341, `DRESSED_MAX`:374, `FIRE_FRAME_MS`:440, `PEER_FIG_BUDGET`:578, `PEER_FIG_IDLE_MS`:586, `PEER_FIG_LOAD_MS`:594, `PEER_FIG_RETRY_MS`:595, `PEER_GREAVES_WAIT_MS`:596, `GEAR_STRIP_TIMEOUT_MS`:597, `DMG_FONT_PX`:866, `DMG_CRIT_FONT_PX`:867, `MSG_EDGE_PX`:927, `DMG_CRIT_COLOR`:937, `MAGIC_BOLT_FRAME_MS`:1017, `HOT_SPECIAL_ARROW`:1113, `SWORD_FEEL_AUTHORED_DIR`:1131, `JET_STREAM_ENABLED`:1326, `JET_LINGER_MS`:1327, `JET_ALPHA`:1331, `JET_MAX`:1335, `FX_BURST_MS`:1391, `SLIME_WAVE_MS`:1449, `ARROW_BLAST_MS`:1450, `ARROW_BLAST_D`:1451, `SNOWBALL_BURST_MS`:1469, `SNAP_G`:1587, `SNAP_REST_MS`:1588, `SNAP_FADE_MS`:1589, `SNAP_MAX`:1590, `PROP_SLASHES_PER_PROP`:1591, `PROP_ARROWS_PER_PROP`:1594, `PROP_SCORCHES_PER_PROP`:1595, `PROP_MARKS_MAX`:1596, `SCORCH_GLOW_MS`:1597, `ORE_SPLIT_MS`:1886, `ORE_POP_LATE_MS`:1899, `DMG_BMP_BAKE_PX`:1971, `DMG_WORD_BAKE_PX`:1974, `DMG_WORD_PAGE_PX`:1975, `NPC_BUBBLE_REACH`:2163, `EMOTE_POP_FONT`:2168, `REMOTE_BAKE_CACHE_MAX`:2273, `BEAM_RISE_S`:2339, `BEAM_A`:2340, `BEAM_HALO_A`:2341, `BEAM_FLICKER`:2342, `BEAM_PULSE_HZ`:2343, `BEAM_MOTES`:2344, `MOTE_TEX`:2345, `LOOT_BEAMS_MAX`:2348, `PEER_FIRES`:2354, `LAND_S`:2420, `POP_JUMP`:2422, `POP_DELAY_S`:2423, `POP_ARC_S`:2424, `POP_BOUNCE_S`:2425, `SMITH_FLAME_H0`:2513, `WHIRL_CATCH_MAX`:2519
 
 ## 4. Apart: not counted, they stay
 
@@ -86,7 +86,7 @@ literal wrapped in `Object.freeze` (a call).
 | `_traitTex` | entityRenderer.js | 4742 | written: assigned (line 4766) | - |
 | `_mannequinTex` | entityRenderer.js | 4749 | written: assigned (line 4775) | - |
 | `_fxPreload` | effectsRenderer.js | 26 | written: .push() (line 38) | loader-retries |
-| `_combatTrimStats` | effectsRenderer.js | 42 | written: assigned (line 14238) | loader-retries |
+| `_combatTrimStats` | effectsRenderer.js | 42 | written: assigned (line 14241) | loader-retries |
 | `_standInTrimStats` | effectsRenderer.js | 63 | written: assigned (line 117) | - |
 | `POPUP_ICONS` | effectsRenderer.js | 939 | written: assigned (line 987) | - |
 | `SHARD_ICONS` | effectsRenderer.js | 1002 | written: assigned (line 1004) | - |
@@ -95,11 +95,11 @@ literal wrapped in `Object.freeze` (a call).
 | `JET_STREAM` | effectsRenderer.js | 1308 | written: assigned (line 1310) | - |
 | `ARROW_BLAST` | effectsRenderer.js | 1447 | written: .push() (line 1460) | - |
 | `SNOWBALL_BURST` | effectsRenderer.js | 1468 | written: .push() (line 1483) | - |
-| `NODE_SPRITE_TEX` | effectsRenderer.js | 1768 | written: assigned (line 1828) | - |
+| `NODE_SPRITE_TEX` | effectsRenderer.js | 1768 | written: assigned (line 1831) | - |
 | `TREE_TEX` | effectsRenderer.js | 1780 | written: assigned (line 1781) | - |
-| `ORE_TEX` | effectsRenderer.js | 1790 | written: assigned (line 1792) | pixel-readers |
-| `ORE_ICON_TIER_TEX` | effectsRenderer.js | 1855 | written: assigned (line 1858) | - |
-| `SMITH_ANVIL` | effectsRenderer.js | 2505 | written: assigned (line 2507) | - |
+| `ORE_TEX` | effectsRenderer.js | 1795 | written: assigned (line 1796) | pixel-readers |
+| `ORE_ICON_TIER_TEX` | effectsRenderer.js | 1858 | written: assigned (line 1861) | - |
+| `SMITH_ANVIL` | effectsRenderer.js | 2508 | written: assigned (line 2510) | - |
 | `_staffTipOut` | entityRenderer.js | 140 | handed on: an argument (line 11178) | - |
 | `_hudBarTex` | entityRenderer.js | 190 | handed on: in a literal (line 225) | renderer-life |
 | `NODE_HPBAR_PARTS` | entityRenderer.js | 599 | handed on: aliased (line 640) | - |
@@ -110,29 +110,29 @@ literal wrapped in `Object.freeze` (a call).
 | `MONSTER_HP_NUM_STYLE` | entityRenderer.js | 4910 | handed on: in a literal (line 5183) | - |
 | `_STAND_SOUTH` | entityRenderer.js | 5346 | handed on: an argument (line 5348) | - |
 | `PLATE_BAND` | entityRenderer.js | 5589 | handed on: in a literal (line 6383) | - |
-| `_emoteIds` | effectsRenderer.js | 32 | handed on: aliased (line 9121) | - |
-| `_emoteSrcs` | effectsRenderer.js | 32 | handed on: aliased (line 9121) | - |
-| `_emoteEms` | effectsRenderer.js | 32 | handed on: aliased (line 9121) | - |
-| `FIRE_SKIN_OPTS` | effectsRenderer.js | 453 | handed on: an argument (line 5054) | - |
+| `_emoteIds` | effectsRenderer.js | 32 | handed on: aliased (line 9124) | - |
+| `_emoteSrcs` | effectsRenderer.js | 32 | handed on: aliased (line 9124) | - |
+| `_emoteEms` | effectsRenderer.js | 32 | handed on: aliased (line 9124) | - |
+| `FIRE_SKIN_OPTS` | effectsRenderer.js | 453 | handed on: an argument (line 5057) | - |
 | `ARROW_SPECIAL` | effectsRenderer.js | 1094 | handed on: in a literal (line 1338) | - |
 | `MAGIC_SPECIAL` | effectsRenderer.js | 1114 | handed on: in a literal (line 1339) | - |
 | `SWORD_SLASH` | effectsRenderer.js | 1123 | handed on: in a literal (line 1340) | - |
 | `EFFECT_BURSTS` | effectsRenderer.js | 1374 | handed on: an argument (line 1386) | - |
 | `GESTURE_TOOLS` | effectsRenderer.js | 1671 | handed on: an argument (line 1714) | mirror-audit |
-| `NODE_SPRITE_SOURCES` | effectsRenderer.js | 1765 | handed on: an argument (line 1827) | - |
-| `DMG_ALL_CHARS` | effectsRenderer.js | 1982 | handed on: an argument (line 1987) | - |
-| `DMG_DIGIT_CHARS` | effectsRenderer.js | 1983 | handed on: an argument (line 1988) | - |
-| `_NO_HOP` | effectsRenderer.js | 2455 | handed on: returned (line 2427) | - |
-| `_AT_MIDDLE` | effectsRenderer.js | 2492 | handed on: aliased (line 9666) | loot-clock |
+| `NODE_SPRITE_SOURCES` | effectsRenderer.js | 1765 | handed on: an argument (line 1830) | - |
+| `DMG_ALL_CHARS` | effectsRenderer.js | 1985 | handed on: an argument (line 1990) | - |
+| `DMG_DIGIT_CHARS` | effectsRenderer.js | 1986 | handed on: an argument (line 1991) | - |
+| `_NO_HOP` | effectsRenderer.js | 2458 | handed on: returned (line 2430) | - |
+| `_AT_MIDDLE` | effectsRenderer.js | 2495 | handed on: aliased (line 9669) | loot-clock |
 | `_PEER_WORN_SLOTS` | entityRenderer.js | 3107 | frozen | - |
 | `CAPTURE_FACING` | entityRenderer.js | 5283 | frozen | - |
 | `PEER_FIG_EST` | effectsRenderer.js | 583 | frozen | - |
-| `GOO_HOLD` | effectsRenderer.js | 2522 | frozen | - |
+| `GOO_HOLD` | effectsRenderer.js | 2525 | frozen | - |
 
 <!-- part 5: the code (tools/dev/render-code-census.mjs --write) -->
 ## 5. The code, counted (v2.3.5347)
 
-Written by `node tools/dev/render-code-census.mjs --write` at ae9648a7; the rules are
+Written by `node tools/dev/render-code-census.mjs --write` at 83802d33; the rules are
 `tools/guards/lib/renderCode.mjs`'s header. Moves nothing. A **leaf** is a
 top-level function that reads no `this` and reaches no module state; its
 **level** is 0 when it reads no other in-file function, else one more than
@@ -307,212 +307,212 @@ the highest leaf it reads (a function reading a non-leaf has no level).
 | `splinterTex` | effectsRenderer.js | 1577 | 10 | - | - | `_SPLINTER_TEX` | - | traps-page-rules |
 | `hardDotTex` | effectsRenderer.js | 1622 | 10 | - | - | `_HARD_DOT_TEX` | - | traps-page-rules |
 | `groundDecalTex` | effectsRenderer.js | 1638 | 17 | - | - | `_GROUND_DECAL_TEX` | - | traps-page-rules |
-| `nodeSpriteTex` | effectsRenderer.js | 1862 | 5 | - | - | `NODE_SPRITE_TEX`, `ORE_TEX`, `TREE_TEX` | - | - |
-| `_installDmgFont` | effectsRenderer.js | 1986 | 5 | - | - | `DMG_ALL_CHARS`, `DMG_DIGIT_CHARS` | `DMG_BMP_BAKE_PX`, `DMG_WORD_BAKE_PX`, `DMG_WORD_PAGE_PX` | - |
-| `_reinstallDmgFont` | effectsRenderer.js | 2018 | 14 | - | - | `_dmgFontSig` | `_dmgLog`, `_installDmgFont` | - |
-| `dmgFontNeedsRebuild` | effectsRenderer.js | 2048 | 1 | - | - | `_dmgBmpReady`, `_dmgPagesGone` | - | - |
-| `_letGoOfDmgPages` | effectsRenderer.js | 2049 | 10 | - | - | `_dmgPagesGone` | `_dmgLog` | - |
-| `_dmgLog` | effectsRenderer.js | 2078 | 3 | - | - | `_dmgPagesGone` | - | - |
-| `prewarmDmgFontPipe` | effectsRenderer.js | 2081 | 43 | - | - | `DMG_STYLE`, `DMG_STYLE_EMOJI`, `_dmgBmpReady`, `_dmgPagesGone` | `DMG_BMP_BAKE_PX`, `DMG_WORD_BAKE_PX`, `_dmgLog`, `_letGoOfDmgPages`, `_reinstallDmgFont`, `dmgFontNeedsRebuild` | traps-phone-memory |
-| `bubbleGradient` | effectsRenderer.js | 2179 | 14 | - | - | `_chatBubbleGrad` | `_bubbleGrads` | - |
-| `cssToHex` | effectsRenderer.js | 2226 | 9 | - | - | `_hexMemo` | - | zone-leftovers |
-| `_trimBakeCache` | effectsRenderer.js | 2289 | 13 | - | - | `_bakeFrame` | `REMOTE_BAKE_CACHE_MAX` | traps-phone-memory |
-| `makeBeamTexture` | effectsRenderer.js | 2355 | 27 | - | 0 | - | - | traps-page-rules |
-| `makeMoteTexture` | effectsRenderer.js | 2384 | 14 | - | 0 | - | `MOTE_TEX` | traps-page-rules |
-| `lootPop` | effectsRenderer.js | 2426 | 24 | - | - | `_NO_HOP` | `POP_ARC_S`, `POP_BOUNCE_S`, `POP_DELAY_S`, `POP_JUMP`, `POP_LAND_S` | - |
-| `lootHop` | effectsRenderer.js | 2458 | 19 | - | - | `_NO_HOP` | `LAND_S`, `lootPop` | loot-clock |
-| `EffectsRenderer.constructor` | effectsRenderer.js | 2527 | 738 | yes | - | `JET_STREAM`, `_fxPreload`, `_standInLegsUse` | `CHOP_GEAR_FW`, `DMG_SCALE`, `JET_LINGER_MS`, `JET_STREAM_ENABLED`, `MSG_FONT_PX`, `STANDIN_LEGS_OFF`, `_fxLoad`, `_sliceStandIn`, `makeBeamTexture`, `makeMoteTexture` | art-holds, elem-windup, farmwalk, fish-top-evict, held-numbers, keep-as-image, loader-retries, loot-clock, mirror-audit, owner-icons, picture-door, storm-eye, tick, water-frog, phase-table, traps-page-rules, traps-phone-memory |
-| `EffectsRenderer._standInTriggers` | effectsRenderer.js | 4269 | 27 | yes | - | - | - | - |
-| `EffectsRenderer._loadChopSkinStrips` | effectsRenderer.js | 4308 | 11 | yes | - | - | - | - |
-| `EffectsRenderer._bakeChopStrips` | effectsRenderer.js | 4360 | 36 | yes | - | - | `_bakeChopStrip` | - |
-| `EffectsRenderer._peerChopFrames` | effectsRenderer.js | 4460 | 27 | yes | - | - | `PEER_FIG_EST`, `PEER_FIG_RETRY_MS`, `_bakeChopStrip` | - |
-| `EffectsRenderer._dropPeerChop` | effectsRenderer.js | 4495 | 14 | yes | - | - | - | - |
-| `EffectsRenderer._loadCookStrips` | effectsRenderer.js | 4534 | 12 | yes | - | - | - | - |
-| `EffectsRenderer._fetchAndBakeCook` | effectsRenderer.js | 4569 | 9 | yes | - | - | - | - |
-| `EffectsRenderer._bakeCookStrips` | effectsRenderer.js | 4606 | 36 | yes | - | - | `_sliceStandIn` | - |
-| `EffectsRenderer._peerStandInInk` | effectsRenderer.js | 4686 | 30 | yes | - | - | `PEER_INK_CAP`, `STANDIN_INK`, `_sliceStandIn` | - |
-| `EffectsRenderer._dropPeerStandInInk` | effectsRenderer.js | 4719 | 15 | yes | - | - | - | - |
-| `EffectsRenderer._peerFigFrames` | effectsRenderer.js | 4744 | 25 | yes | - | - | `PEER_FIG_EST`, `PEER_FIG_LOAD_MS`, `PEER_FIG_RETRY_MS`, `STANDIN_INK`, `_sliceStandIn` | - |
-| `EffectsRenderer._peerFigBytes` | effectsRenderer.js | 4778 | 10 | yes | - | - | `PEER_FIG_EST` | - |
-| `EffectsRenderer._peerFigRoom` | effectsRenderer.js | 4794 | 19 | yes | - | - | `PEER_FIG_BUDGET` | - |
-| `EffectsRenderer._dropPeerFig` | effectsRenderer.js | 4814 | 17 | yes | - | - | - | - |
-| `EffectsRenderer._gearStripPending` | effectsRenderer.js | 4840 | 10 | yes | - | - | `PEER_GREAVES_WAIT_MS` | - |
-| `EffectsRenderer._peerFigure` | effectsRenderer.js | 4874 | 55 | yes | - | - | `CHOP_GEAR_FW`, `FIRE_LEGLESS_OFF` | - |
-| `EffectsRenderer._peerFigureReady` | effectsRenderer.js | 4941 | 4 | yes | - | - | - | - |
-| `EffectsRenderer._loadFireStrips` | effectsRenderer.js | 4981 | 19 | yes | - | - | `FIRE_LEGLESS_OFF` | - |
-| `EffectsRenderer._fireWantLegless` | effectsRenderer.js | 5018 | 5 | - | - | - | `FIRE_LEGLESS_OFF` | - |
-| `EffectsRenderer._fetchAndBakeFire` | effectsRenderer.js | 5024 | 39 | yes | - | `FIRE_SKIN_OPTS` | `FIRE_URL`, `_bakeFireSplit`, `_sliceStandIn` | - |
-| `EffectsRenderer._seatStandInTraits` | effectsRenderer.js | 5105 | 7 | yes | - | - | - | - |
-| `EffectsRenderer._placeSkillTraitsOn` | effectsRenderer.js | 5112 | 14 | yes | - | - | `_isGatheringStandIn`, `_placeStandInCapeOn` | - |
-| `EffectsRenderer.update` | effectsRenderer.js | 5143 | 64 | yes | - | `_bakeFrame` | `GPU_WAIT_MS`, `REMOTE_BAKE_CACHE_MAX`, `_trimBakeCache` | drop-lines, elem-windup, fire-strip, keep-as-image, mirror-audit, owner-icons, renderer-life, storm-eye, water-frog |
-| `EffectsRenderer._dot` | effectsRenderer.js | 5263 | 19 | yes | - | - | `hardDotTex` | - |
-| `EffectsRenderer._hideSpareDots` | effectsRenderer.js | 5283 | 21 | yes | - | - | - | - |
-| `EffectsRenderer._updateParticles` | effectsRenderer.js | 5309 | 171 | yes | - | - | `cssToHex` | - |
-| `EffectsRenderer._updateDamageNumbers` | effectsRenderer.js | 5597 | 236 | yes | - | `DMG_STYLE`, `DMG_STYLE_EMOJI`, `POPUP_ICONS`, `TIGHT_POPUP_ICONS`, `_dmgBmpReady` | `DMG_BMP_BAKE_PX`, `DMG_BMP_RE`, `DMG_CRIT_FONT_PX`, `DMG_DIGIT_RE`, `DMG_FONT_PX`, `DMG_SCALE`, `DMG_WORD_BAKE_PX`, `MSG_EDGE_PX`, `MSG_FONT_PX`, `isDamagePopup` | traps-phone-memory |
-| `EffectsRenderer._updateScreenFlash` | effectsRenderer.js | 6062 | 41 | yes | - | - | `cssToHex` | - |
-| `EffectsRenderer._updateAtmosphere` | effectsRenderer.js | 6106 | 29 | yes | - | - | - | - |
-| `EffectsRenderer._updateProjectiles` | effectsRenderer.js | 6150 | 319 | yes | - | `ARROW_PINE`, `ARROW_SPECIAL`, `MAGIC_BOLT_FRAMES`, `MAGIC_SPECIAL` | `HOT_SPECIAL_ARROW`, `cssToHex`, `stuckShaftScale` | - |
-| `EffectsRenderer._placeCookFood` | effectsRenderer.js | 6783 | 29 | yes | - | `GESTURE_TOOLS` | `_fxLoad` | - |
-| `EffectsRenderer._placeMagicBolt` | effectsRenderer.js | 6826 | 47 | yes | - | `MAGIC_BOLT_FRAMES` | `MAGIC_BOLT_FRAME_MS` | - |
-| `EffectsRenderer._placeSpecialFx` | effectsRenderer.js | 6904 | 48 | yes | - | - | - | - |
-| `EffectsRenderer.projScaleProbe` | effectsRenderer.js | 7006 | 1 | yes | - | - | - | - |
-| `EffectsRenderer.stuckScaleProbe` | effectsRenderer.js | 7007 | 1 | yes | - | - | - | - |
-| `EffectsRenderer._updateProjectileTrail` | effectsRenderer.js | 7009 | 26 | - | - | - | - | - |
-| `EffectsRenderer._fillPoly` | effectsRenderer.js | 7053 | 6 | - | - | - | - | - |
-| `EffectsRenderer._drawArrow` | effectsRenderer.js | 7065 | 21 | yes | - | `ARROW_PINE` | - | - |
-| `EffectsRenderer._placeArrowSprite` | effectsRenderer.js | 7118 | 24 | yes | - | `ARROW_PINE` | - | - |
-| `EffectsRenderer._noteJetStream` | effectsRenderer.js | 7170 | 35 | yes | - | `ARROW_PINE`, `JET_STREAM` | `JET_MAX`, `JET_STREAM_ENABLED` | - |
-| `EffectsRenderer._drawJetStreams` | effectsRenderer.js | 7249 | 22 | yes | - | `JET_STREAM` | `JET_ALPHA`, `JET_LINGER_MS` | - |
-| `EffectsRenderer._placeJetSprite` | effectsRenderer.js | 7285 | 18 | yes | - | - | - | - |
-| `EffectsRenderer._resetArrowSprites` | effectsRenderer.js | 7317 | 10 | yes | - | - | - | - |
-| `EffectsRenderer._drawStuckArrow` | effectsRenderer.js | 7333 | 17 | yes | - | `ARROW_PINE` | - | - |
-| `EffectsRenderer._drawStuckMagicShard` | effectsRenderer.js | 7374 | 8 | yes | - | - | - | - |
-| `EffectsRenderer._updateTelegraphs` | effectsRenderer.js | 7384 | 16 | yes | - | - | - | - |
-| `EffectsRenderer._updateOverlays` | effectsRenderer.js | 7404 | 396 | yes | - | - | - | - |
-| `EffectsRenderer._renderChatBubble` | effectsRenderer.js | 8698 | 130 | yes | - | - | `bubbleGradient` | - |
-| `EffectsRenderer._updateChatBubbles` | effectsRenderer.js | 8982 | 57 | yes | - | - | `NPC_BUBBLE_REACH` | traps-page-rules |
-| `EffectsRenderer._updateEmotePops` | effectsRenderer.js | 9114 | 83 | yes | - | `_emoteActive`, `_emoteEms`, `_emoteIds`, `_emoteSrcs` | `EMOTE_POP_FONT` | - |
-| `EffectsRenderer._updateHUD` | effectsRenderer.js | 9210 | 21 | yes | - | - | - | - |
-| `EffectsRenderer.disposeLootById` | effectsRenderer.js | 9257 | 10 | yes | - | - | - | - |
-| `EffectsRenderer.disposeLootRef` | effectsRenderer.js | 9274 | 5 | yes | - | - | - | - |
-| `EffectsRenderer.flushAllLoot` | effectsRenderer.js | 9288 | 5 | yes | - | - | - | - |
-| `EffectsRenderer._renderPileShine` | effectsRenderer.js | 9300 | 82 | yes | - | - | `BEAM_A`, `BEAM_AT_S`, `BEAM_FLICKER`, `BEAM_HALO_A`, `BEAM_MOTES`, `BEAM_ON`, `BEAM_PULSE_HZ`, `BEAM_RISE_S`, `LOOT_BEAMS_MAX`, `MOTE_TEX`, `makeBeamTexture`, `makeMoteTexture` | - |
-| `EffectsRenderer._disposeLoot` | effectsRenderer.js | 9401 | 29 | yes | - | - | - | - |
-| `EffectsRenderer._renderDroppedItem` | effectsRenderer.js | 9452 | 56 | yes | - | `DROP_COUNT_STYLE` | `DROP_ICON_WORLD` | - |
-| `EffectsRenderer._renderOwnerLabel` | effectsRenderer.js | 9519 | 31 | yes | - | - | - | traps-page-rules |
-| `EffectsRenderer._renderShardOverlay` | effectsRenderer.js | 9557 | 18 | yes | - | `SHARD_ICONS` | - | - |
-| `EffectsRenderer._renderCoinOverlay` | effectsRenderer.js | 9580 | 37 | yes | - | `LABEL_STYLE` | - | traps-page-rules, traps-phone-memory |
-| `EffectsRenderer._renderRareItems` | effectsRenderer.js | 9634 | 76 | yes | - | `_AT_MIDDLE` | `lootHop` | loot-clock |
-| `EffectsRenderer._updateGroundLoot` | effectsRenderer.js | 9721 | 403 | yes | - | `LABEL_STYLE`, `LABEL_STYLE_EMOJI`, `_AT_MIDDLE` | `cssToHex`, `lootHop` | traps-page-rules, traps-phone-memory |
-| `EffectsRenderer._updateFootprints` | effectsRenderer.js | 10373 | 33 | yes | - | - | `PRINT_ALPHA`, `PRINT_TTL_MS` | - |
-| `EffectsRenderer._updateGroundSplatter` | effectsRenderer.js | 10437 | 54 | yes | - | - | `cssToHex`, `groundDecalTex` | - |
-| `EffectsRenderer._updateArrowSnaps` | effectsRenderer.js | 10535 | 22 | yes | - | - | - | - |
-| `EffectsRenderer._spawnArrowSnap` | effectsRenderer.js | 10558 | 40 | yes | - | `ARROW_PINE` | `SNAP_G`, `SNAP_MAX`, `splinterTex` | - |
-| `EffectsRenderer._stepSnapPiece` | effectsRenderer.js | 10609 | 28 | - | - | - | `SNAP_FADE_MS`, `SNAP_G`, `SNAP_REST_MS` | - |
-| `EffectsRenderer._killArrowSnap` | effectsRenderer.js | 10639 | 4 | - | - | - | - | - |
-| `EffectsRenderer._clearArrowSnaps` | effectsRenderer.js | 10644 | 4 | yes | - | - | - | - |
-| `EffectsRenderer.arrowSnapProbe` | effectsRenderer.js | 10650 | 9 | yes | - | - | - | - |
-| `EffectsRenderer._propById` | effectsRenderer.js | 10686 | 9 | yes | - | - | - | - |
-| `EffectsRenderer._propRec` | effectsRenderer.js | 10699 | 4 | yes | - | - | - | - |
-| `EffectsRenderer._propOverlay` | effectsRenderer.js | 10704 | 15 | yes | - | - | - | traps-page-rules |
-| `EffectsRenderer._clearPropMarks` | effectsRenderer.js | 10720 | 12 | yes | - | - | - | - |
-| `EffectsRenderer._killPropMark` | effectsRenderer.js | 10733 | 5 | - | - | - | - | - |
-| `EffectsRenderer._spawnPropMark` | effectsRenderer.js | 10740 | 67 | yes | - | - | `HOT_SPECIAL_ARROW`, `PROP_ARROWS_PER_PROP`, `PROP_MARKS_MAX`, `PROP_SCORCHES_PER_PROP`, `PROP_SLASHES_PER_PROP`, `propSlashTex` | - |
-| `EffectsRenderer._stuckArrowTex` | effectsRenderer.js | 10816 | 7 | - | - | `ARROW_PINE`, `ARROW_SPECIAL` | `HOT_SPECIAL_ARROW` | - |
-| `EffectsRenderer._poseStuckArrow` | effectsRenderer.js | 10829 | 14 | - | - | `ARROW_PINE`, `ARROW_SPECIAL` | `HOT_SPECIAL_ARROW` | - |
-| `EffectsRenderer._placePropArrow` | effectsRenderer.js | 10847 | 33 | yes | - | - | `HOT_SPECIAL_ARROW` | - |
-| `EffectsRenderer._heatPropArrow` | effectsRenderer.js | 10892 | 5 | - | - | - | - | - |
-| `EffectsRenderer._volleyWorld` | effectsRenderer.js | 10901 | 3 | - | - | - | - | - |
-| `EffectsRenderer._reapPropArrows` | effectsRenderer.js | 10907 | 9 | yes | - | - | - | - |
-| `EffectsRenderer._updatePropMarks` | effectsRenderer.js | 10917 | 62 | yes | - | - | `HOT_SPECIAL_ARROW`, `SCORCH_GLOW_MS` | - |
-| `EffectsRenderer.propDepthProbe` | effectsRenderer.js | 10991 | 10 | yes | - | - | - | - |
-| `EffectsRenderer.propMarksProbe` | effectsRenderer.js | 11004 | 25 | yes | - | `ARROW_PINE`, `ARROW_SPECIAL`, `_PROP_SLASH_TEX` | `HOT_SPECIAL_ARROW` | - |
-| `EffectsRenderer._updateDebrisBursts` | effectsRenderer.js | 11034 | 18 | yes | - | - | - | - |
-| `EffectsRenderer._disposeNode` | effectsRenderer.js | 11064 | 15 | - | - | - | - | - |
-| `EffectsRenderer._peerWorkNodes` | effectsRenderer.js | 11097 | 30 | - | - | - | `PEER_SEAT_MATCH_PX` | - |
-| `EffectsRenderer._treeSeeThrough` | effectsRenderer.js | 11134 | 21 | - | - | - | - | - |
-| `EffectsRenderer._updateGatherNodes` | effectsRenderer.js | 11167 | 179 | yes | - | `_trapArt` | `cssToHex`, `nodeSpriteTex` | - |
-| `EffectsRenderer._drawGatherHpBar` | effectsRenderer.js | 11528 | 38 | yes | - | - | - | - |
-| `EffectsRenderer._nodeLabelAt` | effectsRenderer.js | 11607 | 20 | yes | - | - | - | - |
-| `EffectsRenderer._nodeHpBarAt` | effectsRenderer.js | 11637 | 27 | - | - | - | - | - |
-| `EffectsRenderer._updateMonsterImpacts` | effectsRenderer.js | 11675 | 6 | yes | - | - | - | - |
-| `EffectsRenderer._updateSlimeShockwaves` | effectsRenderer.js | 11695 | 39 | yes | - | - | `SLIME_WAVE_MS` | - |
-| `EffectsRenderer.snowballBurstProbe` | effectsRenderer.js | 11742 | 4 | yes | - | `SNOWBALL_BURST` | - | - |
-| `EffectsRenderer.sootProbe` | effectsRenderer.js | 11748 | 1 | yes | - | - | - | - |
-| `EffectsRenderer.slimeShockwaveProbe` | effectsRenderer.js | 11751 | 4 | yes | - | - | - | - |
-| `EffectsRenderer._updateSnowballBursts` | effectsRenderer.js | 11759 | 36 | yes | - | `SNOWBALL_BURST` | `SNOWBALL_BURST_MS` | mirror-audit |
-| `EffectsRenderer._updateArrowBlasts` | effectsRenderer.js | 11817 | 37 | yes | - | `ARROW_BLAST` | `ARROW_BLAST_D`, `ARROW_BLAST_MS` | - |
-| `EffectsRenderer.arrowBlastProbe` | effectsRenderer.js | 11864 | 11 | yes | - | `ARROW_BLAST` | - | - |
-| `EffectsRenderer._landAuraCap` | effectsRenderer.js | 11877 | 1 | - | - | - | - | - |
-| `EffectsRenderer._spawnOreBreak` | effectsRenderer.js | 11885 | 20 | yes | - | `ORE_ICON_TIER_TEX`, `ORE_TEX` | - | - |
-| `EffectsRenderer._spawnItemPopup` | effectsRenderer.js | 11909 | 10 | yes | - | - | - | - |
-| `EffectsRenderer._advanceItemPops` | effectsRenderer.js | 11921 | 18 | yes | - | - | - | - |
-| `EffectsRenderer._advanceOreBreaks` | effectsRenderer.js | 11944 | 26 | yes | - | - | `ORE_BREAK_LIE_MS`, `ORE_POP_LATE_MS`, `ORE_SPLIT_MS` | - |
-| `EffectsRenderer._oreBreakVol` | effectsRenderer.js | 12003 | 6 | - | - | - | - | - |
-| `EffectsRenderer._oreCrack` | effectsRenderer.js | 12015 | 10 | yes | - | - | - | - |
-| `EffectsRenderer._oreSplit` | effectsRenderer.js | 12028 | 7 | yes | - | `ORE_ICON_TEX` | - | - |
-| `EffectsRenderer._spawnCookSmoke` | effectsRenderer.js | 12051 | 20 | yes | - | - | `debrisDotTex` | - |
-| `EffectsRenderer._updateCookSmoke` | effectsRenderer.js | 12075 | 19 | yes | - | - | - | - |
-| `EffectsRenderer._updateFxBursts` | effectsRenderer.js | 12095 | 30 | yes | - | `EFFECT_BURSTS` | `FX_BURST_MS` | - |
-| `EffectsRenderer._updateFireTrail` | effectsRenderer.js | 12154 | 52 | yes | - | - | - | - |
-| `EffectsRenderer._updateWhirlVortex` | effectsRenderer.js | 12246 | 44 | yes | - | - | - | - |
-| `EffectsRenderer._buildSmithFx` | effectsRenderer.js | 12317 | 40 | yes | - | `SMITH_ANVIL` | `SMITH_FLAME_H0` | - |
-| `EffectsRenderer._updateSmithing` | effectsRenderer.js | 12369 | 57 | yes | - | `SMITH_ANVIL` | `SMITH_FLAME_H0` | sound-cues, townsfolk-walk |
-| `EffectsRenderer._updateElemStatusFx` | effectsRenderer.js | 12466 | 451 | yes | - | - | `BURN_BLAZE`, `GOO_HOLD`, `PEER_FIRES` | - |
-| `EffectsRenderer._updateAbilityWindups` | effectsRenderer.js | 13026 | 49 | yes | - | - | - | - |
-| `EffectsRenderer._markWhirlCatch` | effectsRenderer.js | 13110 | 59 | yes | - | - | `WHIRL_CATCH_MAX` | - |
-| `EffectsRenderer._updateCatchFlights` | effectsRenderer.js | 13188 | 44 | yes | - | - | - | - |
-| `EffectsRenderer._updateFishingHole` | effectsRenderer.js | 13250 | 18 | yes | - | - | - | - |
-| `EffectsRenderer._drawFishingHole` | effectsRenderer.js | 13282 | 15 | yes | - | - | - | - |
-| `EffectsRenderer._updateCampfire` | effectsRenderer.js | 13312 | 3 | yes | - | - | `FIRE_FRAME_MS` | - |
-| `EffectsRenderer._updateFiremaking` | effectsRenderer.js | 13318 | 64 | yes | - | - | `FIRE_FRAME_MS` | - |
-| `EffectsRenderer._peerChopTree` | effectsRenderer.js | 13472 | 19 | - | - | - | `PEER_CHOP_REACH`, `PEER_GATHER_NODE_TTL_MS` | - |
-| `EffectsRenderer._updateRemoteExtraction` | effectsRenderer.js | 13505 | 261 | yes | - | - | `CHOP_GEAR_FW`, `FIRE_FRAME_MS`, `PEER_CHOP_IDLE_MS`, `PEER_COOK_REACH`, `PEER_FIG_IDLE_MS`, `PEER_INK_IDLE_MS` | - |
-| `EffectsRenderer._tintGearSprite` | effectsRenderer.js | 14066 | 7 | - | - | - | `_standInTints` | - |
-| `EffectsRenderer._weaponStrip` | effectsRenderer.js | 14091 | 9 | yes | - | - | - | - |
-| `EffectsRenderer._gearStripFrame` | effectsRenderer.js | 14101 | 76 | yes | - | `_combatTrimFrames`, `_combatTrimStats`, `_fxPreload` | `GEAR_STRIP_TIMEOUT_MS` | loader-retries, picture-door |
-| `EffectsRenderer._shirtId` | effectsRenderer.js | 14283 | 6 | - | - | - | - | - |
-| `EffectsRenderer._myShirtLook` | effectsRenderer.js | 14296 | 7 | yes | - | - | - | - |
-| `EffectsRenderer._peerShirtLook` | effectsRenderer.js | 14303 | 10 | - | - | - | - | - |
-| `EffectsRenderer._dressedShirtFrame` | effectsRenderer.js | 14318 | 56 | yes | - | `_fxPreload` | `SHIRT_PATTERN_K` | picture-door |
-| `EffectsRenderer._evictDressed` | effectsRenderer.js | 14379 | 10 | yes | - | - | `DRESSED_MAX` | - |
-| `EffectsRenderer._warmDressedShirts` | effectsRenderer.js | 14392 | 17 | yes | - | - | `CHOP_GEAR_FW` | - |
-| `EffectsRenderer._placeSwingShirt` | effectsRenderer.js | 14411 | 22 | yes | - | - | - | - |
-| `EffectsRenderer._peerStandInArt` | effectsRenderer.js | 14478 | 7 | - | - | - | - | - |
-| `EffectsRenderer._greavesShapeOnce` | effectsRenderer.js | 14498 | 22 | yes | - | `_fxPreload` | `GEAR_STRIP_TIMEOUT_MS` | picture-door |
-| `EffectsRenderer._noteGreavesShape` | effectsRenderer.js | 14523 | 15 | yes | - | - | `STANDIN_LEGS_OFF` | loader-retries |
-| `EffectsRenderer._greavesUnder` | effectsRenderer.js | 14541 | 8 | yes | - | `_standInLegsUse` | - | - |
-| `EffectsRenderer._legsUnderFor` | effectsRenderer.js | 14552 | 6 | yes | - | - | - | held-sweep |
-| `EffectsRenderer._legsWornFor` | effectsRenderer.js | 14559 | 4 | yes | - | `_standInLegsUse` | - | held-sweep |
-| `EffectsRenderer._rebakeLegBodies` | effectsRenderer.js | 14564 | 11 | yes | - | - | - | - |
-| `EffectsRenderer._remoteBodyFramesFor` | effectsRenderer.js | 14580 | 29 | yes | - | `_bakeFrame`, `_standInLegsUse` | `_sliceStandIn`, `_trimBakeCache` | - |
-| `EffectsRenderer._remoteSheetFramesFor` | effectsRenderer.js | 14625 | 24 | yes | - | `_bakeFrame` | `_sliceStandIn`, `_trimBakeCache` | - |
-| `EffectsRenderer._placeJogLegs` | effectsRenderer.js | 14664 | 50 | yes | - | - | `_standInTints` | - |
-| `EffectsRenderer._ensureRemoteSwordSet` | effectsRenderer.js | 14786 | 9 | yes | - | - | - | - |
-| `EffectsRenderer._placeSkillTraitsOnFor` | effectsRenderer.js | 14806 | 12 | yes | - | - | `_isGatheringStandIn`, `_placeStandInCapeOn` | - |
-| `EffectsRenderer._updateRemoteSwordSwings` | effectsRenderer.js | 14824 | 161 | yes | - | `SWORD_SLASH` | - | - |
-| `EffectsRenderer._ensureRemoteBowSet` | effectsRenderer.js | 15074 | 12 | yes | - | - | - | - |
-| `EffectsRenderer._updateRemoteBowShots` | effectsRenderer.js | 15105 | 127 | yes | - | - | `BLOCK_POSE_FRAME` | - |
-| `EffectsRenderer._publishPeerBlockArms` | effectsRenderer.js | 15291 | 18 | yes | - | - | - | - |
-| `EffectsRenderer._placePeerBlockHands` | effectsRenderer.js | 15316 | 56 | yes | - | - | - | - |
-| `EffectsRenderer._orderSwingWeapon` | effectsRenderer.js | 15381 | 11 | - | - | - | - | - |
-| `EffectsRenderer._placeStandInShield` | effectsRenderer.js | 15406 | 49 | yes | - | - | - | - |
-| `EffectsRenderer._updateSwordSwing` | effectsRenderer.js | 15490 | 134 | yes | - | `SWORD_SLASH` | - | - |
-| `EffectsRenderer._placeBlockOffHand` | effectsRenderer.js | 15752 | 12 | yes | - | - | - | - |
-| `EffectsRenderer._placeOffHandWeapon` | effectsRenderer.js | 15777 | 64 | - | - | - | - | - |
-| `EffectsRenderer._predictBowGrip` | effectsRenderer.js | 15952 | 20 | yes | - | - | `BOW_GRIP_GUESS_OFF` | - |
-| `EffectsRenderer._updateBowShot` | effectsRenderer.js | 15977 | 137 | yes | - | - | `BLOCK_POSE_FRAME` | - |
-| `EffectsRenderer.captureAttackFrames` | effectsRenderer.js | 16264 | 84 | yes | - | `ARROW_PINE`, `SWORD_SLASH` | - | - |
-| `EffectsRenderer._photographFar` | effectsRenderer.js | 16383 | 18 | yes | - | - | - | - |
-| `EffectsRenderer._placeCookFigure` | effectsRenderer.js | 16410 | 38 | yes | - | - | - | - |
-| `EffectsRenderer._loadFarmStrips` | effectsRenderer.js | 16526 | 36 | yes | - | - | - | - |
-| `EffectsRenderer._farmReadyNow` | effectsRenderer.js | 16572 | 6 | yes | - | - | - | - |
-| `EffectsRenderer._farmUnderWanted` | effectsRenderer.js | 16585 | 1 | - | - | - | - | - |
-| `EffectsRenderer._bakeFarmBodies` | effectsRenderer.js | 16586 | 34 | yes | - | - | `FARM_MIN_BLOB`, `_sliceStandIn` | - |
-| `EffectsRenderer._warmFarmDressed` | effectsRenderer.js | 16631 | 14 | yes | - | - | - | - |
-| `EffectsRenderer._dropGearStrip` | effectsRenderer.js | 16648 | 10 | yes | - | `_combatTrimFrames` | - | - |
-| `EffectsRenderer._freeFarm` | effectsRenderer.js | 16660 | 34 | yes | - | - | - | - |
-| `EffectsRenderer._peerFarmFigure` | effectsRenderer.js | 16713 | 14 | yes | - | - | - | - |
-| `EffectsRenderer._drawPeerFarmer` | effectsRenderer.js | 16731 | 75 | yes | - | - | `farmCrownMed` | - |
-| `EffectsRenderer._destroyPeerFarmer` | effectsRenderer.js | 16819 | 8 | - | - | - | - | art-holds |
-| `EffectsRenderer._peerFarmersProbe` | effectsRenderer.js | 16829 | 20 | yes | - | - | - | - |
-| `EffectsRenderer._updateFarmWork` | effectsRenderer.js | 16858 | 96 | yes | - | - | `farmCrownMed` | - |
-| `EffectsRenderer.setCaptureRenderer` | effectsRenderer.js | 17014 | 1 | yes | - | - | - | - |
-| `EffectsRenderer._peerOnWorker` | effectsRenderer.js | 17037 | 33 | yes | - | `_bakeFrame` | `_trimBakeCache` | - |
-| `EffectsRenderer._dressedOnWorker` | effectsRenderer.js | 17079 | 30 | yes | - | - | - | - |
-| `EffectsRenderer._own` | effectsRenderer.js | 17109 | 5 | yes | - | - | - | gpu-only |
-| `EffectsRenderer._gpuOnly` | effectsRenderer.js | 17132 | 10 | yes | - | - | - | - |
-| `EffectsRenderer._gpuOnceDrawn` | effectsRenderer.js | 17147 | 5 | yes | - | - | - | gpu-only |
-| `EffectsRenderer._release` | effectsRenderer.js | 17152 | 7 | yes | - | - | - | - |
-| `EffectsRenderer._letGo` | effectsRenderer.js | 17159 | 16 | yes | - | - | - | - |
-| `EffectsRenderer.destroy` | effectsRenderer.js | 17193 | 41 | yes | - | - | - | art-holds, death-zones, elem-windup, fish-top-evict, keep-as-image, loader-retries, loot-clock, renderer-life, storm-eye, townsfolk-walk, water-frog, weapon-feel, traps-page-rules, traps-phone-memory |
-| `EffectsRenderer._slimeTexelWorld` | effectsRenderer.js | 17271 | 1 | - | - | - | - | - |
-| `EffectsRenderer._filmScale` | effectsRenderer.js | 17273 | 1 | yes | - | - | - | - |
-| `EffectsRenderer.captureFxFilm` | effectsRenderer.js | 17275 | 20 | yes | - | - | - | - |
-| `EffectsRenderer._filmShoot` | effectsRenderer.js | 17301 | 13 | - | - | - | - | - |
-| `EffectsRenderer._filmGunk` | effectsRenderer.js | 17325 | 43 | yes | - | - | - | - |
-| `EffectsRenderer._filmStuck` | effectsRenderer.js | 17393 | 36 | yes | - | `ARROW_PINE` | `stuckShaftScale` | - |
-| `EffectsRenderer._filmHotArrow` | effectsRenderer.js | 17442 | 46 | yes | - | `ARROW_PINE` | - | - |
-| `EffectsRenderer._filmCrash` | effectsRenderer.js | 17505 | 29 | yes | - | - | - | - |
-| `EffectsRenderer._updateExtractionCue` | effectsRenderer.js | 17541 | 230 | yes | - | `GESTURE_TOOLS` | `CHOP_GEAR_FW` | - |
-| `EffectsRenderer.clear` | effectsRenderer.js | 18046 | 65 | yes | - | - | - | drop-lines, dungeon-clear, elem-windup, farmwalk, gpu-only, look-relay, mirror-audit, picture-door, renderer-life, storm-eye, tick, townsfolk-walk, water-frog, weapon-feel, zone-leftovers, phase-table, traps-phone-memory |
+| `nodeSpriteTex` | effectsRenderer.js | 1865 | 5 | - | - | `NODE_SPRITE_TEX`, `ORE_TEX`, `TREE_TEX` | - | - |
+| `_installDmgFont` | effectsRenderer.js | 1989 | 5 | - | - | `DMG_ALL_CHARS`, `DMG_DIGIT_CHARS` | `DMG_BMP_BAKE_PX`, `DMG_WORD_BAKE_PX`, `DMG_WORD_PAGE_PX` | - |
+| `_reinstallDmgFont` | effectsRenderer.js | 2021 | 14 | - | - | `_dmgFontSig` | `_dmgLog`, `_installDmgFont` | - |
+| `dmgFontNeedsRebuild` | effectsRenderer.js | 2051 | 1 | - | - | `_dmgBmpReady`, `_dmgPagesGone` | - | - |
+| `_letGoOfDmgPages` | effectsRenderer.js | 2052 | 10 | - | - | `_dmgPagesGone` | `_dmgLog` | - |
+| `_dmgLog` | effectsRenderer.js | 2081 | 3 | - | - | `_dmgPagesGone` | - | - |
+| `prewarmDmgFontPipe` | effectsRenderer.js | 2084 | 43 | - | - | `DMG_STYLE`, `DMG_STYLE_EMOJI`, `_dmgBmpReady`, `_dmgPagesGone` | `DMG_BMP_BAKE_PX`, `DMG_WORD_BAKE_PX`, `_dmgLog`, `_letGoOfDmgPages`, `_reinstallDmgFont`, `dmgFontNeedsRebuild` | traps-phone-memory |
+| `bubbleGradient` | effectsRenderer.js | 2182 | 14 | - | - | `_chatBubbleGrad` | `_bubbleGrads` | - |
+| `cssToHex` | effectsRenderer.js | 2229 | 9 | - | - | `_hexMemo` | - | zone-leftovers |
+| `_trimBakeCache` | effectsRenderer.js | 2292 | 13 | - | - | `_bakeFrame` | `REMOTE_BAKE_CACHE_MAX` | traps-phone-memory |
+| `makeBeamTexture` | effectsRenderer.js | 2358 | 27 | - | 0 | - | - | traps-page-rules |
+| `makeMoteTexture` | effectsRenderer.js | 2387 | 14 | - | 0 | - | `MOTE_TEX` | traps-page-rules |
+| `lootPop` | effectsRenderer.js | 2429 | 24 | - | - | `_NO_HOP` | `POP_ARC_S`, `POP_BOUNCE_S`, `POP_DELAY_S`, `POP_JUMP`, `POP_LAND_S` | - |
+| `lootHop` | effectsRenderer.js | 2461 | 19 | - | - | `_NO_HOP` | `LAND_S`, `lootPop` | loot-clock |
+| `EffectsRenderer.constructor` | effectsRenderer.js | 2530 | 738 | yes | - | `JET_STREAM`, `_fxPreload`, `_standInLegsUse` | `CHOP_GEAR_FW`, `DMG_SCALE`, `JET_LINGER_MS`, `JET_STREAM_ENABLED`, `MSG_FONT_PX`, `STANDIN_LEGS_OFF`, `_fxLoad`, `_sliceStandIn`, `makeBeamTexture`, `makeMoteTexture` | art-holds, elem-windup, farmwalk, fish-top-evict, held-numbers, keep-as-image, loader-retries, loot-clock, mirror-audit, owner-icons, picture-door, storm-eye, tick, water-frog, phase-table, traps-page-rules, traps-phone-memory |
+| `EffectsRenderer._standInTriggers` | effectsRenderer.js | 4272 | 27 | yes | - | - | - | - |
+| `EffectsRenderer._loadChopSkinStrips` | effectsRenderer.js | 4311 | 11 | yes | - | - | - | - |
+| `EffectsRenderer._bakeChopStrips` | effectsRenderer.js | 4363 | 36 | yes | - | - | `_bakeChopStrip` | - |
+| `EffectsRenderer._peerChopFrames` | effectsRenderer.js | 4463 | 27 | yes | - | - | `PEER_FIG_EST`, `PEER_FIG_RETRY_MS`, `_bakeChopStrip` | - |
+| `EffectsRenderer._dropPeerChop` | effectsRenderer.js | 4498 | 14 | yes | - | - | - | - |
+| `EffectsRenderer._loadCookStrips` | effectsRenderer.js | 4537 | 12 | yes | - | - | - | - |
+| `EffectsRenderer._fetchAndBakeCook` | effectsRenderer.js | 4572 | 9 | yes | - | - | - | - |
+| `EffectsRenderer._bakeCookStrips` | effectsRenderer.js | 4609 | 36 | yes | - | - | `_sliceStandIn` | - |
+| `EffectsRenderer._peerStandInInk` | effectsRenderer.js | 4689 | 30 | yes | - | - | `PEER_INK_CAP`, `STANDIN_INK`, `_sliceStandIn` | - |
+| `EffectsRenderer._dropPeerStandInInk` | effectsRenderer.js | 4722 | 15 | yes | - | - | - | - |
+| `EffectsRenderer._peerFigFrames` | effectsRenderer.js | 4747 | 25 | yes | - | - | `PEER_FIG_EST`, `PEER_FIG_LOAD_MS`, `PEER_FIG_RETRY_MS`, `STANDIN_INK`, `_sliceStandIn` | - |
+| `EffectsRenderer._peerFigBytes` | effectsRenderer.js | 4781 | 10 | yes | - | - | `PEER_FIG_EST` | - |
+| `EffectsRenderer._peerFigRoom` | effectsRenderer.js | 4797 | 19 | yes | - | - | `PEER_FIG_BUDGET` | - |
+| `EffectsRenderer._dropPeerFig` | effectsRenderer.js | 4817 | 17 | yes | - | - | - | - |
+| `EffectsRenderer._gearStripPending` | effectsRenderer.js | 4843 | 10 | yes | - | - | `PEER_GREAVES_WAIT_MS` | - |
+| `EffectsRenderer._peerFigure` | effectsRenderer.js | 4877 | 55 | yes | - | - | `CHOP_GEAR_FW`, `FIRE_LEGLESS_OFF` | - |
+| `EffectsRenderer._peerFigureReady` | effectsRenderer.js | 4944 | 4 | yes | - | - | - | - |
+| `EffectsRenderer._loadFireStrips` | effectsRenderer.js | 4984 | 19 | yes | - | - | `FIRE_LEGLESS_OFF` | - |
+| `EffectsRenderer._fireWantLegless` | effectsRenderer.js | 5021 | 5 | - | - | - | `FIRE_LEGLESS_OFF` | - |
+| `EffectsRenderer._fetchAndBakeFire` | effectsRenderer.js | 5027 | 39 | yes | - | `FIRE_SKIN_OPTS` | `FIRE_URL`, `_bakeFireSplit`, `_sliceStandIn` | - |
+| `EffectsRenderer._seatStandInTraits` | effectsRenderer.js | 5108 | 7 | yes | - | - | - | - |
+| `EffectsRenderer._placeSkillTraitsOn` | effectsRenderer.js | 5115 | 14 | yes | - | - | `_isGatheringStandIn`, `_placeStandInCapeOn` | - |
+| `EffectsRenderer.update` | effectsRenderer.js | 5146 | 64 | yes | - | `_bakeFrame` | `GPU_WAIT_MS`, `REMOTE_BAKE_CACHE_MAX`, `_trimBakeCache` | drop-lines, elem-windup, fire-strip, keep-as-image, mirror-audit, owner-icons, renderer-life, storm-eye, water-frog |
+| `EffectsRenderer._dot` | effectsRenderer.js | 5266 | 19 | yes | - | - | `hardDotTex` | - |
+| `EffectsRenderer._hideSpareDots` | effectsRenderer.js | 5286 | 21 | yes | - | - | - | - |
+| `EffectsRenderer._updateParticles` | effectsRenderer.js | 5312 | 171 | yes | - | - | `cssToHex` | - |
+| `EffectsRenderer._updateDamageNumbers` | effectsRenderer.js | 5600 | 236 | yes | - | `DMG_STYLE`, `DMG_STYLE_EMOJI`, `POPUP_ICONS`, `TIGHT_POPUP_ICONS`, `_dmgBmpReady` | `DMG_BMP_BAKE_PX`, `DMG_BMP_RE`, `DMG_CRIT_FONT_PX`, `DMG_DIGIT_RE`, `DMG_FONT_PX`, `DMG_SCALE`, `DMG_WORD_BAKE_PX`, `MSG_EDGE_PX`, `MSG_FONT_PX`, `isDamagePopup` | traps-phone-memory |
+| `EffectsRenderer._updateScreenFlash` | effectsRenderer.js | 6065 | 41 | yes | - | - | `cssToHex` | - |
+| `EffectsRenderer._updateAtmosphere` | effectsRenderer.js | 6109 | 29 | yes | - | - | - | - |
+| `EffectsRenderer._updateProjectiles` | effectsRenderer.js | 6153 | 319 | yes | - | `ARROW_PINE`, `ARROW_SPECIAL`, `MAGIC_BOLT_FRAMES`, `MAGIC_SPECIAL` | `HOT_SPECIAL_ARROW`, `cssToHex`, `stuckShaftScale` | - |
+| `EffectsRenderer._placeCookFood` | effectsRenderer.js | 6786 | 29 | yes | - | `GESTURE_TOOLS` | `_fxLoad` | - |
+| `EffectsRenderer._placeMagicBolt` | effectsRenderer.js | 6829 | 47 | yes | - | `MAGIC_BOLT_FRAMES` | `MAGIC_BOLT_FRAME_MS` | - |
+| `EffectsRenderer._placeSpecialFx` | effectsRenderer.js | 6907 | 48 | yes | - | - | - | - |
+| `EffectsRenderer.projScaleProbe` | effectsRenderer.js | 7009 | 1 | yes | - | - | - | - |
+| `EffectsRenderer.stuckScaleProbe` | effectsRenderer.js | 7010 | 1 | yes | - | - | - | - |
+| `EffectsRenderer._updateProjectileTrail` | effectsRenderer.js | 7012 | 26 | - | - | - | - | - |
+| `EffectsRenderer._fillPoly` | effectsRenderer.js | 7056 | 6 | - | - | - | - | - |
+| `EffectsRenderer._drawArrow` | effectsRenderer.js | 7068 | 21 | yes | - | `ARROW_PINE` | - | - |
+| `EffectsRenderer._placeArrowSprite` | effectsRenderer.js | 7121 | 24 | yes | - | `ARROW_PINE` | - | - |
+| `EffectsRenderer._noteJetStream` | effectsRenderer.js | 7173 | 35 | yes | - | `ARROW_PINE`, `JET_STREAM` | `JET_MAX`, `JET_STREAM_ENABLED` | - |
+| `EffectsRenderer._drawJetStreams` | effectsRenderer.js | 7252 | 22 | yes | - | `JET_STREAM` | `JET_ALPHA`, `JET_LINGER_MS` | - |
+| `EffectsRenderer._placeJetSprite` | effectsRenderer.js | 7288 | 18 | yes | - | - | - | - |
+| `EffectsRenderer._resetArrowSprites` | effectsRenderer.js | 7320 | 10 | yes | - | - | - | - |
+| `EffectsRenderer._drawStuckArrow` | effectsRenderer.js | 7336 | 17 | yes | - | `ARROW_PINE` | - | - |
+| `EffectsRenderer._drawStuckMagicShard` | effectsRenderer.js | 7377 | 8 | yes | - | - | - | - |
+| `EffectsRenderer._updateTelegraphs` | effectsRenderer.js | 7387 | 16 | yes | - | - | - | - |
+| `EffectsRenderer._updateOverlays` | effectsRenderer.js | 7407 | 396 | yes | - | - | - | - |
+| `EffectsRenderer._renderChatBubble` | effectsRenderer.js | 8701 | 130 | yes | - | - | `bubbleGradient` | - |
+| `EffectsRenderer._updateChatBubbles` | effectsRenderer.js | 8985 | 57 | yes | - | - | `NPC_BUBBLE_REACH` | traps-page-rules |
+| `EffectsRenderer._updateEmotePops` | effectsRenderer.js | 9117 | 83 | yes | - | `_emoteActive`, `_emoteEms`, `_emoteIds`, `_emoteSrcs` | `EMOTE_POP_FONT` | - |
+| `EffectsRenderer._updateHUD` | effectsRenderer.js | 9213 | 21 | yes | - | - | - | - |
+| `EffectsRenderer.disposeLootById` | effectsRenderer.js | 9260 | 10 | yes | - | - | - | - |
+| `EffectsRenderer.disposeLootRef` | effectsRenderer.js | 9277 | 5 | yes | - | - | - | - |
+| `EffectsRenderer.flushAllLoot` | effectsRenderer.js | 9291 | 5 | yes | - | - | - | - |
+| `EffectsRenderer._renderPileShine` | effectsRenderer.js | 9303 | 82 | yes | - | - | `BEAM_A`, `BEAM_AT_S`, `BEAM_FLICKER`, `BEAM_HALO_A`, `BEAM_MOTES`, `BEAM_ON`, `BEAM_PULSE_HZ`, `BEAM_RISE_S`, `LOOT_BEAMS_MAX`, `MOTE_TEX`, `makeBeamTexture`, `makeMoteTexture` | - |
+| `EffectsRenderer._disposeLoot` | effectsRenderer.js | 9404 | 29 | yes | - | - | - | - |
+| `EffectsRenderer._renderDroppedItem` | effectsRenderer.js | 9455 | 56 | yes | - | `DROP_COUNT_STYLE` | `DROP_ICON_WORLD` | - |
+| `EffectsRenderer._renderOwnerLabel` | effectsRenderer.js | 9522 | 31 | yes | - | - | - | traps-page-rules |
+| `EffectsRenderer._renderShardOverlay` | effectsRenderer.js | 9560 | 18 | yes | - | `SHARD_ICONS` | - | - |
+| `EffectsRenderer._renderCoinOverlay` | effectsRenderer.js | 9583 | 37 | yes | - | `LABEL_STYLE` | - | traps-page-rules, traps-phone-memory |
+| `EffectsRenderer._renderRareItems` | effectsRenderer.js | 9637 | 76 | yes | - | `_AT_MIDDLE` | `lootHop` | loot-clock |
+| `EffectsRenderer._updateGroundLoot` | effectsRenderer.js | 9724 | 403 | yes | - | `LABEL_STYLE`, `LABEL_STYLE_EMOJI`, `_AT_MIDDLE` | `cssToHex`, `lootHop` | traps-page-rules, traps-phone-memory |
+| `EffectsRenderer._updateFootprints` | effectsRenderer.js | 10376 | 33 | yes | - | - | `PRINT_ALPHA`, `PRINT_TTL_MS` | - |
+| `EffectsRenderer._updateGroundSplatter` | effectsRenderer.js | 10440 | 54 | yes | - | - | `cssToHex`, `groundDecalTex` | - |
+| `EffectsRenderer._updateArrowSnaps` | effectsRenderer.js | 10538 | 22 | yes | - | - | - | - |
+| `EffectsRenderer._spawnArrowSnap` | effectsRenderer.js | 10561 | 40 | yes | - | `ARROW_PINE` | `SNAP_G`, `SNAP_MAX`, `splinterTex` | - |
+| `EffectsRenderer._stepSnapPiece` | effectsRenderer.js | 10612 | 28 | - | - | - | `SNAP_FADE_MS`, `SNAP_G`, `SNAP_REST_MS` | - |
+| `EffectsRenderer._killArrowSnap` | effectsRenderer.js | 10642 | 4 | - | - | - | - | - |
+| `EffectsRenderer._clearArrowSnaps` | effectsRenderer.js | 10647 | 4 | yes | - | - | - | - |
+| `EffectsRenderer.arrowSnapProbe` | effectsRenderer.js | 10653 | 9 | yes | - | - | - | - |
+| `EffectsRenderer._propById` | effectsRenderer.js | 10689 | 9 | yes | - | - | - | - |
+| `EffectsRenderer._propRec` | effectsRenderer.js | 10702 | 4 | yes | - | - | - | - |
+| `EffectsRenderer._propOverlay` | effectsRenderer.js | 10707 | 15 | yes | - | - | - | traps-page-rules |
+| `EffectsRenderer._clearPropMarks` | effectsRenderer.js | 10723 | 12 | yes | - | - | - | - |
+| `EffectsRenderer._killPropMark` | effectsRenderer.js | 10736 | 5 | - | - | - | - | - |
+| `EffectsRenderer._spawnPropMark` | effectsRenderer.js | 10743 | 67 | yes | - | - | `HOT_SPECIAL_ARROW`, `PROP_ARROWS_PER_PROP`, `PROP_MARKS_MAX`, `PROP_SCORCHES_PER_PROP`, `PROP_SLASHES_PER_PROP`, `propSlashTex` | - |
+| `EffectsRenderer._stuckArrowTex` | effectsRenderer.js | 10819 | 7 | - | - | `ARROW_PINE`, `ARROW_SPECIAL` | `HOT_SPECIAL_ARROW` | - |
+| `EffectsRenderer._poseStuckArrow` | effectsRenderer.js | 10832 | 14 | - | - | `ARROW_PINE`, `ARROW_SPECIAL` | `HOT_SPECIAL_ARROW` | - |
+| `EffectsRenderer._placePropArrow` | effectsRenderer.js | 10850 | 33 | yes | - | - | `HOT_SPECIAL_ARROW` | - |
+| `EffectsRenderer._heatPropArrow` | effectsRenderer.js | 10895 | 5 | - | - | - | - | - |
+| `EffectsRenderer._volleyWorld` | effectsRenderer.js | 10904 | 3 | - | - | - | - | - |
+| `EffectsRenderer._reapPropArrows` | effectsRenderer.js | 10910 | 9 | yes | - | - | - | - |
+| `EffectsRenderer._updatePropMarks` | effectsRenderer.js | 10920 | 62 | yes | - | - | `HOT_SPECIAL_ARROW`, `SCORCH_GLOW_MS` | - |
+| `EffectsRenderer.propDepthProbe` | effectsRenderer.js | 10994 | 10 | yes | - | - | - | - |
+| `EffectsRenderer.propMarksProbe` | effectsRenderer.js | 11007 | 25 | yes | - | `ARROW_PINE`, `ARROW_SPECIAL`, `_PROP_SLASH_TEX` | `HOT_SPECIAL_ARROW` | - |
+| `EffectsRenderer._updateDebrisBursts` | effectsRenderer.js | 11037 | 18 | yes | - | - | - | - |
+| `EffectsRenderer._disposeNode` | effectsRenderer.js | 11067 | 15 | - | - | - | - | - |
+| `EffectsRenderer._peerWorkNodes` | effectsRenderer.js | 11100 | 30 | - | - | - | `PEER_SEAT_MATCH_PX` | - |
+| `EffectsRenderer._treeSeeThrough` | effectsRenderer.js | 11137 | 21 | - | - | - | - | - |
+| `EffectsRenderer._updateGatherNodes` | effectsRenderer.js | 11170 | 179 | yes | - | `_trapArt` | `cssToHex`, `nodeSpriteTex` | - |
+| `EffectsRenderer._drawGatherHpBar` | effectsRenderer.js | 11531 | 38 | yes | - | - | - | - |
+| `EffectsRenderer._nodeLabelAt` | effectsRenderer.js | 11610 | 20 | yes | - | - | - | - |
+| `EffectsRenderer._nodeHpBarAt` | effectsRenderer.js | 11640 | 27 | - | - | - | - | - |
+| `EffectsRenderer._updateMonsterImpacts` | effectsRenderer.js | 11678 | 6 | yes | - | - | - | - |
+| `EffectsRenderer._updateSlimeShockwaves` | effectsRenderer.js | 11698 | 39 | yes | - | - | `SLIME_WAVE_MS` | - |
+| `EffectsRenderer.snowballBurstProbe` | effectsRenderer.js | 11745 | 4 | yes | - | `SNOWBALL_BURST` | - | - |
+| `EffectsRenderer.sootProbe` | effectsRenderer.js | 11751 | 1 | yes | - | - | - | - |
+| `EffectsRenderer.slimeShockwaveProbe` | effectsRenderer.js | 11754 | 4 | yes | - | - | - | - |
+| `EffectsRenderer._updateSnowballBursts` | effectsRenderer.js | 11762 | 36 | yes | - | `SNOWBALL_BURST` | `SNOWBALL_BURST_MS` | mirror-audit |
+| `EffectsRenderer._updateArrowBlasts` | effectsRenderer.js | 11820 | 37 | yes | - | `ARROW_BLAST` | `ARROW_BLAST_D`, `ARROW_BLAST_MS` | - |
+| `EffectsRenderer.arrowBlastProbe` | effectsRenderer.js | 11867 | 11 | yes | - | `ARROW_BLAST` | - | - |
+| `EffectsRenderer._landAuraCap` | effectsRenderer.js | 11880 | 1 | - | - | - | - | - |
+| `EffectsRenderer._spawnOreBreak` | effectsRenderer.js | 11888 | 20 | yes | - | `ORE_ICON_TIER_TEX`, `ORE_TEX` | - | - |
+| `EffectsRenderer._spawnItemPopup` | effectsRenderer.js | 11912 | 10 | yes | - | - | - | - |
+| `EffectsRenderer._advanceItemPops` | effectsRenderer.js | 11924 | 18 | yes | - | - | - | - |
+| `EffectsRenderer._advanceOreBreaks` | effectsRenderer.js | 11947 | 26 | yes | - | - | `ORE_BREAK_LIE_MS`, `ORE_POP_LATE_MS`, `ORE_SPLIT_MS` | - |
+| `EffectsRenderer._oreBreakVol` | effectsRenderer.js | 12006 | 6 | - | - | - | - | - |
+| `EffectsRenderer._oreCrack` | effectsRenderer.js | 12018 | 10 | yes | - | - | - | - |
+| `EffectsRenderer._oreSplit` | effectsRenderer.js | 12031 | 7 | yes | - | `ORE_ICON_TEX` | - | - |
+| `EffectsRenderer._spawnCookSmoke` | effectsRenderer.js | 12054 | 20 | yes | - | - | `debrisDotTex` | - |
+| `EffectsRenderer._updateCookSmoke` | effectsRenderer.js | 12078 | 19 | yes | - | - | - | - |
+| `EffectsRenderer._updateFxBursts` | effectsRenderer.js | 12098 | 30 | yes | - | `EFFECT_BURSTS` | `FX_BURST_MS` | - |
+| `EffectsRenderer._updateFireTrail` | effectsRenderer.js | 12157 | 52 | yes | - | - | - | - |
+| `EffectsRenderer._updateWhirlVortex` | effectsRenderer.js | 12249 | 44 | yes | - | - | - | - |
+| `EffectsRenderer._buildSmithFx` | effectsRenderer.js | 12320 | 40 | yes | - | `SMITH_ANVIL` | `SMITH_FLAME_H0` | - |
+| `EffectsRenderer._updateSmithing` | effectsRenderer.js | 12372 | 57 | yes | - | `SMITH_ANVIL` | `SMITH_FLAME_H0` | sound-cues, townsfolk-walk |
+| `EffectsRenderer._updateElemStatusFx` | effectsRenderer.js | 12469 | 451 | yes | - | - | `BURN_BLAZE`, `GOO_HOLD`, `PEER_FIRES` | - |
+| `EffectsRenderer._updateAbilityWindups` | effectsRenderer.js | 13029 | 49 | yes | - | - | - | - |
+| `EffectsRenderer._markWhirlCatch` | effectsRenderer.js | 13113 | 59 | yes | - | - | `WHIRL_CATCH_MAX` | - |
+| `EffectsRenderer._updateCatchFlights` | effectsRenderer.js | 13191 | 44 | yes | - | - | - | - |
+| `EffectsRenderer._updateFishingHole` | effectsRenderer.js | 13253 | 18 | yes | - | - | - | - |
+| `EffectsRenderer._drawFishingHole` | effectsRenderer.js | 13285 | 15 | yes | - | - | - | - |
+| `EffectsRenderer._updateCampfire` | effectsRenderer.js | 13315 | 3 | yes | - | - | `FIRE_FRAME_MS` | - |
+| `EffectsRenderer._updateFiremaking` | effectsRenderer.js | 13321 | 64 | yes | - | - | `FIRE_FRAME_MS` | - |
+| `EffectsRenderer._peerChopTree` | effectsRenderer.js | 13475 | 19 | - | - | - | `PEER_CHOP_REACH`, `PEER_GATHER_NODE_TTL_MS` | - |
+| `EffectsRenderer._updateRemoteExtraction` | effectsRenderer.js | 13508 | 261 | yes | - | - | `CHOP_GEAR_FW`, `FIRE_FRAME_MS`, `PEER_CHOP_IDLE_MS`, `PEER_COOK_REACH`, `PEER_FIG_IDLE_MS`, `PEER_INK_IDLE_MS` | - |
+| `EffectsRenderer._tintGearSprite` | effectsRenderer.js | 14069 | 7 | - | - | - | `_standInTints` | - |
+| `EffectsRenderer._weaponStrip` | effectsRenderer.js | 14094 | 9 | yes | - | - | - | - |
+| `EffectsRenderer._gearStripFrame` | effectsRenderer.js | 14104 | 76 | yes | - | `_combatTrimFrames`, `_combatTrimStats`, `_fxPreload` | `GEAR_STRIP_TIMEOUT_MS` | loader-retries, picture-door |
+| `EffectsRenderer._shirtId` | effectsRenderer.js | 14286 | 6 | - | - | - | - | - |
+| `EffectsRenderer._myShirtLook` | effectsRenderer.js | 14299 | 7 | yes | - | - | - | - |
+| `EffectsRenderer._peerShirtLook` | effectsRenderer.js | 14306 | 10 | - | - | - | - | - |
+| `EffectsRenderer._dressedShirtFrame` | effectsRenderer.js | 14321 | 56 | yes | - | `_fxPreload` | `SHIRT_PATTERN_K` | picture-door |
+| `EffectsRenderer._evictDressed` | effectsRenderer.js | 14382 | 10 | yes | - | - | `DRESSED_MAX` | - |
+| `EffectsRenderer._warmDressedShirts` | effectsRenderer.js | 14395 | 17 | yes | - | - | `CHOP_GEAR_FW` | - |
+| `EffectsRenderer._placeSwingShirt` | effectsRenderer.js | 14414 | 22 | yes | - | - | - | - |
+| `EffectsRenderer._peerStandInArt` | effectsRenderer.js | 14481 | 7 | - | - | - | - | - |
+| `EffectsRenderer._greavesShapeOnce` | effectsRenderer.js | 14501 | 22 | yes | - | `_fxPreload` | `GEAR_STRIP_TIMEOUT_MS` | picture-door |
+| `EffectsRenderer._noteGreavesShape` | effectsRenderer.js | 14526 | 15 | yes | - | - | `STANDIN_LEGS_OFF` | loader-retries |
+| `EffectsRenderer._greavesUnder` | effectsRenderer.js | 14544 | 8 | yes | - | `_standInLegsUse` | - | - |
+| `EffectsRenderer._legsUnderFor` | effectsRenderer.js | 14555 | 6 | yes | - | - | - | held-sweep |
+| `EffectsRenderer._legsWornFor` | effectsRenderer.js | 14562 | 4 | yes | - | `_standInLegsUse` | - | held-sweep |
+| `EffectsRenderer._rebakeLegBodies` | effectsRenderer.js | 14567 | 11 | yes | - | - | - | - |
+| `EffectsRenderer._remoteBodyFramesFor` | effectsRenderer.js | 14583 | 29 | yes | - | `_bakeFrame`, `_standInLegsUse` | `_sliceStandIn`, `_trimBakeCache` | - |
+| `EffectsRenderer._remoteSheetFramesFor` | effectsRenderer.js | 14628 | 24 | yes | - | `_bakeFrame` | `_sliceStandIn`, `_trimBakeCache` | - |
+| `EffectsRenderer._placeJogLegs` | effectsRenderer.js | 14667 | 50 | yes | - | - | `_standInTints` | - |
+| `EffectsRenderer._ensureRemoteSwordSet` | effectsRenderer.js | 14789 | 9 | yes | - | - | - | - |
+| `EffectsRenderer._placeSkillTraitsOnFor` | effectsRenderer.js | 14809 | 12 | yes | - | - | `_isGatheringStandIn`, `_placeStandInCapeOn` | - |
+| `EffectsRenderer._updateRemoteSwordSwings` | effectsRenderer.js | 14827 | 161 | yes | - | `SWORD_SLASH` | - | - |
+| `EffectsRenderer._ensureRemoteBowSet` | effectsRenderer.js | 15077 | 12 | yes | - | - | - | - |
+| `EffectsRenderer._updateRemoteBowShots` | effectsRenderer.js | 15108 | 127 | yes | - | - | `BLOCK_POSE_FRAME` | - |
+| `EffectsRenderer._publishPeerBlockArms` | effectsRenderer.js | 15294 | 18 | yes | - | - | - | - |
+| `EffectsRenderer._placePeerBlockHands` | effectsRenderer.js | 15319 | 56 | yes | - | - | - | - |
+| `EffectsRenderer._orderSwingWeapon` | effectsRenderer.js | 15384 | 11 | - | - | - | - | - |
+| `EffectsRenderer._placeStandInShield` | effectsRenderer.js | 15409 | 49 | yes | - | - | - | - |
+| `EffectsRenderer._updateSwordSwing` | effectsRenderer.js | 15493 | 134 | yes | - | `SWORD_SLASH` | - | - |
+| `EffectsRenderer._placeBlockOffHand` | effectsRenderer.js | 15755 | 12 | yes | - | - | - | - |
+| `EffectsRenderer._placeOffHandWeapon` | effectsRenderer.js | 15780 | 64 | - | - | - | - | - |
+| `EffectsRenderer._predictBowGrip` | effectsRenderer.js | 15955 | 20 | yes | - | - | `BOW_GRIP_GUESS_OFF` | - |
+| `EffectsRenderer._updateBowShot` | effectsRenderer.js | 15980 | 137 | yes | - | - | `BLOCK_POSE_FRAME` | - |
+| `EffectsRenderer.captureAttackFrames` | effectsRenderer.js | 16267 | 84 | yes | - | `ARROW_PINE`, `SWORD_SLASH` | - | - |
+| `EffectsRenderer._photographFar` | effectsRenderer.js | 16386 | 18 | yes | - | - | - | - |
+| `EffectsRenderer._placeCookFigure` | effectsRenderer.js | 16413 | 38 | yes | - | - | - | - |
+| `EffectsRenderer._loadFarmStrips` | effectsRenderer.js | 16529 | 36 | yes | - | - | - | - |
+| `EffectsRenderer._farmReadyNow` | effectsRenderer.js | 16575 | 6 | yes | - | - | - | - |
+| `EffectsRenderer._farmUnderWanted` | effectsRenderer.js | 16588 | 1 | - | - | - | - | - |
+| `EffectsRenderer._bakeFarmBodies` | effectsRenderer.js | 16589 | 34 | yes | - | - | `FARM_MIN_BLOB`, `_sliceStandIn` | - |
+| `EffectsRenderer._warmFarmDressed` | effectsRenderer.js | 16634 | 14 | yes | - | - | - | - |
+| `EffectsRenderer._dropGearStrip` | effectsRenderer.js | 16651 | 10 | yes | - | `_combatTrimFrames` | - | - |
+| `EffectsRenderer._freeFarm` | effectsRenderer.js | 16663 | 34 | yes | - | - | - | - |
+| `EffectsRenderer._peerFarmFigure` | effectsRenderer.js | 16716 | 14 | yes | - | - | - | - |
+| `EffectsRenderer._drawPeerFarmer` | effectsRenderer.js | 16734 | 75 | yes | - | - | `farmCrownMed` | - |
+| `EffectsRenderer._destroyPeerFarmer` | effectsRenderer.js | 16822 | 8 | - | - | - | - | art-holds |
+| `EffectsRenderer._peerFarmersProbe` | effectsRenderer.js | 16832 | 20 | yes | - | - | - | - |
+| `EffectsRenderer._updateFarmWork` | effectsRenderer.js | 16861 | 96 | yes | - | - | `farmCrownMed` | - |
+| `EffectsRenderer.setCaptureRenderer` | effectsRenderer.js | 17017 | 1 | yes | - | - | - | - |
+| `EffectsRenderer._peerOnWorker` | effectsRenderer.js | 17040 | 33 | yes | - | `_bakeFrame` | `_trimBakeCache` | - |
+| `EffectsRenderer._dressedOnWorker` | effectsRenderer.js | 17082 | 30 | yes | - | - | - | - |
+| `EffectsRenderer._own` | effectsRenderer.js | 17112 | 5 | yes | - | - | - | gpu-only |
+| `EffectsRenderer._gpuOnly` | effectsRenderer.js | 17135 | 10 | yes | - | - | - | - |
+| `EffectsRenderer._gpuOnceDrawn` | effectsRenderer.js | 17150 | 5 | yes | - | - | - | gpu-only |
+| `EffectsRenderer._release` | effectsRenderer.js | 17155 | 7 | yes | - | - | - | - |
+| `EffectsRenderer._letGo` | effectsRenderer.js | 17162 | 16 | yes | - | - | - | - |
+| `EffectsRenderer.destroy` | effectsRenderer.js | 17196 | 41 | yes | - | - | - | art-holds, death-zones, elem-windup, fish-top-evict, keep-as-image, loader-retries, loot-clock, renderer-life, storm-eye, townsfolk-walk, water-frog, weapon-feel, traps-page-rules, traps-phone-memory |
+| `EffectsRenderer._slimeTexelWorld` | effectsRenderer.js | 17274 | 1 | - | - | - | - | - |
+| `EffectsRenderer._filmScale` | effectsRenderer.js | 17276 | 1 | yes | - | - | - | - |
+| `EffectsRenderer.captureFxFilm` | effectsRenderer.js | 17278 | 20 | yes | - | - | - | - |
+| `EffectsRenderer._filmShoot` | effectsRenderer.js | 17304 | 13 | - | - | - | - | - |
+| `EffectsRenderer._filmGunk` | effectsRenderer.js | 17328 | 43 | yes | - | - | - | - |
+| `EffectsRenderer._filmStuck` | effectsRenderer.js | 17396 | 36 | yes | - | `ARROW_PINE` | `stuckShaftScale` | - |
+| `EffectsRenderer._filmHotArrow` | effectsRenderer.js | 17445 | 46 | yes | - | `ARROW_PINE` | - | - |
+| `EffectsRenderer._filmCrash` | effectsRenderer.js | 17508 | 29 | yes | - | - | - | - |
+| `EffectsRenderer._updateExtractionCue` | effectsRenderer.js | 17544 | 230 | yes | - | `GESTURE_TOOLS` | `CHOP_GEAR_FW` | - |
+| `EffectsRenderer.clear` | effectsRenderer.js | 18049 | 65 | yes | - | - | - | drop-lines, dungeon-clear, elem-windup, farmwalk, gpu-only, look-relay, mirror-audit, picture-door, renderer-life, storm-eye, tick, townsfolk-walk, water-frog, weapon-feel, zone-leftovers, phase-table, traps-phone-memory |

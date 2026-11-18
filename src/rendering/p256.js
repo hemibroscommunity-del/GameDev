@@ -163,9 +163,20 @@ const PLAYER_DEATH_ON = !NO_TWINS && !/[?&]deathstrip=0(&|$)/.test(_q);
    asks for).  `?uploadicons=0` keeps them pictures. */
 const UPLOAD_ICONS = /^\/icons\/ui\/(?:blocks-(?:mp|stam)|verified-bro-small)\.webp$/;
 const UPLOAD_ICONS_ON = !NO_TWINS && !/[?&]uploadicons=0(&|$)/.test(_q);
+/* v2.3.6222 (card FX PR 3), `projectile-sheets`: the staff's bolt, the
+   staff's special and the sword's slash (effectsRenderer.js, four frames
+   each, behind the loading screen for everyone and kept; the stat scene's
+   bolt is the same address): 1.0 MB held as pictures in the page at the
+   memory check's fight (card P2's census).  Their twins cut 16k-51k colours
+   to 256 (moved 0.005-0.019 OKLab, under the whirlwind's 0.028); widths 868,
+   888 and 408, so none needs padding.  No own switch (the planning
+   session's answer, 2026-11-18: no new switch row): `?p256=0` keeps every
+   twin a picture, these with them. */
+const PROJ_SHEETS = /^\/sprites\/projectiles\/(?:magic-bolt|magic-special|sword-slash)-v1\.webp$/;
+const PROJ_SHEETS_ON = !NO_TWINS;
 /** whether the picture at `path` (no host, no query) is read from its twin here */
-function wantedPath(path) { return !NO_TWINS && (ALL_TWINS || (FX_MADE_ON && FX_MADE.test(path)) || (WORLD_ICONS_ON && WORLD_ICONS.test(path)) || (FX_SHEETS_ON && FX_SHEETS.test(path)) || (ELEM_ICONS_ON && ELEM_ICONS.test(path)) || (HAIRMASKS_ON && HAIRMASKS.test(path)) || (PET_SHEET_ON && PET_SHEET_P.test(path)) || (CAPE_HOOD_ON && CAPE_HOOD.test(path)) || (FISH_SPOT_ON && FISH_SPOT.test(path)) || (HUD_BARS_ON && HUD_BARS.test(path)) || (PLAYER_DEATH_ON && PLAYER_DEATH.test(path)) || (UPLOAD_ICONS_ON && UPLOAD_ICONS.test(path))); }
-const WANTED = !NO_TWINS && (ALL_TWINS || FX_MADE_ON || WORLD_ICONS_ON || FX_SHEETS_ON || ELEM_ICONS_ON || HAIRMASKS_ON || PET_SHEET_ON || CAPE_HOOD_ON || FISH_SPOT_ON || HUD_BARS_ON || PLAYER_DEATH_ON || UPLOAD_ICONS_ON);
+function wantedPath(path) { return !NO_TWINS && (ALL_TWINS || (FX_MADE_ON && FX_MADE.test(path)) || (WORLD_ICONS_ON && WORLD_ICONS.test(path)) || (FX_SHEETS_ON && FX_SHEETS.test(path)) || (ELEM_ICONS_ON && ELEM_ICONS.test(path)) || (HAIRMASKS_ON && HAIRMASKS.test(path)) || (PET_SHEET_ON && PET_SHEET_P.test(path)) || (CAPE_HOOD_ON && CAPE_HOOD.test(path)) || (FISH_SPOT_ON && FISH_SPOT.test(path)) || (HUD_BARS_ON && HUD_BARS.test(path)) || (PLAYER_DEATH_ON && PLAYER_DEATH.test(path)) || (UPLOAD_ICONS_ON && UPLOAD_ICONS.test(path)) || (PROJ_SHEETS_ON && PROJ_SHEETS.test(path))); }
+const WANTED = !NO_TWINS && (ALL_TWINS || FX_MADE_ON || WORLD_ICONS_ON || FX_SHEETS_ON || ELEM_ICONS_ON || HAIRMASKS_ON || PET_SHEET_ON || CAPE_HOOD_ON || FISH_SPOT_ON || HUD_BARS_ON || PLAYER_DEATH_ON || UPLOAD_ICONS_ON || PROJ_SHEETS_ON);
 /* (never while QA compares cropped strips against their files: __btTrimVerify) */
 export function p256On() { return WANTED && picNumbersOn(); }
 
