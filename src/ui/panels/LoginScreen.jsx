@@ -443,8 +443,10 @@ export const LoginScreen = ({ onCreateNew, onPlay, checking }) => {
             2.3.2324 on a v2.3.3439 build.  BUILD_INFO.version stays the art's
             `?v=` cache key, above. */}
         {/* v2.3.4333: the owner's mockup, one small white line just above the
-            version: where the game runs and what it costs.  U+2022 dots as
-            escapes (the game's script stays ASCII). */}
+            version: where the game runs and what it costs.  v2.3.6340: the
+            U+2022 dots are written as themselves in its row
+            (src/data/say/loginScreen.js); the build still writes the game's
+            script in ASCII (vite.config.js, `charset: 'ascii'`). */}
         <div className="bt-login-tag" data-login-tag="">{say(SAY, 'loginScreen.tagline')}</div>
         <div className="bt-login-ver" title={BUILD_INFO.time ? say(SAY, 'loginScreen.builtAt', { time: BUILD_INFO.time }) : undefined}>
           {say(SAY, 'loginScreen.version', { game: BUILD_INFO.game, sha: BUILD_INFO.sha })}
