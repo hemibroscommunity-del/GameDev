@@ -61,6 +61,9 @@ export const MARKET = {
      of the wake scan that finishes the notes a restart left (_mktSettleWait) */
   SETTLE_V: 1,
   SCAN_PAGE: 128,
+  /* v2.3.5801: the weapon kinds a sell files itself under (MKT_CATEGORIES'
+     weapon subtypes, and the retired sword the book moves to greatsword) */
+  OWN_KINDS: Object.freeze(['greatsword', 'bow', 'staff', 'sword']),
 };
 
 export const marketMethods = {
@@ -105,6 +108,28 @@ export const marketMethods = {
   _mktWordsOn() {
     const f = this._liveFlags;
     return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'mktwords') && !f.mktwords);
+  },
+  /* v2.3.5801 (card RV, MS-2): a sell is filed under its weapon's own tier
+     and kind (_mktPlaceOrder).  `mkttier: false` in the live flags: the
+     request's word, as before. */
+  _mktTierOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'mkttier') && !f.mkttier);
+  },
+  /* { subtype, tierKey } a weapon files itself under, or null when it names
+     no kind or tier the book knows (a legacy blob).  The two conversions the
+     book's own load makes (v2.3.3895 the sword, v2.3.3980 the wooden
+     greatsword) are made here too, so the weapon lands where its order would
+     have been moved to. */
+  _mktOwnPlace(item) {
+    if (!item || typeof item !== 'object') return null;
+    let subtype = typeof item.type === 'string' ? item.type : '';
+    if (!MARKET.OWN_KINDS.includes(subtype)) return null;
+    let tierKey = this._mktField(item.gearBase);
+    if (!tierKey) return null;
+    if (subtype === 'sword' && !(this._swordConvertOff && this._swordConvertOff())) subtype = 'greatsword';
+    if (subtype === 'greatsword' && tierKey === 'wood' && !(this._gsCopperOff && this._gsCopperOff())) tierKey = 'copper';
+    return { subtype, tierKey };
   },
   _mktTierLabel(tierKey) {
     const k = String(tierKey || '');
@@ -356,7 +381,7 @@ export const marketMethods = {
     /* v2.3.1971: bound the taxonomy BEFORE anything is escrowed (see
        `_mktField`) -- an unbounded field made the storage write throw
        after the seller's weapon had already left the stash. */
-    const category = this._mktField(body.category);
+    let category = this._mktField(body.category);   /* v2.3.5801: let -- a sell takes its weapon's (below) */
     let subtype = this._mktField(body.subtype);
     /* v2.3.3895: the sword is retired (swordconvert.js); an older page's order
        for one is an order for a greatsword */
@@ -401,6 +426,22 @@ export const marketMethods = {
          them from the weapon it escrows; a buy still names what it wants. */
       element1 = item.element1 || null;
       element2 = item.element2 || null;
+      /* ═══ v2.3.5801 (card RV, MS-2): AND ITS PLACE IN THE BOOK IS ITS WEAPON'S ═══
+         The category, kind and tier were still the request's word (the
+         v2.3.1971 note above: "written up rather than guessed at"): a copper
+         blade sent as `godly` met the head of the godly BUY bucket and sold
+         at the buyer's price, no step where the buyer could look -- and the
+         honest Exchange panel sends the tier row's pick beside the weapon
+         picked, so a mis-pick filed a blade in the wrong bucket too.  A
+         weapon names its own: `gearBase` IS the book's tier key (`ww_` for
+         the Woodworker's, as MKT_WOOD_TIERS spells it) and `type` its kind.
+         A legacy blob naming neither keeps the request's (no worse than
+         before; the worker mints none).  `mkttier: false`: the request's
+         word, as before. */
+      if (this._mktTierOn()) {
+        const _own = this._mktOwnPlace(item);
+        if (_own) { category = 'weapon'; subtype = _own.subtype; tierKey = _own.tierKey; }
+      }
       stashTake(ps, 'weaponStash', idx, 'market_sell');
     } else {
       if ((ps.coins || 0) < p) return { ok: false, error: 'Not enough gold' };
@@ -598,8 +639,8 @@ export const marketMethods = {
     // The refund opId makes the credit idempotent; the converse crash
     // (refund stamped, record survives) is converged by the stamp
     // check in _mktEnsureIndex.
-    await this._mktRefund(order, 'order cancelled');
-    await this.state.storage.delete('mkt_order:' + orderId);
+    /* v2.3.5801 (MS-4): the delete rides the refund's own write when it can */
+    if (!(await this._mktRefund(order, 'order cancelled', 'mkt_order:' + orderId))) await this.state.storage.delete('mkt_order:' + orderId);
     return { ok: true, settled: true, cancelled: order };
   },
 
@@ -608,14 +649,37 @@ export const marketMethods = {
   // exactly once.  The OLD sweep deleted sell orders WITHOUT refunding
   // -- under escrow that would be item destruction, so expiry and
   // cancel both land here.
-  async _mktRefund(order, why) {
+  /* ═══ v2.3.5801 (card RV, MS-4): THE REFUND AND THE ORDER'S DELETE, ONE WRITE ═══
+     A cancel or an expiry paid the escrow back (`refund:<id>`, one write)
+     and deleted the order in the next.  A restart between the two left the
+     order on file with only the stamp to say it was paid, and only the
+     shop's rebuild read that stamp: the prune (48 h) did not wait for it,
+     so a quiet 48 h put the order back on the book and a second cancel paid
+     it again -- a weapon or the gold twice (TRAPS §146: the oplog is not the
+     record).  Now `delKey`, the order's own key, is deleted in the credit's
+     own run (inbox.js _creditWith: the save or the mailbox, the stamp and
+     this delete commit together, or none of them do), and the answer is
+     true: the caller has nothing left to delete.  False when the caller
+     still deletes it (a stamped payout found, or `mktheal: false`).  No
+     write more: the same delete, in the same batch as the credit. */
+  async _mktRefund(order, why, delKey) {
     // v2.3.1184: rule 6 -- never refund over a stamped payout.  A
     // record that survived a crash after its match settled (credit
     // stamped, delete lost) must not ALSO refund its escrow.
     if ((await this._opSeen('settle:' + order.id + ':item')) ||
-        (await this._opSeen('settle:' + order.id + ':gold'))) return;
+        (await this._opSeen('settle:' + order.id + ':gold'))) return false;
     /* v2.3.4505: nor over a sale's note: its escrow is owed to its legs */
-    if (order.settle && !this._mktSettleOff()) return;
+    if (order.settle && !this._mktSettleOff()) return false;
+    /* ...but never for a record still carrying a sale's note (one `mktsettle:
+       false` re-listed): a later roll forward reads that note to send the
+       taker's escrow home, so it keeps the old two writes */
+    if (delKey && this._mktHealOn() && !order.settle) {
+      const del = () => [this.state.storage.delete(delKey)];
+      let r = null;
+      if (order.type === 'buy') r = await this._creditWith(order.playerId, { opId: 'refund:' + order.id, source: 'market', kind: 'gold', payload: { amount: order.price }, note: why }, del);
+      else if (order.item) r = await this._creditWith(order.playerId, { opId: 'refund:' + order.id, source: 'market', kind: 'weapon', payload: { weapon: order.item }, note: why }, del);
+      if (r) return true;
+    }
     if (order.type === 'buy') {
       await this._creditPlayer(order.playerId, { opId: 'refund:' + order.id, source: 'market', kind: 'gold', payload: { amount: order.price }, note: why });
     } else if (order.item) {
@@ -639,8 +703,7 @@ export const marketMethods = {
          finished, never refunded */
       if (o.settle && !this._mktSettleOff()) { await this._mktSettleHeal(o); continue; }
       // v2.3.1184: refund before delete, same as cancel.
-      await this._mktRefund(o, 'listing expired');
-      await this.state.storage.delete('mkt_order:' + o.id);
+      if (!(await this._mktRefund(o, 'listing expired', 'mkt_order:' + o.id))) await this.state.storage.delete('mkt_order:' + o.id);   /* v2.3.5801 */
     }
   },
 
@@ -812,6 +875,14 @@ export const marketMethods = {
     if (this._mktScanned) return;   /* the shop's rebuild read it all meanwhile */
     if (page.size < MARKET.SCAN_PAGE || !last) { this._mktScanned = true; this._mktScanAfter = null; }
     else this._mktScanAfter = last;
+  },
+
+  /* v2.3.5801 (card RV, MS-4): a refund and its order's delete in one write
+     (_mktRefund).  `mktheal: false` in the live flags: the refund, then the
+     delete in a later write, as before. */
+  _mktHealOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'mktheal') && !f.mktheal);
   },
 
   async _mktRetryOwed() {
