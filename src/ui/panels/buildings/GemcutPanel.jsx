@@ -8,6 +8,8 @@ import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.25
 import { shardCrackOnServer } from '@/game/shardCrack.js'; /* v2.3.3516: shards cracked, raw gems combined, by the worker */
 import { ShardCrackPanel } from './ShardCrackPanel.jsx';
 import { act } from '@/game/actions.js';   /* v2.3.5190: the page's requests leave through the action door (card K PR 7) */
+import { SAY } from '@/data/say/gemcut.js';   /* v2.3.6347: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';
 /* === GemcutPanel — buildingPanel === 'gemcut' sub-panel === */
 /* v2.3.875: extracted verbatim from the buildingPanel === 'gemcut' clause
    in BroTown.jsx (UI decomposition; behavior-frozen). 3 props; data +
@@ -59,7 +61,7 @@ export function GemcutPanel(props) {
   if (shardCrackOnServer(stateRef.current)) return React.createElement(ShardCrackPanel, props);
   var _rpgState$lifeSkills33, _rpgState$lifeSkills36;
   return React.createElement("div", { style: LS_WRAP },
-    lsHeader('gemcut', '💎', "Gem Cutter", "Gem Cutting Lv" + (((_rpgState$lifeSkills33 = rpgState.lifeSkills) === null || _rpgState$lifeSkills33 === void 0 || (_rpgState$lifeSkills33 = _rpgState$lifeSkills33.gemCutting) === null || _rpgState$lifeSkills33 === void 0 ? void 0 : _rpgState$lifeSkills33.level) || 1)),
+    lsHeader('gemcut', '💎', say(SAY, 'gemcut.title'), say(SAY, 'gemcut.level', { lvl: (((_rpgState$lifeSkills33 = rpgState.lifeSkills) === null || _rpgState$lifeSkills33 === void 0 || (_rpgState$lifeSkills33 = _rpgState$lifeSkills33.gemCutting) === null || _rpgState$lifeSkills33 === void 0 ? void 0 : _rpgState$lifeSkills33.level) || 1) })),
     React.createElement("div", { style: LS_BODY },
       React.createElement("div", { style: { fontSize: 12, color: LS.txt2, marginBottom: 12, lineHeight: 1.5 } },
         /* v2.3.3481: the 2026-10-19 UI review -- was "Cut raw gems into
@@ -67,8 +69,8 @@ export function GemcutPanel(props) {
            "slottable" is jargon.  The rule is the same: the worker rolls the
            cut from its own Gem Cutting level, 60% from Lv1 up to 98% at 60
            (GEM_CUT_TIERS). */
-        "Cut raw gems into polished gems for your gear. Higher Gem Cutting raises your success chance."),
-      React.createElement("div", { style: LS_MOD }, "Your gems"),
+        say(SAY, 'gemcut.intro')),
+      React.createElement("div", { style: LS_MOD }, say(SAY, 'gemcut.yourGems')),
       Object.entries(ELEMENTS).map(function (_ref143) {
         var _rpgState$lifeSkills34, _rpgState$lifeSkills35, _ZONE_RESOURCES$elem, _ZONE_RESOURCES$elem2;
         var _ref144 = _slicedToArray(_ref143, 2),
@@ -90,7 +92,7 @@ export function GemcutPanel(props) {
             break;
           }
         }
-        var gemName = ((_ZONE_RESOURCES$elem = ZONE_RESOURCES[elem]) === null || _ZONE_RESOURCES$elem === void 0 ? void 0 : _ZONE_RESOURCES$elem.gem) || elem + ' Gem';
+        var gemName = ((_ZONE_RESOURCES$elem = ZONE_RESOURCES[elem]) === null || _ZONE_RESOURCES$elem === void 0 ? void 0 : _ZONE_RESOURCES$elem.gem) || say(SAY, 'gemcut.gemName', { elem });
         var gemCol = ((_ZONE_RESOURCES$elem2 = ZONE_RESOURCES[elem]) === null || _ZONE_RESOURCES$elem2 === void 0 ? void 0 : _ZONE_RESOURCES$elem2.gemColor) || edef.color;
         return /*#__PURE__*/React.createElement("div", {
           key: elem,
@@ -124,13 +126,13 @@ export function GemcutPanel(props) {
             marginTop: 1,
             fontVariantNumeric: 'tabular-nums'
           }
-        }, "◇ Raw: ", rawCount, " \xB7 ◆ Polished: ", polCount), /*#__PURE__*/React.createElement("div", {
+        }, say(SAY, 'gemcut.counts', { raw: rawCount, polished: polCount })), /*#__PURE__*/React.createElement("div", {
           style: {
             fontSize: 11 /* v2.3.1235: batch-3 rollout — 11px text floor (was 10.5) */,
             color: LS.txt3,
             fontVariantNumeric: 'tabular-nums'
           }
-        }, "Success: ", Math.round(successRate * 100), "%")), /*#__PURE__*/React.createElement("button", {
+        }, say(SAY, 'gemcut.success', { pct: Math.round(successRate * 100) }))), /*#__PURE__*/React.createElement("button", {
           /* v2.3.1235: batch-3 rollout — secondary recipe (raised +
              strong hairline, 10px radius — 11 is off the approved
              set) and the 44px hitbox floor (was 36). No-raw state
@@ -181,10 +183,10 @@ export function GemcutPanel(props) {
             /* Roll for success */
             if (Math.random() < successRate) {
               sk.gems[polKey] = (sk.gems[polKey] || 0) + 1;
-              pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Polished ' + gemName + '!', gemCol);
+              pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, say(SAY, 'gemcut.polished', { gem: gemName }), gemCol);
               cue('gemCut');   /* v2.3.3343: as the worker's gem_cut_result (wsClient) */
             } else {
-              pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Gem shattered!', '#D95C54');
+              pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, say(SAY, 'gemcut.shattered'), '#D95C54');
               cue('gemShatter');   /* v2.3.3343 */
             }
             var _gcLvlBefore = sk.gemCutting.level;
@@ -198,13 +200,13 @@ export function GemcutPanel(props) {
                celebration fires, and the world popup stays as the in-world echo, exactly
                as lifeSkillRewards.js leaves it for fishing/woodcutting/mining. */
             if (leveled) celebrateLifeSkillLevel(stateRef.current, 'gemCutting', sk.gemCutting.level, _gcLvlBefore);
-            if (leveled) pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 50, 'Gem Cutting Lv' + sk.gemCutting.level + '!', '#D8A94D');
+            if (leveled) pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 50, say(SAY, 'gemcut.levelUp', { lvl: sk.gemCutting.level }), '#D8A94D');
             setRpgState(_objectSpread({}, R));
             try {
               localStorage.setItem('bt_rpg', JSON.stringify(R));
             } catch (e) {}
           }
-        }, "Cut"));
+        }, say(SAY, 'gemcut.cut')));
       }), Object.entries(((_rpgState$lifeSkills36 = rpgState.lifeSkills) === null || _rpgState$lifeSkills36 === void 0 ? void 0 : _rpgState$lifeSkills36.gems) || {}).every(function (_ref145) {
         var _ref146 = _slicedToArray(_ref145, 2),
           k = _ref146[0],
@@ -225,5 +227,5 @@ export function GemcutPanel(props) {
             resources in elemental zones to collect raw gems!", but a raw gem
             is a kill drop only (the worker's _gemRawOnKill, 5%, the monster's
             land's element); the harvesting gem rates were never read */
-      "No raw gems yet. Defeat monsters out in the lands to find them.")));
+      say(SAY, 'gemcut.noGems'))));
 }
