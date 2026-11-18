@@ -655,7 +655,7 @@ export const persistenceMethods = {
        the game (the card). */
     let stamps = [];
     try {
-      const stale = await this.state.storage.list({ prefix: 'oplog:questitem:' + pid + ':' });
+      const stale = await this._listAll('oplog:questitem:' + pid + ':');   /* v2.3.5961: a page an await; every stamp goes (card V5) */
       stamps = [...stale.keys()];
     } catch (e) { /* best-effort: the stamps only ever cause a re-grant to be skipped, never a double pay */ }
     const keys = ['rpg:' + pid, ...(gone ? [] : ['bank:' + pid]), ...stamps,

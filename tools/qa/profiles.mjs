@@ -21,10 +21,15 @@
  * The numbers (2026-11-17, chosen, not measured on the machines):
  *   - budget-android: Lighthouse's own "mobile" stand-in is a 4x slowed
  *     processor; a phone's mobile data at its slow end ~250 KB/s, ~150 ms
- *     to the first byte.  The whole site comes down it (`/`): a first visit.
+ *     to the first byte.
  *   - hotel-laptop: an old laptop at half speed, on a hotel's shared line
  *     (~120 KB/s, ~300 ms), the way the expo's judges met the game
  *     (desksmooth's thin line was /world/ground/:150:300).
+ *   The line carries the world's art (`/world/`: the ground, its objects),
+ *   what a first visit downloads as it walks.  v2.3.5860: not the whole
+ *   site (`/`) -- this box serves the 5.6 MB of script uncompressed (a real
+ *   host compresses it), so at 120 KB/s the page did not open within the
+ *   harness's 30 s (the first sampled run, 2026-11-17).
  *   Both play the `light` lane: the grand plan's 1.5 ("the `light` lane's
  *   sweeps run under them").
  *
@@ -34,15 +39,15 @@
 
 export const PROFILES = Object.freeze({
   'budget-android': Object.freeze({
-    say: 'A budget Android phone on mobile data: the processor 4x slowed, the whole site down a 250 KB/s line, the light lane',
+    say: 'A budget Android phone on mobile data: the processor 4x slowed, the world art down a 250 KB/s line, the light lane',
     cpu: 4,
-    line: '/:250:150',
+    line: '/world/:250:150',
     lane: 'light',
   }),
   'hotel-laptop': Object.freeze({
-    say: 'An old laptop on a hotel\'s shared line: the processor 2x slowed, the whole site down a 120 KB/s line, the light lane',
+    say: 'An old laptop on a hotel\'s shared line: the processor 2x slowed, the world art down a 120 KB/s line, the light lane',
     cpu: 2,
-    line: '/:120:300',
+    line: '/world/:120:300',
     lane: 'light',
   }),
 });
