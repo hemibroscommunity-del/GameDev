@@ -1,4 +1,4 @@
-# Red on `main`, round 4: the census (card RR, step 8.1; tag 6300)
+# Red on `main`, round 4: the census (card RR, step 8.1; v2.3.6300)
 
 Taken 2026-11-18 in one cloud session (4 vCPUs, the pre-installed Chromium,
 `npm run build` fresh) on `main` at 736f954c. **A SAMPLE, not every phone
@@ -49,10 +49,12 @@ TEST first.
 | `alliance` | 15/16: the board | 16/16 | a flake of the loaded run (an 8 s wait) | none |
 | `testmode` | 21/25: 4 | 25/25 | a flake of the loaded run | none |
 | `folkpass` | 18/20: 2 | 20/20 | a flake of the loaded run | none |
-| GEARTAB | | | | |
-| BROCARD | | | | |
-| FIRSTSTEPS | | | | |
-| NODES | | | | |
+| `firststeps` | (planner) | 42/46: 6 (4 views) | the TEST's: the CLOSE arrow is the game's | RR |
+| `brocard` | (planner) | 55/59 (4) | to trace: the band's row and the tablet's columns | HB2's screens, to trace |
+| `geartab` | (planner) | 115/116: sideways | to trace: the gear tab not found sideways | HB2's screens, to trace |
+| `hitsound` (node) | | 82/82 | GREEN (J3's 5842) | none |
+| `coldload` (node) | | exit 0 | GREEN | none |
+| `cuelevels` (node) | | 1 FAIL: 3 | to trace: jumpLand's comment says ~0.55, it is 0.34 | RR, to trace |
 
 Green in their batch: questline, membudget, afterpaint, bowprops, comeback,
 framesteps, itemdrop, manualcombat, ownersounds, race, tierore, fishvariants,
@@ -109,6 +111,28 @@ and the double tap's roll (8e: 0 rolls). Its own PR.
   the lock) and 2b. A different step each run: J3's 5846 timed it by the
   wall clock once already.
 
+### `firststeps` 6: "the arrows: mayor -> weapon" (the TEST)
+
+On every view the cards came in order and all were done; the arrows were
+`mayor -> close -> weapon -> close` (phone) or `mayor -> weapon -> close`.
+The check takes only `mayor` and `weapon`; the CLOSE arrow ("Tap CLOSE to
+see more of the world", `src/ui/guideArrow.js` id `close`, pointing at
+BandGrip's CLOSE word) is the game's own. Fix: the check takes the guide's
+ids as the game lists them.
+
+### `brocard`, `geartab`, `cuelevels`: to trace
+
+- `brocard` (alone): the open button's gold border read as not lit
+  (`rgb(255, 226, 58)`); a tablet upright drew 2 columns at 480 px, not 3;
+  the row's words beside their pictures where the check wants them stacked;
+  CLOSE reads "OPEN" (the band folded). The band's row and columns are card
+  HB2's files (NavRail, OneBandColumns): a game fix goes to the planning
+  session; a test fix is RR's.
+- `geartab` sideways 844 x 390: "tap the empty Shield cell" found no gear
+  tab at all (`layout: null`), the rail over the tab (HB2's report).
+- `cuelevels` (node): 3. "the levels the comments promise ... within 1.6x:
+  jumpLand ~0.55 is 0.34". The comment or the level moved.
+
 ### The card's two others
 
 - `guards/switches-thrown` and elemental2's "restore clamps at maxMana"
@@ -117,3 +141,15 @@ and the double tap's roll (8e: 0 rolls). Its own PR.
   each `--import`ed alone) has grown with every new switch; `login-keys`
   12h waits on 5 ms ticks (`tick`) between a join and a pass's check, a
   race on a loaded box.
+
+## The order (card RR's PRs, one red a PR, worst first)
+
+1. `mayordoor` (5 checks): `H.keepAlive` (6301).
+2. `firststeps` 6 (4 views), `recoverpay` (the lane), `deskkeys` (7): the
+   tests, one PR each once traced.
+3. `quietphone`, `headframes`, `desklunge`, `cuelevels`: traced first; a
+   game cause is written up and sent to the planning session.
+4. `brocard`, `geartab`: traced; a cause in HB2's files goes to the
+   planning session.
+5. Then the slow checks, then the rejoin loop (and SB's `_flushOutbox`
+   23.6 ms), each its own PR.
