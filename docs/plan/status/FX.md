@@ -1,27 +1,30 @@
 card: FX
 branch: claude/plan-fx-1-effects-leaves
-prs: 6220 (working)
+prs: 6220 (working: draft, opening)
 state: working
 
 ## Done
 
-- (none merged yet)
+- 6220 built: 40 level-0 leaves (census at 5ea5c7d5) + 12 constants they
+  read moved verbatim to src/rendering/leaves/effects-{look,skills,combat,
+  ui,economy,render,social}.js (52 statements, 0 not verbatim); 6 suites
+  re-keyed (planning session's Q2 (A)); npm test 557 green, questline
+  187/187, membudget as main (heap/buffers on their lines on main too).
 
 ## Next
 
-- 6220: effectsRenderer.js's 42 level-0 leaves (the census at 5ea5c7d5)
-  moved verbatim to src/rendering/leaves/effects-<system>.js (7 files:
-  look, skills, combat, render, ui, social, economy), with the 13 lone
-  constants only a leaf can read there; 55 statements, each byte for byte
-  (scratch check). four-lines green (9790 -> 9467 code lines), the two
-  censuses re-written, build green.
+- 6221 (stacked on 6220): the 7 level-1 leaves + LEGS_LOOK_OFF,
+  MSG_MAX_LINES. Built locally; opened once 6220 is up.
 
 ## Found
 
-- (none yet)
+- mp-membudget fails on main on this box: heap 38.3-39.2 (line 38.5),
+  buffers 24.2-24.3 (line 24.2), three runs. Not FX's lines.
+- precheck's server-tests times out here (the suite takes 11-13 min):
+  npm test run alone instead.
 
 ## Needs
 
-- Asked the planning session (once): the suites outside the card that
-  read a moved leaf in effectsRenderer.js's text, and the constants that
-  moved with their leaves. See the message of 2026-11-18.
+- PR 6222 (ore-tiers, projectile-sheets): the p256 recipe needs files
+  outside the card (p256.js, p256Files.js, twins under public/, a new
+  `?name=0` row in switches.mjs). To be asked before building it.
