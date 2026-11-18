@@ -1,16 +1,18 @@
 card: CS
 branch: claude/plan-cs-1-switches-on
-prs: PR 1 (6000) working
-state: working
+prs: PR 1 (6000) ready
+state: ready
 
 ## Done
 
-- (nothing merged yet)
+- PR 1 (6000): the six cost switches ON by default (`reqstamp`,
+  `fullsnap`, `xferescrow`, `resetbook`, `seathold`, `freezedevice`), each
+  off by its live flag set to false; rows, tests, cost-guard lines (§8 the
+  roster's 2 and §17 the losing stake's ledger row, counted apart).
 
 ## Next
 
-- PR 1 (6000): the six cost switches ON by default, each off by its live
-  flag set to false; their rows, tests and cost-guard lines.
+- PR 2 (6001): the usage meter (devtools.js /dev/ read, the Test panel).
 
 ## Found
 
@@ -19,7 +21,14 @@ state: working
 - Comments in duel.js, gladiator.js, market.js, store.js, storeoffer.js and
   playerroads.js say `xferescrow` is "OFF by default" (not this card's
   files; RV holds market/store/storeoffer): stale since 6000.
+- precheck's server-tests step (a 5-minute cap, tools/dev/precheck.mjs)
+  times out on this 4-core box: `npm test` alone takes ~8 minutes, 7 of them
+  guards/switches-thrown.  The suite passes when run by itself.
+- ownerSwitches.js's Set-a-switch chips do not list the six; typing the
+  name works (src/game/, not this card's files).
 
 ## Needs
 
-- (none yet)
+- PR 2: the Test panel lives in src/ui/panels/DevPanel.jsx, not src/debug/
+  (the card says src/debug/ only); the meter's box needs a line there, or a
+  file of its own under src/ui/panels/.  Asked of the planning session.
