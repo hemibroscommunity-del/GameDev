@@ -19,6 +19,7 @@
 
 import { computeCanonicalPools, computeBuildTotal } from './migrations.js';
 import { wornGradeLetter } from './gearprov.js';   /* v2.3.3142: the worn grade everyone else sees */
+import { lifeOf, LIFE } from './life.js';   /* v2.3.5920: the dead take nothing (life.js _deadTakeOn; TRAPS §150) */
 import { pointsGive, pointsTake, pointsSet } from './skillpoints.js';   /* v2.3.5283: the skill points' door (the old grid's two counts) */
 import { xpGive, xpSet } from './xp.js';   /* v2.3.5289: experience and levels' door (card R PR 10) */
 import {
@@ -110,6 +111,11 @@ export const gridMethods = {
       if (w) this._resendPlayerState(w, session.id, ['armor', 'legsArmor']);
     };
     if (this._threatGearLocked(session.id, ps)) { _armourBack(); return false; }
+    /* v2.3.5920 (card V3, TRAPS §150; `deadtake`, life.js): no armour on or
+       off in the dying seconds -- the swap moves the worker's armour stash
+       (a take and a give), and the death's loss reads that stash.  The worn
+       pieces go back, as the gear lock's refusal sends them. */
+    if (lifeOf(ps) !== LIFE.ALIVE && this._deadTakeOn()) { _armourBack(); return false; }
     /* v2.3.4626: NOT DURING A FIGHT WITH A PLAYER IN NO MAN'S LAND (fightlock.js
        `fightlockarmor`; STATE-MACHINES.md "what is left" after #1523).  The loss
        takes the spare armour and legs and leaves what you wear: putting your
