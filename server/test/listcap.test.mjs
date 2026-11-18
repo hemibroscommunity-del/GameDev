@@ -15,6 +15,13 @@
  *      put while the walk was between pages keeps its stakes from a refund;
  *   5. the aim days (accuracy.js): a page of those past DAY_KEEP a flush;
  *   6. a player's copies (admin.js): one page, the oldest dailies first.
+ * v2.3.5961 (PR 2), the other thirteen:
+ *   7. `_listAll` with a most (an owner's page, LISTCAP.OWNER): it stops
+ *      after the page that reaches it and says `more`;
+ *   8. the owner's aim days read only the newest days they show;
+ *   9. the chat reports' answer says `more` past LISTCAP.OWNER;
+ *  10. the Leaderboard object pages `gone:` and `player:` (`_pages`), and
+ *      `faceless` stops once it has found its limit.
  *
  * Every list the walks make is spied: each names a limit while the switch is
  * on.  The static census is tools/guards/traps-saves.test.mjs §76.
@@ -23,6 +30,7 @@ import { makeStorage, openRoom, settle } from './testroom.mjs';
 import { LISTCAP } from '../src/liveops.js';
 import { ACC, accDayKey } from '../src/accuracy.js';
 import { SNAPSHOT } from '../src/admin.js';
+import { Leaderboard, BOARD_HOLD } from '../src/leaderboard.js';
 
 let failures = 0, passes = 0;
 function check(name, cond, detail) {
@@ -180,6 +188,84 @@ const count = (s, prefix) => [...s._store.keys()].filter((k) => k.startsWith(pre
   check(`6. the prune reads one page of the copies (${SNAPSHOT.LIST})`, mine.length === 1 && mine[0].limit === SNAPSHOT.LIST, mine);
   const left = [...s._store.keys()].filter((k) => k.startsWith('rpgsnap:bp_lc_p:'));
   check('6. ...the oldest dailies go first, the parachute stays', left.length === N + 2 - (SNAPSHOT.LIST - SNAPSHOT.KEEP) && !left.includes('rpgsnap:bp_lc_p:20000101') && left.includes('rpgsnap:bp_lc_p:prereset-1'), left.length);
+}
+
+/* ── 7. a most: an owner's page ── */
+{
+  const s = makeStorage();
+  const N = LISTCAP.PAGE * 3 + 9;
+  for (let i = 0; i < N; i++) s._store.set('chain_score:bp_' + String(i).padStart(4, '0'), { at: i });
+  const room = await openRoom(s);
+  const calls = spy(s);
+  const info = {};
+  const got = await room._listAll('chain_score:', LISTCAP.PAGE * 2, info);
+  check('7. `_listAll` with a most stops after the page that reaches it, and says more', got.size === LISTCAP.PAGE * 2 && info.more === true, [got.size, info]);
+  const whole = await room._listAll('chain_score:');
+  check('7. ...without one it reads the prefix whole, every list a page', whole.size === N && calls.every((c) => c.limit === LISTCAP.PAGE), whole.size);
+  const off = await openRoom(s, { listcap: false });
+  const i2 = {};
+  check('7. `listcap: false`: whole in one read, never `more`', (await off._listAll('chain_score:', LISTCAP.PAGE, i2)).size === N && !i2.more);
+}
+
+/* ── 8. the owner's aim days ── */
+{
+  const s = makeStorage();
+  for (let i = 0; i < ACC.DAY_KEEP; i++) {
+    const d = new Date(Date.UTC(2020, 0, 1) + i * 86400000);
+    s._store.set(accDayKey(d.toISOString().slice(0, 10).replace(/-/g, '')), { v: 1, melee: [i + 1, 0], ranged: [0, 0], staff: [0, 0] });
+  }
+  const room = await openRoom(s);
+  const calls = spy(s);
+  const r = await room._accAdminDays(5);
+  const mine = calls.filter((c) => c.prefix === 'accday:');
+  check('8. the owner\'s days: the newest five, read as five', r.ok && r.days.length === 5 && r.days[0].melee[0] === ACC.DAY_KEEP && mine.length === 1 && mine[0].reverse === true && mine[0].limit === 5, [r.days && r.days.map((x) => x.day), mine]);
+}
+
+/* ── 9. the chat reports past the most ── */
+{
+  const s = makeStorage();
+  const now = Date.now();
+  const N = LISTCAP.OWNER + 10;
+  for (let i = 0; i < N; i++) s._store.set('chat_report:' + String(i).padStart(5, '0'), { at: now, by: 'bp_lc_by', target: 'bp_lc_t', text: 'x' });
+  const room = await openRoom(s);
+  const json = (o) => o;
+  const url = new URL('http://x/api/admin/reports?limit=5');
+  const r = await room._chatModAdminRoute({ method: 'GET' }, url, '/reports', json);
+  check(`9. the chat reports read ${LISTCAP.OWNER} at most and say more`, r && r.ok && r.total === LISTCAP.OWNER && r.more === true && r.reports.length === 5, r && { total: r.total, more: r.more });
+}
+
+/* ── 10. the Leaderboard object ── */
+{
+  const store = new Map();
+  const lists = [];
+  const st = { storage: {
+    get: async (k) => store.get(k),
+    put: async (k, v) => { store.set(k, v); },
+    delete: async (k) => { for (const x of (Array.isArray(k) ? k : [k])) store.delete(x); },
+    list: async (o = {}) => {
+      lists.push({ ...o });
+      const m = new Map();
+      for (const [k, v] of [...store].sort()) {
+        if (o.prefix && !k.startsWith(o.prefix)) continue;
+        if (o.startAfter !== undefined && k <= o.startAfter) continue;
+        m.set(k, v);
+        if (o.limit && m.size >= o.limit) break;
+      }
+      return m;
+    },
+  } };
+  const lb = new Leaderboard(st, {});
+  const now = Date.now();
+  const G = BOARD_HOLD.PAGE + 5;
+  for (let i = 0; i < G; i++) store.set('gone:bp_g' + String(i).padStart(5, '0') + ':1', JSON.stringify({ gone: 1, lastSeen: 1 }));
+  store.set('gone:bp_zz:' + now, JSON.stringify({ gone: now, lastSeen: now }));
+  await lb.markGone({ playerId: 'bp_nobody' });
+  const left = [...store.keys()].filter((k) => k.startsWith('gone:'));
+  check(`10. markGone: every old stand-in of ${G} goes, read a page (${BOARD_HOLD.PAGE}) at a time`, left.length === 1 && lists.filter((c) => c.prefix === 'gone:').every((c) => c.limit === BOARD_HOLD.PAGE) && lists.filter((c) => c.prefix === 'gone:').length === 2, [left.length, lists.length]);
+  for (let i = 0; i < 50; i++) store.set('player:bp_f' + String(i).padStart(3, '0'), JSON.stringify({ name: 'f' + i, lastSeen: now }));
+  lists.length = 0;
+  const ids = await lb.faceless(7);
+  check('10. faceless: its limit found, a page read with a limit', ids.length === 7 && lists.length === 1 && lists[0].limit === BOARD_HOLD.PAGE, [ids.length, lists]);
 }
 
 console.log(`\n${passes} passed, ${failures} failed`);

@@ -373,7 +373,11 @@ export const accuracyMethods = {
     const want = int(n, 1, ACC.DAY_KEEP) || 14;
     const rows = new Map();
     try {
-      const days = await this.state.storage.list({ prefix: 'accday:' });
+      /* v2.3.5961 (card V5; TRAPS §76): the newest `want` days, all it shows
+         (what is not yet written is added below; `listcap: false`: every day) */
+      const opts = { prefix: 'accday:' };
+      if (!this._listCapOff()) { opts.reverse = true; opts.limit = want; }
+      const days = await this.state.storage.list(opts);
       for (const [k, v] of days) rows.set(k.slice('accday:'.length), accDayNormalize(v));
     } catch (err) { return { ok: false, error: 'could not read the days' }; }
     /* with what is counted and not yet written */

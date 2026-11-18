@@ -659,7 +659,10 @@ export const arenaMethods = {
    * lets the sweep finish it. */
   async _arenaSettleStakes(tid, matchId, winnerId) {
     try {
-      const stakes = await this.state.storage.list({ prefix: 'arena_stake:' + tid + ':' + matchId + ':' });
+      /* v2.3.5961 (card V5; TRAPS §76): every stake of the match, a page an
+         await: storage awaits keep the gate shut, so no stake lands between
+         two pages, and the plan below is made from all of them, as before */
+      const stakes = await this._listAll('arena_stake:' + tid + ':' + matchId + ':');
       const all = [];
       for (const [k, rec] of stakes) if (rec && typeof rec.sponsorId === 'string') all.push({ k, rec });
       const amt = (rec) => Math.max(0, Math.floor(Number(rec.amount) || 0));
@@ -802,7 +805,7 @@ export const arenaMethods = {
     if (!t || t.status !== 'running') return;
     let recs;
     try {
-      recs = await this.state.storage.list({ prefix: 'arena_stake:' + t.id + ':' });
+      recs = await this._listAll('arena_stake:' + t.id + ':');   /* v2.3.5961: a page an await (card V5) */
     } catch (e) { return; }
     // Sum per match -> per competitor.  targetId is a client-supplied
     // player id, so the inner tally is a null-proto map (rule 4).
@@ -1137,7 +1140,7 @@ export const arenaMethods = {
   },
 
   async _arenaPlanScan() {
-    const plans = await this.state.storage.list({ prefix: 'arena_settle:' });
+    const plans = await this._listAll('arena_settle:');   /* v2.3.5961: a page an await; the count wants them all (card V5) */
     let open = 0;
     for (const [pk, plan] of plans) {
       if (!arenaPlanReadable(plan)) continue;   /* kept for the owner: it pays nothing */
