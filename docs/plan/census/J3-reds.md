@@ -21,7 +21,7 @@ committed) and its numbers are quoted.
 | `hitsound` | 6 red | 6 red | the TEST's (stale table) | 5842 |
 | `comeback` | 1 red | 1, 5 red | the TEST's (wall clock; a race) | 5841 |
 | `race` | 1 red | 1 red | the TEST's (stale cells) | 5843 |
-| `ownersounds` | 3 red | 3, 9b red | the TEST's (regen; the chat gap) | 5844 |
+| `ownersounds` | 3 red | 3, 9b red | the TEST's (regen; the chat gap; one tap) | 5844 |
 | `bowprops` | H red | H red | the TEST's (the view is wider) | 5845 |
 | `desklunge` | 4 red | green | the TEST's (the sea; wall clock) | 5846 |
 | `itemdrop` | 5b red | (J2's runs) | a GAME question (J2's) | Needs |
@@ -65,7 +65,7 @@ as the player's own figure on the player's own jog, whose sheets have
 says which (`__btNpcSprites` `live`, `pose`). Fix: drawn live, his jog's
 cells (at least four, whole numbers); his photograph, the old rule.
 
-### `ownersounds` 3 and 9b
+### `ownersounds` 3, 9b and 9a
 
 - 3 (both rounds: no cue at all on the Quick Eat tap). Read at the tap:
   `{"hp":250,"max":250,"view":null}`, the element under the finger no
@@ -78,6 +78,11 @@ cells (at least four, whole numbers); his photograph, the old rule.
   the test zeroed every townsperson's `chatTimer` only, so a line said in
   the last 20 s (Ace's, just before in 9a) held all back, by run. Fix: the
   gap opened too (`S._idleChatAt = null`).
+- 9a (red 1 of 2 runs of the fixed file, a helper session's): "a tap on
+  Ace (no tap)". The test hopped beside him and made one tap by hand; a
+  frame drawn between a touch's start and end makes a tap a hold on this
+  box, which the harness's `talkToNpc` meets with three tries. Fix: Ace
+  reached the harness's way, `H.approachNpc` (CLAUDE.md §6).
 
 ### `bowprops` H (the guard)
 
@@ -100,13 +105,19 @@ Two causes, both the TEST's:
   stood him 170 px south of the nearest snowman, and that spot was
   sometimes the sea: swimming, the game refuses every swing and lunge
   (`combatHelpers.js swimRefused`), by design. Fix: the first of eight
-  stands round the snowman whose ground the game says is dry
-  (`__btSwimAt`, `swimFx.js`), and a guard that he is not swimming there.
+  stands round the snowman where, once he is there, the game does not have
+  him swimming (`S._wheelSwim`, what `swimRefused` reads), and a guard.
 - 3 alone red (1 of the 11): "inside the lunge's cooldown" lunged
   again (a dash, a fresh 2.3 s cooldown). The click came after the wait
   for the worker's HP (up to 4 s of the wall clock), longer than the 2.5 s
   cooldown on this box (TRAPS §200). Fix: the click at once after the
-  lunge, before that wait, its cooldown read just before it (> 0).
+  lunge (0.65-1.7 s of it left, measured), its cooldown read just before.
+  A swing is asked of it only when the sword's own gap had passed at the
+  click: the lunge's strike stamps that gap when it ARRIVES, and on this
+  box the dash's travel took up to 1.4 s of frames, so the gap could end
+  after the cooldown; clicks aimed between the two, with 320-345 ms of it
+  left, landed after it and lunged (3 of 4 runs). The check names which
+  it was ("no swing due"); every run here was that one.
 
 ### `itemdrop` 5b: a GAME question (J2's Found), not run as a fix here
 
