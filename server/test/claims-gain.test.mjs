@@ -41,8 +41,8 @@ import * as B from './claimbots.mjs';
 const BAR = 1.5;
 /* today's gains (main 82fb78d, the default seed): a line only falls */
 const LINES = {
-  reach: 1.42, bowlabel: 1.55, guard: 1.37, cookshield: 0.67, move: 1.17, harvest: 1.86, cook: 0, quest: 1, sale: 1, local: 1,
-};   /* v2.3.5901: bowlabel 1.6 -> 1.55 (`bowreach` ON: a claim held to its arrow's flight from where it left; card K4 PR 2, decided for the owner while away, 2026-11-18); v2.3.5727: bowlabel 3.3 -> 1.6 (`bowshot` ON) and cook 1.59 -> 0 (`cookstart` ON), card K2 PR 8: decided for the owner while away, 2026-11-17; v2.3.5551: reach 2.96 -> 1.42 (`swordswing` ON), move 2.56 -> 1.17 (`movetop` ON): the owner's yes, 2026-11-17; v2.3.5550: bowlabel 3.76 -> 3.3 (the flicking archer, an honest way the free-swing trial plays); v2.3.5541: move 4.35 -> 2.56 (the sprint mark, ON: the run goes on through the grace, and the sprint's bound only for what is billed; review-z16) */
+  reach: 1.42, bowlabel: 1.4, guard: 1.37, cookshield: 0.67, move: 1.17, harvest: 1.86, cook: 0, quest: 1, sale: 1, local: 1,
+};   /* v2.3.5905: bowlabel 1.55 -> 1.4 (the honest archers' arrows at the real 1,440 px a second, not 480: card K4 PR 6); v2.3.5901: bowlabel 1.6 -> 1.55 (`bowreach` ON: a claim held to its arrow's flight from where it left; card K4 PR 2, decided for the owner while away, 2026-11-18); v2.3.5727: bowlabel 3.3 -> 1.6 (`bowshot` ON) and cook 1.59 -> 0 (`cookstart` ON), card K2 PR 8: decided for the owner while away, 2026-11-17; v2.3.5551: reach 2.96 -> 1.42 (`swordswing` ON), move 2.56 -> 1.17 (`movetop` ON): the owner's yes, 2026-11-17; v2.3.5550: bowlabel 3.76 -> 3.3 (the flicking archer, an honest way the free-swing trial plays); v2.3.5541: move 4.35 -> 2.56 (the sprint mark, ON: the run goes on through the grace, and the sprint's bound only for what is billed; review-z16) */
 /* each gain's spread over five other seeds (CLAIMS_SEED=a..e, --gains:
    the highest less the lowest, rounded up), measured 2026-11-14.  A gain
    fails only past its line by more than its spread, so a change elsewhere in
@@ -60,10 +60,10 @@ const HARVESTGRADE_LINE = 1.46;
    but the claim naming its monster when it lands (no arrow is ever wasted
    in flight) -- the arrow's line and flight time, a later judge (K4's
    status, Found).  A line that only falls */
-const BOWREACH_LINE = 1.55;
+const BOWREACH_LINE = 1.40;   /* v2.3.5905: 1.55 -> 1.40, the honest archers' arrows at their real speed (under the bar now) */
 /* v2.3.5904: the bow's liar with `bowpath: true` (2j): 1.33 on the default
    seed (1.30 to 1.40 over seeds and run names).  A line that only falls */
-const BOWPATH_LINE = 1.33;
+const BOWPATH_LINE = 1.20;   /* v2.3.5905: 1.33 -> 1.20, the same */
 const BOWPATH_LIAR = 'the path\'s liar: each relay aimed at a monster that still needs arrows, each claim when its arrow could have landed, on its line';
 const GRADED = 'the graded liar: perfect at the gesture\'s floor while its 15 in 20 last, else good at once';
 const GAIN_MIN = 4;
@@ -204,7 +204,13 @@ check('2: ...nor on the gain runs', gainRuns.length === 0, gainRuns);
    keeps every arrow (2, above: its gain run and every disturbance), and with
    the lane's switch thrown (`arrowlane: false`, the plan's rule 4) it loses
    some to the plain 210 ms floor: what the mend gives back. */
-const stepOff = GAINS_ONLY ? null : await runBot(CLAIMS.find((c) => c.id === 'bowlabel'), [STEPPER, B.honestBow, { stepIn: true }], { ms: GAIN_MIN * B.MIN, flags: { arrowlane: false } });
+/* v2.3.5905: at the arrow's real 1,440 px a second the stepping archer's
+   arrows no longer land bunched, so the lane's own case is a SLOW arrow (480
+   px a second, as the bench flew every arrow until then: a volley's own
+   speedPx is slower still) -- with it on it keeps every one, off it loses some */
+const stepOff = GAINS_ONLY ? null : await runBot(CLAIMS.find((c) => c.id === 'bowlabel'), [STEPPER, B.honestBow, { stepIn: true, arrowPx: 480 }], { ms: GAIN_MIN * B.MIN, flags: { arrowlane: false } });
+const stepOn = GAINS_ONLY ? null : await runBot(CLAIMS.find((c) => c.id === 'bowlabel'), [STEPPER, B.honestBow, { stepIn: true, arrowPx: 480 }], { ms: GAIN_MIN * B.MIN });
+if (stepOn) check('2b: ...the slow-arrow stepping archer keeps every arrow with the lane on', !stepOn.refusals.length, stepOn.refusals.slice(0, 3));
 if (stepOff) check(`2b: the stepping archer keeps every arrow; with \`arrowlane: false\` it loses ${stepOff.refusals.length} in ${GAIN_MIN} minutes`, stepOff.refusals.length > 0 && stepOff.refusals.every((x) => /arrow in reach did not land/.test(x)), stepOff.refusals.slice(0, 3));
 /* v2.3.5541 (card K, step 4.2): THE SPRINT MARK.  The move's liar marks
    every other step a sprint; with the run going on through the grace
@@ -318,7 +324,7 @@ if (!GAINS_ONLY) {
      v2.3.5901: that judge (`bowreach`, ON, 2g) runs here too: this liar
      now stands at its arrow's flight (1.62 on its seed, within the line's
      spread; the default seed's main row 1.55) */
-  const BOWSHOT_LINE = 1.60;
+  const BOWSHOT_LINE = 1.46;   /* v2.3.5905: 1.60 -> 1.46, the honest archers' arrows at their real speed */
   check(`2f: the bow's liar: gain ${br.gain} off, ${gOn.toFixed(2)} with \`bowshot: true\` (its line ${BOWSHOT_LINE}, the bar ${BAR}; with \`bowreach\` ON since v2.3.5901: 2g)`, gOn <= BOWSHOT_LINE + SPREAD.bowlabel && gOn < gOff, { on: gOn, off: gOff });
 }
 /* v2.3.5901 (card K4 PR 2, step 4.2): THE BOW'S REACH, FROM WHERE THE ARROW
@@ -519,13 +525,13 @@ if (WRITE) {
     ...(bowReach ? [
       '## The bow\'s reach, from where the arrow left (`bowreach`, ON)',
       '',
-      `v2.3.5901 (card K4 PR 2; \`server/src/bowshot.js\`): a claim on an arrow the worker saw leave lands only with the monster within the arrow's own flight of where the archer stood at its relay (675 px x Range, and 400 px of slack: 1,075 px for a new character), not the hit test's 1,490 px from where the archer stands now; a claim with no arrow seen gets 3, and one more every 3 s. The honest archers take what they took with it off and meet no refusal on any disturbance. The bow's own claim (its liar at an honest walk): **${bowReach.walkOff.toFixed(2)}** off, **${bowReach.walkOn.toFixed(2)}** on; the whole liar (walking at 480 px a second, the move's claim) **${bowReach.off.toFixed(2)}** off, **${bowReach.on.toFixed(2)}** on; the liar sending no relays **${bowReach.bare.toFixed(2)}**. Still over 1.5: what is left is not the reach but the claim naming its monster when it lands, so no arrow is ever wasted in flight -- binding a claim to its relay's line and flight time is a later judge.`,
+      `v2.3.5901 (card K4 PR 2; \`server/src/bowshot.js\`): a claim on an arrow the worker saw leave lands only with the monster within the arrow's own flight of where the archer stood at its relay (675 px x Range, and 400 px of slack: 1,075 px for a new character), not the hit test's 1,490 px from where the archer stands now; a claim with no arrow seen gets 3, and one more every 3 s. The honest archers take what they took with it off and meet no refusal on any disturbance. The bow's own claim (its liar at an honest walk): **${bowReach.walkOff.toFixed(2)}** off, **${bowReach.walkOn.toFixed(2)}** on; the whole liar (walking at 480 px a second, the move's claim) **${bowReach.off.toFixed(2)}** off, **${bowReach.on.toFixed(2)}** on; the liar sending no relays **${bowReach.bare.toFixed(2)}**. What is left is not the reach but the claim naming its monster when it lands, so no arrow is ever wasted in flight: the bow's path below (\`bowpath\`). (v2.3.5905: the honest archers' arrows fly the real 1,440 px a second here, not 480.)`,
       '',
     ] : []),
     ...(bowPath ? [
       '## The bow\'s path (`bowpath`, OFF as merged)',
       '',
-      `v2.3.5904 (card K4 PR 5; \`server/src/bowshot.js\`): with \`bowpath: true\` a claim on an arrow seen lands only for a monster near that arrow's line (its relay's x, y and angle: 200 px beside it, and the landing's 8 degree turn) and no sooner than the arrow could have flown there (1,440 px a second x Range, less 300 ms). Every honest archer takes what it took with it off and meets no refusal on any disturbance. The bow's liar with it on: the path's liar (each relay aimed at a monster that still needs arrows, each claim when its arrow could have landed, on its line) **${bowPath.path.toFixed(2)}**; the relay-and-claim liar **${bowPath.shots.toFixed(2)}**. Its line, \`BOWPATH_LINE\`, only falls. OFF until the owner says, as it holds every bow claim to a line the phone's own aim makes.`,
+      `v2.3.5904 (card K4 PR 5; \`server/src/bowshot.js\`): with \`bowpath: true\` a claim on an arrow seen lands only for a monster near that arrow's line (its relay's x, y and angle -- since v2.3.5905 the relay goes at release, with the line the arrow flies, against a worker advertising caps.bowPath: 200 px beside it measured to the monster's body, its feet up 130 px, a boss's 260, and the landing's 8 degree turn) and no sooner than the arrow could have flown there (1,440 px a second x Range, less 300 ms). Every honest archer takes what it took with it off and meets no refusal on any disturbance. The bow's liar with it on: the path's liar (each relay aimed at a monster that still needs arrows, each claim when its arrow could have landed, on its line) **${bowPath.path.toFixed(2)}**; the relay-and-claim liar **${bowPath.shots.toFixed(2)}**. Its line, \`BOWPATH_LINE\`, only falls. OFF until the owner says, as it holds every bow claim to a line the phone's own aim makes.`,
       '',
     ] : []),
     '## Claims with no number yet, and why',

@@ -57,6 +57,18 @@
  *    batch).  A bow's arrow flies straight on its release line (projectiles
  *    .js v2.3.2261: only a staff's bolt steers), so the line is the arrow's.
  *
+ *    v2.3.5905 (card K4 PR 6; the gatekeeper's sitting 45): the LINE AT
+ *    RELEASE -- the relay left when the arrow was fired, but its line is set
+ *    at release (the bow's 110 ms nock, a frame or more later), and a held
+ *    aim moves on in between (a release 35 deg off lost 4 of 8 claims).  A
+ *    phone told caps.bowPath (join.js: only while `bowpath` is on) now sends
+ *    its arrow's relay AT RELEASE, with the line it flies (projectiles.js),
+ *    so the line judged is the arrow's own; with the switch off nothing
+ *    moves.  And THE BODY: the side is measured to the monster's body, its
+ *    feet up PATH_BODY_PX (a boss's PATH_BOSS_BODY_PX: it stands
+ *    gameSystems.js BOSS_STAND_H, 211 px, whatever its size), not to its
+ *    feet: an arrow hits it up its body (a 5x boss ~95 px up lost 4 of 8).
+ *
  * Left as they are: a paid special's claims and everything inside its window
  * (the volley's stuck arrows' chips, its burning patch: hitproof.js
  * _pveVolleyLive), a staff's bolts, a test-mode character, and a player's
@@ -75,6 +87,8 @@ export const BOW_SHOT = Object.freeze({
      (px), the landing's turn a px out, the arrow's speed (projectiles.js
      ARROW_SPEED_PX 24 a frame at 60, x Range) and the time's slack */
   PATH_SIDE_PX: 200,
+  PATH_BODY_PX: 130,        /* v2.3.5905: a monster's body above its feet (the tall figures' torsos sit within it) */
+  PATH_BOSS_BODY_PX: 260,   /* v2.3.5905: a boss's (BOSS_STAND_H 211, and its head) */
   PATH_TURN: 0.14,
   PATH_BACK_PX: 150,
   ARROW_PX_S: 1440,
@@ -125,7 +139,12 @@ export const bowShotMethods = {
     if (!shot.p || !m || typeof m.x !== 'number' || typeof m.y !== 'number') return true;
     const dx = m.x - shot.p.x, dy = m.y - shot.p.y;
     const along = dx * shot.p.c + dy * shot.p.s;
-    const side = Math.abs(dy * shot.p.c - dx * shot.p.s);
+    /* v2.3.5905: THE BODY -- the nearest of the line to the monster's body,
+       its feet (dy) up H px (dy - H); the side is linear along it, so zero
+       where it changes sign, else the nearer end */
+    const H = m._dungeonBoss || m.boss ? BOW_SHOT.PATH_BOSS_BODY_PX : BOW_SHOT.PATH_BODY_PX;
+    const s0 = dy * shot.p.c - dx * shot.p.s, s1 = (dy - H) * shot.p.c - dx * shot.p.s;
+    const side = (s0 <= 0) !== (s1 <= 0) ? 0 : Math.min(Math.abs(s0), Math.abs(s1));
     if (along < -BOW_SHOT.PATH_BACK_PX) return false;
     if (side > BOW_SHOT.PATH_SIDE_PX + Math.max(0, along) * BOW_SHOT.PATH_TURN) return false;
     const speed = BOW_SHOT.ARROW_PX_S * this._hitRangeMult(ps, 'bow');
