@@ -1,6 +1,6 @@
 card: FX
-branch: claude/plan-fx-2-effects-leaves (stacked on claude/plan-fx-1-effects-leaves)
-prs: #2190 6220 (ready), 6221 (working: draft)
+branch: claude/plan-fx-3-ore-projectiles (on fx-2, on fx-1)
+prs: #2190 6220 (ready), #2194 6221 (draft, CI), 6222 (draft)
 state: ready
 
 ## Done
@@ -14,11 +14,12 @@ state: ready
 
 ## Next
 
-- 6221 (stacked on #2190): the 7 level-1 leaves + LEGS_LOOK_OFF and
-  MSG_MAX_LINES, verbatim (61 statements in all, 0 not verbatim);
-  held-sweep 9 re-keyed; npm test 566 green after it, questline 187/187,
-  membudget all green. Ready once CI is.
-- Then 6222 (ore numbers, projectile twins), then 6223 (canvas makers).
+- #2194 (6221, on #2190): 7 level-1 leaves + 2 constants, verbatim;
+  held-sweep 9 re-keyed; questline 187/187, membudget all green.
+- 6222 (on #2194): ore rocks as numbers, projectile twins; artCache
+  13.4 -> 11.2, buffers line 24.2 -> 24.8 (net 1.7 MB less); tierore
+  74/74, magicburst 7/7, questline 187/187.
+- Then 6223 (the canvas makers, §253).
 
 ## Found
 
@@ -31,5 +32,5 @@ state: ready
 
 - #2190 clashes with EN's #2189 in M-tables.md: EN merges first; main
   merged in when gatekeeper 46 asks (planning session, 2026-11-18).
-- 6222: answered (part 6): files outside approved, existing off-ramps
-  ?treenumbers=0 / ?p256=0, buffers measured both ways.
+- Q8 (planning session): lower artCache 79.3 -> 77.1 with framePacer.js
+  MEM_LINES's copy (frame-pacer.test 23a), or keep 79.3 as v2.3.5982 did?
