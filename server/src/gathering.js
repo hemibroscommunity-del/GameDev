@@ -81,7 +81,8 @@ import { xpDecayMult, xpAfterDecay } from './xpdecay.js'; /* v2.3.3251: XP fades
 import { parseGemKey } from './gems.js';   /* v2.3.3516: gems are kept through a death (_keptThroughDeath) */
 import { bagGive } from './bag.js'; /* v2.3.4810: the bag door */
 import { xpGive, xpLevelUp, xpMake } from './xp.js';   /* v2.3.5289: experience and levels' door (card R PR 10) */
-import { harvestGradeEarliest, harvestGradeJudge } from './harvestgrade.js';   /* v2.3.5900: the grade judged (card K4 PR 1; `harvestgrade`, OFF) */
+import { harvestGradeEarliest, harvestGradeJudge } from './harvestgrade.js';
+import { ZONES } from './data.js';   /* v2.3.5903: a harvest's shard only for a zone that has one (TRAPS §154) */   /* v2.3.5900: the grade judged (card K4 PR 1; `harvestgrade`, OFF) */
 
 export const GATHER_HITS = {
   MS: { mining: 650, woodcutting: 540, fishing: 650, cooking: 650 },
@@ -770,7 +771,22 @@ export const gatheringMethods = {
   // can't force shard drops.
   _rollHarvestShard(zoneId) {
     if (Math.random() >= 0.33) return null;
+    /* v2.3.5903 (card K4 PR 4; V4's Found, TRAPS §154): only a zone that HAS
+       a shard -- ZONES' keys, each with its shard_<zone> item -- as the kill's
+       roll since v2.3.3170 (index.js _rollShardForKill).  The key was built
+       from whatever zone the node named, so a node in a runtime zone (a
+       dungeon instance's 'dungeon:<id>') would mint a key that is no item:
+       the game cannot name or draw it, and Diego's pricer buys each new one
+       at its empty-pile price.  Checked AFTER the roll, so a harvest draws
+       exactly the random numbers it always did.  `harvestshard: false` in
+       the live flags: the key built as before. */
+    if (!this._harvestShardOff() && !Object.prototype.hasOwnProperty.call(ZONES, zoneId)) return null;
     return 'shard_' + zoneId;
+  },
+  /* v2.3.5903: the kill switch above, the lower-case way (TRAPS §117) */
+  _harvestShardOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'harvestshard') && !f.harvestshard);
   },
 
   // Mirror of computeOpenDelay() in src/data/gameSystems.js, sans the
