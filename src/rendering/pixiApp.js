@@ -188,6 +188,22 @@ const SCREEN_LAYER_NAMES = ['atmosphere', 'screenFX', 'hud'];
 /* v2.3.3449: each world layer its own render group (buildScene); off with
    `?nolayergroups` to compare */
 const LAYER_GROUPS = !(typeof location !== 'undefined' && /[?&]nolayergroups\b/.test(pageAddress()));
+
+/* v2.3.3190: bytes a pixel by the texture's format -- the Wheel's ground and objects are one byte a pixel, colour
+   numbers (paletteTex.js) -- not four for every texture.  v2.3.6242: one function, read by __btGpuTex and
+   __btGpuMb (card HB PR 3) */
+function gpuBpp(f) {
+  return (f === 'r8unorm' || f === 'r8snorm' || f === 'r8uint' || f === 'r8sint' ? 1
+    : (f === 'rg8unorm' || f === 'r16float' || f === 'r16uint' || f === 'rg8uint' ? 2
+      : (f === 'rgba16float' || f === 'rg32float' ? 8 : (f === 'rgba32float' ? 16 : 4))));
+}
+/* a texture source's bytes on the chip: its pixels at its format, a third more with its mipmaps */
+function gpuSourceBytes(s) {
+  const w = s.pixelWidth || 0, h = s.pixelHeight || 0;
+  const mip = !!(s.autoGenerateMipmaps || s.mipLevelCount > 1);
+  return w * h * gpuBpp(s.format) * (mip ? 4 / 3 : 1);
+}
+
 export const LAYER_NAMES = [...WORLD_LAYER_NAMES, ...SCREEN_LAYER_NAMES];
 /* v2.3.1915: the world stack, published for QA. "Arrows draw under the
    player" is a statement about ORDER, and a scenario that hard-coded the
@@ -501,6 +517,22 @@ function buildScene(app) {
       } catch (e) { /* none */ }
       return out;
     };
+    /* ═══ v2.3.6242: THE CHIP'S TOTAL ALONE, FOR THE GAME'S OWN COUNT (card HB PR 3) ═══
+       The field report's `mem` and the pacer's memory verdict (debug/report.js memCount, buildReport) want one
+       number, the MB on the chip, and asked __btGpuTex for it: a row for every texture with its label cleaned by a
+       regular expression, a sort, a walk of the whole asset cache, and a test texture made and destroyed.  That
+       held the page 20 to 52 ms on budget-android (docs/plan/census/HB-holds.md row 8), from the report's timer
+       and, every 5 s, the pacer.  This is the same sum by the same rule (gpuSourceBytes), and nothing else:
+       __btGpuTex().mb and __btGpuMb().mb are the same number. */
+    window.__btGpuMb = function () {
+      try {
+        const r = app.renderer;
+        const list = (r && r.texture && r.texture.managedTextures) || [];
+        let bytes = 0;
+        for (const s of list) if (s && !s.destroyed) bytes += gpuSourceBytes(s);
+        return { mb: +(bytes / 1048576).toFixed(1) };
+      } catch (e) { return { err: String(e && e.message || e) }; }
+    };
     window.__btGpuTex = function (top) {
       try {
         const r = app.renderer;
@@ -523,17 +555,11 @@ function buildScene(app) {
         const rows = [];
         const byKind = {};
         let bytes = 0;
-        /* v2.3.3190: bytes a pixel by the texture's format -- the Wheel's
-           ground and objects are one byte a pixel, colour numbers
-           (paletteTex.js) -- not four for every texture */
-        const bpp = (f) => (f === 'r8unorm' || f === 'r8snorm' || f === 'r8uint' || f === 'r8sint' ? 1
-          : (f === 'rg8unorm' || f === 'r16float' || f === 'r16uint' || f === 'rg8uint' ? 2
-            : (f === 'rgba16float' || f === 'rg32float' ? 8 : (f === 'rgba32float' ? 16 : 4))));
         for (const s of list) {
           if (!s || s.destroyed) continue;
           const w = s.pixelWidth || 0, h = s.pixelHeight || 0;
           const mip = !!(s.autoGenerateMipmaps || s.mipLevelCount > 1);
-          const b = w * h * bpp(s.format) * (mip ? 4 / 3 : 1);
+          const b = gpuSourceBytes(s);   /* v2.3.6242: the one rule, shared with __btGpuMb below */
           const kind = kindOf(s);
           bytes += b;
           byKind[kind] = (byKind[kind] || 0) + b;
