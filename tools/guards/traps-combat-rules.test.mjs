@@ -739,8 +739,15 @@ const PVP = oneDef(DS, '_pvpAllowed');
   const FREEZE = /_skillFrozen|_skillFreezeOff\(|\.prog3(?![\w$])/;
   const KNOWN_TRACK = {
     '_handleStatsUpdate: payload.weaponSpecs||payload.weaponSkills': 'grids.js: recomputes the max pools from the STORED tracks (computeCanonicalPools); a frozen report changed none of them, nothing healed or saved',
-    '_handleStatsUpdate: payload.weaponUnspent': 'grids.js: a prog3 character\'s reported unspent weapon points are still stored (sanitised, not frozen): FOUND, the owner\'s question',
-    '_handleStatsUpdate: payload.defenseUnspent': 'grids.js: the same for the unspent defence points (clamped 0..999, not frozen): FOUND, the owner\'s question',
+    /* v2.3.6083 (card V7 PR 4, step 1 read): harmless, so no freeze.  On a
+       prog3 character a stored unspent count buys nothing: no worker path
+       spends it (the legacy specs it would buy are gated off for prog3 at
+       _t2Flat and the point helpers, and _clampBuildTotal holds them to
+       COMBAT_BUILD_CEILING, never to an unspent count), prog3FromLegacy never reads it, and the join
+       only restores it to the same field.  Only the retired T2 panel shows
+       it, a system nothing reads (heroSectionBus.js). */
+    '_handleStatsUpdate: payload.weaponUnspent': 'grids.js: a prog3 character\'s reported unspent weapon points are stored (sanitised): harmless, no worker path spends them and prog3FromLegacy never reads them (card V7)',
+    '_handleStatsUpdate: payload.defenseUnspent': 'grids.js: the same for the unspent defence points (clamped 0..999): harmless, nothing on the worker spends or converts them (card V7)',
   };
   const found = new Set();
   let reads = 0;
