@@ -787,8 +787,10 @@ export const DevPanel = ({ onClose }) => {
     const id = devCode.trim();
     if (!id) return;
     const j = await call('/device-pass', { playerId: id });
-    if (j) setMsg('One new device can join ' + id + ' until '
-      + new Date(j.until).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + '. Ask its player to tap Try again.');
+    /* v2.3.5816 (card RV, SEC-F6): with `oldkeyheld` on (the default) the pass
+       admits no old key: the words say so, and the way that works */
+    if (j) setMsg('A pass is open for ' + id + ' until '
+      + new Date(j.until).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + '. It lets an old key in only while oldkeyheld is off; otherwise give it a new key.');
   }, [call, devCode]);
   const forgetDevices = useCallback(async () => {
     const id = devCode.trim();
@@ -1463,8 +1465,12 @@ export const DevPanel = ({ onClose }) => {
             {/* ═══ v2.3.3344: PLAYER LOGINS ═══  See the note by letDeviceIn. */}
             <div style={label}>Player logins</div>
             <div style={{ color: COL.muted, fontSize: 12, marginBottom: 7, lineHeight: 1.4 }}>
-              A character can be played only on devices it was played on before. To move one to a new
-              device, ask its player for the code their screen shows.
+              {/* v2.3.5816 (card RV, SEC-F6; the owner's call, decided while away: "Go recommended
+                  on all"): since v2.3.5716 (`oldkeyheld`) a pass lets no old key in, and a new key
+                  needs none, so the way onto a new device is a new key */}
+              A character's old key works only on devices it was played on before. To move one to a
+              new device, ask its player for the code their screen shows and give it a new key (below):
+              a new key works on any device.
             </div>
             <input
               data-devlock-code="1"
@@ -1476,7 +1482,7 @@ export const DevPanel = ({ onClose }) => {
             />
             <button type="button" data-devlock-pass="1" style={btn(false)} disabled={busy || !devCode.trim()}
               onClick={letDeviceIn}>
-              Let one new device in (30 min)
+              Let one new device in (30 min; only with oldkeyheld off)
             </button>
             <button type="button" data-devlock-forget="1"
               style={{ ...btn(false), borderColor: COL.danger, color: COL.danger }}
@@ -1485,7 +1491,7 @@ export const DevPanel = ({ onClose }) => {
             </button>
             <div style={{ color: COL.muted, fontSize: 12, marginBottom: 4, lineHeight: 1.4 }}>
               Forget is for a character someone else got into: whoever is playing it is put out, and
-              nobody can play it until you let one device in.
+              nobody can play it until you give it a new key.
             </div>
             {/* v2.3.3355: the full reset, its key shown once */}
             <button type="button" data-devlock-newkey="1"

@@ -76,6 +76,9 @@
  *  23. v2.3.5293 (card R PR 17): an Auction House buy-now and a market
  *      cross: `xferescrow` off (the default), the rows as before and no
  *      `xfer:` row; on, ONE row more a sale;
+ *  24. v2.3.5810 (card RV PR 10, the owner's "Yes to all"): a daily spin
+ *      payout writes ONE row more with `paidmark` on (the default), the
+ *      daily record in the credit's own run; the login spin's none;
  * A line here may move when a feature really needs the rows: say so in the
  * PR, in plain words, as the memory budget asks (CLAUDE.md).
  */
@@ -944,6 +947,46 @@ const FAST = 110;
     check(`23. xferescrow off (the default): ${what} writes no xfer: row`, off.xfer === 0 && off.writes > 0, off);
     check(`23. xferescrow on: ${what} writes ONE row more (${off.writes} -> ${on.writes})`, on.xfer === 1 && on.writes === off.writes + 1, { off, on });
   }
+}
+
+/* ── 24. a daily spin's payout and the login spin's, `paidmark` off and on (v2.3.5810, card RV PR 10) ──
+   The owner, 2026-11-18, "Yes to all": the daily record is put in the
+   credit's own run (the paid mark), and its caller still saves it after --
+   ONE row more a daily spin payout.  The login spin's mark moves into the
+   credit's run and its later save goes: no row more. */
+{
+  const measureSpin = async (flags) => {
+    const { room, state } = await makeRoom();
+    room._liveFlags = Object.assign({}, room._liveFlags, flags || {});
+    const a = 'cg_spin_a';
+    state.store.set('rpg:' + a, { _v: 22, coins: 0, level: 5, inventory: {} });
+    const p = await join(room, a);
+    const rec = await room._drLoad(a);
+    rec.sp.open = 1; rec.sp.pot = 100; rec.sp.run = 'cgrun1';
+    const w0 = state.writes.length;
+    await send(room, p, { type: 'daily_spin', payload: { act: 'collect' } });
+    for (let i = 0; i < 4; i++) await new Promise((r) => setTimeout(r, 2));
+    const w = state.writes.slice(w0);
+    return { writes: w.length, daily: w.filter((k) => k.startsWith('daily_rewards:')).length, paid: (room.playerState[a].coins || 0), byPrefix: byPrefix(w) };
+  };
+  const measureLogin = async (flags) => {
+    const { room, state } = await makeRoom();
+    room._liveFlags = Object.assign({}, room._liveFlags, flags || {});
+    const a = 'cg_lspin_a';
+    state.store.set('rpg:' + a, { _v: 22, coins: 0, level: 5, inventory: {} });
+    await join(room, a);
+    const rec = { day: 20000, open: false, paid: false, pid: a, pot: 60, k: 1 };
+    const w0 = state.writes.length;
+    await room._loginSpinSettle('cgacct', rec);
+    for (let i = 0; i < 4; i++) await new Promise((r) => setTimeout(r, 2));
+    const w = state.writes.slice(w0);
+    return { writes: w.length, paid: (room.playerState[a].coins || 0), byPrefix: byPrefix(w) };
+  };
+  const offS = await measureSpin({ paidmark: false }), onS = await measureSpin(null);
+  const offL = await measureLogin({ paidmark: false }), onL = await measureLogin(null);
+  console.log('     24. a daily spin payout: off ' + JSON.stringify(offS) + ', on ' + JSON.stringify(onS) + '; the login spin: off ' + JSON.stringify(offL) + ', on ' + JSON.stringify(onL));
+  check(`24. paidmark on (the default): a daily spin payout writes ONE row more, the daily record in the pay's run (${offS.writes} -> ${onS.writes})`, offS.paid === 100 && onS.paid === 100 && onS.writes === offS.writes + 1 && onS.daily === offS.daily + 1, { offS, onS });
+  check(`24. ...and the login spin's payout no row more (${offL.writes} -> ${onL.writes})`, offL.paid === 60 && onL.paid === 60 && onL.writes === offL.writes, { offL, onL });
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);

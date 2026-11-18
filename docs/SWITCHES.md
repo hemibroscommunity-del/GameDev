@@ -103,6 +103,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `pvpextras` | worker | switch | v2.3.3264 | 2026-10-15 | false | logic | `oneformula`, `pvpbalance` | no | Takes every PvP extra off players at once. |
 | `pvplunge` | worker | switch | v2.3.3262 | 2026-10-15 | false | logic |  | no | No lunge at a player: caps.pvplunge false and the dazed gates off. |
 | `?shieldaim` | page | value | v2.3.3845 |  | =mouse | logic |  | no | On a computer, the shield's guard always follows the pointer. |
+| `shieldclaim` | worker | switch | v2.3.5812 | 2026-11-18 | false | logic |  | no | A join merges the phone's shield and cosmetic claims whatever they are (shape-checked only), as before (SEC-F2: a modified phone can give a character a shield the worker never handed out). |
 | `shieldgem` | worker | switch | v2.3.3187 | 2026-10-12 | false | logic |  | no | Un-advertises the shield gem and refuses every ask. |
 | `shieldwear` | worker | switch | v2.3.3091 | 2026-10-06 | false | logic |  | no | Un-advertises shield wear, ignores every report, and No man's land takes no shield on a loss. |
 | `shockspark` | worker | switch | v2.3.3518 | 2026-10-20 | false | logic |  | no | Un-advertises the storm gem's spark and sparks nothing. |
@@ -190,14 +191,17 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `goldlog` | worker | switch | v2.3.4903 | 2026-11-12 | false | logic |  | no | The gold log notes nothing. |
 | `goldonesum` | worker | switch | v2.3.4803 | 2026-11-11 | false | logic |  | no | Every gold road goes back on its step-1 sum. |
 | `itemdrop` | worker | switch | v2.3.3473 | 2026-10-18 | false | logic |  | no | Dropping an item on the ground is refused (off). |
+| `jackcheck` | worker | switch | v2.3.5813 | 2026-11-17 | false | logic |  | no | The jackpot's deposit takes after its awaits without asking the purse again, as before (MD-3). |
 | `leftoverheal` | worker | switch | v2.3.5809 | 2026-11-17 | false | logic |  | no | The trade window's weapons and the arena's champion pay, then delete their escrow record in a later write, as before (MS-6). |
 | `loginspin` | worker | switch | v2.3.4285 | 2026-11-05 | false | logic |  | no | Un-advertises the login wheel and refuses every ask. |
+| `minebids` | worker | switch | v2.3.5817 | 2026-11-17 | false | logic |  | no | The Auction House's `/mine` answers anyone asking with a player's bids (what, how much, when), as before (RT-3 P1). |
 | `mktheal` | worker | switch | v2.3.5801 | 2026-11-17 | false | logic |  | no | A General Store cancel or expiry pays the escrow back, then deletes the order in a later write, as before (MS-4: a restart between, then 48 quiet hours, can pay it twice). |
 | `mktsettle` | worker | switch | v2.3.4505 | 2026-11-10 | false | logic |  | no | A market leftover with a settle note is healed the old way. |
 | `mkttier` | worker | switch | v2.3.5801 | 2026-11-17 | false | logic |  | no | A General Store sell is filed under the category, kind and tier its request names, as before (MS-2: a cheap blade can fill a better tier's buy order). |
 | `mktwords` | worker | switch | v2.3.5626 | 2026-11-17 | false | logic |  | no | A market order's tier label and seller name are the page's free text again, as before (the worker's own tier label and the character's name while on). |
 | `nmlonewrite` | worker | switch | v2.3.5804 | 2026-11-17 | false | logic |  | no | No man's land pays the killer a credit a piece, in writes after the victim's save, as before (MS-1: a restart between loses the loot). |
 | `offerpend` | worker | switch | v2.3.5809 | 2026-11-17 | false | logic |  | no | An Auction House offer's Yes does not wait for a bid half made, as before (MS-5). |
+| `paidmark` | worker | switch | v2.3.5810 | 2026-11-18 | false | logic |  | no | A daily spin's pot and the login spin save their paid mark in a write after the credit, as before (MD-2: a restart between, then 48 quiet hours, pays the pot again); one row less a daily spin payout. |
 | `revealbag` | worker | switch | v2.3.3951 | 2026-11-03 | false | logic |  | no | Un-advertises the bag's reveal and brings back the at-once reveal. |
 | `risechest` | worker | switch | v2.3.4438 | 2026-11-10 | false | logic |  | no | The rise chest's cap goes and an ask is answered off. |
 | `risekeep` | worker | switch | v2.3.5802 | 2026-11-17 | false | logic |  | no | The oplog prune deletes the rise chest's stamps at 48 h, as before (MD-1: the same character opens the chest again every two days). |
@@ -383,6 +387,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `guestlazy` | worker | switch | v2.3.5610 | 2026-11-17 | false | logic |  | no | A guest's join (no key, no record) writes its rows again: its record twice, its pet book, its login streak and its day's rewards. |
 | `guestquiet` | worker | switch | v2.3.5708 | 2026-11-17 | false | logic |  | no | A fresh guest is reported to the board at its join and on its tracks, and its bot signals (botstat:) are written, before it does anything worth keeping, as before. |
 | `publicreads` | worker | switch | v2.3.5609 | 2026-11-16 | false | logic |  | no | The market's orders, the store's browse and the arena's status walk their book at every read, as before: nothing kept, no address paced. |
+| `rewindsays` | worker | switch | v2.3.5815 | 2026-11-17 | false | logic |  | no | The room rewind's plan does not name the owner's login acts since its time (a key taken back, a device forgotten, a silence), as before (ACC-4). |
 | `rf_spread` | worker | switch | v2.3.5604 | 2026-11-16 | false | logic |  | no | A full room asks every waiting phone to try again in 5 s, however many are knocking (the cadence before); the count is still kept. |
 | `roomhealth` | worker | switch | v2.3.5601 | 2026-11-16 | false | logic |  | no | GET /health/room answers 404 (the room answers its own 404 and the route passes it on); /health is unchanged and nothing in the game changes. |
 | `seathold` | worker | lever | v2.3.5606 |  | true | none |  | no | Mended v2.3.5612 (sitting 19b's review: the gate now tells a holder, who names the seat on the socket, from a stranger; joins in flight count); still OFF until the owner's word (it writes: docs/specs/seat-hold.md). Thrown (true), a joined player whose socket drops holds their seat a minute and a deploy's players theirs for 30 s, so a waiting crowd cannot take them; at most one small write every 15 s while who is in changes, and one as the room empties. Unset or false, the default: the gate counts sockets as before, nothing held, nothing written. |
@@ -556,6 +561,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `lingeracc` | worker | switch | v2.3.4921 | 2026-11-12 | false | logic |  | no | A lingering player's unwritten shot and hit counts (the accuracy record) are left in memory, as before. |
 | `max_players` | worker | value | v2.3.1982 |  | a number, 1 to the ceiling | logic |  | no | The room's cap on players, never above its bandwidth ceiling. |
 | `nearjoin` | worker | switch | v2.3.3276 | 2026-10-17 | false | logic |  | no | New joins get the whole snapshot again, cap off. |
+| `pacekeep` | worker | switch | v2.3.5921 | 2026-11-18 | false | logic |  | no | Eight request paces (the dice, a drop, the gamble, the ace flips, the rewards' read, salvage, the race's start, a rest) are the socket's alone again: a rejoin forgets them (TRAPS §276), as before card V3. |
 | `presence2` | worker | switch | v2.3.3250 | 2026-10-14 | false | logic |  | no | Un-advertises presence 2: every phone back on the v2.3.3246 roster. |
 | `quiet` | worker | switch | v2.3.3254 | 2026-10-15 | false | logic |  | no | Un-advertises the quiet phone: each phone as before from its next join. |
 | `refusejoined` | worker | switch | v2.3.4921 | 2026-11-12 | false | logic |  | no | A refused session is dropped only, not taken out of the world. |
@@ -633,6 +639,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `friendfix` | worker | switch | v2.3.5811 | 2026-11-17 | false | logic |  | no | An accept adds each side only while its own list has room (a one-sided friendship possible), a remove asks only the remover's list, and received requests never run out, as before (ACC-5, SEC-F4). |
 | `invitepace` | worker | switch | v2.3.5624 | 2026-11-15 | false | logic |  | no | A trade invite card and a friend request card go every time again (no 5-second pace a target). |
 | `leaderidleat` | worker | switch | v2.3.4378 | 2026-11-10 | false | logic |  | no | The party leader's idle clock counts only a `seen` above 0, as before. |
+| `lookform` | worker | switch | v2.3.5819 | 2026-11-18 | false | logic |  | no | A `track` sets `avatar` and `color` to any text again, and the look's `rpgData` keeps the phone's own clan tag, clan name and pet name, as before (S2's track half, S3). |
 | `?lookform` | page | switch | v2.3.5807 | 2026-11-17 | =0 | logic |  | no | Another player's avatar and colour are drawn whatever they hold, as before (S2: a picture of their choosing, or an address of theirs every phone that looked fetched from). |
 | `mutehides` | worker | switch | v2.3.5806 | 2026-11-17 | false | logic |  | no | A whisper to a player who muted you is answered with silence (a name nobody holds: no-such-player), and a party invite reaches them, as before (S8). |
 | `namestaff` | worker | switch | v2.3.5814 | 2026-11-17 | false | logic |  | no | A new pet name, alliance name or tag is held only to its own form, as before: blank names and staff words pass (S7). |
