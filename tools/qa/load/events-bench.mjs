@@ -81,7 +81,7 @@ function pushEvents(t) {
   if (t % 10 === 0) room.eventBuffer.push({ type: 'chat', from: ps[0].id, payload: { id: ps[0].id, text: 'hi' } });
 }
 function run(placed) {
-  room._liveFlags = Object.assign({}, room._liveFlags || {}, { eventplace: placed });
+  room._liveFlags = Object.assign({}, room._liveFlags || {}, { eventplace: placed, guestshare: false });   /* v2.3.5729: its bots join as keyless guests, so `guestshare` (seathold.js) is off here: a guest may hold only half the places */
   for (let t = 0; t < 20; t++) { pushEvents(t); keepUp(); tickFn(); }
   for (const p of ps) p.ws.b = 0;
   let total = 0;

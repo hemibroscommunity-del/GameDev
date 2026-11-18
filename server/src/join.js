@@ -87,9 +87,31 @@ const MAGIC_IDS = new Set([...Object.getOwnPropertyNames(Object.prototype), 'pro
    way, not this gate's).  KILL SWITCH `joinidform: false`. */
 const JOIN_ID_FORM = /^[A-Za-z0-9_]{1,64}$/;
 function joinIdMalformed(flags, id) {
-  if (id === undefined || id === null) return false;
+  if (id === undefined || id === null) return joinGuardOn(flags);   /* v2.3.5730: a join with no id (SEC-F1), behind `joinguard` */
   if (flags && typeof flags === 'object' && Object.prototype.hasOwnProperty.call(flags, 'joinidform') && !flags.joinidform) return false;
   return typeof id !== 'string' || !JOIN_ID_FORM.test(id);
+}
+/* ═══ v2.3.5730: A JOIN TAKES ONLY WHAT IS ITS OWN (card K2 PR 11; card RV's
+   review, docs/plan/census/RV-review.md: ACC-1, ACC-2, SEC-F1, ACC-3) ═══
+ * With `joinguard` on (the default; a kill switch `joinguard: false`):
+ *   - SEC-F1: a join with NO id is refused as a malformed one ('auth',
+ *     4003): it was let in as `session.id` undefined, one body and one
+ *     `cadence:login:undefined` row shared by every such join.  Every phone
+ *     of the game sends its id;
+ *   - ACC-1: a key may register only an id with nothing behind it.  A
+ *     guest's id (not `bp_`: a guest's is base-36 random) with a record on
+ *     file, or ANY id a keyless session is playing now, is refused 'key'
+ *     (never 'auth', which makes a phone throw its key away; TRAPS §209):
+ *     a stranger with a key of its own took the guest's record and then
+ *     locked the guest out of it.  An honest phone's key names its own
+ *     `bp_` id, made from that key;
+ *   - ACC-2: a guest's join (no key, no record of one) makes no `char:`
+ *     row: a made-up `bp_` id with no key wrote one, kept for good;
+ *   - ACC-3 is seathold.js's (`_seatGate`): the newest socket naming a held
+ *     seat takes its claim.
+ * Nothing new is written or sent: each refusal is one a phone already reads. */
+function joinGuardOn(flags) {
+  return !(flags && typeof flags === 'object' && Object.prototype.hasOwnProperty.call(flags, 'joinguard') && !flags.joinguard);
 }
 /* v2.3.2445: EXPORTED so the suites can be driven off it rather than off a
    literal copy.  Two literal arrays in anticheat and thirteen hand-written
@@ -359,6 +381,27 @@ export const joinMethods = {
     return this._flagNum('max_players', this.MAX_PLAYERS, 1, this.MAX_PLAYERS);
   },
 
+  /* v2.3.5730: `joinguard`, read by seathold.js too (ACC-3) */
+  _joinGuardOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'joinguard') && !f.joinguard);
+  },
+
+  /* v2.3.5730 (ACC-1, `joinguard`): something already behind an id no key
+     holds -- a keyless session playing it now, or, for a guest's id (not
+     `bp_`), its record on file.  A seeded `bp_` record with no key (a
+     character from before keys, the suites' seeding) is not; a read that
+     fails is taken as nothing behind it, as before. */
+  async _joinGuardTaken(id) {
+    for (const s of this.sessions.values()) {
+      if (s && s.id === id && s.phase === 'joined') return true;   /* with no `auth:` on file, a keyless one */
+    }
+    if (typeof id === 'string' && id.indexOf('bp_') !== 0) {
+      try { if (await this.state.storage.get('rpg:' + id)) return true; } catch (e) { /* as before */ }
+    }
+    return false;
+  },
+
   /* The answer to a joiner we have no room for.  Returns a Response; the
      caller returns it straight out of fetch().  NOTE what it does NOT do:
      it never touches this.sessions, so a refused socket cannot itself
@@ -548,6 +591,10 @@ export const joinMethods = {
          so one with no record is never registered from a phone: refused
          'key', never 'auth' (which makes the phone throw its key away) */
       if (newKeyOf(phrase)) return 'key';
+      /* v2.3.5730 (ACC-1, `joinguard`): a key registers only an id with
+         nothing behind it -- never a guest's id with a record, nor any id a
+         keyless session is playing now ('key': the phone keeps its key) */
+      if (phrase && this._joinGuardOn() && (await this._joinGuardTaken(id))) return 'key';
       if (opts && typeof opts.needVerify === 'function' && !(await opts.needVerify())) return 'verify';
       if (phrase) {
         /* v2.3.3344: ...with the device it was made on (devicelock.js) -- an
@@ -718,6 +765,10 @@ export const joinMethods = {
          character on it included (silence.js, card MOD; before the key, so a
          refused join writes nothing) */
       if (await this._frozenDeviceRefuse(ws, cleanDevice(msg.device), typeof msg.id === 'string' ? msg.id : null)) return;   /* v2.3.5625: and the character it names (the owner's spare) */
+      /* v2.3.5729: a guest's share of the places, and a full room's spare
+         socket (seathold.js, `guestshare`; card K2 PR 10) -- BEFORE the key,
+         whose check writes a new character's `auth:` row (sitting 43's F2) */
+      if (await this._guestSharePre(ws, msg)) return;
       /* v2.3.3275: the account check (verify.js) -- asked only of a character
          that does not exist yet, and only when the owner has turned it on. */
       /* v2.3.3344: ...and the device the join came from (devicelock.js) */
@@ -780,6 +831,10 @@ export const joinMethods = {
       }
       /* v2.3.5622: a NEW character's name by the rule (charname.js, card MOD), before it is made */
       if (await this._charNameRefuse(ws, msg.id, msg.data, msg.name)) return;   /* v2.3.5622: the join's own name too, when its data has none */
+      /* v2.3.5729: a played character's seat at a full room (seathold.js,
+         `guestshare`; card K2 PR 10) -- after the key, so a wrong one moves
+         no guest */
+      if (this._guestShareRefused(ws, msg.id)) return;
     }
     /* ═══ v2.3.3260: YOUR BODY IS STILL IN THE FIGHT ═══
        A player who left within 10 s of a hit between players leaves their
@@ -888,7 +943,10 @@ export const joinMethods = {
 
        Guests (no phrase, no bp_ id) are skipped: they are throwaways by
        definition and have nothing to make permanent. */
-    const _charId = (typeof msg.id === 'string' && msg.id.indexOf('bp_') === 0) ? msg.id : null;
+    /* v2.3.5730 (ACC-2, `joinguard`): ...and a guest's join (no key, no
+       record of one) makes none, whatever its id */
+    const _charId = (typeof msg.id === 'string' && msg.id.indexOf('bp_') === 0
+      && !(_keyOut.guest === true && this._joinGuardOn())) ? msg.id : null;
     if (_charId) {
       session.char = await this._loadOrCreateCharacter(_charId, cleanJoinData);
       if (session.char) {
@@ -1989,6 +2047,8 @@ export const joinMethods = {
         reqid: this._reqOnceOff() ? undefined : 1,
         /* v2.3.5196 (card K PR 11): A WEAPON NAMED BY ITS ID (gidnames.js): the nine requests that take a weapon from the stash read its `gid` beside its place, and refuse when the two disagree -- so the page sends it (src/game/actions.js GID_PLACE).  `gidnames: false` un-advertises it, and the place alone is read */
         gidnames: this._gidNamesOff() ? undefined : 1,
+        /* v2.3.5900 (card K4 PR 1, step 4.2): THE HARVEST'S GRADE, JUDGED (harvestgrade.js): a perfect believed only after an honest gesture's time and at most 15 in any 20 strikes, else paid as good.  An opt-in, OFF as merged (the live flag harvestgrade set true, the owner's); advertised only while on.  The phone changes nothing on it: the Test panel's "This worker" reads it */
+        harvestGrade: this._harvestGradeOn() ? 1 : undefined,
         accuracy: this._accOn() /* v2.3.4545: ACCURACY (accuracy.js) -- the phone numbers its basic shots a weapon and sends the counts on `track` (`ac`) and each hit's shot (`sn`); `acc_request` answers `acc_state`; `accuracy: false` in liveflags un-advertises it and counts nothing -- lower case, a kill switch */ },
       // v2.3.1178: this session's private economy-endpoint token.
       // state_sync goes to the joining socket ONLY -- never broadcast.

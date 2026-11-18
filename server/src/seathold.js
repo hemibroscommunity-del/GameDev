@@ -62,6 +62,37 @@
  */
 import { rfNote, rfRetryMs } from './rfspread.js';
 
+/* ═══ v2.3.5729: A GUEST'S SHARE, AND A PLAYED CHARACTER'S SEAT (card K2 PR 10) ═══
+ *
+ * The 120 places were anyone's who knocked first.  A guest (a join with no
+ * key and no record of one: join.js _verifyJoinAuth's `guest`) costs a
+ * script nothing to make, and eight addresses at IP_SOCKETS each, or one
+ * IPv6 line, could hold the whole room while a played character waited
+ * outside.  With `guestshare` on (the default; decided for the owner while
+ * away, the planning session on the owner's words of 2026-11-17: "For all
+ * decisions waiting on me just go recommended"):
+ *   - guests hold at most SHARE of the places (60 of 120): a guest's join
+ *     past it is refused room_full, as a full room's (close 4009);
+ *   - a played character (an id with a record, its key right) coming to a
+ *     full room takes the seat of the NEWEST IDLE guest (one that has sent
+ *     nothing for IDLE_MS): that guest is told room_full and closed 4009,
+ *     the AFK sweep's way out (leave.js `afk`), and its phone knocks again
+ *     as on any full room.  So the socket gate lets SPARE sockets in past
+ *     the cap while the room holds an idle guest; a join on one that is not
+ *     a played character is refused room_full.  It is decided AFTER the
+ *     key is checked (join.js), so a wrong key moves no guest;
+ *   - an IPv6 address is counted by its /48 too (flood.js ip48Key).
+ * A guest's mark (`session.guest`) is in memory only: nothing is written,
+ * and the messages and closes are the full room's own.  The seat held for
+ * a dropped player (above) is counted as taken.  `guestshare: false`: none
+ * of it, the room's places as before. */
+export const GUEST_SHARE = Object.freeze({
+  FLAG: 'guestshare',
+  SHARE: 0.5,         /* of the room's cap: 60 of 120 */
+  SPARE: 4,           /* sockets past the cap while an idle guest can give way */
+  IDLE_MS: 60000,     /* a guest that has sent nothing this long is idle */
+});
+
 export const SEAT_HOLD = Object.freeze({
   FLAG: 'seathold',
   HOLD_MS: 60000,      /* a dropped player's seat; the phone is back in 1-10 s */
@@ -166,6 +197,129 @@ export const seatHoldMethods = {
     return this._seatHeldIds(typeof now === 'number' ? now : Date.now()).size;
   },
 
+  /* v2.3.5729: `guestshare` -- on unless its own falsy value (as `swordswing`) */
+  _guestShareOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, GUEST_SHARE.FLAG) && !f[GUEST_SHARE.FLAG]);
+  },
+
+  /** v2.3.5729: the places guests may hold (at least one). */
+  _guestCap() {
+    return Math.max(1, Math.floor(this._roomCap() * GUEST_SHARE.SHARE));
+  },
+
+  /** v2.3.5729: the newest joined guest that has sent nothing for IDLE_MS
+   *  ([ws, session]), or null.  The sessions map keeps the order the sockets
+   *  came in, so the last one found is the newest. */
+  _guestIdleNewest(now) {
+    let found = null;
+    for (const [ws, s] of this.sessions) {
+      if (s && s.guest === true && s.id && s.phase === 'joined' && now - (Number(s.lastRecv) || 0) >= GUEST_SHARE.IDLE_MS) found = [ws, s];
+    }
+    return found;
+  },
+
+  /** v2.3.5729: the sockets the gate lets in past the cap -- SPARE while an
+   *  idle guest could give its seat to a played character, else none. */
+  _guestSpare(now) {
+    if (!this._guestShareOn()) return 0;
+    return this._guestIdleNewest(now) ? GUEST_SHARE.SPARE : 0;
+  },
+
+  /* v2.3.5729: the places taken for a join on `ws` of `id`: every other
+     socket (joins in flight too) but this id's own old one (the join takes it
+     over), and the held seats; and how many of them are guests' */
+  _guestTaken(ws, id, held) {
+    let taken = held.size, guests = 0;
+    for (const [w, s] of this.sessions) {
+      if (w === ws || !s) continue;
+      if (s.id && s.id === id) continue;
+      taken++;
+      if (s.guest === true) guests++;   /* in flight too: marked before the key (below) */
+    }
+    return { taken, guests };
+  },
+
+  /** v2.3.5729: join.js, BEFORE the key is checked (sitting 43's review, F2:
+   *  the key's check writes a new character's `auth:` row, so a refusal after
+   *  it left that row behind and the phone's next knock counted as played).
+   *  True when this join was refused, having read or written nothing but, for
+   *  a keyed join on a spare socket, its `auth:` row (a read):
+   *    - a guest (no key) past its share, or on a spare socket;
+   *    - a key with no record on a spare socket (a fresh character waits for
+   *      a place, as at the cap before);
+   *  a key WITH a record on a spare socket goes on to its check, and the seat
+   *  is decided after it (_guestShareRefused). */
+  async _guestSharePre(ws, msg) {
+    if (!this._guestShareOn()) return false;
+    const sess = ws ? this.sessions.get(ws) : null;
+    if (!sess || !msg) return false;
+    const id = typeof msg.id === 'string' ? msg.id : '';
+    const keyed = typeof msg.phrase === 'string' && msg.phrase.length > 0;
+    sess.guest = !keyed;   /* in memory only; a keyless join of an id with a key is refused at the key */
+    const now = Date.now();
+    /* a seat held for this id (seathold, above) is that switch's to judge */
+    const held = this._seatHeldIds(now);
+    if (sess.seat || held.has(id)) return false;
+    const { taken, guests } = this._guestTaken(ws, id, held);
+    const cap = this._roomCap();
+    let refuse = false;
+    if (!keyed) refuse = guests >= this._guestCap() || taken >= cap;
+    else if (taken >= cap) {
+      let rec = null;
+      try { rec = await this.state.storage.get('auth:' + id); } catch (e) { rec = null; }
+      if (rec) sess._guestBump = true;
+      else refuse = true;
+    }
+    if (!refuse) return false;
+    this._guestRoomFull(ws, sess, now, cap);
+    this._playerLeaves(ws, 'refused');   /* the session door (leave.js) */
+    return true;
+  },
+
+  /** v2.3.5729: join.js, once the key is checked: a played character let on
+   *  a spare socket (_guestSharePre) takes the newest idle guest's seat, or
+   *  is refused if none is idle now.  True when refused.  Nothing else is
+   *  judged here. */
+  _guestShareRefused(ws, id) {
+    if (!this._guestShareOn()) return false;
+    const sess = ws ? this.sessions.get(ws) : null;
+    if (!sess || !sess._guestBump) return false;
+    sess._guestBump = false;
+    const now = Date.now();
+    const held = this._seatHeldIds(now);
+    const { taken } = this._guestTaken(ws, id, held);
+    const cap = this._roomCap();
+    if (taken < cap) return false;
+    const idle = this._guestIdleNewest(now);
+    if (idle) { this._guestGiveWay(idle[0], now, cap); return false; }
+    this._guestRoomFull(ws, sess, now, cap);
+    this._playerLeaves(ws, 'refused');   /* the session door (leave.js) */
+    return true;
+  },
+
+  /* the full room's answer on an open socket: room_full, then close 4009
+     (wsClient.js reads either), counted as any refusal (rfspread.js) */
+  _guestRoomFull(ws, sess, now, cap) {
+    rfNote(this, now, sess && sess.ip);
+    try {
+      const joined = this._seatJoinedIds().size + this._seatHeldIds(now).size;
+      this._send(ws, { type: 'room_full', reason: 'full', count: Math.min(cap, joined), cap, retryMs: rfRetryMs(this, now) });
+    } catch (e) { /* the close says it alone */ }
+    try { ws.close(SEAT_HOLD.CLOSE_CODE, 'room full'); } catch (e) { /* gone */ }
+  },
+
+  /* an idle guest gives its seat way: the full room's answer, and out the
+     AFK sweep's way (leave.js `afk`: out of the map at once) */
+  _guestGiveWay(ws, now, cap) {
+    const s = this.sessions.get(ws);
+    this._guestRoomFull(ws, s, now, cap);
+    try {
+      const p = this._playerLeaves(ws, 'afk');
+      if (p && typeof p.catch === 'function') p.catch(() => {});
+    } catch (e) { /* the runtime's own close finishes it */ }
+  },
+
   /** v2.3.5612: index.js fetch, the socket gate.  { ok, seat }: off, the cap
    *  as before.  On: a socket naming a held seat (`?seat=`, one socket a
    *  seat) is let in on the held slots, and carries the seat to its join; a
@@ -173,17 +327,31 @@ export const seatHoldMethods = {
    *  under the cap. */
   _seatGate(url, now) {
     const cap = this._roomCap();
-    if (!seatHoldOn(this)) return { ok: this.sessions.size < cap, seat: null };
     const t = typeof now === 'number' ? now : Date.now();
+    /* v2.3.5729: SPARE sockets past the cap while an idle guest can give
+       way to a played character (`guestshare`, above); 0 otherwise */
+    const spare = this._guestSpare(t);
+    if (!seatHoldOn(this)) return { ok: this.sessions.size < cap + spare, seat: null };
     const held = this._seatHeldIds(t);
     const raw = url && url.searchParams ? url.searchParams.get('seat') : null;
     const seat = typeof raw === 'string' && raw.length > 0 && raw.length <= 64 && held.has(raw) ? raw : null;
     if (seat) {
       let claimed = false;
-      for (const [, s] of this.sessions) if (s && s.seat === seat) { claimed = true; break; }
+      for (const [, s] of this.sessions) {
+        if (!s || s.seat !== seat) continue;
+        /* v2.3.5730 (card RV's ACC-3, `joinguard`, join.js): a claim whose
+           socket has not joined passes to the NEWEST socket naming the seat.
+           An id is public: a socket that named a held seat and never joined
+           kept its holder out until the hold ran out (and could knock again
+           for it).  The old socket is a stranger's from now on (its join is
+           judged as one); the holder's own join still comes in on its held
+           id, whichever socket it is on (_seatJoinRefused). */
+        if (!s.id && this._joinGuardOn && this._joinGuardOn()) { s.seat = null; continue; }
+        claimed = true; break;
+      }
       if (!claimed) return { ok: this.sessions.size < cap + held.size, seat };
     }
-    return { ok: this.sessions.size + held.size < cap, seat: null };
+    return { ok: this.sessions.size + held.size < cap + spare, seat: null };
   },
 
   /** join.js, before the account is read: true when this join was refused
@@ -204,6 +372,10 @@ export const seatHoldMethods = {
     if (sess && sess.seat) refuse = !(id === sess.seat && held.has(id));
     else if (id && held.has(id)) refuse = false;
     else refuse = (this.sessions.size - (sess ? 1 : 0)) + held.size >= cap;
+    /* v2.3.5729: a join with a key, at a full room an idle guest could give
+       way in, goes on to its key check: _guestShareRefused (above) decides
+       after it, so a wrong key moves no guest (`guestshare`) */
+    if (refuse && !(sess && sess.seat) && msg && typeof msg.phrase === 'string' && msg.phrase && this._guestSpare(now) > 0) refuse = false;
     if (!refuse) return false;
     rfNote(this, now, sess && sess.ip);   /* a knock like any refusal (rfspread.js): an address once a second (v2.3.5604 mend) */
     try {

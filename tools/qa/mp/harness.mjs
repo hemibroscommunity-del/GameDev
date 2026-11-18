@@ -37,7 +37,14 @@ import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 import { QUEST_REWARDS as _QR, QUEST_FIRST as _QF } from '../../../server/src/data.js';   /* v2.3.3525: FIRST_LAND */
 import { OLD_MAP_LEGACY, oldMapRefusal, OLD_MAP_STAMP_ID, stampOn, stampOff } from './oldMap.mjs';   /* v2.3.3552: the old map is retired */
-import { TEST_LANE, laneParts, withLane as _withLane } from '../lane.mjs';   /* v2.3.5223: every page names its lane (card O PR 3) */
+import { TEST_LANE, laneParts, withLane as _withLane, profileLane } from '../lane.mjs';   /* v2.3.5223: every page names its lane (card O PR 3) */
+import { applyProfile } from '../profiles.mjs';   /* v2.3.5860: BT_QA_PROFILE (card O2 PR 1) */
+/* v2.3.5860 (card O2 PR 1): BT_QA_PROFILE=<name> (budget-android, hotel-laptop)
+   writes its knobs -- BT_QA_CPU_THROTTLE and BT_QA_SLOW -- before anything
+   below reads them, and plays its lane on every page; an unknown name throws
+   here, so the run stops before anything boots (tools/qa/profiles.mjs). */
+export const PROFILE = applyProfile(process.env);
+if (PROFILE) console.log(`  profile ${PROFILE.name}: ${PROFILE.say} (BT_QA_CPU_THROTTLE=${process.env.BT_QA_CPU_THROTTLE}, BT_QA_SLOW=${process.env.BT_QA_SLOW}, lane=${PROFILE.lane})`);
 
 /* ═══ v2.3.3552: WHICH SCENARIO IS RUNNING ═══
    run.mjs says, so newPlayer can refuse a scenario that would play the
@@ -49,11 +56,11 @@ let _scenario = null;
    every page newPlayer opens carries `lane=<it>` (and `govern=1`), so no test
    meets a lane or a rung by accident of the box (tools/qa/lane.mjs).  A page
    opened with no scenario (a script of its own) plays the `full` lane. */
-let _lane = TEST_LANE, _govern = false;
+let _lane = profileLane(TEST_LANE, PROFILE), _govern = false;   /* v2.3.5860: a profile's lane */
 export function setScenario(name, opts) {
   _scenario = name || null;
   const o = opts || {};
-  _lane = name && o.lane ? o.lane : TEST_LANE;
+  _lane = profileLane(name && o.lane ? o.lane : TEST_LANE, PROFILE);   /* v2.3.5860: a profile plays its own lane */
   _govern = !!(name && o.govern);
 }
 /** v2.3.5223: the game's address with this scenario's lane on it -- for a

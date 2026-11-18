@@ -129,6 +129,7 @@ import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { nmlLive, nmlCanAttack, nmlHere, nmlLockedOut, nmlLockedIn, nmlLockAsk, nmlLockAllow } from '@/game/noMansLand.js';   /* v2.3.3770: + the lock */
 import { NML } from '@/data/noMansLandRings.js'; /* v2.3.3530: SKULL_MS -- an attacker's right in `bys` dates their choice or blow */
 import { sw, pageAddress } from '@/game/switches.js';   /* v2.3.5306: the page's one reader (card T); v2.3.5740: + its address (card T2) */
+import { act } from '@/game/actions.js';   /* v2.3.5880: the page's requests leave through the action door (card K3 PR 1) */
 import { chooseFoe, isLiveFighter, pvpBoutAt, isLiveFoe, liveFoes, hitMeAt, attackersNow, FIGHT_QUIET_MS } from '@/game/sparTargets.js'; /* v2.3.3268: Attack is a choice that lasts; v2.3.3316: + who a swing already hits; v2.3.3528: + when a bout began; v2.3.3530: + who attacks you (a group joins your fight) */
 
 /* how long an unanswered window stays */
@@ -257,7 +258,7 @@ export function nmlAim(S, id) {
 function sendChoice(S, id) {
   if (!S || id == null || !S.channel || typeof S.channel.send !== 'function') return false;
   if (!(S._serverCaps && S._serverCaps.nmlchoice === true)) return false;
-  try { S.channel.send({ type: 'nml_attack', target: String(id) }); } catch (e) { return false; }
+  try { act('nml_attack', { target: String(id) }); } catch (e) { return false; }   /* v2.3.5880: through the action door (actions.js): a request id rides it, so a resend acts once (wire in.js's row) */
   return true;
 }
 
@@ -336,7 +337,7 @@ export function nmlJoinFromBys(S) {
 /** The player card's party invite (InspectPlayerPanel), for this window. */
 export function nmlPartyInvite(S, id) {
   if (!S || !S.channel || !(S._serverCaps && S._serverCaps.party) || id == null) return false;
-  S.channel.send({ type: 'broadcast', event: 'party_invite', payload: { target: id } });
+  act('party_invite', { target: id });   /* v2.3.5880: through the action door (actions.js) */
   try { if (S.player) pushDmgPopup(S, S.player.x, S.player.y - 30, 'Party invite sent', '#fbbf24'); } catch (e) { /* sent all the same */ }
   return true;
 }
@@ -352,7 +353,7 @@ export function nmlPartyInvite(S, id) {
 export function nmlTradeOpen(S, id) {
   if (!S || !S.channel || !(S._serverCaps && S._serverCaps.trade2) || id == null) return false;
   try {
-    S.channel.send({ type: 'broadcast', event: 'trade2_open', payload: { target: id } });
+    act('trade2_open', { target: id });   /* v2.3.5880: through the action door (actions.js) */
   } catch (e) { return false; }
   return true;
 }
