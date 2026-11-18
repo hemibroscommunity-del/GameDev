@@ -276,6 +276,7 @@ export const silenceMethods = {
     let ids = [];
     try {
       const rec = await this.state.storage.get('device:' + device);
+      if (this._usageSwitch) this._usageSwitch('freezedevice', 0, 1);   /* v2.3.6001: its reads named apart (usagemeter.js) */
       ids = rec && Array.isArray(rec.ids) ? rec.ids.map((e) => e && e.id).filter((x) => typeof x === 'string') : [];
     } catch (e) { ids = []; }
     if (ids.some((x) => L.owner.has(x))) return false;              /* ...whatever key it came with */
@@ -289,6 +290,7 @@ export const silenceMethods = {
     if (typeof pid === 'string' && pid) {
       try {
         const had = await this.state.storage.get(['auth:' + pid, 'char:' + pid]);
+        if (this._usageSwitch) this._usageSwitch('freezedevice', 0, 2);   /* v2.3.6001: as above */
         if (had && had.size) return false;
       } catch (e) { return false; }   /* a failed read lets the join on to the key */
     }

@@ -276,6 +276,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `roomrow` | worker | switch | v2.3.5124 | 2026-11-14 | false | logic | `daybook` | no | Nothing of the room's own row is added into the day's book. |
 | `storesize` | worker | switch | v2.3.5287 | 2026-11-14 | false | logic | `daybook` | no | The storage's size is not read into the day's book (its owner's card says "not read that day"); nothing else changes. |
 | `testmode` | worker | lever | v2.3.3430 |  | false | none |  | no | Turns every character's test mode off at once, every check back on. |
+| `usagemeter` | worker | switch | v2.3.6001 | 2026-11-18 | false | logic |  | no | The usage meter counts nothing (the rows written and read and the messages sent, held in memory for the Test panel's Usage box); the storage and the sends go on as before. |
 
 ## look
 

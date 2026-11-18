@@ -207,6 +207,7 @@ export async function snapshotCopy(room, pid, storedBlob) {
   if (!fullSnapOn(room)) return storedBlob;
   const others = restoredPrefixes().filter((p) => p !== 'rpg:');
   const got = await Promise.all(others.map((p) => room.state.storage.get(p + pid)));
+  if (typeof room._usageSwitch === 'function') room._usageSwitch('fullsnap', 0, others.length);   /* v2.3.6001: its reads named apart (usagemeter.js) */
   const w = {};
   others.forEach((p, i) => { w[p] = got[i] === undefined ? null : got[i]; });
   const copy = { ...storedBlob, _with: w };

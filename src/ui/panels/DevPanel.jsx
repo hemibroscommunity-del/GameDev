@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { PlayerDrawings, AccuracyDays } from './DevWatch.jsx';   /* v2.3.4545: what players drew, and every player's accuracy a day */
 import { ReportTable } from './ReportTable.jsx';   /* v2.3.5125: the smoothness table, copied (card A) */
 import { EconCard } from './EconCard.jsx';   /* v2.3.5093: the owner's card, the economy (card E) */
+import { UsageMeter } from './UsageMeter.jsx';   /* v2.3.6001: the usage meter (card CS PR 2) */
 import { SetSwitchRow } from './SetSwitchRow.jsx';   /* v2.3.5602: set a switch, no terminal (card OPS) */
 import { FeedbackOwnerRows } from './FeedbackOwnerRows.jsx';   /* v2.3.5603: the feedback board's takedown and sweep (card OPS) */
 import { SilenceButtons } from './SilenceButtons.jsx';   /* v2.3.5605: silence from a chat report (card OPS) */
@@ -1733,6 +1734,7 @@ export const DevPanel = ({ onClose }) => {
             <AccuracyDays call={call} busy={busy} setMsg={setMsg} COL={COL} btn={btn} label={label} />
             <ReportTable call={call} busy={busy} setMsg={setMsg} COL={COL} btn={btn} label={label} />{/* v2.3.5125: the smoothness table (ReportTable.jsx) */}
             <EconCard call={call} busy={busy} setMsg={setMsg} COL={COL} btn={btn} label={label} />{/* v2.3.5093: the owner's card, the economy (EconCard.jsx) */}
+            <UsageMeter call={call} busy={busy} setMsg={setMsg} COL={COL} btn={btn} label={label} />{/* v2.3.6001: the usage meter (UsageMeter.jsx) */}
 
             <button type="button" style={{ ...btn(false), borderColor: COL.danger, color: COL.danger }} onClick={forgetKey}>
               Forget key on this device
