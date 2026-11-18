@@ -118,7 +118,7 @@ const gateOk = (room) => !!(room._seatGate && room._seatGate(URL0, Date.now()).o
 /* ── 4. on a spare socket: a wrong key, a fresh character, a guest ── */
 {
   const st4 = makeStorage();
-  const room = await openRoom(st4, { max_players: 2 });
+  const room = await openRoom(st4, { max_players: 2, seathold: false });   /* v2.3.6000 (card CS): the made character's held seat would refuse these itself (§5 plays the two together) */
   await made(room, 'bp_gs_played', 'p-played');
   const g1 = await joinAs(room, 'g1', 'bp_gs_ga');
   await joinAs(room, 'k', 'bp_gs_kk', 'p-kk');
