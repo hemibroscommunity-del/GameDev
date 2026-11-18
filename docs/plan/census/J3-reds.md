@@ -1,4 +1,4 @@
-# Red on `main`, round 3: the census (card J3, step 8.1; tag 5840)
+# Red on `main`, round 3: the census (card J3, step 8.1; v2.3.5840)
 
 Taken 2026-11-17/18 in one cloud session (4 vCPUs, the pre-installed
 Chromium, `npm run build` fresh): round 1 on `main` at fcd1ae9, round 2 at
