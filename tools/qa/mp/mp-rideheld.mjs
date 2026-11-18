@@ -13,7 +13,7 @@
  * twice (the first round meets the world's art for the first time, the second
  * finds it come), and the ground is read four times a second
  * (__btGroundCover): how much of the view was missing, how often, and what
- * the ground's worker spent a piece.
+ * the ground's worker spent a piece, the pieces held and the graphics chip's MB.
  *
  *   node tools/qa/mp/run.mjs rideheld
  *   BT_QA_PROFILE=budget-android node tools/qa/mp/run.mjs rideheld
@@ -36,6 +36,17 @@ const ring = (G) => {
   }
   return out;
 };
+
+/* ── the lines (v2.3.6382), this box plain, as it ships; never raised silently ──
+   MISSING_MAX  the share of the view's pieces unlaid on the warm ring, on average: 3.1 and 3.4% measured with
+                groundsend (17.5 and 19.3% with `?groundsend=0`, the ground as it was);
+   HELD_MAX     the most pieces of ground held on the ring: 77 measured (67 and 70 as it was; 86 before the trim
+                behind the board) -- the planning session's condition (2026-11-18): a line at the ride's
+                measured peak, so it cannot creep;
+   GPU_MAX_MB   the graphics chip's total at its highest on the ring: 78.2 measured (76.9 and 80.7 as it was: the
+                chip's total moves 2 to 4 MB run to run with the town's other pictures).  The game's own peak is
+                mp-membudget's tour on foot, 78 to 82 against its 109.3 line: the ride does not raise it. */
+const MISSING_MAX = 8, HELD_MAX = 80, GPU_MAX_MB = 82;
 
 /* one ring on the board, the ground read every 250 ms of the page's clock */
 async function ringOnce(P, G) {
@@ -102,6 +113,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
     console.log('  warm ring:', JSON.stringify(warm));
     rec.ok(`the rings laid ground on the board (guard): ${cold.pieces} and ${warm.pieces} pieces, got off ${cold.offs + warm.offs} times`,
       cold.pieces >= 20 && warm.pieces >= 20, { cold, warm });
+    /* the lines: as it ships, on this box plain (a slowed profile's numbers go to the census, never a line; with
+       `?groundsend=0` there is nothing to hold) */
+    if (!query && !H.PROFILE) {
+      rec.ok(`the ground keeps up with the board: on the warm ring ${warm.missingPct}% of the view's pieces unlaid on average (line ${MISSING_MAX}%; ${warm.popPct}% came on screen before they were laid)`,
+        warm.missingPct != null && warm.missingPct <= MISSING_MAX, warm);
+      rec.ok(`...and holds no more for it: at most ${warm.heldMax} pieces (line ${HELD_MAX}), the graphics chip ${warm.gpuMaxMb} MB at its highest (line ${GPU_MAX_MB})`,
+        warm.heldMax <= HELD_MAX && warm.gpuMaxMb <= GPU_MAX_MB, warm);
+    }
   } finally {
     stopAlive();
     await P.ctx.close().catch(() => {});
