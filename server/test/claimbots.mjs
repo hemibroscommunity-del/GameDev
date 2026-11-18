@@ -36,7 +36,9 @@
  *   WALK 150 px a second (race.js: "A walk is 150 px a second"; the page's
  *   SPEED 2.5 a frame, gameSystems.js); a sword's honest reach about 100 px
  *   centre to centre, a swing every 600 ms; a bow 675 px, a shot every
- *   495 ms, an arrow 480 px a second; the harvest's swing 650 ms a hit and
+ *   495 ms, an arrow 1,440 px a second (projectiles.js ARROW_SPEED_PX 24 a
+ *   frame at 60; v2.3.5905: it was 480, a third of it, so the honest
+ *   archers claimed late -- the gatekeeper's sitting 45); the harvest's swing 650 ms a hit and
  *   its gesture 1.2 to 1.75 s; the cook's 2 hits; an honest phone's grades
  *   (the bot lab's: 45% perfect, 44% good, 11% ok: tools/qa/load/bot-lab.mjs).
  */
@@ -310,7 +312,7 @@ export async function honestBow(W, ph, take, opts = {}) {
     if (ph.pageNow >= nextShot) {
       /* v2.3.5550: the arrow's relay, as a page looses it (monsterCombat.js: `player_projectile`; bowshot.js counts it) */
       await ph.send({ type: 'player_projectile', payload: { x: Math.round(ph.x), y: Math.round(ph.y), ang: Math.atan2(target.y - ph.y, target.x - ph.x), isStaff: false, ts: Math.round(ph.pageNow) } });
-      flying.push({ m: target, at: ph.pageNow + (dist(target, ph) / 480) * 1000 }); nextShot = ph.pageNow + (opts.gap || 495);   /* v2.3.5550: `opts.gap`, the flicked bow's 371 ms */
+      flying.push({ m: target, at: ph.pageNow + (dist(target, ph) / (opts.arrowPx || 1440)) * 1000 });   /* v2.3.5905: the arrow's real 1,440 px a second (it was 480); `opts.arrowPx`, 2b's slow arrow */ nextShot = ph.pageNow + (opts.gap || 495);   /* v2.3.5550: `opts.gap`, the flicked bow's 371 ms */
     }
     flying.sort((a, b) => a.at - b.at);
     const due = Math.min(nextShot, flying.length ? flying[0].at : Infinity);
@@ -341,18 +343,77 @@ export async function liarBowLabel(W, ph, take, opts = {}) {
   await combatStart(W, ph, 'bow');
   while (!ph.over) {
     const ps = W.ps(PID);
-    const reach = W.room._hitReach ? W.room._hitReach(ps, 'ranged', ph.now) - 1 : 1489;
+    /* v2.3.5901: with the bow's reach (bowshot.js, `bowreach`) a claim on an
+       arrow seen is held to the arrow's flight from where it left: the liar
+       that sends its relays stands that far off */
+    const full = W.room._hitReach ? W.room._hitReach(ps, 'ranged', ph.now) - 1 : 1489;
+    const reach = opts.shots && W.room._bowReachOn && W.room._bowReachOn() ? Math.min(full, W.room._hitArrowReach(ps) - 1) : full;
     const inReach = alive(W).filter((m) => dist(m, ps) <= reach).sort((p, q) => dist(p, ps) - dist(q, ps));
     if (!inReach.length) {
       const a = alive(W).sort((p, q) => dist(p, ph) - dist(q, ph))[0];
       if (!a) { await ph.wait(500); continue; }
-      await ph.walkTo(() => a.x, () => a.y, { speed: 480, stop: reach - 40, honest: false });
+      await ph.walkTo(() => a.x, () => a.y, { speed: opts.speed || 480, stop: reach - 40, honest: false });   /* v2.3.5901: `opts.speed`, the bow's claim alone at an honest walk (the move's claim apart, as 2d's sword) */
       continue;
     }
     for (const m of inReach.slice(0, 5)) {
       /* v2.3.5550: `opts.shots`, the liar `bowshot` meets: an arrow's relay sent before each claim (bowshot.js counts it at the bow's rate) */
       if (opts.shots) await ph.send({ type: 'player_projectile', payload: { x: Math.round(ph.x), y: Math.round(ph.y), ang: 0, isStaff: false, ts: Math.round(ph.pageNow) } });
       const r = await claim(W, ph, m, 'ranged', { noKb: true }); if (r.killed) take.kills++; await ph.wait(200);
+    }
+  }
+  take.xp = fightTake(W.ws[PID]);
+}
+/* v2.3.5904 (card K4 PR 5): THE LIAR THE BOW'S PATH MEETS (bowshot.js,
+   `bowpath`): each relay at the bow's own rate (its cycle), aimed at the
+   nearest monster in reach that still needs arrows -- its hp over what the
+   arrows already in flight at it will take, by the damage it has seen --
+   and each claim when the arrow could have landed (at 1,440 px a second,
+   the phone's own), on the monster it was aimed at or, that one dead,
+   another on its line: the most a judge holding each claim to its arrow's
+   line and flight accepts, with the liar's whole knowledge of the room */
+export async function liarBowPath(W, ph, take, opts = {}) {
+  await combatStart(W, ph, 'bow');
+  const flying = [];
+  let next = ph.pageNow, dmg = 0, dmgN = 0;
+  const side = (f, m) => { const dx = m.x - f.x, dy = m.y - f.y, a = dx * Math.cos(f.ang) + dy * Math.sin(f.ang); return { a, s: Math.abs(dy * Math.cos(f.ang) - dx * Math.sin(f.ang)) }; };
+  while (!ph.over) {
+    const ps = W.ps(PID);
+    if (!ps) { await ph.wait(200); continue; }
+    const reach = Math.min(W.room._hitReach(ps, 'ranged', ph.now), W.room._hitArrowReach(ps)) - 1;
+    const speed = 1440 * W.room._hitRangeMult(ps, 'bow');
+    if (ph.pageNow >= next) {
+      const est = dmgN ? dmg / dmgN : 8;
+      const inReach = alive(W).filter((m) => dist(m, ps) <= reach).sort((p, q) => dist(p, ps) - dist(q, ps));
+      const t = inReach.find((m) => m.hp > flying.filter((f) => f.id === m.id).length * est);
+      if (!t) {
+        if (!inReach.length && !flying.length) {
+          const a = alive(W).sort((p, q) => dist(p, ph) - dist(q, ph))[0];
+          if (!a) { await ph.wait(500); continue; }
+          await ph.walkTo(() => a.x, () => a.y, { speed: opts.speed || 480, stop: reach - 40, honest: false });
+          next = Math.max(next, ph.pageNow);
+          continue;
+        }
+        next = ph.pageNow + 50;
+      } else {
+        const ang = Math.atan2(t.y - ps.y, t.x - ps.x);
+        await ph.send({ type: 'player_projectile', payload: { x: Math.round(ps.x), y: Math.round(ps.y), ang, isStaff: false, ts: Math.round(ph.pageNow) } });
+        flying.push({ id: t.id, x: ps.x, y: ps.y, ang, land: ph.pageNow + (dist(t, ps) / speed) * 1000 + 5 });
+        next = ph.pageNow + W.room._pfBowCycleMs(ps) + 1;
+      }
+    }
+    flying.sort((a, b) => a.land - b.land);
+    const due = Math.min(next, flying.length ? flying[0].land : Infinity);
+    if (due > ph.pageNow) await ph.wait(due - ph.pageNow);
+    while (flying.length && flying[0].land <= ph.pageNow) {
+      const f = flying.shift();
+      let m = liveOf(W, f.id);
+      if (!m || !hurtable(m)) m = alive(W).find((x) => { const o = side(f, x); return o.a > 0 && o.s < 150 + o.a * 0.1 && dist(x, f) <= reach; }) || null;
+      if (!m) continue;
+      const hp0 = m.hp;
+      const r = await claim(W, ph, m, 'ranged', { noKb: true });
+      const m1 = liveOf(W, m.id);
+      if (r.landed && m1 && m1.alive) { dmg += hp0 - m1.hp; dmgN++; }
+      if (r.killed) take.kills++;
     }
   }
   take.xp = fightTake(W.ws[PID]);

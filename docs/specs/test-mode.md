@@ -88,7 +88,13 @@ switch allows it.
   `?lookform=0`); an old key's after-join check held while `oldkeyheld` is
   (v2.3.5808, `loginkeys.js`); an offer's Yes waits for a bid half made, and
   a payment and its escrow's delete one write (v2.3.5809, `storeoffer.js`,
-  `trade2.js`, `gladiator.js`, `offerpend`, `leftoverheal`).
+  `trade2.js`, `gladiator.js`, `offerpend`, `leftoverheal`); a friendship both
+  sides or neither, and a request nobody answers let go after 30 days
+  (v2.3.5811, `friends.js`, `friendfix`); the cleaner's blank and hidden
+  characters, and a new pet or alliance name held to the name rule
+  (v2.3.5814, `chatguard.js`, `petbook.js`, `alliance.js`, `cleanmore`,
+  `namestaff`); the rewind's plan names the owner's login acts since its time
+  (v2.3.5815, `restore.js`, `rewindsays`).
 - Every save and payment rule; the login key, the device lock, the lockouts;
   a frozen account.
 - PvP consent and **every check on a hit between players** (pvpbalance.js,

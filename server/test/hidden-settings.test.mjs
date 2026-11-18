@@ -28,6 +28,7 @@ import { BOTFP } from '../src/botfp.js';
 import { BOTSIG } from '../src/botsig.js';
 import { HIDDEN, HIDDEN_SPEC, HIDDEN_PLACEHOLDERS, cleanHidden, mergeHidden, hiddenRefusal } from '../src/hidden.js';
 import { HONEST_CYCLE_MIN_MS } from '../src/gathering.js';
+import { HARVEST_GRADE } from '../src/harvestgrade.js';   /* v2.3.5902: the grade judge's share */
 
 const KEY = 'test-admin-key-hidden';
 function makeState(seed) {
@@ -99,10 +100,12 @@ const synthFp = (i) => ({ len: 400, n: 60, dur: 1200, ent: 0.001, tv: 0, vc: 0.0
 {
   const names = Object.keys(HIDDEN_SPEC);
   /* v2.3.3731: and BOTSIG's, the server's own bot signals (botsig.js) */
-  const home = (n) => (n in BOTFP ? BOTFP : BOTSIG);
+  /* v2.3.5902: and the harvest grade judge's share (harvestgrade.js HARVEST_GRADE) */
+  const GRADE = { GRADE_SHARE_OF: HARVEST_GRADE.SHARE_OF, GRADE_SHARE_MAX: HARVEST_GRADE.SHARE_MAX };
+  const home = (n) => (n in BOTFP ? BOTFP : n in GRADE ? GRADE : BOTSIG);
   const same = (a, b) => (Array.isArray(a) ? JSON.stringify(a) === JSON.stringify(b) : a === b);
-  check('1. every hidden setting is a BOTFP or BOTSIG name, its placeholder today\'s value', names.length >= 24
-    && names.every((n) => (n in BOTFP || n in BOTSIG) && same(HIDDEN_SPEC[n].dflt, home(n)[n]) && same(HIDDEN_PLACEHOLDERS[n], home(n)[n])), names.filter((n) => !(n in BOTFP || n in BOTSIG)));
+  check('1. every hidden setting is a BOTFP, BOTSIG or harvest-grade name, its placeholder today\'s value', names.length >= 24
+    && names.every((n) => (n in BOTFP || n in BOTSIG || n in GRADE) && same(HIDDEN_SPEC[n].dflt, home(n)[n]) && same(HIDDEN_PLACEHOLDERS[n], home(n)[n])), names.filter((n) => !(n in BOTFP || n in BOTSIG || n in GRADE)));
   check('1. every placeholder is inside its own range (a fresh room reads exactly today\'s values)',
     names.every((n) => hiddenRefusal(n, HIDDEN_SPEC[n].dflt === null ? 0 : (Array.isArray(HIDDEN_SPEC[n].dflt) ? [...HIDDEN_SPEC[n].dflt] : HIDDEN_SPEC[n].dflt)) === null), names.filter((n) => hiddenRefusal(n, Array.isArray(HIDDEN_SPEC[n].dflt) ? [...HIDDEN_SPEC[n].dflt] : HIDDEN_SPEC[n].dflt)));
   for (const n of ['FLAG_AT', 'STARTLESS_FLAG_AT', 'FLAG_MIN_GAP_MS', 'FLEET_MIN_IDS', 'FLEET_ACTIVE_MIN', 'FLEET_ACTIVE_STRIKES',
