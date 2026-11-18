@@ -9,8 +9,9 @@
  * measured a liar sending every strike perfect, at the earliest the worker
  * takes it, at 1.86 times the ore of a phone (the bot lab's 45% perfect).
  *
- * TWO RULES, behind one switch (`harvestgrade: true` in the live flags; OFF
- * as merged, the owner's to turn on -- the second changes honest play):
+ * TWO RULES, behind one switch (`harvestgrade`: OFF as merged at v2.3.5900,
+ * ON by default since v2.3.5906, the owner's "Go recommended"; `harvestgrade:
+ * false` in the live flags turns both off -- the second changes honest play):
  *
  *   1. THE TIME.  A perfect is believed only at or after the earliest moment
  *      an honest phone could have made it: the plan's hits played (the first

@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { PlayerDrawings, AccuracyDays } from './DevWatch.jsx';   /* v2.3.4545: what players drew, and every player's accuracy a day */
 import { ReportTable } from './ReportTable.jsx';   /* v2.3.5125: the smoothness table, copied (card A) */
 import { EconCard } from './EconCard.jsx';   /* v2.3.5093: the owner's card, the economy (card E) */
+import { UsageMeter } from './UsageMeter.jsx';   /* v2.3.6001: the usage meter (card CS PR 2) */
 import { SetSwitchRow } from './SetSwitchRow.jsx';   /* v2.3.5602: set a switch, no terminal (card OPS) */
 import { FeedbackOwnerRows } from './FeedbackOwnerRows.jsx';   /* v2.3.5603: the feedback board's takedown and sweep (card OPS) */
 import { SilenceButtons } from './SilenceButtons.jsx';   /* v2.3.5605: silence from a chat report (card OPS) */
@@ -331,8 +332,8 @@ const CAP_GATES = [
   'power' /* v2.3.5502 (card LB): the power index's version, a number (card PW, #1776) -- Overall and the Power column on the Leaderboards, from each row's powerIndex of that version */,
   'statboards' /* v2.3.5502 (card LB): a count -- how many stat boards the worker ranks (card PW, #1781): the Leaderboards' Stats group shows that many */,
   'gidnames' /* v2.3.5196: a weapon named by its id beside its place (server/src/gidnames.js; the action door's GID_PLACE) -- lower case, a kill switch */,
-  'bowPath' /* v2.3.5905 (card K4): the bow's path (server/src/bowshot.js): a claim held to its arrow's line, the relay sent at release -- an opt-in, `bowpath: true` (CAP_OPT_IN) */,
-  'harvestGrade' /* v2.3.5900 (card K4): the harvest's grade judged (server/src/harvestgrade.js): a perfect only after an honest gesture's time, at most 15 in 20 -- an opt-in, `harvestgrade: true` (CAP_OPT_IN) */,
+  'bowPath' /* v2.3.5905 (card K4): the bow's path (server/src/bowshot.js): a claim held to its arrow's line, the relay sent at release -- ON since v2.3.5906, off with `bowpath: false` */,
+  'harvestGrade' /* v2.3.5900 (card K4): the harvest's grade judged (server/src/harvestgrade.js): a perfect only after an honest gesture's time, at most 15 in 20 -- ON since v2.3.5906, off with `harvestgrade: false` */,
   'reqid' /* v2.3.5546: a repeat acts once (server/src/reqonce.js): the action door may re-send a request it heard nothing from, with the same id -- lower case, a kill switch (`reqonce`) */,
   'accuracy' /* v2.3.4545: shots and hits a weapon (server/src/accuracy.js): the phone numbers its basic shots and the Journey page shows how many hit -- lower case, a kill switch */,
 ];
@@ -343,7 +344,7 @@ const CAP_GATES = [
    false there means the kill switch really is thrown. */
 /* v2.3.3755: and `clientoff`, the list of memory savers turned off -- empty
    (the default) is every saver on */
-const CAP_OPT_IN = new Set(['pathall', 'clientoff', 'harvestGrade' /* v2.3.5900: the owner's to turn on */, 'bowPath' /* v2.3.5905: the owner's to turn on */]);
+const CAP_OPT_IN = new Set(['pathall', 'clientoff']);   /* v2.3.5906: harvestGrade and bowPath left it: ON by default (card K4 PR 7) */
 
 /* Plain language for the ones whose absence the owner has actually reported
    as a bug.  Deliberately NOT a full glossary: a made-up description is
@@ -1733,6 +1734,7 @@ export const DevPanel = ({ onClose }) => {
             <AccuracyDays call={call} busy={busy} setMsg={setMsg} COL={COL} btn={btn} label={label} />
             <ReportTable call={call} busy={busy} setMsg={setMsg} COL={COL} btn={btn} label={label} />{/* v2.3.5125: the smoothness table (ReportTable.jsx) */}
             <EconCard call={call} busy={busy} setMsg={setMsg} COL={COL} btn={btn} label={label} />{/* v2.3.5093: the owner's card, the economy (EconCard.jsx) */}
+            <UsageMeter call={call} busy={busy} setMsg={setMsg} COL={COL} btn={btn} label={label} />{/* v2.3.6001: the usage meter (UsageMeter.jsx) */}
 
             <button type="button" style={{ ...btn(false), borderColor: COL.danger, color: COL.danger }} onClick={forgetKey}>
               Forget key on this device

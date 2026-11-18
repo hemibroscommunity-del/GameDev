@@ -97,7 +97,7 @@ async function setup(flags) {
 
 /* ── 5. `bowreach: false`: as before ── */
 {
-  const t = await setup({ bowreach: false });
+  const t = await setup({ bowreach: false, bowpath: false });   /* v2.3.5906: the path (ON by default now) holds a claim with no arrow seen to the small allowance too */
   const reach = t.room._hitArrowReach(t.ps);
   t.mons[0].x = reach + 200;
   t.relay();

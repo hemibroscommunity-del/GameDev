@@ -38,6 +38,7 @@
 import { wordsNote } from './words.js';   /* v2.3.5197: the words rule */
 import { bagTake } from './bag.js'; /* v2.3.4810: the bag door */
 import { xferGift } from './xfer.js'; /* v2.3.5092: the transfer ledger */
+import { lifeOf, LIFE } from './life.js';   /* v2.3.6022 (card RV): the dead take nothing (life.js _deadTakeOn; TRAPS §150) */
 
 export const TRADE_OFFER_TTL = 120000; // 2 min to accept
 
@@ -190,6 +191,9 @@ export const tradeMethods = {
     if (this._giftClosed() || (this._bagLockedByFight && this._bagLockedByFight(target))) return rejectAccepter();
     const senderPs = this.playerState[target];
     if (!senderPs) return rejectAccepter(); // sender left before the accept
+    /* v2.3.6022 (card RV, TRAPS §150; `deadtake`, life.js): the gift is taken
+       from its sender -- not in their dying seconds (this lane's refusal) */
+    if (lifeOf(senderPs) !== LIFE.ALIVE && this._deadTakeOn()) return rejectAccepter();
     const offer = pending.offer;
     // Validate-at-commit: the sender may have spent the goods since
     // offering (the classic trade-window scam, plus honest races).

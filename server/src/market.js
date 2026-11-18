@@ -161,10 +161,25 @@ export const marketMethods = {
   // match against the bucket head).
   async _mktEnsureIndex() {
     if (this._mktIndex) return;
-    this._mktIndex = new Map();
-    this._mktOrderCounts = new Map();
+    /* v2.3.6023 (card RV; TRAPS §76): the book is read a page an await
+       (liveops.js _listAll; `listcap: false` reads it whole in one list),
+       into maps of its own that become the room's only once whole; a second
+       caller meanwhile waits for the same read (the clans' shape, clans.js
+       _clansEnsure).  Before, the maps were the room's before the read, so a
+       caller in between -- a second shop page, an order placed -- met a
+       book with nothing in it (an order matched against nothing, a cap read
+       as zero), and a failed read left the book empty for the worker's life. */
+    if (!this._mktIndexLoading) {
+      this._mktIndexLoading = this._mktIndexLoad().finally(() => { this._mktIndexLoading = null; });
+    }
+    await this._mktIndexLoading;
+  },
+
+  async _mktIndexLoad() {
+    const index = new Map();
+    const counts = new Map();
     const settleOn = !this._mktSettleOff();   /* v2.3.4505 */
-    const entries = await this.state.storage.list({ prefix: 'mkt_order:' });
+    const entries = await this._listAll('mkt_order:');   /* v2.3.6023: a page an await */
     for (const [k, o] of entries) {
       if (!o || !o.id) continue;
       /* v2.3.4505: a sale a restart caught half done carries its note: it is
@@ -202,8 +217,10 @@ export const marketMethods = {
       if (_sw || _gs) {
         await this.state.storage.put(k, o);
       }
-      this._mktAddToIndex(o);
+      this._mktAddToIndex(o, index, counts);
     }
+    this._mktIndex = index;   /* v2.3.6023: the room's, once whole */
+    this._mktOrderCounts = counts;
     /* v2.3.4505: every record has been seen, so the wake scan has nothing
        left to read (_mktSettleWait) */
     if (settleOn) this._mktScanned = true;
@@ -242,10 +259,11 @@ export const marketMethods = {
     return changed;
   },
 
-  _mktAddToIndex(o) {
+  /* v2.3.6023: `index` and `counts` the rebuild's own maps while it reads */
+  _mktAddToIndex(o, index = this._mktIndex, counts = this._mktOrderCounts) {
     const key = this._mktIndexKey(o);
-    if (!this._mktIndex.has(key)) this._mktIndex.set(key, { buys: [], sells: [] });
-    const bucket = this._mktIndex.get(key);
+    if (!index.has(key)) index.set(key, { buys: [], sells: [] });
+    const bucket = index.get(key);
     if (o.type === 'buy') {
       bucket.buys.push(o);
       bucket.buys.sort((a, b) => b.price - a.price);
@@ -253,7 +271,7 @@ export const marketMethods = {
       bucket.sells.push(o);
       bucket.sells.sort((a, b) => a.price - b.price);
     }
-    this._mktOrderCounts.set(o.playerId, (this._mktOrderCounts.get(o.playerId) || 0) + 1);
+    counts.set(o.playerId, (counts.get(o.playerId) || 0) + 1);
   },
 
   _mktRemoveFromIndex(o) {
@@ -558,6 +576,8 @@ export const marketMethods = {
       if (type === 'buy' && p > execPrice) {
         await this._creditPlayer(buyerId, { opId: 'settle:' + maker.id + ':diff', source: 'market', kind: 'gold', payload: { amount: p - execPrice }, note: 'price improvement' });
       }
+      /* v2.3.6025: a re-listed note's first taker goes home before the delete */
+      await this._mktTakerHome(maker);
       await this.state.storage.delete('mkt_order:' + maker.id);
       await this._mktRecordPrice(this._mktIndexKey(order), execPrice);
       return { ok: true, settled: true, matched: true, execPrice, matchedOrder: maker, newOrder: order };
@@ -685,6 +705,9 @@ export const marketMethods = {
     } else if (order.item) {
       await this._creditPlayer(order.playerId, { opId: 'refund:' + order.id, source: 'market', kind: 'weapon', payload: { weapon: order.item }, note: why });
     }
+    /* v2.3.6025: a re-listed note's first taker too, before the caller's
+       delete (the cancel, the expiry sweep) */
+    await this._mktTakerHome(order);
   },
 
   async _mktSweep() {
@@ -730,6 +753,29 @@ export const marketMethods = {
   _mktSettleOff() {
     const f = this._liveFlags;
     return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'mktsettle') && !f.mktsettle);
+  },
+
+  /* ═══ v2.3.6025 (card RV's Found): A RE-LISTED NOTE'S TAKER GOES HOME ═══
+     With `mktsettle: false` (an older worker's rule) the book's rebuild puts
+     a noted maker back on sale, its note unread.  Its cancel, its expiry or
+     a new taker meeting it then deleted the record, and the note with it:
+     the first taker's escrow, taken at the crossing, was named nowhere else
+     and was gone.  Now, before such a delete, the first taker's escrow goes
+     home -- by the heal's own opId (`settle:<id>:back`), so a roll forward
+     that finds the record still there pays it at most once.  Only a whole
+     note this worker reads; only when the maker's escrow went home or was
+     sold under the old rule (never over a stamped leg: the old rule's
+     limit, unchanged).  One credit more, only on this path.
+     KILL SWITCH (lower case): `mktback: false` -- the delete alone, as
+     before. */
+  _mktBackOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'mktback') && !f.mktback);
+  },
+
+  async _mktTakerHome(order) {
+    if (!order || !order.settle || !this._mktBackOn() || !this._mktSettleOk(order.settle)) return;
+    await this._creditPlayer(order.settle.taker, { opId: 'settle:' + order.id + ':back', ...this._mktBackPay(order) });
   },
 
   _mktSettlePlan(order, execPrice, buyerId, sellerId, weapon, label) {

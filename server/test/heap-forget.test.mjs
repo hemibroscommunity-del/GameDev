@@ -27,6 +27,7 @@ import v8 from 'node:v8';
 import vm from 'node:vm';
 import { WIRE_IN } from '../src/wire/in.js';
 import { HEAP_FORGET, HEAP_FORGET_CFG } from '../src/heapforget.js';
+import { PACE_KEEP } from '../src/pacekeep.js';   /* v2.3.5921: a BOUNDED map */
 import { CHAT_LANES } from '../src/chatlanes.js';
 import { BOTFP } from '../src/botfp.js';
 import { LAST_PLACE } from '../src/lastplace.js';
@@ -88,6 +89,7 @@ const BOUNDED = Object.freeze({
   pendingPlayerStateFlush: 'persistence.js: emptied at every flush',
   chatSeen: 'chatmod.js: at most CHATMOD.SEEN_MAX senders, the oldest dropped (the report\'s evidence)',
   _farmRate: 'farm.js: swept of every window past a minute once over 256',
+  _paceKeep: 'pacekeep.js: at most PACE_KEEP.CAP, the spent first, then the oldest (v2.3.5921: a request\'s pace kept across a rejoin, TRAPS §276)',
 });
 {
   const room = await openRoom(makeStorage());
@@ -118,7 +120,7 @@ const BOUNDED = Object.freeze({
     strays.push(name + ' (' + n + ')');
   }
   check('3: no map on the room keeps a guest who left but a HEAP_FORGET row kept past the leave or a BOUNDED one', strays.length === 0, strays);
-  check('3: BOUNDED\'s caps are what they say', BOTFP.MAP_CAP <= 256 && LAST_PLACE.MAX <= 1000, { botfp: BOTFP.MAP_CAP, places: LAST_PLACE.MAX });
+  check('3: BOUNDED\'s caps are what they say', BOTFP.MAP_CAP <= 256 && LAST_PLACE.MAX <= 1000 && PACE_KEEP.CAP <= 1000, { botfp: BOTFP.MAP_CAP, places: LAST_PLACE.MAX, paces: PACE_KEEP.CAP });
 }
 
 /* ── 4. the heap ── */
@@ -133,7 +135,8 @@ const forgetful = () => {
   return { storage, getWebSockets: () => [], acceptWebSocket: () => {} };
 };
 async function perGuest(flags, n) {
-  const room = await openRoom(forgetful(), flags);
+  /* v2.3.6000 (card CS): `seathold` (on by default) would hold each guest's seat a minute and fill the room */
+  const room = await openRoom(forgetful(), { seathold: false, ...(flags || {}) });
   let k = 0;
   const run = async (m) => {
     for (let i = 0; i < m; i++) {

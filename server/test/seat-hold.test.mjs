@@ -3,7 +3,8 @@
  * Red team RT-2, F1: a deploy (or one phone's blip) handed the seats of the
  * people playing to the people waiting.  This holds, on the shared test room:
  *
- *   1. OFF unless `seathold` is true: a drop holds nothing, the roster is
+ *   1. OFF with `seathold: false` (ON by default since v2.3.6000, card CS):
+ *      a drop holds nothing, the roster is
  *      never written, a stranger's join at the cap is not refused here (the
  *      socket gate does it, as before);
  *   2. on: a joined player's drop holds their seat; at the cap (joined +
@@ -47,14 +48,16 @@ const fullSaid = (ws) => ws.sent.find((m) => m && m.type === 'room_full');
 const keysOf = (st, id) => [...st._store.keys()].filter((k) => k.includes(id));
 
 /* ── 1. off ── */
+/* v2.3.6000 (card CS): ON by default (the owner, 2026-11-17: "I think turn
+   all of them on then we monitor usage cost"); `seathold: false` turns it off */
 {
   const st = makeStorage();
-  const room = await openRoom(st, { max_players: 2 });
+  const room = await openRoom(st, { max_players: 2, seathold: false });
   const a = await join(room, fakeWs('a'), 'bp_seat_aaaa');
   const b = await join(room, fakeWs('b'), 'bp_seat_bbbb');
   await room.webSocketClose(a);
   await settle();
-  check('1. off unless true: seatHoldOn reads unset, false and 1 as off', !seatHoldOn(room) && !seatHoldOn({ _liveFlags: { seathold: 1 } }) && !seatHoldOn({ _liveFlags: { seathold: false } }) && seatHoldOn({ _liveFlags: { seathold: true } }));
+  check('1. on unless false (v2.3.6000): seatHoldOn reads false as off; unset, true and 1 as on', !seatHoldOn(room) && seatHoldOn({ _liveFlags: { seathold: 1 } }) && !seatHoldOn({ _liveFlags: { seathold: false } }) && seatHoldOn({ _liveFlags: { seathold: true } }) && seatHoldOn({ _liveFlags: {} }));
   check('1. off: a drop holds nothing', room._seatHeldCount(Date.now()) === 0 && room._seatMem().held.size === 0);
   room._seatRosterTick(Date.now() + SEAT_HOLD.WRITE_MS);
   await settle();
@@ -153,7 +156,7 @@ const keysOf = (st, id) => [...st._store.keys()].filter((k) => k.includes(id));
   await room2._seatHoldLoad(t1 + 5000);
   check('5. ...read once (a second load holds nothing new)', room2._seatHeldIds(t1 + 1000).size === 3);
   check('5. ...for RESTART_MS, then not', room2._seatHeldIds(t1 + SEAT_HOLD.RESTART_MS + 1).size === 0);
-  const room3 = await openRoom(st);
+  const room3 = await openRoom(st, { seathold: false });   /* v2.3.6000: off is thrown (on is the default) */
   await room3._seatHoldLoad(t1);
   check('5. off: a new room reads nothing', room3._seatMem().loaded === false && room3._seatHeldCount(t1) === 0);
 }

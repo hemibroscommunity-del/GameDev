@@ -1058,8 +1058,19 @@ function releaseRelay(a) {
   var p = a._relayAtRelease;
   if (!p) return;
   a._relayAtRelease = null;
-  p.x = Math.round(a._pathX); p.y = Math.round(a._pathY); p.ang = a.ang;
+  /* v2.3.5906: an arrow that hits or goes while still nocked (a monster in
+     contact) has no launch point yet: its fire's place, and its angle now */
+  if (a._pathX != null) { p.x = Math.round(a._pathX); p.y = Math.round(a._pathY); }
+  p.ang = a.ang;
   act('player_projectile', p);
+}
+/* v2.3.5906 (the gatekeeper's sitting 45): an arrow removed while its relay is
+   still held (it hit or planted before its release) sends it now, so the
+   worker counts the arrow and the watchers see it */
+function flushHeldRelays(before, after) {
+  for (var i = 0; i < before.length; i++) {
+    if (before[i] && before[i]._relayAtRelease && after.indexOf(before[i]) < 0) releaseRelay(before[i]);
+  }
 }
 
 /* ═══ v2.3.2217: THE SNOWBALL BURSTS WHERE ITS FLIGHT ENDS ═══
@@ -1195,6 +1206,7 @@ export function updateArrows(S, deps) {
           var lockPt = lockShotPoint(S.lockedTarget && S.lockedTarget.ref, S.currentZone);
           var lockId = (lockPt && S.lockedTarget.ref.id != null) ? S.lockedTarget.ref.id : null;   /* v2.3.2845: see _projCentreLift */
           var freeAim = S._aiming ? (S._aimAngle || 0) : null;
+          var _arrPrev = S.arrows;   /* v2.3.5906: for the held relays of arrows gone this frame (flushHeldRelays) */
           S.arrows = S.arrows.filter(function (a) {
             var _S$rpg15;
             /* v2.3.1425: STUCK-IN-MONSTER -- a special projectile that
@@ -1966,6 +1978,7 @@ export function updateArrows(S, deps) {
                   }
                 }
                 if (S._serverMonsters && S.channel) {
+                  releaseRelay(a);   /* v2.3.5906: a nocked arrow's held relay goes before its first claim (the gatekeeper's sitting 45) */
                   act('monster_damage', {
                     /* v2.3.1114: carry the projectile's element -- the
                        server now drives authoritative statuses/DoT/
@@ -2785,6 +2798,7 @@ export function updateArrows(S, deps) {
             }
             return true;
           });
+          flushHeldRelays(_arrPrev, S.arrows);   /* v2.3.5906 */
         }
 }
 
