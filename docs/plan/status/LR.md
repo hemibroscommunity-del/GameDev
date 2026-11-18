@@ -1,6 +1,6 @@
 card: LR
 branch: claude/plan-lr-1-guard
-prs: (6360) working
+prs: #2226 (6360, draft till green)
 state: working
 
 ## Done
