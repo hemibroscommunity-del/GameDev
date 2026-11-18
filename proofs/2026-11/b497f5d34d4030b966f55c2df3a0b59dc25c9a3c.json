@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "b497f5d34d4030b966f55c2df3a0b59dc25c9a3c",
+  "tree": "6dd9d60b7c67a0e8ca1646d134b9746bf35cb83c",
+  "committedAt": "2026-11-18T08:40:24-08:00",
+  "subject": "Merge pull request #2223 from hemibroscommunity-del/claude/plan-wd2-12-door",
+  "files": 8363,
+  "bytes": 962910971,
+  "listingSha256": "6b008e1765549293839a10cb119830c176b5dadbc46e09ecb34c378cef0b3345",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

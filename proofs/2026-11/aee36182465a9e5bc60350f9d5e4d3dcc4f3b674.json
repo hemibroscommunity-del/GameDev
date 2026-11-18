@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "aee36182465a9e5bc60350f9d5e4d3dcc4f3b674",
+  "tree": "f0dc0f513da595dd557396dcf4c279c30f9f34ca",
+  "committedAt": "2026-11-18T08:40:14-08:00",
+  "subject": "Merge pull request #2222 from hemibroscommunity-del/claude/plan-wd2-11-pets",
+  "files": 8360,
+  "bytes": 962901655,
+  "listingSha256": "ee16bd6b3a0ffefa97078344105643d17def4e4dfc051a80499dd65d3f39c98b",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
