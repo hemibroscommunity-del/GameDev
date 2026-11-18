@@ -98,7 +98,7 @@ Who a player is: ids, accounts, the device lock, login keys, the account check, 
 
 Telling a person from a script: bot signals, fingerprints, claims that are bounded.
 
-- **Files**: `server/src/`: botfp, botsig, botstats, charwatch, hitproof, moveclaims, swordswing, bowshot
+- **Files**: `server/src/`: botfp, botsig, botstats, charwatch, hitproof, moveclaims, swordswing, bowshot, harvestgrade
 - **Doors**: none named yet
 - **Switches**: [its rows in the switch table](SWITCHES.md#bots)
 - **Words**: `bot`, `antibot`, `anticheat`, `charwatch`, `hitproof`, `moveclaim`
