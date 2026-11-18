@@ -87,6 +87,8 @@ export const BOTFP = {
   FLAG_MIN_GAP_MS: 3600000,      // at most one auto-flag written per hour per identity
   FLAG_CAP: 20,
   STARTLESS_FLAG_AT: 20,         // v2.3.3322: strikes refused for want of a start (_botfpOnStartless)
+  STARTLESS_WINDOW_MS: 3600000,  // v2.3.5907: ...inside this window (it counted for life: card LG's B6)
+  STARTLESS_JOIN_GRACE_MS: 10000, // v2.3.5907: ...and none within this of a join (a dropped socket's replay)
   // ── fleet signal (device correlation) ──
   FLEET_MIN_IDS: 4,              // identities on one device nonce
   FLEET_ACTIVE_MIN: 3,           // of which this many harvested heavily this hour
@@ -238,6 +240,8 @@ export const botfpMethods = {
     if (!id) return;
     const now = now_();
     const rec = this._botfpRecord(id, now);
+    rec.joinedAt = now;   /* v2.3.5907: a startless strike just after a join is a dropped socket's (memory only) */
+    rec.joinReplaySpent = false;
 
     // device nonce: random localStorage token + coarse env hash — not PII.
     const dev = msg && msg.device;
@@ -532,7 +536,18 @@ export const botfpMethods = {
      count reaches STARTLESS_FLAG_AT: an honest phone sends one such strike
      after a dropped socket or a deploy, and its recovery strike is paid, not
      refused.  The write is _botfpMaybePut's own pace, a flag's at most one an
-     hour (FLAG_MIN_GAP_MS). */
+     hour (FLAG_MIN_GAP_MS).
+     v2.3.5907 (card K4 PR 8; card LG's B6, docs/specs/honest-trouble.md):
+     the count flagged FOR LIFE -- it only ever added, so an honest player on
+     a flaky line (iPhone Safari drops the socket of a hidden tab; a second
+     drop inside ten minutes, mid-harvest, is refused) reached 20 over weeks.
+     The flag now reads only the strikes inside STARTLESS_WINDOW_MS (an hour:
+     a script hammering them sends 20 in seconds), and the FIRST within
+     STARTLESS_JOIN_GRACE_MS of a join is not counted toward it (the
+     dropped socket's own replay is one strike; a script hammering right
+     after its join has every other one counted).  `counters.startless` still counts every
+     one, for the admin view.  The window is memory (a deploy empties it: a
+     script starts its hour again, an honest player is never hurt by it). */
   _botfpOnStartless(session, why, now) {
     const T = hid(this);
     const t = now || now_();
@@ -540,8 +555,15 @@ export const botfpMethods = {
     this._botfpDecay(rec, t);
     rec.counters.startless = (rec.counters.startless || 0) + 1;
     rec.dirty = true;
-    if (rec.counters.startless >= T.STARTLESS_FLAG_AT) {
-      this._botfpFlag(session.id, rec, 'strikes-without-start', { why, count: rec.counters.startless }, t);
+    const fresh = !rec.joinReplaySpent && typeof rec.joinedAt === 'number' && t - rec.joinedAt < T.STARTLESS_JOIN_GRACE_MS;
+    if (fresh) rec.joinReplaySpent = true;
+    if (!Array.isArray(rec.startlessWin)) rec.startlessWin = [];
+    const win = rec.startlessWin;
+    while (win.length && t - win[0] >= T.STARTLESS_WINDOW_MS) win.shift();
+    if (!fresh) win.push(t);
+    if (win.length > T.STARTLESS_FLAG_AT) win.splice(0, win.length - T.STARTLESS_FLAG_AT);
+    if (!fresh && win.length >= T.STARTLESS_FLAG_AT) {
+      this._botfpFlag(session.id, rec, 'strikes-without-start', { why, count: win.length, windowMs: T.STARTLESS_WINDOW_MS, total: rec.counters.startless }, t);
     }
     this._botfpMaybePut(session.id, rec, false);
   },

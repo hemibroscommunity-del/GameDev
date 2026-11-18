@@ -91,6 +91,8 @@ export const HIDDEN_SPEC = Object.freeze({
   FLAG_AT: row('botfp', BOTFP.FLAG_AT, 1, 1000, false, 'The score that flags a player'),
   FLAG_MIN_GAP_MS: row('botfp', BOTFP.FLAG_MIN_GAP_MS, 60000, 7 * DAY, true, 'At most one flag a player every this many ms'),
   STARTLESS_FLAG_AT: row('botfp', BOTFP.STARTLESS_FLAG_AT, 1, 100000, true, 'Harvests sent without a start before a flag'),
+  STARTLESS_WINDOW_MS: row('botfp', BOTFP.STARTLESS_WINDOW_MS, 60000, 7 * DAY, true, 'v2.3.5907: ...of them inside this many ms (not for life)'),
+  STARTLESS_JOIN_GRACE_MS: row('botfp', BOTFP.STARTLESS_JOIN_GRACE_MS, 0, 600000, true, 'v2.3.5907: the first harvest without a start this soon (ms) after a join is not counted toward the flag'),
   // ── anti-bot: the fleet (one device, many accounts) ──
   FLEET_MIN_IDS: row('botfp', BOTFP.FLEET_MIN_IDS, 2, 16, true, 'Fleet: accounts on one device'),
   FLEET_ACTIVE_MIN: row('botfp', BOTFP.FLEET_ACTIVE_MIN, 1, 16, true, 'Fleet: of which this many harvested heavily this hour'),
