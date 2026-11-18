@@ -6,14 +6,14 @@ Nothing is removed by this census: no cap, no old way, no read.
 
 ## Totals
 
-- caps in `CAP_GATES`: **173**
+- caps in `CAP_GATES`: **174**
 - whose old page way settles value (they go first, as 4.2's): **12**
 - unclear whether they settle value (`?`, never guessed): **0**
 - with no row in the switch table (no `on` day, no end): **62**
 - that count (a number or a list: they stay): **10**
-- **whose old page way is still there (old way `yes`): 160** -- the count that only falls (`tools/guards/caps-census.test.mjs`)
-- not read on the page at all: **3**
-- reads on the page, all caps: **315**
+- **whose old page way is still there (old way `yes`): 162** -- the count that only falls (`tools/guards/caps-census.test.mjs`)
+- not read on the page at all: **2**
+- reads on the page, all caps: **317**
 - births git could not find: **0**
 
 ## The caps
@@ -99,6 +99,7 @@ Sorted: settles value first, then unclear, then the rest; in each, no switch row
 | `boards2` | no | false: hides the daily spin records board | `boards2` | 4355 (b08e5a89d) | 1 | game/spinBoard.js | yes |
 | `bodyTake` | no | false: ignores body_place, no landing at the taken-over body | `bodytake` | 4455 (cc4a4793c) | 1 | networking/wsClient.js | yes |
 | `bowDraw` | no | false: the bow is flicked, not drawn (feel only) | `bowdraw` | 4801 (c96969dc7) | 3 | game/bowFeel.js ×2, networking/wsClient.js | yes |
+| `bowPath` | no | false: a bow relays its shot at fire, not at release; a request, not value | `bowpath` | 5905 (e747dd0e6) | 1 | game/projectiles.js | yes |
 | `bowvolley` | no | false: fires one arrow instead of three; the worker rolls damage | `bowvolley` | 2808 (c1bf4f5d2) | 2 | game/playerActions.js, rendering/systems/effectsRenderer.js | yes |
 | `broCount` | no | false: runs the worn-Bro verify request instead of the wallet count | `broCount` | 3255 (01be99046) | 1 | networking/broWallet.js | yes |
 | `bundle` | no | false: sends messages one at a time | `bundle` | 3254 (97473a180) | 1 | game/quietPhone.js | yes |
@@ -126,7 +127,7 @@ Sorted: settles value first, then unclear, then the rest; in each, no switch row
 | `hardenkeep` | no | false: failure text and chip say the level drops back | `hardenkeep` | 3529 (ea16a759f) | 3 | networking/gameEvents.js, ui/panels/buildings/SmithyPanel.jsx, ui/panels/buildings/WoodworkPanel.jsx | yes |
 | `hardenmats` | no | false: shows the old hardening costs without materials | `hardenmats` | 3139 (d1e2bcec5) | 3 | ui/mobile/dash/ItemDetailPopup.jsx, ui/panels/buildings/SmithyPanel.jsx, ui/panels/buildings/WoodworkPanel.jsx | yes |
 | `hardenwoodskill` | no | false: the hardening line names Blacksmithing, not Woodworking | `hardenwoodskill` | 3481 (b7fbaa7b3) | 1 | ui/panels/buildings/WoodworkPanel.jsx | yes |
-| `harvestGrade` | no | no page read; only a dev panel opt-in label | `harvestgrade` | 5900 (c5a84f73a) | 0 | -- | no |
+| `harvestGrade` | no | false: no "Paid as" popup when the paid grade differs (v2.3.5902); a display | `harvestgrade` | 5900 (c5a84f73a) | 1 | game/lifeSkillRewards.js | yes |
 | `heapburn` | no | false: no burn shown or heap_burn sent | `heapburn` | 3748 (9774ec34c) | 1 | ui/BroTown.jsx | yes |
 | `hitladder` | no | false: the skills page shows the even 1..level odds | `hitladder` | 3229 (e379bb380) | 1 | ui/mobile/dash/SkillsPanel.jsx | yes |
 | `itemdrop` | no | false: hides the Drop button | `itemdrop` | 3473 (44ebd02bf) | 1 | game/itemDrop.js | yes |
