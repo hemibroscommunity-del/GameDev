@@ -172,7 +172,7 @@ import { maybeShowWelcome } from '@/game/welcomeBanner.js';
 import { worldReady, whenWorldReady } from '@/ui/loadingGate.js';   /* v2.3.4136: nothing for the world while a loading screen is up */
 import { checkWitnesses, noteCheckActed, EMPTIED_NEED, CANVAS_CHECK_OFF } from '@/rendering/canvasWitness.js'; /* v2.3.3701: a black screen's rebuild asks first whether Safari emptied the pictures */
 /* v2.3.3890: a second loss inside a rebuild's 5 s is owed a rebuild (window._rebuildRenderer); `?owedrebuild=0` drops it, as before */
-const OWED_REBUILD_OFF = (function () { try { return /[?&]owedrebuild=0\b/.test(window.location.search || ''); } catch (e) { return false; } })();
+const OWED_REBUILD_OFF = (function () { try { return sw('owedrebuild'); } catch (e) { return false; } })();   /* v2.3.5342: the page's one reader (game/switches.js) */
 import { markWorldIn, skipTutorial, worldInMs } from '@/ui/onboardingPace.js'; /* v2.3.2766: one onboarding voice at a time; v2.3.2890 + the welcome plate's Skip tutorial */
 import { BUILD_INFO } from './BuildBadge.jsx';
 import { pushHudPopup, playerScreenPoint } from './XpFlyOverlay.jsx';
@@ -497,7 +497,7 @@ import { laneKnob } from '@/game/drawLanes.js';   /* v2.3.5233 (card O PR 13): t
 function _stepCapMs() { try { const v = Number(laneKnob('step')); return v > 0 ? v : 50; } catch (e) { return 50; } }
 import { framePaceOn, makeFramePacer, noteDrawn, whenDrawn, beforeDraw, runBeforeDraw } from '@/game/framePacer.js';   /* v2.3.4400: a steady rate on a screen the game cannot keep up with */
 import { makeFrameSteps } from '@/game/frameSteps.js';   /* v2.3.5340: the frame as named steps (grand plan 5.4, card M) */
-import { sw } from '@/game/switches.js';   /* v2.3.5340: the page's one reader of its switches (`?framesteps=0`) */
+import { sw, swHas, pageAddress } from '@/game/switches.js';   /* v2.3.5340: the page's one reader of its switches (`?framesteps=0`); v2.3.5342: every read of the address */
 import { accTrack } from '@/game/accuracy.js';   /* v2.3.4545: the shot counts that ride the track */
 import { noteMade } from '@/debug/madeLog.js';   /* v2.3.4400: a job between frames says its name and its time */
 import { setStripPlay } from '@/rendering/zoneTextures.js';   /* v2.3.4400: a look that loads as you walk is unpacked between frames */
@@ -1023,7 +1023,7 @@ var NPC_TAP_REACH = 300;
    (v2.3.2050).  Ace was tap-only already (v2.3.2620).  `?npcprox` brings the
    walk-up opener back for a tab, to compare. */
 var NPC_PROX_OPENS = (function () {
-  try { return new URLSearchParams(window.location.search).has('npcprox'); } catch (e) { return false; }
+  try { return swHas('npcprox'); } catch (e) { return false; }   /* v2.3.5342: the page's one reader */
 })();
 
 /* ═══ v2.3.2975: MAYOR BRO IN THE WHEEL'S BROTOWN ═══
@@ -1195,7 +1195,7 @@ export var BroTown = function BroTown(_ref0) {
        localStorage is unavailable (some private-mode configurations). */
     myId: (function () {
       try {
-        if (/[?&]guest=1\b/.test(window.location.search)) return Math.random().toString(36).slice(2, 10);
+        if (sw('guest')) return Math.random().toString(36).slice(2, 10);   /* v2.3.5342: the page's one reader */
         var _pf = localStorage.getItem('bt_passphrase');
         /* ═══ v2.3.2110: BEFORE MINTING A KEY, ASK IF THIS IS REALLY A NEW DEVICE ═══
            Owner: "the continue button ... right now it shows empty each time an
@@ -1229,7 +1229,7 @@ export var BroTown = function BroTown(_ref0) {
        here).  A guest's id sends no key, so it has none. */
     _tabKey: (function () {
       try {
-        if (/[?&]guest=1\b/.test(window.location.search)) return null;
+        if (sw('guest')) return null;   /* v2.3.5342 */
         return localStorage.getItem('bt_passphrase');
       } catch (e) { return null; }
     })(),
@@ -2434,7 +2434,7 @@ export var BroTown = function BroTown(_ref0) {
      backed out of. */
   var backToMenu = function backToMenu() {
     try {
-      if (/[?&]create=1\b/.test(window.location.search)) {
+      if (sw('create')) {   /* v2.3.5342: the page's one reader */
         var _u = new URL(window.location.href);
         _u.searchParams.delete('create');
         window.history.replaceState(null, '', _u.pathname + _u.search + _u.hash);
@@ -4875,7 +4875,7 @@ export var BroTown = function BroTown(_ref0) {
     };
     /* v2.3.4400: the steady step (game/frameClock.js); none with `?dtsmooth=0` */
     var _frameClock = null;
-    try { if (frameSmoothOn(window.location.search || '')) _frameClock = makeFrameClock(undefined, _stepCapMs); } catch (e) { _frameClock = null; }   /* v2.3.5233: its cap the lane's */
+    try { if (frameSmoothOn(pageAddress())) _frameClock = makeFrameClock(undefined, _stepCapMs); } catch (e) { _frameClock = null; }   /* v2.3.5233: its cap the lane's */
     /* ═══ v2.3.4400: A STEADY RATE ON A FAST SCREEN (game/framePacer.js) ═══
        The owner's iPhone, Safari offering it the screen's own 120 a second,
        twenty-four minutes in: "Still performance issues", "fps ~51  frame
@@ -4884,7 +4884,7 @@ export var BroTown = function BroTown(_ref0) {
        game draws on a whole number of refreshes it can keep to; every other
        screen is every refresh, as ever.  `?pace=0`: the old way. */
     var _framePacer = null, _paceEvery = 1;
-    try { if (framePaceOn(window.location.search || '')) _framePacer = makeFramePacer(); } catch (e) { _framePacer = null; }
+    try { if (framePaceOn(pageAddress())) _framePacer = makeFramePacer(); } catch (e) { _framePacer = null; }   /* v2.3.5342: the address from the page's one reader */
     /* the frame meter's line and QA (mp-steadypace): the screen's rate, and every how many refreshes a frame is drawn */
     if (typeof window !== 'undefined') window.__btPace = function () { return _framePacer ? _framePacer.read() : null; };
     /* v2.3.4400: a monster's look that loads as you walk is unpacked a few ms a frame (zoneTextures.js): this frame's
@@ -8384,7 +8384,7 @@ export var BroTown = function BroTown(_ref0) {
              pointer is on the screen NOW (deskPointerAngle), so walking with
              the mouse still keeps it on the pointer.  `?shieldaim=mouse`:
              the pointer always, monsters or not (the owner's to choose). */
-          if (S._shieldAimMouse == null) S._shieldAimMouse = shieldFollowsPointerAlways(typeof window !== 'undefined' ? window.location.search : '');
+          if (S._shieldAimMouse == null) S._shieldAimMouse = shieldFollowsPointerAlways(pageAddress());   /* v2.3.5342: the page's one reader */
           var _sta = S._shieldAimMouse ? null : shieldTargetAngle(S);
           var _spa = deskPointerAngle(S);
           S._shieldAngle = _sta != null ? _sta : (_spa != null ? _spa : S._mouseAimAngle);
@@ -8699,7 +8699,7 @@ export var BroTown = function BroTown(_ref0) {
        back see-through everywhere -- which a drawn frame never is, the canvas
        is cleared opaque -- was not copied, and is taken the old way
        (_wdThumbCollect).  `?wdgeterror` asks every time, as before. */
-    var WD_GETERROR_EVERY = /[?&]wdgeterror\b/.test(window.location.search || '');
+    var WD_GETERROR_EVERY = swHas('wdgeterror');   /* v2.3.5342: the page's one reader */
     var _WD_CLEAR = new Float32Array([0, 0, 0, 0]);
     function _wdThumbAsk(cv) {
       var gl = _wdGl(cv);   /* v2.3.3313: never cv.getContext (above) */
@@ -9005,7 +9005,7 @@ export var BroTown = function BroTown(_ref0) {
                the picker until the next join.  Free — this block is already
                throttled to one write per 30s, and the same guest guard
                applies for the same reason. */
-            if (!/[?&]guest=1\b/.test(window.location.search)) {
+            if (!sw('guest')) {   /* v2.3.5342 */
               var _hbPf = _tabRowKey(S);   /* v2.3.4606: this tab's own row, never the slot's */
               /* v2.3.3355: and a new key's id -- only the one a join got in
                  with (wsClient.js `_joinedId`): S.myId on a page that started
@@ -12162,7 +12162,7 @@ export var BroTown = function BroTown(_ref0) {
          boot check below would find no character and route to the door,
          which would put the player back on the screen they just answered. */
       var _forceCreate = false;
-      try { _forceCreate = /[?&]create=1\b/.test(window.location.search); } catch (e) { _forceCreate = false; }
+      try { _forceCreate = sw('create'); } catch (e) { _forceCreate = false; }   /* v2.3.5342 */
       /* ═══ v2.3.3046: A KEY THAT ALREADY HAS A CHARACTER IS NOT SENT TO THE CREATOR ═══
          The flag is set by the door AFTER it mints a fresh key, so a key that
          is already in this device's roster -- joinTown writes it there the
@@ -12189,7 +12189,7 @@ export var BroTown = function BroTown(_ref0) {
         return;
       }
       var _forceLogin = false;
-      try { _forceLogin = /[?&]login=1\b/.test(window.location.search); } catch (e) { _forceLogin = false; }
+      try { _forceLogin = sw('login'); } catch (e) { _forceLogin = false; }   /* v2.3.5342 */
       if (_forceLogin) {
         if (alive) setBootPhase('login');
         try { window.__btBootRoute = 'login-forced'; } catch (e) {}
@@ -12416,7 +12416,7 @@ export var BroTown = function BroTown(_ref0) {
        values onto a throwaway would just be confusing. */
     var _cachedRpg = null;
     try {
-      if (!/[?&]guest=1\b/.test(window.location.search)) {
+      if (!sw('guest')) {   /* v2.3.5342 */
         _cachedRpg = JSON.parse(localStorage.getItem('bt_rpg'));
       }
     } catch (e) {}
@@ -12466,7 +12466,7 @@ export var BroTown = function BroTown(_ref0) {
        Stamping here would write the throwaway's name and level onto the real
        character's row — the row the player later taps to continue. */
     try {
-      if (!/[?&]guest=1\b/.test(window.location.search)) {
+      if (!sw('guest')) {   /* v2.3.5342 */
         var _rosterPf = _tabRowKey(S);   /* v2.3.4606: this tab's own row */
         /* v2.3.3355: no id here -- the join is not in yet, and S.myId may be
            a guess for a new key (the heartbeat keeps the one it got in with) */
@@ -12535,8 +12535,7 @@ export var BroTown = function BroTown(_ref0) {
        readable. */
     var _skipIntro = false;
     try {
-      var _p = new URLSearchParams(window.location.search);
-      if (_p.get('debug') === '1') _skipIntro = true;
+      if (sw('debug')) _skipIntro = true;   /* v2.3.5342: the page's one reader */
     } catch (e) {}
     /* Kick off the full avatar-asset preload now (equip is finalized at this
        point) so the intro overlay can hold until it's flicker-free. */
@@ -12579,7 +12578,7 @@ export var BroTown = function BroTown(_ref0) {
     var wanted = false;
     var _spot = null;   /* v2.3.3574 */
     try {
-      if (/[?&]noresume=1\b/.test(window.location.search)) return;
+      if (sw('noresume')) return;   /* v2.3.5342 */
       wanted = sessionStorage.getItem('bt_resume_now') === '1';
       sessionStorage.removeItem('bt_resume_now');
       /* v2.3.3574: where a pictures-emptied reload left the bro (_recoveryReload
