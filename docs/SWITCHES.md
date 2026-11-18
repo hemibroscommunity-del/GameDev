@@ -175,6 +175,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `disable_event_capes` | worker | switch | v2.3.2028 | 2026-08-27 | true | logic |  | no | Thrown, the event's capes stop dropping. |
 | `disable_offer_sweep_all` | worker | switch | v2.3.4412 | 2026-11-10 | true | logic |  | no | Thrown, the store's offer sweep goes back to the old first-20 pass. |
 | `?droplines` | page | switch | v2.3.3627 | 2026-10-27 | =0 | logic |  | no | No drop lines in the chat for what a kill drops. |
+| `dyingkeep` | worker | switch | v2.3.5803 | 2026-11-17 | false | logic |  | no | Goods credited to a player in the dying seconds are wiped by the respawn, as before (MS-3: a trade confirmed after a death pays and keeps nothing). |
 | `econ` | worker | switch | v2.3.5085 | 2026-11-14 | false | logic |  | no | Nothing is counted into a character's minted and burned (`_econ`) or the day's book's economy part; gold and items move as before. |
 | `econresetput` | worker | switch | v2.3.5094 | 2026-11-14 (v2.3.5095) | false | logic |  | no | A character's restart with nobody in the room no longer writes today's book at once: the owner's card may read it as a loss until a later count. On since v2.3.5095 (the owner's yes; one put a restart in an empty room). |
 | `?equipredraw` | page | switch | v2.3.5046 | 2026-11-14 | =0 | logic |  | no | A change of worn gear is set all at once again, not in pieces a frame apart. |
@@ -186,10 +187,13 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `goldonesum` | worker | switch | v2.3.4803 | 2026-11-11 | false | logic |  | no | Every gold road goes back on its step-1 sum. |
 | `itemdrop` | worker | switch | v2.3.3473 | 2026-10-18 | false | logic |  | no | Dropping an item on the ground is refused (off). |
 | `loginspin` | worker | switch | v2.3.4285 | 2026-11-05 | false | logic |  | no | Un-advertises the login wheel and refuses every ask. |
+| `mktheal` | worker | switch | v2.3.5801 | 2026-11-17 | false | logic |  | no | A General Store cancel or expiry pays the escrow back, then deletes the order in a later write, as before (MS-4: a restart between, then 48 quiet hours, can pay it twice). |
 | `mktsettle` | worker | switch | v2.3.4505 | 2026-11-10 | false | logic |  | no | A market leftover with a settle note is healed the old way. |
+| `mkttier` | worker | switch | v2.3.5801 | 2026-11-17 | false | logic |  | no | A General Store sell is filed under the category, kind and tier its request names, as before (MS-2: a cheap blade can fill a better tier's buy order). |
 | `mktwords` | worker | switch | v2.3.5626 | 2026-11-17 | false | logic |  | no | A market order's tier label and seller name are the page's free text again, as before (the worker's own tier label and the character's name while on). |
 | `revealbag` | worker | switch | v2.3.3951 | 2026-11-03 | false | logic |  | no | Un-advertises the bag's reveal and brings back the at-once reveal. |
 | `risechest` | worker | switch | v2.3.4438 | 2026-11-10 | false | logic |  | no | The rise chest's cap goes and an ask is answered off. |
+| `risekeep` | worker | switch | v2.3.5802 | 2026-11-17 | false | logic |  | no | The oplog prune deletes the rise chest's stamps at 48 h, as before (MD-1: the same character opens the chest again every two days). |
 | `salvage` | worker | switch | v2.3.3141 | 2026-10-07 | false | logic |  | no | Un-advertises salvage and refuses both acts. |
 | `season` | worker | switch | v2.3.3400 | 2026-10-18 | true | logic |  | no | Thrown (true), the dropped season comes back on the free spin. |
 | `storeGear` | worker | switch | v2.3.2528 | 2026-09-15 | false | logic |  | no | Un-advertises gear in the store and stops it taking a listing. |
@@ -671,6 +675,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?diet` | page | switch | v2.3.3726 | 2026-10-28 (v2.3.3744) | =1 or =0 (kept for the tab) | logic |  | no | Puts this phone on the move diet (=1) or keeps it off (=0), whatever the worker says for everyone. |
 | `disable_weapon_drops` | worker | switch | v2.3.1150 | 2026-07-03 | true | logic |  | no | Thrown, weapon drops stop rolling (caps.weaponDrops stays true, so no phone mints its own). |
 | `gidnames` | worker | switch | v2.3.5196 | 2026-11-17 | false | logic |  | no | A weapon in the stash is read by its place alone, as before: a request sent as the stash moved acts on the weapon now at that place (the next one). |
+| `guestshare` | worker | switch | v2.3.5729 | 2026-11-17 | false | logic |  | no | ON since v2.3.5729 (decided for the owner while away, 2026-11-17: "For all decisions waiting on me just go recommended."); thrown (`guestshare: false`), guests may hold every place, a played character waits outside a full room as before, and an IPv6 address is counted by its /56 at the widest. |
 | `heapforget` | worker | switch | v2.3.5544 | 2026-11-17 | false | logic |  | no | A guest who left stays in the room's maps (a refused strike with its raw zone, the arrow's refusals, the fire's clock, the chat buckets and reports), as before: the red team's RT-1 N11 open again. |
 | `ip56` | worker | switch | v2.3.5584 | 2026-11-17 | false | logic |  | no | The address limits count an IPv6 address by its /64 alone again (a whole /56 is one customer, at three times the /64's line, while on). |
 | `ip64` | worker | switch | v2.3.5581 | 2026-11-16 | false | logic |  | no | The address limits count each IPv6 address apart again, as before (an IPv6 line is one address by its /64 while on). |
