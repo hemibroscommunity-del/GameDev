@@ -214,12 +214,13 @@ export async function snapshotCopy(room, pid, storedBlob) {
      worst-case character with a full vault could make a copy past the
      storage's 128 KiB a value: its put threw (swallowed) and the day had NO
      copy.  Past SNAP_WITH_MAX the copy is the character alone, as before. */
-  try { if (JSON.stringify(copy).length > SNAP_WITH_MAX) return storedBlob; } catch (e) { return storedBlob; }
+  try { if (UTF8.encode(JSON.stringify(copy)).length > SNAP_WITH_MAX) return storedBlob; } catch (e) { return storedBlob; }   /* bytes, as the storage counts (a name's letters may be several each: sitting 45) */
   return copy;
 }
-/** The fuller daily copy's most, in characters of its JSON: under the
- *  storage's 128 KiB a value, with room to spare. */
+/** The fuller daily copy's most, in bytes of its JSON: under the storage's
+ *  128 KiB a value, with room to spare. */
 export const SNAP_WITH_MAX = 120000;
+const UTF8 = new TextEncoder();
 
 /* ── what a copy holds ── */
 const holds = (snap, p) => (p === 'rpg:' ? !snap._norpg : own(snap._with, p));

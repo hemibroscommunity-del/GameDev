@@ -216,6 +216,12 @@ const sumNow = (r, st) => count(r, st);
   st._store.set('bank:' + P, bigVault);
   const big = await snapshotCopy(r, P, blob);
   check('3. a vault too big for one row: the copy is the character alone, as before', big === blob && !('_with' in big) && JSON.stringify({ ...blob, _with: { 'bank:': bigVault } }).length > SNAP_WITH_MAX);
+  /* bytes, not characters: a vault under the line in characters but over it in bytes (a 3-byte letter) */
+  const wide = { ...VAULT_NOW, items: Array.from({ length: 1400 }, (_, i) => ({ key: 'k' + i, note: '\u2603'.repeat(30) })) };
+  const wideLen = JSON.stringify({ ...blob, _with: { 'bank:': wide, 'pets:': null } });
+  st._store.set('bank:' + P, wide);
+  const w2 = await snapshotCopy(r, P, blob);
+  check('3. ...counted in bytes as the storage counts them, not characters', wideLen.length < SNAP_WITH_MAX && new TextEncoder().encode(wideLen).length > SNAP_WITH_MAX && w2 === blob, { chars: wideLen.length, bytes: new TextEncoder().encode(wideLen).length });
   st._store.set('bank:' + P, VAULT_NOW);
   const none = await snapshotCopy(r, Q, { coins: 50 });
   check('3. ...null where there is none (a restore of it deletes one made since)', none._with['bank:'] === null && none._with['pets:'] === null);
