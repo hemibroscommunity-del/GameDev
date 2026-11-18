@@ -106,4 +106,5 @@ the tree after that merge.
   look-parity, plan-status green).
 - Line 6 on top (tree `d6a51bf492`): `canvas-pictures`, `four-lines`,
   `frame-steps`, `render-tables` green; M-tables part 5 current but for
-  its commit stamp.
+  its commit stamp; `npm run build` green; `node tools/qa/mp/run.mjs
+  questline` 187 of 187 (471 s).
