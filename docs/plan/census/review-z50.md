@@ -9,7 +9,7 @@ checked against GitHub at about 15:55 UTC. Tags bare.
 
 | card | PR(s) | state on GitHub | status file |
 |---|---|---|---|
-| WD2 | #2211 (6320), #2213 to #2222 (6321 to 6330), #2223 (6331) | all base `main`, not drafts, every check green (#2223: see the list) | `ready` on the top of the stack (#2223, the card's last); the lower branches still say `working`, overwritten by the top's as the stack lands |
+| WD2 | #2211 (6320), #2213 to #2222 (6321 to 6330), #2223 (6331) | all base `main`, not drafts, every check green | `ready` on the top of the stack (#2223, the card's last); the lower branches still say `working`, overwritten by the top's as the stack lands |
 | HB2 | none (`claude/plan-hb2-1-coach` 3f72925e pushed) | | `working` |
 | RR | none | census sample in batch 3 of 8 (its message: not this sitting) | |
 | EN | none (6203) | copperwaist red 2 of 4, fish-top-evict to mend (its message: not this sitting) | |
@@ -85,4 +85,28 @@ conflicted (the tree 6dd9d60b).
 
 ## Step 5: the rehearsal
 
-REHEARSAL
+`node tools/dev/gatekeeper.mjs` with the 12 branches in order, on `main`
+aaeb5ccc: the merged tree 6dd9d60b (41 files differ from main; the same
+tree as step 5b's merge by hand).
+
+| command | result |
+|---|---|
+| `npm run build` | PASS (20 s) |
+| `node tools/qa/mp/run.mjs questline` | PASS, 187/187 (492 s) |
+| `node tools/dev/precheck.mjs` | killed at the tool's 15-minute cap (Found, carried); run again by hand on the same tree with no cap: **OK TO PUSH, 0 FAIL**, 1 WARN (the usual "branches pushed in the last 48h"), the server suites green |
+
+## The deploys
+
+#2213, #2215 and #2222 change `server/test/` and so each starts the
+worker's deploy (TRAPS §277). The stack fixes their order (each PR
+carries the one before), so they cannot sit side by side on the list;
+merged in one go, the deploy workflow's concurrency group
+(`deploy-worker`, a newer run replaces one still waiting) makes it at most
+two deploys of the same worker code, the last being the newest `main`.
+
+## The old drafts (listed for the owner, not closed)
+
+#1870 RT-1, #1869 RT-3, #1867 RT-2 (the red team's findings, drafts since
+2026-11-15), #1415 (state-machine sweep working files, "never merge"),
+#1211 (the harvest gesture, v2.3.3725, 2026-10-29): drafts from finished
+work, their base far behind `main`.
