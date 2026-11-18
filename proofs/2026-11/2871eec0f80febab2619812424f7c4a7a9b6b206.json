@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "2871eec0f80febab2619812424f7c4a7a9b6b206",
+  "tree": "bce3167a299ce7117ec08b813ff0e59938e648f1",
+  "committedAt": "2026-11-17T16:12:32-08:00",
+  "subject": "Merge pull request #2083 from hemibroscommunity-del/claude/rv-market",
+  "files": 8185,
+  "bytes": 960591790,
+  "listingSha256": "8d7d3ddd1f430bcc941a14a2c8891b02119b7f029e2abe10b340c9ea9529f541",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
