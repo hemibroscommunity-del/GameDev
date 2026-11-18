@@ -774,8 +774,13 @@ nothing known, and a restore copies nothing.
 
 ### Pillar 6. One table per rule
 
-- [ ] **6.1 [NEXT] Each row of CLAUDE.md §8 names its test and its break
+- [x] **6.1 [NEXT] Each row of CLAUDE.md §8 names its test and its break
   proof.** A row with none is on the list to fix.
+  *Merged: card U2's #2070, #2074, #2082, #2095 (5780-5783): §8 names each
+  row's test, `docs/plan/census/checklist.md` holds 23 rows' break proofs
+  and the 4 held by hand, with why (the gatekeeper, sitting 44, tag 5033).
+  On the list for a card with a browser: row 15 (the bow's sight gate) and
+  row 25's break (`mp-membudget`), untried.*
 - [ ] **6.2 [LATER] Copied tables become one**, as leaf files with no
   imports under `server/src/`. A build check finds no server-only value in
   the page's script. Each table's hash rides in `state_sync.caps`; a
