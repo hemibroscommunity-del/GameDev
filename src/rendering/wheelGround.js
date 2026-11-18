@@ -112,7 +112,7 @@ if (typeof window !== 'undefined') {
     }
     return { inView, laid, missing: inView - laid, far, asked, short, cols: i1 - i0 + 1, rows: j1 - j0 + 1,
       view: [Math.round(G._qw), Math.round(G._qh)], inFlight: G.inFlight, held: G.pieces.size, under: !!(G.under && G.under.visible),
-      dropped: G._dropped || 0 };   /* v2.3.6383: pieces asked for and let go before they came */
+      dropped: G._dropped || 0 };   /* v2.3.6382: pieces asked for and let go before they came */
   };
 }
 /* Ahead of a moving camera: lay the ground where it will be AHEAD_MS from
@@ -159,12 +159,22 @@ const AHEAD_GROW = 2;
    no margin and no KEEP_PX behind).  On foot, as before.
    `?groundsend=0`: MAX_IN_FLIGHT riding too, and the margin all round. */
 const RIDE_IN_FLIGHT = 6;
+/* v2.3.6382: and with the worker kept busy, the look ahead on the board is
+   1.5 times a walk's, not AHEAD_GROW's 2.  At 2 a fast lap (the worker 58 to
+   62 ms a piece) filled the whole of the board's reach: 81 to 83 pieces held
+   on mp-rideheld's ring and the graphics chip at 84.5 to 89.1 MB, over what
+   the ride held before (82 pieces, 81.5 MB, the same lap with
+   `?groundsend=0`) and the planning session's line (the chip at or under the
+   on-foot tour's ~82 MB, 2026-11-18).  At 1.5: 78 pieces, 83.1 MB, the view
+   0.6% unlaid (5.4% as it was); at 1: 75, 82.6 MB, 2.7% unlaid.  The chip's
+   total moves 2 to 4 MB run to run; the pieces are the ground's own count. */
+const AHEAD_GROW_SEND = 1.5;
 function groundSendOn(S) {
-  /* v2.3.6383: read at each ask, as switches.js's one reader is (a test may change the page's address; the gatekeeper's
+  /* v2.3.6382: read at each ask, as switches.js's one reader is (a test may change the page's address; the gatekeeper's
      sitting 52 on #2253) -- its parse is kept per address, so this costs a look-up */
   return !sw('groundsend') && isRiding(S);
 }
-/* ═══ v2.3.6383: THE SIDE BEHIND, WITH NO SEE-SAW (the gatekeeper's sitting 52 on #2253) ═══
+/* ═══ v2.3.6382: THE SIDE BEHIND, WITH NO SEE-SAW (the gatekeeper's sitting 52 on #2253) ═══
    A side is the one left behind when the board rolls away from it clearly
    (TRAIL_IN of the look ahead's reach), and stays so until it all but stops
    rolling that way (TRAIL_OUT): a stick wobbling round the threshold, a
@@ -290,7 +300,7 @@ export class WheelGround {
     const cs = info.chunk.gamePx, C = info.chunk.cols, R = info.chunk.rows;
     const clampI = (v) => Math.max(0, Math.min(C - 1, v));
     const clampJ = (v) => Math.max(0, Math.min(R - 1, v));
-    const grow = isRiding(S) ? Math.max(1, Math.min(AHEAD_GROW, RIDE_MULT)) : 1;   /* v2.3.3843 */
+    const grow = isRiding(S) ? Math.max(1, Math.min(groundSendOn(S) ? AHEAD_GROW_SEND : AHEAD_GROW, RIDE_MULT)) : 1;   /* v2.3.3843; v2.3.6382: AHEAD_GROW_SEND */
     const aMax = AHEAD_MAX * grow, aMs = AHEAD_MS * grow;
     const ax = Math.max(-aMax, Math.min(aMax, this._vx * aMs));
     const ay = Math.max(-aMax, Math.min(aMax, this._vy * aMs));
@@ -300,10 +310,10 @@ export class WheelGround {
        laid sooner ahead are paid for by those let go sooner behind, and the
        ground holds no more than it did (the memory first, CLAUDE.md §7).  A
        side is the one left only while the board rolls clearly away from it
-       (v2.3.6383: TRAIL_IN and TRAIL_OUT, above). */
+       (v2.3.6382: TRAIL_IN and TRAIL_OUT, above). */
     const T = this._trail || (this._trail = { L: false, R: false, T: false, B: false });
     if (groundSendOn(S)) {
-      const on = aMax * TRAIL_IN, off = aMax * TRAIL_OUT;   /* v2.3.6383: in at a quarter, out under an eighth */
+      const on = aMax * TRAIL_IN, off = aMax * TRAIL_OUT;   /* v2.3.6382: in at a quarter, out under an eighth */
       T.L = T.L ? ax > off : ax > on; T.R = T.R ? -ax > off : -ax > on;
       T.T = T.T ? ay > off : ay > on; T.B = T.B ? -ay > off : -ay > on;
     } else { T.L = T.R = T.T = T.B = false; }
@@ -555,7 +565,7 @@ export class WheelGround {
 
   _free(key, rec) {
     this.pieces.delete(key);
-    if (!rec.ready) this._dropped = (this._dropped || 0) + 1;   /* v2.3.6383: QA, asked and let go before it came (__btGroundCover) */
+    if (!rec.ready) this._dropped = (this._dropped || 0) + 1;   /* v2.3.6382: QA, asked and let go before it came (__btGroundCover) */
     if (this.water) this.water.drop(key);
     if (rec.sprite) {
       /* the texture is this piece's alone: destroy it with its source, which

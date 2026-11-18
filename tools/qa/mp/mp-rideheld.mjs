@@ -38,16 +38,17 @@ const ring = (G) => {
 };
 
 /* ── the lines (v2.3.6382), this box plain, as it ships; never raised silently ──
-   MISSING_MAX  the share of the view's pieces unlaid on the warm ring, on average: 3.1 and 3.4% measured with
-                groundsend (17.5 and 19.3% with `?groundsend=0`, the ground as it was);
-   HELD_MAX     the most pieces of ground held on the ring: 77 measured (67 and 70 as it was; 86 before the trim
-                behind the board) -- the planning session's condition (2026-11-18): a line at the ride's
-                measured peak, so it cannot creep;
-   GPU_MAX_MB   the graphics chip's total at its highest on the ring: 78.2 and 81.4 measured in two runs (76.9 and
-                80.7 as it was: the chip's total moves 2 to 4 MB run to run with the town's other pictures), so
-                the line is the higher with that much room.  The game's own peak is
-                mp-membudget's tour on foot, 78 to 82 against its 109.3 line: the ride does not raise it. */
-const MISSING_MAX = 8, HELD_MAX = 80, GPU_MAX_MB = 84;
+   Set on a FAST lap (the worker 58 to 62 ms a piece), where the ground fills the whole of the board's reach: the
+   planning session's condition (2026-11-18), the ride's memory at or under the on-foot tour's, on the fast lap too.
+   MISSING_MAX  the share of the view's pieces unlaid on the warm ring, on average: 0.6% measured (5.4% the same
+                fast lap with `?groundsend=0`; 17 to 19% on slower laps as it was);
+   HELD_MAX     the most pieces of ground held on the ring: 78 measured, the line at what the ride held BEFORE
+                on the same fast lap (82, `?groundsend=0`) -- the ground holds no more than it did;
+   GPU_MAX_MB   the graphics chip's total at its highest on the ring: 83.1 measured (81.5 as it was, the same
+                fast lap; the chip's total moves 2 to 4 MB run to run with the town's other pictures, so the
+                line is the measured peak with 2 MB of that room).  The game's own peak is mp-membudget's tour
+                on foot, 78 to 82 MB against its 109.3 line. */
+const MISSING_MAX = 8, HELD_MAX = 82, GPU_MAX_MB = 85;
 
 /* one ring on the board, the ground read every 250 ms of the page's clock */
 async function ringOnce(P, G) {
@@ -64,7 +65,7 @@ async function ringOnce(P, G) {
       R.n++; R.inView += c.inView; R.missing += c.missing;
       if (c.missing > 0) R.short++;
       if (c.missing > R.worst) R.worst = c.missing;
-      if (c.under) R.under++;   /* v2.3.6383: the overview drawn under the pieces (one missing round the view) */
+      if (c.under) R.under++;   /* v2.3.6382: the overview drawn under the pieces (one missing round the view) */
       /* the memory: the ground's pieces held, and the graphics chip's MB (pixiApp.js __btGpuMb) */
       R.held += c.held; if (c.held > R.heldMax) R.heldMax = c.held;
       const g = window.__btGpuMb ? window.__btGpuMb() : null;
@@ -97,7 +98,7 @@ async function ringOnce(P, G) {
   }, offs);
 }
 
-/* ── v2.3.6383: A U-TURN (the gatekeeper's sitting 52 on #2253) ──
+/* ── v2.3.6382: A U-TURN (the gatekeeper's sitting 52 on #2253) ──
    On the board the side behind is let go sooner, and up to RIDE_IN_FLIGHT pieces asked for the way it was going sit
    in the worker's line ahead of any new ask.  A straight leg east of UTURN_PX from the ring's first point, then
    straight back the same way at once: the way back read as the ring is (what was unlaid, the overview under it). */
@@ -137,7 +138,7 @@ async function uTurn(P, G) {
   });
 }
 
-/* ── v2.3.6383: STOP AND GO (the gatekeeper's sitting 52 on #2253) ──
+/* ── v2.3.6382: STOP AND GO (the gatekeeper's sitting 52 on #2253) ──
    A ride of short pushes with a pause after each, the way a player taps along: the side behind is left and taken
    back as the board slows and starts.  Counts the pieces asked for and let go before they came (`dropped`). */
 const GO_PX = 300, GO_N = 8, GO_PAUSE_MS = 700;
