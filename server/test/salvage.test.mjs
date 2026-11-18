@@ -224,7 +224,10 @@ const bars = (k) => Math.floor(inv()[k] || 0);
   ps()._lastSalvageAt = 0;
   await room.webSocketMessage(ws, JSON.stringify({ type: 'smith_salvage', payload: { field: 'armorStash', gid: piece.gid } }));
   ps().dead = false;
-  check('a dead player salvages nothing', !ws.sent.some((m) => m.type === 'smith_salvage_result') && !!rowOf(piece.gid));
+  /* v2.3.5920 (card V3, TRAPS §150): refused as before, and now answered
+     (`dead`, "Could not salvage"), where it was silent */
+  const deadR = ws.sent.filter((m) => m.type === 'smith_salvage_result').map((m) => m.payload);
+  check('a dead player salvages nothing (answered `dead`)', deadR.length === 1 && deadR[0].ok === false && deadR[0].reason === 'dead' && !!rowOf(piece.gid), deadR);
 }
 
 // ── 6. Weapons, from the weapon bag ──
