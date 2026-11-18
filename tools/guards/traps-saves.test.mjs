@@ -199,9 +199,11 @@ const LIMIT_KNOWN = {
   /* the life phase: a death across a join is its note, life:<pid> */
   respawnAt: 'life',
   /* a request's pace, stamped on ps: a rejoin forgets it (the trap's own
-     shape; each under Found: a room Map, as _pointsResetAts, if its cost counts) */
-  _diceAt: 'pace', _dropAt: 'pace', _lastAceFlipAt: 'pace', _lastDailySpinAt: 'pace',
-  _lastGambleAt: 'pace', _lastRewardsGetAt: 'pace', _lastSalvageAt: 'pace', _raceStartedAt: 'pace', _restAt: 'pace',
+     shape).  v2.3.5921 (card V3 PR 2): the dice, a drop, the ace flips, the
+     gamble, the rewards' read, salvage, the race and a rest are kept by the
+     room across a rejoin (server/src/pacekeep.js, `pacekeep`); the daily
+     spin is left, under Found in docs/plan/status/V3.md (card RV / K3) */
+  _lastDailySpinAt: 'pace',
 };
 {
   const p = masked.get('server/src/persistence.js') || '';
@@ -233,7 +235,7 @@ const LIMIT_KNOWN = {
     }
   }
   check(`§276: the scan reads the fields of ps compared with the time (${compares})`, compares >= 50, compares);
-  census('§276', 'fields of ps a refusal compares with the time, not in _saveRpg\'s list', found, LIMIT_KNOWN, 30);
+  census('§276', 'fields of ps a refusal compares with the time, not in _saveRpg\'s list', found, LIMIT_KNOWN, 18);
 }
 
 /* ── §298: an admin write over a record reads the room first ── */
