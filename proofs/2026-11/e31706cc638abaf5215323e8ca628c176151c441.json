@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "e31706cc638abaf5215323e8ca628c176151c441",
+  "tree": "45118863a1505a209f8838295084cb8a2cb001d2",
+  "committedAt": "2026-11-18T03:13:28-08:00",
+  "subject": "Merge pull request #2199 from hemibroscommunity-del/claude/plan-hb-2-bandsize",
+  "files": 8336,
+  "bytes": 962636020,
+  "listingSha256": "2e4dd72369cd0a620c0c1a1566160a912895fcd5696d386187b48e99c61e9e12",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
