@@ -1,7 +1,7 @@
 card: M
 branch: claude/plan-m-2-steps (#2127, 5341); claude/plan-m-3-reads (#2131, 5342)
-prs: #2089 (5340): merged; #2127 (5341), #2131 (5342): ready (sitting 45)
-state: ready
+prs: #2089 (5340), #2127 (5341), #2131 (5342): all merged
+state: done
 
 ## Done
 - Chain A only (lines 1-3, BroTown.jsx, tags 5340-5342); chain B is M2
@@ -13,8 +13,9 @@ state: ready
   8b, frame-pacer 10c to pageAddress() (planner's (a); deploys, batched)
 
 ## Next
-- The gatekeeper's merge of #2127 then #2131 (one batch, one deploy).
-  Then chain A is done (card lines 1-3).
+- Nothing: chain A is done (card lines 1-3, all merged; marked done by
+  the gatekeeper, sitting 46, which lowered legacy 1555 -> 1531 and
+  switch-reader 33 -> 17).
 
 ## Found
 - mp-manualcombat 10a (a computer's click: one arrow on the press) red on
