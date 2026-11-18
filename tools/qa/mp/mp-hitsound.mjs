@@ -40,11 +40,17 @@ const b = await H.launch();
 let fail = 0;
 const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fail++; };
 
-/* What each material's voice is made of, and what it falls back to. */
+/* What each material's voice is made of, and what it falls back to.
+   v2.3.5842: the rock and the snowman as v2.3.3523 made them on purpose (the
+   owner: "Hit made a fleshy sound on the snowman ... Same fleshy sound for the
+   rock monster on every hit"; docs/specs/sounds-2026-10-19.md §6): the rock is
+   the pick with its click over a scrape of GRAVEL (no step-stone thump), the
+   snowman a crunch of SNOW with an icy crack over it (no snowball thud).  This
+   table still held v2.3.3001's, so main was red here since. */
 const WHOLE = {
   flesh: ['monster-hit'], bone: ['sword-hit3'],
   goo: ['monster-hit', 'step-mud'], ember: ['monster-hit', 'cook-success'],
-  stone: ['mine-strike', 'step-stone'], snow: ['snowman-hit', 'step-snow'],
+  stone: ['mine-strike', 'step-gravel'], snow: ['step-snow', 'step-ice'],
   mud: ['step-mud', 'monster-hit'], wet: ['monster-hit', 'fish-on-hook'],
 };
 const TODAY = {
@@ -110,7 +116,7 @@ try {
     'the mummy stays bony: bone is sword-hit3 alone ("Bony is mummy", v2.3.2452)');
   ok(routed.whole.wat.keys.join() === 'monster-hit' && routed.whole.undefined.keys.join() === 'monster-hit',
     'an unknown or absent material is flesh, as before');
-  ok(routed.old.join(' + ') === 'mine-strike + step-stone', `swordHit (the old name) plays the same voice (${routed.old.join(' + ')})`);
+  ok(routed.old.join(' + ') === WHOLE.stone.join(' + '), `swordHit (the old name) plays the same voice (${routed.old.join(' + ')})`);
   for (const [m, key] of Object.entries(TODAY)) {
     const got = routed.outside[m];
     /* a voice made only of manifest samples (the fire goblin's sizzle, the
@@ -221,7 +227,12 @@ try {
   for (const r of lvl.res) {
     ok(r.peak < 0.95, `${r.name}: no clipping at ${r.shot ? 'full, on you' : "the arrow's 0.6"} (peak ${r.peak.toFixed(2)})`);
     if (!r.shot) {
-      ok(r.ratio > 0.7 && r.ratio < 1.45, `${r.name}: level-matched to sword-hit3 (${r.ratio.toFixed(2)}x: plain ${r.plain.toFixed(2)}, by ear ${r.ear.toFixed(2)})`);
+      /* v2.3.5842: the rock and the snowman sit a little under the others on
+         purpose since v2.3.3523 (sounds-2026-10-19.md §6: the snowman's "~0.7
+         of a hit", the thump taken out of both): measured on main 0.63-0.70
+         for their A and B, so their floor is 0.6; every other voice keeps 0.7 */
+      const floor = /^(stone|snow) [AB]$/.test(r.name) ? 0.6 : 0.7;
+      ok(r.ratio > floor && r.ratio < 1.45, `${r.name}: level-matched to sword-hit3 (${r.ratio.toFixed(2)}x: plain ${r.plain.toFixed(2)}, by ear ${r.ear.toFixed(2)})`);
     } else {
       /* a ball on you sits at or under a blow: measured 0.55-0.98 of it */
       ok(r.ratio > 0.3 && r.ratio < 1.15, `${r.name}: at or under a blow's level (${r.ratio.toFixed(2)}x sword-hit3 at 0.6: plain ${r.plain.toFixed(2)}, by ear ${r.ear.toFixed(2)})`);

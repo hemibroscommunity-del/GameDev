@@ -1039,6 +1039,29 @@ import { nmlHere } from '@/game/noMansLand.js'; /* v2.3.3253: ...only while you 
 import { shotPlayerTargets, isLiveFighter } from '@/game/sparTargets.js'; /* v2.3.3267: your sparring clones are hit like monsters, locked or not; v2.3.3268: and the players you chose to attack */
 import { act } from '@/game/actions.js';   /* v2.3.5187: the page's requests leave through the action door (card K PR 7) */
 
+/* ═══ v2.3.5905 (card K4 PR 6): A BOW'S RELAY AT ITS RELEASE ═══
+   A bow's arrow is fired nocked at the grip and leaves on the line the aim
+   resolves to at RELEASE (the 110 ms latch below, a frame or more later on a
+   slow phone), while its `player_projectile` relay used to go at fire, with
+   the fire's angle -- and a held aim moves on in between.  Against a worker
+   that holds each claim to its arrow's line (caps.bowPath: server bowshot.js,
+   the live flag `bowpath`, an opt-in) the relay waits on the arrow and goes
+   at release with the line it flies: its launch point and angle.  Every
+   other shot, and a bow against any other worker, relays at fire as before.
+   The watchers' copy then starts on the true line too (gameEvents.js). */
+export function relayShot(S, isStaff, payload) {
+  var arr = S.arrows && S.arrows[S.arrows.length - 1];
+  if (!isStaff && arr && arr.fromGrip && S._serverCaps && S._serverCaps.bowPath) { arr._relayAtRelease = payload; return; }
+  act('player_projectile', payload);
+}
+function releaseRelay(a) {
+  var p = a._relayAtRelease;
+  if (!p) return;
+  a._relayAtRelease = null;
+  p.x = Math.round(a._pathX); p.y = Math.round(a._pathY); p.ang = a.ang;
+  act('player_projectile', p);
+}
+
 /* ═══ v2.3.2217: THE SNOWBALL BURSTS WHERE ITS FLIGHT ENDS ═══
    The thrown ball had no impact at all — it simply stopped existing on the
    frame it arrived (owner asked for the burst, and supplied the sheet).
@@ -1584,6 +1607,7 @@ export function updateArrows(S, deps) {
                 else if (freeAim !== null) { a.ang = freeAim; a._aimAt = null; }
                 a._pathX = P.x + _ox;
                 a._pathY = P.y + _oy;
+                releaseRelay(a);   /* v2.3.5905: the relay held for release goes now, on this line */
                 if (a.volley) a.volley.path = { x: a._pathX, y: a._pathY, ang: a.ang, aimAt: a._aimAt };
               }
             }

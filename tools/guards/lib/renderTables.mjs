@@ -35,7 +35,7 @@
  *     TUNED_WORDS and none in UNTUNED_WORDS (below), else not; the owner's review: the tuned ones leave with the
  *     tables.
  *   - A SYSTEM (from the map: tools/guards/lib/systems.mjs): a counted
- *     table's is read by hand (TABLE_SYSTEM below); any other's is the system
+ *     table's is read by hand (SYSTEM_BY_HAND below; and a tuned constant's); any other's is the system
  *     whose `words` its name holds most; a name with none, the comment
  *     just above it; neither, `render` (the map's home for src/rendering/).
  *     A tie goes to the system first in the map.  A word counts when a word
@@ -154,22 +154,50 @@ function loneValue(node) {
    below.  look: the body, its gear, hats, hair, capes; combat: the weapon
    in the hand, its swing and block, arrows and bolts; skills: the gathering
    and making poses, their stand-ins and nodes; economy: loot on the ground;
-   ui: bars and plates over a figure; townsfolk, preload, render as named. */
-export const TABLE_SYSTEM = Object.freeze({
+   ui: bars and plates over a figure; townsfolk, preload, render as named.
+   v2.3.5345 (the planning session's answer, 2026-11-17): the tuned lone
+   constants' systems are read by hand the same way, in the same table (one
+   SYSTEM_BY_HAND): each leaves into its system's file under
+   src/rendering/tables/ (entityRenderer.js's with tag 5345, effectsRenderer.js's
+   with tag 5346). */
+export const SYSTEM_BY_HAND = Object.freeze({
+  /* the tables */
   GRIP_NUDGE_X: 'combat', NPC_DIRS_8: 'townsfolk', TRAIT_RETRY_LATER_MS: 'look', _TRAIT_RETRY_MS: 'look',
   MIRROR_SCREEN_DIR: 'look', JOG_FOOT_FRAMES: 'look', BODY_DIR_SCALE: 'look', BODY_ROWS: 'look',
   JOG_EW_HAT_TUNE: 'look', STAND_HAT_TUNE: 'look', FULLSET_CROWN: 'look', FULLSET_HEAD_RES: 'look',
   FULLSET_HEAD_SEAT: 'look', _GEAR_SLOTS: 'look', _CAPE_HIDDEN_POSES: 'look', _CAPE_JOG_TILT: 'look',
   _CAPE_JOG_DX: 'look', PREWARM_POSES: 'preload', _REGION_SPR: 'look', SECTORS: 'render',
   GRIP_HOLE_FACINGS: 'combat', GRIP_HOLE_R_BY_FACING: 'combat', REST_ANG: 'combat', NECK_ROWS: 'look',
-  BLOCK_ARM_SHOULDER: 'combat', SOUTH_BLOCK_OFFHAND: 'combat', SOUTH_BLOCK_OFFHAND_BY_TYPE: 'combat',
-  RES_FILL: 'ui', RES_GHOST: 'ui', RES_GHOST_HEX: 'ui',
-  CHOP_INK_KEYS: 'skills', COOK_URL: 'skills', SECTORS8: 'combat', FARM_GEAR: 'skills', FARM_PEER_LAYERS: 'skills',
-  GEAR_STRIP_TWIN: 'skills', DRESSED_ONE_FRAME: 'skills', FIRE_LOG_BAND: 'skills', _STAND_IN_TRAIT_KEYS: 'look',
-  FIRE_GEAR_REG: 'skills', BOW_AIM_SECTORS: 'combat', MAGIC_BOLT_ANCHOR: 'combat', SWORD_FEEL_FLIP: 'combat',
-  NODE_SPRITE_HEIGHT_BASE: 'skills', NODE_SPRITE_ANCHOR_Y: 'skills', NODE_ART_BASE: 'skills', NODE_HPBAR_AT: 'skills',
-  NODE_LABEL_TOP: 'skills', NODE_TIER_TINT: 'skills', LOOT_Z: 'economy', LOOT_BEAMS_BY_RANK: 'economy',
-  BEAM_SLOTS: 'economy', RARE_KINDS: 'economy', HOP_KEYS: 'economy',
+  BLOCK_ARM_SHOULDER: 'combat', SOUTH_BLOCK_OFFHAND: 'combat', SOUTH_BLOCK_OFFHAND_BY_TYPE: 'combat', RES_FILL: 'ui',
+  RES_GHOST: 'ui', RES_GHOST_HEX: 'ui', CHOP_INK_KEYS: 'skills', COOK_URL: 'skills', SECTORS8: 'combat',
+  FARM_GEAR: 'skills', FARM_PEER_LAYERS: 'skills', GEAR_STRIP_TWIN: 'skills', DRESSED_ONE_FRAME: 'skills',
+  FIRE_LOG_BAND: 'skills', _STAND_IN_TRAIT_KEYS: 'look', FIRE_GEAR_REG: 'skills', BOW_AIM_SECTORS: 'combat',
+  MAGIC_BOLT_ANCHOR: 'combat', SWORD_FEEL_FLIP: 'combat', NODE_SPRITE_HEIGHT_BASE: 'skills',
+  NODE_SPRITE_ANCHOR_Y: 'skills', NODE_ART_BASE: 'skills', NODE_HPBAR_AT: 'skills', NODE_LABEL_TOP: 'skills',
+  NODE_TIER_TINT: 'skills', LOOT_Z: 'economy', LOOT_BEAMS_BY_RANK: 'economy', BEAM_SLOTS: 'economy',
+  RARE_KINDS: 'economy', HOP_KEYS: 'economy',
+  /* entityRenderer.js's tuned lone constants (v2.3.5345) */
+  PET_DRAW_K: 'render', THREAT_SKULL_PX: 'ui', NPC_TALK_PX: 'townsfolk', HPBAR_ASPECT: 'ui', HPBAR_IN_X: 'ui',
+  HPBAR_IN_W: 'ui', HPBAR_IN_Y: 'ui', HPBAR_IN_H: 'ui', PEER_HPBAR_Y: 'ui', MONSTER_HPBAR_W: 'ui',
+  PLAYER_HPBAR_W: 'ui', PLAYER_SIZE_MULT: 'look', SOUTH_IDLE_TILT: 'combat', MONSTER_SIZE_MULT: 'monsters',
+  NPC_SPRITE_SCALE: 'townsfolk', NPC_FRAME_FEET_Y: 'townsfolk', NPC_FRAME_TOP_Y: 'townsfolk',
+  NPC_PLATE_DROP_FRAC: 'townsfolk', NPC_WALK_PX_PER_FRAME: 'townsfolk', QUEST_BADGE_R: 'townsfolk',
+  MINE_TRAIT_MUL: 'look', FISH_TRAIT_MUL: 'look', _CAPE_PIVOT_Y: 'look', _CAPE_HOOD_TILT_K: 'look',
+  _CAPE_HOOD_DX_K: 'look', BODY_NECK_FRAC: 'look', BODY_WAIST_FRAC: 'look', PLAYER_HEART_SIZE: 'ui',
+  MONSTER_HEART_SIZE: 'ui', HP_RING_OUTER_R: 'ui', HP_RING_GAP_PX: 'ui', GRIP_HOLE_R: 'combat',
+  SWING_FULL_ARC: 'combat', BODY_CELL_MID: 'look', LOCAL_BODY_SCALE: 'look', PLATE_BORDER_PX: 'ui',
+  PLATE_LEVEL_STROKE_PX: 'ui', PLATE_H_RATIO: 'ui', PLATE_PAD_L_RATIO: 'ui', PLATE_GAP_RATIO: 'ui',
+  PLATE_PAD_R_RATIO: 'ui', PLATE_BADGE_TYPE_RATIO: 'ui', RES_BAR_W: 'ui', RES_BAR_H: 'ui', RES_MP_Y: 'ui',
+  RES_BLOCK_W: 'ui', RES_SPENT_GAP: 'ui',
+  /* effectsRenderer.js's tuned lone constants (v2.3.5346) */
+  PRINT_W: 'render', STANDIN_REF_BODY_H: 'skills', CHOP_STANDIN_H: 'skills', COOK_STANDIN_H: 'skills',
+  COOK_PAN_DX: 'skills', CHOP_OFFSET: 'skills', FIRE_STANDIN_H: 'skills', FIRE_FEET_ROW: 'skills',
+  DMG_LIFT: 'combat', JET_LEN_PX: 'combat', SNOWBALL_BURST_H: 'combat', PROP_SLASH_LEN: 'combat',
+  HARD_DOT_R: 'monsters', CAMPFIRE_HPBAR_GAP: 'skills', DMG_STROKE_PX: 'combat', DMG_WORD_PAD: 'combat',
+  EMOTE_POP_PX: 'social', LOOT_SCALE: 'economy', DROP_GROW: 'economy', BEAM_H_PX: 'economy', BEAM_W_PX: 'economy',
+  BEAM_TEX_W: 'economy', BEAM_TEX_H: 'economy', BEAM_HALO_W: 'economy', MOTE_PX: 'economy', POP_H: 'economy',
+  POP_BOUNCE_H: 'economy', PILE_R: 'economy', SMITH_ANVIL_W: 'skills', SMITH_ANVIL_X: 'skills',
+  SMITH_ANVIL_FOOT: 'skills', SMITH_FACE_Y: 'skills',
 });
 
 /* the system from the map's words (a table not read by hand above) */
@@ -270,7 +298,7 @@ export function scanText(src, file) {
   for (const d of decls) {
     const base = { name: d.name, file, line: d.line, lines: d.endLine - d.line + 1, exported: d.exported };
     if (tables.has(d.name)) {
-      const row = { ...base, system: Object.hasOwn(TABLE_SYSTEM, d.name) ? TABLE_SYSTEM[d.name] : systemOf(d.name, d.comment), byHand: Object.hasOwn(TABLE_SYSTEM, d.name), names: uses.get(d.name) };
+      const row = { ...base, system: Object.hasOwn(SYSTEM_BY_HAND, d.name) ? SYSTEM_BY_HAND[d.name] : systemOf(d.name, d.comment), byHand: Object.hasOwn(SYSTEM_BY_HAND, d.name), names: uses.get(d.name) };
       if (written.has(d.name)) rows.written.push({ ...row, how: written.get(d.name) });
       else if (handed.has(d.name)) rows.handed.push({ ...row, how: handed.get(d.name) });
       else rows.tables.push(row);
@@ -282,7 +310,7 @@ export function scanText(src, file) {
       rows.frozen.push({ ...base, system: systemOf(d.name, d.comment) });
       continue;
     }
-    if (d.kind === 'const' && loneValue(d.init)) rows.lone.push({ ...base, system: systemOf(d.name, d.comment), tuned: tunedName(d.name) });
+    if (d.kind === 'const' && loneValue(d.init)) rows.lone.push({ ...base, system: Object.hasOwn(SYSTEM_BY_HAND, d.name) ? SYSTEM_BY_HAND[d.name] : systemOf(d.name, d.comment), byHand: Object.hasOwn(SYSTEM_BY_HAND, d.name), tuned: tunedName(d.name) });
   }
   return rows;
 }
