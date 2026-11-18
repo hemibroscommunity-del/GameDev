@@ -1,6 +1,6 @@
 card: WD
-branch: claude/plan-wd-2-guard (one PR a branch, claude/plan-wd-*)
-prs: #2171 (6140) census: working; PR 2 (6141) guard: working (draft)
+branch: claude/plan-wd-3-spec (one PR a branch, claude/plan-wd-*)
+prs: #2171 (6140) census, #2179 (6141) guard, PR 3 (6142) spec: drafts, CI pending
 state: working
 
 ## Done
@@ -10,9 +10,13 @@ state: working
   Totals: 7486 player-facing (2164 in a table, 4941 in place on the page,
   381 on the worker); 2990 of them `?`; 3110 developer-only apart.
 
+- PR 2 (6141) #2179: tools/guards/player-words.test.mjs, lines 4941 / 381;
+  the break proofs fail as they should.
+- PR 3 (6142): docs/specs/player-words.md, the table's shape and the order
+  of moves: all 446 screens named, in waves W0 to W6 and "stays".
+
 ## Next
-- PR 2 (6141): tools/guards/player-words.test.mjs, lines 4941 / 381; the
-  break proofs fail as they should. Then PR 3 (6142), the spec.
+- Each PR marked ready when its `test` is green; then state: ready.
 
 ## Found
 - "Wheel" a player may read: one row, `?`, src/ui/BroTown.jsx:9045 (the
