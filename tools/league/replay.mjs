@@ -25,7 +25,8 @@
  * plan's hits, the settle) plus what the person took in the recording.  Every
  * later message moves by the same wait, so the person's rhythm is kept.
  * Nothing else is changed: the places, the ids, the fingerprints, the grades
- * are the recording's. */
+ * are the recording's.  And the page's keep-alive (`track`, `aw: 0`, every
+ * 15 s) is said for it: the recording keeps only what a detector reads. */
 import { readFileSync } from 'node:fs';
 import { seededClock } from '../../server/test/testroom.mjs';
 import * as B from '../../server/test/claimbots.mjs';
@@ -35,10 +36,43 @@ export const SPEEDS = [60, 30, 20, 4];
 const PID = 'bp_league_trace';
 const PLAN_LEAD = 90, PLAN_SETTLE = 220, SWING = 650;   /* gathering.js HONEST_CYCLE.LEAD_MS, .SETTLE_MS; the plan's swing (claimbots.mjs) */
 const STARTS = new Set(['extraction_start']);
+const TRACK_MS = 15000;
 const STRIKES = new Set(['node_strike', 'cook_request']);
 const seedOf = (s) => { let h = 2166136261; for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619); return h >>> 0; };
 
-export function loadTrace(path) { return JSON.parse(readFileSync(path, 'utf8')); }
+/* A trace on file keeps each move as what changed from the move before it
+   (`mv`): a page's move carries some fifteen fields that rarely change.
+   packTrace writes that form; unpackTrace gives every message back whole,
+   exactly as it was sent. */
+export function packTrace(trace) {
+  let prev = null;
+  const events = trace.events.map((e) => {
+    if (e.m.type !== 'move') return e;
+    const mv = {};
+    for (const k of Object.keys(e.m)) if (!prev || JSON.stringify(prev[k]) !== JSON.stringify(e.m[k])) mv[k] = e.m[k];
+    for (const k of Object.keys(prev || {})) if (!(k in e.m)) mv[k] = { $gone: 1 };
+    prev = e.m;
+    const out = { t: e.t, mv };
+    if ('after' in e) out.after = e.after;
+    return out;
+  });
+  return { ...trace, v: 2, events };
+}
+export function unpackTrace(trace) {
+  if (trace.v !== 2) return trace;
+  let prev = null;
+  const events = trace.events.map((e) => {
+    if (!e.mv) return e;
+    const m = { ...(prev || {}) };
+    for (const [k, v] of Object.entries(e.mv)) { if (v && typeof v === 'object' && v.$gone) delete m[k]; else m[k] = v; }
+    prev = m;
+    const out = { t: e.t, m };
+    if ('after' in e) out.after = e.after;
+    return out;
+  });
+  return { ...trace, v: 1, events };
+}
+export function loadTrace(path) { return unpackTrace(JSON.parse(readFileSync(path, 'utf8'))); }
 
 /** RUNG 4 AS A BOT: one person's recording played `n` times over in one
  *  account, the way a farm would use it.  Between two plays the bot walks
@@ -85,11 +119,21 @@ export async function replayTrace(trace, { fps = 60, deploy = false, seed = '' }
     if (S.heal) W.heal = true;
     const evs = trace.events.filter((e) => e.m && e.m.type !== 'join');
     const half = Math.floor(evs.length / 2);
-    let offset = 0, startAt = null, mark = 0, sent = 0;
+    let offset = 0, startAt = null, mark = 0, sent = 0, nextTrack = TRACK_MS;
     for (let i = 0; i < evs.length; i++) {
       const e = evs[i];
       if (deploy && i === half) { await W.deploy(() => ({ ...last })); }
       let due = e.t + offset;
+      /* the page's own keep-alive: a person at the page sends `track` with
+         `aw: 0` (index.js: the worker's AFK sweep, tick.js 4006, reads it);
+         the recording keeps only what a detector reads, so the replay says
+         it as the page did, every TRACK_MS */
+      while (nextTrack <= due) {
+        const tt = Math.ceil(nextTrack / frame - 1e-9) * frame;
+        if (tt > at()) await W.run(tt - at());
+        await W.deliver(PID, { type: 'track', data: { aw: 0 } });
+        nextTrack += TRACK_MS;
+      }
       if (STRIKES.has(e.m.type) && typeof e.after === 'number' && startAt != null) {
         const ws = W.ws[PID];
         const plan = ws.sent.slice(mark).filter((m) => m.type === 'gather_hits').pop();
@@ -102,7 +146,7 @@ export async function replayTrace(trace, { fps = 60, deploy = false, seed = '' }
       const msg = e.m;
       if (STARTS.has(msg.type)) { mark = W.ws[PID] ? W.ws[PID].sent.length : 0; }
       const ok = await W.deliver(PID, msg);
-      if (!ok) { refusals.push('not delivered: ' + msg.type); continue; }
+      if (!ok) { const c = W.ws[PID] && W.ws[PID].closed; refusals.push('not delivered: ' + msg.type + (c ? ' (closed ' + c.code + ' ' + c.why + ' at ' + i + ')' : '')); continue; }
       sent++;
       if (STARTS.has(msg.type)) startAt = at();
       if (msg.type === 'move') {

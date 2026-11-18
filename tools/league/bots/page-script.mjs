@@ -28,6 +28,7 @@
  * A tool, never a phone test: it asserts nothing (run.mjs never runs it). */
 import { writeFileSync } from 'node:fs';
 import * as H from '../../qa/mp/harness.mjs';
+import { packTrace } from '../replay.mjs';   /* the file's form: a move as what changed */
 
 const arg = (k, d) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : d; };
 const HARVESTS = Number(arg('--harvests', 6));
@@ -50,6 +51,24 @@ function record(P) {
 }
 const flat = (p) => { try { const v = JSON.parse(p); return Array.isArray(v) ? v : [v]; } catch { return []; } };
 
+/* A move the same as the one before it (a page standing still repeats its
+   place every frame) says nothing a detector or the worker reads: the ring
+   keeps only a place that moved (botsig.js _sigOnMove), the budget spends
+   nothing, and the AFK clock ignores it (index.js moveSig).  Kept: one a
+   second, so the trace's own clock still shows the stand. */
+export function thinRepeats(evs) {
+  let lastKey = null, lastT = -1e9;
+  const keep = evs.filter((e) => {
+    if (e.m.type !== 'move') { lastKey = null; return true; }
+    const k = JSON.stringify(e.m);
+    if (k === lastKey && e.t - lastT < 1000) return false;
+    lastKey = k; lastT = e.t; return true;
+  });
+  evs.length = 0;
+  evs.push(...keep);
+  return evs;
+}
+
 /* frames into a trace: the kept messages in order, times from the first;
    each strike's `after` = its time less the start's and the plan's
    (gathering.js HONEST_CYCLE: 90 ms lead, a 650 ms swing a hit after the
@@ -68,6 +87,7 @@ function toTrace(name, what, R, start) {
       st = null;
     }
   }
+  thinRepeats(evs);
   const first = evs.length ? evs[0].t : 0;
   for (const e of evs) e.t -= first;
   return { v: 1, name, what, kind: 'harvest', recorded: new Date().toISOString().slice(0, 10), by: 'tools/league/bots/page-script.mjs', start, events: evs };
@@ -137,7 +157,7 @@ async function harvestOnce(P, mode, used, rnd) {
     await P.page.waitForTimeout(Math.round(300 + rnd() * 900));
   }
   await P.page.keyboard.press('e');
-  if ((await waitStatus(P, (s) => s === 'ready' || s == null)) !== 'ready') return true;
+  if ((await waitStatus(P, (s) => s === 'ready' || s == null)) !== 'ready') return false;   /* no window: not a harvest (the next vein) */
   if (mode === 'human') await P.page.waitForTimeout(Math.round(150 + rnd() * 600));
   const at = await worldPoint(P, mode === 'bot' ? -70 : -50 - rnd() * 60, mode === 'bot' ? -30 : -10 - rnd() * 40);
   await P.page.mouse.move(at.x, at.y);
@@ -190,7 +210,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       if (ONLY && ONLY !== mode) continue;
       const r = await play(browser, { ws, web }, mode, name);
       const tr = toTrace(file.replace('.json', ''), what, r.R, r.start);
-      writeFileSync(new URL(file, OUT), JSON.stringify(tr) + '\n');
+      writeFileSync(new URL(file, OUT), JSON.stringify(packTrace(tr)) + '\n');
       console.log(`${mode}: ${r.done} harvests, ${tr.events.length} messages kept -> traces/${file}; the live worker flagged: ${r.liveFlags.length ? JSON.stringify(r.liveFlags.map((f) => f.lastFlag || f.kind || f)) : 'nothing'}`);
     }
   } catch (e) { console.error(e); code = 1; }
