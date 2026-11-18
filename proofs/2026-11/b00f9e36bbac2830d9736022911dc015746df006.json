@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "b00f9e36bbac2830d9736022911dc015746df006",
+  "tree": "b29fa9b8d77103ebbcfb714372f40cdc3e8f3289",
+  "committedAt": "2026-11-18T08:39:35-08:00",
+  "subject": "Merge pull request #2218 from hemibroscommunity-del/claude/plan-wd2-7-codex",
+  "files": 8356,
+  "bytes": 962880612,
+  "listingSha256": "e1b17d4d4844d47d8f12179e254ecba608b85f6acf351de26eadd20ebb26edca",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

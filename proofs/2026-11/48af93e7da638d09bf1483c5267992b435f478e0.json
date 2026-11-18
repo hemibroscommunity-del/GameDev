@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "48af93e7da638d09bf1483c5267992b435f478e0",
+  "tree": "0af21bafd6ce26eb29626ca0c5c221e05d5d4804",
+  "committedAt": "2026-11-18T08:39:54-08:00",
+  "subject": "Merge pull request #2220 from hemibroscommunity-del/claude/plan-wd2-9-smithy",
+  "files": 8358,
+  "bytes": 962893090,
+  "listingSha256": "75ce4a28e77494af7615c62674f1f5f1739797b2a4b4805cfbffdfbcd35a7a9b",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
