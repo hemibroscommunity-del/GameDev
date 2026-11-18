@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "7231467817f0aa7b228f60478190f9b1e79d53d4",
+  "tree": "6c0f4f1bac2077edf70cd057ad7f1b07c945ae3a",
+  "committedAt": "2026-11-17T16:58:03-08:00",
+  "subject": "Merge pull request #2108 from hemibroscommunity-del/claude/plan-o2-profile-runs",
+  "files": 8202,
+  "bytes": 960706794,
+  "listingSha256": "487872e35296fe3979fa45442dc3d644deb8ece888c3dcfb09e4091a23fb242e",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

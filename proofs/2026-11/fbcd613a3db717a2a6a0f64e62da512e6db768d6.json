@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "fbcd613a3db717a2a6a0f64e62da512e6db768d6",
+  "tree": "a59a77c7d66af7b5d2ba558d672f5e9ed41b5d17",
+  "committedAt": "2026-11-17T17:36:24-08:00",
+  "subject": "Merge pull request #2103 from hemibroscommunity-del/claude/plan-k2-joinguard",
+  "files": 8218,
+  "bytes": 961076680,
+  "listingSha256": "ffba13550405460cd26b3437a03f2eaf9bd2999e71d4522b726a7147389ab314",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

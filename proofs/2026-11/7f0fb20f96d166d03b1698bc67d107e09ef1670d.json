@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "7f0fb20f96d166d03b1698bc67d107e09ef1670d",
+  "tree": "e8523a526582aa4a731c1070f3c43187593f1a4f",
+  "committedAt": "2026-11-17T17:36:32-08:00",
+  "subject": "Merge pull request #2105 from hemibroscommunity-del/claude/plan-k4-1-harvestgrade",
+  "files": 8222,
+  "bytes": 961108610,
+  "listingSha256": "5ccd4f040e88658a5e30f1cf8bfb6725a1ba3fc6dbd040451568aa5dd2030643",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
