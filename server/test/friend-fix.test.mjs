@@ -23,6 +23,8 @@
  *      ones let go;
  *   4. `friendfix: false`: as before (1 half-accepts, 2 does nothing, 3 is
  *      refused).
+ *   (Z44's review) 1b. the accepter's own list full answers `own-full`;
+ *   3b, 3c. a request I sent a month ago holds no slot and no repeat.
  *
  * Red on main before this change: checks 1, 2 and 3 fail.
  */
@@ -103,11 +105,47 @@ async function staleCeiling(flags) {
   check('3. 50 requests a month old: a new one is let in, the old ones let go', r.got && r.left === 1 && r.err.length === 0, r);
 }
 
+/* ── 1b, 3b, 3c (Z44's review): the accepter's own list full; the sender's
+   own request run out ── */
+async function ownFull(flags) {
+  const R = await three(flags);
+  await R.send(R.ws.b, 'friend_request', { target: A, name: 'A' });   /* B asks A */
+  const da = await R.room._friendsDoc(A);
+  fill(da, FRIENDS.LIST_MAX, 'bp_rvfill_');                            /* then A's own list fills */
+  await R.room._friendsPut(A, da);
+  R.ws.a.sent.length = 0;
+  await R.send(R.ws.a, 'friend_accept', { from: B });
+  return R.ws.a.sent.filter((m) => m.type === 'friend_error').map((m) => m.payload.reason);
+}
+async function staleOut(flags, many) {
+  const R = await three(flags);
+  const da = await R.room._friendsDoc(A);
+  const old = Date.now() - 31 * 86400000;
+  if (many) for (let i = 0; i < FRIENDS.REQ_OUT_MAX; i++) da.reqOut['bp_rvout_' + i] = { name: 'O' + i, at: old };
+  else da.reqOut[B] = { name: 'B', at: old };                        /* B's copy already let go (dropStale) */
+  await R.room._friendsPut(A, da);
+  await settleN(2);
+  R.ws.a.sent.length = 0;
+  await R.send(R.ws.a, 'friend_request', { target: B, name: 'B' });
+  const db = await R.room._friendsDoc(B), da2 = await R.room._friendsDoc(A);
+  return { got: !!db.reqIn[A], out: Object.keys(da2.reqOut).length, err: R.ws.a.sent.filter((m) => m.type === 'friend_error').map((m) => m.payload.reason) };
+}
+{
+  const r = await ownFull(null);
+  check('1b. an accept with the accepter\'s OWN list full says so (own-full), not the other\'s', r[0] === 'own-full', r);
+  const s = await staleOut(null, false);
+  check('3b. a request of mine a month old, its copy gone from them: I can ask again', s.got && s.out === 1 && s.err.length === 0, s);
+  const m = await staleOut(null, true);
+  check('3c. 25 requests of mine a month old hold no slot: a new one goes, the old let go', m.got && m.out === 1 && m.err.length === 0, m);
+}
+
 /* ── 4. the kill switch ── */
 {
   const a = await acceptFull({ friendfix: false });
   const o = await oneSided({ friendfix: false });
   const s = await staleCeiling({ friendfix: false });
+  const so = await staleOut({ friendfix: false }, false);
+  check('4b. `friendfix: false`: my run-out request still blocks a repeat, as before', !so.got, so);
   check('4. `friendfix: false`: as before (a half accept, no remove, the ceiling full)', a.aHasB && !a.bHasA && o.aStillHasB && !s.got && s.err[0] === 'target-full', { a, o, s });
 }
 
