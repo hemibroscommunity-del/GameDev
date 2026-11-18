@@ -21,7 +21,7 @@ committed) and its numbers are quoted.
 | `hitsound` | 6 red | 6 red | the TEST's (stale table) | 5842 |
 | `comeback` | 1 red | 1, 5 red | the TEST's (wall clock; a race) | 5841 |
 | `race` | 1 red | 1 red | the TEST's (stale cells) | 5843 |
-| `ownersounds` | 3 red | 3, 9b red | the TEST's (regen; the chat gap; one tap) | 5844 |
+| `ownersounds` | 3 red | 3, 9b red | the TEST's (regen; the chat gap and clock; one tap; two calls) | 5844 |
 | `bowprops` | H red | H red | the TEST's (the view is wider) | 5845 |
 | `desklunge` | 4 red | green | the TEST's (the sea; wall clock) | 5846 |
 | `itemdrop` | 5b red | (J2's runs) | a GAME question (J2's) | Needs |
@@ -65,7 +65,7 @@ as the player's own figure on the player's own jog, whose sheets have
 says which (`__btNpcSprites` `live`, `pose`). Fix: drawn live, his jog's
 cells (at least four, whole numbers); his photograph, the old rule.
 
-### `ownersounds` 3, 9b and 9a
+### `ownersounds` 3, 9b, 9a and 1a
 
 - 3 (both rounds: no cue at all on the Quick Eat tap). Read at the tap:
   `{"hp":250,"max":250,"view":null}`, the element under the finger no
@@ -76,8 +76,16 @@ cells (at least four, whole numbers); his photograph, the old rule.
 - 9b (round 2): "0 lines popped up". Since v2.3.4040 one idle line is
   said town-wide every 20 s (`townChatter.js idleChatMay`, `S._idleChatAt`);
   the test zeroed every townsperson's `chatTimer` only, so a line said in
-  the last 20 s (Ace's, just before in 9a) held all back, by run. Fix: the
-  gap opened too (`S._idleChatAt = null`).
+  the last 20 s (Ace's, just before in 9a) held all back, by run. And a
+  line is said only within 350 px of you (`IDLE_REACH`), where only Ace
+  stood (the rest 880 px and more), who walks off; and the townsfolk's
+  clocks run by frames (Ace's ran 2.4 s in 12.7 s of wall time), so the
+  test's 1.5 s window could hold no turn of his (TRAPS §200). Fix: the gap
+  opened (`S._idleChatAt = null`), the player beside Ace, and a wait until
+  a line has popped up (8 s at most), the hums counted over all of it.
+- 1a (red 1 of 3 runs of the fixed file): "a fourth on its heels" grunted.
+  The third and fourth blows were two page calls, which a loaded box set
+  more than `HURT_GAP_MS` (700 ms) apart. Fix: both in one page call.
 - 9a (red 1 of 2 runs of the fixed file, a helper session's): "a tap on
   Ace (no tap)". The test hopped beside him and made one tap by hand; a
   frame drawn between a touch's start and end makes a tap a hold on this
