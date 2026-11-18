@@ -76,7 +76,7 @@ const rand = (a, b) => a + Math.random() * (b - a);
 
 async function loadRoom(n) {
   const room = new GameRoom(mockState(), mockEnv);
-  if (SHORT) room._liveFlags = { wheel5x: false };
+  room._liveFlags = SHORT ? { wheel5x: false, guestshare: false } : { guestshare: false };   /* v2.3.5729: its bots join as keyless guests, so `guestshare` (seathold.js) is off here: a guest may hold only half the places */
   let tickFn = null;
   const realSetInterval = globalThis.setInterval;
   globalThis.setInterval = (fn, ms) => {
