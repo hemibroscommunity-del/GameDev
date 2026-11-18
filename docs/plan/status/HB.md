@@ -1,6 +1,6 @@
 card: HB
-branch: claude/plan-hb-2-bandsize
-prs: #2188 (6240, the map): ready; #2199 (6241, the band's geometry): draft
+branch: claude/plan-hb-3-reportmem
+prs: #2188 (6240, the map): merged; #2199 (6241, the band's geometry): ready; #? (6242, the report's memory read): draft
 state: working
 
 ## Done
@@ -11,9 +11,11 @@ state: working
 
 ## Next
 
-- PR 2 (6241): open as a draft, ready when green.  Then PR 3: the World
-  map's labels measured each redraw (loop > draw > label > measureText,
-  108.1 ms O2, 151.5 here).
+- PR 3 (6242): the field report reads the chip's total alone
+  (pixiApp.js __btGpuMb).  Then the next HB family by size.
+- Measured, not opened: the World map's names' widths cached and its
+  boxes kept (branch claude/plan-hb-3-maplabels, local): the longest
+  hold is the first draw's cold measuring, the redraws are drawing.
 
 ## Found
 
@@ -27,5 +29,10 @@ state: working
   main read 38.8 (fail) and 38.3, this branch 38.5 and 38.2.
 
 ## Needs
+
+- The pacer's memory count (report.js memCount) still builds __btGpuTex's
+  whole table every 5 s; server/test/frame-pacer.test.mjs 23c holds its
+  words.  May 23c's regex accept the total alone (gpuMb())?  Asked the
+  planning session.
 
 - Nothing yet.

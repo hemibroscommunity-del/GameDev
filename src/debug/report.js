@@ -96,7 +96,9 @@ import { PACE_BREAK_MS, lateOver, useMemCount } from '../game/framePacer.js';   
    tablet (deviceProfile.js: no fine pointer): a computer's screen-sized
    pictures are no fault (the planner's, 2026-11-17). ── */
 /* v2.3.6242: the chip's MB, by pixiApp.js __btGpuMb (the same sum as __btGpuTex().mb, without its table of every
-   texture: 20 to 52 ms on budget-android, docs/plan/census/HB-holds.md row 8); __btGpuTex where it is missing */
+   texture: 20 to 52 ms on budget-android, docs/plan/census/HB-holds.md row 8); __btGpuTex where it is missing.
+   The report's own read (buildReport) only: the pacer's count (memCount above) keeps its read, which
+   frame-pacer.test 23c holds to its words (card HB asked the planning session) */
 function gpuMb() {
   if (typeof window === 'undefined') return null;
   if (window.__btGpuMb) return window.__btGpuMb();
@@ -105,7 +107,7 @@ function gpuMb() {
 function memCount() {
   if (typeof window === 'undefined') return null;
   const t = window.__btTex && window.__btTex();
-  const g = fineInput() ? null : gpuMb();   /* v2.3.6242: the total alone (pixiApp.js __btGpuMb) */
+  const g = fineInput() ? null : (window.__btGpuTex && window.__btGpuTex());
   const d = window.BT_AUDIO && window.BT_AUDIO.decodedMB && window.BT_AUDIO.decodedMB();
   return [Number(t && t.mb) || 0, g ? Number(g.mb) || 0 : null, Number(d && d.mb) || 0];
 }
