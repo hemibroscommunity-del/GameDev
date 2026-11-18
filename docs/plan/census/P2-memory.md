@@ -75,10 +75,16 @@ lowers the line its saving lands in by three runs' highest:
 1. **5981, PR 2**: the tee's stand and jog sheets not sent to the chip where
    a phone draws them from the numbers (row 5, 1.6 MB of `gpu`). Rows 1 and 2
    came out of PR 2's reading as a question and a Found (below).
-2. **5982 on**: the monsters' goo and fire atlas on the chip only (row 10,
-   1.7 MB of `canvases`); `props-parts` with the retired town's scenery (row
-   9, 1.1 MB of `artCache`); row 1 if the planning session says yes; the
-   tee's other poses as numbers (row 5's 3.4 MB) if a look family is wanted.
+2. **5982, PR 3**: the monsters' goo and fire atlas kept as images of
+   themselves (`keepAsImage`, row 10, 1.7 MB of `canvases`).
+3. **5983, PR 4**: `props-parts` with the retired town's scenery (row 9,
+   1.1 MB of `artCache`).
+4. Then the world map's two canvases (`wheelMinimap.js`, 1.6 + 1.6 MB), and
+   the tee's other poses as numbers (row 5's 3.4 MB) if a look family is
+   wanted. Row 1 (`?lookidle`, the owner's yes) is parked: its re-make is on
+   the page in a frame (38-40 ms here, the line 12); the road is a worker
+   re-make started by an activity-start hook in `BroTown.jsx` and
+   `entityRenderer.js`, after cards M and M2.
 
 Below 1 MB a row is not worth a PR's paid checks (card P's rule).
 
@@ -112,6 +118,24 @@ Below 1 MB a row is not worth a PR's paid checks (card P's rule).
   upload. PR 2 takes the 1.6 MB (`?teechip=0`); the 3.4 MB needs the tee's
   other poses baked as numbers (`tools/art/shirt-bake.mjs`), a look family
   (`mp-ghostaudit`).
+
+## Card V2's memory Found, ranked with the rest (the planning session, 2026-11-18)
+
+- **§253, the canvas makers** (`tools/guards/canvas-pictures.test.mjs`: 49
+  textures made from a canvas name no helper, census 50 -> 49 with 5982).
+  By the probe's canvases at the fight (row 10), the ones holding MB:
+  the world map's overview and lands (`systems/wheelMinimap.js`, 2 sites:
+  1.6 MB in the page and 1.6 on the chip; over 1 MB: a backlog PR once its
+  redraws are read, since a canvas drawn into again takes neither helper);
+  the soft blades (`weaponSprites.js` `softBake`, three 256 x 256: 0.75),
+  the hot arrow (`hotArrowFx.js`, 0.6), the clouds (`worldFxTextures.js`,
+  three 256 x 160: 0.47), the campfire (`campfireFx.js`, 0.2): each under
+  1 MB, not worth a PR's paid checks (card P's rule). `effectsRenderer.js`
+  (8 sites) and `entityRenderer.js` (5): card M2's, Found.
+- **§341, the 17 loops of `.destroy(false)`**: each lets its Textures go and
+  keeps their shared picture on purpose; the trap is the page's thread (a
+  listener list rebuilt a texture at a time), not MB held. No MB at the
+  fight to rank; left to the guard's census (`traps-phone-memory.test.mjs`).
 
 ## Not this card's (Found)
 

@@ -250,6 +250,7 @@ const FORMS = {
   'shieldaim': 'mouse',
   'shieldretry': '0',
   'shirtworker': '0|off|false',
+  'shotimage': '0',
   'skillsreset': '0',
   'skulldoor': '0',
   'slimesplat': '*',
