@@ -1,34 +1,33 @@
 card: Z
-branch: claude/plan-z-sitting-41
-prs: #2086 (this PR), tag 5679, the last line of sitting 41's list (ready)
+branch: claude/plan-z-sitting-43
+prs: #2097 (this PR), tag 5032, line 8 of sitting 43's list (ready)
 state: ready
 
 ## Done
-- `census/review-z41.md`. Tick: the phase line 4 -> 3 (L's #2052,
-  merged at 40). SEC's status written `done` (its tags all used).
+- `census/review-z43.md`. #2093's ticks carried (5.3b, phase line 3 -> 0,
+  L done); 2.3, 4.3, 10.5 ticked (O and R done; O `done`). Blocks for
+  J3, O2, K3, K4, V3, V4, V5, P2, CS; `nextBlock` 6020. No Z block.
 ## The list: merge in this order, each "Create a merge commit"
-1 U2 #2070 (5780, the card and its tag block) · 2 L #2058 (5536,
-`guarddoor`) · 3 L #2065 (5537, `zonedoor`) · 4 L #2067 (5538,
-`fightdoor`) · 5 K2 #2068 (5724, `relaytyped`) · 6 Z (this PR). All on
-`main`, one base at every step (heads and trees in
-`census/review-z41.md`); the worker deploys once. With L's three, card
-L is done and card M chain A's PR 1 (5340) may open.
+1 RV #2072 (5800) · 2 RV #2083 (5801, `mkttier`, `mktheal`; PRIORITY) ·
+3 RV #2091 (5802, `risekeep`) · 4 RV #2094 (5803, `dyingkeep`) · 5 K2
+#2092 (5729, `guestshare`) · 6 T2 #2090 (5743) · 7 U2 #2095 (5783) · 8 Z
+#2097 (this PR) · 9 O2 #2098 (5860) · 10 K3 #2099 (5880). On `main`
+fcd1ae92, one base at every step (heads and trees in
+`census/review-z43.md`). 2 to 5 change `server/`: each deploys the
+worker; merge them one after another.
 ## Held / Stalled
-- None held at review; none stalled. To 42: U2 #2074 (adds
-  `status/U2.md`, as #2070 does: merges `main` after it), RV #2072 (its
-  tag-blocks row meets #2070's and #2071's: merges `main` after them),
-  K2 #2073 (`bowshot` ON, and `cookstart` ON coming; on #2068; at the
-  close, not reviewed); T2 #2071 (READY; meets #2070 in tag-blocks:
-  merges `main` after it) and #2075 (on #2071); V2 #2076-#2080 (came at
-  22:01; #2076's tag-blocks row meets #2070's).
+- None held: #2091's reset finding was decided (below); #2092's F1, F2
+  mended at 336c238b. V2's session inactive (its card's PRs all merged).
 ## Found
-- Sitting 40's (a)-(n) carried, (e) ticked here; new (o) #2068's
-  `relay-bytes` only with `relaytyped` off, (p) #2065's `duel-zone` 226,
-  (q) precheck's 5-minute suite limit: `census/review-z41.md`.
+- Sitting 41's (a)-(q), 42's (r)-(t) carried. New: (u) #2092's lows kept
+  on purpose (junk sockets count as taken; `account.js` stays /56, SEC's
+  file); (v) #2094's nits; (w) U2's row 25 break proof needs a browser.
 ## Needs
-- The owner: the cost switches (`reqstamp`, `fullsnap`, `xferescrow`,
-  `resetbook`, `seathold`, `freezedevice`), `.github/`, Cloudflare
-  (`EDGE_GUARD`, `EDGE_CACHE`, `BODY_CAP`, a www redirect, a rate-limit
-  rule). `cookstart` ON: the planning session says the owner answered
-  "Go recommended on all"; K2's #2073 carries it to 42. Card L done once
-  #2058, #2065, #2067 land: card M chain A's PR 1 (5340) may open.
+- Decided by the owner (23:40, own words: "turn all of them on then we
+  monitor usage cost"): `reqstamp`, `fullsnap`, `xferescrow`,
+  `resetbook`, `seathold`, `freezedevice` ON, by card CS.
+- Owner's own: `.github/`, Cloudflare; the source of
+  `public/audio/ambient/wind-dunes.mp3`.
+- Decided for the owner while away: a restart does not free the rise
+  chest (#2091; off: `risekeep: false`).
+- #2093 is superseded by this PR (the planning session closes it).

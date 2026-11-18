@@ -454,6 +454,15 @@ async function main() {
     worker = await startWorker(copy.dir, port);
     url = `ws://127.0.0.1:${port}/ws?room=${encodeURIComponent(OPT.room)}&rf=1`;
     pids = await groupPids(worker.proc.pid);
+    /* v2.3.5729: the bots join as keyless guests (bots.mjs), and `guestshare`
+       (seathold.js) gives guests only half the places: off for the bench */
+    {
+      const gr = await fetch(`http://127.0.0.1:${port}/api/admin/flags?room=${encodeURIComponent(OPT.room)}`, {
+        method: 'POST', headers: { Authorization: 'Bearer load-test-' + process.pid, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: 'guestshare', value: false }),
+      }).then((r) => r.json()).catch((e) => ({ ok: false, error: String(e) }));
+      console.log('guestshare: false ->', JSON.stringify(gr));
+    }
     /* v2.3.3732: --path switches the room's glide on (liveops.js flags) */
     if (OPT.path) {
       const fr = await fetch(`http://127.0.0.1:${port}/api/admin/flags?room=${encodeURIComponent(OPT.room)}`, {
