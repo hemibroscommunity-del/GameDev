@@ -576,6 +576,8 @@ export const marketMethods = {
       if (type === 'buy' && p > execPrice) {
         await this._creditPlayer(buyerId, { opId: 'settle:' + maker.id + ':diff', source: 'market', kind: 'gold', payload: { amount: p - execPrice }, note: 'price improvement' });
       }
+      /* v2.3.6025: a re-listed note's first taker goes home before the delete */
+      await this._mktTakerHome(maker);
       await this.state.storage.delete('mkt_order:' + maker.id);
       await this._mktRecordPrice(this._mktIndexKey(order), execPrice);
       return { ok: true, settled: true, matched: true, execPrice, matchedOrder: maker, newOrder: order };
@@ -703,6 +705,9 @@ export const marketMethods = {
     } else if (order.item) {
       await this._creditPlayer(order.playerId, { opId: 'refund:' + order.id, source: 'market', kind: 'weapon', payload: { weapon: order.item }, note: why });
     }
+    /* v2.3.6025: a re-listed note's first taker too, before the caller's
+       delete (the cancel, the expiry sweep) */
+    await this._mktTakerHome(order);
   },
 
   async _mktSweep() {
@@ -748,6 +753,29 @@ export const marketMethods = {
   _mktSettleOff() {
     const f = this._liveFlags;
     return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'mktsettle') && !f.mktsettle);
+  },
+
+  /* ═══ v2.3.6025 (card RV's Found): A RE-LISTED NOTE'S TAKER GOES HOME ═══
+     With `mktsettle: false` (an older worker's rule) the book's rebuild puts
+     a noted maker back on sale, its note unread.  Its cancel, its expiry or
+     a new taker meeting it then deleted the record, and the note with it:
+     the first taker's escrow, taken at the crossing, was named nowhere else
+     and was gone.  Now, before such a delete, the first taker's escrow goes
+     home -- by the heal's own opId (`settle:<id>:back`), so a roll forward
+     that finds the record still there pays it at most once.  Only a whole
+     note this worker reads; only when the maker's escrow went home or was
+     sold under the old rule (never over a stamped leg: the old rule's
+     limit, unchanged).  One credit more, only on this path.
+     KILL SWITCH (lower case): `mktback: false` -- the delete alone, as
+     before. */
+  _mktBackOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'mktback') && !f.mktback);
+  },
+
+  async _mktTakerHome(order) {
+    if (!order || !order.settle || !this._mktBackOn() || !this._mktSettleOk(order.settle)) return;
+    await this._creditPlayer(order.settle.taker, { opId: 'settle:' + order.id + ':back', ...this._mktBackPay(order) });
   },
 
   _mktSettlePlan(order, execPrice, buyerId, sellerId, weapon, label) {
