@@ -55,6 +55,20 @@ const PLACES = (process.env.BT_CF_PLACES || 'town,fight').split(',').filter((p) 
 const SAMPLE_MS = +(process.env.BT_CF_SAMPLE_MS || 6000);
 /* v2.3.6181: how long the page is given to know a step's bots (the wait ends as soon as it does) */
 const KNOW_MS = 240000;
+/* v2.3.6181: a step, or a place's own readings, the page must finish within STEP_CAP_MS.  On this
+   box a dpr-3 page in a crowd can stop answering altogether: its thread waits on Chromium's
+   graphics process (software GL at ~350% of the four processors), and a page.evaluate then never
+   returns -- two helper runs sat 55 minutes and more after the 10-bot step (card M2's "stalls").
+   A step that runs past it is said so as a skip, and the run ends there (TRAPS §200).  The longest
+   step measured that finished: about 8 minutes (240 s to know 30 bots, 170 s of memory reading) */
+const STEP_CAP_MS = 15 * 60000;
+const STALLED = Symbol('stalled');
+function capped(p, ms) {
+  let timer = null;
+  p.catch(() => {});   /* a read left hanging rejects when the page is closed, unheard */
+  return Promise.race([p, new Promise((resolve) => { timer = setTimeout(() => resolve(STALLED), ms); })])
+    .finally(() => clearTimeout(timer));
+}
 const QUERY = process.env.BT_CF_QUERY || '';
 
 /* 30 looks, all different: the creator's catalogs (playerSkins.js SKIN_ /
@@ -209,6 +223,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   P.page.on('console', (m) => { if (/resume-resync thaw away/.test(m.text())) thaws.n++; });
   const out = { query: QUERY, steps: STEPS, rows: [] };
   let stopAlive = false;
+  let stalled = null;   /* v2.3.6181: the step the page stopped answering in (STEP_CAP_MS) */
   let bots = null;
   try {
     await H.enterWorld(P);
@@ -261,8 +276,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
       } else {
         await H.glideTo(P, home.x, home.y).catch(() => null);
       }
-      const base = await sample(`${place}, alone`);
-      base.gpuSettled = ((await settledGpu(P)) || {}).mb;
+      const base = await capped((async () => {
+        const b = await sample(`${place}, alone`);
+        b.gpuSettled = ((await settledGpu(P)) || {}).mb;
+        return b;
+      })(), STEP_CAP_MS);
+      if (base === STALLED) { stalled = { place, bots: 0, at: 'alone' }; break; }
       out.rows.push({ place, bots: 0, mem: base });
       console.log(`    ${place}, alone: GPU ${base.gpu} (settled ${base.gpuSettled}), cache ${base.cache}, canvases ${base.canvasMB}, heap ${base.heapMB}`);
 
@@ -270,104 +289,117 @@ export async function run({ browser, wsPort, webPort, rec }) {
       let have = 0;
       for (const want of STEPS) {
         if (want > have) { bots.add(want - have); have = want; }
-        const t0 = Date.now(), thaws0 = thaws.n;
-        let known = 0;
-        /* v2.3.6181: until the page knows them, up to KNOW_MS, not 60 s of the wall clock (TRAPS §200):
-           a starved page hears its ticks late and rejoins on every long frame (`thaws` above), and on
-           this box the step to 30 bots took the page about 100 s (card RD's readings: 20 known for the
-           whole of the old minute, all 30 at 98 s).  How long, and how many rejoins, go in the row */
-        while (Date.now() - t0 < KNOW_MS) {
-          known = await H.readState(P, (S) => Object.keys(S.others || {}).length);
-          if (known >= Math.floor(want * 0.95)) break;
-          await P.page.waitForTimeout(1000);
-        }
-        const knownInS = Math.round((Date.now() - t0) / 1000), knownThaws = thaws.n - thaws0;
-        /* every look seen and baked, the fighters at their monsters */
-        await P.page.waitForTimeout(place === 'fight' ? 12000 : 6000);
-        /* the window: frames, GL calls and voices; the phone fights too */
-        const glOk = await P.page.evaluate(GL_INSTALL);
-        await P.page.evaluate(({ fight }) => {
-          window.perfTracker && window.perfTracker.reset();
-          if (window.__btVoiceCap) window.__btVoiceCap(true);
-          for (const k in (window.__btCfGl || {})) delete window.__btCfGl[k];
-          window.__btCfGlOn = true;
-          if (fight) {
+        const stepRow = await capped((async () => {
+          const t0 = Date.now(), thaws0 = thaws.n;
+          let known = 0;
+          /* v2.3.6181: until the page knows them, up to KNOW_MS, not 60 s of the wall clock (TRAPS §200):
+             a starved page hears its ticks late and rejoins on every long frame (`thaws` above), and on
+             this box the step to 30 bots took the page about 100 s (card RD's readings: 20 known for the
+             whole of the old minute, all 30 at 98 s).  How long, and how many rejoins, go in the row */
+          while (Date.now() - t0 < KNOW_MS) {
+            known = await H.readState(P, (S) => Object.keys(S.others || {}).length);
+            if (known >= Math.floor(want * 0.95)) break;
+            await P.page.waitForTimeout(1000);
+          }
+          const knownInS = Math.round((Date.now() - t0) / 1000), knownThaws = thaws.n - thaws0;
+          /* every look seen and baked, the fighters at their monsters */
+          await P.page.waitForTimeout(place === 'fight' ? 12000 : 6000);
+          /* the window: frames, GL calls and voices; the phone fights too */
+          const glOk = await P.page.evaluate(GL_INSTALL);
+          await P.page.evaluate(({ fight }) => {
+            window.perfTracker && window.perfTracker.reset();
+            if (window.__btVoiceCap) window.__btVoiceCap(true);
+            for (const k in (window.__btCfGl || {})) delete window.__btCfGl[k];
+            window.__btCfGlOn = true;
+            if (fight) {
+              const S = window._gameState.current;
+              window.__cfAim = setInterval(() => {
+                let m = null, d = Infinity;
+                for (const x of S.monsters || []) {
+                  if (!x || x.alive === false || x.dead) continue;
+                  const dd = Math.hypot(x.x - S.player.x, x.y - S.player.y);
+                  if (dd < d) { d = dd; m = x; }
+                }
+                if (!m || d > 400) { S.autoAttack = false; return; }
+                const ang = Math.atan2(m.y - S.player.y, m.x - S.player.x);
+                S._aimAngle = ang; S._lastAimAngle = ang; S._facingAngle = ang; S._targetFacingAngle = ang;
+                S.autoAttack = true;
+              }, 80);
+            }
+          }, { fight: place === 'fight' });
+          await P.page.waitForTimeout(SAMPLE_MS);
+          const w = await P.page.evaluate(() => {
+            window.__btCfGlOn = false;
+            clearInterval(window.__cfAim);
             const S = window._gameState.current;
-            window.__cfAim = setInterval(() => {
-              let m = null, d = Infinity;
-              for (const x of S.monsters || []) {
-                if (!x || x.alive === false || x.dead) continue;
-                const dd = Math.hypot(x.x - S.player.x, x.y - S.player.y);
-                if (dd < d) { d = dd; m = x; }
-              }
-              if (!m || d > 400) { S.autoAttack = false; return; }
-              const ang = Math.atan2(m.y - S.player.y, m.x - S.player.x);
-              S._aimAngle = ang; S._lastAimAngle = ang; S._facingAngle = ang; S._targetFacingAngle = ang;
-              S.autoAttack = true;
-            }, 80);
-          }
-        }, { fight: place === 'fight' });
-        await P.page.waitForTimeout(SAMPLE_MS);
-        const w = await P.page.evaluate(() => {
-          window.__btCfGlOn = false;
-          clearInterval(window.__cfAim);
-          const S = window._gameState.current;
-          S.autoAttack = false;
-          const a = (window.perfTracker && window.perfTracker.getSamples && window.perfTracker.getSamples()) || [];
-          const frames = a.length || 1;
-          const c = window.__btCfGl || {};
-          const per = (k) => +((c[k] || 0) / frames).toFixed(1);
-          const me = S.player || {};
-          let near = 0;
-          for (const id in (S.others || {})) {
-            const o = S.others[id];
-            if (o && Math.abs(o.x - me.x) < 340 && Math.abs(o.y - me.y) < 700) near++;
-          }
-          /* read by name: the look palette's probe lands with it (PR #1212);
-             before that a row says "no palette" */
-          const lp = window['__btLook' + 'Palette'];
-          const ox = [];
-          for (const id in (S.others || {})) { const o = S.others[id]; if (o) ox.push([Math.round(o.x), Math.round(o.y)]); }
-          return {
-            frames: a.length, work: a.map((s) => s.workMs || 0),
-            gl: { draws: per('draws'), calls: per('all'), bindTexture: per('bindTexture'), useProgram: per('useProgram'),
-              uploads: per('texImage2D') + per('texSubImage2D'), targets: per('bindFramebuffer') },
-            voices: window.__btVoiceCap ? window.__btVoiceCap(false) : null,
-            known: Object.keys(S.others || {}).length, near,
-            farHidden: S._peersFarHidden || 0, crowdHidden: S._peersCrowdHidden || 0,
-            monsters: (S.monsters || []).filter((m) => m && m.alive !== false && !m.dead && Math.hypot(m.x - me.x, m.y - me.y) < 700).length,
-            palette: typeof lp === 'function' ? lp() : null,
-            me: [Math.round(me.x), Math.round(me.y)], others: ox.slice(0, 6),
+            S.autoAttack = false;
+            const a = (window.perfTracker && window.perfTracker.getSamples && window.perfTracker.getSamples()) || [];
+            const frames = a.length || 1;
+            const c = window.__btCfGl || {};
+            const per = (k) => +((c[k] || 0) / frames).toFixed(1);
+            const me = S.player || {};
+            let near = 0;
+            for (const id in (S.others || {})) {
+              const o = S.others[id];
+              if (o && Math.abs(o.x - me.x) < 340 && Math.abs(o.y - me.y) < 700) near++;
+            }
+            /* read by name: the look palette's probe lands with it (PR #1212);
+               before that a row says "no palette" */
+            const lp = window['__btLook' + 'Palette'];
+            const ox = [];
+            for (const id in (S.others || {})) { const o = S.others[id]; if (o) ox.push([Math.round(o.x), Math.round(o.y)]); }
+            return {
+              frames: a.length, work: a.map((s) => s.workMs || 0),
+              gl: { draws: per('draws'), calls: per('all'), bindTexture: per('bindTexture'), useProgram: per('useProgram'),
+                uploads: per('texImage2D') + per('texSubImage2D'), targets: per('bindFramebuffer') },
+              voices: window.__btVoiceCap ? window.__btVoiceCap(false) : null,
+              known: Object.keys(S.others || {}).length, near,
+              farHidden: S._peersFarHidden || 0, crowdHidden: S._peersCrowdHidden || 0,
+              monsters: (S.monsters || []).filter((m) => m && m.alive !== false && !m.dead && Math.hypot(m.x - me.x, m.y - me.y) < 700).length,
+              palette: typeof lp === 'function' ? lp() : null,
+              me: [Math.round(me.x), Math.round(me.y)], others: ox.slice(0, 6),
+            };
+          });
+          if (glOk) await P.page.evaluate(() => window.__btCfGlUninstall && window.__btCfGlUninstall());
+          const mem = await sample(`${place}, ${want} bots`);
+          const sg = await settledGpu(P);
+          mem.gpuSettled = sg ? sg.mb : null;
+          const row = {
+            place, bots: want, known: w.known, knownInS, knownThaws, thawsSoFar: thaws.n, onScreen: w.near, farHidden: w.farHidden, crowdHidden: w.crowdHidden, monstersNear: w.monsters,
+            gpu: mem.gpu, gpuSettled: mem.gpuSettled, gpuByKind: sg ? sg.byKind : null, gpuTop: groupGpu(sg),
+            cache: mem.cache, canvasMB: mem.canvasMB, canvasN: mem.canvasN, decodedMB: mem.decodedMB, heapMB: mem.heapMB, buffersMB: mem.buffersMB,
+            frames: w.frames, workP50: q(w.work, 0.5), workP95: q(w.work, 0.95), gl: w.gl,
+            voices: w.voices ? { starts: w.voices.starts, maxPlaying: w.voices.maxPlaying, maxWindow: w.voices.maxWindow, maxWindowKey: w.voices.maxWindowKey,
+              key: w.voices.maxWindowKeyName, held: w.voices.held, capOn: w.voices.on } : null,
+            palette: w.palette ? { on: w.palette.on, ok: w.palette.ok, rows: w.palette.rows, looks: w.palette.looks, rowsFull: w.palette.rowsFull, drawn: w.palette.drawn } : null,
+            botStates: bots.states(), botDeaths: bots.deaths(), me: w.me, othersAt: w.others,
           };
-        });
-        if (glOk) await P.page.evaluate(() => window.__btCfGlUninstall && window.__btCfGlUninstall());
-        const mem = await sample(`${place}, ${want} bots`);
-        const sg = await settledGpu(P);
-        mem.gpuSettled = sg ? sg.mb : null;
-        const row = {
-          place, bots: want, known: w.known, knownInS, knownThaws, thawsSoFar: thaws.n, onScreen: w.near, farHidden: w.farHidden, crowdHidden: w.crowdHidden, monstersNear: w.monsters,
-          gpu: mem.gpu, gpuSettled: mem.gpuSettled, gpuByKind: sg ? sg.byKind : null, gpuTop: groupGpu(sg),
-          cache: mem.cache, canvasMB: mem.canvasMB, canvasN: mem.canvasN, decodedMB: mem.decodedMB, heapMB: mem.heapMB, buffersMB: mem.buffersMB,
-          frames: w.frames, workP50: q(w.work, 0.5), workP95: q(w.work, 0.95), gl: w.gl,
-          voices: w.voices ? { starts: w.voices.starts, maxPlaying: w.voices.maxPlaying, maxWindow: w.voices.maxWindow, maxWindowKey: w.voices.maxWindowKey,
-            key: w.voices.maxWindowKeyName, held: w.voices.held, capOn: w.voices.on } : null,
-          palette: w.palette ? { on: w.palette.on, ok: w.palette.ok, rows: w.palette.rows, looks: w.palette.looks, rowsFull: w.palette.rowsFull, drawn: w.palette.drawn } : null,
-          botStates: bots.states(), botDeaths: bots.deaths(), me: w.me, othersAt: w.others,
-        };
-        out.rows.push(row);
-        console.log('  crowdfight', JSON.stringify({ ...row, gpuTop: undefined }));
-        console.log('    the chip, biggest:', JSON.stringify(row.gpuTop));
+          out.rows.push(row);
+          console.log('  crowdfight', JSON.stringify({ ...row, gpuTop: undefined }));
+          console.log('    the chip, biggest:', JSON.stringify(row.gpuTop));
+          return row;
+        })(), STEP_CAP_MS);
+        if (stepRow === STALLED) { stalled = { place, bots: want, at: 'step', thaws: thaws.n }; break; }
       }
+      if (stalled) break;
       await bots.stop();
       bots = null;
       /* the page lets the bots go before the next place */
-      for (let t0 = Date.now(); Date.now() - t0 < 30000;) {
-        if ((await H.readState(P, (S) => Object.keys(S.others || {}).length)) === 0) break;
-        await P.page.waitForTimeout(1000);
-      }
+      const let_go = await capped((async () => {
+        for (let t0 = Date.now(); Date.now() - t0 < 30000;) {
+          if ((await H.readState(P, (S) => Object.keys(S.others || {}).length)) === 0) break;
+          await P.page.waitForTimeout(1000);
+        }
+        return true;
+      })(), STEP_CAP_MS);
+      if (let_go === STALLED) { stalled = { place, bots: 0, at: 'letting the bots go' }; break; }
+    }
+    if (stalled) {
+      out.stalled = stalled;
+      console.log(`    STALLED: ${JSON.stringify(stalled)}: the page answered nothing for ${STEP_CAP_MS / 60000} minutes`);
     }
 
-    if (threw.length) {
+    if (threw.length && !stalled) {
       out.threw = threw;
       out.deadSprites = await P.page.evaluate(() => {
         const res = [];
@@ -402,7 +434,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const couldNot = (r) => !knew(r) && r.knownThaws >= Math.floor(KNOW_MS / 20000);
     const played = rows.filter((r) => !couldNot(r));
     rec.ok(`the phone knew (nearly) every bot at each step${played.length < rows.length ? ` it could play (${played.length} of ${rows.length})` : ''}`,
-      played.length > 0 && played.every(knew), rows.map((r) => [r.place, r.bots, r.known, `${r.knownInS} s`, `${r.knownThaws} rejoins`]));
+      (played.length > 0 || !!stalled) && played.every(knew), rows.map((r) => [r.place, r.bots, r.known, `${r.knownInS} s`, `${r.knownThaws} rejoins`]));
+    if (stalled) {
+      rec.skip(`the phone knew (nearly) every bot: ${stalled.place}, ${stalled.bots} bots, and every step after`,
+        `this box could not play the page: it answered nothing for ${STEP_CAP_MS / 60000} minutes (${stalled.at}; ${stalled.thaws != null ? stalled.thaws + ' rejoins so far' : ''}), its thread waiting on the graphics process`);
+    }
     for (const r of rows.filter(couldNot)) {
       rec.skip(`the phone knew (nearly) every bot: ${r.place}, ${r.bots} bots`,
         `this box could not play the page: ${r.knownThaws} rejoins in ${r.knownInS} s (a frame gap over 5 s each), ${r.frames} frames in the ${SAMPLE_MS / 1000} s window, ${r.known} known`);
