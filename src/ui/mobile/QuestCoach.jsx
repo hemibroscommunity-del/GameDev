@@ -12,7 +12,9 @@ import { getActiveWeapon } from '@/data/gameSystems.js';
 import { prog3FreshLevel } from '@/data/prog3.js'; /* v2.3.3538: a new character's level (1 under one level) */
 import { startDeskTeach } from '@/ui/deskTeach.js'; /* v2.3.4343: the first-time teaching a computer player missed */
 import { startGuideArrow } from '@/ui/guideArrow.js'; /* v2.3.3925: the big arrow, the first time */
-import { mayorScreenRect } from '@/ui/mayorScreen.js';
+import { mayorScreenRect, canvasPlace } from '@/ui/mayorScreen.js';   /* v2.3.6280: canvasPlace, the canvas's remembered place (`?afterpaint`) */
+import { beforeDraw } from '@/game/framePacer.js';   /* v2.3.6280: the coach measures at the top of the game's frame (card HB2 PR 1) */
+import { AFTER_PAINT } from '@/ui/afterPaint.js';   /* v2.3.6280: `?afterpaint`, the switch's one reader */
 import { onAfterFrame, onDevicePx } from '@/ui/afterFrame.js'; /* v2.3.4360: a mark on something in the world follows it every frame */
 import { worldReady } from '@/ui/loadingGate.js'; /* v2.3.4136: no card while a loading screen is up */ /* v2.3.4106: the first steps' step 2 rings him */
 import { pointsTipWanted, pointsTipDone, pointsTipWords, POINTS_TIP_SNOOZE_AFTER_MS, POINTS_TIP_SNOOZE_MS, POINTS_TIP_MAX_SNOOZES } from '@/game/pointsTips.js'; /* v2.3.3551: the first points, shown */
@@ -235,6 +237,72 @@ function coachFollow(f, el, card, S) {
   if (cx === f.cx && cy === f.cy) return;
   f.cx = cx; f.cy = cy;
   card.style.transform = (cx || cy) ? 'translate3d(' + cx + 'px,' + cy + 'px,0)' : '';
+}
+
+/* ═══ v2.3.6280: WHAT THE CARD'S PLACE IS WORKED OUT FROM, READ OFF THE PAGE IN ONE PLACE (card HB2 PR 1) ═══
+ * The render below placed the ring and the card from the page: the layer's box (fixedBox), the band's height and
+ * the world's span (computed styles), the keys strip, the combat band's reach (playIsLandscape measures the shell),
+ * the card's own height, the pinned quest card and the minimap's open-map button.  The coach is drawn again with
+ * every redraw of the game's page (it is no memo), and each of those reads, coming right after React had changed
+ * the page, laid the page out there (`QuestCoach` 37.4 ms on budget-android, docs/plan/census/HB-holds.md row
+ * 10).  The same reads are made here, together.  Under `?afterpaint` the render takes them as they were read at the
+ * top of the game's last frame (the walk, when it puts a card up, and the frame after every redraw: the
+ * component's `askPage`), and is drawn again a frame later only when one of them has changed.
+ * `?afterpaint=0`: read in the render, as before. */
+function readCoachPage() {
+  const p = { box: fixedBox(document.querySelector('[data-coach]')), sheet: 0, wx: 0, pw: 0, fine: false, kb: null,
+    bandTop: 0, cardH: 0, qh: null, map: null, err: false };
+  const rect = function (n) {
+    const q = n && n.getBoundingClientRect();
+    return q ? { left: q.left, top: q.top, right: q.right, bottom: q.bottom, width: q.width, height: q.height } : null;
+  };
+  try {
+    const cs = getComputedStyle(document.documentElement);
+    p.sheet = parseFloat(cs.getPropertyValue('--sheet-h')) || parseFloat(cs.getPropertyValue('--dash-h')) || 0;
+    p.wx = parseFloat(cs.getPropertyValue('--world-x')) || 0;
+    p.pw = parseFloat(cs.getPropertyValue('--play-w')) || window.innerWidth;
+    p.fine = !!fineInput();
+    if (p.fine) {
+      const kb = document.querySelector('.bt-kb-hints');
+      p.kb = kb && getComputedStyle(kb).display !== 'none' ? rect(kb) : null;
+    } else p.bandTop = combatBandTopPx(playIsLandscape());
+  } catch (_e) { p.err = true; p.pw = (typeof window !== 'undefined' && window.innerWidth) || 0; }
+  try {
+    const el = document.querySelector('[data-coach-card]');
+    p.cardH = (el && el.offsetHeight) || 0;
+    p.qh = rect(document.querySelector('[data-quest-hud]'));
+    p.map = rect(document.querySelector('[data-world-map-open]'));
+  } catch (_e) { /* none to keep clear of */ }
+  return p;
+}
+/* two readings the card would be placed the same from (half a pixel is no move) */
+function samePage(a, b) {
+  if (!a || !b) return false;
+  const n = function (x, y) { return Math.abs((x || 0) - (y || 0)) < 0.5; };
+  const r = function (x, y) {
+    if (!x || !y) return !x === !y;
+    return n(x.left, y.left) && n(x.top, y.top) && n(x.width, y.width) && n(x.height, y.height);
+  };
+  return n(a.box.x, b.box.x) && n(a.box.y, b.box.y) && n(a.box.w, b.box.w) && n(a.box.h, b.box.h)
+    && n(a.sheet, b.sheet) && n(a.wx, b.wx) && n(a.pw, b.pw) && a.fine === b.fine && a.err === b.err
+    && n(a.bandTop, b.bandTop) && n(a.cardH, b.cardH) && r(a.kb, b.kb) && r(a.qh, b.qh) && r(a.map, b.map);
+}
+/* v2.3.3812's step right of the quest card on a computer playing wide (the layout effect in the component, where
+   its notes are), as a function: run in the commit with `?afterpaint=0`, else at the top of the next frame */
+function deskStepRight() {
+  const el = document.querySelector('[data-coach-card]');
+  const qh = document.querySelector('[data-quest-hud]');
+  if (!el || !qh) return;
+  const cr = el.getBoundingClientRect(), qr = qh.getBoundingClientRect();
+  if (!(cr.width > 0) || !(qr.width > 0)) return;
+  if (!(cr.left < qr.right && cr.right > qr.left && cr.top < qr.bottom && cr.bottom > qr.top)) return;
+  const layer = document.querySelector('[data-coach]');
+  const lb = layer ? fixedBox(layer) : { x: 0 };
+  const cs = getComputedStyle(document.documentElement);
+  const wx = parseFloat(cs.getPropertyValue('--world-x')) || 0;
+  const pw = parseFloat(cs.getPropertyValue('--play-w')) || window.innerWidth;
+  const left = qr.right - lb.x + 8;
+  if (left + cr.width <= wx + pw - 8) el.style.left = left + 'px';
 }
 
 /* Measure a live control.  A zero-size or missing element yields null and
@@ -1030,9 +1098,17 @@ const LESSONS = [
     worldRect: function (S) {
       const P = S && S.player, cam = S && S.camera;
       if (!P || !cam) return null;
-      const c = document.querySelector('canvas');
-      if (!c) return null;
-      const cr = c.getBoundingClientRect();
+      /* v2.3.6280: under `?afterpaint` the canvas's place as mayorScreen.js remembers it (measured again at the
+         top of a frame), not measured here: this is asked after every frame the game draws (coachFollow) and in
+         the coach's render (broClear) */
+      let cr = null;
+      if (AFTER_PAINT) cr = canvasPlace();
+      else {
+        const c = document.querySelector('canvas');
+        if (!c) return null;
+        cr = c.getBoundingClientRect();
+      }
+      if (!cr) return null;
       const sx = S._worldScaleX || 1, sy = S._worldScaleY || 1;
       const cxp = cr.left + (P.x - cam.x) * sx;
       const cyp = cr.top + (P.y - 24 - cam.y) * sy;
@@ -1118,6 +1194,11 @@ export function QuestCoach(props) {
   const walkRef = React.useRef({ x: null, y: null, px: 0 });
   /* v2.3.4106: which info step (the map, the quest card) is up, and since when */
   const infoRef = React.useRef({ id: null, at: 0 });
+  /* v2.3.6280: the page as read at the top of the last frame (readCoachPage), whether a reading is asked for, and
+     the count that draws the card again when the reading changed (`?afterpaint`) */
+  const pageRef = React.useRef(null);
+  const pageAskRef = React.useRef(false);
+  const [, setPageTurn] = React.useState(0);
 
   /* v2.3.3925: the big arrow, the first time a weapon is handed over and at
      the first points (ui/guideArrow.js): beside the coach it helps */
@@ -1130,7 +1211,7 @@ export function QuestCoach(props) {
   }, []);
 
   React.useEffect(function () {
-    let raf = 0, tick = 0, stop = false;
+    let raf = 0, tick = 0, stop = false, walkAsked = false;   /* v2.3.6280: walkAsked, the walk waiting for the frame's top */
     /* The mark's own pulse is time-driven rather than a CSS animation so
        the ring and the progress arc stay in step with one frame's read of
        the game state — see the arc write below. */
@@ -1342,6 +1423,27 @@ export function QuestCoach(props) {
 
       /* ── pick and place the mark, ~12x a second ── */
       if ((tick++ % 5) !== 0) return;
+      /* ═══ v2.3.6280: THE WALK MEASURES AT THE TOP OF THE GAME'S NEXT FRAME (card HB2 PR 1; `?afterpaint`) ═══
+         The walk below measures the page: every anchor's rect and what answers at its middle (measure,
+         reachable's elementsFromPoint), the shell (_dashShowing), Mayor Bro's place (live > canvasBox).  This
+         loop runs after the game's own in the same frame, once the frame's writes (the marks moved after it was
+         drawn, React's commits) have made the page's layout stale, so each read laid the whole page out there
+         (`step > measure`, `step > live > canvasBox`: 17.0 and 15.4 ms on the slow profiles,
+         docs/plan/census/HB-holds.md row 32).  Under `?afterpaint` (ON) the walk is asked for here and run at
+         the top of the game's next frame (framePacer.js beforeDraw), where the page the browser has just drawn
+         is laid out: a mark moves or comes up a frame later than before, on the same ~12-a-second beat.  The
+         gesture watchers above still run here, every frame.  `?afterpaint=0`: the walk runs here, as before. */
+      if (AFTER_PAINT) {
+        if (!walkAsked) { walkAsked = true; beforeDraw(function () { walkAsked = false; if (!stop) walk(); }); }
+        return;
+      }
+      walk();
+    };
+    const walk = function () {
+      const S = stateRef && stateRef.current;
+      const rpg = (S && S._rpgFromServer && S.rpg) || null;
+      const now = Date.now();
+      const done = doneRef.current;
       /* ═══ v2.3.2495: THIS ONE TRACKER IS THROTTLED, AND ON PURPOSE ═══
          Every watcher above runs at frame rate because they read plain object
          fields, which is free.  This one does not: _dashShowing() asks
@@ -1528,7 +1630,11 @@ export function QuestCoach(props) {
         && Math.abs(next.rect.top - cur.rect.top) < 2
         && Math.abs(next.rect.width - cur.rect.width) < 2
         && Math.abs(next.rect.height - cur.rect.height) < 2);
-      if (!same) { viewRef.current = next; setView(next); }
+      if (!same) {
+        /* v2.3.6280: the walk is at the top of a frame (`?afterpaint`): the reading the card is placed from, fresh */
+        if (AFTER_PAINT && next) { try { pageRef.current = readCoachPage(); } catch (_e) { pageRef.current = null; } }
+        viewRef.current = next; setView(next);
+      }
       paint();
     };
     /* ═══ v2.3.1808: THE FLASH IS CSS, AND THIS RUNS 12x A SECOND ═══
@@ -1646,19 +1752,29 @@ export function QuestCoach(props) {
        does no layout work for it (the coach draws up to ~12 times a second
        while a world-anchored lesson's ring follows you) */
     if (!deskBigActive()) return;   /* v2.3.4152: the band on a computer too */
-    const el = document.querySelector('[data-coach-card]');
-    const qh = document.querySelector('[data-quest-hud]');
-    if (!el || !qh) return;
-    const cr = el.getBoundingClientRect(), qr = qh.getBoundingClientRect();
-    if (!(cr.width > 0) || !(qr.width > 0)) return;
-    if (!(cr.left < qr.right && cr.right > qr.left && cr.top < qr.bottom && cr.bottom > qr.top)) return;
-    const layer = document.querySelector('[data-coach]');
-    const lb = layer ? fixedBox(layer) : { x: 0 };
-    const cs = getComputedStyle(document.documentElement);
-    const wx = parseFloat(cs.getPropertyValue('--world-x')) || 0;
-    const pw = parseFloat(cs.getPropertyValue('--play-w')) || window.innerWidth;
-    const left = qr.right - lb.x + 8;
-    if (left + cr.width <= wx + pw - 8) el.style.left = left + 'px';
+    /* v2.3.6280: under `?afterpaint` at the top of the next frame (askPage, below): the step right lands a frame
+       later */
+    if (AFTER_PAINT) return;
+    deskStepRight();
+  });
+
+  /* ═══ v2.3.6280: AFTER EVERY DRAW, THE PAGE IS READ AGAIN AT THE TOP OF THE NEXT FRAME (card HB2 PR 1) ═══
+     Under `?afterpaint` the render places the card from the reading taken at the top of the last frame
+     (readCoachPage, top of the file).  After every draw of a card the page is read again there, once a frame
+     however many draws: a band opened, a window turned or the card's own height changed draws it again from
+     the new reading, a frame later (nothing is drawn again when nothing changed).  The step right of the quest
+     card on a computer playing wide (deskStepRight, the layout effect above) runs there too. */
+  React.useEffect(function () {
+    if (!AFTER_PAINT || !viewRef.current || pageAskRef.current) return;
+    pageAskRef.current = true;
+    beforeDraw(function () {
+      pageAskRef.current = false;
+      if (!viewRef.current) return;
+      let p = null;
+      try { p = readCoachPage(); } catch (_e) { p = null; }
+      if (p && !samePage(pageRef.current, p)) { pageRef.current = p; setPageTurn(function (t) { return t + 1; }); }
+      try { if (deskBigActive()) deskStepRight(); } catch (_e) { /* the card stays where it was drawn */ }
+    });
   });
 
   /* v2.3.4360: a world mark's ring and card are moved after every frame the game draws */
@@ -1667,7 +1783,11 @@ export function QuestCoach(props) {
   }, []);
   /* ...from where React has just drawn them: both back to nothing, the new
      `base`, and at once the move for where he is now -- all before the
-     paint, so neither shows a frame at a stale place */
+     paint, so neither shows a frame at a stale place.  v2.3.6280: under
+     `?afterpaint` the move for where he is now waits for the next frame the
+     game draws (the listener above): asked here, his place measured the page
+     in the commit (`coachFollow > worldRect`, docs/plan/census/HB-holds.md
+     row 12), so the ring shows one frame where the walk found him */
   React.useLayoutEffect(function () {
     const f = followRef.current, el = followElRef.current, card = cardRef.current;
     const L = view ? LESSONS.find(function (l) { return l.id === view.id; }) : null;
@@ -1676,7 +1796,7 @@ export function QuestCoach(props) {
     f.dx = 0; f.dy = 0; f.cx = 0; f.cy = 0;
     if (!view || !L || typeof L.worldRect !== 'function' || !(view.rect.width > 0)) { f.L = null; f.base = null; return; }
     f.L = L; f.base = view.rect;
-    coachFollow(f, el, card, stateRef && stateRef.current);
+    if (!AFTER_PAINT) coachFollow(f, el, card, stateRef && stateRef.current);
   }, [view]);
 
   if (!view) return null;
@@ -1692,7 +1812,11 @@ export function QuestCoach(props) {
      (mp-deskcoach).  So the rect is taken into the layer's own box first
      (`fixedBox`), and its bottom is the layer's bottom, not the window's.  A
      phone's box is the window's: nothing there moves.  TRAPS §232. */
-  const box = fixedBox(document.querySelector('[data-coach]'));
+  /* v2.3.6280: every page read below is the reading `pg` (readCoachPage, top of the file): under `?afterpaint` the
+     one taken at the top of the last frame, else read here, as before */
+  let pg = AFTER_PAINT ? pageRef.current : null;
+  if (!pg) pg = readCoachPage();
+  const box = pg.box;
   const r = { left: view.rect.left - box.x, top: view.rect.top - box.y,
               width: view.rect.width, height: view.rect.height };
   const boxH = box.h;
@@ -1742,9 +1866,8 @@ export function QuestCoach(props) {
    * near a button. */
   const bandClear = (() => {
     try {
-      const cs = getComputedStyle(document.documentElement);
-      const band = parseFloat(cs.getPropertyValue('--sheet-h'))
-        || parseFloat(cs.getPropertyValue('--dash-h')) || 0;
+      if (pg.err) return 0;   /* v2.3.6280: a reading that threw: as the read here did */
+      const band = pg.sheet;   /* --sheet-h, else --dash-h */
       /* ═══ v2.3.3407: A COMPUTER HAS NO COMBAT BAND ═══
          Every control in it is .bt-desktop-hide (game.css, pointer:fine), so
          the lift carried the card up past nothing to the 120 px cap at the
@@ -1754,14 +1877,13 @@ export function QuestCoach(props) {
          open).  On a computer what stands over the band is the keys strip,
          so the card clears that, or the band alone when it is put away.
          TRAPS §220; mp-deskreach 4. */
-      if (fineInput()) {   /* v2.3.4804: the device profile */
-        const kb = document.querySelector('.bt-kb-hints');
-        const kr = kb && getComputedStyle(kb).display !== 'none' ? kb.getBoundingClientRect() : null;
+      if (pg.fine) {   /* v2.3.4804: the device profile */
+        const kr = pg.kb;   /* .bt-kb-hints, when shown */
         return Math.max(band + 12, kr && kr.height > 0 ? (box.y + boxH) - kr.top + 8 : 0);
       }
       /* Measured from the viewport's BOTTOM, which is the unit `bottom` below
          wants, so the two can be compared directly. */
-      return band + combatBandTopPx(playIsLandscape()) + 12;
+      return band + pg.bandTop + 12;   /* combatBandTopPx(playIsLandscape()) */
     } catch (_e) { return 0; /* a card that cannot measure simply does not dodge */ }
   })();
   /* ═══ v2.3.3481: ...AND OFF THE BRO HIMSELF ═══
@@ -1795,14 +1917,11 @@ export function QuestCoach(props) {
       const broBot = ring.top + ring.height - box.y;
       const broX = ring.left + ring.width / 2 - box.x;
       const broHalf = Math.max(ring.width / 2, (S._selfBandHalfW || 0) * sx);
-      const cs = getComputedStyle(document.documentElement);
-      const wx = parseFloat(cs.getPropertyValue('--world-x')) || 0;
-      const pw = parseFloat(cs.getPropertyValue('--play-w')) || window.innerWidth;
+      const wx = pg.wx, pw = pg.pw;   /* --world-x, --play-w */
       const cardL = Math.min(Math.max(wx + 8, r.left + r.width / 2 - 110), Math.max(wx + 8, wx + pw - 228));
       if (cardL + 220 <= broX - broHalf || cardL >= broX + broHalf) return 0;   /* beside him */
       const cur = Math.max(Math.max(6, boxH - (r.top - pad - 10)), bandClear);
-      const el = document.querySelector('[data-coach-card]');
-      const cardH = (el && el.offsetHeight) || 72;   /* last paint's, else two lines' worth */
+      const cardH = pg.cardH || 72;   /* last paint's, else two lines' worth */
       const cardBot = boxH - cur;
       if (cardBot <= broTop || cardBot - cardH >= broBot) return 0;   /* over or under him already */
       const lift = boxH - (broTop - 8);
@@ -1811,14 +1930,12 @@ export function QuestCoach(props) {
          coach), where a tap on the card would open the world map instead --
          TRAPS §220's trap, reachable on a short phone */
       const top = (boxH - lift) - cardH, bot = boxH - lift;
-      const clash = (sel) => {
-        const n = document.querySelector(sel);
-        const q = n && n.getBoundingClientRect();
+      const clash = (q) => {   /* v2.3.6280: a rect of the reading */
         if (!q || !(q.width > 0)) return false;
         const ql = q.left - box.x, qt = q.top - box.y;
         return cardL < ql + q.width + 8 && cardL + 220 > ql - 8 && top < qt + q.height + 8 && bot > qt - 8;
       };
-      if (clash('[data-quest-hud]') || clash('[data-world-map-open]')) return 0;
+      if (clash(pg.qh) || clash(pg.map)) return 0;   /* [data-quest-hud], [data-world-map-open] */
       return lift;
     } catch (_e) { return 0; }
   })();
@@ -1830,12 +1947,7 @@ export function QuestCoach(props) {
      at the top (`cap`).  (The step right of the quest card is not followed:
      it is a place the card jumps to, and the next render makes the jump.) */
   {
-    let _wx = 0, _pw = 0;
-    try {
-      const _cs = getComputedStyle(document.documentElement);
-      _wx = parseFloat(_cs.getPropertyValue('--world-x')) || 0;
-      _pw = parseFloat(_cs.getPropertyValue('--play-w')) || window.innerWidth;
-    } catch (_e) { _pw = (typeof window !== 'undefined' && window.innerWidth) || 0; }
+    const _wx = pg.wx, _pw = pg.pw;   /* v2.3.6280: the reading's --world-x, --play-w */
     followRef.current.k = {
       ideal: r.left + r.width / 2 - 110, lo: _wx + 8, hi: Math.max(_wx + 8, _wx + _pw - 228),
       above: above, top: r.top, pad: pad, boxH: boxH,
@@ -1956,9 +2068,7 @@ export function QuestCoach(props) {
            x=175 with the panel occupying 0..220.  --world-x / --play-w are
            0 / innerWidth in portrait, so the arithmetic is unchanged there. */
         left: (() => {
-          const _cs = getComputedStyle(document.documentElement);
-          const _wx = parseFloat(_cs.getPropertyValue('--world-x')) || 0;
-          const _pw = parseFloat(_cs.getPropertyValue('--play-w')) || window.innerWidth;
+          const _wx = pg.wx, _pw = pg.pw;   /* v2.3.6280: the reading's --world-x, --play-w */
           let _l = Math.min(
             Math.max(_wx + 8, r.left + r.width / 2 - 110),
             Math.max(_wx + 8, _wx + _pw - 228));
@@ -1974,8 +2084,7 @@ export function QuestCoach(props) {
              never applies (the band's lift is far below it), so nothing there
              moves. */
           if (above && bandClear > boxH - 120) {
-            const qh = document.querySelector('[data-quest-hud]');
-            const qr = qh && qh.getBoundingClientRect();
+            const qr = pg.qh;   /* [data-quest-hud] */
             if (qr && qr.width > 0) {
               _l = Math.min(Math.max(_l, qr.right - box.x + 8),
                 Math.max(_wx + 8, _wx + _pw - 228));
@@ -1994,8 +2103,7 @@ export function QuestCoach(props) {
              knowable here: two lines of copy, about 70 px).  Upright the
              card never meets the quest card, so nothing there moves. */
           {
-            const qh = document.querySelector('[data-quest-hud]');
-            const qr = qh && qh.getBoundingClientRect();
+            const qr = pg.qh;   /* [data-quest-hud] */
             if (qr && qr.width > 0) {
               const cTop = above
                 ? boxH - Math.min(Math.max(Math.max(6, boxH - (r.top - pad - 10)), bandClear, broClear), Math.max(6, boxH - 120)) - 70
