@@ -257,7 +257,7 @@ export const SYSTEMS = Object.freeze({
   },
   desktop: {
     what: 'a computer: keys, clicks, the wide window and its words',
-    files: [f('src/game', 'deskCombos|deskKeyList|deskKeys|deskTeachState|deskWords|desktopControls|dashSidePref'), f('src/ui', 'deskTeach|deskWide')],
+    files: [f('src/game', 'deskCombos|deskKeyList|deskKeys|deskTeachState|deskWords|desktopControls|dashSidePref|say'), f('src/ui', 'deskTeach|deskWide')],   /* v2.3.6320: + say (the words table's one reader, card WD2) */
     words: ['desk', 'desktop', 'keyboard', 'computer', 'mouse'],
     traps: ['desktop'],
     doors: [{ name: 'NAV_KEYS', file: 'src/game/deskKeys.js', what: 'every key a computer player presses lives here, worn by its button (data-key)' }],
