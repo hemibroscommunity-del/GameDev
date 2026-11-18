@@ -43,6 +43,7 @@
 import { BOTFP } from './botfp.js';
 import { BOTSIG } from './botsig.js';   /* v2.3.3731: the server's own bot signals */
 import { HONEST_CYCLE_MIN_MS } from './gathering.js';
+import { HARVEST_GRADE } from './harvestgrade.js';   /* v2.3.5902: the grade judge's share (card K4; the gatekeeper's sitting 44) */
 
 export const HIDDEN = {
   KEY: 'hidden_settings',
@@ -97,6 +98,9 @@ export const HIDDEN_SPEC = Object.freeze({
   // ── the economic hour caps: floors are the honest bound (header) ──
   HARVEST_HOUR_CAP: row('caps', BOTFP.HARVEST_HOUR_CAP, HONEST_PER_HOUR, 100000, true, 'Harvests a skill an hour before grants are withheld'),
   COOK_HOUR_CAP: row('caps', BOTFP.COOK_HOUR_CAP, HONEST_PER_HOUR, 100000, true, 'Cooks an hour before grants are withheld'),
+  // ── v2.3.5902: the harvest's grade judged (harvestgrade.js, `harvestgrade`): its share ──
+  GRADE_SHARE_OF: row('botfp', HARVEST_GRADE.SHARE_OF, 5, 100, true, 'Harvest grade: perfects are counted over this many strikes in a row'),
+  GRADE_SHARE_MAX: row('botfp', HARVEST_GRADE.SHARE_MAX, 1, 100, true, 'Harvest grade: at most this many of them believed perfect (more is paid as good)'),
   // ── v2.3.3731: the server's own bot signals (botsig.js) ──
   AIM_CHORD_PX: row('botsig', BOTSIG.AIM_CHORD_PX, 10, 400, false, 'Aimed walk: the run judged back this far (px)'),
   AIM_STRAIGHT_PX: row('botsig', BOTSIG.AIM_STRAIGHT_PX, 0, 10, false, 'Aimed walk: every step within this of a straight line (px)'),
