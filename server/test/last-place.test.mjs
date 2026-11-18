@@ -406,7 +406,7 @@ async function walk(r, ws, id, pxs, ms, gap = 33, extra) {
   await move(rk, wk, A.x + 50000, A.y, WHEEL_ZONE);
   check('6. ...past it a reload carries nothing, and its way in is a first join\'s: taken where it is', near(ps(rk, ik).x, A.x + 50000) && !ps(rk, ik)._mvFollow, { x: ps(rk, ik).x - A.x });
 
-  const rm = room();
+  const rm = room({ seathold: false });   /* v2.3.6000 (card CS): 481 drops would each hold a seat a minute (`seathold`, on by default) and fill the room */
   const first = newId();
   for (let i = 0; i <= LAST_PLACE.MAX; i++) {
     const iid = i === 0 ? first : newId();

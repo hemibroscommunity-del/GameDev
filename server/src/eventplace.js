@@ -87,6 +87,34 @@ const RELAY_PLACED = RELAY_PLACED_MADE;
 
 export const EVENT_PLACED_TYPES = Object.freeze([...Object.keys(ROOM_PLACED), ...RELAY_PLACED]);
 
+/* ═══ v2.3.5731: A DUEL'S FRAMES REACH ITS TARGET ALONE (card K2 PR 12; card
+   RV's review; `duelquiet`) ═══
+   A duel's challenge, wager, accept and decline went to EVERY phone in the
+   room: the relays (index.js's default branch, duel.js _interceptDuel) and
+   the worker's own declines (declineBoth, the forged-accept answer) all ride
+   the tick's events.  A phone acts on one only when `payload.target` is its
+   own id (gameEvents.js), so the room's other phones were sent frames they
+   threw away -- and could read who challenged whom, for how much.  With
+   `duelquiet` on (the default; decided for the owner while away, the
+   planning session on the owner's words of 2026-11-17: "Go recommended on
+   all"), each is placed for its target and its sender ALONE (`only`): no
+   zone, no distance, no other phone.  The sender is the id the room stamped
+   on a relay (`ev.from`, index.js), never one a payload wrote: an accepter
+   waits for its own settled accept (duel-pending.test 1, src/game/
+   duelPending.js).  A frame with no target stays room-wide, as before.
+   Nothing a player sees changes; fewer frames are sent.  `duelquiet: false`
+   in the live flags: every phone again.  Independent of `eventplace`. */
+export const DUEL_QUIET_TYPES = Object.freeze(['duel_request', 'duel_wager_request', 'duel_accept', 'duel_decline']);
+const DUEL_QUIET = new Set(DUEL_QUIET_TYPES);
+export function duelPlaceOf(ev) {
+  if (!ev || typeof ev !== 'object' || !DUEL_QUIET.has(ev.type)) return null;
+  const p = ev.payload;
+  if (!p || typeof p !== 'object' || typeof p.target !== 'string' || p.target.length === 0) return null;
+  const who = [p.target];
+  if (typeof ev.from === 'string' && ev.from.length > 0 && ev.from !== p.target) who.push(ev.from);
+  return { z: null, x: null, y: null, who, only: true };
+}
+
 const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
 const idOk = (v) => typeof v === 'string' && v.length > 0;
 const own = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);
@@ -128,6 +156,8 @@ export function placeOf(ev, monsterOf, playerOf) {
    otherwise its zone does. */
 export function eventHeardBy(place, sid, ps, near) {
   const who = place.who;
+  /* v2.3.5731: an event for the players it names and no one else (duelPlaceOf) */
+  if (place.only) return !!who && who.includes(sid);
   if (who) for (let i = 0; i < who.length; i++) if (who[i] === sid) return true;
   if (!ps || !idOk(ps.z)) return true;   /* no zone yet: everything, as before */
   if (place.z !== ps.z) return false;
@@ -142,13 +172,22 @@ export const eventPlaceMethods = {
     const f = this._liveFlags;
     return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'eventplace') && !f.eventplace);
   },
+  /* v2.3.5731: `duelquiet` -- on unless its own falsy value (as `swordswing`) */
+  _duelQuietOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'duelquiet') && !f.duelquiet);
+  },
 
   /* The place of each of a tick's events (an array beside them, null where an
      event goes to everyone), or null when none has one -- the tick's old
      path, untouched.  A zone's monsters are indexed by id at most once a
      tick, and only for a zone an event names. */
   _eventPlaces(events) {
-    if (!events || events.length === 0 || this._eventPlaceOff()) return null;
+    /* v2.3.5731: a duel's frames are placed for their target even with
+       `eventplace` off (duelPlaceOf above) */
+    const placeOn = !this._eventPlaceOff();
+    const quiet = this._duelQuietOn();
+    if (!events || events.length === 0 || (!placeOn && !quiet)) return null;
     let byZone = null;
     const monsterOf = (zone, id) => {
       if (!byZone) byZone = new Map();
@@ -167,7 +206,7 @@ export const eventPlaceMethods = {
     const playerOf = (id) => (this.playerState && own(this.playerState, id) ? this.playerState[id] : null);
     let out = null;
     for (let i = 0; i < events.length; i++) {
-      const pl = placeOf(events[i], monsterOf, playerOf);
+      const pl = (quiet && duelPlaceOf(events[i])) || (placeOn ? placeOf(events[i], monsterOf, playerOf) : null);
       if (pl) {
         if (!out) out = new Array(events.length).fill(null);
         out[i] = pl;

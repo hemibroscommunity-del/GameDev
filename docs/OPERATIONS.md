@@ -472,9 +472,11 @@ curl -X DELETE -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/admin/sil
 ```
 Leave `minutes` out for until lifted (otherwise a whole number of minutes,
 1 to a year). The live switch `silence` (set to `false`) turns silences off.
-The phone half of a freeze is OFF until you turn it on: the live switch
-`freezedevice` set to `true` (it can hold out a phone your own other
-character has used, so it waits for your word). `docs/specs/silence.md`.
+The phone half of a freeze is ON (v2.3.6000: you turned it on, 2026-11-17,
+"I think turn all of them on then we monitor usage cost"): a NEW character
+made on a frozen character's phone is refused too, never a phone one of your
+own characters has used. To turn it off: the live switch `freezedevice` set
+to `false` (Test panel, Live flags, Set a switch). `docs/specs/silence.md`.
 
 ## Renaming a character (v2.3.5622)
 
@@ -586,24 +588,27 @@ it adds or takes are counted in the game's books, so the economy numbers stay
 true. A backup saved by a newer version of the game is refused, never
 written over: wait for that version to be back.
 
-**Turning on the fuller backups** (off by default, because each backup then
-reads two more records: about 2 extra reads a player a day):
+**The fuller backups are ON** (v2.3.6000, your word of 2026-11-17: each
+backup reads two more records, about 2 extra reads a player a day). To turn
+them off: the live switch `fullsnap` set to `false` (Test panel, Live flags,
+Set a switch), or:
 ```
 curl -X POST -H "Authorization: Bearer YOUR_KEY" -H "Content-Type: application/json" \
-  -d '{"name":"fullsnap","value":true}' "https://WORKER/api/admin/flags"
+  -d '{"name":"fullsnap","value":false}' "https://WORKER/api/admin/flags"
 ```
 
-**Counting a character restart in the economy check** (off by default,
-because it adds one record for the whole game and one more write each time
-a player restarts their character): with `resetbook` on, the gold and items
+**Counting a character restart in the economy check** (ON since v2.3.6000,
+your word of 2026-11-17; it adds one record for the whole game and one more
+write each time a player restarts their character): with `resetbook` on, the gold and items
 a restarted character had are written down as gone, so the game's balance
 check (run by the tests) does not read them as missing. Nothing you see
 changes with it: the daily economy numbers do not read that record yet, and
-your economy card already counts restarts on its own. Leave it off unless a
-later change starts reading it.
+your economy card already counts restarts on its own. To turn it off: the
+live switch `resetbook` set to `false` (Test panel, Live flags, Set a
+switch), or:
 ```
 curl -X POST -H "Authorization: Bearer YOUR_KEY" -H "Content-Type: application/json" \
-  -d '{"name":"resetbook","value":true}' "https://WORKER/api/admin/flags"
+  -d '{"name":"resetbook","value":false}' "https://WORKER/api/admin/flags"
 ```
 
 ## Taking the whole room back to an earlier time (v2.3.5288)
@@ -843,6 +848,30 @@ The eight savers, in the panel's words:
 (Each is one live flag, `off_<name>`, shown in **Live flags** below; the
 Message diet has its own row, with **Off for everyone** as its switch.)
 
+## Watching the cost (v2.3.6001)
+
+Cloudflare bills the server for the rows it writes and reads in its
+storage, and for the messages it receives. The meter counts the rows, and
+the messages the server sends (a guide to its traffic, not the bill). You turned the six cost switches
+on (2026-11-17: "I think turn all of them on then we monitor usage cost");
+this is how you watch.
+
+- **The usage meter** (the Test panel, **Show usage**): the rows the server
+  wrote and read and the messages it sent, today (UTC) and since it last
+  started, the biggest kinds of each, and the six switches' own rows apart.
+  It estimates the day's writes from the pace so far against the plans'
+  included rows: the free plan about 100,000 rows written a day, the paid
+  plan 50 million a month. It counts in the server's memory only (it writes
+  nothing itself), so an update or a quiet spell that puts the server away
+  starts it again from 0; it says since when it counts. The live switch
+  `usagemeter` set to `false` stops the counting.
+- **The truth is Cloudflare's own page**: the Cloudflare dashboard, Workers &
+  Pages, brotown-server, **Metrics**, and your account's **Billing** for
+  what is charged. The meter is a guide for the day; the dashboard is what you pay.
+
+If a number looks too high, the meter's "most written" list names the kind
+of row, and any of the six switches turns off from the phone (below).
+
 ## Live switches (flags) — change the game without a deploy
 
 Flags take effect immediately for everyone, survive deploys, and are
@@ -862,6 +891,21 @@ opens only from inside the world): open the game with `?guest=1` at the end
 of its address (a fresh throwaway character on the same phone, which keeps
 your admin key), or with another character, and use its Test panel. Then
 reopen the game normally.
+
+**The six cost switches, ON since v2.3.6000** (your word, 2026-11-17: "I
+think turn all of them on then we monitor usage cost"). Each writes or reads
+a little more; each turns off with its name set to off (Set a switch):
+- `reqstamp`: one row a shop or market request with no record of its own
+  (a store buy, bid, accept or cancel, a market cancel, an auction offer),
+  so a repeat after a reconnect is answered once; gone after 48 hours;
+- `xferescrow`: one ledger row a wagered duel's pot, a losing arena stake, a
+  market cross and an Auction House sale;
+- `resetbook`: one row a character restart, for the game's balance check;
+- `seathold`: a player who drops keeps their seat a minute (30 s after an
+  update); at most one small row every 15 seconds while who is in changes;
+- `fullsnap`: no row; each daily backup reads two more (the vault, the pets);
+- `freezedevice`: no row; a new character's phone is checked against frozen
+  characters' phones (a few reads, only while someone is frozen).
 
 See what's currently set:
 ```

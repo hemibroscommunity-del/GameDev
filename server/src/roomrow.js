@@ -177,6 +177,7 @@ export const roomRowMethods = {
     m.c.restarts++;
     m.flushedAt = typeof now === 'number' ? now : Date.now();
     this._roomRowWrap();
+    if (typeof this._usageStart === 'function') this._usageStart(now);   /* v2.3.6001: the usage meter's wrapper, outside this one (usagemeter.js; card CS PR 2) */
   },
 
   /* the room's storage: put and delete counted, a refused put counted, the

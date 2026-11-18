@@ -106,10 +106,10 @@ const PROTO_KNOWN = {};
 /* `function: prefix`, stepped in today: each one a whole prefix in one read.
    v2.3.5961 (card V5 PR 2): the other thirteen read a page now (liveops.js
    _listPage, _listAll; leaderboard.js _pages; marketplace.js's own loop);
-   the one left is in a file card V5 may not write: */
-const LIST_KNOWN = {
-  '_mktEnsureIndex: mkt_order:': 'market.js: card RV\'s file (card V5 PR 2 left it: the General Store\'s book, read whole once a worker\'s life)',
-};
+   the one left was in a file card V5 might not write.  v2.3.6023 (card RV):
+   the General Store's book reads a page an await too (market.js
+   _mktIndexLoad, _listAll): none is left, and none may come back */
+const LIST_KNOWN = {};
 /* the listed ones a join reaches today (the trap's "never on the join path"): only falls */
 /* v2.3.5960 (card V5 PR 1): the eleven read a page now (liveops.js _listPage,
    _listAll; TRAPS §76): none is left, and none may come back */
@@ -151,7 +151,7 @@ for (const f of FILES) {
     }
   }
   check(`§76: the scan reads every storage.list of the worker (${lists})`, lists >= 20, lists);   /* v2.3.5960: 40 -> 30, the sweeps read through liveops.js _listPage; v2.3.5961: -> 20 */
-  census('§76', 'storage.list calls that name no limit', found, LIST_KNOWN, 1);   /* v2.3.5960: 25 -> 14 (card V5 PR 1); v2.3.5961: -> 1 (PR 2) */
+  census('§76', 'storage.list calls that name no limit', found, LIST_KNOWN, 0);   /* v2.3.5960: 25 -> 14 (card V5 PR 1); v2.3.5961: -> 1 (PR 2); v2.3.6023: -> 0 (card RV) */
   /* the join's reach: this.* calls from _handleJoin, eight deep */
   const reach = new Set();
   const q = [['_handleJoin', 0]];
@@ -199,9 +199,11 @@ const LIMIT_KNOWN = {
   /* the life phase: a death across a join is its note, life:<pid> */
   respawnAt: 'life',
   /* a request's pace, stamped on ps: a rejoin forgets it (the trap's own
-     shape; each under Found: a room Map, as _pointsResetAts, if its cost counts) */
-  _diceAt: 'pace', _dropAt: 'pace', _lastAceFlipAt: 'pace', _lastDailySpinAt: 'pace',
-  _lastGambleAt: 'pace', _lastRewardsGetAt: 'pace', _lastSalvageAt: 'pace', _raceStartedAt: 'pace', _restAt: 'pace',
+     shape).  v2.3.5921 (card V3 PR 2): the dice, a drop, the ace flips, the
+     gamble, the rewards' read, salvage, the race and a rest are kept by the
+     room across a rejoin (server/src/pacekeep.js, `pacekeep`); v2.3.6024
+     (card RV): the daily spin too (dailyrewards.js reads it through paceAt),
+     so its row, the last pace row here, is off */
 };
 {
   const p = masked.get('server/src/persistence.js') || '';
@@ -233,7 +235,7 @@ const LIMIT_KNOWN = {
     }
   }
   check(`§276: the scan reads the fields of ps compared with the time (${compares})`, compares >= 50, compares);
-  census('§276', 'fields of ps a refusal compares with the time, not in _saveRpg\'s list', found, LIMIT_KNOWN, 30);
+  census('§276', 'fields of ps a refusal compares with the time, not in _saveRpg\'s list', found, LIMIT_KNOWN, 17);   /* v2.3.6024: 18 -> 17, the daily spin's pace (card RV) */
 }
 
 /* ── §298: an admin write over a record reads the room first ── */
