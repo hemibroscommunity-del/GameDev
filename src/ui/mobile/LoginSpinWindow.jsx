@@ -2,7 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { getState } from './dash/common.js';
 import { useModalGuard } from './modalGuardBus.js';
 import { BT_AUDIO } from '@/data/index.js';
-import { deskWords } from '@/game/deskWords.js';
+import { SAY } from '@/data/say/loginSpin.js';   /* v2.3.6341: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';   /* a plain row goes through deskWords ("Tap SPIN" reads "Click SPIN" on a computer, as before) */
 import { flyPicture, questFlyTarget } from '@/game/questFly.js';
 import { onSafeGround } from '@/game/trapping.js';
 import { worldReady } from '@/ui/loadingGate.js';
@@ -319,7 +320,7 @@ export const LoginSpinWindow = () => {
         alignItems: 'center', gap: 6, fontFamily: 'Baloo 2, Source Sans 3, sans-serif',
       }}>
         <style>{KEYFRAMES}</style>
-        <button type="button" aria-label="Close" data-login-spin-close="1" data-esc="" data-key="Esc" data-key-at="hang"
+        <button type="button" aria-label={say(SAY, 'loginSpin.close')} data-login-spin-close="1" data-esc="" data-key="Esc" data-key-at="hang"
           onClick={xClose} disabled={xOff}
           style={{ position: 'absolute', top: -2, right: -2, width: 44, height: 44, border: 0, borderRadius: 22, background: 'rgba(0,0,0,.45)', color: '#fff', fontSize: 24, fontWeight: 700, cursor: 'pointer', opacity: xOff ? 0.35 : 1, zIndex: 3 }}>×</button>
         {dStage ? (
@@ -329,7 +330,7 @@ export const LoginSpinWindow = () => {
             width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '0 0 12px', boxSizing: 'border-box',
             background: '#23252f', border: '5px solid #e8b52a', borderRadius: 22, boxShadow: '0 0 0 2px #7a4d00, 0 10px 30px rgba(0,0,0,.6), inset 0 0 40px rgba(0,0,0,.45)',
           }}>
-            <img src={LOGIN_SPIN_ART.dPlate} alt="Double or nothing?" draggable={false} style={{ width: '104%', marginTop: -26, display: 'block' }} />
+            <img src={LOGIN_SPIN_ART.dPlate} alt={say(SAY, 'loginSpin.doubleArt')} draggable={false} style={{ width: '104%', marginTop: -26, display: 'block' }} />
             <div ref={partyEl} style={{ position: 'relative', width: 'min(86%, 46vh, 400px)', aspectRatio: '1 / 1', marginTop: -10 }}>
               {/* the lit and plain wheels turn together; the lit one fades in and out over the plain one, so the lights dim and brighten */}
               <div ref={dWheelEl} data-login-double-wheel="1" style={{ position: 'absolute', inset: 0, willChange: 'transform', transform: 'rotate(' + dDeg.current + 'deg)', filter: stage === 'dwon' ? 'drop-shadow(0 0 16px #ffd23a)' : 'none' }}>
@@ -341,34 +342,34 @@ export const LoginSpinWindow = () => {
               {fx === 'lose' && stage === 'dlost' ? <div aria-hidden="true" style={{ position: 'absolute', inset: '-10%', borderRadius: '50%', background: 'radial-gradient(#ff2a1a,transparent 70%)', animation: 'btlsFlash .6s ease-out forwards', pointerEvents: 'none' }} /> : null}
             </div>
             <div style={{ textAlign: 'center', minHeight: 50, color: '#ffe9b8', fontSize: 15, fontWeight: 700, textShadow: '0 1px 0 #000', padding: '0 10px' }}>
-              {stage === 'dlost' ? <span style={{ color: '#ff9a8a', fontSize: 24, fontWeight: 900 }}>Nothing. Better luck tomorrow.</span>
-                : stage === 'dwon' ? <span ref={popEl} style={{ ...gold, fontSize: 24, display: 'inline-block', animation: 'btlsPop .5s ease-out' }}>{'Doubled: ' + fmt(pot) + ' gold!'}</span>
-                : stage === 'ddrum' || stage === 'dspinning' || stage === 'dwaiting' ? <span>Round and round...</span>
+              {stage === 'dlost' ? <span style={{ color: '#ff9a8a', fontSize: 24, fontWeight: 900 }}>{say(SAY, 'loginSpin.lost')}</span>
+                : stage === 'dwon' ? <span ref={popEl} style={{ ...gold, fontSize: 24, display: 'inline-block', animation: 'btlsPop .5s ease-out' }}>{say(SAY, 'loginSpin.doubled', { pot: fmt(pot) })}</span>
+                : stage === 'ddrum' || stage === 'dspinning' || stage === 'dwaiting' ? <span>{say(SAY, 'loginSpin.rolling')}</span>
                 : (<>
-                    <div style={{ ...gold, fontSize: 24 }}>{fmt(pot) + ' gold'}</div>
-                    <div>{'Win it for ' + fmt(pot * 2) + ', or lose it all. 50 / 50.'}</div>
+                    <div style={{ ...gold, fontSize: 24 }}>{say(SAY, 'loginSpin.pot', { pot: fmt(pot) })}</div>
+                    <div>{say(SAY, 'loginSpin.ask', { twice: fmt(pot * 2) })}</div>
                   </>)}
             </div>
-            {stage === 'ask' && !safe ? <div data-login-unsafe="1" style={{ color: '#ffb3a0', fontSize: 15, fontWeight: 800 }}>{LOGIN_SPIN_UNSAFE_WORDS + ' (NO still collects)'}</div> : null}
-            <div data-login-fifty="1" style={{ color: '#ffd23a', fontSize: 14, fontWeight: 800, letterSpacing: '.04em', textShadow: '0 1px 0 #000' }}>Exactly 50/50 every spin</div>
+            {stage === 'ask' && !safe ? <div data-login-unsafe="1" style={{ color: '#ffb3a0', fontSize: 15, fontWeight: 800 }}>{say(SAY, 'loginSpin.unsafeNo', { unsafe: LOGIN_SPIN_UNSAFE_WORDS })}</div> : null}
+            <div data-login-fifty="1" style={{ color: '#ffd23a', fontSize: 14, fontWeight: 800, letterSpacing: '.04em', textShadow: '0 1px 0 #000' }}>{say(SAY, 'loginSpin.fifty')}</div>
             {stage === 'dlost' ? (
-              <button type="button" data-enter="" data-key="Enter" data-key-at="inline" onClick={close} style={btn}>OK</button>
+              <button type="button" data-enter="" data-key="Enter" data-key-at="inline" onClick={close} style={btn}>{say(SAY, 'loginSpin.ok')}</button>
             ) : (
               <div style={{ display: 'flex', gap: 10, width: '92%', justifyContent: 'center' }}>
                 <button type="button" data-login-yes="1" data-enter="" data-key="Enter" data-key-at="inline" disabled={stage !== 'ask' || !safe} onClick={double}
-                  aria-label="Yes, double or nothing" style={{ flex: 1, minWidth: 0, padding: 0, border: 0, background: 'none', cursor: 'pointer', touchAction: 'manipulation', opacity: stage === 'ask' ? 1 : 0.55 }}>
-                  <img src={LOGIN_SPIN_ART.dYes} alt="YES" draggable={false} style={{ width: '100%', display: 'block' }} />
+                  aria-label={say(SAY, 'loginSpin.yesLabel')} style={{ flex: 1, minWidth: 0, padding: 0, border: 0, background: 'none', cursor: 'pointer', touchAction: 'manipulation', opacity: stage === 'ask' ? 1 : 0.55 }}>
+                  <img src={LOGIN_SPIN_ART.dYes} alt={say(SAY, 'loginSpin.yesArt')} draggable={false} style={{ width: '100%', display: 'block' }} />
                 </button>
                 <button type="button" data-login-no="1" disabled={stage !== 'ask'} onClick={collect}
-                  aria-label="No, collect the gold" style={{ flex: 1, minWidth: 0, padding: 0, border: 0, background: 'none', cursor: 'pointer', touchAction: 'manipulation', opacity: stage === 'ask' ? 1 : 0.55 }}>
-                  <img src={LOGIN_SPIN_ART.dNo} alt="NO" draggable={false} style={{ width: '100%', display: 'block' }} />
+                  aria-label={say(SAY, 'loginSpin.noLabel')} style={{ flex: 1, minWidth: 0, padding: 0, border: 0, background: 'none', cursor: 'pointer', touchAction: 'manipulation', opacity: stage === 'ask' ? 1 : 0.55 }}>
+                  <img src={LOGIN_SPIN_ART.dNo} alt={say(SAY, 'loginSpin.noArt')} draggable={false} style={{ width: '100%', display: 'block' }} />
                 </button>
               </div>
             )}
           </div>
         ) : (
           <>
-            <img src={LOGIN_SPIN_ART.title} alt="Free daily spin" draggable={false} style={{ width: '88%', maxHeight: '14vh', objectFit: 'contain', display: 'block' }} />
+            <img src={LOGIN_SPIN_ART.title} alt={say(SAY, 'loginSpin.titleArt')} draggable={false} style={{ width: '88%', maxHeight: '14vh', objectFit: 'contain', display: 'block' }} />
             <div ref={partyEl} style={{ position: 'relative', width: 'min(94%, 58vh, 520px)', aspectRatio: '1 / 1', flex: '0 1 auto' }}>
               {(stage === 'landed' || stage === 'done') && fx === 'win' && !reduced() ? <div aria-hidden="true" style={{ position: 'absolute', inset: '-22%', borderRadius: '50%', background: 'repeating-conic-gradient(rgba(255,226,120,.55) 0 7deg, transparent 7deg 22deg)', WebkitMaskImage: 'radial-gradient(circle, #000 25%, transparent 70%)', maskImage: 'radial-gradient(circle, #000 25%, transparent 70%)', animation: 'btlsRays 7s linear infinite', pointerEvents: 'none' }} /> : null}
               {/* the lit and plain wheels turn together; the lit one fades in and out over the plain one, so the lights dim and brighten */}
@@ -382,23 +383,23 @@ export const LoginSpinWindow = () => {
             </div>
             <div style={{ minHeight: 64, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%' }}>
               {stage === 'landed' ? (
-                <div ref={popEl} style={{ ...gold, display: 'inline-block', animation: 'btlsPop .5s ease-out' }}>{fmt(pot) + ' gold!'}</div>
+                <div ref={popEl} style={{ ...gold, display: 'inline-block', animation: 'btlsPop .5s ease-out' }}>{say(SAY, 'loginSpin.landed', { pot: fmt(pot) })}</div>
               ) : stage === 'done' ? (
                 <>
-                  <div data-login-spin-won={pot} style={{ ...gold, display: 'inline-block', animation: 'btlsPop .4s ease-out' }}>{pot > 0 ? '+' + fmt(pot) + ' gold' : 'Nothing'}</div>
-                  <button type="button" data-enter="" data-key="Enter" data-key-at="inline" onClick={close} style={btn}>COLLECT</button>
+                  <div data-login-spin-won={pot} style={{ ...gold, display: 'inline-block', animation: 'btlsPop .4s ease-out' }}>{pot > 0 ? say(SAY, 'loginSpin.won', { pot: fmt(pot) }) : say(SAY, 'loginSpin.nothing')}</div>
+                  <button type="button" data-enter="" data-key="Enter" data-key-at="inline" onClick={close} style={btn}>{say(SAY, 'loginSpin.collect')}</button>
                 </>
               ) : stage === 'error' ? (
                 <>
-                  <div style={{ color: '#ffd9a0', fontSize: 14, fontWeight: 700 }}>The wheel did not answer. What you hold is kept.</div>
-                  <button type="button" data-enter="" data-key="Enter" data-key-at="inline" onClick={close} style={btn}>OK</button>
+                  <div style={{ color: '#ffd9a0', fontSize: 14, fontWeight: 700 }}>{say(SAY, 'loginSpin.error')}</div>
+                  <button type="button" data-enter="" data-key="Enter" data-key-at="inline" onClick={close} style={btn}>{say(SAY, 'loginSpin.ok')}</button>
                 </>
               ) : (
                 <>
-                  <div style={{ color: '#ffe9b8', fontSize: 14, fontWeight: 700, textShadow: '0 1px 0 #000' }}>{stage === 'ready' ? (safe ? deskWords('Tap SPIN: one free spin a day') : <span data-login-unsafe="1" style={{ color: '#ffb3a0' }}>{LOGIN_SPIN_UNSAFE_WORDS}</span>) : ' '}</div>
+                  <div style={{ color: '#ffe9b8', fontSize: 14, fontWeight: 700, textShadow: '0 1px 0 #000' }}>{stage === 'ready' ? (safe ? say(SAY, 'loginSpin.how') : <span data-login-unsafe="1" style={{ color: '#ffb3a0' }}>{LOGIN_SPIN_UNSAFE_WORDS}</span>) : ' '}</div>
                   <button type="button" data-enter="" data-key="Enter" data-key-at="inline" data-login-spin-go="1" disabled={stage !== 'ready' || !safe} onClick={spin}
                     style={{ ...btn, opacity: stage === 'ready' && safe ? 1 : 0.55 }}>
-                    {stage === 'ready' ? 'SPIN' : stage === 'loading' ? '...' : 'SPINNING...'}
+                    {say(SAY, stage === 'ready' ? 'loginSpin.spin' : stage === 'loading' ? 'loginSpin.wait' : 'loginSpin.spinning')}
                   </button>
                 </>
               )}
