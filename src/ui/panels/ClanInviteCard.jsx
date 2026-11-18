@@ -2,6 +2,8 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { act } from '@/game/actions.js';   /* v2.3.5190: the page's requests leave through the action door (card K PR 7) */
+import { SAY } from '@/data/say/clanInvite.js';   /* v2.3.6320: its words, in the one table (docs/specs/player-words.md, W0) */
+import { say, sayPieces } from '@/game/say.js';
 
 /* ═══ v2.3.3066: A CLAN INVITE YOU CAN TAKE UP ═══
  *
@@ -24,7 +26,7 @@ export function ClanInviteCard(props) {
     var S = stateRef.current;
     if (S.channel) act('clan_join_accept', { inviter: invite.inviter });   /* v2.3.5190: through the action door (actions.js) */
     S._pendingClanInvite = null;
-    if (S.player) pushDmgPopup(S, S.player.x, S.player.y - 30, 'Joining [' + invite.clanTag + ']...', '#59BF91');
+    if (S.player) pushDmgPopup(S, S.player.x, S.player.y - 30, say(SAY, 'clanInvite.joining', { tag: invite.clanTag }), '#59BF91');
     onDone();
   };
   var later = function () {
@@ -43,19 +45,22 @@ export function ClanInviteCard(props) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', color: '#F4F0E7', marginBottom: 4 }}>
           <img src="/icons/ui/panel-clan.webp" alt="" draggable={false} style={{ width: 24, height: 24, objectFit: 'contain' }}
             onError={function (e) { e.currentTarget.replaceWith(document.createTextNode('🏰')); }} />
-          <span>Clan invite</span>
+          <span>{say(SAY, 'clanInvite.title')}</span>
         </div>
         <div style={{ fontSize: 13, color: '#B6C1BE', marginBottom: 4 }}>
-          <b style={{ color: '#F4F0E7' }}>{invite.fromName}</b> invites you to join <b style={{ color: '#D8AA58' }}>[{invite.clanTag}] {invite.clanName}</b>.
+          {sayPieces(SAY, 'clanInvite.invites', {
+            from: <b key="from" style={{ color: '#F4F0E7' }}>{invite.fromName}</b>,
+            clan: <b key="clan" style={{ color: '#D8AA58' }}>[{invite.clanTag}] {invite.clanName}</b>,
+          })}
         </div>
         <div style={{ fontSize: 11, color: '#8D9B98', marginBottom: 12 }}>
-          It lasts two minutes. Your clan is in the Guild Hall in BroTown.
+          {say(SAY, 'clanInvite.howLong')}
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button type="button" data-clan-invite-accept="" onClick={accept}
-            style={Object.assign({}, btn, { background: 'linear-gradient(180deg,#E3BC6E,#C8963F)', color: '#172126', border: '1px solid #D8AA58' })}>Accept</button>
+            style={Object.assign({}, btn, { background: 'linear-gradient(180deg,#E3BC6E,#C8963F)', color: '#172126', border: '1px solid #D8AA58' })}>{say(SAY, 'clanInvite.accept')}</button>
           <button type="button" data-clan-invite-later="" onClick={later}
-            style={Object.assign({}, btn, { background: '#293B41', color: '#F4F0E7', border: '1px solid rgba(229,237,233,.20)' })}>Not now</button>
+            style={Object.assign({}, btn, { background: '#293B41', color: '#F4F0E7', border: '1px solid rgba(229,237,233,.20)' })}>{say(SAY, 'clanInvite.later')}</button>
         </div>
       </div>
     </div>,

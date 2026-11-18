@@ -78,6 +78,8 @@ import { SpendPointConfirm }   from './dash/SpendPointConfirm.jsx';
 import { playVw, playVh, playIsLandscape, winVh } from './playViewport.js'; /* v2.3.2157: the band has a sideways shape; v2.3.6241: + winVh */
 import { dashMinBus } from './dashMinBus.js';
 import { shopBus } from './shopBus.js';          /* v2.3.3399: a window that sells from the bag unfolds it */
+import { SAY } from '@/data/say/bottomDashboard.js';   /* v2.3.6344: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';
 import { tradeBagBus } from './tradeBagBus.js';
 import { startGearFlash } from './gearFlash.js';   /* v2.3.3049: the first quest's gear flashes until it is on */
 import { stampSheetH, unstampSheetH } from './sheetStamp.js'; /* v2.3.2197: one --sheet-h formula, shared with resize() + the watchdog */ /* v2.3.2119: fold the band to the identity row */
@@ -436,14 +438,14 @@ const IconButton = ({ glyph, src: srcProp, label, active, onClick, onSwipe, node
 const PANELS = {
   /* v2.3.1240: Bag is the always-on quick preview; Inventory is the
      deeper toolbar destination that opens the full item surface. */
-  inventory:    { title: 'Inventory',   Component: InventoryPanel },
-  self:         { title: 'Self',        Component: SelfPanel },
+  inventory:    { title: say(SAY, 'bottomDashboard.titleInventory'),   Component: InventoryPanel },
+  self:         { title: say(SAY, 'bottomDashboard.titleSelf'),        Component: SelfPanel },
   /* v2.3.3527: kept for a stale drill id and a worker without
      caps.achievements, where More's tile is still Journey.
      v2.3.3773: a page of its own beside Achievements, the Character page's
      old records tab moved here (the owner: "journey ... its own icon in the
      more/other apps menus") */
-  journey:      { title: 'Journey',     Component: JourneyPanel },
+  journey:      { title: say(SAY, 'bottomDashboard.titleJourney'),     Component: JourneyPanel },
   /* v2.3.3527: the Achievements page (dash/AchievementsPanel.jsx): More's
      Journey tile against a worker that grants them (the owner's decision 6),
      and your AP number on Life Skills.  `Head`: drawn in the drilled page's
@@ -453,26 +455,26 @@ const PANELS = {
   /* v2.3.1265: Quests toolbar destination — read-only quest log.
      v2.3.1298: questDetail = the per-quest drill (objectives, rewards,
      tracking). */
-  quests:       { title: 'Quests',      Component: QuestsPanel },
-  questDetail:  { title: 'Quest',       Component: QuestDetailPanel },
-  map:          { title: 'Map',         Component: MapPanel },
+  quests:       { title: say(SAY, 'bottomDashboard.titleQuests'),      Component: QuestsPanel },
+  questDetail:  { title: say(SAY, 'bottomDashboard.titleQuest'),       Component: QuestDetailPanel },
+  map:          { title: say(SAY, 'bottomDashboard.titleMap'),         Component: MapPanel },
   /* v2.3.1291 (ChatGPT round-3 §1): the tab says Friends, so the header
      says Friends — one name everywhere (the panel id stays 'social' on
      the wire-free client side; renaming ids resets nothing). */
   /* v2.3.4172: 'Social', its More tile's word now (v2.3.2038's rule) */
-  social:       { title: 'Social',      Component: SocialPanel },
-  more:         { title: 'More',        Component: MorePanel },
+  social:       { title: say(SAY, 'bottomDashboard.titleSocial'),      Component: SocialPanel },
+  more:         { title: say(SAY, 'bottomDashboard.titleMore'),        Component: MorePanel },
   /* v2.3.3120: the Pets page (dash/PetsPanel.jsx): More -> Pets, and the
      farm's Pet House (docs/PET-TRAPPING-PLAN.md) */
-  pets:         { title: 'Pets',        Component: PetsPanel },
-  stats:        { title: 'Stats',       Component: StatsPanel },
+  pets:         { title: say(SAY, 'bottomDashboard.titlePets'),        Component: PetsPanel },
+  stats:        { title: say(SAY, 'bottomDashboard.titleStats'),       Component: StatsPanel },
   /* v2.3.1296 (round-5): expanded header says LIFE SKILLS to separate
      these from Hero's combat attributes; the toolbar label stays
      Skills.  v2.3.1312: the skillDetail drill is retired — the
      per-skill detail renders IN-PANEL inside SkillsPanel now. */
-  skills:       { title: 'Life Skills', Component: SkillsPanel },
-  encyclopedia: { title: 'Codex',       Component: EncyclopediaPanel },
-  guild:        { title: 'Guild',       Component: GuildPanel },
+  skills:       { title: say(SAY, 'bottomDashboard.titleSkills'), Component: SkillsPanel },
+  encyclopedia: { title: say(SAY, 'bottomDashboard.titleCodex'),       Component: EncyclopediaPanel },
+  guild:        { title: say(SAY, 'bottomDashboard.titleGuild'),       Component: GuildPanel },
   /* v2.3.3481: the 2026-10-19 UI review -- headed 'Ranks', the More tile's
      word (v2.3.2038's rule: what you tap and what opens carry one name);
      "Leaderboard" is too long for a six-across tile.  The Town Hall's row
@@ -485,31 +487,31 @@ const PANELS = {
   /* v2.3.3526: headed as its More tile is labelled -- Party once clans are
      parties (caps.clanparty), Clan under the kill switch (MorePanel
      `labelFor`; v2.3.2038's rule: what you tap and what opens carry one name) */
-  clan:         { get title() { return clanPartyOn(getState()) ? 'Party' : 'Clan'; }, Component: ClanPanel },
-  feedback:     { title: 'Feedback',    Component: FeedbackPanel },
-  about:        { title: 'About & privacy', Component: AboutPanel },   /* v2.3.2820: privacy, rules, credits (demo audit) */
-  settings:     { title: 'Settings',    Component: SettingsPanel },
+  clan:         { get title() { return say(SAY, clanPartyOn(getState()) ? 'bottomDashboard.titleParty' : 'bottomDashboard.titleClan'); }, Component: ClanPanel },
+  feedback:     { title: say(SAY, 'bottomDashboard.titleFeedback'),    Component: FeedbackPanel },
+  about:        { title: say(SAY, 'bottomDashboard.titleAbout'), Component: AboutPanel },   /* v2.3.2820: privacy, rules, credits (demo audit) */
+  settings:     { title: say(SAY, 'bottomDashboard.titleSettings'),    Component: SettingsPanel },
   /* v2.3.1143: Login Key display + device transfer. */
   /* v2.3.2038: titled 'Login Key' to match the More tile that now opens it
      directly -- what you tap and what opens should carry one name. */
   /* v2.3.4172: More -> Account: Log out / Switch character, then the key
      (the owner's review: "Switch character / logout: More → Account") */
-  account:      { title: 'Account',     Component: AccountPanel },
+  account:      { title: say(SAY, 'bottomDashboard.titleAccount'),     Component: AccountPanel },
   /* v2.3.4172: what the bell in the world's corner showed (the owner: "The
      notification bell could also move to More, retaining an unread badge") */
-  notifications: { title: 'Notifications', Component: NotificationsPanel },
+  notifications: { title: say(SAY, 'bottomDashboard.titleNotifications'), Component: NotificationsPanel },
   /* v2.3.235 (Phase 5): Tier 2 spec allocation panel. */
   /* v2.3.1236: owner feedback — stat screen shows the six combat skills;
      Weapons menu renamed Build (display string only; the t2 id and
      WEAPON_* internals keep their names). */
-  t2:           { title: 'Build',       Component: T2Panel },
+  t2:           { title: say(SAY, 'bottomDashboard.titleBuild'),       Component: T2Panel },
   /* v2.3.1283: nav-system destination roots.  v2.3.1286: Hero gets its
      dedicated expanded sheet.  v2.3.1291 (ChatGPT round-3 §1): Hero
      OWNS identity/stats/build now — the Self and Stats tiles left the
      More launcher; their PANELS entries stay only so stale drill ids
      in old sessions don't render a blank sheet. */
-  bag:          { title: 'Bag',         Component: InventoryPanel },
-  hero:         { title: 'Bro',         Component: HeroExpanded },   /* v2.3.4172: the Bro page */
+  bag:          { title: say(SAY, 'bottomDashboard.titleBag'),         Component: InventoryPanel },
+  hero:         { title: say(SAY, 'bottomDashboard.titleBro'),         Component: HeroExpanded },   /* v2.3.4172: the Bro page */
   /* ═══ v2.3.2163: THE DASHBOARD, AS A DESTINATION — LANDSCAPE ONLY ═══
      Owner: "I can see 8 slots playing in [portrait] view (plus space for
      combat skills) so this should translate to 8 slots of space viewable
@@ -519,7 +521,7 @@ const PANELS = {
      the same PORTRAIT tile size (vwBasis = the device's short side),
      combat pills stacked below in the vertical space, scrolling as one
      column. */
-  dashboard:    { title: 'Dashboard',   Component: function LandDash() {
+  dashboard:    { title: say(SAY, 'bottomDashboard.titleDashboard'),   Component: function LandDash() {
     /* v2.3.3687: on a computer playing wide the column is an upright phone's
        width (deskWide.js DESK_SHEET_W), so the dashboard is the upright band's
        own row -- the bag and the combat skills side by side, at that width --
@@ -564,27 +566,27 @@ function bagToFront() {
 }
 
 const DESTINATIONS = [
-  { id: 'bag',    label: 'Bag',     icon: '/icons/ui/nav-inventory.webp?v=2.3.1224' },
+  { id: 'bag',    label: say(SAY, 'bottomDashboard.navBag'),     icon: '/icons/ui/nav-inventory.webp?v=2.3.1224' },
   /* v2.3.4172: "Bro" -- the owner's word for the page that is you (the id
      stays 'hero': tests, hooks and the guide arrow key on it, TRAPS §29) */
   { id: 'hero',   label: 'Bro',     icon: '/icons/ui/panel-self.webp?v=2.3.1224' },
   /* v2.3.1331 (owner art drop): dedicated life-skills crest replaces
      the borrowed panel-skills art (magenta knocked out, 256px webp). */
-  { id: 'skills', label: 'Skills',  icon: '/icons/ui/nav-lifeskills.webp?v=2.3.1331' },
-  { id: 'social', label: 'Friends', icon: '/icons/ui/nav-friends.webp?v=2.3.1224' },
-  { id: 'quests', label: 'Quests',  icon: '/icons/ui/panel-quests.webp?v=2.3.1224' },
+  { id: 'skills', label: say(SAY, 'bottomDashboard.navSkills'),  icon: '/icons/ui/nav-lifeskills.webp?v=2.3.1331' },
+  { id: 'social', label: say(SAY, 'bottomDashboard.navFriends'), icon: '/icons/ui/nav-friends.webp?v=2.3.1224' },
+  { id: 'quests', label: say(SAY, 'bottomDashboard.navQuests'),  icon: '/icons/ui/panel-quests.webp?v=2.3.1224' },
   /* v2.3.3215 (owner: "Are you able to fit the codex as another dashboard
      button?"): More's own Codex picture, so what you tapped there and what you
      tap here are the same thing. */
-  { id: 'encyclopedia', label: 'Codex', icon: '/icons/ui/panel-encyclopedia.webp?v=2.3.1224' },
+  { id: 'encyclopedia', label: say(SAY, 'bottomDashboard.navCodex'), icon: '/icons/ui/panel-encyclopedia.webp?v=2.3.1224' },
   /* v2.3.4393 (owner: "make room for a new 'leaderboards' button on the
      dashboard (I think this is already in the 'more' button)"): More's own
      Leaderboards picture.  "Ranks" on the button: "Leaderboards" is twelve
      letters and a phone's button holds six ("Quests", NavRail's badge); the
      page, the button's tooltip and its spoken name say Leaderboards
      (`title`). */
-  { id: 'leaderboard', label: 'Ranks', title: 'Leaderboards', icon: '/icons/ui/panel-leaderboard.webp?v=2.3.1224' },
-  { id: 'more',   label: 'More',    icon: '/icons/ui/nav-more.webp?v=2.3.1224' },
+  { id: 'leaderboard', label: say(SAY, 'bottomDashboard.navRanks'), title: say(SAY, 'bottomDashboard.navRanksTitle'), icon: '/icons/ui/panel-leaderboard.webp?v=2.3.1224' },
+  { id: 'more',   label: say(SAY, 'bottomDashboard.navMore'),    icon: '/icons/ui/nav-more.webp?v=2.3.1224' },
 ];
 
 /* v2.3.1637 (owner correction to their own mockup: "it should be a new
@@ -674,7 +676,7 @@ const DESTINATIONS = [
    v2.3.3215 to v2.3.4172), the words still under the pictures. */
 const RAIL_ORDER = ['hero', 'quests', 'leaderboard', 'encyclopedia', 'more'];
 const RAIL_ITEMS = [
-  { id: 'dashboard', label: 'Gear', icon: '/icons/ui/nav-dashboard.png?v=2.3.3784' },   /* v2.3.3784: the bag and its three fights; v2.3.4172: "Gear" */
+  { id: 'dashboard', label: say(SAY, 'bottomDashboard.navGear'), icon: '/icons/ui/nav-dashboard.png?v=2.3.3784' },   /* v2.3.3784: the bag and its three fights; v2.3.4172: "Gear" */
   ...RAIL_ORDER.map(id => DESTINATIONS.find(d => d.id === id)).filter(Boolean),
 ];
 
@@ -1280,7 +1282,7 @@ export const BottomDashboard = () => {
                 className="bt-chisel bt-chisel--chip"
                 /* v2.3.3407: a name for it, as the upright one has (the UI
                    review listed it as "◂") */
-                aria-label={'Back' + (active && active.title ? ' from ' + active.title : '')}
+                aria-label={active && active.title ? say(SAY, 'bottomDashboard.backFrom', { title: active.title }) : say(SAY, 'bottomDashboard.back')}
                 style={{ ...chipStyle, flex: 'none' }}
               >◂</button>
               <div style={{
@@ -1347,8 +1349,8 @@ export const BottomDashboard = () => {
           className="bt-desk-foldstrip bt-noselect"
           data-desk-foldstrip=""
           role="button"
-          aria-label="Open dashboard"
-          title="Open dashboard (I)"
+          aria-label={say(SAY, 'bottomDashboard.openDashboard')}
+          title={say(SAY, 'bottomDashboard.openDashboardKey')}
           onPointerDown={(e) => e.stopPropagation()}
           onPointerUp={(e) => { e.stopPropagation(); dashboardPanelBus.open('dashboard'); }}
           style={{
@@ -1470,7 +1472,7 @@ export const BottomDashboard = () => {
               else dashboardPanelBus.open('dashboard');
             }}
             className="bt-chisel bt-chisel--chip"
-            aria-label={mode === 'expanded' ? 'Minimize dashboard' : 'Expand dashboard'}
+            aria-label={say(SAY, mode === 'expanded' ? 'bottomDashboard.minimize' : 'bottomDashboard.expand')}
             aria-expanded={mode === 'expanded'}
             data-land-fold={mode === 'expanded' ? 'open' : 'min'}
             /* ═══ v2.3.2497: A 44pt BOX, AND THE GLYPH GROWS WITH IT ═══
@@ -1500,7 +1502,7 @@ export const BottomDashboard = () => {
                   padding: 0, fontSize: 12, fontWeight: 800, letterSpacing: '.08em' }
               : { ...chipStyle, flex: 'none', fontSize: 11, fontWeight: 800, letterSpacing: '.04em', padding: 0,
                   width: LAND_FOLD_CHIP_W, height: LAND_FOLD_CHIP_W }}
-          >{mode === 'expanded' ? 'CLOSE' : 'OPEN'}</button>
+          >{say(SAY, mode === 'expanded' ? 'bottomDashboard.closeWord' : 'bottomDashboard.openWord')}</button>
           {/* ═══ v2.3.2176: MINIMIZED MEANS MINIMIZED ═══
               Owner: the nav buttons "should've been hidden inside the main
               dashboard screen when it's minimized."  So sideways they are
@@ -1731,7 +1733,7 @@ export const BottomDashboard = () => {
               const back = (
                 <button
                   data-dash-back
-                  aria-label={'Back' + (active && active.title ? ' from ' + active.title : '')}
+                  aria-label={active && active.title ? say(SAY, 'bottomDashboard.backFrom', { title: active.title }) : say(SAY, 'bottomDashboard.back')}
                   onPointerUp={(e) => { e.stopPropagation(); dashboardPanelBus.pop(); }}
                   style={{
                     flex: 'none',

@@ -1,6 +1,7 @@
 import { coinArtFor } from '@/game/coinArt.js';   /* v2.3.3734: the owner's coin piles */
 import React, { useCallback, useEffect, useState } from 'react';
-import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
+import { SAY } from '@/data/say/storePanel.js';   /* v2.3.6348: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say as sayWords } from '@/game/say.js';   /* v2.3.6348: as sayWords, beside the panel's own say() (its note); a plain row goes through deskWords (v2.3.3615: "tap" reads "click" on a computer) */
 import { CATEGORIES } from '@/ui/mobile/dash/bagFilterBus.js';
 import { thumbFor, iconFor, ITEM_NAMES } from '@/ui/mobile/dash/InventoryPanel.jsx';   /* ITEM_NAMES v2.3.3141 */
 import { armorIconFor, gearIdIcon } from '@/rendering/gearVariants.js'; /* v2.3.2531: gear listing art */
@@ -72,8 +73,8 @@ function header(gold) {
         style={{ width: 26, height: 26, objectFit: 'contain', flexShrink: 0 }}
         onError={(e) => { e.currentTarget.style.display = 'none'; }} />
       <div style={{ minWidth: 0, flex: 1 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.10em', color: LS.txt1 }}>Auction House</div>
-        <div style={{ fontSize: 11, color: LS.txt3, marginTop: 1 }}>What everyone is selling</div>
+        <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.10em', color: LS.txt1 }}>{sayWords(SAY, 'storePanel.title')}</div>
+        <div style={{ fontSize: 11, color: LS.txt3, marginTop: 1 }}>{sayWords(SAY, 'storePanel.subtitle')}</div>
       </div>
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: LS.brass, fontWeight: 700, fontVariantNumeric: 'tabular-nums', fontSize: 13 }}>
         <img src={coinArtFor(gold) /* v2.3.3734: your gold, its pile */} alt="" draggable={false} style={{ width: 15, height: 15, objectFit: 'contain' }}
@@ -155,16 +156,16 @@ function listingArt(l) {
  * Red under an hour, which is the mockup's own treatment of "2h left". */
 function timeLeft(expiresAt) {
   const ms = (Number(expiresAt) || 0) - Date.now();
-  if (!(ms > 0)) return { text: 'expiring', urgent: true };
+  if (!(ms > 0)) return { text: sayWords(SAY, 'storePanel.expiring'), urgent: true };
   const mins = Math.floor(ms / 60000);
-  if (mins < 60) return { text: mins + 'm left', urgent: true };
+  if (mins < 60) return { text: sayWords(SAY, 'storePanel.leftMins', { mins }), urgent: true };
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return { text: hrs + 'h left', urgent: hrs < 2 };
-  return { text: Math.floor(hrs / 24) + 'd ' + (hrs % 24) + 'h left', urgent: false };
+  if (hrs < 24) return { text: sayWords(SAY, 'storePanel.leftHours', { hours: hrs }), urgent: hrs < 2 };
+  return { text: sayWords(SAY, 'storePanel.leftDays', { days: Math.floor(hrs / 24), hours: hrs % 24 }), urgent: false };
 }
 
 function prettyName(l) {
-  const n = (l.disp && l.disp.name) || 'Item';
+  const n = (l.disp && l.disp.name) || sayWords(SAY, 'storePanel.item');
   if (l.kind === 'pet') return (l.disp && l.disp.pet) ? worldSafeText(petDisplayName(l.disp.pet)) : n;   /* v2.3.3122 */
   if (l.kind === 'weapon' || l.kind === 'gear') return n;
   /* v2.3.3141: the bag's own name when it has one ("Rare Iron Essence",
@@ -177,10 +178,10 @@ function subtitle(l) {
   /* v2.3.3122: a pet's kind, level and story, as the worker read them */
   if (l.kind === 'pet') {
     const pt = (l.disp && l.disp.pet) || {};
-    const bits = (pt.name ? [petKindName(pt.kind, pt.stage)] : []).concat(['Lv ' + (pt.lv || 1)]);   /* the kind only beside a name of its own */
-    if (pt.gold) bits.push('Golden');
-    if (pt.size >= 1.18) bits.push('Big');
-    if (pt.owners > 1) bits.push(pt.owners + ' owners');
+    const bits = (pt.name ? [petKindName(pt.kind, pt.stage)] : []).concat([sayWords(SAY, 'storePanel.petLevel', { lv: pt.lv || 1 })]);   /* the kind only beside a name of its own */
+    if (pt.gold) bits.push(sayWords(SAY, 'storePanel.petGolden'));
+    if (pt.size >= 1.18) bits.push(sayWords(SAY, 'storePanel.petBig'));
+    if (pt.owners > 1) bits.push(sayWords(SAY, 'storePanel.petOwners', { owners: pt.owners }));
     return bits.join(' · ');
   }
   if (l.kind === 'weapon') {
@@ -190,8 +191,8 @@ function subtitle(l) {
     if (d.tier) bits.push(String(d.tier));
     if (d.element1) bits.push(String(d.element1));
     if (d.element2) bits.push(String(d.element2));
-    if (d.hardness) bits.push('H' + d.hardness);
-    return bits.join(' · ') || 'Weapon';
+    if (d.hardness) bits.push(sayWords(SAY, 'storePanel.hardness', { hardness: d.hardness }));
+    return bits.join(' · ') || sayWords(SAY, 'storePanel.weapon');
   }
   /* v2.3.2531: the same subtitle shape as a weapon -- the facts the
      server derived off its own escrowed copy, in the order the item card
@@ -203,9 +204,9 @@ function subtitle(l) {
     if (d.tier) bits.push(String(d.tier));
     if (d.gem) bits.push(String(d.gem));
     if (d.slot) bits.push(String(d.slot));
-    return bits.join(' · ') || 'Gear';
+    return bits.join(' · ') || sayWords(SAY, 'storePanel.gear');
   }
-  return (l.qty > 1 ? l.qty + ' of them' : 'One') + ' · ' + (l.cat || 'item');
+  return sayWords(SAY, l.qty > 1 ? 'storePanel.countMany' : 'storePanel.countOne', { qty: l.qty, cat: l.cat || sayWords(SAY, 'storePanel.catItem') });
 }
 
 /* ═══ v2.3.2618: THE PER-PLAYER CEILING, SHOWN ═══
@@ -234,7 +235,7 @@ function emptyState(line, hint, onList) {
             minHeight: 44, padding: '0 20px', fontSize: 13, fontWeight: 700, borderRadius: 10,
             border: 'none', background: LS.brass, color: LS.onBrass, fontFamily: 'inherit',
             cursor: 'pointer', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
-          }}>+ List an Item</button>
+          }}>{sayWords(SAY, 'storePanel.listItem')}</button>
       ) : null}
     </div>
   );
@@ -316,7 +317,7 @@ export function StorePanel(props) {
     const r = await fn();
     setBusy(false);
     if (r && r.ok) { say(okText, true); setBidFor(null); setBidText(''); if (snd) cue(snd); }
-    else say((r && r.error) || 'The store said no', false);
+    else say((r && r.error) || sayWords(SAY, 'storePanel.saidNo'), false);
     refresh();
   };
 
@@ -325,8 +326,7 @@ export function StorePanel(props) {
       <div style={WRAP}>
         {header(Math.floor(rpgState.coins || 0))}
         <div style={{ ...BODY, fontSize: 12, color: LS.txt2, lineHeight: 1.5 }}>
-          The store is not open on this world yet. It arrives with the next
-          server update — everything else in town keeps working.
+          {sayWords(SAY, 'storePanel.closed')}
         </div>
       </div>
     );
@@ -348,7 +348,7 @@ export function StorePanel(props) {
         }}>{listingArt(l)}</div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: LS.txt1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {prettyName(l)}{l.kind !== 'weapon' && l.kind !== 'gear' && l.qty > 1 ? ' ×' + l.qty : ''}
+            {prettyName(l)}{l.kind !== 'weapon' && l.kind !== 'gear' && l.qty > 1 ? sayWords(SAY, 'storePanel.qty', { qty: l.qty }) : ''}
           </div>
           <div style={{ fontSize: 11, color: LS.txt3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{subtitle(l)}</div>
           {/* v2.3.2618: the mockup's two lower lines -- who is selling it,
@@ -364,7 +364,7 @@ export function StorePanel(props) {
               <PlayerIcon name={l.sellerName} color={l.sellerColor} avatar={l.sellerAvatar} look={l.sellerLook} size={18} />
             )}
             <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {mineView ? 'Yours' : 'Seller: ' + (l.sellerName || 'someone')}
+              {mineView ? sayWords(SAY, 'storePanel.yours') : sayWords(SAY, 'storePanel.seller', { name: l.sellerName || sayWords(SAY, 'storePanel.someone') })}
             </span>
             {/* v2.3.2621: the mockup's little chat icon, on the seller's own
                 line. Gated on caps.storeChat -- against an older worker the
@@ -373,7 +373,7 @@ export function StorePanel(props) {
                 to be tapped (storeApi.storeChatEnabled). Shown on your own
                 listings too: that is where a seller reads what buyers asked. */}
             {chatOn && (
-              <button type="button" aria-label={mineView ? 'Messages about your listing' : 'Message the seller'}
+              <button type="button" aria-label={sayWords(SAY, mineView ? 'storePanel.chatMine' : 'storePanel.chatSeller')}
                 onClick={() => { storeChatBus.openFor(l.id); onChatOpen(l.id); }}
                 data-store-chat-icon
                 style={{
@@ -397,28 +397,28 @@ export function StorePanel(props) {
           <div style={{ fontSize: 11, marginTop: 1, display: 'flex', gap: 8, alignItems: 'baseline' }}>
             <span style={{ color: left.urgent ? LS.bad : LS.txt3 }}>{'\u{1F551} ' + left.text}</span>
             <span style={{ color: LS.txt3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {top ? 'Top bid: ' + top.amount + 'g' : 'No bids'}
+              {top ? sayWords(SAY, 'storePanel.topBid', { amount: top.amount }) : sayWords(SAY, 'storePanel.noBids')}
             </span>
           </div>
         </div>
         <div style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-          <span style={{ fontSize: 13, fontWeight: 700, color: LS.brass, fontVariantNumeric: 'tabular-nums' }}>{l.askPrice}g</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: LS.brass, fontVariantNumeric: 'tabular-nums' }}>{sayWords(SAY, 'storePanel.price', { price: l.askPrice })}</span>
           {mineView
             ? (
               <div style={{ display: 'flex', gap: 5 }}>
-                {top ? pill('Take ' + top.amount + 'g', 'primary', () => act(() => storeAccept(l.id), 'Sold for ' + top.amount + ' gold', 'marketSold'), busy) : null}
-                {pill('Take down', 'quiet', () => act(() => storeCancel(l.id), 'Back in your bag', 'marketList'), busy)}
+                {top ? pill(sayWords(SAY, 'storePanel.take', { amount: top.amount }), 'primary', () => act(() => storeAccept(l.id), sayWords(SAY, 'storePanel.sold', { amount: top.amount }), 'marketSold'), busy) : null}
+                {pill(sayWords(SAY, 'storePanel.takeDown'), 'quiet', () => act(() => storeCancel(l.id), sayWords(SAY, 'storePanel.backInBag'), 'marketList'), busy)}
               </div>
             )
             : isMine
-              ? <span style={{ fontSize: 11, color: LS.txt3 }}>Yours</span>
+              ? <span style={{ fontSize: 11, color: LS.txt3 }}>{sayWords(SAY, 'storePanel.yours')}</span>
               : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5, alignItems: 'stretch' }}>
                   {/* v2.3.2618: "Buy 500g", not "Buy" -- the mockup puts the
                       price ON the button, and a Buy whose cost you have to
                       read off another line is how you tap one by accident. */}
-                  {pill('Buy ' + l.askPrice + 'g', 'primary', () => act(() => storeBuy(l.id), 'Bought for ' + l.askPrice + ' gold', 'marketBuy'), busy)}
-                  {pill('Bid', 'quiet', () => { setBidFor(bidFor === l.id ? null : l.id); setBidText(String(minBid)); }, busy)}
+                  {pill(sayWords(SAY, 'storePanel.buy', { price: l.askPrice }), 'primary', () => act(() => storeBuy(l.id), sayWords(SAY, 'storePanel.bought', { price: l.askPrice }), 'marketBuy'), busy)}
+                  {pill(sayWords(SAY, 'storePanel.bid'), 'quiet', () => { setBidFor(bidFor === l.id ? null : l.id); setBidText(String(minBid)); }, busy)}
                 </div>
               )}
           {bidFor === l.id && !mineView && !isMine && (
@@ -430,7 +430,7 @@ export function StorePanel(props) {
                   fontFamily: 'inherit', color: LS.txt1, background: LS.well,
                   border: '1px solid ' + LS.borderStrong, borderRadius: 8,
                 }} />
-              {pill('Place', 'primary', () => act(() => storeBid(l.id, Math.floor(Number(bidText) || 0)), 'Bid placed', 'marketBid'), busy)}
+              {pill(sayWords(SAY, 'storePanel.place'), 'primary', () => act(() => storeBid(l.id, Math.floor(Number(bidText) || 0)), sayWords(SAY, 'storePanel.bidPlaced'), 'marketBid'), busy)}
             </div>
           )}
         </div>
@@ -455,7 +455,7 @@ export function StorePanel(props) {
               border: '1px solid ' + LS.borderStrong, background: 'transparent', color: LS.txt2,
               fontFamily: 'inherit', cursor: 'pointer',
               WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
-            }}>Back to the shelf</button>
+            }}>{sayWords(SAY, 'storePanel.backToShelf')}</button>
         </div>
       </div>
     );
@@ -466,21 +466,20 @@ export function StorePanel(props) {
       {header(Math.floor(rpgState.coins || 0))}
       <div style={BODY}>
         <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
-          {chip(tab === 'shelf', 'Shelf', () => { setTab('shelf'); refresh('shelf'); }, 't-shelf')}
-          {chip(tab === 'mine', 'Yours', () => { setTab('mine'); refresh('mine'); }, 't-mine')}
+          {chip(tab === 'shelf', sayWords(SAY, 'storePanel.tabShelf'), () => { setTab('shelf'); refresh('shelf'); }, 't-shelf')}
+          {chip(tab === 'mine', sayWords(SAY, 'storePanel.yours'), () => { setTab('mine'); refresh('mine'); }, 't-mine')}
         </div>
 
         {tab === 'shelf' && (
           <>
             <div style={{ display: 'flex', gap: 5, overflowX: 'auto', paddingBottom: 6, marginBottom: 6 }}>
               {/* v2.3.3122: + Pets, the store's own chip (a bag has no pets) */}
-              {(petsListed ? CATEGORIES.concat([{ id: 'pet', label: 'Pets' }]) : CATEGORIES).map((c) => chip(cat === c.id, c.label, () => setCat(c.id), c.id))}
+              {(petsListed ? CATEGORIES.concat([{ id: 'pet', label: sayWords(SAY, 'storePanel.chipPets') }]) : CATEGORIES).map((c) => chip(cat === c.id, c.label, () => setCat(c.id), c.id))}
             </div>
             {shelf.length === 0
               ? emptyState(
-                  cat === 'all' ? 'Nothing is for sale right now.' : 'Nothing in this category right now.',
-                  cat === 'all' ? deskWords('Be the first — open your bag, tap something and choose Sell.')
-                                : 'Try another category, or put one up yourself.',
+                  sayWords(SAY, cat === 'all' ? 'storePanel.emptyAll' : 'storePanel.emptyCat'),
+                  sayWords(SAY, cat === 'all' ? 'storePanel.emptyAllHint' : 'storePanel.emptyCatHint'),
                   goList)
               : shelf.map((l) => row(l, false))}
           </>
@@ -489,25 +488,25 @@ export function StorePanel(props) {
         {tab === 'mine' && (
           <>
             <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
-              {chip(mineTab === 'listings', 'My Listings', () => setMineTab('listings'), 'm-list')}
-              {chip(mineTab === 'bids', 'My Bids', () => setMineTab('bids'), 'm-bids')}
+              {chip(mineTab === 'listings', sayWords(SAY, 'storePanel.myListings'), () => setMineTab('listings'), 'm-list')}
+              {chip(mineTab === 'bids', sayWords(SAY, 'storePanel.myBids'), () => setMineTab('bids'), 'm-bids')}
             </div>
             {mineTab === 'listings' && (
               mine.length === 0
                 ? emptyState(
-                    "You're not selling anything yet.",
-                    deskWords('Open your bag, tap something and choose Sell.'),
+                    sayWords(SAY, 'storePanel.mineEmpty'),
+                    sayWords(SAY, 'storePanel.mineEmptyHint'),
                     goList)
                 : <>
-                    <div style={MOD}>{mine.length + ' of ' + MAX_PER_PLAYER + ' slots used'}</div>
+                    <div style={MOD}>{sayWords(SAY, 'storePanel.slotsUsed', { used: mine.length, max: MAX_PER_PLAYER })}</div>
                     {mine.map((l) => row(l, true))}
                   </>
             )}
             {mineTab === 'bids' && (
               bidding.length === 0
                 ? emptyState(
-                    'You have no bids standing.',
-                    'Your gold is only held while your bid is the top one.')
+                    sayWords(SAY, 'storePanel.bidsEmpty'),
+                    sayWords(SAY, 'storePanel.bidsEmptyHint'))
                 : bidding.map((l) => row(l, false))
             )}
           </>
@@ -523,8 +522,7 @@ export function StorePanel(props) {
           {/* v2.3.2619: a store that expires in a week while the copy promises
               24 hours is worse than the original -- every string that named
               the old lifetime moved with the constant. */}
-          Listings last one week. If nobody buys, it comes back to you — and any
-          bid goes back to whoever made it. Armour and amulets can&apos;t be listed yet.
+          {sayWords(SAY, 'storePanel.footer')}
         </div>
       </div>
     </div>

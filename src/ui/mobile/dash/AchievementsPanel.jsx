@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
+import { SAY } from '@/data/say/achievements.js';   /* v2.3.6351: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say, sayPieces } from '@/game/say.js';   /* v2.3.6351: a plain row goes through deskWords (v2.3.3615: "tap" reads "click" on a computer) */
 import { COL, panelStyle, getState, QUALITY_PRISM, qualityInk } from './common.js';
 import { panelVw } from '../playViewport.js';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
@@ -87,7 +88,7 @@ const chip = (active) => ({
    super-rare a rainbow ring round rainbow words */
 function ApPill({ tier, ap }) {
   const t = ACHV_TIERS[tier];
-  const words = fmt(typeof ap === 'number' ? ap : t.ap) + ' AP';   /* v2.3.4036: a row's own ap (the rare fish's 5 and 10) */
+  const words = say(SAY, 'achievements.ap', { ap: fmt(typeof ap === 'number' ? ap : t.ap) });   /* v2.3.4036: a row's own ap (the rare fish's 5 and 10) */
   const base = { flex: 'none', borderRadius: 999, fontSize: 11, fontWeight: 800, lineHeight: '15px', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' };
   if (t.color === 'prismatic') {
     return (
@@ -105,7 +106,7 @@ function ApPill({ tier, ap }) {
 }
 
 const Lock = () => (
-  <svg data-achv-lock="" viewBox="0 0 12 14" width="11" height="13" role="img" aria-label="Not earned yet"
+  <svg data-achv-lock="" viewBox="0 0 12 14" width="11" height="13" role="img" aria-label={say(SAY, 'achievements.notEarned')}
     style={{ flex: 'none', marginTop: 2 }}>
     <path d="M3.2 6.2V4.4a2.8 2.8 0 0 1 5.6 0v1.8" fill="none" stroke={COL.muted} strokeWidth="1.6" strokeLinecap="round" />
     <rect x="1.5" y="6" width="9" height="7.2" rx="1.6" fill={COL.muted} />
@@ -143,17 +144,17 @@ function TitleLine({ S, id, wearing, wait }) {
         <>
           <span data-achv-title-on="" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 800, color: COL.accent }}>
             <Tick />
-            Your title
+            {say(SAY, 'achievements.yourTitle')}
           </span>
           <button type="button" data-achv-title-off={id} disabled={busy} onClick={ask(null)}
             style={{ ...titleHit, cursor: busy ? 'default' : 'pointer' }}>
-            <span style={titlePill(!busy)}>{mine ? 'Removing…' : 'Remove title'}</span>
+            <span style={titlePill(!busy)}>{say(SAY, mine ? 'achievements.removing' : 'achievements.removeTitle')}</span>
           </button>
         </>
       ) : (
         <button type="button" data-achv-title-use={id} disabled={busy} onClick={ask(id)}
           style={{ ...titleHit, cursor: busy ? 'default' : 'pointer' }}>
-          <span style={titlePill(!busy)}>{mine ? 'Saving…' : 'Use as title'}</span>
+          <span style={titlePill(!busy)}>{say(SAY, mine ? 'achievements.saving' : 'achievements.useTitle')}</span>
         </button>
       )}
     </div>
@@ -189,7 +190,7 @@ function Row({ r, S, now, wait, open, onToggle }) {
             overflowWrap: 'anywhere' }}>
             {def.name}
             {n > 1 ? <span data-achv-times={n} style={{ marginLeft: 5, color: COL.accent, fontVariantNumeric: 'tabular-nums' }}>×{fmt(n)}</span> : null}
-            {wearing ? <span data-achv-wearing="" title="Your title" style={{ marginLeft: 6, verticalAlign: '-1px' }}><Tick size={10} /></span> : null}
+            {wearing ? <span data-achv-wearing="" title={say(SAY, 'achievements.yourTitle')} style={{ marginLeft: 6, verticalAlign: '-1px' }}><Tick size={10} /></span> : null}
           </span>
           <ApPill tier={def.tier} ap={def.ap} />
         </div>
@@ -201,7 +202,7 @@ function Row({ r, S, now, wait, open, onToggle }) {
             <span data-achv-how="" style={{ flex: 1, minWidth: 0, fontSize: 12, lineHeight: 1.35, color: COL.text2 }}>
               {def.how}
               {words ? <span data-achv-progress="" style={{ color: COL.text }}> · {words}</span> : null}
-              {got && n > 1 ? <span style={{ color: COL.text }}> · {fmt(n)} times</span> : null}
+              {got && n > 1 ? <span style={{ color: COL.text }}>{say(SAY, 'achievements.times', { count: fmt(n) })}</span> : null}
             </span>
           ) : (
             /* one line: the clue, and how far along where the worker said */
@@ -274,7 +275,7 @@ function Summary({ S, head, end }) {
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, justifyContent: end ? 'flex-end' : 'flex-start', whiteSpace: 'nowrap' }}>
         <span data-achv-ap-total={sum.apTotal} title={achvSplitWords(sum)}
           style={{ fontSize: head ? 14 : 18, fontWeight: 800, color: COL.gold, fontVariantNumeric: 'tabular-nums' }}>
-          {fmt(sum.apTotal)} AP
+          {say(SAY, 'achievements.ap', { ap: fmt(sum.apTotal) })}
         </span>
         <span data-achv-count={sum.earned} style={{ fontSize: 12.5, fontWeight: 700, color: COL.text2, fontVariantNumeric: 'tabular-nums' }}>
           {sum.earned}/{sum.total}
@@ -285,8 +286,8 @@ function Summary({ S, head, end }) {
         <div data-achv-title-current={titleDef ? titleDef.id : 'none'}
           style={{ fontSize: 11.5, color: COL.text2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: 1 }}>
           {titleDef
-            ? <>Title: <b style={{ color: COL.accent }}>{titleDef.name}</b></>
-            : deskWords('No title yet: tap one you have')}
+            ? <>{sayPieces(SAY, 'achievements.titleNow', { name: <b key="name" style={{ color: COL.accent }}>{titleDef.name}</b> })}</>
+            : say(SAY, 'achievements.noTitle')}
         </div>
       ) : null}
     </div>
@@ -327,7 +328,7 @@ export const AchievementsPanel = () => {
   if (!achvLive(S)) {
     return (
       <div data-achv-panel="off" style={box}>
-        <Note id="off" title="Achievements aren't on yet." sub="This server doesn't keep them yet." />
+        <Note id="off" title={say(SAY, 'achievements.offTitle')} sub={say(SAY, 'achievements.offSub')} />
       </div>
     );
   }
@@ -335,8 +336,8 @@ export const AchievementsPanel = () => {
   if (a && a.unavailable) {
     return (
       <div data-achv-panel="unavailable" style={box}>
-        <Note id="unavailable" title="Achievements can't be read right now."
-          sub="Nothing you have earned is lost: they come back when the server can read them." />
+        <Note id="unavailable" title={say(SAY, 'achievements.unavailableTitle')}
+          sub={say(SAY, 'achievements.unavailableSub')} />
       </div>
     );
   }
@@ -350,7 +351,7 @@ export const AchievementsPanel = () => {
       {/* no header row to ride (a root page): the summary is the page's own
           first lines, as it was */}
       {drilled() ? null : <div style={{ marginBottom: 2 }}><Summary S={S} /></div>}
-      <div role="group" aria-label="Show" style={narrow
+      <div role="group" aria-label={say(SAY, 'achievements.show')} style={narrow
         ? { display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: 6, margin: '0 0 2px' }
         : { display: 'flex', flexWrap: 'wrap', columnGap: 6, margin: '0 0 2px' }}>
         {ACHV_FILTERS.map((f) => (

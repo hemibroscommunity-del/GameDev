@@ -2,6 +2,8 @@ import React from 'react';
 import { BUILD_INFO } from '../BuildBadge.jsx'; /* v2.3.1903 */
 import { BT_AUDIO } from '@/data/index.js';
 import { verifyBro, hasWallet, broVerifySupported, broCountSupported, broCountOf, onBroState, getBroState, BRO_PENDING, BRO_OK } from '@/networking/broWallet.js';
+import { SAY } from '@/data/say/infoPanel.js';   /* v2.3.6353: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';
 
 /* ═══ InfoPanel — online-count + mute/close utility popup ═══ */
 /* v2.3.855: moved verbatim from BroTown.jsx's JSX tree (first UI-panel
@@ -43,16 +45,16 @@ function BroVerifyRow(props) {
   var none = countMode && bro.status === BRO_OK && !count;
 
   var label = countMode
-    ? (busy ? 'Check your wallet\u2026'
-      : verified ? '\u2713 ' + count + ' Hemi Bro' + (count === 1 ? '' : 's') + ' \u00b7 check again'
-        : hasWallet() ? 'Verify my Hemi Bros'
+    ? (busy ? say(SAY, 'infoPanel.broChecking')
+      : verified ? say(SAY, 'infoPanel.broCount', { n: count })
+        : hasWallet() ? say(SAY, 'infoPanel.broVerifyMine')
           /* every player sees this row now, and a phone's own browser has no
              wallet: say how, not just "no" */
-          : 'Hemi Bro holder? Open BroTown in your wallet app to verify')
-    : (verified ? '\u2713 Hemi Bro #' + wornId + ' verified'
-      : busy ? 'Check your wallet\u2026'
-        : hasWallet() ? 'Verify Hemi Bro #' + wornId
-          : 'No wallet in this browser');
+          : say(SAY, 'infoPanel.broHowTo'))
+    : (verified ? say(SAY, 'infoPanel.broVerified', { id: wornId })
+      : busy ? say(SAY, 'infoPanel.broChecking')
+        : hasWallet() ? say(SAY, 'infoPanel.broVerifyWorn', { id: wornId })
+          : say(SAY, 'infoPanel.broNoWallet'));
   var locked = busy || !hasWallet() || (!countMode && verified);
 
   return React.createElement('div', {
@@ -77,7 +79,7 @@ function BroVerifyRow(props) {
     style: { marginTop: 6, fontSize: 11, lineHeight: 1.35, color: '#D95C54' },
   }, bro.error) : none ? React.createElement('div', {
     style: { marginTop: 6, fontSize: 11, lineHeight: 1.35, color: '#C9C2B4' },
-  }, 'This wallet holds no Hemi Bros.') : null);
+  }, say(SAY, 'infoPanel.broNone')) : null);
 }
 
 export function InfoPanel(props) {
@@ -116,7 +118,7 @@ export function InfoPanel(props) {
       fontVariantNumeric: 'tabular-nums',
       color: '#F7F2E7'
     }
-  }, playerCount, " online"), /*#__PURE__*/React.createElement("span", {
+  }, say(SAY, 'infoPanel.online', { count: playerCount })), /*#__PURE__*/React.createElement("span", {
     style: {
       fontSize: 11, // v2.3.1239: 10px font floor (was 9)
       color: stateRef.current._realtimeStatus === 'connected' ? '#59BF91' : '#D95C54',
@@ -142,20 +144,21 @@ export function InfoPanel(props) {
     var _blob = !!(_S.rpg && _S.rpg.prog3 && _S.rpg.prog3.sk);
     var _conn = _S._realtimeStatus === 'connected';
     if (_cap && _blob && _conn) return null;
-    var _why = !_conn ? 'not connected to the server'
-      : !_cap ? 'server has not sent combat rules yet'
-      : 'character has no trained-skill record';
+    var _why = say(SAY, !_conn ? 'infoPanel.whyOffline'
+      : !_cap ? 'infoPanel.whyNoRules'
+      : 'infoPanel.whyNoSkills');
     return /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11, color: '#D9A441', marginTop: -4, marginBottom: 8,
         lineHeight: 1.35,
       }
-    }, "⚠ Combat numbers may read low — " + _why + ".",
+    }, say(SAY, 'infoPanel.lowWarn', { why: _why }),
       /*#__PURE__*/React.createElement("div", {
         style: { color: '#8C8578', fontVariantNumeric: 'tabular-nums' }
-      }, "link " + (_conn ? 'ok' : 'off')
-        + " · rules " + (_cap ? 'ok' : 'off')
-        + " · skills " + (_blob ? 'ok' : 'off')));
+      }, say(SAY, 'infoPanel.facts', {
+        link: say(SAY, _conn ? 'infoPanel.ok' : 'infoPanel.off'),
+        rules: say(SAY, _cap ? 'infoPanel.ok' : 'infoPanel.off'),
+        skills: say(SAY, _blob ? 'infoPanel.ok' : 'infoPanel.off') })));
   })(),
   /* v2.3.1903: the BUILD, always shown.  A report of "still says 0" cannot be
      acted on without knowing which bundle produced it — twice now a fix has
@@ -171,7 +174,7 @@ export function InfoPanel(props) {
     /* v2.3.3481: the 2026-10-19 UI review -- the game's version (the newest
        v2.3.N in the build's commit titles), not package.json's 2.3.2324,
        which is only the art's cache key */
-  }, "build " + BUILD_INFO.game + " (" + BUILD_INFO.sha + ")"), /*#__PURE__*/React.createElement("button", {
+  }, say(SAY, 'infoPanel.build', { game: BUILD_INFO.game, sha: BUILD_INFO.sha })), /*#__PURE__*/React.createElement("button", {
     onClick: function onClick() {
       BT_AUDIO.muted = !BT_AUDIO.muted;
       setPlayerCount(function (c) {
@@ -191,7 +194,7 @@ export function InfoPanel(props) {
       cursor: 'pointer',
       width: '100%'
     }
-  }, BT_AUDIO.muted ? '🔇 Unmute' : '🔊 Mute'), /*#__PURE__*/React.createElement("button", {
+  }, say(SAY, BT_AUDIO.muted ? 'infoPanel.unmute' : 'infoPanel.mute')), /*#__PURE__*/React.createElement("button", {
     onClick: function onClick() {
       return setShowInfo(false);
     },
@@ -208,5 +211,5 @@ export function InfoPanel(props) {
       cursor: 'pointer',
       width: '100%'
     }
-  }, "Close"), /*#__PURE__*/React.createElement(BroVerifyRow, { stateRef: stateRef }));
+  }, say(SAY, 'infoPanel.close')), /*#__PURE__*/React.createElement(BroVerifyRow, { stateRef: stateRef }));
 }

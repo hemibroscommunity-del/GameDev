@@ -2,6 +2,8 @@ import React from 'react';
 import { BUILD_INFO } from '../BuildBadge.jsx';
 import { CharacterPicker } from './CharacterPicker.jsx';                 /* v2.3.1923 */
 import { rosterFull, rosterCount, ROSTER_MAX } from '@/networking/charRoster.js';  /* v2.3.1923, v2.3.2111 */
+import { SAY } from '@/data/say/loginScreen.js';   /* v2.3.6331: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say, sayPieces } from '@/game/say.js';
 
 /* ═══ v2.3.1814: THE LOGIN SCREEN ═══
  *
@@ -277,7 +279,7 @@ export const LoginScreen = ({ onCreateNew, onPlay, checking }) => {
           <span className="bt-login-logowrap">
             <img
               src={art('logo-full')}
-              alt="Hemi Bros — BroTown, multiplayer RPG"
+              alt={say(SAY, 'loginScreen.logoAlt')}
               draggable={false}
               className="bt-login-logo"
             />
@@ -317,7 +319,7 @@ export const LoginScreen = ({ onCreateNew, onPlay, checking }) => {
             disabled={checking}
             onClick={() => setShowPicker(true)}
           >
-            <span>Continue</span>
+            <span>{say(SAY, 'loginScreen.continue')}</span>
           </button>
 
           <button
@@ -331,7 +333,7 @@ export const LoginScreen = ({ onCreateNew, onPlay, checking }) => {
                out — not a dialog asking permission to destroy something. */
             onClick={() => { if (rosterFull()) setWarnFull(true); else onCreateNew(); }}
           >
-            <span>Create Character</span>
+            <span>{say(SAY, 'loginScreen.create')}</span>
           </button>
         </div>
 
@@ -361,7 +363,7 @@ export const LoginScreen = ({ onCreateNew, onPlay, checking }) => {
               }}
             >
               <div style={{ fontSize: 16, fontWeight: 800, color: '#F4F0E7' }}>
-                This device is full
+                {say(SAY, 'loginScreen.fullTitle')}
               </div>
               <div style={{ fontSize: 13, color: '#B6C1BE', marginTop: 6, lineHeight: 1.35 }}>
                 {/* v2.3.2193b: this used to say "Delete one under Continue to
@@ -378,9 +380,7 @@ export const LoginScreen = ({ onCreateNew, onPlay, checking }) => {
                     the bro behind their Login Key.  So the card gives the way
                     there in the menu's own words (not "Delete", which it does not
                     say); "Choose a bro" below opens that very list. */}
-                You have all <b style={{ color: '#F4F0E7' }}>{ROSTER_MAX}</b> bros this
-                device can hold. Play one, or free a slot: tap a bro's ••• and choose
-                Remove from this device. Their Login Key still brings them back.
+                {sayPieces(SAY, 'loginScreen.fullHow', { max: <b key="max" style={{ color: '#F4F0E7' }}>{ROSTER_MAX}</b> })}
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 14 }}>
                 {/* Somewhere to GO, not just a refusal.  It used to say
@@ -395,7 +395,7 @@ export const LoginScreen = ({ onCreateNew, onPlay, checking }) => {
                   style={{ minHeight: 44, fontSize: 14, fontWeight: 800, color: '#F4F0E7' }}
                   onClick={() => { setWarnFull(false); setShowPicker(true); }}
                 >
-                  Choose a bro
+                  {say(SAY, 'loginScreen.fullChoose')}
                 </button>
                 <button
                   type="button"
@@ -403,7 +403,7 @@ export const LoginScreen = ({ onCreateNew, onPlay, checking }) => {
                   style={{ minHeight: 40, fontSize: 13, fontWeight: 800, color: '#B6C1BE' }}
                   onClick={() => setWarnFull(false)}
                 >
-                  Never mind
+                  {say(SAY, 'loginScreen.fullNeverMind')}
                 </button>
               </div>
             </div>
@@ -415,13 +415,13 @@ export const LoginScreen = ({ onCreateNew, onPlay, checking }) => {
             to a cleared browser.  The creator never had a good place for
             it — by then you are already halfway through making someone. */}
         <div className="bt-login-note">
-          {checking
-            ? 'Checking for your character…'
+          {say(SAY, checking
+            ? 'loginScreen.checking'
             /* v2.3.1823: the owner's own wording, off their art sheet — the
                longer version ran to three lines at the bottom of a phone,
                which is a paragraph competing with the buttons rather than
                the "small unobtrusive text" the brief asked for. */
-            : 'Your Login Key lets you access your character on any device.'}
+            : 'loginScreen.keyNote')}
         </div>
 
         {/* v2.3.2185 (owner: "add the version back to the home splash screen
@@ -443,11 +443,13 @@ export const LoginScreen = ({ onCreateNew, onPlay, checking }) => {
             2.3.2324 on a v2.3.3439 build.  BUILD_INFO.version stays the art's
             `?v=` cache key, above. */}
         {/* v2.3.4333: the owner's mockup, one small white line just above the
-            version: where the game runs and what it costs.  U+2022 dots as
-            escapes (the game's script stays ASCII). */}
-        <div className="bt-login-tag" data-login-tag="">{'Any device \u2022 Any browser \u2022 No download \u2022 Free'}</div>
-        <div className="bt-login-ver" title={BUILD_INFO.time ? `Built ${BUILD_INFO.time}` : undefined}>
-          v{BUILD_INFO.game} · {BUILD_INFO.sha}
+            version: where the game runs and what it costs.  v2.3.6340: the
+            U+2022 dots are written as themselves in its row
+            (src/data/say/loginScreen.js); the build still writes the game's
+            script in ASCII (vite.config.js, `charset: 'ascii'`). */}
+        <div className="bt-login-tag" data-login-tag="">{say(SAY, 'loginScreen.tagline')}</div>
+        <div className="bt-login-ver" title={BUILD_INFO.time ? say(SAY, 'loginScreen.builtAt', { time: BUILD_INFO.time }) : undefined}>
+          {say(SAY, 'loginScreen.version', { game: BUILD_INFO.game, sha: BUILD_INFO.sha })}
         </div>
       </div>
 

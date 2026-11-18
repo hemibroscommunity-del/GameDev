@@ -1,36 +1,40 @@
 card: Z
-branch: claude/plan-z-sitting-48
-prs: this PR (tag 6262), the last line of sitting 48's list (ready)
+branch: claude/plan-z-sitting-51
+prs: SB #2228; WD3 #2227, #2229-#2243, #2246, #2248; EN #2234; HB2 #2224; LR #2226, #2245 (ready); this PR (tag 6265), the last line
 state: ready
 
 ## Done
-- `census/review-z48.md`. Notes on 8.1 (RD), 5.5 (FX), 3.1 (HB); part
-  9: EN's folksheets, HB's afterpaint. Card RD's last PR on the list.
-## The list: merge in this order, each "Create a merge commit"
-1 RD #2208 (crowdfight; tests) · 2 EN #2207 (`?folksheets`; DEPLOYS) ·
-3 HB #2209 (`?afterpaint`) · 4 Z. On `main` 586b0a7b, one base at every
-step, every base `main`. Heads, trees: the census.
-## Held / To 49
-- None held. To 49: anything opened after the cut; EN 6203, HB's next.
+- `census/review-z51.md`: 22 PRs checked against their cards; #2224 and
+  #2234 reviewed in full, WD3's 16 screens PRs by 6 word checkers and by
+  hand (the phone's words identical); merge bases one each; rehearsed on
+  `main` 7569a0c0, tree 42d5402f: precheck 0 FAIL, build, questline 187.
+  Blocks WD3 6340, LR 6360, SB 6380 registered (nextBlock 6400); WD2 done.
+## The list: merge in this order, "Create a merge commit", in one go
+1 #2228 (SB 6380)  2 #2227 (WD3 6340, DEPLOYS)  3 #2229  4 #2230  5 #2231
+6 #2232  7 #2233  8 #2235  9 #2236  10 #2237  11 #2238  12 #2239  13 #2240
+14 #2241  15 #2242  16 #2243  17 #2246  18 #2248 (WD3 6356, DEPLOYS)
+19 #2234 (EN 6203)  20 #2224 (HB2 6280)  21 #2226 (LR 6360)  22 #2245
+(LR 6361)  23 Z.  The stacks fix the order; the deploy queue makes it at
+most two deploys, same worker code. LR re-freezes after #2224 lands.
+## Held / To 52
+- None held. To 52: HB2 #2244 (6281, draft; merges main after WD3:
+  BroCard, dash InventoryPanel, QuestJournalPage clash); LR's re-freeze;
+  SB 6381 onward (`atlasrow` parked); RR; EN 6204.
 ## Found
-- 46's and 47's carried. New or restated: RD: a device drawing under 1
-  frame per 5 s rejoins forever (wsClient.js `_aliveTimer`,
-  `RESYNC_AWAY_MS`): a game question, the owner's. HB: `mp-mayordoor`
-  parts 2-3 red on main (5 of 12): no card owns it. FX/EN:
-  mp-membudget's heap (38.5) and buffers lines at their edge on main on
-  session boxes, CI fine. The gatekeeper's tool caps precheck at 15 min
-  (tools/dev/gatekeeper.mjs), under the server suite's ~12 plus the
-  rest: seen again here (its precheck "timed out", no red). WD's 96
-  "tap" words outside deskWords(). canvas-witness 8b reads only a
-  comment. CS's stale "off by default" comments and the Set-a-switch
-  chips (ownerSwitches.js) not listing the six. TL's run.mjs orphans on
-  precheck's timeout. elemental2 maxMana under duelpace: watch. EN's
-  comments name tools/guards/folk-sheets.test.mjs (it is server/test).
-  RD's, EN's and HB's status lines lag their ready PRs. New:
-  `switches-thrown` red once under load (joinidform, login-keys 12h,
-  883 s), green alone in 45 s: watch.
+- 46-50 carried: wsClient `_aliveTimer` rejoin loop (RR's); `mp-mayordoor`
+  2-3 red on main (no card); mp-membudget heap line at its edge (EN saw
+  38.5-39.1); gatekeeper.mjs's 15-min precheck cap (861-889 s here, no
+  card); canvas-witness 8b; CS's comments and chips; TL's run.mjs orphans;
+  elemental2 maxMana; `switches-thrown` once under load.
+- New: `mp-firststeps` part 6 red on main (HB2's find; tools/qa/mp: RR's);
+  `state-census.mjs --check` red on main, no guard runs it (EN's find);
+  SB: the board outruns the ground (79% pop-ins on budget-android: a thing
+  seen, asked), stripRead's worker remade after 4 s idle (now SB's).
+- Mends, no hold: SB `RING_R` from the geometry; EN `_keepQueue` cap (its
+  6204). Old drafts #1870 #1869 #1867 #1415 #1211: closed on GitHub.
 ## Needs
-- Decided for the owner while away (the planning session): EN's
-  folksheets ON (`?folksheets=0`); HB's afterpaint ON (`?afterpaint=0`).
+- Decided for the owner while away: SB `groundsend` ON (`?groundsend=0`,
+  a later PR); carried: EN `folksheets` ON, HB `afterpaint` ON. Parked:
+  SB `atlasrow` (0.3 ms). Computer "tap" -> "click": review-z51.md.
 - Owner's own: `.github/`, Cloudflare; wind-dunes.mp3's source; SEC2's
-  report form needing a public repository.
+  report form; RR's full 388-scenario sweep (a sample now).

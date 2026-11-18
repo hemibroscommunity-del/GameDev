@@ -1,0 +1,64 @@
+/* v2.3.6330: the Pets page's words (src/ui/mobile/dash/PetsPanel.jsx; docs/specs/player-words.md, wave W1) */
+export const SAY = Object.freeze({
+  /* the journal's stages */
+  'pets.stageLow': 'Levels 1-20',
+  'pets.stageHigh': 'Levels 21-40',
+  /* a journal cell */
+  'pets.cellCaught': '{count} caught',
+  'pets.cellNotCaught': 'Not caught',
+  'pets.cellNotTried': 'Not tried',
+  'pets.cellTries': '{tries} tries',
+  'pets.cellGolden': '{gold} golden',
+  'pets.cellBiggest': 'Biggest {pct}%',
+  /* the head: the count and the pet out with you */
+  'pets.countTail': 'in your collection',
+  'pets.withYou': 'With you: {name}',
+  'pets.noneOut': 'No pet out with you',
+  'pets.trapping': ' · Trapping {level}',
+  /* no record, or no pets yet */
+  'pets.notReady': 'Your pets are not ready yet. Try again after you rejoin.',
+  'pets.emptyHow': 'No pets yet. Make box traps at the Woodworker, target a monster out in the lands, tap {trap}, then kill it. About one try in a hundred at best, and every try pays Trapping XP.',
+  'pets.trapButton': 'TRAP',
+  /* the Pet House's more room */
+  'pets.houseFull': 'Your Pet House holds {max}, as many as it can.',
+  'pets.houseAsk': 'Buy room for {step} more pets for {price}?',
+  'pets.houseOffer': 'Pet House: room for {step} more pets, {price}{have}',
+  'pets.housePrice': '{gold} gold',
+  'pets.houseHave': ' (you have {coins})',
+  'pets.houseBuy': 'Buy',
+  'pets.houseKeep': 'Keep',
+  'pets.houseMore': 'More room',
+  /* a listing made */
+  'pets.listedNote': '{text}. It waits at the Auction House until it sells, and comes back if it does not.',
+  /* a pet's row */
+  'pets.level': 'Lv {lv}',
+  'pets.levelHeld': 'Lv {lv} ({own})',
+  'pets.badgeOut': 'With you',
+  'pets.badgeGolden': 'Golden',
+  'pets.badgeBig': 'Big',
+  'pets.wardWhenOut': ' when out',
+  /* a pet's actions */
+  'pets.heldNote': 'Works at Lv {lv} until your Trapping reaches {own}.',
+  'pets.nameSave': 'Save',
+  'pets.releaseAsk': 'Release {name} for good?',
+  'pets.releaseYes': 'Release',
+  'pets.releaseKeep': 'Keep',
+  'pets.putAway': 'Put away',
+  'pets.takeOut': 'Take out',
+  'pets.rename': 'Rename',
+  'pets.release': 'Release',
+  'pets.nameRule': '2-16 letters, numbers, spaces, - or \'',
+  /* selling at the Auction House */
+  'pets.sell': 'Sell at the Auction House',
+  'pets.pricePlaceholder': 'Price in gold',
+  'pets.listedFor': 'Listed for {price} gold',
+  'pets.notListed': 'Not listed',
+  'pets.listButton': 'List',
+  /* the foot of the list */
+  'pets.footNote': 'The pet with you picks up loot from further away{ward}. Pets are never lost, not even in No man\'s land.',
+  'pets.footWard': ', and softens what its own land\'s monsters do to you',
+  /* the journal */
+  'pets.journalTitle': 'Journal',
+  'pets.journalCount': '{caught} of {total} caught',
+  'pets.journalNote': 'Each land\'s monsters become its pet. Past level 20 they come in the land\'s second colours.',
+});

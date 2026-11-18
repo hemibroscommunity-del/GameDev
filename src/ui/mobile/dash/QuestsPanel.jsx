@@ -11,6 +11,8 @@ import { QuestJournalPage, useJournalTap, npcPortrait } from './QuestJournalPage
 import { useBoxSize, sideBySide, FOOT_FADE, railHeading } from './railKit.js';   /* v2.3.4394: a list beside what it opens */
 import { QUEST_PIN, OWNER_ICON } from '@/data/ownerIcons.js';   /* v2.3.4394: the givers' own pins, on the list's pills; the prize wheel on Daily */
 import { dailyRewardsBus, questsLive, spinLive } from '@/game/dailyRewards.js';
+import { SAY } from '@/data/say/questsPanel.js';   /* v2.3.6350: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';
 
 /* v2.3.1265: Quests — read-only quest log (accepting/turning-in stays
    with the NPCs; server-authoritative flow untouched).
@@ -96,7 +98,7 @@ const PathSwitch = () => {
   const look = TRAIL_STYLES.find((s) => s.id === getShownTrailStyle());
   return (
     <div
-      role="switch" aria-checked={on} aria-label="Quest path"
+      role="switch" aria-checked={on} aria-label={say(SAY, 'questsPanel.path')}
       data-questpath-switch={on ? 'on' : 'off'}
       /* role="switch" is not one the click-sound delegate recognises
          (button / role="button"), so the row says so itself */
@@ -109,11 +111,11 @@ const PathSwitch = () => {
         cursor: 'pointer', touchAction: 'manipulation',
       }}>
       <span style={{ flex: 1, minWidth: 0 }}>
-        <span style={{ display: 'block', fontSize: 15, fontWeight: 600, color: COL.text }}>Quest path</span>
+        <span style={{ display: 'block', fontSize: 15, fontWeight: 600, color: COL.text }}>{say(SAY, 'questsPanel.path')}</span>
         <span style={{
           display: 'block', fontSize: 14, color: COL.text2, marginTop: 1,   /* v2.3.3944: 13.5 / 11.5 were, the journal's floor is 13 */
           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-        }}>{on ? (look ? look.label : 'On') + ' on the ground' : 'Hidden'}</span>
+        }}>{on ? say(SAY, 'questsPanel.pathOn', { look: look ? look.label : say(SAY, 'questsPanel.pathOnWord') }) : say(SAY, 'questsPanel.pathHidden')}</span>
       </span>
       {/* The Settings Toggle's pill, same sizes and states (brass-soft fill +
           brass knob when on, raised + muted knob when off). */}
@@ -260,17 +262,17 @@ export const QuestsPanel = () => {
   let secN = 0;
   const sec = (word) => <div key={'s:' + word} data-quest-sec={word} aria-hidden={side ? undefined : 'true'} style={railHeading(!side, secN++ === 0)}>{word}</div>;
   const list = [
-    L.active.length ? sec('Active') : null,
+    L.active.length ? sec(say(SAY, 'questsPanel.secActive')) : null,
     ...L.active.map((r) => pill({
       id: r.id, npc: r.npc, label: r.title, title: r.title + ': ' + deskWords(r.line),
       icon: r.tracked ? 'tracked' : r.ready ? 'ready' : 'waiting', warm: r.ready,
       hook: { 'data-quest-row': r.id /* v2.3.3522: mp-trackquest */, 'data-quest-row-ready': r.ready ? '1' : '0', 'data-quest-row-track': r.tracked ? 'on' : 'off' },
     })),
-    L.available.length ? sec('Available') : null,
+    L.available.length ? sec(say(SAY, 'questsPanel.secAvailable')) : null,
     ...L.available.map((r) => pill({ id: r.id, npc: r.npc, label: r.title, title: r.title + ': ' + r.where, icon: 'offer', hook: { 'data-quest-offer-row': r.id } })),
-    (L.done.length || dailyOn) ? sec('More') : null,
-    L.done.length ? pill({ id: '@done', label: 'Done', count: L.done.length, icon: 'done', hook: { 'data-quest-nav': 'done' } }) : null,
-    dailyOn ? pill({ id: '@daily', label: 'Daily', title: 'Daily rewards', icon: 'daily', hook: { 'data-quest-nav': 'daily' } }) : null,
+    (L.done.length || dailyOn) ? sec(say(SAY, 'questsPanel.secMore')) : null,
+    L.done.length ? pill({ id: '@done', label: say(SAY, 'questsPanel.done'), count: L.done.length, icon: 'done', hook: { 'data-quest-nav': 'done' } }) : null,
+    dailyOn ? pill({ id: '@daily', label: say(SAY, 'questsPanel.daily'), title: say(SAY, 'questsPanel.dailyTip'), icon: 'daily', hook: { 'data-quest-nav': 'daily' } }) : null,
   ];
 
   /* ── what the lit pill opens ── */
@@ -302,7 +304,7 @@ export const QuestsPanel = () => {
             }}>
               <span style={{ display: 'block', fontSize: 15, fontWeight: 600, color: COL.text2, lineHeight: 1.3 }}><span style={{ color: '#7FD6AC' }}>✓</span> {r.title}</span>
             </button>
-            <span data-quest-done-ap={r.ap} style={{ flex: 'none', fontSize: 14, fontWeight: 800, color: COL.text, padding: '0 4px' }}>+{r.ap} AP</span>
+            <span data-quest-done-ap={r.ap} style={{ flex: 'none', fontSize: 14, fontWeight: 800, color: COL.text, padding: '0 4px' }}>{say(SAY, 'questsPanel.doneAp', { ap: r.ap })}</span>
           </div>
         ))}
         {/* v2.3.2992: the road on the ground is put away -- the way is on the
@@ -318,7 +320,7 @@ export const QuestsPanel = () => {
           <button type="button" data-quest-back="done" {...tap(() => setPick('@done'))} style={{
             display: 'flex', alignItems: 'center', gap: 4, minHeight: 44, margin: 0, padding: '0 10px 0 2px', background: 'transparent', border: 'none',
             color: COL.accent, fontFamily: 'inherit', fontSize: 14, fontWeight: 800, cursor: 'pointer', touchAction: 'manipulation',
-          }}><span aria-hidden="true">◂</span> Done quests</button>
+          }}><span aria-hidden="true">◂</span>{' '}{say(SAY, 'questsPanel.doneBack')}</button>
         ) : null}
         <QuestJournalPage page={page} brief track={{ onToggle: toggleTrack }} />
       </div>
@@ -326,7 +328,7 @@ export const QuestsPanel = () => {
   } else {
     pane = (
       <div data-quest-pane="none">
-        <EmptyLine text="No quest right now. Look for a gold ! over someone's head in BroTown." />
+        <EmptyLine text={say(SAY, 'questsPanel.none')} />
         {dailyOn ? <DailyRewardsCard /> : null}
         {GROUND_PATH && L.done.length === 0 ? <PathSwitch /> : null}
       </div>
@@ -350,7 +352,7 @@ export const QuestsPanel = () => {
       /* each side fades at its own foot: the page itself does not scroll */
       WebkitMaskImage: 'none', maskImage: 'none',
     }}>
-      <div ref={navRef} data-quest-rail="" role="tablist" aria-label="Your quests" aria-orientation="vertical" style={{
+      <div ref={navRef} data-quest-rail="" role="tablist" aria-label={say(SAY, 'questsPanel.listAria')} aria-orientation="vertical" style={{
         flex: 'none', width: RAIL_W, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain', touchAction: 'pan-y',
         padding: '0 4px 18px 0', boxSizing: 'border-box', borderRight: `1px solid ${COL.divider}`,
         WebkitMaskImage: FOOT_FADE, maskImage: FOOT_FADE,

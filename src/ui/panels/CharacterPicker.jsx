@@ -5,6 +5,8 @@ import { cancelRpgSave } from '@/game/rpgSave.js';   /* v2.3.3138: the restart's
 import { peerCosmeticsFromWire } from '@/networking/peerCosmetics.js';
 import { portraitDataUrl, portraitOptsFromPeer, portraitHasSubject } from '@/rendering/characterPortrait.js';
 import { AccountLoginForm } from '../account/AccountLoginForm.jsx';
+import { SAY } from '@/data/say/characterPicker.js';   /* v2.3.6331: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say, sayPieces } from '@/game/say.js';
 
 /* ═══ v2.3.1923: THE CONTINUE WINDOW ═══
  *
@@ -74,13 +76,13 @@ import { AccountLoginForm } from '../account/AccountLoginForm.jsx';
 /* Compact and deliberately vague at the top end: "3d ago" is useful, an exact
    date on a character you last touched in April is noise in a 40px row. */
 function ago(t) {
-  if (!t || t <= 1) return 'New here';
+  if (!t || t <= 1) return say(SAY, 'characterPicker.agoNew');
   const s = Math.max(0, Date.now() - t) / 1000;
-  if (s < 90) return 'Played just now';
-  if (s < 3600) return 'Played ' + Math.round(s / 60) + 'm ago';
-  if (s < 86400) return 'Played ' + Math.round(s / 3600) + 'h ago';
-  if (s < 86400 * 30) return 'Played ' + Math.round(s / 86400) + 'd ago';
-  return 'Played a while ago';
+  if (s < 90) return say(SAY, 'characterPicker.agoJustNow');
+  if (s < 3600) return say(SAY, 'characterPicker.agoMinutes', { n: Math.round(s / 60) });
+  if (s < 86400) return say(SAY, 'characterPicker.agoHours', { n: Math.round(s / 3600) });
+  if (s < 86400 * 30) return say(SAY, 'characterPicker.agoDays', { n: Math.round(s / 86400) });
+  return say(SAY, 'characterPicker.agoLongAgo');
 }
 
 const SHEET = {
@@ -307,20 +309,20 @@ export const CharacterPicker = ({ onPlay, onClose }) => {
          tries a minute per address (server account.js), and this list asks the
          worker about every row it has no look for, so a device with many bros
          could spend them and be told only "That did not work". */
-      setFailed(res && res.reason === 'unavailable'
-        ? 'Could not reach the server. Nothing was changed.'
+      setFailed(say(SAY, res && res.reason === 'unavailable'
+        ? 'characterPicker.failUnreachable'
         : res && (res.reason === 'rate' || res.reason === 'locked')
-          ? 'Too many attempts — wait a minute and try again. Nothing was changed.'
+          ? 'characterPicker.failRate'
         /* v2.3.3344: server/src/devicelock.js */
         : res && res.reason === 'device'
-          ? 'This character can only be restarted on a device it was played on. Nothing was changed.'
+          ? 'characterPicker.failDevice'
         /* v2.3.4627: that bro is in a fight with a player (server fightlock.js) */
         : res && res.reason === 'fight'
-          ? 'This character is in a fight with a player right now. Nothing was changed: try again once it is over.'
+          ? 'characterPicker.failFight'
         /* v2.3.5719: it has a listing or an order on the market (server persistence.js resetclean) */
         : res && res.reason === 'market'
-          ? 'This character has something on the market. Nothing was changed: cancel its listings, orders and offers, or wait out its top bids.'
-          : 'That did not work. Nothing was changed.');
+          ? 'characterPicker.failMarket'
+          : 'characterPicker.failOther'));
       return;
     }
     /* Level is now a lie in the roster row -- the character IS level 1 and this
@@ -372,12 +374,12 @@ export const CharacterPicker = ({ onPlay, onClose }) => {
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flex: 'none' }}>
           {/* Owner: "Change Your characters to something more game-like. I like
               CHOOSE YOUR BRO here." */}
-          <div style={{ fontSize: 17, fontWeight: 800, letterSpacing: '.06em' }}>CHOOSE YOUR BRO</div>
+          <div style={{ fontSize: 17, fontWeight: 800, letterSpacing: '.06em' }}>{say(SAY, 'characterPicker.title')}</div>
           {/* The cap, shown always rather than only when it bites: it is the
               reason the Create card disappears, and a limit you only meet at
               the moment it stops you reads as a bug. */}
           <div style={{ fontSize: 13, color: '#8B9895', fontVariantNumeric: 'tabular-nums', flex: 'none' }}>
-            {roster.length} / {ROSTER_MAX}
+            {say(SAY, 'characterPicker.slotCount', { n: roster.length, max: ROSTER_MAX })}
           </div>
         </div>
 
@@ -388,8 +390,7 @@ export const CharacterPicker = ({ onPlay, onClose }) => {
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', margin: '10px -4px 0', padding: '0 4px' }}>
           {roster.length === 0 && (
             <div style={{ fontSize: 14, color: '#B6C1BE', lineHeight: 1.45, padding: '4px 2px 12px' }}>
-              No bros on this device yet. Use Create Character on the screen
-              behind this one, or bring an existing bro over with its Login Key.
+              {say(SAY, 'characterPicker.empty')}
             </div>
           )}
           {roster.map(function (e) {
@@ -417,7 +418,7 @@ export const CharacterPicker = ({ onPlay, onClose }) => {
                   <Portrait entry={e} />
                   <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 3 }}>
                     <span style={{ fontSize: 18, fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {e.name || 'Unnamed bro'}
+                      {e.name || say(SAY, 'characterPicker.unnamed')}
                     </span>
                     {/* The level is the sort key, so it reads as one: its own
                         line, tabular, gold.  A row with no level yet says so
@@ -428,7 +429,7 @@ export const CharacterPicker = ({ onPlay, onClose }) => {
                       color: e.level > 0 ? '#E7C46A' : '#7F8C8A',
                       fontVariantNumeric: 'tabular-nums',
                     }}>
-                      {e.level > 0 ? 'LEVEL ' + e.level : '· · ·'}
+                      {e.level > 0 ? say(SAY, 'characterPicker.rowLevel', { level: e.level }) : say(SAY, 'characterPicker.rowLevelPending')}
                     </span>
                     <span style={{ fontSize: 12, color: '#96A4A1', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {ago(e.at)}
@@ -444,8 +445,8 @@ export const CharacterPicker = ({ onPlay, onClose }) => {
                     character you were about to act on. */}
                 <button
                   type="button"
-                  aria-label={'Options for ' + (e.name || 'this character')}
-                  title={'Options for ' + (e.name || 'this character')}
+                  aria-label={say(SAY, 'characterPicker.optionsFor', { name: e.name || say(SAY, 'characterPicker.optionsForUnnamed') })}
+                  title={say(SAY, 'characterPicker.optionsFor', { name: e.name || say(SAY, 'characterPicker.optionsForUnnamed') })}
                   data-tut="char-menu"
                   onClick={function (ev) { ev.stopPropagation(); setMenuFor(e); }}
                   onPointerDown={function (ev) { ev.stopPropagation(); }}
@@ -489,9 +490,9 @@ export const CharacterPicker = ({ onPlay, onClose }) => {
                 WebkitTapHighlightColor: 'transparent',
               }}
             >
-              <span style={{ fontSize: 12, color: '#8B9895' }}>Playing on another device?</span>
+              <span style={{ fontSize: 12, color: '#8B9895' }}>{say(SAY, 'characterPicker.keyAsk')}</span>
               <span style={{ fontSize: 14, fontWeight: 800, letterSpacing: '.08em', color: '#E7C46A' }}>
-                USE LOGIN KEY
+                {say(SAY, 'characterPicker.keyButton')}
               </span>
             </button>
           )}
@@ -508,7 +509,7 @@ export const CharacterPicker = ({ onPlay, onClose }) => {
             WebkitTapHighlightColor: 'transparent',
           }}
         >
-          Back
+          {say(SAY, 'characterPicker.back')}
         </button>
       </div>
 
@@ -529,10 +530,10 @@ export const CharacterPicker = ({ onPlay, onClose }) => {
         >
           <div onPointerDown={function (e) { e.stopPropagation(); }} style={{ ...SHEET, padding: '16px 16px 14px' }}>
             <div style={{ fontSize: 17, fontWeight: 800, textAlign: 'center' }}>
-              {menuFor.name || 'This character'}
+              {menuFor.name || say(SAY, 'characterPicker.unnamedTitle')}
             </div>
             <div style={{ fontSize: 13, color: '#9FB0C2', marginTop: 4, marginBottom: 14, textAlign: 'center' }}>
-              {menuFor.level > 0 ? 'Level ' + menuFor.level : 'Level unknown'}
+              {menuFor.level > 0 ? say(SAY, 'characterPicker.menuLevel', { level: menuFor.level }) : say(SAY, 'characterPicker.menuLevelUnknown')}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
               <button
@@ -541,9 +542,9 @@ export const CharacterPicker = ({ onPlay, onClose }) => {
                 onClick={function () { setAskFor({ entry: menuFor, action: 'restart' }); setTyped(''); setFailed(''); }}
                 style={{ ...CARD, minHeight: 56, justifyContent: 'flex-start', flexDirection: 'column', alignItems: 'flex-start', gap: 2, padding: '10px 12px' }}
               >
-                <span style={{ fontSize: 15, fontWeight: 800 }}>Restart at level 1</span>
+                <span style={{ fontSize: 15, fontWeight: 800 }}>{say(SAY, 'characterPicker.menuRestart')}</span>
                 <span style={{ fontSize: 12, color: '#9FB0C2', fontWeight: 400 }}>
-                  Keeps the name and the face. Everything earned is gone.
+                  {say(SAY, 'characterPicker.menuRestartAbout')}
                 </span>
               </button>
               <button
@@ -552,9 +553,9 @@ export const CharacterPicker = ({ onPlay, onClose }) => {
                 onClick={function () { setAskFor({ entry: menuFor, action: 'delete' }); setTyped(''); setFailed(''); }}
                 style={{ ...CARD, minHeight: 56, justifyContent: 'flex-start', flexDirection: 'column', alignItems: 'flex-start', gap: 2, padding: '10px 12px' }}
               >
-                <span style={{ fontSize: 15, fontWeight: 800 }}>Remove from this device</span>
+                <span style={{ fontSize: 15, fontWeight: 800 }}>{say(SAY, 'characterPicker.menuRemove')}</span>
                 <span style={{ fontSize: 12, color: '#9FB0C2', fontWeight: 400 }}>
-                  Frees a slot. Their Login Key still brings them back.
+                  {say(SAY, 'characterPicker.menuRemoveAbout')}
                 </span>
               </button>
               <button
@@ -567,7 +568,7 @@ export const CharacterPicker = ({ onPlay, onClose }) => {
                   fontSize: 14, fontWeight: 700, color: '#8B9895', fontFamily: 'inherit',
                 }}
               >
-                Cancel
+                {say(SAY, 'characterPicker.menuCancel')}
               </button>
             </div>
           </div>
@@ -594,36 +595,39 @@ export const CharacterPicker = ({ onPlay, onClose }) => {
           }}
         >
           <div onPointerDown={function (e) { e.stopPropagation(); }} style={{ ...SHEET, padding: '16px 16px 14px' }}>
-            <div style={{ fontSize: 17, fontWeight: 800, textAlign: 'center' }}>Are you sure?</div>
+            <div style={{ fontSize: 17, fontWeight: 800, textAlign: 'center' }}>{say(SAY, 'characterPicker.confirmTitle')}</div>
             <div style={{ fontSize: 13.5, color: '#B6C1BE', marginTop: 8, lineHeight: 1.4 }}>
               {askFor.action === 'restart' ? (
                 <span>
-                  <b style={{ color: '#F4F0E7' }}>{askFor.entry.name || 'This character'}</b> goes
-                  back to <b style={{ color: '#F4F0E7' }}>level 1</b>. Their levels, gear, coins
-                  and quests are gone and cannot be brought back. They keep their
-                  name, their look and their Login Key.
+                  {/* v2.3.6331: one row, the two bold parts kept whole (sayPieces) */}
+                  {sayPieces(SAY, 'characterPicker.confirmRestart', {
+                    name: <b key="name" style={{ color: '#F4F0E7' }}>{askFor.entry.name || say(SAY, 'characterPicker.unnamedTitle')}</b>,
+                    level: <b key="level" style={{ color: '#F4F0E7' }}>{say(SAY, 'characterPicker.confirmRestartLevel')}</b>,
+                  })}
                 </span>
               ) : (
                 <span>
-                  <b style={{ color: '#F4F0E7' }}>{askFor.entry.name || 'This character'}</b> is
-                  removed from this device and their slot is freed. You can bring
-                  them back with their Login Key — without it, they are gone for good.
+                  {sayPieces(SAY, 'characterPicker.confirmRemove', {
+                    name: <b key="name" style={{ color: '#F4F0E7' }}>{askFor.entry.name || say(SAY, 'characterPicker.unnamedTitle')}</b>,
+                  })}
                 </span>
               )}
             </div>
             <div style={{ fontSize: 12.5, color: '#9FB0C2', marginTop: 12, marginBottom: 6 }}>
-              Type <b style={{ color: '#E7C46A', letterSpacing: '.06em' }}>yes</b> to confirm.
+              {sayPieces(SAY, 'characterPicker.confirmTypeHow', {
+                word: <b key="word" style={{ color: '#E7C46A', letterSpacing: '.06em' }}>{say(SAY, 'characterPicker.confirmWord')}</b>,
+              })}
             </div>
             <input
               data-tut="char-confirm-input"
               value={typed}
               onChange={function (ev) { setTyped(ev.target.value); }}
               onKeyDown={function (ev) { if (ev.key === 'Enter' && armed) doConfirmed(); }}
-              placeholder="yes"
+              placeholder={say(SAY, 'characterPicker.confirmWord')}
               autoCapitalize="none"
               autoCorrect="off"
               spellCheck="false"
-              aria-label="Type yes to confirm"
+              aria-label={say(SAY, 'characterPicker.confirmInputLabel')}
               style={{
                 width: '100%', minHeight: 44, boxSizing: 'border-box',
                 background: '#16232E', color: '#F2F6FA',
@@ -644,8 +648,8 @@ export const CharacterPicker = ({ onPlay, onClose }) => {
                 style={{ minHeight: 46, fontSize: 15, fontWeight: 800, opacity: (armed && !busy) ? 1 : 0.42 }}
                 onClick={doConfirmed}
               >
-                {busy ? 'Working…'
-                  : askFor.action === 'restart' ? 'Restart at level 1' : 'Remove from this device'}
+                {say(SAY, busy ? 'characterPicker.confirmWorking'
+                  : askFor.action === 'restart' ? 'characterPicker.confirmRestartButton' : 'characterPicker.confirmRemoveButton')}
               </button>
               <button
                 type="button"
@@ -657,7 +661,7 @@ export const CharacterPicker = ({ onPlay, onClose }) => {
                   fontSize: 14, fontWeight: 700, color: '#8B9895', fontFamily: 'inherit',
                 }}
               >
-                Keep them as they are
+                {say(SAY, 'characterPicker.confirmKeep')}
               </button>
             </div>
           </div>

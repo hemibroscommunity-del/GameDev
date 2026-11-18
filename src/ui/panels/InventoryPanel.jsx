@@ -1,7 +1,8 @@
 import { coinArtFor, COIN_ONE } from '@/game/coinArt.js';   /* v2.3.3734: the owner's coin piles */
 import { askSellWeapon, drawWeaponSale } from '@/game/weaponSell.js'; /* v2.3.4941: a sale drawn only when it went */
 import React from 'react';
-import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
+import { SAY } from '@/data/say/inventoryPanel.js';   /* v2.3.6349: its words, in the one table (docs/specs/player-words.md, W1; a plain row's "tap" reads "click" on a computer, as deskWords did) */
+import { say } from '@/game/say.js';
 import { AMULET_TIERS, BLACKSMITH_TIERS, BT_AUDIO, COLLISION_TABLE, ELEMENTS, MAX_PET_SLOTS, NUGGETS_PER_BAR, PET_LOOT_RADIUS, RARITY_TIERS, WEAPON_STASH_MAX, WEAPON_TYPES, calcDisplayDmgRange, calcDisplayDps, calcDisplayHeal, canEquipItem, discoveredCollisions, getAmuletBonus, getEquipReqLabel, getShieldBonus, toDisplayDamage } from '@/data/index.js'; /* v2.3.2520: the display damage scale */
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 
@@ -112,7 +113,7 @@ export function InventoryPanel(props) {
       letterSpacing: '.10em',
       color: 'var(--ui-text)'
     }
-  }, "Equipment")), /*#__PURE__*/React.createElement("div", {
+  }, say(SAY, 'inventoryPanel.equipment'))), /*#__PURE__*/React.createElement("div", {
     /* v2.3.1232: caption row; gold value = gold.webp + tabular brass */
     style: {
       display: 'flex',
@@ -122,7 +123,7 @@ export function InventoryPanel(props) {
       color: 'var(--ui-text-muted)',
       marginBottom: 8
     }
-  }, "Active: ", rpgState.activeSlot === 'ranged' ? 'Ranged' : 'Melee', " \xB7 ", /*#__PURE__*/React.createElement("img", {
+  }, say(SAY, 'inventoryPanel.active', { slot: rpgState.activeSlot === 'ranged' ? say(SAY, 'inventoryPanel.ranged') : say(SAY, 'inventoryPanel.melee') }), " \xB7 ", /*#__PURE__*/React.createElement("img", {
     src: coinArtFor(rpgState.coins), /* v2.3.3734: the pile for the amount */
     alt: "",
     draggable: false,
@@ -142,12 +143,12 @@ export function InventoryPanel(props) {
       fontVariantNumeric: 'tabular-nums',
       color: 'var(--ui-brass)'
     }
-  }, rpgState.coins, "g")), [{
-    label: 'Melee Weapon',
+  }, say(SAY, 'inventoryPanel.coins', { coins: rpgState.coins }))), [{
+    label: say(SAY, 'inventoryPanel.meleeWeapon'),
     wpn: rpgState.weapon,
     slot: 'melee'
   }, {
-    label: 'Ranged Weapon',
+    label: say(SAY, 'inventoryPanel.rangedWeapon'),
     wpn: rpgState.rangedWeapon,
     slot: 'ranged'
   }].map(function (_ref159) {
@@ -193,7 +194,7 @@ export function InventoryPanel(props) {
         letterSpacing: '.08em',
         color: 'var(--ui-brass-highlight)'
       }
-    }, "ACTIVE"), /*#__PURE__*/React.createElement("div", {
+    }, say(SAY, 'inventoryPanel.activeBadge')), /*#__PURE__*/React.createElement("div", {
       style: {
         display: 'flex',
         alignItems: 'center',
@@ -217,7 +218,7 @@ export function InventoryPanel(props) {
         fontSize: 11,
         color: 'var(--ui-text-muted)'
       }
-    }, rt === null || rt === void 0 ? void 0 : rt.label, " ", wt === null || wt === void 0 ? void 0 : wt.label, " \xB7 ", wpn.tierMult, "\xD7 mult", wpn.quality && wpn.quality !== 'normal' ? ' \xB7 ' + wpn.quality.toUpperCase() + (wpn.quality === 'godly' ? ' \u2728' : wpn.quality === 'elite' ? ' \u2B50' : '') : '', wpn.hardness ? ' \xB7 H' + wpn.hardness : ''))), /*#__PURE__*/React.createElement("div", {
+    }, rt === null || rt === void 0 ? void 0 : rt.label, " ", wt === null || wt === void 0 ? void 0 : wt.label, " \xB7 ", wpn.tierMult, say(SAY, 'inventoryPanel.mult'), wpn.quality && wpn.quality !== 'normal' ? ' \xB7 ' + wpn.quality.toUpperCase() + (wpn.quality === 'godly' ? ' \u2728' : wpn.quality === 'elite' ? ' \u2B50' : '') : '', wpn.hardness ? ' \xB7 ' + say(SAY, 'inventoryPanel.hardnessShort', { hardness: wpn.hardness }) : ''))), /*#__PURE__*/React.createElement("div", {
       /* v2.3.1235: batch-2 rollout — stat strip to the 11px floor */
       style: {
         display: 'flex',
@@ -226,17 +227,17 @@ export function InventoryPanel(props) {
         color: 'var(--ui-text-muted)',
         marginBottom: 4
       }
-    }, /*#__PURE__*/React.createElement("span", null, "DMG: ", /*#__PURE__*/React.createElement("b", {
+    }, /*#__PURE__*/React.createElement("span", null, say(SAY, 'inventoryPanel.dmg'), /*#__PURE__*/React.createElement("b", {
       style: {
         color: 'var(--ui-text)',
         fontVariantNumeric: 'tabular-nums'
       }
-    }, dmg)), /*#__PURE__*/React.createElement("span", null, "SPD: ", /*#__PURE__*/React.createElement("b", {
+    }, dmg)), /*#__PURE__*/React.createElement("span", null, say(SAY, 'inventoryPanel.spd'), /*#__PURE__*/React.createElement("b", {
       style: {
         color: 'var(--ui-text)',
         fontVariantNumeric: 'tabular-nums'
       }
-    }, (wt === null || wt === void 0 ? void 0 : wt.speed) || 1)), /*#__PURE__*/React.createElement("span", null, "RNG: ", /*#__PURE__*/React.createElement("b", {
+    }, (wt === null || wt === void 0 ? void 0 : wt.speed) || 1)), /*#__PURE__*/React.createElement("span", null, say(SAY, 'inventoryPanel.rng'), /*#__PURE__*/React.createElement("b", {
       style: {
         color: 'var(--ui-text)',
         fontVariantNumeric: 'tabular-nums'
@@ -258,7 +259,7 @@ export function InventoryPanel(props) {
         color: (_ELEMENTS$wpn$element6 = ELEMENTS[wpn.element1]) === null || _ELEMENTS$wpn$element6 === void 0 ? void 0 : _ELEMENTS$wpn$element6.color,
         border: '1px solid ' + ((_ELEMENTS$wpn$element7 = ELEMENTS[wpn.element1]) === null || _ELEMENTS$wpn$element7 === void 0 ? void 0 : _ELEMENTS$wpn$element7.color) + '44'
       }
-    }, "E1: ", wpn.element1, " (", (_ELEMENTS$wpn$element8 = ELEMENTS[wpn.element1]) === null || _ELEMENTS$wpn$element8 === void 0 ? void 0 : _ELEMENTS$wpn$element8.status, ")"), wpn.element2 && /*#__PURE__*/React.createElement("span", {
+    }, say(SAY, 'inventoryPanel.element1', { element: wpn.element1, status: (_ELEMENTS$wpn$element8 = ELEMENTS[wpn.element1]) === null || _ELEMENTS$wpn$element8 === void 0 ? void 0 : _ELEMENTS$wpn$element8.status })), wpn.element2 && /*#__PURE__*/React.createElement("span", {
       style: {
         fontSize: 11,
         padding: '2px 6px',
@@ -267,7 +268,7 @@ export function InventoryPanel(props) {
         color: (_ELEMENTS$wpn$element0 = ELEMENTS[wpn.element2]) === null || _ELEMENTS$wpn$element0 === void 0 ? void 0 : _ELEMENTS$wpn$element0.color,
         border: '1px solid ' + ((_ELEMENTS$wpn$element1 = ELEMENTS[wpn.element2]) === null || _ELEMENTS$wpn$element1 === void 0 ? void 0 : _ELEMENTS$wpn$element1.color) + '44'
       }
-    }, "E2: ", wpn.element2, " (", (_ELEMENTS$wpn$element10 = ELEMENTS[wpn.element2]) === null || _ELEMENTS$wpn$element10 === void 0 ? void 0 : _ELEMENTS$wpn$element10.status, ")"), wpn.isVolatile && /*#__PURE__*/React.createElement("span", {
+    }, say(SAY, 'inventoryPanel.element2', { element: wpn.element2, status: (_ELEMENTS$wpn$element10 = ELEMENTS[wpn.element2]) === null || _ELEMENTS$wpn$element10 === void 0 ? void 0 : _ELEMENTS$wpn$element10.status })), wpn.isVolatile && /*#__PURE__*/React.createElement("span", {
       /* v2.3.1235: batch-2 rollout \u2014 badge to the 11px floor, danger
          tint onto the approved --ui-danger; the \u26A1 prefix was
          decorative emoji in chrome. */
@@ -279,12 +280,12 @@ export function InventoryPanel(props) {
         color: 'var(--ui-danger)',
         border: '1px solid rgba(216,99,93,.3)'
       }
-    }, "VOLATILE +30%"), !wpn.element1 && /*#__PURE__*/React.createElement("span", {
+    }, say(SAY, 'inventoryPanel.volatile')), !wpn.element1 && /*#__PURE__*/React.createElement("span", {
       style: {
         fontSize: 11,
         color: 'var(--ui-text-muted)'
       }
-    }, "No elements")));
+    }, say(SAY, 'inventoryPanel.noElements'))));
   }), /*#__PURE__*/React.createElement("div", {
     /* v2.3.1232: module header — 11/600 uppercase .12em */
     /* v2.3.1235: batch-2 rollout — headers onto the locked 11/700
@@ -297,14 +298,14 @@ export function InventoryPanel(props) {
       color: 'var(--ui-text-muted)',
       margin: '10px 0 6px'
     }
-  }, "WORN ARMOR"), /*#__PURE__*/React.createElement("div", {
+  }, say(SAY, 'inventoryPanel.wornArmor')), /*#__PURE__*/React.createElement("div", {
     style: { display: 'flex', gap: 8, marginBottom: 8 }
   }, [
-    { slot: 'chest', name: 'Steel Plate', sub: 'Chest', icon: '/icons/items/chest-plate.webp?v=2.3.1452' }, /* v2.3.1325: painted item set */
-    { slot: 'legs', name: 'Steel Greaves', sub: 'Legs', icon: '/icons/items/greaves.webp?v=2.3.1452' },
+    { slot: 'chest', name: say(SAY, 'inventoryPanel.steelPlate'), sub: say(SAY, 'inventoryPanel.chest'), icon: '/icons/items/chest-plate.webp?v=2.3.1452' }, /* v2.3.1325: painted item set */
+    { slot: 'legs', name: say(SAY, 'inventoryPanel.steelGreaves'), sub: say(SAY, 'inventoryPanel.legs'), icon: '/icons/items/greaves.webp?v=2.3.1452' },
     /* v2.3.756: the t-shirt layer -- worn UNDER the chest armour (both can
        be on at once; armour always renders on top). */
-    { slot: 'shirt', name: 'T-Shirt', sub: 'Chest \u00b7 under armor', icon: '/icons/items/cloth-shirt.webp?v=2.3.1452' }
+    { slot: 'shirt', name: say(SAY, 'inventoryPanel.tShirt'), sub: say(SAY, 'inventoryPanel.underArmor'), icon: '/icons/items/cloth-shirt.webp?v=2.3.1452' }
   ].map(function (it) {
     var on = gearWorn[it.slot];
     return /*#__PURE__*/React.createElement("div", {
@@ -370,7 +371,7 @@ export function InventoryPanel(props) {
         WebkitTapHighlightColor: 'transparent',
         touchAction: 'manipulation'
       }
-    }, on ? 'Unequip' : 'Equip'));
+    }, on ? say(SAY, 'inventoryPanel.unequip') : say(SAY, 'inventoryPanel.equip')));
   })), /*#__PURE__*/React.createElement("div", {
     style: {
       marginBottom: 8,
@@ -396,12 +397,12 @@ export function InventoryPanel(props) {
       fontWeight: 700,
       color: ((_RARITY_TIERS$rpgStat = RARITY_TIERS[(_rpgState$armor2 = rpgState.armor) === null || _rpgState$armor2 === void 0 ? void 0 : _rpgState$armor2.tier]) === null || _RARITY_TIERS$rpgStat === void 0 ? void 0 : _RARITY_TIERS$rpgStat.color) || 'var(--ui-text-muted)'
     }
-  }, ((_rpgState$armor3 = rpgState.armor) === null || _rpgState$armor3 === void 0 ? void 0 : _rpgState$armor3.name) || 'No Armor'), /*#__PURE__*/React.createElement("div", {
+  }, ((_rpgState$armor3 = rpgState.armor) === null || _rpgState$armor3 === void 0 ? void 0 : _rpgState$armor3.name) || say(SAY, 'inventoryPanel.noArmor')), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       color: 'var(--ui-text-muted)'
     }
-  }, (_rpgState$armor4 = rpgState.armor) !== null && _rpgState$armor4 !== void 0 && _rpgState$armor4.attunement ? "Attuned: ".concat(rpgState.armor.attunement) : 'No attunement')))), /*#__PURE__*/React.createElement("div", {
+  }, (_rpgState$armor4 = rpgState.armor) !== null && _rpgState$armor4 !== void 0 && _rpgState$armor4.attunement ? say(SAY, 'inventoryPanel.attuned', { attunement: rpgState.armor.attunement }) : say(SAY, 'inventoryPanel.noAttunement'))))), /*#__PURE__*/React.createElement("div", {
     style: {
       marginBottom: 8,
       padding: 10,
@@ -437,7 +438,7 @@ export function InventoryPanel(props) {
       fontSize: 11,
       color: 'var(--ui-text-muted)'
     }
-  }, ((_AMULET_TIERS$rpgStat = AMULET_TIERS[rpgState.amulet.tier]) === null || _AMULET_TIERS$rpgStat === void 0 ? void 0 : _AMULET_TIERS$rpgStat.label) || 'Simple', " Amulet", rpgState.amulet.gem && function (_ELEMENTS$rpgState$am3) {
+  }, say(SAY, 'inventoryPanel.amulet', { tier: ((_AMULET_TIERS$rpgStat = AMULET_TIERS[rpgState.amulet.tier]) === null || _AMULET_TIERS$rpgStat === void 0 ? void 0 : _AMULET_TIERS$rpgStat.label) || say(SAY, 'inventoryPanel.simple') }), rpgState.amulet.gem && function (_ELEMENTS$rpgState$am3) {
     var bonus = getAmuletBonus(rpgState.amulet);
     if (!bonus) return null;
     return /*#__PURE__*/React.createElement("span", {
@@ -459,25 +460,25 @@ export function InventoryPanel(props) {
       color: (_ELEMENTS$rpgState$am5 = ELEMENTS[rpgState.amulet.gem]) === null || _ELEMENTS$rpgState$am5 === void 0 ? void 0 : _ELEMENTS$rpgState$am5.color,
       border: '1px solid ' + ((_ELEMENTS$rpgState$am6 = ELEMENTS[rpgState.amulet.gem]) === null || _ELEMENTS$rpgState$am6 === void 0 ? void 0 : _ELEMENTS$rpgState$am6.color) + '44'
     }
-  }, rpgState.amulet.gem, " gem")), !rpgState.amulet.gem && /*#__PURE__*/React.createElement("div", {
+  }, say(SAY, 'inventoryPanel.gem', { gem: rpgState.amulet.gem }))), !rpgState.amulet.gem && /*#__PURE__*/React.createElement("div", {
     /* v2.3.1235: batch-2 rollout \u2014 descriptive copy to the 12px floor */
     style: {
       fontSize: 12,
       color: 'var(--ui-text-muted)',
       marginTop: 2
     }
-  }, "No gem \u2014 visit the Enchanter to slot one")) : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+  }, say(SAY, 'inventoryPanel.noGem'))) : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       fontWeight: 700,
       color: 'var(--ui-text-muted)'
     }
-  }, "No Amulet"), /*#__PURE__*/React.createElement("div", {
+  }, say(SAY, 'inventoryPanel.noAmulet')), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12,
       color: 'var(--ui-text-muted)'
     }
-  }, "Craft at Blacksmith from gold bars (nuggets: ", rpgState.goldNuggets || 0, "/", NUGGETS_PER_BAR, ", bars: ", rpgState.goldBars || 0, ")"))))), /*#__PURE__*/React.createElement("div", {
+  }, say(SAY, 'inventoryPanel.craftAmulet', { nuggets: rpgState.goldNuggets || 0, perBar: NUGGETS_PER_BAR, bars: rpgState.goldBars || 0 })))))), /*#__PURE__*/React.createElement("div", {
     style: {
       marginBottom: 8,
       padding: 10,
@@ -513,7 +514,7 @@ export function InventoryPanel(props) {
       fontSize: 11,
       color: 'var(--ui-text-muted)'
     }
-  }, ((_BLACKSMITH_TIERS$rpg = BLACKSMITH_TIERS[rpgState.shield.gearBase]) === null || _BLACKSMITH_TIERS$rpg === void 0 ? void 0 : _BLACKSMITH_TIERS$rpg.label) || 'Basic', " \xB7 ", ((_BLACKSMITH_TIERS$rpg2 = BLACKSMITH_TIERS[rpgState.shield.gearBase]) === null || _BLACKSMITH_TIERS$rpg2 === void 0 ? void 0 : _BLACKSMITH_TIERS$rpg2.tierMult) || 1, "\xD7", rpgState.shield.gem && function (_ELEMENTS$rpgState$sh3) {
+  }, ((_BLACKSMITH_TIERS$rpg = BLACKSMITH_TIERS[rpgState.shield.gearBase]) === null || _BLACKSMITH_TIERS$rpg === void 0 ? void 0 : _BLACKSMITH_TIERS$rpg.label) || say(SAY, 'inventoryPanel.basic'), " \xB7 ", ((_BLACKSMITH_TIERS$rpg2 = BLACKSMITH_TIERS[rpgState.shield.gearBase]) === null || _BLACKSMITH_TIERS$rpg2 === void 0 ? void 0 : _BLACKSMITH_TIERS$rpg2.tierMult) || 1, "\xD7", rpgState.shield.gem && function (_ELEMENTS$rpgState$sh3) {
     var bonus = getShieldBonus(rpgState.shield);
     return bonus ? /*#__PURE__*/React.createElement("span", {
       style: {
@@ -526,18 +527,18 @@ export function InventoryPanel(props) {
       fontSize: 11,
       color: 'var(--ui-text-muted)'
     }
-  }, rpgState.shield.reforgeBonus ? rpgState.shield.reforgeBonus.label + ' +' + rpgState.shield.reforgeBonus.value + rpgState.shield.reforgeBonus.unit : '', rpgState.shield.hardenBonus ? ' · ' + rpgState.shield.hardenBonus.label + ' +' + rpgState.shield.hardenBonus.value + rpgState.shield.hardenBonus.unit : '', !rpgState.shield.reforgeBonus && !rpgState.shield.gem && 'No bonuses yet')) : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+  }, rpgState.shield.reforgeBonus ? rpgState.shield.reforgeBonus.label + ' +' + rpgState.shield.reforgeBonus.value + rpgState.shield.reforgeBonus.unit : '', rpgState.shield.hardenBonus ? ' · ' + rpgState.shield.hardenBonus.label + ' +' + rpgState.shield.hardenBonus.value + rpgState.shield.hardenBonus.unit : '', !rpgState.shield.reforgeBonus && !rpgState.shield.gem && say(SAY, 'inventoryPanel.noBonuses'))) : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       fontWeight: 700,
       color: 'var(--ui-text-muted)'
     }
-  }, "No Shield"), /*#__PURE__*/React.createElement("div", {
+  }, say(SAY, 'inventoryPanel.noShield')), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12,
       color: 'var(--ui-text-muted)'
     }
-  }, "Craft at the Blacksmith from ore"))))), /* ═══ v2.3.2026: THE GOLDEN TICKET ═══
+  }, say(SAY, 'inventoryPanel.craftShield')))))), /* ═══ v2.3.2026: THE GOLDEN TICKET ═══
      Opening it is the reward half of the event drop, so it gets its own row
      rather than sitting in the generic grid where a winner might not notice it.
 
@@ -568,7 +569,7 @@ export function InventoryPanel(props) {
         style: { fontSize: 11, fontWeight: 700, textTransform: 'uppercase',
           letterSpacing: '.14em', color: 'var(--ui-text-muted)',
           fontVariantNumeric: 'tabular-nums', marginTop: 4, marginBottom: 4 }
-      }, "Golden Ticket"),
+      }, say(SAY, 'inventoryPanel.goldenTicket')),
       tickets.map(function (t) {
         var key = t[0], qty = t[1];
         return /*#__PURE__*/React.createElement("button", {
@@ -584,7 +585,7 @@ export function InventoryPanel(props) {
             var opId = key + ':' + (S.playerId || 'me') + ':' + Date.now();
             try { act('cape_redeem', { invKey: key, opId: opId }); } catch (e) {}   /* v2.3.5190: through the action door (actions.js) */
           }
-        }, "Open Golden Ticket", qty > 1 ? ' \xD7' + qty : '');
+        }, say(SAY, 'inventoryPanel.openTicket'), qty > 1 ? ' \xD7' + qty : '');
       }));
   }(), function () {
     var inv = rpgState.inventory || {};
@@ -609,9 +610,9 @@ export function InventoryPanel(props) {
         marginTop: 4,
         marginBottom: 4
       }
-    }, "Food (", cookedFish.reduce(function (s, e) {
+    }, say(SAY, 'inventoryPanel.food', { count: cookedFish.reduce(function (s, e) {
       return s + e[1];
-    }, 0), ")"), /*#__PURE__*/React.createElement("div", {
+    }, 0) })), /*#__PURE__*/React.createElement("div", {
       style: {
         display: 'flex',
         gap: 3,
@@ -671,7 +672,7 @@ export function InventoryPanel(props) {
           try {
             localStorage.setItem('bt_rpg', JSON.stringify(R));
           } catch (e) {}
-          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, '+' + toDisplayDamage(healed) + ' HP', '#59BF91');   /* v2.3.2520: display scale */
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, say(SAY, 'inventoryPanel.healed', { heal: toDisplayDamage(healed) }), '#59BF91');   /* v2.3.2520: display scale */
           /* (Eat handler patched to send eat_request -- see block above.) */
           /* v2.3.2077: `_serverMonsters` is FALSE in town -- it means "this
              zone has server-managed monsters", and wsClient sets it false on
@@ -687,7 +688,7 @@ export function InventoryPanel(props) {
         }
         /* v2.3.1235: batch-2 rollout \u2014 the \uD83D\uDC1F prefix was decorative
            emoji in button chrome (the fish name carries the meaning) */
-      }, fishName, " \xD7", qty, " (+", toDisplayDamage(healAmt), "HP)");
+      }, say(SAY, 'inventoryPanel.eatFish', { fish: fishName, qty: qty, heal: toDisplayDamage(healAmt) }));
     })));
   }(), /*#__PURE__*/React.createElement("div", {
     /* v2.3.1232: module header \u2014 11/600 uppercase .12em */
@@ -703,14 +704,14 @@ export function InventoryPanel(props) {
       marginTop: 4,
       marginBottom: 4
     }
-  }, "Weapon Stash (", (rpgState.weaponStash || []).length, "/", WEAPON_STASH_MAX, ")"), (rpgState.weaponStash || []).length === 0 && /*#__PURE__*/React.createElement("div", {
+  }, say(SAY, 'inventoryPanel.stash', { count: (rpgState.weaponStash || []).length, max: WEAPON_STASH_MAX })), (rpgState.weaponStash || []).length === 0 && /*#__PURE__*/React.createElement("div", {
     /* v2.3.1235: batch-2 rollout \u2014 descriptive copy to the 12px floor */
     style: {
       fontSize: 12,
       color: 'var(--ui-text-muted)',
       marginBottom: 6
     }
-  }, "Empty. Weapon drops are auto-stashed here for comparison."), (rpgState.weaponStash || []).length > 0 && /*#__PURE__*/React.createElement("div", {
+  }, say(SAY, 'inventoryPanel.stashEmpty')), (rpgState.weaponStash || []).length > 0 && /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       flexDirection: 'column',
@@ -797,7 +798,7 @@ export function InventoryPanel(props) {
         fontSize: 11,
         color: 'var(--ui-text-muted)'
       }
-    }, srt === null || srt === void 0 ? void 0 : srt.label, " ", swt === null || swt === void 0 ? void 0 : swt.label, " \xB7 ", sw.tierMult, "\xD7 \xB7 ", isRanged ? 'Ranged' : 'Melee'))), /*#__PURE__*/React.createElement("div", {
+    }, srt === null || srt === void 0 ? void 0 : srt.label, " ", swt === null || swt === void 0 ? void 0 : swt.label, " \xB7 ", sw.tierMult, "\xD7 \xB7 ", isRanged ? say(SAY, 'inventoryPanel.ranged') : say(SAY, 'inventoryPanel.melee')))), /*#__PURE__*/React.createElement("div", {
       /* v2.3.1235: batch-2 rollout — compare strip to the 11px floor;
          diff arrows onto the approved positive/danger tokens */
       style: {
@@ -810,7 +811,7 @@ export function InventoryPanel(props) {
       style: {
         color: 'var(--ui-text-muted)'
       }
-    }, "DMG: ", /*#__PURE__*/React.createElement("b", {
+    }, say(SAY, 'inventoryPanel.dmg'), /*#__PURE__*/React.createElement("b", {
       style: {
         color: 'var(--ui-text)',
         fontVariantNumeric: 'tabular-nums'
@@ -825,7 +826,7 @@ export function InventoryPanel(props) {
       style: {
         color: 'var(--ui-text-muted)'
       }
-    }, "SPD: ", /*#__PURE__*/React.createElement("b", {
+    }, say(SAY, 'inventoryPanel.spd'), /*#__PURE__*/React.createElement("b", {
       style: {
         color: 'var(--ui-text)',
         fontVariantNumeric: 'tabular-nums'
@@ -840,7 +841,7 @@ export function InventoryPanel(props) {
       style: {
         color: 'var(--ui-text-muted)'
       }
-    }, "DPS: ", /*#__PURE__*/React.createElement("b", {
+    }, say(SAY, 'inventoryPanel.dps'), /*#__PURE__*/React.createElement("b", {
       style: {
         color: 'var(--ui-text)',
         fontVariantNumeric: 'tabular-nums'
@@ -888,12 +889,12 @@ export function InventoryPanel(props) {
         fontSize: 11,
         color: 'var(--ui-danger)'
       }
-    }, "VOL"), !sw.element1 && /*#__PURE__*/React.createElement("span", {
+    }, say(SAY, 'inventoryPanel.volatileShort')), !sw.element1 && /*#__PURE__*/React.createElement("span", {
       style: {
         fontSize: 11,
         color: 'var(--ui-text-muted)'
       }
-    }, "No elements"), function () {
+    }, say(SAY, 'inventoryPanel.noElements')), function () {
       /* v2.3.1661 (prog3): pass rpg — req carries have/met when the
          rebuild is live (trained level / defense points). */
       var req = getEquipReqLabel(sw, sw.type, rpgState);
@@ -941,7 +942,7 @@ export function InventoryPanel(props) {
         if (!canEquipItem(R, swapWpn, swapWpn.type)) {
           var req = getEquipReqLabel(swapWpn, swapWpn.type, R); /* v2.3.1661: prog3-aware */
           var _reqHave = req && (req.prog3 ? req.have : (R[req.stat] || 0));
-          if (req) pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Need ' + req.label + ' ' + req.req + ' (have ' + _reqHave + ')', '#D95C54');
+          if (req) pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, say(SAY, 'inventoryPanel.needReq', { label: req.label, req: req.req, have: _reqHave }), '#D95C54');
           return;
         }
         var wDef = WEAPON_TYPES[swapWpn.type];
@@ -975,7 +976,7 @@ export function InventoryPanel(props) {
            rather than silent. */
         BT_AUDIO.uiEquip();   /* v2.3.2659: gain + offset live in uiEquip, not here */
       }
-    }, "Equip" /* v2.3.1235: batch-2 rollout \u2014 the sword emoji prefix was
+    }, say(SAY, 'inventoryPanel.equip') /* v2.3.1235: batch-2 rollout \u2014 the sword emoji prefix was
       decorative emoji in button chrome */), /*#__PURE__*/React.createElement("button", {
       /* v2.3.1232: 44px action row — Sell is the raised secondary */
       /* v2.3.1235: batch-2 rollout — secondary onto the correction-pass
@@ -1007,7 +1008,7 @@ export function InventoryPanel(props) {
            nothing ever took its gold back (game/weaponSell.js). */
         if (!askSellWeapon(stateRef.current, si)) {
           var _Sd = stateRef.current;
-          try { pushDmgPopup(_Sd, _Sd.player.x, _Sd.player.y - 30, 'Not sold: no connection', '#ff5e6c'); } catch (e) { /* popup only */ }
+          try { pushDmgPopup(_Sd, _Sd.player.x, _Sd.player.y - 30, say(SAY, 'inventoryPanel.notSold'), '#ff5e6c'); } catch (e) { /* popup only */ }
           return;
         }
         drawWeaponSale(R, si, sellVal);
@@ -1016,7 +1017,7 @@ export function InventoryPanel(props) {
           localStorage.setItem('bt_rpg', JSON.stringify(R));
         } catch (e) {}
         var S = stateRef.current;
-        pushDmgPopup(S, S.player.x, S.player.y - 30, '+' + sellVal + 'G', '#D8A94D');
+        pushDmgPopup(S, S.player.x, S.player.y - 30, say(SAY, 'inventoryPanel.sold', { gold: sellVal }), '#D8A94D');
         BT_AUDIO.beep(400, 0.05, 0.08, 'sine');
       }
     }, /*#__PURE__*/React.createElement("img", {
@@ -1034,7 +1035,7 @@ export function InventoryPanel(props) {
       onError: function onError(e) {
         e.currentTarget.replaceWith(document.createTextNode('\uD83D\uDCB0'));
       }
-    }), "Sell (", Math.ceil((sw.tierMult || 1) * (((_WEAPON_TYPES$sw$type2 = WEAPON_TYPES[sw.type]) === null || _WEAPON_TYPES$sw$type2 === void 0 ? void 0 : _WEAPON_TYPES$sw$type2.base) || 30) * 0.5), "g)")));
+    }), say(SAY, 'inventoryPanel.sell', { gold: Math.ceil((sw.tierMult || 1) * (((_WEAPON_TYPES$sw$type2 = WEAPON_TYPES[sw.type]) === null || _WEAPON_TYPES$sw$type2 === void 0 ? void 0 : _WEAPON_TYPES$sw$type2.base) || 30) * 0.5) }))));
   })), /*#__PURE__*/React.createElement("div", {
     /* v2.3.1232: module header \u2014 11/600 uppercase .12em */
     /* v2.3.1235: batch-2 rollout \u2014 locked 11/700 .14em muted rung;
@@ -1049,7 +1050,7 @@ export function InventoryPanel(props) {
       marginTop: 4,
       marginBottom: 4
     }
-  }, "Codex: ", discoveredCollisions.size, " collisions discovered"), discoveredCollisions.size > 0 && /*#__PURE__*/React.createElement("div", {
+  }, say(SAY, 'inventoryPanel.codex', { count: discoveredCollisions.size })), discoveredCollisions.size > 0 && /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 3,
@@ -1088,12 +1089,12 @@ export function InventoryPanel(props) {
       marginTop: 8,
       marginBottom: 4
     }
-  }, "Pets: ", ((_rpgState$lifeSkills37 = rpgState.lifeSkills) === null || _rpgState$lifeSkills37 === void 0 || (_rpgState$lifeSkills37 = _rpgState$lifeSkills37.pets) === null || _rpgState$lifeSkills37 === void 0 ? void 0 : _rpgState$lifeSkills37.length) || 0, "/", MAX_PET_SLOTS, ((_rpgState$lifeSkills38 = rpgState.lifeSkills) === null || _rpgState$lifeSkills38 === void 0 ? void 0 : _rpgState$lifeSkills38.trapping) && /*#__PURE__*/React.createElement("span", {
+  }, say(SAY, 'inventoryPanel.pets', { count: ((_rpgState$lifeSkills37 = rpgState.lifeSkills) === null || _rpgState$lifeSkills37 === void 0 || (_rpgState$lifeSkills37 = _rpgState$lifeSkills37.pets) === null || _rpgState$lifeSkills37 === void 0 ? void 0 : _rpgState$lifeSkills37.length) || 0, max: MAX_PET_SLOTS }), ((_rpgState$lifeSkills38 = rpgState.lifeSkills) === null || _rpgState$lifeSkills38 === void 0 ? void 0 : _rpgState$lifeSkills38.trapping) && /*#__PURE__*/React.createElement("span", {
     style: {
       fontSize: 11,
       color: 'var(--ui-text-muted)'
     }
-  }, " \xB7 Trapping Lv", rpgState.lifeSkills.trapping.level)), (((_rpgState$lifeSkills39 = rpgState.lifeSkills) === null || _rpgState$lifeSkills39 === void 0 ? void 0 : _rpgState$lifeSkills39.pets) || []).length === 0 && /*#__PURE__*/React.createElement("div", {
+  }, " \xB7 ", say(SAY, 'inventoryPanel.trapping', { level: rpgState.lifeSkills.trapping.level }))), (((_rpgState$lifeSkills39 = rpgState.lifeSkills) === null || _rpgState$lifeSkills39 === void 0 ? void 0 : _rpgState$lifeSkills39.pets) || []).length === 0 && /*#__PURE__*/React.createElement("div", {
     /* v2.3.1235: batch-2 rollout \u2014 descriptive copy to the 12px floor
        (the \uD83E\uDEA4 in the sentence names the in-game capture button, so it
        is game data, not chrome) */
@@ -1102,7 +1103,7 @@ export function InventoryPanel(props) {
       color: 'var(--ui-text-muted)',
       marginBottom: 4
     }
-  }, "No pets. Weaken a monster to <20% HP then tap \uD83E\uDEA4 to capture!"), /*#__PURE__*/React.createElement("div", {
+  }, say(SAY, 'inventoryPanel.noPets')), /*#__PURE__*/React.createElement("div", {
     /* v2.3.1232: recessed #121B20 tray behind the pet grid (well shadow) */
     /* v2.3.1235: batch-2 rollout \u2014 tray onto the shared .ui-well recipe
        (correction-pass tokens) */
@@ -1160,7 +1161,7 @@ export function InventoryPanel(props) {
         fontSize: 11,
         color: 'var(--ui-text-muted)'
       }
-    }, "Lv", pet.level, " ", pet.archetype), pet.element && /*#__PURE__*/React.createElement("div", {
+    }, say(SAY, 'inventoryPanel.petLevel', { level: pet.level, archetype: pet.archetype })), pet.element && /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11,
         color: ((_ELEMENTS$pet$element2 = ELEMENTS[pet.element]) === null || _ELEMENTS$pet$element2 === void 0 ? void 0 : _ELEMENTS$pet$element2.color) || 'var(--ui-text-muted)'
@@ -1174,7 +1175,7 @@ export function InventoryPanel(props) {
         letterSpacing: '.08em',
         color: 'var(--ui-brass-highlight)'
       }
-    }, "ACTIVE"));
+    }, say(SAY, 'inventoryPanel.activeBadge')));
   })), (((_rpgState$lifeSkills42 = rpgState.lifeSkills) === null || _rpgState$lifeSkills42 === void 0 ? void 0 : _rpgState$lifeSkills42.pets) || []).length > 0 && /*#__PURE__*/React.createElement("div", {
     /* v2.3.1232: caption size floor */
     /* v2.3.1235: batch-2 rollout — descriptive copy to the 12px floor */
@@ -1182,5 +1183,5 @@ export function InventoryPanel(props) {
       fontSize: 12,
       color: 'var(--ui-text-muted)'
     }
-  }, deskWords("Tap a pet to set active. Active pet follows you and auto-collects loot within "), PET_LOOT_RADIUS, "px.")));
+  }, say(SAY, 'inventoryPanel.petHow', { radius: PET_LOOT_RADIUS }))));
 }

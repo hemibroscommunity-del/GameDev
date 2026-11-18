@@ -9,6 +9,8 @@ import {
   dailyRewardsBus, questsLive, spinLive, seasonLive, askReroll, askClaim, askRewards,
   questLabel, questIcon, grantLabel, untilText, claimableTiers, nextTier, tierNeed, coinsShort,
 } from '@/game/dailyRewards.js';
+import { SAY } from '@/data/say/dailyRewards.js';   /* v2.3.6341: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say, sayPieces } from '@/game/say.js';
 
 /* ═══ v2.3.3140: THE DAILY REWARDS WINDOW ═══
  *
@@ -123,17 +125,17 @@ function QuestRow({ q, i, canReroll }) {
         <span style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
           <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: 600, color: COL.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{questLabel(q)}</span>
           <span style={{ flex: 'none', fontSize: 12, fontWeight: 700, color: done ? COL.xp : COL.text2, fontVariantNumeric: 'tabular-nums' }}>
-            {done ? '✓ Done' : Math.min(q.n, q.g) + '/' + q.g}
+            {done ? say(SAY, 'dailyRewards.questDone') : Math.min(q.n, q.g) + '/' + q.g}
           </span>
         </span>
         <span style={{ display: 'block', marginTop: 5 }}><Meter n={q.n} g={q.g} color={done ? COL.xp : COL.accent} /></span>
         <span style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4, fontSize: 11.5, color: COL.text2, fontVariantNumeric: 'tabular-nums' }}>
           <img src={coinArtFor(q.c)} alt="" draggable={false} style={{ width: 13, height: 13, objectFit: 'contain' }} />
-          {q.c} coins · <Star size={12} /> 1
+          {sayPieces(SAY, 'dailyRewards.questPay', { coins: q.c, star: <Star key="star" size={12} /> })}
         </span>
       </span>
       {canReroll && !done && (
-        <button type="button" data-reroll={i} aria-label={'Swap "' + questLabel(q) + '" for another quest'}
+        <button type="button" data-reroll={i} aria-label={say(SAY, 'dailyRewards.swapQuest', { quest: questLabel(q) })}
           onClick={() => askReroll(i)} style={smallBtn(false)}>↻</button>
       )}
     </div>
@@ -157,13 +159,13 @@ function TodayTab({ st }) {
       }}>
         <img src="/icons/ui/elem-flame.webp" alt="" draggable={false} style={{ width: 28, height: 28, objectFit: 'contain', flex: 'none' }} />
         <span style={{ flex: 1, minWidth: 0 }}>
-          <span style={{ display: 'block', fontSize: 14, fontWeight: 700, color: COL.text }}>{(sk.n || 1) + '-day streak'}</span>
+          <span style={{ display: 'block', fontSize: 14, fontWeight: 700, color: COL.text }}>{say(SAY, 'dailyRewards.streak', { days: sk.n || 1 })}</span>
           <span style={{ display: 'block', fontSize: 11.5, color: COL.text2, marginTop: 1, lineHeight: 1.35 }}>
-            {sk.saved > 0 ? 'A freeze saved your streak! ' : ''}
-            Play each day to keep it. It raises the free spin's prizes.
+            {sk.saved > 0 ? say(SAY, 'dailyRewards.freezeSaved') : ''}
+            {say(SAY, 'dailyRewards.streakHow')}
           </span>
         </span>
-        <span data-daily-freezes={sk.fz || 0} title="Streak freezes" style={{ flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 13, fontWeight: 700, color: COL.text, fontVariantNumeric: 'tabular-nums' }}>
+        <span data-daily-freezes={sk.fz || 0} title={say(SAY, 'dailyRewards.freezesTip')} style={{ flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 13, fontWeight: 700, color: COL.text, fontVariantNumeric: 'tabular-nums' }}>
           <img src="/icons/ui/elem-frost.webp" alt="" draggable={false} style={{ width: 18, height: 18, objectFit: 'contain' }} />
           {(sk.fz || 0) + '/' + (sk.fzMax || 2)}
         </span>
@@ -174,7 +176,7 @@ function TodayTab({ st }) {
           _cadenceLoginReward), and a gap longer than the freezes held starts
           the streak again */}
       <div style={{ fontSize: 11.5, color: COL.muted, margin: '6px 2px 0', lineHeight: 1.4 }}>
-        A freeze is used automatically if you miss a day. You earn one every {sk.every || 7} days of streak.
+        {say(SAY, 'dailyRewards.freezeHow', { every: sk.every || 7 })}
       </div>
 
       {/* the spin */}
@@ -196,16 +198,16 @@ function TodayTab({ st }) {
             onError={(e) => { e.currentTarget.style.display = 'none'; }} />
           <span style={{ flex: 1, minWidth: 0 }}>
             <span style={{ display: 'block', fontSize: 13.5, fontWeight: 700, color: COL.text }}>
-              {spLocked ? 'The free daily spin' : (sp.open ? 'Your pot of ' + coinsShort(sp.pot) + ' coins is waiting' : (sp.ready ? 'Your free spin is ready' : (sp.extra > 0 ? sp.extra + ' bonus spin' + (sp.extra === 1 ? '' : 's') + ' to use' : 'Today\'s spin is done')))}
+              {spLocked ? say(SAY, 'dailyRewards.spinTitle') : (sp.open ? say(SAY, 'dailyRewards.spinPot', { pot: coinsShort(sp.pot) }) : (sp.ready ? say(SAY, 'dailyRewards.spinReady') : (sp.extra > 0 ? say(SAY, 'dailyRewards.spinExtra', { n: sp.extra }) : say(SAY, 'dailyRewards.spinDone'))))}
             </span>
             <span style={{ display: 'block', fontSize: 11.5, color: COL.text2, marginTop: 1, lineHeight: 1.35 }}>
               {spLocked
-                ? 'Opens when you hand in Mayor Bro\'s first quest.'
+                ? say(SAY, 'dailyRewards.spinLocked')
                 : sp.open
-                ? 'At the Gambling Den in BroTown: take it, or double or nothing.'
+                ? say(SAY, 'dailyRewards.spinOpen')
                 : (sp.ready || sp.extra > 0
-                  ? 'At the Gambling Den in BroTown. Spin for a lump sum' + (jackpot ? ', up to the ' + coinsShort(jackpot) + ' jackpot.' : '.')
-                  : 'Next free spin in ' + untilText(st.resetAt, st) + '.')}
+                  ? (jackpot ? say(SAY, 'dailyRewards.spinLumpJackpot', { jackpot: coinsShort(jackpot) }) : say(SAY, 'dailyRewards.spinLump'))
+                  : say(SAY, 'dailyRewards.spinNext', { until: untilText(st.resetAt, st) }))}
             </span>
           </span>
         </div>
@@ -215,10 +217,10 @@ function TodayTab({ st }) {
       {/* the quests */}
       {questsLive() && dq.on !== false && (
         <>
-          <Section right={'resets in ' + untilText(st.resetAt, st)}>Daily quests</Section>
+          <Section right={say(SAY, 'dailyRewards.questsResets', { until: untilText(st.resetAt, st) })}>{say(SAY, 'dailyRewards.questsTitle')}</Section>
           {dq.locked ? (
             <div data-daily-locked="1" style={{ padding: '14px 10px', borderRadius: 10, background: COL.well, border: '1px solid ' + COL.border, fontSize: 13, color: COL.text2, lineHeight: 1.45 }}>
-              Hand in Mayor Bro's first quest to open the daily quests.
+              {say(SAY, 'dailyRewards.questsLocked')}
             </div>
           ) : (
             <div data-daily-quests={list.length}>
@@ -230,16 +232,15 @@ function TodayTab({ st }) {
                 <span style={{ flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 2 }}><Star size={18} /><SpinGlyph size={18} /></span>
                 <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: COL.text, lineHeight: 1.35 }}>
                   {dq.all
-                    ? 'All three done! You got +' + ((dq.bonus && dq.bonus.stars) || 1) + ' ★ and a bonus spin.'
-                    : 'Finish all three: +' + ((dq.bonus && dq.bonus.stars) || 1) + ' ★ and a bonus spin'}
+                    ? say(SAY, 'dailyRewards.allDone', { stars: (dq.bonus && dq.bonus.stars) || 1 })
+                    : say(SAY, 'dailyRewards.allToDo', { stars: (dq.bonus && dq.bonus.stars) || 1 })}
                 </span>
                 <span style={{ flex: 'none', fontSize: 12, fontWeight: 700, color: dq.all ? COL.xp : COL.text2, fontVariantNumeric: 'tabular-nums' }}>{doneN}/{list.length || 3}</span>
               </div>
               <div style={{ fontSize: 11.5, color: COL.muted, margin: '8px 2px 0', lineHeight: 1.4 }}>
-                {(dq.rr || 0) > 0
-                  ? 'Not your thing? Tap ↻ to swap one quest for another (once a day).'
-                  : 'You\'ve used today\'s swap.'}
-                {' '}Each quest also puts a ★ on the season.
+                {/* v2.3.6341: its "Tap" reads "Click" on a computer (say() runs deskWords on a plain row) */}
+                {say(SAY, (dq.rr || 0) > 0 ? 'dailyRewards.swapHow' : 'dailyRewards.swapUsed')}
+                {' '}{say(SAY, 'dailyRewards.questStar')}
               </div>
             </div>
           )}
@@ -279,7 +280,7 @@ function TierRow({ st, t, grants, claimed }) {
         <span style={{ flex: 'none', fontSize: 12, fontWeight: 700, color: COL.xp }}>✓</span>
       ) : reached ? (
         <button type="button" data-claim={t} className="button-primary" onClick={() => askClaim(t)}
-          style={{ flex: 'none', minWidth: 64, minHeight: 36, padding: '0 10px', borderRadius: 10, fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>Claim</button>
+          style={{ flex: 'none', minWidth: 64, minHeight: 36, padding: '0 10px', borderRadius: 10, fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>{say(SAY, 'dailyRewards.claim')}</button>
       ) : (
         <span style={{ flex: 'none', fontSize: 12, fontWeight: 700, color: COL.muted, fontVariantNumeric: 'tabular-nums' }}>{need} <Star size={12} /></span>
       )}
@@ -298,8 +299,8 @@ function SeasonTab({ st }) {
     <div>
       <div style={{ padding: '10px 10px', borderRadius: 10, background: COL.well, border: '1px solid ' + COL.border }}>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
-          <span style={{ fontSize: 14, fontWeight: 700, color: COL.text }}>Season {se.s}</span>
-          <span style={{ fontSize: 11.5, color: COL.text2 }}>ends in {untilText(se.endsAt, st)}</span>
+          <span style={{ fontSize: 14, fontWeight: 700, color: COL.text }}>{say(SAY, 'dailyRewards.season', { season: se.s })}</span>
+          <span style={{ fontSize: 11.5, color: COL.text2 }}>{say(SAY, 'dailyRewards.seasonEnds', { until: untilText(se.endsAt, st) })}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
           <span data-season-stars={se.st} style={{ flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 18, fontWeight: 800, color: COL.text, fontVariantNumeric: 'tabular-nums' }}>
@@ -310,30 +311,29 @@ function SeasonTab({ st }) {
           </span>
         </div>
         <div style={{ fontSize: 11.5, color: COL.text2, marginTop: 6 }}>
-          {nt ? 'Tier ' + nt + ' at ' + ntNeed + ' ★' : 'Every tier reached! A bonus spin every ' + (se.ovEvery || 5) + ' ★ more.'}
+          {nt ? say(SAY, 'dailyRewards.nextTier', { tier: nt, need: ntNeed }) : say(SAY, 'dailyRewards.allTiers', { every: se.ovEvery || 5 })}
         </div>
       </div>
       <div data-season-earn={questsLive() ? 'quests' : 'spin'} style={{ fontSize: 11.5, color: COL.muted, margin: '6px 2px 0', lineHeight: 1.4 }}>
         {/* v2.3.3400: with the daily quests put away the free spin is the
             season's only star, and says how many it puts on */}
         {questsLive()
-          ? 'Earn ★ from each daily quest, from finishing all three, and from your free spin.'
-          : 'Earn ' + (se.spinStars || 1) + ' ★ a day with your free spin at the Gambling Den.'}
-        {' '}Missed days never cost ★, and
-        anything you reach but don't claim is sent to you when the season ends.
+          ? say(SAY, 'dailyRewards.earnQuests')
+          : say(SAY, 'dailyRewards.earnSpin', { stars: se.spinStars || 1 })}
+        {' '}{say(SAY, 'dailyRewards.earnKept')}
       </div>
       {claimable.length > 1 && (
         <button type="button" data-claim-all={claimable.length} className="button-primary" onClick={() => askClaim('all')}
           style={{ width: '100%', minHeight: 44, marginTop: 10, borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
-          Claim all ({claimable.length})
+          {say(SAY, 'dailyRewards.claimAll', { count: claimable.length })}
         </button>
       )}
-      <Section right={(se.cl || []).length + '/' + tiers.length + ' claimed'}>Rewards</Section>
+      <Section right={say(SAY, 'dailyRewards.claimed', { got: (se.cl || []).length, all: tiers.length })}>{say(SAY, 'dailyRewards.rewards')}</Section>
       <div data-season-tiers={tiers.length}>
         {tiers.map((g, i) => <TierRow key={i} st={st} t={i + 1} grants={g} claimed={(se.cl || []).includes(i + 1)} />)}
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: COL.text2, margin: '10px 2px 0' }}>
-        <SpinGlyph size={18} /> Past tier {tiers.length}: a bonus spin every {se.ovEvery || 5} ★.
+        {sayPieces(SAY, 'dailyRewards.pastTier', { glyph: <SpinGlyph size={18} key="glyph" />, tier: tiers.length, every: se.ovEvery || 5 })}
       </div>
     </div>
   );
@@ -404,21 +404,21 @@ export const DailyRewardsWindow = () => {
           fontFamily: 'Source Sans 3, sans-serif', color: COL.text,
         }}>
         <div style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 6px 8px 14px', background: COL.bgStrong, borderBottom: '1px solid ' + COL.border }}>
-          <span style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.10em', color: COL.text }}>Daily rewards</span>
-          <button type="button" aria-label="Close" data-daily-close="1" onClick={close}
+          <span style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.10em', color: COL.text }}>{say(SAY, 'dailyRewards.title')}</span>
+          <button type="button" aria-label={say(SAY, 'dailyRewards.close')} data-daily-close="1" onClick={close}
             data-esc="" data-key="Esc" data-key-at="hang"   /* v2.3.3407: its Esc, shown (game/deskKeys.js) */
             style={{ position: 'relative', flex: 'none', width: 44, height: 36, background: 'transparent', border: 0, color: COL.muted, fontSize: 20, fontWeight: 700, cursor: 'pointer' }}>×</button>
         </div>
         {seLive && (
           <div style={{ flex: 'none', display: 'flex', gap: 2, margin: '8px 10px 0', padding: 2, borderRadius: 10, background: COL.well, border: '1px solid ' + COL.border }}>
-            {tabBtn('today', 'Today')}
-            {tabBtn('season', 'Season', claimN)}
+            {tabBtn('today', say(SAY, 'dailyRewards.tabToday'))}
+            {tabBtn('season', say(SAY, 'dailyRewards.tabSeason'), claimN)}
           </div>
         )}
         <div className="ls-scrollbody" style={{ flex: '1 1 auto', minHeight: 0, overflowY: 'auto', touchAction: 'pan-y', overscrollBehavior: 'contain', padding: '4px 12px 16px' }}>
           {!live || !st ? (
             <div style={{ padding: '30px 10px', textAlign: 'center', fontSize: 13, color: COL.muted }}>
-              {live ? 'Loading…' : 'Daily rewards are not open right now.'}
+              {say(SAY, live ? 'dailyRewards.loading' : 'dailyRewards.closed')}
             </div>
           ) : tab === 'season' ? <SeasonTab st={st} /> : <TodayTab st={st} />}
         </div>

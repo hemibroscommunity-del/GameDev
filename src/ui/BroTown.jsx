@@ -189,11 +189,11 @@ import { canvasPlace } from './mayorScreen.js';   /* v2.3.6282: the canvas's pla
    The canvas only moves when the window or the layout does: under `?afterpaint` (ON) its corner is the one
    mayorScreen.js keeps (canvasPlace: measured again at the top of a frame after a resize, a change of the canvas's
    size, or half a second), so a tap in the frame after a turn of the phone is read from the corner of the frame
-   before.  `?afterpaint=0`, or no corner kept yet: measured in the event, as before.  Only `left` and `top` are
-   read by every caller. */
-function canvasCorner(c) {
-  var p = AFTER_PAINT ? canvasPlace() : null;
-  return p || c.getBoundingClientRect();
+   before.  `?afterpaint=0`: measured in the event, as before, through mayorScreen.js's one measure of the canvas
+   (canvasPlace(true): docs/specs/layout-reads.md way 2, the guard's helper).  Only `left` and `top` are read by
+   every caller, and every caller is the game's canvas (`canvas.brotown-canvas`, the one canvasPlace measures). */
+function canvasCorner() {   /* callers pass the canvas the event is on: the one canvasPlace measures */
+  return canvasPlace(!AFTER_PAINT) || { left: 0, top: 0 };   /* no canvas on the page: none to tap */
 }
 
 /* v2.3.1745: how long the QUEST ACCEPTED! / QUEST COMPLETED! banner stays

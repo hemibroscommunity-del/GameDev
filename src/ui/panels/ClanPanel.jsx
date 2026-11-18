@@ -5,6 +5,8 @@ import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHe
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { clanPartyOn } from '@/game/alliance.js';   /* v2.3.3321: clans are parties now */
 import { act } from '@/game/actions.js';   /* v2.3.5190: the page's requests leave through the action door (card K PR 7) */
+import { SAY } from '@/data/say/clan.js';   /* v2.3.6329: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';
 /* ═══ ClanPanel — clan create/manage/war screen ═══ */
 /* v2.3.859: moved verbatim from BroTown.jsx's JSX tree (UI-panel
    decomposition; behavior-frozen). createElement subtree unchanged. Props:
@@ -192,9 +194,9 @@ export function ClanPanel(props) {
         style: Object.assign({}, LS_CARD, { width: 'min(360px, calc(100vw - 24px))', maxHeight: 'min(80vh, 100%)', overflowY: 'auto', padding: 16 })
       },
       React.createElement("button", { className: "bt-inspect-close", onClick: _closeCp }, "✕"),
-      lsTitleRow("Party"),
+      lsTitleRow(say(SAY, 'clan.partyTitle')),
       React.createElement("div", { style: { fontSize: 13, color: '#B6C1BE', marginBottom: 14, lineHeight: 1.5 } },
-        "A party stays together when you log out, and when 20 of its members have played in the last 7 days and are level 5 or more it becomes an alliance, with a name, a tag on every member, wars and a place on the alliance board. Your alliance is in the Saloon in BroTown."),
+        say(SAY, 'clan.partyAbout')),
       React.createElement("button", {
         className: "button-primary", "data-clanparty-find": "",
         style: Object.assign({}, LS_PRIMARY, { marginBottom: 8 }),
@@ -202,8 +204,8 @@ export function ClanPanel(props) {
       }, /* v2.3.3481: the 2026-10-19 UI review -- "Find a party" -> "Invite a
             player": it opens the player list, where you invite someone (the
             worker refuses an invite to anyone already in a party) */
-      "Invite a player"),
-      React.createElement("button", { style: Object.assign({}, LS_SECONDARY, { width: '100%' }), onClick: _closeCp }, "Close")));
+      say(SAY, 'clan.invitePlayer')),
+      React.createElement("button", { style: Object.assign({}, LS_SECONDARY, { width: '100%' }), onClick: _closeCp }, say(SAY, 'clan.close'))));
   }
   var _clanData$members, _clanData$members2;
   var createDefaultClan; /* phantom: undefined in BroTown too — see header */
@@ -257,14 +259,14 @@ export function ClanPanel(props) {
       setShowClanPanel(false);
       setClanCreateMode(false);
     }
-  }, "✕"), !clanData && !clanCreateMode && /*#__PURE__*/React.createElement(React.Fragment, null, lsTitleRow("Clans"), /*#__PURE__*/React.createElement("div", {
+  }, "✕"), !clanData && !clanCreateMode && /*#__PURE__*/React.createElement(React.Fragment, null, lsTitleRow(say(SAY, 'clan.clansTitle')), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 13 /* v2.3.1235: batch-2 rollout — body 13, no half-sizes */,
       color: '#B6C1BE',
       marginBottom: 14,
       lineHeight: 1.5
     }
-  }, "Clans are groups of up to ", CLAN_MAX_MEMBERS, " players. Create one with a custom name, tag, and pixel logo that shows above your head."), /*#__PURE__*/React.createElement("button", {
+  }, say(SAY, 'clan.clansAbout', { max: CLAN_MAX_MEMBERS })), /*#__PURE__*/React.createElement("button", {
     className: "button-primary" /* v2.3.1235: batch-2 rollout — shared gold primary, the surface's only one */,
     style: Object.assign({}, LS_PRIMARY, {
       marginBottom: 8
@@ -272,7 +274,7 @@ export function ClanPanel(props) {
     onClick: function onClick() {
       return setClanCreateMode(true);
     }
-  }, "Create Clan (", CLAN_CREATE_COST, "g)"), (function () {
+  }, say(SAY, 'clan.createButton', { cost: CLAN_CREATE_COST })), (function () {
     /* v2.3.1125: incoming invite acceptance.  clan_invite broadcasts
        used to go nowhere -- no client handler existed, so joining a
        clan was impossible.  gameEvents now parks the invite on
@@ -291,19 +293,19 @@ export function ClanPanel(props) {
         var S = stateRef.current;
         if (S.channel) act('clan_join_accept', { inviter: _inv.inviter });   /* v2.3.5190: through the action door (actions.js) */
         S._pendingClanInvite = null;
-        pushDmgPopup(S, S.player.x, S.player.y - 30, 'Joining [' + _inv.clanTag + ']...', '#59BF91');
+        pushDmgPopup(S, S.player.x, S.player.y - 30, say(SAY, 'clan.joining', { tag: _inv.clanTag }), '#59BF91');
       }
-    }, "Accept invite: [", _inv.clanTag, "] ", _inv.clanName, " (from ", _inv.fromName, ")"); /* v2.3.1235: batch-2 rollout — ✅ dropped, no emoji in chrome */
+    }, say(SAY, 'clan.acceptInvite', { tag: _inv.clanTag, clan: _inv.clanName, from: _inv.fromName })); /* v2.3.1235: batch-2 rollout — ✅ dropped, no emoji in chrome */
   })(), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12 /* v2.3.1235: batch-2 rollout — descriptive copy floor is 12 */,
       color: '#8D9B98',
       lineHeight: 1.4
     }
-  }, "To join a clan, have a clan member invite you by tapping your character.")), !clanData && clanCreateMode && function () {
+  }, say(SAY, 'clan.howToJoin'))), !clanData && clanCreateMode && function () {
     var nameRef = React.createRef();
     var tagRef = React.createRef();
-    return /*#__PURE__*/React.createElement(React.Fragment, null, lsTitleRow("Create Clan"), /*#__PURE__*/React.createElement("div", {
+    return /*#__PURE__*/React.createElement(React.Fragment, null, lsTitleRow(say(SAY, 'clan.createTitle')), /*#__PURE__*/React.createElement("div", {
       style: {
         marginBottom: 12
       }
@@ -311,10 +313,10 @@ export function ClanPanel(props) {
       style: Object.assign({}, LS_HEADER, {
         marginBottom: 6
       })
-    }, "Clan Name"), /*#__PURE__*/React.createElement("input", {
+    }, say(SAY, 'clan.nameLabel')), /*#__PURE__*/React.createElement("input", {
       ref: nameRef,
       maxLength: CLAN_NAME_MAX,
-      placeholder: "My Awesome Clan",
+      placeholder: say(SAY, 'clan.namePlaceholder'),
       style: LS_INPUT
     })), /*#__PURE__*/React.createElement("div", {
       style: {
@@ -324,10 +326,10 @@ export function ClanPanel(props) {
       style: Object.assign({}, LS_HEADER, {
         marginBottom: 6
       })
-    }, "Clan Tag (max ", CLAN_TAG_MAX, " chars)"), /*#__PURE__*/React.createElement("input", {
+    }, say(SAY, 'clan.tagLabel', { max: CLAN_TAG_MAX })), /*#__PURE__*/React.createElement("input", {
       ref: tagRef,
       maxLength: CLAN_TAG_MAX,
-      placeholder: "CLAN",
+      placeholder: say(SAY, 'clan.tagPlaceholder'),
       style: Object.assign({}, LS_INPUT, {
         textTransform: 'uppercase'
       })
@@ -358,16 +360,16 @@ export function ClanPanel(props) {
         var name = (_nameRef$current = nameRef.current) === null || _nameRef$current === void 0 || (_nameRef$current = _nameRef$current.value) === null || _nameRef$current === void 0 ? void 0 : _nameRef$current.trim();
         var tag = (_tagRef$current = tagRef.current) === null || _tagRef$current === void 0 || (_tagRef$current = _tagRef$current.value) === null || _tagRef$current === void 0 || (_tagRef$current = _tagRef$current.trim()) === null || _tagRef$current === void 0 ? void 0 : _tagRef$current.toUpperCase();
         if (!name || name.length < 3) {
-          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Name too short (min 3)', '#D95C54');
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, say(SAY, 'clan.nameShort'), '#D95C54');
           return;
         }
         if (!tag || tag.length < 1) {
-          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Need a clan tag', '#D95C54');
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, say(SAY, 'clan.needTag'), '#D95C54');
           return;
         }
         var R = stateRef.current.rpg;
         if (R.coins < CLAN_CREATE_COST) {
-          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Need ' + CLAN_CREATE_COST + 'g', '#D95C54');
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, say(SAY, 'clan.needGold', { cost: CLAN_CREATE_COST }), '#D95C54');
           return;
         }
         /* v2.3.1125: registry-capable workers own clan creation -- the
@@ -383,7 +385,7 @@ export function ClanPanel(props) {
             color2: CLAN_COLORS[3]
           });
           setClanCreateMode(false);
-          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 40, 'Founding [' + tag + ']...', '#a78bfa');
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 40, say(SAY, 'clan.founding', { tag: tag }), '#a78bfa');
           return;
         }
         /* v2.3.4912: the page's own founding (its own 500g debit and a clan
@@ -391,9 +393,9 @@ export function ClanPanel(props) {
            is the worker's (CLAUDE.md §5), so such a worker founds none.  (It
            threw anyway, after the debit: createDefaultClan is the phantom
            above.) */
-        pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 40, 'Clans are closed', '#D95C54');
+        pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 40, say(SAY, 'clan.closed'), '#D95C54');
       }
-    }, "Create (", CLAN_CREATE_COST, "g)"), /*#__PURE__*/React.createElement("button", {
+    }, say(SAY, 'clan.createConfirm', { cost: CLAN_CREATE_COST })), /*#__PURE__*/React.createElement("button", {
       style: Object.assign({}, LS_SECONDARY, {
         flex: 0.5,
         color: '#B6C1BE'
@@ -401,7 +403,7 @@ export function ClanPanel(props) {
       onClick: function onClick() {
         return setClanCreateMode(false);
       }
-    }, "Cancel")));
+    }, say(SAY, 'clan.cancel'))));
   }(), clanData && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
@@ -455,7 +457,7 @@ export function ClanPanel(props) {
       color: '#8D9B98',
       fontVariantNumeric: 'tabular-nums'
     }
-  }, ((_clanData$members = clanData.members) === null || _clanData$members === void 0 ? void 0 : _clanData$members.length) || 1, "/", CLAN_MAX_MEMBERS, " members \xB7 Lv", clanData.clanLevel || 1))), /*#__PURE__*/React.createElement("div", {
+  }, say(SAY, 'clan.memberCount', { n: ((_clanData$members = clanData.members) === null || _clanData$members === void 0 ? void 0 : _clanData$members.length) || 1, max: CLAN_MAX_MEMBERS, level: clanData.clanLevel || 1 })))), /*#__PURE__*/React.createElement("div", {
     style: {
       marginBottom: 12
     }
@@ -463,7 +465,7 @@ export function ClanPanel(props) {
     style: Object.assign({}, LS_HEADER, {
       marginBottom: 6
     })
-  }, "Logo Editor"), /*#__PURE__*/React.createElement("div", {
+  }, say(SAY, 'clan.logoHeader')), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 4,
@@ -627,7 +629,7 @@ export function ClanPanel(props) {
         localStorage.setItem('bt_clan', JSON.stringify(cleared));
       } catch (e) {}
     }
-  }, "Clear Logo"), /*#__PURE__*/React.createElement("button", {
+  }, say(SAY, 'clan.clearLogo')), /*#__PURE__*/React.createElement("button", {
     style: {
       /* v2.3.1235: batch-2 rollout — 44px secondary (raised fill +
          strong hairline, 10px button radius) per the hitbox floor */
@@ -645,14 +647,14 @@ export function ClanPanel(props) {
       try {
         localStorage.setItem('bt_clan', JSON.stringify(clanData));
       } catch (e) {}
-      pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Logo saved!', '#a78bfa');
+      pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, say(SAY, 'clan.logoSaved'), '#a78bfa');
       BT_AUDIO.collect();
     }
-  }, "Save Logo"))), /*#__PURE__*/React.createElement("div", {
+  }, say(SAY, 'clan.saveLogo')))), /*#__PURE__*/React.createElement("div", {
     style: Object.assign({}, LS_HEADER, {
       marginBottom: 4
     })
-  }, "Members (", ((_clanData$members2 = clanData.members) === null || _clanData$members2 === void 0 ? void 0 : _clanData$members2.length) || 1, ")"), /*#__PURE__*/React.createElement("div", {
+  }, say(SAY, 'clan.membersCount', { n: ((_clanData$members2 = clanData.members) === null || _clanData$members2 === void 0 ? void 0 : _clanData$members2.length) || 1 })), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 13,
       color: '#B6C1BE',
@@ -668,7 +670,7 @@ export function ClanPanel(props) {
         alignItems: 'center',
         borderBottom: LS_DIVIDER
       }
-    }, m === ((_stateRef$current29 = stateRef.current) === null || _stateRef$current29 === void 0 ? void 0 : _stateRef$current29.myId) ? 'You (Founder)' : m); /* v2.3.1235: batch-2 rollout — ⭐ dropped, no emoji in chrome */
+    }, m === ((_stateRef$current29 = stateRef.current) === null || _stateRef$current29 === void 0 ? void 0 : _stateRef$current29.myId) ? say(SAY, 'clan.youFounder') : m); /* v2.3.1235: batch-2 rollout — ⭐ dropped, no emoji in chrome */
   })), /*#__PURE__*/React.createElement("div", {
     style: {
       borderTop: LS_DIVIDER,
@@ -679,7 +681,7 @@ export function ClanPanel(props) {
     style: Object.assign({}, LS_HEADER, {
       marginBottom: 8
     })
-  }, "Clan Wars"), stateRef.current._activeClanWar ? function (_ZONES$war$zone4, _ZONES$war$zone5) { /* v2.3.1235: batch-2 rollout — ⚔️ dropped, no emoji in chrome */
+  }, say(SAY, 'clan.warsHeader')), stateRef.current._activeClanWar ? function (_ZONES$war$zone4, _ZONES$war$zone5) { /* v2.3.1235: batch-2 rollout — ⚔️ dropped, no emoji in chrome */
     var war = stateRef.current._activeClanWar;
     var timeLeft = Math.max(0, Math.ceil((war.endTime - Date.now()) / 60000));
     var isChallenger = war.challenger.tag === clanData.tag;
@@ -718,7 +720,7 @@ export function ClanPanel(props) {
         textTransform: 'uppercase',
         letterSpacing: '.12em'
       }
-    }, "vs"), /*#__PURE__*/React.createElement("div", {
+    }, say(SAY, 'clan.versus')), /*#__PURE__*/React.createElement("div", {
       style: {
         textAlign: 'center'
       }
@@ -742,14 +744,14 @@ export function ClanPanel(props) {
         textAlign: 'center',
         fontVariantNumeric: 'tabular-nums'
       }
-    }, ((_ZONES$war$zone4 = ZONES[war.zone]) === null || _ZONES$war$zone4 === void 0 ? void 0 : _ZONES$war$zone4.name) || war.zone, " \xB7 ", timeLeft, "m remaining \xB7 ", war.killLog.length, " kills"), /*#__PURE__*/React.createElement("div", {
+    }, say(SAY, 'clan.warStatus', { zone: ((_ZONES$war$zone4 = ZONES[war.zone]) === null || _ZONES$war$zone4 === void 0 ? void 0 : _ZONES$war$zone4.name) || war.zone, left: timeLeft, kills: war.killLog.length })), /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11,
         color: '#8D9B98',
         textAlign: 'center',
         marginTop: 3
       }
-    }, "Travel to ", (_ZONES$war$zone5 = ZONES[war.zone]) === null || _ZONES$war$zone5 === void 0 ? void 0 : _ZONES$war$zone5.name, " to fight! PvP kills score points."), war.killLog.slice(-3).reverse().map(function (k, i) {
+    }, say(SAY, 'clan.warTravel', { zone: (_ZONES$war$zone5 = ZONES[war.zone]) === null || _ZONES$war$zone5 === void 0 ? void 0 : _ZONES$war$zone5.name })), war.killLog.slice(-3).reverse().map(function (k, i) {
       return /*#__PURE__*/React.createElement("div", {
         key: i,
         style: {
@@ -758,7 +760,7 @@ export function ClanPanel(props) {
           textAlign: 'center',
           fontVariantNumeric: 'tabular-nums'
         }
-      }, k.killer, " defeated ", k.victim, " (+", k.points, "pts)");
+      }, say(SAY, 'clan.warKill', { killer: k.killer, victim: k.victim, points: k.points }));
     }));
   }() : /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     style: {
@@ -767,12 +769,12 @@ export function ClanPanel(props) {
       marginBottom: 8,
       lineHeight: 1.4
     }
-  }, "Challenge another clan to a 30-minute PvP battle in a zone. Most kills wins!"), /*#__PURE__*/React.createElement("div", {
+  }, say(SAY, 'clan.warAbout')), /*#__PURE__*/React.createElement("div", {
     style: Object.assign({}, LS_HEADER, {
       fontSize: 11,
       marginBottom: 4
     })
-  }, "Battle Zone"), /*#__PURE__*/React.createElement("div", {
+  }, say(SAY, 'clan.warZoneHeader')), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       flexWrap: 'wrap',
@@ -816,7 +818,7 @@ export function ClanPanel(props) {
       fontSize: 11,
       marginBottom: 4
     })
-  }, "Target Clan"), /*#__PURE__*/React.createElement("div", {
+  }, say(SAY, 'clan.warTargetHeader')), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       flexWrap: 'wrap',
@@ -855,7 +857,7 @@ export function ClanPanel(props) {
         fontStyle: 'italic',
         padding: '4px 0'
       }
-    }, "No other clans online");
+    }, say(SAY, 'clan.noOtherClans'));
     return clans.map(function (c) {
       var sel = S._warTarget === c.tag;
       return /*#__PURE__*/React.createElement("button", {
@@ -879,7 +881,7 @@ export function ClanPanel(props) {
       var zone = S._warZone || CLAN_WAR_ZONES[0];
       var target = S._warTargetData;
       if (!target) {
-        pushDmgPopup(S, S.player.x, S.player.y - 30, 'Select a target clan!', '#D95C54');
+        pushDmgPopup(S, S.player.x, S.player.y - 30, say(SAY, 'clan.pickTarget'), '#D95C54');
         return;
       }
       /* v2.3.1125: referee-capable workers BUILD the war themselves
@@ -905,8 +907,8 @@ export function ClanPanel(props) {
           defenderTag: target.tag
         });
       }
-      pushDmgPopup(S, S.player.x, S.player.y - 40, 'WAR DECLARED vs [' + target.tag + ']!', '#D95C54');
-      pushDmgPopup(S, S.player.x, S.player.y - 25, 'Battle zone: ' + ((_ZONES$zone = ZONES[zone]) === null || _ZONES$zone === void 0 ? void 0 : _ZONES$zone.name), 'rgba(255,255,255,.5)');
+      pushDmgPopup(S, S.player.x, S.player.y - 40, say(SAY, 'clan.warDeclared', { tag: target.tag }), '#D95C54');
+      pushDmgPopup(S, S.player.x, S.player.y - 25, say(SAY, 'clan.warZonePopup', { zone: (_ZONES$zone = ZONES[zone]) === null || _ZONES$zone === void 0 ? void 0 : _ZONES$zone.name }), 'rgba(255,255,255,.5)');
       BT_AUDIO.beep(200, 0.15, 0.2, 'sawtooth');
       setTimeout(function () {
         return BT_AUDIO.beep(150, 0.2, 0.25, 'sawtooth');
@@ -929,7 +931,7 @@ export function ClanPanel(props) {
       color: '#D8635D',
       cursor: 'pointer'
     }
-  }, "Declare War"))), /*#__PURE__*/React.createElement("button", {
+  }, say(SAY, 'clan.declareWar')))), /*#__PURE__*/React.createElement("button", {
     style: {
       /* v2.3.1235: batch-2 rollout — danger outline on the corrected
          danger token; 10px button radius */
@@ -971,7 +973,7 @@ export function ClanPanel(props) {
          clan_state {clan:null} echo does all three writebacks. */
       if (S._serverCaps && S._serverCaps.clans) {
         if (S.channel) act('clan_leave', {});   /* v2.3.5190: through the action door (actions.js) */
-        pushDmgPopup(S, S.player.x, S.player.y - 30, 'Leaving clan...', '#D95C54');
+        pushDmgPopup(S, S.player.x, S.player.y - 30, say(SAY, 'clan.leaving'), '#D95C54');
         return;
       }
       /* Legacy-worker path (a worker rolled back past v2.3.1125, or one where
@@ -987,7 +989,7 @@ export function ClanPanel(props) {
       try {
         localStorage.removeItem('bt_clan');
       } catch (e) {}
-      pushDmgPopup(S, S.player.x, S.player.y - 30, 'Left clan', '#D95C54');
+      pushDmgPopup(S, S.player.x, S.player.y - 30, say(SAY, 'clan.left'), '#D95C54');
     }
     /* v2.3.2301: the armed label tells the truth about what the second tap
        actually does.  For the LAST member the server dissolves the clan and
@@ -995,7 +997,7 @@ export function ClanPanel(props) {
        a word for a one-way delete, and this is the only moment the player is
        told. */
   }, leaveArmed
-    ? (soloInClan ? ("Tap again to DISBAND [" + (clanData.tag || '') + "] — the clan and its name are gone")
-      : "Tap again to leave the clan")
-    : "Leave Clan"))));
+    ? (soloInClan ? say(SAY, 'clan.disbandArmed', { tag: clanData.tag || '' })
+      : say(SAY, 'clan.leaveArmed'))
+    : say(SAY, 'clan.leaveButton')))));
 }

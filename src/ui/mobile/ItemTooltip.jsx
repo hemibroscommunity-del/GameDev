@@ -2,19 +2,22 @@ import React, { useEffect, useRef, useState } from 'react';
 import { inventoryBus } from './inventoryBus.js';
 import { INV, FONT, RARITY_BORDER } from './inventoryStyles.js';
 import { ItemArt } from './ItemArt.jsx';
+import { SAY } from '@/data/say/itemTooltip.js';   /* v2.3.6349: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';
 
 const fmtTier = (item, layer2) => {
-  const parts = [`Tier ${item.tier ?? '?'}`];
+  const parts = [say(SAY, 'itemTooltip.tier', { tier: item.tier ?? '?' })];
   if (layer2 && item.quality && item.quality !== 'normal') parts[0] += ' ' + item.quality[0].toUpperCase() + item.quality.slice(1);
-  if (layer2 && item.hardness != null) parts.push(`Hardness ${item.hardness}`);
-  if (layer2 && item.temper != null && item.temper > 0) parts.push(`Temper ${item.temper}`);
+  if (layer2 && item.hardness != null) parts.push(say(SAY, 'itemTooltip.hardness', { hardness: item.hardness }));
+  if (layer2 && item.temper != null && item.temper > 0) parts.push(say(SAY, 'itemTooltip.temper', { temper: item.temper }));
   return parts.join(' · ');
 };
 
-const STAT_LABEL = {
-  layer0: { atk: 'Hits harder', def: 'Tougher', spd: 'A bit slower', crit: 'Lucky strike' },
-  layer2: { atk: 'Attack', def: 'Defense', spd: 'Speed', crit: 'Crit chance' },
-};
+/* v2.3.6349: read when drawn (the words table), so a function */
+const STAT_LABEL = () => ({
+  layer0: { atk: say(SAY, 'itemTooltip.hitsHarder'), def: say(SAY, 'itemTooltip.tougher'), spd: say(SAY, 'itemTooltip.bitSlower'), crit: say(SAY, 'itemTooltip.luckyStrike') },
+  layer2: { atk: say(SAY, 'itemTooltip.attack'), def: say(SAY, 'itemTooltip.defense'), spd: say(SAY, 'itemTooltip.speed'), crit: say(SAY, 'itemTooltip.critChance') },
+});
 
 // Salvage / Trash undo toast.
 const ToastHost = ({ children }) => (
@@ -58,8 +61,8 @@ export const SalvageToast = () => {
   if (!toastQueue.length) return null;
   const t = toastQueue[0];
   const label = t.items.length === 1
-    ? `Salvaged ${t.items[0].name || 'item'} · Undo`
-    : `Salvaged ${t.items.length} items · Undo All`;
+    ? say(SAY, 'itemTooltip.salvagedOne', { name: t.items[0].name || say(SAY, 'itemTooltip.item') })
+    : say(SAY, 'itemTooltip.salvagedMany', { count: t.items.length });
   return (
     <ToastHost>
       <div onClick={() => { t.undos.forEach(u => u && u()); toastQueue.shift(); emitToast(); }}
@@ -106,7 +109,7 @@ const Comparison = ({ item, layer2 }) => {
   else if (item.type === 'pet') comparedTo = equipped.pet;
   else return null;
 
-  const labels = layer2 ? STAT_LABEL.layer2 : STAT_LABEL.layer0;
+  const labels = layer2 ? STAT_LABEL().layer2 : STAT_LABEL().layer0;
   const keys = layer2 ? ['atk', 'def', 'spd'] : ['atk', 'def'];
 
   const rows = keys.map(k => {
@@ -127,7 +130,7 @@ const Comparison = ({ item, layer2 }) => {
         fontSize: 11, fontWeight: 700, color: INV.textVeryMuted, letterSpacing: '.14em',
         fontFamily: FONT.sans, textTransform: 'uppercase', marginBottom: 6,
       }}>
-        {layer2 && comparedTo ? `VS YOUR ${(comparedTo.name || 'GEAR').toUpperCase()}` : 'COMPARED TO WHAT YOU\'RE WEARING'}
+        {layer2 && comparedTo ? say(SAY, 'itemTooltip.vsYour', { gear: (comparedTo.name || say(SAY, 'itemTooltip.gear')).toUpperCase() }) : say(SAY, 'itemTooltip.comparedToWorn')}
       </div>
       {rows.map(r => (
         <div key={r.k} style={{
@@ -159,7 +162,7 @@ const GemsBlock = ({ item }) => {
       <div style={{
         fontSize: 11, fontWeight: 700, color: INV.textVeryMuted, letterSpacing: '.14em',
         fontFamily: FONT.sans, marginBottom: 4, textTransform: 'uppercase',
-      }}>GEMS</div>
+      }}>{say(SAY, 'itemTooltip.gems')}</div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           {(item.gems || []).map((g, i) => (
@@ -168,10 +171,10 @@ const GemsBlock = ({ item }) => {
               <span style={{ fontSize: 12, color: INV.textPrimary, fontFamily: FONT.sans }}>{g}</span>
             </div>
           ))}
-          {filled === 0 && <span style={{ fontSize: 12, color: INV.textMuted }}>(empty)</span>}
+          {filled === 0 && <span style={{ fontSize: 12, color: INV.textMuted }}>{say(SAY, 'itemTooltip.gemsEmpty')}</span>}
         </div>
         <span style={{ fontSize: 11, fontFamily: FONT.mono, color: INV.textMuted }}>
-          {filled} of {item.gemSlots} slots
+          {say(SAY, 'itemTooltip.gemSlots', { filled, slots: item.gemSlots })}
         </span>
       </div>
     </div>
@@ -186,7 +189,7 @@ const getElementColor = (el) => ({
 
 const MarketBlock = ({ item, layer3 }) => {
   if (!layer3) return null;
-  const range = item.tier ? `${item.tier * 30}-${item.tier * 70}g recently` : '— recently';
+  const range = item.tier ? say(SAY, 'itemTooltip.marketRange', { low: item.tier * 30, high: item.tier * 70 }) : say(SAY, 'itemTooltip.marketNone');
   return (
     <div style={{
       /* v2.3.1235: batch-4 rollout — 0.5px sub-pixel border → 1px hairline
@@ -197,10 +200,10 @@ const MarketBlock = ({ item, layer3 }) => {
       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
     }}>
       <div>
-        <div style={{ fontSize: 11, fontWeight: 700, color: INV.marketAccent, letterSpacing: '.14em', fontFamily: FONT.sans }}>MARKET</div>
+        <div style={{ fontSize: 11, fontWeight: 700, color: INV.marketAccent, letterSpacing: '.14em', fontFamily: FONT.sans }}>{say(SAY, 'itemTooltip.market')}</div>
         <div style={{ fontSize: 12, fontFamily: FONT.mono, color: INV.marketAccent }}>{range}</div>
       </div>
-      <div style={{ fontSize: 11, color: INV.marketAccent, cursor: 'pointer' }}>List ↗</div>
+      <div style={{ fontSize: 11, color: INV.marketAccent, cursor: 'pointer' }}>{say(SAY, 'itemTooltip.list')}</div>
     </div>
   );
 };
@@ -224,6 +227,17 @@ const ActionButton = ({ label, primary, destructive, onClick, ghost }) => {
     }}>{label}</div>
   );
 };
+
+/* v2.3.6349: an action stays its English name (onAction compares it); the
+   button reads its words from the table */
+const actWords = (a) => (a === 'Take off' ? say(SAY, 'itemTooltip.takeOff')
+  : a === 'Wear' ? say(SAY, 'itemTooltip.wear')
+  : a === 'Use' ? say(SAY, 'itemTooltip.use')
+  : a === 'Socket' ? say(SAY, 'itemTooltip.socket')
+  : a === 'Keep safe' ? say(SAY, 'itemTooltip.keepSafe')
+  : a === 'Add shortcut' ? say(SAY, 'itemTooltip.addShortcut')
+  : a === 'Salvage' ? say(SAY, 'itemTooltip.salvage')
+  : a);
 
 const actionsFor = (item, isEquipped) => {
   if (isEquipped) return ['Take off', null, 'Add shortcut', null];
@@ -255,7 +269,7 @@ const ShortcutPicker = ({ onPick, onCancel }) => (
           corrected hairline + well-soft tokens (empty slot = well-soft). */}
       <div style={{ width: 32, height: 4, background: 'rgba(229,237,233,.20)', borderRadius: 2, margin: '0 auto 14px' }} />
       <div style={{ color: INV.textPrimary, fontFamily: FONT.sans, fontSize: 13, marginBottom: 12 }}>
-        Pick a shortcut slot to assign:
+        {say(SAY, 'itemTooltip.pickSlot')}
       </div>
       <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginBottom: 16 }}>
         {[0, 1].map(i => (
@@ -266,7 +280,7 @@ const ShortcutPicker = ({ onPick, onCancel }) => (
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
             cursor: 'pointer',
           }}>
-            <div style={{ fontSize: 11, color: INV.textMuted, fontFamily: FONT.sans }}>SLOT {i + 1}</div>
+            <div style={{ fontSize: 11, color: INV.textMuted, fontFamily: FONT.sans }}>{say(SAY, 'itemTooltip.slot', { slot: i + 1 })}</div>
             <div style={{ fontSize: 22, color: INV.textVeryMuted }}>+</div>
           </div>
         ))}
@@ -377,7 +391,7 @@ export const ItemTooltip = ({ item, isEquipped, onClose }) => {
           }}><ItemArt item={item} size={48} /></div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontFamily: FONT.serif, fontSize: 17, fontWeight: 500, color: INV.textPrimary }}>
-              {item.name || '(unnamed)'}
+              {item.name || say(SAY, 'itemTooltip.unnamed')}
             </div>
             {/* v2.3.1235: batch-4 rollout — metadata line onto text-3;
                 crafter credit onto the brass token (was off-token warm
@@ -388,7 +402,7 @@ export const ItemTooltip = ({ item, isEquipped, onClose }) => {
             {layer3 && item.crafter && (
               <div style={{ fontFamily: FONT.serif, fontStyle: 'italic', fontSize: 11,
                 color: INV.marketAccent, marginTop: 3 }}>
-                forged by {item.crafter}{item.acquiredAt ? ` · ${dayLabel(item.acquiredAt)}` : ''}
+                {item.acquiredAt ? say(SAY, 'itemTooltip.forgedByWhen', { crafter: item.crafter, when: dayLabel(item.acquiredAt) }) : say(SAY, 'itemTooltip.forgedBy', { crafter: item.crafter })}
               </div>
             )}
           </div>
@@ -399,12 +413,12 @@ export const ItemTooltip = ({ item, isEquipped, onClose }) => {
         <MarketBlock item={item} layer3={layer3} />
 
         <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-          <ActionButton label={acts[0]} primary onClick={() => onAction(acts[0])} />
-          <ActionButton label={acts[1]} onClick={() => onAction(acts[1])} />
+          <ActionButton label={actWords(acts[0])} primary onClick={() => onAction(acts[0])} />
+          <ActionButton label={actWords(acts[1])} onClick={() => onAction(acts[1])} />
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <ActionButton label={acts[2]} onClick={() => onAction(acts[2])} />
-          <ActionButton label={acts[3]} destructive onClick={() => onAction(acts[3])} />
+          <ActionButton label={actWords(acts[2])} onClick={() => onAction(acts[2])} />
+          <ActionButton label={actWords(acts[3])} destructive onClick={() => onAction(acts[3])} />
         </div>
       </div>
       {showPicker && (
@@ -419,7 +433,7 @@ export const ItemTooltip = ({ item, isEquipped, onClose }) => {
 
 const dayLabel = (ts) => {
   const days = Math.floor((Date.now() - ts) / 86400000);
-  if (days <= 0) return 'today';
-  if (days === 1) return 'yesterday';
-  return `${days} days ago`;
+  if (days <= 0) return say(SAY, 'itemTooltip.today');
+  if (days === 1) return say(SAY, 'itemTooltip.yesterday');
+  return say(SAY, 'itemTooltip.daysAgo', { days });
 };

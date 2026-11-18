@@ -2,6 +2,8 @@ import React from 'react';
 import { petKindName, cleanPetName, PET_NAME, PET_BIG_AT } from '@/data/trapping.js';
 import { sendPetName } from '@/game/petBook.js';
 import { PetPortrait } from '@/ui/petPortrait.jsx';
+import { SAY } from '@/data/say/trapCatch.js';   /* v2.3.6352: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';
 
 /* ═══ v2.3.3120: A NEW PET'S CARD ═══
  * Plan: docs/PET-TRAPPING-PLAN.md -- the trap "snaps shut (a card shows your
@@ -57,7 +59,7 @@ export function TrapCatchCard({ stateRef }) {
           bt-pet-*); the header says which */}
       {pet.gold ? <div className="bt-pet-glow" data-trap-card-glow="1" /> : null}
       <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.14em', textTransform: 'uppercase', color: pet.gold ? '#EAC675' : '#7EE0A8' }}>
-        {pet.gold && big ? 'A big golden one!' : pet.gold ? 'A golden one!' : big ? 'A big one!' : 'Caught!'}
+        {say(SAY, pet.gold && big ? 'trapCatch.bigGolden' : pet.gold ? 'trapCatch.golden' : big ? 'trapCatch.big' : 'trapCatch.caught')}
       </div>
       <div style={{ position: 'relative', overflow: 'hidden', display: 'grid', placeItems: 'center', margin: '6px auto 4px', width: 96, height: 96, borderRadius: 14,
         background: pet.gold ? 'radial-gradient(circle, rgba(234,198,117,.35), rgba(17,30,35,.9))' : '#111E23' }}>
@@ -66,25 +68,25 @@ export function TrapCatchCard({ stateRef }) {
       </div>
       <div style={{ fontSize: 17, fontWeight: 800 }}>{kindName}</div>
       <div style={{ display: 'flex', gap: 6, justifyContent: 'center', margin: '5px 0 10px', flexWrap: 'wrap' }}>
-        <span style={{ padding: '2px 8px', borderRadius: 999, background: '#111E23', fontSize: 12, fontWeight: 800, color: '#D8AA58' }}>Lv {pet.lv || 1}</span>
-        {pet.gold ? <span data-trap-card-gold="1" style={{ padding: '2px 8px', borderRadius: 999, background: 'rgba(234,198,117,.18)', fontSize: 12, fontWeight: 800, color: '#EAC675' }}>Golden!</span> : null}
-        {big ? <span key={card.at} className="bt-pet-big" data-trap-card-big="1" style={{ padding: '2px 8px', borderRadius: 999, background: 'rgba(126,224,168,.14)', fontSize: 12, fontWeight: 800, color: '#7EE0A8' }}>Big</span> : null}
+        <span style={{ padding: '2px 8px', borderRadius: 999, background: '#111E23', fontSize: 12, fontWeight: 800, color: '#D8AA58' }}>{say(SAY, 'trapCatch.level', { lv: pet.lv || 1 })}</span>
+        {pet.gold ? <span data-trap-card-gold="1" style={{ padding: '2px 8px', borderRadius: 999, background: 'rgba(234,198,117,.18)', fontSize: 12, fontWeight: 800, color: '#EAC675' }}>{say(SAY, 'trapCatch.badgeGolden')}</span> : null}
+        {big ? <span key={card.at} className="bt-pet-big" data-trap-card-big="1" style={{ padding: '2px 8px', borderRadius: 999, background: 'rgba(126,224,168,.14)', fontSize: 12, fontWeight: 800, color: '#7EE0A8' }}>{say(SAY, 'trapCatch.badgeBig')}</span> : null}
       </div>
-      <input data-trap-card-name="1" value={name} maxLength={PET_NAME.MAX + 4} placeholder={'Name your ' + kindName}
+      <input data-trap-card-name="1" value={name} maxLength={PET_NAME.MAX + 4} placeholder={say(SAY, 'trapCatch.namePlaceholder', { kind: kindName })}
         onChange={(e) => setName(e.target.value)}
         style={{ width: '100%', boxSizing: 'border-box', minHeight: 40, padding: '0 10px', borderRadius: 10, fontSize: 15,
           background: '#111E23', color: '#F4F0E7', border: '1px solid ' + (name && !clean ? '#D8635D' : 'rgba(229,237,233,.2)'), fontFamily: 'inherit' }} />
       <div style={{ fontSize: 11, color: name && !clean ? '#E59A94' : '#8D9B98', margin: '4px 0 10px', minHeight: 14 }}>
-        {name && !clean ? 'Names are 2-16 letters, numbers or spaces' : 'You can name it later on the Pets page'}
+        {say(SAY, name && !clean ? 'trapCatch.nameBad' : 'trapCatch.nameLater')}
       </div>
       <div style={{ display: 'flex', gap: 8 }}>
         <button data-trap-card-done="1" onClick={close}
           style={{ flex: 1, minHeight: 44, borderRadius: 10, fontSize: 14, fontWeight: 800, fontFamily: 'inherit', cursor: 'pointer',
-            background: '#293B41', color: '#F4F0E7', border: '1px solid rgba(229,237,233,.2)' }}>Done</button>
+            background: '#293B41', color: '#F4F0E7', border: '1px solid rgba(229,237,233,.2)' }}>{say(SAY, 'trapCatch.done')}</button>
         <button data-trap-card-give="1" disabled={!clean} onClick={give}
           style={{ flex: 1, minHeight: 44, borderRadius: 10, fontSize: 14, fontWeight: 800, fontFamily: 'inherit', cursor: clean ? 'pointer' : 'default',
             background: clean ? 'linear-gradient(180deg,#E2B765,#D2A14D)' : '#1A292F', color: clean ? '#172126' : '#8D9B98',
-            border: '1px solid ' + (clean ? '#EAC675' : 'rgba(229,237,233,.11)') }}>Name it</button>
+            border: '1px solid ' + (clean ? '#EAC675' : 'rgba(229,237,233,.11)') }}>{say(SAY, 'trapCatch.nameIt')}</button>
       </div>
     </div>
   );

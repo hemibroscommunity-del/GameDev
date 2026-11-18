@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { COL, getState } from './common.js';
 import { FISH_SPECIES, fishKg } from '@/data/fishVariants.js';
 import { askFishBoard, subscribeFishWeigh } from '@/game/fishWeigh.js';
-import { deskWords } from '@/game/deskWords.js';
+import { SAY } from '@/data/say/fishBoard.js';   /* v2.3.6352: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';   /* v2.3.6352: a plain row goes through deskWords ("tap" reads "click" on a computer) */
 import { BoardRow, BoardEmpty, useBoardFaces } from './BoardRow.jsx';   /* v2.3.4393 */
 
 /* ═══ v2.3.4036: THE BIGGEST FISH -- RANKS' FISH TAB ═══
@@ -24,7 +25,7 @@ const chip = (active) => ({
   border: `1px solid ${active ? COL.accent : COL.border}`, borderRadius: 999,
   fontFamily: 'inherit', fontSize: 12.5, fontWeight: 700, whiteSpace: 'nowrap',
 });
-const TAG = { albino: { word: 'Albino', color: '#F6D9E4' }, large: { word: 'Large', color: '#F2C14E' } };
+const TAG = { albino: { word: say(SAY, 'fishBoard.albino'), color: '#F6D9E4' }, large: { word: say(SAY, 'fishBoard.large'), color: '#F2C14E' } };
 
 export function FishBoard({ initial }) {
   const [sp, setSp] = useState(() => (FISH_SPECIES.some((f) => f.id === initial) ? initial : 'minnow'));
@@ -40,7 +41,7 @@ export function FishBoard({ initial }) {
   const meId = S && S.myId;
   const fb = S && S._fishBoard;
   const rows = fb && fb.boards && Array.isArray(fb.boards[sp]) ? fb.boards[sp] : [];
-  const name = (FISH_SPECIES.find((f) => f.id === sp) || {}).name || 'fish';
+  const name = (FISH_SPECIES.find((f) => f.id === sp) || {}).name || say(SAY, 'fishBoard.someFish');
   const faces = useBoardFaces(rows);
   return (
     <div data-fish-board={sp}>
@@ -56,8 +57,8 @@ export function FishBoard({ initial }) {
         ))}
       </div>
       {rows.length === 0 ? (
-        <BoardEmpty text={!fb ? 'Loading…' : fb.off ? 'The scales are closed for now.' : fb.unavailable ? "The records can't be read right now."
-          : deskWords('Nobody has weighed a ' + name + ' yet. Tap a fish in your bag, then Inspect.')} />
+        <BoardEmpty text={!fb ? say(SAY, 'fishBoard.loading') : fb.off ? say(SAY, 'fishBoard.off') : fb.unavailable ? say(SAY, 'fishBoard.unavailable')
+          : say(SAY, 'fishBoard.empty', { name })} />
       ) : rows.map((r, i) => (
         /* v2.3.4393: the one row every board draws (BoardRow): the face and
            the level it was weighed with, a deleted character's row grey */
