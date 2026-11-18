@@ -428,6 +428,8 @@ export function clearZoneLocalFx(S) {
   S._bashDash = null;
   S._dashStrike = null;
   S._fxBursts = [];
+  S._dropLines = [];   /* v2.3.6060 (card U3): a kill's drop lines float at the old place's world px on the new map (the renderer lets their views go with the list) */
+  if (S._trap) S._trap.mark = null;   /* v2.3.6060: the trap's mark is the old place's monster's (its card and the springs stay: they end on their own clocks) */
 }
 
 /* ═══ v2.3.5208: WHAT FLEW AND FELL IN THE PLACE YOU LEAVE (card L) ═══
