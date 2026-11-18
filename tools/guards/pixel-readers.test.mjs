@@ -71,6 +71,7 @@ const READERS = {
   'src/rendering/keepAsImage.js': 'keeps a canvas made on the device as an image of itself (toBlob), never a p256 picture',
   'src/rendering/lookArmour.js': 'lets a look sheet\'s page copy go; reads no pixel',
   'src/rendering/lookPalette.js': 'sends a look sheet\'s numbers to the chip and lets the page copy go; reads no picture',
+  'src/rendering/monsterShotFx.js': 'v2.3.5982: its two atlases are canvases it minted itself, kept as images of themselves; it reads the <img> only to decode it behind the loading screen, never a pixel, never a p256 picture',
   'src/rendering/npcSprites.js': 'lets the townsfolk\'s cropped canvases go; reads no pixel',
   'src/rendering/p256.js': 'the pack itself, and the twins\' first read',
   'src/rendering/paletteDraw.js': 'drawSourceRect: draws a picture or its colour numbers',
