@@ -9,6 +9,7 @@ import { worldReady } from '@/ui/loadingGate.js';
 import { onboardingBusy, worldInMs } from '@/ui/onboardingPace.js';
 import { LOGIN_SPIN_URLS } from '@/rendering/loginSpinPreload.js';
 import { sw } from '@/game/switches.js';   /* v2.3.5306: the page's one reader (card T) */
+import { act } from '@/game/actions.js';   /* v2.3.5881: the page's requests leave through the action door (card K3 PR 2) */
 import {
   loginSpinBus, loginSpinTarget, loginSpinEase, LOGIN_SPIN_MS, LOGIN_SPIN_TURNS,
   LOGIN_SPIN_UNSAFE_WORDS, loginDoubleTarget, LOGIN_DOUBLE_MS, loginSpinSegAt, loginSpinParty,
@@ -117,7 +118,12 @@ export const spinSafeNow = () => {
 };
 const send = (type, payload) => {
   const S = getState();
-  try { if (S && S.channel) { S.channel.send({ type, payload: payload || {} }); return true; } } catch (e) { /* the timeout tells */ }
+  /* v2.3.5881 (card K3 PR 2): through the action door (actions.js), the same
+     payload and the same way ('alone').  A `req` row (loginspin_double, which
+     moves value) gets the door's request id; the worker's own guard against a
+     double tap or a resend paying twice stays the round's `k` and the day's
+     stamp (loginspin.js), unchanged */
+  try { if (S && S.channel) { act(type, payload || {}); return true; } } catch (e) { /* the timeout tells */ }
   return false;
 };
 
