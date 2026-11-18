@@ -8,6 +8,7 @@
  * docs/plan/census/M-tables.md (tools/dev/render-code-census.mjs).
  */
 import { MIRROR_SCREEN_DIR } from '../tables/look.js';
+import { clipHair } from '../hairClip.js';
 
 /* ── v2.3.6200: level 0 ── */
 /* v2.3.867: composite the player's CURRENT traits (hat / beard / hair) onto a
@@ -87,4 +88,23 @@ export function hideStandInCape(sprites) {
     sprites.capeHoodMask.visible = false;
     sprites.capeHoodMask._btReady = false;
   }
+}
+
+/* ── v2.3.6201: main's level 1 ── */
+/** Hide all three skill-trait sprites (no stand-in active this frame). */
+export function hideSkillTraits(sprites) {
+  if (!sprites) return;
+  hideStandInCape(sprites);                                  /* v2.3.2190 */
+  if (sprites.hat) sprites.hat.visible = false;
+  if (sprites.beard) sprites.beard.visible = false;
+  if (sprites.eyewear) sprites.eyewear.visible = false;   /* v2.3.2361 */
+  if (sprites.eyestyle) sprites.eyestyle.visible = false;   /* v2.3.2643 */
+  if (sprites.species) sprites.species.visible = false;   /* v2.3.2682 */
+  if (sprites.hair) sprites.hair.visible = false;
+  /* v2.3.1776: drop the clip with them.  A hair sprite that is hidden while
+     still holding a mask keeps Pixi doing the stencil work for something
+     nobody can see, and the next pose to reuse this set would inherit the
+     previous hat's silhouette. */
+  if (sprites.hair && sprites.hair.mask) clipHair(sprites.hair, null);   /* v2.3.3459 */
+  if (sprites.hairMask) sprites.hairMask.visible = false;
 }

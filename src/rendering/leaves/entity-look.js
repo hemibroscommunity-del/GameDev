@@ -8,7 +8,7 @@
  * docs/plan/census/M-tables.md (tools/dev/render-code-census.mjs).
  */
 import { Assets, Rectangle, Texture } from 'pixi.js';
-import { BODY_DIR_SCALE, BODY_ROWS, FULLSET_CROWN, JOG_EW_HAT_TUNE, STAND_HAT_TUNE, _CAPE_HOOD_DX_K, _CAPE_HOOD_TILT_K, _CAPE_JOG_DX, _CAPE_JOG_TILT, _CAPE_PIVOT_Y } from '../tables/look.js';
+import { BODY_CELL_MID, BODY_DIR_SCALE, BODY_ROWS, FULLSET_CROWN, JOG_EW_HAT_TUNE, LOCAL_BODY_SCALE, NECK_ROWS, PLAYER_SIZE_MULT, STAND_HAT_TUNE, _CAPE_HOOD_DX_K, _CAPE_HOOD_TILT_K, _CAPE_JOG_DX, _CAPE_JOG_TILT, _CAPE_PIVOT_Y } from '../tables/look.js';
 import { artHasInk, sanitizeShirtArt } from '../traits/playerArt.js';
 import { gearArt, gearMaterial, gearTint } from '../gearVariants.js';
 import { gearDrawFrame, gearDrawFramePhased } from '../gearWalkFrame.js';
@@ -19,8 +19,9 @@ import { getLookBodyEntries, getPants, getShoes, getSkin } from '../playerSkins.
 import { headwearBehindBeard, headwearUnderHair } from '../traits/headwearCatalog.js';
 import { lookArmourFrame, lookArmourOn, lookSheetForWorker } from '../lookArmour.js';
 import { pageAddress } from '@/game/switches.js';
-import { sanitizePattern } from '../traits/patternCatalog.js';
+import { parsePattern, sanitizePattern } from '../traits/patternCatalog.js';
 import { wornSigOf } from '../maskedEvict.js';
+import { buildScale } from '../traits/buildCatalog.js';
 
 /* ── v2.3.6200: level 0 ── */
 /* v2.3.3520: the arm capsule's body clone and every clone riding on it
@@ -559,4 +560,102 @@ export function figureFeetX(display) {
   /* v2.3.3499: and while a jump leans it (rendering/jumpFx.js), the same */
   if (display._jumpXw != null && display.x === display._jumpXw) return display.x - (display._jumpXFix || 0);
   return display._emoteXw != null && display.x === display._emoteXw ? display.x - (display._emoteXFix || 0) : display.x;
+}
+
+/* ── v2.3.6201: main's level 1 ── */
+/* v2.3.1941: everything about a shirt that is NOT the shipped sheet -- its
+   drawings, its pattern, and its colour -- gathered into one object, because
+   they now bake together (see gearSheets.getShirtLookFrame).
+   Returns null when there is neither a drawing nor a pattern, and that null is
+   load-bearing: it is what keeps a plain coloured shirt on the shared sheet
+   with the cheap sprite tint, exactly as it was before any of this existed. */
+export function _shirtLook(front, back, patternStr, tint) {
+  const art = _shirtArtPair(front, back);
+  const pattern = parsePattern(patternStr, 'shirt');
+  return (art || pattern) ? { art, pattern, tint: tint || null } : null;
+}
+export function _feetOffsetUnits(display) {
+  const pose = (display && display._animPose) === 'jog' ? 'jog' : 'stand';
+  const dir = (display && display._animDir) || 'south';
+  const rows = bodyRows(pose, dir);
+  return (rows.feet - BODY_CELL_MID) * bodyDirScale(pose, dir) * LOCAL_BODY_SCALE;
+}
+export function standFootDy(zoneScale) {
+  const rows = bodyRows('stand', 'south');
+  return (rows.feet - BODY_CELL_MID) * bodyDirScale('stand', 'south') * LOCAL_BODY_SCALE
+    * PLAYER_SIZE_MULT * (zoneScale || 1);
+}
+export function standShadeSpan(feetY, zoneScale, sy) {
+  const rows = bodyRows('stand', 'south');
+  const s = bodyDirScale('stand', 'south') * LOCAL_BODY_SCALE * PLAYER_SIZE_MULT * (zoneScale || 1) * (sy || 1);
+  return [feetY - rows.feet * s, feetY + (BODY_CELL_MID * 2 - rows.feet) * s];
+}
+export function fittedShadeSpan(crownY, feetY) {
+  const rows = bodyRows('stand', 'south');
+  const H = BODY_CELL_MID * 2;
+  const tC = rows.crown / H, tF = rows.feet / H;
+  const h = (feetY - crownY) / Math.max(1e-6, tF - tC);
+  const top = crownY - tC * h;
+  return [top, top + h];
+}
+export function nominalStandFigure(dir) {
+  const d = dir || 'south';
+  const rows = bodyRows('stand', d);
+  const s = bodyDirScale('stand', d) * LOCAL_BODY_SCALE * PLAYER_SIZE_MULT;
+  return { bodyH: (rows.feet - rows.crown + 1) * s, footDy: (rows.feet - BODY_CELL_MID) * s };
+}
+export function figureSwimLine(display) {
+  const pose = (display && display._animPose) === 'jog' ? 'jog' : 'stand';
+  const dir = (display && display._animDir) || 'south';
+  const rows = bodyRows(pose, dir);
+  const necks = NECK_ROWS[pose];
+  const neck = necks[dir] != null ? necks[dir] : necks.south;
+  const k = bodyDirScale(pose, dir) * LOCAL_BODY_SCALE;
+  return { water: (neck - BODY_CELL_MID) * k, feet: (rows.feet - BODY_CELL_MID) * k, crown: (rows.crown - BODY_CELL_MID) * k };
+}
+
+/* ── v2.3.6201: main's level 2 ── */
+/* v2.3.2710: where a player figure (yours or a peer's) actually touches the
+   ground, in its layer's space.  The body is centred on its frame, so the
+   feet are this offset BELOW display.y, not at it -- a cast shadow pivoted on
+   display.y would hang in the air at the figure's waist (lightfx/casters.js). */
+export function figureFeetY(display) {
+  /* v2.3.3017: a figure in the middle of a jump is drawn lifted
+     (rendering/jumpFx.js, after the depth pass) and its FEET are still on
+     the ground -- where it is sorted, where its shadow falls (so the gap
+     between body and shadow is the height) and where it stands.  Added back
+     only while the y is still the one jumpFx left (the swim's rule,
+     swimFx.js): the entity pass may have set a fresh y since. */
+  /* v2.3.3499: `_jumpLift` is everything the jump moved the feet by -- the
+     lift, and the squash and lean about them (jumpFx) -- so it is taken back
+     off whole */
+  const lift = display._jumpY != null && display.y === display._jumpY ? (display._jumpLift || 0) : 0;
+  /* v2.3.3392: and a figure that emotes (rendering/emoteFx.js) is drawn
+     tilted, squashed or hopping ABOUT its feet, after the depth pass: its
+     feet are where they were (its y and scale are not), so the emote's own
+     fix is taken off -- only while the y is still the one emoteFx left. */
+  const emo = display._emoteYw != null && display.y === display._emoteYw ? (display._emoteFeetFix || 0) : 0;
+  return display.y + lift - emo + _feetOffsetUnits(display) * display.scale.y;
+}
+/* v2.3.3392: how far the boots are below a live figure's origin, in its own
+   units (the drawn frame's facing and pose) -- for emoteFx, which plants
+   them */
+export function figureFeetUnits(display) {
+  return _feetOffsetUnits(display);
+}
+export function _applyBuildScale(display, pscale, heightId, frameId) {
+  const b = buildScale(heightId, frameId);
+  const sx = pscale * b.sx, sy = pscale * b.sy;
+  if (display.scale.x !== sx || display.scale.y !== sy) { display.scale.x = sx; display.scale.y = sy; }
+  const ui = display._uiLayer;
+  if (ui) {
+    /* Guard against a zero from a future catalog entry: an inverse of 0 is
+       Infinity, and one Infinity in a transform blanks the whole display. */
+    const ix = b.sx ? 1 / b.sx : 1, iy = b.sy ? 1 / b.sy : 1;
+    if (ui.scale.x !== ix || ui.scale.y !== iy) { ui.scale.x = ix; ui.scale.y = iy; }
+  }
+  /* The lift, in WORLD units: the feet sit 24 container units below the
+     origin, so growth below the origin is 24 * (sy - 1) container units, times
+     the zone/player scale that turns container units into world ones. */
+  return -_feetOffsetUnits(display) * (b.sy - 1) * pscale;
 }

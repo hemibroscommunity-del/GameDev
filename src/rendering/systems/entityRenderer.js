@@ -159,19 +159,20 @@ import { PLAYER_SIZE_MULT, TRAIT_RETRY_LATER_MS, _TRAIT_RETRY_MS, MIRROR_SCREEN_
 import { SOUTH_IDLE_TILT, GRIP_NUDGE_X, GRIP_HOLE_FACINGS, GRIP_HOLE_R, GRIP_HOLE_R_BY_FACING, SWING_FULL_ARC, REST_ANG, BLOCK_ARM_SHOULDER, SOUTH_BLOCK_OFFHAND, SOUTH_BLOCK_OFFHAND_BY_TYPE } from '../tables/combat.js';   /* v2.3.5345: the combat system's hand-tuned tables, moved verbatim (card M) */
 import { MONSTER_SIZE_MULT } from '../tables/monsters.js';   /* v2.3.5345: the monsters system's hand-tuned tables, moved verbatim (card M) */
 import { PREWARM_POSES } from '../tables/preload.js';   /* v2.3.5345: the preload system's hand-tuned tables, moved verbatim (card M) */
-import { CARET_OUT, _blockHandPoint, _drawBlockCaret, _hideBlockArm, _hideBlockCaret, _orderPeerHeldShield, carryWobble, clearGripHole, gripHoleWanted, gripNudgeX, heldWeaponInFront, selfCorpseUp } from '../leaves/entity-combat.js';   /* v2.3.6200: its leaves (card EN) */
-export { SELF_DEATH_HOLD_MS, selfCorpseUp } from '../leaves/entity-combat.js';   /* v2.3.6200: exported as before */
-import { _bareOf, _capeTune, _chestFrameOf, _colouredEntry, _croppedTexture, _fullsetCrown, _fullsetFrame, _fullsetTint, _hideArmClones, _hideBodyRegions, _jogPlantCrossed, _localLookEntries, _localWornSig, _lookArmourBody, _lookInline, _maskedKey, _orderHairOverHat, _orderTraitsAndWeapon, _peerArmourSig, _remoteBodyArtBuild, _sendGearSheets, _shirtArtPair, _takeHairMask, _traitState, applyNftTransform, bodyDirScale, bodyRows, hatPoseTune, hideNft } from '../leaves/entity-look.js';   /* v2.3.6200: its leaves (card EN) */
-export { figureFeetX } from '../leaves/entity-look.js';   /* v2.3.6200: exported as before */
+import { CARET_OUT, _blockHandPoint, _drawBlockCaret, _hideBlockArm, _hideBlockCaret, _orderPeerHeldShield, _placeBlockArm, _placeSouthBlockWeapon, carryWobble, clearGripHole, gripHoleWanted, gripNudgeX, heldWeaponInFront, selfCorpseUp, selfGathering } from '../leaves/entity-combat.js';   /* v2.3.6200: its leaves (card EN) */
+export { SELF_DEATH_HOLD_MS, selfCorpseUp, selfGathering } from '../leaves/entity-combat.js';   /* v2.3.6200: exported as before */
+import { _applyBuildScale, _bareOf, _capeTune, _chestFrameOf, _colouredEntry, _croppedTexture, _feetOffsetUnits, _fullsetCrown, _fullsetFrame, _fullsetTint, _hideArmClones, _hideBodyRegions, _jogPlantCrossed, _localLookEntries, _localWornSig, _lookArmourBody, _lookInline, _maskedKey, _orderHairOverHat, _orderTraitsAndWeapon, _peerArmourSig, _remoteBodyArtBuild, _sendGearSheets, _shirtArtPair, _shirtLook, _takeHairMask, _traitState, applyNftTransform, bodyDirScale, bodyRows, hatPoseTune, hideNft } from '../leaves/entity-look.js';   /* v2.3.6200: its leaves (card EN) */
+export { figureFeetUnits, figureFeetX, figureFeetY, figureSwimLine, fittedShadeSpan, nominalStandFigure, standFootDy, standShadeSpan } from '../leaves/entity-look.js';   /* v2.3.6200: exported as before */
 import { _whirlGlow, cssColorToHex, getMonsterColor, getMonsterSize, getSlimeFrame, slimeTintFor } from '../leaves/entity-monsters.js';   /* v2.3.6200: its leaves (card EN) */
 export { getMonsterSize } from '../leaves/entity-monsters.js';   /* v2.3.6200: exported as before */
 import { _idleYield, _idleYieldSoon, _nextFrameP, _prewarmMasks, prewarmDirs } from '../leaves/entity-preload.js';   /* v2.3.6200: its leaves (card EN) */
 import { _hideExceptDeep, drawnAsContent } from '../leaves/entity-render.js';   /* v2.3.6200: its leaves (card EN) */
 import { _placeStandaloneTrait, hideStandInCape } from '../leaves/entity-skills.js';   /* v2.3.6200: its leaves (card EN) */
 import { _chatBubbleUp } from '../leaves/entity-social.js';   /* v2.3.6200: its leaves (card EN) */
-import { NPC_BRO_MULT, NPC_SCALE_MULT, _drawQuestBadge, _folkBodyPx, npcDirFromDelta, npcFigureSize, npcSpriteScale, npcStandFrame } from '../leaves/entity-townsfolk.js';   /* v2.3.6200: its leaves (card EN) */
-import { RES_FADE_MS, RES_HOLD_MS, RES_SRC_CELL, RES_SRC_PITCH, _barSrcW, _hexOf, _resGlideProgress, _setPillType, plateBandFor, threatSkullPhase } from '../leaves/entity-ui.js';   /* v2.3.6200: its leaves (card EN) */
+import { CAPTURE_SHEET, NPC_BRO_MULT, NPC_SCALE_MULT, _drawQuestBadge, _folkBodyPx, npcDirFromDelta, npcFigureHeight, npcFigureSize, npcSpriteScale, npcStandFrame, npcWalkCell } from '../leaves/entity-townsfolk.js';   /* v2.3.6200: its leaves (card EN) */
+import { RES_BAR_MAX_W, RES_BLOCK_H, RES_FADE_MS, RES_HOLD_MS, RES_SRC_CELL, RES_SRC_PITCH, _barScaleX, _barSrcW, _barWidth, _drawResourceBar, _hexOf, _resGlideProgress, _setPillType, plateBandFor, threatSkullPhase } from '../leaves/entity-ui.js';   /* v2.3.6200: its leaves (card EN) */
 export { bandScale, plateBandFor } from '../leaves/entity-ui.js';   /* v2.3.6200: exported as before */
+export { hideSkillTraits } from '../leaves/entity-skills.js';   /* v2.3.6201: exported as before */
 export { MONSTER_SIZE_MULT, MINE_TRAIT_MUL, FISH_TRAIT_MUL };   /* v2.3.5345: still the renderer's exports (moved to ../tables/) */
 
 /* §9.2.1 Collision-opportunity weapon edge glow — proximity radius (≈20u). */
@@ -509,9 +510,6 @@ if (typeof window !== 'undefined') {
   window.__btPeersDrawn._m = _peersDrawn;
 }
 
-/** Height of the drawn figure above the NPC's feet, in world px.
- *  v2.3.3580: times his figure's size in its cell (npcFigureSize). */
-const npcFigureHeight = (src, npc) => npcSpriteScale(src) * (NPC_FRAME_FEET_Y - NPC_FRAME_TOP_Y) * npcFigureSize(npc);
 
 /* v2.3.3809: a townsperson drawn live has no figure this far past the view
    (world px beyond its half-diagonal: _updateNPCs) */
@@ -533,15 +531,6 @@ const FOLK_FAR_MARGIN = 300;
    v2.3.4077: the stride is the player's MEASURED one now (playerSprites
    jogStride, game/legSync.js JOG_STRIDE_PX): the walk x the tuned loop was
    the player's old cadence, whose planted boot slid going east. */
-function npcWalkCell(npc, dir, phase) {
-  const w = npc && npc.walk;
-  const cycle = w && Number.isInteger(w.cycle) && w.cycle > 0 ? w.cycle : 0;
-  if (!cycle) return Math.floor(phase / NPC_WALK_PX_PER_FRAME);
-  const sheet = CAPTURE_SHEET[dir] || dir;
-  const k = (NPC_SCALE_MULT[npc.sprite] || NPC_BRO_MULT) / PLAYER_SIZE_MULT * npcFigureSize(npc);
-  const stride = jogStride(sheet) * k;   /* v2.3.4077: the player's measured stride (playerSprites jogStride) */
-  return Math.floor(phase / Math.max(1, stride / cycle)) % cycle;
-}
 
 
 /* ═══ v2.3.2632: THE ELLIPSE GROUND SHADOWS ARE GONE ═══
@@ -1595,17 +1584,6 @@ if (typeof window !== 'undefined') {
   };
 }
 
-/* v2.3.1941: everything about a shirt that is NOT the shipped sheet -- its
-   drawings, its pattern, and its colour -- gathered into one object, because
-   they now bake together (see gearSheets.getShirtLookFrame).
-   Returns null when there is neither a drawing nor a pattern, and that null is
-   load-bearing: it is what keeps a plain coloured shirt on the shared sheet
-   with the cheap sprite tint, exactly as it was before any of this existed. */
-function _shirtLook(front, back, patternStr, tint) {
-  const art = _shirtArtPair(front, back);
-  const pattern = parsePattern(patternStr, 'shirt');
-  return (art || pattern) ? { art, pattern, tint: tint || null } : null;
-}
 
 /* v2.3.1940: the same idea for the two drawings that live INSIDE the body sheet
    (pants print, chest tattoo) rather than on a gear sprite.  Peer strings are
@@ -4729,23 +4707,6 @@ export function placeSkillTraitsFor(sprites, looks, cwx, cwy, dir, mirror, scale
   _clipStandInHair(sprites, looks.headwear, dir, mirror, cwx, cwy, scaleVal, hwFit2); /* v2.3.1776 */
 }
 
-/** Hide all three skill-trait sprites (no stand-in active this frame). */
-export function hideSkillTraits(sprites) {
-  if (!sprites) return;
-  hideStandInCape(sprites);                                  /* v2.3.2190 */
-  if (sprites.hat) sprites.hat.visible = false;
-  if (sprites.beard) sprites.beard.visible = false;
-  if (sprites.eyewear) sprites.eyewear.visible = false;   /* v2.3.2361 */
-  if (sprites.eyestyle) sprites.eyestyle.visible = false;   /* v2.3.2643 */
-  if (sprites.species) sprites.species.visible = false;   /* v2.3.2682 */
-  if (sprites.hair) sprites.hair.visible = false;
-  /* v2.3.1776: drop the clip with them.  A hair sprite that is hidden while
-     still holding a mask keeps Pixi doing the stencil work for something
-     nobody can see, and the next pose to reuse this set would inherit the
-     previous hat's silhouette. */
-  if (sprites.hair && sprites.hair.mask) clipHair(sprites.hair, null);   /* v2.3.3459 */
-  if (sprites.hairMask) sprites.hairMask.visible = false;
-}
 
 
 
@@ -5323,13 +5284,6 @@ const CAPTURE_FACING = Object.freeze({
   east: 0, southeast: Math.PI / 4, south: Math.PI / 2, southwest: 3 * Math.PI / 4,
   west: Math.PI, northwest: -3 * Math.PI / 4, north: -Math.PI / 2, northeast: -Math.PI / 4,
 });
-const CAPTURE_SHEET = Object.freeze({ west: 'east', northwest: 'northeast', southeast: 'southwest' });
-function _feetOffsetUnits(display) {
-  const pose = (display && display._animPose) === 'jog' ? 'jog' : 'stand';
-  const dir = (display && display._animDir) || 'south';
-  const rows = bodyRows(pose, dir);
-  return (rows.feet - BODY_CELL_MID) * bodyDirScale(pose, dir) * LOCAL_BODY_SCALE;
-}
 /* ═══ v2.3.2846: WHERE A CHARACTER'S BOOTS ARE, FOR THINGS THAT ARE NOT ONE ═══
  * A character's position (S.player.y, a peer's y) is NOT its feet: the body is
  * frame-centred, so the boots are drawn this far below it -- (221-128) x 1.061
@@ -5341,11 +5295,6 @@ function _feetOffsetUnits(display) {
  * figureFeetY below (v2.3.2710) is the same offset read off a LIVE display;
  * this one needs none -- the fire is placed, and the figure planted, from
  * the zone's scale alone. */
-export function standFootDy(zoneScale) {
-  const rows = bodyRows('stand', 'south');
-  return (rows.feet - BODY_CELL_MID) * bodyDirScale('stand', 'south') * LOCAL_BODY_SCALE
-    * PLAYER_SIZE_MULT * (zoneScale || 1);
-}
 /* ═══ v2.3.2991: THE STANDING FIGURE ON A FLAT MAP, IN WORLD PX ═══
    The stat scene sizes the world's swing off its own portrait (bodyH, in the
    window's px), and some of what the world draws round a swing is sized in
@@ -5360,11 +5309,6 @@ export function standFootDy(zoneScale) {
    the bottom).  This is that frame's top and bottom for the standing figure
    whose boots are at `feetY` -- the rows and scales the body is drawn with --
    so a stand-in drawn where you stand (the farmer) can be lit as you are.  */
-export function standShadeSpan(feetY, zoneScale, sy) {
-  const rows = bodyRows('stand', 'south');
-  const s = bodyDirScale('stand', 'south') * LOCAL_BODY_SCALE * PLAYER_SIZE_MULT * (zoneScale || 1) * (sy || 1);
-  return [feetY - rows.feet * s, feetY + (BODY_CELL_MID * 2 - rows.feet) * s];
-}
 /* ═══ v2.3.3697: ...FITTED TO A FIGURE THAT IS NOT STANDING ═══
    The owner, 2026-10-28: "As part of the farming animations I think either the
    watering, planting, or fertilizing the armor styles didn't match (different
@@ -5377,20 +5321,6 @@ export function standShadeSpan(feetY, zoneScale, sy) {
    standing figure's do in it: for a figure of the standing height exactly
    standShadeSpan, and for a kneeling one each piece the shade that piece has
    on the walking figure. */
-export function fittedShadeSpan(crownY, feetY) {
-  const rows = bodyRows('stand', 'south');
-  const H = BODY_CELL_MID * 2;
-  const tC = rows.crown / H, tF = rows.feet / H;
-  const h = (feetY - crownY) / Math.max(1e-6, tF - tC);
-  const top = crownY - tC * h;
-  return [top, top + h];
-}
-export function nominalStandFigure(dir) {
-  const d = dir || 'south';
-  const rows = bodyRows('stand', d);
-  const s = bodyDirScale('stand', d) * LOCAL_BODY_SCALE * PLAYER_SIZE_MULT;
-  return { bodyH: (rows.feet - rows.crown + 1) * s, footDy: (rows.feet - BODY_CELL_MID) * s };
-}
 /* ═══ v2.3.3003: A SWIMMER'S WATERLINE ═══
    Swimming in the Wheel (game/wheelSwim.js, rendering/swimFx.js) only the
    head is out of the water: the figure is sunk until this row is at the
@@ -5401,43 +5331,6 @@ export function nominalStandFigure(dir) {
    jog's the median of its frames plus two (its body bobs; the head bobs in
    the water with it).  Returned in the figure's own units, like
    _feetOffsetUnits, with its feet and crown for the same frame. */
-export function figureSwimLine(display) {
-  const pose = (display && display._animPose) === 'jog' ? 'jog' : 'stand';
-  const dir = (display && display._animDir) || 'south';
-  const rows = bodyRows(pose, dir);
-  const necks = NECK_ROWS[pose];
-  const neck = necks[dir] != null ? necks[dir] : necks.south;
-  const k = bodyDirScale(pose, dir) * LOCAL_BODY_SCALE;
-  return { water: (neck - BODY_CELL_MID) * k, feet: (rows.feet - BODY_CELL_MID) * k, crown: (rows.crown - BODY_CELL_MID) * k };
-}
-/* v2.3.2710: where a player figure (yours or a peer's) actually touches the
-   ground, in its layer's space.  The body is centred on its frame, so the
-   feet are this offset BELOW display.y, not at it -- a cast shadow pivoted on
-   display.y would hang in the air at the figure's waist (lightfx/casters.js). */
-export function figureFeetY(display) {
-  /* v2.3.3017: a figure in the middle of a jump is drawn lifted
-     (rendering/jumpFx.js, after the depth pass) and its FEET are still on
-     the ground -- where it is sorted, where its shadow falls (so the gap
-     between body and shadow is the height) and where it stands.  Added back
-     only while the y is still the one jumpFx left (the swim's rule,
-     swimFx.js): the entity pass may have set a fresh y since. */
-  /* v2.3.3499: `_jumpLift` is everything the jump moved the feet by -- the
-     lift, and the squash and lean about them (jumpFx) -- so it is taken back
-     off whole */
-  const lift = display._jumpY != null && display.y === display._jumpY ? (display._jumpLift || 0) : 0;
-  /* v2.3.3392: and a figure that emotes (rendering/emoteFx.js) is drawn
-     tilted, squashed or hopping ABOUT its feet, after the depth pass: its
-     feet are where they were (its y and scale are not), so the emote's own
-     fix is taken off -- only while the y is still the one emoteFx left. */
-  const emo = display._emoteYw != null && display.y === display._emoteYw ? (display._emoteFeetFix || 0) : 0;
-  return display.y + lift - emo + _feetOffsetUnits(display) * display.scale.y;
-}
-/* v2.3.3392: how far the boots are below a live figure's origin, in its own
-   units (the drawn frame's facing and pose) -- for emoteFx, which plants
-   them */
-export function figureFeetUnits(display) {
-  return _feetOffsetUnits(display);
-}
 /* ═══ v2.3.2748: THE SAME DROP, FOR CODE THAT HAS NO FIGURE IN HAND ═══
    How far below a player's POSITION (S.player.y, a peer's y) their boots are
    drawn, in world px: ~52 at the scale of every zone that has props.  The
@@ -5464,26 +5357,6 @@ export function playerGroundDy(zoneId, x, y) {
    size (effectsRenderer _drawGatherHpBar, drawNodeHpBar `big`).  The plate
    and the bar come back the frame the harvest ends -- the bar only if your HP
    moved inside its usual hold, as ever (v2.3.1682). */
-export function selfGathering(S) {
-  const ex = S && S._extraction;
-  return !!(ex && (ex.status === 'waiting' || ex.status === 'ready')) && !selfCorpseUp(S);
-}
-function _applyBuildScale(display, pscale, heightId, frameId) {
-  const b = buildScale(heightId, frameId);
-  const sx = pscale * b.sx, sy = pscale * b.sy;
-  if (display.scale.x !== sx || display.scale.y !== sy) { display.scale.x = sx; display.scale.y = sy; }
-  const ui = display._uiLayer;
-  if (ui) {
-    /* Guard against a zero from a future catalog entry: an inverse of 0 is
-       Infinity, and one Infinity in a transform blanks the whole display. */
-    const ix = b.sx ? 1 / b.sx : 1, iy = b.sy ? 1 / b.sy : 1;
-    if (ui.scale.x !== ix || ui.scale.y !== iy) { ui.scale.x = ix; ui.scale.y = iy; }
-  }
-  /* The lift, in WORLD units: the feet sit 24 container units below the
-     origin, so growth below the origin is 24 * (sy - 1) container units, times
-     the zone/player scale that turns container units into world ones. */
-  return -_feetOffsetUnits(display) * (b.sy - 1) * pscale;
-}
 
 /* ═══ v2.3.2281: IS THE LOCAL CORPSE ON SCREEN RIGHT NOW ═══
  *
@@ -6545,95 +6418,6 @@ function _drawPlateCapsule(display, level, broId, alarm, band, party, boss, elem
  * to hiding the sprite rather than leaving a stale icon on screen.
  */
 const SOUTH_BLOCK_OFFHAND_ENABLED = true;
-/* Aimed down and out, so the blade leaves the silhouette below the shield
- * instead of climbing across the face.
- * v2.3.1882: 0.72pi -> 0.28pi, which is the SAME angle mirrored about the
- * vertical (pi - 0.72pi).  It has to move with the grip: "down and out" is
- * defined relative to which side he holds it on, and a blade still sweeping
- * down-LEFT from a grip that is now on the RIGHT would be pointing back
- * across his own chest — the one direction this constant exists to avoid. */
-const SOUTH_BLOCK_OFFHAND_AIM = Math.PI * 0.28;
-function _placeSouthBlockWeapon(display, wpn, bobY, quiet) {   /* v2.3.2920: + quiet, for a peer (no local probe) */
-  const spr = display && display._weaponSprite;
-  clearGripHole(spr);   /* v2.3.2911: the carried pose's fist hole is not this pose's */
-  if (!spr || !wpn || !wpn.type) return false;
-  /* THE SAME OBJECT HE WAS JUST CARRYING.  A greatsword and a bow have
-     per-facing held art, and their single-icon fallbacks are something else
-     entirely — `greatsword` is keyed to Sword1.webp, which is the bamboo
-     pole.  The first cut of this took the neutral icon and a bro holding a
-     copper greatsword raised his shield and was holding a gold stick.  Same
-     resolution the stand-in path uses (effectsRenderer), and south is a
-     canonical facing so there is no mirror to reconcile. */
-  const perFacing = (wpn.type === 'greatsword' || wpn.type === 'bow');
-  const artDir = (perFacing && hasWeapon(wpn.type, wpn.gearBase, 'south')) ? 'south' : null;
-  if (!hasWeapon(wpn.type, wpn.gearBase, artDir)) return false;
-  const tex = getWeaponTexture(wpn.type, wpn.gearBase, artDir);
-  if (!tex) return false;
-  if (spr.texture !== tex) spr.texture = tex;
-  const tw = tex.width || 64, th = tex.height || 64;
-  /* handles.json has no bare `greatsword` — its grips are per-facing — and
-     the generic greatsword icon IS the sword's file, so the sword's grip is
-     the same point on the same art.  (Same fallback the stand-in path needs;
-     without it the sprite pivots on its frame's bottom edge and the blade
-     hangs off the chest at an angle nothing asked for.) */
-  const grip = getWeaponHandle(wpn.type, wpn.gearBase, artDir)
-            || (wpn.type === 'greatsword' ? getWeaponHandle('sword', wpn.gearBase, null) : null);
-  if (grip) spr.anchor.set(grip[0] / tw, grip[1] / th);
-  else spr.anchor.set(0.5, 1);
-  const over = SOUTH_BLOCK_OFFHAND_BY_TYPE[wpn.type] || null;
-  const targetH = (over && over.px) ? over.px
-                : wpn.type === 'greatsword' ? 44
-                : wpn.type === 'bow' ? 34
-                : (wpn.type === 'sword' && wpn.gearBase === 'wood') ? 36
-                : 26;
-  /* v2.3.2910: size by weaponFitH, not th -- the widened greatsword's canvas
-     is taller than its blade is long (weaponSprites.js SHEETS). */
-  const k = targetH / Math.max(8, weaponFitH(wpn.type, wpn.gearBase, artDir, th));
-  spr.scale.set(k, k);
-  /* Every weapon icon runs grip-to-tip along the same diagonal (see
-     BLOCK_OFFHAND_ART_ANG), so one constant turns "point it this way" into a
-     rotation.  A staff is reflected about the horizon for the same reason it
-     is on the stand-in: its far end is the HEAD, and head-down is a broom. */
-  const artAng = -Math.PI / 4;
-  if (artDir) {
-    /* Art posed for this facing already knows which way the blade goes;
-       rotating it would only fight the drawing. */
-    spr.rotation = 0;
-  } else {
-    const aim = (wpn.type === 'staff') ? -SOUTH_BLOCK_OFFHAND_AIM : SOUTH_BLOCK_OFFHAND_AIM;
-    spr.rotation = aim - artAng;
-  }
-  spr.tint = weaponTint(wpn.type, wpn.gearBase);
-  spr.alpha = 1;
-  spr.x = (over && typeof over.x === 'number') ? over.x : SOUTH_BLOCK_OFFHAND.x;
-  spr.y = ((over && typeof over.y === 'number') ? over.y : SOUTH_BLOCK_OFFHAND.y) + (bobY || 0);
-  spr.visible = true;
-  /* UNDER THE SHIELD.  setChildIndex removes then re-inserts, so the target
-     depends on which side the container starts from: from above, the shield
-     does not move and the container goes to shIdx; from below, the shield
-     slides down one during the removal and it goes to shIdx-1.  The
-     already-there check keeps it stable rather than ratcheting a slot a
-     frame. */
-  const wc = display._weaponContainer, sh = display._shieldSprite;
-  if (wc && sh && sh.visible) {
-    const shIdx = display.getChildIndex(sh);
-    const wi = display.getChildIndex(wc);
-    if (wi !== shIdx - 1) display.setChildIndex(wc, wi < shIdx ? shIdx - 1 : shIdx);
-  }
-  if (!quiet && typeof window !== 'undefined') {
-    window.__btSouthBlockWeapon = {
-      on: true, type: wpn.type, gearBase: wpn.gearBase || null,
-      x: spr.x, y: spr.y, px: targetH, rotation: spr.rotation,
-      gripped: !!grip, artDir, posed: !!artDir,
-      /* The whole request in two numbers: the weapon's slot and the
-         shield's.  Lower means drawn first means occluded. */
-      wcIdx: wc ? display.getChildIndex(wc) : -1,
-      shieldIdx: (sh && sh.visible) ? display.getChildIndex(sh) : -1,
-      shieldVisible: !!(sh && sh.visible),
-    };
-  }
-  return true;
-}
 
 /* ═══ v2.3.2920: WHERE THE SHIELD HAND IS, FOR ANY FIGURE ═══
    _placeBlockArm's hand, lifted out so another player's held shield sits in
@@ -6642,98 +6426,6 @@ function _placeSouthBlockWeapon(display, wpn, bobY, quiet) {   /* v2.3.2920: + q
    S._peerStandGeom rests on the same fact), plus the cut arm's
    shoulder-to-hand run at the figure's height.  Null on a facing with no arm
    (south, and the three that face away), where your own shield floats. */
-function _placeBlockArm(display, facing, bodyH, bobY, peer) {   /* v2.3.2920: + peer {tex, chest} -- their arm, their sleeve, no local probe */
-  const spr = display._blockArmSprite;
-  const sleeve = display._blockArmSleeve;
-  const group = display._blockArmGroup;
-  if (sleeve) sleeve.visible = false;
-  if (!spr) return null;
-  const map = BLOCK_ARM_FACING[facing];
-  const anchor = BLOCK_ARM_SHOULDER[facing];
-  const tex = map && (peer ? peer.tex : blockArmTexture(map[0]));
-  const cut = map && BLOCK_ARM_CUT[map[0]];
-  if (!map || !anchor || !tex || !cut) {
-    if (peer) { if (group) group.visible = false; }
-    else _hideBlockArm(display, { facing, hasSheet: !!map, hasArt: !!tex });
-    return null;
-  }
-
-  const mirror = map[1];
-  /* 188 is the bow sheet's crown-to-foot figure height, the same constant the
-     bow stand-in divides by. */
-  const sc = (bodyH || 84) / 188;
-  spr.texture = tex;
-  spr.scale.set(mirror ? -sc : sc, sc);
-  /* anchor is (0,0), so position the frame corner such that the cut's shoulder
-     point lands on the body's shoulder.  Mirroring flips which edge the
-     shoulder is measured from. */
-  const sx = mirror ? -sc : sc;
-  spr.x = anchor[0] - cut.shoulder[0] * sx;
-  spr.y = anchor[1] + (bobY || 0) - cut.shoulder[1] * sc;
-  spr.tint = 0xffffff;
-  spr.alpha = 1;
-  spr.visible = true;
-  if (group) group.visible = true;
-
-  /* v2.3.1789: the sleeve rides the arm — same rect, same transform, drawn
-     straight over it, so a copper plate reaches out with the arm instead of
-     stopping at the shoulder.  Tinted by the piece's material for the same
-     reason every other gear draw site is (v2.3.1757): a recoloured set shares
-     its donor's texture and the colour is applied here. */
-  if (sleeve) {
-    const worn = peer ? peer.chest : getEquip('chest');
-    const sleeveTex = blockArmSleeveTexture(map[0], worn, getGearFrame);
-    if (sleeveTex) {
-      sleeve.texture = sleeveTex;
-      sleeve.scale.set(spr.scale.x, spr.scale.y);
-      sleeve.x = spr.x;
-      sleeve.y = spr.y;
-      sleeve.tint = gearTint(worn);
-      sleeve.alpha = 1;
-      sleeve.visible = true;
-    }
-  }
-
-  /* Z-ORDER: the arm group goes DIRECTLY BENEATH the shield, so the boss covers
-     the hand rather than the hand being painted across the shield face.  It has
-     to happen per frame, because the in-hand shield's own z-rule slides
-     _shieldSprite up and down the child list by facing — a fixed build-order
-     position for the arm is right on some facings and wrong on the rest.
-     (Caught by mp-blockarm: the arm sat at index 25 with the shield at 8.)
-
-     setChildIndex removes then re-inserts, so the target depends on which side
-     the group starts from: from above, the shield does not move and the group
-     goes to shIdx; from below, the shield slides down one during the removal
-     and the group goes to shIdx-1.  The "already there" check keeps it stable
-     rather than ratcheting a slot per frame. */
-  const shieldSpr = display._shieldSprite;
-  if (group && shieldSpr) {
-    const shIdx = display.getChildIndex(shieldSpr);
-    const gi = display.getChildIndex(group);
-    if (gi !== shIdx - 1) display.setChildIndex(group, gi < shIdx ? shIdx - 1 : shIdx);
-  }
-
-  /* Where the hand ended up, for the shield to sit in. */
-  const hand = _blockHandPoint(facing, bodyH, bobY);   /* v2.3.2920: one formula, shared with a peer's shield */
-
-  /* QA probe (mp-blockarm) — a headless run cannot read the WebGL canvas. */
-  if (!peer) try {
-    window.__btBlockArm = {
-      on: true, facing, sheet: map[0], mirror,
-      armVisible: spr.visible,
-      armW: spr.texture ? spr.texture.width : 0,
-      armH: spr.texture ? spr.texture.height : 0,
-      sleeveVisible: !!(sleeve && sleeve.visible),
-      sleeveW: (sleeve && sleeve.visible && sleeve.texture) ? sleeve.texture.width : 0,
-      sleeveTint: (sleeve && sleeve.visible) ? sleeve.tint : null,
-      worn: getEquip('chest'),
-      hand,
-      armIdx: group ? display.getChildIndex(group) : display.getChildIndex(spr),
-      shieldIdx: display._shieldSprite ? display.getChildIndex(display._shieldSprite) : -1,
-    };
-  } catch (e) { /* never breaks the frame */ }
-  return hand;
-}
 
 function createPlayerDisplay() {
   const container = new Container();
@@ -7731,24 +7423,6 @@ function createOtherPlayerDisplay() {
  * mid-slide re-bases it instead of leaving two ghosts disagreeing about where
  * the edge is.
  */
-/* v2.3.1896b: the gap has to clear BOTH borders, not just the bar.  At
-   +3 the MP border's bottom edge (y + H + BORDER) landed 1px BELOW the
-   energy border's top (y - BORDER) and the two rounded outlines merged into
-   one lozenge — visible the moment they were photographed together.  Bar +
-   two borders + 3px of real air. */
-/* v2.3.1896c: derived from RES_MP_Y, not from a repeated literal.  It said
-   `40 + ...` while MP moved to 52, so the energy bar climbed INTO the MP bar
-   and clipped its readout — caught in the screenshot, not by the suite, which
-   only asserts enY > mpY and was still true.  Deriving it makes the two
-   impossible to separate again. */
-/* v2.3.2300: the block sheet's own aspect. His frames are 273x98, so a bar
-   drawn 76 wide is 27 tall -- taller than the 20 the old bar plus its keyline
-   occupied, which is why RES_EN_Y is re-derived below rather than left at a
-   number tuned for the old one. 76 keeps the width the owner has been looking
-   at since v2.3.1896c; the height follows the art rather than being squashed
-   into the old slot, because five blocks squeezed to 16px stop reading as five
-   things. */
-const RES_BLOCK_H = Math.round(RES_BLOCK_W * 98 / 273);
 /* Derived, never a literal -- v2.3.1896c records the energy bar climbing INTO
    the MP bar because this said `40 + ...` while MP had moved to 52, and the
    suite did not catch it (it only asserts enY > mpY, which stayed true). */
@@ -7772,9 +7446,6 @@ const RES_EN_Y = RES_MP_Y + RES_BLOCK_H + 3;
    tighter blocks" rather than as distortion. Holding the total at 76 instead
    was the other option and is worse: a block would be 4 CSS px wide, which is
    not a countable thing. */
-const RES_BAR_MAX_W = 118;
-const _barScaleX = (n) => Math.min(RES_BLOCK_W / RES_SRC_CELL, RES_BAR_MAX_W / _barSrcW(n));
-const _barWidth = (n) => Math.round(_barScaleX(n) * _barSrcW(n));
 const RES_SLIDE_MS = 420;      /* how long the spent chunk takes to leave */
 /* v2.3.1896: the spent portion is BLACK (owner), and the border white.  The
    black is what makes the fill read as a quantity against any ground — the
@@ -7784,152 +7455,6 @@ const RES_TRACK = 0x000000;
 const RES_BORDER_COL = 0xFFFFFF;
 
 
-/* One bar.  Returns its alpha, so the caller can decide about the plate. */
-function _drawResourceBar(gfx, sprite, kind, cur, max, y, now, n) {
-  const m = Math.max(1, max || 1);
-  const v = Math.max(0, Math.min(m, cur || 0));
-  /* Seed on the first frame so arriving at partial MP does not read as a
-     spend and flash the bar for nothing — the same trap the HP ring hit at
-     v2.3.1682. */
-  if (gfx._resLast == null) {
-    gfx._resLast = v; gfx._resSpentAt = 0; gfx._resFrom = v;
-    gfx._resSpentAmt = 0;
-    gfx._resGlideAt = 0; gfx._resGlideBase = 0;
-  }
-  if (v < gfx._resLast - 0.01) {
-    /* Was the bar still on screen when this spend landed?  Read BEFORE
-       _resSpentAt is overwritten below — it is the whole test. */
-    const _prevSince = now - (gfx._resSpentAt || 0);
-    const _wasUp = !!gfx._resSpentAt && _prevSince <= RES_HOLD_MS + RES_FADE_MS;
-    gfx._resFrom = gfx._resLast;         /* re-base the chunk on every spend */
-    /* The FADE still re-arms on every spend — that is the owner's original
-       rule ("disappear after 2 seconds if no further mp is used").  Only the
-       GLIDE is now continuous across the burst. */
-    gfx._resGlideBase = _wasUp ? _resGlideProgress(gfx, now) : 0;
-    gfx._resGlideAt = now;
-    gfx._resSpentAt = now;
-    /* v2.3.1897: LATCHED here, not recomputed per frame.  Mana and stamina
-       regenerate server-side, so a regen tick arrives as a rise and lands in
-       the refill branch below — recomputed each frame, the "-N" would blink
-       out the first time the server topped you up, which inside a 2s hold is
-       most of the time.  The chunk can afford that (it is gone in 420ms); a
-       number the player is still reading cannot.  A further spend re-latches,
-       matching the chunk, which also shows only the newest spend. */
-    /* v2.3.1900 (owner: "Successive expenditures of mp and energy are treated
-       cumulatively (numbers keep adding up the more you spend) I just want
-       the expended amount"): the number is THIS spend, not a running total.
-       v2.3.1899 accumulated, which was the wrong answer to a real problem —
-       so keep the guard and drop the total.
-
-       The real problem: mana arrives fractional under town regen (77 -> 77.1
-       -> 90 -> 90.1), so a sub-half-unit dip counts as a spend by the 0.01
-       test above and Math.round()s to ZERO.  Overwriting blindly with that
-       BLANKED a live number mid-glide while its bar stayed up (caught at
-       t=1460 in the three-cast trace).  So a drop that does not round to at
-       least 1 leaves the displayed amount alone: real costs are whole
-       numbers, and anything under a unit is regen jitter, not an expenditure
-       worth announcing.  It still re-arms the bar, which is the pre-existing
-       behaviour of the 0.01 test and not this change's business. */
-    const _rounded = Math.round(gfx._resLast - v);
-    if (_rounded >= 1) gfx._resSpentAmt = _rounded;
-    else if (!_wasUp) gfx._resSpentAmt = 0;
-  } else if (v > gfx._resLast + 0.01) {
-    gfx._resFrom = v;                    /* refill: no chunk, and no reveal */
-  }
-  gfx._resLast = v;
-
-  const since = now - (gfx._resSpentAt || 0);
-  let alpha = 0;
-  if (gfx._resSpentAt) {
-    if (since <= RES_HOLD_MS) alpha = 1;
-    else if (since <= RES_HOLD_MS + RES_FADE_MS) alpha = 1 - (since - RES_HOLD_MS) / RES_FADE_MS;
-  }
-  /* ═══ v2.3.2300: FIVE BLOCKS, NOT A PROPORTIONAL BAR ═══
-     Owner: "instead of seeing tiny percentages and trying to do mental math
-     each time stamina or mana is used, I want just 5 blocks (with thick borders
-     between them but all connected inside a rectangle)."
-
-     Everything ABOVE this line is untouched -- the spend detection, the
-     hold-then-fade clock, the re-arm on a second spend. That is the behaviour
-     v2.3.1895-1900 tuned with the owner over five rounds and none of it was
-     what he is complaining about. What changes is only what gets DRAWN, so the
-     bars still appear on a spend, hold for a second, fade by two, and hold
-     their reserved positions.
-
-     THE GRAPHICS STOPS DRAWING AND KEEPS ITS JOB. Every `_res*` field the
-     probe publishes and the death-reset sweep clears lives on this object, and
-     moving that bookkeeping onto the sprite would mean touching both the
-     revive path and the keep-list. It is the state; the sprite is the view.
-
-     THE SLIDING CHUNK AND THE "-N" ARE GONE with the proportional fill. They
-     existed to make a fraction legible as a quantity ("how much of the bar just
-     left"), which is precisely the mental arithmetic being removed -- and with
-     a block readout the answer is visible without a number, because a whole
-     block goes out. Their bookkeeping is nulled rather than left stale, so the
-     probe reports the absence rather than the last value from before the swap. */
-  gfx.clear();
-  gfx._resSlideT = 1;
-  gfx._resSpentT = 1;
-  gfx._resGhostX = null; gfx._resGhostW = 0;
-  gfx._resSpentAmt = 0;
-  if (alpha <= 0.01) {
-    gfx.alpha = 0;
-    if (sprite) { sprite.visible = false; sprite.alpha = 0; }
-    return 0;
-  }
-  gfx.alpha = alpha;
-  if (sprite) {
-    const parts = BLOCK_BARS[kind] && BLOCK_BARS[kind].parts;
-    const N = Math.max(1, Math.floor(n || 5));
-    const lit = blocksFor(v, m, N);
-    /* No sheet (a 404, or a frame before the preload settled) means no bar --
-       NOT a half-drawn one. The preloading law makes the second case a bug
-       rather than a state to design for, and the manifest awaits these; this
-       is the honest degradation for the first. */
-    if (parts) {
-      const k = _barScaleX(N);
-      const W = _barWidth(N);
-      const L = -W / 2;          /* the container sits at x=0, so the bar grows
-                                    symmetrically about the player's centre --
-                                    this is what preserves the anchor(0.5, 0)
-                                    semantics the single sprite used to have. */
-      sprite.x = 0;
-      sprite.y = y;
-      sprite.alpha = alpha;
-      sprite.visible = true;
-
-      const capW = BLOCK_GEOM.cap * k;
-      sprite._capL.x = L;            sprite._capL.width = capW;  sprite._capL.height = RES_BLOCK_H;
-      sprite._mid.x = L + capW;      sprite._mid.width = Math.max(0, W - capW * 2); sprite._mid.height = RES_BLOCK_H;
-      sprite._capR.x = L + W - capW; sprite._capR.width = capW;  sprite._capR.height = RES_BLOCK_H;
-
-      /* v2.3.2302: cells are POOLED, never destroyed when N changes. N moves
-         on a level-up, an allocation and a respec -- all of which can happen
-         mid-fight -- and `new Sprite()` on the frame the sixth block arrives
-         is a hitch on the one frame the player is actually watching the bar.
-         Grow to fit, then hide the surplus. */
-      while (sprite._cells.length < N) {
-        const c = new Sprite(parts.empty);
-        c.anchor.set(0, 0);
-        sprite.addChild(c);
-        sprite._cells.push(c);
-      }
-      for (let i = 0; i < sprite._cells.length; i++) {
-        const c = sprite._cells[i];
-        if (i >= N) { c.visible = false; continue; }
-        const tex = i < lit ? parts.lit : parts.empty;
-        if (c.texture !== tex) c.texture = tex;
-        c.x = L + k * (BLOCK_GEOM.first + RES_SRC_PITCH * i);
-        c.width = BLOCK_GEOM.cellW * k;
-        c.height = RES_BLOCK_H;
-        c.visible = true;
-      }
-    } else {
-      sprite.visible = false;
-    }
-  }
-  return alpha;
-}
 
 /* v2.3.1896: the readout ON the bar (owner: "fit the numbers on each bar (or
    wherever works best for readability)").  Centred inside the bar rather than
