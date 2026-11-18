@@ -336,7 +336,10 @@ const seed1 = await seedPlayers({ [TA]: { coins: 300, stash: [blade] }, [TB]: { 
     return (isNone(a, b) || isWhole(a, b)) ? null : { a, b };
   });
   check('3. ...the swap\'s write marks the blade\'s record OWED to B (`to`)', sawOwed);
-  check(`3. a restart before any of the commit's ${res.batches} write(s) (the swap, the mail, the record): nothing made or lost, the swap whole or not at all`, res.wrong.length === 0 && res.batches >= 3, res);
+  /* v2.3.5809 (card RV, `leftoverheal`): the blade's mail and its record's
+     delete are one write now (inbox.js _creditWith), so the commit is the
+     swap and that one: 2 writes; `leftoverheal: false`, the old three */
+  check(`3. a restart before any of the commit's ${res.batches} write(s) (the swap, the mail with the record): nothing made or lost, the swap whole or not at all`, res.wrong.length === 0 && res.batches >= 2, res);
 }
 
 // ── 4. the sweep: owed records, orphans ──

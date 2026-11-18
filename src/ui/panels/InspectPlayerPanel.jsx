@@ -38,6 +38,7 @@ function openFromCard(id) {
 import { portraitSrc } from '../mobile/sheet/portraitStore.js'; /* v2.3.2926: your own portrait, for your own card */
 import { act } from '@/game/actions.js';   /* v2.3.5190: the page's requests leave through the action door (card K PR 7) */
 import { skullTo } from '@/game/skullDoor.js';   /* v2.3.5533: the fight's page door (card L) */
+import { drawAvatar, drawColor } from '@/game/lookForm.js';   /* v2.3.5807 (card RV, S2): another player's avatar and colour only in the game's own forms */
 
 /* v2.3.1917: mirrors GameRoom.OPEN_PVP (server/src/index.js).  While it is
    false the worker refuses pvp_threat and every non-consensual hit, so the
@@ -294,22 +295,22 @@ export function InspectPlayerPanel(props) {
     src: genPortrait,
     alt: "",
     draggable: false
-  }) : inspectPlayer.avatar ? /*#__PURE__*/React.createElement("img", {
-    src: inspectPlayer.avatar,
+  }) : drawAvatar(inspectPlayer.avatar) ? /*#__PURE__*/React.createElement("img", {   /* v2.3.5807 (card RV, S2): src/game/lookForm.js */
+    src: drawAvatar(inspectPlayer.avatar),
     alt: "",
     draggable: false,
     onError: function onError(e) {
       /* v2.3.1235: broken avatar URL → swap in the letter tile */
       var el = document.createElement('div');
       el.className = 'bt-pcard-letter';
-      el.style.background = inspectPlayer.color || '#293B41';
+      el.style.background = drawColor(inspectPlayer.color, '#293B41');   /* v2.3.5807 */
       el.textContent = inspectPlayer.name.charAt(0).toUpperCase();
       e.currentTarget.replaceWith(el);
     }
   }) : /*#__PURE__*/React.createElement("div", {
     className: "bt-pcard-letter",
     style: {
-      background: inspectPlayer.color
+      background: drawColor(inspectPlayer.color, undefined)   /* v2.3.5807 (card RV, S2) */
     }
   }, inspectPlayer.name.charAt(0).toUpperCase());
   return React.createElement("div", {

@@ -297,6 +297,12 @@ export const storeOfferMethods = {
   /* ── THE SELLER ANSWERS ──────────────────────────────────────────────
      'yes' settles on the spot. 'no' refunds. 'think' holds the gold and
      records the answer, which is the point of it. */
+  /* v2.3.5809 (MS-5): the kill switch, lower case, on unless written false */
+  _offerPendOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'offerpend') && !f.offerpend);
+  },
+
   async _stOfferReply(listingId, sellerId, buyerId, reply) {
     await this._stEnsureIndex();
     const rec = this._stIndex.get(listingId);
@@ -304,6 +310,17 @@ export const storeOfferMethods = {
     if (rec.sellerId !== sellerId) return { ok: false, settled: true, error: 'That is not your listing' };
     if (OFFER_REPLIES.indexOf(reply) < 0) return { ok: false, settled: true, error: 'Unknown reply' };
     if (rec.sale || rec.releasing) return { ok: false, settled: true, error: 'That listing is being sold' };
+    /* ═══ v2.3.5809 (card RV, MS-5): A "YES" WAITS FOR A BID OR AN OFFER HALF MADE ═══
+       A buy, an accepted bid and a cancel refuse while a bid is being
+       escrowed (`pendBid`); a Yes did not.  A bid whose request failed after
+       its gold was taken waits for the heal (store.js _stHealStuck) to
+       promote or refund it, and a Yes in between sold the listing and took
+       it out of the index, so the heal never found it: that bidder's gold
+       was never given back.  The same words the buy's refusal says.
+       `offerpend: false` in the live flags: as before. */
+    if (reply === 'yes' && this._offerPendOn() && (rec.pendBid || rec.pendOffer)) {
+      return { ok: false, settled: true, error: 'Someone is buying that right now' };
+    }
 
     const offers = this._soOffers(rec);
     const o = offers[buyerId];

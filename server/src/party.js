@@ -433,6 +433,12 @@ export const partyMethods = {
     if (!targetPs) {
       return this._partySend(fromId, 'party_error', { reason: 'target-gone' });
     }
+    /* v2.3.5806 (card RV, S8; the owner's call, decided while away): a
+       player who mutes you is gone, to you -- no card on their screen, and
+       the answer an absent player gets (`mutehides: false`: as before) */
+    if (this._muteHidesOn && this._muteHidesOn() && this._chatModMuted && this._chatModMuted(target, fromId)) {
+      return this._partySend(fromId, 'party_error', { reason: 'target-gone' });
+    }
     /* v2.3.3284: a player whose stored party could not be read is in an
        unknown party, so neither side of an invite (party.md) */
     if (this._partyUnknownIds && this._partyUnknownIds.has(fromId)) {
