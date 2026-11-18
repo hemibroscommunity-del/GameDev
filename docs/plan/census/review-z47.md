@@ -86,13 +86,13 @@ deploys: a new `server/test/folk-sheets.test.mjs`), RD's crowdfight
 
 ### RD #2204 (6182, `mp-manualcombat` 10a), #2205 (6183, `mp-jumpbtn` 2b): none blocking
 
-- #2204: since v2.3.4802 a computer's bow is drawn while the button is
+- #2204: since 4802 a computer's bow is drawn while the button is
   held and looses at the release (`docs/specs/bow-feel.md` "A computer"):
   10a now reads that promise, one arrow at the release, none on the
   press or while held (the phase `drawing`), none after; the old
   press-shoots check kept for `?bowfeel=0`. Still checks something real.
 - #2205: sideways over the folded band (`bt-band-side`) the disc is laid
-  out at 94 and drawn at 0.85 (v2.3.4152, `docs/specs/one-band.md` part
+  out at 94 and drawn at 0.85 (4152, `docs/specs/one-band.md` part
   3): the check wants the drawn size there, 84/94 elsewhere.
 - Both change `docs/plan/status/RD.md` to the same text: either order.
 - On the whole tree (lines 1-8, `60e6847210`): `mp-jumpbtn` 29 of 29
