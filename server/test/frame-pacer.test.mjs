@@ -921,7 +921,10 @@ _liveKnobs(null);   /* v2.3.5224: from here, today's live knobs */
     && !FP.memOver([0, null, 0]) && !FP.memOver(null));
   const rp = readFileSync(join(ROOT, 'src/debug/report.js'), 'utf8');
   check('23c. debug/report.js hands its count in: the report\'s three reads, the chip\'s only with no fine pointer (a phone or a tablet)',
-    /try \{ useMemCount\(memCount\); \}/.test(rp) && /const g = fineInput\(\) \? null : \(window\.__btGpuTex && window\.__btGpuTex\(\)\);/.test(rp));
+    /try \{ useMemCount\(memCount\); \}/.test(rp) && /const g = fineInput\(\) \? null : (?:\(window\.__btGpuTex && window\.__btGpuTex\(\)\)|gpuMb\(\));/.test(rp));
+  /* v2.3.6243 (card HB PR 4, the planning session's one-off yes): the chip's count may be the total alone
+     (report.js gpuMb, pixiApp.js __btGpuMb: the same number as __btGpuTex().mb without its table); the gate on a
+     fine pointer is held as before */
   /* v2.3.5681 (the gatekeeper's sitting 27): the count is read only while the governor judges; memory rungs wait MEM_SETTLE_MS */
   const fpSrc = readFileSync(join(ROOT, 'src/game/framePacer.js'), 'utf8');
   check('23g. the pacer reads the memory\'s count only while the governor judges (on, a lane, not switched off): a phone with it off never walks the chip\'s textures',
