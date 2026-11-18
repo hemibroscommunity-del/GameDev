@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "3750ba4a8d61045f390d11398dbacea42d9d4966",
+  "tree": "ab54e1747daf287dcde07c4b84a65c45818da849",
+  "committedAt": "2026-11-17T16:13:14-08:00",
+  "subject": "Merge pull request #2099 from hemibroscommunity-del/claude/k3-action-door",
+  "files": 8198,
+  "bytes": 960686514,
+  "listingSha256": "d683be44e2ca01962d70029f3b76d505df2da133ed5623a2f4ac1bbb27d9cea3",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

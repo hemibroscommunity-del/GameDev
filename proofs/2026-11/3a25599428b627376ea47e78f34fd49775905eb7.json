@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "3a25599428b627376ea47e78f34fd49775905eb7",
+  "tree": "8c02b2b4bae3ac8f1b1ff244c1bccb5eebfbd751",
+  "committedAt": "2026-11-17T16:13:04-08:00",
+  "subject": "Merge pull request #2097 from hemibroscommunity-del/claude/plan-z-sitting-43",
+  "files": 8192,
+  "bytes": 960670849,
+  "listingSha256": "37614419005b1fb404c84c66ab00b925c9846af720d647d3d8ff235c5d9cfd4a",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

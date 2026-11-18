@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "70e96cce983434823bf368278e9bd2fc2f9f760c",
+  "tree": "1fdae4b3cc7c79d1191523a457f3f1785952c024",
+  "committedAt": "2026-11-17T16:12:53-08:00",
+  "subject": "Merge pull request #2090 from hemibroscommunity-del/claude/t2-reads-killxp",
+  "files": 8189,
+  "bytes": 960640812,
+  "listingSha256": "643c0e0d3bfdb48c374e33c85c3d2a03754fd411faf17f03006a899d08b314d7",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
