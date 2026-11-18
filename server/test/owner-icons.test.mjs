@@ -127,7 +127,8 @@ const LANDS = ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', '
     && /icon\('\/icons\/ui\/bldg-tavern\.webp', '🍺', 26\)/.test(wh));
   const tw = src('src/ui/panels/TradeWindowPanel.jsx');
   check('3b the trade request card leads with the handshake, and no other trade drawer wears an icon',
-    /<TradeDrawer [^>]*title=\{`\$\{trade2\.fromName\} wants to trade`\}[^>]*icon=\{OWNER_ICON\.tradeHandshake\}[^>]*>/.test(tw)   /* other props may sit beside it (the invite's `kind`, v2.3.3481) */
+    /<TradeDrawer [^>]*title=\{say\(SAY, 'tradeWindow\.inviteTitle', \{ name: trade2\.fromName \}\)\}[^>]*icon=\{OWNER_ICON\.tradeHandshake\}[^>]*>/.test(tw)   /* other props may sit beside it (the invite's `kind`, v2.3.3481); v2.3.6323: its words in the table (card WD2) */
+    && /'tradeWindow\.inviteTitle': '\{name\} wants to trade'/.test(src('src/data/say/tradeWindow.js'))
     && (tw.match(/<TradeDrawer [^>]*icon=/g) || []).length === 1 && /\{icon && <img src=\{icon\.src\}/.test(tw));
   const gp = src('src/ui/panels/buildings/GamblePanel.jsx');
   check('3c the weekly jackpot\'s pool wears the sack of gold', /"data-jackpot-pool": ""/.test(gp) && /src: OWNER_ICON\.jackpotSack\.src/.test(gp));

@@ -5,6 +5,8 @@ import { GEM_ELEMENTS, gemCount, gemColor, gemElementName, gemIcon, gemRawKey, g
 import { thumbFor } from '@/ui/mobile/dash/InventoryPanel.jsx';
 import { askShardCrack, askGemCombine, shardCrackBus, shardCrackReasonText, SHARD_CRACK_WAIT_MS } from '@/game/shardCrack.js';
 import { cue } from '@/game/eventSounds.js';
+import { SAY } from '@/data/say/shardCrack.js';   /* v2.3.6347: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';
 
 /* ═══ v2.3.3516: THE GEM WORKS' FIRST TAB -- SHARDS TO GEMS ═══
  *
@@ -70,8 +72,8 @@ function Header({ lvl, chance }) {
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 40px 12px 16px', background: C.strip, borderBottom: '1px solid ' + C.line }}>
       <img src="/icons/ui/bldg-gemcut.webp" alt="" draggable={false} style={{ width: 26, height: 26, objectFit: 'contain', flexShrink: 0 }} />
       <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.10em', color: C.text }}>Gem Cutter</div>
-        <div style={{ fontSize: 11, color: C.mute, marginTop: 1 }}>{'Gem Cutting Lv ' + lvl + ' · ' + chance + '% a shard'}</div>
+        <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.10em', color: C.text }}>{say(SAY, 'shardCrack.title')}</div>
+        <div style={{ fontSize: 11, color: C.mute, marginTop: 1 }}>{say(SAY, 'shardCrack.level', { lvl, chance })}</div>
       </div>
     </div>
   );
@@ -84,11 +86,11 @@ function Reveal({ res }) {
   React.useEffect(() => {
     try { if (box.current && box.current.scrollIntoView) box.current.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (e) { /* a look only */ }
   }, [res.seq]);
-  const name = 'Raw ' + gemElementName(res.element) + ' Gem';
+  const name = say(SAY, 'shardCrack.rawName', { element: gemElementName(res.element) });
   const land = ZONE_SHARDS[res.land];
   const n = res.rolls.length;
-  const head = n + ' ' + (land ? land.label : 'Shard') + (n === 1 ? '' : 's') + ' cracked: '
-    + (res.found > 0 ? (res.found > 1 ? res.found + ' ' + name + 's!' : 'a ' + name + '!') : 'no gem this time');
+  const head = say(SAY, 'shardCrack.cracked', { n, shard: land ? land.label : say(SAY, 'shardCrack.shard'),
+    found: res.found > 0 ? (res.found > 1 ? say(SAY, 'shardCrack.foundMany', { count: res.found, name }) : say(SAY, 'shardCrack.foundOne', { name })) : say(SAY, 'shardCrack.foundNone') });
   const gemPic = gemIcon(gemRawKey(res.element));
   const shardPic = land ? thumbFor(land.key) : null;
   return (
@@ -162,13 +164,13 @@ export function ShardCrackPanel({ rpgState, stateRef }) {
       <Header lvl={lvl} chance={chance} />
       <div style={BODY}>
         <div style={{ fontSize: 12, color: C.sub, lineHeight: 1.5 }}>
-          Crack a land's shards: some hold its raw gem. {RAW_PER_GEM} raw gems make one elemental gem to set into your gear.
+          {say(SAY, 'shardCrack.intro', { per: RAW_PER_GEM })}
         </div>
         <div style={{ fontSize: 11, color: C.mute, marginTop: 3 }}>
-          {'Each shard: ' + chance + '%' + (next ? ' (' + next.pct + '% at Gem Cutting ' + next.minLvl + ')' : '') + '.'}
+          {say(SAY, 'shardCrack.eachShard', { chance, next: next ? say(SAY, 'shardCrack.nextStep', { pct: next.pct, lvl: next.minLvl }) : '' })}
         </div>
 
-        <div style={MOD}>Shards</div>
+        <div style={MOD}>{say(SAY, 'shardCrack.shards')}</div>
         {shardRows.length ? shardRows.map((r) => {
           const all = Math.min(r.have, SHARD_CRACK_MAX);
           return (
@@ -178,19 +180,19 @@ export function ShardCrackPanel({ rpgState, stateRef }) {
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: r.shard.color }}>{r.shard.label}</div>
                 <div data-crack-have={r.have} style={{ fontSize: 11, color: C.sub, fontVariantNumeric: 'tabular-nums' }}>
-                  {'×' + r.have + ' · ' + chance + '% a Raw ' + gemElementName(r.element) + ' Gem'}
+                  {say(SAY, 'shardCrack.shardRow', { have: r.have, chance, element: gemElementName(r.element) })}
                 </div>
               </div>
-              <Btn on={!busy && r.have > 0} data-crack-one={r.land} onClick={() => askShardCrack(S, r.land, 1)}>Crack</Btn>
-              {all > 1 ? <Btn on={!busy} primary data-crack-all={r.land} onClick={() => askShardCrack(S, r.land, all)}>{'All ' + all}</Btn> : null}
+              <Btn on={!busy && r.have > 0} data-crack-one={r.land} onClick={() => askShardCrack(S, r.land, 1)}>{say(SAY, 'shardCrack.crack')}</Btn>
+              {all > 1 ? <Btn on={!busy} primary data-crack-all={r.land} onClick={() => askShardCrack(S, r.land, all)}>{say(SAY, 'shardCrack.all', { count: all })}</Btn> : null}
             </div>
             {crackRes && crackRes.land === r.land ? <Reveal res={crackRes} /> : null}
             </React.Fragment>
           );
-        }) : <div style={EMPTY}>No shards to crack. Monsters and resources out in the lands drop their land's shard.</div>}
+        }) : <div style={EMPTY}>{say(SAY, 'shardCrack.noShards')}</div>}
 
 
-        <div style={MOD}>Raw gems</div>
+        <div style={MOD}>{say(SAY, 'shardCrack.rawGems')}</div>
         {rawRows.length ? rawRows.map((r) => {
           const can = r.have >= RAW_PER_GEM;
           const pips = r.have % RAW_PER_GEM;
@@ -198,21 +200,21 @@ export function ShardCrackPanel({ rpgState, stateRef }) {
             <div key={r.e} data-raw-row={r.e} style={ROW}>
               <img src={gemIcon(gemRawKey(r.e))} alt="" draggable={false} style={{ ...PIC, opacity: 0.75 }} />
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: gemColor(r.e) }}>{'Raw ' + gemElementName(r.e) + ' Gem'}</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: gemColor(r.e) }}>{say(SAY, 'shardCrack.rawName', { element: gemElementName(r.e) })}</div>
                 <div style={{ fontSize: 11, color: C.sub, fontVariantNumeric: 'tabular-nums' }}>
-                  {'×' + r.have + ' · ' + (can ? RAW_PER_GEM + ' make a ' + gemElementName(r.e) + ' Gem'
-                    : (RAW_PER_GEM - pips) + ' more for a ' + gemElementName(r.e) + ' Gem')}
+                  {can ? say(SAY, 'shardCrack.combineReady', { have: r.have, per: RAW_PER_GEM, element: gemElementName(r.e) })
+                    : say(SAY, 'shardCrack.combineMore', { have: r.have, more: RAW_PER_GEM - pips, element: gemElementName(r.e) })}
                 </div>
               </div>
-              <Btn on={can && !busy} primary data-combine={r.e} onClick={() => askGemCombine(S, r.e, false)}>{can ? 'Combine' : 'Need ' + RAW_PER_GEM}</Btn>
+              <Btn on={can && !busy} primary data-combine={r.e} onClick={() => askGemCombine(S, r.e, false)}>{can ? say(SAY, 'shardCrack.combine') : say(SAY, 'shardCrack.need', { per: RAW_PER_GEM })}</Btn>
             </div>
           );
-        }) : <div style={EMPTY}>Raw gems you find show here.</div>}
+        }) : <div style={EMPTY}>{say(SAY, 'shardCrack.noRaw')}</div>}
 
         {rare > 0 ? (
           <>
-            <div style={MOD}>Rare Gem</div>
-            <div style={{ fontSize: 12, color: C.sub, marginBottom: 6 }}>{'×' + rare + ' · cut it into any elemental gem: pick one.'}</div>
+            <div style={MOD}>{say(SAY, 'shardCrack.rare')}</div>
+            <div style={{ fontSize: 12, color: C.sub, marginBottom: 6 }}>{say(SAY, 'shardCrack.rareHow', { count: rare })}</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {WEAPON_GEMS.map((e) => {
                 const on = rarePick === e;
@@ -229,13 +231,13 @@ export function ShardCrackPanel({ rpgState, stateRef }) {
             </div>
             <div style={{ marginTop: 8 }}>
               <Btn on={!!rarePick && !busy} primary data-rare-cut={rarePick || ''} onClick={() => { askGemCombine(S, rarePick, true); setRarePick(null); }}>
-                {rarePick ? 'Cut into a ' + gemElementName(rarePick) + ' Gem' : 'Pick a gem first'}
+                {rarePick ? say(SAY, 'shardCrack.cutInto', { element: gemElementName(rarePick) }) : say(SAY, 'shardCrack.pickFirst')}
               </Btn>
             </div>
           </>
         ) : null}
 
-        <div style={MOD}>Your gems</div>
+        <div style={MOD}>{say(SAY, 'shardCrack.yourGems')}</div>
         {gems.length ? (
           <>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
@@ -243,13 +245,13 @@ export function ShardCrackPanel({ rpgState, stateRef }) {
                 <div key={g.e} data-gem-have={g.e} style={{ minHeight: 36, padding: '0 10px', borderRadius: 999, display: 'flex', alignItems: 'center', gap: 5,
                   fontSize: 12, fontWeight: 700, background: C.well, border: '1px solid ' + C.line, color: gemColor(g.e), fontVariantNumeric: 'tabular-nums' }}>
                   <img src={gemIcon(gemCutKey(g.e))} alt="" draggable={false} style={{ width: 18, height: 18, objectFit: 'contain' }} />
-                  {gemElementName(g.e) + ' Gem ×' + g.have}
+                  {say(SAY, 'shardCrack.gemHave', { element: gemElementName(g.e), count: g.have })}
                 </div>
               ))}
             </div>
-            <div style={{ fontSize: 11, color: C.mute, marginTop: 6 }}>Set them into your gear on the Set gems tab.</div>
+            <div style={{ fontSize: 11, color: C.mute, marginTop: 6 }}>{say(SAY, 'shardCrack.setThem')}</div>
           </>
-        ) : <div style={EMPTY}>Elemental gems you make show here.</div>}
+        ) : <div style={EMPTY}>{say(SAY, 'shardCrack.noGems')}</div>}
 
         {refused ? (
           <div data-crack-refused={refused.reason || 'bad'} style={{ fontSize: 12, color: C.bad, marginTop: 10 }}>

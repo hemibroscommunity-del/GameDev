@@ -10,6 +10,8 @@ import { pushHudPopup } from '../XpFlyOverlay.jsx';  /* v2.3.4183: "+12 gold" / 
 import { onXpBar, xpBarShown, xpGainWords, xpToNextWords } from '../../game/xpBar.js'; /* v2.3.3695: the XP bar */
 import { XpTrack } from './XpTrack.jsx';                                  /* v2.3.3739: its white gain bar and "45 / 120" */
 import { XP_BAR_ICONS, XP_BAR_LABELS, TOPBAR_LOGO } from './xpBarArt.js';           /* v2.3.3695: its skill pictures */
+import { SAY } from '@/data/say/zoneHeader.js';   /* v2.3.6346: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';
 
 /* ═══ v2.3.2892 -> v2.3.3974: THE HOUR'S ICON IS GONE ═══
    v2.3.2892 put a day/night icon beside the zone name (the owner: "Add a time
@@ -150,7 +152,7 @@ export const ZoneHeader = ({ onExit }) => {
     const now = Date.now();
     const said = (S._hudPopups || []).some((p) => p && p.target === 'goldIcon' && /G$|gold$/.test(p.text || '') && now - (p.ts || 0) < 1500);
     if (!said) {
-      try { pushHudPopup(S, { target: 'goldIcon', text: '+' + (gold - goldSeen.current).toLocaleString('en-US') + ' gold', color: '#D8A94D' }); } catch (e) { /* feedback only */ }
+      try { pushHudPopup(S, { target: 'goldIcon', text: say(SAY, 'zoneHeader.goldRise', { gold: (gold - goldSeen.current).toLocaleString('en-US') }), color: '#D8A94D' }); } catch (e) { /* feedback only */ }
     }
   }
   goldSeen.current = gold;
@@ -182,7 +184,7 @@ export const ZoneHeader = ({ onExit }) => {
       sp.className = 'bt-exit-loading';
       const lbl = document.createElement('div');
       lbl.className = 'bt-exit-label';
-      lbl.textContent = 'Reloading…';
+      lbl.textContent = say(SAY, 'zoneHeader.reloading');
       dim.appendChild(sp);
       dim.appendChild(lbl);
       document.body.appendChild(dim);
@@ -195,17 +197,17 @@ export const ZoneHeader = ({ onExit }) => {
 
   return (
     <>
-      <header className="bt-zone-header" aria-label="Current zone">
+      <header className="bt-zone-header" aria-label={say(SAY, 'zoneHeader.bar')}>
         <div className="bt-zone-header__left">
         <button
           type="button"
           className="bt-chisel bt-chisel--chip bt-zone-header__logout"
-          aria-label="Log out"
+          aria-label={say(SAY, 'zoneHeader.logOut')}
           style={{ touchAction: 'manipulation' }}  /* v2.3.4221: a pill of words, as the dashboard's CLOSE */
-          title="Log out"   /* v2.3.4123: always (the owner: "logout ... not switch character") */
+          title={say(SAY, 'zoneHeader.logOut')}   /* v2.3.4123: always (the owner: "logout ... not switch character") */
           onClick={() => setConfirming(true)}
         >
-          LOGOUT
+          {say(SAY, 'zoneHeader.logoutChip')}
         </button>
         {/* v2.3.3553-v2.3.4183: your AP and the owner's medal stood here; they
             are on the Bro card now, and a rise is a "+5 AP" word under the
@@ -263,7 +265,7 @@ export const ZoneHeader = ({ onExit }) => {
             this rail is over the WebGL canvas (TRAPS section 42). */}
         {testModeOn(S) && (
           <span className="bt-zone-header__test" data-test-mode-tag="1"
-            aria-label="Test mode: the anti-cheat is off for this character">TEST MODE</span>
+            aria-label={say(SAY, 'zoneHeader.testModeWhy')}>{say(SAY, 'zoneHeader.testMode')}</span>
         )}
         {/* ═══ v2.3.3695: THE XP BAR, IN THE TITLE'S PLACE WHILE YOU EARN ═══
             The owner: "an XP Popup and an Xp bar to appear with the icon of
@@ -280,7 +282,7 @@ export const ZoneHeader = ({ onExit }) => {
           <div className={'bt-xp-bar' + (xpOn ? ' is-on' : '') + (xb.up ? ' is-up' : '')} data-xp-bar={xb.cat}
             data-xp-level={xb.level} data-xp-frac={xb.frac.toFixed(3)} data-xp-shown={xpOn ? '1' : '0'}
             role="img" aria-hidden={xpOn ? undefined : true}
-            aria-label={`${XP_BAR_LABELS[xb.cat] || 'Skill'} level ${xb.level}, ${xpToNextWords(xb.xp, xb.need)} XP to the next`}>
+            aria-label={say(SAY, 'zoneHeader.xpBar', { skill: XP_BAR_LABELS[xb.cat] || say(SAY, 'zoneHeader.xpSkill'), level: xb.level, next: xpToNextWords(xb.xp, xb.need) })}>
             {/* v2.3.3739: the "+3 XP" pops LEFT of the picture, in its own
                 slot, so it never covers the bar (the owner: "put the plus xp
                 to the left of the weapon icon so you can still see the bar") */}
@@ -290,7 +292,7 @@ export const ZoneHeader = ({ onExit }) => {
               ) : null}
             </span>
             <img className="bt-xp-bar__icon" src={XP_BAR_ICONS[xb.cat]} alt="" draggable={false} />
-            <span className="bt-xp-bar__lv">Lv {xb.level}</span>
+            <span className="bt-xp-bar__lv">{say(SAY, 'zoneHeader.xpLevel', { level: xb.level })}</span>
             <XpTrack bar={xb} />
           </div>
         ) : null}
@@ -315,7 +317,7 @@ export const ZoneHeader = ({ onExit }) => {
         <div className="bt-zone-header__balance">
           {spinSt.known && !spinSt.open && S._serverCaps && S._serverCaps.loginspin ? (
             <button type="button" className={'bt-zone-header__spin' + (spinSt.avail ? '' : ' is-spent')} data-login-spin-btn={spinSt.avail ? 'ready' : 'spent'}
-              aria-label={spinSt.avail ? 'Free daily spin' : 'Free daily spin, already spun today'}
+              aria-label={say(SAY, spinSt.avail ? 'zoneHeader.spin' : 'zoneHeader.spinSpent')}
               style={{ touchAction: 'manipulation' }}
               onClick={() => { if (spinSt.avail) loginSpinBus.open(); else loginSpinBus.note(loginSpinNextWords()); }}>
               <img src={LOGIN_SPIN_URLS[2]} alt="" draggable={false} />
@@ -349,9 +351,9 @@ export const ZoneHeader = ({ onExit }) => {
               textAlign: 'center',
             }}
           >
-            <div style={{ fontSize: 15, fontWeight: 700, color: COL.text }}>Leave the world?</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: COL.text }}>{say(SAY, 'zoneHeader.leaveTitle')}</div>
             <div style={{ fontSize: 12, color: COL.text2, marginTop: 4 }}>
-              {'You\u2019ll log out to the title screen. Your bro is saved.'}
+              {say(SAY, 'zoneHeader.leaveBody')}
             </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
               <button
@@ -360,7 +362,7 @@ export const ZoneHeader = ({ onExit }) => {
                 style={{ flex: 1, minHeight: 40, fontSize: 13, fontWeight: 700, color: COL.text2 }}
                 onClick={() => setConfirming(false)}
               >
-                Cancel
+                {say(SAY, 'zoneHeader.cancel')}
               </button>
               <button
                 type="button"
@@ -370,7 +372,7 @@ export const ZoneHeader = ({ onExit }) => {
                 style={{ flex: 1, minHeight: 40, fontSize: 13, fontWeight: 800 }}
                 onClick={doExit}
               >
-                Log Out
+                {say(SAY, 'zoneHeader.logOutButton')}
               </button>
             </div>
           </div>

@@ -68,6 +68,8 @@ import { loadPins, PIN, PIN_SLOTS, PIN_CSS, PIN_NAME, pinsUp, freePinSlot, dropP
 import { drawMapPins } from './worldMapPins.js';
 import { PinAskCard, PinReplaceCard, PinMark } from './PinCards.jsx';
 import { deskWords } from '../game/deskWords.js';   /* v2.3.3879: the pin hint says "Click" on a computer */
+import { SAY } from '@/data/say/worldMap.js';   /* v2.3.6346: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';
 import { boardPinnable } from '../data/townBoard.js';
 import { wheelDungeonOpen, wheelDungeonLevelsLine } from '../game/wheelDungeons.js';                  /* v2.3.3540: which landmarks are dungeons this worker opens; v2.3.3573: + a party dungeon's level and players */
 
@@ -188,8 +190,8 @@ export function WorldMapOverlay({ stateRef }) {
       {rect && !open && (
         <button
           type="button"
-          aria-label="Open the world map"
-          title="World map (M)"
+          aria-label={say(SAY, 'worldMap.open')}
+          title={say(SAY, 'worldMap.openTitle')}
           data-world-map-open=""
           /* v2.3.3407: on a computer its key, M, beside the minimap's "tap me"
              mark (game.css [data-key], drawn only under a mouse) */
@@ -530,10 +532,10 @@ function WorldMap({ stateRef, onClose }) {
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 'calc(env(safe-area-inset-top, 0px) + 8px) 12px 8px', background: '#111E23', borderBottom: '1px solid rgba(216,170,88,0.35)' }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ color: BRASS, fontWeight: 800, fontSize: 16, letterSpacing: '.04em' }}>{(ZONES.wheel && ZONES.wheel.name) || 'BroTown' /* v2.3.3039: the name players see */}</div>
-          <div data-world-map-where="" style={{ color: INK, fontSize: 12.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{where ? `You are in ${where}` : 'Finding you…'}</div>
+          <div style={{ color: BRASS, fontWeight: 800, fontSize: 16, letterSpacing: '.04em' }}>{(ZONES.wheel && ZONES.wheel.name) || say(SAY, 'worldMap.world') /* v2.3.3039: the name players see */}</div>
+          <div data-world-map-where="" style={{ color: INK, fontSize: 12.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{where ? say(SAY, 'worldMap.where', { where }) : say(SAY, 'worldMap.finding')}</div>
         </div>
-        <button type="button" aria-label="Close the map" data-world-map-close="" onClick={onClose}
+        <button type="button" aria-label={say(SAY, 'worldMap.close')} data-world-map-close="" onClick={onClose}
           data-esc="" data-key="Esc" data-key-at="hang"   /* v2.3.3407: Esc presses it (game/deskKeys.js) */
           style={{ ...btn, fontSize: 24, position: 'relative' }}>×</button>
       </div>
@@ -545,7 +547,7 @@ function WorldMap({ stateRef, onClose }) {
           style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block', touchAction: 'none' }}
         />
         {/* v2.3.3065: north, as on the minimap's frame -- the map never turns */}
-        <svg data-world-map-north="" aria-label="North is up" role="img" viewBox="0 0 44 44" width="44" height="44"
+        <svg data-world-map-north="" aria-label={say(SAY, 'worldMap.north')} role="img" viewBox="0 0 44 44" width="44" height="44"
           style={{ position: 'absolute', left: 10, top: 10, pointerEvents: 'none' }}>
           <circle cx="22" cy="22" r="20.5" fill="rgba(17,30,35,0.92)" stroke="rgba(216,170,88,0.55)" strokeWidth="1" />
           <text x="22" y="15.5" textAnchor="middle" fill={BRASS} fontSize="11.5" fontWeight="900" fontFamily="Source Sans 3, sans-serif">N</text>
@@ -553,9 +555,9 @@ function WorldMap({ stateRef, onClose }) {
           <path d="M22 38 L26 29 L22 31 L18 29 Z" fill="#5E6B70" />
         </svg>
         <div style={{ position: 'absolute', right: 12, bottom: 'calc(env(safe-area-inset-bottom, 0px) + 14px)', display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <button type="button" aria-label="Zoom in" data-world-map-zoom-in="" onClick={() => zoomBtn(1.6)} style={btn}>+</button>
-          <button type="button" aria-label="Zoom out" data-world-map-zoom-out="" onClick={() => zoomBtn(1 / 1.6)} style={btn}>−</button>
-          <button type="button" aria-label="Back to you" data-world-map-me="" onClick={centreOnMe} style={{ ...btn, fontSize: 18 }}>◎</button>
+          <button type="button" aria-label={say(SAY, 'worldMap.zoomIn')} data-world-map-zoom-in="" onClick={() => zoomBtn(1.6)} style={btn}>+</button>
+          <button type="button" aria-label={say(SAY, 'worldMap.zoomOut')} data-world-map-zoom-out="" onClick={() => zoomBtn(1 / 1.6)} style={btn}>−</button>
+          <button type="button" aria-label={say(SAY, 'worldMap.backToYou')} data-world-map-me="" onClick={centreOnMe} style={{ ...btn, fontSize: 18 }}>◎</button>
         </div>
         {/* ═══ v2.3.3879: YOUR PIN -- how to drop one, and how to lift it ═══
             v2.3.4045: a chip for each pin up, in its colour ("Remove pin"
@@ -567,7 +569,7 @@ function WorldMap({ stateRef, onClose }) {
                 style={{ appearance: 'none', minHeight: 44, padding: '0 14px',   /* v2.3.4045: the 44 px touch guide (was 40) */
                   borderRadius: 20, border: `2px solid ${PIN_CSS[k]}`, background: 'rgba(17,30,35,0.94)', color: INK, fontSize: 14, fontWeight: 800,
                   display: 'flex', alignItems: 'center', gap: 2, cursor: 'pointer', touchAction: 'manipulation', whiteSpace: 'nowrap' }}>
-                <PinMark color={k} />{upList.length > 1 ? `Remove ${PIN_NAME[k].toLowerCase()}` : 'Remove pin'}
+                <PinMark color={k} />{upList.length > 1 ? say(SAY, 'worldMap.removeOne', { pin: PIN_NAME[k].toLowerCase() }) : say(SAY, 'worldMap.removePin')}
               </button>
             ))}
           </div>
@@ -583,23 +585,23 @@ function WorldMap({ stateRef, onClose }) {
           padding: '6px 9px', borderRadius: 8, background: 'rgba(17,30,35,0.85)', color: INK, fontSize: 11,
           ...(keyK > 1 ? { zoom: +keyK.toFixed(3) } : null) }}>
           {/* v2.3.3780: the map's own glyphs (mapGlyphs.js), not dots */}
-          <Key glyph="town">town</Key>
-          <Key glyph="camp">camp</Key>
-          <Key glyph="pass">pass</Key>
-          <Key glyph="gate">gate</Key>
-          <Key glyph="landmark">landmark</Key>
-          <Key shape="line" color="#F2E4C2">road</Key>
-          <Key shape="line" color="#5AAEE8">river</Key>
-          <Key shape="star" color={C_STAR}>quest</Key>
-          {pinsShown ? <Key shape="pin">has a quest</Key> : null}
-          {upList.length && mapPinsOn() ? <span data-world-map-key="droppin" style={{ whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center' }}>{upList.map((k) => <PinMark key={k} color={k} size={12} />)}{upList.length > 1 ? 'your pins' : 'your pin'}</span> : null}
+          <Key glyph="town">{say(SAY, 'worldMap.keyTown')}</Key>
+          <Key glyph="camp">{say(SAY, 'worldMap.keyCamp')}</Key>
+          <Key glyph="pass">{say(SAY, 'worldMap.keyPass')}</Key>
+          <Key glyph="gate">{say(SAY, 'worldMap.keyGate')}</Key>
+          <Key glyph="landmark">{say(SAY, 'worldMap.keyLandmark')}</Key>
+          <Key shape="line" color="#F2E4C2">{say(SAY, 'worldMap.keyRoad')}</Key>
+          <Key shape="line" color="#5AAEE8">{say(SAY, 'worldMap.keyRiver')}</Key>
+          <Key shape="star" color={C_STAR}>{say(SAY, 'worldMap.keyQuest')}</Key>
+          {pinsShown ? <Key shape="pin">{say(SAY, 'worldMap.keyQuestPin')}</Key> : null}
+          {upList.length && mapPinsOn() ? <span data-world-map-key="droppin" style={{ whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center' }}>{upList.map((k) => <PinMark key={k} color={k} size={12} />)}{say(SAY, 'worldMap.keyPins', { n: upList.length })}</span> : null}
           {partyShown ? <Key shape="dot" color={PARTY_MARK.CSS}>party</Key> : null}
-          {zoomShown[0] >= AT.others ? <Key glyph="bro">bro</Key> : null}
-          {zoomShown[1] >= AT.monster ? <Key glyph="monster">monster</Key> : null}
-          {zoomShown[1] >= AT.node ? <Key glyph="ore">ore</Key> : null}
-          {zoomShown[1] >= AT.node ? <Key glyph="tree">tree</Key> : null}
-          {zoomShown[1] >= AT.node ? <Key glyph="fish">fish</Key> : null}
-          {zoomShown[0] < AT.camp ? <span style={{ color: '#B6C1BE' }}>Zoom in for more</span> : null}
+          {zoomShown[0] >= AT.others ? <Key glyph="bro">{say(SAY, 'worldMap.keyBro')}</Key> : null}
+          {zoomShown[1] >= AT.monster ? <Key glyph="monster">{say(SAY, 'worldMap.keyMonster')}</Key> : null}
+          {zoomShown[1] >= AT.node ? <Key glyph="ore">{say(SAY, 'worldMap.keyOre')}</Key> : null}
+          {zoomShown[1] >= AT.node ? <Key glyph="tree">{say(SAY, 'worldMap.keyTree')}</Key> : null}
+          {zoomShown[1] >= AT.node ? <Key glyph="fish">{say(SAY, 'worldMap.keyFish')}</Key> : null}
+          {zoomShown[0] < AT.camp ? <span style={{ color: '#B6C1BE' }}>{say(SAY, 'worldMap.zoomMore')}</span> : null}
         </div>
       </div>
     </div>
@@ -1042,7 +1044,7 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
       /* one line, else two (a shut one is always its name over "shut");
          under the picture, else over it -- 11 px a line, 3 between */
       const two = d.closed ? null : twoLines(d.name);
-      const tries = d.closed ? [[[d.name, 'shut'], false]] : [[[d.name], false]].concat(two ? [[two, true]] : []);
+      const tries = d.closed ? [[[d.name, say(SAY, 'worldMap.shut')], false]] : [[[d.name], false]].concat(two ? [[two, true]] : []);
       let ok = false;
       for (const [lines, same] of tries) {
         if (ok) break;
@@ -1096,9 +1098,10 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
     placed.push([px - 18, py - 18, px + 18, py + 18]);
     /* v2.3.3522: "You" under your mark where it clears what is placed (in
        town, the buildings' names), else over it, else under it anyway */
-    if (!label(px, py + 12, ['You'], { size: 11, below: true, color: BRASS })
-      && !label(px, py - 26.5, ['You'], { size: 11, color: BRASS })) {
-      label(px, py + 12, ['You'], { size: 11, below: true, force: true, color: BRASS });
+    const you = say(SAY, 'worldMap.you');
+    if (!label(px, py + 12, [you], { size: 11, below: true, color: BRASS })
+      && !label(px, py - 26.5, [you], { size: 11, color: BRASS })) {
+      label(px, py + 12, [you], { size: 11, below: true, force: true, color: BRASS });
     }
   }
   /* v2.3.3057: the quest's star keeps its own room */
@@ -1125,7 +1128,7 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
      beneath once there is room */
   if (z < AT.stage) {
     for (const L of map.lands) {
-      const lines = z < AT.landSub ? [L.name.toUpperCase()] : [L.name.toUpperCase(), `${L.element ? `${L.element} · ` : ''}Lv ${L.levels[0]}–${L.levels[1]}`];
+      const lines = z < AT.landSub ? [L.name.toUpperCase()] : [L.name.toUpperCase(), L.element ? say(SAY, 'worldMap.landLevels', { element: L.element, lo: L.levels[0], hi: L.levels[1] }) : say(SAY, 'worldMap.levels', { lo: L.levels[0], hi: L.levels[1] })];
       if (label(X(L.x), Y(L.y), lines, { size: z < AT.landSub ? 12 : 14, subSize: 11 })) counts.lands++;
     }
   }
@@ -1133,21 +1136,21 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
   for (const p of map.places) {
     if (p.kind !== 'gate') continue;
     icon('gate', X(p.x), Y(p.y));
-    if (z >= AT.gateName && label(X(p.x), Y(p.y) + 8, [p.name, p.to ? `to ${p.to} · Lv 80–100` : ''].filter(Boolean), { size: 11.5, below: true, subColor: '#D9B8FF' })) counts.gates++;
+    if (z >= AT.gateName && label(X(p.x), Y(p.y) + 8, [p.name, p.to ? say(SAY, 'worldMap.gateTo', { to: p.to }) : ''].filter(Boolean), { size: 11.5, below: true, subColor: '#D9B8FF' })) counts.gates++;
   }
-  if (zr >= AT.commons) label(X(map.hub.commons.x), Y(map.hub.commons.y), [map.hub.commons.name, 'safe, no monsters'], { size: 11.5, weight: 600 });
+  if (zr >= AT.commons) label(X(map.hub.commons.x), Y(map.hub.commons.y), [map.hub.commons.name, say(SAY, 'worldMap.commons')], { size: 11.5, weight: 600 });
   /* each land's stages */
   if (z >= AT.stage) {
     for (const st of map.stages) {
       const land = map.names[st.region] || '';
-      if (label(X(st.x), Y(st.y), [st.name, `${land} · Lv ${st.levels[0]}–${st.levels[1]}`], { size: z < 3.4 ? 12 : 13.5, subSize: 10.5 })) counts.stages++;
+      if (label(X(st.x), Y(st.y), [st.name, say(SAY, 'worldMap.stageLevels', { land, lo: st.levels[0], hi: st.levels[1] })], { size: z < 3.4 ? 12 : 13.5, subSize: 10.5 })) counts.stages++;
     }
   }
   /* camps and passes, then the landmarks and other places */
   for (const p of map.places) {
     const x = X(p.x), y = Y(p.y);
-    if (p.kind === 'camp' && z >= AT.camp) { icon('camp', x, y); if (label(x, y + 8, [p.name, `camp · Lv ${p.level}`], { size: 11, below: true })) counts.camps++; }
-    else if (p.kind === 'pass' && z >= AT.pass) { icon('pass', x, y); if (label(x, y + 7, [p.name, `pass · Lv ${p.level}`], { size: 11, below: true, weight: 600 })) counts.passes++; }
+    if (p.kind === 'camp' && z >= AT.camp) { icon('camp', x, y); if (label(x, y + 8, [p.name, say(SAY, 'worldMap.camp', { lv: p.level })], { size: 11, below: true })) counts.camps++; }
+    else if (p.kind === 'pass' && z >= AT.pass) { icon('pass', x, y); if (label(x, y + 7, [p.name, say(SAY, 'worldMap.pass', { lv: p.level })], { size: 11, below: true, weight: 600 })) counts.passes++; }
     else if (p.kind === 'pass') icon('pass', x, y, 0.8);
     else if (p.kind === 'camp' && z >= 1.5) icon('camp', x, y, 0.8);
   }
@@ -1175,7 +1178,7 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
       if (p.kind === 'bridge') {
         g.fillStyle = '#C9A46A'; g.fillRect(x - 6, y - 3, 12, 6);
         g.lineWidth = 1.2; g.strokeStyle = HALO; g.strokeRect(x - 6, y - 3, 12, 6);
-        if (label(x, y + 6, [p.name.replace(/^the /, '').replace(/^a bridge$/, 'Bridge')], { size: 10.5, below: true, weight: 600, color: '#F2E4C2' })) more.bridges++;
+        if (label(x, y + 6, [p.name.replace(/^the /, '').replace(/^a bridge$/, say(SAY, 'worldMap.bridge'))], { size: 10.5, below: true, weight: 600, color: '#F2E4C2' })) more.bridges++;
       } else if (label(x, y, [p.name], { size: 11, weight: 700, color: '#BFE3FF' })) more.ponds++;
     }
   }
@@ -1190,7 +1193,7 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
         const t = i / 2 + 1, x = X((T[i] + T[i + 2]) / 2), y = Y((T[i + 1] + T[i + 3]) / 2);
         if (!onScreen(x, y)) continue;
         const lo = (t - 1) * (map.levelsPerTier || 5) + 1, hi = t * (map.levelsPerTier || 5);
-        if (label(x, y, [`Lv ${lo}–${hi}`], { size: 10.5, weight: 700, color: '#EAC675' })) more.tierLabels++;
+        if (label(x, y, [say(SAY, 'worldMap.levels', { lo, hi })], { size: 10.5, weight: 700, color: '#EAC675' })) more.tierLabels++;
       }
     }
   }

@@ -5,6 +5,8 @@ import { friendPortrait } from '../sheet/friendPortraits.js';
 import { friendsSrv } from '../sheet/friendsSync.js';            /* v2.3.1324 */
 import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
 import { act } from '@/game/actions.js';   /* v2.3.5191: the page's requests leave through the action door (card K PR 7) */
+import { SAY } from '@/data/say/socialDash.js';   /* v2.3.6345: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';
 
 /* v2.3.1232: Lantern Slate pass.  v2.3.1297 (round-5): Blocked behind
    overflow, inline action strip, honest empty/reconnect states.
@@ -82,7 +84,7 @@ const actionBtn = (_danger) => ({
 const shareInvite = async () => {
   const url = (typeof location !== 'undefined' && location.origin) || 'https://brotown.pages.dev';
   try {
-    if (navigator.share) { await navigator.share({ title: 'BroTown', url }); return true; }
+    if (navigator.share) { await navigator.share({ title: say(SAY, 'socialDash.shareTitle'), url }); return true; }
   } catch (_e) { return false; }
   try { await navigator.clipboard.writeText(url); return 'copied'; } catch (_e) {}
   return false;
@@ -189,12 +191,12 @@ export const SocialPanel = () => {
       {/* Header: online count · Add Friend · ••• (Blocked overflow). */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
         <span style={{ flex: 1, fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: COL.text2 }}>
-          {showBlocked ? `Blocked (${blocked.length})` : `${onlineCount} online`}
+          {showBlocked ? say(SAY, 'socialDash.blockedCount', { count: blocked.length }) : say(SAY, 'socialDash.onlineCount', { count: onlineCount })}
         </span>
         {!showBlocked && (
           <button
             onPointerUp={(e) => { e.stopPropagation(); setShowAdd(v => !v); setOpenRow(null); }}
-            aria-label="Add friend"
+            aria-label={say(SAY, 'socialDash.addLabel')}
             className={'bt-chisel bt-chisel--chip' + (showAdd ? ' bt-chisel--on' : '')}
             style={{
               display: 'flex', alignItems: 'center', gap: 5,
@@ -202,11 +204,11 @@ export const SocialPanel = () => {
               color: showAdd ? COL.text : COL.text2,
               fontSize: 12, fontWeight: 700, fontFamily: 'inherit',
             }}
-          ><PersonPlus />Add Friend</button>
+          ><PersonPlus />{say(SAY, 'socialDash.add')}</button>
         )}
         <button
           onPointerUp={(e) => { e.stopPropagation(); setShowBlocked(v => !v); setOpenRow(null); setShowAdd(false); }}
-          aria-label={showBlocked ? 'Back to friends' : 'Blocked players'}
+          aria-label={say(SAY, showBlocked ? 'socialDash.backLabel' : 'socialDash.blockedLabel')}
           className="bt-chisel bt-chisel--chip"
           style={{
             width: 44, height: 38,
@@ -234,14 +236,14 @@ export const SocialPanel = () => {
             onPointerUp={async (e) => {
               e.stopPropagation();
               const r = await shareInvite();
-              setShared(r === 'copied' ? 'Link copied!' : '');
+              setShared(r === 'copied' ? say(SAY, 'socialDash.linkCopied') : '');
             }}
             className="bt-chisel bt-chisel--chip"
             style={{
               display: 'block', marginTop: 8, minHeight: 38, padding: '0 10px',
               color: COL.text,
               fontFamily: 'inherit', fontSize: 12, fontWeight: 700,
-            }}>{shared || 'Share Invite Link'}</button>
+            }}>{shared || say(SAY, 'socialDash.share')}</button>
         </div>
       )}
 
@@ -253,8 +255,8 @@ export const SocialPanel = () => {
           display: 'flex', gap: 2, marginBottom: 8,
         }}>
           {[
-            { id: 'friends', label: `Friends (${allRows.length})` },
-            { id: 'requests', label: `Requests (${reqIn.length})` },
+            { id: 'friends', label: say(SAY, 'socialDash.tabFriends', { count: allRows.length }) },
+            { id: 'requests', label: say(SAY, 'socialDash.tabRequests', { count: reqIn.length }) },
           ].map(t => (
             <button key={t.id}
               onPointerUp={(e) => { e.stopPropagation(); setTab(t.id); setOpenRow(null); }}
@@ -282,8 +284,8 @@ export const SocialPanel = () => {
       {/* Requests tab body. */}
       {capsFriends && !showBlocked && tab === 'requests' && (
         reqIn.length === 0 && reqOut.length === 0 ? (
-          <Empty line="No requests"
-            sub="Requests you receive — and ones you've sent — show up here." />
+          <Empty line={say(SAY, 'socialDash.noRequests')}
+            sub={say(SAY, 'socialDash.noRequestsSub')} />
         ) : (
           <div>
             {reqIn.map(fid => (
@@ -293,19 +295,19 @@ export const SocialPanel = () => {
               }}>
                 <div style={{ fontSize: 13.5, fontWeight: 700, color: COL.text, marginBottom: 6 }}>
                   {(doc.reqIn[fid] && doc.reqIn[fid].name) || fid}
-                  <span style={{ fontWeight: 600, color: COL.text2 }}> wants to be Bros</span>
+                  <span style={{ fontWeight: 600, color: COL.text2 }}>{say(SAY, 'socialDash.wantsBros')}</span>
                 </div>
                 <div style={{ display: 'flex', gap: 6 }}>
                   <button className={actionCls(false) + ' bt-chisel--on'} style={actionBtn(false)}
-                    onPointerUp={(e) => { e.stopPropagation(); sendFriend('friend_accept', { from: fid }); }}>Accept</button>
+                    onPointerUp={(e) => { e.stopPropagation(); sendFriend('friend_accept', { from: fid }); }}>{say(SAY, 'socialDash.accept')}</button>
                   <button className={actionCls(false)} style={actionBtn(false)}
-                    onPointerUp={(e) => { e.stopPropagation(); sendFriend('friend_decline', { from: fid }); }}>Decline</button>
+                    onPointerUp={(e) => { e.stopPropagation(); sendFriend('friend_decline', { from: fid }); }}>{say(SAY, 'socialDash.decline')}</button>
                 </div>
               </div>
             ))}
             {reqOut.length > 0 && (
               <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: COL.muted, margin: '8px 0 4px' }}>
-                Sent
+                {say(SAY, 'socialDash.sent')}
               </div>
             )}
             {reqOut.map(fid => (
@@ -316,7 +318,7 @@ export const SocialPanel = () => {
                 fontSize: 13, color: COL.text2,
               }}>
                 <span style={{ flex: 1 }}>{(doc.reqOut[fid] && doc.reqOut[fid].name) || fid}</span>
-                <span style={{ fontSize: 11, color: COL.muted }}>Pending</span>
+                <span style={{ fontSize: 11, color: COL.muted }}>{say(SAY, 'socialDash.pending')}</span>
               </div>
             ))}
           </div>
@@ -328,7 +330,7 @@ export const SocialPanel = () => {
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search friends"
+          placeholder={say(SAY, 'socialDash.search')}
           style={{
             width: '100%', boxSizing: 'border-box',
             minHeight: 36, padding: '0 10px', marginBottom: 8,
@@ -339,14 +341,14 @@ export const SocialPanel = () => {
       )}
 
       {!connected ? (
-        <Empty line="Reconnecting…" sub="Friend presence returns when the connection is back." />
+        <Empty line={say(SAY, 'socialDash.reconnecting')} sub={say(SAY, 'socialDash.reconnectingSub')} />
       ) : !showBlocked && (!capsFriends || tab === 'friends') ? (
         rows.length === 0 ? (
           allRows.length === 0 ? (
-            <Empty compact line="No friends yet"
+            <Empty compact line={say(SAY, 'socialDash.noFriends')}
               sub={deskWords('Tap another player anywhere in BroTown to view their profile and add them as a friend.')} />
           ) : (
-            <Empty line="No matches" sub="Try a different name." />
+            <Empty line={say(SAY, 'socialDash.noMatches')} sub={say(SAY, 'socialDash.noMatchesSub')} />
           )
         ) : rows.map((r) => {
           const portrait = friendPortrait(r.fid, r.peer, () => force(v => v + 1));
@@ -389,13 +391,13 @@ export const SocialPanel = () => {
                 }}>
                   {r.name}
                   {r.online && r.level != null && (
-                    <span style={{ fontWeight: 600, color: COL.text2 }}>{` · Lv ${r.level}`}</span>
+                    <span style={{ fontWeight: 600, color: COL.text2 }}>{say(SAY, 'socialDash.level', { lv: r.level })}</span>
                   )}
                 </span>
                 <span style={{ display: 'block', fontSize: 11.5, color: r.online ? (r.away ? '#DFAE4E' : '#55B98A') : COL.text2 }}>
                   {r.online
-                    ? `${r.away ? 'Away' : 'Online'}${r.zoneName ? ' · ' + r.zoneName : ''}${r.sameZone ? ' · with you' : ''}`
-                    : `Offline${seenLine ? ' · ' + seenLine : ''}`}
+                    ? `${say(SAY, r.away ? 'socialDash.away' : 'socialDash.online')}${r.zoneName ? say(SAY, 'socialDash.inZone', { zone: r.zoneName }) : ''}${r.sameZone ? say(SAY, 'socialDash.withYou') : ''}`
+                    : (seenLine ? say(SAY, 'socialDash.offlineSeen', { seen: seenLine }) : say(SAY, 'socialDash.offline'))}
                 </span>
               </span>
               {/* v2.3.1324: per-thread unread count. */}
@@ -411,7 +413,7 @@ export const SocialPanel = () => {
                   read as another panel-size control (v2.3.1323). */}
               <button
                 onPointerUp={(e) => { e.stopPropagation(); setOpenRow(openRow === r.fid ? null : r.fid); }}
-                aria-label={`Actions for ${r.name}`}
+                aria-label={say(SAY, 'socialDash.actionsFor', { name: r.name })}
                 style={{
                   flex: 'none', width: 38, height: 34,
                   background: openRow === r.fid ? COL.accentFill : 'transparent',
@@ -426,22 +428,22 @@ export const SocialPanel = () => {
               <div style={{ display: 'flex', gap: 6, padding: '0 0 8px' }}>
                 {r.online && (
                   <button className={actionCls(false)} style={actionBtn(false)}
-                    onPointerUp={(e) => { e.stopPropagation(); openProfile(r); }}>Profile</button>
+                    onPointerUp={(e) => { e.stopPropagation(); openProfile(r); }}>{say(SAY, 'socialDash.profile')}</button>
                 )}
                 {/* v2.3.1324: DMs need a MUTUAL (server) friendship —
                     legacy one-way follows can't message. */}
                 {capsFriends && r.srv && (
                   <button className={actionCls(false)} style={actionBtn(false)}
-                    onPointerUp={(e) => { e.stopPropagation(); toggleThread(r.fid); }}>Message</button>
+                    onPointerUp={(e) => { e.stopPropagation(); toggleThread(r.fid); }}>{say(SAY, 'socialDash.message')}</button>
                 )}
                 {partyCaps && r.online && (
                   <button className={actionCls(false)} style={{ ...actionBtn(false), color: '#D8A94D' }}
-                    onPointerUp={(e) => { e.stopPropagation(); invite(r.fid); }}>Invite</button>
+                    onPointerUp={(e) => { e.stopPropagation(); invite(r.fid); }}>{say(SAY, 'socialDash.invite')}</button>
                 )}
                 <button className={actionCls(false)} style={actionBtn(false)}
-                  onPointerUp={(e) => { e.stopPropagation(); removeFriend(r.fid, r.srv); }}>Remove</button>
+                  onPointerUp={(e) => { e.stopPropagation(); removeFriend(r.fid, r.srv); }}>{say(SAY, 'socialDash.remove')}</button>
                 <button className={actionCls(true)} style={actionBtn(true)}
-                  onPointerUp={(e) => { e.stopPropagation(); blockPlayer(r.fid, r.name); }}>Block</button>
+                  onPointerUp={(e) => { e.stopPropagation(); blockPlayer(r.fid, r.name); }}>{say(SAY, 'socialDash.block')}</button>
               </div>
             )}
             {/* v2.3.1324: inline DM thread — local archive (the server
@@ -456,7 +458,7 @@ export const SocialPanel = () => {
                 }}>
                   {friendsSrv.thread(r.fid).length === 0 && (
                     <div style={{ fontSize: 11.5, color: COL.muted, textAlign: 'center', padding: '8px 0' }}>
-                      Say hi — messages reach {r.name} even while they're offline.
+                      {say(SAY, 'socialDash.sayHi', { name: r.name })}
                     </div>
                   )}
                   {friendsSrv.thread(r.fid).map((m, mi) => (
@@ -481,7 +483,7 @@ export const SocialPanel = () => {
                     value={draft}
                     onChange={(e) => setDraft(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter') sendDm(r.fid); }}
-                    placeholder="Message…"
+                    placeholder={say(SAY, 'socialDash.draft')}
                     maxLength={280}
                     style={{
                       flex: 1, minWidth: 0, minHeight: 36, padding: '0 10px',
@@ -497,7 +499,7 @@ export const SocialPanel = () => {
                       flex: 'none', minHeight: 38, padding: '0 10px',
                       color: draft.trim() ? undefined : COL.muted,
                       fontFamily: 'inherit', fontSize: 12, fontWeight: 700,
-                    }}>Send</button>
+                    }}>{say(SAY, 'socialDash.send')}</button>
                 </div>
               </div>
             )}
@@ -506,7 +508,7 @@ export const SocialPanel = () => {
         })
       ) : (
         blocked.length === 0 ? (
-          <Empty line="Nobody blocked." />
+          <Empty line={say(SAY, 'socialDash.nobodyBlocked')} />
         ) : blocked.map((b, i) => (
           <div key={b.id || b} style={{
             display: 'flex', alignItems: 'center',

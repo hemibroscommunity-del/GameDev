@@ -31,6 +31,8 @@ import { questCardWords } from '@/game/questCard.js';
 import { QUEST_ART } from '@/ui/panels/questArt.jsx';
 import { questDetailBus } from '@/ui/mobile/sheet/questDetailBus.js';
 import { dashboardPanelBus } from '@/ui/mobile/dashboardPanelBus.js';
+import { SAY } from '@/data/say/questCard.js';   /* v2.3.6350: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';
 
 const GOLD = '#D8A94D';
 const GREEN = '#59BF91';
@@ -95,14 +97,14 @@ export default function QuestCard({ rpgState, live }) {
       <div data-quest-hud="1" data-quest-hud-next={to.quest.id}
         style={boxStyle({ pointerEvents: 'none', border: '1px solid rgba(216,169,77,.35)' })}>
         <div style={titleRow(GOLD)}>
-          <img src="/icons/ui/panel-quests.webp" alt="Quest" draggable={false} style={markStyle} />
-          <span style={{ flex: 1, minWidth: 0 }}>{'Next: ' + to.quest.title}</span>
+          <img src="/icons/ui/panel-quests.webp" alt={say(SAY, 'questCard.markQuest')} draggable={false} style={markStyle} />
+          <span style={{ flex: 1, minWidth: 0 }}>{say(SAY, 'questCard.next', { quest: to.quest.title })}</span>
         </div>
         <div style={subLine}>{'Talk to ' + folkDisplayName(to.npc) + (TOUR_MEET[to.npc] ? ' ' + TOUR_MEET[to.npc] : '')}</div>
         {/* v2.3.3525: others have work too, and where they show */}
         {to.more > 0 && (
           <div data-quest-hud-more={to.more} style={{ ...subLine, color: 'rgba(216,169,77,.85)' }}>
-            {'+' + to.more + ' more: look for a gold ! on your map'}
+            {say(SAY, 'questCard.more', { more: to.more })}
           </div>
         )}
       </div>
@@ -125,7 +127,7 @@ export default function QuestCard({ rpgState, live }) {
       data-quest-hud-quest={q.id}
       data-quest-hud-ready={done ? '1' : '0'}
       role="button"
-      title={folded ? 'Show this quest' : 'Fold this quest'}
+      title={say(SAY, folded ? 'questCard.show' : 'questCard.fold')}
       data-quest-hud-folded={folded ? '1' : '0'}
       /* v2.3.1714: the world listens for taps under the HUD; stop the press
          here or the tap also walks the bro to the top-left corner */
@@ -152,7 +154,7 @@ export default function QuestCard({ rpgState, live }) {
         {/* v2.3.3048: the owner's green check -- now ONLY when ready (v2.3.3918) */}
         <img
           src={done ? QUEST_ART.check : '/icons/ui/panel-quests.webp'}
-          alt={done ? 'Ready to hand in' : 'Quest'}
+          alt={say(SAY, done ? 'questCard.markReady' : 'questCard.markQuest')}
           draggable={false}
           data-quest-hud-mark={done ? 'ready' : 'quest'}
           className={done ? 'bt-quest-hud-ready' : undefined}
@@ -173,11 +175,11 @@ export default function QuestCard({ rpgState, live }) {
       )}
       {!folded && (
         <div
-          data-quest-hud-open="1" role="button" aria-label="Open this quest's page"
+          data-quest-hud-open="1" role="button" aria-label={say(SAY, 'questCard.openAria')}
           onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => { e.stopPropagation(); openQuestPage(q.id); }}
           style={{ ...subLine, color: GOLD, textAlign: 'right', touchAction: 'manipulation', padding: '2px 0' }}>
-          {'Open quest \u203A'}
+          {say(SAY, 'questCard.open')}
         </div>
       )}
     </div>

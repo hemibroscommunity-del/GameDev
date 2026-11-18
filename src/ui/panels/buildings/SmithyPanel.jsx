@@ -20,6 +20,8 @@ import { OWNER_ICON } from '@/data/ownerIcons.js'; /* v2.3.3524: the Upgrade tab
 import { amuletTabShown } from '@/game/forgeTabs.js'; /* v2.3.3535: the Amulet tab only with gold for it */
 import { C, ITEMS_V, COIN, XP, Icon, Cost, Chip, Lock, Btn, Row } from './BenchParts.jsx'; /* v2.3.3667 */
 import { act } from '@/game/actions.js';   /* v2.3.5190: the page's requests leave through the action door (card K PR 7) */
+import { SAY } from '@/data/say/smithy.js';   /* v2.3.6328: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say, sayPieces } from '@/game/say.js';
 
 /* ═══ v2.3.2826: THE BLACKSMITH, REBUILT ═══
  *
@@ -76,7 +78,7 @@ const weaponIcon = (type, tierKey) => {
   const base = type === 'greatsword' ? '/icons/items/great-sword.webp' : '/icons/items/sword.webp';
   return { src: metalIconPath(base, weaponMaterial(type, tierKey)) + ITEMS_V, fallback: base };
 };
-const TYPE_LABEL = { greatsword: 'Greatsword', sword: 'Sword' };
+const TYPE_LABEL = { greatsword: say(SAY, 'smithy.typeGreatsword'), sword: say(SAY, 'smithy.typeSword') };
 
 export function SmithyPanel({ rpgState, stateRef }) {
   const S = stateRef.current || {};
@@ -91,21 +93,21 @@ export function SmithyPanel({ rpgState, stateRef }) {
      read straight off S._serverCaps so the caps-audit can see every gate. */
   const SC = S._serverCaps || {};
   const tabs = [
-    SC.smelting && { id: 'smelt', label: 'Smelt', icon: BAR_THUMBS.bar_copper },
+    SC.smelting && { id: 'smelt', label: say(SAY, 'smithy.tabSmelt'), icon: BAR_THUMBS.bar_copper },
     /* v2.3.3526: the owner's pick (card 11, T121.1): an anvil -- the tab wore
        the copper great sword, an item's own picture */
     { id: 'forge', label: 'Forge', icon: '/icons/ui/tab-forge.webp?v=2.3.3526' },
     /* v2.3.3092: bars into armor (server armorforge.js) */
-    (S._serverCaps && S._serverCaps.armorforge) && { id: 'armor', label: 'Armor', icon: '/icons/items/chest-plate-copper.webp' + ITEMS_V },
+    (S._serverCaps && S._serverCaps.armorforge) && { id: 'armor', label: say(SAY, 'smithy.tabArmor'), icon: '/icons/items/chest-plate-copper.webp' + ITEMS_V },
     /* v2.3.3524: the hammer (the owner: "Make the upgrade tab icon different
        for smithing.  Like a hammer"), not the currency strip's gold gem */
-    (S._serverCaps && (S._serverCaps.harden || S._serverCaps.gemExtract)) && { id: 'upgrade', label: 'Upgrade', icon: OWNER_ICON.smithHammer.src },
+    (S._serverCaps && (S._serverCaps.harden || S._serverCaps.gemExtract)) && { id: 'upgrade', label: say(SAY, 'smithy.tabUpgrade'), icon: OWNER_ICON.smithHammer.src },
     /* v2.3.3535: only to someone holding a nugget, a bar or an amulet
        (game/forgeTabs.js): a nugget is 1 kill in 10,000, so for nearly
        everyone it was a recipe they could never start */
-    (S._serverCaps && S._serverCaps.amuletForge) && amuletTabShown(R) && { id: 'amulet', label: 'Amulet', icon: '/icons/items/amulet.webp' + ITEMS_V },
+    (S._serverCaps && S._serverCaps.amuletForge) && amuletTabShown(R) && { id: 'amulet', label: say(SAY, 'smithy.tabAmulet'), icon: '/icons/items/amulet.webp' + ITEMS_V },
     /* v2.3.3141: salvage for bars, and the grades' essences (server salvage.js) */
-    (S._serverCaps && S._serverCaps.salvage) && { id: 'salvage', label: 'Salvage', icon: essenceIcon('essence_rare_iron') + ITEMS_V },
+    (S._serverCaps && S._serverCaps.salvage) && { id: 'salvage', label: say(SAY, 'smithy.tabSalvage'), icon: essenceIcon('essence_rare_iron') + ITEMS_V },
   ].filter(Boolean);
   const [tabWant, setTabState] = React.useState(() => (S._smithyTab && tabs.some((t) => t.id === S._smithyTab)) ? S._smithyTab : tabs[0].id);
   const setTab = (id) => { S._smithyTab = id; setTabState(id); };
@@ -120,12 +122,13 @@ export function SmithyPanel({ rpgState, stateRef }) {
   const pending = React.useRef(null);
   const [busy, setBusy] = React.useState(null);
   const lvlSeen = React.useRef(lvl);
-  const say = (text, color) => { try { const P = S.player; if (P) pushDmgPopup(S, P.x, P.y - 34, text, color || C.brass); } catch (e) { /* popup only */ } };
+  /* v2.3.6328: the popup was `say`, now the words table's reader's name */
+  const popup = (text, color) => { try { const P = S.player; if (P) pushDmgPopup(S, P.x, P.y - 34, text, color || C.brass); } catch (e) { /* popup only */ } };
   React.useEffect(() => {
     const p = pending.current;
     if (p && p.sig() !== p.before) {
       pending.current = null; setBusy(null);
-      if (p.done) say(p.done);
+      if (p.done) popup(p.done);
       /* v2.3.3343: the anvil's ring -- collect() is a beep(), silent
          (SOUND-GAPS).  A smelt and the armor forge sound from their own
          receipts (wsClient smelt_result / forge_armor_result). */
@@ -146,7 +149,7 @@ export function SmithyPanel({ rpgState, stateRef }) {
     if (!busy) return undefined;
     const t = setTimeout(() => {
       const p = pending.current;
-      if (p && p.fail) { say(p.fail, C.bad); cue('forgeFail'); }   /* v2.3.3343: the refusal heard */
+      if (p && p.fail) { popup(p.fail, C.bad); cue('forgeFail'); }   /* v2.3.3343: the refusal heard */
       pending.current = null; setBusy(null);
     }, 3500);
     return () => clearTimeout(t);
@@ -169,9 +172,9 @@ export function SmithyPanel({ rpgState, stateRef }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 44px 10px 14px', flex: 'none' }}>
         <Icon src="/icons/ui/skill-blacksmithing.webp?v=2.3.1224" size={30} />
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: '.10em', textTransform: 'uppercase', color: C.text }}>Blacksmith</div>
+          <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: '.10em', textTransform: 'uppercase', color: C.text }}>{say(SAY, 'smithy.title')}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
-            <span data-smithy-level={lvl} style={{ fontSize: 12, fontWeight: 800, color: C.brass }}>Lv {lvl}</span>
+            <span data-smithy-level={lvl} style={{ fontSize: 12, fontWeight: 800, color: C.brass }}>{say(SAY, 'smithy.level', { lvl })}</span>
             <div style={{ flex: 1, height: 6, borderRadius: 3, background: C.well, overflow: 'hidden' }}>
               <div style={{ width: `${pct * 100}%`, height: '100%', background: 'linear-gradient(90deg,#C9923E,#EAC675)' }} />
             </div>
@@ -216,20 +219,20 @@ function SmeltTab({ S, inv, lvl, ask, busy }) {
         const go = (n) => ask('smelt', { type: 'smelt_bar', payload: { barKey: key, count: n } }, {
           kind: 'smelt', workMs: SMITH_STRIKE_MS * Math.min(6, 2 + n),
           sig: () => String((S.rpg && S.rpg.inventory && S.rpg.inventory[key]) || 0),
-          fail: 'Could not smelt',
+          fail: say(SAY, 'smithy.smeltFail'),
         });
         return (
           <Row key={key} data-smelt-row={key} icon={BAR_THUMBS[key]}
             title={<>{r.name} <span data-smelt-have={key} style={{ color: '#8D9B98', fontWeight: 700 }}>×{Math.floor(inv[key] || 0)}</span></>}
             action={
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <Btn on={on} primary data-smelt-one={key} onClick={() => go(1)}>{locked ? 'Locked' : 'Smelt'}</Btn>
-                {can > 1 && <Btn on={on} data-smelt-all={key} onClick={() => go(can)}>All ({can})</Btn>}
+                <Btn on={on} primary data-smelt-one={key} onClick={() => go(1)}>{locked ? say(SAY, 'smithy.locked') : say(SAY, 'smithy.smeltButton')}</Btn>
+                {can > 1 && <Btn on={on} data-smelt-all={key} onClick={() => go(can)}>{say(SAY, 'smithy.smeltAll', { count: can })}</Btn>}
               </div>
             }>
             <Cost icon={thumbFor(r.ore)} have={ore} need={r.oreCost} />
             <Chip icon={XP} color="#9FD3F0">+{r.xp}</Chip>
-            {locked && <Lock>Smithing {r.minLvl}</Lock>}
+            {locked && <Lock>{say(SAY, 'smithy.needSmithing', { lvl: r.minLvl })}</Lock>}
           </Row>
         );
       })}
@@ -267,8 +270,8 @@ function ForgeTab({ S, R, inv, coins, lvl, ask, busy }) {
       {cur && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: C.mute, margin: '0 2px 8px' }}>
           <Icon {...(() => { const ic = weaponIcon(cur.type, cur.gearBase); return { src: ic.src, fallback: ic.fallback }; })()} size={18} />
-          <span>Holding <b style={{ color: C.sub }}>{cur.name}</b></span>
-          {stashFull && <Lock>Weapon bag full</Lock>}
+          <span>{sayPieces(SAY, 'smithy.holding', { name: <b key="name" style={{ color: C.sub }}>{cur.name}</b> })}</span>
+          {stashFull && <Lock>{say(SAY, 'smithy.weaponBagFull')}</Lock>}
         </div>
       )}
       {shown.map((key) => {
@@ -296,9 +299,9 @@ function ForgeTab({ S, R, inv, coins, lvl, ask, busy }) {
             }, {
               kind: 'forge', workMs: SMITH_STRIKE_MS * 4,
               sig: () => { const w = S.rpg && S.rpg.weapon; return w ? w.gearBase + ':' + w.type + ':' + (S.rpg.weaponStash || []).length : ''; },
-              done: 'Forged ' + name + '!', fail: 'Could not forge',
-            })}>Forge</Btn>}>
-            {!skillOk && <Lock>Smithing {needLvl}</Lock>}
+              done: say(SAY, 'smithy.forgedDone', { name }), fail: say(SAY, 'smithy.forgeFail'),
+            })}>{say(SAY, 'smithy.forgeButton')}</Btn>}>
+            {!skillOk && <Lock>{say(SAY, 'smithy.needSmithing', { lvl: needLvl })}</Lock>}
             {skillOk && !meets && <Lock>{req.label} {req.value}</Lock>}
             <Cost icon={bt.bar ? BAR_THUMBS[bt.bar] : thumbFor(resKey)} have={have} need={resNeed} />
             <Cost icon={COIN} have={coins} need={bt.goldCost} />
@@ -338,15 +341,15 @@ function ArmorTab({ S, inv, lvl, ask, busy }) {
             action={<Btn on={on} primary data-armor-go={key} onClick={() => ask('armor', { type: 'forge_armor', payload: { recipe: key } }, {
               kind: 'armor', workMs: SMITH_STRIKE_MS * 4,
               sig: () => String((S.rpg && S.rpg.inventory && S.rpg.inventory[r.bar]) || 0),
-              fail: 'Could not forge',
-            })}>{locked ? 'Locked' : 'Forge'}</Btn>}>
-            {locked && <Lock>Smithing {r.minLvl}</Lock>}
+              fail: say(SAY, 'smithy.forgeFail'),
+            })}>{locked ? say(SAY, 'smithy.locked') : say(SAY, 'smithy.forgeButton')}</Btn>}>
+            {locked && <Lock>{say(SAY, 'smithy.needSmithing', { lvl: r.minLvl })}</Lock>}
             <Cost icon={BAR_THUMBS[r.bar]} have={have} need={r.bars} />
             <Chip icon="/icons/ui/stat-defense.webp" color="#CFE3D8">-{dr}%</Chip>
             <Chip icon={XP} color="#9FD3F0">+{r.xp}</Chip>
             {/* v2.3.3544: what wearing it asks -- your level (gear.js
                 _gearOnLevel), or Defense points against an older worker */}
-            {def > 0 && <Chip>{isGearOnLevel() ? 'Level' : 'Defense'} {def} to wear</Chip>}
+            {def > 0 && <Chip>{isGearOnLevel() ? say(SAY, 'smithy.wearLevel', { def }) : say(SAY, 'smithy.wearDefense', { def })}</Chip>}
           </Row>
         );
       })}
@@ -385,15 +388,15 @@ function UpgradeTab({ S, R, coins, lvl, caps, ask, busy }) {
     const skillOk = lvl >= needLvl;
     rows.push(
       <Row key="harden" data-harden-row="1" icon={w.type === 'bow' ? '/icons/items/bow.webp' : w.type === 'staff' ? '/icons/items/staff.webp' : ic.src}
-        iconFallback={ic.fallback} badge={'H' + h} title={maxed ? w.name + ' · max' : 'H' + h + ' → H' + (h + 1)}
+        iconFallback={ic.fallback} badge={say(SAY, 'smithy.hardenBadge', { h })} title={maxed ? say(SAY, 'smithy.hardenMaxTitle', { name: w.name }) : say(SAY, 'smithy.hardenStepTitle', { h, next: h + 1 })}
         action={!maxed && <Btn on={skillOk && coins >= cost && matsOk && !busy} primary data-harden-go="1" onClick={() => ask('harden', {
           type: 'broadcast', event: 'harden_weapon', payload: { slot: 'weapon' },
         }, {
           kind: 'harden', workMs: SMITH_STRIKE_MS * 3,
           /* harden_result (gameEvents) says win or lose; this only clears the busy state */
           sig: () => { const x = S.rpg && S.rpg.weapon; return x ? String(x.hardness || 0) + ':' + (x.temper || 0) + ':' + (S.rpg.coins || 0) + ':' + (hc.material ? ((S.rpg.inventory || {})[hc.material] || 0) : '') : ''; },
-        })}>Harden</Btn>}>
-        {!maxed && !skillOk && <Lock>Smithing {needLvl}</Lock>}
+        })}>{say(SAY, 'smithy.hardenButton')}</Btn>}>
+        {!maxed && !skillOk && <Lock>{say(SAY, 'smithy.needSmithing', { lvl: needLvl })}</Lock>}
         {!maxed && hc.material && <span data-harden-mat={hc.material} style={{ display: 'contents' }}><Cost icon={thumbFor(hc.material)} have={haveMats} need={hc.amount} /></span>}
         {!maxed && <Cost icon={COIN} have={coins} need={cost} />}
         {!maxed && <Chip color={H_ODDS[h] >= 20 ? C.good : '#E5B36A'}>{H_ODDS[h]}%</Chip>}
@@ -401,7 +404,7 @@ function UpgradeTab({ S, R, coins, lvl, caps, ask, busy }) {
             gold and bars still spent (the owner: "the worst that can happen is
             you just stay at hardening 2 and lose resources"); an older worker
             still drops it back, to H0 for its first 19 failures in a row */}
-        {!maxed && h > 0 && <Chip color={C.mute}>{(S._serverCaps && S._serverCaps.hardenkeep) ? 'Fail keeps H' + h : 'Fail → H0'}</Chip>}
+        {!maxed && h > 0 && <Chip color={C.mute}>{(S._serverCaps && S._serverCaps.hardenkeep) ? say(SAY, 'smithy.hardenFailKeeps', { h }) : say(SAY, 'smithy.hardenFailDrops')}</Chip>}
       </Row>,
     );
   }
@@ -419,21 +422,21 @@ function UpgradeTab({ S, R, coins, lvl, caps, ask, busy }) {
       const cost = gemExtractCost(s.item);
       rows.push(
         <Row key={'gem-' + s.slot} data-extract-row={s.slot} icon={(s.icon && s.icon.src) || GEM} iconFallback={s.icon && s.icon.fallback}
-          badge="◆" title={'Take gem out of ' + (s.item.name || s.slot)}
+          badge="◆" title={say(SAY, 'smithy.extractTitle', { name: s.item.name || s.slot })}
           action={<Btn on={coins >= cost && !busy} onClick={() => ask('extract-' + s.slot, {
             type: 'amulet_forge_request', payload: { op: 'extract', target: s.slot },
           }, {
             kind: 'extract', workMs: SMITH_STRIKE_MS * 2,
             sig: () => JSON.stringify([S.rpg && S.rpg[s.slot] && (S.rpg[s.slot].gem || S.rpg[s.slot].element1 || S.rpg[s.slot].element2), S.rpg && S.rpg.coins]),
-            done: 'Gem removed', fail: 'Could not remove the gem',
-          })}>Take out</Btn>}>
+            done: say(SAY, 'smithy.extractDone'), fail: say(SAY, 'smithy.extractFail'),
+          })}>{say(SAY, 'smithy.extractButton')}</Btn>}>
           <Cost icon={COIN} have={coins} need={cost} />
         </Row>,
       );
     }
   }
   if (!rows.length) {
-    return <div style={{ padding: '18px 8px', textAlign: 'center', color: C.mute, fontSize: 13 }}>Hold a weapon to upgrade it.</div>;
+    return <div style={{ padding: '18px 8px', textAlign: 'center', color: C.mute, fontSize: 13 }}>{say(SAY, 'smithy.upgradeEmpty')}</div>;
   }
   return <div>{rows}</div>;
 }
@@ -444,13 +447,13 @@ function AmuletTab({ S, R, coins, lvl, ask, busy }) {
   const bars = R.goldBars || 0;
   return (
     <div>
-      <Row data-goldbar-row="1" icon={GOLDBAR} title={<>Gold Bar <span style={{ color: '#8D9B98', fontWeight: 700 }}>×{bars}</span></>}
+      <Row data-goldbar-row="1" icon={GOLDBAR} title={<>{say(SAY, 'smithy.goldBar')} <span style={{ color: '#8D9B98', fontWeight: 700 }}>×{bars}</span></>}
         action={<Btn on={nug >= NUGGETS_PER_BAR && !busy} onClick={() => ask('goldbar', {
           type: 'amulet_forge_request', payload: { op: 'smelt' },
         }, {
           kind: 'smelt', workMs: SMITH_STRIKE_MS * 2,
-          sig: () => String((S.rpg && S.rpg.goldBars) || 0), done: '+1 Gold Bar', fail: 'Could not smelt',
-        })}>Smelt</Btn>}>
+          sig: () => String((S.rpg && S.rpg.goldBars) || 0), done: say(SAY, 'smithy.goldBarDone'), fail: say(SAY, 'smithy.smeltFail'),
+        })}>{say(SAY, 'smithy.smeltButton')}</Btn>}>
         <Cost icon={NUGGET} have={nug} need={NUGGETS_PER_BAR} />
       </Row>
       {Object.keys(AMULET_TIERS).map((key) => {
@@ -459,15 +462,15 @@ function AmuletTab({ S, R, coins, lvl, ask, busy }) {
         const ok = skillOk && bars >= at.bars && coins >= at.goldCost;
         const worn = R.amulet && R.amulet.tier === key;
         return (
-          <Row key={key} data-amulet-row={key} icon={'/icons/items/amulet.webp' + ITEMS_V} title={at.label + ' Amulet' + (worn ? ' · worn' : '')}
+          <Row key={key} data-amulet-row={key} icon={'/icons/items/amulet.webp' + ITEMS_V} title={say(SAY, 'smithy.amuletTitle', { tier: at.label, worn: worn ? say(SAY, 'smithy.amuletWornTail') : '' })}
             action={<Btn on={ok && !busy} primary onClick={() => ask('amulet', {
               type: 'amulet_forge_request', payload: { op: 'craft', tierKey: key },
             }, {
               kind: 'amulet', workMs: SMITH_STRIKE_MS * 4,
               sig: () => JSON.stringify([S.rpg && S.rpg.amulet && S.rpg.amulet.tier, S.rpg && S.rpg.goldBars]),
-              done: 'Crafted ' + at.label + ' Amulet!', fail: 'Could not craft',
-            })}>Craft</Btn>}>
-            {!skillOk && <Lock>Smithing {at.minLvl}</Lock>}
+              done: say(SAY, 'smithy.amuletDone', { tier: at.label }), fail: say(SAY, 'smithy.amuletFail'),
+            })}>{say(SAY, 'smithy.craftButton')}</Btn>}>
+            {!skillOk && <Lock>{say(SAY, 'smithy.needSmithing', { lvl: at.minLvl })}</Lock>}
             <Cost icon={GOLDBAR} have={bars} need={at.bars} />
             <Cost icon={COIN} have={coins} need={at.goldCost} />
           </Row>
@@ -518,7 +521,7 @@ function carriedPieces(R) {
       if (!metal) return;
       const legs = field === LEGS;
       out.push({ key: field + ':' + (p.gid || 'x' + i), field, gid: typeof p.gid === 'string' ? p.gid : null, metal, grade: p.quality || 'normal',
-        name: p.name || (SALVAGE.METALS[metal].name + (legs ? ' Greaves' : ' Torso')), icon: armorIconFor(legs ? 'legs' : 'chest', metal) });
+        name: p.name || (legs ? say(SAY, 'smithy.greavesName', { metal: SALVAGE.METALS[metal].name }) : say(SAY, 'smithy.torsoName', { metal: SALVAGE.METALS[metal].name })), icon: armorIconFor(legs ? 'legs' : 'chest', metal) });
     });
   }
   (Array.isArray(R.weaponStash) ? R.weaponStash : []).forEach((w, i) => {
@@ -527,7 +530,7 @@ function carriedPieces(R) {
     if (!metal) return;
     const ic = weaponIcon(w.type, w.gearBase);
     out.push({ key: 'weaponStash:' + i + ':' + weaponSig(w), field: 'weaponStash', idx: i, sig: weaponSig(w), metal, grade: w.quality || 'normal',
-      name: SALVAGE.METALS[metal].name + ' ' + (TYPE_LABEL[w.type] || 'Sword') + (w.hardness ? ' H' + w.hardness : ''), icon: ic.src, fallback: ic.fallback });
+      name: say(SAY, 'smithy.weaponName', { metal: SALVAGE.METALS[metal].name, type: TYPE_LABEL[w.type] || say(SAY, 'smithy.typeSword'), hard: w.hardness ? say(SAY, 'smithy.weaponHardTail', { h: w.hardness }) : '' }), icon: ic.src, fallback: ic.fallback });
   });
   return out;
 }
@@ -568,21 +571,24 @@ function SalvageTab({ S, R, inv }) {
   let said = null;
   if (last && last.at >= openedAt.current) {
     if (!last.ok) said = { text: salvageReasonText(last.reason, last.kind), bad: true };
-    else if (last.kind === 'salvage') said = { text: 'Salvaged' + (last.name ? ' ' + last.name : '') + ': +' + last.bars + ' ' + (SALVAGE.METALS[last.metal] ? SALVAGE.METALS[last.metal].name + ' Bars' : 'bars') + (last.essence ? ', +1 ' + essenceName(last.essence) : '') };
-    else said = { text: 'Now ' + (GRADE_LABEL[last.grade] || last.grade) + '!' };
+    else if (last.kind === 'salvage') said = { text: say(SAY, 'smithy.salvagedSaid', { name: last.name ? ' ' + last.name : '', bars: last.bars, what: SALVAGE.METALS[last.metal] ? say(SAY, 'smithy.salvagedMetalBars', { metal: SALVAGE.METALS[last.metal].name }) : say(SAY, 'smithy.salvagedBars'), essence: last.essence ? say(SAY, 'smithy.salvagedEssenceTail', { essence: essenceName(last.essence) }) : '' }) };
+    else said = { text: say(SAY, 'smithy.gradeRaisedSaid', { grade: GRADE_LABEL[last.grade] || last.grade }) };
   }
-  const btnLabel = (key, word) => (wait && wait.key === key ? '…' : armed === key ? 'Sure?' : word);
+  const btnLabel = (key, word) => (wait && wait.key === key ? '…' : armed === key ? say(SAY, 'smithy.confirmButton') : word);
   return (
     <div data-salvage-section="1">
       {said && (
         <div data-salvage-said={said.bad ? 'bad' : 'ok'} aria-live="polite" style={{ margin: '0 2px 8px', fontSize: 13, fontWeight: 700, color: said.bad ? '#E59A94' : C.good }}>{said.text}</div>
       )}
       <div style={{ fontSize: 12, color: C.mute, margin: '0 2px 8px', lineHeight: 1.4 }}>
-        <b style={{ color: C.sub }}>{SALVAGE.BARS} of {SALVAGE.COST_BARS} bars back.</b> Rare, Elite and Godly also leave their <b style={{ color: C.sub }}>essence</b>.
+        {sayPieces(SAY, 'smithy.salvageRule', {
+          back: <b key="back" style={{ color: C.sub }}>{say(SAY, 'smithy.salvageRuleBack', { bars: SALVAGE.BARS, cost: SALVAGE.COST_BARS })}</b>,
+          essence: <b key="essence" style={{ color: C.sub }}>{say(SAY, 'smithy.salvageRuleEssence')}</b>,
+        })}
       </div>
       {pieces.length === 0 && (
         <div data-salvage-empty="1" style={{ padding: '14px 8px', textAlign: 'center', color: C.mute, fontSize: 13 }}>
-          Carry a copper, iron or black steel piece to salvage it.
+          {say(SAY, 'smithy.salvageEmpty')}
         </div>
       )}
       {pieces.map((p) => {
@@ -592,15 +598,15 @@ function SalvageTab({ S, R, inv }) {
         return (
           <Row key={p.key} data-salvage-row={p.key} icon={p.icon + ITEMS_V} iconFallback={p.fallback || p.icon} title={p.name}
             action={<Btn on={on} primary={armed === p.key} data-salvage-go={p.key}
-              onClick={() => press(p.key, 'smith_salvage', refOf(p))}>{btnLabel(p.key, 'Salvage')}</Btn>}>
+              onClick={() => press(p.key, 'smith_salvage', refOf(p))}>{btnLabel(p.key, say(SAY, 'smithy.salvageButton'))}</Btn>}>
             <GradeChip grade={p.grade} />
-            {legacy ? <Lock>Too old to salvage</Lock> : <Chip icon={BAR_THUMBS[SALVAGE.METALS[p.metal].bar]} color={C.good}>+{SALVAGE.BARS}</Chip>}
+            {legacy ? <Lock>{say(SAY, 'smithy.salvageTooOld')}</Lock> : <Chip icon={BAR_THUMBS[SALVAGE.METALS[p.metal].bar]} color={C.good}>+{SALVAGE.BARS}</Chip>}
             {!legacy && ess && <Chip icon={essenceIcon(ess) + ITEMS_V} color={C.good}>+1</Chip>}
           </Row>
         );
       })}
       {essences.length > 0 && (
-        <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.12em', textTransform: 'uppercase', color: C.mute, margin: '14px 2px 8px' }}>Essences</div>
+        <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.12em', textTransform: 'uppercase', color: C.mute, margin: '14px 2px 8px' }}>{say(SAY, 'smithy.essencesHeading')}</div>
       )}
       {essences.map((k) => {
         const e = parseEssenceKey(k);
@@ -614,7 +620,7 @@ function SalvageTab({ S, R, inv }) {
             </div>
             {targets.length === 0 && (
               <div style={{ fontSize: 12, color: C.mute, margin: '0 2px 8px 38px' }}>
-                No {SALVAGE.METALS[e.metal].name.toLowerCase()} piece below {GRADE_LABEL[e.grade]} in your bag.
+                {say(SAY, 'smithy.essenceNoTarget', { metal: SALVAGE.METALS[e.metal].name.toLowerCase(), grade: GRADE_LABEL[e.grade] })}
               </div>
             )}
             {targets.map((p) => {
@@ -622,7 +628,7 @@ function SalvageTab({ S, R, inv }) {
               return (
                 <Row key={key} data-essence-row={key} icon={p.icon + ITEMS_V} iconFallback={p.fallback || p.icon} title={p.name}
                   action={<Btn on={!wait} primary={armed === key} data-essence-go={key}
-                    onClick={() => press(key, 'essence_apply', { essence: k, ...refOf(p) })}>{btnLabel(key, 'Use')}</Btn>}>
+                    onClick={() => press(key, 'essence_apply', { essence: k, ...refOf(p) })}>{btnLabel(key, say(SAY, 'smithy.useButton'))}</Btn>}>
                   <GradeChip grade={p.grade} showNormal />
                   <span style={{ fontSize: 12, color: C.mute }}>→</span>
                   <GradeChip grade={e.grade} />

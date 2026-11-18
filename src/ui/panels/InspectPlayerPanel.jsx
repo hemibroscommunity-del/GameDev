@@ -39,6 +39,8 @@ import { portraitSrc } from '../mobile/sheet/portraitStore.js'; /* v2.3.2926: yo
 import { act } from '@/game/actions.js';   /* v2.3.5190: the page's requests leave through the action door (card K PR 7) */
 import { skullTo } from '@/game/skullDoor.js';   /* v2.3.5533: the fight's page door (card L) */
 import { drawAvatar, drawColor } from '@/game/lookForm.js';   /* v2.3.5807 (card RV, S2): another player's avatar and colour only in the game's own forms */
+import { SAY } from '@/data/say/inspectPlayer.js';   /* v2.3.6345: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';
 
 /* v2.3.1917: mirrors GameRoom.OPEN_PVP (server/src/index.js).  While it is
    false the worker refuses pvp_threat and every non-consensual hit, so the
@@ -253,7 +255,7 @@ export function InspectPlayerPanel(props) {
     if (S.channel) act('party_invite', {   /* v2.3.5190: through the action door (actions.js) */
       target: inspectPlayer.id
     });
-    pushDmgPopup(S, S.player.x, S.player.y - 30, 'Party invite sent', '#fbbf24');
+    pushDmgPopup(S, S.player.x, S.player.y - 30, say(SAY, 'inspectPlayer.partySent'), '#fbbf24');
     setInspectPlayer(null);
   };
   var openTrade = function onClick() {
@@ -285,7 +287,7 @@ export function InspectPlayerPanel(props) {
       fromName: S.myName,
       wager: 0
     });
-    pushDmgPopup(S, S.player.x, S.player.y - 30, 'Duel sent', '#a78bfa');
+    pushDmgPopup(S, S.player.x, S.player.y - 30, say(SAY, 'inspectPlayer.duelSent'), '#a78bfa');
     setInspectPlayer(null);
   };
   /* v2.3.1235: Checkpoint B — portrait chain: generated pixel portrait →
@@ -376,7 +378,7 @@ export function InspectPlayerPanel(props) {
     }
   }, /*#__PURE__*/React.createElement("button", {
     className: "bt-inspect-close",
-    "aria-label": "Close",
+    "aria-label": say(SAY, 'inspectPlayer.close'),
     onClick: function onClick() {
       return setInspectPlayer(null);
     }
@@ -392,8 +394,8 @@ export function InspectPlayerPanel(props) {
   }, /*#__PURE__*/React.createElement("button", {
     className: "bt-pcard-face",
     "data-act": "profile",
-    "aria-label": "Inspect " + inspectPlayer.name,
-    title: "Inspect",
+    "aria-label": say(SAY, 'inspectPlayer.inspectLabel', { name: inspectPlayer.name }),
+    title: say(SAY, 'inspectPlayer.inspectTitle'),
     onClick: function onClick() {
       setShowProfile(true);
     }
@@ -409,16 +411,16 @@ export function InspectPlayerPanel(props) {
     className: "bt-pcard-meta"
   }, inspectPlayer.rpgLv && /*#__PURE__*/React.createElement("span", {
     className: "bt-pcard-lv"
-  }, "LV ", inspectPlayer.rpgLv),
+  }, say(SAY, 'inspectPlayer.level', { lv: inspectPlayer.rpgLv })),
   /* v2.3.2926: the relationship, where the eye lands first -- the mockup's
      "🙂 Friend" beside the level, and the party membership the same way. */
   _partyMate && /*#__PURE__*/React.createElement("span", {
     className: "bt-pcard-rel",
     "data-rel": "party"
-  }, socIcon('party', '🎟️'), "In party"), isFriend && /*#__PURE__*/React.createElement("span", {
+  }, socIcon('party', '🎟️'), say(SAY, 'inspectPlayer.inParty')), isFriend && /*#__PURE__*/React.createElement("span", {
     className: "bt-pcard-rel",
     "data-rel": "friend"
-  }, socIcon('friend', '🙂'), "Friend"), inspectPlayer.rep && inspectPlayer.rep !== 'neutral' && /*#__PURE__*/React.createElement("span", {
+  }, socIcon('friend', '🙂'), say(SAY, 'inspectPlayer.friend')), inspectPlayer.rep && inspectPlayer.rep !== 'neutral' && /*#__PURE__*/React.createElement("span", {
     className: "bt-pcard-rep",
     style: {
       color: ((_REPUTATION$inspectPl = REPUTATION[inspectPlayer.rep]) === null || _REPUTATION$inspectPl === void 0 ? void 0 : _REPUTATION$inspectPl.color) || '#8D9B98'
@@ -447,7 +449,7 @@ export function InspectPlayerPanel(props) {
     "aria-disabled": "true"
   }, socIcon('party', '🎟️'), /*#__PURE__*/React.createElement("span", {
     className: "bt-pcard-lb"
-  }, "In party"))
+  }, say(SAY, 'inspectPlayer.inParty')))
   : /*#__PURE__*/React.createElement("button", {
     className: "bt-pcard-tile",
     "data-act": "party",
@@ -455,7 +457,7 @@ export function InspectPlayerPanel(props) {
     onClick: sendPartyInvite
   }, socIcon('party', '🎟️'), /*#__PURE__*/React.createElement("span", {
     className: "bt-pcard-lb"
-  }, "Invite to Party"))),
+  }, say(SAY, 'inspectPlayer.invite')))),
   /* v2.3.1744: TP is GONE (owner: "remove it", after asking what it did).
      It wrote your own x/y to the inspected player's + 40 and closed the
      card — no cost, no cooldown, no gate, and no server call at all.  The
@@ -471,7 +473,7 @@ export function InspectPlayerPanel(props) {
     onClick: openTrade
   }, socIcon('trade', '🤝'), /*#__PURE__*/React.createElement("span", {
     className: "bt-pcard-lb"
-  }, "Trade")),
+  }, say(SAY, 'inspectPlayer.trade'))),
   /* v2.3.2926: Friend is a tile now (it was the most-hidden control -- the
      old card's social row sat below the fold).  Tapping it when you are
      already friends still removes the friend, as the old "💚 Friend" button
@@ -480,7 +482,7 @@ export function InspectPlayerPanel(props) {
     className: "bt-pcard-tile",
     "data-act": "friend",
     "aria-pressed": isFriend ? "true" : "false",
-    title: isFriend ? "Friends — tap to remove" : "Add friend",
+    title: isFriend ? say(SAY, 'inspectPlayer.friendsTitle') : say(SAY, 'inspectPlayer.addFriendTitle'),
     onClick: function onClick() {
       if (isFriend) {
         var updated = friendsList.filter(function (f) {
@@ -490,7 +492,7 @@ export function InspectPlayerPanel(props) {
         try {
           localStorage.setItem('bt_friends', JSON.stringify(updated));
         } catch (e) {}
-        pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Removed friend', '#D95C54');
+        pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, say(SAY, 'inspectPlayer.friendRemoved'), '#D95C54');
       } else {
         var _updated = [].concat(_toConsumableArray(friendsList), [{
           id: inspectPlayer.id,
@@ -512,19 +514,19 @@ export function InspectPlayerPanel(props) {
             act('friend_request', { target: inspectPlayer.id, name: inspectPlayer.name });   /* v2.3.5190: through the action door (actions.js) */
           }
         } catch (e) {}
-        pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Friend request sent!', '#59BF91');
+        pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, say(SAY, 'inspectPlayer.friendSent'), '#59BF91');
         BT_AUDIO.beep(600, 0.06, 0.08, 'sine');
       }
     }
   }, socIcon('friend', isFriend ? '💚' : '🙂'), /*#__PURE__*/React.createElement("span", {
     className: "bt-pcard-lb"
-  }, isFriend ? 'Friend' : 'Add Friend')), /*#__PURE__*/React.createElement("button", {
+  }, say(SAY, isFriend ? 'inspectPlayer.friendTile' : 'inspectPlayer.addFriend'))), /*#__PURE__*/React.createElement("button", {
     className: "bt-pcard-tile",
     "data-act": "duel",
     onClick: sendDuel
   }, socIcon('duel', '⚔️'), /*#__PURE__*/React.createElement("span", {
     className: "bt-pcard-lb"
-  }, "Duel")),
+  }, say(SAY, 'inspectPlayer.duel'))),
   /* ═══ v2.3.1917: THREAT IS GONE FROM THE CARD ═══
     Owner: "Also remove the option to kill other players for now."  Threat
     was the button that started a non-consensual fight: ignore it (or let
@@ -543,7 +545,7 @@ export function InspectPlayerPanel(props) {
       var _S$rpg26;
       var S = stateRef.current;
       if (S._pvpThreatCdUntil && Date.now() < S._pvpThreatCdUntil) {
-        pushDmgPopup(S, S.player.x, S.player.y - 30, 'Threat on cooldown', '#D95C54');
+        pushDmgPopup(S, S.player.x, S.player.y - 30, say(SAY, 'inspectPlayer.threatCooldown'), '#D95C54');
         setInspectPlayer(null);
         return;
       }
@@ -561,7 +563,7 @@ export function InspectPlayerPanel(props) {
          forged) — nothing arrives and the base window just ages out. */
       skullTo(S, 'red', Date.now() + PVP_THREAT_BASE_COUNTDOWN, 'issue');   /* v2.3.5533: the fight's page door */
       S._pvpThreatCdUntil = Date.now() + PVP_THREAT_COOLDOWN;
-      pushDmgPopup(S, S.player.x, S.player.y - 30, 'Threat issued!', '#D95C54');
+      pushDmgPopup(S, S.player.x, S.player.y - 30, say(SAY, 'inspectPlayer.threatIssued'), '#D95C54');
       BT_AUDIO.beep(150, 0.15, 0.2, 'sawtooth');
       setInspectPlayer(null);
     }
@@ -572,7 +574,7 @@ export function InspectPlayerPanel(props) {
     draggable: false
   }), /*#__PURE__*/React.createElement("span", {
     className: "bt-pcard-lb"
-  }, "Threat")),
+  }, say(SAY, 'inspectPlayer.threat'))),
   /* v2.3.1743: the CLAN invite -- the rarer action, only when you lead a
      clan the target isn't in.  v2.3.2926: a fifth tile after the mockup's
      four (full width under them on a phone held upright, one more in the row
@@ -590,7 +592,7 @@ export function InspectPlayerPanel(props) {
         clanName: clanData.name,
         clanTag: clanData.tag
       });
-      pushDmgPopup(S, S.player.x, S.player.y - 30, 'Clan invite sent', '#a78bfa');
+      pushDmgPopup(S, S.player.x, S.player.y - 30, say(SAY, 'inspectPlayer.clanSent'), '#a78bfa');
       setInspectPlayer(null);
     }
   }, /*#__PURE__*/React.createElement("img", {
@@ -600,7 +602,7 @@ export function InspectPlayerPanel(props) {
     draggable: false
   }), /*#__PURE__*/React.createElement("span", {
     className: "bt-pcard-lb"
-  }, "Invite to [", clanData.tag, "]"))), /*#__PURE__*/React.createElement("div", {
+  }, say(SAY, 'inspectPlayer.clanInvite', { tag: clanData.tag })))), /*#__PURE__*/React.createElement("div", {
     className: "bt-pcard-rule",
     "aria-hidden": true
   }),
@@ -630,9 +632,9 @@ export function InspectPlayerPanel(props) {
       setMutedList(_mNext);
       var _mDurable = chatMuteSettled(_mS);
       pushDmgPopup(_mS, _mS.player.x, _mS.player.y - 30,
-        isMuted ? 'Unmuted' : (_mDurable ? 'Muted — their chat stops here' : 'Muted'), '#D8A94D');
+        isMuted ? say(SAY, 'inspectPlayer.unmuted') : (_mDurable ? say(SAY, 'inspectPlayer.mutedStored') : say(SAY, 'inspectPlayer.mutedLocal')), '#D8A94D');
     }
-  }, socIcon('mute', '🔇'), isMuted ? 'Muted' : 'Mute'), /*#__PURE__*/React.createElement("button", {
+  }, socIcon('mute', '🔇'), say(SAY, isMuted ? 'inspectPlayer.muted' : 'inspectPlayer.mute')), /*#__PURE__*/React.createElement("button", {
     className: "bt-pcard-q" + (isBlocked ? " is-danger" : ""),
     "data-act": "block",
     "aria-pressed": isBlocked ? "true" : "false",
@@ -646,18 +648,18 @@ export function InspectPlayerPanel(props) {
          since the page loaded (the sweep's V12 P2-19). */
       if (isBlocked) {
         setBlockedList(unblockPlayer(stateRef.current, inspectPlayer.id));
-        pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Unblocked', '#59BF91');
+        pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, say(SAY, 'inspectPlayer.unblocked'), '#59BF91');
       } else {
         if (isLawless) {
-          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Can\'t block in lawless zone!', '#D95C54');
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, say(SAY, 'inspectPlayer.noBlockLawless'), '#D95C54');
           return;
         }
         setBlockedList(setBlock(stateRef.current, inspectPlayer.id, true, inspectPlayer.name));
         /* v2.3.3526: and their duel, trade and party requests (gameEvents.js) */
-        pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Blocked: no chat, emotes or requests from them', '#D95C54');
+        pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, say(SAY, 'inspectPlayer.blockedNote'), '#D95C54');
       }
     }
-  }, socIcon('block', '🚫'), isBlocked ? 'Blocked' : 'Block'),
+  }, socIcon('block', '🚫'), say(SAY, isBlocked ? 'inspectPlayer.blocked' : 'inspectPlayer.block')),
   /* ═══ v2.3.1981: REPORT ═══
     Until now a player being harassed on a public server had exactly one
     tool — hide it from themselves — and no way to tell the operator
@@ -678,7 +680,7 @@ export function InspectPlayerPanel(props) {
     onClick: function onClick() {
       if (!reportSent) setReportOpen(true);
     }
-  }, socIcon('report', '⚑'), reportSent ? 'Reported' : 'Report')), reportOpen && /*#__PURE__*/React.createElement(React.Fragment, null,
+  }, socIcon('report', '⚑'), say(SAY, reportSent ? 'inspectPlayer.reported' : 'inspectPlayer.report'))), reportOpen && /*#__PURE__*/React.createElement(React.Fragment, null,
   /* v2.3.2926: the reasons replace the safety row in place.  That row is
      never scrolled away now, so the v2.3.1981 scrollIntoView that fetched
      the old in-body report row from below the fold has nothing to fetch.
@@ -686,15 +688,15 @@ export function InspectPlayerPanel(props) {
      and Cancel out as ONE row, so the card does not grow. */
   /*#__PURE__*/React.createElement("div", {
     className: "bt-pcard-rq"
-  }, /*#__PURE__*/React.createElement("span", null, "Why are you reporting ", inspectPlayer.name, "?"), /*#__PURE__*/React.createElement("button", {
+  }, /*#__PURE__*/React.createElement("span", null, say(SAY, 'inspectPlayer.reportWhy', { name: inspectPlayer.name })), /*#__PURE__*/React.createElement("button", {
     className: "bt-pcard-cancel",
     "data-act": "report-cancel",
     onClick: function onClick() {
       setReportOpen(false);
     }
-  }, "Cancel")), /*#__PURE__*/React.createElement("div", {
+  }, say(SAY, 'inspectPlayer.reportCancel'))), /*#__PURE__*/React.createElement("div", {
     className: "bt-pcard-reasons"
-  }, [['spam', 'Spam'], ['abuse', 'Abuse'], ['harassment', 'Harassment'], ['cheating', 'Cheating']].map(function (r) {
+  }, [['spam', say(SAY, 'inspectPlayer.reasonSpam')], ['abuse', say(SAY, 'inspectPlayer.reasonAbuse')], ['harassment', say(SAY, 'inspectPlayer.reasonHarassment')], ['cheating', say(SAY, 'inspectPlayer.reasonCheating')]].map(function (r) {
     return /*#__PURE__*/React.createElement("button", {
       key: r[0],
       className: "bt-pcard-q bt-pcard-reason",

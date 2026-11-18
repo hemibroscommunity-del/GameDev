@@ -6,6 +6,8 @@ import { _slicedToArray } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { act } from '@/game/actions.js';   /* v2.3.5190: the page's requests leave through the action door (card K PR 7) */
+import { SAY } from '@/data/say/incomingTrade.js';   /* v2.3.6345: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say, sayPieces } from '@/game/say.js';
 /* === IncomingTradePanel — the incomingTrade modal === */
 /* v2.3.885: extracted verbatim from the incomingTrade && rpgState JSX
    subtree in BroTown.jsx (the inbound trade-request popup: review the
@@ -90,17 +92,18 @@ export function IncomingTradePanel(props) {
     onError: function onError(e) {
       e.currentTarget.replaceWith(document.createTextNode('📨'));
     }
-  }), /*#__PURE__*/React.createElement("span", null, "Incoming Trade")), /*#__PURE__*/React.createElement("div", {
+  }), /*#__PURE__*/React.createElement("span", null, say(SAY, 'incomingTrade.title'))), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 13, /* v2.3.1235: "wants to trade" line */
       color: '#B6C1BE',
       marginBottom: 6
     }
-  }, /*#__PURE__*/React.createElement("b", {
+  }, sayPieces(SAY, 'incomingTrade.wants', { name: /*#__PURE__*/React.createElement("b", {
+    key: "name",
     style: {
       color: '#F4F0E7'
     }
-  }, incomingTrade.fromName), " wants to trade. They offer:"), /*#__PURE__*/React.createElement("div", {
+  }, incomingTrade.fromName) })), /*#__PURE__*/React.createElement("div", {
     style: {
       /* v2.3.1232: recessed well tray behind the offer chips */
       display: 'flex',
@@ -206,11 +209,11 @@ export function IncomingTradePanel(props) {
         target: incomingTrade.from,
         offer: incomingTrade.offer
       });
-      pushDmgPopup(S, S.player.x, S.player.y - 30, 'Trade accepted!', '#59BF91');
+      pushDmgPopup(S, S.player.x, S.player.y - 30, say(SAY, 'incomingTrade.accepted'), '#59BF91');
       BT_AUDIO.collect();
       setIncomingTrade(null);
     }
-  }, "Open trade"), /*#__PURE__*/React.createElement("button", {
+  }, say(SAY, 'incomingTrade.open')), /*#__PURE__*/React.createElement("button", {
     style: {
       /* v2.3.1235: raised secondary decline, strong hairline */
       flex: 1,
@@ -232,5 +235,5 @@ export function IncomingTradePanel(props) {
       });
       setIncomingTrade(null);
     }
-  }, "Decline"))));
+  }, say(SAY, 'incomingTrade.decline')))));
 }
