@@ -1,5 +1,5 @@
 card: RV
-branch: claude/rv-storemute (PR 6b, stacked on claude/rv-duel)
+branch: claude/rv-lookform (PR 7, stacked on claude/rv-storemute)
 prs: #2072, #2083 (sitting 42); #2091, #2094 (ready); PRs 5, 6, 6b (5804-5806) in their runs
 state: ready
 
@@ -20,7 +20,8 @@ state: ready
   `duel-pace.test`: 6 FAIL on main. `duelquiet` is K2's (eventplace.js).
 - PR 6b (5806): a muted line not shown on open; a muter away to you
   (`storemute`, `mutehides`). `store-mute.test`: 4 FAIL on main.
-- Then PR 7 (5807, `lookform.js`, the board, the page; S2, S3).
+- PR 7 (5807): `lookform.js`, the board, the page (S2; `?lookform=0`).
+  `lookform.test`: 3 FAIL on main. S3 and `track`'s half wait for index.js.
 
 ## Found
 
