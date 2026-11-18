@@ -1,7 +1,7 @@
 card: RD
 branch: claude/plan-rd-2-crowdfight (one PR a branch, claude/plan-rd-*)
-prs: #2191 (6180), #2204 (6182), #2205 (6183): merged; (6181) crowdfight: opening
-state: working
+prs: #2191 (6180), #2204 (6182), #2205 (6183), #2208 (6181): all merged
+state: done
 
 ## Done
 - #2191 (6180) itemdrop 5b: the TEST's (aged past its end; 0.6 fps).
@@ -9,7 +9,7 @@ state: working
   since v2.3.4802, its release looses; docs/specs/bow-feel.md).
 - #2205 (6183) jumpbtn 2b: the TEST's (sideways over the folded band the
   disc is drawn at 0.85, 80 px; docs/specs/one-band.md part 3).
-- (6181) crowdfight: the TEST's (TRAPS §200). On this box the dpr-3
+- #2208 (6181) crowdfight: the TEST's (TRAPS §200). On this box the dpr-3
   page among 30 bots is held by its frames: a one-line read takes 3-13 s,
   each frame gap over 5 s rejoins (its socket made again every 6-30 s), so
   it takes in a step's new bots late or never though the worker sent them
@@ -19,7 +19,8 @@ state: working
   of ea9ba39 green (here and four helper sessions), 5 skips named in all.
 
 ## Next
-- Nothing: 6181 waits for the gatekeeper. Then: done.
+- Nothing: the card is done (#2208 merged at sitting 48; marked done by
+  the gatekeeper, sitting 49). mp-jumpbtn is green on main since #2205.
 
 ## Found
 - wsClient.js _aliveTimer: a page drawing a frame less often than every

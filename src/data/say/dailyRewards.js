@@ -1,0 +1,53 @@
+/* v2.3.6341: the Daily Rewards window's words (src/ui/mobile/DailyRewardsWindow.jsx; docs/specs/player-words.md, wave W1) */
+export const SAY = Object.freeze({
+  /* a daily quest's row */
+  'dailyRewards.questDone': '✓ Done',
+  'dailyRewards.questPay': '{coins} coins · {star} 1',
+  'dailyRewards.swapQuest': 'Swap "{quest}" for another quest',
+  /* the streak */
+  'dailyRewards.streak': '{days}-day streak',
+  'dailyRewards.freezeSaved': 'A freeze saved your streak! ',
+  'dailyRewards.streakHow': 'Play each day to keep it. It raises the free spin\'s prizes.',
+  'dailyRewards.freezesTip': 'Streak freezes',
+  'dailyRewards.freezeHow': 'A freeze is used automatically if you miss a day. You earn one every {every} days of streak.',
+  /* the spin's row */
+  'dailyRewards.spinTitle': 'The free daily spin',
+  'dailyRewards.spinPot': 'Your pot of {pot} coins is waiting',
+  'dailyRewards.spinReady': 'Your free spin is ready',
+  'dailyRewards.spinExtra': { one: '{n} bonus spin to use', other: '{n} bonus spins to use' },
+  'dailyRewards.spinDone': 'Today\'s spin is done',
+  'dailyRewards.spinLocked': 'Opens when you hand in Mayor Bro\'s first quest.',
+  'dailyRewards.spinOpen': 'At the Gambling Den in BroTown: take it, or double or nothing.',
+  'dailyRewards.spinLumpJackpot': 'At the Gambling Den in BroTown. Spin for a lump sum, up to the {jackpot} jackpot.',
+  'dailyRewards.spinLump': 'At the Gambling Den in BroTown. Spin for a lump sum.',
+  'dailyRewards.spinNext': 'Next free spin in {until}.',
+  /* the quests */
+  'dailyRewards.questsResets': 'resets in {until}',
+  'dailyRewards.questsTitle': 'Daily quests',
+  'dailyRewards.questsLocked': 'Hand in Mayor Bro\'s first quest to open the daily quests.',
+  'dailyRewards.allDone': 'All three done! You got +{stars} ★ and a bonus spin.',
+  'dailyRewards.allToDo': 'Finish all three: +{stars} ★ and a bonus spin',
+  'dailyRewards.swapHow': 'Not your thing? Tap ↻ to swap one quest for another (once a day).',
+  'dailyRewards.swapUsed': 'You\'ve used today\'s swap.',
+  'dailyRewards.questStar': 'Each quest also puts a ★ on the season.',
+  /* the season */
+  'dailyRewards.claim': 'Claim',
+  'dailyRewards.season': 'Season {season}',
+  'dailyRewards.seasonEnds': 'ends in {until}',
+  'dailyRewards.nextTier': 'Tier {tier} at {need} ★',
+  'dailyRewards.allTiers': 'Every tier reached! A bonus spin every {every} ★ more.',
+  'dailyRewards.earnQuests': 'Earn ★ from each daily quest, from finishing all three, and from your free spin.',
+  'dailyRewards.earnSpin': 'Earn {stars} ★ a day with your free spin at the Gambling Den.',
+  'dailyRewards.earnKept': 'Missed days never cost ★, and anything you reach but don\'t claim is sent to you when the season ends.',
+  'dailyRewards.claimAll': 'Claim all ({count})',
+  'dailyRewards.claimed': '{got}/{all} claimed',
+  'dailyRewards.rewards': 'Rewards',
+  'dailyRewards.pastTier': '{glyph} Past tier {tier}: a bonus spin every {every} ★.',
+  /* the window */
+  'dailyRewards.title': 'Daily rewards',
+  'dailyRewards.close': 'Close',
+  'dailyRewards.tabToday': 'Today',
+  'dailyRewards.tabSeason': 'Season',
+  'dailyRewards.loading': 'Loading…',
+  'dailyRewards.closed': 'Daily rewards are not open right now.',
+});

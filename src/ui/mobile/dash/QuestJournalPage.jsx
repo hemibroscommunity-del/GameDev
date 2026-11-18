@@ -44,6 +44,8 @@ import { trackedQuestId, setTrackedQuest } from '@/game/trackedQuest.js';
 import { openWorldMap } from '../../WorldMapOverlay.jsx';
 import { useScrollTap } from '../sheet/scrollTap.js';
 import { swallowTapClick } from '../../swallowTapClick.js';
+import { SAY } from '@/data/say/questJournal.js';   /* v2.3.6350: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';
 import { AFTER_PAINT } from '../../afterPaint.js';   /* v2.3.6281: the first read off the commit (card HB2 PR 2) */
 
 /* the giver's face, by the NAME the quest stores (as the old page found it) */
@@ -164,7 +166,7 @@ export function QuestJournalPage({ page, header = true, kicker = '', brief = fal
   const tracked = trackedQuestId() === page.id;
 
   const nowPart = now && (
-    <Section name="now" label="Now">
+    <Section name="now" label={say(SAY, 'questJournal.now')}>
       <div data-journal-now="" style={{ fontSize: 16.5, fontWeight: 700, lineHeight: 1.35, color: COL.text }}>{deskWords(now.text)}</div>
       {now.goal ? (
         <div style={{ fontSize: 15, lineHeight: 1.4, color: COL.text2, marginTop: 3 }}>{deskWords(now.goal)}</div>
@@ -222,7 +224,7 @@ export function QuestJournalPage({ page, header = true, kicker = '', brief = fal
       </div>
       {track && inHand ? (
         <button type="button" data-quest-track={tracked ? 'on' : 'off'} aria-pressed={tracked}
-          aria-label={tracked ? 'Tracked: stop tracking this quest' : 'Track this quest'} title={tracked ? 'Stop tracking' : 'Track this quest'}
+          aria-label={say(SAY, tracked ? 'questJournal.trackStopAria' : 'questJournal.trackThis')} title={say(SAY, tracked ? 'questJournal.trackStop' : 'questJournal.trackThis')}
           {...tap(() => track.onToggle(page.id))} style={{
             /* 44 px tall in a 40 px head: it overhangs it by 2 px each way */
             flex: 'none', width: 48, height: 44, margin: '-2px 0', padding: 0, boxSizing: 'border-box',
@@ -231,14 +233,14 @@ export function QuestJournalPage({ page, header = true, kicker = '', brief = fal
             color: tracked ? COL.accent : COL.text, fontFamily: 'inherit', cursor: 'pointer', touchAction: 'manipulation',
           }}>
           <span aria-hidden="true" style={{ fontSize: 17, lineHeight: 1 }}>{tracked ? '★' : '☆'}</span>
-          <span style={{ fontSize: 13, fontWeight: 800, lineHeight: 1.15 }}>Track</span>
+          <span style={{ fontSize: 13, fontWeight: 800, lineHeight: 1.15 }}>{say(SAY, 'questJournal.trackButton')}</span>
         </button>
       ) : null}
     </div>
   );
   const briefNow = brief && now && (
     <section data-journal="now" data-journal-card="" style={CARD}>
-      <CardLabel>Now</CardLabel>
+      <CardLabel>{say(SAY, 'questJournal.now')}</CardLabel>
       <div data-journal-now="" style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.28, color: COL.text }}>{deskWords(now.text)}</div>
       {now.goal ? <div style={{ fontSize: 14, lineHeight: 1.3, color: COL.text2, marginTop: 2 }}>{deskWords(now.goal)}</div> : null}
     </section>
@@ -271,7 +273,7 @@ export function QuestJournalPage({ page, header = true, kicker = '', brief = fal
   );
   const briefWhere = brief && where && (where.map ? (
     /* the whole card is Show on map */
-    <button type="button" data-journal="where" data-journal-card="" data-journal-map={page.id} aria-label="Show on map" title={'Where: ' + deskWords(where.text) + '. Show on map'}
+    <button type="button" data-journal="where" data-journal-card="" data-journal-map={page.id} aria-label="Show on map" title={say(SAY, 'questJournal.whereTip', { where: deskWords(where.text) })}
       {...tap(() => showQuestOnMap(page))}
       style={{ ...CARD, display: 'flex', alignItems: 'center', gap: 7, width: '100%', height: 44, padding: '0 6px 0 7px', overflow: 'hidden',
         fontFamily: 'inherit', cursor: 'pointer', touchAction: 'manipulation' }}>
@@ -279,20 +281,20 @@ export function QuestJournalPage({ page, header = true, kicker = '', brief = fal
       <span aria-hidden="true" style={{
         flex: 'none', display: 'flex', alignItems: 'center', height: 30, padding: '0 10px', borderRadius: 999,
         background: COL.accentFill, border: `1px solid ${COL.accent}`, color: COL.accent, fontSize: 13, fontWeight: 800,
-      }}>Map</span>
+      }}>{say(SAY, 'questJournal.mapChip')}</span>
     </button>
   ) : (
-    <section data-journal="where" data-journal-card="" aria-label={'Where: ' + deskWords(where.text)} style={{ ...CARD, display: 'flex', alignItems: 'center', gap: 7, minHeight: 40, padding: '2px 7px' }}>
+    <section data-journal="where" data-journal-card="" aria-label={say(SAY, 'questJournal.whereAria', { where: deskWords(where.text) })} style={{ ...CARD, display: 'flex', alignItems: 'center', gap: 7, minHeight: 40, padding: '2px 7px' }}>
       {whereInner}
     </section>
   ));
   /* v2.3.3522: what tracking does, said once it is on */
   const briefNote = brief && track && inHand && tracked && (
-    <div data-quest-track-note="" style={{ fontSize: 13, color: COL.text2, padding: '0 4px 6px' }}>Your map's gold star follows this quest.</div>
+    <div data-quest-track-note="" style={{ fontSize: 13, color: COL.text2, padding: '0 4px 6px' }}>{say(SAY, 'questJournal.trackNote')}</div>
   );
 
   const wherePart = where && (
-    <Section name="where" label="Where">
+    <Section name="where" label={say(SAY, 'questJournal.where')}>
       <div data-journal-where="" style={{ fontSize: 16, lineHeight: 1.35, color: COL.text }}>{deskWords(where.text)}</div>
       {where.map ? (
         <button type="button" data-journal-map={page.id}
@@ -302,13 +304,13 @@ export function QuestJournalPage({ page, header = true, kicker = '', brief = fal
             background: COL.accentFill, border: `1px solid ${COL.accent}`, borderRadius: 10,
             color: COL.text, fontFamily: 'inherit', fontSize: 15.5, fontWeight: 700,
             cursor: 'pointer', touchAction: 'manipulation',
-          }}>Show on map</button>
+          }}>{say(SAY, 'questJournal.showOnMap')}</button>
       ) : null}
     </Section>
   );
 
   const whoPart = who && (
-    <Section name="who" label="Who" card={brief}>
+    <Section name="who" label={say(SAY, 'questJournal.who')} card={brief}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         {face ? (
           <img src={face} alt="" draggable={false}
@@ -343,7 +345,7 @@ export function QuestJournalPage({ page, header = true, kicker = '', brief = fal
   );
 
   const givenPart = given && (
-    <Section name="given" label="Given to you" card={brief}>
+    <Section name="given" label={say(SAY, 'questJournal.given')} card={brief}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 6 }}>
         {given.items.map((it, i) => <ItemRow key={(it.icon || it.label) + i} item={it} />)}
       </div>
@@ -352,15 +354,15 @@ export function QuestJournalPage({ page, header = true, kicker = '', brief = fal
   );
 
   const rewardPart = reward && (
-    <Section name="reward" label={page.status === 'done' ? 'You got' : 'Reward'} card={brief}>
+    <Section name="reward" label={say(SAY, page.status === 'done' ? 'questJournal.rewardGot' : 'questJournal.reward')} card={brief}>
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px 16px' }}>
         {reward.gold > 0 ? (
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 16, fontWeight: 800, color: COL.gold, fontVariantNumeric: 'tabular-nums' }}>
             <img src={coinArtFor(reward.gold)} alt="" style={{ width: 20, height: 20, objectFit: 'contain' }} />
-            {reward.gold} gold
+            {say(SAY, 'questJournal.gold', { gold: reward.gold })}
           </span>
         ) : null}
-        {reward.xp > 0 ? <span style={{ fontSize: 16, fontWeight: 800, color: '#9DB8FA' }}>+{reward.xp} XP</span> : null}
+        {reward.xp > 0 ? <span style={{ fontSize: 16, fontWeight: 800, color: '#9DB8FA' }}>{say(SAY, 'questJournal.xp', { xp: reward.xp })}</span> : null}
         {reward.apText ? <span data-journal-ap-reward={reward.ap} style={{ fontSize: 16, fontWeight: 800, color: COL.text }}>★ {reward.apText}</span> : null}
         {reward.itemText ? <span style={{ fontSize: 16, fontWeight: 700, color: COL.text }}>{reward.itemText}</span> : null}
       </div>
@@ -374,7 +376,7 @@ export function QuestJournalPage({ page, header = true, kicker = '', brief = fal
   );
 
   const nextPart = next && (
-    <Section name="next" label="Next" card={brief}>
+    <Section name="next" label={say(SAY, 'questJournal.next')} card={brief}>
       <div data-journal-next="" style={{ fontSize: 16, fontWeight: 600, lineHeight: 1.4, color: COL.text }}>{deskWords(next.text)}</div>
       {next.more ? <div style={{ fontSize: 14.5, color: COL.text2, marginTop: 3 }}>{moreLine(next.more)}</div> : null}
     </Section>
@@ -397,7 +399,7 @@ export function QuestJournalPage({ page, header = true, kicker = '', brief = fal
           <div style={{ fontSize: 19, fontWeight: 800, color: COL.text, lineHeight: 1.25 }}>{page.title}</div>
           <div style={{ fontSize: 14, fontWeight: 800, color: tone, marginTop: 3, letterSpacing: '.04em', textTransform: 'uppercase' }}>
             {/* v2.3.3944: "Your quest · In progress" -- one line, not two, on a short upright sheet */}
-            {kicker ? kicker + ' · ' : ''}{page.statusLabel}{tracked && (page.status === 'active' || page.status === 'ready') ? ' · ★ Tracked' : ''}
+            {kicker ? kicker + ' · ' : ''}{page.statusLabel}{tracked && (page.status === 'active' || page.status === 'ready') ? say(SAY, 'questJournal.tracked') : ''}
           </div>
         </div>
       ) : null}

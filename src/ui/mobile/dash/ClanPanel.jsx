@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { COL, panelStyle, getState, openGameWindow } from './common.js';
 import { clanPartyOn, allyTagShown } from '@/game/alliance.js';
 import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
+import { SAY } from '@/data/say/clan.js';   /* v2.3.6329: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';
 
 /* v2.3.1232: Lantern Slate pass (docs/LANTERN-SLATE-SPEC.md) — spec
    empty state, identity strip with the clan icon, module header +
@@ -46,7 +48,7 @@ function PartyNowPage({ S }) {
               [{tag}] {a.name || ''}
             </div>
             <div style={{ fontSize: 12, color: COL.muted, fontVariantNumeric: 'tabular-nums' }}>
-              {a.on ? 'Alliance' : 'Your clan, now a party'} · {n} member{n === 1 ? '' : 's'} · {a.active | 0} active
+              {say(SAY, 'clan.partyLine', { kind: say(SAY, a.on ? 'clan.alliance' : 'clan.formerClan'), n, active: a.active | 0 })}
             </div>
           </div>
         </div>
@@ -55,19 +57,21 @@ function PartyNowPage({ S }) {
           <img src="/icons/ui/panel-clan.webp" alt="" draggable={false}
             style={{ width: 44, height: 44, objectFit: 'contain', opacity: 0.4, margin: '0 auto' }}
             onError={(e) => { e.currentTarget.replaceWith(document.createTextNode('🛡')); }} />
-          <div style={{ fontSize: 13, color: COL.text, marginTop: 6, fontWeight: 700 }}>No party yet</div>
+          <div style={{ fontSize: 13, color: COL.text, marginTop: 6, fontWeight: 700 }}>{say(SAY, 'clan.noParty')}</div>
         </div>
       )}
       <div style={{ fontSize: 12, color: COL.muted, lineHeight: 1.45, padding: '6px 12px 0' }}>
-        {p ? 'Your party stays together when you log out. ' : deskWords('Make a party: pick a player and tap Invite to Party on their card. ')}
-        A party of {(a && a.at) || 20} members who played in the last 7 days and are level 5 or more becomes an alliance, with a name and a tag on every member. Your alliance and the alliance board are in the Saloon in BroTown.
+        {/* v2.3.6329: the no-party hint stays a deskWords('...') call in place:
+            server/test/desk-words.test §5 reads this file for it */}
+        {p ? say(SAY, 'clan.partyStays') : deskWords('Make a party: pick a player and tap Invite to Party on their card. ')}
+        {say(SAY, 'clan.allianceHow', { at: (a && a.at) || 20 })}
       </div>
       {/* v2.3.3481: the 2026-10-19 UI review -- "Find a party" -> "Invite a
           player": it opens the player list, where you invite someone; the
           worker refuses an invite to anyone already in a party, so it can
           never find you one (the Saloon's row says the same, WheelHallPanel.jsx) */}
       <button type="button" data-dash-find-party="" style={btnBrass} onClick={() => openGameWindow('playersOpen')}>
-        Invite a player
+        {say(SAY, 'clan.invitePlayer')}
       </button>
     </div>
   );
@@ -92,15 +96,14 @@ export const ClanPanel = () => {
             style={{ width: 44, height: 44, objectFit: 'contain', opacity: 0.4, margin: '0 auto' /* v2.3.1233: img{display:block} in game.css defeats textAlign centering */ }}
             onError={(e) => { e.currentTarget.replaceWith(document.createTextNode('🛡')); }} />
           <div style={{ fontSize: 13, color: COL.muted, marginTop: 6 }}>
-            You aren't in a clan.
+            {say(SAY, 'clan.notInClan')}
           </div>
           <div style={{ fontSize: 12, color: COL.muted, marginTop: 4, lineHeight: 1.4, padding: '0 12px' }}>
-            Make one, or join one when a clan leader invites you. Clans meet at
-            the Guild Hall in BroTown.
+            {say(SAY, 'clan.notInClanHow')}
           </div>
         </div>
         <button type="button" data-dash-open-clan="" style={btnBrass} onClick={() => openGameWindow('clanOpen')}>
-          Make a clan
+          {say(SAY, 'clan.makeClan')}
         </button>
       </div>
     );
@@ -120,11 +123,11 @@ export const ClanPanel = () => {
             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
           }}>[{clan.tag}] {clan.name}</div>
           <div style={{ fontSize: 12, color: COL.muted, fontVariantNumeric: 'tabular-nums' }}>
-            {members.length} member{members.length === 1 ? '' : 's'}
+            {say(SAY, 'clan.memberCountShort', { n: members.length })}
           </div>
         </div>
       </div>
-      <div style={secHdr}>Members</div>
+      <div style={secHdr}>{say(SAY, 'clan.membersHeader')}</div>
       {members.slice(0, 10).map((m, i) => (
         <div key={m.id || i} style={{
           display: 'flex',
@@ -139,12 +142,12 @@ export const ClanPanel = () => {
             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
           }}>{m.name || m.id}</span>
           <span style={{ fontSize: 14, fontWeight: 700, color: COL.text2, fontVariantNumeric: 'tabular-nums' }}>
-            Lv {m.level ?? '–'}
+            {say(SAY, 'clan.memberLevel', { level: m.level ?? '–' })}
           </span>
         </div>
       ))}
       <button type="button" data-dash-open-clan="" style={btnRaised} onClick={() => openGameWindow('clanOpen')}>
-        Open the clan window
+        {say(SAY, 'clan.openWindow')}
       </button>
     </div>
   );

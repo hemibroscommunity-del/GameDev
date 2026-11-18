@@ -2,6 +2,8 @@
 import { inspectCardBus } from './inspectCardBus.js';
 import { ItemArt } from './ItemArt.jsx';
 import { toDisplayHp } from '@/data/gameSystems.js'; /* v2.3.2572: the display HP scale (§5.8 D1) */
+import { SAY } from '@/data/say/inspectCard.js';   /* v2.3.6343: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';
 
 /* v2.3.1233: Lantern Slate flip (docs/LANTERN-SLATE-SPEC.md) — the card
    was still on the pre-Lantern light-parchment palette.  Keys kept so
@@ -46,8 +48,8 @@ const FONT = {
 
 const STAT_KEYS = ['power', 'vitality', 'endurance', 'agility', 'mind'];
 const STAT_LABEL = {
-  power: 'Power', vitality: 'Vitality', endurance: 'Endurance',
-  agility: 'Agility', mind: 'Mind',
+  power: say(SAY, 'inspectCard.statPower'), vitality: say(SAY, 'inspectCard.statVitality'), endurance: say(SAY, 'inspectCard.statEndurance'),
+  agility: say(SAY, 'inspectCard.statAgility'), mind: say(SAY, 'inspectCard.statMind'),
 };
 
 const useBusVersion = () => {
@@ -101,10 +103,10 @@ const IdentityBand = ({ s }) => {
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontFamily: FONT.serif, fontSize: 16, fontWeight: 700, color: C.text, lineHeight: 1.1 }}>
-            {s.name || '(unnamed)'}
+            {s.name || say(SAY, 'inspectCard.unnamed')}
           </div>
           <div style={{ fontFamily: FONT.sans, fontSize: 11, color: C.muted, marginTop: 3 }}>
-            Lv {s.level || 1} · {s.archetype || 'Wanderer'} · {s.pole || 'unaligned'}
+            {say(SAY, 'inspectCard.identity', { level: s.level || 1, archetype: s.archetype || say(SAY, 'inspectCard.wanderer'), pole: s.pole || say(SAY, 'inspectCard.unaligned') })}
           </div>
           {s.clanTag && (
             <div style={{ fontFamily: FONT.sans, fontSize: 11, color: C.muted2, marginTop: 2 }}>
@@ -198,10 +200,10 @@ const tier2Label = (s, k) => {
      four to five times larger than the one they were reading about themselves.
      The neighbouring stamina and mana tiles stay raw on purpose: §5.8 states
      they are NOT on this scale. */
-  if (k === 'vitality' && t2.maxHp)       return `${toDisplayHp(t2.maxHp)} HP`;
-  if (k === 'endurance' && t2.maxStamina) return `${t2.maxStamina} stam`;
-  if (k === 'agility' && t2.dodge != null) return `${Math.round(t2.dodge * 100)}% eva`;
-  if (k === 'mind' && t2.maxMana)         return `${t2.maxMana} MP`;
+  if (k === 'vitality' && t2.maxHp)       return say(SAY, 'inspectCard.tierHp', { hp: toDisplayHp(t2.maxHp) });
+  if (k === 'endurance' && t2.maxStamina) return say(SAY, 'inspectCard.tierStam', { stam: t2.maxStamina });
+  if (k === 'agility' && t2.dodge != null) return say(SAY, 'inspectCard.tierEva', { pct: Math.round(t2.dodge * 100) });
+  if (k === 'mind' && t2.maxMana)         return say(SAY, 'inspectCard.tierMp', { mp: t2.maxMana });
   return null;
 };
 
@@ -211,11 +213,11 @@ const CombatSection = ({ s }) => {
   const vows = s.vows || [];
   return (
     <div style={{ borderBottom: `1px solid ${C.divider}` }}>
-      <SectionHeader id="combat" label="Combat" />
+      <SectionHeader id="combat" label={say(SAY, 'inspectCard.combat')} />
       <div style={{ padding: '0 14px 12px' }}>
         <div style={{ fontSize: 11, color: C.muted2, letterSpacing: '0.12em',
           fontFamily: FONT.sans, textTransform: 'uppercase', marginBottom: 6 }}>
-          {s.archetype || 'BALANCED'}
+          {s.archetype || say(SAY, 'inspectCard.balanced')}
         </div>
         <div style={{ display: 'flex', gap: 4, justifyContent: 'space-between' }}>
           {STAT_KEYS.map(k => (
@@ -227,10 +229,10 @@ const CombatSection = ({ s }) => {
         {expanded && (
           <div style={{ marginTop: 10, paddingTop: 8, borderTop: `1px dashed ${C.divider}` }}>
             <div style={{ fontSize: 11, color: C.muted2, letterSpacing: '0.12em',
-              fontFamily: FONT.sans, textTransform: 'uppercase', marginBottom: 6 }}>VOWS</div>
+              fontFamily: FONT.sans, textTransform: 'uppercase', marginBottom: 6 }}>{say(SAY, 'inspectCard.vows')}</div>
             {vows.length === 0 ? (
               <div style={{ fontFamily: FONT.sans, fontSize: 11, color: C.muted, fontStyle: 'italic' }}>
-                (no vows yet)
+                {say(SAY, 'inspectCard.noVows')}
               </div>
             ) : vows.map((v, i) => (
               <div key={i} style={{ display: 'flex', justifyContent: 'space-between',
@@ -241,7 +243,7 @@ const CombatSection = ({ s }) => {
                   {STAT_LABEL[v.stat] || v.stat}
                 </span>
                 <span style={{ fontFamily: FONT.mono, fontSize: 11, color: C.muted }}>
-                  vowed {v.days} days{v.partner ? ` · with ${v.partner}` : ''}
+                  {v.partner ? say(SAY, 'inspectCard.vowedWith', { days: v.days, partner: v.partner }) : say(SAY, 'inspectCard.vowed', { days: v.days })}
                 </span>
               </div>
             ))}
@@ -272,14 +274,14 @@ const EquipTile = ({ item, label, size = 80 }) => (
 
 const CarryingSection = ({ s }) => (
   <div style={{ borderBottom: `1px solid ${C.divider}` }}>
-    <SectionHeader id="carrying" label="Carrying" />
+    <SectionHeader id="carrying" label={say(SAY, 'inspectCard.carrying')} />
     <div style={{
       padding: '0 14px 14px',
       display: 'flex', gap: 10, alignItems: 'flex-end', justifyContent: 'flex-start',
     }}>
-      <EquipTile item={s.weapon} label="Weapon" size={80} />
-      <EquipTile item={s.armor}  label="Armor"  size={80} />
-      <EquipTile item={s.pet}    label="Pet"    size={60} />
+      <EquipTile item={s.weapon} label={say(SAY, 'inspectCard.weapon')} size={80} />
+      <EquipTile item={s.armor}  label={say(SAY, 'inspectCard.armor')}  size={80} />
+      <EquipTile item={s.pet}    label={say(SAY, 'inspectCard.pet')}    size={60} />
     </div>
   </div>
 );
@@ -290,10 +292,10 @@ const SKILL_KEYS = [
   'alchemy', 'woodworking', 'tailoring', 'taming', 'scribing',
 ];
 const SKILL_LABEL = {
-  cooking: 'Cooking', fishing: 'Fishing', farming: 'Farming',
-  blacksmithing: 'Blacksmithing', gemCutting: 'Gem Cutting',
-  alchemy: 'Alchemy', woodworking: 'Woodworking', tailoring: 'Tailoring',
-  taming: 'Taming', scribing: 'Scribing',
+  cooking: say(SAY, 'inspectCard.skillCooking'), fishing: say(SAY, 'inspectCard.skillFishing'), farming: say(SAY, 'inspectCard.skillFarming'),
+  blacksmithing: say(SAY, 'inspectCard.skillBlacksmithing'), gemCutting: say(SAY, 'inspectCard.skillGemCutting'),
+  alchemy: say(SAY, 'inspectCard.skillAlchemy'), woodworking: say(SAY, 'inspectCard.skillWoodworking'), tailoring: say(SAY, 'inspectCard.skillTailoring'),
+  taming: say(SAY, 'inspectCard.skillTaming'), scribing: say(SAY, 'inspectCard.skillScribing'),
 };
 
 const SkillTile = ({ skill, rank }) => (
@@ -318,7 +320,7 @@ const SkillsSection = ({ s }) => {
   const skills = s.skills || {};
   return (
     <div style={{ borderBottom: `1px solid ${C.divider}` }}>
-      <SectionHeader id="skills" label="Skills" />
+      <SectionHeader id="skills" label={say(SAY, 'inspectCard.skills')} />
       <div style={{ padding: '0 14px 14px' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 4 }}>
           {SKILL_KEYS.map(k => (
@@ -334,7 +336,7 @@ const SkillsSection = ({ s }) => {
               }}>
                 <span>{SKILL_LABEL[k]}</span>
                 <span style={{ fontFamily: FONT.mono, color: C.muted }}>
-                  {skills[k] || 0}{(skills[k] || 0) >= 80 ? ' · Guild' : ''}
+                  {skills[k] || 0}{(skills[k] || 0) >= 80 ? say(SAY, 'inspectCard.guild') : ''}
                 </span>
               </div>
             ))}
@@ -351,11 +353,11 @@ const HistorySection = ({ s }) => {
   const h = s.history || {};
   return (
     <div style={{ borderBottom: `1px solid ${C.divider}` }}>
-      <SectionHeader id="history" label="History" />
+      <SectionHeader id="history" label={say(SAY, 'inspectCard.history')} />
       <div style={{ padding: '0 14px 14px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
           <span style={{ fontFamily: FONT.serif, fontSize: 14, color: C.text }}>
-            {h.displayedTitle || <span style={{ fontStyle: 'italic', color: C.muted }}>(no titles yet)</span>}
+            {h.displayedTitle || <span style={{ fontStyle: 'italic', color: C.muted }}>{say(SAY, 'inspectCard.noTitles')}</span>}
           </span>
           {h.ascendant && (
             /* v2.3.1233: brass — premium marker, spec-sanctioned use. */
@@ -373,14 +375,14 @@ const HistorySection = ({ s }) => {
           </div>
         )}
         <div style={{ fontFamily: FONT.mono, fontSize: 11, color: C.muted2, marginTop: 4 }}>
-          {h.zonesCleared || 0} zones · {h.apexKills || 0} apex kills
+          {say(SAY, 'inspectCard.zonesApex', { zones: h.zonesCleared || 0, apex: h.apexKills || 0 })}
         </div>
         {expanded && (
           <div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px dashed ${C.divider}` }}>
             <div style={{ fontFamily: FONT.sans, fontSize: 11, color: C.text, marginBottom: 6 }}>
-              <strong style={{ fontWeight: 600 }}>All titles:</strong>{' '}
+              <strong style={{ fontWeight: 600 }}>{say(SAY, 'inspectCard.allTitles')}</strong>{' '}
               {(h.titles && h.titles.length) ? h.titles.join(', ')
-                : <span style={{ fontStyle: 'italic', color: C.muted }}>(none)</span>}
+                : <span style={{ fontStyle: 'italic', color: C.muted }}>{say(SAY, 'inspectCard.none')}</span>}
             </div>
           </div>
         )}
@@ -395,11 +397,11 @@ const JourneySection = ({ s }) => {
   const j = s.journey || {};
   return (
     <div>
-      <SectionHeader id="journey" label="Journey" />
+      <SectionHeader id="journey" label={say(SAY, 'inspectCard.journey')} />
       <div style={{ padding: '0 14px 14px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ fontFamily: FONT.mono, fontSize: 11, color: C.muted }}>
-            {j.count || 0} entries
+            {say(SAY, 'inspectCard.entries', { count: j.count || 0 })}
           </span>
           <span style={{ fontFamily: FONT.sans, fontSize: 11, color: C.muted2 }}>›</span>
         </div>
@@ -414,7 +416,7 @@ const JourneySection = ({ s }) => {
             {(j.entries || []).slice(0, 20).map((e, i) => (
               <div key={i} style={{ marginBottom: 8 }}>
                 <span style={{ fontFamily: FONT.mono, fontSize: 11, color: C.muted2, marginRight: 6 }}>{/* v2.3.1239: 10px font floor (was 9) */}
-                  Day {e.day || i + 1}
+                  {say(SAY, 'inspectCard.day', { day: e.day || i + 1 })}
                 </span>
                 <span style={{ fontFamily: FONT.serif, fontStyle: 'italic', fontSize: 11, color: C.text }}>
                   {e.text}
@@ -473,7 +475,7 @@ export const InspectCard = () => {
             padding: '10px 14px', textAlign: 'center',
             fontFamily: FONT.sans, fontSize: 11, color: C.muted2,
             cursor: 'pointer', borderTop: `1px solid ${C.divider}`,
-          }}>close</div>
+          }}>{say(SAY, 'inspectCard.close')}</div>
           {!hintShown && (
             <div onClick={(e) => { e.stopPropagation(); inspectCardBus.markHintSeen(); }}
               style={{
@@ -482,7 +484,8 @@ export const InspectCard = () => {
                 textAlign: 'center', borderRadius: 4, margin: '8px 14px 14px',
                 fontStyle: 'italic', cursor: 'pointer',
               }}>
-              long-press any name or number to learn more · tap to dismiss
+              {/* v2.3.6343: its "tap" reads "click" on a computer (say() runs deskWords on a plain row) */}
+              {say(SAY, 'inspectCard.hint')}
             </div>
           )}
         </div>

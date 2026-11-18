@@ -1,6 +1,7 @@
 import { coinArtFor } from '@/game/coinArt.js';   /* v2.3.3734: the owner's coin piles */
 import React, { useEffect, useRef, useState } from 'react';
-import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
+import { SAY } from '@/data/say/shopkeeper.js';   /* v2.3.6348: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';   /* v2.3.6348: a plain row goes through deskWords (v2.3.3615: "tap" reads "click" on a computer) */
 import { shopBus } from '../mobile/shopBus.js';
 import { useModalGuard } from '../mobile/modalGuardBus.js'; /* v2.3.2276 */
 import { thumbFor, iconFor, ITEM_NAMES } from '../mobile/dash/InventoryPanel.jsx';
@@ -77,7 +78,7 @@ function prettyKey(k) {
   if (ITEM_NAMES[k]) return ITEM_NAMES[k];
   return String(k || '')
     .replace(/[_-]+/g, ' ')
-    .replace(/\bremnants\b/i, 'remains')
+    .replace(/\bremnants\b/i, say(SAY, 'shopkeeper.remains'))
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
@@ -130,7 +131,7 @@ function ShelfSlot({ itemKey, count, price, selected, onTap, size }) {
       <div style={{
         height: 15, textAlign: 'center', fontSize: 11, fontWeight: 700,
         lineHeight: '15px', color: '#EAC675', fontVariantNumeric: 'tabular-nums',
-      }}>{price > 0 ? price + 'g' : ''}</div>
+      }}>{price > 0 ? say(SAY, 'shopkeeper.price', { price }) : ''}</div>
     </div>
   );
 }
@@ -372,11 +373,11 @@ export function ShopkeeperPanel() {
           style={{ width: 32, height: 32, margin: '-3px 0', objectFit: 'cover', imageRendering: 'pixelated',
             borderRadius: 6, flex: 'none' }} />
         <div style={{ minWidth: 0, flex: 1 }}>
-          <div style={{ fontSize: 13, fontWeight: 800, lineHeight: 1.15 }}>Diego</div>
+          <div style={{ fontSize: 13, fontWeight: 800, lineHeight: 1.15 }}>{say(SAY, 'shopkeeper.name')}</div>
           <div style={{
             fontSize: 11, color: 'var(--ui-text-muted, #8FA3A0)',
             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-          }}>“The more I have, the less I pay.”</div>
+          }}>{say(SAY, 'shopkeeper.motto')}</div>
         </div>
         {/* v2.3.2060 (owner: "show gold coin symbol next to his gold count").
             The game's own coin, the same file the band's gold row and the
@@ -406,7 +407,7 @@ export function ShopkeeperPanel() {
             40 px dark disc, a light ring, a bold cross, red when pressed),
             its negative margin keeping the strip its height -- the drawer is
             a fixed 226 px and the shelf keeps every pixel it had. */}
-        <button type="button" onClick={() => shopBus.setOpen(false)} aria-label="Close"
+        <button type="button" onClick={() => shopBus.setOpen(false)} aria-label={say(SAY, 'shopkeeper.close')}
           data-shop-close=""
           className="bt-xclose"
           data-esc="" data-key="Esc" data-key-at="hang"   /* v2.3.3407: Esc presses it (game/deskKeys.js) */
@@ -425,12 +426,12 @@ export function ShopkeeperPanel() {
           fontSize: 11, fontWeight: 700, letterSpacing: '.12em',
           textTransform: 'uppercase', color: 'var(--ui-text-muted, #8FA3A0)',
           marginBottom: 4, flex: 'none',
-        }}>His shelf</div>
+        }}>{say(SAY, 'shopkeeper.shelf')}</div>
         {shelf.length === 0 ? (
           <div data-shop-empty="" style={{
             flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: 12, color: 'var(--ui-text-secondary, #B6C1BE)', textAlign: 'center',
-          }}>His shelf is bare. Sell him something.</div>
+          }}>{say(SAY, 'shopkeeper.shelfBare')}</div>
         ) : (
           <div data-shop-shelf="" style={{
             display: 'flex', gap: 6, overflowX: 'auto', overflowY: 'hidden',
@@ -468,8 +469,8 @@ export function ShopkeeperPanel() {
             flex: 1, textAlign: 'center', fontSize: 12,
             color: 'var(--ui-text-secondary, #B6C1BE)',
           }}>{sideways
-            ? deskWords('Tap his shelf to buy · tap your bag to sell')   /* v2.3.3407: it is beside, not below */
-            : deskWords('Tap his shelf to buy · tap your bag below to sell')}</div>
+            ? say(SAY, 'shopkeeper.hintBeside')   /* v2.3.3407: it is beside, not below */
+            : say(SAY, 'shopkeeper.hintBelow')}</div>
         ) : (
           <>
             {thumbFor(selKey)
@@ -497,15 +498,15 @@ export function ShopkeeperPanel() {
                     tonics are brewed at the Cookhouse), and neither replaces a
                     running effect -- the line said they did. */}
                 {selStaple
-                  ? <span data-shop-staple="">Always in stock</span>
+                  ? <span data-shop-staple="">{say(SAY, 'shopkeeper.staple')}</span>
                   : selTool
-                  ? <span data-shop-tool={toolWhy || 'ok'}>{toolWhy === 'have' ? 'You have one'
-                      : toolWhy === 'quest' ? "Mayor Bro's quest gives the first"
-                      : 'A replacement, if yours was lost'}</span>
+                  ? <span data-shop-tool={toolWhy || 'ok'}>{toolWhy === 'have' ? say(SAY, 'shopkeeper.toolHave')
+                      : toolWhy === 'quest' ? say(SAY, 'shopkeeper.toolQuest')
+                      : say(SAY, 'shopkeeper.toolSpare')}</span>
                   : <>
-                      <span data-shop-brohas={broHas(selKey)}>Bro has {broHas(selKey)}</span>
+                      <span data-shop-brohas={broHas(selKey)}>{say(SAY, 'shopkeeper.broHas', { count: broHas(selKey) })}</span>
                       {' · '}
-                      <span data-shop-youhave={youHave(selKey)}>you have {youHave(selKey)}</span>
+                      <span data-shop-youhave={youHave(selKey)}>{say(SAY, 'shopkeeper.youHave', { count: youHave(selKey) })}</span>
                     </>}
               </div>
             </div>
@@ -516,13 +517,13 @@ export function ShopkeeperPanel() {
                 disabled, and the row gets its width back for the name. */}
             {(selStaple || selTool) ? null : (
               <>
-                <button type="button" style={stepBtn} aria-label="One fewer"
+                <button type="button" style={stepBtn} aria-label={say(SAY, 'shopkeeper.fewer')}
                   data-shop-minus="" onClick={() => setQty((n) => Math.max(1, n - 1))}>−</button>
                 <div data-shop-qty={clamped} style={{
                   minWidth: 20, textAlign: 'center', fontSize: 15, fontWeight: 700,
                   fontVariantNumeric: 'tabular-nums', flex: 'none',
                 }}>{clamped}</div>
-                <button type="button" style={stepBtn} aria-label="One more"
+                <button type="button" style={stepBtn} aria-label={say(SAY, 'shopkeeper.more')}
                   data-shop-plus=""
                   onClick={() => setQty((n) => Math.min(Math.max(1, selMax), n + 1))}>+</button>
               </>
@@ -544,13 +545,13 @@ export function ShopkeeperPanel() {
             >
               {/* The total is his answer for THIS stack, so it already accounts
                   for the decay across the units -- it is not qty x unit. */}
-              {tooPoor ? 'Not enough gold'
-                : wontBuy ? 'He won\'t buy'
-                : toolWhy === 'have' ? 'You have one'
-                : toolWhy === 'quest' ? 'Not yet'
-                : toolWhy ? 'Not for sale'
-                : (selSide === 'bro' ? 'BUY ' : 'SELL ')
-                  + (liveQuote ? liveQuote.total + 'g' : '…')}
+              {tooPoor ? say(SAY, 'shopkeeper.tooPoor')
+                : wontBuy ? say(SAY, 'shopkeeper.wontBuy')
+                : toolWhy === 'have' ? say(SAY, 'shopkeeper.toolHave')
+                : toolWhy === 'quest' ? say(SAY, 'shopkeeper.notYet')
+                : toolWhy ? say(SAY, 'shopkeeper.notForSale')
+                : say(SAY, selSide === 'bro' ? 'shopkeeper.buy' : 'shopkeeper.sell',
+                  { price: liveQuote ? say(SAY, 'shopkeeper.price', { price: liveQuote.total }) : '…' })}
             </button>
           </>
         )}

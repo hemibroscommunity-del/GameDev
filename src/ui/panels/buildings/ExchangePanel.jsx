@@ -8,6 +8,8 @@ import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { claimPlace, releasePlace } from '@/game/storeSellTap.js';   /* v2.3.4369: one Place tap at a time */
 import { cue } from '@/game/eventSounds.js';   /* v2.3.3434: the market's moments heard, as the auction house's are */
 import { act } from '@/game/actions.js';   /* v2.3.5191: the page's requests leave through the action door (card K PR 7) */
+import { SAY } from '@/data/say/exchange.js';   /* v2.3.6356: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';
 /* === ExchangePanel — buildingPanel === 'exchange' sub-panel === */
 /* v2.3.876: extracted verbatim from the buildingPanel === 'exchange'
    clause in BroTown.jsx (the player marketplace: buy/sell orders,
@@ -76,7 +78,7 @@ export function ExchangePanel(props) {
   var _mktTierBS = BLACKSMITH_TIERS[mktTier];
   var _mktTierWW = WOODWORKING_TIERS[mktTier === null || mktTier === void 0 ? void 0 : mktTier.replace('ww_', '')];
   var mktTierSummary = (_mktTierBS === null || _mktTierBS === void 0 ? void 0 : _mktTierBS.label) || (_mktTierWW === null || _mktTierWW === void 0 ? void 0 : _mktTierWW.label) || mktTier;
-  var mktElemSummary = mktElement1 === null ? 'Any element' : mktElement1 + (mktElement2 ? ' + ' + mktElement2 : '');
+  var mktElemSummary = mktElement1 === null ? say(SAY, 'exchange.anyElement') : mktElement1 + (mktElement2 ? say(SAY, 'exchange.elementAnd', { element: mktElement2 }) : '');
   /* v2.3.1232: Lantern Slate restyle (docs/LANTERN-SLATE-SPEC.md) \u2014
      panel surface + icon header, segmented buy/sell/orders tabs on a
      #121B20 track with the brass bottom edge, 32px/999 filter chips
@@ -142,7 +144,7 @@ export function ExchangePanel(props) {
       letterSpacing: '.10em',
       color: '#F4F0E7'
     }
-  }, "Marketplace")),
+  }, say(SAY, 'exchange.title'))),
   /* ═══ v2.3.2476: THE OTHER SHELF ═══
      This screen matches KINDS of weapon in a bucket; the auction house sells
      THIS one at the seller's own price, with bids. Two different things, both
@@ -166,10 +168,10 @@ export function ExchangePanel(props) {
       fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em',
       WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation'
     }
-  }, /*#__PURE__*/React.createElement("span", null, "Auction House"),
+  }, /*#__PURE__*/React.createElement("span", null, say(SAY, 'exchange.auctionHouse')),
      /*#__PURE__*/React.createElement("span", {
        style: { fontSize: 11, fontWeight: 600, textTransform: 'none', letterSpacing: 0, color: '#B6C1BE' }
-     }, "Buy now or bid ›")) : null,
+     }, say(SAY, 'exchange.auctionHint'))) : null,
   /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
@@ -206,7 +208,7 @@ export function ExchangePanel(props) {
      say this is an order book: orders rest per KIND of gear (tier, type,
      elements), buy and sell alike last 24h (market.js ORDER_EXPIRY), and an
      expired or cancelled one is refunded through the mail (_creditPlayer). */
-  "Trade by gear type \xB7 Orders last 24h \xB7 Refunds by mail")), /*#__PURE__*/React.createElement("div", {
+  say(SAY, 'exchange.walletHint'))), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 2,
@@ -217,7 +219,7 @@ export function ExchangePanel(props) {
       background: '#111E23',
       boxShadow: 'inset 0 2px 5px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,255,255,0.025)'
     }
-  },[['buy', 'Buy'], ['sell', 'Sell'], ['orders', 'My Orders']].map(function (_ref119) {
+  },[['buy', say(SAY, 'exchange.tabBuy')], ['sell', say(SAY, 'exchange.tabSell')], ['orders', say(SAY, 'exchange.tabOrders')]].map(function (_ref119) {
     var _ref120 = _slicedToArray(_ref119, 2),
       id = _ref120[0],
       label = _ref120[1];
@@ -252,7 +254,7 @@ export function ExchangePanel(props) {
       color: '#8D9B98',
       marginBottom: 4
     }
-  }, "Category"), /*#__PURE__*/React.createElement("div", {
+  }, say(SAY, 'exchange.category')), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 4,
@@ -295,7 +297,7 @@ export function ExchangePanel(props) {
       color: '#8D9B98',
       marginBottom: 4
     }
-  }, "Type"), /*#__PURE__*/React.createElement("div", {
+  }, say(SAY, 'exchange.type')), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 4,
@@ -359,7 +361,7 @@ export function ExchangePanel(props) {
       letterSpacing: '.12em',
       color: '#B6C1BE'
     }
-  }, "Filters:"), /*#__PURE__*/React.createElement("span", {
+  }, say(SAY, 'exchange.filters')), /*#__PURE__*/React.createElement("span", {
     style: {
       flex: 1,
       minWidth: 0,
@@ -395,7 +397,7 @@ export function ExchangePanel(props) {
       color: '#8D9B98',
       marginBottom: 4
     }
-  }, "Material Tier"), /*#__PURE__*/React.createElement("div", {
+  }, say(SAY, 'exchange.materialTier')), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       flexWrap: 'wrap',
@@ -434,7 +436,7 @@ export function ExchangePanel(props) {
       color: '#8D9B98',
       marginBottom: 4
     }
-  }, "Element (optional)"), /*#__PURE__*/React.createElement("div", {
+  }, say(SAY, 'exchange.elementOptional')), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       flexWrap: 'wrap',
@@ -459,7 +461,7 @@ export function ExchangePanel(props) {
       cursor: 'pointer',
       fontFamily: 'inherit'
     }
-  }, "Any"), Object.entries(ELEMENTS).filter(function (_ref123) {
+  }, say(SAY, 'exchange.any')), Object.entries(ELEMENTS).filter(function (_ref123) {
     var _ref124 = _slicedToArray(_ref123, 2),
       k = _ref124[0],
       e = _ref124[1];
@@ -504,7 +506,7 @@ export function ExchangePanel(props) {
       cursor: 'pointer',
       fontFamily: 'inherit'
     }
-  }, "Done")), /*#__PURE__*/React.createElement("div", {
+  }, say(SAY, 'exchange.done'))), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       alignItems: 'center',
@@ -527,7 +529,7 @@ export function ExchangePanel(props) {
      rests pays it when a seller comes -- so the label says so; "Est." is the
      game's own formula of the kind's value (estimateMktPrice), not market
      history, so it says "value". */
-  mktMode === 'buy' ? "Max you'll pay" : 'Ask Price'), /*#__PURE__*/React.createElement("input", {
+  say(SAY, mktMode === 'buy' ? 'exchange.maxPay' : 'exchange.askPrice')), /*#__PURE__*/React.createElement("input", {
     type: "number",
     min: 1,
     max: 99999,
@@ -556,7 +558,7 @@ export function ExchangePanel(props) {
     }
   }), /*#__PURE__*/React.createElement("img", {
     src: COIN_ONE, /* v2.3.3734: the one coin, a unit beside a price */
-    alt: "gold",
+    alt: say(SAY, 'exchange.goldAlt'),
     draggable: false,
     style: {
       width: 16,
@@ -573,7 +575,7 @@ export function ExchangePanel(props) {
       fontVariantNumeric: 'tabular-nums',
       marginLeft: 'auto'
     }
-  }, "Est. value: ~", estimateMktPrice(mktTier, mktSubtype), "G")), mktMode === 'sell' && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+  }, say(SAY, 'exchange.estimate', { gold: estimateMktPrice(mktTier, mktSubtype) }))), mktMode === 'sell' && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       fontWeight: 700 /* v2.3.1235: batch-3 rollout — 11/700 .14em muted headers */,
@@ -582,7 +584,7 @@ export function ExchangePanel(props) {
       color: '#8D9B98',
       marginBottom: 4
     }
-  }, "Select Item from Stash"), /*#__PURE__*/React.createElement("div", {
+  }, say(SAY, 'exchange.selectItem')), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       flexWrap: 'wrap',
@@ -625,7 +627,7 @@ export function ExchangePanel(props) {
       color: '#8D9B98',
       fontStyle: 'italic'
     }
-  }, "No items in stash to sell"))), /*#__PURE__*/React.createElement("button", {
+  }, say(SAY, 'exchange.stashEmpty')))), /*#__PURE__*/React.createElement("button", {
     /* v2.3.4369: the sweep's V8a P1-7.  ONE tap at a time (claimPlace: a
        second tap while the first is unanswered does nothing, as the item
        card's sellInFlight has done since v2.3.2507), and a sell's pick is
@@ -664,7 +666,7 @@ export function ExchangePanel(props) {
               _context0.n = 2;
               break;
             }
-            pushDmgPopup(S, S.player.x, S.player.y - 30, 'Not enough gold!', '#D95C54'); cue('denied');   /* v2.3.3462: heard */
+            pushDmgPopup(S, S.player.x, S.player.y - 30, say(SAY, 'exchange.notEnoughGold'), '#D95C54'); cue('denied');   /* v2.3.3462: heard */
             return _context0.a(2);
           case 2:
             _context0.n = 4;
@@ -678,7 +680,7 @@ export function ExchangePanel(props) {
               _context0.n = 4;
               break;
             }
-            pushDmgPopup(S, S.player.x, S.player.y - 30, 'Select an item first!', '#D95C54');
+            pushDmgPopup(S, S.player.x, S.player.y - 30, say(SAY, 'exchange.selectFirst'), '#D95C54');
             return _context0.a(2);
           case 4:
             sellItem = mktMode === 'sell' ? R.weaponStash[mktSellItem] : null;
@@ -713,7 +715,7 @@ export function ExchangePanel(props) {
               _context0.n = 8;
               break;
             }
-            pushDmgPopup(S, S.player.x, S.player.y - 30, data.error || 'Failed!', '#D95C54');
+            pushDmgPopup(S, S.player.x, S.player.y - 30, data.error || say(SAY, 'exchange.failed'), '#D95C54');
             return _context0.a(2);
           case 8:
             /* ═══ v2.3.2476: THE LEGACY SELF-CREDIT PATH IS GONE ═══
@@ -748,12 +750,12 @@ export function ExchangePanel(props) {
             if (mktMode === 'sell' && mktSellItem !== null) setMktSellItem(null);
             if (data.matched) {
               execPrice = data.execPrice;
-              pushDmgPopup(S, S.player.x, S.player.y - 30, (mktMode === 'buy' ? 'Bought for ' : 'Sold for ') + execPrice + 'G!', '#59BF91');
+              pushDmgPopup(S, S.player.x, S.player.y - 30, say(SAY, mktMode === 'buy' ? 'exchange.boughtFor' : 'exchange.soldFor', { price: execPrice }), '#59BF91');
               /* v2.3.3434: the auction house's own sounds (collect() and the
                  beep() below were silent since v2.3.1103) */
               cue(mktMode === 'buy' ? 'marketBuy' : 'marketSold');
             } else {
-              pushDmgPopup(S, S.player.x, S.player.y - 30, mktMode === 'buy' ? 'Buy order placed!' : 'Listed for sale!', '#D8A85F');
+              pushDmgPopup(S, S.player.x, S.player.y - 30, say(SAY, mktMode === 'buy' ? 'exchange.buyPlaced' : 'exchange.listed'), '#D8A85F');
               cue('marketList');
             }
             /* Refresh order book from server */
@@ -778,7 +780,7 @@ export function ExchangePanel(props) {
           case 14:
             _context0.p = 14;
             _t0 = _context0.v;
-            pushDmgPopup(S, S.player.x, S.player.y - 30, 'Server error!', '#D95C54');
+            pushDmgPopup(S, S.player.x, S.player.y - 30, say(SAY, 'exchange.serverError'), '#D95C54');
           case 15:
             return _context0.a(2);
         }
@@ -801,7 +803,7 @@ export function ExchangePanel(props) {
       marginBottom: 10,
       fontFamily: 'inherit'
     }
-  }, mktMode === 'buy' ? 'Place Buy Order (' + mktPrice + 'G)' : 'List for Sale (' + mktPrice + 'G)')), function (_BLACKSMITH_TIERS$mkt2, _WOODWORKING_TIERS$mk2, _WEAPON_TYPES$mktSubt) {
+  }, say(SAY, mktMode === 'buy' ? 'exchange.placeBuy' : 'exchange.placeSell', { price: mktPrice }))), function (_BLACKSMITH_TIERS$mkt2, _WOODWORKING_TIERS$mk2, _WEAPON_TYPES$mktSubt) {
     var S = stateRef.current;
     var orders = mktOrders || [];
     var filtered = mktMode === 'orders' ? orders.filter(function (o) {
@@ -851,7 +853,7 @@ export function ExchangePanel(props) {
         color: '#8D9B98',
         flex: 1
       }
-    }, "Order Book \u2014 ", ((_BLACKSMITH_TIERS$mkt2 = BLACKSMITH_TIERS[mktTier]) === null || _BLACKSMITH_TIERS$mkt2 === void 0 ? void 0 : _BLACKSMITH_TIERS$mkt2.label) || ((_WOODWORKING_TIERS$mk2 = WOODWORKING_TIERS[mktTier === null || mktTier === void 0 ? void 0 : mktTier.replace('ww_', '')]) === null || _WOODWORKING_TIERS$mk2 === void 0 ? void 0 : _WOODWORKING_TIERS$mk2.label) || mktTier, " ", ((_WEAPON_TYPES$mktSubt = WEAPON_TYPES[mktSubtype]) === null || _WEAPON_TYPES$mktSubt === void 0 ? void 0 : _WEAPON_TYPES$mktSubt.label) || mktSubtype), /*#__PURE__*/React.createElement("button", {
+    }, say(SAY, 'exchange.orderBook', { tier: ((_BLACKSMITH_TIERS$mkt2 = BLACKSMITH_TIERS[mktTier]) === null || _BLACKSMITH_TIERS$mkt2 === void 0 ? void 0 : _BLACKSMITH_TIERS$mkt2.label) || ((_WOODWORKING_TIERS$mk2 = WOODWORKING_TIERS[mktTier === null || mktTier === void 0 ? void 0 : mktTier.replace('ww_', '')]) === null || _WOODWORKING_TIERS$mk2 === void 0 ? void 0 : _WOODWORKING_TIERS$mk2.label) || mktTier, type: ((_WEAPON_TYPES$mktSubt = WEAPON_TYPES[mktSubtype]) === null || _WEAPON_TYPES$mktSubt === void 0 ? void 0 : _WEAPON_TYPES$mktSubt.label) || mktSubtype })), /*#__PURE__*/React.createElement("button", {
       onClick: function onClick() {
         S._mktLastRefresh = null; /* force refresh */
         act('http:/api/market/orders', {}, { query: 'category=' + mktCategory + '&subtype=' + mktSubtype + '&tier=' + mktTier + '&room=' + _mktRoom() }).then(function (r) {   /* v2.3.5191: through the action door (actions.js) */
@@ -885,7 +887,7 @@ export function ExchangePanel(props) {
       /* v2.3.1235: batch-3 rollout — order rows move off per-row cards
          into ONE recessed well with hairline dividers (contract:
          dividers over row cards); handlers untouched (rows have none). */
-    }, "SELL ORDERS (lowest first)"), sells.length > 0 && /*#__PURE__*/React.createElement("div", {
+    }, say(SAY, 'exchange.sellOrders')), sells.length > 0 && /*#__PURE__*/React.createElement("div", {
       style: LS_WELL235
     }, sells.slice(0, 8).map(function (o, _ri) {
       return /*#__PURE__*/React.createElement("div", {
@@ -941,7 +943,7 @@ export function ExchangePanel(props) {
           fontWeight: 700,
           color: '#D8AA58'
         }
-      }, "(you)"));
+      }, say(SAY, 'exchange.you')));
     })) /* v2.3.1235: batch-3 rollout — closes the sells list well */, buys.length > 0 && /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11,
@@ -951,7 +953,7 @@ export function ExchangePanel(props) {
         margin: '8px 0 4px'
       }
       /* v2.3.1235: batch-3 rollout — one well + dividers (see sells) */
-    }, "BUY ORDERS (highest first)"), buys.length > 0 && /*#__PURE__*/React.createElement("div", {
+    }, say(SAY, 'exchange.buyOrders')), buys.length > 0 && /*#__PURE__*/React.createElement("div", {
       style: LS_WELL235
     }, buys.slice(0, 8).map(function (o, _ri) {
       return /*#__PURE__*/React.createElement("div", {
@@ -1007,7 +1009,7 @@ export function ExchangePanel(props) {
           fontWeight: 700,
           color: '#D8AA58'
         }
-      }, "(you)"));
+      }, say(SAY, 'exchange.you')));
     })) /* v2.3.1235: batch-3 rollout — closes the buys list well */, sells.length === 0 && buys.length === 0 && /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 12,
@@ -1016,7 +1018,7 @@ export function ExchangePanel(props) {
         textAlign: 'center',
         padding: 10
       }
-    }, "No orders yet. Be the first!")), mktMode === 'orders' && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    }, say(SAY, 'exchange.noOrders'))), mktMode === 'orders' && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
       style: {
         display: 'flex',
         alignItems: 'center',
@@ -1032,7 +1034,7 @@ export function ExchangePanel(props) {
         color: '#8D9B98',
         flex: 1
       }
-    }, "Your Active Orders (", filtered.length, ")"), /*#__PURE__*/React.createElement("button", {
+    }, say(SAY, 'exchange.activeOrders', { count: filtered.length })), /*#__PURE__*/React.createElement("button", {
       onClick: function onClick() {
         S._mktLastRefresh = null;
         act('http:/api/market/my', {}, { query: 'playerId=' + encodeURIComponent(S.myId) + '&room=' + _mktRoom() }).then(function (r) {   /* v2.3.5191: through the action door (actions.js) */
@@ -1064,7 +1066,7 @@ export function ExchangePanel(props) {
       /* v2.3.1235: batch-3 rollout — my-order rows join the one-well +
          dividers pattern (contract: dividers over row cards); the
          cancel handler inside is byte-identical. */
-    }, "No active orders"), filtered.length > 0 && /*#__PURE__*/React.createElement("div", {
+    }, say(SAY, 'exchange.noActive')), filtered.length > 0 && /*#__PURE__*/React.createElement("div", {
       style: LS_WELL235
     }, filtered.map(function (o, _oi) {
       var _WEAPON_TYPES$o$subty;
@@ -1088,7 +1090,7 @@ export function ExchangePanel(props) {
              positive/danger tokens */
           color: o.type === 'buy' ? '#55B98A' : '#D8635D'
         }
-      }, o.type === 'buy' ? 'BUY' : 'SELL'), /*#__PURE__*/React.createElement("div", {
+      }, say(SAY, o.type === 'buy' ? 'exchange.badgeBuy' : 'exchange.badgeSell')), /*#__PURE__*/React.createElement("div", {
         style: {
           flex: 1,
           minWidth: 0
@@ -1108,7 +1110,7 @@ export function ExchangePanel(props) {
           color: '#8D9B98',
           fontVariantNumeric: 'tabular-nums'
         }
-      }, timeLeft, "m left")), /*#__PURE__*/React.createElement("span", {
+      }, say(SAY, 'exchange.minutesLeft', { min: timeLeft }))), /*#__PURE__*/React.createElement("span", {
         /* v2.3.1232: gold-icon tabular price */
         style: {
           display: 'inline-flex',
@@ -1150,7 +1152,7 @@ export function ExchangePanel(props) {
                   /* v2.3.2476: the local refund that used to live here is
                      gone with its twin on /place above -- the worker returns
                      the escrow itself and the echo carries it. */
-                  pushDmgPopup(S, S.player.x, S.player.y - 30, 'Order cancelled', 'rgba(255,255,255,.5)');
+                  pushDmgPopup(S, S.player.x, S.player.y - 30, say(SAY, 'exchange.cancelled'), 'rgba(255,255,255,.5)');
                   cue('tradeOff');   /* v2.3.3434: called off, as a trade is */
                   /* Refresh */
                   S._mktLastRefresh = null;
@@ -1165,7 +1167,7 @@ export function ExchangePanel(props) {
               case 3:
                 _context1.p = 3;
                 _t1 = _context1.v;
-                pushDmgPopup(S, S.player.x, S.player.y - 30, 'Cancel failed', '#D95C54');
+                pushDmgPopup(S, S.player.x, S.player.y - 30, say(SAY, 'exchange.cancelFailed'), '#D95C54');
               case 4:
                 return _context1.a(2);
             }

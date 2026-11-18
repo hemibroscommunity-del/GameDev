@@ -1,0 +1,50 @@
+/* v2.3.6343: the Bro page's words (src/ui/mobile/sheet/BroCard.jsx; docs/specs/player-words.md, wave W1) */
+export const SAY = Object.freeze({
+  /* you: name, level, title, clan, AP */
+  'broCard.you': 'You',
+  'broCard.level': 'Lv {level}',
+  'broCard.titleAria': 'Title: {title}. Change',
+  'broCard.noTitleAria': 'No title. Choose one',
+  'broCard.noTitle': 'No title',
+  'broCard.noParty': 'No party',
+  'broCard.noClan': 'No clan',
+  'broCard.clanAria': 'Clan: {clan}. Open',
+  'broCard.clanNoneAria': '{clan}. Open',
+  'broCard.apAria': '{ap} Achievement Points. Open Achievements',
+  'broCard.ap': '{ap} AP',
+  /* the two tiles */
+  'broCard.achvTileAria': 'Achievements: {earned} of {total}. Open',
+  'broCard.achvTileAriaNone': 'Achievements. Open',
+  'broCard.achievements': 'Achievements',
+  'broCard.lifetimeKills': 'Lifetime Kills',
+  /* the weapon's combat stats */
+  'broCard.combatSkills': 'Combat skills',
+  'broCard.skillAriaXp': '{skill} level {lvl}, {prog} of {thresh} XP: show {weapon} stats',
+  'broCard.skillAriaMax': '{skill} level {lvl}, fully levelled: show {weapon} stats',
+  'broCard.combatStats': 'Combat Stats',
+  'broCard.noWeapon': 'No {weapon} equipped',
+  /* the doors */
+  'broCard.achvSub': '{earned} of {total}',
+  'broCard.lifeSkills': 'Life Skills',
+  'broCard.lifeSub': 'Total level {total}',
+  'broCard.points': 'Points',
+  'broCard.pointsSub': '{n} to spend',
+  'broCard.pointsSpent': 'All spent',
+  'broCard.equipment': 'Equipment',
+  'broCard.equipSub': '{worn} of {slots} worn',
+  'broCard.homestead': 'Homestead',
+  'broCard.plotsReady': { one: '{n} plot ready', other: '{n} plots ready' },
+  'broCard.nothingReady': 'Nothing ready',
+  'broCard.pet': 'Pet',
+  'broCard.noPet': 'No pet',
+  'broCard.titles': 'Titles',
+  'broCard.titlesSub': '{n} unlocked',
+  'broCard.party': 'Party',
+  'broCard.clan': 'Clan',
+  /* the Homestead row's popup */
+  'broCard.farmReady': {
+    one: '{n} plot ready to harvest. Your farm is reached from the Feed & Seed in BroTown: walk in its door to plant, water and harvest.',
+    other: '{n} plots ready to harvest. Your farm is reached from the Feed & Seed in BroTown: walk in its door to plant, water and harvest.',
+  },
+  'broCard.farmNone': 'Nothing ready to harvest yet. Your farm is reached from the Feed & Seed in BroTown: walk in its door to plant, water and harvest.',
+});
