@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
 import { inventoryBus } from './inventoryBus.js';
 import { INV, FONT, RARITY_BORDER } from './inventoryStyles.js';
 import { ItemArt } from './ItemArt.jsx';
+import { SAY } from '@/data/say/equippedTab.js';   /* v2.3.6343: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';
 
 const SlotPicker = ({ slot, onPick, onCancel }) => {
   const items = inventoryBus.state.items.filter(it => {
@@ -26,10 +27,10 @@ const SlotPicker = ({ slot, onPick, onCancel }) => {
         <div style={{
           color: INV.textMuted, fontFamily: FONT.sans, fontSize: 11,
           letterSpacing: 0.4, textTransform: 'uppercase', marginBottom: 12,
-        }}>EQUIP {slot}</div>
+        }}>{say(SAY, 'equippedTab.equipSlot', { slot })}</div>
         {items.length === 0 && (
           <div style={{ color: INV.textMuted, fontFamily: FONT.sans, fontSize: 13, padding: 12 }}>
-            Nothing in inventory fits this slot.
+            {say(SAY, 'equippedTab.nothingFits')}
           </div>
         )}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
@@ -149,7 +150,7 @@ const ShortcutPickerSheet = ({ slotIdx, onPick, onCancel }) => {
         <div style={{
           color: INV.textMuted, fontFamily: FONT.sans, fontSize: 11,
           letterSpacing: 0.4, textTransform: 'uppercase', marginBottom: 12,
-        }}>SHORTCUT SLOT {slotIdx + 1}</div>
+        }}>{say(SAY, 'equippedTab.shortcutSlot', { slot: slotIdx + 1 })}</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
           {items.map(it => (
             <div key={it.id} onClick={() => onPick(it.id)} style={{
@@ -183,11 +184,11 @@ const ShortcutActionSheet = ({ slotIdx, onClose }) => (
       <div onClick={() => { inventoryBus.clearShortcut(slotIdx); onClose(); }} style={{
         padding: 14, color: INV.destructive, fontFamily: FONT.sans, fontSize: 14,
         textAlign: 'center', borderBottom: '0.5px solid rgba(238, 242, 235, .1)', cursor: 'pointer',
-      }}>Remove shortcut</div>
+      }}>{say(SAY, 'equippedTab.removeShortcut')}</div>
       <div onClick={onClose} style={{
         padding: 14, color: INV.textPrimary, fontFamily: FONT.sans, fontSize: 14,
         textAlign: 'center', cursor: 'pointer',
-      }}>Cancel</div>
+      }}>{say(SAY, 'equippedTab.cancel')}</div>
     </div>
   </div>
 );
@@ -208,11 +209,11 @@ export const EquippedTab = ({ onItemTap }) => {
   /* v2.3.613: armor is chest + legs (no helmet -- head/face always shown);
      weapon/pet/tool on the left. */
   const slotConfig = [
-    { slot: 'weapon', label: 'WEAPON', border: INV.slotWeaponBorder, pos: { left: 30,  top: 110 } },
-    { slot: 'chest',  label: 'CHEST',  border: INV.slotArmorBorder,  pos: { right: 30, top: 40  } },
-    { slot: 'legs',   label: 'LEGS',   border: INV.slotArmorBorder,  pos: { right: 30, top: 130 } },
-    { slot: 'pet',    label: 'PET',    border: INV.slotPetBorder,    pos: { left: 30,  top: 30  } },
-    { slot: 'tool',   label: 'TOOL',   border: INV.slotToolBorder,   pos: { left: 30,  top: 200 } },
+    { slot: 'weapon', label: say(SAY, 'equippedTab.weapon'), border: INV.slotWeaponBorder, pos: { left: 30,  top: 110 } },
+    { slot: 'chest',  label: say(SAY, 'equippedTab.chest'),  border: INV.slotArmorBorder,  pos: { right: 30, top: 40  } },
+    { slot: 'legs',   label: say(SAY, 'equippedTab.legs'),   border: INV.slotArmorBorder,  pos: { right: 30, top: 130 } },
+    { slot: 'pet',    label: say(SAY, 'equippedTab.pet'),    border: INV.slotPetBorder,    pos: { left: 30,  top: 30  } },
+    { slot: 'tool',   label: say(SAY, 'equippedTab.tool'),   border: INV.slotToolBorder,   pos: { left: 30,  top: 200 } },
   ];
 
   return (
@@ -257,10 +258,10 @@ export const EquippedTab = ({ onItemTap }) => {
         <div style={{
           fontSize: 12, fontWeight: 500, letterSpacing: 0.4,
           color: 'rgba(238, 242, 235, 0.78)', fontFamily: FONT.sans,
-        }}>SHORTCUTS</div>
+        }}>{say(SAY, 'equippedTab.shortcuts')}</div>
         <div style={{
           fontSize: 11, color: 'rgba(238, 242, 235, 0.45)', fontFamily: FONT.sans,
-        }}>{deskWords('Tap a slot to set')}</div>
+        }}>{say(SAY, 'equippedTab.shortcutsHow')}</div>
       </div>
       <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-start' }}>
         {[0, 1].map(i => (
