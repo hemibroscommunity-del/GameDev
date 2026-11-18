@@ -5,6 +5,8 @@ import { AccountLoginForm } from '../../account/AccountLoginForm.jsx';
 import { rosterCount } from '../../../networking/charRoster.js';   /* v2.3.4172: one bro or more, as the top bar's door asks */
 import { keptQuery } from '../../keepSwitches.js';                 /* v2.3.4172: the door's address, as GameApp's */
 import { swallowTapClick } from '../../swallowTapClick.js';
+import { SAY } from '@/data/say/accountPanel.js';   /* v2.3.6354: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';
 
 /* v2.3.1143: Account panel (More -> Account).  Two jobs: show this
    device's Login Key so the player can save it, and accept a key from
@@ -37,7 +39,7 @@ function leaveTheWorld(many) {
     sp.className = 'bt-exit-loading';
     const lbl = document.createElement('div');
     lbl.className = 'bt-exit-label';
-    lbl.textContent = 'Reloading…';
+    lbl.textContent = say(SAY, 'accountPanel.reloading');
     dim.appendChild(sp);
     dim.appendChild(lbl);
     document.body.appendChild(dim);
@@ -71,11 +73,9 @@ const LogoutConfirm = ({ many, onCancel }) => (
         textAlign: 'center',
       }}
     >
-      <div style={{ fontSize: 15, fontWeight: 700, color: COL.text }}>{many ? 'Switch bro?' : 'Leave the world?'}</div>
+      <div style={{ fontSize: 15, fontWeight: 700, color: COL.text }}>{say(SAY, many ? 'accountPanel.askSwitch' : 'accountPanel.askLeave')}</div>
       <div style={{ fontSize: 12, color: COL.text2, marginTop: 4 }}>
-        {many
-          ? 'You’ll go to your list of bros. This one is saved.'
-          : 'You’ll return to the character screen.'}
+        {say(SAY, many ? 'accountPanel.whySwitch' : 'accountPanel.whyLeave')}
       </div>
       <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
         <button
@@ -86,7 +86,7 @@ const LogoutConfirm = ({ many, onCancel }) => (
           onPointerUp={(e) => { e.stopPropagation(); swallowTapClick(e); onCancel(); }}
           onClick={(e) => { if (e.detail === 0) onCancel(); }}
         >
-          Cancel
+          {say(SAY, 'accountPanel.cancel')}
         </button>
         <button
           type="button"
@@ -97,7 +97,7 @@ const LogoutConfirm = ({ many, onCancel }) => (
           style={{ flex: 1, minHeight: 40, fontSize: 13, fontWeight: 800, color: many ? COL.text : undefined, touchAction: 'manipulation' }}
           onClick={() => leaveTheWorld(many)}
         >
-          {many ? 'Switch Bro' : 'Log Out'}
+          {say(SAY, many ? 'accountPanel.goSwitch' : 'accountPanel.goLogout')}
         </button>
       </div>
     </div>
@@ -114,7 +114,7 @@ export const AccountPanel = () => {
           type="button"
           data-account-door={many ? 'switch' : 'logout'}
           className="bt-chisel bt-chisel--chip"
-          aria-label={many ? 'Switch bro, or log out' : 'Log out to the character screen'}
+          aria-label={say(SAY, many ? 'accountPanel.doorSwitchLabel' : 'accountPanel.doorLogoutLabel')}
           onClick={(e) => { e.stopPropagation(); setConfirming(true); }}
           style={{
             width: '100%', minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
@@ -123,7 +123,7 @@ export const AccountPanel = () => {
         >
           <img src="/icons/ui/logout-door-icon.svg?v=2.3.1333c" alt="" draggable={false}
             style={{ width: 20, height: 20, objectFit: 'contain', pointerEvents: 'none' }} />
-          {many ? 'Switch character' : 'Log out'}
+          {say(SAY, many ? 'accountPanel.doorSwitch' : 'accountPanel.doorLogout')}
         </button>
       </div>
       <div style={{ height: 1, background: COL.divider, margin: '12px 0' }} />

@@ -37,7 +37,7 @@ import { join } from 'node:path';
 import { census, ROOT } from '../dev/words-census.mjs';
 
 /* The census's counts on main 891b850c, 2026-11-18 09:20 UTC (card WD PR 1, #2171; re-landed after CS #2152 and RV #2164, as gatekeeper sitting 46 asked). */
-export const PAGE_LINE = 2842;   /* v2.3.6353: card WD3 moved ControlsTutorial, KeyboardHintsPanel, InfoPanel, InfoPopup's words into src/data/say (was 2906) */
+export const PAGE_LINE = 2800;   /* v2.3.6354: card WD3 moved AccountLoginForm, AccountKeyCard, AccountPanel's words into src/data/say (was 2842) */
 export const SERVER_LINE = 385;
 
 /* The "Wheel" / "remnant" rows the census found: `node tools/dev/words-census.mjs --lines`. */
