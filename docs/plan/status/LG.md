@@ -1,33 +1,34 @@
 card: LG
-branch: claude/plan-lg-2-league (PR 2, 6121)
-prs: #2170 (PR 1, 6120, draft), PR 2 (6121) working
-state: working
+branch: claude/plan-lg-3-replay (PR 3, 6122)
+prs: #2170 (6120) ready, #2178 (6121) ready, #2184 (6122) ready
+state: ready
 
 ## Done
 
-- PR 1 (6120) #2170: docs/specs/honest-trouble.md, every signal a detector
-  reads with its source line, honest trouble, and the rule a detector keeps.
+- PR 1 (6120) #2170: docs/specs/honest-trouble.md (every signal, its line,
+  honest trouble, the detector's rule).
+- PR 2 (6121) #2178: tools/league rungs 1-2, score.mjs, league.test,
+  `npm run league`. Rung 1 caught; rung 2 missed by every detector.
+- PR 3 (6122) #2184: rungs 3-4 (page-script, replay, traces); the honest
+  trace passes at 60/30/20/4 fps and through a deploy.
 
 ## Next
 
-- PR 2 (6121): tools/league (rungs 1-2, score.mjs), server/test/league.test,
-  `npm run league`. Then PR 3 (6122): rungs 3-4, replays at 60/30/20/4 fps
-  and through a deploy.
+- Nothing: all three PRs green and ready, in order (#2170, #2178, #2184,
+  each stacked on the one before). The card is done once they merge.
 
 ## Found
 
-- botfp.js:541 `startless` never fades: an honest phone that drops twice in
-  ten minutes mid-harvest, now and then, reaches the 20 that flags (K4's).
-- botsig.js:333 `reflex` takes off the AVERAGE round trip (index.js:5050):
-  on a wavering line an honest answer can read quick (K4's).
-- botsig.js:193-197 `aimed`: with no place between the chord's ends
-  (the move diet, a slow phone) `straight` is true by default (K4's).
-- The league: rung 2 (rung 1 + a person's noise) is missed by every
-  detector; rung 1's cook is missed (`cook`, botsig.js:418, does not take
-  off the planned hits) (K4's).
+- botfp.js:541 `startless` never fades (K4's).
+- botsig.js:333 `reflex` takes off the AVERAGE round trip (K4's).
+- botsig.js:193-197 `aimed`: no place between the ends reads straight (K4's).
+- The league: rung 2 missed by every detector; rung 1's cook missed
+  (`cook`, botsig.js:418, keeps the planned hits in the gap) (K4's).
+- A deploy halfway lets rung 3 through: botfp's score and replay ring live
+  in memory between paced writes (botfp.js _botfpMaybePut) (K4's).
+- The local box: precheck's server-tests stops at 5 minutes; the whole
+  suite takes 12 here (green). server/node_modules was not installed.
 
 ## Needs
 
-- The planning session: score.mjs runs the worker's GameRoom in-process
-  (testroom), with `wrangler dev` left out; asked 2026-11-18, building on
-  that reading until told otherwise.
+- (nothing)

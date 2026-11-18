@@ -2,6 +2,7 @@
 /* ═══ v2.3.6121: THE LEAGUE'S SCOREBOARD (GRAND-PLAN 10.7; card LG PR 2) ═══
  *
  *   node tools/league/score.mjs [--minutes N] [--seed S] [--json]
+ *   (v2.3.6122: and rungs 3-4 from tools/league/traces/, replay.mjs)
  *   npm run league
  *
  * Runs each rung's bots (tools/league/bots/), and the honest players beside
@@ -29,6 +30,8 @@ import * as B from '../../server/test/claimbots.mjs';
 import { WHEEL_ZONE } from '../../server/src/wheelzone.js';
 import * as R1 from './bots/wire-script.mjs';
 import * as R2 from './bots/wire-noise.mjs';
+import { existsSync } from 'node:fs';
+import { loadTrace, loopTrace, replayTrace, SPEEDS } from './replay.mjs';   /* v2.3.6122: rungs 3-4 and the honest trace */
 
 export const RUNGS = [R1, R2];
 const SWORD = { type: 'sword', tier: 'common', tierMult: 1.0, element1: null, element2: null, isVolatile: false, name: 'copper sword', gearBase: 'copper', quality: 'normal' };
@@ -168,11 +171,34 @@ export async function runLeague({ minutes = 10, seed = '', rungs = RUNGS, honest
   return rows;
 }
 
+/* ══════════ v2.3.6122: THE TRACES (rungs 3-4, and the honest trace) ══════════
+   Rung 3: the real page driven at machine pace (bots/page-script.mjs), its
+   recording replayed as the worker received it.  Rung 4: a person's recording
+   played three times over in one account (replay.mjs loopTrace), the way a
+   farm would use it.  The honest trace: that recording ONCE, at 60, 30, 20
+   and 4 frames a second and through a deploy. */
+export const TRACES = {
+  bot: new URL('./traces/page-bot.json', import.meta.url).pathname,
+  honest: new URL('./traces/honest-harvest.json', import.meta.url).pathname,
+};
+const row = (who, rung, r, extra) => ({ who, rung, kind: 'harvest', pid: 'bp_league_trace', det: r.det, err: null, refusals: r.refusals, ...extra });
+export async function runTraces({ seed = '', loops = 3 } = {}) {
+  const rows = [];
+  if (existsSync(TRACES.bot)) rows.push(row('page-script', 3, await replayTrace(loadTrace(TRACES.bot), { seed })));
+  if (existsSync(TRACES.honest)) {
+    const h = loadTrace(TRACES.honest);
+    rows.push(row('replay x' + loops, 4, await replayTrace(loopTrace(h, loops), { seed })));
+    for (const fps of SPEEDS) rows.push(row('honest trace', 0, await replayTrace(h, { seed, fps }), { kind: 'trace ' + fps + 'fps' }));
+    rows.push(row('honest trace', 0, await replayTrace(h, { seed, fps: 60, deploy: true }), { kind: 'trace +deploy' }));
+  }
+  return rows;
+}
+
 /** Each rung caught (by which detectors) or missed. */
 export function rungTable(rows) {
   const by = new Map();
   for (const r of rows) {
-    const k = r.rung === 0 ? 'honest' : 'rung ' + r.rung + ' ' + r.who;
+    const k = r.rung === 0 ? (r.who === 'honest trace' ? 'honest trace' : 'honest') : 'rung ' + r.rung + ' ' + r.who;
     const t = by.get(k) || { name: k, rung: r.rung, caught: new Set(), flagged: new Set(), sessions: 0 };
     t.sessions++;
     for (const d of caughtBy(r.det)) t.caught.add(d);
@@ -186,7 +212,7 @@ export function printLeague(rows, log = console.log) {
   const pad = (s, n) => String(s).padEnd(n);
   log('\nTHE LEAGUE: each session, what each detector did (FLAG = a flag written; counts = claims held)\n');
   for (const r of rows) {
-    log(pad(r.rung === 0 ? 'honest' : 'rung ' + r.rung + ' ' + r.who, 20) + pad(r.kind, 9) + (r.err ? 'ERROR ' + r.err.split('\n')[0] : 'did ' + Object.entries(r.det.did).filter(([, v]) => v).map(([k, v]) => k + ' ' + v).join(', ')));
+    log(pad(r.rung === 0 ? r.who : 'rung ' + r.rung + ' ' + r.who, 20) + pad(r.kind, 15) + (r.err ? 'ERROR ' + r.err.split('\n')[0] : 'did ' + Object.entries(r.det.did).filter(([, v]) => v).map(([k, v]) => k + ' ' + v).join(', ')));
     for (const d of DETECTORS) if (r.det[d].length) log('    ' + pad(d, 13) + r.det[d].join('; '));
     if (!DETECTORS.some((d) => r.det[d].length)) log('    (nothing: every detector missed it)');
   }
@@ -202,6 +228,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const arg = (k, dflt) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : dflt; };
   const t0 = performance.now();
   const rows = await runLeague({ minutes: Number(arg('--minutes', 10)), seed: arg('--seed', '') });
+  rows.push(...(await runTraces({ seed: arg('--seed', '') })));
   if (process.argv.includes('--json')) console.log(JSON.stringify(rows, null, 1));
   else printLeague(rows);
   console.log('(' + ((performance.now() - t0) / 1000).toFixed(1) + ' s)');
