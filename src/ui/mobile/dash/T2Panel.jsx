@@ -3,6 +3,8 @@ import React, { useEffect, useState } from 'react';
    channel cards it styled became divider rows (see the channel map). */
 import { COL, panelStyle } from './common.js';
 import { spendConfirmBus } from './spendConfirmBus.js';
+import { SAY } from '@/data/say/t2Panel.js';   /* v2.3.6351: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';
 import { prog3HasSkills, prog3SkillLevel, prog3XpRequired, PROG3 } from '@/data/prog3.js'; /* v2.3.1901, v2.3.1902 */
 import {
   WEAPON_CATEGORIES,
@@ -42,7 +44,7 @@ export function requestT2Category(cat) { _pendingCat = cat; }
    blocking / mitigating rather than dealing damage, but the panel shape is
    identical so it shares the tab strip + channel rows below. */
 const DEF_TAB = 'defense';
-const DEF_META = { label: 'Defense', emoji: '\u{1F6E1}' };
+const DEF_META = { label: say(SAY, 't2Panel.tabDefense'), emoji: '\u{1F6E1}' };   /* v2.3.6351: no "tap" in the tabs' names, so read once at load */
 
 /* v2.3.1154: HP + Endurance grid tabs.  Unlike the weapon/defense skills
    these have no separate skill track — the STAT is the level (vitality /
@@ -57,11 +59,11 @@ const DEF_META = { label: 'Defense', emoji: '\u{1F6E1}' };
    unchanged — renaming persisted fields breaks saves (rule 1). */
 const GRID_TABS = {
   hp: {
-    stat: 'vitality', label: 'Vitality', emoji: '❤️',
+    stat: 'vitality', label: say(SAY, 't2Panel.tabVitality'), emoji: '❤️',
     channels: HP_CHANNELS, specKey: 'hpSpec', poolKey: 'hpUnspent',
   },
   endurance: {
-    stat: 'endurance', label: 'Stamina', emoji: '⚡',
+    stat: 'endurance', label: say(SAY, 't2Panel.tabStamina'), emoji: '⚡',
     channels: ENDURANCE_CHANNELS, specKey: 'enduranceSpec', poolKey: 'enduranceUnspent',
   },
 };
@@ -117,7 +119,7 @@ export const T2Panel = () => {
         {/* v2.3.1235: batch-1 rollout — empty state per the locked sheet:
             13/700 secondary, directly on the sheet, no container. */}
         <div style={{ fontSize: 13, fontWeight: 700, color: COL.text2, textAlign: 'center', padding: '14px 0' }}>
-          No character loaded.
+          {say(SAY, 't2Panel.noCharacter')}
         </div>
       </div>
     );
@@ -331,9 +333,9 @@ export const T2Panel = () => {
       }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 11, lineHeight: 1, color: COL.muted, marginBottom: 3, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {(gridTab || (isDef ? DEF_META : (WEAPON_CATEGORY_META[activeCat] || {}))).label} skill · Lv {sk.level || 0}
+            {say(SAY, 't2Panel.skillLine', { skill: (gridTab || (isDef ? DEF_META : (WEAPON_CATEGORY_META[activeCat] || {}))).label, level: sk.level || 0 })}
             {/* v2.3.1207: cap is WEAPON_LEVEL_CAP (100 since v2.3.1156) — the stale 99 literal showed "(Max)" one level early. */}
-            {(sk.level || 0) >= WEAPON_LEVEL_CAP ? ' (Max)' : ` · ${Math.round(xpPct)}% to next`}
+            {(sk.level || 0) >= WEAPON_LEVEL_CAP ? say(SAY, 't2Panel.skillMax') : say(SAY, 't2Panel.skillNext', { pct: Math.round(xpPct) })}
           </div>
           {/* v2.3.1232: Lantern Slate bar — pill radius, XP-green fill with
               the standard vertical light overlay (was indigo). */}
@@ -354,7 +356,7 @@ export const T2Panel = () => {
           border: '1px solid ' + COL.divider,
           whiteSpace: 'nowrap',
         }}>
-          {unspent} pts
+          {say(SAY, 't2Panel.points', { pts: unspent })}
         </div>
       </div>
 
@@ -376,23 +378,23 @@ export const T2Panel = () => {
       }}>
         {gridTab && !gridsLive ? (
           <span style={{ fontSize: 12, lineHeight: 1.25, color: COL.gold, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            Unlocks with next server update — points safe.
+            {say(SAY, 't2Panel.gridsSoon')}
           </span>
         ) : (
           <span style={{ fontSize: 12, lineHeight: 1.25, color: COL.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {/* v2.3.1133: label caught up with v2.3.910's 1-pt-per-level change */}
             {gridTab
               ? (gridTab.stat === 'vitality'
-                ? 'Combat trains Vitality · +1 pt per level'
-                : 'Sprint, block & roll to train · +1 pt per level')
+                ? say(SAY, 't2Panel.trainVitality')
+                : say(SAY, 't2Panel.trainStamina'))
               : isDef
-                ? 'Block & mitigate to train · +1 pt per level'
-                : 'Deal damage to train · +1 pt per level'}
+                ? say(SAY, 't2Panel.trainDefense')
+                : say(SAY, 't2Panel.trainWeapon')}
           </span>
         )}
         {t2uniform && (
           <span style={{ fontSize: 11, fontWeight: 700, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', color: atCeiling ? COL.gold : COL.muted }}>
-            {buildTotal}/{COMBAT_BUILD_CEILING}{atCeiling ? ' · complete' : ''}
+            {buildTotal}/{COMBAT_BUILD_CEILING}{atCeiling ? say(SAY, 't2Panel.buildComplete') : ''}
           </span>
         )}
       </div>
@@ -463,10 +465,10 @@ export const T2Panel = () => {
                   color: v > 0 ? COL.accent : COL.text2, flex: 'none',
                 }}>{v}</span>
                 {!ch.active && (
-                  <span style={{ fontSize: 11, fontWeight: 700, color: COL.gold, letterSpacing: '0.08em' }}>SOON</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: COL.gold, letterSpacing: '0.08em' }}>{say(SAY, 't2Panel.soon')}</span>
                 )}
                 {atCap && (
-                  <span style={{ fontSize: 11, fontWeight: 700, color: COL.gold, letterSpacing: '0.08em' }}>MAX</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: COL.gold, letterSpacing: '0.08em' }}>{say(SAY, 't2Panel.max')}</span>
                 )}
               </div>
               <div style={{ fontSize: 11, lineHeight: 1.25, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>

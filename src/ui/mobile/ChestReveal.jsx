@@ -6,6 +6,8 @@ import { armorIconFor } from '@/rendering/gearVariants.js';
 import { DAILY_CHEST_STRIP, DAILY_CHEST_FRAMES } from '@/rendering/chestPreload.js';
 import { BT_AUDIO } from '@/data/index.js';   /* v2.3.3045: the chest's sounds, on its own frames */
 import { act } from '@/game/actions.js';   /* v2.3.5191: the page's requests leave through the action door (card K PR 7) */
+import { SAY } from '@/data/say/chestReveal.js';   /* v2.3.6349: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';
 
 /* ═══ v2.3.2820: THE DAILY CHEST'S CLAIM WINDOW ═══
  * Owner, with the chest art: "You can make the daily reward this chest that
@@ -61,16 +63,16 @@ const ANSWER_TIMEOUT_MS = 8000;
 /* The one line that says what it is. */
 export function prizeText(p) {
   if (!p) return '';
-  if (p.kind === 'coins') return '+' + (p.coins || 0) + ' coins';
+  if (p.kind === 'coins') return say(SAY, 'chestReveal.prizeCoins', { coins: p.coins || 0 });
   /* v2.3.3132: raw minnows to cook (server dailychest.js); a chest opened on
      an older worker still says what it gave. */
-  if (p.kind === 'fish') return (p.count || 10) + (/^cooked/.test(p.invKey || '') ? ' Cooked Fish' : ' Fish to cook');
-  if (p.kind === 'gem') return 'A Rare Gem';
+  if (p.kind === 'fish') return say(SAY, /^cooked/.test(p.invKey || '') ? 'chestReveal.prizeCookedFish' : 'chestReveal.prizeFishToCook', { count: p.count || 10 });
+  if (p.kind === 'gem') return say(SAY, 'chestReveal.prizeGem');
   if (p.kind === 'armor' && p.piece) {
     const q = p.piece.quality && p.piece.quality !== 'normal' ? (QUALITY_LABEL[p.piece.quality] || p.piece.quality) + ' ' : '';
-    return q + (p.piece.name || 'Armour');
+    return q + (p.piece.name || say(SAY, 'chestReveal.armour'));
   }
-  return 'A prize';
+  return say(SAY, 'chestReveal.prizeOther');
 }
 function prizeIcon(p) {
   if (!p) return null;
@@ -242,7 +244,7 @@ export const ChestReveal = () => {
         textAlign: 'center', fontFamily: 'Source Sans 3, sans-serif',
       }}>
         <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', color: COL.accent }}>
-          Daily chest{n > 1 && stage !== 'reveal' ? ` ×${n}` : ''}
+          {say(SAY, 'chestReveal.title')}{n > 1 && stage !== 'reveal' ? ` ×${n}` : ''}
         </div>
         <div style={{ position: 'relative', marginTop: 4 }}>
           <Frame frame={frame} shaking={stage === 'shaking'} />
@@ -260,25 +262,25 @@ export const ChestReveal = () => {
           </div>
         ) : (
           <div style={{ fontSize: 13, color: COL.text2, minHeight: 20, marginTop: 2 }}>
-            {stage === 'offer' ? (n > 1 ? `You have ${n} chests waiting.` : 'Your daily chest is here.')
-              : stage === 'error' ? 'The chest would not open — try again.'
-              : 'Opening…'}
+            {stage === 'offer' ? (n > 1 ? say(SAY, 'chestReveal.manyWaiting', { count: n }) : say(SAY, 'chestReveal.oneWaiting'))
+              : stage === 'error' ? say(SAY, 'chestReveal.wouldNotOpen')
+              : say(SAY, 'chestReveal.opening')}
           </div>
         )}
         <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
           {(stage === 'offer' || stage === 'error') && (
             <>
-              <button onClick={close} style={secondaryBtn}>Later</button>
+              <button onClick={close} style={secondaryBtn}>{say(SAY, 'chestReveal.later')}</button>
               <button onClick={claim} data-chest-claim="" className="button-primary" disabled={n <= 0}
-                style={{ flex: 1, minHeight: 44, fontSize: 14, touchAction: 'manipulation' }}>Claim</button>
+                style={{ flex: 1, minHeight: 44, fontSize: 14, touchAction: 'manipulation' }}>{say(SAY, 'chestReveal.claim')}</button>
             </>
           )}
           {stage === 'reveal' && (
             <>
-              <button onClick={close} style={n > 0 ? secondaryBtn : { ...secondaryBtn, flex: 1 }} data-chest-done="">Done</button>
+              <button onClick={close} style={n > 0 ? secondaryBtn : { ...secondaryBtn, flex: 1 }} data-chest-done="">{say(SAY, 'chestReveal.done')}</button>
               {n > 0 && (
                 <button onClick={claim} data-chest-claim="" className="button-primary"
-                  style={{ flex: 1, minHeight: 44, fontSize: 14, touchAction: 'manipulation' }}>Claim next ({n})</button>
+                  style={{ flex: 1, minHeight: 44, fontSize: 14, touchAction: 'manipulation' }}>{say(SAY, 'chestReveal.claimNext', { count: n })}</button>
               )}
             </>
           )}

@@ -124,6 +124,8 @@ import { jumpActive, jumpFrame, jumpPhase, flipFrame } from '@/game/jump.js';   
 import { rideLook } from '@/game/ride.js';   /* v2.3.3776: a rider stands sideways, and pushes now and then */
 import { recordCrash } from '../../debug/crashTrap.js'; /* v2.3.1305: trait-sheet load-failure telemetry */
 import { keepAsImage } from '../keepAsImage.js';   /* v2.3.3606: a head piece kept as an image of itself */
+import { keepOnGpuOnly } from '../gpuOnly.js';   /* v2.3.6203: the armour probe's reference, on the chip only */
+import { paletteRendererOf } from '../paletteTex.js';   /* v2.3.6203: ...the probe's own renderer */
 import { TRAIT_LOAD_TIMEOUT_MS } from '../traits/traitImg.js';   /* v2.3.3689: a stalled head piece is asked for again */
 import { loadSetLater } from '../loadSetLater.js';   /* v2.3.4415: the bars over heads asked for again until in */
 import { timeLimit } from '../retryLooks.js';   /* v2.3.4452: a stalled hair mask or placement table counts as failed */
@@ -2300,6 +2302,33 @@ let _spareSkipped = 0;   /* spare-set frames not baked for want of room (QA: __b
      - `willReadFrequently` on the two canvases the bake reads back, so the
        browser keeps them in CPU memory instead of reading pixels back from
        the GPU three times per bake. */
+/* ═══ v2.3.6203: KEPT AS AN IMAGE, ONCE THE BAKES ARE QUIET (card EN PR 4) ═══
+   The masked frames and the fishing overlays are kept as images of themselves
+   (keepAsImage.js: a PNG of each, the canvas let go of), but not in the burst
+   that bakes them: a PNG a frame beside ~150 frames baked in a few seconds
+   left mp-copperwaist's stride unbaked at its 3 s (2 runs of 4 on this box;
+   0 with `?keepimage=0`).  So each waits here until no bake has been stored
+   for KEEP_QUIET_MS, then a few go each KEEP_GAP_MS.  A source destroyed
+   meanwhile (an eviction) is passed over by keepAsImage itself. */
+const KEEP_QUIET_MS = 2000, KEEP_PER_SLICE = 4, KEEP_GAP_MS = 250;
+/* the source Texture.from(canvas) parked in Pixi's Cache for `cv`, or null */
+const _cachedSourceOf = (cv) => { try { const t = Cache.has(cv) ? Cache.get(cv) : null; return (t && t.source) || null; } catch (e) { return null; } };
+const _keepQueue = [];
+let _keepTimer = 0, _keepLastAsk = 0;
+function _afterBakes(fn) {
+  _keepQueue.push(fn);
+  _keepLastAsk = performance.now();
+  if (!_keepTimer) _keepTimer = setTimeout(_keepDrain, KEEP_QUIET_MS);
+}
+function _keepDrain() {
+  _keepTimer = 0;
+  const wait = KEEP_QUIET_MS - (performance.now() - _keepLastAsk);
+  if (wait > 0) { _keepTimer = setTimeout(_keepDrain, wait); return; }
+  for (let n = 0; n < KEEP_PER_SLICE && _keepQueue.length; n++) {
+    try { _keepQueue.shift()(); } catch (e) { /* kept as a canvas */ }
+  }
+  if (_keepQueue.length) _keepTimer = setTimeout(_keepDrain, KEEP_GAP_MS);
+}
 /* v2.3.2872: crop a baked display frame to its art (gearSheets.packTrimmed,
    n = 1).  Declined (art fills the frame) -> the canvas as it was. */
 const _mkBakeCanvas = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
@@ -2307,12 +2336,18 @@ function _cropBakedFrame(dc) {
   const fw = dc.width, fh = dc.height;
   let packed = null;
   try { packed = packTrimmed(dc, fw, fh, 1); } catch (e) { packed = null; }
-  if (!packed) return Texture.from(dc);
+  /* v2.3.6203: each kept as an image of itself (keepAsImage.js, quiet: one
+     already on the chip is not sent again), once the bakes are quiet
+     (_afterBakes): made once, only ever drawn, and kept in _maskedBodyCache
+     past a renderer rebuild, which an emptied canvas (keepOnGpuOnly) would not
+     survive; `?keepimage=0` keeps the canvas */
+  if (!packed) { const t0 = Texture.from(dc); _afterBakes(() => keepAsImage(t0.source, Cache, { quiet: true })); return t0; }
   const c = packed.cells[0];
   const src = Texture.from(packed.canvas).source;   /* cached: __btTex counts it */
   const t = new Texture({ source: src, frame: new Rectangle(c.ax, c.ay, c.w, c.h),
     orig: new Rectangle(0, 0, fw, fh), trim: new Rectangle(c.tx, c.ty, c.w, c.h) });
   if (dc !== packed.canvas) { try { dc.width = 0; dc.height = 0; } catch (e) { /* not ours */ } }
+  _afterBakes(() => keepAsImage(src, Cache, { quiet: true }));
   return t;
 }
 /* v2.3.2874: _histMedian and the bake's scratch buffers moved to maskedBake.js with the bake. */
@@ -2345,7 +2380,7 @@ if (typeof window !== 'undefined') {
     const out = [];
     for (const t of _maskedBodyCache.values()) {
       const r = t && t.source && t.source.resource;
-      if (!r || !r.getContext) continue;
+      if (!r) continue;   /* v2.3.6203: a canvas or, kept as an image of itself, an <img>: drawGearFrame draws either */
       try {
         /* v2.3.2872: the WHOLE frame, drawn back from its crop, so a cropped
            bake fingerprints the same as the uncropped one it replaced */
@@ -2894,6 +2929,9 @@ try {
         if (!r || !r.display) return null;
         const t = Texture.from(r.display);
         t.source.autoGenerateMipmaps = true;
+        /* v2.3.6203: read back through the probe's own renderer (extract), never
+           its canvas: on the chip only (gpuOnly.js) */
+        keepOnGpuOnly(paletteRendererOf(), t.source);
         return t;
       },
       lookJob: (entries, worn, pi) => lookArmourJob(entries, worn, pi),
@@ -3215,7 +3253,7 @@ function _storeBake(key, dc, _beltPending, _bt0, _bs, cell) {
   /* v2.3.2904: `cell` -- the worker has already cropped it (maskedBakeWorker
      cropFrame, packTrimmed's one-frame case): dc IS the crop, and this is the
      Texture _cropBakedFrame would have built around it. */
-  const t = cell ? _croppedTexture(dc, cell) : _cropBakedFrame(dc);
+  const t = cell ? _croppedTexture(dc, cell, _afterBakes) : _cropBakedFrame(dc);   /* v2.3.6203: + the scheduler that keeps it as an image */
   /* v2.3.1121: mipmaps on the masked (armoured) body too, so the shoe outline /
      bare-skin edges don't crawl while jogging in armour (same fix as the bare
      body sheets). Cheap on the downscaled texture. */
@@ -4210,6 +4248,13 @@ function _fishTopFrame(bodyTex, rodTex, plate) {
       window.__btFishTop = { rod, grip, gripR: GRIP_R, w: W, h: H, plate: !!_plate, plateHeld: _plateHeld, gauntlet: nG, legsHeld: _legsHeld };
     }
     ctx.putImageData(img, 0, 0);
+    /* v2.3.6203: made once (the putImageData above), only ever drawn, and kept in
+       _fishTopCache past a renderer rebuild: an image of itself (keepAsImage.js),
+       once the bakes are quiet (_afterBakes).  Its source then is the one the
+       next line makes, found by the canvas in Pixi's Cache (Texture.from keys it
+       so: TRAPS §139), not made a second time here (TRAPS §250's count); gone
+       from the Cache (let go of meanwhile), nothing is kept */
+    _afterBakes(() => keepAsImage(_cachedSourceOf(cv), Cache, { quiet: true }));
     const tex = new Texture({ source: Texture.from(cv).source });
     /* v2.3.4157: kept, and the least recently drawn past the cap let go of
        for good: off its sprites, then its source, Cache entry and canvas */

@@ -5,6 +5,8 @@ import { dashboardPanelBus } from './dashboardPanelBus.js';
 import { BT_AUDIO } from '@/data/index.js'; /* v2.3.2658: ui-close tick */
 import { manualOn, tapLockOn } from '@/game/manualCombat.js'; /* v2.3.4396: the game's combat is swipes now -- the two steps that taught the held attack and the tap lock say so */
 import { fixedBox } from '@/ui/fixedBox.js'; /* v2.3.3470: the layer's own box -- a computer's is the game's column (TRAPS §232) */
+import { SAY } from '@/data/say/controlsTutorial.js';   /* v2.3.6353: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';
 
 /* v2.3.1205: REBUILT as live DOM-anchored annotations (previously a
    frozen screenshot with eyeballed coordinates that every HUD change
@@ -26,10 +28,14 @@ import { fixedBox } from '@/ui/fixedBox.js'; /* v2.3.3470: the layer's own box -
    shape 'circle' rings a single round control.  sels: null is a
    target-less step (coach card centered mid-screen).  A step whose
    sels all fail to measure is dropped for this open, so navigation
-   simply advances past it. */
+   simply advances past it.
+   v2.3.6353: a step's words are getters reading the one table, so they are
+   read as the steps are measured (each open), a computer's "tap" said
+   "click" then; the two `bodyManual`s stay written here (manual-combat.test
+   10q reads them from this file). */
 const STEPS = [
   { key: 'move', shape: 'circle', sels: ['.bt-joystick-zone'],
-    label: 'Move', body: 'Drag the left joystick to move.' },
+    get label() { return say(SAY, 'controlsTutorial.moveLabel'); }, get body() { return say(SAY, 'controlsTutorial.moveBody'); } },
   /* v2.3.1667: this said "hold for special", and it was WRONG — there is
      no hold gesture.  The special fires on a FLICK: BroTown.jsx's right-
      stick release handler measures the release speed and triggers when it
@@ -46,23 +52,23 @@ const STEPS = [
      copy says what the button does and where the target comes from, since
      the owner's rule ("always nearest, tap to pick") is invisible otherwise. */
   { key: 'attack', shape: 'circle', sels: ['.bt-rjoy-base'],
-    label: 'Attack', body: 'The button lights up when something is in reach. Tap it to swing, hold it to keep fighting, and flick across it for your special.',
+    get label() { return say(SAY, 'controlsTutorial.attackLabel'); }, get body() { return say(SAY, 'controlsTutorial.attackBody'); },
     /* v2.3.4396 (docs/specs/manual-combat.md): every attack is made by hand; v2.3.4802: the bow is DRAWN back (docs/specs/bow-feel.md); v2.3.4803: the staff gathers and blasts (game/staffFeel.js) */
     bodyManual: 'Sword: swipe across it, or anywhere on the right side, for each swing. Bow: pull back, away from where you want to shoot, and let go; the longer you hold, the harder it shoots. Staff: hold to gather power (drag to aim), let go to blast the orb; a quick tap fires a spark.' },
   /* v2.3.2251: replaces the switch-target arrows, which are deleted.  This
      is the one rule a player cannot discover by pressing things: the game
      picks your target for you, and tapping is how you overrule it. */
   { key: 'target', shape: null, sels: null,
-    label: 'Your target', body: 'You always aim at the closest enemy. Tap a different one to lock onto it instead, and tap it again to let go.',
+    get label() { return say(SAY, 'controlsTutorial.targetLabel'); }, get body() { return say(SAY, 'controlsTutorial.targetBody'); },
     /* v2.3.5018: the held combat (the game's own again) keeps no lock a player chose: no tap to lock */
-    bodyNoLock: 'You always aim at the closest enemy: hold the right stick toward it and keep fighting.',
+    get bodyNoLock() { return say(SAY, 'controlsTutorial.targetBodyNoLock'); },
     /* v2.3.4396: no lock a player chooses; a special is armed, then made */
-    labelManual: 'Aiming and specials',
+    get labelManual() { return say(SAY, 'controlsTutorial.targetLabelManual'); },
     bodyManual: 'Your sword turns to the closest enemy by itself. A bow shoots opposite your pull, a staff where you drag. For a sword or bow special, tap the Special button first: your next attack is the special.' },
   /* v2.3.2242: the shield left the stick.  Its own button, under Attack,
      that only shows once there is something to block. */
   { key: 'shield', shape: 'circle', sels: ['[data-shield]'], anchorOptional: true,
-    label: 'Shield', body: 'Tap to raise your shield. It stays up until you attack, tap again, or run out of stamina.' },
+    get label() { return say(SAY, 'controlsTutorial.shieldLabel'); }, get body() { return say(SAY, 'controlsTutorial.shieldBody'); } },
   /* v2.3.2243's switch-target arrows step is GONE with the arrows themselves
      (v2.3.2251): with the target always the nearest enemy there is nothing to
      cycle.  Its `target` key is reused by the card above so the tour keeps a
@@ -91,16 +97,16 @@ const STEPS = [
     /* v2.3.4172: by the button's id, not its word (it is "Gear" now;
        TRAPS §29: a renamed label is a selector that silently finds nothing) */
     sels: ['[data-tut="coach-gear"]', '.bt-navrail [data-nav="dashboard"]'],
-    label: 'Bag', body: 'Your items and gear live here. Tap one to equip it.' },
+    get label() { return say(SAY, 'controlsTutorial.bagLabel'); }, get body() { return say(SAY, 'controlsTutorial.bagBody'); } },
   /* v2.3.1287: Chat left the toolbar — the composer opens by tapping
      your own character; the step teaches that instead. */
   /* v2.3.1803: same fault, worse — [data-tut="dash-more"] was its ONLY
      anchor, so this step has never had a fallback to fall back to. */
   { key: 'toolbar', shape: 'rect',
     sels: ['.bt-navrail [aria-label="More"]', '[data-tut="dash-more"]'],
-    label: 'Toolbar', body: 'Menus live down here. Tap your character to chat.' },
+    get label() { return say(SAY, 'controlsTutorial.toolbarLabel'); }, get body() { return say(SAY, 'controlsTutorial.toolbarBody'); } },
   { key: 'dodge', shape: null, sels: null,
-    label: 'Swipe / Dodge', body: 'Swipe anywhere in the world to dodge-roll.' },
+    get label() { return say(SAY, 'controlsTutorial.dodgeLabel'); }, get body() { return say(SAY, 'controlsTutorial.dodgeBody'); } },
 ];
 
 /* v2.3.1235: Lantern Slate tokens (docs/LANTERN-SLATE-SPEC.md) — sheet
@@ -388,7 +394,7 @@ export const ControlsTutorial = () => {
              handler advances a closed tour. Same reason NpcDialogue guards its
              own Next even though the window does the same thing. */
           onClick={(e) => { e.stopPropagation(); onClose(); }}
-          aria-label="Close tutorial"
+          aria-label={say(SAY, 'controlsTutorial.close')}
           data-esc="" data-key="Esc" data-key-at="hang"   /* v2.3.3407: Esc presses it (game/deskKeys.js) */
           style={{
             position: 'absolute',
@@ -422,7 +428,7 @@ export const ControlsTutorial = () => {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12 }}>
           <div style={{
             fontSize: 11, color: COL.muted, whiteSpace: 'nowrap',
-          }}>{`Step ${idx + 1} of ${total}`}</div>
+          }}>{say(SAY, 'controlsTutorial.stepOf', { step: idx + 1, total })}</div>
           <div style={{ flex: 1 }} />
           {!isFirst && (
             <button
@@ -436,7 +442,7 @@ export const ControlsTutorial = () => {
                 border: `1px solid ${COL.border}`,
                 color: COL.text,
               }}
-            >Back</button>
+            >{say(SAY, 'controlsTutorial.back')}</button>
           )}
           <button
             onClick={(e) => { e.stopPropagation(); if (isLast) onClose(); else setStep(s => Math.min(total - 1, s + 1)); }}   /* v2.3.2284: else it double-steps */
@@ -450,7 +456,7 @@ export const ControlsTutorial = () => {
               border: `1px solid ${COL.goldEdge}`,
               color: COL.goldText,
             }}
-          >{isLast ? 'Done' : 'Next'}</button>
+          >{say(SAY, isLast ? 'controlsTutorial.done' : 'controlsTutorial.next')}</button>
         </div>
       </div>
     </div>

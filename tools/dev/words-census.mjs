@@ -32,6 +32,7 @@
  *   - never: comments, console.* and Error(...) arguments, imports, object
  *     keys, comparisons (`=== 'x'`, `case 'x':`), CSS, paths and ids.
  *   - developer-only files (DEV_FILES: the Test panel, src/debug, mock data)
+ *     and, v2.3.6355, words no player is shown (NOT_SHOWN, by their call)
  *     are counted apart and given as a total only (the card's reading).
  *   - the server (server/src, vendor/ aside): words in a field the page shows
  *     (`error:`, `message:`, `text:`, `title:`, `note:` ...).  Refusal CODES
@@ -71,6 +72,7 @@ const DEV_FILES = [
   /^src\/debug\//,
   /^src\/state\//,           // the state ledgers: notes for coders, never drawn
   /^src\/ui\/panels\/(DevPanel|DevWatch|ReportTable|SetSwitchRow|FeedbackOwnerRows|SoundStudio)\.jsx$/,
+  /^src\/ui\/panels\/RenameRow\.jsx$/,   // v2.3.6355: the Test panel's rename row (DevPanel.jsx its one caller; card WD3)
   /^src\/game\/ownerSwitches\.js$/,
   /^src\/data\/soundStudio\.js$/,
   /^src\/ui\/mobile\/mock[A-Z]\w*\.js$/,
@@ -78,6 +80,18 @@ const DEV_FILES = [
   /^server\/src\/(devtools|admin)\.js$/,   // the Test panel's levers and the admin routes
 ];
 export const isDevFile = (f) => DEV_FILES.some((re) => re.test(f));
+
+/* v2.3.6355: NOT SHOWN (docs/specs/player-words.md, "A `?` row is judged as
+   its screen moves": it moves into the table or is listed here, a reason
+   each).  Words inside a file a player uses that no player is shown, by the
+   call they are written in, counted with the developer-only above.  Never a
+   way to meet the line by renaming (rule 8): each entry names what it is and
+   why no player reads it (card WD3, the planning session's answer).
+   tools/guards/player-words.test 5 is its break proof. */
+export const NOT_SHOWN = [
+  { call: 'debugBus.cmd', why: 'the dev console\'s commands and their replies (src/ui/GameApp.jsx: `wheel`, `inv`, `card`, `hpx`, `nudge`, `mastery` ...): typed by a coder in the ?dev=1 console, printed there' },
+];
+const notShown = (s) => NOT_SHOWN.some((n) => s.calls.includes(n.call));
 
 /* ── the lexer ──
  * lex(text, jsx) -> { strings: [{ kind, value, at, key, calls, jsxChild, objKey, cmp, code }] }
@@ -504,7 +518,7 @@ export function census(opts = {}) {
     for (const s of lex(text, true)) {
       const v = judge(s);
       if (!v) continue;
-      if (dv) { dev++; continue; }
+      if (dv || notShown(s)) { dev++; continue; }
       const where = f.startsWith('src/data/') || s.calls.includes('deskWords') ? 'table' : 'place';
       rows.push({ file: f, line: lineAt(starts, s.at), screen: screenOf(f), side: 'client', where, sure: v, kind: s.kind, value: s.value, desk: s.calls.includes('deskWords') });
     }
@@ -567,7 +581,7 @@ export function page(c = census()) {
   L.push('| ...written in place on the page | ' + t.place + ' |');
   L.push('| ...written in place on the worker (`server/src`) | ' + t.server + ' |');
   L.push('| ...sure (`yes`) / unclear, counted (`?`) | ' + t.sure + ' / ' + t.unsure + ' |');
-  L.push('| developer-only (Test panel, `src/debug`, mock data): not player-facing, total only | ' + t.dev + ' |');
+  L.push('| developer-only (Test panel, `src/debug`, mock data; NOT_SHOWN, v2.3.6355): not player-facing, total only | ' + t.dev + ' |');
   L.push('| flag: "Wheel" a player reads | ' + t.wheel + ' |');
   L.push('| flag: "remnant(s)" a player reads | ' + t.remnant + ' |');
   L.push('| flag: "tap" outside `deskWords()` | ' + t.tap + ' |');

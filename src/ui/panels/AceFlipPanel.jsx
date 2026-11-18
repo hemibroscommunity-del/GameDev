@@ -7,6 +7,8 @@ import { thumbFor, ITEM_NAMES, TICKET_KEY_PREFIX } from '@/ui/mobile/dash/Invent
 import { peerCosmeticsFromWire } from '@/networking/peerCosmetics.js';
 import { npcArtUrl } from '@/rendering/npcSprites.js';   /* v2.3.3580: his head, a Hemi Bros portrait now, at the townsfolk's cache-bust */
 import { act } from '@/game/actions.js';   /* v2.3.5190: the page's requests leave through the action door (card K PR 7) */
+import { SAY } from '@/data/say/aceFlip.js';   /* v2.3.6352: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say, sayPieces } from '@/game/say.js';
 
 /* ═══ v2.3.2618: ACE'S COIN FLIP ═══
  *
@@ -108,7 +110,7 @@ function verdict(won, detail) {
         color: won ? LS.bannerWin : LS.bannerLose,
         textShadow: '0 2px 0 rgba(0,0,0,.35)',
       },
-    }, won ? 'YOU WON!' : 'YOU LOST!'),
+    }, say(SAY, won ? 'aceFlip.youWon' : 'aceFlip.youLost')),
     React.createElement('div', {
       style: { marginTop: 5, fontSize: 16, fontWeight: 700, color: won ? LS.bannerWin : LS.bannerLose },
     }, detail));
@@ -122,7 +124,7 @@ function itemTally(r) {
   var sign = r.won ? '+' : '−';
   var m = r && r.items;
   var keys = m ? Object.keys(m) : [];
-  if (!keys.length) return sign + (r.total || 0) + ' items';
+  if (!keys.length) return say(SAY, r.won ? 'aceFlip.itemsWon' : 'aceFlip.itemsLost', { count: r.total || 0 });
   return keys.map(function (k) { return sign + m[k] + ' ' + labelFor(k); }).join(', ');
 }
 
@@ -236,7 +238,7 @@ export function AceFlipPanel() {
       if (!aceFlipBus.pending) return;
       aceFlipBus.setPending(false);
       /* v2.3.4025: Ace's words said plainly (docs/specs/plain-words.md) */
-      aceFlipBus.setNote('Ace shakes his head. "You don\'t have enough gold for that bet, friend. Try a smaller stake."');
+      aceFlipBus.setNote(say(SAY, 'aceFlip.noteRefused'));
     }, 6000);
     return function () { clearTimeout(id); };
   }, [spinning]);
@@ -284,7 +286,7 @@ export function AceFlipPanel() {
       /* Deploy-order safety (rule 19): a worker that has not advertised the
          flag has no case for ace_flip_request and would REBROADCAST the stake
          to the room while settling nothing. Say so rather than send. */
-      aceFlipBus.setNote('Ace puts his coin away. "No coin flips right now, friend. Come back later."');
+      aceFlipBus.setNote(say(SAY, 'aceFlip.noteClosed'));
       return;
     }
     aceFlipBus.setNote('');
@@ -318,7 +320,7 @@ export function AceFlipPanel() {
   var sendItems = function () {
     if (!canWager) return;
     if (!itemsOk) {
-      aceFlipBus.setNote('Ace shakes his head. "Gold only today, friend. Keep your items in your Bag."');
+      aceFlipBus.setNote(say(SAY, 'aceFlip.noteGoldOnly'));
       return;
     }
     var out = {};
@@ -372,11 +374,11 @@ export function AceFlipPanel() {
       }),
       React.createElement('div', { style: { flex: 1, minWidth: 0 } },
         React.createElement('div', { style: { fontSize: 14, color: LS.txt1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, labelFor(k)),
-        React.createElement('div', { style: { fontSize: 12, color: LS.txt3 } }, 'have ' + held)),
+        React.createElement('div', { style: { fontSize: 12, color: LS.txt3 } }, say(SAY, 'aceFlip.have', { held: held }))),
       React.createElement('button', { onClick: step(-1), disabled: q <= 0 || aceFlipBus.pending, style: { width: 26, height: 26, borderRadius: 7, border: '1px solid ' + LS.borderStrong, background: 'transparent', color: q > 0 ? LS.txt1 : LS.dis, fontSize: 15, lineHeight: 1, cursor: 'pointer' } }, '\u2212'),
       React.createElement('span', { style: { minWidth: 26, textAlign: 'center', fontSize: 13, fontWeight: 700, color: q > 0 ? LS.brass : LS.dis, fontVariantNumeric: 'tabular-nums' } }, q),
       React.createElement('button', { onClick: step(1), disabled: q >= held || aceFlipBus.pending, style: { width: 26, height: 26, borderRadius: 7, border: '1px solid ' + LS.borderStrong, background: 'transparent', color: q < held ? LS.txt1 : LS.dis, fontSize: 15, lineHeight: 1, cursor: 'pointer' } }, '+'),
-      React.createElement('button', { onClick: function () { aceFlipBus.stageItem(k, held); }, disabled: q >= held || aceFlipBus.pending, style: { padding: '4px 7px', borderRadius: 7, border: '1px solid ' + LS.borderStrong, background: 'transparent', color: q < held ? LS.txt2 : LS.dis, fontSize: 10.5, fontWeight: 700, cursor: 'pointer' } }, 'All'));
+      React.createElement('button', { onClick: function () { aceFlipBus.stageItem(k, held); }, disabled: q >= held || aceFlipBus.pending, style: { padding: '4px 7px', borderRadius: 7, border: '1px solid ' + LS.borderStrong, background: 'transparent', color: q < held ? LS.txt2 : LS.dis, fontSize: 10.5, fontWeight: 700, cursor: 'pointer' } }, say(SAY, 'aceFlip.all')));
   };
 
   var boardRow = function (r, i, isWin) {
@@ -389,7 +391,7 @@ export function AceFlipPanel() {
       face
         ? React.createElement('img', { src: face, alt: '', draggable: false, style: { width: 30, height: 30, borderRadius: 7, objectFit: 'cover', background: LS.well, flexShrink: 0 } })
         : React.createElement('div', { style: { width: 30, height: 30, borderRadius: 7, background: LS.well, color: LS.txt3, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, flexShrink: 0 } }, String((r && r.name) || '?').slice(0, 1).toUpperCase()),
-      React.createElement('div', { style: { flex: 1, minWidth: 0, fontSize: 14.5, color: LS.txt1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, (r && r.name) || 'Bro'),
+      React.createElement('div', { style: { flex: 1, minWidth: 0, fontSize: 14.5, color: LS.txt1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, (r && r.name) || say(SAY, 'aceFlip.noName')),
       gold((isWin ? '+' : '-') + ((r && r.amount) || 0), 14.5, isWin ? LS.win : LS.lose, (r && r.amount) || 0));
   };
 
@@ -398,7 +400,7 @@ export function AceFlipPanel() {
       React.createElement('div', { style: { fontSize: 12.5, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: isWin ? LS.win : LS.lose, marginBottom: 7 } }, title),
       rows.length
         ? rows.map(function (r, i) { return boardRow(r, i, isWin); })
-        : React.createElement('div', { style: { fontSize: 14, color: LS.txt3, padding: '8px 2px' } }, 'Nothing in the book yet. Be the first name in it. I\'m not saying which column.'));
+        : React.createElement('div', { style: { fontSize: 14, color: LS.txt3, padding: '8px 2px' } }, say(SAY, 'aceFlip.bookEmpty')));
   };
 
   var chip = function (label, value, active) {
@@ -448,10 +450,10 @@ export function AceFlipPanel() {
         onError: function (e) { e.currentTarget.replaceWith(document.createTextNode('🃏')); },
       }),
       React.createElement('div', { style: { minWidth: 0, flex: 1 } },
-        React.createElement('div', { style: { fontSize: 17, fontWeight: 700, letterSpacing: '.10em', textTransform: 'uppercase', color: LS.txt1 } }, 'Ace'),
-        React.createElement('div', { style: { fontSize: 13.5, color: LS.txt3, marginTop: 2 } }, 'Gambler')),
+        React.createElement('div', { style: { fontSize: 17, fontWeight: 700, letterSpacing: '.10em', textTransform: 'uppercase', color: LS.txt1 } }, say(SAY, 'aceFlip.name')),
+        React.createElement('div', { style: { fontSize: 13.5, color: LS.txt3, marginTop: 2 } }, say(SAY, 'aceFlip.role'))),
       React.createElement('button', {
-        onClick: close, 'aria-label': 'Close',
+        onClick: close, 'aria-label': say(SAY, 'aceFlip.close'),
         /* v2.3.3481: the 2026-10-19 UI review -- the ✕ is 18 x 28, under the
            44 px touch floor: an invisible ring makes the press 44 x 44 with
            no change to how it looks (game.css .bt-ace-close; ::before, as
@@ -468,15 +470,15 @@ export function AceFlipPanel() {
     /* ── v2.3.2619: three faces of the dialog ── */
     React.createElement('div', {
       style: { flex: 'none', display: 'flex', background: LS.strip, borderBottom: '1px solid ' + LS.border },
-    }, tab('gold', 'Gold'), tab('items', 'Items'), tab('records', 'Records')),
+    }, tab('gold', say(SAY, 'aceFlip.tabGold')), tab('items', say(SAY, 'aceFlip.tabItems')), tab('records', say(SAY, 'aceFlip.tabRecords'))),
 
     aceFlipBus.mode === 'records' ? React.createElement('div', {
       style: { padding: '13px 14px 15px', maxHeight: '58vh', flex: '1 1 auto', minHeight: 0, overflowY: 'auto' },
     },
       React.createElement('div', { style: { fontSize: 15, color: LS.txt2, lineHeight: 1.5, marginBottom: 13 } },
-        'My record book: the biggest win and the biggest loss on my coin, one line for each player.'),
-      boardList(aceFlipBus.board.wins || [], true, 'Biggest wins'),
-      boardList(aceFlipBus.board.losses || [], false, 'Biggest losses'))
+        say(SAY, 'aceFlip.recordsIntro')),
+      boardList(aceFlipBus.board.wins || [], true, say(SAY, 'aceFlip.biggestWins')),
+      boardList(aceFlipBus.board.losses || [], false, say(SAY, 'aceFlip.biggestLosses')))
 
     : aceFlipBus.mode === 'items' ? React.createElement('div', {
       style: { padding: '13px 14px 15px', flex: '1 1 auto', minHeight: 0, overflowY: 'auto' },
@@ -484,19 +486,19 @@ export function AceFlipPanel() {
       React.createElement('div', { style: { fontSize: 15, color: LS.txt2, lineHeight: 1.5, marginBottom: 12 } },
         aceFlipBus.note
           ? aceFlipBus.note
-          : 'Bet items from your Bag. If you win, you get double. If you lose, I keep them. I win ' + acePct + '% of flips, and you win ' + youPct + '%.'),
+          : say(SAY, 'aceFlip.itemsIntro', { acePct: acePct, youPct: youPct })),
       aceFlipBus.itemResult && !aceFlipBus.pending
         ? verdict(aceFlipBus.itemResult.won, itemTally(aceFlipBus.itemResult))
         : null,
       React.createElement('div', { style: { maxHeight: '38vh', overflowY: 'auto', marginBottom: 10 } },
         bagKeys.length
           ? bagKeys.map(itemRow)
-          : React.createElement('div', { style: { fontSize: 14, color: LS.txt3, padding: '12px 2px', textAlign: 'center' } }, 'Your Bag is empty. Go find some loot first, then come back.')),
+          : React.createElement('div', { style: { fontSize: 14, color: LS.txt3, padding: '12px 2px', textAlign: 'center' } }, say(SAY, 'aceFlip.bagEmpty'))),
       stagedTotal > 0 ? React.createElement('div', {
         style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, fontSize: 14, color: LS.txt2 },
       },
-        React.createElement('span', null, 'Staked: ', React.createElement('strong', { style: { color: LS.brass } }, stagedTotal), ' item', stagedTotal === 1 ? '' : 's'),
-        React.createElement('button', { onClick: function () { aceFlipBus.clearItems(); }, disabled: aceFlipBus.pending, style: { border: 'none', background: 'transparent', color: LS.txt3, fontSize: 11.5, cursor: 'pointer', textDecoration: 'underline' } }, 'Clear')) : null,
+        React.createElement('span', null, sayPieces(SAY, 'aceFlip.staked', { n: stagedTotal, count: React.createElement('strong', { key: 'count', style: { color: LS.brass } }, stagedTotal) })),
+        React.createElement('button', { onClick: function () { aceFlipBus.clearItems(); }, disabled: aceFlipBus.pending, style: { border: 'none', background: 'transparent', color: LS.txt3, fontSize: 11.5, cursor: 'pointer', textDecoration: 'underline' } }, say(SAY, 'aceFlip.clear'))) : null,
       React.createElement('button', {
         onClick: sendItems, disabled: !canWager,
         style: {
@@ -504,13 +506,13 @@ export function AceFlipPanel() {
           background: canWager ? LS.brass : 'rgba(216,170,88,.18)', color: canWager ? LS.onBrass : LS.dis,
           fontSize: 16, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase',
         },
-      }, aceFlipBus.pending ? 'Flipping\u2026' : (stagedTotal > 0 ? 'Double or nothing \u00b7 ' + stagedTotal : 'Stake something')))
+      }, aceFlipBus.pending ? say(SAY, 'aceFlip.flipping') : (stagedTotal > 0 ? say(SAY, 'aceFlip.itemsGo', { total: stagedTotal }) : say(SAY, 'aceFlip.stakeSomething'))))
 
     : React.createElement('div', { style: { padding: '13px 14px 15px', flex: '1 1 auto', minHeight: 0, overflowY: 'auto' } },
       React.createElement('div', { style: { fontSize: 15, color: LS.txt2, lineHeight: 1.5, marginBottom: 12 } },
         aceFlipBus.note
           ? aceFlipBus.note
-          : 'I\'m Ace, and I flip coins for gold. Pick your stake. If you win, I pay you ' + ACE_FLIP_RISK_MULT + ' times your stake. If you lose, you pay me ' + ACE_FLIP_RISK_MULT + ' times your stake. I win ' + acePct + '% of flips, and you win ' + youPct + '%.'),
+          : say(SAY, 'aceFlip.goldIntro', { mult: ACE_FLIP_RISK_MULT, acePct: acePct, youPct: youPct })),
 
       /* ── the coin ── */
       React.createElement('div', {
@@ -536,16 +538,16 @@ export function AceFlipPanel() {
       })),
 
       res && !aceFlipBus.pending
-        ? verdict(res.won, (res.won ? '+' : '−') + Math.abs(res.delta || 0) + ' gold')
+        ? verdict(res.won, say(SAY, res.won ? 'aceFlip.goldWon' : 'aceFlip.goldLost', { amount: Math.abs(res.delta || 0) }))
         : null,
 
       /* ── stake ── */
       React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 } },
-        React.createElement('span', { style: { fontSize: 12.5, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: LS.txt3 } }, 'Your stake'),
+        React.createElement('span', { style: { fontSize: 12.5, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: LS.txt3 } }, say(SAY, 'aceFlip.yourStake')),
         /* v2.3.3481: the 2026-10-19 UI review -- "Bag 2550" beside the top
            bar's "2,550": the balance takes the HUD's own call (ZoneHeader.jsx).
            The stake chips and "Flip for 90g" are amounts, not the balance. */
-        React.createElement('span', { style: { fontSize: 12.5, color: LS.txt3 } }, 'Bag ', gold(Number(coins).toLocaleString(), 13, undefined, coins))),
+        React.createElement('span', { style: { fontSize: 12.5, color: LS.txt3 } }, sayPieces(SAY, 'aceFlip.bag', { gold: React.createElement(React.Fragment, { key: 'gold' }, gold(Number(coins).toLocaleString(), 13, undefined, coins)) }))),
       /* THE LADDER IS BUILT, NOT LISTED.  A fixed Min / quarter / half / Max
          row reads as broken on a small bag: at 105 gold the max stake is 35,
          so the quarter is 8 -- BELOW the 10 minimum -- and the row rendered
@@ -558,7 +560,7 @@ export function AceFlipPanel() {
           .filter(function (v) { return v >= ACE_FLIP_MIN_STAKE && v <= maxStake; })
           .filter(function (v, i, arr) { return arr.indexOf(v) === i; })
           .sort(function (a, b) { return a - b; })
-          .map(function (v) { return chip(v === maxStake ? 'Max ' + v : String(v), v, stake === v); })),
+          .map(function (v) { return chip(v === maxStake ? say(SAY, 'aceFlip.max', { stake: v }) : String(v), v, stake === v); })),
 
       /* The two numbers that matter, stated rather than implied: what you
          win, and what it costs if you don't. */
@@ -566,15 +568,15 @@ export function AceFlipPanel() {
         style: { display: 'flex', gap: 8, marginBottom: 12 },
       },
         React.createElement('div', { style: { flex: 1, background: LS.raised, border: '1px solid ' + LS.border, borderRadius: 9, padding: '8px 10px' } },
-          React.createElement('div', { style: { fontSize: 11.5, letterSpacing: '.12em', textTransform: 'uppercase', color: LS.txt3, marginBottom: 3 } }, 'Win (' + youPct + '%)'),
+          React.createElement('div', { style: { fontSize: 11.5, letterSpacing: '.12em', textTransform: 'uppercase', color: LS.txt3, marginBottom: 3 } }, say(SAY, 'aceFlip.winOdds', { pct: youPct })),
           gold(picked ? '+' + risk : '—', 17, picked ? LS.win : LS.txt3)),
         React.createElement('div', { style: { flex: 1, background: LS.raised, border: '1px solid ' + LS.border, borderRadius: 9, padding: '8px 10px' } },
-          React.createElement('div', { style: { fontSize: 11.5, letterSpacing: '.12em', textTransform: 'uppercase', color: LS.txt3, marginBottom: 3 } }, 'Lose (' + acePct + '%)'),
+          React.createElement('div', { style: { fontSize: 11.5, letterSpacing: '.12em', textTransform: 'uppercase', color: LS.txt3, marginBottom: 3 } }, say(SAY, 'aceFlip.loseOdds', { pct: acePct })),
           gold(picked ? '-' + risk : '—', 17, picked ? LS.lose : LS.txt3))),
 
       maxStake < ACE_FLIP_MIN_STAKE ? React.createElement('div', {
         style: { fontSize: 14, color: LS.lose, textAlign: 'center', padding: '10px 0' },
-      }, 'You need ', gold(ACE_FLIP_MIN_STAKE * ACE_FLIP_RISK_MULT, 14, LS.lose), ' in the bag to cover his smallest bet.')
+      }, sayPieces(SAY, 'aceFlip.needGold', { gold: React.createElement(React.Fragment, { key: 'gold' }, gold(ACE_FLIP_MIN_STAKE * ACE_FLIP_RISK_MULT, 14, LS.lose)) }))
         : React.createElement('button', {
           onClick: send, disabled: !canFlip,
           style: {
@@ -582,5 +584,5 @@ export function AceFlipPanel() {
             background: canFlip ? LS.brass : 'rgba(216,170,88,.18)', color: canFlip ? LS.onBrass : LS.dis,
             fontSize: 16, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase',
           },
-        }, aceFlipBus.pending ? 'Flipping…' : (stake < ACE_FLIP_MIN_STAKE ? 'Pick a stake' : 'Flip for ' + risk + 'g')))));
+        }, aceFlipBus.pending ? say(SAY, 'aceFlip.flipping') : (stake < ACE_FLIP_MIN_STAKE ? say(SAY, 'aceFlip.pickStake') : say(SAY, 'aceFlip.flipFor', { risk: risk }))))));
 }

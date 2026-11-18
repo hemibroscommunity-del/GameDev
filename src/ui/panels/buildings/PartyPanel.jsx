@@ -7,6 +7,8 @@ import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { cue } from '@/game/eventSounds.js';   /* v2.3.3434: signing up heard */
 import { OWNER_ICON } from '@/data/ownerIcons.js';   /* v2.3.3481: the arena's helmet */
 import { act } from '@/game/actions.js';   /* v2.3.5190: the page's requests leave through the action door (card K PR 7) */
+import { SAY } from '@/data/say/partyPanel.js';   /* v2.3.6342: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';
 /* === PartyPanel — buildingPanel === 'party' sub-panel === */
 /* v2.3.881: extracted verbatim from the buildingPanel === 'party'
    clause in BroTown.jsx (the Arena: live tournament bracket, betting
@@ -168,7 +170,7 @@ export function PartyPanel(props) {
       letterSpacing: '.10em',
       color: '#F4F0E7'
     }
-  }, "Gladiator Arena")), /*#__PURE__*/React.createElement("div", {
+  }, say(SAY, 'partyPanel.title'))), /*#__PURE__*/React.createElement("div", {
     /* v2.3.1235: batch-3 rollout — 11px floor on the meta row; the gold
        amount is a key number (16/700 tabular brass). */
     style: {
@@ -181,16 +183,16 @@ export function PartyPanel(props) {
       flexWrap: 'wrap',
       gap: 4
     }
-  }, /* v2.3.1235: state-correction: the bare balance beside a 100G fee was mistakable for the fee; label it. */ "Your gold: ", /*#__PURE__*/React.createElement("img", { src: coinArtFor(rpgState.coins) /* v2.3.3734: your gold, its pile */, alt: "", draggable: false, style: { width: 16, height: 16, objectFit: 'contain', verticalAlign: '-3px' }, onError: function (e) { e.currentTarget.replaceWith(document.createTextNode('\uD83D\uDCB0')); } }), /*#__PURE__*/React.createElement("span", { style: { fontSize: 16 /* v2.3.1235: batch-3 rollout — key-number size */, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#D8AA58' } },
+  }, /* v2.3.1235: state-correction: the bare balance beside a 100G fee was mistakable for the fee; label it. */ say(SAY, 'partyPanel.yourGold'), /*#__PURE__*/React.createElement("img", { src: coinArtFor(rpgState.coins) /* v2.3.3734: your gold, its pile */, alt: "", draggable: false, style: { width: 16, height: 16, objectFit: 'contain', verticalAlign: '-3px' }, onError: function (e) { e.currentTarget.replaceWith(document.createTextNode('\uD83D\uDCB0')); } }), /*#__PURE__*/React.createElement("span", { style: { fontSize: 16 /* v2.3.1235: batch-3 rollout — key-number size */, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#D8AA58' } },
   /* v2.3.3481: the 2026-10-19 UI review -- "2550G" beside the top bar's
      "2,550": the HUD's own call (ZoneHeader.jsx), and no trailing G, as the
      coin already says what the number is (Diego's balance, v2.3.2060).  The
      100G entry stays a price. */
-  Number(rpgState.coins || 0).toLocaleString()), "\xB7 ", ARENA_ENTRY_FEE,
+  Number(rpgState.coins || 0).toLocaleString()), say(SAY, 'partyPanel.entryLine', { fee: ARENA_ENTRY_FEE })
   /* v2.3.3481: the review -- "10 rounds" was never true: a bracket is 2, 4
      or 8 fighters (server gladiator.js MAX_BRACKET 8, the largest power of
      two that fits the queue), so 1 to 3 rounds. */
-  "G entry \xB7 Up to 8 fighters \xB7 Single elimination \xB7 No healing"), function () {
+  ), function () {
     var S = stateRef.current;
     /* Poll arena status periodically */
     if (!S._arenaLastPoll || Date.now() - S._arenaLastPoll > ARENA_POLL_INTERVAL) {
@@ -251,18 +253,18 @@ export function PartyPanel(props) {
      So the AP are named only against a worker that says it pays them
      (`arenaPaysAp`, caps.arenaap); an older worker pays gold alone, and the
      line says the gold alone. */
-  "Enter a single elimination tournament of up to 8 fighters. Blind matchups \u2014 any level can face any level. No food or healing allowed. ",
+  say(SAY, 'partyPanel.intro'),
   /* v2.3.3527: against a worker with achievements the AP are the first
      win's (achvCaps above); the gold and the title every win.  v2.3.3488's
      worker (no achievements yet) paid them on the first win too, under its
      own mark (arenaApFirst above) */
   arenaPaysAp && achvCaps === true
-    ? "Only the final victor earns the Gladiator title and up to 250G for every fighter in the bracket (2,000G for a full 8). Your first win also earns the Gladiator achievement and its " + ARENA_CHAMPION_REWARD.ap + " AP; later wins pay the gold."
+    ? say(SAY, 'partyPanel.prizeAchievement', { ap: ARENA_CHAMPION_REWARD.ap })
     : arenaApFirst && achvCaps !== false
-    ? "Only the final victor earns the Gladiator title and up to 250G for every fighter in the bracket (2,000G for a full 8), plus " + ARENA_CHAMPION_REWARD.ap + " AP for your first win."
+    ? say(SAY, 'partyPanel.prizeApFirst', { ap: ARENA_CHAMPION_REWARD.ap })
     : arenaPaysAp && achvCaps !== false
-    ? "Only the final victor earns the Gladiator title and " + ARENA_CHAMPION_REWARD.ap + " AP, plus up to 250G for every fighter in the bracket (2,000G for a full 8)."
-    : "Only the final victor earns the Gladiator title and up to 250G for every fighter in the bracket (2,000G for a full 8)."), /*#__PURE__*/React.createElement("button", {
+    ? say(SAY, 'partyPanel.prizeAp', { ap: ARENA_CHAMPION_REWARD.ap })
+    : say(SAY, 'partyPanel.prizeGold')), /*#__PURE__*/React.createElement("button", {
     onClick: /*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee8() {
       var S, R, res, data, _t7;
       return _regenerator().w(function (_context8) {
@@ -273,7 +275,7 @@ export function PartyPanel(props) {
               _context8.n = 1;
               break;
             }
-            pushDmgPopup(S, S.player.x, S.player.y - 30, 'Need ' + ARENA_ENTRY_FEE + 'G!', '#D95C54');
+            pushDmgPopup(S, S.player.x, S.player.y - 30, say(SAY, 'partyPanel.needFee', { fee: ARENA_ENTRY_FEE }), '#D95C54');
             return _context8.a(2);
           case 1:
             /* v2.3.1126: the worker escrows the entry fee (settled join
@@ -298,7 +300,7 @@ export function PartyPanel(props) {
               _context8.n = 5;
               break;
             }
-            pushDmgPopup(S, S.player.x, S.player.y - 30, data.error || 'Failed', '#D95C54');
+            pushDmgPopup(S, S.player.x, S.player.y - 30, data.error || say(SAY, 'partyPanel.failed'), '#D95C54');
             return _context8.a(2);
           case 5:
             setArenaStatus({
@@ -316,7 +318,7 @@ export function PartyPanel(props) {
           case 6:
             _context8.p = 6;
             _t7 = _context8.v;
-            pushDmgPopup(S, S.player.x, S.player.y - 30, 'Server error', '#D95C54');
+            pushDmgPopup(S, S.player.x, S.player.y - 30, say(SAY, 'partyPanel.serverError'), '#D95C54');
           case 7:
             setRpgState(_objectSpread({}, R));
             try {
@@ -360,14 +362,14 @@ export function PartyPanel(props) {
       cursor: 'default',
       marginBottom: 8
     }
-  }, "Enter Arena \xB7 ", ARENA_ENTRY_FEE, "G"), rpgState.coins < ARENA_ENTRY_FEE && /*#__PURE__*/React.createElement("div", {
+  }, say(SAY, 'partyPanel.enter', { fee: ARENA_ENTRY_FEE })), rpgState.coins < ARENA_ENTRY_FEE && /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12,
       color: '#D8635D',
       textAlign: 'center',
       marginBottom: 8
     }
-  }, "Need ", ARENA_ENTRY_FEE - rpgState.coins, "G more")), (arenaStatus === null || arenaStatus === void 0 ? void 0 : arenaStatus.status) === 'queued' && /*#__PURE__*/React.createElement("div", {
+  }, say(SAY, 'partyPanel.needMore', { gold: ARENA_ENTRY_FEE - rpgState.coins }))), (arenaStatus === null || arenaStatus === void 0 ? void 0 : arenaStatus.status) === 'queued' && /*#__PURE__*/React.createElement("div", {
     style: {
       padding: 10,
       borderRadius: 8,
@@ -387,22 +389,22 @@ export function PartyPanel(props) {
       color: '#8D9B98',
       marginBottom: 4
     }
-  }, "In Queue"), /*#__PURE__*/React.createElement("div", {
+  }, say(SAY, 'partyPanel.inQueue')), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       color: '#8D9B98'
     }
-  }, "Position: ", arenaStatus.position, "/", arenaStatus.queueSize, " \xB7 ",
+  }, say(SAY, 'partyPanel.position', { pos: arenaStatus.position, size: arenaStatus.queueSize }),
   /* v2.3.3713: the worker sends when the bracket starts (`startsAt`: a
      minute after the first entry, with 2 or more); "Waiting for 4/16
      players" was the old Arena DO's rule, never this worker's */
-  arenaStatus.startsAt ? 'Bracket starts in ' + Math.max(0, Math.ceil((arenaStatus.startsAt - Date.now()) / 1000)) + 's' : 'Waiting for ' + (arenaStatus.queueSize < 4 ? '4' : '16') + ' players...'), /*#__PURE__*/React.createElement("div", {
+  arenaStatus.startsAt ? say(SAY, 'partyPanel.startsIn', { secs: Math.max(0, Math.ceil((arenaStatus.startsAt - Date.now()) / 1000)) }) : say(SAY, 'partyPanel.waitingFor', { count: arenaStatus.queueSize < 4 ? '4' : '16' })), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       color: '#8D9B98',
       marginTop: 4
     }
-  }, "You can close this panel \u2014 you'll be notified when matched!"), /*#__PURE__*/React.createElement("button", {
+  }, say(SAY, 'partyPanel.closeOk')), /*#__PURE__*/React.createElement("button", {
     onClick: /*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee9() {
       var S, _t8;
       return _regenerator().w(function (_context9) {
@@ -419,7 +421,7 @@ export function PartyPanel(props) {
               ok: true,
               status: 'none'
             });
-            pushDmgPopup(S, S.player.x, S.player.y - 30, 'Left arena queue (+' + ARENA_ENTRY_FEE + 'G)', 'rgba(255,255,255,.5)');
+            pushDmgPopup(S, S.player.x, S.player.y - 30, say(SAY, 'partyPanel.leftQueue', { fee: ARENA_ENTRY_FEE }), 'rgba(255,255,255,.5)');
             setRpgState(_objectSpread({}, S.rpg));
             try {
               localStorage.setItem('bt_rpg', JSON.stringify(S.rpg));
@@ -448,7 +450,7 @@ export function PartyPanel(props) {
       color: '#D8635D',
       cursor: 'pointer'
     }
-  }, "Leave Queue (refund ", ARENA_ENTRY_FEE, "G)")), (arenaStatus === null || arenaStatus === void 0 ? void 0 : arenaStatus.status) === 'fighting' && arenaStatus.currentMatch && /*#__PURE__*/React.createElement("div", {
+  }, say(SAY, 'partyPanel.leaveQueue', { fee: ARENA_ENTRY_FEE }))), (arenaStatus === null || arenaStatus === void 0 ? void 0 : arenaStatus.status) === 'fighting' && arenaStatus.currentMatch && /*#__PURE__*/React.createElement("div", {
     style: {
       padding: 10,
       borderRadius: 10,
@@ -466,7 +468,7 @@ export function PartyPanel(props) {
       color: '#D8635D' /* v2.3.1235: danger token */,
       marginBottom: 4
     }
-  }, "FIGHT! Round ", arenaStatus.round), /*#__PURE__*/React.createElement("div", {
+  }, say(SAY, 'partyPanel.fightRound', { round: arenaStatus.round })), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       alignItems: 'center',
@@ -503,13 +505,13 @@ export function PartyPanel(props) {
       fontSize: 11 /* v2.3.1235: batch-3 rollout — 11px text floor */,
       color: '#8D9B98'
     }
-  }, "Lv", arenaStatus.currentMatch.p1Level)), /*#__PURE__*/React.createElement("div", {
+  }, say(SAY, 'partyPanel.level', { lv: arenaStatus.currentMatch.p1Level }))), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 14,
       fontWeight: 700,
       color: '#8D9B98'
     }
-  }, "VS"), /*#__PURE__*/React.createElement("div", {
+  }, say(SAY, 'partyPanel.versus')), /*#__PURE__*/React.createElement("div", {
     style: {
       textAlign: 'center'
     }
@@ -539,19 +541,19 @@ export function PartyPanel(props) {
       fontSize: 11 /* v2.3.1235: batch-3 rollout — 11px text floor */,
       color: '#8D9B98'
     }
-  }, "Lv", arenaStatus.currentMatch.p2Level))), /*#__PURE__*/React.createElement("div", {
+  }, say(SAY, 'partyPanel.level', { lv: arenaStatus.currentMatch.p2Level })))), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       color: '#8D9B98',
       marginTop: 6
     }
-  }, "Find and defeat your opponent!" /* v2.3.3713: a match counts wherever you meet */), /*#__PURE__*/React.createElement("div", {
+  }, say(SAY, 'partyPanel.findFoe') /* v2.3.3713: a match counts wherever you meet */), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11 /* v2.3.1235: batch-3 rollout — 11px text floor */,
       color: '#667875',
       marginTop: 4
     }
-  }, "3 minutes on the clock: then the one with more health left wins." /* v2.3.3713: the worker's rule (gladiator.js MATCH_MS, _arenaTiebreak); "2 min ... auto-awarded" was the old Arena DO's */)), (arenaStatus === null || arenaStatus === void 0 ? void 0 : arenaStatus.status) === 'eliminated' && /*#__PURE__*/React.createElement("div", {
+  }, say(SAY, 'partyPanel.clock') /* v2.3.3713: the worker's rule (gladiator.js MATCH_MS, _arenaTiebreak); "2 min ... auto-awarded" was the old Arena DO's */)), (arenaStatus === null || arenaStatus === void 0 ? void 0 : arenaStatus.status) === 'eliminated' && /*#__PURE__*/React.createElement("div", {
     style: {
       padding: 10,
       borderRadius: 8,
@@ -568,13 +570,13 @@ export function PartyPanel(props) {
       fontWeight: 700,
       color: '#B6C1BE'
     }
-  }, "Eliminated \u2014 Round ", arenaStatus.round), /*#__PURE__*/React.createElement("div", {
+  }, say(SAY, 'partyPanel.eliminated', { round: arenaStatus.round })), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       color: '#8D9B98',
       marginTop: 2
     }
-  }, arenaStatus.wins, " wins \xB7 You can spectate the rest!")), arenaTournament && /*#__PURE__*/React.createElement("div", {
+  }, say(SAY, 'partyPanel.spectate', { wins: arenaStatus.wins }))), arenaTournament && /*#__PURE__*/React.createElement("div", {
     style: {
       marginTop: 4
     }
@@ -589,13 +591,13 @@ export function PartyPanel(props) {
       color: '#8D9B98',
       marginBottom: 4
     }
-  }, /*#__PURE__*/React.createElement("img", { src: "/icons/ui/evt-party.webp", alt: "", draggable: false, style: { width: 16, height: 16, objectFit: 'contain', verticalAlign: '-3px', marginRight: 6 }, onError: function (e) { e.currentTarget.replaceWith(document.createTextNode('\uD83C\uDFDF\uFE0F')); } }), "Tournament \u2014 Round ", arenaTournament.round, "/", arenaTournament.maxRounds, /*#__PURE__*/React.createElement("span", {
+  }, /*#__PURE__*/React.createElement("img", { src: "/icons/ui/evt-party.webp", alt: "", draggable: false, style: { width: 16, height: 16, objectFit: 'contain', verticalAlign: '-3px', marginRight: 6 }, onError: function (e) { e.currentTarget.replaceWith(document.createTextNode('\uD83C\uDFDF\uFE0F')); } }), say(SAY, 'partyPanel.tournamentRound', { round: arenaTournament.round, max: arenaTournament.maxRounds }), /*#__PURE__*/React.createElement("span", {
     style: {
       fontSize: 11,
       color: '#8D9B98',
       marginLeft: 4
     }
-  }, arenaTournament.remaining, "/", arenaTournament.playerCount, " remaining")), /*#__PURE__*/React.createElement("div", {
+  }, say(SAY, 'partyPanel.remaining', { left: arenaTournament.remaining, count: arenaTournament.playerCount }))), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       flexWrap: 'wrap',
@@ -621,7 +623,7 @@ export function PartyPanel(props) {
         textDecoration: p.eliminated ? 'line-through' : 'none',
         opacity: p.eliminated ? 0.55 : 1
       }
-    }, p.name, " ", p.wins > 0 && '(' + p.wins + 'W)');
+    }, p.name, " ", p.wins > 0 && say(SAY, 'partyPanel.fighterWins', { wins: p.wins }));
   })), arenaTournament.currentMatches.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
@@ -632,7 +634,7 @@ export function PartyPanel(props) {
     /* v2.3.1235: batch-3 rollout — match rows move into one well with
        dividers; the red live-match tint was an off-token screen fill
        (the brass "Fighting" tag carries the live state). */
-  }, "Current Matches"), /*#__PURE__*/React.createElement("div", {
+  }, say(SAY, 'partyPanel.currentMatches')), /*#__PURE__*/React.createElement("div", {
     style: LS_WELL235
   }, arenaTournament.currentMatches.map(function (m, _mi) {
     return /*#__PURE__*/React.createElement("div", {
@@ -655,7 +657,7 @@ export function PartyPanel(props) {
       style: {
         color: '#667875'
       }
-    }, "vs"), /*#__PURE__*/React.createElement("span", {
+    }, say(SAY, 'partyPanel.vs')), /*#__PURE__*/React.createElement("span", {
       style: {
         color: m.p2Color || '#D8635D' /* v2.3.1235: danger token fallback */,
         fontWeight: 700
@@ -666,13 +668,13 @@ export function PartyPanel(props) {
         fontSize: 11 /* v2.3.1235: batch-3 rollout \u2014 11px floor */,
         color: '#55B98A' /* v2.3.1235: positive token */
       }
-    }, "Winner: ", m.winnerId === m.p1 ? m.p1Name : m.p2Name), !m.resolved && /*#__PURE__*/React.createElement("span", {
+    }, say(SAY, 'partyPanel.winner', { name: m.winnerId === m.p1 ? m.p1Name : m.p2Name })), !m.resolved && /*#__PURE__*/React.createElement("span", {
       style: {
         marginLeft: 'auto',
         fontSize: 11 /* v2.3.1235: batch-3 rollout \u2014 11px floor */,
         color: '#D8AA58' /* v2.3.1235: brass token; status emoji dropped */
       }
-    }, "Fighting"));
+    }, say(SAY, 'partyPanel.fighting')));
   }))), function () {
     /* v2.3.1210: spectator stake board -- server-summed totals per open
        match (arena_stake_board, gameEvents.js).  Display only; shows
@@ -686,7 +688,7 @@ export function PartyPanel(props) {
          dropped; stake rows move into one well with dividers; the two
          match sides keep the order-book brass/danger semantics. */
       style: { fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.14em', color: '#8D9B98', marginTop: 4, marginBottom: 2 }
-    }, "Spectator Stakes"), /*#__PURE__*/React.createElement("div", {
+    }, say(SAY, 'partyPanel.stakes')), /*#__PURE__*/React.createElement("div", {
       style: LS_WELL235
     }, _board.map(function (b, _bi) {
       var _pot = (b.aTotal || 0) + (b.bTotal || 0);
@@ -697,15 +699,15 @@ export function PartyPanel(props) {
         style: { color: '#D8AA58', fontWeight: 700 }
       }, b.aName || '?'), /*#__PURE__*/React.createElement("span", {
         style: { color: '#D8AA58', fontWeight: 700 }
-      }, (b.aTotal || 0) + 'G', b.aBackers ? ' \xB7' + b.aBackers : ''), /*#__PURE__*/React.createElement("span", {
+      }, say(SAY, 'partyPanel.stakeGold', { gold: b.aTotal || 0 }), b.aBackers ? say(SAY, 'partyPanel.stakeBackers', { count: b.aBackers }) : ''), /*#__PURE__*/React.createElement("span", {
         style: { color: '#667875' }
-      }, "vs"), /*#__PURE__*/React.createElement("span", {
+      }, say(SAY, 'partyPanel.vs')), /*#__PURE__*/React.createElement("span", {
         style: { color: '#D8635D', fontWeight: 700 }
       }, b.bName || '?'), /*#__PURE__*/React.createElement("span", {
         style: { color: '#D8AA58', fontWeight: 700 }
-      }, (b.bTotal || 0) + 'G', b.bBackers ? ' \xB7' + b.bBackers : ''), /*#__PURE__*/React.createElement("span", {
+      }, say(SAY, 'partyPanel.stakeGold', { gold: b.bTotal || 0 }), b.bBackers ? say(SAY, 'partyPanel.stakeBackers', { count: b.bBackers }) : ''), /*#__PURE__*/React.createElement("span", {
         style: { marginLeft: 'auto', fontSize: 11, color: '#8D9B98' }
-      }, _pot + 'G pot'));
+      }, say(SAY, 'partyPanel.stakePot', { gold: _pot })));
     })));
   }(), arenaTournament.status === 'complete' && arenaTournament.champion && /*#__PURE__*/React.createElement("div", {
     style: {
@@ -725,7 +727,7 @@ export function PartyPanel(props) {
       fontWeight: 700,
       color: '#D8AA58'
     }
-  }, "GLADIATOR CHAMPION"), /*#__PURE__*/React.createElement("div", {
+  }, say(SAY, 'partyPanel.champion')), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12,
       fontWeight: 700,
@@ -737,16 +739,16 @@ export function PartyPanel(props) {
       fontSize: 11,
       color: '#8D9B98'
     }
-  }, arenaTournament.champion.wins, " wins \xB7 Lv", arenaTournament.champion.level), /*#__PURE__*/React.createElement("div", {
+  }, say(SAY, 'partyPanel.championWins', { wins: arenaTournament.champion.wins, lv: arenaTournament.champion.level })), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       color: '#D8AA58' /* v2.3.1235: brass token */,
       marginTop: 4
     }
-  }, "+", /* v2.3.3178: the prize the worker paid -- it follows the bracket
+  }, /* v2.3.3178: the prize the worker paid -- it follows the bracket
      now (250 a gladiator, at most 3,600 from the house an hour); a worker
      from before it never sends one, and paid the 2,000 */
-  typeof arenaTournament.champion.prize === 'number' ? arenaTournament.champion.prize : ARENA_CHAMPION_REWARD.gold, "G +",
+  say(SAY, 'partyPanel.championGold', { gold: typeof arenaTournament.champion.prize === 'number' ? arenaTournament.champion.prize : ARENA_CHAMPION_REWARD.gold }),
   /* v2.3.3481: the AP the worker PAID, as the prize above: `champion.ap`,
      which gladiator.js _arenaCrown puts on the record only when it pays them
      (caps.arenaap).  A record without it was paid gold alone -- an older
@@ -756,7 +758,7 @@ export function PartyPanel(props) {
      (the Gladiator achievement): the worker sets `champion.ap` only on a
      crown that pays them (achievements.js _achvWouldPay), so a second
      crown's box says the gold and the title alone. */
-  typeof arenaTournament.champion.ap === 'number' && arenaTournament.champion.ap > 0 ? arenaTournament.champion.ap + "AP + " : " ", "\"Gladiator\" title")), arenaTournament.recentMatches.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+  typeof arenaTournament.champion.ap === 'number' && arenaTournament.champion.ap > 0 ? say(SAY, 'partyPanel.championAp', { ap: arenaTournament.champion.ap }) : " ", say(SAY, 'partyPanel.championTitle'))), arenaTournament.recentMatches.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       fontWeight: 700,
@@ -764,7 +766,7 @@ export function PartyPanel(props) {
       marginTop: 6,
       marginBottom: 2
     }
-  }, "Recent Results"), arenaTournament.recentMatches.slice(-5).reverse().map(function (m, i) {
+  }, say(SAY, 'partyPanel.recentResults')), arenaTournament.recentMatches.slice(-5).reverse().map(function (m, i) {
     var _arenaTournament$play, _arenaTournament$play2;
     return /*#__PURE__*/React.createElement("div", {
       key: i,
@@ -775,11 +777,11 @@ export function PartyPanel(props) {
       }
       /* v2.3.1235: batch-3 rollout — result marks become text glyphs
          (✅/❌ emoji are chrome) */
-    }, "R", m.round, ": ", m.winnerId === m.p1 ? '✓' : '✗', " ", ((_arenaTournament$play = arenaTournament.players.find(function (p) {
+    }, say(SAY, 'partyPanel.resultLine', { round: m.round, mark1: m.winnerId === m.p1 ? '✓' : '✗', p1: ((_arenaTournament$play = arenaTournament.players.find(function (p) {
       return p.id === m.p1;
-    })) === null || _arenaTournament$play === void 0 ? void 0 : _arenaTournament$play.name) || '?', " vs ", ((_arenaTournament$play2 = arenaTournament.players.find(function (p) {
+    })) === null || _arenaTournament$play === void 0 ? void 0 : _arenaTournament$play.name) || '?', p2: ((_arenaTournament$play2 = arenaTournament.players.find(function (p) {
       return p.id === m.p2;
-    })) === null || _arenaTournament$play2 === void 0 ? void 0 : _arenaTournament$play2.name) || '?', " ", m.winnerId === m.p2 ? '✓' : '✗');
+    })) === null || _arenaTournament$play2 === void 0 ? void 0 : _arenaTournament$play2.name) || '?', mark2: m.winnerId === m.p2 ? '✓' : '✗' }));
   }))), /* v2.3.3481: THE REAL BET (arena_sponsor below), and the only one a
      settling worker draws.  `sponsorSpectator` (above) lets a spectator see
      it there, where /status carries no `status` for the two checks. */
@@ -810,20 +812,20 @@ export function PartyPanel(props) {
         color: '#8D9B98',
         marginBottom: 4
       }
-    }, /*#__PURE__*/React.createElement("img", { src: "/icons/ui/evt-sponsorship.webp", alt: "", draggable: false, style: { width: 16, height: 16, objectFit: 'contain', verticalAlign: '-3px', marginRight: 6 }, onError: function (e) { e.currentTarget.replaceWith(document.createTextNode('\uD83C\uDFB2')); } }), "Spectator Betting"), myBet ? /*#__PURE__*/React.createElement("div", {
+    }, /*#__PURE__*/React.createElement("img", { src: "/icons/ui/evt-sponsorship.webp", alt: "", draggable: false, style: { width: 16, height: 16, objectFit: 'contain', verticalAlign: '-3px', marginRight: 6 }, onError: function (e) { e.currentTarget.replaceWith(document.createTextNode('\uD83C\uDFB2')); } }), say(SAY, 'partyPanel.betting')), myBet ? /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11,
         color: '#8D9B98'
       }
-    }, "Bet placed: ", myBet.amount, "G on ", ((_remaining$find = remaining.find(function (p) {
+    }, say(SAY, 'partyPanel.betPlaced', { gold: myBet.amount, name: ((_remaining$find = remaining.find(function (p) {
       return p.id === myBet.targetPlayerId;
-    })) === null || _remaining$find === void 0 ? void 0 : _remaining$find.name) || '???', /*#__PURE__*/React.createElement("br", null), "Round ", arenaTournament.round, " \u2014 waiting for results...") : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    })) === null || _remaining$find === void 0 ? void 0 : _remaining$find.name) || '???' }), /*#__PURE__*/React.createElement("br", null), say(SAY, 'partyPanel.betWaiting', { round: arenaTournament.round })) : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11,
         color: '#8D9B98',
         marginBottom: 4
       }
-    }, "Blind bet \u2014 pick who you think will win this round. ", remaining.length, " players left."), /*#__PURE__*/React.createElement("div", {
+    }, say(SAY, 'partyPanel.betHow', { left: remaining.length })), /*#__PURE__*/React.createElement("div", {
       style: {
         display: 'flex',
         flexWrap: 'wrap',
@@ -848,7 +850,7 @@ export function PartyPanel(props) {
           color: arenaBetTarget === p.id ? '#D8AA58' : p.color || '#F4F0E7',
           cursor: 'pointer'
         }
-      }, p.name, " (Lv", p.level, ")");
+      }, say(SAY, 'partyPanel.betTarget', { name: p.name, lv: p.level }));
     })), /*#__PURE__*/React.createElement("div", {
       style: {
         display: 'flex',
@@ -862,7 +864,7 @@ export function PartyPanel(props) {
         fontWeight: 700,
         color: '#D8AA58'
       }
-    }, "Bet:"), /*#__PURE__*/React.createElement("input", {
+    }, say(SAY, 'partyPanel.betLabel')), /*#__PURE__*/React.createElement("input", {
       "data-arena-bet-amount": "1",
       type: "number",
       min: ARENA_BET_MIN,
@@ -890,7 +892,7 @@ export function PartyPanel(props) {
         fontSize: 11,
         color: '#8D9B98'
       }
-    }, "G (max ", Math.min(ARENA_BET_MAX, rpgState.coins), ")")), /*#__PURE__*/React.createElement("button", {
+    }, say(SAY, 'partyPanel.betMax', { max: Math.min(ARENA_BET_MAX, rpgState.coins) }))), /*#__PURE__*/React.createElement("button", {
       "data-arena-bet-place": "1",
       disabled: !arenaBetTarget || rpgState.coins < arenaBetAmount,
       onClick: function onClick() {
@@ -918,7 +920,7 @@ export function PartyPanel(props) {
           BT_AUDIO.beep(600, 0.05, 0.08, 'sine');
           return;
         }
-        pushDmgPopup(S2, S2.player.x, S2.player.y - 30, 'Betting is closed', '#D95C54'); cue('denied');   /* heard (sound-cues 11x) */
+        pushDmgPopup(S2, S2.player.x, S2.player.y - 30, say(SAY, 'partyPanel.betClosed'), '#D95C54'); cue('denied');   /* heard (sound-cues 11x) */
       },
       style: {
         width: '100%',
@@ -935,7 +937,7 @@ export function PartyPanel(props) {
         color: (arenaBetTarget && rpgState.coins >= arenaBetAmount) ? '#172126' : '#667875',
         cursor: (arenaBetTarget && rpgState.coins >= arenaBetAmount) ? 'pointer' : 'not-allowed'
       }
-    }, "Place Bet")));
+    }, say(SAY, 'partyPanel.placeBet'))));
   }(), function () {
     var S = stateRef.current;
     if (!S._arenaHistoryLoaded) {
@@ -961,7 +963,7 @@ export function PartyPanel(props) {
       }
       /* v2.3.1235: batch-3 rollout \u2014 header emoji dropped; rows move
          into one well with dividers below. */
-    }, "Hall of Fame"), /*#__PURE__*/React.createElement("div", {
+    }, say(SAY, 'partyPanel.hallOfFame')), /*#__PURE__*/React.createElement("div", {
       style: LS_WELL235
     }, arenaHistory.slice(0, 10).map(function (c, i) {
       return /*#__PURE__*/React.createElement("div", {
@@ -994,7 +996,7 @@ export function PartyPanel(props) {
           color: '#8D9B98',
           marginLeft: 'auto'
         }
-      }, c.wins, "W \xB7 ", c.totalPlayers, "P"));
+      }, say(SAY, 'partyPanel.hallRow', { wins: c.wins, players: c.totalPlayers })));
     })) /* v2.3.1235: batch-3 rollout — closes the hall-of-fame well */) : null;
   }());
 }

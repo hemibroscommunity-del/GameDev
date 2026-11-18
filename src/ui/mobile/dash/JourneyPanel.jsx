@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { COL, panelStyle, getState } from './common.js';
 import { playIsLandscape } from '../playViewport.js';   /* v2.3.2171: the sideways pane stacks */
-import { deskWords } from '@/game/deskWords.js';        /* v2.3.3773: "Tap" reads "Click" on a computer */
+import { SAY } from '@/data/say/journey.js';   /* v2.3.6351: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';   /* v2.3.6351: a plain row goes through deskWords (v2.3.3773: "Tap" reads "Click" on a computer) */
 import { ACC_SLOTS, ACC_NAMES, accLive, accPct, askAccuracy, subscribeAccuracy } from '@/game/accuracy.js';   /* v2.3.4545: how many of your shots hit */
 
 /* ═══ v2.3.3773: JOURNEY IS ITS OWN PAGE, UNDER MORE ═══
@@ -81,16 +82,16 @@ export const JourneyPanel = () => {
                The client's own _compStats tally stays the fallback for old
                workers.  This is the number the on-chain attestation
                carries, so the two must not disagree on screen. */
-            ['Kills', R.svKills ?? cs.monstersKilled ?? cs.kills ?? 0, 'rec-kills'],
-            ['Deaths', cs.deaths ?? 0, 'rec-deaths'],
+            [say(SAY, 'journey.kills'), R.svKills ?? cs.monstersKilled ?? cs.kills ?? 0, 'rec-kills'],
+            [say(SAY, 'journey.deaths'), cs.deaths ?? 0, 'rec-deaths'],
             /* Renamed from "Gold Earned" so it can't be confused with
                the current balance in the identity strip (round-4). */
-            ['Lifetime Gold', Number(cs.totalGoldEarned ?? cs.goldEarnedTotal ?? 0).toLocaleString(), 'rec-gold'],
+            [say(SAY, 'journey.lifetimeGold'), Number(cs.totalGoldEarned ?? cs.goldEarnedTotal ?? 0).toLocaleString(), 'rec-gold'],
             /* v2.3.1311: lifetime cumulative XP lives HERE now — the
                identity strip shows normalized next-level progress. */
-            ['Lifetime XP', Number(R.xp || 0).toLocaleString(), 'rec-xp'],
-            ['Duels Won', cs.duelsWon ?? 0, 'rec-duels'],
-            ['Deepest Zone', cs.deepestZone ?? '—', 'rec-zone'],
+            [say(SAY, 'journey.lifetimeXp'), Number(R.xp || 0).toLocaleString(), 'rec-xp'],
+            [say(SAY, 'journey.duelsWon'), cs.duelsWon ?? 0, 'rec-duels'],
+            [say(SAY, 'journey.deepestZone'), cs.deepestZone ?? '—', 'rec-zone'],
           ].map(([label, value, icon]) => {
             /* v2.3.2176b: ONE rule for how big a record's value is printed,
                shared by both layouts.  Five of the six are short numbers,
@@ -156,11 +157,11 @@ export const JourneyPanel = () => {
             is the picture), one column sideways as the cards are */}
         {acc && (
           <div data-journey-acc="" style={{ marginTop: 8 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: COL.muted, margin: '0 2px 4px' }}>Accuracy</div>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: COL.muted, margin: '0 2px 4px' }}>{say(SAY, 'journey.accuracy')}</div>
             <div style={{ display: 'grid', gridTemplateColumns: landPane ? '1fr' : 'repeat(3, 1fr)', gap: 5 }}>
               {ACC_SLOTS.map((slot) => {
                 const a = acc[slot];
-                const shots = a.s > 0 ? a.s.toLocaleString() + (a.s === 1 ? ' shot' : ' shots') : 'no shots yet';
+                const shots = a.s > 0 ? say(SAY, 'journey.shots', { n: a.s, count: a.s.toLocaleString() }) : say(SAY, 'journey.noShots');
                 return (
                   <div key={slot} data-journey-acc-cell={slot} style={{
                     background: COL.wellSoft, border: `1px solid ${COL.tileBor}`, borderRadius: 7, padding: '5px 7px 6px', minWidth: 0,
@@ -174,7 +175,7 @@ export const JourneyPanel = () => {
               })}
             </div>
             <div style={{ fontSize: 11, lineHeight: 1.4, color: COL.muted, margin: '5px 2px 0' }}>
-              Basic attacks that hit an enemy. Specials are not counted.{accRecent ? ' Your last 200: ' + accRecent + '.' : ''}
+              {say(SAY, 'journey.accNote')}{accRecent ? say(SAY, 'journey.accRecent', { recent: accRecent }) : ''}
             </div>
           </div>
         )}
@@ -203,14 +204,14 @@ export const JourneyPanel = () => {
                 fontSize: 12, fontWeight: 800, color: COL.accent,
                 whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
               }}>
-                Level {R._chainScore.level} recorded on Hemi
+                {say(SAY, 'journey.chainLevel', { level: R._chainScore.level })}
               </div>
               <div style={{
                 fontSize: 11, fontWeight: 700, letterSpacing: '.04em',
                 textTransform: 'uppercase', color: COL.muted, marginTop: 1,
                 whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
               }}>
-                {deskWords('Tap to view the transaction')}
+                {say(SAY, 'journey.chainView')}
               </div>
             </div>
             <span aria-hidden="true" style={{

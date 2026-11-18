@@ -985,6 +985,11 @@ nothing known, and a restore copies nothing.
   (`docs/specs/player-words.md`: the table's shape, 449 screens in waves
   W0 to W6). Card WD done. The box waits for the waves, the practice copy
   and the support screen (the gatekeeper, sitting 47, tag 6261).*
+  *The words, wave W1 begun (card WD2), merged at sitting 50: #2211 the
+  door (`src/game/say.js`, `say.test`), #2213 to #2223 eleven PRs moving 14
+  screens' words into `src/data/say/`; the in-place line 4995 -> 4120
+  (worker 385 unchanged). Card WD2 done; card WD3 carries W1 on (the
+  gatekeeper, sitting 51, tag 6265).*
 
 (8.4 of version 1 is part 11's advice; 8.5 is wave 0.)
 

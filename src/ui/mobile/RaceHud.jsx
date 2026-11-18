@@ -19,6 +19,8 @@ import { createPortal } from 'react-dom';
 import { Z_ABOVE_DASH_PROMPT } from '@/ui/zLayers.js';
 import { raceBus, raceView, dismissRace, requestRace, raceOn, RACE_ERR_WORDS } from '@/game/race.js';
 import { cardPlace } from './NmlAskCard.jsx';
+import { SAY } from '@/data/say/raceHud.js';   /* v2.3.6352: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';
 
 const BTN = {
   font: 'inherit', flex: 1, minWidth: 0, minHeight: 40, padding: '0 6px', borderRadius: 11,
@@ -60,7 +62,7 @@ export default function RaceHud({ stateRef }) {
 
   if (v.phase === 'count') {
     const m = middle();
-    const word = v.count > 0 ? String(v.count) : 'GO!';
+    const word = v.count > 0 ? String(v.count) : say(SAY, 'raceHud.go');
     return createPortal(
       <div data-race="count" data-race-count={v.count} aria-live="assertive"
         style={{
@@ -70,7 +72,7 @@ export default function RaceHud({ stateRef }) {
         }}>
         <div key={word} className="bt-race-beat">{word}</div>
         <div style={{ fontSize: 15, fontWeight: 800, color: '#F7F2E7', marginTop: 10, textShadow: '0 2px 4px rgba(0,0,0,.7)' }}>
-          Touch all {v.of - 1} flags, then back here
+          {say(SAY, 'raceHud.howTo', { flags: v.of - 1 })}
         </div>
       </div>,
       document.body
@@ -86,10 +88,10 @@ export default function RaceHud({ stateRef }) {
           pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
         })}>
         <span style={{ fontSize: 13, fontWeight: 800 }}>
-          🏁 {touched < v.of - 1 ? 'Flags ' + touched + '/' + (v.of - 1) : 'Back to the start!'}
+          🏁 {touched < v.of - 1 ? say(SAY, 'raceHud.flags', { touched, of: v.of - 1 }) : say(SAY, 'raceHud.backToStart')}
         </span>
         <span style={{ fontSize: 13, fontWeight: 800, color: '#F6D38B', fontVariantNumeric: 'tabular-nums' }}>{secs(v.secs)}</span>
-        <span style={{ fontSize: 11, color: '#B9C1BF', fontVariantNumeric: 'tabular-nums' }}>Lil Bro {secs(v.lilSecs)}</span>
+        <span style={{ fontSize: 11, color: '#B9C1BF', fontVariantNumeric: 'tabular-nums' }}>{say(SAY, 'raceHud.lilTime', { time: secs(v.lilSecs) })}</span>
       </div>,
       document.body
     );
@@ -99,7 +101,7 @@ export default function RaceHud({ stateRef }) {
   const r = v.result || {};
   const won = !!r.won;
   const lost = !won && !r.err;
-  const title = won ? 'You beat Lil Bro!' : lost ? 'Lil Bro wins!' : (RACE_ERR_WORDS[r.err] || 'No race.');
+  const title = won ? say(SAY, 'raceHud.won') : lost ? say(SAY, 'raceHud.lost') : (RACE_ERR_WORDS[r.err] || say(SAY, 'raceHud.noRace'));
   const close = (e) => { e.preventDefault(); e.stopPropagation(); dismissRace(stateRef.current); };
   const again = (e) => {
     e.preventDefault(); e.stopPropagation();
@@ -115,14 +117,14 @@ export default function RaceHud({ stateRef }) {
       <div style={{ fontSize: 15, fontWeight: 900, color: won ? '#8FD39A' : '#F6D38B' }}>{title}</div>
       {(won || lost) && (
         <div style={{ fontSize: 12, color: '#D9DEDB', marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>
-          You {secs((r.ms || 0) / 1000)} · Lil Bro {secs((r.lilMs || 0) / 1000)}
+          {say(SAY, 'raceHud.times', { you: secs((r.ms || 0) / 1000), lil: secs((r.lilMs || 0) / 1000) })}
         </div>
       )}
-      {won && <div style={{ fontSize: 11, color: '#B9C1BF', marginTop: 4 }}>Talk to Lil Bro for your reward.</div>}
-      {lost && <div style={{ fontSize: 11, color: '#B9C1BF', marginTop: 4 }}>Sprint, and drink Zoom Juice at the start line.</div>}
+      {won && <div style={{ fontSize: 11, color: '#B9C1BF', marginTop: 4 }}>{say(SAY, 'raceHud.wonHint')}</div>}
+      {lost && <div style={{ fontSize: 11, color: '#B9C1BF', marginTop: 4 }}>{say(SAY, 'raceHud.lostHint')}</div>}
       <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-        {canAgain && <button type="button" data-race-again="" onClick={again} style={Object.assign({}, BTN, PRIMARY)}>Race again</button>}
-        <button type="button" data-race-ok="" data-esc="" onClick={close} style={Object.assign({}, BTN, QUIET)}>OK</button>
+        {canAgain && <button type="button" data-race-again="" onClick={again} style={Object.assign({}, BTN, PRIMARY)}>{say(SAY, 'raceHud.again')}</button>}
+        <button type="button" data-race-ok="" data-esc="" onClick={close} style={Object.assign({}, BTN, QUIET)}>{say(SAY, 'raceHud.ok')}</button>
       </div>
     </div>,
     document.body
