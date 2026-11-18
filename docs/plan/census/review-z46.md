@@ -155,14 +155,20 @@ commits (61dc9e1a, 2141b125), #2193, #2192; CS #2139's merge of `main`
   (RV #2164: +1). WD re-lands (`--write`, PAGE_LINE 4995, SERVER_LINE 385)
   once CS #2152 is on `main` (rehearsed: green).
 - HB #2188: census only.
+- RD #2191 (6180, card RD's first PR; its card comes with it):
+  tools/qa/mp/mp-itemdrop.mjs only. Check 5b aged the pile past its end
+  after a futile 20 s wait for a private pile; now aged to 3 s before its
+  flash, read on the frames that flash (TRAPS §177, §200). Draft, its
+  `test` running at the cut: listed once green.
 
 ## The rehearsal (main b5669a5b)
 
 Each line merged into `main` with every line above it (a merge commit, as
 GitHub's); the merge bases counted at each step (`git merge-base --all`);
-the tree after that merge. Lines 21-24 and 28 are simulated with the
-agreed mends (CS's and FX's merge of `main`, WD's re-land): their real
-heads make their own trees.
+the tree after that merge. Lines 1-21 are exact at these heads. From line
+22 the lines wait on the agreed mends (CS's and FX's merge of `main`,
+WD's re-land), so their real heads make their own trees; the whole was
+rehearsed with those mends simulated.
 
 | line | PR | head | tree after | bases |
 |---|---|---|---|---|
@@ -171,32 +177,51 @@ heads make their own trees.
 | 3 | #2188 | `bfec2f415b0c7b85d1666c5b0810cc59840237e7` | `7140cd14772feb1f2475f303bff0d70768ed0485` | 1 |
 | 4 | #2175 | `5f62357f1dcb68713f7cf050b484aa9d8601bd4f` | `2bb32af34a3128d4b64464d5035e2cbf0add4f92` | 1 |
 | 5 | #2170 | `091df85a0b9561233ca9b8c25185aab0a6c564d2` | `73a0ed72c06dbe5de28a4ca28f52907359e7e8ff` | 1 |
-| 6 | #2181 | `6c9d70feb517bcab024c8a3f90e78524a2c0cb21` | `d018e406fbcffa6478bb1ecfef00af57d62c361c` | 1 |
-| 7 | #2183 | `0de541d7ffa557e277b650007eede75a517d5be7` | `b9719ce2a31b57ad9cf0d450f04f1cc0753691a9` | 1 |
-| 8 | #2178 | `3d11c871be1fbe5365e45222bb7c17ca51626274` | `9ee3293fffc25b3e50104eb796820b0739baeb65` | 1 |
-| 9 | #2184 | `de21aa2db963fde942fa539de0410426ab2dfa21` | `ed6dc5ffaaae26248295219b1964e659af0b17c9` | 1 |
-| 10 | #2168 | `250582f3821b0e83539f6b8c662e980a6ecb26dd` | `d92f10e45639614b8e41cce07cf43ddac5eaf460` | 1 |
-| 11 | #2176 | `4635d77c134f754b3b63998bdd2c84012caa15f2` | `6d6379e507bf6d74d72d2cbc88c7f9edfd27117f` | 1 |
-| 12 | #2177 | `fb5846e53f61543aaef8eef7a8c6a28885c854d3` | `c9b9c0ed31dd1a7f986a70a3084588ca276a516b` | 1 |
-| 13 | #2182 | `b37bd4f1c5a839922bd30a0c7aa2c0df4d11aeb7` | `b50c30d1ff602f86457709553482006dd786c5f1` | 1 |
-| 14 | #2187 | `b5777a45e2ff90449f6c9509d5c91fab0b066eb3` | `138d4d5b6eeb2aaa390f40a1df5c23160d37fdf7` | 1 |
-| 15 | #2169 | `137b688021905dfab04ed430b7feb71d9180c7fc` | `1ae476a3d9c19ef4ca901bf741272f64fd7afd25` | 1 |
-| 16 | #2173 | `a88aed3edc1e65c274acf366f3609ccf212c1270` | `1dd9cdf4ab6662d1052b6aacf577b0798fd9b217` | 1 |
-| 17 | #2164 | `2141b12540306db39925dd0c208c9ebaa5fd6420` | `bf19d791d693521b38928c168a8edfca4e6881b6` | 1 |
-| 18 | #2165 | `e7580ab022c45be9445ffc01b098b631e2c47331` | `388a03e4f2398141ee2b22ff369abecef8c8fc05` | 1 |
-| 19 | #2193 | `586f65bf` + `main` (RV restacks) | `f02adca962e0989e2b4b08fb9c30a164cb74fbe0` | 1 |
-| 20 | #2192 | `bac21194` + the new #2193 (RV restacks) | `b563da8ff5bf75b34db4a40832e1f2287647bd82` | 2 at bac21194; 1 once restacked |
-| 21 | #2139 | `cebec572` + `main` (CS, after 20) | `891d3921` (simulated) | 1 |
-| 22 | #2152 | `b4192d4b` + the new #2139 | `a827c605` (simulated) | 1 |
-| 23 | #2189 | `6f81ab2cc02b2c26f2955156466ecc6a6cad0d97` | `36ad8d73` (after the simulated 21-22) | 1 |
-| 24 | #2190 | `2f981b97` + `main` (FX, after 23) | `a8540a4c` (simulated) | 1 |
-| 25 | #2172 | `abc6057fb94eccefb1a1a21851b122210eb0c246` | `6ceeb9c3` | 1 |
-| 26 | #2174 | `a56386387375d25f55797ac61645e7e25ddd891f` | `ded4b9a2` | 1 |
-| 27 | #2171 | `dfab1d0e142b93c6b9d86499815d104e11ac219a` | `75c1e292` | 1 |
-| 28 | #2179 | `3aa7adb1` re-landed (WD, after 22) | `1bf43188` with #2180 (simulated) | 1 |
-| 29 | #2180 | `bb0cde62` + the new #2179 | (as 28) | 1 |
-| 30 | Z | this PR | `a5adb48cdd16f11fa13d3c3d83a0dc8e22bdb499` (the whole, simulated) | 1 |
+| 6 | #2191 | `ee33b3b101b4e389461b250c9461f56efe3e233f` | `d80ba2ab605f818fcd384685ef5f2ef96a53eb18` | 1 |
+| 7 | #2181 | `6c9d70feb517bcab024c8a3f90e78524a2c0cb21` | `4255bd5ef6a0f5104aea1548c27e6d9f5cb62b92` | 1 |
+| 8 | #2183 | `0de541d7ffa557e277b650007eede75a517d5be7` | `386300dcae32e3ebe74363afeabd56b248c794ac` | 1 |
+| 9 | #2178 | `3d11c871be1fbe5365e45222bb7c17ca51626274` | `9c9449330615b2729d8935479345d341a33a9e1f` | 1 |
+| 10 | #2184 | `de21aa2db963fde942fa539de0410426ab2dfa21` | `43ba39680215777f82d42da52d4932220a6bab77` | 1 |
+| 11 | #2168 | `250582f3821b0e83539f6b8c662e980a6ecb26dd` | `d738cfe3f6fb64ebb7c24863032a641dd607c2bf` | 1 |
+| 12 | #2176 | `4635d77c134f754b3b63998bdd2c84012caa15f2` | `e8cd1c3bcf83eb94d3433debfdf9e34c7d18fd53` | 1 |
+| 13 | #2177 | `fb5846e53f61543aaef8eef7a8c6a28885c854d3` | `54e736d9823a881609103fa91552ab7c3129044c` | 1 |
+| 14 | #2182 | `b37bd4f1c5a839922bd30a0c7aa2c0df4d11aeb7` | `09a055f171b1cf176a54c83bf785a66b63aeb8fb` | 1 |
+| 15 | #2187 | `b5777a45e2ff90449f6c9509d5c91fab0b066eb3` | `b893573b1af27907638543fe1105e1b2891b1ae6` | 1 |
+| 16 | #2169 | `137b688021905dfab04ed430b7feb71d9180c7fc` | `09a3d99fd8d081fd7a811d23f2944aa6c4f8281a` | 1 |
+| 17 | #2173 | `a88aed3edc1e65c274acf366f3609ccf212c1270` | `8819920e310e67d5f37ce1df88c762248be7b01e` | 1 |
+| 18 | #2164 | `55e018801db817b6cd8e961469db2ef590212658` | `73970c7c6bf9c707b3594a004303b8668597c0d0` | 1 |
+| 19 | #2165 | `1058bc9cfdf88cbcdd9d972e2ae8c6f09af6373e` | `e9669af387d7764bcfaa98c19a56199f07030d24` | 1 |
+| 20 | #2193 | `e9104d6371e257151a73004fb9481cc5e687949c` | `e41c1aa213f45865660b22599fc1e383465e6f45` | 1 |
+| 21 | #2192 | `d0efb0fe0a0f4b28aa509a35b1f161d9ada3cc38` | `1a48e5f6320c18570f4dcbc9af57441eea180470` | 1 |
+| 22 | #2139 | `cebec572` + `main` (CS merges `main` once 21 lands) | its own | 1 (rehearsed) |
+| 23 | #2152 | `b4192d4b` + the new #2139 | its own | 1 (rehearsed) |
+| 24 | #2189 | `6f81ab2cc02b2c26f2955156466ecc6a6cad0d97` | its own (after 22-23) | 1 |
+| 25 | #2195 | `e79bd0d22470ad56887a963e90a2178b4c8c7aed` (base retargeted to `main`) | its own | 1 |
+| 26 | #2190 | `2f981b97` + `main` (FX merges `main` once 25 lands; re-generates M-tables.md) | its own | 1 (rehearsed) |
+| 27 | #2172 | `abc6057fb94eccefb1a1a21851b122210eb0c246` | its own | 1 |
+| 28 | #2174 | `a56386387375d25f55797ac61645e7e25ddd891f` | its own | 1 |
+| 29 | #2171 | `dfab1d0e142b93c6b9d86499815d104e11ac219a` | its own | 1 |
+| 30 | #2179 | `3aa7adb1` re-landed (WD, PAGE_LINE 4995, SERVER_LINE 385, once 23 lands) | its own | 1 (rehearsed) |
+| 31 | #2180 | `bb0cde62` + the new #2179 | its own | 1 (rehearsed) |
+| 32 | Z | this PR | its own | 1 |
 
 ## The checks on the whole
 
-RESULTS_PENDING
+The tree of lines 1-31 (without RD #2191 and EN #2195, which came later;
+#2192 at its earlier head bac21194; the mends of lines 22-26 and 30
+simulated; this PR on top): tree `a5adb48cdd16f11fa13d3c3d83a0dc8e22bdb499`.
+
+- precheck: every check green but `server-tests`, which ran past even
+  #2175's 20-minute cap on this loaded box (four reviewers running), no
+  suite seen failing; so the suite was run alone:
+- `cd server && npm test`: 579 suites, 577 green (1,323 s). The two reds
+  are one: refusal-door ("_handleDailySpin" listed at its old line), on
+  #2192's earlier head; mended at 14099659 (now d0efb0fe), refusal-door
+  green on the exact tree of lines 1-21 at those heads.
+- caps-census guard 162 = 162; player-words green at 4995 / 385 (WD's
+  re-land); render-tables green after the regeneration; frame-steps 1531,
+  switch-reader 17, render-tables 0 green.
+- `npm run build`: green.
+- `node tools/qa/mp/run.mjs questline`: 187 of 187 (442 s).
+- The cards' own runs: RV's full suite green on its top tree; K2's 551
+  green on each head; CS 555; K4's suites on #2187; TL's on its heads.

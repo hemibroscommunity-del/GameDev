@@ -1,40 +1,37 @@
 card: Z
-branch: claude/plan-z-sitting-45
-prs: this PR (tag 5034), the last line of sitting 45's list (ready)
+branch: claude/plan-z-sitting-46
+prs: this PR (tag 6260), the last line of sitting 46's list (ready)
 state: ready
 
 ## Done
-- `census/review-z45.md`. 1.5 ticked (O2's #2098, #2108 merged); 8.2's
-  note (V4's four merged). Block V7 6080-6099; `nextBlock` 6100.
+- `census/review-z46.md`. 5.4 ticked (M), 5.8 ticked (K3); 5.5's note.
+  Blocks CAP, LG, WD, TL, RD, EN, FX, HB; Z 6260-6279; `nextBlock` 6280.
+  K3, V7, M, V6, V3 done. Lines: frame-steps 1531, switch-reader 17,
+  render-tables 0. Part 9: "Decided for the owner while away".
 ## The list: merge in this order, each "Create a merge commit"
-1 O2 #2148 · 2-8 J3 #2154 to #2160 · 9 U3 #2138 · 10-12 V7 #2153, #2163,
-#2166 · 13 K3 #2130 · 14-16 P2 #2142, #2150, #2161 · 17-18 M #2127, #2131
-· 19-21 M2 #2144, #2145, #2146 · 22-26 K4 #2129, #2140, #2147, #2151,
-#2162 · 27 K2 #2136 · 28-39 RV #2115 to #2123, #2132, #2133, #2141 · 40-43
-V6 #2135, #2137, #2143, #2149 · 44 V3 #2128 · 45 Z (this PR). On `main`
-79f8c4ab, one base at every step but 43 (V6 merges `main` once 42 lands);
-44: V3 merges `main` once 43 lands (`pacekeep` meets RV's `paidmark`).
-16-43 deploy the worker but 21 and 41: merge them one after another. A
-line whose `test` is not green merges only once it is; a red one stops
-its stack there. Heads and trees: `census/review-z45.md`.
-## Held / To 46
-- CS #2139, #2152: two bases over K2's #2136, and `switches.mjs` meets
-  RV's #2115: CS merges `main` once K2 and RV are on it.
-- RV #2164, #2165: #2164 red on its own head: traps-economy-social §269
-  (`_deadTakeOn`, a new gate on the trade window).
-- K4 PR 7 (5906, `harvestgrade` and `bowpath` ON, the owner's "Go
-  recommended"): before `bowpath` is on, #2162's medium (a nocked arrow's
-  hit before release sends no relay: projectiles.js:1810).
-- Lower once merged: frame-steps 1555 -> 1531, switch-reader 33 -> 17
-  (M); render-tables TABLES_LINE 54 -> 0 (M2).
+1 P2 #2185 · 2 M2 #2186 · 3 HB #2188 · 4 TL #2175 · 5 LG #2170 · 6 RD
+#2191 (once its test is green) · 7-8 TL #2181, #2183 · 9-10 LG #2178,
+#2184 · 11-15 K4 #2168, #2176, #2177, #2182, #2187 · 16-17 K2 #2169,
+#2173 · 18-21 RV #2164, #2165, #2193, #2192 · 22-23 CS #2139, #2152
+(CS merges `main` once 21 lands) · 24-25 EN #2189, #2195 · 26 FX #2190
+(merges `main` once 25 lands, re-generates M-tables.md) · 27-28 CAP
+#2172, #2174 · 29-31 WD #2171, #2179, #2180 (WD re-lands 4995/385 once
+23 lands) · 32 Z. On `main` b5669a5b, one base at every step. 7-26
+deploy the worker: merge them one after another. Drafts (K4, CS, EN,
+FX, RD) are marked ready first. Heads and trees: the census.
+## Held / To 47
+- None held. EN #2195 is listed only if retargeted to `main` and its
+  review is clean (else to 47).
 ## Found
-- 41's (a)-(q) to 44's (aa) carried. New: (ab) `crowdfight` "knew every
-  bot" red on main (card M's report; TRAPS §177). (ac) RV moved sitting
-  44's lines 12-17 after the cut (traps-worker §184 went red with V4's
-  #2124): the planning session merged the new heads. (ad) Every card trips
-  precheck's 5-minute `server-tests` cap here (the suite 13-14 min).
+- 45's (a)-(ad) carried. New: (ae) a precheck that times out leaves
+  `switches-thrown` running as an orphan (TL's Found, seen here). (af)
+  elemental2 "restore clamps at maxMana" red once under `duelpace` thrown
+  (#2151's CI): watch. (ag) canvas-witness 8b reads only a comment (M).
+  (ah) mp-membudget heap/buffers over their lines on a session box, CI
+  fine (FX, P2). (ai) WD: 96 "tap" words outside deskWords().
 ## Needs
-- Decided for the owner while away (the planning session): P2 #2161
-  `townparts` ON (`?townparts=0`); V6 #2149 lowers V4's §24 list.
+- Decided for the owner while away (the planning session): K4 #2168
+  `harvestgrade`, `bowpath` ON; #2187 `botscoresave` ON (writes only for
+  a script's record); CAP's settles-value reading; LG's rung 5 later.
 - Owner's own: `.github/`, Cloudflare; wind-dunes.mp3's source; SEC2's
   report form needing a public repository.
