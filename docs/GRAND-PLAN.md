@@ -1449,12 +1449,15 @@ to read when you are back; recorded by the gatekeeper, sitting 46, tag 6260):
 - Card HB's `?afterpaint` ON for everyone (`?afterpaint=0` the
   off-ramp), as its PRs come.
 - On the skateboard the ground keeps up with the board, ON for everyone
-  (card SB, #2253, `?groundsend=0` the off-ramp): the share of the view
-  not yet drawn while riding 19.3 -> 3.1% (this box), 33.5 -> 8.0% (a
-  slow Android); riding holds about 3.4 MB more at worst, under the
-  on-foot peak the memory check already allows. Its smaller sibling
-  (`?atlasrow`, 0.3 ms a send) is parked, not built (recorded by the
-  gatekeeper, sitting 52, tag 6266).
+  (card SB, #2253, `?groundsend=0` the off-ramp): the worker asked for six
+  pieces at a time on the board, not three, the side behind let go sooner,
+  and the board's look ahead 1.5 times a walk's (it was 2). On a fast lap
+  the view not yet drawn 5.4 -> 0.6%, the pieces held 82 -> 78 and the
+  graphics chip 81.5 -> 83.0 MB (within its 2-4 MB run to run); the ride's
+  memory at or under the on-foot tour's peak, as the planning session
+  re-decided on a re-measure (a first version held 89 MB). Its smaller
+  sibling (`?atlasrow`, 0.3 ms a send) is parked, not built (recorded by
+  the gatekeeper, sitting 52, tag 6266).
 - The memory check's `buffers` line raised 24.2 -> 24.8 MB as `artCache`
   fell 2.2 MB (net 1.7 MB less in the page): the ore rocks and the
   projectile sheets as colour numbers (card FX, #2200; `?treenumbers=0`
