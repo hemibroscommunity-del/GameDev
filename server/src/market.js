@@ -161,10 +161,25 @@ export const marketMethods = {
   // match against the bucket head).
   async _mktEnsureIndex() {
     if (this._mktIndex) return;
-    this._mktIndex = new Map();
-    this._mktOrderCounts = new Map();
+    /* v2.3.6023 (card RV; TRAPS §76): the book is read a page an await
+       (liveops.js _listAll; `listcap: false` reads it whole in one list),
+       into maps of its own that become the room's only once whole; a second
+       caller meanwhile waits for the same read (the clans' shape, clans.js
+       _clansEnsure).  Before, the maps were the room's before the read, so a
+       caller in between -- a second shop page, an order placed -- met a
+       book with nothing in it (an order matched against nothing, a cap read
+       as zero), and a failed read left the book empty for the worker's life. */
+    if (!this._mktIndexLoading) {
+      this._mktIndexLoading = this._mktIndexLoad().finally(() => { this._mktIndexLoading = null; });
+    }
+    await this._mktIndexLoading;
+  },
+
+  async _mktIndexLoad() {
+    const index = new Map();
+    const counts = new Map();
     const settleOn = !this._mktSettleOff();   /* v2.3.4505 */
-    const entries = await this.state.storage.list({ prefix: 'mkt_order:' });
+    const entries = await this._listAll('mkt_order:');   /* v2.3.6023: a page an await */
     for (const [k, o] of entries) {
       if (!o || !o.id) continue;
       /* v2.3.4505: a sale a restart caught half done carries its note: it is
@@ -202,8 +217,10 @@ export const marketMethods = {
       if (_sw || _gs) {
         await this.state.storage.put(k, o);
       }
-      this._mktAddToIndex(o);
+      this._mktAddToIndex(o, index, counts);
     }
+    this._mktIndex = index;   /* v2.3.6023: the room's, once whole */
+    this._mktOrderCounts = counts;
     /* v2.3.4505: every record has been seen, so the wake scan has nothing
        left to read (_mktSettleWait) */
     if (settleOn) this._mktScanned = true;
@@ -242,10 +259,11 @@ export const marketMethods = {
     return changed;
   },
 
-  _mktAddToIndex(o) {
+  /* v2.3.6023: `index` and `counts` the rebuild's own maps while it reads */
+  _mktAddToIndex(o, index = this._mktIndex, counts = this._mktOrderCounts) {
     const key = this._mktIndexKey(o);
-    if (!this._mktIndex.has(key)) this._mktIndex.set(key, { buys: [], sells: [] });
-    const bucket = this._mktIndex.get(key);
+    if (!index.has(key)) index.set(key, { buys: [], sells: [] });
+    const bucket = index.get(key);
     if (o.type === 'buy') {
       bucket.buys.push(o);
       bucket.buys.sort((a, b) => b.price - a.price);
@@ -253,7 +271,7 @@ export const marketMethods = {
       bucket.sells.push(o);
       bucket.sells.sort((a, b) => a.price - b.price);
     }
-    this._mktOrderCounts.set(o.playerId, (this._mktOrderCounts.get(o.playerId) || 0) + 1);
+    counts.set(o.playerId, (counts.get(o.playerId) || 0) + 1);
   },
 
   _mktRemoveFromIndex(o) {
