@@ -9,6 +9,7 @@
  * A leaf imports nothing from the renderers (four-lines' IMPORT_CYCLE_FILES
  * has no room): only what the renderer itself imported, from the same files. */
 import { sw } from '@/game/switches.js';
+import { PILE_R } from '../tables/economy.js';
 
 export const _hexTint = (h) => { const n = parseInt(String(h || '').replace('#', ''), 16); return Number.isFinite(n) ? n : 0xffffff; };
 /* ═══ v2.3.4124: LOOT POPS OUT OF THE MONSTER, THEN THE BEAM RISES ═══
@@ -40,4 +41,34 @@ export function applySquash(sp, sq, rot = 0) {
   sp.rotation = rot || 0;
   if (!sq) return;
   sp.scale.set(sp.scale.x * (1 + 0.6 * sq), sp.scale.y * (1 - sq));
+}
+
+/* v2.3.2771 squash; v2.3.2772 and tilt.  Rotation is WRITTEN every call
+   (0 once settled) so a pile never keeps a stale lean. */
+/* ═══ v2.3.2773: A PILE SPREADS OUT, IT DOES NOT STACK ═══
+   Owner: "Instead of a vertical line can you make the loot spread out a bit
+   within a proximal circle."  The coin, shard and rare items used to sit in a
+   column over the remains (coin 10 px up, shard 24, rare icons 30).  Each now
+   has its own spot in a small circle around the pile's middle -- a sunflower
+   (golden-angle) spiral from a per-pile starting angle, so two piles never
+   look stamped from one template and no two items land on the same spot.  The
+   rarest go nearest the middle (they are what you are walking over for); the
+   circle is squashed vertically (x 0.55) because the ground is seen at an
+   angle.  A lone item stays in the middle.  Keys are the items present, so
+   the layout is rebuilt only when the pile's contents change (a claim). */
+export function pileLayout(l, keys) {
+  const sig = keys.join(',');
+  if (l._layoutSig === sig && l._layout) return l._layout;
+  if (l._landSeed == null) l._landSeed = Math.random();
+  const out = Object.create(null);
+  const n = keys.length;
+  const a0 = l._landSeed * Math.PI * 2;
+  for (let i = 0; i < n; i++) {
+    if (n === 1) { out[keys[i]] = { ox: 0, oy: 0 }; continue; }
+    const a = a0 + i * 2.39996;   /* the golden angle */
+    const r = PILE_R * (0.4 + 0.6 * Math.sqrt((i + 0.5) / n)) * (0.85 + 0.3 * _hash(l._landSeed * 37 + i * 4.1));
+    out[keys[i]] = { ox: Math.cos(a) * r, oy: Math.sin(a) * r * 0.55 };
+  }
+  l._layout = out; l._layoutSig = sig;
+  return out;
 }

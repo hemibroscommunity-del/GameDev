@@ -11,8 +11,10 @@
 import { buildScale, getBuildHeight, getBuildFrame } from '../traits/buildCatalog.js';
 import { sideForDir, artHasInk, artHash, artIsSymmetric } from '../traits/playerArt.js';
 import { parsePattern } from '../traits/patternCatalog.js';
-import { DEFAULT_SKIN_TARGET, artForFacing } from '../playerSkins.js';
-import { garbKey } from '../standInGarb.js';
+import { DEFAULT_SKIN_TARGET, artForFacing, skinTarget, pantsTarget, shoesTarget, getSkin, getPants, getShoes } from '../playerSkins.js';
+import { garbKey, peerGarb, localGarb } from '../standInGarb.js';
+import { pageAddress } from '@/game/switches.js';
+import { lookPaletteWanted, getLookPartFrames, lookPaletteOn, lookHas } from '../lookPalette.js';
 
 /* ═══ v2.3.2500: A STAND-IN IS THE SAME BRO, SO IT IS THE SAME SIZE ═══
  *
@@ -129,4 +131,37 @@ export function _twinWouldDiffer(art, dir) {
   const a = artForFacing(art, dir);
   return ['pants', 'tattoo', 'tattooFace', 'tattooArm']
     .some((k) => artHasInk(a[k]) && !artIsSymmetric(a[k]));
+}
+
+/* ═══ v2.3.4470: ...AND UNDER GREAVES TOO (on; `?legslook=0` off) ═══
+   The whole-game sweep of what holds the page (docs/specs/held-sweep.md) found
+   its longest holds in the one stand-in still baked for every look: the
+   sword's and the bow's body under greaves -- 110 to 140 ms a sheet the first
+   time an armoured player swung beside you, 608 ms when your own greaves went
+   on.  The cut under greaves is the same for every look (the greaves' one
+   shape, the art's own legs), so the eight whole-body sheets are kept once
+   more as the bake leaves them under greaves (lookSets/standinlegs.js,
+   public/sprites/look/standinlegs/), and a body under greaves is a look's row
+   like any other.  Still baked the old way: a body with a drawing on it, and
+   any look the palette atlas has no row for. */
+export const LEGS_LOOK_OFF = (() => { try { return /(^|[?&])legslook=(0|off|false)(&|$)/.test(pageAddress()); } catch (e) { return false; } })();
+/* `legs`: the body as it is under greaves (the 'standinlegs' set) */
+export function _standInLook(url, skin, pants, shoes, legs) {
+  if (!lookPaletteWanted()) return null;
+  return getLookPartFrames(legs ? 'standinlegs' : 'standin', _standInSheet(url),
+    [[1, skinTarget(skin) || DEFAULT_SKIN_TARGET], [2, pantsTarget(pants)], [3, shoesTarget(shoes)]]);
+}
+/* is this sheet's body under greaves kept as numbers? */
+export const _legsLookHas = (url) => !LEGS_LOOK_OFF && lookPaletteOn() && lookHas('standinlegs', _standInSheet(url));
+/** A peer's colours as their own screen bakes them -- through the gates every
+ *  recolour passes (skinTarget & co.), from the ids relayed on the wire. */
+export function _peerStandInColours(o) {
+  const skinT = skinTarget(o && o.skin) || DEFAULT_SKIN_TARGET;
+  const pantsT = pantsTarget(o && o.pants), shoesT = shoesTarget(o && o.shoes);
+  const garb = peerGarb(o);   /* v2.3.4037 */
+  return { skinT, pantsT, shoesT, garb, key: _standInColourKey(skinT, pantsT, shoesT, garb) };
+}
+/** Yours as you wear them now -- the stores, not the last bake. */
+export function _localStandInColourKey() {
+  return _standInColourKey(skinTarget(getSkin()) || DEFAULT_SKIN_TARGET, pantsTarget(getPants()), shoesTarget(getShoes()), localGarb());   /* v2.3.4037: + the garb */
 }
