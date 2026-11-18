@@ -54,7 +54,7 @@
  *      NOT_A_MACHINE                                       -> FAIL 5
  *   5. the `race` worker row deleted -> FAIL 1 (4 stays green: the page's
  *      `race` row still carries the wire's name)
- *   6. TODO_LINE one under the count (2; tag 5679)           -> FAIL 7
+ *   6. TODO_LINE one under the count (-1; tag 5032)          -> FAIL 7
  * v2.3.5203 (the gatekeeper's sitting 8, its two holes), each tried by hand:
  *   7. `_sneakJoin(ws,\n msg) { ... s.phase = 'joined' }` at the end of
  *      join.js's joinMethods (its parameters over two lines)  -> FAIL 2
@@ -189,7 +189,7 @@ const fileNamed = (name) => {
    since card L's arena door (#1930).
    Tag 5661 (the gatekeeper, sitting 23, main 8149d61): 15 -> 14, the count
    since card L's ride door (#1936). */
-export const TODO_LINE = 3;   /* v2.3.5679: lowered 4 -> 3 by the gatekeeper, sitting 41 (L's dungeon page door, #2052); v2.3.5677: lowered 5 -> 4 by the gatekeeper, sitting 39 (L's life page door, #2046); v2.3.5676: lowered 6 -> 5 by the gatekeeper, sitting 38 (L's fight page door, #2039); v2.3.5675: lowered 7 -> 6 by the gatekeeper, sitting 37 (L's arena page door, #2031); v2.3.5674: lowered 9 -> 7 by the gatekeeper, sitting 36 (L's trade and ride page doors, #2027); v2.3.5673: lowered 11 -> 9 by the gatekeeper, sitting 35 (L's duel and party page doors, #2022); v2.3.5671: lowered 12 -> 11 by the gatekeeper, sitting 33 (L's connection door, #2012); v2.3.5669: lowered 13 -> 12 by the gatekeeper, sitting 31 (L's window door, #2000); v2.3.5663: 14 -> 13 (#1956) */
+export const TODO_LINE = 0;   /* v2.3.5032: lowered 3 -> 0 by the gatekeeper, sitting 42, carried by sitting 43 (L's guard, zone and fight doors, #2058, #2065, #2067: no `todo` row left, the census strict); v2.3.5679: lowered 4 -> 3 by the gatekeeper, sitting 41 (L's dungeon page door, #2052); v2.3.5677: lowered 5 -> 4 by the gatekeeper, sitting 39 (L's life page door, #2046); v2.3.5676: lowered 6 -> 5 by the gatekeeper, sitting 38 (L's fight page door, #2039); v2.3.5675: lowered 7 -> 6 by the gatekeeper, sitting 37 (L's arena page door, #2031); v2.3.5674: lowered 9 -> 7 by the gatekeeper, sitting 36 (L's trade and ride page doors, #2027); v2.3.5673: lowered 11 -> 9 by the gatekeeper, sitting 35 (L's duel and party page doors, #2022); v2.3.5671: lowered 12 -> 11 by the gatekeeper, sitting 33 (L's connection door, #2012); v2.3.5669: lowered 13 -> 12 by the gatekeeper, sitting 31 (L's window door, #2000); v2.3.5663: 14 -> 13 (#1956) */
 
 /* the machines every side must have a row for: SHAPES part 5's names and
    step 5.3b's list (the plan's own `dungeon`, `connection`, `loading`,
