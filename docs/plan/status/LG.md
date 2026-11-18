@@ -1,7 +1,7 @@
 card: LG
 branch: claude/plan-lg-3-replay (PR 3, 6122)
-prs: #2170 (6120, draft), #2178 (6121, draft), PR 3 (6122) working
-state: working
+prs: #2170 (6120) ready, #2178 (6121) ready, #2184 (6122) ready
+state: ready
 
 ## Done
 
@@ -9,11 +9,13 @@ state: working
   honest trouble, the detector's rule).
 - PR 2 (6121) #2178: tools/league rungs 1-2, score.mjs, league.test,
   `npm run league`. Rung 1 caught; rung 2 missed by every detector.
+- PR 3 (6122) #2184: rungs 3-4 (page-script, replay, traces); the honest
+  trace passes at 60/30/20/4 fps and through a deploy.
 
 ## Next
 
-- PR 3 (6122): rungs 3-4 (page-script.mjs, replay.mjs, traces/); the
-  honest trace passes at 60/30/20/4 fps and through a deploy. Then done.
+- Nothing: all three PRs green and ready, in order (#2170, #2178, #2184,
+  each stacked on the one before). The card is done once they merge.
 
 ## Found
 
