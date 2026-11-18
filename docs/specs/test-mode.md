@@ -69,7 +69,9 @@ switch allows it.
   counted (v2.3.5729, `seathold.js` `GUEST_SHARE`, `flood.js` `ip48Key`,
   `guestshare`); a join taking only what is its own (v2.3.5730, `join.js`,
   `seathold.js`, `joinguard`); a duel's frames to its two players alone
-  (v2.3.5731, `eventplace.js` `duelPlaceOf`, `duelquiet`);
+  (v2.3.5731, `eventplace.js` `duelPlaceOf`, `duelquiet`); a join's colour
+  and avatar held to their forms (v2.3.5733, `join.js`, `lookform.js`,
+  `lookjoin`);
   the owner's routes with no key and the public reads at the edge (v2.3.5726,
   `wire/door.js`; the worker settings `EDGE_GUARD`, `EDGE_CACHE`).
 - A General Store sell filed under its weapon's own tier, and a refund and

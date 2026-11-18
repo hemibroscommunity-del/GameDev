@@ -72,7 +72,8 @@
  * seathold.js GUEST_SHARE, flood.js ip48Key: `guestshare`), a join taking
  * only what is its own (v2.3.5730, join.js, seathold.js: `joinguard`), a
  * duel's frames to its two players alone (v2.3.5731, eventplace.js
- * duelPlaceOf: `duelquiet`), the owner's routes
+ * duelPlaceOf: `duelquiet`), a join's colour and avatar held to their forms
+ * (v2.3.5733, join.js, lookform.js: `lookjoin`), the owner's routes
  * with no key and the public reads at the edge (v2.3.5726, wire/door.js:
  * the worker settings `EDGE_GUARD`, `EDGE_CACHE`), every save and payment rule,
  * the login key and its lockouts, a frozen account, PvP consent and every
