@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "7ef9e3ea902322f3dd9d3feae3f6b01d1b2d903c",
+  "tree": "e8cd1c3bcf83eb94d3433debfdf9e34c7d18fd53",
+  "committedAt": "2026-11-18T00:33:11-08:00",
+  "subject": "Merge pull request #2176 from hemibroscommunity-del/claude/plan-k4-8-startless",
+  "files": 8291,
+  "bytes": 961774879,
+  "listingSha256": "babc0cf99758456f549f903207713c6a2aff084e788a2bc1883fe883e7aff9af",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

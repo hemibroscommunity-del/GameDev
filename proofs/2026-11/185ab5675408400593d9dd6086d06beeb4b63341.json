@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "185ab5675408400593d9dd6086d06beeb4b63341",
+  "tree": "9c9449330615b2729d8935479345d341a33a9e1f",
+  "committedAt": "2026-11-18T00:32:38-08:00",
+  "subject": "Merge pull request #2178 from hemibroscommunity-del/claude/plan-lg-2-league",
+  "files": 8286,
+  "bytes": 961665179,
+  "listingSha256": "de6d3903fca97e74af1f806f2d1e3269bb75cf6a2e8779aea09908599f8c7658",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

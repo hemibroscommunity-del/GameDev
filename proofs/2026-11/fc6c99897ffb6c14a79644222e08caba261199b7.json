@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "fc6c99897ffb6c14a79644222e08caba261199b7",
+  "tree": "d738cfe3f6fb64ebb7c24863032a641dd607c2bf",
+  "committedAt": "2026-11-18T00:33:00-08:00",
+  "subject": "Merge pull request #2168 from hemibroscommunity-del/claude/plan-k4-7-defaults",
+  "files": 8290,
+  "bytes": 961768766,
+  "listingSha256": "80bda66cf8090fc2df774f30c3287e73ad178ed262230390e3131df7bb2eb4f6",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
