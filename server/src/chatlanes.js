@@ -162,8 +162,15 @@ export const chatLaneMethods = {
        sending it. */
     const want = to.toLowerCase();
     const hits = [];
+    /* v2.3.5806 (card RV, S8; the owner's call, decided while away: "Go
+       recommended on all"): a player who mutes you is not here, to you --
+       a whisper answered nothing for a player present and `no-such-player`
+       for one away, so a harasser could test whether the one who muted them
+       was on.  `mutehides: false` in the live flags: as before. */
+    const _hide = this._muteHidesOn();
     for (const [, s] of this.sessions) {
       if (!s || !s.id || s.id === session.id) continue;
+      if (_hide && this._chatModMuted(s.id, session.id)) continue;
       if (this._laneNameOf(s.id).toLowerCase() === want) hits.push(s.id);
     }
     if (hits.length === 0) {
