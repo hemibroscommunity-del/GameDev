@@ -101,7 +101,9 @@
  * to the name rule (v2.3.5814, chatguard.js, petbook.js, alliance.js:
  * `cleanmore`, `namestaff`); the rewind's plan names the owner's login acts since
  * its time (v2.3.5815, restore.js: `rewindsays`); the jackpot's deposit asks
- * the purse again after its awaits (v2.3.5813, cadence.js: `jackcheck`).
+ * the purse again after its awaits (v2.3.5813, cadence.js: `jackcheck`); the
+ * Auction House's `/mine` shows a player's bids only to that player's own
+ * session (v2.3.5817, store.js: `minebids`).
  *
  * WHO CAN TURN IT ON.  Only the admin key, through the Test panel's
  * POST /api/admin/dev/testmode {playerId, on} (devtools.js), which the owner's

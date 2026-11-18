@@ -95,7 +95,9 @@ switch allows it.
   (v2.3.5814, `chatguard.js`, `petbook.js`, `alliance.js`, `cleanmore`,
   `namestaff`); the rewind's plan names the owner's login acts since its time
   (v2.3.5815, `restore.js`, `rewindsays`); the jackpot's deposit asks the
-  purse again after its awaits (v2.3.5813, `cadence.js`, `jackcheck`).
+  purse again after its awaits (v2.3.5813, `cadence.js`, `jackcheck`); the
+  Auction House's `/mine` shows a player's bids only to that player's own
+  session (v2.3.5817, `store.js`, `minebids`).
 - Every save and payment rule; the login key, the device lock, the lockouts;
   a frozen account.
 - PvP consent and **every check on a hit between players** (pvpbalance.js,
