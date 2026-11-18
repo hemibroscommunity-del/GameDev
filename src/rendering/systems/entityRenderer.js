@@ -532,7 +532,7 @@ const FOLK_FAR_MARGIN = 300;
    on QA pages: how many times let go of, how many sheets, and the nearest
    townsperson's distance past the view. */
 const FOLK_SHEETS_FREE_PX = 2000;    /* world px past the view's half-diagonal (the memory check's fight: ~3200) */
-const FOLK_SHEETS_FREE_MS = 20000;   /* that far for this long */
+const FOLK_SHEETS_FREE_MS = 10000;   /* that far for this long */
 const _FOLK_SHEETS_ON = !sw('folksheets');
 let _folkJobs = null;   /* the jobs the loading screen baked (prewarmFolkBodies) */
 const _folkSheets = { onChip: true, farSince: 0, frees: 0, unloaded: 0, nearest: Infinity };
@@ -547,7 +547,7 @@ function _folkSheetsStep(now, nearest) {
   if (!_folkSheets.farSince) { _folkSheets.farSince = now; return; }
   if (_folkSheets.onChip && now - _folkSheets.farSince > FOLK_SHEETS_FREE_MS) {
     const jobs = _folkJobs;
-    _folkSheets.unloaded += unloadBodySheets(bodyKeysAsked(() => { prewarmFolkBodies(jobs); }));
+    _folkSheets.unloaded += unloadBodySheets(new Set(bodyKeysAsked(() => { prewarmFolkBodies(jobs); })));   /* a key asked by several jobs, once */
     _folkSheets.frees++;
     _folkSheets.onChip = false;
   }
