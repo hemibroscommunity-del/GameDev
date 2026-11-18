@@ -301,26 +301,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const ace = await npcAt('Ace');
   let tapped = null, aceVoice = [];
   if (ace) {
-    await H.hopTo(P, ace.x + 36, ace.y + 30);
-    await P.page.waitForTimeout(900);
-    /* where he is on the screen once the camera has settled (mp-moresounds' way) */
-    const screenOf = (wx, wy) => P.page.evaluate(({ wx, wy }) => {
-      const S = window._gameState.current, c = document.querySelector('canvas'), r = c.getBoundingClientRect();
-      return { x: r.left + (wx - S.camera.x) * (S._worldScaleX || 1), y: r.top + (wy - S.camera.y) * (S._worldScaleY || 1) };
-    }, { wx, wy });
-    let scr = null;
-    for (let i = 0; i < 25; i++) {
-      const n = await npcAt('Ace');
-      const cur = n ? await screenOf(n.x, n.y - 26) : null;
-      if (cur && scr && Math.abs(cur.x - scr.x) < 1.5 && Math.abs(cur.y - scr.y) < 1.5) break;
-      scr = cur;
-      await P.page.waitForTimeout(120);
-    }
+    /* v2.3.5844: reached and tapped the harness's way (H.approachNpc, CLAUDE.md
+       §6), not a hop and one hand-made tap: on this slow box a frame drawn
+       between a touch's start and end makes a tap a hold, and talkToNpc tries
+       three times (red 1 of 2 runs of this branch, a helper session's: "no tap") */
     await P.page.evaluate(() => { window.__btCues.reset(); window.__btNpcVoices.reset(); });
     const t0 = await P.page.evaluate(() => Date.now());
-    if (scr) await P.page.touchscreen.tap(scr.x, scr.y);
-    await P.page.waitForTimeout(700);
-    tapped = await P.page.evaluate((t0) => { const r = window.__btNpcTap; return r && r.ts >= t0 - 50 ? r : null; }, t0);
+    await H.approachNpc(P, 'card_sharp');
+    tapped = await P.page.evaluate((t0) => { const r = window.__btNpcTap; return r && r.ts >= t0 - 50 && r.npc === 'Ace' ? r : null; }, t0);
     aceVoice = await P.page.evaluate(() => window.__btCues.stats.log.filter((c) => /^npcVoice\d$/.test(c.name)).map((c) => ({ name: c.name, k: c.k, played: c.played })));
     await P.page.evaluate(() => { const b = document.querySelector('[aria-label^="Close"], .bt-inspect-close'); if (b) b.click(); });
   }
