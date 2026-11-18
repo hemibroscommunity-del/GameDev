@@ -39,6 +39,11 @@ export const DUEL = {
   GRACE_MS: 15000,         // reconnect window before forfeit
   CONSENT_MS: 600000,      // damage-gate pair lifetime (10 min duel cap)
   STALE_ESCROW_MS: 600000, // orphaned escrow age before the sweep refunds
+  /* v2.3.5805 (card RV, S1): a challenger's cards to one target: CARD_BURST
+     at once, then one more each INVITE_REPEAT_MS (trade, friend and party
+     invites have been paced since card MOD: trade2.js INVITE_REPEAT_MS) */
+  INVITE_REPEAT_MS: 5000,
+  CARD_BURST: 2,
 };
 
 /* ═══ v2.3.5211: THE DUEL DOOR (card L PR 5; grand plan step 5.3b) ═══
@@ -170,12 +175,50 @@ export const duelMethods = {
       const wager = msg.type === 'duel_wager_request'
         ? Math.max(0, Math.min(999999, Math.floor(Number(payload.wager) || 0)))
         : 0;
-      this._duelChallenges.set(fromId + '>' + target, { wager, ts: now });
+      /* ═══ v2.3.5805 (card RV, S1): A CHALLENGE'S CARD IS PACED, AND HEARD ONLY IF WANTED ═══
+         A challenge had no pace of its own, no check that the target is in
+         the room, and no mute: the relay bucket (4 a second) was the only
+         bound, and every one is a card and a sound on the target's phone --
+         40 in 10 s in the review's run.  Trade, friend and party invites have
+         been paced since card MOD; the duel was missed.  Now: nobody in the
+         room is no challenge; a target who muted the challenger never hears
+         it (Mute was chat's alone); and the CARDS a challenger sends one
+         target are a bucket of CARD_BURST, one more each INVITE_REPEAT_MS.
+         The record is still written every time, as before, so a stake
+         changed and re-sent behaves as it always has: the accept echoes the
+         stake its card showed (v2.3.3168), a grown one is refused, a lowered
+         one duels at the lower (duel.test).  A held card is only not sent.
+         Another zone is left as before: the accept refuses it, with words to
+         both (v2.3.1973).  `duelpace: false` in the live flags: as before. */
+      const _key = fromId + '>' + target;
+      const _prev = this._duelChallenges.get(_key);
+      let _tok = DUEL.CARD_BURST, _send = true;
+      if (this._duelPaceOn()) {
+        if (!this.playerState[fromId] || !this.playerState[target]) return null;
+        if (this._chatModMuted && this._chatModMuted(target, fromId)) return null;
+        if (_prev && typeof _prev.tok === 'number') {
+          _tok = Math.min(DUEL.CARD_BURST, _prev.tok + Math.max(0, now - (_prev.tokAt || 0)) / DUEL.INVITE_REPEAT_MS);
+        }
+        if (_tok < 1) _send = false;
+        else _tok -= 1;
+      }
+      this._duelChallenges.set(_key, { wager, ts: now, tok: _tok, tokAt: now });
+      if (!_send) return null;
       payload.wager = wager; // relay the sanitized number
       return msg;
     }
     if (msg.type === 'duel_decline') {
-      this._duelChallenges.delete(target + '>' + fromId);
+      /* v2.3.5805 (card RV, S4): a decline is of a challenge the target
+         really sent, and says only that: a decline of nothing, with its
+         `reason` riding through, put "Duel declined" or "Saving is paused
+         for a moment" on any phone it named, four a second.  The reason is
+         the worker's own word (valuepause.js), never a phone's.
+         `duelpace: false`: relayed as sent, as before. */
+      const had = this._duelChallenges.delete(target + '>' + fromId);
+      if (this._duelPaceOn()) {
+        if (!had) return null;
+        msg.payload = { target, from: fromId };
+      }
       return msg;
     }
 
@@ -321,16 +364,39 @@ export const duelMethods = {
              the pot pays exactly as before.  Each credit written out whole:
              the credit guards read its opId at the call (opid-audit,
              gold-door §8) */
-          if (xferEscrowOn(this)) {
+          /* ═══ v2.3.5805 (card RV, MS-6): THE POT AND ITS ESCROW'S DELETE, ONE WRITE ═══
+             The pot was paid (`duelpot:<id>`, one write) and the escrow
+             record deleted in the next: a restart between left the record
+             with only the stamp to say so, and the stale-escrow sweep (on a
+             join, every 5 minutes at most) reads that stamp -- unless the
+             prune got there first (48 h), and then the sweep refunded both
+             stakes on top of the pot (TRAPS §146).  Now the delete rides the
+             pot's own run (inbox.js _creditWith), the ledger's row beside it
+             when `xferescrow` is on.  `duelonewrite: false`: as before. */
+          if (this._duelOneWriteOn()) {
+            await this._creditWith(winnerId, { opId: 'duelpot:' + duel.id, source: 'duel', kind: 'gold', payload: { amount: duel.wager * 2 }, note: 'duel won' },
+              () => { const out = [this.state.storage.delete('duelEscrow:' + duel.id)]; const p = xferEscrowOn(this) ? xferDuelPot(this, duel, winnerId, loserId, how) : null; if (p) out.push(p); return out; });
+          } else if (xferEscrowOn(this)) {
             await this._creditWith(winnerId, { opId: 'duelpot:' + duel.id, source: 'duel', kind: 'gold', payload: { amount: duel.wager * 2 }, note: 'duel won' },
               () => { const p = xferDuelPot(this, duel, winnerId, loserId, how); return p ? [p] : []; });
           } else {
             await this._creditPlayer(winnerId, { opId: 'duelpot:' + duel.id, source: 'duel', kind: 'gold', payload: { amount: duel.wager * 2 }, note: 'duel won' });
           }
-          await this.state.storage.delete('duelEscrow:' + duel.id);
+          if (!this._duelOneWriteOn()) await this.state.storage.delete('duelEscrow:' + duel.id);
         } catch (e) { /* sweep repairs */ }
       })();
     }
+  },
+
+  /* v2.3.5805 (card RV): `duelpace: false` and `duelonewrite: false` in the
+     live flags, each its kill switch (lower case, on unless written false) */
+  _duelPaceOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'duelpace') && !f.duelpace);
+  },
+  _duelOneWriteOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'duelonewrite') && !f.duelonewrite);
   },
 
   _duelOnDisconnect(playerId) {

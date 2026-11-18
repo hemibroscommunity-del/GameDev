@@ -3,6 +3,7 @@ import React from 'react';
    setMuted keeps writing the localStorage mirror this panel reads. */
 import { setMuted, blockedIdOf } from '@/game/chatMute.js'; /* v2.3.3391: + blockedIdOf */
 import { unblockPlayer } from '../mobile/sheet/friendsModel.js'; /* v2.3.4365: the one writer of the block list */
+import { drawColor } from '@/game/lookForm.js';   /* v2.3.5807 (card RV, S2): a friend's colour drawn only as a colour */
 
 /* ═══ SocialPanel — friends / muted / blocked lists ═══ */
 /* v2.3.860: moved verbatim from BroTown.jsx's JSX tree (UI-panel
@@ -158,7 +159,7 @@ export function SocialPanel(props) {
         width: 28,
         height: 28,
         borderRadius: '50%',
-        background: f.color || '#293B41' /* v2.3.1235: batch-2 rollout — raised-token fallback, no off-token gray (player color itself is game data) */,
+        background: drawColor(f.color, '#293B41') /* v2.3.5807 (card RV, S2): lookForm.js; v2.3.1235: batch-2 rollout — raised-token fallback, no off-token gray (player color itself is game data) */,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
