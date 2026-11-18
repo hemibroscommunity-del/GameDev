@@ -1,7 +1,7 @@
 card: RD
 branch: claude/plan-rd-1-itemdrop (one PR a branch, claude/plan-rd-*)
-prs: (6180) itemdrop 5b: opening
-state: working
+prs: #2191 (6180) itemdrop 5b: ready
+state: ready
 
 ## Done
 - itemdrop 5b (6180): the TEST's. Five runs in a row green, 18/18.
@@ -15,7 +15,7 @@ state: working
   frames to the pile's end, the phones at dpr 1 (0.6 fps at dpr 2 here).
 
 ## Next
-- crowdfight "knew every bot" (6181): run on main.
+- crowdfight "knew every bot" (6181): run on main (claude/plan-rd-2-*).
 
 ## Found
 - tools/qa/mp/mp-itemdrop.mjs's other checks pass, but 6a went red once
