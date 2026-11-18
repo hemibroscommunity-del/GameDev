@@ -5,6 +5,8 @@ import { PROG3_SKILL_META } from '@/data/prog3.js';
 import { QuestFrame, QuestCloseX, QuestPay, QuestCaption, QuestSlot, QuestClaimButton, QuestClaimed, QUEST_COIN } from './questArt.jsx';
 import { flyQuestRewards } from '@/game/questFly.js';
 import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
+import { SAY } from '@/data/say/questOffer.js';   /* v2.3.6350: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';
 
 /* ═══ v2.3.1820: THE DECISION, ON ITS OWN SCREEN ═══
  *
@@ -92,20 +94,20 @@ function Claimed(props) {
       <div ref={winRef} className="bt-qw-done-wrap" data-qw-stage="done">
         <QuestFrame className="bt-qw--done" onClick={(e) => { e.stopPropagation(); onDone && onDone(); }}>
           <div className="bt-qw-col bt-qw-col--a">
-            <div className="bt-qw-kicker">Quest Complete</div>
+            <div className="bt-qw-kicker">{say(SAY, 'questOffer.kickerDone')}</div>
             <div className="bt-qw-title">{quest && quest.title}</div>
             <QuestPay gold={gold} xp={xp} />
-            {items.length > 0 && <QuestCaption>Your rewards</QuestCaption>}
+            {items.length > 0 && <QuestCaption>{say(SAY, 'questOffer.yourRewards')}</QuestCaption>}
             {items.length > 0 && <Items list={items} glow />}
           </div>
           <div className="bt-qw-col bt-qw-col--b">
             {skill && xp ? (
               <div className="bt-qw-xpline" data-qw-xpline={skill.key}>
                 <img src={skill.iconSrc} alt="" draggable={false} />
-                {'+' + xp + ' XP to ' + skill.label}
+                {say(SAY, 'questOffer.xpTo', { xp: xp, skill: skill.label })}
               </div>
             ) : null}
-            <QuestClaimed>Rewards claimed!</QuestClaimed>
+            <QuestClaimed>{say(SAY, 'questOffer.claimed')}</QuestClaimed>
           </div>
         </QuestFrame>
       </div>
@@ -149,9 +151,9 @@ export const QuestOfferPanel = (props) => {
      With both groups on screen at once, "for finishing this quest" is
      ambiguous the moment he has a second one queued behind it — and the
      name is the thing that makes the promise concrete. */
-  const finishing = `For finishing “${(quest && quest.title) || 'this quest'}”`;
+  const finishing = say(SAY, 'questOffer.finishing', { title: (quest && quest.title) || say(SAY, 'questOffer.thisQuest') });
   const groups = offering
-    ? [['accept', 'He hands you now', nowItems], ['complete', finishing, endItems]]
+    ? [['accept', say(SAY, 'questOffer.handsNow'), nowItems], ['complete', finishing, endItems]]
       .filter(([, , list]) => list.length > 0)
     : [['complete', finishing, endItems]].filter(([, , list]) => list.length > 0);
 
@@ -198,10 +200,10 @@ export const QuestOfferPanel = (props) => {
              v2.3.3030: the owner's round X.  Still a picture, not a "✕"
              character (v2.3.2289: a text glyph lands in the card's text, which
              the quest scenarios read). */
-          <QuestCloseX qa="dlg-close" label="Close. Your reward stays waiting for you." onClick={() => onClose && onClose()} />
+          <QuestCloseX qa="dlg-close" label={say(SAY, 'questOffer.closeReward')} onClick={() => onClose && onClose()} />
         )}
         <div className="bt-qw-col bt-qw-col--a">
-          <div className="bt-qoffer-kicker bt-qw-kicker">{offering ? 'New Quest' : 'Quest Complete'}</div>
+          <div className="bt-qoffer-kicker bt-qw-kicker">{say(SAY, offering ? 'questOffer.kickerNew' : 'questOffer.kickerDone')}</div>
           <div className="bt-qoffer-title bt-qw-title">{quest && quest.title}</div>
 
           {/* The errand itself, on the accept screen only — on the reward screen
@@ -242,7 +244,7 @@ export const QuestOfferPanel = (props) => {
               disabled={!!confirmDisabled}
               onClick={() => { onConfirm && onConfirm(); }}
             >
-              {offering ? 'Accept Quest' : 'Claim Rewards'}
+              {say(SAY, offering ? 'questOffer.accept' : 'questOffer.claim')}
             </QuestClaimButton>
             {/* Only the OFFER is declinable.  A finished quest's reward is
                 already earned, so a "not now" there is a way to lose track of
@@ -254,7 +256,7 @@ export const QuestOfferPanel = (props) => {
                 data-esc="" data-key="Esc" data-key-at="inline"   /* v2.3.3407: the offer's way out, Esc's */
                 onClick={(e) => { e.stopPropagation(); onClose && onClose(); }}
               >
-                Not now
+                {say(SAY, 'questOffer.notNow')}
               </button>
             )}
           </div>

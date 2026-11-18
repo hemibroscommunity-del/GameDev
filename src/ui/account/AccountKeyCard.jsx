@@ -1,5 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { getBtPassphrase, isNewKey } from '@/networking/index.js';
+import { SAY } from '@/data/say/accountKey.js';   /* v2.3.6354: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say, sayPieces } from '@/game/say.js';
 
 /* v2.3.1143: Login Key display card (see docs/specs/account-login.md).
    The silent passphrase IS the account credential; this card is the
@@ -19,11 +21,10 @@ export const AccountKeyCard = () => {
          the locked Lantern Slate correction sheet (no big container). */
       <div style={{ padding: '6px 0' }}>
         <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--ui-text-secondary)' }}>
-          Guest session — this tab has no Login Key.
+          {say(SAY, 'accountKey.guestTitle')}
         </div>
         <div style={{ fontSize: 12, color: 'var(--ui-text-muted)', marginTop: 2 }}>
-          Play in a normal tab to get a character that can be continued
-          on other devices.
+          {say(SAY, 'accountKey.guestHow')}
         </div>
       </div>
     );
@@ -71,7 +72,7 @@ export const AccountKeyCard = () => {
         fontSize: 11, fontWeight: 700, textTransform: 'uppercase',
         letterSpacing: '.14em', color: 'var(--ui-text-muted)', marginBottom: 4,
       }}>
-        Your Login Key
+        {say(SAY, 'accountKey.head')}
       </div>
       {/* ═══ v2.3.3355: A NEW KEY, AS EIGHT WORDS ═══
           (server/src/loginkeys.js.)  Forty-odd characters do not fit one line
@@ -154,26 +155,22 @@ export const AccountKeyCard = () => {
             padding: '0 12px',
           }}
         >
-          {copied ? 'Copied!' : hideField ? 'Copy Login Key' : 'Copy'}
+          {say(SAY, copied ? 'accountKey.copied' : hideField ? 'accountKey.copyKey' : 'accountKey.copy')}
         </button>
       </div>
       <div style={{ fontSize: 12, color: 'var(--ui-text-secondary)', marginTop: 8, lineHeight: 1.4 }}>
-        This Login Key is the <b>only</b> way to get your character back
-        on a new phone or after clearing your browser. Save it somewhere
-        safe. There is no email recovery.
+        {sayPieces(SAY, 'accountKey.onlyWay', { only: <b key="only">{say(SAY, 'accountKey.only')}</b> })}
       </div>
       {/* v2.3.3344: an old key works only on the devices it is played on
           (server/src/devicelock.js) -- a new one also needs the owner.
           v2.3.3355: a NEW key works on any device (server/src/loginkeys.js) */}
       {isNewKey(phrase) ? (
         <div data-bt="account-keycard-device" data-newkey="1" style={{ fontSize: 12, color: 'var(--ui-text-secondary)', marginTop: 6, lineHeight: 1.4 }}>
-          This key works on any phone or computer: type its eight words at the
-          start screen's Login Key.
+          {say(SAY, 'accountKey.newKeyAnywhere')}
         </div>
       ) : (
         <div data-bt="account-keycard-device" style={{ fontSize: 12, color: 'var(--ui-text-secondary)', marginTop: 6, lineHeight: 1.4 }}>
-          On a new phone or computer, the game's owner also has to let it in:
-          the screen there gives you a code to send them.
+          {say(SAY, 'accountKey.oldKeyOwner')}
         </div>
       )}
     </div>

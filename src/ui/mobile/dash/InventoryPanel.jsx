@@ -15,6 +15,8 @@ import { BagFilterChips } from './BagFilterChips.jsx'; /* v2.3.1652 */
 import { unequipWeaponSlot, unequipShieldDirect, unequipArmorDirect, unequipGearDirect } from './equipActions.js'; /* v2.3.1330 */
 import { getEquip } from '../../../rendering/gearCatalog.js';
 import { playVw, panelVw } from '../playViewport.js';
+import { SAY } from '@/data/say/inventoryDash.js';   /* v2.3.6349: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';
 
 // Category filter chips.  "All" comes first so the player always opens
 // the bag with everything visible.  v2.3.1231: UI Bible icons replace
@@ -501,7 +503,7 @@ const ShopQuoteBadge = ({ ikey }) => {
       color: soft ? '#B08A45' : '#EAC675',
       fontSize: 11, lineHeight: '13px', fontWeight: 700,
       fontVariantNumeric: 'tabular-nums', pointerEvents: 'none',
-    }}>{q.buy}g{soft ? '\u2193' : '\u2191'}</span>
+    }}>{say(SAY, 'inventoryDash.quoteGold', { buy: q.buy })}{soft ? '\u2193' : '\u2191'}</span>
   );
 };
 
@@ -584,7 +586,7 @@ export const ItemTile = ({ ikey, count, style: styleOverride, onSelect, selected
       {/* v2.3.2815: the glint and the arrival ring draw here (game.css) */}
       <span className="bt-bag-fx" aria-hidden="true" />
       {/* v2.3.4036: a large fish's "L", top-left (the anchor owns top-right) */}
-      {fishVariantOf(ikey) === 'large' && <span className="bt-fish-large" data-fish-large="" aria-label="Large">L</span>}
+      {fishVariantOf(ikey) === 'large' && <span className="bt-fish-large" data-fish-large="" aria-label={say(SAY, 'inventoryDash.large')}>{say(SAY, 'inventoryDash.largeMark')}</span>}
       {/* v2.3.1249: owner-approved — the big uncontained 15px count becomes
           a compact contained badge (bottom-right, bare number, 2-digit max;
           recipe in game.css .bt-item-qty).  Shared by the quick Bag preview
@@ -1069,7 +1071,7 @@ export const InventoryPanel = () => {
                             margin: '4px 0 2px',
                             fontFamily: 'inherit', fontSize: 13, fontWeight: 800,
                             letterSpacing: '.02em',
-                          }}>Unequip</button>
+                          }}>{say(SAY, 'inventoryDash.unequip')}</button>
                       );
                     })()}
                   </>
@@ -1209,7 +1211,7 @@ export const InventoryPanel = () => {
               <img src="/icons/ui/nav-inventory.webp?v=2.3.1224" alt="" draggable={false}
                 style={{ width: 32, height: 32, opacity: 0.4, filter: 'grayscale(1)', flex: 'none' }} />
               <div style={{ fontSize: 13, fontWeight: 700, color: COL.text2 }}>
-                {filter === 'all' ? 'Your bag is empty.' : `No ${(CATEGORIES.find(c => c.id === filter)?.label || 'matching').toLowerCase()} items yet.`}
+                {filter === 'all' ? say(SAY, 'inventoryDash.bagEmpty') : say(SAY, 'inventoryDash.noneYet', { what: (CATEGORIES.find(c => c.id === filter)?.label || say(SAY, 'inventoryDash.matching')).toLowerCase() })}
               </div>
               {filter === 'all' && (
                 /* v2.3.1321 (owner): maxWidth 220 forced a two-line wrap
@@ -1219,7 +1221,7 @@ export const InventoryPanel = () => {
                    320px-class screen wraps instead of overflowing, and
                    the margin:auto wrapper keeps it visible either way. */
                 <div style={{ fontSize: 12, color: COL.muted }}>
-                  Defeat monsters and gather materials to fill it up.
+                  {say(SAY, 'inventoryDash.fillIt')}
                 </div>
               )}
             </div>
@@ -1488,7 +1490,7 @@ const StashTile = ({ kind, obj, index, count, style: styleOverride, onSelect, se
       touchAction: 'manipulation',
       /* v2.3.1350: row-fit override from the measured items grid. */
       ...(styleOverride || {}),
-    }} title={(obj && obj.name) || (kind === 'stashShield' ? 'Shield' : kind === 'stashArmor' ? 'Armor' : kind === 'stashLegs' ? 'Greaves' : 'Weapon')}>
+    }} title={(obj && obj.name) || (kind === 'stashShield' ? say(SAY, 'inventoryDash.shield') : kind === 'stashArmor' ? say(SAY, 'inventoryDash.armor') : kind === 'stashLegs' ? say(SAY, 'inventoryDash.greaves') : say(SAY, 'inventoryDash.weapon'))}>
       {/* v2.3.2815: gear catches the light now and then (bagLife.js); a
           rare-or-better piece a little more often (data-life-q) */}
       {thumb

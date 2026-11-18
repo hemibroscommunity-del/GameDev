@@ -352,7 +352,11 @@ spec. Add a line here only for a new RULE every session must follow.
   - a read that waits for the graphics chip runs at the top of a frame
     (`framePacer.js beforeDraw`); a redraw on a timer is a `startTransition`;
     nothing measures the page (`getBoundingClientRect`, `clientWidth`) inside
-    a frame.
+    a frame;
+  - a read of the page's layout goes through the ways of
+    `docs/specs/layout-reads.md` (a kept size: `winVw`, `playVw`; the top
+    of the frame, `beforeDraw`; a ResizeObserver); `layout-reads.test`
+    fails a new one, and its list only falls (v2.3.6361).
 - **Drawing** (a phone's frame is the budget):
   - a structural change (visible, zIndex, add or remove, blend, a texture from
     outside its batch, any change to a small Graphics) rebuilds its layer's
@@ -428,6 +432,7 @@ spec. Add a line here only for a new RULE every session must follow.
 | a domain players use | `ORIGINS` (wrangler.toml: the owner approves) (by hand: outside the repository) |
 | a change to the Wheel's plan or objects | a re-bake of both Wheels (test: `wheel-bakes`) |
 | anything the memory check reads more of | the line raised, with the MB and why in the PR body (test: `mp-membudget`, every PR) |
+| a read of the page's layout | through the measure helper (`winVw`, `playVw`, `canvasBox`, `beforeDraw`, a ResizeObserver: `docs/specs/layout-reads.md`), never a new list row (test: `layout-reads`) |
 | a bake, a load in play, or a redraw on a timer | off the page's thread (the palette, offline, a worker; `startTransition`); `mp-heldsweep` within its budget (by hand: hours-long browser sweep) |
 | a server-only number a copier would value | a row in the hidden settings (`hidden.js` `HIDDEN_SPEC`) with a public placeholder (by hand: a copier's judgment) |
 

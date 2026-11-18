@@ -102,5 +102,28 @@ function check(name, cond, detail) {
   check('5: the quest plate, the townsfolk\'s window, the quest windows, the coach, the codex card, the chat box and the Friends, party and Pets pages call it', missing.length === 0, missing);
 }
 
+/* -- 5b. a row in the words table that say() runs through deskWords --
+   v2.3.6340 (gatekeeper sitting 50's mend 5): 5 finds the screen's call; a
+   row read through say()/sayPieces() goes through deskWords only while it is
+   PLAIN words (src/game/say.js: a { phone, desk } row is each device's own
+   words, unswapped).  So the row is read too: it must stay a string, or its
+   desk form must already read "click" (tools/guards/say.test 2 and 3).
+   BREAK PROOF: src/data/say/pets.js 'pets.emptyHow' made { phone: '...tap
+   {trap}...', desk: '...tap {trap}...' }  -> FAIL 5b */
+{
+  const rows = [
+    ['src/data/say/pets.js', 'pets.emptyHow'],
+  ];
+  const bad = [];
+  for (const [p, key] of rows) {
+    const { SAY } = await import(new URL('../../' + p, import.meta.url).href);
+    const row = SAY[key];
+    const ok = typeof row === 'string'
+      || (row && typeof row === 'object' && typeof row.desk === 'string' && !/\b[Tt]ap/.test(row.desk));
+    if (!ok) bad.push(p + ' ' + key);
+  }
+  check('5b: the table rows those pages read go through deskWords (plain words), or say "click" on a computer themselves', bad.length === 0, bad);
+}
+
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
 process.exit(failures ? 1 : 0);

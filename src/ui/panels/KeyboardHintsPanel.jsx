@@ -13,6 +13,8 @@ import { rideButtonWanted } from '@/game/ride.js';   /* v2.3.3776: Z, the skateb
 import { rideGround } from '@/game/rideGround.js';
 import { oneBandActive } from '@/ui/oneBand.js';   /* v2.3.4263: the band's own key list */
 import { fineInput, COMPUTER_FRAME_QUERY } from '../../game/deviceProfile.js';   /* v2.3.4804: the device profile */
+import { SAY } from '@/data/say/keyboardHints.js';   /* v2.3.6353: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';
 
 /* === KeyboardHintsPanel — the desktop keyboard-hints overlay === */
 /* v2.3.889: extracted verbatim from the bt-kb-hints JSX subtree in
@@ -166,10 +168,10 @@ export function DeskKeysList({ side = 'right' } = {}) {
   React.createElement('button', {
     type: 'button', className: 'bt-desk-keys-head', onClick: toggle,
     'aria-expanded': hidden ? 'false' : 'true',
-    'aria-label': hidden ? 'Show the keyboard controls' : 'Hide the keyboard controls',
-    title: hidden ? 'Show the keyboard controls (H)' : 'Hide the keyboard controls (H)',
+    'aria-label': say(SAY, hidden ? 'keyboardHints.showAria' : 'keyboardHints.hideAria'),
+    title: say(SAY, hidden ? 'keyboardHints.showTip' : 'keyboardHints.hideTip'),
   }, React.createElement('span', { className: 'bt-desk-keys-icon', 'aria-hidden': 'true' }, '⌨'),
-    hidden ? null : React.createElement('span', { className: 'bt-desk-keys-title' }, 'Controls'),
+    hidden ? null : React.createElement('span', { className: 'bt-desk-keys-title' }, say(SAY, 'keyboardHints.title')),
     hidden ? null : React.createElement('span', { className: 'bt-desk-keys-chev', 'aria-hidden': 'true' }, '‹')),
   /* v2.3.3687: how many rows and groups, so each row's height is the list's
      height shared out (game.css .bt-desk-key), the groups packed */
@@ -181,7 +183,7 @@ export function DeskKeysList({ side = 'right' } = {}) {
         React.createElement('kbd', null, k), React.createElement('span', null, label))))),
     React.createElement('button', { type: 'button', key: 'more', className: 'bt-desk-keys-more', 'data-desk-keys-more': more ? '1' : '0', onClick: flipMore,
       style: { gridColumn: '1 / -1', background: 'none', border: 0, color: 'inherit', font: 'inherit', opacity: 0.8, textDecoration: 'underline', cursor: 'pointer', padding: '4px 0' } },
-    more ? 'Fewer keys' : 'More keys')));
+    say(SAY, more ? 'keyboardHints.fewer' : 'keyboardHints.more'))));
 }
 
 /* ═══ v2.3.3526: IN THE BLACK MARGIN, BESIDE THE GAME ═══
@@ -279,8 +281,8 @@ export function BandKeys() {
   };
   return React.createElement('div', { className: 'bt-band-keys bt-noselect', 'data-band-keys': hidden ? 'folded' : 'open', onPointerDown: (e) => e.stopPropagation() },
     React.createElement('button', { type: 'button', className: 'bt-band-keys-head', onClick: toggle, 'aria-expanded': hidden ? 'false' : 'true',
-      title: hidden ? 'Show the keyboard controls (H)' : 'Hide the keyboard controls (H)' },
-    React.createElement('span', { 'aria-hidden': 'true' }, '\u2328'), React.createElement('span', null, 'Controls'),
+      title: say(SAY, hidden ? 'keyboardHints.showTip' : 'keyboardHints.hideTip') },
+    React.createElement('span', { 'aria-hidden': 'true' }, '\u2328'), React.createElement('span', null, say(SAY, 'keyboardHints.title')),
     React.createElement('kbd', null, 'H')),
     hidden ? null : React.createElement('div', { className: 'bt-band-keys-list' },
       rows.map(([k, label]) => React.createElement('div', { className: 'bt-band-key', key: k + ' ' + label },
@@ -291,7 +293,7 @@ export function BandKeys() {
           extra.map(([k, label]) => React.createElement('div', { className: 'bt-band-key', key: k + ' ' + label },
             React.createElement('kbd', null, k), React.createElement('span', null, label)))))),
     hidden ? null : React.createElement('button', { type: 'button', className: 'bt-band-keys-more', 'aria-expanded': more ? 'true' : 'false', 'data-band-keys-more': more ? '1' : '0', onClick: flipMore },
-      more ? 'Fewer keys' : 'More keys'));
+      say(SAY, more ? 'keyboardHints.fewer' : 'keyboardHints.more')));
 }
 
 export function KeyboardHintsPanel({ hidden, onToggle }) {
@@ -340,10 +342,10 @@ export function KeyboardHintsPanel({ hidden, onToggle }) {
     'data-kb-place': place,
     onPointerDown: swallow,
     onClick: toggle,
-    title: hidden ? 'Show the keyboard controls (H)' : 'Hide the keyboard controls (H)',
+    title: say(SAY, hidden ? 'keyboardHints.showTip' : 'keyboardHints.hideTip'),
     role: 'button',
     'aria-pressed': hidden ? 'false' : 'true',
-    'aria-label': hidden ? 'Show keyboard controls' : 'Hide keyboard controls',
+    'aria-label': say(SAY, hidden ? 'keyboardHints.chipShowAria' : 'keyboardHints.chipHideAria'),
   }, '⌨');
   const strip = hidden ? null : React.createElement('div', {
     className: 'bt-kb-hints',
@@ -352,16 +354,16 @@ export function KeyboardHintsPanel({ hidden, onToggle }) {
     'data-kb-place': place,
     onPointerDown: swallow,
     onClick: toggle,
-    title: 'Hide these (H)',
+    title: say(SAY, 'keyboardHints.stripTip'),
     role: 'button',
-    'aria-label': 'Hide keyboard controls',
+    'aria-label': say(SAY, 'keyboardHints.chipHideAria'),
   }, rows.map(([k, label]) => React.createElement('span', {
     className: 'bt-kb-key', key: k + ' ' + label,   /* v2.3.4105: Click twice (Attack, Talk) */
   }, React.createElement('kbd', null, k), ' ' + label)).concat([React.createElement('span', {
     className: 'bt-kb-key', key: 'more', role: 'button', 'data-kb-more': more ? '1' : '0',
     style: { textDecoration: 'underline', cursor: 'pointer' },
     onPointerDown: swallow, onClick: flipMore,
-  }, more ? 'Fewer keys' : 'More keys')]));
+  }, say(SAY, more ? 'keyboardHints.fewer' : 'keyboardHints.more'))]));
 
   /* v2.3.3526: in the margin, the ⌨ under the rows (game.css .bt-kb-side:
      column-reverse), so it stays where it is when the rows go */

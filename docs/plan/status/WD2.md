@@ -1,7 +1,7 @@
 card: WD2
 branch: claude/plan-wd2-12-door (one PR a branch, claude/plan-wd2-1..12, each stacked on the last, base main)
-prs: #2211 #2213 #2214 #2215 #2216 #2217 #2218 #2219 #2220 #2221 #2222 and PR 12 (6320-6331), merge in this order
-state: ready
+prs: #2211, #2213 to #2223 (tags 6320 to 6331): all merged (sitting 50)
+state: done
 
 ## Done (in place on the page 4995 -> 4120; worker 385 unchanged)
 - PR 1 (6320) #2211: say.js (say, sayPieces), guard say.test, ClanInviteCard; -> 4990.
