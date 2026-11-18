@@ -1,5 +1,5 @@
 card: RV
-branch: claude/rv-jackpot (PR 13, stacked on claude/rv-passwords)
+branch: claude/rv-worldsum (PR 18, stacked on claude/rv-jackpot)
 prs: #2072, #2083 (sitting 42); #2091, #2094 (ready); PRs 5-11 built, in their runs
 state: ready
 
@@ -19,7 +19,7 @@ state: ready
 - PR 9 (5809): MS-5, MS-6 (`offerpend`, `leftoverheal`).
 - PR 11 (5811): friends.js ACC-5, SEC-F4 (`friendfix`).
 - PR 14 (5814): S6, S7 (`cleanmore`, `namestaff`). PR 15 (5815): `rewindsays`.
-- PR 16 (5816): the pass words. PR 13 (5813): the jackpot re-check.
+- PR 16 (5816) pass words; 13 (5813) jackpot; 18 (5818) the sum's buy leg.
   Then S3 and `track` (after card L's index.js).
 
 ## Found
