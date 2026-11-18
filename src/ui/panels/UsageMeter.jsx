@@ -48,9 +48,9 @@ export function UsageMeter({ call, busy, setMsg, COL, btn, label }) {
   );
   return (
     <>
-      <div style={label}>Usage (what the server is billed for)</div>
+      <div style={label}>Usage (the server's rows and messages)</div>
       <div style={{ ...sub, marginBottom: 6 }}>
-        Rows the server wrote and read, and messages it sent, today (UTC) and since it last started. Counted in memory: an update starts it again.
+        Rows the server wrote and read, and messages it sent, today (UTC) and since it last started. Counted in memory: an update starts it again. Cloudflare bills the messages the server receives; the ones it sends show its traffic.
       </div>
       <button type="button" data-usage-load="1" style={{ ...btn(false), touchAction: 'manipulation' }} disabled={busy} onClick={load}>
         {u ? 'Reload usage' : 'Show usage'}

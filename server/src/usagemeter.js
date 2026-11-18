@@ -2,8 +2,8 @@
  *
  * The owner, 2026-11-17, turning the six cost switches on (card CS PR 1):
  * "I think turn all of them on then we monitor usage cost".  This is the
- * monitor: the room counts, IN MEMORY ONLY, what Cloudflare bills it for --
- * the rows it writes, the rows it reads and the messages it sends -- since
+ * monitor: the room counts, IN MEMORY ONLY, the rows it writes and reads
+ * (what Cloudflare bills its storage for) and the messages it sends -- since
  * the room started and today (UTC), by kind, and the Test panel reads them
  * (GET /dev/usage, devtools.js; src/ui/panels/UsageMeter.jsx shows them in
  * plain words, with an estimate against the plan's included rows).
@@ -17,7 +17,9 @@
  *   reads    every row it reads: a get of a key 1, of a list each key; a
  *            list() each row it returns (at least 1).  By kind as above (a
  *            list by its prefix);
- *   sends    every frame the send door writes (send.js `_send`), by its type.
+ *   sends    every frame the send door writes (send.js `_send`), by its type
+ *            (Cloudflare bills the messages a room RECEIVES; these are the
+ *            ones it sends: a guide to its traffic, priced by nobody here).
  *   sw       the six cost switches' own rows named apart (PR 1): the rows
  *            written to the stamp (reqstamp), the restarts' book
  *            (resetbook), the ledger (xferescrow) and the roster (seathold)
@@ -134,7 +136,10 @@ export const usageMethods = {
     const t = typeof now === 'number' ? now : Date.now();
     let m = this._usage;
     if (!m) m = this._usage = { start: bucket(t), today: bucket(t), todayEnd: dayEnd(t) };
-    if (t >= m.todayEnd) { m.today = bucket(t); m.todayEnd = dayEnd(t); }
+    /* v2.3.6001 (the gatekeeper's sitting 45): a room still up at midnight saw
+       everything since, so today's count starts at 00:00 UTC, not at its first
+       count (which read "since 00:05 (the server started then)") */
+    if (t >= m.todayEnd) { m.todayEnd = dayEnd(t); m.today = bucket(m.todayEnd - USAGE.DAY_MS); }
     return m;
   },
 
@@ -149,14 +154,14 @@ export const usageMethods = {
       const get = st.get, list = st.list, put = st.put, del = st.delete;
       if (typeof get === 'function') {
         st.get = function (keys, ...rest) {
-          try { room._usageRows(1, keys); } catch (e) { /* a count never stops a read */ }
+          try { if (!room._usageOff()) room._usageRows(1, keys); } catch (e) { /* a count never stops a read */ }
           return get.call(st, keys, ...rest);
         };
       }
       if (typeof list === 'function') {
         st.list = function (opts, ...rest) {
           const p = list.call(st, opts, ...rest);
-          try {
+          if (!room._usageOff()) try {
             const kind = opts && typeof opts.prefix === 'string' ? usageKind(opts.prefix) : 'list';
             if (p && typeof p.then === 'function') p.then((r) => { try { room._usageCount(1, kind, Math.max(1, (r && r.size) || 0), null); } catch (e) { /* as above */ } }, () => {});
           } catch (e) { /* as above */ }
@@ -165,13 +170,13 @@ export const usageMethods = {
       }
       if (typeof put === 'function') {
         st.put = function (keyOrEntries, ...rest) {
-          try { room._usageRows(0, typeof keyOrEntries === 'string' || Array.isArray(keyOrEntries) ? keyOrEntries : (keyOrEntries && typeof keyOrEntries === 'object' ? Object.keys(keyOrEntries) : null)); } catch (e) { /* a count never stops a write */ }
+          try { if (!room._usageOff()) room._usageRows(0, typeof keyOrEntries === 'string' || Array.isArray(keyOrEntries) ? keyOrEntries : (keyOrEntries && typeof keyOrEntries === 'object' ? Object.keys(keyOrEntries) : null)); } catch (e) { /* a count never stops a write */ }
           return put.call(st, keyOrEntries, ...rest);
         };
       }
       if (typeof del === 'function') {
         st.delete = function (keys, ...rest) {
-          try { room._usageRows(0, keys); } catch (e) { /* as above */ }
+          try { if (!room._usageOff()) room._usageRows(0, keys); } catch (e) { /* as above */ }
           return del.call(st, keys, ...rest);
         };
       }

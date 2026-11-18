@@ -104,7 +104,7 @@ check('0. the six switches\' keys', usageSwitchOf('oplog:rq:bp_a:r1') === 'reqst
   room._usageCount(0, 'rpg:', 5, null);
   const before = room._usageRead(t0);
   const after = room._usageRead(t0 + 120000);   /* 00:01 UTC the next day */
-  check('5. at 00:00 UTC today starts empty; the room\'s own runs on', before.today.writes === 5 && after.today.writes === 0 && after.sinceStart.writes === before.sinceStart.writes && after.today.since === t0 + 120000, { before: before.today.writes, after: after.today.writes });
+  check('5. at 00:00 UTC today starts empty, counted from 00:00 (not its first count); the room\'s own runs on', before.today.writes === 5 && after.today.writes === 0 && after.sinceStart.writes === before.sinceStart.writes && after.today.since === Date.UTC(2026, 10, 19), { before: before.today.writes, after: after.today.writes, since: after.today.since });
   check('5. ...and says when the day ends', after.dayEnds === Date.UTC(2026, 10, 20));
 }
 

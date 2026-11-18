@@ -851,7 +851,8 @@ Message diet has its own row, with **Off for everyone** as its switch.)
 ## Watching the cost (v2.3.6001)
 
 Cloudflare bills the server for the rows it writes and reads in its
-storage, and for the messages it handles. You turned the six cost switches
+storage, and for the messages it receives. The meter counts the rows, and
+the messages the server sends (a guide to its traffic, not the bill). You turned the six cost switches
 on (2026-11-17: "I think turn all of them on then we monitor usage cost");
 this is how you watch.
 
