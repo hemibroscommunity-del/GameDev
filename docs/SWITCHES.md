@@ -175,6 +175,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `disable_event_capes` | worker | switch | v2.3.2028 | 2026-08-27 | true | logic |  | no | Thrown, the event's capes stop dropping. |
 | `disable_offer_sweep_all` | worker | switch | v2.3.4412 | 2026-11-10 | true | logic |  | no | Thrown, the store's offer sweep goes back to the old first-20 pass. |
 | `?droplines` | page | switch | v2.3.3627 | 2026-10-27 | =0 | logic |  | no | No drop lines in the chat for what a kill drops. |
+| `dyingkeep` | worker | switch | v2.3.5803 | 2026-11-17 | false | logic |  | no | Goods credited to a player in the dying seconds are wiped by the respawn, as before (MS-3: a trade confirmed after a death pays and keeps nothing). |
 | `econ` | worker | switch | v2.3.5085 | 2026-11-14 | false | logic |  | no | Nothing is counted into a character's minted and burned (`_econ`) or the day's book's economy part; gold and items move as before. |
 | `econresetput` | worker | switch | v2.3.5094 | 2026-11-14 (v2.3.5095) | false | logic |  | no | A character's restart with nobody in the room no longer writes today's book at once: the owner's card may read it as a loss until a later count. On since v2.3.5095 (the owner's yes; one put a restart in an empty room). |
 | `?equipredraw` | page | switch | v2.3.5046 | 2026-11-14 | =0 | logic |  | no | A change of worn gear is set all at once again, not in pieces a frame apart. |

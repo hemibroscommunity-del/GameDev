@@ -73,7 +73,9 @@
  * Also left on, for everyone (v2.3.5801, card RV): a General Store sell
  * filed under its weapon's own tier, and a refund and its order's delete in
  * one write (market.js: `mkttier`, `mktheal`); the rise chest's stamp kept
- * for good by the oplog prune (v2.3.5802, inbox.js OP_PRUNE.KEEP: `risekeep`).
+ * for good by the oplog prune (v2.3.5802, inbox.js OP_PRUNE.KEEP: `risekeep`);
+ * goods credited in the dying seconds kept through the respawn (v2.3.5803,
+ * inbox.js _applyCreditToPs: `dyingkeep`).
  *
  * WHO CAN TURN IT ON.  Only the admin key, through the Test panel's
  * POST /api/admin/dev/testmode {playerId, on} (devtools.js), which the owner's

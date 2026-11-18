@@ -493,6 +493,26 @@ export const inboxMethods = {
       if (Object.prototype.hasOwnProperty.call(Object.prototype, k)) return true;
       if (!ps.inventory) ps.inventory = {};
       bagGive(ps.inventory, k, Math.max(1, Math.floor(p.count || 1)), 'mail_item', undefined, entry); /* v2.3.4810: the bag door; v2.3.5084: the payout, counted by its own class */
+      /* ═══ v2.3.5803 (card RV, MS-3): GOODS THAT LAND IN THE DYING SECONDS ARE KEPT ═══
+         A player is still a live recipient in the five seconds between a
+         death and the respawn, and the respawn runs the second, unconditional
+         wipe (index.js _tickPlayerRespawn -> _wipeInventoryOnDeath): whatever
+         a credit put in the bag then was taken out again.  A trade window
+         both sides had readied, confirmed by the other side after a death to
+         a monster, took the dead side's gold and wiped the goods it paid for;
+         an Auction House or market leg landing then, the same.  The death
+         pile's pickup has refused a dying player since v2.3.3476; a credit is
+         not refused (it is paid for), so it is SHIELDED instead: added to the
+         death's shield, which the respawn wipe keeps (never more than the bag
+         still holds, the v2.3.3169 cap, so nothing comes back twice).  A copy:
+         the shield the death froze may be the loot record's own object.
+         `dyingkeep: false` in the live flags: wiped at the respawn, as before. */
+      if (ps.dying && this._dyingKeepOn()) {
+        const sh = Object.create(null);
+        if (ps._deathShield && typeof ps._deathShield === 'object') for (const kk of Object.keys(ps._deathShield)) sh[kk] = ps._deathShield[kk];
+        sh[k] = Math.max(0, Math.floor(Number(sh[k]) || 0)) + Math.max(1, Math.floor(p.count || 1));
+        ps._deathShield = sh;
+      }
       return true;
     }
     if (entry.kind === 'weapon') {
@@ -806,6 +826,13 @@ export const inboxMethods = {
      (_weaponStashRoom, the test _applyCreditToPs's stash door makes), else
      it waits in the mail -- either way with the caller's record in the same
      run.  A piece or a pet still answers null. */
+  /* v2.3.5803 (MS-3): goods credited in the dying seconds are shielded
+     from the respawn's wipe (_applyCreditToPs).  `dyingkeep: false`: off. */
+  _dyingKeepOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'dyingkeep') && !f.dyingkeep);
+  },
+
   async _creditWith(playerId, entry, also) {
     if (!entry || (entry.kind !== 'gold' && entry.kind !== 'item' && entry.kind !== 'weapon') || typeof also !== 'function') return null;
     const opId = entry.opId;
