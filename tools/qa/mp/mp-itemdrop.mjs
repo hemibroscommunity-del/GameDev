@@ -193,10 +193,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const p5 = (m5 || []).find((p) => p.key === 'ore_copper_ore');
     rec.ok('5a one copper ore dropped through the card ("Drop it"), drawn as the ore\'s picture with no count', r5.step === 'done' && r5.label === 'Drop it' && !!p5 && /ore/.test(p5.url || '') && p5.count === null, { r5, p5 });
     /* v2.3.5652: the watcher beside it before it is aged, in view and past the magnet (50 px, the
-       pickup 20): his screen never listed it from where he had been left (a 150 px walk away) */
+       pickup 20).  v2.3.6180: no wait for his screen to list it first: it is still in its private
+       minute, which the worker sends to nobody else (itemdrop.js _pileHiddenFrom; check 1g), so
+       that wait always ran its 20 s out, and it is the reveal at the age below that brings it */
     if (p5) await H.hopTo(B, p5.x + 110, p5.y + 15, { step: 50 });
-    if (p5) await waitDrop(B, (ps) => ps.some((q) => q.lootId === p5.lootId), 20000);
-    await H.devOp(wsPort, 'dropage', aId, { ms: 121000 });
+    /* v2.3.6180: aged to just short of its flashing, by the dropper's own reading of its clocks,
+       never a flat 121 s: the hop above and the walk to the card take tens of seconds on this box,
+       so 121 s on a pile already that old put it past its END (130 s), and the worker told the room
+       of it and let it go in the same loot tick (index.js _tickLoot: the reveal, then the expiry).
+       The watcher never drew it and the dropper drew at most a frame of it lit (J3-reds.md,
+       {"A":[1],"B":[]}); 5c passed on a pile that had never flashed.  Ten seconds of flashing
+       are left to see (DROP_GONE_MS - DROP_FLASH_MS), the sample below takes at most 8 */
+    const pre5 = (await drops(A) || []).find((q) => q.lootId === (p5 && p5.lootId)) || null;
+    const ageBy = pre5 && pre5.flashInMs > 0 ? Math.round(pre5.flashInMs + 250) : 121000;
+    const aged5 = await H.devOp(wsPort, 'dropage', aId, { ms: ageBy });
     /* v2.3.5652: no wait for "flashing" first: it flashes for ten seconds and a wait of up to 15 s
        on each screen ate them (the alpha read below shows the flash itself) */
     /* on and off: its alpha read on every frame the page draws, both screens at once, until both
@@ -219,7 +229,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const onOff = (s) => [...s].some((a) => a >= 0.9) && [...s].some((a) => a <= 0.3);
     await shot(B, '5-flashing');
     rec.ok('5b two minutes on, it flashes on both screens: on and off', onOff(alphas.A) && onOff(alphas.B),
-      { A: [...alphas.A], B: [...alphas.B] });
+      { A: [...alphas.A], B: [...alphas.B], ageBy, aged: aged5, before: pre5 && { flashInMs: pre5.flashInMs, goneInMs: pre5.goneInMs } });
     const end5A = await waitDrop(A, (ps) => !ps.some((p) => p.lootId === (p5 && p5.lootId)), 20000);
     const end5B = await waitDrop(B, (ps) => !ps.some((p) => p.lootId === (p5 && p5.lootId)), 20000);
     rec.ok('5c ...and ten seconds later it is gone from both screens, in nobody\'s bag',
