@@ -397,6 +397,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
           }, [bId, dId]);
           if (!(two != null && two < 60)) await A.page.waitForTimeout(500);
         }
+        /* v2.3.6301: both copies drawn standing still before the point is
+           read.  On a session box D's copy on A's screen was still sliding
+           from its steps when A clicked (one run in five): the click came
+           down where D had been drawn, nearer C, and asked about C. */
+        const drawnAt = () => A.page.evaluate((ids) => {
+          const S = window._gameState.current, o1 = (S.others || {})[ids[0]], o2 = (S.others || {})[ids[1]];
+          return o1 && o2 ? [o1.renderX, o1.renderY, o2.renderX, o2.renderY] : null;
+        }, [bId, dId]);
+        let still = false;
+        for (let i = 0, prev = await drawnAt(); i < 20 && !still; i++) {
+          await A.page.waitForTimeout(700);
+          const cur = await drawnAt();
+          still = !!prev && !!cur && cur.every((v, k) => Math.abs(v - prev[k]) < 1);
+          prev = cur;
+        }
         const dAt = await A.page.evaluate(([cid, did]) => {
           const S = window._gameState.current, oc = (S.others || {})[cid], od = (S.others || {})[did];
           if (!oc || !od) return null;
@@ -407,7 +422,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const rD = dAt ? await clickRead(dAt.d) : { ask: null };
         await shot(A, '3-click-near-pair');
         rec.ok(`3. two bros ${dAt && dAt.gap} px apart: a click on Doorfar's body picks Doorfar, not Doorphone ("${rD.ask}")`,
-          !!dAt && dAt.gap < 60 && !!rD.ask && /doorfar/i.test(rD.ask), { dAt, rD, two });
+          !!dAt && dAt.gap < 60 && !!rD.ask && /doorfar/i.test(rD.ask), { dAt, rD, two, still });
         await ignore();
         if (D.errors.length) rec.ok('3. ...no page errors on the third bro\'s page', false, D.errors.slice(0, 3));
       } finally {
@@ -426,16 +441,30 @@ export async function run({ browser, wsPort, webPort, rec }) {
         for (let i = 0; i < 2; i++) { await B.page.keyboard.down('a'); await B.page.waitForTimeout(80); await B.page.keyboard.up('a'); }
         await A.page.waitForTimeout(1500);
       }
-      const onMon = await A.page.evaluate(([mid, bid]) => {
+      /* v2.3.6301: the pointer goes where the monster is DRAWN, read again
+         before each try (up to three, the count named).  A monster wanders,
+         and on a session box a page's round trip is 1-3 s: the click came
+         down where it had been (89 px from the bro, one run in five), on
+         nothing.  A click on nothing locks nothing and asks nothing, so a
+         miss can never pass; only a click on the monster can. */
+      const monAt = () => A.page.evaluate(([mid, bid]) => {
         const S = window._gameState.current, m = (S.monsters || []).find((q) => q && String(q.id) === mid), o = (S.others || {})[bid];
         if (!m) return null;
+        const mx = m.renderX != null ? m.renderX : m.x, my = m.renderY != null ? m.renderY : m.y;
         const cv = document.querySelector('canvas.brotown-canvas').getBoundingClientRect();
-        return { x: cv.left + (m.x - S.camera.x) * S._worldScaleX, y: cv.top + (m.y - 12 - S.camera.y) * S._worldScaleY,
+        return { x: cv.left + (mx - S.camera.x) * S._worldScaleX, y: cv.top + (my - 12 - S.camera.y) * S._worldScaleY,
           gap: o ? Math.round(Math.hypot(o.x - m.x, o.y - m.y)) : null };
       }, [mon ? mon.id : '', bId]);
-      const rm = await clickRead(onMon);
+      let onMon = null, rm = { ask: null, lock: null }, tries = 0;
+      for (; tries < 3; tries++) {
+        onMon = await monAt();
+        rm = await clickRead(onMon);
+        if (rm.lock && rm.lock.type === 'monster') break;
+        await ignore();
+      }
+      rm.tries = Math.min(tries + 1, 3);
       await shot(A, '3-click-monster');
-      rec.ok(`3. a monster beside the other bro (${onMon && onMon.gap} px apart): the pointer on the monster locks the monster (${JSON.stringify(rm.lock)}), no "Attack?"`,
+      rec.ok(`3. a monster beside the other bro (${onMon && onMon.gap} px apart): the pointer on the monster locks the monster (${JSON.stringify(rm.lock)}; try ${rm.tries} of 3), no "Attack?"`,
         !!onMon && !!rm.lock && rm.lock.type === 'monster' && rm.lock.id === (mon && mon.id) && !rm.ask, { mon, onMon, rm });
     }
     const errs = [].concat(A.errors, C.errors);
