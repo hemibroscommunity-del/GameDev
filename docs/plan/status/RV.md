@@ -1,5 +1,5 @@
 card: RV
-branch: claude/rv-devicewords (6020, stacked on claude/rv-shieldclaim)
+branch: claude/rv-paidmark (PR 10, 5810, stacked on claude/rv-devicewords)
 prs: #2109-#2123 open (ready, sitting 44); #2072, #2083, #2091, #2094 merged
 state: ready
 
@@ -22,7 +22,7 @@ state: ready
   13 jackpot; 18 the sum's buy leg; 17 `/mine`'s bids to the asker (`minebids`);
   12 (5812) SEC-F2, a join's shield claim only if minted (`shieldclaim`);
   6020 the players' device words (RV's block 6020+, registered by sitting 44).
-- Next: PR 10 `paidmark` (the owner's yes); 6021 market.js's list limit;
+- PR 10 (5810) `paidmark`, built on the owner's yes. Next: 6021 market's list;
   S3 and `track` (index.js); the dead-player takes (`deadtake`).
 
 ## Found
@@ -36,5 +36,4 @@ state: ready
 
 ## Needs
 
-- MD-2 (5810): a second put a payout; the planner asks the owner. Held.
 - #2072: merge main in again once T2's #2071 lands (every block kept).
