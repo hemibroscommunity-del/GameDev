@@ -37,6 +37,7 @@ import { REGEN_TICKS } from './tick.js';   /* v2.3.2062: the regen cadence */
 import { cropHealFor } from './farm.js';  /* v2.3.3537: every crop is food */
 import { fishKeyInfo } from './fishlog.js';   /* v2.3.4036: an albino or a large fish eaten */
 import { bagGive, bagTake } from './bag.js'; /* v2.3.4810: the bag door */
+import { lifeOf, LIFE } from './life.js';   /* v2.3.5920: the dead take nothing (life.js _deadTakeOn; TRAPS §150) */
 /* v2.3.5553: a cook's beat (MIRROR: gathering.js GATHER_HITS.MS.cooking, the pan's 650 ms grease beat) and the network's slack */
 export const COOK_START = Object.freeze({ HIT_MS: 650, CYCLE_MS: 1510 /* MIRROR: gathering.js HONEST_CYCLE_MIN_MS (lead 90, settle 220, the gesture's 1,200 floor) */, SLACK: 0.7 });
 
@@ -1014,6 +1015,10 @@ export const cookingMethods = {
     if (typeof fishKey !== 'string' || !fishKey.startsWith('fish_')) return;
     const ps = this.playerState[session.id];
     if (!ps) return;
+    /* v2.3.5920 (card V3, TRAPS §150; `deadtake`, life.js): a body in its
+       dying seconds cooks nothing -- the fish stays in the bag, and the bag
+       goes again so the phone's guess is undone (the refusal door's echo) */
+    if (lifeOf(ps) !== LIFE.ALIVE && this._deadTakeOn()) { this._refusalEcho(session, ['inventory']); return; }
     if (!this._cookRateOk(ps)) {
       const ws = this._wsBySessionId(session.id);
       if (ws) this._sendPlayerState(ws, session.id);
