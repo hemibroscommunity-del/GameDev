@@ -182,8 +182,17 @@ export const storeChatMethods = {
     const amSeller = rec.sellerId === me;
     const ids = amSeller ? Object.keys(doc.t) : [me];
     const threads = [];
+    /* ═══ v2.3.5806 (card RV, S5): A MUTED PLAYER'S LINES ARE NOT SHOWN ON OPEN ═══
+       The live send already dropped a muted sender's line, but the thread
+       kept it and handed it over here: a seller who muted a buyer read every
+       line when they opened the listing's chat (the header above promised
+       the opposite).  Now a line from someone the opener mutes is left out,
+       and a seller is not shown the thread of a buyer they mute.
+       `storemute: false` in the live flags: everything, as before. */
+    const _mutedBy = (who) => this._storeMuteOn() && who !== me && this._chatModMuted && this._chatModMuted(me, who);
     for (const bid of ids) {
-      const msgs = doc.t[bid] || [];
+      if (amSeller && _mutedBy(bid)) continue;
+      const msgs = (doc.t[bid] || []).filter((m) => !(m && _mutedBy(m.f)));
       if (!amSeller && !msgs.length) continue;      /* nothing to show yet */
       threads.push({
         buyerId: bid,

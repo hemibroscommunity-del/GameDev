@@ -157,6 +157,7 @@ const FORMS = {
   'login': '1',
   'loginspin': '0',
   'lookatlas': '0',
+  'lookform': '0',
   'lookinline': '',
   'lookprobe': '',
   'lootbeam': '0',

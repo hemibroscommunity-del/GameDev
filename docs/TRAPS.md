@@ -66,6 +66,8 @@ a lone rejoin left the duel 'active' forever and blocked BOTH players
 from any new duel. Anything per-participant needs a per-player map.
 **Receipt:** duel `away` map, v2.3.1175 (#220); `docs/specs/duels.md`.
 
+Held by: tools/guards/traps-combat-rules.test.mjs (tag 5941).
+
 ## 6. Plain `{}` keyed by client-supplied ids
 
 **Tempting:** `const clocks = {}` is idiomatic JS. **Wrong:** a
@@ -351,6 +353,8 @@ duel or not. Pinned by `server/test/party.test.mjs` §11 and
 `tools/qa/mp/mp-party.mjs` (whose control taps the SAME player after the
 party breaks up, so a lock-free pass cannot be a missed click).
 
+Held by: tools/guards/traps-combat-rules.test.mjs (tag 5941).
+
 ## 20. Fixing an invisible overlay by raising its z-index
 
 **Tempting:** your new overlay measured onto the right control, at the
@@ -552,6 +556,8 @@ stay evicted (close 4006 → banner, no reconnect).
 **Receipt:** `server/src/index.js` `_moveActivitySig`,
 `server/src/tick.js` `_tickPingAndAfk`, `test/afk.test.mjs`,
 `tools/qa/mp/mp-afk.mjs`.
+
+Held by: tools/guards/traps-combat-rules.test.mjs (tag 5941).
 
 ---
 
@@ -4377,6 +4383,8 @@ frames; `server/test/head-crowns.test.mjs` holds the six to the measured ones.
 body-tops.json itself is unchanged (the tools that read it still see the
 topmost pixel). Before and after: `docs/specs/img/head-crowns-before-after.png`.
 
+Held by: tools/guards/traps-page-rules.test.mjs (tag 5943).
+
 ## 101. A whole-line block test asked about one frame's step blocks nothing (v2.3.2699)
 
 **Tempting:** `attackBlockPoint(zone, x0, y0, x1, y1)` answers "is a prop in the
@@ -4412,6 +4420,8 @@ inside rule straight through).
 arrow fly at the ridge and reads what the RENDERER drew. With the old calls
 restored it fails exactly as reported: the ball drawn to y 645 (the player's
 side), the arrow to y 8 (the map's top edge).
+
+Held by: tools/guards/traps-combat-rules.test.mjs (tag 5941).
 
 ## 102. A timed screenshot sequence on the QA box is not timed (v2.3.2700)
 
@@ -4832,6 +4842,8 @@ fallback for a layer that is not sorted.
 **Not yet covered:** effectsRenderer's `_propOverlay` (the marks and stuck
 arrows of §104) still sorts at +1 and has the same fault for a raised figure;
 it is small and short-lived, and naming its prop the same way is the fix.
+
+Held by: tools/guards/traps-page-rules.test.mjs (tag 5943).
 
 ## 116. A piece cut out of a building leaves everything that reads the building (v2.3.2816–2817)
 
@@ -5761,6 +5773,8 @@ downstream, every way IN is a gate: grep every writer of the container
 marks speak: the gear ledger's `gid` / `prov` are never on a weapon, so a
 "weapon" carrying one is gear.
 
+Held by: tools/guards/traps-worker.test.mjs (tag 5940).
+
 ## 146. "The oplog makes it idempotent" (v2.3.3162)
 
 **The plausible move.** A payout carries a deterministic opId (rule 5), so a
@@ -5781,6 +5795,8 @@ The state that says "paid" is saved in the same run as the payment, by every
 caller. A function that pays marks its own record dirty
 (dailyrewards.js `_drRollover`), so a caller that forgets is caught by the
 tick or the close.
+
+Held by: tools/guards/traps-worker.test.mjs (tag 5940).
 
 ## 147. "Stamp first, then debit" (v2.3.3165)
 
@@ -5832,6 +5848,8 @@ be put there. It was then hardened with cheap wood instead of its bars.
 client named. hardening.js `hardenIsWood` checks for a `ww_` gearBase or a
 bow or staff TYPE, and uses the slot only for a legacy weapon with no type.
 
+Held by: tools/guards/traps-economy-social.test.mjs (tag 5942).
+
 ## 150. "The dead are never at his counter, so his counter needs no check" (v2.3.3163)
 
 **The plausible move.** A new counter (Diego's buy and sell) is written from
@@ -5866,6 +5884,8 @@ the answer along (`_duelKill`). Test a hook through the call site that runs
 it, never by calling it alone with state the call site would already have
 changed.
 
+Held by: tools/guards/traps-combat-rules.test.mjs (tag 5941).
+
 ## 152. "The challenge's number is authoritative" (v2.3.3168)
 
 **The plausible move.** A duel's stake comes from the server's own record of
@@ -5879,6 +5899,8 @@ whose screen said 0 or a smaller number.
 **The rule.** Money taken from a player needs that player's own number: the
 accept echoes what it showed, and the server refuses a stake above it. The
 other side's record decides only what is at or under the consent.
+
+Held by: tools/guards/traps-worker.test.mjs (tag 5940).
 
 ## 153. "The shield keeps what the pickup gave" (v2.3.3169)
 
@@ -5894,6 +5916,8 @@ stack.
 still held: keep `min(shield, held)`. Kept plus dropped must equal held for
 every key, checked against the bag at the moment of the wipe.
 
+Held by: tools/guards/traps-worker.test.mjs (tag 5940).
+
 ## 154. "Every zone's kills drop that zone's shard" (v2.3.3170)
 
 **The plausible move.** A shard is `'shard_' + zoneId`, so any zone a monster
@@ -5907,6 +5931,8 @@ permanent key in his pile each time.
 **The rule.** Item keys come from a fixed table (`ZONES`, a catalog), never
 from an id the server invents at runtime. Gate a built key on the table.
 
+Held by: tools/guards/traps-worker.test.mjs (tag 5940).
+
 ## 155. "Refuse the bad state" (v2.3.3171)
 
 **The plausible move.** An arena join must not land in a tournament that is
@@ -5918,6 +5944,8 @@ queue nothing would start, with no refund.
 
 **The rule.** Gate on the one state that is allowed (`status === 'gathering'`),
 not on the states you thought of that are not.
+
+Held by: tools/guards/traps-worker.test.mjs (tag 5940).
 
 ## 156. "The op id makes the debit idempotent" (v2.3.3171)
 
@@ -5933,6 +5961,8 @@ new operation.
 refund or cancel, the next act carries a new id (`:n`), and so does its
 refund.
 
+Held by: tools/guards/traps-worker.test.mjs (tag 5940).
+
 ## 157. "Activate each match as it is built" (v2.3.3171)
 
 **The plausible move.** Build round 2's matches in a loop and start each one
@@ -5945,6 +5975,8 @@ existed.
 
 **The rule.** Build the whole collection, then act on it. Code that can call
 back into itself must never see a half-built list.
+
+Held by: tools/guards/traps-combat-rules.test.mjs (tag 5941).
 
 ## 158. "Only the server writes that slot" (v2.3.3172)
 
@@ -5960,6 +5992,8 @@ polished gems a join.
 server trusted, audit every reader of that slot. Pay out only for what the
 server can prove it put there (`prov: 'minted'`).
 
+Held by: tools/guards/traps-economy-social.test.mjs (tag 5942).
+
 ## 159. "Clamp the gems on the way in" (v2.3.3172)
 
 **The plausible move.** Every join runs the gem map through a whitelist and a
@@ -5972,6 +6006,8 @@ Every reconnect deleted what the server itself had paid past 200.
 **The rule.** A limit for untrusted input applies to that input. The
 server's own record is healed only once, when it may still hold an old
 unclamped capture, and is otherwise left alone.
+
+Held by: tools/guards/traps-worker.test.mjs (tag 5940).
 
 ## 160. "A stack is just a stack" (v2.3.3173)
 
@@ -5986,6 +6022,8 @@ ticket two, and the second was redeemed by whoever it was traded to.
 rewards) must exclude every capped or one-of item. A cap checked at the
 source holds only if nothing downstream can multiply what it issued.
 
+Held by: tools/guards/traps-economy-social.test.mjs (tag 5942).
+
 ## 161. "The writes are in the same handler" (v2.3.3173)
 
 **The plausible move.** The redeem consumes the ticket and grants the cape in
@@ -5998,6 +6036,8 @@ kept "redeemed" and the stored ticket, which was traded and redeemed again.
 
 **The rule.** Writes that must land together are issued in one synchronous
 run with no `await` between them. An await is a batch boundary.
+
+Held by: tools/guards/traps-worker.test.mjs (tag 5940).
 
 ## 162. "A second login is a reconnect" (v2.3.3174)
 
@@ -6032,6 +6072,8 @@ another clan and be frozen onto a second war's roster.
 **The rule.** When a rule guards one exit, list every exit with the same
 effect (leave, kick, dissolve, a reset). Here the guard went on the far side:
 nobody on an active war's roster joins another clan until it ends.
+
+Held by: tools/guards/traps-economy-social.test.mjs (tag 5942).
 
 ## 164. "Refusing three names covers the prototype" (v2.3.3167)
 
@@ -6370,6 +6412,8 @@ does not resend), and keep that type room-wide.  `server/src/eventplace.js` is a
 ALLOWLIST for this reason: a new type goes to everyone until someone has done
 that reading and placed it.
 
+Held by: tools/guards/traps-economy-social.test.mjs (tag 5942).
+
 ## 177. "A phone scenario that fails on main is a broken feature" (v2.3.3249)
 
 Four phone scenarios failed on `main` for days, and each was logged as "broken
@@ -6431,6 +6475,8 @@ the zone, so hiding the copy in each one would have missed some.
 what its last copy does from then on -- a stale copy is not "nothing", it is
 wrong data at a real place. And TRAPS #18 again: the page's channel lets out
 only the message types it names (`map_watch` was dropped until it had a line).
+
+Held by: tools/guards/traps-economy-social.test.mjs (tag 5942).
 
 ## 179. "The lab is its own worker, so it cannot touch the game" (v2.3.3257)
 
@@ -6564,6 +6610,8 @@ change what happens to it inside a bound the worker set itself: a window it
 opened, a cost it charged, a cooldown it keeps. Look at every `ps.X = !!msg.X`
 that another path reads as protection.
 
+Held by: tools/guards/traps-combat-rules.test.mjs (tag 5941).
+
 ## 184. "The input gate holds a trade together" (v2.3.3294)
 
 **The plausible move.** A trade validates both sides, debits both, then
@@ -6589,6 +6637,8 @@ same run as it debits (`_creditLiveTogether`). A payment's stamp is issued
 with the payment's write. Anything that reads a record and writes it back
 takes its turn (`_inboxSerial`). Test it on inbox.test's batch storage, at
 every write.
+
+Held by: tools/guards/traps-worker.test.mjs (tag 5940).
 
 ## 185. "A new monster attack needs its own copy of the hit" (v2.3.3296)
 
@@ -6816,6 +6866,8 @@ two runs each: home after three trips 83.2-85.2 MB of the chip on main,
 78.1-80.2 with this; the third trip against the second +2.1 and +0 on main
 (+4.1/+4.2 in CI), -1.6 and -1.5 with this. mp-chatbubble and mp-chatfont,
 25 of 25.
+
+Held by: tools/guards/traps-page-rules.test.mjs (tag 5943).
 
 ## 194. "Reading the canvas's context only looks at it" (v2.3.3313)
 
@@ -7086,6 +7138,8 @@ closed safely.
 
 **Receipt:** harvest-proof.test (43 checks, 11 mutations caught),
 mp-recoverpay. The lab's obsidian script went from 2,400 harvests an hour to 6.
+
+Held by: tools/guards/traps-economy-social.test.mjs (tag 5942).
 
 ## 203. "Turn the per-message slack into a capped budget and keep refusing what it can't cover" (v2.3.3325)
 
@@ -7580,6 +7634,8 @@ the record and puts out a join whose key or device it no longer lets in.
 
 **Receipt:** login-keys §12 (21 checks): a gate where each change waits, the
 owner's tool run in the gap; nine fail on v2.3.3355's code.
+
+Held by: tools/guards/traps-worker.test.mjs (tag 5940).
 
 ## 220. "Every window puts a scrim over the screen, so the coach keeps off windows by itself" (v2.3.3407)
 
@@ -8088,6 +8144,8 @@ by the map's east edge (`ground`, 431 ms); `mp-bowedge`, which fails on the
 build before the rule (0 damage by the edge, 3 arrows at a snowman off the
 screen) and passes with it.
 
+Held by: tools/guards/traps-combat-rules.test.mjs (tag 5941).
+
 ## 238. "Require that check on main" (v2.3.3491)
 
 **The plausible move.** Protecting `main`, make every CI check a required
@@ -8144,6 +8202,8 @@ shot at nothing, at a prop, or steered off its target keeps the parallel line.
 with it, and `server/test/shot-ground.test.mjs` §4 (the frost ridge in its own
 numbers: the parallel line enters the ridge, boots to feet passes it).
 
+Held by: tools/guards/traps-combat-rules.test.mjs (tag 5941).
+
 ## 240. "Put the gem on the page's weapon" (v2.3.3513)
 
 **The plausible move.** A test (or a tool) that needs a weapon with an element
@@ -8169,6 +8229,8 @@ claim path, for an emergency, not for a test.
 **Receipt:** `server/test/weapon-gem.test.mjs` §7 (a claim of frost on a flame
 weapon burns; a claim of flame on a plain one does nothing) and `mp-weapongem`
 step 6; `mp-pvpextras` passes with `H.weaponGem`.
+
+Held by: tools/guards/traps-combat-rules.test.mjs (tag 5941).
 
 ## 241. "A target the shot cannot hit is not on its line" (v2.3.3515)
 
@@ -8223,6 +8285,8 @@ trades.
 **Receipt:** `server/test/weapon-gem.test.mjs` §9b (one gem passed between two
 players: 400, then 0, then 0; a gem the second player made, 400), and
 `shard-crack` §6 (a combined gem is owed its XP).
+
+Held by: tools/guards/traps-worker.test.mjs (tag 5940).
 
 ## 243. "The button reads the game state, so it shows when the state says" (v2.3.3548)
 
@@ -8322,6 +8386,8 @@ split: the boss and the slimes already standing never arrive again while the
 new ones each do, and two slimes killed before a split do not die again in its
 re-push.
 
+Held by: tools/guards/traps-economy-social.test.mjs (tag 5942).
+
 ## 246. "The background is white, so key out the white" (v2.3.3558)
 
 **The plausible move.** A monster's art comes as a video or picture on a plain
@@ -8352,6 +8418,8 @@ tools/make_pet_sheet.py) is made again from the mended one.
 **Receipt:** `slime-boss.test` §9 (no see-through pixel inside a living slime,
 in each frame of idle, shoot and hit; it fails on the sheets before the mend
 with 374, 100 and 119), and `mp-slimeboss` pictures the giant's shine whole.
+
+Held by: tools/guards/traps-page-holes.test.mjs (tag 5943).
 
 ## 247. "The window closes on the lift, so the tap is over" (v2.3.3560)
 
@@ -8453,6 +8521,8 @@ new kind of zone gets its box there. Never `_getZoneConfig` alone.
 **Receipt:** `grotto-party.test.mjs` §5: a sword hit at the west wall and the
 north edge, every shove's call, and a split by the bottom wall.
 
+Held by: tools/guards/traps-combat-rules.test.mjs (tag 5941).
+
 ## 250. "The picture is on its canvas, so it is there when it is needed" (v2.3.3574)
 
 **The plausible move.** The game makes most of its pictures itself on 2D
@@ -8510,6 +8580,8 @@ northwest are the only facings drawn from canvases (the body baked under the
 armour); every other facing is the knight figure, from its file.  Receipt:
 `mp-rebuildjog` step 3.
 
+Held by: tools/guards/traps-page-rules.test.mjs (tag 5943).
+
 ## 251. "The loading screen baked every frame the bro is drawn in" (v2.3.3577)
 
 **The plausible move.** A frame of the body under armour has to be baked
@@ -8563,6 +8635,8 @@ only the pictures showed it did nothing to a red goblin.
 **Receipt:** `mp-whirltint` and `QA_WT_LAND=ember` (pictures
 `whirltint-close[-ember].png`: each monster as itself, at the flash's darkest
 and lightest): 100% of the body's pixels amber for both kinds.
+
+Held by: tools/guards/traps-page-rules.test.mjs (tag 5943).
 
 ## 253. "It is cut out of its file, so it is as safe as its file" (v2.3.3606)
 
@@ -8786,6 +8860,8 @@ chosen per batch rather than all inlined into every read.
 **Receipt:** `look-palette-choice` suite, `mp-lookwin`,
 docs/specs/look-palette.md "Not on Windows".
 
+Held by: tools/guards/traps-page-rules.test.mjs (tag 5943).
+
 ## 260. "The one program draws the same frame to the pixel here, so it is safe on a phone" (v2.3.3894)
 
 **The move.** Trust a program that holds several reads (ONE_BATCHER,
@@ -8945,6 +9021,8 @@ the server naming a sold weapon by its id.
 
 **Receipt:** `server/test/store-sell-tap.test.mjs`; docs/specs/marketplace.md.
 
+Held by: tools/guards/traps-economy-social.test.mjs (tag 5942).
+
 ## 266. "The retry is scheduled, so the loading screen waits for it" (v2.3.4368)
 
 **The move.** A picture that fails to download is tried again with
@@ -8963,6 +9041,8 @@ v2.3.4368).
 
 **Receipt:** `server/test/look-load.test.mjs`; docs/specs/retry-looks.md.
 
+Held by: tools/guards/traps-page-rules.test.mjs (tag 5943).
+
 ## 267. "The guard spells the cache key out by hand" (v2.3.4368)
 
 **The move.** `_pickupHeadCap`'s "never evict your own heads" guard matches the
@@ -8977,6 +9057,8 @@ players: in busy BroTown your own head was thrown out and re-made mid-play.
 builder: both call `_headComboPrefix` (playerSkins.js, v2.3.4368).
 
 **Receipt:** `look-load.test` §1; docs/specs/garment-specks.md.
+
+Held by: tools/guards/traps-page-rules.test.mjs (tag 5943).
 
 ## 268. "Start the helper once and keep the promise" (v2.3.4370)
 
@@ -8997,6 +9079,8 @@ frame. A start download gets a time limit for the HANG, not the slow line:
 **Receipt:** `server/test/ground-start.test.mjs`;
 docs/specs/ground-start-retry.md.
 
+Held by: tools/guards/traps-page-rules.test.mjs (tag 5943).
+
 ## 269. "No phone uses the gift, so it needs none of the bag's rules" (v2.3.4375)
 
 **The move.** The old one-way gift (`trade_offer`) is a leftover the trade
@@ -9015,6 +9099,8 @@ the fallback. A rule added to every road out of the bag goes on the gift's
 offer AND accept too. Kill switch `giftclosed`.
 
 **Receipt:** `trade.test` §10 (v1 and v2 phones); docs/OPERATIONS.md.
+
+Held by: tools/guards/traps-economy-social.test.mjs (tag 5942).
 
 ## 270. "The disconnect clock covers a duellist who zones out" (v2.3.4371)
 
@@ -9091,6 +9177,8 @@ a rollback or `prog3FromLegacy` to turn it into power.
 
 **Receipt:** `grids.test` (the prog3 block); docs/specs/build-skill-progression.md.
 
+Held by: tools/guards/traps-combat-rules.test.mjs (tag 5941).
+
 ## 274. "`seen > 0 &&` skips the members we know nothing about" (v2.3.4378)
 
 **The move.** The party's 7-day leader clock counts only leaders seen at least
@@ -9107,6 +9195,8 @@ that uses it, and each clock says what a 0 counts from: here `seen || at || ts`
 sweep (handoff rule 12).
 
 **Receipt:** `party-keep.test` §10b; docs/specs/party.md "A leader never seen".
+
+Held by: tools/guards/traps-economy-social.test.mjs (tag 5942).
 
 ## 275. "The record was read at the join, so the cache can drop it" (v2.3.4379)
 
@@ -9126,6 +9216,8 @@ never evicts an online player's record (botfp.js `_botfpRecord`, kill switch
 live records, or re-read before the first write.
 
 **Receipt:** `server/test/botfp-evict.test.mjs`; docs/specs/anticheat-botfp.md.
+
+Held by: tools/guards/traps-worker.test.mjs (tag 5940).
 
 ## 276. "Stamp the limit on `ps`" (v2.3.4372)
 
@@ -9229,6 +9321,8 @@ cache. "Phones are fine" was a cache, not a screen size.
 **Receipt:** `mp-desksmooth`; the `ground-late` and `zone-gate` suites;
 docs/specs/slow-line-ground.md.
 
+Held by: tools/guards/traps-page-rules.test.mjs (tag 5943).
+
 ## 280. "The meter says 60 frames a second, so the motion is smooth" (v2.3.4400)
 
 **The move.** Chase a "gritty" or "not smooth" report as a frame-rate problem:
@@ -9299,6 +9393,8 @@ time.
   the whole file in one go (`readPageBottoms`).
 
 **Receipt:** `mp-townride`, the `folk-bakes` suite, docs/specs/living-town.md.
+
+Held by: tools/guards/traps-page-rules.test.mjs (tag 5943).
 
 ## 282. "It is running at 51 frames a second" (v2.3.4400)
 
@@ -9418,6 +9514,8 @@ with two Normal torsos and no Rare one (the server still had it).
 **The rule.** When both copies carry a `gid`, compare the `gid`; name and
 strength only for older pieces without one. **Receipt:** `gear-resend.test`.
 
+Held by: tools/guards/traps-economy-social.test.mjs (tag 5942).
+
 ## 287. "The send returned, so the message went" (v2.3.4402)
 
 **Tempting:** call `S.channel.send(...)`, then mark the thing done (the
@@ -9434,6 +9532,8 @@ channel answers `false` ONLY when it drops: some of its paths answer nothing
 (`undefined`) when they send, so a caller tests `!== false`, not `=== true`.
 **Receipt:** `mute-kept.test`, `quest-kept.test`.
 
+Held by: tools/guards/traps-economy-social.test.mjs (tag 5942).
+
 ## 288. "No answer from the store is a no" (v2.3.4412)
 
 **Tempting:** a listing request that times out or fails unlocks the card with
@@ -9446,6 +9546,8 @@ listing card stays LOCKED on `unsure` ("look under Yours, My Listings"). A late
 answer checks `cardAnswer(...).mine` before touching a card.
 **Receipt:** `store-answer.test`.
 
+Held by: tools/guards/traps-economy-social.test.mjs (tag 5942).
+
 ## 289. "The sweep is bounded: it stops after 20 listings" (v2.3.4412)
 
 **Tempting:** bound a sweep by the records it LOOKS at. **Wrong:** the
@@ -9456,6 +9558,8 @@ records you ACT on (writes, refunds); walk the in-memory index freely
 (`store.js` `_stSweep`, `storeoffer.js` `_soHasDue`). A quiet shelf still
 writes nothing. **Receipt:** `store-offer-sweep.test`; switch
 `disable_offer_sweep_all`.
+
+Held by: tools/guards/traps-economy-social.test.mjs (tag 5942).
 
 ## 290. "Write the death pile's row where the pile is laid" (v2.3.4384)
 
@@ -9505,6 +9609,8 @@ swing never told the other players (`player_swing`), and the held loop kept
 swinging while staggered. **The rule.** Anything a swing must do goes in both
 starts. **Receipt:** `swing-shown.test`.
 
+Held by: tools/guards/traps-combat-rules.test.mjs (tag 5941).
+
 ## 294. "`now` is set in the loop, so the block can read it" (v2.3.4388)
 
 **Tempting:** use the game loop's `now` in a block of the loop. **Wrong:**
@@ -9514,6 +9620,8 @@ fetch timer was dead and two pet personalities were "not a number" and never
 drawn. The trail just above has the same fault (left for later).
 **The rule.** Before reading a loop-wide name, find where it is SET; a block
 that runs earlier gets its own clock (`_petNow`). **Receipt:** `pet-clock.test`.
+
+Held by: tools/guards/traps-page-rules.test.mjs (tag 5943).
 
 ## 295. "The respawn reset list is complete" (v2.3.4403)
 
@@ -9539,6 +9647,8 @@ the worker's `blocked` flag is the only block (`shieldCopies.js`
 `localBlockApplies`): no arc test there. `player_shield` is room-wide on
 purpose (§176): gate only its SOUND on `_peerInZone`. **Receipt:**
 `shield-guard.test`; switch `monsterguardbreak`.
+
+Held by: tools/guards/traps-combat-rules.test.mjs (tag 5941).
 
 ## 297. "Close with the code that is nearest" (v2.3.4413)
 
@@ -9575,6 +9685,8 @@ component that only hides itself releases what is live (a microphone, a
 timer, a stream) in the effect that watches `open` going false
 (`src/game/dictation.js`). **Receipt:** `phone-slips.test`.
 
+Held by: tools/guards/traps-page-rules.test.mjs (tag 5943).
+
 ## 300. "The draw knows how to draw it, so it is drawn" (v2.3.4411)
 
 **Tempting:** add a status to the draw code. **Wrong:** a filter in front of
@@ -9583,6 +9695,8 @@ and wobble were not on it: nobody saw another player frozen.
 **The rule.** A filter before a draw reads the same list as the draw's own
 guard: one shared function (`elemFxLive`, `elemHits.js`).
 **Receipt:** `phone-slips.test`.
+
+Held by: tools/guards/traps-page-rules.test.mjs (tag 5943).
 
 ## 301. "Nobody near uses the shared sheet, so free it" (v2.3.4416)
 
@@ -9653,6 +9767,8 @@ the old decoded copy let go) when `BT_AUDIO.ctx` is not that context, as the
 water, beds and ride sounds already did. Anything loaded into `_samples`
 outside the manifest is asked for again in `_rebuildContext` while it is
 wanted. **Receipt:** `audio-rebuild.test`.
+
+Held by: tools/guards/traps-page-rules.test.mjs (tag 5943).
 
 ## 307. "A `dungeon:` id is valid by its shape" (v2.3.4423)
 
@@ -9735,6 +9851,8 @@ The record is memory only (`ps._entryGraceAt`). A test that enters places
 back to back and expects a grace each time clears `ps._entryGraceAt` first
 (`dungeon-live.test` 5b does). It protects the other player, so it never
 asks `_testMode`. **Receipt:** `fight-dodges.test`; switch `entrygrace`.
+
+Held by: tools/guards/traps-combat-rules.test.mjs (tag 5941).
 
 ## 312. "The phone shows Claim only after a clear, so the quest is checked" (v2.3.4441)
 
@@ -10020,6 +10138,8 @@ the worker counts one swing every 100 ms (`MIN_SWING_GAP_MS`); the 50 ms
 between is the network's wobble. **Receipt:** `free-swing.test`,
 `manual-combat.test` §13, `mp-freeswing`.
 
+Held by: tools/guards/traps-combat-rules.test.mjs (tag 5941).
+
 ## 326. "Scale the hit by its share and it is fair" (v2.3.4520)
 
 **Tempting:** a light swing (the free-swing trial, `?manual=3`) deals its
@@ -10055,6 +10175,8 @@ send `ws: [1, 5]`. They draw the short Wheel inside the long room on purpose,
 and their places are in the short Wheel's numbers; a test or a bot still
 sends `[1, 5]` (§196). Fixed in #1526; off-ramp `wheelstep: false`.
 **Receipt:** `world-size.test`.
+
+Held by: tools/guards/traps-combat-rules.test.mjs (tag 5941).
 
 ## 328. "A raised shield with no facing is an old phone: keep the all-round block" (v2.3.4605)
 
@@ -10117,6 +10239,8 @@ Per-character caches in shared storage carry whose they are (`_owner` on
 `bt_rpg`, `bt_resume`). A join never makes a character: only Create does.
 Fixed in #1528; off-ramp `?tabid=0` for one phone. **Receipt:**
 `tab-identity.test`, `mp-tabidentity`.
+
+Held by: tools/guards/traps-economy-social.test.mjs (tag 5942).
 
 ## 332. "Time a bow shot when its claim arrives" (v2.3.4615)
 
