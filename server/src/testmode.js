@@ -85,7 +85,9 @@
  * the victim's own write (v2.3.5804, nomansland.js _nmlOnDeath: `nmlonewrite`);
  * a duel challenge's cards paced and a muted challenger unheard, a decline
  * only of a real challenge, the pot and its escrow's delete one write
- * (v2.3.5805, duel.js: `duelpace`, `duelonewrite`).
+ * (v2.3.5805, duel.js: `duelpace`, `duelonewrite`); a muted sender's shop-thread
+ * line not shown on open, and a player who mutes you away to you
+ * (v2.3.5806, storechat.js, chatlanes.js, party.js: `storemute`, `mutehides`).
  *
  * WHO CAN TURN IT ON.  Only the admin key, through the Test panel's
  * POST /api/admin/dev/testmode {playerId, on} (devtools.js), which the owner's

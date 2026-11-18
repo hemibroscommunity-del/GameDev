@@ -80,7 +80,10 @@ switch allows it.
   victim's own write (v2.3.5804, `nomansland.js` `_nmlOnDeath`, `nmlonewrite`);
   a duel challenge's cards paced and a muted challenger unheard, a decline
   only of a real challenge, the pot and its escrow's delete one write
-  (v2.3.5805, `duel.js`, `duelpace`, `duelonewrite`).
+  (v2.3.5805, `duel.js`, `duelpace`, `duelonewrite`); a muted sender's
+  shop-thread line not shown on open, and a player who mutes you away
+  to you (v2.3.5806, `storechat.js`, `chatlanes.js`, `party.js`, `storemute`,
+  `mutehides`).
 - Every save and payment rule; the login key, the device lock, the lockouts;
   a frozen account.
 - PvP consent and **every check on a hit between players** (pvpbalance.js,
