@@ -4901,9 +4901,14 @@ export class GameRoom {
        is a bare timer), but the AWAY flag it carries does -- see below.
        Everything else -- attacks, harvest strikes, zone changes, chat,
        panel actions -- is input and stamps the clock. */
-    if (msg.type === 'pong' || msg.type === 'report') {
+    if (msg.type === 'pong' || msg.type === 'report' || msg.type === 'map_watch' || msg.type === 'acc_request') {
       /* keepalive, never activity -- v2.3.5127: nor the field report, a timer's (report.js): an idle tab sends
-         one every five minutes and must still be let go of */
+         one every five minutes and must still be let go of.
+         v2.3.6043 (card V6 PR 4; card V4's §24 census): nor the open World map's
+         `map_watch` (presence2.js, every MAP_HEARTBEAT_MS while it is open) or the
+         Journey page's `acc_request` (accuracy.js, every 15 s while it is open):
+         both timers, so a tab left on the map or the Journey page was never let
+         go of.  The tap that opens either is still seen: `track`'s aw:0 below. */
     } else if (msg.type === 'track') {
       /* `track` is a 2 s telemetry timer, so its ARRIVAL says nothing.
          Its `aw` flag does: the client stamps _lastInputAt from
