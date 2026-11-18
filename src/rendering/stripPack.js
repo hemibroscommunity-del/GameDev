@@ -36,15 +36,19 @@
  */
 import { trimScanCellIdx, trimCellOf, trimLayout } from './trimRules.js';
 
+/* v2.3.6284 (card HB2 PR 5): `dec.whole` -- a picture loaded whole (an effect's or an icon's 256-colour twin,
+   p256.js), not a strip: no crop and no packing, the file numbered as it is (w x h, its `cells` null), so its
+   texture's frame is the file's own.  Asked with fw, fh the file's and n 1 (png8Worker.js). */
 export function packStripNumbers(dec, fw, fh, n) {
   if (!dec || !dec.idx) return null;
+  const whole = dec.whole === true;
   const W = dec.w | 0, H = dec.h | 0, st = dec.stride | 0 || W;
   if (!n) n = Math.max(1, Math.floor(W / fw));
   if (!W || !H || H < fh || fw !== Math.round(fw) || fh !== Math.round(fh) || n * fw > W) return null;
   const src = dec.idx, alpha = dec.alpha, rgb = dec.rgb;
   const cells = [];
-  for (let i = 0; i < n; i++) cells.push(trimCellOf(trimScanCellIdx(src, st, i * fw, fw, fh, alpha), fw, fh));
-  const L = trimLayout(cells, fw, fh, n);
+  if (!whole) for (let i = 0; i < n; i++) cells.push(trimCellOf(trimScanCellIdx(src, st, i * fw, fw, fh, alpha), fw, fh));
+  const L = whole ? null : trimLayout(cells, fw, fh, n);
   const w = L ? L.W : n * fw, h = L ? L.H : fh;
   const idx = new Uint8Array(w * h);
   /* the file's numbers -> the packed picture's own, in the order it first uses them */
