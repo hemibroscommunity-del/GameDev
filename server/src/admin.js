@@ -82,6 +82,7 @@ export const SNAPSHOT = {
                                  // let prerestore keys, which sort
                                  // after the yyyymmdd keys, evict the
                                  // real daily snapshots first)
+  LIST: 64,                      // v2.3.5960: the copies one prune reads (card V5; KEEP a class: 14 at most)
 };
 
 /* ═══ v2.3.5286: THE PAGED EXPORT (card R PR 7; grand plan step 4.7) ═══
@@ -444,7 +445,11 @@ export const adminMethods = {
          Matched by PREFIX SET now rather than one literal, so a third
          writer is a one-line registration instead of a silent repeat.  Any
          future `rpgsnap:<pid>:<something-non-numeric>` MUST be added here. */
-      const snaps = await this.state.storage.list({ prefix: 'rpgsnap:' + playerId + ':' });
+      /* v2.3.5960 (card V5; TRAPS §76): one page, SNAPSHOT.LIST keys, on the
+         join's path.  A ring kept to KEEP a class never reaches it; a ring
+         that has (older data) loses its oldest dailies first, a page a day,
+         as the slice below would. */
+      const snaps = await this._listPage('rpgsnap:' + playerId + ':', null, SNAPSHOT.LIST);
       const _isPre = (k) => PARACHUTE_TAGS.some((t) => k.includes(t));
       for (const cls of [
         [...snaps.keys()].filter((k) => !_isPre(k)).sort(),

@@ -32,6 +32,7 @@
  * stamp before refunding (a crash between pot-credit and escrow-delete
  * cannot double-pay). */
 import { xferEscrowOn, xferDuelPot } from './xfer.js';   /* v2.3.5290: the pot's ledger row (card R PR 11; `xferescrow`, OFF by default) */
+import { LISTCAP } from './liveops.js';   /* v2.3.5960: a sweep's page (card V5) */
 
 export const DUEL = {
   CHALLENGE_TTL: 120000,   // 2 min to accept a challenge
@@ -488,12 +489,21 @@ export const duelMethods = {
    * the pot evaporates.  Rate-limited; kicked from the join path.
    * If the pot was already paid (oplog stamp), the record is just
    * deleted -- never refund on top of a payout. */
+  /* v2.3.5960 (card V5; TRAPS §76): a page a call, LISTCAP.SWEEP records,
+     its cursor in memory; the next page an event of its own (liveops.js
+     _listNext), so a join waits on none of it.  The five-minute pace starts
+     a walk; a walk under way goes on. */
   async _duelEscrowSweep() {
     const now = Date.now();
-    if (this._lastDuelSweep && now - this._lastDuelSweep < 300000) return;
-    this._lastDuelSweep = now;
+    const j = this._duelSweepWalk || (this._duelSweepWalk = { after: null, busy: false, timer: null });
+    if (j.busy) return;
+    if (!j.after) {
+      if (this._lastDuelSweep && now - this._lastDuelSweep < 300000) return;
+      this._lastDuelSweep = now;
+    }
+    j.busy = true;
     try {
-      const entries = await this.state.storage.list({ prefix: 'duelEscrow:' });
+      const entries = await this._listPage('duelEscrow:', j, LISTCAP.SWEEP);
       for (const [k, rec] of entries) {
         const id = k.slice('duelEscrow:'.length);
         if (this._duels && this._duels.has(id)) continue; // live duel
@@ -506,6 +516,8 @@ export const duelMethods = {
         await this._creditPlayer(rec.b, { opId: 'duelrefund:' + id + ':b', source: 'duel', kind: 'gold', payload: { amount: rec.wager }, note: 'duel voided (server restart)' });
         await this.state.storage.delete(k);
       }
-    } catch (e) { /* best-effort */ }
+    } catch (e) { j.after = null; /* best-effort: the next walk starts again */ }
+    finally { j.busy = false; }
+    this._listNext(j, () => this._duelEscrowSweep());
   },
 };
