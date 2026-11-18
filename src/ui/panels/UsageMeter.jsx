@@ -32,7 +32,7 @@ export function UsageMeter({ call, busy, setMsg, COL, btn, label }) {
   const kinds = (title, byKind) => {
     const top = usageTop(byKind, 6);
     return (
-      <div style={{ ...sub, marginTop: 2 }}>{title}: {top.length ? top.map(([k, n]) => k + ' ' + num(n)).join(', ') : 'none'}</div>
+      <div style={{ ...sub, marginTop: 2 }}>{title}: {top.length ? top.map(([k, n]) => k.replace(/:$/, '') + ' ' + num(n)).join(', ') : 'none'}</div>
     );
   };
   const bucket = (name, b, attr) => (

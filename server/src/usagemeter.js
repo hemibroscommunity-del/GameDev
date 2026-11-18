@@ -19,8 +19,9 @@
  *            list by its prefix);
  *   sends    every frame the send door writes (send.js `_send`), by its type.
  *   sw       the six cost switches' own rows named apart (PR 1): the rows
- *            written to `oplog:rq:` (reqstamp), `econ_gone` (resetbook),
- *            `xfer:` (xferescrow) and `seats` (seathold) as they pass, and
+ *            written to the stamp (reqstamp), the restarts' book
+ *            (resetbook), the ledger (xferescrow) and the roster (seathold)
+ *            as they pass, each key from its module's own constant, and
  *            the reads fullsnap (playerrestore.js snapshotCopy) and
  *            freezedevice (silence.js _frozenDeviceIs) make, told by them.
  * The storage is wrapped once, at the room's start (roomrow.js
@@ -47,17 +48,24 @@
  * says it is off.
  */
 
+import { REQ_ONCE } from './reqonce.js';
+import { XFER } from './xfer.js';
+import { SEAT_HOLD } from './seathold.js';
+import { GONE_KEY } from './worldsum.js';
+
 export const USAGE = Object.freeze({
   FLAG: 'usagemeter',
   KINDS_MAX: 64,          /* kinds kept apart in one list; the rest is `other` */
   OTHER: 'other',
   DAY_MS: 86400000,
-  /* the six switches' rows, by the key they write (PR 1's table) */
+  /* the six switches' rows, by the key they write (PR 1's table), each
+     from its own module's constant: one source (and the meter names no key
+     itself, shapes-once's one writer) */
   SWITCH_KEYS: Object.freeze([
-    Object.freeze(['oplog:rq:', 'reqstamp', 'prefix']),
-    Object.freeze(['econ_gone', 'resetbook', 'exact']),
-    Object.freeze(['xfer:', 'xferescrow', 'prefix']),
-    Object.freeze(['seats', 'seathold', 'exact']),
+    Object.freeze([REQ_ONCE.STAMP, 'reqstamp', 'prefix']),
+    Object.freeze([GONE_KEY, 'resetbook', 'exact']),
+    Object.freeze([XFER.PREFIX, 'xferescrow', 'prefix']),
+    Object.freeze([SEAT_HOLD.KEY, 'seathold', 'exact']),
   ]),
   SWITCHES: Object.freeze(['reqstamp', 'fullsnap', 'xferescrow', 'resetbook', 'seathold', 'freezedevice']),
 });
