@@ -76,6 +76,7 @@
  * table is mirrored in src/data/farmCrops.js and pinned by mirror-audit. */
 
 import { bagGive, bagTake } from './bag.js'; /* v2.3.4810: the bag door */
+import { lifeOf, LIFE } from './life.js';   /* v2.3.5920: the dying seconds, read in each handler that takes (TRAPS §150) */
 
 export const FARM = {
   /* v2.3.3127: the shape of a `farm:<pid>` record this worker reads and
@@ -341,6 +342,12 @@ export const farmMethods = {
     try { this._send(ws, { type: 'farm_state', payload }); } catch (e) { /* the farm is saved */ }
   },
 
+  /* v2.3.5920 (card V3, TRAPS §150): the answer to a farm request sent in
+     the dying seconds -- nothing done, `dead` ("Could not" in the window) */
+  _farmDeadSend(pid, did) {
+    this._farmSend(pid, { err: 'dead', did });
+  },
+
   /* A fixed one-minute window per player, in memory.  A deploy resets it,
      which buys a script one more minute at most; a reconnect does not, as it
      is keyed by player id.  v2.3.3127: windows already over are swept once
@@ -416,6 +423,12 @@ export const farmMethods = {
      skips the rest; answers farm_state with `did` (what happened) or `err`
      (why nothing did). */
   async _handleFarmAct(session, payload) {
+    /* v2.3.5920 (card V3, TRAPS §150): a body in its dying seconds farms
+       nothing -- as before (_farmPs refuses it, in silence), now answered
+       here, where the guard reading each handler for its life read sees it.
+       `dead` is a word the window does not know: it says "Could not". */
+    const who = session && session.id ? this.playerState[session.id] : null;
+    if (who && (lifeOf(who) !== LIFE.ALIVE || who.dead)) { this._farmDeadSend(session.id, { op: payload && own(OPS, payload.op) ? payload.op : null, n: 0 }); return null; }
     const ps = this._farmPs(session);
     if (!ps) return null;
     if (this._farmOff()) { this._farmSend(session.id, { err: 'off' }); return null; }
@@ -588,6 +601,10 @@ export const farmMethods = {
      seed is sold only to a farmer who can plant it (the window shows it
      locked), and never part of an order: the whole order or nothing. */
   async _handleFarmBuy(session, payload) {
+    /* v2.3.5920 (TRAPS §150): nothing bought in the dying seconds (the
+       trap's own counter: a buy the respawn wiped), answered as above */
+    const who = session && session.id ? this.playerState[session.id] : null;
+    if (who && (lifeOf(who) !== LIFE.ALIVE || who.dead)) { this._farmDeadSend(session.id, { op: 'buy', n: 0 }); return null; }
     const ps = this._farmPs(session);
     if (!ps) return null;
     if (this._farmOff()) { this._farmSend(session.id, { err: 'off' }); return null; }

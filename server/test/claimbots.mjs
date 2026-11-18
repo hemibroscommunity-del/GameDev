@@ -43,6 +43,8 @@
 import { makeStorage, openRoom, join as joinRoom } from './testroom.mjs';
 import { WHEEL_ZONE } from '../src/wheelzone.js';
 import { QUEST_REWARDS } from '../src/data.js';
+import { HARVEST_GRADE } from '../src/harvestgrade.js';   /* v2.3.5900: the grade's judge, for its liar */
+import { HONEST_CYCLE } from '../src/gathering.js';
 
 export const MIN = 60_000;
 export const WALK = 150;
@@ -436,7 +438,14 @@ function gradeOf(mix) {
   const r = Math.random();
   return r < mix.perfect ? 'perfect' : r < mix.perfect + mix.good ? 'good' : 'ok';
 }
-export async function harvester(W, ph, take, { mix, liar = false }) {
+/* v2.3.5900 (card K4 PR 1): `graded`, the liar against the grade's judge
+   (harvestgrade.js, `harvestgrade: true`): it keeps its own count of the
+   perfects believed in its last strikes, as the judge does, and while one
+   more would be believed it waits for the earliest a perfect is (the plan's
+   hits, the settle and the gesture's floor, less the judge's slack); when
+   its share is spent it strikes at once, a good */
+export async function harvester(W, ph, take, { mix, liar = false, graded = false }) {
+  const run = [];
   const ores = () => W.room._ensureZoneNodes(WHEEL_ZONE).filter((n) => n.nodeType === 'oreVein' && n.tierLvl === 1);
   const n0 = ores()[0];
   ph.x = n0.x + 10; ph.y = n0.y + 10; ph.z = WHEEL_ZONE;
@@ -454,13 +463,18 @@ export async function harvester(W, ph, take, { mix, liar = false }) {
     const plan = ws.sent.slice(n0s).filter((m) => m.type === 'gather_hits').pop();
     const hits = plan && plan.payload && Array.isArray(plan.payload.hits) ? plan.payload.hits.length : 1;
     const ex = W.room.extractions[HPID];
-    if (liar) {
+    let perfect = liar;
+    if (liar && graded) perfect = run.slice(-(HARVEST_GRADE.SHARE_OF - 1)).reduce((a, b) => a + b, 0) < HARVEST_GRADE.SHARE_MAX;
+    if (liar && graded && perfect) {
+      await ph.wait((hits - 1) * 650 + HONEST_CYCLE.LEAD_MS + HONEST_CYCLE.SETTLE_MS + HONEST_CYCLE.GESTURE_FLOOR_MS - HARVEST_GRADE.SLACK_MS);
+    } else if (liar) {
       /* the earliest the worker takes: its own start plus the hits less its 250 ms slack */
       await ph.wait(Math.max(0, (hits - 1) * 650 - 249));
     } else {
       await ph.wait(80 + 90 + Math.max(0, hits - 1) * 650 + 220 + u(1350, 1750));
     }
-    const grade = liar ? 'perfect' : gradeOf(mix);
+    const grade = liar ? (perfect ? 'perfect' : 'good') : gradeOf(mix);
+    if (graded) { run.push(perfect ? 1 : 0); if (run.length > HARVEST_GRADE.SHARE_OF) run.shift(); }
     const ore0 = (W.ps(HPID) && W.ps(HPID).inventory && W.ps(HPID).inventory.ore_copper_ore) || 0;
     const s2 = await ph.send({ type: 'node_strike', payload: { id: node.id, zone: WHEEL_ZONE, accuracy: grade, swipeFp: humanFp() } });
     if (!s2) continue;
@@ -468,6 +482,9 @@ export async function harvester(W, ph, take, { mix, liar = false }) {
     if (why !== 'paid' && !liar) ph.refuse('a strike not paid: ' + why + (ex ? '' : ' (no extraction)'));
     const ore1 = (W.ps(HPID) && W.ps(HPID).inventory && W.ps(HPID).inventory.ore_copper_ore) || 0;
     take.ore += Math.max(0, ore1 - ore0);
+    /* v2.3.5900: an honest perfect paid as good is a refusal too (the grade's
+       judge, harvestgrade.js: what the worker did not take of what it sent) */
+    if (!liar && why === 'paid' && grade === 'perfect' && ore1 - ore0 === 1) ph.refuse('a perfect paid as good');
     if (!liar) await ph.wait(u(250, 600));
   }
 }
