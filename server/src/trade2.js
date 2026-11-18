@@ -457,6 +457,11 @@ export const trade2Methods = {
       /* v2.3.4795: the weapons are now delivered, or owed on file; an owed
          one goes by mail (its stamp in the mailbox's write), then its record */
       for (const c of wpnOwed) {
+        /* v2.3.5809 (card RV, MS-6): the mail and the record's delete, one write (`leftoverheal`) */
+        if (this._leftoverHealOn()) {
+          await this._creditWith(c.pid, { ...c.entry, opId: 'trade2:' + s.id + ':wpndeliver:' + c.from + ':' + c.seq }, () => [this.state.storage.delete('trade2wpn:' + c.from + ':' + c.seq)]);
+          continue;
+        }
         await this._creditPlayer(c.pid, { ...c.entry, opId: 'trade2:' + s.id + ':wpndeliver:' + c.from + ':' + c.seq });
         await this.state.storage.delete('trade2wpn:' + c.from + ':' + c.seq);
       }
@@ -778,6 +783,14 @@ export const trade2Methods = {
           await this.state.storage.delete('trade2wpn:' + pid + ':' + entry.seq);
           continue;
         }
+        /* v2.3.5809 (card RV, MS-6): the refund and the record's delete, one write (`leftoverheal`) */
+        if (this._leftoverHealOn()) {
+          await this._creditWith(pid, {
+            opId: 'trade2:' + s.id + ':wpnrefund:' + pid + ':' + entry.seq,
+            source: 'trade', kind: 'weapon', payload: { weapon: entry.weapon }, note: 'trade cancelled',
+          }, () => [this.state.storage.delete('trade2wpn:' + pid + ':' + entry.seq)]);
+          continue;
+        }
         await this._creditPlayer(pid, {
           opId: 'trade2:' + s.id + ':wpnrefund:' + pid + ':' + entry.seq,
           source: 'trade', kind: 'weapon', payload: { weapon: entry.weapon }, note: 'trade cancelled',
@@ -821,12 +834,29 @@ export const trade2Methods = {
            'dup' with no stamp on file is a delivery still running: leave the
            record to it. */
         if (typeof rec.to === 'string' && rec.to) {
+          /* v2.3.5809 (card RV, MS-6): the delivery and the record's delete,
+             one write (`leftoverheal`); a delivery still running answers
+             'dup' with nothing written, and the record is left to it */
+          if (this._leftoverHealOn()) {
+            await this._creditWith(rec.to, {
+              opId: 'trade2:' + rec.sid + ':wpndeliver:' + rec.pid + ':' + rec.seq, source: 'trade', kind: 'weapon', payload: { weapon: rec.weapon },
+              note: typeof rec.note === 'string' ? rec.note.slice(0, 80) : 'trade',
+            }, () => [this.state.storage.delete(k)]);
+            continue;
+          }
           const got = await this._creditPlayer(rec.to, {
             opId: 'trade2:' + rec.sid + ':wpndeliver:' + rec.pid + ':' + rec.seq, source: 'trade', kind: 'weapon', payload: { weapon: rec.weapon },
             note: typeof rec.note === 'string' ? rec.note.slice(0, 80) : 'trade',
           });
           if (got === 'dup' && !(await this._opSeen(deliverOp))) continue;
           await this.state.storage.delete(k);
+          continue;
+        }
+        if (this._leftoverHealOn()) {   /* v2.3.5809: one write */
+          await this._creditWith(rec.pid, {
+            opId: 'trade2:' + rec.sid + ':wpnrefund:' + rec.pid + ':' + rec.seq,
+            source: 'trade', kind: 'weapon', payload: { weapon: rec.weapon }, note: 'trade voided (server restart)',
+          }, () => [this.state.storage.delete(k)]);
           continue;
         }
         await this._creditPlayer(rec.pid, {
