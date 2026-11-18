@@ -270,6 +270,17 @@ export const liveopsMethods = {
     return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'capeoffkept') && !f.capeoffkept);
   },
 
+  /* v2.3.5900 (card K4 PR 1, step 4.2): THE HARVEST'S GRADE, JUDGED
+     (harvestgrade.js) -- an opt-in, OFF as merged: `harvestgrade: true`
+     holds a perfect to the time an honest gesture takes and to 15 in any 20
+     strikes; absent or false, every perfect is believed as before (the
+     perfect rate and botfp's checks only).  The owner's to turn on: the
+     share changes what a player whose every gesture is perfect is paid. */
+  _harvestGradeOn() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && f.harvestgrade === true);
+  },
+
   // Synchronous by design (hot paths).  v2.3.4376: the cache is loaded
   // at the top of GameRoom.fetch, so every request reads it loaded; only a
   // failed storage read leaves it cold (fail-open, as before).  The old
