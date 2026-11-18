@@ -115,6 +115,10 @@ next login would be a mute in name only.
 
 The line is still **stored** when delivery is muted: the thread is the seller's
 record of the haggle either way, and a mute is about what reaches a screen.
+v2.3.5806 (card RV, S5; `storemute`): so it does not reach the screen when the
+thread is OPENED either. `store_dm_open` leaves out every line from someone the
+opener mutes, and a seller is not shown the thread of a buyer they mute (before,
+the open handed over every stored line, the muted one's included).
 
 ## Canned replies
 

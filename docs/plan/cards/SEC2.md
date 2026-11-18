@@ -60,7 +60,24 @@ The audit's file paths say `src/public/_headers`: that file never ships
      security.txt` exists; `mp-csp` green with its three break proofs; the
      preview URL answers `/.well-known/security.txt` with the text file.
 
-2. **(tag 5821) The policy enforced.** Not before PR 1 has run on the
+2. **(tag 5821) The feedback board sends a security hole to GitHub.**
+   The owner, 2026-11-17, asked whether the game's bug reports should go
+   to security.txt's address; the reading chosen (the orchestrator's
+   recommendation, the owner's "Yes"): ordinary bugs stay on the in-game
+   board (one step, no account, the crash feed beside it), and the board
+   points a cheat or a security hole to GitHub's private form, because
+   the board is public (`/list` answers anyone; players vote).
+   - `src/ui/mobile/dash/FeedbackPanel.jsx` (More, Feedback; the legacy
+     panel behind the hidden MenuBar is not reachable and stays): a
+     footnote under Send, the box still first in view.
+   - `docs/UI-DESIGN-NOTES.md`, the Feedback line; the site-headers guard
+     §6 holds the link equal to security.txt's Contact.
+   - **Done when:** the guard green with its break proof; on an upright
+     phone and a computer the line is in view at the panel's end, on top,
+     and pressing it opens the form in a new tab with the panel still open
+     (a one-off run, 2026-11-17, pictures in the PR).
+
+3. **(tag 5822) The policy enforced.** Not before PR 1 has run on the
    owner's phone for a while.
    - Rename the header to `Content-Security-Policy` and fold
      `frame-ancestors 'none'` into it (one CSP line, not two).

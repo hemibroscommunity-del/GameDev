@@ -928,6 +928,14 @@ new router case or relayed type that is in neither list.
   and deleted when empty. Registered in ARCHITECTURE-HANDOFF.
 - **Payouts:** `_creditPlayer` with `opId: 'nmlloot:<victim>:<death ms>:<n>'`,
   one per piece of one death.
+  v2.3.5804 (card RV, MS-1): the gold and the weapons go to a killer in the
+  room in ONE synchronous run with the victim's save (`inbox.js`
+  `_creditLiveTogether`, called from `_nmlOnDeath`, which runs inside
+  `_handlePlayerDeath` before its `_saveRpg` with no await between), so a
+  restart cannot land between the victim's loss and the killer's gain. A
+  piece of gear, a killer no longer in the room and a full weapon stash keep
+  the old road (`_creditPlayer`, the same op ids). `nmlonewrite: false`: every
+  piece by the old road (`nml-onewrite.test`).
 - **Caps:** `caps.nomansland`. The game shows nothing and aims at nobody against
   a worker without it.
 - **Kill switch:** `nomansland: false` (lower case) un-advertises it, refuses
