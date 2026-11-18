@@ -1,6 +1,8 @@
 import React from 'react';
 import { allyBus, allyCapsOn, allyTagShown, waitWords } from '@/game/alliance.js';
 import { draftGet, draftSet, draftDrop } from '@/game/allyDrafts.js';   /* v2.3.5524: what the leader typed outlives a rejoin */
+import { SAY } from '@/data/say/alliancePart.js';   /* v2.3.6342: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';
 
 /* ═══ v2.3.3313: THE SALOON'S ALLIANCE PART (server alliance.js) ═══
  *
@@ -56,18 +58,18 @@ function NameForm(props) {
   return (
     <div data-ally-nameform="" style={{ display: 'grid', gap: 6 }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 72px', gap: 6 }}>
-        <input data-ally-name="" aria-label="Alliance name" placeholder="Name (3-16)" maxLength={16} value={name}
+        <input data-ally-name="" aria-label={say(SAY, 'alliancePart.nameLabel')} placeholder={say(SAY, 'alliancePart.namePlaceholder')} maxLength={16} value={name}
           onChange={function (e) { setName(e.target.value); }} style={INPUT} />
-        <input data-ally-tag="" aria-label="Alliance tag" placeholder="TAG" maxLength={4} value={tag}
+        <input data-ally-tag="" aria-label={say(SAY, 'alliancePart.tagLabel')} placeholder={say(SAY, 'alliancePart.tagPlaceholder')} maxLength={4} value={tag}
           onChange={function (e) { setTag(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '')); }} style={Object.assign({}, INPUT, { textTransform: 'uppercase' })} />
       </div>
       <button type="button" data-ally-save="" disabled={!!wait}
         onClick={function () { draftDrop('name', pid); draftDrop('tag', pid); allyBus.name(props.S, name, tag); }}
         style={Object.assign({}, BTN, wait ? { opacity: 0.5, cursor: 'default' } : null)}>
-        {a.name ? 'Rename' : 'Name your alliance'}
+        {say(SAY, a.name ? 'alliancePart.rename' : 'alliancePart.nameIt')}
       </button>
       <div style={SMALL}>
-        {wait ? 'You can rename it again in ' + waitWords(wait) + '.' : 'The name and tag are yours alone, and every member wears the tag. You can change them once a day.'}
+        {wait ? say(SAY, 'alliancePart.renameWait', { wait: waitWords(wait) }) : say(SAY, 'alliancePart.nameRule')}
       </div>
     </div>
   );
@@ -83,16 +85,16 @@ function WarPart(props) {
     return (
       <div data-ally-war-on="" style={{ display: 'grid', gap: 6 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-          <span style={{ flex: 1, fontSize: 14, fontWeight: 700, color: LS.danger }}>War with {tagLabel(w.them.tag)} {w.them.name || ''}</span>
+          <span style={{ flex: 1, fontSize: 14, fontWeight: 700, color: LS.danger }}>{say(SAY, 'alliancePart.warWith', { tag: tagLabel(w.them.tag), name: w.them.name || '' })}</span>
           <span data-ally-score="" style={{ fontSize: 16, fontWeight: 800, color: LS.txt1, fontVariantNumeric: 'tabular-nums' }}>{w.us | 0}–{w.them.score | 0}</span>
         </div>
-        <div style={SMALL}>{left} min left. Kills count in No man's land, under its usual rules. Everyone who fights is paid at the end: 500 gold if you win, 50 if not.</div>
+        <div style={SMALL}>{say(SAY, 'alliancePart.warLeft', { left: left })}</div>
         {Array.isArray(w.kills) && w.kills.length ? (
           <div style={{ display: 'grid', gap: 2 }}>
             {w.kills.slice().reverse().map(function (k, i) {
               return (
                 <div key={i} data-ally-kill="" style={{ fontSize: 12, color: k.mine ? LS.positive : LS.danger, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {k.mine ? '+1' : '−1'} · {k.k} beat {k.v}
+                  {say(SAY, 'alliancePart.kill', { sign: k.mine ? '+1' : '−1', killer: k.k, victim: k.v })}
                 </div>
               );
             })}
@@ -102,26 +104,26 @@ function WarPart(props) {
     );
   }
   if (!props.leader) {
-    return <div style={SMALL}>No war right now. Your leader can declare one on another alliance.</div>;
+    return <div style={SMALL}>{say(SAY, 'alliancePart.noWar')}</div>;
   }
   if (!a.tag) {
-    return <div style={SMALL}>Name your alliance to fight wars.</div>;
+    return <div style={SMALL}>{say(SAY, 'alliancePart.nameFirst')}</div>;
   }
   var rest = a.warIn > 0 ? a.warIn : 0;
   return (
     <div data-ally-warform="" style={{ display: 'grid', gap: 6 }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 6 }}>
-        <input data-ally-foe="" aria-label="Their tag" placeholder="Their tag" maxLength={4} value={foe}
+        <input data-ally-foe="" aria-label={say(SAY, 'alliancePart.theirTag')} placeholder={say(SAY, 'alliancePart.theirTag')} maxLength={4} value={foe}
           onChange={function (e) { setFoe(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '')); }} style={Object.assign({}, INPUT, { textTransform: 'uppercase' })} />
         <button type="button" data-ally-war="" disabled={!!rest || !foe}
           onClick={function () { draftDrop('foe', pid); allyBus.war(S, foe); }}
           style={Object.assign({}, BTN, { color: LS.danger }, (rest || !foe) ? { opacity: 0.5, cursor: 'default' } : null)}>
-          Declare war
+          {say(SAY, 'alliancePart.declare')}
         </button>
       </div>
       <div style={SMALL}>
-        {rest ? 'Your alliance rests ' + waitWords(rest) + ' before its next war.'
-          : 'A war lasts 30 minutes. Kills count in No man\'s land under its usual rules. Everyone who fights is paid: 500 gold if you win, 50 if not.'}
+        {rest ? say(SAY, 'alliancePart.resting', { wait: waitWords(rest) })
+          : say(SAY, 'alliancePart.warRule')}
       </div>
     </div>
   );
@@ -129,9 +131,9 @@ function WarPart(props) {
 
 function Board(props) {
   var b = allyBus.board;
-  if (!b) return <div style={SMALL}>Asking…</div>;
+  if (!b) return <div style={SMALL}>{say(SAY, 'alliancePart.asking')}</div>;
   /* v2.3.3481: the review -- says who counts, as the Saloon's line does */
-  if (!b.rows.length) return <div data-ally-board-rows="0" style={SMALL}>No alliances yet. A party becomes one when 20 of its members are level 5 or more and played in the last 7 days.</div>;
+  if (!b.rows.length) return <div data-ally-board-rows="0" style={SMALL}>{say(SAY, 'alliancePart.noAlliances')}</div>;
   return (
     <div data-ally-board-rows={b.rows.length} style={{ display: 'grid', gap: 0 }}>
       {b.rows.map(function (r, i) {
@@ -140,14 +142,14 @@ function Board(props) {
           <div key={i} data-ally-board-row="" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderTop: i ? '1px solid ' + LS.border : 'none' }}>
             <span style={{ width: 22, fontSize: 12, color: LS.txt3, fontVariantNumeric: 'tabular-nums' }}>{i + 1}</span>
             <span style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 700, color: mine ? LS.brass : LS.txt1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {tagLabel(r.tag)} {r.name || 'Unnamed alliance'}
+              {tagLabel(r.tag)} {r.name || say(SAY, 'alliancePart.unnamed')}
             </span>
-            <span style={{ fontSize: 12, color: LS.txt2, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{r.active | 0} active · Lv {r.total | 0}</span>
+            <span style={{ fontSize: 12, color: LS.txt2, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{say(SAY, 'alliancePart.boardStats', { active: r.active | 0, total: r.total | 0 })}</span>
           </div>
         );
       })}
       {b.mine && b.mine.rank > b.rows.length ? (
-        <div style={Object.assign({}, SMALL, { paddingTop: 6, color: LS.brass })}>Yours: #{b.mine.rank}, {b.mine.active | 0} active</div>
+        <div style={Object.assign({}, SMALL, { paddingTop: 6, color: LS.brass })}>{say(SAY, 'alliancePart.yours', { rank: b.mine.rank, active: b.mine.active | 0 })}</div>
       ) : null}
     </div>
   );
@@ -165,18 +167,18 @@ export function AlliancePart(props) {
   var at = (a && a.at) || 20, drop = (a && a.drop) || 15;
   return (
     <>
-      <div style={LS_MOD}>Alliance</div>
+      <div style={LS_MOD}>{say(SAY, 'alliancePart.title')}</div>
       {a ? (
         <div data-ally-on={a.on ? '1' : '0'} style={WELL}>
           {a.on ? (
             <>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
                 <span data-ally-title="" style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 800, color: LS.brass, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {a.tag ? tagLabel(a.tag) + ' ' + (a.name || '') : 'Unnamed alliance'}
+                  {a.tag ? tagLabel(a.tag) + ' ' + (a.name || '') : say(SAY, 'alliancePart.unnamed')}
                 </span>
-                <span style={{ fontSize: 12, color: LS.txt2, whiteSpace: 'nowrap' }}>{a.active | 0} active</span>
+                <span style={{ fontSize: 12, color: LS.txt2, whiteSpace: 'nowrap' }}>{say(SAY, 'alliancePart.active', { active: a.active | 0 })}</span>
               </div>
-              <div style={SMALL}>Members who played in the last 7 days and are level 5 or more count. It stays an alliance while {drop} of them do.</div>
+              <div style={SMALL}>{say(SAY, 'alliancePart.stays', { drop: drop })}</div>
               {leader ? <NameForm key={(a.name || '') + '|' + (a.tag || '')} ally={a} S={S} pid={party.id} /> : null}
               <div style={{ height: 1, background: LS.border }} />
               <WarPart ally={a} S={S} leader={leader} pid={party.id} />
@@ -185,15 +187,15 @@ export function AlliancePart(props) {
             <>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
                 <span data-ally-clan={a.clan ? '1' : '0'} style={{ flex: 1, fontSize: 14, fontWeight: 700, color: a.clan ? LS.brass : LS.txt1 }}>
-                  {a.tag ? tagLabel(a.tag) + ' ' + (a.name || '') + (a.clan ? '' : ' is resting') : 'Not an alliance yet'}
+                  {a.tag ? tagLabel(a.tag) + ' ' + (a.name || '') + (a.clan ? '' : say(SAY, 'alliancePart.isResting')) : say(SAY, 'alliancePart.notYet')}
                 </span>
                 <span data-ally-progress="" style={{ fontSize: 13, fontWeight: 700, color: LS.brass, fontVariantNumeric: 'tabular-nums' }}>{a.active | 0}/{at}</span>
               </div>
               {bar(a.active | 0, at)}
               {/* v2.3.3321: a clan that became this party (server clanparty.js) */}
-              {a.clan ? <div style={SMALL}>Your clan is this party now, and its members keep the tag.</div> : null}
+              {a.clan ? <div style={SMALL}>{say(SAY, 'alliancePart.clanNow')}</div> : null}
               <div style={SMALL}>
-                When {at} members have played in the last 7 days and are level 5 or more, your party becomes an alliance: a name and a tag on every member, wars with other alliances, and a place on the alliance board.
+                {say(SAY, 'alliancePart.becomes', { at: at })}
               </div>
             </>
           )}
@@ -204,12 +206,12 @@ export function AlliancePart(props) {
            a member counts when level 5 or more and played in the last 7
            days (server alliance.js ACTIVE_LEVEL, ACTIVE_MS), as the line a
            party member sees above already says. */
-        <div style={Object.assign({}, WELL, SMALL)}>A party becomes an alliance when {at} of its members are level 5 or more and played in the last 7 days: a name, a tag, wars and a place on the board.</div>
+        <div style={Object.assign({}, WELL, SMALL)}>{say(SAY, 'alliancePart.howTo', { at: at })}</div>
       )}
       <button type="button" data-ally-board=""
         onClick={function () { var open = !boardOpen; setBoardOpen(open); if (open) allyBus.askBoard(S); }}
         style={Object.assign({}, BTN, { display: 'flex', alignItems: 'center', justifyContent: 'space-between' })}>
-        <span>Alliance board</span>
+        <span>{say(SAY, 'alliancePart.board')}</span>
         <span aria-hidden="true" style={{ color: LS.brass }}>{boardOpen ? '▾' : '›'}</span>
       </button>
       {boardOpen ? <div style={WELL}><Board /></div> : null}
