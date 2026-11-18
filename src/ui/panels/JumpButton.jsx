@@ -6,6 +6,7 @@ import { isWheelSwimming } from '@/game/wheelSwim.js';
 import { jumpButtonWanted } from '@/game/tapJump.js'; /* v2.3.3105 */
 import { Skin, JumpGlyph, jumpGlyphKind, PaintedIcon, ICON_URL, pressOn, pressOff } from './controlSkin.jsx'; /* v2.3.3018: the owner's mockup; v2.3.3721: a plain jump mark */
 import { fineInput } from '../../game/deviceProfile.js';   /* v2.3.4804: the device profile */
+import { winVw } from '@/ui/mobile/playViewport.js';   /* v2.3.6241: the window's width, kept (card HB PR 2) */
 
 /* ═══ v2.3.3017: THE JUMP BUTTON, BENEATH THE ATTACK DISC ═══
  *
@@ -112,7 +113,7 @@ export function JumpButton(props) {
     var on = !isLandscape && !fine && !!jumpButtonView(stateRef && stateRef.current) && jumpButtonWanted();
     if (!on) { root.removeAttribute('data-jump-clear'); return undefined; }
     var a = jumpAnchor(false);
-    var vw = window.innerWidth || 390;
+    var vw = winVw() || 390;   /* v2.3.6241: kept till the window moves (playViewport.js winVw) */
     var lo = LBTN.left + LBTN.w + PROMPT_SIDE_AIR + PROMPT_SWELL;
     var hi = vw - discRight(false) - RBTN.w - PROMPT_SIDE_AIR - PROMPT_SWELL;
     var w = Math.max(0, Math.min(PROMPT_MAX_W, hi - lo));
