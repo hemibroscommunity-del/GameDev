@@ -147,7 +147,7 @@ player sees changes except the wrong thing the finding is.
 | 11 | 5811 | `friends.js` | ACC-5 (an accept is both sides or neither; a one-sided friendship ended by the side it names), SEC-F4 (a request received 30 days ago let go where the record is written anyway) | `friendfix` |
 | — | — | `gearstash.js` | SEC-F2: read, not built. A join's shield and cosmetic claims are still merged each join, but a claimed piece has no `gid`, so it is `legacy`: never sellable or tradeable (`gearprov.js` `_gearSellable`), no money in it; the gap is wearing a shield the worker never handed out. Closing it can drop an honest phone-only shield, a player's item: **the owner's call** | — |
 | 13 | 5813 | `cadence.js` (+ a door guard) | MD-3, MD-4 | `jackcheck` |
-| 14 | 5814 | `chatguard.js`, `petbook.js`, `alliance.js`, `charname.js` (the switch) | S6 (braille blanks, annotation marks, loose tags; a tag flag kept); S7 (a NEW pet name, alliance name or tag held to the character name's rule: nothing that draws nothing, no stacked marks, no staff words; a stored one never touched) | `cleanmore`, `namestaff` |
+| 14 | 5814 | `chatguard.js`, `petbook.js`, `alliance.js`, `charname.js` (the switch) | S6 (braille blanks, annotation marks, loose tags; a tag flag kept); S7 (a NEW pet name, alliance name or tag held to the character name's rule: nothing that draws nothing, no stacked marks, no staff words; a stored one never touched, and, sitting 44's review decided for the owner while away, an alliance whose stored name now reads as staff keeps it and may change its tag) | `cleanmore`, `namestaff` |
 
 The switch names are a first choice, checked free in the switch table at
 each PR. A PR whose fix turns out to need a new write, a new message or a
