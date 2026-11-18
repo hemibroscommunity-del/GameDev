@@ -14,9 +14,10 @@ The order book matches on a five-field taxonomy bucket
 bid for *any* weapon in that bucket, and the first crossing order executes
 at the resting price. That shape cannot express "bid on **this** sword",
 and it can only ever list one kind of goods — the bucket key *is* a weapon
-taxonomy. It also takes its taxonomy from the request body, which
-`market.js:66-69` documents as an open hole ("a modified client can
-advertise a copper blade as godly").
+taxonomy. It also took its taxonomy from the request body, which
+`market.js`'s v2.3.1971 note documented as an open hole ("a modified client
+can advertise a copper blade as godly"); v2.3.5801 (card RV, `mkttier`)
+closed it for a sell: its weapon's own `gearBase` and `type` file it.
 
 So the store is per-**listing**: one seller, one pile of goods, one ask
 price, at most one live bid — and every field it displays is derived from
