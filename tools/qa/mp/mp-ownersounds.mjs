@@ -118,19 +118,25 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const ev = (type, payload) => cues((a) => { window.__btDispatch({ type: a.type, payload: a.payload }); return true; }, { type, payload });
 
   /* ── 1. your hurt grunt ── */
-  const blow = (extra) => P.page.evaluate((extra) => {
+  /* v2.3.5844: `twice` lands a second blow in the same breath (one page call):
+     two calls could be more than HURT_GAP_MS (700 ms) apart on a loaded box,
+     and the fourth "on its heels" grunted (red 1 of 3 runs) */
+  const blow = (extra, twice) => P.page.evaluate(({ extra, twice }) => {
     const S = window._gameState.current;
-    window.__btDispatch({ type: 'monster_attack', payload: Object.assign({
+    const one = () => window.__btDispatch({ type: 'monster_attack', payload: Object.assign({
       monsterId: 'qa-own', targetId: S.myId, dmg: 40, dmgTaken: 40, zone: S.currentZone, hp: Math.round(S.rpg.hp),
       attackerX: S.player.x + 24, attackerY: S.player.y, ability: 'qa' }, extra) });
-    const L = window.__btCues.stats.log;
-    return L.length ? L[L.length - 1].name : null;
-  }, extra);
+    const last = () => { const L = window.__btCues.stats.log; return L.length ? L[L.length - 1].name : null; };
+    one();
+    const a = last();
+    if (!twice) return a;
+    one();
+    return [a, last()];
+  }, { extra, twice: !!twice });
   await P.page.evaluate(() => { window.__btCues.reset(); window.__btOwnSounds.reset(); });
   const g1 = await blow({}); await P.page.waitForTimeout(800);
   const g2 = await blow({}); await P.page.waitForTimeout(800);
-  const g3 = await blow({});
-  const g4 = await blow({});   /* on its heels */
+  const [g3, g4] = await blow({}, true);   /* the fourth on its heels */
   const grunts = await P.page.evaluate(() => window.__btCues.stats.log.filter((c) => /^hurt[ABC]$/.test(c.name)).map((c) => c.name));
   rec.ok(`1a. three blows 0.8 s apart: three grunts (${grunts.join(', ')}; two to choose from), never the same twice running; a fourth on its heels: none`,
     grunts.length === 3 && grunts[0] !== grunts[1] && grunts[1] !== grunts[2], { g1, g2, g3, g4, grunts });
