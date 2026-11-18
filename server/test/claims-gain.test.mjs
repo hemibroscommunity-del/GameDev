@@ -51,6 +51,10 @@ const LINES = {
 const SPREAD = {
   reach: 0.56, bowlabel: 0.23, guard: 0.49, cookshield: 0.29, move: 0.01, harvest: 0.32, cook: 0.02, quest: 0, sale: 0, local: 0,
 };
+/* v2.3.5900: the harvest's liar with `harvestgrade: true` (2i): a line that
+   only falls, as LINES */
+const HARVESTGRADE_LINE = 1.46;
+const GRADED = 'the graded liar: perfect at the gesture\'s floor while its 15 in 20 last, else good at once';
 const GAIN_MIN = 4;
 const DIST_S = 30;
 const WRITE = process.argv.includes('--write');
@@ -329,6 +333,50 @@ if (!GAINS_ONLY) {
   const gOn = perHour(cc, valueOf(cc, lOn.take), lOn.ms) / Math.max(v, 1e-9);
   check(`2h: the cook's liar: gain ${gOff.toFixed(2)} with \`cookstart: false\`; with it on the bare request ${gBare.toFixed(2)}, the started one ${gOn.toFixed(2)} (the bar ${BAR})`, gOn <= BAR && gBare < 0.05 && gOff > gBare, { bare: gBare, on: gOn, off: gOff });
 }
+/* v2.3.5900 (card K4 PR 1, step 4.2): THE HARVEST'S GRADE, JUDGED
+   (harvestgrade.js; an opt-in, `harvestgrade: true`, OFF as merged: the
+   owner's to turn on).  With it on, both honest harvesters (the phone's
+   grades, the computer's held key) take exactly what they took with it off
+   and meet no refusal on any disturbance -- a perfect of theirs paid as good
+   is one (claimbots.mjs harvester) -- and the maximal liar falls under the
+   bar: the better of the plain liar (every strike perfect at the earliest,
+   all now paid good) and the graded one (claimbots.mjs `graded`: it waits
+   for the gesture's floor while a perfect would be believed, and strikes at
+   once when its 15 in 20 are spent).
+   BREAK PROOF (rule 8), tried by hand 2026-11-17: HARVEST_GRADE.SHARE_MAX
+   = 20 (the share off, the time alone) takes the graded liar from 1.46 to
+   1.57: FAIL. */
+let harvestGradeOn = null;
+if (!GAINS_ONLY) {
+  const hc = CLAIMS.find((c) => c.id === 'harvest');
+  const ms = GAIN_MIN * B.MIN;
+  const ON = { harvestgrade: true };
+  const same = [], refused = [];
+  let bestOn = 0, bestOff = 0;
+  for (const h of hc.honest) {
+    const offRun = await runBot(hc, h, { ms });
+    const off = perHour(hc, valueOf(hc, offRun.take), offRun.ms);
+    bestOff = Math.max(bestOff, off);
+    const r = await runBot(hc, h, { ms, flags: ON });
+    const v = perHour(hc, valueOf(hc, r.take), r.ms);
+    bestOn = Math.max(bestOn, v);
+    if (Math.round(v) !== Math.round(off)) same.push(h[0] + ': ' + Math.round(off) + ' -> ' + Math.round(v));
+    refused.push(...r.refusals.slice(0, 1));
+    for (const d of DISTURBANCES) { const x = await runBot(hc, h, { d, ms: DIST_S * 1000, flags: ON }); if (x.refusals.length) refused.push(h[0] + ' / ' + d.id + ': ' + x.refusals[0]); }
+  }
+  check(`2i: \`harvestgrade: true\`: the honest harvesters take what they took and meet no refusal on any disturbance`, !same.length && !refused.length, { same, refused: refused.slice(0, 4) });
+  const lOff = await runBot(hc, hc.liar, { ms });
+  const gOff = perHour(hc, valueOf(hc, lOff.take), lOff.ms) / Math.max(bestOff, 1e-9);
+  const plain = await runBot(hc, hc.liar, { ms, flags: ON });
+  const graded = await runBot(hc, [GRADED, B.harvester, { liar: true, graded: true }], { ms, flags: ON });
+  const gPlain = perHour(hc, valueOf(hc, plain.take), plain.ms) / Math.max(bestOn, 1e-9);
+  const gGraded = perHour(hc, valueOf(hc, graded.take), graded.ms) / Math.max(bestOn, 1e-9);
+  const gOn = Math.max(gPlain, gGraded);
+  harvestGradeOn = { off: gOff, plain: gPlain, graded: gGraded, on: gOn, liar: perHour(hc, valueOf(hc, graded.take), graded.ms) };
+  /* 1.46 on main fcd1ae9 (the default seed; 1.33 to 1.58 over seeds a to e,
+     the honest phone's own luck over its twenty strikes) */
+  check(`2i: the harvest's liar: gain ${gOff.toFixed(2)} as merged (off); with \`harvestgrade: true\` the plain liar ${gPlain.toFixed(2)}, the graded one ${gGraded.toFixed(2)} (its line ${HARVESTGRADE_LINE}, the bar ${BAR})`, gOn <= BAR && gOn <= HARVESTGRADE_LINE + 0.005 && gOn < gOff, harvestGradeOn);
+}
 for (const r of rows) {
   const line = LINES[r.c.id];
   check(`3: ${r.c.id}: its gain ${r.gain} is within its line ${line} and its spread ${SPREAD[r.c.id]} (${r.gain <= BAR ? 'under' : 'over'} the bar ${BAR})`, r.gain <= line + SPREAD[r.c.id] + 1e-9, { honest: Math.round(r.best.v), liar: Math.round(r.liar.v) });
@@ -370,6 +418,12 @@ if (WRITE) {
     '',
     ...rows.filter((r) => r.hon.length > 1).flatMap((r) => r.hon.filter((h) => h !== r.best).map((h) => `- \`${r.c.id}\`: ${esc(h.who)}: ${n0(h.v)}; the liar over it: **${(r.c.less ? h.v / Math.max(r.liar.v, 1) : r.liar.v / Math.max(h.v, 1e-9)).toFixed(2)}**.`)),
     '',
+    ...(harvestGradeOn ? [
+      '## The harvest\'s grade, judged (`harvestgrade`, OFF as merged)',
+      '',
+      `v2.3.5900 (card K4 PR 1; \`server/src/harvestgrade.js\`): with \`harvestgrade: true\` a perfect is believed only at or after the earliest an honest gesture could make it (the plan's hits, the settle and the 1.2 s gesture floor) and at most 15 in any 20 strikes; a perfect refused is paid as good. The honest harvesters take what they took with it off and meet no refusal on any disturbance (a perfect of theirs paid as good counts as one). The liar: **${harvestGradeOn.off.toFixed(2)}** as merged; with it on, the plain liar (every strike perfect at the earliest) **${harvestGradeOn.plain.toFixed(2)}**, the graded one (perfect at the gesture's floor while its 15 in 20 last, else good at once) **${harvestGradeOn.graded.toFixed(2)}**, ${n0(harvestGradeOn.liar)} ore an hour. Its line, \`HARVESTGRADE_LINE\`, only falls. The share changes what a player whose every gesture is perfect is paid (three in four: 1.75 ore a strike for 2), so the switch is the owner's.`,
+      '',
+    ] : []),
     '## Claims with no number yet, and why',
     '',
     ...UNREACHED.map((u) => `- **${esc(u.what)}** (\`${u.id}\`): ${esc(u.why)}`),

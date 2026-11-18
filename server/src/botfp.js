@@ -454,6 +454,28 @@ export const botfpMethods = {
     return { accuracy, grant: true };
   },
 
+  /* v2.3.5900: the grade's judge's run (harvestgrade.js rule 2: 1 a
+     perfect believed, 0 any other grade, the last SHARE_OF strikes), on the
+     record in memory and never written: a reconnect keeps the record (the
+     map keeps an online player's, _botfpRecord), a deploy forgets it -- at
+     most SHARE_OF more perfects a deploy */
+  _botfpGradeRun(id, now) {
+    const rec = this._botfpRecord(id, now);
+    if (!Array.isArray(rec.gradeRun)) rec.gradeRun = [];
+    return rec.gradeRun;
+  },
+
+  /* v2.3.5900: a perfect the grade's judge paid as good (gathering.js
+     _harvestGraded, harvestgrade.js): `gradeEarly` sooner than an honest
+     gesture, `gradeShare` past 15 in 20 -- counted for the admin view, as
+     `noFpPerfect` is; evidence only, no score */
+  _botfpGradeNote(id, why, now) {
+    const rec = this._botfpRecord(id, now);
+    const k = why === 'early' ? 'gradeEarly' : 'gradeShare';
+    rec.counters[k] = (rec.counters[k] || 0) + 1;
+    rec.dirty = true;
+  },
+
   // Accumulator checks — every EVAL_EVERY strikes, cheap array math.
   _botfpEval(id, rec, now) {
     const T = hid(this);
