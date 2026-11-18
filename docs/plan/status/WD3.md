@@ -1,6 +1,6 @@
 card: WD3
-branch: claude/plan-wd3-12-records (one PR a branch, claude/plan-wd3-N-<what>, each stacked on the last, base main)
-prs: PR 1 (6340, working), PR 2 (6341, working), PR 3 (6342, working), PR 4 (6343, working), PR 5 (6344, working), PR 6 (6345, working), PR 7 (6346, working), PR 8 (6347, working), PR 9 (6348, working), PR 10 (6349, working), PR 11 (6350, working), PR 12 (6351, working)
+branch: claude/plan-wd3-13-games (one PR a branch, claude/plan-wd3-N-<what>, each stacked on the last, base main)
+prs: PR 1 (6340, working), PR 2 (6341, working), PR 3 (6342, working), PR 4 (6343, working), PR 5 (6344, working), PR 6 (6345, working), PR 7 (6346, working), PR 8 (6347, working), PR 9 (6348, working), PR 10 (6349, working), PR 11 (6350, working), PR 12 (6351, working), PR 13 (6352, working)
 state: working
 
 ## Done (in place on the page 4120 -> ...; worker 385 unchanged)
@@ -16,9 +16,10 @@ state: working
 - PR 10 (6349): the bag: ItemTooltip, InventoryPanel x2, InventorySurface, ChestReveal; -> 3113.
 - PR 11 (6350): quests: QuestJournalPage, QuestOfferPanel, QuestCard, QuestsPanel, QuestPanel, QuestDetailPanel; -> 3050.
 - PR 12 (6351): records: AchievementsPanel, StatsPanel, JourneyPanel, T2Panel, SelfPanel (CodexStage: animation names only, no words); -> 2987.
+- PR 13 (6352): games: AceFlipPanel, GamblePanel, RaceHud, FishWeighCard, TrapCatchCard, FishBoard; -> 2906.
 
 ## Next
-- PR 13: the next screens of W1, biggest first (one system a PR).
+- PR 14: the next screens of W1, biggest first (one system a PR).
 
 ## Found
 - "tap" now "click" on a computer (CLAUDE.md §7; phone unchanged): DailyRewardsWindow 'Not your thing? Tap ↻ to swap...'.
@@ -32,6 +33,7 @@ state: working
 - ExchangePanel not moved: server/test/store-sell-tap runs its body in new Function with fixed stubs (needs SAY/say added there). StoreChat reads 'Listing expires expired' (unchanged).
 - "tap" now "click": InventoryPanel 'No pets... then tap 🪤'. Unchanged oddities: chest 'Armour' vs 'Armor'; 'No consumable items yet.' for Potions.
 - Not words, counted: CodexStage's 26 animation names; GameApp's dev console (51); RenameRow is the Test panel's (11).
+- Unchanged oddities: weigh-in 'albino Trout' (a variant id in the sentence); GamblePanel mixes 'G' and 'g' for gold.
 
 ## Needs
 - Nothing.
