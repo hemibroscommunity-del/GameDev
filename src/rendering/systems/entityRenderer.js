@@ -2711,11 +2711,14 @@ function _prewarmBake(bodyTex, worn, dilate, poseInfo, rank) {
 /* v2.3.6205 (card EN PR 6; HB's row 23, `_runLookBake > reply`, 24.5 ms at a
    peer on budget-android): a job's page part -- its inputs, the sheets and the
    job posted to the worker -- ran inside whatever asked for it: the renderer's
-   frame, a peer's prewarm slice, or (most) the worker's answer to the job
-   before, together with lookArmour.js's reading of that answer, all one task.
-   Now the queue starts each job in a task of its own (one timer, whoever asks
-   first), so the answer, the next job and the frame are each their own.  The
-   same jobs in the same order: picked by rank when they start, as before. */
+   frame, a peer's prewarm slice, or the worker's answer to the job before,
+   together with lookArmour.js's reading of that answer, all one task.  Now a
+   job asked for starts in a task of its own (one timer, whoever asks first),
+   and a look job's answer is read in one of its own (_pumpBakes); the next
+   job is still posted from the worker's answer, so the worker never waits on
+   the page between jobs (a timer there too measured a stride left unbaked at
+   mp-copperwaist's 3 s: on a slow page each such task can wait out a frame).
+   The same jobs in the same order: picked by rank when they start. */
 let _pumpTimer = 0;
 function _pumpSoon() {
   if (!_pumpTimer) _pumpTimer = setTimeout(() => { _pumpTimer = 0; _pumpBakes(); }, 0);
@@ -2732,8 +2735,12 @@ function _pumpBakes() {
     _runBake(job).catch(() => { /* best-effort */ }).then(() => {
       _bakeBusy--;
       _bakeByKey.delete(job.key);
-      job.resolve(job.reply);   /* v2.3.3752: a look job's answer (lookArmour.js); undefined for the others */
-      _pumpSoon();   /* v2.3.6205: the next job in a task of its own */
+      /* v2.3.6205: the next job posted at once, from the worker's answer (the
+         worker kept fed, as before); a look job's answer -- lookArmour.js
+         writing the cell's bits into its book -- read in a task of its own */
+      _pumpBakes();
+      if (job.look) setTimeout(() => job.resolve(job.reply), 0);
+      else job.resolve(job.reply);   /* v2.3.3752: a look job's answer (lookArmour.js); undefined for the others */
     });
   }
 }
@@ -2831,14 +2838,6 @@ async function _runLookBake(job) {
     if (bt && bt.source && bt.source.resource) beltTex = bt; else beltPending = true;
   }
   const [belt, ...inps] = await Promise.all([beltTex ? frameInput(beltTex) : null, ...worn.map(w => frameInput(w.tex))]);
-  /* v2.3.6205 (card EN PR 6, row 23): the rest -- the gear sheets and the job
-     posted -- in a task of its own too.  Its inputs' promises settle in other
-     tasks (a belt cut on the page resolves in its own), so it ran as a
-     microtask at the end of whichever came next: on the slow profile a
-     React redraw's, 13 to 44 ms together (`_runLookBake > _sendGearSheets`).
-     The worker check below comes after the wait, so a worker let go meanwhile
-     is seen as before. */
-  await new Promise((r) => setTimeout(r, 0));
   const _close = () => { for (const x of [belt, ...inps]) { try { if (x && x.bm) x.bm.close(); } catch (e) { /* gone */ } } };
   /* a piece whose sheet is not in yet would be baked as if not worn: asked again later */
   if (inps.some((x) => !x) || wk !== _bakeWorker) { _close(); job.reply = { err: wk !== _bakeWorker ? 'worker let go' : 'gear not loaded' }; return; }   /* v2.3.5050: a worker let go meanwhile, as _runBake */
