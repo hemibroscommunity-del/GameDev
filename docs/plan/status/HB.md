@@ -1,6 +1,6 @@
 card: HB
-branch: claude/plan-hb-4-pacermem
-prs: #2188 (6240, the map): merged; #2199 (6241, the band's geometry): ready; #2201 (6242, the report's memory read): draft; #2202 (6243, the pacer's memory read): draft
+branch: claude/plan-hb-5-afterpaint
+prs: #2188 (6240): merged; #2199 (6241), #2201 (6242), #2202 (6243): ready; #? (6244, the door prompt after the paint): draft
 state: working
 
 ## Done
@@ -11,12 +11,14 @@ state: working
 
 ## Next
 
-- PR 4 (6243): the pacer's count reads the total alone; frame-pacer.test
-  23c widened (the planning session's one-off yes).  Then the next HB
-  family by size.
-- Measured, not opened: the World map's names' widths cached and its
-  boxes kept (branch claude/plan-hb-3-maplabels, local): the longest
-  hold is the first draw's cold measuring, the redraws are drawing.
+- PR 5 (6244): the door prompt placed at the top of the next frame
+  (`?afterpaint`, decided for the owner while away; the switch row added
+  here, the planning session's yes).  Then the quest coach, the band's
+  tap and the taps under the same switch, one a PR; pack-page after FX's
+  #2200 (p256.js) is on main.
+- Measured, not opened (no fall): the World map's names' widths cached
+  (claude/plan-hb-3-maplabels, local); the figure's armour from frame 0
+  (the standing sheets are one frame: claude/plan-hb-5-portrait, local).
 
 ## Found
 
