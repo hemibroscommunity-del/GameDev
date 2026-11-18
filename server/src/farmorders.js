@@ -72,6 +72,7 @@
 
 import { PVP_HEAL } from './data.js';
 import { bagTake } from './bag.js'; /* v2.3.4810: the bag door */
+import { lifeOf, LIFE } from './life.js';   /* v2.3.5920: the dying seconds, read in each handler that takes (TRAPS §150) */
 
 export const FARM_ORDERS = {
   /* The record's shape.  A change to it bumps this; an older worker then
@@ -233,6 +234,15 @@ export const farmOrderMethods = {
      bag.  Answers farm_state with the board and `did` (what it paid) or
      `err`. */
   async _handleFarmOrder(session, payload) {
+    /* v2.3.5920 (card V3, TRAPS §150): no delivery in the dying seconds --
+       as before (_farmPs refuses it, in silence), now answered (farm.js
+       _farmDeadSend), where the guard reading each handler sees it */
+    const who = session && session.id ? this.playerState[session.id] : null;
+    if (who && (lifeOf(who) !== LIFE.ALIVE || who.dead)) {
+      const slot = payload && Number.isInteger(payload.slot) ? payload.slot : null;
+      this._farmDeadSend(session.id, { op: 'order', n: 0, slot });
+      return null;
+    }
     const ps = this._farmPs(session);
     if (!ps) return null;
     const pid = session.id;

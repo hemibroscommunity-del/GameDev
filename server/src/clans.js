@@ -69,20 +69,35 @@ export const clanMethods = {
     /* v2.3.3321: and every clan that can be is turned into a party
        (clanparty.js; a no-op once there are none, or with `clanparty: false`) */
     if (this._clans) { await this._clanWarsLazyResolve(); await this._clanPartyConvertAll(); return; }
-    this._clans = new Map();        // clanId -> record
-    this._clanByPlayer = new Map(); // playerId -> clanId
-    this._clanWars = new Map();     // warId -> war
-    const clanEntries = await this.state.storage.list({ prefix: 'clan:' });
+    /* v2.3.5960 (card V5; TRAPS §76): the registry is read a page an await
+       (liveops.js _listAll), into maps of its own that become the room's
+       only once whole; a second caller meanwhile waits for the same read.
+       (Before, the maps were the room's before the read, so a caller in
+       between was answered by an empty registry, and a failed read left it
+       empty for the worker's life.) */
+    if (!this._clansLoading) {
+      this._clansLoading = this._clansLoad().finally(() => { this._clansLoading = null; });
+    }
+    await this._clansLoading;
+    await this._clanWarsLazyResolve();
+    await this._clanPartyConvertAll();   /* v2.3.3321 */
+  },
+
+  async _clansLoad() {
+    const clans = new Map();        // clanId -> record
+    const byPlayer = new Map();     // playerId -> clanId
+    const wars = new Map();         // warId -> war
+    const clanEntries = await this._listAll('clan:');
     for (const [, c] of clanEntries) {
       if (c && c.id) {
-        this._clans.set(c.id, c);
-        for (const pid of c.members || []) this._clanByPlayer.set(pid, c.id);
+        clans.set(c.id, c);
+        for (const pid of c.members || []) byPlayer.set(pid, c.id);
       }
     }
-    const warEntries = await this.state.storage.list({ prefix: 'clan_war:' });
+    const warEntries = await this._listAll('clan_war:');
     const _now = Date.now();
     for (const [k, w] of warEntries) {
-      if (w && w.id && w.status === 'active') this._clanWars.set(w.id, w);
+      if (w && w.id && w.status === 'active') wars.set(w.id, w);
       // v2.3.1179: bounded retention for ended-war snapshots (see
       // CLANS.WAR_RETENTION).  Runs on the once-per-wake registry
       // load, the same lazy slot that resolves overdue wars (rule 12)
@@ -92,8 +107,9 @@ export const clanMethods = {
         this.state.storage.delete(k);
       }
     }
-    await this._clanWarsLazyResolve();
-    await this._clanPartyConvertAll();   /* v2.3.3321 */
+    this._clans = clans;
+    this._clanByPlayer = byPlayer;
+    this._clanWars = wars;
   },
 
   _clanOf(playerId) {
