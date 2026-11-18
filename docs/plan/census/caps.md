@@ -7,8 +7,8 @@ Nothing is removed by this census: no cap, no old way, no read.
 ## Totals
 
 - caps in `CAP_GATES`: **173**
-- whose old page way settles value (they go first, as 4.2's): **9**
-- unclear whether they settle value (`?`, never guessed): **3**
+- whose old page way settles value (they go first, as 4.2's): **12**
+- unclear whether they settle value (`?`, never guessed): **0**
 - with no row in the switch table (no `on` day, no end): **62**
 - that count (a number or a list: they stay): **10**
 - **whose old page way is still there (old way `yes`): 160** -- the count that only falls (`tools/guards/caps-census.test.mjs`)
@@ -26,14 +26,14 @@ Sorted: settles value first, then unclear, then the rest; in each, no switch row
 | `dungeon` | value | false: the page spawns the dungeon locally and pays its own gold and XP | -- | 1127 (25534ed42) | 1 | ui/panels/DungeonCreatorPanel.jsx | yes |
 | `gems` | value | false: the page rolls its own raw gem drops and gem cuts | -- | 1198 (5fbec53ee) | 3 | game/monsterCombat.js, networking/wsClient.js, ui/panels/buildings/GemcutPanel.jsx | yes |
 | `petLoot` | value | false: the pet self-credits ground loot coins and weapons into local state | -- | 1200 (6458cf5c1) | 3 | ui/BroTown.jsx ×3 | yes |
+| `prog3` | value | was ?, read as value by the planning session: the old recalc sets level and pools on the page | -- | 1659 (5a6072bd8) | 3 | networking/wsClient.js, state/data.js, ui/panels/InfoPanel.jsx | yes |
+| `questTrack` | value | was ?, read as value by the planning session: the page counts quest kills and claims them at join | -- | 1120 (8086ee332) | 3 | game/monsterCombat.js ×2, game/projectiles.js | yes |
 | `weaponDrops` | value | false: the page rolls and mints its own weapon drops | -- | 1141 (2df5babf9) | 2 | game/monsterCombat.js, game/projectiles.js | yes |
 | `farm` | value | false: legacy farm panel harvests crops into the bag and grants farming XP | `farm` | 3127 (66b46e064) | 4 | game/farmWalk.js, rendering/farmWorld.js, ui/panels/buildings/FarmPanel.jsx ×2 | yes |
+| `meals` | value | was ?, read as value by the planning session: the old instant cook heals R.hp on the page | `meals` | 3130 (60a2a342b) | 3 | ui/BroTown.jsx, ui/mobile/dash/ItemDetailPopup.jsx, ui/panels/buildings/CookPanel.jsx | yes |
 | `rest` | value | false: the bed restores HP, stamina, mana and Well Rested on the page | `rest` | 3539 (09f1c23f3) | 2 | data/townBoard.js, game/rest.js | yes |
 | `shieldgem` | value | false: the page takes the gem, sets the shield gem, adds XP | `shieldgem` | 3187 (096a82379) | 2 | game/shieldGem.js, networking/wsClient.js | yes |
 | `weapongem` | value | false: the Enchanter slots the gem locally, taking it and granting XP | `weapongem` | 3513 (80fa915e1) | 1 | game/weaponGem.js | yes |
-| `prog3` | ? | false: the old recalc sets level and max pools from page-trained stats; the echo overwrites | -- | 1659 (5a6072bd8) | 3 | networking/wsClient.js, state/data.js, ui/panels/InfoPanel.jsx | yes |
-| `questTrack` | ? | false: the page counts quest kills itself and claims them at join; quest progress, not coins | -- | 1120 (8086ee332) | 3 | game/monsterCombat.js ×2, game/projectiles.js | yes |
-| `meals` | ? | false: the old instant cook heals R.hp on the page; the worker echo overwrites it | `meals` | 3130 (60a2a342b) | 3 | ui/BroTown.jsx, ui/mobile/dash/ItemDetailPopup.jsx, ui/panels/buildings/CookPanel.jsx | yes |
 | `abil` | no | false: no ability buttons appear and nothing is sent | -- | 1733 (2a0f140e8) | 2 | networking/wsClient.js, state/data.js | yes |
 | `aceFlip` | no | false: Ace refuses the flip with a note, nothing sent | -- | 2618 (420e00047) | 1 | ui/panels/AceFlipPanel.jsx | yes |
 | `aceItems` | no | false: hides the item wager and its records board | -- | 2619 (142c3d109) | 2 | ui/mobile/dash/LeaderboardPanel.jsx, ui/panels/AceFlipPanel.jsx | yes |
