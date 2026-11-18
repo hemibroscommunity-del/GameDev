@@ -72,18 +72,46 @@ PRs 2 on take the rows above that are this card's, the most MB first. Each
 is ON by default with its `?name=0`, has its row in `switches.mjs`, and
 lowers the line its saving lands in by three runs' highest:
 
-1. **5981, PR 2**: look sheets let off the chip after 60 s undrawn (#1, up to
-   ~15 MB of `gpu`). `mp-ghostaudit`'s sample: a look family.
-2. **5982, PR 3**: the figure sheets baked in play (#2, ~6-9 MB of `gpu`),
-   after reading why they are drawn. `mp-ghostaudit`'s sample.
-3. **5983, PR 4**: the T-shirt's sheets (#5, ~3.7-4.9 MB of `gpu`).
-   `mp-ghostaudit`'s sample.
-4. **5984, PR 5**: the monsters' goo and fire atlas on the chip only (#10,
-   1.7 MB of `canvases`).
-5. **5985, PR 6**: `props-parts` with the retired town's scenery (#9, 1.1 MB
-   of `artCache`).
+1. **5981, PR 2**: the tee's stand and jog sheets not sent to the chip where
+   a phone draws them from the numbers (row 5, 1.6 MB of `gpu`). Rows 1 and 2
+   came out of PR 2's reading as a question and a Found (below).
+2. **5982 on**: the monsters' goo and fire atlas on the chip only (row 10,
+   1.7 MB of `canvases`); `props-parts` with the retired town's scenery (row
+   9, 1.1 MB of `artCache`); row 1 if the planning session says yes; the
+   tee's other poses as numbers (row 5's 3.4 MB) if a look family is wanted.
 
 Below 1 MB a row is not worth a PR's paid checks (card P's rule).
+
+## What PR 2's reading found (tag 5981)
+
+- **Pixi 8.17 collects nothing by itself.** A texture's
+  `autoGarbageCollect` defaults to false (`TextureSource.defaultOptions`),
+  so a texture sent to the chip stays there for the visit unless its maker
+  says otherwise. `memory-budget.mjs`'s `gpu` line still says "Pixi unloads
+  after 60 s unused", and so do the specs: that holds only for the few
+  sources made with `autoGarbageCollect: true` (`paletteLoad.js`,
+  `wheelObjects.js`). Everything the loading screen sends up
+  (`entityRenderer.js` `uploadBakedTextures`, `uploadGearTextures`) is held
+  for good.
+- **Row 1, the look sheets**: a sheet let off the chip is made again ON THE
+  PAGE at its next draw (`lookPalette.js` `make()`: `drawImage` and
+  `getImageData` of up to 5112 x 222), in that frame, against the page's
+  thread budget. Asked of the planning session (status, Needs).
+- **Row 2, the baked figure sheets**, by the probe's file of origin: every
+  one is a JOG body sheet (`/sprites/player/jog-*.webp`), as shipped
+  (`playerSprites.js` `loadSheet`) or re-skinned (`playerSkins.js`
+  `_buildBodySheetPage`), plus one `mine-south`; more facings each trip.
+  They are drawn walking home through BroTown: the townsfolk, still drawn
+  from baked sheets (MEMORY-MAP: "townsperson ... until then the looks
+  bake"). Their move to the look sets is the townsfolk's own work, and their
+  draw sites are `entityRenderer.js` (card M2's): Found.
+- **Row 5, the T-shirt**: of its 5.0 MB, 1.6 MB is the stand and jog sheets,
+  which a phone draws from the numbers (`lookShirtFrame.js`), sent up by the
+  loading screen all the same; 3.4 MB is the poses with no sheets of numbers
+  (pick up 1.64, fish, roll, mine, hit), sent up so a first use pays no
+  upload. PR 2 takes the 1.6 MB (`?teechip=0`); the 3.4 MB needs the tee's
+  other poses baked as numbers (`tools/art/shirt-bake.mjs`), a look family
+  (`mp-ghostaudit`).
 
 ## Not this card's (Found)
 
