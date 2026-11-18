@@ -9,6 +9,7 @@
 import { boardFace, goneId } from './boards.js';   /* v2.3.4393: a face on each row, and the deleted stand-ins */
 import { POWER, cleanPowerIndex } from './power.js';   /* v2.3.5481: the power index on a row, and its board (card PW) */
 import { cleanStatPoints, statOfBoard } from './statboards.js';   /* v2.3.5484: the stat boards (card PW) */
+import { lookColor } from './lookform.js';   /* v2.3.5807 (card RV, S2): a row's colour a colour */
 
 /* a player not seen for this long is off the boards (and a deleted
    character's stand-in, counted from the day it was deleted) */
@@ -151,13 +152,14 @@ export class Leaderboard {
 
   /* v2.3.4545: the live rows that have no face (set before v2.3.4393, by a player who has not been back) */
   async faceless(limit = 200) {
-    const entries = await this.state.storage.list({ prefix: 'player:' });
     const now = Date.now();
     const ids = [];
-    for (const [k, raw] of entries) {
-      if (ids.length >= limit) break;
+    /* v2.3.5961: a page at a time, stopped once `limit` are found (card V5) */
+    await this._pages('player:', (k, raw) => {
+      if (ids.length >= limit) return false;
       try { const p = JSON.parse(raw); if (p && !p.look && now - (p.lastSeen || 0) < STALE_MS) ids.push(k.slice('player:'.length)); } catch { /* not a row */ }
-    }
+      return ids.length < limit;
+    });
     return ids;
   }
   async fillFaces(faces) {
@@ -208,7 +210,7 @@ export class Leaderboard {
       ...(look ? { look } : {}),
       ...(powerIndex ? { powerIndex } : {}),
       ...(statPoints ? { statPoints } : {}),
-      id: playerId, name: shortStr(name, BOARD_HOLD.NAME) || 'Anon', color: shortStr(color, BOARD_HOLD.COLOR) || '#5b52ff', level: wholeN(level) || 1,
+      id: playerId, name: shortStr(name, BOARD_HOLD.NAME) || 'Anon', color: lookColor(shortStr(color, BOARD_HOLD.COLOR)) || '#5b52ff' /* v2.3.5807 (card RV, S2): a colour only (lookform.js) */, level: wholeN(level) || 1,
       /* v2.3.5483: `ap` is the room's own count (index.js reportToLeaderboard,
          from ps.achievementPoints) -- the blob's only from a report that
          carries none */
@@ -261,12 +263,14 @@ export class Leaderboard {
       await this.state.storage.delete('player:' + playerId);
     }
     try {
-      const old = await this.state.storage.list({ prefix: 'gone:' });
-      for (const [k, v] of old) {
+      /* v2.3.5961: read a page at a time (card V5), the old ones deleted as before */
+      const drop = [];
+      await this._pages('gone:', (k, v) => {
         let g = 0;
         try { g = JSON.parse(v).gone || 0; } catch { g = 0; }
-        if (at - g >= STALE_MS) await this.state.storage.delete(k);
-      }
+        if (at - g >= STALE_MS) drop.push(k);
+      });
+      for (const k of drop) await this.state.storage.delete(k);
     } catch { /* the sweep is hygiene: the next delete tries again */ }
     return moved;
   }
@@ -339,15 +343,22 @@ export class Leaderboard {
   }
 
   /* v2.3.5705: every `player:` row, a page at a time (BOARD_HOLD.PAGE) */
-  async _playerPages(each) {
+  async _playerPages(each) { return this._pages('player:', each); }
+
+  /* v2.3.5961 (card V5; TRAPS §76): every row of `prefix`, a page at a time
+     (_playerPages' walk, for any prefix: `gone:` too); `each` answering
+     false stops the walk after its row.  No switch: what is read is the
+     same, only a page an await (the Leaderboard reads no live flag but
+     what the room sends it). */
+  async _pages(prefix, each) {
     let after = null;
     for (let guard = 0; guard < 10000; guard++) {
-      const page = await this.state.storage.list({ prefix: 'player:', limit: BOARD_HOLD.PAGE, ...(after !== null ? { startAfter: after } : {}) });
+      const page = await this.state.storage.list({ prefix, limit: BOARD_HOLD.PAGE, ...(after !== null ? { startAfter: after } : {}) });
       let n = 0, last = null;
       for (const [key, raw] of page) {
         if (after !== null && key <= after) continue;   /* a storage that ignores startAfter (a test's) */
         n++; last = key;
-        each(key, raw);
+        if (each(key, raw) === false) return;
       }
       if (n < BOARD_HOLD.PAGE || last === null) return;
       after = last;
@@ -381,8 +392,8 @@ export class Leaderboard {
        character must never be drawn. */
     const standIns = category === 'ap' || category === 'power' || !!statOfBoard(category) || Object.prototype.hasOwnProperty.call(Leaderboard.SERIES_CATEGORIES, category);
     if (standIns) try {
-      const gone = await this.state.storage.list({ prefix: 'gone:' });
-      for (const [, raw] of gone) { try { const p = JSON.parse(raw); if (p && p.gone && now - (p.lastSeen || 0) < STALE) players.push(withLv(p)); } catch {} }
+      /* v2.3.5961: a page at a time (card V5) */
+      await this._pages('gone:', (k, raw) => { try { const p = JSON.parse(raw); if (p && p.gone && now - (p.lastSeen || 0) < STALE) players.push(withLv(p)); } catch {} });
     } catch { /* a board without its stand-ins is still a board */ }
 
     /* ═══ v2.3.5481: THE POWER BOARD (power.js, card PW) ═══
