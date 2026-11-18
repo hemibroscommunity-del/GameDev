@@ -13,6 +13,8 @@ import { getHatColor, onHatColorChange, hatColorTarget } from '@/rendering/trait
 import { getShirtColor, onShirtColorChange, shirtColorTarget } from '@/rendering/traits/shirtColorCatalog.js';
 import { getEyeColor, onEyeColorChange } from '@/rendering/traits/eyeColorCatalog.js'; /* v2.3.1928 */
 import { getEquip, onEquipChange } from '@/rendering/gearCatalog.js';
+import { SAY } from '@/data/say/characterView.js';   /* v2.3.6343: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';
 
 /* ═══ v2.3.1815: YOUR CHARACTER, ON THE EQUIP SCREEN ═══
  *
@@ -194,7 +196,7 @@ export const CharacterView = ({ size, weapon, shield, crop, dir, weaponOut, onDr
          backing store (and supersamples it by devicePixelRatio), so setting
          them here would be overwritten on the first draw and misleading to
          read. CSS owns the displayed size only. */
-      aria-label="Your character"
+      aria-label={say(SAY, 'characterView.figure')}
       style={{ width: size, height: size, display: 'block', imageRendering: 'auto',
         marginLeft: -shift }}
     />

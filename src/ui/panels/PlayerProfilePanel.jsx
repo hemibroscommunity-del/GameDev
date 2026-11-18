@@ -2,6 +2,8 @@ import React from 'react';
 import { PetPortrait } from '@/ui/petPortrait.jsx';   /* v2.3.3120 */
 import { PET_RARITY, compactCount } from './playerProfile.js';
 import { GHOST_SRC } from '../mobile/sheet/equipModel.js';
+import { SAY } from '@/data/say/playerProfile.js';   /* v2.3.6345: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say, sayPieces } from '@/game/say.js';
 
 /* ═══ v2.3.2926: THE INSPECT CARD ═══
  *
@@ -47,13 +49,13 @@ import { GHOST_SRC } from '../mobile/sheet/equipModel.js';
 
 const BRO_BADGE = '/icons/ui/verified-bro-small.webp';
 const COMBAT = [
-  ['melee', 'Melee', '/icons/ui/hero/melee.webp?v=2.3.1311'],
-  ['bow', 'Bow', '/icons/ui/hero/bow.webp?v=2.3.1311'],
+  ['melee', say(SAY, 'playerProfile.melee'), '/icons/ui/hero/melee.webp?v=2.3.1311'],
+  ['bow', say(SAY, 'playerProfile.bow'), '/icons/ui/hero/bow.webp?v=2.3.1311'],
   /* MAGIC, as the rest of the game names it (PROG3_SKILL_META, the
      leaderboard).  The owner's mockup said Staff; asked, the owner chose
      "You can do magic."  The key stays 'staff' -- prog3's own category id. */
-  ['staff', 'Magic', '/icons/ui/hero/magic.webp?v=2.3.1311'],
-];
+  ['staff', say(SAY, 'playerProfile.magic'), '/icons/ui/hero/magic.webp?v=2.3.1311'],
+];   /* v2.3.6345: no "tap" in the labels, so read once at load */
 
 /* An icon with a text fallback, like the card's socIcon: a SPAN replaces a
    failed image so the row keeps its shape. */
@@ -130,7 +132,7 @@ export function PlayerProfilePanel({ getProfile, face, onPortrait, onClose, onOp
       data-loaded={p.loaded ? '1' : '0'}
       onClick={(e) => e.stopPropagation()}
     >
-      <button className="bt-inspect-close" aria-label="Close" onClick={onClose}>
+      <button className="bt-inspect-close" aria-label={say(SAY, 'playerProfile.close')} onClick={onClose}>
         <img src="/icons/ui/soc-close.webp" alt="" draggable={false} />
       </button>
 
@@ -139,7 +141,7 @@ export function PlayerProfilePanel({ getProfile, face, onPortrait, onClose, onOp
         <div className="bt-pin-head">
           {onPortrait ? (
             <button className="bt-pcard-face bt-pin-face" data-act="profile-back"
-              aria-label="Back to the player card" title="Back" onClick={onPortrait}>
+              aria-label={say(SAY, 'playerProfile.backLabel')} title={say(SAY, 'playerProfile.backTitle')} onClick={onPortrait}>
               {face}<Lens />
             </button>
           ) : (
@@ -150,22 +152,22 @@ export function PlayerProfilePanel({ getProfile, face, onPortrait, onClose, onOp
               <span className="bt-pin-nm">{p.name}</span>
               {p.isHemiBroVerified && (
                 <img className="bt-pin-bro" src={BRO_BADGE} draggable={false}
-                  alt="Verified Hemi Bro"
-                  title={'Verified Hemi Bro' + (p.broTokenId != null ? ' #' + p.broTokenId : '')
-                    + (p.hemiBroCount > 0 ? ' \u00b7 ' + p.hemiBroCount + ' held' : '')} />
+                  alt={say(SAY, 'playerProfile.broAlt')}
+                  title={say(SAY, 'playerProfile.broTitle', { token: p.broTokenId != null ? say(SAY, 'playerProfile.broToken', { id: p.broTokenId }) : '',
+                    held: p.hemiBroCount > 0 ? say(SAY, 'playerProfile.broHeld', { count: p.hemiBroCount }) : '' })} />
               )}
             </div>
             <div className="bt-pin-meta">
-              {p.characterLevel != null && <span className="bt-pcard-lv">LV {p.characterLevel}</span>}
+              {p.characterLevel != null && <span className="bt-pcard-lv">{say(SAY, 'playerProfile.level', { lv: p.characterLevel })}</span>}
               {/* Friend only: a party mate's "In party" is the dock's first
                   button, and both badges plus the points wrapped this row */}
               {rel.friend && (
                 <span className="bt-pcard-rel" data-rel="friend">
-                  <Ic className="bt-pcard-ic" src="/icons/ui/soc-friend.webp" glyph="🙂" />Friend
+                  <Ic className="bt-pcard-ic" src="/icons/ui/soc-friend.webp" glyph="🙂" />{say(SAY, 'playerProfile.friend')}
                 </span>
               )}
-              <span className="bt-pin-ap" title="Achievement points" data-stat="ap">
-                <Star />{p.achievementPoints == null ? '–' : compactCount(p.achievementPoints)} AP
+              <span className="bt-pin-ap" title={say(SAY, 'playerProfile.apTitle')} data-stat="ap">
+                <Star />{say(SAY, 'playerProfile.ap', { ap: p.achievementPoints == null ? '–' : compactCount(p.achievementPoints) })}
               </span>
               {/* v2.3.3255: how many Hemi Bros their verified wallet holds -- the
                   owner: "It would be cool to list the number of hemi bros owned
@@ -173,19 +175,19 @@ export function PlayerProfilePanel({ getProfile, face, onPortrait, onClose, onOp
                   (broverify.js balanceOf); nothing with none. */}
               {p.hemiBroCount > 0 && (
                 <span className="bt-pin-bros" data-stat="hemibros"
-                  title="Hemi Bros held by their verified wallet">
+                  title={say(SAY, 'playerProfile.brosTitle')}>
                   <img src={BRO_BADGE} alt="" draggable={false} />
-                  {compactCount(p.hemiBroCount)} Hemi Bro{p.hemiBroCount === 1 ? '' : 's'}
+                  {say(SAY, 'playerProfile.bros', { n: p.hemiBroCount, count: compactCount(p.hemiBroCount) })}
                 </span>
               )}
             </div>
             <div className="bt-pin-row">
               <span className="bt-pin-quests" data-stat="quests">
                 <Ic className="bt-pin-qi" src="/icons/ui/panel-quests.webp" glyph="📜" />
-                <b>{p.questsCompleted == null ? '–' : compactCount(p.questsCompleted)}</b> Quests
+                {sayPieces(SAY, 'playerProfile.quests', { count: <b key="count">{p.questsCompleted == null ? '–' : compactCount(p.questsCompleted)}</b> })}
               </span>
-              <button className="bt-pin-iconbtn" data-act="leaderboard" aria-label="Leaderboard"
-                title="Leaderboard" onClick={open('leaderboard')}>
+              <button className="bt-pin-iconbtn" data-act="leaderboard" aria-label={say(SAY, 'playerProfile.leaderboard')}
+                title={say(SAY, 'playerProfile.leaderboard')} onClick={open('leaderboard')}>
                 <Ic src="/icons/ui/panel-leaderboard.webp" glyph="🏆" />
               </button>
             </div>
@@ -198,7 +200,7 @@ export function PlayerProfilePanel({ getProfile, face, onPortrait, onClose, onOp
               a tap opens the Achievements page */}
           {title && (
             <button type="button" className="bt-pin-title" data-achv={title.id} data-tier={title.tier}
-              title="Title: an achievement" onClick={open('achievements')}>
+              title={say(SAY, 'playerProfile.titleTitle')} onClick={open('achievements')}>
               <Ic src={title.iconSrc} glyph={title.glyph || '🎖️'} />
               <span>{title.text}</span>
             </button>
@@ -206,7 +208,7 @@ export function PlayerProfilePanel({ getProfile, face, onPortrait, onClose, onOp
           <span className={'bt-pin-clan' + (p.clan ? '' : ' is-none')} data-stat="clan">
             <Ic className="bt-pin-clanic" src="/icons/ui/clan.webp" glyph="👥" />
             <span className="bt-pin-clannm">
-              {p.clan ? (p.clan.name || '[' + p.clan.tag + ']') : 'No Clan'}
+              {p.clan ? (p.clan.name || '[' + p.clan.tag + ']') : say(SAY, 'playerProfile.noClan')}
             </span>
             {/* the clan's own emblem is a system for later; until then the
                 emblem is the clan's real tag on its real colour */}
@@ -231,12 +233,12 @@ export function PlayerProfilePanel({ getProfile, face, onPortrait, onClose, onOp
             </div>
           ))}
         </div>
-        <div className="bt-pin-equip" role="list" aria-label="Equipment">
+        <div className="bt-pin-equip" role="list" aria-label={say(SAY, 'playerProfile.equipment')}>
           {p.equipment.map((s) => (
             <div key={s.slot} role="listitem" data-slot={s.slot}
               className={'bt-pin-slot' + (s.ghost ? ' is-empty' : '')}
-              title={s.ghost ? 'No ' + s.label.toLowerCase() : (s.name || s.label)}
-              aria-label={s.ghost ? 'No ' + s.label.toLowerCase() : (s.name || s.label)}>
+              title={s.ghost ? say(SAY, 'playerProfile.slotEmpty', { slot: s.label.toLowerCase() }) : (s.name || s.label)}
+              aria-label={s.ghost ? say(SAY, 'playerProfile.slotEmpty', { slot: s.label.toLowerCase() }) : (s.name || s.label)}>
               <img src={s.ghost ? GHOST_SRC[s.slot] : s.iconSrc} alt="" draggable={false} />
             </div>
           ))}
@@ -251,7 +253,7 @@ export function PlayerProfilePanel({ getProfile, face, onPortrait, onClose, onOp
               <Ic src="/icons/ui/hero/rec-kills.webp" glyph="💀" />
               <div>
                 <b>{compactCount(p.showcase.lifetimeKills)}</b>
-                <span>Lifetime Kills</span>
+                <span>{say(SAY, 'playerProfile.kills')}</span>
               </div>
             </div>
             {/* v2.3.3527: the rarest achievement, the worker's pick
@@ -260,18 +262,18 @@ export function PlayerProfilePanel({ getProfile, face, onPortrait, onClose, onOp
             {rarest !== undefined && (
               <button type="button" className="bt-pin-drop" data-stat="rarest"
                 data-rarest={rarest ? rarest.id : 'none'} data-tier={rarest ? rarest.tier : 'none'}
-                aria-label={rarest ? 'Rarest achievement: ' + rarest.name : 'No achievements yet'}
+                aria-label={rarest ? say(SAY, 'playerProfile.rarestLabel', { name: rarest.name }) : say(SAY, 'playerProfile.noAchievements')}
                 onClick={open('achievements')}>
                 {rarest ? (
                   <>
                     <div className="bt-pin-drop-art"><Ic src={rarest.iconSrc} glyph={rarest.glyph} /></div>
-                    <span className="bt-pin-drop-r">{rarest.tierLabel} achievement</span>
+                    <span className="bt-pin-drop-r">{say(SAY, 'playerProfile.tierAchievement', { tier: rarest.tierLabel })}</span>
                     <b className="bt-pin-drop-n">{rarest.name}</b>
                   </>
                 ) : (
                   <>
-                    <span className="bt-pin-drop-r">Rarest achievement</span>
-                    <b className="bt-pin-drop-n is-none">None yet</b>
+                    <span className="bt-pin-drop-r">{say(SAY, 'playerProfile.rarest')}</span>
+                    <b className="bt-pin-drop-n is-none">{say(SAY, 'playerProfile.noneYet')}</b>
                   </>
                 )}
               </button>
@@ -280,7 +282,7 @@ export function PlayerProfilePanel({ getProfile, face, onPortrait, onClose, onOp
           <div className="bt-pin-home" data-stat="homestead">
             <div className="bt-pin-scene" data-preview="1">
               <img src={p.homestead.previewSrc} alt="" draggable={false} />
-              <span className="bt-pin-home-t">Homestead</span>
+              <span className="bt-pin-home-t">{say(SAY, 'playerProfile.homestead')}</span>
               {pet && <span className="bt-pin-petsprite" aria-hidden="true">{pet.kind
                 ? <PetPortrait pet={{ kind: pet.kind, stage: pet.stage, gold: pet.gold }} size={30} />   /* v2.3.3120: drawn, from the pet sheet */
                 : pet.emoji}</span>}
@@ -292,9 +294,9 @@ export function PlayerProfilePanel({ getProfile, face, onPortrait, onClose, onOp
                   {pet.customName}
                 </div>
                 <div className="bt-pin-species">
-                  <span>{pet.speciesName || 'Pet'}</span>
+                  <span>{pet.speciesName || say(SAY, 'playerProfile.pet')}</span>
                   <button className="bt-pin-iconbtn is-small" data-act="codex"
-                    aria-label="Open the Codex" title="Codex" onClick={open('encyclopedia')}>
+                    aria-label={say(SAY, 'playerProfile.codexLabel')} title={say(SAY, 'playerProfile.codexTitle')} onClick={open('encyclopedia')}>
                     <Ic src="/icons/ui/nav-codex.webp" glyph="📖" />
                   </button>
                 </div>
@@ -302,7 +304,7 @@ export function PlayerProfilePanel({ getProfile, face, onPortrait, onClose, onOp
             )}
             <div className="bt-pin-plots" data-stat="plots">
               <Ic src="/icons/ui/skill-farming.webp" glyph="🌱" />
-              <span><b>{dash(plots)}</b> {plots === 1 ? 'plot' : 'plots'} ready</span>
+              <span>{sayPieces(SAY, 'playerProfile.plots', { n: plots, count: <b key="count">{dash(plots)}</b> })}</span>
             </div>
           </div>
         </div>
@@ -315,20 +317,20 @@ export function PlayerProfilePanel({ getProfile, face, onPortrait, onClose, onOp
           <div className="bt-pin-dock">
             {dock.party && (dock.party.state === 'member' ? (
               <div className="bt-pin-cmd is-party is-static" data-act="party" data-state="member" aria-disabled="true">
-                <Ic className="bt-pcard-ic" src="/icons/ui/soc-party.webp" glyph="🎟️" /><span>In party</span>
+                <Ic className="bt-pcard-ic" src="/icons/ui/soc-party.webp" glyph="🎟️" /><span>{say(SAY, 'playerProfile.inParty')}</span>
               </div>
             ) : (
               <button className="bt-pin-cmd is-party" data-act="party" data-state="invite"
-                aria-label="Invite to Party" onClick={dock.party.onClick}>
+                aria-label={say(SAY, 'playerProfile.invite')} onClick={dock.party.onClick}>
                 <Ic className="bt-pcard-ic" src="/icons/ui/soc-party.webp" glyph="🎟️" />
-                <span><span className="is-long">Invite to Party</span><span className="is-short">Invite</span></span>
+                <span><span className="is-long">{say(SAY, 'playerProfile.invite')}</span><span className="is-short">{say(SAY, 'playerProfile.inviteShort')}</span></span>
               </button>
             ))}
             <button className="bt-pin-cmd is-trade" data-act="trade" onClick={dock.trade}>
-              <Ic className="bt-pcard-ic" src="/icons/ui/soc-trade.webp" glyph="🤝" /><span>Trade</span>
+              <Ic className="bt-pcard-ic" src="/icons/ui/soc-trade.webp" glyph="🤝" /><span>{say(SAY, 'playerProfile.trade')}</span>
             </button>
             <button className="bt-pin-cmd is-duel" data-act="duel" onClick={dock.duel}>
-              <Ic className="bt-pcard-ic" src="/icons/ui/soc-duel.webp" glyph="⚔️" /><span>Duel</span>
+              <Ic className="bt-pcard-ic" src="/icons/ui/soc-duel.webp" glyph="⚔️" /><span>{say(SAY, 'playerProfile.duel')}</span>
             </button>
           </div>
         )}

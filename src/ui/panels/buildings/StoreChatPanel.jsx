@@ -3,6 +3,8 @@ import { storeChatBus } from '@/ui/mobile/storeChatBus.js';
 import { PlayerIcon } from '@/ui/PlayerIcon.jsx';
 import { thumbFor, iconFor } from '@/ui/mobile/dash/InventoryPanel.jsx';
 import { storeOfferEnabled } from '@/ui/storeApi.js';   /* v2.3.2623 */
+import { SAY } from '@/data/say/storeChat.js';   /* v2.3.6348: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say, sayPieces } from '@/game/say.js';
 
 /* === StoreChatPanel — "CHAT WITH MARVIN" ========================= v2.3.2621
  *
@@ -39,7 +41,7 @@ export const TEXT_MAX = 200;
 /* The three the mockup draws. Mirrored from STORE_CHAT_QUICK
    (server/src/storechat.js) — they travel as ordinary text through the same
    clamp and the same moderation as anything typed. */
-export const QUICK = ['Still available?', 'Would you take less?', 'I have a question'];
+export const QUICK = [say(SAY, 'storeChat.quickAvailable'), say(SAY, 'storeChat.quickLess'), say(SAY, 'storeChat.quickQuestion')];   /* v2.3.6348: no "tap" in them, so read once at load */
 
 /* ═══ v2.3.2623: THE SELLER'S ANSWERS ═══
  * Owner: "the seller can have a few different replies. Like yes, I'll think
@@ -55,19 +57,19 @@ export const QUICK = ['Still available?', 'Would you take less?', 'I have a ques
  * 'yes' SELLS THE ITEM, so it says so on the button rather than just "Yes".
  * A one-tap control that completes a sale must not read like small talk. */
 export const SELLER_REPLIES = [
-  { id: 'yes', label: (g) => 'Accept ' + g + 'g', tone: 'primary' },
-  { id: 'think', label: () => "I'll think about it", tone: 'quiet' },
-  { id: 'no', label: () => 'No', tone: 'quiet' },
+  { id: 'yes', label: (g) => say(SAY, 'storeChat.accept', { gold: g }), tone: 'primary' },
+  { id: 'think', label: () => say(SAY, 'storeChat.think'), tone: 'quiet' },
+  { id: 'no', label: () => say(SAY, 'storeChat.no'), tone: 'quiet' },
 ];
 
 function timeLeft(expiresAt) {
   const ms = (Number(expiresAt) || 0) - Date.now();
-  if (!(ms > 0)) return 'expired';
+  if (!(ms > 0)) return say(SAY, 'storeChat.expired');
   const mins = Math.floor(ms / 60000);
-  if (mins < 60) return 'in ' + mins + 'm';
+  if (mins < 60) return say(SAY, 'storeChat.inMins', { mins });
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return 'in ' + hrs + 'h';
-  return 'in ' + Math.floor(hrs / 24) + 'd';
+  if (hrs < 24) return say(SAY, 'storeChat.inHours', { hours: hrs });
+  return say(SAY, 'storeChat.inDays', { days: Math.floor(hrs / 24) });
 }
 
 function clock(ts) {
@@ -118,9 +120,9 @@ export function StoreChatPanel({ send, myId }) {
         <span style={{ fontSize: 20 }} aria-hidden="true">{'\u{1F4AC}'}</span>
         <div style={{ minWidth: 0, flex: 1 }}>
           <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.10em', color: LS.txt1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {amSeller ? 'Your listing' : 'Chat with ' + (head.sellerName || 'the seller')}
+            {amSeller ? say(SAY, 'storeChat.yourListing') : say(SAY, 'storeChat.chatWith', { name: head.sellerName || say(SAY, 'storeChat.theSeller') })}
           </div>
-          <div style={{ fontSize: 11, color: LS.txt3, marginTop: 1 }}>Discuss this item directly</div>
+          <div style={{ fontSize: 11, color: LS.txt3, marginTop: 1 }}>{say(SAY, 'storeChat.subtitle')}</div>
         </div>
       </div>
 
@@ -134,13 +136,13 @@ export function StoreChatPanel({ send, myId }) {
             <div style={{ fontSize: 13, fontWeight: 700, color: LS.txt1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {/* v2.3.2621: the same prettifying StorePanel's row does, so the
                   header and the shelf call the item by one name. */}
-              {(item.name || 'Item').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
+              {(item.name || say(SAY, 'storeChat.item')).replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
             </div>
             <div style={{ fontSize: 11, color: LS.txt3, marginTop: 1 }}>
-              {'\u{1F551} Listing expires ' + timeLeft(head.expiresAt)}
+              {say(SAY, 'storeChat.expires', { when: timeLeft(head.expiresAt) })}
             </div>
           </div>
-          <span style={{ fontSize: 13, fontWeight: 700, color: LS.brass, fontVariantNumeric: 'tabular-nums' }}>{head.askPrice}g</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: LS.brass, fontVariantNumeric: 'tabular-nums' }}>{say(SAY, 'storeChat.price', { price: head.askPrice })}</span>
         </div>
 
         {/* a seller with several interested buyers picks one */}
@@ -162,12 +164,10 @@ export function StoreChatPanel({ send, myId }) {
 
         {/* bubbles */}
         <div data-chat-log style={{ maxHeight: 190, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 8 }}>
-          {b.loading && <div style={{ fontSize: 12, color: LS.txt3 }}>Opening…</div>}
+          {b.loading && <div style={{ fontSize: 12, color: LS.txt3 }}>{say(SAY, 'storeChat.opening')}</div>}
           {!b.loading && msgs.length === 0 && (
             <div style={{ fontSize: 12, color: LS.txt3, lineHeight: 1.45, padding: '6px 2px' }}>
-              {amSeller
-                ? 'Nobody has asked about this listing yet.'
-                : 'Say hello — the seller sees this next time they are online.'}
+              {say(SAY, amSeller ? 'storeChat.emptySeller' : 'storeChat.emptyBuyer')}
             </div>
           )}
           {msgs.map((m, i) => {
@@ -187,7 +187,7 @@ export function StoreChatPanel({ send, myId }) {
                   size={26} />
                 <div style={{ minWidth: 0, maxWidth: '76%' }}>
                   <div style={{ fontSize: 10, color: LS.txt3, marginBottom: 2, textAlign: mine ? 'right' : 'left' }}>
-                    {mine ? 'You' : m.fromName}
+                    {mine ? say(SAY, 'storeChat.you') : m.fromName}
                   </div>
                   <div style={{
                     padding: '7px 10px', borderRadius: 10, fontSize: 12.5, lineHeight: 1.35,
@@ -215,19 +215,20 @@ export function StoreChatPanel({ send, myId }) {
             {myOffer ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: LS.txt2 }}>
-                  Your offer of <strong style={{ color: LS.brass }}>{myOffer.gold}g</strong> is being held
-                  {myOffer.reply === 'think' ? ' — the seller is thinking about it' : ''}
+                  {sayPieces(SAY, 'storeChat.offerHeld', {
+                    gold: <strong key="gold" style={{ color: LS.brass }}>{say(SAY, 'storeChat.offerGold', { gold: myOffer.gold })}</strong>,
+                    thinking: myOffer.reply === 'think' ? say(SAY, 'storeChat.offerThinking') : '' })}
                 </span>
                 <button type="button" onClick={() => send('store_offer_cancel', { listingId: b.listingId })}
                   style={{
                     minHeight: 34, padding: '0 10px', fontSize: 11, fontWeight: 700, borderRadius: 8,
                     border: '1px solid ' + LS.borderStrong, background: 'transparent', color: LS.txt2,
                     fontFamily: 'inherit', cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
-                  }}>Take it back</button>
+                  }}>{say(SAY, 'storeChat.takeBack')}</button>
               </div>
             ) : (
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ flex: 1, fontSize: 12, color: LS.txt2 }}>Offer gold</span>
+                <span style={{ flex: 1, fontSize: 12, color: LS.txt2 }}>{say(SAY, 'storeChat.offerLabel')}</span>
                 <input type="number" inputMode="numeric" value={offer} placeholder={String(head.askPrice || '')}
                   onChange={(e) => setOffer(e.target.value)}
                   style={{
@@ -246,12 +247,11 @@ export function StoreChatPanel({ send, myId }) {
                     opacity: Math.floor(Number(offer)) > 0 ? 1 : 0.45,
                     cursor: Math.floor(Number(offer)) > 0 ? 'pointer' : 'default',
                     WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
-                  }}>Offer</button>
+                  }}>{say(SAY, 'storeChat.offer')}</button>
               </div>
             )}
             <div style={{ fontSize: 10, color: LS.txt3, marginTop: 4, lineHeight: 1.4 }}>
-              Your gold is held while the seller decides, and comes straight back if they say no,
-              if you take it back, or if nobody answers in two days.
+              {say(SAY, 'storeChat.offerHow')}
             </div>
           </div>
         )}
@@ -260,7 +260,7 @@ export function StoreChatPanel({ send, myId }) {
         {offerOn && amSeller && b.offers.length > 0 && (
           <div style={{ marginBottom: 8 }}>
             <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: LS.txt3, marginBottom: 6 }}>
-              Offers on this listing
+              {say(SAY, 'storeChat.offersHead')}
             </div>
             {b.offers.map((o) => (
               <div key={o.buyerId} style={{
@@ -269,7 +269,8 @@ export function StoreChatPanel({ send, myId }) {
                 background: LS.raised, border: '1px solid ' + LS.border,
               }}>
                 <span style={{ flex: 1, minWidth: 90, fontSize: 12, color: LS.txt1 }}>
-                  {o.buyerName} offers <strong style={{ color: LS.brass }}>{o.gold}g</strong>
+                  {sayPieces(SAY, 'storeChat.offerRow', { name: o.buyerName,
+                    gold: <strong key="gold" style={{ color: LS.brass }}>{say(SAY, 'storeChat.offerGold', { gold: o.gold })}</strong> })}
                 </span>
                 {SELLER_REPLIES.map((r) => (
                   <button key={r.id} type="button"
@@ -289,7 +290,7 @@ export function StoreChatPanel({ send, myId }) {
 
         {/* the three canned replies */}
         <div style={{ display: 'flex', gap: 5, overflowX: 'auto', paddingBottom: 6, marginBottom: 6 }}>
-          {(amSeller ? ["What's your offer?"] : QUICK).map((q) => (
+          {(amSeller ? [say(SAY, 'storeChat.quickOffer')] : QUICK).map((q) => (
             <button key={q} type="button" onClick={() => post(q)}
               style={{
                 flex: '0 0 auto', minHeight: 34, padding: '0 10px', fontSize: 11, fontWeight: 600,
@@ -303,7 +304,7 @@ export function StoreChatPanel({ send, myId }) {
         {/* composer */}
         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
           <input
-            type="text" value={text} maxLength={TEXT_MAX} placeholder="Type a message..."
+            type="text" value={text} maxLength={TEXT_MAX} placeholder={say(SAY, 'storeChat.typeHere')}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); post(text); } }}
             style={{
@@ -317,7 +318,7 @@ export function StoreChatPanel({ send, myId }) {
               border: 'none', background: LS.brass, color: LS.onBrass, fontFamily: 'inherit',
               opacity: text.trim() ? 1 : 0.45, cursor: text.trim() ? 'pointer' : 'default',
               WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
-            }}>Send</button>
+            }}>{say(SAY, 'storeChat.send')}</button>
         </div>
         <div data-chat-count style={{ fontSize: 10, color: LS.txt3, textAlign: 'right', marginTop: 3 }}>
           {text.length}/{TEXT_MAX}

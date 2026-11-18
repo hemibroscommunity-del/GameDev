@@ -28,7 +28,12 @@
  *
  * A MISSING KEY returns the key itself ('clanInvite.title'), so a fault is
  * seen on screen and never shown as an empty button (tools/guards/say.test
- * also fails a key a screen reads that its table lacks).
+ * also fails a key a screen reads that its table lacks).  v2.3.6340: the
+ * guard reads every call: its first argument a table the file imports
+ * (`import { SAY }` or `import { SAY as X }`), its key a single-quoted
+ * '<screen>.<what>' or a ternary of them (anything else, it cannot check,
+ * and fails), and, when the parts are an object written in place, each
+ * `{name}` the row asks for passed and no part no row uses.
  *
  * sayPieces() is for a sentence with a styled part inside it (a name in
  * bold): it returns the row cut into an array, the text pieces as strings
