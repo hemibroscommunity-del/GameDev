@@ -250,6 +250,24 @@ const sigOf = (room, id) => room._botfp.get(id).sig;
   const kb = sigOf(room, 'bp_sig_cbot'), kh = sigOf(room, 'bp_sig_chum');
   check('4. cooks on a 45-a-minute timer: cook, weighing W_COOK (' + T.W_COOK + ')', kb.reasons.includes('cook') && kb.score === T.W_COOK, kb.reasons);
   check('4. a person\'s cooking: not', !kh.reasons.includes('cook'), { s: histSpread(kh.cook) });
+
+  /* v2.3.5909 (card LG's league, #2178): rung 1's cook -- it waits exactly
+     the hits the worker planned (the dice vary them: 1 to 6 hits), then a
+     fixed gesture and pause.  The beat now takes the planned hits off */
+  const cs = await join(room, 'bp_sig_cplan');
+  const cp = await join(room, 'bp_sig_cplanh');
+  /* each player on its own run of the clock (a gap is the time between its own cooks) */
+  for (const [P, rest] of [[cs, () => 90 + 220 + 1500 + 400], [cp, () => 90 + 220 + 1300 + rnd() * 1500 + rnd() * 1800]]) {
+    for (let i = 0; i < 80; i++) {
+      const hits = 1 + Math.floor(rnd() * 6);
+      room.playerState[P.session.id]._cookHits = { fishKey: 'fish_minnow', hits: Array(hits).fill(2), rolledAt: NOW };
+      NOW += (hits - 1) * 650 + Math.round(rest());
+      room._sigOnCook(P.session);
+    }
+  }
+  const ks = sigOf(room, 'bp_sig_cplan'), kp = sigOf(room, 'bp_sig_cplanh');
+  check('4. a script waiting exactly each cook\'s planned hits, then a fixed gesture: cook (its planned hits taken off the beat)', ks.reasons.includes('cook'), { s: histSpread(ks.cook), n: histTotal(ks.cook) });
+  check('4. ...a person on the same varying plans: not', !kp.reasons.includes('cook'), { s: histSpread(kp.cook) });
 }
 
 // ── 5. reflex ──

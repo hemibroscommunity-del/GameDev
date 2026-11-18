@@ -60,6 +60,7 @@
  * group 'botsig'); BOTSIG below holds the public placeholders. */
 import { WATCH_HOOKS } from './wire/lists.js';   /* v2.3.5182: the watch column */
 import { histNew, histAdd, histTotal, histSpread } from './botstats.js';
+import { GATHER_HITS } from './gathering.js';   /* v2.3.5909: a cook's planned hits, off its beat */
 
 export const BOTSIG = {
   // ── aimed: the walk to a harvest ──
@@ -439,9 +440,21 @@ export const botsigMethods = {
     if (!rec) return;
     const T = hid(this);
     const sig = rec.sig;
-    const gap = sig.cookAt ? now - sig.cookAt : 0;
+    /* v2.3.5909 (card K4 PR 10; card LG's league, #2178: rung 1's cook was
+       missed by every detector): the beat took no account of the hits the
+       worker planned for this cook (gathering.js _planCookHits; still on the
+       player, as this runs before the cook is handled), so a script waiting
+       exactly its plan spread over six bins as the dice varied it.  Its
+       planned swings come off the gap, as the gesture's do (_sigOnStrike's
+       openDelayBase): what is left is the gesture and the pause, the part a
+       person varies and a script does not */
+    const ps = this.playerState && this.playerState[session.id];
+    const plan = ps && ps._cookHits && Array.isArray(ps._cookHits.hits) ? ps._cookHits.hits.length : 0;
+    const planned = plan > 1 ? (plan - 1) * GATHER_HITS.MS.cooking : 0;
+    const raw = sig.cookAt ? now - sig.cookAt : 0;
+    const gap = raw - planned;
     sig.cookAt = now;
-    if (gap > 0 && gap <= T.COOK_GAP_MAX_MS) histAdd(sig.cook, gap, BOTSIG.HIST_LO_COOK, BOTSIG.HIST_PER, BOTSIG.COUNT_CAP);
+    if (gap > 0 && raw <= T.COOK_GAP_MAX_MS) histAdd(sig.cook, gap, BOTSIG.HIST_LO_COOK, BOTSIG.HIST_PER, BOTSIG.COUNT_CAP);
     this._sigActive(sig, now, T);
     this._sigMeasured(session.id, rec, now, true);
   },
