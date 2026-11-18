@@ -67,6 +67,7 @@ export const BOTSIG = {
   AIM_STRAIGHT_PX: 0.75,    // every place on it within this of its line
   AIM_MISS_PX: 1.5,         // ...and the line within this of the node's centre
   AIM_KEY_DEG: 0.5,         // a heading this close to one of the keyboard's 8 is not judged
+  AIM_MIN_PLACES: 4,        // v2.3.5908: places on the chord, its ends included, before it is judged (card LG's A1)
   AIM_MIN_N: 40,
   AIM_SHARE: 0.5,           // aimed runs over all judged runs
   // ── gesture: start to strike, beyond the planned hits (log bins, 8 an octave) ──
@@ -79,6 +80,7 @@ export const BOTSIG = {
   // ── reflex: a monster's wind-up to the step away, dodge or shield ──
   REACT_WINDOW_MS: 1500,
   REACT_QUICK_MS: 120,      // after the measured round trip
+  REACT_WAVER_K: 2,         // v2.3.5908: the round trip's floor is it less this many times its waver (card LG's A2)
   REACT_MIN_N: 20,
   REACT_QUICK_SHARE: 0.6,
   // ── rooted: hits from one spot ──
@@ -187,6 +189,12 @@ export function judgeApproach(path, tx, ty, T) {
     if (Math.hypot(P.x - path[i].x, P.y - path[i].y) >= T.AIM_CHORD_PX) { qi = i; break; }
   }
   if (qi < 0) return null;
+  /* v2.3.5908 (card K4 PR 9; card LG's A1, docs/specs/honest-trouble.md):
+     a run with no place between its ends was `straight` by default -- with
+     the move diet (`movepath`: a steady walk sends a move every ~200 ms,
+     ~30 px) two places span the 40 px chord and nothing is tested.  Fewer
+     than AIM_MIN_PLACES on the chord: not judged, like a keyboard's heading */
+  if (path.length - qi < (T.AIM_MIN_PLACES || BOTSIG.AIM_MIN_PLACES)) return null;
   const Q = path[qi];
   const dx = P.x - Q.x, dy = P.y - Q.y, L = Math.hypot(dx, dy);
   const ux = dx / L, uy = dy / L;
@@ -330,7 +338,16 @@ export const botsigMethods = {
   _sigReact(session, now, w) {
     this._sigWU.delete(session.id);
     const T = hid(this);
-    const dt = now - w.at - (Number(session.rtt) || 0);
+    /* v2.3.5908 (card K4 PR 9; card LG's A2): the line's FLOOR, never its
+       average -- session.rtt is smoothed, so a quick trip after slow ones
+       (jitter) took too much off and read an honest answer as quick.  The
+       round trip less REACT_WAVER_K times its waver (index.js keeps both on
+       every pong: report.js rttWaverNext), so jitter only ever adds to the
+       reaction; with no waver measured, the round trip as before */
+    const rtt = Number(session.rtt) || 0;
+    const waver = Number(session.rttWaver);
+    const floor = Number.isFinite(waver) && waver > 0 ? Math.max(0, rtt - (T.REACT_WAVER_K != null ? T.REACT_WAVER_K : BOTSIG.REACT_WAVER_K) * waver) : rtt;
+    const dt = now - w.at - floor;
     if (now - w.at > T.REACT_WINDOW_MS) return;   /* no answer in time: not a reaction */
     const rec = this._sigOf(session.id, now);
     if (!rec) return;

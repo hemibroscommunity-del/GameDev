@@ -108,6 +108,8 @@ export const HIDDEN_SPEC = Object.freeze({
   AIM_STRAIGHT_PX: row('botsig', BOTSIG.AIM_STRAIGHT_PX, 0, 10, false, 'Aimed walk: every step within this of a straight line (px)'),
   AIM_MISS_PX: row('botsig', BOTSIG.AIM_MISS_PX, 0, 20, false, 'Aimed walk: the line passes this close to the node\'s centre (px)'),
   AIM_KEY_DEG: row('botsig', BOTSIG.AIM_KEY_DEG, 0, 10, false, 'Aimed walk: headings this close to a keyboard\'s 8 are not judged (degrees)'),
+  AIM_MIN_PLACES: row('botsig', BOTSIG.AIM_MIN_PLACES, 3, 12, true, 'v2.3.5908: Aimed walk: places on the run, its ends included, before it is judged'),
+  REACT_WAVER_K: row('botsig', BOTSIG.REACT_WAVER_K, 0, 5, false, 'v2.3.5908: Reflex: the round trip taken off is it less this many times its waver (the line\'s floor)'),
   AIM_MIN_N: row('botsig', BOTSIG.AIM_MIN_N, 5, 400, true, 'Aimed walk: walks judged before it can count'),
   AIM_SHARE: row('botsig', BOTSIG.AIM_SHARE, 0.05, 1, false, 'Aimed walk: share of walks aimed that counts'),
   GEST_MIN_N: row('botsig', BOTSIG.GEST_MIN_N, 10, 400, true, 'Even gestures: harvests timed before it can count'),
