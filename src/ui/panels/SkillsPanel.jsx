@@ -4,6 +4,8 @@ import { _slicedToArray } from '@/lib/babelHelpers.js';
 import { dashboardPanelBus } from '@/ui/mobile/dashboardPanelBus.js';   /* v2.3.3527: your AP opens the Achievements page */
 import { GEM_ELEMENTS, gemCount } from '@/data/gems.js';
 import { folkDisplayName } from '@/data/folkNames.js';   /* v2.3.4048: a quest's giver, his nickname */   /* v2.3.3516: gems are bag items */
+import { SAY } from '@/data/say/skills.js';   /* v2.3.6324: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';
 
 /* ═══ SkillsPanel — life-skill levels / resources / quest progress ═══ */
 /* v2.3.865: moved verbatim from BroTown.jsx's JSX tree (UI-panel
@@ -99,11 +101,11 @@ var lsSkillRow = function lsSkillRow(sk, skill, xpNeeded, xpPct) {
     style: { flex: 1, fontSize: 13.5, fontWeight: 600, color: 'var(--ui-text)' }
   }, sk.name), React.createElement('span', {
     style: { fontSize: 14, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: 'var(--ui-text)' }
-  }, 'Lv ', skill.level)), lsXpBar(xpPct), React.createElement('div', {
+  }, say(SAY, 'skills.levelChip', { lvl: skill.level }))), lsXpBar(xpPct), React.createElement('div', {
     /* v2.3.1235: batch-2 rollout — 10px caption was below the locked
        11px text floor. */
     style: { fontSize: 11, fontWeight: 600, color: 'var(--ui-text-muted)', marginTop: 3, fontVariantNumeric: 'tabular-nums' }
-  }, skill.xp, '/', xpNeeded, ' XP \xB7 ', sk.desc));
+  }, say(SAY, 'skills.rowXp', { xp: skill.xp, need: xpNeeded, desc: sk.desc })));
 };
 
 /* v2.3.1232: quiet empty-state well (shared look across sections) */
@@ -179,28 +181,28 @@ export function SkillsPanel(props) {
       letterSpacing: '.10em',
       color: 'var(--ui-text)'
     }
-  }, "Life Skills")), /*#__PURE__*/React.createElement("div", {
+  }, say(SAY, 'skills.title'))), /*#__PURE__*/React.createElement("div", {
     style: Object.assign({}, LS_HEADER, {
       marginBottom: 8
     })
-  }, "Harvesting"), [{
-    name: 'Woodcutting',
+  }, say(SAY, 'skills.harvesting')), [{
+    name: say(SAY, 'skills.woodcuttingName'),
     key: 'woodcutting',
     icon: '🪓',
     iconSrc: '/icons/ui/skill-woodcutting.webp?v=2.3.1232',
-    desc: 'Chop trees for wood + zone gems'
+    desc: say(SAY, 'skills.woodcuttingDesc')
   }, {
-    name: 'Fishing',
+    name: say(SAY, 'skills.fishingName'),
     key: 'fishing',
     icon: '🎣',
     iconSrc: '/icons/ui/skill-fishing.webp?v=2.3.1232',
-    desc: 'Catch fish for cooking + zone gems'
+    desc: say(SAY, 'skills.fishingDesc')
   }, {
-    name: 'Mining',
+    name: say(SAY, 'skills.miningName'),
     key: 'mining',
     icon: '⛏️',
     iconSrc: '/icons/ui/skill-mining.webp?v=2.3.1232',
-    desc: 'Mine ore (iron Lv1-5, steel Lv6-10) + zone gems'
+    desc: say(SAY, 'skills.miningDesc')
   }].map(function (sk) {
     var _rpgState$lifeSkills43;
     var skill = ((_rpgState$lifeSkills43 = rpgState.lifeSkills) === null || _rpgState$lifeSkills43 === void 0 ? void 0 : _rpgState$lifeSkills43[sk.key]) || {
@@ -215,36 +217,36 @@ export function SkillsPanel(props) {
       marginTop: 12,
       marginBottom: 8
     })
-  }, "Crafting"), [{
-    name: 'Cooking',
+  }, say(SAY, 'skills.crafting')), [{
+    name: say(SAY, 'skills.cookingName'),
     key: 'cooking',
     icon: '🍳',
     iconSrc: '/icons/ui/skill-cooking.webp?v=2.3.1232',
-    desc: 'Cook fish + ingredients for healing food'
+    desc: say(SAY, 'skills.cookingDesc')
   }, {
-    name: 'Blacksmithing',
+    name: say(SAY, 'skills.blacksmithingName'),
     key: 'blacksmithing',
     icon: '🔨',
     iconSrc: '/icons/ui/skill-blacksmithing.webp?v=2.3.1232',
-    desc: 'Forge melee gear bases with gem slots'
+    desc: say(SAY, 'skills.blacksmithingDesc')
   }, {
-    name: 'Woodworking',
+    name: say(SAY, 'skills.woodworkingName'),
     key: 'woodworking',
     icon: '🪚',
     iconSrc: '/icons/ui/skill-woodworking.webp?v=2.3.1232',
-    desc: 'Craft bows & staves with gem slots'
+    desc: say(SAY, 'skills.woodworkingDesc')
   }, {
-    name: 'Gem Cutting',
+    name: say(SAY, 'skills.gemCuttingName'),
     key: 'gemCutting',
     icon: '💎',
     iconSrc: '/icons/ui/skill-gemcutting.webp?v=2.3.1232',
-    desc: 'Cut raw gems into polished slottable gems'
+    desc: say(SAY, 'skills.gemCuttingDesc')
   }, {
-    name: 'Enchanting',
+    name: say(SAY, 'skills.enchantingName'),
     key: 'enchanting',
     icon: '✨',
     iconSrc: '/icons/ui/skill-enchanting.webp?v=2.3.1232',
-    desc: 'Slot gems into gear for elemental power'
+    desc: say(SAY, 'skills.enchantingDesc')
   }].map(function (sk) {
     var _rpgState$lifeSkills44;
     var skill = ((_rpgState$lifeSkills44 = rpgState.lifeSkills) === null || _rpgState$lifeSkills44 === void 0 ? void 0 : _rpgState$lifeSkills44[sk.key]) || {
@@ -259,18 +261,18 @@ export function SkillsPanel(props) {
       marginTop: 12,
       marginBottom: 8
     })
-  }, "Utility"), [{
-    name: 'Farming',
+  }, say(SAY, 'skills.utility')), [{
+    name: say(SAY, 'skills.farmingName'),
     key: 'farming',
     icon: '🌾',
     iconSrc: '/icons/ui/skill-farming.webp?v=2.3.1232',
-    desc: 'Grow ingredients at the farm'
+    desc: say(SAY, 'skills.farmingDesc')
   }, {
-    name: 'Trapping',
+    name: say(SAY, 'skills.trappingName'),
     key: 'trapping',
     icon: '🪤',
     iconSrc: '/icons/ui/skill-trapping.webp?v=2.3.3331',
-    desc: 'Capture weakened monsters as pets'
+    desc: say(SAY, 'skills.trappingDesc')
   }].map(function (sk) {
     var _rpgState$lifeSkills45;
     var skill = ((_rpgState$lifeSkills45 = rpgState.lifeSkills) === null || _rpgState$lifeSkills45 === void 0 ? void 0 : _rpgState$lifeSkills45[sk.key]) || {
@@ -286,7 +288,7 @@ export function SkillsPanel(props) {
     style: Object.assign({}, LS_HEADER, {
       marginBottom: 8
     })
-  }, "Gems"), function (_rpgState$lifeSkills46) {
+  }, say(SAY, 'skills.gems')), function (_rpgState$lifeSkills46) {
     /* v2.3.3516: gems are bag items now (data/gems.js) -- read the bag and
        any old pouch, as raw_/polished_ entries for the chips below */
     var gems = {};
@@ -301,7 +303,7 @@ export function SkillsPanel(props) {
         v = _ref165[1];
       return v > 0;
     });
-    if (entries.length === 0) return lsEmpty("No gems yet. Crack shards at the Gem Works to find them!");
+    if (entries.length === 0) return lsEmpty(say(SAY, 'skills.gemsNone'));
     return /*#__PURE__*/React.createElement("div", {
       style: Object.assign({}, LS_WELL, {
         display: 'flex',
@@ -338,7 +340,7 @@ export function SkillsPanel(props) {
           border: '1px solid ' + gc + '30',
           fontVariantNumeric: 'tabular-nums'
         }
-      }, qual === 'raw' ? '◇' : '◆', " ", ((_ZONE_RESOURCES$elem4 = ZONE_RESOURCES[elem]) === null || _ZONE_RESOURCES$elem4 === void 0 ? void 0 : _ZONE_RESOURCES$elem4.gem) || elem + ' Gem', " \xD7", v);
+      }, qual === 'raw' ? '◇' : '◆', " ", ((_ZONE_RESOURCES$elem4 = ZONE_RESOURCES[elem]) === null || _ZONE_RESOURCES$elem4 === void 0 ? void 0 : _ZONE_RESOURCES$elem4.gem) || say(SAY, 'skills.gemFallback', { elem: elem }), " \xD7", v);
     }));
   }()), /*#__PURE__*/React.createElement("div", {
     style: LS_SECTION
@@ -346,7 +348,7 @@ export function SkillsPanel(props) {
     style: Object.assign({}, LS_HEADER, {
       marginBottom: 8
     })
-  }, "Active Quests"), function () {
+  }, say(SAY, 'skills.quests')), function () {
     var active = Object.entries(rpgState._quests || {}).filter(function (_ref168) {
       var _ref169 = _slicedToArray(_ref168, 2),
         qid = _ref169[0],
@@ -357,7 +359,7 @@ export function SkillsPanel(props) {
         qid = _ref171[0];
       return QUEST_CHAINS[qid];
     }).filter(Boolean);
-    if (active.length === 0) return lsEmpty("No active quests. Talk to NPCs with ❗ markers!");
+    if (active.length === 0) return lsEmpty(say(SAY, 'skills.questsNone'));
     return /*#__PURE__*/React.createElement("div", {
       style: Object.assign({}, LS_WELL, {
         padding: 4
@@ -424,12 +426,12 @@ export function SkillsPanel(props) {
     }
   }, /*#__PURE__*/React.createElement("span", {
     style: LS_HEADER
-  }, "Achievement Points"), _achvOn ? /*#__PURE__*/React.createElement("button", {
+  }, say(SAY, 'skills.ap')), _achvOn ? /*#__PURE__*/React.createElement("button", {
     /* v2.3.3527: the number opens the Achievements page (above): a 44 px
        target, the same 16/700 number, a chevron saying it goes somewhere */
     type: 'button',
     'data-skills-ap': '1',
-    'aria-label': 'Achievement points: ' + (rpgState.achievementPoints || 0) + '. Open your achievements',
+    'aria-label': say(SAY, 'skills.apOpenLabel', { n: rpgState.achievementPoints || 0 }),
     onClick: _openAchv,
     style: {
       minHeight: 44,
@@ -461,7 +463,7 @@ export function SkillsPanel(props) {
     style: Object.assign({}, LS_HEADER, {
       marginBottom: 8
     })
-  }, "Player Stats"), function () {
+  }, say(SAY, 'skills.stats')), function () {
     var cs = rpgState._compStats || createDefaultCompStats();
     /* Update playtime */
     var playmins = Math.floor(((cs.playtimeSeconds || 0) + (Date.now() - (cs._sessionStart || Date.now())) / 1000) / 60);
@@ -470,20 +472,20 @@ export function SkillsPanel(props) {
        headers to 11/700 uppercase .14em muted, and semantic colors are
        reserved for bars/state, so the color field is gone. */
     var sections = [{
-      label: 'Combat',
-      stats: [['Monsters Killed', cs.monstersKilled], ['Deaths', cs.deaths], ['Grand Slams', cs.grandSlams], ['Bosses Killed', cs.bossesKilled], ['Highest Kill Lv', cs.highestMonsterKill], ['Crits Landed', cs.critLanded], ['Collisions', cs.collisionsTriggered]]
+      label: say(SAY, 'skills.statsCombat'),
+      stats: [[say(SAY, 'skills.statMonstersKilled'), cs.monstersKilled], [say(SAY, 'skills.statDeaths'), cs.deaths], [say(SAY, 'skills.statGrandSlams'), cs.grandSlams], [say(SAY, 'skills.statBossesKilled'), cs.bossesKilled], [say(SAY, 'skills.statHighestKill'), cs.highestMonsterKill], [say(SAY, 'skills.statCrits'), cs.critLanded], [say(SAY, 'skills.statCollisions'), cs.collisionsTriggered]]
     }, {
-      label: 'PvP',
-      stats: [['PvP Kills', cs.pvpKills], ['PvP Deaths', cs.pvpDeaths], ['Duels Won', cs.duelsWon], ['Duels Lost', cs.duelsLost]]
+      label: say(SAY, 'skills.statsPvp'),
+      stats: [[say(SAY, 'skills.statPvpKills'), cs.pvpKills], [say(SAY, 'skills.statPvpDeaths'), cs.pvpDeaths], [say(SAY, 'skills.statDuelsWon'), cs.duelsWon], [say(SAY, 'skills.statDuelsLost'), cs.duelsLost]]
     }, {
-      label: 'Life Skills',
-      stats: [['Fish Caught', cs.fishCaught], ['Trees Felled', cs.treesFelled], ['Ores Mined', cs.oresMined], ['Items Crafted', cs.itemsCrafted], ['Items Salvaged', cs.itemsSalvaged], ['Cook Success', cs.cookSuccess], ['Cook Burns', cs.cookBurns], ['Reforges', cs.reforgeAttempts], ['Harden OK', cs.hardenSuccess], ['Harden Fail', cs.hardenFails]]
+      label: say(SAY, 'skills.statsLifeSkills'),
+      stats: [[say(SAY, 'skills.statFishCaught'), cs.fishCaught], [say(SAY, 'skills.statTreesFelled'), cs.treesFelled], [say(SAY, 'skills.statOresMined'), cs.oresMined], [say(SAY, 'skills.statItemsCrafted'), cs.itemsCrafted], [say(SAY, 'skills.statItemsSalvaged'), cs.itemsSalvaged], [say(SAY, 'skills.statCookSuccess'), cs.cookSuccess], [say(SAY, 'skills.statCookBurns'), cs.cookBurns], [say(SAY, 'skills.statReforges'), cs.reforgeAttempts], [say(SAY, 'skills.statHardenOk'), cs.hardenSuccess], [say(SAY, 'skills.statHardenFail'), cs.hardenFails]]
     }, {
-      label: 'Economy',
-      stats: [['Gold Earned', cs.totalGoldEarned], ['Gold Spent', cs.totalGoldSpent], ['Gold Lost (death)', cs.goldLostToDeath], ['Total Gambled', cs.totalGambled], ['Gamble Won', cs.totalGambleWon], ['Gamble Lost', cs.totalGambleLost]]
+      label: say(SAY, 'skills.statsEconomy'),
+      stats: [[say(SAY, 'skills.statGoldEarned'), cs.totalGoldEarned], [say(SAY, 'skills.statGoldSpent'), cs.totalGoldSpent], [say(SAY, 'skills.statGoldLostDeath'), cs.goldLostToDeath], [say(SAY, 'skills.statGambled'), cs.totalGambled], [say(SAY, 'skills.statGambleWon'), cs.totalGambleWon], [say(SAY, 'skills.statGambleLost'), cs.totalGambleLost]]
     }, {
-      label: 'Progress',
-      stats: [['Quests Done', cs.questsCompleted], ['Rare Drops', cs.rareDropsFound], ['Zones Explored', cs.zonesExplored], ['Dungeons Cleared', cs.dungeonsCleared], ['Pets Captured', cs.petsCapured], ['Playtime', playmins + 'min']]
+      label: say(SAY, 'skills.statsProgress'),
+      stats: [[say(SAY, 'skills.statQuestsDone'), cs.questsCompleted], [say(SAY, 'skills.statRareDrops'), cs.rareDropsFound], [say(SAY, 'skills.statZonesExplored'), cs.zonesExplored], [say(SAY, 'skills.statDungeonsCleared'), cs.dungeonsCleared], [say(SAY, 'skills.statPetsCaptured'), cs.petsCapured], [say(SAY, 'skills.statPlaytime'), say(SAY, 'skills.playtimeMins', { mins: playmins })]]
     }];
     return sections.map(function (sec) {
       return /*#__PURE__*/React.createElement("div", {
@@ -525,7 +527,7 @@ export function SkillsPanel(props) {
     style: Object.assign({}, LS_HEADER, {
       marginBottom: 8
     })
-  }, "Resources"), function () {
+  }, say(SAY, 'skills.resources')), function () {
     var inv = rpgState.inventory || {};
     var items = Object.entries(inv).filter(function (_ref174) {
       var _ref175 = _slicedToArray(_ref174, 2),
@@ -533,7 +535,7 @@ export function SkillsPanel(props) {
         v = _ref175[1];
       return v > 0;
     });
-    if (items.length === 0) return lsEmpty("No resources. Harvest nodes in combat zones!");
+    if (items.length === 0) return lsEmpty(say(SAY, 'skills.resourcesNone'));
     /* Categorize */
     var fish = items.filter(function (_ref176) {
       var _ref177 = _slicedToArray(_ref176, 1),
@@ -611,6 +613,6 @@ export function SkillsPanel(props) {
         }, k.replace(/^(fish|wood|ore|herb|gear)_/, '').replace(/_/g, ' ') + ' ×' + v);
       })));
     };
-    return React.createElement(React.Fragment, null, renderGroup('Fish', fish), renderGroup('Wood', wood), renderGroup('Ore', ore), renderGroup('Herbs', herbs), renderGroup('Gear', gear), other.length > 0 && renderGroup('Other', other));
+    return React.createElement(React.Fragment, null, renderGroup(say(SAY, 'skills.groupFish'), fish), renderGroup(say(SAY, 'skills.groupWood'), wood), renderGroup(say(SAY, 'skills.groupOre'), ore), renderGroup(say(SAY, 'skills.groupHerbs'), herbs), renderGroup(say(SAY, 'skills.groupGear'), gear), other.length > 0 && renderGroup(say(SAY, 'skills.groupOther'), other));
   }())));
 }
