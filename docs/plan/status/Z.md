@@ -17,18 +17,20 @@ state: ready
 (merges `main` once 25 lands, re-generates M-tables.md) · 27-28 CAP
 #2172, #2174 · 29-31 WD #2171, #2179, #2180 (WD re-lands 4995/385 once
 23 lands) · 32 Z. On `main` b5669a5b, one base at every step. 7-26
-deploy the worker: merge them one after another. Drafts (K4, CS, EN,
-FX, RD) are marked ready first. Heads and trees: the census.
+deploy the worker: merge them one after another. Drafts (K4, RD) are
+marked ready first; a line merges only on a green `test`. Heads, trees:
+the census.
 ## Held / To 47
-- None held. EN #2195 is listed only if retargeted to `main` and its
-  review is clean (else to 47).
+- None held. To 47: FX #2194 (6221, based on FX's branch), anything
+  opened after the cut.
 ## Found
 - 45's (a)-(ad) carried. New: (ae) a precheck that times out leaves
   `switches-thrown` running as an orphan (TL's Found, seen here). (af)
   elemental2 "restore clamps at maxMana" red once under `duelpace` thrown
   (#2151's CI): watch. (ag) canvas-witness 8b reads only a comment (M).
   (ah) mp-membudget heap/buffers over their lines on a session box, CI
-  fine (FX, P2). (ai) WD: 96 "tap" words outside deskWords().
+  fine (FX, P2). (ai) WD: 96 "tap" words outside deskWords(). (aj)
+  arena.test's hour boundary (TL #2183 mends it).
 ## Needs
 - Decided for the owner while away (the planning session): K4 #2168
   `harvestgrade`, `bowpath` ON; #2187 `botscoresave` ON (writes only for

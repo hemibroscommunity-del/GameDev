@@ -16,7 +16,7 @@ its card comes with its first PR.
 Reviews in full (`server/` or `src/`): one reader a PR group, the angles of
 `/repo-review`, each finding put to its own disproof against the code and
 the suites: K4 #2168, #2176, #2177, #2182, #2187; K2 #2169, #2173; EN
-#2189 and FX #2190 (a verbatim proof). Read here: RV #2164's two new
+#2189, #2195 and FX #2190 (a verbatim proof). Read here: RV #2164's two new
 commits (61dc9e1a, 2141b125), #2193, #2192; CS #2139's merge of `main`
 (cebec572); TL #2181, #2183; LG's `league.test`. Documents and tools (step
 3): CAP #2172, #2174; LG #2170 to #2184's tools; WD #2171 to #2180; HB
@@ -131,8 +131,19 @@ commits (61dc9e1a, 2141b125), #2193, #2192; CS #2139's merge of `main`
   declarations in entityRenderer.js (one now sits over the wrong
   constant, CHAT_BUBBLE_MS's over PEER_HPBAR_HOLD_MS); EN's status says
   93 of 93, the count is 89.
+- EN #2195 (6201, levels 1-3, stacked on #2189; base retargeted to
+  `main`): 23 of 23 declarations (19 functions, 4 constants) byte-equal
+  but the added `export`; every removed line in a leaf; no leaf imports a
+  renderer or another leaf; `RES_EN_Y` in the renderer reads the imported
+  `RES_BLOCK_H` (the leaf evaluates first); eslint no-undef 0; the
+  renderer exports the same 45 names; four guards and 20 more that read
+  src/rendering/ green, 30 server suites that read the files green.
+  Nits: 8 moved functions left their comment in entityRenderer.js
+  (`npcWalkCell`, `standFootDy`, `standShadeSpan`, `fittedShadeSpan`,
+  `figureSwimLine`, `selfGathering`, `_placeBlockArm`, `RES_BAR_MAX_W`);
+  about 20 renderer imports now unused (no lint rule reads them).
 - They clash in docs/plan/census/M-tables.md (both regenerate it): EN
-  first; FX merges `main` once EN lands and re-runs
+  first (#2189, #2195); FX merges `main` once #2195 lands and re-runs
   `render-tables.test --write` and `render-code-census.mjs --write`
   (rehearsed: render-tables green).
 
@@ -208,7 +219,8 @@ rehearsed with those mends simulated.
 ## The checks on the whole
 
 The tree of lines 1-31 (without RD #2191 and EN #2195, which came later;
-#2192 at its earlier head bac21194; the mends of lines 22-26 and 30
+#2192 at its earlier head bac21194; RD's #2191 and EN's #2195 change
+neither the word counts nor the caps census (checked on `main` with them); the mends of lines 22-26 and 30
 simulated; this PR on top): tree `a5adb48cdd16f11fa13d3c3d83a0dc8e22bdb499`.
 
 - precheck: every check green but `server-tests`, which ran past even
