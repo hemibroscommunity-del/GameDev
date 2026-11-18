@@ -31,7 +31,8 @@
  * Probe: window.__btP256(). */
 import { extensions, ExtensionType, LoaderParserPriority, Texture, Rectangle, Cache, loadTextures } from 'pixi.js';
 import { P256_FILES } from '../data/p256Files.js';
-import { picNumbersOn, stripAsNumbers } from './picsNumbers.js';
+import { picNumbersOn, stripAsNumbers, stripRowsAsk, stripPlanAnswered, stripPlanDone } from './picsNumbers.js';   /* v2.3.6284: + the rows' plan */
+import { stripReadOn, readWhole } from './stripRead.js';   /* v2.3.6284: the twin read off the page's thread (card HB2 PR 5) */
 import { isPaletteSource } from './paletteDraw.js';
 import { paletteDecided } from './paletteTex.js';
 import { addPictureRestorer } from './picsOnce.js';
@@ -180,7 +181,7 @@ const WANTED = !NO_TWINS && (ALL_TWINS || FX_MADE_ON || WORLD_ICONS_ON || FX_SHE
 /* (never while QA compares cropped strips against their files: __btTrimVerify) */
 export function p256On() { return WANTED && picNumbersOn(); }
 
-const _stats = { strips: 0, pictures: 0, asOriginal: 0, readMs: 0, undecided: 0 };
+const _stats = { strips: 0, pictures: 0, asOriginal: 0, readMs: 0, undecided: 0, offPage: 0 };   /* v2.3.6284: offPage, the twins read on the worker */
 
 function pathOf(url) {
   let p = String(url || '');
@@ -297,7 +298,31 @@ export const p256LoadParser = {
     if (!twin) return loadTextures.load(url, asset, loader);
     const t0 = typeof performance !== 'undefined' ? performance.now() : 0;
     let src = null, w = 0, h = 0;
-    try {
+    /* ═══ v2.3.6284: THE TWIN'S OWN NUMBERS, READ OFF THE PAGE'S THREAD (card HB2 PR 5) ═══
+       A twin is a 256-colour file: one byte a pixel and its list of colours.  It was loaded as a picture, drawn on a
+       canvas and every pixel read back on the page to find the numbers the file held all along
+       (`p256LoadParser.load > stripAsNumbers > numbersOf > getImageData`: 27.4 ms on budget-android at `town`,
+       docs/plan/census/HB-holds.md row 16; the effects and icons load in play).  Now, as a monster's strip is
+       (zoneTextures.js loadTrackedStrip, CLAUDE.md §7), the strip reader's worker fetches and reads the file whole
+       (stripRead.js readWhole: no crop) and numbers it for the bundle's row of colours as it reads (the rows told
+       as the read starts); the page only puts it on its row.  A colour partly see-through keeps the file's own RGB
+       where the canvas gave it back rounded a step through its premultiplied store: drawn, the same picture
+       (stripPack.js's header).  No worker, a file it cannot read, a QA verify page, or `?stripworker=0`: the
+       canvas, as before. */
+    if (stripReadOn() && !(typeof window !== 'undefined' && window.__btPicNumVerify === true)) {
+      const bundle = bundleOf(url);
+      let rows = null, plan = null;
+      try {
+        const m = await readWhole(twin, () => { rows = stripRowsAsk(bundle); return rows && rows.send; });
+        if (m && m.onRow && rows) { plan = m.onRow; plan.asked = rows; stripPlanAnswered(bundle, plan); }
+        if (m) {
+          src = stripAsNumbers(bundle, null, String(url), { w: m.w, h: m.h, idx: m.idx, pal: m.pal, onRow: m.onRow });
+          if (src) { w = m.w; h = m.h; _stats.offPage++; }
+        }
+      } catch (e) { src = null; }
+      if (plan) stripPlanDone(bundle, plan);
+    }
+    if (!src) try {
       const img = await loadImage(twin);
       w = img.naturalWidth; h = img.naturalHeight;
       const cv = document.createElement('canvas');
