@@ -37,6 +37,10 @@
  *   NODE_OPTIONS=--max-old-space-size=8192 npx vite build --minify false --outDir dist-prof && mv src/dist-prof dist-prof
  *   QA_DIST=dist-prof node tools/qa/mp/run.mjs heldsweep
  *   BT_HS_STATIONS=town,lands   only these (see STATION_NAMES)
+ *   BT_QA_PROFILE=budget-android ...   a slow machine (tools/qa/profiles.mjs; v2.3.5861,
+ *                               card O2 PR 2): the report is heldsweep-<profile>.json,
+ *                               the budget judged as written (a slowed page's holds
+ *                               are longer: what is over goes to the census, never a line)
  *
  * This box draws in software a few frames a second, so the FRAME's own
  * length here says nothing about a phone's; the page's own JavaScript does
@@ -79,6 +83,8 @@ import { holdOf } from '../../../src/debug/holdNames.js';   /* v2.3.5126: the re
 export const lane = 'full';
 
 const PHONE = { width: 430, height: 932 };
+/* v2.3.5861 (card O2 PR 2): under a slow profile (BT_QA_PROFILE) the report is its own file, and says which */
+const REPORT_FILE = H.PROFILE ? `heldsweep-${H.PROFILE.name}.json` : 'heldsweep.json';
 const STATION_NAMES = ['stand', 'town', 'lands', 'fight', 'windows', 'folk', 'peer', 'armour'];
 const WANT = (process.env.BT_HS_STATIONS || STATION_NAMES.join(',')).split(',').map((s) => s.trim()).filter(Boolean);
 
@@ -347,7 +353,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   let B = null;
   const stopA = H.keepAlive(A, 15000);
   let stopB = null;
-  const report = { stations: [] };
+  const report = { profile: H.PROFILE ? H.PROFILE.name : null, stations: [] };   /* v2.3.5861: the slow profile it ran under (card O2 PR 2) */
   try {
     await H.enterWorld(A);
     const ok = await H.waitFor(A, (S) => ({ z: S.currentZone, l: !!S._zoneLoading }), (v) => v.z === 'wheel' && !v.l, { timeout: 120000, label: 'into the world' }).then(() => true).catch(() => false);
@@ -471,7 +477,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const { ranked, over } = judgeHeld(report.stations);
     report.ranked = ranked;
     report.over = over;
-    writeFileSync(join(OUT, 'heldsweep.json'), JSON.stringify(report, null, 1));
+    writeFileSync(join(OUT, REPORT_FILE), JSON.stringify(report, null, 1));
     console.log('\n  ══ EVERYTHING THAT HELD THE PAGE FOR 4 ms OR MORE, WORST FIRST ══');
     console.log('     longest   times   in all   where                          what');
     for (const f of ranked.slice(0, 40)) console.log(`     ${String(f.longest).padStart(6)} ms ${String(f.n).padStart(5)} ${String(f.sum).padStart(7)} ms  ${f.where.padEnd(30).slice(0, 30)} [${f.key}] ${f.what === f.key ? '' : f.what}${f.via ? '   via ' + f.via : ''}`);
@@ -487,7 +493,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* v2.3.5126: what the field report could not name */
     const gaps = noteGaps(report.stations, KNOWN, HOLD_MAX_MS);
     report.noteGaps = gaps;
-    writeFileSync(join(OUT, 'heldsweep.json'), JSON.stringify(report, null, 1));
+    writeFileSync(join(OUT, REPORT_FILE), JSON.stringify(report, null, 1));
     const noted = report.stations.reduce((t, s) => t + Object.values(s.notes || {}).reduce((u, v) => u + v[0], 0), 0);
     rec.ok(`every known hold left a note the field report can name (a debt-list family the page runs, ${HOLD_MAX_MS} ms or more outside the frame; ${noted} notes written; ${gaps.length} left none${gaps.length ? ': ' + gaps.slice(0, 6).map((g) => `${g.key} ${g.ms} ms at ${g.where}${g.holds > 1 ? ' (' + g.holds + ' holds)' : ''}`).join('; ') + ' -- its job must reach the ring under that name (holdNames.js MADE_AS)' : ''})`,
       gaps.length === 0, gaps);
