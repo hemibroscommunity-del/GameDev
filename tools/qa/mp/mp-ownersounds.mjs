@@ -336,8 +336,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
        the timers zeroed, a line said in the last 20 s (Ace's, 9a) held every
        other back, and 0 lines popped up by run on main */
     S._idleChatAt = null;
-    await new Promise((r) => setTimeout(r, 1500));
-    const lines = (S.npcs || []).filter((n) => n.chatBubble && Date.now() - n.chatBubble.ts < 2000).length;
+    /* v2.3.5844: until a line HAS popped up (8 s at most), not 1.5 s of the
+       wall clock: the townsfolk's clocks run by frames (16.7 ms x dt a frame),
+       and on this box Ace's ran 2.4 s in 12.7 s of wall time (measured), so
+       the 1.5 s could hold no turn of his at all (TRAPS §200).  The hums are
+       counted over the whole wait. */
+    const t0 = Date.now();
+    let lines = 0;
+    while (Date.now() - t0 < 8000) {
+      await new Promise((r) => setTimeout(r, 100));
+      lines = (S.npcs || []).filter((n) => n.chatBubble && n.chatBubble.ts >= t0).length;
+      if (lines >= 1) { await new Promise((r) => setTimeout(r, 300)); break; }
+    }
     const hums = window.__btCues.stats.log.filter((c) => /^npcVoice\d$|^lilBroHmm$/.test(c.name)).length;
     return { lines, hums, speaks: V.st.speaks - n0 };
   });
