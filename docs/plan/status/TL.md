@@ -1,7 +1,7 @@
 card: TL
-branch: claude/plan-tl-3 (PR 3; PR 1: claude/plan-tl-1, PR 2: claude/plan-tl-2)
-prs: #2175 (6160, ready); #2181 (6161, ready); PR 3 (6162, working)
-state: working
+branch: claude/plan-tl-3 (PR 3, stacked on PR 2's claude/plan-tl-2, itself on PR 1's claude/plan-tl-1)
+prs: #2175 (6160, ready); #2181 (6161, ready, on #2175); #2183 (6162, ready, on #2181)
+state: ready
 
 ## Done
 - PR 1 (6160): precheck's server-tests cap 5 min -> 20 min (whole run
@@ -17,7 +17,7 @@ state: working
   turns mid-block reproduces CI's two FAILs on the old test; none on the new.
 
 ## Next
-- The three PRs wait for CI and the gatekeeper; done once all merge.
+- The three PRs wait for the gatekeeper (merge in order); done once all merge.
 
 ## Found
 - server/test/run.mjs: when precheck's timeout kills `npm test`, the suites
