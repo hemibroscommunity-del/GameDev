@@ -118,7 +118,8 @@
  * Store's book read a page an await and the room's only once whole
  * (v2.3.6023, market.js, the page under V5's `listcap`); a re-listed noted
  * order's first taker paid back before its delete under `mktsettle: false`
- * (v2.3.6025, market.js: `mktback`).
+ * (v2.3.6025, market.js: `mktback`); the daily spin's pace kept by the room
+ * across a rejoin (v2.3.6024, dailyrewards.js, under V3's `pacekeep`).
  *
  * WHO CAN TURN IT ON.  Only the admin key, through the Test panel's
  * POST /api/admin/dev/testmode {playerId, on} (devtools.js), which the owner's

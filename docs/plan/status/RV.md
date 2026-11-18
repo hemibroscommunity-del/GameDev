@@ -1,6 +1,6 @@
 card: RV
-branch: claude/rv-mktcancel (6025, stacked on claude/rv-marketpages)
-prs: #2164 (6022), #2165 (6023) at sitting 46; #2192 (6024); 6025 (this)
+branch: claude/rv-spinpace (6024, stacked on claude/rv-mktcancel; sitting 46's order)
+prs: #2164 (6022), #2165 (6023), #2193 (6025), #2192 (6024) at sitting 46
 state: ready
 
 ## Done
@@ -18,10 +18,11 @@ state: ready
   trade window's Accept; traps-money §150 4 -> 1.
 - #2165 (6023, on #2164): the General Store's book a page an await, the
   room's once whole (`listcap`, V5's); TRAPS §76 1 -> 0.
-- #2192 (6024, on main): the daily spin's pace kept by the room across a
-  rejoin (`pacekeep`, V3's); traps-saves §276 18 -> 17.
-- 6025 (this, on #2165): under `mktsettle: false`, a re-listed noted
+- #2193 (6025, on #2165): under `mktsettle: false`, a re-listed noted
   order's first taker paid back before its delete (`mktback`).
+- #2192 (6024, this, on #2193): the daily spin's pace kept by the room
+  across a rejoin (`pacekeep`, V3's); traps-saves §276 18 -> 17.
+- Sitting 46's order: #2164, #2165, #2193, #2192.
 
 ## Found
 

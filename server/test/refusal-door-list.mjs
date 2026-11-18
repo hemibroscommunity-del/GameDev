@@ -229,7 +229,7 @@ export const ALLOW = {
   },
   '_handleDailySpin': {
     "if (this._spinOff())": "off",
-    "if (ps._lastDailySpinAt && now - ps._lastDailySpinAt < SPIN.COOLDOWN_MS)": "rate",
+    "if (spinAt && now - spinAt < SPIN.COOLDOWN_MS)": "rate",   /* v2.3.6024: pacekeep.js */
     "if (!rec || !this.playerState[pid])": "err norec",
   },
   '_handleDailyReroll': {

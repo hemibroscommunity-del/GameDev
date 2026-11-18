@@ -29,9 +29,12 @@
  * empties it: one request through early per player, what the stamp on `ps`
  * always allowed at a rejoin.
  *
- * NOT HERE: the daily spin (`_lastDailySpinAt`, card RV / K3's area: under
- * Found in docs/plan/status/V3.md); the fight's timers and the life phase
- * (traps-saves §276's other rows: a rejoin ends the fight).
+ * v2.3.6024 (card RV): and the daily spin (`_lastDailySpinAt`,
+ * dailyrewards.js), the ninth, left by V3 for RV under Found in
+ * docs/plan/status/V3.md.
+ *
+ * NOT HERE: the fight's timers and the life phase (traps-saves §276's
+ * other rows: a rejoin ends the fight).
  *
  * KILL SWITCH (lower case): `pacekeep: false` in the live flags -- nothing
  * kept or read from the room: each pace is the socket's alone, as before.
@@ -40,7 +43,8 @@
 export const PACE_KEEP = Object.freeze({
   CAP: 1000,   /* as lastplace.js's LAST_PLACE.MAX: far past a room's players */
   /* the fields kept, by why (traps-saves §276's `pace` rows) */
-  FIELDS: Object.freeze(['_diceAt', '_dropAt', '_lastAceFlipAt', '_lastGambleAt', '_lastRewardsGetAt', '_lastSalvageAt', '_raceStartedAt', '_restAt']),
+  /* v2.3.6024 (card RV): the daily spin's, the ninth */
+  FIELDS: Object.freeze(['_diceAt', '_dropAt', '_lastAceFlipAt', '_lastDailySpinAt', '_lastGambleAt', '_lastRewardsGetAt', '_lastSalvageAt', '_raceStartedAt', '_restAt']),
 });
 const FIELD = new Set(PACE_KEEP.FIELDS);
 

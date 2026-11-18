@@ -112,7 +112,9 @@ switch allows it.
   V3's `deadtake`); the General Store's book read a page an await and the
   room's only once whole (v2.3.6023, `market.js`, the page under V5's
   `listcap`); a re-listed noted order's first taker paid back before its
-  delete under `mktsettle: false` (v2.3.6025, `market.js`, `mktback`).
+  delete under `mktsettle: false` (v2.3.6025, `market.js`, `mktback`); the
+  daily spin's pace kept by the room across a rejoin (v2.3.6024,
+  `dailyrewards.js`, under V3's `pacekeep`).
 - Every save and payment rule; the login key, the device lock, the lockouts;
   a frozen account.
 - PvP consent and **every check on a hit between players** (pvpbalance.js,
