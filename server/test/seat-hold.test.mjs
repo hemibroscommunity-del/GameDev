@@ -180,8 +180,13 @@ async function joinOn(room, ws, pid, seat) {
   const g2 = room._seatGate(U('&seat=bp_mend_aaaa'), now);
   check('6. a socket naming the held seat is, on the held slots, and carries its seat', g2.ok === true && g2.seat === 'bp_mend_aaaa', g2);
   room.sessions.set(fakeWs('inflight'), { id: null, name: 'Anon', data: {}, seat: 'bp_mend_aaaa' });
+  /* v2.3.5730: with `joinguard` on (card K2 PR 11, RV's ACC-3), the newest
+     socket naming a seat takes an unjoined one's claim (join-guard.test 5);
+     one socket a seat is read here with it off */
+  room._liveFlags.joinguard = false;
   const g3 = room._seatGate(U('&seat=bp_mend_aaaa'), now);
-  check('6. ...one socket a seat: a second naming it is a stranger (refused at the cap)', g3.ok === false && g3.seat === null, g3);
+  delete room._liveFlags.joinguard;
+  check('6. ...one socket a seat: a second naming it is a stranger (refused at the cap; `joinguard: false`)', g3.ok === false && g3.seat === null, g3);
   const g4 = room._seatGate(U('&seat=bp_mend_zzzz'), now);
   check('6. a seat nobody holds is a stranger', g4.ok === false && g4.seat === null, g4);
   for (const [w, s2] of room.sessions) if (s2 && s2.seat && !s2.id) room.sessions.delete(w);

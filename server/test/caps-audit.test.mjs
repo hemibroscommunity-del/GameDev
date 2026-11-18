@@ -49,6 +49,8 @@ function check(name, cond, detail) {
  * client-side.  Every entry needs a WHY; an entry whose flag gains a
  * real client gate must be deleted (checked below). */
 const CAPS_ALLOWLIST = new Map([
+  /* v2.3.5900 (card K4 PR 1) */
+  ['harvestGrade', 'for the Test panel only: the worker judges a harvest\'s grade (harvestgrade.js) and the phone sends exactly what it sent, so nothing on the page gates on it; CAP_GATES (and CAP_OPT_IN: an opt-in, OFF as merged) lists it so "This worker" says whether the judge is on'],
   ['httpAuth', 'handshake negotiation field, not a feature gate — the client SENDS httpAuth:true in join (wsClient.js) rather than reading it from caps'],
   /* v2.3.4911 */
   ['arena', 'for the record: every worker referees its own arena (v2.3.1126), and the page\'s old-worker paths it gated (the entry fee\'s own debit and refunds, the self-reported result and its win credit) are gone; the phone takes the fee and the prizes only from the worker'],
