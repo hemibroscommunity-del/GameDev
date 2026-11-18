@@ -46,7 +46,7 @@ const check = (name, ok, detail) => {
 
 /* ═══ THE LINE ═══  legacy's code lines on the day (v2.3.5340).  Only falls;
    only the gatekeeper lowers it, in a PR of its own. */
-const LEGACY_LINE = 1555;
+const LEGACY_LINE = 1531;   /* 1555 on the day; v2.3.6260: 1531 after card M's #2127 (ten single calls named as steps; the gatekeeper's sitting 46) */
 
 const STEPS_FILE = 'src/game/frameSteps.js';
 /* the loop's file, found by system (step 5.2b: a suite never names a big file
