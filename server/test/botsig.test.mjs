@@ -208,9 +208,11 @@ const sigOf = (room, id) => room._botfp.get(id).sig;
   }
   const sk = sigOf(room, 'bp_sig_keys');
   check('2. a keyboard walking along a row of nodes, dead on each centre: never judged (its 8 headings)', sk.aim.n === 0 && !sk.reasons.includes('aimed'), sk.aim);
-  const j = judgeApproach([{ x: 0, y: 0 }, { x: 25, y: 2 }, { x: 50, y: 0 }], 100, 0, T);
+  const j = judgeApproach([{ x: 0, y: 0 }, { x: 15, y: 0 }, { x: 30, y: 3 }, { x: 50, y: 0 }], 100, 0, T);   /* v2.3.5908: four places (AIM_MIN_PLACES) */
   check('2. judge: a kink over the straightness line is not straight', j && j.straight === false, j);
   check('2. judge: a run shorter than the chord is not judged', judgeApproach([{ x: 0, y: 0 }, { x: 10, y: 3 }], 100, 30, T) === null);
+  /* v2.3.5908 (card LG's A1): the move diet's two places on the chord -- nothing between to test */
+  check('2. judge: a run of two places spanning the chord (the move diet) is not judged, not straight by default', judgeApproach([{ x: 0, y: 0 }, { x: 45, y: 0 }], 100, 0, T) === null && judgeApproach([{ x: 0, y: 0 }, { x: 20, y: 0 }, { x: 45, y: 0 }], 100, 0, T) === null);
 }
 
 // ── 3. gesture, 4. cook ──
@@ -248,6 +250,24 @@ const sigOf = (room, id) => room._botfp.get(id).sig;
   const kb = sigOf(room, 'bp_sig_cbot'), kh = sigOf(room, 'bp_sig_chum');
   check('4. cooks on a 45-a-minute timer: cook, weighing W_COOK (' + T.W_COOK + ')', kb.reasons.includes('cook') && kb.score === T.W_COOK, kb.reasons);
   check('4. a person\'s cooking: not', !kh.reasons.includes('cook'), { s: histSpread(kh.cook) });
+
+  /* v2.3.5909 (card LG's league, #2178): rung 1's cook -- it waits exactly
+     the hits the worker planned (the dice vary them: 1 to 6 hits), then a
+     fixed gesture and pause.  The beat now takes the planned hits off */
+  const cs = await join(room, 'bp_sig_cplan');
+  const cp = await join(room, 'bp_sig_cplanh');
+  /* each player on its own run of the clock (a gap is the time between its own cooks) */
+  for (const [P, rest] of [[cs, () => 90 + 220 + 1500 + 400], [cp, () => 90 + 220 + 1300 + rnd() * 1500 + rnd() * 1800]]) {
+    for (let i = 0; i < 80; i++) {
+      const hits = 1 + Math.floor(rnd() * 6);
+      room.playerState[P.session.id]._cookHits = { fishKey: 'fish_minnow', hits: Array(hits).fill(2), rolledAt: NOW };
+      NOW += (hits - 1) * 650 + Math.round(rest());
+      room._sigOnCook(P.session);
+    }
+  }
+  const ks = sigOf(room, 'bp_sig_cplan'), kp = sigOf(room, 'bp_sig_cplanh');
+  check('4. a script waiting exactly each cook\'s planned hits, then a fixed gesture: cook (its planned hits taken off the beat)', ks.reasons.includes('cook'), { s: histSpread(ks.cook), n: histTotal(ks.cook) });
+  check('4. ...a person on the same varying plans: not', !kp.reasons.includes('cook'), { s: histSpread(kp.cook) });
 }
 
 // ── 5. reflex ──
@@ -555,6 +575,25 @@ const sigOf = (room, id) => room._botfp.get(id).sig;
   check('the Test panel says every reason in words', missing.length === 0, missing);
   void HIDDEN;
   void judgeSig;
+}
+
+// ── v2.3.5908 (card K4 PR 9; card LG's A2): the reflex takes off the line's floor ──
+{
+  const room = new GameRoom(makeState(), env());
+  /* a line averaging 200 ms that wavers about 100 ms either way (rttWaver: index.js, every pong) */
+  const P = await join(room, 'bp_sig_waver', { rtt: 200, rttWaver: 100 });
+  const s = (P2) => sigOf(room, P2);
+  for (let i = 0; i < 30; i++) {
+    room._sigWU = room._sigWU || new Map();
+    const w = { at: NOW, mx: 0, my: 0 };
+    room._sigReact(P.session, NOW + 230, w);   /* an honest 230 ms answer, all of it on the line's quick end */
+    NOW += 2000;
+  }
+  const r = s('bp_sig_waver');
+  check('A2. an honest 230 ms answer on a line averaging 200 ms that wavers 100 ms: never quick (its floor, 0 ms, taken off; the average took off 200 and read 30 ms)', r.react.n >= 30 && r.react.quick === 0 && !r.reasons.includes('reflex'), r.react);
+  const Q = await join(room, 'bp_sig_steady', { rtt: 200 });   /* no waver measured: the round trip as before */
+  for (let i = 0; i < 30; i++) { room._sigReact(Q.session, NOW + 230, { at: NOW, mx: 0, my: 0 }); NOW += 2000; }
+  check('A2. ...with no waver measured, the round trip is taken off as before (230 - 200 = 30 ms: quick)', s('bp_sig_steady').react.quick === 30, s('bp_sig_steady').react);
 }
 
 Date.now = realNow;

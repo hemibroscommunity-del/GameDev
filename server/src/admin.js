@@ -419,7 +419,7 @@ export const adminMethods = {
       const ymd = d.getUTCFullYear() * 10000 + (d.getUTCMonth() + 1) * 100 + d.getUTCDate();
       /* v2.3.5285: with `fullsnap: true` the copy carries the player's other
          restored records too (playerrestore.js snapshotCopy: the vault and
-         the pets under `_with`; two rows more read, OFF by default) */
+         the pets under `_with`; two rows more read; v2.3.6000: ON by default, `fullsnap: false` off) */
       await this.state.storage.put('rpgsnap:' + playerId + ':' + ymd, await snapshotCopy(this, playerId, storedBlob));
       await this.state.storage.put('rpgsnap_at:' + playerId, now);
       // Prune the ring.  v2.3.1179: the two key classes prune

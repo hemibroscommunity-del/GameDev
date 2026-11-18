@@ -493,3 +493,20 @@ record is put in the credit's own run (`inbox.js` `_creditWith`):
 
 Kill switch `paidmark: false` in the live flags: the old order. Suite:
 `server/test/paid-mark.test.mjs`.
+
+## v2.3.6024: the spin's pace outlives a rejoin (card RV; TRAPS §276)
+
+- **What was wrong.** `_handleDailySpin` paces a player's asks by
+  `SPIN.COOLDOWN_MS` (450 ms), stamped on `ps._lastDailySpinAt`. Every join
+  rebuilds `ps`, so a script that closed and reopened its socket between asks
+  was never paced. Each ask past the pace reads the player's rewards record
+  from storage and answers.
+- **Now** the stamp is also kept by the room, by player id, in memory only
+  (`pacekeep.js`, card V3's #2128, which kept eight such paces and left this
+  one to card RV). A rebuilt `ps` reads the room's copy. Nothing new is
+  written.
+- **Kill switch:** `pacekeep: false` (V3's) makes all nine paces the
+  socket's alone again.
+- Test: `server/test/spin-pace.test.mjs` (a spin, a rejoin, a spin inside the
+  pace, past it, the switch). On main before it, the spin inside the pace is
+  answered. `rejoin-pace.test` now counts nine fields.

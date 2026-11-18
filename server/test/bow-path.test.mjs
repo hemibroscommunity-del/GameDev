@@ -2,11 +2,13 @@
  *
  * Grand plan step 4.2, a sword's claim labelled a bow's (TRAPS §329): what
  * was left of the bow's gain with `bowreach` was a claim naming its monster
- * when it lands.  `bowpath: true` (an opt-in, OFF as merged) holds a claim on
+ * when it lands.  `bowpath` (OFF as merged at v2.3.5904; ON by default since
+ * v2.3.5906, `bowpath: false` its kill switch) holds a claim on
  * an arrow seen to the arrow's line (its relay's x, y and angle) and its
  * flight time.  This holds:
  *
- *   1. the reader: off with no flag, on with `bowpath: true`, and off with
+ *   1. the reader: on with no flag (v2.3.5906) and with `true`, off with
+ *      `bowpath: false`, and off with
  *      `bowshot: false` (it judges bowshot's arrows);
  *   2. on: a claim on the monster down the arrow's line, after the arrow
  *      could have flown there: lands;
@@ -15,7 +17,7 @@
  *   4. on: a monster well off the line does not fit the arrow, even late;
  *   5. on: a relay whose x, y is far from the worker's copy of the archer is
  *      measured from the copy;
- *   6. off (as merged): the line and the time are not read -- the early,
+ *   6. off (`bowpath: false`): the line and the time are not read -- the early,
  *      off-line claim lands on the arrow, as before;
  *   7. (v2.3.5905) on: the side is measured to the monster's body, its feet
  *      up 130 px (a boss's 260): a boss hit up its body fits the arrow.
@@ -54,8 +56,8 @@ async function setup(flags) {
 
 /* ── 1. the reader ── */
 {
-  const a = await setup(), b = await setup({ bowpath: true }), c = await setup({ bowpath: true, bowshot: false });
-  check('1. `bowpath` is off with no flag, on with `bowpath: true`, off with `bowshot: false`', a.room._bowPathOn() === false && b.room._bowPathOn() === true && c.room._bowPathOn() === false);
+  const a = await setup(), b = await setup({ bowpath: true }), c = await setup({ bowpath: true, bowshot: false }), d = await setup({ bowpath: false });
+  check('1. `bowpath` is on with no flag (v2.3.5906) and with `true`, off with `bowpath: false` and with `bowshot: false`', a.room._bowPathOn() === true && b.room._bowPathOn() === true && c.room._bowPathOn() === false && d.room._bowPathOn() === false);
 }
 
 /* ── 2, 3. on: the line and the time ── */
@@ -118,12 +120,12 @@ async function setup(flags) {
 
 /* ── 6. off: as before ── */
 {
-  const t = await setup();
+  const t = await setup({ bowpath: false });
   t.relay();
   T += 1;
   const s = t.room._bowShotState(t.ps);
   const before = s.lost;
-  check('6. off (as merged): an early claim off the line lands on the arrow, the no-arrow allowance untouched', t.drop('m_b') === false && s.lost === before && !s.q[0].p, { before, after: s.lost });
+  check('6. off (`bowpath: false`): an early claim off the line lands on the arrow, the no-arrow allowance untouched', t.drop('m_b') === false && s.lost === before && !s.q[0].p, { before, after: s.lost });
 }
 
 Date.now = realNow;

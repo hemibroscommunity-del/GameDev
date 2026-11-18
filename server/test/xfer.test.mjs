@@ -20,8 +20,8 @@
  *   6. THE KILL SWITCH `xfer: false`: no row, and the trade settles as before.
  *   7. THE READ: a day's rows; a newer worker's row returned whole, marked.
  *   8. v2.3.5290 (card R PR 11): A DUEL'S POT, the first escrow road with a
- *      row.  `xferescrow` off (the default): the pot pays as before and
- *      writes no row; on: ONE row, the loser's wager to the winner, `by` the
+ *      row.  `xferescrow: false`: the pot pays as before and writes no
+ *      row; on (the default since v2.3.6000): ONE row, the loser's wager to the winner, `by` the
  *      winner's blow, in the pot's own run (a restart at any of its writes:
  *      the pot and its row both, or neither).
  *   9. v2.3.5292 (card R PR 13): THE ARENA'S STAKES.  `xferescrow` off: the
@@ -278,17 +278,20 @@ async function duelTo(flags) {
   return { st, room, duel };
 }
 {
-  const off = await duelTo(null);
+  /* v2.3.6000 (card CS): `xferescrow` is ON by default (the owner, 2026-11-17:
+     "I think turn all of them on then we monitor usage cost"); `xferescrow:
+     false` turns it off.  Off is thrown here; on is the default (no flag) */
+  const off = await duelTo({ xferescrow: false });
   check('8. a wagered duel is under way (both wagers held)', !!off.duel && off.duel.wager === 40 && off.st._store.has('duelEscrow:' + off.duel.id) && off.room.playerState[A].coins === 460);
   off.room._duelOnDeath(B, 'pvp:' + A);
   await settle(); await settle();
-  check('8. xferescrow off (the default): the pot pays the winner as before, and no row', off.room.playerState[A].coins === 540 && rows(off.st).length === 0 && !off.st._store.has('duelEscrow:' + off.duel.id), { coins: off.room.playerState[A].coins, rows: rows(off.st) });
-  const on = await duelTo({ xferescrow: true });
+  check('8. xferescrow: false: the pot pays the winner as before, and no row', off.room.playerState[A].coins === 540 && rows(off.st).length === 0 && !off.st._store.has('duelEscrow:' + off.duel.id), { coins: off.room.playerState[A].coins, rows: rows(off.st) });
+  const on = await duelTo(null);   /* v2.3.6000: the default, on */
   on.room._duelOnDeath(B, 'pvp:' + A);
   await settle(); await settle();
   const ks = rows(on.st);
   const row = ks.length === 1 ? on.st._store.get(ks[0]) : null;
-  check('8. xferescrow on: the pot pays as before, and ONE row', on.room.playerState[A].coins === 540 && ks.length === 1, { coins: on.room.playerState[A].coins, rows: ks });
+  check('8. xferescrow unset (on, the default since v2.3.6000): the pot pays as before, and ONE row', on.room.playerState[A].coins === 540 && ks.length === 1, { coins: on.room.playerState[A].coins, rows: ks });
   check('8. ...the loser\'s wager to the winner, nothing back, `by` the winner\'s blow, keyed by the duel',
     row && row.road === 'duel_pot' && row.from === B && row.to === A && row.gold === 40 && row.price.gold === 0 && row.by === A && ks[0].endsWith(':duel-' + on.duel.id), row);
   /* the forfeit: nobody's blow */
@@ -339,9 +342,9 @@ async function duelTo(flags) {
   };
   const shareOf = (row) => { const o = Object.create(null); for (const x of row.ids) { const p = /^share:(.+):(\d+)$/.exec(x); if (p) o[p[1]] = (o[p[1]] || 0) + +p[2]; } return o; };
 
-  const off = await arena(null, [100], [100]);
+  const off = await arena({ xferescrow: false }, [100], [100]);   /* v2.3.6000: off is thrown; on is the default */
   await off.room._arenaSettleStakes(TID, MID, FW); await settle(); await settle();
-  check('9. xferescrow off (the default): the stakes settle as before, and no row', rows(off.st).length === 0 && purse(off.st, FW) === 10 && purse(off.st, off.sp[0].id) === 190, { rows: rows(off.st), fw: purse(off.st, FW) });
+  check('9. xferescrow: false: the stakes settle as before, and no row', rows(off.st).length === 0 && purse(off.st, FW) === 10 && purse(off.st, off.sp[0].id) === 190, { rows: rows(off.st), fw: purse(off.st, FW) });
 
   for (const [win, lose] of [[[100], [100]], [[100, 50], [70, 33, 10]], [[17, 29, 11], [13, 101]], [[], [40, 25, 99]]]) {
     const t = await arena({ xferescrow: true }, win, lose);
@@ -480,15 +483,15 @@ async function duelTo(flags) {
 
   /* the market: a sell order, crossed by a buy */
   for (const on of [false, true]) {
-    const { st, room } = await world(on ? { xferescrow: true } : null);
+    const { st, room } = await world(on ? null : { xferescrow: false });
     await room._mktEnsureIndex();
     const sell = await room._mktPlaceOrder(ORD({ playerId: S, stashIndex: 0 }));
     const buy = await room._mktPlaceOrder(ORD({ type: 'buy', playerId: B, price: 100 }));
     await settle(); await settle();
     const rs = rowsOf(st);
     const r = rs.length ? rs[0][1] : null;
-    if (!on) check('11. xferescrow off: a market cross sells as before, and no row', sell.ok && buy.ok && buy.matched && rs.length === 0, { buy, rows: rs.map((x) => x[0]) });
-    else check('11. xferescrow on: a market cross writes ONE row, the weapon (by its id) seller to buyer, the price back, `by` the taker',
+    if (!on) check('11. xferescrow: false: a market cross sells as before, and no row', sell.ok && buy.ok && buy.matched && rs.length === 0, { buy, rows: rs.map((x) => x[0]) });
+    else check('11. xferescrow unset (on, the default): a market cross writes ONE row, the weapon (by its id) seller to buyer, the price back, `by` the taker',
       buy.ok && buy.matched && rs.length === 1 && r.road === 'market' && r.from === S && r.to === B && r.ids.join() === 'weapon:' + GID && r.price.gold === 100 && r.by === B, rs);
   }
 
@@ -500,7 +503,7 @@ async function duelTo(flags) {
   ];
   for (const [road, what, by, act] of ways) {
     for (const on of [false, true]) {
-      const { st, room } = await world(on ? { xferescrow: true } : null);
+      const { st, room } = await world(on ? null : { xferescrow: false });
       const made = await room._stCreateListing({ playerId: S, kind: 'item', invKey: GEL, qty: 2, price: 150 });
       const L = made && made.listing && made.listing.id;
       const out = await act(room, L);
@@ -508,8 +511,8 @@ async function duelTo(flags) {
       const rs = rowsOf(st);
       const r = rs.length ? rs[0][1] : null;
       const price = road === 'auction_sale' ? 150 : road === 'auction_bid' ? 120 : 90;
-      if (!on) check(`11. xferescrow off: ${what} sells as before, and no row`, !!L && out && out.ok && rs.length === 0, { out, rows: rs.map((x) => x[0]) });
-      else check(`11. xferescrow on: ${what} writes ONE row (\`${road}\`), the goods seller to buyer, the price back, \`by\` its tap`,
+      if (!on) check(`11. xferescrow: false: ${what} sells as before, and no row`, !!L && out && out.ok && rs.length === 0, { out, rows: rs.map((x) => x[0]) });
+      else check(`11. xferescrow unset (on, the default): ${what} writes ONE row (\`${road}\`), the goods seller to buyer, the price back, \`by\` its tap`,
         !!L && out && out.ok && rs.length === 1 && r.road === road && r.from === S && r.to === B && r.goods[GEL] === 2 && r.price.gold === price && r.by === by && rs[0][0].endsWith(':ah-' + L), { out, rs });
     }
   }

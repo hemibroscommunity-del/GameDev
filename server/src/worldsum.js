@@ -23,7 +23,7 @@
  * v2.3.5285 (card R PR 6): A RECORD'S END.  A character a restart deletes
  * took what it held with it, and its own count (`_econ`) went too: the sum
  * read it as value gone with no burn written (card K's hostile census:
- * `character_reset`, gold -5000).  With `resetbook: true` in the live flags
+ * `character_reset`, gold -5000).  With `resetbook` on (v2.3.6000: ON by default; `resetbook: false` turns it off)
  * the restart books it into `econ_gone` (goneAdd, in the deletes' own run):
  * what it held as burned, its own minted and burned kept.  That record holds
  * nothing; NET_READERS reads its count, so the sum over the whole store

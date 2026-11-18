@@ -58,6 +58,7 @@ export const sendMethods = {
   _send(ws, msg, type) {
     const s = typeof msg === 'string' ? msg : JSON.stringify(msg);
     ws.send(s);
+    try { if (this._usageSent) this._usageSent(type !== undefined ? type : (msg && msg.type)); } catch (e) { /* a count never stops a send */ }   /* v2.3.6001: the usage meter, a counter bump (usagemeter.js; card CS PR 2) */
     if (!this._sendCountOff()) this._sendCount(type !== undefined ? type : (msg && msg.type), typeof s === 'string' ? s.length : 0);
   },
 

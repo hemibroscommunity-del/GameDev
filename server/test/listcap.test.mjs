@@ -52,6 +52,29 @@ async function until(pred) {
   return pred();
 }
 const count = (s, prefix) => [...s._store.keys()].filter((k) => k.startsWith(prefix)).length;
+/* v2.3.6161 (card TL): a walk's next page waits for the test.  Check 1
+   counted "one call settles one page" after settle()'s 5 ms, but the walk
+   had already armed its next page NEXT_MS (10 ms) on, at the end of the
+   call: a pause of 5 ms or more between the call's return and settle()'s
+   timer (a GC, a busy CI runner) left both timers due at once, and the
+   walk's, armed first, ran first -- so the count already held page 2 and
+   the check went red now and then, green on a re-run.  Now the room's
+   `_listNext` is held while one call is counted: the next page is ASKED
+   for (counted: the walk did go on) but not run until release() hands it
+   to the real `_listNext`, so the count is of exactly one call, however
+   slow the box. */
+function holdWalks(room) {
+  const real = room._listNext;
+  const held = [];
+  room._listNext = (j, run, more) => { held.push([j, run, more]); };
+  return {
+    held,
+    release() {
+      room._listNext = real;
+      for (const [j, run, more] of held.splice(0)) room._listNext(j, run, more);
+    },
+  };
+}
 
 /* ── 1. a sweep, a page a call ── */
 {
@@ -60,11 +83,13 @@ const count = (s, prefix) => [...s._store.keys()].filter((k) => k.startsWith(pre
   for (let i = 0; i < N; i++) s._store.set('duelEscrow:old-' + String(i).padStart(3, '0'), { a: 'bp_lc_a', b: 'bp_lc_b', wager: 5, startedAt: 1 });
   const room = await openRoom(s);
   const calls = spy(s);
+  const hold = holdWalks(room);
   await room._duelEscrowSweep();
   await settle();
   const first = count(s, 'duelEscrow:');
-  check(`1. the duel's escrows: one call settles one page (${LISTCAP.SWEEP}) of ${N}`, first === N - LISTCAP.SWEEP, first);
+  check(`1. the duel's escrows: one call settles one page (${LISTCAP.SWEEP}) of ${N}`, first === N - LISTCAP.SWEEP && hold.held.length === 1, [first, hold.held.length]);
   const paced = room._lastDuelSweep;
+  hold.release();
   check('1. ...the walk goes on, a page an event, to the end of the prefix', await until(() => count(s, 'duelEscrow:') === 0), count(s, 'duelEscrow:'));
   check('1. ...each orphan refunded to both sides, once', (s._store.get('inbox:bp_lc_a') || []).length === N && (s._store.get('inbox:bp_lc_b') || []).length === N,
     [(s._store.get('inbox:bp_lc_a') || []).length, (s._store.get('inbox:bp_lc_b') || []).length]);
@@ -78,9 +103,11 @@ const count = (s, prefix) => [...s._store.keys()].filter((k) => k.startsWith(pre
   /* the bounties: a page of LISTCAP.PAGE */
   const B = LISTCAP.PAGE * 2 + 3;
   for (let i = 0; i < B; i++) s._store.set('bounty:bp_lc_' + String(i).padStart(4, '0'), { ts: 1, amount: 10 });
+  const holdB = holdWalks(room);
   await room._bountySweep();
   await settle();
-  check(`1. the bounties: one call deletes one page (${LISTCAP.PAGE}) of ${B}`, count(s, 'bounty:') === B - LISTCAP.PAGE, count(s, 'bounty:'));
+  check(`1. the bounties: one call deletes one page (${LISTCAP.PAGE}) of ${B}`, count(s, 'bounty:') === B - LISTCAP.PAGE && holdB.held.length === 1, [count(s, 'bounty:'), holdB.held.length]);
+  holdB.release();
   check('1. ...and the walk ends with none left', await until(() => count(s, 'bounty:') === 0), count(s, 'bounty:'));
   check('1. ...every page named its limit', calls.filter((c) => c.prefix === 'bounty:').every((c) => c.limit === LISTCAP.PAGE));
 }

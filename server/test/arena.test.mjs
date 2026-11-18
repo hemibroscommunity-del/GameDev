@@ -192,6 +192,21 @@ room._arena = null; room._arenaClearAt = 0;
 {
   const HOUR = 3600000;
   const hourOf = (t) => Math.floor(t / HOUR);
+  /* v2.3.6162 (card TL): this block's clock stays inside ONE clock hour.
+     The house's budget is a clock hour's (gladiator.js _arenaPrize reads
+     Date.now()), and the block sets an hour's total, then crowns tournament
+     after tournament against it, each a real wait.  Under switches-thrown's
+     slow passes the block takes long enough that a run crossing the hour
+     (CI run 44225792204, the 05:00 UTC hour) started a fresh budget midway:
+     "the next crown that hour takes the entries only" saw 1400, and "a
+     restart keeps the hour's house total" saw {used: 1500}.  So Date.now
+     here runs at the real pace but from one minute into the current hour
+     (moved back at most 59 minutes, never forward past it): 59 minutes of
+     one hour for a block that takes seconds.  The machine's clock comes
+     back at the block's end. */
+  const realNow = Date.now;
+  const clockShift = hourOf(realNow()) * HOUR + 60000 - realNow();
+  Date.now = () => realNow() + clockShift;
   const prizeFn = typeof room._arenaPrize === 'function';
   check('the prize is worked out by the bracket (_arenaPrize)', prizeFn);
   const prizeAt = (n, now, used) => {
@@ -335,6 +350,7 @@ room._arena = null; room._arenaClearAt = 0;
   room._arena = null; room._arenaClearAt = 0; room._arenaHouse = { hour: 0, used: 0 };
   state._store.delete('arena_house');
   room.eventBuffer.length = 0;
+  Date.now = realNow;
 }
 
 // ── 5 + 6 + 7. 4-player bracket: kill, timeout tiebreak, walkover ──
