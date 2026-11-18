@@ -88,7 +88,7 @@ const gateOk = (room) => !!(room._seatGate && room._seatGate(URL0, Date.now()).o
 {
   /* v2.3.6000 (card CS): `seathold` is on by default now; `made` drops the
      played character, whose seat would be held a minute: this section is the
-     guests' share, so the hold is thrown off (§8 plays the two together) */
+     guests' share, so the hold is thrown off (§5 plays the two together) */
   const room = await openRoom(makeStorage(), { max_players: 4, seathold: false });   /* guests: 2 */
   await made(room, 'bp_gs_played', 'p-played');
   const g1 = await joinAs(room, 'g1', 'bp_gs_ga');

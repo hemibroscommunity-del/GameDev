@@ -236,8 +236,8 @@ A.weaponStash = [axe(1), axe(2), axe(3)]; A.coins = 1000;
     r3.playerState['bp_rq_fs'].weaponStash = [axe(4)];
     r3.playerState['bp_rq_ft'].coins = 1000;
     const L3 = await route(r3, fs1, 'POST', '/api/store/list', { playerId: 'bp_rq_fs', kind: 'weapon', stashIndex: 0, price: 100 });
-    await route(r3, fs2, 'POST', '/api/store/buy', { listingId: L3.listing.id, playerId: 'bp_rq_ft', reqId: 'rq-buy-8' });
-    check('10: `reqstamp: false`: no stamp row was written', !!L3.listing && ![...F.store.keys()].some((k) => k.startsWith(REQ_ONCE.STAMP)), [...F.store.keys()].filter((k) => k.startsWith(REQ_ONCE.STAMP)));
+    const B3 = await route(r3, fs2, 'POST', '/api/store/buy', { listingId: L3.listing.id, playerId: 'bp_rq_ft', reqId: 'rq-buy-8' });
+    check('10: `reqstamp: false`: the buy went through, and no stamp row was written', !!L3.listing && !!B3 && B3.ok === true && ![...F.store.keys()].some((k) => k.startsWith(REQ_ONCE.STAMP)), { buy: B3, stamps: [...F.store.keys()].filter((k) => k.startsWith(REQ_ONCE.STAMP)) });
   }
   const T = makeStore();
   const r2 = await openRoom(T, {});   /* v2.3.6000: no flag, the default: on */

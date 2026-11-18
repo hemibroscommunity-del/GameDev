@@ -32,7 +32,7 @@
  */
 import { GameRoom } from '../src/index.js';
 import { STORAGE_MARKS, RESTORE_WAYS, RESTORE_WAY_NAMES, restoredPrefixes } from '../src/storagemarks.js';
-import { playerRestore, snapshotCopy, PLAYER_RESTORE } from '../src/playerrestore.js';
+import { playerRestore, snapshotCopy, PLAYER_RESTORE, SNAP_WITH_MAX } from '../src/playerrestore.js';
 import { count, unexplained, GONE_KEY } from '../src/worldsum.js';
 import { makeStorage, mockEnv, fakeWs, settle, join, seededClock } from './testroom.mjs';
 
@@ -211,6 +211,12 @@ const sumNow = (r, st) => count(r, st);
   delete r._liveFlags.fullsnap;
   const on = await snapshotCopy(r, P, blob);
   check('3. fullsnap unset (on, the default since v2.3.6000): it carries the vault and the pets at that moment', on.coins === 1000 && JSON.stringify(on._with['bank:']) === JSON.stringify(VAULT_NOW) && on._with['pets:'].list[0].id === 'p_now' && !('rpg:' in on._with));
+  /* v2.3.6000 (the gatekeeper's sitting 45): a copy past SNAP_WITH_MAX is the character alone (a put past 128 KiB threw: no copy at all) */
+  const bigVault = { ...VAULT_NOW, items: Array.from({ length: 4000 }, (_, i) => ({ key: 'wood_oak_' + i, n: i, note: 'x'.repeat(24) })) };
+  st._store.set('bank:' + P, bigVault);
+  const big = await snapshotCopy(r, P, blob);
+  check('3. a vault too big for one row: the copy is the character alone, as before', big === blob && !('_with' in big) && JSON.stringify({ ...blob, _with: { 'bank:': bigVault } }).length > SNAP_WITH_MAX);
+  st._store.set('bank:' + P, VAULT_NOW);
   const none = await snapshotCopy(r, Q, { coins: 50 });
   check('3. ...null where there is none (a restore of it deletes one made since)', none._with['bank:'] === null && none._with['pets:'] === null);
   /* through the join: a daily copy taken at the first join of the day */
