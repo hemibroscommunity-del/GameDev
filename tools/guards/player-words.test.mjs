@@ -37,7 +37,7 @@ import { join } from 'node:path';
 import { census, ROOT } from '../dev/words-census.mjs';
 
 /* The census's counts on main 891b850c, 2026-11-18 09:20 UTC (card WD PR 1, #2171; re-landed after CS #2152 and RV #2164, as gatekeeper sitting 46 asked). */
-export const PAGE_LINE = 2800;   /* v2.3.6354: card WD3 moved AccountLoginForm, AccountKeyCard, AccountPanel's words into src/data/say (was 2842) */
+export const PAGE_LINE = 2740;   /* v2.3.6355: card WD3 counted GameApp's dev console (NOT_SHOWN) and the Test panel's RenameRow (DEV_FILES) as not shown (was 2800) */
 export const SERVER_LINE = 385;
 
 /* The "Wheel" / "remnant" rows the census found: `node tools/dev/words-census.mjs --lines`. */
@@ -88,6 +88,21 @@ for (const [n, ok, words] of verdict(c)) check(n + '. ' + words, ok);
   const grew = c2.totals.place - c.totals.place;
   check('4. the break proof: a scratch file with 3 new words in place fails 1 and 3 (' + grew + ' more)',
     grew === 3 && !v[0][1] && v[1][1] && !v[2][1], JSON.stringify(v.map((x) => [x[0], x[1]])));
+}
+
+/* 5. v2.3.6355: NOT_SHOWN (tools/dev/words-census.mjs) leaves out only the
+ * words inside its calls: a scratch file with the dev console's reply and the
+ * same words in a toast counts the toast and not the reply.  BREAK PROOF:
+ * `const notShown = () => true;` in the census -> FAIL 5 (the toast goes too). */
+{
+  const scratch = 'src/ui/panels/ScratchNotShown.jsx';
+  const body = 'debugBus.cmd(\'wheel\', () => \'wheel open now\'); toast(\'wheel open now\');\n';
+  const c3 = census({
+    clientFiles: c.clientFiles.concat([scratch]),
+    read: (f) => (f === scratch ? body : readFileSync(join(ROOT, f), 'utf8')),
+  });
+  const grew = c3.totals.place - c.totals.place;
+  check('5. NOT_SHOWN leaves out the dev console\'s words and nothing beside them (' + grew + ' more, 1 wanted)', grew === 1);
 }
 
 process.exit(failed ? 1 : 0);
