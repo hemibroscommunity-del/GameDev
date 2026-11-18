@@ -80,8 +80,8 @@ size fallback. Documents and tools (step 3): O2 #2148, J3 #2154-#2160.
   mediums: `bowshot.js:113-132` the relay's `ang` is taken at fire, the
   line is set at release (a held aim keeps moving; 4 of 8 claims landed at
   35 degrees off); `bowshot.js:77/130` the side slack is from the
-  monster's feet (a 5x boss hit 95 px up: 4 of 8). K4's #2162 (5905, late)
-  mends both behind `caps.bowPath`: not on this list.
+  monster's feet (a 5x boss hit 95 px up: 4 of 8). K4's #2162 (5905)
+  mends both behind `caps.bowPath` (below), with a new medium of its own.
 
 ### K3 #2130 (5882): none blocking
 
@@ -184,10 +184,10 @@ size fallback. Documents and tools (step 3): O2 #2148, J3 #2154-#2160.
   planning session's yes.
 - O2 #2148 (step 3): the full profile run (the owner's yes), census only.
 
-### Late, reviewed, held to 46
+### Late: reviewed, listed or held to 46
 
-- K4 #2162 (5905): listable as OFF (relay, cap on its own line, CAP_GATES,
-  CAP_OPT_IN); it is on the list. **Before `bowpath` is ON (medium):**
+- K4 #2162 (5905): on the list as OFF (the relay as before, the cap on
+  its own line, in CAP_GATES and CAP_OPT_IN). **Before `bowpath` is ON (medium):**
   `projectiles.js:1810` a nocked arrow can hit in its 110 ms nock; removed
   (:2671) or landed (:1305) before release, it sends no relay
   (`releaseRelay` :1610), so a point-blank archer's claims run out of the
@@ -195,12 +195,16 @@ size fallback. Documents and tools (step 3): O2 #2148, J3 #2154-#2160.
   of release beat its relay; `_pfBowShot` jitter; peers start the arrow at
   the bow hand. Nit: `bowshot.js:145` reads `m.boss`, never set.
 - RV #2164 (6022, `deadtake` in the money's four) and #2165 (6023, the
-  store's book a page an await, `listcap`): none blocking; on the list.
-  Nits: `storeoffer.js:440` a dying resend gets the wrong words;
-  `listcap: false` keeps the build-then-publish (the spec says so).
-- CS #2139, #2152: reviewed, none blocking, but no head with `main` merged
-  (RV's #2110 meets `duel.test`) by the cut: to 46.
-- V7 #2163 (6082), #2166 (6083): two bases over #2153: to 46.
+  store's book a page an await, `listcap`): the review found nothing
+  blocking (nits: `storeoffer.js:440` a dying resend gets the wrong
+  words; `listcap: false` keeps the build-then-publish, as the spec says),
+  but **#2164 is red on its own head**: `traps-economy-social` §269 ("gates
+  the trade window shares ... none new": `_deadTakeOn`). Both to 46.
+- CS #2139, #2152: reviewed, none blocking, but #2139 counts two bases
+  over K2's #2136 and meets RV's #2115 in `switches.mjs` and SWITCHES.md:
+  to 46, after K2 and RV are on `main`.
+- V7 #2163 (6082, the wind-ups carried) and #2166 (6083, §273's rows carry
+  their why, guard text only): on the list at their `main`-merged heads.
 
 ## The rehearsal (main 79f8c4ab)
 
@@ -219,40 +223,40 @@ the tree after that merge.
 | 7 | #2159 | `14edfcc6a5750ce36d6d942c975fe0118c4b45aa` | `8d04899e355beb85a3a67afc27579d5772656de5` | 1 |
 | 8 | #2160 | `33154d123d869f5915a02d82d5065b1e07d2e246` | `0e4903b6f4eed105ff10d7bc128e7ce4e816a74b` | 1 |
 | 9 | #2138 | `e1b46588454c6e431443bdab321b419da435fcb5` | `a4bac9875c327538a358741f9e43b857ceada99a` | 1 |
-| 10 | #2153 | `3cbf7e6453553560a982d319eb618d20d8f05e82` | `42f05f42237c00c189ba4ea6ef0993bacdfcd0f0` | 1 |
-| 11 | #2130 | `403320ce17242ba23be071b468b998ae0ac8b6f0` | `943b155b5f37b00b01a3ea67dfff0c1b6f634ff1` | 1 |
-| 12 | #2142 | `83ca17a71669c4176da8be5346040175f65f3304` | `5a01cf3f3b018fd365d2696e7f15dee325b71962` | 1 |
-| 13 | #2150 | `0054b3184c75ea808c5047d8e52dda3de0fe4ddf` | `b9a43c3ee245f344aeeb798253cf889c73fdaf1d` | 1 |
-| 14 | #2161 | `fe2f33eaba94d681ae8294a7a879080b89d89837` | `6839425f5289ad9cf21ab2c0c9c4d11336f4b7ad` | 1 |
-| 15 | #2127 | `56bca8db9092eef6c74b759120bca7e9d878e9e4` | `dfe6e7022475d1f9e29c1fb7eb98ce0249fb6db3` | 1 |
-| 16 | #2131 | `8cd66542401cbf14e2a50254b8d963fdcf4fdc79` | `c7397b9c508cfbb2288e10ded689643f246e6efb` | 1 |
-| 17 | #2144 | `dd1bd0e33771885b77b65876eabcbfe3b7180214` | `2aa21d74b711661c6b8102a65d4fa1e234a255a4` | 1 |
-| 18 | #2145 | `472eda104deae2619697c8c8d3b23f0d9e263289` | `fba6c631b9007768930552b46ccfcba1297ea406` | 1 |
-| 19 | #2146 | `3108f7c3d031defad055a1e865b96c080d828c23` | `eb31cf92ff5df9fb6570701083fd751b613d5224` | 1 |
-| 20 | #2129 | `7c38f88c8970971a64a8c04be565a5fcf95d952e` | `dd934df8b0aa7b0d3fe3ab7322a44228026b0b80` | 1 |
-| 21 | #2140 | `b24d31180b1709d67ceb555dc22f483c4048d655` | `591ac324f1b6843661461fd8e4ac692926cefc5d` | 1 |
-| 22 | #2147 | `96ebd5ac5e323647025ce22994013c9251b6b706` | `abdb895c69d02ad2abeb632fbd2d7ce78ff6bb62` | 1 |
-| 23 | #2151 | `99f9dc67327e9b9577467546f2ea24932c1c833a` | `db9a61b65087fb135838755b98084510db4cfdf7` | 1 |
-| 24 | #2162 | `82767a1605d6b5baa9b7a648919459c100c10d8f` | `62bd77ad45086df374fe2506f80215e4ba5bc73f` | 1 |
-| 25 | #2136 | `9dfd14bb8d4a53829a8d5681fc4f17d63944d015` | `0f3bee716e7f6262de80c2a887b7975242afef03` | 1 |
-| 26 | #2115 | `62547b3a3c2cf93363749cec91fbf4bd7e915c9e` | `e9910767aa903e523b2bad86d60969d7197a7a7e` | 1 |
-| 27 | #2116 | `98b34262301c2c484854d60ee3bef5579bc65bc5` | `0c1ea2b393763b42281d54624a2749cc31680a23` | 1 |
-| 28 | #2117 | `ecf677d7738ab15bbeb1e354d6528c48c3daa412` | `1c4325b9cb6660dedb6cceb85a2f154dbc967c30` | 1 |
-| 29 | #2118 | `61ce4ce1ad7556c3bedd4ac9fb04ef4ae51a77c3` | `314376415bb0ca2ff8b29cf747256348e081b38a` | 1 |
-| 30 | #2119 | `7b039d86ea60fcde04396b792190387e62f31883` | `026c6e0e6587d5e6ffc7cd9c1ec64939aabe7b8c` | 1 |
-| 31 | #2120 | `aa94fa7bd6a1db8873fa74b6ba0d11298add8675` | `5f76592e2bfc09b0e0461d70b8b95f30c959fa6d` | 1 |
-| 32 | #2121 | `aee1c56067400f37c4f0eeb75508cc6edb1088f3` | `1d3909df62464ae64833844e1d9546144aa28a58` | 1 |
-| 33 | #2122 | `9c5f09b7911779c31e8876c9b8458f151b0a530c` | `d4b748aab42f6cf87abe8130c516b99c47cf22aa` | 1 |
-| 34 | #2123 | `26903bc6e811d7df632b9659e4c762e7fe0739a7` | `27016c69c66cd4d6adfe75ef5aedc71d73b2485a` | 1 |
-| 35 | #2132 | `576a0417fd240ffd471dc591ceddf58b2dbc159e` | `081be3357d18af586a1813e0913c3060d2e6bd90` | 1 |
-| 36 | #2133 | `e047789faed4b75fd4b308080dffa74028d45ae9` | `4ad5cb0a1c5d2b9f8908aeb49e7316728ab2ffbb` | 1 |
-| 37 | #2141 | `435e11a6838c1e2c791ad8defa671e1b61550c6a` | `84e5eacb080a49e875d0acf4e3e1b0a1f4e99b23` | 1 |
-| 38 | #2164 | `1426ffeb6dde778a7733e900a4b5401017baa35f` | `5c9da4499220956b8211571fc7097b2def0efffb` | 1 |
-| 39 | #2165 | `b621e18b59ded5fc9c0efb4683956c92653c158b` | `62fef5a0037f72a5d9103383d76953d54043ea12` | 1 |
-| 40 | #2135 | `e6b85c80b50b4935003477ae9031d63b7a246ad0` | `667382ce28234987ff54953ffb55fe23c9ca2d82` | 1 |
-| 41 | #2137 | `ef7b1591700410a5d358afd8c52eb16c00ccdcb4` | `65b468cef1ecc920923113ef3fef632afccc82cd` | 1 |
-| 42 | #2143 | `ee6a25fae0ee3f92b223f1696f105e6ed70fe6a6` | `e8594ff27f052ee7f616424b5c1936dc21dd084a` | 1 |
-| 43 | #2149 | `7263f8b0bcc959ea11711f115e19bc2fce3a228b` | `9747f24b6b3b3f4a24556c9fd8897c023950d673` | 2 |
+| 10 | #2153 | `1a83c60912714e36fda50c6b37225c3c4110f7df` | `42f05f42237c00c189ba4ea6ef0993bacdfcd0f0` | 1 |
+| 11 | #2163 | `3861cfc213633cbdb82507bb52cacf5f14225a77` | `5701f2743a45eb7ac2dab1f54cec7ee876a0fde5` | 1 |
+| 12 | #2166 | `770a25a54c6be0f0f0a2442e390125a5a5a3db79` | `2a64f7a3e22a697c6d3a5bc167d7031df381f0f4` | 1 |
+| 13 | #2130 | `403320ce17242ba23be071b468b998ae0ac8b6f0` | `b0ab7b9d42dfe3b8ba8fd775dd5a265e9b411192` | 1 |
+| 14 | #2142 | `83ca17a71669c4176da8be5346040175f65f3304` | `4c6cbea65f7fead5f2e6cfd7b2e28ed9a92f91e9` | 1 |
+| 15 | #2150 | `0054b3184c75ea808c5047d8e52dda3de0fe4ddf` | `163e61d4d98eed678bced6cd8b46e6e3b71edf5c` | 1 |
+| 16 | #2161 | `fe2f33eaba94d681ae8294a7a879080b89d89837` | `fb29edee792586bab61aa1027f84f499e361e237` | 1 |
+| 17 | #2127 | `56bca8db9092eef6c74b759120bca7e9d878e9e4` | `17631a0c591f633de703c943a6196fe99d18078d` | 1 |
+| 18 | #2131 | `8cd66542401cbf14e2a50254b8d963fdcf4fdc79` | `0591e15888e3faecaa242e880e37e0c0915e0ffa` | 1 |
+| 19 | #2144 | `dd1bd0e33771885b77b65876eabcbfe3b7180214` | `d5dda5afe9c2a10f4f9abce0fd98ec357b961da3` | 1 |
+| 20 | #2145 | `472eda104deae2619697c8c8d3b23f0d9e263289` | `82afa5609903de090f6482817e36a73e1deb289d` | 1 |
+| 21 | #2146 | `3108f7c3d031defad055a1e865b96c080d828c23` | `61c57c7660df4cc2ad3a75a3099e0739c2e8de25` | 1 |
+| 22 | #2129 | `7c38f88c8970971a64a8c04be565a5fcf95d952e` | `d038951ce1984334e4a7da2ca467efbf90342d56` | 1 |
+| 23 | #2140 | `b24d31180b1709d67ceb555dc22f483c4048d655` | `1e2f07b82f2fbe62e41d049148fd0ffc0e9fbeb9` | 1 |
+| 24 | #2147 | `96ebd5ac5e323647025ce22994013c9251b6b706` | `34845c886e32f0713efca6ab6d7bb62fba4bab65` | 1 |
+| 25 | #2151 | `99f9dc67327e9b9577467546f2ea24932c1c833a` | `f540d77c3ae10e62b84e5ebe25ac9e49bdb2f002` | 1 |
+| 26 | #2162 | `82767a1605d6b5baa9b7a648919459c100c10d8f` | `87502970fad2fbc62103f67e644f7c7ba8a61443` | 1 |
+| 27 | #2136 | `9dfd14bb8d4a53829a8d5681fc4f17d63944d015` | `498fba1c5c26e38f2c3264efd7270218f65f6c77` | 1 |
+| 28 | #2115 | `62547b3a3c2cf93363749cec91fbf4bd7e915c9e` | `9cbc61bd6fe85ddb20d9716159fcf427c9d53559` | 1 |
+| 29 | #2116 | `98b34262301c2c484854d60ee3bef5579bc65bc5` | `cf730078b6e3ff3e90329853e709fbde6d9a3415` | 1 |
+| 30 | #2117 | `ecf677d7738ab15bbeb1e354d6528c48c3daa412` | `e60820d645467613844b47a7ffdcbed592a3923c` | 1 |
+| 31 | #2118 | `61ce4ce1ad7556c3bedd4ac9fb04ef4ae51a77c3` | `2bb04d4e5ed2e15d5cb7d451bfee3600b4fde8df` | 1 |
+| 32 | #2119 | `7b039d86ea60fcde04396b792190387e62f31883` | `344935554b0871bcb020498071d0a6f6ab88f676` | 1 |
+| 33 | #2120 | `aa94fa7bd6a1db8873fa74b6ba0d11298add8675` | `215a2fe27065fac822ab419a379a4ce91af6742d` | 1 |
+| 34 | #2121 | `aee1c56067400f37c4f0eeb75508cc6edb1088f3` | `c6cc28a7c250f5afe7b780ba285bb871f8c3f043` | 1 |
+| 35 | #2122 | `9c5f09b7911779c31e8876c9b8458f151b0a530c` | `0fad23e802745b31adac6cb68cad7dfd1450b17f` | 1 |
+| 36 | #2123 | `26903bc6e811d7df632b9659e4c762e7fe0739a7` | `a259b1dbcf9e8f9b03907b79ffaf815891ccf7cd` | 1 |
+| 37 | #2132 | `576a0417fd240ffd471dc591ceddf58b2dbc159e` | `63933396858c3c3d9866b6594b9155d64e1ba43a` | 1 |
+| 38 | #2133 | `e047789faed4b75fd4b308080dffa74028d45ae9` | `a5fc9ce3cacf1d750d2ec8846ec7ed65bea8cf58` | 1 |
+| 39 | #2141 | `435e11a6838c1e2c791ad8defa671e1b61550c6a` | `1947ca3327bf007dda938f8599316bbfcec438fd` | 1 |
+| 40 | #2135 | `e6b85c80b50b4935003477ae9031d63b7a246ad0` | `8db0f722acbf9d74a87fcbadb3949174bb302b96` | 1 |
+| 41 | #2137 | `ef7b1591700410a5d358afd8c52eb16c00ccdcb4` | `80e0222eb5fc75c3b8cf635007678358c2233784` | 1 |
+| 42 | #2143 | `ee6a25fae0ee3f92b223f1696f105e6ed70fe6a6` | `44697645e9a0107395f50e88fc16208ab456f698` | 1 |
+| 43 | #2149 | `7263f8b0bcc959ea11711f115e19bc2fce3a228b` | `52332e6dfb4624a58f3dd1243226e668cb740035` | 2 |
 | 44 | #2128 | `aa71938` + `main` (V3 merges once 43 lands) | -- | -- |
 
 ## The checks on the whole
@@ -265,7 +269,12 @@ the tree after that merge.
 - Lines 1-18 and 20-42 of an earlier cut (37 lines, before K4's and K3's
   main merges, which change no tree but their own): build green; the
   server suite 566 suites, all green (840 s).
-- The final tree (lines 1-43, 9747f24b): build green; questline run alone:
-  see the list's message (QUESTLINE).
+- The questline tree (lines 1-43 as cut at 03:14, with RV #2164 and
+  #2165, without V7 #2163 and #2166; 9747f24b): build green; questline run
+  alone: 187 of 187 (430 s).
+- The final tree (lines 1-43 above, 52332e6d): every merge clean; the
+  guards traps-combat-rules, -economy-social, -worker, -money, -saves,
+  -wire, -page-rules, -page-holes, switches, systems, four-lines,
+  cap-gates green.
 - RV's own full run on its stack's top: 561 green (714 s). K4, V3, CS, M,
   M2, U3, K3, P2, V6, V7 report their own suites green.
