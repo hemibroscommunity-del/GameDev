@@ -1,6 +1,8 @@
 import { coinArtFor, COIN_ONE } from '@/game/coinArt.js';   /* v2.3.3734: the owner's coin piles */
 import React from 'react';
 import { storeEnabled } from '@/ui/storeApi.js';   /* v2.3.2476 */
+import { SAY } from '@/data/say/vendor.js';   /* v2.3.6348: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';
 /* v2.3.2618: BT_AUDIO, _objectSpread and pushDmgPopup went with the
    shopkeeper's shelf -- they were the purchase handler's, and nothing else
    in this panel used them. */
@@ -101,11 +103,11 @@ export function VendorPanel(props) {
      the subtitle says that; the tile keeps its words. */
   return React.createElement("div", { style: LS_WRAP },
     /* v2.3.3526: the gavel (icons/ui/bldg-auction-gavel.webp), as the door's prompt */
-    lsHeader('auction-gavel', '⚖', "Auction House", "Individual item listings and bids"),
+    lsHeader('auction-gavel', '⚖', say(SAY, 'vendor.title'), say(SAY, 'vendor.subtitle')),
     React.createElement("div", { style: LS_BODY },
       React.createElement("div", {
         style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 12 }
-      }, React.createElement("span", { style: { fontSize: 12, color: LS.txt2 } }, "Your gold"),
+      }, React.createElement("span", { style: { fontSize: 12, color: LS.txt2 } }, say(SAY, 'vendor.yourGold')),
       lsGold(rpgState.coins, 16, rpgState.coins)),
       /* The one tile, in the mockup's own words. Gated on the store cap and
          read through storeEnabled() so it cannot appear against a worker
@@ -130,16 +132,16 @@ export function VendorPanel(props) {
       }), React.createElement("span", { style: { minWidth: 0 } },
         React.createElement("span", {
           style: { display: 'block', fontSize: 14, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: LS.brass }
-        }, "Market"),
+        }, say(SAY, 'vendor.market')),
         React.createElement("span", {
           style: { display: 'block', fontSize: 11, color: LS.txt2, marginTop: 2 }
-        }, "Buy, sell, and bid with players"))
+        }, say(SAY, 'vendor.marketSub')))
       ) : React.createElement("div", {
         style: { fontSize: 12, color: LS.txt2, lineHeight: 1.5 }
-      }, "The market is not open on this world yet. It arrives with the next server update."),
+      }, say(SAY, 'vendor.marketClosed')),
       React.createElement("div", {
         style: { fontSize: 11, color: LS.txt3, marginTop: 12, lineHeight: 1.5 }
-      }, "Meals and drinks are cooked at the Cookhouse, from what the farm grows.")));   /* v2.3.3132: Diego sells no food or drink */
+      }, say(SAY, 'vendor.foodNote'))));   /* v2.3.3132: Diego sells no food or drink */
 }
 
 /* ═══ v2.3.2618: THE SHELF THAT USED TO BE DRAWN HERE ═══
