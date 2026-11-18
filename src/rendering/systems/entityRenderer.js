@@ -3207,8 +3207,10 @@ function _peerPrewarmIfChanged(display, sig, bodyFor, gearIds) {
    `lookFrames`) on the page: 40 ms at the peer station on budget-android,
    20.6 on hotel-laptop (docs/plan/census/HB-holds.md).  The picture is the
    worker's already (CLAUDE.md §7's order: what is left on the page is the
-   frame's decision), so the walk now gives the page back at the next frame
-   once PEER_LOOK_SLICE_MS of it has run, as uploadBakedTextures does. */
+   frame's decision), so the walk now gives the page back once
+   PEER_LOOK_SLICE_MS of it has run, in a task of its own (a timeout, as
+   uploadBakedTextures' unbudgeted pass does): a requestAnimationFrame resume
+   ran each slice in the same task as the game's frame. */
 const PEER_LOOK_SLICE_MS = 4;
 async function _peerLookPrewarmIfChanged(display, sig, entriesFor, gearIds) {
   if (display._peerLookSig === sig) return;
@@ -3223,7 +3225,7 @@ async function _peerLookPrewarmIfChanged(display, sig, entriesFor, gearIds) {
       if (!ents) continue;
       const fc = playerFrameCount(pose, dir) || 1;
       for (let f = 0; f < fc; f++) {
-        if (performance.now() - t0 >= PEER_LOOK_SLICE_MS) { await _nextFrameP(); t0 = performance.now(); }   /* v2.3.6204 */
+        if (performance.now() - t0 >= PEER_LOOK_SLICE_MS) { await new Promise((r) => setTimeout(r, 0)); t0 = performance.now(); }   /* v2.3.6204: a task of its own, not the frame's */
         if (display.destroyed || display._peerLookSig !== sig) return;   /* gone, or changed again */
         const worn = [];
         for (const [sl, it] of gearIds) {
