@@ -1,6 +1,6 @@
 card: TL
-branch: claude/plan-tl-2 (PR 2, stacked on PR 1's claude/plan-tl-1)
-prs: #2175 (6160, ready); #2181 (6161, ready, stacked on #2175)
+branch: claude/plan-tl-3 (PR 3, stacked on PR 2's claude/plan-tl-2, itself on PR 1's claude/plan-tl-1)
+prs: #2175 (6160, ready); #2181 (6161, ready, on #2175); #2183 (6162, ready, on #2181)
 state: ready
 
 ## Done
@@ -10,9 +10,14 @@ state: ready
 - PR 2 (6161): listcap check 1's race: the walk's 10 ms next page beat the
   test's 5 ms settle() after any stall; the test holds `_listNext` while it
   counts one call. 150 runs green (alone, beside npm test, one core).
+- PR 3 (6162, added by the planning session's message of 05:02 UTC):
+  arena.test's house-budget block crossed a clock hour under switches-thrown
+  (CI run 44225792204). Its Date.now now runs from one minute into the
+  current hour, restored at the block's end. A clock shifted so the hour
+  turns mid-block reproduces CI's two FAILs on the old test; none on the new.
 
 ## Next
-- PR 3 (6162) stacks on this branch; done once all three merge.
+- The three PRs wait for the gatekeeper (merge in order); done once all merge.
 
 ## Found
 - server/test/run.mjs: when precheck's timeout kills `npm test`, the suites
