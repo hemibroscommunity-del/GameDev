@@ -12,6 +12,8 @@ import { FUSION_BASES, SECOND_SLOT_LVL, isVolatilePair, isWeaponGem, weaponGemEf
 import { gemExtractCost } from '@/data/items.js'; /* v2.3.3513: Take out's price, the Blacksmith's own */
 import { gemCount, gemTakeLocal, gemXpOwedTotal } from '@/data/gems.js'; /* v2.3.3516: gems are bag items; the XP is for gems you made */
 import { act } from '@/game/actions.js';   /* v2.3.5190: the page's requests leave through the action door (card K PR 7) */
+import { SAY } from '@/data/say/enchant.js';   /* v2.3.6347: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say, sayPieces } from '@/game/say.js';
 /* === EnchantPanel — buildingPanel === 'enchant' sub-panel === */
 /* v2.3.874: extracted verbatim from the buildingPanel === 'enchant' clause
    in BroTown.jsx (UI decomposition; behavior-frozen). 3 props; data +
@@ -132,7 +134,7 @@ export function EnchantPanel(props) {
     return function () { clearTimeout(t); };
   }, [wgWait && wgWait.at]);
   return React.createElement("div", { style: LS_WRAP },
-    lsHeader('enchant', '✨', "Enchanter", "Enchanting Lv" + (((_rpgState$lifeSkills1 = rpgState.lifeSkills) === null || _rpgState$lifeSkills1 === void 0 || (_rpgState$lifeSkills1 = _rpgState$lifeSkills1.enchanting) === null || _rpgState$lifeSkills1 === void 0 ? void 0 : _rpgState$lifeSkills1.level) || 1)),
+    lsHeader('enchant', '✨', say(SAY, 'enchant.title'), say(SAY, 'enchant.level', { lvl: (((_rpgState$lifeSkills1 = rpgState.lifeSkills) === null || _rpgState$lifeSkills1 === void 0 || (_rpgState$lifeSkills1 = _rpgState$lifeSkills1.enchanting) === null || _rpgState$lifeSkills1 === void 0 ? void 0 : _rpgState$lifeSkills1.level) || 1) })),
     React.createElement("div", {
       /* v2.3.1235: state-correction §10 — internal scroll body; scrollbar
          hidden by .ls-scrollbody (game.css), reachability signalled by
@@ -143,27 +145,27 @@ export function EnchantPanel(props) {
       style: LS_BODY
     },
       React.createElement("div", { style: { fontSize: 12, color: LS.txt2, marginBottom: 12, lineHeight: 1.5 } },
-        "Slot polished gems into gear with open gem slots.",
+        say(SAY, 'enchant.intro'),
         /* v2.3.3516: the 400 Enchanting XP is for gems you MADE (the worker's
            lifeSkills.gemsUnpaid, weapongem.js "THE XP, ONCE A GEM"): said
            here so a bought or traded gem's set paying none is no surprise */
         xpOwed === null ? null : React.createElement("div", { "data-gem-xp-owed": xpOwed, style: { fontSize: 11, color: LS.txt3, marginTop: 4 } },
           xpOwed > 0
-            ? "Gems you made pay 400 Enchanting XP when set: " + xpOwed + " still to come."
-            : "Gems you make pay 400 Enchanting XP when set. Bought, traded or taken-out gems pay none.")),
+            ? say(SAY, 'enchant.xpOwed', { owed: xpOwed })
+            : say(SAY, 'enchant.xpHow'))),
       [{
-        label: 'Melee',
+        label: say(SAY, 'enchant.melee'),
         key: 'weapon',
         wpn: rpgState.weapon
       }, {
         /* v2.3.3481: the 2026-10-19 UI review -- was 'Ranged', beside 'Staff',
            which is ranged too; this slot is the bow, as the hero sheet, the
            profile and the leaderboard call it (and the Bank's row) */
-        label: 'Bow',
+        label: say(SAY, 'enchant.bow'),
         key: 'rangedWeapon',
         wpn: rpgState.rangedWeapon
       }, {
-        label: 'Staff',
+        label: say(SAY, 'enchant.staff'),
         key: 'staffWeapon',
         wpn: rpgState.staffWeapon
       }].map(function (_ref84) {
@@ -211,7 +213,7 @@ export function EnchantPanel(props) {
             color: (wpn === null || wpn === void 0 ? void 0 : wpn.name) ? LS.txt1 : LS.dis,
             marginBottom: 4
           }
-        }, (wpn === null || wpn === void 0 ? void 0 : wpn.name) || 'None'), /* v2.3.3481: the 2026-10-19 UI review -- the rarity row only for a
+        }, (wpn === null || wpn === void 0 ? void 0 : wpn.name) || say(SAY, 'enchant.none')), /* v2.3.3481: the 2026-10-19 UI review -- the rarity row only for a
            weapon that is there: with the slot empty it printed "Common (1×)"
            under "None", as if something were equipped. */
         wpn && /*#__PURE__*/React.createElement("div", {
@@ -227,7 +229,7 @@ export function EnchantPanel(props) {
           style: {
             color: ((_RARITY_TIERS$wpn$tie = RARITY_TIERS[wpn === null || wpn === void 0 ? void 0 : wpn.tier]) === null || _RARITY_TIERS$wpn$tie === void 0 ? void 0 : _RARITY_TIERS$wpn$tie.color) || LS.txt3
           }
-        }, ((_RARITY_TIERS$wpn$tie2 = RARITY_TIERS[wpn === null || wpn === void 0 ? void 0 : wpn.tier]) === null || _RARITY_TIERS$wpn$tie2 === void 0 ? void 0 : _RARITY_TIERS$wpn$tie2.label) || 'Common',
+        }, ((_RARITY_TIERS$wpn$tie2 = RARITY_TIERS[wpn === null || wpn === void 0 ? void 0 : wpn.tier]) === null || _RARITY_TIERS$wpn$tie2 === void 0 ? void 0 : _RARITY_TIERS$wpn$tie2.label) || say(SAY, 'enchant.common'),
         /* v2.3.3513: no "(1.5x)" against the worker -- a gem never changed
            the worker's damage roll (the owner's decision 9: the metal's
            damage stays, the element is the gain), so the number it printed
@@ -246,13 +248,13 @@ export function EnchantPanel(props) {
             fontSize: 11,
             fontWeight: 700
           }
-        }, "⚡VOLATILE")), /*#__PURE__*/React.createElement("div", {
+        }, say(SAY, 'enchant.volatile'))), /*#__PURE__*/React.createElement("div", {
           style: {
             fontSize: 11,
             color: LS.txt3,
             marginBottom: 6
           }
-        }, "Gem slots: ", usedSlots, "/", maxSlots, " used", maxSlots === 0 && ' · Craft slotted gear at the Blacksmith or Woodworker first', (wpn === null || wpn === void 0 ? void 0 : wpn.element1) && !(wpn !== null && wpn !== void 0 && wpn.element2) && maxSlots >= 2 && !canAddSecond && ' · Req Enchanting Lv20 for 2nd slot'),
+        }, say(SAY, 'enchant.slots', { used: usedSlots, max: maxSlots }), maxSlots === 0 && say(SAY, 'enchant.slotsNone'), (wpn === null || wpn === void 0 ? void 0 : wpn.element1) && !(wpn !== null && wpn !== void 0 && wpn.element2) && maxSlots >= 2 && !canAddSecond && say(SAY, 'enchant.slotsSecond')),
         /* v2.3.3513: what the gem does, one line a gem, in the worker's words
            (weaponGems.js weaponGemEffect) -- the window used to promise a
            damage number instead, which was never the gem's */
@@ -274,13 +276,13 @@ export function EnchantPanel(props) {
             color: LS.txt2,
             marginBottom: 6
           }
-        }, "Choose a polished gem for Slot 1:"), hasAnyPolished && wpn && wpn.element1 && !wpn.element2 && openSlots > 0 && canAddSecond && /*#__PURE__*/React.createElement("div", {
+        }, say(SAY, 'enchant.chooseFirst')), hasAnyPolished && wpn && wpn.element1 && !wpn.element2 && openSlots > 0 && canAddSecond && /*#__PURE__*/React.createElement("div", {
           style: {
             fontSize: 11,
             color: LS.txt2,
             marginBottom: 6
           }
-        }, "Choose a polished gem for Slot 2 (Fusion):"), hasAnyPolished && wpn && openSlots > 0 && (!wpn.element1 || wpn.element1 && !wpn.element2 && canAddSecond) && /*#__PURE__*/React.createElement("div", {
+        }, say(SAY, 'enchant.chooseSecond')), hasAnyPolished && wpn && openSlots > 0 && (!wpn.element1 || wpn.element1 && !wpn.element2 && canAddSecond) && /*#__PURE__*/React.createElement("div", {
           style: {
             display: 'flex',
             gap: 6,
@@ -313,12 +315,12 @@ export function EnchantPanel(props) {
               fontVariantNumeric: 'tabular-nums',
               cursor: 'pointer'
             },
-            title: blockedVolatile ? 'Volatile combo requires Fusion-Compatible gear base' : '',
+            title: blockedVolatile ? say(SAY, 'enchant.volatileTip') : '',
             disabled: waiting,
             'data-weapon-gem': key + ':' + elem,
             onClick: function onClick() {
               if (blockedVolatile) {
-                pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Needs Fusion-Compatible gear!', '#D95C54');
+                pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, say(SAY, 'enchant.needsFusion'), '#D95C54');
                 return;
               }
               /* v2.3.3513: against the worker, ASK -- the gem, the weapon and
@@ -357,9 +359,9 @@ export function EnchantPanel(props) {
               if (!R._questFlags) R._questFlags = {};
               R._questFlags.enchantedWeapon = true;
               R._questFlags.slottedGem = true;
-              pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, elem + ' enchanted!', edef.color);
+              pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, say(SAY, 'enchant.enchanted', { elem }), edef.color);
               if (leveled) celebrateLifeSkillLevel(stateRef.current, 'enchanting', sk.enchanting.level, _enLvlBefore); /* v2.3.2591 */
-              if (leveled) pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 50, 'Enchanting Lv' + sk.enchanting.level + '!', '#D8A94D');
+              if (leveled) pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 50, say(SAY, 'enchant.levelUp', { lvl: sk.enchanting.level }), '#D8A94D');
               cue('gemSet');   /* v2.3.3343: the gem set with a cast and a glint -- collect() is a beep(), silent (SOUND-GAPS) */
               setRpgState(_objectSpread({}, R));
               try {
@@ -376,10 +378,10 @@ export function EnchantPanel(props) {
         slotPickable && !hasAnyPolished && /*#__PURE__*/React.createElement("button", {
           disabled: true,
           style: LS_DISBTN
-        }, "No polished gems"), !slotPickable && /*#__PURE__*/React.createElement("button", {
+        }, say(SAY, 'enchant.noGems')), !slotPickable && /*#__PURE__*/React.createElement("button", {
           disabled: true,
           style: LS_DISBTN
-        }, wpn && openSlots > 0 ? "Locked" : "No open gem slot"),
+        }, say(SAY, wpn && openSlots > 0 ? 'enchant.locked' : 'enchant.noSlot')),
         /* v2.3.3513: the worker's refusal, under the weapon it was about */
         wgOnServer && wgLast && !wgLast.ok && wgLast.slot === key && Date.now() - wgLast.at < 8000 && /*#__PURE__*/React.createElement("div", {
           'data-weapon-gem-refused': wgLast.reason || 'bad',
@@ -400,9 +402,9 @@ export function EnchantPanel(props) {
             disabled: !can,
             style: can ? { minHeight: 36, padding: '0 12px', borderRadius: 10, fontSize: 12, fontWeight: 700, border: '1px solid ' + LS.border, background: LS.raised, color: LS.txt1, cursor: 'pointer', fontFamily: 'inherit' } : LS_DISBTN,
             onClick: function onClick() { if (can) askWeaponGemOut(stateRef.current, key); }
-          }, waiting && wgWait && wgWait.out && wgWait.slot === key ? 'Taking out…' : 'Take out'), /*#__PURE__*/React.createElement("span", {
+          }, say(SAY, waiting && wgWait && wgWait.out && wgWait.slot === key ? 'enchant.takingOut' : 'enchant.takeOut')), /*#__PURE__*/React.createElement("span", {
             style: { fontSize: 11.5, color: coins >= cost ? LS.txt3 : '#E58C7A', fontVariantNumeric: 'tabular-nums' }
-          }, cost, " gold · the gem comes back"));
+          }, say(SAY, 'enchant.outCost', { cost })));
         }());
       }), rpgState.amulet && /*#__PURE__*/React.createElement("div", {
         style: {
@@ -410,7 +412,7 @@ export function EnchantPanel(props) {
           paddingBottom: 12,
           borderBottom: '1px solid ' + LS.divider
         }
-      }, /*#__PURE__*/React.createElement("div", { style: LS_MOD }, "Amulet"), /*#__PURE__*/React.createElement("div", {
+      }, /*#__PURE__*/React.createElement("div", { style: LS_MOD }, say(SAY, 'enchant.amulet')), /*#__PURE__*/React.createElement("div", {
         style: {
           fontSize: 13.5,
           fontWeight: 600,
@@ -432,17 +434,18 @@ export function EnchantPanel(props) {
           color: LS.txt3,
           marginBottom: 6
         }
-      }, "Slotted: ", /*#__PURE__*/React.createElement("span", {
+      }, sayPieces(SAY, 'enchant.amuletSlotted', { gem: /*#__PURE__*/React.createElement("span", {
+        key: 'gem',
         style: {
           color: (_ELEMENTS$rpgState$am2 = ELEMENTS[rpgState.amulet.gem]) === null || _ELEMENTS$rpgState$am2 === void 0 ? void 0 : _ELEMENTS$rpgState$am2.color
         }
-      }, rpgState.amulet.gem, " gem"), ". Slot a new gem to replace (old gem lost).") : /*#__PURE__*/React.createElement("div", {
+      }, say(SAY, 'enchant.gemName', { gem: rpgState.amulet.gem })) })) : /*#__PURE__*/React.createElement("div", {
         style: {
           fontSize: 11,
           color: LS.txt3,
           marginBottom: 6
         }
-      }, "Slot a polished gem to activate the amulet."), /*#__PURE__*/React.createElement("div", {
+      }, say(SAY, 'enchant.amuletEmpty')), /*#__PURE__*/React.createElement("div", {
         style: {
           display: 'flex',
           gap: 6,
@@ -524,14 +527,14 @@ export function EnchantPanel(props) {
       }) && /*#__PURE__*/React.createElement("button", {
         disabled: true,
         style: LS_DISBTN
-      }, "No polished gems")), !rpgState.amulet && /*#__PURE__*/React.createElement("div", {
+      }, say(SAY, 'enchant.noGems'))), !rpgState.amulet && /*#__PURE__*/React.createElement("div", {
         style: {
           fontSize: 11,
           color: LS.txt3,
           marginBottom: 12
         }
-      }, "📿 Craft an amulet at the Blacksmith to slot gems here."), rpgState.shield && /*#__PURE__*/React.createElement("div", null,
-      /*#__PURE__*/React.createElement("div", { style: LS_MOD }, "Shield"), /*#__PURE__*/React.createElement("div", {
+      }, say(SAY, 'enchant.noAmulet')), rpgState.shield && /*#__PURE__*/React.createElement("div", null,
+      /*#__PURE__*/React.createElement("div", { style: LS_MOD }, say(SAY, 'enchant.shield')), /*#__PURE__*/React.createElement("div", {
         style: {
           fontSize: 13.5,
           fontWeight: 600,
@@ -553,17 +556,18 @@ export function EnchantPanel(props) {
           color: LS.txt3,
           marginBottom: 6
         }
-      }, "Slotted: ", /*#__PURE__*/React.createElement("span", {
+      }, sayPieces(SAY, 'enchant.shieldSlotted', { gem: /*#__PURE__*/React.createElement("span", {
+        key: 'gem',
         style: {
           color: (_ELEMENTS$rpgState$sh2 = ELEMENTS[rpgState.shield.gem]) === null || _ELEMENTS$rpgState$sh2 === void 0 ? void 0 : _ELEMENTS$rpgState$sh2.color
         }
-      }, rpgState.shield.gem, " gem"), ". Slot new gem to replace.") : /*#__PURE__*/React.createElement("div", {
+      }, say(SAY, 'enchant.gemName', { gem: rpgState.shield.gem })) })) : /*#__PURE__*/React.createElement("div", {
         style: {
           fontSize: 11,
           color: LS.txt3,
           marginBottom: 6
         }
-      }, "Slot a polished gem for defensive power."), /*#__PURE__*/React.createElement("div", {
+      }, say(SAY, 'enchant.shieldEmpty')), /*#__PURE__*/React.createElement("div", {
         style: {
           display: 'flex',
           gap: 6,
@@ -641,7 +645,7 @@ export function EnchantPanel(props) {
       }) && /*#__PURE__*/React.createElement("button", {
         disabled: true,
         style: LS_DISBTN
-      }, "No polished gems")), !rpgState.shield && /*#__PURE__*/React.createElement("div", {
+      }, say(SAY, 'enchant.noGems'))), !rpgState.shield && /*#__PURE__*/React.createElement("div", {
         style: {
           fontSize: 11,
           color: LS.txt3
@@ -650,7 +654,7 @@ export function EnchantPanel(props) {
             Blacksmith to slot defensive gems here.", but the Blacksmith has
             made no shields since its rebuild (v2.3.2826); and no emoji in
             the window's words (v2.3.1235) */
-      "No shield equipped. Wear one to slot defensive gems here."), /*#__PURE__*/React.createElement("div", {
+      say(SAY, 'enchant.noShield')), /*#__PURE__*/React.createElement("div", {
         /* v2.3.1235: state-correction §10 — sticky bottom fade (matches
            this panel's #202C32 sheet, not the shared #1E2E34); visible
            only while more content exists below the fold, gone at scroll
