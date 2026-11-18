@@ -180,6 +180,12 @@ export const BOTFP = {
      up to five minutes of the count -- up to five minutes more of harvests
      against a 2,400-an-hour cap nobody honest reaches. */
   PUT_MIN_MS: 300000,            // botstat: put throttle (flags flush immediately)
+  /* v2.3.5910: a rise of the score under FLAG_AT is written with the strike
+     or cook that made it, past PUT_MIN_MS (_botfpMaybePut): a deploy
+     between paced writes forgot it, and card LG's league (#2184) saw the
+     real page at machine pace pass every detector through one.  Any rise
+     (the least step is SCORE_SYNTH, 2) since the last write, decayed. */
+  SCORE_PUT_RISE: 1,
   MAP_CAP: 128, MAP_EVICT_TO: 96,
   DEVICE_CAP: 256, DEVICE_IDS_CAP: 8,
   DEVICE_ID_MAX: 32, DEVICE_ENV_MAX: 16,
@@ -210,7 +216,7 @@ function freshRecord(now) {
     hour: { hourStart: now, bySkill: {} },
     welford: { n: 0, entMean: 0, entM2: 0, vcMean: 0, vcM2: 0 },
     flags: [],
-    dirty: false, lastPutAt: 0,
+    dirty: false, lastPutAt: 0, putScore: 0,   /* v2.3.5910: the score as last written (_botfpScoreRose) */
   };
 }
 
@@ -630,8 +636,9 @@ export const botfpMethods = {
        saves, and would stay quiet for good with its flags in memory only */
     if (this._guestQuiet && this._guestQuiet(id) && !botfpEvidence(rec)) return;
     const now = now_();
-    if (!force && (!rec.dirty || now - rec.lastPutAt < BOTFP.PUT_MIN_MS)) return;
+    if (!force && !this._botfpScoreRose(rec, now) && (!rec.dirty || now - rec.lastPutAt < BOTFP.PUT_MIN_MS)) return;
     rec.lastPutAt = now;
+    rec.putScore = rec.score;
     rec.dirty = false;
     const obj = {
       v: 1, updatedAt: now,
@@ -645,6 +652,35 @@ export const botfpMethods = {
     };
     if (rec.sig) obj.sig = rec.sig;   /* v2.3.3731: botsig.js, at this same pace */
     try { this.state.storage.put('botstat:' + id, obj).catch(() => {}); } catch (e) {}
+  },
+
+  /* ═══ v2.3.5910: THE SCORE'S RISE, WRITTEN (card K4 PR 11; LG's league) ═══
+     The score and the replay ring lived in memory between paced writes
+     (PUT_MIN_MS, five minutes), and a deploy forgets memory: the league's
+     page script (tools/league, rung 3: the real page at machine pace),
+     flagged at every frame rate, passed every detector with a deploy
+     halfway -- its first strike's 2 on file, the rest of its 6 gone, 8 after
+     under FLAG_AT's 10.  A rise since the last write (decayed as the score
+     decays) is written with the strike or cook that made it, so a deploy
+     forgets none of it.  Only under FLAG_AT: at the line the flag itself
+     writes (_botfpFlag, forced), and past it the evidence is on file.
+     WHAT IT COSTS: nothing for a player whose gestures are a person's (the
+     score never rises: two floors at once, or a path drawn twice to the
+     pixel); a script's record at most ceil(FLAG_AT / SCORE_SYNTH) writes
+     more before its flag, then one a decay back under the line (a half-life
+     of 30 minutes: some 7 an hour held there) -- never a write a move, and
+     never a timer (it rides the strike's or cook's own call).  Evidence
+     only: it changes no grade and refuses nothing.  `botscoresave: false` in
+     the live flags: the five-minute pace alone, as before. */
+  _botfpScoreSaveOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'botscoresave') && !f.botscoresave);
+  },
+  _botfpScoreRose(rec, now) {
+    const T = hid(this);
+    if (!(rec.score > 0) || rec.score >= T.FLAG_AT || !this._botfpScoreSaveOn()) return false;
+    const kept = (Number(rec.putScore) || 0) * Math.pow(0.5, Math.max(0, now - (rec.lastPutAt || 0)) / T.SCORE_HALF_LIFE_MS);
+    return rec.score - kept >= BOTFP.SCORE_PUT_RISE;
   },
 
   _botfpFlush(session) {

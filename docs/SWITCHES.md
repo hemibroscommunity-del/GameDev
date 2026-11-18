@@ -55,6 +55,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 |---|---|---|---|---|---|---|---|---|---|
 | `blockarc` | worker | switch | v2.3.4605 | 2026-11-10 | false | logic |  | no | A raised shield blocks all round again, not only in its arc. |
 | `botrecordkeep` | worker | switch | v2.3.4379 | 2026-11-10 | false | logic |  | no | The bot fingerprint records go back to the old eviction of anyone, online or not. |
+| `botscoresave` | worker | switch | v2.3.5910 | 2026-11-18 | false | logic |  | no | Thrown, a rise of the bot fingerprint score is written only at the five-minute pace again, so a deploy between writes forgets it (card LG's league: the page at machine pace passed through one). |
 | `botsig_reverify` | worker | switch | v2.3.3724 | off | true | logic |  | no | Thrown, a join from an account the bot signals flagged must pass the account check again. |
 | `cookshield` | worker | switch | v2.3.4605 | 2026-11-10 | false | logic |  | no | The cook and fire shield holds on the move's edge alone, without the worker's own fire. |
 | `disable_botsig` | worker | switch | v2.3.3724 | 2026-10-29 | true | logic |  | no | Thrown, the bot signals are not judged at all. |
