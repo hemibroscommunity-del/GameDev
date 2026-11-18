@@ -9546,7 +9546,9 @@ no file uses, listed in `docs/specs/one-socket.md`'s table (a failed join is
 4013). An old phone reads an unknown code as an ordinary drop.
 **Receipt:** `session-exits.test` §1.
 
-Held by: tools/guards/traps-wire.test.mjs (tag 5762).
+Held by: tools/guards/traps-wire.test.mjs (tag 5762); every code has
+its row in one-socket.md since tag 6042, and the guard's list of codes
+with none is empty.
 
 ## 298. "The player is offline, so the admin may write their record" (v2.3.4413)
 
