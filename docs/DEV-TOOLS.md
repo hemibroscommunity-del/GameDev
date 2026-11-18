@@ -88,6 +88,23 @@ Notes for anyone extending it:
   fails a file with no lane on GitHub. `node tools/dev/name-lanes.mjs`
   writes the line where it is missing (run twice, it changes nothing).
 
+- **A slow machine: `BT_QA_PROFILE=<name>`** (v2.3.5860-5861, card O2).
+  Two profiles, made only of knobs that already exist
+  (`tools/qa/profiles.mjs`): `budget-android` (the processor 4x slowed,
+  the whole site down a 250 KB/s line, the `light` lane) and
+  `hotel-laptop` (2x, a 120 KB/s line, `light`). The harness sets
+  `BT_QA_CPU_THROTTLE`, `BT_QA_SLOW` and the lane from it when it loads; an
+  unknown name stops the run, and so does a knob also set by hand to another
+  value. Any scenario runs under one; three read it:
+  `BT_QA_PROFILE=hotel-laptop node tools/qa/mp/run.mjs desksmooth` plays
+  one part, the 1920 x 1080 window under the profile;
+  `BT_QA_PROFILE=budget-android QA_DIST=dist-prof node tools/qa/mp/run.mjs
+  heldsweep` (or `phoneframe`) writes `out/heldsweep-<profile>.json`
+  (`phoneframe-<profile>.json`). The budgets are judged as written: a slowed
+  page's holds are longer, and what is over goes in a census
+  (`docs/plan/census/O2-profiles.md`), never a raised line.
+  `tools/guards/qa-profiles.test.mjs` holds the table.
+
 - **CLAUDE.md says the sandbox blocks `npm install`. That is stale** —
   it succeeds for both the client and `server/`, which is the only
   reason any of this is possible.
