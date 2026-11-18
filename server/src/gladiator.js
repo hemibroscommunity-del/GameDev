@@ -45,6 +45,7 @@
  * nothing, because the bracket advances off the duels regardless. */
 
 import { xferArenaStakes } from './xfer.js';   /* v2.3.5292: the arena's stakes' ledger rows (card R PR 13; `xferescrow`, OFF by default) */
+import { LISTCAP } from './liveops.js';   /* v2.3.5960: a sweep's page (card V5) */
 
 export const ARENA = {
   ENTRY_FEE: 100,          // GDD §43
@@ -658,7 +659,10 @@ export const arenaMethods = {
    * lets the sweep finish it. */
   async _arenaSettleStakes(tid, matchId, winnerId) {
     try {
-      const stakes = await this.state.storage.list({ prefix: 'arena_stake:' + tid + ':' + matchId + ':' });
+      /* v2.3.5961 (card V5; TRAPS §76): every stake of the match, a page an
+         await: storage awaits keep the gate shut, so no stake lands between
+         two pages, and the plan below is made from all of them, as before */
+      const stakes = await this._listAll('arena_stake:' + tid + ':' + matchId + ':');
       const all = [];
       for (const [k, rec] of stakes) if (rec && typeof rec.sponsorId === 'string') all.push({ k, rec });
       const amt = (rec) => Math.max(0, Math.floor(Number(rec.amount) || 0));
@@ -801,7 +805,7 @@ export const arenaMethods = {
     if (!t || t.status !== 'running') return;
     let recs;
     try {
-      recs = await this.state.storage.list({ prefix: 'arena_stake:' + t.id + ':' });
+      recs = await this._listAll('arena_stake:' + t.id + ':');   /* v2.3.5961: a page an await (card V5) */
     } catch (e) { return; }
     // Sum per match -> per competitor.  targetId is a client-supplied
     // player id, so the inner tally is a null-proto map (rule 4).
@@ -980,12 +984,19 @@ export const arenaMethods = {
    * while the escrow debits persist.  Rate-limited; kicked from the
    * join path.  Never refunds a tournament whose champion pot was paid
    * -- entries fund the pot (rule 6). */
+  /* v2.3.5960 (card V5; TRAPS §76): a page a call, its cursor in memory, the
+     next page an event of its own (_duelEscrowSweep's walk) */
   async _arenaEntrySweep() {
     const now = Date.now();
-    if (this._lastArenaSweep && now - this._lastArenaSweep < 300000) return;
-    this._lastArenaSweep = now;
+    const j = this._arenaSweepWalk || (this._arenaSweepWalk = { after: null, busy: false, timer: null });
+    if (j.busy) return;
+    if (!j.after) {
+      if (this._lastArenaSweep && now - this._lastArenaSweep < 300000) return;
+      this._lastArenaSweep = now;
+    }
+    j.busy = true;
     try {
-      const entries = await this.state.storage.list({ prefix: 'arena_entry:' });
+      const entries = await this._listPage('arena_entry:', j, LISTCAP.SWEEP);
       for (const [k, rec] of entries) {
         const rest = k.slice('arena_entry:'.length);
         const cut = rest.indexOf(':');
@@ -996,7 +1007,9 @@ export const arenaMethods = {
         await this._creditPlayer(pid, { opId: 'arenarefund:' + tid + ':' + pid + this._arenaEntrySfx(rec.n), source: 'arena', kind: 'gold', payload: { amount: rec.wager || ARENA.ENTRY_FEE }, note: 'arena voided (server restart)' });
         await this.state.storage.delete(k);
       }
-    } catch (e) { /* best-effort */ }
+    } catch (e) { j.after = null; /* best-effort: the next walk starts again */ }
+    finally { j.busy = false; }
+    this._listNext(j, () => this._arenaEntrySweep());
   },
 
   /* v2.3.1128 (PR11): orphaned-stake refund, the entry-sweep pattern.
@@ -1048,36 +1061,58 @@ export const arenaMethods = {
     return true;
   },
 
+  /* v2.3.5960 (card V5; TRAPS §76): the walk in two legs, a page of each a
+     call at most, its cursor and the matches planned so far in memory, the
+     next page an event of its own (_duelEscrowSweep's walk).  EVERY plan is
+     read before ANY stake is weighed, as before: a stake whose plan sat on
+     a later page would otherwise be refunded and paid by its plan too. */
   async _arenaStakeSweep() {
     const now = Date.now();
-    if (this._lastStakeSweep && now - this._lastStakeSweep < 300000) return;
-    this._lastStakeSweep = now;
+    const j = this._stakeSweepWalk || (this._stakeSweepWalk = { leg: null, after: null, planned: null, busy: false, timer: null });
+    if (j.busy) return;
+    if (!j.leg) {
+      if (this._lastStakeSweep && now - this._lastStakeSweep < 300000) return;
+      this._lastStakeSweep = now;
+      j.leg = 'plans'; j.after = null; j.planned = new Set();
+    }
+    j.busy = true;
     try {
       /* v2.3.5089: a match whose plan is on file settled: finish the plan
          (every leg paid once) before any refund is weighed; its stakes are
          the plan's, never refunded.  The live tournament's own settlement is
          left to run (its plan is being paid as this reads). */
-      const plans = await this.state.storage.list({ prefix: 'arena_settle:' });
-      const planned = new Set();
-      for (const [pk, plan] of plans) {
-        if (!plan || plan.v !== 1) { planned.add(pk.slice('arena_settle:'.length)); continue; }
-        planned.add(plan.tid + ':' + plan.matchId);
-        if (this._arena && this._arena.id === plan.tid) continue;
-        if (await this._arenaStakeFinish(pk, plan) && this._arenaPlansOpen > 0) this._arenaPlansOpen--;
-      }
-      const stakes = await this.state.storage.list({ prefix: 'arena_stake:' });
-      for (const [k, rec] of stakes) {
-        if (this._arena && this._arena.id === rec.tid) continue; // live tournament
-        if (now - (rec.ts || 0) < ARENA.STALE_STAKE_MS) continue;
-        if (rec && planned.has(rec.tid + ':' + rec.matchId)) continue;   /* v2.3.5089: its plan's, finished above or kept for the owner */
-        const settled = (await this._opSeen('arenastakewin:' + rec.tid + ':' + rec.matchId + ':' + rec.sponsorId))
-          || (await this._opSeen('arenastakeloss:' + rec.tid + ':' + rec.matchId + ':' + rec.sponsorId));
-        if (!settled) {
-          await this._creditPlayer(rec.sponsorId, { opId: 'arenastakerefund:' + rec.tid + ':' + rec.matchId + ':' + rec.sponsorId, source: 'arena', kind: 'gold', payload: { amount: rec.amount }, note: 'sponsorship voided (server restart)' });
+      const planned = j.planned;
+      if (j.leg === 'plans') {
+        const plans = await this._listPage('arena_settle:', j, LISTCAP.SWEEP);
+        for (const [pk, plan] of plans) {
+          if (!plan || plan.v !== 1) { planned.add(pk.slice('arena_settle:'.length)); continue; }
+          planned.add(plan.tid + ':' + plan.matchId);
+          if (this._arena && this._arena.id === plan.tid) continue;
+          if (await this._arenaStakeFinish(pk, plan) && this._arenaPlansOpen > 0) this._arenaPlansOpen--;
         }
-        await this.state.storage.delete(k);
+        if (!j.after) j.leg = 'stakes';   /* every plan read: the stakes, from their first page */
       }
-    } catch (e) { /* best-effort */ }
+      if (j.leg === 'stakes') {
+        const stakes = await this._listPage('arena_stake:', j, LISTCAP.SWEEP);
+        for (const [k, rec] of stakes) {
+          if (this._arena && this._arena.id === rec.tid) continue; // live tournament
+          if (now - (rec.ts || 0) < ARENA.STALE_STAKE_MS) continue;
+          if (rec && planned.has(rec.tid + ':' + rec.matchId)) continue;   /* v2.3.5089: its plan's, finished above or kept for the owner */
+          const settled = (await this._opSeen('arenastakewin:' + rec.tid + ':' + rec.matchId + ':' + rec.sponsorId))
+            || (await this._opSeen('arenastakeloss:' + rec.tid + ':' + rec.matchId + ':' + rec.sponsorId));
+          if (!settled) {
+            /* v2.3.5960: and a plan put since the plans' leg read them (the walk
+               spans events now): its stakes are its own, never refunded */
+            if (await this.state.storage.get('arena_settle:' + rec.tid + ':' + rec.matchId)) continue;
+            await this._creditPlayer(rec.sponsorId, { opId: 'arenastakerefund:' + rec.tid + ':' + rec.matchId + ':' + rec.sponsorId, source: 'arena', kind: 'gold', payload: { amount: rec.amount }, note: 'sponsorship voided (server restart)' });
+          }
+          await this.state.storage.delete(k);
+        }
+        if (!j.after) { j.leg = null; j.planned = null; }   /* the walk is done */
+      }
+    } catch (e) { j.leg = null; j.after = null; j.planned = null; /* best-effort: the next walk starts again */ }
+    finally { j.busy = false; }
+    this._listNext(j, () => this._arenaStakeSweep(), !!j.leg);
   },
 
   /* ═══ v2.3.5089: THE STAMP PRUNE WAITS FOR AN OPEN ARENA PLAN (sitting 10) ═══
@@ -1105,7 +1140,7 @@ export const arenaMethods = {
   },
 
   async _arenaPlanScan() {
-    const plans = await this.state.storage.list({ prefix: 'arena_settle:' });
+    const plans = await this._listAll('arena_settle:');   /* v2.3.5961: a page an await; the count wants them all (card V5) */
     let open = 0;
     for (const [pk, plan] of plans) {
       if (!arenaPlanReadable(plan)) continue;   /* kept for the owner: it pays nothing */
