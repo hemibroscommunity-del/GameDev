@@ -210,8 +210,17 @@ export async function snapshotCopy(room, pid, storedBlob) {
   if (typeof room._usageSwitch === 'function') room._usageSwitch('fullsnap', 0, others.length);   /* v2.3.6001: its reads named apart (usagemeter.js) */
   const w = {};
   others.forEach((p, i) => { w[p] = got[i] === undefined ? null : got[i]; });
-  return { ...storedBlob, _with: w };
+  const copy = { ...storedBlob, _with: w };
+  /* v2.3.6000 (card CS; the gatekeeper's sitting 45): ON by default now, so a
+     worst-case character with a full vault could make a copy past the
+     storage's 128 KiB a value: its put threw (swallowed) and the day had NO
+     copy.  Past SNAP_WITH_MAX the copy is the character alone, as before. */
+  try { if (JSON.stringify(copy).length > SNAP_WITH_MAX) return storedBlob; } catch (e) { return storedBlob; }
+  return copy;
 }
+/** The fuller daily copy's most, in characters of its JSON: under the
+ *  storage's 128 KiB a value, with room to spare. */
+export const SNAP_WITH_MAX = 120000;
 
 /* ── what a copy holds ── */
 const holds = (snap, p) => (p === 'rpg:' ? !snap._norpg : own(snap._with, p));

@@ -66,7 +66,8 @@ switch allows it.
   ceiling's honest floor (v2.3.5728, `flood.js` `HONEST_PER_S`, `ceilfair`);
   a guest's share of the places, a played character's seat and an IPv6 /48
   counted (v2.3.5729, `seathold.js` `GUEST_SHARE`, `flood.js` `ip48Key`,
-  `guestshare`);
+  `guestshare`); a join taking only what is its own (v2.3.5730, `join.js`,
+  `seathold.js`, `joinguard`);
   the owner's routes with no key and the public reads at the edge (v2.3.5726,
   `wire/door.js`; the worker settings `EDGE_GUARD`, `EDGE_CACHE`).
 - A General Store sell filed under its weapon's own tier, and a refund and
