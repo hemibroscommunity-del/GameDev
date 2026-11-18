@@ -192,6 +192,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `mktwords` | worker | switch | v2.3.5626 | 2026-11-17 | false | logic |  | no | A market order's tier label and seller name are the page's free text again, as before (the worker's own tier label and the character's name while on). |
 | `revealbag` | worker | switch | v2.3.3951 | 2026-11-03 | false | logic |  | no | Un-advertises the bag's reveal and brings back the at-once reveal. |
 | `risechest` | worker | switch | v2.3.4438 | 2026-11-10 | false | logic |  | no | The rise chest's cap goes and an ask is answered off. |
+| `risekeep` | worker | switch | v2.3.5802 | 2026-11-17 | false | logic |  | no | The oplog prune deletes the rise chest's stamps at 48 h, as before (MD-1: the same character opens the chest again every two days). |
 | `salvage` | worker | switch | v2.3.3141 | 2026-10-07 | false | logic |  | no | Un-advertises salvage and refuses both acts. |
 | `season` | worker | switch | v2.3.3400 | 2026-10-18 | true | logic |  | no | Thrown (true), the dropped season comes back on the free spin. |
 | `storeGear` | worker | switch | v2.3.2528 | 2026-09-15 | false | logic |  | no | Un-advertises gear in the store and stops it taking a listing. |

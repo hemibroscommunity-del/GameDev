@@ -40,6 +40,14 @@ export const OP_PRUNE = {
   TTL_MS: 172800000,     // 48h, unchanged
   INTERVAL_MS: 3600000,  // one full sweep per hour, unchanged
   SLOT_MS: 3000,         // one page every 3s while the room is occupied
+  /* v2.3.5802 (card RV, MD-1): the stamps the sweep passes over, by the
+     first word of their op id: each is the only record that a thing paid
+     once a character was paid, so it is kept for good (TRAPS §146: "the
+     oplog is not the record" -- here it is the record, so it is not
+     pruned).  The sweep never even reads them: a page lists up to the
+     range and the next starts after it.  `risekeep: false` prunes them as
+     before. */
+  KEEP: Object.freeze(['risechest:']),
 };
 
 /* ═══ v2.3.3488: ACHIEVEMENT POINTS PAID ONCE A CHARACTER ═══
@@ -188,7 +196,29 @@ export const inboxMethods = {
     try {
       const opts = { prefix: 'oplog:', limit: OP_PRUNE.PAGE };
       if (job.after) opts.startAfter = job.after;
-      const entries = await this.state.storage.list(opts);
+      /* v2.3.5802 (MD-1): the next kept range at or past the cursor: this
+         page stops at its start, or starts after its end */
+      let keepEnd = null;
+      /* one kept range a page: right while KEEP holds one word (or ranges
+         that never interleave with a page's other keys); a second word
+         would need the fill below to stop at the next range too */
+      if (this._riseKeepOn && this._riseKeepOn()) {
+        for (const w of OP_PRUNE.KEEP) {
+          const lo = 'oplog:' + w, hi = lo + '\uffff';
+          if (job.after && job.after >= hi) continue;
+          if (job.after && job.after >= lo) { opts.startAfter = hi; continue; }
+          opts.end = lo; keepEnd = hi;
+          break;
+        }
+      }
+      let entries = await this.state.storage.list(opts);
+      /* v2.3.5802: a page that stopped short at a kept range is filled from
+         after it, in the same call (still one page of keys at most) */
+      if (keepEnd && entries.size < OP_PRUNE.PAGE) {
+        const more = await this.state.storage.list({ prefix: 'oplog:', startAfter: keepEnd, limit: OP_PRUNE.PAGE - entries.size });
+        entries = new Map([...entries, ...more]);
+        keepEnd = null;
+      }
       const stale = [];
       let last = null;
       for (const [k, ts] of entries) {
