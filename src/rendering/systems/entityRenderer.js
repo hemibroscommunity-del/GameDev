@@ -2311,21 +2311,30 @@ let _spareSkipped = 0;   /* spare-set frames not baked for want of room (QA: __b
    for KEEP_QUIET_MS, then a few go each KEEP_GAP_MS.  A source destroyed
    meanwhile (an eviction) is passed over by keepAsImage itself. */
 const KEEP_QUIET_MS = 2000, KEEP_PER_SLICE = 4, KEEP_GAP_MS = 250;
+/* v2.3.6204 (gatekeeper sitting 51's mend; CLAUDE.md §7, "a cache has a cap"):
+   under steady baking the quiet never comes, and the queue only grew, each
+   entry holding its source.  Now it holds KEEP_MAX at most (past it the oldest
+   is passed over and stays a canvas, as before v2.3.6203), and an entry asked
+   for more than KEEP_LONGEST_MS ago is kept even mid-burst, a slice at a time */
+const KEEP_MAX = 600, KEEP_LONGEST_MS = 15000;
 /* the source Texture.from(canvas) parked in Pixi's Cache for `cv`, or null */
 const _cachedSourceOf = (cv) => { try { const t = Cache.has(cv) ? Cache.get(cv) : null; return (t && t.source) || null; } catch (e) { return null; } };
 const _keepQueue = [];
 let _keepTimer = 0, _keepLastAsk = 0;
 function _afterBakes(fn) {
-  _keepQueue.push(fn);
   _keepLastAsk = performance.now();
+  _keepQueue.push({ fn, at: _keepLastAsk });
+  if (_keepQueue.length > KEEP_MAX) _keepQueue.shift();   /* v2.3.6204: the oldest stays a canvas */
   if (!_keepTimer) _keepTimer = setTimeout(_keepDrain, KEEP_QUIET_MS);
 }
 function _keepDrain() {
   _keepTimer = 0;
-  const wait = KEEP_QUIET_MS - (performance.now() - _keepLastAsk);
-  if (wait > 0) { _keepTimer = setTimeout(_keepDrain, wait); return; }
+  const now = performance.now();
+  const wait = KEEP_QUIET_MS - (now - _keepLastAsk);
+  /* v2.3.6204: not quiet yet, unless the oldest has waited KEEP_LONGEST_MS */
+  if (wait > 0 && !(_keepQueue.length && now - _keepQueue[0].at > KEEP_LONGEST_MS)) { _keepTimer = setTimeout(_keepDrain, Math.min(wait, KEEP_GAP_MS * 4)); return; }
   for (let n = 0; n < KEEP_PER_SLICE && _keepQueue.length; n++) {
-    try { _keepQueue.shift()(); } catch (e) { /* kept as a canvas */ }
+    try { _keepQueue.shift().fn(); } catch (e) { /* kept as a canvas */ }
   }
   if (_keepQueue.length) _keepTimer = setTimeout(_keepDrain, KEEP_GAP_MS);
 }
