@@ -804,23 +804,26 @@ if (typeof window !== 'undefined') {
   };
 }
 
-/* ═══ v2.3.6202: A BAKED SHEET LET GO OF WHERE IT IS NOT DRAWN (card EN PR 3) ═══
+/* ═══ v2.3.6202: A BAKED SHEET'S CHIP COPY LET GO OF WHERE IT IS NOT DRAWN (card EN PR 3) ═══
    The townsfolk whose looks the shared numbers refuse (an eye style that
-   blanks the eyes, a drawing: lookBodyRefused) are drawn from a whole sheet
-   baked a pose and facing (35 sheets, about 14 MB, at main 5ea5c7d's memory
-   check), baked behind the world's loading screen (entityRenderer.js
-   prewarmFolkBodies) and, before this, held for the whole visit: on the chip
-   too once each facing was first drawn, so the memory check's fight read
-   5.7, 13.1, 14.3 MB of them, trip by trip, in the Flame Fields where no
-   townsperson is drawn.  The renderer now lets them go far from town and asks
-   for them again on the way back, well before he is on screen
-   (entityRenderer.js _folkSheetsStep; `?folksheets=0` holds them as before).
+   blanks the eyes, a drawing: lookBodyRefused) are drawn from whole sheets
+   baked a pose and facing behind the world's loading screen (entityRenderer.js
+   prewarmFolkBodies: 35 sheets at main 5ea5c7d's memory check), each sent to
+   the graphics chip the first time it is drawn and, before this, kept there
+   for the visit: the memory check's fights in the Flame Fields, where no
+   townsperson is drawn, held 13 to 14 MB of `blob:` sheets on the chip by the
+   second trip.  Now the renderer, far from town, lets go of their CHIP copies
+   only (Pixi's TextureSource.unload: "as soon as it is required for rendering,
+   it will be re-uploaded"): the baked pictures stay in the page, so nothing is
+   baked or loaded again and the loading screen's work stands (PRELOADING IS
+   LAW); a facing drawn again is sent up at its first draw, as on first sight
+   today.  (A first road let the sheets go and baked them again on the way
+   back: on this box a re-bake of the 35 took 78-88 s, so a townsperson was
+   met plain three times in three, and the asset cache grew 3.2 MB a trip.)
    bodyKeysAsked(fn) runs `fn`, which asks for frames exactly as the renderer
    does, and answers the sheet keys it asked for, baking nothing and touching
-   no sheet: the same key, so the release cannot spell it a second way.
-   releaseBodySheets(keys) lets go of those that are baked, each source
-   destroyed 30 s later (_pickupHeadCap's guard: nothing is killed in a frame
-   that may still draw it); a key asked for again bakes afresh. */
+   no sheet: the same key, so this cannot spell it a second way.
+   unloadBodySheets(keys) sends the chip copies of those baked home. */
 let _askOnly = null;
 export function bodyKeysAsked(fn) {
   const out = [];
@@ -828,16 +831,13 @@ export function bodyKeysAsked(fn) {
   try { fn(); } finally { _askOnly = null; }
   return out;
 }
-export function releaseBodySheets(keys) {
+export function unloadBodySheets(keys) {
   let n = 0;
   for (const key of keys) {
     const entry = _bodySheets[key];
-    if (!Array.isArray(entry) || !entry.length) continue;   /* 'loading', given up on, or gone */
-    delete _bodySheets[key];
-    _bodyLater.forget(key);
-    const src = entry[0] && entry[0].source;
-    if (src) setTimeout(() => { try { releaseCanvasSource(src); } catch (e) { /* already gone */ } }, 30000);
-    n++;
+    const src = Array.isArray(entry) && entry[0] && entry[0].source;   /* not 'loading', given up on or gone */
+    if (!src || src.destroyed) continue;
+    try { src.unload(); n++; } catch (e) { /* kept on the chip */ }
   }
   return n;
 }
