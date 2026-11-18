@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "288bdc3cfa97cca5e910f9687ba6b7052d84c120",
+  "tree": "1a48e5f6320c18570f4dcbc9af57441eea180470",
+  "committedAt": "2026-11-18T00:37:05-08:00",
+  "subject": "Merge pull request #2192 from hemibroscommunity-del/claude/rv-spinpace",
+  "files": 8297,
+  "bytes": 961848113,
+  "listingSha256": "b47419af1931634c29a63b50d2096c839015424b3c4e92f070a91667ec1580f2",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

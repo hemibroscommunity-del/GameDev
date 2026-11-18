@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "4f93ddf75cc36a7ad098832733675a9ab5d069b5",
+  "tree": "09a055f171b1cf176a54c83bf785a66b63aeb8fb",
+  "committedAt": "2026-11-18T00:33:36-08:00",
+  "subject": "Merge pull request #2182 from hemibroscommunity-del/claude/plan-k4-10-cookbeat",
+  "files": 8291,
+  "bytes": 961780785,
+  "listingSha256": "633cfecf63fef12a57765b5c2337c013612350e826c1f5dd1159e750a1092c89",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

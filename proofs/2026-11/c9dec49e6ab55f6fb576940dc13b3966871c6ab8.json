@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "c9dec49e6ab55f6fb576940dc13b3966871c6ab8",
+  "tree": "09a3d99fd8d081fd7a811d23f2944aa6c4f8281a",
+  "committedAt": "2026-11-18T00:34:01-08:00",
+  "subject": "Merge pull request #2169 from hemibroscommunity-del/claude/plan-k2-duelquiet",
+  "files": 8293,
+  "bytes": 961803536,
+  "listingSha256": "9f1a2f5e051670e87c71d5d2ce1339fadd998b837271b967d1fcc38fc10d9973",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "cb7ae20b8703c6fb1abbe8d75049d46036f86a62",
+  "tree": "e41c1aa213f45865660b22599fc1e383465e6f45",
+  "committedAt": "2026-11-18T00:36:55-08:00",
+  "subject": "Merge pull request #2193 from hemibroscommunity-del/claude/rv-mktcancel",
+  "files": 8296,
+  "bytes": 961842473,
+  "listingSha256": "38666450fe191b8aa617a226637edfd7edb8b8d1512ebedad320906f9fc6b7c0",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

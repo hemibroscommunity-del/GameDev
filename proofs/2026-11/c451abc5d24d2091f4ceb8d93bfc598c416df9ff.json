@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "c451abc5d24d2091f4ceb8d93bfc598c416df9ff",
+  "tree": "73970c7c6bf9c707b3594a004303b8668597c0d0",
+  "committedAt": "2026-11-18T00:34:28-08:00",
+  "subject": "Merge pull request #2164 from hemibroscommunity-del/claude/rv-deadtake",
+  "files": 8295,
+  "bytes": 961826797,
+  "listingSha256": "cf6a42ea6847663e2ec064c2faefa96afc43966724cf3e9b18c4af68d4aa6c1a",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
