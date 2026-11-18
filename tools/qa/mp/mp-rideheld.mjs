@@ -56,7 +56,7 @@ async function ringOnce(P, G) {
   await P.page.waitForTimeout(4000);
   await P.page.evaluate(() => {
     const s = window.__btWorldTrial.stats;
-    window.__btRH = { s0: { loads: s.loads, popIns: s.popIns, sumMs: s.sumMs, maxMs: s.maxMs }, n: 0, short: 0, missing: 0, inView: 0, worst: 0, held: 0, heldMax: 0, gpuMax: 0, t0: performance.now() };
+    window.__btRH = { s0: { loads: s.loads, popIns: s.popIns, sumMs: s.sumMs, maxMs: s.maxMs, dropped: (window.__btGroundCover() || {}).dropped || 0 }, n: 0, short: 0, missing: 0, inView: 0, worst: 0, held: 0, heldMax: 0, gpuMax: 0, under: 0, t0: performance.now() };
     window.__btRHi = setInterval(() => {
       const c = window.__btGroundCover && window.__btGroundCover();
       const R = window.__btRH;
@@ -64,6 +64,7 @@ async function ringOnce(P, G) {
       R.n++; R.inView += c.inView; R.missing += c.missing;
       if (c.missing > 0) R.short++;
       if (c.missing > R.worst) R.worst = c.missing;
+      if (c.under) R.under++;   /* v2.3.6383: the overview drawn under the pieces (one missing round the view) */
       /* the memory: the ground's pieces held, and the graphics chip's MB (pixiApp.js __btGpuMb) */
       R.held += c.held; if (c.held > R.heldMax) R.heldMax = c.held;
       const g = window.__btGpuMb ? window.__btGpuMb() : null;
@@ -90,8 +91,50 @@ async function ringOnce(P, G) {
       shortPct: R.n ? Math.round(100 * R.short / R.n) : null, missingPct: R.inView ? +(100 * R.missing / R.inView).toFixed(1) : null, worst: R.worst, reads: R.n,
       /* the ground worker: its ms a piece, and the share of the ring it was laying */
       workerMs: loads ? +(ms / loads).toFixed(1) : null, workerBusyPct: Math.round(100 * ms / 1000 / secs), workerMax: s.maxMs,
+      underPct: R.n ? Math.round(100 * R.under / R.n) : null,
+      dropped: ((window.__btGroundCover() || {}).dropped || 0) - R.s0.dropped,
       heldMean: R.n ? Math.round(R.held / R.n) : null, heldMax: R.heldMax, gpuMaxMb: +R.gpuMax.toFixed(1), inFlight: s.loading };
   }, offs);
+}
+
+/* ── v2.3.6383: A U-TURN (the gatekeeper's sitting 52 on #2253) ──
+   On the board the side behind is let go sooner, and up to RIDE_IN_FLIGHT pieces asked for the way it was going sit
+   in the worker's line ahead of any new ask.  A straight leg east of UTURN_PX from the ring's first point, then
+   straight back the same way at once: the way back read as the ring is (what was unlaid, the overview under it). */
+const UTURN_PX = 1500;
+async function uTurn(P, G) {
+  const [x0, y0] = ring(G)[0];
+  await H.glideTo(P, x0, y0, { speed: 2500, timeoutMs: 120000 }).catch(() => {});
+  await P.page.waitForTimeout(4000);
+  const on = await P.page.evaluate(() => { const b = window.__btRideBtn && window.__btRideBtn(); return !!(b && b.on); });
+  if (!on) {
+    await P.page.keyboard.press('z');
+    await H.waitFor(P, () => window.__btRideBtn && window.__btRideBtn(), (v) => v && v.on === true, { timeout: 8000, label: 'on the board' }).catch(() => null);
+  }
+  await H.glideTo(P, x0 + UTURN_PX, y0, { speed: RIDE_PX_S, timeoutMs: 120000 });
+  await P.page.evaluate(() => {
+    const s = window.__btWorldTrial.stats;
+    window.__btRH = { s0: { loads: s.loads, popIns: s.popIns, sumMs: s.sumMs, maxMs: s.maxMs, dropped: (window.__btGroundCover() || {}).dropped || 0 }, n: 0, short: 0, missing: 0, inView: 0, worst: 0, held: 0, heldMax: 0, gpuMax: 0, under: 0, t0: performance.now() };
+    window.__btRHi = setInterval(() => {
+      const c = window.__btGroundCover && window.__btGroundCover();
+      const R = window.__btRH;
+      if (!c || !R) return;
+      R.n++; R.inView += c.inView; R.missing += c.missing;
+      if (c.missing > 0) R.short++;
+      if (c.missing > R.worst) R.worst = c.missing;
+      if (c.under) R.under++;
+    }, 250);
+  });
+  await H.glideTo(P, x0, y0, { speed: RIDE_PX_S, timeoutMs: 120000 });
+  return P.page.evaluate(() => {
+    clearInterval(window.__btRHi);
+    const R = window.__btRH, s = window.__btWorldTrial.stats, secs = (performance.now() - R.t0) / 1000;
+    const loads = s.loads - R.s0.loads;
+    return { secs: Math.round(secs), pieces: loads, popIns: s.popIns - R.s0.popIns,
+      shortPct: R.n ? Math.round(100 * R.short / R.n) : null, missingPct: R.inView ? +(100 * R.missing / R.inView).toFixed(1) : null,
+      worst: R.worst, underPct: R.n ? Math.round(100 * R.under / R.n) : null, reads: R.n,
+      dropped: ((window.__btGroundCover() || {}).dropped || 0) - R.s0.dropped };
+  });
 }
 
 export async function run({ browser, wsPort, webPort, rec }) {
@@ -109,9 +152,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await H.devOp(wsPort, 'vitals', me, { heal: true, god: true, godMinutes: 30 }).catch(() => {});
     const cold = await ringOnce(P, G);
     const warm = await ringOnce(P, G);
+    const turn = await uTurn(P, G);
     console.log(`  query: ${query || '(as it ships)'}${H.PROFILE ? ', profile ' + H.PROFILE.name : ''}`);
     console.log('  cold ring:', JSON.stringify(cold));
     console.log('  warm ring:', JSON.stringify(warm));
+    console.log('  the way back from a U-turn:', JSON.stringify(turn));
     rec.ok(`the rings laid ground on the board (guard): ${cold.pieces} and ${warm.pieces} pieces, got off ${cold.offs + warm.offs} times`,
       cold.pieces >= 20 && warm.pieces >= 20, { cold, warm });
     /* the lines: as it ships, on this box plain (a slowed profile's numbers go to the census, never a line; with

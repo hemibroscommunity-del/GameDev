@@ -111,7 +111,8 @@ if (typeof window !== 'undefined') {
       if (i === i0 || i === i1 || j === j0 || j === j1) far++;
     }
     return { inView, laid, missing: inView - laid, far, asked, short, cols: i1 - i0 + 1, rows: j1 - j0 + 1,
-      view: [Math.round(G._qw), Math.round(G._qh)], inFlight: G.inFlight, held: G.pieces.size, under: !!(G.under && G.under.visible) };
+      view: [Math.round(G._qw), Math.round(G._qh)], inFlight: G.inFlight, held: G.pieces.size, under: !!(G.under && G.under.visible),
+      dropped: G._dropped || 0 };   /* v2.3.6383: pieces asked for and let go before they came */
   };
 }
 /* Ahead of a moving camera: lay the ground where it will be AHEAD_MS from
@@ -158,11 +159,21 @@ const AHEAD_GROW = 2;
    no margin and no KEEP_PX behind).  On foot, as before.
    `?groundsend=0`: MAX_IN_FLIGHT riding too, and the margin all round. */
 const RIDE_IN_FLIGHT = 6;
-let _sendOff = null;
 function groundSendOn(S) {
-  if (_sendOff === null) _sendOff = sw('groundsend');   /* read once: the address does not change in play */
-  return !_sendOff && isRiding(S);
+  /* v2.3.6383: read at each ask, as switches.js's one reader is (a test may change the page's address; the gatekeeper's
+     sitting 52 on #2253) -- its parse is kept per address, so this costs a look-up */
+  return !sw('groundsend') && isRiding(S);
 }
+/* ═══ v2.3.6383: THE SIDE BEHIND, WITH NO SEE-SAW (the gatekeeper's sitting 52 on #2253) ═══
+   A side is the one left behind when the board rolls away from it clearly
+   (TRAIL_IN of the look ahead's reach), and stays so until it all but stops
+   rolling that way (TRAIL_OUT): a stick wobbling round the threshold, a
+   stop-and-go ride or a correction from the worker no longer flips it frame
+   to frame.  And behind, the ground is laid UNDER_PAD past the view but KEPT
+   to MARGIN past it -- exactly where the ground is laid when the side is not
+   left behind -- so a flip either way never asks again for a column it has
+   just let go, nor lets go a column it has just asked for. */
+const TRAIL_IN = 1 / 4, TRAIL_OUT = 1 / 8;
 function inFlightMax(S) {
   return groundSendOn(S) ? RIDE_IN_FLIGHT : MAX_IN_FLIGHT;
 }
@@ -289,10 +300,15 @@ export class WheelGround {
        laid sooner ahead are paid for by those let go sooner behind, and the
        ground holds no more than it did (the memory first, CLAUDE.md §7).  A
        side is the one left only while the board rolls clearly away from it
-       (a quarter of the look ahead's reach). */
-    const trail = groundSendOn(S) ? aMax / 4 : Infinity;
-    const mL = ax > trail ? UNDER_PAD : MARGIN, mR = ax < -trail ? UNDER_PAD : MARGIN;
-    const mT = ay > trail ? UNDER_PAD : MARGIN, mB = ay < -trail ? UNDER_PAD : MARGIN;
+       (v2.3.6383: TRAIL_IN and TRAIL_OUT, above). */
+    const T = this._trail || (this._trail = { L: false, R: false, T: false, B: false });
+    if (groundSendOn(S)) {
+      const on = aMax * TRAIL_IN, off = aMax * TRAIL_OUT;   /* v2.3.6383: in at a quarter, out under an eighth */
+      T.L = T.L ? ax > off : ax > on; T.R = T.R ? -ax > off : -ax > on;
+      T.T = T.T ? ay > off : ay > on; T.B = T.B ? -ay > off : -ay > on;
+    } else { T.L = T.R = T.T = T.B = false; }
+    const mL = T.L ? UNDER_PAD : MARGIN, mR = T.R ? UNDER_PAD : MARGIN;
+    const mT = T.T ? UNDER_PAD : MARGIN, mB = T.B ? UNDER_PAD : MARGIN;
     const nx0 = cx - mL + Math.min(0, ax), nx1 = cx + viewW + mR + Math.max(0, ax);
     const ny0 = cy - mT + Math.min(0, ay), ny1 = cy + viewH + mB + Math.max(0, ay);
     const i0 = clampI(Math.floor(nx0 / cs)), i1 = clampI(Math.floor(nx1 / cs));
@@ -373,8 +389,9 @@ export class WheelGround {
       if (best) this._relay(best.i + ',' + best.j, best, info);
     }
 
-    const kL = mL === MARGIN ? KEEP_PX : 0, kR = mR === MARGIN ? KEEP_PX : 0;   /* v2.3.6382: none behind the board */
-    const kT = mT === MARGIN ? KEEP_PX : 0, kB = mB === MARGIN ? KEEP_PX : 0;
+    /* v2.3.6382: less behind the board; v2.3.6383: kept to MARGIN past the view there (the side behind, above) */
+    const kL = T.L ? MARGIN - UNDER_PAD : KEEP_PX, kR = T.R ? MARGIN - UNDER_PAD : KEEP_PX;
+    const kT = T.T ? MARGIN - UNDER_PAD : KEEP_PX, kB = T.B ? MARGIN - UNDER_PAD : KEEP_PX;
     const k0 = Math.floor((nx0 - kL) / cs), k1 = Math.floor((nx1 + kR) / cs);
     const l0 = Math.floor((ny0 - kT) / cs), l1 = Math.floor((ny1 + kB) / cs);
     let resident = 0, short = 0;
@@ -539,6 +556,7 @@ export class WheelGround {
 
   _free(key, rec) {
     this.pieces.delete(key);
+    if (!rec.ready) this._dropped = (this._dropped || 0) + 1;   /* v2.3.6383: QA, asked and let go before it came (__btGroundCover) */
     if (this.water) this.water.drop(key);
     if (rec.sprite) {
       /* the texture is this piece's alone: destroy it with its source, which
