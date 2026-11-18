@@ -44,7 +44,7 @@ async function ringOnce(P, G) {
   await P.page.waitForTimeout(4000);
   await P.page.evaluate(() => {
     const s = window.__btWorldTrial.stats;
-    window.__btRH = { s0: { loads: s.loads, popIns: s.popIns, sumMs: s.sumMs, maxMs: s.maxMs }, n: 0, short: 0, missing: 0, inView: 0, worst: 0, t0: performance.now() };
+    window.__btRH = { s0: { loads: s.loads, popIns: s.popIns, sumMs: s.sumMs, maxMs: s.maxMs }, n: 0, short: 0, missing: 0, inView: 0, worst: 0, held: 0, heldMax: 0, gpuMax: 0, t0: performance.now() };
     window.__btRHi = setInterval(() => {
       const c = window.__btGroundCover && window.__btGroundCover();
       const R = window.__btRH;
@@ -52,6 +52,10 @@ async function ringOnce(P, G) {
       R.n++; R.inView += c.inView; R.missing += c.missing;
       if (c.missing > 0) R.short++;
       if (c.missing > R.worst) R.worst = c.missing;
+      /* the memory: the ground's pieces held, and the graphics chip's MB (pixiApp.js __btGpuMb) */
+      R.held += c.held; if (c.held > R.heldMax) R.heldMax = c.held;
+      const g = window.__btGpuMb ? window.__btGpuMb() : null;
+      if (g && g.mb > R.gpuMax) R.gpuMax = g.mb;
     }, 250);
   });
   let offs = 0;
@@ -74,7 +78,7 @@ async function ringOnce(P, G) {
       shortPct: R.n ? Math.round(100 * R.short / R.n) : null, missingPct: R.inView ? +(100 * R.missing / R.inView).toFixed(1) : null, worst: R.worst, reads: R.n,
       /* the ground worker: its ms a piece, and the share of the ring it was laying */
       workerMs: loads ? +(ms / loads).toFixed(1) : null, workerBusyPct: Math.round(100 * ms / 1000 / secs), workerMax: s.maxMs,
-      resident: s.resident, inFlight: s.loading };
+      heldMean: R.n ? Math.round(R.held / R.n) : null, heldMax: R.heldMax, gpuMaxMb: +R.gpuMax.toFixed(1), inFlight: s.loading };
   }, offs);
 }
 

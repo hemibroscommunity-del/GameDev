@@ -153,13 +153,18 @@ const AHEAD_GROW = 2;
    On the board, RIDE_IN_FLIGHT may be asked at a time.  What is asked is
    what the board's look ahead (above) already wants -- nothing laid that
    would not be, nothing kept that would not be (the memory: KEEP_PX and the
-   view decide what stays, as before); only sooner.  On foot, as before.
-   `?groundsend=0`: MAX_IN_FLIGHT riding too. */
+   view decide what stays); only sooner -- and, so the ground holds no more
+   than it did, the side the board rolls away from is let go sooner (update:
+   no margin and no KEEP_PX behind).  On foot, as before.
+   `?groundsend=0`: MAX_IN_FLIGHT riding too, and the margin all round. */
 const RIDE_IN_FLIGHT = 6;
 let _sendOff = null;
-function inFlightMax(S) {
+function groundSendOn(S) {
   if (_sendOff === null) _sendOff = sw('groundsend');   /* read once: the address does not change in play */
-  return !_sendOff && isRiding(S) ? RIDE_IN_FLIGHT : MAX_IN_FLIGHT;
+  return !_sendOff && isRiding(S);
+}
+function inFlightMax(S) {
+  return groundSendOn(S) ? RIDE_IN_FLIGHT : MAX_IN_FLIGHT;
 }
 /* Pieces the zone gate laid round the arrival and this view never took (a
    wide desktop view is shaped differently from the phone's) are let go this
@@ -279,8 +284,17 @@ export class WheelGround {
     const ax = Math.max(-aMax, Math.min(aMax, this._vx * aMs));
     const ay = Math.max(-aMax, Math.min(aMax, this._vy * aMs));
     /* the view and its margin, stretched the way the camera is going */
-    const nx0 = cx - MARGIN + Math.min(0, ax), nx1 = cx + viewW + MARGIN + Math.max(0, ax);
-    const ny0 = cy - MARGIN + Math.min(0, ay), ny1 = cy + viewH + MARGIN + Math.max(0, ay);
+    /* v2.3.6382: on the board (groundSend), the side it rolls away from keeps
+       only UNDER_PAD past the view -- no margin, no KEEP_PX -- so the pieces
+       laid sooner ahead are paid for by those let go sooner behind, and the
+       ground holds no more than it did (the memory first, CLAUDE.md §7).  A
+       side is the one left only while the board rolls clearly away from it
+       (a quarter of the look ahead's reach). */
+    const trail = groundSendOn(S) ? aMax / 4 : Infinity;
+    const mL = ax > trail ? UNDER_PAD : MARGIN, mR = ax < -trail ? UNDER_PAD : MARGIN;
+    const mT = ay > trail ? UNDER_PAD : MARGIN, mB = ay < -trail ? UNDER_PAD : MARGIN;
+    const nx0 = cx - mL + Math.min(0, ax), nx1 = cx + viewW + mR + Math.max(0, ax);
+    const ny0 = cy - mT + Math.min(0, ay), ny1 = cy + viewH + mB + Math.max(0, ay);
     const i0 = clampI(Math.floor(nx0 / cs)), i1 = clampI(Math.floor(nx1 / cs));
     const j0 = clampJ(Math.floor(ny0 / cs)), j1 = clampJ(Math.floor(ny1 / cs));
     const vi0 = clampI(Math.floor(cx / cs)), vi1 = clampI(Math.floor((cx + viewW) / cs));
@@ -359,8 +373,10 @@ export class WheelGround {
       if (best) this._relay(best.i + ',' + best.j, best, info);
     }
 
-    const k0 = Math.floor((nx0 - KEEP_PX) / cs), k1 = Math.floor((nx1 + KEEP_PX) / cs);
-    const l0 = Math.floor((ny0 - KEEP_PX) / cs), l1 = Math.floor((ny1 + KEEP_PX) / cs);
+    const kL = mL === MARGIN ? KEEP_PX : 0, kR = mR === MARGIN ? KEEP_PX : 0;   /* v2.3.6382: none behind the board */
+    const kT = mT === MARGIN ? KEEP_PX : 0, kB = mB === MARGIN ? KEEP_PX : 0;
+    const k0 = Math.floor((nx0 - kL) / cs), k1 = Math.floor((nx1 + kR) / cs);
+    const l0 = Math.floor((ny0 - kT) / cs), l1 = Math.floor((ny1 + kB) / cs);
     let resident = 0, short = 0;
     for (const [key, rec] of this.pieces) {
       if (rec.i < k0 || rec.i > k1 || rec.j < l0 || rec.j > l1) this._free(key, rec);
