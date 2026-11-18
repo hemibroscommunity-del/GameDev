@@ -133,7 +133,8 @@ const forgetful = () => {
   return { storage, getWebSockets: () => [], acceptWebSocket: () => {} };
 };
 async function perGuest(flags, n) {
-  const room = await openRoom(forgetful(), flags);
+  /* v2.3.6000 (card CS): `seathold` (on by default) would hold each guest's seat a minute and fill the room */
+  const room = await openRoom(forgetful(), { seathold: false, ...(flags || {}) });
   let k = 0;
   const run = async (m) => {
     for (let i = 0; i < m; i++) {

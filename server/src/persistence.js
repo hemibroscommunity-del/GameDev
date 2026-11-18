@@ -27,7 +27,7 @@ import { revealPublic, revealPublicList } from './revealbag.js';   /* v2.3.4012:
 import { bagEconOwn } from './bag.js';   /* v2.3.5084: the bag door's counts reach the record they belong on */
 import { econResetBook } from './econcard.js';   /* v2.3.5093: a restart booked for the owner's economy card */
 import { GONE_KEY, GONE_V, goneAdd } from './worldsum.js';   /* v2.3.5285: a restart's character booked for the world's sum */
-import { resetBookOn } from './playerrestore.js';   /* v2.3.5285: its switch, `resetbook` (OFF by default) */
+import { resetBookOn } from './playerrestore.js';   /* v2.3.5285: its switch, `resetbook` (v2.3.6000: ON by default, card CS) */
 import { FIGHT_WORDS } from './fightlock.js';   /* v2.3.5719: the restart's fight refusal says what the other fight refusals say */
 
 /* ═══ v2.3.5719 (card SEC PR 20): A CHARACTER RESTART STARTS FROM NOTHING ═══
@@ -625,8 +625,9 @@ export const persistenceMethods = {
        The character and its vault leave the world with what they held, and
        the character's own count (`_econ`) goes with them: the world's sum
        read a restart as value gone with no burn written (gold -5000 in the
-       census).  With `resetbook: true` in the live flags (OFF by default: a
-       new row and a read and a write a restart, the owner's call) both are
+       census).  With `resetbook` on (v2.3.6000: ON by default, the owner's
+       call, card CS; `resetbook: false` in the live flags turns it off: a
+       new row and a read and a write a restart) both are
        booked into `econ_gone` (worldsum.js goneAdd: what they held, burned;
        the character's own count kept) and written in the SAME run as their
        deletes, nothing awaited between (handoff rule 5): a restart between

@@ -14,8 +14,9 @@
  *   LEFT, with why.  A restore puts back each restored record THE SNAPSHOT
  *   HOLDS: the character always (a daily copy is the stored character), and
  *   the vault and the pets when the copy carries them (`_with`, written by
- *   the daily copy with `fullsnap: true` in the live flags, OFF by default:
- *   it reads two rows more a player a day -- the owner's call).
+ *   the daily copy with `fullsnap` in the live flags, ON by default since
+ *   v2.3.6000, the owner's call (card CS): it reads two rows more a player a
+ *   day; `fullsnap: false` turns it off).
  *
  *   THROUGH THE DOORS.  The restored character's purse is made the copy's by
  *   the gold door (`restore`, a set road judged by its difference: SHAPES
@@ -184,19 +185,19 @@ export async function movedSince(room, pid, snap, snapKey, vaultNow) {
 const own = (o, k) => !!o && typeof o === 'object' && Object.prototype.hasOwnProperty.call(o, k);
 const BAD_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 
-/** The daily copy carries the vault and the pets (`_with`) only with
- *  `fullsnap: true` in the live flags: two rows more read a player a day,
- *  OFF until the owner says (a cost: card R's Needs). */
+/** The daily copy carries the vault and the pets (`_with`): two rows more
+ *  read a player a day.  ON by default since v2.3.6000 (card CS, the owner,
+ *  2026-11-17: "I think turn all of them on then we monitor usage cost"); `fullsnap: false` in the live flags turns it off. */
 export function fullSnapOn(room) {
   const f = room && room._liveFlags;
-  return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'fullsnap') && f.fullsnap === true);
+  return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'fullsnap') && f.fullsnap === false);
 }
-/** A restart books the deleted character into `econ_gone` only with
- *  `resetbook: true` in the live flags: a new row, and a read and a write a
- *  restart, OFF until the owner says (a cost: card R's Needs). */
+/** A restart books the deleted character into `econ_gone`: a new row, and a
+ *  read and a write a restart.  ON by default since v2.3.6000 (card CS, the
+ *  owner, 2026-11-17: "I think turn all of them on then we monitor usage cost"); `resetbook: false` in the live flags turns it off. */
 export function resetBookOn(room) {
   const f = room && room._liveFlags;
-  return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'resetbook') && f.resetbook === true);
+  return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'resetbook') && f.resetbook === false);
 }
 
 /** The daily copy of a player: the stored character as it is, and with

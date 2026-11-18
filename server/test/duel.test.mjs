@@ -505,6 +505,10 @@ check('...and BOTH players can duel again afterwards',
  * unwinnable, because combat.js walks only the attacker's own zone.  The
  * refusal has to land BEFORE the escrow, and has to be visible: both
  * players pressed a button. */
+/* v2.3.6000 (card CS): `xferescrow` is on by default now, and §12's pot pays
+   through _creditWith, a beat later: let it land before the purses are set,
+   or it lands on this section's 500 (a=550) */
+await new Promise((r) => setTimeout(r, 20));
 psA.dying = false; psA.dead = false; psB.dying = false; psB.dead = false;
 psA.coins = 500; psB.coins = 500;
 psA.z = 'town'; psB.z = 'meadow';

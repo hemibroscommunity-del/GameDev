@@ -436,8 +436,11 @@ for (const finish of ['cancel', 'retry']) {
 {
   const sc = SCEN[0];
   const { store } = await setup(sc);
-  const on = await crossing(sc, store, Infinity);
-  const off = await crossing(sc, store, Infinity, { mktsettle: false });
+  /* v2.3.6000 (card CS): `xferescrow` (on by default now) adds the sale's
+     ledger row to the settled order only; this counts the note, so it is held
+     off on both sides (xfer.test §11 and cost-guard count the ledger's row) */
+  const on = await crossing(sc, store, Infinity, { xferescrow: false });
+  const off = await crossing(sc, store, Infinity, { mktsettle: false, xferescrow: false });
   /* measured from each crossing's own start */
   check('6. a crossing writes one row more than the old order (its note), no more', on.rows.length === off.rows.length + 1, { on: on.rows, off: off.rows });
   check('6. ...and reads nothing more', on.gets.length === off.gets.length, { on: on.gets, off: off.gets });

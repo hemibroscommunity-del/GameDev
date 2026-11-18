@@ -13,11 +13,12 @@
  *      untouched, what of theirs is held between players named, a dry run
  *      writes nothing, a newer worker's record refused, and a daily copy
  *      without `_with` (today's) puts back the character alone;
- *   3. THE SNAPSHOT: `fullsnap` off, the daily copy is the character as
- *      before; on, it carries the vault and the pets (`_with`);
- *   4. THE RESTART (`character_reset`), card K's hostile census: off (the
- *      default), the world's sum reads it as before (value gone); with
- *      `resetbook: true` the character and its vault are booked into
+ *   3. THE SNAPSHOT: `fullsnap: false`, the daily copy is the character as
+ *      before; on (the default since v2.3.6000), it carries the vault and the
+ *      pets (`_with`);
+ *   4. THE RESTART (`character_reset`), card K's hostile census: with
+ *      `resetbook: false`, the world's sum reads it as before (value gone);
+ *      on (the default since v2.3.6000) the character and its vault are booked into
  *      `econ_gone` in their deletes' own run, and the sum is 0;
  *   5. THE ROUTE: the owner's POST /api/admin/restore answers the same.
  *
@@ -200,18 +201,21 @@ const sumNow = (r, st) => count(r, st);
 /* ══════════ 3. THE SNAPSHOT ══════════ */
 {
   const st = makeStorage(seed());
-  const r = await room(st);
+  /* v2.3.6000 (card CS): `fullsnap` is ON by default (the owner, 2026-11-17:
+     "I think turn all of them on then we monitor usage cost"); `fullsnap:
+     false` turns it off */
+  const r = await room(st, { fullsnap: false });
   const blob = { ...NOW };
   const off = await snapshotCopy(r, P, blob);
-  check('3. fullsnap off (the default): the daily copy is the character as before', off === blob && !('_with' in off));
-  r._liveFlags.fullsnap = true;
+  check('3. fullsnap: false: the daily copy is the character as before', off === blob && !('_with' in off));
+  delete r._liveFlags.fullsnap;
   const on = await snapshotCopy(r, P, blob);
-  check('3. fullsnap on: it carries the vault and the pets at that moment', on.coins === 1000 && JSON.stringify(on._with['bank:']) === JSON.stringify(VAULT_NOW) && on._with['pets:'].list[0].id === 'p_now' && !('rpg:' in on._with));
+  check('3. fullsnap unset (on, the default since v2.3.6000): it carries the vault and the pets at that moment', on.coins === 1000 && JSON.stringify(on._with['bank:']) === JSON.stringify(VAULT_NOW) && on._with['pets:'].list[0].id === 'p_now' && !('rpg:' in on._with));
   const none = await snapshotCopy(r, Q, { coins: 50 });
   check('3. ...null where there is none (a restore of it deletes one made since)', none._with['bank:'] === null && none._with['pets:'] === null);
   /* through the join: a daily copy taken at the first join of the day */
   const st2 = makeStorage(seed(null, true));
-  const r2 = await room(st2, { fullsnap: true });
+  const r2 = await room(st2);   /* v2.3.6000: the default, on */
   await join(r2, fakeWs('p'), P, { loginTaken: true });
   const snaps = [...st2._store.keys()].filter((k) => k.startsWith('rpgsnap:' + P + ':') && /:\d{8}$/.test(k) && k !== SNAP);
   const s = snaps.length ? st2._store.get(snaps[0]) : null;
@@ -237,11 +241,12 @@ async function restart(flags) {
   return { st, r, u: unexplained(start, sumNow(r, st)), writes };
 }
 {
-  const off = await restart(null);
-  check('4. resetbook off (the default): as before -- the character gone, nothing booked (the census\'s value gone)', !off.st._store.has('rpg:' + P) && !off.st._store.has(GONE_KEY) && off.u.gold === -((1000 + 100) - (300 - 40)) && off.u.goods.wood_oak === -9, off.u);   /* held less its own count */
-  const on = await restart({ resetbook: true });
+  /* v2.3.6000 (card CS): `resetbook` is ON by default; `resetbook: false` turns it off */
+  const off = await restart({ resetbook: false });
+  check('4. resetbook: false: as before -- the character gone, nothing booked (the census\'s value gone)', !off.st._store.has('rpg:' + P) && !off.st._store.has(GONE_KEY) && off.u.gold === -((1000 + 100) - (300 - 40)) && off.u.goods.wood_oak === -9, off.u);   /* held less its own count */
+  const on = await restart(null);
   const g = on.st._store.get(GONE_KEY);
-  check('4. resetbook on: the character and its vault are booked into econ_gone', !on.st._store.has('rpg:' + P) && !on.st._store.has('bank:' + P) && !!g && g.n === 1, g);
+  check('4. resetbook unset (on, the default since v2.3.6000): the character and its vault are booked into econ_gone', !on.st._store.has('rpg:' + P) && !on.st._store.has('bank:' + P) && !!g && g.n === 1, g);
   check('4. ...and the world\'s sum is 0: no value gone unexplained (gold and every key)', on.u.gold === 0 && Object.keys(on.u.goods).length === 0, on.u);
   check('4. ...the vault deleted once, in the character\'s run', on.writes.filter((k) => k === 'bank:' + P).length === 1, on.writes);
 }

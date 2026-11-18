@@ -351,7 +351,7 @@ function check(name, cond, detail) {
   }
   {
     const st = makeStorage(seed());
-    const room = await openRoom(st, { econresetput: false });
+    const room = await openRoom(st, { econresetput: false, resetbook: false });   /* v2.3.6000: `resetbook` (on by default, card CS) adds econ_gone; this counts econresetput's own puts */
     const p = puts(st);
     await room._resetCharacterData(P); await settle();
     check('11. `econresetput: false`: no put more than today (the parachute copy only)', p.length === 1 && p[0].startsWith('rpgsnap:'), p);
@@ -366,7 +366,7 @@ function check(name, cond, detail) {
   }
   {
     const st = makeStorage(seed());
-    const room = await openRoom(st, { econresetput: true });
+    const room = await openRoom(st, { econresetput: true, resetbook: false });   /* v2.3.6000: as above */
     room.sessions.set({}, { id: 'bp_someone', openedAt: Date.now() });
     const p = puts(st);
     await room._resetCharacterData(P); await settle();
