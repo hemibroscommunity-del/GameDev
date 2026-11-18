@@ -539,9 +539,11 @@ const outerName = (f, p) => {
     _invCount: { on: 'accept', why: 'own-property counts: the gift\'s accept proves the goods (the offer moves nothing)' },
     _paceTake: { on: 'none', why: 'the message pace, not a rule of the bag (the gift rides the relay\'s bucket)' },
     _opSeen: { on: 'none', why: 'an opId\'s once; the gift is single-shot by its pending offer instead' },
+    /* v2.3.6022 (card RV): the dying take nothing (life.js; TRAPS §150) */
+    _deadTakeOn: { on: 'accept', why: 'a dying sender gives nothing: the gift\'s accept is where it takes (the offer moves nothing), trade.js _interceptTrade (v2.3.6022)' },
   };
   check('§269: the trade window (_handleTrade2Confirm) is found in the economy\'s files', !!window2);
-  census('§269', 'gates the trade window shares with two more roads out of the bag', shared, ROAD_RULES, 4);
+  census('§269', 'gates the trade window shares with two more roads out of the bag', shared, ROAD_RULES, 5);   /* v2.3.6022: 4 -> 5, `deadtake` on the window, the gift and the arena (a new rule of the bag's roads, listed as the trap asks) */
   let offer = '';
   let accept = '';
   for (const f of SERVER) {
