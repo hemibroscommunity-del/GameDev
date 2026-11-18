@@ -76,6 +76,7 @@
 import { gemGive } from './gems.js'; /* v2.3.3516: gems live in the bag */
 import { bagGive, bagTake } from './bag.js'; /* v2.3.4810: the bag door */
 import { stashGive, stashTake, stashSet } from './stash.js';   /* v2.3.5281: the stashes' door (card R PR 2) */
+import { lifeOf, LIFE } from './life.js';   /* v2.3.5920: the dead take nothing (life.js _deadTakeOn; TRAPS §150) */
 
 export const SALVAGE = Object.freeze({
   /* metal id (the armour's `mat`, materialTints.js) -> its bar (smelting.js),
@@ -162,7 +163,10 @@ export const salvageMethods = {
   _salvageWho(session) {
     if (!session || !session.id || this._salvageOff()) return null;
     const ps = this.playerState[session.id];
-    if (!ps || ps.dying || ps.dead || ps.disconnected) return null;
+    /* v2.3.5920 (card V3, TRAPS §150): the life read moved to the two
+       handlers, where it answers (`dead`) -- here it refused in silence, and
+       the guard reading the handlers for it could not see it */
+    if (!ps || ps.disconnected) return null;
     const now = Date.now();
     if (ps._lastSalvageAt && now - ps._lastSalvageAt < SALVAGE.COOLDOWN_MS) return null;
     ps._lastSalvageAt = now;
@@ -221,6 +225,10 @@ export const salvageMethods = {
       this._salvageSend(pid, 'smith_salvage_result', r, false);
       return r;
     };
+    /* v2.3.5920 (TRAPS §150): nothing salvaged in the dying seconds -- as
+       before (it was _salvageWho's silent refusal), now answered: "Could not
+       salvage".  Not behind `deadtake`: it refused before the card too. */
+    if (lifeOf(ps) !== LIFE.ALIVE || ps.dead) return refuse('dead');
     let metal;
     let grade;
     let ref;
@@ -283,6 +291,9 @@ export const salvageMethods = {
       this._salvageSend(pid, 'essence_result', r, false);
       return r;
     };
+    /* v2.3.5920 (TRAPS §150): no essence used in the dying seconds, answered
+       (as for a salvage above) */
+    if (lifeOf(ps) !== LIFE.ALIVE || ps.dead) return refuse('dead');
     const ess = parseEssenceKey(key);
     if (!ess) return refuse('bad');
     if (Math.floor(Number(ps.inventory[key]) || 0) < 1) return refuse('no_essence');

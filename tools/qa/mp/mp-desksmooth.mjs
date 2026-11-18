@@ -65,6 +65,10 @@
  *   BT_DS_SIZES=1920x1080 ...     # only these windows
  *   BT_DS_PARTS=quiet,slowline    # only these parts (quiet, throttle, both, slowline)
  *   BT_DS_SHOTS=1                 # pictures into tools/qa/mp/out/
+ *   BT_QA_PROFILE=hotel-laptop    # a slow machine (tools/qa/profiles.mjs; v2.3.5861, card O2 PR 2):
+ *                                 # one part, `profile`: the middle window under the profile's own
+ *                                 # throttle, line and lane (the harness sets them), the work lines
+ *                                 # times its throttle as part 2's are; BT_DS_PARTS still picks
  */
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
@@ -75,7 +79,7 @@ const ALL = [{ width: 1366, height: 657, name: 'short laptop' }, { width: 1920, 
 const SIZES = process.env.BT_DS_SIZES
   ? process.env.BT_DS_SIZES.split(',').map((s) => { const [w, h] = s.split('x').map(Number); return ALL.find((a) => a.width === w && a.height === h) || { width: w, height: h, name: s }; })
   : ALL;
-const PARTS = (process.env.BT_DS_PARTS || 'quiet,throttle,both,slowline').split(',').map((s) => s.trim());
+const PARTS = (process.env.BT_DS_PARTS || (H.PROFILE ? 'profile' : 'quiet,throttle,both,slowline')).split(',').map((s) => s.trim());   /* v2.3.5861: a profile plays its own part */
 const FULL = process.env.BT_DS_FULL === '1';
 const SHOTS = process.env.BT_DS_SHOTS === '1';
 const THROTTLE = 4;
@@ -156,7 +160,7 @@ async function measure(P, drive) {
 
 async function device(browser, wsPort, webPort, rec, vp, G, how) {
   const tag = `${vp.width}x${vp.height}`;
-  const label = `${vp.name === tag ? tag : vp.name + ' ' + tag}${how.throttle ? `, page slowed x${how.throttle}` : ''}${how.slow ? `, thin line ${how.slow}` : ''}`;
+  const label = `${vp.name === tag ? tag : vp.name + ' ' + tag}${how.profile ? `, profile ${how.profile}` : ''}${how.throttle ? `, page slowed x${how.throttle}` : ''}${how.slow ? `, thin line ${how.slow}` : ''}`;
   if (how.slow) H.slowLine(how.slow);
   const P = await H.newPlayer(browser, { name: 'ds' + vp.width + (how.throttle ? 't' : how.slow ? 's' : ''), wsPort, webPort, world: 'wheel', wide: true,
     viewport: { width: vp.width, height: vp.height }, query: 'lookpalette=0' });
@@ -272,6 +276,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
   if (PARTS.includes('throttle')) for (const vp of FULL ? SIZES : [mid]) out.push(await device(browser, wsPort, webPort, rec, vp, G, { throttle: THROTTLE }));
   /* part 4: the page slowed, and a line that says nothing for 6 s and then is quick (BT_DS_BOTH_LINE: another line) */
   if (PARTS.includes('both')) out.push(await device(browser, wsPort, webPort, rec, mid, G, { throttle: THROTTLE, slow: process.env.BT_DS_BOTH_LINE || '/world/ground/:600:6000' }));
+  /* v2.3.5861 (card O2 PR 2): the slow profile's part -- its throttle and its line are the harness's own
+     (BT_QA_CPU_THROTTLE, BT_QA_SLOW), so this part only names it and judges the work by its throttle */
+  if (PARTS.includes('profile')) {
+    if (!H.PROFILE) rec.ok('the `profile` part wants BT_QA_PROFILE=<name> (tools/qa/profiles.mjs)', false);
+    else out.push(await device(browser, wsPort, webPort, rec, mid, G, { profile: H.PROFILE.name, throttle: H.PROFILE.cpu }));
+  }
   if (PARTS.includes('slowline')) {
     out.push(await device(browser, wsPort, webPort, rec, mid, G, { slow: '/world/ground/:150:200' }));
     if (FULL) {
