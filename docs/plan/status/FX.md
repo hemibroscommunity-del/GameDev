@@ -1,11 +1,12 @@
 card: FX
 branch: claude/plan-fx-1-effects-leaves
-prs: 6220 (working: draft, opening)
-state: working
+prs: #2190 6220 (ready)
+state: ready
 
 ## Done
 
-- 6220 built: 40 level-0 leaves (census at 5ea5c7d5) + 12 constants they
+- #2190 (6220), ready: CI green at 381dc69 (test, playable,
+  memory-budget, lint-build). 40 level-0 leaves (census at 5ea5c7d5) + 12 constants they
   read moved verbatim to src/rendering/leaves/effects-{look,skills,combat,
   ui,economy,render,social}.js (52 statements, 0 not verbatim); 6 suites
   re-keyed (planning session's Q2 (A)); npm test 557 green, questline
@@ -25,6 +26,7 @@ state: working
 
 ## Needs
 
-- PR 6222 (ore-tiers, projectile-sheets): the p256 recipe needs files
-  outside the card (p256.js, p256Files.js, twins under public/, a new
-  `?name=0` row in switches.mjs). To be asked before building it.
+- #2190 clashes with EN's #2189 in M-tables.md: EN merges first; main
+  merged in when gatekeeper 46 asks (planning session, 2026-11-18).
+- 6222: answered (part 6): files outside approved, existing off-ramps
+  ?treenumbers=0 / ?p256=0, buffers measured both ways.
