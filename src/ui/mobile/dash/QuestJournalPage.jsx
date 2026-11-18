@@ -44,6 +44,7 @@ import { trackedQuestId, setTrackedQuest } from '@/game/trackedQuest.js';
 import { openWorldMap } from '../../WorldMapOverlay.jsx';
 import { useScrollTap } from '../sheet/scrollTap.js';
 import { swallowTapClick } from '../../swallowTapClick.js';
+import { AFTER_PAINT } from '../../afterPaint.js';   /* v2.3.6281: the first read off the commit (card HB2 PR 2) */
 
 /* the giver's face, by the NAME the quest stores (as the old page found it) */
 export function npcPortrait(name) {
@@ -60,9 +61,12 @@ export function useBoxWidth() {
   useEffect(() => {
     if (!el) return undefined;
     const read = () => { const r = el.getBoundingClientRect(); setW((old) => (Math.abs(old - r.width) < 1 ? old : Math.round(r.width))); };
-    read();
     let ro = null;
     try { ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(read) : null; } catch (_e) { ro = null; }
+    /* v2.3.6281 (card HB2 PR 2; `?afterpaint`): the first read from the observer (told on observe, after the
+       browser's own layout), not here right after React put the page in, where it laid the whole page out
+       (`read2 > getBoundingClientRect`, 59.2 ms on budget-android at `windows`).  `?afterpaint=0`: here too. */
+    if (!AFTER_PAINT || !ro) read();
     if (ro) ro.observe(el);
     else window.addEventListener('resize', read);
     return () => { if (ro) ro.disconnect(); else window.removeEventListener('resize', read); };
