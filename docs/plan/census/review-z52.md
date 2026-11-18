@@ -87,7 +87,7 @@ against the file by hand:
 - PLAUSIBLE: a U-turn finds the strip 48-192 px behind already freed, with
   up to six jobs for the old direction queued ahead of it (the worker
   never cancels).
-- `_sendOff` cached at module level, against switches.js's v2.3.5306 note
+- `_sendOff` cached at module level, against switches.js's 5306 note
   (a test changes the address mid-page). TRAPS §128 ("Not a bigger
   `MAX_IN_FLIGHT`") stood unanswered.
 - DISPROVED: a piece on screen freed (the free box behind is the cover
@@ -150,6 +150,9 @@ check is green. Not a hold; named below (Found).
    360da6d9. precheck 0 FAIL (860 s), build, questline 187/187.
    (`gatekeeper.mjs` could not fetch; each branch was fetched by hand just
    before, at the heads above.)
+3. **The list**: main + #2251 + #2256 + #2252 + #2254 + #2253 (a978e2e4)
+   + #2255 + #2257: tree **bcd84b2d**. precheck 0 FAIL (829 s), build,
+   questline 187/187. No file under `server/`: nothing deploys.
 
 ## Step 5b: what GitHub will merge
 
@@ -157,6 +160,12 @@ Every PR's base is `main`. Merge bases counted step by step down the list
 (each branch against main with every PR above it merged in, as merge
 commits): one each. #2256 merged #2251's head and not main again: one base
 once #2251 lands.
+
+## The list (merge in this order, "Create a merge commit", in one go)
+
+1 #2251 (RR 6300) · 2 #2256 (RR 6301, stacked on #2251) · 3 #2252 (LR
+6362) · 4 #2254 (HB2 6284) · 5 #2253 (SB 6382, a978e2e4) · 6 #2255 (EN
+6204) · 7 #2257 (HB2 6285) · 8 this PR (Z 6266). Held: none at close.
 
 ## Found (no card's, or another card's)
 

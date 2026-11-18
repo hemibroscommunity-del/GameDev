@@ -6,8 +6,9 @@ state: ready
 ## Done
 - `census/review-z52.md`: 7 PRs checked against their cards; #2253, #2255,
   #2254 and #2257 reviewed (SB's mends folded into #2253 at a978e2e4);
-  merge bases one each, step by step; rehearsed on `main` 1cd3fced:
-  REHEARSAL3. Deploys 44381829545 and 44382339345: success. WD3 done.
+  merge bases one each, step by step; rehearsed on `main` 1cd3fced,
+  tree bcd84b2d: precheck 0 FAIL, build, questline 187. Deploys
+  44381829545 and 44382339345: success. WD3 done.
 ## The list: merge in this order, "Create a merge commit", in one go
 1 #2251 (RR 6300)  2 #2256 (RR 6301, stacked on #2251)  3 #2252 (LR 6362)
 4 #2254 (HB2 6284)  5 #2253 (SB 6382, head a978e2e4)  6 #2255 (EN 6204)
@@ -23,8 +24,7 @@ state: ready
 - `mp-membudget`'s heap line 38.5 MB: red on main about half the time
   here (38.4-38.8), the merged tree 38.5-39.3; no card owns it (the
   planning session's call: a card to bring it down, or a re-measured line).
-- `mp-skateboard`: green alone on #2253's head (30/30) and on main (RR);
-  SB's earlier red was a busy box. Not a red on main.
+- `mp-skateboard` green alone on #2253's head (30/30) and main: not red.
 - RR's census: recoverpay, firststeps 6, deskkeys, headframes, quietphone,
   desklunge, cuelevels 3, brocard 4 and geartab sideways (HB2's screens),
   waterfrog hangs (part 6), hairstencil 3 parts: RR's to trace.
