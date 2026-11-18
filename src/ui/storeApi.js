@@ -114,7 +114,11 @@ export function storePetsEnabled() {
 }
 /* kind 'pet' -> { petId, price }: the worker takes the pet out of ITS OWN
    record by id (petbook.js _petSellable / _petbookTake). */
-export const storeListPet = (petId, price) => post('/list', { kind: 'pet', petId, price });
+/* v2.3.5882 (card K3 PR 3): its route by the door's row's name.  It said
+   '/list' since the door took post() (v2.3.5191), a name with no row, which
+   act() refuses: a pet listing never left the page (the guard's §2c now holds
+   every post() here to a row) */
+export const storeListPet = (petId, price) => post('http:/api/store/list', { kind: 'pet', petId, price });
 
 export function storeMyId() {
   const s = S();

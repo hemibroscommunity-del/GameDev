@@ -217,8 +217,9 @@ const CLOSE_HANDED = {
   _adminPutOut: 'admin.js: the levers\' close (its callers are read)', _floodClose: 'flood.js: the flood\'s close (its callers are read)',
   _authPutOut: 'devicelock.js: `why === \'key\' ? 4017 : DEVICE_LOCK.CLOSE`, the reason the refusal\'s own',
 };
-/* codes with no row in one-socket.md's table today: only falls */
-const NO_ROW_KNOWN = [4003, 4004, 4005, 4006, 4008, 4009, 4010, 4014, 4015, 4016, 4017, 4018, 4023];
+/* codes with no row in one-socket.md's table today: only falls.  v2.3.6042 (card V6
+   PR 3): the thirteen listed on 2026-11-17 have their rows; none is left */
+const NO_ROW_KNOWN = [];
 {
   /* the module constants: NAME = { KEY: number|'string' } */
   const consts = new Map();

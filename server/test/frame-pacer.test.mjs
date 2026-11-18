@@ -308,7 +308,8 @@ check('1. the address: pace=0, off and false are the old way; anything else is o
     && /if \(_framePacer && !_framePacer\.take\(typeof _rafT === 'number' \? _rafT : performance\.now\(\), [^)]*\)\) return;/.test(loop)
     && loop.indexOf('_framePacer.take(') < loop.indexOf('S._frameCount++'));
   check('10b. ...not judged behind a loading screen', /_framePacer\.take\([^;]*!S\._zoneLoading[^;]*S\.__introLiftedAt/.test(loop));
-  check('10c. `?pace=0` makes no pacer; the steady step starts again when the rate changes', /if \(framePaceOn\(window\.location\.search \|\| ''\)\) _framePacer = makeFramePacer\(\);/.test(bt)
+  /* v2.3.5342: the address from the page's one reader (game/switches.js pageAddress; card M PR 3, the planning session's answer) */
+  check('10c. `?pace=0` makes no pacer; the steady step starts again when the rate changes', /if \(framePaceOn\(pageAddress\(\)\)\) _framePacer = makeFramePacer\(\);/.test(bt)
     && /_frameClock\.reset\(\)/.test(bt));
   check('10d. the meter can read it', /window\.__btPace = /.test(bt) && /__btPace/.test(readFileSync(join(ROOT, 'src/debug/perfHud.js'), 'utf8')));
   check('10e. the numbers: a fast screen is over 70 a second, the floor about 40, a verdict from ' + JUDGE_RUNS + ' frames', PACE_FAST_MS === 14 && PACE_FLOOR_MS === 26 && UP_WAIT_MS === 20000);

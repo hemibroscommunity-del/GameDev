@@ -41,7 +41,9 @@
  *     specials in 1.2 s) and the 400 px melee and 3,600 px Wheel reach; the
  *     sword's swing and its 150 px reach and believed shove (v2.3.5548,
  *     swordswing.js, `swordswing`) and a bow's claim held to an arrow seen
- *     (v2.3.5550, bowshot.js, `bowshot`), both asked in combat.js;
+ *     (v2.3.5550, bowshot.js, `bowshot`; within it its reach from where the
+ *     arrow left, v2.3.5901 `bowreach`, and its path, v2.3.5904 `bowpath`),
+ *     both asked in combat.js;
  *   - the order of the first quests (quests.js _questBarred, v2.3.3179: the
  *     'first' and 'order' rules; a quest nobody can give is still refused);
  *   - the dodge-roll window against a player's blow (movement.js _rollOn,
@@ -93,7 +95,21 @@
  * old key's after-join check held while `oldkeyheld` is (v2.3.5808, loginkeys.js);
  * an offer's Yes waits for a bid half made, and a payment and its escrow's
  * delete one write (v2.3.5809, storeoffer.js, trade2.js, gladiator.js:
- * `offerpend`, `leftoverheal`).
+ * `offerpend`, `leftoverheal`); a friendship both sides or neither, and a request
+ * nobody answers let go after 30 days (v2.3.5811, friends.js: `friendfix`); the
+ * cleaner's blank and hidden characters, and a new pet or alliance name held
+ * to the name rule (v2.3.5814, chatguard.js, petbook.js, alliance.js:
+ * `cleanmore`, `namestaff`); the rewind's plan names the owner's login acts since
+ * its time (v2.3.5815, restore.js: `rewindsays`); the jackpot's deposit asks
+ * the purse again after its awaits (v2.3.5813, cadence.js: `jackcheck`); the
+ * Auction House's `/mine` shows a player's bids only to that player's own
+ * session (v2.3.5817, store.js: `minebids`); a join's shield and cosmetic
+ * claims merged only when the ledger backs them (v2.3.5812, gearstash.js:
+ * `shieldclaim`); a daily spin's and the login spin's paid
+ * mark in the credit's own run (v2.3.5810, dailyrewards.js, loginspin.js:
+ * `paidmark`); a `track`'s avatar, colour and look words in the game's own
+ * forms (v2.3.5819, lookform.js: `lookform`); the daily chest's stamp and
+ * save in one write (v2.3.6021, dailychest.js, under `paidmark`).
  *
  * WHO CAN TURN IT ON.  Only the admin key, through the Test panel's
  * POST /api/admin/dev/testmode {playerId, on} (devtools.js), which the owner's

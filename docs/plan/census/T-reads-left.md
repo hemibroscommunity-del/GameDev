@@ -31,7 +31,7 @@ twenty-two of part 2 moved first (v2.3.5343; `switch-reader.test` check 3).
 
 | reads | file |
 |---|---|
-| 16 | src/ui/BroTown.jsx |
+| 0 | src/ui/BroTown.jsx (its 16 moved, v2.3.5342: 13 on `sw`/`swHas` in `MOVED`; `?dtsmooth`, `?pace`, `?shieldaim` (rules handed the whole address: `frameSmoothOn`, `framePaceOn`, `shieldFollowsPointerAlways`) on `pageAddress()`) |
 | 0 | src/rendering/systems/effectsRenderer.js (its 13 moved, v2.3.5343: 10 on `sw`/`swHas` in `MOVED`; `?legslook` (a need), `?dmgscale`, `?orebreakms` (values) on `pageAddress()`, the old test in place) |
 | 0 | src/rendering/systems/entityRenderer.js (its 9 moved, v2.3.5343: 6 on `sw`/`swHas` in `MOVED`; `?traitretry` (a need), `?lookinline` (`=0` is not thrown), `?lookpalette=1`/`?lookprobe` (two names) on `pageAddress()`) |
 

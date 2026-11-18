@@ -81,7 +81,7 @@ import { loadWheelBuildingIcons, freeWheelBuildingIcons } from './wheelBuildingI
 import { preloadFarmArt, freeFarmArt } from './farmWorld.js';   /* v2.3.3136: your farm's barn, props, beds and crops */
 import { ensureStandIn } from './standIns.js';   /* v2.3.3136: the farmer kneels in the cook's figure */
 import { preloadMonsterShots } from './monsterShotFx.js'; /* v2.3.2732: the monsters' goo and fire, minted in code */
-import { preloadWorldLife } from './worldLife.js';        /* v2.3.2811: the buildings' swinging and waving pieces */
+import { preloadWorldLife, loadWorldLifeParts } from './worldLife.js';        /* v2.3.2811: the buildings' swinging and waving pieces; v2.3.5983: their pieces with the retired town's scenery */
 import { preloadRideArt } from './rideFx.js';             /* v2.3.3776: the skateboard */
 import { selfTestReady } from './selfTest.js';            /* v2.3.5234: the self-test at the door (card O PR 14a) */
 
@@ -203,6 +203,9 @@ export async function preloadZoneAssets(zoneId) {
      town (worldview -> town).  The other ways in -- a spoke's return portal,
      a respawn, the farm -- are held by zoneTransitions' syncTownScenery. */
   if (zoneId === 'town') tasks.push(Promise.resolve(loadTownScenery()).catch(() => {}));
+  /* v2.3.5983: and its buildings' signs and flags, which the world's gate no
+     longer loads (worldLife.js preloadWorldLife) */
+  if (zoneId === 'town') tasks.push(Promise.resolve(loadWorldLifeParts()).catch(() => {}));
   /* ═══ v2.3.3136: YOUR FARM ═══
      Its barn, props, beds and every crop's every stage (rendering/farmWorld.js
      -- a bed can turn to any of them while you stand there), and the farmer's
@@ -413,7 +416,9 @@ export async function preloadWorldAnimations() {
        WITHOUT them now (the *-still art), so a building would stand there
        missing its sign until this had loaded -- exactly the first-sight load
        the law forbids.  ~1.1MB decoded. */
-    worldLife: preloadWorldLife(),
+    /* v2.3.5983: the pieces (the retired town's signs and flags) only where
+       this gate loads that town's scenery (townScenery below) */
+    worldLife: preloadWorldLife(!townSkippedOnTheWay()),
     /* v2.3.2279: the bow special's blast.  GLOBAL rather than per-zone -- a
        bow goes everywhere its owner does, so there is no zone to scope it to,
        and the ZONE-ASSET EXCEPTION only covers art a single zone uses.  2MB

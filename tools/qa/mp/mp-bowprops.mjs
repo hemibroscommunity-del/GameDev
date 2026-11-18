@@ -478,15 +478,22 @@ export async function run({ browser, wsPort, webPort, rec }) {
      A plain arrow comes down at the edge of the screen (projectiles.js, the
      v2.3.1095 range rule), so the Town Hall 460 px east of an upright phone's
      archer -- inside the bow's 675 px, past the view's ~320 px half width --
-     is out of its reach, and the bow must not start firing at it. */
+     is out of its reach, and the bow must not start firing at it.
+     v2.3.5845: the distance is read off the view the game draws today, not
+     written: the phone's view is 843 px wide now (half 422, measured on main),
+     so 460 px was ON the screen and this guard refused every run.  He stands
+     past the half width + 60, still inside the bow's 675 px. */
   let hRes = null;
+  const half0 = await P.page.evaluate(() => { const S = window._gameState.current; return S._viewW / 2; });
+  const off = Math.max(460, Math.ceil(half0 + 80));
   for (const yy of [hall.box.y1 - 30, hall.box.y1 - 90, hall.box.y0 + 40]) {
-    await bootsAt(P, hall.box.x0 - 460, yy, dy);
+    if (off > 675 - 20) break;
+    await bootsAt(P, hall.box.x0 - off, yy, dy);
     const first = await firstOnLine(P, 0, 675);
     const half = await P.page.evaluate(() => { const S = window._gameState.current; return S._viewW / 2; });
-    if (first === hall.oi && 460 > half + 60) { hRes = await hold(P, 0, 1600, hall.oi); hRes.half = half; break; }
+    if (first === hall.oi && off > half + 60) { hRes = await hold(P, 0, 1600, hall.oi); hRes.half = half; hRes.off = off; break; }
   }
-  rec.ok('H: the Town Hall is the first thing on a level line, 460 px off and past the screen\'s edge (guard)', !!hRes, { box: hall.box });
+  rec.ok(`H: the Town Hall is the first thing on a level line, ${off} px off and past the screen's edge (half the view ${Math.round(half0)} px; guard)`, !!hRes, { box: hall.box, off, half0 });
   if (hRes) {
     rec.ok(`H: ...and the bow does not fire at it (${hRes.shots} arrows, the gate ${hRes.gate && hRes.gate.id})`,
       hRes.shots === 0 && !!hRes.gate && (hRes.gate.none || hRes.gate.d == null), hRes);

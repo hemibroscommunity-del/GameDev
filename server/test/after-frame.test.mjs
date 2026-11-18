@@ -70,8 +70,9 @@ const src = (p) => readFileSync(new URL('../../' + p, import.meta.url), 'utf8');
   const bt = src('src/ui/BroTown.jsx'), ga = src('src/ui/guideArrow.js'), qc = src('src/ui/mobile/QuestCoach.jsx');
   check('2a the game\'s loop calls the hook once a frame, AFTER the renderer (the camera that frame was drawn with)',
     /* v2.3.5340: the frame's step marks (game/frameSteps.js, card M) may sit between the two calls; nothing else
-       (the planning session's answer, 2026-11-17) */
-    /renderFrame\(S, \{ pixiRef: pixiRef, canvas: canvas, nfts: nfts, perfNow: _perfNow, perfDelta: _perfDelta \}\);\s*(if \(_steps\) _steps\.(end|begin)\(\d\);\s*)*(\/\*[\s\S]*?\*\/\s*)?(if \(_steps\) _steps\.(end|begin)\(\d\);\s*)*runAfterFrame\(S\);/.test(bt)
+       (the planning session's answer, 2026-11-17).  v2.3.5341: a mark's index is any number (render and afterFrame
+       are steps 15 and 16 once the steps inside legacy are named; the planning session's answer) */
+    /renderFrame\(S, \{ pixiRef: pixiRef, canvas: canvas, nfts: nfts, perfNow: _perfNow, perfDelta: _perfDelta \}\);\s*(if \(_steps\) _steps\.(end|begin)\(\d+\);\s*)*(\/\*[\s\S]*?\*\/\s*)?(if \(_steps\) _steps\.(end|begin)\(\d+\);\s*)*runAfterFrame\(S\);/.test(bt)
     && (bt.match(/runAfterFrame\(/g) || []).length === 1);
   /* the arrow */
   check('2b the arrow listens while it is started and stops with it',
