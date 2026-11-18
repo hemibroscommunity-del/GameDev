@@ -1,39 +1,26 @@
 card: WD3
-branch: claude/plan-wd3-13-games (one PR a branch, claude/plan-wd3-N-<what>, each stacked on the last, base main)
-prs: PR 1 (6340, working), PR 2 (6341, working), PR 3 (6342, working), PR 4 (6343, working), PR 5 (6344, working), PR 6 (6345, working), PR 7 (6346, working), PR 8 (6347, working), PR 9 (6348, working), PR 10 (6349, working), PR 11 (6350, working), PR 12 (6351, working), PR 13 (6352, working)
+branch: claude/plan-wd3-14-help (one PR a branch, claude/plan-wd3-N-<what>, each stacked on the last, base main)
+prs: #2227 (6340), #2229 (6341), #2230 (6342), #2231 (6343), #2232 (6344), #2233 (6345); PR 7-15 (6346-6354, working), PR 14 (6353, working)
 state: working
 
 ## Done (in place on the page 4120 -> ...; worker 385 unchanged)
 - PR 1 (6340): the guard's mends (say.test 6-9, desk-words 5b, LoginScreen's comment).
-- PR 2 (6341): the daily rewards: DailySpin, DailyRewardsWindow, DailyRewardsCard, LoginSpinWindow; -> 3987.
-- PR 3 (6342): the arena and alliances: PartyPanel (the Gladiator Arena), AlliancePart, PartyHUD; -> 3901.
-- PR 4 (6343): the hero sheet: BroCard, InspectCard, EquippedTab, CharacterView; -> 3818.
-- PR 5 (6344): the dashboard and More: BottomDashboard, MorePanel, SettingsPanel, AboutPanel, BandGrip; -> 3677.
-- PR 6 (6345): social: PlayerProfilePanel, SocialPanel x2, InspectPlayerPanel, IncomingTradePanel, DuelRequestPanel; -> 3568.
-- PR 7 (6346): the world: WheelHallPanel (the halls), WorldMapOverlay, ZoneHeader, NmlBadge, NmlAskCard; -> 3439.
-- PR 8 (6347): crafting: FeedSeedPanel, EnchantPanel, ShardCrackPanel, WoodworkPanel, GemWorksPanel, GemcutPanel; -> 3309.
-- PR 9 (6348): shops: StoreChatPanel, StorePanel, BankPanel, ShopkeeperPanel, VendorPanel (ExchangePanel left: store-sell-tap runs its body); -> 3201.
-- PR 10 (6349): the bag: ItemTooltip, InventoryPanel x2, InventorySurface, ChestReveal; -> 3113.
-- PR 11 (6350): quests: QuestJournalPage, QuestOfferPanel, QuestCard, QuestsPanel, QuestPanel, QuestDetailPanel; -> 3050.
-- PR 12 (6351): records: AchievementsPanel, StatsPanel, JourneyPanel, T2Panel, SelfPanel (CodexStage: animation names only, no words); -> 2987.
-- PR 13 (6352): games: AceFlipPanel, GamblePanel, RaceHud, FishWeighCard, TrapCatchCard, FishBoard; -> 2906.
+- PR 2-6 (6341-6345): daily rewards (4 screens) -> 3987; arena/alliance (3) -> 3901; hero sheet (4) -> 3818; dashboard/More (5) -> 3677; social (6) -> 3568.
+- PR 7-13 (6346-6352): world map/halls/NML (5) -> 3439; crafting (6) -> 3309; shops (5) -> 3201; bag (5) -> 3113; quests (6) -> 3050; records (5) -> 2987; games (6) -> 2906.
+- PR 14 (6353): help: ControlsTutorial, KeyboardHintsPanel, InfoPanel, InfoPopup -> 2842.
 
 ## Next
-- PR 14: the next screens of W1, biggest first (one system a PR).
+- PR 15: the next screens of W1, biggest first (one system a PR).
 
 ## Found
-- "tap" now "click" on a computer (CLAUDE.md §7; phone unchanged): DailyRewardsWindow 'Not your thing? Tap ↻ to swap...'.
-- Left for a test that reads the code by text: PartyPanel 'Entered arena queue!' (sound-cues 9d); PartyHUD 'Leave?' (party-keep 16), deskWords('Tap to see your party') (party-chip 4d).
-- May read oddly (unchanged): the arena's '{wins} wins' reads '1 wins'.
-- "tap" now "click": InspectCard's hint '... tap to dismiss' (it also says 'long-press' to a computer: unchanged).
-- Left for a test: BottomDashboard 'Achievements' (achievements-client 7e), 'Leaderboards' (test-world-core), 'Bro' (points-tips 6). Dev-only, left: Settings 'Debug overlay (D)' and its line.
-- "tap" now "click": SocialPanel 'No friends yet. Tap a player...'; InspectPlayerPanel 'Friends — tap to remove'. Left for a test: DuelRequestPanel 'DUEL!' (duel-pending), SocialPanel deskWords('Tap another player...') x2 (desk-words 5).
-- "tap" now "click": NmlBadge 'tap it for who can attack you'; NmlAskCard 2 aria-labels 'Tap for what No man's land means'.
-- May read oddly (unchanged): Gem Cutter 'Gem Cutting Lv5' vs 'Lv 5'; Enchanter's two 'Slotted' lines word it differently.
-- ExchangePanel not moved: server/test/store-sell-tap runs its body in new Function with fixed stubs (needs SAY/say added there). StoreChat reads 'Listing expires expired' (unchanged).
-- "tap" now "click": InventoryPanel 'No pets... then tap 🪤'. Unchanged oddities: chest 'Armour' vs 'Armor'; 'No consumable items yet.' for Potions.
-- Not words, counted: CodexStage's 26 animation names; GameApp's dev console (51); RenameRow is the Test panel's (11).
-- Unchanged oddities: weigh-in 'albino Trout' (a variant id in the sentence); GamblePanel mixes 'G' and 'g' for gold.
+- "tap" now "click" on a computer (CLAUDE.md §7; phone unchanged): DailyRewardsWindow swap hint; InspectCard hint; SocialPanel 'No friends yet...'; InspectPlayerPanel 'Friends — tap to remove'; NmlBadge place line; NmlAskCard 2 aria-labels; InventoryPanel 'No pets...'.
+- Left for a test that reads the code by text: PartyPanel 'Entered arena queue!' (sound-cues 9d); PartyHUD 'Leave?' (party-keep 16) and its deskWords (party-chip 4d); BottomDashboard 'Achievements', 'Leaderboards', 'Bro'; DuelRequestPanel 'DUEL!' (duel-pending); SocialPanel deskWords x2 (desk-words 5); WorldMap pin deskWords (map-pin 9b), 'party' key (party-marks 3e); ZoneHeader ' AP' (ap-chip); FeedSeed 'Compost' (bag-icons 4c); QuestCard 'Talk to ' (folk-names 4j); journal aria 'Show on map'.
+- ExchangePanel not moved: server/test/store-sell-tap runs its body with fixed stubs (SAY/say would need adding there).
+- Not words, but counted: GameApp's dev console (51); CodexStage's animation names (26); RenameRow is the Test panel's (11); Settings 'Debug overlay (D)' (?dev=1).
+- May read oddly (unchanged): arena '1 wins'; InspectCard says 'long-press' on a computer; 'Gem Cutting Lv5' vs 'Lv 5'; StoreChat 'Listing expires expired'; chest 'Armour' vs 'Armor'; weigh-in 'albino Trout'; GamblePanel 'G' vs 'g'.
+- A missing part now shows '' where a `+` join showed "undefined" (normal data unaffected).
+- No player-facing "Wheel" or "remnant" met.
+- "tap" now "click": ControlsTutorial 5 step bodies (the tour never chose by device).
 
 ## Needs
-- Nothing.
+- GameApp's and RenameRow's words need NOT_SHOWN/DEV_FILES in tools/dev/words-census.mjs (outside my card): asked the planning session.
