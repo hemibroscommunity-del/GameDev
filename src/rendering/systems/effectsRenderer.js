@@ -11,11 +11,12 @@ import { BT_AUDIO } from '@/data/gameDisplay.js';   /* v2.3.2827: the smith's cl
 import { peerShare, cue } from '@/game/eventSounds.js';   /* v2.3.3343: another player's axe, heard; v2.3.3874: + cue, the smith's hammer */
 import { sparkZigzag } from '@/game/shockSpark.js';   /* v2.3.3518: a shock's spark, drawn as a bolt */
 import { recordCrash } from '@/debug/crashTrap.js';   /* v2.3.3689: crowns.json's failure, logged */
-import { sw, swHas, pageAddress } from '@/game/switches.js'   /* v2.3.5343: the page's one reader of its address (card M, PR 4) */
-import { Assets, BitmapFont, BitmapText, Cache, CanvasTextMetrics, Container, DynamicBitmapFont, FillGradient, Graphics, Matrix, Rectangle, Sprite, Text, Texture, TextStyle } from 'pixi.js';
+import { sw, pageAddress } from '@/game/switches.js'   /* v2.3.5343: the page's one reader of its address (card M, PR 4) */
+import { Assets, BitmapText, Cache, CanvasTextMetrics, Container, FillGradient, Graphics, Matrix, Rectangle, Sprite, Text, Texture, TextStyle } from 'pixi.js';
 import { LockReticle, nearestInMeleeReach } from '@/rendering/lockReticle.js';   /* v2.3.3876: the lock you chose wears a reticle */
 import { keepOnGpuOnly, emptyOnceDrawn } from '../gpuOnly.js';   /* v2.3.3088: pictures kept on the graphics chip only; v2.3.3698: or once drawn */
-import { emptyHeldOnceDrawn, readSourceRect } from '../heldNumbers.js';   /* v2.3.3699: the monsters' strips, held as colour numbers once drawn; v2.3.5250: and a popup kept as numbers, read for its cut */
+import { keepAsImage } from '../keepAsImage.js';   /* v2.3.6223: the effects' small minted pictures, kept as images (card FX PR 4) */
+import { emptyHeldOnceDrawn } from '../heldNumbers.js';   /* v2.3.3699: the monsters' strips, held as colour numbers once drawn; v2.3.5250: and a popup kept as numbers, read for its cut */
 import { readbackFrames } from '../photoSheet.js';   /* v2.3.2987: the stat scene's photographs, one readback */
 
 /* v2.3.1358 (owner directive: ALL animations ready before first use —
@@ -25,41 +26,9 @@ import { readbackFrames } from '../photoSheet.js';   /* v2.3.2987: the stat scen
    consumed by preloadWorldAnimations (preloadAnimations.js). */
 const _fxPreload = [];
 
-/* ═══ v2.3.2500: A STAND-IN IS THE SAME BRO, SO IT IS THE SAME SIZE ═══
- *
- * The walking body is drawn through _applyBuildScale (entityRenderer): the
- * zone's perspective scale TIMES this bro's build (buildCatalog -- height on
- * y, frame on x).  This file had zero references to it, so every figure that
- * REPLACES the body for a few seconds -- the lumberjack, the cook, the
- * fire-lighter, and the peer twins of all three -- was drawn at the average
- * build while the body it stands in for was not.  That is a figure that
- * changes size the moment it starts working, which is what the chop stand-in's
- * "about 10% too small" report is (see the backlog triage, chop size): the
- * answer is the build multiplier, NOT a fourth bump of CHOP_STANDIN_H, which
- * has already been moved three times (84 -> 112 -> 95 -> 104.5) chasing it.
- * (v2.3.3146: the fourth, 104.5 -> 136.8, was the right one after all -- by
- * MEASUREMENT this time, against the walking figure's PLAYER_SIZE_MULT, which
- * no stand-in carries.  See the constant.)
- *
- * TODAY IT IS EXACTLY 1.0 AND CHANGES NOTHING ON SCREEN.  HEIGHT_CATALOG and
- * FRAME_CATALOG were each locked to a single 1.00 entry in v2.3.1995/1996
- * ("keep the medium build only"), and an unknown id answers 1 by the same
- * deploy-order rule, so a peer on an older client relaying `hg: 'tall'` also
- * renders 1.0.  This is the plumbing, put in where it was missing, so that the
- * day a second height goes back into that catalog the stand-ins move with the
- * body instead of being found a version later.
- *
- * NOT APPLIED TO THE SWORD AND BOW STAND-INS, on purpose: those size
- * themselves from S._swordBodyH / S._swordFootY, which entityRenderer computes
- * from `display.scale.y` -- the scale _applyBuildScale has ALREADY written.
- * Multiplying again there would square the build. */
-const _localBuild = () => buildScale(getBuildHeight(), getBuildFrame());
-const _peerBuild = (o) => buildScale(o && o.buildHeight, o && o.buildFrame);
-/* v2.3.3241: a player the renderer did not draw this frame -- far off screen
-   in the Wheel, or past the crowd cap (entityRenderer _updateOtherPlayers,
-   which runs first) -- gets none of their effects either: no stand-in figure,
-   trail, status look or bubble where nobody is drawn */
-const _peerNotDrawn = (S, id) => !!(S && S._peersNotDrawn && S._peersNotDrawn.has(id));
+/* v2.3.6220: _localBuild moved verbatim to ../leaves/effects-look.js (card FX) */
+/* v2.3.6220: _peerBuild moved verbatim to ../leaves/effects-look.js (card FX) */
+/* v2.3.6220: _peerNotDrawn moved verbatim to ../leaves/effects-render.js (card FX) */
 /* v2.3.4882: the emote pass's per-frame lists, kept and emptied (no new arrays each frame) */
 const _emoteIds = [], _emoteSrcs = [], _emoteEms = [], _emoteActive = new Set();
 
@@ -109,28 +78,11 @@ if (typeof window !== 'undefined') {
    Never for a drawing (stamped per player) or under greaves (the legs are cut
    by their shape). */
 registerLookSheets('standin', '/sprites/look/standin/roles.json');
-/* ═══ v2.3.4470: ...AND UNDER GREAVES TOO (on; `?legslook=0` off) ═══
-   The whole-game sweep of what holds the page (docs/specs/held-sweep.md) found
-   its longest holds in the one stand-in still baked for every look: the
-   sword's and the bow's body under greaves -- 110 to 140 ms a sheet the first
-   time an armoured player swung beside you, 608 ms when your own greaves went
-   on.  The cut under greaves is the same for every look (the greaves' one
-   shape, the art's own legs), so the eight whole-body sheets are kept once
-   more as the bake leaves them under greaves (lookSets/standinlegs.js,
-   public/sprites/look/standinlegs/), and a body under greaves is a look's row
-   like any other.  Still baked the old way: a body with a drawing on it, and
-   any look the palette atlas has no row for. */
-const LEGS_LOOK_OFF = (() => { try { return /(^|[?&])legslook=(0|off|false)(&|$)/.test(pageAddress()); } catch (e) { return false; } })();
+/* v2.3.6221: LEGS_LOOK_OFF (read by a leaf there) moved verbatim to ../leaves/effects-look.js (card FX) */
 if (!LEGS_LOOK_OFF) registerLookSheets('standinlegs', '/sprites/look/standinlegs/roles.json');
-const _standInSheet = (url) => String(url || '').replace(/^.*\//, '').replace(/\.png.*$/, '');
-/* `legs`: the body as it is under greaves (the 'standinlegs' set) */
-function _standInLook(url, skin, pants, shoes, legs) {
-  if (!lookPaletteWanted()) return null;
-  return getLookPartFrames(legs ? 'standinlegs' : 'standin', _standInSheet(url),
-    [[1, skinTarget(skin) || DEFAULT_SKIN_TARGET], [2, pantsTarget(pants)], [3, shoesTarget(shoes)]]);
-}
-/* is this sheet's body under greaves kept as numbers? */
-const _legsLookHas = (url) => !LEGS_LOOK_OFF && lookPaletteOn() && lookHas('standinlegs', _standInSheet(url));
+/* v2.3.6220: _standInSheet moved verbatim to ../leaves/effects-look.js (card FX) */
+/* v2.3.6221: _standInLook moved verbatim to ../leaves/effects-look.js (card FX) */
+/* v2.3.6221: _legsLookHas moved verbatim to ../leaves/effects-look.js (card FX) */
 
 function _sliceStandIn(cv, fw, fh, n, statKey, keepCanvas) {
   /* QA only (mp-geartrim sets it before the game loads): keep the whole bake
@@ -180,53 +132,7 @@ if (typeof window !== 'undefined') {
   window.__btCombatGearFrames = (key) => _combatTrimFrames.get(key) || null;
 }
 
-/* ═══ v2.3.2500: THE SKIN-TONE PROBE, FOR THE STAND-INS THAT HAD NONE ═══
- *
- * v2.3.1788 published the mean skin RGB of the baked SWORD and BOW sheets on
- * window.__btStandInSkin so mp-standinskin could assert that a bro does not
- * change complexion when he swings.  The gathering stand-ins -- chop, cook,
- * fire -- go through their own bakes and were outside that coverage, which is
- * how the chopper kept the artist's paint for eleven versions without a test
- * noticing.  Same reading, same object, so one harness covers all five.
- *
- * WHY THE BAKED CANVAS AND NOT A SCREENSHOT: the town's cobblestone passes the
- * same warm-tone test this classifier uses (measured: ~51k "skin" pixels in an
- * 80x90 crop containing one bro), so a world screenshot gives identical
- * numbers before and after a fix.  The canvas is the thing that changed.
- *
- * _bakeBodyStrip keeps its own inline copy of this test rather than calling
- * here: it shares ONE walk of a multi-megapixel canvas with the v2.3.2431 ink
- * probe, and splitting them would add a second full read on a phone. */
-/* `opts` is the SAME ratio window the sheet's own bake was given (recolorStandInSkin).
-   It matters for the fire strip and only for it: the probe's warm-tone test is
-   the body pipeline's, and a campfire passes it -- measured, the flame and its
-   glow drag the fire figure's reported mean to [226,145,88] when the BODY it
-   recoloured is at the walking palette.  Measuring with the window the bake
-   used means the probe counts the pixels the bake actually retinted, which is
-   the thing under test.  Same trick, same reason as v2.3.1723's gear fit:
-   "fitting into the body's ALPHA silhouette gives nonsense" because the halo is
-   in it. */
-function _probeStandInSkin(key, cv, opts) {
-  try {
-    if (typeof window === 'undefined' || !cv) return;
-    const o = opts || {};
-    const maxBR = o.maxBR != null ? o.maxBR : Infinity;
-    const minGR = o.minGR != null ? o.minGR : 0;
-    const maxGR = o.maxGR != null ? o.maxGR : Infinity;
-    const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
-    let n = 0, sr = 0, sg = 0, sb = 0;
-    for (let i = 0; i < d.length; i += 4) {
-      const r = d[i], g = d[i + 1], b = d[i + 2], a = d[i + 3];
-      if (!(a > 40 && r > g && g >= b && (r - b) > 30 && r > 90 && (r - g) > 25)) continue;
-      if (b / r > maxBR || g / r < minGR || g / r > maxGR) continue;
-      n++; sr += r; sg += g; sb += b;
-    }
-    if (!window.__btStandInSkin) window.__btStandInSkin = {};
-    window.__btStandInSkin[key] = n
-      ? { n, rgb: [Math.round(sr / n), Math.round(sg / n), Math.round(sb / n)] }
-      : { n: 0 };
-  } catch (e) { /* a probe never breaks a bake */ }
-}
+/* v2.3.6220: _probeStandInSkin moved verbatim to ../leaves/effects-look.js (card FX) */
 
 /* ═══ v2.3.2855: THE LUMBERJACK'S BAKE, SHARED BY YOUR FIGURE AND A PEER'S ═══
    See _bakeChopStrips and _peerChopFrames.  The three canvases this figure
@@ -234,27 +140,9 @@ function _probeStandInSkin(key, cv, opts) {
    garment of the player's to sit on. */
 const PEER_CHOP_IDLE_MS = 15000;    /* released this long after the last frame that drew one */
 const GPU_WAIT_MS = 500;            /* v2.3.3698: how often the weapon bodies waiting to be drawn are looked at (emptyOnceDrawn) */
-/** Would the pre-flipped bake differ from the plain one?  Only when a drawing
- *  that gets stamped is not its own mirror image -- see _bakeChopStrips. */
-function _chopArtAsymmetric(art) {
-  return !!art && CHOP_INK_KEYS.some((k) => artHasInk(art[k]) && !artIsSymmetric(art[k]));
-}
-/** A peer's three skin drawings, through the same sanitiser every peer drawing
- *  passes (entityRenderer's _remoteBodyArt), or null when they have none. */
-function _peerChopArt(o) {
-  const t = sanitizeShirtArt(o && o.tattooArt), ft = sanitizeShirtArt(o && o.faceTattooArt);
-  const at = sanitizeShirtArt(o && o.armTattooArt);
-  return (t || ft || at) ? { tattoo: t || '', tattooFace: ft || '', tattooArm: at || '' } : null;
-}
-/** The axe as the FILE has it, read before anything is painted: the recolour
- *  finds the key by hue and the drawing palette's pink (#d76ba8) sits inside
- *  that window -- the fishing rod's lesson (v2.3.2854), where a pink tattoo
- *  turned to pine.  Here it would have turned to copper. */
-function _chopKeyMask(img) {
-  const w = img.width, h = img.height;
-  const g = img.getContext('2d', { willReadFrequently: true });
-  return toolKeyMask(g.getImageData(0, 0, w, h).data, w, h);
-}
+/* v2.3.6220: _chopArtAsymmetric moved verbatim to ../leaves/effects-skills.js (card FX) */
+/* v2.3.6220: _peerChopArt moved verbatim to ../leaves/effects-skills.js (card FX) */
+/* v2.3.6220: _chopKeyMask moved verbatim to ../leaves/effects-skills.js (card FX) */
 /** One lumberjack strip (the twelve played frames, 240x220): the skin, the
  *  drawings, then the axe's copper and pine -- AFTER the skin, because the key
  *  is what keeps the skin classifier off the axe (v2.3.2761).  `img` is one of
@@ -273,39 +161,13 @@ function _bakeChopStrip(img, keyMask, skinT, art, statKey, keepCanvas, clothes) 
   return { arr: _sliceStandIn(cv, FW, FH, COUNT, statKey, keepCanvas), cv };
 }
 
-/* ═══ v2.3.2856: THE COOK'S DRAWINGS RIDE A LAYER OF THEIR OWN ═══
-   See _bakeCookStrips.  The cook's skin bake is shared: other players' cooks
-   are drawn from it (the SPEC table's v2.3.1713 note), so your drawings cannot
-   be baked into it or every cook at every campfire would wear them.  They go
-   on a layer drawn over it instead -- only the pixels they change, cropped: at
-   most about half the figure's 4.5 MB per strip (every cell of the face, both
-   arms and the chest drawn), and a small drawing a sliver of it. */
-const COOK_FW = 213, COOK_FH = 220;
+/* v2.3.6220: COOK_FW, COOK_FH (read by a leaf there) moved verbatim to ../leaves/effects-skills.js (card FX) */
 /* v2.3.2858: per figure -- the cook's and the fire-lighter's caches each hold
    this many (_peerStandInInk). */
 const PEER_INK_CAP = 2;             /* drawn peers' layers held at once */
 const PEER_INK_IDLE_MS = 15000;     /* released this long after the last frame that drew one */
-/* v2.3.3314: `ms`, when given, gives up after that long -- a request that
-   never answers would otherwise hold its caller's pending flag for good
-   (_peerFigFrames, which passes it; the other callers wait as before). */
-function _loadStandInImg(url, ms) {
-  return new Promise((res, rej) => {
-    const im = new Image();
-    const t = ms > 0 ? setTimeout(() => { im.onload = null; im.onerror = null; rej(new Error('stand-in strip: no answer in ' + ms + ' ms')); }, ms) : 0;
-    im.onload = () => { clearTimeout(t); res(im); };
-    im.onerror = (e) => { clearTimeout(t); rej(e); };
-    im.src = url;
-  });
-}
-/** One cook strip, split: the skin bake (`cv`, the shared figure) and the
- *  drawings' layer (`ink`, a canvas, or null when there are none). */
-function _bakeCookSplit(img, skinT, art, clothes) {
-  /* v2.3.3146: + `clothes` ({ pantsT, shoesT }): your trousers and boots,
-     the pan kept out of them by where it is (playerSkins _standInClothes) */
-  /* v2.3.4037: + `clothes.garb`, the patterns and print, at his scale (patK):
-     in the figure, not the drawings' layer, as his colours are */
-  return recolorStandInSkinSplit(img, skinT, COOK_FH, { keepX: COOK_KEEP_X, art, regions: COOK_INK_REGIONS, frameW: COOK_FW, patK: STANDIN_GARB_K.cook, ...(clothes || {}) });
-}
+/* v2.3.6220: _loadStandInImg moved verbatim to ../leaves/effects-skills.js (card FX) */
+/* v2.3.6220: _bakeCookSplit moved verbatim to ../leaves/effects-skills.js (card FX) */
 import { ELEMENTS } from '@/data/elements.js';
 import { ZONES } from '@/data/zones.js';
 import { TILE, MINE_SPOT_R, FISH_CUE_DY, MINE_SEAT_DX, MINE_SEAT_DY, FISH_SEAT_DX, FISH_SEAT_DY } from '@/data/constants.js';   /* v2.3.2915: + the harvest seats */
@@ -329,7 +191,7 @@ import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, BLOCK_ARC_HALF, cleav
 import { farmWorkFrame, farmAnimOf, farmWorkBeats, parseFarmEx, farmBeatPlay } from '@/game/farmWork.js';   /* v2.3.3439: the farmer's own moves, frame by frame; and another player's, off their `ex` */
 import { FARM_ANIMS, FARM_ANIM_HEAD } from '@/data/farmAnims.js';   /* v2.3.3439: the owner's three farm animations, cut by tools/make_farm_anims.py */
 import { FARM_ANIM_HEAD_WORLD } from '@/data/farmLayout.js';   /* v2.3.3960 */
-import { treeArtSources, treeArtLevelFor, treeGeom, treeMarkY, treeChopOffset, behindTree, TREE_PX, TREE_FOOT_DY, TREE_FADE, TREE_SEE_ALPHA, TREE_SEE_MS } from '@/game/tierTrees.js';   /* v2.3.3345: each wood its own tree */
+import { treeArtSources, treeArtLevelFor, treeGeom, treeMarkY, behindTree, TREE_PX, TREE_FOOT_DY, TREE_FADE, TREE_SEE_ALPHA, TREE_SEE_MS } from '@/game/tierTrees.js';   /* v2.3.3345: each wood its own tree */
 import { oreArtSources, oreArtLevelFor, oreGeom, ORE_PX } from '@/game/tierOre.js';   /* v2.3.3345: each metal its own rock */
 import { WheelShatter } from '../wheelShatter.js';
 import { treesWhenReady } from '../paletteLoad.js';   /* v2.3.5248: the trees asked for once pictures-as-numbers is decided, read as their numbers */
@@ -349,18 +211,17 @@ import { ZONE_SHARDS } from '../../data/shards.js';
 import { placeSkillTraits, placeSkillTraitsFor, hideSkillTraits, placeStandInCape, selfCorpseUp, SWORD_SWING_MS, BOW_SHOT_MS, BOW_RELEASE_MS, standFootDy, playerGroundDy /* v2.3.2996: where a status sits */, nominalStandFigure /* v2.3.2991 */, standShadeSpan /* v2.3.3636 */, fittedShadeSpan /* v2.3.3697 */, MONSTER_SIZE_MULT /* v2.3.2991: the slime's true size, for the stat scene's films */, remoteBodyArt, monsterBodySprite, drawNodeHpBar /* v2.3.2956: a node's HP bar while your hits land */, bandScale, HPBAR_BIG_H /* v2.3.3035: that bar at your HP bar's size, over the resource */ /* v2.3.2923b */ } from './entityRenderer.js'; /* v2.3.2190: the cape on an attack stand-in; v2.3.2281: is the corpse up; v2.3.2846: where a character's boots are */
 import { clipBoxOrSelf } from '../hairClip.js';   /* v2.3.3459: a stand-in's hair silhouette travels in its stencil box */
 import { getCape } from '../traits/capeCatalog.js'; /* v2.3.2190: the worn cape, for the attack stand-ins */
-import { buildScale, getBuildHeight, getBuildFrame } from '../traits/buildCatalog.js'; /* v2.3.2500: the stand-ins follow the bro's build */
 import { WHIRL_VORTEX, WHIRL_FX_MS, WHIRL_ART_R /* v2.3.2824 */, FIRE_TRAIL_FX, FIRE_TRAIL_FX_MS, FIRE_TRAIL_PLATE_FRAC } from '../fxStrips.js'; /* v2.3.1735; v2.3.2239 fire trail */
 import { CampfireFx, fireLightSpot } from '../campfireFx.js'; /* v2.3.2846: the lit-log campfire, in pixel art; v2.3.3666: + where a peer's light catches */
 import { PersonFire } from '../buildingFire.js'; /* v2.3.3748: on fire in a burning heap, the building's own flames; v2.3.3878: and burning from a fire goblin */
-import { FIRE_STRIP_V, FIRE_FRAME_OFF, FIRE_FIGURE_X, FIRE_STRIKE_FRAME } from '../../data/fireStrip.js'; /* v2.3.3666: the fire-lighter's strip, measured (tools/build_fire_clean.py) */
+import { FIRE_STRIP_V, FIRE_STRIKE_FRAME } from '../../data/fireStrip.js'; /* v2.3.3666: the fire-lighter's strip, measured (tools/build_fire_clean.py) */
 import { getEquip, onEquipChange } from '../gearCatalog.js';   /* v2.3.3640: + the greaves' change (_rebakeLegBodies) */
 import { getShirt, onShirtChange } from '../traits/shirtCatalog.js';   /* v2.3.3146: + the change, for the dressed stand-in shirts */
 import { getShirtColor, shirtFill, onShirtColorChange } from '../traits/shirtColorCatalog.js';
 import { recolorBodyToCanvas, recolorStandInSkin, recolorStandInSkinSplit, DEFAULT_SKIN_TARGET, bodyArtSeg, skinTarget, pantsTarget, shoesTarget, getSkin, getPants, getShoes, onSkinChange, onPantsChange, onShoesChange, localBodyArt, artForFacing } from '../playerSkins.js'; /* v2.3.1710: + the skin-only stand-in recolour (the cook); v2.3.2429: + the player's own drawings; v2.3.2856: + the split bake (the cook's drawings on a layer) */
-import { onArtChange, artHasInk, artIsSymmetric, artHash, sanitizeShirtArt, sideForDir, getShirtArt } from '../traits/playerArt.js';   /* v2.3.3146: + the shirt's sides, for the dressed stand-in shirts */   /* v2.3.2429; v2.3.2431 the symmetry gate; v2.3.2855 a peer's drawings on the lumberjack */
-import { onPatternChange, parsePattern, getPattern, sanitizePattern } from '../traits/patternCatalog.js';   /* v2.3.3146: + the shirt's pattern, yours and a peer's */
-import { STANDIN_GARB_K, localGarb, peerGarb, garbKey, onGarbChange } from '../standInGarb.js';   /* v2.3.4037: the trouser and shoe patterns and the trouser print on every stand-in */
+import { onArtChange, artHasInk, artHash, sanitizeShirtArt, sideForDir, getShirtArt } from '../traits/playerArt.js';   /* v2.3.3146: + the shirt's sides, for the dressed stand-in shirts */   /* v2.3.2429; v2.3.2431 the symmetry gate; v2.3.2855 a peer's drawings on the lumberjack */
+import { onPatternChange, getPattern, sanitizePattern } from '../traits/patternCatalog.js';   /* v2.3.3146: + the shirt's pattern, yours and a peer's */
+import { STANDIN_GARB_K, localGarb, onGarbChange } from '../standInGarb.js';   /* v2.3.4037: the trouser and shoe patterns and the trouser print on every stand-in */
 import { dressShirtStrip } from '../gearBake.js';   /* v2.3.3146: the walking shirt's own dressing (composeShirt), on the stand-ins' strips; v2.3.5014: through gearBake.js, which the body bake's worker runs too */   /* v2.3.2429; v2.3.2431 the symmetry gate */
 import { getGearFrame, packTrimmed, registerGearSource, unregisterGearSource, subTexture, loadCroppedStrip } from '../gearSheets.js';   /* v2.3.2774: + the cropper and the upload hook for the combat strips; v2.3.3074: + its release */
 import { peerEntSprites } from '../artHolds.js';   /* v2.3.4416: every sprite of a peer who left, the gear too */
@@ -372,7 +233,7 @@ import { upscaleToFrameHeight } from '../spriteScale.js'; /* v2.3.1112: restore 
 import { AIM_CARET, AIM_CARET_EDGE } from '../aimCaret.js'; /* v2.3.1799 */
 import { rangedAimAngle, bowGripPoint, orbCrashFx /* v2.3.2991: the staff's crash, filmed for the stat scene */, isPlayerDead /* v2.3.2996 */ } from '@/game/combatHelpers.js'; /* v2.3.2320: the bow sight line uses the SAME ladder the arrow does; v2.3.2543: ...from the same ORIGIN, too */
 import { backShieldPlacement, applyBackShield, BACK_SHIELD_PX } from '../backShield.js'; /* v2.3.1784 */
-import { registerLookSheets, getLookPartFrames, lookPaletteWanted, lookPaletteOn, lookHas, preloadLookSheets, whenLookKnown } from '../lookPalette.js';   /* v2.3.3757: the stand-ins from the numbers */
+import { registerLookSheets, lookPaletteOn, lookHas, preloadLookSheets, whenLookKnown } from '../lookPalette.js';   /* v2.3.3757: the stand-ins from the numbers */
 import { gearStripFrames, gearLookDecided } from '../gearLookFrame.js';   /* v2.3.4998: the combat poses' armour from the numbers */
 import { gearDrawFrame } from '../gearWalkFrame.js';   /* v2.3.4999: the jogging greaves from the numbers */
 import { weaponStripFrames, weaponLookDecided, weaponLookWanted } from '../weaponLookFrame.js';   /* v2.3.5002: the swing's blade and the bow's draw from the numbers */
@@ -385,40 +246,7 @@ import { HotArrowFx, HOT_LEN, buildHotArrowArt, hotArrowReady, hotArrowArt, smou
 import { HitMaterialFx } from '../hitMaterialFx.js';              /* v2.3.2843: what a monster is made of, when it is hit */
 import { burnT0, burnLifeMs } from '@/game/bowVolley.js';           /* v2.3.2848: a volley's arrows smoulder on its clock; v2.3.2849: for its own length */
 
-/* ═══ v2.3.2516: WHICH SWINGS THE BODY OCCLUDES ═══
- * Owner (D7, backlog triage 2026-09-14 §5.8): the greatsword at southwest goes
- * behind the body "for jog/idle AND for the attack swing -- it is in the right
- * hand, facing away from the camera".  entityRenderer's heldWeaponInFront is
- * the jog/idle half; this is the swing's.
- *
- * IT CANNOT BE DECIDED FROM THE SHEET KEY, nor from the swing's own direction,
- * and that is the whole reason this is a function and not one more
- * `=== 'north'`.  TWO separate 4-way collapses stand between the swing and the
- * word "southwest":
- *
- *   the SHEET.  There are three swing sheets.  _swordFacing maps southwest AND
- *   southeast AND south onto `['south', ...]`, and the mirror flag cannot
- *   separate them either, because southwest and south are BOTH unmirrored.
- *   Keying the exception here would move southeast -- which the owner's answer
- *   names as unchanged -- along with southwest.
- *
- *   `S._swordSwingDir`.  It reads like the answer and is not: v2.3.936 resolves
- *   it by DOMINANT AXIS ("the big sword sweeps a wide arc, so 3 sheets cover
- *   everything"), so its only values are east / west / south / north and a
- *   southwest swing arrives as 'south'.  Measured before this comment was
- *   written: a southwest-pinned swing reported sheet 'south', facing 'south'.
- *
- * So it is asked of `S._renderFacing`, the true 8-way compass entityRenderer
- * publishes each frame -- which is exactly what _placeStandInShield reasoned its
- * way to at v2.3.1784, in the same words, for the same collapse.  The peer path
- * has no such publication for someone else's swing and resolves the peer's own
- * swing angle to the same eight sectors instead.
- *
- * north keeps its v2.3.1047 behaviour unchanged: back to camera, blade on the
- * far side. */
-function _swingBehind(sheetKey, facing8) {
-  return sheetKey === 'north' || facing8 === 'southwest';
-}
+/* v2.3.6220: _swingBehind moved verbatim to ../leaves/effects-combat.js (card FX) */
 
 /* ═══ v2.3.3439: THE FARMER'S SIZE, ONE NUMBER ═══
  * The farmer's three moves (src/data/farmAnims.js) are cut so his head, ears
@@ -458,62 +286,11 @@ function farmCrownMed(A) {
   }
   return v;
 }
-/* v2.3.3697: the box the farmer's shine is laid across (glint.js `uFig`), on
-   a sprite that is never drawn: a walking body's frame where his boots are, as
-   wide as a standing figure's frame and fitted, as his shade is, to his own
-   crown and boots (`fit`, fittedShadeSpan; `stand`, standShadeSpan) */
-function placeFarmFigProxy(px, x, fit, stand, bl) {
-  if (!px) return;
-  const k = Math.abs((bl && bl.sx) || 1) / Math.abs((bl && bl.sy) || 1);
-  px.x = x;
-  px.y = fit[1];
-  px.scale.set((stand[1] - stand[0]) * k, fit[1] - fit[0]);
-  px.visible = true;
-}
-function makeFarmFigProxy(layer, label) {
-  const px = new Sprite(Texture.WHITE);
-  px.anchor.set(0.5, 1);
-  px.renderable = false;   /* never drawn: only its box is read */
-  px.visible = false;
-  px.label = label;
-  layer.addChild(px);
-  return px;
-}
+/* v2.3.6220: placeFarmFigProxy moved verbatim to ../leaves/effects-skills.js (card FX) */
+/* v2.3.6220: makeFarmFigProxy moved verbatim to ../leaves/effects-skills.js (card FX) */
 
-/* ═══ v2.3.2915: WHERE THE LUMBERJACK AND THE COOK STAND -- ONE ANSWER ═══
- *
- * Owner: "check all other broadcasted player animations to make sure they
- * match what your character does client side."
- *
- * Neither skill moves you: you chop from wherever the tree offered you the
- * button (routinely 120-240 px from its base -- see mp-chopyield) and cook from
- * wherever you stand by your fire.  Your own screen draws the figure where the
- * WORK is -- the lumberjack 30 px off the trunk on its ground line (44 since
- * v2.3.3146: CHOP_OFFSET), the cook
- * with the pan over the flames -- while a peer's copy was drawn at their
- * POSITION, 6 px below their middle: a lumberjack swinging at air up in the
- * canopy, a cook frying beside the fire.
- *
- * So the spot is computed here, once, and both figures read it: the local
- * placers with their own node, _updateRemoteExtraction with the same node on
- * the watcher's side (the tree from the chopper's gather_node relay, the fire
- * from their campfire_lit).  The zone curve is sampled at the spot, as the
- * local placers always did (v2.3.2287) -- the figure stands at the tree, which
- * on a perspective zone is a different point on the curve from the player. */
-/* v2.3.3345: ...for a trunk as broad as the old pine's.  Each wood's tree is
-   its own picture now, from the slim pine to the broad gnarled hardwood, so
-   the figure stands off by the trunk's own width (game/tierTrees.js
-   treeChopOffset: 44 for a broad trunk, up to 55 for the slim pine) and the
-   blade bites inside it whatever its size. */
-export function chopStandInSpot(zone, node, sign) {
-  const x = node.x - sign * (node && node.nodeType === 'tree' ? treeChopOffset(node) : CHOP_OFFSET);
-  const pscale = 1;
-  return { x, y: node.y + 6 * pscale, pscale };
-}
-export function cookStandInSpot(zone, fire) {
-  const pscale = 1;
-  return { x: fire.x - COOK_STANDIN_H * COOK_PAN_DX * pscale, y: fire.y + 8 * pscale, pscale };
-}
+/* v2.3.6220: chopStandInSpot moved verbatim to ../leaves/effects-skills.js (card FX) */
+/* v2.3.6220: cookStandInSpot moved verbatim to ../leaves/effects-skills.js (card FX) */
 /* The watcher's bounds on those nodes (_updateRemoteExtraction).  Generous on
    purpose -- they exist to throw out a stale or forged relay, not to second-
    guess a real one.  A chop can run from anywhere in the tree's reach box plus
@@ -603,30 +380,16 @@ const SHIRT_PATTERN_K = { chop: 170 / 94.5, cook: 85 / 25.5, fire: 381 / 94.5 / 
   /* v2.3.3439: the farmer's three, matched by the head as the cook is: his
      FARM_ANIM_HEAD over the walking head in the 128 sheet */
   farmhoe: FARM_ANIM_HEAD / 25.5, farmwater: FARM_ANIM_HEAD / 25.5, farmkneel: FARM_ANIM_HEAD / 25.5 };
-/* v2.3.3439: a dressed strip's cache key -- one place, as the farm waits for
-   its own (_warmFarmDressed) and lets them go (_freeFarm) */
-function _dressedKeyOf(item, pose, dir, look, tint, mirror) {
-  const side = sideForDir(dir);
-  const art = look.art ? look.art[side] : null;
-  return (art ? look.key[side] : 'x') + '.' + look.pat + '.' + (tint ? tint.join('_') : 'x')
-    + '/' + (mirror ? 'm' : 'n') + '/' + item + '/' + pose + '/' + dir;
-}
-function _shirtLookOf(front, back, patternStr) {
-  const f = artHasInk(front) ? front : null, b = artHasInk(back) ? back : null;
-  const pattern = parsePattern(patternStr, 'shirt');
-  if (!f && !b && !pattern) return null;
-  return { art: (f || b) ? { front: f, back: b } : null, pattern,
-    key: { front: f ? artHash(f) : 'x', back: b ? artHash(b) : 'x' },
-    pat: pattern ? pattern.id + '-' + pattern.colorIdx : 'x' };
-}
+/* v2.3.6220: _dressedKeyOf moved verbatim to ../leaves/effects-look.js (card FX) */
+/* v2.3.6220: _shirtLookOf moved verbatim to ../leaves/effects-look.js (card FX) */
 import { cycleMs as jogCycleMs, frameCount as jogFrameCount, resolveDirection } from '../playerSprites.js';
 import { jogWaistRow } from '../jogWaist.js';
 import { bowTorsoCutRow } from '../bowTorsoCut.js';
 import { swordTorsoCutRow } from '../swordTorsoCut.js';
 import { GEARLAYER_VER } from '../gearVersion.js';   // shared cache-bust string (see gearVersion.js)
-import { recolorToolKeyCanvas, recolorToolKey, toolKeyMask, isLitToolKey, TOOL_SPECS } from '../toolRecolor.js'; /* v2.3.3684: + isLitToolKey, the log's end in the fire's glow */ /* v2.3.2761: the magenta tool key becomes copper / pine / bark; v2.3.2855: + the file's key mask; v2.3.3660: + recolorToolKey, the fire-lighter's log band */
+import { recolorToolKeyCanvas, recolorToolKey, toolKeyMask, TOOL_SPECS } from '../toolRecolor.js'; /* v2.3.3684: + isLitToolKey, the log's end in the fire's glow */ /* v2.3.2761: the magenta tool key becomes copper / pine / bark; v2.3.2855: + the file's key mask; v2.3.3660: + recolorToolKey, the fire-lighter's log band */
 import { setStandInMaker, ensureStandIn, standInStarted, standInReady, standInMaking, setPeerStandInCheck, forgetStandIn, farmFigureReady } from '../standIns.js';   /* v2.3.3077: the gathering poses, made when first wanted; v2.3.3314: + a peer's, in their colours */
-import { CHOP_INK_REGIONS, CHOP_MIN_BLOB, COOK_INK_REGIONS, COOK_KEEP_X, FIRE_INK_REGIONS, FIRE_KEEP_BOXES } from '../standInInk.js'; /* v2.3.2855: where the drawings go on the lumberjack; v2.3.2856: and on the cook; v2.3.2858: and on the fire-lighter */
+import { CHOP_INK_REGIONS, CHOP_MIN_BLOB, FIRE_INK_REGIONS, FIRE_KEEP_BOXES } from '../standInInk.js'; /* v2.3.2855: where the drawings go on the lumberjack; v2.3.2856: and on the cook; v2.3.2858: and on the fire-lighter */
 import { LOOT_ICONS, weaponIconKey, armorIconKey, lootBeamTexture } from '../lootIcons.js'; /* v2.3.2771: the rare drop's icon and its shine */
 import { ICON_PX as DROP_ICON_PX, acquireDropIcon, releaseDropIcon, dropIconTexture, dropIconStats } from '../dropIcons.js';   /* v2.3.3473: a dropped item, drawn as itself */
 import { dropThumb } from '@/game/dropLook.js';   /* v2.3.3473: ...from its bag picture */
@@ -657,25 +420,18 @@ import { SECTORS8, DMG_LIFT, BOW_AIM_SECTORS, MAGIC_BOLT_ANCHOR, SWORD_FEEL_FLIP
 import { _STAND_IN_TRAIT_KEYS } from '../tables/look.js';   /* v2.3.5346: the look system's hand-tuned tables, moved verbatim (card M) */
 import { HARD_DOT_R } from '../tables/monsters.js';   /* v2.3.5346: the monsters system's hand-tuned tables, moved verbatim (card M) */
 import { EMOTE_POP_PX } from '../tables/social.js';   /* v2.3.5346: the social system's hand-tuned tables, moved verbatim (card M) */
-import { LOOT_SCALE, LOOT_Z, DROP_GROW, BEAM_H_PX, BEAM_W_PX, BEAM_TEX_W, BEAM_TEX_H, BEAM_HALO_W, MOTE_PX, LOOT_BEAMS_BY_RANK, BEAM_SLOTS, RARE_KINDS, POP_H, POP_BOUNCE_H, HOP_KEYS, PILE_R } from '../tables/economy.js';   /* v2.3.5346: the economy system's hand-tuned tables, moved verbatim (card M) */
+import { LOOT_SCALE, LOOT_Z, DROP_GROW, BEAM_H_PX, BEAM_W_PX, BEAM_TEX_W, BEAM_TEX_H, BEAM_HALO_W, MOTE_PX, LOOT_BEAMS_BY_RANK, BEAM_SLOTS, RARE_KINDS, POP_H, POP_BOUNCE_H, HOP_KEYS } from '../tables/economy.js';   /* v2.3.5346: the economy system's hand-tuned tables, moved verbatim (card M) */
+import { _swingBehind, _projSrcPx, readDmgScale, _mixHex, DMG_BMP_FONT, DMG_WORD_FONT, DMG_WORDS_ON, _installOneDmgFont, _dmgFontNames, _dmgSig, _dmgFontsNow } from '../leaves/effects-combat.js';   /* v2.3.6220: the combat system's leaves, moved verbatim (card FX) */   /* v2.3.6221: + _dmgFontsNow */
+import { _hexTint, LOOT_POP, _hash, landAgeOf, applySquash, pileLayout, MOTE_TEX, makeBeamTexture, makeMoteTexture } from '../leaves/effects-economy.js';   /* v2.3.6220: the economy system's leaves, moved verbatim (card FX) */   /* v2.3.6221: + pileLayout */   /* v2.3.6223: + MOTE_TEX, makeBeamTexture, makeMoteTexture */
+import { _localBuild, _peerBuild, _standInSheet, _probeStandInSkin, _dressedKeyOf, _shirtLookOf, _standInColourKey, _twinWouldDiffer, LEGS_LOOK_OFF, _standInLook, _legsLookHas, _peerStandInColours, _localStandInColourKey } from '../leaves/effects-look.js';   /* v2.3.6220: the look system's leaves, moved verbatim (card FX) */   /* v2.3.6221: + LEGS_LOOK_OFF, _standInLook, _legsLookHas, _peerStandInColours, _localStandInColourKey */
+import { _peerNotDrawn, clearIfDrawn } from '../leaves/effects-render.js';   /* v2.3.6220: the render system's leaves, moved verbatim (card FX) */
+import { _chopArtAsymmetric, _peerChopArt, _chopKeyMask, COOK_FW, COOK_FH, _loadStandInImg, _bakeCookSplit, placeFarmFigProxy, makeFarmFigProxy, chopStandInSpot, cookStandInSpot, FIRE_FW, FIRE_FH, _fireFrameShift, _litLogKey, _figBytes, _crossedFrame } from '../leaves/effects-skills.js';   /* v2.3.6220: the skills system's leaves, moved verbatim (card FX) */
+import { bandWithEmote } from '../leaves/effects-social.js';   /* v2.3.6220: the social system's leaves, moved verbatim (card FX) */
+import { POPUP_ZOOM, POPUP_WORLD, popupZoomK, MSG_WRAP_W, msgWrapW, _tightPopupIcon, isAsciiOnly, wrapMessage } from '../leaves/effects-ui.js';   /* v2.3.6220: the ui system's leaves, moved verbatim (card FX) */   /* v2.3.6221: + wrapMessage (and MSG_MAX_LINES, which only it reads) */
+export { chopStandInSpot, cookStandInSpot };   /* v2.3.6220: still the renderer's exports (moved to ../leaves/) */
 export { CHOP_STANDIN_H, COOK_STANDIN_H, COOK_PAN_DX, CHOP_OFFSET, FIRE_STANDIN_H };   /* v2.3.5346: still the renderer's exports (moved to ../tables/) */
 
-/* v2.3.1713: the firemaking strip's frame box, shared by the body bake, the
-   gear layers, the trait crowns and the remote stand-in — they all slice the
-   SAME grid, and crowns.json is generated against it, so a re-cut strip has to
-   move all of them together (the comment at _skillTraitMul says the same thing
-   about the chop/cook widths).
-   v2.3.1715: 161x220 x29 -> 384x512 x8.  The owner replaced this animation
-   outright with an 8-frame set (body + shirt + chest + legs, generated
-   together); the 29-frame strip is RETIRED, there is no fallback to it and
-   nothing may assume 29 again.  384x512 is the supplied art's own cell size, so
-   the sheets ship unresampled — see tools/build_fire_8f.mjs for the measurement
-   that says one new cell IS one old frame at 512/220 = 2.327x, which is why the
-   drawn height FH below stays 154 and the figure's on-screen size is unchanged.
-   THE TWO KNOCK-ONS, both easy to miss: _skillTraitMul.fire had to be scaled by
-   the same 2.327 (it multiplies sp.scale.y, which fell 0.7 -> 0.3008, to size
-   the player's hat), and _updateRemoteExtraction divided by a hardcoded 220. */
-const FIRE_FW = 384, FIRE_FH = 512;
+/* v2.3.6220: FIRE_FW, FIRE_FH (read by a leaf there) moved verbatim to ../leaves/effects-skills.js (card FX) */
 /* v2.3.1749: ONE firemaking cadence.  Owner: "for firemaking speed up the
    animation by about 3x so it doesn't look as choppy" — 200ms/frame is a 5fps
    slideshow; 67 is ~15fps.  Module-level because the local figure
@@ -702,25 +458,7 @@ const FIRE_SKIN_OPTS = { maxBR: 0.50, minGR: 0.45, maxGR: 0.80, minBlob: 1800 };
    table).  One strip, no legless twin.  FIRE_KEEP_BOXES puts the fist's
    islands back into the figure for everybody, drawings or not. */
 const FIRE_URL = `/sprites/skills/firemaking-strip.webp?v=${FIRE_STRIP_V}`;   /* v2.3.3666: the strip without its painted fire */
-/* ═══ v2.3.3666: WHERE EACH FRAME OF THE FIRE-LIGHTER IS DRAWN ═══
-   The owner: "work on the fire starting animation to replace the log and flame
-   in the animation with actual log art and code drawn smoke and flames".  The
-   strip's painted fire is out (tools/build_fire_clean.py); the light's fire is
-   the campfire's own, drawn in code from the strike on (campfireFx.js).  For a
-   fire that stays put on the log, the log has to stay put, and it did not:
-   the second row of the owner's sheet (frames 4-7) was drawn 27 art px higher
-   and a few to the side, the figure with it -- the bro hopped ~7 world px up at
-   frame 4 and dropped back when the light ended.  And the figure stands at
-   x 243 of his 384 px frame, so he was drawn 14 world px to the side of you
-   at both ends of every light.  Both measured by the tool (src/data/fireStrip.js);
-   this is where frame `fi` goes, in world px, for a figure scaled (sx, sy):
-   the figure's middle on your x, each frame's log on frame 0's.  Everything
-   drawn with the figure (clothes, armour, hair, drawings) is placed from it,
-   so it follows. */
-function _fireFrameShift(fi, sx, sy) {
-  const o = FIRE_FRAME_OFF[fi] || FIRE_FRAME_OFF[0];
-  return [(FIRE_FW / 2 - FIRE_FIGURE_X + o[0]) * sx, o[1] * sy];
-}
+/* v2.3.6220: _fireFrameShift moved verbatim to ../leaves/effects-skills.js (card FX) */
 /* ═══ v2.3.3684: UNDER GREAVES, THE FIRE-LIGHTER HAS NO LEGS OF HIS OWN ═══
    The owner: "remove pants (olive green) those should not be showing frame 6
    is particularly bad - armor legs need to shift leftward".  His body kneels
@@ -740,29 +478,9 @@ const FIRE_LEGLESS_OFF = (() => { try { return sw('firelegless'); } catch (e) { 
 const FIRE_LOG_OFF = (() => { try { return sw('firelog'); } catch (e) { return false; } })();
 let _fireLogWood = -1;
 if (typeof window !== 'undefined') window.__btFireLog = () => ({ on: !FIRE_LOG_OFF, wood: _fireLogWood });
-/* v2.3.3684: the lit key pixels within FIRE_LOG_LIT_REACH of the key itself;
-   `?firelit=0` leaves them pink, the game as it was */
-const FIRE_LOG_LIT_REACH = 4;
+/* v2.3.6220: FIRE_LOG_LIT_REACH (read by a leaf there) moved verbatim to ../leaves/effects-skills.js (card FX) */
 const FIRE_LOG_LIT_OFF = (() => { try { return sw('firelit'); } catch (e) { return false; } })();
-function _litLogKey(fd, w, h, key) {
-  const lit = new Uint8Array(w * h);
-  let any = 0;
-  for (let i = 0, o = 0; i < lit.length; i++, o += 4) {
-    if (!key[i] && isLitToolKey(fd[o], fd[o + 1], fd[o + 2], fd[o + 3])) { lit[i] = 1; any++; }
-  }
-  if (!any) return null;
-  const R = FIRE_LOG_LIT_REACH;
-  for (let i = 0; i < lit.length; i++) {
-    if (!lit[i]) continue;
-    const x = i % w, y = (i - x) / w;
-    let near = false;
-    for (let yy = Math.max(0, y - R); yy <= Math.min(h - 1, y + R) && !near; yy++) {
-      for (let xx = Math.max(0, x - R); xx <= Math.min(w - 1, x + R); xx++) if (key[yy * w + xx]) { near = true; break; }
-    }
-    if (!near) lit[i] = 0;
-  }
-  return lit;
-}
+/* v2.3.6220: _litLogKey moved verbatim to ../leaves/effects-skills.js (card FX) */
 function _fireLogToBark(img, cv) {
   const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
   if (!cv || !cv.width || !iw || !ih) return 0;
@@ -878,33 +596,10 @@ const PEER_FIG_LOAD_MS = 15000;
 const PEER_FIG_RETRY_MS = 15000;
 const PEER_GREAVES_WAIT_MS = 3000;
 const GEAR_STRIP_TIMEOUT_MS = 20000;   /* v2.3.4452: a stand-in's gear strip that has not answered has failed (TRAPS §257) */
-/** The colours a gathering figure is baked in, as one key: the skin (the
- *  'default' pick is the explicit tan, as every stand-in bake has it), the
- *  trousers and the boots ('-': the art's own). */
-/* v2.3.4037: + the garb (standInGarb.js): the trouser and shoe patterns and
-   the trouser print are baked into the figure now, so a figure is handed only
-   to a player wearing the same ones (TRAPS §189) */
-function _standInColourKey(skinT, pantsT, shoesT, garb) {
-  return (skinT || DEFAULT_SKIN_TARGET).join(',') + '|' + (pantsT ? pantsT.join(',') : '-')
-    + '|' + (shoesT ? shoesT.join(',') : '-') + '|' + garbKey(garb);
-}
-/** A peer's colours as their own screen bakes them -- through the gates every
- *  recolour passes (skinTarget & co.), from the ids relayed on the wire. */
-function _peerStandInColours(o) {
-  const skinT = skinTarget(o && o.skin) || DEFAULT_SKIN_TARGET;
-  const pantsT = pantsTarget(o && o.pants), shoesT = shoesTarget(o && o.shoes);
-  const garb = peerGarb(o);   /* v2.3.4037 */
-  return { skinT, pantsT, shoesT, garb, key: _standInColourKey(skinT, pantsT, shoesT, garb) };
-}
-/** Yours as you wear them now -- the stores, not the last bake. */
-function _localStandInColourKey() {
-  return _standInColourKey(skinTarget(getSkin()) || DEFAULT_SKIN_TARGET, pantsTarget(getPants()), shoesTarget(getShoes()), localGarb());   /* v2.3.4037: + the garb */
-}
-/** What a baked figure holds on the graphics chip (its one shared source). */
-function _figBytes(arr) {
-  const src = arr && arr[0] && arr[0].source;
-  return src ? Math.round((src.pixelWidth || src.width || 0) * (src.pixelHeight || src.height || 0) * 4) : 0;
-}
+/* v2.3.6220: _standInColourKey moved verbatim to ../leaves/effects-look.js (card FX) */
+/* v2.3.6221: _peerStandInColours moved verbatim to ../leaves/effects-look.js (card FX) */
+/* v2.3.6221: _localStandInColourKey moved verbatim to ../leaves/effects-look.js (card FX) */
+/* v2.3.6220: _figBytes moved verbatim to ../leaves/effects-skills.js (card FX) */
 
 /* ═══ v2.3.1723: PER-FRAME GEAR REGISTRATION for the firemaking pose ═══
    Owner playtest, on being shown the composited figure: the shirt and the
@@ -1001,20 +696,7 @@ function _figBytes(arr) {
  * (a lumberjack, a cook), and nobody has reported them.  The predicate is shared
  * with the layer choice a few lines below rather than written twice, so the two
  * cannot disagree about which figure this is. */
-/* ═══ v2.3.2310: A PROJECTILE'S SHEET IS NOT ALWAYS 256 ═══
- * projectileScalePx (monsterVariants) is stated in ON-SCREEN pixels, so the
- * divisor that turns it into a Sprite scale has to be the source's real width.
- * It was hard-coded to 256 -- true of the fire goblin's fireball.png and false
- * of the recoloured slime orb, which is 128, so the blue slime's ball drew at
- * half the size the constant asked for.  Measuring costs one property read per
- * texture change and cannot go stale when new art lands at a new size.
- * 256 is kept as the fallback so a texture that will not answer behaves exactly
- * as it did before this change. */
-function _projSrcPx(tex) {
-  if (!tex) return 256;
-  const w = (tex.frame && tex.frame.width) || tex.width || (tex.source && tex.source.width) || 0;
-  return w > 0 ? w : 256;
-}
+/* v2.3.6220: _projSrcPx moved verbatim to ../leaves/effects-combat.js (card FX) */
 
 function _isGatheringStandIn(skillKey) {
   return skillKey === 'chop' || skillKey === 'cook' || skillKey === 'fire'
@@ -1184,37 +866,7 @@ if (typeof window !== 'undefined') {
    Crit stat on the Hero screen, so a player learns one symbol, not two. */
 const DMG_FONT_PX = 21;
 const DMG_CRIT_FONT_PX = 38;
-/* ═══ v2.3.3033: DAMAGE NUMBERS ARE 1.75x BIGGER ═══
-   Owner, 2026-10-04: "Damage numbers for players and monsters needs to be
-   about anywhere from 1.5-2x bigger".  The two sizes above are WORLD pixels,
-   and the Wheel draws the world at about 0.6 of a CSS pixel each (the bro 64
-   px tall), so a plain hit read 13 CSS px beside a character five times its
-   height.
-
-   1.75 is the middle of what was asked for, applied to EVERY damage number --
-   a hit you deal (and a crit), a hit on you, a teammate's blow, a tick of
-   burn or poison -- so their sizes keep every relation v2.3.2211 and v2.3.3026
-   set: the crit still 1.8x the plain one, each mark as tall as its number (the
-   22 px cap scales too), the element badge cut to its own box.  What is NOT a
-   damage number keeps its size: "Blocked!", "Dodged", "+30 XP", "+25 G", a
-   heal's "+12" and every word are DMG_FONT_PX as ever, so a kill's number is
-   the biggest thing over the monster and its XP and gold read under it.
-   (v2.3.3192: no longer -- every one of those is now the plain hit's size, the
-   owner's ask; see MSG_FONT_PX below.)
-
-   `?dmgscale=1.5` .. `?dmgscale=2` (1 .. 3) tries another size in a tab, the way
-   `?zoom=` does, so nobody waits for a build to see 1.5 or 2.  Where it is
-   applied -- the size, the lift that keeps the bigger glyph's bottom edge off
-   the bar, the stacking, the climb, the mark -- is the mint in
-   `_updateDamageNumbers` ("HOW BIG, AND HOW HIGH"). */
-function readDmgScale() {
-  try {
-    const q = new URLSearchParams(pageAddress()).get('dmgscale');
-    const v = q == null ? NaN : parseFloat(q);
-    if (isFinite(v)) return Math.min(3, Math.max(1, v));
-  } catch (e) { /* no window: the default */ }
-  return 1.75;
-}
+/* v2.3.6220: readDmgScale moved verbatim to ../leaves/effects-combat.js (card FX) */
 export const DMG_SCALE = readDmgScale();
 if (typeof window !== 'undefined') window.__btDmgScale = DMG_SCALE;   /* QA: mp-dmgsize */
 /* Marks that say "this number is a hit": the weapons, the heart and the elements
@@ -1264,102 +916,20 @@ function isDamagePopup(dmg, t) {
    hit above 19.0 -> 24.9 CSS px.  So, asked, the owner chose ONE SIZE ON THE
    SCREEN for both: POPUP_ZOOM below. */
 const MSG_FONT_PX = DMG_FONT_PX * DMG_SCALE;
-/* ═══ v2.3.3192: ...AND ONE SIZE ON THE SCREEN, WHATEVER THE ZOOM ═══
-   Owner, offered numbers and messages pinned to one size on the screen like
-   the name plates: "Yes do fixed size instead".
-
-   Every size and distance in this popup code is in world px AS DRAWN AT
-   POPUP_ZOOM: the world's scale on the 390 x 844 phone with the dashboard
-   folded (VIEW_OUT 0.77 x its 806 px canvas / 1024 -- the bro 64 px tall,
-   v2.3.3020), the zoom every one of them was tuned at (v2.3.3033): a plain
-   hit's type 22.3 CSS px, a crit's 40.3.  Each frame the world's own scale is
-   divided back out -- `Z` = POPUP_ZOOM / S._worldScaleX, as the name plates
-   (v2.3.2513) and the chat bubble (v2.3.2247) do theirs -- so with the
-   dashboard up (scale 0.4625) a popup is drawn 1.31x the world px and is the
-   same on the screen, and on a bigger phone, sideways or in the desktop shell
-   it is that CSS size too.  Z scales a popup's size AND everything measured
-   from where it was pushed -- its lift, its place in a stack, its climb, its
-   mark and the gap before it, its wrap and its margin from the screen's edge
-   -- so it looks at every zoom as it does at POPUP_ZOOM; only the spot it was
-   pushed at (over a bar, over your head) stays the world's.  `?popupworld`
-   draws them in the world as before, to compare. */
-const POPUP_ZOOM = 0.606;
-const POPUP_Z_MIN = 0.25, POPUP_Z_MAX = 3;   /* a sanity bound (a near-zero scale from a mid-rebuild frame), never a design term */
+/* v2.3.6220: POPUP_ZOOM (read by a leaf there) moved verbatim to ../leaves/effects-ui.js (card FX) */
+/* v2.3.6220: POPUP_Z_MIN, POPUP_Z_MAX (read by a leaf there) moved verbatim to ../leaves/effects-ui.js (card FX) */
 /* v2.3.5343: the reader cannot throw (it catches its own), so no try */
 const BOW_GRIP_GUESS_OFF = typeof location !== 'undefined' && sw('gripguess');
-const POPUP_WORLD = typeof location !== 'undefined' && swHas('popupworld');
-function popupZoomK(S) {
-  const w = S && S._worldScaleX;
-  if (POPUP_WORLD || !(w > 0.01)) return 1;
-  return Math.min(POPUP_Z_MAX, Math.max(POPUP_Z_MIN, POPUP_ZOOM / w));
-}
-/* ═══ v2.3.3192: ...AND A LONG ONE WRAPS, NEVER SHRINKS ═══
-   At that size a long message is wider than a phone: "Element Burst needs an
-   enchanted weapon" is ~750 world px, a "📢" announcement (60 characters)
-   ~1,000, and an upright phone sees ~640 world px across in the Wheel (the
-   bro 64 px tall, worldViewport).  So a message wider than MSG_WRAP_W is
-   broken at its spaces into as few lines as fit, as even as they can be,
-   centred (msgLines) -- the type stays the numbers' size.  520 is about 26
-   characters a line, so the common ones keep one ("Return to Mayor Bro",
-   "Requires Woodcutting Lv 10"), and at most MSG_MAX_LINES; on a narrower
-   screen no wider than MSG_WRAP_SCREEN of it (popups being one CSS size, a
-   320 px phone gets ~21 characters a line).  And it is kept inside the view,
-   MSG_EDGE_PX clear of its sides (_updateDamageNumbers): over you against a
-   dungeon's wall the camera stops following, and half of a centred message
-   would be off the screen. */
-const MSG_WRAP_W = 520;
-const MSG_WRAP_SCREEN = 0.82;
-const MSG_MAX_LINES = 4;
+/* v2.3.6220: POPUP_WORLD (read by a leaf there) moved verbatim to ../leaves/effects-ui.js (card FX) */
+/* v2.3.6220: popupZoomK moved verbatim to ../leaves/effects-ui.js (card FX) */
+/* v2.3.6220: MSG_WRAP_W (read by a leaf there) moved verbatim to ../leaves/effects-ui.js (card FX) */
+/* v2.3.6220: MSG_WRAP_SCREEN (read by a leaf there) moved verbatim to ../leaves/effects-ui.js (card FX) */
+/* v2.3.6221: MSG_MAX_LINES (read by a leaf there) moved verbatim to ../leaves/effects-ui.js (card FX) */
 const MSG_EDGE_PX = 12;
 if (typeof window !== 'undefined') window.__btMsgFont = { px: MSG_FONT_PX, wrap: MSG_WRAP_W, edge: MSG_EDGE_PX, zoom: POPUP_ZOOM, world: POPUP_WORLD };   /* QA: mp-dmgsize */
-/* The widest a message may be laid out, in popup px: MSG_WRAP_W, or less where
-   the screen (its CSS width = the view x the world's scale) is narrower. */
-function msgWrapW(S) {
-  const cssW = S && S._viewW > 0 && S._worldScaleX > 0.01 ? S._viewW * S._worldScaleX : 0;
-  return cssW > 0 && !POPUP_WORLD ? Math.min(MSG_WRAP_W, MSG_WRAP_SCREEN * cssW / POPUP_ZOOM) : MSG_WRAP_W;
-}
-/* `words` laid in `n` lines whose longest is as short as it can be, by
-   characters (within one message its letters are near enough one width), each
-   line at least one word.  A message is a dozen words at most, so every way of
-   cutting it is tried. */
-function msgLines(words, n) {
-  const m = words.length;
-  n = Math.min(n, m);
-  if (n <= 1) return [words.join(' ')];
-  const pre = [0];
-  for (let i = 0; i < m; i++) pre.push(pre[i] + words[i].length);
-  const len = (i, j) => pre[j] - pre[i] + (j - i - 1);   /* words[i..j-1] with a space between each */
-  /* best[l][j]: the shortest possible longest line, laying the first j words in l lines; cut[l][j]: where that l-th line starts */
-  const best = [], cut = [];
-  for (let l = 0; l <= n; l++) { best.push(new Array(m + 1).fill(Infinity)); cut.push(new Array(m + 1).fill(0)); }
-  best[0][0] = 0;
-  for (let l = 1; l <= n; l++) {
-    for (let j = l; j <= m; j++) {
-      for (let i = l - 1; i < j; i++) {
-        const v = Math.max(best[l - 1][i], len(i, j));
-        if (v < best[l][j]) { best[l][j] = v; cut[l][j] = i; }
-      }
-    }
-  }
-  const lines = [];
-  for (let l = n, j = m; l > 0; l--) { const i = cut[l][j]; lines.unshift(words.slice(i, j).join(' ')); j = i; }
-  return lines;
-}
-/* Wrap a message's freshly made Text / BitmapText (at its resting scale, so
-   `width` is popup px) if it is wider than `maxW` (msgWrapW).  Returns its lines. */
-function wrapMessage(text, plain, maxW) {
-  if (!(text.width > maxW) || plain.indexOf('\n') >= 0) return 1;
-  const words = plain.split(' ').filter(Boolean);
-  const most = Math.min(MSG_MAX_LINES, words.length);
-  if (most < 2) return 1;   /* one long word: nowhere to break it */
-  /* centred lines -- the glyph atlas's text is made left-aligned; one line is the same either way */
-  if (text.style && text.style.align !== 'center') text.style.align = 'center';
-  let n = Math.max(2, Math.min(most, Math.ceil(text.width / maxW)));
-  for (;; n++) {
-    text.text = msgLines(words, n).join('\n');
-    if (n >= most || text.width <= maxW) return n;
-  }
-}
+/* v2.3.6220: msgWrapW moved verbatim to ../leaves/effects-ui.js (card FX) */
+/* v2.3.6220: msgLines moved verbatim to ../leaves/effects-ui.js (card FX) */
+/* v2.3.6221: wrapMessage moved verbatim to ../leaves/effects-ui.js (card FX) */
 /* v2.3.2212 (owner: "change the damage color to a light yellow when it's a
    crit").  Was the gold #f5c542 / amber #fbbf24 pair -- two shades for one
    event, and both close enough to the game's general gold accent (level-ups,
@@ -1411,32 +981,7 @@ const POPUP_ICON_SRC = Object.assign({ crit: '/icons/ui/hero/crit.webp', heart: 
    stays right -- and then drawn at the sword's height, the sword's gap after
    the number.  The DOM chips (ElemStatusChips) keep the whole picture. */
 const TIGHT_POPUP_ICONS = new Set(['heart', DEFENSE_POPUP_KEY].concat(Object.keys(ELEM_ICON_SRC)));
-function _tightPopupIcon(tex) {
-  try {
-    const src = tex && tex.source;
-    const img = src && src.resource;
-    const w = src && (src.pixelWidth || src.width), h = src && (src.pixelHeight || src.height);
-    if (!img || !(w > 0) || !(h > 0) || w > 1024 || h > 1024 || typeof document === 'undefined') return tex;
-    const cv = document.createElement('canvas');
-    cv.width = w; cv.height = h;
-    const g = cv.getContext('2d', { willReadFrequently: true });
-    if (!readSourceRect(g, src, 0, 0, w, h, 0, 0, 'popup-cut')) { cv.width = cv.height = 0; return tex; }   /* v2.3.5250: a popup kept as colour numbers too (p256.js, the world's icons): its resource is never drawn as a picture */
-    const d = g.getImageData(0, 0, w, h).data;
-    let x0 = w, y0 = h, x1 = -1, y1 = -1;
-    for (let y = 0; y < h; y++) {
-      const row = y * w * 4;
-      for (let x = 0; x < w; x++) {
-        if (d[row + x * 4 + 3] > 16) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
-      }
-    }
-    cv.width = cv.height = 0;
-    if (x1 < x0 || y1 < y0) return tex;
-    const r = src.resolution || 1;
-    const cut = new Texture({ source: src, frame: new Rectangle(x0 / r, y0 / r, (x1 - x0 + 1) / r, (y1 - y0 + 1) / r) });
-    cut._tight = [x0, y0, x1 - x0 + 1, y1 - y0 + 1];   /* for the QA probe */
-    return cut;
-  } catch (e) { return tex; }   /* the whole picture, as before */
-}
+/* v2.3.6220: _tightPopupIcon moved verbatim to ../leaves/effects-ui.js (card FX) */
 function _loadPopupIcon(k, attempt) {
   const bust = attempt > 0 ? '&r=' + attempt : '';
   return _fxLoad((POPUP_ICON_SRC[k] || ('/icons/popups/' + k + '.webp')) + '?v=2.3.2201' + bust)
@@ -1846,23 +1391,7 @@ for (const cfg of Object.values(EFFECT_BURSTS)) {
 }
 const FX_BURST_MS = 600;
 
-/* ═══ v2.3.2760: DID A LOOPING ANIMATION PASS FRAME `target` SINCE LAST FRAME? ═══
-   The harvest strike effects (the chop's bite, the pick's clink and debris)
-   used to test `cur === target && last !== target`.  That was fine while the
-   loops ran on a clock; since the swing follows the HAND, a quick stroke can
-   step straight over the strike frame (8 -> 10), and the blow would land in
-   silence.  Loops only run forward (gesturePose01 never rewinds), so a smaller
-   `cur` means it wrapped past the end.
-   last === -1: first frame of a harvest -- fire only if we start ON it.
-   last === -2: the loop was re-seeded (the wind-up's clock handed over to the
-   gesture at `ready`, which snaps to the ready pose) -- never a blow. */
-function _crossedFrame(last, cur, target) {
-  if (last === -2) return false;
-  if (last < 0) return cur === target;
-  if (cur === last) return false;
-  if (cur > last) return last < target && cur >= target;
-  return last < target || cur >= target;
-}
+/* v2.3.6220: _crossedFrame moved verbatim to ../leaves/effects-skills.js (card FX) */
 
 /* v2.3.2200 -> v2.3.2843: the per-material hit debris (owner: "snow that
    flies off the monster") is drawn by rendering/hitMaterialFx.js now.  The
@@ -1886,6 +1415,7 @@ function debrisDotTex() {
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, 32, 32);
   _DEBRIS_DOT_TEX = Texture.from(c);
+  keepAsImage(_DEBRIS_DOT_TEX.source, Cache);   /* v2.3.6223 (card FX PR 4): the debris dot, made once and never drawn into again, kept as an image of itself: a rebuilt renderer and an emptied canvas still draw it (TRAPS §250) */
   return _DEBRIS_DOT_TEX;
 }
 /* ═══ v2.3.2217: the thrown snowball's IMPACT ═══
@@ -1993,18 +1523,7 @@ export async function freeFrostImpactTex() {
   }
 }
 
-/* v2.3.2504: channel-wise lerp between two packed 0xRRGGBB colours.  Used by
-   the lock chip's first-second flash; kept at module scope because it is two
-   lines and a per-frame closure in the draw path is the kind of allocation
-   this file has had to unpick before. */
-function _mixHex(a, b, t) {
-  const k = t < 0 ? 0 : (t > 1 ? 1 : t);
-  const ar = (a >> 16) & 255, ag = (a >> 8) & 255, ab = a & 255;
-  const br = (b >> 16) & 255, bg = (b >> 8) & 255, bb = b & 255;
-  return (((ar + (br - ar) * k) | 0) << 16)
-    | (((ag + (bg - ag) * k) | 0) << 8)
-    | ((ab + (bb - ab) * k) | 0);
-}
+/* v2.3.6220: _mixHex moved verbatim to ../leaves/effects-combat.js (card FX) */
 
 /* v2.3.2504 -> v2.3.2843: the placeholder debris (owner §5.8: "the fallback
    burst and decals last about 5 s and read clearly") is replaced by
@@ -2052,6 +1571,7 @@ function propSlashTex() {
     if (h >= 2) { ctx.fillStyle = 'rgba(255,255,255,1)'; ctx.fillRect(x, cy - h + 1, 1, 1); }
   }
   _PROP_SLASH_TEX = Texture.from(c);
+  keepAsImage(_PROP_SLASH_TEX.source, Cache);   /* v2.3.6223 (card FX PR 4): the slash mark, made once and never drawn into again, kept as an image of itself: a rebuilt renderer and an emptied canvas still draw it (TRAPS §250) */
   return _PROP_SLASH_TEX;
 }
 /* v2.3.2731: a wood SPLINTER off a snapped arrow -- a pale sliver with a dark
@@ -2065,6 +1585,7 @@ function splinterTex() {
   ctx.fillStyle = 'rgba(226,190,130,1)'; ctx.fillRect(0, 0, 7, 2);
   ctx.fillStyle = 'rgba(70,44,22,0.9)'; ctx.fillRect(1, 2, 7, 1);
   _SPLINTER_TEX = Texture.from(c);
+  keepAsImage(_SPLINTER_TEX.source, Cache);   /* v2.3.6223 (card FX PR 4): the splinter, made once and never drawn into again, kept as an image of itself: a rebuilt renderer and an emptied canvas still draw it (TRAPS §250) */
   return _SPLINTER_TEX;
 }
 const SNAP_G = 0.13;          /* the 1/2-g term, 60Hz frame units (DEBRIS_GRAV's posture) */
@@ -2110,6 +1631,7 @@ function hardDotTex() {
   ctx.fillStyle = '#ffffff';
   ctx.beginPath(); ctx.arc(8, 8, HARD_DOT_R, 0, Math.PI * 2); ctx.fill();
   _HARD_DOT_TEX = Texture.from(c);
+  keepAsImage(_HARD_DOT_TEX.source, Cache);   /* v2.3.6223 (card FX PR 4): the hard dot, made once and never drawn into again, kept as an image of itself: a rebuilt renderer and an emptied canvas still draw it (TRAPS §250) */
   return _HARD_DOT_TEX;
 }
 
@@ -2133,6 +1655,7 @@ function groundDecalTex() {
   };
   blob(32, 32, 20); blob(20, 40, 10); blob(46, 26, 8); blob(40, 46, 6);
   _GROUND_DECAL_TEX = Texture.from(c);
+  keepAsImage(_GROUND_DECAL_TEX.source, Cache);   /* v2.3.6223 (card FX PR 4): the ground decal, made once and never drawn into again, kept as an image of itself: a rebuilt renderer and an emptied canvas still draw it (TRAPS §250) */
   return _GROUND_DECAL_TEX;
 }
 
@@ -2270,11 +1793,14 @@ _fxPreload.push(treesWhenReady().then(() => Promise.allSettled(treeArtSources().
    vein, its four colour-mapped twins and their break strip held ~8 MB.
    v2.3.3443: 1.2 MB, every rock cut 1.4x (tools/world/add-ore-art.mjs
    ORE_GROW) so that copper hides the miner's shirt's hem as the old vein did. */
+/* v2.3.6222 (card FX PR 3, ore-tiers): asked on the trees' wait, so they are
+   read as their numbers, a byte a pixel (paletteLoad.js, the rocks' note):
+   1.1 MB held as pictures in the page at the memory check's fight.  Still on
+   the loading screen's gate: the wait is pushed as it starts.
+   `?treenumbers=0`: pictures, as before. */
 const ORE_TEX = {};
-for (const { lvl, url } of oreArtSources()) {
-  _fxLoad(url).then((tex) => { if (tex) ORE_TEX[lvl] = tex; })
-    .catch((err) => console.warn('[ore-art] load failed', url, err));
-}
+_fxPreload.push(treesWhenReady().then(() => Promise.allSettled(oreArtSources().map(({ lvl, url }) => _fxLoad(url).then((tex) => { if (tex) ORE_TEX[lvl] = tex; })
+  .catch((err) => console.warn('[ore-art] load failed', url, err))))));
 /* v2.3.2956: where a node's HP bar hangs, as a fraction of its frame --
    measured off the same webps' alpha (>40): the pine's crown tops out at
    0.103, the ore's rock bottoms out at its ground line (NODE_ART_BASE), the
@@ -2426,19 +1952,7 @@ const DMG_STYLE_EMOJI = new TextStyle({
   align: 'center',
 });
 
-/* v2.3.1357: pre-baked glyph atlas for PLAIN NUMERIC popups (damage /
-   XP / gold — the overwhelming majority in combat).  Every `new Text`
-   is a synchronous canvas rasterization; profiling a 12-monster pack
-   fight showed popup MINT RATE (not live count) dominating the frame
-   (avg -55ms and the 400ms spikes vanished with popups suppressed).
-   +100-HP fights run several times longer, so that churn is sustained
-   — the owner's "running badly" report.  BitmapText assembles glyphs
-   from this atlas at near-zero cost.  Glyphs bake WHITE + black stroke
-   at 2x the base popup size (scaled down at use = crisp on retina);
-   tint colors the fill while the black stroke stays black (0 x tint).
-   Popups needing canvas features keep classic Text: emoji (own style),
-   specials (dropShadow halo), and any char outside the baked set. */
-const DMG_BMP_FONT = 'bt-dmg-digits';
+/* v2.3.6220: DMG_BMP_FONT (read by a leaf there) moved verbatim to ../leaves/effects-combat.js (card FX) */
 /* v2.3.1363: bake at 100px — pixi's DynamicBitmapFont measurement base.
    The v2.3.1357 28px bake ended up stored at a FRACTIONAL effective
    resolution (pixi scales page resolution by bakePx/100), so on iPhone
@@ -2462,34 +1976,7 @@ const DMG_BMP_FONT = 'bt-dmg-digits';
    its 14/100 ratio. */
 const DMG_BMP_BAKE_PX = 128;
 let _dmgBmpReady = false;
-/* ═══ v2.3.5008: THE DIGITS AT 128, THE WORDS AT THEIR OWN SIZE ═══
-   The memory survey (mp-gpuaudit, 2026-11-13): on arrival the one font's
-   pages were the biggest thing on the graphics chip that had no name, 14.6
-   MB -- eleven canvases of 512 x 512 with a mip chain, 1.33 MB each (the
-   6.7 MB above, and TRAPS §137's, counted each page at its 400 x 400
-   layout size and without the mips).  All 67 characters were baked at 128
-   for a crit's sake, but a crit is only ever digits (DMG_PLAIN_RE: no
-   letter in a damage number); the letters are drawn in messages ("Dodged!",
-   "+12 XP", "Blocked!"), and a message is the plain number's size, 22.3 CSS
-   px (MSG_FONT_PX at POPUP_ZOOM): 67 device px on a 3x phone, 74 with a
-   crit-flagged note's 10% wiggle.  So two fonts:
-     - DMG_BMP_FONT, the digits and '+-. !' at 128 (3 pages, 4.0 MB): every
-       damage number and crit, drawn exactly as before;
-     - DMG_WORD_FONT, all 67 at 80 on ONE page of 1024 x 1024 (5.3 MB):
-       anything with a letter, drawn at 0.84x its bake (0.93x at the
-       wiggle's widest), so never enlarged (TRAPS §137's rule).
-   14.7 -> 9.3 MB on the chip.  Why 80 on a 1024 page: pixi stores a page at
-   resolution bake / 100, and 512 / 0.8 = 640 and 1024 / 0.8 = 1280 are
-   whole layout px; a bake of 76 (three 512 pages, 4.0 MB) made a page
-   673.7 layout px wide, which QA's exact read-back (drawnPixels) could not
-   read texel for texel.  At 512 the 80 bake takes five pages (6.7 MB); the
-   1024 page packs the same glyphs into one (measured with the page's own
-   install in Chromium's sans-serif).  The digits' pages stay 512 (one 1024
-   page would be 5.3 MB against three 512s' 4.0).  A message with a letter
-   drawn bigger than the words' bake allows (none today: a damage number has
-   no letter) is classic Text, as one outside the set always was.
-   `?dmgwords=0`: the one font of 67 at 128, as before. */
-const DMG_WORD_FONT = 'bt-dmg-words';
+/* v2.3.6220: DMG_WORD_FONT (read by a leaf there) moved verbatim to ../leaves/effects-combat.js (card FX) */
 const DMG_WORD_BAKE_PX = 80;
 const DMG_WORD_PAGE_PX = 1024;
 /* v2.3.5008: the space round each glyph (pixi's default is 4).  At 4 the
@@ -2498,43 +1985,20 @@ const DMG_WORD_PAGE_PX = 1024;
    'K' and 'M' (their ink reaches their cell's edge: measured in Chromium's
    sans-serif, every cell's ink against its own frame).  At 12 every cell
    keeps 3 px or more clear, on the same one page. */
-const DMG_WORDS_ON = !(typeof location !== 'undefined' && sw('dmgwords'));   /* v2.3.5343: the reader cannot throw */
+/* v2.3.6220: DMG_WORDS_ON (read by a leaf there) moved verbatim to ../leaves/effects-combat.js (card FX) */
 /* v2.3.3088: the install is a function, run again for a rebuilt renderer once
    the pages' canvases have been let go of (prewarmDmgFontPipe, gpuOnly.js). */
 const DMG_ALL_CHARS = [['0', '9'], ['A', 'Z'], ['a', 'z'], '+-. !'];
 const DMG_DIGIT_CHARS = [['0', '9'], '+-. !'];
-function _installOneDmgFont(name, bakePx, chars, family, pagePx, padding) {
-  /* v2.3.5008: a page size of its own -- pixi reads it from its defaults
-     only (BitmapFont.install passes none), so set for this install alone */
-  const D = DynamicBitmapFont.defaultOptions;
-  const was = D.textureSize;
-  if (pagePx) D.textureSize = pagePx;
-  try {
-    BitmapFont.install({
-      name,
-      style: {
-        fontFamily: family || 'Source Sans 3, sans-serif',
-        fontSize: bakePx,
-        fontWeight: '800',
-        fill: '#ffffff',
-        stroke: { color: '#000000', width: 14 * bakePx / 100 },
-      },
-      chars,
-      ...(padding ? { padding } : null),
-    });
-  } finally { D.textureSize = was; }
-  /* BitmapFont.install hands nothing back; the font is in Pixi's cache */
-  return Cache.has(name + '-bitmap') ? Cache.get(name + '-bitmap') : null;
-}
+/* v2.3.6220: _installOneDmgFont moved verbatim to ../leaves/effects-combat.js (card FX) */
 /* the fonts installed (one, or the digits' and the words'), as a list */
 function _installDmgFont(family) {
   if (!DMG_WORDS_ON) return [_installOneDmgFont(DMG_BMP_FONT, DMG_BMP_BAKE_PX, DMG_ALL_CHARS, family)];
   return [_installOneDmgFont(DMG_BMP_FONT, DMG_BMP_BAKE_PX, DMG_DIGIT_CHARS, family),
     _installOneDmgFont(DMG_WORD_FONT, DMG_WORD_BAKE_PX, DMG_ALL_CHARS, family, DMG_WORD_PAGE_PX, DMG_WORD_PAD)];
 }
-const _dmgFontNames = () => (DMG_WORDS_ON ? [DMG_BMP_FONT, DMG_WORD_FONT] : [DMG_BMP_FONT]);
-/* the fonts in Pixi's cache now (a missing one as null) */
-const _dmgFontsNow = () => _dmgFontNames().map((n) => (Cache.has(n + '-bitmap') ? Cache.get(n + '-bitmap') : null));
+/* v2.3.6220: _dmgFontNames moved verbatim to ../leaves/effects-combat.js (card FX) */
+/* v2.3.6221: _dmgFontsNow moved verbatim to ../leaves/effects-combat.js (card FX) */
 /* v2.3.3088: WHICH FACE THE ATLAS WAS DRAWN IN.  The install runs as this
    module loads -- before the page's web fonts have arrived (index.html loads
    them display=swap), so the glyphs are normally the browser's own sans-serif,
@@ -2543,17 +2007,7 @@ const _dmgFontsNow = () => _dmgFontNames().map((n) => (Cache.has(n + '-bitmap') 
    advance widths are kept as its face's fingerprint, and a re-install that
    does not match them is made again in the generic face (_reinstallDmgFont). */
 let _dmgFontSig = null;
-function _dmgSig(fonts) {
-  /* v2.3.5008: the fonts' together (both are drawn in one face) */
-  let out = '';
-  for (const font of fonts || []) {
-    const c = font && font.chars;
-    if (!c) return null;
-    for (const k of Object.keys(c).sort()) out += k + ':' + c[k].xAdvance + ',';
-    out += '|';
-  }
-  return out || null;
-}
+/* v2.3.6220: _dmgSig moved verbatim to ../leaves/effects-combat.js (card FX) */
 try {
   _dmgFontSig = _dmgSig(_installDmgFont());
   _dmgBmpReady = true;
@@ -2694,15 +2148,7 @@ export function prewarmDmgFontPipe(renderer) {
   }
 }
 
-/* Cheap ASCII test — anything outside 0x20-0x7E is treated as emoji. */
-function isAsciiOnly(s) {
-  if (typeof s !== 'string') return true;
-  for (let i = 0; i < s.length; i++) {
-    const c = s.charCodeAt(i);
-    if (c < 0x20 || c > 0x7E) return false;
-  }
-  return true;
-}
+/* v2.3.6220: isAsciiOnly moved verbatim to ../leaves/effects-ui.js (card FX) */
 
 const LABEL_STYLE = new TextStyle({
   fontFamily: 'Source Sans 3, sans-serif',
@@ -2721,13 +2167,7 @@ let _chatBubbleGrad = null;
    you -- past any screen's edge at the Wheel's zoom (a 3x phone shows ~650 x
    1,400 of the world, a desktop about 3,200 across) -- see _updateChatBubbles */
 const NPC_BUBBLE_REACH = 2400;
-/* v2.3.3392: the band over a head, lowered as far as an emote brought the
-   name plate down (rendering/emoteFx.js `_emoteHudDrop`: a sitter, a sleeper) */
-function bandWithEmote(band, who) {
-  if (typeof band !== 'number' || !isFinite(band)) return band;
-  const d = who && who._emoteHudDrop;
-  return d > 0 ? band + d : band;
-}
+/* v2.3.6220: bandWithEmote moved verbatim to ../leaves/effects-social.js (card FX) */
 /* v2.3.3391: an emote's emoji over the head (_updateEmotePops): drawn at
    EMOTE_POP_FONT and scaled to EMOTE_POP_PX on the SCREEN, twice the chat's
    14 px -- it is a picture, read at a glance */
@@ -2854,18 +2294,7 @@ const REMOTE_BAKE_CACHE_MAX = 24;
    a crowd swings, and update() trims it back once they stop. */
 let _bakeFrame = 0;
 
-/* Would the pre-flipped bake of this sheet differ from the plain one?  Asked
-   of the art AFTER artForFacing, because that is what actually gets stamped:
-   a north sheet stamps the BACK canvases, so the front ones' symmetry is not
-   the question.  (v2.3.2429 / v2.3.2431; module scope since v2.3.2863, when a
-   peer's stand-in bakes started asking it too.) */
-function _twinWouldDiffer(art, dir) {
-  if (!art) return false;
-  if (parsePattern(art.pantsPattern, 'pants') || parsePattern(art.shoesPattern, 'shoes')) return true;
-  const a = artForFacing(art, dir);
-  return ['pants', 'tattoo', 'tattooFace', 'tattooArm']
-    .some((k) => artHasInk(a[k]) && !artIsSymmetric(a[k]));
-}
+/* v2.3.6220: _twinWouldDiffer moved verbatim to ../leaves/effects-look.js (card FX) */
 function _trimBakeCache(cache, owner) {
   while (cache.size > REMOTE_BAKE_CACHE_MAX) {
     const k0 = cache.keys().next().value;
@@ -2919,7 +2348,7 @@ const BEAM_HALO_A = 0.34;      /* ...and this bright, before the flicker */
 const BEAM_FLICKER = 0.12;     /* how much the brightness trembles */
 const BEAM_PULSE_HZ = 0.45;    /* the slow swell of the light */
 const BEAM_MOTES = 3;          /* motes drifting up a pile's beams (plus one a beam past the first) */
-const MOTE_TEX = 8;
+/* v2.3.6223: MOTE_TEX (read by a leaf there) moved verbatim to ../leaves/effects-economy.js (card FX) */
 /* each beam of a pile: across from its middle (world px), its height (of
    BEAM_H_PX) and its shimmer's phase, so two side by side never pulse as one */
 const LOOT_BEAMS_MAX = 36;     /* beams drawn at once: a pile past it waits for one to go */
@@ -2929,53 +2358,9 @@ const BEAM_ON = (() => { try { return !sw('lootbeam'); } catch (e) { return true
    burning heap is; `?burnfire=0` draws the old flames, for one phone */
 const BURN_BLAZE = (() => { try { return !sw('burnfire'); } catch (e) { return true; } })();
 const PEER_FIRES = 6;   /* other players burning in the building's flames at once; past it, the drawn flames */
-/* v2.3.3916: a thin column: a bright core, soft edges, fading out toward its
-   top.  v2.3.4124: twice as wide, its edges falling off softly (the light,
-   not a stripe), the same picture stretched wider for the halo */
-function makeBeamTexture() {
-  if (typeof document === 'undefined') return null;
-  const W = BEAM_TEX_W, H = BEAM_TEX_H;
-  const cv = document.createElement('canvas');
-  cv.width = W; cv.height = H;
-  const g = cv.getContext('2d');
-  const across = g.createLinearGradient(0, 0, W, 0);
-  across.addColorStop(0, 'rgba(255,255,255,0)');
-  across.addColorStop(0.15, 'rgba(255,255,255,0.08)');
-  across.addColorStop(0.3, 'rgba(255,255,255,0.4)');
-  across.addColorStop(0.42, 'rgba(255,255,255,0.85)');
-  across.addColorStop(0.5, 'rgba(255,255,255,1)');
-  across.addColorStop(0.58, 'rgba(255,255,255,0.85)');
-  across.addColorStop(0.7, 'rgba(255,255,255,0.4)');
-  across.addColorStop(0.85, 'rgba(255,255,255,0.08)');
-  across.addColorStop(1, 'rgba(255,255,255,0)');
-  g.fillStyle = across;
-  g.fillRect(0, 0, W, H);
-  /* ...faded toward the top: the light thinning into the air */
-  g.globalCompositeOperation = 'destination-in';
-  const up = g.createLinearGradient(0, 0, 0, H);
-  up.addColorStop(0, 'rgba(255,255,255,0)');
-  up.addColorStop(0.45, 'rgba(255,255,255,0.6)');
-  up.addColorStop(1, 'rgba(255,255,255,1)');
-  g.fillStyle = up;
-  g.fillRect(0, 0, W, H);
-  return Texture.from(cv);   /* its canvas let go once drawn: _gpuWaiting */
-}
-/* v2.3.4124: a mote of light, a soft round dot */
-function makeMoteTexture() {
-  if (typeof document === 'undefined') return null;
-  const N = MOTE_TEX, c = N / 2;
-  const cv = document.createElement('canvas');
-  cv.width = cv.height = N;
-  const g = cv.getContext('2d');
-  const rg = g.createRadialGradient(c, c, 0, c, c, c);
-  rg.addColorStop(0, 'rgba(255,255,255,1)');
-  rg.addColorStop(0.45, 'rgba(255,255,255,0.5)');
-  rg.addColorStop(1, 'rgba(255,255,255,0)');
-  g.fillStyle = rg;
-  g.fillRect(0, 0, N, N);
-  return Texture.from(cv);
-}
-const _hexTint = (h) => { const n = parseInt(String(h || '').replace('#', ''), 16); return Number.isFinite(n) ? n : 0xffffff; };
+/* v2.3.6223: makeBeamTexture moved verbatim to ../leaves/effects-economy.js (card FX) */
+/* v2.3.6223: makeMoteTexture moved verbatim to ../leaves/effects-economy.js (card FX) */
+/* v2.3.6220: _hexTint moved verbatim to ../leaves/effects-economy.js (card FX) */
 const DROP_ICON_WORLD = 40 * DROP_GROW;
 /* ...and its count, in the owner label's type (_renderOwnerLabel), a size up */
 const DROP_COUNT_STYLE = new TextStyle({
@@ -2995,16 +2380,7 @@ const DROP_COUNT_STYLE = new TextStyle({
  * drop time (l.ts): a pile you walk up to, or one synced on zone entry, is
  * already lying still.  Visual only -- the pickup test reads l.x / l.y. */
 const LAND_S = 1.0;
-/* ═══ v2.3.4124: LOOT POPS OUT OF THE MONSTER, THEN THE BEAM RISES ═══
-   The owner, 2026-11-03: "Monster deaths to loot drops need more of a
-   transition. It's next frame there's a pinhole of light beaming upwards."
-   Each item now leaves from the monster's BODY (POP_H above the pile, where
-   the body stood: the pile sits PILE_Y_OFFSET under it), arcs out to its spot
-   with a little hop up first, and bounces ONCE (POP_ARC_S + POP_BOUNCE_S,
-   about half a second, each item a touch after the one before), and only
-   when it is down does the pile's beam rise (BEAM_AT_S, below).
-   `?lootpop=0`: the v2.3.2771 fall and two hops, for one phone. */
-const LOOT_POP = (() => { try { return !sw('lootpop'); } catch (e) { return true; } })();
+/* v2.3.6220: LOOT_POP (read by a leaf there) moved verbatim to ../leaves/effects-economy.js (card FX) */
 const POP_JUMP = 16;       /* the little hop up as it leaves the body */
 const POP_DELAY_S = 0.08;  /* the last item leaves this much after the first */
 const POP_ARC_S = 0.32;    /* out of the body and down to the ground */
@@ -3042,20 +2418,8 @@ function lootPop(l, key, age, n) {
   return _NO_HOP;
 }
 const _NO_HOP = { dy: 0, sq: 0, rot: 0, out: 1 };
-const _hash = (x) => { const v = Math.sin(x) * 43758.5453; return v - Math.floor(v); };
-/* v2.3.4124: the age the landing (and the beam after it) plays at.  YOUR pile
-   that landed while you watched (its loot_drop: _shine set, not late) is timed
-   from the moment it reached THIS phone, by this phone's clock: on the QA box
-   a kill's loot_drop came ~0.9 s after the worker's drop time (l.ts), so a pop
-   on l.ts had already finished when the pile first showed -- the owner's
-   "next frame there's a pinhole of light", again -- and a phone whose clock
-   runs ahead of or behind the worker's would skip or stall it.  Anything else
-   (another's pile, one synced on the way in) keeps the worker's time: lying
-   still when you arrive, as v2.3.2771. */
-function landAgeOf(l, now, age) {
-  if (LOOT_POP && l._shine && !l._shine.late && Number.isFinite(l._shine.at)) return (now - l._shine.at) / 1000;
-  return age;
-}
+/* v2.3.6220: _hash moved verbatim to ../leaves/effects-economy.js (card FX) */
+/* v2.3.6220: landAgeOf moved verbatim to ../leaves/effects-economy.js (card FX) */
 function lootHop(l, key, age, n = 0) {
   if (LOOT_POP) return lootPop(l, key, age, n);   /* v2.3.4124 */
   if (!(age < LAND_S) || age < 0) return _NO_HOP;
@@ -3089,42 +2453,9 @@ function lootHop(l, key, age, n = 0) {
   const out = 1 - (1 - u) * (1 - u);
   return { dy: A * env * c, sq, rot, out };
 }
-/* v2.3.2771 squash; v2.3.2772 and tilt.  Rotation is WRITTEN every call
-   (0 once settled) so a pile never keeps a stale lean. */
-/* ═══ v2.3.2773: A PILE SPREADS OUT, IT DOES NOT STACK ═══
-   Owner: "Instead of a vertical line can you make the loot spread out a bit
-   within a proximal circle."  The coin, shard and rare items used to sit in a
-   column over the remains (coin 10 px up, shard 24, rare icons 30).  Each now
-   has its own spot in a small circle around the pile's middle -- a sunflower
-   (golden-angle) spiral from a per-pile starting angle, so two piles never
-   look stamped from one template and no two items land on the same spot.  The
-   rarest go nearest the middle (they are what you are walking over for); the
-   circle is squashed vertically (x 0.55) because the ground is seen at an
-   angle.  A lone item stays in the middle.  Keys are the items present, so
-   the layout is rebuilt only when the pile's contents change (a claim). */
-function pileLayout(l, keys) {
-  const sig = keys.join(',');
-  if (l._layoutSig === sig && l._layout) return l._layout;
-  if (l._landSeed == null) l._landSeed = Math.random();
-  const out = Object.create(null);
-  const n = keys.length;
-  const a0 = l._landSeed * Math.PI * 2;
-  for (let i = 0; i < n; i++) {
-    if (n === 1) { out[keys[i]] = { ox: 0, oy: 0 }; continue; }
-    const a = a0 + i * 2.39996;   /* the golden angle */
-    const r = PILE_R * (0.4 + 0.6 * Math.sqrt((i + 0.5) / n)) * (0.85 + 0.3 * _hash(l._landSeed * 37 + i * 4.1));
-    out[keys[i]] = { ox: Math.cos(a) * r, oy: Math.sin(a) * r * 0.55 };
-  }
-  l._layout = out; l._layoutSig = sig;
-  return out;
-}
+/* v2.3.6221: pileLayout moved verbatim to ../leaves/effects-economy.js (card FX) */
 const _AT_MIDDLE = { ox: 0, oy: 0 };
-function applySquash(sp, sq, rot = 0) {
-  if (!sp) return;
-  sp.rotation = rot || 0;
-  if (!sq) return;
-  sp.scale.set(sp.scale.x * (1 + 0.6 * sq), sp.scale.y * (1 - sq));
-}
+/* v2.3.6220: applySquash moved verbatim to ../leaves/effects-economy.js (card FX) */
 
 /* ═══ v2.3.3524: THE SMITH'S ANVIL IS THE OWNER'S PAINTED ONE ═══
    The owner's playtest note: "make a more realistic anvil for the animation
@@ -3143,19 +2474,7 @@ _fxLoad('/sprites/fx/smith-anvil.webp?v=2.3.3493').then((tex) => {
 /* the forge fire's tongues are drawn once at this height and stretched */
 const SMITH_FLAME_H0 = 40;
 
-/* ═══ v2.3.3339: AN EMPTY GRAPHIC IS NOT CLEARED AGAIN ═══
-   Found by the frame-rate hunt after the owner's "around 30fps to 40ish fps":
-   Graphics.clear() on a graphic that is already empty draws nothing new, but
-   it still marks the graphic changed, and Pixi answers any change to a
-   batchable graphic by rebuilding its render group's whole draw list
-   (GraphicsPipe.validateRenderable).  The screen's flash, atmosphere and HUD
-   graphics are empty nearly always and were cleared every frame, so the
-   screen's draw list (its three layers: atmosphere, screenFX, the HUD) was
-   rebuilt every frame.  An empty graphic has no instructions; clearing one
-   changes nothing (each fill already starts its next path afresh). */
-function clearIfDrawn(g) {
-  if (g && g.context && g.context.instructions.length) g.clear();
-}
+/* v2.3.6220: clearIfDrawn moved verbatim to ../leaves/effects-render.js (card FX) */
 
 /* v2.3.3499: the whirlwind's cap if a wind-up does not carry its own (the
    worker's STAM_ABILITIES.whirl.maxTargets, mirrored in data/abilities.js). */

@@ -97,7 +97,7 @@ export const SYSTEMS = Object.freeze({
   },
   liveops: {
     what: 'the live flags, the admin and dev levers, test mode, feedback',
-    files: [f('server/src', 'liveops|admin|devtools|testmode|feedback'), f('src/game', 'testMode|switches|ownerSwitches|feedbackOwner|silenceOwner|renameOwner|adminKeyStore'),   /* v2.3.5602: ownerSwitches; v2.3.5603: feedbackOwner; v2.3.5605: silenceOwner; v2.3.5611: renameOwner (card OPS); v2.3.5718: adminKeyStore (card SEC) */
+    files: [f('server/src', 'liveops|admin|devtools|testmode|feedback|usagemeter'), f('src/game', 'testMode|switches|ownerSwitches|feedbackOwner|silenceOwner|renameOwner|adminKeyStore|usageMeter'),   /* v2.3.5602: ownerSwitches; v2.3.5603: feedbackOwner; v2.3.5605: silenceOwner; v2.3.5611: renameOwner (card OPS); v2.3.5718: adminKeyStore (card SEC); v2.3.6001: usagemeter, usageMeter (card CS) */
       f('server/src', 'restore'),   /* v2.3.5288 (card R): the room's way back, the owner's lever */
       f('server/src', 'playerrestore'),   /* v2.3.5285 (card R): one player's restore, the owner's lever */
     ],

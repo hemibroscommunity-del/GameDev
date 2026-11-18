@@ -92,7 +92,10 @@ for (const [w, l] of [[1, 1], [3, 2], [10, 10]]) {
   for (const on of [false, true]) {
     const { m, W } = world(w, l);
     const st = makeStorage(m);
-    const room = await openRoom(st, on ? {} : { arenasettleplan: false });   /* v2.3.5095: on is the default; off by its switch */
+    /* v2.3.6000 (card CS): `xferescrow` (on by default now) adds a ledger row a
+       losing stake to both orders; this section counts the plan's own rows, so
+       it is held off here (cost-guard §21 counts the stakes' rows) */
+    const room = await openRoom(st, on ? { xferescrow: false } : { arenasettleplan: false, xferescrow: false });   /* v2.3.5095: on is the default; off by its switch */
     const puts = counting(st);
     const b0 = st.batches();
     await room._arenaSettleStakes(TID, MID, W);
@@ -231,7 +234,7 @@ const staked = (store) => gold(store) - purse(store, 'bp_as_x');   /* the match'
   for (const [name, flags] of [['none', {}], ['true', { arenasettleplan: true }], ['false', { arenasettleplan: false }]]) {
     const { m, W } = world(1, 1);
     const st = makeStorage(m);
-    const room = await openRoom(st, flags);
+    const room = await openRoom(st, { ...flags, xferescrow: false });   /* v2.3.6000: the plan's own rows (§1) */
     const puts = counting(st);
     await room._arenaSettleStakes(TID, MID, W);
     await settle();

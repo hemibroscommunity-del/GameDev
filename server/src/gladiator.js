@@ -46,6 +46,7 @@
 
 import { xferArenaStakes } from './xfer.js';   /* v2.3.5292: the arena's stakes' ledger rows (card R PR 13; `xferescrow`, OFF by default) */
 import { LISTCAP } from './liveops.js';   /* v2.3.5960: a sweep's page (card V5) */
+import { lifeOf, LIFE } from './life.js';   /* v2.3.6022 (card RV): the dead take nothing (life.js _deadTakeOn; TRAPS §150) */
 
 export const ARENA = {
   ENTRY_FEE: 100,          // GDD §43
@@ -583,6 +584,9 @@ export const arenaMethods = {
     };
     const t = this._arena;
     if (!t || t.status !== 'running') return err('no-tournament', 'No tournament running');
+    /* v2.3.6022 (card RV, TRAPS §150; `deadtake`, life.js): a backer in their
+       dying seconds stakes nothing (the stake is an escrow debit) */
+    { const _bp = this.playerState[session.id]; if (_bp && lifeOf(_bp) !== LIFE.ALIVE && this._deadTakeOn()) return err('down', 'Not while you are down'); }
     const targetId = payload && payload.targetId;
     // matchId optional: the round-bet UI picks a PLAYER, so resolve
     // the open current-round match containing them when it's omitted.

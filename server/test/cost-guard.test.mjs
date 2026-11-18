@@ -59,22 +59,22 @@
  *      once paid: two rows a match): 6 puts in a 1 v 1; off (the default
  *      until the owner's yes, v2.3.5095) the old order's 5;
  *  18. v2.3.5285 (card R PR 6): a player's daily copy (admin.js
- *      _rpgSnapshotMaybe): `fullsnap` off (the default), the rows read and
+ *      _rpgSnapshotMaybe): `fullsnap` off (`false`; ON by default since v2.3.6000), the rows read and
  *      written as before; on, TWO keys more read (the vault, the pets), no
  *      row more written, the copy's bytes grown by theirs;
- *  19. v2.3.5285: a restart (`character_reset`): `resetbook` off (the
- *      default), the rows as before; on, ONE row more written (`econ_gone`)
+ *  19. v2.3.5285: a restart (`character_reset`): `resetbook` off (`false`;
+ *      ON by default since v2.3.6000), the rows as before; on, ONE row more written (`econ_gone`)
  *      and one key more read (the vault's delete moves into the character's
  *      run: not a row more);
  *  20. v2.3.5290 (card R PR 11): a wagered duel's pot: `xferescrow` off
- *      (the default), the rows as before and no `xfer:` row; on, ONE row
+ *      (`false`; ON by default since v2.3.6000), the rows as before and no `xfer:` row; on, ONE row
  *      more (its `xfer:` row; its delete 90 days on: two over its life);
  *  21. v2.3.5292 (card R PR 13): a match's sponsorship stakes settled (2
- *      backing the winner, 3 the loser): `xferescrow` off (the default),
+ *      backing the winner, 3 the loser): `xferescrow` off (`false`; ON by default since v2.3.6000),
  *      the rows as before and no `xfer:` row; on, ONE row more a LOSING
  *      stake (3), none for a winning one;
  *  23. v2.3.5293 (card R PR 17): an Auction House buy-now and a market
- *      cross: `xferescrow` off (the default), the rows as before and no
+ *      cross: `xferescrow` off (`false`; ON by default since v2.3.6000), the rows as before and no
  *      `xfer:` row; on, ONE row more a sale;
  *  24. v2.3.5810 (card RV PR 10, the owner's "Yes to all"): a daily spin
  *      payout writes ONE row more with `paidmark` on (the default), the
@@ -408,8 +408,14 @@ const FAST = 110;
      the quiet phone sends it), so the room stays awake the whole time */
   await run(room, tickFn, 10 * 60000, async (dt) => { since += dt; if (since >= 10000) { since = 0; await send(room, p, mv(ARRIVAL.x, ARRIVAL.y + ((NOW / 10000) % 2 ? 4 : 0))); } }, FAST);
   const theirs = state.writes.slice(w0).filter((k) => k.indexOf('cg_room') < 0);
-  check(`8. the room's own writes in 10 minutes with one player in it: ${theirs.length} (${Object.entries(byPrefix(theirs)).map((e) => e.join(' ')).join(', ') || 'none'}), at most 5`,
-    theirs.length <= 5, byPrefix(theirs));
+  /* v2.3.6000 (card CS): `seathold` is ON by default (the owner, 2026-11-17:
+     "I think turn all of them on then we monitor usage cost"): the roster (`seats`) is written when who is in changes, at most
+     every 15 s (here 2: the join, and the room emptying).  The line is the
+     old 5 for everything else, and at most 2 for the roster: 7 in all, the
+     2 named, never a silent raise (CLAUDE.md) */
+  const seats = theirs.filter((k) => k === 'seats').length;
+  check(`8. the room's own writes in 10 minutes with one player in it: ${theirs.length} (${Object.entries(byPrefix(theirs)).map((e) => e.join(' ')).join(', ') || 'none'}), at most 5 and the roster's 2 (\`seathold\`, v2.3.6000)`,
+    theirs.length - seats <= 5 && seats <= 2, byPrefix(theirs));
 }
 
 /* ── 9. a tap a script can repeat ─────────────────────────────────────── */
@@ -776,8 +782,12 @@ const FAST = 110;
   room._liveFlags = Object.assign({}, room._liveFlags, { arenasettleplan: true });   /* sitting 10: on only by the owner's yes */
   await room._arenaSettleStakes('cg-t', 'cg-m', W);
   state.storage.put = real;
+  /* v2.3.6000 (card CS): `xferescrow` is ON by default (the owner's word):
+     one ledger row a losing stake (one here), on top of the line, counted
+     apart so a plan per stake again still fails it */
   const line = 6;
-  check(`17. a 1 v 1 match's settlement writes ${puts.length} puts, at most ${line} (the old order's 5 and its plan)`, puts.length <= line && puts.filter((k) => k.startsWith('arena_settle:')).length === 1 && !puts.some((k) => k.startsWith('arena_stake:')), byPrefix(puts));
+  const ledger = puts.filter((k) => k.startsWith('xfer:')).length;
+  check(`17. a 1 v 1 match's settlement writes ${puts.length} puts, at most ${line} (the old order's 5 and its plan) and its losing stake's ledger row (\`xferescrow\`, v2.3.6000)`, puts.length - ledger <= line && ledger === 1 && puts.filter((k) => k.startsWith('arena_settle:')).length === 1 && !puts.some((k) => k.startsWith('arena_stake:')), byPrefix(puts));
 }
 
 /* ── 18. a player's daily copy, `fullsnap` off and on (v2.3.5285) ─────────
@@ -802,11 +812,12 @@ const FAST = 110;
     Object.assign(state.storage, { get: g, list: l, put: pu });
     return { reads, writes: state.writes.length - w0, bytes };
   };
-  const off = await measure(null);
-  const on = await measure({ fullsnap: true });
+  /* v2.3.6000 (card CS): ON by default (the owner, 2026-11-17: "I think turn all of them on then we monitor usage cost"); off is thrown */
+  const off = await measure({ fullsnap: false });
+  const on = await measure(null);
   console.log('     18. a daily copy: off ' + JSON.stringify(off) + ', on ' + JSON.stringify(on));
-  check(`18. fullsnap off (the default): a daily copy reads ${off.reads} keys and writes ${off.writes} rows, as before (at most 3 and 2)`, off.reads <= 3 && off.writes === 2, off);
-  check(`18. fullsnap on: two keys more read (${on.reads}), no row more written (${on.writes}), the copy ${on.bytes - off.bytes} bytes bigger`, on.reads === off.reads + 2 && on.writes === off.writes && on.bytes > off.bytes, { off, on });
+  check(`18. fullsnap: false: a daily copy reads ${off.reads} keys and writes ${off.writes} rows, as before (at most 3 and 2)`, off.reads <= 3 && off.writes === 2, off);
+  check(`18. fullsnap unset (on, the default since v2.3.6000): two keys more read (${on.reads}), no row more written (${on.writes}), the copy ${on.bytes - off.bytes} bytes bigger`, on.reads === off.reads + 2 && on.writes === off.writes && on.bytes > off.bytes, { off, on });
 }
 
 /* ── 19. a restart, `resetbook` off and on (v2.3.5285) ───────────────────── */
@@ -827,11 +838,12 @@ const FAST = 110;
     const w = state.writes.slice(w0);
     return { reads, writes: w.length, gone: w.filter((k) => k === 'econ_gone').length, bank: w.filter((k) => k === 'bank:' + pid).length };
   };
-  const off = await measure(null);
-  const on = await measure({ resetbook: true });
+  /* v2.3.6000 (card CS): ON by default (the owner's word); off is thrown */
+  const off = await measure({ resetbook: false });
+  const on = await measure(null);
   console.log('     19. a restart: off ' + JSON.stringify(off) + ', on ' + JSON.stringify(on));
-  check('19. resetbook off (the default): a restart writes no econ_gone', off.gone === 0 && off.bank === 1, off);
-  check(`19. resetbook on: ONE row more written (${off.writes} -> ${on.writes}: econ_gone; the vault deleted once), at most two keys more read (${off.reads} -> ${on.reads})`,
+  check('19. resetbook: false: a restart writes no econ_gone', off.gone === 0 && off.bank === 1, off);
+  check(`19. resetbook unset (on, the default since v2.3.6000): ONE row more written (${off.writes} -> ${on.writes}: econ_gone; the vault deleted once), at most two keys more read (${off.reads} -> ${on.reads})`,
     on.writes === off.writes + 1 && on.gone === 1 && on.bank === 1 && on.reads <= off.reads + 2, { off, on });
 }
 
@@ -851,11 +863,12 @@ const FAST = 110;
     const w = state.writes.slice(w0);
     return { writes: w.length, xfer: w.filter((k) => k.startsWith('xfer:')).length, byPrefix: byPrefix(w) };
   };
-  const off = await measure(null);
-  const on = await measure({ xferescrow: true });
+  /* v2.3.6000 (card CS): ON by default (the owner's word); off is thrown */
+  const off = await measure({ xferescrow: false });
+  const on = await measure(null);
   console.log('     20. a duel\'s pot: off ' + JSON.stringify(off) + ', on ' + JSON.stringify(on));
-  check('20. xferescrow off (the default): a duel\'s pot writes no xfer: row', off.xfer === 0 && off.writes > 0, off);
-  check(`20. xferescrow on: ONE row more (${off.writes} -> ${on.writes}), its xfer: row`, on.xfer === 1 && on.writes === off.writes + 1, { off, on });
+  check('20. xferescrow: false: a duel\'s pot writes no xfer: row', off.xfer === 0 && off.writes > 0, off);
+  check(`20. xferescrow unset (on, the default since v2.3.6000): ONE row more (${off.writes} -> ${on.writes}), its xfer: row`, on.xfer === 1 && on.writes === off.writes + 1, { off, on });
 }
 
 /* ── 21. a match's stakes, `xferescrow` off and on (v2.3.5292) ─────────── */
@@ -876,17 +889,19 @@ const FAST = 110;
     const w = state.writes.slice(w0);
     return { writes: w.length, xfer: w.filter((k) => k.startsWith('xfer:')).length, byPrefix: byPrefix(w) };
   };
-  const off = await measure(null);
-  const on = await measure({ xferescrow: true });
+  /* v2.3.6000 (card CS): ON by default (the owner's word); off is thrown */
+  const off = await measure({ xferescrow: false });
+  const on = await measure(null);
   console.log('     21. a match\'s stakes (2 v 3): off ' + JSON.stringify(off) + ', on ' + JSON.stringify(on));
-  check('21. xferescrow off (the default): a match\'s stakes write no xfer: row', off.xfer === 0 && off.writes > 0, off);
-  check(`21. xferescrow on: ONE row more a losing stake (${off.writes} -> ${on.writes}: 3), none a winning one`, on.xfer === 3 && on.writes === off.writes + 3, { off, on });
+  check('21. xferescrow: false: a match\'s stakes write no xfer: row', off.xfer === 0 && off.writes > 0, off);
+  check(`21. xferescrow unset (on, the default since v2.3.6000): ONE row more a losing stake (${off.writes} -> ${on.writes}: 3), none a winning one`, on.xfer === 3 && on.writes === off.writes + 3, { off, on });
 }
 
 /* ── 22. a request's id, `reqstamp` off and on (v2.3.5194, reqonce.js) ───────
    A market order's id rides the order's own row; a request with no record of
    its own (a market cancel here) keeps its answer for the sitting and writes
-   nothing more, unless `reqstamp` is on: ONE stamp row a request. */
+   nothing more, unless `reqstamp` is on (the default since v2.3.6000, card
+   CS): ONE stamp row a request. */
 {
   const measure = async (flags, rid) => {
     const { room, state } = await makeRoom();
@@ -906,12 +921,13 @@ const FAST = 110;
     const w = state.writes.slice(w0);
     return { writes: w.length, stamps: w.filter((k) => k.startsWith('oplog:rq:')).length, byPrefix: byPrefix(w) };
   };
-  const plain = await measure(null, null);
-  const off = await measure(null, 'rq-cg-1');
-  const on = await measure({ reqstamp: true }, 'rq-cg-1');
+  /* v2.3.6000 (card CS): ON by default (the owner's word); off is thrown */
+  const plain = await measure({ reqstamp: false }, null);
+  const off = await measure({ reqstamp: false }, 'rq-cg-1');
+  const on = await measure(null, 'rq-cg-1');
   console.log('     22. a market order and its cancel: no id ' + JSON.stringify(plain) + ', an id ' + JSON.stringify(off) + ', reqstamp on ' + JSON.stringify(on));
-  check('22. a request id with reqstamp off (the default): the rows of no id, no stamp row', off.writes === plain.writes && off.stamps === 0 && plain.writes > 0, { plain, off });
-  check(`22. reqstamp on: ONE row more, the cancel's stamp (the order's id rides its own row) (${off.writes} -> ${on.writes})`, on.stamps === 1 && on.writes === off.writes + 1, { off, on });
+  check('22. a request id with `reqstamp: false`: the rows of no id, no stamp row', off.writes === plain.writes && off.stamps === 0 && plain.writes > 0, { plain, off });
+  check(`22. reqstamp unset (on, the default since v2.3.6000): ONE row more, the cancel's stamp (the order's id rides its own row) (${off.writes} -> ${on.writes})`, on.stamps === 1 && on.writes === off.writes + 1, { off, on });
 }
 
 /* ── 23. a sale at the Auction House and the market, `xferescrow` off and on (v2.3.5293) ── */
@@ -940,12 +956,12 @@ const FAST = 110;
     return { writes: w.length, xfer: w.filter((k) => k.startsWith('xfer:')).length, byPrefix: byPrefix(w) };
   };
   for (const which of ['ah', 'mkt']) {
-    const off = await measure(null, which);
-    const on = await measure({ xferescrow: true }, which);
+    const off = await measure({ xferescrow: false }, which);   /* v2.3.6000 (card CS): on is the default, off is thrown */
+    const on = await measure(null, which);
     const what = which === 'ah' ? 'an Auction House buy-now' : 'a market cross';
     console.log('     23. ' + what + ': off ' + JSON.stringify(off) + ', on ' + JSON.stringify(on));
-    check(`23. xferescrow off (the default): ${what} writes no xfer: row`, off.xfer === 0 && off.writes > 0, off);
-    check(`23. xferescrow on: ${what} writes ONE row more (${off.writes} -> ${on.writes})`, on.xfer === 1 && on.writes === off.writes + 1, { off, on });
+    check(`23. xferescrow: false: ${what} writes no xfer: row`, off.xfer === 0 && off.writes > 0, off);
+    check(`23. xferescrow unset (on, the default since v2.3.6000): ${what} writes ONE row more (${off.writes} -> ${on.writes})`, on.xfer === 1 && on.writes === off.writes + 1, { off, on });
   }
 }
 

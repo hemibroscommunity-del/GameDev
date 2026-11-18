@@ -488,7 +488,7 @@ play, a number 1.1 can measure.
   33 (`main` ea7df6b0): every frame leaves through `_send`, and a raw
   `.send(` outside `send.js` fails `send-door.test` 8. Ticked (the
   gatekeeper, sitting 34, tag 5672).*
-- [ ] **4.2 [NEXT] Claims, bounded.** "No claims" can be met by calling a
+- [x] **4.2 [NEXT] Claims, bounded.** "No claims" can be met by calling a
   loose check a judge. So each bounded claim carries its **gain**: a
   maximal liar's take an hour over an honest player's, measured by a house
   bot written for it. Every gain at most 1.5, in `npm test`; and an honest
@@ -541,6 +541,14 @@ play, a number 1.1 can measure.
   K done. `bowshot` ON is the owner's yes (card K2's PR 8). The box waits
   for the bow's reach, the harvest and `cookstart` ON (the gatekeeper,
   sitting 37, tag 5675).*
+  *Card K2's #2073 (`bowshot`, `cookstart` ON) and card K4's eleven PRs
+  (#2105 to #2187: the harvest's grade, the bow's reach and path, all ON;
+  LG's findings on `startless`, `aimed`, `reflex`, the cook's beat and a
+  deploy halfway mended) merged, the last five at sitting 46: on `main`
+  e898c0c7 every gain in `claims-gain.test` is at or under 1.5 (reach
+  1.42, bowlabel 1.2, guard 1.37, move 1.17, harvest 1.46, cook 0), the
+  honest bots unrefused; each judge off with its `false`. Cards K2 and K4
+  done. Ticked by the gatekeeper, sitting 47 (tag 6261).*
 - [x] **4.3 [NEXT] Doors for what is left of value**: experience and
   levels, the stashes, quest state, skill points. A weapon gets an id of its
   own, as gear has.
@@ -739,24 +747,33 @@ nothing known, and a restore copies nothing.
   door: `_fightTo`, `fightdoor`), all ON, merged at sitting 41: 0 `todo`
   on `main` bdfa8734, 37 rows `door`; the line lowered 3 -> 0, the census
   strict. Card L done. Ticked by the gatekeeper, sitting 42, carried by sitting 43 (tag 5032).*
-- [ ] **5.4 [LATER] The frame as named steps.** PR 1 moves nothing: the six
+- [x] **5.4 [LATER] The frame as named steps.** PR 1 moves nothing: the six
   calls the loop already makes, plus one `legacy` step, become the list;
   each counts its errors to the crash ring (a throw in the frame reaches
   only the console today) and its time summed over 600 frames (Safari's
   clock ticks in whole ms). First move: the monsters' step. After 5.2b and
   5.3.
+  *Card M: #2089 (the list, 17 steps; the crash ring's `frame-step`),
+  #2127 (ten single calls inside legacy named, legacy 1555 -> 1531) and
+  #2131 (BroTown.jsx's 16 reads through the page's one reader) merged
+  (the last two at sitting 45); the lines lowered (frame-steps 1531,
+  switch-reader 17). Ticked by the gatekeeper, sitting 46 (tag 6260).*
 - [ ] **5.5 [LATER] The two renderers split** along the system map. After
   5.2b. **Tables first** (v2.3.5059): the hand-tuned tables that sit in the
   two files (scales, offsets, anchors: `BODY_DIR_SCALE` is one) leave as
   leaf files with no imports, a system's tables a PR, before any code
   moves. Step 1 counts them, a census. Nothing a player sees changes, and
   the code-lines line falls (5.1).
+  *Tables done (card M2: #2144, #2145, every table left; render-tables'
+  line 54 -> 0) and the code counted (#2146, part 5 of M-tables.md),
+  merged at sitting 45. The box waits for the code to leave (cards EN
+  and FX) (the gatekeeper, sitting 46, tag 6260).*
 - [ ] **5.6 [LATER] Types on the new walls only**: one `getState()`, the
   action door, the frame's context, the wire folder. As a suite, with
   TypeScript as the server's test tool. Typing the old code is a flood.
 - [ ] **5.7 [NEXT] Close the open hand.** `window._gameState` and
   `_gameFns` are not on a player's page; QA's probes attach under a token.
-- [ ] **5.8 [NEXT] The action door.** `src/game/actions.js`: one function a
+- [x] **5.8 [NEXT] The action door.** `src/game/actions.js`: one function a
   request row; a guard fails a send from anywhere else (150 places pass one
   allowlist today). Each call carries the request id. It is also where a
   helper would act (pillar 11), so it is built once.
@@ -772,6 +789,9 @@ nothing known, and a restore copies nothing.
   `act()`, a family a PR; the census 105 -> 4 sends, fetches 0), merged at
   sitting 21. The box waits for the last 4 sends (the gatekeeper,
   sitting 22, tag 5660).*
+  *Card K3: #2099 (nmlAsk.js's three) and #2104 (LoginSpinWindow.jsx's
+  one, with its request id) merged: the action door's line 0 sends,
+  0 fetches. Ticked by the gatekeeper, sitting 46 (tag 6260).*
 - [x] **5.9 [NOW] Pins.** PixiJS at an exact version; the places the game
   patches its inside, one table with a test.
   *Merged: #1702 (card B), PixiJS at 8.17.1, `tools/guards/pixi-pins.test.mjs`.*
@@ -870,6 +890,12 @@ nothing known, and a restore copies nothing.
   7.3's batches; an old way that settles value goes first, as 4.2's. A cap
   that counts (rows, crops) stays: it is a number, not an old way. A new
   cap is born as today: either side still ships first.
+  *Step 1 merged at sitting 46 (card CAP): #2172, the census
+  (`docs/plan/census/caps.md` by `tools/dev/caps-census.mjs`: 174 caps,
+  12 settle value, 62 with no switch row, 10 count, 162 old page ways),
+  and #2174, its guard (`caps-census.test`: the old ways only fall). Card
+  CAP done. The box waits for 7.2's four weeks and the batches (the
+  gatekeeper, sitting 47, tag 6261).*
 
 ### Pillar 8. Keep working here cheap and checked
 
@@ -906,6 +932,12 @@ nothing known, and a restore copies nothing.
   *J2's #1984 (`mp-dailyrewards`), #1986 (the finger's tap, the Orders
   tab) and #1987 (`mp-rotcap`), the tests', merged at sitting 27. The step
   is open (the gatekeeper, sitting 28, tag 5666).*
+  *Card TL (the tools side): #2175 (precheck's server-tests cap 5 -> 20
+  minutes; a timeout says so), #2181 (`listcap` check 1's race), #2183
+  (`arena.test`'s hour boundary), merged at sitting 46; card TL done.
+  RD's itemdrop 5b (#2191) merged at sitting 46. The step is open: RD's
+  crowdfight (manualcombat 10a and `mp-jumpbtn`, #2204 and #2205, on
+  sitting 47's list) (the gatekeeper, sitting 47, tag 6261).*
 - [ ] **8.2 [NEXT] Traps become guards**, each with a break proof. The count
   that matters is traps held by a proof, not traps of prose.
   *Card V merged, #1724 to #1740: 31 traps held by a proof (25 the rule, 6
@@ -927,6 +959,13 @@ nothing known, and a restore copies nothing.
 - [ ] **8.8 [NEXT] Things the owner does not see**: a practice copy of the
   server before real players; every word a player reads in one table; a
   screen for support (lost keys, a wrong flag).
+  *The words, step 1 (card WD), merged at sitting 46: #2171 the census
+  (`docs/plan/census/words.md`: 7544 player-facing, 2164 in a table, 4995
+  in place on the page, 385 on the worker), #2179 its guard
+  (`player-words.test`, lines 4995 / 385, only fall), #2180 the spec
+  (`docs/specs/player-words.md`: the table's shape, 449 screens in waves
+  W0 to W6). Card WD done. The box waits for the waves, the practice copy
+  and the support screen (the gatekeeper, sitting 47, tag 6261).*
 
 (8.4 of version 1 is part 11's advice; 8.5 is wave 0.)
 
@@ -1084,11 +1123,15 @@ punishes by itself.
   `main` fcd1ae92 (card R done). Turning a fee, hold or pace up, and
   throwing `xferescrow`, stay the owner's calls. Ticked by the gatekeeper,
   sitting 43 (tag 5032).*
-- [ ] **10.6 [NEXT] What an honest player's trouble looks like.** Each
+- [x] **10.6 [NEXT] What an honest player's trouble looks like.** Each
   signal lists what changes it without any cheating: the frame rate, the
   line's delay, a deploy, a hidden tab. Every Low Power iPhone shares one
   rhythm, and every deploy starts every session in the same second: both
   read as a fleet of bots unless the signal knows.
+  *Card LG's #2170 (`docs/specs/honest-trouble.md`: every signal, its
+  line, the honest trouble that moves it, the detector's rule), merged at
+  sitting 46; its findings mended by K4's #2176, #2177 (sitting 46).
+  Ticked by the gatekeeper, sitting 47 (tag 6261).*
 - [ ] **10.7 [NEXT] The league**, tools only. The house's own bots, each
   rung harder: a script on the wire; one with noise; the real page driven
   by a script; a person's recorded play replayed; a model driving the
@@ -1096,6 +1139,14 @@ punishes by itself.
   was frozen. Replays run at 60, 30, 20 and 4 frames a second and through a
   deploy. `npm test` fails when a person's trace is flagged or an easy rung
   is missed.
+  *Card LG's #2178 (rungs 1-2, `score.mjs`, `league.test`, `npm run
+  league`) and #2184 (rungs 3-4: the page driven by a script, a person's
+  play replayed; the honest trace passes at 60/30/20/4 fps and through a
+  deploy), merged at sitting 46, with K4's #2182, #2187 for the cook's
+  beat and a deploy halfway. Card LG done. Rung 5 (a model driving the
+  browser) left for later, decided for the owner while away; rung 2 was
+  missed by every detector at LG's PR 2 (LG's Found). The box waits for
+  rung 5 (the gatekeeper, sitting 47, tag 6261).*
 - [ ] **10.8 [NEXT] The owner's play is the first human record.** With the
   owner's yes: the first ten active minutes of a sitting, one row, labelled
   human. Test mode runs the checks in shadow and records "would refuse",
@@ -1334,6 +1385,32 @@ happen in one sitting a day; and a play window with no deploy follows it.
     DECIDED (2026-11-14): *"Yes you can say the art assets were generated
     by ChatGPT."* The uploads at the top are sprite-sheet sources, some
     outdated by newer designs.
+
+**Decided for the owner while away** (the planning session, by
+`docs/plan/README.md`'s "While the owner is away"; each behind its switch,
+to read when you are back; recorded by the gatekeeper, sitting 46, tag 6260):
+
+- The harvest's grade and the bow's path ON for everyone (card K4,
+  #2168; your "Go recommended"). Off with `harvestgrade: false` or
+  `bowpath: false` in the live flags.
+- A bot score kept through a deploy (card K4, #2187, `botscoresave` ON):
+  a rise of the score is written with the strike or cook that made it.
+  For a person's play the score never rises, so nothing more is written;
+  a scripted player's record is written at most about 5 times more before
+  its flag, then about 7 times an hour while it sits under the line. Never
+  a write a move, never a timer. Off with `botscoresave: false`.
+- The caps census (card CAP) reads `questTrack`, `meals` and `prog3` as
+  "settles value" (they go first when the caps leave, 7.5).
+- The league's rung 5 (a model driving the browser) is left for later
+  (card LG; 10.7).
+- The townsfolk's jog sheets' chip copies unloaded ON for everyone (card
+  EN, PR 3, `?folksheets=0` the off-ramp, a memory saver; on sitting 47's
+  list once it is green).
+- The memory check's `buffers` line raised 24.2 -> 24.8 MB as `artCache`
+  fell 2.2 MB (net 1.7 MB less in the page): the ore rocks and the
+  projectile sheets as colour numbers (card FX, #2200; `?treenumbers=0`
+  and `?p256=0` the pictures). `artCache`'s line stays 79.3 (the frame
+  pacer's copy of it waits for your word).
 
 **Yours outside the code:** two-step login on GitHub and Cloudflare, and
 the wallet key that deployed the scores contract kept safe; a spending

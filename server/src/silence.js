@@ -50,7 +50,9 @@
  * never recorded), so it waits for the owner's decision.  v2.3.5625 (card MOD
  * PR 5): its devices now come from botfp's `device:` record too, and the
  * owner's spare is complete the same way (`_frozenDeviceIs`); the lever stays
- * OFF, the owner's to turn on.
+ * OFF, the owner's to turn on.  v2.3.6000 (card CS): the owner turned it on,
+ * 2026-11-17: "I think turn all of them on then we monitor usage cost"; ON by
+ * default, `freezedevice: false` in the live flags turns it off.
  * The sitting 19 review also: the frozen characters' records are read 128 a
  * get (the runtime's most: 129 freezes threw, and it failed open), and a
  * silence's `minutes` is a positive whole number or left out (-60 and 0.5
@@ -119,14 +121,15 @@ export function silenceUntilWords(until) {
 }
 
 export const silenceMethods = {
-  /* the kill switch `silence: false`, and the owner's lever `freezedevice: true` (OFF unset) */
+  /* the kill switch `silence: false`, and `freezedevice` (v2.3.6000: ON by
+     default, card CS, the owner, 2026-11-17: "I think turn all of them on then we monitor usage cost"; `freezedevice: false` turns it off) */
   _silenceOn() {
     const f = this._liveFlags;
     return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'silence') && !f.silence);
   },
   _freezeDeviceOn() {
     const f = this._liveFlags;
-    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'freezedevice') && f.freezedevice === true);
+    return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'freezedevice') && f.freezedevice === false);
   },
 
   /* every silence, into memory, once a room's life (and again after a failed read) */
@@ -273,6 +276,7 @@ export const silenceMethods = {
     let ids = [];
     try {
       const rec = await this.state.storage.get('device:' + device);
+      if (this._usageSwitch) this._usageSwitch('freezedevice', 0, 1);   /* v2.3.6001: its reads named apart (usagemeter.js) */
       ids = rec && Array.isArray(rec.ids) ? rec.ids.map((e) => e && e.id).filter((x) => typeof x === 'string') : [];
     } catch (e) { ids = []; }
     if (ids.some((x) => L.owner.has(x))) return false;              /* ...whatever key it came with */
@@ -286,6 +290,7 @@ export const silenceMethods = {
     if (typeof pid === 'string' && pid) {
       try {
         const had = await this.state.storage.get(['auth:' + pid, 'char:' + pid]);
+        if (this._usageSwitch) this._usageSwitch('freezedevice', 0, 2);   /* v2.3.6001: as above */
         if (had && had.size) return false;
       } catch (e) { return false; }   /* a failed read lets the join on to the key */
     }

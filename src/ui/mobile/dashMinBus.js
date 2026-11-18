@@ -28,6 +28,8 @@
  * player who folded the band to see the world means it, and a reconnect
  * remounts everything. Read defensively — a private window throws on
  * localStorage access, and a fold preference is not worth a boot failure. */
+import { bandResize } from './playViewport.js';   /* v2.3.6241: the band's own resize */
+
 const MIN_KEY = 'bt_dash_min';
 const readMin = () => {
   try { return localStorage.getItem(MIN_KEY) === '1'; } catch (e) { return false; }
@@ -56,7 +58,8 @@ export const dashMinBus = {
     }
     for (const fn of listeners) fn(next);
     /* The one geometry path: BroTown's resize() listens for this. */
-    try { window.dispatchEvent(new Event('resize')); } catch (e) { /* ignore */ }
+    /* v2.3.6241: marked as the band's, so the sizes kept in playViewport.js stand (card HB PR 2) */
+    try { bandResize(); } catch (e) { /* ignore */ }
   },
   subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); },
 };

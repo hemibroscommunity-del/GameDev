@@ -77,7 +77,8 @@ its off side explicit).
   `_hitArrowReach`: 675 px x Range + 400 px of slack), not the hit test's
   reach from where the archer stands now. A claim with no arrow seen gets 3,
   then one every 3 s. claims-gain 2g.
-- **`bowpath`** (an opt-in, OFF as merged; the owner's): a claim on an arrow
+- **`bowpath`** (OFF as merged at v2.3.5904; ON by default since v2.3.5906,
+  the owner's "Go recommended"; `bowpath: false` turns it off): a claim on an arrow
   seen lands only for a monster near that arrow's line (200 px beside it,
   measured to the monster's body: its feet up 130 px, a boss's 260; plus the
   landing's 8 degree turn) and no sooner than the arrow could have flown
@@ -86,7 +87,8 @@ its off side explicit).
   RELEASE with the line the arrow flies (projectiles.js `relayShot`): the
   line was set at release, a frame or more after the fire the relay used to
   leave at, and a held aim moves on in between (the gatekeeper's sitting 45).
-  Turning it on therefore also moves every bow relay ~110 ms later (the
-  bow's nock) for phones on the new page, and watchers draw the arrow on the
+  With it on, every bow relay therefore goes ~110 ms later (the bow's
+  nock) for phones on the new page -- or at the arrow's first hit, if it hits
+  while still nocked (v2.3.5906), and watchers draw the arrow on the
   line it flies. claims-gain 2j: the path's liar 1.20; every honest archer,
   its arrows at the real 1,440 px a second, unrefused on every disturbance.

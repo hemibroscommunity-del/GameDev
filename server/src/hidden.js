@@ -91,6 +91,8 @@ export const HIDDEN_SPEC = Object.freeze({
   FLAG_AT: row('botfp', BOTFP.FLAG_AT, 1, 1000, false, 'The score that flags a player'),
   FLAG_MIN_GAP_MS: row('botfp', BOTFP.FLAG_MIN_GAP_MS, 60000, 7 * DAY, true, 'At most one flag a player every this many ms'),
   STARTLESS_FLAG_AT: row('botfp', BOTFP.STARTLESS_FLAG_AT, 1, 100000, true, 'Harvests sent without a start before a flag'),
+  STARTLESS_WINDOW_MS: row('botfp', BOTFP.STARTLESS_WINDOW_MS, 60000, 7 * DAY, true, 'v2.3.5907: ...of them inside this many ms (not for life)'),
+  STARTLESS_JOIN_GRACE_MS: row('botfp', BOTFP.STARTLESS_JOIN_GRACE_MS, 0, 600000, true, 'v2.3.5907: the first harvest without a start this soon (ms) after a join is not counted toward the flag'),
   // ── anti-bot: the fleet (one device, many accounts) ──
   FLEET_MIN_IDS: row('botfp', BOTFP.FLEET_MIN_IDS, 2, 16, true, 'Fleet: accounts on one device'),
   FLEET_ACTIVE_MIN: row('botfp', BOTFP.FLEET_ACTIVE_MIN, 1, 16, true, 'Fleet: of which this many harvested heavily this hour'),
@@ -106,6 +108,8 @@ export const HIDDEN_SPEC = Object.freeze({
   AIM_STRAIGHT_PX: row('botsig', BOTSIG.AIM_STRAIGHT_PX, 0, 10, false, 'Aimed walk: every step within this of a straight line (px)'),
   AIM_MISS_PX: row('botsig', BOTSIG.AIM_MISS_PX, 0, 20, false, 'Aimed walk: the line passes this close to the node\'s centre (px)'),
   AIM_KEY_DEG: row('botsig', BOTSIG.AIM_KEY_DEG, 0, 10, false, 'Aimed walk: headings this close to a keyboard\'s 8 are not judged (degrees)'),
+  AIM_MIN_PLACES: row('botsig', BOTSIG.AIM_MIN_PLACES, 3, 12, true, 'v2.3.5908: Aimed walk: places on the run, its ends included, before it is judged'),
+  REACT_WAVER_K: row('botsig', BOTSIG.REACT_WAVER_K, 0, 5, false, 'v2.3.5908: Reflex: the round trip taken off is it less this many times its waver (the line\'s floor)'),
   AIM_MIN_N: row('botsig', BOTSIG.AIM_MIN_N, 5, 400, true, 'Aimed walk: walks judged before it can count'),
   AIM_SHARE: row('botsig', BOTSIG.AIM_SHARE, 0.05, 1, false, 'Aimed walk: share of walks aimed that counts'),
   GEST_MIN_N: row('botsig', BOTSIG.GEST_MIN_N, 10, 400, true, 'Even gestures: harvests timed before it can count'),

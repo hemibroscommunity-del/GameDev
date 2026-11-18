@@ -332,13 +332,16 @@ const LIST = {
   },
   'src/rendering/systems/effectsRenderer.js': {
     _fxLoad: ['once', 1, "the effects' pictures (about 25: projectiles, nodes, icons; the popup icons retry twice in _loadPopupIcon): no time limit"],
-    _loadStandInImg: ['once', 1, "the stand-ins' strips (cook, fire, farm, chop): a time limit only for a peer's figure (PEER_FIG_LOAD_MS, asked again after PEER_FIG_RETRY_MS)"],
     _makeChop: ['once', 2, "the chop's two strips: no time limit, no retry"],
     constructor: ['retry', 1, 'crowns.json: retried at 2, 6, then every 20 s; no time limit'],
     _gearStripFrame: ['own', 1, "a stand-in's gear strip: GEAR_STRIP_TIMEOUT_MS, then later rounds (gearretry, #1505)"],
     _greavesShapeOnce: ['own', 1, "the greaves' shape from the legs' swing or bow strip, the strip itself drawn from the colour numbers (v2.3.4998): failed at GEAR_STRIP_TIMEOUT_MS, asked again at its next draw"],
     _dressedShirtFrame: ['once', 1, "a stand-in's dressed shirt: a failure is an empty entry, never asked again; no time limit"],
     _makeFarm: ['once', 1, "the farm animations' props: no time limit, no retry"],
+  },
+  /* v2.3.6220: _loadStandInImg moved verbatim from effectsRenderer.js (card FX) */
+  'src/rendering/leaves/effects-skills.js': {
+    _loadStandInImg: ['once', 1, "the stand-ins' strips (cook, fire, farm, chop): a time limit only for a peer's figure (PEER_FIG_LOAD_MS, asked again after PEER_FIG_RETRY_MS)"],
   },
   'src/rendering/systems/tileRenderer.js': {
     _loadMapInto: ['once', 2, "a painted zone's map: no time limit, no retry"],

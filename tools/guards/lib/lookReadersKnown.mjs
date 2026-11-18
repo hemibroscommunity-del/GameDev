@@ -8,7 +8,8 @@ export const KNOWN_FRAME = Object.freeze({
   'bakeByAddress.js': 2,
   'blockArm.js': 1,
   'buildingFire.js': 1,
-  'effectsRenderer.js': 14,
+  'effects-combat.js': 2,   /* v2.3.6220: _projSrcPx, moved verbatim from effectsRenderer.js (card FX) */
+  'effectsRenderer.js': 12,
   'entityRenderer.js': 18,
   'farmWorld.js': 1,
   'gearNumbers.js': 1,

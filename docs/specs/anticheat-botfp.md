@@ -108,7 +108,14 @@ the `_extractionMissing` posture — old clients never punished):
   `webSocketClose`, and the join re-reads `botstat:` over the live record:
   a second login every ~29 s rolled the hour count back and kept the
   harvest and cook caps from binding; found by the overnight economy
-  review, 2026-10-12; `botfp.test.mjs` §9b).
+  review, 2026-10-12; `botfp.test.mjs` §9b).  v2.3.5910 (card K4 PR 11):
+  a RISE of the score under FLAG_AT is written with the strike or cook that
+  made it (`_botfpScoreRose`), past the pace -- a deploy between paced
+  writes forgot it, and card LG's league saw the real page at machine pace
+  pass every detector through one.  A person's gestures never raise it;
+  a script's writes at most one a strike up to its flag, then the pace.
+  `botscoresave: false` in the live flags: the pace alone
+  (`botfp-deploy.test.mjs`).
 - `device:<deviceId>` (~200B): env hash, firstSeen, last 8 identities
   (30-day prune). Written at join only when the identity list changes.
 - Live state (in-memory, rule 11): per-identity record ring (64 fps),

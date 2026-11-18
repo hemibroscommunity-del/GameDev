@@ -77,6 +77,16 @@ export const TREE_NUMBERS = !sw('treenumbers');
  *  whether pictures are drawn as numbers here (p256.js whenPaletteDecided,
  *  the effects' own wait: at most 20 s, then as pictures); at once when off. */
 export function treesWhenReady() { return TREE_NUMBERS ? whenPaletteDecided() : Promise.resolve(false); }
+/* ═══ v2.3.6222 (card FX PR 3, ore-tiers): ...AND THE ROCKS ═══
+   The five metals' rocks (public/sprites/ore/ore-*.png, tools/world/
+   add-ore-art.mjs), palette PNGs on 39-57 colours already, held as pictures:
+   1.1 MB in the page at the memory check's fight (card P2's census).  Read
+   here as their numbers, a byte a pixel, as the trees are; effectsRenderer.js
+   asks for them on the trees' wait (treesWhenReady), still behind the loading
+   screen.  A mined-out rock's pieces are cut through drawSourceRect
+   (wheelShatter.js cutPicture), which reads numbers as it reads a picture.
+   No switch of their own (the planning session, 2026-11-18: no new switch
+   row): `?treenumbers=0` keeps the rocks pictures too. */
 /** What this reads for `url` -- { file, opaque } -- or null: not one of the
  *  farm's or the trees', or pictures are not drawn as numbers here. */
 export function paletteFileFor(url) {
@@ -86,6 +96,7 @@ export function paletteFileFor(url) {
   if (TWINS[p]) return { file: TWINS[p] + query, opaque: true, kind: 'ground' };
   if (/^\/world\/farm\/[^/]+\.png$/.test(p)) return { file: String(url), opaque: false, kind: 'picture' };
   if (TREE_NUMBERS && /^\/sprites\/trees\/wood-[^/]+\.png$/.test(p)) return { file: String(url), opaque: false, kind: 'picture' };
+  if (TREE_NUMBERS && /^\/sprites\/ore\/ore-[^/]+\.png$/.test(p)) return { file: String(url), opaque: false, kind: 'picture' };   /* v2.3.6222: the rocks, the trees' way */
   if (/^\/world\/objects\/[^/]+\.png$/.test(p) && /[?&]farm=1(&|$)/.test(query)) return { file: String(url), opaque: false, kind: 'page' };
   return null;
 }

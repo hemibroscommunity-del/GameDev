@@ -79,6 +79,7 @@ const layout = (P) => P.page.evaluate(() => {
   }
   return {
     vw: window.innerWidth, vh: window.innerHeight,
+    bandSide: document.documentElement.classList.contains('bt-band-side'),   /* v2.3.6183: the folded band sideways (game.css) */
     jump: jb, disc: disc && shown(disc) ? box(disc) : null, dash, over,
     block: (() => { const q = document.querySelector('[data-shield]'); return shown(q) ? box(q) : null; })(),   /* v2.3.3721 */
     shield: shown(document.querySelector('[data-shield]')), bash: shown(document.querySelector('[data-ability="bash"]')),
@@ -162,8 +163,13 @@ async function onePhone({ browser, wsPort, webPort, rec, errors, OUT }, ph) {
        v2.3.3799: side by side now, Block left of Jump both ways up */
     const air = blk ? a.jump.l - blk.r : null;
     console.log(`    ${tag}: disc ${dw} px, jump ${jw} px, jump <-> Block ${air} px of air, jump ${a.dash ? a.dash.t - a.jump.b : '?'} px over the dashboard`);
-    rec.ok(`${tag}: 2b. the disc is smaller (${dw} px) and the button larger (${jw} px; v2.3.3920: 64, 68 sideways), 8 px or more of air from Block (${air} px)`,
-      dw === (land ? 94 : 84) && jw === (land ? 68 : 64) && air != null && air >= 8   /* v2.3.3920: 64/68, was 60/64 */, { dw, jw, air, block: blk });
+    /* v2.3.6183: sideways over the folded band (html.bt-band-side) the disc is laid out at 94 and DRAWN at
+       0.85 from its foot, 80 px, so its top corner clears the minimap's plate (v2.3.4152,
+       docs/specs/one-band.md part 3; game.css; TRAPS: "Sideways, the attack disc is drawn at 0.85"); the
+       box this reads is the drawn one */
+    const discWant = land ? Math.round(94 * (a.bandSide ? 0.85 : 1)) : 84;
+    rec.ok(`${tag}: 2b. the disc is smaller (${dw} px${a.bandSide ? ': 94 drawn at 0.85 over the folded band' : ''}) and the button larger (${jw} px; v2.3.3920: 64, 68 sideways), 8 px or more of air from Block (${air} px)`,
+      dw === discWant && jw === (land ? 68 : 64) && air != null && air >= 8   /* v2.3.3920: 64/68, was 60/64 */, { dw, discWant, bandSide: a.bandSide, jw, air, block: blk });
     rec.ok(`${tag}: 3. it covers no other control, the guard down (Block ${a.shield}, Special ${a.special}, Sprint ${a.sprint}): ${a.over.length ? a.over.join(', ') : 'none'}`,
       a.over.length === 0 && a.shield, a);
 

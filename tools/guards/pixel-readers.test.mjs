@@ -59,6 +59,7 @@ const text = (p) => readFileSync(join(ROOT, p), 'utf8');
    there.  "Never a p256 picture" means: none of the pictures it is handed is
    one p256.js reads (check 4 holds the files that name one). */
 const READERS = {
+  'src/rendering/leaves/effects-ui.js': '_tightPopupIcon (v2.3.6220: moved verbatim from effectsRenderer.js, card FX): the popups\' cut through readSourceRect as they load, before they are ever drawn (NAMES_PACKED\'s effectsRenderer.js row)',
   'src/rendering/bakeByAddress.js': 'frameInput: a bake\'s frame cut from its sheet (a body or armour sheet), never a p256 picture',
   'src/rendering/cacheBytes.js': 'counts the page copy\'s bytes; reads no pixel',
   'src/rendering/framePack.js': 'the monsters\' strips kept deflated a frame at a time once on the chip (v2.3.5257): reads a strip\'s numbers to pack them and gives the readers each frame back exactly; never a p256 picture',

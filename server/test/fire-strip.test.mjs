@@ -75,7 +75,7 @@ check('4b the strike is frame 3 (the first frame the owner painted fire on)', F.
 
 /* ── 5. the game reads it ── */
 {
-  const er = src('src/rendering/systems/effectsRenderer.js');
+  const er = src('src/rendering/systems/effectsRenderer.js') + '\n' + src('src/rendering/leaves/effects-skills.js');   /* v2.3.6220: _fireFrameShift moved verbatim to the skills leaf (card FX) */
   check('5a the strip is asked for at FIRE_STRIP_V', /const FIRE_URL = `\/sprites\/skills\/firemaking-strip\.webp\?v=\$\{FIRE_STRIP_V\}`/.test(er));
   check('5b ...which is a version, not empty', /^2\.3\.\d+$/.test(F.FIRE_STRIP_V), F.FIRE_STRIP_V);
   check('5c every frame is placed by the table (_fireFrameShift reads FIRE_FRAME_OFF and FIRE_FIGURE_X)', /function _fireFrameShift[\s\S]{0,200}FIRE_FRAME_OFF[\s\S]{0,200}FIRE_FIGURE_X/.test(er));

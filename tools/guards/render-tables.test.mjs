@@ -40,7 +40,7 @@ import { join } from 'node:path';
 import { scanRenderers, scanText, suitesNaming, tunedName, ROOT } from './lib/renderTables.mjs';
 
 /* the tables: only falls */
-const TABLES_LINE = 54;   /* its first count, v2.3.5344 (main 17f749b): 30 in entityRenderer.js, 24 in effectsRenderer.js */
+const TABLES_LINE = 0;   /* its first count, v2.3.5344 (main 17f749b): 30 in entityRenderer.js, 24 in effectsRenderer.js; v2.3.6260: 0 after card M2's #2144 and #2145 (every table left; the gatekeeper's sitting 46) */
 
 const CENSUS = 'docs/plan/census/M-tables.md';
 /* v2.3.5347: part 5 of the page is the code's census (tools/dev/render-code-census.mjs): this guard keeps it and holds the rest */
