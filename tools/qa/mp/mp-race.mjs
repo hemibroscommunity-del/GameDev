@@ -181,7 +181,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     window.__lapWins = 0; window.__lapMayor = Infinity;
     window.__lilCellTimer = setInterval(() => {
       const d = (window.__btNpcSprites ? window.__btNpcSprites() : []).find((n) => n.name === 'Lil Bro');
-      if (d && typeof d.frame === 'number') window.__lilCells.push(d.frame);
+      if (d && typeof d.frame === 'number') window.__lilCells.push({ f: d.frame, live: !!d.live, pose: d.pose || null });
       if (document.querySelector('.bt-npcdlg, .bt-qoffer')) window.__lapWins += 1;
       const S = window._gameState && window._gameState.current;
       const m = S && (S.npcs || []).find((n) => n && n.id === 'mayor_bro');
@@ -204,9 +204,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const lilCells = await P.page.evaluate(() => { clearInterval(window.__lilCellTimer); return window.__lilCells || []; });
   const lap = await P.page.evaluate(() => ({ wins: window.__lapWins, mayorPx: Math.round(window.__lapMayor) }));
   rec.ok(`no townsperson's window opened during the lap (closest to Mayor Bro ${lap.mayorPx} px)`, lap.wins === 0, lap);
-  const runCells = [...new Set(lilCells.filter((c) => c < 8))].sort((a, b) => a - b);
-  rec.ok(`...on his jog's own cells as he ran (${runCells.join(', ') || 'none'} of 0-7; ${lilCells.length} samples)`,
-    runCells.length >= 4 && lilCells.every((c) => c >= 0 && c <= 8), { runCells, samples: lilCells.length });
+  /* v2.3.5843: two ways he is drawn.  His PHOTOGRAPH's strip (v2.3.3580): the
+     player's jog in eight cells, then his stand (cell 8).  Drawn LIVE (the
+     look's figure, lookFolk.js, v2.3.4058: on by default), he is the player's
+     own figure on the player's own jog, whose sheet has 24-35 cells a facing
+     (playerSprites.js deriveFrameCount), so a cell past 8 is his stride, not a
+     fault: main was red here on every run, 0-7 seen and a cell over 8 too.
+     The probe says which (entityRenderer __btNpcSprites `live`, `pose`). */
+  const liveRun = lilCells.filter((c) => c.live && c.pose === 'jog');
+  const photo = lilCells.filter((c) => !c.live);
+  const runCells = [...new Set((liveRun.length ? liveRun : photo.filter((c) => c.f < 8)).map((c) => c.f))].sort((a, b) => a - b);
+  const cellsOk = lilCells.every((c) => Number.isInteger(c.f) && c.f >= 0 && (c.live || c.f <= 8));
+  rec.ok(`...on his jog's own cells as he ran (${runCells.length} cells: ${runCells.join(', ') || 'none'}; ${liveRun.length ? 'drawn live, on the player\'s jog' : 'his photograph\'s 0-7'}; ${lilCells.length} samples)`,
+    runCells.length >= 4 && cellsOk, { runCells, live: liveRun.length, photo: photo.length, samples: lilCells.length, odd: lilCells.filter((c) => !(Number.isInteger(c.f) && c.f >= 0)).slice(0, 4) });
   rec.ok(`the gold road led to each flag in turn (${roadOk} of ${flags.length})`, roadOk >= flags.length - 1, roadOk);
   rec.ok(`each corner flag turned green as the worker counted it (${greens} of ${flags.length - 1})`, greens === flags.length - 1, greens);
   const result = await H.waitFor(P, () => {
