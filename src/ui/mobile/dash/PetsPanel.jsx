@@ -10,7 +10,8 @@ import { trapLevel, petlevelsOn, petwardsOn } from '@/game/trapping.js';
 import { ZONES } from '@/data/zones.js';
 import { landLook } from '@/data/wheelLands.js';
 import { OWNER_ICON } from '@/data/ownerIcons.js';   /* v2.3.3481: the Pet House row's picture */
-import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
+import { SAY } from '@/data/say/pets.js';   /* v2.3.6330: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say, sayPieces } from '@/game/say.js';   /* v2.3.6330: a plain row goes through deskWords (v2.3.3615: "tap" reads "click" on a computer) */
 
 /* ═══ v2.3.3120: THE PETS PAGE ═══
  * Plan: docs/PET-TRAPPING-PLAN.md -- "Name, set active and release from a
@@ -34,7 +35,7 @@ import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "cl
  * its shape alone.  All of it from the record's `journal`. */
 const POLL_MS = 400;
 const STAGES = [1, 2];
-const STAGE_WORDS = { 1: 'Levels 1-20', 2: 'Levels 21-40' };
+const STAGE_WORDS = { 1: say(SAY, 'pets.stageLow'), 2: say(SAY, 'pets.stageHigh') };   /* v2.3.6330: no "tap" in them, so read once at load */
 
 function XpBar({ view }) {
   return (
@@ -65,11 +66,11 @@ function JournalCell({ kind, stage, j }) {
         minHeight: 26, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{petKindName(kind, stage)}</div>
       <div style={{ fontSize: 9.5, color: COL.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{land}</div>
       <div style={{ fontSize: 10.5, fontWeight: 800, marginTop: 3, color: caught ? '#7EE0A8' : COL.muted, fontVariantNumeric: 'tabular-nums' }}>
-        {caught ? j.n + ' caught' : tried ? 'Not caught' : 'Not tried'}
+        {caught ? say(SAY, 'pets.cellCaught', { count: j.n }) : say(SAY, tried ? 'pets.cellNotCaught' : 'pets.cellNotTried')}
       </div>
-      <div style={{ fontSize: 10, color: COL.text2, fontVariantNumeric: 'tabular-nums' }}>{(j && j.tries) || 0} tries</div>
-      {j && j.gold > 0 ? <div style={{ fontSize: 10, fontWeight: 800, color: '#EAC675' }}>{j.gold} golden</div> : null}
-      {caught && j.big > 0 ? <div data-journal-big={j.big} style={{ fontSize: 10, color: COL.text2 }}>Biggest {Math.round(j.big * 100)}%</div> : null}
+      <div style={{ fontSize: 10, color: COL.text2, fontVariantNumeric: 'tabular-nums' }}>{say(SAY, 'pets.cellTries', { tries: (j && j.tries) || 0 })}</div>
+      {j && j.gold > 0 ? <div style={{ fontSize: 10, fontWeight: 800, color: '#EAC675' }}>{say(SAY, 'pets.cellGolden', { gold: j.gold })}</div> : null}
+      {caught && j.big > 0 ? <div data-journal-big={j.big} style={{ fontSize: 10, color: COL.text2 }}>{say(SAY, 'pets.cellBiggest', { pct: Math.round(j.big * 100) })}</div> : null}
     </div>
   );
 }
@@ -135,9 +136,9 @@ export const PetsPanel = () => {
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 13, fontWeight: 800 }}>
             <span data-pets-count={list.length}>{list.length}{live ? '/' + cap : ''}</span>
-            <span style={{ color: COL.muted, fontWeight: 700, marginLeft: 5 }}>in your collection</span></div>
+            <span style={{ color: COL.muted, fontWeight: 700, marginLeft: 5 }}>{say(SAY, 'pets.countTail')}</span></div>
           <div style={{ fontSize: 12, color: COL.text2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {out ? 'With you: ' + worldSafeText(petDisplayName(out.kind ? out : { ...out, kind: petKindOfOld(out) })) : 'No pet out with you'} · Trapping {T}
+            {out ? say(SAY, 'pets.withYou', { name: worldSafeText(petDisplayName(out.kind ? out : { ...out, kind: petKindOfOld(out) })) }) : say(SAY, 'pets.noneOut')}{say(SAY, 'pets.trapping', { level: T })}
           </div>
         </div>
       </div>
@@ -148,11 +149,11 @@ export const PetsPanel = () => {
           not ready) they follow the count; with pets, More room still sits
           above the list, where a long list cannot push it down. */}
       {unavailable ? (
-        <div style={{ fontSize: 13, color: COL.text2, padding: 12, background: COL.well, borderRadius: 10 }}>Your pets are not ready yet. Try again after you rejoin.</div>
+        <div style={{ fontSize: 13, color: COL.text2, padding: 12, background: COL.well, borderRadius: 10 }}>{say(SAY, 'pets.notReady')}</div>
       ) : list.length === 0 ? (
         <div data-pets-empty="1" style={{ fontSize: 13, color: COL.text2, padding: 12, background: COL.well, borderRadius: 10, lineHeight: 1.45, marginBottom: 8 }}>
-          {deskWords('No pets yet. Make box traps at the Woodworker, target a monster out in the lands, tap')} <b style={{ color: COL.accent }}>TRAP</b>, then kill it.
-          About one try in a hundred at best, and every try pays Trapping XP.
+          {/* v2.3.6330: one row, its "tap" said "click" on a computer by say() (was deskWords on its first half) */}
+          {sayPieces(SAY, 'pets.emptyHow', { trap: <b key="trap" style={{ color: COL.accent }}>{say(SAY, 'pets.trapButton')}</b> })}
         </div>
       ) : null}
       {/* ═══ v2.3.3123: MORE ROOM IN THE PET HOUSE (Phase 4) ═══
@@ -164,7 +165,7 @@ export const PetsPanel = () => {
         const hp = petHousePrice(cap);
         const coins = Math.floor(Number(S && S.rpg && S.rpg.coins) || 0);
         if (!(hp > 0)) {
-          return <div data-pet-house="full" style={{ fontSize: 11, color: COL.muted, marginBottom: 8 }}>Your Pet House holds {PET_HOUSE.CAP_MAX}, as many as it can.</div>;
+          return <div data-pet-house="full" style={{ fontSize: 11, color: COL.muted, marginBottom: 8 }}>{say(SAY, 'pets.houseFull', { max: PET_HOUSE.CAP_MAX })}</div>;
         }
         return (
           <div data-pet-house={cap} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, padding: '6px 10px', background: COL.well, borderRadius: 10 }}>
@@ -177,23 +178,26 @@ export const PetsPanel = () => {
                   said what the places are for: the row says pets, in words
                   (no "+" or "·"), the price still the worker's rule */}
               {houseAsk
-                ? <span>Buy room for {PET_HOUSE.STEP} more pets for <b style={{ color: '#EAC675' }}>{hp.toLocaleString()} gold</b>?</span>
-                : <span>Pet House: room for {PET_HOUSE.STEP} more pets, <b style={{ color: '#EAC675' }}>{hp.toLocaleString()} gold</b>{coins < hp ? <span style={{ color: COL.muted }}> (you have {coins.toLocaleString()})</span> : null}</span>}
+                ? <span>{sayPieces(SAY, 'pets.houseAsk', { step: PET_HOUSE.STEP,
+                    price: <b key="price" style={{ color: '#EAC675' }}>{say(SAY, 'pets.housePrice', { gold: hp.toLocaleString() })}</b> })}</span>
+                : <span>{sayPieces(SAY, 'pets.houseOffer', { step: PET_HOUSE.STEP,
+                    price: <b key="price" style={{ color: '#EAC675' }}>{say(SAY, 'pets.housePrice', { gold: hp.toLocaleString() })}</b>,
+                    have: coins < hp ? <span key="have" style={{ color: COL.muted }}>{say(SAY, 'pets.houseHave', { coins: coins.toLocaleString() })}</span> : null })}</span>}
             </div>
             {houseAsk ? (
               <>
-                <Btn on={coins >= hp} primary data-pet-house-yes={cap} onClick={() => { sendPetHouseBuy(S, cap); setHouseAsk(false); }}>Buy</Btn>
-                <Btn on onClick={() => setHouseAsk(false)}>Keep</Btn>
+                <Btn on={coins >= hp} primary data-pet-house-yes={cap} onClick={() => { sendPetHouseBuy(S, cap); setHouseAsk(false); }}>{say(SAY, 'pets.houseBuy')}</Btn>
+                <Btn on onClick={() => setHouseAsk(false)}>{say(SAY, 'pets.houseKeep')}</Btn>
               </>
             ) : (
-              <Btn on={coins >= hp} data-pet-house-buy={cap} onClick={() => { if (coins >= hp) setHouseAsk(true); }}>More room</Btn>
+              <Btn on={coins >= hp} data-pet-house-buy={cap} onClick={() => { if (coins >= hp) setHouseAsk(true); }}>{say(SAY, 'pets.houseMore')}</Btn>
             )}
           </div>
         );
       })()}
       {sellMsg && sellMsg.ok && !selling ? (
         <div data-pet-listed="1" style={{ fontSize: 12, color: '#7EE0A8', padding: '6px 10px', background: COL.well, borderRadius: 10, marginBottom: 8 }}>
-          {sellMsg.text}. It waits at the Auction House until it sells, and comes back if it does not.
+          {say(SAY, 'pets.listedNote', { text: sellMsg.text })}
         </div>
       ) : null}
       {!unavailable && list.length > 0 && list.map((p) => {
@@ -216,11 +220,11 @@ export const PetsPanel = () => {
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 14, fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{worldSafeText(petDisplayName(pp))}</div>
                 <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 3 }}>
-                  <Badge color={COL.accent}>Lv {lvShown}{held ? ' (' + pp.lv + ')' : ''}</Badge>
+                  <Badge color={COL.accent}>{held ? say(SAY, 'pets.levelHeld', { lv: lvShown, own: pp.lv }) : say(SAY, 'pets.level', { lv: lvShown })}</Badge>
                   {p.name ? <Badge>{petKindName(kind, p.stage)}</Badge> : null}
-                  {isOut ? <Badge color="#7EE0A8">With you</Badge> : null}
-                  {p.gold ? <Badge color="#EAC675" bg="rgba(234,198,117,.15)">Golden</Badge> : null}
-                  {big ? <Badge color="#7EE0A8" bg="rgba(126,224,168,.12)">Big</Badge> : null}
+                  {isOut ? <Badge color="#7EE0A8">{say(SAY, 'pets.badgeOut')}</Badge> : null}
+                  {p.gold ? <Badge color="#EAC675" bg="rgba(234,198,117,.15)">{say(SAY, 'pets.badgeGolden')}</Badge> : null}
+                  {big ? <Badge color="#7EE0A8" bg="rgba(126,224,168,.12)">{say(SAY, 'pets.badgeBig')}</Badge> : null}
                 </div>
                 {levels && live && p.kind ? <XpBar view={petXpView(pp, T)} /> : null}
                 {/* v2.3.3123: THE LAND WARD -- what this pet softens, and how
@@ -235,7 +239,7 @@ export const PetsPanel = () => {
                     <div data-pet-ward={wv.pct} style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4, fontSize: 11,
                       color: isOut ? '#7EE0A8' : COL.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {icon ? <img src={icon} alt="" draggable={false} style={{ width: 14, height: 14, flex: 'none' }} /> : null}
-                      <span>{wv.words}{isOut ? '' : ' when out'}</span>
+                      <span>{wv.words}{isOut ? '' : say(SAY, 'pets.wardWhenOut')}</span>
                     </div>
                   );
                 })()}
@@ -243,29 +247,29 @@ export const PetsPanel = () => {
             </div>
             {isOpen && live && (
               <div onClick={(e) => e.stopPropagation()} style={{ marginTop: 8 }}>
-                {held && <div style={{ fontSize: 11, color: COL.muted, marginBottom: 6 }}>Works at Lv {lvShown} until your Trapping reaches {pp.lv}.</div>}
+                {held && <div style={{ fontSize: 11, color: COL.muted, marginBottom: 6 }}>{say(SAY, 'pets.heldNote', { lv: lvShown, own: pp.lv })}</div>}
                 {naming ? (
                   <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                     <input data-pet-name-input={p.id} autoFocus value={renaming} maxLength={PET_NAME.MAX + 4}
                       placeholder={petKindName(kind, p.stage)} onChange={(e) => setRenaming(e.target.value)}
                       style={{ flex: 1, minWidth: 0, minHeight: 40, padding: '0 10px', borderRadius: 10, fontSize: 15, fontFamily: 'inherit',
                         background: COL.well, color: COL.text, border: '1px solid ' + (renaming && !clean ? COL.danger : COL.borderStrong) }} />
-                    <Btn on={!!clean} primary data-pet-name-save={p.id} onClick={() => { if (sendPetName(S, p.id, clean)) { setNaming(false); setRenaming(''); } }}>Save</Btn>
+                    <Btn on={!!clean} primary data-pet-name-save={p.id} onClick={() => { if (sendPetName(S, p.id, clean)) { setNaming(false); setRenaming(''); } }}>{say(SAY, 'pets.nameSave')}</Btn>
                   </div>
                 ) : releaseAsk === p.id ? (
                   <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                    <span style={{ fontSize: 12, color: '#F0A8A3', flex: '2 1 0' }}>Release {worldSafeText(petDisplayName(pp))} for good?</span>
-                    <Btn on danger data-pet-release-yes={p.id} onClick={() => { sendPetRelease(S, p.id); setReleaseAsk(null); setOpen(null); }}>Release</Btn>
-                    <Btn on onClick={() => setReleaseAsk(null)}>Keep</Btn>
+                    <span style={{ fontSize: 12, color: '#F0A8A3', flex: '2 1 0' }}>{say(SAY, 'pets.releaseAsk', { name: worldSafeText(petDisplayName(pp)) })}</span>
+                    <Btn on danger data-pet-release-yes={p.id} onClick={() => { sendPetRelease(S, p.id); setReleaseAsk(null); setOpen(null); }}>{say(SAY, 'pets.releaseYes')}</Btn>
+                    <Btn on onClick={() => setReleaseAsk(null)}>{say(SAY, 'pets.releaseKeep')}</Btn>
                   </div>
                 ) : (
                   <div style={{ display: 'flex', gap: 6 }}>
-                    <Btn on primary={!isOut} data-pet-active={p.id} onClick={() => sendPetActive(S, isOut ? null : p.id)}>{isOut ? 'Put away' : 'Take out'}</Btn>
-                    <Btn on data-pet-rename={p.id} onClick={() => { setNaming(true); setRenaming(p.name || ''); }}>Rename</Btn>
-                    <Btn on danger data-pet-release={p.id} onClick={() => setReleaseAsk(p.id)}>Release</Btn>
+                    <Btn on primary={!isOut} data-pet-active={p.id} onClick={() => sendPetActive(S, isOut ? null : p.id)}>{say(SAY, isOut ? 'pets.putAway' : 'pets.takeOut')}</Btn>
+                    <Btn on data-pet-rename={p.id} onClick={() => { setNaming(true); setRenaming(p.name || ''); }}>{say(SAY, 'pets.rename')}</Btn>
+                    <Btn on danger data-pet-release={p.id} onClick={() => setReleaseAsk(p.id)}>{say(SAY, 'pets.release')}</Btn>
                   </div>
                 )}
-                {naming && renaming && !clean ? <div style={{ fontSize: 11, color: '#E59A94', marginTop: 4 }}>2-16 letters, numbers, spaces, - or '</div> : null}
+                {naming && renaming && !clean ? <div style={{ fontSize: 11, color: '#E59A94', marginTop: 4 }}>{say(SAY, 'pets.nameRule')}</div> : null}
                 {/* ═══ v2.3.3122: TRADE AND SELL ═══
                     Whether this pet may change hands now, in words (the
                     worker's rule, data/trapping.js petTradeView), and -- when
@@ -282,12 +286,12 @@ export const PetsPanel = () => {
                       <div style={{ fontSize: 11, color: tv.ok ? '#7EE0A8' : COL.muted }}>{tv.words}</div>
                       {tv.ok && sellOn && selling !== p.id && (
                         <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
-                          <Btn on data-pet-sell={p.id} onClick={() => { setSelling(p.id); setPrice(''); setSellMsg(null); }}>Sell at the Auction House</Btn>
+                          <Btn on data-pet-sell={p.id} onClick={() => { setSelling(p.id); setPrice(''); setSellMsg(null); }}>{say(SAY, 'pets.sell')}</Btn>
                         </div>
                       )}
                       {tv.ok && sellOn && selling === p.id && (
                         <div style={{ display: 'flex', gap: 6, marginTop: 6, alignItems: 'center' }}>
-                          <input data-pet-price={p.id} value={price} inputMode="numeric" pattern="[0-9]*" placeholder="Price in gold"
+                          <input data-pet-price={p.id} value={price} inputMode="numeric" pattern="[0-9]*" placeholder={say(SAY, 'pets.pricePlaceholder')}
                             onChange={(e) => setPrice(e.target.value.replace(/[^0-9]/g, '').slice(0, 9))}
                             style={{ flex: 1, minWidth: 0, minHeight: 40, padding: '0 10px', borderRadius: 10, fontSize: 16, fontFamily: 'inherit',
                               background: COL.well, color: COL.text, border: '1px solid ' + COL.borderStrong }} />
@@ -304,9 +308,9 @@ export const PetsPanel = () => {
                             let r = null;
                             try { r = await storeListPet(p.id, pr); } finally { releaseSell(lk); }
                             setSellBusy(false);
-                            if (r && r.ok) { setSellMsg({ ok: true, text: 'Listed for ' + pr + ' gold' }); setSelling(null); setOpen(null); }
-                            else setSellMsg({ ok: false, text: (r && r.reason && TRAP_WORDS[r.reason]) || (r && r.error) || 'Not listed' });
-                          }}>List</Btn>
+                            if (r && r.ok) { setSellMsg({ ok: true, text: say(SAY, 'pets.listedFor', { price: pr }) }); setSelling(null); setOpen(null); }
+                            else setSellMsg({ ok: false, text: (r && r.reason && TRAP_WORDS[r.reason]) || (r && r.error) || say(SAY, 'pets.notListed') });
+                          }}>{say(SAY, 'pets.listButton')}</Btn>
                         </div>
                       )}
                       {sellMsg && selling === p.id ? <div style={{ fontSize: 11, marginTop: 4, color: sellMsg.ok ? '#7EE0A8' : '#E59A94' }}>{sellMsg.text}</div> : null}
@@ -320,15 +324,15 @@ export const PetsPanel = () => {
       })}
       {live && list.length > 0 && (
         <div style={{ fontSize: 11, color: COL.muted, marginTop: 6, lineHeight: 1.4 }}>
-          The pet with you picks up loot from further away{wards ? ', and softens what its own land\'s monsters do to you' : ''}. Pets are never lost, not even in No man's land.
+          {say(SAY, 'pets.footNote', { ward: wards ? say(SAY, 'pets.footWard') : '' })}
         </div>
       )}
       {/* v2.3.3121: THE JOURNAL -- every kind at both stages */}
       {live && book && !unavailable && (
         <div data-pets-journal={kindsCaught} style={{ marginTop: 12 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 6 }}>
-            <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.10em', textTransform: 'uppercase', color: COL.muted }}>Journal</div>
-            <div style={{ fontSize: 11, color: COL.text2, fontVariantNumeric: 'tabular-nums' }}>{kindsCaught} of {kinds.length * STAGES.length} caught</div>
+            <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.10em', textTransform: 'uppercase', color: COL.muted }}>{say(SAY, 'pets.journalTitle')}</div>
+            <div style={{ fontSize: 11, color: COL.text2, fontVariantNumeric: 'tabular-nums' }}>{say(SAY, 'pets.journalCount', { caught: kindsCaught, total: kinds.length * STAGES.length })}</div>
           </div>
           {STAGES.map((st) => (
             <div key={st} style={{ marginBottom: 8 }}>
@@ -338,7 +342,7 @@ export const PetsPanel = () => {
               </div>
             </div>
           ))}
-          <div style={{ fontSize: 11, color: COL.muted, lineHeight: 1.4 }}>Each land's monsters become its pet. Past level 20 they come in the land's second colours.</div>
+          <div style={{ fontSize: 11, color: COL.muted, lineHeight: 1.4 }}>{say(SAY, 'pets.journalNote')}</div>
         </div>
       )}
     </div>

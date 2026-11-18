@@ -26,6 +26,8 @@ import { SHIRT_CATALOG } from '@/rendering/traits/shirtCatalog.js';   /* v2.3.24
 import { getInk as getToolInk, getBrush as getToolBrush, setInk as setToolInk, setBrush as setToolBrush } from './paintTools.js';
 import BodyInk from '@/ui/panels/BodyInk.jsx';   /* v2.3.1965 */
 import { heightMul, PORTRAIT_FIT, getBuildHeight } from '@/rendering/traits/buildCatalog.js';   /* v2.3.1953 */
+import { SAY } from '@/data/say/paint.js';   /* v2.3.6322: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';
 
 /* ═══ v2.3.1938: DRAW YOUR OWN SHIRT ═══
  *
@@ -74,22 +76,22 @@ const CELL_PX = 18;            /* on-screen size of one cell at rest */
    the screen that reaches them (see `cfg` below). */
 const TARGETS = {
   shirt: {
-    title: 'Shirt design',
-    label: 'shirt',
+    title: say(SAY, 'paint.shirtTitle'),
+    label: say(SAY, 'paint.shirtLabel'),
     /* v2.3.1941: `pattern` names the garment slot this target can pattern, or
        null when it cannot be patterned (a tattoo is not clothing). */
     pattern: 'shirt',
-    note: 'Front and back are separate — the back shows when you walk away.',
+    note: say(SAY, 'paint.shirtNote'),
   },
   pants: {
-    title: 'Pants design',
-    label: 'pants',
+    title: say(SAY, 'paint.pantsTitle'),
+    label: say(SAY, 'paint.pantsLabel'),
     pattern: 'pants',
-    note: 'Sits on the upper leg. Leg armour covers it.',
+    note: say(SAY, 'paint.pantsNote'),
   },
   tattoo: {
-    title: 'Tattoos',
-    label: 'tattoo',
+    title: say(SAY, 'paint.tattooTitle'),
+    label: say(SAY, 'paint.tattooLabel'),
     pattern: null,
     /* v2.3.1994: the Body screen reaches the arms as well now, so the caption
        says where a stroke will land before you make it.
@@ -98,7 +100,7 @@ const TARGETS = {
        exact rule (a shirt or breastplate covers the chest; sleeves the upper
        arm, as tattooArm says) and still under the 120px the caption cell
        reserves (game.css .bt-paint-note). */
-    note: 'Draw on the chest or the arms. A shirt or breastplate covers the chest; sleeves cover the upper arm.',
+    note: say(SAY, 'paint.tattooNote'),
   },
   /* v2.3.1949 (owner: "Allow tattoos on the face and arms too").  Three skin
      canvases rather than one drawing stretched over three very differently
@@ -113,43 +115,43 @@ const TARGETS = {
      design all the way round -- the fourth instance of the same idea, worded
      like the other three so a player who has met any of them recognises it. */
   pantsBack: {
-    label: 'back of the pants',
+    label: say(SAY, 'paint.pantsBackLabel'),
     pattern: null,
-    note: 'Shows when you walk away. Separate from the front — leg armour covers it.',
+    note: say(SAY, 'paint.pantsBackNote'),
   },
   tattooBack: {
-    label: 'back tattoo',
+    label: say(SAY, 'paint.tattooBackLabel'),
     pattern: null,
-    note: 'Shows when you walk away. Separate from your chest — a shirt or breastplate covers it.',
+    note: say(SAY, 'paint.tattooBackNote'),
   },
   tattooFace: {
-    label: 'face tattoo',
+    label: say(SAY, 'paint.tattooFaceLabel'),
     pattern: null,
-    note: 'On your face. A hat or a beard can cover part of it.',
+    note: say(SAY, 'paint.tattooFaceNote'),
   },
   tattooArm: {
-    label: 'arm tattoo',
+    label: say(SAY, 'paint.tattooArmLabel'),
     pattern: null,
-    note: 'Goes on BOTH arms. Sleeves cover the upper arm, so it shows below them.',
+    note: say(SAY, 'paint.tattooArmNote'),
   },
   /* v2.3.2043 (owner: "front back for face and back of head area").  The face
      canvas's other side, exactly as shirtBack is to shirtFront -- and worded
      the same way the shirt's note is, because it is the same idea and a player
      who has met one should recognise the other. */
   tattooHeadBack: {
-    label: 'back of head',
+    label: say(SAY, 'paint.tattooHeadBackLabel'),
     pattern: null,
-    note: 'Shows when you walk away. Separate from your face — hair covers part of it.',
+    note: say(SAY, 'paint.tattooHeadBackNote'),
   },
   /* v2.3.1944: shoes are pattern-ONLY.  A boot is about eight screen pixels, so
      there is nothing to draw on -- and the four tiles offered are the ones that
      survive at that size (see patternCatalog). */
   shoes: {
-    title: 'Shoe pattern',
-    label: 'shoes',
+    title: say(SAY, 'paint.shoesTitle'),
+    label: say(SAY, 'paint.shoesLabel'),
     pattern: 'shoes',
     drawing: false,
-    note: 'Boots are small, so these are the patterns that still read at that size.',
+    note: say(SAY, 'paint.shoesNote'),
   },
 };
 
@@ -281,20 +283,20 @@ const ZONE_FOCUS = { tattoo: { cy: 0.377, h: 0.557 } };
 const ZONES = {
   tattoo: [
     { key: 'face', region: 'face', size: 'sm', mode: 'face',
-      name: { front: 'Face', back: 'Back of Head' } },
+      name: { front: say(SAY, 'paint.zoneFace'), back: say(SAY, 'paint.zoneHeadBack') } },
     { key: 'body', region: 'tattoo', size: 'lg', mode: 'body',
       /* "Chest + Arms", not "Chest": the Body screen reaches both and your
          finger picks (v2.3.1994), so the label has to promise what the frame
          actually opens. */
-      name: { front: 'Chest + Arms', back: 'Back + Arms' } },
+      name: { front: say(SAY, 'paint.zoneChest'), back: say(SAY, 'paint.zoneBack') } },
   ],
   shirt: [
     { key: 'shirt', region: 'shirt', size: 'lg', mode: null,
-      name: { front: 'Shirt', back: 'Shirt' } },
+      name: { front: say(SAY, 'paint.zoneShirt'), back: say(SAY, 'paint.zoneShirt') } },
   ],
   pants: [
     { key: 'pants', region: 'pants', size: 'lg', mode: null,
-      name: { front: 'Pants', back: 'Pants' } },
+      name: { front: say(SAY, 'paint.zonePants'), back: say(SAY, 'paint.zonePants') } },
   ],
 };
 
@@ -305,17 +307,20 @@ const ZONES = {
    fetched cannot hitch on first use — which the animation-preload law exists to
    prevent.  One 24x24 viewBox for all of them so they sit on the same optical
    size. */
+/* v2.3.6322: each tip a function, read where the button is drawn -- three
+   of them say "tap", and say()'s deskWords has to ask the device then, not at
+   load (docs/specs/player-words.md, W1). */
 const TOOL_HINT = {
-  pen: 'Draw freehand',
-  line: 'Drag for a straight line',
-  rect: 'Drag for a box outline',
-  ellipse: 'Drag for a circle outline',
-  fill: 'Tap an area to flood it — with the eraser chosen, to clear it',
-  letter: 'Pick a letter, then tap to place it',
+  pen: () => say(SAY, 'paint.toolPen'),
+  line: () => say(SAY, 'paint.toolLine'),
+  rect: () => say(SAY, 'paint.toolRect'),
+  ellipse: () => say(SAY, 'paint.toolEllipse'),
+  fill: () => say(SAY, 'paint.toolFill'),
+  letter: () => say(SAY, 'paint.toolLetter'),
   /* v2.3.1967 (owner: "add a hand shape to tap the existing shape to reselect
      and edit it").  The hint says TAP, because nothing about a hand icon tells
      you that the thing under it is still an object rather than pixels. */
-  select: 'Tap something you already drew to pick it up — recolour, resize or re-layer it',   /* v2.3.2427 */
+  select: () => say(SAY, 'paint.toolSelect'),   /* v2.3.2427 */
 };
 
 function ToolIcon({ id }) {
@@ -359,16 +364,16 @@ function ToolIcon({ id }) {
    round-tripped through localStorage is the '__proto__' trap (TRAPS #6). */
 function selName(op) {
   if (!op) return '';
-  if (op.k === 's') return op.t === 'rect' ? 'box' : op.t === 'ellipse' ? 'circle' : 'line';
-  if (op.k === 't') return 'letter ' + op.g;
-  if (op.k === 'f') return 'fill';
+  if (op.k === 's') return say(SAY, op.t === 'rect' ? 'paint.selBox' : op.t === 'ellipse' ? 'paint.selCircle' : 'paint.selLine');
+  if (op.k === 't') return say(SAY, 'paint.selLetter', { g: op.g });
+  if (op.k === 'f') return say(SAY, 'paint.selFill');
   /* v2.3.2463: a placed design said "brush stroke", because 'd' (v2.3.2455) was
      never given a case here and fell through to the catch-all.  The owner read
      that label off the layer row while reporting a design that would not move,
      which is exactly the confusion a wrong name causes: it names the one thing
      on the row that cannot be moved or resized at all. */
-  if (op.k === 'd') return 'design';
-  return 'brush stroke';
+  if (op.k === 'd') return say(SAY, 'paint.selDesign');
+  return say(SAY, 'paint.selStroke');
 }
 
 /* The four layer steps.  A table rather than four near-identical buttons in the
@@ -376,10 +381,10 @@ function selName(op) {
    the wording stays parallel, which is what makes a row of four read as one
    control with four strengths instead of four unrelated actions. */
 const LAYER_MOVES = [
-  { k: 'bb', d: 'back', label: 'To back', tip: 'Send it behind everything else' },
-  { k: 'b1', d: -1, label: 'Back', tip: 'One step further back' },
-  { k: 'f1', d: 1, label: 'Forward', tip: 'One step further forward' },
-  { k: 'ff', d: 'front', label: 'To front', tip: 'Bring it in front of everything else' },
+  { k: 'bb', d: 'back', label: say(SAY, 'paint.layerToBack'), tip: say(SAY, 'paint.layerToBackTip') },
+  { k: 'b1', d: -1, label: say(SAY, 'paint.layerBack'), tip: say(SAY, 'paint.layerBackTip') },
+  { k: 'f1', d: 1, label: say(SAY, 'paint.layerForward'), tip: say(SAY, 'paint.layerForwardTip') },
+  { k: 'ff', d: 'front', label: say(SAY, 'paint.layerToFront'), tip: say(SAY, 'paint.layerToFrontTip') },
 ];
 
 /* ═══ v2.3.2416: THE THREE DESIGN SLOTS AND THEIR SAVE BUTTON ARE GONE ═══
@@ -431,7 +436,7 @@ export function PatternSwatch({ tile, color, on, onPick }) {
     }
   }, [tile, color]);
   return (
-    <button type="button" onClick={onPick} title={tile ? tile.name : 'Plain'}
+    <button type="button" onClick={onPick} title={tile ? tile.name : say(SAY, 'paint.plainSwatch')}
       style={{ padding: 0, lineHeight: 0, borderRadius: 7, cursor: 'pointer',
         border: on ? '2px solid #D8AA58' : '1px solid rgba(0,0,0,.4)', boxSizing: 'border-box' }}>
       {/* v2.3.1947: sizes off its grid column rather than a fixed 44px — the
@@ -798,7 +803,7 @@ function WornPreview({ look, target, side, art, pat, className, label, fit, focu
   return (
     <canvas ref={boxRef} className={className || 'bt-paint-pv'}
       aria-hidden={decorative ? true : undefined}
-      aria-label={decorative ? undefined : (label || 'Preview on your character')}
+      aria-label={decorative ? undefined : (label || say(SAY, 'paint.previewLabel'))}
       role={decorative ? undefined : 'img'} />
   );
 }
@@ -860,8 +865,8 @@ function ZonePicker({ zones, boxes, activeKey, side, onPick, onFlip, label, hint
                the whole of what a screen reader gets -- and it says the side
                too, because the same frame means two different canvases
                depending on which way the figure is facing. */
-            aria-label={'Edit ' + name + ' (' + side + ')'}
-            title={'Edit ' + name + ' (' + side + ')'}
+            aria-label={say(SAY, 'paint.zoneEdit', { name, side })}
+            title={say(SAY, 'paint.zoneEdit', { name, side })}
             onClick={() => onPick(z)}
             /* Hidden rather than dropped while the composite is still baking:
                the buttons keep their place in the DOM, so the first report does
@@ -874,8 +879,8 @@ function ZonePicker({ zones, boxes, activeKey, side, onPick, onFlip, label, hint
         );
       })}
       <button type="button" className="bt-zone-flip" data-zone-flip={side}
-        aria-label={side === 'back' ? 'Turn round to the front' : 'Turn round to the back'}
-        title={side === 'back' ? 'Turn round to the front' : 'Turn round to the back'}
+        aria-label={say(SAY, side === 'back' ? 'paint.flipToFront' : 'paint.flipToBack')}
+        title={say(SAY, side === 'back' ? 'paint.flipToFront' : 'paint.flipToBack')}
         onClick={onFlip}>
         <img src={ZONE_ART + 'zone-flip.png'} alt="" draggable={false} />
       </button>
@@ -1024,7 +1029,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
      Clear said "the whole back of head" while the gallery offered to put a
      skull on "your tattoo".  Same expression as Clear's, so they cannot drift
      apart again. */
-  const inkLabel = isShirt ? ('shirt ' + side) : scfg.label;
+  const inkLabel = isShirt ? say(SAY, 'paint.inkLabelShirt', { side }) : scfg.label;
 
   /* ── v2.3.2503: the zone picker's state, all of it derived ───────────────
      There is no "which zone is selected" variable, on purpose. The selection IS
@@ -1038,7 +1043,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
     const z = zones.find((q) => q.key === activeZone) || zones[0];
     return z ? (z.name[side] || z.name.front) : '';
   })();
-  const sideWord = side === 'back' ? 'Back' : 'Front';
+  const sideWord = say(SAY, side === 'back' ? 'paint.sideBack' : 'paint.sideFront');
   /* Where each region sits on the worn preview, reported by the composite -- see
      WornPreview's blit. Null until the first bake lands, which is what the
      frames' `hidden` handles. */
@@ -2328,7 +2333,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
     <div className="bt-modal-scrim" role="dialog"
       /* v2.3.1944: shoes cannot be drawn on, so "Draw your shoes" was wrong for
          a screen reader as well as for the eye. */
-      aria-label={(canDraw ? 'Draw your ' : 'Pattern your ') + cfg.label}
+      aria-label={say(SAY, canDraw ? 'paint.drawYour' : 'paint.patternYour', { what: cfg.label })}
       style={{ position: 'fixed', inset: 0, background: 'rgba(6,10,14,.72)',
         display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
       {/* v2.3.1947: padding and gap live in the stylesheet, not here -- a short
@@ -2374,7 +2379,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
             own -- "find room" is the ask, and a row costs 30px on a phone that
             is already tight -- so it is one line above the mode strip, in the
             same cell, and adds only its own text height. */}
-        <h2 className="bt-paint-title">{cfg.title || 'Design'}</h2>
+        <h2 className="bt-paint-title">{cfg.title || say(SAY, 'paint.titleFallback')}</h2>
         {/* v2.3.2503: two entries at most, and never a canvas -- see MODES. The
             four-tab sizing this block used to carry went with the tattoo
             screen's body/face pair, which is the zone picker's job now. */}
@@ -2384,7 +2389,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
               <button key={m} type="button" onClick={() => setMode(m)}
                 className={'bt-cc-tab' + (mode === m ? ' bt-cc-tab--on' : '')}
                 style={{ flex: 1, minHeight: 34, textTransform: 'capitalize' }}>
-                <span className="bt-cc-tab-label">{m}</span>
+                <span className="bt-cc-tab-label">{say(SAY, m === 'pattern' ? 'paint.modePattern' : 'paint.modeDrawing')}</span>
               </button>
             ))}
           </div>
@@ -2400,7 +2405,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
           {zones.length ? (
             <ZonePicker zones={zones} boxes={zoneBoxes} activeKey={activeZone} side={side}
               onPick={pickZone} onFlip={() => setInkBack((v) => !v)}
-              label={sideWord + ' • ' + activeZoneName} hint="Tap a zone to edit">
+              label={say(SAY, 'paint.zoneLabel', { side: sideWord, zone: activeZoneName })} hint={say(SAY, 'paint.zoneHint')}>
               <WornPreview look={look} target={spot} side={side} art={art} pat={pat}
                 focus={ZONE_FOCUS[target]} onZones={setZoneBoxes} />
             </ZonePicker>
@@ -2409,7 +2414,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
           )}
         </div>
         <div className="bt-paint-note">
-          {onPattern ? 'A pattern fills the whole garment. Anything you draw goes on top of it.' : scfg.note}
+          {onPattern ? say(SAY, 'paint.patternNote') : scfg.note}
           {/* v2.3.1950 (owner: "Copy front -> back for shirts.  One tap,
               obvious want.").  It sits under the caption rather than in the
               button row: that row is Undo/Redo/Clear/Done, and this is a
@@ -2419,7 +2424,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
               because the thing it changes is the side you are not looking at. */}
           {isShirt && !onPattern && (
             <button type="button" className="bt-paint-copy"
-              title={'Put this drawing on the ' + (side === 'front' ? 'back' : 'front') + ' as well'}
+              title={say(SAY, side === 'front' ? 'paint.copyToBackTip' : 'paint.copyToFrontTip')}
               onClick={() => {
                 const from = side === 'front' ? 'shirtFront' : 'shirtBack';
                 const to = side === 'front' ? 'shirtBack' : 'shirtFront';
@@ -2432,7 +2437,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
                 copyDoc(from, to);
                 setCopied(true);
               }}>
-              {copied ? 'Copied \u2713' : ('Copy to ' + (side === 'front' ? 'back' : 'front'))}
+              {copied ? say(SAY, 'paint.copied') : say(SAY, side === 'front' ? 'paint.copyToBack' : 'paint.copyToFront')}
             </button>
           )}
           {/* v2.3.2444 (owner: "a catalog of pre done designs to choose from").
@@ -2443,9 +2448,9 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
               whole garment and has no 16x16 grid for a design to land on. */}
           {canDraw && !onPattern && (
             <button type="button" className="bt-paint-copy"
-              title={'Choose a ready-made design for your ' + inkLabel}
+              title={say(SAY, 'paint.designsTip', { what: inkLabel })}
               onClick={() => setShowDesigns(true)}>
-              Designs&hellip;
+              {say(SAY, 'paint.designs')}
             </button>
           )}
         </div>
@@ -2558,7 +2563,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
                   setTool(t.id);
                 }}
                 className={'bt-paint-tool' + (tool === t.id ? ' bt-paint-tool--on' : '')}
-                aria-pressed={tool === t.id} title={TOOL_HINT[t.id]}>
+                aria-pressed={tool === t.id} title={TOOL_HINT[t.id] ? TOOL_HINT[t.id]() : undefined}>
                 <ToolIcon id={t.id} />
                 <span className="bt-paint-tool-label">{t.name}</span>
               </button>
@@ -2615,11 +2620,9 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
                   <button type="button" onClick={() => setLockRatio((v) => !v)}
                     aria-pressed={lockRatio}
                     className={'bt-paint-size' + (lockRatio ? ' bt-paint-size--on' : '')}
-                    title={lockRatio
-                      ? 'Keeping the proportions you drew — tap to size width and height freely'
-                      : 'Width and height are free — tap to keep the proportions you drew'}>
+                    title={say(SAY, lockRatio ? 'paint.keepShapeTip' : 'paint.freeSizeTip')}>
                     <span className="bt-paint-tool-label">
-                      {lockRatio ? '\u2713 Keep shape' : 'Free size'}
+                      {say(SAY, lockRatio ? 'paint.keepShape' : 'paint.freeSize')}
                     </span>
                   </button>
                 )}
@@ -2633,22 +2636,22 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
                 {canCopy(selOp) && (
                   <button type="button" onClick={copySel} className="bt-paint-size"
                     data-paint-copy="1"
-                    title="Make a copy of this one beside it, and hold the copy">
-                    <span className="bt-paint-tool-label">Copy</span>
+                    title={say(SAY, 'paint.copyTip')}>
+                    <span className="bt-paint-tool-label">{say(SAY, 'paint.copy')}</span>
                   </button>
                 )}
                 <button type="button" onClick={placePending}
                   className="bt-paint-size bt-paint-size--on"
-                  title="Finished with this one">
+                  title={say(SAY, 'paint.placeTip')}>
                   <span className="bt-paint-tool-label">
-                    {(selOp.k === 's' || selOp.k === 't' || selOp.k === 'd') ? 'Place' : 'Done'}
+                    {say(SAY, (selOp.k === 's' || selOp.k === 't' || selOp.k === 'd') ? 'paint.place' : 'paint.done')}
                   </span>
                 </button>
                 {(selOp.k === 's' || selOp.k === 't' || selOp.k === 'd') && (   /* v2.3.2455 */
                   <button type="button" onClick={cancelPending} className="bt-paint-size"
                     title={(pendRef.current && pendRef.current.isNew)
-                      ? 'Throw this one away' : 'Put it back the way you found it'}>
-                    <span className="bt-paint-tool-label">Cancel</span>
+                      ? say(SAY, 'paint.cancelNewTip') : say(SAY, 'paint.cancelTip')}>
+                    <span className="bt-paint-tool-label">{say(SAY, 'paint.cancel')}</span>
                   </button>
                 )}
               </div>
@@ -2658,7 +2661,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
                   <button key={ch} type="button" onClick={() => { reletterSel(ch); setLetter(ch); }}
                     data-on={letter === ch ? '1' : undefined}
                     className={'bt-paint-letter' + (letter === ch ? ' bt-paint-letter--on' : '')}
-                    aria-pressed={letter === ch} aria-label={'Letter ' + ch}>{ch}</button>
+                    aria-pressed={letter === ch} aria-label={say(SAY, 'paint.letterAria', { ch })}>{ch}</button>
                 ))}
               </div>
             ) : (
@@ -2670,13 +2673,13 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
                 {BRUSH_SIZES.map((n) => (
                   <button key={n} type="button" disabled={!tdef.brush}
                     onClick={() => setBrush(n)} aria-pressed={brush === n}
-                    aria-label={'Brush ' + n + ' wide'}
+                    aria-label={say(SAY, 'paint.brushAria', { w: n })}
                     style={tdef.brush ? undefined : { opacity: 0.38 }}
                     className={'bt-paint-size' + (brush === n && tdef.brush ? ' bt-paint-size--on' : '')}>
                     <span className="bt-paint-dot-well">
                       <span className="bt-paint-dot" style={{ width: 5 + (n - 1) * 6, height: 5 + (n - 1) * 6 }} />
                     </span>
-                    <span className="bt-paint-tool-label">{n === 1 ? 'Fine' : n === 2 ? 'Medium' : 'Thick'}</span>
+                    <span className="bt-paint-tool-label">{say(SAY, n === 1 ? 'paint.brushFine' : n === 2 ? 'paint.brushMedium' : 'paint.brushThick')}</span>
                   </button>
                 ))}
               </div>
@@ -2689,9 +2692,9 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
                 second copy of Fill, which is a tool in the row above -- Mirror
                 is a modifier that paints both halves of whatever tool is up. */}
             <button type="button" onClick={() => setMirror((m) => !m)}
-              aria-pressed={mirror} title="Mirror: paint both halves at once"
+              aria-pressed={mirror} title={say(SAY, 'paint.mirrorTip')}
               className={'bt-paint-size bt-paint-mirror' + (mirror ? ' bt-paint-size--on' : '')}>
-              <span className="bt-paint-tool-label">Mirror</span>
+              <span className="bt-paint-tool-label">{say(SAY, 'paint.mirror')}</span>
             </button>
           </div>
         )}
@@ -2730,7 +2733,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
           <div className="bt-paint-layers">
             <div className="bt-paint-layer-at">
               {selOp
-                ? ('Layer ' + (sel + 1) + ' of ' + doc.ops.length + ' \u00b7 ' + selName(selOp))
+                ? say(SAY, 'paint.layerAt', { at: sel + 1, count: doc.ops.length, what: selName(selOp) })
                 /* v2.3.2427: it says SELECT, because that is what the button
                    says.  Owner: "The select button doesn't seem to work on what
                    you've drawn" -- and it does work, on every surface, measured
@@ -2744,8 +2747,8 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
                    It also names what picking something up is FOR, since the
                    answers are now recolour and resize as well as re-layer. */
                 : (tool === 'select'
-                  ? 'Tap something you drew to pick it up — then recolour, resize or re-layer it'
-                  : 'Pick Select, then tap something you drew to change it')}
+                  ? say(SAY, 'paint.selectHowTo')
+                  : say(SAY, 'paint.selectFirst'))}
             </div>
             <div className="bt-paint-layer-btns">
               {LAYER_MOVES.map((m) => {
@@ -2765,8 +2768,8 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
               <button type="button" className="bt-paint-size" disabled={!selOp}
                 data-paint-delete="1"
                 style={!selOp ? { opacity: 0.38, cursor: 'default' } : undefined}
-                onClick={deleteSel} title="Take this one off the drawing">
-                <span className="bt-paint-tool-label">Delete</span>
+                onClick={deleteSel} title={say(SAY, 'paint.deleteTip')}>
+                <span className="bt-paint-tool-label">{say(SAY, 'paint.delete')}</span>
               </button>
             </div>
           </div>
@@ -2775,7 +2778,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
         {onPattern ? (
           <div className="bt-paint-pal" style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 5, opacity: patId ? 1 : .35 }}>
             {ART_PALETTE.map((c, i) => (i === 0 ? null : (
-              <button key={i} type="button" title="Pattern colour" disabled={!patId}
+              <button key={i} type="button" title={say(SAY, 'paint.patternColour')} disabled={!patId}
                 onClick={() => pickPatColor(i)}
                 style={{ aspectRatio: '1 / 1', minHeight: 26, borderRadius: 6,
                   cursor: patId ? 'pointer' : 'default', background: c,
@@ -2787,9 +2790,9 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
           <div className="bt-paint-pal" style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 5 }}>
             {ART_PALETTE.map((c, i) => (
               <button key={i} type="button"
-                title={i === 0 ? 'Eraser — works with every tool'
-                  : (selOp ? 'Recolour what you picked up' : 'Colour')}
-                aria-label={i === 0 ? 'Eraser' : 'Colour ' + i}
+                title={i === 0 ? say(SAY, 'paint.eraserTip')
+                  : say(SAY, selOp ? 'paint.recolourTip' : 'paint.colourTip')}
+                aria-label={i === 0 ? say(SAY, 'paint.eraserAria') : say(SAY, 'paint.colourAria', { i })}
                 /* v2.3.2427: with something picked up this repaints IT; with
                    nothing picked up it arms the next mark, as it always has.
                    The ink is set either way, so the colour you just chose is
@@ -2826,8 +2829,8 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
               disabled={!undoN} onClick={undo}
               style={{ flex: 1, minHeight: 38, opacity: undoN ? 1 : 0.38,
                 cursor: undoN ? 'pointer' : 'default' }}
-              title={undoN ? 'Undo the last thing you did' : 'Nothing to undo yet'}>
-              <span className="bt-cc-tab-label">Undo</span>
+              title={say(SAY, undoN ? 'paint.undoTip' : 'paint.undoNoneTip')}>
+              <span className="bt-cc-tab-label">{say(SAY, 'paint.undo')}</span>
             </button>
           )}
           {!onPattern && (
@@ -2835,8 +2838,8 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
               disabled={!redoN} onClick={redo}
               style={{ flex: 1, minHeight: 38, opacity: redoN ? 1 : 0.38,
                 cursor: redoN ? 'pointer' : 'default' }}
-              title={redoN ? 'Put back what you just undid' : 'Nothing to redo'}>
-              <span className="bt-cc-tab-label">Redo</span>
+              title={say(SAY, redoN ? 'paint.redoTip' : 'paint.redoNoneTip')}>
+              <span className="bt-cc-tab-label">{say(SAY, 'paint.redo')}</span>
             </button>
           )}
           <button type="button" className="bt-cc-tab" style={{ flex: 1, minHeight: 38 }}
@@ -2844,8 +2847,8 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
                row -- "Clear arm tattoo" does not fit a quarter of a phone.  The
                mode strip above says which canvas you are on, and the title
                carries the whole sentence. */
-            title={onPattern ? 'Remove the pattern' : ('Erase the whole ' + (isShirt ? side + ' of the shirt' : scfg.label))}
-            aria-label={onPattern ? 'Remove the pattern' : ('Erase the whole ' + (isShirt ? side + ' of the shirt' : scfg.label))}
+            title={onPattern ? say(SAY, 'paint.removePattern') : (isShirt ? say(SAY, 'paint.clearShirtSide', { side }) : say(SAY, 'paint.clearCanvas', { what: scfg.label }))}
+            aria-label={onPattern ? say(SAY, 'paint.removePattern') : (isShirt ? say(SAY, 'paint.clearShirtSide', { side }) : say(SAY, 'paint.clearCanvas', { what: scfg.label }))}
             onClick={() => {
               if (onPattern) { pickTile(''); return; }
               placePending();       /* nothing is selected on an empty grid */
@@ -2867,7 +2870,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
                 The pattern screen keeps its words: "No pattern" is a state to
                 return to, not a thing to throw away. */}
             {onPattern ? (
-              <span className="bt-cc-tab-label">No pattern</span>
+              <span className="bt-cc-tab-label">{say(SAY, 'paint.noPattern')}</span>
             ) : (
               <svg className="bt-paint-tool-icon" viewBox="0 0 24 24" width="20" height="20"
                 aria-hidden="true" focusable="false" style={{ margin: '0 auto' }}>
@@ -2883,7 +2886,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
           </button>
           <button type="button" className="bt-cc-tab bt-cc-tab--on" style={{ flex: 1, minHeight: 38 }}
             onClick={() => { if (selRef.current >= 0) placePending(); onClose(); }}>
-            <span className="bt-cc-tab-label">Done</span>
+            <span className="bt-cc-tab-label">{say(SAY, 'paint.finish')}</span>
           </button>
         </div>
         </div>

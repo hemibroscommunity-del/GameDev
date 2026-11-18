@@ -4,6 +4,8 @@ import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 import { myAllyTag } from '@/game/alliance.js';   /* v2.3.3321: the tag a player wears is their alliance's or former clan's */
 import { act } from '@/game/actions.js';   /* v2.3.5191: the page's requests leave through the action door (card K PR 7) */
 import { drawColor } from '@/game/lookForm.js';   /* v2.3.5807 (card RV, S2): a row's colour drawn only as a colour */
+import { SAY } from '@/data/say/leaderboard.js';   /* v2.3.6327: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';
 
 /* ═══ LeaderboardPanel — top-50 rankings per category ═══ */
 /* v2.3.856: moved verbatim from BroTown.jsx's JSX tree (UI-panel
@@ -99,7 +101,7 @@ export function LeaderboardPanel(props) {
       letterSpacing: '.10em',
       color: '#F4F0E7'
     }
-  }, "Leaderboards")), /*#__PURE__*/React.createElement("div", {
+  }, say(SAY, 'leaderboard.oldTitle'))), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       fontVariantNumeric: 'tabular-nums',
@@ -107,7 +109,7 @@ export function LeaderboardPanel(props) {
       textAlign: 'center',
       marginBottom: 10
     }
-  }, Object.keys(stateRef.current.others).length + 1, " players online"), /*#__PURE__*/React.createElement("div", {
+  }, say(SAY, 'leaderboard.oldOnline', { count: Object.keys(stateRef.current.others).length + 1 })), /*#__PURE__*/React.createElement("div", {
     /* v2.3.1232: segmented tabs on a well track (wraps into two rows on
        narrow cards) */
     /* v2.3.1235: batch-2 rollout — corrected well token + shared .ui-well
@@ -129,7 +131,7 @@ export function LeaderboardPanel(props) {
       overflowX: 'auto',
       touchAction: 'pan-x'
     }
-  }, [['level', 'Level'], ['lifeskills', 'Skills'], ['ap', 'AP'], ['kills', 'Kills'], ['dungeons', 'Dungeons'], ['gold', 'Gold'], ['playtime', 'Time']].map(function (_ref40) {
+  }, [['level', say(SAY, 'leaderboard.oldTabLevel')], ['lifeskills', say(SAY, 'leaderboard.oldTabSkills')], ['ap', say(SAY, 'leaderboard.oldTabAp')], ['kills', say(SAY, 'leaderboard.oldTabKills')], ['dungeons', say(SAY, 'leaderboard.oldTabDungeons')], ['gold', say(SAY, 'leaderboard.oldTabGold')], ['playtime', say(SAY, 'leaderboard.oldTabTime')]].map(function (_ref40) {
     var _ref41 = _slicedToArray(_ref40, 2),
       id = _ref41[0],
       label = _ref41[1];
@@ -198,7 +200,7 @@ export function LeaderboardPanel(props) {
         }, 0) : 0;
         entries.push({
           id: S.myId,
-          name: S.myName || 'You',
+          name: S.myName || say(SAY, 'leaderboard.oldYou'),
           color: S.myColor,
           isMe: true,
           level: (myRpg === null || myRpg === void 0 ? void 0 : myRpg.level) || 1,
@@ -221,7 +223,7 @@ export function LeaderboardPanel(props) {
       }, 0) : 0;
       entries.push({
         id: S.myId,
-        name: S.myName || 'You',
+        name: S.myName || say(SAY, 'leaderboard.oldYou'),
         color: S.myColor,
         isMe: true,
         level: (myRpg === null || myRpg === void 0 ? void 0 : myRpg.level) || 1,
@@ -240,7 +242,7 @@ export function LeaderboardPanel(props) {
         var d = o.rpgData || {};
         entries.push({
           id: id,
-          name: o.name || '???',
+          name: o.name || say(SAY, 'leaderboard.oldUnnamed'),
           color: o.color,
           isMe: false,
           level: o.rpgLv || 1,
@@ -277,13 +279,13 @@ export function LeaderboardPanel(props) {
       return val;
     };
     var tabLabel = {
-      level: 'Level',
-      lifeskills: 'Skill Total',
-      ap: 'Achievement Pts',
-      kills: 'Monsters Killed',
-      dungeons: 'Dungeons Cleared',
-      gold: 'Gold Earned',
-      playtime: 'Playtime'
+      level: say(SAY, 'leaderboard.oldHeadLevel'),
+      lifeskills: say(SAY, 'leaderboard.oldHeadSkills'),
+      ap: say(SAY, 'leaderboard.oldHeadAp'),
+      kills: say(SAY, 'leaderboard.oldHeadKills'),
+      dungeons: say(SAY, 'leaderboard.oldHeadDungeons'),
+      gold: say(SAY, 'leaderboard.oldHeadGold'),
+      playtime: say(SAY, 'leaderboard.oldHeadTime')
     }[leaderboardTab];
     return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
       style: {
@@ -374,13 +376,13 @@ export function LeaderboardPanel(props) {
           fontSize: 11 /* v2.3.1235: batch-2 rollout — text floor is 11 */,
           color: '#8D9B98'
         }
-      }, "(you)")), /*#__PURE__*/React.createElement("div", {
+      }, say(SAY, 'leaderboard.oldYouMark'))), /*#__PURE__*/React.createElement("div", {
         style: {
           fontSize: 11,
           fontVariantNumeric: 'tabular-nums',
           color: '#8D9B98'
         }
-      }, "Lv ", e.level)), /*#__PURE__*/React.createElement("div", {
+      }, say(SAY, 'leaderboard.oldRowLevel', { lv: e.level }))), /*#__PURE__*/React.createElement("div", {
         style: {
           /* v2.3.1235: batch-2 rollout — key number 16/700 tabular;
              brass TEXT for top-3 only */
@@ -402,6 +404,6 @@ export function LeaderboardPanel(props) {
         textAlign: 'center',
         padding: 14
       }
-    }, "Connect with more players to see rankings!")));
+    }, say(SAY, 'leaderboard.oldAlone'))));
   }()));
 }

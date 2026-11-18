@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
+import { SAY } from '@/data/say/heroExpanded.js';   /* v2.3.6325: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';   /* v2.3.6325: say() puts "tap" as "click" on a computer (v2.3.3615's deskWords) */
 /* v2.3.2131: the stat rows below became tappable explainers -- see the
    note on sheetRow.  The words live in infoGlossary so the hero sheet and
    anywhere else that ever shows these rows read from one copy. */
@@ -27,8 +28,8 @@ import {
    10 points") while a stat has a cap, "4 points" once it has none
    (caps.nostatcap: the 999 storage bound is no number to show anyone). */
 function ptsOf(pts, cap, unit) {
-  if (isStatCapFree()) return `${pts} point${pts === 1 ? '' : 's'}`;
-  return unit ? `${pts} of ${cap} points` : `${pts} of ${cap}`;
+  if (isStatCapFree()) return say(SAY, 'heroExpanded.statPoints', { n: pts });
+  return say(SAY, unit ? 'heroExpanded.statPointsOfCap' : 'heroExpanded.statPtsOfCap', { pts, cap });
 }
 import { VitalBar, VITAL_ICONS, VITAL_LABEL, VITAL_TINT } from './VitalBar.jsx'; /* v2.3.1311; VITAL_LABEL v2.3.1883 */
 import { heroStatPills, heroStatFamilies, HERO_PILL_TONE } from './heroStatPills.js';      /* v2.3.3053: the stat pills */
@@ -130,13 +131,13 @@ const SECTION_ALIAS = { Me: 'Card' };   /* v2.3.4172 */
  * owner's art, and deleting art on a text change is not this commit's call.
  */
 const SECTION_LABEL = {
-  Card: 'Bro',             /* v2.3.4172: the card */
-  Overview: 'Equipment',   /* what the section actually shows: the worn six */
+  Card: say(SAY, 'heroExpanded.tabCard'),             /* v2.3.4172: the card */
+  Overview: say(SAY, 'heroExpanded.tabOverview'),   /* what the section actually shows: the worn six */
   /* v2.3.1849 (owner: "instead of build name it points").  The tab already
      carries a count badge of unspent POINTS, and "Build" named the activity
      while "Points" names the thing you have waiting — which is what makes
      the badge and the word say one thing instead of two. */
-  Build: 'Points',
+  Build: say(SAY, 'heroExpanded.tabBuild'),
 };
 /* Round-3 §6 state preservation: the selected section survives leaving
    the destination (module-scoped, session-only).  v2.3.1311: reset to
@@ -158,7 +159,7 @@ dashboardPanelBus.subscribe(() => {
    the way the dashboard names it.  The fourth column is the character:
    `shared: true` is what catGrid / catCard / catRow branch on, and it has no
    iconSrc because its picture is the portrait (read at render). */
-const SHARED_LANE = { key: 'shared', label: 'Shared', shared: true };
+const SHARED_LANE = { key: 'shared', label: say(SAY, 'heroExpanded.sharedLane'), shared: true };
 const POINT_LANES = ['sword', 'staff', 'bow']
   .map((k) => PROG3_SKILL_META.find((m) => m.key === k))
   .filter(Boolean)
@@ -503,7 +504,7 @@ export const HeroExpanded = () => {
         data-pill={p.key}
         role={info ? 'button' : undefined}
         tabIndex={info ? 0 : undefined}
-        aria-label={info ? `${p.label} ${p.value} — what is this?` : `${p.label} ${p.value}`}
+        aria-label={info ? say(SAY, 'heroExpanded.pillAsk', { stat: p.label, value: p.value }) : `${p.label} ${p.value}`}
         onPointerUp={info ? ((e) => {
           e.stopPropagation();
           infoPopupBus.open({ title: info.title, body: info.body, note: info.note, stat: String(p.value) });
@@ -621,7 +622,7 @@ export const HeroExpanded = () => {
   const vitalPill = (kind, cur, max) => (
     <div key={kind} data-vital={kind} title={VITAL_LABEL[kind]}
       data-family-head={kind === 'mana' ? undefined : vitalFam(kind)}
-      role="button" tabIndex={0} aria-label={`${VITAL_LABEL[kind]} ${Math.ceil(cur)} of ${Math.ceil(max)}: what it is made of`}
+      role="button" tabIndex={0} aria-label={say(SAY, 'heroExpanded.vitalAsk', { vital: VITAL_LABEL[kind], cur: Math.ceil(cur), max: Math.ceil(max) })}
       onClick={(e) => { e.stopPropagation(); setFamOpen(vitalFam(kind)); }}
       style={{ display: 'flex', flex: 'none', cursor: 'pointer', touchAction: 'manipulation' }}>
       <VitalBar
@@ -928,12 +929,12 @@ export const HeroExpanded = () => {
               {/* v2.3.3004's rule, kept: the Points light glows "until all
                   points are spent", the window open or not */}
               <span className="bt-pts-glow" data-pts-glow="tab" aria-hidden="true" />
-              {totalUnspent} to spend
+              {say(SAY, 'heroExpanded.tabToSpend', { n: totalUnspent })}
             </span>
           ) : null}
         </span>
         <button type="button" data-esc="" data-bro-popup-close={section}
-          aria-label={`Close ${popupLabel}`} title="Close"
+          aria-label={say(SAY, 'heroExpanded.closeAria', { window: popupLabel })} title={say(SAY, 'heroExpanded.close')}
           onClick={(e) => { e.stopPropagation(); setSection('Card'); }}
           style={{
             flex: 'none', width: 44, height: HERO_TAB_H, padding: 0, margin: '0 -4px 0 0',
@@ -1222,7 +1223,7 @@ export const HeroExpanded = () => {
                           color: rimCol, fontFamily: 'inherit',
                           fontSize: 11, fontWeight: 800, letterSpacing: '.04em',
                           cursor: 'pointer',
-                        }}>CHANGE</button>
+                        }}>{say(SAY, 'heroExpanded.changeButton')}</button>
                     )}
                     {/* ═══ v2.3.2143: TAKE THE CAPE OFF FROM ITS OWN SLOT ═══
                         Owner: "the bug of it not disappearing from bag after
@@ -1257,7 +1258,7 @@ export const HeroExpanded = () => {
                           color: rimCol, fontFamily: 'inherit',
                           fontSize: 11, fontWeight: 800, letterSpacing: '.04em',
                           cursor: 'pointer',
-                        }}>REMOVE</button>
+                        }}>{say(SAY, 'heroExpanded.removeButton')}</button>
                     )}
                   </div>
                   {/* ═══ v2.3.1845: THE ITEM, THEN ITS STATS ═══
@@ -1309,7 +1310,7 @@ export const HeroExpanded = () => {
                         <div style={{
                           fontSize: 11, fontWeight: 600, color: COL.muted,
                           textAlign: 'center',
-                        }}>{selSlot.ghost ? 'Nothing equipped here.' : 'No stat bonuses.'}</div>
+                        }}>{say(SAY, selSlot.ghost ? 'heroExpanded.slotEmpty' : 'heroExpanded.slotNoStats')}</div>
                       )}
                     </div>
                   </div>
@@ -1539,10 +1540,10 @@ export const HeroExpanded = () => {
               if (offline) { try { offlineWhy = ch0.reconnectNow ? ch0.reconnectNow() : 'reconnecting'; } catch (_e) { offlineWhy = 'reconnecting'; } }
               return {
                 blocked: offline
-                  ? (offlineWhy === 'elsewhere' ? 'This character is playing in another window.' : 'Reconnecting to the server. Try again in a moment.')
+                  ? say(SAY, offlineWhy === 'elsewhere' ? 'heroExpanded.spendElsewhere' : 'heroExpanded.spendReconnecting')
                   : avail <= 0
-                  ? `No ${st.atk ? ((PROG3_SKILL_META.find((k) => k.key === cat) || {}).label || 'lane') : 'unspent'} points to spend.`
-                  : pts >= cap ? `${st.label} is already at its cap.` : null,
+                  ? say(SAY, 'heroExpanded.spendNoPoints', { pool: st.atk ? ((PROG3_SKILL_META.find((k) => k.key === cat) || {}).label || say(SAY, 'heroExpanded.spendPoolLane')) : say(SAY, 'heroExpanded.spendPoolUnspent') })
+                  : pts >= cap ? say(SAY, 'heroExpanded.spendAtCap', { stat: st.label }) : null,
                 /* ═══ v2.3.2695: SPEND SEVERAL AT ONCE ═══
                    Owner: "Instead of one button for 'spend point' make it so
                    you can add points more quickly using +/- buttons then
@@ -1584,7 +1585,7 @@ export const HeroExpanded = () => {
                 const laneCat = st.atk ? (cat || buildCat) : prog3ActiveCat(R);
                 /* v2.3.2597: infoKey first — a shortened label may collide with
                    another stat's glossary entry (see prog3.js). */
-                const info = statInfo(st.infoKey || st.label) || { title: st.label, body: st.perText + ' per point.' };
+                const info = statInfo(st.infoKey || st.label) || { title: st.label, body: say(SAY, 'heroExpanded.perPointBody', { perText: st.perText }) };
                 /* v2.3.2695: the numbers follow the stepper -- rowsFor(n) is
                    what n points buy, and the window asks again each time the
                    count changes.  One point is what it opens on. */
@@ -1602,12 +1603,12 @@ export const HeroExpanded = () => {
                   const fmt = (v) => (pv && pv.pool ? String(Math.round(v)) : st.pct ? n1(v * 100) + '%' : n1(v));
                   const rows = [];
                   if (pv) {
-                    rows.push({ label: st.key === 'luck' ? 'Crit chance' : info.title, now: fmt(pv.statNow), after: pv.capped ? null : fmt(pv.statAfter) });
+                    rows.push({ label: st.key === 'luck' ? say(SAY, 'heroExpanded.rowCritChance') : info.title, now: fmt(pv.statNow), after: pv.capped ? null : fmt(pv.statAfter) });
                     /* v2.3.2592: LUCK buys two things per point; the second half
                        gets its own row so "what will my crit damage BE" is
                        answered beside "what will my crit chance BE". */
                     if (typeof pv.statNow2 === 'number') {
-                      rows.push({ label: 'Crit damage', now: '+' + n1(pv.statNow2 * 100) + '%',
+                      rows.push({ label: say(SAY, 'heroExpanded.rowCritDamage'), now: '+' + n1(pv.statNow2 * 100) + '%',
                         after: pv.capped ? null : '+' + n1(pv.statAfter2 * 100) + '%' });
                     }
                     /* v2.3.2695: a SHARED stat drops the DPS line (owner: "Remove
@@ -1635,10 +1636,10 @@ export const HeroExpanded = () => {
                          a bug report, not an answer.  The note rides the row's
                          own metadata (dpsNote). */
                       rows.push(pv.dpsDelta * DISPLAY_SCALE_K > 0.049
-                        ? { label: 'DPS', now: n2(pv.dpsNow), after: n2(pv.dpsAfter), delta: '+' + n2(pv.dpsDelta) }
-                        : { label: 'DPS', now: n2(pv.dpsNow), after: null, delta: st.dpsNote || 'does not change damage' });
+                        ? { label: say(SAY, 'heroExpanded.rowDps'), now: n2(pv.dpsNow), after: n2(pv.dpsAfter), delta: '+' + n2(pv.dpsDelta) }
+                        : { label: say(SAY, 'heroExpanded.rowDps'), now: n2(pv.dpsNow), after: null, delta: st.dpsNote || say(SAY, 'heroExpanded.dpsNoChange') });
                     } else {
-                      rows.push({ label: 'DPS', now: '—', after: null, delta: 'equip a weapon to see' });
+                      rows.push({ label: say(SAY, 'heroExpanded.rowDps'), now: '—', after: null, delta: say(SAY, 'heroExpanded.dpsNoWeapon') });
                     }
                   }
                   return { rows, capped: !!(pv && pv.capped) };
@@ -1661,12 +1662,12 @@ export const HeroExpanded = () => {
                 const payload = {
                   title: info.title + (st.atk
                     ? ' · ' + (laneMeta.label || '')
-                    : ' · Shared'),
+                    : say(SAY, 'heroExpanded.titleSharedTail')),
                   titleParts: [{ label: info.title, icon: st.iconSrc }],
                   /* v2.3.2680: a stat that fades against stronger monsters says
                      so, once, under its explainer. */
                   body: info.body, note: st.fades ? (info.note ? info.note + ' ' : '') + PROG3_FADE_NOTE : info.note,
-                  perText: 'Each point: ' + st.perText,
+                  perText: say(SAY, 'heroExpanded.eachPoint', { perText: st.perText }),
                   /* ═══ v2.3.2696: LESS TO READ ═══
                      Owner: "It's a lot of words but good information.  What's
                      a better solution to make the user understand without
@@ -1678,8 +1679,8 @@ export const HeroExpanded = () => {
                   hook: st.hook || info.body,
                   chips: [
                     ...(st.fades ? [{ key: 'fade', icon: '⚠\uFE0E', warn: true,
-                      label: 'Weaker vs. higher levels', text: PROG3_FADE_NOTE }] : []),
-                    { key: 'how', icon: 'ⓘ', label: 'Details',
+                      label: say(SAY, 'heroExpanded.chipFades'), text: PROG3_FADE_NOTE }] : []),
+                    { key: 'how', icon: 'ⓘ', label: say(SAY, 'heroExpanded.chipDetails'),
                       text: info.body + (info.note ? ' ' + info.note : '') },
                   ],
                   /* the curve, drawn: how far along its maximum the stat is now,
@@ -1740,7 +1741,7 @@ export const HeroExpanded = () => {
                   /* v2.3.2695: `stepMax` turns the button into the owner's
                      [-] n [+] [Spend] row (InfoPopup); run(n) sends n. */
                   action: spend ? {
-                    label: 'Spend point',
+                    label: say(SAY, 'heroExpanded.spendButton'),
                     blocked: spend.blocked,
                     stepMax: spend.max,
                     /* ═══ v2.3.3522: SPEND, AND STAY ═══
@@ -1758,7 +1759,7 @@ export const HeroExpanded = () => {
                     },
                   } : undefined,
                   /* v2.3.3522: what the last Spend bought ("✓ 2 points spent") */
-                  spentNote: spentN > 0 ? `✓ ${spentN} point${spentN === 1 ? '' : 's'} spent` : null,
+                  spentNote: spentN > 0 ? say(SAY, 'heroExpanded.spentNote', { n: spentN }) : null,
                   /* v2.3.3551: and on a first spend -- everything placed is what
                      this window just spent -- that the free reset gives them
                      back (game/pointsTips.js), so trying a stat is safe */
@@ -1792,7 +1793,7 @@ export const HeroExpanded = () => {
                         }))
                       /* v2.3.2695: owner -- "on the highlighted button instead
                          of 'shared' just say 'Unspent Points'". */
-                      : [{ key: 'shared', label: 'Unspent Points', icon: POINTS_ICONS.shared, pts: sharedAvail }],
+                      : [{ key: 'shared', label: say(SAY, 'heroExpanded.lanePickShared'), icon: POINTS_ICONS.shared, pts: sharedAvail }],
                     onPick: st.atk ? ((k) => {
                       /* v2.3.3051: the tab aims the WINDOW only; the grid behind
                          it stays on the weapon in your hand (the owner's "show
@@ -1892,11 +1893,11 @@ export const HeroExpanded = () => {
                 if (col.shared) {
                   const n = sharedAvail;
                   infoPopupBus.open({
-                    title: `Shared — Level ${prog3CharLevel(R)}`,
+                    title: say(SAY, 'heroExpanded.sharedInfoTitle', { level: prog3CharLevel(R) }),
                     body: sharedCaps
-                      ? 'Every level-up in any combat skill also earns shared points. They buy the stats that belong to your character rather than to one weapon: HP, Defense, Mana, Stamina, Dodge, Speed and Resist.'
-                      : 'The stats that belong to your character rather than to one weapon: HP, Defense, Mana, Stamina, Dodge and Resist. Any combat point can be spent here.',
-                    note: n > 0 ? `You have ${n} shared point${n === 1 ? '' : 's'} to spend.` : 'Level up any combat skill to earn more.',
+                      ? say(SAY, 'heroExpanded.sharedInfoBodyCaps')
+                      : say(SAY, 'heroExpanded.sharedInfoBody'),
+                    note: n > 0 ? say(SAY, 'heroExpanded.sharedInfoNote', { n }) : say(SAY, 'heroExpanded.sharedInfoNoteNone'),
                   });
                   return;
                 }
@@ -1904,9 +1905,9 @@ export const HeroExpanded = () => {
                 const lvl = prog3SkillLevel(R, col.key);
                 const n = laneAvail(col.key);
                 infoPopupBus.open({
-                  title: `${info ? info.title : col.label} — Level ${lvl}`,
-                  body: (info ? info.body + ' ' : '') + `Its points buy only this weapon's six stats: Range, Power, Speed, Luck, Special and Elemental.`,
-                  note: n > 0 ? `You have ${n} ${col.label} point${n === 1 ? '' : 's'} to spend.` : `Fight with a ${col.label.toLowerCase()} weapon to earn more.`,
+                  title: say(SAY, 'heroExpanded.laneInfoTitle', { skill: info ? info.title : col.label, level: lvl }),
+                  body: (info ? info.body + ' ' : '') + say(SAY, 'heroExpanded.laneInfoBody'),
+                  note: n > 0 ? say(SAY, 'heroExpanded.laneInfoNote', { n, lane: col.label }) : say(SAY, 'heroExpanded.laneInfoNoteNone', { lane: col.label.toLowerCase() }),
                 });
               } catch (e) { /* an explainer must never block a spend */ }
             };
@@ -2161,8 +2162,8 @@ export const HeroExpanded = () => {
                   return (
                     <div key={col.key} role="button"
                       data-prog3-lane={col.key}
-                      aria-label={`${col.label}, level ${lvl}`}
-                      title={`${col.label} — level ${lvl} — ${pts} point${pts === 1 ? '' : 's'} to spend — ${spent} already applied`}
+                      aria-label={say(SAY, 'heroExpanded.laneAria', { lane: col.label, level: lvl })}
+                      title={say(SAY, 'heroExpanded.laneTitle', { lane: col.label, level: lvl, n: pts, spent })}
                       {...scrollTap(() => setSelCat(col.key))}
                       style={{
                         height: GRID_H, boxSizing: 'border-box', minWidth: 0,
@@ -2188,12 +2189,12 @@ export const HeroExpanded = () => {
                           color: pts > 0 ? COL.accent : COL.text,
                           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%',
                         }}>{col.label}</span>
-                        <span aria-label={`${pts} points to spend on ${col.label}`}
+                        <span aria-label={say(SAY, 'heroExpanded.laneToSpendAria', { n: pts, lane: col.label })}
                           style={{
                             fontSize: 11.5, fontWeight: 700, lineHeight: 1.1, color: COL.text2,
                             fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
                             visibility: pts > 0 ? 'visible' : 'hidden',
-                          }}>{pts} PT{pts === 1 ? '' : 'S'}</span>
+                          }}>{say(SAY, 'heroExpanded.laneCount', { n: pts })}</span>
                         {/* ═══ v2.3.2620: ...AND WHAT IS ALREADY IN IT ═══
                             The line above is what this category can still spend
                             and is deliberately INVISIBLE at zero (the tile keeps
@@ -2208,7 +2209,7 @@ export const HeroExpanded = () => {
                             gaps — and it is muted rather than gold so the gold
                             on this screen keeps meaning "there is something to
                             spend here". */}
-                        <span aria-label={`${spent} points applied to ${col.label}`}
+                        <span aria-label={say(SAY, 'heroExpanded.laneSpentAria', { n: spent, lane: col.label })}
                           style={{
                             /* text2, not muted: on a tile carrying points the
                                background is accentFill, where muted measures
@@ -2218,7 +2219,7 @@ export const HeroExpanded = () => {
                             letterSpacing: '.04em', fontVariantNumeric: 'tabular-nums',
                             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                             maxWidth: '100%',
-                          }}>{spent} SPENT</span>
+                          }}>{say(SAY, 'heroExpanded.laneSpent', { n: spent })}</span>
                       </div>
                     </div>
                   );
@@ -2358,9 +2359,9 @@ export const HeroExpanded = () => {
                      from a CURVE stat -- its points count most first, so a fixed
                      per-point rate is wrong -- on the card's [+].  The grid cell
                      arrived in the same merge and follows it. */
-                  aria-label={`${st.label}${st.atk ? ' for ' + cat : ''}, ${ptsOf(pts, cap, false)}. ${st.perText}${st.curve ? '' : ' per point'}.`}
+                  aria-label={say(SAY, 'heroExpanded.statAria', { stat: st.label, lane: st.atk ? say(SAY, 'heroExpanded.statLane', { lane: cat }) : '', pts: ptsOf(pts, cap, false), perText: st.perText, perPoint: st.curve ? '' : say(SAY, 'heroExpanded.perPointTail') })}
                   aria-disabled={!canSpend}
-                  title={`${st.label} — ${ptsOf(pts, cap, true)} — now ${statValueText(st, cat)} — ${st.perText}${st.curve ? '' : ' per point'}`}
+                  title={say(SAY, 'heroExpanded.statTitle', { stat: st.label, pts: ptsOf(pts, cap, true), now: statValueText(st, cat), perText: st.perText, perPoint: st.curve ? '' : say(SAY, 'heroExpanded.perPointTail') })}
                   {...scrollTap(() => openStatInfo(st, cat, spendFor(st, cat)))}
                   style={{
                     height: CELL_H, minWidth: 0, boxSizing: 'border-box',
@@ -2596,10 +2597,10 @@ export const HeroExpanded = () => {
                 <div
                   data-prog3-lane={isLane ? buildCat : 'shared'}
                   aria-label={isLane
-                    ? `${(PROG3_SKILL_META.find((k) => k.key === buildCat) || {}).label || buildCat}, level ${prog3SkillLevel(R, buildCat)}. `
-                      + POINT_LANES.filter((c) => !c.shared).map((c) => `${c.label} ${laneAvail(c.key)} to spend`).join(', ')
-                    : `Shared, level ${prog3CharLevel(R)}. ${sharedAvail} to spend`}
-                  title={isLane ? 'Tap a weapon to see its points' : 'Shared stats'}
+                    ? say(SAY, 'heroExpanded.headLaneAria', { lane: (PROG3_SKILL_META.find((k) => k.key === buildCat) || {}).label || buildCat, level: prog3SkillLevel(R, buildCat),
+                      pools: POINT_LANES.filter((c) => !c.shared).map((c) => say(SAY, 'heroExpanded.headPool', { lane: c.label, n: laneAvail(c.key) })).join(', ') })
+                    : say(SAY, 'heroExpanded.headSharedAria', { level: prog3CharLevel(R), n: sharedAvail })}
+                  title={say(SAY, isLane ? 'heroExpanded.headLaneTip' : 'heroExpanded.headSharedTip')}
                   style={{
                     height: CELL_H, minWidth: 0, boxSizing: 'border-box',
                     /* v2.3.2686's hairline after the head is the frame's own
@@ -2637,7 +2638,7 @@ export const HeroExpanded = () => {
                             {...(c.key === heldCat ? { 'data-prog3-held': c.key } : null)}
                             {...(on ? { 'data-points-shown': c.key } : null)}
                             aria-pressed={on}
-                            aria-label={`Show ${c.label}'s points`}
+                            aria-label={say(SAY, 'heroExpanded.showLanePoints', { lane: c.label })}
                             onClick={(e) => { e.stopPropagation(); setBuildCat(c.key); }}
                             style={{
                               flex: '1 1 0', minHeight: 0, display: 'flex', alignItems: 'center', gap: PH_GAP,
@@ -2715,7 +2716,7 @@ export const HeroExpanded = () => {
                Every row is the cell's own button: the same handles, the same
                window on a click. */
             const DESK_NUM_H = 20;
-            const deskName = (st) => (st.key === 'aspd' ? 'Attack Speed' : (st.infoKey || st.label));
+            const deskName = (st) => (st.key === 'aspd' ? say(SAY, 'heroExpanded.deskAttackSpeed') : (st.infoKey || st.label));
             const statRowDesk = (st, cat) => {
               const pts = st.atk ? prog3AtkPts(R, cat, st.key) : prog3Pts(R, st.key);
               const cap = prog3StatCap(R, st.key);
@@ -2728,9 +2729,9 @@ export const HeroExpanded = () => {
                   data-prog3-plus={lk}
                   data-stat-info={st.key}
                   role="button"
-                  aria-label={`${st.label}${st.atk ? ' for ' + cat : ''}, ${ptsOf(pts, cap, false)}. ${st.perText}${st.curve ? '' : ' per point'}.`}
+                  aria-label={say(SAY, 'heroExpanded.statAria', { stat: st.label, lane: st.atk ? say(SAY, 'heroExpanded.statLane', { lane: cat }) : '', pts: ptsOf(pts, cap, false), perText: st.perText, perPoint: st.curve ? '' : say(SAY, 'heroExpanded.perPointTail') })}
                   aria-disabled={!canSpend}
-                  title={`${st.label} — ${ptsOf(pts, cap, true)} — now ${statValueText(st, cat)} — ${st.perText}${st.curve ? '' : ' per point'}`}
+                  title={say(SAY, 'heroExpanded.statTitle', { stat: st.label, pts: ptsOf(pts, cap, true), now: statValueText(st, cat), perText: st.perText, perPoint: st.curve ? '' : say(SAY, 'heroExpanded.perPointTail') })}
                   {...scrollTap(() => openStatInfo(st, cat, spendFor(st, cat)))}
                   style={{
                     flex: '1 0 36px', maxHeight: 54, minWidth: 0, boxSizing: 'border-box',
@@ -2746,7 +2747,7 @@ export const HeroExpanded = () => {
                     <span style={{ fontSize: 13, fontWeight: 800, letterSpacing: '.03em', textTransform: 'uppercase', color: COL.text,
                       whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.1 }}>{deskName(st)}</span>
                     <span style={{ fontSize: 11.5, fontWeight: 600, color: COL.text2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.1 }}>
-                      Now {statValueText(st, cat)}
+                      {say(SAY, 'heroExpanded.deskNow', { now: statValueText(st, cat) })}
                     </span>
                   </span>
                   <span data-cell-num data-pts={pts} aria-hidden="true" style={{
@@ -2778,7 +2779,7 @@ export const HeroExpanded = () => {
                         {...(c.key === heldCat ? { 'data-prog3-held': c.key } : null)}
                         {...(on ? { 'data-points-shown': c.key } : null)}
                         aria-pressed={on}
-                        aria-label={`Show ${c.label}'s points`}
+                        aria-label={say(SAY, 'heroExpanded.showLanePoints', { lane: c.label })}
                         onClick={(e) => { e.stopPropagation(); setBuildCat(c.key); }}
                         style={{
                           flex: '1 1 0', minWidth: 0, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
@@ -2806,7 +2807,7 @@ export const HeroExpanded = () => {
                         width: 26, height: 26, flex: 'none', objectFit: 'contain', display: 'block', pointerEvents: 'none',
                       }} />
                       <span style={{ flex: 1, minWidth: 0, fontSize: 12, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase', color: COL.text2 }}>
-                        Character · every weapon
+                        {say(SAY, 'heroExpanded.deskCharacterHead')}
                       </span>
                       {headCount(sharedAvail, 'shared', 18, 30)}
                     </div>,
@@ -2997,7 +2998,7 @@ export const HeroExpanded = () => {
                       something to spend" while this number is the opposite
                       reading: what is already committed. */}
                   <span data-prog3-applied={lk}
-                    aria-label={`${st.label}${st.atk ? ' for ' + cat : ''}: ${ptsOf(pts, cap, true)} applied`}
+                    aria-label={say(SAY, 'heroExpanded.statApplied', { stat: st.label, lane: st.atk ? say(SAY, 'heroExpanded.statLane', { lane: cat }) : '', pts: ptsOf(pts, cap, true) })}
                     style={{
                       /* Two digits reserved, right-aligned, so the numbers
                          line up down the card and a 9 -> 10 does not shuffle
@@ -3052,7 +3053,7 @@ export const HeroExpanded = () => {
                     role="button"
                     data-prog3-plus={lk}
                     data-stat-info={st.key}
-                    aria-label={`${st.label}${st.atk ? ' for ' + cat : ''}, ${ptsOf(pts, cap, false)}. ${st.perText}${st.curve ? '' : ' per point'}.`}
+                    aria-label={say(SAY, 'heroExpanded.statAria', { stat: st.label, lane: st.atk ? say(SAY, 'heroExpanded.statLane', { lane: cat }) : '', pts: ptsOf(pts, cap, false), perText: st.perText, perPoint: st.curve ? '' : say(SAY, 'heroExpanded.perPointTail') })}
                     aria-disabled={!canSpend}
                     /* v2.3.2620: ...and the long-press says what the stat READS
                        right now, which is the other half of what v2.3.2597 took
@@ -3061,7 +3062,7 @@ export const HeroExpanded = () => {
                        row's own line prints the POINTS and this prints what they
                        bought ("31.0%", "1-2"), so the pair is back without
                        either of them costing the cell a pixel. */
-                    title={`${st.label} — ${ptsOf(pts, cap, true)} — now ${statValueText(st, cat)} — ${st.perText}${st.curve ? '' : ' per point'}`}
+                    title={say(SAY, 'heroExpanded.statTitle', { stat: st.label, pts: ptsOf(pts, cap, true), now: statValueText(st, cat), perText: st.perText, perPoint: st.curve ? '' : say(SAY, 'heroExpanded.perPointTail') })}
                     {...scrollTap(() => openStatInfo(st, cat, spendFor(st, cat)), { inner: true })}
                     onClick={(e) => e.stopPropagation()}
                     style={{
@@ -3154,7 +3155,7 @@ export const HeroExpanded = () => {
                   }}>
                     <button type="button"
                       data-prog3-back
-                      aria-label="Back to categories"
+                      aria-label={say(SAY, 'heroExpanded.backAria')}
                       {...scrollTap(() => setSelCat(null), { inner: true })}
                       onClick={(e) => e.stopPropagation()}
                       style={{
@@ -3163,7 +3164,7 @@ export const HeroExpanded = () => {
                         color: COL.text, fontSize: 12, fontWeight: 800, lineHeight: 1,
                         display: 'flex', alignItems: 'center', gap: 4,
                         cursor: 'pointer', touchAction: 'manipulation',
-                      }}>{'\u2190'}{landPane ? '' : ' Back'}</button>
+                      }}>{'\u2190'}{landPane ? '' : say(SAY, 'heroExpanded.backWord')}</button>
                     <img src={shared ? sharedIcon : col.iconSrc} alt="" draggable={false}
                       onError={shared ? (e) => { if (e.currentTarget.src.indexOf(SHARED_ICON_FALLBACK) < 0) e.currentTarget.src = SHARED_ICON_FALLBACK; } : undefined}
                       style={{
@@ -3174,7 +3175,7 @@ export const HeroExpanded = () => {
                       }} />
                     <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
                       <span data-prog3-lane={col.key}
-                        aria-label={`${col.label}, level ${lvl}`}
+                        aria-label={say(SAY, 'heroExpanded.laneAria', { lane: col.label, level: lvl })}
                         style={{
                           fontSize: landPane ? 13 : 15, fontWeight: 900, letterSpacing: '.04em',
                           textTransform: 'uppercase', color: COL.accent, lineHeight: 1,
@@ -3182,17 +3183,17 @@ export const HeroExpanded = () => {
                         }}>{col.label}</span>
                       {/* The owner's one change from the shots: the points sit
                           beside the icon rather than under the title. */}
-                      <span aria-label={`${pts} points to spend on ${col.label}`}
+                      <span aria-label={say(SAY, 'heroExpanded.laneToSpendAria', { n: pts, lane: col.label })}
                         style={{
                           fontSize: 11.5, fontWeight: 700, lineHeight: 1.1,
                           color: pts > 0 ? COL.accent : COL.text2,
                           fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
                           overflow: 'hidden', textOverflow: 'ellipsis',
-                        }}>{pts} PT{pts === 1 ? '' : 'S'}{landPane ? '' : ' AVAILABLE'}</span>
+                        }}>{say(SAY, 'heroExpanded.laneCount', { n: pts })}{landPane ? '' : say(SAY, 'heroExpanded.laneCountTail')}</span>
                     </div>
                     <button type="button"
                       data-lane-info={col.key}
-                      aria-label={`About ${col.label}`}
+                      aria-label={say(SAY, 'heroExpanded.laneAbout', { lane: col.label })}
                       {...scrollTap(() => openLaneInfo(col), { inner: true })}
                       onClick={(e) => e.stopPropagation()}
                       style={{
@@ -3202,7 +3203,7 @@ export const HeroExpanded = () => {
                         fontFamily: 'Georgia, "Times New Roman", serif', fontStyle: 'italic',
                         lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
                         cursor: 'pointer', touchAction: 'manipulation',
-                      }}>i</button>
+                      }}>{say(SAY, 'heroExpanded.laneInfoGlyph')}</button>
                   </div>
                   {/* ═══ v2.3.2597: TWO COLUMNS INSIDE THE CARD ═══
                       Owner: "Once inside the category panel try doing two
@@ -3387,7 +3388,7 @@ export const HeroExpanded = () => {
                         color: armed ? COL.accent : COL.text2,
                         fontSize: 13, fontWeight: 700, letterSpacing: 0.2, cursor: 'pointer',
                       }}>
-                      {armed ? deskWords('Tap again: every point comes back') : '↺ Reset points (free)'}
+                      {say(SAY, armed ? 'heroExpanded.resetArmed' : 'heroExpanded.resetButton')}
                     </button>
                   );
                 })()}
@@ -3413,8 +3414,8 @@ export const HeroExpanded = () => {
             fontSize: 11, fontWeight: 700, letterSpacing: '.06em',
             color: totalUnspent > 0 ? COL.accent : COL.text2,
           }}>
-            <span>BUILD POINTS</span>
-            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{totalUnspent} AVAILABLE</span>
+            <span>{say(SAY, 'heroExpanded.oldBuildHead')}</span>
+            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{say(SAY, 'heroExpanded.oldBuildAvailable', { n: totalUnspent })}</span>
           </div>
           {/* v2.3.1311d (owner): the six parents are LAUNCHERS — every
               tile is ALWAYS tappable and opens that parent's five-
@@ -3517,7 +3518,7 @@ export const HeroExpanded = () => {
                       style={{ width: 26, height: 26, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 12.5, fontWeight: 700, color: COL.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.15 }}>{s.label}</div>
-                      <div style={{ fontSize: 11, fontWeight: 800, color: COL.text2, fontVariantNumeric: 'tabular-nums', lineHeight: 1.15 }}>Lv {lvl}</div>
+                      <div style={{ fontSize: 11, fontWeight: 800, color: COL.text2, fontVariantNumeric: 'tabular-nums', lineHeight: 1.15 }}>{say(SAY, 'heroExpanded.oldTileLevel', { level: lvl })}</div>
                     </div>
                     <span aria-hidden="true" style={{ flex: 'none', fontSize: 13, fontWeight: 800, color: COL.text2, lineHeight: 1 }}>›</span>
                   </div>

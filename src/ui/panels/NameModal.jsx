@@ -1,5 +1,6 @@
 import React from 'react';
-import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
+import { SAY } from '@/data/say/nameModal.js';   /* v2.3.6331: its words, in the one table (docs/specs/player-words.md, W1) */
+import { say } from '@/game/say.js';   /* v2.3.6331: a plain row's "tap" reads "click" on a computer (was deskWords here, v2.3.3615) */
 import { PlayerPaint, WornPreview, PatternSwatch } from './PlayerPaint.jsx';   /* v2.3.1938; v2.3.1940 pants + tattoos; v2.3.2414 WornPreview + PatternSwatch for the inline tools */
 /* v2.3.2414: the ink card reads the drawing stores directly.  It shows what
    you ALREADY wear, so it has to repaint when the editor closes having changed
@@ -42,7 +43,6 @@ import { SHIRT_CATALOG, setShirt } from '@/rendering/traits/shirtCatalog.js';
 import { SHIRT_COLOR_CATALOG, setShirtColor } from '@/rendering/traits/shirtColorCatalog.js';
 import { recolorEnabled, SOLID_ONLY_HAT_COLOR } from '@/rendering/traits/recolorOptions.js';
 import { HEIGHT_CATALOG } from '@/rendering/traits/buildCatalog.js';   /* v2.3.1953; v2.3.1996: frame picker removed; v2.3.2268: the tab went with the height axis, so `setBuildHeight` has no caller left here -- HEIGHT_CATALOG stays because the unreached _buildTile branch below still names it, and that branch is the restoration path */
-import { fineInput } from '../../game/deviceProfile.js';   /* v2.3.4804: the device profile */
 
 /* === NameModal — the character-creator / name-entry splash screen === */
 /* v2.3.888: extracted verbatim from the `if (showNameModal) { ... }`
@@ -231,7 +231,7 @@ export function NameModal(props) {
      the picker: their catalog 'default' entries carry the sprite's native
      colors).  Same setter pairs (sprite store + React mirror) as ever. */
   var _typeDefs = {
-    hair: { label: 'Hair', kind: 'thumb', spriteCat: 'hair', catalog: HAIR_CATALOG, sel: hairSel,
+    hair: { label: say(SAY, 'nameModal.hairType'), kind: 'thumb', spriteCat: 'hair', catalog: HAIR_CATALOG, sel: hairSel,
       set: function (id) { setHair(id); setHairSel(id); },
       colors: recolorEnabled('hair') ? _hairColCat : null, colorSel: hairColorSel, setColor: function (id) { setHairColor(id); setHairColorSel(id); } },
     /* v2.3.1493: the color row only appears for hats flagged `solid`.  It used
@@ -239,7 +239,7 @@ export function NameModal(props) {
        multi-tone hat flattens its accents, and recoloring one of the generated
        hats repaints the head still baked into its frame, so the hidden head
        became a solid-colored second head.  Four hats are solid and keep it. */
-    hat: { label: 'Hats', kind: 'thumb', spriteCat: 'headwear', catalog: HEADWEAR_CATALOG, sel: headwearSel,
+    hat: { label: say(SAY, 'nameModal.hatType'), kind: 'thumb', spriteCat: 'headwear', catalog: HEADWEAR_CATALOG, sel: headwearSel,
       set: function (id) { setHeadwear(id); setHeadwearSel(id); },
       /* v2.3.1927: hatColorsFor drops the colours this particular hat does not
          offer -- the crown's yellow, which is the colour it already is. */
@@ -258,7 +258,7 @@ export function NameModal(props) {
        pair with no decided answer (3d-glasses), which deletes the row the same
        way `colors: null` did for all of them until now.  See
        eyewearColorCatalog.js for the decomposition behind each choice. */
-    eyewear: { label: 'Eyewear', kind: 'thumb', spriteCat: 'eyewear', catalog: EYEWEAR_CATALOG, sel: eyewearSel,
+    eyewear: { label: say(SAY, 'nameModal.eyewearType'), kind: 'thumb', spriteCat: 'eyewear', catalog: EYEWEAR_CATALOG, sel: eyewearSel,
       set: function (id) { setEyewear(id); setEyewearSel(id); },
       colors: recolorEnabled('eyewear') ? eyewearColorsFor(eyewearSel) : null,
       colorLabel: eyewearPaints(eyewearSel),
@@ -303,7 +303,7 @@ export function NameModal(props) {
        flames on Demon, and a row that does not say so is lying about what it
        does.  It is null on 'none', where the row means the eyes themselves and
        the label would be answering a question nobody asked. */
-    eyes: { label: 'Eyes', kind: 'thumb', spriteCat: 'eyestyle', catalog: EYE_STYLE_CATALOG, sel: eyeStyleSel,
+    eyes: { label: say(SAY, 'nameModal.eyesType'), kind: 'thumb', spriteCat: 'eyestyle', catalog: EYE_STYLE_CATALOG, sel: eyeStyleSel,
       set: function (id) { setEyeStyle(id); setEyeStyleSel(id); },
       colors: recolorEnabled('eyes') ? EYE_COLOR_CATALOG : null, colorsWhenNone: true,
       colorLabel: eyeStylePaints(eyeStyleSel),   /* v2.3.2645 */
@@ -317,7 +317,7 @@ export function NameModal(props) {
        been drawn under the species since v2.3.2682 -- the look the owner has
        been using, so they are drawn that size here (.bt-cc-strip--compact,
        game.css). */
-    skin: { label: 'Skin Tone', kind: 'swatch', spriteCat: null, catalog: SKIN_CATALOG, sel: skinSel, compact: true,
+    skin: { label: say(SAY, 'nameModal.skinType'), kind: 'swatch', spriteCat: null, catalog: SKIN_CATALOG, sel: skinSel, compact: true,
       set: function (id) { setSkin(id); setSkinSel(id); }, colors: null },
     /* ═══ v2.3.2682: THE SKIN TAB PICKS A SPECIES **AND** A COLOUR ═══
        Owner: "Make sure it's available in trait picker."  The Eyes tab's
@@ -351,7 +351,7 @@ export function NameModal(props) {
            eyes he still wears; a style the player picked stays. */
     /* v2.3.3772: the owner, 2026-10-28: "Change species to bro type" -- the
        word a player reads; the code still says species */
-    species: { label: 'Bro type', kind: 'thumb', spriteCat: 'species', catalog: SPECIES_CATALOG, sel: speciesSel,
+    species: { label: say(SAY, 'nameModal.speciesType'), kind: 'thumb', spriteCat: 'species', catalog: SPECIES_CATALOG, sel: speciesSel,
       set: function (id) {
         var was = speciesSel;
         setSpecies(id); setSpeciesSel(id);
@@ -366,15 +366,15 @@ export function NameModal(props) {
         else if (!eyes && wasEyes && eyeStyleSel === wasEyes) { setEyeStyle('none'); setEyeStyleSel('none'); }
       },
       colors: null },
-    beard: { label: 'Beard', kind: 'thumb', spriteCat: 'facialhair', catalog: FACIALHAIR_CATALOG, sel: facialHairSel,
+    beard: { label: say(SAY, 'nameModal.beardType'), kind: 'thumb', spriteCat: 'facialhair', catalog: FACIALHAIR_CATALOG, sel: facialHairSel,
       set: function (id) { setFacialHair(id); setFacialHairSel(id); },
       colors: recolorEnabled('beard') ? FACIALHAIR_COLOR_CATALOG : null, colorSel: beardColorSel, setColor: function (id) { setFacialHairColor(id); setBeardColorSel(id); } },
-    shirt: { label: 'Shirts', kind: 'thumb', spriteCat: 'shirt', catalog: SHIRT_CATALOG, sel: shirtSel,
+    shirt: { label: say(SAY, 'nameModal.shirtType'), kind: 'thumb', spriteCat: 'shirt', catalog: SHIRT_CATALOG, sel: shirtSel,
       set: function (id) { setShirt(id); setShirtSel(id); },
       colors: recolorEnabled('shirt') ? SHIRT_COLOR_CATALOG : null, colorSel: shirtColorSel, setColor: function (id) { setShirtColor(id); setShirtColorSel(id); } },
-    pants: { label: 'Pants', kind: 'swatch', spriteCat: null, catalog: PANTS_CATALOG, sel: pantsSel,
+    pants: { label: say(SAY, 'nameModal.pantsType'), kind: 'swatch', spriteCat: null, catalog: PANTS_CATALOG, sel: pantsSel,
       set: function (id) { setPants(id); setPantsSel(id); }, colors: null },
-    shoes: { label: 'Shoes', kind: 'swatch', spriteCat: null, catalog: SHOES_CATALOG, sel: shoesSel,
+    shoes: { label: say(SAY, 'nameModal.shoesType'), kind: 'swatch', spriteCat: null, catalog: SHOES_CATALOG, sel: shoesSel,
       set: function (id) { setShoes(id); setShoesSel(id); }, colors: null },
     /* ═══ v2.3.2268: THE BUILD TAB IS GONE ═══
        Owner: "I changed my mind on the build sizes during the create a
@@ -473,8 +473,8 @@ export function NameModal(props) {
        explaining what shows the face instead.
        The verb doubles as the empty state in words, beside the + on the
        picture -- the same idea arriving on two channels. */
-    shirt: { target: 'shirt', label: 'Pattern or draw on this shirt' },
-    pants: { target: 'pants', label: 'Pattern or draw on these pants' },
+    shirt: { target: 'shirt', label: say(SAY, 'nameModal.shirtPaint') },
+    pants: { target: 'pants', label: say(SAY, 'nameModal.pantsPaint') },
     /* v2.3.1949: one button, three canvases -- the panel's mode strip picks
        chest, face or arms.  The label says so, because a face tattoo nobody
        knows exists is a face tattoo nobody draws. */
@@ -483,11 +483,11 @@ export function NameModal(props) {
        sneaker for shoes.  shirt and pants keep the inline pencil: a print on a
        garment IS drawing, and the pencil says that better than a second shirt
        icon would beside a tab already showing shirts. */
-    skin: { target: 'tattoo', label: 'Tattoo your body or face', icon: 'cc-draw-tattoo' },   /* v2.3.1978: two screens, not three */
+    skin: { target: 'tattoo', label: say(SAY, 'nameModal.skinPaint'), icon: 'cc-draw-tattoo' },   /* v2.3.1978: two screens, not three */
     /* v2.3.1944: shoes are pattern-only — no drawing on an eight-pixel boot,
        which is also why the noun is 'pattern' and never 'design': "draw" would
        be a lie on this tab. */
-    shoes: { target: 'shoes', label: 'Pattern these shoes', icon: 'cc-draw-shoes' },
+    shoes: { target: 'shoes', label: say(SAY, 'nameModal.shoesPaint'), icon: 'cc-draw-shoes' },
   };
   /* v2.3.2415: the pattern currently on a slot, parsed.  patternCatalog
      stores "<id>:<colourIndex>" as one string and the shoes tool row needs
@@ -514,24 +514,24 @@ export function NameModal(props) {
        Alien, as its strip offers them (cc-tab-brotype.png,
        tools/ui/make_brotype_tab_icon.py: their picker tiles' own heads), drawn
        at the tabs' icon height with its own width (`trio`, game.css). */
-    { t: 'species', label: 'Bro type', img: _TAB_ICON('brotype'), wide: true, trio: true },
-    { t: 'hair', label: 'Hair', img: _TAB_ICON('hair') },
-    { t: 'hat', label: 'Hats', img: _TAB_ICON('hat') },
-    { t: 'skin', label: 'Skin', img: _TAB_ICON('skin') },
+    { t: 'species', label: say(SAY, 'nameModal.speciesTab'), img: _TAB_ICON('brotype'), wide: true, trio: true },
+    { t: 'hair', label: say(SAY, 'nameModal.hairTab'), img: _TAB_ICON('hair') },
+    { t: 'hat', label: say(SAY, 'nameModal.hatTab'), img: _TAB_ICON('hat') },
+    { t: 'skin', label: say(SAY, 'nameModal.skinTab'), img: _TAB_ICON('skin') },
     /* v2.3.1929: Eyes sits with the face traits, and lands the row at a clean
        four-and-four in the 4-column grid rather than the old 4+3. */
-    { t: 'eyes', label: 'Eyes', img: _TAB_ICON('eyes') },
+    { t: 'eyes', label: say(SAY, 'nameModal.eyesTab'), img: _TAB_ICON('eyes') },
     /* v2.3.2361: eyewear, beside Eyes.  Nine tabs is the clean 3x3 again.
        v2.3.2389: the owner drew the icon ("Use this for the eyewear thumbnail
        for the trait picker category"), so the placeholder inline glyph this
        tab shipped with is gone and it wears painted art like the other eight.
        Section 7 of docs/specs/eyewear.md, which held the recipe for making
        one, is closed by this. */
-    { t: 'eyewear', label: 'Eyewear', img: _TAB_ICON('eyewear') },
-    { t: 'beard', label: 'Beard', img: _TAB_ICON('beard') },
-    { t: 'shirt', label: 'Shirt', img: _TAB_ICON('shirt') },
-    { t: 'pants', label: 'Pants', img: _TAB_ICON('pants') },
-    { t: 'shoes', label: 'Shoes', img: _TAB_ICON('shoes') },
+    { t: 'eyewear', label: say(SAY, 'nameModal.eyewearTab'), img: _TAB_ICON('eyewear') },
+    { t: 'beard', label: say(SAY, 'nameModal.beardTab'), img: _TAB_ICON('beard') },
+    { t: 'shirt', label: say(SAY, 'nameModal.shirtTab'), img: _TAB_ICON('shirt') },
+    { t: 'pants', label: say(SAY, 'nameModal.pantsTab'), img: _TAB_ICON('pants') },
+    { t: 'shoes', label: say(SAY, 'nameModal.shoesTab'), img: _TAB_ICON('shoes') },
     /* v2.3.1953: the ninth tab.  No painted icon — there is no art for
        "build" and inventing a ninth sheet entry for two numbers is not worth
        it, so it draws its own two-figure glyph inline (same reasoning as the
@@ -539,7 +539,7 @@ export function NameModal(props) {
        3x3 rather than the 4+4+1 an eighth-plus-one would have made; the tabs
        get WIDER in three columns, which is a better touch target than they had
        (see .bt-cc-tabs in game.css). */
-    { t: 'build', label: 'Build', img: null, glyph: 'build' }
+    { t: 'build', label: say(SAY, 'nameModal.buildTab'), img: null, glyph: 'build' }
   ].filter(function (x) { return !!_typeDefs[x.t]; });
   var _activeType = _typeDefs[activeCat] ? activeCat : 'hair';
   var _def = _typeDefs[_activeType];
@@ -1092,7 +1092,7 @@ export function NameModal(props) {
        edge copy to defeat — and the <link rel=preload> in index.html has to
        match this URL exactly or it adds a request instead of saving one
        (docs/TRAPS.md §52). */
-    src: '/ui/welcome/title/brotown-lockup.png', alt: 'BroTown', className: "bt-cc-logo"
+    src: '/ui/welcome/title/brotown-lockup.png', alt: say(SAY, 'nameModal.logoAlt'), className: "bt-cc-logo"
   }), /*#__PURE__*/React.createElement("div", {
     className: "bt-cc-logo-shine", "aria-hidden": true
   }))), /*#__PURE__*/React.createElement("section", {
@@ -1145,7 +1145,7 @@ export function NameModal(props) {
   }),
   /*#__PURE__*/React.createElement("canvas", {
     ref: previewCanvasRef,
-    title: deskWords('Live preview — tap to zoom'),   /* v2.3.3615: a computer shows it on hover */
+    title: say(SAY, 'nameModal.previewTitle'),   /* v2.3.3615: a computer shows it on hover; v2.3.6331: say() puts its "tap" right, as deskWords did */
     /* v2.3.711: drag-to-rotate.  Pointer capture keeps the gesture alive
        when the finger drifts off the canvas mid-swipe.  v2.3.1307: a
        pointer journey with no rotation is a TAP — toggles the zoom. */
@@ -1329,7 +1329,7 @@ export function NameModal(props) {
        transform stays for the same reason it did on Trait Picker: it is what
        keeps the two headings' rule identical rather than one of them relying
        on how its string happens to be typed. */
-  }, "BRO NAME"), /*#__PURE__*/React.createElement("input", {
+  }, say(SAY, 'nameModal.nameHeading')), /*#__PURE__*/React.createElement("input", {
     id: 'bt-cc-name-input',
     ref: _nameFieldRef,   /* v2.3.2388: the blocked button focuses this */
     value: nameInput,
@@ -1349,7 +1349,7 @@ export function NameModal(props) {
        computer (desktopControls.js, QuestCoach.jsx).  Same eleven characters
        and about 1.5px wider at the field's 16px, inside v2.3.2464's measured
        slack (93 of 103.5px); the sideways fit below is touch-only. */
-    placeholder: fineInput() ? "Type a name" : "Tap to name",
+    placeholder: say(SAY, 'nameModal.namePlaceholder'),   /* v2.3.6331: { phone, desk }, the same (pointer:fine) test */
     maxLength: 20,
     /* ═══ v2.3.1818: NO AUTOFOCUS ═══
        Owner: "Immediately after tapping new character from splash screen the
@@ -1391,7 +1391,7 @@ export function NameModal(props) {
       minHeight: 44
     }
   }), /*#__PURE__*/React.createElement("button", {
-    type: 'button', title: 'Random name', "aria-label": 'Generate a random name', onClick: rollRandomName,
+    type: 'button', title: say(SAY, 'nameModal.randomNameTitle'), "aria-label": say(SAY, 'nameModal.randomNameLabel'), onClick: rollRandomName,
     /* v2.3.1251: "Roll" text → dice icon inside the input (handoff).
        44pt touch target, inline-SVG die (no emoji / no asset).
        v2.3.1254: chrome moved to .bt-cc-btn (micro-bevel); the inline
@@ -1554,7 +1554,7 @@ export function NameModal(props) {
        of colour is part of what makes it register as a REPLY. */
     style: { color: _pressMsg ? '#E5B45C' : (_nameValid ? '#55B98A' : '#8D9B98') }
   }, _pressMsg
-      || (_trimmedName.length === 0 ? '' : _nameValid ? '✓ Ready to go' : (_nameWhy ? CHAR_NAME_WORDS[_nameWhy] : 'At least 2 characters')))), /*#__PURE__*/React.createElement("div", {
+      || (_trimmedName.length === 0 ? '' : _nameValid ? say(SAY, 'nameModal.nameReady') : (_nameWhy ? CHAR_NAME_WORDS[_nameWhy] : say(SAY, 'nameModal.nameTooShort'))))), /*#__PURE__*/React.createElement("div", {
     /* v2.3.1524: one action left. "Customize Appearance" opened the drawer,
        and the drawer is now a permanent column, so the button had nothing to
        open. Randomize rerolls the whole look. */
@@ -1610,7 +1610,7 @@ export function NameModal(props) {
      of this screen already uses (Switch Bro, ENTER BRO TOWN, BRO NAME).
      One character shorter, so the one-line fit mp-ccbuttons pins only gets
      easier; the tests find this button by its data-tut handle, not its text. */
-  /*#__PURE__*/React.createElement("span", null, "Randomize Bro")),
+  /*#__PURE__*/React.createElement("span", null, say(SAY, 'nameModal.randomize'))),
   /* ═══ v2.3.2036: RESET ═══
      Owner: "add a reset button so you can make the character back to the
      default" -- and, asked which default, "the look you opened with".
@@ -1622,8 +1622,8 @@ export function NameModal(props) {
     /* Not --hero: that is the headline treatment, and Reset is the quiet
        escape hatch below it. */
     type: 'button', className: "bt-cc-btn bt-cc-reset", 'data-tut': 'cc-reset',   /* v2.3.2114 */
-    onClick: resetLook, title: 'Back to the look you started with'
-  }, /*#__PURE__*/React.createElement("span", null, "Reset")))),
+    onClick: resetLook, title: say(SAY, 'nameModal.resetTitle')
+  }, /*#__PURE__*/React.createElement("span", null, say(SAY, 'nameModal.reset'))))),
   /*#__PURE__*/React.createElement("button", {
     /* ═══ v2.3.2388: IT TAKES THE PRESS SO IT CAN ANSWER IT ═══
        `disabled` is gone and aria-disabled takes its place.  That is the
@@ -1649,7 +1649,7 @@ export function NameModal(props) {
     /* v2.3.1251: PLAY → ENTER BRO TOWN, the screen's one dominant gold
        action.  v2.3.1307: gated on a valid name (round-7). */
     className: "bt-cc-play",
-    "aria-label": 'Enter BroTown',
+    "aria-label": say(SAY, 'nameModal.enterLabel'),
     style: {
       width: '100%',
       cursor: _blockReason ? 'default' : 'pointer',
@@ -1674,7 +1674,7 @@ export function NameModal(props) {
     src: '/ui/welcome/title/crest.webp?v=2.3.2359',
     alt: '', draggable: false, "aria-hidden": true
   }),
-  /*#__PURE__*/React.createElement("span", { className: "bt-cc-play-label" }, "Enter BroTown")),
+  /*#__PURE__*/React.createElement("span", { className: "bt-cc-play-label" }, say(SAY, 'nameModal.enter'))),
   /* ═══ v2.3.2219: THE WAY BACK ═══
      Owner: "Create a character need a back button to main menu."  The
      creator is reached deliberately (CREATE CHARACTER on the splash), and
@@ -1693,7 +1693,7 @@ export function NameModal(props) {
   onBack ? /*#__PURE__*/React.createElement("button", {
     type: 'button', className: "bt-cc-back",
     onClick: onBack,
-    "aria-label": 'Back to the main menu',
+    "aria-label": say(SAY, 'nameModal.backLabel'),
     style: {
       /* v2.3.2378: the 10px top margin is gone.  It sat on top of the
          column's own 4-6px gap, so Back was the one child with two spacings
@@ -1708,7 +1708,7 @@ export function NameModal(props) {
       fontFamily: 'Source Sans 3, sans-serif',
       WebkitTapHighlightColor: 'transparent',
     }
-  }, "Back") : null,
+  }, say(SAY, 'nameModal.back')) : null,
   /* ═══ v2.3.2006: THE RETURNING-PLAYER ROW IS GONE FROM HERE ═══
      Owner: "Remove button already have bro on trait creator screen."
 
@@ -1732,7 +1732,7 @@ export function NameModal(props) {
        (the black was keyed out by LUMINANCE, so the halo feathers to
        transparent instead of leaving a box) — hence no CSS glow here. */
     src: '/ui/hemi-bros-logo.webp?v=' + BUILD_INFO.version,
-    alt: 'Hemi Bros', className: "bt-cc-hemi", draggable: false
+    alt: say(SAY, 'nameModal.hemiAlt'), className: "bt-cc-hemi", draggable: false
   }), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
@@ -1746,7 +1746,7 @@ export function NameModal(props) {
        v2.3.3481: the 2026-10-19 UI review -- the GAME's version (the newest
        v2.3.N in the build's commit titles), not package.json's 2.3.2324;
        BUILD_INFO.version stays the art's `?v=` cache key. */
-  }, "v" + BUILD_INFO.game))), /*#__PURE__*/React.createElement("div", {
+  }, say(SAY, 'nameModal.version', { game: BUILD_INFO.game })))), /*#__PURE__*/React.createElement("div", {
     /* v2.3.1524: the picker COLUMN. Was the v2.3.1276 slide-up drawer, and
        before that an always-visible sheet under the character; it is now a
        permanent pane to the character's right, running from under the title
@@ -1757,8 +1757,8 @@ export function NameModal(props) {
     /* v2.3.1527: the pane says what it is (owner). It used to be introduced by
        a "Customize Appearance" button; without that button it arrived unlabelled. */
     className: "bt-cc-panel-title"
-  }, "Trait Picker"), /*#__PURE__*/React.createElement("nav", {
-    className: "bt-cc-tabs", role: 'tablist', "aria-label": 'Appearance category'
+  }, say(SAY, 'nameModal.panelTitle')), /*#__PURE__*/React.createElement("nav", {
+    className: "bt-cc-tabs", role: 'tablist', "aria-label": say(SAY, 'nameModal.tabsLabel')
   }, _TABS.map(function (x) {
     var on = x.t === _activeType;
     return /*#__PURE__*/React.createElement("button", {
@@ -1797,7 +1797,7 @@ export function NameModal(props) {
        scroll horizontally (sizing in .bt-cc-strip, game.css).  The whole
        catalog is always rendered: the v2.3.835 collapse-on-select
        machinery is retired with the pager. */
-    className: "bt-cc-strip" + (_def.compact ? " bt-cc-strip--compact" : ""), ref: _stripRef, onScroll: _measureMore, role: 'listbox', "aria-label": _def.label + ' options'
+    className: "bt-cc-strip" + (_def.compact ? " bt-cc-strip--compact" : ""), ref: _stripRef, onScroll: _measureMore, role: 'listbox', "aria-label": say(SAY, 'nameModal.stripLabel', { label: _def.label })
   }, _items), /*#__PURE__*/React.createElement("span", {
     /* v2.3.1254: fade + chevron while more tiles wait off-screen.
        v2.3.2205: the arrow points DOWN now, at the direction the grid
@@ -1870,7 +1870,7 @@ export function NameModal(props) {
       "aria-checked": _colors ? (!_def.colorSel || _def.colorSel === 'default') : undefined,
       tabIndex: _colors ? 0 : -1,
       onClick: function () { if (_colors) _def.setColor('default'); }
-    }, "Default"),
+    }, say(SAY, 'nameModal.defaultColor')),
     /* ═══ v2.3.2424: THE ROW SAYS WHICH PART IT PAINTS ═══
        Eyewear and, since v2.3.2645, eye styles set colorLabel, and both for
        the same reason: they are the categories where the answer VARIES between
@@ -1892,7 +1892,7 @@ export function NameModal(props) {
     }, _def.colorLabel) : null),
   /*#__PURE__*/React.createElement("div", { className: "bt-cc-scroll" },
   /*#__PURE__*/React.createElement("div", {
-    className: "bt-cc-colors-row", ref: _colorRowRef, onScroll: _measureMore, role: _colors ? 'radiogroup' : undefined, "aria-label": _colors ? _def.label + ' colors' : undefined
+    className: "bt-cc-colors-row", ref: _colorRowRef, onScroll: _measureMore, role: _colors ? 'radiogroup' : undefined, "aria-label": _colors ? say(SAY, 'nameModal.colorsLabel', { label: _def.label }) : undefined
   }, _colors || /*#__PURE__*/React.createElement("div", null)), /*#__PURE__*/React.createElement("span", {
     className: "bt-cc-more" + (scrollMore.colors ? " bt-cc-more--on" : ""), "aria-hidden": true
   }, "▾"))),
@@ -2103,7 +2103,7 @@ export function NameModal(props) {
               className: 'bt-cc-ink-chip' + (_toolInk === i ? ' bt-cc-ink-chip--on' : '')
                 + (c ? '' : ' bt-cc-ink-chip--erase'),
               style: c ? { background: c } : undefined,
-              "aria-label": (i === 0 ? 'Eraser' : 'Colour ' + i) + ', and open the editor',
+              "aria-label": i === 0 ? say(SAY, 'nameModal.inkEraser') : say(SAY, 'nameModal.inkColour', { i: i }),
               "aria-pressed": _toolInk === i,
               onClick: function () { setInk(i); _open(); }
             });
@@ -2113,7 +2113,7 @@ export function NameModal(props) {
             return /*#__PURE__*/React.createElement("button", {
               key: n, type: 'button',
               className: 'bt-cc-ink-width' + (_toolBrush === n ? ' bt-cc-ink-width--on' : ''),
-              "aria-label": 'Brush ' + n + ' wide, and open the editor',
+              "aria-label": say(SAY, 'nameModal.brushWidth', { n: n }),
               "aria-pressed": _toolBrush === n,
               onClick: function () { setBrush(n); _open(); }
             },
