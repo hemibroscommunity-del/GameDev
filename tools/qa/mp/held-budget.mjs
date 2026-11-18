@@ -51,6 +51,16 @@ export const FRAME_JS_MAX_MS = 16;
 export const WINDOW_MAX_MS = 45;
 export const AT_A_WINDOW = ['windows', 'folk', 'g-boards'];   /* v2.3.4499: + the crowd tour's Leaderboards (mp-crowdsweep) */
 export const NOISE_K = 1.5;
+/* ═══ v2.3.6380: A STATION'S OWN LINE (card SB PR 1) ═══
+   The general line a station's unlisted holds are held to, where it is not HOLD_MAX_MS.  `ride` (mp-heldsweep: the
+   board's ring round BroTown's safe ground, the owner's "freezes just for tiny fractions of a second while it
+   loads", 2026-11-18): held to the general line, 12 ms.  This box, plain (no profile), two runs: every unlisted hold
+   of the ride at or under it but two of 12.1 and 12.2 ms (the judge's noise), the ground's own (a piece's first
+   upload, its colours' row) 12.2 ms the longest.  Slowed (budget-android, hotel-laptop), the ride is over it -- the
+   ground 21.3 ms the longest, others' families to 34 ms: docs/plan/census/SB-ride.md, never a line (the profiles'
+   rule, mp-heldsweep's header).  Lowered, never raised, as card SB's PRs land; `ridewalk` (the same ring walked,
+   asked for only) keeps the general line. */
+export const STATION_LINES = Object.freeze({ ride: HOLD_MAX_MS });
 
 export const KNOWN = {
   /* v2.3.5049: 'body-bake' (was 13; 220 before v2.3.4960, 12 at the crowd's a-ink, b-fish, c-armour1, c-armour8,
@@ -158,7 +168,7 @@ const lineFor = (key, kind, where) => {
   const k = KNOWN[key] || (key.startsWith('ui:') ? KNOWN['ui:*'] : null);
   /* v2.3.4499: `at` -- a listed family's own line at one station of a tour, where that station measured it higher (the
      crowd tour's, mp-crowdsweep): the rest of the tours keep the family's line */
-  const base = k ? ((k.at && k.at[where]) || k.ms) : (kind === 'frame' ? FRAME_JS_MAX_MS : HOLD_MAX_MS);
+  const base = k ? ((k.at && k.at[where]) || k.ms) : (kind === 'frame' ? FRAME_JS_MAX_MS : (STATION_LINES[where] || HOLD_MAX_MS));   /* v2.3.6380: + a station's own line */
   return AT_A_WINDOW.includes(where) ? Math.max(base, WINDOW_MAX_MS) : base;
 };
 
