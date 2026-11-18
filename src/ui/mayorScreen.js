@@ -64,8 +64,10 @@ function _measureBox(now) {
   return _box;
 }
 /** v2.3.6280: the canvas's place on the page as remembered above (QuestCoach's `chatTap` ring and its card's
- *  sums read it under `?afterpaint`), or null with no canvas. */
-export function canvasPlace() { return canvasBox(); }
+ *  sums read it under `?afterpaint`), or null with no canvas.  v2.3.6282: `now` measures it at once (the taps
+ *  with `?afterpaint=0`: BroTown.jsx canvasCorner), through this file's one measure (_measureBox), never a read
+ *  of the caller's own (docs/specs/layout-reads.md, way 2). */
+export function canvasPlace(now) { return now ? _measureBox(Date.now()) : canvasBox(); }
 
 /* Mayor Bro's body on the page (CSS px), or null when he is not here or off
    the screen -- the same screen sums as BroTown's npcAtCss */
