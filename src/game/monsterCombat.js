@@ -45,7 +45,7 @@ import { rollMonsterShard } from '@/data/shards.js';
 import { addBuildUse, applyMeleeLifesteal, clearSwingHitFlags, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, isPlayerDead, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint, spawnHitDebris /* v2.3.2200; v2.3.2843: its decal twin is retired here */, dropLocalRemnantOnce /* v2.3.2233 */, rangedAimAngle, bowGripPoint /* v2.3.2543 */, BOW_SPECIAL_QUEUE_MS /* v2.3.2473 */, propSwingHit /* v2.3.2730 */, shotGroundDy /* v2.3.3206: a shot's ground is under the boots */ } from '@/game/combatHelpers.js';
 import { accShot, accSn } from './accuracy.js';   /* v2.3.4545: a basic shot is numbered, and its hits claim its number (accuracy) */
 import { updateTargeting } from '@/game/targeting.js'; /* v2.3.2243 */
-import { firstSightHit, shotLowAim, lowAimAlong, arrowSureReachPast, shotAimAt, nmlSightAsk } from '@/game/projectiles.js'; /* v2.3.2473: the bow's on-target gate reads the hit test's own radii; v2.3.3206: + the low thing a shot is aimed at; v2.3.3528: + No man's land's ask on an empty line */
+import { firstSightHit, shotLowAim, lowAimAlong, arrowSureReachPast, shotAimAt, nmlSightAsk, relayShot } from '@/game/projectiles.js'; /* v2.3.2473: the bow's on-target gate reads the hit test's own radii; v2.3.3206: + the low thing a shot is aimed at; v2.3.3528: + No man's land's ask on an empty line */
 import { shotTargetId } from '@/game/peerShots.js'; /* v2.3.3266: the player a shot is aimed at, for the others' screens */
 import { isStaggered } from '@/game/elemHits.js'; /* v2.3.4387: nor a held attack while a parry has you staggered */
 import { specialAttack } from '@/game/playerActions.js'; /* v2.3.2473: a queued bow special fires from the fire site */
@@ -1939,8 +1939,8 @@ export function updateMonsterCombat(S, deps) {
                   _rangeMult: isStaff ? 1 : bowRangeMult(S.rpg)   /* v2.3.4862: was x depthK (v2.3.2790), gone with the old map's dunes */
                 });
                 /* Broadcast projectile to other players */
-                /* v2.3.5187: through the action door (actions.js) */
-                act('player_projectile', {
+                /* v2.3.5187: through the action door (actions.js); v2.3.5905: a bow's at its release against caps.bowPath (projectiles.js relayShot) */
+                relayShot(S, isStaff, {
                   id: S.myId, x: Math.round(P.x), y: Math.round(P.y), ang: arrAngle, isStaff: isStaff, ts: _shotTs,
                   /* v2.3.2919: the shot's ELEMENT.  Your own arrow is tipped in
                      your weapon's element colour and your bolt glows in it

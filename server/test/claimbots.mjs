@@ -36,7 +36,9 @@
  *   WALK 150 px a second (race.js: "A walk is 150 px a second"; the page's
  *   SPEED 2.5 a frame, gameSystems.js); a sword's honest reach about 100 px
  *   centre to centre, a swing every 600 ms; a bow 675 px, a shot every
- *   495 ms, an arrow 480 px a second; the harvest's swing 650 ms a hit and
+ *   495 ms, an arrow 1,440 px a second (projectiles.js ARROW_SPEED_PX 24 a
+ *   frame at 60; v2.3.5905: it was 480, a third of it, so the honest
+ *   archers claimed late -- the gatekeeper's sitting 45); the harvest's swing 650 ms a hit and
  *   its gesture 1.2 to 1.75 s; the cook's 2 hits; an honest phone's grades
  *   (the bot lab's: 45% perfect, 44% good, 11% ok: tools/qa/load/bot-lab.mjs).
  */
@@ -310,7 +312,7 @@ export async function honestBow(W, ph, take, opts = {}) {
     if (ph.pageNow >= nextShot) {
       /* v2.3.5550: the arrow's relay, as a page looses it (monsterCombat.js: `player_projectile`; bowshot.js counts it) */
       await ph.send({ type: 'player_projectile', payload: { x: Math.round(ph.x), y: Math.round(ph.y), ang: Math.atan2(target.y - ph.y, target.x - ph.x), isStaff: false, ts: Math.round(ph.pageNow) } });
-      flying.push({ m: target, at: ph.pageNow + (dist(target, ph) / 480) * 1000 }); nextShot = ph.pageNow + (opts.gap || 495);   /* v2.3.5550: `opts.gap`, the flicked bow's 371 ms */
+      flying.push({ m: target, at: ph.pageNow + (dist(target, ph) / (opts.arrowPx || 1440)) * 1000 });   /* v2.3.5905: the arrow's real 1,440 px a second (it was 480); `opts.arrowPx`, 2b's slow arrow */ nextShot = ph.pageNow + (opts.gap || 495);   /* v2.3.5550: `opts.gap`, the flicked bow's 371 ms */
     }
     flying.sort((a, b) => a.at - b.at);
     const due = Math.min(nextShot, flying.length ? flying[0].at : Infinity);

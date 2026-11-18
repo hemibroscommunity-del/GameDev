@@ -16,7 +16,9 @@
  *   5. on: a relay whose x, y is far from the worker's copy of the archer is
  *      measured from the copy;
  *   6. off (as merged): the line and the time are not read -- the early,
- *      off-line claim lands on the arrow, as before.
+ *      off-line claim lands on the arrow, as before;
+ *   7. (v2.3.5905) on: the side is measured to the monster's body, its feet
+ *      up 130 px (a boss's 260): a boss hit up its body fits the arrow.
  *
  * Red on main (v2.3.5726): every check but 6 (no `bowpath`). */
 import { makeStorage, openRoom, fakeWs, join } from './testroom.mjs';
@@ -93,6 +95,25 @@ async function setup(flags) {
   u.relay({ x: 30, y: -20 });
   const shot2 = u.room._bowShotState(u.ps).q[0];
   check('5. ...one near it (a phone a move ahead): the relay\'s own', shot2.p.x === 30 && shot2.p.y === -20, shot2.p);
+}
+
+/* ── 7. on: the side is measured to the monster's body (v2.3.5905) ── */
+{
+  const t = await setup({ bowpath: true });
+  t.mons[0].x = 300; t.mons[0].y = 250; t.mons[0]._dungeonBoss = true;   /* a boss 250 px below the line (y grows down): its body rises across it */
+  t.relay();
+  T += 2000;
+  const s = t.room._bowShotState(t.ps);
+  const before = s.lost;
+  check('7. on: a boss whose body crosses the arrow\'s line, its feet 250 px off it: the arrow fits (its body is hit, not its feet)', t.drop('m_a') === false && s.lost === before, { before, after: s.lost });
+  const u = await setup({ bowpath: true });
+  u.mons[0].x = 300; u.mons[0].y = 400;   /* an ordinary monster: its body 400 to 270 px off the line */
+  u.relay();
+  T += 2000;
+  const su = u.room._bowShotState(u.ps);
+  const b2 = su.lost;
+  u.drop('m_a');
+  check('7. ...an ordinary monster whose body stays 270 px off the line does not fit it', su.lost <= b2 - 1 + 1e-9, { before: b2, after: su.lost });
 }
 
 /* ── 6. off: as before ── */
