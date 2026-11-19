@@ -13,6 +13,7 @@ import { prog3CatFor } from '@/data/prog3.js';   /* v2.3.2231: weapon type -> co
 import { toDisplayHp } from '@/data/gameSystems.js';
 import { SLIME, SLIME_PX, ORB_URL, SHOT, ICON, blueSlimeSheet } from '@/data/statDemoAssets.js';   /* v2.3.2616: shared with the preloader */
 import { prepareStatScene, newSceneSeed, SIM_STATS, SLIME_THROW, SLIME_SWING, SLIME_DEATH_MS } from './statSim.js';   /* v2.3.2979 */
+import { AFTER_PAINT } from '../../afterPaint.js';   /* v2.3.6281: the first measure off the commit (card HB2 PR 2) */
 
 /* ═══ v2.3.2222: WHAT A STAT IS FOR, SHOWN WITH THE GAME'S OWN PIECES ═══
  *
@@ -909,9 +910,12 @@ export const StatDemo = ({ stat, iconSrc, weapon, shield, n, rpg, cat }) => {
     const st = stageRef.current, he = heroRef.current;
     if (!st || !he) return undefined;
     const measure = () => setGeo({ w: st.clientWidth || 0, heroX: he.offsetLeft || 0 });
-    measure();
     let ro = null;
     try { ro = new ResizeObserver(measure); ro.observe(st); } catch (e) { ro = null; }
+    /* v2.3.6281 (card HB2 PR 2; `?afterpaint`): the first measure from the observer (told on observe, after the
+       browser's own layout), not here right after React put the window in, where the first read lays the whole page
+       out (the band's mount measures: docs/plan/census/HB-holds.md rows 3, 5).  `?afterpaint=0`: here too. */
+    if (!AFTER_PAINT || !ro) measure();
     return () => { try { if (ro) ro.disconnect(); } catch (e) { /* gone */ } };
   }, [has]);
   /* the ball's centre starts 99px in from the right (right:88px, 22px wide)

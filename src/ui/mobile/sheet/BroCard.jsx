@@ -1,4 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { AFTER_PAINT } from '../../afterPaint.js';   /* v2.3.6281: the first measure off the commit (card HB2 PR 2) */
 import { getState } from '../dash/common.js';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { dashMinBus } from '../dashMinBus.js';            /* Equipment: the Gear tab, unfolded */
@@ -188,7 +189,11 @@ export const BroCard = ({ points, onPoints }) => {
     const el = box.current;
     if (!el) return undefined;
     const measure = () => { const w = el.clientWidth; if (w > 0) setCols(broCols(w)); };
-    measure();
+    /* v2.3.6281 (card HB2 PR 2; `?afterpaint`): not measured in the commit of the window that put the card in (the
+       first read after React changed the page lays the whole page out there: `measure2`, 67.9 to 80.8 ms on
+       budget-android at `windows`).  The ResizeObserver below tells the size on observe, after the browser's own
+       layout: the columns fit a frame later.  `?afterpaint=0`, or no ResizeObserver: measured here, as before. */
+    if (!AFTER_PAINT || typeof ResizeObserver === 'undefined') measure();
     let ro = null;
     try { ro = new ResizeObserver(measure); ro.observe(el); } catch (e) { ro = null; }
     return () => { try { if (ro) ro.disconnect(); } catch (e) { /* gone */ } };
