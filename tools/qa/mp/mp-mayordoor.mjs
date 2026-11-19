@@ -34,6 +34,8 @@
  * v2.3.3899: the Town Hall's door opens nothing (the owner: "Remove the town
  * hall menu for now"); its board opens at the square's noticeboard, "Read
  * THE TOWN BOARD" and E.
+ * v2.3.6301: every bro keeps a real keystroke every 20 s (H.keepAlive), so
+ * the phone waiting through part 1 is not logged out for idling.
  * Pictures: tools/qa/mp/out/mayordoor-*.png.
  */
 import * as H from './harness.mjs';
@@ -55,6 +57,14 @@ async function into(browser, wsPort, webPort, name, opts) {
     { timeout: 150000, label: name + ' into the world' }).catch(() => null);
   await H.closeNpcDialogue(P).catch(() => {});
   await P.page.addStyleTag({ content: '*:has(> [data-coach-dismiss]) { visibility: hidden !important; }' }).catch(() => {});
+  /* v2.3.6301 (card RR; docs/plan/census/RR-reds.md): a real keystroke every
+     20 s, so no bro idles out.  The phone (C) waits through part 1 (about 3
+     minutes on a session box) and the page logs itself out after two minutes
+     with no real input (wsClient's idle logout): its picture at part 2 said
+     "You were away, so your character logged out", its quest_accept and hops
+     never reached the worker, and parts 2 and 3 (5 of 12) failed on a phone
+     the worker no longer had.  The loop ends when the page closes. */
+  H.keepAlive(P);
   return P;
 }
 /* put the bro at an offset from a townsperson (mp-questprox's place) */
@@ -289,7 +299,23 @@ export async function run({ browser, wsPort, webPort, rec }) {
       cands.sort((p, q) => q.md - p.md);
       const perLand = Object.create(null), tryList = [];
       for (const c of cands) { perLand[c.land] = (perLand[c.land] || 0) + 1; if (perLand[c.land] <= 12) tryList.push(c); }
-      let spot = null;
+      /* v2.3.6301: the spot is quiet when the CLICKS come, not only when A
+         arrived.  On a session box the phone's hops to A take a minute or
+         more, and a monster that wandered up meanwhile stood under the
+         pointer at the other bro's body: the game rightly gave the click to
+         the monster (the pointer ON a monster takes the monster, checked
+         below), and the check went red (one run in two of five).  So once B
+         stands beside A, the nearest live monster to B is read; nearer than
+         QUIET_PX, the pair moves on to the next quiet candidate. */
+      const QUIET_PX = 160;
+      const nearestToB = () => A.page.evaluate((bid) => {
+        const S = window._gameState.current, o = (S.others || {})[bid];
+        if (!o) return null;
+        let md = Infinity;
+        for (const m of S.monsters || []) if (m && m.alive !== false && (m.curHp == null || m.curHp > 0)) md = Math.min(md, Math.hypot(m.x - o.x, m.y - o.y));
+        return Number.isFinite(md) ? Math.round(md) : 99999;
+      }, bId);
+      let spot = null, quietB = null;
       for (const c of tryList.slice(0, 12)) {
         await H.hopTo(A, c.x, c.y, { tries: 90 });
         await A.page.waitForTimeout(1200);
@@ -301,12 +327,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
           for (let k = 0; k <= 90; k += 10) clear = clear && dry(x + k, y);
           return { dry: clear, near };
         }, c);
-        if (ok.dry && ok.near === 0) { spot = c; break; }
-      }
-      await H.hopTo(B, spot ? spot.x + 90 : 0, spot ? spot.y : 0, { tries: 260 });
-      for (let i = 0; i < 2; i++) {   /* a step each, so each is heard where they are */
-        await B.page.keyboard.down('d'); await B.page.waitForTimeout(150); await B.page.keyboard.up('d');
-        await B.page.keyboard.down('a'); await B.page.waitForTimeout(150); await B.page.keyboard.up('a');
+        if (!(ok.dry && ok.near === 0)) continue;
+        await H.hopTo(B, c.x + 90, c.y, { tries: 260 });
+        for (let i = 0; i < 2; i++) {   /* a step each, so each is heard where they are */
+          await B.page.keyboard.down('d'); await B.page.waitForTimeout(150); await B.page.keyboard.up('d');
+          await B.page.keyboard.down('a'); await B.page.waitForTimeout(150); await B.page.keyboard.up('a');
+        }
+        await A.page.waitForTimeout(1500);
+        quietB = await nearestToB();
+        if (quietB == null || quietB >= QUIET_PX) { spot = c; break; }
       }
       /* until A hears B where B is (a far hop is told within a roster) */
       const seen = await H.waitFor(A, () => {
@@ -315,7 +344,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       }, (v) => !!v && v.some((e) => e[1] < 200), { timeout: 20000, label: 'A hears B beside them' }).catch(() => null);
       const bAt = await B.page.evaluate(() => { const S = window._gameState.current; return [Math.round(S.player.x), Math.round(S.player.y), S._nmlLevel || 0]; });
       const can = await A.page.evaluate((bid) => !!(window.__btNmlAsk && window.__btNmlAsk.about(bid) && window.__btNmlAsk.about(bid).can), bId);
-      rec.ok(`3. both in No man's land on a quiet spot (${spot ? spot.land : 'none'}), the other bro one you may fight (guard)`, !!spot && can, { spot, can, bAt, seen });
+      rec.ok(`3. both in No man's land on a quiet spot (${spot ? spot.land : 'none'}; the nearest monster ${quietB} px from the other bro), the other bro one you may fight (guard)`, !!spot && can, { spot, can, bAt, seen, quietB });
       /* where on the page a point `up` game px over the other bro's feet is */
       const peerAt = (up) => A.page.evaluate(([bid, u]) => {
         const S = window._gameState.current, o = (S.others || {})[bid];
@@ -339,7 +368,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
       };
       /* the body (30 game px over the feet) and the head (50) */
       for (const [part, up] of [['body', 30], ['head', 50]]) {
+        const nearB = await nearestToB();   /* v2.3.6301: named in the line, never a pass by itself */
         const r = await clickRead(await peerAt(up));
+        r.nearB = nearB;
         if (part === 'body') await shot(A, '3-click-body');
         rec.ok(`3. a real click on the other bro's ${part} raises "${r.ask}" (Attack?) and takes no monster as the click's pick (${JSON.stringify(r.lock)})`,
           !!r.ask && /doorphone/i.test(r.ask) && !(r.lock && r.lock.type === 'monster' && r.lock.src === 'tap'), r);
@@ -366,6 +397,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
           }, [bId, dId]);
           if (!(two != null && two < 60)) await A.page.waitForTimeout(500);
         }
+        /* v2.3.6301: both copies drawn standing still before the point is
+           read.  On a session box D's copy on A's screen was still sliding
+           from its steps when A clicked (one run in five): the click came
+           down where D had been drawn, nearer C, and asked about C. */
+        const drawnAt = () => A.page.evaluate((ids) => {
+          const S = window._gameState.current, o1 = (S.others || {})[ids[0]], o2 = (S.others || {})[ids[1]];
+          return o1 && o2 ? [o1.renderX, o1.renderY, o2.renderX, o2.renderY] : null;
+        }, [bId, dId]);
+        let still = false;
+        for (let i = 0, prev = await drawnAt(); i < 20 && !still; i++) {
+          await A.page.waitForTimeout(700);
+          const cur = await drawnAt();
+          still = !!prev && !!cur && cur.every((v, k) => Math.abs(v - prev[k]) < 1);
+          prev = cur;
+        }
         const dAt = await A.page.evaluate(([cid, did]) => {
           const S = window._gameState.current, oc = (S.others || {})[cid], od = (S.others || {})[did];
           if (!oc || !od) return null;
@@ -376,7 +422,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const rD = dAt ? await clickRead(dAt.d) : { ask: null };
         await shot(A, '3-click-near-pair');
         rec.ok(`3. two bros ${dAt && dAt.gap} px apart: a click on Doorfar's body picks Doorfar, not Doorphone ("${rD.ask}")`,
-          !!dAt && dAt.gap < 60 && !!rD.ask && /doorfar/i.test(rD.ask), { dAt, rD, two });
+          !!dAt && dAt.gap < 60 && !!rD.ask && /doorfar/i.test(rD.ask), { dAt, rD, two, still });
         await ignore();
         if (D.errors.length) rec.ok('3. ...no page errors on the third bro\'s page', false, D.errors.slice(0, 3));
       } finally {
@@ -395,16 +441,30 @@ export async function run({ browser, wsPort, webPort, rec }) {
         for (let i = 0; i < 2; i++) { await B.page.keyboard.down('a'); await B.page.waitForTimeout(80); await B.page.keyboard.up('a'); }
         await A.page.waitForTimeout(1500);
       }
-      const onMon = await A.page.evaluate(([mid, bid]) => {
+      /* v2.3.6301: the pointer goes where the monster is DRAWN, read again
+         before each try (up to three, the count named).  A monster wanders,
+         and on a session box a page's round trip is 1-3 s: the click came
+         down where it had been (89 px from the bro, one run in five), on
+         nothing.  A click on nothing locks nothing and asks nothing, so a
+         miss can never pass; only a click on the monster can. */
+      const monAt = () => A.page.evaluate(([mid, bid]) => {
         const S = window._gameState.current, m = (S.monsters || []).find((q) => q && String(q.id) === mid), o = (S.others || {})[bid];
         if (!m) return null;
+        const mx = m.renderX != null ? m.renderX : m.x, my = m.renderY != null ? m.renderY : m.y;
         const cv = document.querySelector('canvas.brotown-canvas').getBoundingClientRect();
-        return { x: cv.left + (m.x - S.camera.x) * S._worldScaleX, y: cv.top + (m.y - 12 - S.camera.y) * S._worldScaleY,
+        return { x: cv.left + (mx - S.camera.x) * S._worldScaleX, y: cv.top + (my - 12 - S.camera.y) * S._worldScaleY,
           gap: o ? Math.round(Math.hypot(o.x - m.x, o.y - m.y)) : null };
       }, [mon ? mon.id : '', bId]);
-      const rm = await clickRead(onMon);
+      let onMon = null, rm = { ask: null, lock: null }, tries = 0;
+      for (; tries < 3; tries++) {
+        onMon = await monAt();
+        rm = await clickRead(onMon);
+        if (rm.lock && rm.lock.type === 'monster') break;
+        await ignore();
+      }
+      rm.tries = Math.min(tries + 1, 3);
       await shot(A, '3-click-monster');
-      rec.ok(`3. a monster beside the other bro (${onMon && onMon.gap} px apart): the pointer on the monster locks the monster (${JSON.stringify(rm.lock)}), no "Attack?"`,
+      rec.ok(`3. a monster beside the other bro (${onMon && onMon.gap} px apart): the pointer on the monster locks the monster (${JSON.stringify(rm.lock)}; try ${rm.tries} of 3), no "Attack?"`,
         !!onMon && !!rm.lock && rm.lock.type === 'monster' && rm.lock.id === (mon && mon.id) && !rm.ask, { mon, onMon, rm });
     }
     const errs = [].concat(A.errors, C.errors);

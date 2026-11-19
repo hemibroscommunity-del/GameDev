@@ -10,7 +10,7 @@
    through the ways the spec names.  A read that truly must stay (a size
    read once at start, the window's own resize) is a row with its `why`,
    added only with the planning session's yes, in a PR that says so. */
-export const LINE = 365;   /* 365 reads in 72 files */
+export const LINE = 337;   /* 337 reads in 72 files */
 
 export const KNOWN = Object.freeze([
   /* src/debug/DebugOverlay.jsx */
@@ -185,16 +185,10 @@ export const KNOWN = Object.freeze([
   /* src/ui/mobile/NmlBadge.jsx */
   { file: 'src/ui/mobile/NmlBadge.jsx', fn: 'clearOfThumbs', kind: 'getBoundingClientRect', n: 1, hb: '34' },
   /* src/ui/mobile/QuestCoach.jsx */
-  { file: 'src/ui/mobile/QuestCoach.jsx', fn: 'QuestCoach', kind: 'getBoundingClientRect', n: 5 },
-  { file: 'src/ui/mobile/QuestCoach.jsx', fn: 'QuestCoach', kind: 'getComputedStyle', n: 6 },
-  { file: 'src/ui/mobile/QuestCoach.jsx', fn: 'QuestCoach', kind: 'getPropertyValue', n: 10 },
-  { file: 'src/ui/mobile/QuestCoach.jsx', fn: 'QuestCoach', kind: 'innerWidth', n: 5 },
-  { file: 'src/ui/mobile/QuestCoach.jsx', fn: 'QuestCoach', kind: 'offsetHeight', n: 1 },
   { file: 'src/ui/mobile/QuestCoach.jsx', fn: '_markTooBig', kind: 'innerHeight', n: 1 },
   { file: 'src/ui/mobile/QuestCoach.jsx', fn: '_markTooBig', kind: 'innerWidth', n: 1 },
   { file: 'src/ui/mobile/QuestCoach.jsx', fn: '_topBelowCoach', kind: 'elementFromPoint', n: 1, hb: '32' },
   { file: 'src/ui/mobile/QuestCoach.jsx', fn: '_topBelowCoach', kind: 'elementsFromPoint', n: 1, hb: '32' },
-  { file: 'src/ui/mobile/QuestCoach.jsx', fn: 'clash', kind: 'getBoundingClientRect', n: 1 },
   { file: 'src/ui/mobile/QuestCoach.jsx', fn: 'measure', kind: 'getBoundingClientRect', n: 1, hb: '32' },
   { file: 'src/ui/mobile/QuestCoach.jsx', fn: 'measure', kind: 'innerHeight', n: 2, hb: '32' },
   { file: 'src/ui/mobile/QuestCoach.jsx', fn: 'worldRect', kind: 'getBoundingClientRect', n: 1, hb: '10, 12' },
