@@ -1,6 +1,6 @@
 card: EN
 branch: claude/plan-en-8-folk (6207)
-prs: #2189 6200, #2195 6201, #2207 6202, #2234 6203, #2255 6204 (merged), #2263 6205 (ready), 6206 unused
+prs: #2189 6200, #2195 6201, #2207 6202, #2234 6203, #2255 6204, #2263 6205 (merged), 6206 unused
 state: working
 
 ## Done
