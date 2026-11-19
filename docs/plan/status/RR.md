@@ -1,20 +1,15 @@
 card: RR
 branch: claude/plan-rr-6-slowchecks (one PR a branch, claude/plan-rr-*)
-prs: #2251, #2256 merged; #2265 (6305), #2267 (6306), #2258 (6302), #2260 (6303): sitting 53; #2264 (6304): draft; (6307) slow checks: opening (on #2260)
+prs: #2251, #2256, #2258, #2260, #2265, #2267 merged; #2264 (6304): draft; (6307) slow checks: opening
 state: working
 
 ## Done
-- #2251 (6300) the census (`docs/plan/census/RR-reds.md`), a SAMPLE.
-- #2256 (6301) mayordoor, the TEST's (keepAlive; a quiet spot; clicks
-  where things are drawn). 5 of 5 green.
-- #2258 (6302) firststeps 6, the TEST's (the CLOSE arrow). 5 of 5 green.
-- #2260 (6303) recoverpay, the TEST's (the reload keeps `lane=`). 5 of 5.
+- merged: #2251 (6300) the census (a SAMPLE); #2256 (6301) mayordoor,
+  #2258 (6302) firststeps, #2260 (6303) recoverpay: the tests', 5 of 5;
+  #2265 (6305) usage-meter.test's date (DEPLOYS); #2267 (6306) the heap
+  line 38.5 -> 40.0 (+1.5 MB; the planning session's and Z53's yes).
 - #2264 (6304) deskkeys, the TEST's (the band's keys, its 1.35x minimap,
   8e by the page's key times); 8f the open red (the desklunge family).
-- #2265 (6305) usage-meter.test 5: date-bound (red everywhere from
-  2026-11-19), now on its own clock. DEPLOYS.
-- #2267 (6306) memory-budget's heap 38.5 -> 40.0 (+1.5 MB): main reads
-  37.4-39.2 run to run (the planning session's and Z53's yes).
 - (6307) the slow checks: precheck runs guards/switches-thrown apart
   (770 s alone; the rest 191 s), each part capped (20 / 40 min), a timeout
   stops the run's whole process group; the gatekeeper's precheck cap
