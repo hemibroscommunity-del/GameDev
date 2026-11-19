@@ -22,6 +22,7 @@ import { coinArtFor } from '@/game/coinArt.js';   /* v2.3.4151: the coins beside
 import { barNumber } from '@/game/barNumbers.js';   /* v2.3.4151: the coins' badge says a big purse short, as the top bar does */
 import { UnrevealedMark } from '@/ui/reveal/UnrevealedMark.jsx';   /* v2.3.4151: a "?" piece's mark, as on its card */
 import { act } from '@/game/actions.js';   /* v2.3.5191: the page's requests leave through the action door (card K PR 7) */
+import { beforeDraw } from '@/game/framePacer.js';   /* v2.3.6289: the bag's edges read at the top of the frame (card HB2 PR 10) */
 import { AFTER_PAINT } from '@/ui/afterPaint.js';   /* v2.3.6281: the first measure off the commit (card HB2 PR 2); v2.3.6283: the tab's redraw beside the game's (PR 4) */
 
 /* ═══ v2.3.4151: THE GEAR TAB -- YOUR BAG, ONE CARD, YOUR GEAR ═══
@@ -369,9 +370,29 @@ const NAME_LH = 1.12;
    scroll (the card never does).  The block takes the room the head and pills
    leave (flex), so it is what gives. */
 const INFO_FS = 12.5;
+/* ═══ v2.3.6289: A FIT WHEN ITS WORDS OR ITS BOX CHANGE, NOT AT EVERY DRAW (card HB2 PR 10; `?afterpaint`) ═══
+   FitInfo and FitName below fitted their words in a layout effect with no list, so at EVERY draw of the gear tab
+   (every change to the character: card HB2 PR 4's `ui:GearTab`) each wrote a font size and read the box back, step
+   by step, in React's commit: the page laid out once a step.  The fit depends only on the words and the box: under
+   `?afterpaint` it runs when the words change (the effect's list) and when the box changes size (a ResizeObserver
+   on the element: a turn, the band's height, the card's room; the observer's read is told after the browser's own
+   layout).  The same fit, by the same steps.  `?afterpaint=0`: at every draw, as before. */
+function useFitWhenNeeded(ref, fit, deps) {
+  const fitRef = React.useRef(fit);
+  fitRef.current = fit;   /* the latest fit (its state), for the observer */
+  React.useLayoutEffect(() => { fitRef.current(); }, AFTER_PAINT ? deps : undefined);
+  React.useEffect(() => {
+    const el = ref.current;
+    if (!AFTER_PAINT || !el || typeof ResizeObserver === 'undefined') return undefined;
+    let seen = false;   /* the first notice is the size the layout effect just fitted for */
+    const ro = new ResizeObserver(() => { if (seen) fitRef.current(); seen = true; });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+}
 const FitInfo = ({ txt, color }) => {
   const ref = React.useRef(null);
-  React.useLayoutEffect(() => {
+  useFitWhenNeeded(ref, () => {   /* v2.3.6289: when the words or the box change (above) */
     const el = ref.current;
     if (!el) return;
     let f = INFO_FS;
@@ -380,7 +401,7 @@ const FitInfo = ({ txt, color }) => {
       if (el.scrollHeight <= el.clientHeight + 1) break;
     }
     if (f < FONT_MIN) el.style.fontSize = FONT_MIN + 'px';
-  });
+  }, [txt]);
   return (
     <div ref={ref} data-gear-info="" style={{
       flex: '1 1 auto', minHeight: 0, overflowY: 'auto', overflowX: 'hidden', touchAction: 'pan-y', overscrollBehavior: 'contain',
@@ -392,7 +413,7 @@ const FitInfo = ({ txt, color }) => {
 const FitName = ({ name, quality, size, lines }) => {
   const ref = React.useRef(null);
   const [fit, setFit] = React.useState({ fs: size, clamp: false });
-  React.useLayoutEffect(() => {
+  useFitWhenNeeded(ref, () => {   /* v2.3.6289: when the name or the box changes (above) */
     const el = ref.current;
     if (!el) return;
     /* measured as a plain block (a line clamp reports its own heights) */
@@ -408,7 +429,7 @@ const FitName = ({ name, quality, size, lines }) => {
     if (!ok) f = NAME_FLOOR;
     el.style.cssText = prev;
     if (f !== fit.fs || !ok !== fit.clamp) setFit({ fs: f, clamp: !ok });
-  });
+  }, [name, size, lines]);
   /* a plain block that fits (1 px above and below: the bold face's
      overhang inside its box, so nothing is clipped); only past the floor
      (nothing in the game's data today) the line clamp's ellipsis */
@@ -505,6 +526,20 @@ export const GearTab = ({ R: Rin, desk }) => {
     const top = el.scrollTop > 1, bot = el.scrollTop + el.clientHeight < el.scrollHeight - 1;
     setBagEdge((e) => (e.top === top && e.bot === bot ? e : { top, bot }));
   }, []);
+  /* ═══ v2.3.6289: THE BAG'S EDGES READ AT THE TOP OF THE FRAME, ONCE A FRAME (card HB2 PR 10; `?afterpaint`) ═══
+     The bag's ref was a new function at every draw of the tab, so React let go of it and called the new one at every
+     commit, and each call asked for the edges in a requestAnimationFrame: the bag's scroll and heights read after
+     whatever the frame had changed, at every redraw (the tab's own `scrollTop`, `clientHeight`, `scrollHeight`:
+     docs/specs/layout-reads.md's list).  Under `?afterpaint` the ref is one function, and after each draw the edges
+     are read at the top of the game's next frame (framePacer.js beforeDraw), once however many draws came: the
+     shade still follows a new bag a frame later, as it did.  Scrolling reads them at once, as before (onScroll). */
+  const edgeAskRef = React.useRef(false);
+  const bagRefSet = React.useCallback((el) => { bagRef.current = el; }, []);
+  React.useEffect(() => {
+    if (!AFTER_PAINT || edgeAskRef.current || !bagRef.current) return;
+    edgeAskRef.current = true;
+    beforeDraw(() => { edgeAskRef.current = false; if (bagRef.current) readEdge(); });
+  });
 
   const st = gearTabBus.state;
   const allEntries = groupSpare(getBagEntries(Rin));
@@ -671,7 +706,7 @@ export const GearTab = ({ R: Rin, desk }) => {
         /* nine in view, the rest by scrolling; a tap on an empty square (or
            the space round them) puts the pick down */
         <div style={{ flex: 'none', height: viewH, marginTop: gg, position: 'relative' }}>
-        <div data-gear-bag="" ref={(el) => { bagRef.current = el; if (el) requestAnimationFrame(readEdge); }} onScroll={readEdge}
+        <div data-gear-bag="" ref={AFTER_PAINT ? bagRefSet : (el) => { bagRef.current = el; if (el) requestAnimationFrame(readEdge); }} onScroll={readEdge}
           onClick={(e) => { if (!(e.target && e.target.closest && e.target.closest('[data-bag-key]'))) gearTabBus.deselect(); }}
           style={{
             height: '100%', overflowY: 'auto', touchAction: 'pan-y', WebkitOverflowScrolling: 'touch',
