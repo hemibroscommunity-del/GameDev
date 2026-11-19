@@ -5129,7 +5129,7 @@ export function setupWebSocket(ctx) {
        a return (the canvases, the GL context) runs either way, and a return
        iOS DID tell us of (visibilitychange, pageshow) is not judged at all.
        `?thawjudge=0` (the planning session's yes, 2026-11-19, decided for the
-       owner): every gap rejoins, as before.  game/thawCarried.js has the rule
+       owner): every gap rejoins at once, main's path as before.  game/thawCarried.js has the rule
        and the judge (QA: window.__btThaw). */
     var _thaw = makeThawJudge(workerClock);
     var _hiddenAt = 0;
@@ -5193,8 +5193,8 @@ export function setupWebSocket(ctx) {
         /* v2.3.3496: ...and a page that was frozen long enough has a stale
            world, whether or not iOS fired visibilitychange or pageshow for
            it (it does not always): the same recovery as a return */
-        /* v2.3.6309: noted, judged a beat later (above), the worker's clock as known now */
-        if (gap > RESYNC_AWAY_MS && typeof document !== 'undefined' && document.visibilityState === 'visible') _thaw.gap(now, gap);
+        /* v2.3.6309: noted, judged a beat later (above), the worker's clock as known now; `?thawjudge=0`: main's path, rejoined at once */
+        if (gap > RESYNC_AWAY_MS && typeof document !== 'undefined' && document.visibilityState === 'visible') { if (sw('thawjudge')) { try { _resumeRecover('thaw', gap); } catch (e) { /* the next return tries again */ } } else _thaw.gap(now, gap); }
         return;
       }
       if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;

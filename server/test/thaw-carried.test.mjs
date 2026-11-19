@@ -15,11 +15,12 @@
  *   6. the page wires it (wsClient.js, read by system): the pings handed to
  *      the judge, the gap noted and judged a SETTLE beat later, and only the
  *      forced rejoin skipped for a carried gap (the rest of the return runs);
- *      `?thawjudge=0` judges nothing (every gap rejoins, as before);
+ *      `?thawjudge=0` judges nothing: every gap rejoins at once, main's
+ *      path as before (the planning session, sitting 54's note);
  *   7. the judge: once, a beat on, on the offset as found; off; no clock.
  * BREAK PROOF (rule 8), tried by hand once: thawCarried returning true for
  * an unknown clock -> FAIL 3; `carried === true` dropped from the rejoin's
- * branch in wsClient.js -> FAIL 6.
+ * branch in wsClient.js -> FAIL 6; `?thawjudge=0`'s at-once path dropped -> FAIL 6.
  */
 import { readSystem } from '../../tools/guards/lib/filesOf.mjs';
 import { THAW, thawCarried, thawPingsWanted, makeThawJudge } from '../../src/game/thawCarried.js';
@@ -88,7 +89,9 @@ check('5. the page waits a beat (THAW.SETTLE_MS) before judging, and keeps enoug
   const src = [...readSystem('wire', { only: /\.js$/ }).values()].join('\n');
   check('6. the connection makes one judge on the worker\'s clock', /import \{ makeThawJudge \} from '@\/game\/thawCarried\.js'/.test(src) && /var _thaw = makeThawJudge\(workerClock\);/.test(src));
   check('6. each ping\'s worker time is handed to it', /_thaw\.ping\(msg\.ts\);/.test(src));
-  check('6. a gap over RESYNC_AWAY_MS is noted, not rejoined at once', /if \(gap > RESYNC_AWAY_MS && [^\n]*\) _thaw\.gap\(now, gap\);/.test(src) && !/_resumeRecover\('thaw', gap\)/.test(src));
+  check('6. a gap over RESYNC_AWAY_MS is noted, not rejoined at once; `?thawjudge=0` takes main\'s path, rejoined at once',
+    /if \(gap > RESYNC_AWAY_MS && [^\n]*\) \{ if \(sw\('thawjudge'\)\) \{ try \{ _resumeRecover\('thaw', gap\); \} catch \(e\) \{[^}\n]*\} \} else _thaw\.gap\(now, gap\); \}/.test(src)
+      && (src.match(/_resumeRecover\('thaw', gap\)/g) || []).length === 1);
   check('6. ...judged a beat later, `?thawjudge=0` judging nothing (every gap rejoins, as before), and handed on as `carried`',
     /var _td = _thaw\.due\(now, sw\('thawjudge'\)\);/.test(src) && /_resumeRecover\('thaw', _td\.gap, _td\.carried\)/.test(src));
   check('6. only the forced rejoin is skipped for a carried gap',
