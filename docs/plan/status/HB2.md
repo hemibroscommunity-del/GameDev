@@ -1,6 +1,6 @@
 card: HB2
-branch: claude/plan-hb2-11-maplabels
-prs: #2224-#2266 (6280-6288): merged; #2271 6289: ready; 6290 (map labels): opening
+branch: claude/plan-hb2-12-narrowkeys
+prs: #2224-#2266 (6280-6288): merged; #2271 6289: ready; #2272 6290: checks; 6291 (narrow keys): opening
 state: working
 
 ## Done
@@ -10,18 +10,18 @@ state: working
 - #2254 (6284): p256's twins read and packed on the reader's worker.
 - #2257 (6285): the Quests dot without building the offers (row 35).
 - #2259 (6286): the big arrow's tick at the frame's top (row 18: 70.5 x14 -> 0).
-- #2261 (6287): `other: R > J` off held-budget's debt list by its own
-  rule (7.0-10.6 ms on main, under 12): no row `ours`, step 3.1 closed.
+- #2261 (6287): `other: R > J` off the debt list by its rule: 3.1 closed.
 - #2266 (6288): the big arrow's CLOSE step waits for a weapon on (its rule).
 - #2271 (6289): the gear tab's own reads only when needed (bag edges at
   the frame's top; the names' and words' fit when they or their box change).
-- 6290: the World map's off-screen labels not measured (first draw on
-  opening 102-120 -> 57-64 ms; the same texts at fifteen zooms).
+- #2272 (6290): the World map's off-screen labels not measured (first
+  draw on opening 102-120 -> 57-64 ms; the same texts at fifteen zooms).
+- 6291: the band's key list only on the computer's band (`?narrow` and a
+  small window keep the column's strip; the wide page identical).
 
 ## Next
 
-- RR's `?narrow` BandKeys item (6291; the wide computer page identical):
-  the band's list and `bandKeysActive` ask for the computer's band.
+- The planning session's list is done with 6291.
   Skipped by the planning session: deskTeach's route, rememberChar.
 
 ## Found
