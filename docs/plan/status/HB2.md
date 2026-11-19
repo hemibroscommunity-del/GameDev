@@ -5,8 +5,7 @@ state: working
 
 ## Done
 
-- #2224 (6280): the quest coach measures at the frame's top (?afterpaint).
-- #2244 (6281): the band's tap and mount measures off the tap and commit.
+- #2224 (6280), #2244 (6281): the coach's and the band's measures off the tap.
 - #2247 (6282): a tap reads the canvas's remembered corner.
 - #2249 (6283): the gear tab drawn beside the game's redraw.
 - #2254 (6284): p256's twins read and packed on the reader's worker.
