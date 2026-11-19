@@ -242,7 +242,7 @@ import { nmlJoinFromBys } from '@/game/nmlAsk.js'; /* v2.3.3530: one who chose t
 import { applySalvageResult, applyEssenceResult } from '@/game/salvage.js'; /* v2.3.3141: salvage and essences */
 import { applyItemDropResult } from '@/game/itemDrop.js'; /* v2.3.3473: Drop's answer */
 import { workerClock, rebasePiles } from '@/game/workerClock.js';   /* v2.3.4364: a pile's times on the worker's clock */
-import { THAW, thawCarried } from '@/game/thawCarried.js';   /* v2.3.6309: a gap the socket carried is not a freeze (card RR) */
+import { makeThawJudge } from '@/game/thawCarried.js';   /* v2.3.6309: a gap the socket carried is not a freeze (card RR) */
 import { notRecipientRetry } from '@/game/lootAsk.js';   /* v2.3.4364: an early 'not-recipient' on a death pile, asked once more */
 import { applyItemReveal, afterReveal } from '@/game/revealBag.js'; /* v2.3.4012: a mystery piece opened in the bag */
 import { onPointsResetResult } from '@/game/pointsReset.js'; /* v2.3.3541: the free points reset's answer */
@@ -4157,9 +4157,7 @@ export function setupWebSocket(ctx) {
                  built before the first ping (a join's state_sync comes
                  first) onto it */
               if (workerClock.sample(msg.ts, Date.now()) && S && S.groundLoot) rebasePiles(S.groundLoot, workerClock);
-              /* v2.3.6309: each ping's worker time, kept to judge a gap in the
-                 alive timer's beats by (game/thawCarried.js) */
-              if (Number.isFinite(Number(msg.ts))) { _thawPings.push(Number(msg.ts)); if (_thawPings.length > THAW.KEEP) _thawPings.shift(); }
+              _thaw.ping(msg.ts);   /* v2.3.6309: kept to judge a gap in the alive timer's beats (game/thawCarried.js) */
               /* v2.3.3254: the quiet phone answers on the next frame it sends
                  anyway, saying how long it waited (game/quietPhone.js) */
               if (_quietNow()) {
@@ -5129,11 +5127,11 @@ export function setupWebSocket(ctx) {
        forced rejoin is skipped; anything else (no ping clock yet, pings
        missing: a socket the network dropped) rejoins as before.  The rest of
        a return (the canvases, the GL context) runs either way, and a return
-       iOS DID tell us of (visibilitychange, pageshow) is not judged at all. */
-    var _thawPings = [];
-    var _thawPending = null;
-    var _thawStats = { carried: 0, rejoined: 0, last: null };
-    try { if (typeof window !== 'undefined') window.__btThaw = function () { return { carried: _thawStats.carried, rejoined: _thawStats.rejoined, last: _thawStats.last, pending: !!_thawPending }; }; } catch (e) { /* QA only */ }
+       iOS DID tell us of (visibilitychange, pageshow) is not judged at all.
+       `?thawjudge=0` (the planning session's yes, 2026-11-19, decided for the
+       owner): every gap rejoins, as before.  game/thawCarried.js has the rule
+       and the judge (QA: window.__btThaw). */
+    var _thaw = makeThawJudge(workerClock);
     var _hiddenAt = 0;
     var _lastAliveAt = Date.now();
     /* ═══ v2.3.3034: A SOCKET THAT SAYS OPEN AND CARRIES NOTHING ═══
@@ -5182,18 +5180,8 @@ export function setupWebSocket(ctx) {
       var now = Date.now();
       var gap = now - _lastAliveAt;
       _lastAliveAt = now;
-      /* v2.3.6309: a gap noted a beat ago is judged now, its queued frames handled */
-      if (_thawPending && now - _thawPending.to >= THAW.SETTLE_MS) {
-        var _tp = _thawPending;
-        _thawPending = null;
-        /* `?thawjudge=0` (the planning session's yes, 2026-11-19, decided for
-           the owner): no gap judged, every one rejoins, as before */
-        var _carried = !sw('thawjudge') && thawCarried(_tp.from, _tp.to, _thawPings, _tp.off, _tp.known);
-        _thawStats.last = { gap: _tp.gap, carried: _carried, at: now };
-        if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
-          try { _resumeRecover('thaw', _tp.gap, _carried); } catch (e) { /* the next return tries again */ }
-        }
-      }
+      var _td = _thaw.due(now, sw('thawjudge'));   /* v2.3.6309: a gap noted a beat ago, judged now */
+      if (_td && typeof document !== 'undefined' && document.visibilityState === 'visible') { try { _resumeRecover('thaw', _td.gap, _td.carried); } catch (e) { /* the next return tries again */ } }
       /* We were frozen, not the socket: whatever it carried while we were
          stopped is queued for us, so its silence is counted from now -- and
          an action waiting on an answer waits its full window from now too
@@ -5205,11 +5193,8 @@ export function setupWebSocket(ctx) {
         /* v2.3.3496: ...and a page that was frozen long enough has a stale
            world, whether or not iOS fired visibilitychange or pageshow for
            it (it does not always): the same recovery as a return */
-        if (gap > RESYNC_AWAY_MS && typeof document !== 'undefined' && document.visibilityState === 'visible') {
-          /* v2.3.6309: noted, judged a beat later (above); the worker's clock
-             as known NOW, before the late pings resample it */
-          _thawPending = { from: now - gap, to: now, gap: gap, off: workerClock.offset(), known: workerClock.known() };
-        }
+        /* v2.3.6309: noted, judged a beat later (above), the worker's clock as known now */
+        if (gap > RESYNC_AWAY_MS && typeof document !== 'undefined' && document.visibilityState === 'visible') _thaw.gap(now, gap);
         return;
       }
       if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
@@ -5385,12 +5370,8 @@ export function setupWebSocket(ctx) {
           if (reconnectTimer) clearTimeout(reconnectTimer);
           reconnectDelay = 1000;
           try { connect(); } catch (e) {}
-        } else if (ws.readyState === 1 && _awayMs > RESYNC_AWAY_MS && carried === true) {
-          /* v2.3.6309: the socket carried the gap (game/thawCarried.js): every
-             tick of it came, late, and nothing is stale -- no rejoin */
-          _thawStats.carried++;
+        } else if (ws.readyState === 1 && _awayMs > RESYNC_AWAY_MS && carried === true) { _thaw.count('carried');   /* v2.3.6309: the socket carried the gap: every tick came, late; nothing is stale, no rejoin */
         } else if (ws.readyState === 1 && _awayMs > RESYNC_AWAY_MS) {
-          if (tag === 'thaw') _thawStats.rejoined++;
           /* v2.3.778: socket SURVIVED a long freeze ('[resume] visible
              wsState=1' in every crash log) = stale world.  Protocol v2
              sends only per-tick monster deltas; everything missed while

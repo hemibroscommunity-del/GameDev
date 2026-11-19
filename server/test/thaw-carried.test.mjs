@@ -12,16 +12,17 @@
  *      before or after the gap are not counted;
  *   5. the count wanted: one ping a THAW.PING_MS, less one at an edge, at
  *      least one;
- *   6. wsClient.js wires it: the pings kept, the gap noted and judged a
- *      SETTLE beat later with the offset read when found, and only the forced
- *      rejoin skipped for a carried gap (the rest of the return runs);
- *      `?thawjudge=0` judges nothing (every gap rejoins, as before).
+ *   6. the page wires it (wsClient.js, read by system): the pings handed to
+ *      the judge, the gap noted and judged a SETTLE beat later, and only the
+ *      forced rejoin skipped for a carried gap (the rest of the return runs);
+ *      `?thawjudge=0` judges nothing (every gap rejoins, as before);
+ *   7. the judge: once, a beat on, on the offset as found; off; no clock.
  * BREAK PROOF (rule 8), tried by hand once: thawCarried returning true for
  * an unknown clock -> FAIL 3; `carried === true` dropped from the rejoin's
  * branch in wsClient.js -> FAIL 6.
  */
-import { readFileSync } from 'node:fs';
-import { THAW, thawCarried, thawPingsWanted } from '../../src/game/thawCarried.js';
+import { readSystem } from '../../tools/guards/lib/filesOf.mjs';
+import { THAW, thawCarried, thawPingsWanted, makeThawJudge } from '../../src/game/thawCarried.js';
 
 let passed = 0, failed = 0;
 const check = (name, ok, detail) => {
@@ -82,22 +83,39 @@ check('5. a ping each THAW.PING_MS, less one at an edge, at least one',
 check('5. the page waits a beat (THAW.SETTLE_MS) before judging, and keeps enough pings for a long gap',
   THAW.SETTLE_MS >= 1000 && THAW.KEEP * 2000 >= 60000, THAW);
 
-// ── 6. wsClient.js wires it ──
+// ── 6. the page wires it (read by system: tools/guards/lib/filesOf.mjs) ──
 {
-  const src = readFileSync(new URL('../../src/networking/wsClient.js', import.meta.url), 'utf8');
-  check('6. it imports the rule', /import \{ THAW, thawCarried \} from '@\/game\/thawCarried\.js'/.test(src));
-  check('6. each ping\'s worker time is kept (at most THAW.KEEP)', /_thawPings\.push\(Number\(msg\.ts\)\);\s*if \(_thawPings\.length > THAW\.KEEP\) _thawPings\.shift\(\);/.test(src));
-  check('6. a gap over RESYNC_AWAY_MS is noted with the clock as known then, not rejoined at once',
-    /_thawPending = \{ from: now - gap, to: now, gap: gap, off: workerClock\.offset\(\), known: workerClock\.known\(\) \};/.test(src)
-      && !/_resumeRecover\('thaw', gap\)/.test(src));
-  check('6. ...judged a SETTLE beat later, and handed on as `carried`',
-    /now - _thawPending\.to >= THAW\.SETTLE_MS/.test(src) && /thawCarried\(_tp\.from, _tp\.to, _thawPings, _tp\.off, _tp\.known\)/.test(src)
-      && /_resumeRecover\('thaw', _tp\.gap, _carried\)/.test(src));
-  check('6. `?thawjudge=0` (its switch row) judges nothing: every gap rejoins, as before',
-    /var _carried = !sw\('thawjudge'\) && thawCarried\(/.test(src));
+  const src = [...readSystem('wire', { only: /\.js$/ }).values()].join('\n');
+  check('6. the connection makes one judge on the worker\'s clock', /import \{ makeThawJudge \} from '@\/game\/thawCarried\.js'/.test(src) && /var _thaw = makeThawJudge\(workerClock\);/.test(src));
+  check('6. each ping\'s worker time is handed to it', /_thaw\.ping\(msg\.ts\);/.test(src));
+  check('6. a gap over RESYNC_AWAY_MS is noted, not rejoined at once', /if \(gap > RESYNC_AWAY_MS && [^\n]*\) _thaw\.gap\(now, gap\);/.test(src) && !/_resumeRecover\('thaw', gap\)/.test(src));
+  check('6. ...judged a beat later, `?thawjudge=0` judging nothing (every gap rejoins, as before), and handed on as `carried`',
+    /var _td = _thaw\.due\(now, sw\('thawjudge'\)\);/.test(src) && /_resumeRecover\('thaw', _td\.gap, _td\.carried\)/.test(src));
   check('6. only the forced rejoin is skipped for a carried gap',
-    /_awayMs > RESYNC_AWAY_MS && carried === true\) \{[\s\S]{0,300}?_thawStats\.carried\+\+;[\s\S]{0,40}?\} else if \(ws\.readyState === 1 && _awayMs > RESYNC_AWAY_MS\) \{/.test(src)
+    /_awayMs > RESYNC_AWAY_MS && carried === true\) \{ _thaw\.count\('carried'\);[^\n]*\n\s*\} else if \(ws\.readyState === 1 && _awayMs > RESYNC_AWAY_MS\) \{/.test(src)
       && /_forceRejoin\('resume-resync'/.test(src));
+}
+
+// ── 7. the judge ──
+{
+  let off = OFF, known = true;
+  const clock = { offset: () => off, known: () => known };
+  const j = makeThawJudge(clock);
+  for (const t of pingsEvery(90000, 112000, 2000)) j.ping(t);
+  j.gap(110000, 10000);   /* 100000 .. 110000 */
+  off = 0;                /* the late pings resample the clock: the judge keeps the offset as found */
+  check('7. not judged before a SETTLE beat', j.due(110000 + THAW.SETTLE_MS - 1, false) === null);
+  const d = j.due(110000 + THAW.SETTLE_MS, false);
+  check('7. a beat on: the gap, carried (the offset as it was when the gap was found)', !!d && d.gap === 10000 && d.carried === true, d);
+  check('7. ...judged once', j.due(130000, false) === null && j.stats().pending === false);
+  j.gap(150000, 10000);
+  const e = j.due(152000, true);
+  check('7. `?thawjudge=0`: not carried (handed to the rejoin), counted', !!e && e.carried === false && j.stats().rejoined === 1, j.stats());
+  const k = makeThawJudge({ offset: () => 0, known: () => false });
+  k.gap(10000, 8000);
+  check('7. no ping clock yet: not carried', k.due(20000, false).carried === false);
+  j.count('carried');
+  check('7. count(\'carried\') and the probe\'s stats', j.stats().carried === 1 && typeof j.stats().last === 'object');
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);

@@ -21,7 +21,8 @@
  * rejoin stands.  Nothing else of a return (the canvases Safari emptied, a
  * lost GL context) is judged here: only the forced rejoin.
  *
- * Pure: no imports, no clock of its own (server/test/thaw-carried.test.mjs).
+ * No imports, no clock of its own (server/test/thaw-carried.test.mjs); the
+ * judge below sets the QA probe window.__btThaw.
  */
 export const THAW = Object.freeze({
   /* the longest the worker's pings are apart (90 ticks of 22-33 ms is
@@ -56,4 +57,43 @@ export function thawCarried(fromMs, toMs, pings, offsetMs, known) {
 /** How many pings a gap of `gapMs` must have carried. */
 export function thawPingsWanted(gapMs) {
   return Math.max(1, Math.floor(gapMs / THAW.PING_MS) - 1);
+}
+
+/** The page's judge (wsClient.js): one a connection.  `clock` is
+ *  game/workerClock.js's (offset(), known()).  ping(ts): a ping's worker
+ *  time, kept (at most THAW.KEEP); gap(now, gapMs): a gap in the alive
+ *  timer's beats, noted with the worker's clock as known NOW (before the
+ *  late pings resample it); due(now, off): a SETTLE beat on, the noted gap
+ *  judged -- { gap, carried } once, else null; `off` (`?thawjudge=0`) judges
+ *  every gap stale, as before.  `rejoined` counts the gaps handed on to the
+ *  rejoin, `carried` (count('carried')) those the socket carried.  QA:
+ *  window.__btThaw(). */
+export function makeThawJudge(clock) {
+  const pings = [];
+  const stats = { carried: 0, rejoined: 0, last: null };
+  let pending = null;
+  const judge = {
+    ping(ts) {
+      const n = Number(ts);
+      if (!Number.isFinite(n)) return;
+      pings.push(n);
+      if (pings.length > THAW.KEEP) pings.shift();
+    },
+    gap(now, gapMs) {
+      pending = { from: now - gapMs, to: now, gap: gapMs, off: clock.offset(), known: clock.known() };
+    },
+    due(now, off) {
+      if (!pending || now - pending.to < THAW.SETTLE_MS) return null;
+      const p = pending;
+      pending = null;
+      const carried = !off && thawCarried(p.from, p.to, pings, p.off, p.known);
+      stats.last = { gap: p.gap, carried, at: now };
+      if (!carried) stats.rejoined++;
+      return { gap: p.gap, carried };
+    },
+    count(kind) { if (kind === 'carried') stats.carried++; },
+    stats() { return { carried: stats.carried, rejoined: stats.rejoined, last: stats.last, pending: !!pending }; },
+  };
+  try { if (typeof window !== 'undefined') window.__btThaw = judge.stats; } catch (e) { /* QA only */ }
+  return judge;
 }
