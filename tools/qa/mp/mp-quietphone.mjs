@@ -252,7 +252,13 @@ async function pass({ browser, wsPort, webPort, rec: recAll }, mode) {
         rate <= Math.max(16, nearRate * 1.15), report.turningAlone);
     } else if (quiet) {
       rec.ok(`turning all the time with nobody near: ${rate.toFixed(1)} frames a second (at most 15, every 66 ms; ${nearRate.toFixed(1)} beside the other player)`,
-        rate <= 16 && rate <= nearRate * 0.8, report.turningAlone);
+        rate <= 16, report.turningAlone);
+      /* v2.3.6310: the saving against the near pace is measurable only on a
+         page that sends near faster than the quiet cap (a phone's 30); off
+         the path this box sent 14.5-16.7 near (its frames, not the game's
+         33 ms), so alone at 15 could not be 20% under it (8.7-12.5 alone) */
+      if (nearRate * 0.8 > 16) rec.ok(`...and fewer than beside the other player (${rate.toFixed(1)} <= 80% of ${nearRate.toFixed(1)})`, rate <= nearRate * 0.8, report.turningAlone);
+      else rec.skip('...and fewer than beside the other player', `this page sent only ${nearRate.toFixed(1)} a second beside a player (its frames), under 20, so 80% of it is below the quiet cap of 15: the saving cannot show here`);
     } else {
       rec.ok(`turning with nobody near (before): ${rate.toFixed(1)} frames a second`, true, report.turningAlone);
     }
