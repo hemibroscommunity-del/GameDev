@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "031ed3ea10fb79cd9e9440c8118b5329d3fa354b",
+  "tree": "405cfb78e4064385c6b9ef49542bd48dae265588",
+  "committedAt": "2026-11-19T08:48:02-08:00",
+  "subject": "Merge pull request #2269 from hemibroscommunity-del/claude/plan-rr-6-slowchecks",
+  "files": 8453,
+  "bytes": 963292241,
+  "listingSha256": "244c5526c3e08e14fdcc4c00229795ada678e4218be809943e251645d4d4f987",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
