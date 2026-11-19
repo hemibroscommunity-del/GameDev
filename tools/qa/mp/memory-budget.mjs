@@ -447,8 +447,9 @@
  * main 1cd3fced 37.4, 37.5, 37.6, 37.8, 38.0, 38.4, 38.5, 38.6, 38.6 and new
  * main c0a0791c 38.8, 39.0; mp-membudget alone on the gatekeeper's box read
  * c0a0791c 38.9, 38.6, 38.6, with EN's keep queue off (`?keepimage=0`) 38.6,
- * 38.6 (no change), and 1cd3fced 38.6 (`?groundsend` is never ridden on the
- * tour).  So main reads 37.4 to 39.0 run to run, and the line at 38.5 stood
+ * 38.6 (no change), and 1cd3fced 38.6, 38.6, 38.8, 38.6 (`?groundsend` is
+ * never ridden on the tour): every run of either main over 38.5 on that box.
+ * So main reads 37.4 to 39.0 run to run, and the line at 38.5 stood
  * inside that, as v2.3.4483 found at 37.5: any PR failed it by the luck of
  * the run.  39.5 is the highest seen, 39.0, plus the half MB of room the line
  * had.  NOT a saving given up: the heap has crept about 1 MB since v2.3.5007's
