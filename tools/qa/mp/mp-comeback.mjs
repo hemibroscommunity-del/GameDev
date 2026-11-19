@@ -20,7 +20,10 @@
  *      the context (resume + a silent sound), once armed and not after;
  *   5. a page frozen for seconds with no visibility event at all (iOS does
  *      not always send one): the sound's kick is armed, and the socket that
- *      survived the freeze is rejoined for a whole world;
+ *      survived the freeze is rejoined for a whole world -- v2.3.6309: unless
+ *      the socket CARRIED the gap (the worker's pings from inside it all
+ *      came): then no rejoin, nothing was missed (5); `?thawjudge=0` the
+ *      old way, a rejoin (5b);
  *   6. a connect that never finishes (a radio not awake yet): retried after
  *      CONNECT_STALL_MS, and the world is back -- it used to hold the bro
  *      still for good, until a tab switch killed the socket;
@@ -175,14 +178,39 @@ export async function run({ browser, wsPort, webPort, rec }) {
        before5's): check 4's return left one armed for KICK_ARMED_MS (20 s), so
        `kick > 0` was true at once, read before GameApp's 1 s beat had seen the
        gap and re-armed it (red by run on main: thaw.kick === before5.kick) */
+    /* v2.3.6309 (card RR PR 4; the planning session's yes): a gap the socket
+       CARRIED is not a freeze.  This hold is the page's own (a busy loop);
+       the worker went on sending all through it, so its pings from inside
+       the gap all arrive, handled late (game/thawCarried.js): nothing was
+       missed, and the forced rejoin is skipped -- the rest of the return
+       (the sound's kick, the resume's log) runs as before.  A slow device
+       rejoined on every such gap, forever (card RD's crowdfight).  With
+       `?thawjudge=0` the same hold rejoins for a whole world, as before
+       (5b).  A gap whose pings went missing still rejoins (the node suite,
+       thaw-carried.test). */
+    const thaw0 = await P.page.evaluate(() => (window.__btThaw ? window.__btThaw() : null));
     await P.page.evaluate(() => { const t = Date.now(); while (Date.now() - t < 6500) { /* the page frozen */ } });
     const thaw = await H.waitFor(P, () => ({ sockets: window.__qaSockets.length, kick: window.BT_AUDIO._kickUntil || 0, hold: !!window._gameState.current._netHold,
       st: window._gameState.current._realtimeStatus }), (v) => v.sockets > 0 && v.kick > before5.kick && v.st === 'connected', { timeout: 20000, label: 'the thaw noticed' }).catch(() => null);
+    const judged = await H.waitFor(P, () => (window.__btThaw ? window.__btThaw() : null),
+      (v) => !!v && !v.pending && !!v.last && v.last.gap > 5000 && (v.carried + v.rejoined) > ((thaw0 && thaw0.carried + thaw0.rejoined) || 0),
+      { timeout: 20000, label: 'the gap judged' }).catch(() => null);
     const kinds5 = await crashKinds(P);
-    const after5 = await H.waitFor(P, () => ({ sockets: window.__qaSockets.length, st: window._gameState.current._realtimeStatus, hold: !!window._gameState.current._netHold }),
-      (v) => v.sockets > before5.sockets && v.st === 'connected' && !v.hold, { timeout: 30000, label: 'rejoined after the thaw' }).catch(() => null);
-    rec.ok(`5. a page frozen 6.5 s with no visibility event: the sound's kick armed, and the socket that survived it rejoined for a whole world (sockets ${before5.sockets} -> ${after5 && after5.sockets})`,
-      !!thaw && thaw.kick > before5.kick && !!after5 && kinds5.some((k) => /^resume:thaw/.test(k)), { before5, thaw, after5, kinds5 });
+    await P.page.waitForTimeout(3000);
+    const after5 = await P.page.evaluate(() => ({ sockets: window.__qaSockets.length, st: window._gameState.current._realtimeStatus, hold: !!window._gameState.current._netHold }));
+    rec.ok(`5. a page held 6.5 s with no visibility event, its socket carrying the worker's pings all the while: the sound's kick armed, the return run, the gap judged carried and NOT rejoined (sockets ${before5.sockets} -> ${after5.sockets})`,
+      !!thaw && thaw.kick > before5.kick && kinds5.some((k) => /^resume:thaw/.test(k)) && !!judged && judged.last.carried === true
+        && after5.sockets === before5.sockets && after5.st === 'connected', { before5, thaw, judged, after5, kinds5 });
+    /* 5b. the off-ramp: the old way, a rejoin for a whole world */
+    await P.page.evaluate(() => history.replaceState(null, '', location.pathname + location.search + (location.search ? '&' : '?') + 'thawjudge=0'));
+    const before5b = await P.page.evaluate(() => ({ sockets: window.__qaSockets.length, rejoined: window.__btThaw ? window.__btThaw().rejoined : 0 }));
+    await P.page.evaluate(() => { const t = Date.now(); while (Date.now() - t < 6500) { /* the page frozen again */ } });
+    const after5b = await H.waitFor(P, () => ({ sockets: window.__qaSockets.length, st: window._gameState.current._realtimeStatus, hold: !!window._gameState.current._netHold,
+      thaw: window.__btThaw ? window.__btThaw() : null }), (v) => v.sockets > before5b.sockets && v.st === 'connected' && !v.hold,
+      { timeout: 30000, label: 'rejoined after the thaw (?thawjudge=0)' }).catch(() => null);
+    rec.ok(`5b. ...with ?thawjudge=0 the same hold rejoins for a whole world, as before (sockets ${before5b.sockets} -> ${after5b && after5b.sockets})`,
+      !!after5b && after5b.thaw && after5b.thaw.rejoined > before5b.rejoined, { before5b, after5b });
+    await P.page.evaluate(() => history.replaceState(null, '', location.pathname + location.search.replace(/([?&])thawjudge=0(&|$)/, (m, a, b) => (b ? a : '')).replace(/[?&]$/, '')));
 
     /* ── 6. a connect that never finishes ── */
     const before6 = await P.page.evaluate(() => {
