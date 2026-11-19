@@ -178,6 +178,7 @@ import { BUILD_INFO } from './BuildBadge.jsx';
 import { pushHudPopup } from './XpFlyOverlay.jsx';
 /* v2.3.6244: the door prompt's placing over the bro's head (v2.3.4303) is ui/doorPrompt.js now (card HB PR 5) */
 import { placeOverHead } from './doorPrompt.js';
+import { AFTER_PAINT } from './afterPaint.js';   /* v2.3.6281: the band's own resize at the top of the next frame (card HB2 PR 2) */
 
 /* v2.3.1745: how long the QUEST ACCEPTED! / QUEST COMPLETED! banner stays
    up.  Exported so the headless check reads the real number instead of
@@ -3970,7 +3971,21 @@ export var BroTown = function BroTown(_ref0) {
        attribute width/height aren't set, and at first useEffect run the
        canvas is fresh from React with both undefined). */
     resize();
-    window.addEventListener('resize', resize);
+    /* ═══ v2.3.6281: THE BAND'S OWN RESIZE AT THE TOP OF THE NEXT FRAME (card HB2 PR 2; `?afterpaint`) ═══
+       Folding the band or opening a page sends a `resize` of the band's own (playViewport.js bandResize, marked
+       btBand) so this one geometry path re-stamps --dash-h and the canvas: it ran right inside the tap, after
+       React and the band had changed the page, and its first reads (visualViewport's size, the shell's
+       clientWidth, the inset probe's computed style) laid the whole page out there (`onPointerUp > set`, 55.9
+       ms on budget-android: docs/plan/census/HB-holds.md row 7).  Under `?afterpaint` (ON) the band's resize is
+       run at the top of the game's next frame (framePacer.js beforeDraw), once however many came: the canvas and
+       the band's stamps follow a fold a frame later.  The browser's own resizes run here, as before;
+       `?afterpaint=0`: the band's too. */
+    var _bandAsked = false;
+    var _onResize = function (e) {
+      if (AFTER_PAINT && e && e.btBand === true) { if (!_bandAsked) { _bandAsked = true; beforeDraw(function () { _bandAsked = false; resize(); }); } return; }
+      resize();
+    };
+    window.addEventListener('resize', _onResize);
     if (vv) vv.addEventListener('resize', resize);
     /* ═══ v2.3.2174: A 180-DEGREE FLIP IS NOT A RESIZE ═══
        Turning the phone end-for-end in landscape moves the Dynamic Island
@@ -8494,7 +8509,7 @@ export var BroTown = function BroTown(_ref0) {
       unregCycleWeapon(); /* v2.3.1562 */
       unregSelectSlot(); /* v2.3.4151 */
       teardownDesktopControls();
-      window.removeEventListener('resize', resize);
+      window.removeEventListener('resize', _onResize);   /* v2.3.6281 */
       window.removeEventListener('orientationchange', _orientResize);
       if (resizeObs) resizeObs.disconnect();
       if (vv) vv.removeEventListener('resize', resize);

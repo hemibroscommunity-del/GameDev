@@ -1,25 +1,33 @@
 card: HB2
-branch: claude/plan-hb2-1-coach
-prs: #2224 (6280, the quest coach after the paint): draft, CI
-state: working
+branch: claude/plan-hb2-2-band
+prs: #2224 (6280): ready; 6281, 6282, 6283: opening (stacked); 6284: draft
+state: ready
 
 ## Done
 
-- (none merged yet)
+- #2224 (6280): the quest coach measures at the frame's top (?afterpaint).
+- 6281: the band's tap and mount measures (BroTown resize, NavRail,
+  OneBandColumns, BroCard, GearTab/railKit/StatDemo/bag boxes, the inset).
+- 6282: a tap reads the canvas's remembered corner.
+- 6283: the gear tab drawn beside the game's redraw (useDeferredValue).
 
 ## Next
 
-- #2224 (6280) to green.  PRs 2-4 drafted (stacked: -2-band, -3-taps,
-  -4-geartab), measuring windows/folk/fight/lands; PR 5 drafted
-  (-5-p256, from main).
+- 6284 (p256's twins read and packed on the reader's worker): measure at
+  `town` (stripworker=0 vs on), playable, membudget; then HB's leftover
+  families worst first (R > J, the World map's labels, the report's column).
 
 ## Found
 
-- mp-firststeps part 6 red on main too (the `close` arrow shows; main
-  also fails parts 4-5 and crashes): tools/qa/mp/mp-firststeps.mjs:184.
 - docs/GRAND-PLAN.md 3.1's note says `pack-page` is the last `ours` row;
   held-budget.mjs dropped it at v2.3.5253: the last is `other: R > J`.
-- `other: R > J` still 23-25 ms at `peer` on budget-android after #2209.
+- `other: R > J` still 21-26 ms on budget-android (lands, peer).
+- mp-firststeps part 6 red on main (the `close` arrow; main also 4-5):
+  tools/qa/mp/mp-firststeps.mjs:184.
+- mp-geartab 844x390 "tap the empty Shield cell" and mp-brocard (4 parts)
+  red with ?afterpaint=0 too: the sideways nav rail lies over the tab.
+- `ui:GearTab` still 14.9 ms (budget-android): its own render body.
+- BottomDashboard's own redraw (`jg > Ek`) 62-66 ms at `windows` (row 35).
 
 ## Needs
 

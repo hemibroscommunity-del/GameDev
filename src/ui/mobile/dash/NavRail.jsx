@@ -1,4 +1,5 @@
 import React, { useLayoutEffect, useRef, useState } from 'react';
+import { AFTER_PAINT } from '../../afterPaint.js';   /* v2.3.6281: the first measure off the commit (card HB2 PR 2) */
 import { BT_AUDIO } from '@/data/index.js'; /* v2.3.2639: the tab-tap sound */
 import { COL } from './common.js';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
@@ -104,7 +105,14 @@ export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait, b
       const w = Math.floor((el.clientWidth - 8 - 4 * (n - 1)) / n);
       if (w > 0) setRealW(w);
     };
-    measure();
+    /* ═══ v2.3.6281: NOT MEASURED IN THE COMMIT (card HB2 PR 2; `?afterpaint`) ═══
+       The rail's first measure ran here, in React's commit of the window that put it in, and it was the first
+       read after React changed the page: the browser laid the whole page out there (`measure2`, 72.9 ms on
+       budget-android: docs/plan/census/HB-holds.md row 5).  The ResizeObserver below tells its size anyway, on
+       observe and after every change, after the browser's own layout, where the read costs nothing: under
+       `?afterpaint` (ON) that is the only measure, and the words fit the buttons a frame later (until then the
+       planned width, as before a measure).  `?afterpaint=0`: measured here too, as before. */
+    if (!AFTER_PAINT) measure();
     let ro = null;
     try { ro = new ResizeObserver(measure); ro.observe(el); } catch (e) { ro = null; }
     return () => { try { if (ro) ro.disconnect(); } catch (e) { /* gone */ } };

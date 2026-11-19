@@ -38,6 +38,7 @@
 import { dashboardPanelBus } from './dashboardPanelBus.js';
 import { dashMinBus } from './dashMinBus.js';
 import { playVw, playVh } from './playViewport.js';
+import { AFTER_PAINT } from '../afterPaint.js';   /* v2.3.6281: the inset kept (card HB2 PR 2) */
 import { expandedSheetHeight, drillSheetHeight, bandFootprint } from './sheet/sheetGeometry.js'; /* v2.3.2255: barHeight is reached through bandFootprint now, so the fold cannot be forgotten */
 import { oneBandActive } from '../oneBand.js';   /* v2.3.4072 */
 
@@ -52,6 +53,23 @@ import { oneBandActive } from '../oneBand.js';   /* v2.3.4072 */
 
 /** Write --sheet-h and data-bt-sheet from the CURRENT viewport and sheet
  *  state.  Idempotent: repeated calls with nothing changed do nothing. */
+/* ═══ v2.3.6281: THE INSET KEPT TILL THE WINDOW MOVES (card HB2 PR 2; `?afterpaint`) ═══
+   Opening a window or folding the band stamps this from inside the tap (dashboardPanelBus's listeners, the band's
+   own resize), and the probe's computed style read there laid the page out after the tap had changed it
+   (`onPointerUp > open > emit > stampSheetH`, 25 to 61 ms on budget-android at `windows`).  The home-indicator
+   inset moves only with the window (a turn, an installed launch's first layout): kept from the first read with the
+   probe there, and read again after a resize, a turn or a visual-viewport change the BROWSER sends (a script's,
+   the band's own, cannot move it: playViewport.js's rule).  `?afterpaint=0`: read every time, as before. */
+let _insetKept = -1;
+if (AFTER_PAINT && typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+  try {
+    const forget = (e) => { if (!(e && e.isTrusted === false)) _insetKept = -1; };
+    window.addEventListener('resize', forget, true);
+    window.addEventListener('orientationchange', forget, true);
+    if (window.visualViewport) window.visualViewport.addEventListener('resize', forget);
+  } catch (e) { /* read every time instead */ }
+}
+
 export function stampSheetH() {
   if (typeof document === 'undefined') return;
   const mode = dashboardPanelBus.state.mode;
@@ -96,11 +114,14 @@ export function stampSheetH() {
      bottom of the screen that takes no touch input at all.  Ask bandFootprint,
      which is what --dash-h asks, and the two can no longer disagree in any
      portrait state.  Unfolded it returns barHeight and nothing moves. */
-  let inset = 0;
-  try {
-    const probe = document.getElementById('bt-sab-probe');
-    if (probe) inset = parseFloat(getComputedStyle(probe).paddingBottom) || 0;
-  } catch (e) { /* no probe yet: 0 is correct in a tab, and the watchdog re-runs */ }
+  let inset = AFTER_PAINT ? _insetKept : -1;
+  if (inset < 0) {
+    inset = 0;
+    try {
+      const probe = document.getElementById('bt-sab-probe');
+      if (probe) { inset = parseFloat(getComputedStyle(probe).paddingBottom) || 0; if (AFTER_PAINT) _insetKept = inset; }
+    } catch (e) { /* no probe yet: 0 is correct in a tab, and the watchdog re-runs */ }
+  }
   const px = (vw > vh && !oneBandActive())   /* v2.3.4072: the one band is upright on every shape */
     /* Landscape already IS the inset -- bandFootprint returns it as the whole
        band height there (v2.3.2168), so adding it again would double it. */
