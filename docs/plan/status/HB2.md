@@ -28,8 +28,6 @@ state: working
 
 ## Found
 
-- usage-meter.test part 5 red on main c0a0791 after the date turned
-  2026-11-19 (RR's 6305 mends it); login-keys failed once under load.
 - Red with ?afterpaint=0 / on main too: mp-firststeps part 6 (the test
   forbids the `close` arrow the rule shows), mp-geartab 844x390 (the rail
   over the tab), mp-brocard 4 parts, mp-hairstencil 3 parts;
