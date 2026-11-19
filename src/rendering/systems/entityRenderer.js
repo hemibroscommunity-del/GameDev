@@ -15980,7 +15980,11 @@ export class EntityRenderer {
                his figure is kept but not posed this frame; he is posed in the
                frame he comes into view, before it is drawn.  The circle above
                (half-diagonal + 300) keeps a tall phone view's corners' folk,
-               16% of the draws at the sweep's peer station */
+               16% of the draws at the sweep's peer station.  His stride is
+               still followed (folkStride: a few numbers), or the frame he
+               came back would read all the way he walked meanwhile as one
+               step: a jog and a facing he never had (mp-folkwalk 4) */
+            folkStride(display, npc, now);
             _folkLive = true;
           } else _folkLive = this._drawFolk(S, now, npc, display);
         }
