@@ -148,9 +148,14 @@ export const KNOWN = {
      of the page: 10.7 to 12.5 ms at `town`, every run (one hold just past the line is the judge's noise).  Not a
      redraw a transition shortens: a measurement in the commit (CLAUDE.md §7, "nothing measures the page inside a
      frame").  Listed, not mended: the prompt's placement is game UI outside the card that found it */
-  'other: R > J': { ms: 16, whose: 'ours',
-    why: "React working through a redraw at `stand` and `town` in one piece, no game function on its stack: 14.4 ms twice in one run of five (card TF, main), 5 to 11.3 ms in five runs here.  Beside it every run: the door prompt's placement (BroTown.jsx placeOverHead, XpFlyOverlay.jsx playerScreenPoint) measuring the canvas and itself in React's commit, 10.7 to 12.5 ms",
-    next: "place the door prompt from a cached canvas box and its last size, measured at the top of a frame (framePacer.js beforeDraw), not in the commit; then a development build's CPU profile names the anonymous redraw (docs/specs/held-sweep.md, the equip redraw's way).  The row comes off when five runs of `stand,town` hold nothing of it past 12 ms" },
+  /* v2.3.6287 (card HB2 PR 8): 'other: R > J' (was 16; 14.4 twice in five runs at card TF's find, 10.7 to 12.5 ms
+     beside it every run the door prompt placed in React's commit) off the list.  HB's #2209 (v2.3.6244) places the
+     prompt at the top of the next frame (`?afterpaint`, ON).  The row's own rule, five runs of the main tour's
+     `stand,town` on a profiled build of main 1cd3fce, unthrottled: 7.7, 10.6, 7.6, 7.0 and 9.8 ms the longest
+     (7 to 15 holds a run, all under the general line); and on card HB2's stack (PRs 1-4, 7) 8.9, 10.4, 8.4, 6.7
+     and 7.8.  With it the debt list has no row `ours`: the grand plan's step 3.1 (debtOf('ours'), empty).  Under
+     O2's slow profiles React's redraws still hold longer (21 to 26 ms on budget-android, a 4x throttle): those
+     are judged by the general line like any family, and their parts are card HB2's PRs 2, 4 and 6 */
   /* v2.3.5046: 'other: R > J' (was 20) off the list.  React working through one redraw in one piece: every equip
      change set BroTown's own `gearWorn` (gearWornSync.js), a blocking re-render of the game's root and all under it
      (named on a development build: BroTown, the GearTab, the band's keys, the ride button, the quest coach...).

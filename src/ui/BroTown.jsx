@@ -178,6 +178,23 @@ import { BUILD_INFO } from './BuildBadge.jsx';
 import { pushHudPopup } from './XpFlyOverlay.jsx';
 /* v2.3.6244: the door prompt's placing over the bro's head (v2.3.4303) is ui/doorPrompt.js now (card HB PR 5) */
 import { placeOverHead } from './doorPrompt.js';
+import { AFTER_PAINT } from './afterPaint.js';   /* v2.3.6281: the band's own resize at the top of the next frame (card HB2 PR 2) */
+import { canvasPlace } from './mayorScreen.js';   /* v2.3.6282: the canvas's place, remembered (card HB2 PR 3) */
+/* ═══ v2.3.6282: A TAP READS THE CANVAS'S PLACE AS REMEMBERED, NOT MEASURED IN THE EVENT (card HB2 PR 3; `?afterpaint`) ═══
+   Every tap and click on the world turned its finger's place into the canvas's by the canvas's corner on the page,
+   measured in the event (getBoundingClientRect): the right stick's touch end through tapResourceAtClient, tapNpcAt,
+   the self-tap's circle (clientToCanvas), and the canvas's own touch, click, press and (a computer) every mouse
+   move.  A tap comes after the game has changed the page, so that read laid the whole page out inside it (`rE >
+   tapResourceAtClient > clientToCanvas`, 38.1 ms on budget-android: docs/plan/census/HB-holds.md rows 14, 28, 31).
+   The canvas only moves when the window or the layout does: under `?afterpaint` (ON) its corner is the one
+   mayorScreen.js keeps (canvasPlace: measured again at the top of a frame after a resize, a change of the canvas's
+   size, or half a second), so a tap in the frame after a turn of the phone is read from the corner of the frame
+   before.  `?afterpaint=0`: measured in the event, as before, through mayorScreen.js's one measure of the canvas
+   (canvasPlace(true): docs/specs/layout-reads.md way 2, the guard's helper).  Only `left` and `top` are read by
+   every caller, and every caller is the game's canvas (`canvas.brotown-canvas`, the one canvasPlace measures). */
+function canvasCorner() {   /* callers pass the canvas the event is on: the one canvasPlace measures */
+  return canvasPlace(!AFTER_PAINT) || { left: 0, top: 0 };   /* no canvas on the page: none to tap */
+}
 
 /* v2.3.1745: how long the QUEST ACCEPTED! / QUEST COMPLETED! banner stays
    up.  Exported so the headless check reads the real number instead of
@@ -3970,7 +3987,21 @@ export var BroTown = function BroTown(_ref0) {
        attribute width/height aren't set, and at first useEffect run the
        canvas is fresh from React with both undefined). */
     resize();
-    window.addEventListener('resize', resize);
+    /* ═══ v2.3.6281: THE BAND'S OWN RESIZE AT THE TOP OF THE NEXT FRAME (card HB2 PR 2; `?afterpaint`) ═══
+       Folding the band or opening a page sends a `resize` of the band's own (playViewport.js bandResize, marked
+       btBand) so this one geometry path re-stamps --dash-h and the canvas: it ran right inside the tap, after
+       React and the band had changed the page, and its first reads (visualViewport's size, the shell's
+       clientWidth, the inset probe's computed style) laid the whole page out there (`onPointerUp > set`, 55.9
+       ms on budget-android: docs/plan/census/HB-holds.md row 7).  Under `?afterpaint` (ON) the band's resize is
+       run at the top of the game's next frame (framePacer.js beforeDraw), once however many came: the canvas and
+       the band's stamps follow a fold a frame later.  The browser's own resizes run here, as before;
+       `?afterpaint=0`: the band's too. */
+    var _bandAsked = false;
+    var _onResize = function (e) {
+      if (AFTER_PAINT && e && e.btBand === true) { if (!_bandAsked) { _bandAsked = true; beforeDraw(function () { _bandAsked = false; resize(); }); } return; }
+      resize();
+    };
+    window.addEventListener('resize', _onResize);
     if (vv) vv.addEventListener('resize', resize);
     /* ═══ v2.3.2174: A 180-DEGREE FLIP IS NOT A RESIZE ═══
        Turning the phone end-for-end in landscape moves the Dynamic Island
@@ -8494,7 +8525,7 @@ export var BroTown = function BroTown(_ref0) {
       unregCycleWeapon(); /* v2.3.1562 */
       unregSelectSlot(); /* v2.3.4151 */
       teardownDesktopControls();
-      window.removeEventListener('resize', resize);
+      window.removeEventListener('resize', _onResize);   /* v2.3.6281 */
       window.removeEventListener('orientationchange', _orientResize);
       if (resizeObs) resizeObs.disconnect();
       if (vv) vv.removeEventListener('resize', resize);
@@ -10962,7 +10993,7 @@ export var BroTown = function BroTown(_ref0) {
     var clientToCanvas = function (clientX, clientY) {
       var c = canvasRef.current;
       if (!c) return { x: clientX, y: clientY };
-      var r = c.getBoundingClientRect();
+      var r = canvasCorner(c);   /* v2.3.6282: remembered under `?afterpaint` (canvasCorner, below) */
       return { x: clientX - r.left, y: clientY - r.top };
     };
     /* v2.3.2245: isGestureTouch is gone -- the harvest gesture is performed on
@@ -13102,7 +13133,7 @@ export var BroTown = function BroTown(_ref0) {
                we just locked. */
             stateRef.current._touchHandledAt = Date.now();
             var _S = stateRef.current;
-            var _rect = e.currentTarget.getBoundingClientRect();
+            var _rect = canvasCorner(e.currentTarget);   /* v2.3.6282 */
             var _cssX = t.clientX - _rect.left;
             var _cssY = t.clientY - _rect.top;
             var _cx = _S.camera.x, _cy = _S.camera.y;
@@ -13201,7 +13232,7 @@ export var BroTown = function BroTown(_ref0) {
     onMouseMove: function onMouseMove(e) {
       if (!stateRef.current._isDesktop) return;
       var S = stateRef.current;
-      var rect = e.currentTarget.getBoundingClientRect();
+      var rect = canvasCorner(e.currentTarget);   /* v2.3.6282 */
       var screenX = e.clientX - rect.left;
       var screenY = e.clientY - rect.top;
       /* Convert screen coords to world coords using camera */
@@ -13277,7 +13308,7 @@ export var BroTown = function BroTown(_ref0) {
         /* v2.3.3470: ...unless it is on something the click will use -- a
            townsperson, a resource, a bed (_deskPressTarget): no aim, no
            swing, no arrow, no sound; the click that follows does its job */
-        var _pr = e.currentTarget.getBoundingClientRect();
+        var _pr = canvasCorner(e.currentTarget);   /* v2.3.6282 */
         var _pk = _deskPressTarget(e.clientX - _pr.left, e.clientY - _pr.top);
         if (typeof window !== 'undefined' && window.__btProbe) window.__btDeskPress = { kind: _pk || 'attack', ts: Date.now() };
         if (_pk) return;
@@ -13358,7 +13389,7 @@ export var BroTown = function BroTown(_ref0) {
       var S = stateRef.current;
       if (!S._isDesktop || S._extraction || S._farmWork || S._shieldUp) return;
       if (e.button !== 0) return;
-      var rect = e.currentTarget.getBoundingClientRect();
+      var rect = canvasCorner(e.currentTarget);   /* v2.3.6282 */
       var m = monsterAtCss(e.clientX - rect.left, e.clientY - rect.top);
       if (!m) return;
       if (!tapLockOn()) return;   /* v2.3.4395: manual combat keeps no chosen lock, and a double click is two presses; v2.3.5018: nor the held combat */
@@ -13392,7 +13423,7 @@ export var BroTown = function BroTown(_ref0) {
       if (stateRef.current._touchHandledAt && Date.now() - stateRef.current._touchHandledAt < 600) {
         return;
       }
-      var rect = e.currentTarget.getBoundingClientRect();
+      var rect = canvasCorner(e.currentTarget);   /* v2.3.6282 */
       /* CSS-pixel tap coords. Compare against monster screen positions in
          the same CSS-pixel space — the renderer applies scaleY 0.8 (world
          Y is compressed by 20% in render, see pixiRenderer + BroTown's

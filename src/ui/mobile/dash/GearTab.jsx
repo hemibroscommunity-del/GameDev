@@ -22,6 +22,7 @@ import { coinArtFor } from '@/game/coinArt.js';   /* v2.3.4151: the coins beside
 import { barNumber } from '@/game/barNumbers.js';   /* v2.3.4151: the coins' badge says a big purse short, as the top bar does */
 import { UnrevealedMark } from '@/ui/reveal/UnrevealedMark.jsx';   /* v2.3.4151: a "?" piece's mark, as on its card */
 import { act } from '@/game/actions.js';   /* v2.3.5191: the page's requests leave through the action door (card K PR 7) */
+import { AFTER_PAINT } from '@/ui/afterPaint.js';   /* v2.3.6281: the first measure off the commit (card HB2 PR 2); v2.3.6283: the tab's redraw beside the game's (PR 4) */
 
 /* ═══ v2.3.4151: THE GEAR TAB -- YOUR BAG, ONE CARD, YOUR GEAR ═══
  *
@@ -164,9 +165,13 @@ function useMeasure() {
       const w = Math.round(r.width), h = Math.round(r.height);
       setBox((b) => (b.w === w && b.h === h ? b : { w, h }));
     };
-    read();
+    /* v2.3.6281 (card HB2 PR 2; `?afterpaint`): the first read from the observer (told on observe, after the
+       browser's own layout), not here in the commit of the band that put the tab in, where it laid the whole page
+       out (`read2 > getBoundingClientRect`, 59.2 ms on budget-android at `windows`): the tab is laid out for its
+       box a frame later.  `?afterpaint=0`, or no ResizeObserver: read here too, as before. */
+    if (!AFTER_PAINT || typeof ResizeObserver === 'undefined') read();
     let ro = null;
-    try { ro = new ResizeObserver(read); ro.observe(el); } catch (e) { /* an old browser: the first read stands */ }
+    try { ro = new ResizeObserver(read); ro.observe(el); } catch (e) { /* an old browser: the first read stands */ read(); }
     return () => { try { ro && ro.disconnect(); } catch (e) { /* gone */ } };
   }, []);
   return [ref, box];
@@ -1170,4 +1175,22 @@ export const GearTab = ({ R: Rin, desk }) => {
       )}
     </div>
   );
+};
+
+/* ═══ v2.3.6283: THE TAB DRAWN AGAIN BESIDE THE GAME'S REDRAW, NOT INSIDE IT (card HB2 PR 4; `?afterpaint`) ═══
+   The band hands this tab the live character (S.rpg), and every change the game makes to it (a hit taken, mana
+   spent, a pickup: setRpgState) draws the whole page again in one piece: React draws an ordinary update without
+   letting a frame in, and this tab was the biggest part of that piece in a fight and on the lands (`ui:GearTab`
+   and `the GearTab redrawn`, 15 to 19 ms on budget-android: card FX's find, docs/plan/census/HB-holds.md row 38).
+   Here the band's columns draw the tab through a deferred copy of its props (useDeferredValue): the game's redraw
+   passes the copy it already drew, so this skips (memo), and React draws the tab again just after as background
+   work, letting a frame in between its pieces (each cell, each bag square, each bar is a component).  The tab's
+   own taps and windows (its buses) still draw it at once.  So the bars and the bag follow the character a frame
+   or so later than the rest of the page.  `?afterpaint=0`: drawn inside the game's redraw, as before. */
+const GearTabTurn = React.memo(function GearTabTurn({ p }) {
+  return <GearTab R={p.R} desk={p.desk} />;
+});
+export const GearTabDeferred = (props) => {
+  const later = React.useDeferredValue(props);
+  return <GearTabTurn p={AFTER_PAINT ? later : props} />;
 };

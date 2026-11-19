@@ -1773,7 +1773,7 @@ const SUGGESTED = {
         _FISH_GRIP_TROUSERS _hairMaskCache _lastHairDisplay _standInHairClip _monsterDisplaysRef _traitTex
         _mannequinTex _traitMeta _traitLoadStarted _broBadgeTex _broBadgeSet _smallTexHeld _smallSet _pinTexHeld
         _pinSet _plateWorldScale _cueZoom
-        _folkJobs _folkSheets _keepQueue _keepTimer _keepLastAsk`,   /* v2.3.6202/6203 (card EN): the page's, never reset */
+        _folkJobs _folkSheets _keepQueue _keepTimer _keepLastAsk _pumpTimer`,   /* v2.3.6202/6203/6205 (card EN): the page's, never reset */
       zone: `
         _npcDrawn _lastPeerWeaponSprite _peerQueue`,
     },
