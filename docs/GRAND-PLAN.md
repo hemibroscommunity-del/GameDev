@@ -1471,6 +1471,13 @@ to read when you are back; recorded by the gatekeeper, sitting 46, tag 6260):
   re-decided on a re-measure (a first version held 89 MB). Its smaller
   sibling (`?atlasrow`, 0.3 ms a send) is parked, not built (recorded by
   the gatekeeper, sitting 52, tag 6266).
+- The memory check's `heap` line raised 38.5 -> 40.0 MB (+1.5; card RR,
+  #2267): main's own heap read 37.4 to 39.2 run to run, so every PR failed
+  it by luck; an A/B named no change (the keep queue off, the old main:
+  the same). Not a saving given up: about 1 MB of creep since the last
+  heap trim, for a later trim to find and lower the line again (the
+  planning session, the line's owner; recorded by the gatekeeper, sitting
+  53, tag 6267).
 - The memory check's `buffers` line raised 24.2 -> 24.8 MB as `artCache`
   fell 2.2 MB (net 1.7 MB less in the page): the ore rocks and the
   projectile sheets as colour numbers (card FX, #2200; `?treenumbers=0`
