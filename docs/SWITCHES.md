@@ -748,6 +748,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `fightlockmonster` | worker | switch | v2.3.4841 | 2026-11-11 | false | logic |  | no | A fight with a monster no longer locks the bag in No man's land. |
 | `?folkbake` | page | switch | v2.3.4355 | 2026-11-10 | =0 | logic |  | no | The townsfolk are baked when first met, not behind the loading screen. |
 | `groundlean` | both | switch | v2.3.3717 | 2026-10-28 | off_groundlean: true; ?groundlean=0 (read by the ground worker in public/tools/ground/: out of reach) | memory |  | no | The ground is built by the old builder, not the lean one. |
+| `?groundsend` | page | switch | v2.3.6382 | 2026-11-18 | =0 | logic |  | no | On the board the ground asks its worker for at most 3 pieces at a time, as on foot, not 6 (wheelGround.js RIDE_IN_FLIGHT). |
 | `?groundwait` | page | switch | v2.3.3709 | 2026-10-28 | =0 | logic |  | no | The ground starts building at once, not after the renderer is ready. |
 | `?halloween` | page | lever | v2.3.3395 |  | =1, =0, on or off | none |  | no | Forces the Halloween season on or off. |
 | `?healms` | page | lever | v2.3.3230 |  | a number of ms | none |  | no | A test's own time for a building's hits to be forgotten. |

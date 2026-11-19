@@ -107,7 +107,7 @@ export function deflateOnWorker(pieces) {
    stripRowsAsk: the answers before it counted), and the answer carries the
    strip numbered for its row too (`onRow`: stripRows.js) */
 let _line = Promise.resolve();
-export function readStrip(url, fw, fh, n, rows, rgb) {
+export function readStrip(url, fw, fh, n, rows, rgb, whole) {
   if (!stripReadOn()) return Promise.resolve(null);
   _stats.asked++;
   const job = async () => {
@@ -117,6 +117,7 @@ export function readStrip(url, fw, fh, n, rows, rgb) {
     const msg = { strip: String(url), fw, fh, n: n || 0 };
     if (sent) msg.rows = sent;
     if (rgb) msg.rgb = rgb;   /* v2.3.5044: a colour variant, retinted on the worker */
+    if (whole) msg.whole = true;   /* v2.3.6284: a picture loaded whole (readWhole, below) */
     const m = await ask(msg);
     letGoWhenIdle();
     if (!m || !m.ok || !m.idx || !m.pal) { _stats.failed++; _stats.last = (m && m.error) || 'no answer'; return null; }
@@ -127,6 +128,13 @@ export function readStrip(url, fw, fh, n, rows, rgb) {
   const p = _line.then(job, job);
   _line = p.then(() => {}, () => {});
   return p;
+}
+
+/** v2.3.6284 (card HB2 PR 5): a 256-colour picture loaded WHOLE (p256.js: an effect's or an icon's twin), read as
+ *  its numbers on the same worker and in the same line as the strips: no crop, its own size.  `rows` as readStrip's.
+ *  -> Promise<{ w, h, idx, pal, onRow? } | null> (null: the page reads it, as before). */
+export function readWhole(url, rows) {
+  return readStrip(url, 0, 0, 1, rows, null, true);
 }
 
 if (typeof window !== 'undefined') window.__btStripRead = () => ({ on: stripReadOn(), off: _off, dead: _dead, ..._stats, ms: Math.round(_stats.ms) });

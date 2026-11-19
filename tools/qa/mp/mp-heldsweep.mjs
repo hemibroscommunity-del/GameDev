@@ -294,12 +294,17 @@ export function noteGaps(stations, known, line) {
 }
 
 /* ── v2.3.6380 (card SB PR 1): the ride's ring ──
-   RING_R game px round the Wheel's centre (inside the safe ground, wheelspawns.js WHEEL_SAFE_R 2937: the board gets
-   you off at its edge), RING_N points, closed.  The board's speed is the walk's x RIDE_MULT (game/ride.js), 150 and
+   RING_K of the safe ground's radius round the Wheel's centre (wheelspawns.js WHEEL_SAFE_R: the board gets you off
+   at its edge), RING_N points, closed.  The board's speed is the walk's x RIDE_MULT (game/ride.js), 150 and
    300 game px a second (wheelGround.js AHEAD_GROW's note).  A glide, as mp-townride and `town` ride: no walls, the
    same path every run; the board is checked at every point and got on again if it was left (the water: counted) */
-const RING_R = 2200, RING_N = 16, WALK_PX_S = 150, RIDE_PX_S = 300;
+const RING_K = 0.75, RING_N = 16, WALK_PX_S = 150, RIDE_PX_S = 300;
+/* v2.3.6382 (the gatekeeper's sitting 51 on #2228): the ring's radius a share of the safe ground's (wheelspawns.js
+   WHEEL_SAFE_R, 2937 today: 2203), never a Wheel distance written here -- a re-planned Wheel keeps the ring inside */
+let _safeR = null;
+const safeR = async () => _safeR || (_safeR = (await import(H.REPO + '/server/src/wheelspawns.js')).WHEEL_SAFE_R);
 const RING = (G) => {
+  const RING_R = Math.round(RING_K * _safeR);
   const out = [];
   for (let k = 0; k <= RING_N; k++) {
     const a = Math.PI / 2 + (k / RING_N) * Math.PI * 2;
@@ -433,6 +438,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* in the order asked (BT_HS_STATIONS=ridewalk,ride walks first): the first round a page goes meets the world's art
        down the line for the first time, the second finds it come (the first sample: 105 pieces laid riding first, 678
        walking after) */
+    await safeR();
     const RINGS = { ride: ['on the board round the safe ground', true], ridewalk: ['the same ring walked', false] };
     for (const name of WANT.filter((w) => RINGS[w])) {
       const [label, board] = RINGS[name];
