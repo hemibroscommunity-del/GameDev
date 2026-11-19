@@ -440,19 +440,19 @@
  * edge on main (P2's census), not this change.  `artCache` 13.4 as main. */
 /* v2.3.6306 (card RR; the planning session's yes through the gatekeeper,
  * sitting 53, 2026-11-19), main's own code at the line again: `heap`
- * 38.5 -> 39.5 -- RAISED, +1.0 MB.  After sitting 52's merges every PR
+ * 38.5 -> 40.0 -- RAISED, +1.5 MB.  After sitting 52's merges every PR
  * failed `memory-budget` on the heap alone, test-only ones included (card
- * RR's #2258 and #2260: 38.8 and 39.0 on CI).  The gatekeeper's A/B named no
+ * RR's #2258 and #2260: 38.8, 39.0 and 39.2 on CI; HB2's #2266 39.2).  The gatekeeper's A/B named no
  * change: GitHub's runs on heads with no game change of their own read old
  * main 1cd3fced 37.4, 37.5, 37.6, 37.8, 38.0, 38.4, 38.5, 38.6, 38.6 and new
- * main c0a0791c 38.8, 39.0; mp-membudget alone on the gatekeeper's box read
+ * main c0a0791c 38.8, 39.0, 39.2; mp-membudget alone on the gatekeeper's box read
  * c0a0791c 38.9, 38.6, 38.6, with EN's keep queue off (`?keepimage=0`) 38.6,
  * 38.6 (no change), and 1cd3fced 38.6, 38.6, 38.8, 38.6 (`?groundsend` is
  * never ridden on the tour): every run of either main over 38.5 on that box.
- * So main reads 37.4 to 39.0 run to run, and the line at 38.5 stood
+ * So main reads 37.4 to 39.2 run to run, and the line at 38.5 stood
  * inside that, as v2.3.4483 found at 37.5: any PR failed it by the luck of
- * the run.  39.5 is the highest seen, 39.0, plus the half MB of room the line
- * had.  NOT a saving given up: the heap has crept about 1 MB since v2.3.5007's
+ * the run.  40.0 is the highest seen, 39.2, plus 0.8 of room (39.5, the
+ * first proposal, would have left 0.3 and failed again: the gatekeeper).  NOT a saving given up: the heap has crept about 1 MB since v2.3.5007's
  * trim (measured 36.4); where it went is the next trim's question
  * (docs/specs/heap-trim-2026-11-13.md has the method), and the line lowered
  * again when it is found. */
@@ -465,7 +465,7 @@ export const MEMORY_BUDGET = {
     what: 'pictures the game draws itself, held in 2D canvases (every one still reachable)' },
   sound: { name: 'decoded sound', mb: 22, measured: 18.1,   /* v2.3.3664: 30 -> 32; v2.3.3706: 32 -> 29; v2.3.5006: 29 -> 22, LOWERED to lock in the four sounds decoded ahead instead of pinned (main read 23.0-23.2, this 18.1), see the header */
     what: 'sound decoded into memory (music streams from its file and is not in it, v2.3.3073)' },
-  heap: { name: 'the page\'s JavaScript objects', mb: 39.5, measured: 36.4,   /* v2.3.3595: 32 -> 33; v2.3.3657: 33 -> 34; v2.3.3807: 34 -> 36; v2.3.4005: 36 -> 38; v2.3.4080: 38 -> 37.5; v2.3.4483: 37.5 -> 38.5; v2.3.5007: unchanged, measured 37.7 -> 36.4 by the heap trim, see the header; v2.3.6306: 38.5 -> 39.5, main read 37.4-39.0 run to run, see the header */
+  heap: { name: 'the page\'s JavaScript objects', mb: 40.0, measured: 36.4,   /* v2.3.3595: 32 -> 33; v2.3.3657: 33 -> 34; v2.3.3807: 34 -> 36; v2.3.4005: 36 -> 38; v2.3.4080: 38 -> 37.5; v2.3.4483: 37.5 -> 38.5; v2.3.5007: unchanged, measured 37.7 -> 36.4 by the heap trim, see the header; v2.3.6306: 38.5 -> 40.0, main read 37.4-39.2 run to run, see the header */
     what: 'the page\'s JavaScript objects' },
   buffers: { name: 'the page\'s raw data buffers', mb: 24.8, measured: 23.5,   /* v2.3.3703: 24 -> 22, see the header; v2.3.5248: 22 -> 23.4, RAISED by the trees' colour numbers moved here (1.40 MB) as artCache fell 5.6 (net 4.2 less); v2.3.5250: 23.4 -> 23.7, the world's icons' numbers (0.30 MB) as artCache fell 1.2 (net 0.9 less); v2.3.5252: 23.7 -> 24.2, the whirlwind's numbers (0.50 MB) as artCache fell 2.0 (net 1.5 less), see the header; v2.3.6222: 24.2 -> 24.8, the rocks' and the projectile sheets' numbers (0.5 MB) as artCache fell 2.2 (net 1.7 less), see the header */
     what: 'the page\'s raw data buffers (ArrayBuffers), and the text of its scripts, which the same reading counts (v2.3.3703)' },
