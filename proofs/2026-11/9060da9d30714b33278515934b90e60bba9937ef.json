@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "9060da9d30714b33278515934b90e60bba9937ef",
+  "tree": "e8b3b8146d0be2949ca1b01274619795aa89acaa",
+  "committedAt": "2026-11-18T18:24:07-08:00",
+  "subject": "Merge pull request #2259 from hemibroscommunity-del/claude/plan-hb2-7-arrow",
+  "files": 8452,
+  "bytes": 963273522,
+  "listingSha256": "cb0c46877dee223dce8adfebd4bb2f130becd64e15a5b98ae697f724ad24d0d2",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

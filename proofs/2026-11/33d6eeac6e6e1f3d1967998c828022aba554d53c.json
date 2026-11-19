@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "33d6eeac6e6e1f3d1967998c828022aba554d53c",
+  "tree": "e6a07468f426b339aea81da92e90ef49fd6aca38",
+  "committedAt": "2026-11-18T18:23:50-08:00",
+  "subject": "Merge pull request #2247 from hemibroscommunity-del/claude/plan-hb2-3-taps",
+  "files": 8452,
+  "bytes": 963270550,
+  "listingSha256": "f3f76f2d64f058eb89380f9a26e58b5c61d1cc622414c551a4acf5ef1542c50c",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

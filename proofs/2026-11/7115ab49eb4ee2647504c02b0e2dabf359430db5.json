@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "7115ab49eb4ee2647504c02b0e2dabf359430db5",
+  "tree": "419751f755405c479ee49414a71051e0497cf2b5",
+  "committedAt": "2026-11-18T18:23:59-08:00",
+  "subject": "Merge pull request #2249 from hemibroscommunity-del/claude/plan-hb2-4-geartab",
+  "files": 8452,
+  "bytes": 963272114,
+  "listingSha256": "6c1e451389217bf6c10722762b2122fbaea9782a6b8389591952c5a4e8aec3aa",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
