@@ -141,6 +141,6 @@ commits): one each, no conflict. Every branch carries #2265's head
 - `gatekeeper.mjs` could not fetch again (it used this machine's copies;
   each branch fetched by hand just before). Precheck ran 863-893 s here
   and 1138 s on RR's box: the 15-minute cap is tight (RR's card, item 3).
-- The heap: about 1 MB of creep since v2.3.5007's trim (measured 36.4),
+- The heap: about 1 MB of creep since the last heap trim (tag 5007, measured 36.4),
   named in #2267's why; a trim card would lower the line again. The
   planning session's call.
