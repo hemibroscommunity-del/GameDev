@@ -10,7 +10,7 @@
    through the ways the spec names.  A read that truly must stay (a size
    read once at start, the window's own resize) is a row with its `why`,
    added only with the planning session's yes, in a PR that says so. */
-export const LINE = 337;   /* 337 reads in 72 files */
+export const LINE = 324;   /* 324 reads in 72 files */
 
 export const KNOWN = Object.freeze([
   /* src/debug/DebugOverlay.jsx */
@@ -77,19 +77,9 @@ export const KNOWN = Object.freeze([
   { file: 'src/ui/BroTown.jsx', fn: '_scrollableUp', kind: 'getComputedStyle', n: 1 },
   { file: 'src/ui/BroTown.jsx', fn: '_scrollableUp', kind: 'scrollHeight', n: 1 },
   { file: 'src/ui/BroTown.jsx', fn: 'bM', kind: 'getBoundingClientRect', n: 1 },
-  { file: 'src/ui/BroTown.jsx', fn: 'clientToCanvas', kind: 'getBoundingClientRect', n: 1, hb: '14' },
-  { file: 'src/ui/BroTown.jsx', fn: 'onClick', kind: 'getBoundingClientRect', n: 3 },
+  { file: 'src/ui/BroTown.jsx', fn: 'onClick', kind: 'getBoundingClientRect', n: 2 },
   { file: 'src/ui/BroTown.jsx', fn: 'onClick', kind: 'scrollTop', n: 1 },
-  { file: 'src/ui/BroTown.jsx', fn: 'onDoubleClick', kind: 'getBoundingClientRect', n: 1 },
-  { file: 'src/ui/BroTown.jsx', fn: 'onMouseDown', kind: 'getBoundingClientRect', n: 1 },
-  { file: 'src/ui/BroTown.jsx', fn: 'onMouseMove', kind: 'getBoundingClientRect', n: 1 },
-  { file: 'src/ui/BroTown.jsx', fn: 'onTouchEnd', kind: 'getBoundingClientRect', n: 1, hb: '14' },
   { file: 'src/ui/BroTown.jsx', fn: 'relock', kind: 'innerHeight', n: 2 },
-  { file: 'src/ui/BroTown.jsx', fn: 'resize', kind: 'clientHeight', n: 1, hb: '7' },
-  { file: 'src/ui/BroTown.jsx', fn: 'resize', kind: 'clientWidth', n: 1, hb: '7' },
-  { file: 'src/ui/BroTown.jsx', fn: 'resize', kind: 'getComputedStyle', n: 1, hb: '7' },
-  { file: 'src/ui/BroTown.jsx', fn: 'resize', kind: 'innerHeight', n: 2, hb: '7' },
-  { file: 'src/ui/BroTown.jsx', fn: 'resize', kind: 'innerWidth', n: 1, hb: '7' },
   /* src/ui/ExtractionSwipeLayer.jsx */
   { file: 'src/ui/ExtractionSwipeLayer.jsx', fn: 'buttonCueScreenPos', kind: 'getBoundingClientRect', n: 2 },
   /* src/ui/LevelUpBurst.jsx */
@@ -155,7 +145,6 @@ export const KNOWN = Object.freeze([
   { file: 'src/ui/guideArrow.js', fn: 'shownRect', kind: 'getComputedStyle', n: 1 },
   { file: 'src/ui/guideArrow.js', fn: 'shownRect', kind: 'innerHeight', n: 1 },
   { file: 'src/ui/guideArrow.js', fn: 'shownRect', kind: 'innerWidth', n: 1 },
-  { file: 'src/ui/guideArrow.js', fn: 'shown', kind: 'querySelectorAll', n: 1, hb: '18' },
   { file: 'src/ui/guideArrow.js', fn: 'spotOf', kind: 'innerWidth', n: 1 },
   { file: 'src/ui/guideArrow.js', fn: 'sweepStrays', kind: 'querySelectorAll', n: 1, hb: '18' },
   /* src/ui/mayorScreen.js */

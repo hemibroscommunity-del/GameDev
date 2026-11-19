@@ -44,6 +44,7 @@ import { shardByKey } from '@/data/shards.js';   /* v2.3.3861: only a shard the 
 import { fishPlainKey, fishArtStyle, fishVariantOf, FISH_VARIANT_NAMES } from '@/data/fishVariants.js';   /* v2.3.4036: the rare fish -- the species' picture, washed pale or badged L, and their names */
 import { shownUnrevealed } from '@/game/revealBag.js';   /* v2.3.4012: a mystery piece waits in the bag as a "?" */
 import { UnrevealedMark } from '@/ui/reveal/UnrevealedMark.jsx';
+import { AFTER_PAINT } from '../../afterPaint.js';   /* v2.3.6281: the first measure off the commit (card HB2 PR 2) */
 
 // Light heuristic — classify an inventory key into one of the four
 // category filters.  Items the heuristic doesn't recognise fall through
@@ -715,9 +716,12 @@ export const InventoryPanel = () => {
       const clamped = Math.max(26, Math.min(78, t));
       setEqCard(prev => (Math.abs(prev - clamped) > 1 ? clamped : prev));
     };
-    measure();
     const obs = window.ResizeObserver ? new ResizeObserver(measure) : null;
     if (obs && eqBoxRef.current) obs.observe(eqBoxRef.current);
+    /* v2.3.6281 (card HB2 PR 2; `?afterpaint`): the first measure from the observer (told on observe, after the
+       browser's own layout), not here right after React put the window in, where the first read lays the whole page
+       out (the band's mount measures: docs/plan/census/HB-holds.md rows 3, 5).  `?afterpaint=0`: here too. */
+    if (!AFTER_PAINT || !obs || !eqBoxRef.current) measure();
     window.addEventListener('resize', measure);
     return () => {
       if (obs) obs.disconnect();

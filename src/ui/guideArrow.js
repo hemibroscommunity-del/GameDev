@@ -47,6 +47,8 @@ import { harvestCoachWanted, gestureWanted, killedAny } from '../game/deskTeachS
 import { worldReady } from './loadingGate.js';   /* v2.3.4136: nothing while a loading screen is up */
 import { onAfterFrame, framesRunning, onDevicePx } from './afterFrame.js';   /* v2.3.4360: the Mayor's arrow follows him every frame */
 import { sw } from '../game/switches.js';   /* v2.3.5306: the page's one reader (card T) */
+import { beforeDraw } from '../game/framePacer.js';   /* v2.3.6286: the tick at the top of the game's frame (card HB2 PR 7) */
+import { AFTER_PAINT } from './afterPaint.js';   /* v2.3.6286: `?afterpaint` */
 /* v2.3.4106: the pacing referee's answers (onboardingPace.js: is a plate up,
    was the tutorial skipped) are handed in by the coach that starts this --
    that module imports through '@/', which node (the server's test) cannot */
@@ -279,7 +281,11 @@ export function guideState(id, rpg, S, seen, now, from) {
   if (id === 'close') {
     const q = (rpg && rpg._quests) || {};
     const w = weaponWants(rpg);
-    const want = q.tut_1 === 'active' && !(w.melee || w.shield);
+    /* v2.3.6288 (card HB2 PR 9): "the weapons on" was read as "none waiting in the bag" alone, so in the moment
+       after the first quest turned active and before the Mayor's sword reached the bag (the quest's state and the
+       bag come in their own messages) nothing was waiting AND nothing was on: CLOSE showed before the weapon arrow
+       (card RR's find on a phone, mp-firststeps part 6).  Now a weapon must be on, as the rule above says. */
+    const want = q.tut_1 === 'active' && !!(rpg && rpg.weapon) && !(w.melee || w.shield);
     return { want, done: seen > 0 && (!want || seen >= CLOSE_MS || q.tut_1 === 'turnedIn') };
   }
   /* the harvest's window is open on a computer: the arrow points at the gesture pad (the big E key by the
@@ -511,7 +517,21 @@ function tick(getS) {
 export function startGuideArrow(getS, pace) {
   if (pace && typeof pace.plateUp === 'function' && typeof pace.skipped === 'function') _pace = pace;
   if (_timer || typeof document === 'undefined') return stopGuideArrow;
-  _timer = setInterval(() => tick(getS), TICK_MS);
+  /* ═══ v2.3.6286: THE TICK AT THE TOP OF THE GAME'S NEXT FRAME (card HB2 PR 7; `?afterpaint`) ═══
+     Each tick measures the page: what answers over the target (onTop's elementFromPoint), every candidate's rect
+     (`shown`), the Mayor's place, the label's width.  From a timer's turn the page's layout is whatever the frames
+     and React left it, so the first read laid the whole page out there (`wrapped > tick$1 > onTop >
+     elementFromPoint`, `shown > querySelectorAll`: 22 to 32 ms on budget-android, docs/plan/census/HB-holds.md
+     row 18).  Under `?afterpaint` (ON) the timer asks for the tick and it runs at the top of the game's next frame
+     (framePacer.js beforeDraw), where the page the browser has just drawn is laid out: the arrow moves a frame
+     later, on the same quarter-second beat.  `?afterpaint=0`: on the timer, as before. */
+  let asked = false;
+  _timer = setInterval(() => {
+    if (!AFTER_PAINT) { tick(getS); return; }
+    if (asked) return;
+    asked = true;
+    beforeDraw(() => { asked = false; if (_timer) tick(getS); });
+  }, TICK_MS);
   /* v2.3.4360: ...and after every frame, while it points at Mayor Bro */
   _followS = getS;
   _stopFollow = onAfterFrame(followFrame);
