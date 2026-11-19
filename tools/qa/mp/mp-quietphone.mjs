@@ -27,6 +27,7 @@
  *   node tools/qa/mp/run.mjs quietphone
  */
 import * as H from './harness.mjs';
+import { QUIET } from '../../../src/game/quietPhone.js';   /* v2.3.6310: the near radius, the game's own */
 export const lane = 'full';
 
 const VIEW = { width: 900, height: 700 };
@@ -74,8 +75,27 @@ function countFrames() {
   };
 }
 
-export async function run({ browser, wsPort, webPort, rec }) {
-  const A = await H.newPlayer(browser, { name: 'Quiet', wsPort, webPort, world: 'wheel', viewport: VIEW, query: 'room=' + ROOM, init: countFrames });
+/* v2.3.6310 (card RR; the planning session's answer, 2026-11-19): two passes.
+   Since v2.3.3744 every phone is on the message diet's path (caps.pathall,
+   the owner's "Just turn the message diet on now"), and on the path a move
+   that TURNED goes on the very next batch (wsClient.js flushInputBuffer,
+   pathTurned), near or alone: so with the defaults, a phone turning all the
+   time with nobody near sends no more than it does beside a player -- that
+   is step 4's promise now.  The quiet phone's own saving (at most 15 a
+   second alone, ALONE_GAP_MS) still holds with the path off, and a second,
+   short pass plays steps 3 and 4 under `?diet=0` to hold it there.  Step 4
+   had asked the quiet phone's 15 of the defaults, and was red on every run
+   (20-22 a second alone, 21-22 near). */
+export async function run(ctx) {
+  await pass(ctx, 'default');
+  await pass(ctx, 'diet0');
+}
+
+async function pass({ browser, wsPort, webPort, rec: recAll }, mode) {
+  const d0 = mode === 'diet0';
+  /* the second pass's lines carry its address */
+  const rec = d0 ? { ok: (n, c, d) => recAll.ok('?diet=0: ' + n, c, d), skip: (n, w) => recAll.skip('?diet=0: ' + n, w) } : recAll;
+  const A = await H.newPlayer(browser, { name: d0 ? 'Quietd0' : 'Quiet', wsPort, webPort, world: 'wheel', viewport: VIEW, query: 'room=' + ROOM + (d0 ? '&diet=0' : ''), init: countFrames });
   await H.enterWorld(A);
   let inWheel = false;
   for (let i = 0; i < 120 && !inWheel; i++) {
@@ -97,6 +117,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.place(a0.x - 150, a0.y);
   await A.page.waitForTimeout(2500);
   const seen = await A.page.evaluate((id) => !!(window._gameState.current.others || {})[id], P.id);
+  if (d0) rec.ok('the page is off the message diet\'s path (?diet=0) (guard)', (await A.page.evaluate(() => (window.__btMoveDiet ? window.__btMoveDiet().path : null))) === false);
   rec.ok(`setup: a phone in the Wheel's BroTown with another player beside it (${quiet ? 'the quiet phone: caps.quiet and caps.bundle' : 'NO caps.quiet: measuring only'})`,
     inWheel && seen && typeof a0.id === 'string', { inWheel, seen, caps: { quiet: a0.caps.quiet, bundle: a0.caps.bundle } });
 
@@ -110,7 +131,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const report = {};
 
   /* ── 1. standing still ── */
-  {
+  if (!d0) {
     await A.page.waitForTimeout(1500);
     P.watch = a0.id; P.n = 0;
     const t0 = await nowP();
@@ -167,7 +188,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }), { ms, turnDegPerS, speed: SPEED });
 
   /* ── 2. a straight walk beside the other player ── */
-  {
+  if (!d0) {
     const w = await walk(4000, 0);
     const fs = await frames(w.from, w.to);
     const rate = fs.length / w.secs;
@@ -196,13 +217,40 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── 4. turning all the time, the other player 5,000 px away ── */
   {
     const me = await H.readState(A, (S) => ({ x: S.player.x, y: S.player.y }));
+    await A.page.evaluate((id) => { window.__qpPeerId = id; }, P.id);
     await P.place(me.x + 5000, me.y);
-    await A.page.waitForTimeout(3000);   /* a roster: the far copy parked */
+    /* v2.3.6310 (card RR; docs/plan/census/RR-reds.md): the step is about a
+       phone with NOBODY near, so it waits until this page's own copy of the
+       other player stands past the game's near radius (QUIET.NEAR_R), as the
+       game reads it (quietPhone.js peerNear) -- up to 30 s, the wait named.
+       It waited a fixed 3 s for "a roster", and on a session box the copy
+       was still beside the phone when the walk began: the game rightly sent
+       at the near pace (33 ms), ~21 frames a second, and the check went red
+       on every run. */
+    const farFrom = Date.now();
+    const parked = await H.waitFor(A, (S) => {
+      const o = (S.others || {})[window.__qpPeerId], p = S.player;
+      if (!o) return { gone: true };
+      const ox = Number.isFinite(o.x) ? o.x : o.renderX, oy = Number.isFinite(o.y) ? o.y : o.renderY;
+      return { d: Math.round(Math.hypot(ox - p.x, oy - p.y)), away: !!o._away, zone: o.zone || o.z || null };
+    }, (v) => !!v && (v.gone || v.away || v.d > QUIET.NEAR_R), { timeout: 30000, label: 'the far copy past the near radius' }).catch(() => null);
+    report.parkedMs = Date.now() - farFrom;
+    report.parked = parked;
+    rec.ok(`turning all the time with nobody near: the other player's copy is past the near radius (${QUIET.NEAR_R} px) before the walk (after ${(report.parkedMs / 1000).toFixed(1)} s) (guard)`, !!parked, { parked, ms: report.parkedMs });
+    await A.page.waitForTimeout(500);
     const w = await walk(4000, 360);
     const fs = await frames(w.from, w.to);
     const rate = fs.length / w.secs;
     report.turningAlone = { frames: fs.length, perSec: +rate.toFixed(2), byType: byType(fs) };
-    if (quiet) {
+    const onPath = await A.page.evaluate(() => (window.__btMoveDiet ? window.__btMoveDiet().path : null));
+    report.turningAlone.path = onPath;
+    if (quiet && onPath) {
+      /* v2.3.6310: the path's promise: a turn goes on the next batch, near
+         or alone, so alone never more than beside a player (15% for this
+         box's timers) */
+      rec.ok(`turning all the time with nobody near, on the message diet's path: ${rate.toFixed(1)} frames a second, no more than beside the other player (${nearRate.toFixed(1)})`,
+        rate <= Math.max(16, nearRate * 1.15), report.turningAlone);
+    } else if (quiet) {
       rec.ok(`turning all the time with nobody near: ${rate.toFixed(1)} frames a second (at most 15, every 66 ms; ${nearRate.toFixed(1)} beside the other player)`,
         rate <= 16 && rate <= nearRate * 0.8, report.turningAlone);
     } else {
@@ -213,7 +261,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }
 
   /* ── 5. a damage claim with a move waiting ── */
-  {
+  if (!d0) {
     const r = await A.page.evaluate(() => new Promise((resolve) => {
       const S = window._gameState.current;
       const ch = S.channel;
