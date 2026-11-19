@@ -1,6 +1,6 @@
 card: HB2
 branch: claude/plan-hb2-10-gearbody
-prs: #2224 6280, #2254 6284, #2257 6285, #2261 6287: merged; #2244 6281, #2247 6282, #2249 6283, #2259 6286, #2266 6288: ready; 6289 (gear tab body): opening
+prs: #2224 6280, #2244 6281, #2247 6282, #2249 6283, #2254 6284, #2257 6285, #2259 6286, #2261 6287, #2266 6288: merged; 6289 (gear tab body): opening
 state: working
 
 ## Done
@@ -14,17 +14,17 @@ state: working
 - #2259 (6286): the big arrow's tick at the frame's top (row 18: 70.5 x14 -> 0).
 - #2261 (6287): `other: R > J` off held-budget's debt list by its own
   rule (7.0-10.6 ms on main, under 12): no row `ours`, step 3.1 closed.
-- 6288: the big arrow's CLOSE step waits for a weapon on, as its rule
+- #2266 (6288): the big arrow's CLOSE step waits for a weapon on, as its rule
   says (firststeps' arrows now mayor -> weapon -> close in every layout).
 - 6289: the gear tab's own reads only when needed (bag edges at the
   frame's top; the names' and words' fit when they or their box change).
 
 ## Next
 
-- PR 10 is the card's last (stop after 10). Left for the planning
-  session to give out: the World map's labels (68-90 ms at `windows`;
-  only if pixel-identical and freed on close), RR's `?narrow` BandKeys
-  item; skipped by the planning session: deskTeach's route, rememberChar.
+- The planning session's order after PR 10: the World map's labels
+  (6290; only if pixel-identical, the layer freed on close), then RR's
+  `?narrow` BandKeys item (6291; the wide computer page identical).
+  Skipped by the planning session: deskTeach's route, rememberChar.
 
 ## Found
 
