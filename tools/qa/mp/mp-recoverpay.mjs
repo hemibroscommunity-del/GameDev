@@ -306,11 +306,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (want('B')) {
     /* B. the watchdog's second answer: the recovery reload (BroTown.jsx
        _recoveryReload, verbatim in what it leaves behind) */
-    await P.page.evaluate(() => {
+    /* v2.3.6303 (card RR; docs/plan/census/RR-reds.md): the address the
+       reload goes to keeps the scenario's lane.  BroTown's own reload goes to
+       the path (with ?guest=1); a test page also carries `lane=` (H.withLane,
+       added by the harness), and run.mjs fails a page of the game loaded
+       without one ("every page of the game it loaded named its lane"), which
+       this step's reload was, on every run.  The address is the game's,
+       through H.withLane, as the harness's own pages are. */
+    const base = await P.page.evaluate(() => {
       sessionStorage.setItem('bt_resume_now', '1');
       const g = /[?&]guest=1\b/.test(window.location.search) ? '?guest=1' : '';
-      window.location.replace(window.location.pathname + g);
+      return window.location.pathname + g;
     });
+    await P.page.evaluate((url) => { window.location.replace(url); }, H.withLane(base));
     await P.page.waitForTimeout(4000);
     await P.page.waitForFunction(() => !!(window._gameState && window._gameState.current && window._gameState.current.player), null, { timeout: 120000 }).catch(() => {});
     const backB = await intoWheel(P);
