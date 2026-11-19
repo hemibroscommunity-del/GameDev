@@ -128,6 +128,7 @@ const FORMS = {
   'gpucopies': '',
   'gripguess': '0',
   'groundbg': '1',
+  'groundsend': '0',
   'groundwait': '0',
   'guarddoor': '0',
   'guest': '1',
