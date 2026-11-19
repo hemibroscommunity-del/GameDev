@@ -281,7 +281,11 @@ export function guideState(id, rpg, S, seen, now, from) {
   if (id === 'close') {
     const q = (rpg && rpg._quests) || {};
     const w = weaponWants(rpg);
-    const want = q.tut_1 === 'active' && !(w.melee || w.shield);
+    /* v2.3.6288 (card HB2 PR 9): "the weapons on" was read as "none waiting in the bag" alone, so in the moment
+       after the first quest turned active and before the Mayor's sword reached the bag (the quest's state and the
+       bag come in their own messages) nothing was waiting AND nothing was on: CLOSE showed before the weapon arrow
+       (card RR's find on a phone, mp-firststeps part 6).  Now a weapon must be on, as the rule above says. */
+    const want = q.tut_1 === 'active' && !!(rpg && rpg.weapon) && !(w.melee || w.shield);
     return { want, done: seen > 0 && (!want || seen >= CLOSE_MS || q.tut_1 === 'turnedIn') };
   }
   /* the harvest's window is open on a computer: the arrow points at the gesture pad (the big E key by the
