@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "220d573760d626e814719c37f447cef634e688b7",
+  "tree": "ffbde37434681c85b087d7d2542f028eaf981bb0",
+  "committedAt": "2026-11-18T18:22:48-08:00",
+  "subject": "Merge pull request #2265 from hemibroscommunity-del/claude/plan-rr-7-usagemeter",
+  "files": 8452,
+  "bytes": 963257925,
+  "listingSha256": "32cc350aacedd31cb23d749b3fecfaeaab530376f397dfa04ab6e06c3424c3d5",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
