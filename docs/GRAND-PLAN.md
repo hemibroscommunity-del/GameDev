@@ -395,7 +395,7 @@ outside the profile.
 
 ### Pillar 3. Never hold the page
 
-- [ ] **3.1 [NOW] The debt list, ours first.** Each row of `KNOWN` is marked
+- [x] **3.1 [NOW] The debt list, ours first.** Each row of `KNOWN` is marked
   ours, the box's or the browser's. Done when no row is ours. The order is
   by size until the table has numbers. Found by the review and first in
   line: a bake worker let go after 20 silent seconds is never started again
@@ -436,6 +436,12 @@ outside the profile.
   `other: R > J` comes off by its own rule in HB2's #2261, on sitting 53's
   list: 3.1 is ticked when it is merged (the gatekeeper, sitting 53, tag
   6267).*
+  *Merged at sitting 53: HB2's #2261 (`other: R > J` off the list by its
+  own rule: five runs of `stand,town` 7.0 to 10.6 ms, under 12), #2244,
+  #2247, #2249, #2259 and #2266, EN's #2263 (an armour bake's page work in
+  tasks of its own). `debtOf('ours')` is empty on `main` 18061bea
+  (`tools/qa/mp/held-budget.mjs`: three rows, `box` and `browser`): **3.1
+  is done** (the gatekeeper, sitting 54, tag 6268).*
 - [ ] **3.2 [LATER] One queue for work that is not this frame's**, with
   priorities. It takes nothing while the frames are late or the pacer is
   trying a step up. Work put off (after a fight, at a veil) joins it one a
@@ -976,6 +982,11 @@ nothing known, and a restore copies nothing.
   The step is open: `usage-meter.test` 5 went red on `main` at 00:00 UTC
   2026-11-19 (its clock pinned to 2026-11-18; RR's #2265 on sitting 53's
   list) (the gatekeeper, sitting 53, tag 6267).*
+  *RR's #2265 (`usage-meter.test` 5 on its own clock; deployed, 220d573
+  green), #2267 (the heap line 38.5 -> 40.0), #2258 (`mp-firststeps` 6)
+  and #2260 (`mp-recoverpay`), the tests', merged at sitting 53. The step
+  is open: RR's deskkeys, cuelevels and the slow checks on sitting 54's
+  list (the gatekeeper, sitting 54, tag 6268).*
 - [ ] **8.2 [NEXT] Traps become guards**, each with a break proof. The count
   that matters is traps held by a proof, not traps of prose.
   *Card V merged, #1724 to #1740: 31 traps held by a proof (25 the rule, 6
