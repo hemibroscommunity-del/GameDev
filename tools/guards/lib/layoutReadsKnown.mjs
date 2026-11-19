@@ -10,7 +10,7 @@
    through the ways the spec names.  A read that truly must stay (a size
    read once at start, the window's own resize) is a row with its `why`,
    added only with the planning session's yes, in a PR that says so. */
-export const LINE = 331;   /* 331 reads in 72 files */
+export const LINE = 325;   /* 325 reads in 72 files */
 
 export const KNOWN = Object.freeze([
   /* src/debug/DebugOverlay.jsx */
@@ -77,13 +77,8 @@ export const KNOWN = Object.freeze([
   { file: 'src/ui/BroTown.jsx', fn: '_scrollableUp', kind: 'getComputedStyle', n: 1 },
   { file: 'src/ui/BroTown.jsx', fn: '_scrollableUp', kind: 'scrollHeight', n: 1 },
   { file: 'src/ui/BroTown.jsx', fn: 'bM', kind: 'getBoundingClientRect', n: 1 },
-  { file: 'src/ui/BroTown.jsx', fn: 'clientToCanvas', kind: 'getBoundingClientRect', n: 1, hb: '14' },
-  { file: 'src/ui/BroTown.jsx', fn: 'onClick', kind: 'getBoundingClientRect', n: 3 },
+  { file: 'src/ui/BroTown.jsx', fn: 'onClick', kind: 'getBoundingClientRect', n: 2 },
   { file: 'src/ui/BroTown.jsx', fn: 'onClick', kind: 'scrollTop', n: 1 },
-  { file: 'src/ui/BroTown.jsx', fn: 'onDoubleClick', kind: 'getBoundingClientRect', n: 1 },
-  { file: 'src/ui/BroTown.jsx', fn: 'onMouseDown', kind: 'getBoundingClientRect', n: 1 },
-  { file: 'src/ui/BroTown.jsx', fn: 'onMouseMove', kind: 'getBoundingClientRect', n: 1 },
-  { file: 'src/ui/BroTown.jsx', fn: 'onTouchEnd', kind: 'getBoundingClientRect', n: 1, hb: '14' },
   { file: 'src/ui/BroTown.jsx', fn: 'relock', kind: 'innerHeight', n: 2 },
   /* src/ui/ExtractionSwipeLayer.jsx */
   { file: 'src/ui/ExtractionSwipeLayer.jsx', fn: 'buttonCueScreenPos', kind: 'getBoundingClientRect', n: 2 },
