@@ -98,12 +98,27 @@ check('0. the six switches\' keys', usageSwitchOf('oplog:rq:bp_a:r1') === 'reqst
 /* ── 5. today ── */
 {
   const t0 = Date.UTC(2026, 10, 18, 23, 59, 0);
-  const room = new GameRoom(makeStorage(), mockEnv);
-  room._usageMem(t0);
-  room._usage.start.since = t0; room._usage.today.since = t0;
-  room._usageCount(0, 'rpg:', 5, null);
-  const before = room._usageRead(t0);
-  const after = room._usageRead(t0 + 120000);   /* 00:01 UTC the next day */
+  /* v2.3.6305 (card RR; docs/plan/census/RR-reds.md): the whole step on the
+     test's own clock.  `_usageCount` takes no time and reads Date.now(), so
+     the count went into the REAL day: on 2026-11-18 that was t0's day and
+     the check passed; from 2026-11-19 on the real day was already the next
+     one, its end a day after t0 + 2 min, so "00:01 the next day" never
+     rolled and the check was red on every run, main included (found on
+     #2260's CI at 00:01 UTC).  Date.now is pinned to t0 for the step and put
+     back after; the check itself is unchanged. */
+  const realNow = Date.now;
+  Date.now = () => t0;
+  let room, before, after;
+  try {
+    room = new GameRoom(makeStorage(), mockEnv);
+    room._usageMem(t0);
+    room._usage.start.since = t0; room._usage.today.since = t0;
+    room._usageCount(0, 'rpg:', 5, null);
+    before = room._usageRead(t0);
+    after = room._usageRead(t0 + 120000);   /* 00:01 UTC the next day */
+  } finally {
+    Date.now = realNow;
+  }
   check('5. at 00:00 UTC today starts empty, counted from 00:00 (not its first count); the room\'s own runs on', before.today.writes === 5 && after.today.writes === 0 && after.sinceStart.writes === before.sinceStart.writes && after.today.since === Date.UTC(2026, 10, 19), { before: before.today.writes, after: after.today.writes, since: after.today.since });
   check('5. ...and says when the day ends', after.dayEnds === Date.UTC(2026, 10, 20));
 }
