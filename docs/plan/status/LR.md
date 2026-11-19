@@ -1,7 +1,7 @@
 card: LR
 branch: claude/plan-lr-3-refreeze
-prs: #2226 (6360), #2245 (6361): merged; (6362) the re-freeze
-state: ready
+prs: #2226 (6360), #2245 (6361), #2252 (6362): merged (sittings 51, 52)
+state: done
 
 ## Done
 
