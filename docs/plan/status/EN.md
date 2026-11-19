@@ -17,10 +17,14 @@ state: working
 
 ## Next
 
-- 6207: inside "the frame itself": `_updateNPCs > _drawFolk > _placeTrait /
-  _placeHeadwear`, `_updateOtherPlayers > _placeHeadwear > _ensureTraitLoaded`.
+- 6207 (the frame's folk): a townsperson off the view's rectangle (+260) is
+  not posed (16% of draws at peer; planning session: B alone).
 
 ## Found
+
+- If a crowd ever needs it (planning: not now): skip a townsperson's posing
+  while his pose/facing/frame/size/body are unchanged: 44% of draws at peer
+  (more at 60 fps); 250 ms refresh, so late art could show 250 ms late.
 
 - For the next card: the belt's gear sheet first built on the page,
   gearSheets.js `getGearFrame > buildSheet > _buildShirtOnWorker`
@@ -31,8 +35,8 @@ state: working
   a/b, `bakeleak`'s baseline guard, `heldsweep` (`screen-check` 303 > 260).
 - `copperwaist`'s iron guard (getEquip back to copper): EN 3 of ~6 runs,
   main 0 of 2; more main runs going (told Z52).
-- `state-census.mjs --check` fails on main too: no guard runs it.
 
 ## Needs
 
-- (none). Planning part 7 (session_01LccHaivkofvyigGL4fgBWZ); gatekeeper 53.
+- (none). Planning part 7 (session_01LccHaivkofvyigGL4fgBWZ); gatekeeper 54
+  (session_01LccHajNEjqHLh7oJ6yVsxL).
