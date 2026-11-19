@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "639e1c36f6a5e1d5f187964827c76934bde127ed",
+  "tree": "604d28eb8ac373a101c029408efa5efd0d29e413",
+  "committedAt": "2026-11-18T18:24:21-08:00",
+  "subject": "Merge pull request #2266 from hemibroscommunity-del/claude/plan-hb2-9-close",
+  "files": 8452,
+  "bytes": 963274002,
+  "listingSha256": "cc357f83d40a5795b77abbbca66dc520da0fdedcd0e9932e5b21fe82b77eeb75",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "77f3a6c9f9653cd4b5a02ac720843a0897268b48",
+  "tree": "3aeab4277753774509c5540d3396f309d7a2c3bd",
+  "committedAt": "2026-11-18T18:24:30-08:00",
+  "subject": "Merge pull request #2263 from hemibroscommunity-del/claude/plan-en-6-pump",
+  "files": 8452,
+  "bytes": 963275789,
+  "listingSha256": "29eb45ab81b2ee7f2f6aff201822091fc7764d356f2974602137348b86e6b9a3",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
