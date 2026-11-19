@@ -10,7 +10,7 @@
    through the ways the spec names.  A read that truly must stay (a size
    read once at start, the window's own resize) is a row with its `why`,
    added only with the planning session's yes, in a PR that says so. */
-export const LINE = 325;   /* 325 reads in 72 files */
+export const LINE = 324;   /* 324 reads in 72 files */
 
 export const KNOWN = Object.freeze([
   /* src/debug/DebugOverlay.jsx */
@@ -145,7 +145,6 @@ export const KNOWN = Object.freeze([
   { file: 'src/ui/guideArrow.js', fn: 'shownRect', kind: 'getComputedStyle', n: 1 },
   { file: 'src/ui/guideArrow.js', fn: 'shownRect', kind: 'innerHeight', n: 1 },
   { file: 'src/ui/guideArrow.js', fn: 'shownRect', kind: 'innerWidth', n: 1 },
-  { file: 'src/ui/guideArrow.js', fn: 'shown', kind: 'querySelectorAll', n: 1, hb: '18' },
   { file: 'src/ui/guideArrow.js', fn: 'spotOf', kind: 'innerWidth', n: 1 },
   { file: 'src/ui/guideArrow.js', fn: 'sweepStrays', kind: 'querySelectorAll', n: 1, hb: '18' },
   /* src/ui/mayorScreen.js */
