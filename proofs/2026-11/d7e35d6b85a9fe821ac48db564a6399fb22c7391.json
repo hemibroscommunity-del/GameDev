@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "d7e35d6b85a9fe821ac48db564a6399fb22c7391",
+  "tree": "1772b6bb12eecac9dbdc3466b0c35cc5a35dd8a7",
+  "committedAt": "2026-11-19T08:48:20-08:00",
+  "subject": "Merge pull request #2264 from hemibroscommunity-del/claude/plan-rr-5-deskkeys",
+  "files": 8453,
+  "bytes": 963294744,
+  "listingSha256": "c84a310dba2be910e1c8218e968bd3f89244d6cf61dbcbe0c1b2185f5a4f6d73",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
