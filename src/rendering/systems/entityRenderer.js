@@ -516,6 +516,8 @@ if (typeof window !== 'undefined') {
 /* v2.3.3809: a townsperson drawn live has no figure this far past the view
    (world px beyond its half-diagonal: _updateNPCs) */
 const FOLK_FAR_MARGIN = 300;
+/* v2.3.6207: past the view's rectangle by this (world px: a figure, his hat and plate fit in it), a townsperson is not posed */
+const FOLK_POSE_MARGIN = 260;
 /* ═══ v2.3.6202: THE TOWNSFOLK'S BAKED SHEETS OFF THE CHIP FAR FROM TOWN (card EN PR 3) ═══
    The few townsfolk whose looks the shared numbers refuse are drawn from
    sheets baked behind the loading screen (prewarmFolkBodies), each sent to
@@ -15970,6 +15972,16 @@ export class EntityRenderer {
             }
             dropFolkSkill(display);   /* v2.3.5462: his trade's figure goes with it */
             _folkLive = true;   /* live, and nothing of him to draw out there */
+          } else if (display._folk && _cam && _vw > 0 && _vh > 0
+            && (npc.x < _cam.x - FOLK_POSE_MARGIN || npc.x > _cam.x + _vw + FOLK_POSE_MARGIN
+              || npc.y < _cam.y - FOLK_POSE_MARGIN || npc.y > _cam.y + _vh + FOLK_POSE_MARGIN)) {
+            /* v2.3.6207 (card EN PR 8, the frame's folk): near the screen but
+               off it -- the view's rectangle and a figure's height round it --
+               his figure is kept but not posed this frame; he is posed in the
+               frame he comes into view, before it is drawn.  The circle above
+               (half-diagonal + 300) keeps a tall phone view's corners' folk,
+               16% of the draws at the sweep's peer station */
+            _folkLive = true;
           } else _folkLive = this._drawFolk(S, now, npc, display);
         }
       }
