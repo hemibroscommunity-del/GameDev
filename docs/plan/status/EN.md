@@ -1,6 +1,6 @@
 card: EN
 branch: claude/plan-en-6-pump (6205)
-prs: #2189 6200, #2195 6201, #2207 6202, #2234 6203, #2255 6204 (merged), 6205 (checks)
+prs: #2189 6200, #2195 6201, #2207 6202, #2234 6203, #2255 6204 (merged), #2263 6205 (checks)
 state: working
 
 ## Done
