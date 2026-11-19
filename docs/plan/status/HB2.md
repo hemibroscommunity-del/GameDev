@@ -1,7 +1,7 @@
 card: HB2
 branch: claude/plan-hb2-12-narrowkeys
-prs: #2224-#2266 (6280-6288): merged; #2271 6289: ready; #2272 6290: checks; 6291 (narrow keys): opening
-state: working
+prs: #2224-#2266 (6280-6288): merged; #2271 6289, #2272 6290: ready; 6291 (narrow keys): pushed, no PR yet
+state: paused
 
 ## Done
 
@@ -21,17 +21,16 @@ state: working
 
 ## Next
 
-- The planning session's list is done with 6291.
-  Skipped by the planning session: deskTeach's route, rememberChar.
+- Paused (the owner's usage, until Monday). 6291: precheck OK, playable
+  187/187, membudget 11/11; mp-oneband, mp-deskkeys not run; open its PR.
 
 ## Found
 
 - Red with ?afterpaint=0 / on main too: mp-geartab 844x390 (the rail
   over the tab), mp-brocard 4 parts, mp-hairstencil 3 parts;
   mp-waterfrog hangs after part 5.
-- The World map's first draw on opening is still 57-64 ms (line 45 at a
-  window): the on-screen names' first measure.  Spreading it over frames
-  would show the names a frame or two late: the planning session's call.
+- The World map's first draw: 57-64 ms, left as is (planning session).
+- heldsweep `windows`: `other: jg > Ek` (firstView) 64-72 ms, unlisted.
 - mp-membudget's heap reads 38.8-39.2 MB on main on this box (line 38.5);
   CI's runner passes it.
 
