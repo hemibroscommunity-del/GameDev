@@ -1,7 +1,7 @@
 card: RR
 branch: claude/plan-rr-11-rejoinloop (one PR a branch, claude/plan-rr-*)
 prs: #2251, #2256, #2258, #2260, #2265, #2267 merged; #2264, #2269, #2270 ready; #2273 (6309) draft; 6310 on its branch
-state: blocked
+state: stalled
 
 ## Done
 - merged: #2251 (6300) census; #2256 mayordoor, #2258 firststeps, #2260
