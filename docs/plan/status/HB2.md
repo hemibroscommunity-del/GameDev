@@ -1,7 +1,7 @@
 card: HB2
 branch: claude/plan-hb2-12-narrowkeys
 prs: #2224-#2266 (6280-6288): merged; #2271 6289, #2272 6290: ready; 6291 (narrow keys): pushed, no PR yet
-state: paused
+state: stalled
 
 ## Done
 
