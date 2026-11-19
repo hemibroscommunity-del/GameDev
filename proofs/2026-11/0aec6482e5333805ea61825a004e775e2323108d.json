@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "0aec6482e5333805ea61825a004e775e2323108d",
+  "tree": "77ed2cd3320184a59f4efaa9b54f6ab03c22ecda",
+  "committedAt": "2026-11-19T09:49:56-08:00",
+  "subject": "Merge pull request #2274 from hemibroscommunity-del/claude/plan-en-8-folk",
+  "files": 8453,
+  "bytes": 963301218,
+  "listingSha256": "4c9179966375a111adc06d0742cc8ca7d4e82fa631b6fa45367c1c41e1e4281d",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
