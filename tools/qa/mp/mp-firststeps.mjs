@@ -19,7 +19,9 @@
  *   5. "Your quest" ringing the quest card at the top left, then going;
  *   then 25 s of quiet: no other card;
  *   6. the cards seen, in order, are exactly mayor, equip, minimap,
- *      questPill -- none of the retired ones (move, attack, chat, ...);
+ *      questPill -- none of the retired ones (move, attack, chat, ...); the
+ *      big arrows Mayor Bro's first, then only the first quest's (the
+ *      weapon, CLOSE: v2.3.6302);
  *   7. no page errors.
  * BT_FS_ONLY=phone|sideways|computer|laptop|laptopcol runs one view.
  * Pictures: tools/qa/mp/out/firststeps-<view>-<n>-<step>.png (the phone's
@@ -47,6 +49,14 @@ const VIEWS = [
 const WANT = ['mayor', 'equip', 'minimap', 'questPill'];
 
 /* every card and arrow that shows, in order, recorded in the page */
+/* v2.3.6302 (card RR; docs/plan/census/RR-reds.md): the big arrows a new
+   character's first quest may bring, as the game lists them
+   (src/ui/guideArrow.js): Mayor Bro, the weapon to wear, and (v2.3.4343, the
+   owner's computer player "played almost the whole time with the dashboard
+   up") CLOSE, the open band's fold button, while tut_1 is under way and no
+   weapon is left to wear.  The check took only the first two, so every view
+   went red on the CLOSE lesson the game has given since v2.3.4343. */
+const FIRST_ARROWS = Object.freeze(['mayor', 'weapon', 'close']);
 const RECORDER = `(() => {
   window.__fsSeen = []; window.__fsArrows = []; window.__fsWelcome = 0;
   setInterval(() => {
@@ -182,7 +192,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const seen = await P.page.evaluate(() => ({ cards: window.__fsSeen.slice(), arrows: window.__fsArrows.slice(), coach: window.__btCoach ? window.__btCoach() : null }));
       await shot('6-after');
       rec.ok(`${V.id} 6. the cards, in order: ${seen.cards.join(' -> ')}; the arrows: ${seen.arrows.join(' -> ')}; then nothing`,
-        seen.cards.join() === WANT.join() && !tail && seen.arrows[0] === 'mayor' && seen.arrows.every((a) => a === 'mayor' || a === 'weapon')
+        seen.cards.join() === WANT.join() && !tail && seen.arrows[0] === 'mayor' && seen.arrows.every((a) => FIRST_ARROWS.includes(a))
           && !!seen.coach && WANT.every((id) => seen.coach.done[id] === true),
         { cards: seen.cards, arrows: seen.arrows, tail, done: seen.coach && seen.coach.done,
           oversize: seen.coach && seen.coach.oversize });   /* v2.3.4155: a mark refused for its size, named */
