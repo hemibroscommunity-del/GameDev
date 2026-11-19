@@ -35,7 +35,7 @@ PRs turned ready. Tags bare.
 | card | PR | tag | head | state on GitHub |
 |---|---|---|---|---|
 | RR | #2265 usage-meter 5 on its own clock | 6305 | 14199711 | ready, every check green; DEPLOYS (a server/test file) |
-| RR | #2267 the heap line 38.5 -> 40.0 | 6306 | 7c77c441 | stacked on #2265; CI running at close (see the list) |
+| RR | #2267 the heap line 38.5 -> 40.0 | 6306 | 7c77c441 | stacked on #2265; ready 02:14, every check green |
 | RR | #2258 mp-firststeps 6, the test's | 6302 | 2709b32f | ready, every check green (#2265 merged in) |
 | RR | #2260 mp-recoverpay, the test's | 6303 | 35c434e7 | ready; `test` green, `memory-budget` red on the heap line only (#2267) |
 | HB2 | #2261 `other: R > J` off the debt list by its own rule | 6287 | 46da76db | ready, every check green |
@@ -116,8 +116,9 @@ reading each diff in full:
    stack + #2266 + #2263: tree 47017805. precheck 0 FAIL (863 s), build,
    questline 187/187; then in the same tree `mp-firststeps` 46/46, the
    arrows Mayor -> weapon -> CLOSE on every view (#2258 with #2266).
-3. **The list** (below, #2267 and #2260's 35c434e7 in): see Z.md for the
-   tree and results.
+3. **The list**: main + #2265 + #2267 + #2258 + #2260 (35c434e7) + #2261
+   + #2244 + #2247 + #2249 + #2259 + #2266 + #2263: tree **3aeab427**.
+   precheck 0 FAIL (884 s), build, questline 187/187.
 
 ## Step 5b: what GitHub will merge
 
@@ -128,9 +129,12 @@ commits): one each, no conflict. Every branch carries #2265's head
 #2265 lands first. Only #2265's test file is under `server/`: one deploy
 (a test-only change; the worker's code is the same).
 
-## The list
+## The list (merge in this order, "Create a merge commit", in one go)
 
-See `docs/plan/status/Z.md`.
+1 #2265 (RR 6305; DEPLOYS, a server test only) · 2 #2267 (RR 6306) · 3
+#2258 (RR 6302) · 4 #2260 (RR 6303) · 5 #2261 (HB2 6287) · 6 #2244 (HB2
+6281) · 7 #2247 (6282) · 8 #2249 (6283) · 9 #2259 (6286) · 10 #2266 (HB2
+6288) · 11 #2263 (EN 6205) · 12 this PR (Z 6267). Held: none.
 
 ## Found (no card's, or another card's)
 
