@@ -1,16 +1,18 @@
 card: LR
-branch: claude/plan-lr-2-spec
-prs: #2226 (6360), (6361) working
-state: working
+branch: claude/plan-lr-3-refreeze
+prs: #2226 (6360), #2245 (6361): merged; (6362) the re-freeze
+state: ready
 
 ## Done
 
 - #2226 (6360): the guard, tools/guards/layout-reads.test.mjs; its scan
   and its frozen list (lib/): 365 reads listed in 72 files. About 1 s.
+- #2245 (6361): docs/specs/layout-reads.md, CLAUDE.md §7 line, §8 row.
 
 ## Next
 
-- PR 2 (6361): docs/specs/layout-reads.md, CLAUDE.md §7 line, §8 row.
+- (6362) the list lowered after HB2's #2224 (365 -> 337, --write), as
+  sitting 51 asked; then the card is done.
 
 ## Found
 
