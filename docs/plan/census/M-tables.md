@@ -14,7 +14,7 @@ fails a page that is not the scan's (line numbers aside). The tables line
 | written into (apart) | 15 | 15 |
 | handed on (apart) | 10 | 14 |
 | frozen (a call: apart) | 2 | 2 |
-| lone constants | 73 | 69 |
+| lone constants | 74 | 69 |
 | ...tuned (leave with the tables) | 0 | 0 |
 
 Suites that name a counted table or a tuned constant by its text: 0 (). They move with the two table PRs (the owner's review, 2026-11-17).
@@ -60,7 +60,7 @@ leave with their renderer's tables.
 
 ## 3. The other lone constants (stay)
 
-- entityRenderer.js: `WARD_RING_MS`:137, `COLLISION_GLOW_RANGE_PX`:181, `SKULL_RED_TINT`:186, `HUD_BAR_VER`:191, `PEER_HPBAR_HOLD_MS`:240, `NOTICE_MS`:248, `HPBAR_FLASH_MS`:260, `POPUP_BAR_CLEAR`:270, `SPAWN_FX_MS`:285, `BOSS_SEE_THROUGH`:306, `FOLK_FAR_MARGIN`:518, `TRAIT_NFT_ID`:802, `TRAIT_VER`:809, `HEAD_WATCH_MS`:1041, `BODY_DATA_TIMEOUT_MS`:1117, `MASKED_CAP`:2267, `KEEP_QUIET_MS`:2313, `KEEP_PER_SLICE`:2313, `KEEP_GAP_MS`:2313, `KEEP_MAX`:2319, `KEEP_LONGEST_MS`:2319, `_BAKE_BUSY_MAX`:2691, `_BAKE_STUCK_MS`:3094, `_LOCAL_PATIENCE_MS`:3107, `PEER_LOOK_SLICE_MS`:3235, `FISH_TOP_CAP`:4018, `FISH_SKIN_DARK`:4025, `FISH_SKIN_LIGHT`:4025, `FISH_STEEL_LO`:4025, `FISH_STEEL_HI`:4025, `FISH_STEEL_INK`:4025, `FISH_RIM_MIN`:4026, `FISH_PINE_RG`:4027, `HAIR_MASK_ROUNDS`:4373, `SWORD_SWING_MS`:4628, `BOW_SHOT_MS`:4633, `BOW_RELEASE_MS`:4638, `HP_RING_BAND`:5014, `HP_RING_TRACK`:5017, `HP_RING_CENTER_FILL`:5018, `HP_TIER_GREEN`:5019, `HP_TIER_YELLOW`:5019, `HP_TIER_ORANGE`:5019, `HP_TIER_RED`:5019, `HP_RING_OUTLINE`:5020, `HP_GHOST_WHITE`:5021, `HP_GHOST_DRAIN`:5022, `HP_GHOST_DRAIN_M`:5023, `HP_GHOST_HOLD_MS`:5026, `SWING_ANIM_MS`:5124, `THROW_RELEASE_GRACE_MS`:5147, `PLATE_INK`:5547, `PLATE_FILL_ALPHA`:5678, `PLATE_NAME_FILL`:5688, `PLATE_NAME_WEIGHT`:5695, `PLATE_BORDER_ALPHA`:5702, `PLATE_LEVEL_STROKE`:5767, `PLATE_ALARM_FILL`:5785, `PLATE_ALARM_FILL_ALPHA`:5811, `PLATE_ALARM_NAME_FILL`:5812, `PLATE_ALARM_NAME_WEIGHT`:5813, `PLATE_BOSS_FILL`:5823, `PLATE_BOSS_FILL_ALPHA`:5824, `PLATE_ALARM_LEVEL_FILL`:5833, `PLATE_ENGAGED_MS`:5837, `BRO_BADGE_URL`:5992, `PLATE_SCALE_MIN`:6180, `PLATE_SCALE_MAX`:6181, `CUE_ZOOM_MAX`:6192, `SOUTH_BLOCK_OFFHAND_ENABLED`:6545, `RES_SLIDE_MS`:7574, `RES_TRACK`:7579, `RES_BORDER_COL`:7580
+- entityRenderer.js: `WARD_RING_MS`:137, `COLLISION_GLOW_RANGE_PX`:181, `SKULL_RED_TINT`:186, `HUD_BAR_VER`:191, `PEER_HPBAR_HOLD_MS`:240, `NOTICE_MS`:248, `HPBAR_FLASH_MS`:260, `POPUP_BAR_CLEAR`:270, `SPAWN_FX_MS`:285, `BOSS_SEE_THROUGH`:306, `FOLK_FAR_MARGIN`:518, `FOLK_POSE_MARGIN`:520, `TRAIT_NFT_ID`:804, `TRAIT_VER`:811, `HEAD_WATCH_MS`:1043, `BODY_DATA_TIMEOUT_MS`:1119, `MASKED_CAP`:2269, `KEEP_QUIET_MS`:2315, `KEEP_PER_SLICE`:2315, `KEEP_GAP_MS`:2315, `KEEP_MAX`:2321, `KEEP_LONGEST_MS`:2321, `_BAKE_BUSY_MAX`:2693, `_BAKE_STUCK_MS`:3096, `_LOCAL_PATIENCE_MS`:3109, `PEER_LOOK_SLICE_MS`:3237, `FISH_TOP_CAP`:4020, `FISH_SKIN_DARK`:4027, `FISH_SKIN_LIGHT`:4027, `FISH_STEEL_LO`:4027, `FISH_STEEL_HI`:4027, `FISH_STEEL_INK`:4027, `FISH_RIM_MIN`:4028, `FISH_PINE_RG`:4029, `HAIR_MASK_ROUNDS`:4375, `SWORD_SWING_MS`:4630, `BOW_SHOT_MS`:4635, `BOW_RELEASE_MS`:4640, `HP_RING_BAND`:5016, `HP_RING_TRACK`:5019, `HP_RING_CENTER_FILL`:5020, `HP_TIER_GREEN`:5021, `HP_TIER_YELLOW`:5021, `HP_TIER_ORANGE`:5021, `HP_TIER_RED`:5021, `HP_RING_OUTLINE`:5022, `HP_GHOST_WHITE`:5023, `HP_GHOST_DRAIN`:5024, `HP_GHOST_DRAIN_M`:5025, `HP_GHOST_HOLD_MS`:5028, `SWING_ANIM_MS`:5126, `THROW_RELEASE_GRACE_MS`:5149, `PLATE_INK`:5549, `PLATE_FILL_ALPHA`:5680, `PLATE_NAME_FILL`:5690, `PLATE_NAME_WEIGHT`:5697, `PLATE_BORDER_ALPHA`:5704, `PLATE_LEVEL_STROKE`:5769, `PLATE_ALARM_FILL`:5787, `PLATE_ALARM_FILL_ALPHA`:5813, `PLATE_ALARM_NAME_FILL`:5814, `PLATE_ALARM_NAME_WEIGHT`:5815, `PLATE_BOSS_FILL`:5825, `PLATE_BOSS_FILL_ALPHA`:5826, `PLATE_ALARM_LEVEL_FILL`:5835, `PLATE_ENGAGED_MS`:5839, `BRO_BADGE_URL`:5994, `PLATE_SCALE_MIN`:6182, `PLATE_SCALE_MAX`:6183, `CUE_ZOOM_MAX`:6194, `SOUTH_BLOCK_OFFHAND_ENABLED`:6547, `RES_SLIDE_MS`:7576, `RES_TRACK`:7581, `RES_BORDER_COL`:7582
 - effectsRenderer.js: `BLOCK_POSE_FRAME`:38, `PEER_CHOP_IDLE_MS`:141, `GPU_WAIT_MS`:142, `PEER_INK_CAP`:167, `PEER_INK_IDLE_MS`:168, `PRINT_TTL_MS`:187, `PRINT_ALPHA`:188, `FARM_MIN_BLOB`:273, `PEER_CHOP_REACH`:300, `PEER_COOK_REACH`:301, `PEER_GATHER_NODE_TTL_MS`:302, `PEER_SEAT_MATCH_PX`:307, `CHOP_GEAR_FW`:342, `DRESSED_MAX`:375, `FIRE_FRAME_MS`:441, `PEER_FIG_BUDGET`:579, `PEER_FIG_IDLE_MS`:587, `PEER_FIG_LOAD_MS`:595, `PEER_FIG_RETRY_MS`:596, `PEER_GREAVES_WAIT_MS`:597, `GEAR_STRIP_TIMEOUT_MS`:598, `DMG_FONT_PX`:867, `DMG_CRIT_FONT_PX`:868, `MSG_EDGE_PX`:928, `DMG_CRIT_COLOR`:938, `MAGIC_BOLT_FRAME_MS`:1018, `HOT_SPECIAL_ARROW`:1114, `SWORD_FEEL_AUTHORED_DIR`:1132, `JET_STREAM_ENABLED`:1327, `JET_LINGER_MS`:1328, `JET_ALPHA`:1332, `JET_MAX`:1336, `FX_BURST_MS`:1392, `SLIME_WAVE_MS`:1451, `ARROW_BLAST_MS`:1452, `ARROW_BLAST_D`:1453, `SNOWBALL_BURST_MS`:1471, `SNAP_G`:1591, `SNAP_REST_MS`:1592, `SNAP_FADE_MS`:1593, `SNAP_MAX`:1594, `PROP_SLASHES_PER_PROP`:1595, `PROP_ARROWS_PER_PROP`:1598, `PROP_SCORCHES_PER_PROP`:1599, `PROP_MARKS_MAX`:1600, `SCORCH_GLOW_MS`:1601, `ORE_SPLIT_MS`:1892, `ORE_POP_LATE_MS`:1905, `DMG_BMP_BAKE_PX`:1977, `DMG_WORD_BAKE_PX`:1980, `DMG_WORD_PAGE_PX`:1981, `NPC_BUBBLE_REACH`:2169, `EMOTE_POP_FONT`:2174, `REMOTE_BAKE_CACHE_MAX`:2279, `BEAM_RISE_S`:2345, `BEAM_A`:2346, `BEAM_HALO_A`:2347, `BEAM_FLICKER`:2348, `BEAM_PULSE_HZ`:2349, `BEAM_MOTES`:2350, `LOOT_BEAMS_MAX`:2354, `PEER_FIRES`:2360, `LAND_S`:2382, `POP_JUMP`:2384, `POP_DELAY_S`:2385, `POP_ARC_S`:2386, `POP_BOUNCE_S`:2387, `SMITH_FLAME_H0`:2475, `WHIRL_CATCH_MAX`:2481
 
 ## 4. Apart: not counted, they stay
@@ -71,21 +71,21 @@ literal wrapped in `Object.freeze` (a call).
 
 | name | file | line | why | suites that read it |
 |---|---|---|---|---|
-| `_propsDrawn` | entityRenderer.js | 376 | written: assigned (line 15533) | - |
-| `_fgDrawn` | entityRenderer.js | 382 | written: assigned (line 15632) | - |
-| `_traitCache` | entityRenderer.js | 858 | written: assigned (line 886) | - |
-| `_keepQueue` | entityRenderer.js | 2322 | written: .push() (line 2326) | - |
-| `_bakeWorkerStats` | entityRenderer.js | 2614 | written: counted (line 2695) | - |
-| `_bakeQueue` | entityRenderer.js | 2687 | written: .push() (line 2707) | - |
-| `_localBakeStats` | entityRenderer.js | 3077 | written: counted (line 2804) | - |
-| `_localMisses` | entityRenderer.js | 3106 | written: .shift() (line 3136) | - |
-| `_peerBakeStats` | entityRenderer.js | 3158 | written: counted (line 3179) | - |
-| `_peerQueue` | entityRenderer.js | 3160 | written: .splice() (line 3214) | - |
-| `prewarmProgress` | entityRenderer.js | 3375 | written: assigned (line 3444) | - |
-| `_hairMaskCache` | entityRenderer.js | 4330 | written: assigned (line 4335) | loader-retries |
-| `_standInHairClip` | entityRenderer.js | 4644 | written: assigned (line 4688) | - |
-| `_traitTex` | entityRenderer.js | 4867 | written: assigned (line 4891) | - |
-| `_mannequinTex` | entityRenderer.js | 4874 | written: assigned (line 4900) | - |
+| `_propsDrawn` | entityRenderer.js | 376 | written: assigned (line 15535) | - |
+| `_fgDrawn` | entityRenderer.js | 382 | written: assigned (line 15634) | - |
+| `_traitCache` | entityRenderer.js | 860 | written: assigned (line 888) | - |
+| `_keepQueue` | entityRenderer.js | 2324 | written: .push() (line 2328) | - |
+| `_bakeWorkerStats` | entityRenderer.js | 2616 | written: counted (line 2697) | - |
+| `_bakeQueue` | entityRenderer.js | 2689 | written: .push() (line 2709) | - |
+| `_localBakeStats` | entityRenderer.js | 3079 | written: counted (line 2806) | - |
+| `_localMisses` | entityRenderer.js | 3108 | written: .shift() (line 3138) | - |
+| `_peerBakeStats` | entityRenderer.js | 3160 | written: counted (line 3181) | - |
+| `_peerQueue` | entityRenderer.js | 3162 | written: .splice() (line 3216) | - |
+| `prewarmProgress` | entityRenderer.js | 3377 | written: assigned (line 3446) | - |
+| `_hairMaskCache` | entityRenderer.js | 4332 | written: assigned (line 4337) | loader-retries |
+| `_standInHairClip` | entityRenderer.js | 4646 | written: assigned (line 4690) | - |
+| `_traitTex` | entityRenderer.js | 4869 | written: assigned (line 4893) | - |
+| `_mannequinTex` | entityRenderer.js | 4876 | written: assigned (line 4902) | - |
 | `_fxPreload` | effectsRenderer.js | 27 | written: .push() (line 39) | loader-retries |
 | `_combatTrimStats` | effectsRenderer.js | 43 | written: assigned (line 14203) | loader-retries |
 | `_standInTrimStats` | effectsRenderer.js | 64 | written: assigned (line 118) | - |
@@ -101,16 +101,16 @@ literal wrapped in `Object.freeze` (a call).
 | `ORE_TEX` | effectsRenderer.js | 1801 | written: assigned (line 1802) | pixel-readers |
 | `ORE_ICON_TIER_TEX` | effectsRenderer.js | 1864 | written: assigned (line 1867) | - |
 | `SMITH_ANVIL` | effectsRenderer.js | 2470 | written: assigned (line 2472) | - |
-| `_staffTipOut` | entityRenderer.js | 142 | handed on: an argument (line 11303) | - |
+| `_staffTipOut` | entityRenderer.js | 142 | handed on: an argument (line 11305) | - |
 | `_hudBarTex` | entityRenderer.js | 192 | handed on: in a literal (line 227) | renderer-life |
-| `NODE_HPBAR_PARTS` | entityRenderer.js | 634 | handed on: aliased (line 675) | - |
-| `JOG_EW_HAIR_TUNE` | entityRenderer.js | 1281 | handed on: returned (line 1283) | - |
-| `_BASE_DIRS` | entityRenderer.js | 3383 | handed on: an argument (line 3004) | - |
-| `PLAYER_HP_NUM_STYLE` | entityRenderer.js | 4997 | handed on: in a literal (line 691) | - |
-| `HP_RING_MAX_STYLE` | entityRenderer.js | 5027 | handed on: in a literal (line 7135) | - |
-| `MONSTER_HP_NUM_STYLE` | entityRenderer.js | 5035 | handed on: in a literal (line 5308) | - |
-| `_STAND_SOUTH` | entityRenderer.js | 5471 | handed on: an argument (line 5473) | - |
-| `PLATE_BAND` | entityRenderer.js | 5714 | handed on: in a literal (line 6508) | - |
+| `NODE_HPBAR_PARTS` | entityRenderer.js | 636 | handed on: aliased (line 677) | - |
+| `JOG_EW_HAIR_TUNE` | entityRenderer.js | 1283 | handed on: returned (line 1285) | - |
+| `_BASE_DIRS` | entityRenderer.js | 3385 | handed on: an argument (line 3006) | - |
+| `PLAYER_HP_NUM_STYLE` | entityRenderer.js | 4999 | handed on: in a literal (line 693) | - |
+| `HP_RING_MAX_STYLE` | entityRenderer.js | 5029 | handed on: in a literal (line 7137) | - |
+| `MONSTER_HP_NUM_STYLE` | entityRenderer.js | 5037 | handed on: in a literal (line 5310) | - |
+| `_STAND_SOUTH` | entityRenderer.js | 5473 | handed on: an argument (line 5475) | - |
+| `PLATE_BAND` | entityRenderer.js | 5716 | handed on: in a literal (line 6510) | - |
 | `_emoteIds` | effectsRenderer.js | 33 | handed on: aliased (line 9086) | - |
 | `_emoteSrcs` | effectsRenderer.js | 33 | handed on: aliased (line 9086) | - |
 | `_emoteEms` | effectsRenderer.js | 33 | handed on: aliased (line 9086) | - |
@@ -125,8 +125,8 @@ literal wrapped in `Object.freeze` (a call).
 | `DMG_DIGIT_CHARS` | effectsRenderer.js | 1992 | handed on: an argument (line 1997) | - |
 | `_NO_HOP` | effectsRenderer.js | 2420 | handed on: returned (line 2392) | - |
 | `_AT_MIDDLE` | effectsRenderer.js | 2457 | handed on: aliased (line 9631) | loot-clock |
-| `_PEER_WORN_SLOTS` | entityRenderer.js | 3209 | frozen | - |
-| `CAPTURE_FACING` | entityRenderer.js | 5408 | frozen | - |
+| `_PEER_WORN_SLOTS` | entityRenderer.js | 3211 | frozen | - |
+| `CAPTURE_FACING` | entityRenderer.js | 5410 | frozen | - |
 | `PEER_FIG_EST` | effectsRenderer.js | 584 | frozen | - |
 | `GOO_HOLD` | effectsRenderer.js | 2487 | frozen | - |
 
