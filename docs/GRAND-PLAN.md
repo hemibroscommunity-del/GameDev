@@ -428,6 +428,14 @@ outside the profile.
   falling; `docs/specs/layout-reads.md`), SB's #2228 (mp-heldsweep's
   `ride` station, `census/SB-ride.md`). `other: R > J` is still on the
   list: 3.1 stays open (the gatekeeper, sitting 52, tag 6266).*
+  *Merged at sitting 52: HB2's #2254 (p256's twins read and packed on the
+  worker) and #2257 (the Quests dot without building the offers), EN's
+  #2255 (a peer's look prewarm a few ms at a time, the keep queue capped),
+  SB's #2253 (the ground keeps up with the board, `?groundsend`), LR's
+  #2252 (the layout-read list 365 -> 337). Card SB and card LR done.
+  `other: R > J` comes off by its own rule in HB2's #2261, on sitting 53's
+  list: 3.1 is ticked when it is merged (the gatekeeper, sitting 53, tag
+  6267).*
 - [ ] **3.2 [LATER] One queue for work that is not this frame's**, with
   priorities. It takes nothing while the frames are late or the pacer is
   trying a step up. Work put off (after a fight, at a veil) joins it one a
@@ -963,6 +971,11 @@ nothing known, and a restore copies nothing.
   *RD's #2204 (manualcombat 10a) and #2205 (`mp-jumpbtn` 2b), the tests',
   merged at sitting 47. The step is open: RD's crowdfight (#2208, tag
   6181) (the gatekeeper, sitting 48, tag 6262).*
+  *Card RR: #2251 (`census/RR-reds.md`, the reds on `main` sampled, 48
+  scenarios) and #2256 (`mp-mayordoor`, the test's), merged at sitting 52.
+  The step is open: `usage-meter.test` 5 went red on `main` at 00:00 UTC
+  2026-11-19 (its clock pinned to 2026-11-18; RR's #2265 on sitting 53's
+  list) (the gatekeeper, sitting 53, tag 6267).*
 - [ ] **8.2 [NEXT] Traps become guards**, each with a break proof. The count
   that matters is traps held by a proof, not traps of prose.
   *Card V merged, #1724 to #1740: 31 traps held by a proof (25 the rule, 6

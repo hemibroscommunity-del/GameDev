@@ -1,7 +1,7 @@
 card: SB
 branch: claude/plan-sb-3-groundsend
-prs: #2228 (6380): merged; 6381 parked (no PR); #2253 (6382): working (Z52's mends folded in)
-state: working
+prs: #2228 (6380), #2253 (6382): merged (sittings 51, 52); 6381 parked (no PR)
+state: done
 
 ## Done
 
