@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "13db33198648ce338390666018c72a09dc205d35",
+  "tree": "3f402f49be5002b24455041ca1c067eed2342e1c",
+  "committedAt": "2026-11-18T18:23:10-08:00",
+  "subject": "Merge pull request #2258 from hemibroscommunity-del/claude/plan-rr-3-firststeps",
+  "files": 8452,
+  "bytes": 963260258,
+  "listingSha256": "722e1d68967e706094563cfb37a9332049a30871f6a5d00907ebaadd163a8686",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

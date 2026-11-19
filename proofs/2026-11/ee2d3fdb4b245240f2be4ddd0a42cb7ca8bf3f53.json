@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "ee2d3fdb4b245240f2be4ddd0a42cb7ca8bf3f53",
+  "tree": "0576b9f42ff39cb2703bd56dbe13fa421f25fe33",
+  "committedAt": "2026-11-18T18:23:19-08:00",
+  "subject": "Merge pull request #2260 from hemibroscommunity-del/claude/plan-rr-4-recoverpay",
+  "files": 8452,
+  "bytes": 963261012,
+  "listingSha256": "affe450cbe2306a93904663baaff93eddcc44ca712afa9cfca4d4ee952ecf62b",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

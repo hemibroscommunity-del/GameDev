@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "1bdeae855e4169a090370d8a3e1075c2d9fde4b4",
+  "tree": "46fd7fbc5b5d27e3ed92514d12b78f6801800a3e",
+  "committedAt": "2026-11-18T18:22:57-08:00",
+  "subject": "Merge pull request #2267 from hemibroscommunity-del/claude/plan-rr-8-heapline",
+  "files": 8452,
+  "bytes": 963259397,
+  "listingSha256": "91f8224d2fe44fae1d9232f7345e449ce39a8e5e3877b87a1d190ae9a013853f",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
