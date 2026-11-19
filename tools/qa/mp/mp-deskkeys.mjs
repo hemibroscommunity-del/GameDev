@@ -132,43 +132,14 @@ async function runKeys({ browser, wsPort, webPort, rec }) {
        heading lit, what a click there reaches, one click folds it, one more
        opens it; on a window with no room beside the game, still in the band
        -- and that the old strip and chip are gone, as promised. */
-    const bandKeys = () => P.page.evaluate(() => {
-      const el = document.querySelector('[data-band-keys]'), head = el && el.querySelector('.bt-band-keys-head');
-      const bell = document.querySelector('[data-world-chat-toggle]');
-      const R = (n) => { if (!n) return null; const r = n.getBoundingClientRect(); return r.width > 0 && r.height > 0 ? { l: r.left, r: r.right, t: r.top, b: r.bottom } : null; };
-      const box = R(el), b = R(bell), h = R(head);
-      const ov = (x, z) => !!(x && z && x.l < z.r && x.r > z.l && x.t < z.b && x.b > z.t);
-      let onTop = false;
-      if (h) { const at = document.elementFromPoint((h.l + h.r) / 2, (h.t + h.b) / 2); onTop = !!(at && (at === head || head.contains(at))); }
-      const keys = el ? Array.from(el.querySelectorAll('.bt-band-keys-list kbd')).map((k) => k.textContent) : [];
-      return { state: el ? el.getAttribute('data-band-keys') : null, keys, box, overBell: ov(box, b),
-        onScreen: !!box && box.l >= 0 && box.t >= 0 && box.r <= innerWidth && box.b <= innerHeight,
-        headKey: head ? (head.querySelector('kbd') || {}).textContent || null : null, lit: head ? head.getAttribute('aria-expanded') : null,
-        onTop, at: h ? [Math.round((h.l + h.r) / 2), Math.round((h.t + h.b) / 2)] : null,
-        oldStrip: !!document.querySelector('.bt-kb-hints'), oldChip: !!document.querySelector('.bt-kb-chip') };
-    });
-    const bk1 = await bandKeys();
+    const bk1 = await bandKeys(P);
     rec.ok('the band\'s keys list (v2.3.4263) lists 1, 2 and 3, and lies clear of the bell, on the screen',
       bk1.state === 'open' && ['1', '2', '3'].every((k) => bk1.keys.includes(k)) && !bk1.overBell && bk1.onScreen, bk1);
     rec.ok('...and the floating strip and its ⌨ chip are not drawn beside it (bandKeysActive)', !bk1.oldStrip && !bk1.oldChip, bk1);
-    rec.ok('its ⌨ heading wears H, lit while the list is open, and is what a click there reaches',
-      bk1.headKey === 'H' && bk1.lit === 'true' && bk1.onTop && !!bk1.at, bk1);
-    if (bk1.at) await P.page.mouse.click(bk1.at[0], bk1.at[1]);
-    await P.page.waitForTimeout(400);
-    const bk2 = await bandKeys();
-    if (bk2.at) await P.page.mouse.click(bk2.at[0], bk2.at[1]);
-    await P.page.waitForTimeout(400);
-    const bk3 = await bandKeys();
-    rec.ok('...one click on it folds the list to its heading (unlit), one more opens it again',
-      bk2.state === 'folded' && bk2.lit === 'false' && bk2.keys.length === 0 && bk3.state === 'open' && bk3.lit === 'true' && bk3.keys.length > 0, { bk2, bk3 });
-    await P.page.setViewportSize({ width: 1000, height: 1200 });
-    await P.page.waitForTimeout(900);
-    const bkNarrow = await bandKeys();
-    await P.page.setViewportSize(DESK);
-    await P.page.waitForTimeout(900);
-    const bkWide = await bandKeys();
-    rec.ok('...on a window with no room beside the game (1000 x 1200) the list is still in the band, open and on the screen, and so on this one again',
-      bkNarrow.state === 'open' && bkNarrow.onScreen && !bkNarrow.oldStrip && bkWide.state === 'open' && bkWide.onScreen && !bkWide.oldStrip, { bkNarrow, bkWide });
+    /* its ⌨ heading, a click's fold and a narrow window: step 8h, on the
+       layout players get (on this upright column the list is drawn 18 px
+       wide and its heading has no size: a question for the planning
+       session, docs/plan/status/RR.md) */
 
     /* ── 2. EACH KEY ITS PAGE, AND AGAIN TO CLOSE IT ── */
     for (const [id, k] of [['quests', 'J'], ['hero', 'P'], ['encyclopedia', 'K'], ['more', 'O']]) {
@@ -400,6 +371,22 @@ const snowmen = (P) => P.page.evaluate(() => {
     .sort((a, b) => a.d - b.d);
 });
 /* what the game holds now, for a before and after */
+/* v2.3.6304: the band's own keys list, as a page draws it (steps 1 and 8h) */
+const bandKeys = (P) => P.page.evaluate(() => {
+  const el = document.querySelector('[data-band-keys]'), head = el && el.querySelector('.bt-band-keys-head');
+  const bell = document.querySelector('[data-world-chat-toggle]');
+  const R = (n) => { if (!n) return null; const r = n.getBoundingClientRect(); return r.width > 0 && r.height > 0 ? { l: r.left, r: r.right, t: r.top, b: r.bottom } : null; };
+  const box = R(el), b = R(bell), h = R(head);
+  const ov = (x, z) => !!(x && z && x.l < z.r && x.r > z.l && x.t < z.b && x.b > z.t);
+  let onTop = false;
+  if (h) { const at = document.elementFromPoint((h.l + h.r) / 2, (h.t + h.b) / 2); onTop = !!(at && (at === head || head.contains(at))); }
+  const keys = el ? Array.from(el.querySelectorAll('.bt-band-keys-list kbd')).map((k) => k.textContent) : [];
+  return { state: el ? el.getAttribute('data-band-keys') : null, keys, box, overBell: ov(box, b),
+    onScreen: !!box && box.l >= 0 && box.t >= 0 && box.r <= innerWidth && box.b <= innerHeight,
+    headKey: head ? (head.querySelector('kbd') || {}).textContent || null : null, lit: head ? head.getAttribute('aria-expanded') : null,
+    onTop, at: h ? [Math.round((h.l + h.r) / 2), Math.round((h.t + h.b) / 2)] : null,
+    oldStrip: !!document.querySelector('.bt-kb-hints'), oldChip: !!document.querySelector('.bt-kb-chip') };
+});
 const look = (P) => P.page.evaluate(() => {
   const S = window._gameState.current, R = S.rpg || {}, lt = S.lockedTarget;
   return { slot: R.activeSlot || 'melee', swipe: S._lastSwipe || 0, burst: Math.max(S._lastBurstAt || 0, S._burstMsgAt || 0),
@@ -695,6 +682,27 @@ async function runLayout({ browser, wsPort, webPort, rec }) {
     const dash = await P.page.evaluate(() => { const w = window.__dkDash; window.__dkDash = null; return w ? w.dash : null; });
     rec.ok(`8f. the sword in hand, a double click on a snowman (${mm && mm.id}, ${mm && mm.d} px) lunges at it (the dash left for ${dash}) and ends locked on it: ${JSON.stringify(s1.lock)}`,
       !!pm && pm.canvas && dash === mm.id && !!s1.lock && s1.lock.id === mm.id, { dash, lock: s1.lock, dbl: s1.dbl, press: s1.press, pm, ready });
+
+    /* ── 8h. v2.3.6304: THE BAND'S KEYS, ITS ⌨ HEADING (the narrow page's 1b and 1c, moved here) ── */
+    const bk1 = await bandKeys(P);
+    rec.ok('8h. the band\'s keys list\'s ⌨ heading wears H, lit while the list is open, and is what a click there reaches',
+      bk1.headKey === 'H' && bk1.lit === 'true' && bk1.onTop && !!bk1.at, bk1);
+    if (bk1.at) await P.page.mouse.click(bk1.at[0], bk1.at[1]);
+    await P.page.waitForTimeout(400);
+    const bk2 = await bandKeys(P);
+    if (bk2.at) await P.page.mouse.click(bk2.at[0], bk2.at[1]);
+    await P.page.waitForTimeout(400);
+    const bk3 = await bandKeys(P);
+    rec.ok('8h. ...one click on it folds the list to its heading (unlit), one more opens it again',
+      bk2.state === 'folded' && bk2.lit === 'false' && bk2.keys.length === 0 && bk3.state === 'open' && bk3.lit === 'true' && bk3.keys.length > 0, { bk2, bk3 });
+    await P.page.setViewportSize({ width: 1000, height: 1200 });
+    await P.page.waitForTimeout(900);
+    const bkNarrow = await bandKeys(P);
+    await P.page.setViewportSize(WIDE);
+    await P.page.waitForTimeout(900);
+    const bkWide = await bandKeys(P);
+    rec.ok('8h. ...on a window with no room beside the game (1000 x 1200) the list is still in the band, open and on the screen, and so on this one again',
+      bkNarrow.state === 'open' && bkNarrow.onScreen && !bkNarrow.oldStrip && bkWide.state === 'open' && bkWide.onScreen && !bkWide.oldStrip, { bkNarrow, bkWide });
 
     rec.ok('8g. no page errors', errors.length === 0, errors.slice(0, 3));
   } finally {
