@@ -30,7 +30,7 @@
 import { readFileSync } from 'node:fs';
 import { SRC_DIR, srcFiles } from './src-walk.mjs';
 import { QUEST_ROADS, QUEST_STATES, QUEST_KEPT, QUEST_COUNT_MAX, questStateSet, questCountAdd, questCountSet, questForget, questLoad, questKeep, questKeptTake } from '../src/queststate.js';
-import { makeStorage, openRoom, join, fakeWs, settle } from './testroom.mjs';
+import { makeStorage, openRoom, join, fakeWs, settle, playTour, roomGuard } from './testroom.mjs';
 
 let failures = 0, passes = 0;
 function check(name, cond, detail) {
@@ -200,6 +200,19 @@ function callsIn(s, name) {
 }
 
 await settle();
+/* ══════════ R. THE RUNNING ROOM (v2.3.6440, card DG PR 1) ══════════
+   The tour (testroom.mjs playTour: a quest handed in) played on a guarded
+   room.  A second writer of quest state planted on its paths is refused there,
+   however it is spelled (Object.assign, `||=`, a computed key, an alias, a
+   destructure, `delete`), and fails this suite: testroom.mjs "THE RUNNING
+   ROOM REFUSES".  Break proof: plants1.json (tools/dev/plants/). */
+{
+  const t = await playTour({ tag: 'quest' });
+  check('R. the tour plays under the running room\'s guard', roomGuard.armed());
+  check('R. ...each of its steps did what it does (a quest handed in, paid)', t.steps.length > 0 && t.steps.every((x) => x.paid), t.steps);
+  check('R. ...and no write of a guarded field was refused (testroom.mjs)', roomGuard.refusals().length === 0, roomGuard.refusals().slice(0, 5));
+}
+
 console.log('\n' + passes + ' passed, ' + failures + ' failed');
 if (failures) { console.log('quest-door: FAILED'); process.exit(1); }
 console.log('all quest-door checks passed');

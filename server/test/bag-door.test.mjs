@@ -34,6 +34,7 @@ import { BAG_ROADS, BAG_READS, BAG_EMPTY, BAG_WHOLE, bagAfter, bagGive, bagTake,
 import { MAIL_CLASSES, classFaults, CLASSES, ESCROW_PLACES } from '../src/gold.js';
 import { GameRoom } from '../src/index.js';
 import { flagNameOk } from '../src/liveops.js';
+import { playTour, roomGuard } from './testroom.mjs';   /* v2.3.6440: the running room refuses (card DG PR 1) */
 setBagOneSum(false);   /* v2.3.4900: §1-5 hold the step-1 sums; §6 turns step 2 on */
 
 let failures = 0, passes = 0;
@@ -499,6 +500,19 @@ setBagOneSum(true);
   check('9. a replaced bag: its record is learned again at the next save (the count waits beside it)', !pair(r2, 'log_pine') && bagEconPending(r2.inventory).log_pine.m === 2);
   bagEconOwn(r2.inventory, r2);
   check('9. ...and is folded in there', JSON.stringify(pair(r2, 'log_pine')) === '[2,0]');
+}
+
+/* ══════════ R. THE RUNNING ROOM (v2.3.6440, card DG PR 1) ══════════
+   The tour (testroom.mjs playTour: a quest handed in) played on a guarded
+   room.  A second writer of the bag planted on its paths is refused there,
+   however it is spelled (Object.assign, `||=`, a computed key, an alias, a
+   destructure, `delete`), and fails this suite: testroom.mjs "THE RUNNING
+   ROOM REFUSES".  Break proof: plants1.json (tools/dev/plants/). */
+{
+  const t = await playTour({ tag: 'bag' });
+  check('R. the tour plays under the running room\'s guard', roomGuard.armed());
+  check('R. ...each of its steps did what it does (a quest handed in, paid)', t.steps.length > 0 && t.steps.every((x) => x.paid), t.steps);
+  check('R. ...and no write of a guarded field was refused (testroom.mjs)', roomGuard.refusals().length === 0, roomGuard.refusals().slice(0, 5));
 }
 
 console.log(`\n${passes} passed, ${failures} failed`);

@@ -45,6 +45,7 @@ import { GOLD_ROADS, GOLD_SUMS, goldAfter, goldMethods, goldOneSum, wholeGold, G
 import { BAG_ROADS } from '../src/bag.js';
 import { flagNameOk } from '../src/liveops.js';
 import { GameRoom } from '../src/index.js';
+import { playTour, roomGuard } from './testroom.mjs';   /* v2.3.6440: the running room refuses (card DG PR 1) */
 const NOW_SET = (t) => { Date.now = () => t; };
 
 let failures = 0, passes = 0;
@@ -565,6 +566,19 @@ function callsIn(s) {
   room._goldGive(f, 1, 'quest_reward');
   room._liveFlags = {};
   check('9. with `goldonesum: false` the count is the whole-coin difference (10 -> 11: one)', JSON.stringify(g(f)) === '[1,0]', g(f));
+}
+
+/* ══════════ R. THE RUNNING ROOM (v2.3.6440, card DG PR 1) ══════════
+   The tour (testroom.mjs playTour: a quest handed in) played on a guarded
+   room.  A second writer of gold (coins) planted on its paths is refused there,
+   however it is spelled (Object.assign, `||=`, a computed key, an alias, a
+   destructure, `delete`), and fails this suite: testroom.mjs "THE RUNNING
+   ROOM REFUSES".  Break proof: plants1.json (tools/dev/plants/). */
+{
+  const t = await playTour({ tag: 'gold' });
+  check('R. the tour plays under the running room\'s guard', roomGuard.armed());
+  check('R. ...each of its steps did what it does (a quest handed in, paid)', t.steps.length > 0 && t.steps.every((x) => x.paid), t.steps);
+  check('R. ...and no write of a guarded field was refused (testroom.mjs)', roomGuard.refusals().length === 0, roomGuard.refusals().slice(0, 5));
 }
 
 console.log(`\n${passes} passed, ${failures} failed`);

@@ -40,7 +40,7 @@ import { readFileSync } from 'node:fs';
 import { SRC_DIR, srcFiles } from './src-walk.mjs';
 import { POINT_ROADS, POINT_READS, POINT_FIELDS, DEAL_FIELDS, POINTS_WHOLE, pointsAfter, pointsGive, pointsTake, pointsSet, pointsDeal } from '../src/skillpoints.js';
 import { PROG3, prog3XpRequired } from '../src/prog3.js';
-import { openRoom, makeStorage, join, fakeWs, settle } from './testroom.mjs';
+import { openRoom, makeStorage, join, fakeWs, settle, playTour, roomGuard } from './testroom.mjs';
 
 let failures = 0, passes = 0;
 function check(name, cond, detail) {
@@ -310,6 +310,19 @@ function callsIn(s) {
   check('5. the points reset deals every placed point back (points_reset)',
     p3.alloc.hp === 0 && p3.atk.sword.dmg === 0 && p3.pool === PROG3.POINTS_PER_LEVEL && p3.poolBy.sword === PROG3.POINTS_PER_LEVEL && p3.shared === PROG3.SHARED_POINTS_PER_LEVEL,
     { alloc: p3.alloc.hp, dmg: p3.atk.sword.dmg, pool: p3.pool, poolBy: p3.poolBy, shared: p3.shared });
+}
+
+/* ══════════ R. THE RUNNING ROOM (v2.3.6440, card DG PR 1) ══════════
+   The tour (testroom.mjs playTour: a quest handed in) played on a guarded
+   room.  A second writer of build points planted on its paths is refused there,
+   however it is spelled (Object.assign, `||=`, a computed key, an alias, a
+   destructure, `delete`), and fails this suite: testroom.mjs "THE RUNNING
+   ROOM REFUSES".  Break proof: plants1.json (tools/dev/plants/). */
+{
+  const t = await playTour({ tag: 'skillpoints' });
+  check('R. the tour plays under the running room\'s guard', roomGuard.armed());
+  check('R. ...each of its steps did what it does (a quest handed in, paid)', t.steps.length > 0 && t.steps.every((x) => x.paid), t.steps);
+  check('R. ...and no write of a guarded field was refused (testroom.mjs)', roomGuard.refusals().length === 0, roomGuard.refusals().slice(0, 5));
 }
 
 console.log('\n' + passes + ' passed, ' + failures + ' failed');
