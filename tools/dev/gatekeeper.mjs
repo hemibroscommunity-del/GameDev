@@ -36,7 +36,7 @@
  * One heavy browser job at a time (CLAUDE.md §3): do not run this beside
  * another phone test.
  */
-import { execFileSync, spawnSync } from 'node:child_process';
+import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -46,7 +46,13 @@ const branches = args.filter((a) => !a.startsWith('--'));
 const keep = args.includes('--keep');
 const untilArg = (args.find((a) => a.startsWith('--until=')) || '').slice(8);
 const STEPS = [
-  { id: 'precheck', say: 'node tools/dev/precheck.mjs', cmd: 'node', argv: ['tools/dev/precheck.mjs'], mins: 15 },
+  /* v2.3.6307 (card RR PR 3): 15 minutes was under precheck's own run (it
+     timed out at sittings 47 and 48 with nothing red).  Precheck now caps its
+     two slow parts itself (server-tests 20 min, switches-thrown run apart 40
+     min: tools/dev/precheck.mjs) and its other checks take a few minutes, so
+     this cap is above their sum: a precheck stopped here is a hang, never
+     a slow box's honest run. */
+  { id: 'precheck', say: 'node tools/dev/precheck.mjs', cmd: 'node', argv: ['tools/dev/precheck.mjs'], mins: 70 },
   { id: 'build', say: 'npm run build', cmd: 'npm', argv: ['run', 'build'], mins: 15 },
   { id: 'questline', say: 'node tools/qa/mp/run.mjs questline', cmd: 'node', argv: ['tools/qa/mp/run.mjs', 'questline'], mins: 40 },
 ];
@@ -57,6 +63,28 @@ if (!branches.length || (untilArg && !['precheck', 'build'].includes(untilArg)))
   process.exit(2);
 }
 const steps = untilArg ? STEPS.slice(0, STEPS.findIndex((s) => s.id === untilArg) + 1) : STEPS;
+
+/* v2.3.6307 (card RR PR 3): a step as the leader of its own process group,
+   stopped whole at its cap (SIGTERM, then SIGKILL 10 s on), and whatever of
+   the group outlived the step stopped at its end; the groups still running
+   are stopped too if this script is (Ctrl-C). */
+const _groups = new Set();
+for (const sig of ['SIGTERM', 'SIGINT', 'SIGHUP']) process.on(sig, () => { for (const pid of _groups) { try { process.kill(-pid, 'SIGKILL'); } catch { /* gone */ } } process.exit(130); });
+function runGroup(cmd, args, { cwd, capS }) {
+  return new Promise((resolve) => {
+    const child = spawn(cmd, args, { cwd, env: process.env, detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
+    _groups.add(child.pid);
+    let out = '';
+    const take = (d) => { if (out.length < 256 * 1024 * 1024) out += d; };
+    child.stdout.on('data', take);
+    child.stderr.on('data', take);
+    let timedOut = false;
+    const stop = (sig) => { try { process.kill(-child.pid, sig); } catch { /* gone */ } };
+    const timer = setTimeout(() => { timedOut = true; stop('SIGTERM'); setTimeout(() => stop('SIGKILL'), 10000).unref(); }, capS * 1000);
+    child.on('error', (e) => { out += '\n' + String(e && e.message || e); });
+    child.on('close', (code) => { clearTimeout(timer); stop('SIGKILL'); _groups.delete(child.pid); resolve({ status: code, timedOut, out }); });
+  });
+}
 
 const git = (argv, cwd) => execFileSync('git', argv, { cwd, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }).trim();
 const tryGit = (argv, cwd) => { try { return git(argv, cwd); } catch { return ''; } };
@@ -140,8 +168,11 @@ const results = [];
 for (const s of steps) {
   const t0 = Date.now();
   process.stdout.write(`  running   ${s.say} ...\n`);
-  const r = spawnSync(s.cmd, s.argv, { cwd: tree, encoding: 'utf8', timeout: s.mins * 60000, maxBuffer: 256 * 1024 * 1024, env: process.env });
-  const out = (r.stdout || '') + (r.stderr || '');
+  /* v2.3.6307: run in a process group of its own and, at the cap, the whole
+     group stopped -- spawnSync killed only the command, and a precheck's
+     run.mjs (or a scenario's worker and browser) ran on after it */
+  const r = await runGroup(s.cmd, s.argv, { cwd: tree, capS: s.mins * 60 });
+  const out = r.out;
   const log = join(logs, s.id + '.log');
   writeFileSync(log, out);
   const ok = r.status === 0;
@@ -149,8 +180,8 @@ for (const s of steps) {
   const lines = out.trim().split('\n');
   /* the lines a person needs: precheck's FAILs and verdict, a scenario's FAILs and count, else the tail */
   const telling = lines.filter((l) => /^FAIL\b|^\s+FAIL\s|BLOCKED|OK TO PUSH|assertions, |✓ built|error during build/.test(l));
-  results.push({ ...s, ok, code: r.status, timedOut: r.error && r.error.code === 'ETIMEDOUT', secs, log, show: (ok ? telling.slice(-2) : (telling.length ? telling.slice(0, 25) : lines.slice(-15))) });
-  console.log(`  ${ok ? 'PASS' : 'FAIL'}      ${s.say}   (${secs} s${ok ? '' : r.status === null ? ', timed out or killed' : ', exit ' + r.status})`);
+  results.push({ ...s, ok, code: r.status, timedOut: r.timedOut, secs, log, show: (ok ? telling.slice(-2) : (telling.length ? telling.slice(0, 25) : lines.slice(-15))) });
+  console.log(`  ${ok ? 'PASS' : 'FAIL'}      ${s.say}   (${secs} s${ok ? '' : r.timedOut ? `, stopped at its ${s.mins}-minute cap (the run's processes with it)` : r.status === null ? ', killed' : ', exit ' + r.status})`);
   for (const l of results[results.length - 1].show) console.log('              ' + l.slice(0, 300));
 }
 

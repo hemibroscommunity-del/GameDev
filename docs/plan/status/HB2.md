@@ -1,37 +1,40 @@
 card: HB2
-branch: claude/plan-hb2-7-arrow
-prs: #2224 6280, #2244 6281, #2247 6282, #2249 6283, #2254 6284, #2257 6285: ready; 6286: opening
-state: ready
+branch: claude/plan-hb2-11-maplabels
+prs: #2224-#2266 (6280-6288): merged; #2271 6289: ready; 6290 (map labels): opening
+state: working
 
 ## Done
 
-- #2224 (6280): the quest coach measures at the frame's top (?afterpaint).
-- #2244 (6281): the band's tap and mount measures off the tap and commit.
-- #2247 (6282): a tap reads the canvas's remembered corner.
-- #2249 (6283): the gear tab drawn beside the game's redraw.
+- #2224 (6280), #2244 (6281): the coach's and the band's measures off the tap.
+- #2247 (6282), #2249 (6283): a tap's remembered corner; the gear tab beside.
 - #2254 (6284): p256's twins read and packed on the reader's worker.
 - #2257 (6285): the Quests dot without building the offers (row 35).
-- 6286: the big arrow's tick at the frame's top (row 18: 70.5 x14 -> 0).
+- #2259 (6286): the big arrow's tick at the frame's top (row 18: 70.5 x14 -> 0).
+- #2261 (6287): `other: R > J` off held-budget's debt list by its own
+  rule (7.0-10.6 ms on main, under 12): no row `ours`, step 3.1 closed.
+- #2266 (6288): the big arrow's CLOSE step waits for a weapon on (its rule).
+- #2271 (6289): the gear tab's own reads only when needed (bag edges at
+  the frame's top; the names' and words' fit when they or their box change).
+- 6290: the World map's off-screen labels not measured (first draw on
+  opening 102-120 -> 57-64 ms; the same texts at fifteen zooms).
 
 ## Next
 
-- HB's families still over the line, each needing a choice: R > J (16 ms
-  debt row, 21-26 ms), the World map's labels (68-90 ms at `windows`; the
-  widths' cache measured, no fall), deskTeach's route on its 200 ms timer
-  (13-34 ms; caching it delays the rings), rememberChar's 30 s write
-  (24 ms; skipping it changes the roster's "last played"), ui:GearTab's
-  own body (14.9 ms).  Asked the planning session which to take.
+- RR's `?narrow` BandKeys item (6291; the wide computer page identical):
+  the band's list and `bandKeysActive` ask for the computer's band.
+  Skipped by the planning session: deskTeach's route, rememberChar.
 
 ## Found
 
-- GRAND-PLAN 3.1's note: `pack-page` is off the list since v2.3.5253;
-  the last `ours` row is `other: R > J` (still 21-26 ms).
-- Red with ?afterpaint=0 / on main too: mp-firststeps part 6 (the
-  `close` arrow), mp-geartab 844x390 (the rail over the tab), mp-brocard
-  4 parts, mp-hairstencil 3 parts; mp-waterfrog hangs after part 5.
-- mp-membudget's heap reads 38.9 MB on main 1cd3fce on this box (line 38.5).
-- BottomDashboard's own redraw (`jg > Ek`) 62-66 ms at `windows` (row 35).
+- Red with ?afterpaint=0 / on main too: mp-geartab 844x390 (the rail
+  over the tab), mp-brocard 4 parts, mp-hairstencil 3 parts;
+  mp-waterfrog hangs after part 5.
+- The World map's first draw on opening is still 57-64 ms (line 45 at a
+  window): the on-screen names' first measure.  Spreading it over frames
+  would show the names a frame or two late: the planning session's call.
+- mp-membudget's heap reads 38.8-39.2 MB on main on this box (line 38.5);
+  CI's runner passes it.
 
 ## Needs
 
-- The planning session: which leftover family next (above).
+- Nothing.

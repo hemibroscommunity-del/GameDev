@@ -42,7 +42,7 @@ export const lane = 'full';
 /* the levels the table's comments promise (data/eventSounds.js) */
 const PROMISED = {
   shieldBlock: 1.4, shieldBall: 0.6, shieldUp: 0.55, shieldDown: 0.35, dodged: 0.5, dodgeRoll: 0.6,
-  crit: 0.65, bowLoose: 0.4 /* v2.3.3523: was bowDraw 0.5, the squeak */, discovery: 0.8, jumpUp: 0.45 /* v2.3.3708: the owner's "hup" (was the rush of air, 0.4) */, jumpLand: 0.55 /* v2.3.3686: the owner's "goblin fall" (Freesound 502553); was the thud, 0.4 */, statusEnd: 0.2,
+  crit: 0.65, bowLoose: 0.4 /* v2.3.3523: was bowDraw 0.5, the squeak */, discovery: 0.8, jumpUp: 0.45 /* v2.3.3708: the owner's "hup" (was the rush of air, 0.4) */, jumpLand: 0.33 /* v2.3.3686: the owner's "goblin fall" (Freesound 502553); was the thud, 0.4. v2.3.6308 (card RR): ~0.33 since v2.3.3738 made it SOFTER (the owner: "The landing sound effect after a jump is too harsh"; data/eventSounds.js: the same file at 0.6 of its level, "~0.33 on the scale above"); the promise here still said 0.55, so check 3 read 0.34 as 1.62x under it, red on every run */, statusEnd: 0.2,
   throwSnow: 0.5, lootDrop: 0.25, dungeonClear: 2.5,
   /* v2.3.3434: the second round ("Look for more too") */
   betIn: 0.6, betWon: 1.5, betLost: 1.0, jackpotWin: 1.7, guildQuest: 2.4,

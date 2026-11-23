@@ -1,39 +1,40 @@
 card: EN
-branch: claude/plan-en-6-pump (6205)
-prs: #2189 6200, #2195 6201, #2207 6202, #2234 6203, #2255 6204 (merged), #2263 6205 (checks)
-state: working
+branch: claude/plan-en-8-folk (6207)
+prs: #2189 6200, #2195 6201, #2207 6202, #2234 6203, #2255 6204, #2263 6205 (merged), 6206 unused, #2274 6207 (draft, CI)
+state: stalled (paused by the planning session, 2026-11-19: the owner's usage; until Monday)
 
 ## Done
 
-- #2255 (6204): HB's row 37, a peer's look prewarm in 4 ms slices, each its
-  own task (budget-android, peer: main 25.4 ms x13 in 1 run of 3; PR 0 in 2);
-  Z51's mend (PNG queue capped 600, drained after 15 s). Merged (sitting 52).
-- #2234 (6203), #2207 (6202, `?folksheets=0`, gpu line 114.3 -> 109.3),
+- #2263 (6205): row 23. A job asked for starts in a task of its own, a look
+  job's answer is read in one; the next job still goes from the worker's
+  answer. Peer, budget-android: main 12.0/20.9 ms in 2 of 3; PR none in 3.
+- Row 33 closed by 6205 (planning, 2026-11-19): masked-bake 7.7 ms at peer,
+  8.1 at armour (21.3 before); a 4 ms slicing gained nothing: 6206 unused.
+- #2255 (6204, row 37: a peer's prewarm in 4 ms slices; the PNG queue capped),
+  #2234 (6203), #2207 (6202, `?folksheets=0`, gpu line 114.3 -> 109.3),
   #2195 (6201), #2189 (6200): merged.
 
 ## Next
 
-- 6205: HB's row 23. A job asked for starts in a task of its own
-  (`_pumpSoon`); a look job's answer is read in one of its own; the next job
-  still goes from the worker's answer (a hop there slowed the bakes: a
-  copperwaist frame unbaked). budget-android, peer: main `_runLookBake >
-  reply` 12.0 / 20.9 ms in 2 of 3 runs; PR none in 3 of 3.
-  Then 6206 (row 33), 6207 (the frame's folk).
+- Monday: #2274 (6207, off-screen townsfolk not posed; -9% at peer) CI ->
+  ready -> gatekeeper. Then card EN is done.
 
 ## Found
 
-- `mp-membudget`'s heap line (38.5) at its edge on main: EN's runs read
-  38.3-39.1 with `?folksheets` on AND off (memory-budget.mjs).
-- On this box, red on main as on 6203 (not EN's): `wornbake` (58-60 of 177
-  frames baked in time), `fisharmour` a/b (no gauntlet px), `bakeleak`'s
-  baseline guard, `heldsweep` peer/armour (`screen-check` 303 > 260).
-- `copperwaist`'s iron guard (the equipped ids back to copper mid-stride)
-  red once of three on 6204, once of two on 6205; reads getEquip, not pictures (told Z52).
-- `state-census.mjs --check` fails on main too (the state page): no guard runs it.
-- Re-baking the folk's 35 sheets took 78-88 s on this box (worker),
-  so a free-and-re-bake road meets them plain: not taken.
+- If a crowd ever needs it (planning: not now): skip a townsperson's posing
+  while his pose/facing/frame/size/body are unchanged: 44% of draws at peer
+  (more at 60 fps); 250 ms refresh, so late art could show 250 ms late.
+- For the next card: the belt's gear sheet first built on the page,
+  gearSheets.js `getGearFrame > buildSheet > _buildShirtOnWorker`
+  (`gear-sheet`, 34.7-40.6 ms at peer on budget-android, main and branch).
+- `mp-membudget`'s heap line (38.5) is main's own edge (38.3-39.1 on EN's
+  runs since 6202; sitting 53's A/B: `?keepimage=0` the same).
+- On this box, red on main as on 6203 (not EN's): `wornbake`, `fisharmour`
+  a/b, `bakeleak`'s baseline guard, `heldsweep` (`screen-check` 303 > 260).
+- `copperwaist`'s iron guard (getEquip back to copper): EN 3 of ~6 runs,
+  main 0 of 4 (c0a0791c); 6205 merged, runs on it to follow.
 
 ## Needs
 
-- (none). Planning session part 7 (session_01LccHaivkofvyigGL4fgBWZ);
-  gatekeeper sitting 52 (session_01LccHaiB6Vh6BfVAavjcZ9b).
+- (none). Planning part 7 (session_01LccHaivkofvyigGL4fgBWZ); gatekeeper 54
+  (session_01LccHajNEjqHLh7oJ6yVsxL).
