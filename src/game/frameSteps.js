@@ -25,6 +25,8 @@
  * moves.
  *
  *   tap         settleTapPress            (game/tapJump.js)
+ *   input       stickFrame                (game/stickZones.js; v2.3.6541: the
+ *               stick and the keys read, moved out of legacy whole, card CT)
  *   sound       tickWaterAmbience to tickDanceMusic (the six ambience ticks)
  *   ride        rideStepped               (game/ride.js)
  *   zone        handleZoneTransitions, updateZoneMechanics, updateDungeonWaves
@@ -72,6 +74,9 @@ export const STEPS = [
   /* v2.3.5341: inside legacy, each between `to(0, k)` (or the step before's
      `to(k - 1, k)`) and `to(k, ...)` */
   { name: 'tap', calls: ['settleTapPress'], inLegacy: true },
+  /* v2.3.6541: the player's input read (game/stickZones.js stickFrame), moved
+     out of legacy whole; the two buttons' reads sit here (card CT PR 2) */
+  { name: 'input', calls: ['stickFrame'], inLegacy: true },
   { name: 'sound', calls: ['tickWaterAmbience', 'tickTownAmbience', 'tickAmbientBeds', 'tickRideSound', 'tickHeartbeat', 'tickDanceMusic'], inLegacy: true },
   { name: 'ride', calls: ['rideStepped'], inLegacy: true },
   { name: 'zone', calls: ['handleZoneTransitions', 'updateZoneMechanics', 'updateDungeonWaves'], inLegacy: true },

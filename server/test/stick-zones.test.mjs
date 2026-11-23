@@ -17,13 +17,21 @@
  *      table's guard reads the same off the syntax tree, DOOR_SUITES);
  *   6. MODE 5: `?manual=5` chooses it and is remembered; it is not manual
  *      combat and keeps no tap lock; 4 stays the answer when nothing is chosen.
+ *   7. v2.3.6541 (PR 2) THE STICK IN MODE 5, stickDrive: a thumb at 20% of
+ *      the drawn radius turns the body to its facing and walks nothing; at
+ *      40% walks, the knob drawn out to the drawn radius (never past it);
+ *      a lifted thumb is rest; BroTown's handler makes the one call behind
+ *      twoButtonsOn, and its release writes rest;
+ *   8. v2.3.6541 THE FRAME'S STEP `input`, stickFrame (moved whole out of
+ *      gameLoop): the stick read, the gates, the keys, the idle clock (a thumb
+ *      held turning is a player), the name tag's facing; one object a page.
  *
  * Break proof, tried by hand: `S._stickPhase = 'walk';` added to
  * stickZones.js stickRead -> FAIL 5 (and the guard's §2); TURN: 0.30 -> 0.10
  * -> FAIL 1.
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
-import { STICK_ZONES, STICK_PHASES, stickRead, stickTravel, facing8, stickSwipe, stickTap, stickRelease, turnShare, stickPhase, stickTo } from '../../src/game/stickZones.js';
+import { STICK_ZONES, STICK_PHASES, stickRead, stickTravel, facing8, stickSwipe, stickTap, stickRelease, turnShare, stickPhase, stickTo, stickDrive, stickFrame } from '../../src/game/stickZones.js';
 import { findIn } from '../../tools/guards/lib/filesOf.mjs';
 import { manualMode, manualOn, tapLockOn, twoButtonsOn, setManualCombat, MANUAL } from '../../src/game/manualCombat.js';
 
@@ -155,6 +163,58 @@ function writesOutside(prop, doorFile, doorFn) {
   check('6. mode 4: the two buttons off', twoButtonsOn() === false && manualOn() === false && tapLockOn() === false);
   setManualCombat(0);
   check('6. mode 0: off, with its tap lock', twoButtonsOn() === false && tapLockOn() === true);
+}
+
+/* ── 7. the stick in mode 5 (stickDrive) ── */
+{
+  const el = () => ({ style: {} });
+  for (const [label, R] of [['upright', 37.5], ['sideways', 45]]) {
+    const S = { _facingAngle: 0 }, knob = el(), rod = el();
+    let r = stickDrive(S, 0, 0.2 * R, R, knob, rod, '0.92');   /* 20% straight down */
+    check('7. ' + label + ': 20% turns the body to its facing (south) and walks nothing',
+      r.phase === 'turn' && S._stickPhase === 'turn' && S.stickX === 0 && S.stickY === 0 && near(S._targetFacingAngle, Math.PI / 2), { r, S });
+    check('7. ' + label + ': the knob and the rod drawn to the thumb', /calc\(-50% \+ [0-9.e-]+px\), calc\(-50% \+ 7\.5|calc\(-50% \+ 9px/.test(knob.style.transform) && rod.style.opacity === '0.92', knob.style.transform);
+    const S2 = {};
+    r = stickDrive(S2, -0.4 * R, 0, R, knob, rod, '0.92');   /* 40% left */
+    check('7. ' + label + ': 40% walks that way, slowly near the border, and leaves the facing to the walk',
+      r.phase === 'walk' && S2._stickPhase === 'walk' && S2.stickX < 0 && S2.stickX > -0.3 && S2.stickY === 0 && S2._targetFacingAngle === undefined, S2);
+    r = stickDrive(S2, 3 * R, 0, R, knob, rod, '0.92');
+    check('7. ' + label + ': past the rim, full speed, the knob held at the drawn radius', near(S2.stickX, 1) && knob.style.transform.indexOf('calc(-50% + ' + R + 'px)') >= 0 && rod.style.width === R + 'px', knob.style.transform);
+    r = stickDrive(S2, 0.05 * R, 0, R, knob, rod, '0.92');
+    check('7. ' + label + ': back in the dead zone, rest: no walk, the rod hidden', r.phase === 'rest' && S2._stickPhase === 'rest' && S2.stickX === 0 && rod.style.opacity === '0');
+  }
+  const S = {};
+  stickDrive(S, 30, 0, 37.5, null, null);
+  check('7. no disc (node): the walk and the phase all the same', S._stickPhase === 'walk' && S.stickX > 0);
+  const bt = readFileSync(new URL('../../src/ui/BroTown.jsx', import.meta.url), 'utf8');
+  const mv = bt.slice(bt.indexOf('var handleJoystickMove = useCallback'), bt.indexOf('var handleJoystickEnd = useCallback'));
+  const en = bt.slice(bt.indexOf('var handleJoystickEnd = useCallback'), bt.indexOf('}, []);', bt.indexOf('var handleJoystickEnd = useCallback')));
+  check('7. BroTown\'s stick handler makes the one call, behind twoButtonsOn, and returns', (mv.match(/stickDrive\(/g) || []).length === 1 && /if \(twoButtonsOn\(\)\) \{ stickDrive\([^;]*\); return; \}/.test(mv));
+  check('7. ...and its release writes rest', /stickTo\(S, 'rest'\)/.test(en));
+}
+
+/* ── 8. the frame's step `input` (stickFrame) ── */
+{
+  const mk = (sx, sy) => ({ stickX: sx, stickY: sy, player: { dir: 'down' } });
+  let S = mk(0.5, 0);
+  let o = stickFrame(S, {}, false, false, 1000);
+  check('8. the stick walks, the idle clock stamped, the name tag faces the walk', o.dx === 0.5 && o.dy === 0 && S._lastInputAt === 1000 && S.player.dir === 'right');
+  S = mk(0.5, 0);
+  o = stickFrame(S, { w: true }, true, false, 1000);
+  check('8. a real stun (or death) stops it, the keys too', o.dx === 0 && o.dy === 0 && S.player.dir === 'down');
+  S = mk(0, 0);
+  o = stickFrame(S, { ArrowUp: true, d: true }, false, false, 1000);
+  check('8. no stick: the keys move, a diagonal normalized, the idle clock left to the keys', near(o.dx, Math.SQRT1_2) && near(o.dy, -Math.SQRT1_2) && S._lastInputAt === undefined && S.player.dir === 'up');
+  S = mk(0.9, 0);
+  o = stickFrame(S, {}, true, true, 1000);
+  check('8. the loot freeze: the name tag faces the camera', o.dx === 0 && S.player.dir === 'down');
+  S = mk(0, 0); S._stickPhase = 'turn';
+  stickFrame(S, {}, false, false, 2000);
+  check('8. a thumb held TURNING in mode 5 is a player (the idle clock)', S._lastInputAt === 2000);
+  check('8. one object a page (a frame makes no garbage)', stickFrame(mk(0, 0), {}, false, false, 0) === stickFrame(mk(0, 0), {}, false, false, 0));
+  const bt = readFileSync(new URL('../../src/ui/BroTown.jsx', import.meta.url), 'utf8');
+  check('8. gameLoop reads the input through the step `input` (no second read of S.stickX there)',
+    /_steps\.to\(0, 2\); var _in = stickFrame\(/.test(bt) && !/var dx = \([^;]*\) \? 0 : S\.stickX/.test(bt));
 }
 
 console.log('\n' + passes + ' passed, ' + failures + ' failed');

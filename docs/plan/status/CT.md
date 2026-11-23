@@ -1,30 +1,33 @@
 card: CT
-branch: claude/plan-ct-1-rules
-prs: PR 1 (6540, ready)
-state: ready
+branch: claude/plan-ct-2-stick
+prs: #2282 (6540, ready), PR 2 (6541, working)
+state: working
 
 ## Done
-- PR 1 (6540): the three rules (stickZones, sight, latch), their suites,
-  the phase rows, the ledger rows, mode 5 in manualMode, the switch rows.
+- PR 1 (6540, #2282): the three rules (stickZones, sight, latch), their
+  suites, the phase rows, the ledger rows, mode 5 in manualMode, the
+  switch rows.
+- PR 2 (6541): the left stick in mode 5 (stickDrive: turn, walk, the
+  knob to the drawn radius; the ring on the disc); the frame's step
+  `input` (stickFrame: the loop's stick and keys read moved whole out of
+  legacy, 1531 -> 1513); `mp-twobuttons` part 1 green upright and
+  sideways (real CDP touches; the flick's four touches in one page task).
 
 ## Next
-- PR 2 (6541): the left stick in mode 5 (turn and walk, the ring).
+- PR 2: the mode-off runs (heldcombat, sprint, framesteps), precheck, push.
 
 ## Found
-- `manual-combat.test` 1h pinned `?manual=5` as no switch: now `6` (its
-  one line, the nearest suite).
+- `manual-combat.test` 1h pinned `?manual=5` as no switch: now `6`.
+- On this box a CDP flick cannot be a swipe: each touch waits behind a
+  frame of a few hundred ms (past the swipe's 300 ms), and moves sent with
+  no frame between are coalesced into a tap. The same in mode 4
+  (`tools/qa/mp/mp-twobuttons.mjs` 1f says so).
 
 ## Needs
-- Files outside the card's list that PR 1 needed, mechanically: the three
-  door lines in `tools/guards/phase-table.test.mjs` (DOOR_SUITES: a door
-  row is refused without one); the three new files in `input` in
-  `tools/guards/lib/systems.mjs` (and `docs/SYSTEMS.md`, made from it);
-  `src/game/switches.js` and `docs/SWITCHES.md` (made by the switch table's
-  `--write`). Asked of the orchestrator once, with PR 1.
-- Readings the card does not fix, chosen behind `?manual=5` (asked once):
-  the dead zone is 12% of the travel (a tap that wiggles past 4.5 px turns
-  the body for that moment; the tap still acts as a tap); "nearest the
-  facing's line" read as the least ANGLE off it; Block and the specials
-  stay 400 ms after the last sighting; the one sighted keeps it to 55
-  degrees off the facing; the walk starts from standing at the border
-  (WALK_FLOOR 0, as today's stick rises from 0).
+- PR 1's mechanical rows outside the card: approved (answer 1).
+- PR 2: card M's guard `tools/guards/frame-steps.test.mjs` (WANT +
+  'input'; its runner's hard-coded indices read from WANT, nothing it
+  checks changes) and `tools/qa/mp/mp-framesteps.mjs` (WANT + 'input'):
+  asked of the orchestrator once, 2026-11-23.
+- The ledgers' machine rows for the moved writers (`src/state/input.js`,
+  `skills.js`, `ui.js`: stickX/Y, _lastInputAt, player; `_IN`, `_turn`).
