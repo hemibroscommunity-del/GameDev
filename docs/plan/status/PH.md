@@ -1,14 +1,16 @@
 card: PH
 branch: claude/plan-ph-1-report
-prs: PR 1 (6500, working)
-state: working
+prs: PR 1 (6500, ready: the PR opened from this branch)
+state: ready
 
 ## Done
-- (none merged yet)
+- PR 1 (tag 6500): the report sees heat (`up`), the board (`ride`) and
+  the address bar's off-ramps (`ramps`, in the cell); caps.report 4, kill
+  switch `reportheat`. DEPLOYS the worker. Ready for the gatekeeper.
 
 ## Next
-- PR 1 (tag 6500): the report sees heat, the board and the address bar's
-  off-ramps; caps.report 4, kill switch `reportheat`. DEPLOYS the worker.
+- PR 2 (6501): the memory alarm on the game's own total (its level waits
+  for the owner); PR 3 (6502): the three mp-membudget runs are in hand.
 
 ## Found
 - server/test/report.test.mjs section 7's "full" cell was not full: its
