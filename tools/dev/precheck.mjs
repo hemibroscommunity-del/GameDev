@@ -121,7 +121,7 @@
  * Output is terse and actionable on purpose — the reader is usually an
  * AI session deciding whether it may push.
  */
-import { execFileSync, spawnSync } from 'node:child_process';
+import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -130,6 +130,37 @@ import { pathToFileURL } from 'node:url';
 import { storageKeyRows } from '../guards/lib/storageKeys.mjs';
 import { capGateRows } from '../guards/lib/capGates.mjs';
 import { lookParityRows, lookBlankRows } from '../guards/lib/lookKeys.mjs';
+
+/* v2.3.6307 (card RR PR 3): a command with a cap that, on its timeout,
+   stops the command's whole process group (it is started as the leader of
+   its own), so nothing it started runs on after the precheck: spawnSync's
+   timeout killed only the direct child (`npm`), and run.mjs and its suites
+   went on.  The groups running now are stopped too if the precheck itself
+   is stopped (the gatekeeper's cap). */
+const _groups = new Set();
+const _stopGroups = (sig) => { for (const pid of _groups) { try { process.kill(-pid, sig); } catch { /* gone */ } } };
+for (const sig of ['SIGTERM', 'SIGINT', 'SIGHUP']) process.on(sig, () => { _stopGroups('SIGKILL'); process.exit(130); });
+function runCapped(cmd, args, { cwd, capS, env = process.env }) {
+  return new Promise((resolve) => {
+    const t0 = Date.now();
+    const child = spawn(cmd, args, { cwd, env, detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
+    _groups.add(child.pid);
+    let out = '';
+    const take = (d) => { if (out.length < 64 * 1024 * 1024) out += d; };
+    child.stdout.on('data', take);
+    child.stderr.on('data', take);
+    let timedOut = false;
+    const stop = (sig) => { try { process.kill(-child.pid, sig); } catch { /* gone */ } };
+    const timer = setTimeout(() => { timedOut = true; stop('SIGTERM'); setTimeout(() => stop('SIGKILL'), 10000).unref(); }, capS * 1000);
+    child.on('error', (e) => { out += '\n' + String(e && e.message || e); });
+    child.on('close', (code, signal) => {
+      clearTimeout(timer);
+      stop('SIGKILL');   /* anything of its group still running (a suite's own child) */
+      _groups.delete(child.pid);
+      resolve({ status: code, signal, timedOut, out, secs: Math.round((Date.now() - t0) / 1000) });
+    });
+  });
+}
 
 const baseRef = process.argv[2] || 'origin/main';
 const results = []; // {level:'PASS'|'FAIL'|'WARN'|'INFO', check, msg}
@@ -857,19 +888,52 @@ if (changedServer.length || changedClient.length || changedGuards.length) {
      slowest suite plus the rest.  A timeout says so in plain words:
      still a FAIL (a suite that never finished proved nothing, and a hung one
      must not pass), but never a "test failed". */
-  const SERVER_TESTS_CAP_S = 20 * 60;
-  const r = spawnSync('npm', ['test'], { cwd: join(root, 'server'), encoding: 'utf8', timeout: SERVER_TESTS_CAP_S * 1000, maxBuffer: 64 * 1024 * 1024 });
-  const timedOut = !!(r.error && r.error.code === 'ETIMEDOUT');
-  if (r.status === 0) add('PASS', 'server-tests', 'cd server && npm test — all suites green');
-  else if (timedOut) {
-    const tail = ((r.stdout || '') + (r.stderr || '')).trim().split('\n').slice(-5).join('\n    ');
-    add('FAIL', 'server-tests', `timed out after ${SERVER_TESTS_CAP_S} s; the suite did not finish (no suite was seen to fail: this box was too slow or a suite hung -- run \`cd server && npm test\` alone to see which). Its last lines:\n    ${tail}`);
+  /* ═══ v2.3.6307 (card RR PR 3): THE SLOW GUARD RUNS APART, AND A TIMEOUT
+     LEAVES NOTHING BEHIND ═══
+     guards/switches-thrown (each worker switch born since 5301 thrown, its
+     system's suites run once each) has grown with every new switch: 89 rows
+     now, measured 1139 s on GitHub's runner (the whole `npm test` 1258 s) and
+     the rest of the suites competing with its three jobs for four cores, so
+     the single 20-minute cap above timed out on a loaded box with no suite
+     red (the gatekeeper, sittings 47 and 48).  No check is dropped: the same
+     suites run, in two parts, each with its own cap --
+       server-tests     every suite and guard but that one (node test/run.mjs
+                        with each name, as npm test runs it), REST_CAP_S;
+       switches-thrown  that one alone, from the repository's root, as npm
+                        test runs it, THROWN_CAP_S.
+     A timeout is still a FAIL (a suite that never finished proved nothing),
+     said in plain words.  And it kills the run's whole process group: the
+     old spawnSync killed only `npm` and left run.mjs and its suites running
+     behind a precheck that had ended (card RR's slow checks: "run.mjs
+     orphans left on a precheck timeout").  A precheck itself killed (the
+     gatekeeper's own cap) kills the group it is running first. */
+  const REST_CAP_S = 20 * 60;     /* the rest alone: 191 s here (581 suites), ~6x room; beside the slow guard it took 600-1100 s */
+  const THRONE = 'guards/switches-thrown.test.mjs';
+  const THROWN_CAP_S = 40 * 60;   /* alone: 756 s and 770 s here (89 rows, 2418 suite runs), ~3x room; 1006-1139 s when it shared the box */
+  const suiteNames = [
+    ...readdirSync(join(root, 'server/test')).filter((f) => f.endsWith('.test.mjs')),
+    ...readdirSync(join(root, 'tools/guards')).filter((f) => f.endsWith('.test.mjs')).map((f) => 'guards/' + f),
+  ].filter((f) => f !== THRONE).sort();
+  const rest = await runCapped('node', ['test/run.mjs', ...suiteNames], { cwd: join(root, 'server'), capS: REST_CAP_S });
+  if (rest.status === 0) add('PASS', 'server-tests', `cd server && npm test, every suite but ${THRONE} (${suiteNames.length}) green, ${rest.secs} s`);
+  else if (rest.timedOut) {
+    const tail = rest.out.trim().split('\n').slice(-5).join('\n    ');
+    add('FAIL', 'server-tests', `timed out after ${REST_CAP_S} s; the suites did not finish (no suite was seen to fail: this box was too slow or a suite hung -- run \`cd server && npm test\` alone to see which); the run's processes were stopped. Its last lines:\n    ${tail}`);
   } else {
     /* v2.3.3302: npm test runs every suite now and ends on the list of the
        ones that failed (server/test/run.mjs) -- the last 30 lines are that
        list and the FAIL lines above it */
-    const tail = ((r.stdout || '') + (r.stderr || '')).trim().split('\n').slice(-30).join('\n    ');
-    add('FAIL', 'server-tests', `cd server && npm test exited ${r.status ?? ('on signal ' + (r.signal || (r.error && r.error.code) || '?'))}:\n    ${tail}`);
+    const tail = rest.out.trim().split('\n').slice(-30).join('\n    ');
+    add('FAIL', 'server-tests', `cd server && npm test exited ${rest.status ?? ('on signal ' + (rest.signal || '?'))}:\n    ${tail}`);
+  }
+  const thrown = await runCapped('node', [join('tools', THRONE)], { cwd: root, capS: THROWN_CAP_S });
+  if (thrown.status === 0) add('PASS', 'switches-thrown', `${THRONE} green, ${thrown.secs} s (run apart from the rest: v2.3.6307)`);
+  else if (thrown.timedOut) {
+    const tail = thrown.out.trim().split('\n').slice(-5).join('\n    ');
+    add('FAIL', 'switches-thrown', `timed out after ${THROWN_CAP_S} s; it did not finish (nothing was seen to fail; this box was too slow or a suite hung -- run \`node tools/${THRONE}\` alone); its processes were stopped. Its last lines:\n    ${tail}`);
+  } else {
+    const tail = thrown.out.trim().split('\n').filter((l) => /FAIL|FAILED/.test(l)).slice(0, 20).join('\n    ');
+    add('FAIL', 'switches-thrown', `node tools/${THRONE} exited ${thrown.status ?? ('on signal ' + (thrown.signal || '?'))}:\n    ${tail}`);
   }
 } else {
   add('PASS', 'server-tests', 'no server/, src/ or tools/guards/ changes — suite skipped');

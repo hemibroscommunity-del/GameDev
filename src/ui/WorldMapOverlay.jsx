@@ -71,6 +71,7 @@ import { deskWords } from '../game/deskWords.js';   /* v2.3.3879: the pin hint s
 import { SAY } from '@/data/say/worldMap.js';   /* v2.3.6346: its words, in the one table (docs/specs/player-words.md, W1) */
 import { say } from '@/game/say.js';
 import { boardPinnable } from '../data/townBoard.js';
+import { AFTER_PAINT } from './afterPaint.js';   /* v2.3.6290: a label that cannot reach the screen is not measured (card HB2 PR 11) */
 import { wheelDungeonOpen, wheelDungeonLevelsLine } from '../game/wheelDungeons.js';                  /* v2.3.3540: which landmarks are dungeons this worker opens; v2.3.3573: + a party dungeon's level and players */
 
 /* ═══ v2.3.3525: THE QUEST PINS' PICTURES ═══
@@ -797,7 +798,8 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
     dungeons: 0,   /* v2.3.3540: the dungeons' mouths named with their levels */
     glyphs: { town: 0, camp: 0, pass: 0, gate: 0, landmark: 0, monster: 0, fish: 0, tree: 0, ore: 0, bro: 0 },   /* v2.3.3780: each glyph drawn (the probe's) */
     dungeonLines: [],   /* v2.3.3573: ...and what each says (the probe's; a party dungeon says its players) */
-    detail: detailN };   /* v2.3.3319: the lands' tiles drawn up close (null: none to draw) */
+    detail: detailN,   /* v2.3.3319: the lands' tiles drawn up close (null: none to draw) */
+    labelsUnmeasured: 0 };   /* v2.3.6290: the labels refused off the screen before they were measured (the probe's) */
   const onScreen = (x, y, pad = 30) => x > -pad && y > -pad && x < w + pad && y < h + pad;
   /* each land's level bands: a tick across the spoke every five levels */
   if (z >= AT.tier && map.spokeHalf) {
@@ -944,6 +946,22 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
      just above it */
   const label = (x, y, lines, opts = {}) => {
     const size = opts.size || 12, sub = opts.subSize || Math.max(10, size - 2);
+    /* ═══ v2.3.6290: A LABEL THAT CANNOT REACH THE SCREEN IS NOT MEASURED (card HB2 PR 11; `?afterpaint`) ═══
+       Every label was measured (measureText, the font's shaping) before `free` turned it away for lying off the
+       screen: every stage, camp and land of the whole Wheel at every draw, most of them far outside the town's
+       view.  The first draw after the map opens measured them all cold (mp-heldsweep, `windows`: one 73-137 ms
+       hold, half of it measureText).  `free` refuses a box wholly off the screen, so such a label is refused here
+       first, by what needs no measuring: its height (the lines and their sizes) and, across, a width no string
+       reaches (two of its largest font's sizes a character).  Only refusals `free` would make: the same labels
+       drawn in the same places.  A forced label is drawn wherever it is, so it is always measured.
+       `?afterpaint=0`: measured first, as before. */
+    if (AFTER_PAINT && !opts.force) {
+      const bh0 = size + (lines[1] ? (opts.same ? size : sub) + 3 : 0);
+      const top0 = opts.below ? y : y - bh0 / 2;
+      const n = Math.max(String(lines[0]).length, lines[1] ? String(lines[1]).length : 0);   /* as measureText reads them */
+      const half = n * Math.max(size, sub) + 3;   /* half of the widest the box can be, its 3 px pad included */
+      if (top0 + bh0 + 2 < 0 || top0 - 2 > h || x + half < 0 || x - half > w) { more.labelsUnmeasured++; return false; }
+    }
     g.font = `${opts.weight || 700} ${size}px system-ui, -apple-system, sans-serif`;
     const w0 = g.measureText(lines[0]).width;
     /* v2.3.3522: `same` -- a name wrapped onto two lines keeps its own look */
@@ -1206,6 +1224,12 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
       const mx = (x0 + x1) / 2, my = (y0 + y1) / 2;
       let a = Math.atan2(y1 - y0, x1 - x0);
       if (a > Math.PI / 2) a -= Math.PI; else if (a < -Math.PI / 2) a += Math.PI;
+      /* v2.3.6290: a name that cannot reach the screen is not measured: its box is at most its length in 11 px
+         characters two wide, turned (above, `?afterpaint`) */
+      if (AFTER_PAINT) {
+        const E = String(r.name).length * 11 + 7;
+        if (mx + E < 0 || mx - E > w || my + E < 0 || my - E > h) { more.labelsUnmeasured++; continue; }
+      }
       g.font = 'italic 600 11px system-ui, -apple-system, sans-serif';
       const tw = g.measureText(r.name).width;
       const ext = Math.abs(Math.cos(a)) * tw / 2 + 7, eyt = Math.abs(Math.sin(a)) * tw / 2 + 7;
