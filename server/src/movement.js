@@ -15,6 +15,7 @@
 
 import { VALID_ZONE_IDS, DUNGEON_ZONE_RE } from './data.js';
 import { WHEEL_ZONE } from './wheelzone.js'; /* v2.3.3325: the Wheel's way back (MOVE_BUDGET) */
+import { sitMove } from './sitting.js';   /* v2.3.6481: a judged move on the sitting's card (card WHO PR 2; the orchestrator's yes) */
 
 /* ═══ v2.3.3292: A ROLL IS ONLY AS LONG AS THE ONE YOU PAID FOR ═══
    `dodging` on a move is the phone's word that it is mid-roll, and the two
@@ -810,10 +811,12 @@ export const movementMethods = {
           ps._mvBudget = budget - (dist - over);
           if (over > 0) this._spendGust(ps, over);
           ps._mvFollow = undefined;   /* there: nothing left to follow */
+          sitMove(this, ps, _now, false);   /* v2.3.6481: counted on the sitting's card, memory only; decides nothing (sitting.js) */
         } else {
           const k = reach / dist;
           _toX = _fromX + dx * k; _toY = _fromY + dy * k;
           ps._mvBudget = 0;
+          sitMove(this, ps, _now, true);   /* v2.3.6481: ...and over the budget */
           if (_gust > 0) this._spendGust(ps, _gust);
           /* ...and on between the phone's moves (_tickMoveFollow), at the
              walk's bound: a sprint is billed by its moves, not by the tick */

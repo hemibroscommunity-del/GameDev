@@ -67,6 +67,7 @@ import { WHEEL } from './wheelzone.js';
 import { MOVE_BUDGET } from './movement.js';
 import { SPRINT } from './sprint.js';
 import { PROG3, prog3StatValue } from './prog3.js';
+import { sitHit } from './sitting.js';   /* v2.3.6481: a refusal's reason on the sitting's card (card WHO PR 2; the orchestrator's yes) */
 
 export const HIT_PROOF = Object.freeze({
   /* a paid swipe's window against monsters: the big bolt can land 3.5 s
@@ -134,9 +135,10 @@ export const hitProofMethods = {
   },
 
   /* the overview's counts */
-  _hpTally(k) {
+  _hpTally(k, ps) {
     const c = this._hpCount || (this._hpCount = { noWeapon: 0, far: 0, rate: 0, unpaid: 0, paid: 0 });
     c[k] = (c[k] || 0) + 1;
+    if (ps) sitHit(this, ps, k);   /* v2.3.6481 (card WHO PR 2): a refusal's reason on the claimer's sitting's card (sitting.js), memory only */
   },
 
   /* 1. a ranged or staff claim needs that weapon in the worker's own slot */

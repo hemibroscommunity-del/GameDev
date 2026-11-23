@@ -55,7 +55,17 @@
  *   movement.js sitMove (a judged move; over the budget or not)
  *   combat.js / hitproof.js  sitHit (claimed, landed, refused by reason)
  *   gold.js     sitGold (every road's class, beside the `_econ` count)
- *   report.js   sitReport (soft, build, seen, drawn)
+ *   report.js   sitReport (soft, build, seen, drawn): NOT HANDED YET.
+ *               report.js is card PH's while it mends #2279 (the
+ *               orchestrator, 2026-11-23); until its one call lands, those
+ *               four columns stay at their blanks (-1, '', 0, 0).
+ * The three calls outside this card's files (movement.js, combat.js with
+ * hitproof.js, gold.js) are the orchestrator's yes of 2026-11-23: memory
+ * only, deciding nothing (sitting.test §9: a move's, a hit's and the
+ * purse's outcome the same with `sitting: false`).  `moves` are the judged
+ * ones: with `movebudget: false` (the old bound) none are counted.  Gold by
+ * class is what the door books (gold.js econGold): a payout by the mail
+ * counts under its road's class and its minted part under `mint` too.
  *
  * THE KILL SWITCH `sitting: false` in the live flags (sitOff): nothing is
  * opened, closed or counted, the cap `sitting` is not advertised, and the

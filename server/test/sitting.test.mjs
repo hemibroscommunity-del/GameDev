@@ -24,6 +24,12 @@
  *      what a record holds kept through a save; the stint one a socket
  *      again; the cap `sitting` not advertised (on: `sitting: 1`).
  *   8. A NEWER `_econ` (a rolled-back worker) is left whole: no card.
+ *   9. THE ROOM'S OWN PATHS: judged moves and moves over the budget
+ *      (movement.js), hits claimed, landed and refused by reason (combat.js,
+ *      hitproof.js), gold by its road's class (gold.js) reach the card
+ *      through one call each, and a move's, a hit's and the purse's outcome
+ *      is the same with `sitting: false`.  The report's facts are not
+ *      handed yet (report.js is card PH's: the orchestrator, 2026-11-23).
  *
  * BREAK PROOF (rule 8), tried by hand 2026-11-23:
  *   sitting.js sitOpen: `t - cur[C.u] < SIT.GAP_MS` made `false` -> FAIL 4
@@ -40,7 +46,14 @@
  *   sitting.js sitOpen: `e.sh = sh` (no slice) -> FAIL 5 (the live list);
  *   leave.js: the sitTouch line taken out -> FAIL 4 (the gap from the move);
  *   join.js _sitJoin: the `ECON.V` test taken out -> FAIL 8;
- *   sitting.js sitMove: the sitOff test taken out -> FAIL 7.
+ *   sitting.js sitMove: the sitOff test taken out -> FAIL 7;
+ *   movement.js: either sitMove call taken out -> FAIL 9 (the moves);
+ *   combat.js: the `claim` or the `landed` call taken out, or `attackerPs`
+ *     not handed to `_hpTally('noWeapon')` -> FAIL 9; hitproof.js
+ *     _hpTally's sitHit line taken out -> FAIL 9;
+ *   gold.js econGold: the sitGold line taken out -> FAIL 9;
+ *   sitting.js sitMove: the card deciding a move (`rec._mvBudget = 0`) ->
+ *     FAIL 9 (the path differs from `sitting: false`'s).
  */
 import { makeStorage, openRoom, join, fakeWs, settle, seededClock } from './testroom.mjs';
 import { SIT, sitBlank, sitOneClean, sitCleanInto, sitOpen, sitMove, sitHit, sitGold, sitReport, sitTouch, sitRead, sitOff } from '../src/sitting.js';
@@ -252,6 +265,50 @@ const live = (room, pid) => room.playerState[pid];
   sitMove(room, live(room, pid), clock.now(), false);
   check('8. ...and nothing counted into it', JSON.stringify(e) === '{"v":3,"future":{"x":1}}');
   check('8. ...the actor takes a stint of its own', typeof sessOf(room, ws).actor.stint === 'number');
+}
+
+/* ══════════ 9. THE ROOM'S OWN PATHS HAND IT THEIR FACTS ══════════
+   (the orchestrator's yes for movement.js, combat.js + hitproof.js, gold.js:
+   one call each, memory only, deciding nothing) */
+{
+  const play = async (flags) => {
+    const pid = 'bp_sit_room';
+    const st = makeStorage(seed([pid], 500));
+    const room = await openRoom(st, flags);
+    const ws = fakeWs('room');
+    await join(room, ws, pid, { loginTaken: true }); await settle();
+    if (room.tickInterval) { clearInterval(room.tickInterval); room.tickInterval = null; }
+    const ps = live(room, pid);
+    const mv = (x, y) => room.webSocketMessage(ws, JSON.stringify({ type: 'move', x, y, z: ps.z }));
+    const path = [];
+    for (let i = 0; i < 12; i++) { clock.advance(100); await mv(ps.x + 30, ps.y); path.push([Math.round(ps.x), Math.round(ps.y)]); }
+    clock.advance(100); await mv(ps.x + 5000, ps.y);   /* past what the budget covers */
+    path.push([Math.round(ps.x), Math.round(ps.y)]);
+    /* a hit: claimed on a monster of the player's zone, far away (refused: `far`) */
+    const near = { id: 'm_sit_near', x: ps.x + 10, y: ps.y, alive: true, hp: 50, maxHp: 50, level: 1 };
+    room.monsters[ps.z] = [near];
+    const m = near;
+    const hpBefore = near.hp;
+    const hit = (id, slot) => room.webSocketMessage(ws, JSON.stringify({ type: 'monster_damage', payload: { monsterId: id, zone: ps.z, element: null, slot, special: false } }));
+    ps.rangedWeapon = null;
+    await hit(near.id, 'ranged');   /* no bow in the worker's own slot: refused `noWeapon` (hitproof.js) */
+    clock.advance(1000); await hit(near.id, 'melee');
+    room._goldGive(ps, 40, 'quest_reward');
+    room._goldTake(ps, 15, 'weapon_forge');
+    return { room, ps, path, m: !!m, monsterHp: [hpBefore, 0, near.hp], coins: ps.coins, st };
+  };
+  const on = await play(null), off = await play({ sitting: false });
+  const r = sitRead(on.ps._econ.s);
+  check('9. thirteen judged moves counted by movement.js, one over the budget', r && r.mv === 13 && r.mo === 1, r);
+  check('9. a move\'s outcome is the same with `sitting: false` as with the card (the same path, place by place)', JSON.stringify(on.path) === JSON.stringify(off.path), { on: on.path.slice(-2), off: off.path.slice(-2) });
+  check('9. a monster to claim a hit on is in the world', on.m);
+  check('9. two hits claimed, the bow with no bow refused `noWeapon` (combat.js, hitproof.js)', r && r.hc === 2 && r.hr.noWeapon === 1, r);
+  check('9. ...the near one landed: counted landed, and the monster hurt', r && r.hl === 1 && on.monsterHp[2] < 50, { hl: r && r.hl, hp: on.monsterHp });
+  check('9. ...the hits\' outcomes the same without the card (the refused one nothing, the other landed: its roll is the dice\'s)', on.monsterHp[0] === off.monsterHp[0] && (on.monsterHp[2] < 50) === (off.monsterHp[2] < 50), { on: on.monsterHp, off: off.monsterHp });
+  check('9. gold through the door, by its road\'s class (gold.js): 40 minted, 15 burned', r && r.gd.mint === 40 && r.gd.burn === -15, r && r.gd);
+  check('9. ...the purse the same without the card', on.coins === off.coins, { on: on.coins, off: off.coins });
+  check('9. `sitting: false`: none of it counted', !Array.isArray(off.ps._econ.s));
+  check('9. the report\'s facts (soft, build, seen, drawn) are not handed yet: report.js is card PH\'s (the orchestrator, 2026-11-23)', r && r.sf === -1 && r.b === '' && r.se === 0 && r.dr === 0);
 }
 
 clock.uninstall && clock.uninstall();
