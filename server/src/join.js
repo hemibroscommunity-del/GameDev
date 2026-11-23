@@ -31,6 +31,7 @@ import { requestIp } from './flood.js';   /* v2.3.5604 (mend): a refusal counted
 import { questLoad } from './queststate.js';   /* v2.3.5284: quest state's door (card R PR 5) */
 import { xpSet } from './xp.js';   /* v2.3.5289: experience and levels' door (card R PR 10) */
 import { tidyCharName } from './charname.js';   /* v2.3.5622: a name with no record held to the rule (the sitting 19 review) */
+import { actorSocket, actorOff } from './actor.js';   /* v2.3.6480: the actor, made once at the join (card WHO PR 1) */
 import { lookColor, lookAvatar } from './lookform.js';   /* v2.3.5733 (card RV's S2, the join's half): a look's colour and avatar held to their forms */
 
 /* ═══ v2.3.1627: the JOIN DATA ALLOWLIST ═══
@@ -935,6 +936,11 @@ export const joinMethods = {
     }
     session.id = msg.id;
     session.phase = 'joined';   /* v2.3.4830: the session's life (leave.js) */
+    /* v2.3.6480 (card WHO PR 1): THE ACTOR, made once, here, where the join
+       names the character (actor.js; docs/SHAPES.md part 1): a `person`, its
+       character, its sitting's id (the worker's clock), by the socket.  Never
+       from a field the phone sent.  Changed by nothing after. */
+    actorSocket(this, session, msg.id, Date.now());
     /* v2.3.1970: see sanitizeDisplayName above -- this is the copy the
        state_sync nameplate and the hiscores row are built from. */
     session.name = sanitizeDisplayName(msg.name);
@@ -2071,6 +2077,8 @@ export const joinMethods = {
         power: this._powerCap(),
         /* v2.3.5484: THE STAT BOARDS (statboards.js, card PW): GET /api/leaderboard/top?category=pts_<stat> ranks the points allocated to each shared stat (and `pts_dmg` the weapons' damage points summed), from every board row's `statPoints`.  HOW MANY boards (STAT_BOARD_IDS, in order): a count that grows (TRAPS §9).  `statboards: false` in liveflags un-advertises it and no report carries the points. */
         statboards: this._statBoardsCap(),
+        /* v2.3.6480 (card WHO PR 1): THE ACTOR (actor.js): the ledger's rows say who started them, and the day's book keeps test play apart.  Nothing a phone does changes; `actor: false` in the live flags un-advertises it and writes every row as before. */
+        actor: actorOff(this) ? undefined : 1,
         /* v2.3.5546 (card K PR 9, 5194b): A REPEAT ACTS ONCE (reqonce.js): a value request carrying its request id (`reqId`) is answered once, a repeat getting the first answer again -- so the page may re-send a request it heard nothing back from with the same id (src/game/actions.js).  `reqonce: false` un-advertises it, and the page re-sends nothing */
         reqid: this._reqOnceOff() ? undefined : 1,
         /* v2.3.5196 (card K PR 11): A WEAPON NAMED BY ITS ID (gidnames.js): the nine requests that take a weapon from the stash read its `gid` beside its place, and refuse when the two disagree -- so the page sends it (src/game/actions.js GID_PLACE).  `gidnames: false` un-advertises it, and the place alone is read */

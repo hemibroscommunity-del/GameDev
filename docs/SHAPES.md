@@ -87,16 +87,16 @@ read by every door after that.
 
 | Field | What it is | Values | Mark |
 |---|---|---|---|
-| `kind` | What is acting. | `person`, `qa`, `owner`, `system`, `helper` | NEW |
+| `kind` | What is acting. | `person`, `qa`, `owner`, `system`, `helper` | TODAY (built 6480: `server/src/actor.js`; `person` and `system` made, `owner` made and not yet called, `qa` and `helper` by nothing) |
 | `pid` | The character it acts as. Empty for `owner` and `system`: the character an owner's route changes is its target, not its actor. | A character's id (part 2) | TODAY's name for it |
 | `principal` | The account above the character. | Empty on every actor until call 14 is answered (part 2) | NEW |
-| `stint` | The sitting it belongs to. Empty where there is none (`owner`, `system`, a login door's call). | A sitting's id (part 2) | NEW |
-| `wayIn` | Where it came in. | `socket`, `http`, `admin`, `room` | NEW |
+| `stint` | The sitting it belongs to. Empty where there is none (`owner`, `system`, a login door's call). | A sitting's id (part 2) | TODAY (built 6480: the worker's clock at the join) |
+| `wayIn` | Where it came in. | `socket`, `http`, `admin`, `room` | TODAY (built 6480) |
 | `permit` | The grant it acts under. | Empty for everything but a `helper` | NEW |
 
 | Name | One writer | Readers | Where | Rows |
 |---|---|---|---|---|
-| `actor` (NEW) | The three places below, one for each way in. Nothing else makes or changes one. | The wire table's check of who may start a row (card K); the sitting's card (card Q); a ledger row's "who started it" (card E); the helper door (step 11.7) | On the session for a socket; a value handed to the handler for a request | none |
+| `actor` (TODAY: built 6480, `server/src/actor.js`) | The three places below, one for each way in. Nothing else makes or changes one. | The wire table's check of who may start a row (card K); the sitting's card (card Q); a ledger row's "who started it" (card E); the helper door (step 11.7) | On the session for a socket; a value handed to the handler for a request | none |
 
 The kinds:
 
@@ -173,7 +173,7 @@ Three more that look like ids and are not the kind this page needs:
 | Name | What it names | Made by | One writer | Readers | Where | Rows |
 |---|---|---|---|---|---|---|
 | `principal` (NEW) | The account above characters: call 14's "one person, one account". | The worker, never the phone. | Not built. An empty field on every actor until call 14 is answered. If the answer is no, the field stays empty for good and nothing else changes. | The actor | Not built | none until built |
-| `stint` (NEW) | One sitting: one visit of one character. It spans reconnects and deploys, and ends after a quiet gap. | The worker, at the join that begins it: the worker's own clock at that moment, in ms. Unique with `pid` (a character has one live session), and it is the sitting's "when". | The join (`server/src/join.js`), through the sitting's card (part 7) | The actor; the sitting's card; the report's second sink | Kept with the sitting's card, so a join after a deploy finds it | rides the card |
+| `stint` (TODAY: made at the join, 6480; one a socket until 6481 carries it across reconnects and deploys) | One sitting: one visit of one character. It spans reconnects and deploys, and ends after a quiet gap. | The worker, at the join that begins it: the worker's own clock at that moment, in ms. Unique with `pid` (a character has one live session), and it is the sitting's "when". | The join (`server/src/join.js`), through the sitting's card (part 7) | The actor; the sitting's card; the report's second sink | Kept with the sitting's card, so a join after a deploy finds it | rides the card |
 | `gid` on a weapon (NEW use of a TODAY name; **built**, v2.3.5282) | A weapon. | The worker, by the minter gear has: `gearMintId` (`gearprov.js`; `_gearProvMintId` is it). | The stashes' door (`stash.js` `weaponIdGive`, `weaponIdsAll`), the forge, and the save's migration v22; no ledger row (a weapon's would be the cost question). The field on the piece is `gid`, and no second name is made. | Every handler that takes a weapon from a phone (below); the world's sum | `rpg:` (the hands, the bag) and wherever the weapon waits (a listing, an order, a trade window, the mail) | none (no ledger) |
 | `reqId` (NEW) | One request of a player's: one tap, and every re-send of it. | **The phone**, in one place: the action door (`src/game/actions.js`, step 5.8). | the action door | The handler it rides to, and the answer, which echoes it | below | below |
 

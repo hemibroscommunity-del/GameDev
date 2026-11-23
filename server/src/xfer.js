@@ -3,9 +3,9 @@
  * One lasting row each time value settles between two players: when, the
  * road, from, to, the gold, the goods and their ids, the price (what came
  * back the other way), and `by`, the player whose tap settled it.  (SHAPES
- * part 1's actor, "who started it", is not built yet: when it is, the row
- * keeps it under one key beside `by`, never its fields flat.)  The owner's
- * cases read it ("unwind this transfer"), and card Q's signals; the owner's
+ * part 1's actor, "who started it", is built at v2.3.6480 (actor.js): the
+ * row keeps it under one key, `actor`, beside `by`, never its fields flat.)
+ * The owner's cases read it ("unwind this transfer"), and card Q's signals; the owner's
  * card counts the share moved one way for nothing from it (step 10.4).
  * Before this a trade left no trace but the two purses it changed.
  *
@@ -80,6 +80,7 @@
  */
 
 import { playerRoadsBy } from './playerroads.js';   /* v2.3.5280: the roads between players, one table */
+import { actorOff, actorOf, actorRow, ROOM_ACTOR } from './actor.js';   /* v2.3.6480: who started it (card WHO PR 1) */
 
 export const XFER = Object.freeze({
   V: 1,
@@ -183,7 +184,18 @@ const sideEmpty = (x) => !x.gold && !x.ids.length && !Object.keys(x.goods).lengt
  *    from    the player whose `gives` these are; `to` the other
  *    gives   what `from` gave: {_gold, key: n}; `ids` its pets' and weapons'
  *    price   what came back the other way, the same shape ({} for a gift)
- *    by      the player whose tap settled it */
+ *    by      the player whose tap settled it
+ *  v2.3.6480 (card WHO PR 1; SHAPES part 1): and `actor`, WHO STARTED IT,
+ *  under its one key (actor.js actorRow): `by`'s live session's actor (a
+ *  socket's, or an HTTP call's, which acts as its session), the room's
+ *  (`system`) when nobody's tap settled it, null when `by` has no live
+ *  session; `test: true` beside its kind when its character is in test
+ *  mode at the write, so the owner's test play is told apart for ever
+ *  after.  It rides the row's own put: no new row.  `actor: false` in the
+ *  live flags: no `actor` key, the row exactly as before.  XFER.V stays 1:
+ *  a key the older readers never read (econcard.js xferSummary), on a row
+ *  written once -- a bump would have an older worker's card skip the new
+ *  rows as `newer` for nothing. */
 export function xferRow(room, { road, id, from, to, gives, ids, price, priceIds, by, now } = {}) {
   try {
     if (!room || !room.state || !room.state.storage || xferOff(room)) return null;
@@ -203,6 +215,7 @@ export function xferRow(room, { road, id, from, to, gives, ids, price, priceIds,
       price: back,
       by: typeof by === 'string' && by ? by : null,
     };
+    if (!actorOff(room)) row.actor = actorRow(room, row.by ? actorOf(room, row.by) : ROOM_ACTOR);   /* v2.3.6480 */
     if (cut.v) row.cut = true;
     const p = room.state.storage.put(key, row);
     /* the prune rides the row's write, once a day (the header) */
