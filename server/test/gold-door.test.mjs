@@ -41,7 +41,7 @@ import { readFileSync, readdirSync, mkdtempSync, mkdirSync, writeFileSync, rmSyn
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { SRC_DIR, srcFiles, LEFT_OUT, LEFT_OUT_HOLDS } from './src-walk.mjs';
-import { GOLD_ROADS, GOLD_SUMS, goldAfter, goldMethods, goldOneSum, wholeGold, GOLD_LOG, goldLogOf, CLASSES, ESCROW_PLACES, MAIL_CLASSES, mailClassOf, classFaults, GOLD_LOADS, mailMinted } from '../src/gold.js';
+import { ECON_V, GOLD_ROADS, GOLD_SUMS, goldAfter, goldMethods, goldOneSum, wholeGold, GOLD_LOG, goldLogOf, CLASSES, ESCROW_PLACES, MAIL_CLASSES, mailClassOf, classFaults, GOLD_LOADS, mailMinted } from '../src/gold.js';
 import { BAG_ROADS } from '../src/bag.js';
 import { flagNameOk } from '../src/liveops.js';
 import { GameRoom } from '../src/index.js';
@@ -556,10 +556,12 @@ function callsIn(s) {
   room._goldGive(m, 10, 'mail_gold');
   check('9. a payout with no class, or none handed over, books nothing', JSON.stringify(g(m)) === '[450,0]', g(m));
   check('9. mailMinted: the house\'s part is held to what landed', mailMinted({ opId: 'arenapot:x', payload: { house: 900 } }, 300) === 300 && mailMinted({ opId: 'arenapot:x', payload: {} }, 300) === 0 && mailMinted(null, 5) === 0);
-  /* a newer worker's shape is never counted into */
-  const nv = { coins: 0, _econ: { v: 2, future: 1 } };
+  /* a newer worker's shape is never counted into (v2.3.6440: ECON_V + 1, so the
+     check keeps its purpose whatever the shape's number is: card WHO's bump,
+     the orchestrator's ask) */
+  const nv = { coins: 0, _econ: { v: ECON_V + 1, future: 1 } };
   room._goldGive(nv, 10, 'quest_reward');
-  check('9. a NEWER _econ is left whole (never counted into by a rolled-back worker)', JSON.stringify(nv._econ) === '{"v":2,"future":1}' && nv.coins === 10);
+  check('9. a NEWER _econ is left whole (never counted into by a rolled-back worker)', JSON.stringify(nv._econ) === JSON.stringify({ v: ECON_V + 1, future: 1 }) && nv.coins === 10);
   /* step 1's sums: counted by the whole-coin difference all the same */
   room._liveFlags = { goldonesum: false };
   const f = { coins: 10.5 };
@@ -577,6 +579,7 @@ function callsIn(s) {
 {
   const t = await playTour({ tag: 'gold' });
   check('R. the tour plays under the running room\'s guard', roomGuard.armed());
+  check('R. ...the guard is ON the tour\'s record (coins its accessor, the bag its Proxy, the room\'s map the guarded one: the purpose review, sitting 56)', roomGuard.holds(t.ps, t.room).length === 0, roomGuard.holds(t.ps, t.room));
   check('R. ...each of its steps did what it does (a quest handed in, paid)', t.steps.length > 0 && t.steps.every((x) => x.paid), t.steps);
   check('R. ...and no write of a guarded field was refused (testroom.mjs)', roomGuard.refusals().length === 0, roomGuard.refusals().slice(0, 5));
 }

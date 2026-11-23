@@ -387,6 +387,28 @@ export const roomGuard = Object.freeze({
   off(fn) { offDepth++; try { return fn(); } finally { offDepth--; } },
   /** forget the refusals so far (a suite that plants one on purpose) */
   clear() { refusals.length = 0; },
+  /** v2.3.6440 (the gatekeeper's purpose review, sitting 56): is the guard
+   *  ON this record, in this room?  `armed()` reads only the env var: a
+   *  gutted guardRecord, or a room whose `playerState` is an own data
+   *  property (a class field would make one) past the map's guard, left every
+   *  R check green.  This reads the record itself: `coins` is the guard's own
+   *  accessor (or, absent, the guard's layer is under the record), the bag
+   *  is the guard's Proxy, and the room's map is the prototype's guarded one.
+   *  -> [] when it holds, else what does not. */
+  holds(ps, room) {
+    const bad = [];
+    if (!GUARD_ON) bad.push('the guard is not armed (TESTROOM_GUARD=0)');
+    if (!ps || typeof ps !== 'object') { bad.push('no record'); return bad; }
+    const d = Object.getOwnPropertyDescriptor(ps, 'coins');
+    const own = OWN_GETTERS.get(ps);
+    if (d ? !(d.get && own && own.get('coins') === d.get) : !LAYERS.has(Object.getPrototypeOf(ps))) bad.push('coins is not the guard\'s accessor');
+    if (ps.inventory && typeof ps.inventory === 'object' && !TARGET_OF.has(ps.inventory)) bad.push('the bag is not the guard\'s Proxy');
+    if (room) {
+      if (Object.prototype.hasOwnProperty.call(room, 'playerState')) bad.push('the room\'s playerState is its own property, past the guarded map');
+      else if (!Object.values(room.playerState || {}).includes(ps)) bad.push('the record is not in the room\'s map');
+    }
+    return bad;
+  },
 });
 function refuse(path, op, at, why) {
   const r = { path, op, at, why };

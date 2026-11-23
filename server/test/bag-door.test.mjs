@@ -31,7 +31,7 @@
 import { readFileSync } from 'node:fs';
 import { SRC_DIR, srcFiles } from './src-walk.mjs';
 import { BAG_ROADS, BAG_READS, BAG_EMPTY, BAG_WHOLE, bagAfter, bagGive, bagTake, bagSet, bagCount, bagOneSum, wholeCount, setBagOneSum, bagOneSumOn, bagEconOwn, bagEconPending } from '../src/bag.js';
-import { MAIL_CLASSES, classFaults, CLASSES, ESCROW_PLACES } from '../src/gold.js';
+import { ECON_V, MAIL_CLASSES, classFaults, CLASSES, ESCROW_PLACES } from '../src/gold.js';
 import { GameRoom } from '../src/index.js';
 import { flagNameOk } from '../src/liveops.js';
 import { playTour, roomGuard } from './testroom.mjs';   /* v2.3.6440: the running room refuses (card DG PR 1) */
@@ -486,10 +486,11 @@ setBagOneSum(true);
   const bad = { };
   bagGive(bad, '__proto__', 1, 'harvest');
   check('9. a prototype name is never counted', Object.keys(bagEconPending(bad)).length === 0);
-  const nv = { inventory: { a: 1 }, _econ: { v: 2, x: 1 } };
+  /* v2.3.6440: ECON_V + 1, whatever the shape's number is (card WHO's bump, the orchestrator's ask) */
+  const nv = { inventory: { a: 1 }, _econ: { v: ECON_V + 1, x: 1 } };
   bagEconOwn(nv.inventory, nv);
   bagGive(nv.inventory, 'a', 1, 'harvest');
-  check('9. a NEWER _econ is left whole', JSON.stringify(nv._econ) === '{"v":2,"x":1}');
+  check('9. a NEWER _econ is left whole', JSON.stringify(nv._econ) === JSON.stringify({ v: ECON_V + 1, x: 1 }));
   /* a record whose bag was replaced (a death's wipe): the old bag no longer
      counts into it, the new one waits for its save */
   const r2 = { inventory: { log_pine: 1 } };
@@ -511,6 +512,7 @@ setBagOneSum(true);
 {
   const t = await playTour({ tag: 'bag' });
   check('R. the tour plays under the running room\'s guard', roomGuard.armed());
+  check('R. ...the guard is ON the tour\'s record (coins its accessor, the bag its Proxy, the room\'s map the guarded one: the purpose review, sitting 56)', roomGuard.holds(t.ps, t.room).length === 0, roomGuard.holds(t.ps, t.room));
   check('R. ...each of its steps did what it does (a quest handed in, paid)', t.steps.length > 0 && t.steps.every((x) => x.paid), t.steps);
   check('R. ...and no write of a guarded field was refused (testroom.mjs)', roomGuard.refusals().length === 0, roomGuard.refusals().slice(0, 5));
 }

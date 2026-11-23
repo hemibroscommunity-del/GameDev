@@ -1,6 +1,6 @@
 card: DG
 branch: claude/dg-door-guards
-prs: PR 1 (6440) opened ready (see Done)
+prs: #2283 (PR 1, 6440, ready again: the purpose review's mend)
 state: ready
 
 ## Done
@@ -12,16 +12,16 @@ state: ready
   (`||=` on a field already set: GOLD-2, XP-2, HP-4; a branch the reward
   never takes: HP-2, STASH-1) or call a legal door (GOLD-4): PR 2's scan.
   Whole server suite: 582 green (799.7 s). Deploys when merged.
+- PR 1's mend (sitting 56's purpose review): `roomGuard.holds(ps, room)`
+  reads the record itself (coins the guard's accessor, the bag its Proxy,
+  the room's map the guarded one); each door's R block checks it, and
+  testroom.test §7 records a refusal of 4 spellings run as worker code.
+  Red now: guardRecord gutted (gold, life, testroom); `playerState` an own
+  data property (gold, bag; gold with GOLD-1 on top). Also `ECON_V + 1` in
+  gold-door §9 and bag-door §9 (card WHO's shape bump, the orchestrator's ask).
 
-## Next (HANDOVER: this session's memory passed 250,000 tokens)
-- A fresh session takes PR 2 (6441). Start from branch
-  `claude/dg-pr2-draft` (no PR; pushed only to keep the work): it holds
-  `tools/guards/lib/writesOf.mjs`, the drafted scanner, and
-  `docs/plan/census/dg-pr2-draft.md`, what it finds and what is left.
-  Base PR 2 on `claude/dg-door-guards` (PR 1) or on main once PR 1 merges.
-- The plant files are only in PR #2275: `git show
-  origin/claude/game-grand-plan-combat-6v7yq4:tools/dev/plants/<file>`.
-  `cd server && npm install` first (@babel for the scanner).
+## Next
+- PR 2 (6441), on branch claude/dg-scans: the scans read the syntax tree.
 
 ## Found
 - none

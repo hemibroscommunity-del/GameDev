@@ -328,6 +328,7 @@ for (const [name, table, fn] of [['hp', HP_ROADS, '_hpSet'], ['life', LIFE_ROADS
 {
   const t = await playTour({ tag: 'life' });
   check('R. the tour plays under the running room\'s guard', roomGuard.armed());
+  check('R. ...the guard is ON the tour\'s record (coins its accessor, the bag its Proxy, the room\'s map the guarded one: the purpose review, sitting 56)', roomGuard.holds(t.ps, t.room).length === 0, roomGuard.holds(t.ps, t.room));
   check('R. ...each of its steps did what it does (a quest handed in, paid)', t.steps.length > 0 && t.steps.every((x) => x.paid), t.steps);
   check('R. ...and no write of a guarded field was refused (testroom.mjs)', roomGuard.refusals().length === 0, roomGuard.refusals().slice(0, 5));
 }
