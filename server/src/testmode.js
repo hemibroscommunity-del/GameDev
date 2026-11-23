@@ -55,7 +55,10 @@
  * And another (v2.3.5627, silence.js _ownerDeviceNote): a device a
  * test-mode character joins from is kept as the owner's (`ownerdev:`), so a
  * freeze's device rule never holds the owner's own phone.  It turns nothing
- * off either.
+ * off either.  And another (v2.3.6480, actor.js actorTest): a record that
+ * keeps who acted marks a test-mode character's (an `xfer:` row's actor
+ * `test: true`; the day's book's `test` key, apart from play).  It turns
+ * nothing off either.
  *
  * WHAT IT LEAVES ON, for everyone, the test-mode character included: the
  * flood and message budgets, the join window and the per-address limits

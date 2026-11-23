@@ -73,7 +73,7 @@ export const SYSTEMS = Object.freeze({
   },
   session: {
     what: 'a sitting: the join, leaving, lingering, the rejoin and what it re-sends',
-    files: [f('server/src', 'join|leave|linger|lastplace|pacekeep|rejoinresend|nearjoin|presence2'), f('src/game', 'rejoinSlots|resumeListeners|quietPhone|nearJoin|presence2|stateCleanup')],
+    files: [f('server/src', 'join|leave|linger|lastplace|pacekeep|rejoinresend|nearjoin|presence2|actor'),   /* v2.3.6480: actor.js, who is acting (card WHO) */ f('src/game', 'rejoinSlots|resumeListeners|quietPhone|nearJoin|presence2|stateCleanup')],
     words: ['join', 'leave', 'linger', 'rejoin', 'reconnect', 'presence', 'session', 'quiet-phone', 'quietphone'],
     traps: [],
     doors: [

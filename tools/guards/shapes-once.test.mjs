@@ -55,11 +55,13 @@ import { ROOT } from './lib/fourLines.mjs';
 /* SHAPES part 8, "Chosen", and each row's one file (null: not placed yet;
    the builder writes it here in the PR that first defines the name) */
 const NAMES = Object.freeze({
-  actor: { part: 1, where: null },
-  principal: { part: '1, 2', where: null },
-  stint: { part: '1, 2', where: null },
-  wayIn: { part: '1, 5', where: 'server/src/wire/columns.js', carriers: ['server/src/wire/in.js', 'server/src/wire/relays.js', 'server/src/wire/out.js', 'server/src/wire/http.js'] },   /* v2.3.5061 (card N): the column's closed list; each row file carries its values */
-  permit: { part: '1, 7', where: null },
+  /* v2.3.6480 (card WHO PR 1): the actor built, in its one file; the
+     ledger's row and the join's cap carry it as a field of their own */
+  actor: { part: 1, where: 'server/src/actor.js', carriers: ['server/src/join.js', 'server/src/xfer.js'] },
+  principal: { part: '1, 2', where: 'server/src/actor.js' },   /* v2.3.6480: an empty field on every actor (call 14) */
+  stint: { part: '1, 2', where: 'server/src/actor.js' },   /* v2.3.6480: made at the join (actor.js stintNext) */
+  wayIn: { part: '1, 5', where: 'server/src/wire/columns.js', carriers: ['server/src/actor.js' /* v2.3.6480: the actor's way in */, 'server/src/wire/in.js', 'server/src/wire/relays.js', 'server/src/wire/out.js', 'server/src/wire/http.js'] },   /* v2.3.5061 (card N): the column's closed list; each row file carries its values */
+  permit: { part: '1, 7', where: 'server/src/actor.js' },   /* v2.3.6480: an empty field on every actor until the helper door (11.7); its storage prefix `permit:` stays unbuilt */
   /* the action door (step 5.8; part 10).  Read in src/ only: the worker
      echoes a request's reqId in its answer, which carries it, not makes it */
   reqId: { part: 2, where: 'src/game/actions.js', scope: 'src/' },
