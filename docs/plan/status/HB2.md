@@ -1,28 +1,28 @@
 card: HB2
 branch: claude/plan-hb2-12-narrowkeys
-prs: #2224-#2266 (6280-6288): merged; #2271 6289, #2272 6290: ready; 6291 (narrow keys): pushed, no PR yet
-state: stalled
+prs: #2224-#2272 (6280-6290): merged; 6291 (narrow keys): ready (this branch's PR); #2276 6292 (ground rule): ready
+state: ready
 
 ## Done
 
-- #2224 (6280), #2244 (6281): the coach's and the band's measures off the tap.
-- #2247 (6282), #2249 (6283): a tap's remembered corner; the gear tab beside.
-- #2254 (6284): p256's twins read and packed on the reader's worker.
-- #2257 (6285): the Quests dot without building the offers (row 35).
-- #2259 (6286): the big arrow's tick at the frame's top (row 18: 70.5 x14 -> 0).
-- #2261 (6287): `other: R > J` off the debt list by its rule: 3.1 closed.
-- #2266 (6288): the big arrow's CLOSE step waits for a weapon on (its rule).
-- #2271 (6289): the gear tab's own reads only when needed (bag edges at
-  the frame's top; the names' and words' fit when they or their box change).
-- #2272 (6290): the World map's off-screen labels not measured (first
-  draw on opening 102-120 -> 57-64 ms; the same texts at fifteen zooms).
+- Merged #2224-#2272 (6280-6290): the coach's and band's measures, a tap's
+  corner, p256 on the worker, the Quests dot, the big arrow's tick and
+  CLOSE, `other: R > J` off the debt list, the gear tab's reads, the World
+  map's labels (first draw 102-120 -> 57-64 ms).
 - 6291: the band's key list only on the computer's band (`?narrow` and a
-  small window keep the column's strip; the wide page identical).
+  small window keep the column's strip). deskkeys step 1's two lines now
+  assert the narrow column; the list's checks moved to 8h (planning
+  session's yes, 2026-11-23).
+- 6292 (#2276): ground swatches hold only what a foot steps over, seen as
+  the buildings are (tools only; the owner's rule of 2026-11-20).
 
 ## Next
 
-- Paused (the owner's usage, until Monday). 6291: precheck OK, playable
-  187/187, membudget 11/11; mp-oneband, mp-deskkeys not run; open its PR.
+- Nothing of HB2's is left but the gatekeeper's merges. Card LF finished
+  the two branches (2026-11-23).
+- 6291, run by card LF on this box on this merged head: oneband all pass;
+  deskkeys 60 asserts, 59 pass, 1 skip, 1 fail = 8f (sword lunge), red on
+  main too, waits for the owner's verdict on the controls trial (CT).
 
 ## Found
 
