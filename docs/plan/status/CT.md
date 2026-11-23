@@ -12,7 +12,6 @@ state: working
   `input` (stickFrame: the loop's stick and keys read moved whole out of
   legacy, 1531 -> 1513); `mp-twobuttons` part 1 green upright and
   sideways (real CDP touches; the flick's four touches in one page task).
-
 - PR 1's mend (the gatekeeper's sitting 56): the negative wrap's check
   (plant S11 red), the exact edges (B3, B5, L2), the phase rows held to
   the modules' lists (G2); facing8 gives west as +PI only; latchCheck lets
@@ -31,8 +30,8 @@ state: working
 ## Needs
 - PR 1's mechanical rows outside the card: approved (answer 1).
 - PR 2: card M's guard `tools/guards/frame-steps.test.mjs` (WANT +
-  'input'; its runner's hard-coded indices read from WANT, nothing it
-  checks changes) and `tools/qa/mp/mp-framesteps.mjs` (WANT + 'input'):
-  asked of the orchestrator once, 2026-11-23.
+  'input'; its indices read from WANT) and `tools/qa/mp/mp-framesteps.mjs`
+  (WANT + 'input'): approved by the orchestrator part 1, 2026-11-23 (three
+  plants proved red: in the PR's words).
 - The ledgers' machine rows for the moved writers (`src/state/input.js`,
   `skills.js`, `ui.js`: stickX/Y, _lastInputAt, player; `_IN`, `_turn`).
