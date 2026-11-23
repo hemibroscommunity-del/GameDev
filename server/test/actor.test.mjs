@@ -21,6 +21,9 @@
  *      room's.  Under ONE key, never flat.  Still one row a settlement.
  *   6. THE DAY'S BOOK: a test-mode sitting's seconds go under the `econ`
  *      part's `test` key, apart from play; a played sitting's at the top.
+ *      Gold a test-mode character makes (gold.js's one call hands its
+ *      record) under `test`; a player's at the top.  Items are not split
+ *      (bagGive gets the bag alone).
  *      bookAddBy: a test-mode record's add under `test`, anyone else's (or
  *      none) at the top; `testmode: false` (the room's own question) adds
  *      with play.
@@ -38,7 +41,9 @@
  *   xfer.js: the `actorOff` guard taken out -> FAIL 7 (a key with the switch
  *     thrown);
  *   leave.js: bookAddBy back to bookAdd -> FAIL 6 (test seconds with play);
- *   daybook.js bookAddBy: the `actorOff` test taken out -> FAIL 7.
+ *   daybook.js bookAdd: the `actorOff` test taken out -> FAIL 7;
+ *   gold.js econGold: the record not passed (`, undefined, rec` taken out)
+ *     -> FAIL 6 (test gold with play).
  */
 import { makeStorage, openRoom, join, fakeWs, settle, seededClock } from './testroom.mjs';
 import { ACTOR, ROOM_ACTOR, actorOwner, actorOf, actorRow, actorSocket, actorOff, stintNext } from '../src/actor.js';
@@ -221,6 +226,21 @@ async function sitting(testmode, flags) {
   check('6. a test-mode sitting\'s seconds go under the `econ` part\'s `test` key', t.econ[BOOK_TEST] && t.econ[BOOK_TEST].p && t.econ[BOOK_TEST].p.s === 90 && !(t.econ.p && t.econ.p.s), t.econ);
   const p = await sitting(false);
   check('6. ...a played sitting\'s at the top, nothing under `test`', p.econ.p && p.econ.p.s === 90 && !p.econ[BOOK_TEST], p.econ);
+}
+{
+  /* gold: the door's one call (gold.js econGold) hands the purse's record */
+  const m = seed(['bp_ac_gt', 'bp_ac_gp'], 50);
+  testOn(m, 'bp_ac_gt');
+  const room = await openRoom(makeStorage(m));
+  await join(room, fakeWs('gt'), 'bp_ac_gt', { loginTaken: true });
+  await join(room, fakeWs('gp'), 'bp_ac_gp', { loginTaken: true });
+  const e0 = JSON.parse(JSON.stringify(econOf(room) || {}));
+  const g = (e, t) => Number(((t ? (e.test || {}) : e).g || {}).mint) || 0;
+  room._goldGive(room.playerState.bp_ac_gt, 40, 'quest_reward');
+  room._goldGive(room.playerState.bp_ac_gp, 15, 'quest_reward');
+  const e1 = econOf(room);
+  check('6. gold a test-mode character makes is booked under `test`; a player\'s at the top', g(e1, true) - g(e0, true) === 40 && g(e1, false) - g(e0, false) === 15, { e0, e1 });
+  check('6. ...the purses themselves paid as before', room.playerState.bp_ac_gt.coins === 90 && room.playerState.bp_ac_gp.coins === 65);
 }
 {
   const st = makeStorage();
