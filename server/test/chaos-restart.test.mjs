@@ -37,6 +37,17 @@
  *      R2, green in nineteen suites) fails 7 ("gold 100": the ticket's gold
  *      back in the purse and in the pool); the item drop's save removed
  *      fails it too.
+ *      v2.3.6461 (the gatekeeper's sitting 56): the sum's unexplained()
+ *      weighs gold and bag keys, not pieces, and the axes were seeded with
+ *      no id on file, so each room minted its own and a copy on each side
+ *      of a restart read as two different axes.  So the axes are seeded
+ *      with ids, and the judge counts the pieces the sum itself holds by
+ *      id (its readers' own ctx): the same number after as before, none
+ *      twice.  BREAK PROOFS, tried by hand: the weapon staged with
+ *      `await escrowed` before the stash's push and save (trade2.js, the
+ *      v2.3.3294 incident, plant B1: an axe doubled) and the stash saved
+ *      and awaited before the escrow's put (plant B4: an axe lost) each
+ *      fail 7's trade2_stage_weapon.
  *
  * The storage is inbox.test §8c's: every write of one synchronous run commits
  * as one batch, as a Durable Object's does, and the room dies before batch
@@ -64,7 +75,7 @@ import { ARENA } from '../src/gladiator.js';
 import { mockEnv, fakeWs, baseSession, makeStorage, settle } from './testroom.mjs';
 /* v2.3.6461 (card BK PR 2): the sweep made from the value table, judged by the one sum */
 import { VALUE_PAUSE } from '../src/valuepause.js';
-import { count, unexplained } from '../src/worldsum.js';
+import { count, unexplained, READERS } from '../src/worldsum.js';
 import { BANK } from '../src/bank.js';
 
 /* v2.3.4793: what is red on today's code, each with its reason.  The ids are
@@ -483,7 +494,19 @@ const arenaRunning = (r) => {
 {
   const CV = { a: 'bp_cv_a', b: 'bp_cv_b', c: 'bp_cv_c' };
   const PIDS = Object.values(CV);
-  const axe = (i) => ({ name: 'Sweep axe ' + i, type: 'axe', tierMult: 1, dmg: 5 });
+  /* v2.3.6461 (sitting 56): each axe with its id on file (as the minter
+     writes it, gearprov.js GID_RE), so a room after a restart reads the
+     same axe the room before held, and a piece doubled or lost is seen */
+  const axe = (i) => ({ name: 'Sweep axe ' + i, type: 'axe', tierMult: 1, dmg: 5, gid: 'gcv.' + i + '.axe' + i });
+  /* the world's count, and its pieces: every id the sum's readers hold (a
+     piece of gear, a weapon, a pet), read off the sum's own ctx by wrapping
+     each reader (worldsum.js is not this suite's to change) */
+  const held = (r, state) => {
+    let ctx = null;
+    const readers = Object.fromEntries(Object.entries(READERS).map(([p, f]) => [p, (c, k, v) => { ctx = c; return f(c, k, v); }]));
+    const c = count(r, state, readers);
+    return { ...c, pieces: ctx ? ctx.ids.length : -1 };
+  };
   const seed = await seedPlayers({
     [CV.a]: { coins: 2000, inv: { [GEL]: 12, wood_oak: 10 }, stash: [axe(1), axe(2), axe(3)] },
     [CV.b]: { coins: 2000, inv: { ore_iron_ore: 6 }, stash: [axe(4)] },
@@ -616,22 +639,23 @@ const arenaRunning = (r) => {
          General Store's and the Auction House's books, which finish a
          crossing or a sale a restart cut (market-settle, store-onewrite) */
       wakeOpts: { async beforeSweeps(r2) { await r2._mktEnsureIndex(); await r2._stEnsureIndex(); await settleIo(); } },
-      async before(r) { const ctx = (await d.before(r)) || {}; await settleIo(); ctx.start = count(r, r.state); ctx.room = r; return ctx; },
+      async before(r) { const ctx = (await d.before(r)) || {}; await settleIo(); ctx.start = held(r, r.state); ctx.room = r; return ctx; },
       act: (r, ctx) => d.act(r, ctx),
     };
     const m = await measure(seed, path);
     const ran = d.moved(m.ctx.room);
     const res0 = m;
     const res = await everyRestart(seed, path, (st, k, w) => {
-      const end = count(w.room, w.room.state);
+      const end = held(w.room, w.room.state);
       const u = unexplained(w.ctx.start, end);
       const goods = JSON.stringify(Object.fromEntries(Object.entries(u.goods).sort()));
       const ground = d.ground && k === res0.batches ? JSON.stringify(d.ground) : '{}';
-      if (u.gold || goods !== ground || end.dup.length) return { gold: u.gold, goods: u.goods, dup: end.dup.slice(0, 3) };
+      const pieces = end.pieces - w.ctx.start.pieces;
+      if (u.gold || goods !== ground || end.dup.length || pieces) return { gold: u.gold, goods: u.goods, pieces, dup: end.dup.slice(0, 3) };
       return null;
     });
     check(`7. ${row} (${VALUE_PAUSE[row].roads.join(', ') || 'a weapon into the window'}): it moved, and a restart before each of its ${res.batches} write(s) or after the last leaves nothing unexplained` + (d.ground ? ' (but the pile on the ground, lost by design: ' + JSON.stringify(d.ground) + ')' : ''),
-      ran && res.batches >= 1 && res.wrong.length === 0, { ran, batches: res.batches, wrong: res.wrong.slice(0, 4) });
+      ran && res.batches >= 1 && res.wrong.length === 0 && m.ctx.start.pieces >= 4, { ran, batches: res.batches, pieces: m.ctx.start.pieces, wrong: res.wrong.slice(0, 4) });
   }
 }
 
