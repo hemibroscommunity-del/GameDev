@@ -87,7 +87,10 @@ export function stickTravel(sideways) {
 /** Snap an angle to the nearest of the eight facings drawn today. */
 export function facing8(ang) {
   const step = (2 * Math.PI) / STICK_ZONES.FACINGS;
-  return Math.round(ang / step) * step;
+  const f = Math.round(ang / step) * step;
+  /* v2.3.6540: west is ONE facing, +PI (the gatekeeper's sitting 56: -PI and
+     +PI for the same facing would read as a change, and a move as a flip) */
+  return f <= -Math.PI + 1e-9 ? Math.PI : f;
 }
 
 /** Read the thumb: (dx, dy) from where it landed, CSS px; `travel` the
