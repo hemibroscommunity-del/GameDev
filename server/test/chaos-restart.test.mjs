@@ -23,6 +23,20 @@
  *      the weapon comes home; and the same with a new trade at once
  *   5. an arena sponsor's stake placed
  *   6. an arena match's stakes settled
+ *   7. v2.3.6461 (card BK PR 2): THE SWEEP MADE FROM THE VALUE TABLE --
+ *      every row of valuepause.js VALUE_PAUSE (the fourteen actions that
+ *      begin with a take on a move or escrow road) driven through its real
+ *      message or route, crashed before each of its writes and after its
+ *      last, the wake as the room makes it (the shops' books rebuilt, the
+ *      restart sweeps, everyone back), and judged by the world's sum
+ *      (src/worldsum.js unexplained()).  A row with no driver fails.  One
+ *      loss is by design and named: a pile dropped on the ground lives in
+ *      memory only (handoff rule 11), so a restart loses exactly it.
+ *      BREAK PROOF, tried by hand: the jackpot deposit's save removed
+ *      (cadence.js `_saveRpg` after `jackpot_ticket`; shape-books.md plant
+ *      R2, green in nineteen suites) fails 7 ("gold 100": the ticket's gold
+ *      back in the purse and in the pool); the item drop's save removed
+ *      fails it too.
  *
  * The storage is inbox.test §8c's: every write of one synchronous run commits
  * as one batch, as a Durable Object's does, and the room dies before batch
@@ -48,6 +62,10 @@ import { ARENA } from '../src/gladiator.js';
    dying before batch `crashAt`), its socket, its session and its settle moved
    there, the first suite on it */
 import { mockEnv, fakeWs, baseSession, makeStorage, settle } from './testroom.mjs';
+/* v2.3.6461 (card BK PR 2): the sweep made from the value table, judged by the one sum */
+import { VALUE_PAUSE } from '../src/valuepause.js';
+import { count, unexplained } from '../src/worldsum.js';
+import { BANK } from '../src/bank.js';
 
 /* v2.3.4793: what is red on today's code, each with its reason.  The ids are
    the ones the checks below pass to `verdict`. */
@@ -447,6 +465,174 @@ const arenaRunning = (r) => {
   });
   check(`6. a restart before any of the settlement's ${res.batches} write(s), then the restart sweep: no gold is ever MADE, no stake left standing`, made.length === 0 && res.batches >= 2, made);
   verdict('arena-stake-settle-loss', '6. ...nor lost', lost.length === 0, lost);
+}
+
+// ── 7. v2.3.6461 (card BK PR 2): THE SWEEP MADE FROM THE VALUE TABLE ──
+/* Six paths were restarted above, by hand; a jackpot deposit whose save was
+   removed doubled its gold after a restart and nineteen suites stayed green
+   (docs/plan/census/shape-books.md, plant R2).  So the sweep is made from the
+   table that already names every action beginning with a take on a `move` or
+   `escrow` road: valuepause.js VALUE_PAUSE (fourteen rows).  Each row has its
+   driver below (a row with none fails: a new value action is swept the day
+   it is listed), played through the real message or route over a world of
+   saved players; the room dies before EACH of its writes in turn, and once
+   after its last (a value held only in memory dies with it), a second room
+   wakes on what was written, everyone joins again, and the world's sum
+   (src/worldsum.js, the one sum) judges from the start's count: unexplained
+   gold 0, every bag key 0, no piece held twice.  KNOWN above stays empty. */
+{
+  const CV = { a: 'bp_cv_a', b: 'bp_cv_b', c: 'bp_cv_c' };
+  const PIDS = Object.values(CV);
+  const axe = (i) => ({ name: 'Sweep axe ' + i, type: 'axe', tierMult: 1, dmg: 5 });
+  const seed = await seedPlayers({
+    [CV.a]: { coins: 2000, inv: { [GEL]: 12, wood_oak: 10 }, stash: [axe(1), axe(2), axe(3)] },
+    [CV.b]: { coins: 2000, inv: { ore_iron_ore: 6 }, stash: [axe(4)] },
+    [CV.c]: { coins: 2000, inv: {} },
+  });
+  const route = (r, method, path, body, query) => r.fetch(new Request('https://x' + path + (query ? '?' + query : ''),
+    { method, headers: { 'Content-Type': 'application/json' }, ...(body ? { body: JSON.stringify(body) } : {}) })).then((x) => x.json());
+  const on = async (r, ...who) => { const w = {}; for (const k of who) w[k] = await joinOn(r, fakeWs('cv-' + k), CV[k]); return w; };
+  const ps = (r, k) => r.playerState[CV[k]];
+  const wheelAt = (r, p, dx, dy) => { const c = r._wheelT().WHEEL_CENTRE; Object.assign(p, { z: 'wheel', x: c[0] + dx, y: c[1] + dy }); };
+  const list = async (r, kind) => {
+    const body = kind === 'weapon' ? { playerId: CV.a, kind: 'weapon', stashIndex: 0, price: 100 } : { playerId: CV.a, kind: 'item', invKey: GEL, qty: 4, price: 50 };
+    const l = await route(r, 'POST', '/api/store/list', body);
+    return l && l.listing && l.listing.id;
+  };
+  const tradeOpen = async (r, w) => { r._paceTake = () => true; await cmd(r, w.a, 'trade2_open', { target: CV.b }); await cmd(r, w.b, 'trade2_open', { target: CV.a }); await settleIo(); };
+  /* each driver: `before` sets the action up (and is not crashed); `act` is the action */
+  const DRIVERS = {
+    trade2_confirm: {
+      async before(r) {
+        const w = await on(r, 'a', 'b'); await tradeOpen(r, w);
+        await cmd(r, w.a, 'trade2_set', { offer: { [GEL]: 3, _gold: 150 } }); await cmd(r, w.b, 'trade2_set', { offer: { ore_iron_ore: 2 } });
+        await cmd(r, w.a, 'trade2_ready', { ready: true }); await cmd(r, w.b, 'trade2_ready', { ready: true }); await settleIo();
+        for (const t of (r._trades2 || new Map()).values()) t.changedAt = Date.now() - 999999;
+        await cmd(r, w.a, 'trade2_confirm'); await settleIo();
+        return { w };
+      },
+      act: (r, { w }) => cmd(r, w.b, 'trade2_confirm'),
+      moved: (r) => (ps(r, 'b').inventory[GEL] || 0) === 3,
+    },
+    trade_accept: {
+      async before(r) {
+        const w = await on(r, 'a', 'b'); r._liveFlags.giftclosed = false;
+        await cmd(r, w.a, 'trade_offer', { target: CV.b, fromName: 'A', offer: { _gold: 60, [GEL]: 2 } }); await settleIo();
+        return { w };
+      },
+      act: (r, { w }) => cmd(r, w.b, 'trade_accept', { target: CV.a }),
+      moved: (r) => (ps(r, 'b').inventory[GEL] || 0) === 2,
+    },
+    bank_deposit: {
+      async before(r) {
+        const w = await on(r, 'a'); const c = r._wheelT().WHEEL_CENTRE;
+        Object.assign(ps(r, 'a'), { z: 'wheel', x: c[0] + BANK.DOOR[0] + 40, y: c[1] + BANK.DOOR[1] + 150 });
+        await cmd(r, w.a, 'bank_open'); await settleIo();
+        return { w };
+      },
+      act: (r, { w }) => cmd(r, w.a, 'bank_deposit', { kind: 'gold', n: 300, opId: 'cv-1' }),
+      moved: (r) => ps(r, 'a').coins === 1700,
+    },
+    'http:/api/arena/join': {
+      async before(r) { await on(r, 'a'); r._arenaHouse = { hour: 0, used: 0 }; return {}; },
+      act: (r) => route(r, 'POST', '/api/arena/join', { playerId: CV.a, playerName: 'A' }),
+      moved: (r) => ps(r, 'a').coins === 2000 - ARENA.ENTRY_FEE,
+    },
+    arena_sponsor: {
+      async before(r) {
+        const w = await on(r, 'a', 'b', 'c'); r._arenaHouse = { hour: 0, used: 0 };
+        await route(r, 'POST', '/api/arena/join', { playerId: CV.a, playerName: 'A' });
+        await route(r, 'POST', '/api/arena/join', { playerId: CV.b, playerName: 'B' });
+        r._arena.gatherDeadline = Date.now() - 1; r._arenaLazyTick(Date.now());
+        await new Promise((x) => setTimeout(x, 25));
+        return { w };
+      },
+      act: (r, { w }) => cmd(r, w.c, 'arena_sponsor', { targetId: CV.a, amount: 100 }),
+      moved: (r) => ps(r, 'c').coins === 1900,
+    },
+    jackpot_deposit: {
+      async before(r) { return { w: await on(r, 'a') }; },
+      act: (r, { w }) => cmd(r, w.a, 'jackpot_deposit', { amount: 100 }),
+      moved: (r) => ps(r, 'a').coins === 1900,
+    },
+    'http:/api/market/place': {
+      async before(r) {
+        await on(r, 'a', 'b');
+        await route(r, 'POST', '/api/market/place', { type: 'sell', category: 'weapon', subtype: 'axe', tierKey: 'mythic', price: 300, playerId: CV.a, stashIndex: 0 });
+        return {};
+      },
+      act: (r) => route(r, 'POST', '/api/market/place', { type: 'buy', category: 'weapon', subtype: 'axe', tierKey: 'mythic', price: 320, playerId: CV.b }),
+      moved: (r) => ps(r, 'b').coins === 1700,
+    },
+    'http:/api/store/list': {
+      async before(r) { await on(r, 'a'); return {}; },
+      act: (r) => list(r, 'item'),
+      moved: (r) => ps(r, 'a').inventory[GEL] === 8,
+    },
+    'http:/api/store/buy': {
+      async before(r) { await on(r, 'a', 'b'); return { id: await list(r, 'item') }; },
+      act: (r, { id }) => route(r, 'POST', '/api/store/buy', { listingId: id, playerId: CV.b }),
+      moved: (r) => (ps(r, 'b').inventory[GEL] || 0) === 4,
+    },
+    'http:/api/store/bid': {
+      async before(r) { await on(r, 'a', 'b'); return { id: await list(r, 'item') }; },
+      act: (r, { id }) => route(r, 'POST', '/api/store/bid', { listingId: id, playerId: CV.b, amount: 40 }),
+      moved: (r) => ps(r, 'b').coins === 1960,
+    },
+    store_offer: {
+      async before(r) { const w = await on(r, 'a', 'b'); return { w, id: await list(r, 'weapon') }; },
+      act: (r, { w, id }) => { r._soBuckets = null; return cmd(r, w.b, 'store_offer', { listingId: id, gold: 40 }); },
+      moved: (r) => ps(r, 'b').coins === 1960,
+    },
+    duel_accept: {
+      async before(r) { const w = await on(r, 'a', 'b'); await cmd(r, w.b, 'duel_wager_request', { target: CV.a, wager: 50 }); await settleIo(); return { w }; },
+      act: (r, { w }) => cmd(r, w.a, 'duel_accept', { target: CV.b, wager: 50 }),
+      moved: (r) => ps(r, 'a').coins === 1950 && ps(r, 'b').coins === 1950,
+    },
+    item_drop: {
+      async before(r) { const w = await on(r, 'a'); wheelAt(r, ps(r, 'a'), 0, 288); ps(r, 'a')._dropAt = 0; return { w }; },
+      act: (r, { w }) => r.webSocketMessage(w.a, JSON.stringify({ type: 'item_drop', key: 'wood_oak', qty: 2 })),
+      moved: (r) => ps(r, 'a').inventory.wood_oak === 8,
+      /* by design, not a fault: a pile on the ground lives in the room's
+         memory only (handoff rule 11, itemdrop.js's header), so a restart
+         after the drop loses exactly what lies there -- and nothing else */
+      ground: { wood_oak: -2 },
+    },
+    trade2_stage_weapon: {
+      async before(r) { const w = await on(r, 'a', 'b'); await tradeOpen(r, w); return { w }; },
+      act: (r, { w }) => cmd(r, w.a, 'trade2_stage_weapon', { stashIdx: 0 }),
+      moved: (r) => ps(r, 'a').weaponStash.length === 2,
+    },
+  };
+  const rows = Object.keys(VALUE_PAUSE);
+  const undriven = rows.filter((k) => !DRIVERS[k]);
+  check(`7. every row of the value table (${rows.length}) has its driver in the sweep`, rows.length >= 14 && undriven.length === 0, undriven);
+  for (const row of rows) {
+    const d = DRIVERS[row];
+    if (!d) continue;
+    const path = {
+      pids: PIDS,
+      /* the wake as the room makes it: the first shop request rebuilds the
+         General Store's and the Auction House's books, which finish a
+         crossing or a sale a restart cut (market-settle, store-onewrite) */
+      wakeOpts: { async beforeSweeps(r2) { await r2._mktEnsureIndex(); await r2._stEnsureIndex(); await settleIo(); } },
+      async before(r) { const ctx = (await d.before(r)) || {}; await settleIo(); ctx.start = count(r, r.state); ctx.room = r; return ctx; },
+      act: (r, ctx) => d.act(r, ctx),
+    };
+    const m = await measure(seed, path);
+    const ran = d.moved(m.ctx.room);
+    const res0 = m;
+    const res = await everyRestart(seed, path, (st, k, w) => {
+      const end = count(w.room, w.room.state);
+      const u = unexplained(w.ctx.start, end);
+      const goods = JSON.stringify(Object.fromEntries(Object.entries(u.goods).sort()));
+      const ground = d.ground && k === res0.batches ? JSON.stringify(d.ground) : '{}';
+      if (u.gold || goods !== ground || end.dup.length) return { gold: u.gold, goods: u.goods, dup: end.dup.slice(0, 3) };
+      return null;
+    });
+    check(`7. ${row} (${VALUE_PAUSE[row].roads.join(', ') || 'a weapon into the window'}): it moved, and a restart before each of its ${res.batches} write(s) or after the last leaves nothing unexplained` + (d.ground ? ' (but the pile on the ground, lost by design: ' + JSON.stringify(d.ground) + ')' : ''),
+      ran && res.batches >= 1 && res.wrong.length === 0, { ran, batches: res.batches, wrong: res.wrong.slice(0, 4) });
+  }
 }
 
 console.log(failures === 0 ? '\nALL PASS' : '\n' + failures + ' FAILURE(S)');
