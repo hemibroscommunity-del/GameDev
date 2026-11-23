@@ -1,32 +1,34 @@
 card: RR
-branch: claude/plan-rr-11-rejoinloop (one PR a branch, claude/plan-rr-*)
-prs: #2251, #2256, #2258, #2260, #2265, #2267 merged; #2264, #2269, #2270 ready; #2273 (6309) draft; 6310 on its branch
-state: stalled
+branch: claude/plan-rr-11-rejoinloop (finished by card LF, 2026-11-23)
+prs: merged #2251 #2256 #2258 #2260 #2264 #2265 #2267 #2269 #2270; ready #2273 (6309, DEPLOYS), #2277 (6310)
+state: ready
 
 ## Done
 - merged: #2251 (6300) census; #2256 mayordoor, #2258 firststeps, #2260
-  recoverpay (the tests'); #2265 usage-meter date (DEPLOYS); #2267 heap 40.0.
-- ready: #2264 (6304) deskkeys (8f open: desklunge family); #2269 (6307)
-  the slow checks; #2270 (6308) cuelevels jumpLand 0.33.
+  recoverpay (the tests'); #2264 (6304) deskkeys; #2265 usage-meter date
+  (DEPLOYS); #2267 heap 40.0; #2269 (6307) the slow checks; #2270 (6308)
+  cuelevels jumpLand 0.33.
 - #2273 (6309) the rejoin loop: a gap the socket's pings carried is not
   rejoined (src/game/thawCarried.js, thaw-carried.test DEPLOYS);
-  `?thawjudge=0` takes main's exact path. Head 812ab66 pushed UNPROVEN:
-  comeback x2 and precheck not yet run on it (a73c060 was proven).
-- 6310 quietphone (claude/plan-rr-10-quietphone, no PR): step 4 holds the
-  diet path's promise; `?diet=0` pass holds 15/s; the 80% ratio a named
-  skip where near < 20/s. 4 of 5 green (run 1 before the skip: 1 red).
+  `?thawjudge=0` takes main's exact path, skipping the judge. 5b asserted a
+  counter that path cannot move (812ab668 pushed unproven; split run on
+  988dddff alone: 9 of 10): now it asserts a new socket, a whole state_sync
+  again, and the judge's counters untouched. mp-comeback 12/12 twice, this
+  box, main merged (card LF, 2026-11-23).
+- #2277 (6310) quietphone: step 4 holds the diet path's promise; a `?diet=0`
+  pass holds 15/s; the 80% ratio a named skip where near < 20/s. 15/15, 1
+  skip, this box, 2026-11-23.
 
 ## Next
-- On Monday: comeback x2 + precheck on #2273's head, then to the
-  gatekeeper; quietphone's 5th run, precheck, PR; then 8f/desklunge,
-  headframes, hairstencil (12-PR limit: one left).
+- Nothing of RR's: the gatekeeper's merges (#2273 deploys: the next sitting).
 
 ## Found
-- quietphone: off the path this box sends 14.5-17.2 near (its frames).
-- deskkeys 8f: a double click's lock can land on another snowman.
-- guideArrow's CLOSE lesson came up once BEFORE the weapon arrow.
-- This session is at lineage depth 8 of 8: it cannot start helpers.
+- deskkeys 8f (a sword double click's lock lands on another snowman) and
+  desklunge: wait for the owner's verdict on the controls trial (card CT).
+- headframes, hairstencil (3 parts), geartab, brocard: a later card, after
+  the owner's choice of a full sweep (finish.md part 9).
+- guideArrow's CLOSE lesson came up once BEFORE the weapon arrow on a phone
+  (src/ui/guideArrow.js): a game question for the owner.
 
 ## Needs
-- Stopped by the planning session (2026-11-19 ~04:50 UTC): the owner's
-  account at 99% of its usage until Monday. Idle until messaged.
+- Nothing.

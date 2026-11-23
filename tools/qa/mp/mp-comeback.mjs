@@ -54,6 +54,8 @@ const STALL = () => {
     }
     const ws = protos ? new Real(url, protos) : new Real(url);
     window.__qaSockets.push(ws);
+    /* v2.3.6309: a WHOLE world arriving is a state_sync frame (step 5b counts them after a rejoin) */
+    ws.addEventListener('message', (ev) => { if (typeof ev.data === 'string' && ev.data.startsWith('{"type":"state_sync"')) window.__qaSyncs = (window.__qaSyncs || 0) + 1; });
     return ws;
   }
   Q.prototype = Real.prototype;
@@ -203,13 +205,27 @@ export async function run({ browser, wsPort, webPort, rec }) {
         && after5.sockets === before5.sockets && after5.st === 'connected', { before5, thaw, judged, after5, kinds5 });
     /* 5b. the off-ramp: the old way, a rejoin for a whole world */
     await P.page.evaluate(() => history.replaceState(null, '', location.pathname + location.search + (location.search ? '&' : '?') + 'thawjudge=0'));
-    const before5b = await P.page.evaluate(() => ({ sockets: window.__qaSockets.length, rejoined: window.__btThaw ? window.__btThaw().rejoined : 0 }));
+    /* v2.3.6309 (card LF; the planning session's word, 2026-11-23): 812ab668 made the off path skip the judge and was
+       pushed unproven, so `thaw.rejoined` (the gaps the JUDGE handed on) can no longer rise here: 5b asserted a counter
+       that path cannot move (the split run on 988dddff alone: 9 of 10, the same 5b).  What the off switch is FOR is
+       asserted instead: (a) a new socket opened and the page is connected, no hold; (b) the WHOLE world came again (a
+       state_sync frame counted on the new socket; no `__bt*` handle shows a rebuilt world, so the test's own socket
+       wrapper counts them); (c) the judge did not run: its counters and `last` are exactly as step 5 left them. */
+    const before5b = await P.page.evaluate(() => { const t = window.__btThaw ? window.__btThaw() : null;
+      return { sockets: window.__qaSockets.length, syncs: window.__qaSyncs || 0, carried: t && t.carried, rejoined: t && t.rejoined, lastAt: t && t.last && t.last.at, lastGap: t && t.last && t.last.gap }; });
     await P.page.evaluate(() => { const t = Date.now(); while (Date.now() - t < 6500) { /* the page frozen again */ } });
-    const after5b = await H.waitFor(P, () => ({ sockets: window.__qaSockets.length, st: window._gameState.current._realtimeStatus, hold: !!window._gameState.current._netHold,
-      thaw: window.__btThaw ? window.__btThaw() : null }), (v) => v.sockets > before5b.sockets && v.st === 'connected' && !v.hold,
+    const after5b = await H.waitFor(P, () => { const t = window.__btThaw ? window.__btThaw() : null;
+      return { sockets: window.__qaSockets.length, syncs: window.__qaSyncs || 0, st: window._gameState.current._realtimeStatus, hold: !!window._gameState.current._netHold,
+        carried: t && t.carried, rejoined: t && t.rejoined, lastAt: t && t.last && t.last.at, lastGap: t && t.last && t.last.gap, pending: !!(t && t.pending) }; },
+      (v) => v.sockets > before5b.sockets && v.st === 'connected' && !v.hold && v.syncs > before5b.syncs,
       { timeout: 30000, label: 'rejoined after the thaw (?thawjudge=0)' }).catch(() => null);
-    rec.ok(`5b. ...with ?thawjudge=0 the same hold rejoins for a whole world, as before (sockets ${before5b.sockets} -> ${after5b && after5b.sockets})`,
-      !!after5b && after5b.thaw && after5b.thaw.rejoined > before5b.rejoined, { before5b, after5b });
+    rec.ok(`5b. ...with ?thawjudge=0 the same hold rejoins for a whole world, as before: a new socket (${before5b.sockets} -> ${after5b && after5b.sockets}), connected, no hold`,
+      !!after5b && after5b.sockets > before5b.sockets && after5b.st === 'connected' && !after5b.hold, { before5b, after5b });
+    rec.ok(`5b. ...the whole world came again: a state_sync on the new socket (${before5b.syncs} -> ${after5b && after5b.syncs})`,
+      !!after5b && after5b.syncs > before5b.syncs, { before5b, after5b });
+    rec.ok('5b. ...and the judge did not run: its counters and last gap are exactly as step 5 left them',
+      !!after5b && !after5b.pending && after5b.carried === before5b.carried && after5b.rejoined === before5b.rejoined
+        && after5b.lastAt === before5b.lastAt && after5b.lastGap === before5b.lastGap && !!judged && after5b.carried === judged.carried && after5b.rejoined === judged.rejoined && after5b.lastAt === judged.last.at, { judged, before5b, after5b });
     await P.page.evaluate(() => history.replaceState(null, '', location.pathname + location.search.replace(/([?&])thawjudge=0(&|$)/, (m, a, b) => (b ? a : '')).replace(/[?&]$/, '')));
 
     /* ── 6. a connect that never finishes ── */
