@@ -27,6 +27,8 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { SEND, sendOutside } from '../src/send.js';
 import { DAYBOOK, bookAdd, bookPut, bookRead } from '../src/daybook.js';
 import { makeStorage, openRoom, join, settle } from './testroom.mjs';
+import { SRC_DIR, srcFiles } from './src-walk.mjs';
+import { doorCalls, where } from '../../tools/guards/lib/writesOf.mjs';   /* v2.3.6441: the census reads the syntax tree (card DG PR 2) */
 
 let failures = 0;
 function check(name, cond, detail) {
@@ -195,19 +197,23 @@ function body(src, name) {
    v2.3.5671 (the gatekeeper, sitting 33, after #2013 and #2014 merged on main 35aa7f7b): strict, no line --
    any raw socket write outside send.js fails (`this._send`, `room._send`, or `sendOutside` before a room). */
 {
-  const found = [];
-  const walk = (dir) => {
-    for (const e of readdirSync(new URL(dir, import.meta.url), { withFileTypes: true })) {
-      if (e.isDirectory()) { walk(dir + e.name + '/'); continue; }
-      if (!e.name.endsWith('.js') || (dir === '../src/' && e.name === 'send.js')) continue;
-      readFileSync(new URL(dir + e.name, import.meta.url), 'utf8').split('\n').forEach((l, i) => {
-        if (/^\s*(\*|\/\/|\/\*)/.test(l)) return;
-        if (/\.send\(/.test(l)) found.push(dir.slice(7) + e.name + ':' + (i + 1));
-      });
-    }
-  };
-  walk('../src/');
+  /* v2.3.6441 (card DG PR 2): read off the syntax tree, any receiver and any
+     position: `ws.send(...)`, `ws.send.bind(ws)` and a name made of it
+     (plants2 SEND-1), `ws['send'](...)`, `.call`, `.apply`, handed on as a
+     value.  Only asking whether it is there (`if (ws.send)`) is no write. */
+  const raw = Object.create(null);
+  for (const f of srcFiles()) raw[f] = readFileSync(new URL(f, SRC_DIR), 'utf8');
+  const { calls, odd } = doorCalls(raw, { skip: ['send.js'], names: ['send'], membersOnly: true });
+  /* a field of the same name put, not a socket's: by file and function */
+  const NOT_A_SOCKET = { 'daybook.js bookRead': 'the book\'s part named `send` (`src.parts.send = sends`): the day\'s counts, not a socket' };
+  const seen = new Set();
+  const found = [...calls, ...odd].filter((r) => { const k = r.file + ' ' + r.fn; if (r.how === 'put' && NOT_A_SOCKET[k]) { seen.add(k); return false; } return true; })
+    .map((r) => where(r) + (r.how === 'call' ? '' : ' (' + r.how + ')'));
+  check('8: ...every NOT_A_SOCKET row is still there (a stale one is deleted)', seen.size === Object.keys(NOT_A_SOCKET).length, Object.keys(NOT_A_SOCKET).filter((k) => !seen.has(k)));
   check(`8: no raw socket write outside send.js (strict; ${found.length} found): write through _send`, found.length === 0, found.slice(0, 40));
+  const probe = (t) => { const r = doorCalls({ 'x.js': 'function f(ws, s) {\n' + t + '\n}' }, { names: ['send'], membersOnly: true }); return r.calls.length + r.odd.length; };
+  check('8: ...the census finds a write however it is spelled (a bind, a name made of it, a string key, .call)',
+    probe('ws.send(s);') === 1 && probe('const out = ws.send.bind(ws); out(s);') === 1 && probe("ws['send'](s);") === 1 && probe('ws.send.call(ws, s);') === 1 && probe('const { send } = ws;') === 1 && probe('if (ws.send) x();') === 0 && probe('const send = (t) => t; send(s);') === 0);
 }
 
 await settle();

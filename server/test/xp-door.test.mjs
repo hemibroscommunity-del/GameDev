@@ -29,6 +29,7 @@ import { readFileSync } from 'node:fs';
 import { SRC_DIR, srcFiles } from './src-walk.mjs';
 import { XP_ROADS, XP_READS, XP_TRACKS, XP_VERBS, XP_FIELDS, xpGive, xpLevelUp, xpSet, xpMake } from '../src/xp.js';
 import { makeStorage, openRoom, join, fakeWs, settle, playTour, roomGuard } from './testroom.mjs';
+import { writesOf, doorWrites, doorCalls, where } from '../../tools/guards/lib/writesOf.mjs';   /* v2.3.6441: the scans read the syntax tree (card DG PR 2) */
 
 let failures = 0, passes = 0;
 function check(name, cond, detail) {
@@ -88,112 +89,98 @@ const files = srcFiles();
 const code = Object.create(null);
 for (const f of files) code[f] = strip(readFileSync(new URL(f, SRC_DIR), 'utf8'));
 const lineOf = (s, i) => s.slice(0, i).split('\n').length;
-/* a write of `xp` or `level` by any name, a track made whole, a map of tracks made whole */
-const WRITES = [
-  /(?:\.(?:xp|level)|\[\s*['"](?:xp|level)['"]\s*\])\s*(?:[-+*/%]?=(?![=>])|\+\+|--)/g,
-  /(?:\+\+|--)\s*[\w$.]+\.(?:xp|level)\b/g,
-  /=(?![=>])\s*\{[^{}\n]*\blevel\b\s*[:,}][^{}\n]*\bxp\b[^{}\n]*\}/g,
-  /=(?![=>])\s*\{[^{}\n]*\bxp\b\s*[:,}][^{}\n]*\blevel\b[^{}\n]*\}/g,
-  /\.(?:lifeSkills|weaponSkills|defenseSkill|sk)\s*=(?![=>])/g,
-];
-function writesIn(s) {
-  const lines = new Map();
-  for (const re of WRITES) for (const m of s.matchAll(re)) {
-    const ln = lineOf(s, m.index);
-    if (lines.has(ln)) continue;
-    const ls = s.lastIndexOf('\n', m.index) + 1, le = s.indexOf('\n', m.index);
-    lines.set(ln, s.slice(ls, le < 0 ? s.length : le).trim());
-  }
-  return lines;
-}
-/* Not the door's, each with why (a line of its file matching `re`) */
-const L = (file, re, kind, why) => ({ file, re, kind, why });
+/* v2.3.6441 (card DG PR 2): the scan reads the syntax tree
+   (tools/guards/lib/writesOf.mjs): a write of `xp` or `level` by any name and
+   any spelling (`||=`, `??=`, `Object.assign`, a destructured track, a track
+   rebuilt and put back `{ level, xp }`), a map of tracks made whole.  Each
+   place that is not the door's is LISTED by its file, its function and its
+   field, with how many writes it holds: the old '*' row (a new, empty map of
+   life skills anywhere) names its files now (plants4 XP-5). */
+const raw = Object.create(null);
+for (const f of files) raw[f] = readFileSync(new URL(f, SRC_DIR), 'utf8');
+const XP_SCAN = ['xp', 'level', 'lifeSkills', 'weaponSkills', 'defenseSkill', 'sk'];
+const L = (file, fn, field, n, kind, why) => ({ file, fn, field, n, kind, why });
+const NEW_LS = 'a new, empty map of life skills for a player who has none (holds no experience)';
 const LISTED = [
   /* SHAPERS: a stored record, or a fresh copy, shaped before it is a live player's */
-  L('migrations.js', /ls\[k\] = \{ level: 1, xp: 0 \}/, 'shaper', 'the migrations: a stored record\'s life skills made whole'),
-  L('migrations.js', /sk\.level = 1/, 'shaper', 'the migrations: a stored life skill with no level, made 1'),
-  L('migrations.js', /blob\.level = next/, 'shaper', 'the migrations: a stored character\'s level, re-dealt'),
-  L('prog3.js', /sk\[cat\] = \{ level, xp:/, 'shaper', 'prog3FromLegacy: a build made from the old grid\'s (migration v10, the join\'s heal)'),
-  L('prog3.js', /out\.sk\[cat\]\.(?:level|xp) = /, 'shaper', '_sanitizeProg3: the join\'s clean, into a fresh block'),
-  L('grids.js', /out\[cat\] = \{ level: floor, xp:/, 'shaper', '_sanitizeWeaponSkills: a sanitized copy'),
-  L('power.js', /p3\.sk\[cat\] = \{ level: C\.sk\[cat\], xp: 0 \}/, 'shaper', 'the power index\'s control: a build made up in memory, no player\'s'),
+  L('migrations.js', 'freshLifeSkills', 'level', 1, 'shaper', 'the migrations: a stored record\'s life skills made whole'),
+  L('migrations.js', 'freshLifeSkills', 'xp', 1, 'shaper', 'the same'),
+  L('migrations.js', 'healLifeSkillLevels', 'level', 2, 'shaper', 'the migrations: a stored life skill with no level, made 1'),
+  L('migrations.js', 'healLifeSkillLevels', 'xp', 1, 'shaper', 'the same'),
+  L('migrations.js', 'run', 'level', 1, 'shaper', 'the migrations: a stored character\'s level, re-dealt'),
+  L('prog3.js', 'prog3FromLegacy', 'level', 1, 'shaper', 'prog3FromLegacy: a build made from the old grid\'s (migration v10, the join\'s heal)'),
+  L('prog3.js', 'prog3FromLegacy', 'xp', 1, 'shaper', 'the same'),
+  L('prog3.js', '_sanitizeProg3', 'level', 1, 'shaper', '_sanitizeProg3: the join\'s clean, into a fresh block'),
+  L('prog3.js', '_sanitizeProg3', 'xp', 1, 'shaper', 'the same'),
+  L('grids.js', '_sanitizeWeaponSkills', 'level', 2, 'shaper', '_sanitizeWeaponSkills: a sanitized copy'),
+  L('grids.js', '_sanitizeWeaponSkills', 'xp', 2, 'shaper', 'the same'),
+  L('power.js', 'controlBuild', 'level', 1, 'shaper', 'the power index\'s control: a build made up in memory, no player\'s'),
+  L('power.js', 'controlBuild', 'xp', 1, 'shaper', 'the same'),
   /* WHOLE: a map of tracks made whole (empty, or loaded) */
-  L('*', /\.lifeSkills = \{\}/, 'whole', 'a new, empty map of life skills for a player who has none (holds no experience)'),
-  L('prog3.js', /p3\.sk = \{\}/, 'whole', 'a new, empty map of combat skills (holds no experience)'),
-  L('join.js', /\.lifeSkills = stored\.lifeSkills \|\| \{\}/, 'whole', 'the join loads the stored character\'s life skills'),
-  L('join.js', /\.lifeSkills = \(msg\.data && msg\.data\.rpgLifeSkills/, 'whole', 'a first join\'s claimed life skills (held by trapBootstrapGuard and the gems\' adopt)'),
-  L('join.js', /\.weaponSkills = /, 'whole', 'the old grid\'s weapon tracks, loaded or a phone\'s copy sanitized (the Wheel\'s characters read prog3)'),
-  L('join.js', /\.defenseSkill = /, 'whole', 'the old grid\'s defence track, the same'),
-  L('grids.js', /ps\.weaponSkills = this\._sanitizeWeaponSkills/, 'whole', 'the old grid\'s weapon tracks from a phone\'s report, sanitized, never lower'),
-  L('grids.js', /ps\.defenseSkill = this\._sanitizeDefenseSkill/, 'whole', 'the old grid\'s defence track, the same'),
+  L('amulet.js', '_gemsAdoptOnJoin', 'lifeSkills', 1, 'whole', NEW_LS),
+  L('devtools.js', '_devLifeSkill', 'lifeSkills', 1, 'whole', NEW_LS),
+  L('devtools.js', '_devTrapping', 'lifeSkills', 1, 'whole', NEW_LS),
+  L('gathering.js', '_addLifeSkillXp', 'lifeSkills', 1, 'whole', NEW_LS),
+  L('hardenedwood.js', '_handleMakeHardenedWood', 'lifeSkills', 1, 'whole', NEW_LS),
+  L('trapping.js', '_trapSkillReady', 'lifeSkills', 1, 'whole', NEW_LS),
+  L('weapongem.js', '_gemsUnpaidOf', 'lifeSkills', 1, 'whole', NEW_LS),
+  L('prog3.js', 'prog3RespecPoints', 'sk', 1, 'whole', 'a new, empty map of combat skills (holds no experience)'),
+  L('join.js', '_handleJoin', 'lifeSkills', 2, 'whole', 'the join loads the stored character\'s life skills, or a first join\'s claimed ones (held by trapBootstrapGuard and the gems\' adopt)'),
+  L('join.js', '_handleJoin', 'weaponSkills', 2, 'whole', 'the old grid\'s weapon tracks, loaded or a phone\'s copy sanitized (the Wheel\'s characters read prog3)'),
+  L('join.js', '_handleJoin', 'defenseSkill', 2, 'whole', 'the old grid\'s defence track, the same'),
+  L('grids.js', '_handleStatsUpdate', 'weaponSkills', 1, 'whole', 'the old grid\'s weapon tracks from a phone\'s report, sanitized, never lower'),
+  L('grids.js', '_handleStatsUpdate', 'defenseSkill', 1, 'whole', 'the old grid\'s defence track, the same'),
   /* NOT A CHARACTER'S EXPERIENCE */
-  L('cooking.js', /ps\._buffs\.xp = endsAt/, 'notxp', 'a meal\'s XP buff: its timer'),
-  L('devtools.js', /m\.xp = /, 'notxp', 'a monster\'s XP reward (the owner\'s spawn lever)'),
-  L('devtools.js', /out\.level = L/, 'notxp', 'the lever\'s reply'),
-  L('dungeon.js', /mn\.xp = /, 'notxp', 'a summoned monster\'s XP reward'),
-  L('farm.js', /did\.xp = xp/, 'notxp', 'a harvest\'s report'),
-  L('party.js', /m\.level = ps\.level/, 'notxp', 'a party roster\'s copy of a member\'s level'),
-  L('party.js', /meta\.level = level/, 'notxp', 'a party roster\'s copy, the same'),
-  L('petbook.js', /pet\.xp = g\.xp/, 'notxp', 'a pet\'s own experience: the pet\'s, in its own record (pets:), out of the door'),
-  L('pvpextras.js', /h\.level = this\._prog3OpponentLevel/, 'notxp', 'a hit\'s record of the opponent\'s level'),
+  L('cooking.js', '_applyDish', 'xp', 1, 'notxp', 'a meal\'s XP buff: its timer (`ps._buffs.xp`)'),
+  L('devtools.js', '_devTrapping', 'xp', 2, 'notxp', 'a monster\'s XP reward (the owner\'s spawn lever, `m.xp`)'),
+  L('devtools.js', '_devTrapping', 'level', 1, 'notxp', 'the lever\'s reply (`out.level`)'),
+  L('dungeon.js', '_dungeonBossSummon', 'xp', 1, 'notxp', 'a summoned monster\'s XP reward (`mn.xp`)'),
+  L('farm.js', '_handleFarmAct', 'xp', 1, 'notxp', 'a harvest\'s report (`did.xp`)'),
+  L('gathering.js', '_planCookHits', 'level', 1, 'notxp', 'a cook\'s planned hits: the skill level it was planned at (`ps._cookHits`)'),
+  L('clanparty.js', '_clanToParty', 'level', 1, 'notxp', 'a party roster\'s copy of a member\'s level'),
+  L('party.js', '_partyStore', 'level', 2, 'notxp', 'a party roster\'s copy of a member\'s level'),
+  L('party.js', '_partyLoad', 'level', 1, 'notxp', 'a party roster\'s copy, the same'),
+  L('party.js', '_handlePartyAccept', 'level', 2, 'notxp', 'a party roster\'s copy, the same'),
+  L('party.js', '_partyOnRejoin', 'level', 1, 'notxp', 'a party roster\'s copy, the same'),
+  L('petbook.js', '_petbookAddXp', 'xp', 1, 'notxp', 'a pet\'s own experience: the pet\'s, in its own record (pets:), out of the door'),
+  L('pvpextras.js', '_pvpStatusHolder', 'level', 1, 'notxp', 'a weapon status holder\'s level (`ps._wst`)'),
+  L('pvpextras.js', '_pvpApplyWeaponStatus', 'level', 1, 'notxp', 'a hit\'s record of the opponent\'s level'),
+  L('pvpextras.js', '_pvpCollision', 'level', 1, 'notxp', 'a hit\'s record of the opponent\'s level'),
+  L('join.js', '_sanitizeJoinData', 'sk', 2, 'notxp', 'a look key `sk` (the skin) over the look\'s list, not the build\'s skills'),
+  L('join.js', '_loadOrCreateCharacter', 'sk', 1, 'notxp', 'the same look key'),
+  L('join.js', '_handleJoin', 'sk', 1, 'notxp', 'the same look key'),
+  L('store.js', '_stBustLook', 'sk', 2, 'notxp', 'the same look key, a bust\'s look'),
 ];
 {
-  const found = [];
-  const seen = new Set();
-  for (const f of files) {
-    if (f === 'xp.js') continue;
-    for (const [ln, line] of writesIn(code[f])) {
-      const hit = LISTED.find((e) => (e.file === '*' || e.file === f) && e.re.test(line));
-      if (hit) { seen.add(hit); continue; }
-      found.push(f + ':' + ln + ' ' + line.slice(0, 110));
-    }
-  }
-  check('2. no experience or level is written in server/src but through the door (xp.js) or a place listed with why', found.length === 0, found);
-  check('2. every listed place still exists (a stale one is deleted)', seen.size === LISTED.length, LISTED.filter((e) => !seen.has(e)).map((e) => e.file + ' ' + e.re));
-  const plant = (t) => writesIn(strip(t)).size;
+  const r = doorWrites(raw, { skip: ['xp.js'], fields: XP_SCAN, listed: LISTED });
+  check('2. no experience or level is written in server/src but through the door (xp.js) or a place listed with why', r.found.length === 0, r.found.map(where));
+  check('2. every listed place still holds its count of writes (a stale one is deleted, a second spelling is one too many)', r.stale.length === 0, r.stale);
+  const plant = (t) => writesOf('function f(s, sk, ps, track, p3, cat, n, need, claimed) {\n' + t + '\n}', { fields: XP_SCAN }).length;
   const mustFind = [
     's.xp = (s.xp || 0) + n;', 'sk.xp += n;', 'sk.level++;', '++sk.level;', 'ps.level = 5;', 'ps.level += 1;', 'ps["xp"] = 0;',
     'ps.lifeSkills.mining = { level: 1, xp: 0 };', 'p3.sk[cat] = { xp: 0, level: 2 };', 'ps.lifeSkills = claimed;', 'track.xp -= need;',
+    'ps.level ||= 1;', 'Object.assign(ps, { xp: 0 });', 'delete ps.xp;',
   ];
-  check('2. ...the scanner finds each shape of a second writer (' + mustFind.length + ' planted)', mustFind.every((t) => plant(t) === 1), mustFind.filter((t) => plant(t) !== 1));
-  check('2. ...and reads a read as no write', plant('if (s.xp >= need) return s.level;\nconst lv = ps.level || 1;\nreturn { level: lv };\nx = a.level === b.level;') === 0);
+  check('2. ...the scanner finds each shape of a second writer (' + mustFind.length + ' planted)', mustFind.every((t) => plant(t) >= 1), mustFind.filter((t) => plant(t) < 1));
+  check('2. ...and reads a read as no write', plant('if (s.xp >= need) return s.level;\nconst lv = ps.level || 1;\nreturn { level: lv };\nconst x = s.level === sk.level;') === 0);
 }
 
 /* ══════════ 3. ONE ROW, ONE PLACE ══════════ */
 const DOOR = { xpGive: 'give', xpLevelUp: 'levelUp', xpSet: 'set', xpMake: 'make' };
-function callsIn(s, name) {
-  const out = [];
-  for (const m of s.matchAll(new RegExp('(?<![\\w$.])' + name + '\\(', 'g'))) {
-    let i = m.index + m[0].length, depth = 1, q = null;
-    for (; i < s.length && depth > 0; i++) {
-      const ch = s[i];
-      if (q) { if (ch === '\\') i++; else if (ch === q) q = null; continue; }
-      if (ch === '\'' || ch === '"' || ch === '`') q = ch;
-      else if (ch === '(') depth++;
-      else if (ch === ')') depth--;
-    }
-    const args = s.slice(m.index + m[0].length, i - 1);
-    const road = /,\s*'([A-Za-z0-9_]+)'\s*$/.exec(args);
-    out.push({ road: road ? road[1] : null, line: lineOf(s, m.index) });
-  }
-  return out;
-}
 {
+  /* v2.3.6441: by any receiver, a bind or a name made of it no plain call */
+  const { calls, odd } = doorCalls(raw, { skip: ['xp.js'], names: Object.keys(DOOR) });
+  check('3. the door is called plainly, by name (no bind, .call, apply or a name made of it)', odd.length === 0, odd.map((o) => where(o) + ' (' + o.how + ')'));
   const byRoad = Object.create(null);
   const bad = [];
-  for (const f of files) {
-    if (f === 'xp.js') continue;
-    for (const [name, verb] of Object.entries(DOOR)) {
-      for (const c of callsIn(code[f], name)) {
-        const where = f + ':' + c.line;
-        if (!c.road) { bad.push(where + ' ' + name + ' names no road as a plain string'); continue; }
-        const row = Object.prototype.hasOwnProperty.call(XP_ROADS, c.road) ? XP_ROADS[c.road] : null;
-        if (!row) { bad.push(where + ' names "' + c.road + '", which XP_ROADS has not got'); continue; }
-        if (row.verb !== verb) bad.push(where + ' ' + c.road + ' is a ' + row.verb + ', called by ' + name);
-        if (row.at.split(' ')[0] !== f) bad.push(where + ' ' + c.road + '\'s row says it is in ' + row.at.split(' ')[0]);
-        (byRoad[c.road] = byRoad[c.road] || []).push(where);
-      }
-    }
+  for (const c of calls) {
+    const w = c.file + ':' + c.line;
+    if (!c.road || !/^[A-Za-z0-9_]+$/.test(c.road)) { bad.push(w + ' ' + c.name + ' names no road as a plain string'); continue; }
+    const row = Object.prototype.hasOwnProperty.call(XP_ROADS, c.road) ? XP_ROADS[c.road] : null;
+    if (!row) { bad.push(w + ' names "' + c.road + '", which XP_ROADS has not got'); continue; }
+    if (row.verb !== DOOR[c.name]) bad.push(w + ' ' + c.road + ' is a ' + row.verb + ', called by ' + c.name);
+    if (row.at.split(' ')[0] !== c.file) bad.push(w + ' ' + c.road + '\'s row says it is in ' + row.at.split(' ')[0]);
+    (byRoad[c.road] = byRoad[c.road] || []).push(w);
   }
   check('3. every call names a road the table has, with its verb, from its row\'s file', bad.length === 0, bad);
   check('3. every road has a caller (a row nobody calls is deleted with its feature)', Object.keys(XP_ROADS).every((r) => byRoad[r]), Object.keys(XP_ROADS).filter((r) => !byRoad[r]));

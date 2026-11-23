@@ -62,6 +62,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { filesOf } from './lib/filesOf.mjs';
+import { visit } from './lib/writesOf.mjs';   /* v2.3.6441: the census reads the syntax tree (card DG PR 2) */
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
 const read = (f) => readFileSync(join(ROOT, f), 'utf8');
@@ -248,13 +249,70 @@ const OWNER_KEY_FILE = 'src/ui/panels/DevPanel.jsx';
 
 /* ── 7. the census: sends and fetches outside the door ── */
 const LINE = { sends: 0, fetches: 0 };   /* v2.3.5187: 203 less PR 7.1's 57; v2.3.5188: less PR 7.2's 41; v2.3.5189: less PR 7.3's 17; v2.3.5190: less PR 7.4's 44; v2.3.5191: less PR 7.5's 22 sends and 24 fetches (the fetch left: BroTown's, 7.6; LoginSpinWindow.jsx waits for card T's #1863); v2.3.5192: less PR 7.6's 18 sends (BroTown.jsx's 17, the ride key's) and 1 fetch; the 4 left: nmlAsk.js and LoginSpinWindow.jsx, after card T's #1863; v2.3.5880: less nmlAsk.js's 3 (card K3 PR 1); the 1 left: LoginSpinWindow.jsx's, K3 PR 2; v2.3.5881: less LoginSpinWindow.jsx's 1 (card K3 PR 2): none left */
+/* v2.3.6441 (card DG PR 2): read off the syntax tree, never a pattern of
+   text: a channel's send by any spelling (`S.channel?.send(...)`, `const ch =
+   S.channel; ch.send(m)`, a bind of it: plants2 ACT-1, ACT-2), and a fetch
+   whose address names a route however it was built (a url made a line above,
+   `fetch(u, ...)`: plants2 ACT-3). */
+const isChannel = (recv, path) => {
+  if (!recv) return false;
+  if (/(^|\.|\?\.)channel\??$/.test(recv)) return true;
+  if (/^[A-Za-z_$][\w$]*$/.test(recv)) {
+    const b = path && path.scope.getBinding(recv);
+    const init = b && b.path.isVariableDeclarator() && b.path.node.init;
+    return !!init && /(^|\.|\?\.)channel\??$/.test(recv && init.start != null ? SRC_NOW.slice(init.start, init.end).trim() : '');
+  }
+  return false;
+};
+let SRC_NOW = '';
+function treeSends(s) {
+  const out = [];
+  SRC_NOW = s;
+  visit(s, { 'MemberExpression|OptionalMemberExpression'(path) {
+    const m = path.node;
+    const k = m.computed ? (m.property.type === 'StringLiteral' ? m.property.value : null) : m.property.name;
+    if (k !== 'send') return;
+    const recv = s.slice(m.object.start, m.object.end);
+    if (!isChannel(recv, path)) return;
+    /* a send: called, bound (`.bind`, `.call`, `.apply`), or a name made of it; `typeof S.channel.send` asks, it sends nothing */
+    const p = path.parentPath;
+    const called = (p.isCallExpression() || p.isOptionalCallExpression()) && p.node.callee === m;
+    const through = (p.isMemberExpression() || p.isOptionalMemberExpression()) && p.node.object === m && !p.node.computed && ['bind', 'call', 'apply'].includes(p.node.property.name);
+    const named = (p.isVariableDeclarator() && p.node.init === m) || (p.isAssignmentExpression() && p.node.right === m);
+    if (called || through || named) out.push(m.loc.start.line);
+  } });
+  return out;
+}
+function treeFetches(s) {
+  const out = [];
+  visit(s, { 'CallExpression|OptionalCallExpression'(path) {
+    const c = path.node.callee;
+    const name = c.type === 'Identifier' ? c.name : ((c.type === 'MemberExpression' || c.type === 'OptionalMemberExpression') && !c.computed ? c.property.name : null);
+    if (name !== 'fetch') return;   /* fetchWithTimeout is the owner key's way, held by 7b */
+    const a = path.node.arguments[0];
+    if (!a) return;
+    let text = s.slice(a.start, a.end);
+    if (a.type === 'Identifier') {
+      const b = path.scope.getBinding(a.name);
+      const init = b && b.path.isVariableDeclarator() && b.path.node.init;
+      if (init) text += ' ' + s.slice(init.start, init.end);
+    }
+    if (/\/api\//.test(text)) out.push({ line: path.node.loc.start.line, path: (/'(\/api\/[a-z_/]*)/.exec(text) || [])[1] || null });
+  } });
+  return out;
+}
 {
   let sends = 0; const byFile = new Map();
   for (const [f, s] of SRC) {
     if (f === 'src/game/actions.js') continue;
-    const n = (s.match(/channel\.send\(/g) || []).length;
+    const n = treeSends(s).length;
     if (n) { sends += n; byFile.set(f, n); }
   }
+  for (const [f, s] of SRC) for (const x of treeFetches(s)) if (!fetches.some((y) => y.f === f && y.line === x.line)) fetches.push({ f, ...x });
+  check('7: ...the census reads the tree: `S.channel?.send`, a channel held in a name, a url built a line above',
+    treeSends('function f(S, m) {\n S.channel?.send(m);\n const ch = S.channel; ch.send(m);\n this.channel.send(m);\n const g = S.channel.send.bind(S.channel);\n}').length === 4
+    && treeSends('function f(ws, m, S) { ws.send(m); const x = { send: 1 }; if (typeof S.channel.send !== "function") return; }').length === 0
+    && treeFetches("function f() { const u = (window.BT_API_BASE || '') + '/api/store/buy'; fetch(u, { method: 'POST' }); fetch('/img/a.png'); }").length === 1);
   const fx = fetches.filter((x) => !EXCEPT(x) && x.f !== 'src/game/actions.js').length;
   check(`7: sends outside the door (${sends}, in ${byFile.size} files) are at or under the line (${LINE.sends})`, sends <= LINE.sends, sends);
   check(`7: fetches of /api/ outside the door (${fx}) are at or under the line (${LINE.fetches})`, fx <= LINE.fetches, fx);
