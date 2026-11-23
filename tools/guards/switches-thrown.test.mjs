@@ -14,9 +14,33 @@
  *     T's status file with the card whose files it is in.  This guard fixes
  *     none.
  *
- * WHICH ROWS.  On every PR (cd server && npm test): only the rows born from
- * tag 5301 on (the switches added since the table), so its share stays under
- * about 30 s.  By hand:
+ * WHICH ROWS.  v2.3.6420 (card CK PR 1): THE WHOLE SET is the rows born
+ * from tag 5301 on (the switches added since the table: 89 rows, 2,418 suite
+ * runs, 894 s of a 979 s suite on 2026-11-23, every push paying it).  It runs
+ * once a sitting, in the gatekeeper's rehearsal (tools/dev/gatekeeper.mjs
+ * runs `--whole` as its own step; its result is on the list).  On a PR
+ * (cd server && npm test, and precheck) it throws, of the whole set:
+ *   - TOUCHED: each row the branch changed against `main` -- its line in
+ *     tools/guards/lib/switches.mjs, a file of its system (or of a system
+ *     whose row needs it: what suitesFor runs), a file that reads it
+ *     (the scanner's), or a suite it runs;
+ *   - THE FEW: a fixed few chosen by the commit (FEW_RUNS suite runs, a
+ *     window of the rows in name order starting where the commit's id
+ *     points), so every switch is still thrown over time, also where the
+ *     branch touched none;
+ *   - all of them where this machinery itself changed (MACHINERY).
+ * "Changed against `main`" (changedFiles below):
+ *   - on GitHub the checkout is one commit, the PR merged into main (or, on
+ *     main, the merge): its first parent IS main, fetched by its id at depth
+ *     1 (actions/checkout keeps the token for it), then git diff;
+ *   - on a session's box: the merge base with origin/main, the working tree
+ *     and new files with it;
+ *   - BT_THROWN_CHANGED=a,b (the plants, by hand) names the files;
+ *   - where none of these can tell: THE FEW only, and the line says so.
+ * By hand:
+ *   node tools/guards/switches-thrown.test.mjs --whole     the whole set
+ *                                                          (the rehearsal's)
+ *   ...and --list: the rows it would throw and why, no suite run
  *   node tools/guards/switches-thrown.test.mjs --all       every worker switch
  *   node tools/guards/switches-thrown.test.mjs --sample    in each system, one
  *                                                          switch of each risk
@@ -49,10 +73,10 @@
  */
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { SWITCHES } from './lib/switches.mjs';
-import { describe } from './lib/systems.mjs';
-import { ROOT } from './lib/switchScan.mjs';
+import { describe, mappedFiles, placeFiles } from './lib/systems.mjs';
+import { ROOT, scanWorker } from './lib/switchScan.mjs';
 
 /* the second configurations known to break (rule 3: a census, it only
    falls): flag -> ['suite.test.mjs: words of the failing check'] */
@@ -71,6 +95,7 @@ const PRELOAD = join(ROOT, 'tools/guards/lib/thrown.mjs');
 const SERVER = join(ROOT, 'server');
 const argv = process.argv.slice(2);
 const ALL = argv.includes('--all');
+const WHOLE = argv.includes('--whole');
 const SAMPLE = argv.includes('--sample');
 const oi = argv.indexOf('--only');
 const ONLY = oi >= 0 ? argv[oi + 1] : null;
@@ -96,7 +121,112 @@ function pick() {
     for (const r of worker) { const k = r.system + '|' + r.risk; if (!seen.has(k)) { seen.add(k); out.push(r); } }
     return out;
   }
-  return worker.filter((r) => typeof r.born === 'number' && r.born >= BORN_FROM);
+  const whole = worker.filter((r) => typeof r.born === 'number' && r.born >= BORN_FROM);
+  if (WHOLE) return whole;
+  return pickForPr(whole);
+}
+
+/* ── v2.3.6420 (card CK PR 1): on a PR, what the PR can break ── */
+
+/* this guard's own machinery: a change to it throws the whole set */
+const MACHINERY = Object.freeze([
+  'tools/guards/switches-thrown.test.mjs', 'tools/guards/lib/thrown.mjs',
+  'tools/guards/lib/thrown-hooks.mjs', 'tools/guards/lib/thrown-patch.mjs',
+]);
+/* the few, in suite runs: one row at least, then rows while they fit (a
+   world row is 76 runs, a wire row 21: about 25 s here at three at a time) */
+const FEW_RUNS = 60;
+const SWITCH_TABLE = 'tools/guards/lib/switches.mjs';
+
+const gitOut = (args, timeout = 60000) => {
+  const r = spawnSync('git', args, { cwd: ROOT, encoding: 'utf8', timeout, maxBuffer: 64 * 1024 * 1024 });
+  return r.status === 0 ? r.stdout : null;
+};
+const lines = (t) => (t || '').split('\n').map((l) => l.trim()).filter(Boolean);
+
+/* the files the branch changed against main, the base they were read
+   against, and how: { files: [...] | null, base, how } */
+function changedFiles() {
+  if (process.env.BT_THROWN_CHANGED !== undefined) {
+    return { files: lines(process.env.BT_THROWN_CHANGED.replace(/,/g, '\n')), base: null, how: 'BT_THROWN_CHANGED' };
+  }
+  if (process.env.GITHUB_ACTIONS === 'true') {
+    /* one commit checked out (depth 1): its parents are only names in it,
+       so main (the first) is fetched by its id */
+    const head = gitOut(['cat-file', '-p', 'HEAD']);
+    const parent = head && (/^parent ([0-9a-f]{40})$/m.exec(head) || [])[1];
+    if (!parent) return { files: null, base: null, how: 'GitHub: HEAD names no parent' };
+    if (gitOut(['cat-file', '-e', parent + '^{commit}']) === null) {
+      gitOut(['fetch', '--no-tags', '--quiet', '--depth=1', 'origin', parent], 120000);
+    }
+    const d = gitOut(['diff', '--name-only', parent, 'HEAD']);
+    return d === null ? { files: null, base: parent, how: 'GitHub: main (' + parent.slice(0, 10) + ') could not be fetched' }
+      : { files: lines(d), base: parent, how: 'GitHub: the merge against its first parent, main ' + parent.slice(0, 10) };
+  }
+  const main = gitOut(['rev-parse', '--verify', '--quiet', 'origin/main']);
+  if (!main) return { files: null, base: null, how: 'no origin/main here' };
+  const mb = gitOut(['merge-base', 'HEAD', 'origin/main']);
+  const base = (mb && mb.trim()) || main.trim();
+  const d = gitOut(['diff', '--name-only', base]);
+  const n = gitOut(['ls-files', '--others', '--exclude-standard']);
+  if (d === null) return { files: null, base, how: 'git diff against ' + base.slice(0, 10) + ' failed' };
+  return { files: [...new Set([...lines(d), ...lines(n)])].sort(), base, how: (mb ? 'the merge base with origin/main, ' : 'origin/main (no merge base in this shallow clone), ') + base.slice(0, 10) + ', and the working tree' };
+}
+
+/* the switch table's rows whose line the branch changed */
+function rowsChangedInTable(base) {
+  if (!base) return null;
+  const d = gitOut(['diff', '-U0', base, '--', SWITCH_TABLE]);
+  if (d === null) return null;
+  const out = new Set();
+  for (const l of d.split('\n')) {
+    if (!/^[+-](?![+-])/.test(l)) continue;
+    const m = /^\s*\{\s*name:\s*'([^']+)'/.exec(l.slice(1));
+    if (m) out.add(m[1]);
+  }
+  return out;
+}
+
+let PICKED = null;   /* what pickForPr chose, and why: for the line */
+function pickForPr(whole) {
+  const ch = changedFiles();
+  const sorted = whole.slice().sort((a, b) => a.name.localeCompare(b.name));
+  const touched = new Map();   /* name -> why */
+  if (ch.files) {
+    const changed = new Set(ch.files);
+    if (MACHINERY.some((f) => changed.has(f))) {
+      PICKED = { how: ch.how, changed: ch.files.length, touched: whole.length, few: 0, why: 'this guard\'s machinery changed: the whole set' };
+      return whole;
+    }
+    const bySystem = placeFiles(mappedFiles()).bySystem;
+    const readers = scanWorker().names;
+    const inTable = changed.has(SWITCH_TABLE) ? rowsChangedInTable(ch.base) : new Set();
+    for (const row of whole) {
+      const systemsOf = new Set([row.system]);
+      for (const r of SWITCHES) if (r.needs.includes(row.name)) systemsOf.add(r.system);
+      let why = null;
+      if (inTable === null) why = 'the switch table changed (its rows could not be told apart)';
+      else if (inTable.has(row.name)) why = 'its row';
+      if (!why) for (const sys of systemsOf) { const f = (bySystem[sys] || []).find((x) => changed.has(x)); if (f) { why = f + ' (system ' + sys + ')'; break; } }
+      if (!why) { const f = (readers.get(row.name) || []).map((x) => x.file).find((x) => changed.has(x)); if (f) why = f + ' (reads it)'; }
+      if (!why) { const s = suitesFor(row).find((x) => changed.has('server/test/' + x)); if (s) why = 'server/test/' + s + ' (a suite it runs)'; }
+      if (why) touched.set(row.name, why);
+    }
+  }
+  /* the few: from the commit's id, a window of the rows in name order */
+  const head = (gitOut(['rev-parse', 'HEAD']) || '0').trim();
+  const start = sorted.length ? parseInt(head.slice(0, 8), 16) % sorted.length : 0;
+  const few = [];
+  let runs = 0;
+  for (let k = 0; k < sorted.length; k++) {
+    const row = sorted[(start + k) % sorted.length];
+    const n = suitesFor(row).length;
+    if (few.length && runs + n > FEW_RUNS) break;
+    few.push(row.name); runs += n;
+  }
+  PICKED = { how: ch.how, changed: ch.files ? ch.files.length : null, touched: touched.size, few: few.length, head: head.slice(0, 10), touchedWhy: [...touched].map(([n, w]) => n + ': ' + w), fewNames: few };
+  const keep = new Set([...touched.keys(), ...few]);
+  return whole.filter((r) => keep.has(r.name));
 }
 function suitesFor(row) {
   const set = new Set(suitesOf(row.system));
@@ -172,7 +302,19 @@ if (NONE) {
 }
 
 const rows = pick();
-const label = ONLY ? `--only ${ONLY}` : ALL ? '--all' : SAMPLE ? '--sample' : `rows born from ${BORN_FROM} on`;
+const label = ONLY ? `--only ${ONLY}` : ALL ? '--all' : SAMPLE ? '--sample' : WHOLE ? `--whole: rows born from ${BORN_FROM} on`
+  : `on a PR, of the rows born from ${BORN_FROM} on: ${PICKED.touched} touched, ${PICKED.few} of the few (commit ${PICKED.head || '?'})`;
+if (PICKED) {
+  console.log(`     changed against main: ${PICKED.changed === null ? 'UNKNOWN (' + PICKED.how + '): the few only' : PICKED.changed + ' file(s), ' + PICKED.how}`);
+  if (PICKED.why) console.log('     ' + PICKED.why);
+  for (const l of PICKED.touchedWhy || []) console.log('     touched  ' + l);
+  if (PICKED.fewNames) console.log('     the few  ' + PICKED.fewNames.join(', ') + '  (the whole set: the gatekeeper\'s rehearsal, --whole)');
+}
+/* --list: the rows it would throw, and why, then stop (no suite runs) */
+if (argv.includes('--list')) {
+  console.log(`${label}: ${rows.length} row(s), ${rows.reduce((n, r) => n + suitesFor(r).length, 0)} suite run(s)`);
+  process.exit(0);
+}
 const t0 = Date.now();
 
 /* the baseline: each suite once, unthrown.  v2.3.5305 (the gatekeeper,
