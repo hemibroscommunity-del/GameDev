@@ -7,6 +7,11 @@ state: ready
 - PR 1 (6540): the three rules (stickZones, sight, latch), their suites,
   the phase rows, the ledger rows, mode 5 in manualMode, the switch rows.
 
+- PR 1's mend (the gatekeeper's sitting 56): the negative wrap's check
+  (plant S11 red), the exact edges (B3, B5, L2), the phase rows held to
+  the modules' lists (G2); facing8 gives west as +PI only; latchCheck lets
+  go on a distance that is not a number. Each plant proved red.
+
 ## Next
 - PR 2 (6541): the left stick in mode 5 (turn and walk, the ring).
 
