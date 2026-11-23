@@ -89,6 +89,13 @@
  *      report.js RIDE_LONG_BIN: 6                                        -> FAIL 15.1
  *      src/debug/report.js addFrames: `if (a.rideGaps) a.rideGaps[...]++` (every frame the board's) -> FAIL 15.4
  *      src/debug/report.js rampsOf: drop `if (!has(n)) continue;`        -> FAIL 15.2
+ *      The gatekeeper's sitting 56 (the purpose review): the dodges tried
+ *      THROUGH THE ROOM, 15.8 (tried 2026-11-23; the code held all four,
+ *      only a room check was missing):
+ *      report.js reportSums: the raw ramps, `msg.ramps.filter(string)`    -> FAIL 15.8a
+ *      report.js _reportTake: `heat: true` (the switch ignored)          -> FAIL 15.8b
+ *      report.js reportSums: rideGaps any array of ten (no ints)         -> FAIL 15.8c
+ *      report.js reportSums: `const drawnOk = drawn || 0;` (the claim)   -> FAIL 15.8d
  */
 import { readFileSync } from 'node:fs';
 import { GameRoom } from '../src/index.js';
@@ -673,6 +680,40 @@ const A = await join('bp_rep_a', 'Repo');
   room._liveFlags = { reportlanes: false };
   check('15.7 `reportlanes: false` is 2 and takes no heat either', room._reportCap() === 2);
   room._liveFlags = {};
+
+  /* 15.8 v2.3.6500 (the gatekeeper's sitting 56, the purpose review on #2279): the card's dodges and the lane's,
+     each THROUGH THE ROOM (`_reportTake` into the day's book), not a helper alone: a fresh socket a report, and
+     what the book gained read from its `dev` part before and after */
+  let n8 = 0;
+  const through = async (over, flags) => {
+    const before = JSON.parse(JSON.stringify((await devPart()) || {}));
+    room._liveFlags = flags || {};
+    const w = await join('bp_rep_dodge' + (++n8), 'Dodge' + n8);
+    clock += REPORT.PACE_MS;
+    const why = room._reportTake(room.sessions.get(w), { ...msg, ...over }, clock);
+    room._liveFlags = {};
+    const after = (await devPart()) || {};
+    const moved = Object.keys(after).filter((k) => JSON.stringify(after[k]) !== JSON.stringify(before[k]));
+    return { why, moved, was: moved.length === 1 ? before[moved[0]] || null : null, now: moved.length === 1 ? after[moved[0]] : null };
+  };
+  const cellOf = (sw) => '1|' + KEY + '|full|' + sw + '|5122';
+  const t8a = await through({ ramps: ['nosuchswitch=0', 'free.text=0'] });
+  check('15.8a ramps off the switch table (`nosuchswitch=0`, `free.text=0`) sent through the room land in the cell `none`',
+    t8a.why === 'ok' && t8a.moved.length === 1 && t8a.moved[0] === cellOf('none'), t8a.moved);
+  const t8b = await through({}, { reportheat: false });
+  const gained = (x, k) => !!(x.now && x.now[k]) && JSON.stringify(x.now[k]) !== JSON.stringify(x.was && x.was[k]);
+  check('15.8b `reportheat: false`: a report with `?govern=0` sent through the room lands in the cell `none` and adds no `up` and no `ride`',
+    t8b.why === 'ok' && t8b.moved.length === 1 && t8b.moved[0] === cellOf('none') && !gained(t8b, 'up') && !gained(t8b, 'ride'), t8b);
+  /* each bin within the report's own and the ride's counts within its frames, so only the fraction or the sign is wrong */
+  const frac = b.rideGaps.slice(); frac[9] -= 0.5;
+  const neg = b.rideGaps.slice(); neg[0] = -1;
+  const t8c = [await through({ rideGaps: frac, ride: [40, 0, 0] }), await through({ rideGaps: neg, ride: [40, 0, 0] })];
+  check('15.8c a ride\'s gaps with a fraction or a negative sent through the room: the report counts, no `ride`',
+    t8c.every((x) => x.why === 'ok' && x.moved.length === 1 && x.now.n === (x.was ? x.was.n : 0) + 1 && !gained(x, 'ride')), t8c);
+  const t8d = await through({ drawn: b.drawn + 7 });
+  const upWas = t8d.was && t8d.was.up && t8d.was.up.m15 ? t8d.was.up.m15[1] : 0;
+  check('15.8d a `drawn` unlike its gaps\' sum sent through the room: `up` adds the kept gaps\' sum (none kept: 0), never the claim',
+    t8d.why === 'ok' && t8d.moved.length === 1 && t8d.now.up && t8d.now.up.m15 && t8d.now.up.m15[1] - upWas === 0 && !gained(t8d, 'ride'), t8d);
 }
 
 console.log(`\n${passes} passed, ${failures} failed`);

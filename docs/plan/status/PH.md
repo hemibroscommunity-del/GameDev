@@ -1,12 +1,17 @@
 card: PH
 branch: claude/plan-ph-1-report
-prs: PR 1 (6500, ready: the PR opened from this branch)
+prs: #2279 (PR 1, 6500, ready again after sitting 56's hold)
 state: ready
 
 ## Done
 - PR 1 (tag 6500): the report sees heat (`up`), the board (`ride`) and
   the address bar's off-ramps (`ramps`, in the cell); caps.report 4, kill
   switch `reportheat`. DEPLOYS the worker. Ready for the gatekeeper.
+- Sitting 56's hold mended: report.test 15.8a-d send the four dodges
+  through the room (raw ramps, `reportheat: false`, a fraction or a
+  negative in rideGaps, a `drawn` unlike its gaps); each plant red, the
+  code held all four (no code change). Files outside the card named in
+  the PR's words with the planning session's approval.
 
 ## Next
 - PR 2 (6501): the memory alarm on the game's own total (its level waits
