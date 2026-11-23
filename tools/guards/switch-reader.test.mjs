@@ -36,6 +36,16 @@
  *                                           reader true)
  *   - pageAddress() made to lower-case the address (2026-11-17)
  *                                        -> FAIL 5 (?tod=dusk&TOD=x)
+ *   v2.3.6520 (card WL; the shape review's plant 6), tried 2026-11-23, each
+ *   in src/game/farmWalk.js tickFarmWalk:
+ *   - `if (new URL(window.location.href).searchParams.get('farmfast') === '1') return;`
+ *                                        -> FAIL 3 (the text count passed it)
+ *   - `const _q = new URLSearchParams(document.location.search); if (_q.has('farmfast')) return;`
+ *                                        -> FAIL 3
+ *   - `if (/farmfast/.test(location.href)) return;`  -> FAIL 3
+ *   - `if (String(location).includes('farmfast')) return;` -> FAIL 3
+ *   What it cannot see: the address handed whole to another module that
+ *   reads it there (`readIt(location)`), said above addressReads.
  *
  * Run from the repository's root: node tools/guards/switch-reader.test.mjs
  * (cd server && npm test runs it with every other guard and suite).
@@ -45,10 +55,117 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { SWITCHES } from './lib/switches.mjs';
 import { blankComments, pageFiles, pageForm, READER_FILE, READER_IMPORT, ROOT } from './lib/switchScan.mjs';
-import { filesOf } from './lib/filesOf.mjs';   /* v2.3.5742: a big file found by its system (tests-by-system 2); v2.3.5343: and the two renderers (inSystem below) */
+import { filesOf } from './lib/filesOf.mjs';
+import { babel } from './lib/renderTables.mjs';   /* v2.3.6520: @babel, the root's or server/'s */
+
+/* ═══ v2.3.6520: THE PAGE'S ADDRESS, READ OFF THE SYNTAX TREE (card WL) ═══
+   Check 3 counted the text `location.search`; the shape review (2026-11-23,
+   plant 6) read `?farmfast` through `new URL(window.location.href)
+   .searchParams.get('farmfast')` and the count stayed green.  Now each
+   SOURCE of the address is counted, off the tree (the plan's rule 2):
+   `search` or `href` of a `location` (any receiver: `window.`,
+   `document.`, `self.`), `document.URL`, `document.documentURI`,
+   `String(location)`, `location.toString()`, `location` in a template or
+   added to text.  A source is no read when it is: a place to go
+   (`location.href = ...`); a base for a relative URL (`new URL(u,
+   location.href)`); or the start of a URL that only WRITES its params
+   (`set`, `delete`, `append`, `sort`) and is otherwise handed whole or
+   read for its href, pathname, search, hash or text: the page building its
+   own new address (history.replaceState), no switch read.  So
+   `new URL(location.href).searchParams.get(..)` and
+   `new URLSearchParams(location.search)` are each one read.
+   What it cannot see: the address handed whole to another module and read
+   there (`readIt(location)`): no rule over one file can. */
+const PARAM_WRITES = new Set(['set', 'delete', 'append', 'sort']);
+const ADDRESS_TEXT = new Set(['href', 'search', 'URL', 'documentURI']);
+
+const keyOf = (m) => (!m.computed && m.property.type === 'Identifier' ? m.property.name
+  : (m.property.type === 'StringLiteral' ? m.property.value : null));
+/* `location`, `window.location`, `document.location`, `self.location`, `globalThis.location` */
+const isLocation = (n) => !!n && ((n.type === 'Identifier' && n.name === 'location')
+  || (n.type === 'MemberExpression' && keyOf(n) === 'location'));
+/* the address as text: a location's href or search, document.URL, document.documentURI */
+const isAddressText = (n) => !!n && n.type === 'MemberExpression' && ADDRESS_TEXT.has(keyOf(n))
+  && ((isLocation(n.object) && ['href', 'search'].includes(keyOf(n)))
+    || (n.object.type === 'Identifier' && n.object.name === 'document' && ['URL', 'documentURI'].includes(keyOf(n))));
+const isNew = (n, names) => !!n && n.type === 'NewExpression' && n.callee.type === 'Identifier' && names.includes(n.callee.name);
+
+/* a URL made from the address whose params are only WRITTEN (`set`, `delete`, `append`, `sort`) and
+   which is otherwise only handed whole (history.replaceState(.., u)) or read for its href, pathname,
+   hash or text: the page building its own new address, no switch read */
+function onlyRewrites(newPath) {
+  const uses = [];
+  const p = newPath.parent;
+  if (p.type === 'VariableDeclarator' && p.id.type === 'Identifier' && p.init === newPath.node) {
+    const b = newPath.parentPath.scope.getBinding(p.id.name);
+    if (!b || (b.constantViolations && b.constantViolations.length)) return false;
+    for (const r of b.referencePaths) uses.push(r);
+  } else uses.push(newPath);
+  return uses.every((r) => {
+    const q = r.parent;
+    if (q.type === 'MemberExpression' && q.object === r.node) {
+      const k = keyOf(q);
+      if (['href', 'pathname', 'search', 'hash', 'toString'].includes(k)) return true;   /* the new address, whole or in parts */
+      if (k !== 'searchParams') return false;
+      const q2 = r.parentPath.parent;
+      return q2.type === 'MemberExpression' && q2.object === q && PARAM_WRITES.has(keyOf(q2));
+    }
+    if (q.type === 'CallExpression' && q.arguments.includes(r.node)) return true;
+    if (q.type === 'BinaryExpression' && q.operator === '+') return true;
+    if (q.type === 'TemplateLiteral') return true;
+    return false;
+  });
+}
+
+const _cache = new Map();
+/* the reads of the page's address in one file's source: [{ line, how }], or
+   null when no @babel loads */
+function addressReads(src, file) {
+  if (!/location|document\.URL|documentURI/.test(src)) return [];
+  let B;
+  try { B = babel(); } catch { return null; }
+  const key = file + '\0' + src.length;
+  if (_cache.has(key)) return _cache.get(key);
+  const ast = B.parse(src, { sourceType: 'module', plugins: ['jsx'], errorRecovery: true });
+  const out = [];
+  const add = (n, how) => out.push({ line: n.loc.start.line, how });
+  /* one source of the address at `path`: a read unless it is a place to go, a base, or the start of
+     a URL that only rewrites the address */
+  const judge = (path, how) => {
+    const n = path.node, p = path.parent;
+    if (p.type === 'AssignmentExpression' && p.left === n) return;                       /* location.href = ... : a place to go */
+    if (isNew(p, ['URL']) && p.arguments[1] === n) return;                                /* new URL(u, location.href): a base */
+    if (isNew(p, ['URL', 'URLSearchParams']) && p.arguments[0] === n && onlyRewrites(path.parentPath)) return;
+    add(n, how);
+  };
+  B.traverse(ast, {
+    MemberExpression(path) {
+      if (isAddressText(path.node)) judge(path, keyOf(path.node) === 'search' ? 'location.search' : 'the address (' + keyOf(path.node) + ')');
+    },
+    CallExpression(path) {
+      const n = path.node;
+      /* String(location), location.toString() */
+      if ((n.callee.type === 'Identifier' && n.callee.name === 'String' && isLocation(n.arguments[0]))
+        || (n.callee.type === 'MemberExpression' && keyOf(n.callee) === 'toString' && isLocation(n.callee.object))) judge(path, 'the address (as text)');
+    },
+    TemplateLiteral(path) { for (const e of path.node.expressions) if (isLocation(e)) add(e, 'the address (in a template)'); },
+    BinaryExpression(path) {
+      const n = path.node;
+      if (n.operator === '+' && (isLocation(n.left) || isLocation(n.right))) add(n, 'the address (+ text)');
+    },
+  });
+  _cache.set(key, out);
+  return out;
+}
+   /* v2.3.5742: a big file found by its system (tests-by-system 2); v2.3.5343: and the two renderers (inSystem below) */
 
 /* the outside reads: only falls */
-const OUTSIDE_LINE = 17;   /* its first count, v2.3.5306: 228 with sitting 17's `?slimewalk` (card P's slimeSprites.js, P still running: not moved), 221 after the first seven reads moved; 212 after v2.3.5309's nine; 201 after v2.3.5310's eleven; 189 after v2.3.5232's twelve (card O PR 12: the lanes' off-ramps); 172 with v2.3.5311's pageAddress() sites (seventeen) ; 161 after v2.3.5313's eleven ; 155 after v2.3.5314's six ; 144 after v2.3.5315's eleven ; 116 after v2.3.5316's twenty-eight ; 71 after v2.3.5317's forty-five (render, on pageAddress()) ; 65 after v2.3.5740's six (card T2: the game's) ; 59 after v2.3.5741's six (card T2: the screens, the townsfolk's pictures) ; 56 after v2.3.5742's three (card T2: the connection's) ; 34 after v2.3.5343's twenty-two (card M chain B: the two renderers; the gatekeeper's sitting 42) ; 33 after v2.3.5743's one (card T2: the kill's XP fly, on pageAddress(); census part 1 closed) ; 17 after v2.3.5342's sixteen (card M chain A: BroTown.jsx; the gatekeeper's sitting 46, v2.3.6260) */
+/* v2.3.6520 (card WL): 17 -> 18, the same code counted by the tree, which
+   reads all the address and not the text `location.search` alone: the one
+   it newly sees was there all along (BroTown.jsx's tidy of `?create`,
+   `?login`, `?noresume`, `_u2.searchParams.has(k)` on a URL made from
+   `window.location.href`).  No room: the count is the line. */
+const OUTSIDE_LINE = 18;   /* its first count, v2.3.5306: 228 with sitting 17's `?slimewalk` (card P's slimeSprites.js, P still running: not moved), 221 after the first seven reads moved; 212 after v2.3.5309's nine; 201 after v2.3.5310's eleven; 189 after v2.3.5232's twelve (card O PR 12: the lanes' off-ramps); 172 with v2.3.5311's pageAddress() sites (seventeen) ; 161 after v2.3.5313's eleven ; 155 after v2.3.5314's six ; 144 after v2.3.5315's eleven ; 116 after v2.3.5316's twenty-eight ; 71 after v2.3.5317's forty-five (render, on pageAddress()) ; 65 after v2.3.5740's six (card T2: the game's) ; 59 after v2.3.5741's six (card T2: the screens, the townsfolk's pictures) ; 56 after v2.3.5742's three (card T2: the connection's) ; 34 after v2.3.5343's twenty-two (card M chain B: the two renderers; the gatekeeper's sitting 42) ; 33 after v2.3.5743's one (card T2: the kill's XP fly, on pageAddress(); census part 1 closed) ; 17 after v2.3.5342's sixteen (card M chain A: BroTown.jsx; the gatekeeper's sitting 46, v2.3.6260) */
 
 /* v2.3.5343: a moved read in a big file (the four lines' own: BroTown.jsx,
    the two renderers) names its file through its system, never its path
@@ -237,17 +354,26 @@ const src = new Map(files.map((f) => [f, readFileSync(join(ROOT, f), 'utf8')]));
   check(`2: every ask of the reader names a page row, sw only one with a form (${asks} asks)`, bad.length === 0, bad);
 }
 
-/* 3. the outside reads: only fall */
+/* 3. the outside reads: only fall.
+   v2.3.6520 (card WL; the shape review's plant 6): the count was the text
+   `location.search`, and `new URL(window.location.href).searchParams.get(
+   'farmfast')` passed it.  Now the reads are read off the syntax tree (the
+   plan's rule 2; addressReads, at the top of this file): each source of
+   the address (`location.search`, `location.href`, `document.URL`, ...,
+   through any receiver) that is not a place to go, a base for a relative
+   URL, or the start of a URL that only rewrites the address. */
 {
   let n = 0;
   const where = [];
   for (const [f, s] of src) {
     if (f === READER_FILE) continue;
-    const k = (blankComments(s).match(/location\.search/g) || []).length;
-    if (k) { n += k; where.push(`${f}: ${k}`); }
+    const reads = addressReads(s, f);
+    if (reads === null) { check('3: @babel loads from the root or server/ (npm install)', false); break; }
+    if (reads.length) { n += reads.length; where.push(`${f}: ${reads.map((r) => r.line + ' ' + r.how).join(', ')}`); }
   }
-  check(`3: reads of location.search outside the reader: ${n}, the line ${OUTSIDE_LINE} (it only falls: a read moves into src/game/switches.js)`, n <= OUTSIDE_LINE, where.slice(-12));
+  check(`3: reads of the page's address outside the reader, read off the tree: ${n}, the line ${OUTSIDE_LINE} (it only falls: a read moves into src/game/switches.js)`, n <= OUTSIDE_LINE, where.slice(-12));
   if (n < OUTSIDE_LINE) console.log(`     (room: ${n} under the line ${OUTSIDE_LINE}; the gatekeeper may lower it)`);
+  if (process.argv.includes('--list')) for (const w of where) console.log('     ' + w);
 }
 
 /* 5. v2.3.5311: pageAddress() is the address itself (the sites that hand the

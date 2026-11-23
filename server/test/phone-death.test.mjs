@@ -22,6 +22,7 @@
  *      applyLocalRespawn (no 24 * TILE copy);
  *   6. the 20-second watchdog is untouched. */
 import { readFileSync } from 'fs';
+import { createRequire } from 'module';
 import * as D from '../../src/game/phoneDeath.js';
 
 let failures = 0;
@@ -32,6 +33,73 @@ function check(name, cond, detail) {
 const read = (f) => readFileSync(new URL('../../' + f, import.meta.url), 'utf8');
 const bro = read('src/ui/BroTown.jsx');
 const ge = read('src/networking/gameEvents.js');
+
+/* v2.3.6520 (card WL, the shape review's plant 4a): "it takes no gold" was
+   `!/coins\s*=/` over the block's text, and `S.rpg.coins -= Math.floor(
+   S.rpg.coins * 0.1);` planted in the catch-all passed it (`-=` is not
+   `coins =`).  Now any write to the purse is read off the syntax tree (the
+   plan's rule 2): an assignment of any operator, `++` / `--`, `delete`, a
+   destructuring target, `Object.assign` / `Reflect.set` /
+   `Object.defineProperty`, through any receiver, and an object literal with
+   a `coins` key (a record built with a purse in it).  Only a key held in a
+   variable (`r[k] = `) cannot be read here: no rule can, short of running it.
+   BREAK (tried 2026-11-23): BroTown.jsx: `S.rpg.coins -= Math.floor(S.rpg.coins * 0.1);`
+   after `S.rpg._compStats.deaths++;` in the catch-all -> FAIL 4c; and each of
+   `var _r = S.rpg; _r.coins--;`, `Object.assign(S.rpg, { coins: 0 });`,
+   `S.rpg = { ...S.rpg, coins: 0 };`, `S.rpg['coins'] *= 0.9;`,
+   `({ c: S.rpg.coins } = { c: 1 });` -> FAIL 4c; gameEvents.js: `R2.coins -= 5;`
+   after `R2._compStats.deaths++;` in the client-local death -> FAIL 5c. */
+let _babel = null;
+for (const pkg of ['../package.json', '../../package.json']) {
+  try {
+    const req = createRequire(new URL(pkg, import.meta.url));
+    const t = req('@babel/traverse');
+    _babel = { parse: req('@babel/parser').parse, traverse: t.default || t };
+    break;
+  } catch { /* the next */ }
+}
+const _trees = new Map();
+const PURSE = 'coins';
+const keyText = (n) => (!n ? null : n.type === 'StringLiteral' ? n.value
+  : (n.type === 'TemplateLiteral' && n.expressions.length === 0 ? n.quasis[0].value.cooked : null));
+const propOf = (m) => (m && (m.type === 'MemberExpression' || m.type === 'OptionalMemberExpression')
+  ? (!m.computed && m.property.type === 'Identifier' ? m.property.name : keyText(m.property)) : null);
+const keyOf = (pr) => (pr && (pr.type === 'ObjectProperty' || pr.type === 'ObjectMethod')
+  ? (!pr.computed && pr.key.type === 'Identifier' ? pr.key.name : keyText(pr.key)) : null);
+/* every write to the purse in src[a, b): [{ line, text }] (null: no parser) */
+function purseWrites(src, a, b) {
+  if (!_babel) return null;
+  let ast = _trees.get(src);
+  if (!ast) { ast = _babel.parse(src, { sourceType: 'module', plugins: ['jsx'], errorRecovery: true }); _trees.set(src, ast); }
+  const out = [];
+  const inside = (n) => n.start >= a && n.end <= b;
+  const hit = (n) => { if (inside(n)) out.push({ line: n.loc.start.line, text: src.slice(n.start, Math.min(n.end, n.start + 80)) }); };
+  const targets = (n, acc) => {
+    if (!n) return acc;
+    if (n.type === 'MemberExpression') acc.push(n);
+    else if (n.type === 'ObjectPattern') for (const pr of n.properties) targets(pr.type === 'RestElement' ? pr.argument : pr.value, acc);
+    else if (n.type === 'ArrayPattern') for (const el of n.elements) targets(el, acc);
+    else if (n.type === 'AssignmentPattern') targets(n.left, acc);
+    else if (n.type === 'RestElement') targets(n.argument, acc);
+    return acc;
+  };
+  _babel.traverse(ast, {
+    AssignmentExpression(p) { if (targets(p.node.left, []).some((m) => propOf(m) === PURSE)) hit(p.node); },
+    UpdateExpression(p) { if (propOf(p.node.argument) === PURSE) hit(p.node); },
+    UnaryExpression(p) { if (p.node.operator === 'delete' && propOf(p.node.argument) === PURSE) hit(p.node); },
+    'ForOfStatement|ForInStatement'(p) { if (targets(p.node.left, []).some((m) => propOf(m) === PURSE)) hit(p.node); },
+    ObjectExpression(p) { if (p.node.properties.some((pr) => keyOf(pr) === PURSE)) hit(p.node); },
+    CallExpression(p) {
+      const c = p.node.callee;
+      if (c.type !== 'MemberExpression' || c.object.type !== 'Identifier') return;
+      const who = c.object.name, how = propOf(c);
+      if ((who === 'Object' && how === 'defineProperty') || (who === 'Reflect' && ['set', 'defineProperty', 'deleteProperty'].includes(how))) {
+        if (keyText(p.node.arguments[1]) === PURSE) hit(p.node);
+      }
+    },
+  });
+  return out;
+}
 
 /* 1 */
 {
@@ -89,7 +157,9 @@ const ge = read('src/networking/gameEvents.js');
   const blk = a >= 0 && b > a ? bro.slice(a, b) : '';
   check('4a the catch-all block is found', blk.length > 0);
   check('4b it asks the rule (no hand copy of the condition)', /if\s*\(\s*catchAllDies\(S\)\s*\)/.test(blk) && !/!S\._serverMonsters\s*&&\s*S\.rpg\s*&&\s*S\.rpg\.hp\s*<=\s*0/.test(blk));
-  check('4c it takes no gold (the worker never does)', !/DEATH_GOLD_PENALTY/.test(blk) && !/coins\s*=/.test(blk) && !/'G'/.test(blk));
+  const purse4 = a >= 0 && b > a ? purseWrites(bro, a, b) : [];
+  check('4c it takes no gold (the worker never does): no write to the purse, read off the tree', purse4 !== null && purse4.length === 0
+    && !/DEATH_GOLD_PENALTY/.test(blk) && !/'G'/.test(blk), purse4 === null ? '@babel loads from neither server/ nor the root (npm install)' : purse4);
   check('4d it stands up through applyLocalRespawn', /applyLocalRespawn\(S,\s*'town'\)/.test(blk));
   check('4e ...with no landing of its own (TOWN_SPAWN, generateZoneMap, its own player_respawned)',
     !/TOWN_SPAWN/.test(blk) && !/generateZoneMap/.test(blk) && !/event:\s*'player_respawned'/.test(blk));
@@ -105,7 +175,9 @@ const ge = read('src/networking/gameEvents.js');
   const b = a >= 0 ? ge.indexOf("case 'player_hurt_by_monster':", a) : -1;
   const blk = a >= 0 && b > a ? ge.slice(a, b) : '';
   check('5b the client-local death block is found', blk.length > 0);
-  check('5c it takes no gold', !/DEATH_GOLD_PENALTY/.test(blk) && !/coins\s*=/.test(blk) && !/'G'/.test(blk));
+  const purse5 = a >= 0 && b > a ? purseWrites(ge, a, b) : [];
+  check('5c it takes no gold: no write to the purse, read off the tree (v2.3.6520)', purse5 !== null && purse5.length === 0
+    && !/DEATH_GOLD_PENALTY/.test(blk) && !/'G'/.test(blk), purse5 === null ? '@babel loads from neither server/ nor the root (npm install)' : purse5);
   check('5d it stands up through applyLocalRespawn', /applyLocalRespawn\(S,\s*'town'\)/.test(blk));
   check('5e ...with no landing of its own (24 * TILE, generateZoneMap, its own player_respawned)',
     !/24\s*\*\s*TILE/.test(blk) && !/generateZoneMap/.test(blk) && !/event:\s*'player_respawned'/.test(blk));

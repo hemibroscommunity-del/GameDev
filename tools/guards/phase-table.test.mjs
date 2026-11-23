@@ -154,6 +154,21 @@
  *  42. `S._realtimeStatus = 'idle';` back in wsClient.js -> connection-door.test FAIL 2
  * v2.3.5526 (the window door):
  *  41. `S._npcProxLatch = null;` back in BroTown.jsx gameLoop -> window-door.test FAIL 2
+ * v2.3.6520 (card WL; the shape review's plants 2a and 2b, which every
+ * suite and this guard let through), tried 2026-11-23:
+ *  54. `var _farmDefaults = { _shieldUp: true }; Object.assign(S, _farmDefaults);`
+ *      in farmWalk.js tickFarmWalk                       -> FAIL 2 (was green)
+ *  55. `const _d0 = { _shieldUp: true }; const _d1 = { ..._d0 };
+ *      Object.assign(S, _d1);` there                     -> FAIL 2
+ *  56. `S.x9 = { ...S.x9, _shieldUp: true };` there      -> FAIL 2
+ *  57. `this._duels.set(d.id, { ...d, status: 'resolved' })` over
+ *      this._duels in party.js _partySend                 -> FAIL 2 (was green)
+ *  58. the same with the key in a const, `{ ...d, [_st]: 'resolved' }`
+ *      (`const _st = 'status'`), and `d[_st] = 'resolved'` -> FAIL 2
+ *  Not caught, and why: a key built at run time (`'sta' + 'tus'`), and a
+ *  record copied whole and changed in another module by a name this file
+ *  never sees (`structuredClone(d)` handed to a helper that writes it):
+ *  no reading of one file can, short of running it.
  *
  * Run from the repository's root: node tools/guards/phase-table.test.mjs
  * (cd server && npm test runs it with every other guard and suite).
@@ -338,6 +353,7 @@ const DOOR_SUITES = Object.freeze({
       ...['server/src/index.js', 'server/src/marketplace.js', 'server/src/leaderboard.js', 'server/src/arena.js', 'server/src/feedback.js']
         .map((file) => ({ file, text: 'this.state = state', fn: 'constructor', why: 'the Durable Object\'s own handle, in its constructor' })),
       { file: 'server/src/dungeon.js', text: 'inst.state = ', fn: '_dungeonTo', why: 'a dungeon run\'s old state, written by its own door (the `dungeon` row, v2.3.5215)' },
+      { file: 'server/src/dungeon.js', text: "wave: 1, state: 'active'", fn: '_handleDungeonStart', why: 'a dungeon run\'s birth (its old state, the `dungeon` row\'s), not a trade (v2.3.6520: a key beside a spread)' },
     ] },
   /* v2.3.5222: card O's ladder (the governor's rung, drawLanes.js `LANE._rung`) -- the planning session's word, sitting 12:
      the rung is a property of a module object, so the tree reads its writes as every other door's */
@@ -350,6 +366,10 @@ const DOOR_SUITES = Object.freeze({
       { file: 'server/src/clans.js', text: 'war.status = ', why: 'a clan war\'s end, its own record' },
       { file: 'server/src/gladiator.js', text: ' t.status = ', fn: '_arenaTo', why: 'an arena tournament: the `arena` row\'s own door (v2.3.5522; the space before `t` keeps out `mt.status =`, the gatekeeper\'s low)' },
       { file: 'server/src/arena.js', text: 'tournament.status = ', why: 'the old Arena object\'s tournament (kept for its binding)' },
+      /* v2.3.6520: keys beside a spread (the new rule) */
+      { file: 'server/src/index.js', text: 'attackerId: sourceId, status: statusId', fn: '_applyMonsterDot', why: 'a damage message\'s status effect, not a duel\'s' },
+      { file: 'server/src/playerrestore.js', text: 'return { status: 200, ...answer, copy: null', fn: 'playerRestore', why: 'an HTTP answer\'s status code (the dry run)' },
+      { file: 'server/src/playerrestore.js', text: 'return { status: 200, ...answer, copy: copyKey }', fn: 'playerRestore', why: 'an HTTP answer\'s status code' },
     ] },
   /* v2.3.5212: the party door -- a Map, so its set / delete / clear are
      writes too (writesIn) */
@@ -362,7 +382,9 @@ const DOOR_SUITES = Object.freeze({
      only phase on the worker (and mining's, chopping's, fishing's and a
      farm step's) */
   'server/test/cook-door.test.mjs': { field: 'ps.ex', fn: '_exTo', holds: '§2: no write of .ex in server/src outside _exTo',
-    prop: 'ex', besides: [] },
+    prop: 'ex', besides: [
+      { file: fileNamed('tick.js'), text: 'eqs: ps.eqs, ex: ps.ex,', fn: 'playerWire', why: 'a copy onto the tick\'s wire entry, not the player\'s (v2.3.6520: a key beside a spread)' },
+    ] },
   /* v2.3.5214: the harvest door (fishing's too) -- a record keyed by id, so
      a write of one of its keys is a write (writesIn's `keyed`) */
   'server/test/harvest-door.test.mjs': { field: 'this.extractions', fn: '_harvestTo', holds: '§2: no write of this.extractions or its keys in server/src outside _harvestTo but its birth',
@@ -397,6 +419,7 @@ const DOOR_SUITES = Object.freeze({
     prop: 'blocking', besides: [
       { file: fileNamed('spar.js'), text: 'blocking: false, blockStartT: 0', fn: '_sparSpawn', why: 'the sparring clone\'s birth, guard down, before any move' },
       { file: fileNamed('tick.js'), text: 'e.blocking = ps.blocking || false;', why: 'a copy of the guard onto the tick\'s entry, not the player\'s' },
+      { file: fileNamed('join.js'), text: 'dodging: false, blocking: false, dead: false', fn: '_handleJoin', why: 'a player\'s birth at the join when no body was kept, guard down (v2.3.6520: a key beside a spread)' },
     ] },
   /* v2.3.5537: the zone door */
   'server/test/zone-door.test.mjs': { field: 'ps.z', fn: '_zoneTo', holds: '§2: no write of a player\'s .z in server/src outside _zoneTo',
@@ -408,6 +431,11 @@ const DOOR_SUITES = Object.freeze({
       { file: fileNamed('nearjoin.js'), text: 'out.z = q.z;', fn: '_nearJoinListEntry', why: 'a near-join list\'s entry, a copy' },
       { file: fileNamed('spar.js'), text: 'z: ownerPs.z,', fn: '_sparSpawn', why: 'the sparring clone\'s birth, at its owner\'s place' },
       { file: fileNamed('tick.js'), text: 'e.z = ps.z;', why: 'a copy of the place onto the tick\'s entry, not the player\'s' },
+      /* v2.3.6520: keys beside a spread (the new rule) */
+      { file: fileNamed('join.js'), text: "x: 0, y: 0, d: 'down', z: 'town'", fn: '_handleJoin', why: 'a player\'s birth at the join when no body was kept, before any move' },
+      { file: fileNamed('spar.js'), text: 'aw: 0, pet: null, x: ps.x, y: ps.y, z: ps.z', fn: '_sparSpawn', why: 'the sparring clone\'s look, a copy of its owner\'s place' },
+      { file: 'server/src/index.js', text: 'r[id] = { ...c.look, x: cps.x, y: cps.y, z: cps.z', fn: 'getAllPlayerData', why: 'a sparring clone\'s entry on the players\' list, a copy of its place' },
+      { file: fileNamed('tick.js'), text: 'd: ps.d, z: ps.z, vx: rp(ps.vx)', fn: 'playerWire', why: 'a copy of the place onto the tick\'s wire entry, not the player\'s' },
     ] },
   /* v2.3.5538: the fight door (the clock's pvpAt and healAt: the suite's §2) */
   'server/test/fight-door.test.mjs': { field: 'this._pvpHealClocks', fn: '_fightTo', holds: '§2: no write of this._pvpHealClocks, a clock\'s .pvpAt or .healAt in server/src outside _fightTo',
@@ -462,6 +490,19 @@ const DOOR_SUITES = Object.freeze({
       { file: fileNamed('entityRenderer.js'), text: '_extraction: null, _firemaking: null', fn: 'poseFrame', why: 'a copy of the state made for a posed picture (Object.assign({}, real, ...)), never S' },
     ] },
 });
+/* v2.3.6520 (card WL): a scanned row's field as a key beside a spread
+   (the new rule above) outside the row's own files, each with why.  Here,
+   not in the row's `besides` (src/state/phases.js is card CT's side of the
+   line: this guard's own exceptions live in this guard) */
+const KEY_BESIDES = Object.freeze({
+  'session (worker)': [
+    { file: 'server/src/dungeon.js', text: 'ability, phase,', why: 'a boss ability\'s phase (wind-up, strike) on its notice to the room, not a session\'s' },
+    { file: 'server/src/telegraph.js', text: 'ability: kind, phase,', why: 'a monster ability\'s phase on its telegraph message, not a session\'s' },
+  ],
+  'monster (worker)': [
+    { file: 'server/src/wheelzone.js', text: 'alive: true,', why: 'a gathering node\'s birth on the Wheel (a tree, a rock), not a monster' },
+  ],
+});
 const SCAN_DOORS = Object.freeze({
   'session (worker)': 'session-door.test plays the phases but fails no second writer of session.phase',
   'monster (worker)': 'monster-newlife.test holds the reset\'s lists, not who makes a new life',
@@ -494,12 +535,22 @@ function fnName(path) {
 /* a key written out: `x.k`, `x['k']`, and (v2.3.5216, the gatekeeper's low,
    sitting 16) a template with nothing in it, ``x[`k`]``.  A key held in a
    variable (`x[k]`) cannot be read here: no rule can, short of running it */
-const keyText = (n) => (!n ? null : n.type === 'StringLiteral' ? n.value
-  : (n.type === 'TemplateLiteral' && n.expressions.length === 0 && n.quasis.length === 1 ? n.quasis[0].value.cooked : null));
-const propOf = (m) => (m && m.type === 'MemberExpression'
-  ? (!m.computed && m.property.type === 'Identifier' ? m.property.name : keyText(m.property))
+/* v2.3.6520 (card WL): and, with the scope at hand, a key held in a `const`
+   whose value is written out (`const k = 'status'; x[k] = ...`) */
+const keyText = (n, sc) => {
+  if (!n) return null;
+  if (n.type === 'StringLiteral') return n.value;
+  if (n.type === 'TemplateLiteral' && n.expressions.length === 0 && n.quasis.length === 1) return n.quasis[0].value.cooked;
+  if (n.type === 'Identifier' && sc) {
+    const b = sc.getBinding(n.name);
+    if (b && b.kind === 'const' && b.path.isVariableDeclarator() && b.path.node.init) return keyText(b.path.node.init, null);
+  }
+  return null;
+};
+const propOf = (m, sc) => (m && m.type === 'MemberExpression'
+  ? (!m.computed && m.property.type === 'Identifier' ? m.property.name : keyText(m.property, sc))
   : null);
-const keyName = (pr) => (pr && pr.type === 'ObjectProperty' ? (pr.key.type === 'Identifier' && !pr.computed ? pr.key.name : keyText(pr.key)) : null);
+const keyName = (pr, sc) => (pr && pr.type === 'ObjectProperty' ? (pr.key.type === 'Identifier' && !pr.computed ? pr.key.name : keyText(pr.key, sc)) : null);
 /* every write of `.prop` in a file: [{ line, fn, text }]; with `value`, only
    a write of that literal (alive = true); with `keyed` (v2.3.5214, a door's
    field that is a record keyed by id, the harvest's this.extractions), a
@@ -517,7 +568,7 @@ function writesIn(rel, prop, value, keyed) {
   const lines = raw.split('\n');
   const out = [];
   const val = (n) => value === undefined || (n && n.type === 'BooleanLiteral' && n.value === value);
-  const hit = (path, n, missing) => out.push({ line: n.loc.start.line, fn: fnName(path), text: lines[n.loc.start.line - 1] || '', missing: !!missing });
+  const hit = (path, n, missing, key) => out.push({ line: n.loc.start.line, fn: fnName(path), text: lines[n.loc.start.line - 1] || '', missing: !!missing, key: !!key });
   /* v2.3.5214 (the gatekeeper's low, sitting 15): a birth is matched by the
      tree, not by its text alone.  `missing`: the write is the consequent of
      `if (!<the same field>)`, so it only ever makes a field that is not there
@@ -535,7 +586,7 @@ function writesIn(rel, prop, value, keyed) {
     const t = up.node.test;
     return t.type === 'UnaryExpression' && t.operator === '!' && same(t.argument, path.node.left);
   };
-  const at = (m) => propOf(m) === prop || (!!keyed && !!m && m.type === 'MemberExpression' && propOf(m.object) === prop);
+  const at = (m, sc) => propOf(m, sc) === prop || (!!keyed && !!m && m.type === 'MemberExpression' && propOf(m.object, sc) === prop);
   /* v2.3.5216 (the gatekeeper's low, sitting 16): a destructuring target is a
      write too -- `({ ex: ps.ex } = msg)`, `[ps.po] = list`, a default
      (`{ po: ps.po = 'sit' }`), a rest (`[...ps.po]`), nested -- its value
@@ -551,20 +602,20 @@ function writesIn(rel, prop, value, keyed) {
   };
   const patternHits = (path, left) => {
     if (value !== undefined || !left || (left.type !== 'ObjectPattern' && left.type !== 'ArrayPattern')) return;
-    if (targets(left, []).some(at)) hit(path, path.node);
+    if (targets(left, []).some((m) => at(m, path.scope))) hit(path, path.node);
   };
   babel.traverse(ast, {
     AssignmentExpression(path) {
-      if (at(path.node.left) && val(path.node.right)) hit(path, path.node, ifMissing(path));
+      if (at(path.node.left, path.scope) && val(path.node.right)) hit(path, path.node, ifMissing(path));
       else patternHits(path, path.node.left);
     },
     'ForOfStatement|ForInStatement'(path) {
       const left = path.node.left;
-      if (value === undefined && left && left.type === 'MemberExpression' && at(left)) hit(path, path.node);
+      if (value === undefined && left && left.type === 'MemberExpression' && at(left, path.scope)) hit(path, path.node);
       else patternHits(path, left);
     },
-    UpdateExpression(path) { if (value === undefined && at(path.node.argument)) hit(path, path.node); },
-    UnaryExpression(path) { if (value === undefined && path.node.operator === 'delete' && at(path.node.argument)) hit(path, path.node); },
+    UpdateExpression(path) { if (value === undefined && at(path.node.argument, path.scope)) hit(path, path.node); },
+    UnaryExpression(path) { if (value === undefined && path.node.operator === 'delete' && at(path.node.argument, path.scope)) hit(path, path.node); },
     CallExpression(path) {
       const c = path.node.callee;
       /* v2.3.5212: a door's field that is a Map (the party's
@@ -577,18 +628,50 @@ function writesIn(rel, prop, value, keyed) {
         const who = c.object.name, how = propOf(c);
         if ((who === 'Object' && how === 'defineProperty') || (who === 'Reflect' && ['set', 'defineProperty', 'deleteProperty'].includes(how))) {
           const [obj, key] = path.node.arguments;
-          if (keyText(key) === prop || (keyed && propOf(obj) === prop)) { hit(path, path.node); return; }
+          if (keyText(key, path.scope) === prop || (keyed && propOf(obj) === prop)) { hit(path, path.node); return; }
         }
       }
       if (!(c.type === 'MemberExpression' && c.object.type === 'Identifier' && c.object.name === 'Object' && propOf(c) === 'assign')) return;
       if (keyed && value === undefined && propOf(path.node.arguments[0]) === prop) { hit(path, path.node); return; }
+      /* v2.3.6520 (card WL; the shape review's plant 2a): a source handed
+         over in a variable, `var d = { _shieldUp: true }; Object.assign(S,
+         d);`, or spread into the source, is read through to its literal */
       for (const a of path.node.arguments.slice(1)) {
-        if (a.type !== 'ObjectExpression') continue;
-        for (const pr of a.properties) if (keyName(pr) === prop && val(pr.value)) hit(path, pr);
+        for (const pr of literalProps(a, path.scope, 0)) if (keyName(pr, path.scope) === prop && val(pr.value)) hit(path, pr);
       }
+    },
+    /* v2.3.6520 (card WL; the shape review's plant 2b): a record copied with
+       the field changed, `this._duels.set(d.id, { ...d, status: 'resolved'
+       })`, writes the field as surely as `d.status = ` does.  An object
+       literal with a spread beside a key of the field's name is a write
+       (`key`: the caller lets it stand only in the door's own file, or as a
+       `besides` with why) */
+    ObjectExpression(path) {
+      const props = path.node.properties;
+      if (!props.some((x) => x.type === 'SpreadElement')) return;
+      for (const pr of props) if (keyName(pr, path.scope) === prop && val(pr.value)) hit(path, pr, false, true);
     },
   });
   return out;
+}
+/* v2.3.6520: the properties an object handed to Object.assign holds: a
+   literal's own, a spread's (followed), and a variable's whose binding is
+   a literal (`const d = { ... }`), a few steps deep */
+function literalProps(n, scope, depth) {
+  if (!n || depth > 4) return [];
+  if (n.type === 'ObjectExpression') {
+    const out = [];
+    for (const pr of n.properties) {
+      if (pr.type === 'SpreadElement') out.push(...literalProps(pr.argument, scope, depth + 1));
+      else out.push(pr);
+    }
+    return out;
+  }
+  if (n.type === 'Identifier' && scope) {
+    const b = scope.getBinding(n.name);
+    if (b && b.path && b.path.isVariableDeclarator() && b.path.node.init) return literalProps(b.path.node.init, b.path.scope, depth + 1);
+  }
+  return [];
 }
 {
   const bad = [];
@@ -613,7 +696,8 @@ function writesIn(rel, prop, value, keyed) {
         const seen = new Set();
         for (const f of filesUnder(SRC_OF[r.side])) {
           for (const w of writesIn(f, want.prop, undefined, want.keyed)) {
-            if (f === r.file && w.fn === r.fn) { mine++; continue; }
+            if (f === r.file && w.fn === r.fn && !w.key) { mine++; continue; }
+            if (f === r.file && w.key) continue;   /* v2.3.6520: a copy with a spread in the door's own file */
             /* v2.3.5214: an entry may also say where (`fn`, the function the
                tree places it in) and how (`ifMissing`, a birth only) */
             const b = (want.besides || []).find((x) => x.file === f && w.text.includes(x.text) && (!x.fn || w.fn === x.fn) && (!x.ifMissing || w.missing));
@@ -637,8 +721,10 @@ function writesIn(rel, prop, value, keyed) {
       for (const f of files) {
         for (const w of writesIn(f, sc.prop, sc.value)) {
           const k = f + ' ' + w.fn;
-          if (hits.has(k)) { hits.set(k, hits.get(k) + 1); continue; }
-          const b = (held.besides || []).find((x) => x.file === f && w.text.includes(x.text));
+          if (w.key && allowed.some((p) => p.file === f)) continue;   /* v2.3.6520: a copy with a spread in the door's own file */
+          if (hits.has(k) && !w.key) { hits.set(k, hits.get(k) + 1); continue; }
+          const b = (held.besides || []).find((x) => x.file === f && w.text.includes(x.text))
+            || (KEY_BESIDES[keyOf(r)] || []).find((x) => w.key && x.file === f && w.text.includes(x.text));
           if (b) { besidesSeen.add(b); continue; }
           bad.push(`${keyOf(r)}: ${f}:${w.line} (in ${w.fn || 'no function'}) writes .${sc.prop} outside ${sc.at.join(', ')}: ${w.text.trim().slice(0, 90)}`);
         }
@@ -646,6 +732,7 @@ function writesIn(rel, prop, value, keyed) {
       for (const [k, n] of hits) if (!n) bad.push(`${keyOf(r)}: ${k} writes no .${sc.prop} any more (a stale place)`);
     }
     for (const b of held.besides || []) if (!besidesSeen.has(b)) bad.push(`${keyOf(r)}: its besides entry ${b.file} "${b.text}" is gone (delete it)`);
+    for (const b of KEY_BESIDES[keyOf(r)] || []) if (!besidesSeen.has(b)) bad.push(`${keyOf(r)}: its KEY_BESIDES entry ${b.file} "${b.text}" is gone (delete it)`);
     for (const b of held.born || []) {
       const p = place(b.at);
       const src = p && codeOf(p.file);
