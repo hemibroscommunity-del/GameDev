@@ -366,7 +366,10 @@ export const GOLD_LOADS = Object.freeze(['join_stored']);
 /* v2.3.5085 (the gatekeeper's sitting 8): `_econ`'s shape number, in ONE
    place -- this.  bag.js and migrations.js (ECON.V) import it: held in three
    places by nothing, a bump in one stopped the doors' counting silently. */
-export const ECON_V = 1;
+/* v2.3.6481 (card WHO PR 2; shape bump, the orchestrator's yes): 1 -> 2,
+   the sitting's card inside `_econ` (`s` open, `sh` closed: sitting.js,
+   migrations.js econClean).  What the doors count (`g`, `i`) is as in 1. */
+export const ECON_V = 2;
 /** The record's `_econ`, made if it has none; null for a NEWER one (never
  *  counted into: a rolled-back worker leaves a newer shape alone). */
 export function econOn(rec) {

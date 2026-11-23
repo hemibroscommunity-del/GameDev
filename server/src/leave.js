@@ -77,6 +77,7 @@ const FULL = Object.freeze({
 });
 
 import { heapForgetMethods } from './heapforget.js';   /* v2.3.5544 (RT-1 N11): the room forgets who left */
+import { sitTouch } from './sitting.js';   /* v2.3.6481: the leave's moment on the sitting's card (card WHO PR 2) */
 import { bookAddBy } from './daybook.js';   /* v2.3.5093: a sitting's seconds into the book's riding `econ` part; v2.3.6480: test play apart (bookAddBy) */
 
 export const LEAVE_WAYS = Object.freeze({
@@ -166,6 +167,11 @@ export const leaveMethods = {
       /* v2.3.6480 (card WHO PR 1): a test-mode character's seconds apart, under
          the part's `test` key (daybook.js bookAddBy; `actor: false`, with play) */
       if (session.openedAt > 0 && !(this._econOff && this._econOff())) bookAddBy(this, 'econ', { p: { s: Math.max(0, Math.round((Date.now() - session.openedAt) / 1000)) } }, this.playerState[session.id]);
+      /* v2.3.6481 (card WHO PR 2): the leave's moment on the open sitting's
+         card (sitting.js), so a reconnect's gap is measured from it.  Memory
+         only: it reaches storage with the close's own save when there is one
+         (below), else the card closes at its last saved moment */
+      sitTouch(this, this.playerState[session.id], Date.now());
       if (d.botfp === 'safe') {
         /* v2.3.3174: the takeover writes the bot fingerprint's summary first,
            as a clean close does.  _botfpOnJoin re-reads botstat: (written at
