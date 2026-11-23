@@ -13,7 +13,12 @@ state: ready
   by the orchestrator's capped rule (three new named rows).
 
 ## Next
-- PR 6521 (a leaf stays a leaf), on its own branch from `main`.
+- HANDED OVER (memory past 250k): a fresh session takes PR 6521 on, from
+  `main`, on its own branch.  For 6521: every leaf and table reaches no
+  `systems/` file through any chain of static imports today (checked), so
+  the guard can hold the chain, not only the first import; a `const` Map
+  or array a leaf fills is module state too (the tired spelling of the
+  plant's `let`).  The orchestrator is part 2, session_01LccHakncEEzQHS5F2Wh3Ga.
 - Waiting: CT's #2282 (three DOOR_SUITES rows in phase-table): merge `main`
   after it lands, keep its rows.
 
