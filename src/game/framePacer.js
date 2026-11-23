@@ -335,34 +335,70 @@ let _samples = null, _busyIn = null;
 /* ═══ v2.3.5231 (card O PR 11): THE MEMORY'S VERDICT ═══
    The game's own count -- the report's `mem` [art from files, the chip's
    textures, decoded sound] in MB, handed in (useMemCount: debug/report.js;
-   no import into the pacer) -- over the memory check's lines for each.
-   MEM_LINES is a COPY of tools/qa/mp/memory-budget.mjs MEMORY_BUDGET's
-   (artCache, gpu; v2.3.5681 not sound: no rung lowers it), held equal by frame-pacer.test §23: never a number
-   of its own.  The planner's, 2026-11-17: the art and sound lines
-   everywhere; the chip's only where deviceProfile.js says a phone or a
-   tablet (a computer's screen-sized pictures are no fault: the counter hands
-   in no chip count there).  Read at most every MEM_READ_MS. */
-export const MEM_LINES = Object.freeze({ artCache: 79.3, gpu: 109.3 });   /* v2.3.5981: gpu 115 -> 114.3 with the memory check's line (card P2); v2.3.6202: 114.3 -> 109.3 with it (card EN PR 3, the planning session's yes) */
+   no import into the pacer).  The planner's, 2026-11-17: the chip's count
+   only where deviceProfile.js says a phone or a tablet (a computer's
+   screen-sized pictures are no fault: the counter hands in no chip count
+   there).  Read at most every MEM_READ_MS.
+
+   v2.3.6501 (card PH PR 2; the shape review's item 17): THE ALARM HAS A
+   TRIGGER OF ITS OWN.  It was two of the memory check's lines, copied
+   (MEM_LINES: art 79.3, chip 109.3; frame-pacer.test 23a held them equal):
+   art read 11 to 16 MB in play, so its half could never fire, and the
+   chip's fired only some 27 MB over the trip's peak.  Now ONE number, the
+   game's own TOTAL -- art + the chip's (a phone or a tablet) + sound -- over
+   MEM_ALARM.MB, set just above what the game reads in a crowded fight (the
+   owner's yes: docs/plan/finish.md part 9, call 3; the readings:
+   docs/plan/census/PH-phone.md).  The memory check's lines are no longer
+   its business (card PH's PR 3 lowers them to the readings).  `?govern=0`
+   stops it as before (the count is read only while the governor judges).
+   THE OFF-RAMP `?memalarm=0`: the two old lines, frozen as they were
+   (MEM_LINES_OLD), on this phone. */
+export const MEM_ALARM = Object.freeze({ MB: 0 });   /* MB: see PH-phone.md -- set with the owner's yes (card PH PR 2) */
+export const MEM_LINES_OLD = Object.freeze({ artCache: 79.3, gpu: 109.3 });   /* v2.3.6501: the old trigger, frozen (v2.3.5981, v2.3.6202: the memory check's lines then) */
 export const MEM_READ_MS = 5000;
 /* v2.3.5681 (the gatekeeper's sitting 27): the wait between memory rungs,
    past the masked frames' 30 s deferred destroy (maskedEvict.js) */
 export const MEM_SETTLE_MS = 35000;
-let _memCount = null, _memAt = -Infinity, _memWas = false;
+let _memCount = null, _memAt = -Infinity, _memWas = false, _memTotal = null, _memForce = 0;
 /** debug/report.js hands its count here: fn() -> [tex, gpu or null, snd] MB. */
 export function useMemCount(fn) { _memCount = typeof fn === 'function' ? fn : null; _memAt = -Infinity; }
-/** Is any count over its line?  [tex, gpu, snd]; a null gpu is not judged. */
-export function memOver(m) {
+/** v2.3.6501: the game's own total, MB: art + the chip's (where handed in) + sound; null for no count. */
+export function memTotal(m) {
+  if (!Array.isArray(m)) return null;
+  const n = (v) => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : 0);
+  return n(m[0]) + n(m[1]) + n(m[2]);
+}
+/** Is the game's memory over its alarm?  [tex, gpu, snd].  v2.3.6501: the
+ *  total over MEM_ALARM.MB; with `old` (`?memalarm=0`) the two frozen lines
+ *  as before (a null gpu not judged, the sound never). */
+export function memOver(m, old) {
   if (!Array.isArray(m)) return false;
-  /* v2.3.5681 (the planner's): not the sound -- no rung lowers it (a sound
-     rung of its own is later work: card O's status) */
-  return m[0] > MEM_LINES.artCache || (m[1] != null && m[1] > MEM_LINES.gpu);
+  if (old) return m[0] > MEM_LINES_OLD.artCache || (m[1] != null && m[1] > MEM_LINES_OLD.gpu);
+  return memTotal(m) > MEM_ALARM.MB;
+}
+/** v2.3.6501: `?memalarm=0` -- the old two lines on this phone. */
+export function memAlarmOld(search) {
+  return !!(typeof search === 'string' ? readerFor(search).sw('memalarm') : sw('memalarm'));
 }
 function memFull(ts) {
   if (!_memCount) return false;
   if (ts - _memAt < MEM_READ_MS) return _memWas;
   _memAt = ts;
-  try { _memWas = memOver(_memCount()); } catch (e) { _memWas = false; }
+  try {
+    const m = _memCount();
+    if (Array.isArray(m) && _memForce > 0) m[0] = (Number(m[0]) || 0) + _memForce;   /* QA only: __btMemAlarm.force */
+    _memTotal = memTotal(m);
+    _memWas = memOver(m, memAlarmOld());
+  } catch (e) { _memWas = false; }
   return _memWas;
+}
+/* QA: the alarm, the last total read, and a forced addition to the count
+   (mp-memalarm: the total pushed over the line frees the caches) */
+if (typeof window !== 'undefined') {
+  window.__btMemAlarm = (opt) => {
+    if (opt && typeof opt.force === 'number') { _memForce = Math.max(0, opt.force); _memAt = -Infinity; }
+    return { mb: MEM_ALARM.MB, old: memAlarmOld(), total: _memTotal, over: _memWas, force: _memForce };
+  };
 }
 
 /** debug/perfTracker.js hands its ring here: no import into the pacer. */

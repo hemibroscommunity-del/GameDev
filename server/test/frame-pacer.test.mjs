@@ -906,19 +906,31 @@ _liveKnobs(null);   /* v2.3.5224: from here, today's live knobs */
    one is a full memory; the chip's count is judged only where it is handed
    in (a phone or a tablet: debug/report.js); the two caches' caps are a
    share of their own and a rung taken trims them at once.
+   v2.3.6501 (card PH PR 2; the shape review's item 17): the alarm is the
+   game's own TOTAL over a number of its own (MEM_ALARM), no longer a copy of
+   the memory check's two lines -- the art's never fired (79.3 against 11 to
+   16 read).  23a and 23b hold it; 23i is the node model of a phone filling.
    BREAKS (rule 8), tried by hand once, 2026-11-17:
-     - MEM_LINES' artCache 79.3 made 80                    -> FAIL 23a
      - report.js's `fineInput() ? null :` taken out      -> FAIL 23c
      - maskedEvict.js trimMasked's `maskedCap(cap)` made `cap` -> FAIL 23d */
 {
   const { MEMORY_BUDGET } = await import('../../tools/qa/mp/memory-budget.mjs');
   const FP = await import('../../src/game/framePacer.js');
-  check('23a. the pacer\'s memory lines are the memory check\'s (artCache, gpu; v2.3.5681 not sound: no rung lowers it): a copy, never a number of its own',
-    FP.MEM_LINES.artCache === MEMORY_BUDGET.artCache.mb && FP.MEM_LINES.gpu === MEMORY_BUDGET.gpu.mb && Object.keys(FP.MEM_LINES).join() === 'artCache,gpu', { pacer: FP.MEM_LINES });
-  const L = FP.MEM_LINES;
-  check('23b. a count over a line is a full memory; the chip\'s count is judged only when handed in (a computer hands in none); v2.3.5681: the sound never (no rung lowers it)',
-    !FP.memOver([L.artCache, L.gpu, 0]) && FP.memOver([L.artCache + 1, 0, 0]) && !FP.memOver([0, 0, 999]) && FP.memOver([0, L.gpu + 1, 0])
+  /* v2.3.6501 (card PH PR 2): a trigger of its own, on the game's own total, just above what the game reads in a
+     crowded fight (MEM_ALARM.READ, measured on the test box: docs/plan/census/PH-phone.md), well under where an
+     iPhone's page dies (about 250 MB, the whole page), and no copy of the memory check's lines */
+  const A = FP.MEM_ALARM.MB;
+  check('23a. the alarm is a number of its own, just above the game\'s own total in a crowded fight and under the phone\'s 250 MB; the memory check\'s lines are no longer copied',
+    A > FP.MEM_ALARM.READ && A <= FP.MEM_ALARM.READ * 1.25 && A < 200 && !('MEM_LINES' in FP)
+      && A !== MEMORY_BUDGET.artCache.mb && A !== MEMORY_BUDGET.gpu.mb, { alarm: FP.MEM_ALARM });
+  const L = FP.MEM_LINES_OLD;
+  check('23b. the game\'s own total -- art, the chip\'s where handed in, sound -- over the alarm is a full memory; at it, not',
+    FP.memTotal([10, 70, 18]) === 98 && FP.memTotal([10, null, 18]) === 28 && FP.memTotal(null) === null
+    && !FP.memOver([0, A, 0]) && FP.memOver([0, A + 0.5, 0]) && FP.memOver([A / 3, A / 3, A / 3 + 1]) && FP.memOver([A, null, 1])
     && !FP.memOver([0, null, 0]) && !FP.memOver(null));
+  check('23b. `?memalarm=0`: the two old lines, frozen (art 79.3, the chip 109.3, the sound never), on that phone',
+    FP.memAlarmOld('?memalarm=0') && !FP.memAlarmOld('') && !FP.memAlarmOld('?memalarm=1') && L.artCache === 79.3 && L.gpu === 109.3
+    && !FP.memOver([L.artCache, L.gpu, 999], true) && FP.memOver([L.artCache + 1, 0, 0], true) && FP.memOver([0, L.gpu + 1, 0], true) && !FP.memOver([0, null, 0], true));
   const rp = readFileSync(join(ROOT, 'src/debug/report.js'), 'utf8');
   check('23c. debug/report.js hands its count in: the report\'s three reads, the chip\'s only with no fine pointer (a phone or a tablet)',
     /try \{ useMemCount\(memCount\); \}/.test(rp) && /const g = fineInput\(\) \? null : (?:\(window\.__btGpuTex && window\.__btGpuTex\(\)\)|gpuMb\(\));/.test(rp));
@@ -939,6 +951,33 @@ _liveKnobs(null);   /* v2.3.5224: from here, today's live knobs */
     const two = g.read().mem;
     check('23h. a memory rung waits MEM_SETTLE_MS (past the 30 s deferred destroy) after the last: 12 s of a full memory take one, the next only after the wait', FP.MEM_SETTLE_MS > 30000 && one === 1 && two === 2, { one, two });
     _resetLanes();
+  }
+  /* 23i. v2.3.6501 (card PH PR 2): THE NODE MODEL OF A FILLING PHONE.  The game's own count read as the pacer reads
+     it (every MEM_READ_MS, a verdict about every 1.4 s): the art held at what the trip reads (11 to 16 MB), the
+     sound at 18, the chip's textures filling from 60 MB by 0.2 MB a second -- a crowd gathering.  The alarm must
+     take the memory's rung within two verdicts of the total crossing it, and none before; today's trigger (the
+     memory check's two lines, `?memalarm=0`) takes none until the chip alone passes 109.3 -- the break proof. */
+  {
+    const ride = (old) => {
+      _resetLanes();
+      const g = makeGovernor({ on: true, store: memStore() });
+      g.veil(0);
+      let first = null, crossedAt = null, readAt = -Infinity, full = false;
+      for (let t = 1400; t <= 600000; t += 1400) {
+        const m = [14, 60 + 0.0002 * t, 18];
+        if (crossedAt == null && FP.memTotal(m) > A) crossedAt = t;
+        if (t - readAt >= FP.MEM_READ_MS) { readAt = t; full = FP.memOver(m, old); }
+        g.verdict(0, t, { axis: 'chip', atFloor: true, memFull: full });
+        if (first == null && g.read().mem > 0) first = { t, total: +FP.memTotal(m).toFixed(1), chip: +m[1].toFixed(1) };
+      }
+      _resetLanes();
+      return { first, crossedAt };
+    };
+    const now = ride(false), was = ride(true);
+    check('23i. a filling phone trips the alarm: the memory\'s rung within two verdicts and a read of the total crossing it, never before',
+      now.first && now.crossedAt != null && now.first.t >= now.crossedAt && now.first.t - now.crossedAt <= FP.MEM_READ_MS + 3 * 1400, { now, alarm: A });
+    check('23i. ...where the old trigger slept on until the chip alone passed 109.3 MB (the break proof: art 14 never reaches 79.3)',
+      was.first && was.first.chip > L.gpu && was.first.total > A + 20, { was });
   }
   const ME = await import('../../src/rendering/maskedEvict.js');
   const DL = await import('../../src/game/drawLanes.js');
