@@ -81,6 +81,8 @@ const mon = (id, d, a = 0, alive = true) => ({ id, x: me.x + Math.cos(deg(a)) * 
   check('3. a dead monster: never', !sightPick(me, 0, [mon('a', 100, 0, false)], R, null) && !sightPick(me, 0, [mon('a', 100, 0, false)], R, 'a'));
   check('3. the facing\'s way, not east: facing south sees a monster south', !!sightPick(me, Math.PI / 2, [mon('a', 200, 90)], R, null) && !sightPick(me, Math.PI / 2, [mon('a', 200, 0)], R, null));
   check('3. the angle wraps at west', near(angleOff(deg(179), deg(-179)), deg(2)));
+  /* v2.3.6540 (the gatekeeper's sitting 56, plant S11): the other way round */
+  check('3. ...and the other way: facing west (+PI), a monster up-left (-135 deg) is 45 off', near(angleOff(deg(-135), Math.PI), deg(45)) && near(angleOff(deg(-179), deg(179)), deg(2)));
 }
 
 /* ── 4. of several ── */

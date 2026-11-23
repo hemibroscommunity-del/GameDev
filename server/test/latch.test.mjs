@@ -23,7 +23,9 @@
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { LATCH_PHASES, LATCH_ENDS, latchPhase, latchTo, latchPress, latchCheck, latchClear } from '../../src/game/latch.js';
-import { sightRange } from '../../src/game/sight.js';
+import { sightRange, SIGHT_PHASES } from '../../src/game/sight.js';
+import { STICK_PHASES } from '../../src/game/stickZones.js';   /* v2.3.6540: G2 below */
+import { PHASES } from '../../src/state/phases.js';
 
 let failures = 0, passes = 0;
 function check(name, cond, detail) {
@@ -49,6 +51,9 @@ const locked = (id = 'a') => { const S = {}; latchPress(S, id); return S; };
   check('2. press: pressed again lets go', latchPress(a, 'b') === 'unlock' && latchPhase(a) === 'idle' && a._latchEnd === 'press' && a._latchId === null);
   const b = locked();
   check('2. range: 549 holds (the sword\'s 550)', latchCheck(b, { alive: true, d: 549 }, OUT, []) === null && latchPhase(b) === 'active');
+  { const e = locked();
+    check('2. range: exactly 550 holds (the gatekeeper\'s sitting 56, L2)', latchCheck(e, { alive: true, d: 550 }, OUT, []) === null && latchPhase(e) === 'active');
+    check('2. range: a distance that is not a number lets go', latchCheck(e, { alive: true, d: NaN }, OUT, []) === 'range' && latchPhase(e) === 'idle'); }
   check('2. range: 551 lets go', latchCheck(b, { alive: true, d: 551 }, OUT, []) === 'range' && latchPhase(b) === 'idle' && b._latchEnd === 'range');
   const bow = locked();
   check('2. range: a bow\'s target holds to 825 (its out)', latchCheck(bow, { alive: true, d: 820 }, sightRange('ranged').out, []) === null && latchCheck(bow, { alive: true, d: 830 }, sightRange('ranged').out, []) === 'range');
@@ -119,6 +124,12 @@ function writesOutside(prop, doorFile, doorFn) {
   const w = writesOutside('_latchPhase', 'src/game/latch.js', 'latchTo');
   check('4. latchTo writes the phase (active, idle)', w.inDoorWrites === 2, w.inDoorWrites);
   check('4. no write of S._latchPhase in src/ outside latchTo', w.outside.length === 0, w.outside);
+}
+
+/* v2.3.6540 (the gatekeeper's sitting 56, G2): the phase table's states are the modules' own lists */
+for (const [name, list] of [['latch', LATCH_PHASES], ['sight', SIGHT_PHASES], ['stick', STICK_PHASES]]) {
+  const row = PHASES.find((p) => p.name === name && p.side === 'page');
+  check('G2. the phase table\'s ' + name + ' row holds the module\'s states', !!row && JSON.stringify(row.states) === JSON.stringify(list), row && row.states);
 }
 
 console.log('\n' + passes + ' passed, ' + failures + ' failed');

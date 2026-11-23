@@ -13,6 +13,11 @@ state: working
   legacy, 1531 -> 1513); `mp-twobuttons` part 1 green upright and
   sideways (real CDP touches; the flick's four touches in one page task).
 
+- PR 1's mend (the gatekeeper's sitting 56): the negative wrap's check
+  (plant S11 red), the exact edges (B3, B5, L2), the phase rows held to
+  the modules' lists (G2); facing8 gives west as +PI only; latchCheck lets
+  go on a distance that is not a number. Each plant proved red.
+
 ## Next
 - PR 2: the mode-off runs (heldcombat, sprint, framesteps), precheck, push.
 

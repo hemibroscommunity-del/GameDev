@@ -90,7 +90,7 @@ export function latchCheck(S, target, out, others) {
     latchTo(S, 'idle', null, 'killed');
     return 'killed';
   }
-  if (target.d > out) { latchTo(S, 'idle', null, 'range'); return 'range'; }
+  if (!(target.d <= out)) { latchTo(S, 'idle', null, 'range'); return 'range'; }   /* v2.3.6540: written so a distance that is not a number lets go too (the gatekeeper's sitting 56) */
   return null;
 }
 
