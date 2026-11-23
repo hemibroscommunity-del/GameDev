@@ -1,18 +1,18 @@
 card: CT
 branch: claude/plan-ct-1-rules
-prs: PR 1 (6540, working)
-state: working
+prs: PR 1 (6540, ready)
+state: ready
 
 ## Done
-- (nothing merged yet)
+- PR 1 (6540): the three rules (stickZones, sight, latch), their suites,
+  the phase rows, the ledger rows, mode 5 in manualMode, the switch rows.
 
 ## Next
-- PR 1 (6540): stickZones.js, sight.js, latch.js and their suites, the
-  three phase rows, the ledger rows, mode 5 in manualMode, the switch rows.
-  Node only; nothing calls them yet.
+- PR 2 (6541): the left stick in mode 5 (turn and walk, the ring).
 
 ## Found
-- (none)
+- `manual-combat.test` 1h pinned `?manual=5` as no switch: now `6` (its
+  one line, the nearest suite).
 
 ## Needs
 - Files outside the card's list that PR 1 needed, mechanically: the three
