@@ -8,7 +8,7 @@ state: ready
   (gold, hp and the life phase, xp and level, the bag, the stashes, quest
   state, build points): a write outside its door is refused and fails the
   suite. The 7 door suites play a tour (a quest handed in) under it.
-  plants1.json: 18 of 23 RED; the 5 GREEN write nothing on the path
+  plants1.json: 17 of 23 RED (16 of 22 realistic); the 6 GREEN write nothing on the path
   (`||=` on a field already set: GOLD-2, XP-2, HP-4; a branch the reward
   never takes: HP-2, STASH-1) or call a legal door (GOLD-4): PR 2's scan.
   Whole server suite: 582 green (799.7 s). Deploys when merged.
