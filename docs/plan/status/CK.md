@@ -1,28 +1,21 @@
 card: CK
-branch: claude/ck-checks-cost (one PR a branch, claude/ck-*)
-prs: (6420) switches-thrown on a PR: opening
+branch: claude/ck-asset-git-ids (one PR a branch, claude/ck-*; on #2284's)
+prs: #2284 (6420, ready), (6421) asset guards by git's ids: working
 state: working
 
 ## Done
-- (6420) switches-thrown: on a PR it throws the rows the branch touched
-  (the row's line, its system's files, a file that reads it, a suite it
-  runs) and a few chosen by the commit (60 suite runs); `--whole` is the
-  old set (89 rows), run once a sitting by the gatekeeper as its own step
-  (precheck leaves it to that step there); `--list` says what and why.
-  GitHub's one-commit checkout: main fetched by the merge's first parent
-  (tried on a depth-1 clone; unreachable: the few only, said).
-
-- (6420) measured here: a docs branch's whole suite 979 -> 215.5 s
-  (154.7 s without claims-gain; switches-thrown 894 -> 13 s); plant A
-  (join.js, `lookjoin`'s off path) red on its PR, 55 s; plant B (index.js,
-  `cleanmore`'s, not touched) green on its PR, red at `--whole` (773 s).
+- (6420) #2284: switches-thrown throws on a PR what it touched and a few
+  by the commit; `--whole` once a sitting (the gatekeeper). Docs branch's
+  suite 979 -> 215.5 s (claims-gain 162 s, card BK's); plants A, B red.
+- (6421) asset guards by git's ids: a file whose git id and row are
+  main's is trusted (its size read); the rest hashed; 6 and 7 read only
+  what is not main's (all when a reader changed); 6's census by change,
+  a family that rose counted whole; the gatekeeper's precheck hashes all
+  (BT_ASSETS_WHOLE=1). Plants 9-11 and sources 4-5 red, here and committed.
 
 ## Next
-- HANDED OVER at the memory line (244,000 tokens) after 6420: a fresh
-  session takes the card from PR 2 (6421, the asset guards by git's ids).
-- The plants (by hand, not in any PR): A `join.js` line 522 drop
-  `&& this._lookJoinOn()`; B `index.js` room chat
-  `text = this._cleanMoreOn() ? this._chatGuardClean(text) : text;`.
+- (6421) precheck, push, open READY (stacked on #2284: merge after it);
+  then 6422 (one parse of the big files), 6423 (the bookkeeping).
 
 ## Found
 - docs/specs/switch-table.md line 165 ("On every PR only the rows born
@@ -32,7 +25,16 @@ state: working
   the whole suite cannot be under 120 s while it is.
 - server/test/run.mjs: a name picks every suite whose name holds it
   (`npm test -- switches` runs switches-thrown too): PR 4's file.
+- switches-thrown's changedFiles finds main as lib/sinceMain.mjs does:
+  one could serve both (6423 or later; mine).
 
 ## Needs
-- The orchestrator: the 120 s line of PR 1 is not met while
-  claims-gain (card BK's) takes 162 s alone; open it as it is, or hold?
+- None. (Answered by the orchestrator, 2026-11-23: #2284 goes to the
+  gatekeeper as it is; its 120 s shortfall is claims-gain's, card BK's.)
+- PR 5 waits on the owner's own words, two changes under `.github/`:
+  (a) server-ci.yml: `concurrency: { group: <workflow>-<ref>,
+  cancel-in-progress: true }`, so a newer push cancels the older run
+  (each push 22 to 43 paid minutes); (b) the required `test` job ends
+  green at its first step when the PR changes only `docs/` (a step that
+  diffs against main, never a path filter on the trigger: TRAPS 238),
+  saving a whole suite run on every documents-only push.
