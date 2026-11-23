@@ -9,7 +9,8 @@ state: working
   `phase-table` reads a door's field as an `Object.assign` source held in a
   variable and as a key beside a spread; `switch-reader` counts every read
   of the page's address off the tree (17 -> 18: the same code, one read
-  newly seen); `four-lines` counts statements, each line set room for room.
+  newly seen); `four-lines` counts statements, each line set room for room
+  by the orchestrator's capped rule (three new named rows).
 
 ## Next
 - PR 6520: precheck, merge `main`, open it ready.
@@ -18,6 +19,6 @@ state: working
 - (none yet)
 
 ## Needs
-- Asked the orchestrator once (2026-11-23): the four lines' room-for-room
-  reading; card CT's new state fields for OWNED (PR 6522); card BK's words
-  for the restart sweep (PR 6524).
+- Answered by the orchestrator (2026-11-23): the four lines' rule (capped
+  room); OWNED starts without CT (CT sends its fields when one lands); BK
+  sends its restart words (until then the row says "not measured").

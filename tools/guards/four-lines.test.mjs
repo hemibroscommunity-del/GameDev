@@ -39,7 +39,7 @@
  *                                                -> FAIL 1 and 2 (it was
  *      green: the line held a token already)
  *   7. `var a = 1, b = 2;` and `a(), b();` each count two (section 5)
- *   8. LINES.PACKED_FILE's hitMaterialFx.js 2002 -> 1777  -> FAIL 1
+ *   8. LINES.PACKED_FILE's hitMaterialFx.js 1946 -> 1777  -> FAIL 1 (tried 2026-11-23)
  *
  * Run from the repository's root: node tools/guards/four-lines.test.mjs
  *   --live   insist on card D's script for 4 (it fails where the script

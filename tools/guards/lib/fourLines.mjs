@@ -596,19 +596,22 @@ export function stateWritesFromRendering({ live = false } = {}) {
    8953 -> 8941 (card P's #1868: the full set's test moved into
    beltHold.js).
    v2.3.6520 (card WL, at main 0aec648): THE LINES HOLD STATEMENTS (the
-   header's rule above), so every number was set again, room for room: each
-   line by its own measure, new = floor(old line x statements / code lines
-   today), the same share of room it had, none lowered and none loosened
-   (the two renderers' rooms are the gatekeeper's to take back).  The
+   header's rule above), so every number was set again, room for room (the
+   orchestrator's rule, 2026-11-23): new line = today's statements + the
+   room, the room = floor(old room in code lines x the file's own statements
+   a code line), and never more than the old room's own number, so no line
+   is lowered and none loosened in either measure (the two renderers' rooms
+   are the gatekeeper's to take back).  The
    generic lines by the whole client's measure (154,347 statements on
    187,101 code lines): OTHER_FILE 1500 -> 1237, OTHER_FUNCTION 1000 -> 824.
    Three that hold more statements than their lines said, under the old
-   generic lines and over the new, get lines of their own by their own
-   measure (PACKED_FILE, and FUNCTION's last row): bodyRecolor.js 1010 code
+   generic lines and over the new, get lines of their own by the same rule,
+   their room under 1500 / 1000 (PACKED_FILE, and FUNCTION's last row: three
+   NEW rows, the gatekeeper's to lower): bodyRecolor.js 1010 code
    lines, 1449 statements; hitMaterialFx.js 1332, 1778; initPixiRenderer
    960, 967.  The old and the new, (line, count) -> (line, count):
-     effectsRenderer.js (9870, 9425) -> (10163, 9705)
-     entityRenderer.js  (8941, 7959) -> (8967, 7983)
+     effectsRenderer.js (9870, 9425) -> (10150, 9705)
+     entityRenderer.js  (8941, 7959) -> (8965, 7983)
      BroTown.jsx        (8370, 8332) -> (6916, 6885)
      gameSystems.js     (5622, 5622) -> (2105, 2105)
      gameDisplay.js     (4268, 4268) -> (3116, 3116)
@@ -628,16 +631,16 @@ export function stateWritesFromRendering({ live = false } = {}) {
      _updateMonsters             (1086, 1086) -> (996, 996)
      DungeonCreatorPanel         (1060, 1058) -> (229, 229)
      ExchangePanel               (1029, 1020) -> (270, 268)
-     bodyRecolor.js    (1500 generic, 1010) -> (2151, 1449)
-     hitMaterialFx.js  (1500 generic, 1332) -> (2002, 1778)
+     bodyRecolor.js    (1500 generic, 1010) -> (1939, 1449)
+     hitMaterialFx.js  (1500 generic, 1332) -> (1946, 1778)
      initPixiRenderer  (1000 generic, 960)  -> (1007, 967) */
 export const LINES = Object.freeze({
   /* a file's code lines.  These files have a line of their own, at their
      count on the day; every other file under src/ stays at or under
      OTHER_FILE (a new file too) */
   FILE: Object.freeze({
-    'src/rendering/systems/effectsRenderer.js': 10163,
-    'src/rendering/systems/entityRenderer.js': 8967,
+    'src/rendering/systems/effectsRenderer.js': 10150,
+    'src/rendering/systems/entityRenderer.js': 8965,
     'src/ui/BroTown.jsx': 6916,
     'src/data/gameSystems.js': 2105,
     'src/data/gameDisplay.js': 3116,
@@ -649,8 +652,8 @@ export const LINES = Object.freeze({
      than the new one, at their own measure (the note above).  Not "big
      files" (lib/bigFileSuites.mjs reads FILE alone): a line, not a list */
   PACKED_FILE: Object.freeze({
-    'src/rendering/bodyRecolor.js': 2151,
-    'src/rendering/hitMaterialFx.js': 2002,
+    'src/rendering/bodyRecolor.js': 1939,
+    'src/rendering/hitMaterialFx.js': 1946,
   }),
   OTHER_FILE: 1237,
   /* a function's code lines, by `file#name` (the largest of a name, where a
