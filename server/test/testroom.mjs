@@ -493,6 +493,10 @@ function guardRecord(ps) {
       },
     });
   }
+  /* a prototype as any other is, with its `constructor` (wire-hostile.test
+     counts a record whose prototype was swapped by a `__proto__` key: a
+     plain object put under it has none) */
+  Object.defineProperty(layer, 'constructor', { value: under ? under.constructor : Object, writable: true, configurable: true, enumerable: false });
   LAYERS.add(layer);
   Object.setPrototypeOf(ps, layer);
   return ps;
