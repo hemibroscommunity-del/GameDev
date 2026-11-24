@@ -14,6 +14,12 @@
  *      by its name or through a name that holds it (v2.3.5291: `||=`, `??=`,
  *      `&&=`, `+=` and Object.assign too, the sitting 20 review); each shape
  *      planted and found;
+ *   2b. (v2.3.6446, sitting 59) THE ALLOW LIST: quest state appears outside
+ *      queststate.js only in a form the scan knows (a state or count read,
+ *      a test, a copy, a name it follows, the door's verbs, a pure global, a
+ *      function of the same file); handed to a function of another file,
+ *      returned, put into an object or a list written out (a kept piece too)
+ *      is RED unless a row of HANDED_OUT (6 at v2.3.6446; it only falls);
  *   3. ONE ROW, ONE PLACE: every call names a road the table has, with its
  *      verb, from its row's file; every road has exactly one caller;
  *   4. THE GAME: a quest accepted, its signal counted, handed in, and the
@@ -26,6 +32,8 @@
  *   - (v2.3.5291) `ps._quests ||= Object.create(null);` in quests.js     -> FAIL 2
  *   - (v2.3.5291) `Object.assign(this.playerState[playerId]._questKills, body.x);`
  *     in devtools.js                                                     -> FAIL 2
+ *   - (v2.3.6446) `this._questTidy(ps._quests)` in devtools.js (a function
+ *     of another file)                                                  -> FAIL 2b (plants-scans.json)
  */
 import { readFileSync } from 'node:fs';
 import { SRC_DIR, srcFiles } from './src-walk.mjs';
@@ -91,9 +99,36 @@ const raw = Object.create(null);
 for (const f of files) raw[f] = readFileSync(new URL(f, SRC_DIR), 'utf8');
 const SCAN = { containers: ['_quests', '_questKills', '_questFlags', ...QUEST_KEPT] };
 const writesIn = (s) => writesOf(s, SCAN);
+/* v2.3.6446 (sitting 59: a container handed to a function of ANOTHER file
+   stayed green).  THE ALLOW LIST (writesOf opts.handout): quest state
+   appears outside queststate.js only in a form the scan knows -- a read of a
+   quest's state or count (a word, a number: it goes anywhere), a test, a
+   copy, a name it follows, an argument of the door's verbs, of a pure global
+   or of a function of the same file; a map or a kept list handed to a
+   function of another file, returned, or put into an object or a list
+   written out (a kept list's pieces are objects: a piece too) is a write the
+   scan cannot follow, RED unless a row of HANDED_OUT (it only falls). */
+const QUEST_DOORS = ['questStateSet', 'questCountAdd', 'questCountSet', 'questForget', 'questLoad', 'questKeep', 'questKeptTake'];
+const SCAN_OUT = { ...SCAN, handout: { doors: QUEST_DOORS, objects: [...QUEST_KEPT] } };
+const O = (file, fn, field, why) => ({ file, fn, field, out: true, n: 1, why });
+const HANDED_OUT = [
+  O('persistence.js', '_saveRpg', '_quests', 'the save: the map put into the stored record'),
+  O('persistence.js', '_saveRpg', '_questFlags', 'the save: the flags put into the stored record'),
+  O('persistence.js', '_saveRpg', '_questKills', 'the save: the counts put into the stored record'),
+  O('persistence.js', '_sendPlayerState', '_quests', 'the echo: the map put into the player\'s message'),
+  O('persistence.js', '_sendPlayerState', '_questFlags', 'the echo: the flags put into the player\'s message'),
+  O('persistence.js', '_sendPlayerState', '_questKills', 'the echo: the counts put into the player\'s message'),
+];
 {
-  const r = doorWrites(raw, { skip: ['queststate.js'], ...SCAN });
+  const r = doorWrites(raw, { skip: ['queststate.js'], ...SCAN_OUT, listed: HANDED_OUT });
   check('2. no quest state is written in server/src but through the door (queststate.js), however it is spelled', r.found.length === 0, r.found.map(where));
+  check('2. ...every HANDED_OUT row still holds its count (it only falls: a row whose place is gone is deleted)', r.stale.length === 0, r.stale);
+  const outs = (t) => writesOf('function f(ps, id, q, x, claimed, pid) {\n' + t + '\n}', SCAN_OUT).filter((w) => w.out).length;
+  check('2. ...ALLOW LIST: a map or a kept list handed where the scan cannot follow is red (a function of another file, a return, an object or a list written out, a kept piece)',
+    outs('markAll(ps._quests, id);') && outs('return ps._questKills;') && outs('const o = { q: ps._quests }; send(o);') && outs('keep([ps._questFlags]);')
+    && outs('this._fit(ps._questGrantOverflow[0]);') && outs('for (const w of ps._questWeaponUnfit) mail(w);') && outs('const m = ps._quests; this._tidy(m);'));
+  check('2. ...and the allowed forms are not: a state or a count anywhere, a test, a copy, the door\'s verbs, a pure global',
+    outs('log(ps._quests[id], ps._questKills[q] + 1);\nif (!ps._quests || typeof ps._quests !== \'object\') return;\nsend({ q: { ...ps._quests } });\nquestKeep(ps, \'_questWeaponUnfit\', ps._questWeaponUnfit[0], \'weapon_unfit\');\nconst n = Object.keys(ps._questKills).length + JSON.stringify(ps._quests).length;\nfor (const w of ps._questWeaponUnfit) say(w.name);') === 0);
   const plant = (t) => writesIn('function f(ps, id, q, x, claimed, pid) {\n' + t + '\n}').length;
   const mustFind = [
     'ps._quests[id] = \'active\';', 'ps._questKills = Object.create(null);', 'ps._questKills[q] += 1;', 'ps._questKills[q]++;',

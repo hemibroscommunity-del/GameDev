@@ -8,7 +8,14 @@
  * walk past.  Each is planted here, in a function of its own, and must be
  * found; the reads beside them must not be.  A spelling the scanner cannot
  * know (a key computed from data at run time) is the running room's
- * (server/test/testroom.mjs, card DG PR 1). */
+ * (server/test/testroom.mjs, card DG PR 1).
+ *
+ * v2.3.6446 (sitting 59): 6. THE ALLOW LIST (opts.handout) -- a container
+ * handed where the scan cannot follow (a function of another file, a return,
+ * an object or a list written out, a spread, a callback, a piece when its
+ * items are objects) is red, its allowed forms are not; 7. opts.getters (a
+ * Map's item and the key put on it) and opts.unknownKeys (a key the tree
+ * cannot know on a record holding a guarded field). */
 import { writesOf, refsOf, doorWrites, doorCalls } from './lib/writesOf.mjs';
 
 let failed = 0;
@@ -199,6 +206,60 @@ for (const [name, body, how, nm, road] of REF_PLANTS) {
   check('5. ...a row for every file (\'*\') is refused: a row names its file', threw);
   const c = doorCalls({ 'a.js': inFn("this._goldGive(ps, 1, 'a'); room._goldGive(ps, 1, 'b'); const g = this._goldGive.bind(this);") }, { names: ['_goldGive'] });
   check('5. doorCalls: every receiver\'s call with its road, a bind as odd', c.calls.map((x) => x.road).join() === 'a,b' && c.odd.length === 1 && c.odd[0].how === 'bind', c);
+}
+
+/* ── 6. THE ALLOW LIST (v2.3.6446, sitting 59) ── */
+/* `tuneFirst(ps.weaponStash)` with tuneFirst in ANOTHER file stayed green:
+   the scan enumerated the spellings of a write and followed a container
+   within one file.  opts.handout: every appearance of a container is in a
+   form the scan knows, or it is a write it cannot follow (`out: true`). */
+{
+  const HO = { containers: ['weaponStash', 'inventory'], handout: { doors: ['stashGive', 'bagGive'], objects: ['weaponStash'] } };
+  const outs = (body) => W(body, HO).filter((w) => w.out);
+  const RED = [
+    ['Z59 a function of another file', 'tuneFirst(ps.weaponStash);'],
+    ['a method of another file handed a piece', 'this._polish(ps.weaponStash[0]);'],
+    ['a return', 'return ps.inventory;'],
+    ['an arrow\'s answer', 'const f = () => ps.weaponStash; f();'],
+    ['a property of an object written out', 'send({ list: ps.weaponStash });'],
+    ['an element of a list written out', 'keep([ps.inventory]);'],
+    ['a spread into a call', 'keep(...ps.weaponStash);'],
+    ['a copy of a list of pieces handed out', 'keep(ps.weaponStash.slice(0, 3));'],
+    ['an entry of Object.entries handed out', 'for (const [, w] of Object.entries(ps.weaponStash)) fix(w);'],
+    ['a callback of another file', 'ps.weaponStash.forEach(fix);'],
+    ['a method it cannot know', 'ps.weaponStash[reward.how](1);'],
+    ['new', 'const m = new Map(ps.inventory);'],
+    ['an alias handed out', 'const bag = ps.inventory; this._tally(bag);'],
+    ['a found piece handed out', 'const w = ps.weaponStash.find((x) => x.lvl > 1); fix(w);'],
+  ];
+  for (const [name, body] of RED) { const got = outs(body); check('6. ' + name + ': red (cannot follow)', got.length > 0 && got.every((w) => /^cannot follow: /.test(w.how)), got.map((w) => [w.line, w.field, w.how])); }
+  const OK = [
+    ['a read, a length, a test, a compare', 'const n = ps.weaponStash.length; if (!ps.weaponStash || ps.inventory.wood > 1) return; return n === 1;'],
+    ['a count of the bag anywhere (its items are numbers)', 'log(ps.inventory.wood, ps.inventory[reward.k]); return ps.inventory.wood;'],
+    ['a field of a piece anywhere', 'log(ps.weaponStash[0].name); return ps.weaponStash[0].lvl;'],
+    ['the door\'s own call, a pure global', 'stashGive(ps, "weaponStash", ps.weaponStash[0]); bagGive(ps.inventory, "w", 1); JSON.stringify(ps.weaponStash); Array.isArray(ps.inventory); Object.keys(ps.inventory); Math.max(ps.inventory.wood, 1);'],
+    ['a read-only method, a callback written out', 'ps.weaponStash.includes(x); ps.weaponStash.indexOf(x); ps.weaponStash.forEach((w) => log(w.name)); ps.weaponStash.some((w) => w.lvl > 1);'],
+    ['a function of the same file', 'look(ps.weaponStash);\n  },\n  look(l) {\n    return l.length;'],
+    ['a copy of the bag (its values are numbers)', 'send({ bag: { ...ps.inventory } }); keep(Object.values(ps.inventory));'],
+    ['used as a key, a loop, a name followed', 'const t = T[ps.weaponStash[0].type]; for (const w of ps.weaponStash) log(w.name); const l = ps.weaponStash; return l.length;'],
+  ];
+  for (const [name, body] of OK) { const got = outs(body); check('6. ' + name + ': no hand-out', got.length === 0, got.map((w) => [w.line, w.field, w.how])); }
+  const r = doorWrites({ 'a.js': inFn('tuneFirst(ps.weaponStash);'), 'b.js': inFn('tuneFirst(ps.weaponStash); ps.weaponStash.lvl = 1;') }, { ...HO, listed: [{ file: 'b.js', fn: '_turnIn', field: 'weaponStash', out: true, n: 1, why: 'a note' }] });
+  check('6. doorWrites: a hand-out row (`out: true`) holds hand-outs only, a write beside it is still found', r.found.length === 2 && r.found.every((w) => (w.file === 'a.js') === !!w.out) && r.stale.length === 0, r);
+}
+
+/* ── 7. a map's item, its key; a key the tree cannot know on a record (v2.3.6446) ── */
+{
+  const S = { containers: ['sessions'], getters: ['get'] };
+  const got = W('const s = this.sessions.get(ws); s.id = null; s.lastPing = 1; s[reward.k] = 2;', S);
+  check('7. opts.getters: an item got from a Map (`.get`) is followed, each write with the key it puts (unknown: null)',
+    got.length === 3 && JSON.stringify(got.map((w) => w.key)) === JSON.stringify([['id'], ['lastPing'], null]), got.map((w) => [w.how, w.key]));
+  const U = { fields: ['coins'], unknownKeys: true };
+  const u = (body) => W(body, U).filter((w) => w.field === '[?]').length;
+  check('7. opts.unknownKeys: a key the tree cannot know on a record holding a guarded field is a write of \'[?]\'',
+    u('if (ps.coins) ps[reward.k] = 1;') === 1 && u('this.playerState[ws][reward.k] = 1;') === 1 && u('const me = ps; ps.coins = 1; me[reward.k] = 0;') === 1 && u('delete ps[reward.k]; return ps.coins;') === 1);
+  check('7. ...and not on a record of no guarded field, nor a known key, nor a read',
+    u('const o = {}; o[reward.k] = 1; ps["gems"] = 1; const v = ps[reward.k]; return ps.coins;') === 0);
 }
 
 if (failed) { console.log(failed + ' FAILED'); process.exit(1); }
