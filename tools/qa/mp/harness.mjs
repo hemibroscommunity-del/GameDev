@@ -1406,6 +1406,22 @@ export async function unfoldBand(P, { timeout = 6000 } = {}) {
   return { arrived, now: await read() };
 }
 
+/* v2.3.6581: the band folded, the other way round from unfoldBand: the owner's
+   "64 px tall" and a phone's folded canvas (390x806) are measured with the
+   dashboard down, and a fresh player arrives with it OPEN.  Taps the real chip;
+   idempotent (a folded band is left alone); returns the state it arrived in. */
+export async function foldBand(P, { timeout = 6000 } = {}) {
+  const read = () => P.page.evaluate(() => {
+    const b = document.querySelector('[data-dash-fold]');
+    return b ? b.getAttribute('data-dash-fold') : null;
+  });
+  const arrived = await read();
+  if (arrived !== 'open') return { arrived, now: arrived };
+  await tapTop(P.page, '[data-dash-fold="open"]', timeout).catch(() => {});
+  await P.page.waitForTimeout(900);
+  return { arrived, now: await read() };
+}
+
 /* ── PIXELS ────────────────────────────────────────────────────────────────
  * Some things can only be proven by looking at the screen.  The obvious way —
  * getImageData on the game canvas — returns BLANK: the WebGL context has no
