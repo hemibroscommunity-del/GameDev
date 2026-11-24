@@ -259,7 +259,7 @@ const isDef = (ln) => /^\s*(async\s+)?\w+\([^)]*\)\s*\{/.test(ln);
     { file: 'index.js', fn: 'constructor', field: 'sessions', n: 1, why: 'the room makes its map of sessions' },
     { file: 'index.js', fn: 'fetch', field: 'sessions', n: 1, why: 'a new socket\'s session is put in the map (`.set`), phase open' },
   ];
-  const m = doorWrites(raw, { skip: ['leave.js'], fields: ['sessions'], containers: ['sessions'], listed: MAP });
+  const m = doorWrites(raw, { skip: ['leave.js'], fields: ['sessions'], containers: ['sessions'], shallow: ['sessions'], listed: MAP });   /* v2.3.6441 (sitting 58): a session's own field is no write of the map */
   check('3. the map of sessions is changed or made again only by the door (leave.js) and the two places listed, however it is spelled', m.found.length === 0, m.found.map(whereW));
   check('3. ...each listed place still holds its count', m.stale.length === 0, m.stale);
   const ID = [{ file: 'join.js', fn: '_handleJoin', field: 'id', n: 1, why: 'the join names the session\'s player' }];

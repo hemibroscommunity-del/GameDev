@@ -33,7 +33,18 @@
  *         (`this.playerState[id] = { ...ps, coins }`, or held in a name first);
  *       - an ELEMENT of a container written in place (`ps.weaponStash[0].lvl
  *         = 99`, `const w = ps.weaponStash[i]; w.lvl = 99`, `for (const w of
- *         ps.weaponStash) w.lvl = 99`): a write of the container;
+ *         ps.weaponStash) w.lvl = 99`): a write of the container; and an
+         element FOUND or HANDED to a callback (v2.3.6441, sitting 57: `const
+         w = ps.weaponStash.find(...)`, `.at(i)`, and the
+         first parameter of `forEach` / `find` / `filter` / `map` / `some` /
+         `every` / `findIndex` / `findLast`, `reduce`'s second, called on the
+         container or on a `filter` / `slice` / `sort`... of it);
+       - an object named in a const or let handed to Object.assign
+         (`const patch = { coins }; Object.assign(ps, patch)`, keys put into
+         `patch` later too, and a spread of it; sitting 57);
+       - a key that is a PARAMETER of a function of the same file, from the
+         words its callers hand it (`function bump(o, k, n) { o[k] += n; }
+         bump(ps, 'coins', 5)`; sitting 57);
  *       - through an ALIAS of a container: `const inv = ps.inventory`,
  *         `const { inventory } = ps`, `const { _quests: qs } = ps`, an alias
  *         of an alias, and a function of the same file handed the container
@@ -61,6 +72,20 @@
  *
  *   parse(code)  the tree (@babel/parser, module, JSX and the usual
  *     plugins), or throws.
+ *
+ *     DENY BY DEFAULT (v2.3.6441, sitting 58: `const [first] =
+ *     ps.weaponStash; first.lvl = 99` stayed green, the third sitting to
+ *     find a new spelling): a container or an item of one is followed through
+ *     EVERY form of binding -- a name, an object or a list pattern, nested, a
+ *     rest, a default, a key that is a number, a parameter's or a loop's or
+ *     a callback's pattern, a copy of its list (`[...l]`, `.filter`,
+ *     `Object.values`: its items, never its own slots), a member it is put
+ *     into (`this._cur = w`), a function of the file that hands it back, an
+ *     object holding it under another key -- and a binding it CANNOT follow
+ *     (a key the tree cannot know, a member of a call's answer, a form it
+ *     has no rule for) is reported as a write ('cannot follow: ...'), so an
+ *     unknown spelling is red.  opts.shallow: containers whose items are
+ *     their own (the map of sessions).
  *
  * It reads; it never runs the code.  What it cannot know: a key computed at
  * run time from data (`ps[row.field] = v`) -- the running room catches that
@@ -99,6 +124,20 @@ export function parse(code) {
   return ast;
 }
 
+/* v2.3.6441 (sitting 57: an item changed through `.find(...)` / `forEach`
+   stayed green): a call that hands back ONE element of the list or map it is
+   called on, a call that hands back a new list of the SAME elements, and a
+   call that hands each element to its callback (the parameter's index) */
+const ELEMENT_GETTERS = new Set(['find', 'findLast', 'at']);   /* not a Map's `get`: a session got from `sessions` is no write of the map (session-door) */
+const LIST_COPIERS = new Set(['filter', 'slice', 'concat', 'toSorted', 'toReversed', 'sort', 'reverse', 'values',
+  /* v2.3.6441 (sitting 58): more lists of the same items -- a copy's own slots are no write, its items are the container's */
+  'entries', 'flat', 'toSpliced', 'with', 'map', 'flatMap']);
+/* v2.3.6441 (sitting 58): the calls of the language that hand back a list of
+   a container's items: `Object.values(ps.weaponStash)`, `Array.from(...)` */
+const GLOBAL_COPIERS = new Set(['Object.values', 'Object.entries', 'Array.from']);
+const ELEMENT_CALLBACKS = new Map([['forEach', 0], ['find', 0], ['findLast', 0], ['filter', 0], ['map', 0], ['flatMap', 0],
+  ['some', 0], ['every', 0], ['findIndex', 0], ['findLastIndex', 0], ['reduce', 1], ['reduceRight', 1]]);
+
 const LIST_CHANGERS = new Set(['push', 'pop', 'shift', 'unshift', 'splice', 'sort', 'reverse', 'fill', 'copyWithin',
   /* a Map's or a Set's own changers, on a container held as one */
   'set', 'delete', 'clear', 'add']);
@@ -108,6 +147,11 @@ const LIST_CHANGERS = new Set(['push', 'pop', 'shift', 'unshift', 'splice', 'sor
    ps[f].push(w)` and `ps[GEAR_PROV_FIELD.shield]` are known keys.  A name
    bound in the file itself is read from the file.  Set for one call only. */
 let WORDS = null;
+/* v2.3.6441 (sitting 57's plant `bump(ps, 'coins', n)`): the words a
+   function's PARAMETER can be, from the arguments its callers in the same
+   file hand it.  Set by writesOf for one call: (binding, path, depth) ->
+   words | null.  Null (no hook) outside writesOf. */
+let PARAM_WORDS = null;
 
 /* the named function a node sits in: its own name, a method's key, the
    variable or property it is given to (phase-table's rule) */
@@ -159,6 +203,7 @@ function wordsOf(node, path, depth = 0) {
       const bind = path.scope.getBinding(node.name);
       if ((!bind || bind.kind === 'module') && WORDS && Object.prototype.hasOwnProperty.call(WORDS, node.name)) return [...WORDS[node.name]];
       if (!bind) return null;
+      if (bind.kind === 'param' && PARAM_WORDS) return PARAM_WORDS(bind, depth + 1);
       const bp = bind.path;
       if (bp.isVariableDeclarator()) {
         const decl = bp.parentPath;
@@ -223,7 +268,7 @@ export function writesOf(code, opts = {}) {
      container (`bagOf(ps)` is the bag) makes its name an alias */
   const MAKERS = opts.makers || {};
   WORDS = opts.words || null;
-  try { return writesIn(); } finally { WORDS = null; }
+  try { return writesIn(); } finally { WORDS = null; PARAM_WORDS = null; }
   function writesIn() {
   const CONTAINERS = new Set(opts.containers || []);
   const file = opts.file || '';
@@ -237,16 +282,89 @@ export function writesOf(code, opts = {}) {
   const alias = new Map();   /* Binding -> field */
   /* function param aliases found by a call in the file: Binding -> field */
   const fnsByName = new Map();   /* name -> [function path] (declarations, methods, consts) */
+  /* v2.3.6441 (sitting 58: `const [first] = ps.weaponStash; first.lvl = 99`
+     stayed green): DENY BY DEFAULT.  A container, or an item of one, bound
+     to anything is followed through every form of binding (a name, an
+     object or a list pattern, nested, a rest, a default, a parameter of this
+     file's functions, a loop's, a callback's), and a binding the scanner
+     cannot follow (a key it cannot know, a member of something else, a form
+     it has no rule for) is reported as a WRITE ('cannot follow'): an unknown
+     spelling is red, never green. */
+  const copies = new Set();      /* Binding: a name bound to a COPY of a container's list */
+  const holders = new Map();     /* Binding -> Map(key -> container): an object written out with a container under a key */
+  const fnReturns = new Map();   /* function path -> container: it hands back a container or an item of one */
+  const unfollowed = new Map();  /* node.start -> { path, node, field, how } */
+  /* a container put into a member (`S.cur = ps.weaponStash[0]`): followed at
+     that member -- its root's binding (or `this`) and its keys, an unknown
+     key matching only an unknown key */
+  const memberAlias = new Map(); /* root -> [{ parts, c, copy }] */
+  const bindingIds = new Map();
+  /* opts.shallow: containers whose ITEMS are their own (the map of sessions:
+     a key put or deleted is a write of it, a session's own field is not) */
+  const SHALLOW = new Set(opts.shallow || []);
+  const itemOf = (c) => (c && !String(c).split('|').some((x) => SHALLOW.has(x)) ? c : null);
+  function memberPath(node, path) {
+    const parts = [];
+    let n = node;
+    while (n && (n.type === 'MemberExpression' || n.type === 'OptionalMemberExpression')) {
+      const ks = keysOf(n, path);
+      parts.unshift(ks && ks.length === 1 ? '.' + ks[0] : '[?]');
+      n = n.object;
+    }
+    let root;
+    if (n && n.type === 'ThisExpression') root = 'this';
+    else if (n && n.type === 'Identifier') {
+      const b = path.scope.getBinding(n.name);
+      if (!b) root = 'g:' + n.name;
+      else { if (!bindingIds.has(b)) bindingIds.set(b, bindingIds.size); root = 'b' + bindingIds.get(b); }
+    } else return null;
+    return { root, parts };
+  }
+  function memberAliasOf(node, path) {
+    if (!memberAlias.size) return null;
+    const mp = memberPath(node, path);
+    const rows = mp && memberAlias.get(mp.root);
+    if (!rows) return null;
+    for (const r of rows) if (r.parts.length === mp.parts.length && r.parts.every((x, i) => x === mp.parts[i])) return r;
+    return null;
+  }
+  const cannot = (path, node, field, how) => {
+    const k = node.start + ':' + field;
+    if (!unfollowed.has(k)) unfollowed.set(k, { path, node, field, how: 'cannot follow: ' + how });
+  };
+  const globalName = (c) => ((c && (c.type === 'MemberExpression' || c.type === 'OptionalMemberExpression') && !c.computed
+    && c.object.type === 'Identifier' && c.property.type === 'Identifier') ? c.object.name + '.' + c.property.name : '');
+  /* the keys an object holds containers under: written out, or a name bound to one */
+  function holderOf(node, path) {
+    if (!node) return null;
+    if (node.type === 'Identifier') { const b = path.scope.getBinding(node.name); return (b && holders.get(b)) || null; }
+    if (node.type !== 'ObjectExpression') return null;
+    let h = null;
+    for (const p of node.properties) {
+      if (p.type !== 'ObjectProperty') continue;
+      const k = p.computed ? wordsOf(p.key, path) : [p.key.type === 'Identifier' ? p.key.name : String(p.key.value)];
+      const c = containerOf(p.value, path);
+      if (!c || !k || k.length !== 1 || CONTAINERS.has(k[0])) continue;   /* under a container's own name: its key says it */
+      (h || (h = new Map())).set(k[0], c);
+    }
+    return h;
+  }
 
   /* what a node holds: { container } when it IS a container (x.inventory, an alias) */
   function containerOf(node, path) {
     if (!node) return null;
     if (node.type === 'MemberExpression' || node.type === 'OptionalMemberExpression') {
       const ks = keysOf(node, path);
+      /* v2.3.6441 (sitting 58): a key of an object that holds a container
+         (`const o = { bag: ps.inventory }; o.bag`) */
+      const h = holderOf(node.object, path);
+      if (h && ks && ks.length === 1 && h.has(ks[0])) return h.get(ks[0]);
+      const ma = memberAliasOf(node, path);
+      if (ma) return ma.c;
       /* one key, or a key that is any of several (`for (const f of STASH_FIELDS) ps[f]`), every one a container */
       if (ks && ks.length && ks.every((k) => CONTAINERS.has(k))) return ks.length === 1 ? ks[0] : ks.join('|');
       /* an element of a container (`ps.weaponStash[0]`, `inv.wood`): writing into it is writing the container */
-      return insideOf(node, path);
+      return itemOf(insideOf(node, path));
     }
     if (node.type === 'Identifier') {
       const b = path.scope.getBinding(node.name);
@@ -259,9 +377,69 @@ export function writesOf(code, opts = {}) {
     if (node.type === 'CallExpression' || node.type === 'OptionalCallExpression') {
       const c = node.callee;
       const n = c.type === 'Identifier' ? c.name : ((c.type === 'MemberExpression' || c.type === 'OptionalMemberExpression') && !c.computed ? c.property.name : null);
-      return n && Object.prototype.hasOwnProperty.call(MAKERS, n) ? MAKERS[n] : null;
+      if (n && Object.prototype.hasOwnProperty.call(MAKERS, n)) return MAKERS[n];
+      /* v2.3.6441 (sitting 57): an element FOUND in a container
+         (`ps.weaponStash.find(...)`, `.at(i)`) is the
+         container's: writing into it writes the container */
+      if (n && ELEMENT_GETTERS.has(n) && c.type !== 'Identifier') return elementsOf(c.object, path);
+      /* v2.3.6441 (sitting 58): a copy of its list (`.filter(...)`,
+         `.slice()`, `Object.values(...)`, `Array.from(...)`) holds the
+         container's own items: an item written through the copy is the
+         container's (the copy's own slots are not: isCopy) */
+      if (GLOBAL_COPIERS.has(globalName(c))) return elementsOf(node.arguments[0], path);
+      if (n && LIST_COPIERS.has(n) && c.type !== 'Identifier') return elementsOf(c.object, path);
+      /* a function of this file that hands back a container or an item of one */
+      if (n && fnsByName.has(n) && (c.type === 'Identifier' || c.object.type === 'ThisExpression' || c.object.type === 'Identifier')) {
+        for (const f of fnsByName.get(n)) if (fnReturns.has(f)) return fnReturns.get(f);
+      }
+      return null;
     }
-    if (node.type === 'ParenthesizedExpression') return containerOf(node.expression, path);
+    /* v2.3.6441 (sitting 58): a list written out with an item of a container
+       in it, or a spread of one (`[...ps.weaponStash]`): its items are the
+       container's */
+    if (node.type === 'ArrayExpression') {
+      for (const e of node.elements) {
+        if (!e) continue;
+        const c = e.type === 'SpreadElement' ? elementsOf(e.argument, path) : containerOf(e, path);
+        if (c) return c;
+      }
+      return null;
+    }
+    if (node.type === 'ParenthesizedExpression' || node.type === 'AwaitExpression' || node.type === 'TSNonNullExpression') return containerOf(node.expression || node.argument, path);
+    if (node.type === 'SequenceExpression') return containerOf(node.expressions[node.expressions.length - 1], path);
+    return null;
+  }
+  /* v2.3.6441 (sitting 58): a NEW list of a container's items (a copy: its
+     own slots and its own order are no write of the container); a sort or a
+     reverse is the list it was called on, in place */
+  function isCopy(node, path) {
+    if (!node) return false;
+    if (node.type === 'ArrayExpression') return true;
+    if (node.type === 'Identifier') { const b = path.scope.getBinding(node.name); return !!b && copies.has(b); }
+    if (node.type === 'MemberExpression' || node.type === 'OptionalMemberExpression') { const ma = memberAliasOf(node, path); return !!ma && ma.copy; }
+    /* `Array.isArray(l) ? l.filter(Boolean) : []`: every side a copy */
+    if (node.type === 'ConditionalExpression') return isCopy(node.consequent, path) && isCopy(node.alternate, path);
+    if (node.type === 'LogicalExpression') return isCopy(node.left, path) && isCopy(node.right, path);
+    if (node.type === 'CallExpression' || node.type === 'OptionalCallExpression') {
+      const c = node.callee;
+      if (GLOBAL_COPIERS.has(globalName(c))) return true;
+      if ((c.type === 'MemberExpression' || c.type === 'OptionalMemberExpression') && !c.computed && c.property.type === 'Identifier' && LIST_COPIERS.has(c.property.name)) {
+        return c.property.name === 'sort' || c.property.name === 'reverse' ? isCopy(c.object, path) : true;
+      }
+    }
+    if (node.type === 'ParenthesizedExpression') return isCopy(node.expression, path);
+    return false;
+  }
+  /* v2.3.6441: a node whose ELEMENTS are a container's own: the container
+     (or an alias of it), or a copy of its list (`filter`, `slice`, `sort`,
+     `concat`...: a new list, the same items) */
+  function elementsOf(node, path) {
+    const c = containerOf(node, path) || ((node && (node.type === 'MemberExpression' || node.type === 'OptionalMemberExpression')) ? insideOf(node, path) : null);
+    if (c) return itemOf(c);
+    if (node && (node.type === 'CallExpression' || node.type === 'OptionalCallExpression')) {
+      const k = node.callee;
+      if ((k.type === 'MemberExpression' || k.type === 'OptionalMemberExpression') && !k.computed && k.property.type === 'Identifier' && LIST_COPIERS.has(k.property.name)) return elementsOf(k.object, path);
+    }
     return null;
   }
   /* inside a container: the member's object is a container (or deeper in one) */
@@ -298,6 +476,9 @@ export function writesOf(code, opts = {}) {
   function target(path, node, how) {
     if (!node) return;
     if (node.type === 'MemberExpression' || node.type === 'OptionalMemberExpression') {
+      /* v2.3.6441 (sitting 58): a slot of a COPY of a container's list (`const
+         l = [...ps.weaponStash]; l[0] = x`, `l.length = 0`) is the copy's own */
+      if (isCopy(node.object, path)) return;
       const inside = insideOf(node, path);
       if (inside) { add(path, node, inside, true, how, recvOf(node, path)); return; }
       const ks = keysOf(node, path);
@@ -326,6 +507,40 @@ export function writesOf(code, opts = {}) {
     return ks;
   }
 
+  /* v2.3.6441 (sitting 57: `const patch = { coins }; Object.assign(ps,
+     patch)` stayed green): the keys a SOURCE of Object.assign puts -- an
+     object written out (and the spreads in it), or a name bound to one, with
+     every key put into that name after (`patch.coins = n`, `patch[k] = n`
+     with k known), a ternary or || of them */
+  function sourceKeys(node, path, depth = 0) {
+    if (!node || depth > 6) return [];
+    if (node.type === 'ObjectExpression') {
+      const ks = objectKeys(node, path);
+      for (const p of node.properties) if (p.type === 'SpreadElement') ks.push(...sourceKeys(p.argument, path, depth + 1));
+      return ks;
+    }
+    if (node.type === 'ConditionalExpression') return [...sourceKeys(node.consequent, path, depth + 1), ...sourceKeys(node.alternate, path, depth + 1)];
+    if (node.type === 'LogicalExpression') return [...sourceKeys(node.left, path, depth + 1), ...sourceKeys(node.right, path, depth + 1)];
+    if (node.type === 'Identifier') {
+      const b = path.scope.getBinding(node.name);
+      if (!b) return [];
+      const ks = [];
+      if (b.path.isVariableDeclarator() && b.path.node.id.type === 'Identifier') ks.push(...sourceKeys(b.path.node.init, b.path, depth + 1));
+      for (const v of b.constantViolations || []) if (v.isAssignmentExpression() && v.node.left.type === 'Identifier') ks.push(...sourceKeys(v.node.right, v, depth + 1));
+      for (const r of b.referencePaths) {
+        const m = r.parentPath;
+        if (!m || !(m.isMemberExpression() || m.isOptionalMemberExpression()) || m.node.object !== r.node) continue;
+        const a = m.parentPath;
+        const put = (a.isAssignmentExpression() && a.node.left === m.node) || (a.isUpdateExpression() && a.node.argument === m.node);
+        if (!put) continue;
+        const k = keysOf(m.node, m);
+        if (k) ks.push(...k);
+      }
+      return ks;
+    }
+    return [];
+  }
+
   /* pass 1: aliases (declarations, destructures), functions by name */
   const bindAlias = (path, id, field) => {
     if (!id || id.type !== 'Identifier') return false;
@@ -334,49 +549,137 @@ export function writesOf(code, opts = {}) {
     alias.set(b, field);
     return true;
   };
+  /* v2.3.6441 (sitting 58): what flows into a binding: { c (the container
+     its items are), copy (a new list of them), holder (keys -> container) } */
+  const flowOf = (node, path) => {
+    if (!node) return null;
+    const c = containerOf(node, path), holder = holderOf(node, path);
+    return c || holder ? { c, copy: !!c && isCopy(node, path), holder } : null;
+  };
+  const keyWords = (p, path) => (p.computed ? wordsOf(p.key, path) : [p.key.type === 'Identifier' ? p.key.name : String(p.key.value)]);
+  /* bind a target (a name or a pattern) to what flows in; -> grew */
+  function bindTarget(path, t, src, how) {
+    if (!t) return false;
+    switch (t.type) {
+      case 'Identifier': {
+        if (!src) return false;
+        const b = path.scope.getBinding(t.name);
+        if (!b) return false;
+        let g = false;
+        if (src.c && alias.get(b) !== src.c) { alias.set(b, src.c); g = true; }
+        if (src.copy && !copies.has(b)) { copies.add(b); g = true; }
+        if (src.holder && !holders.has(b)) { holders.set(b, src.holder); g = true; }
+        return g;
+      }
+      case 'AssignmentPattern': {
+        /* `const { inv = ps.inventory } = o`: the default flows in too */
+        const d = flowOf(t.right, path);
+        return bindTarget(path, t.left, src && src.c ? { c: src.c } : (d ? { c: d.c, holder: d.holder } : src), how);
+      }
+      case 'RestElement': return bindTarget(path, t.argument, src && src.c ? { c: src.c } : null, how);
+      case 'ArrayPattern': {
+        /* `const [first] = ps.weaponStash`: each part is an item of it */
+        let g = false;
+        const it = src && itemOf(src.c);
+        for (const e of t.elements) g = bindTarget(path, e, it ? { c: it } : null, how + ' [pattern]') || g;
+        return g;
+      }
+      case 'ObjectPattern': {
+        let g = false;
+        for (const p of t.properties) {
+          if (p.type === 'RestElement') { g = bindTarget(path, p.argument, src && src.c ? { c: src.c } : null, how + ' {...rest}') || g; continue; }
+          /* from a container or an item of one: every part is the container's */
+          if (src && src.c) { const it = itemOf(src.c); if (it) g = bindTarget(path, p.value, { c: it }, how + ' {pattern}') || g; continue; }
+          const k = keyWords(p, path);
+          if (!k) { if (CONTAINERS.size) cannot(path, p, [...CONTAINERS].join('|'), how + ': a key the tree cannot know'); continue; }
+          let c = null;
+          if (src && src.holder) for (const x of k) if (src.holder.has(x)) c = src.holder.get(x);
+          const ck = k.filter((x) => CONTAINERS.has(x));
+          if (!c && ck.length) c = ck.join('|');
+          g = bindTarget(path, p.value, c ? { c } : null, how + ' {pattern}') || g;
+        }
+        return g;
+      }
+      case 'MemberExpression': case 'OptionalMemberExpression': {
+        /* put into a member: a write of a field (its key says it), or into a
+           container (insideOf says it), or the container now lives where the
+           scanner cannot follow it */
+        if (!src || !src.c) return false;
+        const ks = keysOf(t, path);
+        if (insideOf(t, path) || (ks && ks.some((k) => FIELDS.has(k)))) return false;
+        const mp = memberPath(t, path);
+        if (!mp) { cannot(path, t, src.c, how + ': put into a member of something the scanner cannot name'); return false; }
+        const rows = memberAlias.get(mp.root) || [];
+        if (rows.some((r) => r.parts.length === mp.parts.length && r.parts.every((x, i) => x === mp.parts[i]) && r.c === src.c)) return false;
+        rows.push({ parts: mp.parts, c: src.c, copy: !!src.copy });
+        memberAlias.set(mp.root, rows);
+        return true;
+      }
+      default:
+        if (src && src.c) cannot(path, t, src.c, how + ': a form the scanner has no rule for (' + t.type + ')');
+        return false;
+    }
+  }
   const visitAliases = () => {
     let grew = false;
+    const loopOf = (path) => {
+      /* for (const P of E) / for (P of E): each item of E */
+      const l = path.node.left, target = l.type === 'VariableDeclaration' ? l.declarations[0].id : l;
+      const at = l.type === 'VariableDeclaration' ? path.get('left.declarations.0') : path;
+      const c = path.isForOfStatement() ? elementsOf(path.node.right, path) : null;
+      grew = bindTarget(at, target, c ? { c } : null, 'for-of') || grew;   /* a pattern over records too: `for (const { weaponStash } of list)` */
+    };
     traverse(ast, {
+      ForOfStatement: loopOf,
       VariableDeclarator(path) {
         const { id, init } = path.node;
-        /* for (const w of ps.weaponStash): each element is the container's */
-        const loop = path.parentPath && path.parentPath.parentPath;
-        if (!init && loop && loop.isForOfStatement() && loop.node.left === path.parentPath.node && id.type === 'Identifier') {
-          const c = containerOf(loop.node.right, loop);
-          if (c) grew = bindAlias(path, id, c) || grew;
-          return;
-        }
         if (!init) return;
-        if (id.type === 'Identifier') {
-          const c = containerOf(init, path);
-          if (c) grew = bindAlias(path, id, c) || grew;
-        } else if (id.type === 'ObjectPattern') {
-          for (const p of id.properties) {
-            if (p.type !== 'ObjectProperty') continue;
-            const k = p.computed ? wordsOf(p.key, path) : [p.key.type === 'Identifier' ? p.key.name : String(p.key.value)];
-            const v = p.value.type === 'AssignmentPattern' ? p.value.left : p.value;
-            if (k && k.length === 1 && CONTAINERS.has(k[0])) grew = bindAlias(path, v, k[0]) || grew;
-          }
-        }
+        grew = bindTarget(path, id, flowOf(init, path), 'const') || grew;
       },
       AssignmentExpression(path) {
         const { left, right, operator } = path.node;
-        if (operator === '=' && left.type === 'Identifier') { const c = containerOf(right, path); if (c) grew = bindAlias(path, left, c) || grew; }
+        if (!['=', '||=', '??=', '&&='].includes(operator)) return;
+        grew = bindTarget(path, left, flowOf(right, path), 'assign') || grew;
+      },
+      /* a function of this file that hands back a container or an item of one */
+      ReturnStatement(path) {
+        const c = path.node.argument && containerOf(path.node.argument, path);
+        const f = path.getFunctionParent();
+        if (c && f && !fnReturns.has(f)) { fnReturns.set(f, c); grew = true; }
+      },
+      /* a parameter that is a pattern names its containers itself: `function give({ weaponStash }) {...}` */
+      Function(path) {
+        for (const prm of path.node.params) if (prm.type !== 'Identifier') grew = bindTarget(path, prm, null, 'parameter') || grew;
+      },
+      ArrowFunctionExpression(path) {
+        const b = path.node.body;
+        if (b.type === 'BlockStatement') return;
+        const c = containerOf(b, path.get('body'));
+        if (c && !fnReturns.has(path)) { fnReturns.set(path, c); grew = true; }
       },
       /* a function of this file handed a container: its parameter is an alias */
       CallExpression(path) {
         const { callee, arguments: args } = path.node;
+        /* v2.3.6441: `ps.weaponStash.forEach((w) => { w.lvl = 99; })`: the
+           callback's element parameter is the container's (any pattern: sitting 58) */
+        if ((callee.type === 'MemberExpression' || callee.type === 'OptionalMemberExpression') && !callee.computed
+          && callee.property.type === 'Identifier' && ELEMENT_CALLBACKS.has(callee.property.name)) {
+          const cb = args[0];
+          const c = cb && (cb.type === 'ArrowFunctionExpression' || cb.type === 'FunctionExpression') ? elementsOf(callee.object, path) : null;
+          const prm = c ? cb.params[ELEMENT_CALLBACKS.get(callee.property.name)] : null;
+          if (prm) grew = bindTarget(path.get('arguments.0'), prm, { c }, 'callback') || grew;
+        }
         let name = null;
         if (callee.type === 'Identifier') name = callee.name;
         else if ((callee.type === 'MemberExpression' || callee.type === 'OptionalMemberExpression') && !callee.computed && callee.property.type === 'Identifier'
           && (callee.object.type === 'ThisExpression' || callee.object.type === 'Identifier')) name = callee.property.name;
         if (!name || !fnsByName.has(name)) return;
         args.forEach((a, i) => {
-          const c = containerOf(a, path);
-          if (!c) return;
+          const src = a.type === 'SpreadElement' ? null : flowOf(a, path);
+          if (!src) return;
           for (const f of fnsByName.get(name)) {
             const prm = f.node.params[i];
-            if (prm && prm.type === 'Identifier') { const b = f.scope.getBinding(prm.name); if (b && alias.get(b) !== c) { alias.set(b, c); grew = true; } }
+            if (prm) grew = bindTarget(f, prm, src, 'parameter of ' + name) || grew;
           }
         });
       },
@@ -395,7 +698,49 @@ export function writesOf(code, opts = {}) {
       fnsByName.get(name).push(path);
     },
   });
-  for (let i = 0; i < 6 && visitAliases(); i++) { /* to a fixed point */ }
+  /* v2.3.6441: the calls of each function of this file, by name, for the
+     words a parameter can be (`bump(ps, 'coins', 5)`) */
+  const callsByName = new Map();
+  traverse(ast, {
+    'CallExpression|OptionalCallExpression'(path) {
+      const c = path.node.callee;
+      let name = null;
+      if (c.type === 'Identifier') name = c.name;
+      else if ((c.type === 'MemberExpression' || c.type === 'OptionalMemberExpression') && !c.computed && c.property.type === 'Identifier'
+        && (c.object.type === 'ThisExpression' || c.object.type === 'Identifier')) name = c.property.name;
+      if (!name || !fnsByName.has(name)) return;
+      if (!callsByName.has(name)) callsByName.set(name, []);
+      callsByName.get(name).push(path);
+    },
+  });
+  const fnOfParam = (bind) => {
+    const f = bind.path.parentPath;
+    if (!f || !f.isFunction()) return null;
+    const i = f.node.params.indexOf(bind.path.node);
+    if (i < 0) return null;
+    for (const [name, fns] of fnsByName) if (fns.includes(f)) return { name, i };
+    return null;
+  };
+  const asking = new Set();
+  PARAM_WORDS = (bind, depth) => {
+    if (asking.has(bind) || depth > 6) return null;
+    const at = fnOfParam(bind);
+    const calls = at && callsByName.get(at.name);
+    if (!calls || !calls.length) return null;
+    asking.add(bind);
+    try {
+      const all = [];
+      for (const cp of calls) {
+        const a = cp.node.arguments[at.i];
+        if (!a || a.type === 'SpreadElement') return null;
+        const w = wordsOf(a, cp, depth + 1);
+        if (!w) return null;
+        all.push(...w);
+      }
+      return [...new Set(all)];
+    } finally { asking.delete(bind); }
+  };
+  for (let i = 0; i < 12 && visitAliases(); i++) { /* to a fixed point */ }
 
   /* pass 2: the writes */
   traverse(ast, {
@@ -441,18 +786,21 @@ export function writesOf(code, opts = {}) {
         const c = containerOf(t, path) || ((t.type === 'MemberExpression' || t.type === 'OptionalMemberExpression') ? insideOf(t, path) : null);
         if (c) { add(path, path.node, c, true, how, t.type === 'MemberExpression' ? recvOf(t, path) : { text: srcOf(code, t) }); return; }
         let ks = [];
-        if (prop === 'assign' || prop === 'defineProperties') for (const s of args.slice(1)) ks.push(...objectKeys(s, path));
+        if (prop === 'assign' || prop === 'defineProperties') for (const s of args.slice(1)) ks.push(...sourceKeys(s, path));
         else { const w = wordsOf(args[1], path); if (w) ks = w; }
         for (const k of ks) if (FIELDS.has(k)) add(path, path.node, k, false, how, { text: srcOf(code, t) });
         return;
       }
       /* a list's own changers on a container */
       if (prop && LIST_CHANGERS.has(prop)) {
-        const c = containerOf(callee.object, path) || ((callee.object.type === 'MemberExpression') ? insideOf(callee.object, path) : null);
+        const c = isCopy(callee.object, path) ? null   /* a copy's own order (`[...ps.weaponStash].sort(...)`) */
+          : containerOf(callee.object, path) || ((callee.object.type === 'MemberExpression') ? insideOf(callee.object, path) : null);
         if (c) add(path, path.node, c, true, '.' + prop + '()', { text: srcOf(code, callee.object) });
       }
     },
   });
+  /* v2.3.6441 (sitting 58): what the scanner could not follow is a write (deny by default) */
+  for (const u of unfollowed.values()) add(u.path, u.node, u.field, true, u.how, { text: srcOf(code, u.node) });
   out.sort((a, b) => a.line - b.line);
   return out;
   }

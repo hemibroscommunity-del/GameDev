@@ -55,10 +55,16 @@ const FIELD_PLANTS = [
   ['a whole block put', 'ps.prog3 = { pool: 9 };', POINTS, 'prog3'],
   ['a record rebuilt with a spread and put back', 'this.playerState[session.id] = { ...ps, coins: 5 };', GOLD, 'coins'],
   ['the same, held in a name first', 'const next = { ...ps, coins: 5 }; this.playerState[session.id] = next;', GOLD, 'coins'],
+  /* v2.3.6441: sitting 57's plants (review-z57.md, #2295) */
+  ['Z57 Object.assign of a patch held in a name', 'const patch = { coins: (ps.coins || 0) + 5 }; Object.assign(ps, patch);', GOLD, 'coins'],
+  ['Z57 ...a patch filled after', "let patch = {}; patch['coins'] = 5; Object.assign(ps, { ...patch });", GOLD, 'coins'],
+  ['Z57 ...a patch from a ternary', 'const a = { coins: 1 }, b = { gems: 1 }; Object.assign(ps, reward.big ? a : b);', GOLD, 'coins'],
+  ['Z57 a helper handed the record and the key', "function bump(o, k, n) { o[k] = (o[k] || 0) + n; } bump(ps, 'coins', 5);", GOLD, 'coins'],
+  ['Z57 ...the key handed on twice', "function put(o, k, v) { o[k] = v; } function bump(o, k, n) { put(o, k, (o[k] || 0) + n); } bump(ps, 'coins', 5);", GOLD, 'coins'],
 ];
 for (const [name, body, opts, field] of FIELD_PLANTS) {
   const got = W(body, opts);
-  check('1. ' + name + ': found as a write of ' + field, got.some((w) => w.field === field && w.fn === '_turnIn' && w.line === 3), got.map((w) => [w.line, w.field, w.how]));
+  check('1. ' + name + ': found as a write of ' + field, got.some((w) => w.field === field && ['_turnIn', 'bump', 'put'].includes(w.fn) && w.line === 3), got.map((w) => [w.line, w.field, w.how]));
 }
 
 /* ── 2. a container's contents written, through any alias ── */
@@ -92,6 +98,37 @@ const CONTAINER_PLANTS = [
   ['a stash item held in a name, changed', 'const w = ps.weaponStash[0]; w.lvl = 99;', STASH, 'weaponStash'],
   ['every stash item changed over a loop', 'for (const w of ps.weaponStash) w.lvl = 99;', STASH, 'weaponStash'],
   ['a stash item\'s field deleted', 'delete ps.weaponStash[0].gems;', STASH, 'weaponStash'],
+  /* v2.3.6441: sitting 57's plants (an item changed through .find / forEach) */
+  ['Z57 a stash item found, then changed', 'const w = ps.weaponStash.find((x) => x.id === reward.id); if (w) w.lvl = 99;', STASH, 'weaponStash'],
+  ['Z57 ...changed where it is found', 'ps.weaponStash.find((x) => x.id === reward.id).lvl = 99;', STASH, 'weaponStash'],
+  ['Z57 ...at(i)', 'ps.shieldStash.at(-1).lvl = 99;', STASH, 'shieldStash'],
+  ['Z57 every stash item changed in a forEach', 'ps.weaponStash.forEach((w) => { w.lvl = 99; });', STASH, 'weaponStash'],
+  ['Z57 ...over a filtered copy', 'ps.weaponStash.filter((w) => w.lvl < 5).forEach(function (w) { delete w.gems; });', STASH, 'weaponStash'],
+  ['Z57 ...through an alias, in a map', 'const list = ps.weaponStash; list.map((w) => { w.lvl = 1; return w; });', STASH, 'weaponStash'],
+  ['Z57 ...reduce\'s item', 'ps.weaponStash.reduce((n, w) => { w.seen = 1; return n + 1; }, 0);', STASH, 'weaponStash'],
+  /* v2.3.6441: sitting 58's plant (review-z58.md, #2295) and the class
+     around it -- a binding followed through EVERY form (a list pattern, a
+     nested one, a key that is a number, a rest, a parameter's pattern, a
+     loop's, a callback's, a copy, a member of something else, a function's
+     answer, an object holding it), and a form the scanner cannot follow is
+     a write (deny by default) */
+  ['Z58 a list pattern written through', 'const [first] = ps.weaponStash; first.lvl = 99;', STASH, 'weaponStash'],
+  ['Z58 ...nested under the stash\'s key', 'const { weaponStash: [w0] } = ps; w0.lvl = 99;', STASH, 'weaponStash'],
+  ['Z58 ...an item\'s number as a key', 'const { 0: first } = ps.weaponStash; first.lvl = 99;', STASH, 'weaponStash'],
+  ['Z58 ...a pattern put, not declared', 'let w; [w] = ps.weaponStash; w.lvl = 99;', STASH, 'weaponStash'],
+  ['Z58 ...a rest of the items', 'const [, ...rest] = ps.weaponStash; rest[0].lvl = 99;', STASH, 'weaponStash'],
+  ['Z58 ...a loop\'s pattern over entries()', 'for (const [, w] of ps.weaponStash.entries()) w.lvl = 99;', STASH, 'weaponStash'],
+  ['Z58 ...a callback\'s pattern', 'ps.weaponStash.forEach(({ gems }) => { gems.length = 0; });', STASH, 'weaponStash'],
+  ['Z58 ...a parameter\'s pattern', 'function give({ weaponStash }) { weaponStash.push(reward.weapon); } give(ps);', STASH, 'weaponStash'],
+  ['Z58 ...a loop over records, a pattern', 'for (const { weaponStash } of [ps]) weaponStash.push(reward.weapon);', STASH, 'weaponStash'],
+  ['Z58 a copy\'s item written', 'const all = [...ps.weaponStash]; all[0].lvl = 99;', STASH, 'weaponStash'],
+  ['Z58 ...Object.values', 'Object.values(ps.weaponStash)[0].lvl = 99;', STASH, 'weaponStash'],
+  ['Z58 ...a filtered copy held in a name', 'const live = ps.weaponStash.filter(Boolean); live[0].lvl = 99;', STASH, 'weaponStash'],
+  ['Z58 an item put into a member, written there', 'this._cur = ps.weaponStash[0]; this._cur.lvl = 99;', STASH, 'weaponStash'],
+  ['Z58 a function of the file that hands back an item', 'const pick = () => ps.weaponStash[0]; pick().lvl = 99;', STASH, 'weaponStash'],
+  ['Z58 an object holding the stash under another key', 'const o = { list: ps.weaponStash }; o.list.push(reward.weapon);', STASH, 'weaponStash'],
+  ['Z58 DENY: a key the tree cannot know, in a pattern', 'const { [reward.k]: s } = ps; s.push(reward.weapon);', STASH, 'weaponStash|armorStash|shieldStash'],
+  ['Z58 DENY: an item put into a member of a call\'s answer', 'this.slot().w = ps.weaponStash[0];', STASH, 'weaponStash'],
 ];
 for (const [name, body, opts, field] of CONTAINER_PLANTS) {
   const got = W(body, opts);
@@ -108,6 +145,14 @@ const READS = [
   ['the bag\'s own count read through an alias', 'const inv = ps.inventory; const n = inv.wood || 0; return n + 1;', BAG],
   ['a copy of the record sent or saved, not put back', 'const out = { ...ps, coins: 0 }; this._send(ws, { type: "x", payload: { ...ps, coins: 1 } }); return out;', GOLD],
   ['a stash item read in a loop', 'let best = 0; for (const w of ps.weaponStash) best = Math.max(best, w.lvl); return best;', STASH],
+  /* v2.3.6441: beside sitting 57's plants, the reads stay reads */
+  ['a stash item found and read, a forEach that reads', 'const w = ps.weaponStash.find((x) => x.id === 1); let n = w ? w.lvl : 0; ps.weaponStash.forEach((x) => { n += x.lvl; }); return n;', STASH],
+  ['a patch of other fields, a helper handed another key', "const patch = { name: 'x' }; Object.assign(ps, patch); function bump(o, k, n) { o[k] = (o[k] || 0) + n; } bump(ps, 'gems', 1);", GOLD],
+  ['a copy made from a found item', 'const w = { ...ps.weaponStash.find((x) => x.id === 1) }; w.lvl = 99; return w;', STASH],
+  /* v2.3.6441: beside sitting 58's, a copy's own slots and order, an item read through a pattern */
+  ['a copy sorted and cut', 'const sorted = [...ps.weaponStash].sort((a, b) => a.lvl - b.lvl); sorted.length = 1; const ids = ps.weaponStash.map((w) => w.id); ids.push(0); return sorted;', STASH],
+  ['an item read through a list pattern', 'const [first] = ps.weaponStash; const { lvl } = ps.weaponStash[0]; return first ? first.lvl + lvl : 0;', STASH],
+  ['a session\'s own field, the map shallow', 'for (const [w, s] of this.sessions) s.seen = 1; const one = this.sessions.get(ws); one.x = 1;', { containers: ['sessions'], shallow: ['sessions'] }],
 ];
 for (const [name, body, opts] of READS) {
   const got = W(body, opts);
