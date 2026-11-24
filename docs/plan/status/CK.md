@@ -1,34 +1,33 @@
 card: CK
-branch: claude/ck-one-parse (one PR a branch, claude/ck-*; on #2288's)
-prs: #2284 (6420, ready), #2288 (6421, ready; on #2284), this branch's (6422, ready; on #2288)
+branch: claude/ck-bookkeeping (one PR a branch, claude/ck-*; on #2294's)
+prs: #2284 (6420, merged), #2288 (6421, ready), #2294 (6422, ready), this branch's (6423, ready)
 state: ready
 
 ## Done
-- (6420) #2284: switches-thrown throws on a PR what it touched and a few
-  by the commit; `--whole` once a sitting (the gatekeeper). Docs branch's
-  suite 979 -> 215.5 s (claims-gain 162 s, card BK's); plants A, B red.
-- (6421) #2288: asset guards trust what is main's by git's ids; in the
-  suite door 16.5 -> 0.23 s, sources 13.2 -> 0.07 s; docs suite 164.8 s.
-- (6422) the per-suite mends, not one shared parse (the orchestrator's
-  answer: the time is not parsing). ladder-passes 20.3 -> 0.25 s (it gave
-  the renderer's word, p256.js's 20 s wait); picture-door 7.2 -> 1.2 s
-  (`blank()` kept by its text). Each one plant red before and after.
+- (6420) #2284: switches-thrown throws what a PR touched, a few by the
+  commit; `--whole` at the gatekeeper. Docs suite 979 -> 215.5 s.
+- (6421) #2288: asset guards trust main's files by git's ids: door 16.5 ->
+  0.23 s, sources 13.2 -> 0.07 s.
+- (6422) #2294: per-suite mends (the orchestrator's answer): ladder-passes
+  20.3 -> 0.25 s, picture-door 7.2 -> 1.2 s; plants red before and after.
+- (6423) bookkeeping: SLOW_FIRST from 2026-11-24 (suite 153 s, claims-gain
+  128 s first); precheck's rest cap 20 -> 10 min, the gatekeeper's precheck
+  70 -> 25 min; CLAUDE.md 6's time; the brief hides all-merged blocks
+  (102 -> 96 lines); README's rule already on main (v2.3.6400).
 
 ## Next
-- PR 4 (6423), the bookkeeping (run.mjs; one PR of mine touches it).
+- PR 5 only on the owner's own words (Needs). Card done otherwise.
 
 ## Found
 - docs/specs/switch-table.md line 165 ("On every PR only the rows born
   from tag 5301 on run"): stale after 6420 (not this card's file).
-- server/test/claims-gain.test.mjs (card BK's): 162 s alone here
-  (`time node test/claims-gain.test.mjs`), its header says about 25 s:
-  the whole suite cannot be under 120 s while it is.
-- run.mjs: `npm test -- switches` runs switches-thrown too (PR 4's).
+- server/test/claims-gain.test.mjs (card BK's): 128-162 s here (header:
+  25 s); the suite cannot be under 120 s while it is.
+- run.mjs: `npm test -- switches` runs switches-thrown too (not PR 4's).
 - switches-thrown (gatekeeper's): never catches a cap advertised whatever
   its reader says (harvestGrade; plain suites do). Fits no PR of CK's.
-- tools/guards/phase-table.test.mjs (card WL's; #2286 open on it, #2282
-  adds rows): 7 s, babel's traverse and GC. A parse kept by git id fits
-  it: for after #2286 and #2282 have merged.
+- tools/guards/phase-table.test.mjs (WL's; #2286, #2282 on it): 7 s, babel
+  traverse and GC; a parse kept by git id fits, after those merge.
 
 ## Needs
 - PR 5 waits on the owner's own words, two changes under `.github/`:
