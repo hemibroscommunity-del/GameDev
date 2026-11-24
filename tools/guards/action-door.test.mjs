@@ -59,7 +59,7 @@
  *   5. src/game/actions.js: `item_drop`'s `body: 'top'` taken off      -> FAIL 2b (v2.3.5185, sitting 14)
  *   6. src/game/actions.js: `auth` taken off http:/api/market/place    -> FAIL 3b (v2.3.5191, 2026-11-15)
  *   7. act(): a JSON header and a body on every route, a GET's too      -> FAIL 5 (v2.3.5191, 2026-11-15)
- *   8. src/ui/BroTown.jsx ~8198: `const k = 'channel'; S[k].send(...)`  -> FAIL 7 (v2.3.6446, plants-scans.json)
+ *   8. the page's main file ~8198 (BroTown): `const k = 'channel'; S[k].send(...)`  -> FAIL 7 (v2.3.6446, plants-scans.json)
  *
  * Run from the repository's root: node tools/guards/action-door.test.mjs
  * (cd server && npm test runs it with every other guard).
