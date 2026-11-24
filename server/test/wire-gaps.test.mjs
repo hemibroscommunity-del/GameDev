@@ -27,11 +27,35 @@
  *      by any name (a destructured `pathname`, a renamed one), has a route
  *      row (wire-table §6 reads the text `path ===` / `url.pathname ===`).
  *
+ * v2.3.6446 (card DG, sitting 59's mend): ALLOW LISTS IN THE TREE.  Sitting
+ * 59's review stayed green with a relay let in by a regular expression or
+ * `endsWith` (relay.js), a `{ ...msg }` broadcast, and routes by
+ * `pathname.slice(1)` and `searchParams.has('tip')`.  Each part below names
+ * the forms the guarded thing may take; every other form is red unless a row
+ * of a counted list (it only falls), and a form the guard cannot follow is red.
+ *   2c. THE PHONE'S OBJECT NEVER GOES OUT: in the router, `msg`, a field of
+ *      it, `msg.payload || msg`, or a name for one is never spread, given to
+ *      Object.assign, made a literal's part, put on another object, returned,
+ *      or handed to a SENDER (the send door's own, and every function of
+ *      server/src that hands a parameter whole to one, computed); a call it
+ *      cannot follow is red (CARRIER_LISTED, CARRIER_READERS).
+ *   4. THE RELAY'S DECISION: `_relayAllowed` defined once, in relay.js, its
+ *      body the listed statements (the made list, the kill switch); every
+ *      other read of a type in relay.js a counted row (RELAY_TYPE_READS).
+ *   5. THE ROUTER'S URL: made only as `const url = new URL(request.url)` in
+ *      the two fetches; each read a strict compare with a literal path, a
+ *      mount's startsWith, the routes' door, or a counted row (URL_HANDED).
+ * BREAK PROOF (sitting 59's plants, plants-gaps.json, all red): a regex and
+ * an `endsWith` relay (4a), `String(type).toLowerCase()` (4a), a
+ * `startsWith` in _relayBuild (4b), `broadcastExcept(ws, { ...msg })` and
+ * `broadcastAll(msg.payload || msg)` (2c), `pathname.slice(1)` and
+ * `searchParams.has('tip')` routes (5).
+ *
  * Read only: nothing here changes the room's code or the table.
  */
 import { readFileSync } from 'node:fs';
 import { SRC_DIR, srcFiles } from './src-walk.mjs';
-import { visit } from '../../tools/guards/lib/writesOf.mjs';
+import { visit, parse, fnName } from '../../tools/guards/lib/writesOf.mjs';
 import { WIRE_RELAY } from '../src/wire/relays.js';
 import { WIRE_HTTP } from '../src/wire/http.js';
 import { PRIVILEGED_EVENTS } from '../src/wire/lists.js';
@@ -298,6 +322,357 @@ if (fetchM) {
   }
   check(`3: the path lister reads the syntax tree (guard: ${all.length} compares)`, all.length > 15 && all.some((x) => x.p === '/_room_count') && all.some((x) => x.p === '/api/'), all.length);
   check('3: every path index.js compares, by any name, has a route row', found.length === 0, found);
+}
+
+/* ════ v2.3.6446 (card DG, sitting 59's mend): ALLOW LISTS IN THE TREE ════
+   Sitting 59's review walked beside each part above: a relay let in by a
+   regular expression or `endsWith` in relay.js (part 1 asks only the words
+   server/src spells), a `{ ...msg }` broadcast (part 2b follows `msg` as an
+   argument only), routes by `pathname.slice(1)` and `searchParams.has('tip')`
+   (part 3 reads only literal paths).  Each part below names the FORMS the
+   guarded thing may take in the syntax tree; every other appearance is red
+   unless it is a row of a counted list that only falls, and a form the
+   guard cannot follow is red, never passed for being unknown. */
+const SHAPE_SKIP = new Set(['start', 'end', 'loc', 'range', 'extra', 'leadingComments', 'trailingComments', 'innerComments', 'comments', 'errors', 'tokens']);
+const shapeOf = (n) => JSON.stringify(n, (k, v) => (SHAPE_SKIP.has(k) ? undefined : v));
+/* a node's own source, its comments out and its spaces one: a row's key */
+const norm = (code, n) => code.slice(n.start, n.end).replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '').replace(/\s+/g, ' ').trim();
+/* a counted list held to what was found: a row seen more is red, a row seen fewer is stale (the list only falls) */
+function heldTo(list, got) {
+  const over = [], stale = [];
+  for (const [k, n] of got) { const row = list[k]; if (!row) over.push(k + ' (x' + n + ')'); else if (n > row[0]) over.push(k + ' (x' + n + ', listed ' + row[0] + ')'); }
+  for (const k of Object.keys(list)) { const n = got.get(k) || 0; if (n < list[k][0]) stale.push(k + ' (seen ' + n + ', listed ' + list[k][0] + ')'); }
+  return { over, stale };
+}
+const bump = (m, k) => m.set(k, (m.get(k) || 0) + 1);
+
+/* ── 4. THE RELAY'S DECISION, in the tree (relay.js) ──
+   4a. `_relayAllowed` is defined once, in relay.js, and its body is these
+   statements and nothing else (their shapes in the tree): a type is let in
+   by the made list (`RELAY.TYPES.has(type)`) or by the kill switch that lets
+   every type in (`relaylist: false`).  Nowhere in server/src is the name
+   given another body or reached by a string (`this['_relay' + ...]`).
+   4b. Every other read of a type in relay.js -- a `.type` or `['type']` of
+   anything, a destructure of `type`, a computed key on `msg`, `arguments` --
+   is a row of RELAY_TYPE_READS by its function and its form (its parent
+   node's source), counted: a regular expression, startsWith / endsWith, a
+   `==`, a switch, a lookup in another object, a second name is red. */
+const RELAY_ALLOWED_BODY = [
+  ['if (RELAY.TYPES.has(type)) return true;', 'THE ADMISSION: a row of the wire table (RELAY.TYPES, made from its relay rows)'],
+  ['const f = this._liveFlags;', 'the live flags, for the switch below'],
+  ["return !!(f && typeof f === 'object' && own(f, 'relaylist') && !f.relaylist);", 'the kill switch `relaylist: false`: every type, as before the allowlist (liveops)'],
+];
+const RELAY_TYPE_READS = {
+  '_relayBuild: Object.prototype.hasOwnProperty.call(RELAY_FORMS, msg.type)': [1, 'its row\'s field forms (RELAY_FORMS): which fields go out, never whether it goes'],
+  '_relayBuild: RELAY_FORMS[msg.type]': [1, 'the same row\'s forms, read'],
+  '_relayBuild: type: msg.type': [1, 'the type carried onto the rebuilt message (admitted at the gate before)'],
+  '_relayBytesDrop: msg && msg.type': [1, 'the log line of a relay dropped for its bytes'],
+};
+{
+  const RSRC = raw['relay.js'];
+  const defs = [];
+  for (const f of Object.keys(raw)) {
+    visit(raw[f], {
+      'ObjectMethod|ClassMethod|ObjectProperty|ClassProperty|ClassPrivateMethod'(path) {
+        const k = path.node.key;
+        if (k && !path.node.computed && (k.name || k.value) === '_relayAllowed') defs.push({ f, path, line: lineOf(raw[f], path.node) });
+      },
+      'MemberExpression|OptionalMemberExpression'(path) {
+        const n = path.node;
+        if (!n.computed && n.property.name === '_relayAllowed' && path.parentPath.isAssignmentExpression() && path.parentKey === 'left') defs.push({ f, line: lineOf(raw[f], n), what: 'given another body' });
+      },
+      StringLiteral(path) { if (path.node.value === '_relayAllowed' && !path.parentPath.isObjectProperty({ computed: false })) defs.push({ f, line: lineOf(raw[f], path.node), what: 'reached by a string' }); },
+    });
+  }
+  const own1 = defs.length === 1 && defs[0].f === 'relay.js' && defs[0].path && defs[0].path.isObjectMethod() && !defs[0].path.node.async && !defs[0].path.node.generator;
+  check('4a: `_relayAllowed` is defined once, in relay.js, and nowhere given another body or reached by a string', own1, defs.map((d) => d.f + ':' + d.line + (d.what ? ' ' + d.what : '')));
+  if (own1) {
+    const m = defs[0].path.node;
+    const want = RELAY_ALLOWED_BODY.map(([s]) => shapeOf(parse('function _relayAllowed(type) {\n' + s + '\n}').program.body[0].body.body[0]));
+    const got = m.body.body;
+    const bad = [];
+    if (m.params.length !== 1 || m.params[0].type !== 'Identifier' || m.params[0].name !== 'type') bad.push('its parameter is not the one `type`');
+    if (got.length !== want.length) bad.push(got.length + ' statements, ' + want.length + ' listed');
+    got.forEach((s, i) => { if (shapeOf(s) !== want[i]) bad.push('relay.js:' + lineOf(RSRC, s) + ' `' + norm(RSRC, s).slice(0, 120) + '` is no listed statement (RELAY_ALLOWED_BODY ' + (i + 1) + ')'); });
+    check('4a: ...its body is the listed statements and nothing else: the made list, then the kill switch', bad.length === 0, bad);
+  }
+  const got = new Map(), odd = [];
+  visit(RSRC, {
+    'MemberExpression|OptionalMemberExpression'(path) {
+      const n = path.node;
+      const isType = (!n.computed && n.property.name === 'type') || (n.computed && n.property.type === 'StringLiteral' && n.property.value === 'type');
+      if (isType) { bump(got, fnName(path) + ': ' + norm(RSRC, path.parent)); return; }
+      if (n.computed && n.object.type === 'Identifier' && n.object.name === 'msg') odd.push('relay.js:' + lineOf(RSRC, n) + ' `' + norm(RSRC, n) + '` (a computed key on msg)');
+    },
+    ObjectPattern(path) {
+      for (const p of path.node.properties) if (p.type === 'RestElement' || p.computed || (p.key && (p.key.name || p.key.value) === 'type')) odd.push('relay.js:' + lineOf(RSRC, p) + ' `' + norm(RSRC, path.node) + '` (a destructure: its type or its rest)');
+    },
+    Identifier(path) { if (path.node.name === 'arguments' && path.isReferencedIdentifier()) odd.push('relay.js:' + lineOf(RSRC, path.node) + ' `arguments`'); },
+  });
+  const { over, stale } = heldTo(RELAY_TYPE_READS, got);
+  check('4b: every read of a type in relay.js but the admission is a listed form (RELAY_TYPE_READS, counted): no regular expression, startsWith/endsWith, ==, switch, lookup or second name', over.length === 0 && odd.length === 0, [...over, ...odd]);
+  check('4b: ...every RELAY_TYPE_READS row is still there, at its count (a stale row is deleted, a count lowered)', stale.length === 0, stale);
+  check('4b: the reader reads the tree (guard: the four rows found)', got.size >= 4, [...got.keys()]);
+}
+
+/* ── 5. THE ROUTER'S URL, in the tree (index.js) ──
+   A request's URL is made once a fetch, `const url = new URL(request.url)`,
+   and never read another way: `request.url` only there, no other `new URL`.
+   Each read of that `url` is one of the FORMS: a strict comparison of
+   `url.pathname` with a literal path (part 3 holds the path to its row), a
+   mount's `url.pathname.startsWith('<literal path>')`, the routes' door's
+   own call, or a row of URL_HANDED (the URL handed to a named helper,
+   counted).  `searchParams`, `search`, `href`, a slice of the path, a loose
+   or non-literal comparison, a destructure, a second name, a reassignment:
+   red. */
+const URL_FORMS_DOOR = 'this._wireDoorHttp(request, url)';
+const URL_MADE_IN = { routeHttp: 'the outer worker\'s router (its default export\'s fetch hands it the request)', fetch: 'GameRoom.fetch, the room\'s routes' };
+const URL_HANDED = {
+  'bodyCapRoute(url.pathname)': [1, 'the outer worker\'s body cap by route (bodycap.js), before the room'],
+  'roomNameFor(url)': [1, 'which room a request is for (its query\'s room name, judged there)'],
+  'edgeCacheRead(url)': [3, 'the edge cache\'s key for a public read (edgecache.js): market, store, arena'],
+  'edgeKeyRefusal(url.pathname)': [1, 'the edge key check by route (the leaderboard)'],
+  'this._publicReadDo(url)': [4, 'the public reads kept and paced by address (publicreads.js)'],
+  'this._seatGate(url)': [1, 'the room\'s seat gate (its query\'s place in line)'],
+  'this._roomFullRefusal(url)': [2, 'the room-full refusal (join.js)'],
+};
+{
+  let ast = null;
+  visit(INDEX, { Program(path) { ast = path; } });
+  const made = [], bad = [], handed = new Map();
+  let reads = 0;
+  ast.traverse({
+    NewExpression(path) {
+      if (path.node.callee.type !== 'Identifier' || !/^URL(SearchParams)?$/.test(path.node.callee.name)) return;
+      const d = path.parentPath;
+      const fnP = path.getFunctionParent();
+      const ok = path.node.callee.name === 'URL' && d.isVariableDeclarator() && d.node.id.type === 'Identifier' && d.node.id.name === 'url'
+        && d.parentPath.node.kind === 'const' && path.node.arguments.length === 1 && chain(path.node.arguments[0]) === 'request.url'
+        && fnP && Object.prototype.hasOwnProperty.call(URL_MADE_IN, fnName(path)) && fnP.node.params[0] && fnP.node.params[0].name === 'request';
+      if (!ok) { bad.push('index.js:' + lineOf(INDEX, path.node) + ' `' + norm(INDEX, path.node) + '` (the URL made another way)'); return; }
+      made.push(d);
+    },
+    'MemberExpression|OptionalMemberExpression'(path) {
+      const n = path.node;
+      if ((!n.computed && n.property.name === 'url') || (n.computed && n.property.type === 'StringLiteral' && n.property.value === 'url')) {
+        if (!(path.parentPath.isNewExpression() && made.some((d) => d.node.init === path.parent))) {
+          /* the made URL is visited first (its declarator is entered before its argument): a read of `.url` elsewhere is red */
+          const inMade = path.parentPath.isNewExpression() && path.parentPath.parentPath.isVariableDeclarator();
+          if (!inMade) bad.push('index.js:' + lineOf(INDEX, n) + ' `' + norm(INDEX, path.parent) + '` (the request\'s URL read outside `new URL(request.url)`)');
+        }
+      }
+    },
+    ObjectPattern(path) {
+      for (const p of path.node.properties) if (p.key && !p.computed && ['url', 'pathname', 'searchParams', 'search', 'href'].includes(p.key.name)) bad.push('index.js:' + lineOf(INDEX, p) + ' `' + norm(INDEX, path.node) + '` (a destructure of the URL)');
+    },
+  });
+  const isPath = (n) => n && ((n.type === 'StringLiteral' && n.value.startsWith('/')) || (n.type === 'TemplateLiteral' && !n.expressions.length && n.quasis[0].value.cooked.startsWith('/')));
+  for (const d of made) {
+    const b = d.scope.getBinding('url');
+    if (!b || b.path !== d) { bad.push('index.js:' + lineOf(INDEX, d.node) + ' the made URL\'s binding is not followed'); continue; }
+    for (const v of b.constantViolations) bad.push('index.js:' + lineOf(INDEX, v.node) + ' `url` given another value');
+    for (const r of b.referencePaths) {
+      reads++;
+      const at = 'index.js:' + lineOf(INDEX, r.node);
+      const p = r.parentPath;
+      /* the routes' door's own call */
+      if (p.isCallExpression() && r.parentKey === 'arguments' && norm(INDEX, p.node) === URL_FORMS_DOOR) continue;
+      /* handed whole to a named helper (URL_HANDED) */
+      if ((p.isCallExpression() || p.isNewExpression()) && r.parentKey === 'arguments') { bump(handed, (chain(p.node.callee) || '(a call by another name)') + '(url)'); continue; }
+      if (p.isMemberExpression() && r.parentKey === 'object' && !p.node.computed && p.node.property.name === 'pathname') {
+        const g = p.parentPath;
+        /* url.pathname === '/lit' (or !==), either side */
+        if (g.isBinaryExpression() && (g.node.operator === '===' || g.node.operator === '!==') && isPath(p.parentKey === 'left' ? g.node.right : g.node.left)) continue;
+        /* url.pathname.startsWith('/lit') */
+        if (g.isMemberExpression() && p.parentKey === 'object' && !g.node.computed && g.node.property.name === 'startsWith'
+          && g.parentPath.isCallExpression() && g.parentKey === 'callee' && g.parent.arguments.length === 1 && isPath(g.parent.arguments[0])) continue;
+        /* the path handed to a named helper (URL_HANDED) */
+        if ((g.isCallExpression() || g.isNewExpression()) && p.parentKey === 'arguments') { bump(handed, (chain(g.node.callee) || '(a call by another name)') + '(url.pathname)'); continue; }
+        bad.push(at + ' `' + norm(INDEX, g.node).slice(0, 100) + '` (the path read in no listed form)');
+        continue;
+      }
+      bad.push(at + ' `' + norm(INDEX, p.node).slice(0, 100) + '` (the URL read in no listed form)');
+    }
+  }
+  const { over, stale } = heldTo(URL_HANDED, handed);
+  check('5: the request\'s URL is made only as `const url = new URL(request.url)` in a fetch (guard: ' + made.length + ' made, ' + reads + ' reads)', made.length === 2 && reads > 30, made.length);
+  check('5: every read of the request\'s URL in index.js is a listed form: a strict compare with a literal path, a mount\'s startsWith, the routes\' door, a URL_HANDED row (counted)', bad.length === 0 && over.length === 0, [...bad, ...over]);
+  check('5: ...every URL_HANDED row is still there, at its count (a stale row is deleted, a count lowered)', stale.length === 0, stale);
+}
+
+/* ── 2c. WHAT GOES OUT IS NEVER THE PHONE'S OWN OBJECT (the router) ──
+   In `_onMessage`, the phone's message `msg`, a field of it at any depth
+   (`msg.payload`, `msg.data[k]`), or an `||` / `??` / `?:` / `await` of them
+   (`msg.payload || msg`), and any name given one, is a CARRIER.  A carrier
+   may be read, compared, tested and handed to a function; it is red when it
+   is SPREAD (`{ ...msg }`, `[...msg.list]`, `f(...msg.args)`), handed to
+   Object.assign, made a field or an element of a literal, put on another
+   object (`x.y = msg.payload`), returned, or handed to a SENDER: the send
+   door's own (`_send`, `_sendRoom`, broadcastAll/Except, the room's
+   eventBuffer, a socket's send) and, computed off the whole of server/src,
+   every function that hands one of its parameters, whole, to a sender (the
+   helpers `_partySend(pid, type, payload)` and the rest).  A call the guard
+   cannot follow (a computed callee, a name with no definition in server/src,
+   a function not listed in CARRIER_READERS) is red.  After the rebuild in
+   the default case (`msg = this._relayBuild(session, msg)`), `msg` is the
+   worker's own message (part 2b holds its takers).  Rows: CARRIER_LISTED,
+   counted, by form. */
+const SINKS = { 'this._send': [1], 'this._sendRoom': [0], 'this.broadcastAll': [0], 'this.broadcastExcept': [1], 'this.eventBuffer.push': 'all', 'sendOutside': [1] };
+const CARRIER_READERS = {
+  'console.error': 'a log line', 'console.warn': 'a log line', 'console.log': 'a log line', 'Math.min': 'a number',
+  'Object.prototype.hasOwnProperty.call': 'asks whether a field is there', 'Number.isFinite': 'asks a number',
+  'RIDE_ENDS_ON.has': 'a list of types asked', 'PAUSE_GATED.has': 'a list of types asked', 'FIGHT_GATED.has': 'a list of types asked', 'PRIVILEGED_EVENTS.has': 'the deny-list asked',
+};
+const CARRIER_LISTED = {
+  /* the `track` case (index.js): each cosmetic key of TRACK_COSMETIC_KEYS copied on its own, to its form, before it rides session.data and the player_update fan-out */
+  'put on another object: clean[k] = _tv.length > _tcap ? _tv.slice(0, _tcap) : _tv': [1, 'track: a cosmetic string, cut to its cap (cosmeticCap)'],
+  'put on another object: clean[k] = _tv': [2, 'track: a scalar (null, a boolean, a finite number), and `rpgData`, the inspect card\'s blob, bounded by its JSON size (TRACK_BLOB_MAX_BYTES)'],
+  /* the shop's case: the type, one of the case's own two words */
+  'a field of a literal: kind: _kind': [1, 'shop_sell / shop_buy: the case\'s own type on its result (`_kind = msg.type`, inside those two cases)'],
+};
+{
+  /* every named function of server/src: its parameters' names and its body */
+  const defs = new Map();   /* name -> [{ f, path, params }] */
+  for (const f of Object.keys(raw)) {
+    visit(raw[f], { 'ObjectMethod|ClassMethod|FunctionDeclaration|FunctionExpression|ArrowFunctionExpression'(path) {
+      const n = path.node, pp = path.parentPath;
+      let name = null;
+      if ((path.isObjectMethod() || path.isClassMethod()) && !n.computed) name = n.key.name || n.key.value;
+      else if (n.id && n.id.name) name = n.id.name;
+      else if (pp.isVariableDeclarator() && pp.node.id.type === 'Identifier') name = pp.node.id.name;
+      else if (pp.isObjectProperty() && !pp.node.computed) name = pp.node.key.name || pp.node.key.value;
+      else if (pp.isAssignmentExpression() && pp.node.left.type === 'MemberExpression' && !pp.node.left.computed) name = pp.node.left.property.name;
+      if (!name) return;
+      if (!defs.has(name)) defs.set(name, []);
+      defs.get(name).push({ f, path, params: n.params.map((p) => (p.type === 'Identifier' ? p.name : p.type === 'AssignmentPattern' && p.left.type === 'Identifier' ? p.left.name : p.type === 'RestElement' ? '...' : null)) });
+    } });
+  }
+  /* the names in `node` handed WHOLE (not a field read, not a key) */
+  const wholeIn = (node, names) => {
+    const out = new Set();
+    const look = (n, parent, key) => {
+      if (!n || typeof n !== 'object') return;
+      if (Array.isArray(n)) { for (const x of n) look(x, parent, key); return; }
+      if (n.type === 'Identifier' && names.has(n.name)) {
+        const fieldRead = parent && (parent.type === 'MemberExpression' || parent.type === 'OptionalMemberExpression') && key === 'object';
+        const aKey = parent && parent.type === 'ObjectProperty' && key === 'key' && !parent.computed && !parent.shorthand;
+        const asked = parent && (parent.type === 'UnaryExpression'
+          /* `p && p.x`: the left passes on only when it is falsy, never an object; `p ? a : b` tests it */
+          || (parent.type === 'LogicalExpression' && parent.operator === '&&' && key === 'left') || (parent.type === 'ConditionalExpression' && key === 'test'));
+        if (!fieldRead && !aKey && !asked) out.add(n.name);
+      }
+      if (/Function/.test(n.type) || n.type === 'BinaryExpression' || n.type === 'CallExpression' && n !== node) return;
+      for (const k of Object.keys(n)) if (!SHAPE_SKIP.has(k) && n[k] && typeof n[k] === 'object') look(n[k], n, k);
+    };
+    look(node, null, null);
+    return out;
+  };
+  const sinkAt = (callNode) => {
+    const c = callNode.callee;
+    const name = chain(c);
+    if (name && Object.prototype.hasOwnProperty.call(SINKS, name)) return SINKS[name];
+    if ((c.type === 'MemberExpression' || c.type === 'OptionalMemberExpression') && !c.computed && c.property.name === 'send' && name !== 'this._send') return [0];
+    return null;
+  };
+  const senders = new Map();   /* name -> Set of parameter indexes handed whole to a send */
+  const sendersAt = (callNode) => {
+    const s = sinkAt(callNode);
+    if (s) return s;
+    const name = chain(callNode.callee);
+    if (name && name.startsWith('this.') && name.split('.').length === 2 && senders.has(name.slice(5))) return [...senders.get(name.slice(5))];
+    return null;
+  };
+  for (let round = 0, grew = true; grew && round < 12; round++) {
+    grew = false;
+    for (const [name, list] of defs) for (const d of list) {
+      const params = new Map();
+      d.params.forEach((p, i) => { if (p && p !== '...') params.set(p, i); });
+      if (!params.size) continue;
+      /* a second name for a parameter, in its body: the parameter */
+      d.path.traverse({ VariableDeclarator(p) {
+        if (p.node.id.type !== 'Identifier' || !p.node.init) return;
+        for (const w of wholeIn(p.node.init, new Set(params.keys()))) if (!params.has(p.node.id.name)) params.set(p.node.id.name, params.get(w));
+      } });
+      d.path.traverse({ 'CallExpression|OptionalCallExpression'(p) {
+        const at = sendersAt(p.node);
+        if (!at) return;
+        const args = at === 'all' ? p.node.arguments : at.map((i) => p.node.arguments[i]).filter(Boolean);
+        for (const a of args) for (const w of wholeIn(a, new Set(params.keys()))) {
+          const i = params.get(w);
+          if (!senders.has(name)) senders.set(name, new Set());
+          if (!senders.get(name).has(i)) { senders.get(name).add(i); grew = true; }
+        }
+      } });
+    }
+  }
+  check('2c: the senders are computed off server/src (guard: broadcastAll, _partySend, _send\'s callers found)', senders.has('broadcastAll') && senders.has('broadcastExcept') && senders.has('_partySend') && senders.size > 20, senders.size);
+
+  const bad = [], got = new Map();
+  let carriers = 0;
+  if (onMsg) {
+    let buildAt = -1;
+    onMsg.traverse({ AssignmentExpression(path) {
+      const n = path.node;
+      if (n.left.type === 'Identifier' && n.left.name === 'msg' && n.right.type === 'CallExpression' && chain(n.right.callee) === 'this._relayBuild') buildAt = n.start;
+    } });
+    const afterBuild = (node) => dflt && buildAt >= 0 && node.start > buildAt && node.end <= dflt.end;
+    const PASS = new Set(['LogicalExpression', 'ConditionalExpression', 'AwaitExpression', 'ParenthesizedExpression', 'SequenceExpression', 'TSAsExpression', 'TSNonNullExpression']);
+    const seenBind = new Set(), seenNode = new Set();
+    const follow = (binding, label) => {
+      if (!binding || seenBind.has(binding)) return;
+      seenBind.add(binding);
+      for (const v of binding.constantViolations) {
+        /* `msg = this._relayBuild(...)` / `msg = await this._interceptX(...)`: the router's own steps after the rebuild */
+        if (label === 'msg' && afterBuild(v.node)) continue;
+        if (label === 'msg' && v.node.type === 'AssignmentExpression' && chain(v.node.right.callee || {}) === 'this._relayBuild') continue;
+        if (label !== 'msg') bad.push('index.js:' + lineOf(INDEX, v.node) + ' `' + label + '` (a carrier\'s name) given another value');
+      }
+      for (const r0 of binding.referencePaths) {
+        if (label === 'msg' && afterBuild(r0.node)) continue;
+        let r = r0;
+        /* a field, at any depth (a computed one too): still the phone's */
+        while ((r.parentPath.isMemberExpression() || r.parentPath.isOptionalMemberExpression()) && r.parentKey === 'object') r = r.parentPath;
+        /* a value passed through: || ?? ?: await (...) */
+        while (PASS.has(r.parent.type) && !(r.parent.type === 'ConditionalExpression' && r.parentKey === 'test') && !(r.parent.type === 'SequenceExpression' && r.parent.expressions[r.parent.expressions.length - 1] !== r.node)) r = r.parentPath;
+        if (seenNode.has(r.node)) continue;
+        seenNode.add(r.node);
+        carriers++;
+        const p = r.parentPath, at = 'index.js:' + lineOf(INDEX, r.node), txt = norm(INDEX, p.node).slice(0, 110);
+        const listed = (form) => { const k = form + ': ' + txt; if (CARRIER_LISTED[k]) bump(got, k); else bad.push(at + ' `' + txt + '` (' + form + ')'); };
+        if (p.isSpreadElement()) { listed('spread'); continue; }
+        if (p.isObjectProperty() && r.parentKey === 'value') { listed('a field of a literal'); continue; }
+        if (p.isArrayExpression()) { listed('an element of a literal'); continue; }
+        if (p.isReturnStatement() || p.isArrowFunctionExpression()) { listed('returned'); continue; }
+        if (p.isVariableDeclarator() && r.parentKey === 'init') {
+          if (p.node.id.type === 'Identifier') follow(p.scope.getBinding(p.node.id.name), p.node.id.name);
+          continue;   /* a destructure takes fields; a second name is followed (2b reds `const x = msg` itself) */
+        }
+        if (p.isAssignmentExpression() && r.parentKey === 'right') {
+          if (p.node.left.type === 'Identifier') { if (p.node.left.name !== 'msg') follow(p.scope.getBinding(p.node.left.name), p.node.left.name); continue; }
+          listed('put on another object'); continue;
+        }
+        if ((p.isCallExpression() || p.isOptionalCallExpression() || p.isNewExpression()) && r.parentKey === 'arguments') {
+          const callee = chain(p.node.callee);
+          const i = p.node.arguments.indexOf(r.node);
+          if (callee === 'Object.assign') { listed('Object.assign'); continue; }
+          /* its size measured (`JSON.stringify(x).length`): a number, no copy */
+          if (callee === 'JSON.stringify' && p.parentPath.isMemberExpression() && p.parentKey === 'object' && !p.parent.computed && p.parent.property.name === 'length') continue;
+          const sink = sendersAt(p.node);
+          if (sink && (sink === 'all' || sink.includes(i))) { listed('handed whole to a send (' + callee + ')'); continue; }
+          if (r.node.type === 'Identifier' && r.node.name === 'msg') continue;   /* part 2b holds `msg` itself to its takers */
+          if (callee && callee.startsWith('this.') && callee.split('.').length === 2 && defs.has(callee.slice(5))) continue;   /* a function of server/src, no sender at this place */
+          if (callee && Object.prototype.hasOwnProperty.call(CARRIER_READERS, callee)) continue;
+          listed('handed to a call the guard cannot follow (' + (callee || 'a computed callee') + ')'); continue;
+        }
+        /* read, compared, tested, a key of a lookup, a switch, a callee: no copy goes anywhere */
+      }
+    };
+    follow(onMsg.scope.getBinding('msg'), 'msg');
+  }
+  const { over, stale } = heldTo(CARRIER_LISTED, got);
+  if (process.env.WIRE_GAPS_ALL) for (const x of [...bad, ...over]) console.log('       ' + x);
+  check(`2c: the phone's message, a field of it or a name for one, is never spread, assigned whole, made a literal's part or handed to a sender (CARRIER_LISTED, counted; guard: ${carriers} carriers)`, bad.length === 0 && over.length === 0 && carriers > 150, [...bad, ...over]);
+  check('2c: ...every CARRIER_LISTED row is still there, at its count', stale.length === 0, stale);
 }
 
 await settle();
