@@ -907,9 +907,14 @@ if (changedServer.length || changedClient.length || changedGuards.length) {
      behind a precheck that had ended (card RR's slow checks: "run.mjs
      orphans left on a precheck timeout").  A precheck itself killed (the
      gatekeeper's own cap) kills the group it is running first. */
-  const REST_CAP_S = 20 * 60;     /* the rest alone: 191 s here (581 suites), ~6x room; beside the slow guard it took 600-1100 s */
+  /* v2.3.6423 (card CK PR 4): the caps from the times of 2026-11-24, on a
+     session's 4-vCPU box: the rest 145 s and 150 s (581 suites; picture-door
+     and ladder-passes mended, the asset guards by git's ids), so 10 minutes
+     is 4x room; switches-thrown's whole set 652 s (a branch that changes its
+     machinery throws them all), so 40 minutes stays, 3.7x. */
+  const REST_CAP_S = 10 * 60;     /* the rest alone: 150 s here (581 suites), 4x room; it was 20 min at 191 s */
   const THRONE = 'guards/switches-thrown.test.mjs';
-  const THROWN_CAP_S = 40 * 60;   /* alone: 756 s and 770 s here (89 rows, 2418 suite runs), ~3x room; 1006-1139 s when it shared the box */
+  const THROWN_CAP_S = 40 * 60;   /* the whole set alone: 652 s (2026-11-24), 756 s and 770 s here (89 rows, 2418 suite runs), ~3x room; 1006-1139 s when it shared the box */
   const suiteNames = [
     ...readdirSync(join(root, 'server/test')).filter((f) => f.endsWith('.test.mjs')),
     ...readdirSync(join(root, 'tools/guards')).filter((f) => f.endsWith('.test.mjs')).map((f) => 'guards/' + f),
