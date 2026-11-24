@@ -14,6 +14,7 @@ state: ready
   mp-twobuttons 2c's stay step, part 7.
 
 ## Next
+- Hand-over at 309k: rerun mp-twobuttons on #2340's head (7a, 7c, 7d).
 - Three CT parts from claude/plan-ct-8-freefire: tap-and-hold auto-attack;
   Block, Charge (the dash's button), the thumb's layout; node and townsfolk.
 
@@ -25,6 +26,11 @@ state: ready
   kill the lock goes to the next with no press): left for the next part.
 - 3c/3d sideways: Block/Special flip in the DOM while their probes say
   shown and the phase holds (part 12's; seen again in item 8's run).
+- mp-twobuttons (item 8, last run): 94, 89 pass; 2c's stay and 7b pass up
+  and sideways. 7a/7c red were the bow firing at a prop on its line (today's
+  rule): the steps now read the line (not rerun). 7d (a free arrow meets a
+  monster): the test's hiding of a sighted monster did not take in my runs
+  (the press locked it); the helper's run passed it upright (58 -> 49).
 - Turn band at 430x775: dead 4.5, TURN 11.25, rim 37.5 px.
 
 ## Needs
