@@ -1,7 +1,7 @@
 card: PH
 branch: claude/plan-ph-6-debtgate (stacked on claude/plan-ph-5-heaptrend)
 prs: #2279 (PR 1, 6500, DEPLOYS), #2291 (PR 2, 6501), #2297 (PR 3, 6502), #2306 (PR 5, 6504): test green, heads sent; PR 6 (6505: this branch)
-state: working (part 4 hands over at ~300k tokens: PR 6 in hand, NOT opened; branch pushed, no PR)
+state: working (part 5: PR 6's last piece, the skateboard proof runs; then merge origin/main, precheck, push, open)
 
 ## Done
 - PR 1 (6500) #2279: heat, the board, the ramps; sitting 57 mended (15.8c/e/f).
@@ -20,20 +20,31 @@ state: working (part 4 hands over at ~300k tokens: PR 6 in hand, NOT opened; bra
   two steps.
 
 ## Next (part 5 of PH)
-- PR 6's last piece, mp-skateboard: 30/30 alone; at BT_QA_CPU_THROTTLE=4
-  on main b966af81 (helper, 961 s) 9 red: 4 (off null), 5, 5b, 5c, 8,
-  10 x2, 11. Wall-clock caps on a slow page (TRAPS 200): wait until over
-  on the game's clock, up to a cap; re-try slowed through a helper.
-- The gate's sample on main (helper): red, `server-message` 16.5 ms > 12
-  at town x2 (unlisted): ask the orchestrator before the PR opens.
+- PR 6 in hand, its last pieces done in the branch: the gate's sample
+  red on main (`server-message` 16.5 ms > 12 at town x2) answered by
+  orchestrator part 5: the step does not land red; `server-message` is a
+  NEW row of held-budget.mjs (17 ms, ours, a new named debt, not a raised
+  line) and its row in docs/specs/held-sweep.md's table (held-sweep.test
+  7b4 holds the table to the list: name it in the PR's words). It reopens
+  the grand plan's step 3.1 (debtOf('ours') 0 -> 1): say so.
+- mp-skateboard mended in the test (TRAPS 177, 200): every wait on the
+  game's own clock (the step log's `_dtScale` summed), its cap the game's
+  ms. Today on the test box at BT_QA_CPU_THROTTLE=4 the OLD test passed
+  30/30 (690 s; part 4's 9 red were a busier box): the proof is at 6, old
+  against mended, through the helper (one at a time).
+- Order: PR 6 lands AFTER CK's #2305 and #2307 (both still open at
+  04:40 UTC, main b966af81); origin/main merged once before the push.
 - Then PR 4 (6503): call 1 answered (orchestrator, 2026-11-24 02:39-02:46
   UTC); its words go in census/PH-phone.md. A default look is the owner's.
+  The owner's extras and Low Power Mode: asked 03:33 UTC, not answered.
 
 ## Found
 - maskedEvict.js's header: old words. buffers 24.3 on CI vs 24.8: trim owed.
 - `portrait` 21.7 ms > 12 at the sweep's armour (off the list since 5042).
-- #2279's playable: 187/187 then "cancelled" in clean-up; re-run (03:32):
-  result owed to orchestrator part 5. Owner's extras: advice sent.
+- #2279's playable: 187/187 then "cancelled" in clean-up; re-run (run
+  45317933491) SUCCESS 187/187 (540 s), sent to orchestrator part 5. Owner's extras: advice sent.
+- `server-message` (new row, ours): src/networking/wsClient.js ws.onmessage
+  and what it hands on (census/HB-holds.md row 15): not this card's.
 
 ## Needs
 - The owner's word on the alarm's level (call 3): decided while away, 120.
