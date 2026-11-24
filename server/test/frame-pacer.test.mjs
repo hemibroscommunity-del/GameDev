@@ -988,6 +988,31 @@ _liveKnobs(null);   /* v2.3.5224: from here, today's live knobs */
     check('23i. ...where the old trigger slept on until the chip alone passed 109.3 MB (the break proof: art 14 never reaches 79.3)',
       was.first && was.first.chip > L.gpu && was.first.total > A + 20, { was });
   }
+  /* 23j. v2.3.6501 (the gatekeeper's sitting 58, review-z58): THE PAGE'S OWN ADDRESS.  23i hands memFull its address;
+     the page's pacer calls memFull(ts) with none, so `memFull(ts, search = '')` (or the pacer's call as
+     `memFull(ts, '')`) left `?memalarm=0` read nowhere, green in four suites.  Here the pacer itself runs, on a stand-in
+     page whose address is `?memalarm=0` and then none, and the memory's word it hands the governor is read: a total
+     of 131.5 MB (art 14, the chip 100, sound 17.5) is over the alarm's 120 but under both old lines.
+       framePacer.js memFull: `export function memFull(ts, search = '')`   -> FAIL 23j (the switch thrown)
+       framePacer.js take(): `memFull(ts, '')` in the governor's verdict      -> FAIL 23j (the switch thrown) */
+  {
+    const hadLoc = Object.prototype.hasOwnProperty.call(globalThis, 'location');
+    const was = globalThis.location;
+    const pageSays = (search) => {
+      globalThis.location = { search };
+      const words = [];
+      const gov = { verdict: (share, ts, ctx) => { words.push(!!(ctx && ctx.memFull)); }, veil() {}, skip() {}, judging: () => true, read: () => ({}) };
+      FP.useMemCount(() => [14, 100, 17.5]);
+      const P = makeFramePacer({ gov });
+      for (let k = 0; k < 2400; k++) P.take(k * B60);   /* 40 s of a 60 screen: verdicts every 80 frames */
+      FP.useMemCount(null);
+      return words;
+    };
+    const thrown = pageSays('?memalarm=0'), none = pageSays('');
+    if (hadLoc) globalThis.location = was; else delete globalThis.location;
+    check('23j. the PAGE\'S pacer reads its own address: with `?memalarm=0` the memory is never full at 131.5 MB (the old lines); without it, full (over 120)',
+      thrown.length >= 10 && none.length >= 10 && thrown.every((x) => x === false) && none.slice(2).every((x) => x === true), { thrown: thrown.slice(0, 12), none: none.slice(0, 12) });
+  }
   const ME = await import('../../src/rendering/maskedEvict.js');
   const DL = await import('../../src/game/drawLanes.js');
   _resetLanes();

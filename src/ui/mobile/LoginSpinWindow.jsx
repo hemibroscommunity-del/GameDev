@@ -9,12 +9,12 @@ import { onSafeGround } from '@/game/trapping.js';
 import { worldReady } from '@/ui/loadingGate.js';
 import { onboardingBusy, worldInMs } from '@/ui/onboardingPace.js';
 import { LOGIN_SPIN_URLS } from '@/rendering/loginSpinPreload.js';
-import { sw } from '@/game/switches.js';   /* v2.3.5306: the page's one reader (card T) */
+import { swValue } from '@/game/switches.js';   /* v2.3.5306: the page's one reader (card T); v2.3.6560: its value (`?loginspin=1` the offer at login) */
 import { act } from '@/game/actions.js';   /* v2.3.5881: the page's requests leave through the action door (card K3 PR 2) */
 import {
   loginSpinBus, loginSpinTarget, loginSpinEase, LOGIN_SPIN_MS, LOGIN_SPIN_TURNS,
   LOGIN_SPIN_UNSAFE_WORDS, loginDoubleTarget, LOGIN_DOUBLE_MS, loginSpinSegAt, loginSpinParty,
-  LOGIN_SPIN_WINDUP_MS, LOGIN_SPIN_WINDUP_DEG, LOGIN_SPIN_OVER_DEG, LOGIN_SPIN_SETTLE_MS,
+  LOGIN_SPIN_WINDUP_MS, LOGIN_SPIN_WINDUP_DEG, LOGIN_SPIN_OVER_DEG, LOGIN_SPIN_SETTLE_MS, spinOffersItself,
 } from '@/game/loginSpinWheel.js';
 
 /* ═══ v2.3.4295: THE LOGIN WHEEL'S WINDOW ═══
@@ -43,6 +43,10 @@ import {
  * below asks once the world is up, and opens when the worker says there is a
  * spin AND the screen is quiet.  Closing it without spinning keeps today's
  * spin for the next login that day (nothing is written until the spin).
+ * v2.3.6560 (card LS): it no longer opens by itself (the owner, 2026-11-24:
+ * "the daily spin popup wouldn't leave me alone"): the top bar's button opens
+ * it; `?loginspin=1` brings the offer back, once a mount (spinOffersItself in
+ * src/game/loginSpinWheel.js).
  *
  * MEMORY.  The three pictures (wheel 640 px, pointer, title; 256 colours each)
  * are only fetched into the HTTP cache behind the loading screen
@@ -60,8 +64,10 @@ const ANSWER_TIMEOUT_MS = 8000;
 const SETTLE_AFTER_WORLD_MS = 2500;
 const DRUM_MS = 750;
 /* v2.3.4295: ?loginspin=0 -- no AUTO-open on this phone (the top bar's button still opens it); the QA
-   harness passes it so a scenario that does not test the wheel is never covered by it */
-const autoOpenOff = () => sw('loginspin');   /* v2.3.5306: the one reader (was /(?:^|[?&])loginspin=0(?:&|$)/) */
+   harness passes it so a scenario that does not test the wheel is never covered by it.
+   v2.3.6560 (card LS): no auto-open is everyone's default now (the owner, 2026-11-24: "just leave it as
+   a button in the top right"); `?loginspin=1` brings the offer back, once a mount (spinOffersItself). */
+const offerSwitch = () => swValue('loginspin');
 const reduced = () => { try { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) { return false; } };
 
 /* v2.3.4295: the owner: "Make sure the wheel spin is satisfying it's supposed to be a dopamine hit."
@@ -157,7 +163,9 @@ export const LoginSpinWindow = () => {
   useEffect(() => { if (bus.refused) setStage((s) => (s === 'waiting' ? 'ready' : s === 'dwaiting' ? 'ask' : s)); }, [bus.refused]);
   useEffect(() => () => { timers.current.forEach(clearTimeout); cancelAnimationFrame(raf.current); }, []);
 
-  /* the host: ask once the world is up, open when it is quiet */
+  /* the host: ask once the world is up (the button reads the answer); v2.3.6560: open by itself only on
+     `?loginspin=1`, once a mount, when it is quiet */
+  const offeredRef = useRef(false);
   useEffect(() => {
     const id = setInterval(() => {
       const S = getState();
@@ -165,7 +173,7 @@ export const LoginSpinWindow = () => {
       if (b.open || !S || !S.channel || !S._serverCaps || !S._serverCaps.loginspin) return;
       if (!worldReady() || worldInMs() < SETTLE_AFTER_WORLD_MS) return;
       if (!askedRef.current) { askedRef.current = send('loginspin_ask'); return; }
-      if (b.avail && !autoOpenOff() && !onboardingBusy() && spinSafeNow()) loginSpinBus.open();
+      if (spinOffersItself(b, offerSwitch(), offeredRef.current) && !onboardingBusy() && spinSafeNow()) { offeredRef.current = true; loginSpinBus.open(); }
     }, ASK_POLL_MS);
     return () => clearInterval(id);
   }, []);
