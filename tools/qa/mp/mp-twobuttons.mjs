@@ -21,6 +21,8 @@
  *   1g. no page errors.
  *
  * PART 2 (PR 3, tag 6542): THE RIGHT SIDE -- Attack, a latch
+ *   (the character first let past the Mayor's gate, tut_1: a new one is
+ *   held in BroTown's safe circle, and the nearest monster is outside it)
  *   2a. a real monster of the Wheel, the body turned toward it by the stick
  *       (a 20% turn): SIGHTED (game/sight.js);
  *   2b. ONE press of Attack (the disc, at its centre) and the lift: the
@@ -160,6 +162,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
       /* ── PART 2: the right side ── */
       const me = await H.readState(P, (S) => S.myId);
       await H.devOp(wsPort, 'vitals', me, { heal: true, god: true, godMinutes: 8 });
+      /* v2.3.6542: past the Mayor's gate (mp-crowdfight's way).  A new
+         character is held inside BroTown's safe circle until the first quest
+         (game/wheelHome.js wheelCommonsGate: every step out pulled back to the edge, the
+         body's speed 0), and the nearest monster stands just outside it: the
+         stick and the keeper both walked into the gate (part 6's write-watch:
+         the walk's step, then the gate's pull back, each frame) */
+      await H.devOp(wsPort, 'quests', me).catch(() => null);
+      await P.page.evaluate(() => {
+        const keep = () => {
+          const S = window._gameState && window._gameState.current, R = S && S.rpg;
+          if (!R) return;
+          if (!R._quests || typeof R._quests !== 'object') R._quests = {};
+          if (!R._quests.tut_1) R._quests.tut_1 = true;
+        };
+        keep();
+        clearInterval(window.__ctGateOpen);
+        window.__ctGateOpen = setInterval(keep, 100);
+      });
       await H.devOp(wsPort, 'kit', me, { what: 'weapons' });   /* a new character has no weapon (mp-arena's way) */
       await H.waitFor(P, (S) => ((S.rpg && S.rpg.weaponStash) || []).some((w) => w && w.type === 'greatsword') || !!(S.rpg && S.rpg.weapon), (v) => v, { timeout: 15000, label: 'the kit' }).catch(() => null);
       const eq = await H.equipWeapon(P, 'greatsword', 'weapon', 'melee').catch((e) => ({ ok: false, why: String(e) }));   /* the held attack swings only an equipped weapon (monsterCombat _eqWpn) */
@@ -219,7 +239,6 @@ export async function run({ browser, wsPort, webPort, rec }) {
          the gap closing 9): what the stick said, what the body did, each
          half second -- the evidence the next red reads */
       const walkTrace = [];
-      let walkWrites = null;
       const STK = (P) => H.readState(P, (S) => ({ sx: +(S.stickX || 0).toFixed(2), sy: +(S.stickY || 0).toFixed(2), x: Math.round(S.player.x), y: Math.round(S.player.y),
         vx: +(S.player.vx || 0).toFixed(2), vy: +(S.player.vy || 0).toFixed(2), auto: !!S.autoAttack, climb: !!S._climb, swim: !!(S._wheelSwim && S._wheelSwim.on), air: !!S._jump, back: !!S._backpedaling,
         hold: [S._zoneLoading, S._netHold, S._townArtHold, S._farmArtHold, S._avatarArtHold, S._sled, S._shieldUp, S._extraction, S._dodgeRoll].map((v) => (v ? 1 : 0)).join(''),
@@ -233,25 +252,6 @@ export async function run({ browser, wsPort, webPort, rec }) {
           await P.page.waitForTimeout(500);
           g = await GAP(P);
           walkTrace.push(await STK(P));
-          if (k === 1) walkWrites = await P.page.evaluate(() => new Promise((done) => {
-            /* v2.3.6542: who writes the body while the locked stick walks:
-               every write of x, y, vx for 1.5 s, its value and its caller */
-            const S = window._gameState.current, Pl = S.player, log = [], keep = {};
-            let frames = 0, on = true;
-            const raf = () => { frames++; if (on) requestAnimationFrame(raf); };
-            requestAnimationFrame(raf);
-            for (const k of ['x', 'y', 'vx']) {
-              keep[k] = Pl[k];
-              Object.defineProperty(Pl, k, { configurable: true, enumerable: true, get: () => keep[k],
-                set: (v) => { if (log.length < 60) { const st = String(new Error().stack).split('\n').slice(2, 4).map((l) => l.trim().replace(/^at /, '').replace(/https?:\/\/[^/]+\//, '')).join(' < ');
-                  log.push(k + '=' + (typeof v === 'number' ? +v.toFixed(2) : v) + ' (' + (typeof keep[k] === 'number' ? +keep[k].toFixed(2) : keep[k]) + ') ' + st.slice(0, 160)); } keep[k] = v; } });
-            }
-            setTimeout(() => {
-              on = false;
-              for (const k of ['x', 'y', 'vx']) { const v = keep[k]; delete Pl[k]; Pl[k] = v; }
-              done({ frames, log, drop: S._climbDrop ? 1 : 0, dying: !!S._dying, hp: S.rpg && S.rpg.hp, dash: !!S._bashDash, gust: !!S._gust, roll: !!S._dodgeRoll });
-            }, 1500);
-          }));
         }
         await touch('touchEnd', [{ x: c.x, y: c.y, id: 1 }]);
       }
@@ -261,9 +261,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
          and one walking off faster than a held attack's halved walk grew the
          gap with the stick walking you in all the same (the helper's run:
          341 -> 372 px upright, 238 -> 329 sideways) */
-      console.log('   2c ' + label + ' walk: ' + JSON.stringify({ walkWrites, walkTrace: walkTrace.slice(0, 3) }));
       const toward = g && gPress ? (g.px - gPress.px) * Math.cos(gPress.a) + (g.py - gPress.py) * Math.sin(gPress.a) : 0;
-      rec.ok(`2c. ${label}: the stick walks you in while locked (${Math.round(toward)} px toward it; the gap ${g ? Math.round(g.d) : '?'} px), the lock held`, !!g && (g.d <= 90 || toward > 20) && (await LATCH(P)).phase === 'active', { gPress, g, toward, walkTrace, walkWrites });
+      rec.ok(`2c. ${label}: the stick walks you in while locked (${Math.round(toward)} px toward it; the gap ${g ? Math.round(g.d) : '?'} px), the lock held`, !!g && (g.d <= 90 || toward > 20) && (await LATCH(P)).phase === 'active', { gPress, g, toward, walkTrace });
       /* this box draws a few frames a second and a held attack halves the
          walk (mode 4's rule, kept): the rest of the way by the harness's hop */
       if (g0 && g0.d > 90) {
@@ -308,7 +307,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         return { wpn: !!(S.rpg && S.rpg.weapon), slot: S.rpg && S.rpg.activeSlot, swim: !!(S._wheelSwim && S._wheelSwim.on), swungAgo: S.swingTimer ? Date.now() - S.swingTimer : null,
           gap: m ? Math.round(Math.hypot(m.x - S.player.x, m.y - S.player.y)) : null, mhp: m ? m.curHp : null }; }, target));
       const fightTrace = died ? null : await P.page.evaluate(() => window._ctFight || null);
-      rec.ok(`2c. ${label}: the fight played to its death with no press (the end: ${l2.end || 'moved to ' + l2.id})`, !!died, { died, l2, hurt, why, afterHop, fightTrace });
+      rec.ok(`2c. ${label}: the fight played to its death with no press (the end: ${l2.end || (l2.id === target ? 'none: still on it' : 'moved to ' + l2.id)})`, !!died, { died, l2, hurt, why, afterHop, fightTrace });
 
       /* 2d: the second press lets go (when the lock moved on to the next);
          a kill with none other in sight let go by itself ('killed') */
