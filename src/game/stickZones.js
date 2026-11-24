@@ -35,7 +35,9 @@
  * imports), by a relative path, so node tests it (server/test/
  * stick-zones.test.mjs).
  */
-import { readerFor, swValue } from './switches.js';
+import { readerFor, swValue, sw } from './switches.js';
+import { sprintSupported, startSprint, stopSprint } from './sprint.js';   /* v2.3.6545: the rim's sprint, a hold through sprint.js's own start and stop (sprint.js imports nothing) */
+import { twoButtonsLive } from './latch.js';   /* v2.3.6545: rimSprintLive, the one gate's answer and the rim's switch */
 
 export const STICK_ZONES = Object.freeze({
   /* the share of the travel that is nothing at all (4.5 px upright, 5.4
@@ -65,6 +67,12 @@ export const STICK_ZONES = Object.freeze({
   TAP_MS: 200,
   /* the facings drawn today */
   FACINGS: 8,
+  /* v2.3.6545 (card CT item 6; trial numbers): the thumb pushed PAST the
+     disc's drawn rim sprints.  On at SPRINT_AT of the drawn radius, off only
+     below SPRINT_OFF: the gap between them is what keeps a thumb resting
+     near the line from starting and stopping the sprint every move */
+  SPRINT_AT: 1.25,
+  SPRINT_OFF: 1.05,
 });
 
 export const STICK_PHASES = Object.freeze(['rest', 'turn', 'walk']);
@@ -118,6 +126,86 @@ export function stickRead(dx, dy, travel, turn) {
   return { phase: 'walk', share, ang, face, sx: (dx / d) * k, sy: (dy / d) * k };
 }
 
+/* ═══ v2.3.6545: SPRINT FROM THE LEFT STICK'S RIM (card CT item 6) ═══
+ * The owner, 2026-11-24: "the sprint button should be moved to the left
+ * joystick too" (asked how: "Go recommended").  In mode 5 the thumb pushed
+ * PAST the disc's drawn edge sprints; at the rim itself (share 1.0) it walks
+ * at full speed and spends nothing, so a thumb resting at the rim never burns
+ * stamina by accident.  The share is stickRead's own, the thumb's distance
+ * over the drawn radius, NEVER clamped (the walk's vector stops at 1 and
+ * would never reach SPRINT_AT).
+ *
+ * It is a HOLD, like Shift on a computer: out past SPRINT_AT starts it
+ * (sprint.js startSprint, how 'rim'), back inside SPRINT_OFF or the thumb
+ * lifted stops it (stopSprint 'rim').  It stops only a sprint it started:
+ * Shift's stays Shift's.  Every end of today's sprint still ends it
+ * (updateSprint: stamina 0, the shield, an attack, the water, death, a zone,
+ * standing still), and after ANY end, or a refusal, it starts again only
+ * once the thumb has come back inside SPRINT_OFF and gone out again (`ready`).
+ * Refused for stamina: today's "Not enough energy!" and the denied tick,
+ * once a push (`say`, the button's own words: SprintButton sprintTiredSay).
+ * With the shield up, dead, in the water or attacking it does not start (it
+ * would end on the next frame and spend the push); the push stays ready.
+ * Stamina, the speed and the move's `sp` are today's: the worker judges it
+ * as now (server/src/sprint.js).  `?rimsprint=0` turns it off and gives the
+ * sprint button back.
+ *
+ * S._rimSprint { out, ready }: made only on the first push past SPRINT_AT
+ * (a page in mode 4 never has one), written only here. */
+
+/** Is the thumb past the rim?  `was` its answer last time (the band: on at
+ *  SPRINT_AT, off below SPRINT_OFF). */
+export function rimPast(share, was) {
+  return was ? share >= STICK_ZONES.SPRINT_OFF : share >= STICK_ZONES.SPRINT_AT;
+}
+
+/** The rim's sprint for this page: on unless `?rimsprint=0`.  `search` is
+ *  for tests. */
+export function rimSprintOn(search) {
+  return !(typeof search === 'string' ? readerFor(search).sw('rimsprint') : sw('rimsprint'));
+}
+
+/** The two buttons are played AND the rim sprints (the button's place). */
+export function rimSprintLive() {
+  return twoButtonsLive() && rimSprintOn();
+}
+
+/** A sprint the rim started is under way (the turn ring's colour). */
+export function rimSprinting(S) {
+  const sp = S && S._sprint;
+  return !!(sp && sp.on && sp.how === 'rim');
+}
+
+/* what would end a sprint on the next frame (updateSprint's own ends) */
+function rimHeld(S) {
+  return !!(S._shieldUp || S._dying || (S.rpg && S.rpg.hp <= 0) || (S._wheelSwim && S._wheelSwim.on)
+    || S.autoAttack || S.isSwinging || S._bashDash);
+}
+
+/** The thumb at `share` of the drawn radius, at `now` (Date.now(): sprint.js's
+ *  clock).  'start' | 'stop' | 'tired' | null. */
+export function rimSprint(S, share, now, say) {
+  if (!S || !rimSprintOn()) return null;
+  let rim = S._rimSprint;
+  if (!rim) {
+    if (!(share >= STICK_ZONES.SPRINT_AT) || !sprintSupported(S)) return null;
+    rim = S._rimSprint = { out: false, ready: true };
+  }
+  rim.out = rimPast(share, rim.out);
+  if (!rim.out) {
+    rim.ready = true;
+    return rimSprinting(S) && stopSprint(S, 'rim', now) ? 'stop' : null;
+  }
+  if (!rim.ready || (S._sprint && S._sprint.on) || rimHeld(S)) return null;
+  rim.ready = false;
+  if (startSprint(S, now, 'rim')) return 'start';
+  if (S._sprint && S._sprint.why === 'tired') {
+    if (typeof say === 'function') say(S, now);
+    return 'tired';
+  }
+  return null;
+}
+
 /** Is this release a SWIPE (the dodge roll)?  Today's rule, read from the
  *  gesture alone: from where the thumb landed to where it lifted, `ms` its
  *  time down.  The roll's angle, or null. */
@@ -159,14 +247,15 @@ export function stickTo(S, phase) {
  * walk are this function's.  `dx, dy` the thumb from where it landed, CSS
  * px; `radius` the disc's drawn radius (its box's half width: the travel in
  * this mode); `knob`, `rod` the disc's two drawn parts and `op` the disc's
- * opacity (null in node).  It draws the knob out to the drawn radius,
+ * opacity (null in node); `say` the sprint refusal's words (v2.3.6545:
+ * rimSprint, above).  It draws the knob out to the drawn radius,
  * writes the walk (S.stickX/Y: 0 in a turn and at rest), the body's facing
  * on a turn (S._targetFacingAngle: visualSystems slews S._facingAngle to it,
  * and entityRenderer's 'facingAngle' branch draws it with no renderer
  * change; the facing that changes rides `move` as any turn does today, and
  * nothing goes while it is unchanged), and the stick's phase. */
 let _turn = null;   /* the page's `?turnzone`, read once */
-export function stickDrive(S, dx, dy, radius, knob, rod, op) {
+export function stickDrive(S, dx, dy, radius, knob, rod, op, say) {
   if (_turn === null) _turn = turnShare();
   const R = radius > 0 ? radius : STICK_ZONES.RADIUS_UP;
   const r = stickRead(dx, dy, R, _turn);
@@ -182,6 +271,7 @@ export function stickDrive(S, dx, dy, radius, knob, rod, op) {
   S.stickY = r.sy;
   if (r.phase === 'turn') S._targetFacingAngle = r.face;
   stickTo(S, r.phase);
+  r.rim = rimSprint(S, r.share, Date.now(), say);   /* v2.3.6545: the thumb's own share, unclamped; `say` the refusal's words */
   return r;
 }
 
@@ -212,6 +302,7 @@ export function stickLift(S) {
   S.stickX = 0;
   S.stickY = 0;
   stickTo(S, 'rest');
+  if (S._rimSprint) rimSprint(S, 0, Date.now(), null);   /* v2.3.6545: a lifted thumb lets go of the rim's sprint (a hold) */
 }
 
 /* ═══ v2.3.6541: THE FRAME'S STEP `input` (game/frameSteps.js; card CT PR 2) ═══

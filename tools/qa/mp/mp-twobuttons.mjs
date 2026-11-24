@@ -82,6 +82,29 @@
  *   4c. the row again, reading two buttons: a tap loads mode 4 (manual=4,
  *       the key forgotten), today's words back.
  *
+ * PART 5 (item 6, tag 6545): SPRINT FROM THE STICK'S RIM, upright and
+ *   sideways (after part 1, stamina full), timed by the renderer's own
+ *   frames (S._frameCount; TRAPS 200), the worker's bar read through its
+ *   admin view:
+ *   5a. in mode 5 the sprint button is not drawn (its probe: not shown, the
+ *       rim live, the worker's sprint supported);
+ *   5b. the thumb AT the rim (share 1.0, west): full walking speed, no
+ *       sprint, the stamina still on the phone and on the worker;
+ *   5c. pushed past it (1.4): the rim's sprint (how 'rim'), running, the
+ *       turn ring lit (data-rimsprint), and the worker bills the moves
+ *       marked `sp` (its stamina falls);
+ *   5d. back to the rim (1.0): it ends ('rim'), the ring dark, the walk on;
+ *   5e. out again, then the worker's stamina set to 2: it runs dry
+ *       ('empty'), and with the thumb still out (moved about past the rim,
+ *       the bar mended) it does not start again; back inside, then out: it
+ *       starts;
+ *   5f. the thumb lifted: it ends ('rim'), the stick at rest;
+ *   5g. the mode off (part 2f's page, mode 4): the button drawn as today,
+ *       and a thumb far past the left disc's rim sprints nothing;
+ *   5h. `?rimsprint=0` in mode 5 (part 4's page loaded again): the button
+ *       back, a thumb past the rim walks at full speed and sprints nothing,
+ *       the tour's words without the rim's line.
+ *
  * Today's stick with the mode off is played by mp-sprint (the thumb and the
  * button together) and mp-heldcombat (the default, mode 4).
  */
@@ -136,6 +159,27 @@ const STICK = (P) => H.readState(P, (S) => ({
   ang: S._facingAngle, roll: !!S._dodgeRoll,
 }));
 
+/* ═══ v2.3.6545: PART 5's helpers ═══ */
+/* the sprint as the phone and its button see it, the ring, the frame */
+const RIMV = (P) => H.readState(P, (S) => {
+  const sp = S._sprint || {};
+  const b = window.__btSprintBtn ? window.__btSprintBtn() : null;
+  return { on: !!sp.on, how: sp.how || null, why: sp.why || null, running: !!(sp.on && sp.moving), st: S.rpg ? S.rpg.stamina : null,
+    sx: S.stickX || 0, sy: S.stickY || 0, phase: S._stickPhase || 'rest', f: S._frameCount || 0,
+    ring: !!document.querySelector('[data-rimsprint="on"]'), btn: b, dom: !!document.querySelector('[data-sprint]') };
+});
+/* `n` of the renderer's own frames (TRAPS 200: never a clock's window) */
+async function frames(P, n) {
+  const f0 = await H.readState(P, (S) => S._frameCount || 0);
+  await H.waitFor(P, (S) => S._frameCount || 0, (v) => v >= f0 + n, { timeout: 90000, label: n + ' frames' }).catch(() => null);
+}
+const srvSt = async (wsPort, id) => { const v = await H.serverPlayer(wsPort, id).catch(() => null); return v && typeof v.stamina === 'number' ? v.stamina : null; };
+/* the thumb out from the disc's centre `c` to `share` of the drawn radius `R`, west, in slow steps (never a swipe) */
+async function thumbTo(P, touch, c, R, from, share) {
+  const n = Math.max(1, Math.round(Math.abs(share - from) / 0.1));
+  for (let k = 1; k <= n; k++) { await touch('touchMove', [{ x: c.x - (from + (share - from) * k / n) * R, y: c.y, id: 5 }]); await P.page.waitForTimeout(40); }
+}
+
 /* ═══ v2.3.6544: PART 4's helpers ═══ */
 const panelUp = (P) => P.page.evaluate(() => !!Array.from(document.querySelectorAll('strong')).find((n) => n.textContent === 'Test panel'));
 /* the Test panel: a 1.2 s hold on the zone's name (ZoneHeader), held until it is up (mp-soundstudio's) */
@@ -178,7 +222,7 @@ const coachIs = (w, m, a, sp) => !!w.coach && (w.coach.move || []).length === 1 
 const todayWords = (w) => w.mode === 4 && w.move === TOUR['controlsTutorial.moveBody'] && w.attack === TOUR['controlsTutorial.attackBody']
   && w.targetLabel === TOUR['controlsTutorial.targetLabel'] && w.target === TOUR['controlsTutorial.targetBodyNoLock'] && w.shield === TOUR['controlsTutorial.shieldBody']
   && coachIs(w, 'Drag to move.', 'Hold to attack the nearest enemy.', 'A quick swipe on the Attack button.');
-const twoWords = (w) => w.mode === 5 && w.move === TOUR['controlsTutorial.moveBodyTwo'] && w.attack === TOUR['controlsTutorial.attackBodyTwo']
+const twoWords = (w) => w.mode === 5 && w.move === TOUR['controlsTutorial.moveBodyRim']   /* v2.3.6545: the rim's sprint line (moveBodyTwo with `?rimsprint=0`, 5h) */ && w.attack === TOUR['controlsTutorial.attackBodyTwo']
   && w.targetLabel === TOUR['controlsTutorial.targetLabelTwo'] && w.target === TOUR['controlsTutorial.targetBodyTwo'] && w.shield === TOUR['controlsTutorial.shieldBodyTwo']
   && coachIs(w, COACH['questCoach.moveTwo'], COACH['questCoach.attackTwo'], COACH['questCoach.specialTwo']);
 /* the row: open the panel, read it, tap its button at its centre (a real touch), wait for the page to load again and the world */
@@ -294,6 +338,75 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const f = await H.readState(P, (S) => ({ flash: S._dodgeFlash || 0, stamina: S.rpg && S.rpg.stamina }));
       rec.ok(`1f. ${label}: a fast flick is the dodge roll (the swipe judged first)`, f.flash >= before, { before, ...f });
       await P.page.waitForTimeout(800);
+
+      /* ── PART 5 (v2.3.6545): sprint from the stick's rim ── */
+      {
+        const me5 = await H.readState(P, (S) => S.myId);
+        await H.devOp(wsPort, 'vitals', me5, { heal: true });
+        await frames(P, 3);
+        const a = await RIMV(P);
+        rec.ok(`5a. ${label}: in mode 5 the sprint button is not drawn (shown ${a.btn && a.btn.shown}, the rim ${a.btn && a.btn.rim}, the worker's sprint ${a.btn && a.btn.supported})`,
+          !!a.btn && a.btn.shown === false && a.btn.rim === true && a.btn.supported === true && !a.dom, a);
+        /* 5b: at the rim */
+        await touch('touchStart', [{ x: c.x, y: c.y, id: 5 }]);
+        await P.page.waitForTimeout(80);
+        await thumbTo(P, touch, c, R, 0, 1.0);
+        await frames(P, 4);
+        const b0 = await RIMV(P), s0 = await srvSt(wsPort, me5);
+        await frames(P, 8);
+        const b1 = await RIMV(P), s1 = await srvSt(wsPort, me5);
+        rec.ok(`5b. ${label}: the thumb at the rim walks at full speed (${b1.sx.toFixed(2)}) and does not sprint (${b1.on}); stamina still (phone ${b0.st} -> ${b1.st}, worker ${s0} -> ${s1})`,
+          b1.phase === 'walk' && b1.sx < -0.99 && !b0.on && !b1.on && b0.st === b1.st && s0 != null && s0 === s1, { b0, b1, s0, s1 });
+        /* 5c: past it */
+        await thumbTo(P, touch, c, R, 1.0, 1.4);
+        const on = await H.waitFor(P, (S) => !!(S._sprint && S._sprint.on && S._sprint.moving), (v) => v, { timeout: 20000, label: 'the rim sprint' }).catch(() => null);
+        const c0 = await RIMV(P);
+        /* the worker's bill, and its bar back on the phone: a page drawing a frame
+           every 800 ms (this box sideways) reads the worker's echo many frames
+           late, so wait on both, by frames (the helper's first run: 100 -> 89 on
+           the worker while the phone still read a late full bar) */
+        let s2 = null, c1 = null;
+        for (let k = 0; k < 40; k++) {
+          await frames(P, 2);
+          s2 = await srvSt(wsPort, me5); c1 = await RIMV(P);
+          if (s2 != null && s1 != null && s2 < s1 - 1 && c1.st < s1 - 1) break;
+        }
+        rec.ok(`5c. ${label}: pushed past the rim (1.4) it sprints (how ${c1.how}, running ${c1.running}), the ring lit (${c1.ring}); the worker bills the sp moves (${s1} -> ${s2}), the phone's bar falls (${c0.st} -> ${c1.st} of ${s1})`,
+          !!on && c1.on && c1.how === 'rim' && c1.running && c1.ring && s2 != null && s1 != null && s2 < s1 - 1 && c1.st < s1 - 1, { c0, c1, s1, s2 });
+        /* 5d: back to the rim */
+        await thumbTo(P, touch, c, R, 1.4, 1.0);
+        const off = await H.waitFor(P, (S) => !!(S._sprint && S._sprint.on), (v) => !v, { timeout: 20000, label: 'the rim sprint ends' }).catch(() => null);
+        await frames(P, 3);
+        const d1 = await RIMV(P);
+        rec.ok(`5d. ${label}: back at the rim it ends (${d1.why}), the ring dark (${d1.ring}), the walk on (${d1.sx.toFixed(2)})`,
+          off === false && !d1.on && d1.why === 'rim' && !d1.ring && d1.sx < -0.99, d1);
+        /* 5e: out, run dry, no restart with the thumb out; back in and out: again */
+        await thumbTo(P, touch, c, R, 1.0, 1.4);
+        const on2 = await H.waitFor(P, (S) => !!(S._sprint && S._sprint.on), (v) => v, { timeout: 20000, label: 'the rim sprint again' }).catch(() => null);
+        await H.devOp(wsPort, 'vitals', me5, { stamina: 2 });
+        const dry = await H.waitFor(P, (S) => (S._sprint ? S._sprint.why : null), (v) => v === 'empty', { timeout: 120000, label: 'run dry (the worker\'s bar reaches a slow page late)' }).catch(() => null);
+        await H.devOp(wsPort, 'vitals', me5, { heal: true });
+        await H.waitFor(P, (S) => (S.rpg ? S.rpg.stamina : 0), (v) => v >= 50, { timeout: 120000, label: 'the bar mended on the phone' }).catch(() => null);
+        let restarted = false;
+        for (const sh of [1.5, 1.3, 1.6, 1.35]) {
+          await thumbTo(P, touch, c, R, sh === 1.5 ? 1.4 : 1.45, sh);
+          await frames(P, 2);
+          const e = await RIMV(P);
+          if (e.on) restarted = true;
+        }
+        const e1 = await RIMV(P);
+        await thumbTo(P, touch, c, R, 1.35, 0.9);
+        await frames(P, 2);
+        await thumbTo(P, touch, c, R, 0.9, 1.4);
+        const back = await H.waitFor(P, (S) => !!(S._sprint && S._sprint.on && S._sprint.how === 'rim'), (v) => v, { timeout: 20000, label: 'the rim sprint after coming back' }).catch(() => null);
+        rec.ok(`5e. ${label}: out again it sprints (${!!on2}); at 0 stamina it ends (${dry}); with the thumb still out and the bar mended (${e1.st}) it does not start again (${restarted}); back inside, then out: it starts (${!!back})`,
+          !!on2 && dry === 'empty' && !restarted && !e1.on && e1.st >= 5 && !!back, { e1, restarted });
+        /* 5f: lifted */
+        await touch('touchEnd', [{ x: c.x - 1.4 * R, y: c.y, id: 5 }]);
+        const lift = await H.waitFor(P, (S) => ({ on: !!(S._sprint && S._sprint.on), why: S._sprint && S._sprint.why, phase: S._stickPhase || 'rest' }), (v) => !v.on, { timeout: 20000, label: 'lifted' }).catch(() => null);
+        rec.ok(`5f. ${label}: the thumb lifted, the sprint ends (${lift && lift.why}), the stick at rest (${lift && lift.phase})`, !!lift && lift.why === 'rim' && lift.phase === 'rest', lift);
+        await frames(P, 3);
+      }
 
       /* ── PART 2: the right side ── */
       const me = await H.readState(P, (S) => S.myId);
@@ -682,6 +795,26 @@ export async function run({ browser, wsPort, webPort, rec }) {
         rec.ok(`3e. the mode off: the two buttons' resolver hides nothing (Block ${off.shield}, Special ${off.special}), no sight line (${off.line})`,
           off.shield === true && off.special === true && off.line === false && off.phase === 'none', off);
 
+        /* 5g (v2.3.6545): the mode off: the sprint button as today, and the
+           left disc pushed far past its rim sprints nothing */
+        {
+          const D4 = await DISC(Q);
+          const g0 = await RIMV(Q);
+          let g1 = null;
+          if (D4.base) {
+            const c4 = { x: D4.base.x, y: D4.base.y }, R4 = D4.base.w / 2;
+            await tq('touchStart', [{ x: c4.x, y: c4.y, id: 5 }]);
+            await Q.page.waitForTimeout(80);
+            await thumbTo(Q, tq, c4, R4, 0, 1.6);
+            await frames(Q, 6);
+            g1 = await RIMV(Q);
+            await tq('touchEnd', [{ x: c4.x - 1.6 * R4, y: c4.y, id: 5 }]);
+            await frames(Q, 3);
+          }
+          rec.ok(`5g. the mode off: the sprint button drawn as today (${g0.btn && g0.btn.shown}, rim ${g0.btn && g0.btn.rim}); the left disc pushed far past its rim walks (${g1 && g1.sx.toFixed(2)}) and sprints nothing (${g1 && g1.on})`,
+            !!g0.btn && g0.btn.shown === true && g0.btn.rim === false && g0.dom && !!g1 && g1.sx < -0.9 && !g1.on && !g1.ring, { g0, g1 });
+        }
+
         /* PART 4 (v2.3.6544): the Test panel's row, and the words in each mode */
         await Q.page.waitForFunction(() => !!(window.__btCoach && window.__btTourWords), null, { timeout: 20000 }).catch(() => null);
         const w4 = await WORDS(Q);
@@ -696,6 +829,38 @@ export async function run({ browser, wsPort, webPort, rec }) {
           rec.ok(`4c. the row read ${r2.reads}; its tap loaded mode ${w6 && w6.mode} (manual=${w6 && w6.manual}, the key ${w6 && w6.key}), today's words back`,
             r2.reads === 'buttons' && r2.went && r2.inW && !!w6 && w6.manual === '4' && w6.key === null && todayWords(w6), { r2, w6 });
         } else rec.ok('4c. the row back to two sticks (4b first)', false, r1);
+
+        /* 5h (v2.3.6545): `?rimsprint=0` in mode 5: the button back, the rim does nothing, the tour without its line */
+        {
+          const u = new URL(Q.page.url());
+          u.searchParams.set('manual', '5');
+          u.searchParams.set('rimsprint', '0');
+          await Q.page.goto(u.toString()).catch(() => null);
+          await H.enterWorld(Q);
+          const inH = await H.waitFor(Q, (S) => ({ zone: S.currentZone, loading: !!S._zoneLoading }), (v) => v.zone === 'wheel' && !v.loading, { timeout: 150000, label: 'in the Wheel, ?rimsprint=0' }).catch(() => null);
+          let h0 = null, h1 = null, wh = null;
+          if (inH) {
+            const ch = await Q.ctx.newCDPSession(Q.page);
+            const th = (type, pts) => ch.send('Input.dispatchTouchEvent', { type, touchPoints: pts });
+            await Q.page.waitForFunction(() => !!(window.__btCoach && window.__btTourWords && window.__btSprintBtn), null, { timeout: 20000 }).catch(() => null);
+            await frames(Q, 3);
+            h0 = await RIMV(Q);
+            wh = await WORDS(Q);
+            const DH = await DISC(Q);
+            if (DH.base) {
+              const ch5 = { x: DH.base.x, y: DH.base.y }, RH = DH.base.w / 2;
+              await th('touchStart', [{ x: ch5.x, y: ch5.y, id: 5 }]);
+              await Q.page.waitForTimeout(80);
+              await thumbTo(Q, th, ch5, RH, 0, 1.6);
+              await frames(Q, 6);
+              h1 = await RIMV(Q);
+              await th('touchEnd', [{ x: ch5.x - 1.6 * RH, y: ch5.y, id: 5 }]);
+            }
+          }
+          rec.ok(`5h. \`?rimsprint=0\` in mode ${wh && wh.mode}: the sprint button back (${h0 && h0.btn && h0.btn.shown}); a thumb past the rim walks at full speed (${h1 && h1.sx.toFixed(2)}) and sprints nothing (${h1 && h1.on}); the tour says the walk without the rim's line`,
+            !!inH && !!wh && wh.mode === 5 && !!h0 && h0.btn && h0.btn.shown === true && h0.btn.rim === false && h0.dom && !!h1 && h1.sx < -0.99 && !h1.on && !h1.ring
+              && wh.move === TOUR['controlsTutorial.moveBodyTwo'], { h0, h1, move: wh && wh.move });
+        }
       } else rec.ok('2f. the mode off: in the Wheel (guard)', false, inQ);
     }
     rec.ok('1g/2g. no page errors', errs.length === 0, errs.slice(0, 4));

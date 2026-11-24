@@ -1,6 +1,6 @@
 card: CT
-branch: claude/plan-ct-5-words (PR 5, stacked on claude/plan-ct-4-sight)
-prs: #2282 (6540, merged), #2293 (6541, merged at 60), #2308 (6542, held at 60: mended), #2327 (6543, ready), #2330 (6544, draft, main 598cfd38 in)
+branch: claude/plan-ct-6-sprint (item 6, stacked on claude/plan-ct-5-words)
+prs: #2282 (6540, merged), #2293 (6541, merged at 60), #2308 (6542, held at 60: mended), #2327 (6543, ready), #2330 (6544, draft, main 598cfd38 in), item 6 (6545, draft: its number in the PR's words)
 state: ready
 
 ## Done
@@ -17,9 +17,13 @@ state: ready
   its line from the state, record and __btSightLine in
   rendering/sightLineDraw.js (leaves guard); the row reads pageAddress,
   twoButtonsChoose(on, search) gives `?...` (switch-reader 3).
+- Item 6 (6545): sprint past the stick's rim (stickZones.js rimSprint,
+  1.25 on / 1.05 off, a hold, how 'rim'; no server change); no sprint
+  button in mode 5; the ring lit gold; `?rimsprint=0`. stick-zones 10,
+  mp-twobuttons part 5.
 
 ## Next
-- Item 6 (6545, sprint from the left stick): a fresh part.
+- The owner's verdict on the trial (the card's "Stop there").
 
 ## Found
 - `manual-combat.test` 1h pinned `?manual=5` as no switch: now `6`.
@@ -28,6 +32,8 @@ state: ready
   frame; this box draws one every 767-1117 ms, so one missed frame drops
   it. 3c: a SKIP with the frame time when frames are wider than the hold
   (TRAPS 200); 3d counts each button (Block, then Special a render later).
+- mp-twobuttons 3d upright, run 1 of 2 (433 ms frames): Block, Special 8
+  times in 3c while the phase held (PR 4's to judge; not item 6's).
 
 ## Needs
 - Approved: the two OWNED rows (stickX, stickY; #2290 is in `main`); PR

@@ -4,6 +4,7 @@ import { sprintSupported, sprintArmed, isSprinting, toggleSprint, SPRINT_MIN_STA
 import { isWheelSwimming } from '@/game/wheelSwim.js';
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { cue } from '@/game/eventSounds.js'; /* v2.3.3462: the "denied" tick */
+import { rimSprintLive } from '@/game/stickZones.js';   /* v2.3.6545: in the two buttons the stick's rim sprints, and this button is not drawn (card CT item 6) */
 import { Skin, PaintedIcon, ICON_URL, pressOn, pressOff } from './controlSkin.jsx'; /* v2.3.3018: the owner's mockup */
 
 /* ═══ v2.3.3006: THE SPRINT BUTTON, RIGHT OF THE MOVEMENT STICK ═══
@@ -95,6 +96,14 @@ export function sprintButtonView(S) {
   };
 }
 
+/** v2.3.6545: a sprint refused for stamina, said as the button says it: the
+ *  words over your head and the denied tick.  The button's tap and the
+ *  stick's rim (game/stickZones.js rimSprint, once a push) share it. */
+export function sprintTiredSay(s, now) {
+  if (s.player) pushDmgPopup(s, s.player.x, s.player.y - 30, SPRINT_TIRED_NOTE, SPRINT_TIRED_COLOR, { ts: now });
+  cue('denied');   /* v2.3.3462: a refusal is heard (the owner's "denied" tick) */
+}
+
 function fmt(n) { return (Math.round(n * 100) / 100).toFixed(2); }
 
 export function SprintButton(props) {
@@ -132,13 +141,14 @@ export function SprintButton(props) {
       var s2 = stateRef && stateRef.current;
       var v = sprintButtonView(s2);
       var sp = s2 && s2._sprint;
-      return { shown: !!v, view: v, supported: sprintSupported(s2), armed: sprintArmed(s2), running: isSprinting(s2),
+      return { shown: !!v && !rimSprintLive(), rim: rimSprintLive(), view: v, supported: sprintSupported(s2), armed: sprintArmed(s2), running: isSprinting(s2),
         how: sp ? sp.how : null, why: sp ? sp.why : null, n: sp ? sp.n : 0,
         stamina: s2 && s2.rpg ? s2.rpg.stamina : null };
     };
   }
   var view = sprintButtonView(S);
   if (!view) return null;
+  if (rimSprintLive()) return null;   /* v2.3.6545: the two buttons sprint from the stick's rim (`?rimsprint=0` gives the button back); the poll above still decides */
 
   var anchor = sprintAnchor(isLandscape);
   var size = anchor.size;
@@ -149,8 +159,7 @@ export function SprintButton(props) {
     var now = Date.now();
     var ok = toggleSprint(s, now);
     if (!ok && s._sprint && s._sprint.why === 'tired' && s._sprint.refusedAt === now) {
-      if (s.player) pushDmgPopup(s, s.player.x, s.player.y - 30, SPRINT_TIRED_NOTE, SPRINT_TIRED_COLOR, { ts: now });
-      cue('denied');   /* v2.3.3462: a refusal is heard (the owner's "denied" tick) */
+      sprintTiredSay(s, now);   /* v2.3.6545: the words and the tick, shared with the stick's rim */
       setNope(function (x) { return x + 1; });
     }
     keyRef.current = '';

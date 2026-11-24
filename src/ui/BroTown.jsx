@@ -462,7 +462,7 @@ import { laneKnob } from '@/game/drawLanes.js';   /* v2.3.5233 (card O PR 13): t
 function _stepCapMs() { try { const v = Number(laneKnob('step')); return v > 0 ? v : 50; } catch (e) { return 50; } }
 import { framePaceOn, makeFramePacer, noteDrawn, whenDrawn, beforeDraw, runBeforeDraw } from '@/game/framePacer.js';   /* v2.3.4400: a steady rate on a screen the game cannot keep up with */
 import { makeFrameSteps } from '@/game/frameSteps.js';   /* v2.3.5340: the frame as named steps (grand plan 5.4, card M) */
-import { stickDrive, stickFrame, stickAnalog, stickLift } from '@/game/stickZones.js'; import { latchFrame, latchAttackPress, latchHolds, latchLook, twoButtonsLive } from '@/game/latch.js';   /* v2.3.6541: the two buttons' left stick (`?manual=5`, card CT PR 2), and the frame's step `input`; v2.3.6542: their Attack, a latch (PR 3) */
+import { stickDrive, stickFrame, stickAnalog, stickLift } from '@/game/stickZones.js'; import { sprintTiredSay } from './panels/SprintButton.jsx';   /* v2.3.6545: the rim's sprint refused for stamina says what the button said (card CT item 6) */ import { latchFrame, latchAttackPress, latchHolds, latchLook, twoButtonsLive } from '@/game/latch.js';   /* v2.3.6541: the two buttons' left stick (`?manual=5`, card CT PR 2), and the frame's step `input`; v2.3.6542: their Attack, a latch (PR 3) */
 import { sw, swHas, pageAddress } from '@/game/switches.js';   /* v2.3.5340: the page's one reader of its switches (`?framesteps=0`); v2.3.5342: every read of the address */
 import { accTrack } from '@/game/accuracy.js';   /* v2.3.4545: the shot counts that ride the track */
 import { noteMade } from '@/debug/madeLog.js';   /* v2.3.4400: a job between frames says its name and its time */
@@ -10215,7 +10215,7 @@ export var BroTown = function BroTown(_ref0) {
     var rawDx = clientX - bcx;
     var rawDy = clientY - bcy;
     /* v2.3.6541: the two buttons (`?manual=5`, a trial): the stick's three zones, rest, turn and walk, by the thumb's share of the disc's DRAWN radius; the knob, the walk, the turn's facing and the phase are stickDrive's (game/stickZones.js; card CT PR 2) */
-    if (twoButtonsLive()) { stickDrive(stateRef.current, rawDx, rawDy, rect.width / 2, knobRef.current, lStickRef.current, base.style.opacity); return; }
+    if (twoButtonsLive()) { stickDrive(stateRef.current, rawDx, rawDy, rect.width / 2, knobRef.current, lStickRef.current, base.style.opacity, sprintTiredSay); return; }   /* v2.3.6545: + the thumb past the rim sprints (stickZones.js rimSprint; card CT item 6) */
     var dist = Math.sqrt(rawDx * rawDx + rawDy * rawDy);
     var maxR = rect.width / 2 - 20;
     var clampDist = Math.min(dist, maxR);

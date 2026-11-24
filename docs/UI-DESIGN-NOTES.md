@@ -1877,6 +1877,7 @@ Screens: two-buttons, two-buttons-sighted
 - **Whirlwind comes once combat is on** (the Attack latch pressed): it has always needed a monster locked, and in this mode the lock is the latch's, so a monster only in sight shows Block and Special and not yet Whirlwind (a cast with no lock is refused, "Not in combat!").
 - **Switched in the Test panel** (v2.3.6544): the row "Controls: two sticks / two buttons" sets the same remembered choice as the address (the installed app has none) and the game loads again into it; back to two sticks is today's default. No key needed, as the side column's row above it.
 - **The teaching words follow the mode** (v2.3.6544): on a touch screen in this mode the controls tour says the stick turns, then walks; Attack locks on and keeps fighting until pressed again; the sight line finds what you face; Block and the specials come up round Attack while a monster is in sight. The quest coach's move, attack and special lessons say the same in short. Every other mode and a computer read the words they always did.
+- **Sprint is the left stick pushed past its edge** (v2.3.6545, card CT item 6; the owner, 2026-11-24: "the sprint button should be moved to the left joystick too", asked how: "Go recommended"): the thumb out past 1.25 of the disc's drawn radius sprints, and it stops once the thumb is back inside 1.05 (the gap stops a thumb resting near the line flickering it on and off) or lifts. It is a hold, like Shift on a computer. At the edge itself the bro walks at full speed and spends nothing, so a thumb resting there never burns stamina by accident. Every end of today's sprint still ends it (stamina gone, the shield, an attack, the water, death, a zone, standing still), and after one it starts again only once the thumb has come back in and gone out again. Too tired: the button's own "Not enough energy!" and denied tick, once a push. While it runs the turn ring is lit gold; there is no sprint button in this mode. Stamina, speed and what the worker is sent are today's. The tour adds "Push the stick past its edge to sprint." Switch: `?rimsprint=0` gives the button back and the edge does nothing.
 - **In a fight between players** (a duel, a spar, No man's land) the sight sees monsters only, so Block and the specials stay up as they are today: a rule of a fight between players is the owner's to change.
 - **Decided for the owner while away** (v2.3.6543): a monster's hit from outside your sight does not bring Block up in this mode (today's buttons also come for a hit in the last 5 s); the owner's rule is the sight. Switch: `?manual=4` (or nothing chosen) for today's controls.
 
@@ -1891,7 +1892,7 @@ Screens: two-buttons, two-buttons-sighted
 
 **Still open:**
 - Whether the line should differ for a bow and a staff (today both draw the same stream as the sword's line).
-- Sprint from the left stick's edge in this mode (card CT item 6, the owner: "the sprint button should be moved to the left joystick too").
+- The rim sprint's two lines (1.25 on, 1.05 off) are trial numbers, for the owner's thumb to judge.
 
 Sources: docs/plan/cards/CT.md, src/game/stickZones.js, src/game/sight.js, src/game/latch.js, src/game/controlVisibility.js (combatButtonsShown), src/rendering/leaves/effects-sight.js, docs/specs/manual-combat.md, docs/specs/control-redesign.md.
 

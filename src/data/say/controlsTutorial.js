@@ -19,6 +19,8 @@ export const SAY = Object.freeze({
   'controlsTutorial.dodgeBody': 'Swipe anywhere in the world to dodge-roll.',
   /* v2.3.6544: the two buttons (`?manual=5`, card CT PR 5: a trial, a touch screen only) */
   'controlsTutorial.moveBodyTwo': 'Push the left stick a little to turn and face that way. Push it further to walk.',
+  /* v2.3.6545: ...and past its edge, a sprint (card CT item 6; not with `?rimsprint=0`, where the sprint button is back) */
+  'controlsTutorial.moveBodyRim': 'Push the left stick a little to turn and face that way. Push it further to walk. Push the stick past its edge to sprint.',
   'controlsTutorial.attackBodyTwo': 'Face a monster in reach and a line points to it. Tap Attack once: you lock on and keep fighting. Tap again to stop. With nothing in sight, a tap is one swing.',
   'controlsTutorial.targetLabelTwo': 'Your sight line',
   'controlsTutorial.targetBodyTwo': 'The line finds the monster you face once it is in reach (a bow or a staff reaches further than a sword). While one is in sight, Block and your specials come up around Attack. When your target falls, the next one in sight is yours.',

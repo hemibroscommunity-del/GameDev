@@ -236,6 +236,7 @@ const FORMS = {
   'retrylooks': '0',
   'ridecoast': '0|off|false',
   'ridedoor': '0',
+  'rimsprint': '0',
   'room': '*',
   'rostercookie': '0|off|false',
   'seacover': '0',

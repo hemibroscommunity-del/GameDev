@@ -6,7 +6,39 @@ import { QuickEatButton } from './QuickEatButton.jsx'; /* v2.3.3260 */
 import { JumpButton } from './JumpButton.jsx'; /* v2.3.3017 */
 import { Skin, RDISC_ICONS, AimReticle } from './controlSkin.jsx'; /* v2.3.3018: the owner's mockup -- one skin for every control */
 import { twoButtonsLive } from '@/game/latch.js'; /* v2.3.6541: the two buttons' turn ring (card CT PR 2); v2.3.6542: through the one gate */
-import { turnRingRadius } from '@/game/stickZones.js'; /* v2.3.6541: the turn ring's radius, CSS px (the turn's share of the disc's drawn radius; stick-zones 7b reads this call) */
+import { turnRingRadius, rimSprintOn, rimSprinting } from '@/game/stickZones.js'; /* v2.3.6541: the turn ring's radius, CSS px (the turn's share of the disc's drawn radius; stick-zones 7b reads this call); v2.3.6545: the rim's sprint lights it */
+
+/* ═══ v2.3.6545: THE TURN RING SAYS "SPRINTING" (card CT item 6) ═══
+ * In the two buttons the thumb pushed past the disc's rim sprints
+ * (game/stickZones.js rimSprint), and the sprint button is not drawn.  So
+ * the turn ring is lit in the sprint's own colour, solid and warm, while a
+ * sprint the rim started runs: no new art, no new sound.  Mounted only in
+ * the ring (mode 5) with the rim on; it asks the state every RIM_POLL_MS
+ * and redraws only on a change, the redraw a transition (a redraw on a
+ * timer never holds a frame). */
+const RIM_POLL_MS = 100;
+export const RIM_SPRINT_COLOR = 'rgba(255,186,73,.95)';
+function RimGlow(props) {
+  var stateRef = props.stateRef;
+  var _s = React.useState(false), on = _s[0], setOn = _s[1];
+  React.useEffect(function () {
+    var was = false;
+    var id = setInterval(function () {
+      var now = rimSprinting(stateRef && stateRef.current);
+      if (now === was) return;
+      was = now;
+      React.startTransition(function () { setOn(now); });
+    }, RIM_POLL_MS);
+    return function () { clearInterval(id); };
+  }, [stateRef]);
+  /* drawn always and shown by its opacity: the poll runs for the ring's life
+     either way (TRAPS 299: no `return null` with a live poll beside it) */
+  return React.createElement('div', {
+    'data-rimsprint': on ? 'on' : 'off', 'aria-hidden': 'true',
+    style: { position: 'absolute', inset: -1.5, borderRadius: '50%', border: '2.5px solid ' + RIM_SPRINT_COLOR,
+      boxShadow: '0 0 6px ' + RIM_SPRINT_COLOR, boxSizing: 'border-box', pointerEvents: 'none', opacity: on ? 1 : 0 },
+  });
+}
 
 /* ═══ v2.3.3018: THE ATTACK DISC IS A GOLD-RINGED BUTTON WITH A PICTURE ═══
  * Owner: "Make the on screen buttons look more like the improved mockup."
@@ -250,7 +282,7 @@ export function TouchControls(props) {
     style: { position: 'absolute', left: '50%', top: '50%', width: 2 * turnRingRadius(isLandscape), height: 2 * turnRingRadius(isLandscape),
       transform: 'translate(-50%,-50%)', borderRadius: '50%', border: '1.5px dashed rgba(232,238,241,.55)',
       boxSizing: 'border-box', pointerEvents: 'none' },
-  }) : null, /*#__PURE__*/React.createElement("div", {
+  }, rimSprintOn() ? React.createElement(RimGlow, { stateRef: stateRef }) : null) : null, /*#__PURE__*/React.createElement("div", {
     /* Analog "stick" — anchored at joystick centre, grows toward the
        knob when dragged.  transform-origin at left-centre so rotation
        pivots at the disc centre; width set dynamically by
