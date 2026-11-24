@@ -9,7 +9,11 @@
  *   1. THE ZEROS: a `fee`, `hold` or `pace` that is not 0.  The owner's call
  *      12: "YES to building the table with everything at zero; turning one
  *      up is a later call."  No settlement reads them yet; turning one up is
- *      a PR that builds its reader, the owner's call;
+ *      a PR that builds its reader, the owner's call.  v2.3.6463 (card BK
+ *      PR 4): ...and each is marked so (playerroads.js LEVERS: fee, hold
+ *      and pace, each `wired: false`, with what it `means`); a lever marked not wired
+ *      is 0 on every row.  That nothing reads one is
+ *      tools/guards/road-levers.test's (it reads the source);
  *   2. A ROW THAT IS NOT WHOLE: no `at` or `why`; a `carries` off ROAD_KINDS
  *      or empty; a ledger off ROAD_LEDGERS, or `none` with no `ledgerWhy`; a
  *      row that names no road; a road no door has; a `mint` or `burn` road
@@ -52,7 +56,7 @@
 import { GOLD_ROADS } from '../src/gold.js';
 import { BAG_ROADS, BAG_WHOLE } from '../src/bag.js';
 import { marksOf } from '../src/storagemarks.js';
-import { PLAYER_ROADS, OWN_ROADS, ROAD_KINDS, KIND_DOORS, DOORLESS, ROAD_LEDGERS } from '../src/playerroads.js';
+import { PLAYER_ROADS, OWN_ROADS, ROAD_KINDS, KIND_DOORS, DOORLESS, ROAD_LEDGERS, LEVERS } from '../src/playerroads.js';   /* v2.3.6463: + LEVERS */
 import { STASH_ROADS, STASH_SELF } from '../src/stash.js';   /* v2.3.5281 */
 import { readFileSync, existsSync } from 'node:fs';
 
@@ -171,6 +175,11 @@ const f = faults(REAL);
 
 /* ══════════ 1. THE ZEROS ══════════ */
 check('1. every road between players has fee, hold and pace 0 (the owner\'s call 12)', f.zeros.length === 0, f.zeros);
+/* v2.3.6463 (card BK PR 4): the levers say what they are */
+check('1. the three levers are marked, each with what it means: fee, hold, pace (playerroads.js LEVERS)',
+  Object.keys(LEVERS).sort().join() === 'fee,hold,pace' && Object.values(LEVERS).every((l) => typeof l.wired === 'boolean' && typeof l.means === 'string' && l.means.length > 10), LEVERS);
+const unwiredSet = Object.entries(PLAYER_ROADS).flatMap(([k, row]) => Object.keys(LEVERS).filter((c) => !LEVERS[c].wired && row[c] !== 0).map((c) => k + '.' + c));
+check('1. ...a lever marked not wired is 0 on every row', unwiredSet.length === 0, unwiredSet);
 
 /* ══════════ 2. EVERY ROW WHOLE ══════════ */
 check('2. every row is whole: where, why, what it carries, its ledger, and only `move` and `escrow` roads that exist', f.rows.length === 0, f.rows);
