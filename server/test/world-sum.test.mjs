@@ -90,6 +90,15 @@ const { GOLD_ROADS } = await import('../src/gold.js');
 const { STASH_ROADS } = await import('../src/stash.js');
 /* v2.3.5091: the sum moved out whole (the storm judges with it too); v2.3.5093: into the worker (src/worldsum.js), the live walk's one sum */
 const { READERS, count, unexplained } = await import('../src/worldsum.js');
+/* v2.3.6464: the pieces the sum holds by id (a piece of gear, a weapon, a
+   pet), read off the sum's own ctx by wrapping each reader (worldsum.js is
+   not this suite's): unexplained() weighs gold and bag keys, not pieces */
+const piecesHeld = (room, state) => {
+  let ctx = null;
+  const readers = Object.fromEntries(Object.entries(READERS).map(([p, f]) => [p, (c, k, v) => { ctx = c; return f(c, k, v); }]));
+  count(room, state, readers);
+  return ctx ? ctx.ids.length : -1;
+};
 /* the room: the gold door's three verbs write down their road; a message to
    it is a handler (and so is its alarm) */
 function ranRoom(room) {
@@ -189,7 +198,17 @@ let PLAYED = null;
   check('1. at the start, every record is marked and every marked value record has a reader', start.unmarked.length === 0 && start.noReader.length === 0, { unmarked: start.unmarked, noReader: start.noReader });
   for (const k of Object.keys(RAN)) RAN[k].clear();
   const steps = [];
-  const note = (what) => { const u = unexplained(start, count(room, state)); steps.push([what, u.gold, Object.keys(u.goods).length ? u.goods : 0]); };
+  /* v2.3.6464 (sitting 56's Found on #2278: a weapon lost on an equip swap
+     stayed green, the sum counting no pieces): each step says how many
+     pieces it MADE (a grant); any other change in the pieces held fails */
+  const pieceSteps = [];
+  let piecesThen = piecesHeld(room, state);
+  const note = (what, made = 0) => {
+    const u = unexplained(start, count(room, state)); steps.push([what, u.gold, Object.keys(u.goods).length ? u.goods : 0]);
+    const p = piecesHeld(room, state);
+    if (p - piecesThen !== made) pieceSteps.push([what, p - piecesThen, made]);
+    piecesThen = p;
+  };
 
   /* the bank: gold and goods in and out (escrow) */
   {
@@ -440,7 +459,7 @@ let PLAYED = null;
     const wore = A.armor && A.armor.gid;
     await send(room, ws.a, 'unequip_request', { slot: 'armor' });
     check('1. A put on one torso, then the other, then took it off', wore === pieces[1].gid && !(A.armor && A.armor.gid), { wore, now: A.armor });
-    note('armour worn');
+    note('armour worn', pieces.length);   /* v2.3.6464: the two torsos made above */
     /* a granted shield goes on the arm when the arm is empty (quests.js) */
     const grant = () => { played(() => room._grantQuestItem(A, { kind: 'shield', gearBase: 'wood', tierMult: 1.0, name: 'Pine Shield' }, 'bp_ws_a')); return A.shield && A.shield.gid; };
     const sh = grant();
@@ -451,7 +470,7 @@ let PLAYED = null;
     const swapped = A.shield && A.shield.gid;
     await send(room, ws.a, 'shield_wear', { none: true });
     check('1. A took a shield off, was given another, swapped back to the first, and took it off', !!sh && off && !!other && other !== sh && swapped === sh && !(A.shield && A.shield.gid), { sh, off, other, swapped });
-    note('shield worn');
+    note('shield worn', 2);   /* v2.3.6464: the two shields granted (grant()) */
     const route = (method, path, body) => room.fetch(new Request('https://x' + path, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })).then((r) => r.json());
     const lg = await route('POST', '/api/store/list', { playerId: 'bp_ws_a', kind: 'gear', field: 'armorStash', gid: pieces[0].gid, price: 250 });
     check('1. A listed a torso at the Auction House (held in the listing)', !!(lg && lg.listing) && !(A.armorStash || []).some((x) => x && x.gid === pieces[0].gid), lg);
@@ -532,6 +551,11 @@ let PLAYED = null;
   check(`1. at the end: unexplained gold ${u.gold}`, u.gold === 0, u);
   check('1. ...and no bag key unexplained', Object.keys(u.goods).length === 0, u.goods);
   check('1. no piece of gear or pet is held twice', end.dup.length === 0, end.dup);
+  /* v2.3.6464: BREAK PROOF, tried by hand: the weapon swap's bag spliced
+     after its stashSet (gear.js _handleEquipRequest: the old weapon put
+     back, then cut out) was green in all 70 checks before this line and
+     fails it now ("weapons swapped", -1) */
+  check(`1. after every step, the pieces held (${piecesThen}) moved only by what the step made: none lost, none made from nothing`, pieceSteps.length === 0 && piecesThen > 0, pieceSteps);
   check('1. every record is marked and every marked value record has a reader, at the end too', end.unmarked.length === 0 && end.noReader.length === 0, { unmarked: end.unmarked, noReader: end.noReader });
   check('1. value moved: gold was minted and burned (the scenario is not empty)', end.net.gold !== start.net.gold, end.net);
 }

@@ -1,34 +1,36 @@
 card: BK
-branch: claude/plan-bk-1-worldsum
-prs: 6460 (ready, opening)
+branch: claude/plan-bk-5-pieces (on claude/plan-bk-1-worldsum)
+prs: #2278 6460 (ready), #2281 6461 (ready again), 6464 (ready, opening)
 state: ready
 
 ## Done
 
-- 6460 (PR 1): world-sum writes down every road the room's real handlers
-  ran (a module hook in front of the bag's and stashes' doors, the gold door
-  wrapped on the room; a door called by hand is not counted), and fails a
-  move or escrow road (51) neither played nor on UNPLAYED (7, a line that
-  only falls). §1 now plays the General Store, the Auction House, the
-  jackpot, duel.js, gladiator.js, an item drop, a staged weapon, the gift
-  trade, gear worn, No man's land's kill. Plants 2 and 3 red by the sum
-  itself ("slime_gel 1", "unexplained gold 3"); a new unplayed escrow row
-  red by the gate.
+- 6460 (PR 1): world-sum fails a move or escrow road (51) its real
+  handlers never ran and not on UNPLAYED (7, only falls). Plants 2, 3 red.
+- 6461 (PR 2): chaos-restart §7, the sweep made from VALUE_PAUSE (14 rows),
+  crashed before every write and after the last, judged by unexplained().
+  Sitting 56's hold mended: the axes seeded with ids on file, the judge
+  counting the pieces the sum's readers hold by id. Plants B1, B4, R2 red.
+- 6464 (sitting 56's Found on #2278, the orchestrator's word): world-sum §1
+  counts the pieces the sum holds by id at every step; a step names the
+  pieces it made, any other change fails. Plant E1 (gear.js's swap spliced
+  after its stashSet: a weapon lost) was green, is red ("weapons swapped").
 
 ## Next
 
-- 6461 (PR 2): the restart sweep made from VALUE_PAUSE (plant R2 red).
+- 6462 (PR 3): the 1.5 bar, honestly, once card CK's #2284 merges; from
+  main once #2278 and #2281 merge. claims-gain.test's 162 s (card CK's
+  Found) is brought down there, no check weakened, or said why not.
 
 ## Found
 
-- `escrow_debit_stored` (gold.js) looks unreachable from a handler: every
-  route that takes it asks for a live session first (httpauth.js). On
-  UNPLAYED with that reason.
-- `escrow_item`, `escrow_item_stored` run only with `ahonewrite: false`
-  (store.js): the old listing path behind its switch.
-- Mints and burns (harvest, cook, forge, a weapon's sale, a quest's hand-in,
-  loot gold, pets, the farm) are not held by the gate: a mint is explained
-  by construction; a door that books other than it moves is card DG's.
+- `escrow_debit_stored` (gold.js) looks unreachable from a handler.
+- `escrow_item`, `escrow_item_stored` run only with `ahonewrite: false`.
+- A mint is explained by construction; a door booking other than it moves
+  is card DG's.
+- A pile dropped on the ground is lost on a restart, by design (rule 11).
+- A crossing or sale a restart cut is finished at the first shop request
+  after the wake; until then the buyer's gold reads as gone.
 
 ## Needs
 
