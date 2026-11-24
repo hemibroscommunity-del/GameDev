@@ -87,6 +87,7 @@ export const STORAGE_MARKS = Object.freeze({
   'ally_war:':        M('none', 'between', 'an alliance war (its pay is a mint, by the mail)'),
   /* v2.3.5092: what moved between two players, kept to be read (xfer.js); the value is in the purses */
   'xfer:':            M('none', 'between', 'the transfer ledger (a record of what moved, not what is held)'),
+  'play_trace:':      M('none', 'player', 'a recording of the owner\'s play, labelled human (v2.3.6482, playtrace.js): a sample, not value'),
 
   /* ── the room's own ── */
   'shop_stock':       M('goods', 'room', 'Diego\'s pile: what he bought, sold on to the next'),
@@ -165,6 +166,7 @@ export const RESTORE_WAYS = Object.freeze({
   'farmorders:':      W('left', 'the day\'s orders: the day\'s limit'),
   'harden_ledger:':   W('left', 'hardening tries: a count'),
   'botstat:':         W('left', 'anti-bot evidence: never rewound'),
+  'play_trace:':      W('left', 'a recording of play (v2.3.6482): what happened, never rewound'),
   'frozen:':          W('left', 'the owner\'s lever'),
   'silenced:':        W('left', 'the owner\'s silence (v2.3.5621): a restore never lifts one'),
   'testmode:':        W('left', 'the owner\'s lever'),

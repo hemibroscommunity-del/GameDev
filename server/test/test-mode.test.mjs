@@ -488,7 +488,7 @@ const lastOf = (ws, type) => { for (let i = ws.sent.length - 1; i >= 0; i--) if 
   });
   /* v2.3.5900: gathering.js asks for the grade's judge too (_harvestGraded,
      through the strike's `_tm`): harvestgrade.js itself asks nothing */
-  const expect = ['accuracy.js' /* v2.3.4545: not a check -- a test character is left out of the owner's accuracy totals a day */, 'actor.js' /* v2.3.6480: not a check -- a record that keeps who acted marks a test-mode character's (card WHO) */, 'botfp.js', 'botsig.js' /* v2.3.3731 */, 'combat.js', 'cooking.js', 'gathering.js', 'join.js', 'lastplace.js', 'movement.js', 'quests.js', 'silence.js' /* v2.3.5627: not a check -- a test-mode character's device is kept as the owner's, never held by a freeze */, 'testmode.js'];
+  const expect = ['accuracy.js' /* v2.3.4545: not a check -- a test character is left out of the owner's accuracy totals a day */, 'actor.js' /* v2.3.6480: not a check -- a record that keeps who acted marks a test-mode character's (card WHO) */, 'botfp.js', 'botsig.js' /* v2.3.3731 */, 'combat.js', 'cooking.js', 'gathering.js', 'join.js', 'lastplace.js', 'movement.js', 'playtrace.js' /* v2.3.6482: the shadow -- a test-mode sitting's first ten active minutes recorded, its checks run in shadow, "would refuse" counted (card WHO) */, 'quests.js', 'silence.js' /* v2.3.5627: not a check -- a test-mode character's device is kept as the owner's, never held by a freeze */, 'testmode.js'];
   check('8. the checks that ask are the listed ones, and only those (a new one is said in testmode.js\'s header)',
     JSON.stringify(all.sort()) === JSON.stringify(expect), all);
 }
