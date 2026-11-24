@@ -215,6 +215,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const GAP = (P) => H.readState(P, bind((S, id) => { const m = (S.monsters || []).find((x) => x && String(x.id) === id); return m ? { d: Math.hypot(m.x - S.player.x, m.y - S.player.y), a: Math.atan2(m.y - S.player.y, m.x - S.player.x), px: S.player.x, py: S.player.y } : null; }, target));
       let g = await GAP(P);
       const gPress = g;
+      /* v2.3.6542: the walk's trace (part 6's red: the body moved 32 px with
+         the gap closing 9): what the stick said, what the body did, each
+         half second -- the evidence the next red reads */
+      const walkTrace = [];
+      const STK = (P) => H.readState(P, (S) => ({ sx: +(S.stickX || 0).toFixed(2), sy: +(S.stickY || 0).toFixed(2), x: Math.round(S.player.x), y: Math.round(S.player.y),
+        vx: +(S.player.vx || 0).toFixed(2), vy: +(S.player.vy || 0).toFixed(2), auto: !!S.autoAttack, climb: !!S._climb, swim: !!(S._wheelSwim && S._wheelSwim.on), air: !!S._jump, back: !!S._backpedaling }));
       if (g && g.d > 90) {
         await touch('touchStart', [c]);
         await P.page.waitForTimeout(80);
@@ -222,6 +228,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
           await touch('touchMove', [{ x: c.x + 0.7 * R * Math.cos(g.a), y: c.y + 0.7 * R * Math.sin(g.a), id: 1 }]);
           await P.page.waitForTimeout(500);
           g = await GAP(P);
+          walkTrace.push(await STK(P));
         }
         await touch('touchEnd', [{ x: c.x, y: c.y, id: 1 }]);
       }
@@ -232,7 +239,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
          gap with the stick walking you in all the same (the helper's run:
          341 -> 372 px upright, 238 -> 329 sideways) */
       const toward = g && gPress ? (g.px - gPress.px) * Math.cos(gPress.a) + (g.py - gPress.py) * Math.sin(gPress.a) : 0;
-      rec.ok(`2c. ${label}: the stick walks you in while locked (${Math.round(toward)} px toward it; the gap ${g ? Math.round(g.d) : '?'} px), the lock held`, !!g && (g.d <= 90 || toward > 20) && (await LATCH(P)).phase === 'active', { gPress, g, toward });
+      rec.ok(`2c. ${label}: the stick walks you in while locked (${Math.round(toward)} px toward it; the gap ${g ? Math.round(g.d) : '?'} px), the lock held`, !!g && (g.d <= 90 || toward > 20) && (await LATCH(P)).phase === 'active', { gPress, g, toward, walkTrace });
       /* this box draws a few frames a second and a held attack halves the
          walk (mode 4's rule, kept): the rest of the way by the harness's hop */
       if (g0 && g0.d > 90) {
@@ -250,11 +257,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
          this box) fell behind a monster walking off: 282 px both ways, the
          sword swinging at air (the helper's run) */
       await P.page.evaluate((id) => {
-        const until = Date.now() + 90000;
+        const until = Date.now() + 90000, t0 = Date.now();
+        /* v2.3.6542: the fight's trace, every second and at the keeper's stop */
+        const tr = window._ctFight = { stop: null, trace: [] };
+        let k10 = 0;
         const t = setInterval(() => {
           const S = window._gameState && window._gameState.current;
           const m = S && (S.monsters || []).find((x) => x && String(x.id) === id);
-          if (!S || !m || !m.alive || m.curHp <= 0 || Date.now() > until) { clearInterval(t); return; }
+          const row = () => ({ t: Date.now() - t0, here: !!m, alive: m ? m.alive : null, hp: m ? m.curHp : null, gap: m ? Math.round(Math.hypot(m.x - S.player.x, m.y - S.player.y)) : null,
+            lid: S && S._latchId != null ? String(S._latchId) : null, ph: S && S._latchPhase, auto: !!(S && S.autoAttack), n: S ? (S.monsters || []).length : null });
+          if (++k10 % 10 === 0 && tr.trace.length < 100) tr.trace.push(row());
+          if (!S || !m || !m.alive || m.curHp <= 0 || Date.now() > until) { tr.stop = row(); clearInterval(t); return; }
           const dx = m.x - S.player.x, dy = m.y - S.player.y, d = Math.hypot(dx, dy);
           if (d <= 30) return;
           const k = Math.min(40, d - 25);
@@ -269,7 +282,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const why = await H.readState(P, bind((S, id) => { const m = (S.monsters || []).find((x) => x && String(x.id) === id);
         return { wpn: !!(S.rpg && S.rpg.weapon), slot: S.rpg && S.rpg.activeSlot, swim: !!(S._wheelSwim && S._wheelSwim.on), swungAgo: S.swingTimer ? Date.now() - S.swingTimer : null,
           gap: m ? Math.round(Math.hypot(m.x - S.player.x, m.y - S.player.y)) : null, mhp: m ? m.curHp : null }; }, target));
-      rec.ok(`2c. ${label}: the fight played to its death with no press (the end: ${l2.end || 'moved to ' + l2.id})`, !!died, { died, l2, hurt, why });
+      const fightTrace = died ? null : await P.page.evaluate(() => window._ctFight || null);
+      rec.ok(`2c. ${label}: the fight played to its death with no press (the end: ${l2.end || 'moved to ' + l2.id})`, !!died, { died, l2, hurt, why, fightTrace });
 
       /* 2d: the second press lets go (when the lock moved on to the next);
          a kill with none other in sight let go by itself ('killed') */
