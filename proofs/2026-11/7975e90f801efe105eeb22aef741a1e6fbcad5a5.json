@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "7975e90f801efe105eeb22aef741a1e6fbcad5a5",
+  "tree": "cf7115508f3042ac2cc9f59409b61ef627c20203",
+  "committedAt": "2026-11-23T21:45:10-08:00",
+  "subject": "Merge pull request #2283 from hemibroscommunity-del/claude/dg-door-guards",
+  "files": 8498,
+  "bytes": 963709519,
+  "listingSha256": "e8cef6de2c19702dde2f10ae0160e25ef238975b4a799bf34eda3e01b601a156",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

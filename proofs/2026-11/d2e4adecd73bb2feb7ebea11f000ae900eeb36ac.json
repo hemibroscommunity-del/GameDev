@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "d2e4adecd73bb2feb7ebea11f000ae900eeb36ac",
+  "tree": "6bdc86fde58110a6caa689ff78ef7e6b53c8ea1a",
+  "committedAt": "2026-11-23T21:45:03-08:00",
+  "subject": "Merge pull request #2299 from hemibroscommunity-del/claude/plan-bk-3-claimsbar",
+  "files": 8497,
+  "bytes": 963674458,
+  "listingSha256": "23fecf5281f19b79d7cc9e663ecdef0e6790e40342f89678b256e3b645aa5229",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
