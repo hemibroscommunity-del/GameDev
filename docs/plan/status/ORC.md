@@ -2,13 +2,13 @@ card: ORC
 branch: claude/plan-orc
 prs: none open (this notes branch never has a PR)
 state: working
-part 5 (session_01LccHakcRoC4r9Sbtry2Erm, started by the owner 02:49 UTC, depth 0) is the orchestrator; every running session below was told its id at 02:51. Never message parts 1 to 4. A part 6 TELLS every running session its id first.
+part 5 (session_01LccHakcRoC4r9Sbtry2Erm, started by the owner 02:49 UTC, depth 0) is the orchestrator; every running session below was told its id at 02:51. Never message parts 1 to 4. A part 6 TELLS every running session its id first. Part 4 also started a duplicate part 5 (session_01LccHamjiNtLpRMK9GZpvoK) at 03:07: it stood down; the owner was told to talk to THIS one.
 
 ## Sitting 57: MERGED 02:14 UTC (#2288, #2294, #2296, #2281, #2289, #2282, notes #2304); main b966af81. The holds' words: docs/plan/census/review-z57.md on main. Its gatekeeper (session_01LccHahbA4NKM4W2gfwhETx) was told it may stop.
 ## Sitting 58: 2026-11-25 UTC (two a day; the owner was told they may say "run another round today"). A NEW gatekeeper session (strong, high). Queue so far, every re-push reviewed fresh:
 - CK #2305 (6425, 69c7b1e8) THEN #2307 (6424, `.github/`, 4261a46b; the owner's own words quoted in its body)
-- BK #2299 (3c4322c8), #2301 (f40b578f), and 6465 when it comes. WHO #2285 (dcf8ca12, mended). CT #2293 (305bb3a4, mended), PR 3 (6542) coming
-- DG #2283 (a new head coming from part 3), #2295 and #2300 (new heads coming from part 5)
+- BK #2299 (3c4322c8), #2301 (f40b578f), and 6465 when it comes. WHO #2285 (dcf8ca12, mended). CT #2293 (a new head coming: three more plants), #2308 (6542, a draft)
+- DG #2283 (a98fff04, green), #2295 and #2300 (new heads coming from part 5)
 - PH #2279, #2291 (held, being mended), #2297, #2306 (a draft until green). LS's one PR (6560)
 - WL MENDED, in this order: #2286 (8290b17b, deploys), #2287 (a91eb4e5), #2290 (0709ce99), #2298 (0a555d3c), #2302 (faa51437), #2303 (3df384e3)
 - #2273 (RR, card LF) HELD: LF part 2 session_01LccHak4rzmk1FfkjzyFgGo (new 02:54, strong, high: a guard's mend) moves wsClient's thaw decision into src/game/thawCarried.js and plays it; five plants in the PR's body; sends the head when green.
@@ -16,12 +16,12 @@ After 58 merges, TELL: WHO when #2283 is in (open 6481, then 6482) and when #227
 
 ## Sessions (strong, high unless said)
 - CK  part 3 session_01LccHanDgcojfUMPpPn87N2: holds; the card is DONE once #2305 and #2307 merge
-- DG  part 3 session_01LccHanED8EaLracuMeAGGR (about 200k): caretaker of #2283 ONLY (a last CI mend: heap-forget in testroom's UNGUARDED_SUITES; sends the head when green). DG part 5 session_01LccHameAWFA8ouUrKZDsv3 (new 02:45): #2295's three plants and testroom §7, then merges up into #2300, tells two heads, stops. DG part 4 session_01LccHajiyuv8speuDQTioEV: builds PR 4 (6443), merges claude/dg-books once before its last push, then 5, 6
+- DG  #2283 GREEN at a98fff04 (part 3 stopped). DG part 5 session_01LccHameAWFA8ouUrKZDsv3: #2295's three plants with a98fff04 merged in, then up into #2300, sends two heads, stops. DG part 4 session_01LccHajiyuv8speuDQTioEV: builds PR 4 (6443), merges claude/dg-books once before its last push, then 5, 6
 - BK  part 4 session_01LccHajLr9A1dTtu6jVmRir (new 02:43): one PR, 6465 (Z's two Founds: the weapon listing's restart, piecesHeld by ids)
 - WHO part 4 session_01LccHahezkhX8pJRQSedVFF: 6481 and 6482 built, not pushed, wait for #2283; report.js waits for #2279
 - PH  part 4 session_01LccHajdAuhmwzihWdn6F7x (new 02:24): mends #2279 and #2291 up the chain, then PR 4 (call 1 is COMPLETE: it has the table and the owner's words), then PR 6; it brings a default-look question for the owner first
 - WL  part 4 session_01LccHajbxzLqNe1hfoBPtSb: all six PRs mended and pushed (heads above); it waits for the sitting
-- CT  part 3 session_01LccHai1bVEjSVXUpBurWA5: at about 330k; finishes PR 3 then hands over: START CT part 4 (its Next: #2293's greens the mend did not cover (mode 5's raw angle, `?turnzone` ignored, the ring in mode 4), PRs 4, 5, then item 6)
+- CT  part 4 session_01LccHanDF63yQ8rwWeeZeRf (new 03:11, on claude/plan-ct-3-right): #2293's three uncovered plants (one push), then #2308 (6542, a draft: mend mp-twobuttons 2c's chase, one haiku helper run, ready), then PRs 4, 5, item 6. Told: the two OWNED rows wait for #2290 on main (TELL it). Part 3 stopped.
 - LS  session_01LccHahoqJuxxQDjafEQf1Q (new 02:40): card LS, one PR 6560 (the card is in its first message; block 6560 to 6579)
 - Stopped, never message: BK 3, PH 3, and every older part.
 
