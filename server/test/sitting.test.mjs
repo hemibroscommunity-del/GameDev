@@ -23,6 +23,12 @@
  *   7. THE KILL SWITCH `sitting: false`: nothing opened, closed or counted;
  *      what a record holds kept through a save; the stint one a socket
  *      again; the cap `sitting` not advertised (on: `sitting: 1`).
+ *  7b. THROWN OFF, A WEEK, THROWN ON (sitting 59's bug, v2.3.6481): a
+ *      record holding a week-old open card joins with the flag off, the flag
+ *      is thrown on mid-sitting: the real moves and every counter count
+ *      nothing into it; the next join closes it whole and opens a new one;
+ *      a join that opens nothing (sitOpen off, or a body taken over with
+ *      the flag off: join.js's sitForget) leaves the earlier card uncounted.
  *   8. A NEWER `_econ` (a rolled-back worker) is left whole: no card.
  *   9. THE ROOM'S OWN PATHS: judged moves and moves over the budget
  *      (movement.js), hits claimed, landed and refused by reason (combat.js,
@@ -252,6 +258,76 @@ const live = (room, pid) => room.playerState[pid];
   check('7. ...what the record holds kept through the save', storedEcon(st, pid).s[C.mv] === 9 && storedEcon(st, pid).sh.length === 1, storedEcon(st, pid));
   check('7. ...the actor\'s stint one a socket again (this join\'s clock)', sessOf(room, ws).actor.stint >= t0 && sessOf(room, ws).actor.stint !== held[C.t]);
   check('7. ...the cap not advertised', capsOf(ws) && capsOf(ws).sitting === undefined, capsOf(ws));
+}
+
+/* ══════════ 7b. THROWN OFF, A WEEK, THROWN ON (sitting 59's bug) ══════════
+   A record holds an open card a week old.  It joins with `sitting: false`
+   (nothing opened, nothing closed), and the flag is thrown back on in the
+   middle of the sitting: the week-old card must count NOTHING (it is not
+   this sitting's), and the next join closes it whole and opens a new one. */
+{
+  const pid = 'bp_sit_week';
+  const WEEK = 7 * 86400e3;
+  const held = sitBlank(T0 - WEEK - 3600e3, 1); held[C.u] = T0 - WEEK; held[C.mv] = 4;
+  const st = makeStorage(seed([pid], 50, { _econ: { v: 2, g: { m: 0, b: 0 }, i: {}, s: held, sh: [] } }));
+  const room = await openRoom(st, { sitting: false });
+  const ws = fakeWs('week');
+  await join(room, ws, pid, { loginTaken: true }); await settle();
+  if (room.tickInterval) { clearInterval(room.tickInterval); room.tickInterval = null; }
+  const ps = live(room, pid);
+  const old = ps._econ.s;
+  check('7b. joined with `sitting: false`: the week-old card held as it was', old && old[C.t] === held[C.t] && old[C.mv] === 4 && old[C.u] === held[C.u], old);
+  delete room._liveFlags.sitting;   /* thrown back on, mid-sitting */
+  check('7b. the flag thrown back on', sitOff(room) === false);
+  const mv = (x, y) => room.webSocketMessage(ws, JSON.stringify({ type: 'move', x, y, z: ps.z }));
+  for (let i = 0; i < 4; i++) { clock.advance(1000); await mv(ps.x + 20, ps.y); }
+  sitMove(room, ps, clock.now(), true); sitHit(room, ps, 'claim', clock.now()); sitHit(room, ps, 'landed'); sitHit(room, ps, SIT.REFUSALS[0]); sitGold(room, ps, SIT.CLASSES[0], 7); sitReport(room, ps, { seen: 3, drawn: 2, soft: 1, build: 'x' }); sitTouch(room, ps, clock.now());
+  const r = sitRead(ps._econ.s);
+  check('7b. the real moves and every counter: nothing into the week-old card', ps._econ.s === old && r.mv === 4 && r.mo === 0 && r.hc === 0 && r.hl === 0 && r.hr[SIT.REFUSALS[0]] === 0 && r.gd[SIT.CLASSES[0]] === 0 && r.se === 0 && r.dr === 0 && r.sf === -1 && r.b === '', r);
+  check('7b. ...its last touch and longest gap unmoved (not reopened)', old[C.u] === held[C.u] && old[C.g] === 0 && !(Array.isArray(ps._econ.sh) && ps._econ.sh.length), { u: old[C.u], g: old[C.g], sh: ps._econ.sh });
+  await close(room, ws);
+  clock.advance(1000);
+  const ws2 = fakeWs('week2');
+  const t1 = clock.now();
+  await join(room, ws2, pid, { loginTaken: true }); await settle();
+  if (room.tickInterval) { clearInterval(room.tickInterval); room.tickInterval = null; }
+  const ps2 = live(room, pid);
+  const sh = ps2._econ.sh || [];
+  check('7b. the next join (on) closes the week-old card whole', sh.length === 1 && sh[0][C.t] === held[C.t] && sh[0][C.mv] === 4 && sh[0][C.u] === held[C.u], sh);
+  check('7b. ...and opens a new one at this join (its stint the actor\'s)', ps2._econ.s && ps2._econ.s[C.t] >= t1 && ps2._econ.s[C.t] === sessOf(room, ws2).actor.stint, { s: ps2._econ.s && ps2._econ.s[C.t], a: sessOf(room, ws2).actor });
+  const mv2 = (x, y) => room.webSocketMessage(ws2, JSON.stringify({ type: 'move', x, y, z: ps2.z }));
+  for (let i = 0; i < 3; i++) { clock.advance(1000); await mv2(ps2.x + 20, ps2.y); }
+  check('7b. ...which counts this sitting\'s moves', sitRead(ps2._econ.s).mv === 3, sitRead(ps2._econ.s));
+  /* and a join that opens nothing forgets the card the last one took */
+  room._liveFlags.sitting = false;
+  sitOpen(room, ps2, null, clock.now());
+  delete room._liveFlags.sitting;
+  sitMove(room, ps2, clock.now(), false);
+  check('7b. a join with the flag off: the card the last join took counts no more', sitRead(ps2._econ.s).mv === 3, sitRead(ps2._econ.s));
+  /* the whole of it through the room: a sitting on (its card taken), the
+     socket gone, a rejoin with the flag off, the flag on again, moves */
+  const ws3 = fakeWs('week3');
+  await close(room, ws2); clock.advance(1000);
+  await join(room, ws3, pid, { loginTaken: true }); await settle();
+  const ps3 = live(room, pid);
+  const mv3 = (x, y) => room.webSocketMessage(ws3, JSON.stringify({ type: 'move', x, y, z: ps3.z }));
+  clock.advance(1000); await mv3(ps3.x + 20, ps3.y);
+  const card3 = ps3._econ.s, n3 = sitRead(card3).mv;
+  check('7b. a rejoin with the flag on: its card counts', n3 >= 1, sitRead(card3));
+  const ws4 = fakeWs('week4');
+  clock.advance(1000);   /* the socket not closed first: a second phone takes the body over (join.js's kept body) */
+  room._liveFlags.sitting = false;
+  room._bodyTakeWants = () => true;   /* the takeover's one decision (bodytake.js: a phone that can be placed, a body in a fight) */
+  await join(room, ws4, pid, { loginTaken: true }); await settle();
+  delete room._bodyTakeWants;
+  if (room.tickInterval) { clearInterval(room.tickInterval); room.tickInterval = null; }
+  delete room._liveFlags.sitting;
+  const ps4 = live(room, pid);
+  const mv4 = (x, y) => room.webSocketMessage(ws4, JSON.stringify({ type: 'move', x, y, z: ps4.z }));
+  const n4 = sitRead(ps4._econ.s).mv;
+  for (let i = 0; i < 3; i++) { clock.advance(1000); await mv4(ps4.x + 20, ps4.y); }
+  check('7b. ...then the body taken over with the flag off, thrown on: its card counts nothing more', ps4 === ps3 && ps4._econ.s === card3 && sitRead(card3).mv === n4 && n4 === n3, { kept: ps4 === ps3, same: ps4._econ.s === card3, mv: sitRead(ps4._econ.s).mv, n4, n3 });
+  await close(room, ws4);
 }
 
 /* ══════════ 8. A NEWER `_econ` ══════════ */
