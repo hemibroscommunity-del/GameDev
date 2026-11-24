@@ -219,6 +219,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
          the gap closing 9): what the stick said, what the body did, each
          half second -- the evidence the next red reads */
       const walkTrace = [];
+      let walkWrites = null;
       const STK = (P) => H.readState(P, (S) => ({ sx: +(S.stickX || 0).toFixed(2), sy: +(S.stickY || 0).toFixed(2), x: Math.round(S.player.x), y: Math.round(S.player.y),
         vx: +(S.player.vx || 0).toFixed(2), vy: +(S.player.vy || 0).toFixed(2), auto: !!S.autoAttack, climb: !!S._climb, swim: !!(S._wheelSwim && S._wheelSwim.on), air: !!S._jump, back: !!S._backpedaling,
         hold: [S._zoneLoading, S._netHold, S._townArtHold, S._farmArtHold, S._avatarArtHold, S._sled, S._shieldUp, S._extraction, S._dodgeRoll].map((v) => (v ? 1 : 0)).join(''),
@@ -232,6 +233,25 @@ export async function run({ browser, wsPort, webPort, rec }) {
           await P.page.waitForTimeout(500);
           g = await GAP(P);
           walkTrace.push(await STK(P));
+          if (k === 1) walkWrites = await P.page.evaluate(() => new Promise((done) => {
+            /* v2.3.6542: who writes the body while the locked stick walks:
+               every write of x, y, vx for 1.5 s, its value and its caller */
+            const S = window._gameState.current, Pl = S.player, log = [], keep = {};
+            let frames = 0, on = true;
+            const raf = () => { frames++; if (on) requestAnimationFrame(raf); };
+            requestAnimationFrame(raf);
+            for (const k of ['x', 'y', 'vx']) {
+              keep[k] = Pl[k];
+              Object.defineProperty(Pl, k, { configurable: true, enumerable: true, get: () => keep[k],
+                set: (v) => { if (log.length < 60) { const st = String(new Error().stack).split('\n').slice(2, 4).map((l) => l.trim().replace(/^at /, '').replace(/https?:\/\/[^/]+\//, '')).join(' < ');
+                  log.push(k + '=' + (typeof v === 'number' ? +v.toFixed(2) : v) + ' (' + (typeof keep[k] === 'number' ? +keep[k].toFixed(2) : keep[k]) + ') ' + st.slice(0, 160)); } keep[k] = v; } });
+            }
+            setTimeout(() => {
+              on = false;
+              for (const k of ['x', 'y', 'vx']) { const v = keep[k]; delete Pl[k]; Pl[k] = v; }
+              done({ frames, log, drop: S._climbDrop ? 1 : 0, dying: !!S._dying, hp: S.rpg && S.rpg.hp, dash: !!S._bashDash, gust: !!S._gust, roll: !!S._dodgeRoll });
+            }, 1500);
+          }));
         }
         await touch('touchEnd', [{ x: c.x, y: c.y, id: 1 }]);
       }
@@ -241,8 +261,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
          and one walking off faster than a held attack's halved walk grew the
          gap with the stick walking you in all the same (the helper's run:
          341 -> 372 px upright, 238 -> 329 sideways) */
+      console.log('   2c ' + label + ' walk: ' + JSON.stringify({ walkWrites, walkTrace: walkTrace.slice(0, 3) }));
       const toward = g && gPress ? (g.px - gPress.px) * Math.cos(gPress.a) + (g.py - gPress.py) * Math.sin(gPress.a) : 0;
-      rec.ok(`2c. ${label}: the stick walks you in while locked (${Math.round(toward)} px toward it; the gap ${g ? Math.round(g.d) : '?'} px), the lock held`, !!g && (g.d <= 90 || toward > 20) && (await LATCH(P)).phase === 'active', { gPress, g, toward, walkTrace });
+      rec.ok(`2c. ${label}: the stick walks you in while locked (${Math.round(toward)} px toward it; the gap ${g ? Math.round(g.d) : '?'} px), the lock held`, !!g && (g.d <= 90 || toward > 20) && (await LATCH(P)).phase === 'active', { gPress, g, toward, walkTrace, walkWrites });
       /* this box draws a few frames a second and a held attack halves the
          walk (mode 4's rule, kept): the rest of the way by the harness's hop */
       if (g0 && g0.d > 90) {
