@@ -460,6 +460,8 @@ const DOOR_SUITES = Object.freeze({
       /* v2.3.6520: keys beside a spread (the new rule) */
       { file: fileNamed('join.js'), text: "x: 0, y: 0, d: 'down', z: 'town'", fn: '_handleJoin', why: 'a player\'s birth at the join when no body was kept, before any move' },
       { file: fileNamed('spar.js'), text: 'aw: 0, pet: null, x: ps.x, y: ps.y, z: ps.z', fn: '_sparSpawn', why: 'the sparring clone\'s look, a copy of its owner\'s place' },
+      /* v2.3.6484 (card WHO, sitting 60; the orchestrator's yes): one row, a raise */
+      { file: fileNamed('playtrace.js'), text: 'return { x, y, z };', why: 'a place READ into the owner\'s recording (the league\'s trace form), never a write of a player\'s zone' },
       { file: 'server/src/index.js', text: 'r[id] = { ...c.look, x: cps.x, y: cps.y, z: cps.z', fn: 'getAllPlayerData', why: 'a sparring clone\'s entry on the players\' list, a copy of its place' },
       { file: fileNamed('tick.js'), text: 'd: ps.d, z: ps.z, vx: rp(ps.vx)', fn: 'playerWire', why: 'a copy of the place onto the tick\'s wire entry, not the player\'s' },
     ] },
@@ -962,6 +964,7 @@ const KEYS = Object.freeze(Object.assign(Object.create(null), {
   'z server/src/moveclaims.js': 1,
   'z server/src/movement.js': 1,
   'z server/src/movepath.js': 1,
+  'z server/src/playtrace.js': 1,   /* v2.3.6484 (card WHO; the orchestrator's yes, a raise 118 -> 119): placeAt, a place read into a recording */
   'z server/src/spar.js': 2,
   'z server/src/tick.js': 2,
   'z server/src/wheeldungeon.js': 1,
