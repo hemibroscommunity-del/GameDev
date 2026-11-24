@@ -44,6 +44,13 @@
  *   daybook.js bookAdd: the `actorOff` test taken out -> FAIL 7;
  *   gold.js econGold: the record not passed (`, undefined, rec` taken out)
  *     -> FAIL 6 (test gold with play).
+ * ...and the gatekeeper's three green plants (sitting 57), red since:
+ *   gold.js econGold: the record passed for a mint only (`cls === 'mint' ?
+ *     rec : undefined`) -> FAIL 6 (test gold burned with play);
+ *   actor.js actorOf: `s.phase !== 'gone'` taken out -> FAIL 5 (a
+ *     takeover's old sitting);
+ *   actor.js actorRow: `test` from `ps._testMode` alone -> FAIL 5
+ *     (`testmode: false`).
  */
 import { makeStorage, openRoom, join, fakeWs, settle, seededClock } from './testroom.mjs';
 import { ACTOR, ROOM_ACTOR, actorOwner, actorOf, actorRow, actorSocket, actorOff, stintNext } from '../src/actor.js';
@@ -205,6 +212,24 @@ const ROW_KEYS = 'at,by,day,from,gold,goods,ids,price,road,to,v';   /* the row's
   const gone = st._store.get(XFER.PREFIX + DAY + ':g-gone');
   check('5. ...a tap whose session is gone: `actor: null` (never made up)', !!gone && gone.actor === null, gone);
   check('5. actorRow of nothing, or of a kind not on the list, is null', actorRow(room, null) === null && actorRow(room, { kind: 'boss' }) === null);
+  /* v2.3.6480 (the gatekeeper's review, sitting 57): a takeover's old
+     session is `gone` while _leaveRun awaits, and may come first in the
+     room's list: the actor is the live session's, never the old sitting's */
+  {
+    const P = 'bp_ac_take', a1 = { kind: 'person', pid: P, stint: 1, wayIn: 'socket' }, a2 = { kind: 'person', pid: P, stint: 2, wayIn: 'socket' };
+    const fake = { sessions: new Map([[{}, { id: P, phase: 'gone', actor: a1 }], [{}, { id: P, phase: 'playing', actor: a2 }]]) };
+    const only = { sessions: new Map([[{}, { id: P, phase: 'gone', actor: a1 }]]) };
+    check('5. actorOf: a takeover\'s gone session is passed over for the live one', actorOf(fake, P) === a2 && actorOf(only, P) === null, { got: actorOf(fake, P), only: actorOf(only, P) });
+  }
+  /* ...and `test` is the room's question (the record's mark AND the
+     `testmode` switch), never the mark alone */
+  {
+    const P = 'bp_ac_tmoff';
+    const r3 = await openRoom(makeStorage(), { testmode: false });
+    r3.playerState[P] = { _testMode: true };
+    const row3 = actorRow(r3, { kind: 'person', pid: P, stint: 1, wayIn: 'socket' });
+    check('5. `testmode: false`: a marked character\'s row carries no `test` (the switch is asked, not the mark)', !!row3 && row3.pid === P && !('test' in row3), row3);
+  }
 }
 
 /* ══════════ 6. THE DAY'S BOOK ══════════ */
@@ -241,6 +266,15 @@ async function sitting(testmode, flags) {
   const e1 = econOf(room);
   check('6. gold a test-mode character makes is booked under `test`; a player\'s at the top', g(e1, true) - g(e0, true) === 40 && g(e1, false) - g(e0, false) === 15, { e0, e1 });
   check('6. ...the purses themselves paid as before', room.playerState.bp_ac_gt.coins === 90 && room.playerState.bp_ac_gp.coins === 65);
+  /* v2.3.6480 (the gatekeeper's review, sitting 57): and gold BURNED, the
+     door's other class (a plant booking a test-mode burn with play was green) */
+  const b = (e, t) => Number(((t ? (e.test || {}) : e).g || {}).burn) || 0;
+  const e1b = JSON.parse(JSON.stringify(econOf(room) || {}));
+  room._goldTake(room.playerState.bp_ac_gt, 10, 'weapon_forge');
+  room._goldTake(room.playerState.bp_ac_gp, 5, 'weapon_forge');
+  const e2 = econOf(room);
+  check('6. gold a test-mode character burns is booked under `test`; a player\'s at the top', b(e2, true) - b(e1b, true) === 10 && b(e2, false) - b(e1b, false) === 5, { e1b, e2 });
+  check('6. ...the purses paid as before', room.playerState.bp_ac_gt.coins === 80 && room.playerState.bp_ac_gp.coins === 60);
 }
 {
   const st = makeStorage();
