@@ -21,11 +21,12 @@ state: working
 - PR 3 (6542, #2308 draft): the latch, the lock, S.stickX/Y one owner.
 
 ## Next
-- PR 3 (#2308): 2c's red was the TEST (three traced runs, part 6): the
-  Mayor's gate (no tut_1; wheelHome.js wheelCommonsGate) held the body in
-  BroTown's circle, the monster outside. The lock never moved. Mended: part
-  2 opens the gate first (mp-crowdfight's way). Then the helper's ONE run;
-  green: #2308 ready. Then PR 4 (6543), PR 5 (6544), item 6 (6545).
+- PR 3 (#2308): 2c's walk-in mended and green (the Mayor's gate held a new
+  character in BroTown: the test's; pushed 76eed056). The fight is still
+  red: beside it (25 px), swinging, the monster at 1 hp 90 s; the socket
+  probe saw nothing sent. A probe on claude/plan-ct-3-probe (no PR, no CI)
+  reads the swing's hit test (drawn place vs true, aim); the helper runs it.
+- Then PR 4 (6543), PR 5 (6544), item 6 (6545).
 
 ## Found
 - `manual-combat.test` 1h pinned `?manual=5` as no switch: now `6`.
