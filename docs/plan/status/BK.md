@@ -1,6 +1,6 @@
 card: BK
-branch: claude/plan-bk-3-claimsbar (from main e5342063)
-prs: #2278 6460 (merged), #2281 6461 (ready), #2289 6464 (ready), 6462 (ready, opening)
+branch: claude/plan-bk-3-claimsbar (on claude/plan-bk-5-pieces, on claude/plan-bk-2-restart)
+prs: #2278 6460 (merged), #2281 6461 (ready), #2289 6464 (ready), #2299 6462 (ready)
 state: ready
 
 ## Done
