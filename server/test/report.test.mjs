@@ -107,6 +107,10 @@
  *      src/debug/report.js buildReport: `/ 2 / 60000` as `/ 2 / 1000` (seconds read as minutes) -> FAIL 15.10
  *      src/debug/report.js _poll: `if (riding) a.rideMs += seenD;` dropped                     -> FAIL 15.10
  *      report.js reportSums: `&& rd[1] <= lateAll` dropped, or `&& rd[2] <= judgedAll`          -> FAIL 15.9
+ *      (v2.3.6507, the gatekeeper's sitting 60, review-z60: three of 59's plants were green on the worker's side; tried by hand 2026-11-24)
+ *      report.js reportSums: the long row `for (let i = RIDE_LONG_BIN - 1; ...)`              -> FAIL 15.14
+ *      report.js reportSums: the up row's seconds `secs` (hidden seconds as seen)              -> FAIL 15.14
+ *      report.js reportSums: the ride's seconds `int(msg.ride[0], 0, secs)`                    -> FAIL 15.14
  */
 import { readFileSync } from 'node:fs';
 import { GameRoom } from '../src/index.js';
@@ -657,6 +661,24 @@ const A = await join('bp_rep_a', 'Repo');
       const r = heatOf(o); return r && !('ride' in r.sums) && r.sums.n === 1;
     }));
   check('15.5 an `up` off its four is dropped; the rest counts', !('up' in heatOf({ up: 4 }).sums) && !('up' in heatOf({ up: '2' }).sums) && heatOf({ up: 9 }).sums.n === 1);
+  /* 15.14 v2.3.6507 (the gatekeeper's sitting 60, review-z60 on #2323: three of 59's plants still green on the WORKER's
+     side -- PHONE() is 46 s covered and 46 seen, and its board's frames all in the last bin, so a seen read as covered
+     and a long edge one bin early were the same numbers).  A report of 60 s covered, 14 of them hidden (46 seen) */
+  const hid = (over) => heatOf({ secs: 60, ...(over || {}) });
+  const h0 = hid();
+  check('15.14 the worker, a report with hidden seconds (60 covered, 46 seen): its `up` row counts the SEEN seconds, never the covered',
+    !!h0 && h0.sums.seen === 46 && same(h0.sums.up.m15, [46, 105, 5, 0]), h0 && h0.sums.up);
+  const h1 = hid({ ride: [47, 2, 60] }), h2 = hid({ ride: [46, 2, 60] });
+  check('15.14 ...a ride of 47 s on 46 seen (inside the 60 covered) is no board; one of 46 is',
+    !!h1 && !('ride' in h1.sums) && h1.sums.n === 1 && !!h2 && same(h2.sums.ride, [1, 46, 60, 2, 60]), { h1: h1 && h1.sums.ride, h2: h2 && h2.sums.ride });
+  /* the long edge, bin by bin: one board frame in the bin just short of RIDE_LONG_BIN's edge, one in it, one in the last */
+  const binAt = (i, n) => { const g = new Array(GAP_BINS).fill(0); g[i] = n; return g; };
+  const plus = (x, y) => x.map((v, i) => v + y[i]);
+  const edge = (bins) => hid({ gaps: plus(binAt(3, 104), bins), ride: [30, 0, 1], rideGaps: bins });   /* 105 drawn, as PHONE() */
+  const eShort = edge(binAt(RIDE_LONG_BIN - 1, 1)), eAt = edge(binAt(RIDE_LONG_BIN, 1)), eLast = edge(binAt(GAP_BINS - 1, 1));
+  check('15.14 ...`long` starts AT RIDE_LONG_BIN (42 ms): a board frame of the bin before is not long, one of its own bin and one of the last are',
+    [eShort, eAt, eLast].every((e) => e && Array.isArray(e.sums.ride)) && eShort.sums.ride[4] === 0 && eAt.sums.ride[4] === 1 && eLast.sums.ride[4] === 1,
+    { short: eShort && eShort.sums.ride, at: eAt && eAt.sums.ride, last: eLast && eLast.sums.ride });
 
   /* 15.6 THE DONE-WHEN, through the room: a page 20 minutes up, riding, with `?govern=0` */
   const ws = await join('bp_rep_heat', 'Heaty');

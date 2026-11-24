@@ -103,11 +103,19 @@
  *      frames never a slower screen); a phone that cools comes back; a cool
  *      one is never stepped; the two off-ramps (`?govcool=0`, `?beathold=0`)
  *      are today's, and fail the same phones (24d).
+ *      v2.3.6507 (the gatekeeper's sitting 60): A STEP THE CHIP CAUSED COMES
+ *      BACK (24k: the chip's cost x1.8 or x2.6 for minutes 5 to 15, the work
+ *      unchanged, at 60 and 120, and at the edge with the work up 10 to 30%:
+ *      at the top rate from minute 17, no flutter, the doubled wait holding
+ *      the hot ten minutes); a step the work caused waits for its margin
+ *      (24l, 24m: heatSeen); §13 runs `?govcool=0` too (the doubling).
  *
  * BREAK PROOF (rule 8), tried by hand 2026-11-14:
  *  13. framePacer.js makeGovernor down(): `upWait = Math.min(UP_WAIT_MAX_MS, upWait * 2)`
  *      as `upWait = Math.min(UP_WAIT_MAX_MS, upWait)` (the doubling taken out)
  *                                  -> FAIL 13 at 60, both seeds (17 and 13 failed tries: a see-saw; not settled)
+ *      v2.3.6507: since PR 4's margin its phone never tries up while hot, so the plant is red only in §13's
+ *      `?govcool=0` run: FAIL 13 at 60 `?govcool=0`, both seeds (38 failed tries), and 24k (below)
  *  14. makeGovernor step(): `if (!veil && movesPixels(ladderRung(), to))` as
  *      `if (false && movesPixels(ladderRung(), to))`   -> FAIL 14 (both seeds) and 14b
  *  17. `setRung(1, 0);` at the end of src/game/speedTest.js -> FAIL 17
@@ -136,6 +144,12 @@
  *      ...the governor's `if (coolOn && !cooledFrom(hotWork, workNow)) return;` taken out -> FAIL 24a (60/1.6: 10 changes)
  *      ...the pacer's rate try without `&& cooledFrom(hotRate, heat())` -> FAIL 24a (a fast screen's own see-saw)
  *      keptBeat() as `return r;` (every reading believed) -> FAIL 24c (a hot 120 read as a 60), 24h, 24j
+ *  13 and 24k. (v2.3.6507, the gatekeeper's sitting 60, review-z60 on #2318; tried by hand 2026-11-24)
+ *      the governor's down() as `if (done && wasUp) { wasUp = false; }` (the doubling taken out: green on 1ede9800,
+ *      the margin masking it) -> FAIL 13 at 60 `?govcool=0`, both seeds (38 failed tries), and 24k (52 steps a chip-hot ten minutes)
+ *      the governor's down() `hotWork = workNow` (the margin on the work alone, PR 4's line)
+ *                                  -> FAIL 24k (60: at 30 from minute 5 to the end) and 24m (no try up on the wait)
+ *      the pacer's down() `hotRate = w` (the same, a fast screen's own rate) -> FAIL 24k (120: 0% and 38% at 120 from minute 17)
  */
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -412,8 +426,8 @@ const memStore = () => { let v = null; return { get: () => (v ? JSON.parse(JSON.
 const EFFECT = { crowd: [1, 0.8, 0.64], shine: [1, 0.86], shadows: [1, 0.8], water: [1, 0.9], pixels: [1, 0.78, 0.56] };
 const stepOf = (k, r) => KNOBS[k].steps.indexOf(knobAt('full', k, r));
 const costAt = (base, r) => { const v = (k) => EFFECT[k][stepOf(k, r)]; return { work: base.work * v('crowd'), chip: base.chip * v('shine') * v('shadows') * v('water') * v('pixels') }; };
-function model(b, base, heat, ms, { veil = () => false, seed = 1, store = memStore() } = {}) {
-  const G = makeGovernor({ on: true, store });
+function model(b, base, heat, ms, { veil = () => false, seed = 1, store = memStore(), cool } = {}) {
+  const G = makeGovernor({ on: true, store, cool });   /* v2.3.6507: cool false, `?govcool=0` (§13 runs both) */
   const P = makeFramePacer({ gov: G });
   const ring = [];
   useFrameSamples((fromT, fn) => { let i = ring.length; while (i > 0 && ring[i - 1].t > fromT) i--; for (let j = i; j < ring.length; j++) fn(ring[j]); return ring.length ? ring[ring.length - 1].t : fromT; }, null);
@@ -452,11 +466,15 @@ _liveKnobs(KNOB_NAMES);   /* v2.3.5224: §13 to §16, the whole ladder (above) *
     { name: '60', b: B60, base: { work: 5, chip: 6 }, hot: 2.1 },
     { name: '120', b: B120, base: { work: 2.6, chip: 3.4 }, hot: 5.4 },
   ];
+  /* v2.3.6507 (the gatekeeper's sitting 60 on #2318, A CARD DODGE GREEN): with the cooling margin (PR 4) this phone
+     never tries up while hot, so the margin masked the doubled wait -- the doubling taken out was green here, and break
+     proof 13 no longer true.  The doubling is what holds a see-saw wherever the margin does not (`?govcool=0`, one switch
+     thrown; a step the chip caused: 24k), so §13 runs both configurations: all new, and `?govcool=0` */
   for (const R of runs) {
-    for (const seed of [7, 8]) {
+    for (const [seed, cool] of [[7, undefined], [8, undefined], [7, false], [8, false]]) {
       _resetLanes();
-      const { P, G, steps } = model(R.b, R.base, heatOf(R.hot), 40 * MIN, { veil: loadings, seed });
-      const tag = `at ${R.name} a second (seed ${seed})`;
+      const { P, G, steps } = model(R.b, R.base, heatOf(R.hot), 40 * MIN, { veil: loadings, seed, cool });
+      const tag = `at ${R.name} a second (seed ${seed}${cool === false ? ', `?govcool=0`' : ''})`;
       check(`13. ${tag}: it steps down as the phone heats (${steps.filter((x) => x.dir < 0 && x.t < 9 * MIN).length} steps by minute 9)`, steps.some((x) => x.dir < 0 && x.t < 9 * MIN), steps.slice(0, 8));
       /* settled: the last five minutes at steady heat (15 to 20) on one rung, but for tries up that come back down: every
          step there is a try up whose next step is back down its axis, or that step back (its try perhaps just before) */
@@ -1054,14 +1072,16 @@ _liveKnobs(null);   /* v2.3.5224: from here, today's live knobs */
    once the game's own work a frame has fallen COOL_MARGIN below the last step down's (both the ladder's and a fast
    screen's own rate), and the screen's beat held (keptBeat).  Readings: docs/plan/census/PH-phone.md. */
 {
-  const { COOL_MARGIN, cooledFrom, keptBeat, beatHoldOn, govCoolOn, _tabShown } = await import('../../src/game/framePacer.js');
+  const { COOL_MARGIN, LATE_CLEAN, cooledFrom, heatSeen, keptBeat, beatHoldOn, govCoolOn, _tabShown } = await import('../../src/game/framePacer.js');
   _resetLanes(); _liveKnobs(null); _resetClientOff(); holdLadder(false); useFrameSamples(null, null);
   const memStore = () => { let v = null; return { get: () => (v ? JSON.parse(JSON.stringify(v)) : null), set: (x) => { v = JSON.parse(JSON.stringify(x)); } }; };
   const EFFECT = { shine: [1, 0.86], shadows: [1, 0.8], water: [1, 0.9], pixels: [1, 0.78, 0.56] };   /* §13's own */
   /* base: { work, chip } ms a frame cool; hot: the factor at full heat (or hotAt(t)); tau: the heat's time to settle.
      opts: cool, beatHold (the switches), gov false (the governor off, the pacer its own), pace false (every refresh
      the phone can: no pacer, no governor) */
-  const heatRun = ({ b, base, hot, hotAt = null, tau, mins = 60, seed = 7, cool = true, beatHold = true, gov = true, pace = true }) => {
+  /* v2.3.6507 (the gatekeeper's sitting 60): chipAt / workAt, a factor on the chip's cost alone or the work's alone
+     (the scene, not the heat); after, the share at the top rate and the rate changes from that minute on */
+  const heatRun = ({ b, base, hot, hotAt = null, chipAt = null, workAt = null, after = 0, tau, mins = 60, seed = 7, cool = true, beatHold = true, gov = true, pace = true }) => {
     _resetLanes(); _liveKnobs(null);
     const live = new Set(liveKnobs());
     const eff = (k, r) => (live.has(k) && EFFECT[k] ? EFFECT[k][KNOBS[k].steps.indexOf(knobAt('full', k, r))] : 1);
@@ -1080,10 +1100,11 @@ _liveKnobs(null);   /* v2.3.5224: from here, today's live knobs */
         const u = r();
         const m = (1 + ((hotAt ? hotAt(t) : hot) - 1) * T) * (u < 0.7 ? 0.85 + 0.2 * r() : u < 0.95 ? 1.05 + 0.3 * r() : 1.35 + 0.35 * r());
         const rg = ladderRung();
-        const chip = base.chip * eff('shine', rg) * eff('shadows', rg) * eff('water', rg) * eff('pixels', rg);
-        prevWork = base.work * m; prevT = t;
-        k += Math.max(1, Math.ceil((base.work + chip) * m / b - 1e-9));
-        did = base.work + chip;
+        const work = base.work * (workAt ? workAt(t) : 1);
+        const chip = base.chip * eff('shine', rg) * eff('shadows', rg) * eff('water', rg) * eff('pixels', rg) * (chipAt ? chipAt(t) : 1);
+        prevWork = work * m; prevT = t;
+        k += Math.max(1, Math.ceil((work + chip) * m / b - 1e-9));
+        did = work + chip;
         const w = Math.floor(t / WIN); win[w] = win[w] || { n: 0 }; win[w].n++;
       } else k += 1;
       const now = k * b, dt = now - lastT;
@@ -1099,7 +1120,10 @@ _liveKnobs(null);   /* v2.3.5224: from here, today's live knobs */
     let chg2 = 0; for (let i = half + 1; i < rates.length; i++) if (rates[i] !== rates[i - 1]) chg2++;
     const top = Math.round(1000 / b);
     const shareAt = (from, to) => Math.round(100 * rates.slice(from, to).filter((x) => x === top).length / Math.max(1, rates.slice(from, to).length));
-    const out = { hz: top, hot: hotAt ? 'turns' : hot, tauS: tau / 1000, chg2, top: shareAt(0), top2: shareAt(half), mis: Math.round(100 * misMs / ms), steps: G.read().stepsN, changes: P.read().changes };
+    const from = Math.floor(after / WIN);
+    let chgA = 0; for (let i = from + 1; i < rates.length; i++) if (rates[i] !== rates[i - 1]) chgA++;
+    const out = { hz: top, hot: hotAt ? 'turns' : hot, tauS: tau / 1000, chg2, top: shareAt(0), top2: shareAt(half), mis: Math.round(100 * misMs / ms), steps: G.read().stepsN, changes: P.read().changes,
+      topA: shareAt(from), chgA, rates };
     _resetLanes();
     return out;
   };
@@ -1132,6 +1156,96 @@ _liveKnobs(null);   /* v2.3.5224: from here, today's live knobs */
   const coolP = [heatRun({ ...B60M, hot: 1.2, tau: 180000 }), heatRun({ ...B120M, hot: 1.2, tau: 180000 })];
   check('24f. a cool phone: a 60 never stepped; a 120 at its edge (1.2) at 120 four fifths of the hour, its long cycle the phone\'s own heat',
     coolP[0].top === 100 && coolP[0].steps === 0 && coolP[1].top >= 80, coolP.map((x) => `${x.hz}: top ${x.top}%, ${x.chg2} changes, ${x.steps} rungs`));
+  /* v2.3.6507 (the gatekeeper's sitting 60 on #2318, A BUG IN BEHAVIOUR): the margin read the game's own work, so a step
+     down the CHIP caused never came back -- the probe: the suite's phone, the chip's cost x1.8 or x2.6 for minutes 5 to 15
+     (a scene heavy for the chip), the work unchanged, took the rate at 304 s and was still at 30 half an hour after the
+     scene went light (`?govcool=0`: 58.4).  The mend (heatSeen): the margin only where the work rose past it */
+  const MINS = 60000, scene = (f) => (t) => (t >= 5 * MINS && t < 15 * MINS ? f : 1);
+  const chipRuns = [];
+  for (const [M, f] of [[B60M, 1.8], [B60M, 2.6], [B120M, 1.8], [B120M, 2.6]]) for (const seed of [7, 8]) chipRuns.push({ M, f, seed, x: heatRun({ ...M, hot: 1, chipAt: scene(f), tau: 180000, mins: 45, after: 17 * MINS, seed }) });
+  /* ...and AT THE EDGE (heatSeen's line, the work up 17%): the chip x2.6 with the work x1.1, x1.2 and x1.3 as well */
+  for (const [M, w] of [[B60M, 1.1], [B60M, 1.2], [B60M, 1.3], [B120M, 1.1], [B120M, 1.2], [B120M, 1.3]]) chipRuns.push({ M, f: `2.6+work x${w}`, seed: 9, x: heatRun({ ...M, hot: 1, chipAt: scene(2.6), workAt: scene(w), tau: 180000, mins: 45, after: 17 * MINS, seed: 9 }) });
+  const sayC = (L) => L.map(({ x, f, seed }) => `${x.hz}/chip x${f}/seed ${seed}: ${x.steps} steps, ${x.changes} rate changes, top ${x.topA}% from minute 17, ${x.chgA} changes`);
+  check('24k. A STEP THE CHIP CAUSED COMES BACK: the chip x1.8 or x2.6 for minutes 5 to 15, the work unchanged (or up 10 to 30%: the edge) -- stepped down, and at the top rate from minute 17 on (98%), at 60 and 120',
+    chipRuns.every(({ x }) => x.steps + x.changes >= 1 && x.topA >= 98), sayC(chipRuns));
+  /* the chip's step now tries on the wait alone, so the DOUBLED wait is what holds a see-saw while the chip stays hot:
+     a try up and its fall back are two steps (the ladder's) or two changes (a fast screen's own rate) */
+  const hotSteps = 2 * triesAllowed(10 * MINS) + 2;
+  check(`24k. ...and no flutter: at most one rate change from minute 17 on (the climb back), and no see-saw while the chip is hot (the doubled wait: at most ${hotSteps} steps in all)`,
+    chipRuns.every(({ x }) => x.chgA <= 1 && Math.max(x.steps, x.changes) <= hotSteps), sayC(chipRuns));
+  /* a work-caused one: the same ten minutes with the WORK x1.8 (the chip's cost unchanged) -- it waits for its margin, and comes back once the work falls */
+  const workRuns = [7, 8].map((seed) => heatRun({ ...B60M, hot: 1, workAt: scene(2.2), tau: 180000, mins: 45, after: 17 * MINS, seed }));
+  check('24l. a step the WORK caused (the work x2.2 for minutes 5 to 15) comes back once the work falls (98% from minute 17), with no flutter',
+    workRuns.every((x) => x.steps + x.changes >= 1 && x.topA >= 98 && x.chgA <= 1), workRuns.map((x) => `${x.hz}: ${x.steps} steps, top ${x.topA}% from minute 17, ${x.chgA} changes`));
+  {
+    /* the governor itself, verdict by verdict: samples of a known work a frame (late frames 30 ms apart) */
+    const ring = [];
+    let t = 0;
+    useFrameSamples((fromT, fn) => { let i = ring.length; while (i > 0 && ring[i - 1].t > fromT) i--; for (let j = i; j < ring.length; j++) fn(ring[j]); return ring.length ? ring[ring.length - 1].t : fromT; }, null);
+    const feed = (work, late) => { for (let i = 0; i < 80; i++) { t += late ? 30 : B60; ring.push({ t, totalMs: late ? 30 : B60, workMs: work }); if (ring.length > 600) ring.shift(); } };
+    const run = (stepWork, coolWork) => {
+      _resetLanes(); _liveKnobs(null); ring.length = 0; t = 0;
+      const G = makeGovernor({ on: true, store: memStore(), cool: true });
+      G.veil(0);
+      for (let i = 0; i < 6; i++) { feed(5, false); G.verdict(0, t, { refresh: B60, every: 1, atFloor: true }); }   /* the full row's rest: 5 ms */
+      for (let i = 0; i < 2; i++) { feed(stepWork, true); G.verdict(0.9, t, { refresh: B60, every: 1, atFloor: true }); }
+      const down = G.read();
+      const at = t;
+      let upAt = null;
+      while (t - at < 4 * UP_WAIT_MS && upAt == null) { feed(coolWork, false); G.verdict(0, t, { refresh: B60, every: 2, atFloor: true }); if (G.read().depth === 0) upAt = t - at; }
+      return { down: down.depth, hot: down.hotWorkMs, rest: down.restWorkMs, upAt };
+    };
+    const chipStep = run(5.1, 5.1), workStep = run(9, 8.5), workCool = run(9, 8.2);
+    check('24m. the governor: a step down whose work never rose (5 -> 5.1, the chip\'s) keeps no work to wait on, and tries up on the wait alone',
+      chipStep.down > 0 && chipStep.rest === 5 && chipStep.hot === null && chipStep.upAt != null && chipStep.upAt >= UP_WAIT_MS && chipStep.upAt < UP_WAIT_MS + 2000, chipStep);
+    check('24m. ...one whose work rose (5 -> 9) waits for its margin: at 8.5 never (two waits and more), at 8.2 (8% under 9) at the wait',
+      workStep.down > 0 && workStep.hot === 9 && workStep.upAt === null && workCool.upAt != null && workCool.upAt < UP_WAIT_MS + 2000, { workStep, workCool });
+    const edge = 5 * (1 + COOL_MARGIN) / (1 - COOL_MARGIN);
+    check('24m. heatSeen: the work at the step kept only where it rose past the line (its mark a margin over the rest); unknown rest, kept; no work, none',
+      heatSeen(9, 5) === 9 && heatSeen(5.1, 5) === null && heatSeen(edge, 5) === edge && heatSeen(edge - 0.01, 5) === null && heatSeen(7, null) === 7 && heatSeen(null, 5) === null);
+    /* v2.3.6507: the rest is the full row's own -- read on a clean verdict (LATE_CLEAN itself clean), no rung, every
+       refresh, and a work read (20 samples); never a late verdict's, a rung's, a fast screen's paced rate's; a lane's own */
+    {
+      _resetLanes(); _liveKnobs(null); ring.length = 0; t = 0;
+      const G = makeGovernor({ on: true, store: memStore(), cool: true });
+      const ctx = (every) => ({ refresh: B60, every, atFloor: true });
+      const rest = () => G.read().restWorkMs;
+      G.veil(0);
+      feed(6, false); G.verdict(LATE_CLEAN, t, ctx(1));
+      const r0 = rest();
+      feed(5, false); G.verdict(0, t, ctx(1));
+      const r1 = rest();
+      feed(4, false); G.verdict(0, t, ctx(2));                     /* a fast screen at half its rate: not the row's */
+      const r2 = rest();
+      for (let i = 0; i < 10; i++) { t += B60; ring.push({ t, totalMs: B60, workMs: 1 }); }
+      G.verdict(0, t, ctx(1));                                     /* ten samples: no work read */
+      const r3 = rest();
+      feed(4, true); G.verdict(0.9, t, ctx(1));                    /* late, and a lighter work */
+      feed(4, false); G.verdict(0.1, t, ctx(1));                   /* neither late nor clean (0.1), and lighter */
+      const r4 = rest();
+      for (let i = 0; i < 2; i++) { feed(9, true); G.verdict(0.9, t, ctx(1)); }   /* the step down */
+      const stepped = G.read().depth > 0;
+      feed(3, false); G.verdict(0, t, ctx(2));                     /* a rung held: not the row's */
+      const r5 = rest();
+      check('24n. the rest: the clean full row\'s lowest work a frame (6, then 5), never at half the rate (4), on too few samples, late (4), or a rung held (3)',
+        r0 === 6 && r1 === 5 && r2 === 5 && r3 === 5 && r4 === 5 && stepped && r5 === 5 && G.read().hotWorkMs === 9, { r0, r1, r2, r3, r4, r5, stepped });
+      /* a memory rung is no heat's: it keeps no work to wait on */
+      _resetLanes(); ring.length = 0;
+      const M = makeGovernor({ on: true, store: memStore(), cool: true });
+      M.veil(t);
+      feed(5, false); M.verdict(0, t, ctx(1));
+      for (let i = 0; i < 2; i++) { feed(9, false); M.verdict(0, t, { ...ctx(1), memFull: true }); }
+      const mem = M.read();
+      feed(3, false); M.verdict(0, t, ctx(1));                     /* a memory rung held, every refresh: not the row's */
+      const memRest = M.read().restWorkMs;
+      useDevClass(() => ({ hz: 30 }));
+      M.veil(t + 1);
+      check('24n. ...a memory rung taken keeps no work to wait on (its work 9); a rung held at every refresh reads no rest (3); a new lane (a 30 screen) starts with none',
+        mem.mem > 0 && mem.hotWorkMs === null && mem.restWorkMs === 5 && memRest === 5 && M.read().lane === 'thirty' && M.read().restWorkMs === null, { mem, now: M.read() });
+      _resetLanes();
+    }
+    useFrameSamples(null, null);
+  }
   /* the rules themselves */
   check('24g. cooledFrom: a try up only COOL_MARGIN below the step down\'s work a frame; unknown on either side, yes',
     COOL_MARGIN > 0 && COOL_MARGIN < 0.2 && cooledFrom(10, 10 * (1 - COOL_MARGIN)) && !cooledFrom(10, 10 * (1 - COOL_MARGIN) + 0.01) && cooledFrom(null, 5) && cooledFrom(10, null));

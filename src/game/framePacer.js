@@ -77,9 +77,34 @@ export const COOL_MARGIN = 0.08;
 
 /** v2.3.6503: has the phone cooled by the margin since it was too slow?  `hot`
  *  the game's own work a frame (ms) at the step down, `now` the last
- *  verdict's; either unknown (null), yes.  Pure. */
+ *  verdict's; either unknown (null), yes.  Pure.
+ *  v2.3.6507 (the gatekeeper's sitting 60): `hot` is null too where the work
+ *  never rose (heatSeen): a step the CHIP caused is the wait's alone. */
 export function cooledFrom(hot, now) {
   return hot == null || now == null || now <= hot * (1 - COOL_MARGIN);
+}
+
+/** v2.3.6507 (the gatekeeper's sitting 60 on #2318): the work a frame a step
+ *  down waits on, or null -- the wait alone.  `w` the game's own work a frame
+ *  at the step, `rest` the coolest the full row ever read (a clean verdict,
+ *  every refresh, no rung; null unknown).  The margin is kept only where the
+ *  work ROSE past it: where its mark (COOL_MARGIN under `w`) is still a margin
+ *  over `rest`, so a cooled phone's own scatter (a verdict's mean, about 2%
+ *  either way; `rest` the lowest of them) reaches it.  The first cut, "the
+ *  mark at or over the rest", left a 120 phone at 60 for 23 minutes: a step
+ *  read 2.79 ms over a rest of 2.56 (scatter, the work unchanged), a mark of
+ *  2.567 that a cool phone read once in many minutes.
+ *  A step the CHIP caused (the work unchanged, the chip's cost up: a scene
+ *  heavy for the chip) left the work where it was, so "the work fell 8%" never
+ *  came: the gatekeeper's probe (the chip x1.8 and x2.6 for minutes 5 to 15)
+ *  took the rate at 304 s and was still at 30 half an hour after the scene
+ *  went light.  The chip's cost cannot be read below its rate (its frames are
+ *  all in time), so such a step waits on the doubled wait, as before PR 4.
+ *  No edge to flutter on: a work just past the line waits for a mark a
+ *  margin over the rest, just short of it the doubled wait.  Pure. */
+export function heatSeen(w, rest) {
+  if (w == null) return null;
+  return rest == null || w * (1 - COOL_MARGIN) >= rest * (1 + COOL_MARGIN) ? w : null;
 }
 
 const CB_KEEP = 180;      /* the browser's calls the refresh is read from */
@@ -212,7 +237,7 @@ export function makeFramePacer(opts) {
   const down = (ts) => {
     if (wasUp) { upWait = Math.min(UP_WAIT_MAX_MS, upWait * 2); wasUp = false; }
     trial = false; bad = 0;
-    const w = heat(); if (w != null) hotRate = w;   /* v2.3.6503 */
+    const w = heat(); if (w != null) hotRate = gov.heatSeen ? gov.heatSeen(w) : w;   /* v2.3.6503; v2.3.6507: null where the work never rose (the chip's step) */
     change(Math.min(most, every + 1), ts);
   };
   /* the rate's own steps: a fast screen's alone (most is 1 on any other, so
@@ -348,7 +373,11 @@ export function makeFramePacer(opts) {
  *     tried 60, held it a minute as it heated and fell back: 10 to 14 rate
  *     changes a half hour.  Now none, and a phone that cools (a fight over)
  *     is back at once.  No work read (no samples), or `?govcool=0`: the wait
- *     alone, as before.
+ *     alone, as before.  v2.3.6507 (the gatekeeper's sitting 60): only a
+ *     step whose work ROSE waits on the margin (heatSeen, against the full
+ *     row's rest); a step the CHIP caused, the work unchanged, waits on the
+ *     doubled wait alone -- the margin had nothing to see fall, and a 60
+ *     phone stayed at 30 half an hour after its scene went light.
  *   THE SCREEN'S BEAT IS HELD (v2.3.6503): see keptBeat -- a hot phone's
  *     missed frames are no slower screen (the lane `thirty`, the strip's hz).
  *   PIXELS ONLY BEHIND A VEIL: a step that would change the pixels (a live
@@ -557,6 +586,7 @@ export function makeGovernor(opts) {
   const coolOn = o.cool !== undefined ? !!o.cool : govCoolOn();
   let workNow = null;           /* the game's own work a frame (ms), the mean of the last verdict's samples; null: too few */
   let hotWork = null;           /* ...at the last step down on a late verdict: a try up waits for COOL_MARGIN below it */
+  let restWork = null;          /* v2.3.6507: the coolest work a frame the full row read (heatSeen); null: none yet */
   let lane = null;              /* the lane its rung is kept for; null: none loaded yet (a veil loads it) */
   let bad = 0, trial = false, wasUp = false, changedAt = 0, upWait = UP_WAIT_MS;
   let memAt = -Infinity;        /* v2.3.5681: the last memory rung taken (MEM_SETTLE_MS) */
@@ -635,7 +665,7 @@ export function makeGovernor(opts) {
     trial = false; bad = 0;
     const done = step(axis, -1, ts, false);
     /* v2.3.6503: the work a frame where it was too slow (a memory rung is no heat's) */
-    if (done && axis !== 'mem' && workNow != null) hotWork = workNow;
+    if (done && axis !== 'mem' && workNow != null) hotWork = heatSeen(workNow, restWork);   /* v2.3.6507: null where the work never rose (the chip's step) */
     if (done && wasUp) { upWait = Math.min(UP_WAIT_MAX_MS, upWait * 2); wasUp = false; }
     return done;
   };
@@ -674,7 +704,7 @@ export function makeGovernor(opts) {
     stack = [];
     if (r.work > 0) stack.push('work');
     if (r.chip > 0) stack.push('chip');
-    pending = null; bad = 0; trial = false; wasUp = false; upWait = UP_WAIT_MS; changedAt = ts; hotWork = null;
+    pending = null; bad = 0; trial = false; wasUp = false; upWait = UP_WAIT_MS; changedAt = ts; hotWork = null; restWork = null;
   };
   /* v2.3.5235: THE OWNER'S SWITCH (clientOff 'govern': the Test panel's
      list, every phone, live, no deploy -- the planning session's word in
@@ -738,6 +768,9 @@ export function makeGovernor(opts) {
      *  pacer's reading of the heat for its own rate's tries; null unknown,
      *  or `?govcool=0`. */
     heat() { return coolOn && on ? workNow : null; },
+    /** v2.3.6507: the work a frame a step down of the screen's own rate
+     *  waits on (heatSeen against the full row's rest): null, the wait alone. */
+    heatSeen(w) { return heatSeen(w, restWork); },
     verdict(share, ts, ctx) {
       const c = ctx || {};
       if (!on || lane == null) return;
@@ -793,6 +826,8 @@ export function makeGovernor(opts) {
       if (pending && pending.dir < 0) pending = null;
       if (wasUp && ts - changedAt >= upWait) { wasUp = false; upWait = UP_WAIT_MS; }
       if (rungDepth() === 0) hotWork = null;
+      /* v2.3.6507: the full row's rest -- a clean verdict, no rung, every refresh (a fast screen's own rate up) */
+      if (share <= LATE_CLEAN && rungDepth() === 0 && (c.every == null || c.every === 1) && workNow != null) restWork = restWork == null ? workNow : Math.min(restWork, workNow);
       if (c.rateMoved || share > LATE_CLEAN || rungDepth() === 0 || ts - changedAt < upWait) return;
       /* v2.3.6503 (card PH PR 4): COOLED BY A MARGIN -- a try up only once the
          game's own work a frame has fallen COOL_MARGIN below what it was at
@@ -821,7 +856,7 @@ export function makeGovernor(opts) {
       const r = ladderRung();
       return { on, off: switchedOff(), held: _held, lane, work: r.work, chip: r.chip, pixels: r.pixels, mem: r.mem | 0, depth: rungDepth(), pending: pending ? { ...pending } : null,
         trial, upWait, bad, steps: steps.slice(), stepsN, axis: lastAxis, split: lastSplit,
-        workMs: workNow == null ? null : +workNow.toFixed(2), hotWorkMs: hotWork == null ? null : +hotWork.toFixed(2) };   /* v2.3.6503 */
+        workMs: workNow == null ? null : +workNow.toFixed(2), hotWorkMs: hotWork == null ? null : +hotWork.toFixed(2), restWorkMs: restWork == null ? null : +restWork.toFixed(2) };   /* v2.3.6503; v2.3.6507 the rest */
     },
   };
 }
