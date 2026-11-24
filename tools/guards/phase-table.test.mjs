@@ -824,8 +824,8 @@ const SPREAD_CALLS = Object.freeze(Object.assign(Object.create(null), {
   'src/rendering/lightfx/lightFx.js': 1,
   'src/rendering/lookSets/skills.js': 1,
   'src/rendering/pixiRenderer.js': 1,
-  'src/rendering/systems/effectsRenderer.js': 2,
-  'src/ui/BroTown.jsx': 1,
+  [fileNamed('effectsRenderer.js')]: 2,   /* a big file, by its system (tests-by-system) */
+  [fileNamed('BroTown.jsx')]: 1,
   'src/ui/mobile/NmlBadge.jsx': 1,
   'src/ui/mobile/dash/InventoryPanel.jsx': 1,
   'src/ui/mobile/dash/equipActions.js': 1,
