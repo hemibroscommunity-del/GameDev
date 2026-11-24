@@ -15,6 +15,15 @@
  * reader (and says its unit there), and it is the owner's call, never
  * decided while away.  0 means none, whatever the unit turns out to be.
  *
+ * NOT WIRED (v2.3.6463, card BK PR 4): LEVERS below says so of each of the
+ * three, so a row's `fee: 0` is never read as "a fee of nothing is
+ * charged": nothing charges, holds or paces at all.  A lever is wired in
+ * the PR that builds its reader, with a test that sets it and sees it
+ * applied (a fee set, then charged), on the owner's word; that PR turns
+ * its mark to `wired: true`.  tools/guards/road-levers.test.mjs fails a
+ * file of server/src that reads a lever marked not wired, and a lever
+ * marked wired that nothing reads; player-roads.test §1 holds the marks.
+ *
  * A ROW (one settlement: a way the value goes, start to landing):
  *   at        where its code is, for people
  *   carries   the kinds of value it moves (ROAD_KINDS): gold, bag counts, a
@@ -71,6 +80,13 @@ export const KIND_DOORS = Object.freeze({ gold: Object.freeze(['gold']), bag: Ob
  *  left it in card R PR 2, v2.3.5281). */
 export const DOORLESS = Object.freeze(['pet']);
 export const ROAD_LEDGERS = Object.freeze(['xfer', 'kill', 'none']);
+/** v2.3.6463 (card BK PR 4): the three levers of a row, and whether
+ *  anything reads them.  None does: `wired: false`, each 0 on every row. */
+export const LEVERS = Object.freeze({
+  fee: Object.freeze({ wired: false, means: 'the part of the value the game keeps: no settlement reads it, so nothing is charged' }),
+  hold: Object.freeze({ wired: false, means: 'how long the value waits before it lands: no settlement reads it, so everything lands at once' }),
+  pace: Object.freeze({ wired: false, means: 'how many such settlements an account may make: no settlement reads it, so none is counted' }),
+});
 
 const fz = (o) => {
   const out = {};
