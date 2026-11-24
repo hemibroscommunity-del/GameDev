@@ -17,6 +17,12 @@ export const SAY = Object.freeze({
   'controlsTutorial.toolbarBody': 'Menus live down here. Tap your character to chat.',
   'controlsTutorial.dodgeLabel': 'Swipe / Dodge',
   'controlsTutorial.dodgeBody': 'Swipe anywhere in the world to dodge-roll.',
+  /* v2.3.6544: the two buttons (`?manual=5`, card CT PR 5: a trial, a touch screen only) */
+  'controlsTutorial.moveBodyTwo': 'Push the left stick a little to turn and face that way. Push it further to walk.',
+  'controlsTutorial.attackBodyTwo': 'Face a monster in reach and a line points to it. Tap Attack once: you lock on and keep fighting. Tap again to stop. With nothing in sight, a tap is one swing.',
+  'controlsTutorial.targetLabelTwo': 'Your sight line',
+  'controlsTutorial.targetBodyTwo': 'The line finds the monster you face once it is in reach (a bow or a staff reaches further than a sword). While one is in sight, Block and your specials come up around Attack. When your target falls, the next one in sight is yours.',
+  'controlsTutorial.shieldBodyTwo': 'It comes up beside Attack while a monster is in sight. Tap to raise your shield. It stays up until you attack, tap again, or run out of stamina.',
   /* the card */
   'controlsTutorial.close': 'Close tutorial',
   'controlsTutorial.stepOf': 'Step {step} of {total}',

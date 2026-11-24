@@ -3,10 +3,11 @@ import { controlsTutorialBus } from './controlsTutorialBus.js';
 import { holdDisc, releaseDisc } from '@/game/controlVisibility.js'; /* v2.3.2246: the discs hide themselves; a tour that points at them says so */
 import { dashboardPanelBus } from './dashboardPanelBus.js';
 import { BT_AUDIO } from '@/data/index.js'; /* v2.3.2658: ui-close tick */
-import { manualOn, tapLockOn } from '@/game/manualCombat.js'; /* v2.3.4396: the game's combat is swipes now -- the two steps that taught the held attack and the tap lock say so */
+import { manualOn, tapLockOn, twoButtonsOn } from '@/game/manualCombat.js'; /* v2.3.4396: the game's combat is swipes now -- the two steps that taught the held attack and the tap lock say so */
 import { fixedBox } from '@/ui/fixedBox.js'; /* v2.3.3470: the layer's own box -- a computer's is the game's column (TRAPS §232) */
 import { SAY } from '@/data/say/controlsTutorial.js';   /* v2.3.6353: its words, in the one table (docs/specs/player-words.md, W1) */
 import { say } from '@/game/say.js';
+import { fineInput } from '@/game/deviceProfile.js';   /* v2.3.6544: the two buttons are a touch screen's (card CT PR 5) */
 
 /* v2.3.1205: REBUILT as live DOM-anchored annotations (previously a
    frozen screenshot with eyeballed coordinates that every HUD change
@@ -35,7 +36,8 @@ import { say } from '@/game/say.js';
    10q reads them from this file). */
 const STEPS = [
   { key: 'move', shape: 'circle', sels: ['.bt-joystick-zone'],
-    get label() { return say(SAY, 'controlsTutorial.moveLabel'); }, get body() { return say(SAY, 'controlsTutorial.moveBody'); } },
+    get label() { return say(SAY, 'controlsTutorial.moveLabel'); }, get body() { return say(SAY, 'controlsTutorial.moveBody'); },
+    get bodyTwo() { return say(SAY, 'controlsTutorial.moveBodyTwo'); } },   /* v2.3.6544: the two buttons' turn and walk */
   /* v2.3.1667: this said "hold for special", and it was WRONG — there is
      no hold gesture.  The special fires on a FLICK: BroTown.jsx's right-
      stick release handler measures the release speed and triggers when it
@@ -54,6 +56,7 @@ const STEPS = [
   { key: 'attack', shape: 'circle', sels: ['.bt-rjoy-base'],
     get label() { return say(SAY, 'controlsTutorial.attackLabel'); }, get body() { return say(SAY, 'controlsTutorial.attackBody'); },
     /* v2.3.4396 (docs/specs/manual-combat.md): every attack is made by hand; v2.3.4802: the bow is DRAWN back (docs/specs/bow-feel.md); v2.3.4803: the staff gathers and blasts (game/staffFeel.js) */
+    get bodyTwo() { return say(SAY, 'controlsTutorial.attackBodyTwo'); },   /* v2.3.6544: Attack is a latch */
     bodyManual: 'Sword: swipe across it, or anywhere on the right side, for each swing. Bow: pull back, away from where you want to shoot, and let go; the longer you hold, the harder it shoots. Staff: hold to gather power (drag to aim), let go to blast the orb; a quick tap fires a spark.' },
   /* v2.3.2251: replaces the switch-target arrows, which are deleted.  This
      is the one rule a player cannot discover by pressing things: the game
@@ -64,11 +67,14 @@ const STEPS = [
     get bodyNoLock() { return say(SAY, 'controlsTutorial.targetBodyNoLock'); },
     /* v2.3.4396: no lock a player chooses; a special is armed, then made */
     get labelManual() { return say(SAY, 'controlsTutorial.targetLabelManual'); },
+    /* v2.3.6544: the two buttons: the sight line, and the lock that moves on */
+    get labelTwo() { return say(SAY, 'controlsTutorial.targetLabelTwo'); }, get bodyTwo() { return say(SAY, 'controlsTutorial.targetBodyTwo'); },
     bodyManual: 'Your sword turns to the closest enemy by itself. A bow shoots opposite your pull, a staff where you drag. For a sword or bow special, tap the Special button first: your next attack is the special.' },
   /* v2.3.2242: the shield left the stick.  Its own button, under Attack,
      that only shows once there is something to block. */
   { key: 'shield', shape: 'circle', sels: ['[data-shield]'], anchorOptional: true,
-    get label() { return say(SAY, 'controlsTutorial.shieldLabel'); }, get body() { return say(SAY, 'controlsTutorial.shieldBody'); } },
+    get label() { return say(SAY, 'controlsTutorial.shieldLabel'); }, get body() { return say(SAY, 'controlsTutorial.shieldBody'); },
+    get bodyTwo() { return say(SAY, 'controlsTutorial.shieldBodyTwo'); } },   /* v2.3.6544: Block comes with the sight */
   /* v2.3.2243's switch-target arrows step is GONE with the arrows themselves
      (v2.3.2251): with the target always the nearest enemy there is nothing to
      cycle.  Its `target` key is reused by the card above so the tour keeps a
@@ -108,6 +114,22 @@ const STEPS = [
   { key: 'dodge', shape: null, sels: null,
     get label() { return say(SAY, 'controlsTutorial.dodgeLabel'); }, get body() { return say(SAY, 'controlsTutorial.dodgeBody'); } },
 ];
+
+/* ═══ v2.3.6544: WHICH WORDS A STEP SHOWS (card CT PR 5) ═══
+   The two buttons' (`?manual=5`, on a touch screen: a computer's keys do not
+   change), then the swipes' (manualOn), then the held combat's with no tap
+   lock, then the plain words.  The card and the probe read this one pick. */
+function stepWords(cur) {
+  const two = twoButtonsOn() && !fineInput();
+  return {
+    label: (two && cur.labelTwo) || (manualOn() && cur.labelManual) || cur.label,
+    body: (two && cur.bodyTwo) || (manualOn() && cur.bodyManual) || (!tapLockOn() && cur.bodyNoLock) || cur.body,
+  };
+}
+/* QA (mp-twobuttons part 4): every step's words as the tour would show them now */
+if (typeof window !== 'undefined') {
+  try { window.__btTourWords = () => STEPS.map((s) => Object.assign({ key: s.key }, stepWords(s))); } catch (_e) { /* no window */ }
+}
 
 /* v2.3.1235: Lantern Slate tokens (docs/LANTERN-SLATE-SPEC.md) — sheet
    surface, hairline border, brass accent, warm-white text ladder. */
@@ -415,11 +437,11 @@ export const ControlsTutorial = () => {
           color: COL.accent, letterSpacing: '0.14em',
           textTransform: 'uppercase', lineHeight: 1.2,
           paddingRight: 32,
-        }}>{(manualOn() && cur.labelManual) || cur.label}</div>
+        }}>{stepWords(cur).label}</div>
         <div style={{
           fontSize: 13, color: COL.text,
           marginTop: 6, lineHeight: 1.4,
-        }}>{(manualOn() && cur.bodyManual) || (!tapLockOn() && cur.bodyNoLock) || cur.body}</div>
+        }}>{stepWords(cur).body}</div>
 
         {/* v2.3.1235: Checkpoint B — ONE footer flex row:
             [Step text] [spacer] [Back?] [Next].  Progress text sits

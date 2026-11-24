@@ -68,10 +68,24 @@
  *       Block comes by today's rule (a monster within reach), no sight
  *       line, the resolver not asked to hide it.
  *
+ * PART 4 (PR 5, tag 6544): THE TEST PANEL'S ROW AND THE TEACHING WORDS
+ *   (part 2f's page, mode 4, upright)
+ *   4a. mode 4: the controls tour and the quest coach say today's words
+ *       (window.__btTourWords, __btCoach().words);
+ *   4b. the Test panel (a hold on the zone's name; no key) has the row
+ *       "Controls: two sticks / two buttons" reading two sticks; a tap on
+ *       it loads the page again in mode 5 (the address's manual=5, the
+ *       device's `bt_manual` '5'), and there the tour and the coach say the
+ *       two buttons' words (src/data/say/controlsTutorial.js, questCoach.js);
+ *   4c. the row again, reading two buttons: a tap loads mode 4 (manual=4,
+ *       the key forgotten), today's words back.
+ *
  * Today's stick with the mode off is played by mp-sprint (the thumb and the
  * button together) and mp-heldcombat (the default, mode 4).
  */
 import * as H from './harness.mjs';
+import { SAY as TOUR } from '../../../src/data/say/controlsTutorial.js';   /* v2.3.6544: part 4's words */
+import { SAY as COACH } from '../../../src/data/say/questCoach.js';
 export const lane = 'full';
 
 const UPRIGHT = { width: 390, height: 844 };
@@ -119,6 +133,76 @@ const STICK = (P) => H.readState(P, (S) => ({
   x: S.player.x, y: S.player.y, facing: S._renderFacing || null,
   ang: S._facingAngle, roll: !!S._dodgeRoll,
 }));
+
+/* ═══ v2.3.6544: PART 4's helpers ═══ */
+const panelUp = (P) => P.page.evaluate(() => !!Array.from(document.querySelectorAll('strong')).find((n) => n.textContent === 'Test panel'));
+/* the Test panel: a 1.2 s hold on the zone's name (ZoneHeader), held until it is up (mp-soundstudio's) */
+async function openPanel(P) {
+  for (let i = 0; i < 3; i++) {
+    if (await panelUp(P)) return true;
+    const at = await P.page.evaluate(() => {
+      const el = document.querySelector('.bt-zone-header__title');
+      if (!el) return null;
+      const r = el.getBoundingClientRect();
+      return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+    });
+    if (!at) { await P.page.waitForTimeout(1000); continue; }
+    await P.page.mouse.move(at.x, at.y);
+    await P.page.mouse.down();
+    const t0 = Date.now();
+    await P.page.waitForTimeout(1400);
+    while (Date.now() - t0 < 8000 && !(await panelUp(P))) await P.page.waitForTimeout(250);
+    await P.page.mouse.up();
+    for (const t1 = Date.now(); Date.now() - t1 < 4000;) {
+      if (await panelUp(P)) return true;
+      await P.page.waitForTimeout(250);
+    }
+  }
+  return panelUp(P);
+}
+/* the mode, the remembered key, the address and the words, as this page has them */
+const WORDS = (P) => P.page.evaluate(() => {
+  const t = window.__btTourWords ? window.__btTourWords() : [];
+  const by = Object.create(null); for (const x of t) by[x.key] = x;
+  const c = window.__btCoach ? window.__btCoach().words : null;
+  let key = 'n/a'; try { key = localStorage.getItem('bt_manual'); } catch (e) { /* no store */ }
+  return { mode: window.__btManual ? window.__btManual.mode() : null, key, manual: new URLSearchParams(location.search).get('manual'),
+    move: by.move && by.move.body, attack: by.attack && by.attack.body, targetLabel: by.target && by.target.label, target: by.target && by.target.body,
+    shield: by.shield && by.shield.body, coach: c };
+});
+const coachIs = (w, m, a, sp) => !!w.coach && (w.coach.move || []).length === 1 && w.coach.move[0] === m && (w.coach.attack || []).length === 2 && w.coach.attack.every((x) => x === a)
+  && (w.coach.special || []).length === 2 && w.coach.special.every((x) => x === sp);
+/* today's words (mode 4: no tap lock, so the target step's no-lock words) */
+const todayWords = (w) => w.mode === 4 && w.move === TOUR['controlsTutorial.moveBody'] && w.attack === TOUR['controlsTutorial.attackBody']
+  && w.targetLabel === TOUR['controlsTutorial.targetLabel'] && w.target === TOUR['controlsTutorial.targetBodyNoLock'] && w.shield === TOUR['controlsTutorial.shieldBody']
+  && coachIs(w, 'Drag to move.', 'Hold to attack the nearest enemy.', 'A quick swipe on the Attack button.');
+const twoWords = (w) => w.mode === 5 && w.move === TOUR['controlsTutorial.moveBodyTwo'] && w.attack === TOUR['controlsTutorial.attackBodyTwo']
+  && w.targetLabel === TOUR['controlsTutorial.targetLabelTwo'] && w.target === TOUR['controlsTutorial.targetBodyTwo'] && w.shield === TOUR['controlsTutorial.shieldBodyTwo']
+  && coachIs(w, COACH['questCoach.moveTwo'], COACH['questCoach.attackTwo'], COACH['questCoach.specialTwo']);
+/* the row: open the panel, read it, tap its button at its centre (a real touch), wait for the page to load again and the world */
+async function tapRow(P) {
+  if (!(await openPanel(P))) return { panel: false };
+  const at = await P.page.evaluate(() => {
+    const el = document.querySelector('[data-dev-controls]');
+    if (!el) return null;
+    el.scrollIntoView({ block: 'center' });
+    const r = el.getBoundingClientRect();
+    const label = Array.from(document.querySelectorAll('div')).some((d) => d.textContent === 'Controls: two sticks / two buttons');
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2, reads: el.getAttribute('data-dev-controls'), label };
+  });
+  if (!at) return { panel: true, row: false };
+  await P.page.waitForTimeout(150);
+  const nav = P.page.waitForNavigation({ timeout: 30000 }).catch(() => null);
+  await P.page.touchscreen.tap(at.x, at.y);
+  const went = !!(await nav);
+  let inW = null;
+  if (went) {
+    await H.enterWorld(P);
+    inW = await H.waitFor(P, (S) => ({ zone: S.currentZone, loading: !!S._zoneLoading }), (v) => v.zone === 'wheel' && !v.loading, { timeout: 150000, label: 'in the Wheel again' }).catch(() => null);
+    await P.page.waitForFunction(() => !!(window.__btCoach && window.__btTourWords), null, { timeout: 20000 }).catch(() => null);
+  }
+  return { panel: true, row: true, reads: at.reads, label: at.label, went, inW: !!inW };
+}
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const players = [];
@@ -570,6 +654,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
           line: window.__btSightLine ? window.__btSightLine().drawn : 'no probe', phase: (window._gameState.current || {})._sightPhase || 'none' }));
         rec.ok(`3e. the mode off: the two buttons' resolver hides nothing (Block ${off.shield}, Special ${off.special}), no sight line (${off.line})`,
           off.shield === true && off.special === true && off.line === false && off.phase === 'none', off);
+
+        /* PART 4 (v2.3.6544): the Test panel's row, and the words in each mode */
+        await Q.page.waitForFunction(() => !!(window.__btCoach && window.__btTourWords), null, { timeout: 20000 }).catch(() => null);
+        const w4 = await WORDS(Q);
+        rec.ok(`4a. mode ${w4.mode}: the controls tour and the quest coach say today's words`, todayWords(w4), w4);
+        const r1 = await tapRow(Q);
+        const w5 = r1.went ? await WORDS(Q) : null;
+        rec.ok(`4b. the Test panel's row "Controls: two sticks / two buttons" read ${r1.reads}; its tap loaded mode ${w5 && w5.mode} (the address's manual=${w5 && w5.manual}, the key ${w5 && w5.key}), and the tour and the coach say the two buttons' words`,
+          r1.label && r1.reads === 'sticks' && r1.went && r1.inW && !!w5 && w5.manual === '5' && w5.key === '5' && twoWords(w5), { r1, w5 });
+        if (r1.went && r1.inW) {
+          const r2 = await tapRow(Q);
+          const w6 = r2.went ? await WORDS(Q) : null;
+          rec.ok(`4c. the row read ${r2.reads}; its tap loaded mode ${w6 && w6.mode} (manual=${w6 && w6.manual}, the key ${w6 && w6.key}), today's words back`,
+            r2.reads === 'buttons' && r2.went && r2.inW && !!w6 && w6.manual === '4' && w6.key === null && todayWords(w6), { r2, w6 });
+        } else rec.ok('4c. the row back to two sticks (4b first)', false, r1);
       } else rec.ok('2f. the mode off: in the Wheel (guard)', false, inQ);
     }
     rec.ok('1g/2g. no page errors', errs.length === 0, errs.slice(0, 4));

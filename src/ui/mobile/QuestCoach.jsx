@@ -32,6 +32,9 @@ import { fixedBox } from '@/ui/fixedBox.js'; /* v2.3.3470: the layer's own box -
 import { deskWords } from '@/game/deskWords.js'; /* v2.3.3615: "tap" reads "click" on a computer */
 import { deskBigActive } from '@/ui/deskWide.js'; /* v2.3.3687; v2.3.3793: no OPEN chip now, but the coach card's clear-of-the-quest-HUD layout (main) asks it; v2.3.4152: either computer layout */
 import { fineInput } from '../../game/deviceProfile.js';   /* v2.3.4804: the device profile */
+import { twoButtonsOn } from '@/game/manualCombat.js';   /* v2.3.6544: the two buttons' words (card CT PR 5) */
+import { SAY } from '@/data/say/questCoach.js';
+import { say } from '@/game/say.js';
 
 /* ═══════════════════════════════════════════════════════════════════
    QUEST COACH — the controls are taught by the questline (v2.3.1796)
@@ -550,6 +553,16 @@ function windowUp() {
                   player who already knows the gesture is never nagged)
    `anchors`    — live-DOM targets, first REACHABLE one wins, each with the
                   wording that fits what it is pointing at. */
+/* ═══ v2.3.6544: THE TWO BUTTONS' WORDS (`?manual=5`, card CT PR 5) ═══
+   On a touch screen in the two buttons the stick turns before it walks,
+   Attack is a latch and the specials are buttons that come with the sight:
+   the move, attack and special lessons say so; every other device and mode
+   reads the words it always did. */
+const twoTeach = () => twoButtonsOn() && !fineInput();
+const MOVE_BODY = function () { return twoTeach() ? say(SAY, 'questCoach.moveTwo') : 'Drag to move.'; };
+const ATTACK_BODY = function () { return twoTeach() ? say(SAY, 'questCoach.attackTwo') : 'Hold to attack the nearest enemy.'; };
+const SPECIAL_BODY = function () { return twoTeach() ? say(SAY, 'questCoach.specialTwo') : 'A quick swipe on the Attack button.'; };
+
 const LESSONS = [
   {
     /* ═══ v2.3.2495: THE FIRST JOIN STARTS WITH THE WORLD, NOT THE BAND ═══
@@ -637,7 +650,7 @@ const LESSONS = [
     id: 'move',
     shape: 'circle',
     anchors: [{ sel: '.bt-joystick-zone', reach: '[data-joyzone="L"]',
-                body: 'Drag to move.' }],
+                body: MOVE_BODY }],
     label: 'Move',
     live: function (rpg) { return preTutorial(rpg); },
     done: null,     /* watched live -- see the walked tracker below */
@@ -978,9 +991,9 @@ const LESSONS = [
     shape: 'circle',
     /* v2.3.2242: the stick is a BUTTON -- hold it, do not drag it. */
     anchors: [{ sel: '.bt-rjoy-base', reach: '.bt-rjoy-base',
-                body: 'Hold to attack the nearest enemy.' },
+                body: ATTACK_BODY },
               { sel: '.bt-rjoy-zone', reach: '.bt-rjoy-base',
-                body: 'Hold to attack the nearest enemy.' }],
+                body: ATTACK_BODY }],
     label: 'Attack',
     live: function (rpg) { return !!getActiveWeapon(rpg); },
     done: null,     /* watched live -- see the isSwinging tracker below */
@@ -990,9 +1003,9 @@ const LESSONS = [
     shape: 'circle',
     /* v2.3.2242: same gesture, on the Attack BUTTON now. */
     anchors: [{ sel: '.bt-rjoy-base', reach: '.bt-rjoy-base',
-                body: 'A quick swipe on the Attack button.' },
+                body: SPECIAL_BODY },
               { sel: '.bt-rjoy-zone', reach: '.bt-rjoy-base',
-                body: 'A quick swipe on the Attack button.' }],
+                body: SPECIAL_BODY }],
     label: 'Special attack',
     /* ═══ v2.3.1797: THE SPECIAL IS PART OF THE TUTORIAL ═══
        Owner: "I think mayor bro ought to require you to perform your special
@@ -1671,7 +1684,10 @@ export function QuestCoach(props) {
     try {
       window.__btCoach = function () {
         const b = blockRef.current;
-        return { done: Object.assign({}, doneRef.current), heldMs: Math.round(b.ms),
+        /* v2.3.6544: the move, attack and special lessons' words as shown now (mp-twobuttons part 4) */
+        const words = Object.create(null);
+        for (const L of LESSONS) if (L.id === 'move' || L.id === 'attack' || L.id === 'special') words[L.id] = L.anchors.map((a) => (typeof a.body === 'function' ? a.body(stateRef && stateRef.current) : a.body));
+        return { words, done: Object.assign({}, doneRef.current), heldMs: Math.round(b.ms),
                  /* v2.3.4106: the first steps in order, which are done, and the retired lessons */
                  firstSteps: FIRST_STEPS.slice(), retired: Array.from(RETIRED),
                  showing: viewRef.current ? viewRef.current.id : null,
