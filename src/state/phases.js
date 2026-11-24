@@ -490,6 +490,50 @@ export const PHASES = [
     held: { suite: 'server/test/window-door.test.mjs' },
     note: 'v2.3.5526: the door (the planner\'s reading: one field, the set of reasons; S._windows a Map from WINDOW_WHYS panel, npc to its hold; windowTo writes each reason\'s old field, S._uiBusy (a lift is false) and S._npcProxLatch (a lift is null), for its readers; switch ?windowdoor). Beside it: the decision panels\' count (modalGuardBus.js _depth, module state with no S, guardPush and the release it hands back) and each window\'s own bus record (inventoryBus, wheelBus, ChestReveal): what is in a window, not whether the world is covered.',
   },
+  /* ═══ v2.3.6540: THE TWO BUTTONS' THREE PHASES (card CT PR 1; `?manual=5`, a trial) ═══
+     Each one field and one function from its first line (CLAUDE.md section
+     5); nothing calls them until the card's PR 2 (the stick) and PR 3 (the
+     sight and the latch), so a write found anywhere but the door fails today. */
+  {
+    name: 'stick', side: 'page', status: 'door',
+    what: 'The left stick in the two buttons: at rest, turning the body in place, or walking.',
+    field: 'S._stickPhase', states: ['rest', 'turn', 'walk'],
+    fn: 'stickTo', file: 'src/game/stickZones.js',
+    clears: [{ edge: 'end', at: 'src/game/stickZones.js stickTo' }],
+    rejoin: 'none: the page\'s own, a thumb on the glass',
+    held: { suite: 'server/test/stick-zones.test.mjs' },
+    note: 'v2.3.6540: the zones by the thumb\'s share of the disc\'s drawn radius (STICK_ZONES; `?turnzone`). A lifted thumb is rest (the release, PR 2).',
+  },
+  {
+    name: 'sight', side: 'page', status: 'door',
+    what: 'Whether a monster is in your sight in the two buttons: alive, in the weapon\'s range and the faced cone.',
+    field: 'S._sightPhase', states: ['none', 'sighted'],
+    fn: 'sightTo', file: 'src/game/sight.js',
+    clears: [
+      { edge: 'end', at: 'src/game/sight.js sightStep' },
+      { edge: 'zone', at: 'src/game/sight.js sightClear' },
+      { edge: 'death', at: 'src/game/sight.js sightClear' },
+    ],
+    rejoin: 'none: the page\'s own, made again each frame from the monsters it holds',
+    held: { suite: 'server/test/sight.test.mjs' },
+    notes: ['S._sightId', 'S._sightAt'],
+    note: 'v2.3.6540: its notes, the sighted id and the last sighting\'s moment, written beside it in sightStep and sightClear; the phase falls to none only SIGHT.HOLD_MS after the last sighting (no flicker at the edge: TRAPS 218).',
+  },
+  {
+    name: 'latch', side: 'page', status: 'door',
+    what: 'The Attack latch in the two buttons: idle, or active with a target locked.',
+    field: 'S._latchPhase', states: ['idle', 'active'],
+    fn: 'latchTo', file: 'src/game/latch.js',
+    clears: [
+      { edge: 'end', at: 'src/game/latch.js latchCheck' },
+      { edge: 'death', at: 'src/game/latch.js latchClear' },
+      { edge: 'zone', at: 'src/game/latch.js latchClear' },
+    ],
+    rejoin: 'none: the page\'s own; the worker keeps no lock (nothing on the worker changes in card CT)',
+    held: { suite: 'server/test/latch.test.mjs' },
+    notes: ['S._latchId', 'S._latchEnd'],
+    note: 'v2.3.6540: the five ends (LATCH_ENDS press, range, killed, death, zone) and the one move (the target dead, another in sight: the nearest, no new press). Its notes, the locked id and the last end, written by latchTo with it.',
+  },
 ];
 
 /* Ledger rows D's census marks `phase` (a field set to, or compared with, two

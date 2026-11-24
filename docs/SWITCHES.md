@@ -92,7 +92,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `guarddoor` | worker | switch | v2.3.5536 | 2026-11-17 | false | logic |  | no | A raise is written while the guard break's latch is live, as the lines before the guard door could have; movement.js and the sparring clone still check the latch first. |
 | `?guarddoor` | page | switch | v2.3.5521 | 2026-11-16 | =0 | logic |  | no | Your shield on the phone takes any raise or drop its own code asks again (a raise over a raised one, with no shield or in the cooldown, a drop of none), as the lines before the page door could have; raiseShieldToggle and dropShield still check each first. |
 | `killroll` | worker | switch | v2.3.3209 | 2026-10-13 | false | logic |  | no | Every drop on its own roll again, nothing sent over the monster. |
-| `?manual` | page | value | v2.3.4357 |  | =0 to =4 (remembered on the device) | logic |  | no | Picks the combat mode on this device: 0 the old, 1 to 4 the manual trials. |
+| `?manual` | page | value | v2.3.4357 |  | =0 to =5 (remembered on the device) | logic |  | no | Picks the combat mode on this device: 0 the old, 1 to 4 the manual trials, 5 the two buttons (v2.3.6540, card CT). |
 | `monsterguardbreak` | worker | switch | v2.3.4393 | 2026-11-10 | false | logic |  | no | A monster's hit on no stamina no longer breaks the guard. |
 | `monsterhold` | worker | switch | v2.3.3513 | 2026-10-20 | false | logic |  | no | The element hold rule off: monsters move as before real gems. |
 | `mummyroar` | worker | switch | v2.3.3621 | 2026-10-27 | false | logic |  | no | Mummies swing as before, without the roar. |
@@ -243,6 +243,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | name | side | kind | born | on | thrown | risk | needs | fallback | off |
 |---|---|---|---|---|---|---|---|---|---|
 | `?tapthrough` | page | switch | v2.3.3560 | 2026-10-22 | present | logic |  | no | A tap that closes a window lets its click through, as before. |
+| `?turnzone` | page | value | v2.3.6540 |  | =<percent> (15 to 70) | logic |  | no | Moves the left stick's turn border in the two buttons (?manual=5): a thumb inside it turns the body, past it walks (game/stickZones.js; 30 when not given). |
 
 ## life
 
@@ -683,7 +684,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?guest` | page | lever | v2.3.1116 |  | =1 | none |  | no | This tab plays as a fresh guest with its own id. |
 | `?jumpicon` | page | value | v2.3.3721 |  | a glyph's name | logic |  | no | Picks the jump button's glyph. |
 | `?login` | page | lever | v2.3.1839 |  | =1 | none |  | no | Shows the login door. |
-| `?loginspin` | page | switch | v2.3.4295 | 2026-11-05 | =0 | logic |  | no | The login wheel does not open by itself (its button still opens it). |
+| `?loginspin` | page | switch | v2.3.4295 | 2026-11-24 (v2.3.6560) | =1 (the offer at login comes back), =0 (never by itself: the default; the harness passes it) | logic |  | no | v2.3.6560: the login wheel offers itself once after login again, as before (closed without a spin it waits for its button; the default, and `=0`: it never opens by itself, its button at the right of the top bar is the way in). |
 | `?nomapdetail` | page | switch | v2.3.3319 | 2026-10-17 | present | memory |  | no | No detail tiles on the world map. |
 | `?noresume` | page | lever | v2.3.781 |  | =1 | none |  | no | Does not walk back into the world on load. |
 | `?npcprox` | page | switch | v2.3.3583 | 2026-10-23 | present | logic |  | no | Walking up to a townsperson opens them again (the old opener), to compare. |

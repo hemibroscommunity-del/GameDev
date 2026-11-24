@@ -294,7 +294,17 @@ export function schedule(script, d, opts = {}) {
  * this file's, armed when a suite imports it.  `TESTROOM_GUARD=0` (an env
  * var) disarms it for one run; `roomGuard.off(fn)` for one call.
  * Its own checks: testroom.test.mjs; the door suites play paths under it. */
-const GUARD_ON = !(typeof process !== 'undefined' && process.env && process.env.TESTROOM_GUARD === '0');
+/* v2.3.6440 (sitting 57's CI): the suites that MEASURE the room are not
+   played under the guard: its accessors, Proxies and copies are a probe's
+   weight, and a measure of the room's own memory read them as the room's
+   (heap-forget §4: 2,563 B a guest unguarded on the runner, 4,167 and 4,632
+   guarded, the line 4,096).  Each by its file, with why. */
+export const UNGUARDED_SUITES = Object.freeze({
+  'heap-forget.test.mjs': 'measures what a guest leaves in the room\'s heap: the guard would be counted as the room\'s',
+});
+const SUITE_FILE = typeof process !== 'undefined' && process.argv && process.argv[1] ? String(process.argv[1]).split(/[\\/]/).pop() : '';
+const GUARD_ON = !(typeof process !== 'undefined' && process.env && process.env.TESTROOM_GUARD === '0')
+  && !Object.prototype.hasOwnProperty.call(UNGUARDED_SUITES, SUITE_FILE);
 
 /* ── each guarded field's door: `file.js functionName` on the stack ── */
 const fns = (file, ...names) => names.map((n) => file + ' ' + n);
