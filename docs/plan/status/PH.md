@@ -44,7 +44,12 @@ state: working (orchestrator now part 6, session_01LccHanKxudynkwdrcZewcK, from 
   water and shadows stay; the phone's default ONE number in one place (a
   lower pick, 1.5 or 1, is one line); the Speed test gains ?res=1.5 and 1
   rows if it fits PR 4's files. Name it in the PR as the owner's answer.
-  Low Power Mode: not answered yet.
+  Low Power Mode ANSWERED (04:32 UTC): "Low power mode was not on during
+  test". So lane "thirty" (a 30-a-second screen) was read wrong on a phone
+  that drew 45: a fault in how the pacer or the report reads the screen's
+  rate (src/game/framePacer.js / drawLanes.js, to look at first). If PR 4's
+  governor leans on that reading, PR 4 mends it or stops trusting it;
+  otherwise it goes under Found with its file.
 
 ## Found
 - maskedEvict.js's header: old words. buffers 24.3 on CI vs 24.8: trim owed.
