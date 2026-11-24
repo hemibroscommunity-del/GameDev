@@ -2,7 +2,7 @@ card: ORC
 branch: claude/plan-orc
 prs: none open (this notes branch never has a PR)
 state: working
-part 4 (session_01LccHahqYWSLxVUrw1fLzd3) hands over 2026-11-24 about 02:55 UTC at about 215k of memory; part 5 reads this and docs/plan/finish.md. Never message parts 1 to 4. TELL every running session below the new id first.
+part 5 (session_01LccHakcRoC4r9Sbtry2Erm, started by the owner 02:49 UTC, depth 0) is the orchestrator; every running session below was told its id at 02:51. Never message parts 1 to 4. A part 6 TELLS every running session its id first.
 
 ## Sitting 57: MERGED 02:14 UTC (#2288, #2294, #2296, #2281, #2289, #2282, notes #2304); main b966af81. The holds' words: docs/plan/census/review-z57.md on main. Its gatekeeper (session_01LccHahbA4NKM4W2gfwhETx) was told it may stop.
 ## Sitting 58: 2026-11-25 UTC (two a day; the owner was told they may say "run another round today"). A NEW gatekeeper session (strong, high). Queue so far, every re-push reviewed fresh:
@@ -11,7 +11,7 @@ part 4 (session_01LccHahqYWSLxVUrw1fLzd3) hands over 2026-11-24 about 02:55 UTC 
 - DG #2283 (a new head coming from part 3), #2295 and #2300 (new heads coming from part 5)
 - PH #2279, #2291 (held, being mended), #2297, #2306 (a draft until green). LS's one PR (6560)
 - WL MENDED, in this order: #2286 (8290b17b, deploys), #2287 (a91eb4e5), #2290 (0709ce99), #2298 (0a555d3c), #2302 (faa51437), #2303 (3df384e3)
-- #2273 (RR, card LF) is HELD and NO running session owns it: FIND card LF's session (a haiku lane, by title) or start a part for it (the middle model, high): wsClient `if (_td) _td.carried = true;` stays green; thaw-carried §6 is regexes over text.
+- #2273 (RR, card LF) HELD: LF part 2 session_01LccHak4rzmk1FfkjzyFgGo (new 02:54, strong, high: a guard's mend) moves wsClient's thaw decision into src/game/thawCarried.js and plays it; five plants in the PR's body; sends the head when green.
 After 58 merges, TELL: WHO when #2283 is in (open 6481, then 6482) and when #2279 is in (the report.js call); every session the new main; the owner in plain words.
 
 ## Sessions (strong, high unless said)
@@ -35,4 +35,4 @@ After 58 merges, TELL: WHO when #2283 is in (open 6481, then 6482) and when #227
 - Call 1 COMPLETE, all sent to PH part 4: the Speed test (28 frames a second as played, 45 with all extras off; 35 ms of a frame is the graphics chip); the owner FELT the table's last row ("all those off") as the smoothest; the governor and `?groundsend=0` comparisons were nearly nothing (both stay on). OWED TO THE OWNER: PH's recommendation on which extras to give up by default, each with its switch: the owner chooses.
 - Told: `brotown.net/?loginspin=0` stops the popup today. Read to them: the two "decided while away" (120 MB `?memalarm=0` #2291; `?thawjudge=0` #2273), both held. Calls 4, 6, 7, 8 not asked.
 
-## The week (from Monday 21:00 UTC): NOT summed by part 4 (its 03:25 sweep is cancelled: set your own, and sum first). $262.75 at 00:58, about $83 an hour, so about $420 by 02:55 (a guess); part 4 cost about $8. One week about $2,700; no new card past $2,170.
+## The week (from Monday 21:00 UTC): SUMMED 02:52 by part 5's lane: about $410 (38 sessions, RR's last-week $71 taken off; three running ones not yet counted), about $70 an hour. One week about $2,700; no new card past $2,170. Many parts ran to 300k-390k before handing over: hold them to 250k. Next sweep about 04:25 (send_later).
