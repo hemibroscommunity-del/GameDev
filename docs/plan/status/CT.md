@@ -1,7 +1,7 @@
 card: CT
 branch: claude/plan-ct-5-words (PR 5, stacked on claude/plan-ct-4-sight)
 prs: #2282 (6540, merged), #2293 (6541, merged at 60), #2308 (6542, held at 60: mended), #2327 (6543, ready), PR 5 (6544, working)
-state: working
+state: ready
 
 ## Done
 - PR 1 (6540, #2282): merged at sitting 57.
@@ -26,14 +26,14 @@ state: working
   mp-twobuttons part 4 (4a-4c: the row tapped both ways, the words).
 
 ## Next
-- The mend pushed to #2308 and merged up through #2327; PR 5: one
-  helper run of mp-twobuttons, one push, the draft PR, then tell the
-  orchestrator (the three heads). Item 6 (6545, sprint
-  from the stick) is a fresh part's.
+- PR 5 open (draft); the orchestrator told; hand-over (memory past 250k).
 
 ## Found
 - `manual-combat.test` 1h pinned `?manual=5` as no switch: now `6`.
 - This box: a CDP flick waits behind a slow frame (mp-twobuttons 1f).
+- mp-twobuttons on PR 5 (helper, after the mend): 49 PASS, 2 FAIL, 1 SKIP:
+  4a-4c pass; 3c/3d SIDEWAYS red again (the phase changed twice at the
+  edge, a frame every 767 ms), as run 5 on #2327: PR 4's check to judge.
 
 ## Needs
 - Approved: the two OWNED rows (stickX, stickY; #2290 is in `main`); PR
