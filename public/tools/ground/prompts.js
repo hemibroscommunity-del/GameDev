@@ -11,7 +11,7 @@
  * So two chats about the same swatch ask exactly the same question, and a
  * change to the style bible changes every prompt at once.
  */
-import { PIXEL, HD_STYLE, QUIET_GROUND, NO_DIRECTION, PLANK_BOARDS, KEY_MATCH, EDGE_MATCH, EDGE_BACKGROUND, BLEND_MATCH, personScale } from '../style/bible.js';
+import { PIXEL, HD_STYLE, QUIET_GROUND, NO_DIRECTION, PLANK_BOARDS, KEY_MATCH, EDGE_MATCH, EDGE_BACKGROUND, BLEND_MATCH, personScale, GROUND_VIEW, WALK_OVER } from '../style/bible.js';   /* v2.3.6292: + the buildings' view and the walk-over rule */
 
 /* Swatches that ARE a surface -- a street, planks, gravel -- rather than
    ground things sit on.  The quiet rule still holds; "no paths" would not. */
@@ -46,7 +46,7 @@ export function promptFor(entry) {
   const quiet = SURFACES.has(entry.id) ? QUIET_SURFACE : QUIET_GROUND;
   const way = entry.laid === 'planks' ? PLANK_BOARDS : NO_DIRECTION;
   return [
-    `A seamless, tileable square texture of ground for BroTown, a top-down 2D action RPG, seen from directly above: ${entry.brief}. ${quiet} ${way} Every edge must continue seamlessly into the opposite edge. No border, no text and no shadows cast on it.`,
+    `A seamless, tileable square texture of ground for BroTown, a 2D action RPG, ${GROUND_VIEW}: ${entry.brief}. ${quiet} ${WALK_OVER} ${way} Every edge must continue seamlessly into the opposite edge. No border, no text and no shadows cast on it.`,
     `Style: ${HD_STYLE}`,
     entry.laid === 'planks'
       ? `${KEY_MATCH} Scale: about twelve to sixteen boards from top to bottom, drawn big and clear; the game makes each one about an eighth as wide as a person is tall.`
@@ -82,7 +82,7 @@ export function hasEdgePieces(entry) { return !!(entry && PIECES[entry.kind] && 
 export function edgePromptFor(entry) {
   const [what, noun] = PIECES[entry.kind] || ['small loose pieces of it', 'ground'];
   return [
-    `Loose EDGE PIECES of one ground for BroTown, a top-down 2D action RPG, seen from directly above. The ground: ${entry.brief}. Draw ${what}: about forty to sixty separate small pieces, each about the size of a person's hand or head, scattered evenly over the whole picture with plain background between them. No piece touches another or the edge of the picture. The game lays these where this ground ends and another begins, so they must look exactly like this ground's own ${noun}.`,
+    `Loose EDGE PIECES of one ground for BroTown, a 2D action RPG, ${GROUND_VIEW}. The ground: ${entry.brief}. Draw ${what}: about forty to sixty separate small pieces, each about the size of a person's hand or head, scattered evenly over the whole picture with plain background between them. No piece touches another or the edge of the picture. The game lays these where this ground ends and another begins, so they must look exactly like this ground's own ${noun}.`,
     `${EDGE_BACKGROUND} ${NO_DIRECTION} No text and no border.`,
     `Style: ${HD_STYLE}`,
     `${EDGE_MATCH} Scale: ${scaleLine()}.`,
@@ -102,7 +102,7 @@ export function edgePromptFor(entry) {
 const QUIET_BLEND = 'The texture is quiet and clean: broad, smooth areas of the base tones, with small details covering no more than about a tenth of the area, and no noise, speckle or grain. Only what the two grounds have themselves: no objects, no paths and no water.';
 export function blendPromptFor(a, b) {
   return [
-    `A seamless, tileable square texture of ground for BroTown, a top-down 2D action RPG, seen from directly above: the ground halfway between two grounds that meet, which the game lays between them. One is ${a.name}: ${a.brief}. The other is ${b.name}: ${b.brief}. Mix the two evenly over the whole square, in patches of each running into the other with the small details of both scattered through, so that it looks like both at once and like neither one alone. ${QUIET_BLEND} ${NO_DIRECTION} Every edge must continue seamlessly into the opposite edge. No border, no text and no shadows cast on it.`,
+    `A seamless, tileable square texture of ground for BroTown, a 2D action RPG, ${GROUND_VIEW}: the ground halfway between two grounds that meet, which the game lays between them. One is ${a.name}: ${a.brief}. The other is ${b.name}: ${b.brief}. Mix the two evenly over the whole square, in patches of each running into the other with the small details of both scattered through, so that it looks like both at once and like neither one alone. ${QUIET_BLEND} ${WALK_OVER} ${NO_DIRECTION} Every edge must continue seamlessly into the opposite edge. No border, no text and no shadows cast on it.`,
     `Style: ${HD_STYLE}`,
     `Attached are the two ground pictures it goes between: ${a.name} and ${b.name}. ${BLEND_MATCH} Scale: ${scaleLine()}.`,
   ].join('\n\n');

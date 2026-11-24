@@ -14,7 +14,10 @@
  *   6. A DEPLOY AT A MESSAGE: a second room on what was written keeps it all
  *      and nothing of the first room's memory.
  */
-import { makeStorage, openRoom, roomQueue, seededClock, join, fakeWs, settle, DISTURBANCES, disturbance, schedule } from './testroom.mjs';
+import vm from 'node:vm';
+import { join as joinPath } from 'node:path';
+import { SRC_PATH } from './src-walk.mjs';
+import { makeStorage, openRoom, roomQueue, seededClock, join, fakeWs, settle, DISTURBANCES, disturbance, schedule, playTour, roomGuard } from './testroom.mjs';
 import { BANK } from '../src/bank.js';
 
 let failures = 0, passes = 0;
@@ -131,6 +134,35 @@ const clock = seededClock({ seed: 11 }).install();
 }
 
 clock.restore();
+
+/* ── 7. THE RUNNING ROOM REFUSES (v2.3.6440, card DG PR 1; the purpose
+   review, sitting 56: no check proved the guard was ON a record).  The tour's
+   record is guarded, and a write of a guarded field outside its door is
+   refused and recorded, however it is spelled. */
+{
+  const t = await playTour({ tag: 'testroom' });
+  check('7. the guard is ON the tour\'s record (testroom.mjs roomGuard.holds)', roomGuard.holds(t.ps, t.room).length === 0, roomGuard.holds(t.ps, t.room));
+  roomGuard.clear();
+  /* a write made from a file of server/src with no door on its stack: the
+     guard refuses a test's own hand by design (a suite sets a record up), so
+     each spelling runs as code named after a worker file (vm's filename),
+     never a file on disk */
+  const fromSrc = (body) => vm.runInThisContext('(function probe(ps) {\n' + body + '\n})', { filename: joinPath(SRC_PATH, 'zz-guard-probe.js') });
+  const tries = [
+    ['ps.coins = n', fromSrc('ps.coins = 999;')],
+    ['Object.assign(ps, { hp })', fromSrc('Object.assign(ps, { hp: 1 });')],
+    ['a bag count through an alias', fromSrc('const inv = ps.inventory; inv.wood_pine_log = 99;')],
+    ['a computed key', fromSrc("const k = 'xp'; ps[k] = 5;")],
+  ];
+  for (const [name, fn] of tries) {
+    const before = roomGuard.refusals().length;
+    let threw = false;
+    try { fn(t.ps); } catch (e) { threw = /testroom/.test(String(e && e.message)); }
+    check('7. refused and recorded: ' + name, threw && roomGuard.refusals().length === before + 1, roomGuard.refusals().slice(before));
+  }
+  roomGuard.clear();
+}
+
 console.log(`\n${passes} passed, ${failures} failed`);
 if (failures) process.exit(1);
 console.log('all testroom checks passed');

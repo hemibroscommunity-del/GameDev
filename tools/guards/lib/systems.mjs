@@ -250,7 +250,7 @@ export const SYSTEMS = Object.freeze({
   },
   input: {
     what: 'touch and the controls on a phone',
-    files: [f('src/game', 'controlVisibility|playerActions|coachMarkSize'), f('src/ui', 'tapDismiss|swallowTapClick')],
+    files: [f('src/game', 'controlVisibility|playerActions|coachMarkSize|stickZones|sight|latch'), f('src/ui', 'tapDismiss|swallowTapClick')],   /* v2.3.6540: + stickZones, sight, latch (card CT, the two buttons) */
     words: ['touch', 'control', 'tap', 'thumb', 'swallow'],
     traps: ['input'],
     doors: [],
