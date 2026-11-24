@@ -893,6 +893,11 @@ export const movementMethods = {
      * accepting msg.x/msg.y removes the bypass entirely and needs no
      * heuristic. That is a bigger change than an audit follow-up should
      * smuggle in, so it is written down instead of guessed at. */
+    /* v2.3.6481: a test-mode move is judged by nothing above, so it is counted
+       here, as activity on the sitting's card (never over a budget it has
+       not got): the owner's sittings read their own active seconds
+       (sitting.js; the orchestrator's yes, 2026-11-24).  Memory only. */
+    if (_tm) sitMove(this, ps, _now, false);
     ps.lastMoveAt = _now;
 
     // Position + velocity + flags update only on accept -- and ps.z is
