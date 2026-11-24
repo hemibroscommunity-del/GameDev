@@ -346,8 +346,10 @@ let _samples = null, _busyIn = null;
    art read 11 to 16 MB in play, so its half could never fire, and the
    chip's fired only some 27 MB over the trip's peak.  Now ONE number, the
    game's own TOTAL -- art + the chip's (a phone or a tablet) + sound -- over
-   MEM_ALARM.MB, set just above what the game reads in a crowded fight (the
-   owner's yes: docs/plan/finish.md part 9, call 3; the readings:
+   MEM_ALARM.MB, set just above what the game reads in a crowded fight
+   (DECIDED FOR THE OWNER WHILE AWAY, not the owner's yes: call 3 of
+   docs/plan/finish.md part 9 went unanswered, and the planning session set
+   it on 2026-11-23; if the owner answers, their words win.  The readings:
    docs/plan/census/PH-phone.md).  The memory check's lines are no longer
    its business (card PH's PR 3 lowers them to the readings).  `?govern=0`
    stops it as before (the count is read only while the governor judges).
@@ -385,7 +387,13 @@ export function memOver(m, old) {
 export function memAlarmOld(search) {
   return !!(typeof search === 'string' ? readerFor(search).sw('memalarm') : sw('memalarm'));
 }
-function memFull(ts) {
+/** Is the memory full, read as the governor reads it (at most every
+ *  MEM_READ_MS, through the count handed in)?  v2.3.6501 (the gatekeeper's
+ *  sitting 57): exported, and `search` (an address, as framePaceOn's) stands
+ *  for the page's own, so node runs THIS read with `?memalarm=0` thrown and
+ *  not (frame-pacer.test 23i): a memFull that never asked the switch, or
+ *  always slept on the old lines, was green before. */
+export function memFull(ts, search) {
   if (!_memCount) return false;
   if (ts - _memAt < MEM_READ_MS) return _memWas;
   _memAt = ts;
@@ -393,7 +401,7 @@ function memFull(ts) {
     const m = _memCount();
     if (Array.isArray(m) && _memForce > 0) m[0] = (Number(m[0]) || 0) + _memForce;   /* QA only: __btMemAlarm.force */
     _memTotal = memTotal(m);
-    _memWas = memOver(m, memAlarmOld());
+    _memWas = memOver(m, memAlarmOld(search));
   } catch (e) { _memWas = false; }
   return _memWas;
 }

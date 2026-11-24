@@ -22,7 +22,9 @@
  *      frames' cap 900 -> 450 (__btLocalMisses().cap), the frames held
  *      within it;
  *   3. the force taken off, the alarm reads under again.
- *   `?memalarm=0` (the old two lines) is held by frame-pacer.test 23b.
+ *   `?memalarm=0` (the old two lines) is held by frame-pacer.test 23b, and
+ *   the pacer's own read (memFull) with it thrown and not by 23i (v2.3.6501,
+ *   the gatekeeper's sitting 57).
  *   BREAK, tried 2026-11-23 on the test box: framePacer.js memFull's
  *   `memOver(m, memAlarmOld())` made `memOver(m, true)` (the old two lines:
  *   the art forced to 47 MB never reaches 79.3)  -> FAIL 2, both checks.

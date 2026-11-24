@@ -96,6 +96,13 @@
  *      report.js _reportTake: `heat: true` (the switch ignored)          -> FAIL 15.8b
  *      report.js reportSums: rideGaps any array of ten (no ints)         -> FAIL 15.8c
  *      report.js reportSums: `const drawnOk = drawn || 0;` (the claim)   -> FAIL 15.8d
+ *      The gatekeeper's sitting 57 (review-z57): two more, tried 2026-11-24
+ *      (the code held both; 15.8c's "fraction" had landed on an empty bin,
+ *      a -0.5, so no positive fraction was ever sent):
+ *      report.js reportSums: rideGaps `every(x => typeof x === 'number' && x >= 0)` -> FAIL 15.8c
+ *      report.js reportSums: the up row's late `msg.late[0]` (raw)       -> FAIL 15.8e
+ *      report.js reportSums: the up row's below `msg.rung[1]` (raw)      -> FAIL 15.8f
+ *      report.js reportSums: the up row's below `0` (never the rung's)   -> FAIL 15.8f
  */
 import { readFileSync } from 'node:fs';
 import { GameRoom } from '../src/index.js';
@@ -704,16 +711,30 @@ const A = await join('bp_rep_a', 'Repo');
   const gained = (x, k) => !!(x.now && x.now[k]) && JSON.stringify(x.now[k]) !== JSON.stringify(x.was && x.was[k]);
   check('15.8b `reportheat: false`: a report with `?govern=0` sent through the room lands in the cell `none` and adds no `up` and no `ride`',
     t8b.why === 'ok' && t8b.moved.length === 1 && t8b.moved[0] === cellOf('none') && !gained(t8b, 'up') && !gained(t8b, 'ride'), t8b);
-  /* each bin within the report's own and the ride's counts within its frames, so only the fraction or the sign is wrong */
-  const frac = b.rideGaps.slice(); frac[9] -= 0.5;
+  /* each bin within the report's own and the ride's counts within its frames, so only the fraction or the sign is wrong.
+     v2.3.6500 (sitting 57): the fraction on the fullest bin, so it stays POSITIVE (99.5 of 100); on an empty bin it was
+     a -0.5, a negative, and a check of the sign alone passed it */
+  const full = b.rideGaps.indexOf(Math.max(...b.rideGaps));
+  const frac = b.rideGaps.slice(); frac[full] -= 0.5;
   const neg = b.rideGaps.slice(); neg[0] = -1;
   const t8c = [await through({ rideGaps: frac, ride: [40, 0, 0] }), await through({ rideGaps: neg, ride: [40, 0, 0] })];
-  check('15.8c a ride\'s gaps with a fraction or a negative sent through the room: the report counts, no `ride`',
-    t8c.every((x) => x.why === 'ok' && x.moved.length === 1 && x.now.n === (x.was ? x.was.n : 0) + 1 && !gained(x, 'ride')), t8c);
+  check('15.8c a ride\'s gaps with a positive fraction or a negative sent through the room: the report counts, no `ride`',
+    frac[full] > 0 && !Number.isInteger(frac[full]) && frac[full] <= b.gaps[full]
+      && t8c.every((x) => x.why === 'ok' && x.moved.length === 1 && x.now.n === (x.was ? x.was.n : 0) + 1 && !gained(x, 'ride')), { frac, t8c });
   const t8d = await through({ drawn: b.drawn + 7 });
   const upWas = t8d.was && t8d.was.up && t8d.was.up.m15 ? t8d.was.up.m15[1] : 0;
   check('15.8d a `drawn` unlike its gaps\' sum sent through the room: `up` adds the kept gaps\' sum (none kept: 0), never the claim',
     t8d.why === 'ok' && t8d.moved.length === 1 && t8d.now.up && t8d.now.up.m15 && t8d.now.up.m15[1] - upWas === 0 && !gained(t8d, 'ride'), t8d);
+  /* v2.3.6500 (sitting 57, review-z57): the up row's late and below columns, like 15.8d's drawn: each the KEPT
+     verdict's, never the report's claim. A late over its judged is not kept (late <= judged), and a rung's seconds
+     over the report's are not either; each adds 0 to its column, and a kept one adds its own */
+  const upCol = (x, i) => (x.now && x.now.up && x.now.up.m15 ? x.now.up.m15[i] : 0) - (x.was && x.was.up && x.was.up.m15 ? x.was.up.m15[i] : 0);
+  const t8e = [await through({ late: [9, 5] }), await through({ late: [3, 5] })];
+  check('15.8e a `late` over its judged sent through the room: `up`\'s late adds 0, never the claim (9); a kept one adds its own (3)',
+    t8e.every((x) => x.why === 'ok' && x.moved.length === 1) && upCol(t8e[0], 2) === 0 && upCol(t8e[1], 2) === 3, t8e);
+  const t8f = [await through({ rung: [1, msg.secs + 5] }), await through({ rung: [1, 30] })];
+  check('15.8f a `rung` past the report\'s seconds sent through the room: `up`\'s below adds 0, never the claim; a kept one adds its 30',
+    t8f.every((x) => x.why === 'ok' && x.moved.length === 1) && upCol(t8f[0], 3) === 0 && upCol(t8f[1], 3) === 30, t8f);
 }
 
 console.log(`\n${passes} passed, ${failures} failed`);
