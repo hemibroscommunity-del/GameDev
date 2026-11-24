@@ -20,6 +20,11 @@
  *       its four touches sent to the zone's listeners in one task: see 1f);
  *   1g. no page errors.
  *
+ * PART 6 (tag 6546, the owner's mends of 2026-11-24): 6a in part 2 (the
+ *   latch wears the plain sword, raised and pressed in, never the
+ *   crosshair), 6b in 2f (mode 4 keeps the crosshair), 6c at the end (the
+ *   left stick's zones in CSS px on the owner's iPhone, 430x775 at 3x).
+ *
  * PART 2 (PR 3, tag 6542): THE RIGHT SIDE -- Attack, a latch
  *   (the character first let past the Mayor's gate, tut_1: a new one is
  *   held in BroTown's safe circle, and the nearest monster is outside it)
@@ -158,6 +163,16 @@ const STICK = (P) => H.readState(P, (S) => ({
   x: S.player.x, y: S.player.y, facing: S._renderFacing || null,
   ang: S._facingAngle, roll: !!S._dodgeRoll,
 }));
+
+/* v2.3.6546: what the Attack disc wears: the plain sword (bt-rjoy-strike, mode 5)
+   and the crosshair (bt-rjoy-aim), each drawn or not, and the latch's look */
+const FACE_ICON = (P) => P.page.evaluate(() => {
+  const base = document.querySelector('.bt-rjoy-base');
+  const on = (el) => { if (!el) return false; const r = el.getBoundingClientRect(); return getComputedStyle(el).display !== 'none' && r.width > 4 && r.height > 4; };
+  const st = base && base.querySelector('.bt-rjoy-strike');
+  return { latch: base ? base.getAttribute('data-latch') : null, ricon: base ? base.getAttribute('data-ricon') : null,
+    strike: on(st), aim: on(base && base.querySelector('.bt-rjoy-aim')), src: st ? st.getAttribute('src') : null };
+});
 
 /* ═══ v2.3.6545: PART 5's helpers ═══ */
 /* the sprint as the phone and its button see it, the ring, the frame */
@@ -468,11 +483,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
           lock: lt && lt.ref ? String(lt.id) : null, latchLock: !!(lt && lt.latch), auto: !!S.autoAttack,
           look: el ? el.getAttribute('data-latch') : null, taps: S._tapAttacks || 0 };
       });
+      const i0 = await FACE_ICON(P);   /* v2.3.6546: raised, before the press */
       await press();
       const b1 = await H.waitFor(P, (S) => !!(S.lockedTarget && S.lockedTarget.latch), (v) => v, { timeout: 8000, label: 'the latch\'s lock' }).catch(() => null);
       const l1 = await LATCH(P);
       rec.ok(`2b. ${label}: one press: the latch active on it, locked, attacking with no thumb down, the disc pressed in (${l1.phase}, ${l1.lock}, ${l1.look})`,
         !!b1 && l1.phase === 'active' && l1.id === target && l1.lock === target && l1.latchLock && l1.auto && l1.look === 'on', { ...l1, target, b1: !!b1 });
+      /* 6a (v2.3.6546): the latch wears the plain sword, raised and pressed in, never the crosshair */
+      const i1 = await FACE_ICON(P);
+      rec.ok(`6a. ${label}: Attack wears the plain sword, not the crosshair: raised (${i0.latch}: sword ${i0.strike}, crosshair ${i0.aim}) and pressed in and lit (${i1.latch}: sword ${i1.strike}, crosshair ${i1.aim})`,
+        i0.latch === 'off' && i0.strike && !i0.aim && i1.latch === 'on' && i1.strike && !i1.aim && i1.src, { i0, i1 });
 
       /* 2c: walk in with the stick (real touches, 70%, re-aimed each half
          second; the lock turns the body to it), then the fight to its death
@@ -662,7 +682,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const shown = () => ({ block: !!document.querySelector('[data-shield]'), special: !!document.querySelector('[data-special]'), ability: !!document.querySelector('[data-ability]') });
         let was = JSON.stringify(shown());
         w.dom.push({ t: Date.now(), v: JSON.parse(was) });
-        const mo = w.mo = new MutationObserver(() => { const n = JSON.stringify(shown()); if (n !== was) { was = n; w.dom.push({ t: Date.now(), v: JSON.parse(n), d: Math.round(w.at) }); } });
+        /* v2.3.6546 (part 12's Found: Block and Special changed 8 times in 3c upright while the phase held): each change says what the buttons' rules read then -- the sight, the latch, the nearest live monster, the last hurt, the shield, the frame */
+        const why = () => { const S = window._gameState && window._gameState.current; if (!S || !S.player) return null; let near = null; for (const m of S.monsters || []) { if (!m || !m.alive || (typeof m.curHp === 'number' && m.curHp <= 0)) continue; const d = Math.hypot(m.x - S.player.x, m.y - S.player.y); if (near == null || d < near) near = d; }
+          return { p: S._sightPhase || 'none', sAge: S._sightAt ? Date.now() - S._sightAt : null, l: S._latchPhase || 'idle', near: near == null ? null : Math.round(near), hurt: S.lastDamageTaken ? Date.now() - S.lastDamageTaken : null, up: !!S._shieldUp, f: S._frameCount || 0, sh: window.__btShieldBtn ? window.__btShieldBtn().shown : null, sp: window.__btSpecialBtn ? window.__btSpecialBtn().shown : null }; };
+        const mo = w.mo = new MutationObserver(() => { const n = JSON.stringify(shown()); if (n !== was) { was = n; w.dom.push({ t: Date.now(), v: JSON.parse(n), d: Math.round(w.at), why: why() }); } });
         mo.observe(document.body, { childList: true, subtree: true });
         let ph = null;
         clearInterval(window.__ctEdgeT);
@@ -729,7 +752,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const mid = await P.page.evaluate(() => ({ p: window._ctEdge.phase.length, d: window._ctEdge.dom.length, g: window._ctEdge.gaps.length }));
       for (let k = 0; k < 6; k++) { await walkTo(520, 300); await walkTo(435, 300); }
       const q2 = await EDGE(P);
-      const w2 = await P.page.evaluate((g0) => { const gs = window._ctEdge.gaps.slice(g0).sort((a, b) => a - b); return { phase: window._ctEdge.phase.slice(-6), dom: window._ctEdge.dom.slice(-6), frameMs: gs.length ? Math.round(gs[gs.length >> 1]) : null, frames: gs.length }; }, mid.g);
+      const w2 = await P.page.evaluate((o) => { const gs = window._ctEdge.gaps.slice(o.g).sort((a, b) => a - b); return { phase: window._ctEdge.phase.slice(-6), dom: window._ctEdge.dom.slice(o.d), frameMs: gs.length ? Math.round(gs[gs.length >> 1]) : null, frames: gs.length }; }, { g: mid.g, d: mid.d });
+      if (w2.dom.length) console.log(`  3c ${label}: the buttons changed ${w2.dom.length} times (v2.3.6546: each with what their rules read): ${JSON.stringify(w2.dom)}`);   /* v2.3.6546: every change in 3c, not the last six */
       const name3c = `3c. ${label}: back and forth between 435 and 520 px six times: no change of the phase (${q2.phases - mid.p}) or the buttons (${q2.doms - mid.d}), still sighted with the line`;
       const edgeHeld = q2.phases === mid.p && q2.doms === mid.d && q2.phase === 'sighted' && q2.block && q2.special && q2.line && q2.line.drawn && !q2.lost;
       /* v2.3.6544 (TRAPS 200): the sight holds 400 ms past its last sighting (sight.js SIGHT.HOLD_MS), counted on the
@@ -787,6 +811,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
         }
         rec.ok(`2f. the mode off (mode ${after && after.mode}): the right half is the held attack again (held: ${!!held}; lifted: ${after && after.auto}), no data-latch`,
           !!z && !!held && after && !after.auto && after.mode === 4 && after.look === null, { z, held, after });
+        const iq = await FACE_ICON(Q);
+        rec.ok(`6b. the mode off: the disc wears the crosshair as today (${iq.aim}), no sword drawn on it (${iq.strike}, in the page: ${iq.src})`,
+          iq.aim && !iq.strike && !iq.src, iq);
         /* 3e (v2.3.6543): the mode off, nothing in sight: the resolver hides
            nothing (Block and Special by their own rules alone) and no sight
            line is drawn */
@@ -863,6 +890,48 @@ export async function run({ browser, wsPort, webPort, rec }) {
         }
       } else rec.ok('2f. the mode off: in the Wheel (guard)', false, inQ);
     }
+    /* ── PART 6 (v2.3.6546): THE LEFT STICK'S ZONES ON THE OWNER'S PHONE ──
+       The owner, 2026-11-24, on an iPhone 14 Pro (430x775 CSS px at 3x):
+       "directional facing (no movement) isn't working with left joystick based
+       on press distance".  A slow push west, one CSS px a touch move, from
+       where the thumb landed (the disc's centre), upright and sideways, and
+       upright again with `?turnzone=50`: where the dead zone ends, where TURN
+       ends and where the rim is, in CSS px, read off the page's own phase
+       (S._stickPhase) after each move.  The numbers are stickZones.js's
+       (DEAD 12%, TURN 30% of the disc's DRAWN radius): this checks the page
+       keeps them, and prints them for the owner. */
+    for (const [label, viewport, q] of [['upright', { width: 430, height: 775 }, 'manual=5'], ['sideways', { width: 775, height: 430 }, 'manual=5'], ['upright, ?turnzone=50', { width: 430, height: 775 }, 'manual=5&turnzone=50']]) {
+      const Z = await H.newPlayer(browser, { name: 'Zonebro' + players.length, wsPort, webPort, viewport, touch: true, dpr: 3, world: 'wheel', query: q });
+      players.push(Z);
+      Z.page.on('pageerror', (e) => errs.push('6 ' + label + ': ' + String((e && e.message) || e).slice(0, 200)));
+      await H.enterWorld(Z);
+      const inZ = await H.waitFor(Z, (S) => ({ zone: S.currentZone, loading: !!S._zoneLoading }), (v) => v.zone === 'wheel' && !v.loading, { timeout: 150000, label: 'in the Wheel' }).catch(() => null);
+      if (!inZ) { rec.ok(`6c. ${label}: in the Wheel (guard)`, false, null); continue; }
+      await Z.page.waitForTimeout(1500);
+      const cz = await Z.ctx.newCDPSession(Z.page);
+      const tz = (type, pts) => cz.send('Input.dispatchTouchEvent', { type, touchPoints: pts });
+      const DZ = await DISC(Z);
+      if (!DZ.base) { rec.ok(`6c. ${label}: the left disc on screen (guard)`, false, DZ); continue; }
+      const RZ = DZ.base.w / 2, cc = { x: DZ.base.x, y: DZ.base.y, id: 6 };
+      const turn = q.indexOf('turnzone=50') >= 0 ? 0.5 : 0.3;
+      let deadEnd = null, turnEnd = null, last = 'rest';
+      await tz('touchStart', [cc]);
+      await Z.page.waitForTimeout(80);
+      for (let px = 1; px <= Math.ceil(RZ) + 2; px++) {
+        await tz('touchMove', [{ x: cc.x - px, y: cc.y, id: 6 }]);
+        const ph = await H.readState(Z, (S) => S._stickPhase || 'rest');
+        if (last === 'rest' && ph !== 'rest') deadEnd = px - 1;
+        if (last !== 'walk' && ph === 'walk') turnEnd = px - 1;
+        last = ph;
+      }
+      await tz('touchEnd', [{ x: cc.x - Math.ceil(RZ) - 2, y: cc.y, id: 6 }]);
+      /* a CSS px a step: each border read to the whole px at or below it */
+      const okDead = deadEnd === Math.floor(0.12 * RZ), okTurn = turnEnd === Math.floor(turn * RZ);
+      console.log(`  6c ${label} (${viewport.width}x${viewport.height}, 3x): the dead zone ends at ${deadEnd} px, TURN ends at ${turnEnd} px (a band of ${turnEnd != null && deadEnd != null ? turnEnd - deadEnd : '?'} px), the rim at ${RZ} px; the ring drawn at ${DZ.ring && DZ.ring.w / 2} px`);
+      rec.ok(`6c. ${label}: a slow push from where the thumb landed: nothing to ${deadEnd} px, TURN to ${turnEnd} px, walking past it, the rim at ${RZ} px (the drawn radius; ${Math.round(turn * 100)}% of it ${(turn * RZ).toFixed(1)} px)`,
+        okDead && okTurn && last === 'walk' && !!DZ.ring && Math.abs(DZ.ring.w / 2 - turn * RZ) < 1.5, { deadEnd, turnEnd, RZ, ring: DZ.ring, last });
+    }
+
     rec.ok('1g/2g. no page errors', errs.length === 0, errs.slice(0, 4));
   } finally {
     for (const P of players) await P.ctx.close().catch(() => {});

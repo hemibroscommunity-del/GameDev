@@ -7657,6 +7657,23 @@ html[data-orient="landscape"] .bt-zone-banner .bt-zone-banner__name{font-size:14
 .bt-rjoy-base[data-ricon="w-great-sword-blacksteel"] .bt-rjoy-aim,
 .bt-rjoy-base[data-ricon="w-bow"] .bt-rjoy-aim,
 .bt-rjoy-base[data-ricon="w-staff"] .bt-rjoy-aim{display:block}
+/* v2.3.6546: the two buttons' Attack (data-latch: mode 5 only) wears the plain
+   sword for an attack, never the reticle (TouchControls bt-rjoy-strike; the owner:
+   "change icon to general attack icon right now it's a crosshair") */
+.bt-rjoy-base[data-latch] .bt-rjoy-aim{display:none}
+.bt-rjoy-base[data-latch][data-ricon="melee"] .bt-rjoy-strike,
+.bt-rjoy-base[data-latch][data-ricon="ranged"] .bt-rjoy-strike,
+.bt-rjoy-base[data-latch][data-ricon="staff"] .bt-rjoy-strike,
+.bt-rjoy-base[data-latch][data-ricon="w-sword"] .bt-rjoy-strike,
+.bt-rjoy-base[data-latch][data-ricon="w-sword-copper"] .bt-rjoy-strike,
+.bt-rjoy-base[data-latch][data-ricon="w-sword-iron"] .bt-rjoy-strike,
+.bt-rjoy-base[data-latch][data-ricon="w-sword-blacksteel"] .bt-rjoy-strike,
+.bt-rjoy-base[data-latch][data-ricon="w-great-sword"] .bt-rjoy-strike,
+.bt-rjoy-base[data-latch][data-ricon="w-great-sword-copper"] .bt-rjoy-strike,
+.bt-rjoy-base[data-latch][data-ricon="w-great-sword-iron"] .bt-rjoy-strike,
+.bt-rjoy-base[data-latch][data-ricon="w-great-sword-blacksteel"] .bt-rjoy-strike,
+.bt-rjoy-base[data-latch][data-ricon="w-bow"] .bt-rjoy-strike,
+.bt-rjoy-base[data-latch][data-ricon="w-staff"] .bt-rjoy-strike{display:block}
 /* v2.3.3920: a thumb on the stick: the reticle and its rod (the pointer) light */
 .bt-rjoy-aim .bt-aim-ring,.bt-rjoy-aim .bt-aim-tick{transition:stroke 90ms linear}
 .bt-rjoy-base[data-pressed="1"] .bt-rjoy-aim .bt-aim-ring,.bt-rjoy-base[data-pressed="1"] .bt-rjoy-aim .bt-aim-tick{stroke:#FFF3C4}
