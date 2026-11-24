@@ -277,6 +277,7 @@ const FORMS = {
   'tapthrough': '',
   'teechip': '0',
   'textkeep': '',
+  'thawjudge': '0',
   'tod': '*',
   'toolsolid': '0|off|false',
   'townchat': '0',
