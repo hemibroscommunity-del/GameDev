@@ -23,9 +23,11 @@
  *   4. THE SCAN IS WHOLE: every file of server/src (server/test/src-walk.mjs,
  *      the doors' list), the table's own included, parses, and the three
  *      levers are the table's;
- *   5. THE SCAN SEES A PLANT: sixteen planted spellings (sitting 58's six,
- *      the first scan's four, BK's six) each come out red the way they
- *      should, and three honest uses (a key list, another field) do not.
+ *   5. THE SCAN SEES A PLANT: thirty-one planted spellings (sitting 58's
+ *      six, the first scan's four, BK's six, sitting 59's four, BK's six
+ *      more, and five that hold the stops' allow lists: THE STOPS, NAMED)
+ *      each come out red the way they should, and three honest uses (a key
+ *      list, another field) do not.
  *
  * Its scope, said once: the scan starts where the rows come from (an import
  * of PLAYER_ROADS or of the module whole, a dynamic import of the table, the
@@ -44,16 +46,27 @@
  *   - BK's: `export const _l = (r, k) => PLAYER_ROADS[r][k];` -> FAIL 1 (not followed)
  *   - BK's: `const charge = ({ fee }) => fee; export const _c = (r) => charge(PLAYER_ROADS[r]);` -> FAIL 1
  *   - `fee: Object.freeze({ wired: true, ...` in playerroads.js LEVERS -> FAIL 2
+ * v2.3.6466 (sitting 59's four, green before, and BK's own), each in xfer.js
+ * green on the old guard and red on this one, xfer.js restored green:
+ *   - `export const _p = (r) => PLAYER_ROADS[r].valueOf().fee;` -> FAIL 1
+ *   - `Object.values(PLAYER_ROADS).forEach((row, i, all) => all[i].fee)` -> FAIL 1
+ *   - `import { PLAYER_ROADS as _Q } from './playerroads.js?x'; ... _Q.duel.fee` -> FAIL 1
+ *   - `const _tag = (s, row) => row.fee; ... _tag\`${PLAYER_ROADS.duel}\`` -> FAIL 1 (lost)
+ *   - BK's: `import { PLAYER_ROADS as _Q } from './playerroads'` (no extension) -> FAIL 1
+ *   - BK's: `_cache = PLAYER_ROADS[r]; return _cache.pace;` (never declared) -> FAIL 1 (lost)
+ * Its mutants (every line v2.3.6466 added, weakened one at a time): sixteen
+ * die on a plant of §5.  One lives, said: a TaggedTemplateExpression added
+ * to STOP_AT, because the tagged check runs before the table.
  *
  * Run: node tools/guards/road-levers.test.mjs (from the repository's root;
  * server/test/run.mjs runs it with every guard). */
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, posix } from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
-const { srcFiles, SRC_PATH } = await import(new URL('../../server/test/src-walk.mjs', import.meta.url));
+const { srcFiles, SRC_PATH, LEFT_OUT_HOLDS } = await import(new URL('../../server/test/src-walk.mjs', import.meta.url));
 const { LEVERS, PLAYER_ROADS } = await import(new URL('../../server/src/playerroads.js', import.meta.url));
 
 let failures = 0;
@@ -74,7 +87,57 @@ for (const pkg of ['package.json', 'server/package.json']) {
 if (!babel) { console.log('FAIL 4. @babel/parser and @babel/traverse are installed (npm install at the root)'); process.exit(1); }
 
 const NAMES = Object.keys(LEVERS);
-const fromTable = (src) => typeof src === 'string' && /(^|\/)playerroads\.js$/.test(src);
+const files = srcFiles();
+/* the files an import may lead to: the walk's, and the ones its folders left
+   out hold by name (vendor/: the signer, never ours and never the table's) */
+const SRC_SET = new Set([...files, ...Object.entries(LEFT_OUT_HOLDS).flatMap(([d, fs]) => fs.map((f) => d + '/' + f))]);
+
+/* ══════════ THE STOPS, NAMED (v2.3.6466, sitting 59) ══════════
+ * Sitting 59 found four spellings green: `row.valueOf().fee` (a method of
+ * Object.prototype was a stop, and valueOf hands the row back), a forEach's
+ * third parameter (the list itself, never bound), an import of
+ * './playerroads.js?x' (a text pattern placed the table), a tagged template
+ * (every template was a stop, but a tagged one CALLS its tag with the row).
+ * Each was a place the scan stopped following without saying what it
+ * stopped on.  Now every stop is a NAMED form in one of the lists below;
+ * any other appearance of the value is LOST, and lost is red:
+ *   - a key of the module whole: PLAYER_ROADS, or another export by name;
+ *   - a key of a row: a lever (read), or another field the rows have;
+ *   - a method of Object.prototype on the table or a row: valueOf hands the
+ *     value back (followed), the five in PROTO_ENDS give a boolean or a
+ *     string; the rest (`__lookupGetter__`, ...) are lost;
+ *   - an import's source: placed as a file of server/src (a query or a hash
+ *     cut off, no extension tried with '.js'), or a package; one the scan
+ *     cannot place is lost;
+ *   - the forms in STOP_AT, each with its why. */
+const MOD_OTHERS = new Set(Object.keys(await import(new URL('../../server/src/playerroads.js', import.meta.url))).filter((k) => k !== 'PLAYER_ROADS'));
+const ROW_FIELDS = new Set(Object.values(PLAYER_ROADS).flatMap((row) => Object.keys(row)).filter((k) => !NAMES.includes(k)));
+const PROTO_ENDS = new Set(['hasOwnProperty', 'propertyIsEnumerable', 'isPrototypeOf', 'toString', 'toLocaleString']);
+const STOP_AT = {
+  MemberExpression: ['property'], OptionalMemberExpression: ['property'],   /* the value as a key: a string */
+  UnaryExpression: ['argument'],             /* typeof, !, void, -, delete: a primitive */
+  ExpressionStatement: ['expression'],       /* the value dropped */
+  TemplateLiteral: ['expressions'],          /* an untagged template: a string (a tagged one is a call: lost, before this) */
+  ForInStatement: ['right'],                 /* its keys only */
+  IfStatement: ['test'], WhileStatement: ['test'], DoWhileStatement: ['test'], ForStatement: ['test'], SwitchStatement: ['discriminant'],
+  ConditionalExpression: ['test'],           /* a truth test */
+  BinaryExpression: ['left', 'right'],       /* a comparison or a sum: a primitive (`in` names a key, before this) */
+  AssignmentExpression: ['left'],            /* the name written over: the new value is not the table's */
+};
+/* where an import's source leads: 'table', 'file' (another of server/src),
+   'package', or 'lost' (a relative path that is no file -- an escape, a
+   folder --, or a '#' map of a package.json) */
+function placeImport(src, file) {
+  if (typeof src !== 'string') return 'lost';
+  if (src.startsWith('#')) return 'lost';
+  if (!src.startsWith('.') && !src.startsWith('/')) return 'package';
+  const p = posix.normalize(posix.join(posix.dirname(file), src.replace(/[?#].*$/, '')));
+  for (const c of [p, p + '.js']) {
+    if (c === 'playerroads.js') return 'table';
+    if (SRC_SET.has(c)) return 'file';
+  }
+  return 'lost';
+}
 
 /* ══════════ THE SCAN: a value followed, not a name looked for ══════════
  * v2.3.6463 (sitting 58's hold): the first scan looked for `.fee` in a file
@@ -98,9 +161,9 @@ const PROTO = new Set(Object.getOwnPropertyNames(Object.prototype));
 const ITER = new Set(['forEach', 'map', 'filter', 'some', 'every', 'find', 'findLast', 'flatMap', 'findIndex', 'findLastIndex']);
 /* the depth a key leads to: 'read' (a lever), a depth, 'stop', or 'lost' */
 function step(depth, key) {
-  if (depth === 'mod') return key === 'PLAYER_ROADS' ? 'table' : key === null ? 'lost' : 'stop';
-  if (depth === 'table') return key === null ? 'row' : PROTO.has(key) ? 'stop' : 'row';
-  if (depth === 'row') return key === null ? 'lost' : NAMES.includes(key) ? 'read' : 'stop';
+  if (depth === 'mod') return key === 'PLAYER_ROADS' ? 'table' : MOD_OTHERS.has(key) ? 'stop' : 'lost';
+  if (depth === 'table') return key === null ? 'row' : PROTO.has(key) ? 'lost' : 'row';
+  if (depth === 'row') return NAMES.includes(key) ? 'read' : ROW_FIELDS.has(key) ? 'stop' : 'lost';
   if (depth === 'rows' || depth === 'pairs') return key === null || /^\d+$/.test(key) ? (depth === 'rows' ? 'row' : 'pair') : key === 'length' ? 'stop' : 'lost';
   if (depth === 'pair') return key === '1' ? 'row' : key === '0' || key === 'length' ? 'stop' : 'lost';
   return 'lost';   /* a promise of the module: only `await` follows it */
@@ -137,8 +200,8 @@ function scan(code, file, isTable = false) {
     else if (to !== 'stop') flow(path, to);
   };
   const inExport = (p) => p && p.parentPath && p.parentPath.parentPath && /^Export(Named|Default)Declaration$/.test(p.parentPath.parentPath.node.type);
-  function followBinding(b, depth, origin = false) {
-    if (!b) return;
+  function followBinding(b, depth, origin, from) {
+    if (!b) return lose(from, 'stored in a name the scan cannot find (never declared)');
     if (!origin && inExport(b.path)) passes.push(at(b.path.node) + ': exports a value holding the rows');
     /* babel lists `export const X = ...` itself among X's references: the
        declaration, not a use (its export is the pass-on above) */
@@ -147,7 +210,7 @@ function scan(code, file, isTable = false) {
   function bindPattern(p, depth) {
     const n = p.node;
     if (!n) return;
-    if (n.type === 'Identifier') return followBinding(p.scope.getBinding(n.name), depth);
+    if (n.type === 'Identifier') return followBinding(p.scope.getBinding(n.name), depth, false, p);
     if (n.type === 'AssignmentPattern') return bindPattern(p.get('left'), depth);
     if (n.type === 'ObjectPattern') {
       for (const pp of p.get('properties')) {
@@ -235,6 +298,7 @@ function scan(code, file, isTable = false) {
         const fn = cb && /Function/.test(cb.node.type) ? cb : cb && cb.node.type === 'Identifier' ? fnOf(cb.scope.getBinding(cb.node.name)) : null;
         if (!fn) return lose(from, 'a callback the scan cannot see into');
         bindParam(fn, 0, elem);
+        bindParam(fn, 2, depth);   /* the list itself (sitting 59: `all[i].fee`) */
         if (key === 'filter') flow(call, depth);
         else if (key === 'find' || key === 'findLast') flow(call, elem);
         return;
@@ -244,8 +308,12 @@ function scan(code, file, isTable = false) {
       if (['includes', 'indexOf', 'join'].includes(key)) return;
       return lose(from, 'a list method the scan does not follow (' + key + ')');
     }
-    if ((depth === 'table' || depth === 'row') && key !== null && PROTO.has(key)) return;
-    if (depth === 'mod' && key !== null && key !== 'PLAYER_ROADS') return;   /* another export: its own return is held in the table's file */
+    if ((depth === 'table' || depth === 'row') && key !== null && PROTO.has(key)) {
+      if (key === 'valueOf') return flow(call, depth);   /* hands the value back (sitting 59) */
+      if (PROTO_ENDS.has(key)) return;
+      return lose(from, 'a method of Object.prototype the scan does not follow (' + key + ')');
+    }
+    if (depth === 'mod' && MOD_OTHERS.has(key)) return;   /* another export: its own return is held in the table's file */
     lose(from, 'a method of ' + depth + ' the scan does not follow (' + key + ')');
   }
   function flow(path, depth) {
@@ -259,34 +327,29 @@ function scan(code, file, isTable = false) {
       if ((up.isCallExpression() || up.isOptionalCallExpression()) && par.key === 'callee') return methodCall(up, depth, k, par);
       return go(par, step(depth, k), k);
     }
-    if ((t === 'MemberExpression' || t === 'OptionalMemberExpression') && path.key === 'property') return;
     if (t === 'CallExpression' || t === 'OptionalCallExpression' || t === 'NewExpression') {
       if (path.key === 'callee') return lose(path, 'called');
       if (t === 'NewExpression') return lose(path, 'passed to `new`');
       return callArg(par, path.key, depth, path);
     }
     if (t === 'VariableDeclarator' && path.key === 'init') return bindPattern(par.get('id'), depth);
-    if (t === 'AssignmentExpression') {
-      if (path.key === 'left') return;
+    if (t === 'AssignmentExpression' && path.key === 'right') {
       const l = par.get('left');
-      if (l.isIdentifier()) followBinding(l.scope.getBinding(l.node.name), depth);
+      if (l.isIdentifier()) followBinding(l.scope.getBinding(l.node.name), depth, false, l);
       else if (l.isMemberExpression()) lose(l, 'stored into a property');
       else bindPattern(l, depth);
       return flow(par, depth);
     }
-    if (t === 'ConditionalExpression') return path.key === 'test' ? undefined : flow(par, depth);
+    if (t === 'ConditionalExpression' && path.key !== 'test') return flow(par, depth);
     if (t === 'LogicalExpression' || t === 'ParenthesizedExpression' || t === 'TSNonNullExpression' || t === 'TSAsExpression') return flow(par, depth);
     if (t === 'SequenceExpression') return path.key === pn.expressions.length - 1 ? flow(par, depth) : undefined;
     if (t === 'AwaitExpression') return flow(par, depth === 'promise' ? 'mod' : depth);
-    if (t === 'UnaryExpression' || t === 'ExpressionStatement' || t === 'TemplateLiteral' || t === 'ForInStatement'
-      || (/^(If|While|DoWhile|For|Switch)Statement$/.test(t) && (path.key === 'test' || path.key === 'discriminant'))) return;
-    if (t === 'BinaryExpression') {
-      if (pn.operator === 'in' && path.key === 'right') {
-        const k = constStr(pn.left, par.scope);
-        return go(par, k === null ? 'stop' : step(depth, k), k);
-      }
-      return;
+    if (t === 'TemplateLiteral' && par.parentPath.isTaggedTemplateExpression()) return lose(path, 'a tagged template: its tag is called with the value');
+    if (t === 'BinaryExpression' && pn.operator === 'in' && path.key === 'right') {
+      const k = constStr(pn.left, par.scope);
+      return go(par, k === null ? 'stop' : step(depth, k), k);
     }
+    if (STOP_AT[t] && STOP_AT[t].includes(path.listKey || path.key)) return;
     if (t === 'ReturnStatement') return returned(path.getFunctionParent(), depth, path);
     if (t === 'ArrowFunctionExpression' && path.key === 'body') return returned(par, depth, path);
     if (t === 'ExportSpecifier' || t === 'ExportDefaultDeclaration') return passes.push(at(pn) + ': exports a value holding the rows');
@@ -301,8 +364,8 @@ function scan(code, file, isTable = false) {
   /* where the rows come from: an import of the table (named, the module
      whole), a dynamic import of it, and in the table's file its own binding */
   for (const n of ast.program.body) {
-    if (n.type === 'ExportAllDeclaration' && fromTable(n.source && n.source.value)) passes.push(file + ': export * from the table');
-    if (n.type === 'ExportNamedDeclaration' && n.source && fromTable(n.source.value)) {
+    if (n.type === 'ExportAllDeclaration' && placeImport(n.source && n.source.value, file) === 'table') passes.push(file + ': export * from the table');
+    if (n.type === 'ExportNamedDeclaration' && n.source && placeImport(n.source.value, file) === 'table') {
       for (const s of n.specifiers || []) {
         const local = s.local && (s.local.name || s.local.value);
         if (local === 'PLAYER_ROADS' || s.type === 'ExportNamespaceSpecifier') passes.push(file + ': passes PLAYER_ROADS on');
@@ -311,15 +374,18 @@ function scan(code, file, isTable = false) {
   }
   babel.traverse(ast, {
     Program(p) {
-      if (isTable) followBinding(p.scope.getBinding('PLAYER_ROADS'), 'table', true);
+      if (isTable) followBinding(p.scope.getBinding('PLAYER_ROADS'), 'table', true, p);
     },
-    ImportDeclaration(p) {
-      if (!fromTable(p.node.source.value)) return;
+    'ImportDeclaration|ExportAllDeclaration|ExportNamedDeclaration'(p) {
+      if (!p.node.source) return;
+      const place = placeImport(p.node.source.value, file);
+      if (place === 'lost') { lose(p, 'an import the scan cannot place (' + p.node.source.value + ')'); return; }
+      if (place !== 'table' || !p.isImportDeclaration()) return;
       for (const s of p.get('specifiers')) {
         const b = p.scope.getBinding(s.node.local.name);
-        if (s.isImportNamespaceSpecifier() || s.isImportDefaultSpecifier()) followBinding(b, 'mod');
-        else if ((s.node.imported.name || s.node.imported.value) === 'PLAYER_ROADS') followBinding(b, 'table');
-        else if ((s.node.imported.name || s.node.imported.value) === 'default') followBinding(b, 'mod');
+        if (s.isImportNamespaceSpecifier() || s.isImportDefaultSpecifier()) followBinding(b, 'mod', false, s);
+        else if ((s.node.imported.name || s.node.imported.value) === 'PLAYER_ROADS') followBinding(b, 'table', false, s);
+        else if ((s.node.imported.name || s.node.imported.value) === 'default') followBinding(b, 'mod', false, s);
       }
     },
     'CallExpression|ImportExpression'(p) {
@@ -327,8 +393,9 @@ function scan(code, file, isTable = false) {
       if (!isImport) return;
       const src = p.node.type === 'ImportExpression' ? p.node.source : p.node.arguments[0];
       const s = constStr(src, p.scope);
-      if (s === null) lose(p, 'a dynamic import the scan cannot name');
-      else if (fromTable(s)) flow(p, 'promise');
+      const place = s === null ? 'lost' : placeImport(s, file);
+      if (place === 'lost') lose(p, 'a dynamic import the scan cannot name or place');
+      else if (place === 'table') flow(p, 'promise');
     },
   });
   return { passes, reads, lost };
@@ -337,7 +404,6 @@ function scan(code, file, isTable = false) {
 /* ══════════ THE SCAN ══════════ */
 /* every file of server/src, the table's own included (a helper beside the
    table is a reader like any other: sitting 58) */
-const files = srcFiles();
 const broken = [];
 const readers = Object.fromEntries(NAMES.map((k) => [k, []]));
 const passed = [];
@@ -387,6 +453,22 @@ const PLANTS = {
   'a row put in an object (BK)': [IMP + 'const box = { row: PLAYER_ROADS.duel };\nexport const f = () => box;', 'lost'],
   'a row returned by an exported function of the table (BK)': ['export const PLAYER_ROADS = {};\nexport function roadRow(r) { return PLAYER_ROADS[r]; }', 'pass', true],
   'the rows of Object.values, a callback (BK)': [IMP + 'export const fees = () => Object.values(PLAYER_ROADS).some((row) => row.fee > 0);', 'read'],
+  'valueOf, which hands the row back (sitting 59)': [IMP + 'export const f = (r) => PLAYER_ROADS[r].valueOf().fee;', 'read'],
+  'a callback\'s third parameter, the list (sitting 59)': [IMP + 'export const f = () => Object.values(PLAYER_ROADS).forEach((row, i, all) => all[i].fee);', 'read'],
+  'an import with a query (sitting 59)': ["import { PLAYER_ROADS } from './playerroads.js?x';\nexport const f = PLAYER_ROADS.duel.fee;", 'read'],
+  'a tagged template (sitting 59)': [IMP + 'const tag = (s, row) => row.fee;\nexport const f = tag`${PLAYER_ROADS.duel}`;', 'lost'],
+  'an import with no extension (BK)': ["import { PLAYER_ROADS } from './playerroads';\nexport const f = PLAYER_ROADS.duel.hold;", 'read'],
+  'a row stored in a name never declared (BK)': [IMP + 'export function f(r) { cache = PLAYER_ROADS[r]; return cache.pace; }', 'lost'],
+  'an import through a package\'s # map (BK)': ["import { PLAYER_ROADS } from '#roads';\nexport const f = PLAYER_ROADS.duel.fee;", 'lost'],
+  'an import with an escape, which node decodes (BK)': ["import { PLAYER_ROADS } from './player%72oads.js';\nexport const f = PLAYER_ROADS.duel.fee;", 'lost'],
+  'a dynamic import with a query (BK)': ["export const f = async () => (await import('./playerroads.js?v=2')).PLAYER_ROADS.duel.fee;", 'read'],
+  'the table\'s own binding renamed (BK)': ['const ROADS = {};\nexport { ROADS as PLAYER_ROADS };\nexport const f = (r) => ROADS[r].fee;', 'lost', true],
+  /* the allow lists hold: a key or method outside each is red, not a stop */
+  'a field no row has (a list holds)': [IMP + 'export const f = PLAYER_ROADS.duel.fees;', 'lost'],
+  'a method of Object.prototype off the table, uncalled (a list holds)': [IMP + 'export const f = PLAYER_ROADS.constructor;', 'lost'],
+  'a method of Object.prototype outside PROTO_ENDS (a list holds)': [IMP + "export const f = PLAYER_ROADS.duel.__lookupGetter__('fee');", 'lost'],
+  'a key the module whole does not export (a list holds)': ["import * as R from './playerroads.js';\nexport const f = R.PLAYER_ROAD;", 'lost'],
+  'a method the module whole does not export (a list holds)': ["import * as R from './playerroads.js';\nexport const f = R.roadsOf('duel');", 'lost'],
 };
 const missed = [];
 for (const [name, [code, want, isTable]] of Object.entries(PLANTS)) {
