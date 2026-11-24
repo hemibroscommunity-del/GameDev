@@ -8,6 +8,13 @@ here. Sittings 1 to 55 are in the plan's own notes and in
 
 | Sitting | Step | Merged | The box waits for |
 |---|---|---|---|
+| 61 | 8.1 | listed at 61: LF's #2273, #2320, #2329 (60's hold mended) | (the box: red on `main` zero; LF's next job, `thaw-carried` §10 on the judged path) |
+| 61 | 10.1, 11.2, 10.8 | listed at 61: WHO's #2317, #2325, #2333 | (the debts: `docs/plan/debts.md` WHO) |
+| 61 | 2.3 | listed at 61: PH's #2279, #2291, #2297, #2306, #2314, #2318, #2323, #2332 (60's three holds mended) | the governor at a mild heat (main's own; the owner's phone test, `finish.md` part 9 item 1) |
+| 61 | 5.4b | listed at 61: CT's #2308, #2327, #2330 | CT item 6 (sprint on the stick, sitting 62); the owner's play (part 9 item 7) |
+| 61 | (no box) | listed at 61: VW's #2331 (the default view 0.79, the owner's pick) | |
+| 61 | 4.4, 4.5 | nothing new | BK's #2326 (held: red with PH's #2279, `road-levers` cannot place `report.js:131`'s import of `../../src/game/switches.js`) |
+| 61 | (no box) | sitting 60: every one of its 17 (LF #2321; WHO #2285, #2316; WL #2286 to #2322; CT #2293; DG #2295 to #2324) | 5.2b, 5.3: the phase-table's fence made a wall (WL's next PR) |
 | 60 | 8.1 | listed at 60: LF's #2321 (elemental2 pinned) | #2273, #2320 (held: red with WL's #2286, wsClient.js 2599 statements over its new line 2598; the review itself passed) |
 | 60 | 10.1, 11.2 | listed at 60: WHO's #2285, #2316 (59's bug mended) | #2317 (held: red with DG's #2313, `traceNote` not a `wire-gaps` taker); #2325, WHO's mend of 59's holes (sitting 61) |
 | 60 | 5.2b, 5.3 | listed at 60: WL's #2286, #2287, #2290, #2298, #2302, #2303, #2322 | the phase-table's fence made a wall (WL's next PR) |
