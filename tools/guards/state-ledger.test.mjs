@@ -37,6 +37,15 @@
  *   7. the rows card D suggests a reset for (not `never`, not `?`) still
  *      `sitting` with no `kept:` may only fall: SITTING_LINE, which each of
  *      card L's reset PRs lowers to its count (its card's PR 4).
+ *   8. (v2.3.6522, card WL PR 3) OWNED STATE: a row of OWNED (a field
+ *      pinned to its system) is written only from its system's files, read
+ *      off the code (the script's writes), never off the ledger's writers
+ *      column: a second writer is refused, not recorded.  OWNED_LINE is its
+ *      count and only rises (a row is taken off by the gatekeeper alone).
+ *      A row whose writers ALL moved to one other system is re-pinned by
+ *      hand in the same PR (moving is not crossing); 8b counts the fields
+ *      with an enforced reset that OWNED does not hold (only falls); 8c
+ *      counts the fields WAITING for one owner (only falls).
  * Printed, never failed: the unlisted rows by system, the rows of files the
  * map has not placed (`unsorted`: no ledger can take them), and a listed row
  * whose system has moved since it was listed (it stays in its file).
@@ -83,6 +92,24 @@
  *  12. `_pointsResetAskedAt`'s `kept:` taken off (469, line 468) -> FAIL 7
  *  13. the reset given inline, `resetOn('zone', (S) => {...}, 'audio')`
  *                                                         -> FAIL 6
+ * v2.3.6522 (card WL PR 3), each tried by hand, 2026-11-23:
+ *  14. `S._deathCard = null;` in groundLoot.js updateGroundLootPickup (the
+ *      shape review's plant 1)                          -> FAIL 5 and 8
+ *  15. the same, then `state-census.mjs --ledger life --write` (the way
+ *      out that recorded it)                            -> FAIL 8 alone
+ *  16. `if (S._deathCard) S._deathCard.lost = 0;` there (a write inside it)
+ *                                                         -> FAIL 8
+ *  17. `_deathCard` taken off OWNED                       -> FAIL 8 (440,
+ *      the line 441)
+ *  18. `Object.assign(S, { _deathCard: ... })` there; and a helper
+ *      `_zz(state) { ({ v: state._deathCard } = o); }` called `_zz(S)`
+ *      there (a destructured write through a renamed name)  -> FAIL 8
+ *  19. `_shotEnds` pinned to debug (every write is audio's): FAIL 8 says
+ *      "moved, not crossed -- re-pin its row to audio"
+ *  NOT CAUGHT: `Object.assign(S, z)` with z a variable holding the key, and
+ *  a computed key (`{ ['_deathCard']: null }`): the script lists them as
+ *  "merged with keys not written out" (its WHOLE) and its --json does not
+ *  carry them, so no row can be refused for them here.
  *
  * Run from the repository's root: node tools/guards/state-ledger.test.mjs
  *   --live   insist on the script: fail where it cannot load (no fallback)
@@ -376,5 +403,204 @@ if (census) {
   info('sitting with a suggestion, by system: ' + [...bySys].sort((a, b) => a[1] - b[1] || (a[0] < b[0] ? -1 : 1)).map(([s2, c]) => `${s2} ${c}`).join(', '));
 }
 
+/* ── 8. owned state (v2.3.6522, card WL PR 3) ──
+   For a row of OWNED, every place the code writes the field (the census
+   script's sets, its writes inside the field, and its writes through a
+   name given it) is a file of the row's system, pinned here.  The ledger's
+   writers column is not read: "make the ledger again" records a second
+   writer (5 goes green) and this stays red (shape-walls.md, plant 1).  A
+   row is taken off only in the gatekeeper's PR: OWNED_LINE is the count,
+   and it only rises.  Where the script cannot load, 8 is skipped and said
+   (--live fails it).
+   The first rows (main 0aec6482, 2026-11-23): every field whose writes sit
+   in one file today, pinned to that file's system (so the dying door's
+   _dying and _deathStart are life's, though ledgered in ui), and the
+   page's phase fields whose writes sit in one system (_inDuel: duelDoor
+   and duelPending).  Out, and why: _extraction (written from skills,
+   social, render and ui) and _pose (townsfolk and audio) have no one owner
+   yet; the fields the code never writes; a field written in a file the
+   map has not placed.  Card CT's fields join as they land (the
+   orchestrator names them).
+   v2.3.6522 (the orchestrator, 2026-11-24, before sitting 57): stickX and
+   stickY taken out (443 -> 441), so this PR and card CT's #2293 merge in
+   either order: with both on main the two fields have writers in two
+   systems (input's stickDrive in game/stickZones.js, ui's joystick
+   handlers in BroTown.jsx), which OWNED must not claim to wall.  They wait
+   in WAITING beside _extraction and _pose. */
+const OWNED = Object.freeze({
+  audio: ['_shotEnds'],
+  combat: ['_abilityFx', '_acc', '_accState', '_bfPose', '_burnUntil',
+    '_chillUntil', '_climbNoteAt', '_dazeNoteAt', '_dazeUntil',
+    '_dmgFromMonster', '_dodgeFlash', '_engaged', '_engagedGapAt',
+    '_engagedId', '_fractureStacks', '_fractureUntil', '_frozenAt',
+    '_frozenUntil', '_hasDodged', '_killXpFlewAt', '_killXpKillAt',
+    '_killXpWait', '_lockDroppedAt', '_lockDroppedWhy', '_lungeIFramesUntil',
+    '_mc', '_offlineNoteAt', '_peerDmgLastRel', '_peerDmgQueue',
+    '_peerDmgZone', '_perimeterPx', '_poisonUntil', '_pvpSwSent',
+    '_pvpSwSentBy', '_shieldDroppedAt', '_shieldDroppedWhy', '_shieldThreat',
+    '_shieldUp', '_shockAt', '_shockFrom', '_shockUntil', '_slowMult',
+    '_slowUntil', '_soakUntil', '_stf', '_stuckNoteAt', '_stuckUntil',
+    '_targetCands', '_thornUntil', '_wardAt', '_wardElem', '_wardPct',
+    '_wobbleFrom', '_wobbleUntil'],
+  desktop: ['_dblTapRolls', '_eTalkHints', '_interactNow', '_isDesktop',
+    '_teachNode', 'keys'],
+  economy: ['_bank', '_bankPending', '_dailyRewards', '_dlCredits',
+    '_dropLast', '_mail', '_mktPlaceBusy', '_revealLast', '_spinBoard',
+    '_t2Leave', '_t2Live', '_t2QuietUntil'],
+  input: ['_burstMsgAt', '_iceAttack', '_lastBurstAt', '_lastSwipe'],
+  life: ['_deathCard', '_deathStart', '_dying'],
+  liveops: ['_testMode'],
+  monsters: ['_bowShotAng', '_bowSight', '_cursedUntil', '_monNoiseAt',
+    '_ownSpecialRecent', '_playerStunUntil', '_propSwingAt', '_rpgSaveTimer',
+    '_staffCadenceMs'],
+  movement: ['_flipCount', '_jumpCount', '_jumpLandAt', '_jumpLandFx',
+    '_jumpOver', '_jumpWhy', '_lastFlip', '_lastJumpRun', '_pushY',
+    '_restAsked', '_ride', '_riseChestAsk', '_riseChestGot', '_sprint',
+    '_sprintRunOuts', '_tapAtk', '_tapAtkWhy', '_tapAttacks', '_wheelSwim'],
+  'page-thread': ['__pixiErrStreak', '_heapBurnSentAt', '_heapBurnUntil',
+    '_splitLog'],
+  quests: ['_pointsResetAskedAt', '_qcNextPoll', '_qcSeen'],
+  render: ['_blockPose', '_blockShieldBehind', '_bloodBursts',
+    '_bodyAnimDir', '_bodyAnimFrame', '_bodyAnimMirror', '_bodyDrawH',
+    '_bodyFootY', '_bodyMoving', '_bowArtReady', '_bowDir', '_bowGripDX',
+    '_bowGripDY', '_bowGripX', '_bowGripY', '_bowHoldFrame', '_bowJogLegs',
+    '_bowShowing', '_catchFlights', '_climbFrame', '_dazeGritAt',
+    '_dodgeTrail', '_dustPuffs', '_emoteHudDrop', '_facingSrc', '_farmHands',
+    '_figureScaleY', '_frozenChipAt', '_gustDustAt', '_jogBodyH',
+    '_monstersArtWait', '_monstersFarHidden', '_peerArmTex',
+    '_peerBlockPose', '_peerBowFacingsReady', '_peerShieldHeld',
+    '_peerStandGeom', '_peersCrowdHidden', '_peersFarHidden',
+    '_peersNotDrawn', '_renderFacing', '_selfBandBotY', '_selfBandHalfW',
+    '_selfBandTopY', '_selfChatTipY', '_staffTipAt', '_staffTipBehind',
+    '_staffTipX', '_staffTipY', '_standInBody', '_standInBodyH',
+    '_standInFootY', '_stormZaps', '_swordBodyH', '_swordFootY',
+    '_swordJogLegs', '_swordSwingDir', '_swordSwinging', '_waterBlows',
+    '_whirlCatch', '_worldScaleX', '_worldScaleY'],
+  session: ['_mapWatchSent', '_onlineAt'],
+  skills: ['_dealtAt', '_farmAskedAt', '_farmLastSeed', '_farmLastStep',
+    '_farmSeedPick', '_farmSteps', '_fishBoard', '_gatherHitSeq',
+    '_instantHealAt', '_lastHarvestOkAt', '_nearBed', '_petBook',
+    '_petBookRev', '_petLevelSaid', '_petLevelUps', '_petXpGained', '_pvpAt',
+    '_smithing', '_strikeShown', '_trapArms', '_trapCatches', '_trapLast',
+    '_trapReveal', '_trapRolls', '_trapTries', '_trapsMade', '_wardHits',
+    '_wardSaid', '_wardSaidAt'],
+  social: ['_activeDuel', '_arenaInvolved', '_arenaMatch',
+    '_arenaTournamentId', '_diceAskAt', '_inDuel', '_nmlFoes', '_party',
+    '_pvpBlows', '_pvpBouts', '_pvpHitBy', '_pvpSkullType', '_pvpSkullUntil',
+    '_race', '_raceLil', '_serverMuteNames', '_serverMutes', '_spar'],
+  townsfolk: ['_emoteAt', '_emoteMove', '_idleChatAt', '_idleChatSeq',
+    'emote'],
+  ui: ['__aliveAt', '__introLiftedAt', '__introLiftedZone', '__wdArmedAt',
+    '__wdDark', '__wdEverLit', '__wdFastRebuiltAt', '__wdFirstNext',
+    '__wdHb', '__wdNext', '__wdReloading', '_arenaHistoryLoaded',
+    '_arenaLastBgPoll', '_arenaLastPoll', '_arenaNotified', '_atkEnergy',
+    '_atkHoldUntil', '_atkPressAt', '_backpedaling', '_blocked',
+    '_btnHarvest', '_chatBySelfTap', '_clanPaintColor', '_clanPainting',
+    '_customDungeonTerrain', '_deskPressBash', '_deskPressLock',
+    '_discGhost', '_discRect', '_discRectAt', '_dtScale', '_fbLastFilter',
+    '_frameCount', '_frameMs', '_friends', '_gambleWager', '_harvestKeys',
+    '_hasSled', '_hitStop', '_hudPopups', '_kaConfirmed', '_lJoyHeld',
+    '_lJoyLiveUntil', '_lJoyPreviewUntil', '_lJoyShown', '_lastBroadcastBa',
+    '_lastBroadcastBlocking', '_lastBroadcastDead', '_lastBroadcastEx',
+    '_lastBroadcastFacing', '_lastBroadcastGear', '_lastBroadcastX',
+    '_lastBroadcastY', '_lastBroadcastZone', '_lastExBroadcast',
+    '_lastGatherNodeAt', '_lastGatherNodeId', '_lastMoveBroadcast',
+    '_lastStatsUpdateSig', '_lastTrack', '_lbLastTab', '_lbServerData',
+    '_mcEarly', '_mcTeachAt', '_mcTeachN', '_mktLastRefresh',
+    '_mouseAimAngle', '_mouseScreen', '_mouseWorldX', '_mouseWorldY',
+    '_nearHouse', '_nearNode', '_nearNpc', '_nearPetHouse',
+    '_nearWheelBuilding', '_nearWheelDoor', '_nearWorkshop', '_perf',
+    '_petPrevPX', '_petPrevPY', '_playerCount', '_playtimeTick',
+    '_preDungeonMap', '_preDungeonMonsters', '_preDungeonNodes', '_proxNode',
+    '_pvpThreatCdUntil', '_rBtnLiveUntil', '_rBtnPressUntil', '_rBtnShown',
+    '_rJoyLiveUntil', '_raft', '_railCss', '_railCssAt', '_restPending',
+    '_resumeSpot', '_shieldAimMouse', '_shieldCdUntil', '_sleeping',
+    '_slideVx', '_slideVy', '_smithyTab', '_snowballCd', '_staleTouches',
+    '_statsSavedJson', '_tapActs', '_tapEmptySeq', '_tourStarted',
+    '_trailTimer', '_tutorialDoneAt', '_tutorialStep', '_userCycledSlot',
+    '_warTarget', '_warTargetData', '_warZone', '_wasMovingBcast',
+    '_weaponSwapFlash', '_windows', '_wwType', '_xpBarLastGainTs', 'blocked',
+    'bodySize', 'collectibles', 'friends', 'lastBroadcast', 'myBroData',
+    'nearBuilding', 'trail'],
+  wire: ['_arenaStakeBoard', '_authRejects', '_capeStatusLine',
+    '_characterReset', '_currentRoom', '_dungeonEnteredAt', '_evErrLogged',
+    '_frozenByAdmin', '_gambleResult', '_hardenedWoodSeen', '_httpToken',
+    '_jackpotPool', '_jackpotTickets', '_joinId', '_joinKey',
+    '_joinRejectedFatal', '_joinedId', '_keyFellBack', '_keyIdAsked',
+    '_keyNewAt', '_lastAbilityReject', '_lastArrowBoom', '_lastGhostSweep',
+    '_lastReportAck', '_levelShownBaselined', '_manaFlat', '_nodeResyncT',
+    '_pendingZoneNodes', '_pvpSrvHits', '_realtimeStatus', '_resetRefused',
+    '_serverCaps', '_serverGatherNodes', '_serverLoot', '_staggerUntil',
+    '_stunEnd', '_t2LocalEnd', '_tabClaim', '_tabKey', '_tabKeyOld',
+    '_tabMoved', '_tooFarAt', '_verifyToken', '_xpBuff', '_xpBuffMul',
+    'channel'],
+  world: ['_bodyPlaceDue', '_bodyPlacedAt', '_diveAir', '_diveStarted',
+    '_dungeonClear', '_dungeonComplete', '_echoActive', '_enteredFromDir',
+    '_enteredFromExit', '_enteredFromHub', '_hubExitDisarm',
+    '_inCustomDungeon', '_inDungeon', '_lastDrownTick', '_mapPins',
+    '_nmlAskAgain', '_nmlAsked', '_nmlAskedAt', '_nmlConfiscatedAt',
+    '_nmlLevel', '_nmlLockAskAt', '_nmlLocks', '_nmlSelf', '_spawnAskedAt',
+    '_spawnSince', '_spawnToWheel', '_swimming', '_tideLevel', '_veils',
+    '_wheelDoorAskedAt', '_wheelGateHits', '_wheelSpawnInit', '_zoneLockAt',
+    '_zoneWarnAt', 'currentZone'],
+});
+const OWNED_LINE = 441;
+/* 8c. the fields that wait for one owner (written from two systems or
+   more today), each with what it waits for.  Its count only falls: a row
+   leaves when it joins OWNED, and a field is not added to dodge 8. */
+const WAITING = Object.freeze({
+  _extraction: 'written from skills, social, render and ui: no one owner yet',
+  _pose: 'written from townsfolk and audio: no one owner yet',
+  stickX: "waiting for one owner: card CT's PR 3 (6542) sends BroTown's joystick writes through stickZones' stickTo and adds both rows pinned to `input`",
+  stickY: "waiting for one owner: card CT's PR 3 (6542) sends BroTown's joystick writes through stickZones' stickTo and adds both rows pinned to `input`",
+});
+const WAITING_LINE = 4;
+const RESETS_OUTSIDE_LINE = 26;
+if (census) {
+  const byName = new Map(census.json.fields.map((f) => [f.name, f]));
+  const placed = placeFiles();
+  const bad = [];
+  const seen = new Set();
+  let n = 0;
+  for (const [sys, names] of Object.entries(OWNED)) {
+    if (!Object.hasOwn(SYSTEMS, sys)) { bad.push(`${sys}: not a system of the map`); continue; }
+    for (const name of names) {
+      n++;
+      if (seen.has(name)) { bad.push(`${name}: in OWNED twice`); continue; }
+      seen.add(name);
+      const f = byName.get(name);
+      if (!f) { bad.push(`S.${name} (${sys}): the census finds no such field (gone from the code: the gatekeeper takes its row off)`); continue; }
+      /* the orchestrator's reading (2026-11-23): moving is not forbidden,
+         only crossing.  A row whose writers ALL moved to one other system
+         (a slice taken out of a big file, finish.md rule 5) is re-pinned
+         by hand in that same PR, one line; writers in two systems fail */
+      const sites = [...f.sets, ...f.inside, ...(f.throughAName || [])];
+      const sysOfAt = (at) => systemOf('src/' + at.split(':')[0], placed) || 'unsorted';
+      const out = sites.filter((at) => sysOfAt(at) !== sys);
+      if (!out.length) continue;
+      const all = new Set(sites.map(sysOfAt));
+      if (all.size === 1) bad.push(`S.${name} is ${sys}'s, and every write of it is now ${[...all][0]}'s (${out.join(', ')}): moved, not crossed -- re-pin its row to ${[...all][0]} in OWNED, in this same PR, one line`);
+      else bad.push(`S.${name} is ${sys}'s, written from ${[...all].filter((x) => x !== sys).join(', ')} too: ${out.join(', ')} (a second system's writer is refused; give it the owner's door or call)`);
+    }
+  }
+  if (n < OWNED_LINE) bad.unshift(`OWNED holds ${n}, under its line ${OWNED_LINE}: a row is taken off only by the gatekeeper`);
+  check(`8: every owned field is written only from its system's files (${n} fields in OWNED, the line ${OWNED_LINE}): a second writer is refused, not recorded`, bad.length === 0, bad);
+  /* 8b. the enforced resets outside the wall (the orchestrator's counter,
+     2026-11-23, for the scoreboard, PR 6524): the rows whose lifetime
+     names an edge and that OWNED does not hold, written from more than one
+     system today.  26 at main 0aec6482 (16 of the 42 are in OWNED: the
+     14 with one writer file, and _race and _inDuel).  Only
+     falls: a row joins OWNED as its writers come into one system. */
+  const edgeRows = [];
+  for (const rows of ledgers.values()) for (const row of rows) if (row.field !== undefined && row.lifetime !== 'sitting') edgeRows.push(row.field);
+  const outside = edgeRows.filter((x) => !seen.has(x));
+  check(`8b: the enforced-reset fields outside OWNED at or under the line ${RESETS_OUTSIDE_LINE} (${outside.length} of ${edgeRows.length}; ${edgeRows.length - outside.length} inside)`, outside.length <= RESETS_OUTSIDE_LINE, outside);
+  if (outside.length < RESETS_OUTSIDE_LINE) info(`(room: ${RESETS_OUTSIDE_LINE - outside.length} under the line ${RESETS_OUTSIDE_LINE}: the gatekeeper lowers it)`);
+  const waiting = Object.keys(WAITING);
+  const both = waiting.filter((x) => seen.has(x));
+  check(`8c: the fields waiting for one owner at or under the line ${WAITING_LINE} (${waiting.length}: ${waiting.join(', ')}), none of them in OWNED`, waiting.length <= WAITING_LINE && !both.length, both.map((x) => `S.${x} is in OWNED and WAITING: take it off WAITING (and lower WAITING_LINE)`));
+} else {
+  info('8: not checked: the page carries no writers (only where the script cannot load)');
+}
 console.log(failed ? `\n${failed} failed` : '\nall green');
 process.exit(failed ? 1 : 0);
