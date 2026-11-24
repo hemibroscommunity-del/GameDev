@@ -1,0 +1,20 @@
+[
+  { "id": "PAY2-0 CONTROL a second plain call of a legal road", "file": "server/src/shop.js", "anchor": "this._goldGive(ps, paid, 'shop_sell');",
+    "text": "    this._goldGive(ps, paid, 'shop_sell');", "suites": ["gold-door"] },
+  { "id": "PAY2-1 a double pay through a legal road, the door's method bound to a name", "file": "server/src/shop.js", "anchor": "this._goldGive(ps, paid, 'shop_sell');",
+    "text": "    { const give = this._goldGive.bind(this); give(ps, paid, 'shop_sell'); }", "suites": ["gold-door", "world-sum", "shop"] },
+  { "id": "BAG-5 the whole bag emptied (the '*' entry of WHOLE_BAG)", "file": "server/src/quests.js", "anchor": "this._goldGive(ps, reward.gold || 0, 'quest_reward');",
+    "text": "    ps.inventory = {};", "suites": ["bag-door", "world-sum"] },
+  { "id": "BAG-6 CONTROL the whole bag replaced by a spread", "file": "server/src/quests.js", "anchor": "this._goldGive(ps, reward.gold || 0, 'quest_reward');",
+    "text": "    ps.inventory = { ...ps.inventory, [reward.item]: 99 };", "suites": ["bag-door"] },
+  { "id": "XP-5 every life skill wiped (the '*' entry of LISTED)", "file": "server/src/quests.js", "anchor": "this._goldGive(ps, reward.gold || 0, 'quest_reward');",
+    "text": "    ps.lifeSkills = {};", "suites": ["xp-door"] },
+  { "id": "OUT-0 CONTROL a new type the worker sends, written as a literal, no out row", "file": "server/src/quests.js", "anchor": "this._goldGive(ps, reward.gold || 0, 'quest_reward');",
+    "text": "    this._send(this._wsBySessionId(session.id), { type: 'quest_bonus', payload: { gold: 5 } });", "suites": ["wire-audit", "wire-table"] },
+  { "id": "RELAY-1 two relay types allowed by hand beside the made list", "file": "server/src/relay.js", "anchor": "if (RELAY.TYPES.has(type)) return true;", "before": true,
+    "text": "    if (['tip_jar', 'party_ping'].includes(type)) return true;   /* two more the party needs */", "suites": ["wire-table", "relay.", "relaytyped", "wire-audit"] },
+  { "id": "ROUTE-0 CONTROL a route with no row, answered before the routes' door", "file": "server/src/index.js", "anchor": "    if (url.pathname.startsWith('/api/')) {", "before": true,
+    "text": "    if (url.pathname === '/api/tip') return new Response('{\"ok\":true}');", "suites": ["wire-table"] },
+  { "id": "ROUTE-1 the same route, the path in a destructured name", "file": "server/src/index.js", "anchor": "    if (url.pathname.startsWith('/api/')) {", "before": true,
+    "text": "    { const { pathname } = url; if (pathname === '/api/tip') { const b = await request.json(); return new Response(JSON.stringify({ ok: true, n: b.n })); } }", "suites": ["wire-table", "wire-door", "wire-hostile"] }
+]
