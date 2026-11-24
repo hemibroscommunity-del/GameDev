@@ -20,14 +20,14 @@ draft), #2300 (DG), #2301 (BK), all opened during it.
 | BK | #2289 the sum counts the pieces | 6464 | b4cbd29e | pass, one note | 5 |
 | DG | #2283 the running room refuses | 6440 | b5ba8bb8 | pass (56's hold mended) | 6 |
 | CT | #2282 the two buttons' rules | 6540 | 6e96ab02 | pass, Z's call (below) | 7 |
-| WL | #2290 owned state | 6522 | d1ff3d9c | pass | 8 |
+| WL | #2290 owned state | 6522 | d1ff3d9c, then 67752c2d | pass at d1ff3d9c; its new head holds #2286 and #2287 (held): to 58 | - |
 | RR | #2273 the rejoin loop | 6309 | 06cd9091 | HOLD | - |
 | PH | #2279 the report sees heat | 6500 | 316dab3f | HOLD | - |
 | PH | #2291 the memory alarm | 6501 | 490d110f (reviewed at bce0ac59; the new head only resolves PH.md) | HOLD | - |
 | CT | #2293 the left stick | 6541 | 5029ffca | HOLD | - |
 | DG | #2295 the scans read the tree | 6441 | f7ef9edb | HOLD (its `test` red) | - |
 | WHO | #2285 the actor, made once | 6480 | b09b9721 | HOLD | - |
-| WL | #2286 four small mends | 6520 | 1751f7b9 | HOLD (conflicts with `main`) | - |
+| WL | #2286 four small mends | 6520 | 1751f7b9 (b407ef82 merged `main` since) | HOLD | - |
 | WL | #2287 a leaf stays a leaf | 6521 | 61eae59a | HOLD | - |
 | WL | #2298 the open hand | 6523 | 61c016d4 | HOLD | - |
 | BK | #2299 the claims bar | 6462 | d14032fb | HOLD (red unplanted) | - |
@@ -120,7 +120,8 @@ draft), #2300 (DG), #2301 (BK), all opened during it.
   eight ways); nothing calls `stickRead` in this PR and #2293's suite
   catches it. Z's call: pass, with Z4 named here; the exact-edge class
   stays CT's call (as at 56). `server/test/**` only.
-- **#2290**: the count is honest (444 one-file fields, less 3 unplaced and
+- **#2290** (at d1ff3d9c; not listed, its new head holds two held PRs):
+  the count is honest (444 one-file fields, less 3 unplaced and
   stickX/Y, plus `_inDuel` and `_race`: 441); the card's plant and 12 own
   red; one green said in its words.
 
@@ -130,7 +131,9 @@ Rehearsal 1 (all 16 then queued) stopped at the merges: four branches
 clash (#2289 with #2281 and #2291 with #2279 in their status files, #2290
 with #2287 in WL.md, #2286 with `main`). Rehearsal 2 (the 12 that merged)
 was stopped once the holds were known (its precheck timed out on a loaded
-box, no suite failed). Rehearsal 3 is the list: RESULT_LINE
+box, no suite failed). Rehearsal 3 (with #2290 at d1ff3d9c) was stopped when WL re-pushed its
+chain so that #2290 holds #2286 and #2287. Rehearsal 4 is the list, its
+seven in order: RESULT_LINE
 
 ## Step 5b: what GitHub will merge
 

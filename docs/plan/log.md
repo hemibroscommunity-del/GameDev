@@ -12,7 +12,7 @@ here. Sittings 1 to 55 are in the plan's own notes and in
 | 57 | 4.4, 4.5 | sitting 56: BK's #2278 (the sum plays what it sums); listed at 57: #2281, #2289 | card BK: the `store_list` row's weapon, pieces by id, #2299 |
 | 57 | 4.1 | listed at 57: DG's #2283 (the running room refuses) | DG's #2295 (held: its `test` red), #2300 |
 | 57 | 5.4b | listed at 57: CT's #2282 (the rules) | CT's #2293 (held: the input read's Y and death gates) |
-| 57 | 5.2b, 5.3 | listed at 57: WL's #2290 (owned state, 441) | WL's #2286, #2287, #2298 (held) |
+| 57 | 5.2b, 5.3 | nothing merged | WL's #2286, #2287, #2298 (held); #2290 (passed, but holds #2286 and #2287) |
 | 57 | 10.1, 11.2 | nothing merged | WHO's #2285 (held: test play booked with play) |
 | 57 | 2.3 | nothing merged | PH's #2279, #2291 (held) |
 | 57 | (no box) | sitting 56: DIR's #2275 (the direction), CK's #2284 (switches-thrown on a PR); listed at 57: CK's #2288, #2294, #2296 | card CK's last lines |
