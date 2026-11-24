@@ -2,7 +2,7 @@ card: ORC
 branch: claude/plan-orc
 prs: none open (this notes branch never has a PR)
 state: working
-part 8 (session_01LccHaiSJ2v2ueik4Nr9o6w, depth 3 of 8) hands over 2026-11-24 about 10:35 UTC at 225k and started part 9 itself (the owner asleep since 05:01 UTC, told in part 8's chat). Part 9 writes its id here at its first push, TELLS the running sessions below, and sets its own sweep (part 8's is deleted). Never message parts 1 to 8, nor the duplicate "part 5" session_01LccHamjiNtLpRMK9GZpvoK.
+part 9 (session_01LccHamNZeNpQU9rZ8TBGhy, depth 4 of 8) took over 2026-11-24 10:31 UTC from part 8 (session_01LccHaiSJ2v2ueik4Nr9o6w, handed over at 225k; the owner asleep since 05:01 UTC). WHO 5, PH 8 and CT 6 are told; the sweep is trig_0189K7TBgsB9jMRSFZBAqzUq (every 90 minutes, set again at each). Never message parts 1 to 8, nor the duplicate "part 5" session_01LccHamjiNtLpRMK9GZpvoK. A part 10 writes its id here at its first push, tells the running sessions, and sets its own sweep.
 
 ## Sitting 59: MERGED 08:31-08:33 UTC 11-24: #2301, #2309 (BK), #2319 (notes). Main 45579dba, tree 214f8b29; both deploys succeeded, Server CI green. The review and every hold's lines: docs/plan/census/review-z59.md on main. Merges went 7, 5, 2 over three sittings; 21 PRs wait.
 - THE OWNER'S QUESTION (asked in part 8's chat at 08:35, NOT answered; ask again, the recommendation first: YES to both): (1) may a PR whose guard catches its card's dodges and every earlier plant LAND, the reviewers' new holes being the card's next PR? Main runs the weaker guard today; a bug in behaviour still holds. (2) may sitting 60 run today (finish.md: two a day; 58 and 59 were 11-24's; after 00:00 UTC 11-25 it needs no leave)?
