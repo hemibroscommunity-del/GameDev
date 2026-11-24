@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "9626746f99207eaaf65a32e41e4d0df4485c132d",
+  "tree": "b372ad754bde1b10ead58e3f3c54cdc18240b342",
+  "committedAt": "2026-11-23T16:43:26-08:00",
+  "subject": "Merge pull request #2275 from hemibroscommunity-del/claude/game-grand-plan-combat-6v7yq4",
+  "files": 8483,
+  "bytes": 963497987,
+  "listingSha256": "5bac88f784f0a6dcf9b87e05b29969fc96b8d0b461f9fff7e3ef5ae6e6218f3f",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
