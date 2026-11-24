@@ -19,6 +19,7 @@
  */
 import { readFileSync } from 'node:fs';
 import { SRC_DIR, srcFiles } from './src-walk.mjs';
+import { doorWrites, doorCalls, visit, fnName, where as whereW } from '../../tools/guards/lib/writesOf.mjs';   /* v2.3.6441: the scan reads the syntax tree (card DG PR 2) */
 import { GameRoom } from '../src/index.js';
 import { LEAVE_WAYS } from '../src/leave.js';
 import { WHEEL_ZONE } from '../src/wheelzone.js';
@@ -238,20 +239,57 @@ function where(re, allow) {
 }
 const isDef = (ln) => /^\s*(async\s+)?\w+\([^)]*\)\s*\{/.test(ln);
 {
-  const bad = where(/webSocketClose\(/, (f, ln) => f === 'index.js' && /async webSocketClose\(ws\)/.test(ln));
+  /* v2.3.6441: every reference by any receiver, read off the syntax tree */
+  const rawW = Object.create(null);
+  for (const f of files) rawW[f] = readFileSync(new URL(f, dir), 'utf8');
+  const ws1 = doorCalls(rawW, { names: ['webSocketClose'] });
+  const bad = [...ws1.calls, ...ws1.odd].map(whereW);
   check('3. nothing calls webSocketClose: every way of leaving names its row (leave.js)', bad.length === 0, bad);
   const del = where(/sessions\.delete\(/, (f) => f === 'leave.js');
   check('3. a session leaves the map only through the door', del.length === 0, del);
+  /* v2.3.6441 (card DG PR 2): read off the syntax tree, however it is
+     spelled: the map changed or made again (`this.sessions.clear()`,
+     `this.sessions = new Map([...].filter(...))`, plants3 LEAVE-1, LEAVE-3),
+     a body deleted from the room in place, a session's id put back to
+     nobody (plants3 LEAVE-2).  Each place that is not the door's, by file,
+     function and count. */
+  const raw = Object.create(null);
+  for (const f of files) raw[f] = readFileSync(new URL(f, dir), 'utf8');
+  const MAP = [
+    { file: 'index.js', fn: 'constructor', field: 'sessions', n: 1, why: 'the room makes its map of sessions' },
+    { file: 'index.js', fn: 'fetch', field: 'sessions', n: 1, why: 'a new socket\'s session is put in the map (`.set`), phase open' },
+  ];
+  const m = doorWrites(raw, { skip: ['leave.js'], fields: ['sessions'], containers: ['sessions'], shallow: ['sessions'], listed: MAP });   /* v2.3.6441 (sitting 58): a session's own field is no write of the map */
+  check('3. the map of sessions is changed or made again only by the door (leave.js) and the two places listed, however it is spelled', m.found.length === 0, m.found.map(whereW));
+  check('3. ...each listed place still holds its count', m.stale.length === 0, m.stale);
+  const ID = [{ file: 'join.js', fn: '_handleJoin', field: 'id', n: 1, why: 'the join names the session\'s player' }];
+  const ids = doorWrites(raw, { skip: ['leave.js'], fields: ['id'], keep: (w) => !!w.recv && /^(session|sess)$/.test(w.recv.text), listed: ID });
+  check('3. a session\'s id is written by the join alone (never put back to nobody but through the door)', ids.found.length === 0 && ids.stale.length === 0, { found: ids.found.map(whereW), stale: ids.stale });
+  const BODY = { 'join.js _handleJoin': 'a join whose record could not be read takes its body back', 'linger.js _lingerEnd': 'the end of a lingering body (its session left before)', 'persistence.js _resetCharacterData': 'the owner\'s reset of a character, its session gone', 'spar.js _sparRemove': 'a sparring CLONE, never a session' };
+  const gone = [];
+  for (const f of files) {
+    if (f === 'leave.js') continue;
+    visit(raw[f], { UnaryExpression(path) {
+      const a = path.node.argument;
+      if (path.node.operator !== 'delete' || (a.type !== 'MemberExpression' && a.type !== 'OptionalMemberExpression')) return;
+      const o = a.object;
+      if ((o.type === 'MemberExpression' || o.type === 'OptionalMemberExpression') && !o.computed && o.property.name === 'playerState') gone.push(f + ' ' + fnName(path));
+    } });
+  }
+  check('3. a body leaves playerState only through the door and the places listed (BODY), once each', JSON.stringify(gone.sort()) === JSON.stringify(Object.keys(BODY).sort()), gone);
   for (const m of ['_duelOnDisconnect', '_trade2OnDisconnect', '_partyOnDisconnect', '_chatModOnClose', '_drOnClose', '_lingerOnClose', '_sparOnLeave']) {
-    const bad2 = where(new RegExp('\\b' + m + '\\('), (f, ln) => f === 'leave.js' || isDef(ln));
-    check('3. ' + m + ' is the door\'s alone', bad2.length === 0, bad2);
+    const r = doorCalls(rawW, { skip: ['leave.js'], names: [m] });
+    const bad2 = [...r.calls, ...r.odd].map(whereW);
+    check('3. ' + m + ' is the door\'s alone (by any receiver, in any position)', bad2.length === 0, bad2);
   }
   /* spar.js: a sparring CLONE leaving (never a session) */
   const pl = where(/type:\s*'player_leave'/, (f) => f === 'leave.js' || f === 'linger.js' || f === 'spar.js');
   check('3. player_leave comes from the door (and the end of a lingering body) only', pl.length === 0, pl);
   /* every way named is a row; every row is named */
   const named = new Set();
-  for (const f of files) for (const m of code[f].matchAll(/_playerLeaves\(\s*\w+\s*,\s*'(\w+)'/g)) named.add(m[1]);
+  const leaves = doorCalls(rawW, { skip: ['leave.js'], names: ['_playerLeaves'], road: (args) => args[1] || null });
+  check('3. _playerLeaves is called plainly, each call naming its way as a plain string', leaves.odd.length === 0 && leaves.calls.every((c) => c.road), [...leaves.odd, ...leaves.calls.filter((c) => !c.road)].map(whereW));
+  for (const c of leaves.calls) if (c.road) named.add(c.road);
   const unknown = [...named].filter((w) => !Object.prototype.hasOwnProperty.call(LEAVE_WAYS, w));
   const unused = Object.keys(LEAVE_WAYS).filter((w) => !named.has(w));
   check('3. every way a caller names is a row of LEAVE_WAYS', unknown.length === 0, unknown);

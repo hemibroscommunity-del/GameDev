@@ -56,18 +56,21 @@ const LOOP_FILE = loopAt.length === 1 ? loopAt[0].file : null;
 const stepsSrc = read(STEPS_FILE);
 const FS = await import(pathToFileURL(join(ROOT, STEPS_FILE)).href);
 /* v2.3.5341: + the ten steps inside legacy, in their places (card M PR 2) */
-const WANT = ['legacy', 'tap', 'sound', 'ride', 'zone', 'farm', 'townsfolk', 'monsters', 'weaponFeel', 'loot', 'peers',
+/* v2.3.6541: + 'input' (game/stickZones.js stickFrame, card CT PR 2); the runner's checks below read
+   their steps' places from this list (MON, REN, IN), so a step added does not move them */
+const WANT = ['legacy', 'tap', 'input', 'sound', 'ride', 'zone', 'farm', 'townsfolk', 'monsters', 'weaponFeel', 'loot', 'peers',
   'visual', 'arrows', 'slime', 'cleanup', 'render', 'afterFrame'];
 const N = WANT.length;
+const MON = WANT.indexOf('monsters'), REN = WANT.indexOf('render'), IN = FS.STEPS.filter((s) => s.inLegacy).length;
 
 /* ── 1. no imports ── */
 check('1: frameSteps.js imports nothing', !/^\s*(import\b|export\s[^;]*\bfrom\b)/m.test(stepsSrc));
 
 /* ── 2. the runner ── */
 {
-  check('2: the steps, in order: legacy, the ten inside it, then the six calls', JSON.stringify(FS.STEP_NAMES) === JSON.stringify(WANT), FS.STEP_NAMES);
-  check('2: each step after legacy names its calls; the ten inside legacy say so, the six after it do not',
-    FS.STEPS[0].calls.length === 0 && FS.STEPS.slice(1).every((s, i) => s.calls.length > 0 && s.calls.every((c) => /^\w+$/.test(c)) && !!s.inLegacy === (i < 10)));
+  check(`2: the steps, in order: legacy, the ${IN} inside it, then the six calls`, JSON.stringify(FS.STEP_NAMES) === JSON.stringify(WANT), FS.STEP_NAMES);
+  check(`2: each step after legacy names its calls; the ${IN} inside legacy say so, the six after it do not`,
+    FS.STEPS[0].calls.length === 0 && FS.STEPS.slice(1).every((s, i) => s.calls.length > 0 && s.calls.every((c) => /^\w+$/.test(c)) && !!s.inLegacy === (i < IN)));
   const allCalls = FS.STEPS.flatMap((s) => s.calls);
   check('2: no call in two steps', new Set(allCalls).size === allCalls.length, allCalls);
   check('2: the window is 600 frames', FS.WINDOW === 600);
@@ -80,15 +83,15 @@ check('1: frameSteps.js imports nothing', !/^\s*(import\b|export\s[^;]*\bfrom\b)
      split in two around the steps inside it */
   const frame = (ms) => {
     st.begin(0); t += ms[0] / 2;
-    for (let i = 1; i <= 10; i++) { st.to(0, i); t += ms[i]; st.to(i, 0); }
+    for (let i = 1; i <= IN; i++) { st.to(0, i); t += ms[i]; st.to(i, 0); }
     t += ms[0] / 2; st.end(0);
-    for (let i = 11; i < N; i++) { st.begin(i); t += ms[i]; st.end(i); }
+    for (let i = IN + 1; i < N; i++) { st.begin(i); t += ms[i]; st.end(i); }
   };
-  const A = WANT.map((n, i) => (i === 0 ? 4 : i === 7 ? 3 : i === 15 ? 8 : 1));
+  const A = WANT.map((n, i) => (i === 0 ? 4 : i === MON ? 3 : i === REN ? 8 : 1));
   frame(A);
   frame(A);
   let r = st.read();
-  check('2: before a whole window, no last sums and the window being summed', r.on === true && r.ms === null && r.now.frames === 2 && r.now.ms[0] === 8 && r.now.ms[7] === 6 && r.now.ms[15] === 16, r);
+  check('2: before a whole window, no last sums and the window being summed', r.on === true && r.ms === null && r.now.frames === 2 && r.now.ms[0] === 8 && r.now.ms[MON] === 6 && r.now.ms[REN] === 16, r);
   frame(A);
   frame(WANT.map(() => 2));
   r = st.read();
@@ -97,7 +100,7 @@ check('1: frameSteps.js imports nothing', !/^\s*(import\b|export\s[^;]*\bfrom\b)
   /* `to` reads the clock once */
   let reads = 0;
   const one = FS.makeFrameSteps({ now: () => { reads++; return 0; } });
-  one.begin(0); reads = 0; one.to(0, 7);
+  one.begin(0); reads = 0; one.to(0, MON);
   check('2: to(a, b) ends a and begins b on one clock read', reads === 1 && one.read().open === 'monsters');
 
   /* a throw in `render`: counted, its time so far summed, reported once (a
@@ -105,17 +108,17 @@ check('1: frameSteps.js imports nothing', !/^\s*(import\b|export\s[^;]*\bfrom\b)
   reports.length = 0;
   t = 0;
   st = FS.makeFrameSteps({ now: () => t, report: (n, m) => reports.push(n + ': ' + m) });
-  st.begin(0); t += 2; st.end(0); st.begin(15); t += 3;
+  st.begin(0); t += 2; st.end(0); st.begin(REN); t += 3;
   const name = st.fault(new Error('boom'));
-  st.begin(0); t += 2; st.end(0); st.begin(15); t += 3;
+  st.begin(0); t += 2; st.end(0); st.begin(REN); t += 3;
   st.fault(new Error('again'));
-  st.begin(0); t += 2; st.to(0, 7); t += 1;
+  st.begin(0); t += 2; st.to(0, MON); t += 1;
   const name2 = st.fault('a string thrown');
   r = st.read();
   check('2: fault names the step that was open (one of the six; one inside legacy)', name === 'render' && name2 === 'monsters', [name, name2]);
-  check('2: each throw counted', r.throws[15] === 2 && r.throws[7] === 1 && r.throws[0] === 0, r.throws);
+  check('2: each throw counted', r.throws[REN] === 2 && r.throws[MON] === 1 && r.throws[0] === 0, r.throws);
   check('2: a step\'s FIRST throw reported, once; later ones counted only', JSON.stringify(reports) === JSON.stringify(['render: boom', 'monsters: a string thrown']), reports);
-  check('2: the open step\'s time up to its throw is summed', r.now.ms[15] === 6 && r.now.ms[0] === 6 && r.now.ms[7] === 1, r.now.ms);
+  check('2: the open step\'s time up to its throw is summed', r.now.ms[REN] === 6 && r.now.ms[0] === 6 && r.now.ms[MON] === 1, r.now.ms);
   check('2: no step open after a fault', r.open === null && st.fault(new Error('x')) === null);
 
   const loud = FS.makeFrameSteps({ now: () => 0, report: () => { throw new Error('ring full'); } });

@@ -1,35 +1,34 @@
 card: DG
-branch: claude/dg-door-guards
-prs: #2283 (PR 1, 6440, ready again: sitting 57's CI mend)
+branch: claude/dg-books (PR 3), on claude/dg-scans (PR 2); PR 1 merged (a98fff04)
+prs: #2283 (PR 1, 6440, merged), #2295 (PR 2, 6441, ready: sitting 58's mend), #2300 (PR 3, 6442, tests only)
 state: ready
 
 ## Done
-- Sitting 57's CI (#2295 red, heap-forget 4,167 B a guest): the guard let
-  go of a record only at a sweep after a full collection (+1 KB a guest,
-  test room only); now a record leaving the room's map is checked once and
-  let go (340 B a guest; plants1 still 17 of 23 red). CI still read 4,632:
-  heap-forget is now UNGUARDED_SUITES (a measure of the room's own heap).
-- PR 1 (6440): testroom.mjs arms a guard on every live player's record
-  (gold, hp and the life phase, xp and level, the bag, the stashes, quest
-  state, build points): a write outside its door is refused and fails the
-  suite. The 7 door suites play a tour (a quest handed in) under it.
-  plants1.json: 17 of 23 RED (16 of 22 realistic); the 6 GREEN write nothing on the path
-  (`||=` on a field already set: GOLD-2, XP-2, HP-4; a branch the reward
-  never takes: HP-2, STASH-1) or call a legal door (GOLD-4): PR 2's scan.
-  Whole server suite: 582 green (799.7 s). Deploys when merged.
-- PR 1's mend (sitting 56's purpose review): `roomGuard.holds(ps, room)`
-  reads the record itself (coins the guard's accessor, the bag its Proxy,
-  the room's map the guarded one); each door's R block checks it, and
-  testroom.test §7 records a refusal of 4 spellings run as worker code.
-  Red now: guardRecord gutted (gold, life, testroom); `playerState` an own
-  data property (gold, bag; gold with GOLD-1 on top). Also `ECON_V + 1` in
-  gold-door §9 and bag-door §9 (card WHO's shape bump, the orchestrator's ask).
+- Sitting 58's hold on #2295 (review-z58.md), the CLASS mended: the scans
+  DENY BY DEFAULT.  writesOf follows a container or its item through every
+  binding (list and nested patterns, a rest, a number key, a parameter's,
+  loop's or callback's pattern, a copy, a member it is put into, a function
+  that hands it back, an object holding it) and reports a binding it cannot
+  follow as a write ('cannot follow'); action-door §7 the same for a
+  channel and a fetch.  Both plants and six of mine RED, in real files.
+- Sitting 57's hold on #2295: its three plants red.
+- PR 2 (6441): one scanner (tools/guards/lib/writesOf.mjs) for every door
+  test; door plants of plants1-4 red by the scan alone, but SEND-2 (PR 6).
+- PR 3 (6442): gold-door §10 and bag-door §10 run every road on a blank
+  record and carried ones: the books moved exactly what the purse or bag
+  moved (mint, burn) or nothing (move, escrow); shape-books plant 1 red.
+- PR 1 (6440, #2283): the running room refuses; merged.
 
 ## Next
-- PR 2 (6441), on branch claude/dg-scans: the scans read the syntax tree.
+- Sitting 59: #2295, #2300 together.
+- PR 4 (6443): on claude/dg-books.
+- testroom §7 tries four fields (Z's Found): a later PR of the card.
 
 ## Found
-- none
+- none (the wider reads found no second writer in server/src or src/)
 
 ## Needs
 - none
+
+## Note
+- A Map's `.get(k)` is no element of the container (session-door).

@@ -389,7 +389,7 @@ const econNum = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 function econGold(rec, cls, d, room) {
   if (!d || (cls !== 'mint' && cls !== 'burn')) return;
   if (room && typeof room._econOff === 'function' && room._econOff()) return;   /* v2.3.5085: `econ: false` */
-  if (room) bookAdd(room, 'econ', { g: { [cls]: cls === 'mint' ? d : -d } });
+  if (room) bookAdd(room, 'econ', { g: { [cls]: cls === 'mint' ? d : -d } }, undefined, rec);   /* v2.3.6480 (card WHO, the orchestrator's yes): a test-mode purse's gold under the part's `test` key (daybook.js) */
   const e = econOn(rec);
   if (!e) return;
   if (cls === 'mint') e.g.m = econNum(e.g.m) + d;
