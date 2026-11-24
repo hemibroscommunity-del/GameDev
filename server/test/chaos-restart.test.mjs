@@ -48,6 +48,11 @@
  *      v2.3.3294 incident, plant B1: an axe doubled) and the stash saved
  *      and awaited before the escrow's put (plant B4: an axe lost) each
  *      fail 7's trade2_stage_weapon.
+ *      v2.3.6465 (sitting 57's review): a row may carry more than one way in
+ *      (ALSO): the Auction House WEAPON listing is swept beside the stack's,
+ *      and the pieces are judged id by id, not by their count.  BREAK PROOF:
+ *      the weapon's save awaited before the listing's put (store.js) fails
+ *      7's `http:/api/store/list weapon` (an axe lost).
  *
  * The storage is inbox.test §8c's: every write of one synchronous run commits
  * as one batch, as a Durable Object's does, and the room dies before batch
@@ -505,7 +510,10 @@ const arenaRunning = (r) => {
     let ctx = null;
     const readers = Object.fromEntries(Object.entries(READERS).map(([p, f]) => [p, (c, k, v) => { ctx = c; return f(c, k, v); }]));
     const c = count(r, state, readers);
-    return { ...c, pieces: ctx ? ctx.ids.length : -1 };
+    /* v2.3.6465 (card BK, sitting 57's review): the ids themselves, not
+       their count, so a piece lost and another made across a restart fail
+       (a count passed them) */
+    return { ...c, pieces: new Set(ctx ? ctx.ids.map(([kind, id]) => kind + ':' + id) : []) };
   };
   const seed = await seedPlayers({
     [CV.a]: { coins: 2000, inv: { [GEL]: 12, wood_oak: 10 }, stash: [axe(1), axe(2), axe(3)] },
@@ -627,11 +635,35 @@ const arenaRunning = (r) => {
       moved: (r) => ps(r, 'a').weaponStash.length === 2,
     },
   };
+  /* v2.3.6465 (card BK, sitting 57's review of #2281): a row's driver plays
+     one kind, and VALUE_PAUSE's store row names only the bag's roads, so the
+     Auction House WEAPON listing (store.js _stCreateListing: the stash's
+     `store_list` take, then the `store_listing:` put) was never crashed.  A
+     row may carry more than one way in: each is swept as its own case,
+     named `row + ' ' + kind`.  The value table is not this suite's
+     (valuepause.js), so the extra way is named here.
+     BREAK PROOF, tried by hand: the weapon's save awaited, so it commits
+     in a write of its own before the listing's put (store.js, the line
+     after `stashTake(ps, 'weaponStash', idx, 'store_list')`: `await
+     this._saveRpg(playerId, ps)`), passed every suite before this case and
+     fails it now (a restart before write 1 of 2: `gear:gcv.1.axe1` lost). */
+  const ALSO = {
+    'http:/api/store/list': {
+      weapon: {
+        async before(r) { await on(r, 'a'); return {}; },
+        act: (r) => list(r, 'weapon'),
+        moved: (r) => ps(r, 'a').weaponStash.length === 2,
+        roads: ['store_list'],
+      },
+    },
+  };
   const rows = Object.keys(VALUE_PAUSE);
   const undriven = rows.filter((k) => !DRIVERS[k]);
   check(`7. every row of the value table (${rows.length}) has its driver in the sweep`, rows.length >= 14 && undriven.length === 0, undriven);
-  for (const row of rows) {
-    const d = DRIVERS[row];
+  const orphans = Object.keys(ALSO).filter((k) => !VALUE_PAUSE[k]);
+  check('7. ...and every extra way in belongs to a row of it', orphans.length === 0, orphans);
+  const cases = rows.flatMap((row) => [[row, DRIVERS[row], null], ...Object.entries(ALSO[row] || {}).map(([kind, d]) => [row, d, kind])]);
+  for (const [row, d, kind] of cases) {
     if (!d) continue;
     const path = {
       pids: PIDS,
@@ -650,12 +682,12 @@ const arenaRunning = (r) => {
       const u = unexplained(w.ctx.start, end);
       const goods = JSON.stringify(Object.fromEntries(Object.entries(u.goods).sort()));
       const ground = d.ground && k === res0.batches ? JSON.stringify(d.ground) : '{}';
-      const pieces = end.pieces - w.ctx.start.pieces;
-      if (u.gold || goods !== ground || end.dup.length || pieces) return { gold: u.gold, goods: u.goods, pieces, dup: end.dup.slice(0, 3) };
+      const lost = [...w.ctx.start.pieces].filter((id) => !end.pieces.has(id)), came = [...end.pieces].filter((id) => !w.ctx.start.pieces.has(id));
+      if (u.gold || goods !== ground || end.dup.length || lost.length || came.length) return { gold: u.gold, goods: u.goods, lost, came, dup: end.dup.slice(0, 3) };
       return null;
     });
-    check(`7. ${row} (${VALUE_PAUSE[row].roads.join(', ') || 'a weapon into the window'}): it moved, and a restart before each of its ${res.batches} write(s) or after the last leaves nothing unexplained` + (d.ground ? ' (but the pile on the ground, lost by design: ' + JSON.stringify(d.ground) + ')' : ''),
-      ran && res.batches >= 1 && res.wrong.length === 0 && m.ctx.start.pieces >= 4, { ran, batches: res.batches, pieces: m.ctx.start.pieces, wrong: res.wrong.slice(0, 4) });
+    check(`7. ${row}${kind ? ' ' + kind : ''} (${(d.roads || VALUE_PAUSE[row].roads).join(', ') || 'a weapon into the window'}): it moved, and a restart before each of its ${res.batches} write(s) or after the last leaves nothing unexplained` + (d.ground ? ' (but the pile on the ground, lost by design: ' + JSON.stringify(d.ground) + ')' : ''),
+      ran && res.batches >= 1 && res.wrong.length === 0 && m.ctx.start.pieces.size >= 4, { ran, batches: res.batches, pieces: m.ctx.start.pieces.size, wrong: res.wrong.slice(0, 4) });
   }
 }
 

@@ -55,6 +55,17 @@ row should say).
    in `playerroads.js` are read by nothing: mark the three "not wired" in
    the table and its guard. A reader with a test that sets a fee and sees
    it charged is a later card, on the owner's word.
+5. **(6465) Two roads the merged suites did not reach** (added by the
+   orchestrator, part 4, from sitting 57's review,
+   `docs/plan/census/review-z57.md`, #2281 and #2289). (a) `chaos-restart`
+   §7 sweeps the Auction House WEAPON listing beside the stack's (a row may
+   carry more than one way in; `VALUE_PAUSE`'s row names only the bag's
+   roads). (b) `world-sum` §1's `piecesHeld` and `chaos-restart`'s `held()`
+   compare the ids, not their count. Tests only.
+   Done when the weapon's save awaited before the `store_listing:` put
+   (`store.js`) and the equip swap's weapon put back with its id dropped
+   (`Object.assign({}, activeItem, { gid: undefined })`, `gear.js`), each
+   green before, are red.
 
 ## Readings chosen for you
 
