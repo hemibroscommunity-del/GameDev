@@ -1,9 +1,17 @@
 card: DG
-branch: claude/dg-reach (PR 5), on claude/dg-wireform (PR 4), on claude/dg-books (PR 3), on claude/dg-scans (PR 2), on claude/dg-door-guards (PR 1)
-prs: #2283 (PR 1, 6440, CI mend), #2295 (PR 2, 6441, CI mend), #2300 (PR 3, 6442, ready), #2310 (PR 4, 6443, ready), PR 5 (6444, ready); all base main
-state: ready
+branch: claude/dg-gaps (PR 6), on claude/dg-reach (PR 5), on claude/dg-wireform (PR 4), on claude/dg-books (PR 3), on claude/dg-scans (PR 2), on claude/dg-door-guards (PR 1)
+prs: #2283 (PR 1, 6440, CI mend), #2295 (PR 2, 6441, CI mend), #2300 (PR 3, 6442, ready), #2310 (PR 4, 6443, ready), #2312 (PR 5, 6444, ready), PR 6 (6445, working); all base main
+state: working
 
 ## Done
+- PR 6 (6445): the gaps beside the doors. wire-gaps.test (new): the relay is
+  the made list (every word of server/src asked of the running room, and
+  sent); the default case opens with its two gates; 2b who takes the phone's
+  message as it came (TAKERS); nothing before the routes' door answers; every
+  path index.js compares, by any name, has a row. send-door 1b counts UTF-8
+  bytes (send.js utf8Bytes), 9 sendOutside imported in origin.js alone.
+  sessions.clear / rebuilt sessions / ws.send.bind: PR 2's, still red. 13
+  plants red (4 mine). No cap, no live flag.
 - PR 5 (6444): wire-hostile watches what is read off each message after the
   door (test room only): 3a every named field read or in NOT_REACHED with
   why (104, REACH_LINE; 3b it only falls); 4 no unnamed read (three named in
@@ -23,13 +31,14 @@ state: ready
   GOLD_ROADS and BAG_ROADS: the books moved what the purse or bag moved.
 
 ## Next
-- PR 6 (6445): the gaps beside the doors (a branch from claude/dg-reach).
+- PR 6: the merges, the whole suite, precheck, the PR.
 
 ## Found
 - none (no real second writer)
 
 ## Needs
-- none
+- docs/specs/send-door.md:25 still says the count is in characters
+  (send.js now counts bytes): not a card DG file. May I mend its line?
 
 ## Note
 - PR 6's `sessions.clear()` / rebuilt `sessions` and `ws.send` through

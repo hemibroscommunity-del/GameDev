@@ -21,14 +21,17 @@
  *   8. THE CENSUS, STRICT (v2.3.5671, the gatekeeper, sitting 33; the plan's
  *      rule 3): a raw `.send(` in server/src outside send.js fails.  Card K
  *      PR 13 (#2013, #2014) took it 93 -> 0; a frame leaves through `_send`.
+ *   1b. (v2.3.6445, card DG PR 6) BYTES: a frame is counted in UTF-8 bytes.
+ *   9. (v2.3.6445) sendOutside, the door's uncounted form before a room, is
+ *      imported only in the files listed (OUTSIDE), send.js by names alone.
  * Break proof (tried by hand): `_send` writing `s + ' '` -> 1 and 3 red; a
  * helper put back to `ws.send(JSON.stringify(` -> 4 and 8 red. */
 import { readFileSync, readdirSync } from 'node:fs';
-import { SEND, sendOutside } from '../src/send.js';
+import { SEND, sendOutside, utf8Bytes } from '../src/send.js';
 import { DAYBOOK, bookAdd, bookPut, bookRead } from '../src/daybook.js';
 import { makeStorage, openRoom, join, settle } from './testroom.mjs';
 import { SRC_DIR, srcFiles } from './src-walk.mjs';
-import { doorCalls, where } from '../../tools/guards/lib/writesOf.mjs';   /* v2.3.6441: the census reads the syntax tree (card DG PR 2) */
+import { doorCalls, where, visit } from '../../tools/guards/lib/writesOf.mjs';   /* v2.3.6441: the census reads the syntax tree (card DG PR 2) */
 
 let failures = 0;
 function check(name, cond, detail) {
@@ -49,7 +52,8 @@ const room = await openRoom(makeStorage());
   check('1: an object goes out as JSON.stringify of it, byte for byte', ws.raw[0] === JSON.stringify(msg), ws.raw[0]);
   room._send(ws, '{"type":"tick","seq":1}', 'tick_probe');
   check('1: a frame already made goes out as it is', ws.raw[1] === '{"type":"tick","seq":1}', ws.raw[1]);
-  check('1: each counted under its type with its length', tally(room, 'door_probe')[0] === 1 && tally(room, 'door_probe')[1] === ws.raw[0].length && tally(room, 'tick_probe')[1] === 23, [tally(room, 'door_probe'), tally(room, 'tick_probe')]);
+  /* v2.3.6445 (card DG PR 6): its length in BYTES as the socket writes them (UTF-8), not characters */
+  check('1: each counted under its type with its length in bytes', tally(room, 'door_probe')[0] === 1 && tally(room, 'door_probe')[1] === Buffer.byteLength(ws.raw[0], 'utf8') && tally(room, 'tick_probe')[1] === 23, [tally(room, 'door_probe'), tally(room, 'tick_probe')]);
   const dead = { send() { throw new Error('closed'); } };
   let threw = false;
   try { room._send(dead, { type: 'dead_probe' }); } catch (e) { threw = true; }
@@ -190,6 +194,26 @@ function body(src, name) {
   check('7: `sendcount: false`: the frame the same, nothing counted', ws.raw[0] === JSON.stringify(msg) && tally(r7, 'off_probe')[0] === 0);
 }
 
+/* ── 1b. bytes, not characters (v2.3.6445, card DG PR 6; the plan's 4.1b "counting bytes by type";
+   shape-doors.md part 8: send.js counted `s.length`, UTF-16 units) ── */
+{
+  const ws = rawWs('b');
+  const words = ['plain', 'Zoë', '€ uro', '⚔ sword', '😀 grin', 'あ', 'a\u0000b', '\ud83d\ude00\ud83d\ude00'];
+  const wrong = [];
+  for (const w of words) {
+    const r = await openRoom(makeStorage());
+    r._send(ws, { type: 'bytes_probe', payload: { w } });
+    const frame = ws.raw[ws.raw.length - 1];
+    const [n, len] = tally(r, 'bytes_probe');
+    if (n !== 1 || len !== Buffer.byteLength(frame, 'utf8')) wrong.push({ w, len, bytes: Buffer.byteLength(frame, 'utf8'), chars: frame.length });
+    /* the frame made first (the tick's way) is counted the same */
+    r._send(ws, frame, 'bytes_made');
+    if (tally(r, 'bytes_made')[1] !== Buffer.byteLength(frame, 'utf8')) wrong.push({ w, made: tally(r, 'bytes_made')[1] });
+  }
+  check('1b: a frame is counted in UTF-8 bytes (an emoji four, an accented letter two), an object or a frame made first', wrong.length === 0, wrong);
+  check('1b: ...utf8Bytes agrees with the engine on every character width (guard)', ['', 'abc', 'é', '€', '😀', 'x😀é€'].every((t) => utf8Bytes(t) === Buffer.byteLength(t, 'utf8')) && utf8Bytes(null) === 0);
+}
+
 /* ── 8. the census, strict ── */
 /* v2.3.5193: 150 on main 78f70f4a (140 `.send(JSON.stringify` and 10 of frames made first); 57 moved behind the helpers.
    v2.3.5198 (card K PR 13, batch 1): every file no card holds, 65 more: 28 left.
@@ -214,6 +238,42 @@ function body(src, name) {
   const probe = (t) => { const r = doorCalls({ 'x.js': 'function f(ws, s) {\n' + t + '\n}' }, { names: ['send'], membersOnly: true }); return r.calls.length + r.odd.length; };
   check('8: ...the census finds a write however it is spelled (a bind, a name made of it, a string key, .call)',
     probe('ws.send(s);') === 1 && probe('const out = ws.send.bind(ws); out(s);') === 1 && probe("ws['send'](s);") === 1 && probe('ws.send.call(ws, s);') === 1 && probe('const { send } = ws;') === 1 && probe('if (ws.send) x();') === 0 && probe('const send = (t) => t; send(s);') === 0);
+}
+
+/* ── 9. sendOutside is the worker's, before a room (v2.3.6445, card DG PR 6; shape-doors.md SEND-2) ──
+   The door's form outside a room writes a frame nothing counts.  Imported
+   into a room's file, it is a raw write the census of part 8 never sees.
+   Read off the syntax tree: every import of send.js (a named import by any
+   name, the module whole, a re-export, `import()`), by file; sendOutside only
+   in the files listed. */
+{
+  const raw = Object.create(null);
+  for (const f of srcFiles()) raw[f] = readFileSync(new URL(f, SRC_DIR), 'utf8');
+  const OUTSIDE = { 'origin.js': 'the worker refuses a socket from a site not the game\'s before it reaches a room (refuseOrigin)' };
+  const found = [];
+  const seen = new Set();
+  const isSend = (src) => typeof src === 'string' && /(^|\/)send(\.js)?$/.test(src);
+  for (const f of Object.keys(raw)) {
+    if (f === 'send.js') continue;
+    const at = (node, what) => found.push(f + ':' + raw[f].slice(0, node.start).split('\n').length + ' ' + what);
+    visit(raw[f], {
+      ImportDeclaration(path) {
+        if (!isSend(path.node.source.value)) return;
+        for (const sp of path.node.specifiers) {
+          if (sp.type === 'ImportNamespaceSpecifier' || sp.type === 'ImportDefaultSpecifier') at(path.node, 'send.js whole (`' + sp.local.name + '`): name what you take');
+          else if ((sp.imported.name || sp.imported.value) === 'sendOutside') { if (OUTSIDE[f]) seen.add(f); else at(path.node, 'sendOutside imported' + (sp.local.name !== 'sendOutside' ? ' as `' + sp.local.name + '`' : '')); }
+        }
+      },
+      ExportNamedDeclaration(path) { if (path.node.source && isSend(path.node.source.value)) at(path.node, 'send.js re-exported'); },
+      ExportAllDeclaration(path) { if (isSend(path.node.source.value)) at(path.node, 'send.js re-exported whole'); },
+      CallExpression(path) {
+        const c = path.node.callee, a = path.node.arguments[0];
+        if ((c.type === 'Import' || (c.type === 'Identifier' && c.name === 'require')) && a && (a.type !== 'StringLiteral' || isSend(a.value))) at(path.node, 'send.js loaded by `' + (c.type === 'Import' ? 'import()' : 'require') + '`');
+      },
+    });
+  }
+  check('9: sendOutside is imported only where no room is (OUTSIDE), and send.js by its names alone', found.length === 0, found);
+  check('9: ...each file listed still imports it (a stale one is deleted)', seen.size === Object.keys(OUTSIDE).length, [...seen]);
 }
 
 await settle();
