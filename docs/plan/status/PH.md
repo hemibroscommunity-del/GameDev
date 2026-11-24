@@ -4,10 +4,9 @@ prs: #2279 (PR 1, 6500, DEPLOYS), #2291 (6501), #2297 (6502), #2306 (6504): test
 state: working (part 5 hands over at ~205k tokens, at the PR boundary: PR 4 too big for what is left; orchestrator part 6, session_01LccHanKxudynkwdrcZewcK)
 
 ## Done
-- PR 1 (6500) #2279: heat, the board, the ramps; sitting 57 mended.
-- PR 2 (6501) #2291: the memory alarm on the game's own total, 120 MB
-  (DECIDED FOR THE OWNER WHILE AWAY; `?memalarm=0`).
-- PR 3 (6502) #2297: lines + TOTAL 216.0. PR 5 (6504) #2306: --heap.
+- #2279 (6500): heat, the board, the ramps. #2291 (6501): the memory alarm,
+  120 MB (decided while away; `?memalarm=0`). #2297 (6502): lines + TOTAL
+  216.0. #2306 (6504): --heap.
 - PR 6 (6505): the gate's held sample (stand, town, ride; the sweep's
   unminified build) and gate-steps.test (new files approved, orchestrator
   part 5, 03:30); screen-check mended in the test (rider's own browser,
@@ -23,16 +22,19 @@ state: working (part 5 hands over at ~205k tokens, at the PR boundary: PR 4 too 
   changes a half hour), and `mis`, the pacer reading a hot phone's missed
   frames as a slower screen (the owner's lane `thirty`): PR 4's to mend.
   Then: govsim as frame-pacer.test's check (the break proof), the cooled
-  margin and doubled wait; on phones 1.5 sharpness and shine off by
-  default, each with its switch (the owner's answers, census/PH-phone.md).
+  margin and doubled wait; on phones 1.5 sharpness by default, metal
+  shine ON and the ladder's FIRST rung (NOT off: orchestrator 05:02 UTC,
+  census/PH-phone.md's last part), each with its switch, in the PR under
+  "Decided for the owner while away".
 
 ## Found
-- maskedEvict.js's header: old words. buffers 24.3 on CI vs 24.8: trim owed.
-- `portrait` 21.7 ms > 12 at the sweep's armour (off the list since 5042).
-- `server-message` (new row, ours): src/networking/wsClient.js ws.onmessage
-  and what it hands on (census/HB-holds.md row 15).
+- maskedEvict.js's header: old words; buffers 24.3 CI vs 24.8: trim owed.
+  `portrait` 21.7 ms > 12 at the sweep's armour (off the list since 5042).
+- `server-message` (new row, ours): wsClient.js ws.onmessage (HB-holds 15).
 - lane `thirty` read on a phone drawing 45 (Low Power off): framePacer.js /
   drawLanes.js, PR 4's if the governor leans on it.
 
+- The Speed test card's "off" rows are slower than "everything on" (owner's
+  1.5 card): say so, not savings (the Speed test's file; census/PH-phone.md).
 ## Needs
 - The owner's word on the alarm's level (call 3): decided while away, 120.

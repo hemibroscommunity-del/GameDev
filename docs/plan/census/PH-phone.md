@@ -129,3 +129,21 @@ hour, and 60 held 4 to 15% of the time. And `mis`: a hot phone's missed frames a
 read as 60 for 68 to 90% of the hour at 2.4). That is the owner's lane `thirty` on a phone drawing 45 with Low Power
 Mode off (above): the governor leans on the pacer's refresh reading, so it is PR 4's to mend or stop trusting
 (`framePacer.js`'s refresh estimate; the lane from `drawLanes.js`).
+
+## The owner's Speed test at 1.5, passed on by the orchestrator (part 6), 2026-11-24 05:01 UTC
+
+On the owner's iPhone (14 Pro or Pro Max, brotown.net): "Screen 430 x 775 at 3x, drawn 645 x 1106 px (lowered to
+1.5x), touch, iOS, looks palette on, lane full". Frames a second / slowest ms: everything on (as you play) 60 / 18;
+no shadows (and no shine) 58 / 20; no metal shine 48 / 24; metal shine the old way 46 / 25; three drawing programs
+52 / 23; shadows the old way 45 / 26; still water 47 / 24; lower resolution (2x, not 3x) 47 / 25; all of those off
+51 / 24. The game's own work 3.1 ms a frame, 62 draws, 1.0 picture switches; "Every frame is ready in time for the
+screen (60 a second...): nothing is holding the frame rate back here."
+
+**THIS REPLACES "shine off by default" above.** Decided for the owner while away (the orchestrator, 05:02 and 05:16
+UTC; the owner said "keep going throughout the night"), each behind its switch, named in PR 4 under "Decided for the
+owner while away": (1) phone sharpness 1.5 by default (the owner's own "1.5 looks fine nothing below that");
+(2) metal shine STAYS ON by default (as played it drew 60 with everything on); shine is the ladder's FIRST rung to
+drop when a phone falls behind (then the card's next rungs), with a switch to force it either way.
+Found, for the Speed test: its rows are not comparable on this card (every "off" row slower than "everything on",
+"lane full" here against "lane thirty" before): the phone warming, the screen's rate changing, or a row's own switch
+costing a rebuild. A card whose "off" rows are slower should say so in plain words, not print savings computed from them.
