@@ -42,6 +42,13 @@
  *      in a leaf or table is module state held on the page; the three today
  *      are QA probes (KNOWN_GLOBALS).  A new one fails: `window.__seen =
  *      window.__seen || new Map()` is the third spelling of the plant.
+ *   2c. EVERY USE OF THE STATE IS AN ALLOWED FORM (v2.3.6526, sitting 59's
+ *      hold: an ALLOW list, not the spellings learned): the state is
+ *      followed from each of its own places through every use; a named read,
+ *      a reading method, a name or copy (followed), a value that leaves no
+ *      handle, or a function the guard reads are allowed, and every other
+ *      use is a row of USES (by file, only falls: 1 row, 4 uses), a form it
+ *      cannot follow included.  A write reached so is rule 2's.
  *   5. THE RULES, ON A FIXTURE: each plant below, scanned as text in memory,
  *      fails its rule, and a clean leaf passes (so a scan made blind fails
  *      here, not only on the plants by hand).
@@ -97,6 +104,14 @@
  *
  * Run from the repository's root:  node tools/guards/leaves.test.mjs
  * (cd server && npm test runs it with every other guard and suite).
+ * v2.3.6526, sitting 59's hold (the class: every use of the state followed,
+ * rule 2c), tried 2026-11-24 in selfCorpseUp(S), each red:
+ *   - `for (const m of [...S.monsters]) m.seen = 1;`  -> FAIL 2 (the copy followed)
+ *   - `const _w = { s: S }; _w.s._zz = 1;`           -> FAIL 2 (the object followed)
+ *   - `for (const m of S.monsters) _H.mark(m);`       -> FAIL 2c (a method of another object)
+ *   and in rule 5's fixture card WL's own six: an array pattern, a member
+ *   kept (`o.m = S.monsters`), an iterator walked, a slice's entry, a found
+ *   entry through `|| []`, `Reflect.set(S.player, ..)`.
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative, dirname, resolve, sep } from 'node:path';
@@ -114,6 +129,13 @@ const KNOWN_GLOBALS = [
 const GLOBAL_LINE = KNOWN_GLOBALS.length;
 /* v2.3.6521 (sitting 58): rule 2b's list, by file (it only falls) */
 const UNFOLLOWED = Object.freeze(Object.assign(Object.create(null), {}));
+/* v2.3.6526 (sitting 59): rule 2c's list, the state's uses that are no allowed form, by file (it
+   only falls).  It starts with 1 row holding 4 uses: entity-monsters.js hands a parameter a caller
+   fills from a variable named `state` (the monster's own look state, by its look: a caller's
+   `state`) to the recolour module, which is not a leaf. */
+const USES = Object.freeze(Object.assign(Object.create(null), {
+  'src/rendering/leaves/entity-monsters.js': 4,
+}));
 
 let failed = 0;
 const ok = (m) => console.log('ok   ' + m);
@@ -427,6 +449,7 @@ function scanLeaf(rel, text, stateParams = new Map()) {
       paramBindings(p, positions);
     },
   });
+  const stateRoots = new Set(stateMarks);   /* v2.3.6526: the state's own places, before any alias */
   const pendingS = [];
   spreadMarks(ast, stateMarks, pendingS);
   /* v2.3.6521 (sitting 58): a function handed over a marked value that the
@@ -500,7 +523,182 @@ function scanLeaf(rel, text, stateParams = new Map()) {
       } else handsOn.push({ local: c.name, pos: i });
     });
   }
-  return { moduleState, stateWrites, globals: [...new Set(globals)], exportsFns, handsOn, unfollowed };
+  const uses = stateUses(ast, stateRoots, where, stateWrites, (src) => LEAF_SET.has(withExt(ALIAS(src, rel))));
+  return { moduleState, stateWrites, globals: [...new Set(globals)], exportsFns, handsOn, unfollowed, uses };
+}
+
+/* ── 2c. v2.3.6526 (sitting 59's hold): the state's every use, an ALLOW list ──
+   Sittings 57 to 59 each planted a spelling of a write the alias marks did
+   not reach (`for (const m of [...S.monsters]) m.seen = 1`, `_H.mark(m)`,
+   `const _w = { s: S }; _w.s._zz = 1`).  So the state is FOLLOWED from each
+   of its own places (a parameter named S, one a caller fills, the page's
+   `window._gameState`) through every use, and each use must be one of the
+   ALLOWED forms; any other is a row of USES (by file, it only falls), a
+   form it cannot follow included:
+     - a READ BY A NAMED FIELD: `S.x`, `S.x.y` (and `S.x[k]`, `S.x[0]`: a
+       read of an entry), followed on to where that value goes;
+     - a READING METHOD of it (`.get`, `.has`, `.includes`, `.find`,
+       `.filter`, `.map`, `.forEach`, `.slice`, ... below): its callback, a
+       function written there, has its parameters followed; what it returns
+       of the state (`get`, `find`, `filter`, `slice`, `values`, ...) is
+       followed on;
+     - a NAME given it (`const c = S.x`, `const { a, b } = S`, `for (const m
+       of S.x)`): each use of the name is followed (a name given another
+       value later is a row);
+     - a copy that holds its parts (`[...S.x]`, `{ ...S.x }`, `{ s: S }`,
+       `[S.x]`, `a || S.x`, `c ? S.x : y`): the copy is followed;
+     - a VALUE that leaves no handle: an operand (`+`, `<`, `===`, `!`,
+       `typeof`, a template), a test (`if`, `?:`, `while`, `switch`),
+       `for (k in S.x)`, a return (the caller's), handed to `Math.*`,
+       `Number`, `String`, `Boolean`, `isFinite`, `isNaN`, `parseInt`,
+       `parseFloat`, `JSON.stringify`, `Array.isArray`, `Object.keys`
+       (`Object.values`, `Object.entries`, `Array.from` are followed on);
+     - handed to a function the guard reads: a local function by its name,
+       or a leaf's import (the mark goes on to its parameter: rule 2).
+   A write through any of these is rule 2's (red).  Every other use is a
+   row: handed to a method of another object (`_H.mark(m)`, `g.drawRect(
+   S.x, ..)`), to a parameter or a non-leaf import, kept in a member or a
+   name assigned again (`o.y = S.x`), a method of it not on the lists, the
+   state by a key held in a variable on a write, `.call`/`.apply`/`.bind`. */
+const READ_PRIMITIVE = new Set(['has', 'includes', 'indexOf', 'lastIndexOf', 'findIndex', 'findLastIndex', 'some', 'every',
+  'forEach', 'join', 'toFixed', 'toString', 'toLowerCase', 'toUpperCase', 'startsWith', 'endsWith', 'charAt', 'charCodeAt',
+  'codePointAt', 'trim', 'trimStart', 'trimEnd', 'split', 'padStart', 'padEnd', 'repeat', 'localeCompare', 'getTime',
+  'test', 'match', 'replace', 'replaceAll', 'search', 'substring', 'substr', 'valueOf', 'toPrecision', 'keys']);
+const READ_ALIAS = new Set(['get', 'find', 'findLast', 'at', 'slice', 'filter', 'values', 'entries', 'concat', 'flat',
+  'map', 'flatMap', 'reduce', 'reduceRight']);
+const SAFE_CALLS = new Set(['Number', 'String', 'Boolean', 'isFinite', 'isNaN', 'parseInt', 'parseFloat']);
+const SAFE_OF = { Math: null, Number: null, JSON: new Set(['stringify']), Array: new Set(['isArray']), Object: new Set(['keys', 'is']) };
+const ALIAS_OF = { Object: new Set(['values', 'entries']), Array: new Set(['from', 'of']) };
+let LEAF_SET = new Set();
+function stateUses(ast, roots, where, stateWrites, isLeafImport) {
+  const rows = [];
+  const row = (n, how) => rows.push(where(n) + ' -- ' + how);
+  const write = (n, how) => { const w = where(n) + ' -- ' + how + ' into the state (followed)'; if (!stateWrites.some((x) => x.startsWith(where(n)))) stateWrites.push(w); };
+  const seen = new Set();
+  const isTarget = (path) => {
+    const p = path.parent, n = path.node;
+    return (p.type === 'AssignmentExpression' && p.left === n) || p.type === 'UpdateExpression'
+      || (p.type === 'UnaryExpression' && p.operator === 'delete')
+      || ((p.type === 'ForInStatement' || p.type === 'ForOfStatement') && p.left === n)
+      || p.type === 'ObjectProperty' && p.value === n && path.parentPath.parent.type === 'ObjectPattern'
+      || p.type === 'ArrayPattern' || p.type === 'RestElement' || p.type === 'AssignmentPattern' && p.left === n;
+  };
+  const followBinding = (scope, name, at) => {
+    const b = scope.getBinding(name);
+    if (!b) { row(at, 'the state kept in ' + name + ' (no binding)'); return; }
+    if (b.constantViolations.length) { row(at, 'the state kept in ' + name + ', given another value later'); return; }
+    for (const r of b.referencePaths) follow(r);
+  };
+  const pattern = (pathAt, pat) => {
+    if (!pat) return;
+    if (pat.type === 'Identifier') { followBinding(pathAt.scope, pat.name, pat); return; }
+    if (pat.type === 'AssignmentPattern') { pattern(pathAt, pat.left); return; }
+    if (pat.type === 'RestElement') { pattern(pathAt, pat.argument); return; }
+    if (pat.type === 'ObjectPattern') { for (const pr of pat.properties) pattern(pathAt, pr.type === 'RestElement' ? pr.argument : pr.value); return; }
+    if (pat.type === 'ArrayPattern') { for (const e of pat.elements) pattern(pathAt, e); return; }
+    row(pat, 'the state given to a pattern it cannot read');
+  };
+  /* the callbacks of a reading method: a function written there has its parameters followed */
+  const callbacks = (callPath) => {
+    for (const a of callPath.get('arguments')) {
+      if (a.isFunction()) { for (const prm of a.node.params) pattern(a, prm); continue; }
+      if (a.isIdentifier() || isMember(a.node) || isCall(a.node)) {
+        const fp = fnOf(a);
+        if (fp) { for (const prm of fp.node.params) pattern(fp, prm); continue; }
+        if (maybeFn(a)) row(a.node, 'a function the guard cannot read handed the state\'s parts');
+      }
+    }
+  };
+  /* handed to a call as an argument */
+  const handed = (path, callPath) => {
+    const c = callPath.node.callee;
+    if (c.type === 'Identifier') {
+      const b = callPath.scope.getBinding(c.name);
+      if (!b && SAFE_CALLS.has(c.name)) return;
+      if (b && b.kind === 'module') {
+        const src = b.path.parentPath.node.source && b.path.parentPath.node.source.value;
+        if (src && isLeafImport(src)) return;          /* the mark goes on (rule 2) */
+        row(path.node, 'the state handed to an import that is not a leaf (' + c.name + ')');
+        return;
+      }
+      if (b && b.kind !== 'param' && !b.constantViolations.length && (b.path.isFunctionDeclaration()
+        || (b.path.isVariableDeclarator() && b.path.node.init && /Function/.test(b.path.node.init.type)))) return;   /* a local function: followed */
+      row(path.node, 'the state handed to ' + c.name + ' (a function the guard cannot read)');
+      return;
+    }
+    if (isMember(c) && c.object.type === 'Identifier' && !callPath.scope.getBinding(c.object.name)) {
+      const k = propName(c);
+      if (Object.prototype.hasOwnProperty.call(SAFE_OF, c.object.name) && (SAFE_OF[c.object.name] === null || SAFE_OF[c.object.name].has(k))) return;
+      if (ALIAS_OF[c.object.name] && ALIAS_OF[c.object.name].has(k)) { follow(callPath); return; }
+    }
+    row(path.node, 'the state handed to ' + (isMember(c) ? 'a method (.' + (propName(c) || '?') + ')' : 'a ' + c.type));
+  };
+  /* `path` is a value of the state: each use must be an allowed form */
+  const follow = (path) => {
+    const n = path.node;
+    if (!n || seen.has(n)) return;
+    seen.add(n);
+    const p = path.parent, pp = path.parentPath;
+    if (isMember(p) && p.object === n) {
+      const k = propName(p);
+      if (isTarget(pp)) { write(p, 'a write'); return; }
+      const g = pp.parent;
+      if (isCall(g) && g.callee === p) {
+        if (k && MUTATORS.has(k)) { write(g, '.' + k + '()'); return; }
+        if (k && READ_PRIMITIVE.has(k)) { callbacks(pp.parentPath); return; }
+        if (k && READ_ALIAS.has(k)) { callbacks(pp.parentPath); follow(pp.parentPath); return; }
+        row(g, 'a method of the state not on the reading lists (' + (k || 'a computed key') + ')');
+        return;
+      }
+      follow(pp);
+      return;
+    }
+    if (isTarget(path)) { row(n, 'the state\'s place given another value'); return; }
+    switch (p.type) {
+      case 'VariableDeclarator':
+        if (p.init === n) { pattern(pp, p.id); return; }
+        break;
+      case 'ForOfStatement':
+        if (p.right === n) {
+          const l = p.left;
+          if (l.type === 'VariableDeclaration') pattern(pp, l.declarations[0].id);
+          else row(l, 'the state\'s parts given to a name or member written again');
+          return;
+        }
+        break;
+      case 'ForInStatement': if (p.right === n) return; break;
+      case 'SpreadElement':
+        if (pp.parent.type === 'ArrayExpression' || pp.parent.type === 'ObjectExpression') { follow(pp.parentPath); return; }
+        if (isCall(pp.parent) || pp.parent.type === 'NewExpression') { handed(pp, pp.parentPath); return; }
+        break;
+      case 'ArrayExpression': follow(pp); return;
+      case 'ObjectProperty':
+        if (p.value === n && pp.parent.type === 'ObjectExpression') { follow(pp.parentPath); return; }
+        break;
+      case 'LogicalExpression': case 'ParenthesizedExpression': case 'TSNonNullExpression': case 'AwaitExpression':
+        follow(pp); return;
+      case 'ConditionalExpression': if (p.test === n) return; follow(pp); return;
+      case 'SequenceExpression': if (p.expressions[p.expressions.length - 1] === n) follow(pp); return;
+      case 'MemberExpression': case 'OptionalMemberExpression':
+        if (p.property === n && p.computed) return;     /* a key read: `x[S.k]` */
+        break;
+      case 'BinaryExpression': case 'TemplateLiteral': case 'IfStatement': case 'WhileStatement': case 'DoWhileStatement':
+      case 'SwitchStatement': case 'SwitchCase': case 'ReturnStatement': case 'ExpressionStatement': case 'TaggedTemplateExpression':
+        return;
+      case 'UnaryExpression': if (p.operator !== 'delete') return; break;
+      case 'ArrowFunctionExpression': if (p.body === n) return; break;
+      case 'CallExpression': case 'OptionalCallExpression': case 'NewExpression':
+        if (p.callee === n) { row(n, 'the state called as a function'); return; }
+        handed(path, pp); return;
+      default: break;
+    }
+    row(n, 'the state in a ' + p.type + ' (a form the guard cannot follow)');
+  };
+  for (const b of roots) for (const r of b.referencePaths) follow(r);
+  babel.traverse(ast, {
+    'MemberExpression|OptionalMemberExpression'(p) { if (globalStateBase(p.node) && bases(p.node).some(globalStateBase) && p.node.object.type === 'Identifier') follow(p); },
+  });
+  return rows;
 }
 
 /* ── who fills a leaf's parameter with the state (callers under src/) ── */
@@ -617,6 +815,17 @@ export const draw = (sprite, S) => { sprite.alpha = S.a; sprite.scale.set(2); };
     ['a `let` in a function run once at load', 'export const tick = (() => { let n = 0; return () => n++; })();', 'moduleState'],
     ['a `const` Map in a function run once at load, filled', 'export const remember = (function () { const seen = new Map(); return (k) => { seen.set(k, 1); }; })();', 'moduleState'],
     ['a page global', 'export function f() { window.__seen = window.__seen || new Map(); }', 'globals'],
+    /* v2.3.6526: sitting 59's plants (rule 2c follows every use) */
+    ['a copy\'s parts written', 'export function f(S) { for (const m of [...S.monsters]) m.seen = 1; }', 'stateWrites'],
+    ['handed to a method of another object', 'const _H = { mark(x) { x.seen = 1; } };\nexport function f(S) { for (const m of S.monsters) _H.mark(m); }', 'uses'],
+    ['kept in an object', 'export function f(S) { const _w = { s: S }; _w.s._zz = 1; }', 'stateWrites'],
+    /* v2.3.6526: card WL's own, not designed for */
+    ['an array pattern', 'export function f(S) { const [first] = S.monsters; first.hp = 0; }', 'stateWrites'],
+    ['kept in a member', 'export function f(S) { const o = {}; o.m = S.monsters; o.m[0].x = 1; }', 'uses'],
+    ['an iterator walked', 'export function f(S) { const it = S.byId.values(); it.next().value.x = 1; }', 'uses'],
+    ['a slice\'s entry written', 'export function f(S) { S.monsters.slice(0, 1)[0].dead = true; }', 'stateWrites'],
+    ['a found entry, through a default', 'export function f(S) { (S.monsters || []).find(Boolean).x = 1; }', 'stateWrites'],
+    ['Reflect.set on a part', 'export function f(S) { Reflect.set(S.player, \'x\', 1); }', 'uses'],
   ];
   const clean = scanLeaf('fixture/clean.js', CLEAN);
   if (clean.moduleState.length || clean.stateWrites.length || clean.globals.length || clean.unfollowed.length) {
@@ -637,12 +846,13 @@ export const draw = (sprite, S) => { sprite.alpha = S.a; sprite.scale.set(2); };
   if (!chainToSystems(G, 'src/rendering/leaves/a.js')) missed.push('the chain through a middle file');
   if (chainToSystems(new Map([['src/rendering/leaves/a.js', ['src/rendering/b.js']]]), 'src/rendering/leaves/a.js')) missed.push('(a chain read where there is none)');
   if (missed.length) bad('5. the rules miss ' + missed.length + ' of ' + (PLANTS.length + 2) + ' plants: ' + missed.join('; '));
-  else ok('5. the rules catch all ' + (PLANTS.length + 2) + ' plants (module state 11, the state 15 with the rename, the hand-on and the callbacks, one it cannot follow, a global, the chain)');
+  else ok('5. the rules catch all ' + (PLANTS.length + 2) + ' plants (module state 11, the state 15 with the rename, the hand-on and the callbacks, one it cannot follow, a global, the chain; v2.3.6526: sitting 59\'s 3 and card WL\'s 6, every use followed)');
 }
 
 /* ── the leaves, read ─────────────────────────────────────────────────── */
 const leafFiles = LEAF_DIRS.flatMap(walk);
 const leafSet = new Set(leafFiles);
+LEAF_SET = leafSet;
 if (leafFiles.length < 20) bad('the leaves and tables are ' + leafFiles.length + ' files: the folders moved? (26 on 2026-11-23)');
 else ok(leafFiles.length + ' leaf and table files read (' + LEAF_DIRS.join(', ') + ')');
 
@@ -701,6 +911,21 @@ else ok('2. no leaf or table writes to S (parameters named S, and ' + filled + '
   const fell = Object.keys(UNFOLLOWED).filter((rel) => (by[rel] || []).length < UNFOLLOWED[rel]);
   if (fell.length) console.log('     (room: ' + fell.map((rel) => rel + ' ' + (by[rel] || []).length + ' < ' + UNFOLLOWED[rel]).join(', ') + '; lower the list)');
   if (process.argv.includes('--list')) for (const rel of Object.keys(by)) by[rel].forEach((m) => console.log('     unfollowed ' + m));
+}
+
+/* 2c. v2.3.6526 (sitting 59): the state's every use is an allowed form, or a row of USES (by
+   file; it only falls): a new spelling is red, never green */
+{
+  const over = [];
+  let n = 0;
+  for (const [rel, r] of results) {
+    n += r.uses.length;
+    if (r.uses.length > (USES[rel] || 0)) over.push(rel + ' (' + r.uses.length + ', its row ' + (USES[rel] || 0) + '): ' + r.uses.join('; '));
+  }
+  const line = Object.values(USES).reduce((t, x) => t + x, 0);
+  if (over.length) { bad('2c. uses of the state that are no allowed form, over the list (' + n + '; the list ' + line + ' in ' + Object.keys(USES).length + ' row(s)):'); over.forEach((x) => console.log('       ' + x)); }
+  else ok('2c. every use of the state in a leaf is a named read, a reading method, a followed name or copy, a value, or a function the guard reads: ' + n + ' other (the list ' + line + ' in ' + Object.keys(USES).length + ' row(s); it only falls)');
+  if (process.argv.includes('--uses')) for (const [, r] of results) for (const u of r.uses) console.log('       use ' + u);
 }
 
 /* 3 */
