@@ -255,6 +255,7 @@ import { freeSwingMethods } from './freeswing.js'; /* v2.3.4520: the free-swing 
 import { drawGatherMethods } from './drawgather.js'; /* v2.3.4801: the bow's draw and the staff's gather (a shot's share of a full build) */
 import { testModeMethods } from './testmode.js'; /* v2.3.3430: test mode -- the owner's own characters without the honesty checks */
 import { deviceLockMethods } from './devicelock.js'; /* v2.3.3344: a character's login key works on the devices it is played on */
+import { traceNote } from './playtrace.js'; /* v2.3.6482: the owner's play recorded (card WHO PR 3) */
 import { silenceMethods } from './silence.js'; /* v2.3.5621: the owner's silence, and a freeze that holds the device (card MOD) */
 import { charNameMethods } from './charname.js'; /* v2.3.5622: the name rules (card MOD) */
 import { loginKeyMethods } from './loginkeys.js'; /* v2.3.3355: new Login Keys, made by the worker */
@@ -4878,6 +4879,11 @@ export class GameRoom {
     if (this._wireDoor(session, msg)) return;
     /* v2.3.5621: the owner's silence, its own step after the door (silence.js, card MOD; card K's word) */
     if (this._silenceDoor(session, msg)) return;
+    /* v2.3.6482 (card WHO PR 3; the orchestrator's yes, 2026-11-24): what a
+       test-mode sitting's page sent, recorded (playtrace.js).  Synchronous,
+       makes nothing and returns at once for a session not recording, never
+       throws; memory only but for the recording's one put. */
+    traceNote(this, session, msg);
     /* Reset the AFK clock on real input only.  Pong replies are
        keepalive heartbeats, not player activity -- counting them would
        mean the timeout fires only on TCP death, not on AFK players

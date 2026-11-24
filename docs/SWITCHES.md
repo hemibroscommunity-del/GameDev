@@ -569,6 +569,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `max_players` | worker | value | v2.3.1982 |  | a number, 1 to the ceiling | logic |  | no | The room's cap on players, never above its bandwidth ceiling. |
 | `nearjoin` | worker | switch | v2.3.3276 | 2026-10-17 | false | logic |  | no | New joins get the whole snapshot again, cap off. |
 | `pacekeep` | worker | switch | v2.3.5921 | 2026-11-18 | false | logic |  | no | Nine request paces (the dice, a drop, the gamble, the ace flips, the rewards' read, salvage, the race's start, a rest, and since v2.3.6024 the daily spin) are the socket's alone again: a rejoin forgets them (TRAPS §276), as before card V3. |
+| `playtrace` | worker | switch | v2.3.6482 | 2026-11-24 | false | logic | `sitting` | no | No test-mode sitting is recorded and no `play_trace:` row written (rows written stay), no check runs in shadow, and the cap `playtrace` is not advertised. |
 | `presence2` | worker | switch | v2.3.3250 | 2026-10-14 | false | logic |  | no | Un-advertises presence 2: every phone back on the v2.3.3246 roster. |
 | `quiet` | worker | switch | v2.3.3254 | 2026-10-15 | false | logic |  | no | Un-advertises the quiet phone: each phone as before from its next join. |
 | `refusejoined` | worker | switch | v2.3.4921 | 2026-11-12 | false | logic |  | no | A refused session is dropped only, not taken out of the world. |

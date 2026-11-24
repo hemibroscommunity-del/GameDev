@@ -602,12 +602,15 @@ const TREE_UNNAMED = {
 const TREE_FORMS = [
   { at: 'join.js _handleJoin', what: 'a write of the message (data)',
     why: 'a join with no record on file strips the rpg claims off its own `data` before anything reads it (join.js: a new character starts from the server\'s defaults; CLAUDE.md §5 Identity)' },
+  /* v2.3.6484 (card WHO, sitting 60's hold; the orchestrator's yes, a raise: TREE_LINE 15 -> 16) */
+  { at: 'playtrace.js note', what: 'the message handed to JSON.stringify (its keys listed)',
+    why: 'the owner\'s recording: the message as the page sent it, which rung 4 replays (a copy by names would drop a new wire field from the replay); playtrace.test §7c holds the copy safe: kept, the message unchanged, nothing sent' },
 ];
 /* a table built at run time, read as the literal it is made from (`FIGHT_LOCK`
    is Object.fromEntries over FIGHT_LOCK_SW and FIGHT_LOCK_HOW: its rows'
    `when` and `refuse` are FIGHT_LOCK_HOW's) */
 const TREE_TABLES = { 'fightlock.js:FIGHT_LOCK': 'FIGHT_LOCK_HOW' };
-const TREE_LINE = 15;   /* 13 fields + 1 form + 1 table, 2026-11-24 */
+const TREE_LINE = 16;   /* 13 fields + 1 form + 1 table, 2026-11-24; v2.3.6484: + playtrace.js note's copy (card WHO, the orchestrator's yes) */
 
 /* ══════════ RUN ══════════ */
 const t0 = performance.now();

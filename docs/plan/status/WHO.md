@@ -1,6 +1,6 @@
 card: WHO
-branch: claude/plan-who-2-sitting (6481, stacked on claude/plan-who-1-actor, #2285); claude/plan-who-3-trace (6482, stacked on it, opens next)
-prs: #2285 6480 (held at sitting 59, frozen), #2316 6481 (held at sitting 59: its BUG mended here), #2317 6482 (held, frozen but for this mend merged up); the other holds on claude/plan-who-mend59 (next)
+branch: claude/plan-who-mend60 (6484, sitting 60's hold of #2317 and the sitting card's flag gap; base claude/plan-who-mend59, #2325, on #2317; main merged in)
+prs: #2285 6480 and #2316 6481 IN main (sitting 60); #2317 6482 HELD at sitting 60 (wire-gaps 2b, with DG's #2313); #2325 6483 mend59 (draft, base #2317's branch): sitting 59's other holds, a mutation pass; 6484 mend60 (draft, base #2325's branch): sitting 60's hold and the flag gap
 state: working
 
 ## Done
@@ -11,8 +11,7 @@ state: working
 
 ## Next (part 4, from 2026-11-24)
 - The orchestrator's three answers (2026-11-24): 1 YES admin.js KEPT_OUT's one `play_trace:` row (already on 6482); 2 the trace stays ONE row of 96 KB, `cut: 'size'` accepted, nothing more built; 3 YES the movement.js test-mode call (in 6481, committed, not pushed).
-- 6481: #2283 merged (sitting 58, main 045a8b1a): #2285's branch (with main) merged in, precheck, pushed, opened READY on claude/plan-who-1-actor ("shape bump: ECON_V" first; the yeses: movement.js (two judged calls and the test-mode one), combat.js + hitproof.js, gold.js econGold; migrations.js econClean; report.js NOT, card PH's).
-- 6482: merge 6481 in, precheck, push, open READY on claude/plan-who-2-sitting ("stacked on 6481" at the top; the files outside the card with their lines; admin.js KEPT_OUT, the orchestrator's yes; answer 2 named; not shadowed: botfp, botsig, the quests' order, lastplace, the roll window).
+- 6481/6482: opened READY as #2316, #2317 (sitting 58); held at sitting 59; the bug mended (above).
 - Then report.js's one sitReport call after #2279 (card PH), on the orchestrator's word.
 
 ## Found
@@ -20,14 +19,16 @@ state: working
 - Items are not split by test play: bag.js bagGive is handed the bag alone.
 - server/src/econcard.js openSeconds counts a test-mode sitting's open seconds with play.
 - The card's counts reach storage only with a save the record makes anyway (no put of its own): a sitting with no save after its last activity (walking only, nothing dirty at the close) loses the counts since its last save; the card closes at its last saved moment (SHAPES part 2).
-
 - A walking page sends about ten moves a second: 96 KB holds about five active minutes of it, so a walk-heavy sitting's row ends `cut: 'size'` before the ten minutes (the bench's harvester did: playtrace.test §2). The whole ten minutes would take two rows or a coarser form in the league's trace (tools/league, not this card's): the orchestrator's answer (2026-11-24): one row, `cut: 'size'` accepted for now.
 - Test mode judges no move, so the sitting's card (6481) counts no active second from a test-mode character's moves (only its hit claims): the trace keeps its own active clock. Fixed in 6481 (the orchestrator's yes, 2026-11-24): movement.js counts a test-mode move (sitting.test §10).
 - The cook's start in shadow sees no spent plan (test mode never spends one), so a second result on one plan is not counted as would-refuse.
-
 - Sitting 59's BUG (mended on #2316's branch, v2.3.6481): sitting.js open(): only the card the record's LATEST join took counts (room._sitLive, a WeakMap; sitForget at every join): joined with `sitting: false`, the flag thrown on mid-sitting, a week-old card is no longer reopened (sitting.test §7b, 7 checks; red with the old open() and with join.js's sitForget removed).
+- 6483 (mend59): the three suites kill what PRs 1-3 added (a mutation pass, 1,389 mutants: 1,235 killed, 154 listed with why in the PR); sitting 59's holds all red; three plants of my own red (one after a new check, sitting.test §10b). The orchestrator is now part 9 (session_01LccHamNZeNpQU9rZ8TBGhy).
+- Found by the pass (not fixed, the orchestrator's question): the shadow disagrees with the real check in three places (playtrace, recording only): the cook floor measured from play's lastCookAt; a second plan-less cook never counted; a warp at the first move after the join not counted.
+- 6484 (mend60, main merged in): sitting 60's hold: traceNote is handed the phone's message as it came, and the recording IS the message (rung 4 replays what the page sent), so its type alone cannot serve: it is named in wire-gaps' TAKERS (DG's guard, the orchestrator's offer), and playtrace.test §7c holds what a taker must be (a copy kept, the message unchanged, nothing sent; three plants red). The review's gap in sitting.js: the switch thrown off and on on one socket with no rejoin put the same card back on, the off time its longest gap: now `sitting: false` set through the flags' route (liveops.js, one call) forgets every card the joins took (sitFlagSet); the next join closes or carries it on. sitting.test §7c (16 checks, both ways back on: cleared and set true); five plants red, one equivalent survivor (the call on any flag's change: off, the map is already empty).
+- Left (not built, debts.md's lines): the trace's shadow in cooking.js :1044 and :1076, movement.js :711 with playtrace.js :217. Exact, the cook's shadow must stop at the first would-refuse (rate, start, floor) with anchors of the recording's own, and the move's must judge the arrival: a redesign of the chain, its own PR.
 ## Needs
-- #2285: sitting 59 (the orchestrator has its head).
+- The orchestrator's answers (2026-11-24, on 6484): main merged in, two only-falls censuses read #2317's playtrace.js: the recording keeps its whole copy, wire-hostile's TREE_FORMS row (TREE_LINE 15 -> 16); the place written once (placeAt), phase-table's KEYS row (118 -> 119) and the zone door's `besides` row.
 - report.js's one call (soft, build, seen, drawn) after #2279 (card PH) merges: in 6482 or a small PR after it (the orchestrator's word).
 
 ## Readings chosen (for the gatekeeper)
