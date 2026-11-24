@@ -1,9 +1,13 @@
 card: DG
 branch: claude/dg-books (PR 3), on claude/dg-scans (PR 2), on claude/dg-door-guards (PR 1)
-prs: #2283 (PR 1, 6440, ready, mended), #2295 (PR 2, 6441, ready, base main), PR 3 (6442, ready)
+prs: #2283 (PR 1, 6440, CI mend), #2295 (PR 2, 6441, CI mend), #2300 (PR 3, 6442, ready); all base main
 state: ready
 
 ## Done
+- Sitting 57's CI (#2295 red): doorHolders walked every file once a name
+  (gold-door 1 s -> 46 s, past switches-thrown's 180 s): one walk a file
+  (4.6 s; GOLD-4 still red); PR 1's guard lets go of a record leaving the
+  room's map (heap-forget, +1 KB a guest in the test room), merged in.
 - PR 1 (6440, #2283): the running room refuses a write of a guarded field
   outside its door (testroom.mjs); mended for sitting 56 (roomGuard.holds;
   ECON_V + 1 for card WHO). Deploys when merged.
