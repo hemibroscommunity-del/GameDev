@@ -18,20 +18,19 @@ state: working
 - Sitting 59's mend rides PR 3 (the orchestrator's word): §8's writes of
   dx/dy an ALLOW list (WALK_WRITES: the statement, its `if`, counted; only
   falls), followed by the binding; both plants and eight of my own red.
-- PR 3 (6542, #2308 draft, stacked): the latch wired, the lock, S.stickX/Y
-  one owner (stickAnalog, stickLift; stick-zones 9).
+- PR 3 (6542, #2308 draft): the latch, the lock, S.stickX/Y one owner.
 
 ## Next
-- PR 3: mp-twobuttons 2c mended (claude/plan-ct-3-helper, f3ba66dd): one
-  helper run (session_01LccHaiTxWSWL6uNTsEJoZL). Green: PR 2 merged up,
-  main merged, precheck, push, #2308 ready. Red: mend 2c, run again.
+- PR 3 (#2308, branch claude/plan-ct-3-right, pushed as a draft with
+  PR 2's mend, sitting 59's allow list and main): the helper's ONE run of
+  `node tools/qa/mp/run.mjs twobuttons` on the branch (2c mended, never
+  run). Green: mark #2308 ready. Red: mend 2c (the test), run again.
 - Then PR 4 (6543), PR 5 (6544), item 6 (6545).
 
 ## Found
 - `manual-combat.test` 1h pinned `?manual=5` as no switch: now `6`.
-- On this box a CDP flick cannot be a swipe: each touch waits behind a
-  frame of a few hundred ms (past the swipe's 300 ms), and moves sent with
-  no frame between are coalesced into a tap (mode 4 too; mp-twobuttons 1f).
+- This box: a CDP flick waits behind a slow frame, past the swipe's 300 ms
+  (mode 4 too; mp-twobuttons 1f).
 
 ## Needs
 - The two OWNED rows (stickX, stickY pinned to `input`, OWNED_LINE + 2 in
