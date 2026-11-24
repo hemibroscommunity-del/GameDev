@@ -1,6 +1,6 @@
 card: CT
 branch: claude/plan-ct-2-stick (PR 2) and claude/plan-ct-3-right (PR 3)
-prs: #2282 (6540, merged), #2293 (6541, ready: sitting 58's hold mended), #2308 (6542, draft)
+prs: #2282 (6540, merged), #2293 (6541, held at 59, frozen), #2308 (6542, draft)
 state: working
 
 ## Done
@@ -13,7 +13,11 @@ state: working
   each the whole start of dx/dy; gameLoop reads no stick and hides S from
   nothing; every reader of the stick in src/ on a closed list). 16 plants
   red, tried by hand. The card's +44 (item 6, tag 6545) named in the PR's
-  words as the orchestrator's addition.
+  words as the orchestrator's addition. Head bfd443e9 green, frozen (held
+  at sitting 59: a later write to dx/dy unseen; the owner is asked).
+- Sitting 59's mend rides PR 3 (the orchestrator's word): §8's writes of
+  dx/dy an ALLOW list (WALK_WRITES: the statement, its `if`, counted; only
+  falls), followed by the binding; both plants and eight of my own red.
 - PR 3 (6542, #2308 draft, stacked): the latch wired, the lock, S.stickX/Y
   one owner (stickAnalog, stickLift; stick-zones 9).
 

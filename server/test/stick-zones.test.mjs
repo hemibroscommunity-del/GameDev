@@ -59,6 +59,14 @@
  * (the clock is the module's own now); stickFrame stamping
  * `performance.now()` or 0 -> FAIL 8 (three minutes of walking played on the
  * idle judge's clock).
+ * v2.3.6542, the gatekeeper's sitting 59 (both were green; both now red,
+ * tried by hand): a later write after the start, `if (!dx && !dy) { var _h =
+ * heldDirection(S); ... dx = _h[0]; ... }` and `if (!dy && K['w']) dy = -1;`
+ * -> FAIL 8 (the walk's writes an ALLOW list, WALK_WRITES, followed by the
+ * binding).  And eight not designed for, each red: `dx++` in a nested block,
+ * a for-of head, a closure's write, `[dx, dy] = ...`, a second `var dx`, a
+ * row spelled again, `dy *= 1.5`, `eval('dx = 1')`.  WALK_WRITES_PRINT=1
+ * prints the writes as the guard reads them (to take a row out).
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { STICK_ZONES, STICK_PHASES, stickRead, stickTravel, facing8, stickSwipe, stickTap, stickRelease, turnShare, stickPhase, stickTo, stickDrive, stickFrame, turnRingRadius, stickAnalog, stickLift, STICK_DEAD_PX } from '../../src/game/stickZones.js';   /* v2.3.6542: + the stick's one writer in every mode */
@@ -434,12 +442,12 @@ function writesOutside(prop, doorFile, doorFn) {
           const n = path.node;
           if (n.callee.type !== 'Identifier' || n.callee.name !== 'stickFrame') return;
           const names = (e) => { const out = []; (function walk(x) { if (!x) return; if (x.type === 'Identifier') out.push(x.name); else if (x.type === 'LogicalExpression' && x.operator === '||') { walk(x.left); walk(x.right); } else out.push('?' + x.type); })(e); return out.sort(); };
-          calls.push({ file, path, frozen: names(n.arguments[2]), loot: names(n.arguments[3]), args: n.arguments.length });
+          calls.push({ file, src, path, frozen: names(n.arguments[2]), loot: names(n.arguments[3]), args: n.arguments.length });
         },
       });
     }
     check('8. BroTown calls stickFrame once, frozen by a real stun OR death OR the loot freeze, four arguments (no clock handed in; read off the syntax tree)', calls.length === 1
-      && JSON.stringify(calls[0].frozen) === JSON.stringify(['_playerDead', '_playerLootFrozen', '_realStunned']) && JSON.stringify(calls[0].loot) === '["_playerLootFrozen"]' && calls[0].args === 4, calls.map((c) => ({ ...c, path: undefined })));
+      && JSON.stringify(calls[0].frozen) === JSON.stringify(['_playerDead', '_playerLootFrozen', '_realStunned']) && JSON.stringify(calls[0].loot) === '["_playerLootFrozen"]' && calls[0].args === 4, calls.map((c) => ({ ...c, path: undefined, src: undefined })));
     const call = calls[0] && calls[0].path;
     /* the binding: `var _in = stickFrame(...)`, read only as _in.dx / _in.dy, each the whole start of dx / dy */
     let bind = 'no call';
@@ -479,6 +487,59 @@ function writesOutside(prop, doorFile, doorFn) {
       step = st.isVariableDeclaration() && st.node.declarations.length === 1 && toCall(sib(-1), 0, 2) && toCall(close, 2, 0);
     }
     check('8. the call is the step `input`: between `_steps.to(0, 2)` and `_steps.to(2, 0)` (off the syntax tree)', step);
+    /* v2.3.6542 (the gatekeeper's sitting 59): an ALLOW list of the walk's
+       writes.  The binding check above sees only how dx and dy START; a later
+       write (`if (!dy && K['w']) dy = -1;`, a held way from a helper) walked
+       past it.  So every write of the walk's two names in the calling
+       function, followed off the syntax tree by their BINDING (babel's scope:
+       a plain or compound assignment, ++/--, a destructure, a for-of/in head,
+       a write inside a nested block or a closure, a second `var`), must be a
+       row of WALK_WRITES: its statement's words, under the `if` that holds it,
+       counted.  The start is the one declaration; each row comes after it.  A
+       new form, a row spelled again, a row moved under another `if`, or a
+       form the guard cannot follow (`eval`, `with`, `new Function`) is RED.
+       The rows are the loop's later steps that own the walk today (the
+       river's feel, the wobble, the glide, the jump's carry, the climb's
+       slope); the list only falls (a row a step stops writing comes out). */
+    const WALK_WRITES = {   /* 'the write @ the test of the if that holds it' : how many */
+      'dx = _rFeel[1] @ _rFeel': 1, 'dy = _rFeel[2] @ _rFeel': 1,   /* the river's feel */
+      'dx = _wbX @ _wbA': 1, 'dy = dx * _wbS + dy * _wbC @ _wbA': 1,   /* the wobble */
+      'dx = _gl[0] @ S._wheelSwim && S._wheelSwim.on': 1, 'dy = _gl[1] @ S._wheelSwim && S._wheelSwim.on': 1,   /* the swim's glide */
+      'dx = S._jump.dx || 0 @ _inAir && S._jump && !_realStunned && !_playerLootFrozen && Math.abs(dx) < 0.1 &': 1,   /* the jump's carry */
+      'dy = S._jump.dy || 0 @ _inAir && S._jump && !_realStunned && !_playerLootFrozen && Math.abs(dx) < 0.1 &': 1,
+      "dx = _clS[0] @ S.currentZone === 'wheel'": 1, "dy = _clS[1] @ S.currentZone === 'wheel'": 1,   /* the climb's slope */
+    };
+    const writes = {}, outOfOrder = [], unfollowed = [];
+    let starts = 0;
+    if (fnPath && call) {
+      const text = calls[0].src;   /* babel's getSource() needs the file on the hub: read the words off the source */
+      const words = (p) => text.slice(p.node.start, p.node.end).replace(/\s+/g, ' ').slice(0, 80);
+      const underIf = (p) => { const i = p.findParent((q) => q.isIfStatement() || q === fnPath); return i && i !== fnPath ? words(i.get('test')) : ''; };
+      const startAt = call.parentPath.node.start;
+      for (const nm of ['dx', 'dy']) {
+        const b = call.scope.getBinding(nm);
+        if (!b || b.scope !== fnPath.scope) { unfollowed.push(nm + ' is not the calling function\'s own name'); continue; }
+        if (b.path.isVariableDeclarator() && b.path.node.init && words(b.path.get('init')) === '_in.' + nm) starts++;
+        for (const v of b.constantViolations) {
+          if (v.isVariableDeclarator()) { unfollowed.push('a second `var ' + nm + '` (line ' + v.node.loc.start.line + ')'); continue; }
+          const st = v.isAssignmentExpression() && v.node.operator === '=' && v.get('left').isIdentifier() ? v : null;
+          const key = st ? words(st) + ' @ ' + underIf(st) : '~' + words(v);
+          writes[key] = (writes[key] || 0) + 1;
+          if (v.node.start < startAt) outOfOrder.push(key);
+          if (!st) unfollowed.push(nm + ': ' + words(v) + ' (line ' + v.node.loc.start.line + ')');
+        }
+      }
+      fnPath.traverse({
+        WithStatement(p) { unfollowed.push('with (line ' + p.node.loc.start.line + ')'); },
+        CallExpression(p) { if (p.get('callee').isIdentifier({ name: 'eval' })) unfollowed.push('eval (line ' + p.node.loc.start.line + ')'); },
+        NewExpression(p) { if (p.get('callee').isIdentifier({ name: 'Function' })) unfollowed.push('new Function (line ' + p.node.loc.start.line + ')'); },
+      });
+    }
+    const extra = Object.keys(writes).filter((k) => writes[k] > (WALK_WRITES[k] || 0)).map((k) => k + ' x' + writes[k]);
+    if (process.env.WALK_WRITES_PRINT) console.log(JSON.stringify(writes, null, 1));
+    check('8. every write of dx and dy in the calling function is a row of the allow list, after the one start, counted (deny by default; off the syntax tree)', !!fnPath && starts === 2 && extra.length === 0 && outOfOrder.length === 0 && unfollowed.length === 0, { starts, extra, outOfOrder, unfollowed });
+    const gone = Object.keys(WALK_WRITES).filter((k) => (writes[k] || 0) < WALK_WRITES[k]);
+    check('8. the allow list only falls: a row the loop no longer writes comes out of WALK_WRITES', gone.length === 0, gone);
     /* in the calling function: no read of the stick, and nothing the guard cannot follow */
     const hidden = [];
     if (fnPath) fnPath.traverse({
