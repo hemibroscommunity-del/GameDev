@@ -71,6 +71,17 @@
  *   - `export const zzTick = (() => { let n = 0; return () => n++; })();`
  *                                         -> FAIL 1 (an IIFE's `let`; its
  *     `const` Map filled from the inner function fails 1 too)
+ * v2.3.6521, sitting 58's hold (a callback named, not written there: the
+ * guard knew spellings; it now FOLLOWS a function handed over and counts a
+ * form it cannot follow, rule 2b), tried 2026-11-24 in selfCorpseUp(S):
+ *   - `const _mark = (m) => { m.seen = 1; }; S.monsters.forEach(_mark);` -> FAIL 2
+ *   - a declared `function _mk2(m)` given to `Object.values(S.monsters).map`,
+ *     `_m3.bind(null)` given to forEach, `_m4.call(null, S)`,
+ *     `_m5.apply(null, [S])`, `_m7.bind(null, S)()`  -> FAIL 2
+ *   - `const _q = S.pick(); S.monsters.forEach(_q)`, a `let` callback given
+ *     another value, `_m8.apply(null, _l)`      -> FAIL 2b (cannot follow)
+ *   - `S.monsters.forEach((m) => m.hp)`           -> green (a read)
+ *   - `S.monsters.forEach(S.mark)`                -> FAIL 2b
  * NOT CAUGHT, and why: a callback handed to a function that is given the
  * state elsewhere (`each(f)` where each reads S itself: the call names no
  * marked value); a function run once at load through a name (`const init
@@ -101,6 +112,8 @@ const KNOWN_GLOBALS = [
   'src/rendering/leaves/entity-combat.js: __btSouthBlockWeapon',
 ];
 const GLOBAL_LINE = KNOWN_GLOBALS.length;
+/* v2.3.6521 (sitting 58): rule 2b's list, by file (it only falls) */
+const UNFOLLOWED = Object.freeze(Object.assign(Object.create(null), {}));
 
 let failed = 0;
 const ok = (m) => console.log('ok   ' + m);
@@ -198,10 +211,47 @@ function writeTargets(path) {
 }
 const WRITE_TYPES = 'AssignmentExpression|UpdateExpression|UnaryExpression|ForInStatement|ForOfStatement|CallExpression|OptionalCallExpression';
 
+/* v2.3.6521 (sitting 58): the function an argument IS, followed: a function
+   written there, a local name bound to one and never given another value
+   (a declaration, `const f = () => ..`), or `f.bind(..)` of either; else null */
+function fnOf(a) {
+  if (!a || !a.node) return null;
+  if (a.isFunction()) return a;
+  if (a.isIdentifier()) {
+    const b = a.scope.getBinding(a.node.name);
+    if (!b || b.kind === 'module' || b.kind === 'param' || b.constantViolations.length) return null;
+    if (b.path.isFunctionDeclaration()) return b.path;
+    if (b.path.isVariableDeclarator()) { const i = b.path.get('init'); return i && i.node && i.isFunction() ? i : null; }
+    return null;
+  }
+  if (a.isCallExpression() && a.get('callee').isMemberExpression() && propName(a.node.callee) === 'bind') return fnOf(a.get('callee.object'));
+  return null;
+}
+/* an argument that may be a function this scan cannot follow: an import's
+   name, a parameter, a name given more than one value, a member, a call's
+   result (a literal, a template, an object, an array or a name bound to a
+   value that is not a function is data) */
+function maybeFn(a) {
+  const n = a.node;
+  if (!n) return false;
+  if (n.type === 'Identifier') {
+    const b = a.scope.getBinding(n.name);
+    if (!b) return false;                                 /* a global (undefined, Math...) */
+    if (b.kind === 'module') return true;                 /* an import: handed on to its leaf */
+    if (b.kind === 'module' || b.constantViolations.length) return true;
+    /* a parameter is a function when its function calls it (`cb(..)`, `cb.call(..)`); one only read
+       or handed on is data (an id, a band, a variant) */
+    if (b.kind === 'param') return b.referencePaths.some((r) => (isCall(r.parent) && r.parent.callee === r.node)
+      || (isMember(r.parent) && r.parent.object === r.node && ['call', 'apply', 'bind'].includes(propName(r.parent))));
+    if (b.path.isVariableDeclarator()) { const i = b.path.node.init; return !i || /Call|Member|Conditional|Logical|Identifier|Await/.test(i.type); }
+    return false;
+  }
+  return isMember(n) || isCall(n) || n.type === 'ConditionalExpression' || n.type === 'LogicalExpression';
+}
 /* every name in a file a value of a marked binding is given to (an alias):
    `const c = S.x`, `const { x } = S`, `c = S.x` later, `for (const c of S.x)`.
    `marked` is a Set of babel Bindings; it grows in place */
-function spreadMarks(ast, marked) {
+function spreadMarks(ast, marked, pending = []) {
   const decls = [];
   babel.traverse(ast, {
     VariableDeclarator(p) { if (p.node.init) decls.push({ scope: p.scope, id: p.node.id, init: p.node.init }); },
@@ -216,9 +266,22 @@ function spreadMarks(ast, marked) {
        `Object.values(S.x).map(f)`, `each(S.x, f)`) is given that value's
        parts, so every parameter it names is marked too */
     'CallExpression|OptionalCallExpression'(p) {
-      const fns = p.get('arguments').filter((a) => a.isFunction());
-      if (!fns.length) return;
-      const from = [...p.node.arguments.filter((a) => !/Function/.test(a.type))];
+      /* v2.3.6521 (sitting 58's hold: `const _mark = (m) => { m.seen = 1; };
+         S.monsters.forEach(_mark)` stayed green): a function handed over is
+         FOLLOWED whatever its spelling -- written there, a local name bound to
+         one (`_mark`), `_mark.bind(..)` -- and one it cannot follow (an
+         import's, a parameter, a member, a call's result) is kept as
+         `pending`: scanLeaf hands an import's on to its leaf, and counts the
+         rest as forms it cannot follow (rule 2b, a list that only falls) */
+      const fns = [];
+      const unknown = [];
+      for (const a of p.get('arguments')) {
+        const fp = fnOf(a);
+        if (fp) fns.push(fp);
+        else if (maybeFn(a)) unknown.push(a);
+      }
+      if (!fns.length && !unknown.length) return;
+      const from = [...p.get('arguments').filter((a) => !fns.includes(a) && !a.isFunction()).map((a) => a.node)];
       /* the callee's chain, and the arguments of each call along it
          (`Object.values(S.x).map`, `[...S.x].filter`) */
       for (let n = p.node.callee; n;) {
@@ -229,6 +292,9 @@ function spreadMarks(ast, marked) {
         else n = null;
       }
       for (const f of fns) for (const prm of f.node.params) decls.push({ scope: p.scope, id: prm, init: null, from, inner: f.scope });
+      /* over a marked value OTHER than the argument itself (`out.push(S.x)` hands the state's part
+         on as data; `S.x.forEach(q)` hands q the state's parts) */
+      for (const a of unknown) pending.push({ scope: p.scope, from: from.filter((x) => x !== a.node), arg: a });
     },
   });
   const idsOf = (id, out = []) => {
@@ -265,6 +331,7 @@ function scanLeaf(rel, text, stateParams = new Map()) {
   const globals = [];
   const exportsFns = new Map();   /* exported name -> the function node */
   const handsOn = [];             /* [{ callee (import or local name), pos }] a marked value passed on */
+  const unfollowedCalls = [];     /* v2.3.6521: forms of the hand-on it cannot follow */
   let programScope = null;
   const fnByName = new Map();     /* local name -> function node, for marks */
 
@@ -360,7 +427,24 @@ function scanLeaf(rel, text, stateParams = new Map()) {
       paramBindings(p, positions);
     },
   });
-  spreadMarks(ast, stateMarks);
+  const pendingS = [];
+  spreadMarks(ast, stateMarks, pendingS);
+  /* v2.3.6521 (sitting 58): a function handed over a marked value that the
+     scan could not follow: an import's goes on to its leaf (its first three
+     places get the parts, as forEach, map and reduce give them); any other
+     is a form it cannot follow, counted (rule 2b) */
+  const unfollowed = unfollowedCalls;
+  for (const q of pendingS) {
+    if (!q.from.some((x) => bases(x).some((b) => b.type === 'Identifier' && stateMarks.has(q.scope.getBinding(b.name))) || bases(x).some(globalStateBase))) continue;
+    const a = q.arg.node;
+    const b = a.type === 'Identifier' ? q.scope.getBinding(a.name) : null;
+    if (b && b.kind === 'module') {
+      const imp = b.path.node;
+      const src = b.path.parentPath.node.source.value;
+      const name = imp.type === 'ImportDefaultSpecifier' ? 'default' : (imp.imported ? (imp.imported.name || imp.imported.value) : null);
+      for (const pos of [0, 1, 2]) handsOn.push({ src, name, pos });
+    } else unfollowed.push(where(a) + ' -- a function handed over the state\'s parts that the scan cannot follow');
+  }
 
   /* a value reached from a marked binding, as the scope it is written in
      resolves its names */
@@ -386,9 +470,25 @@ function scanLeaf(rel, text, stateParams = new Map()) {
   });
   /* a marked value handed to another function: the mark goes with it */
   function handOn(p) {
-    const c = p.node.callee;
+    let c = p.node.callee;
+    /* v2.3.6521 (sitting 58): `f.call(t, S)` hands S to f's first place,
+       `f.bind(t, S)` the same (the bound call's own come after);
+       `f.apply(t, [S])` each element */
+    let shift = 0;
+    let args = p.node.arguments;
+    if (isMember(c) && c.object.type === 'Identifier' && ['call', 'bind'].includes(propName(c))) { c = c.object; shift = 1; }
+    else if (isMember(c) && c.object.type === 'Identifier' && propName(c) === 'apply') {
+      c = c.object; shift = 1;
+      args = [args[0], ...((args[1] && args[1].type === 'ArrayExpression') ? args[1].elements : [])];
+      /* a list it cannot read (a name, a call): whatever it holds is handed on unseen */
+      if (p.node.arguments[1] && p.node.arguments[1].type !== 'ArrayExpression') {
+        unfollowedCalls.push(where(p.node) + ' -- .apply with a list the scan cannot read');
+      }
+    }
     if (c.type !== 'Identifier') return;
-    p.node.arguments.forEach((a, i) => {
+    args.forEach((a, i0) => {
+      const i = i0 - shift;
+      if (!a || i < 0) return;
       const st = bases(a).some(globalStateBase) || markedBase(a, stateMarks, p.scope);
       if (!st) return;
       const b = p.scope.getBinding(c.name);
@@ -400,7 +500,7 @@ function scanLeaf(rel, text, stateParams = new Map()) {
       } else handsOn.push({ local: c.name, pos: i });
     });
   }
-  return { moduleState, stateWrites, globals: [...new Set(globals)], exportsFns, handsOn };
+  return { moduleState, stateWrites, globals: [...new Set(globals)], exportsFns, handsOn, unfollowed };
 }
 
 /* ── who fills a leaf's parameter with the state (callers under src/) ── */
@@ -509,13 +609,18 @@ export const draw = (sprite, S) => { sprite.alpha = S.a; sprite.scale.set(2); };
     /* v2.3.6521: sitting 57's plants */
     ['a callback given the state\'s parts', 'export function f(S, now) { S.monsters.forEach((m) => { m.seen = now; }); }', 'stateWrites'],
     ['a callback, the state as an argument', 'export function f(S) { Object.values(S.monsters).map(function (m) { m.n++; }); }', 'stateWrites'],
+    /* v2.3.6521: sitting 58's plants (a function handed over by name) */
+    ['a callback by name', 'export function f(S) { const mark = (m) => { m.seen = 1; }; S.monsters.forEach(mark); }', 'stateWrites'],
+    ['a callback bound', 'export function f(S) { function mark(m) { m.n = 1; } S.monsters.forEach(mark.bind(null)); }', 'stateWrites'],
+    ['the state through .call', 'export function f(S) { const g = (x) => { x.seen = 1; }; g.call(null, S); }', 'stateWrites', null, true],
+    ['a callback it cannot follow', 'export function f(S) { const q = S.pick(); S.monsters.forEach(q); }', 'unfollowed'],
     ['a `let` in a function run once at load', 'export const tick = (() => { let n = 0; return () => n++; })();', 'moduleState'],
     ['a `const` Map in a function run once at load, filled', 'export const remember = (function () { const seen = new Map(); return (k) => { seen.set(k, 1); }; })();', 'moduleState'],
     ['a page global', 'export function f() { window.__seen = window.__seen || new Map(); }', 'globals'],
   ];
   const clean = scanLeaf('fixture/clean.js', CLEAN);
-  if (clean.moduleState.length || clean.stateWrites.length || clean.globals.length) {
-    bad('5. a clean leaf is read as dirty: ' + [...clean.moduleState, ...clean.stateWrites, ...clean.globals].join('; '));
+  if (clean.moduleState.length || clean.stateWrites.length || clean.globals.length || clean.unfollowed.length) {
+    bad('5. a clean leaf is read as dirty: ' + [...clean.moduleState, ...clean.stateWrites, ...clean.globals, ...clean.unfollowed].join('; '));
   } else ok('5. a clean leaf (a table, one built at load, locals written, a sprite written, S read) passes');
   const missed = [];
   for (const [what, text, list, fills, handOn] of PLANTS) {
@@ -532,7 +637,7 @@ export const draw = (sprite, S) => { sprite.alpha = S.a; sprite.scale.set(2); };
   if (!chainToSystems(G, 'src/rendering/leaves/a.js')) missed.push('the chain through a middle file');
   if (chainToSystems(new Map([['src/rendering/leaves/a.js', ['src/rendering/b.js']]]), 'src/rendering/leaves/a.js')) missed.push('(a chain read where there is none)');
   if (missed.length) bad('5. the rules miss ' + missed.length + ' of ' + (PLANTS.length + 2) + ' plants: ' + missed.join('; '));
-  else ok('5. the rules catch all ' + (PLANTS.length + 2) + ' plants (module state 11, the state 12 with the rename, the hand-on and the callbacks, a global, the chain)');
+  else ok('5. the rules catch all ' + (PLANTS.length + 2) + ' plants (module state 11, the state 15 with the rename, the hand-on and the callbacks, one it cannot follow, a global, the chain)');
 }
 
 /* ── the leaves, read ─────────────────────────────────────────────────── */
@@ -581,6 +686,22 @@ else ok('1. no leaf or table holds module state (no top-level let/var, no top-le
 const sw = [...results.values()].flatMap((r) => r.stateWrites);
 if (sw.length) { bad('2. a leaf writes to the state (' + sw.length + '):'); sw.forEach((m) => console.log('       ' + m)); }
 else ok('2. no leaf or table writes to S (parameters named S, and ' + filled + ' a caller or a leaf fills with the state)');
+
+/* 2b. v2.3.6521 (sitting 58): the forms of handing the state's parts on that
+   the scan cannot follow (a function by a parameter, a member or a call's
+   result, given over the state; `.apply` with a list it cannot read), by
+   file: the list only falls, so a new spelling is red, never green */
+{
+  const by = Object.create(null);
+  for (const [rel, r] of results) if (r.unfollowed.length) by[rel] = r.unfollowed;
+  const over = Object.keys(by).filter((rel) => by[rel].length > (UNFOLLOWED[rel] || 0));
+  const n = Object.values(by).reduce((t, u) => t + u.length, 0);
+  if (over.length) { bad('2b. forms the scan cannot follow, over the list (' + n + '; the list ' + Object.values(UNFOLLOWED).reduce((t, x) => t + x, 0) + '):'); over.forEach((rel) => by[rel].forEach((m) => console.log('       ' + m))); }
+  else ok('2b. forms of handing the state on that the scan cannot follow: ' + n + ' (the list only falls)');
+  const fell = Object.keys(UNFOLLOWED).filter((rel) => (by[rel] || []).length < UNFOLLOWED[rel]);
+  if (fell.length) console.log('     (room: ' + fell.map((rel) => rel + ' ' + (by[rel] || []).length + ' < ' + UNFOLLOWED[rel]).join(', ') + '; lower the list)');
+  if (process.argv.includes('--list')) for (const rel of Object.keys(by)) by[rel].forEach((m) => console.log('     unfollowed ' + m));
+}
 
 /* 3 */
 {

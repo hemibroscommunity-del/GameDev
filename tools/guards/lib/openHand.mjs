@@ -38,7 +38,14 @@
  * namespace handed on (`export * as C from`).  v2.3.6523 (sitting 57): a
  * namespace import (`import * as C`, then `C.getState()`), a getter given
  * a second name (`const gs = getState`), a named re-export and `export *
- * from` are followed now (they were not).
+ * from` are followed now (they were not).  v2.3.6523 (sitting 58): the
+ * scan no longer knows spellings of a getter's use: a namespace is followed
+ * however it is made (`import *`, `await import()`, `.then`, a second name)
+ * and taken apart, and every use of a getter or namespace is judged: called
+ * (`.call`, `.apply`, `.bind` too) is a reach 'f', a second name or an
+ * export is followed, and ANY other use (an object, an argument such as
+ * `useMemo(getState)`, a key it cannot read, an `import(u)` of a path it
+ * cannot read) is a reach 'g': a form it cannot follow is red, not green.
  *
  * Speed: every file is parsed (@babel/parser, about 0.8 s for src/), walked
  * by a plain loop for anything that could be a reach, and only those files
@@ -106,6 +113,8 @@ function couldReach(ast) {
   walk(ast.program, (n) => {
     if (hit) return;
     if (n.type === 'Identifier' && HANDS.has(n.name)) hit = true;
+    else if (n.type === 'CallExpression' && n.callee.type === 'Import' && n.arguments[0] && n.arguments[0].type !== 'StringLiteral'
+      && !(n.arguments[0].type === 'TemplateLiteral' && !n.arguments[0].expressions.length)) hit = true;   /* v2.3.6523: a path it cannot read */
     else if (n.type === 'StringLiteral' && HANDS.has(n.value)) hit = true;
     else if ((n.type === 'MemberExpression' || n.type === 'OptionalMemberExpression') && n.computed && mentionsRoot(n.object, winNames) && loose(n.property)) hit = true;
     else if (n.type === 'ObjectPattern' && n.properties.some((p) => p.type === 'ObjectProperty' && p.computed && loose(p.key))) hit = true;
@@ -177,13 +186,53 @@ function analyse(babel, rel, ast, exportsOf, has) {
   /* v2.3.6523 (sitting 57's hold: `import * as C` then `C.getState()`
      stayed green): a namespace import's binding -> the exports of its file,
      so `C.x` has the kind its file gave x */
+  /* v2.3.6523 (sitting 58's hold: a reader through `await import(..)`, a
+     namespace taken apart, `.bind`/`.call`, a getter in an object or handed
+     to useMemo stayed green): a NAMESPACE is followed as a class -- `import
+     * as C`, `const C = await import('./x.js')`, `import('./x.js').then((C)
+     => ..)`, a name given one (`const D = C`) -- and so is each use of a
+     getter (below, the reaches) */
+  const dynSrc = (path) => {
+    /* `import('./x.js')` (awaited or not): the file, or '?' when the path cannot be read */
+    if (!path || !path.node) return null;
+    if (path.isAwaitExpression()) return dynSrc(path.get('argument'));
+    if (!path.isCallExpression() || path.node.callee.type !== 'Import') return null;
+    const a = path.get('arguments')[0];
+    const e = a && a.evaluate();
+    return e && e.confident && typeof e.value === 'string' ? (resolveImport(rel, e.value, has) || '-') : '?';
+  };
+  const nsOfBinding = (b, depth = 0) => {
+    if (!b || depth > 6) return null;
+    const p = b.path;
+    if (p.isImportNamespaceSpecifier()) return resolveImport(rel, p.parentPath.node.source.value, has);
+    if (p.isVariableDeclarator() && p.get('id').isIdentifier() && !b.constantViolations.length) {
+      const init = p.get('init');
+      const d = dynSrc(init);
+      if (d) return d;
+      if (init.isIdentifier()) return nsOfBinding(init.scope.getBinding(init.node.name), depth + 1);
+    }
+    /* `import('./x.js').then((C) => ..)`: the callback's first parameter */
+    const fp = b.kind === 'param' ? (p.isFunction() ? p : p.parentPath) : null;
+    if (fp && fp.isFunction() && fp.node.params[0] && fp.node.params[0].type === 'Identifier' && fp.node.params[0].name === b.identifier.name) {
+      const call = fp.parentPath;
+      if (call && call.isCallExpression() && fp.listKey === 'arguments' && fp.key === 0) {
+        const c = call.get('callee');
+        if ((c.isMemberExpression() || c.isOptionalMemberExpression()) && memberKey(c) === 'then') return dynSrc(c.get('object'));
+      }
+    }
+    return null;
+  };
+  const nsSrc = (objPath) => {
+    if (!objPath || !objPath.node) return null;
+    if (objPath.isIdentifier()) return nsOfBinding(objPath.scope.getBinding(objPath.node.name));
+    return dynSrc(objPath);
+  };
   const nsKind = (objPath, key) => {
-    if (!objPath || !objPath.isIdentifier()) return null;
-    const b = objPath.scope.getBinding(objPath.node.name);
-    if (!b || !b.path.isImportNamespaceSpecifier()) return null;
-    const src = resolveImport(rel, b.path.parentPath.node.source.value, has);
+    const src = nsSrc(objPath);
     return src && exportsOf.has(src) && key ? (exportsOf.get(src)[key] || null) : null;
   };
+  /* the file's exports hold a hand, a getter or the global (a namespace of it handed on is a reach) */
+  const nsHolds = (src) => src === '?' || (!!src && exportsOf.has(src) && Object.keys(exportsOf.get(src)).length > 0);
   const kindOfImport = (b) => {
     const p = b.path;
     if (!p.isImportSpecifier() && !p.isImportDefaultSpecifier()) return null;
@@ -256,6 +305,36 @@ function analyse(babel, rel, ast, exportsOf, has) {
     return yes;
   };
 
+  /* a getter by name, or a namespace's getter (`C.getState`) */
+  const isGetter = (path) => {
+    if (!path || !path.node) return false;
+    if (path.isIdentifier()) { const b = path.scope.getBinding(path.node.name); return !!b && kind.get(b) === 'getter'; }
+    if (path.isMemberExpression() || path.isOptionalMemberExpression()) return nsKind(path.get('object'), memberKey(path)) === 'getter';
+    return false;
+  };
+  /* v2.3.6523 (sitting 58): how a getter is USED, judged as a class: called (`gs()`, `gs.call(..)`,
+     `gs.apply(..)`, `gs.bind(..)`) is a reach 'f'; given a second name (`const g2 = gs`) or exported
+     is followed (no line); ANY other use (in an object, handed to useMemo or any function, returned,
+     put in a list) hands the hand on: a reach 'g', counted, so an unknown spelling is red */
+  const getterUse = (p) => {
+    const par = p.parentPath;
+    if ((par.isCallExpression() || par.isOptionalCallExpression()) && p.key === 'callee') return 'f';
+    if ((par.isMemberExpression() || par.isOptionalMemberExpression()) && p.key === 'object' && ['call', 'apply', 'bind'].includes(memberKey(par))) return 'f';
+    if (par.isVariableDeclarator() && p.key === 'init' && par.get('id').isIdentifier()) return null;
+    if (par.isExportSpecifier() || par.isExportDefaultDeclaration()) return null;
+    return 'g';
+  };
+  /* v2.3.6523 (sitting 58): how a namespace is USED: a member read, a name given it, or taken apart
+     are followed; any other use (handed to a function, kept in an object) hands every name its file
+     exports on: a reach 'g' when its file holds a hand, a getter or the global */
+  const nsUse = (p) => {
+    const par = p.parentPath;
+    if ((par.isMemberExpression() || par.isOptionalMemberExpression()) && p.key === 'object') return null;
+    if (par.isVariableDeclarator() && p.key === 'init') return null;
+    if (par.isExportSpecifier()) return null;
+    return 'g';
+  };
+
   /* the names, to a fixpoint (a name made from a name made from a hand) */
   const seen = new Set();
   babel.traverse(ast, {
@@ -283,6 +362,36 @@ function analyse(babel, rel, ast, exportsOf, has) {
         else if (!init.node && b.constantViolations.length && b.constantViolations.some((v) => v.isAssignmentExpression() && isHand(v.get('right')))) k = 'hand';
       }
       if (!k && p.isFunctionDeclaration() && returnsHand(p)) k = 'getter';
+      /* v2.3.6523 (sitting 58): `const g2 = getState.bind(null)` is a getter */
+      if (!k && p.isVariableDeclarator() && p.get('id').isIdentifier() && p.get('init').isCallExpression()) {
+        const c = p.get('init.callee');
+        if ((c.isMemberExpression() || c.isOptionalMemberExpression()) && memberKey(c) === 'bind' && isGetter(c.get('object'))) k = 'getter';
+      }
+      /* v2.3.6523 (sitting 58): taken apart in a dynamic import's handler, `.then(({ getState }) => ..)` */
+      if (!k && b.kind === 'param') {
+        const fp = p.isFunction() ? p : p.parentPath;
+        const pat = fp && fp.isFunction() && fp.node.params[0] && fp.node.params[0].type === 'ObjectPattern' ? fp.get('params')[0] : null;
+        const call = pat && fp.parentPath;
+        const c = call && call.isCallExpression() && fp.listKey === 'arguments' && fp.key === 0 ? call.get('callee') : null;
+        const src = c && (c.isMemberExpression() || c.isOptionalMemberExpression()) && memberKey(c) === 'then' ? dynSrc(c.get('object')) : null;
+        if (src && exportsOf.has(src)) {
+          for (const pp of pat.get('properties')) {
+            if (pp.isObjectProperty() && pp.get('value').isIdentifier() && pp.node.value.name === b.identifier.name && exportsOf.get(src)[patternKey(pp)]) k = exportsOf.get(src)[patternKey(pp)];
+          }
+        }
+      }
+      /* v2.3.6523 (sitting 58): a name taken apart from a namespace (`const { getState } = C`,
+         `const { getState } = await import('./common.js')`) has the kind its file gave the key */
+      if (!k && p.isVariableDeclarator() && p.get('id').isObjectPattern() && p.get('init').node) {
+        const src = nsSrc(p.get('init'));
+        if (src && exportsOf.has(src)) {
+          for (const pp of p.get('id.properties')) {
+            if (!pp.isObjectProperty() || !pp.get('value').isIdentifier() || pp.node.value.name !== b.identifier.name) continue;
+            const key = patternKey(pp);
+            if (key && exportsOf.get(src)[key]) k = exportsOf.get(src)[key];
+          }
+        }
+      }
       /* a name taken apart from a hand: const { current: S } = window._gameState */
       if (!k && p.isVariableDeclarator() && !p.get('id').isIdentifier() && p.get('init').node && isHand(p.get('init'))) k = 'hand';
       /* a name taken apart from the global under a hand's key */
@@ -332,7 +441,9 @@ function analyse(babel, rel, ast, exportsOf, has) {
       /* v2.3.6523: through a namespace import, as a name would count */
       const nk = nsKind(p.get('object'), memberKey(p));
       if (nk === 'hand') mark(p.node, 'e');
-      else if (nk === 'getter' && (p.parentPath.isCallExpression() || p.parentPath.isOptionalCallExpression()) && p.key === 'callee') mark(p.node, 'f');
+      else if (nk === 'getter') { const u = getterUse(p); if (u) mark(p.node, u); }
+      /* a namespace's key it cannot read (`C[k]`) of a file that holds a hand */
+      else if (p.node.computed && memberKey(p) === null && nsHolds(nsSrc(p.get('object')))) mark(p.node, 'g');
     },
     ObjectProperty(p) {
       if (p.parentPath.isObjectPattern() && HANDS.has(patternKey(p)) && isPatternOfWin(p.parentPath)) mark(p.node, 'c');
@@ -342,7 +453,36 @@ function analyse(babel, rel, ast, exportsOf, has) {
       const e = p.get('left').evaluate();
       if (e.confident && HANDS.has(e.value)) mark(p.node, 'd');
     },
-    'CallExpression|OptionalCallExpression'(p) { if (isReflectHand(p)) mark(p.node, 'd'); },
+    'CallExpression|OptionalCallExpression'(p) {
+      if (isReflectHand(p)) mark(p.node, 'd');
+      /* v2.3.6523 (sitting 58): a dynamic import is followed where its value goes (a name, taken
+         apart, `.then`); one whose path cannot be read, or whose namespace of a file that holds a
+         hand goes anywhere else, is a reach 'g' (a form it cannot follow) */
+      const d = dynSrc(p);
+      if (!d) return;
+      if (d === '?') { mark(p.node, 'g'); return; }
+      if (!nsHolds(d)) return;
+      let q = p;
+      if (q.parentPath.isAwaitExpression()) q = q.parentPath;
+      const par = q.parentPath;
+      if (par.isVariableDeclarator() && q.key === 'init') return;
+      if ((par.isMemberExpression() || par.isOptionalMemberExpression()) && q.key === 'object') {
+        if (memberKey(par) === 'then') {
+          /* followed when its handler takes the namespace by a name or takes it apart */
+          const call = par.parentPath;
+          const h = call.isCallExpression() && par.key === 'callee' ? call.get('arguments')[0] : null;
+          const p0 = h && h.isFunction() ? h.node.params[0] : null;
+          if (h && h.isFunction() && (!p0 || p0.type === 'Identifier' || p0.type === 'ObjectPattern')) return;
+          mark(p.node, 'g');
+          return;
+        }
+        const k2 = exportsOf.get(d)[memberKey(par)];
+        if (k2 === 'hand') { mark(par.node, 'e'); return; }
+        if (k2 === 'getter') { const u = getterUse(par); if (u) mark(par.node, u); return; }
+        if (memberKey(par) !== null) return;
+      }
+      mark(p.node, 'g');
+    },
     Identifier(p) {
       const n = p.node;
       if (!p.isReferencedIdentifier()) return;
@@ -354,7 +494,8 @@ function analyse(babel, rel, ast, exportsOf, has) {
          was taken, so a panel's `const S = getState()` is one line, not
          every line that reads S; a getter counts at each call */
       if (k === 'hand' && b.scope.path.isProgram()) mark(n, 'e');
-      else if (k === 'getter' && (p.parentPath.isCallExpression() || p.parentPath.isOptionalCallExpression()) && p.key === 'callee') mark(n, 'f');
+      else if (k === 'getter') { const u = getterUse(p); if (u) mark(n, u); }
+      else if (!k && nsHolds(nsOfBinding(b)) && nsUse(p)) mark(n, 'g');
     },
     ExportNamedDeclaration(p) {
       const d = p.get('declaration');
@@ -423,13 +564,26 @@ export function openHandCensus(babel, sources) {
     exportsOf.set(rel, exp);
     return was !== JSON.stringify(exp);
   };
+  const importCache = new Map();
   const importsOf = (rel) => {
+    if (importCache.has(rel)) return importCache.get(rel);
     const out2 = [];
     for (const st of parse(rel).program.body) {
       if (st.type !== 'ImportDeclaration' && !((st.type === 'ExportNamedDeclaration' || st.type === 'ExportAllDeclaration') && st.source)) continue;
       const src = resolveImport(rel, st.source.value, has);
       if (src) out2.push(src);
     }
+    /* v2.3.6523 (sitting 58): a dynamic `import('./x.js')` with a written path, anywhere */
+    if (sources.get(rel).includes('import(')) {
+      walk(parse(rel).program, (n) => {
+        if (n.type !== 'CallExpression' || n.callee.type !== 'Import') return;
+        const a = n.arguments[0];
+        const spec = a && (a.type === 'StringLiteral' ? a.value : (a.type === 'TemplateLiteral' && !a.expressions.length ? a.quasis[0].value.cooked : null));
+        const src = spec && resolveImport(rel, spec, has);
+        if (src) out2.push(src);
+      });
+    }
+    importCache.set(rel, out2);
     return out2;
   };
   /* to a fixpoint across files: an import of an exported hand makes its
