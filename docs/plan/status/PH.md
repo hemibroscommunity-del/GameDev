@@ -25,7 +25,10 @@ state: working (part 4: the chain mended, one push per PR; then PR 6)
 - Main b966af81 merged once, at the chain's bottom (PR 1's branch).
 
 ## Next
-- PR 6 (6505). PR 4 (6503) waits for call 1.
+- PR 6 (6505). Then PR 4 (6503): call 1 is answered (the orchestrator's
+  messages, 2026-11-24 02:39-02:46 UTC: the Speed test's table, govern and
+  groundsend both stay on, "all those off" felt best); its words go in
+  census/PH-phone.md with PR 4. A default look changed is the owner's call.
 
 ## Found
 - src/rendering/maskedEvict.js's header: the memory rung's old words.
@@ -33,5 +36,4 @@ state: working (part 4: the chain mended, one push per PR; then PR 6)
 - main b2cdd55a on the test box: heap 39.5 / 40.2 / 39.6, one over 40.0.
 
 ## Needs
-- The owner's five minutes (call 1): PR 4's order of rungs.
 - The owner's word on the alarm's level (call 3): decided while away, 120.
