@@ -36,17 +36,6 @@ import { join } from 'node:path';
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
 const read = (f) => readFileSync(join(ROOT, f), 'utf8');
 
-/* the debt list's rows marked ours (step 3.1, card H: each row of KNOWN gets
-   `whose`: ours, box or browser).  Until every row is marked there is no
-   count, only how far the marking has got. */
-async function holdFamiliesOurs() {
-  const { KNOWN } = await import(pathToFileURL(join(ROOT, 'tools/qa/mp/held-budget.mjs')).href);
-  const rows = Object.values(KNOWN);
-  const unmarked = rows.filter((r) => !['ours', 'box', 'browser'].includes(r && r.whose)).length;
-  if (unmarked) return { say: null, note: `${rows.length} rows on the debt list, ${unmarked} not yet marked ours, the box's or the browser's (step 3.1)` };
-  return { say: String(rows.filter((r) => r.whose === 'ours').length) };
-}
-
 /* the cases the restart test lists as red on today's code: the entries of
    its KNOWN map (server/test/chaos-restart.test.mjs) */
 function restartLossesKnown() {
@@ -86,7 +75,7 @@ async function largestFileCodeLines() {
 const ROWS = [
   { id: 'devices-reporting', measure: 'Devices that report their own smoothness', line: 'every sitting' },
   { id: 'device-choices-by-name', measure: 'Device choices made by a name, outside the profile', line: '0' },
-  { id: 'hold-families-ours', measure: 'Hold families on the debt list that are ours to fix', line: '0', count: holdFamiliesOurs },
+  { id: 'hold-families-ours', measure: 'Hold families on the debt list that are ours to fix', line: '0' },
   { id: 'late-frame-controllers', measure: 'Controllers reading "the frames are late"', line: '1' },
   { id: 'wire-rows', measure: 'Wire rows that say who may start them and what they do', line: 'all, the HTTP routes included' },
   { id: 'bounded-claims', measure: 'Bounded claims, and what a lying phone gains by each', line: 'counted; each gain at most 1.5 times an honest player\'s' },
@@ -101,6 +90,14 @@ const ROWS = [
   { id: 'file-papers', measure: 'Supplied files with their papers (where from, licence, AI-made)', line: 'all' },
   { id: 'tests-red-on-main', measure: 'Tests red on `main`', line: '0' },
   { id: 'traps-with-break-proof', measure: 'Traps held by a test that has a break proof', line: 'counted, rising' },
+  /* v2.3.6524 (card WL PR 5): rows whose numbers a ledger or a guard
+     already holds, past part 3's seventeen (the card's list).  A line the
+     plan never set says so: the scoreboard does not invent one. */
+  { id: 'suites-by-path', measure: 'Suites that read the page\'s source by its path', line: 'not set (step 5.2b: a feature converts its own slice)' },
+  { id: 'switches-thrown', measure: 'Switches thrown, on a PR and at the rehearsal', line: 'not set (rule 4: each switch thrown once)' },
+  { id: 'memory-lines', measure: 'The memory check\'s lines, summed against their readings', line: 'not set (a line only falls)' },
+  { id: 'restart-sweep-reach', measure: 'Value actions the restart sweep crashes at every write', line: 'all, by the value table' },
+  { id: 'open-hand', measure: 'Code lines that reach window._gameState or _gameFns', line: 'a line that only falls (closing it: step 5.7)' },
 ];
 
 const NOT = 'not measured';
