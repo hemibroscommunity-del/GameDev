@@ -1,7 +1,7 @@
 card: PH
-branch: claude/plan-ph-5-heaptrend (stacked on claude/plan-ph-3-membudget)
-prs: #2279 (PR 1, 6500, DEPLOYS: sitting 57's hold mended), #2291 (PR 2, 6501: hold mended), #2297 (PR 3, 6502: takes #2291's mend), #2306 (PR 5, 6504: this branch)
-state: working (part 4: the chain mended, one push per PR; then PR 6)
+branch: claude/plan-ph-6-debtgate (stacked on claude/plan-ph-5-heaptrend)
+prs: #2279 (PR 1, 6500, DEPLOYS), #2291 (PR 2, 6501), #2297 (PR 3, 6502), #2306 (PR 5, 6504): test green, heads sent; PR 6 (6505: this branch)
+state: working (PR 6)
 
 ## Done
 - PR 1 (6500) #2279: the report sees heat, the board and the ramps.
@@ -24,8 +24,16 @@ state: working (part 4: the chain mended, one push per PR; then PR 6)
   First row, main b2cdd55a, test box: 39.6, +1.1 over the start: named.
 - Main b966af81 merged once, at the chain's bottom (PR 1's branch).
 
+- PR 6 (6505), in hand: gatekeeper.mjs's rehearsal builds the sweep's
+  unminified bundle and plays mp-heldsweep stand,town,ride; guard
+  tools/guards/gate-steps.test (its 6 plants red). screen-check mended
+  in the test: the sweep's rider in its own browser, peer 6.5 ms (was
+  281-307, test box); held-budget's row made true, its 260 kept.
+  mp-skateboard 30/30 alone (this branch); slowed run with a helper.
+
 ## Next
-- PR 6 (6505). Then PR 4 (6503): call 1 is answered (the orchestrator's
+- PR 6: the new suite's and mp-heldsweep.mjs's approval (asked); the
+  helper's sample and slowed skateboard. Then PR 4 (6503): call 1 is answered (the orchestrator's
   messages, 2026-11-24 02:39-02:46 UTC: the Speed test's table, govern and
   groundsend both stay on, "all those off" felt best); its words go in
   census/PH-phone.md with PR 4. A default look changed is the owner's call.
@@ -34,6 +42,7 @@ state: working (part 4: the chain mended, one push per PR; then PR 6)
 - src/rendering/maskedEvict.js's header: the memory rung's old words.
 - buffers: 24.2-24.3 on CI against 24.8 kept: the trim owed.
 - main b2cdd55a on the test box: heap 39.5 / 40.2 / 39.6, one over 40.0.
+- `portrait` 21.7 ms > 12 at the sweep's armour (off the list since 5042).
 
 ## Needs
 - The owner's word on the alarm's level (call 3): decided while away, 120.
