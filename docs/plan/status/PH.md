@@ -29,6 +29,7 @@ state: working (part 10: sitting 60's three holds mended on ONE new branch on th
 - Next part: sitting 61 reads both mends; the owner's Speed test
   once PR 4 lands. Swings-not-time for mp-membudget stays in #2318's words.
 ## Found
+- At the merge of main (sitting 60): DG's wire-hostile 3a counts #2279's four report fields (`up`, `ride`, `rideGaps`, `ramps`): listed in NOT_REACHED (the devClass gate, as the other 18), REACH_LINE 104 -> 108, in the PR's words.
 - maskedEvict.js's header still says the memory rung is "the report's count over the memory check's lines" (not my file).
 - The 30-bot crowd fight cannot be read on the test box (census/PH-phone.md).
 
