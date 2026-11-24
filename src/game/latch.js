@@ -42,10 +42,25 @@
  * BroTown writes what latchFrame and latchAttackPress return, and a lifted
  * thumb (handleRBtnRelease) leaves it as latchHolds says.
  *
- * One import, sight.js (none of its own): node tests it
+ * Three imports, sight.js, and manualCombat.js and deviceProfile.js for the one gate (twoButtonsLive; v2.3.6542): node tests it
  * (server/test/latch.test.mjs).
  */
 import { sightPick, sightStep, sightClear, sightRange, drawnFace } from './sight.js';   /* v2.3.6542 */
+import { twoButtonsOn } from './manualCombat.js';   /* v2.3.6542 (sitting 60): the one gate, twoButtonsLive, below */
+import { fineInput } from './deviceProfile.js';
+
+/** v2.3.6542 (the gatekeeper's sitting 60): THE ONE GATE every site of the
+ *  two buttons asks: chosen (`?manual=5`) AND a touch screen's main pointer
+ *  (the card: touch only, a computer's keys and mouse do not change).  The
+ *  gate was split: the Attack press asked twoButtonsOn() alone, the frame
+ *  (latchFrame) and the lock asked it with !fineInput(), so on a touch screen
+ *  with a mouse a press latched, set the held attack, and nothing ended it.
+ *  Here, not in manualCombat.js, whose rules import nothing
+ *  (manual-combat.test 10a).  server/test/latch.test.mjs H2 reads every
+ *  caller of twoButtonsOn off the syntax tree (an ALLOW list: this gate). */
+export function twoButtonsLive() {
+  return twoButtonsOn() && !fineInput();
+}
 
 export const LATCH_PHASES = Object.freeze(['idle', 'active']);
 export const LATCH_ENDS = Object.freeze(['press', 'range', 'killed', 'death', 'zone']);
@@ -190,6 +205,12 @@ export function latchFrame(S, now, dead, slot, mult) {
  *  hold's kept id (the gatekeeper's sitting 56: a press locks only what is in
  *  sight now) -- and presses (latchPress).  'lock' | 'unlock' | 'once'. */
 export function latchAttackPress(S) {
+  /* v2.3.6542 (the gatekeeper's sitting 60): off the two buttons' one gate (a
+     mouse on a touch screen, or the mode not chosen) a press latches nothing:
+     null, and the phase stays as it was.  latchFrame, the frame that ends a
+     latch, runs only on the same gate, so a press it could not see must never
+     begin one. */
+  if (!twoButtonsLive()) return null;
   const pk = sightNow(S, _range);
   return latchPress(S, pk ? pk.id : null);
 }
