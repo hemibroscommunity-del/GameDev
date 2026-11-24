@@ -1,7 +1,7 @@
 card: BK
-branch: claude/plan-bk-debts59 (6466: sitting 59's debts on #2301)
-prs: #2278 6460, #2281 6461, #2289 6464, #2299 6462, #2301 6463, #2309 6465 (merged); 6466: ready
-state: done
+branch: claude/plan-bk-mend61 (6467: sitting 61's hold on #2326), on claude/plan-bk-debts59 (6466)
+prs: #2278 6460, #2281 6461, #2289 6464, #2299 6462, #2301 6463, #2309 6465 (merged); #2326 6466: held; 6467: ready
+state: ready
 
 ## Done
 
@@ -10,19 +10,19 @@ state: done
   follows the table's value through the syntax tree. 6465: chaos-restart §7
   and world-sum compare the weapon listing's pieces by id (sitting 59: red).
 - 6466 (sitting 59's debts on #2301): road-levers names every place its
-  scan stops (THE STOPS, NAMED: the module's other exports, the rows' other
-  fields, five methods of Object.prototype, the import placer, STOP_AT);
-  anything else is lost, and lost is red. Sitting 59's four green spellings
-  (`valueOf()`, a forEach's third parameter, `'./playerroads.js?x'`, a
-  tagged template) and BK's own two (`'./playerroads'`, a row stored in a
-  name never declared): each green on the old guard in xfer.js, red now,
-  green restored; 31 plants in §5; 16 mutants die, one equivalent (named in
-  its header). A guard only: nothing on the phone; outside `server/`, no
-  deploy.
+  scan stops (THE STOPS, NAMED); lost is red; sitting 59's four green
+  spellings and BK's two each red now; 31 plants; 16 mutants die.
+- 6467 (sitting 61's hold on #2326: red beside PH's #2279, whose worker
+  imports `../../src/game/switches.js`): road-levers resolves an import
+  that leaves server/src on the disk and scans the file it reaches, and
+  its imports in turn; what it cannot place stays lost (red). Green on
+  main's tree (it reads switches.js); 12 tree plants red, the 31 and the
+  six spellings still red; 15 mutants die. A guard only: no deploy.
 
 ## Next
 
-- 6466: the gatekeeper's list. The card is then done.
+- 6467 with 6466 beneath it: the gatekeeper's list, as one line. The card
+  is then done.
 
 ## Found
 
