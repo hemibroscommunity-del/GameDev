@@ -1,36 +1,30 @@
 card: ORC
 branch: claude/plan-orc
-prs: #2275 (the direction, READY, test green; first on sitting 56's list; this notes branch never has a PR)
+prs: #2275 (the direction, READY; in sitting 56's rehearsal; this notes branch never has a PR)
 state: working
-part 1 (session_01LccHanB57Tk5sgzS4CDR5a) handed over 2026-11-23 23:30 UTC at 223k of memory; part 2 reads this and docs/plan/finish.md.
+part 2 (session_01LccHakncEEzQHS5F2Wh3Ga) took over 2026-11-23 23:28 UTC; this is its word at 00:27 UTC on 11-24.
 
-## Sessions (model, effort) and state at 23:25 UTC
-- CK  session_01LccHamkU1qYRAzBZnFhFPA (strong, high) working, 244k; first PR (6420) URGENT, not ready yet
-- LF  session_01LccHanEKaetwRqRMg2sF44 (middle, high) #2276, #2277, #2280 ready; mending mp-comeback 5b on #2273 (the test, not the fix), then green twice, then ready: NEXT sitting (it deploys)
-- DG  session_01LccHam3hL1TDQFgUsHLUFj (strong, high) working, 311k, no PR yet
-- BK  ENDED at 258k. #2278, #2281 (stacked on #2278) ready. A FRESH session takes PR 3 (6462, the 1.5 bar) from status/BK.md on claude/plan-bk-2-restart AFTER CK's first PR has merged
-- WHO session_01LccHahoLnZrBGcghpNXvuS (strong, high) working, 275k, no PR yet
-- PH  session_01LccHahZRduWjAuiDMFSpQ5 (strong, high) #2279 ready (deploys); 338k; PR 2 and PR 4 wait on the owner's calls 1 and 3
-- WL  session_01LccHakUejTB5ZPCvtkEHZQ (strong, high) working, 320k, no PR yet
-- CT  part 1 ENDED at 264k, #2282 ready (deploys). Part 2: session_01LccHakRPms7qXKDymBYWBF, from PR 2 (6541)
-- Z   sitting 56: session_01LccHahXLNdqaiGzrYpAGDB, started 23:21 (the day's first). Its list goes to the orchestrator, who merges it in order
-Sessions past 250k hand over after the PR in hand (finish.md 6.1): start a fresh one from the status file; tell it never to read BroTown.jsx or a renderer whole.
+## Sessions (all strong, high, unless said) at 00:27 UTC
+- CK  part 3 session_01LccHanDgcojfUMPpPn87N2: #2284 (6420, PASSED 56's review), #2288 (6421, stacked on it) ready; building PR 3 (6422: ladder-passes, picture-door per-suite; NOT phase-table, WL's); PR 5 waits on the owner's words
+- DG  part 2 session_01LccHanAyuD8xJATBb5jYCU: #2283 mended, ready (b5ba8bb8, with ECON_V + 1 for WHO); building PR 2 (6441)
+- BK  part 2 session_01LccHai6haXcyTG2rCgotRC: #2278 passed; #2281 mended, ready (36729df8); #2289 (6464, pieces by id) ready; PR 3 (6462 + claims-gain's 162 s) waits for #2284 to merge: TELL IT
+- WHO part 3 session_01LccHajq4XpNZ9Jy3EqctCz: #2285 ready; 6481 built on claude/plan-who-2-sitting, opens after #2283 merges: TELL IT; building 6482 (A and B approved); report.js call after #2279 merges: TELL IT
+- PH  part 2 session_01LccHaja67ykEakkDuTo7u5: #2279 mended, ready (316dab3f); PR 2 (6501) MB 120 decided while away; PR 3 stacked on it; PR 4 waits call 1; PRs 5, 6 after #2284 merges: TELL IT
+- WL  part 3 session_01LccHakJNqjKYa3xDvhNxBe: #2286, #2287, #2290 ready; building 6523; merge main into #2286 after #2282 merges: TELL IT
+- CT  part 2 session_01LccHakRPms7qXKDymBYWBF: #2282 mended, ready; PR 2 (6541) stacked
+- LF  session_01LccHanEKaetwRqRMg2sF44 (middle): done; #2276, #2277, #2280 in sitting 56; #2273 ready (deploys). LF.md is on #2280 and #2273: after one merges, tell LF to merge main into the other
+- Z   sitting 56 session_01LccHahXLNdqaiGzrYpAGDB: rehearsing #2275, #2284, #2276, #2277, #2278, #2280; its list not yet sent. HELD then mended: #2279, #2281, #2282, #2283
+- Old parts were told to unsubscribe and stop. Fresh sessions burn about 250k in 40 minutes: prompts now carry "keep your memory small".
+
+## Next sitting (57) queue
+#2273, #2279, #2281, #2282 (before #2286), #2283 (before WHO's 6481), #2285, #2286, #2287, #2288, #2289, #2290; server PRs together.
 
 ## Decided (each named in its PR's words)
-- A card is read from PR #2275's branch by `git show`, not pasted. PRs open READY; children message only when ready, stalled, asking, handing over.
-- WHO: qa actor unbuilt (Found); ONE line of gold.js (the econGold call) to pass the record, no GOLD_ROADS row, door tests unchanged; bag counts not split; owner actor made, unwired.
-- WL: four-lines by statements: new = today's statements + room, room = floor(old room x own ratio), never more than the old room; three new named rows. OWNED starts without CT's fields (CT sends them to WL). BK sent WL the restart row's words.
-- LF: may edit two assertions of mp-deskkeys step 1 (#2280); 8f stays red (waits for the owner's verdict on the controls trial).
-- CT: mechanical rows outside the card (systems.mjs, generated switches, DOOR_SUITES rows in WL's phase-table.test: list #2282 before WL's PR there); five trial numbers behind ?manual=5; BroTown.jsx never rises, offset from its own slice.
+- CK: #2284 through with the 120 s line unmet (claims-gain, BK's, 162 s). PH: lines = highest + max(scatter, 1.0 MB), heap 40.0, buffers 24.8; mp-membudget.mjs one READ row. WL: OWNED = one-writer fields (443), re-pin on a move. WHO: migrations.js econClean, gold.js ECON_V + sitGold, movement.js, combat.js, hitproof.js, index.js traceNote, gathering.js, cooking.js; NOT report.js (PH's).
+- Decided for the owner while away: the memory alarm at 120 MB (test box), behind ?memalarm=0. TOLD the owner 00:00 UTC.
 
-## Waits for the owner (asked 22:33 UTC; no answer yet)
-- call 1: five minutes on the phone (Speed test table; ?govern=0; ?groundsend=0) -> PH
-- call 2: GitHub's checks, in the owner's OWN words -> CK
-- call 3: the memory alarm's level -> PH
-- #2279 grows the day book's dev part 24 -> 28 KB a write: Z says if it costs more; if so the owner's call
-- calls 4 to 8 not asked. Tell the owner CT's trial numbers when the trial reaches the phone.
+## Waits for the owner
+- call 1 (five minutes on the phone) -> PH; call 2 (.github/, own words) -> CK; calls 4 to 8 not asked.
 
 ## The week (from Monday 21:00 UTC)
-- one week is about $2,700 (last week's sessions created 11-16 21:00 to 11-19 17:00); 80% = $2,170: past it no new card
-- this week at 23:25: $134 over 9 reporting sessions (the direction session $63 of it); about $9 a session-hour, $70 an hour with eight running
-- field: ccr.external_metadata.usage.cost_usd; context_usage.used_tokens (a haiku lane reads them)
+- about $2,700 a week; past $2,170 no new card. $134 at 23:25 UTC on 11-23; not summed since (first sweep 00:59 UTC).
