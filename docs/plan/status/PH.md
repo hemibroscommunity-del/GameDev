@@ -1,30 +1,20 @@
 card: PH
 branch: claude/plan-ph-1-report
-prs: #2279 (PR 1, 6500, ready again after sitting 56's hold)
-state: ready
+prs: #2279 (PR 1, 6500, DEPLOYS: sitting 57's hold mended), #2291 (PR 2, 6501), #2297 (PR 3, 6502), #2306 (PR 5, 6504)
+state: working (part 4: mending sitting 57's holds, one push per PR when the chain is mended)
 
 ## Done
-- PR 1 (tag 6500): the report sees heat (`up`), the board (`ride`) and
-  the address bar's off-ramps (`ramps`, in the cell); caps.report 4, kill
-  switch `reportheat`. DEPLOYS the worker. Ready for the gatekeeper.
-- Sitting 56's hold mended: report.test 15.8a-d send the four dodges
-  through the room (raw ramps, `reportheat: false`, a fraction or a
-  negative in rideGaps, a `drawn` unlike its gaps); each plant red, the
-  code held all four (no code change). Files outside the card named in
-  the PR's words with the planning session's approval.
+- PR 1 (6500) #2279: the report sees heat, the board and the ramps.
+  Sitting 57 (review-z57): 15.8c's "fraction" sat on an empty bin (a -0.5,
+  a negative), so `every(x >= 0)` stayed green: now on the fullest bin
+  (99.5 of 100). New 15.8e and 15.8f: the `up` row's late and below
+  columns are the kept verdict's, never the claim. Plants tried
+  2026-11-24 on the test box: rideGaps sign-only, `msg.late[0]`,
+  `msg.rung[1]`, below `0` each -> FAIL 15.8c / e / f / f.
 
 ## Next
-- PR 2 (6501): the memory alarm on the game's own total (its level waits
-  for the owner); PR 3 (6502): the three mp-membudget runs are in hand.
-
-## Found
-- server/test/report.test.mjs section 7's "full" cell was not full: its
-  late (40 of 900 > 105 drawn) and rung (120 s > 46 covered) were dropped by
-  the checks, so the floor of sixteen cells a day measured a 1.5 KB cell; a
-  truly full one was 1.7 KB (fourteen a day). Mended in PR 1 (my suite).
+- #2291's mend (memFull and `?memalarm=0`), carried into #2297 and #2306.
+- Then PR 6 (6505). PR 4 (6503) waits for call 1.
 
 ## Needs
-- The owner's five minutes (finish.md part 9, call 1): the Speed test's
-  table, `?govern=0` against on when warm, `?groundsend=0` on the board.
-  PR 4's order of rungs waits on it; PRs 1 to 3 do not.
-- The owner's yes on the memory alarm's level (call 3): PR 2's level.
+- The owner's five minutes (call 1): PR 4's order of rungs.
