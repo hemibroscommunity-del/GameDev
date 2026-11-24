@@ -11,8 +11,8 @@ After 57 merges, TELL: WHO (#2283 in: merge main, open 6481 "shape bump: ECON_V"
 
 ## Sessions (strong, high); every one was told part 3's id: tell each the new one
 - CK  part 3 session_01LccHanDgcojfUMPpPn87N2 (about 150k): #2288, #2294, #2296 ready; card DONE but PR 5 (waits call 2, the owner's own words)
-- DG  part 3 session_01LccHanED8EaLracuMeAGGR: #2283, #2295 ready; PR 3 (6442) built, its push is due; PRs 4 to 6 to build
-- BK  part 3 session_01LccHaie7SxqWb9if8mSTuX: #2281, #2289, #2299 ready (no push to #2299 until 57 has merged); building PR 4 (6463), the last
+- DG  part 3 session_01LccHanED8EaLracuMeAGGR: caretaker only (subscribed to #2283, #2295, #2300; #2300 = PR 3, tests only, for sitting 58, asked to retarget to main). DG part 4 (new 01:36, session_01LccHajiyuv8speuDQTioEV): builds PR 4 (6443) from claude/dg-books, then 5, 6
+- BK  part 3 session_01LccHaie7SxqWb9if8mSTuX: #2281, #2289, #2299 ready (no push to #2299 until 57 has merged); PR 4 = #2301 (edb00915, from main, for sitting 58: merge main once into #2299 and #2301 after 57 lands, on the orchestrator's word); all four PRs written
 - WHO part 4 session_01LccHahezkhX8pJRQSedVFF (new 01:22): #2285 ready; 6481 and 6482 built, no PR, wait for the word that #2283 merged
 - PH  part 3 session_01LccHai7CL7LxQeF4eEbKc8 (new 01:04): #2279, #2291 ready; #2297 a draft (lines from CI's read); PR 4 waits call 1; PRs 5, 6 free
 - WL  part 4 session_01LccHajbxzLqNe1hfoBPtSb (new 01:11): pushing #2286, #2287, #2290, #2298 as a chain (each holds the one before); its new heads are DUE to the orchestrator and Z; PR 5 (6524) stacked on #2298, base main; PR 6 after
