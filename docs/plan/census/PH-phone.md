@@ -79,3 +79,27 @@ over it. Decided for the owner while away (call 3 unanswered since 22:33 UTC;
 the planning session, 2026-11-23, README tag 5058), behind `?memalarm=0`. The
 phone's own count waits on the field report (PR 1). If the owner answers
 before it merges, their words win.
+
+## The owner's answers for PR 4 (6503), passed on by the orchestrator, 2026-11-24 (v2.3.6505)
+
+As said, word for word (in the orchestrator's part 5 session):
+
+- The extras, to the advice: "What does draw at 2x mean. Might even be able to go further with that cause the art is
+  not great anyway", then "And yea keep going recommended". So, on phones: metal shine off by default, its switch to
+  bring it back; water and shadows stay.
+- The sharpness, after `?res=1.5` and `?res=1` on the phone: "1.5 looks fine nothing below that". The phone's
+  default is 1.5 (this replaces "2x"), never lower, one number in one place, with its switch to the old look. 1.5 is
+  below the art's own 2 px a game px: check `[data-res-soft]` is the look at 1.5 and the one the owner saw. The Speed
+  test has no 1.5 row: the frames gained are unmeasured until the owner runs it on the new default (finish.md rule 4).
+- Low Power Mode during the Speed test: "Low power mode was not on during test". So lane `thirty` (a 30-a-second
+  screen) was read wrong on a phone that drew 45: the pacer's or the report's reading of the screen's rate
+  (`src/game/framePacer.js`, `drawLanes.js` first). If PR 4's governor leans on it, PR 4 mends it or stops trusting it.
+
+## mp-skateboard, slowed, the test box, 2026-11-24 (PR 6, 6505)
+
+| run | throttle | test | result |
+|---|---|---|---|
+| part 4's helper, main b966af81 | 4 | as on main | 9 red: 4 (off null), 5, 5b, 5c, 8, 10 x2, 11 (961 s) |
+| this part, the branch | 4 | as on main | 30/30 (690 s): the reds ride the box's load |
+| this part, the branch | 6 | as on main | 28/30: 9 and 11 red (770 s) |
+| this part, the branch | 6 | mended (the game's clock) | 30/30 (968 s) |
