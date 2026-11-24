@@ -1,22 +1,22 @@
 card: CT
-branch: claude/plan-ct-8-freefire (item 8, stacked on claude/plan-ct-7-mends)
-prs: #2340 (6547, draft on main), #2282 (6540, merged), #2293 (6541, merged at 60), #2308 (6542, held at 60: mended), #2327 (6543, ready), #2330 (6544, draft, main 598cfd38 in), item 6 (6545, draft), item 7 (6546, at the gate)
-state: ready
+branch: claude/plan-ct-9-hold (part 15: tap and hold, stacked on claude/plan-ct-8-freefire)
+prs: part 15 (6548, draft on claude/plan-ct-8-freefire, PR to come), #2340 (6547, draft on main), #2282 (6540, merged), #2293 (6541, merged at 60), #2308 (6542, held at 60: mended), #2327 (6543, ready), #2330 (6544, draft, main 598cfd38 in), item 6 (6545, draft), item 7 (6546, at the gate)
+state: working
 
 ## Done
-- PRs 1-2 (6540 #2282, 6541 #2293) merged; 3-5 (6542-6544) in via #2330.
-- Item 6 (6545): sprint past the stick's rim (`?rimsprint=0`).
-- Item 7 (6546): the line only in combat (`?sightline=1`); the plain sword.
-- Item 8 (6547): the free arrow (a press with nothing sighted looses on the
-  body's facing; game/freeAttack.js freeArrowGo; `?freefire=0`); the sword
-  stays, no switch (Attack's press is freeAttack.js twoButtonPress, its road
-  held). No server line; tools/guards/free-attack.test.mjs (no deploy);
-  mp-twobuttons 2c's stay step, part 7.
+- PRs 1-5 (6540-6544) merged or in via #2330; items 6-8 (6545 rim sprint,
+  6546 the line in combat, 6547 the free arrow, `?freefire=0`) in #2340.
+- Part 15 (6548, working): tap and hold. A tap on Attack is one attack (a
+  lock that stays); a hold on a lock fills a ring (600 ms, `?autohold=<ms>`)
+  and turns auto-attack on (lit); a tap while auto ends it; a kill lets
+  everything go (no hop). The latch's phases idle/active/auto (one field,
+  latchTo; S.autoAttack from latchHolds). `?holdauto=0` the old press.
+  latch.js + freeAttack.js; latch.test 6, free-attack 4-5 (no server/src).
 
 ## Next
-- Hand-over at 309k: rerun mp-twobuttons on #2340's head (7a, 7c, 7d).
-- Three CT parts from claude/plan-ct-8-freefire: tap-and-hold auto-attack;
-  Block, Charge (the dash's button), the thumb's layout; node and townsfolk.
+- Part 15: mp-twobuttons 2a-2d to the new rule; the helper's run of #2340.
+- Two CT parts after it: Block, Charge (the dash's button), the thumb's
+  layout; node and townsfolk.
 
 ## Found
 - Item 8's repro (430x775 @3x, a greatsword, one press, 5 s): the body

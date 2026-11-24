@@ -42,7 +42,7 @@ import { zoneHomes } from '@/data/zones.js';   /* v2.3.3499: the Wheel's far cul
 import { keepDuelLock } from '@/game/duelLock.js';   /* v2.3.3713: a player lock follows its peer; an arena match locks on sight */
 import { tapLockOn, mcLockAllowed } from './manualCombat.js';   /* v2.3.4395: manual combat keeps no chosen lock; v2.3.5018: nor the held combat (tapLockOn) */
 import { dropUnsettledDuel } from '@/game/duelPending.js';   /* v2.3.4361: an accept the worker never settled */
-import { latchPhase, twoButtonsLive } from '@/game/latch.js';   /* v2.3.6542: the two buttons' lock is the latch's (card CT PR 3) */
+import { latchLocked, twoButtonsLive } from '@/game/latch.js';   /* v2.3.6542: the two buttons' lock is the latch's (card CT PR 3) */
 import { resetOn } from '@/game/resetOn.js';   /* v2.3.5206: the fight you picked ends at the zone door (card L) */
 
 function monPos(m) {
@@ -513,7 +513,7 @@ resetOn('zone', endEngagement, 'combat');
 
 /* v2.3.6542: the two buttons' lock (above): the latch's id, or none */
 function latchLock(S) {
-  const id = latchPhase(S) === 'active' ? S._latchId : null;
+  const id = latchLocked(S) ? S._latchId : null;   /* v2.3.6548: a tap's lock or auto-attack's (card CT part 15) */
   const lt = autoLock(S);
   /* v2.3.6542: kept only once its ref is the LIVE monster of the list
      (lockRefPresent: a replaced one re-pointed by id, as mode 4's path does

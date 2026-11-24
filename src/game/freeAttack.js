@@ -40,11 +40,11 @@
  * (tools/guards/free-attack.test.mjs) plays it and reads its road.  The dash
  * gets its own button (Charge) in a later part.
  *
- * Two imports, switches.js and latch.js (the one gate and the latch's press): node
+ * Two imports, switches.js and latch.js (the one gate, the latch's press and its hold): node
  * tests it (tools/guards/free-attack.test.mjs).
  */
 import { readerFor, sw } from './switches.js';
-import { twoButtonsLive, latchAttackPress } from './latch.js';   /* the two buttons' one gate, and the latch's press */
+import { twoButtonsLive, latchAttackPress, latchPhase, latchHolds, latchHoldStart, latchRing, latchRelease, latchRingOff, latchSlide, autoHoldMs } from './latch.js';   /* the two buttons' one gate, and the latch's press; v2.3.6548: its hold (tap and hold, card CT part 15) */
 
 /** The free arrow for this page: on unless `?freefire=0`.  `search` is for
  *  tests. */
@@ -75,12 +75,37 @@ export function freeArrowGo(S, tapNow) {
  *  the way the body faces (`tap`: tapJump.js requestTapAttack, handed in;
  *  with a bow it is the free arrow above).  The held attack (S.autoAttack)
  *  is the lock's.  Nothing else: no walk, no step, no dash.  Returns the
- *  press ('lock' | 'unlock' | 'once'), or null off the two buttons (nothing
- *  done). */
-export function twoButtonPress(S, now, tap) {
+ *  press ('lock' | 'unlock' | 'once', and v2.3.6548 'strike'), or null off
+ *  the two buttons (nothing done).
+ *
+ *  v2.3.6548 (card CT part 15, the owner: "Otherwise each tap is its own
+ *  attack cycle"): with the hold's rule (latch.js holdAutoOn) every press but
+ *  the one that ends auto-attack is ONE attack at once (`tap`: at the lock,
+ *  which the body faces, or the way it faces), and a press on a lock starts
+ *  the hold (latchHoldStart) and its ring on `el`, the disc (latchRing, once
+ *  here).  With `?holdauto=0` the lock is auto at once and strikes no tap,
+ *  as before.  S.autoAttack is latchHolds's, the phase's. */
+export function twoButtonPress(S, now, tap, el) {
   const lp = latchAttackPress(S);
   if (lp === null) return null;
-  if (lp === 'once') { if (typeof tap === 'function') tap(S, now); }
-  else S.autoAttack = lp === 'lock';
+  if (lp !== 'unlock' && latchPhase(S) !== 'auto') { if (typeof tap === 'function') tap(S, now); }
+  if (latchHoldStart(S, now)) latchRing(el, S, autoHoldMs());
+  S.autoAttack = latchHolds(S);
   return lp;
+}
+
+/** v2.3.6548: Attack's finger lifted or cancelled (BroTown's bE, a page
+ *  going away): the hold ends and the ring empties at once.  Before the fill
+ *  it was a tap: nothing else happens.  True when a hold was running. */
+export function twoButtonRelease(S, el) {
+  latchRingOff(el);
+  return latchRelease(S);
+}
+
+/** v2.3.6548: Attack's finger moved (dx, dy) px from its press: slid off
+ *  the button (latch.js latchSlide), the hold ends as a lift does. */
+export function twoButtonSlide(S, el, dx, dy) {
+  if (!latchSlide(S, dx, dy)) return false;
+  latchRingOff(el);
+  return true;
 }

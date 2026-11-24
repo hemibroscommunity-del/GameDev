@@ -16,6 +16,10 @@
  *      locks it and moves NOTHING (the player untouched, no dash, nothing
  *      written but the latch's and the sight's notes and the held attack);
  *      again lets go; nothing in sight is the tap's one attack; mode 4 nothing;
+ *      v2.3.6548 (card CT part 15): the press is one attack at once and
+ *      starts the hold and its ring, a lift before the fill is a tap, a slide
+ *      off ends the hold, a tap while auto lets go with no attack of its own,
+ *      and `?holdauto=0` is the press of parts 13-14;
  *   5. THE PRESS'S ROAD, off the syntax tree: it calls only the latch's press
  *      and the tap it is handed (the orchestrator, 2026-11-24: "so a later
  *      part cannot wire the dash to Attack unseen");
@@ -36,7 +40,7 @@
 import { readFileSync } from 'node:fs';
 import { readSystem } from './lib/filesOf.mjs';
 import { createRequire } from 'node:module';
-import { freeFireOn, freeArrow, freeArrowGo, twoButtonPress } from '../../src/game/freeAttack.js';
+import { freeFireOn, freeArrow, freeArrowGo, twoButtonPress, twoButtonRelease, twoButtonSlide } from '../../src/game/freeAttack.js';
 import { setManualCombat } from '../../src/game/manualCombat.js';
 
 let failures = 0, passes = 0;
@@ -89,18 +93,37 @@ for (const [fn, name] of [[freeFireOn, 'freefire']]) {
   const S = page('melee', [mon()]);
   const before = JSON.stringify(S.player);
   const r1 = twoButtonPress(S, 1000, tap);
-  check('4a. a sword, a monster in sight 240 px ahead: the press locks (\'lock\', the latch active on it, the held attack on), no tap',
-    r1 === 'lock' && S._latchPhase === 'active' && S._latchId === 'm1' && S.autoAttack === true && taps.length === 0, { r1, ph: S._latchPhase, id: S._latchId, auto: S.autoAttack });
+  /* v2.3.6548 (card CT part 15): the hold's rule is the page's: a press on a
+     monster locks it AND is one attack at once (the tap), the held attack
+     off until a hold fills; the press starts the hold */
+  check('4a. a sword, a monster in sight 240 px ahead: the press locks (\'lock\', the latch active on it, the held attack off), one attack at once, the hold started',
+    r1 === 'lock' && S._latchPhase === 'active' && S._latchId === 'm1' && S.autoAttack === false && taps.length === 1 && taps[0] === 1000 && S._latchHoldAt === 1000, { r1, ph: S._latchPhase, id: S._latchId, auto: S.autoAttack, taps });
   /* the road moves nothing: the body, its speed, no dash, no lunge, no ability */
   const moved = JSON.stringify(S.player) !== before;
   const extra = Object.keys(S).filter((k) => !['player', '_renderFacing', 'monsters', 'currentZone', 'rpg', 'autoAttack'].includes(k) && !/^_(latch|sight)/.test(k));
   check('4b. ...and nothing moves the body: the player untouched, no dash (S._bashDash), nothing written but the latch\'s and the sight\'s notes and the held attack',
     !moved && S._bashDash === undefined && extra.length === 0, { moved, extra });
-  const r2 = twoButtonPress(S, 1100, tap);
-  check('4c. again: let go (\'unlock\', idle, the held attack off)', r2 === 'unlock' && S._latchPhase === 'idle' && S.autoAttack === false, { r2 });
+  /* v2.3.6548: the ring at the press, once, on the element handed in */
+  const attrs = Object.create(null), props = Object.create(null);
+  const el = { getAttribute: (k) => (k in attrs ? attrs[k] : null), setAttribute: (k, v) => { attrs[k] = String(v); }, removeAttribute: (k) => { delete attrs[k]; }, style: { setProperty: (k, v) => { props[k] = v; } } };
+  check('4c. lifted before the fill: a tap (the hold ends, the lock stays, nothing else)', twoButtonRelease(S, el) === true && S._latchHoldAt === 0 && S._latchPhase === 'active' && taps.length === 1);
+  const r2 = twoButtonPress(S, 1100, tap, el);
+  check('4c. a tap on the lock: \'strike\', one more attack, the lock kept, the ring started on the disc (data-hold, --autohold 600ms)',
+    r2 === 'strike' && taps.length === 2 && S._latchPhase === 'active' && S._latchId === 'm1' && attrs['data-hold'] === 'a' && props['--autohold'] === '600ms', { r2, attrs, props });
+  check('4c. slid 30 px: still holding; 60 px: slid off, the ring empty', twoButtonSlide(S, el, 30, 0) === false && attrs['data-hold'] === 'a' && twoButtonSlide(S, el, 60, 0) === true && !('data-hold' in attrs) && S._latchHoldAt === 0);
+  S._latchPhase = 'auto';   /* as latchFill writes it at the fill (latch.test 6b plays the fill) */
+  const r2b = twoButtonPress(S, 1200, tap, el);
+  check('4c. a tap while auto: let go (\'unlock\', idle, the held attack off), NO attack of its own, no ring', r2b === 'unlock' && S._latchPhase === 'idle' && S.autoAttack === false && taps.length === 2 && !('data-hold' in attrs), { r2b, taps });
+  globalThis.location = { search: '?holdauto=0' };
+  const O = page('melee', [mon()]);
+  const o1 = twoButtonPress(O, 1250, tap, el);
+  check('4c. ?holdauto=0: today\'s press -- locked AND auto at once, the held attack on, no tap, no hold, no ring', o1 === 'lock' && O._latchPhase === 'auto' && O.autoAttack === true && taps.length === 2 && !O._latchHoldAt && !('data-hold' in attrs), { o1, ph: O._latchPhase });
+  check('4c. ?holdauto=0: again lets go', twoButtonPress(O, 1260, tap) === 'unlock' && O._latchPhase === 'idle' && O.autoAttack === false && taps.length === 2);
+  delete globalThis.location;
+  taps.length = 0;
   const E = page('ranged', []);
   const r3 = twoButtonPress(E, 1200, tap);
-  check('4d. nothing in sight: the tap\'s one attack the way the body faces (handed the state and the time), the latch idle', r3 === 'once' && taps.length === 1 && taps[0] === 1200 && E._latchPhase !== 'active' && E.autoAttack === undefined, { r3, taps });
+  check('4d. nothing in sight: the tap\'s one attack the way the body faces (handed the state and the time), the latch idle', r3 === 'once' && taps.length === 1 && taps[0] === 1200 && E._latchPhase !== 'active' && E.autoAttack === false, { r3, taps });
   check('4e. nothing in sight and no tap handed: no throw', twoButtonPress(page('ranged', []), 1300) === 'once');
   setManualCombat(4);
   const F = page('melee', [mon()]);
@@ -121,7 +144,12 @@ for (const [fn, name] of [[freeFireOn, 'freefire']]) {
     const ast = B5.parse(src, { sourceType: 'module' });
     const callees = [];
     B5.traverse(ast, { FunctionDeclaration(p) { if (p.node.id.name !== 'twoButtonPress') return; p.traverse({ CallExpression(q) { const c = q.node.callee; callees.push(c.type === 'Identifier' ? c.name : c.type); } }); } });
-    check('5. twoButtonPress calls only latchAttackPress and the tap handed in', callees.length === 2 && callees.includes('latchAttackPress') && callees.includes('tap'), callees);
+    /* v2.3.6548: + the latch's phase, its hold and ring, the fill's length and the derived held attack (card CT part 15) */
+    const ALLOW = ['latchAttackPress', 'tap', 'latchPhase', 'latchHoldStart', 'latchRing', 'autoHoldMs', 'latchHolds'];
+    check('5. twoButtonPress calls only the latch\'s press, its hold and ring, and the tap handed in', callees.length === ALLOW.length && ALLOW.every((n) => callees.includes(n)), callees);
+    const rel = [];
+    B5.traverse(ast, { FunctionDeclaration(p) { if (!/^twoButton(Release|Slide)$/.test(p.node.id.name)) return; p.traverse({ CallExpression(q) { const c = q.node.callee; rel.push(c.type === 'Identifier' ? c.name : c.type); } }); } });
+    check('5. the lift and the slide call only the latch\'s hold and ring (v2.3.6548)', rel.slice().sort().join() === ['latchRelease', 'latchRingOff', 'latchRingOff', 'latchSlide'].sort().join(), rel);
   } else check('5. @babel/parser loads', false);
 }
 
@@ -156,8 +184,8 @@ for (const [fn, name] of [[freeFireOn, 'freefire']]) {
     /* 6b: Attack's press in the two buttons: ONE call, the whole branch */
     const l = calls('ui', 'twoButtonPress');
     const lIf = l.length === 1 ? l[0].findParent((p) => p.isIfStatement()) : null;
-    check('6b. the screens: ONE call, `if (twoButtonsLive()) { twoButtonPress(Sb, Date.now(), requestTapAttack); return; }` (the press\'s whole road; a dash beside it would show)',
-      l.length === 1 && !!lIf && gen(lIf.node.test) === 'twoButtonsLive()' && gen(lIf.node.consequent) === '{ twoButtonPress(Sb, Date.now(), requestTapAttack); return; }', { n: l.length, test: lIf && gen(lIf.node.test), body: lIf && gen(lIf.node.consequent) });
+    check('6b. the screens: ONE call, `if (twoButtonsLive()) { twoButtonPress(Sb, Date.now(), requestTapAttack, rJoyRef.current); return; }` (the press\'s whole road; a dash beside it would show; v2.3.6548: + the disc for the ring)',
+      l.length === 1 && !!lIf && gen(lIf.node.test) === 'twoButtonsLive()' && gen(lIf.node.consequent) === '{ twoButtonPress(Sb, Date.now(), requestTapAttack, rJoyRef.current); return; }', { n: l.length, test: lIf && gen(lIf.node.test), body: lIf && gen(lIf.node.consequent) });
   }
 }
 

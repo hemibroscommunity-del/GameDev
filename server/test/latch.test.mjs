@@ -34,6 +34,7 @@
  * (and the guard's §2).
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { AUTOHOLD, holdAutoOn, autoHoldMs, latchLocked, latchHoldStart, latchRelease, latchSlide, latchFill, latchRing, latchRingOff, latchLine } from '../../src/game/latch.js';   /* v2.3.6548: tap and hold (6) */
 import { LATCH_PHASES, LATCH_ENDS, latchPhase, latchTo, latchPress, latchCheck, latchClear, latchFrame, latchAttackPress, latchHolds, latchLook, sightNow, twoButtonsLive } from '../../src/game/latch.js';   /* v2.3.6542: + the wiring (card CT PR 3) */
 import { sightRange, SIGHT_PHASES, SIGHT, sightPhase, sightPick, drawnFace } from '../../src/game/sight.js';
 import { STICK_PHASES } from '../../src/game/stickZones.js';   /* v2.3.6540: G2 below */
@@ -53,9 +54,9 @@ const locked = (id = 'a') => { const S = {}; latchPress(S, id); return S; };
 /* ── 1. a press ── */
 {
   const S = {};
-  check('1. nothing written: idle', latchPhase(S) === 'idle' && LATCH_PHASES.join() === 'idle,active');
+  check('1. nothing written: idle', latchPhase(S) === 'idle' && LATCH_PHASES.join() === 'idle,active,auto');
   check('1. a press with nothing sighted: one attack, still idle', latchPress(S, null) === 'once' && latchPhase(S) === 'idle' && !S._latchPhase);
-  check('1. a press with a monster sighted: locked, active', latchPress(S, 'm7') === 'lock' && latchPhase(S) === 'active' && S._latchId === 'm7');
+  check('1. a press with a monster sighted (today\'s press): locked, auto', latchPress(S, 'm7') === 'lock' && latchPhase(S) === 'auto' && S._latchId === 'm7');
   check('1. while locked, a frame in range holds it', latchCheck(S, { alive: true, d: 300 }, OUT, []) === null && S._latchId === 'm7');
 }
 
@@ -65,9 +66,9 @@ const locked = (id = 'a') => { const S = {}; latchPress(S, id); return S; };
   const a = locked();
   check('2. press: pressed again lets go', latchPress(a, 'b') === 'unlock' && latchPhase(a) === 'idle' && a._latchEnd === 'press' && a._latchId === null);
   const b = locked();
-  check('2. range: 549 holds (the sword\'s 550)', latchCheck(b, { alive: true, d: 549 }, OUT, []) === null && latchPhase(b) === 'active');
+  check('2. range: 549 holds (the sword\'s 550)', latchCheck(b, { alive: true, d: 549 }, OUT, []) === null && latchPhase(b) === 'auto');
   { const e = locked();
-    check('2. range: exactly 550 holds (the gatekeeper\'s sitting 56, L2)', latchCheck(e, { alive: true, d: 550 }, OUT, []) === null && latchPhase(e) === 'active');
+    check('2. range: exactly 550 holds (the gatekeeper\'s sitting 56, L2)', latchCheck(e, { alive: true, d: 550 }, OUT, []) === null && latchPhase(e) === 'auto');
     check('2. range: a distance that is not a number lets go', latchCheck(e, { alive: true, d: NaN }, OUT, []) === 'range' && latchPhase(e) === 'idle'); }
   check('2. range: 551 lets go', latchCheck(b, { alive: true, d: 551 }, OUT, []) === 'range' && latchPhase(b) === 'idle' && b._latchEnd === 'range');
   const bow = locked();
@@ -90,7 +91,7 @@ const locked = (id = 'a') => { const S = {}; latchPress(S, id); return S; };
 {
   const S = locked('a');
   const r = latchCheck(S, { alive: false, d: 40 }, OUT, [{ id: 'far', d: 400 }, { id: 'near', d: 120 }, { id: 'a', d: 40 }]);
-  check('3. the target dies with others sighted: the lock moves to the nearest, no new press', r === 'moved' && latchPhase(S) === 'active' && S._latchId === 'near', [r, S]);
+  check('3. the target dies with others sighted: the lock moves to the nearest, no new press', r === 'moved' && latchPhase(S) === 'auto' && S._latchId === 'near', [r, S]);
   check('3. ...and holds on it', latchCheck(S, { alive: true, d: 120 }, OUT, []) === null && S._latchId === 'near');
   const T = locked('a');
   check('3. the dead one itself is never the next', latchCheck(T, { alive: false, d: 40 }, OUT, [{ id: 'a', d: 10 }]) === 'killed');
@@ -144,7 +145,10 @@ function writesOutside(prop, doorFile, doorFn) {
 /* ═══ v2.3.6542: 5. WIRED (card CT PR 3): the frame, the press, the ends, the move ═══
    A page's state as the step `input` sees it: you at (0, 0) facing east, the
    monsters in S.monsters.  latchFrame's answer is the held attack
-   (S.autoAttack): true attacking, false let go, null nothing to say. */
+   (S.autoAttack): true attacking, false let go, null nothing to say.
+   v2.3.6548: section 5 plays today's press (`?holdauto=0`: a press locks
+   AND holds, a kill moves the lock); the hold's rule is section 6. */
+globalThis.location = { search: '?holdauto=0' };
 {
   const mon = (id, x, y = 0, alive = true) => ({ id, x, y, alive });
   const page = (mons) => ({ player: { x: 0, y: 0 }, _renderFacing: 'east', monsters: mons, currentZone: 'wheel' });
@@ -155,7 +159,7 @@ function writesOutside(prop, doorFile, doorFn) {
   {
     const a = mon('a', 300), S = page([a]);
     check('5a. a monster ahead in range: sighted, the latch idle, nothing said', frame(S) === null && sightPhase(S) === 'sighted' && latchPhase(S) === 'idle');
-    check('5a. Attack pressed: locked on it', latchAttackPress(S) === 'lock' && latchPhase(S) === 'active' && S._latchId === 'a');
+    check('5a. Attack pressed: locked on it', latchAttackPress(S) === 'lock' && latchPhase(S) === 'auto' && S._latchId === 'a');
     check('5a. a frame while locked: attacking', frame(S) === true);
     S._renderFacing = 'west';
     check('5a. the drawn facing turned away: still locked (the lock is not the cone\'s)', frame(S) === true && S._latchId === 'a');
@@ -180,7 +184,7 @@ function writesOutside(prop, doorFile, doorFn) {
     frame(S); latchAttackPress(S);
     check('5c. three ahead: the one nearest the facing\'s line locked', S._latchId === 'c', S._latchId);
     c.alive = false;
-    check('5c. it dies: the lock moves to the nearest other in sight (b), still attacking', frame(S) === true && S._latchId === 'b' && latchPhase(S) === 'active');
+    check('5c. it dies: the lock moves to the nearest other in sight (b), still attacking', frame(S) === true && S._latchId === 'b' && latchPhase(S) === 'auto');
     b.curHp = 0;
     check('5c. at 0 hp it counts as dead: moves to a', frame(S) === true && S._latchId === 'a');
     S.monsters = [b];
@@ -219,7 +223,7 @@ function writesOutside(prop, doorFile, doorFn) {
     frame(S); latchAttackPress(S);
     for (const [k, v] of [['_shieldUp', true], ['_extraction', {}], ['_climb', {}], ['_wheelSwim', { on: true }]]) {
       S[k] = v;
-      const off = frame(S) === false && latchHolds(S) === false && latchPhase(S) === 'active';
+      const off = frame(S) === false && latchHolds(S) === false && latchPhase(S) === 'auto';
       S[k] = k === '_wheelSwim' ? { on: false } : null;
       check('5g. ' + k + ': the attack held off, the latch kept; then taken up again', off && frame(S) === true && latchHolds(S) === true);
     }
@@ -251,10 +255,142 @@ function writesOutside(prop, doorFile, doorFn) {
     latchLook(el, S); latchLook(el, S);
     check('5j. idle: raised (data-latch off), written once', attrs['data-latch'] === 'off' && writes === 1);
     frame(S); latchAttackPress(S); latchLook(el, S); latchLook(el, S);
-    check('5j. active: pressed in (on), one more write', attrs['data-latch'] === 'on' && writes === 2);
+    check('5j. auto: pressed in (auto), one more write', attrs['data-latch'] === 'auto' && writes === 2);
     check('5j. no element: nothing', latchLook(null, S) === false);
   }
 }
+delete globalThis.location;
+
+/* ═══ v2.3.6548: 6. TAP AND HOLD (card CT part 15) ═══
+   The owner, 2026-11-24: "if you hold down the attack button near a monster
+   something signifies that the auto-attack is enabled. Maybe 2 seconds.
+   Otherwise each tap is its own attack cycle."  The page's own rule (no
+   `?holdauto=0`): a tap locks and strikes, a hold past the fill is auto, a
+   tap while auto lets go, a kill lets everything go. */
+{
+  const mon = (id, x, y = 0, alive = true) => ({ id, x, y, alive });
+  const page = (mons) => ({ player: { x: 0, y: 0 }, _renderFacing: 'east', monsters: mons, currentZone: 'wheel' });
+  const F = (S, now, dead) => latchFrame(S, now, !!dead, 'melee', 1);
+  check('6. the hold\'s rule is the page\'s (no address)', holdAutoOn() === true && holdAutoOn('') === true && holdAutoOn('?holdauto=0') === false && holdAutoOn('?holdauto=1') === true);
+  check('6. the fill: 600 ms by default, `?autohold=` in whole ms, 200 to 3000',
+    autoHoldMs() === 600 && autoHoldMs('') === 600 && autoHoldMs('?autohold=2000') === 2000 && autoHoldMs('?autohold=200') === 200 && autoHoldMs('?autohold=3000') === 3000
+      && autoHoldMs('?autohold=199') === 200 && autoHoldMs('?autohold=3001') === 3000 && autoHoldMs('?autohold=abc') === 600 && autoHoldMs('?autohold=') === 600 && autoHoldMs('?autohold=-5') === 600 && autoHoldMs('?autohold=7.5') === 600,
+    [autoHoldMs('?autohold=2000'), autoHoldMs('?autohold=199'), autoHoldMs('?autohold=3001')]);
+  check('6. AUTOHOLD: 600, 200 to 3000, a slide of 56 px', AUTOHOLD.MS === 600 && AUTOHOLD.MIN === 200 && AUTOHOLD.MAX === 3000 && AUTOHOLD.SLIDE_PX === 56 && Object.isFrozen(AUTOHOLD));
+
+  /* 6a. a tap: one attack cycle, a lock that stays, no held attack */
+  {
+    const S = page([mon('a', 300), mon('b', 320, 20)]);
+    check('6a. sighted, idle', F(S, 1000) === null && latchPhase(S) === 'idle');
+    check('6a. the press locks: active (no held attack), the id the sighted one', latchAttackPress(S) === 'lock' && latchPhase(S) === 'active' && latchLocked(S) && S._latchId === 'a' && latchHolds(S) === false);
+    check('6a. the hold starts on the lock (the press\'s own time)', latchHoldStart(S, 1000) === true && S._latchHoldAt === 1000);
+    check('6a. 300 ms on: not filled', F(S, 1300) === false && latchPhase(S) === 'active' && S._latchHoldAt === 1000);
+    check('6a. lifted at 300 ms: the hold ends (a tap), the lock stays', latchRelease(S) === true && S._latchHoldAt === 0 && latchPhase(S) === 'active' && S._latchId === 'a');
+    check('6a. ...and a lift with no hold says so', latchRelease(S) === false);
+    check('6a. long after: still the lock, never auto (the fill is the hold\'s alone)', F(S, 5000) === false && latchPhase(S) === 'active' && latchHolds(S) === false);
+    check('6a. a tap on the lock: \'strike\' (one attack), the lock kept on a', latchAttackPress(S) === 'strike' && latchPhase(S) === 'active' && S._latchId === 'a');
+    check('6a. the line is the lock\'s while active', latchLine(S, 5000, false) !== null);
+  }
+  /* 6b. a hold past the fill: auto, the finger may lift */
+  {
+    const S = page([mon('a', 300)]);
+    F(S, 1000); latchAttackPress(S); latchHoldStart(S, 1000);
+    check('6b. 599 ms: not yet', F(S, 1599) === false && latchPhase(S) === 'active');
+    check('6b. 600 ms: auto, the held attack on (the frame says true)', F(S, 1600) === true && latchPhase(S) === 'auto' && S._latchHoldAt === 0 && latchHolds(S) === true && S._latchId === 'a');
+    check('6b. lifted after the fill: nothing ends (no hold running), still auto', latchRelease(S) === false && latchPhase(S) === 'auto' && F(S, 1700) === true);
+    check('6b. a tap while auto: \'unlock\' -- off, idle (end press)', latchAttackPress(S) === 'unlock' && latchPhase(S) === 'idle' && S._latchEnd === 'press' && latchHolds(S) === false);
+    check('6b. ...the frame after: nothing to say (null: the press let the held attack go)', F(S, 1750) === null);
+    check('6b. no hold starts with nothing locked', latchHoldStart(S, 1800) === false && !S._latchHoldAt);
+    const H = page([mon('a', 300)]);
+    F(H, 1000); latchAttackPress(H); latchHoldStart(H, 1000);
+    check('6b. latchFill alone: at 1999 of 2000 no, at 2000 yes', latchFill(H, 2999, 2000) === false && latchPhase(H) === 'active' && latchFill(H, 3000, 2000) === true && latchPhase(H) === 'auto');
+    check('6b. latchFill with no hold: nothing', latchFill(H, 9000, 600) === false && latchFill(null, 9000, 600) === false && latchFill({ _latchHoldAt: 0 }, 9000, 1) === false);
+  }
+  /* 6c. a kill: everything lets go, no hop to a second monster standing near */
+  {
+    const a = mon('a', 300), S = page([a, mon('b', 330, 10)]);
+    F(S, 1000); latchAttackPress(S); latchHoldStart(S, 1000); F(S, 1600);
+    check('6c. auto on a', latchPhase(S) === 'auto' && S._latchId === 'a');
+    a.alive = false;
+    check('6c. a dies, b in sight: let go (\'killed\'), no move, the held attack false', F(S, 1650) === false && latchPhase(S) === 'idle' && S._latchEnd === 'killed' && S._latchId === null);
+    check('6c. the next frame: nothing (b sighted, not locked)', F(S, 1700) === null && latchPhase(S) === 'idle');
+    const b = mon('b', 300), T = page([b, mon('c', 330, 10)]);
+    F(T, 1000); latchAttackPress(T); latchHoldStart(T, 1000);
+    b.curHp = 0;
+    check('6c. a tap\'s lock dies mid-hold: idle, the hold dropped', F(T, 1200) === false && latchPhase(T) === 'idle' && T._latchHoldAt === 0 && T._latchEnd === 'killed');
+    check('6c. ...and the fill never comes', F(T, 2000) === null && latchPhase(T) === 'idle');
+  }
+  /* 6d. out of sight: auto ends; a hold whose lock goes is dropped */
+  {
+    const a = mon('a', 300), S = page([a]);
+    F(S, 1000); latchAttackPress(S); latchHoldStart(S, 1000); F(S, 1600);
+    a.x = 560;
+    check('6d. auto, the monster past 550: let go (\'range\')', F(S, 1650) === false && latchPhase(S) === 'idle' && S._latchEnd === 'range');
+    const b = mon('b', 300), T = page([b]);
+    F(T, 1000); latchAttackPress(T); latchHoldStart(T, 1000);
+    b.x = 600;
+    check('6d. mid-hold out of range: idle, the hold dropped', F(T, 1100) === false && T._latchHoldAt === 0 && latchPhase(T) === 'idle');
+    const D = page([mon('d', 300)]);
+    F(D, 1000); latchAttackPress(D); latchHoldStart(D, 1000);
+    check('6d. your death mid-hold: idle, the hold dropped', F(D, 1100, true) === false && D._latchHoldAt === 0 && D._latchEnd === 'death');
+    check('6d. latchFill on a hold with no lock drops it', (() => { const X = { _latchHoldAt: 5 }; return latchFill(X, 9000, 600) === false && X._latchHoldAt === 0; })());
+  }
+  /* 6e. a press with nothing in sight: one attack, no lock, no ring */
+  {
+    const S = page([mon('a', -300)]);
+    F(S, 1000);
+    check('6e. nothing sighted: \'once\', idle, no hold', latchAttackPress(S) === 'once' && latchPhase(S) === 'idle' && latchHoldStart(S, 1000) === false);
+    check('6e. the pure press: idle and nothing sighted is once; locked again is strike; auto again is unlock',
+      latchPress({}, null, true) === 'once' && latchPress({ _latchPhase: 'active', _latchId: 'q' }, 'z', true) === 'strike' && latchPress({ _latchPhase: 'auto', _latchId: 'q' }, 'z', true) === 'unlock');
+    const W = { _latchPhase: 'active', _latchId: 'q' };
+    check('6e. a strike keeps its lock (not the one sighted now)', latchPress(W, 'z', true) === 'strike' && W._latchId === 'q');
+    check('6e. `hold` is exactly true: anything else is today\'s press (a lock is auto)', (() => { const X = {}; return latchPress(X, 'z', 1) === 'lock' && latchPhase(X) === 'auto'; })());
+    check('6e. today\'s press on a tap\'s lock lets go', (() => { const X = { _latchPhase: 'active', _latchId: 'q' }; return latchPress(X, 'z') === 'unlock' && latchPhase(X) === 'idle'; })());
+    check('6e. the hold\'s press with an empty id: once', latchPress({}, '', true) === 'once');
+  }
+  /* 6f. a slide off the button ends the hold, as a lift */
+  {
+    const S = { _latchPhase: 'active', _latchId: 'a', _latchHoldAt: 10 };
+    check('6f. 56 px: still on the button', latchSlide(S, 56, 0) === false && S._latchHoldAt === 10);
+    check('6f. past 56 px: slid off, the hold ends', latchSlide(S, 40, 40) === true && S._latchHoldAt === 0);
+    check('6f. again: nothing to end', latchSlide(S, 90, 0) === false);
+    check('6f. a hold start needs a time', latchHoldStart(S, 0) === false && latchHoldStart(S, NaN) === false && latchHoldStart(null, 5) === false);
+  }
+  /* 6g. the disc: data-latch lock / auto / off, the ring once at the press */
+  {
+    let writes = 0; const attrs = Object.create(null), props = Object.create(null);
+    const el = { getAttribute: (k) => (k in attrs ? attrs[k] : null), setAttribute: (k, v) => { writes++; attrs[k] = String(v); }, removeAttribute: (k) => { writes++; delete attrs[k]; },
+      style: { setProperty: (k, v) => { props[k] = v; } } };
+    const S = page([mon('a', 300)]);
+    F(S, 1000); latchLook(el, S);
+    check('6g. idle: off', attrs['data-latch'] === 'off' && writes === 1);
+    latchAttackPress(S); latchHoldStart(S, 1000);
+    check('6g. the ring at the press: data-hold a, --autohold its length', latchRing(el, S, 600) === true && attrs['data-hold'] === 'a' && props['--autohold'] === '600ms');
+    latchLook(el, S);
+    check('6g. locked mid-hold: lock, the ring kept', attrs['data-latch'] === 'lock' && attrs['data-hold'] === 'a');
+    check('6g. a look with nothing changed writes nothing', latchLook(el, S) === false);
+    F(S, 1600); latchLook(el, S);
+    check('6g. filled: auto (lit), the ring gone', attrs['data-latch'] === 'auto' && !('data-hold' in attrs));
+    check('6g. no hold: no ring', latchRing(el, S, 600) === false && !('data-hold' in attrs) && latchRing(null, S, 600) === false);
+    S._latchHoldAt = 5;
+    check('6g. a second press\'s ring is b (a new animation: the fill restarts with no layout read), then a', latchRing(el, S, 2000) === true && attrs['data-hold'] === 'a' && latchRing(el, S, 2000) === true && attrs['data-hold'] === 'b' && props['--autohold'] === '2000ms');
+    check('6g. the ring off at once: true once, then false', latchRingOff(el) === true && !('data-hold' in attrs) && latchRingOff(el) === false && latchRingOff(null) === false);
+  }
+  /* 6h. `?autohold=2000` through the frame */
+  {
+    globalThis.location = { search: '?autohold=2000' };
+    const S = page([mon('a', 300)]);
+    F(S, 1000); latchAttackPress(S); latchHoldStart(S, 1000);
+    check('6h. ?autohold=2000: 1999 ms no', F(S, 2999) === false && latchPhase(S) === 'active');
+    check('6h. ...2000 ms auto', F(S, 3000) === true && latchPhase(S) === 'auto');
+    globalThis.location = { search: '?holdauto=0&autohold=200' };
+    const T = page([mon('t', 300)]);
+    F(T, 1000);
+    check('6h. ?holdauto=0: the press is auto at once (no hold)', latchAttackPress(T) === 'lock' && latchPhase(T) === 'auto' && latchHoldStart(T, 1000) === false);
+    delete globalThis.location;
+  }
+}
+
 
 /* v2.3.6540 (the gatekeeper's sitting 56, G2): the phase table's states are the modules' own lists */
 for (const [name, list] of [['latch', LATCH_PHASES], ['sight', SIGHT_PHASES], ['stick', STICK_PHASES]]) {
