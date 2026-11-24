@@ -306,7 +306,10 @@ for (const [name, list] of [['latch', LATCH_PHASES], ['sight', SIGHT_PHASES], ['
   /* H2. every caller of twoButtonsOn in src/, off the syntax tree: an ALLOW
      list of (file, the function it is called in).  An import of it under
      another name, or a namespace's .twoButtonsOn, is a caller too. */
-  const ALLOW = new Set(['src/game/latch.js:twoButtonsLive']);
+  /* (file: the nearest named function) -> how many calls.  v2.3.6544: + the
+     Test panel's row, which shows and flips the device's CHOICE (any device:
+     the stored `?manual=5`), never plays the mode (card CT PR 5) */
+  const ALLOW = Object.freeze({ 'src/game/latch.js:twoButtonsLive': 1, 'src/ui/panels/DevPanel.jsx:DevPanel': 5 });
   let B = null;
   for (const pkg of ['package.json', 'server/package.json']) {
     try { const req = createRequire(new URL('../../' + pkg, import.meta.url)); const tr = req('@babel/traverse'); B = { parse: req('@babel/parser').parse, traverse: tr.default || tr }; break; } catch (e) { /* the next */ }
@@ -331,15 +334,16 @@ for (const [name, list] of [['latch', LATCH_PHASES], ['sight', SIGHT_PHASES], ['
           const c = p.node.callee;
           const hit = (c.type === 'Identifier' && names.has(c.name)) || (c.type === 'MemberExpression' && !c.computed && c.property && c.property.name === 'twoButtonsOn');
           if (!hit) return;
-          const fn = p.getFunctionParent();
-          const nm = fn && ((fn.node.id && fn.node.id.name) || (fn.parent && fn.parent.id && fn.parent.id.name) || (fn.parent && fn.parent.key && fn.parent.key.name)) || '(top)';
-          const at = f + ':' + nm;
+          let fn = p.getFunctionParent(), nm = null;   /* v2.3.6544: the nearest NAMED function (a click's arrow is its component's) */
+          while (fn && !nm) { nm = (fn.node.id && fn.node.id.name) || (fn.parent && fn.parent.id && fn.parent.id.name) || (fn.parent && fn.parent.key && fn.parent.key.name) || null; if (!nm) fn = fn.getFunctionParent(); }
+          const at = f + ':' + (nm || '(top)');
           found.push(at);
-          if (!ALLOW.has(at)) bad.push(at + ' (line ' + p.node.loc.start.line + ')');
+          if (!ALLOW[at]) bad.push(at + ' (line ' + p.node.loc.start.line + ')');
         },
       });
     }
-    check('H2. every caller of twoButtonsOn in src/ is on the ALLOW list (the sites ask twoButtonsLive)', bad.length === 0 && found.length >= 1, { bad, found });
+    const n = Object.create(null); for (const a of found) n[a] = (n[a] || 0) + 1;
+    check('H2. every caller of twoButtonsOn in src/ is on the ALLOW list (the sites ask twoButtonsLive), as many times as listed', bad.length === 0 && Object.keys(ALLOW).every((k) => n[k] === ALLOW[k]) && Object.keys(n).length === Object.keys(ALLOW).length, { bad, n });
   }
 }
 

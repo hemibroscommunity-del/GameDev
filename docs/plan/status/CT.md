@@ -20,19 +20,20 @@ state: working
   page loads again into it); the tour's and the coach's words for the
   mode (say tables controlsTutorial, new questCoach); honest-trouble.md
   section D (the latched fight to each signal of aim or press rhythm; no
-  line moves; `rooted` margin #4 wider). Node: two-buttons-choose (15
+  line moves; `rooted` margin #4 wider); the words by the one gate, the
+  row on H2's ALLOW list (5 calls). Node: two-buttons-choose (15
   checks; 5 plants red, 2 equivalent survivors listed). Phone:
   mp-twobuttons part 4 (4a-4c: the row tapped both ways, the words).
 
 ## Next
-- PR 5: precheck, one helper run of mp-twobuttons, main merged once, one
-  push, the draft PR, then tell the orchestrator. Item 6 (6545, sprint
+- The mend pushed to #2308 and merged up through #2327; PR 5: one
+  helper run of mp-twobuttons, one push, the draft PR, then tell the
+  orchestrator (the three heads). Item 6 (6545, sprint
   from the stick) is a fresh part's.
 
 ## Found
 - `manual-combat.test` 1h pinned `?manual=5` as no switch: now `6`.
-- This box: a CDP flick waits behind a slow frame, past the swipe's 300 ms
-  (mode 4 too; mp-twobuttons 1f).
+- This box: a CDP flick waits behind a slow frame (mp-twobuttons 1f).
 
 ## Needs
 - Approved: the two OWNED rows (stickX, stickY; #2290 is in `main`); PR

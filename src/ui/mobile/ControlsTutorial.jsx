@@ -3,11 +3,11 @@ import { controlsTutorialBus } from './controlsTutorialBus.js';
 import { holdDisc, releaseDisc } from '@/game/controlVisibility.js'; /* v2.3.2246: the discs hide themselves; a tour that points at them says so */
 import { dashboardPanelBus } from './dashboardPanelBus.js';
 import { BT_AUDIO } from '@/data/index.js'; /* v2.3.2658: ui-close tick */
-import { manualOn, tapLockOn, twoButtonsOn } from '@/game/manualCombat.js'; /* v2.3.4396: the game's combat is swipes now -- the two steps that taught the held attack and the tap lock say so */
+import { manualOn, tapLockOn } from '@/game/manualCombat.js'; /* v2.3.4396: the game's combat is swipes now -- the two steps that taught the held attack and the tap lock say so */
 import { fixedBox } from '@/ui/fixedBox.js'; /* v2.3.3470: the layer's own box -- a computer's is the game's column (TRAPS §232) */
 import { SAY } from '@/data/say/controlsTutorial.js';   /* v2.3.6353: its words, in the one table (docs/specs/player-words.md, W1) */
 import { say } from '@/game/say.js';
-import { fineInput } from '@/game/deviceProfile.js';   /* v2.3.6544: the two buttons are a touch screen's (card CT PR 5) */
+import { twoButtonsLive } from '@/game/latch.js';   /* v2.3.6544: the two buttons' one gate (a touch screen's; card CT PR 5) */
 
 /* v2.3.1205: REBUILT as live DOM-anchored annotations (previously a
    frozen screenshot with eyeballed coordinates that every HUD change
@@ -120,7 +120,7 @@ const STEPS = [
    change), then the swipes' (manualOn), then the held combat's with no tap
    lock, then the plain words.  The card and the probe read this one pick. */
 function stepWords(cur) {
-  const two = twoButtonsOn() && !fineInput();
+  const two = twoButtonsLive();
   return {
     label: (two && cur.labelTwo) || (manualOn() && cur.labelManual) || cur.label,
     body: (two && cur.bodyTwo) || (manualOn() && cur.bodyManual) || (!tapLockOn() && cur.bodyNoLock) || cur.body,
