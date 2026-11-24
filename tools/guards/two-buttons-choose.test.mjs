@@ -87,10 +87,11 @@ for (const had of ['5', '3']) {
 {
   const pairs = [['controlsTutorial.moveBodyTwo', 'controlsTutorial.moveBody'], ['controlsTutorial.attackBodyTwo', 'controlsTutorial.attackBody'],
     ['controlsTutorial.targetLabelTwo', 'controlsTutorial.targetLabel'], ['controlsTutorial.targetBodyTwo', 'controlsTutorial.targetBodyNoLock'],
-    ['controlsTutorial.shieldBodyTwo', 'controlsTutorial.shieldBody']];
+    ['controlsTutorial.shieldBodyTwo', 'controlsTutorial.shieldBody'],
+    ['controlsTutorial.attackBodyHold', 'controlsTutorial.attackBodyTwo'], ['controlsTutorial.targetBodyHold', 'controlsTutorial.targetBodyTwo']];   /* v2.3.6548: tap and hold's words (card CT part 15) */
   const bad = pairs.filter(([two, old]) => typeof TOUR[two] !== 'string' || !TOUR[two] || TOUR[two] === TOUR[old]);
   check('4a the tour\'s two-buttons rows are in its table, each its own words', bad.length === 0, bad);
-  const coach = ['questCoach.moveTwo', 'questCoach.attackTwo', 'questCoach.specialTwo'].filter((k) => typeof COACH[k] !== 'string' || !COACH[k]);
+  const coach = ['questCoach.moveTwo', 'questCoach.attackTwo', 'questCoach.attackHold', 'questCoach.specialTwo'].filter((k) => typeof COACH[k] !== 'string' || !COACH[k]);
   check('4b the coach\'s two-buttons rows are in its table', coach.length === 0, coach);
 }
 

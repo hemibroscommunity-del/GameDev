@@ -84,7 +84,21 @@ the switch table.
   again, when the target is out of range (with the margin the sword's ring
   has today, 440 held out to 550, so the edge does not flicker), or when it
   dies with no other monster sighted. If another is sighted as it dies, the
-  lock moves to the nearest with no new press. A press with nothing sighted
+  lock moves to the nearest with no new press. **Tap and hold** (part 15,
+  tag 6548; the owner, 2026-11-24: *"I'm also thinking if you hold down the
+  attack button near a monster something signifies that the auto-attack is
+  enabled. Maybe 2 seconds. Otherwise each tap is its own attack cycle"*,
+  and to the orchestrator's reading *"Yes do it the way you suggested"*)
+  changes that: every press is ONE attack at once; with a monster sighted
+  it locks it ('active': the body faces it, the line shows) and the lock
+  stays for the next taps until it dies, leaves the hold range or yours
+  ends (a tap never lets a lock go); a HOLD on a lock fills a ring round
+  Attack and at `autohold` ms (600; `?autohold=<ms>`, 200 to 3000) is
+  'auto' (the held attack on, the button lit, the finger may lift); a lift
+  before the fill empties the ring (a tap); a tap while auto ends it and
+  strikes nothing of its own; a kill lets EVERYTHING go, no move to the
+  next (*"doesn't jump to every monster"*). `?holdauto=0` keeps the press
+  above (a lock is auto at once, the move kept). A press with nothing sighted
   is one attack the way the body faces, as a tap is today, and with a bow
   that is an arrow on the body's facing, line or no line (item 8, the owner
   2026-11-24: *"I want free form attacks when you press the attack button
@@ -117,7 +131,8 @@ the switch table.
   stop and ask.
 - **Three phases, each one field and one function** (CLAUDE.md section 5),
   each a row of `src/state/phases.js`: the stick (rest, turn, walk), the
-  sight (none, sighted), the latch (idle, active). Never a second boolean.
+  sight (none, sighted), the latch (idle, active, auto: part 15; S.autoAttack
+  derived from it, latchHolds). Never a second boolean.
 - **The rules are modules** (`finish.md` part 5, rule 5): `stickZones.js`,
   `sight.js`, `latch.js` under `src/game/`, with no imports where possible
   and node suites that test what they do. `BroTown.jsx` gains calls, not

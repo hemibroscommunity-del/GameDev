@@ -54,6 +54,20 @@
  *       latch active, the monster locked (targeting.js: the latch's lock),
  *       the held attack on with no thumb down, the disc pressed in
  *       (data-latch on);
+ *       v2.3.6548 (tag 6548, card CT part 15, TAP AND HOLD; the owner,
+ *       2026-11-24: "if you hold down the attack button near a monster
+ *       something signifies that the auto-attack is enabled ... Otherwise
+ *       each tap is its own attack cycle"): now a TAP is one attack (the
+ *       tap's count up one) and a lock that STAYS (active, data-latch lock,
+ *       NO held attack, the ring shown while the finger is down and gone at
+ *       the lift); a hold of 900 ms with `?autohold=1500` is still a tap (the
+ *       ring's length 1500ms, no auto: the switch honoured, a release before
+ *       the fill); a hold past the fill (600 ms) is AUTO (data-latch auto,
+ *       lit, the held attack on, the ring gone, the press stamped at least
+ *       600 ms before the fill); a tap while auto lets go (idle, 'press',
+ *       no attack of its own); `?holdauto=0` is the old press (a tap locks
+ *       AND holds, no ring, no tap attack; again lets go); then a tap locks
+ *       again and the hold turns auto on for the fight;
  *   2c. the stick walks you in while locked (the body walks toward it: a
  *       Wheel monster wanders; the rest by the harness's hop, and in the
  *       fight a keeper inside the page holds you beside it: this box's few
@@ -68,6 +82,9 @@
  *   2d. the SECOND press (the lock moved on to the next) lets go, or the
  *       kill with none other in sight let go by itself: the latch idle, the
  *       held attack off, the disc raised (data-latch off);
+ *       v2.3.6548: the kill lets EVERYTHING go, others near or not (no hop:
+ *       the owner's "doesn't jump to every monster"): idle ('killed'), no
+ *       id, the held attack off, raised; the others near at the kill said;
  *   2e. a tap on the world's right half attacks nothing (Attack is the
  *       attack);
  *   2f. the mode off (`?manual=4`, today's default): the right half is the
@@ -267,9 +284,9 @@ const coachIs = (w, m, a, sp) => !!w.coach && (w.coach.move || []).length === 1 
 const todayWords = (w) => w.mode === 4 && w.move === TOUR['controlsTutorial.moveBody'] && w.attack === TOUR['controlsTutorial.attackBody']
   && w.targetLabel === TOUR['controlsTutorial.targetLabel'] && w.target === TOUR['controlsTutorial.targetBodyNoLock'] && w.shield === TOUR['controlsTutorial.shieldBody']
   && coachIs(w, 'Drag to move.', 'Hold to attack the nearest enemy.', 'A quick swipe on the Attack button.');
-const twoWords = (w) => w.mode === 5 && w.move === TOUR['controlsTutorial.moveBodyRim']   /* v2.3.6545: the rim's sprint line (moveBodyTwo with `?rimsprint=0`, 5h) */ && w.attack === TOUR['controlsTutorial.attackBodyTwo']
-  && w.targetLabel === TOUR['controlsTutorial.targetLabelTwo'] && w.target === TOUR['controlsTutorial.targetBodyTwo'] && w.shield === TOUR['controlsTutorial.shieldBodyTwo']
-  && coachIs(w, COACH['questCoach.moveTwo'], COACH['questCoach.attackTwo'], COACH['questCoach.specialTwo']);
+const twoWords = (w) => w.mode === 5 && w.move === TOUR['controlsTutorial.moveBodyRim']   /* v2.3.6545: the rim's sprint line (moveBodyTwo with `?rimsprint=0`, 5h) */ && w.attack === TOUR['controlsTutorial.attackBodyHold']   /* v2.3.6548: tap and hold's words (attackBodyTwo, targetBodyTwo, attackTwo with `?holdauto=0`) */
+  && w.targetLabel === TOUR['controlsTutorial.targetLabelTwo'] && w.target === TOUR['controlsTutorial.targetBodyHold'] && w.shield === TOUR['controlsTutorial.shieldBodyTwo']
+  && coachIs(w, COACH['questCoach.moveTwo'], COACH['questCoach.attackHold'], COACH['questCoach.specialTwo']);
 /* the row: open the panel, read it, tap its button at its centre (a real touch), wait for the page to load again and the world */
 async function tapRow(P) {
   if (!(await openPanel(P))) return { panel: false };
@@ -513,6 +530,33 @@ export async function run({ browser, wsPort, webPort, rec }) {
           lock: lt && lt.ref ? String(lt.id) : null, latchLock: !!(lt && lt.latch), auto: !!S.autoAttack,
           look: el ? el.getAttribute('data-latch') : null, taps: S._tapAttacks || 0 };
       });
+      /* v2.3.6548 (tap and hold): the ring on the disc, the address's
+         switches flipped in place (switches.js reads the address at each
+         ask), and a press held for `ms` with a read while the finger is down */
+      const RING = (P) => P.page.evaluate(() => { const el = document.querySelector('.bt-rjoy-base'); return el ? { hold: el.getAttribute('data-hold'), ms: el.style.getPropertyValue('--autohold') || null, latch: el.getAttribute('data-latch') } : null; });
+      const ADDR = (q) => P.page.evaluate((q) => { const u = new URL(location.href); for (const k of Object.keys(q)) { if (q[k] == null) u.searchParams.delete(k); else u.searchParams.set(k, q[k]); } history.replaceState(history.state, '', u.pathname + u.search + u.hash); return u.search; }, q);
+      const HOLD = async (ms, midAt) => {
+        await touch('touchStart', [{ x: RD.x, y: RD.y, id: 2 }]);
+        await P.page.waitForTimeout(midAt);
+        const mid = { ring: await RING(P), l: await LATCH(P) };
+        if (ms > midAt) await P.page.waitForTimeout(ms - midAt);
+        const end = await LATCH(P);
+        await touch('touchEnd', [{ x: RD.x, y: RD.y, id: 2 }]);
+        await P.page.waitForTimeout(400);
+        return { mid, end, after: await LATCH(P), ring: await RING(P) };
+      };
+      /* a hold until auto (the fill is the frame's: this box draws few) */
+      const HOLD_AUTO = async () => {
+        await P.page.evaluate(() => { const w = window.__ctHold = { at: 0, auto: 0 }; const t = setInterval(() => { const S = window._gameState && window._gameState.current; if (!S) return; if (S._latchHoldAt > 0) w.at = S._latchHoldAt; if (S._latchPhase === 'auto' && !w.auto) { w.auto = Date.now(); clearInterval(t); } }, 15); setTimeout(() => clearInterval(t), 12000); });
+        await touch('touchStart', [{ x: RD.x, y: RD.y, id: 2 }]);
+        await P.page.waitForTimeout(250);
+        const mid = { ring: await RING(P), l: await LATCH(P) };
+        const filled = await H.waitFor(P, (S) => S._latchPhase || 'idle', (v) => v === 'auto', { timeout: 10000, label: 'the hold\'s fill' }).catch(() => null);
+        const held = await LATCH(P);
+        await touch('touchEnd', [{ x: RD.x, y: RD.y, id: 2 }]);
+        await P.page.waitForTimeout(400);
+        return { mid, filled: !!filled, held, after: await LATCH(P), ring: await RING(P), icon: await FACE_ICON(P), t: await P.page.evaluate(() => window.__ctHold) };
+      };
       const i0 = await FACE_ICON(P);   /* v2.3.6546: raised, before the press */
       /* 6d (v2.3.6546, the owner: "It's only the line drawn that snaps"): sighted, the latch idle: NO line yet */
       await frames(P, 2);
@@ -520,15 +564,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok(`6d. ${label}: the monster in sight, Attack not pressed: no sight line (drawn ${ln0 && ln0.drawn})`, !!ln0 && !ln0.drawn, ln0);
       await DASHWATCH(P);   /* v2.3.6547: every frame's dash, from before the press */
       const atPress = await H.readState(P, (S) => ({ x: S.player.x, y: S.player.y, f: S._frameCount || 0 }));
-      await press();
+      const tapsAt0 = (await LATCH(P)).taps;
+      const tp1 = await HOLD(150, 100);   /* v2.3.6548: a tap (150 ms: the ring read while the finger is down) */
       const b1 = await H.waitFor(P, (S) => !!(S.lockedTarget && S.lockedTarget.latch), (v) => v, { timeout: 8000, label: 'the latch\'s lock' }).catch(() => null);
       const l1 = await LATCH(P);
-      rec.ok(`2b. ${label}: one press: the latch active on it, locked, attacking with no thumb down, the disc pressed in (${l1.phase}, ${l1.lock}, ${l1.look})`,
-        !!b1 && l1.phase === 'active' && l1.id === target && l1.lock === target && l1.latchLock && l1.auto && l1.look === 'on', { ...l1, target, b1: !!b1 });
+      rec.ok(`2b. ${label}: a TAP: one attack (taps ${tapsAt0} -> ${l1.taps}), the latch active on it, locked, NO held attack, the disc raised (${l1.phase}, ${l1.lock}, ${l1.look}, auto ${l1.auto})`,
+        !!b1 && l1.phase === 'active' && l1.id === target && l1.lock === target && l1.latchLock && !l1.auto && l1.look === 'lock' && l1.taps === tapsAt0 + 1, { ...l1, target, b1: !!b1, tapsAt0 });
+      rec.ok(`2b. ${label}: the tap's ring: shown while the finger was down (${tp1.mid.ring && tp1.mid.ring.hold}), gone at the lift (${tp1.ring && tp1.ring.hold})`,
+        !!tp1.mid.ring && !!tp1.mid.ring.hold && !!tp1.ring && tp1.ring.hold == null, tp1);
       /* 6a (v2.3.6546): the latch wears the plain sword, raised and pressed in, never the crosshair */
       const i1 = await FACE_ICON(P);
-      rec.ok(`6a. ${label}: Attack wears the plain sword, not the crosshair: raised (${i0.latch}: sword ${i0.strike}, crosshair ${i0.aim}) and pressed in and lit (${i1.latch}: sword ${i1.strike}, crosshair ${i1.aim})`,
-        i0.latch === 'off' && i0.strike && !i0.aim && i1.latch === 'on' && i1.strike && !i1.aim && i1.src, { i0, i1 });
+      rec.ok(`6a. ${label}: Attack wears the plain sword, not the crosshair: raised (${i0.latch}: sword ${i0.strike}, crosshair ${i0.aim}) and locked by a tap (${i1.latch}: sword ${i1.strike}, crosshair ${i1.aim})`,
+        i0.latch === 'off' && i0.strike && !i0.aim && i1.latch === 'lock' && i1.strike && !i1.aim && i1.src, { i0, i1 });   /* v2.3.6548: a tap's lock is 'lock' (raised); lit is the hold's ('auto', below) */
       const ln1 = await H.waitFor(P, () => (window.__btSightLine ? window.__btSightLine() : null), (v) => !!v && v.drawn && v.id === target, { timeout: 8000, label: 'the line on the lock' }).catch(() => null);
       rec.ok(`6e. ${label}: Attack pressed: the line drawn to the LOCKED monster (${ln1 && ln1.id}, ${ln1 && ln1.len} px)`, !!ln1, { ln1: ln1 || (await LINE(P)), target });
       /* 2c (v2.3.6547, card CT item 8; the owner, 2026-11-24: "I want to change the
@@ -542,6 +589,43 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const stayMoved = Math.hypot(stay.x - atPress.x, stay.y - atPress.y);
       rec.ok(`2c. ${label}: the press moved nothing: the body ${Math.round(stayMoved)} px from where it stood over ${stay.f - atPress.f} frames, no dash (${(stay.dash || []).length}, its cooldown ${stay.cd}), the latch ${stay.phase}`,
         stayMoved <= 12 && !!stay.dash && stay.dash.length === 0 && !(stay.cd > 0) && stay.f - atPress.f >= 4 && (stay.phase === 'active' || stay.end === 'killed'), { atPress, stay });
+      rec.ok(`2b. ${label}: the tap is ONE attack cycle: 1.2 s on, no held attack and no more taps (taps ${(await LATCH(P)).taps}), the lock kept`,
+        (await LATCH(P)).taps === l1.taps && !(await LATCH(P)).auto && (await LATCH(P)).phase === 'active', await LATCH(P));
+
+      /* v2.3.6548 (tap and hold, card CT part 15) */
+      {
+        /* a release before the fill, with ?autohold=1500: held 900 ms (past
+           the 600 default), still a tap -- the switch honoured */
+        await ADDR({ autohold: '1500' });
+        const tA = (await LATCH(P)).taps;
+        const hA = await HOLD(900, 300);
+        rec.ok(`2b. ${label}: ?autohold=1500, held 900 ms and lifted: a release before the fill is a tap -- one attack (taps ${tA} -> ${hA.after.taps}), the ring ${hA.mid.ring && hA.mid.ring.ms} shown then gone, still locked (${hA.after.phase}), no auto`,
+          !!hA.mid.ring && hA.mid.ring.hold != null && hA.mid.ring.ms === '1500ms' && hA.end.phase === 'active' && !hA.end.auto && hA.after.phase === 'active' && !hA.after.auto && hA.after.look === 'lock' && hA.ring && hA.ring.hold == null && hA.after.taps === tA + 1 && hA.after.id === target, hA);
+        await ADDR({ autohold: null });
+        /* a hold past the fill: auto, lit */
+        const tB = (await LATCH(P)).taps;
+        const hB = await HOLD_AUTO();
+        const tookMs = hB.t && hB.t.at && hB.t.auto ? hB.t.auto - hB.t.at : null;
+        rec.ok(`2b. ${label}: a HOLD past the fill: auto-attack on after ${tookMs} ms (>= 600), the button lit (${hB.after.look}), the held attack on with the finger lifted, the ring gone (${hB.ring && hB.ring.hold}); the press one attack (taps ${tB} -> ${hB.after.taps})`,
+          hB.filled && !!hB.mid.ring && hB.mid.ring.hold != null && hB.mid.l.phase === 'active' && tookMs >= 600 && hB.after.phase === 'auto' && hB.after.auto && hB.after.look === 'auto' && hB.ring && hB.ring.hold == null && hB.after.id === target && hB.after.taps === tB + 1 && hB.icon.latch === 'auto' && hB.icon.strike && !hB.icon.aim, hB);
+        /* a tap while auto: off, and no attack of its own */
+        await press();
+        const lC = await LATCH(P);
+        rec.ok(`2b. ${label}: a tap while auto: off (${lC.phase}, ${lC.end}), the button raised (${lC.look}), the held attack off, NO attack of its own (taps ${hB.after.taps} -> ${lC.taps})`,
+          lC.phase === 'idle' && lC.end === 'press' && !lC.auto && lC.look === 'off' && lC.taps === hB.after.taps, lC);
+        /* ?holdauto=0: the press of parts 13-14 */
+        await ADDR({ holdauto: '0' });
+        const tD = (await LATCH(P)).taps;
+        const hD = await HOLD(150, 100);
+        const lD2 = (await press(), await LATCH(P));
+        rec.ok(`2b. ${label}: ?holdauto=0: a tap locks AND holds (${hD.after.phase}, auto ${hD.after.auto}, ${hD.after.look}), no ring (${hD.mid.ring && hD.mid.ring.hold}), no tap attack (taps ${tD} -> ${hD.after.taps}); again lets go (${lD2.phase}, ${lD2.end})`,
+          hD.after.phase === 'auto' && hD.after.auto && hD.after.look === 'auto' && !!hD.mid.ring && hD.mid.ring.hold == null && hD.after.taps === tD && lD2.phase === 'idle' && lD2.end === 'press' && !lD2.auto, { hD, lD2 });
+        await ADDR({ holdauto: null });
+        /* lock it again with a tap, for the walk and the fight */
+        await press();
+        const lE = await LATCH(P);
+        rec.ok(`2b. ${label}: a tap locks it again (${lE.phase} on ${lE.id})`, lE.phase === 'active' && lE.id === target, { lE, target });
+      }
 
       /* 2c: walk in with the stick (real touches, 70%, re-aimed each half
          second; the lock turns the body to it), then the fight to its death
@@ -580,7 +664,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
          (a monster that starts within reach is killed by the latch before the
          check: the first run of part 3, upright, the gap 90 px: the end
          'killed', the latch's own) */
-      const lockHeld = (l) => l.phase === 'active' || l.end === 'killed';
+      const lockHeld = (l) => l.phase === 'active' || l.phase === 'auto' || l.end === 'killed';   /* v2.3.6548: a tap's lock or auto */
       rec.ok(`2c. ${label}: the stick walks you in while locked (${Math.round(toward)} px toward it; the gap ${g ? Math.round(g.d) : '?'} px), the lock held`, !!g && (g.d <= 90 || toward > 20) && lockHeld(await LATCH(P)), { gPress, g, toward, walkTrace });
       /* this box draws a few frames a second and a held attack halves the
          walk (mode 4's rule, kept): the rest of the way by the harness's hop */
@@ -588,6 +672,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const m1 = await H.readState(P, bind((S, id) => { const m = (S.monsters || []).find((x) => x && String(x.id) === id); return m ? { x: m.x, y: m.y } : null; }, target));
         if (m1) await H.hopTo(P, Math.round(m1.x - 50 * Math.cos(g0.a)), Math.round(m1.y - 50 * Math.sin(g0.a)), { tries: 30 });
       }
+      /* v2.3.6548: the fight's held attack is the hold's: hold Attack to the fill */
+      const hF = await HOLD_AUTO();
+      rec.ok(`2c. ${label}: held to the fill for the fight: auto (${hF.after.phase}, ${hF.after.look})`, hF.filled && hF.after.phase === 'auto' && hF.after.auto && hF.after.id === target, hF);
       const afterHop = { latch: await LATCH(P), gap: await GAP(P), stk: await STK(P) };
       const hp = await H.readState(P, bind((S, id) => { const m = (S.monsters || []).find((x) => x && String(x.id) === id); return m ? (m.curHp != null ? m.curHp : m.hp) : null; }, target));
       const hurt = typeof hp === 'number' && hp > 2 ? await H.devOp(wsPort, 'hurt', me, { id: target, dmg: Math.floor(hp) - 1 }).catch((e) => ({ err: String(e) })) : { hp };
@@ -660,17 +747,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
         rec.skip(fightName, `this page drew a frame every ${fightTrace.frameMs} ms (its median over the fight): ${fightTrace.stop.sw} swings and not one frame inside the blade's contact window (${120}-${400} ms into a swing), so no swing reached its hit test; the lock held (${l2.id}), ${fightTrace.stop.gap} px off`);
       } else rec.ok(fightName, !!died, { died, l2, hurt, why, afterHop, fightTrace });
 
-      /* 2d: the second press lets go (when the lock moved on to the next);
-         a kill with none other in sight let go by itself ('killed') */
-      const lockMoved = l2.phase === 'active';
-      if (lockMoved) await press();
-      else await P.page.waitForTimeout(400);
+      /* 2d: v2.3.6548 (tap and hold): the kill lets everything go, others
+         near or not -- no hop to the next (the press of parts 13-14 moved the
+         lock; `?holdauto=0` keeps that).  The others near at the kill said */
+      const lockMoved = false;
+      const nearAtKill = await H.readState(P, bind((S, id) => (S.monsters || []).filter((m) => m && String(m.id) !== id && m.alive && !(m.curHp <= 0) && Math.hypot(m.x - S.player.x, m.y - S.player.y) <= 550).length, target));
+      await P.page.waitForTimeout(400);
       const l3 = await LATCH(P);
       await frames(P, 2);
       const ln3 = await LINE(P);
       rec.ok(`6f. ${label}: combat over (${l3.phase}, ${l3.end}): the line gone (drawn ${ln3 && ln3.drawn})`, l3.phase === 'idle' && !!ln3 && !ln3.drawn, { l3, ln3 });
-      rec.ok(`2d. ${label}: ${lockMoved ? 'the second press lets go' : 'the kill let go by itself'}: idle (${l3.end}), the held attack off, the disc raised (${l3.look})`,
-        l3.phase === 'idle' && l3.end === (lockMoved ? 'press' : 'killed') && !l3.auto && l3.look === 'off' && !l3.latchLock, l3);
+      rec.ok(`2d. ${label}: the kill let everything go (${l2.phase} at the kill, now ${l3.phase}, ${l3.end}): no hop (${nearAtKill} other${nearAtKill === 1 ? '' : 's'} within 550 px), the held attack off, the disc raised (${l3.look})`,
+        l2.phase === 'idle' && l3.phase === 'idle' && l3.end === 'killed' && l3.id == null && !l3.auto && l3.look === 'off' && !l3.latchLock, { l2, l3, nearAtKill });
 
       /* 2e: a tap on the world's right half attacks nothing */
       const tz = await P.page.evaluate(() => { const el = document.querySelector('[data-joyzone="R"]'); if (!el) return null; const b = el.getBoundingClientRect(); return { x: b.left + b.width * 0.5, y: b.top + b.height * 0.35 }; });

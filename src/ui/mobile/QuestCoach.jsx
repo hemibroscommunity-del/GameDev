@@ -32,7 +32,7 @@ import { fixedBox } from '@/ui/fixedBox.js'; /* v2.3.3470: the layer's own box -
 import { deskWords } from '@/game/deskWords.js'; /* v2.3.3615: "tap" reads "click" on a computer */
 import { deskBigActive } from '@/ui/deskWide.js'; /* v2.3.3687; v2.3.3793: no OPEN chip now, but the coach card's clear-of-the-quest-HUD layout (main) asks it; v2.3.4152: either computer layout */
 import { fineInput } from '../../game/deviceProfile.js';   /* v2.3.4804: the device profile */
-import { twoButtonsLive } from '@/game/latch.js';   /* v2.3.6544: the two buttons' words, by their one gate (card CT PR 5) */
+import { twoButtonsLive, holdAutoOn } from '@/game/latch.js';   /* v2.3.6544: the two buttons' words, by their one gate (card CT PR 5) */
 import { SAY } from '@/data/say/questCoach.js';
 import { say } from '@/game/say.js';
 
@@ -559,7 +559,7 @@ function windowUp() {
    the move, attack and special lessons say so; every other device and mode
    reads the words it always did. */
 const MOVE_BODY = function () { return twoButtonsLive() ? say(SAY, 'questCoach.moveTwo') : 'Drag to move.'; };
-const ATTACK_BODY = function () { return twoButtonsLive() ? say(SAY, 'questCoach.attackTwo') : 'Hold to attack the nearest enemy.'; };
+const ATTACK_BODY = function () { return twoButtonsLive() ? say(SAY, holdAutoOn() ? 'questCoach.attackHold' : 'questCoach.attackTwo') : 'Hold to attack the nearest enemy.'; };   /* v2.3.6548: tap and hold (card CT part 15) */
 const SPECIAL_BODY = function () { return twoButtonsLive() ? say(SAY, 'questCoach.specialTwo') : 'A quick swipe on the Attack button.'; };
 
 const LESSONS = [
