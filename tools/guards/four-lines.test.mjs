@@ -7,6 +7,9 @@
  *      memory and are never counted): a file with a line of its own stays
  *      under it, every other file under OTHER_FILE;
  *   2. the longest function, and every function: the same, by function;
+ *   1b, 2b. and their code lines too (v2.3.6520, after sitting 57's hold:
+ *      one statement folded over forty lines passed the statements alone):
+ *      CODE_LINES, `main`'s code-line lines, held beside the statements;
  *   3. import cycles under src/, and the files inside them;
  *   4. writes to `S` from src/rendering/ (card D's count, never a second one).
  *
@@ -40,6 +43,10 @@
  *      green: the line held a token already)
  *   7. `var a = 1, b = 2;` and `a(), b();` each count two (section 5)
  *   8. LINES.PACKED_FILE's hitMaterialFx.js 1946 -> 1777  -> FAIL 1 (tried 2026-11-23)
+ *   9. (sitting 57's plant) one statement folded over forty lines at the
+ *      foot of BroTown.jsx, `export const _zzFold = {` and forty `kN: N,`
+ *      rows: +1 statement inside its room, +42 code lines -> FAIL 1b
+ *      (green before: statements alone; tried 2026-11-24)
  *
  * Run from the repository's root: node tools/guards/four-lines.test.mjs
  *   --live   insist on card D's script for 4 (it fails where the script
@@ -49,7 +56,7 @@
  *            page only where it cannot (lib/fourLines.mjs, stateCensus())
  * (cd server && npm test runs it with every other guard and suite).
  */
-import { measureClient, measureSource, countStatements, stateWritesFromRendering, LINES } from './lib/fourLines.mjs';
+import { measureClient, measureSource, countStatements, stateWritesFromRendering, LINES, CODE_LINES } from './lib/fourLines.mjs';
 
 let failed = 0;
 const check = (name, ok, detail) => {
@@ -73,6 +80,12 @@ const OWN_FILE = Object.freeze({ ...LINES.FILE, ...LINES.PACKED_FILE });
   for (const f of Object.keys(OWN_FILE)) if (!Object.hasOwn(m.files, f)) room.push(`${f}: gone (its line can come off)`);
   const biggest = Object.entries(m.files).sort((a, b) => b[1] - a[1])[0];
   check(`1: no file over its line (the largest: ${biggest[0]}, ${biggest[1]} statements, ${m.codeLines[biggest[0]]} code lines; ${Object.keys(m.files).length} files)`, over.length === 0, over);
+  const overLines = [];
+  for (const [f, n] of Object.entries(m.codeLines)) {
+    const line = Object.hasOwn(CODE_LINES.FILE, f) ? CODE_LINES.FILE[f] : CODE_LINES.OTHER_FILE;
+    if (n > line) overLines.push(`${f}: ${n} code lines, its code-line line ${line}`);
+  }
+  check('1b: no file over its code-line line (CODE_LINES: one statement folded over many lines is held here)', overLines.length === 0, overLines);
 }
 
 /* ── 2. the longest function, and every function ── */
@@ -82,15 +95,19 @@ const OWN_FILE = Object.freeze({ ...LINES.FILE, ...LINES.PACKED_FILE });
     const k = fn.file + '#' + fn.name;
     if (!best[k] || fn.statements > best[k].statements) best[k] = fn;
   }
-  const over = [];
+  const over = [], overLines = [];
   for (const [k, fn] of Object.entries(best)) {
     const line = Object.hasOwn(LINES.FUNCTION, k) ? LINES.FUNCTION[k] : LINES.OTHER_FUNCTION;
     if (fn.statements > line) over.push(`${k} (from line ${fn.from}): ${fn.statements} statements, its line ${line}`);
+    const cl = Object.hasOwn(CODE_LINES.FUNCTION, k) ? CODE_LINES.FUNCTION[k] : CODE_LINES.OTHER_FUNCTION;
+    const most = m.functions.filter((g) => g.file + '#' + g.name === k).reduce((a, g) => Math.max(a, g.lines), 0);
+    if (most > cl) overLines.push(`${k}: ${most} code lines, its code-line line ${cl}`);
     else if (Object.hasOwn(LINES.FUNCTION, k) && fn.statements < line) room.push(`${k}: ${fn.statements} (its line ${line})`);
   }
   for (const k of Object.keys(LINES.FUNCTION)) if (!best[k]) room.push(`${k}: gone (its line can come off)`);
   const top = m.functions[0];
   check(`2: no function over its line (the longest: ${top.file}#${top.name}, ${top.statements} statements)`, over.length === 0, over);
+  check('2b: no function over its code-line line (CODE_LINES: one statement folded over many lines is held here)', overLines.length === 0, overLines);
 }
 
 /* ── 3. import cycles ── */
