@@ -36,7 +36,15 @@ state: working (orchestrator now part 6, session_01LccHanKxudynkwdrcZewcK, from 
   04:40 UTC, main b966af81); origin/main merged once before the push.
 - Then PR 4 (6503): call 1 answered (orchestrator, 2026-11-24 02:39-02:46
   UTC); its words go in census/PH-phone.md. A default look is the owner's.
-  The owner's extras and Low Power Mode: asked 03:33 UTC, not answered.
+  The owner's extras ANSWERED (orchestrator part 6, 04:32 UTC, word for
+  word: "What does draw at 2x mean. Might even be able to go further with
+  that cause the art is not great anyway", then "And yea keep going
+  recommended"): on phones draw at 2x by default (src/game/renderRes.js)
+  and metal shine off, each with its switch-table row to bring it back;
+  water and shadows stay; the phone's default ONE number in one place (a
+  lower pick, 1.5 or 1, is one line); the Speed test gains ?res=1.5 and 1
+  rows if it fits PR 4's files. Name it in the PR as the owner's answer.
+  Low Power Mode: not answered yet.
 
 ## Found
 - maskedEvict.js's header: old words. buffers 24.3 on CI vs 24.8: trim owed.
