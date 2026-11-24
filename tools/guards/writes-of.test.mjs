@@ -106,6 +106,29 @@ const CONTAINER_PLANTS = [
   ['Z57 ...over a filtered copy', 'ps.weaponStash.filter((w) => w.lvl < 5).forEach(function (w) { delete w.gems; });', STASH, 'weaponStash'],
   ['Z57 ...through an alias, in a map', 'const list = ps.weaponStash; list.map((w) => { w.lvl = 1; return w; });', STASH, 'weaponStash'],
   ['Z57 ...reduce\'s item', 'ps.weaponStash.reduce((n, w) => { w.seen = 1; return n + 1; }, 0);', STASH, 'weaponStash'],
+  /* v2.3.6441: sitting 58's plant (review-z58.md, #2295) and the class
+     around it -- a binding followed through EVERY form (a list pattern, a
+     nested one, a key that is a number, a rest, a parameter's pattern, a
+     loop's, a callback's, a copy, a member of something else, a function's
+     answer, an object holding it), and a form the scanner cannot follow is
+     a write (deny by default) */
+  ['Z58 a list pattern written through', 'const [first] = ps.weaponStash; first.lvl = 99;', STASH, 'weaponStash'],
+  ['Z58 ...nested under the stash\'s key', 'const { weaponStash: [w0] } = ps; w0.lvl = 99;', STASH, 'weaponStash'],
+  ['Z58 ...an item\'s number as a key', 'const { 0: first } = ps.weaponStash; first.lvl = 99;', STASH, 'weaponStash'],
+  ['Z58 ...a pattern put, not declared', 'let w; [w] = ps.weaponStash; w.lvl = 99;', STASH, 'weaponStash'],
+  ['Z58 ...a rest of the items', 'const [, ...rest] = ps.weaponStash; rest[0].lvl = 99;', STASH, 'weaponStash'],
+  ['Z58 ...a loop\'s pattern over entries()', 'for (const [, w] of ps.weaponStash.entries()) w.lvl = 99;', STASH, 'weaponStash'],
+  ['Z58 ...a callback\'s pattern', 'ps.weaponStash.forEach(({ gems }) => { gems.length = 0; });', STASH, 'weaponStash'],
+  ['Z58 ...a parameter\'s pattern', 'function give({ weaponStash }) { weaponStash.push(reward.weapon); } give(ps);', STASH, 'weaponStash'],
+  ['Z58 ...a loop over records, a pattern', 'for (const { weaponStash } of [ps]) weaponStash.push(reward.weapon);', STASH, 'weaponStash'],
+  ['Z58 a copy\'s item written', 'const all = [...ps.weaponStash]; all[0].lvl = 99;', STASH, 'weaponStash'],
+  ['Z58 ...Object.values', 'Object.values(ps.weaponStash)[0].lvl = 99;', STASH, 'weaponStash'],
+  ['Z58 ...a filtered copy held in a name', 'const live = ps.weaponStash.filter(Boolean); live[0].lvl = 99;', STASH, 'weaponStash'],
+  ['Z58 an item put into a member, written there', 'this._cur = ps.weaponStash[0]; this._cur.lvl = 99;', STASH, 'weaponStash'],
+  ['Z58 a function of the file that hands back an item', 'const pick = () => ps.weaponStash[0]; pick().lvl = 99;', STASH, 'weaponStash'],
+  ['Z58 an object holding the stash under another key', 'const o = { list: ps.weaponStash }; o.list.push(reward.weapon);', STASH, 'weaponStash'],
+  ['Z58 DENY: a key the tree cannot know, in a pattern', 'const { [reward.k]: s } = ps; s.push(reward.weapon);', STASH, 'weaponStash|armorStash|shieldStash'],
+  ['Z58 DENY: an item put into a member of a call\'s answer', 'this.slot().w = ps.weaponStash[0];', STASH, 'weaponStash'],
 ];
 for (const [name, body, opts, field] of CONTAINER_PLANTS) {
   const got = W(body, opts);
@@ -126,6 +149,10 @@ const READS = [
   ['a stash item found and read, a forEach that reads', 'const w = ps.weaponStash.find((x) => x.id === 1); let n = w ? w.lvl : 0; ps.weaponStash.forEach((x) => { n += x.lvl; }); return n;', STASH],
   ['a patch of other fields, a helper handed another key', "const patch = { name: 'x' }; Object.assign(ps, patch); function bump(o, k, n) { o[k] = (o[k] || 0) + n; } bump(ps, 'gems', 1);", GOLD],
   ['a copy made from a found item', 'const w = { ...ps.weaponStash.find((x) => x.id === 1) }; w.lvl = 99; return w;', STASH],
+  /* v2.3.6441: beside sitting 58's, a copy's own slots and order, an item read through a pattern */
+  ['a copy sorted and cut', 'const sorted = [...ps.weaponStash].sort((a, b) => a.lvl - b.lvl); sorted.length = 1; const ids = ps.weaponStash.map((w) => w.id); ids.push(0); return sorted;', STASH],
+  ['an item read through a list pattern', 'const [first] = ps.weaponStash; const { lvl } = ps.weaponStash[0]; return first ? first.lvl + lvl : 0;', STASH],
+  ['a session\'s own field, the map shallow', 'for (const [w, s] of this.sessions) s.seen = 1; const one = this.sessions.get(ws); one.x = 1;', { containers: ['sessions'], shallow: ['sessions'] }],
 ];
 for (const [name, body, opts] of READS) {
   const got = W(body, opts);

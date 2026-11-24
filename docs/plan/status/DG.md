@@ -1,37 +1,38 @@
 card: DG
-branch: claude/dg-gaps (PR 6), on claude/dg-reach (5), dg-wireform (4), dg-books (3), dg-scans (2), dg-door-guards (1)
-prs: #2283 (PR 1, 6440), #2295 (PR 2, 6441), #2300 (PR 3, 6442), #2310 (PR 4, 6443), #2312 (PR 5, 6444), PR 6 (6445, working); all base main
-state: working
+branch: claude/dg-gaps (PR 6), on dg-reach (5), dg-wireform (4), dg-books (3), dg-scans (2)
+prs: #2283 (PR 1, 6440, merged), #2295 (PR 2, 6441), #2300 (PR 3, 6442), #2310 (PR 4, 6443), #2312 (PR 5, 6444), #2313 (PR 6, 6445): all ready
+state: done
 
 ## Done
-- PR 6 (6445): wire-gaps.test (new): the relay is the made list (every word
-  of server/src asked of the running room, and sent); the router's default
-  case opens with its two gates; 2b who takes the phone's message as it came
-  (TAKERS); nothing before the routes' door answers; every path index.js
-  compares, by any name, has a row. send-door 1b counts UTF-8 bytes
-  (send.js utf8Bytes); 9 sendOutside imported in origin.js alone.
-  sessions.clear / rebuilt sessions / ws.send.bind: PR 2's, still red.
-  13 plants red (4 mine). No cap, no live flag.
-- PR 5 (6444): wire-hostile watches what is read off each message after the
-  door: every named field read or in NOT_REACHED (104, only falls); no
-  unnamed read; no listing of a message's keys. 8 plants red.
-- PR 4 (6443): the wire door holds a named field to its form (WIRE_FORM);
-  `wireform` absent refuses, 'count' counts, false the old door; cap wireForm.
-- PR 3 (6442): gold-door and bag-door §10 run every road: the books moved
-  what the purse or bag moved, or nothing.
-- PR 2 (6441): one scanner (tools/guards/lib/writesOf.mjs) for every door
-  test; sitting 57's three plants red (stash-door, gold-door, action-door).
-- PR 1 (6440): the running room refuses a write of a guarded field outside
-  its door (testroom.mjs).
+- PR 6 (6445, #2313): done.  wire-gaps.test: the relay is the made list;
+  the router's default case opens with its two gates; nothing before the
+  routes' door answers; every path index.js compares has a row.  send-door
+  counts UTF-8 bytes; sendOutside imported in origin.js alone.  13 plants red.
+- PR 5 (6444, #2312): wire-hostile watches what is read off each message
+  after the door (test room only): every named field read or in
+  NOT_REACHED with why (104, only falls); no unnamed read; no listing of a
+  message's keys.  8 plants red.
+- PR 4 (6443, #2310): a named field held to its form (door.js WIRE_FORM);
+  `wireform` absent refuses, 'count' counts, false the old door; cap
+  wireForm; judge.mjs refuses every plant; playable and mp-bank green.
+- Sitting 58's hold on #2310 (review-z58.md): wire-form §4b plays, in
+  the running room, the old door's four refusals (body, key, reqId, number)
+  in every mode: refused, no handler, counted under the old why; the
+  review's plant (count's `why = ''` out of the form branch) RED.  §5 pins
+  the table's forms row by row (a dropped or loosened form RED).
+- Sitting 58's hold on #2295 (review-z58.md): the scans DENY BY DEFAULT
+  (writesOf and action-door §7 follow a binding through every form; one
+  they cannot follow is red).  Both plants and six of mine RED.
+- PR 2 (6441, #2295): one scanner (writesOf.mjs) for every door suite.
+- PR 3 (6442, #2300): the books moved what the purse or bag moved.
 
 ## Next
-- PR 6: the merges, the whole suite, precheck, the PR.
+- Sitting 59: #2295, #2300, #2310 (behaviour, its own line), #2312, #2313.
+- Left: plants6.json not run here (hand-over); testroom §7's four fields.
 
 ## Found
-- none (no real second writer)
+- Sitting 58's: a row dropped from testroom.mjs GUARDED goes unseen (PR 1's
+  file, merged): pin it to the doors' own lists, a later PR of the card.
 
 ## Needs
-- none (send-door.md lines 25-26 mended: the orchestrator allowed it)
-
-## Note
-- testroom §7 tries four fields (Z's Found): PR 1's line, a later PR's.
+- none (the orchestrator: mark #2313 ready once all five are green)

@@ -18,10 +18,13 @@
  *      handler and is counted (`<type> form`, and `_wireFormSeen` by type
  *      and field); `wireform: 'count'`, it reaches its handler and is
  *      counted; `wireform: false`, nothing read, nothing counted;
+ *   4b. in every mode the door refuses what the door of v2.3.5184 refused,
+ *      for the same why (sitting 58's hold: count mode must never let an
+ *      old refusal in);
  *   5. the table: every `form` names a field its row's `trust` names, in a
  *      form the door reads; the three reads the table did not name have
  *      their rows (player_attack dmgBase and critChance, move dead,
- *      trade2_cancel id);
+ *      trade2_cancel id); and the table's forms are a pinned list;
  *   6. the cap: state_sync's `wireForm` is 1 (refusing), 2 (counting), or
  *      absent with the switch thrown.
  *
@@ -116,6 +119,46 @@ async function play(flags) {
   check('6: the cap: wireForm 1 refusing, 2 counting, absent with the switch thrown', on.cap === 1 && count.cap === 2 && off.cap === undefined, [on.cap, count.cap, off.cap]);
 }
 
+/* ── 4b. v2.3.6443 (sitting 58's hold on #2310: `if (mode === 'count') why
+   = ''` moved out of the form branch let EVERY old refusal in, green in four
+   suites): in every mode the door refuses what the door of v2.3.5184
+   refused, for the same why, and no handler hears it; count mode lets in a
+   frame out of FORM only ── */
+async function playOld(flags) {
+  const st = makeStorage(new Map([['rpg:' + A, { _v: 21, coins: 100, level: 3, hp: 100, maxHp: 100, inventory: {} }]]));
+  const room = await openRoom(st, flags);
+  const ws = await join(room, fakeWs('b'), A, { name: 'Ada' });
+  await settle();
+  let heard = 0;
+  const real = room._achvTitle;
+  room._achvTitle = function (...a) { heard++; return real ? real.apply(this, a) : undefined; };
+  for (const f of OLD_FRAMES) await room.webSocketMessage(ws, f);
+  await settle();
+  return { room, heard, sess: room.sessions.get(ws) };
+}
+/* each refused by the old door: a body that is no object, a key that is
+   never a field, a request id out of its form, a number that is not finite
+   (beside a field out of form: the old why comes first) */
+const OLD_FRAMES = [
+  '{"type":"achv_title","payload":[1]}',
+  '{"type":"achv_title","payload":{"id":"t2","__proto__":{"x":1}}}',
+  '{"type":"achv_title","payload":{"id":"t2"},"reqId":{"a":1}}',
+  '{"type":"achv_title","payload":{"id":1e999}}',
+];
+{
+  const whys = OLD_FRAMES.map((f) => wireDoorJudge(JSON.parse(f), undefined, { forms: false }));
+  check('4b: each frame is refused by the door of v2.3.5184 (forms: false), never for its form', whys.every((w) => w && !w.startsWith('form ')), whys);
+  const want = Object.create(null);
+  for (const w of whys) { const k = 'achv_title ' + w.split(' ')[0]; want[k] = (want[k] || 0) + 1; }
+  for (const [label, flags] of [['absent', undefined], ['\'count\'', { wireform: 'count' }], ['false', { wireform: false }]]) {
+    const r = await playOld(flags);
+    const got = r.room._wireDoorCounts || {};
+    const same = Object.keys(want).every((k) => got[k] === want[k]);
+    check('4b: wireform ' + label + ': every old refusal still refused (no handler heard it), counted under its old why',
+      r.heard === 0 && same && r.sess.wireDoor === OLD_FRAMES.length, { heard: r.heard, got, want, wireDoor: r.sess.wireDoor });
+  }
+}
+
 /* ── 5. the table ── */
 {
   const bad = [];
@@ -131,6 +174,24 @@ async function play(flags) {
     }
   }
   check('5: every row\'s form names a field of its trust, in a form the door reads (' + n + ' fields)', bad.length === 0 && n > 0, bad);
+  /* v2.3.6443 (sitting 58: the rows' forms were unpinned -- a form dropped
+     or loosened stayed green): every form the table holds, written out.  A
+     change to a row's form changes this list in the same PR. */
+  const PINNED = {
+    move: { dead: 'yes' },
+    player_attack: { dmgBase: 'num', critChance: 'num' },
+    bank_deposit: { kind: ['gold', 'item'], id: 'id', n: 'count', opId: 'id' },
+    bank_withdraw: { kind: ['gold', 'item'], id: 'id', n: 'count', opId: 'id' },
+    gamble_request: { wager: 'count' },
+    ace_flip_request: { stake: 'count' },
+    jackpot_deposit: { amount: 'count' },
+    trade2_cancel: { id: 'id' },
+  };
+  const held = Object.create(null);
+  for (const r of [...WIRE_IN, ...WIRE_RELAY]) if (Object.prototype.hasOwnProperty.call(r, 'form')) held[r.name] = r.form;
+  check('5: the table\'s forms are the pinned list, row for row and field for field (a form dropped, added or loosened is red)',
+    JSON.stringify(Object.keys(held).sort().map((k) => [k, held[k]])) === JSON.stringify(Object.keys(PINNED).sort().map((k) => [k, PINNED[k]])),
+    { held, PINNED });
   const row = (name) => WIRE_IN.find((r) => r.name === name);
   const named = [['player_attack', 'dmgBase'], ['player_attack', 'critChance'], ['move', 'dead'], ['trade2_cancel', 'id']];
   check('5: the three reads the table did not name have their rows', named.every(([t, f]) => row(t) && row(t).trust && Object.prototype.hasOwnProperty.call(row(t).trust, f)), named.filter(([t, f]) => !(row(t) && row(t).trust && Object.prototype.hasOwnProperty.call(row(t).trust, f))));
