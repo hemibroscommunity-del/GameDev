@@ -8,14 +8,14 @@ part 4 (session_01LccHahqYWSLxVUrw1fLzd3) hands over 2026-11-24 about 02:55 UTC 
 ## Sitting 58: 2026-11-25 UTC (two a day; the owner was told they may say "run another round today"). A NEW gatekeeper session (strong, high). Queue so far, every re-push reviewed fresh:
 - CK #2305 (6425, 69c7b1e8) THEN #2307 (6424, `.github/`, 4261a46b; the owner's own words quoted in its body)
 - BK #2299 (3c4322c8), #2301 (f40b578f), and 6465 when it comes. WHO #2285 (dcf8ca12, mended). CT #2293 (305bb3a4, mended), PR 3 (6542) coming
-- DG #2283 (9b9aee9f), #2295 (148af59f: CI mends only, its three planted lines still to mend), #2300 (4b23905c)
+- DG #2283 (a new head coming from part 3), #2295 and #2300 (new heads coming from part 5)
 - PH #2279, #2291 (held, being mended), #2297, #2306 (a draft until green). WL #2286, #2287, #2290, #2298 (held, being mended), #2302, #2303. LS's one PR (6560)
 - #2273 (RR, card LF) is HELD and NO running session owns it: FIND card LF's session (a haiku lane, by title) or start a part for it (the middle model, high): wsClient `if (_td) _td.carried = true;` stays green; thaw-carried §6 is regexes over text.
 After 58 merges, TELL: WHO when #2283 is in (open 6481, then 6482) and when #2279 is in (the report.js call); every session the new main; the owner in plain words.
 
 ## Sessions (strong, high unless said)
 - CK  part 3 session_01LccHanDgcojfUMPpPn87N2: holds; the card is DONE once #2305 and #2307 merge
-- DG  part 3 session_01LccHanED8EaLracuMeAGGR: mends #2283, #2295, #2300, tells the heads when green. DG part 4 session_01LccHajiyuv8speuDQTioEV: builds PR 4 (6443), merges claude/dg-books once before its last push, then 5, 6
+- DG  part 3 session_01LccHanED8EaLracuMeAGGR (about 200k): caretaker of #2283 ONLY (a last CI mend: heap-forget in testroom's UNGUARDED_SUITES; sends the head when green). DG part 5 session_01LccHameAWFA8ouUrKZDsv3 (new 02:45): #2295's three plants and testroom §7, then merges up into #2300, tells two heads, stops. DG part 4 session_01LccHajiyuv8speuDQTioEV: builds PR 4 (6443), merges claude/dg-books once before its last push, then 5, 6
 - BK  part 4 session_01LccHajLr9A1dTtu6jVmRir (new 02:43): one PR, 6465 (Z's two Founds: the weapon listing's restart, piecesHeld by ids)
 - WHO part 4 session_01LccHahezkhX8pJRQSedVFF: 6481 and 6482 built, not pushed, wait for #2283; report.js waits for #2279
 - PH  part 4 session_01LccHajdAuhmwzihWdn6F7x (new 02:24): mends #2279 and #2291 up the chain, then PR 6; PR 4 waits for call 1's comparisons; it HAS the owner's Speed test table
