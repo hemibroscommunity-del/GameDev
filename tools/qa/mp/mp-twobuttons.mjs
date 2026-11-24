@@ -220,7 +220,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
          half second -- the evidence the next red reads */
       const walkTrace = [];
       const STK = (P) => H.readState(P, (S) => ({ sx: +(S.stickX || 0).toFixed(2), sy: +(S.stickY || 0).toFixed(2), x: Math.round(S.player.x), y: Math.round(S.player.y),
-        vx: +(S.player.vx || 0).toFixed(2), vy: +(S.player.vy || 0).toFixed(2), auto: !!S.autoAttack, climb: !!S._climb, swim: !!(S._wheelSwim && S._wheelSwim.on), air: !!S._jump, back: !!S._backpedaling }));
+        vx: +(S.player.vx || 0).toFixed(2), vy: +(S.player.vy || 0).toFixed(2), auto: !!S.autoAttack, climb: !!S._climb, swim: !!(S._wheelSwim && S._wheelSwim.on), air: !!S._jump, back: !!S._backpedaling,
+        hold: [S._zoneLoading, S._netHold, S._townArtHold, S._farmArtHold, S._avatarArtHold, S._sled, S._shieldUp, S._extraction, S._dodgeRoll].map((v) => (v ? 1 : 0)).join(''),
+        clk: ['_playerStunUntil', '_lootFreezeUntil', '_stuckUntil', '_dazeUntil', '_frozenUntil', '_chillUntil', '_slowUntil', '_spdBuff'].filter((k) => S[k] && Date.now() < S[k]).join(','),
+        bf: !!(S._bf && S._bf.view), stf: !!(S._stf && S._stf.g), dt: S._dtScale, ag: S.rpg && S.rpg.agility, swing: !!S.isSwinging, ride: !!S._ride, race: !!S._race, aim: S._aimAngle == null ? null : +S._aimAngle.toFixed(2) }));
       if (g && g.d > 90) {
         await touch('touchStart', [c]);
         await P.page.waitForTimeout(80);
@@ -246,6 +249,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const m1 = await H.readState(P, bind((S, id) => { const m = (S.monsters || []).find((x) => x && String(x.id) === id); return m ? { x: m.x, y: m.y } : null; }, target));
         if (m1) await H.hopTo(P, Math.round(m1.x - 50 * Math.cos(g0.a)), Math.round(m1.y - 50 * Math.sin(g0.a)), { tries: 30 });
       }
+      const afterHop = { latch: await LATCH(P), gap: await GAP(P), stk: await STK(P) };
       const hp = await H.readState(P, bind((S, id) => { const m = (S.monsters || []).find((x) => x && String(x.id) === id); return m ? (m.curHp != null ? m.curHp : m.hp) : null; }, target));
       const hurt = typeof hp === 'number' && hp > 2 ? await H.devOp(wsPort, 'hurt', me, { id: target, dmg: Math.floor(hp) - 1 }).catch((e) => ({ err: String(e) })) : { hp };
       /* the monster at 1 hp walks off: the harness keeps you beside it, the
@@ -265,8 +269,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
           const S = window._gameState && window._gameState.current;
           const m = S && (S.monsters || []).find((x) => x && String(x.id) === id);
           const row = () => ({ t: Date.now() - t0, here: !!m, alive: m ? m.alive : null, hp: m ? m.curHp : null, gap: m ? Math.round(Math.hypot(m.x - S.player.x, m.y - S.player.y)) : null,
-            lid: S && S._latchId != null ? String(S._latchId) : null, ph: S && S._latchPhase, auto: !!(S && S.autoAttack), n: S ? (S.monsters || []).length : null });
-          if (++k10 % 10 === 0 && tr.trace.length < 100) tr.trace.push(row());
+            lid: S && S._latchId != null ? String(S._latchId) : null, ph: S && S._latchPhase, auto: !!(S && S.autoAttack), n: S ? (S.monsters || []).length : null, px: S ? Math.round(S.player.x) : null, py: S ? Math.round(S.player.y) : null, vx: S ? +(S.player.vx || 0).toFixed(2) : null });
+          if ((++k10 % 10 === 0 || k10 === 1) && tr.trace.length < 100) tr.trace.push(row());
           if (!S || !m || !m.alive || m.curHp <= 0 || Date.now() > until) { tr.stop = row(); clearInterval(t); return; }
           const dx = m.x - S.player.x, dy = m.y - S.player.y, d = Math.hypot(dx, dy);
           if (d <= 30) return;
@@ -283,7 +287,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         return { wpn: !!(S.rpg && S.rpg.weapon), slot: S.rpg && S.rpg.activeSlot, swim: !!(S._wheelSwim && S._wheelSwim.on), swungAgo: S.swingTimer ? Date.now() - S.swingTimer : null,
           gap: m ? Math.round(Math.hypot(m.x - S.player.x, m.y - S.player.y)) : null, mhp: m ? m.curHp : null }; }, target));
       const fightTrace = died ? null : await P.page.evaluate(() => window._ctFight || null);
-      rec.ok(`2c. ${label}: the fight played to its death with no press (the end: ${l2.end || 'moved to ' + l2.id})`, !!died, { died, l2, hurt, why, fightTrace });
+      rec.ok(`2c. ${label}: the fight played to its death with no press (the end: ${l2.end || 'moved to ' + l2.id})`, !!died, { died, l2, hurt, why, afterHop, fightTrace });
 
       /* 2d: the second press lets go (when the lock moved on to the next);
          a kill with none other in sight let go by itself ('killed') */
