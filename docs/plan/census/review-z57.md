@@ -36,7 +36,7 @@ draft), #2300 (DG), #2301 (BK), all opened during it.
 
 - **#2273** (`thaw-carried.test` §6 reads wsClient's text): in wsClient,
   `if (_td) _td.carried = true;` after `_thaw.due(...)` (every gap judged
-  carried: the v2.3.778 stale world never rejoined); `_td && _td.carried &&`
+  carried: the 778 stale world never rejoined); `_td && _td.carried &&`
   at the not-carried branch; `THAW.KEEP`'s shift removed (the list's cap).
   Nothing plays "pings missing -> the gap handed on -> `_forceRejoin`".
   The fix reads right; `mp-comeback` 5b is mended in the test.
@@ -52,7 +52,7 @@ draft), #2300 (DG), #2301 (BK), all opened during it.
   in node too.
 - **#2293** (`stick-zones` §8, the input read "moved whole"): in
   `stickFrame`, `S._lastInputAt` set on `S.stickX` only (a thumb walking
-  straight up is idled out, the v2.3.3034 incident); `dy` not frozen by
+  straight up is idled out, the 3034 incident); `dy` not frozen by
   loot (a stunned body walks on Y); `_playerDead` dropped at BroTown's call
   (a corpse walks); `K['a']` walking right; the loot facing removed; mode
   5's raw angle and `?turnzone` ignored; the ring in mode 4.
@@ -138,7 +138,7 @@ was stopped once the holds were known (its precheck timed out on a loaded
 box, no suite failed). Rehearsal 3 (with #2290 at d1ff3d9c) was stopped when WL re-pushed its
 chain so that #2290 holds #2286 and #2287. Rehearsal 4 (seven) was stopped at DG's
 word on #2283 (below). Rehearsal 5 is the list, its six in order:
-RESULT_LINE
+tree b3ebacea (b3ebaceac47f3ccaad70d7d92930ce0eb8b09e13): precheck 0 FAIL (189 s), every switch thrown once (89, 2420 suite runs, 744 s), build, questline 187 passed, all green on a quiet box
 
 ## Step 5b: what GitHub will merge
 

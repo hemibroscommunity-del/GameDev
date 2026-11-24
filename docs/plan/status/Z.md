@@ -7,7 +7,7 @@ state: ready
 - `census/review-z57.md`: 19 PRs checked against their cards at their heads
   as they stood, each read by a purpose lane (top model, plants); 6 listed,
   12 held or waiting, each with its planted line. Rehearsed on `main` b2cdd55a
-  (rehearsal 5, the list in order): RESULT_LINE. One merge base each, step
+  (rehearsal 5, the list in order): tree b3ebacea (b3ebaceac47f3ccaad70d7d92930ce0eb8b09e13): precheck 0 FAIL (189 s), every switch thrown once (89, 2420 suite runs, 744 s), build, questline 187 passed, all green on a quiet box. One merge base each, step
   by step; every base `main`.
 ## The list: merge in this order, "Create a merge commit", in one go
 1 #2288 (CK 6421, tools)  2 #2294 (CK 6422)  3 #2296 (CK 6423)
