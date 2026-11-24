@@ -133,9 +133,14 @@ async function runKeys({ browser, wsPort, webPort, rec }) {
        opens it; on a window with no room beside the game, still in the band
        -- and that the old strip and chip are gone, as promised. */
     const bk1 = await bandKeys(P);
-    rec.ok('the band\'s keys list (v2.3.4263) lists 1, 2 and 3, and lies clear of the bell, on the screen',
-      bk1.state === 'open' && ['1', '2', '3'].every((k) => bk1.keys.includes(k)) && !bk1.overBell && bk1.onScreen, bk1);
-    rec.ok('...and the floating strip and its ⌨ chip are not drawn beside it (bandKeysActive)', !bk1.oldStrip && !bk1.oldChip, bk1);
+    /* v2.3.6291 (card HB2, PR 12; the planning session's yes, 2026-11-23: step 1's two lines only): this page is
+       the upright COLUMN (no `bt-desk-wide`), where the band's key list is not drawn (game.css; bandKeysActive asks the
+       same) and the column keeps its floating strip and its chip.  Both lines asked the opposite, of the 18 px list
+       v2.3.6304 found there; the list's own checks (1, 2 and 3 on it, clear of the bell, on the screen, the heading)
+       are step 8h's, on the computer's band. */
+    rec.ok('the upright column draws no band keys list (v2.3.6291: it lists keys only on the computer\'s band)',
+      !bk1.box, bk1);
+    rec.ok('...and keeps its floating strip and its ⌨ chip (bandKeysActive is false there)', bk1.oldStrip && bk1.oldChip, bk1);
     /* its ⌨ heading, a click's fold and a narrow window: step 8h, on the
        layout players get (on this upright column the list is drawn 18 px
        wide and its heading has no size: a question for the planning
@@ -686,7 +691,8 @@ async function runLayout({ browser, wsPort, webPort, rec }) {
     /* ── 8h. v2.3.6304: THE BAND'S KEYS, ITS ⌨ HEADING (the narrow page's 1b and 1c, moved here) ── */
     const bk1 = await bandKeys(P);
     rec.ok('8h. the band\'s keys list\'s ⌨ heading wears H, lit while the list is open, and is what a click there reaches',
-      bk1.headKey === 'H' && bk1.lit === 'true' && bk1.onTop && !!bk1.at, bk1);
+      bk1.headKey === 'H' && bk1.lit === 'true' && bk1.onTop && !!bk1.at
+        && ['1', '2', '3'].every((k) => bk1.keys.includes(k)) && !bk1.overBell && bk1.onScreen, bk1);   /* v2.3.6291: + step 1's old list checks (1, 2, 3, the bell, the screen), moved here with the list */
     if (bk1.at) await P.page.mouse.click(bk1.at[0], bk1.at[1]);
     await P.page.waitForTimeout(400);
     const bk2 = await bandKeys(P);

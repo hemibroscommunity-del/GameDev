@@ -907,9 +907,14 @@ if (changedServer.length || changedClient.length || changedGuards.length) {
      behind a precheck that had ended (card RR's slow checks: "run.mjs
      orphans left on a precheck timeout").  A precheck itself killed (the
      gatekeeper's own cap) kills the group it is running first. */
-  const REST_CAP_S = 20 * 60;     /* the rest alone: 191 s here (581 suites), ~6x room; beside the slow guard it took 600-1100 s */
+  /* v2.3.6423 (card CK PR 4): the caps from the times of 2026-11-24, on a
+     session's 4-vCPU box: the rest 145 s and 150 s (581 suites; picture-door
+     and ladder-passes mended, the asset guards by git's ids), so 10 minutes
+     is 4x room; switches-thrown's whole set 652 s (a branch that changes its
+     machinery throws them all), so 40 minutes stays, 3.7x. */
+  const REST_CAP_S = 10 * 60;     /* the rest alone: 150 s here (581 suites), 4x room; it was 20 min at 191 s */
   const THRONE = 'guards/switches-thrown.test.mjs';
-  const THROWN_CAP_S = 40 * 60;   /* alone: 756 s and 770 s here (89 rows, 2418 suite runs), ~3x room; 1006-1139 s when it shared the box */
+  const THROWN_CAP_S = 40 * 60;   /* the whole set alone: 652 s (2026-11-24), 756 s and 770 s here (89 rows, 2418 suite runs), ~3x room; 1006-1139 s when it shared the box */
   const suiteNames = [
     ...readdirSync(join(root, 'server/test')).filter((f) => f.endsWith('.test.mjs')),
     ...readdirSync(join(root, 'tools/guards')).filter((f) => f.endsWith('.test.mjs')).map((f) => 'guards/' + f),
@@ -926,8 +931,15 @@ if (changedServer.length || changedClient.length || changedGuards.length) {
     const tail = rest.out.trim().split('\n').slice(-30).join('\n    ');
     add('FAIL', 'server-tests', `cd server && npm test exited ${rest.status ?? ('on signal ' + (rest.signal || '?'))}:\n    ${tail}`);
   }
-  const thrown = await runCapped('node', [join('tools', THRONE)], { cwd: root, capS: THROWN_CAP_S });
-  if (thrown.status === 0) add('PASS', 'switches-thrown', `${THRONE} green, ${thrown.secs} s (run apart from the rest: v2.3.6307)`);
+  /* v2.3.6420 (card CK PR 1): in the gatekeeper's rehearsal this part is
+     the gatekeeper's own next step, the WHOLE set (`--whole`, once a
+     sitting); here, as on a PR, it throws what the branch can break and a
+     few chosen by the commit (the guard's header) */
+  const thrown = process.env.BT_THROWN_BY_GATEKEEPER === '1'
+    ? { status: 0, secs: 0, gatekeeper: true }
+    : await runCapped('node', [join('tools', THRONE)], { cwd: root, capS: THROWN_CAP_S });
+  if (thrown.gatekeeper) add('PASS', 'switches-thrown', `left to the gatekeeper's next step: node tools/${THRONE} --whole (BT_THROWN_BY_GATEKEEPER)`);
+  else if (thrown.status === 0) add('PASS', 'switches-thrown', `${THRONE} green, ${thrown.secs} s (run apart from the rest: v2.3.6307)`);
   else if (thrown.timedOut) {
     const tail = thrown.out.trim().split('\n').slice(-5).join('\n    ');
     add('FAIL', 'switches-thrown', `timed out after ${THROWN_CAP_S} s; it did not finish (nothing was seen to fail; this box was too slow or a suite hung -- run \`node tools/${THRONE}\` alone); its processes were stopped. Its last lines:\n    ${tail}`);
