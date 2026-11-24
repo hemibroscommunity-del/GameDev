@@ -27,12 +27,27 @@
  *      the rejoin: a gap carried, none; pings missing, exactly one, a beat
  *      on; a slow page's many gaps; the kept list's cap; the switch off; a
  *      short gap.
+ *   9. the PAGE'S OWN CODE played (sitting 58's hold: §8 plays a copy of
+ *      _resumeRecover, so a return planted before the real thawResume stayed
+ *      green): the alive timer's body and _resumeRecover, lifted from
+ *      wsClient's tree and RUN in one closure of stubs on a fake clock; what
+ *      they DO is watched (the rejoins, the connects, the canvas check, the
+ *      GL probe): a carried gap kept, the rest of the return still run;
+ *      pings missing, one rejoin a beat on; a slow page; the switch off; a
+ *      hidden tab; a short return; a hung-up page; a dead socket.
  * BREAK PROOF (rule 8), tried by hand once: thawCarried returning true for
  * an unknown clock -> FAIL 3; sitting 57's three plants and card LF's two
  * (the PR's "Plants"): every verdict made carried after due() -> FAIL 8;
  * the rejoin behind `carried` -> FAIL 8 (in wsClient's if: FAIL 6); KEEP's
  * shift dropped -> FAIL 8; `?thawjudge=0` noting instead of rejoining at
  * once -> FAIL 8; the ping not handed to the judge -> FAIL 6.
+ * Sitting 58's (card LF, by hand, a scratch copy of wsClient, each -> FAIL 9):
+ * `if (tag === 'thaw') return;` before thawResume; `_awayMs =
+ * Math.min(_awayMs, _frozenMs)` before it; `Math.max(_hiddenMs, _frozenMs)`
+ * with `awayMs || 0` dropped; `if (gap < 60000) gap = 0;` before thawBeat;
+ * `visible`'s `&&` made `||`; and LF's own three: `&& tag !== 'thaw'` on the
+ * status gate, `if (arguments[2]) return;` atop _resumeRecover (a carried
+ * thaw skipping the canvases), `tag === 'thaw' ? 0 : (awayMs || 0)`.
  */
 import { readSystem } from '../../tools/guards/lib/filesOf.mjs';
 import { babel } from '../../tools/guards/lib/renderTables.mjs';
@@ -318,6 +333,164 @@ check('5. the page waits a beat (THAW.SETTLE_MS) before judging, and keeps enoug
       did === null && pg.rejoins.length === 0 && pg.judge.stats().last === null, { did, rejoins: pg.rejoins });
     pg.resume(9000, undefined);   /* ...and a long one iOS told of: not judged, rejoined as before */
     check('8. a long return iOS told of (not the thaw\'s): rejoined as before', pg.rejoins.length === 1, pg.rejoins); }
+}
+
+// ── 9. the PAGE'S OWN CODE played (sitting 58's hold, v2.3.6309: §8 plays a
+//    copy of _resumeRecover, so `if (tag === 'thaw') return;` before the real
+//    thawResume stayed green).  The alive timer's body and _resumeRecover are
+//    lifted out of wsClient.js's syntax tree as they stand and RUN, sharing
+//    one closure (a `with` over a stub table: the socket, S, the clock, the
+//    canvas check, setTimeout, a spy for _forceRejoin and connect), on a fake
+//    clock with fake pings.  What is watched is what the code DOES: the
+//    rejoins, the connects, the canvas check and the GL probe it schedules. ──
+{
+  const wire = readSystem('wire', { only: /\.js$/ });
+  const wsFile = [...wire.keys()].find((f) => /networking\/wsClient\.js$/.test(f));
+  const src = wire.get(wsFile);
+  const { parse, traverse } = babel();
+  const ast = parse(src, { sourceType: 'module', plugins: ['jsx'] });
+  let timerFn = null, recoverFn = null;
+  const nums = Object.create(null);   /* the page's own numbers: RESYNC_AWAY_MS, DEAD_PIPE_MS, ... */
+  traverse(ast, {
+    VariableDeclarator(p) {
+      const n = p.node;
+      if (n.id.type === 'Identifier' && n.init && n.init.type === 'NumericLiteral') nums[n.id.name] = n.init.value;
+      if (n.id.type === 'Identifier' && n.id.name === '_aliveTimer' && n.init && n.init.type === 'CallExpression' && n.init.callee.name === 'setInterval') timerFn = p.get('init.arguments.0');
+    },
+    FunctionDeclaration(p) { if (p.node.id && p.node.id.name === '_resumeRecover') recoverFn = p; },
+  });
+  /* its text, a dynamic import() made a stub's (the crash log), and every name it reads from outside itself */
+  const lift = (fp) => {
+    const at = fp.node.start, imports = [], free = new Set();
+    fp.traverse({
+      CallExpression(q) { if (q.node.callee.type === 'Import') imports.push(q.node.callee.start - at); },
+      Identifier(q) {
+        const left = (q.parentPath.isAssignmentExpression() && q.parentPath.node.left === q.node) || q.parentPath.isUpdateExpression();
+        if (!q.isReferencedIdentifier() && !left) return;
+        const b = q.scope.getBinding(q.node.name);
+        if (!b || !(b.path.node === fp.node || b.path.findParent((x) => x.node === fp.node))) free.add(q.node.name);
+      },
+    });
+    let text = src.slice(at, fp.node.end);
+    for (const i of imports.sort((x, y) => y - x)) text = text.slice(0, i) + '__import' + text.slice(i + 'import'.length);
+    return { text, free };
+  };
+  const timerL = timerFn && lift(timerFn), recoverL = recoverFn && lift(recoverFn);
+  check('9. wsClient\'s alive timer body and _resumeRecover found in its tree, and the page\'s RESYNC_AWAY_MS',
+    !!timerL && !!recoverL && nums.RESYNC_AWAY_MS === 5000, { timer: !!timerL, recover: !!recoverL, away: nums.RESYNC_AWAY_MS });
+
+  const GLOBALS = new Set(['Math', 'Number', 'JSON', 'Object', 'Array', 'String', 'Boolean', 'isFinite', 'undefined', 'NaN', 'Infinity', 'arguments']);
+  const STUBBED = ['Date', 'document', 'window', 'S', 'ws', 'sw', 'setTimeout', 'clearTimeout', 'connect', '_forceRejoin', '_resumeRecover',
+    '_thaw', 'thawBeat', 'thawResume', '_hiddenAt', '_lastAliveAt', '_lastInboundAt', '_settleSentAt', '_connectAt', 'reconnectTimer', 'reconnectDelay',
+    'checkWitnesses', 'noteCheckActed', 'EMPTIED_NEED', 'CANVAS_CHECK_OFF', '__import', 'RESYNC_AWAY_MS', 'DEAD_PIPE_MS', 'SETTLE_SILENT_MS', 'CONNECT_STALL_MS'];
+  const unstubbed = timerL && recoverL ? [...new Set([...timerL.free, ...recoverL.free])].filter((n) => !GLOBALS.has(n) && !STUBBED.includes(n)) : ['(not found)'];
+  check('9. every name the two read from outside themselves is one the stub table gives (or a plain global)', unstubbed.length === 0, unstubbed);
+
+  /* a page: the real timer and _resumeRecover in one closure */
+  const realPage = ({ off = false, known = true, status = 'connected' } = {}) => {
+    const pg = { now: 0, rejoins: [], connects: 0, witnessed: 0, probes: 0, missing: new Set() };
+    const env = {
+      Date: { now: () => pg.now },
+      document: { visibilityState: 'visible' },
+      window: {},
+      S: { _realtimeStatus: status },
+      ws: { readyState: 1 },
+      sw: (k) => (k === 'thawjudge' ? off : false),
+      setTimeout: (fn, ms) => { if (ms === 600) pg.probes++; return 1; },
+      clearTimeout: () => {},
+      connect: () => { pg.connects++; env.ws = { readyState: 0 }; },
+      _forceRejoin: (tag, why) => { pg.rejoins.push({ tag, why, at: pg.now }); env.ws = { readyState: 1 }; },
+      _thaw: makeThawJudge({ offset: () => OFF, known: () => known }),
+      thawBeat, thawResume,
+      _hiddenAt: 0, _lastAliveAt: 0, _lastInboundAt: 0, _settleSentAt: 0, _connectAt: 0, reconnectTimer: null, reconnectDelay: 1000,
+      checkWitnesses: () => { pg.witnessed++; return { emptied: 0, checked: 4, ms: 1 }; },
+      noteCheckActed: () => {}, EMPTIED_NEED: 2, CANVAS_CHECK_OFF: false,
+      __import: () => Promise.resolve({ recordCrash: () => {} }),
+      RESYNC_AWAY_MS: nums.RESYNC_AWAY_MS, DEAD_PIPE_MS: nums.DEAD_PIPE_MS, SETTLE_SILENT_MS: nums.SETTLE_SILENT_MS, CONNECT_STALL_MS: nums.CONNECT_STALL_MS,
+    };
+    const scope = new Proxy(env, {
+      has: (o, k) => typeof k === 'string',
+      get: (o, k) => {
+        if (typeof k !== 'string') return undefined;
+        if (k in o) return o[k];
+        if (GLOBALS.has(k) && k !== 'arguments') return globalThis[k];
+        pg.missing.add(k); return undefined;
+      },
+      set: (o, k, v) => { o[k] = v; return true; },
+    });
+    // eslint-disable-next-line no-new-func
+    const made = new Function('__scope', 'with (__scope) { return { timer: (' + timerL.text + '), recover: (' + recoverL.text + ') }; }')(scope);
+    env._resumeRecover = made.recover;
+    pg.env = env; pg.judge = env._thaw; pg.recover = made.recover;
+    pg.beat = (t) => { pg.now = t; made.timer(); };
+    pg.ping = (pageT, handledAt) => { env._thaw.ping(pageT + OFF); env._lastInboundAt = handledAt === undefined ? pageT : handledAt; };
+    pg.play = (t) => { for (let x = pg.now + 1000; x <= t; x += 1000) { if (x % 2000 === 0) pg.ping(x); pg.beat(x); } };
+    pg.freeze = (ms, carried) => {
+      const from = pg.now, to = from + ms;
+      pg.beat(to);
+      if (carried) for (let x = from + 1; x <= to; x++) if (x % 2000 === 0) pg.ping(x, to);
+    };
+    return pg;
+  };
+
+  if (timerL && recoverL) {
+    { const pg = realPage();
+      pg.play(20000); pg.freeze(12000, true); pg.play(45000);
+      check('9. the real page: a 12 s gap its socket carried keeps the socket (no rejoin, no connect), counted carried',
+        pg.rejoins.length === 0 && pg.connects === 0 && pg.judge.stats().carried === 1, { rejoins: pg.rejoins, stats: pg.judge.stats(), missing: [...pg.missing] });
+      check('9. ...and the rest of the return still runs for it: the canvas check once, the GL probe scheduled once',
+        pg.witnessed === 1 && pg.probes === 1, { witnessed: pg.witnessed, probes: pg.probes }); }
+
+    { const pg = realPage();
+      pg.play(20000); pg.freeze(12000, false);
+      check('9. the real page: a 12 s gap with its pings missing, no rejoin in its own beat', pg.rejoins.length === 0, pg.rejoins);
+      pg.play(33000);
+      const r = pg.rejoins[0];
+      check('9. ...a beat on, the real _resumeRecover(\'thaw\') rejoins: exactly one _forceRejoin(\'resume-resync\', \'thaw away 12s\')',
+        pg.rejoins.length === 1 && r.tag === 'resume-resync' && r.why === 'thaw away 12s' && r.at === 33000 && pg.witnessed === 1 && pg.probes === 1,
+        { rejoins: pg.rejoins, witnessed: pg.witnessed, missing: [...pg.missing] });
+      pg.play(90000);
+      check('9. ...and only one, the page playing on (no dead pipe: its pings keep coming)', pg.rejoins.length === 1, pg.rejoins); }
+
+    { const pg = realPage();
+      pg.play(10000);
+      const gaps = [6000, 9000, 14000, 30000, 7000, 21000, 16000, 12000, 18000, 8000];
+      for (let r = 0; r < 2; r++) for (const g of gaps) { pg.freeze(g, true); pg.play(pg.now + 2000); }
+      check('9. the real page, slow (card RD\'s crowdfight): 20 carried gaps of 6-30 s, not one rejoin', pg.rejoins.length === 0 && pg.judge.stats().carried === 20,
+        { rejoins: pg.rejoins.length, stats: pg.judge.stats() });
+      pg.freeze(15000, false); pg.play(pg.now + 3000);
+      check('9. ...its first gap with the pings missing: one rejoin', pg.rejoins.length === 1 && pg.rejoins[0].why === 'thaw away 15s', pg.rejoins); }
+
+    { const pg = realPage({ off: true });
+      pg.play(20000); pg.freeze(12000, true);
+      check('9. the real page, `?thawjudge=0`: the gap rejoins in its own beat, its pings notwithstanding (main\'s path)',
+        pg.rejoins.length === 1 && pg.rejoins[0].at === 32000 && pg.rejoins[0].why === 'thaw away 12s', pg.rejoins); }
+
+    { const pg = realPage();
+      pg.play(20000);
+      pg.env.document.visibilityState = 'hidden'; pg.env._hiddenAt = 20000;
+      for (let t = 30000; t <= 80000; t += 10000) pg.beat(t);   /* a hidden tab's timer, throttled to one beat in 10 s, no pings */
+      check('9. the real page, hidden (a tab switched away, its timer throttled): no gap judged, no rejoin', pg.rejoins.length === 0 && pg.judge.stats().last === null,
+        { rejoins: pg.rejoins, last: pg.judge.stats().last });
+      pg.env.document.visibilityState = 'visible'; pg.now = 81000;
+      pg.recover('visible');   /* armResumeListeners' visibilitychange */
+      check('9. ...back 61 s later, the return iOS told of rejoins as before (`visible`, not judged)',
+        pg.rejoins.length === 1 && /^visible away 61s$/.test(pg.rejoins[0].why) && pg.env._hiddenAt === 0, pg.rejoins); }
+
+    { const pg = realPage();
+      pg.play(20000);
+      pg.env._hiddenAt = 18000; pg.recover('visible');
+      check('9. the real page: a 2 s return, the socket open, keeps it', pg.rejoins.length === 0 && pg.connects === 0, pg.rejoins); }
+
+    { const pg = realPage({ status: 'superseded' });
+      pg.play(20000); pg.freeze(12000, false); pg.play(30000);
+      check('9. the real page, hung up (superseded, its banner up): a thaw never reconnects behind the banner', pg.rejoins.length === 0 && pg.connects === 0, pg.rejoins); }
+
+    { const pg = realPage();
+      pg.play(20000); pg.env.ws = { readyState: 3 }; pg.freeze(12000, false); pg.now += 1000; pg.beat(pg.now);
+      check('9. the real page, its socket dead at the thaw: connected again at once, no forced rejoin', pg.connects === 1 && pg.rejoins.length === 0,
+        { connects: pg.connects, rejoins: pg.rejoins }); }
+  }
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);

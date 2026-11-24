@@ -20,6 +20,11 @@ state: ready
   road (fake clock, pings, a rejoin spy), §6 reads wsClient's syntax tree.
   Plants a, b, c (in the module, and a, b by hand in wsClient) and LF's d, e
   all red; green unplanted (40). The PR body's "Plants".
+- Part 3, sitting 58's hold on #2273 (a return before the real thawResume
+  stayed green): thaw-carried.test §9 lifts the alive timer's body and
+  _resumeRecover from wsClient's tree and RUNS them on a fake clock (stubs,
+  a rejoin spy). The review's five plants and LF's three (M1-M3) each red
+  (scratch copy); green unplanted (55). The PR body's "Plants".
 
 ## Next
 - #2273's `test` green, then the gatekeeper's next sitting (it deploys).
