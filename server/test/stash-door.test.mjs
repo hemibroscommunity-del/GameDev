@@ -25,6 +25,13 @@
  *      classFaults); a move is within the same player (`other: 'self'`); an
  *      escrow names a place that holds (ESCROW_PLACES); the door's gear lists
  *      are gearstash.js's;
+ *   2b. (v2.3.6446, sitting 59) THE ALLOW LIST: a stash, or a piece of one,
+ *      appears outside stash.js only in a form the scan knows (a read, a
+ *      test, a copy or a name it follows, an argument of the door's calls, a
+ *      pure global, a function of the same file); handed to a function of
+ *      another file, returned, put into an object or a list written out is a
+ *      write it cannot follow, RED unless a row of HANDED_OUT (which only
+ *      falls; 31 appearances in 24 rows at v2.3.6446);
  *   5. THE CAP IS THE DOOR'S: `_saveRpg` keeps every weapon of a bag over its
  *      cap (never cut at the save), and a weapon by the mail to a full bag is
  *      refused at the door (the mail keeps it), the bag untouched.
@@ -33,6 +40,7 @@
  *   - `ps.weaponStash.push(w);` put back in inbox.js           -> FAIL 2 (a second writer)
  *   - `if (list.length >= stashCap(field, room)) return false;` deleted -> FAIL 1, FAIL 5
  *   - a second `stashTake(ps, 'weaponStash', 0, 'salvage_weapon')` in store.js -> FAIL 3 (two callers; and the wrong file)
+ *   - (v2.3.6446) `tuneFirst(ps.weaponStash)` in gear.js, tuneFirst in gearstash.js writing `list[0].lvl = 99` -> FAIL 2 (handed out; plants-scans.json)
  *
  * A new way to change a stash: a row in STASH_ROADS and one call that names it.
  */
@@ -120,8 +128,48 @@ const IN_PLACE = [
   { file: 'revealbag.js', fn: '_revealBagOnJoin', field: 'armorStash|legsStash|shieldStash|amuletStash|gearStash', n: 1, why: 'the reveal bag at the join: a piece with no id has no secret to keep (its flag taken off)' },
   { file: 'swordconvert.js', fn: 'swordToGreatsword', field: 'weaponStash', n: 8, why: 'the owner\'s sword conversion (owner call 1): a stored sword made a greatsword in place' },
 ];
+/* v2.3.6446 (sitting 59: `tuneFirst(ps.weaponStash)`, tuneFirst in
+   gearstash.js writing `list[0].lvl = 99`, stayed green: the scan followed a
+   stash only within one file).  THE ALLOW LIST (writesOf opts.handout): a
+   stash, or a piece of one (its items are objects), appears outside the door
+   only as a read, a test, a copy or a name the scan follows, an argument of
+   the door's own calls, of a pure global or of a function of the same file;
+   every other appearance -- handed to a function of another file, returned,
+   put into an object or a list written out -- is a write the scan cannot
+   follow, RED unless it is a row below.  The rows only fall: each says why
+   the piece handed out is read there, or copied, never changed. */
+const STASH_DOORS = ['stashGive', 'stashTake', 'stashSet', 'stashCap', 'weaponIdOk', 'weaponIdGive', 'weaponIdsAll'];
+const SCAN_OUT = { ...SCAN, handout: { doors: STASH_DOORS, objects: [...STASH_FIELDS] } };
+const O = (file, fn, field, n, why) => ({ file, fn, field, out: true, n, why });
+const GEARS = 'armorStash|legsStash|shieldStash|amuletStash|gearStash';
+const HANDED_OUT = [
+  O('amulet.js', '_handleAmuletForge', 'weaponStash', 1, 'the forged piece\'s id stamped in the provenance book (_gearProvTouch reads its gid)'),
+  O('gear.js', '_prog3EquipOk', 'weaponStash', 2, 'the equip gate asks whether a piece is an armour-ladder piece and its defence need (isArmourLadderPiece, armorDefReq: reads)'),
+  O('gear.js', '_handleEquipRequest', 'weaponStash', 1, 'a blade still a "?" opened as it is worn (_revealBagOnWear: the reveal bag\'s own flag)'),
+  O('gearstash.js', '_gearStashAdoptOnJoin', 'armorStash|legsStash|shieldStash|gearStash|amuletStash', 3, 'the join\'s stored gear lists resolved against the provenance book (_gearProvResolveList hands back a new list, through stashSet)'),
+  O('gscopper.js', 'gameNamesFor', 'weaponStash', 1, 'a gem set\'s name read (weaponGemName)'),
+  O('gscopper.js', 'oldGreatswordToMetal', 'weaponStash', 1, 'the same name read for the migration\'s rename (weaponGemName; the write is IN_PLACE\'s row)'),
+  O('join.js', '_handleJoin', 'weaponStash', 1, 'the stored weapon bag cleaned (_sanitizeWeaponList hands back new pieces) into stashSet'),
+  O('market.js', '_mktPlaceOrder', 'weaponStash', 1, 'a weapon listed on the market: a clean copy (_sanitizeWeapon)'),
+  O('nomansland.js', '_nmlOnDeath', 'weaponStash', 1, 'No man\'s land\'s death: each weapon lost handed to the mail\'s credit (the stash is emptied through the door: nml_weapons)'),
+  O('nomansland.js', '_nmlOnDeath', GEARS, 1, 'No man\'s land\'s death: a worn piece kept in the list the door sets back (keep.push)'),
+  O('persistence.js', 'capStash', 'amuletStash', 1, 'the echo\'s copy of a gear list, cut at the cap (a new list for the message)'),
+  O('persistence.js', 'keepStash', 'amuletStash', 1, 'the save\'s copy of a gear list, cut at the keep cap (a new list for the record)'),
+  O('persistence.js', '_saveRpg', 'weaponStash', 1, 'the save: a copy of the weapon bag into the stored record'),
+  O('persistence.js', '_sendPlayerState', 'weaponStash', 1, 'the echo: the weapon bag\'s public view (revealPublicList hands back new pieces)'),
+  O('revealbag.js', '_revealBagOpen', 'weaponStash', 3, 'the reveal bag\'s answer: the opened piece handed back to its handler and read for its reveals (_revealsFor)'),
+  O('revealbag.js', '_revealBagOpen', GEARS, 1, 'the reveal bag: the copies of a gear piece gathered to be opened together'),
+  O('revealbag.js', '_revealBagAchv', 'weaponStash', 1, 'an achievement asked of the opened piece (_achvOnPiece reads it)'),
+  O('salvage.js', '_salvageWeaponAt', 'weaponStash', 2, 'the salvage\'s look-up: the weapon read (_isGearNotWeapon) and handed back to its handler, which takes it through the door'),
+  O('shieldgem.js', '_shieldGemPiece', GEARS, 2, 'the shield to gem found (its predicate a function of the file) and handed back to the gem handler'),
+  O('shieldwear.js', 'bag', GEARS, 1, 'the shield list read by the wear handler\'s helper (bagIt gives through the door)'),
+  O('store.js', '_stCreateListing', 'weaponStash', 1, 'a weapon listed in the store: a clean copy (_sanitizeWeapon)'),
+  O('swordconvert.js', 'gameNamesFor', 'weaponStash', 1, 'a gem set\'s name read (weaponGemName)'),
+  O('swordconvert.js', 'swordToGreatsword', 'weaponStash', 1, 'the same name read for the conversion\'s rename (weaponGemName; the write is IN_PLACE\'s row)'),
+  O('trade2.js', '_handleTrade2StageWeapon', 'weaponStash', 1, 'a weapon staged in a trade: a clean copy (_sanitizeWeapon)'),
+];
 {
-  const r = doorWrites(raw, { skip: ['stash.js'], ...SCAN, listed: [...NOT_A_STASH, ...IN_PLACE] });
+  const r = doorWrites(raw, { skip: ['stash.js'], ...SCAN_OUT, listed: [...NOT_A_STASH, ...IN_PLACE, ...HANDED_OUT] });
   check('2. no stash is written in server/src but through the door (stash.js): by its name, by a field in a name, or through a name that holds one', r.found.length === 0, r.found.map(where));
   check('2. ...every NOT_A_STASH and IN_PLACE entry still holds its count of writes (a stale one is deleted, a second spelling is one too many)', r.stale.length === 0, r.stale);
   const plant = (txt) => writesOf(txt, SCAN).length;
@@ -145,6 +193,23 @@ const IN_PLACE = [
   const missed = mustFind.filter((t) => plant(t) === 0);
   check('2. ...the scanner finds each shape of a second writer (' + mustFind.length + ' planted)', missed.length === 0, missed);
   check('2. ...and reads a compare as no write', plant('export const x = {\n  _a(ps) {\n    if (ps.weaponStash == null) return;\n    return ps.weaponStash.length === 3;\n  },\n};') === 0);
+  /* v2.3.6446 (sitting 59): THE ALLOW LIST -- a stash or a piece of it
+     handed where the scan cannot follow is red; the allowed forms are not */
+  const outs = (t) => writesOf(t, SCAN_OUT).filter((w) => w.out).length;
+  const mustOut = [
+    'export const x = {\n  _a(ps) {\n    tuneFirst(ps.weaponStash);\n  },\n};',                          /* the review's: a function of another file */
+    'export const x = {\n  _a(ps) {\n    this._tune(ps.armorStash[0]);\n  },\n};',                       /* a piece handed to a method of another file */
+    'export const x = {\n  _a(ps) {\n    return ps.weaponStash;\n  },\n};',                               /* handed back */
+    'export const x = {\n  _a(ps) {\n    const o = { list: ps.weaponStash };\n    send(o);\n  },\n};',     /* a property of an object written out */
+    'export const x = {\n  _a(ps) {\n    keep([...ps.weaponStash]);\n  },\n};',                          /* a copy of the list: the same pieces */
+    'export const x = {\n  _a(ps) {\n    for (const [, w] of Object.entries(ps.weaponStash)) fix(w);\n  },\n};',
+    'export const x = {\n  _a(ps) {\n    const w = ps.weaponStash.find((p) => p.lvl > 1);\n    polish(w);\n  },\n};',
+    'export const x = {\n  _a(ps) {\n    ps.weaponStash.forEach(tidy);\n  },\n};',                         /* a callback of another file */
+  ];
+  const missedOut = mustOut.filter((t) => outs(t) === 0);
+  check('2. ...ALLOW LIST: a stash or a piece handed where the scan cannot follow is red (' + mustOut.length + ' planted)', missedOut.length === 0, missedOut);
+  check('2. ...and the allowed forms are not: a read, a length, a test, a door\'s call, a pure global, a function of the file, a field of a piece, a key',
+    outs('export const x = {\n  _a(ps, i) {\n    const n = ps.weaponStash.length;\n    if (!Array.isArray(ps.weaponStash) || ps.weaponStash.includes(null)) return;\n    stashGive(ps, \'weaponStash\', ps.weaponStash[0], \'loot_weapon\', this);\n    log(ps.weaponStash[i].name, JSON.stringify(ps.weaponStash));\n    look(ps.weaponStash);\n    for (const w of ps.weaponStash) say(w.name + w.lvl);\n    return T[ps.weaponStash[0].type];\n  },\n};\nfunction look(l) { return l.length; }') === 0);
 }
 
 /* ══════════ 3. ONE ROW, ONE PLACE ══════════ */

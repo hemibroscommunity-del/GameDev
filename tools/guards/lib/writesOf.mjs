@@ -87,6 +87,27 @@
  *     unknown spelling is red.  opts.shallow: containers whose items are
  *     their own (the map of sessions).
  *
+ *     THE ALLOW LIST (v2.3.6446, sitting 59: `tuneFirst(ps.weaponStash)`,
+ *     tuneFirst in another file, stayed green -- the fourth sitting to find a
+ *     spelling; the scan ENUMERATED writes and followed within one file).
+ *     opts.handout: { doors: [the door's functions], objects: [containers
+ *     whose items are objects] }.  Every APPEARANCE of a container (a member
+ *     named so, a name or member bound to it, a maker's call) is climbed
+ *     through what only passes it on to a form the scan knows -- a read of a
+ *     key or a field, a read-only method, a callback written out, a copy, a
+ *     name it follows, a test, a compare, a loop, an argument of the door's
+ *     calls, of a pure global (PURE_CALLS) or of a function of the same file
+ *     -- or it is reported as a write it cannot follow (`out: true`): handed
+ *     to a function of another file, returned, a property value or an
+ *     element of something written out, a spread into a call, a piece of a
+ *     list of objects handed out.  A test lists the ones that stay, by file,
+ *     function and count (doorWrites' `out: true` rows), and they only fall.
+ *     opts.getters: a Map's `get` hands back an item (the session door);
+ *     an item's write carries `key`, the key it puts (null: unknown).
+ *     opts.unknownKeys: a key the tree cannot know written on a record that
+ *     holds a guarded field (a name a field is read or written on, an alias
+ *     of one, `this.playerState[id]`) is a write of '[?]'.
+ *
  * It reads; it never runs the code.  What it cannot know: a key computed at
  * run time from data (`ps[row.field] = v`) -- the running room catches that
  * one (server/test/testroom.mjs "THE RUNNING ROOM REFUSES", card DG PR 1).
@@ -141,6 +162,27 @@ const ELEMENT_CALLBACKS = new Map([['forEach', 0], ['find', 0], ['findLast', 0],
 const LIST_CHANGERS = new Set(['push', 'pop', 'shift', 'unshift', 'splice', 'sort', 'reverse', 'fill', 'copyWithin',
   /* a Map's or a Set's own changers, on a container held as one */
   'set', 'delete', 'clear', 'add']);
+
+/* v2.3.6446 (sitting 59: `tuneFirst(ps.weaponStash)` with tuneFirst in
+   ANOTHER file stayed green -- the scanner enumerated the spellings of a
+   write and followed a container only within one file).  THE ALLOW LIST
+   (opts.handout): every appearance of a container outside its door is in
+   one of a few forms the scanner knows, or it is a write it cannot follow.
+   The forms: a read of a key or a field (`.length`, an element's field), a
+   read-only method, an element callback written out (followed), a copy
+   (followed), a name or a member it is bound to (followed), a compare, a
+   test, a loop over it (followed), an argument of the door's own calls, of a
+   function of the same file (followed), or of a pure global below.  Every
+   other appearance -- an argument of a function the scanner cannot follow,
+   a return, a property value of an object written out, a spread into a
+   call, an element of a list written out, an element handed out when the
+   items are objects -- is reported ('cannot follow: ...', `out: true`). */
+const READ_PROPS = new Set(['length', 'size']);
+const READ_METHODS = new Set(['includes', 'indexOf', 'lastIndexOf', 'has', 'keys', 'join', 'hasOwnProperty', 'toString']);
+/* the pure globals a container may be handed to: they read it, never keep it */
+const PURE_CALLS = new Set(['Array.isArray', 'Number', 'String', 'Boolean', 'JSON.stringify', 'Object.keys',
+  /* a key asked about, the language's own two spellings */
+  'Object.prototype.hasOwnProperty.call', 'Object.hasOwn']);
 
 /* The words a name from ANOTHER file holds (`STASH_FIELDS`, `GEAR_PROV_FIELD`),
    handed in by the test that imported it, so `for (const f of STASH_FIELDS)
@@ -302,6 +344,24 @@ export function writesOf(code, opts = {}) {
   /* opts.shallow: containers whose ITEMS are their own (the map of sessions:
      a key put or deleted is a write of it, a session's own field is not) */
   const SHALLOW = new Set(opts.shallow || []);
+  /* v2.3.6446 (sitting 59): opts.getters -- a Map's `get` hands back an item
+     too (the session door asks which field of a session got from the map is
+     put: `const s = this.sessions.get(ws); s.id = null`) */
+  const GETTERS = new Set(opts.getters || []);
+  /* v2.3.6446 (sitting 59): opts.unknownKeys -- the records that hold a
+     guarded field: a name a field of FIELDS is read or written on anywhere in
+     the file, or one made from a player's record (`this.playerState[id]`) */
+  const fieldHolders = new Set();
+  const isPlayerRecord = (n) => !!n && (n.type === 'MemberExpression' || n.type === 'OptionalMemberExpression')
+    && (n.object.type === 'MemberExpression' || n.object.type === 'OptionalMemberExpression') && !n.object.computed
+    && n.object.property.type === 'Identifier' && n.object.property.name === 'playerState';
+  function holdsField(obj, path) {
+    if (!obj) return false;
+    if (isPlayerRecord(obj)) return true;
+    if (obj.type !== 'Identifier') return false;
+    const b = path.scope.getBinding(obj.name);
+    return !!b && fieldHolders.has(b);
+  }
   const itemOf = (c) => (c && !String(c).split('|').some((x) => SHALLOW.has(x)) ? c : null);
   function memberPath(node, path) {
     const parts = [];
@@ -381,7 +441,7 @@ export function writesOf(code, opts = {}) {
       /* v2.3.6441 (sitting 57): an element FOUND in a container
          (`ps.weaponStash.find(...)`, `.at(i)`) is the
          container's: writing into it writes the container */
-      if (n && ELEMENT_GETTERS.has(n) && c.type !== 'Identifier') return elementsOf(c.object, path);
+      if (n && (ELEMENT_GETTERS.has(n) || GETTERS.has(n)) && c.type !== 'Identifier') return elementsOf(c.object, path);
       /* v2.3.6441 (sitting 58): a copy of its list (`.filter(...)`,
          `.slice()`, `Object.values(...)`, `Array.from(...)`) holds the
          container's own items: an item written through the copy is the
@@ -464,12 +524,12 @@ export function writesOf(code, opts = {}) {
     return recv;
   }
 
-  function add(path, node, field, inside, how, recv) {
+  function add(path, node, field, inside, how, recv, extra) {
     const line = node.loc ? node.loc.start.line : 0;
     const key = line + ':' + (node.start || 0) + ':' + field + ':' + inside + ':' + how;
     if (seen.has(key)) return;
     seen.add(key);
-    out.push({ file, line, field, inside: !!inside, how, fn: fnName(path), text: (lines[line - 1] || '').trim(), recv: recv || null });
+    out.push({ file, line, field, inside: !!inside, how, fn: fnName(path), text: (lines[line - 1] || '').trim(), recv: recv || null, ...(extra || {}) });
   }
 
   /* a target written: a member, or a pattern holding members */
@@ -480,9 +540,18 @@ export function writesOf(code, opts = {}) {
          l = [...ps.weaponStash]; l[0] = x`, `l.length = 0`) is the copy's own */
       if (isCopy(node.object, path)) return;
       const inside = insideOf(node, path);
-      if (inside) { add(path, node, inside, true, how, recvOf(node, path)); return; }
+      /* `key`: the key put under the container's item (`s.id = null`: ['id'];
+         unknown: null), for a test that asks which field of an item (the
+         session door: the fields that bind a session to its player) */
+      if (inside) { add(path, node, inside, true, how, recvOf(node, path), { key: keysOf(node, path) }); return; }
       const ks = keysOf(node, path);
       if (ks) for (const k of ks) if (FIELDS.has(k)) add(path, node, k, false, how, recvOf(node, path));
+      /* v2.3.6446 (sitting 59): opts.unknownKeys -- a key the tree cannot
+         know (`ps[k] = v`), written on a record that holds a guarded field
+         (a name the file reads or writes a field of, or a player's record
+         `this.playerState[id]`), may be any of them: a write it cannot
+         follow, field '[?]' */
+      if (!ks && opts.unknownKeys && holdsField(node.object, path)) add(path, node, '[?]', false, 'cannot follow: ' + how + ', a key the tree cannot know on a record that holds ' + [...FIELDS].join('|'), recvOf(node, path));
       return;
     }
     if (node.type === 'Identifier') {
@@ -742,6 +811,32 @@ export function writesOf(code, opts = {}) {
   };
   for (let i = 0; i < 12 && visitAliases(); i++) { /* to a fixed point */ }
 
+  if (opts.unknownKeys) traverse(ast, {
+    VariableDeclarator(path) {
+      const { id, init } = path.node;
+      if (id.type === 'Identifier' && isPlayerRecord(init)) { const b = path.scope.getBinding(id.name); if (b) fieldHolders.add(b); }
+    },
+    'MemberExpression|OptionalMemberExpression'(path) {
+      const o = path.node.object;
+      if (o.type !== 'Identifier') return;
+      const ks = keysOf(path.node, path);
+      if (!ks || !ks.some((k) => FIELDS.has(k))) return;
+      const b = path.scope.getBinding(o.name);
+      if (b) fieldHolders.add(b);
+    },
+  });
+  /* a name bound to a holder (`const q = ps`), or a holder bound to it: the same record */
+  if (opts.unknownKeys) for (let i = 0, more = true; more && i < 6; i++) {
+    more = false;
+    traverse(ast, { VariableDeclarator(path) {
+      const { id, init } = path.node;
+      if (id.type !== 'Identifier' || !init || init.type !== 'Identifier') return;
+      const a = path.scope.getBinding(id.name), c = path.scope.getBinding(init.name);
+      if (!a || !c || fieldHolders.has(a) === fieldHolders.has(c)) return;
+      fieldHolders.add(a); fieldHolders.add(c); more = true;
+    } });
+  }
+
   /* pass 2: the writes */
   traverse(ast, {
     AssignmentExpression(path) {
@@ -784,7 +879,11 @@ export function writesOf(code, opts = {}) {
         if (!t) return;
         const how = objName + '.' + prop;
         const c = containerOf(t, path) || ((t.type === 'MemberExpression' || t.type === 'OptionalMemberExpression') ? insideOf(t, path) : null);
-        if (c) { add(path, path.node, c, true, how, t.type === 'MemberExpression' ? recvOf(t, path) : { text: srcOf(code, t) }); return; }
+        if (c) {
+          const put = prop === 'assign' || prop === 'defineProperties' ? args.slice(1).flatMap((x) => sourceKeys(x, path)) : wordsOf(args[1], path);
+          add(path, path.node, c, true, how, t.type === 'MemberExpression' ? recvOf(t, path) : { text: srcOf(code, t) }, { key: put && put.length ? put : null });
+          return;
+        }
         let ks = [];
         if (prop === 'assign' || prop === 'defineProperties') for (const s of args.slice(1)) ks.push(...sourceKeys(s, path));
         else { const w = wordsOf(args[1], path); if (w) ks = w; }
@@ -799,6 +898,256 @@ export function writesOf(code, opts = {}) {
       }
     },
   });
+  /* v2.3.6446 (sitting 59): THE ALLOW LIST (opts.handout: { doors: [the
+     door's own functions], objects: [containers whose items are objects] }).
+     Every appearance of a container -- a member named so, a name or a member
+     it is bound to, a maker's call -- is followed up the tree through the
+     forms that only pass it on, to a form the scanner knows (a read, a test,
+     a binding it follows, the door's call, a pure global, a function of this
+     file) or it is reported: a write it cannot follow (`out: true`).  The
+     LEVEL of a value: 0 the container (or a copy of its list), 1 an item, 2 a
+     field of an item; a value at its container's plain level (an item of a
+     bag of counts, a field of a stash's piece) is a read and goes anywhere. */
+  if (opts.handout && CONTAINERS.size) handouts(opts.handout);
+  function handouts(H) {
+    const DOORS = new Set(H.doors || []);
+    const OBJECTS = new Set(H.objects || []);
+    const plain = (c) => (String(c).split('|').some((x) => OBJECTS.has(x)) && !String(c).split('|').some((x) => SHALLOW.has(x)) ? 2 : 1);
+    const level = new Map();   /* Binding -> 0 | 1 | 2 */
+    const fnLevel = new Map(); /* function path -> the lowest level it hands back */
+    let settled = false;
+    const up = (L) => (L == null ? null : Math.min(L + 1, 2));
+    const lo = (a, b) => (a == null ? b : (b == null ? a : Math.min(a, b)));
+    const isFn = (n) => !!n && (n.type === 'ArrowFunctionExpression' || n.type === 'FunctionExpression');
+    /* a container itself, by its own name, a holder's key, a member it was put into, a maker */
+    function directOf(node, path) {
+      if (node.type === 'MemberExpression' || node.type === 'OptionalMemberExpression') {
+        const ks = keysOf(node, path);
+        if (ks && ks.length && ks.every((k) => CONTAINERS.has(k))) return ks.join('|');
+        const h = holderOf(node.object, path);
+        if (h && ks && ks.length === 1 && h.has(ks[0])) return h.get(ks[0]);
+        const ma = memberAliasOf(node, path);
+        return ma ? ma.c : null;
+      }
+      if (node.type === 'CallExpression' && node.callee.type === 'Identifier' && Object.prototype.hasOwnProperty.call(MAKERS, node.callee.name)) return MAKERS[node.callee.name];
+      return null;
+    }
+    function levelOf(node, path, d = 0) {
+      if (!node || d > 8) return null;
+      switch (node.type) {
+        case 'ParenthesizedExpression': case 'TSNonNullExpression': return levelOf(node.expression, path, d + 1);
+        case 'AwaitExpression': return levelOf(node.argument, path, d + 1);
+        case 'SequenceExpression': return levelOf(node.expressions[node.expressions.length - 1], path, d + 1);
+        case 'AssignmentExpression': return lo(levelOf(node.right, path, d + 1), levelOf(node.left, path, d + 1));
+        case 'LogicalExpression': return node.operator === '&&' ? levelOf(node.right, path, d + 1) : lo(levelOf(node.left, path, d + 1), levelOf(node.right, path, d + 1));
+        case 'ConditionalExpression': return lo(levelOf(node.consequent, path, d + 1), levelOf(node.alternate, path, d + 1));
+        case 'Identifier': {
+          const b = path.scope.getBinding(node.name);
+          if (!b || !alias.has(b)) return null;
+          return level.has(b) ? level.get(b) : (settled ? 0 : null);   /* unknown while it settles; then a container (the safe side) */
+        }
+        case 'MemberExpression': case 'OptionalMemberExpression': {
+          if (directOf(node, path)) return 0;
+          const L = levelOf(node.object, path, d + 1);
+          if (L == null) return null;
+          const ks = keysOf(node, path);
+          if (ks && ks.length === 1 && READ_PROPS.has(ks[0])) return 2;
+          return up(L);
+        }
+        case 'CallExpression': case 'OptionalCallExpression': {
+          if (directOf(node, path)) return 0;
+          const c = node.callee;
+          /* `Object.entries(l)`: a list of [key, item] pairs, one level above the items (-1 for a container) */
+          if (GLOBAL_COPIERS.has(globalName(c))) { const L = levelOf(node.arguments[0], path, d + 1); return L != null && globalName(c) === 'Object.entries' ? L - 1 : L; }
+          if ((c.type === 'MemberExpression' || c.type === 'OptionalMemberExpression') && !c.computed && c.property.type === 'Identifier') {
+            const k = c.property.name;
+            const L = levelOf(c.object, path, d + 1);
+            if (L != null) {
+              if (ELEMENT_GETTERS.has(k) || GETTERS.has(k) || k === 'get') return up(L);
+              if (LIST_COPIERS.has(k)) return L;
+              return null;
+            }
+          }
+          /* a function of this file that hands one back: the lowest level it hands back */
+          const nm = c.type === 'Identifier' ? c.name : ((c.type === 'MemberExpression' || c.type === 'OptionalMemberExpression') && !c.computed && c.property.type === 'Identifier' ? c.property.name : null);
+          let F = null;
+          if (nm && fnsByName.has(nm)) for (const f of fnsByName.get(nm)) if (fnLevel.has(f)) F = lo(F, fnLevel.get(f));
+          if (F != null) return F;
+          return containerOf(node, path) ? (settled ? 0 : null) : null;
+        }
+        case 'ArrayExpression': {
+          let L = null;
+          for (const e of node.elements) {
+            if (!e) continue;
+            if (e.type === 'SpreadElement') L = lo(L, levelOf(e.argument, path, d + 1));
+            else { const x = levelOf(e, path, d + 1); if (x != null) L = lo(L, Math.max(x - 1, 0)); }
+          }
+          return L;
+        }
+        default: return null;
+      }
+    }
+    /* the level of each name bound to a container or an item of one, to a fixed point */
+    let grew = true;
+    const setL = (b, L) => {
+      if (!b || L == null || !alias.has(b)) return;
+      const o = level.get(b);
+      if (o === undefined || L < o) { level.set(b, L); grew = true; }
+    };
+    const bindPat = (path, t, L) => {
+      if (!t) return;
+      if (t.type === 'Identifier') { setL(path.scope.getBinding(t.name), L); return; }
+      if (t.type === 'AssignmentPattern') { bindPat(path, t.left, lo(L, levelOf(t.right, path))); return; }
+      if (t.type === 'RestElement') { bindPat(path, t.argument, L); return; }
+      if (t.type === 'ArrayPattern') { for (const e of t.elements) bindPat(path, e, up(L)); return; }
+      if (t.type === 'ObjectPattern') {
+        for (const p of t.properties) {
+          if (p.type === 'RestElement') { bindPat(path, p.argument, L); continue; }
+          const k = keyWords(p, path);
+          bindPat(path, p.value, k && k.every((x) => CONTAINERS.has(x)) ? 0 : up(L));
+        }
+      }
+    };
+    for (let i = 0; grew && i < 12; i++) {
+      grew = false;
+      traverse(ast, {
+        VariableDeclarator(path) { if (path.node.init) bindPat(path, path.node.id, levelOf(path.node.init, path)); },
+        ReturnStatement(path) {
+          const f = path.getFunctionParent();
+          const L = path.node.argument ? levelOf(path.node.argument, path) : null;
+          if (f && L != null && (!fnLevel.has(f) || L < fnLevel.get(f))) { fnLevel.set(f, L); grew = true; }
+        },
+        ArrowFunctionExpression(path) {
+          if (path.node.body.type === 'BlockStatement') return;
+          const L = levelOf(path.node.body, path.get('body'));
+          if (L != null && (!fnLevel.has(path) || L < fnLevel.get(path))) { fnLevel.set(path, L); grew = true; }
+        },
+        AssignmentExpression(path) { if (['=', '||=', '??=', '&&='].includes(path.node.operator) && path.node.left.type !== 'MemberExpression') bindPat(path, path.node.left, levelOf(path.node.right, path)); },
+        ForOfStatement(path) {
+          const l = path.node.left, t = l.type === 'VariableDeclaration' ? l.declarations[0].id : l;
+          bindPat(l.type === 'VariableDeclaration' ? path.get('left.declarations.0') : path, t, up(levelOf(path.node.right, path)));
+        },
+        CallExpression(path) {
+          const { callee, arguments: args } = path.node;
+          if ((callee.type === 'MemberExpression' || callee.type === 'OptionalMemberExpression') && !callee.computed && callee.property.type === 'Identifier'
+            && ELEMENT_CALLBACKS.has(callee.property.name) && isFn(args[0])) {
+            const prm = args[0].params[ELEMENT_CALLBACKS.get(callee.property.name)];
+            if (prm) bindPat(path.get('arguments.0'), prm, up(levelOf(callee.object, path)));
+          }
+          let name = null;
+          if (callee.type === 'Identifier') name = callee.name;
+          else if ((callee.type === 'MemberExpression' || callee.type === 'OptionalMemberExpression') && !callee.computed && callee.property.type === 'Identifier'
+            && (callee.object.type === 'ThisExpression' || callee.object.type === 'Identifier')) name = callee.property.name;
+          if (!name || !fnsByName.has(name)) return;
+          args.forEach((a, i) => {
+            if (a.type === 'SpreadElement') return;
+            const L = levelOf(a, path);
+            if (L == null) return;
+            for (const f of fnsByName.get(name)) if (f.node.params[i]) bindPat(f, f.node.params[i], L);
+          });
+        },
+      });
+    }
+    settled = true;
+    const followed = (b) => !!b && (alias.has(b) || copies.has(b) || holders.has(b));
+    /* up the tree from one appearance: null (a form the scanner knows) or why not */
+    function climb(path, L, c) {
+      const P = plain(c);
+      let x = path;
+      for (let guard = 0; guard < 60; guard++) {
+        if (L >= P) return null;
+        const p = x.parentPath;
+        if (!p) return null;
+        const n = p.node, me = x.node;
+        if (p.isParenthesizedExpression() || p.isTSNonNullExpression() || p.isAwaitExpression()) { x = p; continue; }
+        if (p.isLogicalExpression()) { if (n.left === me && n.operator === '&&') return null; x = p; continue; }
+        if (p.isConditionalExpression()) { if (n.test === me) return null; x = p; continue; }
+        if (p.isSequenceExpression()) { if (n.expressions[n.expressions.length - 1] !== me) return null; x = p; continue; }
+        if ((p.isMemberExpression() || p.isOptionalMemberExpression()) && n.property === me) return null;   /* used as a key: read */
+        if ((p.isMemberExpression() || p.isOptionalMemberExpression()) && n.object === me) {
+          const ks = keysOf(n, p);
+          const k = ks && ks.length === 1 ? ks[0] : null;
+          const gp = p.parentPath;
+          if (gp && (gp.isCallExpression() || gp.isOptionalCallExpression()) && gp.node.callee === n) {
+            if (k == null) return 'a method the tree cannot know';
+            if (LIST_CHANGERS.has(k)) return null;                 /* a write: the scan's own */
+            if (READ_METHODS.has(k)) return null;
+            if (ELEMENT_CALLBACKS.has(k)) {
+              const cb = gp.node.arguments[0];
+              const pureCb = cb && cb.type === 'Identifier' && PURE_CALLS.has(cb.name) && !gp.scope.getBinding(cb.name);   /* `.filter(Boolean)` */
+              if (!isFn(cb) && !pureCb) return 'its items handed to a callback the scanner cannot follow (.' + k + ')';
+              if (k === 'find' || k === 'findLast') { x = gp; L = up(L); continue; }
+              if (k === 'filter' || k === 'map' || k === 'flatMap') { if (P === 1) return null; x = gp; continue; }
+              return null;                                         /* forEach, some, every, findIndex, reduce: the callback is followed */
+            }
+            if (ELEMENT_GETTERS.has(k) || GETTERS.has(k) || k === 'get') { x = gp; L = up(L); continue; }
+            if (LIST_COPIERS.has(k)) { if (P === 1) return null; x = gp; continue; }   /* a copy of a list of values is a value */
+            return 'a method the scanner cannot follow (.' + k + ')';
+          }
+          if (k && READ_PROPS.has(k)) return null;
+          x = p; L = up(L); continue;                              /* an item, or a field of one */
+        }
+        if ((p.isCallExpression() || p.isOptionalCallExpression()) && n.arguments.includes(me)) {
+          const cal = n.callee;
+          const g = globalName(cal);
+          const name = cal.type === 'Identifier' ? cal.name : ((cal.type === 'MemberExpression' || cal.type === 'OptionalMemberExpression') && !cal.computed && cal.property.type === 'Identifier' ? cal.property.name : null);
+          if (name && DOORS.has(name)) return null;
+          if (PURE_CALLS.has(g) || PURE_CALLS.has(srcOf(code, cal)) || (cal.type === 'Identifier' && PURE_CALLS.has(cal.name) && !p.scope.getBinding(cal.name))
+            || ((cal.type === 'MemberExpression' || cal.type === 'OptionalMemberExpression') && cal.object.type === 'Identifier' && cal.object.name === 'Math' && !p.scope.getBinding('Math'))) return null;
+          if (GLOBAL_COPIERS.has(g)) { if (P === 1) return null; x = p; if (g === 'Object.entries') L -= 1; continue; }
+          if (name && fnsByName.has(name) && (cal.type === 'Identifier' || cal.object.type === 'ThisExpression' || cal.object.type === 'Identifier')) return null;
+          return 'handed to ' + srcOf(code, cal).slice(0, 60) + '(...), a function the scanner cannot follow';
+        }
+        if (p.isNewExpression()) return 'handed to new ' + srcOf(code, n.callee).slice(0, 40);
+        if (p.isSpreadElement()) {
+          const gp = p.parentPath;
+          if (gp.isArrayExpression()) { if (P === 1) return null; x = gp; continue; }   /* a copy of the list: the same items */
+          if (gp.isObjectExpression()) { x = gp; L = up(L); continue; }               /* a new object holding its keys' values: one level down */
+          return 'spread into a call';
+        }
+        if (p.isArrayExpression()) return 'an element of a list written out';
+        if (p.isObjectProperty() && n.value === me) return 'the value of a property of an object written out';
+        if (p.isVariableDeclarator() && n.init === me) {
+          if (n.id.type !== 'Identifier') return null;           /* a pattern: the scan follows it, or reports it */
+          return followed(p.scope.getBinding(n.id.name)) ? null : 'bound to a name the scanner does not follow';
+        }
+        if (p.isAssignmentExpression()) {
+          if (n.left === me) return null;                          /* put: a write, the scan's own */
+          if (n.left.type === 'Identifier') return followed(p.scope.getBinding(n.left.name)) ? null : 'bound to a name the scanner does not follow';
+          if (n.left.type === 'MemberExpression' || n.left.type === 'OptionalMemberExpression') {
+            const ks = keysOf(n.left, p);
+            if (memberAliasOf(n.left, p) || insideOf(n.left, p) || (ks && ks.some((k) => FIELDS.has(k)))) return null;
+            return 'put into a member the scanner does not follow';
+          }
+          return null;
+        }
+        if (p.isUpdateExpression() || p.isUnaryExpression() || p.isBinaryExpression()) return null;
+        if (p.isIfStatement() || p.isWhileStatement() || p.isDoWhileStatement() || p.isForStatement() || p.isSwitchStatement()
+          || p.isSwitchCase() || p.isExpressionStatement() || p.isTemplateLiteral() || p.isForInStatement()) return null;
+        if (p.isForOfStatement()) return n.right === me ? null : 'a loop\'s target';
+        if (p.isReturnStatement() || (p.isArrowFunctionExpression() && n.body === me)) return 'handed back (a return)';
+        return 'a form the scanner has no rule for (' + n.type + ')';
+      }
+      return null;
+    }
+    const report = (path, node, c, L) => {
+      const why = climb(path, L, c);
+      if (why) add(path, node, c, true, 'cannot follow: ' + why, { text: srcOf(code, node) }, { out: true });
+    };
+    traverse(ast, {
+      'MemberExpression|OptionalMemberExpression'(path) {
+        const c = directOf(path.node, path);
+        if (c) report(path, path.node, c, 0);
+      },
+      CallExpression(path) { const c = path.node.callee.type === 'Identifier' ? directOf(path.node, path) : null; if (c) report(path, path.node, c, 0); },
+      Identifier(path) {
+        if (!path.isReferencedIdentifier()) return;
+        const b = path.scope.getBinding(path.node.name);
+        if (!b || !alias.has(b)) return;
+        report(path, path.node, alias.get(b), level.has(b) ? level.get(b) : 0);
+      },
+    });
+  }
   /* v2.3.6441 (sitting 58): what the scanner could not follow is a write (deny by default) */
   for (const u of unfollowed.values()) add(u.path, u.node, u.field, true, u.how, { text: srcOf(code, u.node) });
   out.sort((a, b) => a.line - b.line);
@@ -916,7 +1265,8 @@ export function doorWrites(code, opts = {}) {
     for (const w of writesOf(code[f], { ...opts, file: f })) {
       if (opts.keep && !opts.keep(w)) continue;
       writes.push(w);
-      const row = listed.find((r) => r.file === f && r.fn === w.fn && r.field === w.field);
+      /* v2.3.6446 (sitting 59): a container handed where the scanner cannot follow it (`out: true`) is its own row */
+      const row = listed.find((r) => r.file === f && r.fn === w.fn && r.field === w.field && !!r.out === !!w.out);
       if (row) got.get(row).push(w);
       else found.push(w);
     }
