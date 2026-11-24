@@ -44,21 +44,31 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const SERVER = join(HERE, '..');
 
 /* The slowest suites, started first so the run does not end on one of them
-   alone (measured 2026-10-17, ms): the rest take under two seconds each.  A
-   stale list only costs the tail a few seconds. */
+   alone.  v2.3.6423 (card CK PR 4): measured again 2026-11-24, ms, 4 at a
+   time on a session's 4-vCPU box, the way a documents branch runs it
+   (`cd server && BT_THROWN_CHANGED= BT_ASSETS_BASE=HEAD node test/run.mjs`:
+   582 suites, 153 s, 600 s summed); the list of 2026-10-17 had one of the
+   six slowest (aggro-grid).  claims-gain alone is most of the run's floor:
+   started first, the other three lanes share the rest.  Every other suite
+   takes under five seconds.  A stale list only costs the tail a few
+   seconds. */
 const SLOW_FIRST = [
-  'aggro-grid',    // 12,151 (4 at a time on the QA box; 8,262 alone)
-  'cost-guard',    // 10,959
-  'near-join',     //  7,432
-  'slim-roster',   //  6,475
-  'presence2',     //  6,359
-  'tick-share',    //  3,272
-  'quiet-phone',   //  2,970
-  'look-relay',    //  2,581
-  'steady-movers', //  2,404
-  'far-players',   //  2,235
-  'move-diet',     //  2,110
-  'farm',          //  2,094
+  'claims-gain',            // 127,954
+  'heap-forget',            //  36,803
+  'aggro-grid',             //  21,022
+  'login-keys',             //  20,473
+  'relay-bytes',            //  15,304
+  'ground-waits',           //  15,082
+  'guards/phase-table',     //  13,733
+  'guards/switches-thrown',  //  13,552
+  'league',                 //  11,126
+  'storm',                  //  10,375
+  'cost-guard',             //   9,873
+  'power',                  //   9,168
+  'wire-hostile',           //   7,595
+  'roomrow',                //   6,585
+  'inflate-raw',            //   6,307
+  'presence2',              //   5,303
 ];
 
 const args = process.argv.slice(2);

@@ -13,6 +13,14 @@
  *   2. merges each branch into it (origin/<branch>; a branch only this
  *      machine has is used and SAID to be local);
  *   3. runs, in the merged tree:   node tools/dev/precheck.mjs
+ *                                    (v2.3.6421: with BT_ASSETS_WHOLE=1,
+ *                                    the asset guards hash every file,
+ *                                    once a sitting; a PR hashes only
+ *                                    what is not main's by git's ids)
+ *                                  node tools/guards/switches-thrown.test.mjs --whole
+ *                                    (v2.3.6420: every switch born since
+ *                                    5301 thrown, once a sitting; a PR
+ *                                    throws only what it can break)
  *                                  npm run build
  *                                  node tools/qa/mp/run.mjs questline
  *   4. prints each command's result and the merged tree's hash, and takes
@@ -52,7 +60,20 @@ const STEPS = [
      min: tools/dev/precheck.mjs) and its other checks take a few minutes, so
      this cap is above their sum: a precheck stopped here is a hang, never
      a slow box's honest run. */
-  { id: 'precheck', say: 'node tools/dev/precheck.mjs', cmd: 'node', argv: ['tools/dev/precheck.mjs'], mins: 70 },
+  /* v2.3.6420 (card CK PR 1): precheck leaves switches-thrown to the step
+     after it (BT_THROWN_BY_GATEKEEPER), which throws the WHOLE set once a
+     sitting: on a PR it throws only what the PR can break and a few chosen by
+     the commit (tools/guards/switches-thrown.test.mjs, its header). */
+  /* v2.3.6423 (card CK PR 4): so precheck here is its other checks and the
+     rest of the suite (capped at 10 min there): the whole of it took 151 s
+     on a session's box, 2026-11-24 (`BT_THROWN_BY_GATEKEEPER=1
+     BT_ASSETS_WHOLE=1 node tools/dev/precheck.mjs`).  25 minutes is above
+     the sum of every cap precheck holds (the rest 10, its other checks'
+     4 + 2 + 7 x 1), so a precheck stopped here is still a hang, never a
+     slow box's honest run; it was 70, when precheck ran the slow guard
+     itself. */
+  { id: 'precheck', say: 'node tools/dev/precheck.mjs', cmd: 'node', argv: ['tools/dev/precheck.mjs'], mins: 25, env: { BT_THROWN_BY_GATEKEEPER: '1', BT_ASSETS_WHOLE: '1' } },
+  { id: 'thrown', say: 'node tools/guards/switches-thrown.test.mjs --whole', cmd: 'node', argv: ['tools/guards/switches-thrown.test.mjs', '--whole'], mins: 40, withPrecheck: true },
   { id: 'build', say: 'npm run build', cmd: 'npm', argv: ['run', 'build'], mins: 15 },
   { id: 'questline', say: 'node tools/qa/mp/run.mjs questline', cmd: 'node', argv: ['tools/qa/mp/run.mjs', 'questline'], mins: 40 },
 ];
@@ -62,7 +83,11 @@ if (!branches.length || (untilArg && !['precheck', 'build'].includes(untilArg)))
     + '  It merges nothing for real.');
   process.exit(2);
 }
-const steps = untilArg ? STEPS.slice(0, STEPS.findIndex((s) => s.id === untilArg) + 1) : STEPS;
+/* v2.3.6420: a step `withPrecheck` runs whenever precheck does (--until=precheck
+   included): it is the part of precheck's checks the gatekeeper runs whole */
+let upTo = untilArg ? STEPS.findIndex((s) => s.id === untilArg) + 1 : STEPS.length;
+while (upTo < STEPS.length && STEPS[upTo].withPrecheck) upTo++;
+const steps = STEPS.slice(0, upTo);
 
 /* v2.3.6307 (card RR PR 3): a step as the leader of its own process group,
    stopped whole at its cap (SIGTERM, then SIGKILL 10 s on), and whatever of
@@ -70,9 +95,9 @@ const steps = untilArg ? STEPS.slice(0, STEPS.findIndex((s) => s.id === untilArg
    are stopped too if this script is (Ctrl-C). */
 const _groups = new Set();
 for (const sig of ['SIGTERM', 'SIGINT', 'SIGHUP']) process.on(sig, () => { for (const pid of _groups) { try { process.kill(-pid, 'SIGKILL'); } catch { /* gone */ } } process.exit(130); });
-function runGroup(cmd, args, { cwd, capS }) {
+function runGroup(cmd, args, { cwd, capS, env }) {
   return new Promise((resolve) => {
-    const child = spawn(cmd, args, { cwd, env: process.env, detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
+    const child = spawn(cmd, args, { cwd, env: { ...process.env, ...(env || {}) }, detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
     _groups.add(child.pid);
     let out = '';
     const take = (d) => { if (out.length < 256 * 1024 * 1024) out += d; };
@@ -171,7 +196,7 @@ for (const s of steps) {
   /* v2.3.6307: run in a process group of its own and, at the cap, the whole
      group stopped -- spawnSync killed only the command, and a precheck's
      run.mjs (or a scenario's worker and browser) ran on after it */
-  const r = await runGroup(s.cmd, s.argv, { cwd: tree, capS: s.mins * 60 });
+  const r = await runGroup(s.cmd, s.argv, { cwd: tree, capS: s.mins * 60, env: s.env });
   const out = r.out;
   const log = join(logs, s.id + '.log');
   writeFileSync(log, out);
@@ -179,7 +204,7 @@ for (const s of steps) {
   const secs = Math.round((Date.now() - t0) / 1000);
   const lines = out.trim().split('\n');
   /* the lines a person needs: precheck's FAILs and verdict, a scenario's FAILs and count, else the tail */
-  const telling = lines.filter((l) => /^FAIL\b|^\s+FAIL\s|BLOCKED|OK TO PUSH|assertions, |✓ built|error during build/.test(l));
+  const telling = lines.filter((l) => /^FAIL\b|^\s+FAIL\s|BLOCKED|OK TO PUSH|assertions, |✓ built|error during build|^ok\s+thrown \(/.test(l));
   results.push({ ...s, ok, code: r.status, timedOut: r.timedOut, secs, log, show: (ok ? telling.slice(-2) : (telling.length ? telling.slice(0, 25) : lines.slice(-15))) });
   console.log(`  ${ok ? 'PASS' : 'FAIL'}      ${s.say}   (${secs} s${ok ? '' : r.timedOut ? `, stopped at its ${s.mins}-minute cap (the run's processes with it)` : r.status === null ? ', killed' : ', exit ' + r.status})`);
   for (const l of results[results.length - 1].show) console.log('              ' + l.slice(0, 300));
