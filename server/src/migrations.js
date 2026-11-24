@@ -49,6 +49,7 @@
 
 import { t2ReplayFlat } from './data.js';
 import { ECON_V } from './gold.js';   /* v2.3.5085: `_econ`'s shape number, one place */
+import { sitCleanInto } from './sitting.js';   /* v2.3.6481: the sitting's card, inside `_econ` (card WHO PR 2) */
 import { prog3FromLegacy, prog3SplitAtk, prog3GrantRetroPoints, prog3MoveElemToAtk,
   prog3FoldLuck, prog3GrantSharedPoints /* v2.3.2592 */, prog3Redeal /* v2.3.3538 */ } from './prog3.js';
 import { normalizeGearStashes } from './gearstash.js';
@@ -77,7 +78,7 @@ export const RPG_SCHEMA_VERSION = 22;   /* v2.3.3895: 18 -> 19, swords-become-gr
  * migrations.test §econ.  Card Q puts the open sitting's card inside it,
  * under a key of its own (step 10.2): never a third field.
  *
- *   _econ: { v: 1,
+ *   _econ: { v: 2,   (v2.3.6481: 1 -> 2, + `s` and `sh`, the sitting's card: sitting.js)
  *            g: { m, b },              gold minted, burned (whole coins)
  *            i: { <bag key>: { m, b } } each bag key's, by itself }
  *
@@ -126,7 +127,13 @@ export function econClean(raw) {
       n++;
     }
   }
-  return out;
+  /* v2.3.6481 (card WHO PR 2; SHAPES part 7, "Open": the card goes INSIDE
+     `_econ`, under keys of its own -- the orchestrator's yes for this file):
+     the open sitting's card `s` and the closed ones `sh`, made safe by their
+     one writer (sitting.js).  ECON_V 1 -> 2: a v1 record has neither and
+     reads as before; a worker rolled back to v1 keeps a v2 `_econ` whole
+     (the line at the top) and counts nothing into it. */
+  return sitCleanInto(out, raw);
 }
 
 /* Pure version of the v2.3.769 heal (was GameRoom._healLifeSkills):

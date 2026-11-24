@@ -176,7 +176,9 @@ const DAY0 = '20261114';
   bookAdd(r3, 'room', { x: 1 }, T0); await r3._daybook.putting;   /* the worker's first put, out of the way (v2.3.5085: `econ` rides, it starts none) */
   let filled = 0;
   while (bookAdd(r3, 'dev', { ['n' + filled]: 1 }, T0 + 1)) filled++;
-  check(`2c. a part takes numbers until it reaches PART_BYTES (${filled} numbers), then refuses`, filled > 100 && bookBytes(r3._daybook.days.get(DAY0).parts.dev) <= DAYBOOK.PART_BYTES, filled);
+  /* v2.3.6500 (card PH PR 1): `dev` has a line of its own (PART_BYTES_OF), as `send` has */
+  const DEV_BYTES = DAYBOOK.PART_BYTES_OF.dev || DAYBOOK.PART_BYTES;
+  check(`2c. a part takes numbers until it reaches its line (${filled} numbers), then refuses`, filled > 100 && bookBytes(r3._daybook.days.get(DAY0).parts.dev) <= DEV_BYTES && bookBytes(r3._daybook.days.get(DAY0).parts.dev) > DEV_BYTES - 64, filled);
   check('2c. ...another part is not full', bookAdd(r3, 'speed', { all: [60, 16, 20, 9] }, T0 + 2) === true);
   await bookPut(r3, T0 + 3);
   const rec3 = st3._store.get(bookKey(DAY0));
@@ -186,7 +188,7 @@ const DAY0 = '20261114';
   await bookPut(r3, T0 + 5);
   const rec3b = st3._store.get(bookKey(DAY0));
   check('2c. ...at the write a new number past the line is refused and counted, an add to a number it has lands', rec3b.dev.n0 === 5 && !(longKey in rec3b.dev) && rec3b.over.dev === 2, rec3b.over);
-  check('2c. ...the stored part is still within PART_BYTES', bookBytes(bookNormalize(rec3b, DAY0).dev) <= DAYBOOK.PART_BYTES);
+  check('2c. ...the stored part is still within its line', bookBytes(bookNormalize(rec3b, DAY0).dev) <= DEV_BYTES);
   /* the worst case: every part full of the longest keys, the deepest trees,
      the widest numbers -- the reckoning is an upper bound of the JSON, and
      the whole day fits a stored value */

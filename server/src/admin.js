@@ -146,6 +146,7 @@ export const EXPORT = Object.freeze({
     'lspin:': 'keyed by a device\'s id',
     'friend_msg:': 'the words one player sent another',
     'bro_link:': 'a wallet\'s address',
+    'play_trace:': 'a recording of the owner\'s play (v2.3.6482, playtrace.js): what a phone sent, not the character',
   }),
   ID_RE: /^[A-Za-z0-9_.-]{1,120}$/,
   CURSOR_MAX: 400,
@@ -524,6 +525,10 @@ export const adminMethods = {
           adminLock: this._adminLockInfo(),
           /* v2.3.5711: a flood, seen (the tally above; memory only) */
           floodTally: this._floodTallyInfo(),
+          /* v2.3.6443 (card DG PR 4): the wire door's refusals by row and why,
+             and the fields out of their form by type and field, with the
+             forms' mode (wire/door.js _wireDoorInfo; memory only) */
+          wireDoor: this._wireDoorInfo ? this._wireDoorInfo() : null,
           /* v2.3.3240: the 2 s look relay -- tracks in, and how many went out
              whole, as only what changed, or not at all (lookrelay.js) */
           lookRelay: this._lookInfo(),

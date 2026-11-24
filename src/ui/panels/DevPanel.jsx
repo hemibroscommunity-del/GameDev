@@ -15,6 +15,8 @@ import { loadTimes, loadTimesText } from '../../game/loadTimes.js';   /* v2.3.50
 import { openSoundStudio } from '../../game/soundStudio.js';   /* v2.3.3523: every sound and where it plays */
 import { CLIENT_SAVERS, clientOffNow } from '../../game/clientOff.js';   /* v2.3.3755: the Memory savers row */
 import { expoAddressFlags, expoAddressWords } from '../../game/expoAddress.js';   /* v2.3.4158: the expo's one-Wi-Fi switch */
+import { twoButtonsOn, twoButtonsChoose } from '../../game/manualCombat.js';   /* v2.3.6544: the two buttons' row (card CT PR 5) */
+import { pageAddress } from '../../game/switches.js';   /* v2.3.6544: the page's address through the one reader (switch-reader check 3), for the two buttons' row */
 import { oneBandActive, setOneBand } from '../oneBand.js';   /* v2.3.4072: the one dashboard (v2.3.4152: the row is its off switch) */
 import { loadAdminKey, saveAdminKey, forgetAdminKey, pageStores } from '../../game/adminKeyStore.js';   /* v2.3.5718: the key for the session, or remembered on this device */
 
@@ -335,6 +337,7 @@ const CAP_GATES = [
   'bowPath' /* v2.3.5905 (card K4): the bow's path (server/src/bowshot.js): a claim held to its arrow's line, the relay sent at release -- ON since v2.3.5906, off with `bowpath: false` */,
   'harvestGrade' /* v2.3.5900 (card K4): the harvest's grade judged (server/src/harvestgrade.js): a perfect only after an honest gesture's time, at most 15 in 20 -- ON since v2.3.5906, off with `harvestgrade: false` */,
   'reqid' /* v2.3.5546: a repeat acts once (server/src/reqonce.js): the action door may re-send a request it heard nothing from, with the same id -- lower case, a kill switch (`reqonce`) */,
+  'wireForm' /* v2.3.6443: the wire door holds a named field to its form (server/src/wire/door.js WIRE_FORM) -- lower case, a kill switch (`wireform`) */,
   'accuracy' /* v2.3.4545: shots and hits a weapon (server/src/accuracy.js): the phone numbers its basic shots and the Journey page shows how many hit -- lower case, a kill switch */,
 ];
 /* v2.3.3732: caps that are OFF by default on purpose -- an opt-in, not a job
@@ -961,6 +964,26 @@ export const DevPanel = ({ onClose }) => {
         <button type="button" style={btn(!oneBandActive())} data-dev-one-band={oneBandActive() ? 'on' : 'off'}
           onClick={() => setOneBand(!oneBandActive())}>
           {oneBandActive() ? 'Use the side column (old layout)' : 'Back to the dashboard at the bottom'}
+        </button>
+
+        {/* ═══ v2.3.6544: THE TWO BUTTONS (card CT PR 5: a trial) ═══
+            The owner, 2026-11-23: "there's just an attack and jump button".
+            Keyless, as the row above: the installed app has no address bar
+            for ?manual=5.  It sets the same remembered choice (manualCombat.js
+            twoButtonsChoose, handed switches.js pageAddress: v2.3.6544) and the
+            page reloads into it.  A touch screen's:
+            a computer's keys and mouse do not change. */}
+        <div style={label}>Controls: two sticks / two buttons</div>
+        <div style={{ color: COL.muted, fontSize: 12, marginBottom: 7, lineHeight: 1.4 }}>
+          {twoButtonsOn() ? 'Now: two buttons. ' : 'Now: two sticks. '}
+          Two buttons is a trial on a phone or tablet: the left stick turns, then walks; Attack locks onto the
+          monster in your sight line and keeps fighting until you press it again; Block and the specials come
+          up around it while a monster is in sight. The game reloads, and this device keeps the choice until you
+          switch it back here.
+        </div>
+        <button type="button" style={btn(twoButtonsOn())} data-dev-controls={twoButtonsOn() ? 'buttons' : 'sticks'}
+          onClick={() => { location.replace(twoButtonsChoose(!twoButtonsOn(), pageAddress())); }}>
+          {twoButtonsOn() ? 'Back to two sticks' : 'Play with two buttons'}
         </button>
 
         {!key && (

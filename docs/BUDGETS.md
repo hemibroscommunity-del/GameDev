@@ -13,7 +13,9 @@ says what exists TODAY:
 - **The line**: the number that may not be passed, and the file a test holds
   it in. Blank where there is none.
 - **Reads**: what measures it.
-- **Spends**: what uses some of it.
+- **Spends**: what uses some of it. How much is **not measured** for any
+  system today (v2.3.6525: every spend in the guard's table is `null`, or
+  its row names none; part 9 says how a number gets in).
 - **Controls**: what CHANGES the game because of it (a rate, a cap, a
   quality, a refusal). Rule 6 wants one controller for each signal.
 - **SECOND**: a controller of a signal another controller already acts on.
@@ -474,11 +476,17 @@ Rule 6's table, for card B's guard. Each system, one row, in a table of code:
 |---|---|
 | `system` | its files (card B's map) |
 | `reads` | the shared things it measures |
-| `spends` | the shared things it uses, and how much: ms a frame, MB, rows an hour, messages a second |
+| `spends` | the shared things it uses, and how much: ms a frame, MB, rows an hour, messages a second. `null`, or a row that names none: **not measured** (not "spends nothing") |
 | `controls` | the ONE signal it acts on, if any |
 
 The guard fails a signal two rows control, and a sum of `spends` over its
-line. Parts 1 to 7 are the rows as they are today; part 8 is what the guard
+line. **Paper marked as paper** (v2.3.6525, card WL): the sum counts only the
+rows that MEASURED a spend (a finite number, 0 or more); a spend that is
+neither `null` nor a measure fails; a thing with no measured spender prints
+"not measured: no sum checked", never a pass. On 2026-11-24 nothing is
+measured: `page-ms` has 4 spenders and `messages` 2, all `null`, and 19 of
+the 33 rows name no spend. A number goes in only with the run that measured
+it, named beside it (`tools/guards/lib/budgets.mjs`). Parts 1 to 7 are the rows as they are today; part 8 is what the guard
 would fail on its first run. Rule 3 says how such a table lands: a census
 whose count of unlisted things may only fall, made strict by the gatekeeper
 alone.

@@ -425,6 +425,8 @@ import { _swingBehind, _projSrcPx, readDmgScale, _mixHex, DMG_BMP_FONT, DMG_WORD
 import { _hexTint, LOOT_POP, _hash, landAgeOf, applySquash, pileLayout, MOTE_TEX, makeBeamTexture, makeMoteTexture } from '../leaves/effects-economy.js';   /* v2.3.6220: the economy system's leaves, moved verbatim (card FX) */   /* v2.3.6221: + pileLayout */   /* v2.3.6223: + MOTE_TEX, makeBeamTexture, makeMoteTexture */
 import { _localBuild, _peerBuild, _standInSheet, _probeStandInSkin, _dressedKeyOf, _shirtLookOf, _standInColourKey, _twinWouldDiffer, LEGS_LOOK_OFF, _standInLook, _legsLookHas, _peerStandInColours, _localStandInColourKey } from '../leaves/effects-look.js';   /* v2.3.6220: the look system's leaves, moved verbatim (card FX) */   /* v2.3.6221: + LEGS_LOOK_OFF, _standInLook, _legsLookHas, _peerStandInColours, _localStandInColourKey */
 import { _peerNotDrawn, clearIfDrawn } from '../leaves/effects-render.js';   /* v2.3.6220: the render system's leaves, moved verbatim (card FX) */
+import { beamStream } from '../leaves/effects-sight.js';   /* v2.3.6543: the bow's stream (card CT PR 4) */
+import { drawSightLine } from '../sightLineDraw.js';   /* v2.3.6544: the two buttons' sight line, its QA record off the leaf (main's leaves guard; card CT PR 5) */
 import { _chopArtAsymmetric, _peerChopArt, _chopKeyMask, COOK_FW, COOK_FH, _loadStandInImg, _bakeCookSplit, placeFarmFigProxy, makeFarmFigProxy, chopStandInSpot, cookStandInSpot, FIRE_FW, FIRE_FH, _fireFrameShift, _litLogKey, _figBytes, _crossedFrame } from '../leaves/effects-skills.js';   /* v2.3.6220: the skills system's leaves, moved verbatim (card FX) */
 import { bandWithEmote } from '../leaves/effects-social.js';   /* v2.3.6220: the social system's leaves, moved verbatim (card FX) */
 import { POPUP_ZOOM, POPUP_WORLD, popupZoomK, MSG_WRAP_W, msgWrapW, _tightPopupIcon, isAsciiOnly, wrapMessage } from '../leaves/effects-ui.js';   /* v2.3.6220: the ui system's leaves, moved verbatim (card FX) */   /* v2.3.6221: + wrapMessage (and MSG_MAX_LINES, which only it reads) */
@@ -8508,53 +8510,10 @@ export class EffectsRenderer {
            that it tells you what you can hit.
            The `: 95` arm stays unreachable-but-honest, as it was. */
         const lineLen = _beamLen;   /* hoisted above the probe -- v2.3.2448 */
-        const halfW = 2;          // half-width of beam at neutral
-        const waveAmp = 1.6;      // edge wave amplitude in px
-        const waveLen = 42;       // px per wave cycle along the beam
-        const phase = (now / 600) * Math.PI * 2;  // ~600 ms per wave-shift
-        /* v2.3.2448: SEGMENTS FOLLOW THE LENGTH.  24 of them over 280 px was
-           ~12 px per step, comfortably inside the 42 px wave cycle.  Left
-           fixed over 675+ px each step spans ~28 px -- two thirds of a cycle --
-           and the sine is sampled so coarsely that the edges read as a zigzag
-           of straight chords instead of a flowing stream.  Same ~12 px step at
-           any length, floored at the old count so nothing shortens. */
-        const segments = Math.max(24, Math.round(lineLen / 12));
-        const cosA = Math.cos(aimA), sinA = Math.sin(aimA);
-        // Perpendicular unit vector (rotate aim by +90°).
-        const perpX = -sinA, perpY = cosA;
-        /* v2.3.938: for a bow, start the beam at the teal grip (where the arrow
-           actually launches from, published by the bow stand-in) instead of the
-           player's feet, so the arrow flies down the MIDDLE of the line of
-           sight rather than parallel-and-offset to it.  Staff/melee keep the
-           feet origin; if no grip has been published yet, fall back to feet. */
-        /* v2.3.2320: the origin is the one hoisted above the probe — the same
-           point the angle was measured from, and the same point the probe
-           reports.  It used to be recomputed here, which is how the beam came
-           to draw from the grip along an angle taken from the feet. */
-        const originX = _beamOrigin.x;
-        const originY = _beamOrigin.y;
-        const top = [];
-        const bot = [];
-        for (let i = 0; i <= segments; i++) {
-          const t = i / segments;
-          const dist = t * lineLen;
-          const bx = originX + cosA * dist;
-          const by = originY + sinA * dist;
-          // Wave moves backward along the beam over time (phase increases).
-          const wavePos = (dist / waveLen) * Math.PI * 2 - phase;
-          const topW = halfW + Math.sin(wavePos) * waveAmp;
-          const botW = halfW + Math.sin(wavePos + Math.PI) * waveAmp;
-          top.push(bx + perpX * topW, by + perpY * topW);
-          bot.push(bx - perpX * botW, by - perpY * botW);
-        }
-        // Build closed polygon: top forward, then bottom in reverse.
-        gfx.moveTo(top[0], top[1]);
-        for (let i = 2; i < top.length; i += 2) gfx.lineTo(top[i], top[i + 1]);
-        for (let i = bot.length - 2; i >= 0; i -= 2) gfx.lineTo(bot[i], bot[i + 1]);
-        gfx.closePath();
-        gfx.fill({ color: 0xffffff, alpha: 0.2 });
+        beamStream(gfx, _beamOrigin, aimA, lineLen, now);   /* v2.3.6543: the stream's drawing moved verbatim to ../leaves/effects-sight.js, where the two buttons' sight line draws it too (card CT PR 4) */
         }
       }
+      drawSightLine(gfx, S, now, shouldDraw && isBow);   /* v2.3.6543: the two buttons' sight line, to the monster in sight (../leaves/effects-sight.js; card CT PR 4) */
     }
 
     /* ═══ v2.3.1704: THE SHIELD CONE ═══

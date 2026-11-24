@@ -13,7 +13,7 @@
  * (the deploy-order safety surface -- see docs/WIRE-PROTOCOL.md).
  * The switch case now delegates: `await this._handleJoin(...)`. */
 
-import { healLifeSkills, healLifeSkillLevels /* v2.3.3041 */, freshLifeSkills /* v2.3.3138 */, econClean /* v2.3.5084 */ } from './migrations.js';
+import { healLifeSkills, healLifeSkillLevels /* v2.3.3041 */, freshLifeSkills /* v2.3.3138 */, econClean /* v2.3.5084 */, ECON /* v2.3.6481 */ } from './migrations.js';
 import { trapBootstrapGuard } from './trapping.js'; /* v2.3.3120: no pets or Trapping level from a first connect */
 import { t2ReplayFlat, COOKING_RECIPES } from './data.js';   /* v2.3.3130: caps.cookRows */
 import { FARM_CROP_IDS } from './farm.js';   /* v2.3.3131: caps.farmCrops */
@@ -31,6 +31,9 @@ import { requestIp } from './flood.js';   /* v2.3.5604 (mend): a refusal counted
 import { questLoad } from './queststate.js';   /* v2.3.5284: quest state's door (card R PR 5) */
 import { xpSet } from './xp.js';   /* v2.3.5289: experience and levels' door (card R PR 10) */
 import { tidyCharName } from './charname.js';   /* v2.3.5622: a name with no record held to the rule (the sitting 19 review) */
+import { actorSocket, actorOff, stintNext } from './actor.js';   /* v2.3.6480: the actor, made once at the join (card WHO PR 1) */
+import { sitOpen, sitOff, sitForget } from './sitting.js';   /* v2.3.6481: the sitting's card, opened or carried on (card WHO PR 2) */
+import { traceBegin, traceOff } from './playtrace.js';   /* v2.3.6482: the owner's play recorded, the first human record (card WHO PR 3) */
 import { lookColor, lookAvatar } from './lookform.js';   /* v2.3.5733 (card RV's S2, the join's half): a look's colour and avatar held to their forms */
 
 /* ═══ v2.3.1627: the JOIN DATA ALLOWLIST ═══
@@ -935,6 +938,7 @@ export const joinMethods = {
     }
     session.id = msg.id;
     session.phase = 'joined';   /* v2.3.4830: the session's life (leave.js) */
+    /* v2.3.6480: the actor is made below, once the record is loaded (v2.3.6481) */
     /* v2.3.1970: see sanitizeDisplayName above -- this is the copy the
        state_sync nameplate and the hiscores row are built from. */
     session.name = sanitizeDisplayName(msg.name);
@@ -1097,6 +1101,21 @@ export const joinMethods = {
        server's own defaults (v2.3.3138, below), persisted so
        every later connect uses the stored value.
        v2.3.4455: not for a kept body -- it IS the live record (bodytake.js) */
+    /* ═══ v2.3.6481: THE SITTING'S CARD (sitting.js; card WHO PR 2) ═══
+       Opened or carried on once the record is the live one, before the
+       join's own save (no put of its own): a card touched inside the gap
+       goes on with its stint, an older one -- cut by a deploy, a crash, a
+       walk away -- is closed at its last saved moment.  A record whose
+       `_econ` is a NEWER shape is left whole (null: the actor takes a stint
+       of its own); `sitting: false` opens nothing. */
+    let _sitStint = null;
+    const _sitJoin = (ps) => {
+      sitForget(this, ps);   /* v2.3.6481 (sitting 59): a card this join does not take counts nothing (sitting.js) */
+      if (!ps || typeof ps !== 'object' || sitOff(this)) return null;
+      if (!ps._econ || typeof ps._econ !== 'object') ps._econ = econClean(ps._econ);
+      if (ps._econ.v !== ECON.V) return null;
+      return sitOpen(this, ps, session, Date.now(), (t) => stintNext(this, t));
+    };
     if (!_body) {
       /* ═══ v2.3.3138: A FAILED READ IS NOT A NEW CHARACTER ═══
          _loadRpg answered null for a read that threw as well as for no
@@ -1756,6 +1775,7 @@ export const joinMethods = {
             if (typeof this._moveRespawned === 'function') this._moveRespawned(_ps);
           }
         }
+        _sitStint = _sitJoin(_ps);   /* v2.3.6481: before the join's own save, which carries it */
         if (!this._guestLazy(msg.id)) this._saveRpg(msg.id, _ps);   /* v2.3.5610: not a fresh guest's (guestlazy.js) */
       }
     } else {
@@ -1763,7 +1783,20 @@ export const joinMethods = {
          does it for a rebuilt one), and its wait for the phone begins */
       this._nmlLockOnJoin(msg.id);
       this._bodyTakeStart(msg.id, Date.now());
+      _sitStint = _sitJoin(this.playerState[msg.id]);   /* v2.3.6481: the kept body's sitting goes on */
     }
+    /* v2.3.6480 (card WHO PR 1): THE ACTOR, made once, here, where the join
+       has the character (actor.js; docs/SHAPES.md part 1): a `person`, its
+       character, its sitting's id (the worker's clock), by the socket.  Never
+       from a field the phone sent.  Changed by nothing after.  v2.3.6481
+       (card WHO PR 2): moved here from beside `session.phase = 'joined'`, so
+       a sitting carried on across a reconnect or a deploy hands it its stint
+       (sitting.js); a join that ended above has none, as before. */
+    actorSocket(this, session, msg.id, Date.now(), _sitStint);
+    /* v2.3.6482 (card WHO PR 3): a test-mode sitting's first ten active
+       minutes recorded in memory (playtrace.js), from its beginning only.
+       No put here. */
+    try { traceBegin(this, this.playerState[msg.id], msg.id, _sitStint, Date.now()); } catch (e) { /* a recording never stops a join */ }
     /* v2.3.3120: the pets record (petbook.js) -- one storage GET, and a stored
        blob's old pets moved in once.  It replaces v2.3.1130's adoption, which
        took up to six pets from the BROWSER for anyone the server had none for.
@@ -2071,6 +2104,12 @@ export const joinMethods = {
         power: this._powerCap(),
         /* v2.3.5484: THE STAT BOARDS (statboards.js, card PW): GET /api/leaderboard/top?category=pts_<stat> ranks the points allocated to each shared stat (and `pts_dmg` the weapons' damage points summed), from every board row's `statPoints`.  HOW MANY boards (STAT_BOARD_IDS, in order): a count that grows (TRAPS §9).  `statboards: false` in liveflags un-advertises it and no report carries the points. */
         statboards: this._statBoardsCap(),
+        /* v2.3.6480 (card WHO PR 1): THE ACTOR (actor.js): the ledger's rows say who started them, and the day's book keeps test play apart.  Nothing a phone does changes; `actor: false` in the live flags un-advertises it and writes every row as before. */
+        actor: actorOff(this) ? undefined : 1,
+        /* v2.3.6481 (card WHO PR 2): THE SITTING'S CARD (sitting.js): a character's visit measured by the server and kept inside `_econ` (the last 32 closed); its `stint` carried across reconnects and deploys inside five quiet minutes.  Nothing a phone sees changes; `sitting: false` in the live flags un-advertises it and opens, closes and counts nothing. */
+        sitting: sitOff(this) ? undefined : 1,
+        /* v2.3.6482 (card WHO PR 3): THE OWNER'S PLAY RECORDED (playtrace.js): a test-mode sitting's first ten active minutes, one `play_trace:` row labelled human, in the league's trace form; test mode's checks run in shadow and say what they would refuse.  Nothing a player sees; needs the sitting's card; `playtrace: false` records nothing. */
+        playtrace: (traceOff(this) || sitOff(this)) ? undefined : 1,
         /* v2.3.5546 (card K PR 9, 5194b): A REPEAT ACTS ONCE (reqonce.js): a value request carrying its request id (`reqId`) is answered once, a repeat getting the first answer again -- so the page may re-send a request it heard nothing back from with the same id (src/game/actions.js).  `reqonce: false` un-advertises it, and the page re-sends nothing */
         reqid: this._reqOnceOff() ? undefined : 1,
         /* v2.3.5196 (card K PR 11): A WEAPON NAMED BY ITS ID (gidnames.js): the nine requests that take a weapon from the stash read its `gid` beside its place, and refuse when the two disagree -- so the page sends it (src/game/actions.js GID_PLACE).  `gidnames: false` un-advertises it, and the place alone is read */
@@ -2079,6 +2118,8 @@ export const joinMethods = {
         harvestGrade: this._harvestGradeOn() ? 1 : undefined,
         /* v2.3.5905 (card K4 PR 6): THE BOW'S PATH (bowshot.js, `bowpath`, ON since v2.3.5906; off with the live flag bowpath set false): a phone told this sends its arrow's relay at RELEASE with the line it flies, the line the worker then holds each claim to.  Advertised only while on */
         bowPath: this._bowPathOn() ? 1 : undefined,
+        /* v2.3.6443 (card DG PR 4): THE WIRE DOOR HOLDS A FIELD TO ITS FORM (wire/door.js WIRE_FORM): a named field out of its form (`n: "5"`, `-5`, a 15,000-character id) is refused before any handler.  The page sends only fields in form, so it gates nothing on this: the Test panel reads it (CAP_GATES).  2 while the door only counts (`wireform: 'count'`), gone with `wireform: false` -- lower case, a kill switch */
+        wireForm: this._wireFormMode() === 'on' ? 1 : (this._wireFormMode() === 'count' ? 2 : undefined),
         accuracy: this._accOn() /* v2.3.4545: ACCURACY (accuracy.js) -- the phone numbers its basic shots a weapon and sends the counts on `track` (`ac`) and each hit's shot (`sn`); `acc_request` answers `acc_state`; `accuracy: false` in liveflags un-advertises it and counts nothing -- lower case, a kill switch */ },
       // v2.3.1178: this session's private economy-endpoint token.
       // state_sync goes to the joining socket ONLY -- never broadcast.

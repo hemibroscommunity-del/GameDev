@@ -98,7 +98,7 @@ const overlaps = (P) => P.page.evaluate(() => {
 async function tapOn(P, el) {
   for (let taps = 1; taps <= 3; taps++) {
     await P.page.touchscreen.tap((el.l + el.r) / 2, (el.t + el.b) / 2);
-    const v = await H.waitFor(P, () => window.__btRideBtn(), (q) => q.on === true, { timeout: 5000, label: 'on the board' }).catch(() => null);
+    const v = await untilG(P, () => window.__btRideBtn(), (q) => q.on === true, { ms: 5000 }).catch(() => null);
     if (v) return Object.assign({ taps }, v);
   }
   return null;
@@ -113,6 +113,43 @@ const feel = (P) => P.page.evaluate(() => {
   return { on: !!r.on, why: r.why || null, spd: typeof r.spd === 'number' ? +r.spd.toFixed(4) : null, push: r.push, clk: r.clk || 0,
     x: S.player.x, y: S.player.y, snd: window.__btRideSound ? window.__btRideSound.state() : null };
 });
+/* ── v2.3.6505 (card PH PR 6; TRAPS 177 and 200, the test first): THE GAME'S CLOCK FOR THE WHOLE PAGE ──
+   Green alone, and nine red at BT_QA_CPU_THROTTLE=4 on main b966af81 (4, 5, 5b, 5c, 8, 10 twice, 11): every one a
+   wait sized by the wall's clock for a page drawing 60 frames a second -- "off within 6 s", "heard within 10 s",
+   "silent 0.4 s after" -- read on a page drawing a few.  The board's `clk` (above) runs only while you ride; this one
+   runs always: the game's own step summed, frame by frame (the steady step's `_dtScale`, what everything is moved
+   by), read from the frame's step log (BroTown.jsx `__btStepLog`, mp-steadystep's probe), so "0.4 s after" means 0.4 s
+   of the game, on any box.  A wait is until its thing is so, up to a cap of the GAME's ms (and a wall's backstop,
+   long, for a page that stops drawing at all). */
+const clockOn = (P) => P.page.evaluate(() => {
+  window.__btStepLog = { ms: 0, push() { const S = window._gameState && window._gameState.current; this.ms += (S && S._dtScale > 0 ? S._dtScale : 1) * 16.667; return 0; } };
+});
+/* a page made again (a reload) has lost its log: put it back, so a wait never sits out its backstop on a clock that stopped */
+const gameMs = (P) => P.page.evaluate(() => {
+  if (!window.__btStepLog || typeof window.__btStepLog.ms !== 'number') window.__btStepLog = { ms: 0, push() { const S = window._gameState && window._gameState.current; this.ms += (S && S._dtScale > 0 ? S._dtScale : 1) * 16.667; return 0; } };
+  return window.__btStepLog.ms;
+}).catch(() => 0);
+const WALL_BACKSTOP_MS = 180000;
+/* wait `ms` of the game's clock */
+async function waitGame(P, ms) {
+  const g0 = await gameMs(P);
+  for (const w0 = Date.now(); Date.now() - w0 < WALL_BACKSTOP_MS;) {
+    if ((await gameMs(P)) - g0 >= ms) return true;
+    await P.page.waitForTimeout(40);
+  }
+  return false;
+}
+/* H.waitFor's way, its cap the game's ms: the value once `pred` holds, null at the cap */
+async function untilG(P, fn, pred, { ms = 5000, every = 100 } = {}) {
+  const g0 = await gameMs(P);
+  for (const w0 = Date.now(); Date.now() - w0 < WALL_BACKSTOP_MS;) {
+    const v = await H.readState(P, fn).catch(() => undefined);
+    if (v !== undefined && pred(v)) return v;
+    if ((await gameMs(P)) - g0 >= ms) return null;
+    await P.page.waitForTimeout(every);
+  }
+  return null;
+}
 /* the worker's own count of moves it had to follow past its bound
    (movement.js _moveBudgetInfo): an honest move is never one */
 const followedBy = async (wsPort) => {
@@ -124,7 +161,7 @@ const followedBy = async (wsPort) => {
 /* on the board and standing: hold the way (`press`) until the board has been
    at top a while, let go (`release`), watch it roll to a stop */
 async function feelRun(P, id, wsPort, press, release) {
-  await H.waitFor(P, (S) => (S._ride ? S._ride.spd : -1), (v) => v === 0, { timeout: 8000, label: 'standing on the board' }).catch(() => null);
+  await untilG(P, (S) => (S._ride ? S._ride.spd : -1), (v) => v === 0, { ms: 8000 }).catch(() => null);
   const f0 = await followedBy(wsPort);
   const s0 = await feel(P);
   await press();
@@ -146,11 +183,12 @@ async function feelRun(P, id, wsPort, press, release) {
   }
   /* the worker's copy: its rest packet may land a frame or two late */
   let gap = null;
-  for (let i = 0; i < 20; i++) {
+  for (const g0 = await gameMs(P), w0 = Date.now(); Date.now() - w0 < WALL_BACKSTOP_MS;) {   /* v2.3.6505: up to 4 s of the game's (was 20 x 200 ms of the wall's) */
     const sv = await H.serverPlayer(wsPort, id).catch(() => null);
     const me = await feel(P);
     gap = sv ? Math.round(Math.hypot(sv.x - me.x, sv.y - me.y)) : null;
     if (gap != null && gap <= 4) break;
+    if ((await gameMs(P)) - g0 >= 4000) break;
     await P.page.waitForTimeout(200);
   }
   const f1 = await followedBy(wsPort);
@@ -208,6 +246,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const inB = await H.waitFor(B, (S) => ({ z: S.currentZone, l: !!S._zoneLoading }), (v) => v.z === 'wheel' && !v.l, { timeout: 120000, label: 'computer in the world' }).catch(() => null);
     rec.ok('both in the world (guard)', !!inA && !!inB, { inA, inB });
     if (!inA || !inB) return;
+    for (const P of [A, B]) await clockOn(P);   /* v2.3.6505: the game's clock, from here on */
     const idA = await H.readState(A, (S) => S.myId), idB = await H.readState(B, (S) => S.myId);
     for (const id of [idA, idB]) await H.devOp(wsPort, 'vitals', id, { heal: true, god: true, godMinutes: 30 }).catch(() => {});
     for (const P of [A, B]) await P.page.addStyleTag({ content: '.bt-quest-banner, .bt-quest-plate, *:has(> [data-coach-dismiss]) { visibility: hidden !important; }' }).catch(() => {});
@@ -222,7 +261,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (!s0.el) return;
     await A.page.screenshot({ path: join(OUT, 'skateboard-button-upright.png') }).catch(() => {});
     const on = await tapOn(A, s0.el);
-    await A.page.waitForTimeout(600);
+    await waitGame(A, 600);
     const s1 = await state(A);
     rec.ok(`1. a real tap puts the phone's bro on the board (the worker's word; ${on ? on.taps : '?'} tap), drawn under him (${JSON.stringify(s1.fx && s1.fx.self)})`,
       !!on && s1.ride && s1.ride.on && !!(s1.fx && s1.fx.self), s1);
@@ -231,7 +270,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* 2. the computer sees it */
     const look = () => B.page.evaluate((id) => { const S = window._gameState.current; return { brd: !!(S.others && S.others[id] && S.others[id]._brd), fx: window.__btRideFx ? window.__btRideFx().peers : 0 }; }, idA);
     let seen2 = await look();
-    for (let i = 0; i < 32 && !(seen2.brd && seen2.fx >= 1); i++) { await B.page.waitForTimeout(250); seen2 = await look(); }
+    for (const g0 = await gameMs(B), w0 = Date.now(); !(seen2.brd && seen2.fx >= 1) && (await gameMs(B)) - g0 < 8000 && Date.now() - w0 < WALL_BACKSTOP_MS;) { await B.page.waitForTimeout(250); seen2 = await look(); }   /* v2.3.6505: 8 s of the game's (was 32 x 250 ms of the wall's) */
     rec.ok(`2. the computer sees the phone's bro on his board (brd ${seen2.brd}) and draws it (${seen2.fx} rider)`, seen2.brd && seen2.fx >= 1, seen2);
     await B.page.screenshot({ path: join(OUT, 'skateboard-peer-computer.png') }).catch(() => {});
 
@@ -241,9 +280,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     /* 4. out past the edge */
     const R = 2937;   /* zones.js wheel.safeR (the town's safe ground); the centre is the world's */
-    await H.glideTo(A, G.cx + R + 220, G.arrival.y, { speed: 700, timeoutMs: 20000 });
-    const off = await H.waitFor(A, () => window.__btRideBtn(), (v) => v.on === false, { timeout: 6000, label: 'off at the edge' }).catch(() => null);
-    await A.page.waitForTimeout(800);
+    await H.glideTo(A, G.cx + R + 220, G.arrival.y, { speed: 700, timeoutMs: 60000 });   /* v2.3.6505: the carry's cap (it ends when there) */
+    const off = await untilG(A, () => window.__btRideBtn(), (v) => v.on === false, { ms: 6000 }).catch(() => null);
+    await waitGame(A, 800);
     const s4 = await state(A);
     rec.ok(`4. ridden out past the safe ground: off the board (${s4.ride && s4.ride.why}) and the button gone`,
       !!off && s4.ride && !s4.ride.on && (s4.ride.why === 'edge' || s4.ride.why === 'zone') && !s4.el, s4);
@@ -253,14 +292,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`5. on the computer the button wears Z (${z0.el && z0.el.key})`, !!z0.el && z0.el.key === 'Z', z0);
     await B.page.screenshot({ path: join(OUT, 'skateboard-button-computer.png') }).catch(() => {});
     await B.page.keyboard.press('z');
-    const zOn = await H.waitFor(B, () => window.__btRideBtn(), (v) => v.on === true, { timeout: 5000, label: 'Z on' }).catch(() => null);
+    const zOn = await untilG(B, () => window.__btRideBtn(), (v) => v.on === true, { ms: 5000 }).catch(() => null);
     /* v2.3.3791: the roll is heard while the rider rolls (game/rideSound.js) */
     const snd = () => B.page.evaluate(() => ({ ctx: !!(window.BT_AUDIO && window.BT_AUDIO.ctx) || !!(window.__btRideSound), s: window.__btRideSound ? window.__btRideSound.state() : null }));
     await B.page.keyboard.down('d');
     let rolling = null;
     /* v2.3.5440: the level follows the board's speed, so wait for the start's
        two pushes (about 0.8 s of the game's clock: several seconds here) */
-    for (let i = 0; i < 50; i++) { await B.page.waitForTimeout(200); const q = await snd(); if (q.s && q.s.playing && q.s.k >= 0.99 && q.s.gain > 0.01) { rolling = q; break; } rolling = q; }
+    /* v2.3.6505: up to 10 s of the game's clock (was 50 x 200 ms of the wall's: on a slowed page the pushes had not landed) */
+    for (const g0 = await gameMs(B), w0 = Date.now(); (await gameMs(B)) - g0 < 10000 && Date.now() - w0 < WALL_BACKSTOP_MS;) { await B.page.waitForTimeout(200); const q = await snd(); if (q.s && q.s.playing && q.s.k >= 0.99 && q.s.gain > 0.01) { rolling = q; break; } rolling = q; }
     await B.page.keyboard.up('d');
     rec.ok(`5b. riding and rolling, the board is heard (playing ${rolling && rolling.s && rolling.s.playing}, gain ${rolling && rolling.s && rolling.s.gain} of ${rolling && rolling.s && rolling.s.vol}, at ${rolling && rolling.s && rolling.s.k} of its speed)`,
       !!(rolling && rolling.s && rolling.s.playing && rolling.s.k >= 0.99 && rolling.s.gain > 0.01), rolling);
@@ -298,13 +338,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await shotAt(fr++);
     await B.page.waitForTimeout(500);
     await B.page.keyboard.press('z');
-    const zOff = await H.waitFor(B, () => window.__btRideBtn(), (v) => v.on === false, { timeout: 5000, label: 'Z off' }).catch(() => null);
+    const zOff = await untilG(B, () => window.__btRideBtn(), (v) => v.on === false, { ms: 5000 }).catch(() => null);
     rec.ok('5. Z gets on, and Z again gets off', !!zOn && !!zOff, { zOn, zOff });
     /* v2.3.3791: ...and the roll falls silent at once, its source stopped
        soon after: nothing plays after the ride ends */
-    await B.page.waitForTimeout(400);
+    await waitGame(B, 400);   /* v2.3.6505: 0.4 s and 2.6 s of the game's clock, as the check says */
     const hush = await B.page.evaluate(() => window.__btRideSound.state());
-    await B.page.waitForTimeout(2200);
+    await waitGame(B, 2200);
     const gone = await B.page.evaluate(() => window.__btRideSound.state());
     rec.ok(`5c. off the board the roll falls silent (gain ${hush.gain} after 0.4 s) and stops (playing ${gone.playing} after 2.6 s)`,
       hush.gain < 0.01 && !hush.riding && gone.playing === false, { hush, gone });
@@ -312,15 +352,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* ── 10. v2.3.5440: the push start and the roll-off, on the computer's keys ──
        along the east road, well inside the safe ground and the Mayor gate */
     await H.glideTo(B, G.cx + R - 1300, G.cy, { speed: 600, timeoutMs: 30000 });
-    await B.page.waitForTimeout(800);
+    await waitGame(B, 800);
     await B.page.keyboard.press('z');
-    const on10 = await H.waitFor(B, () => window.__btRideBtn(), (v) => v.on === true, { timeout: 5000, label: 'on, for the roll' }).catch(() => null);
+    const on10 = await untilG(B, () => window.__btRideBtn(), (v) => v.on === true, { ms: 5000 }).catch(() => null);
     const R10 = on10 ? await feelRun(B, idB, wsPort, () => B.page.keyboard.down('d'), () => B.page.keyboard.up('d')) : null;
     console.log(`    keys: ${JSON.stringify(R10)}`);
     if (R10) feelChecks(rec, 10, 'On the computer\'s keys', R10);
     else rec.ok('10. on the board for the roll (guard)', false, { on10 });
     await B.page.keyboard.press('z');
-    await H.waitFor(B, () => window.__btRideBtn(), (v) => v.on === false, { timeout: 5000, label: 'off, after the roll' }).catch(() => null);
+    await untilG(B, () => window.__btRideBtn(), (v) => v.on === false, { ms: 5000 }).catch(() => null);
 
     /* ── 8. v2.3.3839: the Mayor gate, ridden into on the computer's keys ── */
     const gateLook = () => B.page.evaluate((c) => {
@@ -333,14 +373,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
         ride: S._ride ? { on: !!S._ride.on, why: S._ride.why } : null, tut: !!(S.rpg && S.rpg._quests && S.rpg._quests.tut_1), pop };
     }, [G.cx, G.cy]);
     await H.glideTo(B, G.cx + R - 150, G.cy, { speed: 600, timeoutMs: 30000 });   /* due east, along the road */
-    await B.page.waitForTimeout(1200);
+    await waitGame(B, 1200);
     const g0 = await gateLook();
     await B.page.keyboard.press('z');
-    await H.waitFor(B, () => window.__btRideBtn(), (v) => v.on === true, { timeout: 5000, label: 'on, at the gate' }).catch(() => null);
+    await untilG(B, () => window.__btRideBtn(), (v) => v.on === true, { ms: 5000 }).catch(() => null);
     await B.page.keyboard.down('d');
     const g8 = [];
     let shot8 = false;
-    for (let t0 = Date.now(); Date.now() - t0 < 12000;) {
+    /* v2.3.6505: 12 s of the game's riding (was 12 s of the wall's: a few frames of it on a slowed page) */
+    for (const g0r = await gameMs(B), w0 = Date.now(); (await gameMs(B)) - g0r < 12000 && Date.now() - w0 < WALL_BACKSTOP_MS;) {
       await B.page.waitForTimeout(150);
       const q = await gateLook();
       g8.push(q);
@@ -362,12 +403,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     /* ── 9. ...the first quest taken, the same ride rolls out, off the board ── */
     await B.page.evaluate(() => { const S = window._gameState.current; S.channel.send({ type: 'quest_accept', payload: { questId: 'tut_1' } }); });
-    const tut = await H.waitFor(B, (S) => !!(S.rpg && S.rpg._quests && S.rpg._quests.tut_1), (v) => v, { timeout: 8000, label: 'the first quest taken' }).catch(() => null);
+    const tut = await untilG(B, (S) => !!(S.rpg && S.rpg._quests && S.rpg._quests.tut_1), (v) => v, { ms: 8000 }).catch(() => null);
     const on9 = await B.page.evaluate(() => window.__btRideBtn().on);
-    if (!on9) { await B.page.keyboard.press('z'); await H.waitFor(B, () => window.__btRideBtn(), (v) => v.on === true, { timeout: 5000 }).catch(() => null); }
+    if (!on9) { await B.page.keyboard.press('z'); await untilG(B, () => window.__btRideBtn(), (v) => v.on === true, { ms: 5000 }).catch(() => null); }
     await B.page.keyboard.down('d');
     let g9 = null, pop9 = false;
-    for (let t0 = Date.now(); Date.now() - t0 < 20000;) {
+    for (const g0r = await gameMs(B), w0 = Date.now(); (await gameMs(B)) - g0r < 20000 && Date.now() - w0 < WALL_BACKSTOP_MS;) {   /* v2.3.6505: the game's 20 s */
       await B.page.waitForTimeout(150);
       g9 = await gateLook();
       pop9 = pop9 || g9.pop;
@@ -381,17 +422,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* ── 11. v2.3.5440: let go short of the edge at top: off AT the edge,
        with no roll past it (game/ride.js rideCheck, then no roll after) ── */
     await H.glideTo(B, G.cx + R - 800, G.cy, { speed: 600, timeoutMs: 30000 });
-    await B.page.waitForTimeout(800);
+    await waitGame(B, 800);
     await B.page.keyboard.press('z');
-    await H.waitFor(B, () => window.__btRideBtn(), (v) => v.on === true, { timeout: 5000, label: 'on, for the edge' }).catch(() => null);
-    await H.waitFor(B, (S) => (S._ride ? S._ride.spd : -1), (v) => v === 0, { timeout: 8000 }).catch(() => null);
+    await untilG(B, () => window.__btRideBtn(), (v) => v.on === true, { ms: 5000 }).catch(() => null);
+    await untilG(B, (S) => (S._ride ? S._ride.spd : -1), (v) => v === 0, { ms: 8000 }).catch(() => null);
     await B.page.keyboard.down('d');
     let e0 = await feel(B);
     for (let t0 = Date.now(); Date.now() - t0 < 40000 && e0.on && e0.x < G.cx + R - 110;) { await B.page.waitForTimeout(15); e0 = await feel(B); }
     await B.page.keyboard.up('d');
     const e11 = [];
     for (let t0 = Date.now(); Date.now() - t0 < 30000;) { const q = await feel(B); e11.push(q); if (!q.on) break; await B.page.waitForTimeout(15); }
-    await B.page.waitForTimeout(1500);
+    await waitGame(B, 1500);   /* v2.3.6505: "1.5 s later", the game's */
     const eEnd = await feel(B);
     const eOff = e11.find((q) => !q.on) || null;
     const rOff = eOff ? Math.round(Math.hypot(eOff.x - G.cx, eOff.y - G.cy) - R) : null;
@@ -404,7 +445,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
        (the gatekeeper's sitting 10: the roll's way cancelled it the next
        frame, and the worker's 'fight' read "Off the board to fight.") */
     await H.grant(wsPort, idB, 'item', { invKey: 'woodcutting_axe', count: 1 }).catch(() => {});
-    await H.waitFor(B, (S) => (((S.rpg || {}).inventory || {}).woodcutting_axe || 0), (v) => v > 0, { timeout: 20000, label: 'the axe' }).catch(() => null);
+    await untilG(B, (S) => (((S.rpg || {}).inventory || {}).woodcutting_axe || 0), (v) => v > 0, { ms: 20000 }).catch(() => null);
     const tree = await B.page.evaluate(([cx, cy, r]) => {
       const S = window._gameState.current, p = S.player;
       let best = null, d = Infinity;
@@ -422,8 +463,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await B.page.waitForTimeout(1200);
       await H.closeNpcDialogue(B).catch(() => {});
       await B.page.keyboard.press('z');
-      await H.waitFor(B, () => window.__btRideBtn(), (v) => v.on === true, { timeout: 5000, label: 'on, by the tree' }).catch(() => null);
-      await H.waitFor(B, (S) => (S._ride ? S._ride.spd : -1), (v) => v === 0, { timeout: 8000 }).catch(() => null);
+      await untilG(B, () => window.__btRideBtn(), (v) => v.on === true, { ms: 5000 }).catch(() => null);
+      await untilG(B, (S) => (S._ride ? S._ride.spd : -1), (v) => v === 0, { ms: 8000 }).catch(() => null);
       /* a short push along the stand's line, so it rolls a little and stays in reach */
       const look13 = () => B.page.evaluate((id) => {
         const S = window._gameState.current, r = S._ride || {};
@@ -434,7 +475,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       let q = await look13();
       for (let tries = 0; tries < 4 && !(q.spd > 0 && q.reach); tries++) {
         await B.page.keyboard.down('d');
-        for (let t0 = Date.now(); Date.now() - t0 < 4000; ) { q = await look13(); if (q.spd > 0) break; await B.page.waitForTimeout(10); }
+        for (const g0w = await gameMs(B), w0 = Date.now(); (await gameMs(B)) - g0w < 4000 && Date.now() - w0 < WALL_BACKSTOP_MS;) { q = await look13(); if (q.spd > 0) break; await B.page.waitForTimeout(10); }
         await B.page.keyboard.up('d');
         q = await look13();
       }
@@ -444,9 +485,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const justAfter = await look13();
       let off = null;
       let seen = justAfter.line;
-      for (let t0 = Date.now(); Date.now() - t0 < 8000; ) { const w = await look13(); seen = w.line || seen; if (!w.on) { off = w; break; } await B.page.waitForTimeout(100); }
+      for (const g0w = await gameMs(B), w0 = Date.now(); (await gameMs(B)) - g0w < 8000 && Date.now() - w0 < WALL_BACKSTOP_MS;) { const w = await look13(); seen = w.line || seen; if (!w.on) { off = w; break; } await B.page.waitForTimeout(100); }
       let later = await look13();
-      for (let t0 = Date.now(); Date.now() - t0 < 1500; ) { later = await look13(); seen = later.line || seen; await B.page.waitForTimeout(100); }
+      for (const g0w = await gameMs(B), w0 = Date.now(); (await gameMs(B)) - g0w < 1500 && Date.now() - w0 < WALL_BACKSTOP_MS;) { later = await look13(); seen = later.line || seen; await B.page.waitForTimeout(100); }
       h13 = { tree: true, atE, justAfter, off, later, seen };
     }
     console.log(`    harvest mid-roll: ${JSON.stringify(h13)}`);
@@ -459,12 +500,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
        (the gatekeeper's sitting 11: the roll moved you past the pose's 4 px
        and ended it, and the line read "Off the board to fight.") */
     await B.page.keyboard.down('a'); await B.page.waitForTimeout(400); await B.page.keyboard.up('a');   /* off the chop (a step ends it) */
-    await H.waitFor(B, (S) => !!S._extraction, (v) => v === false, { timeout: 8000, label: 'the chop let go' }).catch(() => null);
+    await untilG(B, (S) => !!S._extraction, (v) => v === false, { ms: 8000 }).catch(() => null);
     await H.glideTo(B, G.cx + R - 1300, G.cy, { speed: 600, timeoutMs: 30000 });
     await B.page.waitForTimeout(800);
     await B.page.keyboard.press('z');
-    await H.waitFor(B, () => window.__btRideBtn(), (v) => v.on === true, { timeout: 5000, label: 'on, for the pose' }).catch(() => null);
-    await H.waitFor(B, (S) => (S._ride ? S._ride.spd : -1), (v) => v === 0, { timeout: 8000 }).catch(() => null);
+    await untilG(B, () => window.__btRideBtn(), (v) => v.on === true, { ms: 5000 }).catch(() => null);
+    await untilG(B, (S) => (S._ride ? S._ride.spd : -1), (v) => v === 0, { ms: 8000 }).catch(() => null);
     const look14 = () => B.page.evaluate(() => {
       const S = window._gameState.current, r = S._ride || {};
       return { on: !!r.on, why: r.why || null, spd: r.spd || 0, pose: S._pose ? S._pose.id : null, x: S.player.x,
@@ -477,15 +518,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await B.page.keyboard.up('d');
     /* the picker, then Sit, while it rolls */
     await B.page.keyboard.press('b');
-    await H.waitFor(B, () => !!document.querySelector('[data-emote-move="sit"]'), (v) => v === true, { timeout: 5000, label: 'the picker' }).catch(() => null);
+    await untilG(B, () => !!document.querySelector('[data-emote-move="sit"]'), (v) => v === true, { ms: 5000 }).catch(() => null);
     const atSit = await look14();
     await B.page.click('[data-emote-move="sit"]').catch(() => {});
     await B.page.waitForTimeout(300);
     const sat = await look14();
     let off14 = null, seen14 = sat.line;
-    for (let t0 = Date.now(); Date.now() - t0 < 8000; ) { const w = await look14(); seen14 = w.line || seen14; if (!w.on) { off14 = w; break; } await B.page.waitForTimeout(100); }
+    for (const g0w = await gameMs(B), w0 = Date.now(); (await gameMs(B)) - g0w < 8000 && Date.now() - w0 < WALL_BACKSTOP_MS;) { const w = await look14(); seen14 = w.line || seen14; if (!w.on) { off14 = w; break; } await B.page.waitForTimeout(100); }
     let late14 = await look14();
-    for (let t0 = Date.now(); Date.now() - t0 < 1500; ) { late14 = await look14(); seen14 = late14.line || seen14; await B.page.waitForTimeout(100); }
+    for (const g0w = await gameMs(B), w0 = Date.now(); (await gameMs(B)) - g0w < 1500 && Date.now() - w0 < WALL_BACKSTOP_MS;) { late14 = await look14(); seen14 = late14.line || seen14; await B.page.waitForTimeout(100); }
     console.log(`    pose mid-roll: ${JSON.stringify({ atSit, sat, off14, late14, seen14 })}`);
     rec.ok(`14. Sit struck from the picker while the board rolls (at ${atSit.spd.toFixed(2)} of top): the board stops at once (${sat.spd}) and he sits (${sat.pose})`,
       atSit.on && atSit.spd > 0 && sat.spd === 0 && sat.pose === 'sit', { atSit, sat });

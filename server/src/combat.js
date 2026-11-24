@@ -145,6 +145,7 @@ export const STAFF_BOLT = {
 };
 export const BOW_VOLLEY_WORTH = 2;
 
+import { traceHitShadow } from './playtrace.js';   /* v2.3.6482: a test-mode hit judged in shadow (card WHO PR 3; the orchestrator's yes) */
 import {
   ELEMENT_STATUS, applyElementStatus, resolveElementCollision, fractureDmgMult,
   elemAttackStat, // v2.3.2199: prog3 `elem` stat resolver for the DoT power snapshot
@@ -158,6 +159,7 @@ import { PROG3 } from './prog3.js'; // v2.3.1659: the trained-skill combat rebui
 import { WHEEL_ZONE, WHEEL } from './wheelzone.js'; /* v2.3.2978 */
 import { ONE_FORMULA, specialMultFor } from './oneformula.js'; /* v2.3.3260: one formula for every fight */
 import { FREE_SWING } from './freeswing.js'; /* v2.3.4520: the free-swing trial */
+import { sitHit } from './sitting.js';   /* v2.3.6481: hits claimed and landed on the sitting's card (card WHO PR 2; the orchestrator's yes) */
 
 export const combatMethods = {
   /* v2.3.5540: the archer's lane's kill switch (below, in
@@ -1216,6 +1218,7 @@ export const combatMethods = {
        disconnected player could keep swinging.
        Fail closed on a missing playerState: no attacker, no damage. */
     if (!attackerPs) return;
+    sitHit(this, attackerPs, 'claim', Date.now());   /* v2.3.6481: a claim on the sitting's card, memory only; decides nothing (sitting.js) */
     /* Death: use the SERVER's own view, not ps.dead.  ps.dead is written
        straight from the client's `move` payload (movement.js
        `if (msg.dead !== undefined) ps.dead = !!msg.dead`), so gating on
@@ -1312,7 +1315,7 @@ export const combatMethods = {
     const _tm = this._testMode(attackerPs);
     const _hp = this._hitProofOn() && !_tm;
     const _hpNow = Date.now();
-    if (_hp && !this._hitWeaponOk(attackerPs, _effSlot)) { this._hpTally('noWeapon'); return; }
+    if (_hp && !this._hitWeaponOk(attackerPs, _effSlot)) { this._hpTally('noWeapon', attackerPs); return; }
     if (_effSlot === 'melee' && !_tm
         && typeof attackerPs.x === 'number' && typeof attackerPs.y === 'number'
         && typeof m.x === 'number' && typeof m.y === 'number') {
@@ -1330,7 +1333,7 @@ export const combatMethods = {
       const _reach = this._hitReach(attackerPs, _effSlot, _hpNow);
       const _hdx = attackerPs.x - m.x;
       const _hdy = attackerPs.y - m.y;
-      if (_reach !== null && _hdx * _hdx + _hdy * _hdy > _reach * _reach) { this._hpTally('far'); return; }
+      if (_reach !== null && _hdx * _hdx + _hdy * _hdy > _reach * _reach) { this._hpTally('far', attackerPs); return; }
     }
     /* v2.3.2978: ...but the Wheel is forty zones across, so "anywhere in this
        zone" is no longer a cap at all.  A ranged or staff hit there must come
@@ -1360,20 +1363,25 @@ export const combatMethods = {
        land their share. */
     const _dg = (!isSpecial && (_effSlot === 'ranged' || _effSlot === 'staff'))
       ? this._dgFind(attackerPs, _effSlot, payload.sw) : null;
-    if (_hp && !isSpecial && !this._hitRateTake(attackerPs, _effSlot, _hpNow, _dg ? (_dg.drop ? 0 : _dg.f) : 1)) { this._hpTally('rate'); return; }
+    /* v2.3.6482 (card WHO PR 3; the orchestrator's yes): a test-mode hit,
+       while its sitting records, run through the chain above and below in
+       SHADOW (playtrace.js traceHitShadow): the verdict recorded, the hit
+       landing as test mode lets it */
+    if (_tm && attackerPs._trace) traceHitShadow(this, attackerPs, m, { slot: _effSlot, zone, now: _hpNow, special: isSpecial, cost: _dg ? (_dg.drop ? 0 : _dg.f) : 1, sw: payload.sw, id: monsterId, wheelMax: WHEEL.RANGED_MAX, free: this._freeSwingFor(session) });
+    if (_hp && !isSpecial && !this._hitRateTake(attackerPs, _effSlot, _hpNow, _dg ? (_dg.drop ? 0 : _dg.f) : 1)) { this._hpTally('rate', attackerPs); return; }
     /* v2.3.5550 (card K, step 4.2): A BOW'S CLAIM IS AN ARROW SEEN
        (bowshot.js, an opt-in: `bowshot: true`) -- an ordinary `ranged` claim
        lands only on an arrow whose relay the worker counted; a paid
        special's window (its chips, its patch) and a test-mode character are
        left as they are */
-    if (_effSlot === 'ranged' && !isSpecial && !_tm && this._bowShotDrop(attackerPs, payload.sw, monsterId, _hpNow)) { this._hpTally('shot'); return; }
+    if (_effSlot === 'ranged' && !isSpecial && !_tm && this._bowShotDrop(attackerPs, payload.sw, monsterId, _hpNow)) { this._hpTally('shot', attackerPs); return; }
     /* v2.3.5548 (card K, step 4.2): THE SWORD'S SWING (swordswing.js, an
        opt-in: `swordswing: true`) -- one counted swing a player at the
        sword's own rate, its ring's targets together; a phone on the
        free-swing trial is prorated by time already, and a special swing and
        a test-mode character are left as they are */
     if (_effSlot === 'melee' && !isSpecial && !_tm && this._swordSwingOn() && !this._freeSwingFor(session)
-        && !this._swordSwingTake(attackerPs, monsterId, _hpNow)) { this._hpTally('swing'); return; }
+        && !this._swordSwingTake(attackerPs, monsterId, _hpNow)) { this._hpTally('swing', attackerPs); return; }
     /* v2.3.2849: a big bolt is ONE roll from its own band that then explodes
        (STAFF_BOLT at the top of this file) -- `_bigBolt` is what the wire
        said, `_orbs` below is what the lane lets it be worth. */
@@ -1582,6 +1590,7 @@ export const combatMethods = {
     /* v2.3.4545: an accepted hit, once a shot, for the player's accuracy (accuracy.js): `sn` is the shot's number
        on the phone; a special, a stuck arrow's chip and an older phone carry none */
     this._accHit(session.id, _effSlot, isSpecial, payload.sn);
+    sitHit(this, attackerPs, 'landed');   /* v2.3.6481: ...and landed on the sitting's card (sitting.js), after the accuracy's count (accuracy.test 4f) */
 
     /* v2.3.2481: where the bolt actually landed, read BEFORE the knockback
        below moves the monster — the splash must go off at the impact point,

@@ -52,7 +52,7 @@ mouse, and the SCREEN's short side under 600 CSS px; the biggest phones are
 
 | Class | Budget at the default zoom |
 |---|---|
-| A phone | the view cap's reference at the art's px: (850 x 2) x (1330 x 2), ~4.52 million |
+| A phone | the view cap's reference at the art's px: (850 x 2) x (1330 x 2), ~4.52 million at the 0.77 view; x (0.77 / 0.79)^2, ~4.30 million, at the default 0.79 (v2.3.6580: the same pixels a game px, a closer view) |
 | Anything else (a tablet, a computer) | a 1920 x 1080 screen's, ~2.07 million |
 | `?pixbudget=<pixels>` (any class) | that count (at least 100000; `3000000` or `3e6`) |
 | `?pixbudget=0` | none |

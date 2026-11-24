@@ -5,6 +5,8 @@ import { RideButton } from './RideButton.jsx'; /* v2.3.3776: the skateboard */
 import { QuickEatButton } from './QuickEatButton.jsx'; /* v2.3.3260 */
 import { JumpButton } from './JumpButton.jsx'; /* v2.3.3017 */
 import { Skin, RDISC_ICONS, AimReticle } from './controlSkin.jsx'; /* v2.3.3018: the owner's mockup -- one skin for every control */
+import { twoButtonsLive } from '@/game/latch.js'; /* v2.3.6541: the two buttons' turn ring (card CT PR 2); v2.3.6542: through the one gate */
+import { turnRingRadius } from '@/game/stickZones.js'; /* v2.3.6541: the turn ring's radius, CSS px (the turn's share of the disc's drawn radius; stick-zones 7b reads this call) */
 
 /* ═══ v2.3.3018: THE ATTACK DISC IS A GOLD-RINGED BUTTON WITH A PICTURE ═══
  * Owner: "Make the on screen buttons look more like the improved mockup."
@@ -240,7 +242,15 @@ export function TouchControls(props) {
   }, React.createElement('path', {
     d: 'M50 6.5 L44 13.5 L56 13.5 Z M50 93.5 L44 86.5 L56 86.5 Z M6.5 50 L13.5 44 L13.5 56 Z M93.5 50 L86.5 44 L86.5 56 Z',
     fill: 'rgba(232,238,241,.72)', stroke: 'rgba(8,12,15,.55)', strokeWidth: 1.2, strokeLinejoin: 'round',
-  })), /*#__PURE__*/React.createElement("div", {
+  })), /* v2.3.6541: the two buttons (`?manual=5`, a trial; card CT PR 2): the turn's border drawn on the
+     disc as a ring, at the turn zone's share (`?turnzone`) of the drawn radius -- inside it the thumb turns
+     the body, past it the body walks (game/stickZones.js).  Static: drawn once with the disc, never per move. */
+  twoButtonsLive() ? React.createElement('div', {
+    'data-turnring': '', 'aria-hidden': 'true',
+    style: { position: 'absolute', left: '50%', top: '50%', width: 2 * turnRingRadius(isLandscape), height: 2 * turnRingRadius(isLandscape),
+      transform: 'translate(-50%,-50%)', borderRadius: '50%', border: '1.5px dashed rgba(232,238,241,.55)',
+      boxSizing: 'border-box', pointerEvents: 'none' },
+  }) : null, /*#__PURE__*/React.createElement("div", {
     /* Analog "stick" — anchored at joystick centre, grows toward the
        knob when dragged.  transform-origin at left-centre so rotation
        pivots at the disc centre; width set dynamically by

@@ -68,7 +68,7 @@ import * as H from './harness.mjs';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { MEM_INIT, memSampler } from './memprobe.mjs';
-import { MEMORY_BUDGET } from './memory-budget.mjs';
+import { MEMORY_BUDGET, judgeLines } from './memory-budget.mjs';   /* v2.3.6506: judgeLines (card PH, the sitting-59 mend) */
 export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
@@ -89,7 +89,7 @@ const LOOKS_MS = 45000;
    black screen.  Measured over six runs on main (2026-10-06): the GPU
    (settled) +1.0 at most, the heap +0.8, the workers +2.0 (the ground
    builder's heap steps by ~2 MB), every other line +0. */
-const TRIP_GROWTH = { artCache: 3, gpu: 4, canvases: 3, sound: 1, heap: 3, buffers: 3, workers: 4 };
+const TRIP_GROWTH = { artCache: 3, gpu: 4, canvases: 3, sound: 1, heap: 3, buffers: 3, workers: 4, total: 21 };   /* v2.3.6502 (card PH PR 3): the total's, the seven's summed */
 
 /* ═══ v2.3.5005: A STANDING STOP READS A GROUND THAT HAS STOPPED ═══
    The ground worker squeezes each swatch picture 3 s after a piece last used
@@ -129,6 +129,9 @@ const READ = {
   buffers: (s) => s.buffersMB,
   workers: (s) => (s.workers && s.workers.length
     ? +s.workers.reduce((a, w) => a + (w.heapMB || 0) + (w.buffersMB || 0), 0).toFixed(1) : null),
+  /* v2.3.6502 (card PH PR 3): the seven at the same stop, summed -- what the phone holds at once, near the ~250 MB
+     its page dies at; null where any of the seven was not read */
+  total: (s) => { const v = ['artCache', 'gpu', 'canvases', 'sound', 'heap', 'buffers', 'workers'].map((k) => READ[k](s)); return v.every((x) => typeof x === 'number' && Number.isFinite(x)) ? +v.reduce((a, b) => a + b, 0).toFixed(1) : null; },
 };
 
 /* the GPU a minute later, as Pixi's collector would leave it (see the header):
@@ -410,20 +413,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
         trail: trips.map((t) => [t.atFight.trail, t.back.trail]) });
 
     /* ── within budget ── */
-    const peaks = {};
-    for (const k of Object.keys(READ)) {
-      const vals = out.stops.map((s) => ({ v: READ[k](s), at: s.label }));
-      const bad = vals.filter((x) => typeof x.v !== 'number' || !Number.isFinite(x.v));
-      const top = vals.filter((x) => typeof x.v === 'number').sort((a, b) => b.v - a.v)[0] || null;
-      peaks[k] = top;
-      const line = MEMORY_BUDGET[k];
-      if (bad.length || !top) {
-        rec.ok(`${k}: read at every stop`, false, { unread: bad.map((x) => x.at) });
-        continue;
-      }
-      rec.ok(`${k} (${line.name}): at most ${top.v} MB (${top.at}), budget ${line.mb} MB`,
-        top.v <= line.mb, { line: k, read: top.v, at: top.at, budget: line.mb, over: +(top.v - line.mb).toFixed(1), whatToDo: WHAT_TO_DO });
-    }
+    /* v2.3.6506: the comparison is memory-budget.mjs judgeLines' (heap-trend.test drives it); each row as it is */
+    const judged = judgeLines(out.stops, READ, WHAT_TO_DO);
+    const peaks = judged.peaks;
+    for (const row of judged.rows) rec.ok(row.name, row.ok, row.detail);
     out.peaks = peaks;
     console.log('    line        highest   budget   room');
     for (const k of Object.keys(READ)) {

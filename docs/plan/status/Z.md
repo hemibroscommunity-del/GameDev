@@ -1,39 +1,27 @@
 card: Z
-branch: claude/plan-z-sitting-59
-prs: BK #2301 #2309 (listed); this PR (tag 6271), the last line
+branch: claude/plan-z-sitting-61
+prs: 5 lines listed (LF, WHO, PH, CT stacks; VW), 17 PRs; BK held; this PR (tag 6273), the last line
 state: ready
 
 ## Done
-- `census/review-z59.md`: 23 PRs checked against their cards at their heads
-  (the orchestrator's queue of 07:25), each read by a purpose lane (top
-  model, plants). Sitting 58's 47 planted lines all RED now; 2 listed, 21
-  held or waiting on a held PR, each with its new planted line. Rehearsed
-  on `main` 43541e5f, the list in order: tree 26e6a925
-  (26e6a925447c6b34e6fe4071e243d7c9d3f9aeb3): precheck 0 FAIL (179 s),
-  every switch thrown once (89, 2420 suite runs, 853 s), claims-gain
-  --whole (621 s), build, questline 187 passed. One merge base each, step
-  by step; both bases `main`.
+- `census/review-z61.md`: the orchestrator's frozen 18, every head as
+  given; what was new read by five purpose lanes (top model, plants).
+  Rehearsed on `main` 598cfd38, the list in order: tree 909f9e67
+  (909f9e677a399189cf987bdd4eb4a6660fd76d05): precheck PASS; with BK
+  too (c339d7f0): every switch thrown, claims-gain --whole, build,
+  questline 187 of 187, all green, precheck red only by BK.
 ## The list: merge in this order, "Create a merge commit", in one go
-1 #2301 (BK 6463; DEPLOYS)  2 #2309 (BK 6465; DEPLOYS)
-3 Z (6271, a draft: mark it ready first).
-## Held / To 60
-- Held, each a plant green in the PR's own guard (review-z59): #2273 (no
-  uncarried gap of 5 to 12 s played), #2285 (test mode taken once), #2316
-  (a week-old card reopened: a bug), #2317 (six shadows off), #2286 (a
-  URL's text; a frozen spread), #2287 (a spread copy; a method),
-  #2298 (`debugBus.getState`; importsOf's file order), #2279 (riding
-  forced; nine report lines), #2306 (the rise from `.slice(-1)`), #2314
-  (draft; the sample filtered out), #2293 (a later write to `dx`/`dy`),
-  #2295 (`S[k].send`; a stash helper; `s.id`), #2310 (an array form;
-  `wireform: true` counts), #2312 (a gated read; `msg.length`), #2313
-  (draft; new head e2de46fd at 08:14 not reviewed).
-- Waiting on a held PR under them (own part passed): #2290, #2302, #2303
-  (WL), #2291, #2297 (PH), #2300 (DG).
+1 #2329 (LF top: lands #2273, #2320; draft, retarget to main)
+2 #2333 (WHO top: lands #2317, #2325; draft, retarget)
+3 #2332 (PH top: lands #2279 to #2323; draft, retarget)
+4 #2330 (CT top: lands #2308, #2327; draft, retarget)
+5 #2331 (VW; draft, base main). Every one DEPLOYS the worker.
+6 Z (6273, a draft: mark it ready first).
+## Held / To 62
+- #2326 (BK): red with PH's #2279: `road-levers` 1 cannot place
+  `server/src/report.js:131`'s import of `../../src/game/switches.js`.
+  BK's guard learns an import outside `server/src`; then it lands.
 ## Found
-- elemental2.test.mjs:187 flaky (about 1 in 1,700; no card). frame-pacer
-  23g a text pattern (card O). held-budget and memory-budget lines can
-  rise silently. `window.debug.getState()` uncounted (WL). The box had no
-  `node_modules` at the start.
+- `docs/plan/debts.md` (61's lines); the login-keys 12g deploy failure.
 ## Needs
-- Nothing from the owner for this list. The orchestrator: #2291's body
-  does not name `renderRes.js` nor its second suite as approved.
+- Nothing from the owner for this list.

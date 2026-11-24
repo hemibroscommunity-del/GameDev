@@ -84,6 +84,13 @@ export function stickTravel(sideways) {
   return sideways ? STICK_ZONES.RADIUS_SIDE : STICK_ZONES.RADIUS_UP;
 }
 
+/** v2.3.6541 (sitting 57's mend): the turn ring's radius on the disc, CSS px:
+ *  the page's turn border (`?turnzone`, turnShare) of the disc's drawn radius,
+ *  to a tenth of a px.  TouchControls draws it only in mode 5 (twoButtonsOn). */
+export function turnRingRadius(sideways) {
+  return Math.round(turnShare() * stickTravel(sideways) * 10) / 10;
+}
+
 /** Snap an angle to the nearest of the eight facings drawn today. */
 export function facing8(ang) {
   const step = (2 * Math.PI) / STICK_ZONES.FACINGS;
@@ -144,4 +151,108 @@ export function stickTo(S, phase) {
   if (stickPhase(S) === phase) return false;
   S._stickPhase = phase;
   return true;
+}
+
+/* ═══ v2.3.6541: THE STICK IN MODE 5 (card CT PR 2) ═══
+ * BroTown's handleJoystickMove makes this ONE call when the page plays the
+ * two buttons (manualCombat twoButtonsOn), and returns: the disc and the
+ * walk are this function's.  `dx, dy` the thumb from where it landed, CSS
+ * px; `radius` the disc's drawn radius (its box's half width: the travel in
+ * this mode); `knob`, `rod` the disc's two drawn parts and `op` the disc's
+ * opacity (null in node).  It draws the knob out to the drawn radius,
+ * writes the walk (S.stickX/Y: 0 in a turn and at rest), the body's facing
+ * on a turn (S._targetFacingAngle: visualSystems slews S._facingAngle to it,
+ * and entityRenderer's 'facingAngle' branch draws it with no renderer
+ * change; the facing that changes rides `move` as any turn does today, and
+ * nothing goes while it is unchanged), and the stick's phase. */
+let _turn = null;   /* the page's `?turnzone`, read once */
+export function stickDrive(S, dx, dy, radius, knob, rod, op) {
+  if (_turn === null) _turn = turnShare();
+  const R = radius > 0 ? radius : STICK_ZONES.RADIUS_UP;
+  const r = stickRead(dx, dy, R, _turn);
+  const d = Math.min(Math.hypot(dx || 0, dy || 0), R);
+  const a = Math.atan2(dy || 0, dx || 0);
+  if (knob) knob.style.transform = 'translate(calc(-50% + ' + Math.cos(a) * d + 'px), calc(-50% + ' + Math.sin(a) * d + 'px))';
+  if (rod) {
+    rod.style.width = d + 'px';
+    rod.style.transform = 'rotate(' + a + 'rad)';
+    rod.style.opacity = d > 4 ? (op || '0.5') : '0';
+  }
+  S.stickX = r.sx;
+  S.stickY = r.sy;
+  if (r.phase === 'turn') S._targetFacingAngle = r.face;
+  stickTo(S, r.phase);
+  return r;
+}
+
+/* ═══ v2.3.6542: THE STICK'S ONE WRITER IN EVERY MODE (the orchestrator, card WL's owned state) ═══
+ * S.stickX / S.stickY are written here only: mode 5's stickDrive above, and
+ * every other mode's analog read and lift below, moved out of BroTown's
+ * handleJoystickMove / handleJoystickEnd WHOLE (the same numbers, the same
+ * order of operations, the same frame: a call where the lines were).  The
+ * read: the thumb `dist` CSS px from where it landed at `angle`, the stick's
+ * travel `maxR` (the disc's half width less 20: 17.5 px upright, 25
+ * sideways); inside the 12 px dead zone nothing, else the share past it,
+ * full at maxR (v2.3.949's relative drag). */
+export const STICK_DEAD_PX = 12;
+export function stickAnalog(S, dist, angle, maxR) {
+  if (dist < STICK_DEAD_PX) {
+    S.stickX = 0;
+    S.stickY = 0;
+    return;
+  }
+  /* Analog: normalize to -1..1 range based on distance from center */
+  const strength = Math.min((dist - STICK_DEAD_PX) / (maxR - STICK_DEAD_PX), 1);
+  S.stickX = Math.cos(angle) * strength;
+  S.stickY = Math.sin(angle) * strength;
+}
+/** The thumb lifted, in every mode: no walk, the stick at rest (stickTo
+ *  writes only when mode 5 moved it). */
+export function stickLift(S) {
+  S.stickX = 0;
+  S.stickY = 0;
+  stickTo(S, 'rest');
+}
+
+/* ═══ v2.3.6541: THE FRAME'S STEP `input` (game/frameSteps.js; card CT PR 2) ═══
+ * The loop's read of the player's input, moved here out of BroTown's
+ * gameLoop whole (grand plan 5.4's next move: legacy falls by the input
+ * step), so the two buttons' reads sit in one named step, not in legacy.
+ * Nothing it did changes:
+ *   - movement is gated by REAL stuns only (hexer / brute charge), death and
+ *     the loot pickup's freeze (`frozen`); the 250 ms hit-react lockout does
+ *     not freeze it (v2.3.1x: stacked lockouts read as frame stutter);
+ *   - v2.3.3034: a thumb held on the stick is a player (the idle clock,
+ *     S._lastInputAt, IDLE_LOGOUT_MS: a stick has no key repeat, and two
+ *     minutes of walking logged you out mid-stride).  v2.3.6541: a thumb
+ *     held TURNING in mode 5 is one too (its walk is 0);
+ *   - the keys move you when the stick does not (the same gates), a diagonal
+ *     normalized;
+ *   - the name tag's facing, P.dir: 'down' (camera-facing) in the loot
+ *     freeze (`lootFrozen`), else the way you move.
+ * `K` the keys held.  Returns the walk { dx, dy }: one object, made once,
+ * written again each frame (a frame makes no garbage).
+ * v2.3.6541 (the gatekeeper's sitting 58): the idle clock is read HERE, on
+ * the idle judge's own clock (Date.now(): BroTown's IDLE_LOGOUT_MS check and
+ * wsClient's stamp), never handed in: a `performance.now()` or a 0 handed in
+ * stamped a walking thumb on another clock and idled it out (the 3034
+ * incident), and a guard counting arguments never saw which clock came. */
+const _IN = { dx: 0, dy: 0 };
+export function stickFrame(S, K, frozen, lootFrozen) {
+  let dx = frozen ? 0 : S.stickX, dy = frozen ? 0 : S.stickY;
+  if (S.stickX || S.stickY || stickPhase(S) === 'turn') S._lastInputAt = Date.now();
+  if (!frozen && dx === 0 && dy === 0) {
+    if (K['ArrowUp'] || K['w'] || K['W']) dy = -1;
+    if (K['ArrowDown'] || K['s'] || K['S']) dy = 1;
+    if (K['ArrowLeft'] || K['a'] || K['A']) dx = -1;
+    if (K['ArrowRight'] || K['d'] || K['D']) dx = 1;
+    if (dx && dy) { const len = Math.sqrt(dx * dx + dy * dy); dx /= len; dy /= len; }
+  }
+  const P = S.player;
+  if (lootFrozen) P.dir = 'down';
+  else if (Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1) {
+    if (Math.abs(dx) > Math.abs(dy)) P.dir = dx > 0 ? 'right' : 'left'; else P.dir = dy > 0 ? 'down' : 'up';
+  }
+  _IN.dx = dx; _IN.dy = dy;
+  return _IN;
 }

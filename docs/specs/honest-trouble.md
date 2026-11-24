@@ -421,6 +421,37 @@ speed plus 80 px.
 
 ---
 
+## D. A person's latched fight: the two buttons (`?manual=5`; tag 6544)
+
+Card CT, PR 5: a trial, on a touch screen only. The left stick turns the body
+inside 30% of its travel and walks beyond; Attack is a latch (one press locks
+the monster in the sight line and the held attack runs at the weapon's own
+rate until a second press, the range's end or the kill, and on a kill the
+lock moves to the next monster in sight with no press); Block and the
+specials are buttons that come with the sight. **Nothing on the worker
+changes and no detector's line moves.** The worker cannot tell this mode
+from the default (4, the held combat): no field of `join` or `move` says it
+(only the swipes' trial, 3, sends one: `fs`, `wsClient.js:759`). So a person
+in mode 5 sends what a person holding the attack in mode 4 sends, with fewer
+touches. What that looks like to each signal that reads aim or the rhythm of
+presses:
+
+| Signal | A person's latched fight | Safe today? |
+|---|---|---|
+| A1 `aimed` | A turn (the thumb inside 30%) moves no place, so it never enters the ring (`botsig.js:289`: a move is kept only when the place changed). A walk starts at the turn's border and its speed rises to the rim: a slower start sends more places on the last 40 px, never fewer. | yes |
+| A2 `reflex` | A turn is no answer (same place, no velocity: `botsig.js:306`). The answers are today's: a walk away, the dodge swipe, Block. In a latched fight the right thumb is not holding Attack, so Block is one tap, not a lift and a press: the answer is quicker by the lift, still a person's reaction, and the frame and the line only add to it. Margin #2 below is the same. | yes |
+| A3 `rooted` | The fight goes on with no thumb down and the lock moves through a pack by itself, so a person who stands still kills more from one spot than in mode 4 (an archer or a staff, at range, most of all). Runs from one spot are longer for an honest person. | **margin (#4, wider)** |
+| A5 `gesture`, B1-B4 (the fingerprint, the replay ring, the variance, the gap between strikes) | Attack near a node starts a harvest, as the disc does today; the harvest's drawn gesture is the minigame's own layer (`ExtractionSwipeLayer.jsx`, `swipeFp`), which this mode does not touch. | yes |
+| C1 the hit's reach | The sight's ranges are the worker's reach less its slack, never more (`sight.js` `sightRange`): a latched hit claims no further than mode 4's. | yes |
+| C2, C4, C5 the hit's rate, the bow's shot, the sword's swing | The latch runs the held attack's own lines (`S.autoAttack`): the weapon's own rate, the held bow's relays, a ring's hits in one bundle. The bow looses at the lock. | yes |
+| C3 the paid special | The Special button is today's `ability_use` (`type: 'swipe'`), a tap in place of a flick. | yes |
+| The cadence of presses (not read, below) | **Two presses a fight**, or one: the fight's rhythm is the weapon's cooldown, and the lock's moves come with no press at all. A person's latched fight and a script's are the same on the wire, and the same as mode 4's held fight. | yes, while it stays unread |
+
+**The detector must:** never read "few presses a kill" or "a lock that moves
+by itself" as a script: that is the mode, and the worker cannot see the
+mode. A rule that needs to know it asks for a field on `join` first (a cap
+and a kill switch: CLAUDE.md section 5), never a guess from the rhythm.
+
 ## What is NOT read (and must stay so)
 
 The cadence of `move` (a timer: 33/66 ms, or ~200 ms with the move diet),

@@ -42,6 +42,7 @@ import { zoneHomes } from '@/data/zones.js';   /* v2.3.3499: the Wheel's far cul
 import { keepDuelLock } from '@/game/duelLock.js';   /* v2.3.3713: a player lock follows its peer; an arena match locks on sight */
 import { tapLockOn, mcLockAllowed } from './manualCombat.js';   /* v2.3.4395: manual combat keeps no chosen lock; v2.3.5018: nor the held combat (tapLockOn) */
 import { dropUnsettledDuel } from '@/game/duelPending.js';   /* v2.3.4361: an accept the worker never settled */
+import { latchPhase, twoButtonsLive } from '@/game/latch.js';   /* v2.3.6542: the two buttons' lock is the latch's (card CT PR 3) */
 import { resetOn } from '@/game/resetOn.js';   /* v2.3.5206: the fight you picked ends at the zone door (card L) */
 
 function monPos(m) {
@@ -510,6 +511,29 @@ function endEngagement(S) {
 }
 resetOn('zone', endEngagement, 'combat');
 
+/* v2.3.6542: the two buttons' lock (above): the latch's id, or none */
+function latchLock(S) {
+  const id = latchPhase(S) === 'active' ? S._latchId : null;
+  const lt = autoLock(S);
+  /* v2.3.6542: kept only once its ref is the LIVE monster of the list
+     (lockRefPresent: a replaced one re-pointed by id, as mode 4's path does
+     below the mode's return).  A whole list's replace (a zone_state) left the
+     latch holding the old object: still "holdable", frozen where it was, and
+     every swing (monsterCombat: the lock's ref is the aim) went that way --
+     45 swings at a fishman 25 px off, 48 degrees wide, none landing (part 6's
+     probe, mp-twobuttons 2c sideways) */
+  if (lt && id != null && lt.type === 'monster' && String(lt.id) === String(id) && lockRefPresent(S) && monHoldable(lt.ref)) return;
+  let m = null;
+  if (id != null && Array.isArray(S.monsters)) {
+    for (let i = 0; i < S.monsters.length; i++) {
+      const c = S.monsters[i];
+      if (c && c.id != null && String(c.id) === String(id) && monHoldable(c)) { m = c; break; }
+    }
+  }
+  if (m) { S.lockedTarget = { type: 'monster', id: m.id, ref: m, src: 'auto', latch: true, at: Date.now() }; return; }
+  if (lt) { S.lockedTarget = null; S._lockDroppedAt = Date.now(); S._lockDroppedWhy = 'latch'; clearLockAim(S); }
+}
+
 export function updateTargeting(S) {
   if (!S || !S.player) return;
   /* First, so every early return below still leaves the flag current. */
@@ -632,6 +656,18 @@ export function updateTargeting(S) {
     if (S.lockedTarget) { S.lockedTarget = null; S._lockDroppedAt = Date.now(); S._lockDroppedWhy = 'dead'; clearLockAim(S); }
     return;
   }
+  /* ═══ v2.3.6542: THE TWO BUTTONS LOCK WHAT ATTACK LATCHED, AND NOTHING ELSE ═══
+     The owner, 2026-11-23: "It will lock on target while combat is active."
+     With `?manual=5` on a touch screen (card CT PR 3) the lock is the
+     latch's: its monster while it is active (game/latch.js: Attack pressed
+     with a monster in sight), none while it is idle -- no automatic nearest
+     lock for any weapon, so a bow and a staff lock too, and their shots fly
+     at it (combatHelpers rangedAimAngle: the lock first).  `src: 'auto'` so
+     mcLockAllowed keeps it; `latch: true` says whose.  The latch's ends
+     (game/latch.js latchCheck) are its range and its death, so nothing
+     below judges it.  A player's lock (a duel's, a spar's) returned above,
+     as in mode 4. */
+  if (twoButtonsLive()) { latchLock(S); return; }
 
   /* A TAPPED lock survives until it dies or you tap again -- range never
      clears it.  (v2.3.2246 §7.9: the range rule owns only the locks it made,

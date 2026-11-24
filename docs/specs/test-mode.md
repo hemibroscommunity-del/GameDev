@@ -132,6 +132,26 @@ A test-mode character's device is also kept as the owner's (v2.3.5627,
 (`freezedevice`) never holds the owner's own phone. Not a check: it turns
 nothing off.
 
+And a record that keeps who acted marks it (v2.3.6480, `actor.js actorTest`,
+`actorRow`): an `xfer:` row's `actor` takes `test: true` beside its kind,
+and the day's book adds the character's seconds and gold under its part's
+`test` key, apart from play. Not a check: it turns nothing off.
+
+And the owner's play is recorded and its checks run IN SHADOW (v2.3.6482,
+`playtrace.js`; grand plan step 10.8, the owner's yes, call 13): a test-mode
+sitting's first ten active minutes become one `play_trace:` row labelled
+`human`, in the league's trace form (rung 4 replays it), and while it
+records, the checks test mode turns off are asked anyway, their verdict
+counted as "would refuse" (`wr`), play going on as test mode lets it: the
+move budget (on a budget of the recording's own, movement.js), the
+too-early strike and the strike with no start of its own (gathering.js), the
+cook's rate, its floor and its start (cooking.js), and the hit proof's
+weapon, reach and rate, the bow's arrow and the sword's swing (combat.js).
+NOT shadowed: the bot scoring (botfp.js, botsig.js: their scoring writes),
+the quests' order, the reconnect's judge (lastplace.js) and the roll window:
+the league's replay of the row (test mode off) is their shadow. Not a check:
+it turns nothing off. `playtrace: false` records and shadows nothing.
+
 ## The switch
 
 | Surface | Who | What |

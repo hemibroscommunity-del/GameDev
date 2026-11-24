@@ -25,7 +25,7 @@ untouched. It is a trial: the owner has changed the right stick three times
 better the old way"*), so nothing old is removed until they have played
 both.
 
-**Tags:** 6540 to 6559, one a PR, in order.
+**Tags:** 6540 to 6559, one a PR, in order (6545: item 6, the orchestrator's addition of 2026-11-24).
 **Model and effort:** the strong model, high. Helpers (the cheapest model, low) for phone runs.
 **Read:** `CLAUDE.md`; `docs/plan/finish.md` parts 5 and 6 (they bind you);
 `docs/plan/census/controls-map.md` (today's controls, file by file: start
@@ -141,6 +141,48 @@ the switch table.
    across it).
 5. **(6544) The Test panel's row, the teaching words for the mode, the
    watch's row.** Then tell the orchestrator: ready for the owner's phone.
+6. **(6545) Sprint from the left stick in mode 5** (the owner's request,
+   2026-11-24 01:31 UTC: *"the sprint button should be moved to the left
+   joystick too"*; asked how: *"Go recommended"*): the thumb pushed PAST the
+   disc's edge sprints; no sprint button in mode 5.
+   PURPOSE: in the two-button trial the run is one more thing the left thumb
+   does, and a thumb resting at the rim (full walking speed) never burns
+   stamina by accident.
+   Readings chosen (named in the PR under "Decided by the orchestrator"):
+   - The rule is a pure function beside `stickRead` in `stickZones.js` (or
+     `src/game/stickSprint.js`), fed the UNCLAMPED `share`: on at share >=
+     SPRINT_AT 1.25, off below SPRINT_OFF 1.05, both in STICK_ZONES (trial
+     numbers). Never read from the clamped walk vector.
+   - It is a HOLD, like Shift on a computer: BroTown's stick call holds the
+     sprint through `sprint.js`'s start/stop, never `toggleSprint`. Every end
+     of today's sprint still ends it (stamina 0, shield, attack, swim, death,
+     a zone change, standing still), and after an end it starts again only
+     once the thumb has come back inside SPRINT_OFF and gone out again.
+     Refused for stamina: today's "Not enough energy!" popup and denied cue,
+     once a push.
+   - Stamina, speed and the `sp` field on the move are today's; NO server
+     change, no cap, no new message (`server/src/sprint.js` judges it as now).
+   - In mode 5 with this on, `SprintButton.jsx` is not rendered.
+     `?rimsprint=0` (a row in the switch table) gives the button back and the
+     edge does nothing. With mode 5 off, everything is as today. Shift on a
+     computer is unchanged.
+   - What shows: PR 2's ring says "sprinting" by its own colour; no new art,
+     no new sound. One teaching line with PR 5's words: "Push the stick past
+     its edge to sprint."
+   Files beyond the card's own, APPROVED (README "Who answers", answer 1):
+   `src/game/sprint.js` (only if the hold needs a `how`),
+   `src/ui/panels/SprintButton.jsx` (the not-rendered case), the switch
+   table, `server/test/stick-zones.test.mjs` (it deploys: say so),
+   `tools/qa/mp/mp-<name>.mjs` with its lane, `docs/UI-DESIGN-NOTES.md`.
+   Done when a phone test in mode 5 (`world: 'wheel'`, upright and sideways)
+   shows: at the rim (share 1.0) full walking speed, no sprint, stamina
+   still; past 1.25 the sprint (the move's `sp`, stamina falling); back
+   inside, it ends; at 0 stamina it ends and does not start again until the
+   thumb has come back; `?rimsprint=0` and mode off are as today. And these
+   plants go red in the suite, by what the code does: SPRINT_OFF made equal
+   to SPRINT_AT (flutter); the rule fed the clamped speed (sprints at the
+   rim); a restart with the thumb still out; a sprint started with the
+   shield up or dead; `toggleSprint` in place of the hold.
 
 Stop there. Taking the right stick out, moving the old scenarios, the
 computer's controls and PvP wait for the owner's verdict.

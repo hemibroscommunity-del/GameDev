@@ -51,7 +51,8 @@
  * v2.3.5123: and the field report's, `_reportOff` (report.js); v2.3.5124:
  * the room's own row's, `_roomRowOff` (roomrow.js); v2.3.5127: the Speed
  * test's card's, `_reportSpeedOff` (report.js).
- * v2.3.5221: and card O's lanes', `_reportLanesOff` (report.js): `reportlanes`.  */
+ * v2.3.5221: and card O's lanes', `_reportLanesOff` (report.js): `reportlanes`.
+ * v2.3.6500: and card PH's heat, board and ramps, `_reportHeatOff` (report.js): `reportheat`.  */
 
 /* v2.3.2438: the daily metric walks the player table one page per tick
    slot (see _metricsMaybe).  A throw waits RETRY_MS before trying again
@@ -108,6 +109,7 @@ import { setGearStashCap, GEAR_STASH_CAP, GEAR_STASH_CAP_LEGACY, WEAPON_STASH_CA
 import { setBagOneSum, setBagBook, setBagEcon } from './bag.js';   /* v2.3.4900: the bag door's step 2 switch; v2.3.5085: + its book */
 import { bookAdd, bookSoFar, bookDay } from './daybook.js';   /* v2.3.5085; v2.3.5093: + a day as it stands */
 import { worldCtx, worldAdd } from './worldsum.js';   /* v2.3.5093: the world's one sum, in the day's snapshot */
+import { sitFlagSet } from './sitting.js';   /* v2.3.6484: `sitting: false` set, the cards the joins took count no more (card WHO; sitting 60) */
 import { STORAGE_MARKS } from './storagemarks.js';   /* v2.3.5093: which records hold gold */
 
 /* ═══ v2.3.5093: THE WORLD'S SUM IN THE DAY'S SNAPSHOT (grand plan step 10.4, card E PR 12) ═══
@@ -310,6 +312,17 @@ export const liveopsMethods = {
   _wireDoorOff() {
     const f = this._liveFlags;
     return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'wiredoor') && !f.wiredoor);
+  },
+
+  /* v2.3.6443 (card DG PR 4): the wire door's forms (wire/door.js
+     WIRE_FORM): `wireform: 'count'` counts a field out of form and lets it
+     in; `wireform: false` (or any falsy value) reads no form, the door of
+     v2.3.5184; absent or anything else, a field out of form is refused */
+  _wireFormMode() {
+    const f = this._liveFlags;
+    if (!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'wireform'))) return 'on';
+    if (f.wireform === 'count') return 'count';
+    return f.wireform ? 'on' : 'off';
   },
 
   /* v2.3.5543 (RT-1 N10): the relay's byte bounds (relay.js
@@ -633,6 +646,7 @@ export const liveopsMethods = {
       if (name.startsWith('off_') && typeof this._clientOffChanged === 'function') this._clientOffChanged();
       if (name === 'disable_bigbags' || name === 'bagonesum' || name === 'econ') this._syncBagCaps();   /* v2.3.4224; v2.3.4900: + the bag door's one sum; v2.3.5085: + the counting's switch */
       if (name === 'freeswing' && typeof this._freeSwingFlagChanged === 'function') this._freeSwingFlagChanged();   /* v2.3.4520: the free-swing trial, every phone told (freeswing.js) */
+      if (name === 'sitting') sitFlagSet(this);   /* v2.3.6484: thrown off, no card goes on counting on the same socket (sitting.js) */
       if ((name === 'bowdraw' || name === 'staffgather') && typeof this._drawGatherFlagChanged === 'function') this._drawGatherFlagChanged();   /* v2.3.4799: the bow's draw and the staff's gather, every phone told (drawgather.js) */
       return json({ ok: true, flags });
     }

@@ -82,6 +82,7 @@ import { parseGemKey } from './gems.js';   /* v2.3.3516: gems are kept through a
 import { bagGive } from './bag.js'; /* v2.3.4810: the bag door */
 import { xpGive, xpLevelUp, xpMake } from './xp.js';   /* v2.3.5289: experience and levels' door (card R PR 10) */
 import { harvestGradeEarliest, harvestGradeJudge } from './harvestgrade.js';
+import { traceWould, traceStartless } from './playtrace.js';   /* v2.3.6482: a test-mode strike judged in shadow (card WHO PR 3; the orchestrator's yes) */
 import { ZONES } from './data.js';   /* v2.3.5903: a harvest's shard only for a zone that has one (TRAPS §154) */   /* v2.3.5900: the grade judged (card K4 PR 1; `harvestgrade`, OFF) */
 
 export const GATHER_HITS = {
@@ -1516,6 +1517,7 @@ export const gatheringMethods = {
       const jitterHi = 1 + jit;
       const earliestOpen = ex.startedAt + Math.floor(ex.openDelayBase * jitterLo) - this.EXTRACTION_GRACE_MS;
       const latestClose  = ex.startedAt + Math.ceil(ex.openDelayBase * jitterHi) + this.EXTRACT_WINDOW_MS + this.EXTRACTION_GRACE_MS;
+      if (now < earliestOpen && _tm) traceWould(this, ps, 'strike_early', now);   /* v2.3.6482: in shadow, while it records (playtrace.js; card WHO PR 3) */
       if (now < earliestOpen && !_tm) {
         // Too early -- impossibly fast swipe.  Drop the strike, leave
         // the node alive, leave extraction state so a legit follow-up
@@ -1546,6 +1548,7 @@ export const gatheringMethods = {
       /* v2.3.3322: no start of its own -- a recovery strike, or refused with
          the node left standing (HARVEST_PROOF).  Counted either way, the
          other-node strike too (it never was). */
+      if (this._harvestProofOn() && _tm) traceStartless(this, ps, now);   /* v2.3.6482: in shadow, on a recovery clock of the recording's own (playtrace.js) */
       if (this._harvestProofOn() && !_tm) {
         if (ex) session._extractionOtherNode = (session._extractionOtherNode || 0) + 1;
         if (!this._harvestRecoverOk(session.id, now)) {

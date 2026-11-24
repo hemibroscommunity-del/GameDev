@@ -14,6 +14,7 @@
  * tables).  Original section comments preserved on each method. */
 
 import { FISH_TIERS, FISH_HEAL, COOKING_RECIPES, SHOP_ITEMS, DISHES, DIEGO_SHELF, PVP_HEAL, manaSurgePerTick } from './data.js';
+import { traceWould, traceCookRate } from './playtrace.js';   /* v2.3.6482: a test-mode cook judged in shadow (card WHO PR 3; the orchestrator's yes) */
 
 /* v2.3.3133: the most players the one-bite clocks keep before a prune drops
    the ones that can no longer hold anyone back (_pvpHealPrune). */
@@ -957,8 +958,9 @@ export const cookingMethods = {
   // v2.3.3036: 45/min since the gesture is a quarter of what it was --
   // see COOK_PER_MIN.
   _cookRateOk(ps) {
-    /* v2.3.3430: no rate for a test-mode character (testmode.js) */
-    if (typeof this._testMode === 'function' && this._testMode(ps)) return true;
+    /* v2.3.3430: no rate for a test-mode character (testmode.js); v2.3.6482:
+       judged in shadow on a history of the recording's own (playtrace.js) */
+    if (typeof this._testMode === 'function' && this._testMode(ps)) { traceCookRate(this, ps, COOK_PER_MIN); return true; }
     const now = Date.now();
     if (!Array.isArray(ps._cookHistory)) ps._cookHistory = [];
     ps._cookHistory = ps._cookHistory.filter((t) => (now - t) < 60000);
@@ -1038,6 +1040,8 @@ export const cookingMethods = {
        v2.3.5727).  v2.3.5727: only looked at here; spent below, once the
        floor and the fish check pass too */
     const cookStart = this._cookStartOn() && !(typeof this._testMode === 'function' && this._testMode(ps));
+    /* v2.3.6482: a test-mode cook's start judged in shadow while it records (_cookStartOk reads, spends nothing; playtrace.js) */
+    if (!cookStart && ps._trace && this._cookStartOn() && !this._cookStartOk(ps, fishKey, Date.now(), session)) traceWould(this, ps, 'cook_start');
     if (cookStart && !this._cookStartOk(ps, fishKey, Date.now(), session)) {
       const ws = this._wsBySessionId(session.id);
       if (ws) this._sendPlayerState(ws, session.id);
@@ -1069,6 +1073,7 @@ export const cookingMethods = {
     const nowCk = Date.now();
     const COOK_FLOOR_MS = 900;
     /* v2.3.3430: ...and no floor for a test-mode character (testmode.js) */
+    if (ps._trace && ps._lastCookAt && (nowCk - ps._lastCookAt) < COOK_FLOOR_MS) traceWould(this, ps, 'cook_floor', nowCk);   /* v2.3.6482: in shadow (playtrace.js) */
     if (ps._lastCookAt && (nowCk - ps._lastCookAt) < COOK_FLOOR_MS && !this._testMode(ps)) {
       const ws = this._wsBySessionId(session.id);
       if (ws) this._sendPlayerState(ws, session.id);

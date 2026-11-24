@@ -84,7 +84,7 @@ export const KNOWN = {
      more.  The same sweeps with ?packworker=0: 27.5 and 22.2 ms the longest, 5 holds each (docs/specs/asset-door.md
      part 5, 5253) */
   'screen-check': { ms: 260, whose: 'box',
-    why: "only with a SECOND page open on this box (the other player's own browser): both pages draw on one software graphics chip, and the black-screen check's collect waits for the other page's frames too, 106 to 208 ms.  With one page it is 0 to 2 ms since the collect moved to the top of the frame (it was 110 to 206)",
+    why: "only with a SECOND page open in the SAME browser on this box (the other player's page, one browser's two tabs): both pages draw on one software graphics chip, and the black-screen check's collect waits for the other page's frames too, 106 to 208 ms (281 to 307 at the sweep's peer and armour, census/HB-holds.md row 1).  With one page it is 0 to 2 ms since the collect moved to the top of the frame (it was 110 to 206).  v2.3.6505 (card PH PR 6; TRAPS 177, the test first): mp-heldsweep's rider has a browser of its own (two chips, as two phones), and leaves before `armour`: the peer station read 6.5 ms, once, on the test box (2026-11-24).  The line stays for the scenarios that still open a second page in the one browser (the sword, bow and staff feel tests read this list)",
     next: 'nothing here: two pages are never on one phone.  On a phone the frame strip names it ("screen check N ms") if it is ever 4 ms or more',
     crowd: "(no line of its own: the crowd tour now plays the species last) with one page, when the chip is swamped (the first crowd tours, after the species churn, 377 MB on it): the fenced read is not back within its frames and the check falls back to its OLD way, a drawImage copy of the canvas that waits for the chip: 465 to 625 ms, a dozen times.  Fix the churn first (speciesArt, below); then the old way should not run in play at all (skip a check rather than copy)" },
   /* v2.3.5044: 'strip-made' (was 24) off the list.  What was left was the page putting a monster strip's numbers on its
@@ -92,6 +92,15 @@ export const KNOWN = {
      the main tour's `town`, three runs, 9.4 / 17.9 / 10.0 ms the longest, 34 holds.  Now the reader's worker numbers
      the strip for its row (stripRows.js; a colour variant retinted there first) and the page only checks the rows and
      makes the texture.  The sample (`town`, `lands` x3): 6.1 / 12.4 / 4.5 ms the longest, 11 holds in all (the 12.4: 9 ms of it the row's upload to this box's software chip; one hold just past the general line is the judge's noise) (docs/specs/held-sweep.md, "Card H") */
+  /* v2.3.6505 (card PH PR 6): 'server-message' ON the list, a NEW named debt (not a line raised).  The gate's held
+     sample (stand, town, ride: tools/dev/gatekeeper.mjs's `heldsample`) on main b966af81, on the test box,
+     2026-11-24: 16.5 ms over the general 12 at `town`, twice in one run, unlisted, so every sitting would read red.
+     A gate red at every sitting teaches everyone to read past it (orchestrator part 5's call); listed, it goes red
+     only for what is new.  Seen before and listed only (census/HB-holds.md row 15: 33.0 ms at `lands`; SB-ride.md
+     row 13: 19.6 on the board).  Not card PH's to fix: it is the message's own size and the work handed on */
+  'server-message': { ms: 17, whose: 'ours',
+    why: "a message from the worker worked through in one piece on the page (wsClient.js ws.onmessage and what it hands on: processGameEvent, the strip readers' replies): 16.5 ms twice at the gate sample's `town` on main b966af81, on the test box (2026-11-24); 33.0 once at the sweep's `lands` before (census/HB-holds.md row 15)",
+    next: "split what one message makes the page do (the tick's per-entity work handed on a frame at a time), or send less in one message (the worker's message size, HB-holds row 15); then the row comes off" },
   'the frame itself': { ms: 70, whose: 'box',
     why: "one frame's own code on this box, which plays a quarter of a second of game in each (it draws four a second): every monster, bubble and name plate that changed in that time is done in one frame",
     next: 'mp-phoneframe is the measure of a frame at a phone\'s rate; here the line only stops it growing',
@@ -209,4 +218,32 @@ export function judgeHeld(stations) {
     ranked: ranked.map((f) => ({ key: f.key, what: f.what, n: f.n, sum: Math.round(f.sum), longest: +f.longest.toFixed(1), where: [...f.where].join(', '), frame: f.frame, outside: f.outside, via: f.via })),
     over,
   };
+}
+
+/* v2.3.6506 (card PH, the sitting-59 mend): THE SWEEP'S VERDICT, here and not in the scenario.  The gate's held
+   sample (gatekeeper.mjs `heldsample`) is only as red as mp-heldsweep's verdict, and sitting 59 dropped that
+   verdict (`fresh.length === 0` forced true in mp-heldsweep.mjs) with every suite green: the scenario needs a
+   browser for an hour, no suite could play it.  The verdict's rows are made here, from the stations the sweep
+   measured, and gate-steps.test drives them with stations of its own (a new hold over its line, a listed one
+   grown, a station unread, a station asked for and not played); the scenario passes each row to its `rec.ok` as
+   it is.  `want` the stations asked for (BT_HS_STATIONS).  Returns judgeHeld's { ranked, over } and the rows,
+   each { name, ok, detail }. */
+export function sweepVerdict(stations, want) {
+  const st = Array.isArray(stations) ? stations : [];
+  const { ranked, over } = judgeHeld(st);
+  const listed = over.filter((o) => o.listed), fresh = over.filter((o) => !o.listed);
+  const say = (l) => l.slice(0, 6).map((o) => `${o.key} ${o.longest} ms > ${o.line} (${o.where}${o.times > 1 ? ', ' + o.times + ' times' : ''})`).join('; ');
+  const asked = Array.isArray(want) ? want : [];
+  const rows = [
+    { name: `the profile reads by name (an unminified build: the game's loop found in ${st.filter((s) => s.readable).length} of ${st.length} stations)`,
+      ok: st.length >= 1 && st.every((s) => s.readable),
+      detail: 'build with: npx vite build --minify false --outDir dist-prof, and run with QA_DIST=dist-prof' },
+    { name: `the budget: nothing NEW holds the page past its line -- ${HOLD_MAX_MS} ms a job outside the frame, ${FRAME_JS_MAX_MS} ms of the game's own code inside one, ${WINDOW_MAX_MS} ms at a window (${fresh.length} over${fresh.length ? ': ' + say(fresh) : ''})`,
+      ok: fresh.length === 0, detail: fresh },
+    { name: `...and nothing on the debt list has grown past its own line (${Object.keys(KNOWN).length} listed; ${listed.length} over${listed.length ? ': ' + say(listed) : ''})`,
+      ok: listed.length === 0, detail: listed },
+    { name: `every station asked for was played (${st.map((s) => s.name).filter((v, i, a) => a.indexOf(v) === i).join(', ')})`,
+      ok: asked.length >= 1 && asked.every((w) => st.some((s) => s.name === w)), detail: asked },
+  ];
+  return { ranked, over, rows };
 }

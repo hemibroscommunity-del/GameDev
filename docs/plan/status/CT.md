@@ -1,28 +1,34 @@
 card: CT
-branch: claude/plan-ct-1-rules
-prs: PR 1 (6540, ready)
+branch: claude/plan-ct-5-words (PR 5, stacked on claude/plan-ct-4-sight)
+prs: #2282 (6540, merged), #2293 (6541, merged at 60), #2308 (6542, held at 60: mended), #2327 (6543, ready), #2330 (6544, draft, main 598cfd38 in)
 state: ready
 
 ## Done
-- PR 1 (6540): the three rules (stickZones, sight, latch), their suites,
-  the phase rows, the ledger rows, mode 5 in manualMode, the switch rows.
-- PR 1's mend (the gatekeeper's sitting 56): the negative wrap's check
-  (plant S11 red), the exact edges (B3, B5, L2), the phase rows held to
-  the modules' lists (G2); facing8 gives west as +PI only; latchCheck lets
-  go on a distance that is not a number. Each plant proved red.
+- PR 1 (6540, #2282): merged at sitting 57.
+- PR 2 (6541, #2293): the left stick. Merged at sitting 60.
+- PR 3 (6542, #2308): the latch, the lock, the stick's one owner; held
+  at 60, mended: ONE gate, latch.js twoButtonsLive (latch.test H1, H2).
+- PR 4 (6543, #2327 ready, head 08d6735d): the sight line, Block and the
+  specials with the sight. mp-twobuttons 48 PASS, 0 FAIL, 1 SKIP (2c).
+- PR 5 (6544, #2330): the Test panel's row "Controls: two sticks / two
+  buttons"; the tour's and coach's words; honest-trouble.md D; node
+  two-buttons-choose; mp-twobuttons part 4.
+- PR 5 on main 598cfd38 (part 11): the leaf only draws (sightStream);
+  its line from the state, record and __btSightLine in
+  rendering/sightLineDraw.js (leaves guard); the row reads pageAddress,
+  twoButtonsChoose(on, search) gives `?...` (switch-reader 3).
 
 ## Next
-- PR 2 (6541): the left stick in mode 5 (turn and walk, the ring).
+- Item 6 (6545, sprint from the left stick): a fresh part.
 
 ## Found
-- `manual-combat.test` 1h pinned `?manual=5` as no switch: now `6` (its
-  one line, the nearest suite).
+- `manual-combat.test` 1h pinned `?manual=5` as no switch: now `6`.
+- This box: a CDP flick waits behind a slow frame (mp-twobuttons 1f).
+- 3c/3d sideways was the TEST: the sight holds 400 ms, stepped once a
+  frame; this box draws one every 767-1117 ms, so one missed frame drops
+  it. 3c: a SKIP with the frame time when frames are wider than the hold
+  (TRAPS 200); 3d counts each button (Block, then Special a render later).
 
 ## Needs
-- Answered by the orchestrator, 2026-11-23 (named in #2282's words): the
-  outside files approved as mechanical rows (phase-table's three
-  DOOR_SUITES lines, one a line, nothing else there: WL's file); the five
-  readings stand as trial numbers; BroTown.jsx never rises: each PR moves
-  at least as many lines (and statements) of the input path out as it adds.
-- Handed over at 264,000 tokens (finish.md 6.1): PR 2 is part 2's
-  (branch claude/plan-ct-2-stick, stacked on this one).
+- Approved: the two OWNED rows (stickX, stickY; #2290 is in `main`); PR
+  1's mechanical rows; PR 2's frame-steps WANT; the ledgers' machine rows.
