@@ -1,38 +1,40 @@
 card: BK
-branch: claude/plan-bk-2-restart (on claude/plan-bk-1-worldsum)
-prs: #2278 6460 (ready), #2281 6461 (ready again after sitting 56's hold)
+branch: claude/plan-bk-5-pieces (on claude/plan-bk-2-restart); 6462 on claude/plan-bk-3-claimsbar
+prs: #2278 6460 (merged), #2281 6461 (ready), #2289 6464 (ready), #2299 6462 (ready)
 state: ready
 
 ## Done
 
-- 6460 (PR 1): world-sum fails a move or escrow road (51) its real
-  handlers never ran and not on UNPLAYED (7, only falls). Plants 2, 3 red.
+- 6460 (PR 1): world-sum fails a road its handlers never ran. Merged.
 - 6461 (PR 2): chaos-restart §7, the sweep made from VALUE_PAUSE (14 rows),
-  crashed before every write and after the last, judged by unexplained().
-  Sitting 56's hold mended: the axes seeded with ids on file, the judge
-  counting the pieces the sum's readers hold by id. Plants B1 (an axe
-  doubled, "pieces 1"), B4 (an axe lost, "pieces -1") and R2 red.
+  judged by unexplained(). Plants B1, B4, R2 red. Ready (#2281).
+- 6464 (sitting 56's Found on #2278): world-sum §1 counts the pieces the sum
+  holds by id at every step. Plant E1 red. Ready (#2289).
+- 6462 (PR 3): claims-gain's bar, honestly. A PR runs one seed's gains (about
+  22 s); `--whole` (the gatekeeper's new `claims` step) runs the six seeds and
+  every disturbance. 3b judges the worst gain over the seeds run against 1.5;
+  over it, a KNOWN row (only falls) prints KNOWN, never PASS. KNOWN: reach
+  1.92 (seed d), freeswing 1.75, staff 2.97, harvest 1.57. The reach plant
+  now doubles `_swordReach` (plant C1): red on one seed (1.96 > 1.92) and six.
+  New rows: the liar whose join says `fs: 1`, and the staff (honest caster and
+  liar bots in claimbots.mjs). No rule of combat changed.
 
 ## Next
 
-- 6462 (PR 3): the 1.5 bar, honestly, once card CK's #2284 merges; from
-  main once #2278 and #2281 merge. claims-gain.test's 162 s (card CK's
-  Found) is brought down there, no check weakened, or said why not.
+- PR 4 (6463): `fee`, `hold`, `pace` in playerroads.js marked "not wired".
 
 ## Found
 
-- `escrow_debit_stored` (gold.js) looks unreachable from a handler.
-- `escrow_item`, `escrow_item_stored` run only with `ahonewrite: false`.
-- A mint is explained by construction; a door booking other than it moves
-  is card DG's.
-- A pile dropped on the ground is lost on a restart, by design (rule 11).
+- The sword's reach over six seeds is 1.92 (seed d), not "about 1.55":
+  finish.md part 9 call 5 says 1.55 to the owner (the orchestrator's file).
+- The staff's judge (hitproof.js) lets a liar take 2.97x an honest new
+  caster: its rate is the quickest build's (2 a second) against a new
+  character's 900 ms bolt, and its reach is counted from where it stands.
+- `escrow_debit_stored` (gold.js) looks unreachable from a handler;
+  `escrow_item(_stored)` run only with `ahonewrite: false`.
 - A crossing or sale a restart cut is finished at the first shop request
-  after the wake; until then the buyer's gold reads as gone.
-- Sitting 56 on #2278: a weapon lost on an equip swap (gear.js `stashSet`
-  then `bag.splice`) stays green in world-sum. The same mend as §7's
-  (count the pieces by id); it lands in world-sum.test, on #2278 if the
-  gatekeeper asks, else a PR of its own from this card's tags.
+  after the wake (a pile on the ground is lost on one, by design).
 
 ## Needs
 
-- Nothing.
+- Call 5 (the sword's reach) and a staff's-judge card: not this card's.
