@@ -28,6 +28,7 @@ import { SRC_DIR, srcFiles } from './src-walk.mjs';
 import { HP_ROADS, LIFE_ROADS, LIFE, lifeOf, lifeMethods } from '../src/life.js';
 import { GameRoom } from '../src/index.js';
 import { flagNameOk } from '../src/liveops.js';
+import { playTour, roomGuard } from './testroom.mjs';   /* v2.3.6440: the running room refuses (card DG PR 1) */
 
 let failures = 0, passes = 0;
 function check(name, cond, detail) {
@@ -316,6 +317,20 @@ for (const [name, table, fn] of [['hp', HP_ROADS, '_hpSet'], ['life', LIFE_ROADS
   const a = room._lifeTo({ hp: 10, maxHp: 100, dmgFromMonster: { m1: 30 } }, 'alive', 'respawn');
   room._applyMeleeLifesteal(a, 'm1', 'melee');
   check('6. the melee lifesteal no longer raises a dying body, and still heals a live one', k.hp === 0 && a.hp > 10, { dying: k.hp, alive: a.hp });
+}
+
+/* ══════════ R. THE RUNNING ROOM (v2.3.6440, card DG PR 1) ══════════
+   The tour (testroom.mjs playTour: a quest handed in) played on a guarded
+   room.  A second writer of health and the life phase planted on its paths is refused there,
+   however it is spelled (Object.assign, `||=`, a computed key, an alias, a
+   destructure, `delete`), and fails this suite: testroom.mjs "THE RUNNING
+   ROOM REFUSES".  Break proof: plants1.json (tools/dev/plants/). */
+{
+  const t = await playTour({ tag: 'life' });
+  check('R. the tour plays under the running room\'s guard', roomGuard.armed());
+  check('R. ...the guard is ON the tour\'s record (coins its accessor, the bag its Proxy, the room\'s map the guarded one: the purpose review, sitting 56)', roomGuard.holds(t.ps, t.room).length === 0, roomGuard.holds(t.ps, t.room));
+  check('R. ...each of its steps did what it does (a quest handed in, paid)', t.steps.length > 0 && t.steps.every((x) => x.paid), t.steps);
+  check('R. ...and no write of a guarded field was refused (testroom.mjs)', roomGuard.refusals().length === 0, roomGuard.refusals().slice(0, 5));
 }
 
 console.log(`\n${passes} passed, ${failures} failed`);
