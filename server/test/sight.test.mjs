@@ -21,13 +21,43 @@
  *      of S._sightPhase in src/ is outside it (the phase table's guard reads
  *      the same off the syntax tree, DOOR_SUITES).
  *
+ * v2.3.6543 (card CT PR 4: the sight line, and Block and the specials
+ * appearing):
+ *   7. THE LINE (sightLine): from the body to the monster in sight while the
+ *      phase is sighted and the frame's step still sights (S._sightAt within
+ *      HOLD_MS), never to one dead, at 0 hp, gone, or nowhere;
+ *   8. THE BUTTONS (controlVisibility.js combatButtonsShown, the one
+ *      resolver): any other mode, every button's own rule; the two buttons,
+ *      on screen while sighted, latched, or in a fight between players, and
+ *      nothing else; the fight asked last;
+ *   9. THE LEAF (rendering/leaves/effects-sight.js): drawSightLine draws the
+ *      bow's stream to the monster, from the body, its length the gap;
+ *      nothing while the bow's own beam is drawn; beamStream draws one closed
+ *      polygon as the renderer's did;
+ *  10. THE CALLERS, off the syntax tree (an ALLOW list): Block, Special and
+ *      Whirlwind / Shield Bash each ask the resolver with
+ *      `twoButtonsOn() && !fineInput()` and `fightOn`, in the render's own
+ *      gate (its `return null`), and nothing else in src/ calls it; the
+ *      renderer calls drawSightLine once, in its overlays, after the bow's
+ *      beam, with `shouldDraw && isBow`.
+ *
  * Break proof, tried by hand: `if (d > (kept ? range.out : range.in))` ->
  * `if (d > range.in)` -> FAIL 2 and 5; `S._sightPhase = 'none';` in
  * sightClear -> FAIL 6 (and the guard's §2).
+ * v2.3.6543, tried by hand (each FAILs its section): `<= SIGHT.HOLD_MS` ->
+ * `< SIGHT.HOLD_MS` (7); `String(m.id) !== k` -> `m.id !== S._sightId` (7);
+ * the dead test dropped (7); `|| latchPhase(S) === 'active'` dropped (8);
+ * `!!fight(S)` -> `!!fight` (8); `if (!twoOn) return true` -> `false` (8);
+ * the `beamDrawn` skip dropped (9); ShieldButton's resolver call dropped, or
+ * its `!fineInput()` dropped (10); a fourth caller in src/ (10).
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { findIn } from '../../tools/guards/lib/filesOf.mjs';
-import { SIGHT, SIGHT_PHASES, sightRange, sightPick, sightPhase, sightTo, sightStep, sightClear, angleOff } from '../../src/game/sight.js';
+import { SIGHT, SIGHT_PHASES, sightRange, sightPick, sightPhase, sightTo, sightStep, sightClear, angleOff, sightLine } from '../../src/game/sight.js';   /* v2.3.6543: + the line */
+import { combatButtonsShown } from '../../src/game/controlVisibility.js';   /* v2.3.6543 */
+import { latchTo } from '../../src/game/latch.js';   /* v2.3.6543 */
+import { beamStream, drawSightLine } from '../../src/rendering/leaves/effects-sight.js';   /* v2.3.6543 */
+import { babel } from '../../tools/guards/lib/renderTables.mjs';   /* v2.3.6543: the callers off the syntax tree */
 
 let failures = 0, passes = 0;
 function check(name, cond, detail) {
@@ -161,6 +191,160 @@ function writesOutside(prop, doorFile, doorFn) {
   const w = writesOutside('_sightPhase', 'src/game/sight.js', 'sightTo');
   check('6. sightTo writes the phase', w.inDoorWrites === 1, w.inDoorWrites);
   check('6. no write of S._sightPhase in src/ outside sightTo', w.outside.length === 0, w.outside);
+}
+
+/* ── 7. the line (v2.3.6543) ── */
+{
+  const T = 50000;
+  const mk = (over) => Object.assign({ player: { x: 1000, y: 1000 }, monsters: [{ id: 7, x: 1300, y: 1400, alive: true, curHp: 9 }], _sightPhase: 'sighted', _sightId: 7, _sightAt: T }, over || {});
+  const l = sightLine(mk(), T + 10);
+  check('7. sighted: from the body to the monster, its length the gap', !!l && l.id === 7 && l.x0 === 1000 && l.y0 === 1000 && l.x1 === 1300 && l.y1 === 1400 && near(l.d, 500), l);
+  check('7. one object, reused', sightLine(mk(), T) === l);
+  check('7. the id read as words both sides (a number spawned, a string over the wire)', !!sightLine(mk({ _sightId: '7' }), T) && !!sightLine(mk({ monsters: [{ id: '7', x: 1, y: 2, alive: true }] }), T));
+  check('7. held to HOLD_MS after the step last sighted, not a moment more', !!sightLine(mk(), T + SIGHT.HOLD_MS) && sightLine(mk(), T + SIGHT.HOLD_MS + 1) === null);
+  check('7. no clock, nothing', sightLine(mk(), undefined) === null && sightLine(mk(), NaN) === null);
+  check('7. phase none: nothing (with a kept id)', sightLine(mk({ _sightPhase: 'none' }), T) === null && sightLine(mk({ _sightPhase: undefined }), T) === null);
+  check('7. no id, no body, no S: nothing', sightLine(mk({ _sightId: null }), T) === null && sightLine(mk({ player: null }), T) === null && sightLine(null, T) === null);
+  check('7. the monster gone from the list: nothing', sightLine(mk({ monsters: [{ id: 8, x: 1, y: 2, alive: true }] }), T) === null && sightLine(mk({ monsters: null }), T) === null);
+  check('7. dead, or at 0 hp: nothing', sightLine(mk({ monsters: [{ id: 7, x: 1, y: 2, alive: false }] }), T) === null && sightLine(mk({ monsters: [{ id: 7, x: 1, y: 2, alive: true, curHp: 0 }] }), T) === null);
+  check('7. nowhere (a place not a number): nothing', sightLine(mk({ monsters: [{ id: 7, x: NaN, y: 2, alive: true }] }), T) === null && sightLine(mk({ monsters: [{ id: 7, x: 1, y: Infinity, alive: true }] }), T) === null && sightLine(mk({ player: { x: NaN, y: 0 } }), T) === null && sightLine(mk({ player: { x: 0, y: undefined } }), T) === null);
+  check('7. the first of the same id, a hole in the list skipped', !!sightLine(mk({ monsters: [null, { id: 7, x: 1000, y: 1100, alive: true }] }), T));
+  /* played: a frame's step sights it, the line follows; walked out, the line
+     stays the HOLD and goes with the phase */
+  const S = { player: { x: 0, y: 0 }, monsters: [{ id: 'm', x: 300, y: 0, alive: true }] };
+  const R = sightRange('melee');
+  sightStep(S, sightPick(S.player, 0, S.monsters, R, null), 1000);
+  const a = sightLine(S, 1000);
+  check('7. played: sighted at 300, the line drawn', !!a && near(a.d, 300), a);
+  S.monsters[0].x = 600;
+  sightStep(S, sightPick(S.player, 0, S.monsters, R, S._sightId), 1100);
+  check('7. played: past 550, the line held while the phase holds', !!sightLine(S, 1100) && sightPhase(S) === 'sighted');
+  sightStep(S, sightPick(S.player, 0, S.monsters, R, S._sightId), 1000 + SIGHT.HOLD_MS + 1);
+  check('7. played: the phase gone, the line gone', sightPhase(S) === 'none' && sightLine(S, 1000 + SIGHT.HOLD_MS + 1) === null);
+}
+
+/* ── 8. the buttons: the one resolver (v2.3.6543) ── */
+{
+  let asked = 0;
+  const yes = () => { asked++; return true; }, no = () => { asked++; return false; };
+  check('8. any other mode: every button\'s own rule (true), whatever S', combatButtonsShown({}, false, no) === true && combatButtonsShown(null, false, false) === true && combatButtonsShown(undefined, 0) === true);
+  check('8. the two buttons, nothing in sight, no latch, no fight: hidden', combatButtonsShown({}, true, no) === false && combatButtonsShown({}, true, false) === false && combatButtonsShown({}, true) === false);
+  check('8. the two buttons, no S: hidden', combatButtonsShown(null, true, yes) === false);
+  asked = 0;
+  check('8. sighted: shown, and the fight not asked', combatButtonsShown({ _sightPhase: 'sighted' }, true, no) === true && asked === 0);
+  const L = {};
+  latchTo(L, 'active', 'm1');
+  check('8. the latch active (combat on): shown', combatButtonsShown(L, true, no) === true && asked === 0);
+  latchTo(L, 'idle', null, 'press');
+  check('8. the latch let go, nothing in sight: hidden', combatButtonsShown(L, true, no) === false);
+  check('8. a fight between players (sparTargets fightOn): shown', combatButtonsShown({}, true, yes) === true && combatButtonsShown({}, true, true) === true);
+  const seen = [];
+  combatButtonsShown({ k: 1 }, true, (s) => { seen.push(s && s.k); return false; });
+  check('8. the fight asked of S', seen.length === 1 && seen[0] === 1, seen);
+  /* the edge, played: the buttons follow the phase, one change in, one out */
+  const S = { player: { x: 0, y: 0 }, monsters: [{ id: 'e', x: 600, y: 0, alive: true }] };
+  const R = sightRange('melee');
+  let flips = 0, was = combatButtonsShown(S, true, false), t = 0;
+  const path = [];
+  for (let k = 0; k < 6; k++) path.push(600, 500, 435, 470, 545, 480);   /* in once, then back and forth between 435 and 545 */
+  path.push(700, 700, 700, 700, 700, 700, 700, 700);
+  for (const x of path) {
+    S.monsters[0].x = x; t += 100;
+    sightStep(S, sightPick(S.player, 0, S.monsters, R, S._sightId == null ? null : S._sightId), t);
+    const now = combatButtonsShown(S, true, false);
+    if (now !== was) { flips++; was = now; }
+  }
+  check('8. a monster walked back and forth across the edge: the buttons came once and went once', flips === 2 && was === false, flips);
+}
+
+/* ── 9. the leaf (v2.3.6543) ── */
+{
+  const rec = () => { const g = { ops: [] }; for (const k of ['moveTo', 'lineTo', 'closePath', 'fill']) g[k] = (...a) => { g.ops.push([k, ...a]); return g; }; return g; };
+  const g0 = rec();
+  beamStream(g0, { x: 10, y: 20 }, 0, 240, 0);
+  const lines = g0.ops.filter((o) => o[0] === 'lineTo').length;
+  const fill = g0.ops.find((o) => o[0] === 'fill');
+  check('9. beamStream: one closed polygon along the heading, white at 0.2 (the renderer\'s)', g0.ops[0][0] === 'moveTo' && near(g0.ops[0][1], 10) && lines === 2 * 25 - 1 && g0.ops.filter((o) => o[0] === 'closePath').length === 1 && !!fill && fill[1].color === 0xffffff && fill[1].alpha === 0.2, { lines, fill });
+  const xs = g0.ops.filter((o) => o[0] === 'lineTo').map((o) => o[1]);
+  check('9. beamStream: as long as asked (240 px east)', near(Math.max(...xs), 250), Math.max(...xs));
+  const now = Date.now();
+  const S = { player: { x: 100, y: 100 }, monsters: [{ id: 3, x: 100, y: 400, alive: true }], _sightPhase: 'sighted', _sightId: 3, _sightAt: now + 60000 };
+  const g1 = rec();
+  check('9. drawSightLine: sighted, drawn', drawSightLine(g1, S, 0, false) === true && g1.ops.length > 0);
+  const ys = g1.ops.filter((o) => o[0] === 'lineTo').map((o) => o[2]);
+  check('9. ...from the body, south to the monster', near(g1.ops[0][2], 100) && Math.abs(g1.ops[0][1] - 100) < 4, g1.ops[0]);
+  check('9. ...reaching the monster', Math.abs(Math.max(...ys) - 400) < 4, Math.max(...ys));
+  const g2 = rec();
+  check('9. the bow\'s own beam drawn this frame: nothing', drawSightLine(g2, S, 0, true) === false && g2.ops.length === 0);
+  const g3 = rec();
+  check('9. nothing in sight: nothing', drawSightLine(g3, Object.assign({}, S, { _sightPhase: 'none' }), 0, false) === false && g3.ops.length === 0);
+  check('9. no graphic, or on the body: nothing, no throw', drawSightLine(null, S, 0, false) === false && drawSightLine(rec(), Object.assign({}, S, { monsters: [{ id: 3, x: 100, y: 100, alive: true }] }), 0, false) === false);
+}
+
+/* ── 10. the callers, off the syntax tree: an ALLOW list (v2.3.6543) ── */
+{
+  const { parse, traverse } = babel();
+  const ROOT = new URL('../../', import.meta.url);
+  const walk = (dir, out) => {
+    for (const e of readdirSync(new URL(dir, ROOT))) {
+      const rel = dir + e;
+      if (statSync(new URL(rel, ROOT)).isDirectory()) walk(rel + '/', out);
+      else if (/\.jsx?$/.test(e)) out.push(rel);
+    }
+    return out;
+  };
+  /* the resolver's callers: the file, and the component whose render asks */
+  const ALLOW = Object.freeze({
+    'src/ui/panels/ShieldButton.jsx': 2,   /* the render's gate, and its QA probe */
+    'src/ui/panels/SpecialButton.jsx': 2,   /* the render's gate, and its QA probe */
+    'src/ui/panels/AbilityButtons.jsx': 1,   /* the render's gate */
+  });
+  const calls = Object.create(null), bad = [], gates = Object.create(null), draws = [];
+  const isTwoOn = (e) => e && e.type === 'LogicalExpression' && e.operator === '&&'
+    && e.left.type === 'CallExpression' && e.left.callee.type === 'Identifier' && e.left.callee.name === 'twoButtonsOn' && e.left.arguments.length === 0
+    && e.right.type === 'UnaryExpression' && e.right.operator === '!' && e.right.argument.type === 'CallExpression' && e.right.argument.callee.type === 'Identifier' && e.right.argument.callee.name === 'fineInput' && e.right.argument.arguments.length === 0;
+  for (const f of walk('src/', [])) {
+    const src = readFileSync(new URL(f, ROOT), 'utf8');
+    if (!src.includes('combatButtonsShown') && !src.includes('drawSightLine')) continue;
+    const ast = parse(src, { sourceType: 'module', plugins: ['jsx'], errorRecovery: true });
+    traverse(ast, {
+      CallExpression(path) {
+        const n = path.node;
+        if (n.callee.type !== 'Identifier') return;
+        if (n.callee.name === 'drawSightLine') {
+          const fn = path.getFunctionParent();
+          const a = n.arguments;
+          draws.push({ f, in: fn && fn.node.key ? fn.node.key.name : null,
+            args: a.length === 4 && a[0].type === 'Identifier' && a[0].name === 'gfx' && a[1].type === 'Identifier' && a[1].name === 'S' && a[2].type === 'Identifier' && a[2].name === 'now'
+              && a[3].type === 'LogicalExpression' && a[3].operator === '&&' && a[3].left.name === 'shouldDraw' && a[3].right.name === 'isBow',
+            line: n.loc && n.loc.start.line });
+          return;
+        }
+        if (n.callee.name !== 'combatButtonsShown') return;
+        calls[f] = (calls[f] || 0) + 1;
+        const a = n.arguments;
+        const ok = a.length === 3 && isTwoOn(a[1]) && a[2].type === 'Identifier' && a[2].name === 'fightOn';
+        if (!ok) bad.push(f + ':' + (n.loc && n.loc.start.line));
+        /* the render's gate: the call decides a `return null` of the component */
+        const ifp = path.findParent((p) => p.isIfStatement());
+        const decl = path.findParent((p) => p.isVariableDeclarator());
+        if (ifp && ifp.node.consequent.type === 'ReturnStatement' && ifp.node.consequent.argument && ifp.node.consequent.argument.type === 'NullLiteral') gates[f] = (gates[f] || 0) + 1;
+        else if (decl && decl.node.id.name === 'live') {
+          /* ShieldButton: `var live = ... && combatButtonsShown(...)`, then `if (!live && !S._shieldUp) return null` */
+          const b = path.scope.getBinding('live');
+          const used = b && b.referencePaths.some((r) => { const i = r.findParent((p) => p.isIfStatement()); return i && i.node.consequent.type === 'ReturnStatement' && i.node.consequent.argument && i.node.consequent.argument.type === 'NullLiteral'; });
+          if (used && b.constantViolations.length === 0) gates[f] = (gates[f] || 0) + 1;
+        }
+      },
+    });
+  }
+  const want = Object.keys(ALLOW).sort().join(), got = Object.keys(calls).sort().join();
+  check('10. the resolver\'s callers are the three buttons, and nothing else in src/', want === got, { want, got });
+  check('10. ...each as many times as listed', Object.keys(ALLOW).every((f) => calls[f] === ALLOW[f]), calls);
+  check('10. ...each with `twoButtonsOn() && !fineInput()` and `fightOn`', bad.length === 0, bad);
+  check('10. ...each in its render\'s gate (its `return null`)', Object.keys(ALLOW).every((f) => gates[f] === 1), gates);
+  check('10. the renderer draws the sight line once, in its overlays, with `gfx, S, now, shouldDraw && isBow`',
+    draws.length === 1 && draws[0].f === 'src/rendering/systems/effectsRenderer.js' && draws[0].in === '_updateOverlays' && draws[0].args, draws);
 }
 
 console.log('\n' + passes + ' passed, ' + failures + ' failed');

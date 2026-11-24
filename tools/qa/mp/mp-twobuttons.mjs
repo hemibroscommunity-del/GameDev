@@ -49,6 +49,25 @@
  *       held attack again (held: on; lifted: off), no data-latch;
  *   2g. no page errors.
  *
+ * PART 3 (PR 4, tag 6543): THE SIGHT LINE, AND BLOCK AND THE SPECIALS
+ *   (a shield in hand, the latch idle; the body held on the line in front
+ *   of a real monster by a keeper inside the page, on its own clock, at a
+ *   distance that follows a path: far, in, back and forth across the edge,
+ *   out.  A page-side watcher counts every time Block or Special comes or
+ *   goes, each change of the DOM, and every change of the sight's phase)
+ *   3a. far off (700 px), nothing in sight: the right side is Attack and
+ *       Jump only (no Block, no Special, no Whirlwind) and no line drawn;
+ *   3b. walked in to 435 px (inside the sword's 440): sighted, the line
+ *       drawn to that monster, Block and Special on screen around Attack;
+ *   3c. walked back and forth between 435 and 545 px (inside the 550 the
+ *       sight is held to) six times: the buttons and the phase never
+ *       changed (no flicker at the edge);
+ *   3d. out to 700 px: the phase gone, the line gone, Block and Special gone,
+ *       each in ONE change (came once, went once over the whole walk);
+ *   3e. the mode off (part 2f's page, mode 4): with a shield and a sword
+ *       Block comes by today's rule (a monster within reach), no sight
+ *       line, the resolver not asked to hide it.
+ *
  * Today's stick with the mode off is played by mp-sprint (the thumb and the
  * button together) and mp-heldcombat (the default, mode 4).
  */
@@ -359,6 +378,100 @@ export async function run({ browser, wsPort, webPort, rec }) {
       if (tz) { await touch('touchStart', [{ x: tz.x, y: tz.y, id: 3 }]); await P.page.waitForTimeout(60); await touch('touchEnd', [{ x: tz.x, y: tz.y, id: 3 }]); await P.page.waitForTimeout(800); }
       const l4 = await LATCH(P);
       rec.ok(`2e. ${label}: a tap on the world's right half attacks nothing`, !!tz && l4.taps === tapsBefore && !l4.auto && l4.phase === 'idle', { tz, tapsBefore, l4 });
+
+      /* ── PART 3: the sight line, and Block and the specials ── */
+      await H.devOp(wsPort, 'kit', me, { what: 'shield' }).catch(() => null);
+      const shieldOn = await H.waitFor(P, (S) => !!(S.rpg && S.rpg.shield), (v) => v, { timeout: 15000, label: 'a shield' }).catch(() => null);
+      rec.ok(`3. ${label}: a shield in hand (guard)`, !!shieldOn);
+      const mon3 = await H.readState(P, (S) => {
+        const P0 = S.player; let best = null;
+        for (const m of S.monsters || []) {
+          if (!m || !m.alive || !(m.curHp > 0 || m.curHp == null)) continue;
+          const d = Math.hypot(m.x - P0.x, m.y - P0.y);
+          if (!best || d < best.d) best = { id: String(m.id), x: m.x, y: m.y, d };
+        }
+        return best;
+      });
+      rec.ok(`3. ${label}: a live monster for the edge (guard)`, !!mon3, mon3);
+      if (!mon3) continue;
+      if (mon3.d > 900) { await H.hopTo(P, Math.round(mon3.x - 700), Math.round(mon3.y), { tries: 90 }); await P.page.waitForTimeout(1200); }
+      /* the keeper and the watcher, inside the page: the body stands on the
+         drawn facing's line from the monster (so it is straight ahead,
+         whatever way the body faces), at the path's distance, stepping at most
+         40 px a 100 ms (400 px/s: the worker's move budget is 500) */
+      await P.page.evaluate((id) => {
+        const FACE = { east: 0, southeast: Math.PI / 4, south: Math.PI / 2, southwest: 3 * Math.PI / 4, west: Math.PI, northwest: -3 * Math.PI / 4, north: -Math.PI / 2, northeast: -Math.PI / 4 };
+        const w = window._ctEdge = { want: 700, at: 700, phase: [], dom: [], ticks: 0, lost: false };
+        const shown = () => ({ block: !!document.querySelector('[data-shield]'), special: !!document.querySelector('[data-special]'), ability: !!document.querySelector('[data-ability]') });
+        let was = JSON.stringify(shown());
+        w.dom.push({ t: Date.now(), v: JSON.parse(was) });
+        const mo = w.mo = new MutationObserver(() => { const n = JSON.stringify(shown()); if (n !== was) { was = n; w.dom.push({ t: Date.now(), v: JSON.parse(n), d: Math.round(w.at) }); } });
+        mo.observe(document.body, { childList: true, subtree: true });
+        let ph = null;
+        clearInterval(window.__ctEdgeT);
+        window.__ctEdgeT = setInterval(() => {
+          const S = window._gameState && window._gameState.current;
+          if (!S || !S.player) return;
+          const p = S._sightPhase || 'none';
+          if (p !== ph) { ph = p; w.phase.push({ t: Date.now(), p, d: Math.round(w.at) }); }
+          const m = (S.monsters || []).find((x) => x && String(x.id) === id);
+          if (!m || !m.alive) { w.lost = true; return; }
+          w.ticks++;
+          const f = FACE[S._renderFacing];
+          const a = typeof f === 'number' ? f : (typeof S._facingAngle === 'number' ? S._facingAngle : Math.PI / 2);
+          w.at += Math.max(-40, Math.min(40, w.want - w.at));
+          const tx = m.x - Math.cos(a) * w.at, ty = m.y - Math.sin(a) * w.at;
+          const dx = tx - S.player.x, dy = ty - S.player.y, dd = Math.hypot(dx, dy);
+          const k = Math.min(dd, 40);
+          if (dd > 0.5) { S.player.x += (dx / dd) * k; S.player.y += (dy / dd) * k; }
+        }, 100);
+      }, mon3.id);
+      const EDGE = (P) => P.page.evaluate(() => {
+        const w = window._ctEdge, S = window._gameState && window._gameState.current;
+        const ln = window.__btSightLine ? window.__btSightLine() : null;
+        return { at: Math.round(w.at), phase: S && S._sightPhase || 'none', id: S && S._sightId != null ? String(S._sightId) : null, line: ln,
+          block: !!document.querySelector('[data-shield]'), special: !!document.querySelector('[data-special]'), ability: !!document.querySelector('[data-ability]'),
+          attack: !!document.querySelector('.bt-rjoy-base'), jump: !!document.querySelector('[data-jump]'), latch: S && S._latchPhase || 'idle',
+          phases: w.phase.length, doms: w.dom.length, lost: w.lost, ticks: w.ticks };
+      });
+      const walkTo = async (d, holdMs) => {
+        await P.page.evaluate((x) => { window._ctEdge.want = x; }, d);
+        await H.waitFor(P, () => Math.round(window._ctEdge.at), (v) => v === d, { timeout: 20000, label: 'at ' + d }).catch(() => null);
+        if (holdMs) await P.page.waitForTimeout(holdMs);
+      };
+      /* 3a */
+      await walkTo(700, 1500);
+      await H.waitFor(P, (S) => S._sightPhase || 'none', (v) => v === 'none', { timeout: 8000, label: 'nothing in sight' }).catch(() => null);
+      await P.page.waitForTimeout(600);   /* the buttons' 200 ms render tick, twice and more */
+      const q0 = await EDGE(P);
+      rec.ok(`3a. ${label}: far off (${q0.at} px), nothing in sight: Attack and Jump only (Block ${q0.block}, Special ${q0.special}, Whirlwind ${q0.ability}), no line`,
+        q0.phase === 'none' && q0.attack && q0.jump && !q0.block && !q0.special && !q0.ability && !!q0.line && !q0.line.drawn && q0.latch === 'idle', q0);
+      const marks = await P.page.evaluate(() => ({ p: window._ctEdge.phase.length, d: window._ctEdge.dom.length }));
+      /* 3b: in to 435; this box draws a frame every few hundred ms, so wait on the page's own sight (TRAPS 200) */
+      await walkTo(435, 0);
+      const s1 = await H.waitFor(P, (S) => S._sightPhase || 'none', (v) => v === 'sighted', { timeout: 15000, label: 'sighted at 435' }).catch(() => null);
+      await H.waitFor(P, () => !!document.querySelector('[data-shield]') && !!document.querySelector('[data-special]'), (v) => v, { timeout: 8000, label: 'Block and Special' }).catch(() => null);
+      await H.waitFor(P, () => !!(window.__btSightLine && window.__btSightLine().drawn), (v) => v, { timeout: 8000, label: 'the line' }).catch(() => null);
+      const q1 = await EDGE(P);
+      rec.ok(`3b. ${label}: walked in to ${q1.at} px: sighted, the line drawn to it (${q1.line && q1.line.len} px), Block and Special around Attack`,
+        !!s1 && q1.phase === 'sighted' && q1.id === mon3.id && !!q1.line && q1.line.drawn && q1.line.id === mon3.id && Math.abs(q1.line.len - 435) < 60 && q1.block && q1.special && q1.attack && q1.jump, q1);
+      /* 3c: back and forth across the edge, inside the held 550 */
+      const mid = await P.page.evaluate(() => ({ p: window._ctEdge.phase.length, d: window._ctEdge.dom.length }));
+      for (let k = 0; k < 6; k++) { await walkTo(545, 300); await walkTo(435, 300); }
+      const q2 = await EDGE(P);
+      const w2 = await P.page.evaluate(() => ({ phase: window._ctEdge.phase.slice(-6), dom: window._ctEdge.dom.slice(-6) }));
+      rec.ok(`3c. ${label}: back and forth between 435 and 545 px six times: no change of the phase (${q2.phases - mid.p}) or the buttons (${q2.doms - mid.d}), still sighted with the line`,
+        q2.phases === mid.p && q2.doms === mid.d && q2.phase === 'sighted' && q2.block && q2.special && q2.line && q2.line.drawn && !q2.lost, { q2, w2 });
+      /* 3d: out */
+      await walkTo(700, 0);
+      await H.waitFor(P, (S) => S._sightPhase || 'none', (v) => v === 'none', { timeout: 15000, label: 'lost at 700' }).catch(() => null);
+      await H.waitFor(P, () => !document.querySelector('[data-shield]') && !document.querySelector('[data-special]'), (v) => v, { timeout: 8000, label: 'Block and Special gone' }).catch(() => null);
+      await P.page.waitForTimeout(600);
+      const q3 = await EDGE(P);
+      const w3 = await P.page.evaluate(() => { const w = window._ctEdge; clearInterval(window.__ctEdgeT); w.mo.disconnect(); return { phase: w.phase, dom: w.dom }; });
+      const domFlips = q3.doms - marks.d;
+      rec.ok(`3d. ${label}: out to ${q3.at} px: the phase, the line, Block and Special gone, each in one change (the phase ${q3.phases - marks.p} changes, the buttons ${domFlips} over the whole walk: in, out)`,
+        q3.phase === 'none' && q3.line && !q3.line.drawn && !q3.block && !q3.special && q3.phases - marks.p === 2 && domFlips <= 2 && domFlips >= 1, { q3, w3 });
     }
 
     /* 2f: the mode off -- today's default, the held attack on the right half */
@@ -384,6 +497,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
         }
         rec.ok(`2f. the mode off (mode ${after && after.mode}): the right half is the held attack again (held: ${!!held}; lifted: ${after && after.auto}), no data-latch`,
           !!z && !!held && after && !after.auto && after.mode === 4 && after.look === null, { z, held, after });
+        /* 3e (v2.3.6543): the mode off, nothing in sight: the resolver hides
+           nothing (Block and Special by their own rules alone) and no sight
+           line is drawn */
+        const off = await Q.page.evaluate(() => ({ shield: window.__btShieldBtn ? window.__btShieldBtn().shown : 'no probe', special: window.__btSpecialBtn ? window.__btSpecialBtn().shown : 'no probe',
+          line: window.__btSightLine ? window.__btSightLine().drawn : 'no probe', phase: (window._gameState.current || {})._sightPhase || 'none' }));
+        rec.ok(`3e. the mode off: the two buttons' resolver hides nothing (Block ${off.shield}, Special ${off.special}), no sight line (${off.line})`,
+          off.shield === true && off.special === true && off.line === false && off.phase === 'none', off);
       } else rec.ok('2f. the mode off: in the Wheel (guard)', false, inQ);
     }
     rec.ok('1g/2g. no page errors', errs.length === 0, errs.slice(0, 4));

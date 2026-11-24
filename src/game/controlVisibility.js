@@ -29,6 +29,9 @@
  * that harmless.
  */
 
+import { sightPhase } from './sight.js';   /* v2.3.6543: the two buttons' sight (card CT PR 4) */
+import { latchPhase } from './latch.js';   /* v2.3.6543: ...and their latch */
+
 /* Object.create(null), not {}: the keys are 'L' / 'R' here, but this is the
    house rule for any map that is looked up by a caller-supplied string
    (CLAUDE.md; three incidents in one day on 2026-07-07). */
@@ -73,4 +76,35 @@ export function discSideFor(sel) {
    render" -- a distinction a screenshot cannot make (TRAPS §28). */
 export function discHoldProbe() {
   return { L: Array.from(HOLDS.L), R: Array.from(HOLDS.R) };
+}
+
+/* ═══ v2.3.6543: BLOCK AND THE SPECIALS COME WITH THE SIGHT (card CT PR 4) ═══
+ * The owner, 2026-11-23: "when monsters in your line of site (and in range)
+ * the combat buttons appear around the attack button."  "By combat buttons I
+ * mean blocking and special attacks."
+ *
+ * THE ONE RESOLVER for those buttons in the two buttons (`?manual=5` on a
+ * touch screen: `twoOn`): Block (ShieldButton.jsx), Special
+ * (SpecialButton.jsx) and Whirlwind / Shield Bash (AbilityButtons.jsx) each
+ * ask it ON TOP of their own rule (a shield in hand, a weapon, no swim...),
+ * which it never loosens.  In the two buttons they are on screen while
+ *   - a monster is SIGHTED (sight.js: its phase holds HOLD_MS past the last
+ *     sighting and the range is held out from 440 to 550, so the buttons come
+ *     once at a sighting and go once at its end: no flicker at the edge, and
+ *     one change, never one a frame: TRAPS 218), or
+ *   - the latch is ACTIVE (latch.js: combat on, the lock held), or
+ *   - a fight between players is on (`fight`, sparTargets.js fightOn: a
+ *     clone, a chosen foe, the player you fight).  The sight sees monsters
+ *     only, and PR 3 said in its words that in a duel, a spar or No man's
+ *     land "Block and the specials are their buttons": a rule of a fight
+ *     between players is not this card's to change.
+ * With none of those the right side is Attack and Jump only.  Any other
+ * mode (`twoOn` false): true, every button's own rule alone, as today.
+ * `fight` a function of S (asked last, only when needed) or a boolean.
+ * Node tests it (server/test/control-visibility-ct.test.mjs). */
+export function combatButtonsShown(S, twoOn, fight) {
+  if (!twoOn) return true;
+  if (!S || typeof S !== 'object') return false;
+  if (sightPhase(S) === 'sighted' || latchPhase(S) === 'active') return true;
+  return typeof fight === 'function' ? !!fight(S) : !!fight;
 }

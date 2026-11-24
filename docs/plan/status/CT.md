@@ -1,6 +1,6 @@
 card: CT
-branch: claude/plan-ct-2-stick (PR 2) and claude/plan-ct-3-right (PR 3)
-prs: #2282 (6540, merged), #2293 (6541, held at 59, frozen), #2308 (6542, draft)
+branch: claude/plan-ct-4-sight (PR 4, stacked on claude/plan-ct-3-right)
+prs: #2282 (6540, merged), #2293 (6541, held at 59), #2308 (6542, ready), PR 4 (6543, working)
 state: working
 
 ## Done
@@ -17,14 +17,15 @@ state: working
 - Sitting 59's mend rides PR 3 (the orchestrator's word): §8's writes of
   dx/dy an ALLOW list (WALK_WRITES: the statement, its `if`, counted; only
   falls), followed by the binding; both plants and eight of my own red.
-- PR 3 (6542, #2308 draft): the latch, the lock, S.stickX/Y one owner.
+- PR 3 (6542, #2308 ready, head 6bb4d0f0): the latch, the lock, the stick's
+  one owner; 2c's sideways fight a SKIP with the box's frame time.
 
 ## Next
-- PR 3 (#2308): sideways 2c's fight red on ea3175e7 (43 swings in 90 s,
-  a fishman 25 px off at 1 hp). Part 7: the BOX's. The hit test runs only
-  on a frame 120-400 ms into a swing; ~0.7 s frames miss it. The test
-  counts swings that reached it (S._propSwingAt) and the frame: none, at
-  a frame over 280 ms, a SKIP (TRAPS 200); else red. Then #2308 ready.
+- PR 4 (6543): the sight line (leaf effects-sight.js, the bow's stream
+  moved verbatim into it), Block/Special/Whirlwind through
+  controlVisibility.js combatButtonsShown; sight.test 7-10 (24 of 25
+  plants red; the 25th was a redundant check, taken out); states.mjs's
+  two screens, UI notes' section; mp-twobuttons part 3. Then the PR.
 
 ## Found
 - `manual-combat.test` 1h pinned `?manual=5` as no switch: now `6`.

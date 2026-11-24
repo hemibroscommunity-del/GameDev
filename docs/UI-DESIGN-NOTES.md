@@ -1863,6 +1863,35 @@ Screens: harvest-near, harvest-windup, harvest-ready
 
 Sources: docs/specs/gathering-hits.md, docs/specs/gesture-cue.md, docs/specs/desktop-harvest.md, docs/specs/wheel-resources.md, docs/specs/gathering-look.md, docs/specs/hit-ladder.md, docs/specs/harvest-ink.md, docs/specs/tier-trees.md, docs/specs/tier-ore.md, docs/specs/control-redesign.md, docs/LANTERN-SLATE-SPEC.md, docs/TRAPS.md, CLAUDE.md, src/ui/BroTown.jsx, src/ui/panels/TouchControls.jsx
 
+## The two-button controls (a trial, `?manual=5`)
+Screens: two-buttons, two-buttons-sighted
+
+**What it is for:** A second way to fight on a phone, for the owner to try beside today's (the held attack on the right stick). The owner, 2026-11-23: "change the combat mechanics of the right joystick so that there's just an attack and jump button", "when monsters in your line of site (and in range) the combat buttons appear around the attack button", "By combat buttons I mean blocking and special attacks." The idea, in their words: "the majority of combat will consist of delivering combos of special attacks, jumps, and blocking instead of managing the direction or smashing the attack button." It is a trial: nothing of today's controls is removed until the owner has played both (card CT, `docs/plan/cards/CT.md`).
+
+**Decisions, and why:**
+- **Chosen by `?manual=5`, remembered on the device**; nothing chosen is today's combat (mode 4). Touch only: a computer's keys and mouse are unchanged.
+- **The left stick has three zones** (v2.3.6541): a small dead zone, then up to 30% of the disc's drawn radius the bro TURNS and does not walk, past it he WALKS; the disc draws the border as a ring. `?turnzone=<percent>` moves the border for the trial.
+- **Attack is a latch, drawn bevelled** (v2.3.6542): raised at rest, pressed in and lit while combat is on. A press with a monster in sight locks it and the weapon attacks at its own rate with no thumb down; a second press, the monster out of range (the sword's 440 held out to 550), its death with no other in sight, your death or a change of place lets go. If another is in sight as yours dies, the lock moves to it.
+- **The sight line** (v2.3.6543): while a monster is in your sight (alive, within the weapon's range, in front of you: 45 degrees each side of the way you face) a soft white line runs from your bro to it. It is the bow's own aim stream, so the trial adds no new look. The owner: "The line of site will become visible if it's within target range of the monster (target range will depend on whether melee weapon or ranged weapon is equipped with range being longer)." With a bow out and shooting, the bow's own line is the line (one, not two over each other).
+- **Block, Special and Whirlwind come with the sight** (v2.3.6543): with nothing in sight the right side is Attack and Jump only. They come once when a monster comes into sight, stay while combat is on, and go once about 0.4 s after the last sighting, so a monster pacing the range's edge does not make them blink (the range is held out from 440 to 550). Each still keeps its own rule (Block needs a shield, Special a weapon, none in the water). They stay in their usual places round the disc.
+- **In a fight between players** (a duel, a spar, No man's land) the sight sees monsters only, so Block and the specials stay up as they are today: a rule of a fight between players is the owner's to change.
+- **Decided for the owner while away** (v2.3.6543): a monster's hit from outside your sight does not bring Block up in this mode (today's buttons also come for a hit in the last 5 s); the owner's rule is the sight. Switch: `?manual=4` (or nothing chosen) for today's controls.
+
+**Tried before, and changed:**
+- The right stick became a plain Attack button (v2.3.2242, 2026-09-03), then both sticks came back, the right one keeping its button ways (v2.3.2258): "I want both joysticks back ... BUT I also want the right joystick to keep its contextual button properties that exist now".
+- Every attack a swipe of the right stick (manual combat, v2.3.4395 to v2.3.4655), until the owner, 2026-11-13: "I like combat better the old way. You just move the right joystick towards the enemy and it attacks as long as it is held down" (v2.3.5018: the held combat, mode 4, the default today).
+- A lock you choose by tapping a monster, taken out 2026-11-09 as "easily botted and abused" (v2.3.4396). The latch locks only what is in your sight, and only with a press of Attack.
+
+**Please don't suggest:**
+- Removing today's right stick, moving the old phone tests, or changing a computer's controls: those wait for the owner's verdict on the trial.
+- A tap on a monster to choose the target (taken out as "easily botted").
+
+**Still open:**
+- Whether the line should differ for a bow and a staff (today both draw the same stream as the sword's line).
+- Sprint from the left stick's edge in this mode (card CT item 6, the owner: "the sprint button should be moved to the left joystick too").
+
+Sources: docs/plan/cards/CT.md, src/game/stickZones.js, src/game/sight.js, src/game/latch.js, src/game/controlVisibility.js (combatButtonsShown), src/rendering/leaves/effects-sight.js, docs/specs/manual-combat.md, docs/specs/control-redesign.md.
+
 ## Fighting
 Screens: spar-fight, lock-reticle
 

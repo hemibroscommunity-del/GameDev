@@ -146,3 +146,32 @@ export function sightClear(S) {
   S._sightAt = 0;
   return sightTo(S, 'none');
 }
+
+/* ═══ v2.3.6543: THE SIGHT LINE (card CT PR 4) ═══
+ * The owner, 2026-11-23: "The line of site will become visible if it's
+ * within target range of the monster."  What the line is drawn between:
+ * the body and the monster in sight, while the phase is 'sighted' (its
+ * HOLD_MS included: the line goes with the buttons, not a frame before) and
+ * only while the frame's step still sights (`S._sightAt` within HOLD_MS of
+ * `now`: a phase left behind by a mode switched off draws nothing).  The
+ * leaf (src/rendering/leaves/effects-sight.js) draws it with the bow's
+ * stream; this decides it, so node tests it.  One object, reused (a frame's
+ * read: no garbage). */
+const _LINE = { id: null, x0: 0, y0: 0, x1: 0, y1: 0, d: 0 };
+export function sightLine(S, now) {
+  if (!S || sightPhase(S) !== 'sighted' || S._sightId == null || !S.player) return null;
+  if (!(now - (S._sightAt || 0) <= SIGHT.HOLD_MS)) return null;   /* written so a clock that is not a number draws nothing */
+  const k = String(S._sightId);   /* String() both sides: ids are numbers in some spawn paths (latch.js findMon) */
+  const mons = Array.isArray(S.monsters) ? S.monsters : [];
+  for (let i = 0; i < mons.length; i++) {
+    const m = mons[i];
+    if (!m || m.id == null || String(m.id) !== k) continue;
+    if (!m.alive || (typeof m.curHp === 'number' && m.curHp <= 0) || !isFinite(m.x) || !isFinite(m.y)) return null;
+    const P = S.player;
+    if (!isFinite(P.x) || !isFinite(P.y)) return null;
+    _LINE.id = m.id; _LINE.x0 = P.x; _LINE.y0 = P.y; _LINE.x1 = m.x; _LINE.y1 = m.y;
+    _LINE.d = Math.hypot(m.x - P.x, m.y - P.y);
+    return _LINE;
+  }
+  return null;
+}
