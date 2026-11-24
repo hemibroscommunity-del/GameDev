@@ -103,6 +103,10 @@
  *      report.js reportSums: the up row's late `msg.late[0]` (raw)       -> FAIL 15.8e
  *      report.js reportSums: the up row's below `msg.rung[1]` (raw)      -> FAIL 15.8f
  *      report.js reportSums: the up row's below `0` (never the rung's)   -> FAIL 15.8f
+ *      (v2.3.6500, the gatekeeper's sitting 58, review-z58: three plants were green; tried by hand 2026-11-24)
+ *      src/debug/report.js buildReport: `/ 2 / 60000` as `/ 2 / 1000` (seconds read as minutes) -> FAIL 15.10
+ *      src/debug/report.js _poll: `if (riding) a.rideMs += seenD;` dropped                     -> FAIL 15.10
+ *      report.js reportSums: `&& rd[1] <= lateAll` dropped, or `&& rd[2] <= judgedAll`          -> FAIL 15.9
  */
 import { readFileSync } from 'node:fs';
 import { GameRoom } from '../src/index.js';
@@ -735,6 +739,60 @@ const A = await join('bp_rep_a', 'Repo');
   const t8f = [await through({ rung: [1, msg.secs + 5] }), await through({ rung: [1, 30] })];
   check('15.8f a `rung` past the report\'s seconds sent through the room: `up`\'s below adds 0, never the claim; a kept one adds its 30',
     t8f.every((x) => x.why === 'ok' && x.moved.length === 1) && upCol(t8f[0], 3) === 0 && upCol(t8f[1], 3) === 30, t8f);
+}
+
+/* ── 15.9 and 15.10: v2.3.6500 (card PH PR 1; the gatekeeper's sitting 58, review-z58: three plants were green) ── */
+{
+  /* 15.9 the worker: a board's late over the REPORT's late, or its judged over the report's judged, is no board
+     (each within its own frames was all 15.5 asked: `rd[1] <= lateAll`, `rd[2] <= judgedAll` dropped stayed green) */
+  const heatOf = (over) => reportSums({ ...PHONE(), late: [5, 105], up: 2, ride: [30, 2, 60], rideGaps: [0, 0, 0, 0, 0, 0, 0, 0, 0, 60], ...(over || {}) }, { lanes: true, heat: true });
+  const overLate = heatOf({ ride: [30, 6, 60] });
+  const overJudged = heatOf({ gaps: [0, 0, 0, 0, 0, 0, 0, 0, 0, 200], drawn: 200, ride: [30, 2, 120], rideGaps: [0, 0, 0, 0, 0, 0, 0, 0, 0, 150] });
+  const within = heatOf({ gaps: [0, 0, 0, 0, 0, 0, 0, 0, 0, 200], drawn: 200, ride: [30, 5, 105], rideGaps: [0, 0, 0, 0, 0, 0, 0, 0, 0, 150] });
+  check('15.9 a board late more often than the whole report (6 of its 60 against the report\'s 5), or judged more than the report (120 against 105): no board, the report counts; at the report\'s own (5, 105) it is kept',
+    overLate && !('ride' in overLate.sums) && overLate.sums.n === 1 && overJudged && !('ride' in overJudged.sums) && overJudged.sums.n === 1
+    && within && within.sums.ride && within.sums.ride[3] === 5, { overLate: overLate && overLate.sums.ride, overJudged: overJudged && overJudged.sums.ride, within: within && within.sums.ride });
+
+  /* 15.10 THE PAGE, live: its own report loop on a stand-in page and clock -- joined, polled every 2 s for 20 minutes
+     riding, then built.  `up` is the mean of the report's first and last minutes seen ((0 + 20) / 2 = 10: `m15`,
+     bucket 1), and the board's seconds are the seen time it rode.  (Seconds read as minutes put every report past
+     30 after 30 s; the ride's bank dropped sent no board: both stayed green with the pure parts alone.) */
+  const T0 = Date.UTC(2026, 10, 24, 6, 0, 0);
+  let T = T0;
+  const realNow = Date.now, realSI = globalThis.setInterval, hadWin = 'window' in globalThis;
+  let tick = null;
+  const gl = { getParameter: () => 8, getShaderPrecisionFormat: () => ({ precision: 23 }), getExtension: () => null, isContextLost: () => false,
+    VERSION: 1, MAX_TEXTURE_SIZE: 2, MAX_TEXTURE_IMAGE_UNITS: 3, FRAGMENT_SHADER: 4, HIGH_FLOAT: 5 };
+  try {
+    Date.now = () => T;
+    globalThis.window = { devicePixelRatio: 2, _pixiRenderer: { app: { renderer: { gl, screen: { width: 390, height: 844 } } } }, addEventListener() {}, matchMedia: () => ({ matches: false }) };
+    const L = await import('../../src/debug/report.js?live=15.10');
+    const S = { _serverCaps: { report: 4 }, _ride: { on: true }, channel: { send() {} } };
+    globalThis.setInterval = (fn) => { tick = fn; return 0; };
+    L.reportJoined(S);
+    globalThis.setInterval = realSI;
+    /* each report as the page would send it, read just before the next opens (its `seen` falls back) */
+    const reps = [];
+    let prev = null, prevAt = 0;
+    for (let i = 0; i < 1050 && tick; i++) {
+      T += 2000; tick();
+      const o = window.__btReport ? window.__btReport().open : null;
+      if (prev && o && o.seen < prev.seen) reps.push({ r: prev, at: prevAt });
+      prev = o; prevAt = (T - T0) / 60000;
+    }
+    if (prev) reps.push({ r: prev, at: prevAt });
+    /* each report's bucket is its own stretch's middle: (its first minute + its last) / 2, in MINUTES */
+    const ups = reps.map((x) => x.r.up), want = reps.map((x) => upBucket((x.at - x.r.seen / 60 + x.at) / 2));
+    check('15.10 the page, 35 minutes up and riding all of it: every report\'s `up` is the bucket of ITS stretch\'s middle minute (0, 1, 2, 3 in turn), and each report\'s board is all its seen seconds',
+      !!tick && reps.length >= 5 && ups.join() === want.join() && ups[0] === 0 && ups.includes(1) && ups.includes(2) && ups[ups.length - 1] === 3
+      && reps.every((x) => Array.isArray(x.r.ride) && Math.abs(x.r.ride[0] - x.r.seen) <= 2),
+      { ups, want, n: reps.length, rides: reps.map((x) => x.r.ride && x.r.ride[0]), seens: reps.map((x) => x.r.seen), at: reps.map((x) => x.at) });
+  } catch (e) {
+    check('15.10 the page, 20 minutes up and riding all of it (the stand-in page threw)', false, String(e && e.stack || e).slice(0, 300));
+  } finally {
+    Date.now = realNow; globalThis.setInterval = realSI;
+    if (!hadWin) delete globalThis.window;
+  }
 }
 
 console.log(`\n${passes} passed, ${failures} failed`);

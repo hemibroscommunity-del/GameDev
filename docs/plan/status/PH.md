@@ -4,6 +4,7 @@ prs: #2279 (PR 1, 6500, DEPLOYS: sitting 57's hold mended), #2291 (PR 2, 6501: t
 state: working (part 6: mending sitting 58's holds on #2279 and #2291, one push each, then up the stack; PR 4 on claude/plan-ph-4-governor)
 
 ## Done
+- Sitting 58 (review-z58) on #2279, mended (part 6): report.test 15.9 (a board's late or judged over the report's own: no board) and 15.10 (the page's own loop on a stand-in page and clock, 35 minutes riding). Its three plants red, tried by hand 2026-11-24.
 - Sitting 58 (review-z58) on #2291, mended (part 6): frame-pacer.test 23j, the PAGE's pacer reading its own address (`?memalarm=0` on a stand-in page, then none): `memFull(ts, search = '')` and the call as `memFull(ts, '')` both red, tried by hand 2026-11-24.
 - PR 1 (6500) #2279: the report sees heat, the board and the ramps.
   Sitting 57: 15.8c's fraction now positive; 15.8e/f the up row's late
