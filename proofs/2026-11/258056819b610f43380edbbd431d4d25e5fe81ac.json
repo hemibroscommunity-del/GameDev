@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "258056819b610f43380edbbd431d4d25e5fe81ac",
+  "tree": "f41884e87a6f4dd238e770136250aa381af91241",
+  "committedAt": "2026-11-24T10:24:44-08:00",
+  "subject": "Merge pull request #2330 from hemibroscommunity-del/claude/plan-ct-5-words",
+  "files": 8548,
+  "bytes": 965099377,
+  "listingSha256": "aaf87ffca767baae99457783ec918295471407cc824624c79d66e6424b4c2727",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

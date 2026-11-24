@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "3a03fb85b983a16f43762cb248c9795672a7763e",
+  "tree": "909f9e677a399189cf987bdd4eb4a6660fd76d05",
+  "committedAt": "2026-11-24T10:25:00-08:00",
+  "subject": "Merge pull request #2331 from hemibroscommunity-del/claude/vw-view-079",
+  "files": 8551,
+  "bytes": 965589013,
+  "listingSha256": "438e89ef9bafb3b91735d115224bf2c220bb49d128d36ef5cf18254844f4d555",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
