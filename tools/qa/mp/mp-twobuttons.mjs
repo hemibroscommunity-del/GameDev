@@ -36,7 +36,10 @@
  *       then the fight plays itself to
  *       the monster's death (the worker brings it
  *       near its floor first, /dev/hurt, so a test box's few frames a second
- *       finish it): the latch's end 'killed', or the lock moved to the next;
+ *       finish it): the latch's end 'killed', or the lock moved to the next
+ *       (v2.3.6542: a SKIP with the frame time where the page drew frames
+ *       wider than the blade's contact window and no swing reached its hit
+ *       test: TRAPS §200);
  *   2d. the SECOND press (the lock moved on to the next) lets go, or the
  *       kill with none other in sight let go by itself: the latch idle, the
  *       held attack off, the disc raised (data-latch off);
@@ -283,11 +286,26 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await P.page.evaluate((id) => {
         const until = Date.now() + 90000, t0 = Date.now();
         /* v2.3.6542: the fight's trace, every second and at the keeper's stop */
-        const tr = window._ctFight = { stop: null, trace: [] };
-        let k10 = 0, swings = 0, swWas = null;
+        const tr = window._ctFight = { stop: null, trace: [], contacts: 0, frameMs: null };
+        let k10 = 0, swings = 0, swWas = null, cWas = null;
+        /* v2.3.6542: the box's frame by the renderer's clock (TRAPS §200):
+           the median gap between animation frames over the fight */
+        const gaps = []; let fLast = 0, fOn = true;
+        const fr = (ts) => { if (fLast && gaps.length < 400) gaps.push(ts - fLast); fLast = ts; if (fOn) requestAnimationFrame(fr); };
+        requestAnimationFrame(fr);
         const t = setInterval(() => {
           const S = window._gameState && window._gameState.current;
           if (S && S.swingTimer && S.swingTimer !== swWas) { swWas = S.swingTimer; swings++; }
+          /* v2.3.6542: a swing whose blade reached its hit test.  The game's
+             own witness: monsterCombat stamps S._propSwingAt with the swing's
+             timer on the one frame its contact opens (MELEE_CONTACT_MS, 120 ms
+             in) while the swing still runs (under 400 ms) -- the same gate
+             as the monster test beside it.  A page whose frames come further
+             apart than that window never draws that frame, and the sword
+             cuts air on every swing (the helper's run on ea3175e7, sideways:
+             43 swings in 90 s, the lock on a fishman 25 px off at 1 hp, the
+             hit flag never seen) */
+          if (S && S._propSwingAt && S._propSwingAt !== cWas) { cWas = S._propSwingAt; tr.contacts++; }
           const m = S && (S.monsters || []).find((x) => x && String(x.id) === id);
           const row = () => ({ t: Date.now() - t0, here: !!m, alive: m ? m.alive : null, hp: m ? m.curHp : null, gap: m ? Math.round(Math.hypot(m.x - S.player.x, m.y - S.player.y)) : null,
             lid: S && S._latchId != null ? String(S._latchId) : null, ph: S && S._latchPhase, auto: !!(S && S.autoAttack), n: S ? (S.monsters || []).length : null, px: S ? Math.round(S.player.x) : null, py: S ? Math.round(S.player.y) : null, vx: S ? +(S.player.vx || 0).toFixed(2) : null,
@@ -295,7 +313,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
             aim: S && S._aimAngle != null ? +S._aimAngle.toFixed(2) : null, ang: m ? +Math.atan2(m.y - S.player.y, m.x - S.player.x).toFixed(2) : null,
             hit: m ? !!m._hitThisSwing : null, inv: m ? !!m._invulnerable : null, arch: m ? (m.archetype || m.type) : null });
           if ((++k10 % 10 === 0 || k10 === 1) && tr.trace.length < 100) tr.trace.push(row());
-          if (!S || !m || !m.alive || m.curHp <= 0 || Date.now() > until) { tr.stop = row(); clearInterval(t); return; }
+          if (!S || !m || !m.alive || m.curHp <= 0 || Date.now() > until) {
+            fOn = false; const gs = gaps.slice().sort((a, b) => a - b);
+            tr.frameMs = gs.length ? Math.round(gs[gs.length >> 1]) : null;
+            tr.stop = Object.assign(row(), { contacts: tr.contacts, frameMs: tr.frameMs }); clearInterval(t); return;
+          }
           const dx = m.x - S.player.x, dy = m.y - S.player.y, d = Math.hypot(dx, dy);
           if (d <= 30) return;
           const k = Math.min(40, d - 25);
@@ -311,7 +333,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
         return { wpn: !!(S.rpg && S.rpg.weapon), slot: S.rpg && S.rpg.activeSlot, swim: !!(S._wheelSwim && S._wheelSwim.on), swungAgo: S.swingTimer ? Date.now() - S.swingTimer : null,
           gap: m ? Math.round(Math.hypot(m.x - S.player.x, m.y - S.player.y)) : null, mhp: m ? m.curHp : null }; }, target));
       const fightTrace = died ? null : await P.page.evaluate(() => window._ctFight || null);
-      rec.ok(`2c. ${label}: the fight played to its death with no press (the end: ${l2.end || (l2.id === target ? 'none: still on it' : 'moved to ' + l2.id)})`, !!died, { died, l2, hurt, why, afterHop, fightTrace });
+      const fightName = `2c. ${label}: the fight played to its death with no press (the end: ${l2.end || (l2.id === target ? 'none: still on it' : 'moved to ' + l2.id)})`;
+      /* v2.3.6542: TRAPS §200.  Where this page never drew one frame inside
+         the blade's contact window (no swing reached its hit test), the
+         fight cannot be judged here: a skip with the frame time, never a
+         pass, and only when the median frame is wider than that window
+         (280 ms).  No contact on a faster page, or one swing that reached its hit test and a monster still
+         alive at 1 hp is the game's, and stays red */
+      if (!died && fightTrace && fightTrace.stop && fightTrace.contacts === 0 && fightTrace.stop.sw >= 5 && fightTrace.frameMs >= 400 - 120) {
+        rec.skip(fightName, `this page drew a frame every ${fightTrace.frameMs} ms (its median over the fight): ${fightTrace.stop.sw} swings and not one frame inside the blade's contact window (${120}-${400} ms into a swing), so no swing reached its hit test; the lock held (${l2.id}), ${fightTrace.stop.gap} px off`);
+      } else rec.ok(fightName, !!died, { died, l2, hurt, why, afterHop, fightTrace });
 
       /* 2d: the second press lets go (when the lock moved on to the next);
          a kill with none other in sight let go by itself ('killed') */

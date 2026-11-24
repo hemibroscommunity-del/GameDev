@@ -20,11 +20,11 @@ state: working
 - PR 3 (6542, #2308 draft): the latch, the lock, S.stickX/Y one owner.
 
 ## Next
-- PR 3 (#2308): 2c mended. The walk-in: the test's (the Mayor's gate held
-  a new character in BroTown). The fight: the GAME's (targeting.js
-  latchLock kept a replaced monster's old object as the lock's ref; every
-  swing aimed at it, none landed); fixed, checked in latch.test R. Then the
-  helper's run; green: #2308 ready. Then PR 4, PR 5, item 6 (6543-6545).
+- PR 3 (#2308): sideways 2c's fight red on ea3175e7 (43 swings in 90 s,
+  a fishman 25 px off at 1 hp). Part 7: the BOX's. The hit test runs only
+  on a frame 120-400 ms into a swing; ~0.7 s frames miss it. The test
+  counts swings that reached it (S._propSwingAt) and the frame: none, at
+  a frame over 280 ms, a SKIP (TRAPS 200); else red. Then #2308 ready.
 
 ## Found
 - `manual-combat.test` 1h pinned `?manual=5` as no switch: now `6`.
@@ -35,5 +35,5 @@ state: working
 - The two OWNED rows (stickX, stickY pinned to `input`, OWNED_LINE + 2 in
   WL's `tools/guards/state-ledger.test.mjs`: approved by the orchestrator,
   2026-11-24) land when #2290 is on `main` (merged in before the last push).
-- Approved: PR 1's mechanical rows; PR 2's frame-steps WANT + 'input';
-  the ledgers' machine rows for moved writers (`--write`).
+- Approved: PR 1's mechanical rows; PR 2's frame-steps WANT + 'input'; the
+  ledgers' machine rows for moved writers (`--write`).
