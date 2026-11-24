@@ -1,6 +1,9 @@
 import React from 'react';
 import { ABILITY_META } from '@/data/index.js';
 import { abilityStatus, castAbility } from '@/game/abilities.js';
+import { fightOn } from '@/game/sparTargets.js';
+import { combatButtonsShown } from '@/game/controlVisibility.js';   /* v2.3.6543: in the two buttons, Block and the specials come with the sight (card CT PR 4) */
+import { twoButtonsLive } from '@/game/latch.js';   /* v2.3.6542: the two buttons' one gate (the gatekeeper's sitting 60) */
 import { blockRingBus } from '@/ui/mobile/blockRingBus.js'; /* v2.3.2252: the bash button follows the shield's edge, not a 200ms poll */
 import { ctlColumn, ctlBottom, CTL_SLOT, rightCluster, RCTL_SLOT } from '@/ui/panels/ShieldButton.jsx'; /* v2.3.2574: both buttons are on the RIGHT again -- Bash in the column (slot 0), Whirlwind in the cluster above the disc */
 import { Skin, TornadoIcon, BashIcon, pressOn, pressOff, readyFlash } from '@/ui/panels/controlSkin.jsx'; /* v2.3.3018: the owner's mockup */
@@ -120,6 +123,7 @@ export function AbilityButtons(props) {
 
   var S = stateRef && stateRef.current;
   if (!S || !S.rpg) return null;
+  if (!combatButtonsShown(S, twoButtonsLive(), fightOn)) return null;   /* v2.3.6543: in the two buttons Whirlwind and Shield Bash come with the sight (controlVisibility.js; card CT PR 4) */
 
   var kinds = ['bash', 'whirl'];
   var live = [];

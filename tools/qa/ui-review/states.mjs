@@ -1471,6 +1471,61 @@ export const STATES = [
     },
     after: async ({ P }) => { await evalIn(P, () => { const S = window._gameState.current; if (S) S.lockedTarget = null; }).catch(() => {}); await wait(P, 300); },
   },
+  /* ═══ v2.3.6543: THE TWO BUTTONS (card CT PR 4; `?manual=5`, a trial) ═══
+     The page put on the trial the way `?manual=5` does at load
+     (window.__btManual.set: the worker is not asked), a sword and a shield in
+     hand; touch only, so the phone views.  First at rest in BroTown, nothing
+     in sight; then at Frost Ridge's first snowmen, the body turned toward one
+     by a real thumb on the left stick (a short push: the turn, not the walk),
+     the sight line drawn and Block and the specials come.  Put back on
+     today's combat after. */
+  {
+    id: 'two-buttons', group: 'Fighting', title: 'The two buttons, nothing in sight',
+    about: 'The two-button trial (`?manual=5`) with no monster in sight: on the right only the Attack button (raised, a bevel) and Jump. Block, Special and Whirlwind stay away until a monster is in your sight.',
+    views: ['portrait', 'landscape'],
+    settle: 1200,
+    run: async ({ P, wsPort, myId }) => {
+      await H.devOp(wsPort, 'vitals', myId, { heal: true, god: true, godMinutes: 30 }).catch(() => {});
+      await evalIn(P, () => { window.__btManual.set(5); });
+      await armForFight(P, wsPort, myId);
+      await wait(P, 900);
+      const m = await evalIn(P, () => window.__btManual.mode());
+      if (m !== 5) return 'the page is not on the two buttons (mode ' + m + ')';
+    },
+  },
+  {
+    id: 'two-buttons-sighted', group: 'Fighting', title: 'The two buttons, a monster in sight',
+    about: 'The two-button trial with a snowman in your sight (within the sword\'s 440 px, in front of you): a soft white line runs from your bro to it, and Block and Special have come up around the Attack button (Whirlwind joins them once Attack is pressed: combat on). They stay while it is in sight and go about half a second after it leaves.',
+    views: ['portrait', 'landscape'],
+    settle: 1200,
+    run: async ({ P, wsPort, myId, view }) => {
+      await evalIn(P, () => { window.__btManual.set(5); });
+      const { WHEEL_SPAWNS } = await import(H.REPO + '/server/src/wheelspawns.js');
+      const at = WHEEL_SPAWNS.frost && WHEEL_SPAWNS.frost.points[0];
+      if (!at) return 'no Frost Ridge spawn';
+      await H.hopTo(P, at[0] + 150, at[1] + 220, { tries: 260 });
+      await wait(P, 2500);
+      const a = await evalIn(P, () => {
+        const S = window._gameState.current, p = S.player;
+        const m = (S.monsters || []).filter((q) => q && q.alive !== false && (q.curHp == null || q.curHp > 0))
+          .sort((x, y) => Math.hypot(x.x - p.x, x.y - p.y) - Math.hypot(y.x - p.x, y.y - p.y))[0];
+        return m ? Math.atan2(m.y - p.y, m.x - p.x) : null;
+      });
+      if (a == null) return 'no monster near';
+      /* a short push on the left stick toward it: the TURN (game/stickZones.js) */
+      const vp = view.viewport;
+      const cdp = await P.ctx.newCDPSession(P.page);
+      const x = Math.round(vp.width * 0.18), y = Math.round(vp.height * (view.id === 'landscape' ? 0.45 : 0.66));
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y, id: 42 }] });
+      await wait(P, 80);
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: Math.round(x + 10 * Math.cos(a)), y: Math.round(y + 10 * Math.sin(a)), id: 42 }] });
+      await wait(P, 700);
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }).catch(() => {});
+      const seen = await P.page.waitForFunction(() => { const S = window._gameState.current; return S && S._sightPhase === 'sighted'; }, null, { timeout: 8000, polling: 150 }).then(() => true).catch(() => false);
+      if (!seen) return 'no monster came into sight';
+    },
+    after: async ({ P }) => { await evalIn(P, () => { window.__btManual.set(4); const S = window._gameState.current; if (S) S.lockedTarget = null; }).catch(() => {}); await wait(P, 300); },
+  },
   {
     /* v2.3.3817: the death card, staged (a real death's is mp-deathcard's),
        then let go */

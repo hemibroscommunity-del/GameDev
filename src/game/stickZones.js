@@ -185,6 +185,35 @@ export function stickDrive(S, dx, dy, radius, knob, rod, op) {
   return r;
 }
 
+/* ═══ v2.3.6542: THE STICK'S ONE WRITER IN EVERY MODE (the orchestrator, card WL's owned state) ═══
+ * S.stickX / S.stickY are written here only: mode 5's stickDrive above, and
+ * every other mode's analog read and lift below, moved out of BroTown's
+ * handleJoystickMove / handleJoystickEnd WHOLE (the same numbers, the same
+ * order of operations, the same frame: a call where the lines were).  The
+ * read: the thumb `dist` CSS px from where it landed at `angle`, the stick's
+ * travel `maxR` (the disc's half width less 20: 17.5 px upright, 25
+ * sideways); inside the 12 px dead zone nothing, else the share past it,
+ * full at maxR (v2.3.949's relative drag). */
+export const STICK_DEAD_PX = 12;
+export function stickAnalog(S, dist, angle, maxR) {
+  if (dist < STICK_DEAD_PX) {
+    S.stickX = 0;
+    S.stickY = 0;
+    return;
+  }
+  /* Analog: normalize to -1..1 range based on distance from center */
+  const strength = Math.min((dist - STICK_DEAD_PX) / (maxR - STICK_DEAD_PX), 1);
+  S.stickX = Math.cos(angle) * strength;
+  S.stickY = Math.sin(angle) * strength;
+}
+/** The thumb lifted, in every mode: no walk, the stick at rest (stickTo
+ *  writes only when mode 5 moved it). */
+export function stickLift(S) {
+  S.stickX = 0;
+  S.stickY = 0;
+  stickTo(S, 'rest');
+}
+
 /* ═══ v2.3.6541: THE FRAME'S STEP `input` (game/frameSteps.js; card CT PR 2) ═══
  * The loop's read of the player's input, moved here out of BroTown's
  * gameLoop whole (grand plan 5.4's next move: legacy falls by the input

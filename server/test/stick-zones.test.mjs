@@ -27,6 +27,9 @@
  *      read by stickDrive and the ring (a fresh copy of the module on a
  *      page with the switch), the handler's raw offset and the ring's gate
  *      (twoButtonsOn(), never in mode 4) off the syntax tree;
+ *   9. v2.3.6542 (PR 3) THE STICK'S ONE WRITER: every mode's analog read and
+ *      lift are stickZones.js's (moved whole from BroTown: the same values
+ *      to the last bit), and nothing else in src/ writes S.stickX / stickY;
  *   8. v2.3.6541 THE FRAME'S STEP `input`, stickFrame (moved whole out of
  *      gameLoop): the stick read, the gates, the keys, the idle clock (a thumb
  *      held turning is a player), the name tag's facing; one object a page.
@@ -56,9 +59,17 @@
  * (the clock is the module's own now); stickFrame stamping
  * `performance.now()` or 0 -> FAIL 8 (three minutes of walking played on the
  * idle judge's clock).
+ * v2.3.6542, the gatekeeper's sitting 59 (both were green; both now red,
+ * tried by hand): a later write after the start, `if (!dx && !dy) { var _h =
+ * heldDirection(S); ... dx = _h[0]; ... }` and `if (!dy && K['w']) dy = -1;`
+ * -> FAIL 8 (the walk's writes an ALLOW list, WALK_WRITES, followed by the
+ * binding).  And eight not designed for, each red: `dx++` in a nested block,
+ * a for-of head, a closure's write, `[dx, dy] = ...`, a second `var dx`, a
+ * row spelled again, `dy *= 1.5`, `eval('dx = 1')`.  WALK_WRITES_PRINT=1
+ * prints the writes as the guard reads them (to take a row out).
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
-import { STICK_ZONES, STICK_PHASES, stickRead, stickTravel, facing8, stickSwipe, stickTap, stickRelease, turnShare, stickPhase, stickTo, stickDrive, stickFrame, turnRingRadius } from '../../src/game/stickZones.js';
+import { STICK_ZONES, STICK_PHASES, stickRead, stickTravel, facing8, stickSwipe, stickTap, stickRelease, turnShare, stickPhase, stickTo, stickDrive, stickFrame, turnRingRadius, stickAnalog, stickLift, STICK_DEAD_PX } from '../../src/game/stickZones.js';   /* v2.3.6542: + the stick's one writer in every mode */
 import { findIn, readSystem, systemNames } from '../../tools/guards/lib/filesOf.mjs';
 import { babel } from '../../tools/guards/lib/renderTables.mjs';   /* v2.3.6541 (sitting 57's mend): the call read off the syntax tree */
 import { manualMode, manualOn, tapLockOn, twoButtonsOn, setManualCombat, MANUAL } from '../../src/game/manualCombat.js';
@@ -224,9 +235,9 @@ function writesOutside(prop, doorFile, doorFn) {
   stickDrive(S, 30, 0, 37.5, null, null);
   check('7. no disc (node): the walk and the phase all the same', S._stickPhase === 'walk' && S.stickX > 0);
   /* read by system (tools/guards/lib/filesOf.mjs), never a big file by its path */
-  check('7. the stick handler makes the one call, behind twoButtonsOn, and returns', findIn('ui', /stickDrive\(/).length === 1
-    && findIn('ui', /if \(twoButtonsOn\(\)\) \{ stickDrive\(stateRef\.current, rawDx, rawDy, [^;]*\); return; \}/).length === 1);
-  check('7. ...and its release writes rest', findIn('ui', /S\.stickY = 0; stickTo\(S, 'rest'\);/).length === 1);
+  check('7. the stick handler makes the one call, behind the one gate (twoButtonsLive, v2.3.6542), and returns', findIn('ui', /stickDrive\(/).length === 1
+    && findIn('ui', /if \(twoButtonsLive\(\)\) \{ stickDrive\(stateRef\.current, rawDx, rawDy, [^;]*\); return; \}/).length === 1);
+  check('7. ...and its release writes rest (v2.3.6542: through stickLift, 9 below)', findIn('ui', /\bstickLift\(S\);/).length === 1);
 }
 
 /* ── 7b. v2.3.6541, the gatekeeper's sitting 57 (three plants that stayed
@@ -295,7 +306,7 @@ function writesOutside(prop, doorFile, doorFn) {
         if (!((k.type === 'StringLiteral' && k.value === 'data-turnring'))) return;
         const call = path.findParent((p) => p.isCallExpression());
         const cond = call && call.parentPath && call.parentPath.isConditionalExpression() && call.parentPath.node.consequent === call.node ? call.parentPath.node : null;
-        const gate = !!cond && cond.test.type === 'CallExpression' && cond.test.callee.type === 'Identifier' && cond.test.callee.name === 'twoButtonsOn' && cond.test.arguments.length === 0;
+        const gate = !!cond && cond.test.type === 'CallExpression' && cond.test.callee.type === 'Identifier' && cond.test.callee.name === 'twoButtonsLive' && cond.test.arguments.length === 0;
         let sized = 0;
         call.traverse({ CallExpression(q) { if (q.node.callee.type === 'Identifier' && q.node.callee.name === 'turnRingRadius') sized++; } });
         rings.push({ file, gate, sized });
@@ -303,7 +314,7 @@ function writesOutside(prop, doorFile, doorFn) {
     });
   }
   check('7b. the stick handler hands stickDrive the thumb\'s raw offset (clientX - bcx, clientY - bcy, never written again)', drives.length === 1 && drives[0].raw === true, drives);
-  check('7b. the disc draws the turn ring only when twoButtonsOn() (never in mode 4), sized by turnRingRadius', rings.length === 1 && rings[0].gate === true && rings[0].sized === 2, rings);
+  check('7b. the disc draws the turn ring only when twoButtonsLive() (the one gate, v2.3.6542; never in mode 4), sized by turnRingRadius', rings.length === 1 && rings[0].gate === true && rings[0].sized === 2, rings);
   setManualCombat(4);
   check('7b. ...and twoButtonsOn() is false in mode 4', twoButtonsOn() === false);
   setManualCombat(5);
@@ -431,12 +442,12 @@ function writesOutside(prop, doorFile, doorFn) {
           const n = path.node;
           if (n.callee.type !== 'Identifier' || n.callee.name !== 'stickFrame') return;
           const names = (e) => { const out = []; (function walk(x) { if (!x) return; if (x.type === 'Identifier') out.push(x.name); else if (x.type === 'LogicalExpression' && x.operator === '||') { walk(x.left); walk(x.right); } else out.push('?' + x.type); })(e); return out.sort(); };
-          calls.push({ file, path, frozen: names(n.arguments[2]), loot: names(n.arguments[3]), args: n.arguments.length });
+          calls.push({ file, src, path, frozen: names(n.arguments[2]), loot: names(n.arguments[3]), args: n.arguments.length });
         },
       });
     }
     check('8. BroTown calls stickFrame once, frozen by a real stun OR death OR the loot freeze, four arguments (no clock handed in; read off the syntax tree)', calls.length === 1
-      && JSON.stringify(calls[0].frozen) === JSON.stringify(['_playerDead', '_playerLootFrozen', '_realStunned']) && JSON.stringify(calls[0].loot) === '["_playerLootFrozen"]' && calls[0].args === 4, calls.map((c) => ({ ...c, path: undefined })));
+      && JSON.stringify(calls[0].frozen) === JSON.stringify(['_playerDead', '_playerLootFrozen', '_realStunned']) && JSON.stringify(calls[0].loot) === '["_playerLootFrozen"]' && calls[0].args === 4, calls.map((c) => ({ ...c, path: undefined, src: undefined })));
     const call = calls[0] && calls[0].path;
     /* the binding: `var _in = stickFrame(...)`, read only as _in.dx / _in.dy, each the whole start of dx / dy */
     let bind = 'no call';
@@ -461,7 +472,7 @@ function writesOutside(prop, doorFile, doorFn) {
       }
     }
     check('8. the walk is read only through the call: `_in` bound once, read only as `_in.dx` and `_in.dy`, each the whole start of dx and dy (off the syntax tree)', bind === '', bind);
-    /* the step `input`: the declaration between _steps.to(0, 2) and _steps.to(2, 0) in one block */
+    /* the step `input`: the declaration right after _steps.to(0, 2), before its _steps.to(2, 0), in one block */
     let step = false;
     if (call) {
       const st = call.parentPath.parentPath;   /* the VariableDeclaration */
@@ -469,9 +480,66 @@ function writesOutside(prop, doorFile, doorFn) {
       const toCall = (n, a, b) => !!n && n.type === 'IfStatement' && n.consequent.type === 'ExpressionStatement' && n.consequent.expression.type === 'CallExpression'
         && n.consequent.expression.callee.type === 'MemberExpression' && n.consequent.expression.callee.object.name === '_steps' && KEY(n.consequent.expression.callee) === 'to'
         && n.consequent.expression.arguments.map((x) => x.value).join() === a + ',' + b;
-      step = st.isVariableDeclaration() && st.node.declarations.length === 1 && toCall(sib(-1), 0, 2) && toCall(sib(1), 2, 0);
+      /* v2.3.6542 (PR 3): the step holds the latch's read too, so the close is
+         the first `_steps.to` after the call, and it must be (2, 0) */
+      let close = null;
+      for (let i = 1; sib(i); i++) { const n = sib(i); if (n.type === 'IfStatement' && n.consequent.type === 'ExpressionStatement' && n.consequent.expression.type === 'CallExpression' && n.consequent.expression.callee.type === 'MemberExpression' && n.consequent.expression.callee.object.name === '_steps') { close = n; break; } }
+      step = st.isVariableDeclaration() && st.node.declarations.length === 1 && toCall(sib(-1), 0, 2) && toCall(close, 2, 0);
     }
     check('8. the call is the step `input`: between `_steps.to(0, 2)` and `_steps.to(2, 0)` (off the syntax tree)', step);
+    /* v2.3.6542 (the gatekeeper's sitting 59): an ALLOW list of the walk's
+       writes.  The binding check above sees only how dx and dy START; a later
+       write (`if (!dy && K['w']) dy = -1;`, a held way from a helper) walked
+       past it.  So every write of the walk's two names in the calling
+       function, followed off the syntax tree by their BINDING (babel's scope:
+       a plain or compound assignment, ++/--, a destructure, a for-of/in head,
+       a write inside a nested block or a closure, a second `var`), must be a
+       row of WALK_WRITES: its statement's words, under the `if` that holds it,
+       counted.  The start is the one declaration; each row comes after it.  A
+       new form, a row spelled again, a row moved under another `if`, or a
+       form the guard cannot follow (`eval`, `with`, `new Function`) is RED.
+       The rows are the loop's later steps that own the walk today (the
+       river's feel, the wobble, the glide, the jump's carry, the climb's
+       slope); the list only falls (a row a step stops writing comes out). */
+    const WALK_WRITES = {   /* 'the write @ the test of the if that holds it' : how many */
+      'dx = _rFeel[1] @ _rFeel': 1, 'dy = _rFeel[2] @ _rFeel': 1,   /* the river's feel */
+      'dx = _wbX @ _wbA': 1, 'dy = dx * _wbS + dy * _wbC @ _wbA': 1,   /* the wobble */
+      'dx = _gl[0] @ S._wheelSwim && S._wheelSwim.on': 1, 'dy = _gl[1] @ S._wheelSwim && S._wheelSwim.on': 1,   /* the swim's glide */
+      'dx = S._jump.dx || 0 @ _inAir && S._jump && !_realStunned && !_playerLootFrozen && Math.abs(dx) < 0.1 &': 1,   /* the jump's carry */
+      'dy = S._jump.dy || 0 @ _inAir && S._jump && !_realStunned && !_playerLootFrozen && Math.abs(dx) < 0.1 &': 1,
+      "dx = _clS[0] @ S.currentZone === 'wheel'": 1, "dy = _clS[1] @ S.currentZone === 'wheel'": 1,   /* the climb's slope */
+    };
+    const writes = {}, outOfOrder = [], unfollowed = [];
+    let starts = 0;
+    if (fnPath && call) {
+      const text = calls[0].src;   /* babel's getSource() needs the file on the hub: read the words off the source */
+      const words = (p) => text.slice(p.node.start, p.node.end).replace(/\s+/g, ' ').slice(0, 80);
+      const underIf = (p) => { const i = p.findParent((q) => q.isIfStatement() || q === fnPath); return i && i !== fnPath ? words(i.get('test')) : ''; };
+      const startAt = call.parentPath.node.start;
+      for (const nm of ['dx', 'dy']) {
+        const b = call.scope.getBinding(nm);
+        if (!b || b.scope !== fnPath.scope) { unfollowed.push(nm + ' is not the calling function\'s own name'); continue; }
+        if (b.path.isVariableDeclarator() && b.path.node.init && words(b.path.get('init')) === '_in.' + nm) starts++;
+        for (const v of b.constantViolations) {
+          if (v.isVariableDeclarator()) { unfollowed.push('a second `var ' + nm + '` (line ' + v.node.loc.start.line + ')'); continue; }
+          const st = v.isAssignmentExpression() && v.node.operator === '=' && v.get('left').isIdentifier() ? v : null;
+          const key = st ? words(st) + ' @ ' + underIf(st) : '~' + words(v);
+          writes[key] = (writes[key] || 0) + 1;
+          if (v.node.start < startAt) outOfOrder.push(key);
+          if (!st) unfollowed.push(nm + ': ' + words(v) + ' (line ' + v.node.loc.start.line + ')');
+        }
+      }
+      fnPath.traverse({
+        WithStatement(p) { unfollowed.push('with (line ' + p.node.loc.start.line + ')'); },
+        CallExpression(p) { if (p.get('callee').isIdentifier({ name: 'eval' })) unfollowed.push('eval (line ' + p.node.loc.start.line + ')'); },
+        NewExpression(p) { if (p.get('callee').isIdentifier({ name: 'Function' })) unfollowed.push('new Function (line ' + p.node.loc.start.line + ')'); },
+      });
+    }
+    const extra = Object.keys(writes).filter((k) => writes[k] > (WALK_WRITES[k] || 0)).map((k) => k + ' x' + writes[k]);
+    if (process.env.WALK_WRITES_PRINT) console.log(JSON.stringify(writes, null, 1));
+    check('8. every write of dx and dy in the calling function is a row of the allow list, after the one start, counted (deny by default; off the syntax tree)', !!fnPath && starts === 2 && extra.length === 0 && outOfOrder.length === 0 && unfollowed.length === 0, { starts, extra, outOfOrder, unfollowed });
+    const gone = Object.keys(WALK_WRITES).filter((k) => (writes[k] || 0) < WALK_WRITES[k]);
+    check('8. the allow list only falls: a row the loop no longer writes comes out of WALK_WRITES', gone.length === 0, gone);
     /* in the calling function: no read of the stick, and nothing the guard cannot follow */
     const hidden = [];
     if (fnPath) fnPath.traverse({
@@ -501,6 +569,51 @@ function writesOutside(prop, doorFile, doorFn) {
     const er = got.find((g) => g.startsWith('entityRenderer.js '));
     const want = WANT.map((w) => (w.endsWith('READER_ER') ? (er || 'entityRenderer.js ?') : w)).sort();
     check('8. every reader of S.stickX / S.stickY in src/ is on the closed list (a helper that reads the stick for the loop fails)', JSON.stringify(got) === JSON.stringify(want), { got, want });
+  }
+}
+
+/* ── 9. v2.3.6542: the stick's ONE writer in every mode (the orchestrator: card WL's owned state) ──
+   BroTown's analog read and lift moved whole into stickZones.js: the
+   DEFAULT controls (every mode but 5) write the same values.  The old lines,
+   copied here verbatim, against the call, across the thumb's reach, upright
+   (travel 17.5) and sideways (25): equal to the last bit. */
+{
+  const old = (S, dist, angle, maxR) => {   /* BroTown.jsx handleJoystickMove before v2.3.6542 */
+    var deadzone = 12;
+    if (dist < deadzone) {
+      S.stickX = 0;
+      S.stickY = 0;
+    } else {
+      var strength = Math.min((dist - deadzone) / (maxR - deadzone), 1);
+      S.stickX = Math.cos(angle) * strength;
+      S.stickY = Math.sin(angle) * strength;
+    }
+  };
+  let n = 0; const diff = [];
+  for (const maxR of [17.5, 25, 37.5 / 2 - 20 + 20]) {
+    for (let dist = 0; dist <= 80; dist += 0.25) {
+      for (let k = -16; k <= 16; k++) {
+        const angle = (k * Math.PI) / 16 + 0.013;
+        const A = {}, B = {};
+        old(A, dist, angle, maxR); stickAnalog(B, dist, angle, maxR); n++;
+        if (!Object.is(A.stickX, B.stickX) || !Object.is(A.stickY, B.stickY)) diff.push({ maxR, dist, angle, A, B });
+      }
+    }
+  }
+  check(`9. the analog read moved whole: ${n} thumbs, the same values to the last bit`, diff.length === 0, diff.slice(0, 3));
+  check('9. its dead zone is the old 12 px: 11.99 nothing, 12 a start', STICK_DEAD_PX === 12
+    && (() => { const S = {}; stickAnalog(S, 11.99, 0, 17.5); return S.stickX === 0 && S.stickY === 0; })()
+    && (() => { const S = {}; stickAnalog(S, 12, 0, 17.5); return S.stickX === 0 && S.stickY === 0 && Object.keys(S).length === 2; })());
+  const L = { stickX: 0.7, stickY: -0.2 };
+  stickLift(L);
+  check('9. the lift: no walk, the stick at rest (no phase written when mode 5 never moved it)', L.stickX === 0 && L.stickY === 0 && !('_stickPhase' in L));
+  const T = { stickX: 1, stickY: 0, _stickPhase: 'walk' };
+  stickLift(T);
+  check('9. ...and from mode 5\'s walk, at rest', T._stickPhase === 'rest');
+  for (const prop of ['stickX', 'stickY']) {
+    const w = writesOutside(prop, 'src/game/stickZones.js', 'stickAnalog');
+    const far = w.outside.filter((x) => !x.startsWith('src/game/stickZones.js:'));
+    check(`9. no write of S.${prop} in src/ outside stickZones.js (its one owner, system input)`, far.length === 0, far);
   }
 }
 
