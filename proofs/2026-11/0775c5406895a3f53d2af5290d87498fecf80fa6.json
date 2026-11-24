@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "0775c5406895a3f53d2af5290d87498fecf80fa6",
+  "tree": "b02a497a2969746f97f3ef4f5bd5d05ffab13300",
+  "committedAt": "2026-11-24T06:53:33-08:00",
+  "subject": "Merge pull request #2285 from hemibroscommunity-del/claude/plan-who-1-actor",
+  "files": 8507,
+  "bytes": 963836170,
+  "listingSha256": "d80323f545b430e893117f33083daac078a692f533c7ec4ce78edaf5a8f512be",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

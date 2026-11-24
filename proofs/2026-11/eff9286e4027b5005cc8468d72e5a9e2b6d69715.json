@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "eff9286e4027b5005cc8468d72e5a9e2b6d69715",
+  "tree": "2622ad41ff2d541177d20a7f5fd7aeeebaf526ba",
+  "committedAt": "2026-11-24T06:53:30-08:00",
+  "subject": "Merge pull request #2321 from hemibroscommunity-del/claude/plan-lf-elemental2-pin",
+  "files": 8504,
+  "bytes": 963794339,
+  "listingSha256": "1c3a242a9f481a055b51ba5bded3e54f06b2aa8b3d894d9204f755c5332e60d8",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
