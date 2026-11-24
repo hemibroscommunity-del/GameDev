@@ -9,18 +9,14 @@ state: ready
   `Object.assign` source and spread key, `switch-reader` off the tree,
   `four-lines` by statements (each line set room for room).
 - (6521, #2287) A leaf stays a leaf: `tools/guards/leaves.test.mjs`.
-  No module state (top-level let/var, or a top-level or imported binding
-  written from a function: a `const` Map filled is the tired `let`); no
-  write to the state (a parameter named S, or one a caller under src/ fills
-  with it, the mark passed leaf to leaf); no chain of imports to
-  `systems/` (esbuild's graph); the page globals a census of 3 (QA probes).
-  The plant (entity-social.js) and 8 tired spellings red; 22 on a fixture.
 
-- (6522, in hand) Owned state: `state-ledger` check 8, OWNED (443 fields
+- (6522, #2290) Owned state: `state-ledger` check 8, OWNED (441 fields
   pinned to a system: every field written from one file today, and the
   phase field _inDuel), read off the census's writes; OWNED_LINE only
-  rises; 8b: 26 of 42 enforced resets outside it (only falls). The plant
-  red, still red after `--ledger life --write`; CT's branch green.
+  rises; 8b: 26 of 42 enforced resets outside it (only falls); 8c: 4
+  fields wait for one owner (_extraction, _pose, stickX, stickY; only
+  falls). stickX/Y out at the orchestrator's word: CT's #2293 writes them
+  from input too (CT's PR 3, 6542, gives them one owner).
 
 ## Next
 - Hand over (memory past 200k): 6523, the open hand's census, from `main`.

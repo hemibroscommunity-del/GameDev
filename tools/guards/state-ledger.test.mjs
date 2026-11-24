@@ -44,7 +44,8 @@
  *      count and only rises (a row is taken off by the gatekeeper alone).
  *      A row whose writers ALL moved to one other system is re-pinned by
  *      hand in the same PR (moving is not crossing); 8b counts the fields
- *      with an enforced reset that OWNED does not hold (only falls).
+ *      with an enforced reset that OWNED does not hold (only falls); 8c
+ *      counts the fields WAITING for one owner (only falls).
  * Printed, never failed: the unlisted rows by system, the rows of files the
  * map has not placed (`unsorted`: no ledger can take them), and a listed row
  * whose system has moved since it was listed (it stays in its file).
@@ -98,8 +99,8 @@
  *      out that recorded it)                            -> FAIL 8 alone
  *  16. `if (S._deathCard) S._deathCard.lost = 0;` there (a write inside it)
  *                                                         -> FAIL 8
- *  17. `_deathCard` taken off OWNED                       -> FAIL 8 (442,
- *      the line 443)
+ *  17. `_deathCard` taken off OWNED                       -> FAIL 8 (440,
+ *      the line 441)
  *  18. `Object.assign(S, { _deathCard: ... })` there; and a helper
  *      `_zz(state) { ({ v: state._deathCard } = o); }` called `_zz(S)`
  *      there (a destructured write through a renamed name)  -> FAIL 8
@@ -419,7 +420,13 @@ if (census) {
    social, render and ui) and _pose (townsfolk and audio) have no one owner
    yet; the fields the code never writes; a field written in a file the
    map has not placed.  Card CT's fields join as they land (the
-   orchestrator names them). */
+   orchestrator names them).
+   v2.3.6522 (the orchestrator, 2026-11-24, before sitting 57): stickX and
+   stickY taken out (443 -> 441), so this PR and card CT's #2293 merge in
+   either order: with both on main the two fields have writers in two
+   systems (input's stickDrive in game/stickZones.js, ui's joystick
+   handlers in BroTown.jsx), which OWNED must not claim to wall.  They wait
+   in WAITING beside _extraction and _pose. */
 const OWNED = Object.freeze({
   audio: ['_shotEnds'],
   combat: ['_abilityFx', '_acc', '_accState', '_bfPose', '_burnUntil',
@@ -514,7 +521,7 @@ const OWNED = Object.freeze({
     '_warTarget', '_warTargetData', '_warZone', '_wasMovingBcast',
     '_weaponSwapFlash', '_windows', '_wwType', '_xpBarLastGainTs', 'blocked',
     'bodySize', 'collectibles', 'friends', 'lastBroadcast', 'myBroData',
-    'nearBuilding', 'stickX', 'stickY', 'trail'],
+    'nearBuilding', 'trail'],
   wire: ['_arenaStakeBoard', '_authRejects', '_capeStatusLine',
     '_characterReset', '_currentRoom', '_dungeonEnteredAt', '_evErrLogged',
     '_frozenByAdmin', '_gambleResult', '_hardenedWoodSeen', '_httpToken',
@@ -537,7 +544,17 @@ const OWNED = Object.freeze({
     '_wheelDoorAskedAt', '_wheelGateHits', '_wheelSpawnInit', '_zoneLockAt',
     '_zoneWarnAt', 'currentZone'],
 });
-const OWNED_LINE = 443;
+const OWNED_LINE = 441;
+/* 8c. the fields that wait for one owner (written from two systems or
+   more today), each with what it waits for.  Its count only falls: a row
+   leaves when it joins OWNED, and a field is not added to dodge 8. */
+const WAITING = Object.freeze({
+  _extraction: 'written from skills, social, render and ui: no one owner yet',
+  _pose: 'written from townsfolk and audio: no one owner yet',
+  stickX: "waiting for one owner: card CT's PR 3 (6542) sends BroTown's joystick writes through stickZones' stickTo and adds both rows pinned to `input`",
+  stickY: "waiting for one owner: card CT's PR 3 (6542) sends BroTown's joystick writes through stickZones' stickTo and adds both rows pinned to `input`",
+});
+const WAITING_LINE = 4;
 const RESETS_OUTSIDE_LINE = 26;
 if (census) {
   const byName = new Map(census.json.fields.map((f) => [f.name, f]));
@@ -579,6 +596,9 @@ if (census) {
   const outside = edgeRows.filter((x) => !seen.has(x));
   check(`8b: the enforced-reset fields outside OWNED at or under the line ${RESETS_OUTSIDE_LINE} (${outside.length} of ${edgeRows.length}; ${edgeRows.length - outside.length} inside)`, outside.length <= RESETS_OUTSIDE_LINE, outside);
   if (outside.length < RESETS_OUTSIDE_LINE) info(`(room: ${RESETS_OUTSIDE_LINE - outside.length} under the line ${RESETS_OUTSIDE_LINE}: the gatekeeper lowers it)`);
+  const waiting = Object.keys(WAITING);
+  const both = waiting.filter((x) => seen.has(x));
+  check(`8c: the fields waiting for one owner at or under the line ${WAITING_LINE} (${waiting.length}: ${waiting.join(', ')}), none of them in OWNED`, waiting.length <= WAITING_LINE && !both.length, both.map((x) => `S.${x} is in OWNED and WAITING: take it off WAITING (and lower WAITING_LINE)`));
 } else {
   info('8: not checked: the page carries no writers (only where the script cannot load)');
 }
