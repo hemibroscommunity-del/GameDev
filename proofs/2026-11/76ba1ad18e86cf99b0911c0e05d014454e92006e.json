@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "76ba1ad18e86cf99b0911c0e05d014454e92006e",
+  "tree": "9b7f2cf04940882b34e96601a77c329ababfbd91",
+  "committedAt": "2026-11-23T16:44:02-08:00",
+  "subject": "Merge pull request #2277 from hemibroscommunity-del/claude/plan-rr-10-quietphone",
+  "files": 8484,
+  "bytes": 963515369,
+  "listingSha256": "f5f02578ee11463b7c369de3c3185d4c85628eff37ab65b48ad227b904758820",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

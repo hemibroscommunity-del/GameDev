@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "4a1f69eca78b85919c51b9644609a6ae106935b2",
+  "tree": "74bdff0f7505e50a1408bec28946c105acebc7f2",
+  "committedAt": "2026-11-23T16:43:49-08:00",
+  "subject": "Merge pull request #2276 from hemibroscommunity-del/claude/plan-hb2-13-groundrule",
+  "files": 8484,
+  "bytes": 963511152,
+  "listingSha256": "df7cdcb7d73384328584e82bb8ee308a77587c2b01a3827927ad571fdb05a071",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
