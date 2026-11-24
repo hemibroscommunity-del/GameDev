@@ -18,8 +18,10 @@
  * catches each socket's, as broadcastAll always did.
  *
  * THE COUNT: a Map of type -> [frames, length], the frame's length in
- * characters (the worker's JSON is ASCII but for a player's own words: a
- * character a byte, near enough to say where the bytes go).  A type not in
+ * BYTES as it goes on the wire, UTF-8 (v2.3.6445, card DG PR 6: it counted
+ * characters, `s.length`, and the plan's 4.1b says bytes: an emoji is two
+ * characters and four bytes, a name's accented letter one and two;
+ * `utf8Bytes` below, which reads past an ASCII frame at the engine's speed).  A type not in
  * the form TYPE_RE, or past TYPES_MAX types, is counted under OTHER.  Never
  * stored on its own: it RIDES the day's book (daybook.js sendRide, the part
  * `send`, a riding part) -- folded into today's sums only when the book is
@@ -40,6 +42,24 @@ export const SEND = Object.freeze({
   OTHER: '_other',  /* the day's book's keys take it; no type starts with _ */
 });
 
+/* v2.3.6445 (card DG PR 6): a frame's length in UTF-8 bytes, as the socket
+   writes it.  The worker's JSON is ASCII but for a player's own words, so an
+   all-ASCII frame (the regular expression's one pass, in the engine) is its
+   length; only a frame with a wider character is walked.  JSON.stringify
+   writes no lone half of a pair, so each half of a pair is two bytes. */
+const WIDE = /[^\x00-\x7f]/;
+export function utf8Bytes(s) {
+  if (typeof s !== 'string') return 0;
+  if (!WIDE.test(s)) return s.length;
+  let n = s.length;
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    if (c < 0x80) continue;
+    n += c < 0x800 || (c >= 0xd800 && c <= 0xdfff) ? 1 : 2;
+  }
+  return n;
+}
+
 /* v2.3.5198 (card K PR 13): a frame written OUTSIDE any room -- the worker's
    refusal of a socket before it reaches one (origin.js refuseOrigin): no
    room, so nothing counts it; written as JSON.stringify(msg), as before */
@@ -59,7 +79,7 @@ export const sendMethods = {
     const s = typeof msg === 'string' ? msg : JSON.stringify(msg);
     ws.send(s);
     try { if (this._usageSent) this._usageSent(type !== undefined ? type : (msg && msg.type)); } catch (e) { /* a count never stops a send */ }   /* v2.3.6001: the usage meter, a counter bump (usagemeter.js; card CS PR 2) */
-    if (!this._sendCountOff()) this._sendCount(type !== undefined ? type : (msg && msg.type), typeof s === 'string' ? s.length : 0);
+    if (!this._sendCountOff()) this._sendCount(type !== undefined ? type : (msg && msg.type), utf8Bytes(s));   /* v2.3.6445: bytes, not characters */
   },
 
   /* The room's form: every socket but `except`, the frame made once; a dead

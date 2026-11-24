@@ -26,6 +26,13 @@
  *      switch.  §1-5 run with the switch OFF (the step-1 sums).
  *
  *  (8, 9: the classes and the count, v2.3.5081 and v2.3.5084;)
+ *   2b. (v2.3.6446, sitting 59) THE ALLOW LIST: the bag appears outside
+ *      bag.js only in a form the scan knows (a count read, a test, a copy, a
+ *      name it follows, the door's calls, a pure global, a function of the
+ *      same file); handed to a function of another file, returned, put into
+ *      an object or a list written out is RED unless a row of HANDED_OUT
+ *      (4 at v2.3.6446; it only falls).  Break: `this._topUp(ps.inventory)`
+ *      in shop.js -> FAIL 2 (plants-scans.json);
  *  10. EACH ROAD BOOKED WHAT IT MOVED (v2.3.6442, card DG PR 3): every road
  *      of BAG_ROADS and every mail word runs on a blank bag and carried ones,
  *      named or waiting; the record's `_econ.i` and the day's book moved
@@ -253,7 +260,24 @@ for (const f of files) raw[f] = readFileSync(new URL(f, dir), 'utf8');
   /* a write of a count (through any alias: `const inv = ps.inventory`,
      `const { inventory } = ps`, `bagOf(ps)`, a helper handed the bag) or of
      the whole bag; only the whole-bag puts listed above are not the door's */
-  const r = doorWrites(raw, { skip: ['bag.js'], containers: ['inventory'], makers: { bagOf: 'inventory' }, listed: WHOLE_BAG });
+  /* v2.3.6446 (sitting 59: a stash handed to a function of ANOTHER file
+     stayed green; the bag the same).  THE ALLOW LIST (writesOf
+     opts.handout): the bag appears outside bag.js only in a form the scan
+     knows -- a read of a count (a count is a number: it goes anywhere), a
+     test, a copy (`{ ...inv }`, `Object.keys`), a name it follows, an
+     argument of the door's own functions, of a pure global or of a function
+     of the same file; the bag itself handed to a function of another file,
+     returned, or put into an object written out is a write the scan cannot
+     follow, RED unless a row of HANDED_OUT (it only falls). */
+  const BAG_DOORS = ['bagEconOwn', 'bagEconPending', 'wholeCount', 'bagCount', 'bagOneSum', 'bagAfter', 'bagGive', 'bagTake', 'bagSet'];
+  const O = (file, fn, n, why) => ({ file, fn, field: 'inventory', out: true, n, why });
+  const HANDED_OUT = [
+    O('gems.js', 'bagOf', 1, 'the gems\' maker of the bag: it hands the bag back, and the scan follows every call of it (makers: bagOf)'),
+    O('index.js', '_wipeInventoryOnDeath', 1, 'the death wipe asks which gathering tools the bag holds (gathering.js _keepGatherTools reads, and hands back a new bag)'),
+    O('persistence.js', '_saveRpg', 1, 'the save: the bag put into the stored record'),
+    O('persistence.js', '_sendPlayerState', 1, 'the echo: the bag put into the player\'s message'),
+  ];
+  const r = doorWrites(raw, { skip: ['bag.js'], containers: ['inventory'], makers: { bagOf: 'inventory' }, handout: { doors: BAG_DOORS, objects: [] }, listed: [...WHOLE_BAG, ...HANDED_OUT] });
   const counts = r.found.filter((w) => w.inside);
   const whole = r.found.filter((w) => !w.inside);
   check('2. no bag count is written in server/src but through the bag door (bag.js), however it is spelled', counts.length === 0, counts.map(where));
@@ -264,6 +288,13 @@ for (const f of files) raw[f] = readFileSync(new URL(f, dir), 'utf8');
   check('2. the scan catches `inv[k] = 1`, `ps.inventory.x += 1`, `delete ps.inventory[k]`, `inv[k]--`, `inv[k] ||= 1`, `Object.assign(inv, {})`',
     probe('inv[k] = 1') && probe('ps.inventory.x += 1') && probe('delete ps.inventory[k]') && probe('inv[k]--') && probe('inv[k] ||= 1') && probe('Object.assign(inv, { a: 1 })')
     && !probe('const a = inv[k] === 1') && !probe('if (ps.inventory[k] <= 0) x()'));
+  /* v2.3.6446 (sitting 59): THE ALLOW LIST, planted */
+  const outs = (src) => writesOf('function f(ps, inv0, k) {\n const inv = ps.inventory;\n' + src + '\n}', { containers: ['inventory'], handout: { doors: BAG_DOORS, objects: [] } }).filter((w) => w.out).length;
+  check('2. ALLOW LIST: the bag handed to a function of another file, returned, put into an object or a list written out, a callback, is red',
+    outs('fillUp(ps.inventory)') && outs('this._topUp(inv, k)') && outs('return inv') && outs('send({ bag: ps.inventory })') && outs('keep([inv])') && outs('ship(...[inv])'));
+  check('2. ...and the allowed forms are not: a count anywhere, a copy, a test, the door\'s calls, a pure global',
+    !outs('log(inv[k], ps.inventory.wood)') && !outs('send({ bag: { ...ps.inventory } })') && !outs('if (!inv || typeof inv !== \'object\') return') && !outs('bagGive(inv, k, 1, \'loot\')')
+    && !outs('const n = Object.keys(inv).length + JSON.stringify(ps.inventory).length') && !outs('for (const key in inv) use(inv[key])') && !outs('Object.values(inv).forEach(bump)'));
 }
 
 /* ── 3. ONE ROW, ONE PLACE ───────────────────────────────────────────────── */

@@ -730,6 +730,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `sendcount` | worker | switch | v2.3.5193 | 2026-11-17 | false | logic |  | no | The send door writes every frame as before but counts none: the day's book carries no `send` part (the frames a type and their length). |
 | `?wheelwhole` | page | switch | v2.3.3318 | 2026-10-17 | present | logic |  | no | Asks for every world monster on the way in, not only those near. |
 | `wiredoor` | worker | switch | v2.3.5184 | 2026-11-14 | false | logic |  | no | Every message and the room's web routes reach their handlers unchecked again, as before the wire door; a mute of `__proto__` is taken again. |
+| `wireform` | worker | switch | v2.3.6443 | 2026-11-24 | false or 'count' | logic | `wiredoor` | no | A named field is held only to the old door's checks again (no number that is not finite, a words field a string of 2,000): `n: "5"`, `-5` or a 15,000-character id reaches its handler; `'count'` counts each one and lets it in. |
 | `?wirereset` | page | switch | v2.3.5207 | 2026-11-14 | =0 | logic |  | no | The monsters' balls in flight, their warnings on the ground and the impact rings carry over a change of place again, emptied only where a way out did it by hand or by their own clock. |
 
 ## world

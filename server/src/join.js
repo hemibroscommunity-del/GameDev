@@ -2111,6 +2111,8 @@ export const joinMethods = {
         harvestGrade: this._harvestGradeOn() ? 1 : undefined,
         /* v2.3.5905 (card K4 PR 6): THE BOW'S PATH (bowshot.js, `bowpath`, ON since v2.3.5906; off with the live flag bowpath set false): a phone told this sends its arrow's relay at RELEASE with the line it flies, the line the worker then holds each claim to.  Advertised only while on */
         bowPath: this._bowPathOn() ? 1 : undefined,
+        /* v2.3.6443 (card DG PR 4): THE WIRE DOOR HOLDS A FIELD TO ITS FORM (wire/door.js WIRE_FORM): a named field out of its form (`n: "5"`, `-5`, a 15,000-character id) is refused before any handler.  The page sends only fields in form, so it gates nothing on this: the Test panel reads it (CAP_GATES).  2 while the door only counts (`wireform: 'count'`), gone with `wireform: false` -- lower case, a kill switch */
+        wireForm: this._wireFormMode() === 'on' ? 1 : (this._wireFormMode() === 'count' ? 2 : undefined),
         accuracy: this._accOn() /* v2.3.4545: ACCURACY (accuracy.js) -- the phone numbers its basic shots a weapon and sends the counts on `track` (`ac`) and each hit's shot (`sn`); `acc_request` answers `acc_state`; `accuracy: false` in liveflags un-advertises it and counts nothing -- lower case, a kill switch */ },
       // v2.3.1178: this session's private economy-endpoint token.
       // state_sync goes to the joining socket ONLY -- never broadcast.
