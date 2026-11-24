@@ -1,14 +1,15 @@
 card: WHO
 branch: claude/plan-who-2-sitting (6481, on claude/plan-who-1-actor)
 prs: #2285 6480 (ready), 6481 (built, waits on #2283)
-state: working
+state: ready
 
 ## Done
 - 6480: #2285, the actor (server/src/actor.js; `xfer:` rows' `actor`, test play apart in the day's book; `actor: false`; cap `actor`). Ready; deploys when merged.
 - 6481 (built, not opened): server/src/sitting.js, the sitting's card inside `_econ` (`s` open, `sh` the last 32 closed), ECON_V 1 -> 2 (shape bump), opened or carried on at the join (the actor made below the record's load, with the sitting's stint), the leave's touch, `sitting: false`, cap `sitting` on its own line. The orchestrator's yes (2026-11-23): one call each in movement.js, combat.js + hitproof.js, gold.js econGold. sitting.test 55 checks, 19 plants red. No new row, no new put, no cost-guard line moved.
 
-## Next
-- 6481 opens READY after #2283 (card DG) has merged with `ECON_V + 1` in gold-door.test and bag-door.test (kept in my working tree only, uncommitted, as the orchestrator asked), and `main` merged once. Then 6482 (play_trace:, would-refuse in shadow).
+## Next (hand-over: part 2 ended at 266k tokens, 2026-11-24; a fresh session finishes 6481)
+- 6481 is built and pushed (claude/plan-who-2-sitting, precheck OK, no PR yet). When the orchestrator says #2283 (card DG) has merged: merge `main` once (it brings `ECON_V + 1` into gold-door.test:559 and bag-door.test:488; without it those two are red here), run precheck, push, open the PR READY on main (or on claude/plan-who-1-actor if #2285 has not merged). Its words open "shape bump: ECON_V" and name the orchestrator's yeses (movement.js, combat.js + hitproof.js, gold.js econGold; migrations.js econClean; report.js NOT, card PH's).
+- Then 6482 (play_trace:, would-refuse in shadow); and report.js's one sitReport call after #2279.
 
 ## Found
 - qa: no proof of QA on the socket (a login change, a new card); `qa` unbuilt.
