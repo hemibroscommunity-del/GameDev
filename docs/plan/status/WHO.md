@@ -1,6 +1,6 @@
 card: WHO
-branch: claude/plan-who-3-trace (6482, #2317, on #2316's branch, on #2285's); the other holds of sitting 59 on claude/plan-who-mend59 (next)
-prs: #2285 6480, #2316 6481 (its BUG mended, v2.3.6481), #2317 6482: all three HELD at sitting 59, their heads frozen but for the bug's mend merged up
+branch: claude/plan-who-mend59 (6483, sitting 59's other holds; base claude/plan-who-3-trace, #2317, on #2316, on #2285)
+prs: #2285 6480, #2316 6481 (its BUG mended, v2.3.6481), #2317 6482: all three HELD at sitting 59, heads frozen but for the bug's mend; 6483 (mend59, building: a mutation pass, every survivor killed or listed)
 state: working
 
 ## Done
