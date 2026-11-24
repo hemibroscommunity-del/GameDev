@@ -195,11 +195,10 @@ function writesOutside(prop, doorFile, doorFn) {
   const S = {};
   stickDrive(S, 30, 0, 37.5, null, null);
   check('7. no disc (node): the walk and the phase all the same', S._stickPhase === 'walk' && S.stickX > 0);
-  const bt = readFileSync(new URL('../../src/ui/BroTown.jsx', import.meta.url), 'utf8');
-  const mv = bt.slice(bt.indexOf('var handleJoystickMove = useCallback'), bt.indexOf('var handleJoystickEnd = useCallback'));
-  const en = bt.slice(bt.indexOf('var handleJoystickEnd = useCallback'), bt.indexOf('}, []);', bt.indexOf('var handleJoystickEnd = useCallback')));
-  check('7. BroTown\'s stick handler makes the one call, behind twoButtonsOn, and returns', (mv.match(/stickDrive\(/g) || []).length === 1 && /if \(twoButtonsOn\(\)\) \{ stickDrive\([^;]*\); return; \}/.test(mv));
-  check('7. ...and its release writes rest', /stickTo\(S, 'rest'\)/.test(en));
+  /* read by system (tools/guards/lib/filesOf.mjs), never a big file by its path */
+  check('7. the stick handler makes the one call, behind twoButtonsOn, and returns', findIn('ui', /stickDrive\(/).length === 1
+    && findIn('ui', /if \(twoButtonsOn\(\)\) \{ stickDrive\(stateRef\.current, rawDx, rawDy, [^;]*\); return; \}/).length === 1);
+  check('7. ...and its release writes rest', findIn('ui', /S\.stickY = 0; stickTo\(S, 'rest'\);/).length === 1);
 }
 
 /* ── 8. the frame's step `input` (stickFrame) ── */
@@ -221,9 +220,8 @@ function writesOutside(prop, doorFile, doorFn) {
   stickFrame(S, {}, false, false, 2000);
   check('8. a thumb held TURNING in mode 5 is a player (the idle clock)', S._lastInputAt === 2000);
   check('8. one object a page (a frame makes no garbage)', stickFrame(mk(0, 0), {}, false, false, 0) === stickFrame(mk(0, 0), {}, false, false, 0));
-  const bt = readFileSync(new URL('../../src/ui/BroTown.jsx', import.meta.url), 'utf8');
   check('8. gameLoop reads the input through the step `input` (no second read of S.stickX there)',
-    /_steps\.to\(0, 2\); var _in = stickFrame\(/.test(bt) && !/var dx = \([^;]*\) \? 0 : S\.stickX/.test(bt));
+    findIn('ui', /_steps\.to\(0, 2\); var _in = stickFrame\(/).length === 1 && findIn('ui', /\? 0 : S\.stickX/).length === 0);
 }
 
 console.log('\n' + passes + ' passed, ' + failures + ' failed');

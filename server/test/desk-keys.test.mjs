@@ -102,7 +102,7 @@ check('5a the menus group is the dashboard\'s seven letters and the map\'s, in d
 const ctl = src('src/game/desktopControls.js');
 const bro = src('src/ui/BroTown.jsx');
 const bound = (k) => {
-  if (k === 'WASD') return /K\['w'\]/.test(bro) && /S\.keys\['w'\]/.test(ctl);
+  if (k === 'WASD') return /K\['w'\]/.test(bro + src('src/game/stickZones.js')) && /S\.keys\['w'\]/.test(ctl);   /* v2.3.6541: the loop's key read moved whole to stickZones.js stickFrame (the frame's step input, card CT PR 2) */
   if (k === 'Shift') return /K\['Shift'\]/.test(bro);
   if (k === 'Space') return /e\.code === 'Space'/.test(ctl);
   if (k === 'Tab') return /e\.code === 'Tab'/.test(ctl);
