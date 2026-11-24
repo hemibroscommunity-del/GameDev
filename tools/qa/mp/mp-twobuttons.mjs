@@ -68,7 +68,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const errs = [];
   try {
     for (const [label, viewport] of [['upright', UPRIGHT], ['sideways', SIDEWAYS]]) {
-      const P = await H.newPlayer(browser, { name: label === 'upright' ? 'Twobro' : 'Sidebro', wsPort, webPort, viewport, touch: true, dpr: 3, world: 'wheel', query: 'manual=5' });
+      const P = await H.newPlayer(browser, { name: label === 'upright' ? 'Twobro' : 'Sidebro', wsPort, webPort, viewport, touch: true, dpr: 3, world: 'wheel', query: 'manual=5&wheelwhole' });   /* v2.3.6542: wheelwhole: every Wheel monster in the arrival's list (server/src/wheelnear.js; mp-blockcost's), for part 2's real monster */
       players.push(P);
       P.page.on('pageerror', (e) => errs.push(label + ': ' + String((e && e.message) || e).slice(0, 200)));
       await H.enterWorld(P);
