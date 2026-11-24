@@ -313,12 +313,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
             return orig.call(this, d);
           };
         }
-        let k10 = 0;
+        let k10 = 0, swings = 0, swWas = null;
         const t = setInterval(() => {
           const S = window._gameState && window._gameState.current;
+          if (S && S.swingTimer && S.swingTimer !== swWas) { swWas = S.swingTimer; swings++; }
           const m = S && (S.monsters || []).find((x) => x && String(x.id) === id);
           const row = () => ({ t: Date.now() - t0, here: !!m, alive: m ? m.alive : null, hp: m ? m.curHp : null, gap: m ? Math.round(Math.hypot(m.x - S.player.x, m.y - S.player.y)) : null,
-            lid: S && S._latchId != null ? String(S._latchId) : null, ph: S && S._latchPhase, auto: !!(S && S.autoAttack), n: S ? (S.monsters || []).length : null, px: S ? Math.round(S.player.x) : null, py: S ? Math.round(S.player.y) : null, vx: S ? +(S.player.vx || 0).toFixed(2) : null });
+            lid: S && S._latchId != null ? String(S._latchId) : null, ph: S && S._latchPhase, auto: !!(S && S.autoAttack), n: S ? (S.monsters || []).length : null, px: S ? Math.round(S.player.x) : null, py: S ? Math.round(S.player.y) : null, vx: S ? +(S.player.vx || 0).toFixed(2) : null,
+            sw: swings, rdx: m && typeof m.renderX === 'number' ? Math.round(m.renderX - m.x) : 'none', rdy: m && typeof m.renderY === 'number' ? Math.round(m.renderY - m.y) : 'none',
+            aim: S && S._aimAngle != null ? +S._aimAngle.toFixed(2) : null, ang: m ? +Math.atan2(m.y - S.player.y, m.x - S.player.x).toFixed(2) : null,
+            hit: m ? !!m._hitThisSwing : null, inv: m ? !!m._invulnerable : null, arch: m ? (m.archetype || m.type) : null, own: !!(S && S.channel && S.channel.ws && Object.prototype.hasOwnProperty.call(S.channel.ws, 'send')) });
           if ((++k10 % 10 === 0 || k10 === 1) && tr.trace.length < 100) tr.trace.push(row());
           if (!S || !m || !m.alive || m.curHp <= 0 || Date.now() > until) { tr.stop = row(); clearInterval(t); return; }
           const dx = m.x - S.player.x, dy = m.y - S.player.y, d = Math.hypot(dx, dy);
