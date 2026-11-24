@@ -5,7 +5,9 @@ state: ready
 
 ## Done
 - PR 1 (6440, #2283): the running room refuses a write of a guarded field
-  outside its door (testroom.mjs); plants1 17 of 23 red. Deploys when merged.
+  outside its door (testroom.mjs); plants1 17 of 23 red. Mended for sitting
+  56 (roomGuard.holds: the guard is proved ON a record; ECON_V + 1 for card
+  WHO). Deploys when merged.
 - PR 2 (6441): one scanner, tools/guards/lib/writesOf.mjs (the syntax tree:
   any assignment, `delete`, Object.assign, a key in a name, an alias, a
   helper handed the record; a door's call by any receiver, a bind or a name
