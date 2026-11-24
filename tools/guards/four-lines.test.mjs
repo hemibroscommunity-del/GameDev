@@ -2,10 +2,14 @@
  *
  * The client's walls start with four numbers that may only fall:
  *
- *   1. code lines by file (comments are the project's memory and are not
- *      counted): a file with a line of its own stays under it, every other
- *      file under OTHER_FILE;
+ *   1. statements by file (v2.3.6520, card WL: they were code lines, and
+ *      two statements on one line counted one; comments are the project's
+ *      memory and are never counted): a file with a line of its own stays
+ *      under it, every other file under OTHER_FILE;
  *   2. the longest function, and every function: the same, by function;
+ *   1b, 2b. and their code lines too (v2.3.6520, after sitting 57's hold:
+ *      one statement folded over forty lines passed the statements alone):
+ *      CODE_LINES, `main`'s code-line lines, held beside the statements;
  *   3. import cycles under src/, and the files inside them;
  *   4. writes to `S` from src/rendering/ (card D's count, never a second one).
  *
@@ -31,6 +35,18 @@
  *   4. LINES.STATE_WRITES_FROM_RENDERING 114 -> 113         -> FAIL 4
  *   5. the rules' own examples (section 5) fail if the parser's reading
  *      changes: a comment counted as code turns 5 red.
+ * v2.3.6520 (card WL; the shape review's plant 4a and item 13), tried
+ * 2026-11-23 with each line at its count (a scratch copy of LINES):
+ *   6. BroTown.jsx: `S.rpg.coins -= Math.floor(S.rpg.coins * 0.1);` on the
+ *      SAME line as the catch-all's `dyingTo(S, 'die', ...)` call
+ *                                                -> FAIL 1 and 2 (it was
+ *      green: the line held a token already)
+ *   7. `var a = 1, b = 2;` and `a(), b();` each count two (section 5)
+ *   8. LINES.PACKED_FILE's hitMaterialFx.js 1946 -> 1777  -> FAIL 1 (tried 2026-11-23)
+ *   9. (sitting 57's plant) one statement folded over forty lines at the
+ *      foot of BroTown.jsx, `export const _zzFold = {` and forty `kN: N,`
+ *      rows: +1 statement inside its room, +42 code lines -> FAIL 1b
+ *      (green before: statements alone; tried 2026-11-24)
  *
  * Run from the repository's root: node tools/guards/four-lines.test.mjs
  *   --live   insist on card D's script for 4 (it fails where the script
@@ -40,7 +56,7 @@
  *            page only where it cannot (lib/fourLines.mjs, stateCensus())
  * (cd server && npm test runs it with every other guard and suite).
  */
-import { measureClient, measureSource, stateWritesFromRendering, LINES } from './lib/fourLines.mjs';
+import { measureClient, measureSource, countStatements, stateWritesFromRendering, LINES, CODE_LINES } from './lib/fourLines.mjs';
 
 let failed = 0;
 const check = (name, ok, detail) => {
@@ -50,18 +66,26 @@ const check = (name, ok, detail) => {
 const room = [];
 
 const m = measureClient();
+/* v2.3.6520: a file's own line, the big files' (FILE) or a packed one's (PACKED_FILE) */
+const OWN_FILE = Object.freeze({ ...LINES.FILE, ...LINES.PACKED_FILE });
 
-/* ── 1. code lines by file ── */
+/* ── 1. statements by file ── */
 {
   const over = [];
   for (const [f, n] of Object.entries(m.files)) {
-    const line = Object.hasOwn(LINES.FILE, f) ? LINES.FILE[f] : LINES.OTHER_FILE;
-    if (n > line) over.push(`${f}: ${n} code lines, its line ${line}`);
-    else if (Object.hasOwn(LINES.FILE, f) && n < line) room.push(`${f}: ${n} (its line ${line})`);
+    const line = Object.hasOwn(OWN_FILE, f) ? OWN_FILE[f] : LINES.OTHER_FILE;
+    if (n > line) over.push(`${f}: ${n} statements, its line ${line}`);
+    else if (Object.hasOwn(OWN_FILE, f) && n < line) room.push(`${f}: ${n} (its line ${line})`);
   }
-  for (const f of Object.keys(LINES.FILE)) if (!Object.hasOwn(m.files, f)) room.push(`${f}: gone (its line can come off)`);
+  for (const f of Object.keys(OWN_FILE)) if (!Object.hasOwn(m.files, f)) room.push(`${f}: gone (its line can come off)`);
   const biggest = Object.entries(m.files).sort((a, b) => b[1] - a[1])[0];
-  check(`1: no file over its line (the largest: ${biggest[0]}, ${biggest[1]} code lines; ${Object.keys(m.files).length} files)`, over.length === 0, over);
+  check(`1: no file over its line (the largest: ${biggest[0]}, ${biggest[1]} statements, ${m.codeLines[biggest[0]]} code lines; ${Object.keys(m.files).length} files)`, over.length === 0, over);
+  const overLines = [];
+  for (const [f, n] of Object.entries(m.codeLines)) {
+    const line = Object.hasOwn(CODE_LINES.FILE, f) ? CODE_LINES.FILE[f] : CODE_LINES.OTHER_FILE;
+    if (n > line) overLines.push(`${f}: ${n} code lines, its code-line line ${line}`);
+  }
+  check('1b: no file over its code-line line (CODE_LINES: one statement folded over many lines is held here)', overLines.length === 0, overLines);
 }
 
 /* ── 2. the longest function, and every function ── */
@@ -69,17 +93,21 @@ const m = measureClient();
   const best = Object.create(null);
   for (const fn of m.functions) {
     const k = fn.file + '#' + fn.name;
-    if (!best[k] || fn.lines > best[k].lines) best[k] = fn;
+    if (!best[k] || fn.statements > best[k].statements) best[k] = fn;
   }
-  const over = [];
+  const over = [], overLines = [];
   for (const [k, fn] of Object.entries(best)) {
     const line = Object.hasOwn(LINES.FUNCTION, k) ? LINES.FUNCTION[k] : LINES.OTHER_FUNCTION;
-    if (fn.lines > line) over.push(`${k} (from line ${fn.from}): ${fn.lines} code lines, its line ${line}`);
-    else if (Object.hasOwn(LINES.FUNCTION, k) && fn.lines < line) room.push(`${k}: ${fn.lines} (its line ${line})`);
+    if (fn.statements > line) over.push(`${k} (from line ${fn.from}): ${fn.statements} statements, its line ${line}`);
+    const cl = Object.hasOwn(CODE_LINES.FUNCTION, k) ? CODE_LINES.FUNCTION[k] : CODE_LINES.OTHER_FUNCTION;
+    const most = m.functions.filter((g) => g.file + '#' + g.name === k).reduce((a, g) => Math.max(a, g.lines), 0);
+    if (most > cl) overLines.push(`${k}: ${most} code lines, its code-line line ${cl}`);
+    else if (Object.hasOwn(LINES.FUNCTION, k) && fn.statements < line) room.push(`${k}: ${fn.statements} (its line ${line})`);
   }
   for (const k of Object.keys(LINES.FUNCTION)) if (!best[k]) room.push(`${k}: gone (its line can come off)`);
   const top = m.functions[0];
-  check(`2: no function over its line (the longest: ${top.file}#${top.name}, ${top.lines} code lines)`, over.length === 0, over);
+  check(`2: no function over its line (the longest: ${top.file}#${top.name}, ${top.statements} statements)`, over.length === 0, over);
+  check('2b: no function over its code-line line (CODE_LINES: one statement folded over many lines is held here)', overLines.length === 0, overLines);
 }
 
 /* ── 3. import cycles ── */
@@ -127,6 +155,16 @@ const m = measureClient();
   const c = measureSource('function Big() {\n  const a = () => {\n    return 1;\n  };\n  return a;\n}\n', 'n.js');
   check('5: a function counts the functions inside it', c.functions.find((f) => f.name === 'Big').lines === 6, c.functions);
   check('5: static imports are read, import() is not', JSON.stringify(measureSource('import x from "./x";\nexport * from "./y";\nimport "./z";\nconst l = () => import("./w");\n', 'i.js').imports) === '["./x","./y","./z"]');
+  /* v2.3.6520: the statements, as pinned (countStatements' header) */
+  const st = countStatements(src, 'rules.jsx');
+  const stNames = st.functions.map((f) => f.name + ':' + f.statements).sort().join(' ');
+  /* import 1; function f 1, const s 1, return 1; export const g 1, its arrow's
+     expression 1; class K 1, if 1, return 1 = 9 */
+  check('5: statements: a declaration, each declarator, a return, an `if`, an arrow\'s expression body, a class (9)', st.statements === 9, st.statements);
+  check('5: functions are named and counted by their statements (f, g, the method m)', stNames === 'f:2 g:1 m:2', stNames);
+  const two = countStatements('var a = 1, b = 2;\na(), b();\nif (a) { b(); } else c(); d();\n', 't.js').statements;
+  check('5: two statements on one line count two (`var a, b`, `a(), b()`, an if\'s arms, a statement after it)', two === 8, two);
+  check('5: a function counts the statements of the functions inside it', countStatements('function Big() {\n  const a = () => {\n    return 1;\n  };\n  return a;\n}\n', 'n.js').functions.find((f) => f.name === 'Big').statements === 3);
 }
 
 if (room.length) console.log('\nroom the gatekeeper may take back (lower these lines in a PR of their own):\n  ' + room.join('\n  '));
