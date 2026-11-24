@@ -48,6 +48,7 @@
  *   join.js _sitJoin: the `ECON.V` test taken out -> FAIL 8;
  *   sitting.js sitMove: the sitOff test taken out -> FAIL 7;
  *   movement.js: either sitMove call taken out -> FAIL 9 (the moves);
+ *   movement.js: the test-mode sitMove taken out -> FAIL 10;
  *   combat.js: the `claim` or the `landed` call taken out, or `attackerPs`
  *     not handed to `_hpTally('noWeapon')` -> FAIL 9; hitproof.js
  *     _hpTally's sitHit line taken out -> FAIL 9;
@@ -309,6 +310,27 @@ const live = (room, pid) => room.playerState[pid];
   check('9. ...the purse the same without the card', on.coins === off.coins, { on: on.coins, off: off.coins });
   check('9. `sitting: false`: none of it counted', !Array.isArray(off.ps._econ.s));
   check('9. the report\'s facts (soft, build, seen, drawn) are not handed yet: report.js is card PH\'s (the orchestrator, 2026-11-23)', r && r.sf === -1 && r.b === '' && r.se === 0 && r.dr === 0);
+}
+
+/* ══════════ 10. A TEST-MODE CHARACTER'S MOVES ARE ACTIVITY TOO ══════════
+   (the orchestrator's yes, 2026-11-24: test mode judges no move, so before
+   this the owner's sittings counted no active second from walking) */
+{
+  const pid = 'bp_sit_tm';
+  const st = makeStorage(seed([pid], 0));
+  st._store.set('testmode:' + pid, { v: 1, on: true, at: 1, name: 'tm' });
+  const room = await openRoom(st, null);
+  const ws = fakeWs('tm');
+  await join(room, ws, pid, { loginTaken: true }); await settle();
+  if (room.tickInterval) { clearInterval(room.tickInterval); room.tickInterval = null; }
+  const ps = live(room, pid);
+  const mv = (x, y) => room.webSocketMessage(ws, JSON.stringify({ type: 'move', x, y, z: ps.z }));
+  for (let i = 0; i < 6; i++) { clock.advance(1000); await mv(ps.x + 30, ps.y); }
+  clock.advance(1000); await mv(ps.x + 5000, ps.y);   /* far: test mode takes it, and no budget to be over */
+  const r = sitRead(ps._econ.s);
+  check('10. the character is in test mode (its moves judged by nothing)', room._testMode(ps) === true);
+  check('10. seven test-mode moves counted, none over a budget', r && r.mv === 7 && r.mo === 0, r);
+  check('10. ...and their seconds active (a second apart: six, the first move\'s from the join\'s touch)', r && r.a >= 6, r && r.a);
 }
 
 clock.uninstall && clock.uninstall();
