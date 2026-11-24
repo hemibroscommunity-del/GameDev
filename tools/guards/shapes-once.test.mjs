@@ -79,7 +79,7 @@ const NAMES = Object.freeze({
 const PREFIXES = Object.freeze({
   'daybook:': { part: 7, writer: 'server/src/daybook.js' },   /* v2.3.5080, card E: bookAdd, the one door */
   'xfer:': { part: 7, writer: 'server/src/xfer.js' },   /* v2.3.5092, card E: xferRow, in the settlement's own run */
-  'play_trace:': { part: 7, writer: null },
+  'play_trace:': { part: 7, writer: 'server/src/playtrace.js' },   /* v2.3.6482, card WHO: traceEnd, one put a test-mode sitting */
   'permit:': { part: 7, writer: null },
 });
 const ACTION_DOOR = 'src/game/actions.js';

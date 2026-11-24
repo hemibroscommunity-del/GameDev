@@ -40,7 +40,7 @@
  * the same sitting is not recorded again, so a reconnect cuts a recording
  * short (a sample, honestly labelled by its `cut`).  No timer, no read, no
  * delete, test-mode sittings only.  A character keeps
- * TRACE.KEEP rows: the key's slot is the sitting's stint (in seconds) modulo
+ * TRACE.KEEP rows: the key's slot is the sitting's id (in seconds) modulo
  * KEEP, so a newer sitting may take an older's slot.  Nothing that counts
  * value is in it.
  *
@@ -51,7 +51,7 @@
  * sample, not a sum, and no sum reads it.
  *
  * WHAT IT NEEDS: the sitting's card (`sitting: false` records nothing: its
- * stint names the row and says a sitting began) and a test-mode character.  A character not in
+ * id names the row and says a sitting began) and a test-mode character.  A character not in
  * test mode is never recorded: a trace is a person's only with the owner's
  * yes, and only the owner's characters have test mode.
  *
@@ -106,26 +106,26 @@ function cardOf(ps) {
 }
 
 /** The row's key: a character's slot for a sitting. */
-export function traceKey(pid, stint) {
-  return TRACE.PREFIX + pid + ':' + (Math.floor(Math.abs(Number(stint) || 0) / 1000) % TRACE.KEEP);
+export function traceKey(pid, sid) {
+  return TRACE.PREFIX + pid + ':' + (Math.floor(Math.abs(Number(sid) || 0) / 1000) % TRACE.KEEP);
 }
 
 /** At the join, once the sitting's card is open (join.js): a test-mode
  *  character's sitting under its first ten active minutes starts (or, a
  *  reconnect with the body kept, goes on with) its recording. */
-export function traceBegin(room, ps, pid, stint, now) {
+export function traceBegin(room, ps, pid, sid, now) {
   if (!ps || typeof ps !== 'object' || traceOff(room) || !sitOn(room)) return false;
-  if (!fin(stint) || !stint || !isTest(room, ps)) { if (ps._trace) delete ps._trace; return false; }
+  if (!fin(sid) || !sid || !isTest(room, ps)) { if (ps._trace) delete ps._trace; return false; }
   const s = cardOf(ps);
-  if (!s || s[SIT.COL.t] !== stint) return false;
-  if (ps._trace && ps._trace.stint === stint) return true;   /* the same sitting goes on */
+  if (!s || s[SIT.COL.t] !== sid) return false;
+  if (ps._trace && ps._trace.sid === sid) return true;   /* the same sitting goes on */
   /* only a sitting the join just OPENED starts one (its card never touched
      since: sitting.js sitBlank), never one carried on -- a later part is
      never recorded over the first */
-  if (ps._traceDone === stint || s[SIT.COL.u] !== s[SIT.COL.t]) return false;
+  if (ps._traceDone === sid || s[SIT.COL.u] !== s[SIT.COL.t]) return false;
   const t0 = Math.floor(fin(now) ? now : Date.now());
   ps._trace = {
-    stint, t0, act: 0, at: t0, pid: String(pid),
+    sid, t0, act: 0, at: t0, pid: String(pid),
     start: null,   /* where the replay joins: the first move's place (the room's at the end when none) */
     ev: [], bytes: 0, prev: null, prevKey: null, prevT: -1e9, startT: null,
     kinds: Object.create(null), wr: Object.create(null), wt: [],
@@ -299,10 +299,10 @@ function kindOf(k) {
 export function traceRowOf(R, why, at, ps) {
   const recorded = new Date(at).toISOString().slice(0, 10);
   return {
-    v: TRACE.V, label: 'human', pid: R.pid, stint: R.stint, at, act: Math.round(R.act / 1000), cut: why,
+    v: TRACE.V, label: 'human', pid: R.pid, sid: R.sid, at, act: Math.round(R.act / 1000), cut: why,
     wr: Object.assign({}, R.wr), wt: R.wt.slice(),
     trace: {
-      v: TRACE.FORM, name: 'play_trace ' + R.pid + ' ' + R.stint, what: 'human', kind: kindOf(R.kinds),
+      v: TRACE.FORM, name: 'play_trace ' + R.pid + ' ' + R.sid, what: 'human', kind: kindOf(R.kinds),
       recorded, by: 'server/src/playtrace.js', start: Object.assign({}, R.start || placeOf(ps)), events: R.ev.slice(),
     },
   };
@@ -316,14 +316,14 @@ export function traceEnd(room, ps, why, now) {
   const R = ps && ps._trace;
   if (!R) return null;
   delete ps._trace;
-  ps._traceDone = R.stint;
+  ps._traceDone = R.sid;
   const t = Math.floor(fin(now) ? now : Date.now());
   if (traceOff(room)) return null;
   if (why === 'leave' && R.act < TRACE.MIN_ACTIVE_S * 1000) return null;
   if (!R.ev.length) return null;
   const row = traceRowOf(R, why, t, ps);
   try {
-    const p = room.state.storage.put(traceKey(R.pid, R.stint), row);
+    const p = room.state.storage.put(traceKey(R.pid, R.sid), row);
     if (p && typeof p.catch === 'function') p.catch(() => {});
     return row;
   } catch (e) { return null; }   /* a recording must never stop what it records */

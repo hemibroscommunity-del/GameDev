@@ -76,7 +76,7 @@ const capsOf = (ws) => { const m = ws.sent.find((x) => x && x.type === 'state_sy
   check('1. a character\'s rows are a ring of TRACE.KEEP slots under `play_trace:<pid>:`', slots.size <= TRACE.KEEP && [...slots].every((k) => /^play_trace:bp_x:[0-7]$/.test(k)), [...slots]);
   check('1. the same sitting\'s stint is the same slot', traceKey('bp_x', 1764000000123) === traceKey('bp_x', 1764000000999));
   check('1. the one label is `human`; the row\'s shape 1, the league\'s trace form 2', TRACE.LABELS.length === 1 && TRACE.LABELS[0] === 'human' && TRACE.V === 1 && TRACE.FORM === 2);
-  const R = { pid: 'bp_x', stint: 5, act: 0, start: { x: 1, y: 2, z: 'wheel' }, ev: [{ t: 0, mv: { type: 'move', x: 1, y: 2 } }], kinds: Object.create(null), wr: { move_budget: 1 }, wt: [[0, 0]] };
+  const R = { pid: 'bp_x', sid: 5, act: 0, start: { x: 1, y: 2, z: 'wheel' }, ev: [{ t: 0, mv: { type: 'move', x: 1, y: 2 } }], kinds: Object.create(null), wr: { move_budget: 1 }, wt: [[0, 0]] };
   const row = traceRowOf(R, 'ten', Date.UTC(2026, 10, 24));
   check('1. traceRead reads a row of its shape as the league\'s trace', traceRead(row) === row.trace && row.trace.v === 2 && row.trace.what === 'human' && row.trace.kind === 'walk');
   check('1. ...and nothing else: another label, another shape, junk', traceRead({ ...row, label: 'bot' }) === null && traceRead({ ...row, v: 2 }) === null && traceRead(null) === null && traceRead({ v: 1, label: 'human', trace: { v: 2 } }) === null);
@@ -108,7 +108,7 @@ async function recordHarvest({ testMode = true, flags = {}, minutes = 14, seed =
   check('2. ONE `play_trace:` row, put once', rec.rows.length === 1 && rec.puts === 1, { rows: rec.rows.map(([k]) => k), puts: rec.puts });
   const [key, row] = rec.rows[0] || [];
   const tr = traceRead(row);
-  check('2. ...labelled human, the character\'s, its sitting\'s stint in its key', row && row.label === 'human' && row.pid === H.pid && key === traceKey(H.pid, row.stint), row && { label: row.label, pid: row.pid, key });
+  check('2. ...labelled human, the character\'s, its sitting\'s id in its key', row && row.label === 'human' && row.pid === H.pid && key === traceKey(H.pid, row.sid), row && { label: row.label, pid: row.pid, key });
   /* the bench's harvester walks at ten moves a second: 96 KB holds about
      five active minutes of it, so its row ends at the cap (§5b holds `ten`) */
   check('2. ...ended by the first ten active minutes or the row\'s cap, whichever came first, and says which', row && (row.cut === 'ten' || row.cut === 'size') && row.act > 60 && row.act <= TRACE.ACTIVE_S + 1, row && { cut: row.cut, act: row.act });

@@ -112,6 +112,10 @@ const SCRATCH = {
   /* kept in a record of its own (registered in ARCHITECTURE-HANDOFF's
      rule-2 table), put on `ps` when it loads */
   ownRecord: ['apOnce' /* aponce:<pid> */, 'bro', 'broN' /* the Hemi Bro link */, 'allyTag' /* the party's */],
+  /* v2.3.6482 (card WHO): a test-mode sitting's recording while it records,
+     and the sitting it ended (playtrace.js): a sample, its one row its own
+     record (`play_trace:`), never the character's */
+  trace: ['_trace', '_traceDone'],
 };
 /* Stepped in today: written meaning to last, in neither list.  Each is a
    line under Found in docs/plan/status/V.md, for the card whose file it is. */
