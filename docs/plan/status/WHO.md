@@ -1,6 +1,6 @@
 card: WHO
-branch: claude/plan-who-2-sitting (6481, stacked on claude/plan-who-1-actor, #2285); claude/plan-who-3-trace (6482, stacked on it, opens next)
-prs: #2285 6480 (mended again, for sitting 59), 6481 (open, READY, on #2285's branch), 6482 (built, opens next, stacked on 6481)
+branch: claude/plan-who-3-trace (6482, stacked on claude/plan-who-2-sitting, #2316, itself on #2285's branch)
+prs: #2285 6480 (mended again, for sitting 59), #2316 6481 (open, READY), 6482 (open, READY, on #2316's branch)
 state: working
 
 ## Done
@@ -11,8 +11,8 @@ state: working
 
 ## Next (part 4, from 2026-11-24)
 - The orchestrator's three answers (2026-11-24): 1 YES admin.js KEPT_OUT's one `play_trace:` row (already on 6482); 2 the trace stays ONE row of 96 KB, `cut: 'size'` accepted, nothing more built; 3 YES the movement.js test-mode call (in 6481, committed, not pushed).
-- 6481: #2283 merged (sitting 58, main 045a8b1a): #2285's branch (with main) merged in, precheck, pushed, opened READY on claude/plan-who-1-actor ("shape bump: ECON_V" first; the yeses: movement.js (two judged calls and the test-mode one), combat.js + hitproof.js, gold.js econGold; migrations.js econClean; report.js NOT, card PH's).
-- 6482: merge 6481 in, precheck, push, open READY on claude/plan-who-2-sitting ("stacked on 6481" at the top; the files outside the card with their lines; admin.js KEPT_OUT, the orchestrator's yes; answer 2 named; not shadowed: botfp, botsig, the quests' order, lastplace, the roll window).
+- 6481: #2283 merged (sitting 58, main 045a8b1a): #2285's branch (with main) merged in, precheck, pushed, opened READY as #2316 on claude/plan-who-1-actor ("shape bump: ECON_V" first; the yeses: movement.js (two judged calls and the test-mode one), combat.js + hitproof.js, gold.js econGold; migrations.js econClean; report.js NOT, card PH's).
+- 6482: #2316's branch merged in, precheck, pushed, opened READY on claude/plan-who-2-sitting ("stacked on 6481" at the top; the files outside the card with their lines; admin.js KEPT_OUT, the orchestrator's yes; answer 2 named; not shadowed: botfp, botsig, the quests' order, lastplace, the roll window).
 - Then report.js's one sitReport call after #2279 (card PH), on the orchestrator's word.
 
 ## Found
