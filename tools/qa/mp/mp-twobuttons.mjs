@@ -284,7 +284,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
          gap with the stick walking you in all the same (the helper's run:
          341 -> 372 px upright, 238 -> 329 sideways) */
       const toward = g && gPress ? (g.px - gPress.px) * Math.cos(gPress.a) + (g.py - gPress.py) * Math.sin(gPress.a) : 0;
-      rec.ok(`2c. ${label}: the stick walks you in while locked (${Math.round(toward)} px toward it; the gap ${g ? Math.round(g.d) : '?'} px), the lock held`, !!g && (g.d <= 90 || toward > 20) && (await LATCH(P)).phase === 'active', { gPress, g, toward, walkTrace });
+      /* v2.3.6543: the lock held, or it held to the monster's death on the walk in
+         (a monster that starts within reach is killed by the latch before the
+         check: the first run of part 3, upright, the gap 90 px: the end
+         'killed', the latch's own) */
+      const lockHeld = (l) => l.phase === 'active' || l.end === 'killed';
+      rec.ok(`2c. ${label}: the stick walks you in while locked (${Math.round(toward)} px toward it; the gap ${g ? Math.round(g.d) : '?'} px), the lock held`, !!g && (g.d <= 90 || toward > 20) && lockHeld(await LATCH(P)), { gPress, g, toward, walkTrace });
       /* this box draws a few frames a second and a held attack halves the
          walk (mode 4's rule, kept): the rest of the way by the harness's hop */
       if (g0 && g0.d > 90) {
@@ -380,8 +385,25 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok(`2e. ${label}: a tap on the world's right half attacks nothing`, !!tz && l4.taps === tapsBefore && !l4.auto && l4.phase === 'idle', { tz, tapsBefore, l4 });
 
       /* ── PART 3: the sight line, and Block and the specials ── */
+      /* the kit's shield lands in the stash: worn the bag's way (the UI
+         review's armForFight; shieldWear.js) */
       await H.devOp(wsPort, 'kit', me, { what: 'shield' }).catch(() => null);
-      const shieldOn = await H.waitFor(P, (S) => !!(S.rpg && S.rpg.shield), (v) => v, { timeout: 15000, label: 'a shield' }).catch(() => null);
+      const wear = () => P.page.evaluate(() => {
+        const S = window._gameState && window._gameState.current, R = S && S.rpg;
+        if (!R) return false;
+        if (R.shield) return true;
+        if (!Array.isArray(R.shieldStash) || !R.shieldStash.length) return false;
+        const sh = R.shieldStash.shift();
+        R.shield = sh;
+        if (S.channel && S._serverCaps && S._serverCaps.shieldwear) {
+          const payload = (typeof sh.gid === 'string' && sh.gid) ? { gid: sh.gid }
+            : { sig: [sh.name || '', sh.gearBase || '', sh.tierMult == null ? '' : sh.tierMult, sh.tier || ''].join('|') };
+          try { S.channel.send({ type: 'shield_wear', payload }); } catch (e) { /* the next change reports it */ }
+        }
+        return true;
+      });
+      let shieldOn = false;
+      for (let k = 0; k < 60 && !shieldOn; k++) { shieldOn = await wear(); if (!shieldOn) await P.page.waitForTimeout(250); }
       rec.ok(`3. ${label}: a shield in hand (guard)`, !!shieldOn);
       const mon3 = await H.readState(P, (S) => {
         const P0 = S.player; let best = null;
@@ -401,7 +423,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
          40 px a 100 ms (400 px/s: the worker's move budget is 500) */
       await P.page.evaluate((id) => {
         const FACE = { east: 0, southeast: Math.PI / 4, south: Math.PI / 2, southwest: 3 * Math.PI / 4, west: Math.PI, northwest: -3 * Math.PI / 4, north: -Math.PI / 2, northeast: -Math.PI / 4 };
-        const w = window._ctEdge = { want: 700, at: 700, phase: [], dom: [], ticks: 0, lost: false };
+        const w = window._ctEdge = { want: 700, at: 700, real: null, phase: [], dom: [], ticks: 0, lost: false, last: Date.now() };
         const shown = () => ({ block: !!document.querySelector('[data-shield]'), special: !!document.querySelector('[data-special]'), ability: !!document.querySelector('[data-ability]') });
         let was = JSON.stringify(shown());
         w.dom.push({ t: Date.now(), v: JSON.parse(was) });
@@ -417,26 +439,34 @@ export async function run({ browser, wsPort, webPort, rec }) {
           const m = (S.monsters || []).find((x) => x && String(x.id) === id);
           if (!m || !m.alive) { w.lost = true; return; }
           w.ticks++;
+          /* v2.3.6543: stepped by the time since the last step (400 px/s,
+             at most 200 px a step), not 40 px a tick: this box's timers run
+             a slow frame apart, and the first run's body lagged its path
+             (sideways: 335 px off with the path at 700) */
+          const t = Date.now(), dt = Math.min(500, t - w.last); w.last = t;
+          const step = 0.4 * dt;
           const f = FACE[S._renderFacing];
           const a = typeof f === 'number' ? f : (typeof S._facingAngle === 'number' ? S._facingAngle : Math.PI / 2);
-          w.at += Math.max(-40, Math.min(40, w.want - w.at));
+          w.at += Math.max(-step, Math.min(step, w.want - w.at));
           const tx = m.x - Math.cos(a) * w.at, ty = m.y - Math.sin(a) * w.at;
           const dx = tx - S.player.x, dy = ty - S.player.y, dd = Math.hypot(dx, dy);
-          const k = Math.min(dd, 40);
+          const k = Math.min(dd, step);
           if (dd > 0.5) { S.player.x += (dx / dd) * k; S.player.y += (dy / dd) * k; }
+          w.real = Math.hypot(m.x - S.player.x, m.y - S.player.y);
         }, 100);
       }, mon3.id);
       const EDGE = (P) => P.page.evaluate(() => {
         const w = window._ctEdge, S = window._gameState && window._gameState.current;
         const ln = window.__btSightLine ? window.__btSightLine() : null;
-        return { at: Math.round(w.at), phase: S && S._sightPhase || 'none', id: S && S._sightId != null ? String(S._sightId) : null, line: ln,
+        return { at: Math.round(w.at), real: w.real == null ? null : Math.round(w.real), phase: S && S._sightPhase || 'none', id: S && S._sightId != null ? String(S._sightId) : null, line: ln,
           block: !!document.querySelector('[data-shield]'), special: !!document.querySelector('[data-special]'), ability: !!document.querySelector('[data-ability]'),
           attack: !!document.querySelector('.bt-rjoy-base'), jump: !!document.querySelector('[data-jump]'), latch: S && S._latchPhase || 'idle',
           phases: w.phase.length, doms: w.dom.length, lost: w.lost, ticks: w.ticks };
       });
       const walkTo = async (d, holdMs) => {
         await P.page.evaluate((x) => { window._ctEdge.want = x; }, d);
-        await H.waitFor(P, () => Math.round(window._ctEdge.at), (v) => v === d, { timeout: 20000, label: 'at ' + d }).catch(() => null);
+        /* the body there, by the real distance (the path's and the body's) */
+        await H.waitFor(P, () => ({ at: Math.round(window._ctEdge.at), real: window._ctEdge.real }), (v) => v.at === d && v.real != null && Math.abs(v.real - d) < 12, { timeout: 30000, label: 'at ' + d }).catch(() => null);
         if (holdMs) await P.page.waitForTimeout(holdMs);
       };
       /* 3a */

@@ -186,6 +186,11 @@ export function latchFrame(S, now, dead, slot, mult) {
   return latchHolds(S);
 }
 
+/** v2.3.6543: the weapon's sight range held out (sightRange's `out`), as the
+ *  last frame sighted with: Block's and Special's "a monster near" in the two
+ *  buttons (controlVisibility.js combatReach; card CT PR 4). */
+export function latchReach() { return _range.out; }
+
 /** Attack pressed (the disc, mode 5): sights afresh -- never the 400 ms
  *  hold's kept id (the gatekeeper's sitting 56: a press locks only what is in
  *  sight now) -- and presses (latchPress).  'lock' | 'unlock' | 'once'. */

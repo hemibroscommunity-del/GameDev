@@ -54,8 +54,8 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { findIn } from '../../tools/guards/lib/filesOf.mjs';
 import { SIGHT, SIGHT_PHASES, sightRange, sightPick, sightPhase, sightTo, sightStep, sightClear, angleOff, sightLine } from '../../src/game/sight.js';   /* v2.3.6543: + the line */
-import { combatButtonsShown } from '../../src/game/controlVisibility.js';   /* v2.3.6543 */
-import { latchTo } from '../../src/game/latch.js';   /* v2.3.6543 */
+import { combatButtonsShown, combatReach } from '../../src/game/controlVisibility.js';   /* v2.3.6543 */
+import { latchTo, latchFrame, latchReach } from '../../src/game/latch.js';   /* v2.3.6543 */
 import { beamStream, drawSightLine } from '../../src/rendering/leaves/effects-sight.js';   /* v2.3.6543 */
 import { babel } from '../../tools/guards/lib/renderTables.mjs';   /* v2.3.6543: the callers off the syntax tree */
 
@@ -255,6 +255,14 @@ function writesOutside(prop, doorFile, doorFn) {
     if (now !== was) { flips++; was = now; }
   }
   check('8. a monster walked back and forth across the edge: the buttons came once and went once', flips === 2 && was === false, flips);
+  /* their "a monster near": the sight's range in the two buttons */
+  check('8. reach: a sword\'s before any frame, 550 (the sight held out)', latchReach() === 550 && combatReach(true, 220) === 550, latchReach());
+  check('8. reach: any other mode, the base untouched', combatReach(false, 220) === 220 && combatReach(0, 300) === 300);
+  latchFrame({ player: { x: 0, y: 0 }, monsters: [], currentZone: 'wheel' }, 1, false, 'ranged', 1);
+  check('8. reach: a bow\'s once a frame sighted with it (825, the worker\'s 675 + 150)', latchReach() === 825 && combatReach(true, 220) === 825, latchReach());
+  check('8. reach: never less than the base', combatReach(true, 900) === 900);
+  latchFrame({ player: { x: 0, y: 0 }, monsters: [], currentZone: 'wheel' }, 2, false, 'melee', 1);
+  check('8. reach: back to the sword\'s', latchReach() === 550);
 }
 
 /* ── 9. the leaf (v2.3.6543) ── */
@@ -299,7 +307,7 @@ function writesOutside(prop, doorFile, doorFn) {
     'src/ui/panels/SpecialButton.jsx': 2,   /* the render's gate, and its QA probe */
     'src/ui/panels/AbilityButtons.jsx': 1,   /* the render's gate */
   });
-  const calls = Object.create(null), bad = [], gates = Object.create(null), draws = [];
+  const calls = Object.create(null), bad = [], gates = Object.create(null), draws = [], reach = Object.create(null), reachBad = [];
   const isTwoOn = (e) => e && e.type === 'LogicalExpression' && e.operator === '&&'
     && e.left.type === 'CallExpression' && e.left.callee.type === 'Identifier' && e.left.callee.name === 'twoButtonsOn' && e.left.arguments.length === 0
     && e.right.type === 'UnaryExpression' && e.right.operator === '!' && e.right.argument.type === 'CallExpression' && e.right.argument.callee.type === 'Identifier' && e.right.argument.callee.name === 'fineInput' && e.right.argument.arguments.length === 0;
@@ -325,6 +333,19 @@ function writesOutside(prop, doorFile, doorFn) {
         const a = n.arguments;
         const ok = a.length === 3 && isTwoOn(a[1]) && a[2].type === 'Identifier' && a[2].name === 'fightOn';
         if (!ok) bad.push(f + ':' + (n.loc && n.loc.start.line));
+        /* in the gate, beside it: the button's own rule handed the reach */
+        const own = path.findParent((p) => p.isLogicalExpression());
+        if (own) {
+          const other = own.node.left === n || (own.node.left.type === 'UnaryExpression' && own.node.left.argument === n) ? own.node.right : own.node.left;
+          const oc = other.type === 'UnaryExpression' ? other.argument : other;
+          if (oc.type === 'CallExpression' && oc.callee.type === 'Identifier' && /ButtonLive$/.test(oc.callee.name)) {
+            const r = oc.arguments[1];
+            const reachOk = !!r && r.type === 'CallExpression' && r.callee.type === 'Identifier' && r.callee.name === 'combatReach' && r.arguments.length === 2 && isTwoOn(r.arguments[0])
+              && r.arguments[1].type === 'Identifier' && r.arguments[1].name === 'TARGET_PERIMETER_PX';
+            reach[f] = (reach[f] || 0) + (reachOk ? 1 : 0);
+            if (!reachOk) reachBad.push(f + ':' + (n.loc && n.loc.start.line));
+          }
+        }
         /* the render's gate: the call decides a `return null` of the component */
         const ifp = path.findParent((p) => p.isIfStatement());
         const decl = path.findParent((p) => p.isVariableDeclarator());
@@ -343,6 +364,8 @@ function writesOutside(prop, doorFile, doorFn) {
   check('10. ...each as many times as listed', Object.keys(ALLOW).every((f) => calls[f] === ALLOW[f]), calls);
   check('10. ...each with `twoButtonsOn() && !fineInput()` and `fightOn`', bad.length === 0, bad);
   check('10. ...each in its render\'s gate (its `return null`)', Object.keys(ALLOW).every((f) => gates[f] === 1), gates);
+  check('10. Block\'s and Special\'s own rules handed `combatReach(twoButtonsOn() && !fineInput(), TARGET_PERIMETER_PX)` beside the resolver',
+    reach['src/ui/panels/ShieldButton.jsx'] === 1 && reach['src/ui/panels/SpecialButton.jsx'] === 1 && reachBad.length === 0, { reach, reachBad });
   check('10. the renderer draws the sight line once, in its overlays, with `gfx, S, now, shouldDraw && isBow`',
     draws.length === 1 && draws[0].f === 'src/rendering/systems/effectsRenderer.js' && draws[0].in === '_updateOverlays' && draws[0].args, draws);
 }

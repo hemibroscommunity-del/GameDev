@@ -4,7 +4,7 @@ import { toggleShield, shieldButtonLive } from '@/game/shieldToggle.js';
 import { Skin, BlockFace, pressOn, pressOff, useReadyFlash } from './controlSkin.jsx'; /* v2.3.3018: the owner's mockup; v2.3.3522: the owner's shield on Block */
 import { WHEEL_MINI_PX } from '@/ui/wheelMiniSize.js';   /* v2.3.3986: the minimap's side on a phone, in one place */
 import { fightOn } from '@/game/sparTargets.js';
-import { combatButtonsShown } from '@/game/controlVisibility.js';   /* v2.3.6543: in the two buttons, Block and the specials come with the sight (card CT PR 4) */
+import { combatButtonsShown, combatReach } from '@/game/controlVisibility.js';   /* v2.3.6543: in the two buttons, Block and the specials come with the sight (card CT PR 4) */
 import { twoButtonsOn } from '@/game/manualCombat.js';
 import { fineInput } from '@/game/deviceProfile.js';
 import { winVw } from '@/ui/mobile/playViewport.js';   /* v2.3.6241: the window's width, kept (card HB PR 2) */
@@ -835,7 +835,7 @@ export function ShieldButton(props) {
      the shield's cooldown runs out. */
   var flash = useReadyFlash(!!(S && S._shieldCdUntil && Date.now() < S._shieldCdUntil));
   if (!S || !S.rpg) return null;
-  var live = shieldButtonLive(S, TARGET_PERIMETER_PX) && combatButtonsShown(S, twoButtonsOn() && !fineInput(), fightOn);   /* v2.3.6543: + the two buttons' sight (controlVisibility.js) */
+  var live = shieldButtonLive(S, combatReach(twoButtonsOn() && !fineInput(), TARGET_PERIMETER_PX)) && combatButtonsShown(S, twoButtonsOn() && !fineInput(), fightOn);   /* v2.3.6543: + the two buttons' sight, its range the perimeter (controlVisibility.js) */
   /* QA probe (house style: __btMonHit, __btCoach): why the button is or is
      not on screen, which a screenshot cannot say. */
   if (typeof window !== 'undefined') {

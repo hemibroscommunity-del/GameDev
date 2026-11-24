@@ -30,7 +30,7 @@
  */
 
 import { sightPhase } from './sight.js';   /* v2.3.6543: the two buttons' sight (card CT PR 4) */
-import { latchPhase } from './latch.js';   /* v2.3.6543: ...and their latch */
+import { latchPhase, latchReach } from './latch.js';   /* v2.3.6543: ...and their latch, and its range */
 
 /* Object.create(null), not {}: the keys are 'L' / 'R' here, but this is the
    house rule for any map that is looked up by a caller-supplied string
@@ -107,4 +107,20 @@ export function combatButtonsShown(S, twoOn, fight) {
   if (!S || typeof S !== 'object') return false;
   if (sightPhase(S) === 'sighted' || latchPhase(S) === 'active') return true;
   return typeof fight === 'function' ? !!fight(S) : !!fight;
+}
+
+/* v2.3.6543: ...and their "a monster near".  Block's and Special's own rules
+ * (shieldToggle.js shieldButtonLive, SpecialButton.jsx specialButtonLive) come
+ * up for a monster within a perimeter, today's 220 px: in the two buttons a
+ * monster in sight is up to the sight's range away (the sword's 440 held out
+ * to 550, a bow's and a staff's longer), and a 220 px rule would keep them
+ * down at a sighting (mp-twobuttons 3b's first run: Special absent at 435
+ * px, sighted).  So in the two buttons the perimeter they are handed is the
+ * sight's range (latch.js latchReach, never less than `base`); anywhere else
+ * `base` untouched.  The resolver above still decides: a monster that near
+ * but behind you (not sighted) shows nothing. */
+export function combatReach(twoOn, base) {
+  if (!twoOn) return base;
+  const r = latchReach();
+  return typeof r === 'number' && r > base ? r : base;
 }

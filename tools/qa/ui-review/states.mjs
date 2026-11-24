@@ -1495,7 +1495,7 @@ export const STATES = [
   },
   {
     id: 'two-buttons-sighted', group: 'Fighting', title: 'The two buttons, a monster in sight',
-    about: 'The two-button trial with a snowman in your sight (within the sword\'s 440 px, in front of you): a soft white line runs from your bro to it, and Block, Special and Whirlwind have come up around the Attack button. They stay while it is in sight and go about half a second after it leaves.',
+    about: 'The two-button trial with a snowman in your sight (within the sword\'s 440 px, in front of you): a soft white line runs from your bro to it, and Block and Special have come up around the Attack button (Whirlwind joins them once Attack is pressed: combat on). They stay while it is in sight and go about half a second after it leaves.',
     views: ['portrait', 'landscape'],
     settle: 1200,
     run: async ({ P, wsPort, myId, view }) => {
