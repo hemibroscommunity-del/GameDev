@@ -1,6 +1,6 @@
 card: PH
-branch: claude/plan-ph-3-membudget (stacked on claude/plan-ph-2-memalarm)
-prs: #2279 (ready, PR 1, 6500, DEPLOYS), #2291 (ready, PR 2, 6501), #2297 (ready, PR 3, 6502: this branch)
+branch: claude/plan-ph-5-heaptrend (stacked on claude/plan-ph-3-membudget)
+prs: #2279 (ready, PR 1, 6500, DEPLOYS), #2291 (ready, PR 2, 6501), #2297 (ready, PR 3, 6502), PR 5 (6504: this branch)
 state: ready
 
 ## Done
@@ -15,8 +15,15 @@ state: ready
   (18.9 there + 1.0); heap 40.0 and buffers 24.8 kept; a TOTAL 216.0.
   No line rises above main's.
 
+- PR 5 (6504): main's heap at each sitting (gatekeeper.mjs --heap,
+  the middle of three, a row of baseline.md); a rise over 1.0 MB since
+  the last trim named with the PRs between; heap-trend.test holds the
+  line at 40.0 (tools/dev/heap-trend.mjs and the suite approved outside
+  the card). First row, main b2cdd55a on the test box: 39.6, +1.1: named.
+
 ## Next
-- PRs 5 and 6 (6504, 6505), in order. PR 4 (6503) waits for call 1.
+- PR 5: pushed once sitting 57 has merged (CK's gatekeeper.mjs PRs),
+  after one merge of main. Then PR 6 (6505). PR 4 (6503) waits for call 1.
 
 ## Found
 - src/rendering/maskedEvict.js's header still calls the memory rung "the
@@ -26,6 +33,8 @@ state: ready
 - The 30-bot crowd fight cannot be read on the test box.
 - buffers: 24.8-24.9 on the test box, 24.3 on CI, its line 24.8 (main's,
   kept): 0.5 MB of room on CI. The next heap/buffers trim is owed.
+- main's heap on the test box (b2cdd55a): 39.5 / 40.2 / 39.6, one run of
+  three over its 40.0 line: mp-membudget is red on main's code there.
 
 ## Needs
 - The owner's five minutes (call 1): PR 4's order of rungs.
