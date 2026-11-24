@@ -283,7 +283,36 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await P.page.evaluate((id) => {
         const until = Date.now() + 90000, t0 = Date.now();
         /* v2.3.6542: the fight's trace, every second and at the keeper's stop */
-        const tr = window._ctFight = { stop: null, trace: [] };
+        const tr = window._ctFight = { stop: null, trace: [], out: {}, in: {}, outAtk: [], inSay: [] };
+        /* v2.3.6542: the socket both ways in the fight (the helper's run on
+           76eed056: the body 25 px off, the sword swinging, the monster at
+           1 hp for 90 s): are the hits sent, and what does the worker say */
+        const tally = (f, raw, keepOut) => {
+          const bag = keepOut ? f.out : f.in;
+          let o; try { o = typeof raw === 'string' ? JSON.parse(raw) : null; } catch (e) { o = null; }
+          const list = Array.isArray(o) ? o : (o && Array.isArray(o.msgs) ? o.msgs : (o ? [o] : []));
+          if (!o) { bag['(bin)'] = (bag['(bin)'] || 0) + 1; return; }
+          for (const m of list) {
+            const ty = (m && (m.type || m.t)) || '?';
+            bag[ty] = (bag[ty] || 0) + 1;
+            const txt = JSON.stringify(m);
+            if (keepOut && /attack|hit|swing|strike|melee/i.test(ty) && f.outAtk.length < 4) f.outAtk.push(txt.slice(0, 300));
+            if (!keepOut && /refus|deny|denied|reject|miss|invalid|range|hit|dmg|damage|died|kill|dealt|error/i.test(ty) && f.inSay.length < 8) f.inSay.push(txt.slice(0, 300));
+          }
+        };
+        window.__ctTally = tally;
+        if (!WebSocket.prototype.__ctSend) {
+          const orig = WebSocket.prototype.send;
+          WebSocket.prototype.__ctSend = orig;
+          WebSocket.prototype.send = function (d) {
+            const f = window._ctFight;
+            if (f && !f.stop) {
+              window.__ctTally(f, d, true);
+              if (!this.__ctHeard) { this.__ctHeard = true; this.addEventListener('message', (ev) => { const g = window._ctFight; if (g && !g.stop) window.__ctTally(g, ev.data, false); }); }
+            }
+            return orig.call(this, d);
+          };
+        }
         let k10 = 0;
         const t = setInterval(() => {
           const S = window._gameState && window._gameState.current;
