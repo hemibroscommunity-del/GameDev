@@ -103,3 +103,29 @@ As said, word for word (in the orchestrator's part 5 session):
 | this part, the branch | 4 | as on main | 30/30 (690 s): the reds ride the box's load |
 | this part, the branch | 6 | as on main | 28/30: 9 and 11 red (770 s) |
 | this part, the branch | 6 | mended (the game's clock) | 30/30 (968 s) |
+
+## PR 4 (6503): today's governor in the heat model (govsim.mjs, main's framePacer.js, node, 2026-11-24)
+
+`node tools/dev/plants/govsim.mjs .` on this branch (framePacer.js and drawLanes.js as on main b966af81), 60 minutes,
+seed 7. `chg2`: rate changes in the second half hour (10 s windows); `mis`: share of the time the pacer read the
+screen's refresh wrong (over 2 ms off).
+
+| screen | hot | tau | real rate share | chg2 | steps down / up | mis |
+|---|---|---|---|---|---|---|
+| 60 | 1.6 | 180 s | 30: 83%, 40: 13%, 60: 4% | 10 | 14 / 13 | 0% |
+| 60 | 1.6 | 600 s | 30: 74%, 40: 11%, 60: 15% | 14 | 16 / 15 | 0% |
+| 60 | 2.1 | 180 s | 30: 97%, 60: 2% | 0 | 14 / 13 | 0% |
+| 60 | 2.1 | 600 s | 30: 92%, 60: 7% | 0 | 14 / 13 | 0% |
+| 60 | 3.2 | 180 s | 30: 99% | 0 | 17 / 16 | 69% |
+| 60 | 3.2 | 600 s | 30: 96% | 0 | 13 / 12 | 66% |
+| 120 | 2.4 | 180 s | 60: 99%, 120: 1% | 0 | 0 / 0 | 90% |
+| 120 | 2.4 | 600 s | 60: 96%, 120: 4% | 0 | 1 / 1 | 68% |
+| 120 | 5.4 | 180 s | 40: 91%, 60: 8% | 8 | 1 / 1 | 1% |
+| 120 | 5.4 | 600 s | 40: 81%, 60: 18% | 4 | 1 / 1 | 4% |
+| 60 (veils) | 3.2 | 180 s | 30: 99% | 0 | 17 / 16 | 69% |
+
+What it says, for the next part: the see-saw is the 60 screen 5% too slow when hot (1.6): 10 to 14 changes in a half
+hour, and 60 held 4 to 15% of the time. And `mis`: a hot phone's missed frames are read as a SLOWER SCREEN (a 120
+read as 60 for 68 to 90% of the hour at 2.4). That is the owner's lane `thirty` on a phone drawing 45 with Low Power
+Mode off (above): the governor leans on the pacer's refresh reading, so it is PR 4's to mend or stop trusting
+(`framePacer.js`'s refresh estimate; the lane from `drawLanes.js`).

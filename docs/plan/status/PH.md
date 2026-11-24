@@ -1,7 +1,7 @@
 card: PH
-branch: claude/plan-ph-6-debtgate (stacked on claude/plan-ph-5-heaptrend)
-prs: #2279 (PR 1, 6500, DEPLOYS), #2291 (6501), #2297 (6502), #2306 (6504): test green, heads sent; PR 6 (6505): this branch, opening
-state: working (orchestrator part 6, session_01LccHanKxudynkwdrcZewcK, from 04:30 UTC)
+branch: claude/plan-ph-4-governor (stacked on claude/plan-ph-6-debtgate, #2314)
+prs: #2279 (PR 1, 6500, DEPLOYS), #2291 (6501), #2297 (6502), #2306 (6504): test green, heads sent; #2314 (PR 6, 6505, draft, head 72accffe); PR 4 (6503): this branch, no PR
+state: working (part 5 hands over at ~205k tokens, at the PR boundary: PR 4 too big for what is left; orchestrator part 6, session_01LccHanKxudynkwdrcZewcK)
 
 ## Done
 - PR 1 (6500) #2279: heat, the board, the ramps; sitting 57 mended.
@@ -18,9 +18,13 @@ state: working (orchestrator part 6, session_01LccHanKxudynkwdrcZewcK, from 04:3
   and #2307 (open at 04:55 UTC); origin/main (b966af81) merged.
 
 ## Next
-- PR 4 (6503), the governor: govsim.mjs, the break proof, the cooled
-  margin and doubled wait; the owner's answers (census/PH-phone.md): on
-  phones 1.5 sharpness and shine off by default, each with its switch.
+- PR 4 (6503), the governor, NOT begun in code: today's governor read in
+  govsim (census/PH-phone.md, last table): the see-saw at 60/1.6 (10-14
+  changes a half hour), and `mis`, the pacer reading a hot phone's missed
+  frames as a slower screen (the owner's lane `thirty`): PR 4's to mend.
+  Then: govsim as frame-pacer.test's check (the break proof), the cooled
+  margin and doubled wait; on phones 1.5 sharpness and shine off by
+  default, each with its switch (the owner's answers, census/PH-phone.md).
 
 ## Found
 - maskedEvict.js's header: old words. buffers 24.3 on CI vs 24.8: trim owed.
