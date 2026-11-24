@@ -14,9 +14,9 @@ part 8 (session_01LccHaiSJ2v2ueik4Nr9o6w, depth 3 of 8; top model, high) took ov
 ## Sessions (strong, high, unless said). A fresh part reads about 100k just starting: hand each over at 250k. Stopped, never message: CK 3, LS, Z58, Z59 (session_01LccHamhTw938q28o5ReECL, its list delivered), DG 1-8, WL 1-5, PH 1-6, BK 1-4, LF 1-2, CT 1-4, WHO 1-4
 - WHO part 5 session_01LccHakgconDw3JMVjgPhcT (from claude/plan-who-3-trace), WL part 6 session_01LccHajneB9cPvhAVHd7BVD (from claude/plan-wl-6-paper), DG part 9 session_01LccHams8bzREx3iz4pzX8h (from claude/dg-gaps; also plants6.json, and #2313's `test` on e2de46fd): started 08:34, each sends ONE message when its mend PR is green
 - LF  part 3 session_01LccHan4DrJrFNNFBNXkkJQ (184k at 07:25): told its hold and elemental2; hands over if at 215k
-- PH  part 7 session_01LccHajroDM6poawzQHuBhV (about 200k): told its three holds; at 200k or more it stops and a fresh part mends (top branch claude/plan-ph-4-governor unless it says otherwise)
+- PH  part 8 session_01LccHam5g8oM3wDAGy4nPPG (from claude/plan-ph-4-governor, started 08:35; mend branch claude/plan-ph-mend59, tag 6506). Part 7 stopped at 250k: never message
 - CT  part 5 session_01LccHaiBsdFzHH2mfcKLAHc (189k at 07:25; card on claude/plan-ct-3-right): #2293's mend rides #2308; hands over if at 215k
-- BK  part 5 session_01LccHamidtKhMApGmCJaEbU (195k): merged; told road-levers' four green spellings for its next PR, or to say its card is done
+- BK: card DONE (all on main), part 5 stopped. Debts for one small PR, NO session yet (decide at a sweep; a guard, so the strong model): road-levers' four green spellings (BK's note: every STOP of the scan becomes a short allow list, the import matched after stripping ?/#, every parameter of a callback bound; anything else fails), and status/BK.md on main still says Needs (stale): state done rides that PR
 - A new part's prompt: part 11's (GRAND-PLAN.md line 1696), finish.md parts 5 and 6, the KEEP YOUR MEMORY SMALL lines, a BRANCH NAME as source_revision; `model` and `effort` both set
 
 ## Decided (each named in its PR's words)
