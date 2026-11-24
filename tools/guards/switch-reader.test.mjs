@@ -294,7 +294,9 @@ const MOVED = Object.freeze([
   { name: 'guidearrow', call: 'sw', file: 'src/ui/guideArrow.js', old: (S) => new URLSearchParams(S).get('guidearrow') === '0' },
   { name: 'guidearrow', call: 'sw', file: 'src/ui/deskTeach.js', old: (S) => new URLSearchParams(S).get('guidearrow') === '0' },
   { name: 'nmlask', call: 'sw', file: 'src/game/nmlAsk.js', old: (S) => /[?&]nmlask=0(?:&|$)/.test(S || '') },
-  { name: 'loginspin', call: 'sw', file: 'src/ui/mobile/LoginSpinWindow.jsx', old: (S) => /(?:^|[?&])loginspin=0(?:&|$)/.test(S) },
+  /* v2.3.6560 (card LS): the meaning changed on purpose (the owner, 2026-11-24: no popup at login): the value is read and
+     src/game/loginSpinWheel.js spinOffersItself decides (`=1` offers once; nothing, `=0` or any other word never) */
+  { name: 'loginspin', call: 'swValue', file: 'src/ui/mobile/LoginSpinWindow.jsx', old: (S) => new URLSearchParams(S).get('loginspin') },
   { name: 'nomapdetail', call: 'swHas', file: 'src/ui/worldMapDetail.js', old: (S) => /[?&]nomapdetail(?:[=&]|$)/.test(S) },
   { name: 'tapthrough', call: 'swHas', file: 'src/ui/swallowTapClick.js', old: (S) => /[?&]tapthrough(=|&|$)/.test(S || '') },
   /* v2.3.5309: quests, skills, economy, townsfolk, audio (the systems with the fewest reads, their files held by no running card) */
