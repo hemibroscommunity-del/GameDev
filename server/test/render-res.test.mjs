@@ -103,6 +103,15 @@ check('1b. a phone\'s budget is the view cap\'s reference at 2 px a game px: ~4.
 /* break proof: REF_W 850 -> 900 in viewCap.js turns 1b red */
 check('1c. anything else\'s is a 1920 x 1080 screen\'s: ~2.07 million', Math.abs(pixelBudget(false) - SCREEN) < 1 && SCREEN_BUDGET_W * SCREEN_BUDGET_H === SCREEN_REF, pixelBudget(false));
 check('1d. ...and a computer\'s page uses it (the class kept with the size)', Math.abs((noteCanvasCss(100, 100), pixelBudget()) - SCREEN) < 1);
+/* v2.3.6581: the owner's pick written out as numbers, so no constant read from the
+   same file can move with the thing it checks.  The default is 0.79 ("Ok I like 0.79",
+   v2.3.6580) and the budget is the reference's x (0.77 / 0.79)^2: a phone's
+   4.522 million -> 4.296 million, a computer's 2.074 million -> 1.970 million.
+   Break proofs: VIEW_OUT_DEFAULT 0.79 -> 0.77 in viewCap.js, or renderRes.js
+   viewOut() reading VIEW_OUT_REF again (the factor dropped), turns 1g red. */
+check('1g. the default view is the owner\'s 0.79, and the budget follows it: a phone\'s 4.296 million, a computer\'s 1.970 million',
+  VIEW_CAP.VIEW_OUT_DEFAULT === 0.79 && VIEW_CAP.VIEW_OUT_REF === 0.77
+    && Math.abs(pixelBudget(true) - 4.2963e6) < 2e3 && Math.abs(pixelBudget(false) - 1.9696e6) < 2e3, [pixelBudget(true), pixelBudget(false)]);
 page(1, '?zoom=0.5');
 check('1e. ?zoom=0.5 grows both as the view cap\'s reference (0.77 / 0.5 each way)',
   Math.abs(pixelBudget(true) - BUDGET_REF * (0.77 / 0.5) ** 2) < 1 && Math.abs(pixelBudget(false) - SCREEN_REF * (0.77 / 0.5) ** 2) < 1, [pixelBudget(true), pixelBudget(false)]);
