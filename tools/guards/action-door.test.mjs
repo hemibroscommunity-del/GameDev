@@ -254,26 +254,51 @@ const LINE = { sends: 0, fetches: 0 };   /* v2.3.5187: 203 less PR 7.1's 57; v2.
    S.channel; ch.send(m)`, a bind of it: plants2 ACT-1, ACT-2), and a fetch
    whose address names a route however it was built (a url made a line above,
    `fetch(u, ...)`: plants2 ACT-3). */
-const isChannel = (recv, path) => {
-  if (!recv) return false;
-  if (/(^|\.|\?\.)channel\??$/.test(recv)) return true;
-  if (/^[A-Za-z_$][\w$]*$/.test(recv)) {
-    const b = path && path.scope.getBinding(recv);
-    const init = b && b.path.isVariableDeclarator() && b.path.node.init;
-    return !!init && /(^|\.|\?\.)channel\??$/.test(recv && init.start != null ? SRC_NOW.slice(init.start, init.end).trim() : '');
+/* v2.3.6441 (sitting 57: `S['channel'].send(m)` and `const go = fetch`
+   stayed green, the receiver matched as text): the receiver is read as a
+   node -- a member whose key is `channel` however it is written (`.channel`,
+   `?.channel`, `['channel']`, a template), or a name bound to one, or to a
+   name bound to one */
+const keyOf = (m) => (!m.computed ? (m.property.type === 'Identifier' ? m.property.name : null)
+  : m.property.type === 'StringLiteral' ? m.property.value
+  : (m.property.type === 'TemplateLiteral' && m.property.expressions.length === 0 ? m.property.quasis[0].value.cooked : null));
+const isMember = (n) => n && (n.type === 'MemberExpression' || n.type === 'OptionalMemberExpression');
+const unwrap = (n) => { while (n && (n.type === 'ParenthesizedExpression' || n.type === 'TSNonNullExpression')) n = n.expression; return n; };
+function isChannel(node, path, depth = 0) {
+  node = unwrap(node);
+  if (!node || depth > 6) return false;
+  if (isMember(node)) return keyOf(node) === 'channel';
+  if (node.type === 'LogicalExpression') return isChannel(node.left, path, depth + 1) || isChannel(node.right, path, depth + 1);
+  if (node.type === 'Identifier') {
+    const b = path && path.scope.getBinding(node.name);
+    const init = b && b.path.isVariableDeclarator() && b.path.node.id.type === 'Identifier' && b.path.node.init;
+    return !!init && isChannel(init, b.path, depth + 1);
   }
   return false;
-};
-let SRC_NOW = '';
+}
+/* the page's fetch however it is reached: the global name, `window.fetch` /
+   `globalThis.fetch` / `self['fetch']`, a name bound to one (`const go =
+   fetch`), a bind of one (`fetch.bind(window)`) */
+function isFetch(node, path, depth = 0) {
+  node = unwrap(node);
+  if (!node || depth > 6) return false;
+  if (node.type === 'Identifier') {
+    const b = path && path.scope.getBinding(node.name);
+    if (!b) return node.name === 'fetch';
+    const init = b.path.isVariableDeclarator() && b.path.node.id.type === 'Identifier' && b.path.node.init;
+    return !!init && isFetch(init, b.path, depth + 1);
+  }
+  if (isMember(node)) return keyOf(node) === 'fetch';
+  if ((node.type === 'CallExpression' || node.type === 'OptionalCallExpression') && isMember(node.callee) && keyOf(node.callee) === 'bind') return isFetch(node.callee.object, path, depth + 1);
+  if (node.type === 'LogicalExpression') return isFetch(node.left, path, depth + 1) || isFetch(node.right, path, depth + 1);
+  return false;
+}
 function treeSends(s) {
   const out = [];
-  SRC_NOW = s;
   visit(s, { 'MemberExpression|OptionalMemberExpression'(path) {
     const m = path.node;
-    const k = m.computed ? (m.property.type === 'StringLiteral' ? m.property.value : null) : m.property.name;
-    if (k !== 'send') return;
-    const recv = s.slice(m.object.start, m.object.end);
-    if (!isChannel(recv, path)) return;
+    if (keyOf(m) !== 'send') return;
+    if (!isChannel(m.object, path)) return;
     /* a send: called, bound (`.bind`, `.call`, `.apply`), or a name made of it; `typeof S.channel.send` asks, it sends nothing */
     const p = path.parentPath;
     const called = (p.isCallExpression() || p.isOptionalCallExpression()) && p.node.callee === m;
@@ -287,9 +312,13 @@ function treeFetches(s) {
   const out = [];
   visit(s, { 'CallExpression|OptionalCallExpression'(path) {
     const c = path.node.callee;
-    const name = c.type === 'Identifier' ? c.name : ((c.type === 'MemberExpression' || c.type === 'OptionalMemberExpression') && !c.computed ? c.property.name : null);
-    if (name !== 'fetch') return;   /* fetchWithTimeout is the owner key's way, held by 7b */
-    const a = path.node.arguments[0];
+    /* fetchWithTimeout is the owner key's way, held by 7b; `fetch.call(w, u)`'s
+       address is its second argument, `fetch.apply(w, [u])`'s in a list */
+    let a;
+    if (isFetch(c, path)) a = path.node.arguments[0];
+    else if (isMember(c) && keyOf(c) === 'call' && isFetch(c.object, path)) a = path.node.arguments[1];
+    else if (isMember(c) && keyOf(c) === 'apply' && isFetch(c.object, path)) { const l = path.node.arguments[1]; a = l && l.type === 'ArrayExpression' ? l.elements[0] : null; }
+    else return;
     if (!a) return;
     let text = s.slice(a.start, a.end);
     if (a.type === 'Identifier') {
@@ -313,6 +342,11 @@ function treeFetches(s) {
     treeSends('function f(S, m) {\n S.channel?.send(m);\n const ch = S.channel; ch.send(m);\n this.channel.send(m);\n const g = S.channel.send.bind(S.channel);\n}').length === 4
     && treeSends('function f(ws, m, S) { ws.send(m); const x = { send: 1 }; if (typeof S.channel.send !== "function") return; }').length === 0
     && treeFetches("function f() { const u = (window.BT_API_BASE || '') + '/api/store/buy'; fetch(u, { method: 'POST' }); fetch('/img/a.png'); }").length === 1);
+  /* v2.3.6441: sitting 57's plants, red by the tree */
+  check('7: ...a bracket and a string, a template, a name of a name: `S[\'channel\'].send`, `S[`channel`].send`, `const a = S.channel; const b = a; b.send`',
+    treeSends('function f(S, m) {\n S[\'channel\'].send(m);\n S[`channel`].send(m);\n const a = S.channel; const b = a; b.send(m);\n S.channel[\'send\'](m);\n}').length === 4);
+  check('7: ...the fetch held in a name, bound, called through `.call` or `window.fetch`: `const go = fetch; go(\'/api/x\')`',
+    treeFetches("function f(u) { const go = fetch; go('/api/a'); const g2 = fetch.bind(window); g2('/api/b'); fetch.call(window, '/api/c'); window['fetch']('/api/d'); const fetch2 = (x) => x; fetch2('/api/e'); }").length === 4);
   const fx = fetches.filter((x) => !EXCEPT(x) && x.f !== 'src/game/actions.js').length;
   check(`7: sends outside the door (${sends}, in ${byFile.size} files) are at or under the line (${LINE.sends})`, sends <= LINE.sends, sends);
   check(`7: fetches of /api/ outside the door (${fx}) are at or under the line (${LINE.fetches})`, fx <= LINE.fetches, fx);

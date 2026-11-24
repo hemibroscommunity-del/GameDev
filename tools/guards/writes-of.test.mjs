@@ -55,10 +55,16 @@ const FIELD_PLANTS = [
   ['a whole block put', 'ps.prog3 = { pool: 9 };', POINTS, 'prog3'],
   ['a record rebuilt with a spread and put back', 'this.playerState[session.id] = { ...ps, coins: 5 };', GOLD, 'coins'],
   ['the same, held in a name first', 'const next = { ...ps, coins: 5 }; this.playerState[session.id] = next;', GOLD, 'coins'],
+  /* v2.3.6441: sitting 57's plants (review-z57.md, #2295) */
+  ['Z57 Object.assign of a patch held in a name', 'const patch = { coins: (ps.coins || 0) + 5 }; Object.assign(ps, patch);', GOLD, 'coins'],
+  ['Z57 ...a patch filled after', "let patch = {}; patch['coins'] = 5; Object.assign(ps, { ...patch });", GOLD, 'coins'],
+  ['Z57 ...a patch from a ternary', 'const a = { coins: 1 }, b = { gems: 1 }; Object.assign(ps, reward.big ? a : b);', GOLD, 'coins'],
+  ['Z57 a helper handed the record and the key', "function bump(o, k, n) { o[k] = (o[k] || 0) + n; } bump(ps, 'coins', 5);", GOLD, 'coins'],
+  ['Z57 ...the key handed on twice', "function put(o, k, v) { o[k] = v; } function bump(o, k, n) { put(o, k, (o[k] || 0) + n); } bump(ps, 'coins', 5);", GOLD, 'coins'],
 ];
 for (const [name, body, opts, field] of FIELD_PLANTS) {
   const got = W(body, opts);
-  check('1. ' + name + ': found as a write of ' + field, got.some((w) => w.field === field && w.fn === '_turnIn' && w.line === 3), got.map((w) => [w.line, w.field, w.how]));
+  check('1. ' + name + ': found as a write of ' + field, got.some((w) => w.field === field && ['_turnIn', 'bump', 'put'].includes(w.fn) && w.line === 3), got.map((w) => [w.line, w.field, w.how]));
 }
 
 /* ── 2. a container's contents written, through any alias ── */
@@ -92,6 +98,14 @@ const CONTAINER_PLANTS = [
   ['a stash item held in a name, changed', 'const w = ps.weaponStash[0]; w.lvl = 99;', STASH, 'weaponStash'],
   ['every stash item changed over a loop', 'for (const w of ps.weaponStash) w.lvl = 99;', STASH, 'weaponStash'],
   ['a stash item\'s field deleted', 'delete ps.weaponStash[0].gems;', STASH, 'weaponStash'],
+  /* v2.3.6441: sitting 57's plants (an item changed through .find / forEach) */
+  ['Z57 a stash item found, then changed', 'const w = ps.weaponStash.find((x) => x.id === reward.id); if (w) w.lvl = 99;', STASH, 'weaponStash'],
+  ['Z57 ...changed where it is found', 'ps.weaponStash.find((x) => x.id === reward.id).lvl = 99;', STASH, 'weaponStash'],
+  ['Z57 ...at(i)', 'ps.shieldStash.at(-1).lvl = 99;', STASH, 'shieldStash'],
+  ['Z57 every stash item changed in a forEach', 'ps.weaponStash.forEach((w) => { w.lvl = 99; });', STASH, 'weaponStash'],
+  ['Z57 ...over a filtered copy', 'ps.weaponStash.filter((w) => w.lvl < 5).forEach(function (w) { delete w.gems; });', STASH, 'weaponStash'],
+  ['Z57 ...through an alias, in a map', 'const list = ps.weaponStash; list.map((w) => { w.lvl = 1; return w; });', STASH, 'weaponStash'],
+  ['Z57 ...reduce\'s item', 'ps.weaponStash.reduce((n, w) => { w.seen = 1; return n + 1; }, 0);', STASH, 'weaponStash'],
 ];
 for (const [name, body, opts, field] of CONTAINER_PLANTS) {
   const got = W(body, opts);
@@ -108,6 +122,10 @@ const READS = [
   ['the bag\'s own count read through an alias', 'const inv = ps.inventory; const n = inv.wood || 0; return n + 1;', BAG],
   ['a copy of the record sent or saved, not put back', 'const out = { ...ps, coins: 0 }; this._send(ws, { type: "x", payload: { ...ps, coins: 1 } }); return out;', GOLD],
   ['a stash item read in a loop', 'let best = 0; for (const w of ps.weaponStash) best = Math.max(best, w.lvl); return best;', STASH],
+  /* v2.3.6441: beside sitting 57's plants, the reads stay reads */
+  ['a stash item found and read, a forEach that reads', 'const w = ps.weaponStash.find((x) => x.id === 1); let n = w ? w.lvl : 0; ps.weaponStash.forEach((x) => { n += x.lvl; }); return n;', STASH],
+  ['a patch of other fields, a helper handed another key', "const patch = { name: 'x' }; Object.assign(ps, patch); function bump(o, k, n) { o[k] = (o[k] || 0) + n; } bump(ps, 'gems', 1);", GOLD],
+  ['a copy made from a found item', 'const w = { ...ps.weaponStash.find((x) => x.id === 1) }; w.lvl = 99; return w;', STASH],
 ];
 for (const [name, body, opts] of READS) {
   const got = W(body, opts);
