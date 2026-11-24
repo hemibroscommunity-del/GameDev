@@ -93,11 +93,18 @@ const { READERS, count, unexplained } = await import('../src/worldsum.js');
 /* v2.3.6464: the pieces the sum holds by id (a piece of gear, a weapon, a
    pet), read off the sum's own ctx by wrapping each reader (worldsum.js is
    not this suite's): unexplained() weighs gold and bag keys, not pieces */
+/* v2.3.6465 (card BK, sitting 57's review of #2289): the IDS, not their
+   count.  A count passed a piece lost and another made in the same step
+   (the equip swap's weapon put back with its id dropped, gear.js
+   `stashSet(..., Object.assign({}, activeItem, { gid: undefined }), 'equip_swap')`:
+   a new id minted for it, the count the same, all 70 checks green).  So the
+   ids held are a set ('gear:<gid>', 'pet:<id>'), and a step is judged by
+   what left it and what came into it. */
 const piecesHeld = (room, state) => {
   let ctx = null;
   const readers = Object.fromEntries(Object.entries(READERS).map(([p, f]) => [p, (c, k, v) => { ctx = c; return f(c, k, v); }]));
   count(room, state, readers);
-  return ctx ? ctx.ids.length : -1;
+  return new Set(ctx ? ctx.ids.map(([kind, id]) => kind + ':' + id) : []);
 };
 /* the room: the gold door's three verbs write down their road; a message to
    it is a handler (and so is its alarm) */
@@ -203,10 +210,13 @@ let PLAYED = null;
      pieces it MADE (a grant); any other change in the pieces held fails */
   const pieceSteps = [];
   let piecesThen = piecesHeld(room, state);
+  /* v2.3.6465: by id -- no id may leave in a step, and exactly `made` new
+     ones may come (a lost one and a new one no longer cancel) */
   const note = (what, made = 0) => {
     const u = unexplained(start, count(room, state)); steps.push([what, u.gold, Object.keys(u.goods).length ? u.goods : 0]);
     const p = piecesHeld(room, state);
-    if (p - piecesThen !== made) pieceSteps.push([what, p - piecesThen, made]);
+    const lost = [...piecesThen].filter((id) => !p.has(id)), came = [...p].filter((id) => !piecesThen.has(id));
+    if (lost.length || came.length !== made) pieceSteps.push([what, { lost, came, made }]);
     piecesThen = p;
   };
 
@@ -554,8 +564,13 @@ let PLAYED = null;
   /* v2.3.6464: BREAK PROOF, tried by hand: the weapon swap's bag spliced
      after its stashSet (gear.js _handleEquipRequest: the old weapon put
      back, then cut out) was green in all 70 checks before this line and
-     fails it now ("weapons swapped", -1) */
-  check(`1. after every step, the pieces held (${piecesThen}) moved only by what the step made: none lost, none made from nothing`, pieceSteps.length === 0 && piecesThen > 0, pieceSteps);
+     fails it now ("weapons swapped", -1).
+     v2.3.6465: BREAK PROOF, tried by hand: the same swap's old weapon put
+     back with its id dropped (gear.js `stashSet(ps, 'weaponStash',
+     Object.assign({}, activeItem, { gid: undefined }), 'equip_swap', ...)`:
+     a new id minted for it, the count the same) was green in all 70 checks
+     and fails this one now ("weapons swapped": one id lost, one came) */
+  check(`1. after every step, the pieces held (${piecesThen.size}) moved only by what the step made, id by id: none lost, none made from nothing`, pieceSteps.length === 0 && piecesThen.size > 0, pieceSteps);
   check('1. every record is marked and every marked value record has a reader, at the end too', end.unmarked.length === 0 && end.noReader.length === 0, { unmarked: end.unmarked, noReader: end.noReader });
   check('1. value moved: gold was minted and burned (the scenario is not empty)', end.net.gold !== start.net.gold, end.net);
 }
