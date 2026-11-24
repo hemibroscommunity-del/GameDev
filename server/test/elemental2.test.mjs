@@ -197,6 +197,14 @@ const hit = () => {
   // represents a legally-spaced swing.
   if (ps._monHitCad) ps._monHitCad.delete(mTarget.id);
   ps._ss = undefined;   /* v2.3.5551: the sword's swing too (swordswing.js, ON): each test swing a cycle apart, as in real play */
+  /* v2.3.6312: ...and each from beside the monster.  Every hit shoves it
+     (combat.js HIT_KNOCKBACK: 30 px, a crit 45), and the swings here roll the
+     real Math.random: two crits carried it from 10 px to 160, past the
+     sword's 150 reach, and the fifth swing was dropped (the reach check,
+     combat.js ~1322): "restore clamps at maxMana" red about 1 run in 1,700.
+     The test is of the mana restore, not the shove, so the target is put
+     back each swing. */
+  mTarget.x = ps.x + 10; mTarget.y = ps.y;
   return room._handleMonsterDamage(room.sessions.get(ws), { monsterId: mTarget.id, zone: 'meadow', element: 'frost', slot: 'melee' });
 };
 primeSetup(1.0); // resonating

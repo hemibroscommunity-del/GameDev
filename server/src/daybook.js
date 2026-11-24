@@ -92,6 +92,8 @@
  * Suite: server/test/daybook.test.mjs.  The spec is this header (the
  * registry row names it). */
 
+import { actorOff, actorTest } from './actor.js';   /* v2.3.6480: test play apart (bookAddBy) */
+
 export const DAYBOOK = Object.freeze({
   V: 1,
   PREFIX: 'daybook:',
@@ -130,6 +132,9 @@ export const DAYBOOK = Object.freeze({
   ARR_MAX: 64,
   NUM_MAX: 1e15,
 });
+
+/* v2.3.6480: the one key test play goes under (bookAdd's `who`) */
+export const BOOK_TEST = 'test';
 
 const KEY_RE = /^[A-Za-z0-9_.:|,+=-]+$/;
 const BAD_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
@@ -328,9 +333,12 @@ const off = (room) => !!(room && typeof room._daybookOff === 'function' && room.
  *  put may have started: its promise is on `room._daybook.putting`), false
  *  when refused (switched off, an unknown part, a tree the door does not
  *  take, a full part).  Never throws, never awaits. */
-export function bookAdd(room, part, nums, now) {
+export function bookAdd(room, part, nums, now, who) {
   try {
     if (!room || off(room)) return false;
+    /* v2.3.6480: `who`, the live player's state whose add this is: a test-mode
+       character's goes under the part's `test` key (bookAddBy, below) */
+    if (who && !actorOff(room) && actorTest(room, who)) nums = { [BOOK_TEST]: nums };
     if (DAYBOOK.PARTS.indexOf(part) < 0) return false;
     now = callerNow(now);
     const b = mem(room);
@@ -345,6 +353,24 @@ export function bookAdd(room, part, nums, now) {
     if (DAYBOOK.RIDES.indexOf(part) < 0) bookMaybePut(room, now);   /* v2.3.5085: a riding part waits for another's put */
     return true;
   } catch (e) { return false; }   /* a count must never stop what it counts */
+}
+
+/* ═══ v2.3.6480: TEST PLAY APART FROM PLAY (card WHO PR 1; actor.js) ═══
+   The day's book's parts split by who acted: an add made for a character in
+   test mode (actor.js actorTest: the owner's test play, which is a
+   `person`'s whose record is marked) goes under ONE key of its part, `test`
+   (`econ.test.g.mint`, `econ.test.p.s`), so the owner's card reads play
+   alone (src/game/econCard.js reads `g`, `i`, `p` and `r` at the part's top)
+   and the test play stays counted, apart.  `who` is the live player's state
+   whose add this is.  It rides the add it splits: no new row, no new put.
+   `actor: false` in the live flags (actor.js actorOff): added with play, as
+   before.  DAYBOOK.V stays 1: an older worker keeps a part's `test` as any
+   other branch of its tree, and its readers never read it.  bookAdd takes
+   the same `who` as its fifth argument (gold.js econGold passes the purse's
+   record that way: one line there, the orchestrator's yes).  Items are NOT
+   split: the bag door (bag.js bagGive) is handed the bag alone, no record. */
+export function bookAddBy(room, part, nums, who, now) {
+  return bookAdd(room, part, nums, now, who);
 }
 
 /** The pace: starts a put when one is due and none is running.  Returns its
