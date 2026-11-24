@@ -4,6 +4,10 @@ prs: #2283 (PR 1, 6440, ready, mended), PR 2 (6441, ready)
 state: ready
 
 ## Done
+- Sitting 57's CI (#2295 red): doorHolders walked every file once a name
+  (gold-door 1 s -> 46 s, past switches-thrown's 180 s): one walk a file
+  (4.6 s; GOLD-4 still red); PR 1's guard lets go of a record leaving the
+  room's map (heap-forget, +1 KB a guest in the test room), merged in.
 - PR 1 (6440, #2283): the running room refuses a write of a guarded field
   outside its door (testroom.mjs); plants1 17 of 23 red. Mended for sitting
   56 (roomGuard.holds: the guard is proved ON a record; ECON_V + 1 for card
