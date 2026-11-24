@@ -795,5 +795,129 @@ const A = await join('bp_rep_a', 'Repo');
   }
 }
 
+
+/* ── 15.11: v2.3.6506 (the sitting-59 mend; review-z59: `isRiding(_S) || true`, addFrames without `riding`, the
+   board's late and judged swapped, `r.ramps` removed, `_upBank +=` removed in _onVisibility, the thaw's line
+   removed -- all green, because 15.10 rides the whole time, draws no frames and never hides).  THE PAGE, live, on
+   a stand-in page and clock that DRAWS (the frame meter's own ring, perfTracker.record), WALKS then RIDES, HIDES,
+   is frozen and thawed, and has `?govern=0&zoom=1.5` in its address.  Every number below is known before the run:
+     0 to 60 s   walking, frames of 16 ms: the first report -- a walk, so no board in it at all;
+     60 to 120   walking, frames 16, 16, 30, 50 a poll (two late: the walk's, never the board's);
+     120 to 240  riding, frames 16, 30, 45, 0 a poll: drawn 4, judged 3 (0 is no frame to judge), late 2 (past
+                 25 ms, the pacer's own line at 60 Hz), one past 42 (the board's long);
+     240 to 270  hidden, still on the board: no seen time, so no board time;
+     270 to 300  seen again, walking, frames of 16;
+     300 to 328  frozen (no poll), thawed at 330: 28 s that are neither seen nor the page's minutes;
+     330 to 360  walking; the second report at 360.
+   The second report's board: 120 s, late 120, judged 180, its gaps 60 in each of four bins; its ramps `govern=0`
+   and `zoom=`; the page's minutes at 360: 360 - 30 hidden - 28 frozen = 302 s (5.03). */
+{
+  const T0 = Date.UTC(2026, 10, 24, 8, 0, 0);
+  let T = T0, tick = null, visFn = null, ft = 1e9;
+  const realNow = Date.now, realSI = globalThis.setInterval, hadWin = 'window' in globalThis, hadDoc = 'document' in globalThis;
+  const realWarn = console.warn;
+  console.warn = () => {};   /* the frame meter's own spike lines */
+  const gl = { getParameter: () => 8, getShaderPrecisionFormat: () => ({ precision: 23 }), getExtension: () => null, isContextLost: () => false,
+    VERSION: 1, MAX_TEXTURE_SIZE: 2, MAX_TEXTURE_IMAGE_UNITS: 3, FRAGMENT_SHADER: 4, HIGH_FLOAT: 5 };
+  try {
+    Date.now = () => T;
+    const doc = { visibilityState: 'visible', addEventListener: (type, fn) => { if (type === 'visibilitychange') visFn = fn; } };
+    globalThis.document = doc;
+    globalThis.window = { devicePixelRatio: 2, location: { search: '?govern=0&zoom=1.5' }, __btPace: () => ({ refresh: 1000 / 60, every: 1 }),
+      _pixiRenderer: { app: { renderer: { gl, screen: { width: 390, height: 844 } } } }, addEventListener() {}, matchMedia: () => ({ matches: false }) };
+    const L = await import('../../src/debug/report.js?live=15.11');
+    const probe = window.__btReport;
+    const { perfTracker } = await import('../../src/debug/perfTracker.js');
+    const S = { _serverCaps: { report: 4 }, _ride: { on: false }, channel: { send() {} } };
+    globalThis.setInterval = (fn) => { tick = fn; return 0; };
+    L.reportJoined(S);
+    globalThis.setInterval = realSI;
+    const built = [];
+    const poll = (ms) => {
+      for (const x of ms || []) { ft += Math.max(1, x); perfTracker.record({ t: ft, totalMs: x, intervalMs: x, workMs: Math.min(x, 8), simMs: 1, renderMs: 1, tileMs: 1, entityMs: 1, effectsMs: 1, fpsMs: 1, appMs: 1 }); }
+      T += 2000; tick();
+      const l = probe().last;
+      if (l && built[built.length - 1] !== l) built.push(l);
+    };
+    const polls = (n, ms) => { for (let i = 0; i < n; i++) poll(ms); };
+    polls(30, [16, 16, 16]);                    /* to 60 s: the first report */
+    polls(30, [16, 16, 30, 50]);                /* to 120 */
+    S._ride.on = true;
+    polls(60, [16, 30, 45, 0]);                 /* to 240, riding */
+    doc.visibilityState = 'hidden'; visFn && visFn({ type: 'visibilitychange' });
+    polls(15, null);                            /* to 270, hidden (still on the board) */
+    doc.visibilityState = 'visible'; visFn && visFn({ type: 'visibilitychange' });
+    S._ride.on = false;
+    polls(15, [16]);                            /* to 300 */
+    T += 28000;                                 /* frozen */
+    polls(16, [16]);                            /* 330 to 360: the second report (16 polls: the thaw is the first) */
+    const [walk, mixed] = built;
+    const upMin = probe().upMin;
+    const bins = new Array(GAP_EDGES.length + 1).fill(0);
+    for (const x of [16, 30, 45, 0]) bins[gapBin(x)] += 60;
+    check('15.11 the page, a walk: its report (the first, 60 s, frames drawn) carries no board at all (no `ride`, no `rideGaps`)',
+      built.length === 2 && !!walk && walk.seen >= 55 && !('ride' in walk) && !('rideGaps' in walk), walk && { seen: walk.seen, ride: walk.ride, rideGaps: walk.rideGaps, n: built.length });
+    check('15.11 ...walked, rode, hid, froze: its board is the ride\'s alone -- 120 s, late 120, judged 180 (never the walk\'s late frames, never the hidden half minute)',
+      !!mixed && Array.isArray(mixed.ride) && mixed.ride.join() === '120,120,180', mixed && mixed.ride);
+    check('15.11 ...its gaps: the ride\'s 240 frames, 60 in each of the four bins its frames fall in', !!mixed && Array.isArray(mixed.rideGaps) && mixed.rideGaps.join() === bins.join(),
+      { got: mixed && mixed.rideGaps, want: bins });
+    check('15.11 ...its ramps: the address\'s `govern=0` and the value `zoom=`, as the page reads them', !!mixed && Array.isArray(mixed.ramps) && mixed.ramps.join() === 'govern=0,zoom=', mixed && mixed.ramps);
+    check('15.11 ...the page\'s minutes: 360 s less 30 hidden less 28 frozen = 302 s (5.03), and the report\'s `up` the bucket of its middle',
+      upMin === 5.03 && !!mixed && mixed.up === upBucket((1 + 5.03) / 2), { upMin, up: mixed && mixed.up });
+    /* a worker of caps.report 3 (`reportheat: false`): the next report, riding the whole of it, carries none of the four */
+    S._serverCaps.report = 3; S._ride.on = true;
+    polls(150, [16, 30, 45, 0]);                /* 360 to 660: the third report */
+    const third = built[2];
+    check('15.11 ...to a worker of caps.report 3, a report ridden the whole way carries none of the four (`up`, `ride`, `rideGaps`, `ramps`)',
+      built.length === 3 && !!third && third.seen > 250 && ['up', 'ride', 'rideGaps', 'ramps'].every((k) => !(k in third)), third && Object.keys(third));
+  } catch (e) {
+    check('15.11 the page, walked and rode (the stand-in page threw)', false, String(e && e.stack || e).slice(0, 300));
+  } finally {
+    Date.now = realNow; globalThis.setInterval = realSI;
+    if (!hadWin) delete globalThis.window;
+    if (!hadDoc) delete globalThis.document;
+    console.warn = realWarn;
+  }
+}
+
+/* ── 15.12: v2.3.6506 (the sitting-59 mend's mutation pass): THE OWNER'S TABLE, word for word.  15.6 read only
+   that a `15+ min:` and a `riding (` line were there: the late share's rounding, its `dr > 0` guard and the lines'
+   order all changed with it green.  A cell whose late share sits just under a half (44.47 tenths of a percent:
+   4.4%, and 4.5% at a thousandth more), a stretch of one frame (100%), and one with none (0%, never NaN). */
+{
+  const cellK = '1|' + KEY + '|full|govern=0|5122';
+  const cell = { n: 2, seen: 900, secs: 950,
+    up: { m0: [2000, 100000, 4447, 30], m5: [10, 1, 1, 0], m30: [0, 0, 0, 0] },
+    ride: [2, 2000, 100000, 4447, 12] };
+  const lines = bookTableText([{ day: '20270101', dev: { [cellK]: cell }, speed: {} }]).split('\n');
+  const up = lines.find((l) => l.startsWith('  by minutes seen  '));
+  const ride = lines.find((l) => l.startsWith('  riding ('));
+  check('15.12 the table\'s minutes line, word for word: the late share to a tenth (4.4%), one frame 100%, none 0%',
+    up === '  by minutes seen  0+ min: 50 fps, late 4.4%, 30 of 2000 secs below the row; 5+ min: 0.1 fps, late 100%, 0 of 10 secs below the row; 30+ min: 0 fps, late 0%, 0 of 0 secs below the row', up);
+  check('15.12 ...and its board line', ride === '  riding (2 reports, 2000 secs): 50 fps, late 4.4%, frames past 42 ms 12', ride);
+  const none = bookTableText([{ day: '20270101', dev: { [cellK]: { n: 1, seen: 30, secs: 30, up: {}, ride: null } }, speed: {} }]);
+  check('15.12 ...a cell with an empty `up` and no board says neither line', !/by minutes seen/.test(none) && !/riding \(/.test(none), none);
+  let threw = null;
+  try { bookTableText([{ day: '20270101', dev: { [cellK]: { n: 1, seen: 30, secs: 30, up: null } }, speed: {} }]); } catch (e) { threw = String(e); }
+  check('15.12 ...an `up` of null is no line, never a throw', threw === null, threw);
+}
+
+/* ── 15.13: v2.3.6506: the worker's ramps, over the WHOLE switch table: each page switch, thrown by the first word
+   that throws it, is kept by the worker exactly as written (a name with any digit, the longest name, the shortest);
+   and what is not a ramp is passed over without a throw: a number, an object, a word with no `=` */
+{
+  const firstWord = (n) => RAMP_WORDS.find((w) => readerFor('?' + n + '=' + w).thrown().includes('?' + n));
+  const pageNames = SWITCHES.filter((r) => r.side !== 'worker').map((r) => r.name.replace(/^\?/, ''));
+  const lost = pageNames.filter((n) => { const t = n + '=' + firstWord(n); return rampsOf([t]).join() !== t; });
+  const lens = pageNames.map((n) => n.length);
+  check('15.13 every page switch of the table (' + pageNames.length + '; names ' + Math.min(...lens) + ' to ' + Math.max(...lens) + ' long, ' + pageNames.filter((n) => /[2-9]/.test(n)).length + ' with a digit 2 to 9) is kept by the worker as the page writes it',
+    pageNames.length > 200 && lost.length === 0, lost.slice(0, 10));
+  let threw = null, got = null;
+  try { got = rampsOf([5, { a: 1 }, null, 'govern', 'govern=0']); } catch (e) { threw = String(e); }
+  check('15.13 ...a number, an object, null, a word with no `=` among them: passed over, the ramp kept, no throw', threw === null && got && got.join() === 'govern=0', { threw, got });
+  const r2 = reportSums({ ...PHONE(), ramps: ['govern=0'], sw: undefined }, { site: 'live', lanes: true, heat: true });
+  check('15.13 ...a report with ramps and no `sw` at all: its cell names the ramp', !!r2 && typeof r2.cell === 'string' && r2.cell.split('|')[3] === 'govern=0', r2 && r2.cell);
+}
+
 console.log(`\n${passes} passed, ${failures} failed`);
 process.exit(failures === 0 ? 0 : 1);

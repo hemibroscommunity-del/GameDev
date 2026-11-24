@@ -219,3 +219,31 @@ export function judgeHeld(stations) {
     over,
   };
 }
+
+/* v2.3.6506 (card PH, the sitting-59 mend): THE SWEEP'S VERDICT, here and not in the scenario.  The gate's held
+   sample (gatekeeper.mjs `heldsample`) is only as red as mp-heldsweep's verdict, and sitting 59 dropped that
+   verdict (`fresh.length === 0` forced true in mp-heldsweep.mjs) with every suite green: the scenario needs a
+   browser for an hour, no suite could play it.  The verdict's rows are made here, from the stations the sweep
+   measured, and gate-steps.test drives them with stations of its own (a new hold over its line, a listed one
+   grown, a station unread, a station asked for and not played); the scenario passes each row to its `rec.ok` as
+   it is.  `want` the stations asked for (BT_HS_STATIONS).  Returns judgeHeld's { ranked, over } and the rows,
+   each { name, ok, detail }. */
+export function sweepVerdict(stations, want) {
+  const st = Array.isArray(stations) ? stations : [];
+  const { ranked, over } = judgeHeld(st);
+  const listed = over.filter((o) => o.listed), fresh = over.filter((o) => !o.listed);
+  const say = (l) => l.slice(0, 6).map((o) => `${o.key} ${o.longest} ms > ${o.line} (${o.where}${o.times > 1 ? ', ' + o.times + ' times' : ''})`).join('; ');
+  const asked = Array.isArray(want) ? want : [];
+  const rows = [
+    { name: `the profile reads by name (an unminified build: the game's loop found in ${st.filter((s) => s.readable).length} of ${st.length} stations)`,
+      ok: st.length >= 1 && st.every((s) => s.readable),
+      detail: 'build with: npx vite build --minify false --outDir dist-prof, and run with QA_DIST=dist-prof' },
+    { name: `the budget: nothing NEW holds the page past its line -- ${HOLD_MAX_MS} ms a job outside the frame, ${FRAME_JS_MAX_MS} ms of the game's own code inside one, ${WINDOW_MAX_MS} ms at a window (${fresh.length} over${fresh.length ? ': ' + say(fresh) : ''})`,
+      ok: fresh.length === 0, detail: fresh },
+    { name: `...and nothing on the debt list has grown past its own line (${Object.keys(KNOWN).length} listed; ${listed.length} over${listed.length ? ': ' + say(listed) : ''})`,
+      ok: listed.length === 0, detail: listed },
+    { name: `every station asked for was played (${st.map((s) => s.name).filter((v, i, a) => a.indexOf(v) === i).join(', ')})`,
+      ok: asked.length >= 1 && asked.every((w) => st.some((s) => s.name === w)), detail: asked },
+  ];
+  return { ranked, over, rows };
+}

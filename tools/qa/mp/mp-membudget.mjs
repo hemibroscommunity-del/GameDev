@@ -68,7 +68,7 @@ import * as H from './harness.mjs';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { MEM_INIT, memSampler } from './memprobe.mjs';
-import { MEMORY_BUDGET } from './memory-budget.mjs';
+import { MEMORY_BUDGET, judgeLines } from './memory-budget.mjs';   /* v2.3.6506: judgeLines (card PH, the sitting-59 mend) */
 export const lane = 'full';
 
 const PHONE = { width: 390, height: 844 };
@@ -413,20 +413,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
         trail: trips.map((t) => [t.atFight.trail, t.back.trail]) });
 
     /* ── within budget ── */
-    const peaks = {};
-    for (const k of Object.keys(READ)) {
-      const vals = out.stops.map((s) => ({ v: READ[k](s), at: s.label }));
-      const bad = vals.filter((x) => typeof x.v !== 'number' || !Number.isFinite(x.v));
-      const top = vals.filter((x) => typeof x.v === 'number').sort((a, b) => b.v - a.v)[0] || null;
-      peaks[k] = top;
-      const line = MEMORY_BUDGET[k];
-      if (bad.length || !top) {
-        rec.ok(`${k}: read at every stop`, false, { unread: bad.map((x) => x.at) });
-        continue;
-      }
-      rec.ok(`${k} (${line.name}): at most ${top.v} MB (${top.at}), budget ${line.mb} MB`,
-        top.v <= line.mb, { line: k, read: top.v, at: top.at, budget: line.mb, over: +(top.v - line.mb).toFixed(1), whatToDo: WHAT_TO_DO });
-    }
+    /* v2.3.6506: the comparison is memory-budget.mjs judgeLines' (heap-trend.test drives it); each row as it is */
+    const judged = judgeLines(out.stops, READ, WHAT_TO_DO);
+    const peaks = judged.peaks;
+    for (const row of judged.rows) rec.ok(row.name, row.ok, row.detail);
     out.peaks = peaks;
     console.log('    line        highest   budget   room');
     for (const k of Object.keys(READ)) {

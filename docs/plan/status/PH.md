@@ -1,7 +1,7 @@
 card: PH
 branch: the stack, bottom to top: claude/plan-ph-1-report, -2-memalarm, -3-membudget, -5-heaptrend, -6-debtgate, -4-governor (this file is the same on each)
-prs: #2279 (PR 1, 6500, DEPLOYS), #2291 (PR 2, 6501), #2297 (PR 3, 6502), #2306 (PR 5, 6504), #2314 (PR 6, 6505, draft); PR 4 (6503) on claude/plan-ph-4-governor, its PR not yet open
-state: working (part 7, session_01LccHajroDM6poawzQHuBhV; orchestrator part 8): the stack merged up (done); PR 4 opened as a draft, its heap over its line (Needs)
+prs: #2279 (PR 1, 6500, DEPLOYS), #2291 (PR 2, 6501), #2297 (PR 3, 6502), #2306 (PR 5, 6504), #2314 (PR 6, 6505, draft), #2318 (PR 4, 6503, draft); the sitting-59 mend (6506, draft) on claude/plan-ph-mend59, its base claude/plan-ph-4-governor
+state: working (part 8, session_01LccHam5g8oM3wDAGy4nPPG; orchestrator part 8): all six PRs open, the six heads frozen as sitting 59 reviewed them; the mend of sitting 59's holds on ONE branch above them (orchestrator's rule, part 8)
 
 ## Done
 - Sitting 58 (review-z58) on #2279, mended (part 6): report.test 15.9 and 15.10; its three plants red, tried by hand 2026-11-24. 148 passed (test box). #2279's words updated for sitting 58 (part 7).
@@ -19,15 +19,17 @@ state: working (part 7, session_01LccHajroDM6poawzQHuBhV; orchestrator part 8): 
   PHONE_RES; `?phoneres=0`); `?shine=0|1`. `playable` passed on it.
 
 ## Next
-- PR 4: opened as a draft (B, orchestrator part 8): membudget's heap red, +2 MB
-  the 1.5's, compiled code from more of the fight run (census PH-phone.md).
-- PR 4's words name: phone sharpness 1.5 (the owner: "1.5 looks fine
-  nothing below that"); shine ON by default with `?shine=0|1` (decided for
-  the owner while away, the orchestrator's); the ladder's order stays
-  today's (rate first), the owner's to change; the files outside the card
-  approved by the orchestrator (part 6, 05:51 UTC 11-24).
-- #2306's `playable` timed out at sitting 58: a second timeout is a hold.
-
+- The sitting-59 mend (6506, draft, base claude/plan-ph-4-governor): the class of
+  #2279's, #2306's and #2314's holds, not the planted lines one by one -- a
+  mutation pass over every line those PRs added in the guarded functions,
+  each mutant against its suite alone; every survivor killed by a test that
+  drives the real path (report.test 15.11-15.13: the page walked, rode, hid,
+  froze; gate-steps 6-10 and heap-trend 10-11: the REAL gatekeeper on a
+  stand-in repository, tools/guards/lib/gateSandbox.mjs) or listed in the PR's
+  words with why. The six reviewed heads are not pushed to.
+- After it: the gatekeeper's next sitting; the owner's Speed test once PR 4
+  lands (not before). `mp-membudget` fighting a fixed number of swings (not a
+  fixed time) stays in #2318's words for the gatekeeper.
 ## Found
 - src/rendering/maskedEvict.js's header still says the memory rung is
   "the report's count over the memory check's lines" (not my card's file).

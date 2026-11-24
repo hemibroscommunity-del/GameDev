@@ -512,3 +512,29 @@ export const MEMORY_BUDGET = {
   total: { name: 'everything the page holds at once', mb: 216.0, measured: 207.8,   /* v2.3.6502: new, the highest of three reads (207.8) + their scatter (8.2), see the header (v2.3.6502) */
     what: 'the seven above, read at the same stop and summed -- its highest anywhere on the trip' },
 };
+
+/* v2.3.6506 (card PH, the sitting-59 mend): THE JUDGE, here beside its lines.  Sitting 59 raised the heap line
+   INSIDE mp-membudget's judge (`top.v <= line.mb` with a few MB more for `heap`) and heap-trend.test stayed green:
+   it read MEMORY_BUDGET alone, never the comparison, which lived in a scenario no suite can play (a browser).  The
+   comparison is made here, from the stops the scenario read and its readers (`read`: a key to a stop's MB), and
+   heap-trend.test drives it (a heap a tenth over its line red, at its line green, a stop unread red); the scenario
+   hands each row to its `rec.ok` as it is.  Returns { peaks, rows }: each key's highest stop, and a row a key,
+   { name, ok, detail }. */
+export function judgeLines(stops, read, whatToDo) {
+  const peaks = {}, rows = [];
+  const all = Array.isArray(stops) ? stops : [];
+  for (const k of Object.keys(read)) {
+    const vals = all.map((s) => ({ v: read[k](s), at: s.label }));
+    const bad = vals.filter((x) => typeof x.v !== 'number' || !Number.isFinite(x.v));
+    const top = vals.filter((x) => typeof x.v === 'number').sort((a, b) => b.v - a.v)[0] || null;
+    peaks[k] = top;
+    const line = MEMORY_BUDGET[k];
+    if (!line || bad.length || !top) {
+      rows.push({ name: `${k}: read at every stop${line ? '' : ' (and a line of its own)'}`, ok: false, detail: { unread: bad.map((x) => x.at), line: !!line } });
+      continue;
+    }
+    rows.push({ name: `${k} (${line.name}): at most ${top.v} MB (${top.at}), budget ${line.mb} MB`, ok: top.v <= line.mb,
+      detail: { line: k, read: top.v, at: top.at, budget: line.mb, over: +(top.v - line.mb).toFixed(1), whatToDo } });
+  }
+  return { peaks, rows };
+}

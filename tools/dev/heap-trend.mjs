@@ -59,12 +59,26 @@ export function lastTrim(rows) {
   return rows[0] || null;
 }
 
-/* the verdict on a new reading against the table so far */
-export function verdict(rows, middle) {
+/* the verdict on a new reading against the table so far.  v2.3.6506 (the
+   sitting-59 mend: a row marked `trim` was never held to have fallen, so a
+   `--trim` at a heap that ROSE reset the base and hid the creep): a trim is
+   kept only where the middle fell below the row before it (`trimAsked` the
+   gatekeeper's --trim); asked and not fallen, the row is not marked and the
+   list says so */
+export function verdict(rows, middle, trimAsked = false) {
   const base = lastTrim(rows);
-  if (!base) return { base: null, rise: 0, named: false };
+  const before = rows.length ? rows[rows.length - 1] : null;
+  const trim = !!trimAsked && !!before && middle < before.middle;
+  const trimRefused = !!trimAsked && !trim;
+  if (!base) return { base: null, rise: 0, named: false, trim: !!trimAsked, trimRefused: false };
   const rise = +(middle - base.middle).toFixed(1);
-  return { base, rise, named: rise > RISE_MB };
+  return { base, rise, named: rise > RISE_MB, trim, trimRefused, before };
+}
+
+/* v2.3.6506: the rows marked `trim` (after the first, the start) whose middle
+   did not fall below the row before: a base reset with no trim behind it */
+export function unfallenTrims(rows) {
+  return rows.filter((r, i) => i > 0 && r.trim && !(r.middle < rows[i - 1].middle));
 }
 
 /* the PR numbers in `git log --first-parent --format=%s base..main` */
@@ -99,6 +113,10 @@ export function addRow(md, row) {
 
 /* the line on the gatekeeper's list */
 export function say(v, middle, prs) {
+  const refused = v.trimRefused ? `\n--trim REFUSED: ${middle} MB did not fall below the row before (${v.before ? v.before.sitting + ': ' + v.before.middle : 'none'}); the row is not marked trim and the base stays.` : '';
+  return _say(v, middle, prs) + refused;
+}
+function _say(v, middle, prs) {
   if (!v.base) return `heap ${middle} MB: the first row of the trend`;
   const from = `since the last trim (${v.base.sitting}, ${v.base.main.slice(0, 8)}: ${v.base.middle})`;
   if (!v.named) return `heap ${middle} MB, ${v.rise >= 0 ? '+' : ''}${v.rise} ${from}: within ${RISE_MB} MB`;

@@ -80,7 +80,7 @@
 import * as H from './harness.mjs';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { HOLD_MAX_MS, FRAME_JS_MAX_MS, WINDOW_MAX_MS, KNOWN, judgeHeld } from './held-budget.mjs';
+import { HOLD_MAX_MS, FRAME_JS_MAX_MS, KNOWN, sweepVerdict } from './held-budget.mjs';   /* v2.3.6506: sweepVerdict (judgeHeld inside) */
 import { holdOf } from '../../../src/debug/holdNames.js';   /* v2.3.5126: the report's own reading of a note */
 export const lane = 'full';
 
@@ -550,22 +550,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
     });
 
     /* ── the ranking, and the budget (held-budget.mjs judgeHeld: the lines, the debt list, the noise rule) ── */
-    const { ranked, over } = judgeHeld(report.stations);
+    /* v2.3.6506: the verdict's rows are held-budget.mjs sweepVerdict's (gate-steps.test drives them) */
+    const verdict = sweepVerdict(report.stations, WANT);
+    const { ranked, over } = verdict;
     report.ranked = ranked;
     report.over = over;
     writeFileSync(join(OUT, REPORT_FILE), JSON.stringify(report, null, 1));
     console.log('\n  ══ EVERYTHING THAT HELD THE PAGE FOR 4 ms OR MORE, WORST FIRST ══');
     console.log('     longest   times   in all   where                          what');
     for (const f of ranked.slice(0, 40)) console.log(`     ${String(f.longest).padStart(6)} ms ${String(f.n).padStart(5)} ${String(f.sum).padStart(7)} ms  ${f.where.padEnd(30).slice(0, 30)} [${f.key}] ${f.what === f.key ? '' : f.what}${f.via ? '   via ' + f.via : ''}`);
-    const readable = report.stations.every((s) => s.readable);
-    rec.ok(`the profile reads by name (an unminified build: the game's loop found in ${report.stations.filter((s) => s.readable).length} of ${report.stations.length} stations)`, readable && report.stations.length >= 1,
-      'build with: npx vite build --minify false --outDir dist-prof, and run with QA_DIST=dist-prof');
-    const listed = over.filter((o) => o.listed), fresh = over.filter((o) => !o.listed);
-    const say = (l) => l.slice(0, 6).map((o) => `${o.key} ${o.longest} ms > ${o.line} (${o.where}${o.times > 1 ? ', ' + o.times + ' times' : ''})`).join('; ');
-    rec.ok(`the budget: nothing NEW holds the page past its line -- ${HOLD_MAX_MS} ms a job outside the frame, ${FRAME_JS_MAX_MS} ms of the game's own code inside one, ${WINDOW_MAX_MS} ms at a window (${fresh.length} over${fresh.length ? ': ' + say(fresh) : ''})`,
-      fresh.length === 0, fresh);
-    rec.ok(`...and nothing on the debt list has grown past its own line (${Object.keys(KNOWN).length} listed; ${listed.length} over${listed.length ? ': ' + say(listed) : ''})`,
-      listed.length === 0, listed);
+    for (const v of verdict.rows) rec.ok(v.name, v.ok, v.detail);
     /* v2.3.5126: what the field report could not name */
     const gaps = noteGaps(report.stations, KNOWN, HOLD_MAX_MS);
     report.noteGaps = gaps;
@@ -573,7 +567,6 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const noted = report.stations.reduce((t, s) => t + Object.values(s.notes || {}).reduce((u, v) => u + v[0], 0), 0);
     rec.ok(`every known hold left a note the field report can name (a debt-list family the page runs, ${HOLD_MAX_MS} ms or more outside the frame; ${noted} notes written; ${gaps.length} left none${gaps.length ? ': ' + gaps.slice(0, 6).map((g) => `${g.key} ${g.ms} ms at ${g.where}${g.holds > 1 ? ' (' + g.holds + ' holds)' : ''}`).join('; ') + ' -- its job must reach the ring under that name (holdNames.js MADE_AS)' : ''})`,
       gaps.length === 0, gaps);
-    rec.ok(`every station asked for was played (${report.stations.map((s) => s.name).filter((v, i, a) => a.indexOf(v) === i).join(', ')})`, WANT.every((w) => report.stations.some((s) => s.name === w)), WANT);
   } finally {
     stopA();
     if (stopB) stopB();

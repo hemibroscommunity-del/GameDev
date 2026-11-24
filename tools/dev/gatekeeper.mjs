@@ -181,10 +181,10 @@ async function recordHeap() {
   const middle = T.middleOf(reads);
   const file = join(root, 'docs', 'plan', 'baseline.md');
   const md = readFileSync(file, 'utf8');
-  const v = T.verdict(T.parseRows(md), middle);
+  const v = T.verdict(T.parseRows(md), middle, args.includes('--trim'));   /* v2.3.6506: a trim only where it fell */
   const base = v.base && tryGit(['rev-parse', '--verify', '--quiet', v.base.main + '^{commit}'], root);
   const prs = base ? T.prsIn(tryGit(['log', '--first-parent', '--format=%s', `${base}..${main}`], root)) : [];
-  writeFileSync(file, T.addRow(md, { sitting: sittingArg, date: new Date().toISOString().slice(0, 10), main, reads, middle, trim: args.includes('--trim') }));
+  writeFileSync(file, T.addRow(md, { sitting: sittingArg, date: new Date().toISOString().slice(0, 10), main, reads, middle, trim: v.trim }));
   console.log('\n' + T.say(v, middle, prs));
   console.log('row added to docs/plan/baseline.md: commit it with the sitting\'s notes.');
   done(0);
