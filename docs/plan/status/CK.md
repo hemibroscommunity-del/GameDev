@@ -1,6 +1,6 @@
 card: CK
-branch: claude/ck-cap-mend (one PR a branch, claude/ck-*)
-prs: #2284, #2288, #2294, #2296 (6420-6423, merged), this branch's (6425, ready)
+branch: claude/ck-ci-settings (one PR a branch, claude/ck-*; on #2305's)
+prs: #2284, #2288, #2294, #2296 (6420-6423, merged), #2305 (6425, ready), this branch's (6424, ready)
 state: ready
 
 ## Done
@@ -12,11 +12,14 @@ state: ready
   128 s first); precheck's rest cap 20 -> 10 min, the gatekeeper's precheck
   70 -> 25 min; CLAUDE.md 6's time; the brief hides all-merged blocks
   (102 -> 96 lines); README's rule already on main (v2.3.6400).
-- (6425) this branch: the rest's cap back to 20 min, the gatekeeper's
+- (6425) #2305: the rest's cap back to 20 min, the gatekeeper's
   precheck step 35 min (the Found below; the orchestrator's yes).
 
 ## Next
-- PR 5 only on the owner's own words (Needs). Card done otherwise.
+- (6424) this branch, PR 5: the owner's "Yes to GitHub check settings. Do
+  whatever works best." (2026-11-24, the orchestrator's session): a newer
+  push cancels a PR's older run; a PR of documents no suite reads ends
+  `test` green at its first step. Card done once it merges.
 
 ## Found
 - Z on #2296: the 10-min rest cap timed out at sitting 57 on a box shared
@@ -31,10 +34,4 @@ state: ready
   traverse and GC; a parse kept by git id fits, after those merge.
 
 ## Needs
-- PR 5 waits on the owner's own words, two changes under `.github/`:
-  (a) server-ci.yml: `concurrency: { group: <workflow>-<ref>,
-  cancel-in-progress: true }`, so a newer push cancels the older run
-  (each push 22 to 43 paid minutes); (b) the required `test` job ends
-  green at its first step when the PR changes only `docs/` (a step that
-  diffs against main, never a path filter on the trigger: TRAPS 238),
-  saving a whole suite run on every documents-only push.
+- None (call 2 answered: PR 5 is this branch).
