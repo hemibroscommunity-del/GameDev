@@ -33,7 +33,18 @@
  *         (`this.playerState[id] = { ...ps, coins }`, or held in a name first);
  *       - an ELEMENT of a container written in place (`ps.weaponStash[0].lvl
  *         = 99`, `const w = ps.weaponStash[i]; w.lvl = 99`, `for (const w of
- *         ps.weaponStash) w.lvl = 99`): a write of the container;
+ *         ps.weaponStash) w.lvl = 99`): a write of the container; and an
+         element FOUND or HANDED to a callback (v2.3.6441, sitting 57: `const
+         w = ps.weaponStash.find(...)`, `.at(i)`, and the
+         first parameter of `forEach` / `find` / `filter` / `map` / `some` /
+         `every` / `findIndex` / `findLast`, `reduce`'s second, called on the
+         container or on a `filter` / `slice` / `sort`... of it);
+       - an object named in a const or let handed to Object.assign
+         (`const patch = { coins }; Object.assign(ps, patch)`, keys put into
+         `patch` later too, and a spread of it; sitting 57);
+       - a key that is a PARAMETER of a function of the same file, from the
+         words its callers hand it (`function bump(o, k, n) { o[k] += n; }
+         bump(ps, 'coins', 5)`; sitting 57);
  *       - through an ALIAS of a container: `const inv = ps.inventory`,
  *         `const { inventory } = ps`, `const { _quests: qs } = ps`, an alias
  *         of an alias, and a function of the same file handed the container
@@ -99,6 +110,15 @@ export function parse(code) {
   return ast;
 }
 
+/* v2.3.6441 (sitting 57: an item changed through `.find(...)` / `forEach`
+   stayed green): a call that hands back ONE element of the list or map it is
+   called on, a call that hands back a new list of the SAME elements, and a
+   call that hands each element to its callback (the parameter's index) */
+const ELEMENT_GETTERS = new Set(['find', 'findLast', 'at']);   /* not a Map's `get`: a session got from `sessions` is no write of the map (session-door) */
+const LIST_COPIERS = new Set(['filter', 'slice', 'concat', 'toSorted', 'toReversed', 'sort', 'reverse', 'values']);
+const ELEMENT_CALLBACKS = new Map([['forEach', 0], ['find', 0], ['findLast', 0], ['filter', 0], ['map', 0], ['flatMap', 0],
+  ['some', 0], ['every', 0], ['findIndex', 0], ['findLastIndex', 0], ['reduce', 1], ['reduceRight', 1]]);
+
 const LIST_CHANGERS = new Set(['push', 'pop', 'shift', 'unshift', 'splice', 'sort', 'reverse', 'fill', 'copyWithin',
   /* a Map's or a Set's own changers, on a container held as one */
   'set', 'delete', 'clear', 'add']);
@@ -108,6 +128,11 @@ const LIST_CHANGERS = new Set(['push', 'pop', 'shift', 'unshift', 'splice', 'sor
    ps[f].push(w)` and `ps[GEAR_PROV_FIELD.shield]` are known keys.  A name
    bound in the file itself is read from the file.  Set for one call only. */
 let WORDS = null;
+/* v2.3.6441 (sitting 57's plant `bump(ps, 'coins', n)`): the words a
+   function's PARAMETER can be, from the arguments its callers in the same
+   file hand it.  Set by writesOf for one call: (binding, path, depth) ->
+   words | null.  Null (no hook) outside writesOf. */
+let PARAM_WORDS = null;
 
 /* the named function a node sits in: its own name, a method's key, the
    variable or property it is given to (phase-table's rule) */
@@ -159,6 +184,7 @@ function wordsOf(node, path, depth = 0) {
       const bind = path.scope.getBinding(node.name);
       if ((!bind || bind.kind === 'module') && WORDS && Object.prototype.hasOwnProperty.call(WORDS, node.name)) return [...WORDS[node.name]];
       if (!bind) return null;
+      if (bind.kind === 'param' && PARAM_WORDS) return PARAM_WORDS(bind, depth + 1);
       const bp = bind.path;
       if (bp.isVariableDeclarator()) {
         const decl = bp.parentPath;
@@ -223,7 +249,7 @@ export function writesOf(code, opts = {}) {
      container (`bagOf(ps)` is the bag) makes its name an alias */
   const MAKERS = opts.makers || {};
   WORDS = opts.words || null;
-  try { return writesIn(); } finally { WORDS = null; }
+  try { return writesIn(); } finally { WORDS = null; PARAM_WORDS = null; }
   function writesIn() {
   const CONTAINERS = new Set(opts.containers || []);
   const file = opts.file || '';
@@ -259,9 +285,26 @@ export function writesOf(code, opts = {}) {
     if (node.type === 'CallExpression' || node.type === 'OptionalCallExpression') {
       const c = node.callee;
       const n = c.type === 'Identifier' ? c.name : ((c.type === 'MemberExpression' || c.type === 'OptionalMemberExpression') && !c.computed ? c.property.name : null);
-      return n && Object.prototype.hasOwnProperty.call(MAKERS, n) ? MAKERS[n] : null;
+      if (n && Object.prototype.hasOwnProperty.call(MAKERS, n)) return MAKERS[n];
+      /* v2.3.6441 (sitting 57): an element FOUND in a container
+         (`ps.weaponStash.find(...)`, `.at(i)`) is the
+         container's: writing into it writes the container */
+      if (n && ELEMENT_GETTERS.has(n) && c.type !== 'Identifier') return elementsOf(c.object, path);
+      return null;
     }
     if (node.type === 'ParenthesizedExpression') return containerOf(node.expression, path);
+    return null;
+  }
+  /* v2.3.6441: a node whose ELEMENTS are a container's own: the container
+     (or an alias of it), or a copy of its list (`filter`, `slice`, `sort`,
+     `concat`...: a new list, the same items) */
+  function elementsOf(node, path) {
+    const c = containerOf(node, path) || ((node && (node.type === 'MemberExpression' || node.type === 'OptionalMemberExpression')) ? insideOf(node, path) : null);
+    if (c) return c;
+    if (node && (node.type === 'CallExpression' || node.type === 'OptionalCallExpression')) {
+      const k = node.callee;
+      if ((k.type === 'MemberExpression' || k.type === 'OptionalMemberExpression') && !k.computed && k.property.type === 'Identifier' && LIST_COPIERS.has(k.property.name)) return elementsOf(k.object, path);
+    }
     return null;
   }
   /* inside a container: the member's object is a container (or deeper in one) */
@@ -326,6 +369,40 @@ export function writesOf(code, opts = {}) {
     return ks;
   }
 
+  /* v2.3.6441 (sitting 57: `const patch = { coins }; Object.assign(ps,
+     patch)` stayed green): the keys a SOURCE of Object.assign puts -- an
+     object written out (and the spreads in it), or a name bound to one, with
+     every key put into that name after (`patch.coins = n`, `patch[k] = n`
+     with k known), a ternary or || of them */
+  function sourceKeys(node, path, depth = 0) {
+    if (!node || depth > 6) return [];
+    if (node.type === 'ObjectExpression') {
+      const ks = objectKeys(node, path);
+      for (const p of node.properties) if (p.type === 'SpreadElement') ks.push(...sourceKeys(p.argument, path, depth + 1));
+      return ks;
+    }
+    if (node.type === 'ConditionalExpression') return [...sourceKeys(node.consequent, path, depth + 1), ...sourceKeys(node.alternate, path, depth + 1)];
+    if (node.type === 'LogicalExpression') return [...sourceKeys(node.left, path, depth + 1), ...sourceKeys(node.right, path, depth + 1)];
+    if (node.type === 'Identifier') {
+      const b = path.scope.getBinding(node.name);
+      if (!b) return [];
+      const ks = [];
+      if (b.path.isVariableDeclarator() && b.path.node.id.type === 'Identifier') ks.push(...sourceKeys(b.path.node.init, b.path, depth + 1));
+      for (const v of b.constantViolations || []) if (v.isAssignmentExpression() && v.node.left.type === 'Identifier') ks.push(...sourceKeys(v.node.right, v, depth + 1));
+      for (const r of b.referencePaths) {
+        const m = r.parentPath;
+        if (!m || !(m.isMemberExpression() || m.isOptionalMemberExpression()) || m.node.object !== r.node) continue;
+        const a = m.parentPath;
+        const put = (a.isAssignmentExpression() && a.node.left === m.node) || (a.isUpdateExpression() && a.node.argument === m.node);
+        if (!put) continue;
+        const k = keysOf(m.node, m);
+        if (k) ks.push(...k);
+      }
+      return ks;
+    }
+    return [];
+  }
+
   /* pass 1: aliases (declarations, destructures), functions by name */
   const bindAlias = (path, id, field) => {
     if (!id || id.type !== 'Identifier') return false;
@@ -366,6 +443,18 @@ export function writesOf(code, opts = {}) {
       /* a function of this file handed a container: its parameter is an alias */
       CallExpression(path) {
         const { callee, arguments: args } = path.node;
+        /* v2.3.6441: `ps.weaponStash.forEach((w) => { w.lvl = 99; })`: the
+           callback's element parameter is the container's */
+        if ((callee.type === 'MemberExpression' || callee.type === 'OptionalMemberExpression') && !callee.computed
+          && callee.property.type === 'Identifier' && ELEMENT_CALLBACKS.has(callee.property.name)) {
+          const cb = args[0];
+          const c = cb && (cb.type === 'ArrowFunctionExpression' || cb.type === 'FunctionExpression') ? elementsOf(callee.object, path) : null;
+          const prm = c ? cb.params[ELEMENT_CALLBACKS.get(callee.property.name)] : null;
+          if (prm && prm.type === 'Identifier') {
+            const b = path.get('arguments.0').scope.getBinding(prm.name);
+            if (b && alias.get(b) !== c) { alias.set(b, c); grew = true; }
+          }
+        }
         let name = null;
         if (callee.type === 'Identifier') name = callee.name;
         else if ((callee.type === 'MemberExpression' || callee.type === 'OptionalMemberExpression') && !callee.computed && callee.property.type === 'Identifier'
@@ -395,6 +484,48 @@ export function writesOf(code, opts = {}) {
       fnsByName.get(name).push(path);
     },
   });
+  /* v2.3.6441: the calls of each function of this file, by name, for the
+     words a parameter can be (`bump(ps, 'coins', 5)`) */
+  const callsByName = new Map();
+  traverse(ast, {
+    'CallExpression|OptionalCallExpression'(path) {
+      const c = path.node.callee;
+      let name = null;
+      if (c.type === 'Identifier') name = c.name;
+      else if ((c.type === 'MemberExpression' || c.type === 'OptionalMemberExpression') && !c.computed && c.property.type === 'Identifier'
+        && (c.object.type === 'ThisExpression' || c.object.type === 'Identifier')) name = c.property.name;
+      if (!name || !fnsByName.has(name)) return;
+      if (!callsByName.has(name)) callsByName.set(name, []);
+      callsByName.get(name).push(path);
+    },
+  });
+  const fnOfParam = (bind) => {
+    const f = bind.path.parentPath;
+    if (!f || !f.isFunction()) return null;
+    const i = f.node.params.indexOf(bind.path.node);
+    if (i < 0) return null;
+    for (const [name, fns] of fnsByName) if (fns.includes(f)) return { name, i };
+    return null;
+  };
+  const asking = new Set();
+  PARAM_WORDS = (bind, depth) => {
+    if (asking.has(bind) || depth > 6) return null;
+    const at = fnOfParam(bind);
+    const calls = at && callsByName.get(at.name);
+    if (!calls || !calls.length) return null;
+    asking.add(bind);
+    try {
+      const all = [];
+      for (const cp of calls) {
+        const a = cp.node.arguments[at.i];
+        if (!a || a.type === 'SpreadElement') return null;
+        const w = wordsOf(a, cp, depth + 1);
+        if (!w) return null;
+        all.push(...w);
+      }
+      return [...new Set(all)];
+    } finally { asking.delete(bind); }
+  };
   for (let i = 0; i < 6 && visitAliases(); i++) { /* to a fixed point */ }
 
   /* pass 2: the writes */
@@ -441,7 +572,7 @@ export function writesOf(code, opts = {}) {
         const c = containerOf(t, path) || ((t.type === 'MemberExpression' || t.type === 'OptionalMemberExpression') ? insideOf(t, path) : null);
         if (c) { add(path, path.node, c, true, how, t.type === 'MemberExpression' ? recvOf(t, path) : { text: srcOf(code, t) }); return; }
         let ks = [];
-        if (prop === 'assign' || prop === 'defineProperties') for (const s of args.slice(1)) ks.push(...objectKeys(s, path));
+        if (prop === 'assign' || prop === 'defineProperties') for (const s of args.slice(1)) ks.push(...sourceKeys(s, path));
         else { const w = wordsOf(args[1], path); if (w) ks = w; }
         for (const k of ks) if (FIELDS.has(k)) add(path, path.node, k, false, how, { text: srcOf(code, t) });
         return;

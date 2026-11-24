@@ -8114,10 +8114,15 @@ html[data-orient="landscape"] .bt-fish-card{top:calc(env(safe-area-inset-top,0px
    dashboard area on the right".  Right of the centred 480 px assembly, inside
    the band: slate key caps (the [data-key] recipe's colours) and words in two
    columns, a quiet "Controls  H" heading, "More keys" at the foot.  Shown only
-   to a mouse under the one band, upright, and where the band has the room. */
+   to a mouse under the one band, upright, and where the band has the room.
+   v2.3.6291 (card HB2; card RR's find): ...and only on the computer's band
+   (html.bt-desk-wide, the frame freed to the window): under `?narrow` the band
+   is the upright 390 px column, so its right side was 18 px and the list drew
+   there, its heading unsized; there the column keeps its strip
+   (KeyboardHintsPanel's bandKeysActive asks the same). */
 .bt-band-keys{display:none}
 @media (pointer:fine) and (min-width:1000px){
-  html.bt-one-band:not(.bt-band-side) .bt-band-keys{
+  html.bt-desk-wide.bt-one-band:not(.bt-band-side) .bt-band-keys{
     display:flex;flex-direction:column;gap:3px;position:absolute;z-index:2;
     top:12px;bottom:auto;max-height:calc(100% - 20px);right:12px;max-width:270px;
     left:calc(50% + min(var(--band-max-w,480px), 100%) / 2 + 16px);
