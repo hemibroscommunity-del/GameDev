@@ -1,35 +1,36 @@
 card: Z
-branch: claude/plan-z-sitting-53
-prs: RR #2265, #2267, #2258, #2260; HB2 #2261, #2244, #2247, #2249, #2259, #2266; EN #2263 (ready); this PR (tag 6267), the last line
+branch: claude/plan-z-sitting-56
+prs: DIR #2275, CK #2284, LF #2276 #2277 #2280, BK #2278 (listed); this PR (tag 6268), the last line
 state: ready
 
 ## Done
-- `census/review-z53.md`: 11 PRs checked against their cards and reviewed;
-  two reds on main found (usage-meter 5's date; the heap line) and mended
-  on the list; merge bases one each, step by step; rehearsed on `main`
-  c0a0791c, tree 3aeab427: precheck 0 FAIL (884 s), build, questline 187;
-  `mp-firststeps` 46/46 on rehearsal 2's tree (#2258 with #2266).
+- `census/review-z56.md`: 10 ready PRs checked against their cards, each
+  that changes a guard or the game read by a purpose lane (top model,
+  plants); rehearsed on `main` 0aec6482 (card CK's gatekeeper.mjs), tree
+  2fe89fcc: precheck 0 FAIL (160 s), every switch thrown once (89, 641 s),
+  build, questline 187/187; one merge base each, step by step.
+- Sitting 54's notes landed (3.1's tick, `census/review-z54.md`); the shape
+  review's part 4 boxes; the two renderers' lines 8941 -> 7984 and
+  9870 -> 9450; the log (`docs/plan/log.md`) begun.
 ## The list: merge in this order, "Create a merge commit", in one go
-1 #2265 (RR 6305; DEPLOYS: a server test only)  2 #2267 (RR 6306, heap
-38.5 -> 40.0)  3 #2258 (RR 6302)  4 #2260 (RR 6303)  5 #2261 (HB2 6287)
-6 #2244 (HB2 6281)  7 #2247 (6282)  8 #2249 (6283)  9 #2259 (6286)
-10 #2266 (HB2 6288)  11 #2263 (EN 6205)  12 Z (6267).
-#2260's `memory-budget` is red on the heap line #2267 raises: not a hold.
-## Held / To 54
-- None held. To 54: tick 3.1 once #2261 is merged (`debtOf('ours')`
-  empty); RR's next (the slow checks, the rejoin loop); EN 6206 on; HB2's
-  leftover order (GearTab's body, then the World map labels if
-  pixel-identical and freed on close).
+1 #2275 (DIR 6400)  2 #2284 (CK 6420, urgent: every check shorter)
+3 #2276 (LF 6292)  4 #2277 (LF 6310)  5 #2278 (BK 6460; DEPLOYS: a server
+test only)  6 #2280 (LF 6291)  7 Z (6268, a draft: mark it ready first).
+## Held / To 57
+- Held, each a plant green in the PR's own suite (review-z56 4b): #2281
+  (row 14's weapon doubled or lost), #2283 (the guard gutted, all green),
+  #2279 (PH's dodges a and d), #2282 (`angleOff`'s negative wrap).
+- To 57: those four re-pushed during this sitting (new heads: review
+  again); WL #2286 and 6521, WHO 6480; RR #2273 (DEPLOYS). CT before any WL
+  PR in `phase-table.test.mjs`. Tick nothing of this list until merged.
 ## Found
-- `usage-meter.test` 5 red on main from 00:00 UTC 2026-11-19 (a pinned
-  date): RR's #2265, first on the list. Every PR merged its branch in.
-- `mp-membudget`'s heap line under main's own scatter (37.4-39.2): A/B
-  named no PR; RR's #2267 re-measures it (planning session's yes). About
-  1 MB of creep since the last trim: a trim card's question.
-- gatekeeper.mjs could not fetch (branches fetched by hand); precheck
-  863-893 s here, 1138 s on RR's box: the 15-min cap is tight (RR's 3).
+- `worldsum.js` counts no weapon pieces: a weapon lost on an equip swap
+  passes world-sum (card BK).
+- switches-thrown never catches a cap advertised whatever its reader says
+  (`harvestGrade`): plain suites do (card CK's, no loss).
+- quietphone's 80%-of-near line is a named skip on every run on this box
+  (near under 20): the hard 16 a second line is what guards here.
+- CK's status file says `working` with its PR ready.
 ## Needs
-- Decided while away (part 9's list): the heap line +1.5 MB (no saving
-  given up; a later trim lowers it).
-- Owner's own: `.github/`, Cloudflare; wind-dunes.mp3's source; SEC2's
-  report form; RR's full 388-scenario sweep (a sample now).
+- Nothing from the owner for this list. Owner's own still: `.github/`,
+  Cloudflare; the controls trial's verdict (deskkeys 8f; card CT).
