@@ -269,13 +269,52 @@ function isChannel(node, path, depth = 0) {
   if (!node || depth > 6) return false;
   if (isMember(node)) return keyOf(node) === 'channel';
   if (node.type === 'LogicalExpression') return isChannel(node.left, path, depth + 1) || isChannel(node.right, path, depth + 1);
-  if (node.type === 'Identifier') {
-    const b = path && path.scope.getBinding(node.name);
-    const init = b && b.path.isVariableDeclarator() && b.path.node.id.type === 'Identifier' && b.path.node.init;
-    return !!init && isChannel(init, b.path, depth + 1);
+  if (node.type === 'Identifier') return chanBinding(path && path.scope.getBinding(node.name), depth);
+  if (node.type === 'ConditionalExpression') return isChannel(node.consequent, path, depth + 1) || isChannel(node.alternate, path, depth + 1);
+  if (node.type === 'AssignmentExpression') return isChannel(node.right, path, depth + 1);
+  if (node.type === 'SequenceExpression') return isChannel(node.expressions[node.expressions.length - 1], path, depth + 1);
+  return false;
+}
+/* v2.3.6441 (sitting 58: `const { channel } = S; channel.send(m)` stayed
+   green: a name bound by a PATTERN was not followed).  DENY BY DEFAULT: a
+   name is a channel when it is bound to one by ANY form -- a name, a pattern
+   under the key `channel` (`{ channel }`, `{ channel: c = null }`, nested, a
+   parameter's, a loop's), or put again later (`ch = S.channel`) -- and every
+   USE of a channel is one the census knows (a test of it, a read of a key
+   that is not `send`, a name bound to it) or it is COUNTED as a send: a use
+   the census cannot follow (handed to a call, put into a member or a list,
+   a key it cannot know, a pattern taking its `send`) is red, never green. */
+const patternKey = (bp, name) => {
+  /* the key a name sits under in the pattern that binds it, or null */
+  let hit = null;
+  const walk = (n, key) => {
+    if (!n || hit !== null) return;
+    if (n.type === 'Identifier') { if (n.name === name) hit = key; return; }
+    if (n.type === 'AssignmentPattern') return walk(n.left, key);
+    if (n.type === 'RestElement') return walk(n.argument, '...');
+    if (n.type === 'ArrayPattern') { for (const e of n.elements) walk(e, '[]'); return; }
+    if (n.type === 'ObjectPattern') for (const p of n.properties) {
+      if (p.type === 'RestElement') { walk(p.argument, '...'); continue; }
+      walk(p.value, p.computed ? (p.key.type === 'StringLiteral' ? p.key.value : '?') : (p.key.name || String(p.key.value)));
+    }
+  };
+  const ids = bp.isVariableDeclarator() ? [bp.node.id] : (bp.isFunction() ? bp.node.params : [bp.node]);
+  for (const id of ids) walk(id, null);
+  return hit;
+};
+function chanBinding(b, depth) {
+  if (!b) return false;
+  const bp = b.path;
+  if (bp.isVariableDeclarator() && bp.node.id.type === 'Identifier') {
+    if (bp.node.init && isChannel(bp.node.init, bp, depth + 1)) return true;
+  } else if (patternKey(bp, b.identifier.name) === 'channel') return true;
+  for (const v of b.constantViolations || []) {
+    if (v.isAssignmentExpression() && v.node.left.type === 'Identifier' && isChannel(v.node.right, v, depth + 1)) return true;
+    if (v.isAssignmentExpression() && v.node.left.type !== 'Identifier' && patternKey({ isVariableDeclarator: () => false, isFunction: () => false, node: v.node.left }, b.identifier.name) === 'channel') return true;
   }
   return false;
 }
+
 /* the page's fetch however it is reached: the global name, `window.fetch` /
    `globalThis.fetch` / `self['fetch']`, a name bound to one (`const go =
    fetch`), a bind of one (`fetch.bind(window)`) */
@@ -285,6 +324,9 @@ function isFetch(node, path, depth = 0) {
   if (node.type === 'Identifier') {
     const b = path && path.scope.getBinding(node.name);
     if (!b) return node.name === 'fetch';
+    /* v2.3.6441 (sitting 58): bound by a pattern under the key `fetch` (`const { fetch: go } = window`), or put again */
+    if (!(b.path.isVariableDeclarator() && b.path.node.id.type === 'Identifier') && patternKey(b.path, node.name) === 'fetch') return true;
+    for (const v of b.constantViolations || []) if (v.isAssignmentExpression() && v.node.left.type === 'Identifier' && isFetch(v.node.right, v, depth + 1)) return true;
     const init = b.path.isVariableDeclarator() && b.path.node.id.type === 'Identifier' && b.path.node.init;
     return !!init && isFetch(init, b.path, depth + 1);
   }
@@ -293,19 +335,64 @@ function isFetch(node, path, depth = 0) {
   if (node.type === 'LogicalExpression') return isFetch(node.left, path, depth + 1) || isFetch(node.right, path, depth + 1);
   return false;
 }
+/* v2.3.6441 (sitting 58): where a value is USED, climbing through what
+   only passes it on (brackets, `a || b`, a ternary's side): 'test' (an if, a
+   compare, `typeof`, `!`, a statement of its own), 'name' (bound to a
+   name, followed), 'key' (a key of it read; with the key), or 'other' (a
+   use the census cannot follow) */
+function useOf(path) {
+  let x = path;
+  for (;;) {
+    const p = x.parentPath, c = x.node;
+    if (!p) return { use: 'test' };
+    const n = p.node;
+    if (p.isParenthesizedExpression() || p.isTSNonNullExpression() || p.isAwaitExpression() || p.isLogicalExpression()
+      || (p.isConditionalExpression() && n.test !== c) || (p.isSequenceExpression() && n.expressions[n.expressions.length - 1] === c)) { x = p; continue; }
+    if (p.isSequenceExpression() || p.isConditionalExpression() || p.isIfStatement() || p.isWhileStatement() || p.isDoWhileStatement()
+      || (p.isForStatement() && n.test === c) || p.isUnaryExpression() || p.isBinaryExpression() || p.isExpressionStatement()) return { use: 'test' };
+    if ((p.isMemberExpression() || p.isOptionalMemberExpression()) && n.object === c) return { use: 'key', key: keyOf(n), path: p };
+    if (p.isVariableDeclarator() && n.init === c) return n.id.type === 'Identifier' ? { use: 'name' } : { use: 'pattern', pattern: n.id };
+    if (p.isAssignmentExpression() && n.right === c) {
+      if (n.left.type === 'Identifier') return { use: 'name' };
+      if (isMember(n.left) && keyOf(n.left) === 'channel') return { use: 'name' };   /* put under the key `channel`: a channel by its key */
+      if (n.left.type === 'ObjectPattern' || n.left.type === 'ArrayPattern') return { use: 'pattern', pattern: n.left };
+      return { use: 'other' };
+    }
+    if (p.isAssignmentExpression() && n.left === c) return { use: 'test' };   /* `S.channel = null`: put, not used */
+    /* `S.channel.send.bind(S.channel)`: the receiver handed to its own send's bind, a send counted once */
+    if ((p.isCallExpression() || p.isOptionalCallExpression()) && n.arguments.includes(c) && isMember(n.callee)
+      && ['bind', 'call', 'apply'].includes(keyOf(n.callee)) && isMember(n.callee.object) && keyOf(n.callee.object) === 'send') return { use: 'test' };
+    return { use: 'other' };
+  }
+}
+/* a pattern taking a channel apart: only keys it knows, never `send` */
+const patternTakesSend = (pt) => pt.type !== 'ObjectPattern'
+  || pt.properties.some((p) => p.type === 'RestElement' || (p.computed && p.key.type !== 'StringLiteral') || (p.computed ? p.key.value : (p.key.name || String(p.key.value))) === 'send');
 function treeSends(s) {
   const out = [];
-  visit(s, { 'MemberExpression|OptionalMemberExpression'(path) {
-    const m = path.node;
-    if (keyOf(m) !== 'send') return;
-    if (!isChannel(m.object, path)) return;
-    /* a send: called, bound (`.bind`, `.call`, `.apply`), or a name made of it; `typeof S.channel.send` asks, it sends nothing */
-    const p = path.parentPath;
-    const called = (p.isCallExpression() || p.isOptionalCallExpression()) && p.node.callee === m;
-    const through = (p.isMemberExpression() || p.isOptionalMemberExpression()) && p.node.object === m && !p.node.computed && ['bind', 'call', 'apply'].includes(p.node.property.name);
-    const named = (p.isVariableDeclarator() && p.node.init === m) || (p.isAssignmentExpression() && p.node.right === m);
-    if (called || through || named) out.push(m.loc.start.line);
-  } });
+  const seen = new Set();
+  const hit = (n) => { if (!seen.has(n.start)) { seen.add(n.start); out.push(n.loc.start.line); } };
+  /* a channel used: a send, a key the census cannot know, a pattern taking its send, or a use it cannot follow */
+  const chanUse = (path) => {
+    const u = useOf(path);
+    if (u.use === 'test' || u.use === 'name') return;
+    if (u.use === 'pattern') { if (patternTakesSend(u.pattern)) hit(path.node); return; }
+    if (u.use === 'key') {
+      if (u.key === null) { hit(path.node); return; }
+      if (u.key !== 'send') return;
+      /* a send: called, bound, handed on, named -- anything but asked about (`typeof S.channel.send`, `if (S.channel.send)`) */
+      if (useOf(u.path).use !== 'test') hit(u.path.node);
+      return;
+    }
+    hit(path.node);
+  };
+  visit(s, {
+    'MemberExpression|OptionalMemberExpression'(path) { if (keyOf(path.node) === 'channel') chanUse(path); },
+    Identifier(path) {
+      if (!path.isReferencedIdentifier() || isMember(path.parent) && path.parent.property === path.node && !path.parent.computed) return;
+      if (isChannel(path.node, path)) chanUse(path);
+    },
+  });
   return out;
 }
 function treeFetches(s) {
@@ -327,6 +414,22 @@ function treeFetches(s) {
       if (init) text += ' ' + s.slice(init.start, init.end);
     }
     if (/\/api\//.test(text)) out.push({ line: path.node.loc.start.line, path: (/'(\/api\/[a-z_/]*)/.exec(text) || [])[1] || null });
+  },
+  /* v2.3.6441 (sitting 58): DENY BY DEFAULT -- a fetch used any way but
+     called, `.call` / `.apply` / `.bind`, bound to a name (followed) or asked
+     about (`typeof fetch`) is counted: its address cannot be read */
+  'Identifier|MemberExpression|OptionalMemberExpression'(path) {
+    const n = path.node;
+    if (n.type === 'Identifier') {
+      if (!path.isReferencedIdentifier() || (isMember(path.parent) && path.parent.property === n && !path.parent.computed)) return;
+      if (!isFetch(n, path)) return;
+    } else if (keyOf(n) !== 'fetch') return;
+    const u = useOf(path);
+    const p = path.parentPath;
+    const called = (p.isCallExpression() || p.isOptionalCallExpression()) && p.node.callee === n;
+    if (called || u.use === 'test' || u.use === 'name') return;
+    if (u.use === 'key' && ['call', 'apply', 'bind'].includes(u.key)) return;
+    out.push({ line: n.loc.start.line, path: null, cannot: true });
   } });
   return out;
 }
@@ -347,6 +450,17 @@ function treeFetches(s) {
     treeSends('function f(S, m) {\n S[\'channel\'].send(m);\n S[`channel`].send(m);\n const a = S.channel; const b = a; b.send(m);\n S.channel[\'send\'](m);\n}').length === 4);
   check('7: ...the fetch held in a name, bound, called through `.call` or `window.fetch`: `const go = fetch; go(\'/api/x\')`',
     treeFetches("function f(u) { const go = fetch; go('/api/a'); const g2 = fetch.bind(window); g2('/api/b'); fetch.call(window, '/api/c'); window['fetch']('/api/d'); const fetch2 = (x) => x; fetch2('/api/e'); }").length === 4);
+  /* v2.3.6441: sitting 58's plant (review-z58.md, #2295) and the class
+     around it: a channel or a fetch bound by any form is followed, and a use
+     the census cannot follow is counted (deny by default) */
+  check('7: ...a channel taken from a pattern, nested, a parameter\'s, put again, its send taken apart: `const { channel } = S; channel.send(m)`',
+    treeSends('function f(S, m) {\n const { channel } = S; channel.send(m);\n const { channel: c = null } = S; c.send(m);\n const { net: { channel: d } } = S; d.send(m);\n let e; e = S.channel; e.send(m);\n const { send } = S.channel; send(m);\n}\nfunction g({ channel }, m) {\n channel.send(m);\n}').length === 6);
+  check('7: ...DENY: a channel handed to a call, put into a list or a member, a key the census cannot know, counted',
+    treeSends('function f(S, m, k) {\n relay(S.channel, m);\n const list = [S.channel];\n this.out = S.channel;\n S.channel[k](m);\n}').length === 4
+    && treeSends('function f(S) {\n if (S.channel && S.channel.readyState === 1) return;\n const ok = S.channel && typeof S.channel.send === "function";\n S.channel = null;\n}').length === 0);
+  check('7: ...a fetch taken from a pattern (`const { fetch: go } = window; go(\'/api/x\')`), DENY: a fetch handed on, counted',
+    treeFetches("function f() { const { fetch: go } = window; go('/api/a'); }").length === 1
+    && treeFetches("function f() { retry(fetch, '/api/b'); const o = { f: window.fetch }; if (typeof fetch !== 'function') return; }").filter((x) => x.cannot).length === 2);
   const fx = fetches.filter((x) => !EXCEPT(x) && x.f !== 'src/game/actions.js').length;
   check(`7: sends outside the door (${sends}, in ${byFile.size} files) are at or under the line (${LINE.sends})`, sends <= LINE.sends, sends);
   check(`7: fetches of /api/ outside the door (${fx}) are at or under the line (${LINE.fetches})`, fx <= LINE.fetches, fx);
