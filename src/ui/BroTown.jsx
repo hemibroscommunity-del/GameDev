@@ -11605,7 +11605,7 @@ export var BroTown = function BroTown(_ref0) {
                loop as a press of the disc is (game/tapJump.js
                requestTapAttack); the JUMP button and Space jump (X until v2.3.3844). */
             /* v2.3.4395: manual combat -- a tap attacks nothing: a swipe does */
-            try { if (!mcSwipes(_tjS) && !_sfEnd && !twoButtonsOn()) requestTapAttack(_tjS, endT); }   /* v2.3.6542: in the two buttons the attack is Attack's, never the world's tap */ catch (err) { /* an attack is never worth a broken tap */ }   /* v2.3.4803: a staff's tap is its spark (the lift's, above) */
+            try { if (twoButtonsOn()) { /* v2.3.6542: in the two buttons the attack is Attack's, never the world's tap */ } else if (!mcSwipes(_tjS) && !_sfEnd) requestTapAttack(_tjS, endT); } catch (err) { /* an attack is never worth a broken tap */ }   /* v2.3.4803: a staff's tap is its spark (the lift's, above) */
           }
         }
       }

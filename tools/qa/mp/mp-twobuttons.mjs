@@ -27,7 +27,8 @@
  *       latch active, the monster locked (targeting.js: the latch's lock),
  *       the held attack on with no thumb down, the disc pressed in
  *       (data-latch on);
- *   2c. the fight plays itself to the monster's death (the worker brings it
+ *   2c. walked in on the stick (the lock held), the fight plays itself to
+ *       the monster's death (the worker brings it
  *       near its floor first, /dev/hurt, so a test box's few frames a second
  *       finish it): the latch's end 'killed', or the lock moved to the next;
  *   2d. the SECOND press (the lock moved on to the next) lets go, or the
@@ -200,14 +201,29 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok(`2b. ${label}: one press: the latch active on it, locked, attacking with no thumb down, the disc pressed in (${l1.phase}, ${l1.lock}, ${l1.look})`,
         !!b1 && l1.phase === 'active' && l1.id === target && l1.lock === target && l1.latchLock && l1.auto && l1.look === 'on', l1);
 
-      /* 2c: the fight to its death (brought near its floor by the worker) */
+      /* 2c: walk in with the stick (real touches, 70%, re-aimed each half
+         second; the lock turns the body to it), then the fight to its death
+         (brought near its floor by the worker) */
+      const GAP = (P) => H.readState(P, bind((S, id) => { const m = (S.monsters || []).find((x) => x && String(x.id) === id); return m ? { d: Math.hypot(m.x - S.player.x, m.y - S.player.y), a: Math.atan2(m.y - S.player.y, m.x - S.player.x) } : null; }, target));
+      let g = await GAP(P);
+      if (g && g.d > 90) {
+        await touch('touchStart', [c]);
+        await P.page.waitForTimeout(80);
+        for (let k = 0; k < 50 && g && g.d > 90; k++) {
+          await touch('touchMove', [{ x: c.x + 0.7 * R * Math.cos(g.a), y: c.y + 0.7 * R * Math.sin(g.a), id: 1 }]);
+          await P.page.waitForTimeout(500);
+          g = await GAP(P);
+        }
+        await touch('touchEnd', [{ x: c.x, y: c.y, id: 1 }]);
+      }
+      rec.ok(`2c. ${label}: walked in on the stick, still locked (${g ? Math.round(g.d) : '?'} px)`, !!g && g.d <= 130 && (await LATCH(P)).phase === 'active', g);
       const hp = await H.readState(P, bind((S, id) => { const m = (S.monsters || []).find((x) => x && String(x.id) === id); return m ? (m.curHp != null ? m.curHp : m.hp) : null; }, target));
-      if (typeof hp === 'number' && hp > 2) await H.devOp(wsPort, 'hurt', me, { id: target, dmg: Math.floor(hp) - 1 }).catch(() => null);
+      const hurt = typeof hp === 'number' && hp > 2 ? await H.devOp(wsPort, 'hurt', me, { id: target, dmg: Math.floor(hp) - 1 }).catch((e) => ({ err: String(e) })) : { hp };
       const died = await H.waitFor(P, bind((S, id) => ({ end: S._latchEnd || null, id: S._latchId == null ? null : String(S._latchId),
         dead: !(S.monsters || []).some((x) => x && String(x.id) === id && x.alive && !(x.curHp <= 0)) }), target), (v) => v.dead && (v.end === 'killed' || (v.id && v.id !== target)),
         { timeout: 120000, label: 'the fight' }).catch(() => null);
       const l2 = await LATCH(P);
-      rec.ok(`2c. ${label}: the fight played to its death with no press (the end: ${l2.end || 'moved to ' + l2.id})`, !!died, { died, l2 });
+      rec.ok(`2c. ${label}: the fight played to its death with no press (the end: ${l2.end || 'moved to ' + l2.id})`, !!died, { died, l2, hurt });
 
       /* 2d: the second press lets go (when the lock moved on to the next);
          a kill with none other in sight let go by itself ('killed') */
