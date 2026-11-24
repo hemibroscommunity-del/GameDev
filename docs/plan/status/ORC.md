@@ -2,7 +2,7 @@ card: ORC
 branch: claude/plan-orc
 prs: none open (this notes branch never has a PR)
 state: working
-part 7 (session_01LccHaiJdAe8MAz1LJHMztf, depth 2) hands over 2026-11-24 about 07:35 UTC at 185k, BEFORE sitting 59's merge (about 20 PRs would cross 250k), and started part 8 itself (the owner asleep since 05:01; told). Part 8 writes its id here at its first push, TELLS the gatekeeper and every running session below, and sets its own sweep (part 7's is deleted). Never message parts 1 to 7, nor the duplicate "part 5" session_01LccHamjiNtLpRMK9GZpvoK.
+part 8 (session_01LccHaiSJ2v2ueik4Nr9o6w, depth 3 of 8; top model, high) took over 2026-11-24 07:27 UTC from part 7 (session_01LccHaiJdAe8MAz1LJHMztf, handed over at 185k BEFORE sitting 59's merge; the owner asleep since 05:01, told). Told at 07:27: the gatekeeper of 59, DG 8, LF 3, BK 5, PH 7, CT 5. Its sweep: trig_01Qi7kWhivmfuGwkd9SnBKa7 (08:58 UTC, then every 90 minutes; no other check). Never message parts 1 to 7, nor the duplicate "part 5" session_01LccHamjiNtLpRMK9GZpvoK. A part 9 is started at 250k (the tree allows it), and the owner told.
 
 ## Sitting 58: merged 05:45 UTC 11-24 (main 43541e5f). Its deploys (d2e4adec, 7975e90f) and Server CI on 43541e5f are GREEN (read 07:25). The holds' lines: docs/plan/census/review-z58.md.
 ## Sitting 59: STARTED 07:25 UTC, gatekeeper session_01LccHamhTw938q28o5ReECL (strong, high). It merges nothing; it sends ONE list (order, full heads, the rehearsal's final tree, the holds, the owner's words) to the orchestrator: part 8 TELLS it its id first. Its notes PR is a draft: mark ready and merge LAST when `test` is green. The queue it was given, heads read 07:25, all `test` green and clean unless said:
