@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "0cc85493a283cb2a46bf4683870b3eb69e3b87e3",
+  "tree": "c6550c407a75272cd55539040fea79c98520b5f6",
+  "committedAt": "2026-11-24T06:55:40-08:00",
+  "subject": "Merge pull request #2287 from hemibroscommunity-del/claude/plan-wl-2-leaves",
+  "files": 8509,
+  "bytes": 963929543,
+  "listingSha256": "7ee98e6ad4b6876e32597240c9b5943069b4adf121869507912cd50c18e12b97",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
