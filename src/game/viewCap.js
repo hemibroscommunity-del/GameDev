@@ -53,7 +53,8 @@ export const VIEW_CAP = Object.freeze({
   REF_W: 850,
   REF_H: 1330,
   SHORT_MIN: 680,
-  VIEW_OUT_REF: 0.77,   /* VIEW_OUT_DEFAULT, the zoom these were measured at */
+  VIEW_OUT_DEFAULT: 0.79, /* v2.3.6580: the default view (worldViewport.js VIEW_OUT_DEFAULT is this; renderRes reads it here, it cannot import worldViewport) */
+  VIEW_OUT_REF: 0.77,   /* the zoom these were measured at (v2.3.6580: no longer VIEW_OUT_DEFAULT, 0.79; the reference grows by REF / VIEW_OUT like any ?zoom=k, so the cap's effect is unchanged) */
 });
 
 /** The scale after the cap.  `scale` is the rule's scale before it, cssW/cssH

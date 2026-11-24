@@ -34,6 +34,10 @@ dashboard open: 850 x 1330 game px (1.13M px²) at the default zoom.
   every screen that sees less than the reference (an upright phone, a
   1366 x 768 laptop) is untouched.
 * At `?zoom=k` the reference grows with the view (0.77 / k each way).
+* v2.3.6580: the default view is now 0.79 (the owner's pick). The reference
+  stays the one measured at 0.77 and grows by 0.77 / 0.79 each way, as for any
+  `?zoom=k`, so the cap's effect is unchanged; the view numbers in the table
+  below (measured at 0.77) are about 3% smaller each way at the default.
 
 Why 850 and not 760: the first cut took 760 x 1330 (half way between the
 dashboard up and folded) and zoomed the open 390 x 844 phone in by 5%

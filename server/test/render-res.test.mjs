@@ -88,21 +88,26 @@ function page(dpr, search, w, h, dev) {
 const PHONE = (sw, sh) => ({ sw, sh, fine: false });
 const TABLET = (sw, sh) => ({ sw, sh, fine: false });
 const px = (w, h) => w * h * renderDpr() * renderDpr();
-const BUDGET = (VIEW_CAP.REF_W * 2) * (VIEW_CAP.REF_H * 2);   /* a phone's */
-const SCREEN = 1920 * 1080;                                   /* anything else's */
+const BUDGET_REF = (VIEW_CAP.REF_W * 2) * (VIEW_CAP.REF_H * 2);   /* a phone's, at the reference zoom */
+const SCREEN_REF = 1920 * 1080;                                   /* anything else's, at the reference zoom */
+/* v2.3.6580: the default view is 0.79, closer than the 0.77 the reference was
+   measured at, so the budget (the same pixels a game px) is (0.77 / 0.79)^2 of it */
+const K0 = (VIEW_CAP.VIEW_OUT_REF / VIEW_CAP.VIEW_OUT_DEFAULT) ** 2;
+const BUDGET = BUDGET_REF * K0;   /* a phone's, at the default view */
+const SCREEN = SCREEN_REF * K0;   /* anything else's, at the default view */
 
 /* ── 1. the budget, from the constants ────────────────────────────────── */
 page(1, '');
 check('1a. the art\'s px mirror bible.js (PIXEL.gamePxPerArtPx)', GAME_PX_PER_ART_PX === PIXEL.gamePxPerArtPx, [GAME_PX_PER_ART_PX, PIXEL.gamePxPerArtPx]);
-check('1b. a phone\'s budget is the view cap\'s reference at 2 px a game px: ~4.52 million', pixelBudget(true) === BUDGET && Math.abs(BUDGET - 4.522e6) < 1e3, pixelBudget(true));
+check('1b. a phone\'s budget is the view cap\'s reference at 2 px a game px: ~4.52 million', Math.abs(pixelBudget(true) - BUDGET) < 1 && Math.abs(BUDGET_REF - 4.522e6) < 1e3, pixelBudget(true));
 /* break proof: REF_W 850 -> 900 in viewCap.js turns 1b red */
-check('1c. anything else\'s is a 1920 x 1080 screen\'s: ~2.07 million', pixelBudget(false) === SCREEN && SCREEN_BUDGET_W * SCREEN_BUDGET_H === SCREEN, pixelBudget(false));
-check('1d. ...and a computer\'s page uses it (the class kept with the size)', (noteCanvasCss(100, 100), pixelBudget()) === SCREEN);
+check('1c. anything else\'s is a 1920 x 1080 screen\'s: ~2.07 million', Math.abs(pixelBudget(false) - SCREEN) < 1 && SCREEN_BUDGET_W * SCREEN_BUDGET_H === SCREEN_REF, pixelBudget(false));
+check('1d. ...and a computer\'s page uses it (the class kept with the size)', Math.abs((noteCanvasCss(100, 100), pixelBudget()) - SCREEN) < 1);
 page(1, '?zoom=0.5');
 check('1e. ?zoom=0.5 grows both as the view cap\'s reference (0.77 / 0.5 each way)',
-  Math.abs(pixelBudget(true) - BUDGET * (0.77 / 0.5) ** 2) < 1 && Math.abs(pixelBudget(false) - SCREEN * (0.77 / 0.5) ** 2) < 1, [pixelBudget(true), pixelBudget(false)]);
+  Math.abs(pixelBudget(true) - BUDGET_REF * (0.77 / 0.5) ** 2) < 1 && Math.abs(pixelBudget(false) - SCREEN_REF * (0.77 / 0.5) ** 2) < 1, [pixelBudget(true), pixelBudget(false)]);
 page(1, '?zoom=9');
-check('1f. ?zoom= is clamped as worldViewport clamps it (1.5)', Math.abs(pixelBudget(true) - BUDGET * (0.77 / 1.5) ** 2) < 1, pixelBudget(true));
+check('1f. ?zoom= is clamped as worldViewport clamps it (1.5)', Math.abs(pixelBudget(true) - BUDGET_REF * (0.77 / 1.5) ** 2) < 1, pixelBudget(true));
 
 /* ── 2. the screens ──────────────────────────────────────────────────── */
 {
@@ -132,9 +137,9 @@ check('1f. ?zoom= is clamped as worldViewport clamps it (1.5)', Math.abs(pixelBu
   /* break proof: SCREEN_BUDGET_W 1920 -> 2560 turns 2b red */
   check('2c. the canvas\'s size is read, not the window\'s (1830 x 920 at 1 is under 2.07 million)', (page(1, '', 1830, 920), renderDpr() === 1));
   page(2, '', 390, 300, { sw: 1920, sh: 1080, fine: false });
-  check('2d. a small window on a big touch screen is not a phone (the screen, not the window)', pixelBudget() === SCREEN);
+  check('2d. a small window on a big touch screen is not a phone (the screen, not the window)', Math.abs(pixelBudget() - SCREEN) < 1);
   page(3, '', 390, 844, { sw: 390, sh: 844, fine: true });
-  check('2e. a phone-sized screen with a mouse is not a phone', pixelBudget() === SCREEN);
+  check('2e. a phone-sized screen with a mouse is not a phone', Math.abs(pixelBudget() - SCREEN) < 1);
 }
 
 /* ── 3. the lowest of four; the switch; not told yet ──────────────────── */
