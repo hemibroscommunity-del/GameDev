@@ -540,7 +540,92 @@ function analyse(babel, rel, ast, exportsOf, has) {
       else if (d.isExpression() && isHand(d)) exp.default = 'hand';
     },
   });
-  return { reach, exp };
+  /* v2.3.6526 (sitting 59's hold: `debugBus.getState()` from a new file,
+     an object holding the getter, stayed green): the exports that BEAR the
+     hand -- one with a kind above, or whose declaration holds a reach (an
+     object or class with a method that reaches, a function that does) --
+     so an importer of one is held to a list (openHandCensus's edges) in
+     whatever form it imports, not only the forms the kinds follow */
+  const bearing = new Set(Object.keys(exp));
+  /* a declaration that HANDS the hand out, read with the scopes: it is of a kind above, or its
+     value (outside any function body) names a binding of a kind (`{ getState }`, `[S]`, `{ S:
+     window._gameState }`) or reaches, or a function in it (a method, a getter) hands one back
+     (returnsHand) -- not a function that only uses the hand inside (calling it hands nothing) */
+  const declPaths = new Map();   /* node -> path, for the program's top-level declarations */
+  babel.traverse(ast, {
+    'VariableDeclarator|FunctionDeclaration|ClassDeclaration|ExportDefaultDeclaration'(p) {
+      if (p.scope.path.isProgram() || p.parentPath.isProgram() || (p.parentPath && p.parentPath.parentPath && p.parentPath.parentPath.isProgram())) declPaths.set(p.node, p);
+    },
+  });
+  const holds = (node) => {
+    const p = node && declPaths.get(node);
+    if (!p) return false;
+    if (p.isFunctionDeclaration()) return returnsHand(p);
+    let hit = false;
+    const look = (q) => q.traverse({
+      Function(f) { if (returnsHand(f)) hit = true; f.skip(); },
+      Identifier(r) {
+        if (!r.isReferencedIdentifier()) return;
+        const b = r.scope.getBinding(r.node.name);
+        if ((b && kind.has(b)) || reach.has(r.node.loc.start.line)) hit = true;
+      },
+      MemberExpression(r) { if (reach.has(r.node.loc.start.line) && !r.getFunctionParent()) hit = true; },
+    });
+    if (p.isExportDefaultDeclaration()) {
+      const d = p.get('declaration');
+      if (d.isFunction()) return returnsHand(d);
+      if (d.isIdentifier()) { const b = p.scope.getBinding(d.node.name); return !!(b && kind.has(b)); }
+      look(p);
+      return hit;
+    }
+    if (p.isVariableDeclarator()) {
+      const init = p.get('init');
+      if (!init.node) return false;
+      if (init.isFunction()) return returnsHand(init);
+      const b0 = p.get('id').isIdentifier() ? p.scope.getBinding(p.node.id.name) : null;
+      if (b0 && kind.has(b0)) return true;
+      if (init.isIdentifier()) { const b = p.scope.getBinding(init.node.name); if (b && kind.has(b)) return true; }
+      look(p);
+      return hit;
+    }
+    look(p);   /* a class: its members */
+    return hit;
+  };
+  for (const st of ast.program.body) {
+    if (st.type === 'ExportNamedDeclaration' && st.declaration) {
+      const d = st.declaration;
+      const ids = (x, o = []) => {
+        if (!x) return o;
+        if (x.type === 'Identifier') o.push(x.name);
+        else if (x.type === 'ObjectPattern') x.properties.forEach((q) => ids(q.type === 'RestElement' ? q.argument : q.value, o));
+        else if (x.type === 'ArrayPattern') x.elements.forEach((e) => ids(e, o));
+        else if (x.type === 'AssignmentPattern') ids(x.left, o);
+        else if (x.type === 'RestElement') ids(x.argument, o);
+        return o;
+      };
+      if (d.type === 'VariableDeclaration') { for (const v of d.declarations) if (holds(v)) for (const nm of ids(v.id)) bearing.add(nm); }
+      else if (d.id && holds(d)) bearing.add(d.id.name);
+    } else if (st.type === 'ExportNamedDeclaration' && !st.source) {
+      for (const sp of st.specifiers) {
+        if (sp.type !== 'ExportSpecifier') continue;
+        const local = sp.local.name || sp.local.value;
+        const decl = ast.program.body.find((x) => (x.type === 'FunctionDeclaration' || x.type === 'ClassDeclaration') && x.id && x.id.name === local)
+          || ast.program.body.find((x) => x.type === 'VariableDeclaration' && x.declarations.some((v) => v.id.type === 'Identifier' && v.id.name === local));
+        const dn = decl && decl.type === 'VariableDeclaration' ? decl.declarations.find((v) => v.id.type === 'Identifier' && v.id.name === local) : decl;
+        if (holds(dn)) bearing.add(sp.exported.name || sp.exported.value);
+      }
+    } else if (st.type === 'ExportDefaultDeclaration') {
+      const d = st.declaration;
+      if (holds(st) || (d.type !== 'Identifier' && holds(d))) bearing.add('default');
+      if (d.type === 'Identifier') {
+        const decl = ast.program.body.find((x) => (x.type === 'FunctionDeclaration' || x.type === 'ClassDeclaration') && x.id && x.id.name === d.name)
+          || ast.program.body.find((x) => x.type === 'VariableDeclaration' && x.declarations.some((v) => v.id.type === 'Identifier' && v.id.name === d.name));
+        const dn = decl && decl.type === 'VariableDeclaration' ? decl.declarations.find((v) => v.id.type === 'Identifier' && v.id.name === d.name) : decl;
+        if (holds(dn)) bearing.add('default');
+      }
+    }
+  }
+  return { reach, exp, bearing };
 }
 
 /* the census: Map rel -> Map(line -> how) of every file with a reach.
@@ -555,10 +640,12 @@ export function openHandCensus(babel, sources) {
   const todo = new Set();
   for (const rel of sources.keys()) if (couldReach(parse(rel))) todo.add(rel);
   const exportsOf = new Map();
+  const bearingOf = new Map();
   const out = new Map();
   const look = (rel) => {
     const ast = babel.parser.parse(sources.get(rel), { sourceType: 'module', plugins: ['jsx'], errorRecovery: true });
-    const { reach, exp } = analyse(babel, rel, ast, exportsOf, has);
+    const { reach, exp, bearing } = analyse(babel, rel, ast, exportsOf, has);
+    bearingOf.set(rel, bearing);
     if (reach.size) out.set(rel, reach); else out.delete(rel);
     const was = JSON.stringify(exportsOf.get(rel) || {});
     exportsOf.set(rel, exp);
@@ -581,24 +668,95 @@ export function openHandCensus(babel, sources) {
         const spec = a && (a.type === 'StringLiteral' ? a.value : (a.type === 'TemplateLiteral' && !a.expressions.length ? a.quasis[0].value.cooked : null));
         const src = spec && resolveImport(rel, spec, has);
         if (src) out2.push(src);
+        else if (spec == null) out2.push('?');   /* v2.3.6526: a path it cannot read: read again every round */
       });
     }
     importCache.set(rel, out2);
     return out2;
   };
-  /* to a fixpoint across files: an import of an exported hand makes its
-     importer a file to look at carefully (and its own exports may grow) */
-  let changed = new Set();
-  for (const rel of todo) if (look(rel)) changed.add(rel);
-  for (let round = 0; changed.size && round < 8; round++) {
-    const next = new Set();
-    for (const rel of sources.keys()) {
-      if (!importsOf(rel).some((s) => changed.has(s))) continue;
-      todo.add(rel);
-      if (look(rel)) next.add(rel);
-    }
-    changed = next;
+  /* v2.3.6526 (sitting 59's hold, a real ORDER bug): the walk to a fixed
+     point re-read only a file whose WRITTEN import named a file that had
+     changed, so `src/game/aaHand.js` with `import(DIR + 'common.js')`
+     (sorted before common.js) was read once, before common.js's getter was
+     known, and never again: `src/a/` green, `src/z/` red.  Now the graph is
+     walked to a fixed point WHATEVER THE FILES' ORDER: every file that may
+     reach (couldReach), imports a file with a hand export, or imports a
+     path it cannot read is read again, round after round, until no file's
+     exports change; then every such file is read once more against the
+     final exports, so its reaches never depend on when it was first read.
+     A walk that does not settle FAILS (it throws), never passes.
+     open-hand.test check 5 shuffles the order and asks for the same count. */
+  const withExports = () => new Set([...exportsOf].filter(([, e]) => Object.keys(e).length).map(([r]) => r));
+  const candidate = (rel, held) => todo.has(rel) || importsOf(rel).some((x) => x === '?' || held.has(x));
+  for (let round = 0, changed = true; changed; round++) {
+    if (round > 64) throw new Error('openHand: the import graph did not settle in 64 rounds');
+    changed = false;
+    const held = withExports();
+    for (const rel of sources.keys()) if (candidate(rel, held) && look(rel)) changed = true;
   }
+  const held = withExports();
+  for (const rel of sources.keys()) if (candidate(rel, held)) look(rel);
+  /* v2.3.6526 (sitting 59): the getter's importers, an ALLOW list.  A file
+     whose exports bear the hand (bearingOf) may be imported by another in
+     ONE form only without a row: a static named import (or a named
+     re-export) of names that bear nothing.  Every other edge into it -- a
+     bearing name imported, the default when it bears, a namespace (`import
+     * as`, `export * from`, `export * as`), any dynamic `import()` of it --
+     and every dynamic import whose path cannot be read, anywhere, is an
+     EDGE, held by open-hand.test to its list (by file; it only falls): a
+     new importer of the hand in any form is red, a new file included. */
+  const edges = new Map();
+  const edge = (rel, to, line, how) => { if (!edges.has(rel)) edges.set(rel, []); edges.get(rel).push({ to, line, how }); };
+  const bears = (t) => !!t && bearingOf.has(t) && bearingOf.get(t).size > 0;
+  /* a re-export bears what it re-exports (to a fixed point: a file of re-exports hands on) */
+  for (let again = true, n = 0; again && n < 64; n++) {
+    again = false;
+    for (const rel of sources.keys()) {
+      for (const st of parse(rel).program.body) {
+        if (!st.source || (st.type !== 'ExportNamedDeclaration' && st.type !== 'ExportAllDeclaration')) continue;
+        const t = resolveImport(rel, st.source.value, has);
+        if (!bears(t)) continue;
+        if (!bearingOf.has(rel)) bearingOf.set(rel, new Set());
+        const mine = bearingOf.get(rel), theirs = bearingOf.get(t);
+        const give = (nm) => { if (!mine.has(nm)) { mine.add(nm); again = true; } };
+        if (st.type === 'ExportAllDeclaration') { if (st.exported) give(st.exported.name || st.exported.value); else for (const nm of theirs) if (nm !== 'default') give(nm); }
+        else for (const sp of st.specifiers) if (sp.type !== 'ExportSpecifier' || theirs.has(sp.local.name || sp.local.value)) give(sp.exported.name || sp.exported.value);
+      }
+    }
+  }
+  for (const rel of sources.keys()) {
+    const ast = parse(rel);
+    for (const st of ast.program.body) {
+      const isImp = st.type === 'ImportDeclaration';
+      const isRe = (st.type === 'ExportNamedDeclaration' || st.type === 'ExportAllDeclaration') && st.source;
+      if (!isImp && !isRe) continue;
+      const t = resolveImport(rel, st.source.value, has);
+      if (!bears(t)) continue;
+      const theirs = bearingOf.get(t);
+      const line = st.loc.start.line;
+      if (st.type === 'ExportAllDeclaration') { edge(rel, t, line, 'export * from'); continue; }
+      for (const sp of st.specifiers || []) {
+        if (sp.type === 'ImportNamespaceSpecifier' || sp.type === 'ExportNamespaceSpecifier') edge(rel, t, line, 'a namespace');
+        else if (sp.type === 'ImportDefaultSpecifier' || sp.type === 'ExportDefaultSpecifier') { if (theirs.has('default')) edge(rel, t, line, 'the default'); }
+        else {
+          const nm = isImp ? (sp.imported.name || sp.imported.value) : (sp.local.name || sp.local.value);
+          if (theirs.has(nm)) edge(rel, t, line, nm);
+        }
+      }
+    }
+    if (sources.get(rel).includes('import(')) {
+      walk(ast.program, (n) => {
+        if (n.type !== 'CallExpression' || n.callee.type !== 'Import') return;
+        const a = n.arguments[0];
+        const spec = a && (a.type === 'StringLiteral' ? a.value : (a.type === 'TemplateLiteral' && !a.expressions.length ? a.quasis[0].value.cooked : null));
+        if (spec == null) { edge(rel, '?', n.loc.start.line, 'import() of a path it cannot read'); return; }
+        const t = resolveImport(rel, spec, has);
+        if (bears(t)) edge(rel, t, n.loc.start.line, 'import()');
+      });
+    }
+  }
+  out.edges = edges;
+  out.bearing = bearingOf;
   return out;
 }
 
@@ -611,7 +769,7 @@ export function realSources(root) {
 /* the frozen list's file, written by open-hand.test.mjs --write (it lowers;
    it never adds a row or raises one) */
 export const KNOWN_PATH = 'tools/guards/lib/openHandKnown.mjs';
-export function renderKnown(rows, line, filesLine) {
+export function renderKnown(rows, line, filesLine, importers = {}) {
   const keys = Object.keys(rows).sort();
   return `/* v2.3.6523: the open hand's census (card WL PR 4): each file under src/
  * that reaches window._gameState or window._gameFns, and how many code lines
@@ -626,6 +784,13 @@ export const LINE = ${line};          /* code lines that reach the hand, every f
 export const FILES_LINE = ${filesLine};     /* files that do */
 export const KNOWN = {
 ${keys.map((k) => `  '${k}': ${rows[k]},`).join('\n')}
+};
+/* v2.3.6526 (sitting 59): the getter's importers, by file: the edges into a
+ * file whose exports bear the hand in any form but a named import of names
+ * that bear nothing, and every import() of a path the guard cannot read
+ * (lib/openHand.mjs, openHandCensus's edges).  It only falls, as KNOWN. */
+export const IMPORTERS = {
+${Object.keys(importers).sort().map((k) => `  '${k}': ${importers[k]},`).join('\n')}
 };
 `;
 }
