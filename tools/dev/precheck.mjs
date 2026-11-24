@@ -911,8 +911,13 @@ if (changedServer.length || changedClient.length || changedGuards.length) {
      session's 4-vCPU box: the rest 145 s and 150 s (581 suites; picture-door
      and ladder-passes mended, the asset guards by git's ids), so 10 minutes
      is 4x room; switches-thrown's whole set 652 s (a branch that changes its
-     machinery throws them all), so 40 minutes stays, 3.7x. */
-  const REST_CAP_S = 10 * 60;     /* the rest alone: 150 s here (581 suites), 4x room; it was 20 min at 191 s */
+     machinery throws them all), so 40 minutes stays, 3.7x.
+     v2.3.6425 (card CK): the rest's cap back to 20 minutes.  10 timed out
+     at the gatekeeper's sitting 57 on a box shared with its lanes, no suite
+     red: 150 s was a quiet box's time, and a shared box took 600-1100 s
+     (card RR's note).  A cap that reads a slow box as a FAIL costs a whole
+     run again; 20 still ends a hang. */
+  const REST_CAP_S = 20 * 60;     /* the rest alone: 150 s on a quiet box (581 suites), 600-1100 s on a shared one */
   const THRONE = 'guards/switches-thrown.test.mjs';
   const THROWN_CAP_S = 40 * 60;   /* the whole set alone: 652 s (2026-11-24), 756 s and 770 s here (89 rows, 2418 suite runs), ~3x room; 1006-1139 s when it shared the box */
   const suiteNames = [
