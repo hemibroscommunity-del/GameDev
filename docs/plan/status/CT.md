@@ -1,30 +1,28 @@
 card: CT
-branch: claude/plan-ct-3-right
-prs: #2282 (6540, merged), #2293 (6541, ready), PR 3 (6542, draft)
+branch: claude/plan-ct-2-stick (PR 2) and claude/plan-ct-3-right (PR 3)
+prs: #2282 (6540, merged), #2293 (6541, ready: sitting 58's hold mended), #2308 (6542, draft)
 state: working
 
 ## Done
 - PR 1 (6540, #2282): merged at sitting 57.
-- PR 2 (6541, #2293, head 58521077, green): the left stick, step `input`;
-  sitting 57's eight plants red (stick-zones 8, 7b). Card item 6 added.
+- PR 2 (6541, #2293): the left stick, step `input`. Sitting 57's eight
+  plants red (stick-zones 8, 7b). Sitting 58's hold mended (part 5): the
+  idle clock is stickFrame's own (Date.now(), the idle judge's; no clock
+  handed in), three minutes of walking played on that clock; the walk's
+  binding followed off the syntax tree (`_in` read only as `_in.dx/_in.dy`,
+  each the whole start of dx/dy; gameLoop reads no stick and hides S from
+  nothing; every reader of the stick in src/ on a closed list). 16 plants
+  red, tried by hand. The card's +44 (item 6, tag 6545) named in the PR's
+  words as the orchestrator's addition.
 - PR 3 (6542, #2308 draft, stacked): the latch wired, the lock, S.stickX/Y
   one owner (stickAnalog, stickLift; stick-zones 9).
 
-## Next (part 4 handed over at 237,000 tokens)
-- HEAD: `claude/plan-ct-3-helper` (f3ba66dd + this) = PR 3's branch with 3
-  unpushed commits: #2293's 7b merged in (stick-zones 92), and 2c mended
-  (the walk-in judged by the body's walk toward it; the fight's keeper in
-  the page, every 100 ms to within 30 px). A265bc0c (old chase) ran 32/34,
-  2c's fight red both ways (gap 282-382: a monster walking off). Helper
-  session_01LccHaiStWCjx3f1YfwafkF runs f3ba66dd once (~40 min here).
-  Green: merge main, precheck, push PR 3's branch, mark #2308 ready.
-- #2293 HELD at sitting 58 (review-z58.md, PR 2315's head): BroTown 5365
-  `dy = _in.dy || S.stickY` and 5364 `_perfNow` for Date.now() stay
-  green. Mend through its module, by what it does, not text over BroTown;
-  name item 6 (the +44 card edit, tag 6545) in the PR's words as the
-  orchestrator's addition; trial numbers under "Decided for the owner
-  while away". Then merge it up into PR 3.
+## Next
+- PR 3: mp-twobuttons 2c mended (claude/plan-ct-3-helper, f3ba66dd): one
+  helper run (session_01LccHaiTxWSWL6uNTsEJoZL). Green: PR 2 merged up,
+  main merged, precheck, push, #2308 ready. Red: mend 2c, run again.
 - Then PR 4 (6543), PR 5 (6544), item 6 (6545).
+
 ## Found
 - `manual-combat.test` 1h pinned `?manual=5` as no switch: now `6`.
 - On this box a CDP flick cannot be a swipe: each touch waits behind a
