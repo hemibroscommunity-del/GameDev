@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "c2da80bfa81a4ce778ed77aa129418385d486c10",
+  "tree": "5dfb50f74c290fa38b7450a4b2bccc3f6ee237e0",
+  "committedAt": "2026-11-24T06:57:50-08:00",
+  "subject": "Merge pull request #2300 from hemibroscommunity-del/claude/dg-books",
+  "files": 8523,
+  "bytes": 964169864,
+  "listingSha256": "a3b0cbeb6dbd5edac533d3ae33560dd954c1ebf3177a9fbb14045f15c50db8ee",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
