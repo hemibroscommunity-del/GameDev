@@ -1,37 +1,36 @@
 card: HB2
-branch: claude/plan-hb2-11-maplabels
-prs: #2224-#2266 (6280-6288): merged; #2271 6289: ready; 6290 (map labels): opening
-state: working
+branch: claude/plan-hb2-12-narrowkeys
+prs: #2224-#2272 (6280-6290): merged; 6291 (narrow keys): ready (this branch's PR); #2276 6292 (ground rule): ready
+state: ready
 
 ## Done
 
-- #2224 (6280), #2244 (6281): the coach's and the band's measures off the tap.
-- #2247 (6282), #2249 (6283): a tap's remembered corner; the gear tab beside.
-- #2254 (6284): p256's twins read and packed on the reader's worker.
-- #2257 (6285): the Quests dot without building the offers (row 35).
-- #2259 (6286): the big arrow's tick at the frame's top (row 18: 70.5 x14 -> 0).
-- #2261 (6287): `other: R > J` off held-budget's debt list by its own
-  rule (7.0-10.6 ms on main, under 12): no row `ours`, step 3.1 closed.
-- #2266 (6288): the big arrow's CLOSE step waits for a weapon on (its rule).
-- #2271 (6289): the gear tab's own reads only when needed (bag edges at
-  the frame's top; the names' and words' fit when they or their box change).
-- 6290: the World map's off-screen labels not measured (first draw on
-  opening 102-120 -> 57-64 ms; the same texts at fifteen zooms).
+- Merged #2224-#2272 (6280-6290): the coach's and band's measures, a tap's
+  corner, p256 on the worker, the Quests dot, the big arrow's tick and
+  CLOSE, `other: R > J` off the debt list, the gear tab's reads, the World
+  map's labels (first draw 102-120 -> 57-64 ms).
+- 6291: the band's key list only on the computer's band (`?narrow` and a
+  small window keep the column's strip). deskkeys step 1's two lines now
+  assert the narrow column; the list's checks moved to 8h (planning
+  session's yes, 2026-11-23).
+- 6292 (#2276): ground swatches hold only what a foot steps over, seen as
+  the buildings are (tools only; the owner's rule of 2026-11-20).
 
 ## Next
 
-- RR's `?narrow` BandKeys item (6291; the wide computer page identical):
-  the band's list and `bandKeysActive` ask for the computer's band.
-  Skipped by the planning session: deskTeach's route, rememberChar.
+- Nothing of HB2's is left but the gatekeeper's merges. Card LF finished
+  the two branches (2026-11-23).
+- 6291, run by card LF on this box on this merged head: oneband all pass;
+  deskkeys 60 asserts, 59 pass, 1 skip, 1 fail = 8f (sword lunge), red on
+  main too, waits for the owner's verdict on the controls trial (CT).
 
 ## Found
 
 - Red with ?afterpaint=0 / on main too: mp-geartab 844x390 (the rail
   over the tab), mp-brocard 4 parts, mp-hairstencil 3 parts;
   mp-waterfrog hangs after part 5.
-- The World map's first draw on opening is still 57-64 ms (line 45 at a
-  window): the on-screen names' first measure.  Spreading it over frames
-  would show the names a frame or two late: the planning session's call.
+- The World map's first draw: 57-64 ms, left as is (planning session).
+- heldsweep `windows`: `other: jg > Ek` (firstView) 64-72 ms, unlisted.
 - mp-membudget's heap reads 38.8-39.2 MB on main on this box (line 38.5);
   CI's runner passes it.
 

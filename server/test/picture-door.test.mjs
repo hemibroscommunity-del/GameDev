@@ -96,8 +96,19 @@ const relOf = (f) => relative(ROOT, f).split('\\').join('/');
 
 /* comments, and the insides of strings, template literals and regex literals,
    blanked (the same length, newlines kept): a load named in a comment or a
-   string is not a load, and a bracket inside one never upsets the counting */
+   string is not a load, and a bracket inside one never upsets the counting.
+   v2.3.6422: kept by the text itself (card CK PR 3).  The sections blank the
+   same files again and again (each caller count walks every text): 6.5 s of
+   the suite's 7.2 s was this scan run again on texts it had already blanked.
+   The key is the whole text, so a text a section plants a fault in is a new
+   key and blanked afresh: nothing is read from a stale copy. */
+const BLANKED = new Map();
 function blank(t) {
+  let b = BLANKED.get(t);
+  if (b === undefined) { b = blankScan(t); BLANKED.set(t, b); }
+  return b;
+}
+function blankScan(t) {
   let out = '', i = 0, prev = '';
   const n = t.length;
   while (i < n) {
