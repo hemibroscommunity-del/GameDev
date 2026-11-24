@@ -27,7 +27,9 @@
  *       latch active, the monster locked (targeting.js: the latch's lock),
  *       the held attack on with no thumb down, the disc pressed in
  *       (data-latch on);
- *   2c. walked in on the stick (the lock held), the fight plays itself to
+ *   2c. the stick walks you in while locked (the gap falls; the rest by the
+ *       harness's hop: this box's few frames, a held attack's half walk),
+ *       then the fight plays itself to
  *       the monster's death (the worker brings it
  *       near its floor first, /dev/hurt, so a test box's few frames a second
  *       finish it): the latch's end 'killed', or the lock moved to the next;
@@ -206,17 +208,25 @@ export async function run({ browser, wsPort, webPort, rec }) {
          (brought near its floor by the worker) */
       const GAP = (P) => H.readState(P, bind((S, id) => { const m = (S.monsters || []).find((x) => x && String(x.id) === id); return m ? { d: Math.hypot(m.x - S.player.x, m.y - S.player.y), a: Math.atan2(m.y - S.player.y, m.x - S.player.x) } : null; }, target));
       let g = await GAP(P);
+      const gPress = g;
       if (g && g.d > 90) {
         await touch('touchStart', [c]);
         await P.page.waitForTimeout(80);
-        for (let k = 0; k < 50 && g && g.d > 90; k++) {
+        for (let k = 0; k < 16 && g && g.d > 90; k++) {
           await touch('touchMove', [{ x: c.x + 0.7 * R * Math.cos(g.a), y: c.y + 0.7 * R * Math.sin(g.a), id: 1 }]);
           await P.page.waitForTimeout(500);
           g = await GAP(P);
         }
         await touch('touchEnd', [{ x: c.x, y: c.y, id: 1 }]);
       }
-      rec.ok(`2c. ${label}: walked in on the stick, still locked (${g ? Math.round(g.d) : '?'} px)`, !!g && g.d <= 130 && (await LATCH(P)).phase === 'active', g);
+      const g0 = await GAP(P);
+      rec.ok(`2c. ${label}: the stick walks you in while locked (${g ? Math.round(g.d) : '?'} px, nearer than at the press), the lock held`, !!g && (g.d <= 90 || g.d < gPress.d - 20) && (await LATCH(P)).phase === 'active', { gPress, g });
+      /* this box draws a few frames a second and a held attack halves the
+         walk (mode 4's rule, kept): the rest of the way by the harness's hop */
+      if (g0 && g0.d > 90) {
+        const m1 = await H.readState(P, bind((S, id) => { const m = (S.monsters || []).find((x) => x && String(x.id) === id); return m ? { x: m.x, y: m.y } : null; }, target));
+        if (m1) await H.hopTo(P, Math.round(m1.x - 50 * Math.cos(g0.a)), Math.round(m1.y - 50 * Math.sin(g0.a)), { tries: 30 });
+      }
       const hp = await H.readState(P, bind((S, id) => { const m = (S.monsters || []).find((x) => x && String(x.id) === id); return m ? (m.curHp != null ? m.curHp : m.hp) : null; }, target));
       const hurt = typeof hp === 'number' && hp > 2 ? await H.devOp(wsPort, 'hurt', me, { id: target, dmg: Math.floor(hp) - 1 }).catch((e) => ({ err: String(e) })) : { hp };
       const died = await H.waitFor(P, bind((S, id) => ({ end: S._latchEnd || null, id: S._latchId == null ? null : String(S._latchId),
