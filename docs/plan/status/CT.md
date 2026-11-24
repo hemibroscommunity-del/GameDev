@@ -1,12 +1,11 @@
 card: CT
 branch: claude/plan-ct-2-stick
-prs: #2282 (6540, ready), PR 2 (6541, ready)
+prs: #2282 (6540, merged), #2293 (6541, ready: mended for sitting 58)
 state: ready
 
 ## Done
-- PR 1 (6540, #2282): the three rules (stickZones, sight, latch), their
-  suites, the phase rows, the ledger rows, mode 5 in manualMode, the
-  switch rows.
+- PR 1 (6540, #2282, merged at sitting 57): the three rules, their suites,
+  the phase and ledger rows, mode 5, the switch rows.
 - PR 2 (6541): the left stick in mode 5 (stickDrive: turn, walk, the
   knob to the drawn radius; the ring on the disc); the frame's step
   `input` (stickFrame: the loop's stick and keys read moved whole out of
@@ -16,6 +15,9 @@ state: ready
   (plant S11 red), the exact edges (B3, B5, L2), the phase rows held to
   the modules' lists (G2); facing8 gives west as +PI only; latchCheck lets
   go on a distance that is not a number. Each plant proved red.
+- PR 2's mend (sitting 57): stick-zones §8 holds stickFrame by what it does
+  (Y's idle clock, the freeze on both ways, each key) and BroTown's call off
+  the syntax tree (a corpse never walks): the five plants red.
 
 ## Next
 - PR 3 (6542): the right side in mode 5 (Attack as the latch, Jump, the

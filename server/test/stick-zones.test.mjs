@@ -29,10 +29,17 @@
  * Break proof, tried by hand: `S._stickPhase = 'walk';` added to
  * stickZones.js stickRead -> FAIL 5 (and the guard's §2); TURN: 0.30 -> 0.10
  * -> FAIL 1.
+ * v2.3.6541, the gatekeeper's sitting 57 (each was green; each now red, tried
+ * by hand): stickFrame stamping `_lastInputAt` on S.stickX only -> FAIL 8 (a
+ * thumb walking straight up); `dy = S.stickY` unfrozen -> FAIL 8 twice;
+ * `_playerDead` dropped from BroTown's call -> FAIL 8 (the call read off the
+ * syntax tree); K['a'] walking right -> FAIL 8; the loot facing taken out ->
+ * FAIL 8.
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { STICK_ZONES, STICK_PHASES, stickRead, stickTravel, facing8, stickSwipe, stickTap, stickRelease, turnShare, stickPhase, stickTo, stickDrive, stickFrame } from '../../src/game/stickZones.js';
-import { findIn } from '../../tools/guards/lib/filesOf.mjs';
+import { findIn, readSystem } from '../../tools/guards/lib/filesOf.mjs';
+import { babel } from '../../tools/guards/lib/renderTables.mjs';   /* v2.3.6541 (sitting 57's mend): the call read off the syntax tree */
 import { manualMode, manualOn, tapLockOn, twoButtonsOn, setManualCombat, MANUAL } from '../../src/game/manualCombat.js';
 
 let failures = 0, passes = 0;
@@ -220,6 +227,40 @@ function writesOutside(prop, doorFile, doorFn) {
   stickFrame(S, {}, false, false, 2000);
   check('8. a thumb held TURNING in mode 5 is a player (the idle clock)', S._lastInputAt === 2000);
   check('8. one object a page (a frame makes no garbage)', stickFrame(mk(0, 0), {}, false, false, 0) === stickFrame(mk(0, 0), {}, false, false, 0));
+  /* v2.3.6541, the gatekeeper's sitting 57 (each of its plants went green
+     here): the stick's Y the same as its X, the freeze on both, the keys
+     each their way, and BroTown's call read off the syntax tree */
+  S = mk(0, -0.8);
+  o = stickFrame(S, {}, false, false, 3000);
+  check('8. a thumb walking straight up: the walk, the idle clock stamped (the 3034 incident: never idled out), the tag faces up', o.dx === 0 && o.dy === -0.8 && S._lastInputAt === 3000 && S.player.dir === 'up');
+  S = mk(0.3, 0.7);
+  o = stickFrame(S, {}, true, false, 1000);
+  check('8. a real stun (or death) freezes BOTH ways of the stick (a stunned body never walks on Y)', o.dx === 0 && o.dy === 0);
+  S = mk(0, 0.9); S.player.dir = 'up';
+  o = stickFrame(S, {}, true, true, 1000);
+  check('8. the loot freeze holds the Y walk too, and the tag faces the camera', o.dx === 0 && o.dy === 0 && S.player.dir === 'down');
+  const keyWay = (k) => { const T = mk(0, 0); const r = stickFrame(T, { [k]: true }, false, false, 1); return [r.dx, r.dy, T.player.dir]; };
+  check('8. each key its own way: a/A/ArrowLeft west, d/D/ArrowRight east, w/W/ArrowUp north, s/S/ArrowDown south',
+    ['a', 'A', 'ArrowLeft'].every((k) => JSON.stringify(keyWay(k)) === '[-1,0,"left"]') && ['d', 'D', 'ArrowRight'].every((k) => JSON.stringify(keyWay(k)) === '[1,0,"right"]')
+    && ['w', 'W', 'ArrowUp'].every((k) => JSON.stringify(keyWay(k)) === '[0,-1,"up"]') && ['s', 'S', 'ArrowDown'].every((k) => JSON.stringify(keyWay(k)) === '[0,1,"down"]'));
+  {
+    /* the call: its freeze is a real stun OR death OR the loot freeze, its
+       loot argument the loot freeze (a corpse that walks is a dropped name) */
+    const { parse, traverse } = babel();
+    const calls = [];
+    for (const [file, src] of readSystem('ui', { only: /\.jsx?$/ })) {
+      if (!src.includes('stickFrame(')) continue;
+      const ast = parse(src, { sourceType: 'module', plugins: ['jsx'], errorRecovery: true });
+      traverse(ast, { CallExpression(path) {
+        const n = path.node;
+        if (n.callee.type !== 'Identifier' || n.callee.name !== 'stickFrame') return;
+        const names = (e) => { const out = []; (function walk(x) { if (!x) return; if (x.type === 'Identifier') out.push(x.name); else if (x.type === 'LogicalExpression' && x.operator === '||') { walk(x.left); walk(x.right); } else out.push('?' + x.type); })(e); return out.sort(); };
+        calls.push({ file, frozen: names(n.arguments[2]), loot: names(n.arguments[3]), args: n.arguments.length });
+      } });
+    }
+    check('8. BroTown calls stickFrame once, frozen by a real stun OR death OR the loot freeze (read off the syntax tree)', calls.length === 1
+      && JSON.stringify(calls[0].frozen) === JSON.stringify(['_playerDead', '_playerLootFrozen', '_realStunned']) && JSON.stringify(calls[0].loot) === '["_playerLootFrozen"]' && calls[0].args === 5, calls);
+  }
   check('8. gameLoop reads the input through the step `input` (no second read of S.stickX there)',
     findIn('ui', /_steps\.to\(0, 2\); var _in = stickFrame\(/).length === 1 && findIn('ui', /\? 0 : S\.stickX/).length === 0);
 }
