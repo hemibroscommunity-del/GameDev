@@ -10,11 +10,19 @@ files, which cards, which tags or which order.
 owner opens a fresh session and says what they want, with nothing to
 paste. A fresh session is best: a long one costs more on every turn.
 
+**Read `docs/plan/finish.md` first** (v2.3.6400, the direction of
+2026-11-23): what is being finished, which cards run, which model each
+kind of session runs on, the five rules a card keeps, the spending rules,
+and the orchestrator's loop. An orchestrator that is not the first reads
+where the last one stopped: `git show
+origin/claude/plan-orc:docs/plan/status/ORC.md`.
+
 **Small or big.** A request that fits in one PR and touches no file a
 running session holds is done right there, by this session, as a card of
 one PR. Anything bigger becomes a card and a session of its own, and this
-session writes no game code for it. Either way, nothing is merged by the
-orchestrator.
+session writes no game code for it. It merges only the gatekeeper's list,
+in its order, as the planning session (`docs/plan/README.md`): never a PR
+that is not on a list, its own included.
 
 ## A request, in order
 
@@ -30,9 +38,13 @@ orchestrator.
 3. **Is it already planned?** If a card or a step of `docs/GRAND-PLAN.md`
    covers it, say so and start that card instead of a new one.
 4. **Write its card**, in the day-one cards' form
-   (`docs/plan/cards/W.md` is the model): its PRs in order, each with its
-   files, its tag, its "done when", and the readings chosen so no session
-   guesses.
+   (`docs/plan/cards/W.md` is the model; `CT.md` for a feature, `DG.md`
+   for a guard): its PRs in order, each with its files, its tag, its "done
+   when", and the readings chosen so no session guesses.
+   - The card says its PURPOSE, and for a guard the faults it must catch
+     (`finish.md` part 5); its model and effort (`finish.md` part 3 and 6).
+   - A feature takes its slice out of the big files: its rules are modules
+     under `src/game/` with suites that test what they do.
    - Tags come from `tools/dev/tag-blocks.json`, written bare (`tag 5060`).
    - The card names which of CLAUDE.md's laws apply (preloading, memory and
      256 colours for art, the doors for gold, bag and health, the phone
@@ -45,6 +57,11 @@ orchestrator.
    merge. A letter not yet used in part 11.
    - Effort: extra for money, logins, combat feel, or the big files;
      standard otherwise.
+   - The model by the kind of work (`finish.md` part 3): a helper that
+     only runs tests on the cheapest; tools, a test's own mend and
+     documents on the middle one; the worker, the big files, combat and
+     guards on the strong one; the top model for the orchestrator and the
+     gatekeeper's purpose review.
 6. **Tell the owner, in plain words**: what will be built, how many
    sessions, roughly when the pull requests will come, and what they will
    see on their phone when it lands.

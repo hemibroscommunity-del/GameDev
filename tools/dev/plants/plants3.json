@@ -1,0 +1,16 @@
+[
+  { "id": "HIT-1b a monster's blow priced by another receiver name, in a path hit-door does not play", "file": "server/src/farm.js", "anchor": "this._goldTake(ps, cost, 'farm_buy');", "show": 6,
+    "text": "    { const room = this; room._applyDamage(ps, 5, { monster: 'scarecrow' }); }", "suites": ["hit-door"] },
+  { "id": "HP-5 heal and stand up by the door's own methods under existing roads, another receiver name", "file": "server/src/farm.js", "anchor": "this._goldTake(ps, cost, 'farm_buy');",
+    "text": "    { const room = this; room._hpSet(ps, ps.maxHp, 'rest'); room._lifeTo(ps, 'alive', 'respawn'); }", "suites": ["life-door"] },
+  { "id": "LEAVE-1 every session dropped at once", "file": "server/src/farm.js", "anchor": "this._goldTake(ps, cost, 'farm_buy');",
+    "text": "    this.sessions.clear();", "suites": ["session-door"] },
+  { "id": "LEAVE-2 a player un-joined in place (the body deleted, the session's id cleared)", "file": "server/src/farm.js", "anchor": "this._goldTake(ps, cost, 'farm_buy');",
+    "text": "    delete this.playerState[session.id]; session.id = null;", "suites": ["session-door"] },
+  { "id": "LEAVE-3 the map rebuilt without the socket", "file": "server/src/farm.js", "anchor": "this._goldTake(ps, cost, 'farm_buy');",
+    "text": "    this.sessions = new Map([...this.sessions].filter(([w]) => w !== ws));", "suites": ["session-door"] },
+  { "id": "REACH which fields does any handler read while the hostile suite runs (a Proxy on the message after the door; not a break proof)", "file": "server/src/index.js", "anchor": "    if (this._silenceDoor(session, msg)) return;",
+    "env": { "READS_OUT": "/tmp/wire-reads.json" }, "show": 4,
+    "text": "    if (typeof process !== 'undefined' && process.env && process.env.READS_OUT) { const G = globalThis; if (!G.__reads) { G.__reads = new Set(); G.__seen = new Set(); import('node:fs').then((fs) => { process.on('exit', () => { try { fs.writeFileSync(process.env.READS_OUT, JSON.stringify({ reads: [...G.__reads], seen: [...G.__seen] })); } catch (e) {} }); }); } const T = String(msg.type); G.__seen.add(T); const wrap = (o) => new Proxy(o, { get(t, k, r) { if (typeof k === 'string') G.__reads.add(T + ' ' + k); return Reflect.get(t, k, r); }, has(t, k) { if (typeof k === 'string') G.__reads.add(T + ' ' + k); return Reflect.has(t, k); } }); if (msg.payload && typeof msg.payload === 'object' && !Array.isArray(msg.payload)) msg.payload = wrap(msg.payload); msg = wrap(msg); }",
+    "suites": ["wire-hostile"] }
+]

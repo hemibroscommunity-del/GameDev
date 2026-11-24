@@ -28,11 +28,28 @@ name: Server CI
 # (2026-10-17) -- so a PR that changed only one of those ran no server suite,
 # on the PR or on main.  npm test runs every suite in ~30 s since v2.3.3302
 # (test/run.mjs), so the suite simply runs on every PR and every push to main.
+# v2.3.6424 (card CK PR 5; the owner, 2026-11-24: "Yes to GitHub check
+# settings. Do whatever works best."): each run is paid minutes, so
+#   - a newer push to a PR cancels that PR's older run (concurrency below).
+#     A push to main is never cancelled: deploy-worker.yml waits for the
+#     suite on that commit;
+#   - a PR that changes only documents no suite reads ends green at the job's
+#     first step ("Documents only?").  It is NOT a path filter on the trigger:
+#     the job still runs and still reports `test`, so the required check never
+#     waits for a run that never comes (TRAPS §238).  The suites read many
+#     docs/ files (the storage-key registry, TRAPS, SHAPES, the specs), each
+#     by its full path, so a changed document whose path any file under
+#     server/test/ or tools/guards/ names runs the whole suite, as does any
+#     file outside docs/, a push to main, or a run by hand.
 on:
   workflow_dispatch:
   pull_request:
   push:
     branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   test:
@@ -42,10 +59,33 @@ jobs:
         working-directory: server
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2   # a PR's checkout is its merge into main: main is the first parent
+      - name: Documents only?
+        id: docs
+        working-directory: .
+        run: |
+          if [ "${{ github.event_name }}" != "pull_request" ]; then echo "run=1" >> "$GITHUB_OUTPUT"; exit 0; fi
+          files=$(git diff --name-only HEAD^1 HEAD) || { echo "no first parent here: the whole suite"; echo "run=1" >> "$GITHUB_OUTPUT"; exit 0; }
+          run=0
+          [ -n "$files" ] || run=1
+          while IFS= read -r f; do
+            [ -n "$f" ] || continue
+            case "$f" in
+              docs/*) ;;
+              *) echo "not a document: $f"; run=1; break ;;
+            esac
+            if grep -rqF --include='*.mjs' -- "$f" server/test tools/guards; then echo "a suite reads $f"; run=1; break; fi
+          done <<< "$files"
+          [ "$run" = 1 ] || echo "only documents no suite reads changed: the suite is not needed"
+          echo "run=$run" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-node@v4
+        if: steps.docs.outputs.run == '1'
         with:
           node-version: 20
           cache: npm
           cache-dependency-path: server/package-lock.json
       - run: npm ci
+        if: steps.docs.outputs.run == '1'
       - run: npm test
+        if: steps.docs.outputs.run == '1'
