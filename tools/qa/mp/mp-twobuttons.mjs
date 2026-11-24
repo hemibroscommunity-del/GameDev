@@ -158,6 +158,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
       /* ── PART 2: the right side ── */
       const me = await H.readState(P, (S) => S.myId);
       await H.devOp(wsPort, 'vitals', me, { heal: true, god: true, godMinutes: 8 });
+      const eq = await H.equipWeapon(P, 'greatsword', 'weapon', 'melee').catch((e) => ({ ok: false, why: String(e) }));   /* the held attack swings only an equipped weapon (monsterCombat _eqWpn) */
+      rec.ok(`2. ${label}: a sword in hand (guard)`, !!(eq && eq.ok), eq);
       const mon0 = await H.readState(P, (S) => {
         const P0 = S.player; let best = null;
         for (const m of S.monsters || []) {
@@ -233,7 +235,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
         dead: !(S.monsters || []).some((x) => x && String(x.id) === id && x.alive && !(x.curHp <= 0)) }), target), (v) => v.dead && (v.end === 'killed' || (v.id && v.id !== target)),
         { timeout: 120000, label: 'the fight' }).catch(() => null);
       const l2 = await LATCH(P);
-      rec.ok(`2c. ${label}: the fight played to its death with no press (the end: ${l2.end || 'moved to ' + l2.id})`, !!died, { died, l2, hurt });
+      const why = await H.readState(P, bind((S, id) => { const m = (S.monsters || []).find((x) => x && String(x.id) === id);
+        return { wpn: !!(S.rpg && S.rpg.weapon), slot: S.rpg && S.rpg.activeSlot, swim: !!(S._wheelSwim && S._wheelSwim.on), swungAgo: S.swingTimer ? Date.now() - S.swingTimer : null,
+          gap: m ? Math.round(Math.hypot(m.x - S.player.x, m.y - S.player.y)) : null, mhp: m ? m.curHp : null }; }, target));
+      rec.ok(`2c. ${label}: the fight played to its death with no press (the end: ${l2.end || 'moved to ' + l2.id})`, !!died, { died, l2, hurt, why });
 
       /* 2d: the second press lets go (when the lock moved on to the next);
          a kill with none other in sight let go by itself ('killed') */
