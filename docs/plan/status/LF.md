@@ -1,7 +1,7 @@
 card: LF
-branch: claude/plan-rr-11-rejoinloop (carries this file; #2280's branch carried an earlier copy)
-prs: #2276 (6292), #2277 (6310), #2280 (6291), #2273 (6309, this branch): all ready
-state: ready
+branch: claude/plan-lf-thaw-edges (carries this file; based on #2273's branch)
+prs: #2276 (6292), #2277 (6310), #2280 (6291), #2273 (6309, frozen at 72c08a15); the mend 6311 (claude/plan-lf-thaw-edges, on #2273's branch)
+state: working
 
 ## Done
 - Line 4: #2276 (6292, ground rule): precheck OK, level with main.
@@ -15,19 +15,21 @@ state: ready
   judge's counters untouched). 12/12 twice on the merged head, precheck OK.
 - Line 5: EN done, HB2 true (on #2280), RR true (here).
 - Part 2, sitting 57's hold on #2273: the decision moved into
-  src/game/thawCarried.js (thawBeat, the alive timer's say; thawResume, the
-  open socket's); wsClient keeps a call each. thaw-carried.test §8 plays the
-  road (fake clock, pings, a rejoin spy), §6 reads wsClient's syntax tree.
-  Plants a, b, c (in the module, and a, b by hand in wsClient) and LF's d, e
-  all red; green unplanted (40). The PR body's "Plants".
+  src/game/thawCarried.js; thaw-carried §8 plays the road, §6 reads
+  wsClient's tree. Every plant red (40 green then). The PR's "Plants".
 - Part 3, sitting 58's hold on #2273 (a return before the real thawResume
   stayed green): thaw-carried.test §9 lifts the alive timer's body and
   _resumeRecover from wsClient's tree and RUNS them on a fake clock (stubs,
   a rejoin spy). The review's five plants and LF's three (M1-M3) each red
   (scratch copy); green unplanted (55). The PR body's "Plants".
+- Part 3, sitting 59's hold (no uncarried 5-12 s gap played): #2273 frozen;
+  the mend is 6311 on its own branch: every gap 4-12 s both sides of the
+  line, a mutation pass (118 mutants, 6 equivalent survivors), the
+  review's five floors and LF's three unplanned plants red (69 green).
 
 ## Next
-- #2273's `test` green, then the gatekeeper's next sitting (it deploys).
+- The mend's `test` green; the owner's word on #2273 (frozen); then a sitting.
+- The Found: elemental2's crit shove (its own PR, 6312, from main).
 
 ## Found
 - deskkeys 8f stays red on main (card CT's verdict).

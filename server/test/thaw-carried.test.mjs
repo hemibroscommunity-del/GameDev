@@ -35,6 +35,14 @@
  *      GL probe): a carried gap kept, the rest of the return still run;
  *      pings missing, one rejoin a beat on; a slow page; the switch off; a
  *      hidden tab; a short return; a hung-up page; a dead socket.
+ *   v2.3.6311 (sitting 59's hold: no uncarried gap of 5 to 12 s was played,
+ *      so a floor under 12 s was unseen): §8 and §9 play every gap of 4 to
+ *      12 s on both sides of RESYNC_AWAY_MS, carried and not; a return iOS
+ *      told of at the line and a millisecond past it; the dead pipe watched by
+ *      the beats after the thaw's say (a page beating every 1 s and every
+ *      3 s); §3, §4 and §7 the edges a mutation pass found unkilled (a 1 ms
+ *      gap, a ping at the gap's very end, a ping time that is not a number,
+ *      the probe's last verdict and window.__btThaw, thawResume's returns).
  * BREAK PROOF (rule 8), tried by hand once: thawCarried returning true for
  * an unknown clock -> FAIL 3; sitting 57's three plants and card LF's two
  * (the PR's "Plants"): every verdict made carried after due() -> FAIL 8;
@@ -48,6 +56,14 @@
  * `visible`'s `&&` made `||`; and LF's own three: `&& tag !== 'thaw'` on the
  * status gate, `if (arguments[2]) return;` atop _resumeRecover (a carried
  * thaw skipping the canvases), `tag === 'thaw' ? 0 : (awayMs || 0)`.
+ * Sitting 59's (card LF, v2.3.6311, each -> FAIL 8 and/or 9): a floor of
+ * 10 s on an uncarried gap in thawResume, in due(), in thawBeat, before
+ * wsClient's thawResume and in the timer's resume; LF's three not designed
+ * for: the count wanted lowered under 12 s, `?thawjudge=0` handing its gap
+ * on as carried, the gap's window widened back by a ping.  A mutation pass
+ * over every line #2273 added in thawCarried.js and wsClient.js (each
+ * number changed, condition negated, line deleted; 118 mutants, this suite
+ * only) kills all but six equivalents (the PR's words).
  */
 import { readSystem } from '../../tools/guards/lib/filesOf.mjs';
 import { babel } from '../../tools/guards/lib/renderTables.mjs';
@@ -93,6 +109,8 @@ const pingsEvery = (fromPage, toPage, every) => {
   check('3. no ping clock known yet: not carried (the old rule: rejoin)', !thawCarried(0, 20000, pings, OFF, false));
   check('3. a gap of nothing (or backwards): not carried', !thawCarried(5000, 5000, pings, OFF, true) && !thawCarried(6000, 5000, pings, OFF, true));
   check('3. no list, or a bad offset: not carried', !thawCarried(0, 20000, null, OFF, true) && !thawCarried(0, 20000, pings, NaN, true));
+  /* v2.3.6311: the shortest gap there is, its one ping at its end, is a gap like any other */
+  check('3. a gap of 1 ms with its ping at its end: carried', thawCarried(5000, 5001, [5001 + OFF], OFF, true));
 }
 
 // ── 4. the worker's times are mapped onto the page's ──
@@ -103,6 +121,10 @@ const pingsEvery = (fromPage, toPage, every) => {
   check('4. read as if the clocks agreed (offset 0): none of them falls in the gap', !thawCarried(from, to, pings, 0, true));
   const outside = [from - 1 + OFF, from + OFF, to + 1 + OFF, to + 5000 + OFF];
   check('4. pings before the gap (or at its very start) and after it are not counted', !thawCarried(from, to, outside, OFF, true));
+  /* v2.3.6311: the gap's last moment is inside it: the count wanted, the last of them stamped at its very end */
+  const g30 = pingsEvery(from, from + 30000, 2000), w30 = thawPingsWanted(30000);
+  check('4. a ping at the gap\'s very end is counted (the count wanted, the last at the end)',
+    thawCarried(from, from + 30000, g30.slice(-w30), OFF, true) && g30[g30.length - 1] === from + 30000 + OFF, { want: w30 });
 }
 
 // ── 5. the count wanted ──
@@ -246,9 +268,27 @@ check('5. the page waits a beat (THAW.SETTLE_MS) before judging, and keeps enoug
   check('7. `?thawjudge=0`: not carried (handed to the rejoin), counted', !!e && e.carried === false && j.stats().rejoined === 1, j.stats());
   const k = makeThawJudge({ offset: () => 0, known: () => false });
   k.gap(10000, 8000);
-  check('7. no ping clock yet: not carried', k.due(20000, false).carried === false);
+  check('7. no ping clock yet: not carried', (k.due(20000, false) || {}).carried === false);
   j.count('carried');
   check('7. count(\'carried\') and the probe\'s stats', j.stats().carried === 1 && typeof j.stats().last === 'object');
+  /* v2.3.6311 (sitting 59: every line the PR added killed by a test) */
+  check('7. the probe\'s last verdict is the last gap judged: its length, verdict and time',
+    !!j.stats().last && j.stats().last.gap === 10000 && j.stats().last.carried === false && j.stats().last.at === 152000, j.stats().last);
+  const q = makeThawJudge(clock);
+  q.ping('soon'); q.ping(undefined); q.ping(NaN);
+  check('7. a ping time that is not a number is not kept (it would take a real one\'s place)', q.stats().kept === 0, q.stats());
+  const hadWin = Object.prototype.hasOwnProperty.call(globalThis, 'window'), oldWin = globalThis.window;
+  globalThis.window = {};
+  const w = makeThawJudge(clock);
+  w.count('carried');
+  const probe = globalThis.window.__btThaw;
+  if (hadWin) globalThis.window = oldWin; else delete globalThis.window;
+  check('7. on a page, window.__btThaw() is the judge\'s own stats (mp-comeback reads it)', typeof probe === 'function' && probe().carried === 1);
+  const spy = [];
+  const jr = makeThawJudge(clock);
+  const rs = [thawResume(jr, 5000, 5000, false, () => spy.push(1)), thawResume(jr, 5001, 5000, true, () => spy.push(2)), thawResume(jr, 5001, 5000, false, () => spy.push(3))];
+  check('7. thawResume: at the line nothing (null); past it, carried kept (\'carried\', counted); not carried, \'rejoin\' and the rejoin',
+    rs.join() === ',carried,rejoin' && spy.join() === '3' && jr.stats().carried === 1, { rs, spy });
 }
 
 // ── 8. the road PLAYED: beats on a fake clock, fake pings, a spy for the rejoin ──
@@ -333,6 +373,28 @@ check('5. the page waits a beat (THAW.SETTLE_MS) before judging, and keeps enoug
       did === null && pg.rejoins.length === 0 && pg.judge.stats().last === null, { did, rejoins: pg.rejoins });
     pg.resume(9000, undefined);   /* ...and a long one iOS told of: not judged, rejoined as before */
     check('8. a long return iOS told of (not the thaw\'s): rejoined as before', pg.rejoins.length === 1, pg.rejoins); }
+
+  /* v2.3.6311 (sitting 59's hold: no uncarried gap of 5 to 12 s was played, so a
+     floor under 12 s was unseen): every gap on both sides of the line, each on
+     a page of its own, two beats played after it */
+  const EDGE = [4000, 4999, 5000, 5001, 5499, 5500, 6000, 7000, 8000, 9000, 9999, 10000, 11000, 11999, 12000];
+  for (const carried of [false, true]) {
+    const got = EDGE.map((g) => {
+      const pg = page();
+      pg.play(20000);
+      pg.freeze(g, carried);
+      pg.beat(pg.now + 1000); pg.beat(pg.now + 1000);
+      return pg.rejoins.length + (pg.judge.stats().last ? 'j' : '');   /* 'j': the gap was judged */
+    });
+    const want = EDGE.map((g) => (g > AWAY && !carried ? '1j' : g > AWAY ? '0j' : '0'));
+    check(`8. every gap of 4 to 12 s, ${carried ? 'carried: none rejoins' : 'its pings missing: one rejoin each past 5 s, none at or under'}`,
+      got.join() === want.join(), { gaps: EDGE, got, want });
+  }
+  { const pg = page();
+    pg.play(20000);
+    pg.resume(AWAY, undefined); const at = pg.rejoins.length;
+    pg.resume(AWAY + 1, undefined);
+    check('8. a return iOS told of: away exactly RESYNC_AWAY_MS keeps the socket, a millisecond more rejoins', at === 0 && pg.rejoins.length === 1, pg.rejoins); }
 }
 
 // ── 9. the PAGE'S OWN CODE played (sitting 58's hold, v2.3.6309: §8 plays a
@@ -490,6 +552,44 @@ check('5. the page waits a beat (THAW.SETTLE_MS) before judging, and keeps enoug
       pg.play(20000); pg.env.ws = { readyState: 3 }; pg.freeze(12000, false); pg.now += 1000; pg.beat(pg.now);
       check('9. the real page, its socket dead at the thaw: connected again at once, no forced rejoin', pg.connects === 1 && pg.rejoins.length === 0,
         { connects: pg.connects, rejoins: pg.rejoins }); }
+
+    /* v2.3.6311 (sitting 59's hold): the real page, every gap on both sides of
+       RESYNC_AWAY_MS, each on a page of its own: missing pings, one rejoin past
+       the line and its why the gap's own seconds; carried, none */
+    const EDGE = [4000, 4999, 5000, 5001, 5499, 5500, 6000, 7000, 8000, 9000, 9999, 10000, 11000, 11999, 12000];
+    for (const carried of [false, true]) {
+      const got = EDGE.map((g) => {
+        const pg = realPage();
+        pg.play(20000);
+        pg.freeze(g, carried);
+        pg.beat(pg.now + 1000); pg.beat(pg.now + 1000);
+        return pg.rejoins.map((r) => r.tag + ':' + r.why).join('|');
+      });
+      const want = EDGE.map((g) => (g > nums.RESYNC_AWAY_MS && !carried ? 'resume-resync:thaw away ' + Math.round(g / 1000) + 's' : ''));
+      check(`9. the real page, every gap of 4 to 12 s, ${carried ? 'carried: none rejoins' : 'its pings missing: one rejoin each past 5 s, none at or under'}`,
+        got.join() === want.join(), { gaps: EDGE, got, want });
+    }
+
+    { const pg = realPage();
+      pg.play(20000);
+      pg.env._hiddenAt = pg.now - nums.RESYNC_AWAY_MS; pg.recover('visible'); const at = pg.rejoins.length;
+      pg.env._hiddenAt = pg.now - nums.RESYNC_AWAY_MS - 1; pg.recover('visible');
+      check('9. the real page, a return iOS told of: away exactly RESYNC_AWAY_MS keeps the socket, a millisecond more rejoins',
+        at === 0 && pg.rejoins.length === 1 && pg.rejoins[0].why === 'visible away 5s', pg.rejoins); }
+
+    /* the beats after the thaw's say still watch the socket (v2.3.3034's dead
+       pipe): a page beating every second, then every 3 s (slow, not frozen),
+       its socket gone quiet: rejoined as a dead pipe once it is silent past
+       DEAD_PIPE_MS, never as a thaw */
+    for (const every of [1000, 3000]) {
+      const pg = realPage();
+      pg.play(20000);
+      for (let t = pg.now + every; t <= 20000 + nums.DEAD_PIPE_MS + 4 * every; t += every) pg.beat(t);   /* no pings */
+      const r = pg.rejoins[0];
+      check(`9. the real page, its socket silent while it beats every ${every / 1000} s: one dead-pipe rejoin past DEAD_PIPE_MS, no thaw`,
+        pg.rejoins.length >= 1 && r.tag === 'dead-pipe' && r.at - 20000 > nums.DEAD_PIPE_MS && r.at - 20000 <= nums.DEAD_PIPE_MS + every && pg.judge.stats().last === null,
+        { rejoins: pg.rejoins, last: pg.judge.stats().last });
+    }
   }
 }
 
