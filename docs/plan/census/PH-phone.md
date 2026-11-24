@@ -35,7 +35,7 @@ main's plus PR 2's alarm, which no line reads.
 | artCache | 11.2 | 11.2 | 11.2 | 11.2 | 0 | 12.2 |
 | gpu | 83.8 | 81.0 | 76.4 | 83.8 | 10.2 | 94.0 |
 | canvases | 12.7 | 12.7 | 12.7 | 13.7 | 1.0 | 14.7 |
-| sound | 18.1 | 18.1 | 18.1 | 18.1 | 0.2 | 19.1 |
+| sound | 18.1 | 18.1 | 18.1 | 18.1 | 0.2 | 19.9 (CI's 18.9 + 1.0) |
 | heap | 39.7 | 39.8 | 39.9 | 39.9 | 1.7 | 40.0 (kept) |
 | buffers | 24.8 | 24.9 | 24.9 | 24.9 | 0.5 | 24.8 (kept: over in two) |
 | workers | 18.6 | 18.5 | 18.1 | 21.2 | 3.1 | 24.3 |
@@ -43,6 +43,23 @@ main's plus PR 2's alarm, which no line reads.
 
 The total is read only in runs 4 to 6 (READ.total is new). Heap and buffers sit
 AT their lines on main's own code on this box: CI's own run decides.
+
+## mp-membudget, PR 3's own CI run (ee22311e, GitHub's runner), 2026-11-24
+
+| line | CI highest | line | room |
+|---|---|---|---|
+| artCache | 11.2 | 12.2 | 1.0 |
+| gpu | 77.3 | 94.0 | 16.7 |
+| canvases | 13.7 | 14.7 | 1.0 |
+| sound | 18.9 | 19.1 -> 19.9 | 0.2 -> 1.0 |
+| heap | 37.2 | 40.0 | 2.8 |
+| buffers | 24.3 | 24.8 (kept) | 0.5 |
+| workers | 19.4 | 24.3 | 4.9 |
+| total | 198.2 | 216.0 | 17.8 |
+
+Sound read 0.8 MB above the box's highest: its line is set from CI's read
+(19.9, still under main's 22). Buffers has 0.5 MB of room on CI, but CI's read
+plus 1.0 (25.3) is over main's 24.8 and no line rises: kept, the trim owed.
 
 ## mp-crowdfight, `main` 0aec6482, the test box, 2026-11-23 (the fight only)
 
