@@ -1,7 +1,7 @@
 card: CT
 branch: claude/plan-ct-2-stick
-prs: #2282 (6540, ready), PR 2 (6541, working)
-state: working
+prs: #2282 (6540, ready), PR 2 (6541, ready)
+state: ready
 
 ## Done
 - PR 1 (6540, #2282): the three rules (stickZones, sight, latch), their
@@ -18,7 +18,8 @@ state: working
   go on a distance that is not a number. Each plant proved red.
 
 ## Next
-- PR 2: the mode-off runs (heldcombat, sprint, framesteps), precheck, push.
+- PR 3 (6542): the right side in mode 5 (Attack as the latch, Jump, the
+  lock, its ends, the move to the next monster).
 
 ## Found
 - `manual-combat.test` 1h pinned `?manual=5` as no switch: now `6`.
