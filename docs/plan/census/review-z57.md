@@ -18,8 +18,8 @@ draft), #2300 (DG), #2301 (BK), all opened during it.
 | CK | #2296 the checks' bookkeeping | 6423 | 8c9a45da | pass | 3 |
 | BK | #2281 the restart sweep | 6461 | 36729df8 | pass (56's hold mended), one Found | 4 |
 | BK | #2289 the sum counts the pieces | 6464 | b4cbd29e | pass, one note | 5 |
-| DG | #2283 the running room refuses | 6440 | b5ba8bb8 | pass (56's hold mended) | 6 |
-| CT | #2282 the two buttons' rules | 6540 | 6e96ab02 | pass, Z's call (below) | 7 |
+| CT | #2282 the two buttons' rules | 6540 | 6e96ab02 | pass, Z's call (below) | 6 |
+| DG | #2283 the running room refuses | 6440 | b5ba8bb8 | pass (56's hold mended); held at DG's word: `heap-forget` §4 | - |
 | WL | #2290 owned state | 6522 | d1ff3d9c, then 67752c2d | pass at d1ff3d9c; its new head holds #2286 and #2287 (held): to 58 | - |
 | RR | #2273 the rejoin loop | 6309 | 06cd9091 | HOLD | - |
 | PH | #2279 the report sees heat | 6500 | 316dab3f | HOLD | - |
@@ -111,7 +111,11 @@ draft), #2300 (DG), #2301 (BK), all opened during it.
   compares a count, so a piece lost and one made in the same step passes
   (`Object.assign({}, stashItem, { gid: undefined })` green); one line to
   compare the id sets. Its new head holds #2281 (only BK.md resolved).
-- **#2283**: 56's holds red (`guardRecord` gutted; the own-property
+- **#2283** (not listed: DG found, during the sitting, that its test-room
+  guard keeps a WeakRef a guest until a later sweep, about 1 KB a guest in
+  the test room, so `heap-forget` §4 (4,167 B against 4,096) passed its
+  own CI by luck; DG is pushing the mend, a new head to review at 58):
+  56's holds red (`guardRecord` gutted; the own-property
   `playerState`, with GOLD-1); the card's `||=`, destructure, receiver
   dodges red; six own red; plants1 17 red, 6 green as its words say (PR
   2's). Found: a row dropped from `GUARDED` (`dead`) green in life-door.
@@ -132,8 +136,9 @@ clash (#2289 with #2281 and #2291 with #2279 in their status files, #2290
 with #2287 in WL.md, #2286 with `main`). Rehearsal 2 (the 12 that merged)
 was stopped once the holds were known (its precheck timed out on a loaded
 box, no suite failed). Rehearsal 3 (with #2290 at d1ff3d9c) was stopped when WL re-pushed its
-chain so that #2290 holds #2286 and #2287. Rehearsal 4 is the list, its
-seven in order: RESULT_LINE
+chain so that #2290 holds #2286 and #2287. Rehearsal 4 (seven) was stopped at DG's
+word on #2283 (below). Rehearsal 5 is the list, its six in order:
+RESULT_LINE
 
 ## Step 5b: what GitHub will merge
 
