@@ -202,3 +202,24 @@ model; the shine's saving there, 14% of the chip's time, is the suite's GUESS, n
 
 To ask the owner with the phone's own numbers: a Speed test whose "No metal shine" row is not slower than "Everything
 on" (the card at 1.5 cannot say: every OFF row read slower).
+
+## The owner's Speed test at 1.5, as written by PH part 5 (its session's push, 05:46 UTC): the card's words in full
+
+On the owner's iPhone (14 Pro or Pro Max, brotown.net): "Screen 430 x 775 at 3x, drawn 645 x 1106 px (lowered to
+1.5x), touch, iOS, looks palette on, lane full". Frames a second / slowest ms: everything on (as you play) 60 / 18;
+no shadows (and no shine) 58 / 20; no metal shine 48 / 24; metal shine the old way 46 / 25; three drawing programs
+52 / 23; shadows the old way 45 / 26; still water 47 / 24; lower resolution (2x, not 3x) 47 / 25; all of those off
+51 / 24. The game's own work 3.1 ms a frame, 62 draws, 1.0 picture switches; "Every frame is ready in time for the
+screen (60 a second...): nothing is holding the frame rate back here."
+
+**THIS REPLACES "shine off by default" above.** Decided for the owner while away (the orchestrator, 05:02 and 05:16
+UTC; the owner said "keep going throughout the night"), each behind its switch, named in PR 4 under "Decided for the
+owner while away": (1) phone sharpness 1.5 by default (the owner's own "1.5 looks fine nothing below that");
+(2) metal shine STAYS ON by default (as played it drew 60 with everything on); shine is the ladder's FIRST rung to
+drop when a phone falls behind (then the card's next rungs), with a switch to force it either way.
+Found, for the Speed test: its rows are not comparable on this card (every "off" row slower than "everything on",
+"lane full" here against "lane thirty" before): the phone warming, the screen's rate changing, or a row's own switch
+costing a rebuild. A card whose "off" rows are slower should say so in plain words, not print savings computed from them.
+
+(v2.3.6503, part 6: the "FIRST rung" in the paragraph above was WITHDRAWN by the orchestrator, part 6, 05:39 UTC:
+ rate first, shine second, as today; the shine stays ON by default; see "The shine's place on the ladder" below.)
