@@ -53,6 +53,8 @@ const FIELD_PLANTS = [
   ['POINTS-1 Object.assign onto a destructured block', '{ const { prog3 } = ps; if (prog3) Object.assign(prog3, { pool: (prog3.pool || 0) + 1 }); }', POINTS, 'pool'],
   ['POINTS-2 ||=', 'if (ps.prog3) ps.prog3.shared ||= 3;', POINTS, 'shared'],
   ['a whole block put', 'ps.prog3 = { pool: 9 };', POINTS, 'prog3'],
+  ['a record rebuilt with a spread and put back', 'this.playerState[session.id] = { ...ps, coins: 5 };', GOLD, 'coins'],
+  ['the same, held in a name first', 'const next = { ...ps, coins: 5 }; this.playerState[session.id] = next;', GOLD, 'coins'],
 ];
 for (const [name, body, opts, field] of FIELD_PLANTS) {
   const got = W(body, opts);
@@ -86,6 +88,10 @@ const CONTAINER_PLANTS = [
   ['a stash\'s length cut', 'ps.weaponStash.length = 0;', STASH, 'weaponStash'],
   ['a stash by a field from another file\'s map', 'const field = GEAR_PROV_FIELD.shield; ps[field].push(reward.piece);', STASH, 'armorStash|shieldStash'],
   ['every stash, over another file\'s list', 'for (const f of STASH_FIELDS) ps[f].length = 0;', STASH, 'weaponStash|armorStash|shieldStash'],
+  ['a stash item changed in place', 'ps.weaponStash[0].lvl = 99;', STASH, 'weaponStash'],
+  ['a stash item held in a name, changed', 'const w = ps.weaponStash[0]; w.lvl = 99;', STASH, 'weaponStash'],
+  ['every stash item changed over a loop', 'for (const w of ps.weaponStash) w.lvl = 99;', STASH, 'weaponStash'],
+  ['a stash item\'s field deleted', 'delete ps.weaponStash[0].gems;', STASH, 'weaponStash'],
 ];
 for (const [name, body, opts, field] of CONTAINER_PLANTS) {
   const got = W(body, opts);
@@ -100,6 +106,8 @@ const READS = [
   ['a name put again', 'let inv = ps.inventory; inv = {}; const q = ps._quests; const n = q.length;', { containers: ['inventory', '_quests'] }],
   ['another field', 'ps.coinsSeen = 1; ps.levelUpAt = 2; ps.x.hpBar = 3;', { fields: ['coins', 'level', 'hp'] }],
   ['the bag\'s own count read through an alias', 'const inv = ps.inventory; const n = inv.wood || 0; return n + 1;', BAG],
+  ['a copy of the record sent or saved, not put back', 'const out = { ...ps, coins: 0 }; this._send(ws, { type: "x", payload: { ...ps, coins: 1 } }); return out;', GOLD],
+  ['a stash item read in a loop', 'let best = 0; for (const w of ps.weaponStash) best = Math.max(best, w.lvl); return best;', STASH],
 ];
 for (const [name, body, opts] of READS) {
   const got = W(body, opts);

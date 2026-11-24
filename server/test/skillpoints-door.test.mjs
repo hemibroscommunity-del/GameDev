@@ -160,7 +160,7 @@ const SHAPERS = {
   prog3GrantRetroPoints: { why: 'migration v14 and the sanitizer\'s heal: the 3-a-level back-pay, once (its `ppl` stamp)', writes: { poolBy: 2, pool: 1, ppl: 1 } },
   prog3SplitAtk: { why: 'migration v11 and the sanitizer\'s heal (on a copy): the one alloc split into body and weapon stats, the weapon points refunded', writes: { alloc: 2, atk: 1, pool: 1 } },
   prog3MoveElemToAtk: { why: 'migration v15 and the sanitizer\'s heal (on a copy): the old body elemental stat refunded', writes: { alloc: 1, pool: 1 } },
-  prog3FoldLuck: { why: 'migration v17 and the sanitizer\'s heal (on a copy): crit and crit damage refunded into their lane', writes: { poolBy: 2, pool: 1 } },
+  prog3FoldLuck: { why: 'migration v17 and the sanitizer\'s heal (on a copy): crit and crit damage refunded into their lane', writes: { poolBy: 2, pool: 1, atk: 1 } },
   prog3GrantSharedPoints: { why: 'migration v17 and the sanitizer\'s heal: the shared points\' back-pay, once (its `spl` stamp)', writes: { shared: 1, spl: 1 } },
 };
 /* The whole-block assigns, each tied to a POINTS_WHOLE row. */

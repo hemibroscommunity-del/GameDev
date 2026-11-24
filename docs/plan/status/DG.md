@@ -1,6 +1,6 @@
 card: DG
 branch: claude/dg-scans (PR 2), on claude/dg-door-guards (PR 1)
-prs: #2283 (PR 1, 6440, ready), PR 2 (6441, ready)
+prs: #2283 (PR 1, 6440, ready, mended), PR 2 (6441, ready)
 state: ready
 
 ## Done
@@ -15,8 +15,10 @@ state: ready
   stash, life, points, quest, xp, hit, session and send doors, the page's
   action door and wire-audit's type census read it; allow-lists keyed by
   file + function + field + count; the '*' rows of bag-door and xp-door name
-  their files. Gold's roads one step out (FORWARDERS: GOLD-4).
-  Door plants of plants1-4, the scan alone: see the PR's words.
+  their files. Gold's roads one step out (FORWARDERS: GOLD-4). A stash item
+  changed in place is a stash write (IN_PLACE lists 7 places; the
+  orchestrator's note). Door plants of plants1-4 red by the scan alone,
+  but SEND-2 (PR 6's): the PR's words.
 
 ## Next
 - PR 3 (6442): each road booked what it moved (gold-door, bag-door).

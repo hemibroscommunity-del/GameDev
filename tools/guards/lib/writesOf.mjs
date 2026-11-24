@@ -29,6 +29,11 @@
  *         known);
  *       - a key held in a variable when the variable's values are known: a
  *         `const`, a `for (const k of ['coins', ...])`, a ternary of words;
+ *       - a record rebuilt from a spread with a field put and put back
+ *         (`this.playerState[id] = { ...ps, coins }`, or held in a name first);
+ *       - an ELEMENT of a container written in place (`ps.weaponStash[0].lvl
+ *         = 99`, `const w = ps.weaponStash[i]; w.lvl = 99`, `for (const w of
+ *         ps.weaponStash) w.lvl = 99`): a write of the container;
  *       - through an ALIAS of a container: `const inv = ps.inventory`,
  *         `const { inventory } = ps`, `const { _quests: qs } = ps`, an alias
  *         of an alias, and a function of the same file handed the container
@@ -240,7 +245,8 @@ export function writesOf(code, opts = {}) {
       const ks = keysOf(node, path);
       /* one key, or a key that is any of several (`for (const f of STASH_FIELDS) ps[f]`), every one a container */
       if (ks && ks.length && ks.every((k) => CONTAINERS.has(k))) return ks.length === 1 ? ks[0] : ks.join('|');
-      return null;
+      /* an element of a container (`ps.weaponStash[0]`, `inv.wood`): writing into it is writing the container */
+      return insideOf(node, path);
     }
     if (node.type === 'Identifier') {
       const b = path.scope.getBinding(node.name);
@@ -333,6 +339,13 @@ export function writesOf(code, opts = {}) {
     traverse(ast, {
       VariableDeclarator(path) {
         const { id, init } = path.node;
+        /* for (const w of ps.weaponStash): each element is the container's */
+        const loop = path.parentPath && path.parentPath.parentPath;
+        if (!init && loop && loop.isForOfStatement() && loop.node.left === path.parentPath.node && id.type === 'Identifier') {
+          const c = containerOf(loop.node.right, loop);
+          if (c) grew = bindAlias(path, id, c) || grew;
+          return;
+        }
         if (!init) return;
         if (id.type === 'Identifier') {
           const c = containerOf(init, path);
@@ -391,11 +404,27 @@ export function writesOf(code, opts = {}) {
       /* a record rebuilt and put back: `t = { level: 1, xp: 0 }`, `p3.sk[cat] = { xp }`
          -- the object written out names a field */
       const r = path.node.right;
-      if (r.type === 'ObjectExpression' && path.node.left.type !== 'Identifier') {
+      if (r.type === 'ObjectExpression' && path.node.left.type !== 'Identifier' && !r.properties.some((p) => p.type === 'SpreadElement')) {
         for (const k of objectKeys(r, path)) if (FIELDS.has(k) && !CONTAINERS.has(k)) add(path, path.node, k, false, 'assign {' + k + '}', { text: srcOf(code, path.node.left) });
       }
     },
     UpdateExpression(path) { target(path, path.node.argument, 'update ' + path.node.operator); },
+    /* a record rebuilt from a spread with a field put (`{ ...ps, coins: 5 }`)
+       and put back into the room: straight into a member, or held in a name
+       that is then put into one.  A copy sent or saved is no write. */
+    ObjectExpression(path) {
+      const props = path.node.properties;
+      if (!props.some((p) => p.type === 'SpreadElement')) return;
+      const keys = objectKeys(path.node, path).filter((k) => FIELDS.has(k));
+      if (!keys.length) return;
+      const isMemberPut = (pp) => pp && pp.isAssignmentExpression() && pp.node.left.type !== 'Identifier';
+      let back = isMemberPut(path.parentPath) && path.parentPath.node.right === path.node;
+      if (!back && path.parentPath.isVariableDeclarator() && path.parentPath.node.id.type === 'Identifier') {
+        const bnd = path.parentPath.scope.getBinding(path.parentPath.node.id.name);
+        back = !!bnd && bnd.referencePaths.some((r) => isMemberPut(r.parentPath) && r.parentPath.node.right === r.node);
+      }
+      if (back) for (const k of keys) add(path, path.node, k, false, 'rebuilt {...,' + k + '} put back', { text: '{...}' });
+    },
     UnaryExpression(path) { if (path.node.operator === 'delete') target(path, path.node.argument, 'delete'); },
     ForXStatement(path) { const l = path.node.left; if (l.type !== 'VariableDeclaration') target(path, l, 'for-of target'); },
     CallExpression(path) {

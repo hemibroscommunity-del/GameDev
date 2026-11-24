@@ -105,10 +105,25 @@ const SCAN = {
 /* What looks like a stash write and is not one, and why: its file, its
    function, its field, how many writes.  A stale entry fails. */
 const NOT_A_STASH = [];   /* none today: a worn slot (`ps[f] = null` over WORN_WEAPONS) is not bound to a stash field */
+/* v2.3.6441 (the orchestrator's note on the purpose review, sitting 56): a
+   stash ITEM changed in place (`ps.weaponStash[0].lvl = 99`, an item held in
+   a name, a loop over the stash) is a write of the stash.  The places that
+   reshape their own items in place today, each with why; a new one fails.
+   None adds or takes an item: what the stash holds is the door's. */
+const GEAR = 'armorStash|legsStash|shieldStash|gearStash|amuletStash';
+const IN_PLACE = [
+  { file: 'amulet.js', fn: '_stripGems', field: 'weaponStash', n: 7, why: 'the forge\'s gem extraction: the gems taken off an item and its name rebuilt (what the phone predicted), the item kept where it is' },
+  { file: 'gearprov.js', fn: 'visit', field: GEAR, n: 2, why: 'the provenance sweep: a piece whose id was claimed twice loses its id and is marked legacy' },
+  { file: 'gscopper.js', fn: 'oldGreatswordToMetal', field: 'weaponStash', n: 6, why: 'a stored old greatsword given its metal (a migration on a blob, and the mail\'s landing), never weaker' },
+  { file: 'migrations.js', fn: 'fix', field: 'weaponStash', n: 1, why: 'the migrations: a renamed weapon\'s name' },
+  { file: 'revealbag.js', fn: '_revealBagOpen', field: 'weaponStash', n: 1, why: 'the reveal bag: an unrevealed weapon revealed (its flag taken off)' },
+  { file: 'revealbag.js', fn: '_revealBagOnJoin', field: 'armorStash|legsStash|shieldStash|amuletStash|gearStash', n: 1, why: 'the reveal bag at the join: a piece with no id has no secret to keep (its flag taken off)' },
+  { file: 'swordconvert.js', fn: 'swordToGreatsword', field: 'weaponStash', n: 8, why: 'the owner\'s sword conversion (owner call 1): a stored sword made a greatsword in place' },
+];
 {
-  const r = doorWrites(raw, { skip: ['stash.js'], ...SCAN, listed: NOT_A_STASH });
+  const r = doorWrites(raw, { skip: ['stash.js'], ...SCAN, listed: [...NOT_A_STASH, ...IN_PLACE] });
   check('2. no stash is written in server/src but through the door (stash.js): by its name, by a field in a name, or through a name that holds one', r.found.length === 0, r.found.map(where));
-  check('2. ...every NOT_A_STASH entry still holds its count of writes (a stale one is deleted)', r.stale.length === 0, r.stale);
+  check('2. ...every NOT_A_STASH and IN_PLACE entry still holds its count of writes (a stale one is deleted, a second spelling is one too many)', r.stale.length === 0, r.stale);
   const plant = (txt) => writesOf(txt, SCAN).length;
   const mustFind = [
     'export const x = {\n  _a(ps, w) {\n    ps.weaponStash.push(w);\n  },\n};',
@@ -123,6 +138,9 @@ const NOT_A_STASH = [];   /* none today: a worn slot (`ps[f] = null` over WORN_W
     /* v2.3.6441: the shape review's (plants1 STASH-1, STASH-2) */
     'export const x = {\n  _a(ps, w) {\n    const { weaponStash } = ps;\n    weaponStash.push(w);\n  },\n};',
     'export const x = {\n  _a(ps, w) {\n    Object.assign(ps, { weaponStash: [...(ps.weaponStash || []), w] });\n  },\n};',
+    /* v2.3.6441: an item changed in place (the purpose review's note, sitting 56) */
+    'export const x = {\n  _a(ps) {\n    ps.weaponStash[0].lvl = 99;\n  },\n};',
+    'export const x = {\n  _a(ps) {\n    for (const w of ps.weaponStash) w.lvl = 99;\n  },\n};',
   ];
   const missed = mustFind.filter((t) => plant(t) === 0);
   check('2. ...the scanner finds each shape of a second writer (' + mustFind.length + ' planted)', missed.length === 0, missed);
