@@ -85,6 +85,13 @@ register('data:text/javascript,' + encodeURIComponent(
 const warn = console.warn, error = console.error;
 const quiet = (f) => (...a) => { if (!/^\[fx-strips\]/.test(String(a[0]))) f(...a); };
 console.warn = quiet(warn); console.error = quiet(error);
+/* v2.3.6422: the renderer's word, given before the effects ask for it.  The
+   effects' twins wait for it (p256.js whenPaletteDecided) and in node no
+   renderer is ever made, so a green run sat out its 20 s cap (DECIDE_MS) after
+   the last check: 20.3 s, 0.4 s of it work (card CK PR 3).  Node has no
+   WebGL 2, so the word is what such a device says (paletteTex.js
+   setPaletteRenderer(null): `_ok` false), as check 6 already reads it. */
+(await import('../../src/rendering/paletteTex.js')).setPaletteRenderer(null);
 const D = await import('../../src/game/drawLanes.js');
 const G = await import('../../src/rendering/lightfx/glint.js');
 const LF = await import('../../src/rendering/lightfx/lightFx.js');

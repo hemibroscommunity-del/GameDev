@@ -1,35 +1,39 @@
 card: Z
-branch: claude/plan-z-sitting-53
-prs: RR #2265, #2267, #2258, #2260; HB2 #2261, #2244, #2247, #2249, #2259, #2266; EN #2263 (ready); this PR (tag 6267), the last line
+branch: claude/plan-z-sitting-57
+prs: CK #2288 #2294 #2296, BK #2281 #2289, CT #2282 (listed); this PR (tag 6269), the last line
 state: ready
 
 ## Done
-- `census/review-z53.md`: 11 PRs checked against their cards and reviewed;
-  two reds on main found (usage-meter 5's date; the heap line) and mended
-  on the list; merge bases one each, step by step; rehearsed on `main`
-  c0a0791c, tree 3aeab427: precheck 0 FAIL (884 s), build, questline 187;
-  `mp-firststeps` 46/46 on rehearsal 2's tree (#2258 with #2266).
+- `census/review-z57.md`: 19 PRs checked against their cards at their heads
+  as they stood, each read by a purpose lane (top model, plants); 6 listed,
+  12 held or waiting, each with its planted line. Rehearsed on `main` b2cdd55a
+  (rehearsal 5, the list in order): tree b3ebacea (b3ebaceac47f3ccaad70d7d92930ce0eb8b09e13): precheck 0 FAIL (189 s), every switch thrown once (89, 2420 suite runs, 744 s), build, questline 187 passed, all green on a quiet box. One merge base each, step
+  by step; every base `main`.
 ## The list: merge in this order, "Create a merge commit", in one go
-1 #2265 (RR 6305; DEPLOYS: a server test only)  2 #2267 (RR 6306, heap
-38.5 -> 40.0)  3 #2258 (RR 6302)  4 #2260 (RR 6303)  5 #2261 (HB2 6287)
-6 #2244 (HB2 6281)  7 #2247 (6282)  8 #2249 (6283)  9 #2259 (6286)
-10 #2266 (HB2 6288)  11 #2263 (EN 6205)  12 Z (6267).
-#2260's `memory-budget` is red on the heap line #2267 raises: not a hold.
-## Held / To 54
-- None held. To 54: tick 3.1 once #2261 is merged (`debtOf('ours')`
-  empty); RR's next (the slow checks, the rejoin loop); EN 6206 on; HB2's
-  leftover order (GearTab's body, then the World map labels if
-  pixel-identical and freed on close).
+1 #2288 (CK 6421, tools)  2 #2294 (CK 6422)  3 #2296 (CK 6423)
+4 #2281 (BK 6461)  5 #2289 (BK 6464)  6 #2282 (CT 6540)
+(2 to 6 DEPLOY, each `server/test/**` only: no worker code changes)
+7 Z (6269, a draft: mark it ready first).
+## Held / To 58
+- Held, each a plant green in the PR's own guard (review-z57): #2273 (a
+  gap judged carried), #2279 (`up` columns raw; `rideGaps` fractions),
+  #2291 (`?memalarm=0` unread in play), #2293 (the stick's Y, the corpse),
+  #2295 (its `test` red: gold-door 99 s), #2285 (test burns as play;
+  `gone`), #2286 (code lines unheld; b407ef82 merged `main`), #2287
+  (`forEach` writes), #2298 (namespace import), #2299 (`--whole` red
+  unplanted). #2290 passed at d1ff3d9c, but its new head 67752c2d holds
+  #2286 and #2287: it waits with them.
+- #2283 passed, then held at DG's word: its test room keeps ~1 KB a
+  guest (`heap-forget` §4 4,167 B against 4,096); DG pushes the mend.
+- To 58: those re-pushed (review fresh); #2300 (DG), #2301 (BK), #2297.
 ## Found
-- `usage-meter.test` 5 red on main from 00:00 UTC 2026-11-19 (a pinned
-  date): RR's #2265, first on the list. Every PR merged its branch in.
-- `mp-membudget`'s heap line under main's own scatter (37.4-39.2): A/B
-  named no PR; RR's #2267 re-measures it (planning session's yes). About
-  1 MB of creep since the last trim: a trim card's question.
-- gatekeeper.mjs could not fetch (branches fetched by hand); precheck
-  863-893 s here, 1138 s on RR's box: the 15-min cap is tight (RR's 3).
+- Card BK: `chaos-restart`'s `store_list` row drives items only;
+  `piecesHeld` counts pieces, not ids; bots' dice follow their words.
+- Card DG: `testroom` §7 tries four fields; a row dropped from `GUARDED`
+  is unseen. Card WL: statement lines are blind to JSX and literals.
+- The orchestrator's `finish.md` part 9: the reach "about 1.55" is 1.96 at
+  worst over six seeds.
+- #2296's 10-minute precheck cap times out on a box shared with lanes.
 ## Needs
-- Decided while away (part 9's list): the heap line +1.5 MB (no saving
-  given up; a later trim lowers it).
-- Owner's own: `.github/`, Cloudflare; wind-dunes.mp3's source; SEC2's
-  report form; RR's full 388-scenario sweep (a sample now).
+- Nothing from the owner for this list. Owner's own still: `.github/`,
+  Cloudflare; call 3 (the memory alarm's level, #2291, decided while away).
