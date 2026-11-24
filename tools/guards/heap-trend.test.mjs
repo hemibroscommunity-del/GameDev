@@ -101,6 +101,8 @@ const bad = Object.keys(MEMORY_BUDGET).filter((k) => { const j = judgeLines(stop
 ok('10 ...each line read a tenth of a MB over (the heap among them) is red, and only that one', bad.length === 0, bad);
 const unreadJ = judgeLines([{ label: 'home', heap: 30 }, { label: 'fight' }], { heap: (st) => st.heap });
 ok('10 ...a stop whose reading is missing is red (never judged on the stops that read)', unreadJ.rows.length === 1 && unreadJ.rows[0].ok === false, unreadJ.rows);
+const nanJ = judgeLines([{ label: 'home', heap: 30 }, { label: 'fight', heap: NaN }], { heap: (st) => st.heap });
+ok('10 ...a stop that read NaN is red (not a number that sorts nowhere)', nanJ.rows.length === 1 && nanJ.rows[0].ok === false, nanJ.rows);
 const offList = judgeLines([{ label: 'home', nosuch: 1 }], { nosuch: (st) => st.nosuch });
 ok('10 ...a reading with no line of its own is red', offList.rows[0].ok === false);
 
@@ -148,6 +150,9 @@ try {
   ok('11 ...the list names the rise FROM THE TRIM (start, 38.5: 1.2 MB, not the 0.7 since the last row) and the two PRs between',
     a.out.includes(`HEAP ROSE 1.2 MB since the last trim (start, ${sb.hashes.start.slice(0, 8)}: 38.5) to 39.7`) && /PRs merged between: #22, #21\./.test(a.out),
     a.out.split('\n').filter((l) => /heap|HEAP/.test(l)));
+  ok('11 ...it runs main\'s build, then mp-membudget three times, and nothing else (no rehearsal after it); the row dated today',
+    a.steps.map((x) => x.id).join() === 'build,membudget,membudget,membudget' && lastA.date === new Date().toISOString().slice(0, 10) && !/the gatekeeper's rehearsal/.test(a.out),
+    { steps: a.steps.map((x) => x.id), date: lastA.date });
   const b = sb.run(['--heap', '--sitting=61', '--trim'], { heaps: [40.1, 39.2, 39.7] });
   const rowsB = parseRows(sb.baselineText()), lastB = rowsB[rowsB.length - 1];
   ok('11 ...the middle again where it is read last (39.7); `--trim` at a heap that did not fall: refused, said, not marked',
@@ -159,13 +164,51 @@ try {
     c.status === 0 && lastC.sitting === '62' && lastC.middle === 38.2 && lastC.trim && lastTrim(rowsC).sitting === '62' && /heap 38\.2 MB, -0\.3 since the last trim/.test(c.out) && unfallenTrims(rowsC).length === 0,
     { last: lastC, out: c.out.split('\n').filter((l) => /heap|HEAP|trim/.test(l)) });
   const d = sb.run(['--heap', '--sitting=63'], { heaps: [38.1, null, 38.3] });
+  const e = sb.run(['--heap', '--sitting=64'], { red: ['build'], heaps: [38.1, 38.2, 38.3] });
+  ok('11 ...main does not build: exit 1, no mp-membudget run, no row', e.status === 1 && e.steps.map((x) => x.id).join() === 'build'
+    && parseRows(sb.baselineText()).length === rowsC.length && /npm run build on main: no heap recorded/.test(e.out), { status: e.status, steps: e.steps.map((x) => x.id) });
+  const late = sb.advanceOrigin(23);
+  const f = sb.run(['--heap', '--sitting=65'], { heaps: [38.3, 38.1, 38.2] });
+  const lastF = parseRows(sb.baselineText()).slice(-1)[0];
+  ok('11 ...a PR merged on GitHub since this checkout last fetched: --heap fetches and measures THAT main (its row names it; within, +0 since the trim)',
+    f.status === 0 && lastF.sitting === '65' && lastF.main === late.slice(0, 8) && /heap 38\.2 MB, \+0 since the last trim \(62/.test(f.out), { last: lastF, out: f.out.split('\n').filter((l) => /heap|HEAP/.test(l)) });
   const noSitting = sb.run(['--heap'], { heaps: [38.1, 38.2, 38.3] }), withBranch = sb.run(['--heap', '--sitting=64', 'claude/stand-in'], { heaps: [38.1, 38.2, 38.3] });
   ok('11 ...`--heap` with no `--sitting=`, or with a branch named: the usage, exit 2, nothing run and no row',
-    noSitting.status === 2 && noSitting.steps.length === 0 && withBranch.status === 2 && withBranch.steps.length === 0 && parseRows(sb.baselineText()).length === rowsC.length,
+    noSitting.status === 2 && noSitting.steps.length === 0 && withBranch.status === 2 && withBranch.steps.length === 0 && parseRows(sb.baselineText()).length === rowsC.length + 1,
     { noSitting: noSitting.status, withBranch: withBranch.status });
-  ok('11 ...a run that read no heap: no row, exit 1', d.status === 1 && parseRows(sb.baselineText()).length === rowsC.length && /three heap readings wanted/.test(d.out), { status: d.status });
+  ok('11 ...a run that read no heap (its middle run wrote nothing: never the run before\'s file read again): no row, exit 1', d.status === 1 && parseRows(sb.baselineText()).length === rowsC.length + 1 && /three heap readings wanted/.test(d.out), { status: d.status });
 } finally {
   sb.close();
+}
+
+/* 12. v2.3.6506 (the mend's mutation pass): heap-trend.mjs's edges, each read by what it returns */
+{
+  let threw = false;
+  try { middleOf([NaN, 38.1, 38.2]); } catch { threw = true; }
+  ok('12 a reading that is not a number (NaN) is no reading: three wanted, it throws', threw);
+  const tbl = HEADING + '\n\n| sitting | date | main | three reads | middle | mark |\n|---|---|---|---|---|---|\n| start | 2026-11-23 | `aaaaaaaa` | 38.2, 39.0, 38.5 | 38.5 | trim |\n| x | y |\n\n## later\n\n| 99 | 2026-12-09 | `bbbbbbbb` | 1, 2, 3 | 2 |  |\n';
+  const pr = parseRows(tbl);
+  ok('12 parseRows: a short row is passed over, a later section\'s table never read, each cell in its place',
+    pr.length === 1 && pr[0].sitting === 'start' && pr[0].date === '2026-11-23' && pr[0].main === 'aaaaaaaa' && pr[0].middle === 38.5 && pr[0].trim, pr);
+  ok('12 ...no table at all: no rows', parseRows('# nothing here\n| a | b | c | d | e | f |\n').length === 0);
+  ok('12 lastTrim: no rows, null; rows and no trim, the first', lastTrim([]) === null && lastTrim([row('a', 1), row('b', 2)]).sitting === 'a');
+  const v0 = verdict([], 38.5), v0t = verdict([], 38.5, true);
+  ok('12 verdict with no rows: no base, nothing named; the first row may be a trim, and nothing is refused',
+    v0.base === null && v0.named === false && v0.trim === false && v0.trimRefused === false && v0t.trim === true && v0t.trimRefused === false
+      && say(v0, 38.5, []) === 'heap 38.5 MB: the first row of the trend', { v0, v0t });
+  const vn = verdict([row('start', 38.5, true)], 38.8);
+  ok('12 verdict with no --trim asked: no trim, nothing refused; a rise under the MB said with its sign',
+    vn.trim === false && vn.trimRefused === false && !/REFUSED/.test(say(vn, 38.8, [])) && say(vn, 38.8, []).startsWith('heap 38.8 MB, +0.3 since the last trim (start'), say(vn, 38.8, []));
+  ok('12 unfallenTrims: the SECOND row marked trim at a rise is caught too', unfallenTrims([row('start', 38.5, true), row('58', 38.9, true)]).length === 1);
+  let noHead = null, noRows = null;
+  try { addRow('# no table\n', { sitting: '1', date: 'd', main: 'm', reads: [1, 2, 3], middle: 2 }); } catch (e2) { noHead = String(e2); }
+  try { addRow(HEADING + '\n\nno pipe here\n', { sitting: '1', date: 'd', main: 'm', reads: [1, 2, 3], middle: 2 }); } catch (e2) { noRows = String(e2); }
+  ok('12 addRow: no table, or a table with no header line: it throws (never a row written somewhere else)', /no "/.test(noHead || '') && /no header/.test(noRows || ''), { noHead, noRows });
+  const before = tbl.split('\n');
+  const after = addRow(tbl, { sitting: '70', date: '2026-12-01', main: 'cccccccc', reads: [1, 2, 3], middle: 2 }).split('\n');
+  const at = after.findIndex((l) => l.startsWith('| 70 |'));
+  ok('12 addRow: the row goes right under the table\'s last row (above the blank line and the next section), every other line kept',
+    after.length === before.length + 1 && at === before.indexOf('| x | y |') + 1 && after.slice(0, at).concat(after.slice(at + 1)).join('\n') === tbl, { at, n: after.length });
 }
 
 process.exit(failed ? 1 : 0);

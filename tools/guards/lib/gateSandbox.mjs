@@ -21,7 +21,7 @@
  * the PATH (no network, no packages), so a gate run takes a few seconds.
  *
  * `mp-membudget` (the heap mode's three runs) writes the membudget.json the
- * gatekeeper reads, its heap the next of `heaps`.
+ * gatekeeper reads, its heap the next of `heaps` (null: no file written).
  *
  * Pure node and git: the server's CI has no client packages (no Playwright).
  */
@@ -52,7 +52,8 @@ if (id === 'membudget') {
   const heaps = JSON.parse(process.env.GATE_FAKE_HEAPS || '[]');
   const out = join(process.cwd(), 'tools', 'qa', 'mp', 'out');
   mkdirSync(out, { recursive: true });
-  writeFileSync(join(out, 'membudget.json'), JSON.stringify({ peaks: { heap: { v: heaps[n - 1], at: 'stand-in' } } }));
+  /* a heap of null: the run wrote nothing (a run that died before its report) */
+  if (heaps[n - 1] !== null) writeFileSync(join(out, 'membudget.json'), JSON.stringify({ peaks: { heap: { v: heaps[n - 1], at: 'stand-in' } } }));
 }
 const red = (process.env.GATE_FAKE_RED || '').split(',').filter(Boolean);
 if (red.includes(id)) { console.log('FAIL  the stand-in ' + id + ' (asked red)'); process.exit(1); }
@@ -124,6 +125,17 @@ export function makeSandbox({ baseline } = {}) {
       });
       const steps = existsSync(log) ? readFileSync(log, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)) : [];
       return { status: r.status, out: (r.stdout || '') + (r.stderr || ''), steps };
+    },
+    /** a commit merged on origin's main from ANOTHER clone (this checkout's
+     *  origin/main is then behind until it fetches): its hash */
+    advanceOrigin(n) {
+      const other = join(top, 'other' + n);
+      sh(top, 'git', [...GIT_ID, 'clone', '--quiet', origin, other]);
+      writeFileSync(join(other, 'e' + n + '.txt'), String(n) + '\n');
+      sh(other, 'git', [...GIT_ID, 'add', '-A']);
+      sh(other, 'git', [...GIT_ID, 'commit', '--quiet', '-m', `Merge pull request #${n} from stand-in/late`]);
+      sh(other, 'git', [...GIT_ID, 'push', '--quiet', 'origin', 'main']);
+      return sh(other, 'git', ['rev-parse', 'HEAD']);
     },
     baselineText() { return readFileSync(join(repo, 'docs/plan/baseline.md'), 'utf8'); },
     close() {

@@ -247,6 +247,14 @@ const unread = rowsOf([stn('stand', []), stn('town', [], false), stn('ride', [])
 ok('10 ...a station whose profile does not read by name: red', !unread.okAll && unread.v.rows[0].ok === false, unread.bad);
 const short = rowsOf([stn('stand', []), stn('town', [])], WANT);
 ok('10 ...a station asked for and not played (the ride): red', !short.okAll && short.v.rows[3].ok === false, short.bad);
+ok('10 ...the new hold\'s row names it, its time, its line, its station and how often (the list the gatekeeper reads)',
+  fresh2.v.rows[1].name.includes(`a-new-job ${HOLD + 6} ms > ${HOLD} (town, 2 times)`) && fresh2.v.rows[3].name.endsWith('(stand, town, ride)'), fresh2.v.rows.map((r) => r.name.slice(-60)));
+const seven = rowsOf([stn('town', [1, 2, 3, 4, 5, 6, 7].flatMap((i) => [{ key: 'job' + i, what: 'job' + i, ms: HOLD + 10 + i }, { key: 'job' + i, what: 'job' + i, ms: HOLD + 10 + i }]))], ['town']);
+ok('10 ...seven new holds: red, the six worst named (the row stays readable)', !seven.okAll && (seven.v.rows[1].name.match(/job\d/g) || []).length === 6 && !seven.v.rows[1].name.includes('job1 '), seven.v.rows[1].name.slice(0, 200));
+const once = rowsOf([stn('stand', []), stn('town', [{ key: 'a-big-job', what: 'a-big-job', ms: HOLD * 2 }]), stn('ride', [])], WANT);
+ok('10 ...a NEW hold ONCE, at twice its line (past the noise rule, NOISE_K): red, and named', !once.okAll && once.v.rows[1].ok === false && /a-big-job/.test(once.v.rows[1].name), once.bad);
+const one = rowsOf([stn('stand', [])], ['stand']);
+ok('10 ...one station asked for, one played: green', one.okAll, one.bad);
 const nothing = rowsOf([], WANT);
 ok('10 ...no station at all: red (never green for having measured nothing)', !nothing.okAll && nothing.v.rows[0].ok === false && nothing.v.rows[3].ok === false, nothing.bad);
 
