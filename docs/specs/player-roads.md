@@ -42,12 +42,13 @@ while away.
 lever is wired by the PR that builds its reader and a test that sets it and
 sees it applied (a fee set, then charged), on the owner's word, and that PR
 turns its mark to `wired: true`. `tools/guards/road-levers.test.mjs` holds
-the marks to the source, off the syntax tree: it fails a file of
-`server/src` that holds the rows (it imports `PLAYER_ROADS`, or the module
-whole) and reads a lever marked not wired, a lever marked wired that
-nothing reads, and a file that passes `PLAYER_ROADS` on. Break proofs, tried
-by hand: `PLAYER_ROADS.market.fee` read in `xfer.js` fails its §1, and
-`fee` marked `wired: true` fails its §2.
+the marks to the source, off the syntax tree: it follows the table's value
+binding by binding (an alias, a const key, destructuring, a local function,
+a callback, a dynamic import; the table's own file included) and fails a
+read of a lever marked not wired, a use it cannot follow (so an unknown
+spelling is red, never green: sitting 58's hold, mended in BK part 5), a
+lever marked wired that nothing reads, and a file that passes the rows on
+under any name. Its §5 plants sixteen spellings and three honest uses.
 
 | Row | What it is | Carries | Ledger |
 |---|---|---|---|
