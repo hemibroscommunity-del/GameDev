@@ -1,4 +1,4 @@
-# Known debts (v2.3.6272, v2.3.6273; the owner's line of 2026-11-24)
+# Known debts (v2.3.6272, v2.3.6273, v2.3.6274; the owner's line of 2026-11-24)
 
 The owner, 2026-11-24, asked "May I draw the line there?": *"Yes."* The
 finish is a fixed list (`docs/plan/finish.md` part 2). A reviewer's finding
@@ -8,8 +8,8 @@ A bug in how the game behaves is not a debt: it is still fixed (and held,
 
 Each line: the card, the file, and the plant or finding that shows it.
 "Green" means the plant stays green in the named guard. Written from the
-gatekeeper's reviews of sittings 58 to 61 (`docs/plan/census/review-z58.md`,
-`review-z59.md`, `review-z60.md`, `review-z61.md`) and the orchestrator's own list, for
+gatekeeper's reviews of sittings 58 to 62 (`docs/plan/census/review-z58.md`,
+`review-z59.md`, `review-z60.md`, `review-z61.md`, `review-z62.md`) and the orchestrator's own list, for
 every finding that no PR on sitting 60's list mends. A finding on a HELD PR
 stays with that PR until it lands, and is marked (held).
 
@@ -87,6 +87,9 @@ stays with that PR until it lands, and is marked (held).
   scenario (60).
 - `tools/qa/mp/mp-twobuttons.mjs:343` (61: 2c at :477): its SKIP asks neither
   the lock on the target, the phase active nor a small gap (60).
+- `tools/qa/mp/mp-twobuttons.mjs` step "3. upright: a shield in hand
+  (guard)": once in three runs (CT's on 67ba711e) the shield never came,
+  so 3b-3d saw no Block (74 of 78); the rerun 78 of 78 (62).
 - `tools/guards/four-lines.test.mjs`: BroTown has 62 lines of room (8308
   against 8370), so new logic in `gameLoop` is not seen (60).
 - A 280 ms hitch inside a swing misses its hit test (the orchestrator).
@@ -125,9 +128,23 @@ stays with that PR until it lands, and is marked (held).
 
 - `tools/dev/state-census.mjs` `--json` carries no const-key, `Reflect.set`
   or `defineProperty` write to S, so OWNED cannot refuse them (58; card D).
-- (held #2326) `tools/guards/road-levers.test.mjs` ~391-399: a `require`
+- `tools/guards/road-levers.test.mjs` ~391-399: a `require`
   made by `createRequire(import.meta.url)('./playerroads.js')` is not a
-  start of the scan; `eval('_Q')[r].fee` is not marked lost (61).
+  start of the scan; `eval('_Q')[r].fee` is not marked lost (61); still
+  green at 62 on #2335, with `require` of an outside file and a computed
+  `require` beside it (62).
+- `tools/guards/road-levers.test.mjs` `placeImport` (~175): a symlink in
+  the repository is "reached" without its real path checked: a link in
+  `src/game` to the table, one in `server/src` to `playerroads.js`, or a
+  linked folder to `server/src` reads `.fee` green (#2326 was red on the
+  second) (62).
+- `tools/guards/road-levers.test.mjs`: a copy of `playerroads.js` at
+  `src/game/zRoadsMirror.js`, its `.fee` read in `server/src`, is green;
+  a reached file's bare `@/game/...` import counts as a package (62).
+- `tools/guards/road-levers.test.mjs`: two mutants of #2335's lines live
+  (the `'..'` test dropped; `scanTree`'s `seen` set dropped: no tree plant
+  has a cycle); check 3's label says "no file of server/src" for an
+  outside file (62).
 - `chaos-restart` §7 does not drive the Auction House GEAR and PET listings
   (`store.js` ~846) (58; card BK).
 - `finish.md` part 9: the reach "about 1.55"; its worst over six seeds is
