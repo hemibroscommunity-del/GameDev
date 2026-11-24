@@ -21,20 +21,13 @@ state: working
 - PR 3 (6542, #2308 draft): the latch, the lock, S.stickX/Y one owner.
 
 ## Next
-- PR 3 (#2308): 2c's red was the TEST, by three traced runs on this box
-  (part 6): the character was held in BroTown's safe circle by the Mayor's
-  gate (no tut_1; game/wheelHome.js wheelCommonsGate pulls every step out
-  back to the edge, speed 0), and the nearest monster stood outside it. The
-  lock never moved (the hurt monster was the locked one; the message said
-  "moved to" for an end of null). Mended: part 2 opens the gate first
-  (mp-crowdfight's way: the worker's `quests`, tut_1 kept in the page); the
-  walk's and the fight's traces stay in 2c's FAIL details. Then the helper's
-  ONE run on the branch; green: #2308 ready.
-- Then PR 4 (6543), PR 5 (6544), item 6 (6545).
+- PR 3 (#2308): 2c's red was the TEST (three traced runs, part 6): the
+  Mayor's gate (no tut_1; wheelHome.js wheelCommonsGate) held the body in
+  BroTown's circle, the monster outside. The lock never moved. Mended: part
+  2 opens the gate first (mp-crowdfight's way). Then the helper's ONE run;
+  green: #2308 ready. Then PR 4 (6543), PR 5 (6544), item 6 (6545).
 
 ## Found
-- mp-twobuttons 2c (part 6): a new character cannot leave BroTown's safe
-  circle; a part that fights outside it opens the gate first.
 - `manual-combat.test` 1h pinned `?manual=5` as no switch: now `6`.
 - This box: a CDP flick waits behind a slow frame, past the swipe's 300 ms
   (mode 4 too; mp-twobuttons 1f).
