@@ -643,7 +643,7 @@ export function openHandCensus(babel, sources) {
   const bearingOf = new Map();
   const out = new Map();
   const look = (rel) => {
-    const ast = babel.parser.parse(sources.get(rel), { sourceType: 'module', plugins: ['jsx'], errorRecovery: true });
+    const ast = parse(rel);   /* v2.3.6526: one tree a file (babel's scopes are kept on it) */
     const { reach, exp, bearing } = analyse(babel, rel, ast, exportsOf, has);
     bearingOf.set(rel, bearing);
     if (reach.size) out.set(rel, reach); else out.delete(rel);
