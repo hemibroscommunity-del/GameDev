@@ -2,7 +2,7 @@ card: ORC
 branch: claude/plan-orc
 prs: none open (this notes branch never has a PR)
 state: working
-part 3 (session_01LccHai8C7VrfNzbCiF6C2k) hands over 2026-11-24 about 01:45 UTC, BEFORE sitting 57's merge (its memory would cross 250k in the merge); part 4 reads this and docs/plan/finish.md. PART 4, YOUR FIRST ACT: one send_message to part 3 saying "part 4 started" with your id (the owner was asked to start you; part 3 starts one itself at about 02:00 UTC if it hears nothing, and two orchestrators must not run); it is the only message you ever send it.
+part 3 (session_01LccHai8C7VrfNzbCiF6C2k) hands over 2026-11-24 about 01:45 UTC, BEFORE sitting 57's merge (its memory would cross 250k in the merge); part 4 reads this and docs/plan/finish.md. Part 3 started part 4 itself at 01:53 UTC (the owner, asked at 01:33 to start it, had not answered): never message part 3.
 
 ## Sitting 57: RUNNING since 01:06 UTC, gatekeeper session_01LccHahbA4NKM4W2gfwhETx (strong, high). Its list comes to the orchestrator: TELL IT THE NEW ID FIRST.
 Queue as sent (17): #2273 (06cd9091), #2279 (316dab3f), #2281 (36729df8), #2289 (b4cbd29e), #2282 then #2293, #2283 (b5ba8bb8) then #2295 (f7ef9ed; base main now; `test` was running at 01:30), #2285, #2286, #2287, #2290, #2288 then #2294 (f191ced6) then #2296 (8c9a45da), #2291 (490d110f). If room: #2298 (WL PR 4), #2299 (BK PR 3, d14032fb, on #2289). Not in it: #2297 (a draft).
@@ -11,11 +11,11 @@ After 57 merges, TELL: WHO (#2283 in: merge main, open 6481 "shape bump: ECON_V"
 
 ## Sessions (strong, high); every one was told part 3's id: tell each the new one
 - CK  part 3 session_01LccHanDgcojfUMPpPn87N2 (about 150k): #2288, #2294, #2296 ready; card DONE but PR 5 (waits call 2, the owner's own words)
-- DG  part 3 session_01LccHanED8EaLracuMeAGGR: caretaker only (subscribed to #2283, #2295, #2300; #2300 = PR 3, tests only, for sitting 58, asked to retarget to main). DG part 4 (new 01:36, session_01LccHajiyuv8speuDQTioEV): builds PR 4 (6443) from claude/dg-books, then 5, 6
+- DG  part 3 session_01LccHanED8EaLracuMeAGGR: caretaker only: #2295's CI went RED at 01:47 (gold-door slow, heap-forget 4,167 B against 4,096); it pushes fixes to #2283, #2295, #2300 and told Z to hold #2283 and #2295 until green (WHO's 6481 waits on #2283) (subscribed to #2283, #2295, #2300; #2300 = PR 3, tests only, for sitting 58, asked to retarget to main). DG part 4 (new 01:36, session_01LccHajiyuv8speuDQTioEV): builds PR 4 (6443) from claude/dg-books (answered: it merges REFUSING, `wireform: 'count'` / `false` the flag's other states, counted on v1 and v2 first), then 5, 6
 - BK  part 3 session_01LccHaie7SxqWb9if8mSTuX: #2281, #2289, #2299 ready (no push to #2299 until 57 has merged); PR 4 = #2301 (edb00915, from main, for sitting 58: merge main once into #2299 and #2301 after 57 lands, on the orchestrator's word); all four PRs written
 - WHO part 4 session_01LccHahezkhX8pJRQSedVFF (new 01:22): #2285 ready; 6481 and 6482 built, no PR, wait for the word that #2283 merged
 - PH  part 3 session_01LccHai7CL7LxQeF4eEbKc8 (new 01:04): #2279, #2291 ready; #2297 a draft (lines from CI's read); PR 4 waits call 1; PRs 5, 6 free
-- WL  part 4 session_01LccHajbxzLqNe1hfoBPtSb (new 01:11): pushing #2286, #2287, #2290, #2298 as a chain (each holds the one before); its new heads are DUE to the orchestrator and Z; PR 5 (6524) stacked on #2298, base main; PR 6 after
+- WL  part 4 session_01LccHajbxzLqNe1hfoBPtSb (new 01:11): chain pushed 01:40, each holds the one before: #2286 b407ef82, #2287 f9e86568, #2290 67752c2d, #2298 200611b2 (Z has them); PR 5 = #2302 (d54fcbcb, on #2298, for sitting 58, told to mark it ready); told to stack PR 6 (6525) on it
 - CT  part 3 session_01LccHai1bVEjSVXUpBurWA5: #2282, #2293 ready; building PR 3 (6542); PRs 4, 5 after
 - Old parts (PH 2, WL 3, WHO 3, ORC 1 and 2) told to unsubscribe and stop: never message them.
 
