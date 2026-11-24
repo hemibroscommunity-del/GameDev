@@ -32,6 +32,23 @@
  * Break proof, tried by hand: `if (next) { ... }` -> `if (false)` in
  * latchCheck -> FAIL 3; `S._latchPhase = 'idle';` in latchClear -> FAIL 4
  * (and the guard's §2).
+ *
+ *   5. (v2.3.6548) plays today's press under `?holdauto=0`: a lock is 'auto'
+ *      at once (the held attack on), the kill moves the lock;
+ *   6. TAP AND HOLD (v2.3.6548, card CT part 15), the page's rule: a tap
+ *      locks ('active', no held attack) and the lock stays; a press on it is
+ *      'strike'; a hold fills at 600 ms ('auto'; `?autohold=<ms>` clamped
+ *      200 to 3000); a lift before is a tap; a slide past 56 px ends the
+ *      hold; a tap while auto lets go ('press'); a kill lets EVERYTHING go,
+ *      another in sight or not; out of range and your death drop a hold;
+ *      the disc's data-latch off / lock / auto and its ring (data-hold a/b,
+ *      --autohold) set once at the press.
+ * Mutants (v2.3.6548): 61 one-line changes of the added lines of latch.js,
+ * freeAttack.js, controlVisibility.js and targeting.js, run against this
+ * suite, sight.test and tools/guards/free-attack: 60 killed.  The one that
+ * lives: targeting.js latchLock reading `=== 'active'` alone (the lock
+ * dropped while auto): that file imports by the '@' alias, so no node suite
+ * loads it; mp-twobuttons 2b's hold step reads the lock while auto.
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { AUTOHOLD, holdAutoOn, autoHoldMs, latchLocked, latchHoldStart, latchRelease, latchSlide, latchFill, latchRing, latchRingOff, latchLine } from '../../src/game/latch.js';   /* v2.3.6548: tap and hold (6) */
@@ -334,6 +351,7 @@ delete globalThis.location;
     F(D, 1000); latchAttackPress(D); latchHoldStart(D, 1000);
     check('6d. your death mid-hold: idle, the hold dropped', F(D, 1100, true) === false && D._latchHoldAt === 0 && D._latchEnd === 'death');
     check('6d. latchFill on a hold with no lock drops it', (() => { const X = { _latchHoldAt: 5 }; return latchFill(X, 9000, 600) === false && X._latchHoldAt === 0; })());
+    check('6d. ...and on one already auto: dropped, nothing written again', (() => { const X = { _latchPhase: 'auto', _latchId: 'q', _latchHoldAt: 5, _latchEnd: 'x' }; return latchFill(X, 9000, 600) === false && X._latchHoldAt === 0 && X._latchEnd === 'x'; })());
   }
   /* 6e. a press with nothing in sight: one attack, no lock, no ring */
   {
@@ -371,6 +389,8 @@ delete globalThis.location;
     check('6g. a look with nothing changed writes nothing', latchLook(el, S) === false);
     F(S, 1600); latchLook(el, S);
     check('6g. filled: auto (lit), the ring gone', attrs['data-latch'] === 'auto' && !('data-hold' in attrs));
+    attrs['data-hold'] = 'b';
+    check('6g. a ring left with no hold: taken away, and the look says it wrote', latchLook(el, S) === true && !('data-hold' in attrs));
     check('6g. no hold: no ring', latchRing(el, S, 600) === false && !('data-hold' in attrs) && latchRing(null, S, 600) === false);
     S._latchHoldAt = 5;
     check('6g. a second press\'s ring is b (a new animation: the fill restarts with no layout read), then a', latchRing(el, S, 2000) === true && attrs['data-hold'] === 'a' && latchRing(el, S, 2000) === true && attrs['data-hold'] === 'b' && props['--autohold'] === '2000ms');

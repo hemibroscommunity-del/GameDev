@@ -281,7 +281,7 @@ export function latchFrame(S, now, dead, slot, mult) {
   }
   sightStep(S, sightNow(S, _range), now);
   const hold = holdAutoOn();
-  if (hold) latchFill(S, now, autoHoldMs());   /* v2.3.6548: the hold's ring full: auto-attack on */
+  latchFill(S, now, autoHoldMs());   /* v2.3.6548: the hold's ring full: auto-attack on (a hold starts only on the hold's rule: latchHoldStart) */
   if (!latchLocked(S)) return was ? false : null;
   const m = findMon(S.monsters, S._latchId);
   _T.alive = monUp(m);

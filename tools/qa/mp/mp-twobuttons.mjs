@@ -607,7 +607,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const hB = await HOLD_AUTO();
         const tookMs = hB.t && hB.t.at && hB.t.auto ? hB.t.auto - hB.t.at : null;
         rec.ok(`2b. ${label}: a HOLD past the fill: auto-attack on after ${tookMs} ms (>= 600), the button lit (${hB.after.look}), the held attack on with the finger lifted, the ring gone (${hB.ring && hB.ring.hold}); the press one attack (taps ${tB} -> ${hB.after.taps})`,
-          hB.filled && !!hB.mid.ring && hB.mid.ring.hold != null && hB.mid.l.phase === 'active' && tookMs >= 600 && hB.after.phase === 'auto' && hB.after.auto && hB.after.look === 'auto' && hB.ring && hB.ring.hold == null && hB.after.id === target && hB.after.taps === tB + 1 && hB.icon.latch === 'auto' && hB.icon.strike && !hB.icon.aim, hB);
+          hB.filled && !!hB.mid.ring && hB.mid.ring.hold != null && hB.mid.l.phase === 'active' && tookMs >= 600 && hB.after.phase === 'auto' && hB.after.auto && hB.after.look === 'auto' && hB.after.lock === target && hB.after.latchLock && hB.ring && hB.ring.hold == null && hB.after.id === target && hB.after.taps === tB + 1 && hB.icon.latch === 'auto' && hB.icon.strike && !hB.icon.aim, hB);
         /* a tap while auto: off, and no attack of its own */
         await press();
         const lC = await LATCH(P);
