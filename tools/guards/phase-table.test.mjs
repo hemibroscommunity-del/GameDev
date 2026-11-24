@@ -27,6 +27,19 @@
  *   2b. the table is plain data (read before it is imported);
  *   3. every slot of REJOIN_SLOTS (src/game/rejoinSlots.js) is named by a row,
  *      and every slot a row names is in REJOIN_SLOTS;
+ *   2d. A FENCE ON A LITERAL KEY, NOT A WALL (v2.3.6526, sitting 59's hold):
+ *      every object-literal key naming a door's field, in a function,
+ *      outside the door's files, and not an http status handed straight to
+ *      `new Response(..)` / `Response.json(..)`, is a row of KEYS (by field
+ *      and file, only falls: 63 rows, 118 keys).  Sitting 59's four
+ *      (`...Object.freeze({ status })`, a conditional `_p`, `_up(d, {
+ *      status })`, `..._ps[0]`) each plant such a literal and are red, as
+ *      are card WL's own three (a string key, a template key, a const key).
+ *      NOT GUARDED: a write by a key held in a variable (`x[k] = v`, 2,111
+ *      today), a spread of a non-literal (776), Object.assign from a
+ *      non-literal (434): the tree cannot read the key.  Not deny by
+ *      default: the wall (each door keeps a shadow of what it set, the test
+ *      room compares after every message and tick) is the card's next PR.
  *   4. every machine name in the wire table's `phase` column
  *      (server/src/wire/columns.js, card N's, and every row's demands) is a
  *      row;
@@ -866,6 +879,173 @@ if (babel) {
   const fell = Object.keys(SPREAD_CALLS).filter((f) => (counts[f] || 0) < SPREAD_CALLS[f]);
   if (fell.length) info(`(room: ${fell.map((f) => f + ' ' + (counts[f] || 0) + ' < ' + SPREAD_CALLS[f]).join(', ')}; lower the list)`);
   if (process.argv.includes('--write-spreads')) console.log(JSON.stringify(counts, null, 2));
+}
+
+/* ── 2d. v2.3.6526 (sitting 59's hold; the orchestrator's answer (a)): A
+   FENCE ON A LITERAL KEY, NOT A WALL ──
+   Sitting 59 wrote a door's field through a literal the scan did not follow
+   (`Object.freeze({ status: 'resolved' })` spread, a conditional `_p`, a
+   `_up(patch)` helper, `..._ps[0]`, party.js): each plants an object
+   literal with the field's key.  So every object-literal key that names a
+   door's field (its side's files, outside the door's own files) is counted,
+   by field and file, and the list only falls (KEYS): a new one is red,
+   whatever is done with the literal after.  The ALLOWED forms (no row):
+     - a literal outside every function (a table built at load, the wire
+       table's `phase` column: data, never a record's write);
+     - a literal handed straight to `new Response(..)` / `Response.json(..)`
+       (an http status, not a phase);
+     - a key the guard cannot read (`{ [k]: v }` with a k it cannot read).
+   NOT GUARDED (said in the PR, and here): a write by a key held in a
+   variable (`x[k] = v`, 2,111 under src/ and server/src on 2026-11-24), a
+   spread of a non-literal (776), Object.assign from a non-literal (434):
+   the tree cannot read the key.  This is a fence, not deny by default; the
+   wall (a shadow kept by each door, compared in the test room after every
+   message and tick) is the card's next PR (docs/plan/status/WL.md, Found). */
+const KEYS = Object.freeze(Object.assign(Object.create(null), {
+  ['_dying ' + fileNamed('entityRenderer.js')]: 1,   /* a big file, by its system */
+  ['_extraction ' + fileNamed('entityRenderer.js')]: 1,   /* a big file, by its system */
+  ['_pvpSkullType ' + fileNamed('entityRenderer.js')]: 1,   /* a big file, by its system */
+  ['_shieldUp ' + fileNamed('effectsRenderer.js')]: 1,   /* a big file, by its system */
+  ['_shieldUp ' + fileNamed('entityRenderer.js')]: 1,   /* a big file, by its system */
+  'alive server/src/devtools.js': 1,
+  'alive server/src/dungeon.js': 2,
+  'alive server/src/gathering.js': 1,
+  'alive server/src/index.js': 1,
+  'alive server/src/join.js': 2,
+  'alive server/src/spawnscale.js': 2,
+  'alive server/src/tick.js': 2,
+  'alive server/src/wheelzone.js': 1,
+  'alive src/data/gameSystems.js': 2,
+  'alive src/data/lifeSkills.js': 1,
+  'alive src/networking/gameEvents.js': 1,
+  'alive src/networking/wsClient.js': 1,
+  'alive src/rendering/farmWorld.js': 3,
+  'alive src/rendering/lightfx/casters.js': 7,
+  'alive src/rendering/systems/ambientFx.js': 1,
+  ['alive ' + fileNamed('entityRenderer.js')]: 1,   /* a big file, by its system */
+  'alive src/rendering/wheelDoors.js': 1,
+  'alive src/rendering/wheelObjects.js': 2,
+  ['alive ' + fileNamed('BroTown.jsx')]: 1,   /* a big file, by its system */
+  'blocking server/src/admin.js': 1,
+  'blocking server/src/index.js': 1,
+  'blocking server/src/join.js': 1,
+  'blocking server/src/spar.js': 1,
+  ['currentZone ' + fileNamed('effectsRenderer.js')]: 2,   /* a big file, by its system */
+  ['currentZone ' + fileNamed('BroTown.jsx')]: 1,   /* a big file, by its system */
+  'ex server/src/admin.js': 1,
+  'ex server/src/tick.js': 1,
+  'life server/src/spar.js': 4,
+  'phase server/src/dungeon.js': 1,
+  'phase server/src/index.js': 1,
+  'phase server/src/life.js': 1,
+  'phase server/src/telegraph.js': 6,
+  'po server/src/admin.js': 1,
+  'po server/src/tick.js': 1,
+  'state server/src/dungeon.js': 1,
+  'state server/src/party.js': 3,
+  'state server/src/rejoinresend.js': 1,
+  'status server/src/alliance.js': 1,
+  'status server/src/arena.js': 5,
+  'status server/src/burst.js': 1,
+  'status server/src/chainwriter.js': 3,
+  'status server/src/clans.js': 1,
+  'status server/src/gladiator.js': 10,
+  'status server/src/index.js': 2,
+  'status server/src/origin.js': 2,
+  'status server/src/playerrestore.js': 9,
+  'status server/src/publicreads.js': 1,
+  'z server/src/bodytake.js': 1,
+  'z server/src/eventplace.js': 3,
+  'z server/src/index.js': 1,
+  'z server/src/join.js': 1,
+  'z server/src/lastplace.js': 2,
+  'z server/src/moveclaims.js': 1,
+  'z server/src/movement.js': 1,
+  'z server/src/movepath.js': 1,
+  'z server/src/spar.js': 2,
+  'z server/src/tick.js': 2,
+  'z server/src/wheeldungeon.js': 1,
+}));
+function keyLiteralsIn(rel, props, text = null) {
+  const raw = text === null ? readFileSync(join(ROOT, rel), 'utf8') : text;
+  if (![...props].some((p) => raw.includes(p))) return [];
+  let ast = text === null ? astCache.get(rel) : null;
+  if (!ast) { ast = babel.parser.parse(raw, { sourceType: 'module', plugins: ['jsx'], errorRecovery: true }); if (text === null) astCache.set(rel, ast); }
+  const out = [];
+  babel.traverse(ast, {
+    ObjectProperty(path) {
+      if (path.parent.type !== 'ObjectExpression') return;
+      const k = keyName(path.node, path.scope);
+      if (!k || !props.has(k)) return;
+      if (!path.getFunctionParent()) return;                                   /* a table built at load */
+      const obj = path.parentPath, c = obj.parent;
+      if (c && (c.type === 'NewExpression' || c.type === 'CallExpression') && c.arguments.includes(obj.node)) {
+        const ce = c.callee;
+        if ((ce.type === 'Identifier' && ce.name === 'Response')
+          || (ce.type === 'MemberExpression' && ce.object.type === 'Identifier' && ce.object.name === 'Response' && propOf(ce) === 'json')) return;   /* an http status */
+      }
+      out.push({ prop: k, line: path.node.loc.start.line });
+    },
+  });
+  return out;
+}
+const fenceFields = () => {
+  /* side -> Map(prop -> Set(the door's own files)) */
+  const m = { worker: new Map(), page: new Map() };
+  const add = (side, prop, file) => { if (!m[side].has(prop)) m[side].set(prop, new Set()); if (file) m[side].get(prop).add(file); };
+  for (const r of ROWS.filter((x) => x && x.status === 'door')) {
+    const held = r.held || {};
+    if (str(held.suite) && Object.prototype.hasOwnProperty.call(DOOR_SUITES, held.suite)) add(r.side, DOOR_SUITES[held.suite].prop, r.file);
+    for (const sc of held.scan || []) { add(r.side, sc.prop, r.file); for (const a of sc.at || []) { const p = place(a); if (p) add(r.side, sc.prop, p.file); } }
+  }
+  return m;
+};
+if (babel) {
+  const F = fenceFields();
+  const found = Object.create(null);
+  const byField = Object.create(null);
+  for (const side of Object.keys(SRC_OF)) {
+    const props = new Set(F[side].keys());
+    for (const f of filesUnder(SRC_OF[side])) {
+      for (const h of keyLiteralsIn(f, props)) {
+        if (F[side].get(h.prop).has(f)) continue;                               /* the door's own file */
+        const key = h.prop + ' ' + f;
+        (found[key] = found[key] || []).push(h.line);
+      }
+    }
+  }
+  const over = [];
+  for (const k of Object.keys(found).sort()) {
+    const field = k.split(' ')[0];
+    byField[field] = (byField[field] || 0) + found[k].length;
+    if (found[k].length > (KEYS[k] || 0)) over.push(`${k}: ${found[k].length} literal key(s), its row ${KEYS[k] || 0} (lines ${found[k].join(', ')})`);
+  }
+  const n = Object.values(found).reduce((t, l) => t + l.length, 0);
+  const line = Object.values(KEYS).reduce((t, x) => t + x, 0);
+  check(`2d: a FENCE (not a wall): object-literal keys naming a door's field outside its file, in a function, not an http status: ${n} in ${Object.keys(found).length} (field, file) pairs, the list ${line} in ${Object.keys(KEYS).length} rows (it only falls); by field ${Object.entries(byField).sort((a, b) => b[1] - a[1]).map(([f, c]) => f + ' ' + c).join(', ')}`, over.length === 0, over);
+  const stale = Object.keys(KEYS).filter((k) => !found[k]);
+  if (stale.length) info(`(room: ${stale.join(', ')} hold none now; delete their rows)`);
+  if (process.argv.includes('--write-keys')) for (const k of Object.keys(found).sort()) console.log(`  '${k}': ${found[k].length},`);
+  const rowsBy = Object.create(null);
+  for (const k of Object.keys(KEYS)) { const fld = k.split(' ')[0]; rowsBy[fld] = (rowsBy[fld] || 0) + 1; }
+  info(`(2d's rows by field: ${Object.entries(rowsBy).sort((a, b) => b[1] - a[1]).map(([f, c]) => f + ' ' + c).join(', ')})`);
+  /* the plants, every run: sitting 59's four (party.js:122), then card WL's own three; and the
+     allowed forms, none */
+  const wrap = (b) => `export function _partyLeave(d, c) {\n${b}\n}\n`;
+  const ST = new Set(['status']);
+  const RED = [
+    "return { ...d, ...Object.freeze({ status: 'resolved' }) };",
+    "const _p = c ? { status: 'resolved' } : null; return { ...d, ..._p };",
+    "const _up = (o, patch) => Object.assign(o, patch); _up(d, { status: 'resolved' });",
+    "const _ps = [{ status: 'resolved' }]; return { ...d, ..._ps[0] };",
+    "return Object.assign(d, { 'status': 'resolved' });",
+    "return { ...d, [`status`]: 'resolved' };",
+    "const K = 'status'; return { ...d, [K]: 'resolved' };",
+  ];
+  const ALLOWED = ["return new Response('gone', { status: 410 });", "return Response.json({ ok: 1 }, { status: 200 });"];
+  const missed = RED.filter((b) => !keyLiteralsIn('plant.js', ST, wrap(b)).length);
+  const loud = ALLOWED.filter((b) => keyLiteralsIn('plant.js', ST, wrap(b)).length);
+  check(`2d: each planted literal key is counted (${RED.length} plants), each allowed form is not (${ALLOWED.length})`, !missed.length && !loud.length, { missed, loud });
 }
 
 /* ── 3. REJOIN_SLOTS, both ways ── */
