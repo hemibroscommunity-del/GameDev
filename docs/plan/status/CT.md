@@ -1,7 +1,7 @@
 card: CT
 branch: claude/plan-ct-4-sight (PR 4, stacked on claude/plan-ct-3-right)
-prs: #2282 (6540, merged), #2293 (6541, held at 59), #2308 (6542, ready), PR 4 (6543, working)
-state: working
+prs: #2282 (6540, merged), #2293 (6541, held at 59), #2308 (6542, ready), PR 4 (6543, ready)
+state: ready
 
 ## Done
 - PR 1 (6540, #2282): merged at sitting 57.
@@ -19,13 +19,11 @@ state: working
   one owner; 2c's sideways fight a SKIP with the box's frame time.
 
 ## Next
-- PR 4 (6543, branch claude/plan-ct-4-sight, no PR yet; handed over at
-  285k memory). Built: the line (leaf effects-sight.js), Block/Special via
-  controlVisibility.js combatButtonsShown + combatReach (sight's range);
-  sight.test 7-10, 30 plants red. mp-twobuttons run 2: 42 pass, 5 red, all
-  3a/3c/3d: ANOTHER monster of the pack in sight at 700 px (the test's).
-  Mended (a lone monster, nn >= 1300) but NOT run: next part runs part 3
-  once by a helper, then the full suite, main merged, the PR (base 3-right).
+- PR 4 (6543, draft PR on claude/plan-ct-3-right; part 9). mp-twobuttons
+  run 3: 31 pass, 7 red, the test's choice of monster (another of the
+  pack locked or in sight). Mended: PICK, a monster AND its side, the path
+  480 px from any other (a new sighting is at 440; run 4's 650 asked too
+  much: 506 near BroTown). Run 5 by a helper. PR 5, item 6: fresh parts.
 
 ## Found
 - `manual-combat.test` 1h pinned `?manual=5` as no switch: now `6`.

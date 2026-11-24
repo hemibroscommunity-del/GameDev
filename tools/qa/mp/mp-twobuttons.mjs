@@ -235,10 +235,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const eq = await H.equipWeapon(P, 'greatsword', 'weapon', 'melee').catch((e) => ({ ok: false, why: String(e) }));   /* the held attack swings only an equipped weapon (monsterCombat _eqWpn) */
       rec.ok(`2. ${label}: a sword in hand (guard)`, !!(eq && eq.ok), eq);
       /* v2.3.6543: the monster with room round the walk in (PICK: 60 to 420 px
-         out, the sight's 550 held plus a wander, 650 px from any other) */
+         out, 480 px from any other: the sight takes a NEW monster at 440, its
+         550 holds only the one already in sight; the fourth run: 506 px the most
+         room near BroTown, 650 asked too much) */
       const mon0 = await H.readState(P, bind(PICK, { dMin: 60, dMax: 420, maxD: 3000 }));
-      rec.ok(`2. ${label}: a real monster of the Wheel with no other near its path (${mon0 && mon0.room} px; guard)`, !!mon0 && mon0.room >= 650, mon0);
-      if (!mon0 || mon0.room < 650) continue;
+      rec.ok(`2. ${label}: a real monster of the Wheel with no other near its path (${mon0 && mon0.room} px; guard)`, !!mon0 && mon0.room >= 480, mon0);
+      if (!mon0 || mon0.room < 480) continue;
       await H.hopTo(P, Math.round(mon0.x - 170 * Math.cos(mon0.a)), Math.round(mon0.y - 170 * Math.sin(mon0.a)), { tries: 90 });
       await P.page.waitForTimeout(1200);
       const near = await H.readState(P, bind((S, id) => { const m = (S.monsters || []).find((x) => x && String(x.id) === id); return m ? { mx: m.x, my: m.y, px: S.player.x, py: S.player.y } : null; }, mon0.id));
@@ -432,12 +434,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
          px off, and the sight is the phone's, of every monster; the third: no
          monster 1300 px from its nearest neighbour among those the phone
          knows).  PICK: the body's points 400 to 730 px out on the side chosen,
-         650 px from any other live monster (the sight's 550 held, and a
-         wander); then the body turned to face it from that side, so the
+         480 px from any other live monster (a NEW sighting is at 440; the
+         550 holds only the one in sight); then the body turned to face it from that side, so the
          keeper's line (the drawn facing's) is that side */
       const mon3 = await H.readState(P, bind(PICK, { dMin: 400, dMax: 730, maxD: 4000 }));
-      rec.ok(`3. ${label}: a live monster with no other near the path (${mon3 && mon3.room} px, from the ${mon3 && mon3.face}; guard)`, !!mon3 && mon3.room >= 650, mon3);
-      if (!mon3 || mon3.room < 650) continue;
+      rec.ok(`3. ${label}: a live monster with no other near the path (${mon3 && mon3.room} px, from the ${mon3 && mon3.face}; guard)`, !!mon3 && mon3.room >= 480, mon3);
+      if (!mon3 || mon3.room < 480) continue;
       await H.hopTo(P, Math.round(mon3.x - 700 * Math.cos(mon3.a)), Math.round(mon3.y - 700 * Math.sin(mon3.a)), { tries: 260 });
       await P.page.waitForTimeout(1500);
       await touch('touchStart', [c]);
