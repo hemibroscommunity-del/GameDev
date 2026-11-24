@@ -25,6 +25,25 @@ PR 3 (6502): each line = highest + scatter (a lowered line locks a saving
 in); a TOTAL line added. The game's own count (art + chip + sound) at its
 highest: 106.4 (run 1, trip 3 home again); at a fight 98.4.
 
+## mp-membudget, three more runs with PR 2 (bce0ac59), the test box, 2026-11-24
+
+Run on PR 3's provisional lines (so they FAILED where noted); the game's code is
+main's plus PR 2's alarm, which no line reads.
+
+| line | run 4 | run 5 | run 6 | six runs: highest | scatter | PR 3's line |
+|---|---|---|---|---|---|---|
+| artCache | 11.2 | 11.2 | 11.2 | 11.2 | 0 | 12.2 |
+| gpu | 83.8 | 81.0 | 76.4 | 83.8 | 10.2 | 94.0 |
+| canvases | 12.7 | 12.7 | 12.7 | 13.7 | 1.0 | 14.7 |
+| sound | 18.1 | 18.1 | 18.1 | 18.1 | 0.2 | 19.1 |
+| heap | 39.7 | 39.8 | 39.9 | 39.9 | 1.7 | 40.0 (kept) |
+| buffers | 24.8 | 24.9 | 24.9 | 24.9 | 0.5 | 24.8 (kept: over in two) |
+| workers | 18.6 | 18.5 | 18.1 | 21.2 | 3.1 | 24.3 |
+| total | 207.8 | 205.1 | 199.6 | 207.8 | 8.2 | 216.0 (new) |
+
+The total is read only in runs 4 to 6 (READ.total is new). Heap and buffers sit
+AT their lines on main's own code on this box: CI's own run decides.
+
 ## mp-crowdfight, `main` 0aec6482, the test box, 2026-11-23 (the fight only)
 
 - alone at the Flame Fields: chip 71.1, art 11.2.

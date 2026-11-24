@@ -89,7 +89,7 @@ const LOOKS_MS = 45000;
    black screen.  Measured over six runs on main (2026-10-06): the GPU
    (settled) +1.0 at most, the heap +0.8, the workers +2.0 (the ground
    builder's heap steps by ~2 MB), every other line +0. */
-const TRIP_GROWTH = { artCache: 3, gpu: 4, canvases: 3, sound: 1, heap: 3, buffers: 3, workers: 4 };
+const TRIP_GROWTH = { artCache: 3, gpu: 4, canvases: 3, sound: 1, heap: 3, buffers: 3, workers: 4, total: 21 };   /* v2.3.6502 (card PH PR 3): the total's, the seven's summed */
 
 /* ═══ v2.3.5005: A STANDING STOP READS A GROUND THAT HAS STOPPED ═══
    The ground worker squeezes each swatch picture 3 s after a piece last used
@@ -129,6 +129,9 @@ const READ = {
   buffers: (s) => s.buffersMB,
   workers: (s) => (s.workers && s.workers.length
     ? +s.workers.reduce((a, w) => a + (w.heapMB || 0) + (w.buffersMB || 0), 0).toFixed(1) : null),
+  /* v2.3.6502 (card PH PR 3): the seven at the same stop, summed -- what the phone holds at once, near the ~250 MB
+     its page dies at; null where any of the seven was not read */
+  total: (s) => { const v = ['artCache', 'gpu', 'canvases', 'sound', 'heap', 'buffers', 'workers'].map((k) => READ[k](s)); return v.every((x) => typeof x === 'number' && Number.isFinite(x)) ? +v.reduce((a, b) => a + b, 0).toFixed(1) : null; },
 };
 
 /* the GPU a minute later, as Pixi's collector would leave it (see the header):
