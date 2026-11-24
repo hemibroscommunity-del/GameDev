@@ -73,5 +73,6 @@ export const ROWS = [
   { variable: '_shows', file: 'src/debug/report.js', system: 'debug', lifetime: 'sitting', suggested: '?', born: 'const array', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/debug/report.js'] },
   { variable: '_speed', file: 'src/debug/report.js', system: 'debug', lifetime: 'sitting', suggested: '?', born: 'let null', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/debug/report.js'] },
   { variable: '_timer', file: 'src/debug/report.js', system: 'debug', lifetime: 'sitting', suggested: '?', born: 'let null', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/debug/report.js'] },
+  { variable: '_upBank', file: 'src/debug/report.js', system: 'debug', lifetime: 'sitting', suggested: '?', born: 'let number', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/debug/report.js'] },
   { variable: '_visSince', file: 'src/debug/report.js', system: 'debug', lifetime: 'sitting', suggested: '?', born: 'let null', twoFiles: '', noRead: false, phase: null, flag: false, neverChanged: false, writers: ['src/debug/report.js'] },
 ];
