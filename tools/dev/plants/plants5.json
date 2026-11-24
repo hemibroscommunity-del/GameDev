@@ -1,0 +1,6 @@
+[
+  { "id": "RELAY-1 (re-run with the relay suites by their real names) two relay types allowed by hand beside the made list", "file": "server/src/relay.js", "anchor": "if (RELAY.TYPES.has(type)) return true;", "before": true,
+    "text": "    if (['tip_jar', 'party_ping'].includes(type)) return true;   /* two more the party needs */", "suites": ["relay"], "show": 4 },
+  { "id": "PRIV-1 a privileged type let through the router's deny-list by hand", "file": "server/src/index.js", "anchor": "        if (PRIVILEGED_EVENTS.has(msg.type)) break;", "before": true,
+    "text": "        if (msg.type === 'player_state' && session.gm) { this.broadcastExcept(ws, msg); break; }   /* a game master's push */", "suites": ["wire-table", "wire-audit", "relay"], "show": 4 }
+]

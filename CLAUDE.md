@@ -249,9 +249,12 @@ spec. Add a line here only for a new RULE every session must follow.
 
 ## 6. Testing
 
-- **Server**: `cd server && npm test` runs every `test/*.test.mjs` (about 30 s;
-  `npm test -- name` for some). A new system adds a suite (nothing to register);
-  touching a wire format extends the nearest suite.
+- **Server**: `cd server && npm test` runs every `test/*.test.mjs` and
+  `tools/guards/*.test.mjs` (about 2.5 minutes on a session's box, more when
+  the branch touches a switch: `switches-thrown`; v2.3.6423). Run a suite by
+  its name while you work (`npm test -- name`); the whole suite once before a
+  push. A new system adds a suite (nothing to register); touching a wire
+  format extends the nearest suite.
 - **Phone scenarios**: `node tools/qa/mp/run.mjs <name>` after
   `npm run build` (a real worker and Chromium; a new scenario is its file,
   `tools/qa/mp/mp-<name>.mjs`, found by its name: no line in run.mjs). Two run on every PR: `playable` (mp-questline) and

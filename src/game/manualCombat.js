@@ -231,14 +231,14 @@ export function manualMode(search, store) {
   if (q == null) { try { q = typeof location !== 'undefined' ? location.search : ''; } catch (e) { q = ''; } }
   var ls = store;
   if (ls === undefined) { try { ls = typeof localStorage !== 'undefined' ? localStorage : null; } catch (e) { ls = null; } }
-  var m = /(?:^|[?&])manual=([01234])(?:&|$)/.exec(String(q || ''));   /* v2.3.4520: + 3, the free-swing trial; v2.3.5018: + 4, the held combat */
+  var m = /(?:^|[?&])manual=([012345])(?:&|$)/.exec(String(q || ''));   /* v2.3.4520: + 3, the free-swing trial; v2.3.5018: + 4, the held combat; v2.3.6540: + 5, the two buttons */
   if (m) {
     /* v2.3.5018: 4 (the default) forgets; every other choice is remembered */
     try { if (ls) { if (m[1] === '4') ls.removeItem(MANUAL.KEY); else ls.setItem(MANUAL.KEY, m[1]); } } catch (e) { /* a private window: the address still decides this visit */ }
     return +m[1];
   }
   /* v2.3.4655: nothing remembered was the trial (3); v2.3.5018: it is the held combat (4) */
-  try { var v = ls ? ls.getItem(MANUAL.KEY) : null; return v === '0' ? 0 : v === '1' ? 1 : v === '2' ? 2 : v === '3' ? 3 : 4; } catch (e) { return 4; }
+  try { var v = ls ? ls.getItem(MANUAL.KEY) : null; return v === '0' ? 0 : v === '1' ? 1 : v === '2' ? 2 : v === '3' ? 3 : v === '5' ? 5 : 4; } catch (e) { return 4; }   /* v2.3.6540: + 5 */
 }
 /** Is manual combat wanted on this device (any kind)?  Yes for the swipes
  *  (1, 2, 3); no for the old combat (0) and the held combat (4, v2.3.5018). */
@@ -262,7 +262,20 @@ export function tapLockOn() {
 export function manualSling() { return manualOn() && _mode === 2; }
 /** v2.3.4520: the free-swing trial (`?manual=3`). */
 export function manualFreeSwing() { return manualOn() && _mode === 3; }
-export function setManualCombat(v) { _mode = v === 2 ? 2 : v === 3 ? 3 : v === 4 ? 4 : (v ? 1 : 0); }   /* v2.3.5018: + 4 */
+export function setManualCombat(v) { _mode = v === 2 ? 2 : v === 3 ? 3 : v === 4 ? 4 : v === 5 ? 5 : (v ? 1 : 0); }   /* v2.3.5018: + 4; v2.3.6540: + 5 */
+/* ═══ v2.3.6540: THE TWO BUTTONS (`?manual=5`, card CT: a trial) ═══
+   The owner, 2026-11-23: "change the combat mechanics of the right joystick
+   so that there's just an attack and jump button."  A sixth choice, 5, THE
+   TWO BUTTONS, remembered as 0 to 3 are; on a phone only (a computer's keys
+   and mouse do not change).  Everything 4 does unless a line asks this:
+   manualOn() and tapLockOn() are false for it, so every handler takes the
+   held combat's lines.  Its rules are their own modules (game/stickZones.js,
+   game/sight.js, game/latch.js); taking it out again is one small change. */
+/** v2.3.6540: is this page playing the two buttons (`?manual=5`)? */
+export function twoButtonsOn() {
+  if (_mode === null) _mode = manualMode();
+  return _mode === 5;
+}
 
 /** One device's remembered on/off: `?<name>=0` turns it off and is
  *  remembered under `key` ('0'), `?<name>=1` forgets; on otherwise. */

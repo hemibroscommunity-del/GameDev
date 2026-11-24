@@ -1,7 +1,7 @@
 card: EN
 branch: claude/plan-en-8-folk (6207)
-prs: #2189 6200, #2195 6201, #2207 6202, #2234 6203, #2255 6204, #2263 6205 (merged), 6206 unused, #2274 6207 (draft, CI)
-state: stalled (paused by the planning session, 2026-11-19: the owner's usage; until Monday)
+prs: #2189 6200, #2195 6201, #2207 6202, #2234 6203, #2255 6204, #2263 6205, #2274 6207: all merged; 6206 unused
+state: done
 
 ## Done
 
@@ -16,8 +16,8 @@ state: stalled (paused by the planning session, 2026-11-19: the owner's usage; u
 
 ## Next
 
-- Monday: #2274 (6207, off-screen townsfolk not posed; -9% at peer) CI ->
-  ready -> gatekeeper. Then card EN is done.
+- Nothing: #2274 (6207, off-screen townsfolk not posed; -9% at peer) merged
+  at sitting 55. Card EN is done (written by card LF, 2026-11-23).
 
 ## Found
 
