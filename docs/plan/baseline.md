@@ -67,3 +67,26 @@ The whole sweep (every station, about 12 minutes) and the crowd tour
 (`mp-crowdsweep`, about 15 minutes) were left out of this sample. Either can
 be added here by a later run of the same commands with no
 `BT_HS_STATIONS`; say so if you want them.
+
+## The heap at each sitting
+
+v2.3.6504 (card PH PR 5). The memory check's `heap` line was raised five
+times to follow `main` (33 to 40.0), each time because `main`'s own code had
+reached it; no one change was measured. It is not raised again
+(`tools/guards/heap-trend.test.mjs` holds it at 42.5 or below: the one rise, 40.0 to 42.5 at v2.3.6503, the owner's phone sharpness of 1.5). Instead the
+gatekeeper records `main`'s heap at each sitting, on the test box:
+
+```
+node tools/dev/gatekeeper.mjs --heap --sitting=57
+```
+
+builds `origin/main`, runs `mp-membudget` three times, and adds a row here:
+the three highest heap readings and their middle. A rise of over 1.0 MB since
+the last row marked `trim` is named on the gatekeeper's list with the PRs
+merged between (`--trim` marks the row of the sitting after a trim landed).
+The first row is the start, read by card PH on 2026-11-23.
+
+| sitting | date | main | three reads | middle | mark |
+|---|---|---|---|---|---|
+| start | 2026-11-23 | `0aec6482` | 38.2, 39.0, 38.5 | 38.5 | trim |
+| PH | 2026-11-24 | `b2cdd55a` | 39.5, 40.2, 39.6 | 39.6 |  |

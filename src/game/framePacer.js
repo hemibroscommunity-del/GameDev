@@ -70,6 +70,43 @@ export const LATE_CLEAN = 0.05;
 export const UP_WAIT_MS = 20000;
 export const UP_WAIT_MAX_MS = 320000;
 
+/* v2.3.6503 (card PH PR 4): a try up waits until the game's own work a frame
+   has fallen this share below what it was at the last step down (THE
+   GOVERNOR, below: COOLED BY A MARGIN) */
+export const COOL_MARGIN = 0.08;
+
+/** v2.3.6503: has the phone cooled by the margin since it was too slow?  `hot`
+ *  the game's own work a frame (ms) at the step down, `now` the last
+ *  verdict's; either unknown (null), yes.  Pure.
+ *  v2.3.6507 (the gatekeeper's sitting 60): `hot` is null too where the work
+ *  never rose (heatSeen): a step the CHIP caused is the wait's alone. */
+export function cooledFrom(hot, now) {
+  return hot == null || now == null || now <= hot * (1 - COOL_MARGIN);
+}
+
+/** v2.3.6507 (the gatekeeper's sitting 60 on #2318): the work a frame a step
+ *  down waits on, or null -- the wait alone.  `w` the game's own work a frame
+ *  at the step, `rest` the coolest the full row ever read (a clean verdict,
+ *  every refresh, no rung; null unknown).  The margin is kept only where the
+ *  work ROSE past it: where its mark (COOL_MARGIN under `w`) is still a margin
+ *  over `rest`, so a cooled phone's own scatter (a verdict's mean, about 2%
+ *  either way; `rest` the lowest of them) reaches it.  The first cut, "the
+ *  mark at or over the rest", left a 120 phone at 60 for 23 minutes: a step
+ *  read 2.79 ms over a rest of 2.56 (scatter, the work unchanged), a mark of
+ *  2.567 that a cool phone read once in many minutes.
+ *  A step the CHIP caused (the work unchanged, the chip's cost up: a scene
+ *  heavy for the chip) left the work where it was, so "the work fell 8%" never
+ *  came: the gatekeeper's probe (the chip x1.8 and x2.6 for minutes 5 to 15)
+ *  took the rate at 304 s and was still at 30 half an hour after the scene
+ *  went light.  The chip's cost cannot be read below its rate (its frames are
+ *  all in time), so such a step waits on the doubled wait, as before PR 4.
+ *  No edge to flutter on: a work just past the line waits for a mark a
+ *  margin over the rest, just short of it the doubled wait.  Pure. */
+export function heatSeen(w, rest) {
+  if (w == null) return null;
+  return rest == null || w * (1 - COOL_MARGIN) >= rest * (1 + COOL_MARGIN) ? w : null;
+}
+
 const CB_KEEP = 180;      /* the browser's calls the refresh is read from */
 const REFRESH_EVERY = 30; /* ...and how often it is read again */
 
@@ -92,6 +129,32 @@ export function ladderRateOn(search) {
 /** Is the pacer on?  The address: `pace=0` (or off, false) is the old way. */
 export function framePaceOn(search) {
   return !(typeof search === 'string' ? readerFor(search).sw('pace') : sw('pace'));   /* v2.3.5232: the page's one reader */
+}
+
+/** v2.3.6503 (card PH PR 4): `?beathold=0` -- the screen's beat read afresh
+ *  every time, a slower reading believed (the reading before card PH). */
+export function beatHoldOn(search) {
+  return !(typeof search === 'string' ? readerFor(search).sw('beathold') : sw('beathold'));
+}
+
+/** v2.3.6503 (card PH PR 4): THE SCREEN'S BEAT IS HELD.  `held` the refresh
+ *  in hand (ms, or null), `r` a new reading: what the pacer keeps.  A
+ *  reading a whole number of times SLOWER than the one in hand (twice, three
+ *  times) is the phone missing frames, not a slower screen: a hot 120 phone
+ *  whose every frame takes two refreshes is called every 16.7 ms, and its
+ *  gaps cannot be told from a 60 screen's.  The heat model (frame-pacer.test
+ *  §24; docs/plan/census/PH-phone.md) read a hot 120 as a 60 for 68 to 90%
+ *  of an hour, and a 60 phone drawing 45 read as a 30 screen is the owner's
+ *  lane `thirty` with Low Power Mode off (2026-11-24: "Low power mode was not
+ *  on during test").  A faster reading, the same one, or one no whole
+ *  number of times the held (a window moved to another screen) is
+ *  believed; a tab's return reads the beat afresh (Low Power Mode is turned
+ *  on in the Settings, which hides the page).  Pure. */
+export function keptBeat(held, r) {
+  if (held == null || !(r > held + 0.5)) return r;
+  const k = r / held;
+  if (Math.round(k) >= 2 && Math.abs(k - Math.round(k)) <= 0.2) return held;
+  return r;
 }
 
 /** The screen's refresh, in ms, from the gaps between the browser's calls
@@ -151,6 +214,8 @@ export function makeFramePacer(opts) {
      verdict and at a veil.  `?ladderrate=0` is the rate as before (opts:
      the tests' { rateOn }). */
   const rateOn = opts && opts.rateOn !== undefined ? !!opts.rateOn : ladderRateOn();
+  /* v2.3.6503: the screen's beat held (keptBeat; opts: the tests' { beatHold }) */
+  const beatHold = opts && opts.beatHold !== undefined ? !!opts.beatHold : beatHoldOn();
   let rateAt = PACE_FLOOR_MS;
   const readRate = () => {
     try { const a = laneKnob('rate'); rateAt = typeof a === 'number' && a > 0 ? a : PACE_FLOOR_MS; } catch (e) { rateAt = PACE_FLOOR_MS; }
@@ -163,6 +228,8 @@ export function makeFramePacer(opts) {
   let runs = 0, lates = 0, bad = 0;
   let trial = false, wasUp = false, changedAt = 0, upWait = UP_WAIT_MS, changes = 0;
   let lastShare = null;
+  let hotRate = null;   /* v2.3.6503: the game's work a frame at the rate's last step down (cooledFrom) */
+  const heat = () => { try { return gov.heat ? gov.heat() : null; } catch (e) { return null; } };
   const clearJudge = () => { runs = 0; lates = 0; };
   const change = (n, ts) => { if (n !== every) { every = n; changedAt = ts; changes++; } clearJudge(); };
   /* a step down.  One that follows a step UP means the faster rate did not
@@ -170,6 +237,7 @@ export function makeFramePacer(opts) {
   const down = (ts) => {
     if (wasUp) { upWait = Math.min(UP_WAIT_MAX_MS, upWait * 2); wasUp = false; }
     trial = false; bad = 0;
+    const w = heat(); if (w != null) hotRate = gov.heatSeen ? gov.heatSeen(w) : w;   /* v2.3.6503; v2.3.6507: null where the work never rose (the chip's step) */
     change(Math.min(most, every + 1), ts);
   };
   /* the rate's own steps: a fast screen's alone (most is 1 on any other, so
@@ -184,7 +252,9 @@ export function makeFramePacer(opts) {
     bad = 0; trial = false;
     /* the faster rate has held a whole wait: the device has really come back, so the waits start afresh */
     if (wasUp && ts - changedAt >= upWait) { wasUp = false; upWait = UP_WAIT_MS; }
-    if (share <= LATE_CLEAN && every > 1 && ts - changedAt >= upWait) { trial = true; wasUp = true; change(every - 1, ts); }
+    if (every <= 1) hotRate = null;
+    /* v2.3.6503 (card PH PR 4): COOLED BY A MARGIN, as the governor's (below): a fast screen's own rate too */
+    if (share <= LATE_CLEAN && every > 1 && ts - changedAt >= upWait && cooledFrom(hotRate, heat())) { trial = true; wasUp = true; change(every - 1, ts); }
   };
   const verdict = (ts) => {
     const share = lates / runs;
@@ -206,7 +276,11 @@ export function makeFramePacer(opts) {
       /* v2.3.5222: a veil (a loading screen; a tab's return): where the
          governor may move pixels, and keeps its rung for the lane */
       if (!judge) { gov.veil(ts); readRate(); }
-      else if (_returned) { _returned = false; gov.veil(ts); readRate(); }
+      else if (_returned) {
+        _returned = false; gov.veil(ts); readRate();
+        /* v2.3.6503: a tab's return reads the screen's beat afresh (keptBeat) */
+        if (beatHold) { refresh = null; gapN = 0; gapAt = 0; }
+      }
       if (last == null) { last = ts; lastRun = ts; return true; }
       const gap = ts - last;
       last = ts;
@@ -216,7 +290,7 @@ export function makeFramePacer(opts) {
       if (gapN < CB_KEEP) gapN++;
       if (refresh == null || ++calls % REFRESH_EVERY === 0) {
         const r = refreshOf(gapN < CB_KEEP ? gaps.subarray(0, gapN) : gaps);
-        if (r != null) refresh = r;
+        if (r != null) refresh = beatHold ? keptBeat(refresh, r) : r;   /* v2.3.6503: held */
       }
       if (refresh == null) {
         /* the screen's rate not known yet: every refresh, as ever, and nothing judged */
@@ -290,6 +364,22 @@ export function makeFramePacer(opts) {
  *     is passed through to the next).  On a fast screen the pacer's own
  *     rate steps first: the ladder steps down only once that rate is at its
  *     floor, and never on a verdict the rate stepped on.
+ *   COOLED BY A MARGIN (v2.3.6503, card PH PR 4): a try up -- the ladder's,
+ *     and a fast screen's own rate's -- waits, past the wait, until the
+ *     game's own work a frame (the samples' `workMs`, the verdict's mean: a
+ *     hot phone's CPU slows with its chip) is COOL_MARGIN below what it was
+ *     at the last step down.  In the heat model (frame-pacer.test §24) a 60
+ *     phone 5% too slow when hot cooled enough at 30 to pass the clean wait,
+ *     tried 60, held it a minute as it heated and fell back: 10 to 14 rate
+ *     changes a half hour.  Now none, and a phone that cools (a fight over)
+ *     is back at once.  No work read (no samples), or `?govcool=0`: the wait
+ *     alone, as before.  v2.3.6507 (the gatekeeper's sitting 60): only a
+ *     step whose work ROSE waits on the margin (heatSeen, against the full
+ *     row's rest); a step the CHIP caused, the work unchanged, waits on the
+ *     doubled wait alone -- the margin had nothing to see fall, and a 60
+ *     phone stayed at 30 half an hour after its scene went light.
+ *   THE SCREEN'S BEAT IS HELD (v2.3.6503): see keptBeat -- a hot phone's
+ *     missed frames are no slower screen (the lane `thirty`, the strip's hz).
  *   PIXELS ONLY BEHIND A VEIL: a step that would change the pixels (a live
  *     resize rebuilds the crowd's shared picture, the worst moment) waits
  *     for a loading screen (`judge` false) or a tab's return; a clean
@@ -315,6 +405,12 @@ export function makeFramePacer(opts) {
 export const LADDER_KEY = 'bt_rung';
 const STEPS_KEPT = 8;
 
+/** v2.3.6503 (card PH PR 4): `?govcool=0` -- a try up as before, on the wait
+ *  alone (COOL_MARGIN not asked). */
+export function govCoolOn(search) {
+  return !(typeof search === 'string' ? readerFor(search).sw('govcool') : sw('govcool'));
+}
+
 /** Does the governor move the ladder on this page?  `govern=0` no, `govern=1`
  *  yes; else not where the address names a lane (a test's page), else yes. */
 export function governOn(search) {
@@ -335,34 +431,83 @@ let _samples = null, _busyIn = null;
 /* ═══ v2.3.5231 (card O PR 11): THE MEMORY'S VERDICT ═══
    The game's own count -- the report's `mem` [art from files, the chip's
    textures, decoded sound] in MB, handed in (useMemCount: debug/report.js;
-   no import into the pacer) -- over the memory check's lines for each.
-   MEM_LINES is a COPY of tools/qa/mp/memory-budget.mjs MEMORY_BUDGET's
-   (artCache, gpu; v2.3.5681 not sound: no rung lowers it), held equal by frame-pacer.test §23: never a number
-   of its own.  The planner's, 2026-11-17: the art and sound lines
-   everywhere; the chip's only where deviceProfile.js says a phone or a
-   tablet (a computer's screen-sized pictures are no fault: the counter hands
-   in no chip count there).  Read at most every MEM_READ_MS. */
-export const MEM_LINES = Object.freeze({ artCache: 79.3, gpu: 109.3 });   /* v2.3.5981: gpu 115 -> 114.3 with the memory check's line (card P2); v2.3.6202: 114.3 -> 109.3 with it (card EN PR 3, the planning session's yes) */
+   no import into the pacer).  The planner's, 2026-11-17: the chip's count
+   only where deviceProfile.js says a phone or a tablet (a computer's
+   screen-sized pictures are no fault: the counter hands in no chip count
+   there).  Read at most every MEM_READ_MS.
+
+   v2.3.6501 (card PH PR 2; the shape review's item 17): THE ALARM HAS A
+   TRIGGER OF ITS OWN.  It was two of the memory check's lines, copied
+   (MEM_LINES: art 79.3, chip 109.3; frame-pacer.test 23a held them equal):
+   art read 11 to 16 MB in play, so its half could never fire, and the
+   chip's fired only some 27 MB over the trip's peak.  Now ONE number, the
+   game's own TOTAL -- art + the chip's (a phone or a tablet) + sound -- over
+   MEM_ALARM.MB, set just above what the game reads in a crowded fight
+   (DECIDED FOR THE OWNER WHILE AWAY, not the owner's yes: call 3 of
+   docs/plan/finish.md part 9 went unanswered, and the planning session set
+   it on 2026-11-23; if the owner answers, their words win.  The readings:
+   docs/plan/census/PH-phone.md).  The memory check's lines are no longer
+   its business (card PH's PR 3 lowers them to the readings).  `?govern=0`
+   stops it as before (the count is read only while the governor judges).
+   THE OFF-RAMP `?memalarm=0`: the two old lines, frozen as they were
+   (MEM_LINES_OLD), on this phone. */
+/* READ: the game's own total at its highest, ON THE TEST BOX (2026-11-23): mp-membudget 106.4 (the third trip, home
+   again); a 10-bot fight at the Flame Fields 104.9 (the chip 75.7, art 11.7, sound 17.5); 30 bots could not be read
+   there (the page stopped answering).  MB: 13% over it, half an iPhone's ~250 MB page, and 21 MB before the old
+   trigger could fire.  Decided for the owner while away (call 3; the planning session, 2026-11-23, tag 5058):
+   `?memalarm=0` the old lines.  The phone's own count waits on the field report's (card PH PR 1). */
+export const MEM_ALARM = Object.freeze({ READ: 106.4, MB: 120 });
+export const MEM_LINES_OLD = Object.freeze({ artCache: 79.3, gpu: 109.3 });   /* v2.3.6501: the old trigger, frozen (v2.3.5981, v2.3.6202: the memory check's lines then) */
 export const MEM_READ_MS = 5000;
 /* v2.3.5681 (the gatekeeper's sitting 27): the wait between memory rungs,
    past the masked frames' 30 s deferred destroy (maskedEvict.js) */
 export const MEM_SETTLE_MS = 35000;
-let _memCount = null, _memAt = -Infinity, _memWas = false;
+let _memCount = null, _memAt = -Infinity, _memWas = false, _memTotal = null, _memForce = 0;
 /** debug/report.js hands its count here: fn() -> [tex, gpu or null, snd] MB. */
 export function useMemCount(fn) { _memCount = typeof fn === 'function' ? fn : null; _memAt = -Infinity; }
-/** Is any count over its line?  [tex, gpu, snd]; a null gpu is not judged. */
-export function memOver(m) {
-  if (!Array.isArray(m)) return false;
-  /* v2.3.5681 (the planner's): not the sound -- no rung lowers it (a sound
-     rung of its own is later work: card O's status) */
-  return m[0] > MEM_LINES.artCache || (m[1] != null && m[1] > MEM_LINES.gpu);
+/** v2.3.6501: the game's own total, MB: art + the chip's (where handed in) + sound; null for no count. */
+export function memTotal(m) {
+  if (!Array.isArray(m)) return null;
+  const n = (v) => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : 0);
+  return n(m[0]) + n(m[1]) + n(m[2]);
 }
-function memFull(ts) {
+/** Is the game's memory over its alarm?  [tex, gpu, snd].  v2.3.6501: the
+ *  total over MEM_ALARM.MB; with `old` (`?memalarm=0`) the two frozen lines
+ *  as before (a null gpu not judged, the sound never). */
+export function memOver(m, old) {
+  if (!Array.isArray(m)) return false;
+  if (old) return m[0] > MEM_LINES_OLD.artCache || (m[1] != null && m[1] > MEM_LINES_OLD.gpu);
+  return memTotal(m) > MEM_ALARM.MB;
+}
+/** v2.3.6501: `?memalarm=0` -- the old two lines on this phone. */
+export function memAlarmOld(search) {
+  return !!(typeof search === 'string' ? readerFor(search).sw('memalarm') : sw('memalarm'));
+}
+/** Is the memory full, read as the governor reads it (at most every
+ *  MEM_READ_MS, through the count handed in)?  v2.3.6501 (the gatekeeper's
+ *  sitting 57): exported, and `search` (an address, as framePaceOn's) stands
+ *  for the page's own, so node runs THIS read with `?memalarm=0` thrown and
+ *  not (frame-pacer.test 23i): a memFull that never asked the switch, or
+ *  always slept on the old lines, was green before. */
+export function memFull(ts, search) {
   if (!_memCount) return false;
   if (ts - _memAt < MEM_READ_MS) return _memWas;
   _memAt = ts;
-  try { _memWas = memOver(_memCount()); } catch (e) { _memWas = false; }
+  try {
+    const m = _memCount();
+    if (Array.isArray(m) && _memForce > 0) m[0] = (Number(m[0]) || 0) + _memForce;   /* QA only: __btMemAlarm.force */
+    _memTotal = memTotal(m);
+    _memWas = memOver(m, memAlarmOld(search));
+  } catch (e) { _memWas = false; }
   return _memWas;
+}
+/* QA: the alarm, the last total read, and a forced addition to the count
+   (mp-memalarm: the total pushed over the line frees the caches) */
+if (typeof window !== 'undefined') {
+  window.__btMemAlarm = (opt) => {
+    if (opt && typeof opt.force === 'number') { _memForce = Math.max(0, opt.force); _memAt = -Infinity; }
+    return { mb: MEM_ALARM.MB, old: memAlarmOld(), total: _memTotal, over: _memWas, force: _memForce };
+  };
 }
 
 /** debug/perfTracker.js hands its ring here: no import into the pacer. */
@@ -383,11 +528,13 @@ export function holdLadder(on) { _held = !!on; }
 let _wasHidden = false, _returned = false, _hides = 0;
 /** The tab hid (the page's listener; the tests'). */
 export function _tabHid() { _wasHidden = true; _hides++; }
+/** v2.3.6503: the tab shown again (the page's listener; the tests'): a veil, and the screen's beat read afresh. */
+export function _tabShown() { if (_wasHidden) { _wasHidden = false; _returned = true; } }
 if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
   try {
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState !== 'visible') _tabHid();
-      else if (_wasHidden) { _wasHidden = false; _returned = true; }
+      else _tabShown();
     });
   } catch (e) { /* no veil from a tab's return: the loading screen's still is one */ }
 }
@@ -435,6 +582,11 @@ export function makeGovernor(opts) {
   const o = opts || {};
   const on = o.on !== undefined ? !!o.on : governOn();
   const store = o.store !== undefined ? o.store : _pageStore();
+  /* v2.3.6503 (card PH PR 4): COOLED BY A MARGIN (`?govcool=0` the try up as before; opts: the tests' { cool }) */
+  const coolOn = o.cool !== undefined ? !!o.cool : govCoolOn();
+  let workNow = null;           /* the game's own work a frame (ms), the mean of the last verdict's samples; null: too few */
+  let hotWork = null;           /* ...at the last step down on a late verdict: a try up waits for COOL_MARGIN below it */
+  let restWork = null;          /* v2.3.6507: the coolest work a frame the full row read (heatSeen); null: none yet */
   let lane = null;              /* the lane its rung is kept for; null: none loaded yet (a veil loads it) */
   let bad = 0, trial = false, wasUp = false, changedAt = 0, upWait = UP_WAIT_MS;
   let memAt = -Infinity;        /* v2.3.5681: the last memory rung taken (MEM_SETTLE_MS) */
@@ -512,6 +664,8 @@ export function makeGovernor(opts) {
   const down = (axis, ts) => {
     trial = false; bad = 0;
     const done = step(axis, -1, ts, false);
+    /* v2.3.6503: the work a frame where it was too slow (a memory rung is no heat's) */
+    if (done && axis !== 'mem' && workNow != null) hotWork = heatSeen(workNow, restWork);   /* v2.3.6507: null where the work never rose (the chip's step) */
     if (done && wasUp) { upWait = Math.min(UP_WAIT_MAX_MS, upWait * 2); wasUp = false; }
     return done;
   };
@@ -550,7 +704,7 @@ export function makeGovernor(opts) {
     stack = [];
     if (r.work > 0) stack.push('work');
     if (r.chip > 0) stack.push('chip');
-    pending = null; bad = 0; trial = false; wasUp = false; upWait = UP_WAIT_MS; changedAt = ts;
+    pending = null; bad = 0; trial = false; wasUp = false; upWait = UP_WAIT_MS; changedAt = ts; hotWork = null; restWork = null;
   };
   /* v2.3.5235: THE OWNER'S SWITCH (clientOff 'govern': the Test panel's
      list, every phone, live, no deploy -- the planning session's word in
@@ -560,7 +714,7 @@ export function makeGovernor(opts) {
      next sitting. */
   const switchedOff = () => { try { return clientOff('govern'); } catch (e) { return false; } };
   const rest = (ts, veil) => {
-    pending = null; bad = 0; trial = false; wasUp = false; upWait = UP_WAIT_MS;
+    pending = null; bad = 0; trial = false; wasUp = false; upWait = UP_WAIT_MS; hotWork = null;
     const r = ladderRung();
     const row = { work: 0, chip: 0, pixels: 0, mem: 0 };
     if (r.work === 0 && r.chip === 0 && r.pixels === 0 && !(r.mem > 0)) return;
@@ -577,6 +731,8 @@ export function makeGovernor(opts) {
     let newest = fromT;
     try { newest = _samples(fromT, (x) => { list.push(x); }); } catch (e) { return null; }
     if (typeof newest === 'number') fromT = newest;
+    /* v2.3.6503: the game's own work a frame, the heat's one reading (a hot phone's CPU slows with its chip) */
+    if (list.length >= 20) { let w = 0; for (const x of list) w += (x && x.workMs) || 0; workNow = w / list.length; } else workNow = null;
     const sp = lateSplit(list, lateOver(refresh, every), _busyIn);
     lastSplit = sp;
     if (!sp.late) return null;
@@ -608,6 +764,13 @@ export function makeGovernor(opts) {
     /** v2.3.5681: is it judging at all (on, a lane loaded, not switched off)?
      *  The pacer reads the memory's count only then. */
     judging() { return on && lane != null && !switchedOff(); },
+    /** v2.3.6503: the game's own work a frame at the last verdict (ms), the
+     *  pacer's reading of the heat for its own rate's tries; null unknown,
+     *  or `?govcool=0`. */
+    heat() { return coolOn && on ? workNow : null; },
+    /** v2.3.6507: the work a frame a step down of the screen's own rate
+     *  waits on (heatSeen against the full row's rest): null, the wait alone. */
+    heatSeen(w) { return heatSeen(w, restWork); },
     verdict(share, ts, ctx) {
       const c = ctx || {};
       if (!on || lane == null) return;
@@ -662,7 +825,19 @@ export function makeGovernor(opts) {
       bad = 0; trial = false;
       if (pending && pending.dir < 0) pending = null;
       if (wasUp && ts - changedAt >= upWait) { wasUp = false; upWait = UP_WAIT_MS; }
+      if (rungDepth() === 0) hotWork = null;
+      /* v2.3.6507: the full row's rest -- a clean verdict, no rung, every refresh (a fast screen's own rate up) */
+      if (share <= LATE_CLEAN && rungDepth() === 0 && (c.every == null || c.every === 1) && workNow != null) restWork = restWork == null ? workNow : Math.min(restWork, workNow);
       if (c.rateMoved || share > LATE_CLEAN || rungDepth() === 0 || ts - changedAt < upWait) return;
+      /* v2.3.6503 (card PH PR 4): COOLED BY A MARGIN -- a try up only once the
+         game's own work a frame has fallen COOL_MARGIN below what it was at
+         the last step down.  The heat model (frame-pacer.test §24): a 60
+         phone 5% too slow when hot cooled enough at 30 to pass the clean
+         wait, tried 60, held it a minute while it heated, and fell back --
+         10 to 14 rate changes a half hour, the doubled wait undone each time
+         the faster rate held a whole wait.  Where no samples are handed in
+         (no work read), or with `?govcool=0`, the try up is as before */
+      if (coolOn && !cooledFrom(hotWork, workNow)) return;
       /* the axis to try: the last stepped down that has a rung to undo, else
          whichever has (the chip's first).  v2.3.5225: THE PIXELS LAST -- a
          pixel try up waits for its veil, so every other axis comes back
@@ -680,7 +855,8 @@ export function makeGovernor(opts) {
     read() {
       const r = ladderRung();
       return { on, off: switchedOff(), held: _held, lane, work: r.work, chip: r.chip, pixels: r.pixels, mem: r.mem | 0, depth: rungDepth(), pending: pending ? { ...pending } : null,
-        trial, upWait, bad, steps: steps.slice(), stepsN, axis: lastAxis, split: lastSplit };
+        trial, upWait, bad, steps: steps.slice(), stepsN, axis: lastAxis, split: lastSplit,
+        workMs: workNow == null ? null : +workNow.toFixed(2), hotWorkMs: hotWork == null ? null : +hotWork.toFixed(2), restWorkMs: restWork == null ? null : +restWork.toFixed(2) };   /* v2.3.6503; v2.3.6507 the rest */
     },
   };
 }

@@ -485,12 +485,16 @@ async function runHttpRow(row) {
  * values (`plain` above) before the field is read.  The list only falls
  * (3b): a scene that reaches a field takes its line out (a row's own suite
  * plays its scene; the plan's step 4.1).  104 fields on 2026-11-24, the
- * count the review's REACH plant measured (plants3.json, reach.mjs). */
-const REACH_LINE = 104;
+ * count the review's REACH plant measured (plants3.json, reach.mjs).
+ * v2.3.6507 (card PH, the sitting-60 mend, at its merge of main): 108 -- the
+ * report's four fields of card PH PR 1 (#2279: `up`, `ride`, `rideGaps`,
+ * `ramps`), named in its row before this suite landed and read past the same
+ * devClass gate as the report's other eighteen; report.test 15 drives them. */
+const REACH_LINE = 108;
 const NOT_REACHED = {
   join: { fields: ['nj'],
     why: 'pres is 1, not 2: the near-join list is read only for pres2 (nearjoin.js, join.js)' },
-  report: { fields: ['drawLane', 'build', 'secs', 'seen', 'sw', 'drawn', 'gaps', 'late', 'split', 'where', 'near', 'holds', 'mem', 'lost', 'died', 'speed', 'rung', 'self'],
+  report: { fields: ['drawLane', 'build', 'secs', 'seen', 'sw', 'drawn', 'gaps', 'late', 'split', 'where', 'near', 'holds', 'mem', 'lost', 'died', 'speed', 'rung', 'self', 'up', 'ride', 'rideGaps', 'ramps'],
     why: 'devClass is not an object: classOfReport gives null and the report drops (report.js)' },
   pong: { fields: ['ts', 'hd'],
     why: 'no ping was sent (the test room runs no tick loop): a pong with lastPing 0 is dropped (index.js)' },

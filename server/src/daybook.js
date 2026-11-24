@@ -126,7 +126,12 @@ export const DAYBOOK = Object.freeze({
   /* v2.3.5193: a part held to less than PART_BYTES (the worst full day, every
      part full, stays under a stored value's 128 KiB: daybook.test 10b) --
      the send door's, a type a key (~110 types; past it, `over`) */
-  PART_BYTES_OF: Object.freeze({ send: 8 * 1024 }),
+  PART_BYTES_OF: Object.freeze({ send: 8 * 1024,
+    /* v2.3.6500 (card PH PR 1): the field report's cells grew by the minutes
+       seen and the board (report.js): 28 KB, all the worst full day leaves
+       under a stored value's 128 KiB (10b), for eleven of the fullest cells
+       a day (report.test 7) */
+    dev: 28 * 1024 }),
   DEPTH_MAX: 4,
   KEY_MAX: 96,
   ARR_MAX: 64,

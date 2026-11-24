@@ -25,6 +25,14 @@
  *      like the speed test's ratio: the renderer, the soft look, a resize),
  *      and back at the row all is as before; `?ladderpix=0` keeps every
  *      pixel at any rung.
+ *   7. v2.3.6503 (card PH PR 4), A PHONE DRAWS AT 1.5 (the owner: "1.5 looks
+ *      fine nothing below that"): an iPhone at 1.5, sideways and the biggest
+ *      too; the same ratio and the same soft mark as `?res=1.5` (the picture
+ *      the owner saw); never lower by the pixel rungs; an explicit `?res=`
+ *      replaces it; `?phoneres=0` the screen's own (the old look, §2 and §6's
+ *      phones); a tablet and a computer untouched; one number (PHONE_RES).
+ *   Break proof (7, tried 2026-11-24): renderDpr's `else if (phone) r = Math.min(r, PHONE_RES);`
+ *   taken out -> FAIL 7a, 7b, 7c; the floor (`Math.min(r, floor)` as `0`) -> FAIL 7c (1.06).
  *   Break proof (6, tried 2026-11-14): renderDpr's `if (f < 1) r *= Math.sqrt(f);`
  *   taken out -> FAIL 6a, 6b, 6c; the onKnob's `followRenderer(res);` taken out -> FAIL 6c.
  *   v2.3.5225 (the gatekeeper's sitting 12): the change is carried out at the
@@ -105,7 +113,7 @@ check('1f. ?zoom= is clamped as worldViewport clamps it (1.5)', Math.abs(pixelBu
     ['a 1920 x 1080 laptop at 1 (its canvas under the window)', 1, 1920, 920, undefined],
   ];
   for (const [tag, d, w, h, dev] of UNTOUCHED) {
-    page(d, '', w, h, dev);
+    page(d, dev ? '?phoneres=0' : '', w, h, dev);   /* v2.3.6503: a phone's own budget, the old look (§7 the 1.5) */
     check('2a. untouched: ' + tag, renderDpr() === d && !renderResLowered(), { dpr: renderDpr(), px: px(w, h) });
   }
   const LOWERED = [
@@ -145,7 +153,7 @@ page(2, '');
 check('3f. no budget until the canvas\'s size is told (the first resize tells it)', renderDpr() === 2);
 page(2, '?pixbudget=3000000', 2560, 1440);
 check('3g. ?pixbudget=<pixels> sets the budget for one screen', Math.abs(px(2560, 1440) - 3e6) < 1, px(2560, 1440));
-page(3, '?a=1&pixbudget=1e6', 390, 844, PHONE(390, 844));
+page(3, '?a=1&pixbudget=1e6&phoneres=0', 390, 844, PHONE(390, 844));   /* v2.3.6503: the old look (§7 the 1.5) */
 check('3h. ...on a phone too, written 1e6', Math.abs(px(390, 844) - 1e6) < 1, px(390, 844));
 page(2, '?pixbudget=50', 2560, 1440);
 check('3i. a count under 100000 is ignored (the class\'s budget)', Math.abs(px(2560, 1440) - SCREEN) < 1);
@@ -249,7 +257,7 @@ let worldViewport;
   const resizes = [];
   window.dispatchEvent = (e) => { resizes.push(e && e.type); };
   /* a phone under its budget: the screen's own pixels, then a quarter fewer, then half */
-  page(3, '', 390, 844, PHONE(390, 844));
+  page(3, '?phoneres=0', 390, 844, PHONE(390, 844));   /* v2.3.6503: the old look (§7 the 1.5) */
   rung(0);
   const row = px(390, 844);
   rung(P1);
@@ -273,7 +281,7 @@ let worldViewport;
   const frameResizes = () => { const d = renderDpr(); const cw = canvas.width / d, ch = canvas.height / d; const r = Math.abs(pixi.width - cw) > 0.5 || Math.abs(pixi.height - ch) > 0.5; if (r) { pixi.width = cw; pixi.height = ch; } return r; };
   const bad = [];
   for (const [w, hh, d, dev] of [[390, 806, 3, PHONE(390, 844)], [1920, 920, 1, null], [2560, 1300, 2, null]]) {
-    page(d, '', w, hh, dev || undefined);
+    page(d, dev ? '?phoneres=0' : '', w, hh, dev || undefined);   /* v2.3.6503: the old look (§7 the 1.5) */
     rung(0);
     resize(w, hh); frameResizes();
     resizes.length = 0;
@@ -294,12 +302,44 @@ let worldViewport;
   rung(P2); rung(0);
   check('6d. back at the lane\'s row, every pixel the budget allows, as before the ladder', Math.abs(px(2560, 1440) - SCREEN) < 1);
   /* ?ladderpix=0 */
-  page(3, '?ladderpix=0', 390, 844, PHONE(390, 844));
+  page(3, '?ladderpix=0&phoneres=0', 390, 844, PHONE(390, 844));   /* v2.3.6503: the old look (§7 the 1.5) */
   rung(P2);
   check('6e. `?ladderpix=0`: every pixel at any rung', Math.abs(px(390, 844) - 390 * 844 * 9) < 1);
   rung(0);
   const rr = readFileSync(join(src, 'game/renderRes.js'), 'utf8');
   check('6f. the pixels are read through the lanes\' one reader (laneKnob(\'pixels\')), told by onKnob', /laneKnob\('pixels'\)/.test(rr) && /onKnob\('pixels', /.test(rr));
+}
+
+/* ── 7. v2.3.6503 (card PH PR 4): a phone draws at 1.5 ──────────────── */
+{
+  const { PHONE_RES } = RR;
+  const { setRung, AXES } = await import(srcUrl('game/drawLanes.js'));
+  const { runBeforeDraw } = await import(srcUrl('game/framePacer.js'));
+  const soft = () => !!(globalThis.document && document.documentElement.attrs && 'data-res-soft' in document.documentElement.attrs);
+  const hadDoc = globalThis.document;
+  globalThis.document = { documentElement: { attrs: {}, setAttribute(k) { this.attrs[k] = ''; }, removeAttribute(k) { delete this.attrs[k]; } } };
+  const look = (dpr, search, w, h, dev) => { page(dpr, search, w, h, dev); setRenderResLive(0); return { dpr: renderDpr(), soft: soft(), lowered: renderResLowered() }; };
+  const phones = [[390, 844, PHONE(390, 844)], [844, 390, PHONE(390, 844)], [440, 956, PHONE(440, 956)]].map(([w, h, d]) => look(3, '', w, h, d));
+  check('7a. an iPhone draws at 1.5 canvas pixels a CSS pixel (a quarter of its own 3\'s), upright, sideways and the biggest: one number, PHONE_RES',
+    PHONE_RES === 1.5 && phones.every((x) => x.dpr === 1.5 && x.lowered), phones);
+  const res15 = look(3, '?res=1.5&phoneres=0', 390, 844, PHONE(390, 844));
+  const def = look(3, '', 390, 844, PHONE(390, 844));
+  check('7b. ...the very picture `?res=1.5` showed the owner: the same ratio, stretched smoothly up the same way ([data-res-soft])',
+    def.dpr === res15.dpr && def.soft && res15.soft, { def, res15 });
+  const at = (n) => AXES.pixels.findIndex((r) => r.knob === 'pixels' && r.to === n) + 1;
+  page(3, '', 390, 844, PHONE(390, 844));
+  setRung(0, 0, at(2)); runBeforeDraw();
+  const deep = renderDpr();
+  setRung(0, 0, 0); runBeforeDraw();
+  check('7c. never lower: the ladder\'s deepest pixel rung keeps a phone at 1.5 ("nothing below that")', deep === 1.5, deep);
+  const asked = [look(3, '?res=3', 390, 844, PHONE(390, 844)), look(3, '?res=2', 390, 844, PHONE(390, 844)), look(3, '?phoneres=0', 390, 844, PHONE(390, 844))];
+  check('7d. an explicit `?res=` replaces it (3, 2), and `?phoneres=0` is the screen\'s own: the old look, unsoftened',
+    asked[0].dpr === 3 && !asked[0].soft && asked[1].dpr === 2 && asked[2].dpr === 3 && !asked[2].soft, asked);
+  const others = [look(2, '', 1194, 834, TABLET(1194, 834)), look(1, '', 1920, 920, undefined), look(2, '', 1440, 900, undefined)];
+  check('7e. a tablet and a computer as before (their budgets, never PHONE_RES)', others[0].dpr !== 1.5 && others[1].dpr === 1 && others[2].dpr !== 1.5, others);
+  const lowP = look(1, '', 390, 844, PHONE(390, 844));
+  check('7f. a phone whose screen is below 1.5 keeps its own', lowP.dpr === 1 && !lowP.lowered, lowP);
+  globalThis.document = hadDoc;
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);

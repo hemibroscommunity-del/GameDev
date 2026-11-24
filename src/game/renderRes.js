@@ -86,13 +86,37 @@
  * this file follows the way the speed test's ratio does (the renderer's
  * resolution, the soft look, a resize so resize() agrees).  `?ladderpix=0`:
  * the pixel rungs off for one screen, every pixel the budget allows.
+ *
+ * ═══ v2.3.6503 (card PH PR 4): A PHONE DRAWS AT 1.5 ═══
+ *
+ * The owner, 2026-11-24, after `?res=1.5` and `?res=1` on their iPhone: "1.5
+ * looks fine nothing below that"; then the Speed test at 1.5, everything on:
+ * 60 a second, "nothing is holding the frame rate back here" (the card:
+ * docs/plan/census/PH-phone.md).  So a phone (deviceProfile.js phoneScreen,
+ * the class kept with the size) draws at PHONE_RES canvas pixels a CSS pixel
+ * at most -- this one number, here -- in place of its screen's own 3: a
+ * quarter of the pixels.  1.5 is below the art's own 2 px a game px, so the
+ * canvas is stretched smoothly up ([data-res-soft]), the very picture
+ * `?res=1.5` showed the owner (the same ratio, the same mark: render-res §7).
+ *   - NEVER LOWER: on a phone, the ladder's pixel rungs do not take it below
+ *     PHONE_RES ("nothing below that"); the speed test's own ratio and an
+ *     explicit `?res=` still do (the owner's own trials).
+ *   - An explicit `?res=` replaces it (`?res=3`, the screen's own, on one
+ *     page); `?phoneres=0` brings the old look back on one phone (the
+ *     screen's own ratio, the pixel rungs as before).  Tablets and computers
+ *     as before (their budgets above).
+ *   - The frames it gains are measured on the owner's phone by one Speed
+ *     test card only (finish.md part 5 rule 4): its 1.5 row waits on the
+ *     owner.
  */
+/* v2.3.6503: the phone's default canvas pixels a CSS pixel (the owner's 1.5, "nothing below that") */
+export const PHONE_RES = 1.5;
 
 import { VIEW_CAP } from './viewCap.js';   /* v2.3.5140: the reference area of world (no imports: node reads it too) */
 import { phoneScreen } from './deviceProfile.js';   /* v2.3.5140: the budget's class */
 import { laneKnob, onKnob, ladderPixOn as laneHasPix } from './drawLanes.js';   /* v2.3.5225: the pixels' knob (card O) */
 import { beforeDraw } from './framePacer.js';
-import { swValue } from './switches.js';   /* v2.3.5232 (card O PR 12): `?pixbudget`, `?res`, `?zoom` through the page's one reader */   /* v2.3.5225: a knob's change carried out at the top of a frame */
+import { swValue, sw } from './switches.js';   /* v2.3.5232 (card O PR 12): `?pixbudget`, `?res`, `?zoom` through the page's one reader */   /* v2.3.5225: a knob's change carried out at the top of a frame */
 
 /* v2.3.5140: game px per picture px (public/tools/style/bible.js
    PIXEL.gamePxPerArtPx; render-res.test holds the two together) */
@@ -114,6 +138,13 @@ let _phone = false;   /* v2.3.5140: the class, kept with the size (noteCanvasCss
 let _viewOut = null;  /* v2.3.5140: ?zoom=, read once, as worldViewport's VIEW_OUT */
 let _pixF = 1;        /* v2.3.5225: the ladder's share of the pixels drawn (laneKnob('pixels')) */
 let _pixOff = null;   /* v2.3.5225: ?ladderpix=0, read once */
+
+/* v2.3.6503: a phone at PHONE_RES, unless ?phoneres=0.  Read through the page's one
+   reader each time (it keeps its own copy per address), never a copy of our own here: a
+   new module row is a row in the state ledger (state-ledger 4), and a test's reset kept it */
+function phoneResOn() {
+  try { return !sw('phoneres'); } catch (e) { return true; }
+}
 
 /* v2.3.5232: each value as written, through the page's one reader; the
    old tests' patterns now held to the whole value (what `=...(&|$)` read) */
@@ -204,12 +235,16 @@ function readPixels() {
 export function renderDpr() {
   let r = deviceRatio();
   const u = urlRes();
+  /* v2.3.6503: a phone's 1.5 (PHONE_RES), unless the address names a ratio of its own */
+  const phone = !u && _phone && phoneResOn();
   if (u) r = Math.min(r, u);
+  else if (phone) r = Math.min(r, PHONE_RES);
+  const floor = phone ? r : 0;   /* v2.3.6503: "nothing below that": the pixel rungs keep a phone at it */
   if (_live) r = Math.min(r, _live);
   const b = budgetRatio();
   if (b) r = Math.min(r, b);
   const f = pixFactor();
-  if (f < 1) r *= Math.sqrt(f);
+  if (f < 1) r = Math.max(r * Math.sqrt(f), Math.min(r, floor));
   return r;
 }
 

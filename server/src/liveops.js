@@ -51,7 +51,8 @@
  * v2.3.5123: and the field report's, `_reportOff` (report.js); v2.3.5124:
  * the room's own row's, `_roomRowOff` (roomrow.js); v2.3.5127: the Speed
  * test's card's, `_reportSpeedOff` (report.js).
- * v2.3.5221: and card O's lanes', `_reportLanesOff` (report.js): `reportlanes`.  */
+ * v2.3.5221: and card O's lanes', `_reportLanesOff` (report.js): `reportlanes`.
+ * v2.3.6500: and card PH's heat, board and ramps, `_reportHeatOff` (report.js): `reportheat`.  */
 
 /* v2.3.2438: the daily metric walks the player table one page per tick
    slot (see _metricsMaybe).  A throw waits RETRY_MS before trying again

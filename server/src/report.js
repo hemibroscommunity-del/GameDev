@@ -80,9 +80,55 @@
  * back to 2: a lane other than `full` is then dropped (no cell), and `rung`
  * and `self` are dropped from a report that still comes.
  *
+ * v2.3.6500, CARD PH's PR 1: THE REPORT SEES HEAT AND THE BOARD.  The shape
+ * review of 2026-11-23 (docs/plan/census/shape-review.md item 20): the
+ * owner's iPhone fell from 106 to 51 frames a second after 24 minutes
+ * (2026-11-10) and the skateboard felt gritty (2026-11-18), and the day's
+ * sums could see neither -- no minutes up, no riding flag -- nor which of
+ * the address bar's off-ramps the page ran with (only the worker's 15
+ * savers).  So, to a worker whose caps.report is 4:
+ *   - `up`: which stretch of the page's SEEN minutes since its first join
+ *     the report's middle falls in (UP_EDGES: 0 to 5, 5 to 15, 15 to 30,
+ *     over 30), a place 0..3.  The cell sums by it, beside the cell's own
+ *     sums (never in its key: one sitting crosses all four, and a socket
+ *     reaches two cells): `up` { m0 | m5 | m15 | m30: [seen secs, frames
+ *     drawn, late, seconds below the lane's row] } -- the frame rate, the
+ *     late share and the governor's time down by minutes played: heat;
+ *   - `ride` [seconds on the board, late, judged] and `rideGaps` (the gaps'
+ *     ten bins) of the frames drawn while riding (game/ride.js isRiding at
+ *     each poll); the cell's `ride` [reports with a ride, seconds, frames,
+ *     late, long: past 42 ms] summed: the board's own frames
+ *     beside all (one row, not ten bins: report.test 7);
+ *   - `ramps`: the address bar's switches thrown, `name=word` (RAMP_WORDS),
+ *     each held to the page's ONE reader of the switch table
+ *     (src/game/switches.js readerFor: the forms `switches.test.mjs --write`
+ *     makes from tools/guards/lib/switches.mjs) -- a ramp is kept only if
+ *     that address really throws that switch, so no name off the table and
+ *     no free text reaches the book.  They join the savers in the cell's
+ *     switches part (swCell: none, the one, or many), so `?govern=0` is a
+ *     cell of its own, `govern=0`, beside the same phone's `none`.  A
+ *     switch newer than this worker's deploy is not on its copy of the
+ *     reader: it is dropped until the worker deploys again.
+ * THE DAY'S `dev` PART GROWS TO 28 KB (daybook.js PART_BYTES_OF), all the
+ * worst full day leaves under a stored value's 128 KiB (daybook.test 10b).
+ * The fullest cell -- every field, its four `up` rows and a ride -- reckons
+ * about 2.4 KB (report.test 7): eleven a day, devices times builds times
+ * the owner's ramps.  The floor was sixteen of a cell that was not full (its
+ * late and rung were dropped by its own fixture's numbers: a full one was
+ * 1.7 KB, fourteen); one player on several builds a day fills about ten.
+ * The book still writes one row a pace.
+ * THE KILL SWITCH `reportheat: false` in the live flags: caps.report back to
+ * 3, and `up`, `ride`, `rideGaps` and `ramps` dropped from a report that
+ * still comes (its cell then the savers' alone, as before).
+ *
  * Suite: server/test/report.test.mjs.
  */
 import { bookAdd } from './daybook.js';
+/* v2.3.6500 (card PH PR 1): the page's one reader of its switches, a leaf
+   with no imports, generated from the switch table: the worker asks it
+   whether an address throws a switch (rampsOf), so the closed list of the
+   report's `ramps` is the table's, one source (the plan's rule 2) */
+import { readerFor } from '../../src/game/switches.js';
 
 export const REPORT = Object.freeze({
   V: 1,
@@ -103,7 +149,20 @@ export const REPORT = Object.freeze({
   /* v2.3.5127: the cells one socket's reports may reach */
   CELLS_A_SOCKET: 2,
   SW_MAX: 32,
+  /* v2.3.6500 (card PH PR 1): the address bar's ramps read, at most */
+  RAMPS_MAX: 8,
 });
+
+/* v2.3.6500 (card PH PR 1): the stretches of minutes seen (src/debug/report.js
+   UP_EDGES; report.test holds them equal), and their keys in a cell's `up` */
+export const UP_EDGES = Object.freeze([5, 15, 30]);
+export const UP_KEYS = Object.freeze(['m0', 'm5', 'm15', 'm30']);
+/* the words a ramp may carry after its `=` (src/debug/report.js RAMP_WORDS):
+   every word a row's form on the page throws with ('' its presence), so a
+   switch thrown by its row's own word is always sent as written; a value
+   switch (`?zoom=1.5`) is sent with '' (report.test holds the list whole) */
+export const RAMP_WORDS = Object.freeze(['', '0', '1', '2', 'off', 'false', 'no', 'all', 'mouse']);
+const RAMP_NAME_RE = /^[a-z0-9]{1,32}$/;
 
 /* ── the closed lists: the phone's, copied (report.test holds them equal) ── */
 /* src/game/deviceProfile.js DEV_CLASS, in its key's order */
@@ -140,6 +199,10 @@ export const SAVERS = Object.freeze(['sfxcache', 'voicecap', 'onecopy', 'picnumb
 /* src/debug/report.js WHERE and GAP_EDGES (ten bins) */
 export const WHERE = Object.freeze(['town', 'farm', 'dungeon', 'commons', 'frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', 'verdant', 'other']);
 export const GAP_BINS = 10;
+/* v2.3.6500 (card PH PR 1): the first bin a ride's frame counts as long in
+   (its lower edge 42 ms, src/debug/report.js GAP_EDGES[6]: a frame that
+   missed two refreshes of 60) */
+export const RIDE_LONG_BIN = 7;
 export const DIED = Object.freeze(['no', 'killed', 'evicted']);
 /* src/debug/holdNames.js HOLD_NAMES */
 export const HOLD_NAMES = Object.freeze([
@@ -179,6 +242,13 @@ export const SPEED = Object.freeze({ FPS_MAX: 1000, MS_MAX: 10000 });
  *   rung     v2.3.5221: [reports that carried one, the most rungs taken
  *            summed, seconds below the lane's row summed] (card O)
  *   self     v2.3.5221: { '<program>': reports naming it } (card O, step 1.7)
+ *   up       v2.3.6500: { m0 | m5 | m15 | m30: [seen secs, frames drawn,
+ *            late, secs below the row] }, by minutes seen (card PH: heat):
+ *            the rate (drawn / seen), the late share (late / drawn) and the
+ *            governor's time down, by minutes played
+ *   ride     v2.3.6500: [reports with a ride, secs riding, frames drawn
+ *            riding, late, long: those past 42 ms] (the report's `rideGaps`
+ *            checked against its gaps, then summed to `long`)
  *   v2.3.5127 (sitting 4): maps and sums, not a bin a word, so a cell is
  *   about half its first size and the day's 24 KB holds about twice the
  *   devices and builds */
@@ -229,12 +299,43 @@ export function classOfReport(c) {
 
 /** The switches' part of a cell: 'none', the one saver's id, or 'many' (the
  *  plan's rule 4: two configurations, all new or exactly one switch thrown,
- *  and the rest apart).  Ids off the list are dropped. */
-export function swCell(sw) {
-  if (!Array.isArray(sw)) return 'none';
+ *  and the rest apart).  Ids off the list are dropped.  v2.3.6500 (card PH
+ *  PR 1): and the address bar's ramps, already checked (rampsOf), with them:
+ *  `?govern=0` alone is the cell `govern=0`. */
+export function swCell(sw, ramps) {
   const ids = [];
-  for (const s of sw.slice(0, REPORT.SW_MAX)) if (typeof s === 'string' && SAVERS.includes(s) && !ids.includes(s)) ids.push(s);
+  if (Array.isArray(sw)) for (const s of sw.slice(0, REPORT.SW_MAX)) if (typeof s === 'string' && SAVERS.includes(s) && !ids.includes(s)) ids.push(s);
+  if (Array.isArray(ramps)) for (const r of ramps) if (!ids.includes(r)) ids.push(r);
   return ids.length === 0 ? 'none' : ids.length === 1 ? ids[0] : 'many';
+}
+
+/** v2.3.6500 (card PH PR 1): a report's `ramps`, checked: each `name=word`
+ *  kept only where the page's one reader says the address `?name=word`
+ *  throws that switch (src/game/switches.js readerFor) -- a name off the
+ *  switch table, a word off RAMP_WORDS, a dependent the address does not
+ *  name itself, free text: dropped.  -> the kept ones, sorted, as written. */
+export function rampsOf(ramps) {
+  if (!Array.isArray(ramps)) return [];
+  const out = [];
+  for (const t of ramps.slice(0, REPORT.RAMPS_MAX)) {
+    if (typeof t !== 'string') continue;
+    const at = t.indexOf('=');
+    if (at < 1) continue;
+    const name = t.slice(0, at), word = t.slice(at + 1);
+    if (!RAMP_NAME_RE.test(name) || !RAMP_WORDS.includes(word) || out.includes(t)) continue;
+    let thrown = false;
+    try { thrown = readerFor('?' + name + '=' + word).thrown().includes('?' + name); } catch (e) { thrown = false; }
+    if (thrown) out.push(t);
+  }
+  return out.sort();
+}
+
+/** v2.3.6500 (card PH PR 1): the stretch a page's seen minutes fall in, a
+ *  place of UP_KEYS (the page's own rule, src/debug/report.js upBucket). */
+export function upBucket(min) {
+  let i = 0;
+  while (i < UP_EDGES.length && !(min < UP_EDGES[i])) i++;
+  return i;
 }
 
 /** The next waver (index.js case 'pong'): the smoothed distance of `sample`
@@ -288,8 +389,12 @@ export function reportSums(msg, own) {
   const seen = int(msg.seen, 0, secs);
   if (seen === null) return null;
   const o = own || {};
+  /* v2.3.6500 (card PH PR 1): heat, the board and the ramps, only where the
+     worker takes them (`own.heat`: caps.report 4; `reportheat: false` none) */
+  const heat = !!(lanes && o.heat);
+  const ramps = heat ? rampsOf(msg.ramps) : [];
   /* v2.3.5127: the build is the page's only on the game's own site */
-  const cell = REPORT.V + '|' + cls.key + '|' + msg.drawLane + '|' + swCell(msg.sw) + '|' + (o.site === 'live' ? build : 'preview');
+  const cell = REPORT.V + '|' + cls.key + '|' + msg.drawLane + '|' + swCell(msg.sw, ramps) + '|' + (o.site === 'live' ? build : 'preview');
   const s = Object.create(null);
   s.n = 1;
   s.secs = secs;
@@ -364,6 +469,32 @@ export function reportSums(msg, own) {
       if (Object.keys(sf).length) s.self = sf;
     }
   }
+  /* v2.3.6500 (card PH PR 1): the minutes seen, and the board's frames */
+  if (heat) {
+    const up = int(msg.up, 0, UP_KEYS.length - 1);
+    if (up !== null) {
+      const drawnOk = s.gaps ? s.gaps.reduce((a, b) => a + b, 0) : 0;
+      s.up = Object.create(null);
+      s.up[UP_KEYS[up]] = [seen, drawnOk, s.late ? s.late[0] : 0, s.rung ? s.rung[2] : 0];
+    }
+    /* the board: its gaps a part of the report's (each bin at most the
+       report's own), late <= judged <= its frames, its seconds at most seen */
+    const rg = s.gaps ? ints(msg.rideGaps, GAP_BINS, 0, REPORT.SECS_MAX * REPORT.FPS_MAX) : null;
+    const rd = Array.isArray(msg.ride) && msg.ride.length === 3 ? [int(msg.ride[0], 0, seen), int(msg.ride[1], 0, REPORT.SECS_MAX * REPORT.FPS_MAX), int(msg.ride[2], 0, REPORT.SECS_MAX * REPORT.FPS_MAX)] : null;
+    if (rg && rd && rd.every((x) => x !== null) && rg.every((x, i) => x <= s.gaps[i])) {
+      const rDrawn = rg.reduce((a, b) => a + b, 0);
+      const judgedAll = s.late ? s.late[1] : 0, lateAll = s.late ? s.late[0] : 0;
+      if (rd[1] <= rd[2] && rd[2] <= rDrawn && rd[2] <= judgedAll && rd[1] <= lateAll && (rd[0] > 0 || rDrawn > 0)) {
+        /* kept as one short row, not ten bins: the board's frames, and those
+           past RIDE_LONG_BIN's edge (42 ms: two refreshes of 60 missed) --
+           a cell's ten bins of its own would have cut the day's cells by a
+           third (report.test 7) */
+        let long = 0;
+        for (let i = RIDE_LONG_BIN; i < GAP_BINS; i++) long += rg[i];
+        s.ride = [1, rd[0], rDrawn, rd[1], long];
+      }
+    }
+  }
   const speed = has(msg, 'speed') ? speedSums(msg.speed, cls.key, o.site === 'live' ? build : 'preview') : null;   /* v2.3.5127: the build is the worker's call */
   return { cell, sums: s, soft: cls.soft, speed };
 }
@@ -380,7 +511,18 @@ export const reportMethods = {
     if (this._reportSpeedOff()) return 1;
     /* v2.3.5221: 3 takes card O's lanes, rung and self too; `reportlanes:
        false` back to 2 (a cap that grows gates by its count: TRAPS §9) */
-    return this._reportLanesOff() ? 2 : 3;
+    if (this._reportLanesOff()) return 2;
+    /* v2.3.6500 (card PH PR 1): 4 takes heat, the board and the ramps too;
+       `reportheat: false` back to 3 */
+    return this._reportHeatOff() ? 3 : 4;
+  },
+
+  /* v2.3.6500 (card PH PR 1): `reportheat: false` in the live flags takes
+     `up`, `ride`, `rideGaps` and `ramps` no more -- caps.report back to 3,
+     and the four dropped from a report that still comes */
+  _reportHeatOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'reportheat') && !f.reportheat);
   },
 
   /* v2.3.5221: card O's kill switch, as liveops.js's `_reportSpeedOff`:
@@ -403,7 +545,7 @@ export const reportMethods = {
       if (session.reportAt && now - session.reportAt < REPORT.PACE_MS) return 'pace';
       session.reportAt = now;
       const first = !session.reportCells;
-      const r = reportSums(msg, { delay: session.rtt, waver: session.rttWaver, site: session.site, first, lanes: this._reportCap() >= 3 });   /* v2.3.5221: lanes */
+      const r = reportSums(msg, { delay: session.rtt, waver: session.rttWaver, site: session.site, first, lanes: this._reportCap() >= 3, heat: this._reportCap() >= 4 });   /* v2.3.5221: lanes; v2.3.6500 heat (card PH PR 1) */
       if (!r) return 'bad';
       /* v2.3.5127 (sitting 4: a program could fill the day's part with one
          device class a report): a socket's reports reach at most

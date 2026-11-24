@@ -80,7 +80,7 @@
 import * as H from './harness.mjs';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { HOLD_MAX_MS, FRAME_JS_MAX_MS, WINDOW_MAX_MS, KNOWN, judgeHeld } from './held-budget.mjs';
+import { HOLD_MAX_MS, FRAME_JS_MAX_MS, KNOWN, sweepVerdict } from './held-budget.mjs';   /* v2.3.6506: sweepVerdict (judgeHeld inside) */
 import { holdOf } from '../../../src/debug/holdNames.js';   /* v2.3.5126: the report's own reading of a note */
 export const lane = 'full';
 
@@ -395,7 +395,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   mkdirSync(OUT, { recursive: true });
   /* the old tap to swing for this page (`?manual=0`): the tour's fight is scripted with it */
   const A = await H.newPlayer(browser, { name: 'Sweeper', wsPort, webPort, viewport: PHONE, touch: true, dpr: 1, world: 'wheel', query: 'manual=0' + (process.env.BT_HS_QUERY ? '&' + process.env.BT_HS_QUERY : '') });
-  let B = null;
+  let B = null, browserB = null;   /* v2.3.6505: the rider's own browser (the peer station) */
   const stopA = H.keepAlive(A, 15000);
   let stopB = null;
   const report = { profile: H.PROFILE ? H.PROFILE.name : null, stations: [] };   /* v2.3.5861: the slow profile it ran under (card O2 PR 2) */
@@ -503,7 +503,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     if (WANT.includes('peer')) {
       const here = await H.readState(A, (S) => ({ x: S.player.x, y: S.player.y }));
-      B = await H.newPlayer(browser, { name: 'Rider', wsPort, webPort, viewport: { width: 390, height: 600 }, touch: false, world: 'wheel', query: 'manual=0',
+      /* v2.3.6505 (card PH PR 6; TRAPS 177, the test first): the rider gets A BROWSER OF ITS OWN.  In the one
+         browser both pages drew on one software graphics chip, so the phone's black-screen check (its read at the
+         top of the frame) waited for the rider's frames too: `screen-check` 281 to 307 ms here (census/HB-holds.md
+         row 1), over its line, red on main.  Two players are never on one phone: two browsers are two chips, as two
+         phones are.  It is closed after this station: `armour` is the phone's own. */
+      browserB = await H.launch();
+      B = await H.newPlayer(browserB, { name: 'Rider', wsPort, webPort, viewport: { width: 390, height: 600 }, touch: false, world: 'wheel', query: 'manual=0',
         init: dress({ skin: 'ebony', pants: 'red', shoes: 'blue', hair: 'long', haircolor: 'red', headwear: 'red-cap' }) });
       stopB = H.keepAlive(B, 15000);
       await H.enterWorld(B);
@@ -525,6 +531,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
         await A.page.waitForTimeout(2000);
         return { seen: await A.page.evaluate(() => Object.keys(window._gameState.current.others || {}).length).catch(() => 0) };
       });
+      /* v2.3.6505: the rider leaves before `armour` (the phone's own; it met the rider's frames before) */
+      if (stopB) { stopB(); stopB = null; }
+      await B.ctx.close().catch(() => {});
+      await browserB.close().catch(() => {});
+      B = null; browserB = null;
     }
 
     await station('armour', "the phone's own armour on, a walk round, and off", async () => {
@@ -539,22 +550,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
     });
 
     /* ── the ranking, and the budget (held-budget.mjs judgeHeld: the lines, the debt list, the noise rule) ── */
-    const { ranked, over } = judgeHeld(report.stations);
+    /* v2.3.6506: the verdict's rows are held-budget.mjs sweepVerdict's (gate-steps.test drives them) */
+    const verdict = sweepVerdict(report.stations, WANT);
+    const { ranked, over } = verdict;
     report.ranked = ranked;
     report.over = over;
     writeFileSync(join(OUT, REPORT_FILE), JSON.stringify(report, null, 1));
     console.log('\n  ══ EVERYTHING THAT HELD THE PAGE FOR 4 ms OR MORE, WORST FIRST ══');
     console.log('     longest   times   in all   where                          what');
     for (const f of ranked.slice(0, 40)) console.log(`     ${String(f.longest).padStart(6)} ms ${String(f.n).padStart(5)} ${String(f.sum).padStart(7)} ms  ${f.where.padEnd(30).slice(0, 30)} [${f.key}] ${f.what === f.key ? '' : f.what}${f.via ? '   via ' + f.via : ''}`);
-    const readable = report.stations.every((s) => s.readable);
-    rec.ok(`the profile reads by name (an unminified build: the game's loop found in ${report.stations.filter((s) => s.readable).length} of ${report.stations.length} stations)`, readable && report.stations.length >= 1,
-      'build with: npx vite build --minify false --outDir dist-prof, and run with QA_DIST=dist-prof');
-    const listed = over.filter((o) => o.listed), fresh = over.filter((o) => !o.listed);
-    const say = (l) => l.slice(0, 6).map((o) => `${o.key} ${o.longest} ms > ${o.line} (${o.where}${o.times > 1 ? ', ' + o.times + ' times' : ''})`).join('; ');
-    rec.ok(`the budget: nothing NEW holds the page past its line -- ${HOLD_MAX_MS} ms a job outside the frame, ${FRAME_JS_MAX_MS} ms of the game's own code inside one, ${WINDOW_MAX_MS} ms at a window (${fresh.length} over${fresh.length ? ': ' + say(fresh) : ''})`,
-      fresh.length === 0, fresh);
-    rec.ok(`...and nothing on the debt list has grown past its own line (${Object.keys(KNOWN).length} listed; ${listed.length} over${listed.length ? ': ' + say(listed) : ''})`,
-      listed.length === 0, listed);
+    for (const v of verdict.rows) rec.ok(v.name, v.ok, v.detail);
     /* v2.3.5126: what the field report could not name */
     const gaps = noteGaps(report.stations, KNOWN, HOLD_MAX_MS);
     report.noteGaps = gaps;
@@ -562,11 +567,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const noted = report.stations.reduce((t, s) => t + Object.values(s.notes || {}).reduce((u, v) => u + v[0], 0), 0);
     rec.ok(`every known hold left a note the field report can name (a debt-list family the page runs, ${HOLD_MAX_MS} ms or more outside the frame; ${noted} notes written; ${gaps.length} left none${gaps.length ? ': ' + gaps.slice(0, 6).map((g) => `${g.key} ${g.ms} ms at ${g.where}${g.holds > 1 ? ' (' + g.holds + ' holds)' : ''}`).join('; ') + ' -- its job must reach the ring under that name (holdNames.js MADE_AS)' : ''})`,
       gaps.length === 0, gaps);
-    rec.ok(`every station asked for was played (${report.stations.map((s) => s.name).filter((v, i, a) => a.indexOf(v) === i).join(', ')})`, WANT.every((w) => report.stations.some((s) => s.name === w)), WANT);
   } finally {
     stopA();
     if (stopB) stopB();
     await A.ctx.close().catch(() => {});
     if (B) await B.ctx.close().catch(() => {});
+    if (browserB) await browserB.close().catch(() => {});
   }
 }
