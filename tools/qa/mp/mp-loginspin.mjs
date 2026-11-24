@@ -2,14 +2,29 @@
  *
  * One real player against a real worker, in the Wheel's BroTown, twice (a phone
  * upright 390 x 844 and a computer 1280 x 800):
- *   1. the worker advertises the wheel (caps.loginspin); the window is opened
- *      by hand (the host waits for the first steps of a new character);
+ *   1. the worker advertises the wheel (caps.loginspin); v2.3.6560 (card LS,
+ *      the owner 2026-11-24: "just leave it as a button in the top right"): on
+ *      the game's default address the window does NOT open by itself, past the
+ *      settle time plus three seconds of the page's own clock and frames; the
+ *      page asked the worker exactly once and the bar's button reads ready; a
+ *      tap opens it; closed without a spin it stays closed, the button bright;
+ *      a second tap opens it for the spin;
  *   2. before: the title plate, the wheel, the pointer, one SPIN button;
  *   3. SPIN: the wheel turns and stops; the worker HOLDS the prize (nothing
  *      paid yet); DOUBLE OR NOTHING? with YES / NO; YES until a loss (or 3
  *      wins), then NO: the worker's purse is exactly the held pot higher
  *      (or unchanged after a loss) -- the gold is the worker's;
- *   5. a second ask the same day: nothing to spin; no page errors.
+ *   5. a second ask the same day: nothing to spin; no page errors;
+ *   6. (the phone) `?loginspin=1`, the off-ramp: a character logs in, the window offers itself ONCE, and closed without a
+ *      spin it stays closed.
+ * THE DEFAULT ADDRESS: the harness appends `loginspin=0` to an address that
+ * does not name it (harness.mjs `_noSpin`), so no query can ask for the
+ * default.  QA_INIT below runs before the game's script and takes the
+ * harness's word back off the address (history.replaceState; the page's
+ * switch reader reads the address as it is at each ask, src/game/switches.js):
+ * the game reads no `loginspin` at all, as on a player's phone.  Every
+ * character here is past the tutorial (QA_INIT), so the old wheel would have
+ * opened itself for each of them.
  * Pictures: docs/shots/daily-spin-<view>-{before,after,double-ask,double-win|double-nothing,collect}.png.
  */
 import * as H from './harness.mjs';
@@ -20,14 +35,46 @@ export const lane = 'full';
 const PHONE = { width: 390, height: 844 };
 const WIDE = { width: 1280, height: 800 };
 
+/* v2.3.6560: the page's own init (H.newPlayer `init`, before the game's script).  It takes the harness's
+   `loginspin=0` off the address (the header: THE DEFAULT ADDRESS; `?loginspin=1` stays); it marks the tutorial
+   skipped, as the game's own Skip does (onboardingPace.js SKIP_KEY), so the character is one the old wheel WOULD
+   have opened itself for (onboardingBusy holds it back for a new character's first steps: without this the
+   default pass stayed green with the unconditional open put back, the plant run of 2026-11-24); and it counts the
+   page's loginspin_ask messages as they leave (a bundle's frame holds several: each one counts). */
+const QA_INIT = () => {
+  try {
+    const u = new URL(location.href);
+    if (u.searchParams.get('loginspin') === '0') { u.searchParams.delete('loginspin'); history.replaceState(history.state, '', u.pathname + u.search + u.hash); }
+  } catch (e) { /* the address as it was */ }
+  try { localStorage.setItem('bt_tutorial_skipped', '1'); } catch (e) { /* private window */ }
+  window.__qaSpinAsks = 0;
+  const send = WebSocket.prototype.send;
+  WebSocket.prototype.send = function (d) { try { if (typeof d === 'string') window.__qaSpinAsks += (d.match(/"loginspin_ask"/g) || []).length; } catch (e) { /* counted or not */ } return send.call(this, d); };
+};
+/* v2.3.6560: wait `ms` of the page's own clock AND at least four of its frames (TRAPS §200: this box draws a
+   few frames a second; the host's poll runs on the page's timers) */
+const pageWait = (P, ms) => P.page.evaluate((ms) => new Promise((res) => {
+  const t0 = performance.now(); let frames = 0;
+  const step = () => { frames++; if (performance.now() - t0 >= ms && frames >= 4) res({ ms: Math.round(performance.now() - t0), frames }); else requestAnimationFrame(step); };
+  requestAnimationFrame(step);
+}), ms);
+const SETTLE_PLUS_MS = 3000 + 1000;   /* three seconds past the settle, and one of the host's 1000 ms polls */
+const winState = (P) => P.page.evaluate(() => ({
+  win: !!document.querySelector('[data-login-spin]'),
+  open: !!(window.__btLoginSpinBus && window.__btLoginSpinBus.get().open),
+  btn: (document.querySelector('[data-login-spin-btn]') || { getAttribute: () => null }).getAttribute('data-login-spin-btn'),
+  asks: window.__qaSpinAsks,
+}));
+const tapButton = (A) => A.page.click('[data-login-spin-btn="ready"]', { timeout: 4000, force: true }).catch(() => A.page.evaluate(() => document.querySelector('[data-login-spin-btn]').click()));
+
 async function pass(view, { browser, wsPort, webPort, rec }) {
   const OUT = join(H.REPO, 'docs/shots');
   mkdirSync(OUT, { recursive: true });
   const shot = (P, name) => P.page.screenshot({ path: join(OUT, `daily-spin-${view}-${name}.png`) }).catch(() => {});
   const phone = view === 'phone';
   const A = await H.newPlayer(browser, phone
-    ? { name: 'Spinbro', wsPort, webPort, world: 'wheel', viewport: PHONE, touch: true }
-    : { name: 'Spindesk', wsPort, webPort, world: 'wheel', viewport: WIDE, wide: true });
+    ? { name: 'Spinbro', wsPort, webPort, world: 'wheel', viewport: PHONE, touch: true, init: QA_INIT }
+    : { name: 'Spindesk', wsPort, webPort, world: 'wheel', viewport: WIDE, wide: true, init: QA_INIT });
   const errors = [];
   A.page.on('pageerror', (e) => errors.push(String((e && e.message) || e).slice(0, 200)));
   const tag = (s) => `${view}: ${s}`;
@@ -42,6 +89,15 @@ async function pass(view, { browser, wsPort, webPort, rec }) {
     const gold0 = (await H.adminPlayer(wsPort, id)).rpg.coins;
     /* the top bar's button (the host asks once the world is up): it opens the window */
     await A.page.waitForSelector('[data-login-spin-btn="ready"]', { timeout: 20000 }).catch(() => {});
+    /* v2.3.6560: the default address -- no popup at login.  The ask went (so the host is past its settle time);
+       then three seconds more, and a poll, by the page's clock and frames */
+    const addr = await A.page.evaluate(() => location.search);
+    rec.ok(tag('the game\'s address names no loginspin (the default a player gets)'), !/(?:^|[?&])loginspin=/.test(addr), addr);
+    await A.page.waitForFunction(() => window.__qaSpinAsks >= 1, null, { timeout: 20000 }).catch(() => {});
+    const waited = await pageWait(A, SETTLE_PLUS_MS);
+    const st0 = await winState(A);
+    rec.ok(tag('logged in with a spin ready: past the settle time plus three seconds the window has NOT opened by itself, the bar\'s button reads ready'), !st0.win && !st0.open && st0.btn === 'ready', { ...st0, waited });
+    rec.ok(tag('the page asked the worker exactly once'), st0.asks === 1, st0);
     await shot(A, 'topbar');
     const rects = await A.page.evaluate(() => {
       const r = (sel) => { const e = document.querySelector(sel); if (!e) return null; const b = e.getBoundingClientRect(); return b.width ? { l: b.left, r: b.right, t: b.top, b: b.bottom } : null; };
@@ -61,14 +117,18 @@ async function pass(view, { browser, wsPort, webPort, rec }) {
       await A.page.setViewportSize(PHONE);
       await A.page.waitForTimeout(400);
     }
-    /* v2.3.4345: opening the window and closing it WITHOUT a spin (what a refusal on unsafe ground leads to) leaves the button bright */
-    await A.page.evaluate(() => { window.__btLoginSpinBus.open(); });
+    /* v2.3.4345: opening the window and closing it WITHOUT a spin (what a refusal on unsafe ground leads to) leaves the button bright;
+       v2.3.6560: by the button and its ✕, as a player does, and closed it stays closed (the owner's "wouldn't leave me alone") */
+    await tapButton(A);
     await A.page.waitForSelector('[data-login-spin-close]', { timeout: 10000 }).catch(() => {});
-    await A.page.evaluate(() => { window.__btLoginSpinBus.close(); });
-    await A.page.waitForTimeout(400);
-    const stillReady = await A.page.evaluate(() => (document.querySelector('[data-login-spin-btn]') || {}).getAttribute?.('data-login-spin-btn'));
-    rec.ok(tag('opened and closed without a spin: the bar\'s button is still bright, not greyed'), stillReady === 'ready', stillReady);
-    await A.page.click('[data-login-spin-btn="ready"]', { timeout: 4000, force: true }).catch(() => A.page.evaluate(() => document.querySelector('[data-login-spin-btn]').click()));
+    const opened = await winState(A);
+    rec.ok(tag('a tap on the bar\'s button opens the window'), opened.win && opened.open, opened);
+    await A.page.click('[data-login-spin-close]', { timeout: 4000, force: true }).catch(() => A.page.evaluate(() => document.querySelector('[data-login-spin-close]').click()));
+    await A.page.waitForSelector('[data-login-spin]', { state: 'detached', timeout: 5000 }).catch(() => {});
+    const waited2 = await pageWait(A, SETTLE_PLUS_MS);
+    const st1 = await winState(A);
+    rec.ok(tag('closed without a spin: it stays closed (three seconds and a poll later), the bar\'s button still bright, not greyed'), !st1.win && !st1.open && st1.btn === 'ready', { ...st1, waited: waited2 });
+    await tapButton(A);
     await A.page.waitForSelector('[data-login-spin="ready"]', { timeout: 10000 }).catch(() => {});
     await A.page.waitForTimeout(600);
     await shot(A, 'before');
@@ -122,6 +182,8 @@ async function pass(view, { browser, wsPort, webPort, rec }) {
     });
     await shot(A, 'topbar-spent');
     rec.ok(tag('after the spin the bar\'s button is greyed out; a tap says "Next free spin in ..h ..m" and opens no window'), /^Next free spin in (\d+h )?\d+m$/.test(note.t) && !note.win, note);
+    const asksAfter = await A.page.evaluate(() => window.__qaSpinAsks);
+    rec.ok(tag('one ask the whole sitting: the window\'s opens, closes and the spin asked nothing more'), asksAfter === 1, asksAfter);
     /* a second ask the same day: nothing to spin */
     await A.page.evaluate(() => { window._gameState.current.channel.send({ type: 'loginspin_ask', payload: {} }); });
     await A.page.waitForTimeout(1200);
@@ -133,7 +195,33 @@ async function pass(view, { browser, wsPort, webPort, rec }) {
   }
 }
 
+/* v2.3.6560: the off-ramp, `?loginspin=1`: the old offer at login, once a mount */
+async function offerRoad({ browser, wsPort, webPort, rec }) {
+  const A = await H.newPlayer(browser, { name: 'Spinoffer', wsPort, webPort, world: 'wheel', viewport: PHONE, touch: true, query: 'loginspin=1', init: QA_INIT });
+  const errors = [];
+  A.page.on('pageerror', (e) => errors.push(String((e && e.message) || e).slice(0, 200)));
+  const tag = (s) => `loginspin=1: ${s}`;
+  try {
+    await H.enterWorld(A);
+    await H.waitFor(A, (S) => ({ zone: S.currentZone, loading: !!S._zoneLoading }),
+      (v) => v.zone === 'wheel' && !v.loading, { timeout: 120000, label: 'in the Wheel' }).catch(() => null);
+    await A.page.waitForSelector('[data-login-spin-close]', { timeout: 30000 }).catch(() => {});
+    const st0 = await winState(A);
+    rec.ok(tag('a character past the tutorial logs in: the window offers itself'), st0.win && st0.open, st0);
+    await A.page.click('[data-login-spin-close]', { timeout: 4000, force: true }).catch(() => A.page.evaluate(() => { const b = document.querySelector('[data-login-spin-close]'); if (b) b.click(); }));
+    await A.page.waitForSelector('[data-login-spin]', { state: 'detached', timeout: 5000 }).catch(() => {});
+    const waited = await pageWait(A, SETTLE_PLUS_MS);
+    const st1 = await winState(A);
+    rec.ok(tag('closed without a spin it stays closed (three seconds and a poll later), the button bright'), !st1.win && !st1.open && st1.btn === 'ready', { ...st1, waited });
+    rec.ok(tag('the page asked the worker exactly once'), st1.asks === 1, st1);
+    rec.ok(tag('no page errors'), errors.length === 0, errors.slice(0, 3));
+  } finally {
+    await A.ctx.close().catch(() => {});
+  }
+}
+
 export async function run(ctx) {
   await pass('phone', ctx);
   await pass('desk', ctx);
+  await offerRoad(ctx);
 }

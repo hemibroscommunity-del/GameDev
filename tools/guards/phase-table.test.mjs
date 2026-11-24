@@ -165,6 +165,17 @@
  *      this._duels in party.js _partySend                 -> FAIL 2 (was green)
  *  58. the same with the key in a const, `{ ...d, [_st]: 'resolved' }`
  *      (`const _st = 'status'`), and `d[_st] = 'resolved'` -> FAIL 2
+ * v2.3.6520, sitting 58's hold (`{ ...d, ..._p }` with `_p = { status:
+ * 'resolved' }` green): a spread's keys are FOLLOWED as a class
+ * (literalProps), and a spread it cannot follow is counted (2c), tried
+ * 2026-11-24, each in party.js _partySend over `const d = this._d0`:
+ *  59. `const _p = { status: 'resolved' }; this._dx = { ...d, ..._p };` -> FAIL 2
+ *  60. `{ ...d, ...(playerId ? { status: 'resolved' } : {}) }`,
+ *      `{ ...d, ...(playerId && { status: 'resolved' }) }`  -> FAIL 2
+ *  61. `const _mk = () => ({ status: 'resolved' }); { ...d, ..._mk() }`, and
+ *      a declared function returning it from inside an `if` -> FAIL 2
+ *  62. `this._dx = { ...this._d0, ...this._wire(playerId) }` -> FAIL 2c
+ *  `{ ...d, other: 1 }` stays green (a copy that writes no door's field).
  *  Not caught, and why: a key built at run time (`'sta' + 'tus'`), and a
  *  record copied whole and changed in another module by a name this file
  *  never sees (`structuredClone(d)` handed to a helper that writes it):
@@ -398,7 +409,9 @@ const DOOR_SUITES = Object.freeze({
     prop: 'runPhase', besides: [] },
   /* v2.3.5216: the pose door */
   'server/test/pose-door.test.mjs': { field: 'ps.po', fn: '_poseTo', holds: '§2: no write of .po in server/src outside _poseTo',
-    prop: 'po', besides: [] },
+    prop: 'po', besides: [
+      { file: fileNamed('tick.js'), text: '...(ps.po ? { po: ps.po } : {})', fn: 'playerWire', why: 'a copy onto the tick\'s wire entry, not the player\'s (v2.3.6520, sitting 58: a key a spread brings, followed)' },
+    ] },
   /* v2.3.5217: the race door */
   'server/test/race-door.test.mjs': { field: 'ps._race', fn: '_raceTo', holds: '§2: no write of ._race in server/src outside _raceTo',
     prop: '_race', besides: [] },
@@ -652,7 +665,13 @@ function writesIn(rel, prop, value, keyed) {
     ObjectExpression(path) {
       const props = path.node.properties;
       if (!props.some((x) => x.type === 'SpreadElement')) return;
-      for (const pr of props) if (keyName(pr, path.scope) === prop && val(pr.value)) hit(path, pr, false, true);
+      /* v2.3.6520 (sitting 58's hold: `{ ...d, ..._p }` with `_p = { status:
+         'resolved' }` stayed green): the keys a spread brings are followed
+         too (literalProps: a name bound to a literal, either arm of `?:`,
+         `&&`, `||`, a local function's returned literal), when the literal
+         has anything beside that spread (a copy, not a literal alone) */
+      if (props.length < 2) return;
+      for (const pr of literalProps(path.node, path.scope, 0)) if (keyName(pr, path.scope) === prop && val(pr.value)) hit(path, pr, false, true);
     },
   });
   return out;
@@ -661,7 +680,35 @@ function writesIn(rel, prop, value, keyed) {
    literal's own, a spread's (followed), and a variable's whose binding is
    a literal (`const d = { ... }`), a few steps deep */
 function literalProps(n, scope, depth) {
-  if (!n || depth > 4) return [];
+  if (!n || depth > 6) return [];
+  /* v2.3.6520 (sitting 58): the forms a source can come in, followed as a
+     class: either arm of a choice, a function's returned literal (a local
+     function, called by name: `...mk()`), a literal in parentheses.  What
+     is left is a record copied whole (a parameter, a member, an import's
+     call), which carries only the fields it had: the keys it writes are
+     the ones this guard reads where they are written */
+  if (n.type === 'ConditionalExpression') return [...literalProps(n.consequent, scope, depth + 1), ...literalProps(n.alternate, scope, depth + 1)];
+  if (n.type === 'LogicalExpression') return [...literalProps(n.left, scope, depth + 1), ...literalProps(n.right, scope, depth + 1)];
+  if (n.type === 'SequenceExpression') return literalProps(n.expressions[n.expressions.length - 1], scope, depth + 1);
+  if (n.type === 'CallExpression' && n.callee.type === 'Identifier' && scope) {
+    const b = scope.getBinding(n.callee.name);
+    const fnNode = b && b.path && (b.path.isFunctionDeclaration() ? b.path.node
+      : (b.path.isVariableDeclarator() && b.path.node.init && /Function/.test(b.path.node.init.type) ? b.path.node.init : null));
+    if (!fnNode) return [];
+    if (fnNode.body.type !== 'BlockStatement') return literalProps(fnNode.body, b.path.scope, depth + 1);
+    /* every return of its own (in an if or a loop too; never a nested function's) */
+    const out = [];
+    const walk = (st) => {
+      if (!st || typeof st !== 'object' || /Function/.test(st.type || '')) return;
+      if (st.type === 'ReturnStatement') { out.push(...literalProps(st.argument, b.path.scope, depth + 1)); return; }
+      for (const k of ['body', 'consequent', 'alternate', 'block', 'handler', 'finalizer', 'cases']) {
+        const v = st[k];
+        if (Array.isArray(v)) v.forEach(walk); else if (v && typeof v === 'object') walk(v);
+      }
+    };
+    fnNode.body.body.forEach(walk);
+    return out;
+  }
   if (n.type === 'ObjectExpression') {
     const out = [];
     for (const pr of n.properties) {
@@ -745,6 +792,80 @@ function literalProps(n, scope, depth) {
   const listed = [...Object.keys(SCAN_DOORS)].filter((k) => !doors.some((r) => keyOf(r) === k));
   if (listed.length) bad.push(`SCAN_DOORS lists rows that are not doors: ${listed.join(', ')}`);
   check(`2: a door's field has no writer outside its function, and what holds it is on the closed lists (${doors.length} doors: ${doors.map(keyOf).join(', ')})`, bad.length === 0, bad);
+}
+
+/* ── 2c. v2.3.6520 (sitting 58): the spreads the phase scan cannot follow ──
+   A key a spread brings is followed (literalProps: a name bound to a
+   literal, either arm of a choice, a local function's returned literal).
+   A spread of a CALL into an import or a method (`...mkPatch()`,
+   `...this._wire(d)`) brings keys from a body this file does not hold: the
+   scan cannot follow it, so each is counted here by file and the list only
+   falls (a new one is red: follow it, or move the keys where they are
+   seen).  A spread of a record by name or member (`...d`, `...ps.eq`) is a
+   copy of a record, which carries only the fields it already had: those
+   are not counted (987 spreads in all, 2026-11-24; the record's own
+   writes are read where they are made). */
+const SPREAD_CALLS = Object.freeze(Object.assign(Object.create(null), {
+  'server/src/clans.js': 1,
+  'server/src/dungeon.js': 1,
+  'server/src/gladiator.js': 1,
+  'server/src/join.js': 1,
+  'server/src/loginspin.js': 3,
+  'server/src/market.js': 3,
+  'server/src/persistence.js': 1,
+  'server/src/petbook.js': 1,
+  'server/src/revealbag.js': 3,
+  'server/src/spar.js': 3,
+  'server/src/spawnscale.js': 1,
+  'server/src/store.js': 1,
+  'server/src/trade2.js': 1,
+  'src/game/wheelBreak.js': 1,
+  'src/rendering/folkSkill.js': 1,
+  'src/rendering/lightfx/lightFx.js': 1,
+  'src/rendering/lookSets/skills.js': 1,
+  'src/rendering/pixiRenderer.js': 1,
+  'src/rendering/systems/effectsRenderer.js': 2,
+  'src/ui/BroTown.jsx': 1,
+  'src/ui/mobile/NmlBadge.jsx': 1,
+  'src/ui/mobile/dash/InventoryPanel.jsx': 1,
+  'src/ui/mobile/dash/equipActions.js': 1,
+  'src/ui/mobile/mockItems.js': 1,
+  'src/ui/mobile/sheet/StatDemo.jsx': 2,
+  'src/ui/panels/PlayerPaint.jsx': 6,
+}));
+function spreadCallsIn(rel) {
+  const raw = readFileSync(join(ROOT, rel), 'utf8');
+  if (!raw.includes('...')) return 0;
+  let ast = astCache.get(rel);
+  if (!ast) { ast = babel.parser.parse(raw, { sourceType: 'module', plugins: ['jsx'], errorRecovery: true }); astCache.set(rel, ast); }
+  let n = 0;
+  babel.traverse(ast, {
+    SpreadElement(path) {
+      if (path.parent.type !== 'ObjectExpression') return;
+      const a = path.node.argument;
+      if (a.type !== 'CallExpression') return;
+      const c = a.callee;
+      const b = c.type === 'Identifier' ? path.scope.getBinding(c.name) : null;
+      if (b && b.kind !== 'module') return;   /* a local function: followed */
+      n++;
+    },
+  });
+  return n;
+}
+if (babel) {
+  const over = [];
+  const counts = Object.create(null);
+  let total = 0;
+  for (const side of Object.keys(SRC_OF)) for (const f of filesUnder(SRC_OF[side])) {
+    const n = spreadCallsIn(f);
+    if (!n) continue;
+    counts[f] = n; total += n;
+    if (n > (SPREAD_CALLS[f] || 0)) over.push(`${f}: ${n} spread(s) of a call into an import or a method, the list ${SPREAD_CALLS[f] || 0}`);
+  }
+  check(`2c: spreads of a call the phase scan cannot follow: ${total} in ${Object.keys(counts).length} files (the list only falls)`, over.length === 0, over);
+  const fell = Object.keys(SPREAD_CALLS).filter((f) => (counts[f] || 0) < SPREAD_CALLS[f]);
+  if (fell.length) info(`(room: ${fell.map((f) => f + ' ' + (counts[f] || 0) + ' < ' + SPREAD_CALLS[f]).join(', ')}; lower the list)`);
+  if (process.argv.includes('--write-spreads')) console.log(JSON.stringify(counts, null, 2));
 }
 
 /* ── 3. REJOIN_SLOTS, both ways ── */
