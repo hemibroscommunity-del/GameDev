@@ -57,7 +57,7 @@ export const SYSTEMS = Object.freeze({
   wire: {
     what: 'the socket and the messages: the router, the relay, the client\'s connection and its event switch, what each side can do (caps)',
     /* v2.3.5061 (card N): server/src/wire/, the wire table (one row a message or route) */
-    files: [f('server/src', 'index|relay|bundle|clientoff|flood'), re('^server/src/wire/'), re('^src/networking/'), f('src/game', 'clientOff|clientOffApply|blockedAsks|workerClock|t1Sync|tooFar'),
+    files: [f('server/src', 'index|relay|bundle|clientoff|flood'), re('^server/src/wire/'), re('^src/networking/'), f('src/game', 'clientOff|clientOffApply|blockedAsks|workerClock|t1Sync|tooFar|thawCarried'),
       f('src/game', 'actions|connectionDoor'),   /* v2.3.5528: + the connection door (card L); v2.3.5185 (card K): the action door, the one way a request leaves the page */
       f('server/src', 'heapforget|reqonce|gidnames|send|words'),   /* v2.3.5544 (card K, RT-1 N11): the room forgets who left; v2.3.5194: a repeat acts once; v2.3.5193: the send door; v2.3.5197: the words rule */
     ],
@@ -73,7 +73,7 @@ export const SYSTEMS = Object.freeze({
   },
   session: {
     what: 'a sitting: the join, leaving, lingering, the rejoin and what it re-sends',
-    files: [f('server/src', 'join|leave|linger|lastplace|pacekeep|rejoinresend|nearjoin|presence2|actor|sitting'),   /* v2.3.6480: actor.js, who is acting (card WHO); v2.3.6481: sitting.js, the sitting's card */ f('src/game', 'rejoinSlots|resumeListeners|quietPhone|nearJoin|presence2|stateCleanup')],
+    files: [f('server/src', 'join|leave|linger|lastplace|pacekeep|rejoinresend|nearjoin|presence2|actor|sitting|playtrace'),   /* v2.3.6480: actor.js, who is acting (card WHO); v2.3.6481: sitting.js, the sitting's card; v2.3.6482: playtrace.js, the owner's play recorded */ f('src/game', 'rejoinSlots|resumeListeners|quietPhone|nearJoin|presence2|stateCleanup')],
     words: ['join', 'leave', 'linger', 'rejoin', 'reconnect', 'presence', 'session', 'quiet-phone', 'quietphone'],
     traps: [],
     doors: [

@@ -15,6 +15,7 @@
 
 import { VALID_ZONE_IDS, DUNGEON_ZONE_RE } from './data.js';
 import { WHEEL_ZONE } from './wheelzone.js'; /* v2.3.3325: the Wheel's way back (MOVE_BUDGET) */
+import { traceMoveShadow } from './playtrace.js';   /* v2.3.6482: a test-mode move judged in shadow (card WHO PR 3; the orchestrator's yes) */
 import { sitMove } from './sitting.js';   /* v2.3.6481: a judged move on the sitting's card (card WHO PR 2; the orchestrator's yes) */
 
 /* ═══ v2.3.3292: A ROLL IS ONLY AS LONG AS THE ONE YOU PAID FOR ═══
@@ -704,6 +705,10 @@ export const movementMethods = {
     if (ps._mp) this._movePathRewind(ps);
     let _fromX = ps.x, _fromY = ps.y;
     let _bounded = !_tm && !zoneChanged && !firstMove && typeof ps.x === 'number' && typeof ps.y === 'number';
+    /* v2.3.6482 (card WHO PR 3; the orchestrator's yes): a test-mode move,
+       while its sitting records, judged in SHADOW on a budget of the
+       recording's own (playtrace.js traceMoveShadow); play is untouched */
+    if (_tm && ps._trace) traceMoveShadow(this, ps, msg, _now, !zoneChanged && !firstMove, _sprintK);
     /* v2.3.3327: ...or from its ARRIVAL, after a login or a death
        (lastplace.js), whichever of the two is nearer where the phone says */
     const _in = (_budgetOn && !_tm && zoneChanged && newZone === WHEEL_ZONE) ? this._wheelEntryFrom(ps, msg.x, msg.y) : null;

@@ -33,6 +33,7 @@ import { xpSet } from './xp.js';   /* v2.3.5289: experience and levels' door (ca
 import { tidyCharName } from './charname.js';   /* v2.3.5622: a name with no record held to the rule (the sitting 19 review) */
 import { actorSocket, actorOff, stintNext } from './actor.js';   /* v2.3.6480: the actor, made once at the join (card WHO PR 1) */
 import { sitOpen, sitOff, sitForget } from './sitting.js';   /* v2.3.6481: the sitting's card, opened or carried on (card WHO PR 2) */
+import { traceBegin, traceOff } from './playtrace.js';   /* v2.3.6482: the owner's play recorded, the first human record (card WHO PR 3) */
 import { lookColor, lookAvatar } from './lookform.js';   /* v2.3.5733 (card RV's S2, the join's half): a look's colour and avatar held to their forms */
 
 /* ═══ v2.3.1627: the JOIN DATA ALLOWLIST ═══
@@ -1792,6 +1793,10 @@ export const joinMethods = {
        a sitting carried on across a reconnect or a deploy hands it its stint
        (sitting.js); a join that ended above has none, as before. */
     actorSocket(this, session, msg.id, Date.now(), _sitStint);
+    /* v2.3.6482 (card WHO PR 3): a test-mode sitting's first ten active
+       minutes recorded in memory (playtrace.js), from its beginning only.
+       No put here. */
+    try { traceBegin(this, this.playerState[msg.id], msg.id, _sitStint, Date.now()); } catch (e) { /* a recording never stops a join */ }
     /* v2.3.3120: the pets record (petbook.js) -- one storage GET, and a stored
        blob's old pets moved in once.  It replaces v2.3.1130's adoption, which
        took up to six pets from the BROWSER for anyone the server had none for.
@@ -2103,6 +2108,8 @@ export const joinMethods = {
         actor: actorOff(this) ? undefined : 1,
         /* v2.3.6481 (card WHO PR 2): THE SITTING'S CARD (sitting.js): a character's visit measured by the server and kept inside `_econ` (the last 32 closed); its `stint` carried across reconnects and deploys inside five quiet minutes.  Nothing a phone sees changes; `sitting: false` in the live flags un-advertises it and opens, closes and counts nothing. */
         sitting: sitOff(this) ? undefined : 1,
+        /* v2.3.6482 (card WHO PR 3): THE OWNER'S PLAY RECORDED (playtrace.js): a test-mode sitting's first ten active minutes, one `play_trace:` row labelled human, in the league's trace form; test mode's checks run in shadow and say what they would refuse.  Nothing a player sees; needs the sitting's card; `playtrace: false` records nothing. */
+        playtrace: (traceOff(this) || sitOff(this)) ? undefined : 1,
         /* v2.3.5546 (card K PR 9, 5194b): A REPEAT ACTS ONCE (reqonce.js): a value request carrying its request id (`reqId`) is answered once, a repeat getting the first answer again -- so the page may re-send a request it heard nothing back from with the same id (src/game/actions.js).  `reqonce: false` un-advertises it, and the page re-sends nothing */
         reqid: this._reqOnceOff() ? undefined : 1,
         /* v2.3.5196 (card K PR 11): A WEAPON NAMED BY ITS ID (gidnames.js): the nine requests that take a weapon from the stash read its `gid` beside its place, and refuse when the two disagree -- so the page sends it (src/game/actions.js GID_PLACE).  `gidnames: false` un-advertises it, and the place alone is read */

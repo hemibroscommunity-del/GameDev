@@ -230,6 +230,11 @@ if (onMsg) {
     'this._observeClanInvite': 'the relay\'s step (after the rebuild)', 'this._interceptThreat': 'the relay\'s step (after the rebuild)',
     'this._sparSeen': 'the relay\'s step (after the rebuild)', 'this._relayBytesDrop': 'the relay\'s pace (after the rebuild)',
     'this.eventBuffer.push': 'THE RELAY, rebuilt in the sender\'s name (after the rebuild, in the default case)',
+    /* v2.3.6484 (card WHO; sitting 60's hold): the recording IS the message
+       (rung 4 replays what the page sent), so its type alone cannot serve.
+       It keeps a deep copy of its kinds (TRACE.TYPES), never changes the
+       message, sends nothing (playtrace.test §7c holds all three). */
+    'traceNote': 'the owner\'s recording (playtrace.js): a copy kept, the message unchanged, nothing sent',
   };
   const AFTER_BUILD = new Set(Object.keys(TAKERS).filter((k) => /after the rebuild/.test(TAKERS[k])));
   const bad = [], seen = new Set();

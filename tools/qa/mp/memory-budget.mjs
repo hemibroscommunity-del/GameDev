@@ -456,19 +456,99 @@
  * trim (measured 36.4); where it went is the next trim's question
  * (docs/specs/heap-trim-2026-11-13.md has the method), and the line lowered
  * again when it is found. */
+/* v2.3.6501 (card PH PR 2; the shape review's item 17): the frame pacer no
+ * longer copies `artCache` and `gpu` (framePacer.js MEM_LINES, which
+ * v2.3.5982 and v2.3.6222 left the art's line at 79.3 for): its memory
+ * alarm is a number of its own on the game's total (MEM_ALARM, read in a
+ * crowded fight: docs/plan/census/PH-phone.md).  These lines are the
+ * memory check's alone again, free to fall to what the game reads (card
+ * PH's PR 3). */
+/* v2.3.6502 (card PH PR 3; the shape review's item 18): THE CHECK GATES
+ * WHAT A PHONE HOLDS.  The seven lines summed to 365.7 MB where the readings
+ * summed to about 206 and an iPhone's page dies near 250: four lines had
+ * 3 to 7 times their reading of room (art 79.3 against 11.2), so a change
+ * could add tens of MB and stay green.  Each line is now the highest of three
+ * runs on main's code on the test box (part 1's three on 0aec6482 and three
+ * with card PH's PR 2, which adds nothing a line reads, 2026-11-23:
+ * docs/plan/census/PH-phone.md) plus the larger of their scatter and 1.0 MB
+ * (the planning session's answer, 2026-11-23: a line inside main's own
+ * run-to-run noise fails every PR by luck, and a line that fails by luck
+ * gets waved through):
+ *   artCache 79.3 -> 12.2 (11.2 + 1.0)    gpu 109.3 -> 94.0 (83.8 + 10.2)
+ *   canvases 54.3 -> 14.7 (13.7 + 1.0)    sound 22 -> 19.9 (CI's 18.9 + 1.0)
+ *   workers 36 -> 24.3 (21.2 + 3.1)       total new, 216.0 (207.8 + 8.2)
+ * `heap` (40.0) and `buffers` (24.8) UNCHANGED, and no line rises: the six
+ * runs read heap 38.2-39.9 and buffers 24.4-24.9, so main's own code sits AT
+ * both lines on this box (buffers 0.1 over in two of six): the line where
+ * the next trim is owed, not room to give away.  The margin is held against
+ * the higher of this box's reads and CI's (the PR's own memory-budget run).
+ * The TOTAL is the seven read at the same stop and summed (mp-membudget
+ * READ.total): 199.6-207.8 MB, against the ~250 an iPhone's page dies at,
+ * where the seven lines summed to 365.7 before this.
+ *   The PR's own CI run (ee22311e, 2026-11-24) read artCache 11.2, gpu 77.3,
+ * canvases 13.7, sound 18.9, heap 37.2, buffers 24.3, workers 19.4, total
+ * 198.2: `sound` read 0.8 MB above this box's highest, so its line is CI's
+ * 18.9 + 1.0 = 19.9 (still 2.1 under main's 22).  `buffers` read 24.3 there,
+ * 0.5 MB of room: CI's read + 1.0 would be 25.3, over main's 24.8, and no
+ * line rises, so it stays at 24.8 (the next trim is owed there).
+ *
+ * v2.3.6503 (card PH PR 4), `heap` 40.0 -> 42.5 -- RAISED, +2.5 MB, the ONE
+ * line that rises (decided for the owner while away by the orchestrator, part
+ * 9, 2026-11-24; the TOTAL stays 216.0 and every other line stays).  The
+ * owner's 1.5 sharpness on a phone ("1.5 looks fine nothing below that",
+ * 2026-11-24) owns about 2 MB of the page's heap: compiled code +1.00, arrays
+ * +0.27, objects +0.12, because the 1.5 page swings 24 times at the check's
+ * fight where the 1.0 one swings 10 (docs/plan/census/PH-phone.md, "PR 4's
+ * heap at 1.5"): more code run, no holder.  The reads: 39.4 (#2318) and 40.2
+ * (#2323) on GitHub's runner, 41.5 on the test box, 39.3 on the test box with
+ * `?phoneres=0` (the switch that undoes the cause).  The line is the highest
+ * read, 41.5, plus 1.0 MB (the margin the 6501/6502 lines carry), rounded up
+ * to 42.5.  tools/dev/heap-trend.mjs HEAP_LINE rises to 42.5 with it (the
+ * guard still holds the line at that number; it is not weakened). */
 export const MEMORY_BUDGET = {
-  artCache: { name: 'art loaded from files', mb: 79.3, measured: 16.2,   /* v2.3.3702: 156 -> 112; v2.3.5246: 112 -> 109.1, LOWERED by the portraits let go of (2.9 MB); v2.3.5247: 109.1 -> 107.0, Ace's coin strips (2.1 MB); v2.3.5248: 107.0 -> 101.4, the trees as numbers (5.6 MB); v2.3.5249: 101.4 -> 98.3, the made effects as numbers (3.1 MB); v2.3.5250: 98.3 -> 97.1, the world's icons (1.2 MB); v2.3.5252: 97.1 -> 95.1, the whirlwind as numbers (2.0 MB); v2.3.5256: 95.1 -> 90.6, the slimes' strips loaded as you walk (4.5 MB), see the header; v2.3.5258: 90.6 -> 88.6, the element marks as numbers (2.0 MB, measured on its own at 95.1 -> 93.1), see the header; v2.3.5562: 88.6 -> 86.7, the hats' hair masks as numbers (1.9 MB), see the header; v2.3.5563: 86.7 -> 85.2, the pet sheet as numbers (1.5 MB), see the header; v2.3.5564: 85.2 -> 84.5, the hood's hair masks as numbers (0.7 MB), see the header; v2.3.5565: 84.5 -> 83.0, the fishing spot's pond as numbers (1.5 MB), see the header; v2.3.5566: 83.0 -> 81.9, the bars over heads as numbers (1.1 MB), see the header; v2.3.5567: 81.9 -> 80.5, the death strip as numbers (1.4 MB), see the header; v2.3.5569: 80.5 -> 79.3, the block strips and the Bro badge as numbers (1.2 MB), see the header; v2.3.6222: left at 79.3 though the ore rocks and the projectile sheets as numbers saved 2.2 MB (the frame pacer's copy, framePacer.js MEM_LINES), see the header */
+  artCache: { name: 'art loaded from files', mb: 12.2, measured: 11.2,   /* v2.3.3702: 156 -> 112; v2.3.5246: 112 -> 109.1, LOWERED by the portraits let go of (2.9 MB); v2.3.5247: 109.1 -> 107.0, Ace's coin strips (2.1 MB); v2.3.5248: 107.0 -> 101.4, the trees as numbers (5.6 MB); v2.3.5249: 101.4 -> 98.3, the made effects as numbers (3.1 MB); v2.3.5250: 98.3 -> 97.1, the world's icons (1.2 MB); v2.3.5252: 97.1 -> 95.1, the whirlwind as numbers (2.0 MB); v2.3.5256: 95.1 -> 90.6, the slimes' strips loaded as you walk (4.5 MB), see the header; v2.3.5258: 90.6 -> 88.6, the element marks as numbers (2.0 MB, measured on its own at 95.1 -> 93.1), see the header; v2.3.5562: 88.6 -> 86.7, the hats' hair masks as numbers (1.9 MB), see the header; v2.3.5563: 86.7 -> 85.2, the pet sheet as numbers (1.5 MB), see the header; v2.3.5564: 85.2 -> 84.5, the hood's hair masks as numbers (0.7 MB), see the header; v2.3.5565: 84.5 -> 83.0, the fishing spot's pond as numbers (1.5 MB), see the header; v2.3.5566: 83.0 -> 81.9, the bars over heads as numbers (1.1 MB), see the header; v2.3.5567: 81.9 -> 80.5, the death strip as numbers (1.4 MB), see the header; v2.3.5569: 80.5 -> 79.3, the block strips and the Bro badge as numbers (1.2 MB), see the header; v2.3.6222: left at 79.3 though the ore rocks and the projectile sheets as numbers saved 2.2 MB (the frame pacer's copy, framePacer.js MEM_LINES), see the header; v2.3.6501: no longer copied (framePacer.js MEM_ALARM), see the header ; v2.3.6502: 79.3 -> 12.2, LOWERED to the highest of six reads (11.2) + 1.0 MB, see the header (v2.3.6502) */
     what: 'pictures loaded from files, decoded (the asset cache, window.__btTex) -- its highest at the fight, the monsters\' looks loaded' },
-  gpu: { name: 'textures on the graphics chip', mb: 109.3, measured: 95.0,   /* v2.3.4058: 105 -> 115, approved by the owner 2026-11-03, see the header; v2.3.5981: 115 -> 114.3, the tee's stand and jog sheets not sent (0.73 MB), see the header; v2.3.6202: 114.3 -> 109.3, the townsfolk's baked sheets off the chip far from town (5.0 MB), see the header */
+  gpu: { name: 'textures on the graphics chip', mb: 94.0, measured: 83.8,   /* v2.3.4058: 105 -> 115, approved by the owner 2026-11-03, see the header; v2.3.5981: 115 -> 114.3, the tee's stand and jog sheets not sent (0.73 MB), see the header; v2.3.6202: 114.3 -> 109.3, the townsfolk's baked sheets off the chip far from town (5.0 MB), see the header ; v2.3.6502: 109.3 -> 94.0, LOWERED to the highest of six reads (83.8) + their scatter (10.2), see the header (v2.3.6502) */
     what: 'textures on the graphics chip (window.__btGpuTex) -- including what was drawn in the last minute, which Pixi unloads after 60 s unused' },
-  canvases: { name: 'pictures the game draws itself', mb: 54.3, measured: 49.7,   /* v2.3.3699: 96 -> 88; v2.3.3702: 88 -> 56, see the header; v2.3.5982: 56 -> 54.3, the goo atlas kept as images (1.7 MB) */
+  canvases: { name: 'pictures the game draws itself', mb: 14.7, measured: 13.7,   /* v2.3.3699: 96 -> 88; v2.3.3702: 88 -> 56, see the header; v2.3.5982: 56 -> 54.3, the goo atlas kept as images (1.7 MB) ; v2.3.6502: 54.3 -> 14.7, LOWERED to the highest of six reads (13.7) + 1.0 MB, see the header (v2.3.6502) */
     what: 'pictures the game draws itself, held in 2D canvases (every one still reachable)' },
-  sound: { name: 'decoded sound', mb: 22, measured: 18.1,   /* v2.3.3664: 30 -> 32; v2.3.3706: 32 -> 29; v2.3.5006: 29 -> 22, LOWERED to lock in the four sounds decoded ahead instead of pinned (main read 23.0-23.2, this 18.1), see the header */
+  sound: { name: 'decoded sound', mb: 19.9, measured: 18.9,   /* v2.3.3664: 30 -> 32; v2.3.3706: 32 -> 29; v2.3.5006: 29 -> 22, LOWERED to lock in the four sounds decoded ahead instead of pinned (main read 23.0-23.2, this 18.1), see the header ; v2.3.6502: 22 -> 19.9, LOWERED to CI's read (18.9, over this box's six reads' 18.1) + 1.0 MB, see the header (v2.3.6502) */
     what: 'sound decoded into memory (music streams from its file and is not in it, v2.3.3073)' },
-  heap: { name: 'the page\'s JavaScript objects', mb: 40.0, measured: 36.4,   /* v2.3.3595: 32 -> 33; v2.3.3657: 33 -> 34; v2.3.3807: 34 -> 36; v2.3.4005: 36 -> 38; v2.3.4080: 38 -> 37.5; v2.3.4483: 37.5 -> 38.5; v2.3.5007: unchanged, measured 37.7 -> 36.4 by the heap trim, see the header; v2.3.6306: 38.5 -> 40.0, main read 37.4-39.2 run to run, see the header */
+  heap: { name: 'the page\'s JavaScript objects', mb: 42.5, measured: 36.4,   /* v2.3.3595: 32 -> 33; v2.3.3657: 33 -> 34; v2.3.3807: 34 -> 36; v2.3.4005: 36 -> 38; v2.3.4080: 38 -> 37.5; v2.3.4483: 37.5 -> 38.5; v2.3.5007: unchanged, measured 37.7 -> 36.4 by the heap trim, see the header; v2.3.6306: 38.5 -> 40.0, main read 37.4-39.2 run to run, see the header; v2.3.6502: unchanged, its scatter in three runs narrower than main's run to run, see the header (v2.3.6502); v2.3.6503: 40.0 -> 42.5, RAISED +2.5 MB by the owner's 1.5 sharpness (the highest read 41.5 + 1.0), see the header (v2.3.6503) */
     what: 'the page\'s JavaScript objects' },
-  buffers: { name: 'the page\'s raw data buffers', mb: 24.8, measured: 23.5,   /* v2.3.3703: 24 -> 22, see the header; v2.3.5248: 22 -> 23.4, RAISED by the trees' colour numbers moved here (1.40 MB) as artCache fell 5.6 (net 4.2 less); v2.3.5250: 23.4 -> 23.7, the world's icons' numbers (0.30 MB) as artCache fell 1.2 (net 0.9 less); v2.3.5252: 23.7 -> 24.2, the whirlwind's numbers (0.50 MB) as artCache fell 2.0 (net 1.5 less), see the header; v2.3.6222: 24.2 -> 24.8, the rocks' and the projectile sheets' numbers (0.5 MB) as artCache fell 2.2 (net 1.7 less), see the header */
+  buffers: { name: 'the page\'s raw data buffers', mb: 24.8, measured: 23.5,   /* v2.3.3703: 24 -> 22, see the header; v2.3.5248: 22 -> 23.4, RAISED by the trees' colour numbers moved here (1.40 MB) as artCache fell 5.6 (net 4.2 less); v2.3.5250: 23.4 -> 23.7, the world's icons' numbers (0.30 MB) as artCache fell 1.2 (net 0.9 less); v2.3.5252: 23.7 -> 24.2, the whirlwind's numbers (0.50 MB) as artCache fell 2.0 (net 1.5 less), see the header; v2.3.6222: 24.2 -> 24.8, the rocks' and the projectile sheets' numbers (0.5 MB) as artCache fell 2.2 (net 1.7 less), see the header; v2.3.6502: unchanged, its scatter in three runs narrower than main's run to run, see the header (v2.3.6502); v2.3.6503: 40.0 -> 42.5, RAISED +2.5 MB by the owner's 1.5 sharpness (the highest read 41.5 + 1.0), see the header (v2.3.6503) */
     what: 'the page\'s raw data buffers (ArrayBuffers), and the text of its scripts, which the same reading counts (v2.3.3703)' },
-  workers: { name: 'the background workers', mb: 36, measured: 30.5,
+  workers: { name: 'the background workers', mb: 24.3, measured: 21.2,   /* v2.3.6502: 36 -> 24.3, LOWERED to the highest of six reads (21.2) + their scatter (3.1), see the header (v2.3.6502) */
     what: 'the background workers (the ground builder): their objects and buffers' },
+  /* v2.3.6502 (card PH PR 3): THE TOTAL -- the seven read at the same stop, summed (mp-membudget READ.total): what the
+     phone holds at once, against the ~250 MB an iPhone's page dies at.  The seven lines summed were 365.7 MB before
+     this PR: no single line could say the page was near its end. */
+  total: { name: 'everything the page holds at once', mb: 216.0, measured: 207.8,   /* v2.3.6502: new, the highest of three reads (207.8) + their scatter (8.2), see the header (v2.3.6502) */
+    what: 'the seven above, read at the same stop and summed -- its highest anywhere on the trip' },
 };
+
+/* v2.3.6506 (card PH, the sitting-59 mend): THE JUDGE, here beside its lines.  Sitting 59 raised the heap line
+   INSIDE mp-membudget's judge (`top.v <= line.mb` with a few MB more for `heap`) and heap-trend.test stayed green:
+   it read MEMORY_BUDGET alone, never the comparison, which lived in a scenario no suite can play (a browser).  The
+   comparison is made here, from the stops the scenario read and its readers (`read`: a key to a stop's MB), and
+   heap-trend.test drives it (a heap a tenth over its line red, at its line green, a stop unread red); the scenario
+   hands each row to its `rec.ok` as it is.  Returns { peaks, rows }: each key's highest stop, and a row a key,
+   { name, ok, detail }. */
+export function judgeLines(stops, read, whatToDo) {
+  const peaks = {}, rows = [];
+  const all = Array.isArray(stops) ? stops : [];
+  for (const k of Object.keys(read)) {
+    const vals = all.map((s) => ({ v: read[k](s), at: s.label }));
+    const bad = vals.filter((x) => typeof x.v !== 'number' || !Number.isFinite(x.v));
+    const top = vals.filter((x) => typeof x.v === 'number').sort((a, b) => b.v - a.v)[0] || null;
+    peaks[k] = top;
+    const line = MEMORY_BUDGET[k];
+    if (!line || bad.length || !top) {
+      rows.push({ name: `${k}: read at every stop${line ? '' : ' (and a line of its own)'}`, ok: false, detail: { unread: bad.map((x) => x.at), line: !!line } });
+      continue;
+    }
+    rows.push({ name: `${k} (${line.name}): at most ${top.v} MB (${top.at}), budget ${line.mb} MB`, ok: top.v <= line.mb,
+      detail: { line: k, read: top.v, at: top.at, budget: line.mb, over: +(top.v - line.mb).toFixed(1), whatToDo } });
+  }
+  return { peaks, rows };
+}

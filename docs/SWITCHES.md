@@ -157,6 +157,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?ladderpix` | page | switch | v2.3.5225 | 2026-11-14 | =0, off, false | chip | `govern` | no | The pixel rungs are off: every pixel the screen and the budget allow, whatever the rung. |
 | `?lane` | page | lever | v2.3.5221 |  | =full, =light or =thirty | none |  | no | This page draws in the named lane, whatever its device's facts pick. |
 | `lookpalette` | both | switch | v2.3.3716 | 2026-10-28 | off_lookpalette: true; ?lookpalette=0 (=1 builds it anyway) | chip |  | onWindows, onMac (v2.3.5228: the look's overrides, drawLanes.js) in src/game/deviceProfile.js | Each look's copy is baked on first sight again, not coloured on the chip. |
+| `?phoneres` | page | switch | v2.3.6503 | 2026-11-24 | =0 | chip |  | no | A phone draws at its screen's own ratio again (3 canvas pixels a CSS pixel on an iPhone), not the owner's 1.5; the pixel rungs take it lower as before. |
 | `?pixbudget` | page | switch | v2.3.5140 | 2026-11-14 | =0 (off), or a number: the budget to try | chip |  | no | The drawing resolution is no longer held to the pixel budget. |
 | `?res` | page | value | v2.3.3339 |  | a number: the drawing resolution | chip |  | no | Sets the drawing resolution by hand. |
 | `?speedms` | page | lever | v2.3.3339 |  | a number of ms | none |  | no | The Speed test measures for this long, not 4 s. |
@@ -269,6 +270,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `fullsnap` | worker | switch | v2.3.5285 | 2026-11-17 (v2.3.6000) | false | logic |  | no | Thrown (false), a player's daily copy is the character alone, as before.  Unset, the default, ON since v2.3.6000 (the owner, 2026-11-17: "I think turn all of them on then we monitor usage cost"): the copy carries their vault and pets too (two keys more read a player a day, no row more written), so the owner's restore puts them back with the character. |
 | `listcap` | worker | switch | v2.3.5960 | 2026-11-17 | false | logic |  | no | Every storage list of the room reads its whole prefix in one read again (the sweeps, the registries, a player's copies, the aim and metric days, the arena's stakes and plans, the owner's pages, and since v2.3.6023 the General Store's book), as before card V5; a sweep is then one page. The Leaderboard and the old Marketplace page always (no flag reaches them). |
 | `report` | worker | switch | v2.3.5122 | 2026-11-14 | false | logic |  | no | Un-advertises the field report, so no phone sends its smoothness, and drops any that still comes. |
+| `reportheat` | worker | switch | v2.3.6500 | 2026-11-23 | false | logic | `report`, `reportspeed`, `reportlanes` | no | The field report no longer takes the minutes seen, the board's frames or the address bar's switches (caps.report back to 3). |
 | `reportlanes` | worker | switch | v2.3.5221 | 2026-11-14 | false | logic | `report`, `reportspeed` | no | The field report no longer takes a lane but full, the governor's rung or the self-test (caps.report back to 2). |
 | `reportspeed` | worker | switch | v2.3.5127 | 2026-11-14 | false | logic | `report` | no | The Speed test's card is no longer taken (caps.report back to 1); the smoothness reports carry on. |
 | `resetbook` | worker | switch | v2.3.5285 | 2026-11-17 (v2.3.6000) | false | logic |  | no | Thrown (false), a restart books nothing, as before.  Unset, the default, ON since v2.3.6000 (the owner, 2026-11-17: "I think turn all of them on then we monitor usage cost"): a restart books the deleted character and its vault into `econ_gone` (one row for the room, one write and a read a restart), read by the world's sum as the tests take it (restore.test); nothing live reads it yet (the day's walk reads the records that hold value only, and the owner's economy card already counts restarts, econResetBook). |
@@ -401,10 +403,13 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 
 | name | side | kind | born | on | thrown | risk | needs | fallback | off |
 |---|---|---|---|---|---|---|---|---|---|
+| `?beathold` | page | switch | v2.3.6503 | 2026-11-24 | =0 | logic | `?pace` | no | The pacer reads the screen's rate afresh every time again: a hot phone's missed frames can be read as a slower screen (a 120 as a 60, a 60 as a 30 and its lane `thirty`). |
 | `?dtsmooth` | page | switch | v2.3.4355 | 2026-11-10 | =0, off, false | logic |  | no | The frame's step is the raw time, not the steady step. |
 | `?framesteps` | page | switch | v2.3.5340 | 2026-11-17 | =0 | logic |  | no | The frame is not marked as named steps: no step times, no step's throw in the crash ring, and window.__btSteps() says off; the loop runs as before. |
+| `?govcool` | page | switch | v2.3.6503 | 2026-11-24 | =0 | logic | `govern` | no | The governor and the pacer try a faster rate again on the wait alone, as before: not only once the game's own work a frame has fallen 8% below the last step down's (a hot phone see-saws between 60 and 30). |
 | `govern` | both | switch | v2.3.5222 | 2026-11-14 | off_govern: true (v2.3.5235: every phone, live, the Test panel's list); ?govern=0 (off), =1 (on where `?lane=` holds it) | logic |  | no | The governor no longer moves the ladder: the lane's row, however late the frames. |
 | `?ladderrate` | page | switch | v2.3.5224 | 2026-11-14 | =0, off, false | logic | `govern` | no | The rate as before the ladder: a 60 screen is never paced, whatever the rung. |
+| `?memalarm` | page | switch | v2.3.6501 | 2026-11-23 | =0 | memory | `govern` | no | The governor's memory alarm goes back to the memory check's two old lines (art 79.3, the chip 109.3 MB), not the game's own total. |
 | `?pace` | page | switch | v2.3.4355 | 2026-11-10 | =0, off, false | logic |  | no | No frame pacer: the frames are drawn as the browser calls, as before. |
 
 ## preload
@@ -522,6 +527,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?sheen` | page | switch | v2.3.2736 | 2026-09-24 (v2.3.2887) | =1, =0, on or off | logic |  | no | Turns the sheen on gear on or off. |
 | `?sheenpass` | page | switch | v2.3.3453 | 2026-10-18 | present | chip |  | no | The sheen is drawn without its batch. |
 | `?shieldretry` | page | switch | v2.3.4431 | 2026-11-10 | =0 | logic | `?retrylooks` | no | Shield sheets that failed are not asked for again. |
+| `?shine` | page | switch | v2.3.6503 | 2026-11-24 | =0 or =1 | chip |  | no | The metal never shines (=0), or always shines (=1), on this phone: the governor's ladder no longer takes it (its second chip rung, after the rate). |
 | `?shotimage` | page | switch | v2.3.5982 | 2026-11-18 | =0 | memory |  | no | The monsters' thrown goo and fire are drawn from their two canvases, kept in the page as before, not from images of them. |
 | `?slimesplat` | page | switch | v2.3.4127 | off | =0 or =1 | logic |  | no | The slime's splat turned off (=0) or on (=1) for this phone. |
 | `?slimewalk` | page | switch | v2.3.5256 | 2026-11-14 | =0, off, false | memory |  | no | The slimes' sheets load behind the first loading screen and are kept, as before, not as a slime comes near. |
@@ -570,6 +576,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `max_players` | worker | value | v2.3.1982 |  | a number, 1 to the ceiling | logic |  | no | The room's cap on players, never above its bandwidth ceiling. |
 | `nearjoin` | worker | switch | v2.3.3276 | 2026-10-17 | false | logic |  | no | New joins get the whole snapshot again, cap off. |
 | `pacekeep` | worker | switch | v2.3.5921 | 2026-11-18 | false | logic |  | no | Nine request paces (the dice, a drop, the gamble, the ace flips, the rewards' read, salvage, the race's start, a rest, and since v2.3.6024 the daily spin) are the socket's alone again: a rejoin forgets them (TRAPS §276), as before card V3. |
+| `playtrace` | worker | switch | v2.3.6482 | 2026-11-24 | false | logic | `sitting` | no | No test-mode sitting is recorded and no `play_trace:` row written (rows written stay), no check runs in shadow, and the cap `playtrace` is not advertised. |
 | `presence2` | worker | switch | v2.3.3250 | 2026-10-14 | false | logic |  | no | Un-advertises presence 2: every phone back on the v2.3.3246 roster. |
 | `quiet` | worker | switch | v2.3.3254 | 2026-10-15 | false | logic |  | no | Un-advertises the quiet phone: each phone as before from its next join. |
 | `refusejoined` | worker | switch | v2.3.4921 | 2026-11-12 | false | logic |  | no | A refused session is dropped only, not taken out of the world. |
@@ -729,6 +736,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?room` | page | lever | v2.3.217 |  | a room's name | none |  | no | Joins the named room, not the lobby's. |
 | `roomceiling` | worker | switch | v2.3.5545 | 2026-11-17 | false | logic |  | no | No ceiling on the room's messages in: a full room of sockets each inside its own budget is ~14,400 a second, all taken, as before (the red team's RT-1 N5 open again). |
 | `sendcount` | worker | switch | v2.3.5193 | 2026-11-17 | false | logic |  | no | The send door writes every frame as before but counts none: the day's book carries no `send` part (the frames a type and their length). |
+| `?thawjudge` | page | switch | v2.3.6309 | 2026-11-19 | =0 | logic |  | no | Every gap of over 5 s in the page's own beats rejoins an open socket, as before, even when the worker's pings show the socket carried the gap (a slow device rejoins on every gap). |
 | `?wheelwhole` | page | switch | v2.3.3318 | 2026-10-17 | present | logic |  | no | Asks for every world monster on the way in, not only those near. |
 | `wiredoor` | worker | switch | v2.3.5184 | 2026-11-14 | false | logic |  | no | Every message and the room's web routes reach their handlers unchecked again, as before the wire door; a mute of `__proto__` is taken again. |
 | `wireform` | worker | switch | v2.3.6443 | 2026-11-24 | false or 'count' | logic | `wiredoor` | no | A named field is held only to the old door's checks again (no number that is not finite, a words field a string of 2,000): `n: "5"`, `-5` or a 15,000-character id reaches its handler; `'count'` counts each one and lets it in. |

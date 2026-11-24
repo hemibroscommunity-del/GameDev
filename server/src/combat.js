@@ -145,6 +145,7 @@ export const STAFF_BOLT = {
 };
 export const BOW_VOLLEY_WORTH = 2;
 
+import { traceHitShadow } from './playtrace.js';   /* v2.3.6482: a test-mode hit judged in shadow (card WHO PR 3; the orchestrator's yes) */
 import {
   ELEMENT_STATUS, applyElementStatus, resolveElementCollision, fractureDmgMult,
   elemAttackStat, // v2.3.2199: prog3 `elem` stat resolver for the DoT power snapshot
@@ -1362,6 +1363,11 @@ export const combatMethods = {
        land their share. */
     const _dg = (!isSpecial && (_effSlot === 'ranged' || _effSlot === 'staff'))
       ? this._dgFind(attackerPs, _effSlot, payload.sw) : null;
+    /* v2.3.6482 (card WHO PR 3; the orchestrator's yes): a test-mode hit,
+       while its sitting records, run through the chain above and below in
+       SHADOW (playtrace.js traceHitShadow): the verdict recorded, the hit
+       landing as test mode lets it */
+    if (_tm && attackerPs._trace) traceHitShadow(this, attackerPs, m, { slot: _effSlot, zone, now: _hpNow, special: isSpecial, cost: _dg ? (_dg.drop ? 0 : _dg.f) : 1, sw: payload.sw, id: monsterId, wheelMax: WHEEL.RANGED_MAX, free: this._freeSwingFor(session) });
     if (_hp && !isSpecial && !this._hitRateTake(attackerPs, _effSlot, _hpNow, _dg ? (_dg.drop ? 0 : _dg.f) : 1)) { this._hpTally('rate', attackerPs); return; }
     /* v2.3.5550 (card K, step 4.2): A BOW'S CLAIM IS AN ARROW SEEN
        (bowshot.js, an opt-in: `bowshot: true`) -- an ordinary `ranged` claim

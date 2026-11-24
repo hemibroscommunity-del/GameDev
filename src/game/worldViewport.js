@@ -34,7 +34,7 @@
 import { WORLD_ZOOM, TILE } from '@/data/constants.js';
 import { renderDpr } from './renderRes.js'; /* v2.3.3339 */
 import { ZONES } from '@/data/zones.js'; /* v2.3.2247: the per-zone zoom ceiling */
-import { capViewScale, viewCapChoice } from './viewCap.js'; /* v2.3.4084: one visible area for every screen */
+import { capViewScale, viewCapChoice, VIEW_CAP } from './viewCap.js'; /* v2.3.4084: one visible area for every screen */
 import { clientOff } from './clientOff.js'; /* v2.3.4084: the Test panel's row turns the cap off */
 import { pageAddress } from './switches.js';   /* v2.3.5313: the page's one reader (card T) */
 
@@ -222,8 +222,20 @@ export const FIGURE_SCALE_FLOOR = 0.50;
  * every zoom note above uses; on the owner's Pro Max, folded, ~68 px (0.96
  * device px a picture px).  With the dashboard up the canvas is shorter and
  * the reference-zone floor draws him smaller, ~48 px on the QA phone.
- * `?zoom=0.64` is the view before this (mp-zoomout). */
-export const VIEW_OUT_DEFAULT = 0.77;
+ * `?zoom=0.64` is the view before this (mp-zoomout).
+ *
+ * v2.3.6580: 0.77 -> 0.79, the owner's own pick.  They played `?zoom=0.926`,
+ * 0.85, 0.81 and 0.88 on their iPhone against 0.77 and said: "I think the
+ * sweet spot might be between that zoom you just had me test and the more
+ * zoomed out default", "In terms of seeing player detail vs world around
+ * you for just general play", then "Ok I like 0.79".  The bro is a touch
+ * bigger (the view takes in 0.77/0.79 = 97% of the world each way), and a
+ * closer view draws slightly less.  `?zoom=0.77` is the view before this.
+ * The number is written in viewCap.js (VIEW_CAP.VIEW_OUT_DEFAULT: renderRes
+ * reads it there, as worldViewport imports renderRes).  The view cap's
+ * reference stays measured at 0.77: it scales
+ * with the view by VIEW_OUT_REF / VIEW_OUT, as it does for any ?zoom=k. */
+export const VIEW_OUT_DEFAULT = VIEW_CAP.VIEW_OUT_DEFAULT;   /* 0.79, written in viewCap.js (v2.3.6580: renderRes reads the same number and worldViewport imports renderRes) */
 function readViewOut() {
   try {
     const m = /(?:^|[?&])zoom=([0-9.]+)(?:&|$)/.exec(pageAddress());

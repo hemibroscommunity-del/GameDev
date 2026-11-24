@@ -35,6 +35,11 @@
  *      and shadows' programs are warmed by the device's switch alone
  *      (pixiRenderer.js), never the knob's.
  *
+ *   7. v2.3.6503 (card PH PR 4): THE OWNER'S TWO PINS -- `?shine=0` the metal
+ *      never shines, `?shine=1` always, and either takes the shine off the
+ *      governor's live set (drawLanes.js ADDRESS_PINS); neither, the ladder's.
+ *      Break proof: the two ADDRESS_PINS rows taken out -> FAIL 7 (both pins).
+ *
  * BREAK PROOF (rule 8), each tried by hand, 2026-11-14:
  *   - glint.js sheenLive: `return sheenOn();`                        -> FAIL 3, 4
  *   - lightFx.js update: `if (!lightFxOn() || !S)` as it was         -> FAIL 4
@@ -259,6 +264,28 @@ const code = (p) => readFileSync(new URL(p, SRC), 'utf8').replace(/\/\*[\s\S]*?\
   D.setRung(0, 0, 0);
   check(`6. ...so the governor passes them: a chip-bound phone with \`?sheen=0\` and no sea steps ${steps.join(', ')} (no try spent on the shine or the water)`,
     steps[0] === 'rate' && steps[1] === 'shadows' && !steps.includes('shine') && !steps.includes('water'), g.read());
+}
+
+/* ── 7. v2.3.6503 (card PH PR 4): the owner's two ways to hold the shine still ── */
+{
+  const hadLoc = Object.prototype.hasOwnProperty.call(globalThis, 'location');
+  const was = globalThis.location;
+  const at = (search) => {
+    globalThis.location = { search };
+    D._resetLanes();
+    D.setRung(0, D.AXES.chip.length, 0);   /* the deepest chip rung: the shine taken if the ladder could */
+    const out = { live: D.liveKnobs().includes('shine'), knob: D.laneKnob('shine'), drawn: G.sheenLive ? G.sheenLive() : null };
+    D.setRung(0, 0, 0);
+    const row = D.laneKnob('shine');
+    D._resetLanes();
+    return { ...out, row };
+  };
+  const off = at('?shine=0'), on = at('?shine=1'), none = at('');
+  if (hadLoc) globalThis.location = was; else delete globalThis.location;
+  D._resetLanes();
+  check('7. `?shine=0`: the metal never shines, at the row and at every rung, and the ladder leaves the shine alone (not live)', !off.live && off.knob === 'off' && off.row === 'off', off);
+  check('7. `?shine=1`: the metal always shines, even at the deepest chip rung (not live)', !on.live && on.knob === 'on' && on.row === 'on', on);
+  check('7. neither: the shine is the ladder\'s (live), on at the row, off at the deepest chip rung', none.live && none.row === 'on' && none.knob === 'off', none);
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);

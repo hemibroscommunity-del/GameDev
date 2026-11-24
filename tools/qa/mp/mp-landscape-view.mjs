@@ -33,9 +33,16 @@
  * spec.
  */
 import * as H from './harness.mjs';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 export const lane = 'full';
 
-const REF_AREA = 850 * 1330;   /* viewCap.js REF_W x REF_H at the default zoom */
+/* viewCap.js REF_W x REF_H, measured at 0.77 and grown by 0.77 / VIEW_OUT each
+   way (v2.3.6580: the default is 0.79, so the reference is 0.77/0.79 of it;
+   read from the files, so the next change of the default needs no edit here) */
+const _src = (f, re) => Number(re.exec(readFileSync(join(H.REPO, f), 'utf8'))[1]);
+const _k = _src('src/game/viewCap.js', /VIEW_OUT_REF: ([0-9.]+)/) / _src('src/game/viewCap.js', /VIEW_OUT_DEFAULT: ([0-9.]+),/);
+const REF_AREA = 850 * 1330 * _k * _k;
 const SHORT_MIN = 680;         /* viewCap.js SHORT_MIN */
 
 const read = (P) => P.page.evaluate(() => {

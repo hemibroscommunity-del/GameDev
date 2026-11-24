@@ -78,6 +78,7 @@ const FULL = Object.freeze({
 
 import { heapForgetMethods } from './heapforget.js';   /* v2.3.5544 (RT-1 N11): the room forgets who left */
 import { sitTouch } from './sitting.js';   /* v2.3.6481: the leave's moment on the sitting's card (card WHO PR 2) */
+import { traceEnd } from './playtrace.js';   /* v2.3.6482: a recording's row so far, at the leave (card WHO PR 3) */
 import { bookAddBy } from './daybook.js';   /* v2.3.5093: a sitting's seconds into the book's riding `econ` part; v2.3.6480: test play apart (bookAddBy) */
 
 export const LEAVE_WAYS = Object.freeze({
@@ -172,6 +173,11 @@ export const leaveMethods = {
          only: it reaches storage with the close's own save when there is one
          (below), else the card closes at its last saved moment */
       sitTouch(this, this.playerState[session.id], Date.now());
+      /* v2.3.6482 (card WHO PR 3): a test-mode sitting's recording
+         (playtrace.js) ends at its first leave and puts its one row (never
+         awaited, test mode only); a phone back inside the sitting is not
+         recorded again */
+      try { traceEnd(this, this.playerState[session.id], 'leave', Date.now()); } catch (e) { /* a recording never stops a leave */ }
       if (d.botfp === 'safe') {
         /* v2.3.3174: the takeover writes the bot fingerprint's summary first,
            as a clean close does.  _botfpOnJoin re-reads botstat: (written at

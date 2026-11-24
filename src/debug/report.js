@@ -47,6 +47,20 @@
  *   rung      v2.3.5222 (card O's governor): [the most rungs taken at once,
  *             the seconds seen below the lane's row] (game/drawLanes.js), to
  *             a worker that takes lanes (takesLanes) only
+ *   up        v2.3.6500 (card PH PR 1): which stretch of the page's SEEN
+ *             minutes since its first join the report's middle falls in
+ *             (UP_EDGES: 0 to 5, 5 to 15, 15 to 30, over 30), a place 0..3:
+ *             the frames by minutes played, which is heat (the owner's 106
+ *             to 51 a second after 24 minutes, 2026-11-10)
+ *   ride      v2.3.6500: [seconds on the board, late, judged] and
+ *   rideGaps  the gaps' ten bins, of the frames drawn while riding
+ *             (game/ride.js isRiding at each poll: the skateboard's grit,
+ *             2026-11-18), where it rode at all
+ *   ramps     v2.3.6500: the address bar's switches thrown, `name=word`, by
+ *             the page's one reader of the switch table (game/switches.js
+ *             thrown), only names the address writes itself; the word as
+ *             written where it is one of RAMP_WORDS, else '' (a value)
+ *             -- these four to a worker whose caps.report is 4 (takesHeat)
  *   speed     v2.3.5125: the Speed test's card, once, in the first report
  *             after a player runs it (game/speedTest.js): { model, rows },
  *             `model` a place in SPEED_MODELS the player picks (a page
@@ -114,7 +128,8 @@ function memCount() {
 try { useMemCount(memCount); } catch (e) { /* no pacer: no verdict */ }
 import { wheelHere } from '../game/wheelTrial.js';
 import { act } from '../game/actions.js';   /* v2.3.5189: the page's requests leave through the action door (card K PR 7) */
-import { sw } from '../game/switches.js';   /* v2.3.5314: the page's one reader (card T) */
+import { sw, thrown, swHas, swValue } from '../game/switches.js';   /* v2.3.5314: the page's one reader (card T); v2.3.6500 the ramps thrown (card PH PR 1) */
+import { isRiding } from '../game/ride.js';   /* v2.3.6500 (card PH PR 1): the board's frames */
 
 export const REPORT = Object.freeze({
   V: 1,
@@ -133,6 +148,38 @@ export const REPORT = Object.freeze({
 export const GAP_EDGES = Object.freeze([10, 12.5, 15, 18.5, 24, 29, 42, 75, 150]);
 export const WHERE = Object.freeze(['town', 'farm', 'dungeon', 'commons', 'frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', 'verdant', 'other']);
 const OFF_KEY = 'bt_report';
+/* v2.3.6500 (card PH PR 1): the stretches of minutes seen, their upper edges
+   (server/src/report.js UP_EDGES: report.test holds them equal) */
+export const UP_EDGES = Object.freeze([5, 15, 30]);
+/* the words a ramp carries after its `=` (server/src/report.js RAMP_WORDS):
+   every word a row's form throws with; any other value is sent as '' */
+export const RAMP_WORDS = Object.freeze(['', '0', '1', '2', 'off', 'false', 'no', 'all', 'mouse']);
+const RAMPS_MAX = 8;
+
+/** v2.3.6500: the stretch `min` seen minutes fall in, 0..3 (the worker's
+ *  upBucket is the same rule). */
+export function upBucket(min) {
+  let i = 0;
+  while (i < UP_EDGES.length && !(min < UP_EDGES[i])) i++;
+  return i;
+}
+
+/** v2.3.6500 (card PH PR 1): the ramps of an address, `name=word`, from its
+ *  reader's answers: `names` the thrown names ('?x', thrown()), `has` and
+ *  `value` its swHas and swValue.  Only names the address writes itself (a
+ *  dependent thrown by what it needs is not sent: the worker could not
+ *  check it), sorted, at most RAMPS_MAX.  Pure (the suite's). */
+export function rampsOf(names, has, value) {
+  const out = [];
+  for (const q of Array.isArray(names) ? names : []) {
+    const n = String(q).replace(/^\?/, '');
+    if (!has(n)) continue;
+    const v = value(n);
+    const t = n + '=' + (RAMP_WORDS.includes(v) ? v : '');
+    if (!out.includes(t)) out.push(t);
+  }
+  return out.sort().slice(0, RAMPS_MAX);
+}
 
 /* ── v2.3.5125: THE SPEED TEST'S CARD (the grand plan's step 1.2) ── */
 /* the Speed test's steps (game/speedTest.js steps(): `k`), in its order */
@@ -256,6 +303,13 @@ let _a = null;            /* the bins */
    (performance.now(), the frame meter's clock: a frame whose gap holds one
    is the hidden spell, not a frame) */
 let _visSince = null;
+/* v2.3.6500 (card PH PR 1): the seen time banked since the first join, apart
+   from any report (a report switched off and on again keeps the page's
+   minutes): the report's `up` */
+let _upBank = 0;
+function _upMs(now) {
+  return Math.max(0, _upBank + (_visSince != null ? Math.max(0, now - _visSince) : 0));
+}
 const _shows = [];
 const SHOWS_KEEP = 8;
 let _last = null;         /* QA: the last report built, sent or not */
@@ -284,6 +338,7 @@ function _onVisibility(ev) {
       _markShow(typeof performance !== 'undefined' ? performance.now() : 0);
     } else {
       if (_a && _visSince != null) _a.seenMs += Math.max(0, now - Math.max(_visSince, _a.t0));
+      if (_visSince != null) _upBank += Math.max(0, now - _visSince);   /* v2.3.6500 */
       _visSince = null;
     }
   } catch (e) { /* the report's own */ }
@@ -302,7 +357,7 @@ function _restart(now) {
  *  (`pace`: framePacer.js read()).  Returns { lastT, near } (the newest
  *  sample's time, the near count at it).  Pure but for busyIn (the busy beat,
  *  `?perf=1` only): the suite's. */
-export function addFrames(a, samples, fromT, shows, pace) {
+export function addFrames(a, samples, fromT, shows, pace, riding) {
   /* v2.3.5222: judged on every screen whose refresh the pacer knows, by its
      own rule (lateOver): the report's `late` and the governor's are one */
   const judging = !!(pace && pace.refresh);
@@ -319,11 +374,14 @@ export function addFrames(a, samples, fromT, shows, pace) {
     if (spansShow) continue;   /* the hidden spell, not a frame */
     a.drawn++;
     a.gaps[gapBin(total)]++;
+    if (riding && a.rideGaps) a.rideGaps[gapBin(total)]++;   /* v2.3.6500: the board's own frames */
     if (nearNow > a.near) a.near = nearNow;
     if (!judging || !(total > 0) || total > PACE_BREAK_MS) continue;
     a.judged++;
+    if (riding && a.rideGaps) a.rideJudged++;
     if (!(total > lateMs)) continue;
     a.late++;
+    if (riding && a.rideGaps) a.rideLate++;
     /* the strip's split of a late frame (perfHud.js): the game's own parts,
        and the rest outside it -- busy or waiting where the beat can say */
     const work = x.workMs || 0, outside = Math.max(0, total - work);
@@ -347,10 +405,14 @@ export function blankBins(now) {
     holds: [], whereMs: Object.create(null), near: 0,
     lost0: glLostCount(), rb0: _rebuilds(),
     rungMax: 0, belowMs: 0,   /* v2.3.5222: the governor's rung (drawLanes.js) */
+    /* v2.3.6500 (card PH PR 1): the seen minutes at the report's start, and
+       the board's frames, seconds, late and judged */
+    up0: 0, rideGaps: new Array(GAP_EDGES.length + 1).fill(0), rideMs: 0, rideLate: 0, rideJudged: 0,
   };
 }
 function _reset(now) {
   _a = blankBins(now);
+  _a.up0 = _upMs(now);   /* v2.3.6500 */
 }
 function _rebuilds() {
   try { return (typeof window !== 'undefined' && window.__btGlRebuilds) || 0; } catch (e) { return 0; }
@@ -387,6 +449,7 @@ function _poll() {
     if (late > REPORT.THAW_MS && _visSince != null) {
       _markShow(_lastPollP + REPORT.POLL_MS);
       a.seenMs -= Math.min(late, Math.max(0, now - Math.max(_visSince, a.t0)));
+      _upBank -= Math.min(late, Math.max(0, now - _visSince));   /* v2.3.6500: nor the page's minutes */
     }
     _lastPollP = typeof performance !== 'undefined' ? performance.now() : 0;
     const where = _whereNow(_S);
@@ -398,6 +461,11 @@ function _poll() {
     const depth = rungDepth();
     if (depth > a.rungMax) a.rungMax = depth;
     if (depth > 0) a.belowMs += seenD;
+    /* v2.3.6500 (card PH PR 1): on the board now: the frames since the last
+       poll are the board's (a poll every 2 s), and the seen time */
+    let riding = false;
+    try { riding = isRiding(_S); } catch (e) { riding = false; }
+    if (riding) a.rideMs += seenD;
     a.lastPoll = now;
     setMarkWhere(where);
     /* the pacer's own rule, with its own refresh and step (framePacer.js
@@ -405,7 +473,7 @@ function _poll() {
        where it judges: v2.3.5222, a refresh it knows, on every screen */
     let pace = null;
     try { pace = typeof window !== 'undefined' && window.__btPace ? window.__btPace() : null; } catch (e) { pace = null; }
-    const fr = addFrames(a, perfTracker.getSamples(), _lastFrameT, _shows, pace);
+    const fr = addFrames(a, perfTracker.getSamples(), _lastFrameT, _shows, pace, riding);
     _lastFrameT = fr.lastT;
     const nearNow = fr.near;
     /* the holds: the ring's new entries that have a name of the list */
@@ -477,6 +545,17 @@ export function buildReport(now) {
   if (takesLanes(_S)) { try { const sf = selfFailures().filter((n) => !_selfSaid.has(n)); if (sf.length) r.self = sf; } catch (e) { /* none said */ } }
   /* v2.3.5127 (sitting 4): the card goes only to a worker that takes it;
      to one that does not, it waits (and is not cleared by the send) */
+  /* v2.3.6500 (card PH PR 1): the minutes seen, the board and the ramps, to
+     a worker that takes them (caps.report 4) */
+  if (takesHeat(_S)) {
+    r.up = upBucket((a.up0 + _upMs(tNow)) / 2 / 60000);
+    const rideDrawn = a.rideGaps.reduce((x, y) => x + y, 0);
+    if (a.rideMs > 0 || rideDrawn > 0) {
+      r.ride = [Math.min(r.seen, _w(a.rideMs / 1000)), a.judged > 0 ? a.rideLate : 0, a.judged > 0 ? a.rideJudged : 0];
+      r.rideGaps = a.rideGaps.slice();
+    }
+    try { const rp = rampsOf(thrown(), swHas, swValue); if (rp.length) r.ramps = rp; } catch (e) { /* none said */ }
+  }
   if (_speed && takesSpeed(_S)) r.speed = { model: _speed.model, rows: _speed.rows.map((x) => x.slice()) };
   return r;
 }
@@ -501,6 +580,13 @@ export function takesSpeed(S) {
  *  live flags: back to 2, and the page sends `full`, no `rung`, no `self`). */
 export function takesLanes(S) {
   return !!(S && S._serverCaps && Number(S._serverCaps.report) >= 3);
+}
+
+/** v2.3.6500 (card PH PR 1): `caps.report` 4 takes the minutes seen, the
+ *  board and the address bar's ramps (`reportheat: false` in its live flags:
+ *  back to 3, and the page sends none of the four). */
+export function takesHeat(S) {
+  return !!(S && S._serverCaps && Number(S._serverCaps.report) >= 4);
 }
 
 /* a report is due: built, sent to a worker that takes one, and a new one opened */
@@ -565,7 +651,7 @@ export function bookTableText(days) {
   const out = [];
   const list = Array.isArray(days) ? days : [];
   out.push('BroTown smoothness table (v' + REPORT.V + '): ' + list.length + ' day(s), newest first. A cell is: shape | device class '
-    + '(gl-soft-maxTex-prec-units-mp-dpr-hz-fill-input-frame-cores) | lane | switches | build (`preview`: any page off the game\'s own site).');
+    + '(gl-soft-maxTex-prec-units-mp-dpr-hz-fill-input-frame-cores) | lane | switches (a saver, or an address\'s `name=word`) | build (`preview`: any page off the game\'s own site).');
   out.push('gaps bins (ms): <' + GAP_EDGES.join(', <') + ', more.  where: ' + WHERE.join(' ') + '.  speed rows: step fps p50 p95 work (means of the runs).');
   for (const d of list) {
     out.push('');
@@ -589,6 +675,18 @@ export function bookTableText(days) {
       if (c.died) out.push('  died no ' + c.died[0] + ' killed ' + c.died[1] + ' evicted ' + c.died[2] + (c.diedMem ? '  (their MB ' + c.diedMem[0] + ', min up ' + c.diedMem[1] + ', rebuilds ' + c.diedMem[2] + ')' : '')
         + (c.diedAt && typeof c.diedAt === 'object' ? '  where ' + map(c.diedAt) : ''));
       if (c.line) out.push('  line mean ms: delay ' + _mean(c.line[0], n) + ', waver ' + _mean(c.line[1], n));
+      /* v2.3.6500 (card PH PR 1): by minutes seen (heat), and the board's own frames */
+      if (c.up && typeof c.up === 'object') {
+        const rows = ['m0', 'm5', 'm15', 'm30'].filter((k) => Array.isArray(c.up[k])).map((k) => {
+          const [sn, dr, lt, bl] = c.up[k];
+          return k.slice(1) + '+ min: ' + _mean(dr, sn) + ' fps, late ' + (dr > 0 ? Math.round((1000 * lt) / dr) / 10 : 0) + '%, ' + bl + ' of ' + sn + ' secs below the row';
+        });
+        if (rows.length) out.push('  by minutes seen  ' + rows.join('; '));
+      }
+      if (Array.isArray(c.ride)) {
+        const [rn, rs, rd, rl, rlong] = c.ride;
+        out.push('  riding (' + rn + ' reports, ' + rs + ' secs): ' + _mean(rd, rs) + ' fps, late ' + (rd > 0 ? Math.round((1000 * rl) / rd) / 10 : 0) + '%, frames past 42 ms ' + rlong);
+      }
       if (c.holds) {
         const hs = Object.keys(c.holds).map((h) => [h, c.holds[h]]).sort((a, b) => b[1][1] - a[1][1]);
         out.push('  holds (name: times, ms in all) ' + hs.map(([h, v]) => h + ' ' + v[0] + 'x ' + v[1] + 'ms').join('; '));
@@ -617,7 +715,7 @@ export function bookTableText(days) {
 if (typeof window !== 'undefined') {
   window.__btReport = (opt) => {
     if (opt && opt.send) { _poll(); _due(Date.now()); }
-    return { on: reportOn(), cap: takesReports(_S), speedCap: takesSpeed(_S), lanesCap: takesLanes(_S), joinedAt: _joinedAt,
+    return { on: reportOn(), cap: takesReports(_S), speedCap: takesSpeed(_S), lanesCap: takesLanes(_S), heatCap: takesHeat(_S), upMin: Math.round(_upMs(Date.now()) / 600) / 100, joinedAt: _joinedAt,
       dueIn: _dueAt ? _dueAt - Date.now() : null, sent: _sent, dropped: _dropped, diedOwed: _diedOwed, speed: _speed,
       open: buildReport(Date.now()), last: _last };
   };

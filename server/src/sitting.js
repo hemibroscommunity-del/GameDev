@@ -172,6 +172,17 @@ export function sitForget(room, rec) {
   if (m && rec && typeof rec === 'object') m.delete(rec);
 }
 
+/** v2.3.6484 (sitting 60's review): the flag set through the live flags'
+ *  route (liveops.js, its one call).  Thrown OFF, every card the joins took
+ *  counts no more: thrown back on with the same socket and no rejoin, the
+ *  card went on, the off time its longest gap (a week: g = 604799) and the
+ *  moves after it counted into a sitting that had stopped.  The next join
+ *  closes it or carries it on (sitOpen), as after a reconnect.  Set on, or
+ *  off again, nothing is forgotten (a card counting goes on counting). */
+export function sitFlagSet(room) {
+  if (sitOff(room)) room._sitLive = new WeakMap();
+}
+
 /* the open card of a live record that this room's join took, or null */
 function open(room, rec) {
   const e = rec && rec._econ;

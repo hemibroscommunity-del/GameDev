@@ -485,12 +485,16 @@ async function runHttpRow(row) {
  * values (`plain` above) before the field is read.  The list only falls
  * (3b): a scene that reaches a field takes its line out (a row's own suite
  * plays its scene; the plan's step 4.1).  104 fields on 2026-11-24, the
- * count the review's REACH plant measured (plants3.json, reach.mjs). */
-const REACH_LINE = 104;
+ * count the review's REACH plant measured (plants3.json, reach.mjs).
+ * v2.3.6507 (card PH, the sitting-60 mend, at its merge of main): 108 -- the
+ * report's four fields of card PH PR 1 (#2279: `up`, `ride`, `rideGaps`,
+ * `ramps`), named in its row before this suite landed and read past the same
+ * devClass gate as the report's other eighteen; report.test 15 drives them. */
+const REACH_LINE = 108;
 const NOT_REACHED = {
   join: { fields: ['nj'],
     why: 'pres is 1, not 2: the near-join list is read only for pres2 (nearjoin.js, join.js)' },
-  report: { fields: ['drawLane', 'build', 'secs', 'seen', 'sw', 'drawn', 'gaps', 'late', 'split', 'where', 'near', 'holds', 'mem', 'lost', 'died', 'speed', 'rung', 'self'],
+  report: { fields: ['drawLane', 'build', 'secs', 'seen', 'sw', 'drawn', 'gaps', 'late', 'split', 'where', 'near', 'holds', 'mem', 'lost', 'died', 'speed', 'rung', 'self', 'up', 'ride', 'rideGaps', 'ramps'],
     why: 'devClass is not an object: classOfReport gives null and the report drops (report.js)' },
   pong: { fields: ['ts', 'hd'],
     why: 'no ping was sent (the test room runs no tick loop): a pong with lastPing 0 is dropped (index.js)' },
@@ -602,12 +606,15 @@ const TREE_UNNAMED = {
 const TREE_FORMS = [
   { at: 'join.js _handleJoin', what: 'a write of the message (data)',
     why: 'a join with no record on file strips the rpg claims off its own `data` before anything reads it (join.js: a new character starts from the server\'s defaults; CLAUDE.md §5 Identity)' },
+  /* v2.3.6484 (card WHO, sitting 60's hold; the orchestrator's yes, a raise: TREE_LINE 15 -> 16) */
+  { at: 'playtrace.js note', what: 'the message handed to JSON.stringify (its keys listed)',
+    why: 'the owner\'s recording: the message as the page sent it, which rung 4 replays (a copy by names would drop a new wire field from the replay); playtrace.test §7c holds the copy safe: kept, the message unchanged, nothing sent' },
 ];
 /* a table built at run time, read as the literal it is made from (`FIGHT_LOCK`
    is Object.fromEntries over FIGHT_LOCK_SW and FIGHT_LOCK_HOW: its rows'
    `when` and `refuse` are FIGHT_LOCK_HOW's) */
 const TREE_TABLES = { 'fightlock.js:FIGHT_LOCK': 'FIGHT_LOCK_HOW' };
-const TREE_LINE = 15;   /* 13 fields + 1 form + 1 table, 2026-11-24 */
+const TREE_LINE = 16;   /* 13 fields + 1 form + 1 table, 2026-11-24; v2.3.6484: + playtrace.js note's copy (card WHO, the orchestrator's yes) */
 
 /* ══════════ RUN ══════════ */
 const t0 = performance.now();

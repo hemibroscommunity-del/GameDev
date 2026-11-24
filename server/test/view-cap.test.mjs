@@ -74,14 +74,18 @@ check('2d. the row is on the Test panel, and follows live', CLIENT_SAVERS.some((
   _resetClientOff();
   const { worldViewport } = await import(pathToFileURL(file).href);
   const cv = (w, h) => ({ width: w, height: h });   /* dpr 1 in node */
-  /* the canvases mp-landscape-view measured in the Wheel, and what it read */
+  /* the canvases mp-landscape-view measured in the Wheel, and what it read.
+     v2.3.6580: the default view is 0.79, so the upright and capped views are
+     0.77/0.79 of the spec's numbers (docs/specs/view-cap.md, measured at 0.77:
+     643x1330, 1564x723, 1199x943, 1384x817); the uncapped sideways and the
+     computer 1366 do not move (their own reference is the other axis) */
   const ROWS = [
-    { tag: 'upright 390x844 folded', c: [390, 806], before: [643, 1330], after: [643, 1330] },
-    { tag: 'upright 390x844 open', c: [390, 615], before: [843, 1330], after: [843, 1330] },
-    { tag: 'sideways 844x390', c: [844, 390], before: [2078, 960], after: [1564, 723] },
+    { tag: 'upright 390x844 folded', c: [390, 806], before: [627, 1296], after: [627, 1296] },
+    { tag: 'upright 390x844 open', c: [390, 615], before: [822, 1296], after: [822, 1296] },
+    { tag: 'sideways 844x390', c: [844, 390], before: [2078, 960], after: [1525, 704] },
     { tag: 'computer 1366x768', c: [820, 768], before: [1025, 960], after: [1025, 960] },
-    { tag: 'computer 1920x1080', c: [1374, 1080], before: [1221, 960], after: [1199, 943] },
-    { tag: 'ultrawide 2560x1080', c: [1830, 1080], before: [1627, 960], after: [1384, 817] },
+    { tag: 'computer 1920x1080', c: [1374, 1080], before: [1221, 960], after: [1169, 919] },
+    { tag: 'ultrawide 2560x1080', c: [1830, 1080], before: [1627, 960], after: [1349, 796] },
   ];
   for (const r of ROWS) {
     const off = worldViewport(cv(...r.c), 'wheel', { cap: false });
@@ -97,7 +101,7 @@ check('2d. the row is on the Test panel, and follows live', CLIENT_SAVERS.some((
   check('3g. the Test panel\'s row turned off: the sideways phone\'s old view, at once', near(live.W, 2078, 1.5) && near(live.H, 960, 1.5), live);
   setClientOff('');
   const back = worldViewport(cv(844, 390), 'wheel');
-  check('3h. ...and turned back on: capped again', near(back.W, 1564, 1.5), back);
+  check('3h. ...and turned back on: capped again', near(back.W, 1525, 1.5), back);
   /* D10 still holds sideways: the old town sees wider than a combat zone */
   const town = worldViewport(cv(844, 390), 'town'), ember = worldViewport(cv(844, 390), 'ember');
   check('3i. D10 sideways: town still zoomed out past a combat zone (no void: zoom only goes in)', town.scale < ember.scale - 0.05 && town.W > 1024 && near(ember.W, 1024, 1), { town, ember });
