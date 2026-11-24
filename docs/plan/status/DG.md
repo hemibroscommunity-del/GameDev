@@ -1,35 +1,39 @@
 card: DG
-branch: claude/dg-door-guards
-prs: #2283 (PR 1, 6440, ready again: sitting 57's CI mend)
-state: ready
+branch: claude/dg-mend59 (sitting 59's mend, 6446, base claude/dg-gaps), on dg-gaps (6), dg-reach (5), dg-wireform (4), dg-books (3), dg-scans (2)
+prs: #2283 (PR 1, 6440, merged), #2295 (PR 2, 6441), #2300 (PR 3, 6442), #2310 (PR 4, 6443), #2312 (PR 5, 6444), #2313 (PR 6, 6445): all ready (heads frozen); the mend: one draft PR, 6446
+state: working
 
 ## Done
-- Sitting 57's CI (#2295 red, heap-forget 4,167 B a guest): the guard let
-  go of a record only at a sweep after a full collection (+1 KB a guest,
-  test room only); now a record leaving the room's map is checked once and
-  let go (340 B a guest; plants1 still 17 of 23 red). CI still read 4,632:
-  heap-forget is now UNGUARDED_SUITES (a measure of the room's own heap).
-- PR 1 (6440): testroom.mjs arms a guard on every live player's record
-  (gold, hp and the life phase, xp and level, the bag, the stashes, quest
-  state, build points): a write outside its door is refused and fails the
-  suite. The 7 door suites play a tour (a quest handed in) under it.
-  plants1.json: 17 of 23 RED (16 of 22 realistic); the 6 GREEN write nothing on the path
-  (`||=` on a field already set: GOLD-2, XP-2, HP-4; a branch the reward
-  never takes: HP-2, STASH-1) or call a legal door (GOLD-4): PR 2's scan.
-  Whole server suite: 582 green (799.7 s). Deploys when merged.
-- PR 1's mend (sitting 56's purpose review): `roomGuard.holds(ps, room)`
-  reads the record itself (coins the guard's accessor, the bag its Proxy,
-  the room's map the guarded one); each door's R block checks it, and
-  testroom.test §7 records a refusal of 4 spellings run as worker code.
-  Red now: guardRecord gutted (gold, life, testroom); `playerState` an own
-  data property (gold, bag; gold with GOLD-1 on top). Also `ECON_V + 1` in
-  gold-door §9 and bag-door §9 (card WHO's shape bump, the orchestrator's ask).
+- Sitting 59's mend (6446, claude/dg-mend59): the class, as allow lists in
+  the tree and a mutation pass in the room; plants6.json 35 of 35 RED
+  (docs/plan/census/dg-mend59.md).
+- PR 6 (6445, #2313): done.  wire-gaps.test: the relay is the made list;
+  the router's default case opens with its two gates; nothing before the
+  routes' door answers; every path index.js compares has a row.  send-door
+  counts UTF-8 bytes; sendOutside imported in origin.js alone.  13 plants red.
+- PR 5 (6444, #2312): wire-hostile watches what is read off each message
+  after the door (test room only): every named field read or in
+  NOT_REACHED with why (104, only falls); no unnamed read; no listing of a
+  message's keys.  8 plants red.
+- PR 4 (6443, #2310): a named field held to its form (door.js WIRE_FORM);
+  `wireform` absent refuses, 'count' counts, false the old door; cap
+  wireForm; judge.mjs refuses every plant; playable and mp-bank green.
+- PR 2 (6441, #2295): one scanner (writesOf.mjs) for every door suite.
+- PR 3 (6442, #2300): the books moved what the purse or bag moved.
 
 ## Next
-- PR 2 (6441), on branch claude/dg-scans: the scans read the syntax tree.
+- Sitting 59: #2295, #2300, #2310 (behaviour, its own line), #2312, #2313.
+- The owner, in the morning: may #2295 to #2313 land with this mend on top.
 
 ## Found
-- none
+- relay.js `_relayBytesDrop` sizes a relay by `JSON.stringify(msg).length`
+  (characters, not bytes): behaviour, not fixed here.
+- wire-hostile TREE_UNNAMED (13): fields handlers read that no row names
+  (`ride` data, `player_attack` element, `dungeon_start`'s 11 top-level
+  config fields): naming them puts them under the door's forms (behaviour),
+  the rows' own change.
+- `WIRE_HOSTILE_DOOR=off` fails wire-hostile check 2 the same way on
+  e2de46fd (2 cases against 19): older than the mend.
 
 ## Needs
-- none
+- none (the orchestrator: mark #2313 ready once all five are green)

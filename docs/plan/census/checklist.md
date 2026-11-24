@@ -17,37 +17,43 @@ rule 1): a guard is.
 
 ## The rows
 
-| # | Row | Test(s) | Break proof (the change -> what failed) |
-|---|---|---|---|
-| 1 | an animation or sprite | `preload-census` (U2); the pose, `mp-ghostaudit` (a phone scenario, by hand) | `preloadAnimations.js`: `traits: preloadTraits(),` as `traits: null,` -> FAIL 1 (34 > 31). In its header. |
-| 2 | a message the server sends | `wire-audit`, `wire-table` | a function in `chatmod.js` doing `this._send(ws, { type: 'zz_probe_out' })` -> `wire-audit` FAIL ("every server-emitted type is in PRIVILEGED_EVENTS"). `wire-table` alone did not see this one; its own header's breaks hold the table's form. |
-| 3 | a relay a phone sends | `action-door`, `wire-table` | `actions.js`: a row `zz_relay: A('priority'),` with no row in the wire table -> `action-door` FAIL 1 (`zz_relay`). `wire-table` did not see it; it fails a relay row renamed (`trade_accept` as `trade_acceptx` in `wire/relays.js` -> FAIL 9). |
-| 4 | a request the page makes | `action-door` | `chat.js`: `S.channel.send({ type: 'zz_probe' })` -> FAIL 2 (`zz_probe`). |
-| 5 | a server behaviour | `cap-gates` (U2), `caps-audit`, `liveops` §8e | `DevPanel.jsx`: `'charLock', ` taken out of `CAP_GATES` -> `cap-gates` FAIL 1. In its header. |
-| 6 | a `?name=` or a live flag | `switches` | `chat.js`: `new URLSearchParams(location.search).get('zzprobe')` -> FAIL 1 (`?zzprobe` unlisted). |
-| 7 | a storage key | `storage-keys` (U2), `storage-marks`, `restore` | `farm.js`: `storage.put('farm:'` as `storage.put('zzfarm:'` -> `storage-keys` FAIL 1. In its header. |
-| 8 | a monster hit on players | `hit-door` | a function in `chatmod.js` calling `this._applyDamage(ps, 1, false)` -> FAIL 10d (`chatmod.js` a new caller). |
-| 9 | gold | `gold-door` | `chatmod.js`: `ps.coins = 5;` -> FAIL 2. |
-| 10 | a bag count, a stash, hp, leaving | `bag-door`, `stash-door`, `life-door`, `session-door` | in `chatmod.js`, one at a time: `ps.inventory[x] = 1;` -> `bag-door` FAIL 2; `ps.weaponStash.push(x);` -> `stash-door` FAIL 2; `ps.hp = 1;` -> `life-door` FAIL 2; `this.sessions.delete(ws);` -> `session-door` FAIL 3. |
-| 11 | build points | `skillpoints-door` | `chatmod.js`: `p3.pool = 1;` -> FAIL 2. |
-| 12 | a quest's state | `quest-door` | `chatmod.js`: `ps._quests[q] = 'active';` -> FAIL 2. |
-| 13 | experience or a level | `xp-door` | `chatmod.js`: `s.xp = (s.xp \|\| 0) + 1;` -> FAIL 2. |
-| 14 | an honesty check | `test-mode` §8 | `chatmod.js`: `if (this._testMode(ps)) return;` -> FAIL 8 (an unlisted file asks). |
-| 15 | a refusal in the hit test | **none: by hand** | Cannot (below). |
-| 16 | a field on the tick | `tick-share` | `tick.js` buildFor: `const d = { type: 'tick', seq, ts };` with `zz: 1` added (one builder only) -> FAIL 1a (not byte for byte). |
-| 17 | a sound | `sound-cues` §12 (the label), `sound-credits` (U2, the row) | `CREDITS.md`: the music row's `village` taken out (both places) -> `sound-credits` FAIL 1. In its header. |
-| 18 | a screen or window | `screens-listed` (U2), `desk-keys` | the login door's `Screens:` line without `login-door` -> FAIL 1; `ShopkeeperPanel.jsx`'s ✕ without `data-esc` -> FAIL 2. In its header. |
-| 19 | a phone test | `old-map` (precheck and the harness), `scenario-lanes`, `phone-test-wide` (U2) | `mp-deskwide.mjs`: its `wide: true` taken out -> `phone-test-wide` FAIL 1. In its header. |
-| 20 | a picture made on a canvas | `canvas-pictures` (U2) | `hairColorCatalog.js`: its `keepAsImage(t.source, Cache)` taken out -> FAIL 1 (51 > 50). In its header. |
-| 21 | art that loads as you walk | `strip-door` | `wheelGround.js`: `export const zzNums = (d) => numbersOf(d);` (a new caller of a page packer) -> FAIL 5. |
-| 22 | a stored look key | `look-keys` (U2) | `characterRecord.js`: `LOOK_BLANK`'s `hw: 'none', ` taken out -> FAIL 2. In its header. |
-| 23 | a domain players use | **none: by hand** | Cannot (below). `origin` holds the list itself. |
-| 24 | the Wheel's plan or objects | `wheel-bakes` (U2) | `plan.js`: the Blacksmith's `name` one letter changed -> FAIL 1 and 2. In its header. |
-| 25 | more for the memory check | `mp-membudget` (a phone scenario GitHub runs on every PR) | **Not tried here**: it needs a browser and a built page, and this card has none. Its lines are `tools/qa/mp/memory-budget.mjs`; the rule "never raise one silently" is the PR's words, read by the gatekeeper. |
-| 26 | a bake, a load in play, a timer's redraw | **none: by hand** (`hold-names` and `budgets` hold the tables) | Cannot (below). |
-| 27 | a server-only number a copier would value | **none: by hand** (`hidden-settings` holds the table) | Cannot (below). |
+| # | Row | Test(s) | Break proof (the change -> what failed) | Its break proof is run |
+|---|---|---|---|---|
+| 1 | an animation or sprite | `preload-census` (U2); the pose, `mp-ghostaudit` (a phone scenario, by hand) | `preloadAnimations.js`: `traits: preloadTraits(),` as `traits: null,` -> FAIL 1 (34 > 31). In its header. | by hand, last on 2026-11-17 |
+| 2 | a message the server sends | `wire-audit`, `wire-table` | a function in `chatmod.js` doing `this._send(ws, { type: 'zz_probe_out' })` -> `wire-audit` FAIL ("every server-emitted type is in PRIVILEGED_EVENTS"). `wire-table` alone did not see this one; its own header's breaks hold the table's form. | by hand, last on 2026-11-17 |
+| 3 | a relay a phone sends | `action-door`, `wire-table` | `actions.js`: a row `zz_relay: A('priority'),` with no row in the wire table -> `action-door` FAIL 1 (`zz_relay`). `wire-table` did not see it; it fails a relay row renamed (`trade_accept` as `trade_acceptx` in `wire/relays.js` -> FAIL 9). | by hand, last on 2026-11-17 |
+| 4 | a request the page makes | `action-door` | `chat.js`: `S.channel.send({ type: 'zz_probe' })` -> FAIL 2 (`zz_probe`). | by hand, last on 2026-11-17 |
+| 5 | a server behaviour | `cap-gates` (U2), `caps-audit`, `liveops` §8e | `DevPanel.jsx`: `'charLock', ` taken out of `CAP_GATES` -> `cap-gates` FAIL 1. In its header. | by hand, last on 2026-11-17 |
+| 6 | a `?name=` or a live flag | `switches` | `chat.js`: `new URLSearchParams(location.search).get('zzprobe')` -> FAIL 1 (`?zzprobe` unlisted). | **by a guard**: `switches` check 9 plays the same shape (fixture P2, `new URLSearchParams(location.search).get(...)`) every run |
+| 7 | a storage key | `storage-keys` (U2), `storage-marks`, `restore` | `farm.js`: `storage.put('farm:'` as `storage.put('zzfarm:'` -> `storage-keys` FAIL 1. In its header. | by hand, last on 2026-11-17 |
+| 8 | a monster hit on players | `hit-door` | a function in `chatmod.js` calling `this._applyDamage(ps, 1, false)` -> FAIL 10d (`chatmod.js` a new caller). | by hand, last on 2026-11-17 |
+| 9 | gold | `gold-door` | `chatmod.js`: `ps.coins = 5;` -> FAIL 2. | by hand, last on 2026-11-17 |
+| 10 | a bag count, a stash, hp, leaving | `bag-door`, `stash-door`, `life-door`, `session-door` | in `chatmod.js`, one at a time: `ps.inventory[x] = 1;` -> `bag-door` FAIL 2; `ps.weaponStash.push(x);` -> `stash-door` FAIL 2; `ps.hp = 1;` -> `life-door` FAIL 2; `this.sessions.delete(ws);` -> `session-door` FAIL 3. | **by a guard** for the stash (`stash-door` check 2 plays `ps.weaponStash.push(w)` every run); the bag, hp and leaving by hand, last on 2026-11-17 |
+| 11 | build points | `skillpoints-door` | `chatmod.js`: `p3.pool = 1;` -> FAIL 2. | by hand, last on 2026-11-17 |
+| 12 | a quest's state | `quest-door` | `chatmod.js`: `ps._quests[q] = 'active';` -> FAIL 2. | **by a guard**: `quest-door` check 2 plays `ps._quests[id] = 'active';` every run |
+| 13 | experience or a level | `xp-door` | `chatmod.js`: `s.xp = (s.xp \|\| 0) + 1;` -> FAIL 2. | **by a guard**: `xp-door` check 2 plays `s.xp = (s.xp || 0) + n;` every run |
+| 14 | an honesty check | `test-mode` §8 | `chatmod.js`: `if (this._testMode(ps)) return;` -> FAIL 8 (an unlisted file asks). | by hand, last on 2026-11-17 |
+| 15 | a refusal in the hit test | **none: by hand** | Cannot (below). | none (no test) |
+| 16 | a field on the tick | `tick-share` | `tick.js` buildFor: `const d = { type: 'tick', seq, ts };` with `zz: 1` added (one builder only) -> FAIL 1a (not byte for byte). | by hand, last on 2026-11-17 |
+| 17 | a sound | `sound-cues` §12 (the label), `sound-credits` (U2, the row) | `CREDITS.md`: the music row's `village` taken out (both places) -> `sound-credits` FAIL 1. In its header. | by hand, last on 2026-11-17 |
+| 18 | a screen or window | `screens-listed` (U2), `desk-keys` | the login door's `Screens:` line without `login-door` -> FAIL 1; `ShopkeeperPanel.jsx`'s ✕ without `data-esc` -> FAIL 2. In its header. | by hand, last on 2026-11-17 |
+| 19 | a phone test | `old-map` (precheck and the harness), `scenario-lanes`, `phone-test-wide` (U2) | `mp-deskwide.mjs`: its `wide: true` taken out -> `phone-test-wide` FAIL 1. In its header. | by hand, last on 2026-11-17 |
+| 20 | a picture made on a canvas | `canvas-pictures` (U2) | `hairColorCatalog.js`: its `keepAsImage(t.source, Cache)` taken out -> FAIL 1 (51 > 50). In its header. | by hand, last on 2026-11-17 |
+| 21 | art that loads as you walk | `strip-door` | `wheelGround.js`: `export const zzNums = (d) => numbersOf(d);` (a new caller of a page packer) -> FAIL 5. | by hand, last on 2026-11-17 |
+| 22 | a stored look key | `look-keys` (U2) | `characterRecord.js`: `LOOK_BLANK`'s `hw: 'none', ` taken out -> FAIL 2. In its header. | by hand, last on 2026-11-17 |
+| 23 | a domain players use | **none: by hand** | Cannot (below). `origin` holds the list itself. | none (no test) |
+| 24 | the Wheel's plan or objects | `wheel-bakes` (U2) | `plan.js`: the Blacksmith's `name` one letter changed -> FAIL 1 and 2. In its header. | by hand, last on 2026-11-17 |
+| 25 | more for the memory check | `mp-membudget` (a phone scenario GitHub runs on every PR) | **Not tried here**: it needs a browser and a built page, and this card has none. Its lines are `tools/qa/mp/memory-budget.mjs`; the rule "never raise one silently" is the PR's words, read by the gatekeeper. | by hand, **never tried** (a browser and a built page) |
+| 26 | a bake, a load in play, a timer's redraw | **none: by hand** (`hold-names` and `budgets` hold the tables) | Cannot (below). | none (no test) |
+| 27 | a server-only number a copier would value | **none: by hand** (`hidden-settings` holds the table) | Cannot (below). | none (no test) |
 
 **Covered by a test:** 23 rows. Row 25's break was not tried here.
+**Its break proof run** (v2.3.6525, card WL PR 6: paper marked as paper):
+a guard plays the row's break every run for rows 6, 12, 13 and the stash of
+row 10 (the shape is a fixture inside the guard: a scanner that stopped
+seeing it fails there). Every other break was tried once, by hand, last on
+2026-11-17, and undone: a guard that has since stopped catching it would
+stay green until someone tries it again. Row 25's was never tried.
 **Cannot:** 4 rows.
 
 ## The four that cannot, and why

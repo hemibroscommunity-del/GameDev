@@ -25,16 +25,30 @@
  *      hold, the step-1 line exactly for every honest one, and the room's
  *      switch.  §1-5 run with the switch OFF (the step-1 sums).
  *
+ *  (8, 9: the classes and the count, v2.3.5081 and v2.3.5084;)
+ *   2b. (v2.3.6446, sitting 59) THE ALLOW LIST: the bag appears outside
+ *      bag.js only in a form the scan knows (a count read, a test, a copy, a
+ *      name it follows, the door's calls, a pure global, a function of the
+ *      same file); handed to a function of another file, returned, put into
+ *      an object or a list written out is RED unless a row of HANDED_OUT
+ *      (4 at v2.3.6446; it only falls).  Break: `this._topUp(ps.inventory)`
+ *      in shop.js -> FAIL 2 (plants-scans.json);
+ *  10. EACH ROAD BOOKED WHAT IT MOVED (v2.3.6442, card DG PR 3): every road
+ *      of BAG_ROADS and every mail word runs on a blank bag and carried ones,
+ *      named or waiting; the record's `_econ.i` and the day's book moved
+ *      exactly what the count moved (mint, burn) or nothing (move, escrow).
+ *
  * A new way to change the bag: a row in BAG_ROADS, one call that names it,
  * and its longhand line in EXPECT below.
  */
 import { readFileSync } from 'node:fs';
 import { SRC_DIR, srcFiles } from './src-walk.mjs';
-import { BAG_ROADS, BAG_READS, BAG_EMPTY, BAG_WHOLE, bagAfter, bagGive, bagTake, bagSet, bagCount, bagOneSum, wholeCount, setBagOneSum, bagOneSumOn, bagEconOwn, bagEconPending } from '../src/bag.js';
+import { BAG_ROADS, BAG_READS, BAG_EMPTY, BAG_WHOLE, bagAfter, bagGive, bagTake, bagSet, bagCount, bagOneSum, wholeCount, setBagOneSum, bagOneSumOn, bagEconOwn, bagEconPending, setBagBook, setBagEcon } from '../src/bag.js';   /* v2.3.6442: + the day's book's hook and the counting's switch (§10) */
 import { ECON_V, MAIL_CLASSES, classFaults, CLASSES, ESCROW_PLACES } from '../src/gold.js';
 import { GameRoom } from '../src/index.js';
 import { flagNameOk } from '../src/liveops.js';
 import { playTour, roomGuard } from './testroom.mjs';   /* v2.3.6440: the running room refuses (card DG PR 1) */
+import { writesOf, doorWrites, doorCalls, where } from '../../tools/guards/lib/writesOf.mjs';   /* v2.3.6441: the scans read the syntax tree (card DG PR 2) */
 setBagOneSum(false);   /* v2.3.4900: §1-5 hold the step-1 sums; §6 turns step 2 on */
 
 let failures = 0, passes = 0;
@@ -202,87 +216,111 @@ const lineAt = (s, i) => { const a = s.lastIndexOf('\n', i) + 1; const e = s.ind
 /* v2.3.5081: each names its row of bag.js BAG_WHOLE, which classes what it
    does to what the bag holds (SHAPES part 3, edge 4); the death's two wipes,
    one line before, are two entries now: they are two classes */
+/* v2.3.6441 (card DG PR 2): keyed by file, function and how many writes,
+   read off the syntax tree; the old '*' row (a new, empty bag anywhere)
+   names its files now (plants4 BAG-5: `ps.inventory = {}` in a quest's
+   turn-in was "a new bag"). */
+const W = (file, fn, n, row, why) => ({ file, fn, field: 'inventory', n, row, why });
+const NEW_BAG = 'a new, empty bag for a player who has none (the callers\' own guard, as before)';
 const WHOLE_BAG = [
-  { file: '*', re: /\.inventory\s*=\s*(?:\{\s*\}|Object\.create\(null\))\s*;/, row: 'new_bag', why: 'a new, empty bag for a player who has none (the callers\' own guard, as before)' },
-  { file: 'join.js', re: /\.inventory\s*=\s*stored\.inventory\s*\|\|\s*\{\}/, row: 'join_load', why: 'the join loads the stored character\'s bag' },
-  { file: 'join.js', re: /\.inventory\s*=\s*_cappedInv\b/, row: 'join_first', why: 'the join\'s first-connect bag, capped (trapping.js _trapJoinCap)' },
-  { file: 'index.js', re: /ps\.inventory\s*=\s*this\._wipeInventoryOnDeath\(ps,/, row: 'death_wipe', why: 'the death wipe: the bag made what the dead keep (the tools; nothing in No man\'s land), the rest to the pile' },
-  { file: 'index.js', re: /ps\.inventory\s*=\s*this\._wipeInventoryOnDeath\(ps\)/, row: 'respawn_wipe', why: 'the respawn wipe: the same, again, five seconds on' },
+  W('bank.js', '_handleBankMove', 1, 'new_bag', NEW_BAG),
+  W('cooking.js', '_handleEatRequest', 2, 'new_bag', NEW_BAG),
+  W('cooking.js', '_handleFiremakingRequest', 1, 'new_bag', NEW_BAG),
+  W('cooking.js', '_handleDrinkRequest', 1, 'new_bag', NEW_BAG),
+  W('cooking.js', '_handleCookRecipe', 1, 'new_bag', NEW_BAG),
+  W('cooking.js', '_applyShopItem', 1, 'new_bag', NEW_BAG),
+  W('cooking.js', '_handleCookRequest', 1, 'new_bag', NEW_BAG),
+  W('devtools.js', '_devKit', 1, 'new_bag', NEW_BAG),
+  W('devtools.js', '_devTrapping', 1, 'new_bag', NEW_BAG),
+  W('dungeonreward.js', '_dungeonReward', 1, 'new_bag', NEW_BAG),
+  W('eventcapes.js', '_claimCapeTicket', 1, 'new_bag', NEW_BAG),
+  W('eventcapes.js', '_handleCapeRedeem', 1, 'new_bag', NEW_BAG),
+  W('farm.js', '_farmPs', 1, 'new_bag', NEW_BAG),
+  W('fishlog.js', '_fishCatch', 1, 'new_bag', NEW_BAG),
+  W('fishlog.js', '_fishDev', 1, 'new_bag', NEW_BAG),
+  W('gathering.js', '_handleNodeStrike', 1, 'new_bag', NEW_BAG),
+  W('gear.js', '_handleForgeWeapon', 1, 'new_bag', NEW_BAG),
+  W('gems.js', 'bagOf', 1, 'new_bag', NEW_BAG),
+  W('hardenedwood.js', '_handleMakeHardenedWood', 1, 'new_bag', NEW_BAG),
+  W('hardening.js', '_handleHardenWeapon', 1, 'new_bag', NEW_BAG),
+  W('inbox.js', '_applyCreditToPs', 1, 'new_bag', NEW_BAG),
+  W('index.js', '_handleLootPickup', 4, 'new_bag', NEW_BAG),
+  W('quests.js', '_grantQuestItem', 1, 'new_bag', NEW_BAG),
+  W('salvage.js', '_salvageWho', 1, 'new_bag', NEW_BAG),
+  W('shop.js', '_shopSell', 1, 'new_bag', NEW_BAG),
+  W('shop.js', '_shopBuy', 3, 'new_bag', NEW_BAG),
+  W('trapping.js', '_handleMakeTraps', 1, 'new_bag', NEW_BAG),
+  W('join.js', '_handleJoin', 2, ['join_load', 'join_first'], 'the join loads the stored character\'s bag, or a first connect\'s, capped (trapping.js _trapJoinCap)'),
+  W('index.js', '_handlePlayerDeath', 1, 'death_wipe', 'the death wipe: the bag made what the dead keep (the tools; nothing in No man\'s land), the rest to the pile'),
+  W('index.js', '_tickPlayerRespawn', 1, 'respawn_wipe', 'the respawn wipe: the same, again, five seconds on'),
 ];
+const raw = Object.create(null);
+for (const f of files) raw[f] = readFileSync(new URL(f, dir), 'utf8');
 {
-  /* a name that holds the bag: `const inv = ps.inventory`, `= ...inventory : null`, `= bagOf(...)` */
-  const ALIAS = /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*([^;\n]*)/g;
-  const found = [];
-  const seen = new Set();
-  for (const f of files) {
-    if (f === 'bag.js') continue;
-    const s = code[f];
-    const names = new Set();
-    for (const m of s.matchAll(ALIAS)) if (/\.inventory\b(?!\s*\[)|\bbagOf\(/.test(m[2]) && !/Object\.(?:keys|entries|values)|JSON|[\w$]\(\s*[\w$.]*\.inventory\s*\)/.test(m[2])) names.add(m[1]);   /* not a copy made from it (index.js `keep = this._keepGatherTools(ps.inventory)`) */
-    const holders = ['[\\w$.]*\\.inventory', ...[...names].map((n) => '\\b' + n.replace(/\$/g, '\\$'))];
-    const H = '(?:' + holders.join('|') + ')';
-    const COUNT_WRITE = new RegExp(H + '\\s*(?:\\[[^\\]\\n]*\\]|\\.[A-Za-z_$][\\w$]*)\\s*(?:[-+*/%]?=(?!=)|\\+\\+|--)|delete\\s+' + H + '\\s*[\\[.]|(?:\\+\\+|--)\\s*' + H + '\\s*[\\[.]', 'g');
-    for (const m of s.matchAll(COUNT_WRITE)) found.push(f + ':' + lineOf(s, m.index) + ' ' + lineAt(s, m.index).trim().slice(0, 100));
-    /* whole-bag assigns: only those listed */
-    for (const m of s.matchAll(/\.inventory\s*=(?!=)/g)) {
-      const line = lineAt(s, m.index);
-      const ok = WHOLE_BAG.find((w) => (w.file === '*' || w.file === f) && w.re.test(line));
-      if (ok) { seen.add(ok); continue; }
-      found.push(f + ':' + lineOf(s, m.index) + ' (whole bag) ' + line.trim().slice(0, 100));
-    }
-  }
-  check('2. no bag count is written in server/src but through the bag door (bag.js)', found.length === 0, found);
-  check('2. every WHOLE_BAG entry still exists (a stale one is deleted)', seen.size === WHOLE_BAG.length,
-    WHOLE_BAG.filter((w) => !seen.has(w)).map((w) => w.file + ' ' + w.re));
+  /* a write of a count (through any alias: `const inv = ps.inventory`,
+     `const { inventory } = ps`, `bagOf(ps)`, a helper handed the bag) or of
+     the whole bag; only the whole-bag puts listed above are not the door's */
+  /* v2.3.6446 (sitting 59: a stash handed to a function of ANOTHER file
+     stayed green; the bag the same).  THE ALLOW LIST (writesOf
+     opts.handout): the bag appears outside bag.js only in a form the scan
+     knows -- a read of a count (a count is a number: it goes anywhere), a
+     test, a copy (`{ ...inv }`, `Object.keys`), a name it follows, an
+     argument of the door's own functions, of a pure global or of a function
+     of the same file; the bag itself handed to a function of another file,
+     returned, or put into an object written out is a write the scan cannot
+     follow, RED unless a row of HANDED_OUT (it only falls). */
+  const BAG_DOORS = ['bagEconOwn', 'bagEconPending', 'wholeCount', 'bagCount', 'bagOneSum', 'bagAfter', 'bagGive', 'bagTake', 'bagSet'];
+  const O = (file, fn, n, why) => ({ file, fn, field: 'inventory', out: true, n, why });
+  const HANDED_OUT = [
+    O('gems.js', 'bagOf', 1, 'the gems\' maker of the bag: it hands the bag back, and the scan follows every call of it (makers: bagOf)'),
+    O('index.js', '_wipeInventoryOnDeath', 1, 'the death wipe asks which gathering tools the bag holds (gathering.js _keepGatherTools reads, and hands back a new bag)'),
+    O('persistence.js', '_saveRpg', 1, 'the save: the bag put into the stored record'),
+    O('persistence.js', '_sendPlayerState', 1, 'the echo: the bag put into the player\'s message'),
+  ];
+  const r = doorWrites(raw, { skip: ['bag.js'], containers: ['inventory'], makers: { bagOf: 'inventory' }, handout: { doors: BAG_DOORS, objects: [] }, listed: [...WHOLE_BAG, ...HANDED_OUT] });
+  const counts = r.found.filter((w) => w.inside);
+  const whole = r.found.filter((w) => !w.inside);
+  check('2. no bag count is written in server/src but through the bag door (bag.js), however it is spelled', counts.length === 0, counts.map(where));
+  check('2. ...and the whole bag is put only where WHOLE_BAG lists', whole.length === 0, whole.map(where));
+  check('2. every WHOLE_BAG entry still holds its count of writes (a stale one is deleted, a second spelling is one too many)', r.stale.length === 0, r.stale);
   /* the scan sees what it must: an alias write, a dot write, a delete */
-  const probe = (src) => { const s = strip(src); const H = '(?:[\\w$.]*\\.inventory|\\binv)'; return new RegExp(H + '\\s*(?:\\[[^\\]\\n]*\\]|\\.[A-Za-z_$][\\w$]*)\\s*(?:[-+*/%]?=(?!=)|\\+\\+|--)|delete\\s+' + H + '\\s*[\\[.]').test(s); };
-  check('2. the scan catches `inv[k] = 1`, `ps.inventory.x += 1`, `delete ps.inventory[k]`, `inv[k]--`',
-    probe('inv[k] = 1') && probe('ps.inventory.x += 1') && probe('delete ps.inventory[k]') && probe('inv[k]--') && !probe('const a = inv[k] === 1') && !probe('if (ps.inventory[k] <= 0) x()'));
+  const probe = (src) => writesOf('function f(ps, inv0, k) {\n const inv = ps.inventory;\n' + src + '\n}', { containers: ['inventory'] }).length > 0;
+  check('2. the scan catches `inv[k] = 1`, `ps.inventory.x += 1`, `delete ps.inventory[k]`, `inv[k]--`, `inv[k] ||= 1`, `Object.assign(inv, {})`',
+    probe('inv[k] = 1') && probe('ps.inventory.x += 1') && probe('delete ps.inventory[k]') && probe('inv[k]--') && probe('inv[k] ||= 1') && probe('Object.assign(inv, { a: 1 })')
+    && !probe('const a = inv[k] === 1') && !probe('if (ps.inventory[k] <= 0) x()'));
+  /* v2.3.6446 (sitting 59): THE ALLOW LIST, planted */
+  const outs = (src) => writesOf('function f(ps, inv0, k) {\n const inv = ps.inventory;\n' + src + '\n}', { containers: ['inventory'], handout: { doors: BAG_DOORS, objects: [] } }).filter((w) => w.out).length;
+  check('2. ALLOW LIST: the bag handed to a function of another file, returned, put into an object or a list written out, a callback, is red',
+    outs('fillUp(ps.inventory)') && outs('this._topUp(inv, k)') && outs('return inv') && outs('send({ bag: ps.inventory })') && outs('keep([inv])') && outs('ship(...[inv])'));
+  check('2. ...and the allowed forms are not: a count anywhere, a copy, a test, the door\'s calls, a pure global',
+    !outs('log(inv[k], ps.inventory.wood)') && !outs('send({ bag: { ...ps.inventory } })') && !outs('if (!inv || typeof inv !== \'object\') return') && !outs('bagGive(inv, k, 1, \'loot\')')
+    && !outs('const n = Object.keys(inv).length + JSON.stringify(ps.inventory).length') && !outs('for (const key in inv) use(inv[key])') && !outs('Object.values(inv).forEach(bump)'));
 }
 
 /* ── 3. ONE ROW, ONE PLACE ───────────────────────────────────────────────── */
-/* Every bagGive / bagTake / bagSet call, its arguments split at the top level
-   (strings skipped); the road is the 4th. */
-function callsIn(s) {
-  const out = [];
-  for (const m of s.matchAll(/\bbag(Give|Take|Set)\(/g)) {
-    if (/(?:function|\.)\s*$/.test(s.slice(Math.max(0, m.index - 10), m.index))) continue;
-    let i = m.index + m[0].length, depth = 1, q = null, start = i;
-    const args = [];
-    for (; i < s.length && depth > 0; i++) {
-      const ch = s[i];
-      if (q) { if (ch === '\\') i++; else if (ch === q) q = null; continue; }
-      if (ch === '\'' || ch === '"' || ch === '`') q = ch;
-      else if (ch === '(' || ch === '[' || ch === '{') depth++;
-      else if (ch === ')' || ch === ']' || ch === '}') { depth--; if (depth === 0) args.push(s.slice(start, i).trim()); }
-      else if (ch === ',' && depth === 1) { args.push(s.slice(start, i).trim()); start = i + 1; }
-    }
-    const lit = /^'([A-Za-z0-9_]+)'$/.exec(args[3] || '');
-    out.push({ verb: m[1].toLowerCase(), road: lit ? lit[1] : null, nargs: args.length, line: lineOf(s, m.index) });
-  }
-  return out;
-}
+/* Every bagGive / bagTake / bagSet call, by any receiver (v2.3.6441: read
+   off the syntax tree); the road is the 4th argument, the cap the 5th. */
 {
+  const VERB_OF = { bagGive: 'give', bagTake: 'take', bagSet: 'set' };
+  const { calls, odd } = doorCalls(raw, { skip: ['bag.js'], names: Object.keys(VERB_OF), road: (args) => args[3] || null });
+  check('3. the bag door is called plainly, by name (no bind, .call, apply or a name made of it)', odd.length === 0, odd.map((o) => where(o) + ' (' + o.how + ')'));
   const byRoad = Object.create(null);
   const bad = [];
-  for (const f of files) {
-    if (f === 'bag.js') continue;
-    for (const c of callsIn(code[f])) {
-      const where = f + ':' + c.line;
-      if (!c.road) { bad.push(where + ' names no road as a plain string (4th argument)'); continue; }
-      if (!own(BAG_ROADS, c.road)) { bad.push(where + ' names "' + c.road + '", which BAG_ROADS has not got'); continue; }
-      const row = BAG_ROADS[c.road];
-      if (row.dir !== c.verb) bad.push(where + ' ' + c.road + ' is a ' + row.dir + ', called as a ' + c.verb);
-      if (row.at.split(' ')[0] !== f) bad.push(where + ' ' + c.road + '\'s row says it is in ' + row.at.split(' ')[0]);
-      if (row.cap !== (c.nargs === 5)) bad.push(where + ' ' + c.road + (row.cap ? ' needs its cap (5th argument)' : ' passes a cap its row has not got'));
-      (byRoad[c.road] = byRoad[c.road] || []).push(where);
-    }
+  for (const c of calls) {
+    const where1 = c.file + ':' + c.line;
+    if (!c.road || !/^[A-Za-z0-9_]+$/.test(c.road)) { bad.push(where1 + ' names no road as a plain string (4th argument)'); continue; }
+    if (!own(BAG_ROADS, c.road)) { bad.push(where1 + ' names "' + c.road + '", which BAG_ROADS has not got'); continue; }
+    const row = BAG_ROADS[c.road];
+    if (row.dir !== VERB_OF[c.name]) bad.push(where1 + ' ' + c.road + ' is a ' + row.dir + ', called as a ' + VERB_OF[c.name]);
+    if (row.at.split(' ')[0] !== c.file) bad.push(where1 + ' ' + c.road + '\'s row says it is in ' + row.at.split(' ')[0]);
+    if (row.cap !== (c.args.length === 5)) bad.push(where1 + ' ' + c.road + (row.cap ? ' needs its cap (5th argument)' : ' passes a cap its row has not got'));
+    (byRoad[c.road] = byRoad[c.road] || []).push(where1);
   }
   check('3. every call names a road the table has, with its verb, from its row\'s file', bad.length === 0, bad);
   const none = Object.keys(BAG_ROADS).filter((r) => !byRoad[r]);
   const twice = Object.keys(byRoad).filter((r) => byRoad[r].length > 1).map((r) => r + ': ' + byRoad[r].join(', '));
   check('3. every road has a caller (a row nobody calls is deleted with its feature)', none.length === 0, none);
-  check('3. no road has two callers (a second place is a second row)', twice.length === 0, twice);
+  check('3. no road has two callers, by any receiver (a second place is a second row)', twice.length === 0, twice);
   check('3. at v2.3.4810: one road for each of the places that wrote a bag count by hand before the door',
     Object.keys(BAG_ROADS).length >= N_ROADS_4810, Object.keys(BAG_ROADS).length);
 }
@@ -444,8 +482,10 @@ setBagOneSum(true);
 {
   /* edge 4: the whole-bag assigns -- not roads, but classed */
   const rows = Object.keys(BAG_WHOLE);
-  const named = WHOLE_BAG.map((w) => w.row);
-  check('8. every WHOLE_BAG entry names a row of BAG_WHOLE, and every row is named once', named.every((r) => rows.includes(r)) && rows.every((r) => named.filter((x) => x === r).length === 1), { rows, named });
+  /* v2.3.6441: a row's places are named by file and function now, so the new
+     bag's row is named by each of its files */
+  const named = WHOLE_BAG.flatMap((w) => [].concat(w.row));
+  check('8. every WHOLE_BAG entry names a row of BAG_WHOLE, and every row is named', named.every((r) => rows.includes(r)) && rows.every((r) => named.includes(r)), { rows, named });
   const bad = Object.entries(BAG_WHOLE).filter(([, w]) => w.class !== null && classFaults({ x: w }, BAG_ROADS).length).map(([n]) => n);
   check('8. ...each is null (holds nothing new) or classed as a road is', bad.length === 0 && Object.values(BAG_WHOLE).every((w) => w.class === null || CLASSES.includes(w.class)), bad);
   check('8. ...the death\'s wipe moves the bag to the pile on the ground (death_pile:)', BAG_WHOLE.death_wipe.class === 'escrow' && BAG_WHOLE.death_wipe.other === 'death_pile:' && ESCROW_PLACES.includes('death_pile:'));
@@ -501,6 +541,101 @@ setBagOneSum(true);
   check('9. a replaced bag: its record is learned again at the next save (the count waits beside it)', !pair(r2, 'log_pine') && bagEconPending(r2.inventory).log_pine.m === 2);
   bagEconOwn(r2.inventory, r2);
   check('9. ...and is folded in there', JSON.stringify(pair(r2, 'log_pine')) === '[2,0]');
+}
+
+/* ── 10. EACH ROAD BOOKED WHAT IT MOVED (v2.3.6442, card DG PR 3) ──────────
+   §9 holds a few roads by hand; a road no case names could book one less
+   than it gives and stay green (the gold door's shape-books.md plant 1, the
+   same here).  So EVERY road in BAG_ROADS runs, by its own verb, on a blank
+   bag and on bags carrying a count (a fraction too), for several amounts,
+   with step 2's sum on and off, in a bag its record has named and in one
+   whose count waits for its save (then folded in, whole): the record's `_econ.i[key]` (or what
+   waits) and the day's book (the room's hook, setBagBook) moved exactly
+   what the bag's count moved -- a mint its rise, a burn its fall, a set its
+   signed difference by its class -- and a move or an escrow nothing.  The
+   mail road books its CREDIT's class, for every word of MAIL_CLASSES.  With
+   `econ: false` every road moves the same bag and books nothing.
+   BREAK PROOF: `econBag(bag, k, row.class, road === 'cook_recipe' ? d - 1 :
+   d)` in bagGive -> FAIL 10. */
+{
+  const K = 'ore_copper';
+  const day = Object.create(null);
+  setBagBook((cls, k, amt) => { const p = day[k] || (day[k] = { mint: 0, burn: 0 }); p[cls] += amt; });
+  const STARTS = [() => ({}), () => ({ [K]: 9 }), () => ({ [K]: 2.5, log_pine: 1 })];
+  const AMOUNTS = [1, 4, 500];
+  const call = (road, bag, n, credit) => {
+    const row = BAG_ROADS[road];
+    if (row.dir === 'give') return bagGive(bag, K, n, road, row.cap ? 12 : undefined, credit);
+    if (row.dir === 'take') return bagTake(bag, K, n, road);
+    return bagSet(bag, K, bagCount(bag, K) + (n % 2 ? -n : n), road);   /* a set both ways: up and down */
+  };
+  const pairOf = (into) => (into && into[K] ? { m: into[K].m, b: into[K].b } : { m: 0, b: 0 });
+  const bad = [];
+  let runs = 0;
+  const moved = new Set();
+  const run1 = (road, mk, n, oneSum, named, credit, want) => {
+    setBagOneSum(oneSum);
+    for (const k of Object.keys(day)) delete day[k];
+    const bag = mk();
+    const rec = { inventory: bag };
+    if (named === 'carried') rec._econ = { v: ECON_V, g: { m: 0, b: 0 }, i: Object.assign(Object.create(null), { [K]: { m: 5, b: 1 } }) };
+    if (named) bagEconOwn(bag, rec);
+    const read = () => (named ? pairOf(rec._econ && rec._econ.i) : pairOf(bagEconPending(bag)));
+    const before = bagCount(bag, K), e0 = read();
+    call(road, bag, n, credit);
+    const d = bagCount(bag, K) - before, e1 = read();
+    const got = { m: e1.m - e0.m, b: e1.b - e0.b };
+    const bk = day[K] || { mint: 0, burn: 0 };
+    const exp = want ? want(d) : { m: 0, b: 0 };
+    runs++; if (d !== 0) moved.add(road);
+    if (got.m !== exp.m || got.b !== exp.b || bk.mint !== exp.m || bk.burn !== exp.b) {
+      bad.push({ road, start: JSON.stringify(mk()), n, oneSum, named, opId: credit && credit.opId, count: d, rec: got, day: bk, want: exp });
+    }
+    if (!named) {   /* what waited is folded into the record at its save, whole */
+      const r2 = { inventory: bag };
+      bagEconOwn(bag, r2);
+      const f = pairOf(r2._econ && r2._econ.i);
+      if (f.m !== e1.m || f.b !== e1.b || Object.keys(bagEconPending(bag)).length) bad.push({ road, n, oneSum, fold: f, waited: e1 });
+    }
+  };
+  const byClass = (road) => {
+    const row = BAG_ROADS[road];
+    if (row.class === 'mint') return (d) => ({ m: d, b: 0 });
+    if (row.class === 'burn') return (d) => ({ m: 0, b: -d });
+    return null;   /* a move, an escrow: the world's total did not change */
+  };
+  for (const road of Object.keys(BAG_ROADS)) {
+    for (const mk of STARTS) for (const n of AMOUNTS) for (const oneSum of [true, false]) for (const named of ['blank', 'carried', null]) {
+      run1(road, mk, n, oneSum, named, undefined, byClass(road));
+    }
+  }
+  /* the mail: what landed books its credit's class (gold.js MAIL_CLASSES) on top of the road's own */
+  for (const [word, row] of Object.entries(MAIL_CLASSES)) {
+    for (const mk of STARTS) for (const n of AMOUNTS) {
+      const house = Math.floor(n / 3);
+      const want = (d) => ({ m: row.class === 'mint' ? d : (row.house ? Math.min(d, house) : 0), b: 0 });
+      run1('mail_item', mk, n, true, 'blank', { opId: word + ':dg6442:x', payload: { invKey: K, count: n, house } }, want);
+    }
+  }
+  setBagOneSum(true);
+  check(`10. every road (${Object.keys(BAG_ROADS).length}) and every mail word (${Object.keys(MAIL_CLASSES).length}) booked exactly what its count moved: a mint its rise, a burn its fall, a move or an escrow nothing (record, what waits, the day's book; ${runs} runs)`,
+    bad.length === 0 && runs >= Object.keys(BAG_ROADS).length * 54, bad.slice(0, 6));
+  const still = Object.keys(BAG_ROADS).filter((r) => !moved.has(r));
+  check('10. ...and every road moved its count in some run (a road that moved nothing proves nothing)', still.length === 0, still);
+  /* `econ: false`: the same bag, nothing booked */
+  const off = [];
+  for (const road of Object.keys(BAG_ROADS)) {
+    for (const k of Object.keys(day)) delete day[k];
+    setBagEcon(true);
+    const a = { [K]: 9 }; call(road, a, 4);
+    for (const k of Object.keys(day)) delete day[k];
+    setBagEcon(false);
+    const b = { [K]: 9 }; const rb = { inventory: b }; bagEconOwn(b, rb); call(road, b, 4);
+    if (JSON.stringify(a) !== JSON.stringify(b) || rb._econ || Object.keys(day).length) off.push({ road, on: a, off: b, econ: rb._econ, day: { ...day } });
+  }
+  setBagEcon(true);
+  setBagBook(null);
+  check('10. with `econ: false` every road moves the same bag and books nothing', off.length === 0, off.slice(0, 5));
 }
 
 /* ══════════ R. THE RUNNING ROOM (v2.3.6440, card DG PR 1) ══════════

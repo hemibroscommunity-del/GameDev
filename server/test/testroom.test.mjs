@@ -17,8 +17,12 @@
 import vm from 'node:vm';
 import { join as joinPath } from 'node:path';
 import { SRC_PATH } from './src-walk.mjs';
-import { makeStorage, openRoom, roomQueue, seededClock, join, fakeWs, settle, DISTURBANCES, disturbance, schedule, playTour, roomGuard } from './testroom.mjs';
+import { makeStorage, openRoom, roomQueue, seededClock, join, fakeWs, settle, DISTURBANCES, disturbance, schedule, playTour, roomGuard, GUARDED } from './testroom.mjs';
 import { BANK } from '../src/bank.js';
+import { STASH_FIELDS } from '../src/stash.js';   /* v2.3.6446: §7b pins GUARDED to the doors' own lists */
+import { QUEST_FIELDS, QUEST_KEPT } from '../src/queststate.js';
+import { XP_FIELDS } from '../src/xp.js';
+import { POINT_FIELDS } from '../src/skillpoints.js';
 
 let failures = 0, passes = 0;
 function check(name, cond, detail) {
@@ -160,6 +164,43 @@ clock.restore();
     try { fn(t.ps); } catch (e) { threw = /testroom/.test(String(e && e.message)); }
     check('7. refused and recorded: ' + name, threw && roomGuard.refusals().length === before + 1, roomGuard.refusals().slice(before));
   }
+  roomGuard.clear();
+
+  /* ── 7b. EVERY ROW, PINNED TO THE DOORS' OWN LISTS (v2.3.6446, sitting
+     58's Found, mended at sitting 59): §7 tried four fields, so a row
+     dropped from GUARDED (testroom.mjs) went unseen -- the room then let
+     that field be written from anywhere and every suite stayed green.  Now
+     (a) every field a door's own module lists (stash.js STASH_FIELDS,
+     queststate.js QUEST_FIELDS and QUEST_KEPT, xp.js XP_FIELDS,
+     skillpoints.js POINT_FIELDS by where it lives, and the purse's and
+     life's own fields) is a GUARDED row, so a row dropped or a field added
+     to a door without its row is RED; and (b) EVERY GUARDED row, and every
+     keyed row under prog3, is refused when written from a worker file
+     with no door on its stack. */
+  const P3 = GUARDED.prog3 && GUARDED.prog3.keys;
+  const want = [
+    ...STASH_FIELDS, ...QUEST_FIELDS, ...QUEST_KEPT, ...XP_FIELDS, 'coins', 'hp', 'life', 'dying', 'dead',
+    ...Object.entries(POINT_FIELDS).filter(([, f]) => f.on === 'ps').map(([k]) => k),
+  ];
+  const missing = want.filter((k) => !Object.prototype.hasOwnProperty.call(GUARDED, k));
+  check('7b. every field a door lists is a GUARDED row (' + want.length + ')', missing.length === 0, missing);
+  const p3want = Object.entries(POINT_FIELDS).filter(([, f]) => f.on === 'p3').map(([k]) => k);
+  const p3missing = p3want.filter((k) => !P3 || !Object.prototype.hasOwnProperty.call(P3, k));
+  check('7b. every prog3 field skillpoints.js lists is a GUARDED key under prog3 (' + p3want.length + ')', p3missing.length === 0, p3missing);
+  const leak = [];
+  const probe = fromSrc('const [k, v, under] = arguments[1]; if (under) ps[under][k] = v; else ps[k] = v;');
+  const tryOne = (k, under) => {
+    const spec = under ? P3[k] : GUARDED[k];
+    const v = spec.keys || spec.each || spec.whole || spec.fresh ? { zz_probe: 1 } : 7;   /* a container's put, or a leaf's */
+    const before = roomGuard.refusals().length;
+    let threw = false;
+    try { probe(t.ps, [k, v, under]); } catch (e) { threw = /testroom/.test(String(e && e.message)); }
+    if (!(threw && roomGuard.refusals().length === before + 1)) leak.push((under ? under + '.' : '') + k);
+  };
+  for (const k of Object.keys(GUARDED)) tryOne(k, null);
+  if (P3 && t.ps.prog3 && typeof t.ps.prog3 === 'object') for (const k of Object.keys(P3)) tryOne(k, 'prog3');
+  check('7b. every GUARDED row is refused from a worker file (' + Object.keys(GUARDED).length + ' rows, ' + (P3 ? Object.keys(P3).length : 0) + ' under prog3)', leak.length === 0, leak);
+  check('7b. the tour\'s record holds prog3 (the keyed rows were tried)', !!(t.ps.prog3 && typeof t.ps.prog3 === 'object'));
   roomGuard.clear();
 }
 

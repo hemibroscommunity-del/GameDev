@@ -12,9 +12,10 @@
  *   2. Every ask of the reader in src/ names a row of the switch table on the
  *      page's side, and `sw` only a row with a form (`swValue` reads a
  *      value's): an ask that can never be thrown is a mistake.
- *   3. THE OUTSIDE READS (a census, only falls; the gatekeeper's): the reads
- *      of `location.search` in src/ outside the reader, code only (comments
- *      blanked).  Card T's PRs 7 on lower it as reads move in.
+ *   3. THE OUTSIDE READS (a census, only falls; the gatekeeper's): every
+ *      appearance of the page's address in src/ outside the reader that is
+ *      not an allowed form, by file (v2.3.6526).  Card T's PRs 7 on lowered
+ *      it as reads moved in.
  *   4. The page's reader follows its address: a page may change its own
  *      (history.replaceState), and the reader answers for it as it is now.
  *   5. pageAddress() (v2.3.5311) is the address as written, '' with no
@@ -36,6 +37,37 @@
  *                                           reader true)
  *   - pageAddress() made to lower-case the address (2026-11-17)
  *                                        -> FAIL 5 (?tod=dusk&TOD=x)
+ *   v2.3.6520 (card WL; the shape review's plant 6), tried 2026-11-23, each
+ *   in src/game/farmWalk.js tickFarmWalk:
+ *   - `if (new URL(window.location.href).searchParams.get('farmfast') === '1') return;`
+ *                                        -> FAIL 3 (the text count passed it)
+ *   - `const _q = new URLSearchParams(document.location.search); if (_q.has('farmfast')) return;`
+ *                                        -> FAIL 3
+ *   - `if (/farmfast/.test(location.href)) return;`  -> FAIL 3
+ *   - `if (String(location).includes('farmfast')) return;` -> FAIL 3
+ *   v2.3.6520, sitting 58's hold (the guard knew spellings; it now FOLLOWS
+ *   the location and fails on a form it cannot follow: addressScan), tried
+ *   2026-11-24, each in tickFarmWalk:
+ *   - `new URL(window.location).searchParams.get('farmfast')`  -> FAIL 3
+ *   - `const _loc = window.location; _loc.search.includes(..)` -> FAIL 3
+ *   - `const { search } = window.location; search.includes(..)` -> FAIL 3
+ *   - `const { location: _l } = window; _l.href...`            -> FAIL 3
+ *   - `window['location'].search`, `window.location?.search`   -> FAIL 3
+ *   - `readIt(location)`, `[window.location][0]`,
+ *     `String.bind(null, location)`, `let _m = location; _m = null`
+ *                                        -> FAIL 3b (a form it cannot follow)
+ *   - `location.pathname === '/x'`        -> green (no switch is there)
+ *   v2.3.6526 (sitting 59's hold; the class, not the lines): an ALLOW list.
+ *   The few forms the address may take outside the reader are named
+ *   (addressScan's header); every other appearance, a form it cannot
+ *   follow included, is a row of OUTSIDE (by file, only falls: 19 rows, 37
+ *   forms).  Check 3c runs the plants itself: sitting 59's four
+ *   (`new URL(window.location.href).search`, `.href`, `'' + new URL(..)`,
+ *   `window[_k]`), card WL's own (`{ w: window }`, a computed destructure,
+ *   performance's navigation entry, `document.defaultView[..]`,
+ *   `document.baseURI`, `Reflect.get(_g, 'loc' + 'ation')`, an alias of the
+ *   document, `ownerDocument.URL`, `navigation`) and 57 and 58's: all rows.
+ *   `document` is followed now (an alias, a computed key, handed on).
  *
  * Run from the repository's root: node tools/guards/switch-reader.test.mjs
  * (cd server && npm test runs it with every other guard and suite).
@@ -45,16 +77,300 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { SWITCHES } from './lib/switches.mjs';
 import { blankComments, pageFiles, pageForm, READER_FILE, READER_IMPORT, ROOT } from './lib/switchScan.mjs';
-import { filesOf } from './lib/filesOf.mjs';   /* v2.3.5742: a big file found by its system (tests-by-system 2); v2.3.5343: and the two renderers (inSystem below) */
+import { filesOf } from './lib/filesOf.mjs';
+import { babel } from './lib/renderTables.mjs';   /* v2.3.6520: @babel, the root's or server/'s */
 
-/* the outside reads: only falls */
-const OUTSIDE_LINE = 17;   /* its first count, v2.3.5306: 228 with sitting 17's `?slimewalk` (card P's slimeSprites.js, P still running: not moved), 221 after the first seven reads moved; 212 after v2.3.5309's nine; 201 after v2.3.5310's eleven; 189 after v2.3.5232's twelve (card O PR 12: the lanes' off-ramps); 172 with v2.3.5311's pageAddress() sites (seventeen) ; 161 after v2.3.5313's eleven ; 155 after v2.3.5314's six ; 144 after v2.3.5315's eleven ; 116 after v2.3.5316's twenty-eight ; 71 after v2.3.5317's forty-five (render, on pageAddress()) ; 65 after v2.3.5740's six (card T2: the game's) ; 59 after v2.3.5741's six (card T2: the screens, the townsfolk's pictures) ; 56 after v2.3.5742's three (card T2: the connection's) ; 34 after v2.3.5343's twenty-two (card M chain B: the two renderers; the gatekeeper's sitting 42) ; 33 after v2.3.5743's one (card T2: the kill's XP fly, on pageAddress(); census part 1 closed) ; 17 after v2.3.5342's sixteen (card M chain A: BroTown.jsx; the gatekeeper's sitting 46, v2.3.6260) */
+/* ═══ v2.3.6526: THE PAGE'S ADDRESS, AN ALLOW LIST (card WL; sitting 59's hold) ═══
+   Sittings 57 to 59 each planted a spelling the guard did not know, and
+   each mend learned the spellings: `new URL(window.location.href)
+   .search.includes(..)` passed as "a URL that only rewrites the address",
+   `'' + new URL(..)` as "handed whole", `window[_k]` with `_k =
+   'location'` was never seen at all.  So the guard is turned around: it
+   names the FEW FORMS in which the page's address may appear outside the
+   reader, and every other appearance is a row of OUTSIDE (by file, it only
+   falls), the forms it cannot follow included.
+
+   Where the address can be reached (each one a SOURCE):
+     - `location`, the global name (unless the file binds its own);
+     - any `X.location` / `X['location']` / `X[`location`]`, whatever X
+       (`window.`, `document.`, `self.`, `this.`, an alias, a parameter);
+     - `.URL`, `.documentURI`, `.baseURI` of anything (`document.URL`,
+       `el.ownerDocument.URL`, `img.baseURI`), except the constructor
+       `window.URL` / `self.URL` / `globalThis.URL`;
+     - the global object or the document by a key that is not a literal
+       (`window[_k]`, `globalThis['loc' + 'ation']`, `document.defaultView[k]`)
+       or handed on whole (to a call, a spread, an array, a name assigned
+       again, ...): `window`, `self`, `globalThis`, `document`, `top`,
+       `parent`, `frames`, `opener` and `.defaultView` / `.ownerDocument`,
+       and a const name bound to one of them (followed to each use);
+     - the Navigation API (`navigation`), performance's navigation entry
+       (`getEntries()`, `getEntriesByName(..)`, `getEntriesByType(..)` but
+       for a literal other than 'navigation'), `eval`, `new Function`;
+     - a file the parser cannot read.
+   The ALLOWED forms (no row):
+     - inside the reader, src/game/switches.js;
+     - the location (or a const name bound to it, followed to each use)
+       as a PLACE TO GO: `location = ..`, `location.href = ..` (any part,
+       with `=`), `.assign(..)`, `.replace(..)`, `.reload()`;
+     - a part that holds no switch: `pathname`, `hash`, `host`,
+       `hostname`, `origin`, `port`, `protocol`, `ancestorOrigins` (read,
+       or destructured into a name);
+     - a TEST of being there: `typeof location`, `!location`, the left of
+       `&&`, the test of `?:` or `if`;
+     - a BASE under a literal path: `new URL('/x', location.href)` (the
+       path, not '', '?..' or '#..', replaces the base's search);
+     - the global object written to or asked its names:
+       `Object.assign(window, ..)`, `Object.defineProperty(window, ..)`,
+       `Object.keys(window)` (the values it then reads are judged where
+       they are read), `typeof`/`===`/`in`/`instanceof` against it.
+   Everything else (a read of `search` or `href`, the location to a URL or
+   made text, a computed key, a destructure of `search`, a rest, a name
+   assigned again, the location handed to a helper) is a row.  The old
+   "a URL that only rewrites the address" is no longer an allowed form:
+   those URLs are rows now, counted, and fall as they move to the reader. */
+const GLOBALS = new Set(['window', 'self', 'globalThis', 'document', 'top', 'parent', 'frames', 'opener']);
+const MEMBER_GLOBALS = new Set(['window', 'globalThis', 'document', 'defaultView', 'ownerDocument']);
+const NO_SWITCH_PARTS = new Set(['pathname', 'hash', 'host', 'hostname', 'origin', 'port', 'protocol', 'ancestorOrigins']);
+const NAMES_ONLY = new Set(['assign', 'defineProperty', 'defineProperties', 'keys', 'getOwnPropertyNames']);
+const GOES = new Set(['assign', 'replace', 'reload']);
+const TEXT_KEYS = new Set(['URL', 'documentURI', 'baseURI']);
+const isMember = (n) => !!n && (n.type === 'MemberExpression' || n.type === 'OptionalMemberExpression');
+/* the key of a member, or null when it is computed from anything but a literal */
+const keyOf = (m) => {
+  if (!m.computed) return m.property.type === 'Identifier' ? m.property.name : null;
+  const p = m.property;
+  if (p.type === 'StringLiteral') return p.value;
+  if (p.type === 'TemplateLiteral' && p.expressions.length === 0) return p.quasis[0].value.cooked;
+  return null;
+};
+const propKey = (p) => {
+  if (!p.computed) return p.key.type === 'Identifier' ? p.key.name : (p.key.type === 'StringLiteral' ? p.key.value : null);
+  if (p.key.type === 'StringLiteral') return p.key.value;
+  if (p.key.type === 'TemplateLiteral' && p.key.expressions.length === 0) return p.key.quasis[0].value.cooked;
+  return null;
+};
+
+const _cache = new Map();
+/* the rows of one file's source: [{ line, how }], or null when no @babel loads */
+function addressScan(src, file) {
+  let B;
+  try { B = babel(); } catch { return null; }
+  const key = file + '\0' + src.length;
+  if (_cache.has(key)) return _cache.get(key);
+  const rows = [];
+  const row = (n, how) => rows.push({ line: n.loc ? n.loc.start.line : 0, how });
+  let ast;
+  try { ast = B.parse(src, { sourceType: 'module', plugins: ['jsx'], errorRecovery: true }); } catch (e) {
+    rows.push({ line: 0, how: 'the file does not parse (' + String(e.message).slice(0, 60) + ')' });
+    _cache.set(key, rows);
+    return rows;
+  }
+  if (ast.errors && ast.errors.length) rows.push({ line: (ast.errors[0].loc && ast.errors[0].loc.line) || 0, how: 'the file parses with errors: it cannot be followed' });
+  const seen = new Set();
+  /* is `path` (an expression) the global object, the document, or a name kept bound to one */
+  const globalish = (path, depth = 0) => {
+    const n = path.node;
+    if (!n || depth > 8) return false;
+    if (n.type === 'Identifier') {
+      if (GLOBALS.has(n.name) && !path.scope.hasBinding(n.name)) return true;
+      const b = path.scope.getBinding(n.name);
+      if (!b || !b.path.isVariableDeclarator() || !b.path.node.init) return false;
+      return globalish(b.path.get('init'), depth + 1);
+    }
+    if (isMember(n)) { const k = keyOf(n); return k !== null && (MEMBER_GLOBALS.has(k) || (GLOBALS.has(k) && globalish(path.get('object'), depth + 1))); }
+    if (n.type === 'ConditionalExpression') return globalish(path.get('consequent'), depth + 1) || globalish(path.get('alternate'), depth + 1);
+    if (n.type === 'LogicalExpression') return globalish(path.get('left'), depth + 1) || globalish(path.get('right'), depth + 1);
+    if (n.type === 'SequenceExpression') return globalish(path.get('expressions.' + (n.expressions.length - 1)), depth + 1);
+    if (n.type === 'ParenthesizedExpression' || n.type === 'TSAsExpression') return globalish(path.get('expression'), depth + 1);
+    return false;
+  };
+  /* the location tested for being there (never its value handed on) */
+  const onlyTested = (path) => {
+    let q = path;
+    if (q.parent.type === 'LogicalExpression' && q.parent.operator === '&&' && q.parent.left === q.node) return true;
+    while (q.parent.type === 'LogicalExpression') q = q.parentPath;
+    const p = q.parent;
+    return ((p.type === 'ConditionalExpression' || p.type === 'IfStatement') && p.test === q.node)
+      || (p.type === 'UnaryExpression' && (p.operator === '!' || p.operator === 'typeof'));
+  };
+  const destructure = (pat) => {
+    for (const p of pat.properties) {
+      if (p.type === 'RestElement') { row(p, 'the location destructured into a rest'); continue; }
+      const k = propKey(p);
+      if (k !== null && NO_SWITCH_PARTS.has(k) && p.value.type === 'Identifier') continue;
+      row(p, k === null ? 'the location destructured by a computed key' : `the location's ${k}, destructured`);
+    }
+  };
+  /* a first argument that replaces the base's search: a literal path (not '', '?..' or '#..') */
+  const fixedPath = (a) => {
+    const t = a && (a.type === 'StringLiteral' ? a.value : (a.type === 'TemplateLiteral' ? a.quasis[0].value.cooked : null));
+    return typeof t === 'string' && t.length > 0 && t[0] !== '?' && t[0] !== '#';
+  };
+  /* `path` is the page's location object: the ALLOWED forms; every other is a row */
+  const follow = (path) => {
+    const n = path.node;
+    if (seen.has(n)) return;
+    seen.add(n);
+    const p = path.parent;
+    if (p.type === 'AssignmentExpression' && p.left === n && p.operator === '=') return;          /* location = '..': a place to go */
+    if (isMember(p) && p.object === n) {
+      const k = keyOf(p);
+      const pp = path.parentPath.parent;
+      if (k !== null && NO_SWITCH_PARTS.has(k) && !(pp.type === 'AssignmentExpression' && pp.left === p && pp.operator !== '=')
+        && !(pp.type === 'CallExpression' && pp.callee === p)) return;                             /* location.pathname: no switch there */
+      if (k !== null && pp.type === 'AssignmentExpression' && pp.left === p && pp.operator === '=') return;   /* location.href = '..': a place to go */
+      if ((k === 'href' || k === 'origin') && pp.type === 'NewExpression' && pp.callee.type === 'Identifier' && pp.callee.name === 'URL'
+        && pp.arguments[1] === p && fixedPath(pp.arguments[0])) return;                             /* new URL('/x', location.href): a base */
+      if (k !== null && GOES.has(k) && (pp.type === 'CallExpression' || pp.type === 'OptionalCallExpression') && pp.callee === p) return; /* location.assign(..) */
+      row(p, k === null ? 'the location by a computed key' : `the location's ${k}`);
+      return;
+    }
+    if (p.type === 'VariableDeclarator' && p.init === n) {
+      if (p.id.type === 'Identifier') {
+        const b = path.parentPath.scope.getBinding(p.id.name);
+        if (!b || (b.constantViolations && b.constantViolations.length)) { row(n, `the location kept in ${p.id.name}, assigned again`); return; }
+        for (const r of b.referencePaths) follow(r);
+        return;
+      }
+      if (p.id.type === 'ObjectPattern') { destructure(p.id); return; }
+      row(n, 'the location bound to a pattern');
+      return;
+    }
+    if (onlyTested(path)) return;
+    if (p.type === 'NewExpression' && p.callee.type === 'Identifier' && p.callee.name === 'URL' && p.arguments[1] === n && fixedPath(p.arguments[0])) return;
+    row(n, `the location in a ${p.type}`);
+  };
+  B.traverse(ast, {
+    Identifier(path) {
+      const n = path.node;
+      if (!path.isReferencedIdentifier()) return;
+      if (n.name === 'location' && !path.scope.hasBinding('location')) follow(path);
+      else if (n.name === 'navigation' && !path.scope.hasBinding('navigation')) row(n, 'the Navigation API (navigation)');
+      else if ((n.name === 'eval') && !path.scope.hasBinding(n.name)) row(n, 'eval');
+      else if (GLOBALS.has(n.name) && !path.scope.hasBinding(n.name)) handed(path);
+    },
+    'MemberExpression|OptionalMemberExpression'(path) {
+      const n = path.node;
+      const k = keyOf(n);
+      if (k === 'location') { follow(path); return; }
+      if (k !== null && TEXT_KEYS.has(k)) {
+        /* document.URL / x.documentURI / x.baseURI: the address as text; window.URL is the constructor */
+        if (k === 'URL' && n.object.type === 'Identifier' && ['window', 'self', 'globalThis'].includes(n.object.name)) return;   /* the constructor */
+        const pp = path.parent;
+        if (pp.type === 'AssignmentExpression' && pp.left === n) return;
+        row(n, `the address (${k})`);
+        return;
+      }
+      if (k === null && globalish(path.get('object'))) row(n, 'the global object by a computed key');
+    },
+    ObjectPattern(path) {
+      for (const p of path.node.properties) {
+        if (p.type !== 'ObjectProperty') continue;
+        const k = propKey(p);
+        if (k === 'location') {
+          if (p.value.type === 'Identifier') {
+            const b = path.scope.getBinding(p.value.name);
+            if (!b || (b.constantViolations && b.constantViolations.length)) row(p, 'the location destructured, assigned again');
+            else for (const r of b.referencePaths) follow(r);
+          } else if (p.value.type === 'ObjectPattern') destructure(p.value);
+          else row(p, 'the location destructured into a pattern');
+        } else if (k !== null && TEXT_KEYS.has(k)) row(p, `the address (${k}, destructured)`);
+      }
+    },
+    CallExpression(path) {
+      /* performance's navigation entry names the address: getEntries(), getEntriesByType(not a literal
+         or 'navigation'), getEntriesByName(..) */
+      const c = path.node.callee, a = path.node.arguments[0];
+      const k = isMember(c) ? keyOf(c) : null;
+      if (k === 'getEntries' || k === 'getEntriesByName'
+        || (k === 'getEntriesByType' && !(a && a.type === 'StringLiteral' && a.value !== 'navigation'))) row(path.node, `the address (performance's ${k})`);
+    },
+    NewExpression(path) {
+      const c = path.node.callee;
+      if (c.type === 'Identifier' && c.name === 'Function' && !path.scope.hasBinding('Function')) row(path.node, 'new Function');
+    },
+  });
+  /* the global object or the document handed on whole (to a call, a spread, an array, an object, a
+     name that is not followed, ...): the guard cannot follow it */
+  function handed(path, name = path.node.name) {
+    const n = path.node, p = path.parent;
+    if (seen.has(n)) return;
+    seen.add(n);
+    if (isMember(p) && p.object === n) return;                         /* window.x: judged as a member */
+    if (p.type === 'VariableDeclarator' && p.init === n && p.id.type === 'Identifier') {
+      const b = path.parentPath.scope.getBinding(p.id.name);
+      if (b && !(b.constantViolations && b.constantViolations.length)) {
+        for (const r of b.referencePaths) handed(r, `${name} kept in ${p.id.name}`);
+        return;
+      }
+    }
+    if (p.type === 'VariableDeclarator' && p.init === n && p.id.type === 'ObjectPattern') {
+      for (const q of p.id.properties) if (q.type === 'RestElement' || propKey(q) === null) row(q, `the global object (${name}) destructured by a computed key or rest`);
+      return;
+    }
+    if (onlyTested(path)) return;
+    /* written to, or asked its names (no value of the global's comes out): Object.assign(window, ..),
+       Object.defineProperty(window, ..), Object.keys(window) */
+    if (p.type === 'CallExpression' && p.arguments[0] === n && isMember(p.callee) && p.callee.object.type === 'Identifier'
+      && p.callee.object.name === 'Object' && NAMES_ONLY.has(keyOf(p.callee))) return;
+    if (p.type === 'BinaryExpression' && (p.operator === '===' || p.operator === '!==' || p.operator === '==' || p.operator === '!=' || p.operator === 'in' || p.operator === 'instanceof')) return;
+    if (p.type === 'ConditionalExpression' || p.type === 'LogicalExpression') {
+      /* `typeof window !== 'undefined' ? window : globalThis` as a value: judged where it goes */
+      let q = path;
+      while (q.parent.type === 'ConditionalExpression' || q.parent.type === 'LogicalExpression') q = q.parentPath;
+      if (isMember(q.parent) && q.parent.object === q.node) return;
+      if (q.parent.type === 'VariableDeclarator' && q.parent.id.type === 'Identifier') {
+        const b = q.parentPath.scope.getBinding(q.parent.id.name);
+        if (b && !(b.constantViolations && b.constantViolations.length)) {
+          for (const r of b.referencePaths) handed(r, `${name} kept in ${q.parent.id.name}`);
+          return;
+        }
+      }
+    }
+    row(n, `the global object (${name}) in a ${p.type}`);
+  }
+  _cache.set(key, rows);
+  return rows;
+}
+   /* v2.3.5742: a big file found by its system (tests-by-system 2); v2.3.5343: and the two renderers (inSystem below) */
+
+/* the outside reads: only fall.  v2.3.6526: the count is by file, OUTSIDE below (after inSystem). */
 
 /* v2.3.5343: a moved read in a big file (the four lines' own: BroTown.jsx,
    the two renderers) names its file through its system, never its path
    (tests-by-system, step 5.2b): a name the map no longer gives is undefined,
    and check 1 fails loudly (its file asks nothing) */
 const inSystem = (system, name) => filesOf(system).find((f) => f.endsWith('/' + name));
+
+/* v2.3.6526 (sitting 59): every appearance of the address outside the reader that is not an
+   allowed form, by file (check 3).  It only falls: a file over its row, or a file not here, fails.
+   It starts with 19 rows holding 37 forms (the old line was 18 reads; the same code, now also
+   counting the URLs made from the address to rewrite it or as a base (9), the global object by a
+   computed key (5), the global object handed on whole (4) and an observer's getEntries() (1)).  The big files are named through their system
+   (tests-by-system 2).  The old line's history: its first count, v2.3.5306: 228 with sitting 17's `?slimewalk` (card P's slimeSprites.js, P still running: not moved), 221 after the first seven reads moved; 212 after v2.3.5309's nine; 201 after v2.3.5310's eleven; 189 after v2.3.5232's twelve (card O PR 12: the lanes' off-ramps); 172 with v2.3.5311's pageAddress() sites (seventeen) ; 161 after v2.3.5313's eleven ; 155 after v2.3.5314's six ; 144 after v2.3.5315's eleven ; 116 after v2.3.5316's twenty-eight ; 71 after v2.3.5317's forty-five (render, on pageAddress()) ; 65 after v2.3.5740's six (card T2: the game's) ; 59 after v2.3.5741's six (card T2: the screens, the townsfolk's pictures) ; 56 after v2.3.5742's three (card T2: the connection's) ; 34 after v2.3.5343's twenty-two (card M chain B: the two renderers; the gatekeeper's sitting 42) ; 33 after v2.3.5743's one (card T2: the kill's XP fly, on pageAddress(); census part 1 closed) ; 17 after v2.3.5342's sixteen (card M chain A: BroTown.jsx; the gatekeeper's sitting 46, v2.3.6260) 
+   v2.3.6520: 17 -> 18 by the tree (BroTown.jsx's tidy of `?create`); 3b's list of forms it could
+   not follow was 0 and is folded in here. */
+const OUTSIDE = Object.freeze(Object.assign(Object.create(null), {
+  [inSystem('data', 'gameDisplay.js')]: 8,           /* `/[?&]x\b/.test(location.search)`: eight switches read before the reader */
+  'src/data/soundFold.js': 1,
+  'src/debug/perfTracker.js': 1,           /* a long-task observer's `list.getEntries()` (no navigation there; not followed) */
+  'src/game/deskKeys.js': 1,               /* `typeof document !== 'undefined' ? document : null` handed on */
+  'src/game/manualCombat.js': 2,
+  'src/game/pinSlots.js': 1,
+  'src/game/weaponFeel.js': 1,
+  [inSystem('wire', 'wsClient.js')]: 2,        /* the document and the window handed to the freeze watch */
+  'src/rendering/bodyBake.js': 1,          /* `new URL(u, location.href)`: a base under a path not literal */
+  'src/rendering/drawLists.js': 1,         /* `window[name]` */
+  'src/rendering/keepAsImage.js': 1,
+  'src/rendering/png8Worker.js': 4,        /* `self.location.href` as a base under a path not literal */
+  'src/rendering/retryLooks.js': 1,
+  [inSystem('render', 'effectsRenderer.js')]: 3,   /* a base; `window[k]` twice (the probes kept) */
+  [inSystem('render', 'entityRenderer.js')]: 2,    /* `window[k]` twice (the probes kept) */
+  'src/rendering/traits/traitImg.js': 1,
+  [inSystem('ui', 'BroTown.jsx')]: 4,              /* three URLs made from the address to rewrite it; `(_window = window)` */
+  'src/ui/mobile/BottomDashboard.jsx': 1,
+  'src/ui/oneBand.js': 1,                  /* `new URL(location.href)` to rewrite `?oneband` */
+}));
 
 /* ── the reads moved into the reader: each old test word for word, as a
    function of the address (S) ── */
@@ -239,17 +555,87 @@ const src = new Map(files.map((f) => [f, readFileSync(join(ROOT, f), 'utf8')]));
   check(`2: every ask of the reader names a page row, sw only one with a form (${asks} asks)`, bad.length === 0, bad);
 }
 
-/* 3. the outside reads: only fall */
+/* 3. the outside reads: only fall.
+   v2.3.6520 (card WL; the shape review's plant 6): the count was the text
+   `location.search`, and `new URL(window.location.href).searchParams.get(
+   'farmfast')` passed it; read off the syntax tree since (the plan's rule 2).
+   v2.3.6526 (sitting 59): an ALLOW list (addressScan, at the top of this
+   file): every appearance of the address that is not one of its few
+   allowed forms is a row, by file, against OUTSIDE.  A file over its row,
+   or a file with no row, fails; the forms the tree cannot follow are rows
+   too (3b is folded in: an unknown form is red, never green). */
 {
   let n = 0;
   const where = [];
+  const over = [];
+  const seenFiles = new Set();
   for (const [f, s] of src) {
     if (f === READER_FILE) continue;
-    const k = (blankComments(s).match(/location\.search/g) || []).length;
-    if (k) { n += k; where.push(`${f}: ${k}`); }
+    const rows = addressScan(s, f);
+    if (rows === null) { check('3: @babel loads from the root or server/ (npm install)', false); break; }
+    if (!rows.length) continue;
+    seenFiles.add(f);
+    n += rows.length;
+    const said = `${f}: ${rows.map((r) => r.line + ' ' + r.how).join(', ')}`;
+    where.push(said);
+    if (rows.length > (OUTSIDE[f] || 0)) over.push(`${said} (its row ${OUTSIDE[f] || 0})`);
   }
-  check(`3: reads of location.search outside the reader: ${n}, the line ${OUTSIDE_LINE} (it only falls: a read moves into src/game/switches.js)`, n <= OUTSIDE_LINE, where.slice(-12));
-  if (n < OUTSIDE_LINE) console.log(`     (room: ${n} under the line ${OUTSIDE_LINE}; the gatekeeper may lower it)`);
+  const line = Object.values(OUTSIDE).reduce((a, b) => a + b, 0);
+  check(`3: the page's address outside the reader, every form but the allowed ones: ${n} in ${seenFiles.size} files, the list ${line} in ${Object.keys(OUTSIDE).length} rows (by file; it only falls: a read moves into src/game/switches.js)`, over.length === 0, over);
+  const lost = Object.keys(OUTSIDE).filter((f) => f === 'undefined' || !src.has(f));
+  check('3: every row of OUTSIDE names a page file (a big file through its system)', lost.length === 0, lost);
+  if (n < line) console.log(`     (room: ${n} under the list's ${line}; the gatekeeper may lower a row)`);
+  if (process.argv.includes('--list')) for (const w of where) console.log('     ' + w);
+}
+
+/* 3c. v2.3.6526: the plants, run by the guard itself (each a whole file of one function): every
+   RED one gives a row, every ALLOWED one none.  Sitting 59's lines first, then three of card WL's
+   own that the allow list was not written for, then sittings 57 and 58's. */
+{
+  const wrap = (body) => `export function tickFarmWalk(S) {\n${body}\n}\n`;
+  const RED = [
+    /* sitting 59 */
+    "if (new URL(window.location.href).search.includes('farmfast')) return;",
+    "if (new URL(window.location.href).href.includes('farmfast')) return;",
+    "if (('' + new URL(window.location.href)).includes('farmfast')) return;",
+    "const _k = 'location'; if (String(window[_k]).includes('farmfast')) return;",
+    /* card WL's own, not designed for */
+    "const _o = { w: window }; if (_o.w.location.search) return;",
+    "const { [`loc${'ation'}`]: _L } = window; if (_L.search) return;",
+    "if (performance.getEntriesByType('navigation')[0].name.includes('farmfast')) return;",
+    "if (document.defaultView[['loc', 'ation'].join('')].search) return;",
+    "if (new URL('', document.baseURI).searchParams.has('farmfast')) return;",
+    "const _g = typeof globalThis !== 'undefined' ? globalThis : window; if (Reflect.get(_g, 'loc' + 'ation').search) return;",
+    "const _d = document; if (_d.URL.includes('farmfast')) return;",
+    "if (el.ownerDocument.URL.includes('farmfast')) return;",
+    "if (navigation.currentEntry.url.includes('farmfast')) return;",
+    /* sittings 57 and 58 */
+    "if (new URL(window.location).searchParams.get('farmfast')) return;",
+    "const _loc = window.location; if (_loc.search.includes('farmfast')) return;",
+    "const { search } = window.location; if (search.includes('farmfast')) return;",
+    "const { location: _l } = window; if (_l.href.includes('farmfast')) return;",
+    "if (window['location'].search) return;",
+    "if (window.location?.search) return;",
+    "readIt(location);",
+    "if ([window.location][0].search) return;",
+    "let _m = location; _m = null;",
+    "if (/farmfast/.test(location.href)) return;",
+    "if (String(location).includes('farmfast')) return;",
+    "const _q = new URLSearchParams(document.location.search); if (_q.has('farmfast')) return;",
+  ];
+  const ALLOWED = [
+    "if (location.pathname === '/x') return;",
+    "location.href = '/play';",
+    "window.location.reload();",
+    "if (typeof window !== 'undefined' && window.location) S.x = 1;",
+    "const u = new URL('/sprites/a.png', location.href);",
+    "Object.assign(window, { __btX: 1 });",
+    "const { pathname } = window.location;",
+  ];
+  const red = RED.filter((b) => !(addressScan(wrap(b), 'plant-' + b) || []).length);
+  check(`3c: each planted read of the address is a row (${RED.length} plants)`, red.length === 0, red);
+  const loud = ALLOWED.filter((b) => (addressScan(wrap(b), 'plant-' + b) || [1]).length);
+  check(`3c: each allowed form is no row (${ALLOWED.length} forms)`, loud.length === 0, loud);
 }
 
 /* 5. v2.3.5311: pageAddress() is the address itself (the sites that hand the

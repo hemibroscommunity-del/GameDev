@@ -47,6 +47,14 @@ The plan is finished for now when all of these are true on `main`:
 4. The owner's phone has said how the game runs on it (card PH), and the
    two-button controls are on that phone to try (card CT).
 
+**The owner's line of 2026-11-24** (v2.3.6272; asked "May I draw the line
+there?", the owner: *"Yes."*, for the week's usage and because *"It's hard
+for me to understand a sense of progression because new elements get
+added"*): the finish is a FIXED list, what was written by sitting 60, #2326,
+#2325, card CT's PR 4, PR 5 and item 6, and the grit diagnosis; later
+reviewer findings go to `docs/plan/debts.md`, not to new cards or
+sessions, except a bug in how the game behaves, which is still fixed.
+
 After that the plan rests. What is left waits by design: for players or
 data (1.3's table, 2.5, 10.7's last rung, 10.9, 10.10), for the owner's own
 words (`.github/`, Cloudflare: 1.3's road, 4.7's lab try, 8.8's practice
@@ -197,7 +205,28 @@ missing, and rules 1, 5 and 6 keep it cheap.
 - **The purpose review.** A PR that adds or changes a guard, or changes
   `server/src`, the wire, money, logins or combat, is read by a lane on the
   top model, which plants the card's dodges and two of its own in a scratch
-  copy. A plant that stays green is a hold.
+  copy. A plant that stays green is a hold, of these kinds only
+  (v2.3.6272, sitting 60).
+- **What holds, and what is a card's next job** (the owner, 2026-11-24,
+  asked by the orchestrator after sittings 57 to 59 landed 7, 5 and 2 PRs
+  because each review found new holes of the same kind: "(1) May a change
+  land once its check catches everything its card asked for and everything
+  earlier reviews found? The reviewers' newest findings would become that
+  card's next job instead of holding it back. A real bug in how the game
+  behaves would still hold a change back. (2) May a third merge round run
+  today?"; the owner: *"Yes to both. I want as much work done as you can
+  so this plan can get done. I have other things I want to add to the
+  game but am waiting for this to be finished"*):
+  - STILL A HOLD: a red rehearsal or a red `test`; a bug in behaviour (the
+    game, the worker, the wire, money, a login, a save doing the wrong
+    thing); one of the card's own dodges still green; a plant an earlier
+    sitting's review named, still green on the head listed as its mend.
+  - NOT A HOLD: a reviewer's NEW hole in a guard (a plant neither the card
+    nor an earlier review named). The gatekeeper writes it in its notes as
+    that card's NEXT JOB, one line with the file and the plant, and the PR
+    lands. The next review holds that card to it.
+  - A third sitting ran on 2026-11-24 by the owner's leave for that day;
+    the rule of two a day stands for other days.
 - **Notes go to `docs/plan/log.md`**, one line a step a sitting. The plan
   keeps its boxes.
 - **At most two sittings a day**; the rehearsal throws every switch once

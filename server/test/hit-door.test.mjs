@@ -55,6 +55,7 @@ import { SHOCK, BURN, POISON } from '../src/monsterstatus.js';
 import { FIRE_TRAIL } from '../src/firetrail.js';
 import { ZONE_PROPS } from '../src/props.js';
 import { srcFiles } from './src-walk.mjs';
+import { doorCalls, where } from '../../tools/guards/lib/writesOf.mjs';   /* v2.3.6441: the scan reads the syntax tree (card DG PR 2) */
 
 const mockState = () => ({
   storage: { get: async () => undefined, put: async () => {}, list: async () => new Map(), delete: async () => {} },
@@ -623,10 +624,21 @@ for (const src of ALL.filter((s) => s !== 'boss')) {
      hits.js every monster's, combat.js a player's claim, pvpextras.js a
      player's extras.  A new way for a monster to hurt you goes through
      _monsterHit with its own row, or it fails here. */
+  /* v2.3.6441 (card DG PR 2): read off the syntax tree, by ANY receiver
+     (`const room = this; room._applyDamage(...)`, plants2 HIT-1, plants3
+     HIT-1b), by file AND function AND count, so a second caller inside a file
+     the test once allowed whole (combat.js's thorns, plants2 HIT-2) fails,
+     and a bind or a name made of it is no plain call. */
   const dir = new URL('../src/', import.meta.url);
-  const callers = srcFiles()   /* v2.3.5060: in depth, a folder's files too (src-walk.mjs) */
-    .filter((f) => /this\._applyDamage\(/.test(readFileSync(new URL(f, dir), 'utf8')));
-  check('10d. only hits.js, combat.js and pvpextras.js call _applyDamage', callers.sort().join(',') === 'combat.js,hits.js,pvpextras.js', callers);
+  const raw = Object.create(null);
+  for (const f of srcFiles()) raw[f] = readFileSync(new URL(f, dir), 'utf8');   /* v2.3.5060: in depth, a folder's files too (src-walk.mjs) */
+  const PRICERS = { 'combat.js _resolvePvPAttack': 1, 'hits.js _monsterHit': 1, 'pvpextras.js _strikePlayer': 1 };
+  const { calls, odd } = doorCalls(raw, { names: ['_applyDamage'] });
+  const got = Object.create(null);
+  for (const c of calls) got[c.file + ' ' + c.fn] = (got[c.file + ' ' + c.fn] || 0) + 1;
+  check('10d. only hits.js _monsterHit (every monster\'s), combat.js _resolvePvPAttack (a player\'s claim) and pvpextras.js _strikePlayer (a player\'s extras) call _applyDamage, once each, by any receiver',
+    JSON.stringify(Object.entries(got).sort()) === JSON.stringify(Object.entries(PRICERS).sort()), { got, at: calls.map(where) });
+  check('10d. ...and _applyDamage is called plainly (no bind, .call, apply or a name made of it)', odd.length === 0, odd.map((o) => where(o) + ' (' + o.how + ')'));
   /* 10e. a row the table does not have hits nobody */
   {
     const now = Date.now();

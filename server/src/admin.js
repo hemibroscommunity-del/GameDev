@@ -525,6 +525,10 @@ export const adminMethods = {
           adminLock: this._adminLockInfo(),
           /* v2.3.5711: a flood, seen (the tally above; memory only) */
           floodTally: this._floodTallyInfo(),
+          /* v2.3.6443 (card DG PR 4): the wire door's refusals by row and why,
+             and the fields out of their form by type and field, with the
+             forms' mode (wire/door.js _wireDoorInfo; memory only) */
+          wireDoor: this._wireDoorInfo ? this._wireDoorInfo() : null,
           /* v2.3.3240: the 2 s look relay -- tracks in, and how many went out
              whole, as only what changed, or not at all (lookrelay.js) */
           lookRelay: this._lookInfo(),
