@@ -516,7 +516,14 @@ resetOn('zone', endEngagement, 'combat');
 function latchLock(S) {
   const id = latchPhase(S) === 'active' ? S._latchId : null;
   const lt = autoLock(S);
-  if (lt && id != null && lt.type === 'monster' && String(lt.id) === String(id) && monHoldable(lt.ref)) return;
+  /* v2.3.6542: kept only once its ref is the LIVE monster of the list
+     (lockRefPresent: a replaced one re-pointed by id, as mode 4's path does
+     below the mode's return).  A whole list's replace (a zone_state) left the
+     latch holding the old object: still "holdable", frozen where it was, and
+     every swing (monsterCombat: the lock's ref is the aim) went that way --
+     45 swings at a fishman 25 px off, 48 degrees wide, none landing (part 6's
+     probe, mp-twobuttons 2c sideways) */
+  if (lt && id != null && lt.type === 'monster' && String(lt.id) === String(id) && lockRefPresent(S) && monHoldable(lt.ref)) return;
   let m = null;
   if (id != null && Array.isArray(S.monsters)) {
     for (let i = 0; i < S.monsters.length; i++) {

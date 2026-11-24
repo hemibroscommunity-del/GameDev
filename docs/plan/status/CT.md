@@ -20,12 +20,11 @@ state: working
 - PR 3 (6542, #2308 draft): the latch, the lock, S.stickX/Y one owner.
 
 ## Next
-- PR 3 (#2308): 2c's walk-in mended and green (the Mayor's gate held a new
-  character in BroTown: the test's; pushed 76eed056). The fight is still
-  red: beside it (25 px), swinging, the monster at 1 hp 90 s; the socket
-  probe saw nothing sent. A probe on claude/plan-ct-3-probe (no PR, no CI)
-  reads the swing's hit test (drawn place vs true, aim); the helper runs it.
-  Then PR 4 (6543), PR 5 (6544), item 6 (6545).
+- PR 3 (#2308): 2c mended. The walk-in: the test's (the Mayor's gate held
+  a new character in BroTown). The fight: the GAME's (targeting.js
+  latchLock kept a replaced monster's old object as the lock's ref; every
+  swing aimed at it, none landed); fixed, checked in latch.test R. Then the
+  helper's run; green: #2308 ready. Then PR 4, PR 5, item 6 (6543-6545).
 
 ## Found
 - `manual-combat.test` 1h pinned `?manual=5` as no switch: now `6`.

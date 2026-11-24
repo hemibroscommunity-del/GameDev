@@ -247,5 +247,20 @@ for (const [name, list] of [['latch', LATCH_PHASES], ['sight', SIGHT_PHASES], ['
   check('G2. the phase table\'s ' + name + ' row holds the module\'s states', !!row && JSON.stringify(row.states) === JSON.stringify(list), row && row.states);
 }
 
+/* ── v2.3.6542 (part 6): the latch's lock follows a replaced monster ──
+   mp-twobuttons 2c: after a whole list's replace the latch kept its lock on
+   the OLD object (still "holdable", frozen where it was), and every swing
+   aimed at it (monsterCombat: the lock's ref is the aim): 45 swings at a
+   fishman 25 px off, 48 degrees wide, none landing.  The keep in latchLock
+   now asks lockRefPresent (the ref re-pointed by id to the live one) first. */
+{
+  const tg = readFileSync(new URL('../../src/game/targeting.js', import.meta.url), 'utf8');
+  const fn = (tg.match(/function latchLock\(S\) \{[\s\S]*?\n\}/) || [''])[0];
+  const keep = fn.split('\n').find((l) => /^\s*if \(lt && id != null/.test(l)) || '';
+  check('R. the latch keeps its lock only once its ref is the live monster (lockRefPresent before monHoldable, in the keep)',
+    /lockRefPresent\(S\) && monHoldable\(lt\.ref\)\) return;/.test(keep), keep.trim().slice(0, 200));
+  check('R. lockRefPresent re-points the ref by id (String both sides)', /String\(m\.id\) === String\(lt\.id\)\) \{ lt\.ref = m; return true; \}/.test(tg));
+}
+
 console.log('\n' + passes + ' passed, ' + failures + ' failed');
 process.exit(failures ? 1 : 0);
