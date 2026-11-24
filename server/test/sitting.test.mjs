@@ -37,6 +37,7 @@
  *      is the same with `sitting: false`.  The report's facts are not
  *      handed yet (report.js is card PH's: the orchestrator, 2026-11-23).
  *  10. A TEST-MODE CHARACTER'S MOVES are activity too (counted, never over).
+ * 10b. (v2.3.6483) a test-mode move counted with no recording running.
  *  11. THE MEND (v2.3.6483, sitting 59's mend), each played in the room:
  *      a. a sitting longer than the gap, back inside it, goes on (the gap
  *         from the last touch, never the start);
@@ -439,6 +440,30 @@ const live = (room, pid) => room.playerState[pid];
   check('10. the character is in test mode (its moves judged by nothing)', room._testMode(ps) === true);
   check('10. seven test-mode moves counted, none over a budget', r && r.mv === 7 && r.mo === 0, r);
   check('10. ...and their seconds active (a second apart: six, the first move\'s from the join\'s touch)', r && r.a >= 6, r && r.a);
+}
+/* v2.3.6483 (sitting 59's mend; a plant of the WHO session's own stayed
+   green): a test-mode move counts on the card whether or not a recording
+   runs (playtrace.js).  §10 above always had one (its join begins it), so a
+   count gated on `ps._trace` passed; here the recording is switched off
+   (`playtrace: false`) and, on a second character, already ended. */
+{
+  const play = async (pid, flags, endFirst) => {
+    const st = makeStorage(seed([pid], 0));
+    st._store.set('testmode:' + pid, { v: 1, on: true, at: 1, name: 'tm' });
+    const room = await openRoom(st, flags);
+    const ws = fakeWs(pid);
+    await join(room, ws, pid, { loginTaken: true }); await settle();
+    if (room.tickInterval) { clearInterval(room.tickInterval); room.tickInterval = null; }
+    const ps = live(room, pid);
+    if (endFirst && ps._trace) delete ps._trace;   /* the recording over (its ten minutes, its size) */
+    const mv = (x, y) => room.webSocketMessage(ws, JSON.stringify({ type: 'move', x, y, z: ps.z }));
+    for (let i = 0; i < 4; i++) { clock.advance(1000); await mv(ps.x + 30, ps.y); }
+    return { r: sitRead(ps._econ.s), rec: !!ps._trace };
+  };
+  const off = await play('bp_sit_tm_nr', { playtrace: false }, false);
+  check('10b. `playtrace: false`: a test-mode sitting\'s moves still counted on its card', !off.rec && off.r && off.r.mv === 4 && off.r.a >= 4, off);
+  const done = await play('bp_sit_tm_done', null, true);
+  check('10b. ...and after its recording ended', !done.rec && done.r && done.r.mv === 4 && done.r.a >= 4, done);
 }
 
 /* ══════════ 11. THE MEND: EACH HOLD PLAYED IN THE ROOM (v2.3.6483) ══════════

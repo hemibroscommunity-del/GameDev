@@ -1,6 +1,6 @@
 card: WHO
 branch: claude/plan-who-mend59 (6483, sitting 59's other holds; base claude/plan-who-3-trace, #2317, on #2316, on #2285)
-prs: #2285 6480, #2316 6481 (its BUG mended, v2.3.6481), #2317 6482: all three HELD at sitting 59, heads frozen but for the bug's mend; 6483 (mend59, building: a mutation pass, every survivor killed or listed)
+prs: #2285 6480, #2316 6481 (its BUG mended, v2.3.6481), #2317 6482: all three HELD at sitting 59, heads frozen but for the bug's mend; 6483 mend59 (draft, base #2317's branch): the other holds, a mutation pass
 state: working
 
 ## Done
@@ -11,8 +11,7 @@ state: working
 
 ## Next (part 4, from 2026-11-24)
 - The orchestrator's three answers (2026-11-24): 1 YES admin.js KEPT_OUT's one `play_trace:` row (already on 6482); 2 the trace stays ONE row of 96 KB, `cut: 'size'` accepted, nothing more built; 3 YES the movement.js test-mode call (in 6481, committed, not pushed).
-- 6481: #2283 merged (sitting 58, main 045a8b1a): #2285's branch (with main) merged in, precheck, pushed, opened READY as #2316 on claude/plan-who-1-actor ("shape bump: ECON_V" first; the yeses: movement.js (two judged calls and the test-mode one), combat.js + hitproof.js, gold.js econGold; migrations.js econClean; report.js NOT, card PH's).
-- 6482: #2316's branch merged in, precheck, pushed, opened READY on claude/plan-who-2-sitting ("stacked on 6481" at the top; the files outside the card with their lines; admin.js KEPT_OUT, the orchestrator's yes; answer 2 named; not shadowed: botfp, botsig, the quests' order, lastplace, the roll window).
+- 6481/6482: opened READY as #2316, #2317 (sitting 58); held at sitting 59; the bug mended (above).
 - Then report.js's one sitReport call after #2279 (card PH), on the orchestrator's word.
 
 ## Found
@@ -26,6 +25,8 @@ state: working
 - The cook's start in shadow sees no spent plan (test mode never spends one), so a second result on one plan is not counted as would-refuse.
 
 - Sitting 59's BUG (mended on #2316's branch, v2.3.6481): sitting.js open(): only the card the record's LATEST join took counts (room._sitLive, a WeakMap; sitForget at every join): joined with `sitting: false`, the flag thrown on mid-sitting, a week-old card is no longer reopened (sitting.test §7b, 7 checks; red with the old open() and with join.js's sitForget removed).
+- 6483 (mend59): the three suites kill what PRs 1-3 added (a mutation pass, 1,389 mutants: 1,235 killed, 154 listed with why in the PR); sitting 59's holds all red; three plants of my own red (one after a new check, sitting.test §10b). The orchestrator is now part 9 (session_01LccHamNZeNpQU9rZ8TBGhy).
+- Found by the pass (not fixed, the orchestrator's question): the shadow disagrees with the real check in three places (playtrace, recording only): the cook floor measured from play's lastCookAt; a second plan-less cook never counted; a warp at the first move after the join not counted.
 ## Needs
 - #2285: sitting 59 (the orchestrator has its head).
 - report.js's one call (soft, build, seen, drawn) after #2279 (card PH) merges: in 6482 or a small PR after it (the orchestrator's word).
