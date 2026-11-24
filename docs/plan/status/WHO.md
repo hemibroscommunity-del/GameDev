@@ -1,7 +1,7 @@
 card: WHO
 branch: claude/plan-who-3-trace (6482, stacked on claude/plan-who-2-sitting)
 prs: #2285 6480 (ready), 6481 (built, waits on #2283), 6482 (built, stacked on 6481)
-state: ready
+state: handing over (part 3 at 290k tokens, 2026-11-24): 6481 and 6482 built and pushed, neither opened
 
 ## Done
 - 6480: #2285, the actor (server/src/actor.js; `xfer:` rows' `actor`, test play apart in the day's book; `actor: false`; cap `actor`). Ready; deploys when merged.
@@ -11,7 +11,7 @@ state: ready
 
 ## Next (hand-over: part 2 ended at 266k tokens, 2026-11-24; a fresh session finishes 6481)
 - 6481 is built and pushed (claude/plan-who-2-sitting, precheck OK, no PR yet). When the orchestrator says #2283 (card DG) has merged: merge `main` once (it brings `ECON_V + 1` into gold-door.test:559 and bag-door.test:488; without it those two are red here), run precheck, push, open the PR READY on main (or on claude/plan-who-1-actor if #2285 has not merged). Its words open "shape bump: ECON_V" and name the orchestrator's yeses (movement.js, combat.js + hitproof.js, gold.js econGold; migrations.js econClean; report.js NOT, card PH's).
-- 6482: open READY once 6481 is open (its words: "stacked on 6481", the files and lines outside the card, as the orchestrator asked). Then report.js's one sitReport call after #2279.
+- 6482 (claude/plan-who-3-trace, pushed, precheck as 6481's: green but for bag-door and gold-door, which wait on #2283): open READY once 6481 is open, on claude/plan-who-2-sitting. Its words: "stacked on 6481" at the top; the files outside the card with their lines (index.js `_onMessage` after the silence door; movement.js after `_bounded`; gathering.js the too-early and startless sites; cooking.js `_cookRateOk`, the start, the floor; combat.js before the rate line), and admin.js `KEPT_OUT` (one row: room-export.test fails a character's key on neither list; not asked of the orchestrator yet: say so); not shadowed: botfp, botsig, the quests' order, lastplace, the roll window. Then report.js's one sitReport call after #2279.
 
 ## Found
 - qa: no proof of QA on the socket (a login change, a new card); `qa` unbuilt.
