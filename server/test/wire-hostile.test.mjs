@@ -193,7 +193,11 @@ const rec = () => ({ _v: 21, coins: 5000, level: 10, hp: 100, maxHp: 100,
  * holds every field a socket row's `trust` names to: read by some case, or
  * listed in NOT_REACHED with why (a list that only falls).  A field read
  * that the row does NOT name fails too (section 4): the door holds only
- * what the table names.  The test room's alone: nothing on the live worker. */
+ * what the table names; and so does a listing of the message's keys after
+ * the door (4b: a spread, Object.assign or JSON copy, whose reads the Proxy
+ * cannot see; none today).  The test room's alone: nothing on the live
+ * worker.  Its break proofs: the PR's words (card DG PR 5), seven plants. */
+const KEYS = '(its keys)';   /* the key READS notes for a listing of the message's keys */
 const READS = new Map();   /* 'row field' -> where it was first read (a line of src/) */
 const SEEN = new Set();    /* the rows a case took past the door */
 const armedOf = new WeakMap();
@@ -208,7 +212,9 @@ function watchReads(room) {
     const T = String(msg.type).slice(0, 64);
     const st = { on: false };
     const seen = (k) => { if (st.on && typeof k === 'string') { const key = T + ' ' + k; if (!READS.has(key)) READS.set(key, whereRead()); } };
-    const wrap = (o) => new Proxy(o, { get(t, k, r) { seen(k); return Reflect.get(t, k, r); }, has(t, k) { seen(k); return Reflect.has(t, k); } });
+    const wrap = (o) => new Proxy(o, { get(t, k, r) { seen(k); return Reflect.get(t, k, r); }, has(t, k) { seen(k); return Reflect.has(t, k); },
+      /* a copy of the whole message (a spread, Object.assign, JSON) lists its keys: the reads off the copy are not seen, so a listing is its own fault (4b) */
+      ownKeys(t) { seen(KEYS); return Reflect.ownKeys(t); } });
     const p = msg.payload;
     if (p && typeof p === 'object' && !Array.isArray(p)) msg.payload = wrap(p);
     const m = wrap(msg);
@@ -439,8 +445,107 @@ async function runHttpRow(row) {
   return n;
 }
 
-const REACH_LINE = 0;
-const NOT_REACHED = {};
+/* v2.3.6444 (card DG PR 5): THE FIELDS NO CASE REACHES, by row, and why:
+ * the first check that stops a joined player in town with the plausible
+ * values (`plain` above) before the field is read.  The list only falls
+ * (3b): a scene that reaches a field takes its line out (a row's own suite
+ * plays its scene; the plan's step 4.1).  104 fields on 2026-11-24, the
+ * count the review's REACH plant measured (plants3.json, reach.mjs). */
+const REACH_LINE = 104;
+const NOT_REACHED = {
+  join: { fields: ['nj'],
+    why: 'pres is 1, not 2: the near-join list is read only for pres2 (nearjoin.js, join.js)' },
+  report: { fields: ['drawLane', 'build', 'secs', 'seen', 'sw', 'drawn', 'gaps', 'late', 'split', 'where', 'near', 'holds', 'mem', 'lost', 'died', 'speed', 'rung', 'self'],
+    why: 'devClass is not an object: classOfReport gives null and the report drops (report.js)' },
+  pong: { fields: ['ts', 'hd'],
+    why: 'no ping was sent (the test room runs no tick loop): a pong with lastPing 0 is dropped (index.js)' },
+  dice: { fields: ['max'],
+    why: 'kind is neither flip nor roll; max is read only for a roll (dice.js)' },
+  player_attack: { fields: ['sw', 'orbs', 'part', 'sn'],
+    why: 'town is lawful, no duel or No man\'s land: the victim is skipped (combat.js _resolvePvPAttack)' },
+  monster_damage: { fields: ['special', 'orbs', 'part', 'sw', 'noKb', 'sn'],
+    why: 'monsterId names no monster of the zone (combat.js _handleMonsterDamage)' },
+  ability_use: { fields: ['targetId', 'pid'],
+    why: 'type is no ability; both are read only for a lunge (index.js _handleAbilityUse)' },
+  ability: { fields: ['targetId', 'pid'],
+    why: 'kind is no STAM_ABILITIES key (abilities.js)' },
+  prog3_allocate: { fields: ['cat'],
+    why: 'stat is no stat name; cat is read only for an attack stat (prog3.js)' },
+  stats_update: { fields: ['armor', 'legsArmor', 'power', 'vitality', 'endurance', 'agility', 'mind', 'defenseSkill'],
+    why: 'a prog3 player skips the T1 stats; armorRef and legsArmorRef win over armor and legsArmor (grids.js)' },
+  extraction_start: { fields: ['fishKey'],
+    why: 'skill is not cooking; fishKey is read only on the cooking branch (gathering.js)' },
+  cook_request: { fields: ['swipeFp'],
+    why: 'fishKey is no fish_ key (cooking.js)' },
+  farm_act: { fields: ['beds', 'crop'],
+    why: 'op is no farm op (farm.js _handleFarmAct)' },
+  farm_buy: { fields: ['count'],
+    why: 'item is neither compost nor a seed (farm.js _handleFarmBuy)' },
+  smelt_bar: { fields: ['count'],
+    why: 'barKey is no smelt recipe (smelting.js)' },
+  cape_equip: { fields: ['worn'],
+    why: 'the player owns no cape: the refusal echo (eventcapes.js)' },
+  amulet_forge_request: { fields: ['tierKey', 'gem', 'target', 'stashIdx', 'gid'],
+    why: 'op is unknown: denied by default (amulet.js _handleAmuletForge)' },
+  gem_cut_request: { fields: ['gem'],
+    why: 'shardcrack is on by default: the whole message is refused (amulet.js _handleGemCut)' },
+  bank_deposit: { fields: ['id'],
+    why: 'kind is out of its form (gold or item) at the door, and id is read only for an item (bank.js)' },
+  bank_withdraw: { fields: ['id'],
+    why: 'kind is out of its form (gold or item) at the door, and id is read only for an item (bank.js)' },
+  store_dm: { fields: ['to'],
+    why: 'listingId names no listing; to is read only for the seller (storechat.js)' },
+  daily_reroll: { fields: ['i'],
+    why: 'the daily quests are off unless their flag is set (dailyrewards.js)' },
+  season_claim: { fields: ['all', 'tier'],
+    why: 'the season is off unless its flag is set (dailyrewards.js)' },
+  bro_verify: { fields: ['signature', 'tokenId', 'count'],
+    why: 'no bro_nonce was asked first: nonce_expired (broverify.js)' },
+  item_drop: { fields: ['qty'],
+    why: 'town is a no-drop zone: not-here (itemdrop.js)' },
+  farm_order: { fields: ['id'],
+    why: 'day is not the record\'s day: order-stale before id (farmorders.js)' },
+  make_traps: { fields: ['count'],
+    why: 'log is no TRAPPING log: bad-log (trapping.js)' },
+  smith_salvage: { fields: ['gid', 'idx', 'sig'],
+    why: 'field is neither the weapon stash nor an armour list: bad (salvage.js)' },
+  essence_apply: { fields: ['gid', 'idx', 'sig'],
+    why: 'essence is no essence key: bad (salvage.js)' },
+  shield_gem: { fields: ['gid', 'sig'],
+    why: 'gem is not a string: bad_gem (shieldgem.js)' },
+  shard_crack: { fields: ['count'],
+    why: 'land is no SHARD_CRACK land: bad_land (shardcrack.js)' },
+  make_hardened_wood: { fields: ['count'],
+    why: 'key is no hardened-wood recipe: bad-key (hardenedwood.js)' },
+  pet_name: { fields: ['name'],
+    why: 'the player has no pets: no-pet (petbook.js)' },
+  pet_release: { fields: ['confirm'],
+    why: 'the player has no pets: no-pet (petbook.js)' },
+  arena_sponsor: { fields: ['matchId', 'amount'],
+    why: 'no tournament is running: no-tournament (gladiator.js)' },
+  trade2_set: { fields: ['offer'],
+    why: 'no trade is open (trade2.js: phase trade:in)' },
+  trade2_ready: { fields: ['ready'],
+    why: 'no trade is open (trade2.js: phase trade:in)' },
+  trade2_stage_weapon: { fields: ['stashIdx', 'gid', 'expectName'],
+    why: 'no trade is open (trade2.js: phase trade:in)' },
+  trade2_unstage_weapon: { fields: ['seq'],
+    why: 'no trade is open (trade2.js: phase trade:in)' },
+  trade2_pets: { fields: ['ids'],
+    why: 'no trade is open (trade2.js: phase trade:in)' },
+  party_chat: { fields: ['text'],
+    why: 'the player is in no party (party.js: phase party:in)' },
+  alliance_name: { fields: ['name', 'tag'],
+    why: 'the player leads no party: no-party (alliance.js)' },
+  alliance_war: { fields: ['tag'],
+    why: 'the player leads no party: no-party (alliance.js)' },
+  clan_create: { fields: ['name', 'tag', 'color1', 'color2', 'logo'],
+    why: 'clanparty is on by default: new clans are refused (clans.js)' },
+  clan_join_accept: { fields: ['inviter'],
+    why: 'clanparty is on by default: joins are refused (clans.js)' },
+  clan_war_declare: { fields: ['defenderTag', 'war', 'zone'],
+    why: 'clanparty is on by default: new wars are refused (clans.js)' },
+};
 
 /* ══════════ RUN ══════════ */
 const t0 = performance.now();
@@ -530,7 +635,7 @@ const namedOf = (r) => [...new Set(Object.keys(r.trust || {}).map((k) => k.split
 if (!DOOR_OFF) {
   const listed = new Set();
   for (const [row, { fields }] of Object.entries(NOT_REACHED)) for (const f of fields) listed.add(row + ' ' + f);
-  const unread = [], stale = [], unnamed = [];
+  const unread = [], stale = [], unnamed = [], listedKeys = [];
   let named = 0, read = 0;
   for (const r of socketRows.filter((x) => !x.wayIn || x.wayIn === 'socket')) {
     const fields = namedOf(r);
@@ -544,16 +649,18 @@ if (!DOOR_OFF) {
     for (const [key, at] of READS) {
       if (!key.startsWith(r.name + ' ')) continue;
       const f = key.slice(r.name.length + 1);
-      if (!REACH_SKIP.has(f) && !NOT_A_FIELD.test(f) && !fields.includes(f)) unnamed.push(key + ' (read at ' + at + ')');
+      if (f === KEYS) listedKeys.push(key + ' (at ' + at + ')');
+      else if (!REACH_SKIP.has(f) && !NOT_A_FIELD.test(f) && !fields.includes(f)) unnamed.push(key + ' (read at ' + at + ')');
     }
   }
   for (const key of listed) if (!WIRE_IN.some((r) => key.startsWith(r.name + ' ') && namedOf(r).includes(key.slice(r.name.length + 1)))) stale.push(key + ' (no such row or field)');
-  if (process.argv.includes('--reach')) for (const k of [...unread, ...stale, ...unnamed]) console.log('REACH ' + k);   /* every line, for NOT_REACHED */
+  if (process.argv.includes('--reach')) for (const k of [...unread, ...stale, ...unnamed, ...listedKeys]) console.log('REACH ' + k);   /* every line, for NOT_REACHED */
   console.log(`     reach: ${named} named fields, ${read} read after the door, ${listed.size} not reached (REACH_LINE ${REACH_LINE}); ${SEEN.size} rows passed the door`);
   check(`3a: every field a row names was read by some case, or is in NOT_REACHED with why (${unread.length} neither)`, unread.length === 0, unread.slice(0, 20));
   check(`3b: NOT_REACHED only falls: no listed field is read now (delete its line) and the list is at most REACH_LINE (${listed.size} <= ${REACH_LINE})`, stale.length === 0 && listed.size <= REACH_LINE, stale.slice(0, 20));
   if (listed.size < REACH_LINE) console.log(`NOTE NOT_REACHED fell (${listed.size} < ${REACH_LINE}): lower REACH_LINE in this suite`);
   check(`4: no case read a field its row does not name (name it in the row's trust: wire/in.js)`, unnamed.length === 0, unnamed.slice(0, 20));
+  check(`4b: no handler lists a message's keys after the door (a copy of the whole message hides what it reads: read the named fields)`, listedKeys.length === 0, listedKeys.slice(0, 20));
 }
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);
