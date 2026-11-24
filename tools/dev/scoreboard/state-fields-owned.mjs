@@ -33,7 +33,7 @@ export default async function stateFieldsOwned({ root }) {
   const say = `${decided.length} decided, ${enforced.length} enforced, of ${fields.length}`;
   const ast = treeOf(root, 'tools/guards/state-ledger.test.mjs');
   const owned = ast && objectOfLists(constInit(ast, 'OWNED'));
-  if (!owned) return { say, note: 'state-ledger has no OWNED set on this tree (card WL PR 3): no wall counted' };
+  if (!owned) return { say, note: 'OWNED not measured: state-ledger has no OWNED set on this tree (card WL PR 3), or one this cannot read whole (a spread, a key or a value it cannot read): no wall counted' };
   const inOwned = new Set(Object.values(owned).flat());
   const outside = enforced.filter((r) => !inOwned.has(r.field)).length;
   const waiting = objectKeys(constInit(ast, 'WAITING'));
