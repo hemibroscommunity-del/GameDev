@@ -96,6 +96,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
      file says, so the next change of the default does not break this check */
   const NOW_OUT = Number(/VIEW_OUT_DEFAULT: ([0-9.]+),/.exec(readFileSync(join(H.REPO, 'src/game/viewCap.js'), 'utf8'))[1]);
   const WAS_OUT = 0.64, STEP = NOW_OUT / WAS_OUT;
+  const OWNER_VIEW = 0.79;      /* v2.3.6581: the owner's pick, "Ok I like 0.79" (v2.3.6580); the one number to change when they pick again */
+  const BRO_WORLD_PX = 105.7;   /* the bro, crown to foot, in world px (worldViewport.js: 105.7, S._bodyDrawH) */
   for (const [tag, query, K] of [['now', '', 1.15], ['was', `zoom=${WAS_OUT}`, 1.15]]) {
     const P = await H.newPlayer(browser, { name: tag === 'now' ? 'Wideview' : 'Oldview', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel', query });
     const errors = [];
@@ -113,6 +115,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.waitForTimeout(6000);
     const arrival = await look(P);
     console.log(`    ${tag}: first ${JSON.stringify(first.ground)}, standing ${JSON.stringify(arrival)}`);
+    /* v2.3.6581: the dashboard folded, the bro read (check 1b), then open again as the rest expects */
+    let folded = null;
+    if (tag === 'now') {
+      await H.foldBand(P);
+      await P.page.waitForTimeout(1500);
+      folded = await look(P);
+      console.log(`    ${tag} folded: ${JSON.stringify({ bodyCss: folded.bodyCss, scale: folded.scale, view: folded.view })}`);
+      await H.unfoldBand(P);
+      await P.page.waitForTimeout(1500);
+    }
     await P.page.screenshot({ path: join(OUT, `zoomout-${tag}-arrival.png`) });
 
     const bs = (await buildingsDrawn(P)).filter((o) => isBuilding[o.id]);
@@ -140,7 +152,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     alive = false;
     await keep.catch(() => {});
-    got[tag] = { first, arrival, land, bs, off, errors };
+    got[tag] = { first, arrival, folded, land, bs, off, errors };
     await P.ctx.close().catch(() => {});
   }
 
@@ -156,11 +168,26 @@ export async function run({ browser, wsPort, webPort, rec }) {
     now.arrival.bodyCss > 0 && was.arrival.bodyCss > 0 && Math.abs(now.arrival.bodyCss / was.arrival.bodyCss - STEP) < 0.02,
     { now: now.arrival.bodyCss, was: was.arrival.bodyCss });
   /* 1b. v2.3.3020: the owner's "char 64 pixels tall", on this phone with the
-     dashboard folded -- and so each picture px about one device px on a 3x
-     phone (1.5 x the scale), where 0.64 had it at three quarters */
+     dashboard FOLDED (390 x 806: 0.77 x 806 / 1024 = 0.606, 105.7 world px of
+     bro = 64.1 CSS px) -- and so each picture px about one device px on a 3x
+     phone (1.5 x the scale), where 0.64 had it at three quarters.
+     v2.3.6581: the owner's 0.79 ("Ok I like 0.79", v2.3.6580) makes him 3%
+     bigger, 65.7 px on the same phone.  Two things were wrong here since
+     v2.3.3020: a fresh player arrives with the dashboard OPEN (canvas 390 x 615,
+     the bro 48.9 px at 0.77, 50.2 at 0.79), which the check never folded, so
+     it read 48.9 against 64; and part 1 of v2.3.6580 scaled the 63-65.5 window
+     by NOW_OUT / 0.77 with NOW_OUT read from the file, so a default put back
+     to 0.77 moved the window with it.  So: the owner's pick is written ONCE
+     here (OWNER_VIEW, to change when the owner picks again), the band is folded
+     and read, and the window is 64 x 0.79 / 0.77 = 65.7, +-0.7. */
   const dpp = (a) => +(1.5 * a.arrival.scale).toFixed(3);
-  rec.ok(`...the bro ${now.arrival.bodyCss} CSS px tall, the owner's 64 at 0.77, x NOW_OUT/0.77 since v2.3.6580 (each picture px ${dpp(now)} device px on a 3x phone, ${dpp(was)} before)`,
-    now.arrival.bodyCss >= 63 * (NOW_OUT / 0.77) && now.arrival.bodyCss <= 65.5 * (NOW_OUT / 0.77) && dpp(now) >= 0.88, { bodyCss: now.arrival.bodyCss, dpp: dpp(now), was: dpp(was) });
+  rec.ok(`the default view is the owner's ${OWNER_VIEW} (the file says ${NOW_OUT}, the page ${now.arrival.view && now.arrival.view.viewOut})`,
+    NOW_OUT === OWNER_VIEW && !!now.arrival.view && now.arrival.view.viewOut === OWNER_VIEW, { file: NOW_OUT, page: now.arrival.view });
+  rec.ok(`...with the dashboard open (how a player arrives) the bro is ${now.arrival.bodyCss} CSS px, ${BRO_WORLD_PX} world px x the scale ${now.arrival.scale} (${(BRO_WORLD_PX * now.arrival.scale).toFixed(1)})`,
+    Math.abs(now.arrival.bodyCss - BRO_WORLD_PX * now.arrival.scale) < 1, { bodyCss: now.arrival.bodyCss, scale: now.arrival.scale });
+  const fo = now.folded;
+  rec.ok(`...and with it folded he is ${fo && fo.bodyCss} CSS px tall (the owner's 64 at 0.77 x ${OWNER_VIEW}/0.77 = ${(64 * OWNER_VIEW / 0.77).toFixed(1)}), each picture px ${fo && dpp({ arrival: fo })} device px on a 3x phone (${dpp(was)} at 0.64)`,
+    !!fo && fo.bodyCss >= 65.0 && fo.bodyCss <= 66.5 && dpp({ arrival: fo }) >= 0.92, { folded: fo && { bodyCss: fo.bodyCss, scale: fo.scale, view: fo.view } });
   /* 2. the buildings */
   /* v2.3.3283: three on the arrival's screen, not four: since the town was laid
      roomier (v2.3.3022) and its square grew (v2.3.3031) the Town Hall, the
