@@ -62,6 +62,7 @@ const STEPS = [
      the commit (tools/guards/switches-thrown.test.mjs, its header). */
   { id: 'precheck', say: 'node tools/dev/precheck.mjs', cmd: 'node', argv: ['tools/dev/precheck.mjs'], mins: 70, env: { BT_THROWN_BY_GATEKEEPER: '1' } },
   { id: 'thrown', say: 'node tools/guards/switches-thrown.test.mjs --whole', cmd: 'node', argv: ['tools/guards/switches-thrown.test.mjs', '--whole'], mins: 40, withPrecheck: true },
+  { id: 'claims', say: 'node server/test/claims-gain.test.mjs --whole', cmd: 'node', argv: ['server/test/claims-gain.test.mjs', '--whole'], mins: 20, withPrecheck: true },   /* v2.3.6462 (card BK PR 3): the six seeds and every disturbance; a PR runs one seed's gains (the suite's header) */
   { id: 'build', say: 'npm run build', cmd: 'npm', argv: ['run', 'build'], mins: 15 },
   { id: 'questline', say: 'node tools/qa/mp/run.mjs questline', cmd: 'node', argv: ['tools/qa/mp/run.mjs', 'questline'], mins: 40 },
 ];

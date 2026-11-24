@@ -24,15 +24,34 @@
  *   --write`), each claim's honest and liar takes, its gain, and what each
  *   bot met on each disturbance; a claim no bot can reach in node says why.
  *
- * BREAK PROOF (rule 8), tried by hand 2026-11-14: `CLAIMS_PLANT=reach node
- * test/claims-gain.test.mjs` loosens the sword's judge in the reach liar's
- * room (`room.PVE_MELEE_RANGE = 800`, the reach doubled): the liar claims
- * from 799 px, its gain rises from 2.96 to 5.08, past its line and spread:
- * FAIL (and only the reach: each run has its own seed).
+ * v2.3.6462 (card BK PR 3): THE 1.5 BAR, HONESTLY.  3b judges each claim's
+ * WORST gain over the seeds run against BAR.  A claim over it whose number
+ * is known is a row of KNOWN, a row that only falls: the suite prints
+ * "KNOWN", never PASS, for it, and fails it past its row.  A claim over the
+ * bar and not in KNOWN fails.  Whether a KNOWN claim's judge is tightened
+ * (the sword's reach: a player would feel a shorter sword) is the owner's
+ * call (docs/plan/finish.md part 9, call 5); this suite only says the number.
  *
- * About 25 s: a gain run is GAIN_MIN simulated minutes (the cook's a whole
- * hour, to meet its hourly cap), a disturbance run DIST_S seconds; the
- * fights tick every 22 ms, as the worker does.  Seeded: the same every run. */
+ * TWO RUNS (v2.3.6462; card CK's rule: a check moves to where it is paid
+ * once, nothing is dropped):
+ *   `node test/claims-gain.test.mjs`          a PR's: one seed (CLAIMS_SEED,
+ *       default ''), the gains alone (2a, 3, 3b): about 20 s;
+ *   `node test/claims-gain.test.mjs --whole`  the gatekeeper's rehearsal
+ *       (tools/dev/gatekeeper.mjs, step `claims`): the six seeds ('' and a
+ *       to e), 3b judging the worst of them, and every disturbance run and
+ *       judge's check (1, 2b to 2j): about 4 minutes.
+ *   `--gains` is the first, as it was (kept so an old command still runs).
+ *
+ * BREAK PROOF (rule 8; v2.3.6462: the old plant set `PVE_MELEE_RANGE`,
+ * which nothing reads with `swordswing` ON, and stayed green):
+ * `CLAIMS_PLANT=reach` doubles the reach the worker reads today
+ * (`room._swordReach`, SWORD_SWING.REACH_PX 150 -> 300: shape-books.md's
+ * plant C1) in the reach and free-swing liars' rooms: 3b FAILS on one seed
+ * and on six (the numbers are in the PR's words and KNOWN's comment).
+ *
+ * A gain run is GAIN_MIN simulated minutes (the cook's a whole hour, to meet
+ * its hourly cap), a disturbance run DIST_S seconds; the fights tick every
+ * 22 ms, as the worker does.  Seeded: the same every run. */
 import { writeFileSync } from 'node:fs';
 import { performance } from 'node:perf_hooks';
 import { seededClock, DISTURBANCES } from './testroom.mjs';
@@ -41,15 +60,15 @@ import * as B from './claimbots.mjs';
 const BAR = 1.5;
 /* today's gains (main 82fb78d, the default seed): a line only falls */
 const LINES = {
-  reach: 1.42, bowlabel: 1.2, guard: 1.37, cookshield: 0.67, move: 1.17, harvest: 1.46, cook: 0, quest: 1, sale: 1, local: 1,
-};   /* v2.3.5906: bowlabel 1.4 -> 1.2 and harvest 1.86 -> 1.46 (`bowpath` and `harvestgrade` ON by default, each row's liar the maximal one under them: card K4 PR 7, the owner's "Go recommended"); v2.3.5905: bowlabel 1.55 -> 1.4 (the honest archers' arrows at the real 1,440 px a second, not 480: card K4 PR 6); v2.3.5901: bowlabel 1.6 -> 1.55 (`bowreach` ON: a claim held to its arrow's flight from where it left; card K4 PR 2, decided for the owner while away, 2026-11-18); v2.3.5727: bowlabel 3.3 -> 1.6 (`bowshot` ON) and cook 1.59 -> 0 (`cookstart` ON), card K2 PR 8: decided for the owner while away, 2026-11-17; v2.3.5551: reach 2.96 -> 1.42 (`swordswing` ON), move 2.56 -> 1.17 (`movetop` ON): the owner's yes, 2026-11-17; v2.3.5550: bowlabel 3.76 -> 3.3 (the flicking archer, an honest way the free-swing trial plays); v2.3.5541: move 4.35 -> 2.56 (the sprint mark, ON: the run goes on through the grace, and the sprint's bound only for what is billed; review-z16) */
+  reach: 1.42, bowlabel: 1.2, guard: 1.37, cookshield: 0.67, move: 1.17, harvest: 1.46, cook: 0, quest: 1, sale: 1, local: 1, freeswing: 1.74, staff: 2.97,
+};   /* v2.3.6462: freeswing and staff, new rows (card BK PR 3), the default seed; v2.3.5906: bowlabel 1.4 -> 1.2 and harvest 1.86 -> 1.46 (`bowpath` and `harvestgrade` ON by default, each row's liar the maximal one under them: card K4 PR 7, the owner's "Go recommended"); v2.3.5905: bowlabel 1.55 -> 1.4 (the honest archers' arrows at the real 1,440 px a second, not 480: card K4 PR 6); v2.3.5901: bowlabel 1.6 -> 1.55 (`bowreach` ON: a claim held to its arrow's flight from where it left; card K4 PR 2, decided for the owner while away, 2026-11-18); v2.3.5727: bowlabel 3.3 -> 1.6 (`bowshot` ON) and cook 1.59 -> 0 (`cookstart` ON), card K2 PR 8: decided for the owner while away, 2026-11-17; v2.3.5551: reach 2.96 -> 1.42 (`swordswing` ON), move 2.56 -> 1.17 (`movetop` ON): the owner's yes, 2026-11-17; v2.3.5550: bowlabel 3.76 -> 3.3 (the flicking archer, an honest way the free-swing trial plays); v2.3.5541: move 4.35 -> 2.56 (the sprint mark, ON: the run goes on through the grace, and the sprint's bound only for what is billed; review-z16) */
 /* each gain's spread over five other seeds (CLAIMS_SEED=a..e, --gains:
    the highest less the lowest, rounded up), measured 2026-11-14.  A gain
    fails only past its line by more than its spread, so a change elsewhere in
    the room that moves the dice does not; a judge loosened moves it far more
    (the break proof: the reach doubled, 2.96 to 5.08) */
 const SPREAD = {
-  reach: 0.56, bowlabel: 0.23, guard: 0.49, cookshield: 0.29, move: 0.01, harvest: 0.32, cook: 0.02, quest: 0, sale: 0, local: 0,
+  reach: 0.56, bowlabel: 0.23, guard: 0.49, cookshield: 0.29, move: 0.01, harvest: 0.32, cook: 0.02, quest: 0, sale: 0, local: 0, freeswing: 0.67, staff: 0.18,   /* v2.3.6462: the new rows' spreads, measured 2026-11-24 */
 };
 /* v2.3.5900: the harvest's liar with `harvestgrade: true` (2i): a line that
    only falls, as LINES */
@@ -73,8 +92,45 @@ const PLAIN_HARVEST_LIAR = ['every strike perfect, at the earliest the worker ta
 const GAIN_MIN = 4;
 const DIST_S = 30;
 const WRITE = process.argv.includes('--write');
-const GAINS_ONLY = process.argv.includes('--gains');   /* the gains alone, no disturbance runs (to read a seed's spread) */
-const SEED = process.env.CLAIMS_SEED || '';             /* another seed for every run: the spread the margin below is measured from */
+/* v2.3.6462: the whole run is the gatekeeper's (`--whole`); by default the
+   gains alone on one seed, a PR's share (`--gains` was this and still is) */
+const WHOLE = process.argv.includes('--whole');
+const GAINS_ONLY = !WHOLE;
+const SEED = process.env.CLAIMS_SEED || '';             /* the one seed a PR's run plays (and every disturbance run's) */
+const SEEDS = WHOLE ? ['', 'a', 'b', 'c', 'd', 'e'] : [SEED];   /* v2.3.6462: 3b judges the worst of these */
+/* v2.3.6462: THE CLAIMS OVER THE BAR, KNOWN: each its worst gain over the six
+   seeds (`--whole`), measured on main e5342063, 2026-11-24.  A row that only
+   falls: lower it when --whole prints a NOTE, remove it when the claim is
+   under the bar.  Never raise one to pass, and never shrink a liar to pass. */
+const KNOWN = {
+  /* seeds '' a b c d e: 1.42 1.46 1.55 1.57 1.92 1.46.  The sword's swing
+     (swordswing.js: 150 px from the worker's copy, a token bucket of 2):
+     the liar claims from 149 px what the honest sword walks in to 90 for.
+     Tightening it is the owner's call 5 (finish.md part 9) */
+  reach: 1.92,
+  /* seeds '' a b c d e: 1.46 1.33 1.41 1.36 1.57 1.37.  The graded liar
+     under `harvestgrade` (harvestgrade.js: 15 perfects in any 20, no sooner
+     than an honest gesture) over a phone's guessed grades (the bot lab's
+     45% perfect): the grade is still the phone's word inside that limit */
+  harvest: 1.57,
+  /* seeds '' a b c d e: 1.74 1.32 1.17 1.08 1.21 1.75.  The reach liar on
+     the free-swing trial: its swings skip the swing's count (combat.js
+     `_freeSwingFor`), the trial's prorating holds their rate, and the reach
+     is the sword's 150 px, as `reach` */
+  freeswing: 1.75,
+  /* seeds '' a b c d e: 2.97 2.63 2.73 2.76 2.68 2.81.  The staff's judge
+     (hitproof.js) allows 2 claims a second, the quickest build's bolt (200
+     + 300 ms), and a reach of 675 x Range + 250 + 0.3 s of the run from
+     where it stands; a new character's honest caster looses one every 900
+     ms and walks in to 600 px.  The judge, not the bench: a later card's */
+  staff: 2.97,
+};
+const KNOWN_WHY = {
+  reach: 'the sword\'s 150 px swing reach against an honest 90 px: the owner\'s call 5 (finish.md part 9)',
+  harvest: 'the phone\'s grade inside harvestgrade\'s 15-in-20 limit, over a guessed honest mix',
+  freeswing: 'the sword\'s reach as `reach`, on the trial\'s prorated swings',
+  staff: 'the staff\'s rate at the quickest build\'s (2 a second) and its reach from where it stands, against a new character\'s 900 ms bolt',
+};
 const PLANT = process.env.CLAIMS_PLANT || '';
 const CENSUS = new URL('../../docs/plan/census/claims.md', import.meta.url);
 
@@ -88,14 +144,32 @@ const check = (name, ok, detail) => {
 const seedOf = (str) => { let h = 2166136261; for (let i = 0; i < str.length; i++) h = Math.imul(h ^ str.charCodeAt(i), 16777619); return h >>> 0; };
 
 const COMBAT = { tickMs: 22, prep: B.nearField };
+/* v2.3.6462: the break proof, at the reach the worker reads (combat.js
+   `this._swordReach()`: SWORD_SWING.REACH_PX with `swordswing` ON, else
+   PVE_MELEE_RANGE), doubled; the liar reads the same (claimbots.mjs) */
+const REACH_PLANT = (room) => { const r0 = room._swordReach.bind(room); room._swordReach = () => 2 * r0(); };
 const STEPPER = 'the stepping archer: a shot every 495 ms, running in (250 px a second) while its arrows fly';
 const PHONE_MIX = { perfect: 0.45, good: 0.44 };   /* the bot lab's assumption: no measured data on real grades */
 const CLAIMS = [
-  { id: 'reach', what: 'the sword\'s reach', judge: 'a melee hit is taken from `PVE_MELEE_RANGE` (400 px, index.js; combat.js _handleMonsterDamage), and a miss never reaches the worker',
+  { id: 'reach', what: 'the sword\'s reach', judge: 'a melee hit is taken from the worker\'s copy within `_swordReach()` (150 px, SWORD_SWING.REACH_PX with `swordswing` ON; v2.3.6462: it said PVE_MELEE_RANGE\'s 400, read only with it off), one counted swing at the sword\'s rate (swordswing.js), and a miss never reaches the worker',
     take: 'kills', world: COMBAT,
     honest: [['the honest sword: in to 90 px, a swing every 600 ms', B.honestSword]],
-    liar: ['every monster within 399 px, each every 210 ms (its lane), unshoved (`noKb`)', B.liarSword],
-    plant: PLANT === 'reach' ? (room) => { room.PVE_MELEE_RANGE = 800; } : null },
+    liar: ['every monster within the judge\'s reach (149 px), each every 210 ms (its lane), unshoved (`noKb`)', B.liarSword],
+    plant: PLANT === 'reach' ? REACH_PLANT : null },
+  /* v2.3.6462 (card BK PR 3): the reach liar whose join says `fs: 1` (the
+     free-swing trial, join.js): its swings skip the swing's count
+     (combat.js `_freeSwingFor`) and keep the trial's own floor and share
+     (freeswing.js) -- shape-books.md's probe, now a row */
+  { id: 'freeswing', what: 'the sword\'s reach on the free-swing trial (a join that says `fs: 1`)', judge: 'the sword\'s reach (swordswing.js, 150 px); the swing\'s count is skipped for a phone on the trial (combat.js `_freeSwingFor`), its swings prorated by time instead (freeswing.js)',
+    take: 'kills', world: COMBAT,
+    honest: [['the honest sword', B.honestSword], ['the honest sword on the trial (its join says `fs: 1`)', B.honestSword, { fs: 1 }]],
+    liar: ['the reach liar, its join saying `fs: 1`', B.liarSword, { fs: 1 }],
+    plant: PLANT === 'reach' ? REACH_PLANT : null },
+  /* v2.3.6462 (card BK PR 3): the staff, which had no row */
+  { id: 'staff', what: 'a staff\'s claim', judge: '`slot: \'staff\'` with a staff worn (hitproof.js): from the worker\'s copy within 675 px x Range + 250 + 0.3 s of the run, 2 claims a second across every monster (3 s of them may wait), each monster on its 210 ms lane',
+    take: 'kills', world: COMBAT,
+    honest: [['the honest caster: in to 600 px, a bolt every 900 ms, each claim when its bolt lands', B.honestStaff], ['the honest sword', B.honestSword]],
+    liar: ['standing at the staff\'s whole reach, a claim on each monster in it whenever the rate holds one, unshoved', B.liarStaff] },
   { id: 'bowlabel', what: 'a sword\'s claim labelled a bow\'s (TRAPS §329)', judge: '`slot: \'ranged\'` with a bow worn: five claims a second (hitproof.js), each on an arrow the worker saw leave at the bow\'s rate (`bowshot`), within the arrow\'s flight of where it left (`bowreach`, 1,075 px for a new character; with no arrow seen, the hit test\'s 1,490 px for one claim in 3 s), near its line and after its flight (`bowpath`, ON since v2.3.5906), and never lowers the guard',
     take: 'kills', world: COMBAT,
     honest: [['the honest archer: in to 600 px, a shot every 495 ms, each claim when its arrow lands', B.honestBow], ['the honest sword', B.honestSword],
@@ -149,13 +223,13 @@ const UNREACHED = [
 
 /* one bot's run: its world, its phone (on a disturbance), its take */
 const blank = () => ({ kills: 0, xp: 0, ore: 0, cooked: 0, gold: 0, px: 0, points: 0, hurt: 0 });
-async function runBot(c, [who, bot, opts], { d = null, ms, plant = null, flags = undefined } = {}) {
+async function runBot(c, [who, bot, opts], { d = null, ms, plant = null, flags = undefined, seed = SEED } = {}) {
   const w = c.world || {};
-  const clock = seededClock({ seed: seedOf(SEED + c.id + '|' + who + '|' + (d ? d.id : 'gain')) }).install();
+  const clock = seededClock({ seed: seedOf(seed + c.id + '|' + who + '|' + (d ? d.id : 'gain')) }).install();
   try { return await runIn(clock, c, w, bot, opts, { d, ms, plant, flags }); } finally { clock.restore(); }
 }
 async function runIn(clock, c, w, bot, opts, { d, ms, plant, flags }) {
-  const W = await B.makeWorld(clock, { tickMs: w.tickMs || 200, prep: w.prep || null, recs: w.recs ? w.recs() : {}, plant, ...((flags || w.flags) ? { flags: flags || w.flags } : {}) });
+  const W = await B.makeWorld(clock, { tickMs: w.tickMs || 200, prep: w.prep || null, recs: w.recs ? w.recs() : {}, plant, fs: (opts && opts.fs) || 0, ...((flags || w.flags) ? { flags: flags || w.flags } : {}) });
   const ph = new B.Phone(W, null, d, ms);
   const take = blank();
   const quiet = { l: console.log, w: console.warn, e: console.error };
@@ -170,12 +244,16 @@ const valueOf = (c, take) => (c.take === 'gold+xp+kills' ? take.gold + take.xp +
 const perHour = (c, v, ms) => (c.whole ? v : ms > 0 ? (v * 3600000) / ms : 0);
 
 const t0 = performance.now();
-const rows = [];
+/* v2.3.6462: every claim on each seed of SEEDS; `rows` is the first seed's
+   (the census's, the lines' and the disturbances' seed) */
+const bySeed = Object.create(null);
+for (const seed of SEEDS) {
+const rows = bySeed[seed] = [];
 for (const c of CLAIMS) {
   const ms = (c.minutes || GAIN_MIN) * B.MIN;
   const hon = [];
-  for (const h of c.honest) { const r = await runBot(c, h, { ms }); hon.push({ who: h[0], v: perHour(c, valueOf(c, r.take), r.ms), refusals: r.refusals }); }
-  const lr = await runBot(c, c.liar, { ms, plant: c.plant || null });
+  for (const h of c.honest) { const r = await runBot(c, h, { ms, seed }); hon.push({ who: h[0], v: perHour(c, valueOf(c, r.take), r.ms), refusals: r.refusals }); }
+  const lr = await runBot(c, c.liar, { ms, plant: c.plant || null, seed });
   const liar = { who: c.liar[0], v: perHour(c, valueOf(c, lr.take), lr.ms) };
   const best = c.less ? hon.reduce((a, b) => (b.v < a.v ? b : a)) : hon.reduce((a, b) => (b.v > a.v ? b : a));
   let gain;
@@ -184,13 +262,15 @@ for (const c of CLAIMS) {
   else gain = liar.v / Math.max(best.v, 1e-9);
   rows.push({ c, hon, liar, best, gain: Math.round(gain * 100) / 100 });
 }
+}
+const rows = bySeed[SEEDS[0]];
 
 /* the honest bots on every disturbance (each claim's first honest bot, and a
    second where it plays another way) */
 const dist = [];
 for (const c of GAINS_ONLY ? [] : CLAIMS) {
   for (const h of c.honest) {
-    if (h[1] === B.honestSword && c.id !== 'reach') continue;   /* the same bot as the reach's: run once */
+    if (h[1] === B.honestSword && !h[2] && c.id !== 'reach') continue;   /* the same bot as the reach's: run once (v2.3.6462: a sword with its own opts, `fs: 1`, is another) */
     for (const d of DISTURBANCES) {
       const r = await runBot(c, h, { d, ms: DIST_S * 1000 });
       dist.push({ claim: c.id, who: h[0], d: d.id, refusals: r.refusals });
@@ -200,11 +280,11 @@ for (const c of GAINS_ONLY ? [] : CLAIMS) {
 const secs = ((performance.now() - t0) / 1000).toFixed(1);
 
 /* ══════════ THE CHECKS ══════════ */
-check(`1: every claim of step 4.2 has its number (${CLAIMS.length}) or its why (${UNREACHED.length})`, CLAIMS.length + UNREACHED.length === 11);
+check(`1: every claim of step 4.2 has its number (${CLAIMS.length}) or its why (${UNREACHED.length})`, CLAIMS.length + UNREACHED.length === 13);   /* v2.3.6462: 11 -> 13, the free-swing reach and the staff */
 const refused = dist.filter((x) => x.refusals.length);
 check(`2: the honest bots meet no refusal on any disturbance (${dist.length} runs, ${DISTURBANCES.length} disturbances)`, refused.length === 0,
   refused.map((x) => x.claim + ' / ' + x.d + ': ' + x.refusals[0] + (x.refusals.length > 1 ? ' (+' + (x.refusals.length - 1) + ')' : '')));
-const gainRuns = rows.flatMap((r) => r.hon.filter((h) => h.refusals.length).map((h) => r.c.id + ': ' + h.refusals[0]));
+const gainRuns = SEEDS.flatMap((s) => bySeed[s]).flatMap((r) => r.hon.filter((h) => h.refusals.length).map((h) => r.c.id + ': ' + h.refusals[0]));
 check('2: ...nor on the gain runs', gainRuns.length === 0, gainRuns);
 /* v2.3.5540 (card K, step 4.2): THE ARCHER'S LANE.  The stepping archer
    keeps every arrow (2, above: its gain run and every disturbance), and with
@@ -483,11 +563,31 @@ if (!GAINS_ONLY) {
      the honest phone's own luck over its twenty strikes) */
   check(`2i: the harvest's liar: gain ${gOff.toFixed(2)} with \`harvestgrade: false\`; with \`harvestgrade: true\` the plain liar ${gPlain.toFixed(2)}, the graded one ${gGraded.toFixed(2)} (its line ${HARVESTGRADE_LINE}, the bar ${BAR})`, gOn <= BAR && gOn <= HARVESTGRADE_LINE + 0.005 && gOn < gOff, harvestGradeOn);
 }
-for (const r of rows) {
+/* 3: each seed's gain within its line and its spread (the line a dice
+   margin over the default seed's; v2.3.6462: on every seed run, which the
+   spread was measured to hold) */
+for (const seed of SEEDS) for (const r of bySeed[seed]) {
   const line = LINES[r.c.id];
-  check(`3: ${r.c.id}: its gain ${r.gain} is within its line ${line} and its spread ${SPREAD[r.c.id]} (${r.gain <= BAR ? 'under' : 'over'} the bar ${BAR})`, r.gain <= line + SPREAD[r.c.id] + 1e-9, { honest: Math.round(r.best.v), liar: Math.round(r.liar.v) });
-  if (r.gain < line - SPREAD[r.c.id] - 0.005) console.log(`NOTE ${r.c.id}'s gain fell to ${r.gain} (line ${line}): lower its line in this suite, and the census with --write`);
+  check(`3: ${r.c.id}${SEEDS.length > 1 ? ` (seed '${seed}')` : ''}: its gain ${r.gain} is within its line ${line} and its spread ${SPREAD[r.c.id]}`, r.gain <= line + SPREAD[r.c.id] + 1e-9, { honest: Math.round(r.best.v), liar: Math.round(r.liar.v) });
+  if (seed === SEEDS[0] && r.gain < line - SPREAD[r.c.id] - 0.005) console.log(`NOTE ${r.c.id}'s gain fell to ${r.gain} (line ${line}): lower its line in this suite, and the census with --write`);
 }
+/* 3b (v2.3.6462): THE BAR.  Each claim's worst gain over the seeds run: under
+   BAR passes; over it, a KNOWN row at or above it prints KNOWN (never PASS),
+   else it fails.  A KNOWN row prints KNOWN on a seed under the bar too: its
+   worst is over it, and a PR's one seed must not read as the claim met */
+const worstOf = (id) => SEEDS.map((seed) => ({ seed, gain: bySeed[seed].find((r) => r.c.id === id).gain })).reduce((a, b) => (b.gain > a.gain ? b : a));
+for (const c of CLAIMS) {
+  const w = worstOf(c.id), k = KNOWN[c.id];
+  const where = SEEDS.length > 1 ? `the worst of ${SEEDS.length} seeds, ${w.gain} (seed '${w.seed}')` : `${w.gain} on seed '${w.seed}'`;
+  if (k === undefined) check(`3b: ${c.id}: ${where}, ${w.gain <= BAR ? 'under' : 'OVER'} the bar ${BAR}${w.gain <= BAR ? '' : ' and not a KNOWN row'}`, w.gain <= BAR);
+  else if (w.gain > k + 1e-9) check(`3b: ${c.id}: ${where}, over its KNOWN row ${k} (the bar ${BAR})`, false);
+  else {
+    console.log(`KNOWN 3b: ${c.id} ${k}, over the bar ${BAR}, known (${where}${SEEDS.length > 1 ? '' : `; ${k} the worst of six, --whole`}): ${KNOWN_WHY[c.id]}`);
+    if (WHOLE && w.gain <= BAR) console.log(`NOTE ${c.id} is under the bar on every seed: remove its KNOWN row`);
+    else if (WHOLE && w.gain < k - 0.005) console.log(`NOTE ${c.id}'s worst fell to ${w.gain} (KNOWN ${k}): lower its row`);
+  }
+}
+for (const id of Object.keys(KNOWN)) if (!CLAIMS.some((c) => c.id === id)) check(`3b: KNOWN's row ${id} is a claim measured here`, false);
 console.log(`     ${rows.length} claims measured, ${dist.length} disturbance runs, in ${secs} s`);
 
 /* ══════════ THE CENSUS ══════════ */
@@ -498,7 +598,7 @@ if (WRITE) {
   const L = [
     '# The claims\' gains (card K PR 6, v2.3.5186)',
     '',
-    'Made by `node test/claims-gain.test.mjs --write` (from `server/`). Grand',
+    'Made by `node test/claims-gain.test.mjs --whole --write` (from `server/`). Grand',
     'plan step 4.2, step 1: each claim the worker believes inside a bound, its',
     'gain measured by house bots (`server/test/claimbots.mjs`) on card E\'s test',
     'room: the take of a maximal liar (it sends the most the judge accepts) an',
@@ -510,13 +610,13 @@ if (WRITE) {
     '4.2\'s tightenings (card K\'s second block) each come behind its own live flag,',
     'and this bench is how each is measured.',
     '',
-    `On main 82fb78d, seeded, ${GAIN_MIN} simulated minutes a run (the cook's an hour).`,
+    `On main e5342063 (v2.3.6462), seeded, ${GAIN_MIN} simulated minutes a run (the cook's an hour).`,
     '',
     '## The gains',
     '',
-    '| Claim | The judge | The take | Honest | Liar | Gain | Its spread | Over 1.5 |',
-    '|---|---|---|---|---|---|---|---|',
-    ...rows.map((r) => `| ${esc(r.c.what)} (\`${r.c.id}\`) | ${esc(r.c.judge)} | ${takeWord[r.c.take]} | ${n0(r.best.v)} (${esc(r.best.who)}) | ${n0(r.liar.v)} (${esc(r.liar.who)}) | **${r.gain}** | ${SPREAD[r.c.id]} | ${r.gain > BAR ? 'yes' : 'no'} |`),
+    '| Claim | The judge | The take | Honest | Liar | Gain | Its spread | Worst of the seeds | Over 1.5 |',
+    '|---|---|---|---|---|---|---|---|---|',
+    ...rows.map((r) => `| ${esc(r.c.what)} (\`${r.c.id}\`) | ${esc(r.c.judge)} | ${takeWord[r.c.take]} | ${n0(r.best.v)} (${esc(r.best.who)}) | ${n0(r.liar.v)} (${esc(r.liar.who)}) | **${r.gain}** | ${SPREAD[r.c.id]} | ${worstOf(r.c.id).gain} (seed '${worstOf(r.c.id).seed}') | ${KNOWN[r.c.id] !== undefined ? '**KNOWN**' : worstOf(r.c.id).gain > BAR ? 'yes' : 'no'} |`),
     '',
     'The spread is the gain\'s highest less its lowest over five other seeds (`CLAIMS_SEED=a` to `e`, `--gains`): the suite fails a gain past its line by more than it.',
     '',
@@ -542,6 +642,12 @@ if (WRITE) {
       `v2.3.5904 (card K4 PR 5; \`server/src/bowshot.js\`): with \`bowpath: true\` a claim on an arrow seen lands only for a monster near that arrow's line (its relay's x, y and angle -- since v2.3.5905 the relay goes at release, with the line the arrow flies, against a worker advertising caps.bowPath: 200 px beside it measured to the monster's body, its feet up 130 px, a boss's 260, and the landing's 8 degree turn) and no sooner than the arrow could have flown there (1,440 px a second x Range, less 300 ms). Every honest archer takes what it took with it off and meets no refusal on any disturbance. The bow's liar with it on: the path's liar (each relay aimed at a monster that still needs arrows, each claim when its arrow could have landed, on its line) **${bowPath.path.toFixed(2)}**; the relay-and-claim liar **${bowPath.shots.toFixed(2)}**. Its line, \`BOWPATH_LINE\`, only falls. ON by default since v2.3.5906 (the owner's "Go recommended"); \`bowpath: false\` turns it off.`,
       '',
     ] : []),
+    '## Over the bar, known (`KNOWN`, v2.3.6462)',
+    '',
+    `The suite judges each claim's worst gain over the seeds run (${SEEDS.map((x) => `'${x}'`).join(', ')}) against the bar ${BAR} (check 3b). These are over it, and say so: a row that only falls, never raised to pass. Tightening a judge is not this suite's: the sword's reach is the owner's call 5 (\`docs/plan/finish.md\` part 9).`,
+    '',
+    ...Object.keys(KNOWN).map((id) => `- \`${id}\`: **${KNOWN[id]}** (this run's worst ${worstOf(id).gain}, seed '${worstOf(id).seed}'): ${esc(KNOWN_WHY[id])}`),
+    '',
     '## Claims with no number yet, and why',
     '',
     ...UNREACHED.map((u) => `- **${esc(u.what)}** (\`${u.id}\`): ${esc(u.why)}`),
@@ -572,6 +678,7 @@ if (WRITE) {
   writeFileSync(CENSUS, L.join('\n'));
   console.log('     wrote docs/plan/census/claims.md');
 }
-for (const r of rows) console.log(`     ${r.c.id.padEnd(9)} honest ${Math.round(r.best.v)}  liar ${Math.round(r.liar.v)}  gain ${r.gain}`);
+/* v2.3.6462: every seed run, each honest bot's take (the best one first) */
+for (const seed of SEEDS) for (const r of bySeed[seed]) console.log(`     ${SEEDS.length > 1 ? `'${seed}' ` : ''}${r.c.id.padEnd(9)} honest ${[r.best, ...r.hon.filter((h) => h !== r.best)].map((h) => Math.round(h.v)).join(' / ')}  liar ${Math.round(r.liar.v)}  gain ${r.gain}`);
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

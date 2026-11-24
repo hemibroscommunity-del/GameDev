@@ -1,35 +1,40 @@
 card: BK
-branch: claude/plan-bk-1-worldsum
-prs: 6460 (ready, opening)
+branch: claude/plan-bk-3-claimsbar (from main e5342063)
+prs: #2278 6460 (merged), #2281 6461 (ready), #2289 6464 (ready), 6462 (ready, opening)
 state: ready
 
 ## Done
 
-- 6460 (PR 1): world-sum writes down every road the room's real handlers
-  ran (a module hook in front of the bag's and stashes' doors, the gold door
-  wrapped on the room; a door called by hand is not counted), and fails a
-  move or escrow road (51) neither played nor on UNPLAYED (7, a line that
-  only falls). §1 now plays the General Store, the Auction House, the
-  jackpot, duel.js, gladiator.js, an item drop, a staged weapon, the gift
-  trade, gear worn, No man's land's kill. Plants 2 and 3 red by the sum
-  itself ("slime_gel 1", "unexplained gold 3"); a new unplayed escrow row
-  red by the gate.
+- 6460 (PR 1): world-sum fails a road its handlers never ran. Merged.
+- 6461 (PR 2): chaos-restart §7, the sweep made from VALUE_PAUSE (14 rows),
+  judged by unexplained(). Plants B1, B4, R2 red. Ready (#2281).
+- 6464 (sitting 56's Found on #2278): world-sum §1 counts the pieces the sum
+  holds by id at every step. Plant E1 red. Ready (#2289).
+- 6462 (PR 3): claims-gain's bar, honestly. A PR runs one seed's gains (about
+  22 s); `--whole` (the gatekeeper's new `claims` step) runs the six seeds and
+  every disturbance. 3b judges the worst gain over the seeds run against 1.5;
+  over it, a KNOWN row (only falls) prints KNOWN, never PASS. KNOWN: reach
+  1.92 (seed d), freeswing 1.75, staff 2.97, harvest 1.57. The reach plant
+  now doubles `_swordReach` (plant C1): red on one seed (1.96 > 1.92) and six.
+  New rows: the liar whose join says `fs: 1`, and the staff (honest caster and
+  liar bots in claimbots.mjs). No rule of combat changed.
 
 ## Next
 
-- 6461 (PR 2): the restart sweep made from VALUE_PAUSE (plant R2 red).
+- PR 4 (6463): `fee`, `hold`, `pace` in playerroads.js marked "not wired".
 
 ## Found
 
-- `escrow_debit_stored` (gold.js) looks unreachable from a handler: every
-  route that takes it asks for a live session first (httpauth.js). On
-  UNPLAYED with that reason.
-- `escrow_item`, `escrow_item_stored` run only with `ahonewrite: false`
-  (store.js): the old listing path behind its switch.
-- Mints and burns (harvest, cook, forge, a weapon's sale, a quest's hand-in,
-  loot gold, pets, the farm) are not held by the gate: a mint is explained
-  by construction; a door that books other than it moves is card DG's.
+- The sword's reach over six seeds is 1.92 (seed d), not "about 1.55":
+  finish.md part 9 call 5 says 1.55 to the owner (the orchestrator's file).
+- The staff's judge (hitproof.js) lets a liar take 2.97x an honest new
+  caster: its rate is the quickest build's (2 a second) against a new
+  character's 900 ms bolt, and its reach is counted from where it stands.
+- `escrow_debit_stored` (gold.js) looks unreachable from a handler;
+  `escrow_item(_stored)` run only with `ahonewrite: false`.
+- A crossing or sale a restart cut is finished at the first shop request
+  after the wake (a pile on the ground is lost on one, by design).
 
 ## Needs
 
-- Nothing.
+- Call 5 (the sword's reach) and a staff's-judge card: not this card's.
