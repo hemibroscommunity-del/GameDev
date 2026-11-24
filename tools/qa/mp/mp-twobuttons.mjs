@@ -158,6 +158,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
       /* ── PART 2: the right side ── */
       const me = await H.readState(P, (S) => S.myId);
       await H.devOp(wsPort, 'vitals', me, { heal: true, god: true, godMinutes: 8 });
+      await H.devOp(wsPort, 'kit', me, { what: 'weapons' });   /* a new character has no weapon (mp-arena's way) */
+      await H.waitFor(P, (S) => ((S.rpg && S.rpg.weaponStash) || []).some((w) => w && w.type === 'greatsword') || !!(S.rpg && S.rpg.weapon), (v) => v, { timeout: 15000, label: 'the kit' }).catch(() => null);
       const eq = await H.equipWeapon(P, 'greatsword', 'weapon', 'melee').catch((e) => ({ ok: false, why: String(e) }));   /* the held attack swings only an equipped weapon (monsterCombat _eqWpn) */
       rec.ok(`2. ${label}: a sword in hand (guard)`, !!(eq && eq.ok), eq);
       const mon0 = await H.readState(P, (S) => {
