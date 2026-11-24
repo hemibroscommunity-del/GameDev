@@ -9,7 +9,7 @@
  * found; the reads beside them must not be.  A spelling the scanner cannot
  * know (a key computed from data at run time) is the running room's
  * (server/test/testroom.mjs, card DG PR 1). */
-import { writesOf, refsOf, doorWrites, doorCalls } from './lib/writesOf.mjs';
+import { writesOf, refsOf, doorWrites, doorCalls, msgReadsOf } from './lib/writesOf.mjs';
 
 let failed = 0;
 function check(name, ok, detail) {
@@ -199,6 +199,55 @@ for (const [name, body, how, nm, road] of REF_PLANTS) {
   check('5. ...a row for every file (\'*\') is refused: a row names its file', threw);
   const c = doorCalls({ 'a.js': inFn("this._goldGive(ps, 1, 'a'); room._goldGive(ps, 1, 'b'); const g = this._goldGive.bind(this);") }, { names: ['_goldGive'] });
   check('5. doorCalls: every receiver\'s call with its road, a bind as odd', c.calls.map((x) => x.road).join() === 'a,b' && c.odd.length === 1 && c.odd[0].how === 'bind', c);
+}
+
+/* ── 6. v2.3.6446 (sitting 59): what a handler reads off a message (msgReadsOf) ──
+   wire-hostile's section 5 asks it of every handler the router hands a
+   message to; each spelling here, in a handler of its own: a read of a
+   field however it is written, a read no case of a running room would
+   reach, a read that is no read (after a return, a name nothing uses), and
+   every other form of the message a fault (deny by default). */
+{
+  const ROUTER = "export const r = {\n  async _onMessage(ws, session, msg) {\n    switch (msg.type) {\n      case 'a': await this._h(session, msg); break;\n"
+    + "      case 'b': this._g(session, msg.payload || msg); break;\n    }\n  },\n};\n";
+  const run = (body, extra = '') => msgReadsOf({
+    'index.js': ROUTER,
+    'h.js': "import { far } from './f.js';\nconst own = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);\nfunction helper(m) { return m.x; }\n" + extra
+      + 'export const h = {\n  async _h(session, msg) {\n' + body + '\n  },\n  _g(session, p) { return p.g; },\n};\n',
+    'f.js': 'export function far(m) { return m.x; }\nexport const o = { _other(m) { return m.x; } };\n',
+  }, { entry: { file: 'index.js', fn: '_onMessage', param: 2 }, types: ['a', 'b'] });
+  const readsOf = (res, field) => res.reads.filter((x) => x.field === field && x.types.has('a'));
+  const READS = [
+    ['a member', 'void msg.x;'], ['a bracket', "void msg['x'];"], ['a key in a const', "const k = 'x'; void msg[k];"],
+    ['optional', 'void msg?.x;'], ['a destructure', 'const { x } = msg; void x;'], ['a renamed destructure', 'const { x: y = 1 } = msg; void y;'],
+    ['the payload, or the message', 'const p = msg.payload || msg; void p.x;'], ['a nested destructure of the payload', 'const { payload: { x } } = msg; void x;'],
+    ['own(msg, k)', "void own(msg, 'x');"], ['`in`', "void ('x' in msg);"], ['Object.hasOwn', "void Object.hasOwn(msg, 'x');"],
+    ['a function of the file', 'void helper(msg);'], ['a function it imports', 'void far(msg);'], ['a method of the room in another file', 'void this._other(msg);'],
+    ['a key put together', "void msg['x' + ''];"], ['an alias of an alias', 'const a = msg; const b = a; void b.x;'],
+  ];
+  for (const [n, body] of READS) { const r = readsOf(run(body), 'x'); check('6. a read: ' + n, r.length >= 1 && r.some((x) => x.live), run(body)); }
+  const len = readsOf(run('if (msg.length) return;'), 'length');
+  check('6. msg.length is a read of a field named length (sitting 59: NOT_A_FIELD held it to nothing)', len.length === 1);
+  const gate = run("if (msg.type === 'b') void msg.z; void msg.w;");
+  check('6. which types reach a read: a test of msg.type the case cannot pass reaches none', gate.reads.find((x) => x.field === 'z').types.size === 0 && gate.reads.find((x) => x.field === 'w').types.has('a'));
+  check('6. ...and the other case\'s handler is read for its own type', run('').reads.some((x) => x.field === 'g' && x.types.has('b') && !x.types.has('a')));
+  const DEAD = [
+    ['after a return', 'return; void msg.x;'],
+    ['a destructure whose name nothing uses (sitting 59: quests.js)', 'const { x } = msg;'],
+    ['a destructure whose names are used only after a return', 'const { x } = msg; return; void x;'],
+    ['a value bound to a name nothing uses', 'const v = msg.x;'],
+  ];
+  for (const [n, body] of DEAD) { const r = readsOf(run(body), 'x'); check('6. no read: ' + n, r.length >= 1 && r.every((x) => !x.live), r); }
+  const FAULTS = [
+    ['a key the tree cannot know', 'void msg[Date.now()];'], ['a spread', 'const c = { ...msg };'], ['Object.keys', 'Object.keys(msg);'],
+    ['a rest', 'const { x, ...r } = msg; void x; void r;'], ['stored on the room', 'this.box = msg;'], ['handed to a list', 'const l = []; l.push(msg);'],
+    ['JSON', 'JSON.stringify(msg);'], ['for-in', 'for (const k in msg) void k;'], ['awaited', 'await msg;'], ['a write', 'msg.x = 1;'],
+    ['a template', 'void `${msg}`;'], ['handed to what it cannot find', 'globalThis.fn(msg);'], ['stored in an object', 'const o = { m: msg };'],
+    ['an inner function hands it back', 'const f = () => msg; void f;'], ['a computed key of a destructure', 'const { [Date.now()]: q } = msg; void q;'],
+    ['arguments', 'void arguments[1];'],
+  ];
+  for (const [n, body] of FAULTS) { const r = run(body); check('6. a fault: ' + n, r.faults.some((f) => f.types.has('a')), r.faults); }
+  check('6. a clean handler has no fault', run('void msg.x; const { y } = msg; void y;').faults.length === 0, run('void msg.x;').faults);
 }
 
 if (failed) { console.log(failed + ' FAILED'); process.exit(1); }

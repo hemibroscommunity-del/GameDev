@@ -45,20 +45,51 @@
  * that holds one before any handler.  It is sent where it can arrive, as the
  * text `NaN` in a query or a header.  Infinity arrives as `1e999`.
  *
+ * WHAT A HANDLER READS, REACHED OR NOT (v2.3.6446, sitting 59's mend; card
+ * DG).  Sections 3 and 4 (v2.3.6444) watch the reads a case REACHES; the
+ * review of sitting 59 planted three a case never meets and all three
+ * stayed green: `if (msg.lucky)` behind a gate no case passes (dice.js), a
+ * handler that returns right after its destructure (quests.js: its names
+ * counted as read), `msg.length` (the old NOT_A_FIELD words, held to
+ * nothing).  Section 5 reads the syntax tree (tools/guards/lib/writesOf.mjs
+ * msgReadsOf) from the router into every function the message is handed
+ * to, and holds:
+ *   5a  every read of a field is of one its row's `trust` names (or
+ *       TREE_UNNAMED, with why);
+ *   5b  the message appears in no other form (deny by default: a computed
+ *       key, a spread, a copy, a rest, a store, a write, a call the tree
+ *       cannot follow), or TREE_FORMS;
+ *   5c  every named field is read LIVE (not after a return, not a
+ *       destructured name nothing uses); and a case's read counts for 3a
+ *       only when the tree reads the field live too;
+ *   5d  TREE_UNNAMED, TREE_FORMS and TREE_TABLES only fall (TREE_LINE);
+ *   5w  the watcher itself, on a room of its own; 5j  the judges' verdicts,
+ *       each both ways, on lists of the suite's own; 6  every verdict given.
+ * No name is "not a field" any more: `length`, `then`, `toJSON` are held.
+ *
  * BREAK PROOF (rule 8), tried by hand 2026-11-14: `WIRE_HOSTILE_PLANT=1 node
  * test/wire-hostile.test.mjs` plants, on the room of the `achv_title` row, a
  * handler that writes `ps[payload.id] = payload` (the shape
  * `ps[payload.k] = ...`); its `"__proto__"` case swaps the record's
  * prototype and the count rises past LINE: FAIL.
+ * v2.3.6446 (sitting 59): the review's three lines and three plants of the
+ * mend's own (the rest of a payload kept on the room, the message kept in a
+ * list by a call on a list, a key put together from two words in a type
+ * table's row of another file), each RED (the PR's words); and a
+ * mutation pass over the decisions of sections 3 to 5, each mutant against
+ * this suite alone: 44 of 48 killed (the PR's words: the 4 and why).
  *
  * Not a phone test: node, card E's test room (testroom.mjs).  ~20 s. */
-import { writeFileSync } from 'node:fs';
+import { writeFileSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { join as pathJoin } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import worker, { Leaderboard, Feedback } from '../src/index.js';
 import { WIRE_IN } from '../src/wire/in.js';
 import { WIRE_HTTP } from '../src/wire/http.js';
 import { makeStorage, openRoom, fakeWs, join, seededClock, settle } from './testroom.mjs';
 import { performance } from 'node:perf_hooks';
 import { count, unexplained } from '../src/worldsum.js';
+import { msgReadsOf } from '../../tools/guards/lib/writesOf.mjs';   /* v2.3.6446: the tree's reading (section 5) */
 
 /* the count of failing cases today: it only falls.  v2.3.5183, main 9fd5e58:
    19.  v2.3.5184 (card K PR 4): 1 -- the wire door drops `move`'s 16 (a key
@@ -74,8 +105,10 @@ const DOOR_OFF = process.env.WIRE_HOSTILE_DOOR === 'off';
 const CENSUS = new URL('../../docs/plan/census/hostile.md', import.meta.url);
 
 let failures = 0;
+const judged = new Set();   /* v2.3.6446: the verdicts given (the last check: none skipped) */
 const check = (name, ok, detail) => {
   if (!ok) failures++;
+  judged.add(String(name).split(':')[0]);
   console.log((ok ? 'PASS ' : 'FAIL ') + name + (ok || detail === undefined ? '' : '  ' + JSON.stringify(detail).slice(0, 600)));
 };
 
@@ -196,7 +229,9 @@ const rec = () => ({ _v: 21, coins: 5000, level: 10, hp: 100, maxHp: 100,
  * what the table names; and so does a listing of the message's keys after
  * the door (4b: a spread, Object.assign or JSON copy, whose reads the Proxy
  * cannot see; none today).  The test room's alone: nothing on the live
- * worker.  Its break proofs: the PR's words (card DG PR 5), seven plants. */
+ * worker.  Its break proofs: the PR's words (card DG PR 5), seven plants.
+ * v2.3.6446 (sitting 59): what no case reaches is section 5's (the tree);
+ * the watcher's own behaviour is held by 5w, on a room of its own. */
 const KEYS = '(its keys)';   /* the key READS notes for a listing of the message's keys */
 const READS = new Map();   /* 'row field' -> where it was first read (a line of src/) */
 const SEEN = new Set();    /* the rows a case took past the door */
@@ -547,6 +582,33 @@ const NOT_REACHED = {
     why: 'clanparty is on by default: new wars are refused (clans.js)' },
 };
 
+/* v2.3.6446 (sitting 59): WHAT THE TREE READS THAT A ROW DOES NOT NAME, and
+ * the forms the tree's reading (tools/guards/lib/writesOf.mjs msgReadsOf)
+ * lets by, each with why.  Section 5 holds every OTHER read the tree finds
+ * to its row's `trust`, and every other form of the message to nothing
+ * (deny by default).  Counted (TREE_LINE: their fields, forms and tables)
+ * and the list only falls: a row that names the field takes its line out.
+ * Found 2026-11-24 by the tree, behind gates no case of section 1 passes
+ * (a field the running room never meets).  Named in no row here: naming
+ * a field puts it under the door's forms, which is the row's own change. */
+const TREE_UNNAMED = {
+  ride: { fields: ['data'],
+    why: 'ride.js _handleRide reads `msg.payload || msg.data || msg`: a phone\'s `data: { on }` (a case sends a payload, so the Proxy never meets it)' },
+  player_attack: { fields: ['element'],
+    why: 'pvpextras.js _pvpClaimElement reads the claim\'s element only with weapongem thrown (as monster_damage\'s `element`, named in v2.3.6444)' },
+  dungeon_start: { fields: ['monsters', 'name', 'terrain', 'width', 'height', 'waves', 'monsterLevel', 'element', 'hasBoss', 'bossArchetype', 'bossMultiplier'],
+    why: 'dungeon.js _dungeonSanitizeConfig(payload.config || payload): with no config the payload itself is the config (the row\'s `absent`), and the row names only `config.*`' },
+};
+const TREE_FORMS = [
+  { at: 'join.js _handleJoin', what: 'a write of the message (data)',
+    why: 'a join with no record on file strips the rpg claims off its own `data` before anything reads it (join.js: a new character starts from the server\'s defaults; CLAUDE.md §5 Identity)' },
+];
+/* a table built at run time, read as the literal it is made from (`FIGHT_LOCK`
+   is Object.fromEntries over FIGHT_LOCK_SW and FIGHT_LOCK_HOW: its rows'
+   `when` and `refuse` are FIGHT_LOCK_HOW's) */
+const TREE_TABLES = { 'fightlock.js:FIGHT_LOCK': 'FIGHT_LOCK_HOW' };
+const TREE_LINE = 15;   /* 13 fields + 1 form + 1 table, 2026-11-24 */
+
 /* ══════════ RUN ══════════ */
 const t0 = performance.now();
 let cases = 0;
@@ -622,45 +684,220 @@ if (DOOR_OFF) {
   check(`2: the failing cases do not rise past the line (${failing} <= ${LINE}: docs/plan/census/hostile.md)`, failing <= LINE, census.slice(0, 8));
   if (failing < LINE) console.log(`NOTE the failing cases fell (${failing} < ${LINE}): lower LINE in this suite, and the census with --write`);
 }
-/* ══════════ 3 and 4: HOW FAR THE CASES REACHED (v2.3.6444; card DG PR 5) ══════════
-   Every field a socket row's `trust` names (its top level: `data.x` is
-   `data`; less type, payload and reqId) was read by some case after the
+/* ══════════ 3 to 5: HOW FAR THE CASES REACHED, AND WHAT THE TREE READS ══════════
+   (v2.3.6444, card DG PR 5; v2.3.6446, sitting 59's mend)
+   3 and 4: every field a socket row's `trust` names (its top level: `data.x`
+   is `data`; less type, payload and reqId) was read by some case after the
    door, or is in NOT_REACHED with why; a listed field that a case now reads
    fails until its line goes (the list only falls, REACH_LINE its count).
    And no case read a field its row does not name.  Held with the door on
-   (WIRE_HOSTILE_DOOR=off lets other frames in: its reach is not the line). */
+   (WIRE_HOSTILE_DOOR=off lets other frames in: its reach is not the line).
+   v2.3.6446 (sitting 59: `if (msg.lucky)` behind a gate no case passes, a
+   handler that returns right after its destructure, `msg.length`, all
+   green): a case's read counts only when the tree reads the field LIVE too
+   (5), and no name is let by as "not a field" (`length`, `then`, `toJSON`:
+   the old NOT_A_FIELD words, read by no case today, held now). */
 const REACH_SKIP = new Set(['type', 'payload', 'reqId']);
-const NOT_A_FIELD = /^(then|toJSON|constructor|length|valueOf|toString)$/;
 const namedOf = (r) => [...new Set(Object.keys(r.trust || {}).map((k) => k.split('.')[0].replace(/\[\]$/, '')))].filter((k) => !REACH_SKIP.has(k));
-if (!DOOR_OFF) {
+const isSocket = (x) => x.dir === 'in' && (!x.wayIn || x.wayIn === 'socket');
+
+/* v2.3.6446: THE JUDGES, pure, so 5j tries every verdict on lists of its own
+   (sitting 59's rule: each comparison the suite decides by is killed by a
+   test, not only by a room that happens to fail).
+   judgeReach: the running room's reads (`reads`: 'row field' -> where), the
+   tree's live reads (`treeLive`: 'row field'), NOT_REACHED and its line. */
+function judgeReach({ rows, reads, treeLive, notReached, line }) {
   const listed = new Set();
-  for (const [row, { fields }] of Object.entries(NOT_REACHED)) for (const f of fields) listed.add(row + ' ' + f);
+  for (const [row, { fields }] of Object.entries(notReached)) for (const f of fields) listed.add(row + ' ' + f);
   const unread = [], stale = [], unnamed = [], listedKeys = [];
   let named = 0, read = 0;
-  for (const r of socketRows.filter((x) => !x.wayIn || x.wayIn === 'socket')) {
+  for (const r of rows) {
     const fields = namedOf(r);
     named += fields.length;
     for (const f of fields) {
       const key = r.name + ' ' + f;
-      if (READS.has(key)) read++;
-      if (READS.has(key) && listed.has(key)) stale.push(key);
-      else if (!READS.has(key) && !listed.has(key)) unread.push(key);
+      /* a destructure whose names nothing uses is no read (the review's quests.js plant) */
+      const was = reads.has(key) && treeLive.has(key);
+      if (was) read++;
+      if (was && listed.has(key)) stale.push(key);
+      else if (!was && !listed.has(key)) unread.push(key);
     }
-    for (const [key, at] of READS) {
+    for (const [key, at] of reads) {
       if (!key.startsWith(r.name + ' ')) continue;
       const f = key.slice(r.name.length + 1);
       if (f === KEYS) listedKeys.push(key + ' (at ' + at + ')');
-      else if (!REACH_SKIP.has(f) && !NOT_A_FIELD.test(f) && !fields.includes(f)) unnamed.push(key + ' (read at ' + at + ')');
+      else if (!REACH_SKIP.has(f) && !fields.includes(f)) unnamed.push(key + ' (read at ' + at + ')');
     }
   }
-  for (const key of listed) if (!WIRE_IN.some((r) => key.startsWith(r.name + ' ') && namedOf(r).includes(key.slice(r.name.length + 1)))) stale.push(key + ' (no such row or field)');
-  if (process.argv.includes('--reach')) for (const k of [...unread, ...stale, ...unnamed, ...listedKeys]) console.log('REACH ' + k);   /* every line, for NOT_REACHED */
-  console.log(`     reach: ${named} named fields, ${read} read after the door, ${listed.size} not reached (REACH_LINE ${REACH_LINE}); ${SEEN.size} rows passed the door`);
-  check(`3a: every field a row names was read by some case, or is in NOT_REACHED with why (${unread.length} neither)`, unread.length === 0, unread.slice(0, 20));
-  check(`3b: NOT_REACHED only falls: no listed field is read now (delete its line) and the list is at most REACH_LINE (${listed.size} <= ${REACH_LINE})`, stale.length === 0 && listed.size <= REACH_LINE, stale.slice(0, 20));
-  if (listed.size < REACH_LINE) console.log(`NOTE NOT_REACHED fell (${listed.size} < ${REACH_LINE}): lower REACH_LINE in this suite`);
-  check(`4: no case read a field its row does not name (name it in the row's trust: wire/in.js)`, unnamed.length === 0, unnamed.slice(0, 20));
-  check(`4b: no handler lists a message's keys after the door (a copy of the whole message hides what it reads: read the named fields)`, listedKeys.length === 0, listedKeys.slice(0, 20));
+  for (const key of listed) if (!rows.some((r) => key.startsWith(r.name + ' ') && namedOf(r).includes(key.slice(r.name.length + 1)))) stale.push(key + ' (no such row or field)');
+  const count = listed.size;
+  return { named, read, count, unread, stale, unnamed, listedKeys,
+    ok3a: unread.length === 0, ok3b: stale.length === 0 && count <= line, ok4: unnamed.length === 0, ok4b: listedKeys.length === 0 };
+}
+/* judgeTree: the tree's reads and faults (msgReadsOf) against the rows, with
+   TREE_UNNAMED, TREE_FORMS and the line (the tables count in it too) */
+function judgeTree({ rows, tree, unnamedKnown, formsKnown, tables, line }) {
+  const byName = new Map(rows.map((r) => [r.name, namedOf(r)]));
+  const known = new Set();
+  for (const [row, { fields }] of Object.entries(unnamedKnown)) for (const f of fields) known.add(row + ' ' + f);
+  const unnamed = new Map(), live = new Set(), usedKnown = new Set(), usedForms = new Set(), faults = [];
+  for (const x of tree.reads) {
+    for (const t of x.types) {
+      const fields = byName.get(t);
+      if (!fields) continue;
+      const key = t + ' ' + x.field;
+      if (x.live) live.add(key);
+      if (REACH_SKIP.has(x.field) || fields.includes(x.field)) continue;
+      if (known.has(key)) { usedKnown.add(key); continue; }
+      if (!unnamed.has(key)) unnamed.set(key, x.file + ':' + x.line + ' ' + x.text);
+    }
+  }
+  for (const f of tree.faults) {
+    /* a fault no socket row's type reaches is a relay's (the router's default: wire-gaps holds it) */
+    if (![...f.types].some((t) => byName.has(t))) continue;
+    const row = formsKnown.find((k) => k.at === f.file + ' ' + f.fn && k.what === f.what);
+    if (row) { usedForms.add(row); continue; }
+    faults.push(f.file + ':' + f.line + ' [' + f.fn + '] ' + f.what + ': ' + f.text + ' (' + [...f.types].slice(0, 3).join(', ') + (f.types.size > 3 ? ' +' + (f.types.size - 3) : '') + ')');
+  }
+  const neverLive = [];
+  for (const r of rows) for (const f of byName.get(r.name)) if (!live.has(r.name + ' ' + f)) neverLive.push(r.name + ' ' + f);
+  const stale = [...known].filter((k) => !usedKnown.has(k))
+    .concat(formsKnown.filter((k) => !usedForms.has(k)).map((k) => k.at + ': ' + k.what));
+  const count = known.size + formsKnown.length + Object.keys(tables).length;
+  return { live, count, unnamed: [...unnamed].map(([k, at]) => k + ' (' + at + ')'), faults, neverLive, stale,
+    ok5a: unnamed.size === 0, ok5b: faults.length === 0, ok5c: neverLive.length === 0, ok5d: stale.length === 0 && count <= line };
+}
+
+/* v2.3.6446: the tree's reading of every handler the router hands a message to */
+function srcFiles() {
+  const out = {};
+  const walk = (dir, pre) => {
+    for (const f of readdirSync(dir)) {
+      const p = pathJoin(dir, f);
+      if (statSync(p).isDirectory()) walk(p, pre + f + '/');
+      else if (f.endsWith('.js')) out[pre + f] = readFileSync(p, 'utf8');
+    }
+  };
+  walk(fileURLToPath(new URL('../src/', import.meta.url)), '');
+  return out;
+}
+const socketIn = socketRows.filter(isSocket);
+const tree = msgReadsOf(srcFiles(), { entry: { file: 'index.js', fn: '_onMessage', param: 2 }, types: socketIn.map((r) => r.name),
+  skip: ['_wireDoor'], tables: TREE_TABLES });
+const tv = judgeTree({ rows: socketIn, tree, unnamedKnown: TREE_UNNAMED, formsKnown: TREE_FORMS, tables: TREE_TABLES, line: TREE_LINE });
+
+if (!DOOR_OFF) {
+  const v = judgeReach({ rows: socketIn, reads: READS, treeLive: tv.live, notReached: NOT_REACHED, line: REACH_LINE });
+  if (process.argv.includes('--reach')) for (const k of [...v.unread, ...v.stale, ...v.unnamed, ...v.listedKeys]) console.log('REACH ' + k);   /* every line, for NOT_REACHED */
+  console.log(`     reach: ${v.named} named fields, ${v.read} read after the door (and live in the tree), ${v.count} not reached (REACH_LINE ${REACH_LINE}); ${SEEN.size} rows passed the door`);
+  check(`3a: every field a row names was read by some case (and the tree reads it live), or is in NOT_REACHED with why (${v.unread.length} neither)`, v.ok3a, v.unread.slice(0, 20));
+  check(`3b: NOT_REACHED only falls: no listed field is read now (delete its line) and the list is at most REACH_LINE (${v.count} <= ${REACH_LINE})`, v.ok3b, v.stale.slice(0, 20));
+  if (v.count < REACH_LINE) console.log(`NOTE NOT_REACHED fell (${v.count} < ${REACH_LINE}): lower REACH_LINE in this suite`);
+  check(`4: no case read a field its row does not name (name it in the row's trust: wire/in.js)`, v.ok4, v.unnamed.slice(0, 20));
+  check(`4b: no handler lists a message's keys after the door (a copy of the whole message hides what it reads: read the named fields)`, v.ok4b, v.listedKeys.slice(0, 20));
+}
+
+/* ══════════ 5: WHAT THE TREE READS, REACHED OR NOT (v2.3.6446, sitting 59) ══════════
+   The running room holds only what its cases reach; the tree holds the rest
+   (tools/guards/lib/writesOf.mjs msgReadsOf: from index.js _onMessage into
+   every function the message is handed to, which types reach each line read
+   off the router's cases and the tests of msg.type). */
+console.log(`     tree: ${tree.reads.length} reads of a message, ${tree.faults.length} other forms (${tree.faults.length - tv.faults.length - TREE_FORMS.length} a relay's), allowed ${tv.count} (TREE_LINE ${TREE_LINE})`);
+check(`5a: every read the tree finds is of a field its row names, or in TREE_UNNAMED with why (${tv.unnamed.length} not)`, tv.ok5a, tv.unnamed.slice(0, 20));
+check(`5b: the message appears in no form but a read of a named field (deny by default: a computed key, a spread, a copy, a rest, a store, a write, a call it cannot follow), or in TREE_FORMS (${tv.faults.length} not)`, tv.ok5b, tv.faults.slice(0, 20));
+check(`5c: every field a row names is read LIVE somewhere in the tree (not after a return, not a destructured name nothing uses) (${tv.neverLive.length} not)`, tv.ok5c, tv.neverLive.slice(0, 20));
+check(`5d: TREE_UNNAMED, TREE_FORMS and TREE_TABLES only fall: each row still found, at most TREE_LINE (${tv.count} <= ${TREE_LINE})`, tv.ok5d, tv.stale.slice(0, 20));
+if (tv.count < TREE_LINE) console.log(`NOTE the tree's allowed list fell (${tv.count} < ${TREE_LINE}): lower TREE_LINE in this suite`);
+
+/* 5w: the running room's watcher itself, on a room of its own: a read after
+   the door is counted (a member, `in`, a listing of keys, a symbol passes
+   unharmed), a read before it or on a frame the door dropped is not, and
+   what is no plain object goes by unwrapped. */
+{
+  const WS = '__watch_self', WD = '__watch_drop', SYM = Symbol('s');
+  const fake = {
+    _onMessage(ws, s, m) {
+      if (!m || typeof m !== 'object') return 'plain';
+      void m.before;
+      if (this._wireDoor(s, m)) { void m.after; return 'dropped'; }
+      const p = m.payload;
+      if (Array.isArray(p)) void p[0];
+      else if (p && typeof p === 'object') { void p.a; void Object.keys(p); void p[SYM]; }
+      void ('b' in m);
+      void m.length;
+      if (Array.isArray(m)) void m[0];
+      return 'ran';
+    },
+    _wireDoor(s, m) { return m.type === WD ? 'drop' : ''; },
+  };
+  watchReads(fake);
+  const before = new Set(READS.keys()), seenBefore = new Set(SEEN);
+  const outs = [];
+  let threw = null;
+  try {
+    for (const m of [{ type: WS, payload: { a: 1 }, b: 2, before: 1 }, { type: WD, payload: { a: 1 }, after: 1 }, null, 'text', [1],
+      { type: WS + '_arr', payload: [5] }, { type: WS + '_null', payload: null }, { type: WS + '_str', payload: 'x' }]) outs.push(fake._onMessage(null, {}, m));
+  } catch (e) { threw = String(e && e.message); }
+  const got = [...READS.keys()].filter((k) => !before.has(k)).sort();
+  /* `type`: the watcher's own read once the door passed (SEEN) */
+  const want = [WS + ' (its keys)', WS + ' a', WS + ' b', WS + ' length', WS + ' payload', WS + ' type']
+    .concat(...['_arr', '_null', '_str'].map((x) => ['b', 'length', 'payload', 'type'].map((f) => WS + x + ' ' + f))).sort();
+  const seenNew = [...SEEN].filter((k) => !seenBefore.has(k)).sort();
+  check(`5w: the watcher counts what is read after the door and nothing else (${got.length} reads)`, !threw && JSON.stringify(got) === JSON.stringify(want)
+    && JSON.stringify(outs) === JSON.stringify(['ran', 'dropped', 'plain', 'plain', 'ran', 'ran', 'ran', 'ran'])
+    && JSON.stringify(seenNew) === JSON.stringify([WS, WS + '_arr', WS + '_null', WS + '_str']), { threw, got, outs, seenNew });
+  for (const k of got) READS.delete(k);
+  for (const k of seenNew) SEEN.delete(k);
+}
+
+/* 5j: the judges' verdicts on lists of the suite's own: each verdict both
+   ways, at the line and one past it */
+{
+  const rows = [{ name: 'r1', trust: { x: 'request', y: 'request', 'd.e': 'request', reqId: 'request' } }];
+  const R = (...ks) => new Map(ks.map((k) => [k, 'here']));
+  const L = (...ks) => new Set(ks);
+  const J = (o) => judgeReach({ rows, line: 1, notReached: { r1: { fields: ['y'], why: '' } }, ...o });
+  const cases = [
+    ['all read or listed', J({ reads: R('r1 x', 'r1 d'), treeLive: L('r1 x', 'r1 d', 'r1 y') }), { ok3a: true, ok3b: true, ok4: true, ok4b: true }],
+    ['a field neither read nor listed', J({ reads: R('r1 x'), treeLive: L('r1 x', 'r1 d') }), { ok3a: false, ok3b: true }],
+    ['a case read it, the tree reads it nowhere live (a dead destructure)', J({ reads: R('r1 x', 'r1 d'), treeLive: L('r1 x') }), { ok3a: false }],
+    ['a listed field a case reads', J({ reads: R('r1 x', 'r1 d', 'r1 y'), treeLive: L('r1 x', 'r1 d', 'r1 y') }), { ok3a: true, ok3b: false }],
+    ['a listed field that is no field', J({ reads: R('r1 x', 'r1 d'), treeLive: L('r1 x', 'r1 d'), notReached: { r1: { fields: ['y', 'zz'], why: '' } }, line: 2 }), { ok3b: false }],
+    ['the list one past its line', J({ reads: R('r1 x'), treeLive: L('r1 x'), notReached: { r1: { fields: ['y', 'd'], why: '' } } }), { ok3a: true, ok3b: false }],
+    ['the list at its line', J({ reads: R('r1 x'), treeLive: L('r1 x'), notReached: { r1: { fields: ['y', 'd'], why: '' } }, line: 2 }), { ok3b: true }],
+    ['a read of a field the row does not name', J({ reads: R('r1 x', 'r1 d', 'r1 q'), treeLive: L('r1 x', 'r1 d') }), { ok4: false }],
+    ['`length` is a field like any other', J({ reads: R('r1 x', 'r1 d', 'r1 length'), treeLive: L('r1 x', 'r1 d') }), { ok4: false }],
+    ['type, payload and reqId are no fields', J({ reads: R('r1 x', 'r1 d', 'r1 type', 'r1 payload', 'r1 reqId'), treeLive: L('r1 x', 'r1 d') }), { ok4: true, ok3a: true }],
+    ['a listing of the keys', J({ reads: R('r1 x', 'r1 d', 'r1 ' + KEYS), treeLive: L('r1 x', 'r1 d') }), { ok4b: false, ok4: true }],
+  ];
+  const T = (reads, faults, o = {}) => judgeTree({ rows, tree: { reads, faults }, unnamedKnown: {}, formsKnown: [], tables: {}, line: 0, ...o });
+  const rd = (field, live = true, types = ['r1']) => ({ types: new Set(types), field, live, file: 'f.js', line: 1, text: '' });
+  const ft = (what, types = ['r1']) => ({ types: new Set(types), file: 'f.js', line: 1, fn: 'h', what, text: '' });
+  const all = [rd('x'), rd('y'), rd('d')];
+  cases.push(
+    ['the tree: every named field read live', T(all, []), { ok5a: true, ok5b: true, ok5c: true, ok5d: true }],
+    ['the tree: a named field read only dead', T([rd('x'), rd('y', false), rd('d')], []), { ok5c: false, ok5a: true }],
+    ['the tree: a read the row does not name', T([...all, rd('lucky')], []), { ok5a: false }],
+    ['the tree: `length` read', T([...all, rd('length')], []), { ok5a: false }],
+    ['the tree: an unnamed read listed', T([...all, rd('q')], [], { unnamedKnown: { r1: { fields: ['q'], why: '' } }, line: 1 }), { ok5a: true, ok5d: true }],
+    ['the tree: the list one past its line', T([...all, rd('q')], [], { unnamedKnown: { r1: { fields: ['q'], why: '' } }, line: 0 }), { ok5a: true, ok5d: false }],
+    ['the tree: a listed read no longer found', T(all, [], { unnamedKnown: { r1: { fields: ['q'], why: '' } }, line: 1 }), { ok5d: false }],
+    ['the tree: a listed read of no row', T(all, [], { unnamedKnown: { r9: { fields: ['q'], why: '' } }, line: 1 }), { ok5d: false }],
+    ['the tree: a fault', T(all, [ft('a spread')]), { ok5b: false }],
+    ['the tree: a fault listed', T(all, [ft('a spread')], { formsKnown: [{ at: 'f.js h', what: 'a spread' }], line: 1 }), { ok5b: true, ok5d: true }],
+    ['the tree: another fault in a listed function', T(all, [ft('a rest')], { formsKnown: [{ at: 'f.js h', what: 'a spread' }], line: 1 }), { ok5b: false }],
+    ['the tree: a listed fault no longer found', T(all, [], { formsKnown: [{ at: 'f.js h', what: 'a spread' }], line: 1 }), { ok5d: false }],
+    ['the tree: a fault no row reaches (a relay\'s)', T(all, [ft('a spread', [])]), { ok5b: true }],
+    ['the tree: a read no row reaches', T([...all, rd('lucky', true, [])], []), { ok5a: true }],
+    ['the tree: a table counts in the line', T(all, [], { tables: { 'a.js:T': 'U' }, line: 0 }), { ok5d: false }],
+  );
+  const bad = cases.filter(([, got, want]) => Object.entries(want).some(([k, v]) => got[k] !== v)).map(([n, got, want]) => n + ': ' + JSON.stringify(Object.fromEntries(Object.keys(want).map((k) => [k, got[k]]))));
+  check(`5j: the judges' verdicts on ${cases.length} lists of the suite's own`, bad.length === 0, bad);
+}
+/* v2.3.6446: every verdict was given (a branch that skips a section is a red, not a silence) */
+{
+  const want = ['1', '2', ...(DOOR_OFF ? [] : ['3a', '3b', '4', '4b']), '5a', '5b', '5c', '5d', '5w', '5j'];
+  check(`6: every verdict was given (${want.join(' ')})`, want.every((k) => judged.has(k)), want.filter((k) => !judged.has(k)));
 }
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);
