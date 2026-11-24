@@ -1,21 +1,22 @@
 card: CK
-branch: claude/ck-asset-git-ids (one PR a branch, claude/ck-*; on #2284's)
-prs: #2284 (6420, ready), (6421) asset guards by git's ids: working
+branch: claude/ck-one-parse (one PR a branch, claude/ck-*; on #2288's)
+prs: #2284 (6420, ready), #2288 (6421, ready; on #2284), (6422) not begun
 state: working
 
 ## Done
 - (6420) #2284: switches-thrown throws on a PR what it touched and a few
   by the commit; `--whole` once a sitting (the gatekeeper). Docs branch's
   suite 979 -> 215.5 s (claims-gain 162 s, card BK's); plants A, B red.
-- (6421) asset guards by git's ids: a file whose git id and row are
-  main's is trusted (its size read); the rest hashed; 6 and 7 read only
-  what is not main's (all when a reader changed); 6's census by change,
-  a family that rose counted whole; the gatekeeper's precheck hashes all
-  (BT_ASSETS_WHOLE=1). Plants 9-11 and sources 4-5 red, here and committed.
+- (6421) #2288: asset guards trust what is main's by git's ids; in the
+  suite door 16.5 -> 0.23 s, sources 13.2 -> 0.07 s; docs suite 164.8 s.
 
 ## Next
-- (6421) precheck, push, open READY (stacked on #2284: merge after it);
-  then 6422 (one parse of the big files), 6423 (the bookkeeping).
+- HANDED OVER (part 2, ~200k tokens) before 6422. Measured alone here:
+  ladder-passes 20.3 s is IDLE (cpu-prof: 20 s idle): green, it ends
+  without process.exit and a timer (framePacer makeGovernor?) holds it;
+  picture-door 7 s, 6.5 s of it `blank()` (line 100) run again on the
+  same texts (a Map of each text's blank); phase-table 7 s, babel's
+  traverse and GC. So "one parse kept by git id" fits phase-table only.
 
 ## Found
 - docs/specs/switch-table.md line 165 ("On every PR only the rows born
@@ -25,12 +26,11 @@ state: working
   the whole suite cannot be under 120 s while it is.
 - server/test/run.mjs: a name picks every suite whose name holds it
   (`npm test -- switches` runs switches-thrown too): PR 4's file.
-- switches-thrown's changedFiles finds main as lib/sinceMain.mjs does:
-  one could serve both (6423 or later; mine).
+- switches-thrown's changedFiles and lib/sinceMain.mjs both find main.
 
 ## Needs
-- None. (Answered by the orchestrator, 2026-11-23: #2284 goes to the
-  gatekeeper as it is; its 120 s shortfall is claims-gain's, card BK's.)
+- 6422 changes ladder-passes, picture-door, phase-table: not in the
+  card's hold list. May it, and is the per-suite mend PR 3?
 - PR 5 waits on the owner's own words, two changes under `.github/`:
   (a) server-ci.yml: `concurrency: { group: <workflow>-<ref>,
   cancel-in-progress: true }`, so a newer push cancels the older run
