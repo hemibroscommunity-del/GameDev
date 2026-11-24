@@ -24,15 +24,18 @@
  *   stint      the sitting's id: the WORKER's own clock in ms at the join
  *              that made it (never a phone's), one a room's join at most a
  *              ms (stintNext), so unique with `pid`.  null where there is no
- *              sitting (`owner`, `system`).  v2.3.6481 (this card's PR 2)
- *              carries it across a reconnect and a deploy, through the
- *              sitting's card.
+ *              sitting (`owner`, `system`).  v2.3.6481 (this card's PR 2):
+ *              carried across a reconnect and a deploy inside the gap, by the
+ *              sitting's card (sitting.js sitOpen; `sitting: false`, one a
+ *              socket again).
  *   wayIn      `socket`, `http`, `admin`, `room` (ACTOR.WAYS).
  *   permit     the grant a `helper` acts under: null (step 11.7).
  *
  * MADE AT THE WAYS IN, and nowhere else:
  *   1. the socket: actorSocket(room, session, pid), once, where the join
- *      names the character (join.js, beside `session.phase = 'joined'`).  A
+ *      has the character's record (join.js; v2.3.6481: moved below the
+ *      record's load, from beside `session.phase = 'joined'`, so the sitting
+ *      it goes on with names its stint).  A
  *      second join on a socket is closed with 4011 before it gets there, and
  *      a session that has one keeps it (the maker refuses to make another).
  *   2. HTTP: a call that passed _httpAuthCheck acts AS the live session it
@@ -115,11 +118,14 @@ export function stintNext(room, now) {
 
 /** 1. The socket: made once, where the join names the character.  A session
  *  that has an actor keeps it (returns it unchanged). */
-export function actorSocket(room, session, pid, now) {
+export function actorSocket(room, session, pid, now, stint) {
   if (!session || typeof session !== 'object') return null;
   if (session.actor) return session.actor;
   if (typeof pid !== 'string' || !pid) return null;
-  const a = make('person', pid, stintNext(room, now), 'socket');
+  /* v2.3.6481 (card WHO PR 2): the sitting's stint when the join carried one
+     on (sitting.js sitOpen: a reconnect or a deploy inside the gap), else a
+     new one of this socket's */
+  const a = make('person', pid, typeof stint === 'number' && Number.isFinite(stint) && stint > 0 ? stint : stintNext(room, now), 'socket');
   try { Object.defineProperty(session, 'actor', { value: a, enumerable: true, writable: false, configurable: false }); }
   catch (e) { return null; }
   return a;

@@ -66,6 +66,8 @@ const CAPS_ALLOWLIST = new Map([
   /* v2.3.5481 / v2.3.5484: THE POWER INDEX and THE STAT BOARDS (card PW)
      shipped first with a row each here; v2.3.5502 (card LB, PR 3): the
      Leaderboards read caps.power and caps.statboards, so both rows are gone */
+  /* v2.3.6443 (card DG PR 4) */
+  ['wireForm', 'the wire door\'s forms (wire/door.js WIRE_FORM): the page sends only fields in their form, so no path of it gates on this; the Test panel\'s "This worker" names it (CAP_GATES), 1 refusing, 2 only counting'],
   /* v2.3.1660: the prog3 entry added at v2.3.1659 is deleted — the
      client gate shipped (wsClient setProg3Enabled), so the audit
      enforces it for real now. */

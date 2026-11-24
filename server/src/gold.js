@@ -73,6 +73,7 @@
  * (v2.3.5085: but one, the day's book's door, which has none.)
  */
 import { bookAdd } from './daybook.js';   /* v2.3.5085: the book's `econ` part, as each road runs */
+import { sitGold } from './sitting.js';   /* v2.3.6481: gold by road class on the sitting's card (card WHO PR 2) */
 
 /* ── HOW EACH ROAD READS THE PURSE (step 1: as it did before the door) ──
  * `c` is the purse as it is (`rec.coins`), `n` the amount, `take` the verb.
@@ -366,7 +367,10 @@ export const GOLD_LOADS = Object.freeze(['join_stored']);
 /* v2.3.5085 (the gatekeeper's sitting 8): `_econ`'s shape number, in ONE
    place -- this.  bag.js and migrations.js (ECON.V) import it: held in three
    places by nothing, a bump in one stopped the doors' counting silently. */
-export const ECON_V = 1;
+/* v2.3.6481 (card WHO PR 2; shape bump, the orchestrator's yes): 1 -> 2,
+   the sitting's card inside `_econ` (`s` open, `sh` closed: sitting.js,
+   migrations.js econClean).  What the doors count (`g`, `i`) is as in 1. */
+export const ECON_V = 2;
 /** The record's `_econ`, made if it has none; null for a NEWER one (never
  *  counted into: a rolled-back worker leaves a newer shape alone). */
 export function econOn(rec) {
@@ -387,6 +391,7 @@ const econNum = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
    one call card E's PR 6 makes in this door.  Minted as a positive `mint`,
    burned as a positive `burn` (a set road's signed difference stays signed). */
 function econGold(rec, cls, d, room) {
+  sitGold(room, rec, cls, d);   /* v2.3.6481 (card WHO PR 2; the orchestrator's yes): every road's class on the sitting's card (sitting.js), memory only; decides nothing */
   if (!d || (cls !== 'mint' && cls !== 'burn')) return;
   if (room && typeof room._econOff === 'function' && room._econOff()) return;   /* v2.3.5085: `econ: false` */
   if (room) bookAdd(room, 'econ', { g: { [cls]: cls === 'mint' ? d : -d } }, undefined, rec);   /* v2.3.6480 (card WHO, the orchestrator's yes): a test-mode purse's gold under the part's `test` key (daybook.js) */

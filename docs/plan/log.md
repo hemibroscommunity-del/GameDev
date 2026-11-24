@@ -8,6 +8,13 @@ here. Sittings 1 to 55 are in the plan's own notes and in
 
 | Sitting | Step | Merged | The box waits for |
 |---|---|---|---|
+| 60 | 8.1 | listed at 60: LF's #2321 (elemental2 pinned) | #2273, #2320 (held: red with WL's #2286, wsClient.js 2599 statements over its new line 2598; the review itself passed) |
+| 60 | 10.1, 11.2 | listed at 60: WHO's #2285, #2316 (59's bug mended) | #2317 (held: red with DG's #2313, `traceNote` not a `wire-gaps` taker); #2325, WHO's mend of 59's holes (sitting 61) |
+| 60 | 5.2b, 5.3 | listed at 60: WL's #2286, #2287, #2290, #2298, #2302, #2303, #2322 | the phase-table's fence made a wall (WL's next PR) |
+| 60 | 5.4b | listed at 60: CT's #2293 | #2308 (held: the Attack press and `latchFrame` ask different gates) |
+| 60 | 4.1 | listed at 60: DG's #2295, #2300, #2310, #2312, #2313, #2324 | (none held) |
+| 60 | 2.3 | nothing new | PH's #2279 to #2323 (held: three of 59's worker `report` plants green; #2318 a governor that never climbs back after a chip-caused step, a card dodge green) |
+| 60 | (no box) | sitting 59: BK's #2301, #2309 | the owner's rule of 2026-11-24 (a new hole is a card's next job) in finish.md part 8 and card Z 4b |
 | 59 | 4.4, 4.5 | listed at 59: BK's #2301 (the roads' levers), #2309 (the weapon listing, pieces by id) | four contrived spellings past road-levers (BK's next PR); the gear and pet listings undriven |
 | 59 | 4.1 | sitting 58: DG's #2283 | DG's #2295 (held: `S[k].send`, a stash helper, `s.id`), #2300 (on it), #2310, #2312, #2313 (held) |
 | 59 | 8.1 | nothing new | LF's #2273 (held: no uncarried gap of 5 to 12 s is played) |

@@ -10,7 +10,7 @@
  *      `helper` are made by nothing.
  *   3. THE SITTING'S ID: the worker's clock at the join; two joins in one
  *      ms never share one; a new socket of the same character is a new
- *      actor (and, until PR 6481, a new sitting).
+ *      actor (v2.3.6481: on the same sitting, inside the gap).
  *   4. THE OTHER WAYS IN: the room's constant (`system`, `room`), the
  *      owner's (`owner`, `admin`), and an HTTP call acting as its live
  *      session's actor (actorOf), none once the session is gone.
@@ -131,7 +131,9 @@ const capsOf = (ws) => { const m = ws.sent.find((x) => x && x.type === 'state_sy
   const w3 = fakeWs('s1b');
   await join(room, w3, 'bp_ac_s1', { loginTaken: true });   /* the same character again: takes the first over */
   const a3 = sessOf(room, w3).actor;
-  check('3. a new socket of the same character is a new actor', !!a3 && a3 !== a1 && a3.pid === 'bp_ac_s1' && a3.stint === clock.now(), a3);
+  /* v2.3.6481 (card WHO PR 2): ...and the same sitting, a second later
+     (sitting.js carries the stint inside five quiet minutes; sitting.test) */
+  check('3. a new socket of the same character is a new actor, on the same sitting', !!a3 && a3 !== a1 && a3.pid === 'bp_ac_s1' && a3.stint === s1, { a3, s1 });
 }
 
 /* ══════════ 4. THE OTHER WAYS IN ══════════ */

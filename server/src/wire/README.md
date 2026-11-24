@@ -100,6 +100,7 @@ Columns in this order; only `note` may be left out.
 | `doesWhat` | what it does, a list |
 | `reqId` | what makes a repeat act once |
 | `trust` | `{ field: value }`, one value a field |
+| `form` | (optional, v2.3.6443) `{ field: form }`, a field of `trust` held to more than its trust's default |
 | `absent` | what a missing field or body means, in words |
 | `bad` | what a wrong value gets, a list |
 | `answer` | the message that tells the sender what happened |
@@ -268,6 +269,17 @@ but a bound with known holes keeps its judge (step 4.2 measures each judge's
 gain), and the holes go in a note. A demand of `phase` that holds on one road
 only (getting ON the board) is in `phase`, with the road in a note.
 
+
+### `form` (v2.3.6443, card DG PR 4)
+
+Optional. `{ field: form }` for a field the row's `trust` names (never a
+`words` one): `count` a whole number of zero or more, `int`, `num`, `yes`
+(true or false), `id` (door.js `WIRE_FORM.ID_RE`), `str:<n>`,
+`num|str:<n>`, or a closed list (`['gold', 'item']`). The wire door
+refuses a value out of it before any handler (`null` passes). A field with
+no form is held to its trust's default: a `request` field's string at most
+`WIRE_FORM.STR_MAX`. A form is written only where the page's sender was
+read and sends nothing else (`wire-form.test` §5 holds the column).
 ### `absent`
 
 Words, never the census's. Clauses joined by `; `, each opening with

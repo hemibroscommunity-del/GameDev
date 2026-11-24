@@ -87,6 +87,27 @@
  *     unknown spelling is red.  opts.shallow: containers whose items are
  *     their own (the map of sessions).
  *
+ *     THE ALLOW LIST (v2.3.6446, sitting 59: `tuneFirst(ps.weaponStash)`,
+ *     tuneFirst in another file, stayed green -- the fourth sitting to find a
+ *     spelling; the scan ENUMERATED writes and followed within one file).
+ *     opts.handout: { doors: [the door's functions], objects: [containers
+ *     whose items are objects] }.  Every APPEARANCE of a container (a member
+ *     named so, a name or member bound to it, a maker's call) is climbed
+ *     through what only passes it on to a form the scan knows -- a read of a
+ *     key or a field, a read-only method, a callback written out, a copy, a
+ *     name it follows, a test, a compare, a loop, an argument of the door's
+ *     calls, of a pure global (PURE_CALLS) or of a function of the same file
+ *     -- or it is reported as a write it cannot follow (`out: true`): handed
+ *     to a function of another file, returned, a property value or an
+ *     element of something written out, a spread into a call, a piece of a
+ *     list of objects handed out.  A test lists the ones that stay, by file,
+ *     function and count (doorWrites' `out: true` rows), and they only fall.
+ *     opts.getters: a Map's `get` hands back an item (the session door);
+ *     an item's write carries `key`, the key it puts (null: unknown).
+ *     opts.unknownKeys: a key the tree cannot know written on a record that
+ *     holds a guarded field (a name a field is read or written on, an alias
+ *     of one, `this.playerState[id]`) is a write of '[?]'.
+ *
  * It reads; it never runs the code.  What it cannot know: a key computed at
  * run time from data (`ps[row.field] = v`) -- the running room catches that
  * one (server/test/testroom.mjs "THE RUNNING ROOM REFUSES", card DG PR 1).
@@ -141,6 +162,27 @@ const ELEMENT_CALLBACKS = new Map([['forEach', 0], ['find', 0], ['findLast', 0],
 const LIST_CHANGERS = new Set(['push', 'pop', 'shift', 'unshift', 'splice', 'sort', 'reverse', 'fill', 'copyWithin',
   /* a Map's or a Set's own changers, on a container held as one */
   'set', 'delete', 'clear', 'add']);
+
+/* v2.3.6446 (sitting 59: `tuneFirst(ps.weaponStash)` with tuneFirst in
+   ANOTHER file stayed green -- the scanner enumerated the spellings of a
+   write and followed a container only within one file).  THE ALLOW LIST
+   (opts.handout): every appearance of a container outside its door is in
+   one of a few forms the scanner knows, or it is a write it cannot follow.
+   The forms: a read of a key or a field (`.length`, an element's field), a
+   read-only method, an element callback written out (followed), a copy
+   (followed), a name or a member it is bound to (followed), a compare, a
+   test, a loop over it (followed), an argument of the door's own calls, of a
+   function of the same file (followed), or of a pure global below.  Every
+   other appearance -- an argument of a function the scanner cannot follow,
+   a return, a property value of an object written out, a spread into a
+   call, an element of a list written out, an element handed out when the
+   items are objects -- is reported ('cannot follow: ...', `out: true`). */
+const READ_PROPS = new Set(['length', 'size']);
+const READ_METHODS = new Set(['includes', 'indexOf', 'lastIndexOf', 'has', 'keys', 'join', 'hasOwnProperty', 'toString']);
+/* the pure globals a container may be handed to: they read it, never keep it */
+const PURE_CALLS = new Set(['Array.isArray', 'Number', 'String', 'Boolean', 'JSON.stringify', 'Object.keys',
+  /* a key asked about, the language's own two spellings */
+  'Object.prototype.hasOwnProperty.call', 'Object.hasOwn']);
 
 /* The words a name from ANOTHER file holds (`STASH_FIELDS`, `GEAR_PROV_FIELD`),
    handed in by the test that imported it, so `for (const f of STASH_FIELDS)
@@ -302,6 +344,24 @@ export function writesOf(code, opts = {}) {
   /* opts.shallow: containers whose ITEMS are their own (the map of sessions:
      a key put or deleted is a write of it, a session's own field is not) */
   const SHALLOW = new Set(opts.shallow || []);
+  /* v2.3.6446 (sitting 59): opts.getters -- a Map's `get` hands back an item
+     too (the session door asks which field of a session got from the map is
+     put: `const s = this.sessions.get(ws); s.id = null`) */
+  const GETTERS = new Set(opts.getters || []);
+  /* v2.3.6446 (sitting 59): opts.unknownKeys -- the records that hold a
+     guarded field: a name a field of FIELDS is read or written on anywhere in
+     the file, or one made from a player's record (`this.playerState[id]`) */
+  const fieldHolders = new Set();
+  const isPlayerRecord = (n) => !!n && (n.type === 'MemberExpression' || n.type === 'OptionalMemberExpression')
+    && (n.object.type === 'MemberExpression' || n.object.type === 'OptionalMemberExpression') && !n.object.computed
+    && n.object.property.type === 'Identifier' && n.object.property.name === 'playerState';
+  function holdsField(obj, path) {
+    if (!obj) return false;
+    if (isPlayerRecord(obj)) return true;
+    if (obj.type !== 'Identifier') return false;
+    const b = path.scope.getBinding(obj.name);
+    return !!b && fieldHolders.has(b);
+  }
   const itemOf = (c) => (c && !String(c).split('|').some((x) => SHALLOW.has(x)) ? c : null);
   function memberPath(node, path) {
     const parts = [];
@@ -381,7 +441,7 @@ export function writesOf(code, opts = {}) {
       /* v2.3.6441 (sitting 57): an element FOUND in a container
          (`ps.weaponStash.find(...)`, `.at(i)`) is the
          container's: writing into it writes the container */
-      if (n && ELEMENT_GETTERS.has(n) && c.type !== 'Identifier') return elementsOf(c.object, path);
+      if (n && (ELEMENT_GETTERS.has(n) || GETTERS.has(n)) && c.type !== 'Identifier') return elementsOf(c.object, path);
       /* v2.3.6441 (sitting 58): a copy of its list (`.filter(...)`,
          `.slice()`, `Object.values(...)`, `Array.from(...)`) holds the
          container's own items: an item written through the copy is the
@@ -464,12 +524,12 @@ export function writesOf(code, opts = {}) {
     return recv;
   }
 
-  function add(path, node, field, inside, how, recv) {
+  function add(path, node, field, inside, how, recv, extra) {
     const line = node.loc ? node.loc.start.line : 0;
     const key = line + ':' + (node.start || 0) + ':' + field + ':' + inside + ':' + how;
     if (seen.has(key)) return;
     seen.add(key);
-    out.push({ file, line, field, inside: !!inside, how, fn: fnName(path), text: (lines[line - 1] || '').trim(), recv: recv || null });
+    out.push({ file, line, field, inside: !!inside, how, fn: fnName(path), text: (lines[line - 1] || '').trim(), recv: recv || null, ...(extra || {}) });
   }
 
   /* a target written: a member, or a pattern holding members */
@@ -480,9 +540,18 @@ export function writesOf(code, opts = {}) {
          l = [...ps.weaponStash]; l[0] = x`, `l.length = 0`) is the copy's own */
       if (isCopy(node.object, path)) return;
       const inside = insideOf(node, path);
-      if (inside) { add(path, node, inside, true, how, recvOf(node, path)); return; }
+      /* `key`: the key put under the container's item (`s.id = null`: ['id'];
+         unknown: null), for a test that asks which field of an item (the
+         session door: the fields that bind a session to its player) */
+      if (inside) { add(path, node, inside, true, how, recvOf(node, path), { key: keysOf(node, path) }); return; }
       const ks = keysOf(node, path);
       if (ks) for (const k of ks) if (FIELDS.has(k)) add(path, node, k, false, how, recvOf(node, path));
+      /* v2.3.6446 (sitting 59): opts.unknownKeys -- a key the tree cannot
+         know (`ps[k] = v`), written on a record that holds a guarded field
+         (a name the file reads or writes a field of, or a player's record
+         `this.playerState[id]`), may be any of them: a write it cannot
+         follow, field '[?]' */
+      if (!ks && opts.unknownKeys && holdsField(node.object, path)) add(path, node, '[?]', false, 'cannot follow: ' + how + ', a key the tree cannot know on a record that holds ' + [...FIELDS].join('|'), recvOf(node, path));
       return;
     }
     if (node.type === 'Identifier') {
@@ -742,6 +811,32 @@ export function writesOf(code, opts = {}) {
   };
   for (let i = 0; i < 12 && visitAliases(); i++) { /* to a fixed point */ }
 
+  if (opts.unknownKeys) traverse(ast, {
+    VariableDeclarator(path) {
+      const { id, init } = path.node;
+      if (id.type === 'Identifier' && isPlayerRecord(init)) { const b = path.scope.getBinding(id.name); if (b) fieldHolders.add(b); }
+    },
+    'MemberExpression|OptionalMemberExpression'(path) {
+      const o = path.node.object;
+      if (o.type !== 'Identifier') return;
+      const ks = keysOf(path.node, path);
+      if (!ks || !ks.some((k) => FIELDS.has(k))) return;
+      const b = path.scope.getBinding(o.name);
+      if (b) fieldHolders.add(b);
+    },
+  });
+  /* a name bound to a holder (`const q = ps`), or a holder bound to it: the same record */
+  if (opts.unknownKeys) for (let i = 0, more = true; more && i < 6; i++) {
+    more = false;
+    traverse(ast, { VariableDeclarator(path) {
+      const { id, init } = path.node;
+      if (id.type !== 'Identifier' || !init || init.type !== 'Identifier') return;
+      const a = path.scope.getBinding(id.name), c = path.scope.getBinding(init.name);
+      if (!a || !c || fieldHolders.has(a) === fieldHolders.has(c)) return;
+      fieldHolders.add(a); fieldHolders.add(c); more = true;
+    } });
+  }
+
   /* pass 2: the writes */
   traverse(ast, {
     AssignmentExpression(path) {
@@ -784,7 +879,11 @@ export function writesOf(code, opts = {}) {
         if (!t) return;
         const how = objName + '.' + prop;
         const c = containerOf(t, path) || ((t.type === 'MemberExpression' || t.type === 'OptionalMemberExpression') ? insideOf(t, path) : null);
-        if (c) { add(path, path.node, c, true, how, t.type === 'MemberExpression' ? recvOf(t, path) : { text: srcOf(code, t) }); return; }
+        if (c) {
+          const put = prop === 'assign' || prop === 'defineProperties' ? args.slice(1).flatMap((x) => sourceKeys(x, path)) : wordsOf(args[1], path);
+          add(path, path.node, c, true, how, t.type === 'MemberExpression' ? recvOf(t, path) : { text: srcOf(code, t) }, { key: put && put.length ? put : null });
+          return;
+        }
         let ks = [];
         if (prop === 'assign' || prop === 'defineProperties') for (const s of args.slice(1)) ks.push(...sourceKeys(s, path));
         else { const w = wordsOf(args[1], path); if (w) ks = w; }
@@ -799,6 +898,256 @@ export function writesOf(code, opts = {}) {
       }
     },
   });
+  /* v2.3.6446 (sitting 59): THE ALLOW LIST (opts.handout: { doors: [the
+     door's own functions], objects: [containers whose items are objects] }).
+     Every appearance of a container -- a member named so, a name or a member
+     it is bound to, a maker's call -- is followed up the tree through the
+     forms that only pass it on, to a form the scanner knows (a read, a test,
+     a binding it follows, the door's call, a pure global, a function of this
+     file) or it is reported: a write it cannot follow (`out: true`).  The
+     LEVEL of a value: 0 the container (or a copy of its list), 1 an item, 2 a
+     field of an item; a value at its container's plain level (an item of a
+     bag of counts, a field of a stash's piece) is a read and goes anywhere. */
+  if (opts.handout && CONTAINERS.size) handouts(opts.handout);
+  function handouts(H) {
+    const DOORS = new Set(H.doors || []);
+    const OBJECTS = new Set(H.objects || []);
+    const plain = (c) => (String(c).split('|').some((x) => OBJECTS.has(x)) && !String(c).split('|').some((x) => SHALLOW.has(x)) ? 2 : 1);
+    const level = new Map();   /* Binding -> 0 | 1 | 2 */
+    const fnLevel = new Map(); /* function path -> the lowest level it hands back */
+    let settled = false;
+    const up = (L) => (L == null ? null : Math.min(L + 1, 2));
+    const lo = (a, b) => (a == null ? b : (b == null ? a : Math.min(a, b)));
+    const isFn = (n) => !!n && (n.type === 'ArrowFunctionExpression' || n.type === 'FunctionExpression');
+    /* a container itself, by its own name, a holder's key, a member it was put into, a maker */
+    function directOf(node, path) {
+      if (node.type === 'MemberExpression' || node.type === 'OptionalMemberExpression') {
+        const ks = keysOf(node, path);
+        if (ks && ks.length && ks.every((k) => CONTAINERS.has(k))) return ks.join('|');
+        const h = holderOf(node.object, path);
+        if (h && ks && ks.length === 1 && h.has(ks[0])) return h.get(ks[0]);
+        const ma = memberAliasOf(node, path);
+        return ma ? ma.c : null;
+      }
+      if (node.type === 'CallExpression' && node.callee.type === 'Identifier' && Object.prototype.hasOwnProperty.call(MAKERS, node.callee.name)) return MAKERS[node.callee.name];
+      return null;
+    }
+    function levelOf(node, path, d = 0) {
+      if (!node || d > 8) return null;
+      switch (node.type) {
+        case 'ParenthesizedExpression': case 'TSNonNullExpression': return levelOf(node.expression, path, d + 1);
+        case 'AwaitExpression': return levelOf(node.argument, path, d + 1);
+        case 'SequenceExpression': return levelOf(node.expressions[node.expressions.length - 1], path, d + 1);
+        case 'AssignmentExpression': return lo(levelOf(node.right, path, d + 1), levelOf(node.left, path, d + 1));
+        case 'LogicalExpression': return node.operator === '&&' ? levelOf(node.right, path, d + 1) : lo(levelOf(node.left, path, d + 1), levelOf(node.right, path, d + 1));
+        case 'ConditionalExpression': return lo(levelOf(node.consequent, path, d + 1), levelOf(node.alternate, path, d + 1));
+        case 'Identifier': {
+          const b = path.scope.getBinding(node.name);
+          if (!b || !alias.has(b)) return null;
+          return level.has(b) ? level.get(b) : (settled ? 0 : null);   /* unknown while it settles; then a container (the safe side) */
+        }
+        case 'MemberExpression': case 'OptionalMemberExpression': {
+          if (directOf(node, path)) return 0;
+          const L = levelOf(node.object, path, d + 1);
+          if (L == null) return null;
+          const ks = keysOf(node, path);
+          if (ks && ks.length === 1 && READ_PROPS.has(ks[0])) return 2;
+          return up(L);
+        }
+        case 'CallExpression': case 'OptionalCallExpression': {
+          if (directOf(node, path)) return 0;
+          const c = node.callee;
+          /* `Object.entries(l)`: a list of [key, item] pairs, one level above the items (-1 for a container) */
+          if (GLOBAL_COPIERS.has(globalName(c))) { const L = levelOf(node.arguments[0], path, d + 1); return L != null && globalName(c) === 'Object.entries' ? L - 1 : L; }
+          if ((c.type === 'MemberExpression' || c.type === 'OptionalMemberExpression') && !c.computed && c.property.type === 'Identifier') {
+            const k = c.property.name;
+            const L = levelOf(c.object, path, d + 1);
+            if (L != null) {
+              if (ELEMENT_GETTERS.has(k) || GETTERS.has(k) || k === 'get') return up(L);
+              if (LIST_COPIERS.has(k)) return L;
+              return null;
+            }
+          }
+          /* a function of this file that hands one back: the lowest level it hands back */
+          const nm = c.type === 'Identifier' ? c.name : ((c.type === 'MemberExpression' || c.type === 'OptionalMemberExpression') && !c.computed && c.property.type === 'Identifier' ? c.property.name : null);
+          let F = null;
+          if (nm && fnsByName.has(nm)) for (const f of fnsByName.get(nm)) if (fnLevel.has(f)) F = lo(F, fnLevel.get(f));
+          if (F != null) return F;
+          return containerOf(node, path) ? (settled ? 0 : null) : null;
+        }
+        case 'ArrayExpression': {
+          let L = null;
+          for (const e of node.elements) {
+            if (!e) continue;
+            if (e.type === 'SpreadElement') L = lo(L, levelOf(e.argument, path, d + 1));
+            else { const x = levelOf(e, path, d + 1); if (x != null) L = lo(L, Math.max(x - 1, 0)); }
+          }
+          return L;
+        }
+        default: return null;
+      }
+    }
+    /* the level of each name bound to a container or an item of one, to a fixed point */
+    let grew = true;
+    const setL = (b, L) => {
+      if (!b || L == null || !alias.has(b)) return;
+      const o = level.get(b);
+      if (o === undefined || L < o) { level.set(b, L); grew = true; }
+    };
+    const bindPat = (path, t, L) => {
+      if (!t) return;
+      if (t.type === 'Identifier') { setL(path.scope.getBinding(t.name), L); return; }
+      if (t.type === 'AssignmentPattern') { bindPat(path, t.left, lo(L, levelOf(t.right, path))); return; }
+      if (t.type === 'RestElement') { bindPat(path, t.argument, L); return; }
+      if (t.type === 'ArrayPattern') { for (const e of t.elements) bindPat(path, e, up(L)); return; }
+      if (t.type === 'ObjectPattern') {
+        for (const p of t.properties) {
+          if (p.type === 'RestElement') { bindPat(path, p.argument, L); continue; }
+          const k = keyWords(p, path);
+          bindPat(path, p.value, k && k.every((x) => CONTAINERS.has(x)) ? 0 : up(L));
+        }
+      }
+    };
+    for (let i = 0; grew && i < 12; i++) {
+      grew = false;
+      traverse(ast, {
+        VariableDeclarator(path) { if (path.node.init) bindPat(path, path.node.id, levelOf(path.node.init, path)); },
+        ReturnStatement(path) {
+          const f = path.getFunctionParent();
+          const L = path.node.argument ? levelOf(path.node.argument, path) : null;
+          if (f && L != null && (!fnLevel.has(f) || L < fnLevel.get(f))) { fnLevel.set(f, L); grew = true; }
+        },
+        ArrowFunctionExpression(path) {
+          if (path.node.body.type === 'BlockStatement') return;
+          const L = levelOf(path.node.body, path.get('body'));
+          if (L != null && (!fnLevel.has(path) || L < fnLevel.get(path))) { fnLevel.set(path, L); grew = true; }
+        },
+        AssignmentExpression(path) { if (['=', '||=', '??=', '&&='].includes(path.node.operator) && path.node.left.type !== 'MemberExpression') bindPat(path, path.node.left, levelOf(path.node.right, path)); },
+        ForOfStatement(path) {
+          const l = path.node.left, t = l.type === 'VariableDeclaration' ? l.declarations[0].id : l;
+          bindPat(l.type === 'VariableDeclaration' ? path.get('left.declarations.0') : path, t, up(levelOf(path.node.right, path)));
+        },
+        CallExpression(path) {
+          const { callee, arguments: args } = path.node;
+          if ((callee.type === 'MemberExpression' || callee.type === 'OptionalMemberExpression') && !callee.computed && callee.property.type === 'Identifier'
+            && ELEMENT_CALLBACKS.has(callee.property.name) && isFn(args[0])) {
+            const prm = args[0].params[ELEMENT_CALLBACKS.get(callee.property.name)];
+            if (prm) bindPat(path.get('arguments.0'), prm, up(levelOf(callee.object, path)));
+          }
+          let name = null;
+          if (callee.type === 'Identifier') name = callee.name;
+          else if ((callee.type === 'MemberExpression' || callee.type === 'OptionalMemberExpression') && !callee.computed && callee.property.type === 'Identifier'
+            && (callee.object.type === 'ThisExpression' || callee.object.type === 'Identifier')) name = callee.property.name;
+          if (!name || !fnsByName.has(name)) return;
+          args.forEach((a, i) => {
+            if (a.type === 'SpreadElement') return;
+            const L = levelOf(a, path);
+            if (L == null) return;
+            for (const f of fnsByName.get(name)) if (f.node.params[i]) bindPat(f, f.node.params[i], L);
+          });
+        },
+      });
+    }
+    settled = true;
+    const followed = (b) => !!b && (alias.has(b) || copies.has(b) || holders.has(b));
+    /* up the tree from one appearance: null (a form the scanner knows) or why not */
+    function climb(path, L, c) {
+      const P = plain(c);
+      let x = path;
+      for (let guard = 0; guard < 60; guard++) {
+        if (L >= P) return null;
+        const p = x.parentPath;
+        if (!p) return null;
+        const n = p.node, me = x.node;
+        if (p.isParenthesizedExpression() || p.isTSNonNullExpression() || p.isAwaitExpression()) { x = p; continue; }
+        if (p.isLogicalExpression()) { if (n.left === me && n.operator === '&&') return null; x = p; continue; }
+        if (p.isConditionalExpression()) { if (n.test === me) return null; x = p; continue; }
+        if (p.isSequenceExpression()) { if (n.expressions[n.expressions.length - 1] !== me) return null; x = p; continue; }
+        if ((p.isMemberExpression() || p.isOptionalMemberExpression()) && n.property === me) return null;   /* used as a key: read */
+        if ((p.isMemberExpression() || p.isOptionalMemberExpression()) && n.object === me) {
+          const ks = keysOf(n, p);
+          const k = ks && ks.length === 1 ? ks[0] : null;
+          const gp = p.parentPath;
+          if (gp && (gp.isCallExpression() || gp.isOptionalCallExpression()) && gp.node.callee === n) {
+            if (k == null) return 'a method the tree cannot know';
+            if (LIST_CHANGERS.has(k)) return null;                 /* a write: the scan's own */
+            if (READ_METHODS.has(k)) return null;
+            if (ELEMENT_CALLBACKS.has(k)) {
+              const cb = gp.node.arguments[0];
+              const pureCb = cb && cb.type === 'Identifier' && PURE_CALLS.has(cb.name) && !gp.scope.getBinding(cb.name);   /* `.filter(Boolean)` */
+              if (!isFn(cb) && !pureCb) return 'its items handed to a callback the scanner cannot follow (.' + k + ')';
+              if (k === 'find' || k === 'findLast') { x = gp; L = up(L); continue; }
+              if (k === 'filter' || k === 'map' || k === 'flatMap') { if (P === 1) return null; x = gp; continue; }
+              return null;                                         /* forEach, some, every, findIndex, reduce: the callback is followed */
+            }
+            if (ELEMENT_GETTERS.has(k) || GETTERS.has(k) || k === 'get') { x = gp; L = up(L); continue; }
+            if (LIST_COPIERS.has(k)) { if (P === 1) return null; x = gp; continue; }   /* a copy of a list of values is a value */
+            return 'a method the scanner cannot follow (.' + k + ')';
+          }
+          if (k && READ_PROPS.has(k)) return null;
+          x = p; L = up(L); continue;                              /* an item, or a field of one */
+        }
+        if ((p.isCallExpression() || p.isOptionalCallExpression()) && n.arguments.includes(me)) {
+          const cal = n.callee;
+          const g = globalName(cal);
+          const name = cal.type === 'Identifier' ? cal.name : ((cal.type === 'MemberExpression' || cal.type === 'OptionalMemberExpression') && !cal.computed && cal.property.type === 'Identifier' ? cal.property.name : null);
+          if (name && DOORS.has(name)) return null;
+          if (PURE_CALLS.has(g) || PURE_CALLS.has(srcOf(code, cal)) || (cal.type === 'Identifier' && PURE_CALLS.has(cal.name) && !p.scope.getBinding(cal.name))
+            || ((cal.type === 'MemberExpression' || cal.type === 'OptionalMemberExpression') && cal.object.type === 'Identifier' && cal.object.name === 'Math' && !p.scope.getBinding('Math'))) return null;
+          if (GLOBAL_COPIERS.has(g)) { if (P === 1) return null; x = p; if (g === 'Object.entries') L -= 1; continue; }
+          if (name && fnsByName.has(name) && (cal.type === 'Identifier' || cal.object.type === 'ThisExpression' || cal.object.type === 'Identifier')) return null;
+          return 'handed to ' + srcOf(code, cal).slice(0, 60) + '(...), a function the scanner cannot follow';
+        }
+        if (p.isNewExpression()) return 'handed to new ' + srcOf(code, n.callee).slice(0, 40);
+        if (p.isSpreadElement()) {
+          const gp = p.parentPath;
+          if (gp.isArrayExpression()) { if (P === 1) return null; x = gp; continue; }   /* a copy of the list: the same items */
+          if (gp.isObjectExpression()) { x = gp; L = up(L); continue; }               /* a new object holding its keys' values: one level down */
+          return 'spread into a call';
+        }
+        if (p.isArrayExpression()) return 'an element of a list written out';
+        if (p.isObjectProperty() && n.value === me) return 'the value of a property of an object written out';
+        if (p.isVariableDeclarator() && n.init === me) {
+          if (n.id.type !== 'Identifier') return null;           /* a pattern: the scan follows it, or reports it */
+          return followed(p.scope.getBinding(n.id.name)) ? null : 'bound to a name the scanner does not follow';
+        }
+        if (p.isAssignmentExpression()) {
+          if (n.left === me) return null;                          /* put: a write, the scan's own */
+          if (n.left.type === 'Identifier') return followed(p.scope.getBinding(n.left.name)) ? null : 'bound to a name the scanner does not follow';
+          if (n.left.type === 'MemberExpression' || n.left.type === 'OptionalMemberExpression') {
+            const ks = keysOf(n.left, p);
+            if (memberAliasOf(n.left, p) || insideOf(n.left, p) || (ks && ks.some((k) => FIELDS.has(k)))) return null;
+            return 'put into a member the scanner does not follow';
+          }
+          return null;
+        }
+        if (p.isUpdateExpression() || p.isUnaryExpression() || p.isBinaryExpression()) return null;
+        if (p.isIfStatement() || p.isWhileStatement() || p.isDoWhileStatement() || p.isForStatement() || p.isSwitchStatement()
+          || p.isSwitchCase() || p.isExpressionStatement() || p.isTemplateLiteral() || p.isForInStatement()) return null;
+        if (p.isForOfStatement()) return n.right === me ? null : 'a loop\'s target';
+        if (p.isReturnStatement() || (p.isArrowFunctionExpression() && n.body === me)) return 'handed back (a return)';
+        return 'a form the scanner has no rule for (' + n.type + ')';
+      }
+      return null;
+    }
+    const report = (path, node, c, L) => {
+      const why = climb(path, L, c);
+      if (why) add(path, node, c, true, 'cannot follow: ' + why, { text: srcOf(code, node) }, { out: true });
+    };
+    traverse(ast, {
+      'MemberExpression|OptionalMemberExpression'(path) {
+        const c = directOf(path.node, path);
+        if (c) report(path, path.node, c, 0);
+      },
+      CallExpression(path) { const c = path.node.callee.type === 'Identifier' ? directOf(path.node, path) : null; if (c) report(path, path.node, c, 0); },
+      Identifier(path) {
+        if (!path.isReferencedIdentifier()) return;
+        const b = path.scope.getBinding(path.node.name);
+        if (!b || !alias.has(b)) return;
+        report(path, path.node, alias.get(b), level.has(b) ? level.get(b) : 0);
+      },
+    });
+  }
   /* v2.3.6441 (sitting 58): what the scanner could not follow is a write (deny by default) */
   for (const u of unfollowed.values()) add(u.path, u.node, u.field, true, u.how, { text: srcOf(code, u.node) });
   out.sort((a, b) => a.line - b.line);
@@ -916,7 +1265,8 @@ export function doorWrites(code, opts = {}) {
     for (const w of writesOf(code[f], { ...opts, file: f })) {
       if (opts.keep && !opts.keep(w)) continue;
       writes.push(w);
-      const row = listed.find((r) => r.file === f && r.fn === w.fn && r.field === w.field);
+      /* v2.3.6446 (sitting 59): a container handed where the scanner cannot follow it (`out: true`) is its own row */
+      const row = listed.find((r) => r.file === f && r.fn === w.fn && r.field === w.field && !!r.out === !!w.out);
       if (row) got.get(row).push(w);
       else found.push(w);
     }
@@ -994,3 +1344,558 @@ export function doorHolders(code, calls, listed = []) {
    with nothing in it, a const bound to one, `'a' + 'b'`, a ternary of them);
    null when it cannot be known.  For a census of names (wire-audit's types). */
 export function wordsAt(node, path) { return wordsOf(node, path); }
+
+/* ═══ v2.3.6446 (sitting 59): WHAT A HANDLER READS OFF A MESSAGE ═══
+ *
+ * WHY.  wire-hostile's reach (v2.3.6444, card DG PR 5) watches the message
+ * a case sends with a Proxy, so it holds only the reads a case REACHES: the
+ * review of sitting 59 planted `if (msg.lucky) ...` behind a gate no case
+ * passes (dice.js), a handler that returns right after its destructure
+ * (quests.js: the names counted as "read" though nothing used them) and
+ * `msg.length` (the Proxy's NOT_A_FIELD words were held to nothing), and
+ * all three stayed green.  A read the running room cannot reach is held
+ * here, off the syntax tree.
+ *
+ *   msgReadsOf(files, { entry: { file, fn, param }, types, skip })
+ *     -> { reads: [read], faults: [fault] }
+ *     files: { 'index.js': code, ... } (server/src, its paths from there);
+ *     entry: the router (index.js _onMessage, the message its param 2);
+ *     types: the message types the door lets in (the socket rows' names);
+ *     skip: calls not followed, by name (the door itself, `_wireDoor`,
+ *     which reads by the table before any handler).
+ *   From the entry, every function the message is HANDED to is read as
+ *   well: a method of the room (`this._x(msg)`, `room._x(p)`), a function
+ *   of the same file or one it imports, a row of a table keyed by the
+ *   message's type (`T[msg.type](...)`, `const row = T[msg.type];
+ *   row.refuse(...)`), `fn.call(this, msg)`.  Which types reach a read is
+ *   read off the tree too: the router's `case`, a test of `msg.type`
+ *   (`===`, `||`, a Set's `has`, `own(T, msg.type)`), an early return.
+ *   read:  { types: Set, field, file, line, fn, live, how }
+ *     a member read of the message or its payload (`msg.x`, `msg['x']`, a
+ *     key the tree knows, `const { x } = msg`, `own(msg, 'x')`, `'x' in
+ *     msg`), through any alias (`const p = msg.payload || msg`).  `live`
+ *     is false when the read sits after a return (or a throw, a break) or
+ *     when its value is bound to a name nothing live uses (a destructure
+ *     whose names are never used is NO read: the review's quests.js plant).
+ *   fault: { types, file, line, fn, what, text }
+ *     DENY BY DEFAULT: every other appearance of the message -- a computed
+ *     key the tree cannot know, a spread or a copy (`{ ...msg }`,
+ *     Object.keys, JSON.stringify), a rest, the message stored in an object
+ *     or a list or a member, handed to a function it cannot find, called,
+ *     awaited, coerced to a string, a write of it -- is a fault, never
+ *     passed for being unknown. */
+const MSG_HARMLESS = new Set(['Array.isArray', 'Object.getPrototypeOf', 'Object.isFrozen']);
+const MSG_LISTS_KEYS = new Set(['Object.keys', 'Object.values', 'Object.entries', 'Object.assign', 'Object.getOwnPropertyNames',
+  'Object.fromEntries', 'Reflect.ownKeys', 'JSON.stringify', 'structuredClone', 'Object.freeze', 'Object.create']);
+const MSG_HAS_KEY = new Set(['Object.hasOwn', 'Reflect.has', 'Reflect.get', 'Object.prototype.hasOwnProperty.call']);
+const dotted = (n) => (n && n.type === 'Identifier' ? n.name
+  : n && n.type === 'ThisExpression' ? 'this'
+  : n && n.type === 'MemberExpression' && !n.computed && n.property.type === 'Identifier' ? (dotted(n.object) ? dotted(n.object) + '.' + n.property.name : null)
+  : null);
+const FN_TYPES = new Set(['FunctionDeclaration', 'FunctionExpression', 'ArrowFunctionExpression', 'ObjectMethod', 'ClassMethod']);
+const STMT_LISTS = new Set(['BlockStatement', 'Program', 'SwitchCase', 'StaticBlock']);
+const EXITS = new Set(['ReturnStatement', 'ThrowStatement', 'BreakStatement', 'ContinueStatement']);
+const stmtList = (n) => (Array.isArray(n.body) ? n.body : Array.isArray(n.consequent) ? n.consequent : null);
+
+export function msgReadsOf(files, { entry, types, skip = [], tables = {} }) {
+  const { traverse } = babel();
+  const ALL = new Set(types);
+  const SKIP = new Set(skip);
+  const F = new Map();   /* file -> { code, tops, consts, imports } */
+  const methods = new Map();   /* name -> [{ file, path }] */
+  for (const [file, code] of Object.entries(files)) {
+    const ast = parse(code);
+    const rec = { code, ast, tops: new Map(), consts: new Map(), imports: new Map() };
+    F.set(file, rec);
+    const addM = (name, path) => { if (!methods.has(name)) methods.set(name, []); methods.get(name).push({ file, path }); };
+    traverse(ast, {
+      ObjectMethod(p) { if (!p.node.computed && p.node.key.type === 'Identifier') addM(p.node.key.name, p); },
+      ClassMethod(p) { if (!p.node.computed && p.node.key.type === 'Identifier') addM(p.node.key.name, p); },
+      ObjectProperty(p) {
+        const v = p.node.value;
+        if (!p.node.computed && p.node.key.type === 'Identifier' && (v.type === 'FunctionExpression' || v.type === 'ArrowFunctionExpression')) addM(p.node.key.name, p.get('value'));
+      },
+      FunctionDeclaration(p) { if (p.parentPath.isProgram() || p.parentPath.isExportNamedDeclaration() || p.parentPath.isExportDefaultDeclaration()) rec.tops.set(p.node.id ? p.node.id.name : 'default', p); },
+      VariableDeclarator(p) {
+        const at = p.parentPath.parentPath;
+        if (!(at.isProgram() || at.isExportNamedDeclaration()) || p.node.id.type !== 'Identifier') return;
+        rec.consts.set(p.node.id.name, p);
+        const i = p.node.init;
+        if (i && (i.type === 'FunctionExpression' || i.type === 'ArrowFunctionExpression')) rec.tops.set(p.node.id.name, p.get('init'));
+      },
+      ImportDeclaration(p) {
+        const src = p.node.source.value;
+        if (!src.startsWith('.')) return;
+        const base = file.includes('/') ? file.slice(0, file.lastIndexOf('/') + 1) : '';
+        const out = [];
+        for (const s of (base + src).split('/')) { if (s === '..') out.pop(); else if (s !== '.') out.push(s); }
+        const to = out.join('/');
+        for (const s of p.node.specifiers) rec.imports.set(s.local.name, { file: to, name: s.type === 'ImportSpecifier' ? (s.imported.name || s.imported.value) : 'default' });
+      },
+    });
+  }
+  const reads = [], faults = [];
+  const lineOf = (n) => (n && n.loc ? n.loc.start.line : 0);
+  const textOf = (file, n) => { const c = F.get(file).code; return n && n.start != null ? c.slice(n.start, n.end).split('\n')[0].slice(0, 120) : ''; };
+
+  /* a top-level const or function, of this file or the one it imports */
+  function declOf(file, name, depth = 0) {
+    const rec = F.get(file);
+    if (!rec || depth > 4) return null;
+    if (rec.tops.has(name)) return { file, name, path: rec.tops.get(name), kind: 'fn' };
+    if (rec.consts.has(name)) return { file, name, path: rec.consts.get(name), kind: 'const' };
+    const im = rec.imports.get(name);
+    if (im && F.has(im.file)) return declOf(im.file, im.name, depth + 1);
+    return null;
+  }
+  /* an object literal a name holds (a table keyed by type): `{...}`, Object.freeze({...}) */
+  function objLit(file, node, path, depth = 0) {
+    if (!node || depth > 4) return null;
+    if (node.type === 'ObjectExpression') return { file, node };
+    if (node.type === 'CallExpression' && ['Object.freeze', 'Object.assign'].includes(dotted(node.callee))) return objLit(file, node.arguments[node.arguments.length - 1], path, depth + 1);
+    if (node.type === 'Identifier') {
+      const b = path && path.scope.getBinding(node.name);
+      const d = declOf(file, node.name);
+      /* `tables`: a table built at run time (Object.fromEntries over another), read as the literal the test names */
+      if (d && d.kind === 'const' && (!b || b.kind === 'module' || b.path === d.path) && tables[d.file + ':' + d.name]) {
+        const t = declOf(d.file, tables[d.file + ':' + d.name]);
+        return t && t.kind === 'const' ? objLit(t.file, t.path.node.init, t.path, depth + 1) : null;
+      }
+      if (b && b.kind !== 'module' && b.path.isVariableDeclarator()) return objLit(file, b.path.node.init, b.path, depth + 1);
+      if (d && d.kind === 'const') return objLit(d.file, d.path.node.init, d.path, depth + 1);
+    }
+    return null;
+  }
+  function setWords(file, node, path, depth = 0) {
+    if (!node || depth > 4) return null;
+    if (node.type === 'NewExpression' && dotted(node.callee) === 'Set' && node.arguments[0]) return listWords(node.arguments[0], path) || null;
+    if (node.type === 'CallExpression' && dotted(node.callee) === 'Object.freeze') return setWords(file, node.arguments[0], path, depth + 1);
+    if (node.type === 'Identifier') {
+      const b = path && path.scope.getBinding(node.name);
+      if (b && b.kind !== 'module' && b.path.isVariableDeclarator()) return setWords(file, b.path.node.init, b.path, depth + 1);
+      const d = declOf(file, node.name);
+      if (d && d.kind === 'const') return setWords(d.file, d.path.node.init, d.path, depth + 1);
+    }
+    return null;
+  }
+  const keyName = (p) => (p.key.type === 'Identifier' ? p.key.name : String(p.key.value));
+  const keysOfLit = (o) => o.node.properties.filter((p) => (p.type === 'ObjectProperty' || p.type === 'ObjectMethod') && !p.computed).map(keyName);
+  const inter = (a, b) => (b ? new Set([...a].filter((x) => b.has(x))) : a);
+
+  /* the functions a value of a type table's row is: a function written there, a name of a function */
+  function fnsOfValue(file, node) {
+    if (!node) return null;
+    if (node.type === 'FunctionExpression' || node.type === 'ArrowFunctionExpression') return [{ file, node }];
+    if (node.type === 'Identifier') { const d = declOf(file, node.name); if (d && d.kind === 'fn') return [{ file: d.file, path: d.path }]; }
+    /* a function a maker of this file hands back: `refuse: resend(['coins'])`, `const resend = (f) => (room, pid) => ...` */
+    if (node.type === 'CallExpression' && node.callee.type === 'Identifier') {
+      const d = declOf(file, node.callee.name);
+      if (!d || d.kind !== 'fn') return null;
+      const fnN = d.path.node, out = [];
+      if (fnN.body.type !== 'BlockStatement') return FN_TYPES.has(fnN.body.type) ? [{ file: d.file, node: fnN.body }] : null;
+      let ok = true;
+      d.path.traverse({ ReturnStatement(q) {
+        if (q.getFunctionParent().node !== fnN) return;
+        if (q.node.argument && FN_TYPES.has(q.node.argument.type)) out.push({ file: d.file, node: q.node.argument }); else ok = false;
+      } });
+      return ok && out.length ? out : null;
+    }
+    return null;
+  }
+  /* the path of a node inside a file's tree, found by its place (a table's row written in another file) */
+  const pathCache = new Map();
+  function pathOfNode(file, node) {
+    const key = file + ':' + node.start;
+    if (pathCache.has(key)) return pathCache.get(key);
+    let found = null;
+    traverse(F.get(file).ast, { enter(p) { if (p.node === node) { found = p; p.stop(); } } });
+    pathCache.set(key, found);
+    return found;
+  }
+
+  const memo = new Map();
+  const paramWords = new Map();   /* binding -> words: a parameter's words from its caller */
+  const prevHook = PARAM_WORDS;
+  PARAM_WORDS = (bind) => (paramWords.has(bind) ? paramWords.get(bind) : null);
+  try {
+    const ent = (methods.get(entry.fn) || []).find((m) => m.file === entry.file);
+    if (!ent) faults.push({ types: ALL, file: entry.file, line: 0, fn: entry.fn, what: 'no entry ' + entry.fn, text: '' });
+    else analyze(entry.file, ent.path, entry.param, ALL, []);
+  } finally { PARAM_WORDS = prevHook; }
+  return { reads, faults };
+
+  function analyze(file, fnPath, idx, ctx, argWords, typeArgs = [], root = true) {
+    if (!ctx.size) return { returns: false };
+    const key = file + ':' + fnPath.node.start + ':' + idx + ':' + [...ctx].sort().join(',') + ':' + JSON.stringify(argWords) + ':' + typeArgs.join(',') + ':' + root;
+    if (memo.has(key)) return memo.get(key);
+    const res = { returns: false };
+    memo.set(key, res);
+    const A = { file, fnPath, ctx, tracked: new Set(), root: new Set(), typeAlias: new Set(), res, fn: fnName(fnPath.get('body')) };
+    const params = fnPath.get('params');
+    const saved = [];
+    params.forEach((pp, j) => {
+      const w = argWords[j];
+      if (j === idx || !w || !pp.isIdentifier()) return;
+      const b = fnPath.scope.getBinding(pp.node.name);
+      if (b) { saved.push([b, paramWords.get(b)]); paramWords.set(b, w); }
+    });
+    /* a parameter handed the message's type (`this._x(session, msg.type, p)`) narrows as msg.type does */
+    for (const j of typeArgs) { const pp = params[j]; if (pp && pp.isIdentifier()) { const b = fnPath.scope.getBinding(pp.node.name); if (b) A.typeAlias.add(b); } }
+    try {
+      let p = params[idx];
+      if (!p) return res;
+      if (p.isAssignmentPattern()) p = p.get('left');
+      if (p.isIdentifier()) { const b = fnPath.scope.getBinding(p.node.name); if (b) track(A, b, root); }
+      else if (p.isObjectPattern()) destructure(A, p, p, root);
+      else fault(A, p, 'the message taken by a ' + p.node.type);
+      /* `arguments` hands the message on unnamed */
+      fnPath.traverse({ Identifier(q) { if (q.node.name === 'arguments' && !q.scope.getBinding('arguments') && q.isReferencedIdentifier() && q.getFunctionParent() && q.getFunctionParent().node === fnPath.node) fault(A, q, 'arguments (the message handed on unnamed)'); } });
+    } finally { for (const [b, w] of saved) { if (w === undefined) paramWords.delete(b); else paramWords.set(b, w); } }
+    return res;
+  }
+  function fault(A, path, what) {
+    faults.push({ types: ctxAt(A, path), file: A.file, line: lineOf(path.node), fn: A.fn, what, text: textOf(A.file, path.node) });
+  }
+  /* root: the binding holds the message itself (not its payload, nor
+     `msg.payload || msg`): only ITS `type` is the message's type */
+  function track(A, b, root = false) {
+    if (A.tracked.has(b)) return;
+    A.tracked.add(b);
+    if (root) A.root.add(b);
+    for (const r of b.referencePaths) useOf(A, r, root);
+    for (const v of b.constantViolations) {
+      if ((v.isAssignmentExpression() && v.node.operator !== '=') || v.isUpdateExpression()) fault(A, v, 'the message changed by ' + v.node.operator);
+    }
+  }
+  /* a node after a return, a throw, a break or a continue (inside A's function) */
+  function dead(A, path) {
+    for (let p = path; p && p.parentPath && p.node !== A.fnPath.node; p = p.parentPath) {
+      if (typeof p.key === 'number' && STMT_LISTS.has(p.parentPath.node.type)) {
+        const list = stmtList(p.parentPath.node);
+        if (list && list[p.key] === p.node) for (let i = 0; i < p.key; i++) if (EXITS.has(list[i].type)) return true;
+      }
+    }
+    return false;
+  }
+  function usedLive(A, b) { return !!b && b.referencePaths.some((r) => !dead(A, r)); }
+  function isTracked(A, node, path) {
+    if (!node) return false;
+    if (node.type === 'Identifier') { const b = path.scope.getBinding(node.name); return !!b && A.tracked.has(b); }
+    if ((node.type === 'MemberExpression' || node.type === 'OptionalMemberExpression') && !node.computed && node.property.name === 'payload') return isTracked(A, node.object, path);
+    return false;
+  }
+  function isTypeRead(A, node, path) {
+    if (!node) return false;
+    if (node.type === 'Identifier') { const b = path.scope.getBinding(node.name); return !!b && A.typeAlias.has(b); }
+    if (!((node.type === 'MemberExpression' || node.type === 'OptionalMemberExpression') && !node.computed && node.property.name === 'type' && node.object.type === 'Identifier')) return false;
+    const b = path.scope.getBinding(node.object.name);
+    return !!b && A.root.has(b);
+  }
+  /* the types a test lets through when it is true (neg: when false); null: it does not say */
+  function typesOfTest(A, node, path, neg = false) {
+    if (!node) return null;
+    if (node.type === 'UnaryExpression' && node.operator === '!') return typesOfTest(A, node.argument, path, !neg);
+    if (node.type === 'LogicalExpression' && (node.operator === '||' || node.operator === '&&')) {
+      const a = typesOfTest(A, node.left, path, neg), b = typesOfTest(A, node.right, path, neg);
+      if ((node.operator === '||') !== neg) return a && b ? new Set([...a, ...b]) : null;
+      return a && b ? inter(a, b) : (a || b);
+    }
+    if (node.type === 'BinaryExpression' && ['===', '==', '!==', '!='].includes(node.operator)) {
+      const eq = (node.operator === '===' || node.operator === '==') !== neg;
+      let w = null;
+      if (isTypeRead(A, node.left, path)) w = wordsOf(node.right, path);
+      else if (isTypeRead(A, node.right, path)) w = wordsOf(node.left, path);
+      else {
+        /* both sides known words (a parameter its callers hand a word): the test is decided */
+        const l = wordsOf(node.left, path), r = wordsOf(node.right, path);
+        if (!l || !r) return null;
+        const always = l.length === 1 && r.length === 1 && l[0] === r[0], never = !l.some((x) => r.includes(x));
+        if (eq ? never : always) return new Set();
+        return null;
+      }
+      if (!w) return null;
+      return eq ? new Set(w) : new Set([...ALL].filter((t) => !w.includes(t)));
+    }
+    if (neg || node.type !== 'CallExpression') return null;
+    const c = node.callee, args = node.arguments;
+    /* SET.has(msg.type) */
+    if (c.type === 'MemberExpression' && !c.computed && c.property.name === 'has' && args.length === 1 && isTypeRead(A, args[0], path)) {
+      const w = setWords(A.file, c.object, path);
+      return w ? new Set(w) : null;
+    }
+    /* own(T, msg.type) */
+    if (args.length === 2 && isTypeRead(A, args[1], path) && (dotted(c) === 'own' || dotted(c) === 'Object.hasOwn')) {
+      const o = objLit(A.file, args[0], path);
+      return o ? new Set(keysOfLit(o)) : null;
+    }
+    return null;
+  }
+  /* the types that reach a node inside A's function */
+  function ctxAt(A, path) {
+    let ctx = A.ctx;
+    for (let p = path; p && p.parentPath && p.node !== A.fnPath.node; p = p.parentPath) {
+      const par = p.parentPath;
+      if ((par.isIfStatement() || par.isConditionalExpression()) && p.key === 'consequent') ctx = inter(ctx, typesOfTest(A, par.node.test, par));
+      else if ((par.isIfStatement() || par.isConditionalExpression()) && p.key === 'alternate') ctx = inter(ctx, typesOfTest(A, par.node.test, par, true));
+      else if (par.isLogicalExpression() && p.key === 'right' && par.node.operator === '&&') ctx = inter(ctx, typesOfTest(A, par.node.left, par));
+      else if (par.isLogicalExpression() && p.key === 'right' && par.node.operator === '||') ctx = inter(ctx, typesOfTest(A, par.node.left, par, true));
+      else if (par.isSwitchCase() && p.listKey === 'consequent' && isTypeRead(A, par.parentPath.node.discriminant, par.parentPath)) {
+        const sw = par.parentPath, cases = sw.node.cases, i = cases.indexOf(par.node);
+        if (par.node.test) {
+          /* this case's word and those of the empty cases that fall into it */
+          const w = new Set();
+          let ok = true;
+          for (let j = i; j >= 0; j--) {
+            if (j < i && cases[j].consequent.length) break;
+            const ww = cases[j].test ? wordsOf(cases[j].test, sw) : null;
+            if (!ww) { ok = false; break; }
+            ww.forEach((x) => w.add(x));
+          }
+          if (ok) ctx = inter(ctx, w);
+        } else {
+          const named = new Set();
+          for (const c of cases) if (c.test) (wordsOf(c.test, sw) || []).forEach((x) => named.add(x));
+          ctx = new Set([...ctx].filter((t) => !named.has(t)));
+        }
+      }
+      /* an early way out before this statement: `if (msg.type !== 'x') return;` */
+      if (typeof p.key === 'number' && STMT_LISTS.has(par.node.type)) {
+        const list = stmtList(par.node);
+        if (list && list[p.key] === p.node) for (let i = 0; i < p.key; i++) {
+          const s = list[i];
+          const out = s.type === 'IfStatement' && !s.alternate && (EXITS.has(s.consequent.type)
+            || (s.consequent.type === 'BlockStatement' && s.consequent.body.length && EXITS.has(s.consequent.body[s.consequent.body.length - 1].type)));
+          if (out) ctx = inter(ctx, typesOfTest(A, s.test, par, true));
+        }
+      }
+    }
+    return ctx;
+  }
+  function read(A, path, field, how, valuePath) {
+    let live = !dead(A, path);
+    /* a value bound to a name nothing live uses is no read */
+    if (live && valuePath && valuePath.parentPath && valuePath.parentPath.isVariableDeclarator() && valuePath.key === 'init' && valuePath.parentPath.node.id.type === 'Identifier') {
+      if (!usedLive(A, valuePath.parentPath.scope.getBinding(valuePath.parentPath.node.id.name))) live = false;
+    }
+    reads.push({ types: ctxAt(A, path), field, file: A.file, line: lineOf(path.node), fn: A.fn, live, how, text: textOf(A.file, path.node) });
+  }
+  function destructure(A, pat, at, root = false) {
+    for (const prop of pat.get('properties')) {
+      if (prop.isRestElement()) { fault(A, prop, 'a rest of the message (`...rest`: its keys listed)'); continue; }
+      const ks = prop.node.computed ? wordsOf(prop.node.key, prop) : [keyName(prop.node)];
+      if (!ks) { fault(A, prop, 'a computed key the tree cannot know, destructured'); continue; }
+      let v = prop.get('value');
+      if (v.isAssignmentPattern()) v = v.get('left');
+      for (const f of ks) {
+        const base = { types: ctxAt(A, at), field: f, file: A.file, line: lineOf(prop.node), fn: A.fn, how: 'destructure', text: textOf(A.file, prop.node) };
+        if (v.isIdentifier()) {
+          const b = v.scope.getBinding(v.node.name);
+          reads.push({ ...base, live: !dead(A, at) && usedLive(A, b) });
+          if (f === 'payload' && b) track(A, b);
+          if (f === 'type' && b && root) A.typeAlias.add(b);
+        } else if (v.isObjectPattern() || v.isArrayPattern()) {
+          reads.push({ ...base, live: !dead(A, at) });
+          if (f === 'payload') { if (v.isObjectPattern()) destructure(A, v, at); else fault(A, v, 'the payload taken by a list pattern'); }
+        } else fault(A, v, 'a destructure the tree cannot follow (' + v.node.type + ')');
+      }
+    }
+  }
+  /* `path` is an expression that holds the message (or its payload) */
+  function useOf(A, path, root = false) {
+    const par = path.parentPath, pn = par.node, k = path.key;
+    switch (pn.type) {
+      case 'MemberExpression': case 'OptionalMemberExpression': {
+        if (k !== 'object') return fault(A, par, 'the message used as a key');
+        const ks = keysOf(pn, par) || loopKeys(A, pn.property, par);
+        if (!ks) return fault(A, par, 'a computed key the tree cannot know');
+        const gp = par.parentPath;
+        if ((gp.isAssignmentExpression() && par.key === 'left') || gp.isUpdateExpression() || (gp.isUnaryExpression() && gp.node.operator === 'delete')) return fault(A, gp, 'a write of the message (' + ks.join('|') + ')');
+        for (const f of ks) {
+          if (f === 'type' && root && gp.isVariableDeclarator() && gp.node.id.type === 'Identifier') { const b = gp.scope.getBinding(gp.node.id.name); if (b) A.typeAlias.add(b); }
+          read(A, par, f, 'member', par);
+        }
+        if (ks.includes('payload')) useOf(A, par);
+        return;
+      }
+      case 'VariableDeclarator': {
+        if (k !== 'init') return fault(A, par, 'a form the tree cannot follow (VariableDeclarator)');
+        const id = par.get('id');
+        if (id.isIdentifier()) { const b = par.scope.getBinding(id.node.name); if (b) track(A, b, root); return; }
+        if (id.isObjectPattern()) return destructure(A, id, par, root);
+        return fault(A, par, 'the message taken by a ' + id.node.type);
+      }
+      case 'AssignmentExpression': {
+        if (k !== 'right') return fault(A, par, 'a write of the message');
+        const l = par.get('left');
+        if (pn.operator === '=' && l.isIdentifier()) { const b = par.scope.getBinding(l.node.name); if (b) { track(A, b, root && A.root.has(b)); return useOf(A, par, root); } return fault(A, par, 'the message put in a global'); }
+        if (pn.operator === '=' && l.isObjectPattern()) return destructure(A, l, par, root);
+        return fault(A, par, 'the message stored (' + textOf(A.file, pn.left) + ')');
+      }
+      case 'LogicalExpression':
+        if (pn.operator === '&&' && k === 'left') return;   /* a test */
+        return useOf(A, par, root && !isTracked(A, k === 'left' ? pn.right : pn.left, par));
+      case 'ConditionalExpression':
+        if (k === 'test') return;
+        return useOf(A, par, root && !isTracked(A, k === 'consequent' ? pn.alternate : pn.consequent, par));
+      case 'ParenthesizedExpression': case 'TSAsExpression': case 'TSNonNullExpression':
+        return useOf(A, par, root);
+      case 'SequenceExpression':
+        if (k === pn.expressions.length - 1) return useOf(A, par, root);
+        return;
+      case 'UnaryExpression':
+        if (pn.operator === 'typeof' || pn.operator === '!' || pn.operator === 'void') return;
+        return fault(A, par, 'the message coerced (' + pn.operator + ')');
+      case 'BinaryExpression':
+        if (['===', '!==', '==', '!=', 'instanceof'].includes(pn.operator)) return;
+        if (pn.operator === 'in' && k === 'right') {
+          const w = wordsOf(pn.left, par);
+          if (!w) return fault(A, par, 'a key the tree cannot know, asked with `in`');
+          for (const f of w) read(A, par, f, 'in');
+          return;
+        }
+        return fault(A, par, 'the message coerced (' + pn.operator + ')');
+      case 'IfStatement': case 'WhileStatement': case 'DoWhileStatement': case 'ForStatement':
+        if (k === 'test') return;
+        return fault(A, par, 'a form the tree cannot follow (' + pn.type + ')');
+      case 'ExpressionStatement': return;
+      case 'CallExpression': case 'OptionalCallExpression': case 'NewExpression':
+        if (k === 'callee') return fault(A, par, 'the message called');
+        return handedTo(A, par, path.key, root);
+      case 'ReturnStatement':
+        if (par.getFunctionParent() && par.getFunctionParent().node === A.fnPath.node) { A.res.returns = true; return; }
+        return fault(A, par, 'the message returned from an inner function');
+      case 'ArrowFunctionExpression':
+        if (k === 'body' && pn === A.fnPath.node) { A.res.returns = true; return; }
+        return fault(A, par, k === 'body' ? 'the message returned from an inner function' : 'a form the tree cannot follow (ArrowFunctionExpression)');
+      case 'AwaitExpression': return fault(A, par, 'the message awaited (its `then` read)');
+      case 'SpreadElement': case 'SpreadProperty': return fault(A, par, 'a spread of the message (its keys listed)');
+      case 'ObjectProperty': return fault(A, par, 'the message stored in an object (' + textOf(A.file, pn.key) + ')');
+      case 'ArrayExpression': return fault(A, par, 'the message stored in a list');
+      case 'ForInStatement': case 'ForOfStatement': return fault(A, par, 'the message walked by ' + (pn.type === 'ForInStatement' ? 'for-in' : 'for-of') + ' (its keys listed)');
+      case 'TemplateLiteral': return fault(A, par, 'the message coerced (a template)');
+      default: return fault(A, par, 'a form the tree cannot follow (' + pn.type + ')');
+    }
+  }
+  /* a key a for-of hands over a choice of lists: `for (const s of (ps.prog3 ? [] : T1_STATS)) payload[s]` */
+  function loopKeys(A, node, path) {
+    if (!node || node.type !== 'Identifier') return null;
+    const b = path.scope.getBinding(node.name);
+    const loop = b && b.path.isVariableDeclarator() && b.path.parentPath.parentPath;
+    if (!loop || !loop.isForOfStatement() || loop.node.left !== b.path.parentPath.node) return null;
+    const r = loop.node.right;
+    if (r.type !== 'ConditionalExpression') return null;
+    const x = listWords(r.consequent, loop), y = listWords(r.alternate, loop);
+    if (!x || !y) {
+      const fromFile = (n) => (n.type === 'ArrayExpression' ? listWords(n, loop) : n.type === 'Identifier' ? (() => { const d = declOf(A.file, n.name); return d && d.kind === 'const' ? listWords(d.path.node.init, d.path) : null; })() : null);
+      const x2 = x || fromFile(r.consequent), y2 = y || fromFile(r.alternate);
+      return x2 && y2 ? [...x2, ...y2] : null;
+    }
+    return [...x, ...y];
+  }
+  /* the message handed to a call as its argument number `i` */
+  function handedTo(A, call, i, root = false) {
+    if (typeof i !== 'number') return fault(A, call, 'a form the tree cannot follow (a call)');
+    const cn = call.node, c = cn.callee, name = dotted(c);
+    const argWordsAt = (shift = 0) => cn.arguments.slice(shift).map((a, j) => (j + shift === i || a.type === 'SpreadElement' ? null : wordsOf(a, call)));
+    const follow = (targets, idx, words, ctxHere) => {
+      let returns = false;
+      const shift = cn.arguments.length - words.length;
+      const typeArgs = cn.arguments.slice(shift).map((a, j) => (isTypeRead(A, a, call) ? j : -1)).filter((j) => j >= 0);
+      for (const t of targets) {
+        const fp = t.path || pathOfNode(t.file, t.node);
+        if (!fp) { fault(A, call, 'cannot find ' + (name || '?')); continue; }
+        if (analyze(t.file, fp, idx, t.ctx ? inter(t.ctx, ctxHere) : ctxHere, words, typeArgs, root).returns) returns = true;
+      }
+      if (returns) useOf(A, call);
+    };
+    if (cn.arguments.slice(0, i).some((a) => a.type === 'SpreadElement')) return fault(A, call, 'the message handed after a spread');
+    if (cn.type === 'NewExpression') return fault(A, call, 'the message handed to new ' + (name || '?'));
+    if (name && MSG_HARMLESS.has(name)) return;
+    if (name && MSG_LISTS_KEYS.has(name)) return fault(A, call, 'the message handed to ' + name + ' (its keys listed)');
+    if (name && MSG_HAS_KEY.has(name)) {
+      const kAt = name.endsWith('.call') ? 1 : 1;
+      if (i !== 0) return fault(A, call, 'the message handed to ' + name + ' as a key');
+      const w = wordsOf(cn.arguments[kAt], call);
+      if (!w) return fault(A, call, 'a key the tree cannot know, asked with ' + name);
+      for (const f of w) read(A, call, f, name);
+      return;
+    }
+    if (name && SKIP.has(name.split('.').pop())) return;
+    const ctxHere = ctxAt(A, call);
+    /* fn.call(this, msg) */
+    if (c.type === 'MemberExpression' && !c.computed && c.property.name === 'call' && i >= 1) {
+      const inner = c.object;
+      if (inner.type === 'Identifier') { const d = declOf(A.file, inner.name); if (d && d.kind === 'fn') return follow([d], i - 1, argWordsAt(1), ctxHere); }
+      const mName = inner.type === 'MemberExpression' && !inner.computed ? inner.property.name : null;
+      if (mName && methods.has(mName) && methods.get(mName).length === 1) return follow(methods.get(mName), i - 1, argWordsAt(1), ctxHere);
+      return fault(A, call, 'the message handed to ' + (name || textOf(A.file, c)) + ' (cannot find it)');
+    }
+    /* T[msg.type](...) */
+    if (c.type === 'MemberExpression' && c.computed && isTypeRead(A, c.property, call)) {
+      const o = objLit(A.file, c.object, call);
+      if (!o) return fault(A, call, 'a table keyed by type the tree cannot read (' + textOf(A.file, c.object) + ')');
+      const targets = [];
+      for (const prop of o.node.properties) {
+        if (prop.computed || !(prop.type === 'ObjectProperty' || prop.type === 'ObjectMethod')) continue;
+        const kk = keyName(prop);
+        if (!ctxHere.has(kk)) continue;
+        const fs = prop.type === 'ObjectMethod' ? [{ file: o.file, node: prop }] : fnsOfValue(o.file, prop.value);
+        if (!fs) { fault(A, call, 'a row of ' + textOf(A.file, c.object) + ' the tree cannot follow (' + kk + ')'); continue; }
+        for (const f of fs) targets.push({ ...f, ctx: new Set([kk]) });
+      }
+      return follow(targets, i, argWordsAt(), ctxHere);
+    }
+    /* const row = T[msg.type]; row.refuse(...) */
+    if (c.type === 'MemberExpression' && !c.computed && c.object.type === 'Identifier') {
+      const b = call.scope.getBinding(c.object.name);
+      const init = b && b.path.isVariableDeclarator() && b.path.node.init ? b.path.get('init') : null;
+      let table = null;
+      if (init && init.isMemberExpression() && init.node.computed && isTypeRead(A, init.node.property, init)) table = init.node.object;
+      if (init && !table) init.traverse({ MemberExpression(q) { if (q.node.computed && isTypeRead(A, q.node.property, q)) table = q.node.object; } });
+      if (table) {
+        const o = objLit(A.file, table, init);
+        if (!o) return fault(A, call, 'a table keyed by type the tree cannot read');
+        const targets = [];
+        for (const prop of o.node.properties) {
+          if (prop.computed || prop.type !== 'ObjectProperty') continue;
+          const kk = keyName(prop);
+          if (!ctxHere.has(kk)) continue;
+          const row = objLit(o.file, prop.value, null);
+          if (!row) { fault(A, call, 'a row of a type table the tree cannot read (' + kk + ')'); continue; }
+          const m = row.node.properties.find((q) => !q.computed && q.key && keyName(q) === c.property.name);
+          if (!m) continue;
+          const fs = m.type === 'ObjectMethod' ? [{ file: row.file, node: m }] : fnsOfValue(row.file, m.value);
+          if (!fs) { faults.push({ types: new Set([kk]), file: A.file, line: lineOf(call.node), fn: A.fn, what: 'a row of a type table the tree cannot follow (' + kk + '.' + c.property.name + ')', text: textOf(A.file, call.node) }); continue; }
+          for (const f of fs) targets.push({ ...f, ctx: new Set([kk]) });
+        }
+        return follow(targets, i, argWordsAt(), ctxHere);
+      }
+    }
+    /* a method of the room: this._x(msg), room._x(msg) */
+    if (c.type === 'MemberExpression' && !c.computed && c.property.type === 'Identifier') {
+      const m = c.property.name;
+      let recvThis = c.object.type === 'ThisExpression';
+      if (!recvThis && c.object.type === 'Identifier') {
+        const b = call.scope.getBinding(c.object.name);
+        recvThis = !!b && ((b.path.isVariableDeclarator() && b.path.node.init && b.path.node.init.type === 'ThisExpression') || (b.kind === 'param' && m.startsWith('_')));
+      }
+      if (recvThis && methods.has(m)) {
+        const ms = methods.get(m), same = ms.filter((x) => x.file === A.file);
+        if (ms.length === 1 || same.length === 1) return follow(ms.length === 1 ? ms : same, i, argWordsAt(), ctxHere);
+        return fault(A, call, 'the message handed to ' + m + ', which ' + ms.length + ' places define');
+      }
+      return fault(A, call, 'the message handed to ' + (name || textOf(A.file, c)) + ' (cannot find it)');
+    }
+    /* a function of this file, or one it imports */
+    if (c.type === 'Identifier') {
+      const b = call.scope.getBinding(c.name);
+      if (b && b.kind !== 'module' && b.path.isFunctionDeclaration()) return follow([{ file: A.file, path: b.path }], i, argWordsAt(), ctxHere);
+      if (b && b.kind !== 'module' && b.path.isVariableDeclarator() && b.path.node.init && FN_TYPES.has(b.path.node.init.type)) return follow([{ file: A.file, path: b.path.get('init') }], i, argWordsAt(), ctxHere);
+      if (!b || b.kind === 'module' || b.path.parentPath.isProgram() || b.path.parentPath.isExportNamedDeclaration()) {
+        const d = declOf(A.file, c.name);
+        if (d && d.kind === 'fn') return follow([d], i, argWordsAt(), ctxHere);
+      }
+    }
+    return fault(A, call, 'the message handed to ' + (name || textOf(A.file, c)) + ' (cannot find it)');
+  }
+}
