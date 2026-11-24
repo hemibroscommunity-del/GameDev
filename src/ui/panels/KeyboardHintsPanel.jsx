@@ -2,7 +2,7 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import { tapLockOn } from '@/game/manualCombat.js';   /* v2.3.4396; v2.3.5018: the lock's own question */
 import { deskKeyRows, deskKeyGroups, deskKeyStamp } from '@/game/deskKeyList.js';   /* v2.3.3687: the keys that work now */
-import { deskWideActive, DESK_KEYS_W, DESK_KEYS_FOLDED_W } from '@/ui/deskWide.js';   /* v2.3.3687: a computer playing wide */
+import { deskWideActive, deskBandActive, DESK_KEYS_W, DESK_KEYS_FOLDED_W } from '@/ui/deskWide.js';   /* v2.3.3687: a computer playing wide; v2.3.6291: + its band */
 import { abilityUnlocked, isAbilitiesEnabled } from '@/data/abilities.js';
 import { prog3CharLevel, prog3ActiveCat, burstRefusal, burstWeapon } from '@/data/prog3.js';
 import { quickEatChoices } from '@/game/quickEat.js';
@@ -11,7 +11,6 @@ import { sprintSupported } from '@/game/sprint.js';
 import { trappingOn, trapsHeld } from '@/game/trapping.js';
 import { rideButtonWanted } from '@/game/ride.js';   /* v2.3.3776: Z, the skateboard, in BroTown */
 import { rideGround } from '@/game/rideGround.js';
-import { oneBandActive } from '@/ui/oneBand.js';   /* v2.3.4263: the band's own key list */
 import { fineInput, COMPUTER_FRAME_QUERY } from '../../game/deviceProfile.js';   /* v2.3.4804: the device profile */
 import { SAY } from '@/data/say/keyboardHints.js';   /* v2.3.6353: its words, in the one table (docs/specs/player-words.md, W1) */
 import { say } from '@/game/say.js';
@@ -255,7 +254,11 @@ export function bandKeysActive() {
   try {
     if (!fineInput()) return false;   /* v2.3.4804: the device profile */
     const cl = document.documentElement.classList;
-    return oneBandActive() && !cl.contains('bt-band-side');
+    /* v2.3.6291 (card HB2; card RR's find): the computer's band (deskBandActive: the one band, `bt-desk-wide` and
+       the computer's window), as game.css shows the list.  It asked for the one band alone, so under `?narrow` (the
+       upright column, no `bt-desk-wide`) and in a computer window under 1000 px, where the list is not drawn, the
+       strip below stood aside for it all the same and no keys showed.  On the computer's band: the same answer. */
+    return deskBandActive() && !cl.contains('bt-band-side');
   } catch (_e) { return false; }
 }
 export function BandKeys() {

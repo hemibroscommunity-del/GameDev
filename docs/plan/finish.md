@@ -1,0 +1,233 @@
+# Finishing the grand plan: the direction of 2026-11-23 (v2.3.6400)
+
+The owner, 2026-11-23: *"I'm in middle of implementing the 'grand plan' ...
+using [the top model] to ensure work is directed appropriately and
+efficiently to finish up"*; *"review the work in accordance with the plan to
+make sure it's the correct shape because I've been using less intelligent
+models to do the work"*; *"I want an orchestrator session ... and have it
+manage different sessions to complete as much parallel work as possible but
+efficiently."*
+
+This file is that direction. One session on the top model read the plan, had
+six reviewers try to break the finished work, measured what the work cost,
+and wrote the cards below. **The orchestrator reads this file first and
+works from it until part 2's line is reached.** The findings are in
+`docs/plan/census/shape-review.md`; each card's detail is in its card.
+
+## 1. The short of it
+
+- The plan's boxes: 41 of 57 before-players steps are ticked on `main` (42
+  with 3.1, whose tick waits in sitting 54's notes), 43 of 76 in all. Seven
+  of the open ones cannot finish without players or the owner's own words;
+  nineteen are LATER by design (part 7 of the plan).
+- **The server is in the state the plan wanted, and its guards are not.**
+  No way to cheat was found. But 44 of 47 realistic faults planted on the
+  doors passed the door's own test, and six ticks say more than the code
+  does (`shape-review.md` part 3).
+- **The page got instruments and fences, not walls.** `BroTown.jsx` is the
+  size it was; the frame's "steps" are timing marks.
+- **No smoothness claim was checked on a real phone.**
+- **The work cost more than it had to.** Every session ran on one model at
+  one effort, the test runners too; three long sessions alone cost $174
+  because a session's whole memory is read again at every step (one reached
+  650,000 tokens); every push paid about 22 minutes of GitHub's time, 91%
+  of it one guard.
+- **The gate checked the letter.** So this phase's cards each say their
+  PURPOSE and the faults their guard must catch, and the gate plants them.
+
+## 2. What "finished" means for this phase
+
+The plan is finished for now when all of these are true on `main`:
+
+1. The paused work has landed (card LF).
+2. The review's mends have landed (cards CK, DG, BK, WHO, PH, WL), and the
+   plan's boxes say what the code does (`shape-review.md` part 4, Z's).
+3. The scoreboard measures every row a ledger already holds a number for
+   (card WL).
+4. The owner's phone has said how the game runs on it (card PH), and the
+   two-button controls are on that phone to try (card CT).
+
+After that the plan rests. What is left waits by design: for players or
+data (1.3's table, 2.5, 10.7's last rung, 10.9, 10.10), for the owner's own
+words (`.github/`, Cloudflare: 1.3's road, 4.7's lab try, 8.8's practice
+copy), or for a number (every LATER step). New features then go through the
+orchestrator as cards, each under part 5's rule 5.
+
+## 3. The cards, and who runs beside whom
+
+All eight start on day one. Their files do not meet, except where the last
+column says.
+
+| Card | What | Tags | Model, effort | Beside the others |
+|---|---|---|---|---|
+| LF | The leftovers: RR's rejoin fix and quiet-phone test, HB2's two branches, three status files | RR's and HB2's own | the middle model, high | free |
+| CK | The checks' cost: a push costs minutes, no check dropped | 6420 on | the strong model, high | holds `gatekeeper.mjs`, `precheck.mjs`, `run.mjs` |
+| DG | The doors' guards hold against any spelling; the wire door holds a form | 6440 on | the strong model, high | its own line in `join.js`'s caps |
+| BK | The books reach every road: the sum, the restart, the 1.5 bar | 6460 on | the strong model, high | never in `gold-door.test`, `bag-door.test` (DG's) |
+| WHO | Who acted, and the sitting's card (10.1 and 11.2 as code, 10.2, 10.8) | 6480 on | the strong model, high | its own line in `join.js`'s caps |
+| PH | The phone's truth: the report, the memory lines, the governor | 6500 on | the strong model, high | its last PR after CK's first (`gatekeeper.mjs`) |
+| WL | Walls that hold: the page's fences, the scoreboard's counters | 6520 on | the strong model, high | the scoreboard is WL's alone |
+| CT | The two-button controls, a trial scheme (the owner's request) | 6540 on | the strong model, high | ALONE in `BroTown.jsx` and the two renderers |
+| Z | The gatekeeper, as part 8 changes it | its block | the strong model, high | at most two sittings a day |
+
+Helpers (a session that only runs phone tests and reports): the cheapest
+model, low effort.
+
+The four tiers are the models the app offers, from the most able down:
+**the top model, the strong model, the middle model, the cheapest.** Last
+week every session ran on the strong model at high effort, the helpers
+too. The orchestrator's first message names each tier's model as it is
+today; a tier's name outlives a model's.
+
+**Never side by side** (part 11 of the plan still holds): anything else in
+`BroTown.jsx` or the two renderers while CT is open; two sessions in
+`GOLD_ROADS`; two new caps or live flags on one line.
+
+**Every merge touching `server/**` deploys**, a test file too: DG, BK, WHO
+and PH's first PR all do. The gatekeeper lists them together, once a
+sitting; a PR that changes behaviour (DG's wire forms, WHO, PH's report)
+each on a line of its own.
+
+## 4. Not now, and why
+
+- **More tables of what exists**: the words' next wave (2,710 lines in
+  place), the 206 state rows decided by hand, the last 17 address reads,
+  the 63 traps left as prose, the 222 suite pairs converted wholesale. Each
+  is a fence around code that has not moved. A feature converts its own
+  slice (part 5, rule 5).
+- **`deskkeys` 8f and `desklunge`** (a computer's lock and lunge): they wait
+  for the owner's verdict on the controls trial.
+- **Closing `window._gameState` (5.7)**: 53 files read it; card WL counts
+  them so the number only falls; the move comes with the slices.
+- **Reaping old switches (7.3)**: 152 logic switches are past their four
+  weeks. It is the step where code really leaves, and the first card after
+  this phase, a system a PR, starting where the controls trial does not
+  touch.
+- **4.7's restore from the registry, 10.9's cases, a support screen**:
+  before real players; there is one player.
+
+## 5. The five rules of this phase
+
+1. **A card says its purpose and its dodges.** For a guard: the faults it
+   must catch, written the ways a tired programmer would write them. "Done
+   when" is those plants going red, run again by the gatekeeper's lane.
+2. **A guard reads the syntax tree or the running room**, never a pattern of
+   text, when it guards value, a phase or the wire.
+3. **A tick means the purpose is met.** A table that only describes is
+   ticked as a table.
+4. **A claim about a device says where it was measured.** "On the test box"
+   until the owner's phone has said.
+5. **A feature takes its slice out of the big files.** New rules land as
+   modules under `src/game/` with suites that test what they do, not what
+   they are spelled like; the big file gains calls, not logic; its lines
+   fall.
+
+## 6. Spending
+
+Measured on last week's sessions (`get_session`'s `usage`): card RR $70.95
+(287 million tokens of memory read again), the planning session $56.35 (its
+memory at 652,000), card HB2 $46.46 (at 565,000), a gatekeeper's sitting
+about $4, a test helper $1.32. A session's cost is its memory times its
+steps. So:
+
+1. **A session hands over at 250,000 tokens of memory** (its own
+   `get_session`, `context_usage.used_tokens`): it finishes the PR in hand,
+   makes its status file true, and tells the orchestrator, which starts a
+   fresh session for the card's next line. The orchestrator too.
+2. **One wait, never a poll.** A long command runs in the background, or
+   with a long timeout, and its end wakes the session. No `sleep` loop, no
+   reading a log again and again: each look reads the whole memory.
+3. **Phone-test runs go to helpers** on the cheapest model: more than three
+   scenario runs, or any repeat run, is a helper's. A helper changes no
+   file and sends back the PASS and FAIL lines.
+4. **A push is 22 to 43 paid minutes.** Push when a PR's line is done. The
+   status file rides the work's commit: never a status-only push to an open
+   PR. Merge `main` once, before the last push.
+5. **Output to a file**; print its tail and its FAIL lines.
+6. **Raw reading goes to a lane.** The orchestrator and the gatekeeper read
+   statuses, diffs and logs through a lane on a cheap model that returns
+   the few lines that matter.
+7. **The tree is eight sessions deep.** The orchestrator sits at 1, a card
+   at 2, a helper at 3. A new part of the orchestrator is best started by
+   the owner (a fresh session on the top model at high effort, saying "Continue
+   as the orchestrator"), which starts again at 0; if the owner is away the
+   orchestrator starts its own successor, and says so.
+8. **Watch the week.** The owner's allowance is a week's, from Monday
+   21:00 UTC; the last one was used to 99% between 2026-11-16 21:00 and
+   11-19 17:00. The orchestrator's first lane sums `usage.cost_usd` over
+   the sessions of those hours: that sum is about one week. At each sweep
+   it sums this week's sessions and reads its own `rate_limit_info`. Past
+   80% of a week, no new card starts and the owner is told.
+
+The orchestrator itself: **the top model, high effort.** Its judgement (a
+card's purpose, an answer to a session, the order) is what the review found
+missing, and rules 1, 5 and 6 keep it cheap.
+
+## 7. The orchestrator's loop
+
+1. **Start.** Read this file, `shape-review.md` parts 1 and 4,
+   `docs/plan/README.md`, `orchestrator.md`, part 11 of the plan. List the
+   sessions by title. Last week's finished sessions stay as they are.
+2. **Day one.** Start the eight cards (the card in the session's first
+   message, part 11's prompt, the model and effort of part 3, the title
+   "Grand plan · card <letter> · <what>"), and add: "Read
+   `docs/plan/finish.md` parts 5 and 6: they bind you." The cards are on
+   `main` once this direction's PR has merged; until then they are on its
+   branch, and a session does not commit its card again.
+3. **Ask the owner once, in plain words** (part 9), and go on without
+   waiting where a card does not need the answer.
+4. **Sweep** when a session says done, stalled or asks, and otherwise about
+   every 90 minutes (`send_later`): a lane reads the status files and the
+   PRs; answer questions (README, "Who answers"); start a helper or a fresh
+   session where one handed over.
+5. **Sittings.** Start Z when four PRs are ready or one is urgent, at most
+   twice a day. Merge its list, in its order, as the planning session does
+   (README), checking each tree against the rehearsal's; never a PR that is
+   not on a list. Tell the sessions to merge `main`.
+6. **Tell the owner** after each sitting, in plain words: what landed, what
+   they will see on their phone, what waits for them.
+7. **Hand over** (part 6, rules 1 and 7): keep `docs/plan/status/ORC.md` on
+   the branch `claude/plan-orc` (at most 40 lines: each card's session and
+   state, what waits for the owner, what was decided), pushed at each
+   hand-over. A new part reads it there (`git show
+   origin/claude/plan-orc:docs/plan/status/ORC.md`) and this file.
+
+## 8. The gatekeeper, changed (card Z has the words)
+
+- **The purpose review.** A PR that adds or changes a guard, or changes
+  `server/src`, the wire, money, logins or combat, is read by a lane on the
+  top model, which plants the card's dodges and two of its own in a scratch
+  copy. A plant that stays green is a hold.
+- **Notes go to `docs/plan/log.md`**, one line a step a sitting. The plan
+  keeps its boxes.
+- **At most two sittings a day**; the rehearsal throws every switch once
+  (after card CK) and runs the held-page sample (after card PH).
+- **First sitting**: land sitting 54's notes (3.1's tick), this direction's
+  PR, and `shape-review.md` part 4.
+
+## 9. The owner's calls, in plain words
+
+The orchestrator asks these; each is short to answer.
+
+1. **Five minutes on your phone** (card PH needs it). In the Test panel:
+   run the Speed test and tap "Copy table", then paste it in the chat. Then,
+   when the phone is warm, play five minutes at brotown.net and five at
+   brotown.net/?govern=0 (the speed ladder off): which felt smoother? Then
+   one lap on the skateboard at brotown.net and one at
+   brotown.net/?groundsend=0: any difference?
+2. **GitHub's checks.** May the check settings change so a newer push
+   cancels the older run, and a change to documents only skips the long
+   test? It saves most of the paid minutes. It is a change under
+   `.github/`, so it needs your own words.
+3. **The game's memory alarm.** It is set so high it can never go off. May
+   it be set just above what the game really uses?
+4. **Every phone test once** (388 of them, about an hour on thirty cheap
+   helpers) to learn what is really red, or keep sampling?
+5. **The sword's reach.** A cheating phone gains about 1.55 times an honest
+   player's kills by lying about reach; the plan's line is 1.5. Tighten it
+   (the sword would feel a little shorter), or keep it and say so?
+6. **Cloudflare's spending cap**, carried from last week.
+7. **After you have played the two-button controls**: keep, tune, or drop.
+8. **Later**: a read-only key so sessions can read your phone's reports
+   themselves (this environment already reaches the game's addresses);
+   until then, "Copy table".
