@@ -30,6 +30,17 @@
  *   7. THE KILL SWITCH `actor: false`: no `actor` key on a row (the row's
  *      keys exactly as before), test play added with play, the cap not
  *      advertised.  On: the cap `actor: 1`.
+ *   8. THE MARK AND THE SWITCH, READ AT EACH WRITE (v2.3.6483, sitting 59's
+ *      mend): test mode turned on and off for the same live character
+ *      between trades and between gold adds, and `actor` thrown off and on
+ *      between trades (both ways) and joins: every row, add and cap follows
+ *      the mode and the switch at its own write, never the first it saw.
+ *   9. THE HELPERS' OWN EDGES (v2.3.6483): stintNext, actorSocket, actorOf,
+ *      actorTest and actorRow on what the room never hands them (no room,
+ *      no session, no pid, a stint of 0 or NaN, a principal or a permit).
+ *   (v2.3.6483 also: §3 the socket's own stint with `sitting: false`; §5
+ *      the room's actor's exact keys; §6 `econ: false` and a session never
+ *      opened book no seconds.)
  *
  * BREAK PROOF (rule 8), tried by hand 2026-11-23:
  *   join.js: the actorSocket line taken out -> FAIL 1 (no actor) and FAIL 5
@@ -54,9 +65,16 @@
  * ...and the purpose review's (sitting 58):
  *   join.js: `if (!actorOff(this)) actorSocket(...)` -> FAIL 7 (joined off,
  *     traded on: `actor: null`).
+ * ...and the reviewer's green plants of sitting 59, red since (v2.3.6483):
+ *   actor.js actorRow: `(ps._actT ??= actorTest(room, ps))` -> FAIL 8 (the
+ *     second trade's `test` the first's);
+ *   daybook.js bookAdd: the same for `who` -> FAIL 8 (the day's book);
+ *   xfer.js: `actorOff(room)` kept once a room -> FAIL 8 (the switch thrown
+ *     between trades).  The mutation pass's other survivors are listed, with
+ *     why, in the card's notes (sa-listed).
  */
 import { makeStorage, openRoom, join, fakeWs, settle, seededClock } from './testroom.mjs';
-import { ACTOR, ROOM_ACTOR, actorOwner, actorOf, actorRow, actorSocket, actorOff, stintNext } from '../src/actor.js';
+import { ACTOR, ROOM_ACTOR, actorOwner, actorOf, actorRow, actorSocket, actorOff, actorTest, stintNext } from '../src/actor.js';
 import { XFER, xferRow, xferDay } from '../src/xfer.js';
 import { bookAddBy, bookDay, BOOK_TEST } from '../src/daybook.js';
 
@@ -134,6 +152,19 @@ const capsOf = (ws) => { const m = ws.sent.find((x) => x && x.type === 'state_sy
   /* v2.3.6481 (card WHO PR 2): ...and the same sitting, a second later
      (sitting.js carries the stint inside five quiet minutes; sitting.test) */
   check('3. a new socket of the same character is a new actor, on the same sitting', !!a3 && a3 !== a1 && a3.pid === 'bp_ac_s1' && a3.stint === s1, { a3, s1 });
+}
+{
+  /* v2.3.6483 (sitting 59's mend): with `sitting: false` the actor's stint
+     is the socket's own (actorSocket's stintNext, not the card's): two joins
+     in one ms still never share one, and the first is the worker's clock */
+  const st = makeStorage(seed(['bp_ac_o1', 'bp_ac_o2'], 50));
+  const room = await openRoom(st, { sitting: false });
+  const w1 = fakeWs('o1'), w2 = fakeWs('o2');
+  const t0 = clock.now();
+  await join(room, w1, 'bp_ac_o1', { loginTaken: true });
+  await join(room, w2, 'bp_ac_o2', { loginTaken: true });
+  const o1 = sessOf(room, w1).actor, o2 = sessOf(room, w2).actor;
+  check('3. `sitting: false`: the socket\'s own stint, the clock at the join, and two joins in one ms never share one', !!o1 && !!o2 && o1.stint >= t0 && o2.stint === o1.stint + 1, { o1, o2, t0 });
 }
 
 /* ══════════ 4. THE OTHER WAYS IN ══════════ */
@@ -214,6 +245,8 @@ const ROW_KEYS = 'at,by,day,from,gold,goods,ids,price,road,to,v';   /* the row's
   await xferRow(room, { road: 'gift_trade', id: 'g-room', from: 'bp_x', to: 'bp_y', gives: { _gold: 5 }, price: {}, by: null });
   const row = xrows(st)[0];
   check('5. a settlement nobody\'s tap made: the room\'s actor (system, room)', !!row && row.actor && row.actor.kind === 'system' && row.actor.wayIn === 'room' && !('pid' in row.actor), row && row.actor);
+  /* v2.3.6483 (sitting 59's mend): exactly those two: no empty stint written */
+  check('5. ...exactly its kind and way in (no empty `stint`, `pid`, `principal` or `permit`)', !!row && JSON.stringify(row.actor) === '{"kind":"system","wayIn":"room"}', row && row.actor);
   await xferRow(room, { road: 'gift_trade', id: 'g-gone', from: 'bp_x', to: 'bp_y', gives: { _gold: 5 }, price: {}, by: 'bp_x' });
   const gone = st._store.get(XFER.PREFIX + DAY + ':g-gone');
   check('5. ...a tap whose session is gone: `actor: null` (never made up)', !!gone && gone.actor === null, gone);
@@ -257,6 +290,22 @@ async function sitting(testmode, flags) {
   check('6. a test-mode sitting\'s seconds go under the `econ` part\'s `test` key', t.econ[BOOK_TEST] && t.econ[BOOK_TEST].p && t.econ[BOOK_TEST].p.s === 90 && !(t.econ.p && t.econ.p.s), t.econ);
   const p = await sitting(false);
   check('6. ...a played sitting\'s at the top, nothing under `test`', p.econ.p && p.econ.p.s === 90 && !p.econ[BOOK_TEST], p.econ);
+  /* v2.3.6483 (sitting 59's mend): the line bookAddBy took over keeps its
+     two older conditions: `econ: false` books no seconds (read at the
+     leave, so a room before it with `econ` on decides nothing), nor does a
+     session that was never opened */
+  const off = await sitting(true, { econ: false });
+  check('6. ...`econ: false`: no seconds booked, at the top or under `test`', !(off.econ.p && off.econ.p.s) && !off.econ[BOOK_TEST], off.econ);
+  const m0 = seed(['bp_ac_sit0'], 50);
+  const st0 = makeStorage(m0);
+  const r0 = await openRoom(st0);
+  const w0 = fakeWs('sit0');
+  await join(r0, w0, 'bp_ac_sit0', { loginTaken: true });
+  sessOf(r0, w0).openedAt = 0;
+  clock.advance(90 * 1000);
+  await r0.webSocketClose(w0, 1000, 'bye', true); await settle();
+  const e0 = econOf(r0) || (st0._store.get('daybook:' + bookDay(clock.now())) || {}).econ || {};
+  check('6. ...a session never opened (`openedAt` 0): no seconds booked', !(e0.p && e0.p.s) && !(e0[BOOK_TEST] && e0[BOOK_TEST].p), e0);
 }
 {
   /* gold: the door's one call (gold.js econGold) hands the purse's record */
@@ -291,6 +340,11 @@ async function sitting(testmode, flags) {
   bookAddBy(room, 'econ', { g: { mint: 2 } }, null);
   bookAddBy(room, 'econ', { i: { mint: { fish_minnow: 4 } } }, { _testMode: true });
   check('6. bookAddBy: a test-mode record\'s add under `test`, anyone\'s else (or none) at the top', day().test.g.mint === 7 && day().g.mint === 5 && day().test.i.mint.fish_minnow === 4, day());
+  /* v2.3.6483 (sitting 59's mend): one record's adds, each its own (a
+     second add of the same record is added, never the first one's answer) */
+  const same = { _testMode: true };
+  const ok1 = bookAddBy(room, 'econ', { g: { burn: 2 } }, same), ok2 = bookAddBy(room, 'econ', { g: { burn: 3 } }, same);
+  check('6. ...two adds of one record: both added', ok1 === true && ok2 === true && day().test.g.burn === 5, day().test);
   const r2 = await openRoom(makeStorage(), { testmode: false });
   bookAddBy(r2, 'econ', { g: { mint: 7 } }, { _testMode: true });
   const d2 = r2._daybook.days.get(bookDay(clock.now())).parts.econ;
@@ -324,6 +378,131 @@ async function sitting(testmode, flags) {
   const row = xrows(st)[0];
   const a = row && row.actor;
   check('7. off at the join, on at the trade: the row\'s actor is the last confirm\'s, never null', actorOff(room) === false && !!a && a.kind === 'person' && a.pid === B && a.test === true && a.stint === sessOf(room, wb).actor.stint, row && row.actor);
+}
+
+/* ══════════ 8. THE MARK AND THE SWITCH, READ AT EACH WRITE ══════════
+   v2.3.6483 (sitting 59's mend): the reviewer's green plants, red here.
+   Test mode marks a character, and the owner turns it on and off while the
+   session lives (testmode.js _testModeSet): every row and every add takes
+   the mode AT ITS WRITE, never the first one it saw for that character
+   (`ps._actT ??= actorTest(...)` in actorRow, the same in daybook.js
+   bookAdd).  And `actor: false` is read at each write, never once a room
+   (xfer.js, the cap at each join). */
+const byAt = (st) => xrows(st).sort((a, b) => a.at - b.at);
+async function tradeOnce(room, wa, wb) {
+  await cmd(room, wa, 'trade2_open', { target: B }); await settle();
+  await cmd(room, wb, 'trade2_open', { target: A }); await settle();
+  await cmd(room, wa, 'trade2_set', { offer: { _gold: 10 } }); await settle();
+  await cmd(room, wb, 'trade2_set', { offer: { ore_iron_ore: 1 } }); await settle();
+  await cmd(room, wa, 'trade2_ready', { ready: true }); await settle();
+  await cmd(room, wb, 'trade2_ready', { ready: true }); await settle();
+  clock.advance(3000);
+  await cmd(room, wa, 'trade2_confirm'); await settle();
+  await cmd(room, wb, 'trade2_confirm'); await settle();
+  clock.advance(1000);
+}
+{
+  /* test mode ON, OFF, ON for the same live character (B, the last confirm):
+     four trades in one room, each row the mode at its write */
+  const m8 = world(false);
+  m8.get('rpg:' + B).inventory.ore_iron_ore = 12;   /* one a trade, seven trades */
+  const st = makeStorage(m8);
+  const room = await openRoom(st);
+  const wa = fakeWs('a8'), wb = fakeWs('b8');
+  await join(room, wa, A, { loginTaken: true });
+  await join(room, wb, B, { loginTaken: true });
+  const want = [false, true, false, true];
+  for (const on of want) { await room._testModeSet(B, on); await tradeOnce(room, wa, wb); }
+  const rows = byAt(st);
+  const got = rows.map((r) => !!(r.actor && r.actor.test === true));
+  check('8. test mode turned on and off for the same live character between trades: each row\'s `test` the mode at its write (off, on, off, on)', rows.length === 4 && got.join() === want.join() && rows.every((r) => r.actor && r.actor.pid === B), { got, n: rows.length });
+  check('8. ...the trades themselves settled each time (B paid 10 a trade)', room.playerState[B].coins === 340, room.playerState[B].coins);
+  /* ...and `actor` thrown off and on between trades, both ways, in the same room */
+  room._liveFlags.actor = false; await tradeOnce(room, wa, wb);
+  delete room._liveFlags.actor; await tradeOnce(room, wa, wb);
+  room._liveFlags.actor = false; await tradeOnce(room, wa, wb);
+  const r2 = byAt(st).slice(4);
+  check('8. `actor` thrown off, on, off between trades: the rows follow it (no key, an actor, no key)', r2.length === 3 && !('actor' in r2[0]) && !!r2[1].actor && r2[1].actor.pid === B && !('actor' in r2[2]), r2.map((r) => r.actor));
+}
+{
+  /* ...the other way: a room opened with `actor: false`, then on, then off */
+  const st = makeStorage(world(false));
+  const room = await openRoom(st, { actor: false });
+  const wa = fakeWs('a8b'), wb = fakeWs('b8b');
+  await join(room, wa, A, { loginTaken: true });
+  await join(room, wb, B, { loginTaken: true });
+  await tradeOnce(room, wa, wb);
+  delete room._liveFlags.actor; await tradeOnce(room, wa, wb);
+  room._liveFlags.actor = false; await tradeOnce(room, wa, wb);
+  const rs = byAt(st);
+  check('8. opened with `actor: false`, thrown on, then off: no key, an actor, no key', rs.length === 3 && !('actor' in rs[0]) && !!rs[1].actor && rs[1].actor.kind === 'person' && !('actor' in rs[2]), rs.map((r) => r.actor));
+}
+{
+  /* the day's book: the same purse in test mode, out, in again, and the
+     switch thrown between; every add the mode and the switch at its add */
+  const P = 'bp_ac_flip';
+  const room = await openRoom(makeStorage(seed([P], 50)));
+  await join(room, fakeWs('flip'), P, { loginTaken: true });
+  const ps = room.playerState[P];
+  const g = (t) => { const e = econOf(room) || {}; return Number(((t ? (e.test || {}) : e).g || {}).mint) || 0; };
+  const steps = [];
+  const give = (n) => { const t0 = g(true), p0 = g(false); room._goldGive(ps, n, 'quest_reward'); steps.push([g(true) - t0, g(false) - p0]); };
+  await room._testModeSet(P, true); give(1); give(2);       /* on: both under `test` (the second add of one record counts too) */
+  await room._testModeSet(P, false); give(4);               /* off: at the top */
+  await room._testModeSet(P, true); give(8);                /* on again: under `test` */
+  room._liveFlags.actor = false; give(16);                  /* `actor: false`: with play */
+  delete room._liveFlags.actor; give(32);                   /* on again: under `test` */
+  check('8. the day\'s book: one character\'s gold in test mode, out, in, the switch off, on: each add booked by the mode and the switch at its add', JSON.stringify(steps) === JSON.stringify([[1, 0], [2, 0], [0, 4], [8, 0], [0, 16], [32, 0]]), steps);
+  check('8. ...the purse paid every time', ps.coins === 50 + 63, ps.coins);
+}
+{
+  /* the cap at each join, in one room: on, off, on */
+  const ids = ['bp_ac_cap1', 'bp_ac_cap2', 'bp_ac_cap3'];
+  const room = await openRoom(makeStorage(seed(ids, 50)));
+  const w1 = fakeWs('cap1'), w2 = fakeWs('cap2'), w3 = fakeWs('cap3');
+  await join(room, w1, ids[0], { loginTaken: true });
+  room._liveFlags.actor = false;
+  await join(room, w2, ids[1], { loginTaken: true });
+  delete room._liveFlags.actor;
+  await join(room, w3, ids[2], { loginTaken: true });
+  check('8. the cap read at each join: `actor: 1`, none with the switch off, `actor: 1` again', (capsOf(w1) || {}).actor === 1 && !!capsOf(w2) && capsOf(w2).actor === undefined && (capsOf(w3) || {}).actor === 1, [capsOf(w1) && capsOf(w1).actor, capsOf(w2) && capsOf(w2).actor, capsOf(w3) && capsOf(w3).actor]);
+}
+
+/* ══════════ 9. THE HELPERS' OWN EDGES (direct calls) ══════════
+   v2.3.6483 (sitting 59's mend): what the room never hands them (it
+   validates first), held so a guard taken out is red, not a quiet throw
+   somewhere later. */
+{
+  check('9. the shape\'s number and its lists, exactly', ACTOR.V === 1 && Array.isArray(ACTOR.WAYS) && ACTOR.WAYS.join() === 'socket,http,admin,room' && ACTOR.KINDS.join() === 'person,qa,owner,system,helper', { V: ACTOR.V, WAYS: ACTOR.WAYS });
+  check('9. actorOff: a flag only the flags\' prototype holds is not thrown', actorOff({ _liveFlags: Object.create({ actor: false }) }) === false && actorOff(null) === false && actorOff({ _liveFlags: { actor: 0 } }) === false);
+  /* stintNext: no room, no clock, the first id of a room */
+  check('9. stintNext: no room is no throw', stintNext(null, 5) === 5);
+  check('9. ...a room\'s first id is its clock (1 ms included)', stintNext({}, 1) === 1 && stintNext({}, 7.9) === 7);
+  check('9. ...a clock that is not a finite number reads the worker\'s', stintNext({}, NaN) === clock.now() && stintNext({}, Infinity) === clock.now() && stintNext({}, '5') === clock.now());
+  /* actorSocket: what it refuses, what it hands back */
+  const r = await openRoom(makeStorage());
+  const sNull = actorSocket(r, null, 'bp_x'), sStr = actorSocket(r, 'sess', 'bp_x');
+  check('9. actorSocket: no session object, no actor (no throw)', sNull === null && sStr === null);
+  const e1 = {}, e2 = {};
+  check('9. ...no pid, or a pid not a string: no actor, nothing defined', actorSocket(r, e1, '') === null && actorSocket(r, e2, 5) === null && !('actor' in e1) && !('actor' in e2));
+  const s3 = {};
+  const a3 = actorSocket(r, s3, 'bp_x', clock.now());
+  check('9. ...it hands back the actor it made', !!a3 && a3 === s3.actor && a3.pid === 'bp_x');
+  const s4 = {}, s5 = {}, s6 = {}, s7 = {};
+  const t1 = actorSocket(r, s4, 'bp_x', clock.now(), 1), t0 = actorSocket(r, s5, 'bp_x', clock.now(), 0), tn = actorSocket(r, s6, 'bp_x', clock.now(), NaN), ts = actorSocket(r, s7, 'bp_x', clock.now(), '77');
+  check('9. ...a sitting\'s stint taken when it is a positive finite number (1 ms included); 0, NaN or a string: one of its own', t1.stint === 1 && t0.stint > 1 && tn.stint > 1 && ts.stint > 1 && t0.stint !== tn.stint, { t1: t1.stint, t0: t0.stint, tn: tn.stint, ts: ts.stint });
+  /* actorOf: a room it cannot read */
+  check('9. actorOf: no room, no pid, no sessions: null (no throw)', actorOf(null, 'bp_x') === null && actorOf(r, '') === null && actorOf(r, 5) === null && actorOf({}, 'bp_x') === null);
+  /* actorTest: with no room's question, the mark alone */
+  check('9. actorTest: nothing is not in test mode (no throw)', actorTest(null, null) === false && actorTest(r, 'x') === false);
+  check('9. ...no room (or a room with no question): the mark alone, exactly `true`', actorTest(null, { _testMode: true }) === true && actorTest({}, { _testMode: true }) === true && actorTest(null, { _testMode: 'yes' }) === false && actorTest({}, { _testMode: false }) === false);
+  /* actorRow: no room; the fields no way in fills yet */
+  const pr = actorRow(null, { kind: 'person', pid: 'bp_x', stint: 3, wayIn: 'socket' });
+  check('9. actorRow with no room: the actor\'s fields, no `test` (no throw)', !!pr && JSON.stringify(pr) === '{"kind":"person","pid":"bp_x","stint":3,"wayIn":"socket"}', pr);
+  const full = actorRow(r, { kind: 'helper', pid: null, principal: 'acct_1', stint: null, wayIn: 'http', permit: 'grant_1' });
+  check('9. ...a principal and a permit, when an actor has them, are kept; an empty stint left out', !!full && full.principal === 'acct_1' && full.permit === 'grant_1' && !('stint' in full) && !('pid' in full), full);
+  const und = actorRow(r, { kind: 'system', stint: undefined, wayIn: 'room' });
+  check('9. ...an undefined stint left out too', !!und && !('stint' in und), und);
 }
 
 clock.restore();
