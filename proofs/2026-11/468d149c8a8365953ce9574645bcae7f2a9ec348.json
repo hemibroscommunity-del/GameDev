@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "468d149c8a8365953ce9574645bcae7f2a9ec348",
+  "tree": "19154abca410e9289270793593455fd403c0355c",
+  "committedAt": "2026-11-23T18:13:43-08:00",
+  "subject": "Merge pull request #2288 from hemibroscommunity-del/claude/ck-asset-git-ids",
+  "files": 8489,
+  "bytes": 963569428,
+  "listingSha256": "7923f5823c32c25d45ec9e8d234b78b7870ffbb29d6e03e96f2bbd6ed4733621",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
