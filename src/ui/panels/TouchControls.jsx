@@ -5,7 +5,7 @@ import { RideButton } from './RideButton.jsx'; /* v2.3.3776: the skateboard */
 import { QuickEatButton } from './QuickEatButton.jsx'; /* v2.3.3260 */
 import { JumpButton } from './JumpButton.jsx'; /* v2.3.3017 */
 import { Skin, RDISC_ICONS, AimReticle } from './controlSkin.jsx'; /* v2.3.3018: the owner's mockup -- one skin for every control */
-import { twoButtonsOn } from '@/game/manualCombat.js'; /* v2.3.6541: the two buttons' turn ring (card CT PR 2) */
+import { twoButtonsLive } from '@/game/latch.js'; /* v2.3.6541: the two buttons' turn ring (card CT PR 2); v2.3.6542: through the one gate */
 import { turnRingRadius } from '@/game/stickZones.js'; /* v2.3.6541: the turn ring's radius, CSS px (the turn's share of the disc's drawn radius; stick-zones 7b reads this call) */
 
 /* ═══ v2.3.3018: THE ATTACK DISC IS A GOLD-RINGED BUTTON WITH A PICTURE ═══
@@ -245,7 +245,7 @@ export function TouchControls(props) {
   })), /* v2.3.6541: the two buttons (`?manual=5`, a trial; card CT PR 2): the turn's border drawn on the
      disc as a ring, at the turn zone's share (`?turnzone`) of the drawn radius -- inside it the thumb turns
      the body, past it the body walks (game/stickZones.js).  Static: drawn once with the disc, never per move. */
-  twoButtonsOn() ? React.createElement('div', {
+  twoButtonsLive() ? React.createElement('div', {
     'data-turnring': '', 'aria-hidden': 'true',
     style: { position: 'absolute', left: '50%', top: '50%', width: 2 * turnRingRadius(isLandscape), height: 2 * turnRingRadius(isLandscape),
       transform: 'translate(-50%,-50%)', borderRadius: '50%', border: '1.5px dashed rgba(232,238,241,.55)',

@@ -36,7 +36,7 @@
  *      polygon as the renderer's did;
  *  10. THE CALLERS, off the syntax tree (an ALLOW list): Block, Special and
  *      Whirlwind / Shield Bash each ask the resolver with
- *      `twoButtonsOn() && !fineInput()` and `fightOn`, in the render's own
+ *      `twoButtonsLive()` (the one gate, v2.3.6542) and `fightOn`, in the render's own
  *      gate (its `return null`), and nothing else in src/ calls it; the
  *      renderer calls drawSightLine once, in its overlays, after the bow's
  *      beam, with `shouldDraw && isBow`.
@@ -308,7 +308,8 @@ function writesOutside(prop, doorFile, doorFn) {
     'src/ui/panels/AbilityButtons.jsx': 1,   /* the render's gate */
   });
   const calls = Object.create(null), bad = [], gates = Object.create(null), draws = [], reach = Object.create(null), reachBad = [];
-  const isTwoOn = (e) => e && e.type === 'LogicalExpression' && e.operator === '&&'
+  /* v2.3.6542 (the gatekeeper's sitting 60): the one gate, latch.js twoButtonsLive() (latch.test H2 holds every caller of twoButtonsOn) */
+  const isTwoOn = (e) => !!e && e.type === 'CallExpression' && e.callee.type === 'Identifier' && e.callee.name === 'twoButtonsLive' && e.arguments.length === 0;
     && e.left.type === 'CallExpression' && e.left.callee.type === 'Identifier' && e.left.callee.name === 'twoButtonsOn' && e.left.arguments.length === 0
     && e.right.type === 'UnaryExpression' && e.right.operator === '!' && e.right.argument.type === 'CallExpression' && e.right.argument.callee.type === 'Identifier' && e.right.argument.callee.name === 'fineInput' && e.right.argument.arguments.length === 0;
   for (const f of walk('src/', [])) {
@@ -362,9 +363,9 @@ function writesOutside(prop, doorFile, doorFn) {
   const want = Object.keys(ALLOW).sort().join(), got = Object.keys(calls).sort().join();
   check('10. the resolver\'s callers are the three buttons, and nothing else in src/', want === got, { want, got });
   check('10. ...each as many times as listed', Object.keys(ALLOW).every((f) => calls[f] === ALLOW[f]), calls);
-  check('10. ...each with `twoButtonsOn() && !fineInput()` and `fightOn`', bad.length === 0, bad);
+  check('10. ...each with `twoButtonsLive()` and `fightOn`', bad.length === 0, bad);
   check('10. ...each in its render\'s gate (its `return null`)', Object.keys(ALLOW).every((f) => gates[f] === 1), gates);
-  check('10. Block\'s and Special\'s own rules handed `combatReach(twoButtonsOn() && !fineInput(), TARGET_PERIMETER_PX)` beside the resolver',
+  check('10. Block\'s and Special\'s own rules handed `combatReach(twoButtonsLive(), TARGET_PERIMETER_PX)` beside the resolver',
     reach['src/ui/panels/ShieldButton.jsx'] === 1 && reach['src/ui/panels/SpecialButton.jsx'] === 1 && reachBad.length === 0, { reach, reachBad });
   check('10. the renderer draws the sight line once, in its overlays, with `gfx, S, now, shouldDraw && isBow`',
     draws.length === 1 && /\/systems\/effects[A-Z]\w+\.js$/.test(draws[0].f) && draws[0].in === '_updateOverlays' && draws[0].args, draws);   /* the effects renderer, by its folder (tests-by-system: no suite names a big file by its path) */

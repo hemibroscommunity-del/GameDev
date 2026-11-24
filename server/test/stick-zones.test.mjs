@@ -235,8 +235,8 @@ function writesOutside(prop, doorFile, doorFn) {
   stickDrive(S, 30, 0, 37.5, null, null);
   check('7. no disc (node): the walk and the phase all the same', S._stickPhase === 'walk' && S.stickX > 0);
   /* read by system (tools/guards/lib/filesOf.mjs), never a big file by its path */
-  check('7. the stick handler makes the one call, behind twoButtonsOn, and returns', findIn('ui', /stickDrive\(/).length === 1
-    && findIn('ui', /if \(twoButtonsOn\(\)\) \{ stickDrive\(stateRef\.current, rawDx, rawDy, [^;]*\); return; \}/).length === 1);
+  check('7. the stick handler makes the one call, behind the one gate (twoButtonsLive, v2.3.6542), and returns', findIn('ui', /stickDrive\(/).length === 1
+    && findIn('ui', /if \(twoButtonsLive\(\)\) \{ stickDrive\(stateRef\.current, rawDx, rawDy, [^;]*\); return; \}/).length === 1);
   check('7. ...and its release writes rest (v2.3.6542: through stickLift, 9 below)', findIn('ui', /\bstickLift\(S\);/).length === 1);
 }
 
@@ -306,7 +306,7 @@ function writesOutside(prop, doorFile, doorFn) {
         if (!((k.type === 'StringLiteral' && k.value === 'data-turnring'))) return;
         const call = path.findParent((p) => p.isCallExpression());
         const cond = call && call.parentPath && call.parentPath.isConditionalExpression() && call.parentPath.node.consequent === call.node ? call.parentPath.node : null;
-        const gate = !!cond && cond.test.type === 'CallExpression' && cond.test.callee.type === 'Identifier' && cond.test.callee.name === 'twoButtonsOn' && cond.test.arguments.length === 0;
+        const gate = !!cond && cond.test.type === 'CallExpression' && cond.test.callee.type === 'Identifier' && cond.test.callee.name === 'twoButtonsLive' && cond.test.arguments.length === 0;
         let sized = 0;
         call.traverse({ CallExpression(q) { if (q.node.callee.type === 'Identifier' && q.node.callee.name === 'turnRingRadius') sized++; } });
         rings.push({ file, gate, sized });
@@ -314,7 +314,7 @@ function writesOutside(prop, doorFile, doorFn) {
     });
   }
   check('7b. the stick handler hands stickDrive the thumb\'s raw offset (clientX - bcx, clientY - bcy, never written again)', drives.length === 1 && drives[0].raw === true, drives);
-  check('7b. the disc draws the turn ring only when twoButtonsOn() (never in mode 4), sized by turnRingRadius', rings.length === 1 && rings[0].gate === true && rings[0].sized === 2, rings);
+  check('7b. the disc draws the turn ring only when twoButtonsLive() (the one gate, v2.3.6542; never in mode 4), sized by turnRingRadius', rings.length === 1 && rings[0].gate === true && rings[0].sized === 2, rings);
   setManualCombat(4);
   check('7b. ...and twoButtonsOn() is false in mode 4', twoButtonsOn() === false);
   setManualCombat(5);

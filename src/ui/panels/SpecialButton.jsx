@@ -1,11 +1,11 @@
 import React from 'react';
 import { TARGET_PERIMETER_PX, getActiveWeapon, specialManaCost } from '@/data/index.js';
 import { specialAttack } from '@/game/playerActions.js';
-import { mcSwipes, mcArmToggle, mcArmed, twoButtonsOn } from '@/game/manualCombat.js'; /* v2.3.4395: manual combat -- this button ARMS the special for the next attack */
+import { mcSwipes, mcArmToggle, mcArmed } from '@/game/manualCombat.js'; /* v2.3.4395: manual combat -- this button ARMS the special for the next attack */
 import { isWheelSwimming } from '@/game/wheelSwim.js'; /* v2.3.3003: no special in the water */
-import { fightOn } from '@/game/sparTargets.js';
+import { fightOn } from '@/game/sparTargets.js'; /* v2.3.3267: a spar is a fight, for every weapon; v2.3.3268: and one with a real player in No man's land */
+import { twoButtonsLive } from '@/game/latch.js';   /* v2.3.6542: the two buttons' one gate (the gatekeeper's sitting 60) */
 import { combatButtonsShown, combatReach } from '@/game/controlVisibility.js';   /* v2.3.6543: in the two buttons, the specials come with the sight (card CT PR 4) */
-import { fineInput } from '@/game/deviceProfile.js'; /* v2.3.3267: a spar is a fight, for every weapon; v2.3.3268: and one with a real player in No man's land */
 import { BOW_SPECIAL_QUEUE_MS } from '@/game/combatHelpers.js'; /* v2.3.2543: the queued special's own expiry, so the button and the fire site cannot disagree about how long a request stands */
 import { ctlBottom, rightCluster, RCTL_SLOT } from '@/ui/panels/ShieldButton.jsx'; /* v2.3.2574: back to the RIGHT disc, in the shared diagonal cluster above it */
 import { Skin, AbilityFace, SpecialFace, specialArtKind, SkinTag, pressOn, pressOff, useReadyFlash } from '@/ui/panels/controlSkin.jsx'; /* v2.3.3018: the owner's mockup; v2.3.3336: the owner's special for each weapon */
@@ -211,10 +211,10 @@ export function SpecialButton(props) {
         /* v2.3.2543: the held-special state, which replaced a popup.  A
            scenario can read a flag; it cannot read a ring. */
         queued: specialQueued(s2),
-        shown: combatButtonsShown(s2, twoButtonsOn() && !fineInput(), fightOn) };   /* v2.3.6543 */
+        shown: combatButtonsShown(s2, twoButtonsLive(), fightOn) };   /* v2.3.6543 */
     };
   }
-  if (!specialButtonLive(S, combatReach(twoButtonsOn() && !fineInput(), TARGET_PERIMETER_PX)) || !combatButtonsShown(S, twoButtonsOn() && !fineInput(), fightOn)) return null;   /* v2.3.6543: + the two buttons' sight, its range the perimeter (controlVisibility.js) */
+  if (!specialButtonLive(S, combatReach(twoButtonsLive(), TARGET_PERIMETER_PX)) || !combatButtonsShown(S, twoButtonsLive(), fightOn)) return null;   /* v2.3.6543: + the two buttons' sight, its range the perimeter (controlVisibility.js) */
 
   /* v2.3.2574: the shared RIGHT cluster decides the size, the right edge and
      the slot height -- one rule for this button and Whirlwind beside it. */

@@ -1,29 +1,33 @@
 card: CT
-branch: claude/plan-ct-4-sight (PR 4, stacked on claude/plan-ct-3-right)
-prs: #2282 (6540, merged), #2293 (6541, held at 59), #2308 (6542, ready), PR 4 (6543, ready)
-state: ready
+branch: claude/plan-ct-5-words (PR 5, stacked on claude/plan-ct-4-sight)
+prs: #2282 (6540, merged), #2293 (6541, merged at 60), #2308 (6542, held at 60: mended), #2327 (6543, ready), PR 5 (6544, working)
+state: working
 
 ## Done
 - PR 1 (6540, #2282): merged at sitting 57.
-- PR 2 (6541, #2293): the left stick, step `input`. Sitting 57's eight
-  plants red (stick-zones 8, 7b). Sitting 58's hold mended (part 5): the
-  idle clock is stickFrame's own (Date.now(), the idle judge's; no clock
-  handed in), three minutes of walking played on that clock; the walk's
-  binding followed off the syntax tree (`_in` read only as `_in.dx/_in.dy`,
-  each the whole start of dx/dy; gameLoop reads no stick and hides S from
-  nothing; every reader of the stick in src/ on a closed list). 16 plants
-  red, tried by hand; the card's +44 (item 6) named as the orchestrator's.
-  Head bfd443e9 green, frozen (held at 59: the owner is asked).
-- Sitting 59's mend rides PR 3: §8's writes of dx/dy an ALLOW list.
-- PR 3 (6542, #2308 ready, head 6bb4d0f0): the latch, the lock, the stick's
-  one owner; 2c's sideways fight a SKIP with the box's frame time.
+- PR 2 (6541, #2293): the left stick. Merged at sitting 60.
+- PR 3 (6542, #2308 ready, head 6bb4d0f0): the latch, the lock, the
+  stick's one owner; 2c's sideways fight a SKIP with the box's frame time.
+  Held at 60 (a split gate): mended, tag 6542's commit: ONE gate,
+  latch.js twoButtonsLive (chosen AND a touch pointer), asked by every
+  site and by latchAttackPress itself; latch.test H1 (a mouse on a touch
+  screen in mode 5: the press latches nothing) and H2 (every caller of
+  twoButtonsOn off the syntax tree, an ALLOW list); 4 plants red.
+- PR 4 (6543, #2327 ready, head 08d6735d): the sight line, Block and the
+  specials with the sight. mp-twobuttons 48 PASS, 0 FAIL, 1 SKIP (2c).
+- PR 5 (6544, part 10): the Test panel's row "Controls: two sticks / two
+  buttons" (manualCombat twoButtonsChoose: the same key as `?manual=5`, the
+  page loads again into it); the tour's and the coach's words for the
+  mode (say tables controlsTutorial, new questCoach); honest-trouble.md
+  section D (the latched fight to each signal of aim or press rhythm; no
+  line moves; `rooted` margin #4 wider). Node: two-buttons-choose (15
+  checks; 5 plants red, 2 equivalent survivors listed). Phone:
+  mp-twobuttons part 4 (4a-4c: the row tapped both ways, the words).
 
 ## Next
-- PR 4 (6543, #2327 draft on claude/plan-ct-3-right; part 9). Runs 3-4:
-  the test's choice of monster (PICK: a monster AND its side, the path 480
-  px from any other). Run 5 (helper, 9af138bb): 46 pass, 2 red, 1 SKIP:
-  3c/3d sideways, a frame every 767 ms, 545 px 5 inside the held 550: now
-  520. Run 6 by a helper. CI green on 9af138bb. PR 5, item 6: fresh parts.
+- PR 5: precheck, one helper run of mp-twobuttons, main merged once, one
+  push, the draft PR, then tell the orchestrator. Item 6 (6545, sprint
+  from the stick) is a fresh part's.
 
 ## Found
 - `manual-combat.test` 1h pinned `?manual=5` as no switch: now `6`.
@@ -31,8 +35,5 @@ state: ready
   (mode 4 too; mp-twobuttons 1f).
 
 ## Needs
-- The two OWNED rows (stickX, stickY pinned to `input`, OWNED_LINE + 2 in
-  WL's `tools/guards/state-ledger.test.mjs`: approved by the orchestrator,
-  2026-11-24) land when #2290 is on `main` (merged in before the last push).
-- Approved: PR 1's mechanical rows; PR 2's frame-steps WANT + 'input'; the
-  ledgers' machine rows for moved writers (`--write`).
+- Approved: the two OWNED rows (stickX, stickY; #2290 is in `main`); PR
+  1's mechanical rows; PR 2's frame-steps WANT; the ledgers' machine rows.

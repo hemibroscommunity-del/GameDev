@@ -5,8 +5,7 @@ import { Skin, BlockFace, pressOn, pressOff, useReadyFlash } from './controlSkin
 import { WHEEL_MINI_PX } from '@/ui/wheelMiniSize.js';   /* v2.3.3986: the minimap's side on a phone, in one place */
 import { fightOn } from '@/game/sparTargets.js';
 import { combatButtonsShown, combatReach } from '@/game/controlVisibility.js';   /* v2.3.6543: in the two buttons, Block and the specials come with the sight (card CT PR 4) */
-import { twoButtonsOn } from '@/game/manualCombat.js';
-import { fineInput } from '@/game/deviceProfile.js';
+import { twoButtonsLive } from '@/game/latch.js';   /* v2.3.6542: the two buttons' one gate (the gatekeeper's sitting 60) */
 import { winVw } from '@/ui/mobile/playViewport.js';   /* v2.3.6241: the window's width, kept (card HB PR 2) */
 
 /* ═══ v2.3.2242: THE SHIELD BUTTON ═══
@@ -835,7 +834,7 @@ export function ShieldButton(props) {
      the shield's cooldown runs out. */
   var flash = useReadyFlash(!!(S && S._shieldCdUntil && Date.now() < S._shieldCdUntil));
   if (!S || !S.rpg) return null;
-  var live = shieldButtonLive(S, combatReach(twoButtonsOn() && !fineInput(), TARGET_PERIMETER_PX)) && combatButtonsShown(S, twoButtonsOn() && !fineInput(), fightOn);   /* v2.3.6543: + the two buttons' sight, its range the perimeter (controlVisibility.js) */
+  var live = shieldButtonLive(S, combatReach(twoButtonsLive(), TARGET_PERIMETER_PX)) && combatButtonsShown(S, twoButtonsLive(), fightOn);   /* v2.3.6543: + the two buttons' sight, its range the perimeter (controlVisibility.js) */
   /* QA probe (house style: __btMonHit, __btCoach): why the button is or is
      not on screen, which a screenshot cannot say. */
   if (typeof window !== 'undefined') {
@@ -844,7 +843,7 @@ export function ShieldButton(props) {
       return { live: shieldButtonLive(s2, TARGET_PERIMETER_PX), up: !!(s2 && s2._shieldUp),
         hasShield: !!(s2 && s2.rpg && s2.rpg.shield), lock: !!(s2 && s2.lockedTarget),
         monsters: (s2 && s2.monsters ? s2.monsters.length : 0),
-        shown: combatButtonsShown(s2, twoButtonsOn() && !fineInput(), fightOn) };   /* v2.3.6543 */
+        shown: combatButtonsShown(s2, twoButtonsLive(), fightOn) };   /* v2.3.6543 */
     };
   }
   /* Keep rendering while it is UP even if the fight moved away, or a raised
