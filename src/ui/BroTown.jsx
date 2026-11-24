@@ -5360,8 +5360,8 @@ export var BroTown = function BroTown(_ref0) {
           S._bashDash = null;
           S._dashStrike = null;
         }
-        /* v2.3.6541: the step `input` (game/frameSteps.js): the stick and the keys read, the idle clock, the name tag's facing, moved whole to game/stickZones.js stickFrame (card CT PR 2) */
-        if (_steps) _steps.to(0, 2); var _in = stickFrame(S, K, _realStunned || _playerDead || _playerLootFrozen, _playerLootFrozen, Date.now()); if (_steps) _steps.to(2, 0);
+        /* v2.3.6541: the step `input` (game/frameSteps.js): the stick and the keys read, the idle clock, the name tag's facing, moved whole to game/stickZones.js stickFrame (card CT PR 2; sitting 58: its idle clock its own, the walk read only through _in) */
+        if (_steps) _steps.to(0, 2); var _in = stickFrame(S, K, _realStunned || _playerDead || _playerLootFrozen, _playerLootFrozen); if (_steps) _steps.to(2, 0);
         var dx = _in.dx, dy = _in.dy;
 
         /* ═══ v2.3.3003: SWIMMING IN THE WHEEL ═══

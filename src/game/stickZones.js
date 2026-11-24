@@ -202,11 +202,16 @@ export function stickDrive(S, dx, dy, radius, knob, rod, op) {
  *   - the name tag's facing, P.dir: 'down' (camera-facing) in the loot
  *     freeze (`lootFrozen`), else the way you move.
  * `K` the keys held.  Returns the walk { dx, dy }: one object, made once,
- * written again each frame (a frame makes no garbage). */
+ * written again each frame (a frame makes no garbage).
+ * v2.3.6541 (the gatekeeper's sitting 58): the idle clock is read HERE, on
+ * the idle judge's own clock (Date.now(): BroTown's IDLE_LOGOUT_MS check and
+ * wsClient's stamp), never handed in: a `performance.now()` or a 0 handed in
+ * stamped a walking thumb on another clock and idled it out (the 3034
+ * incident), and a guard counting arguments never saw which clock came. */
 const _IN = { dx: 0, dy: 0 };
-export function stickFrame(S, K, frozen, lootFrozen, now) {
+export function stickFrame(S, K, frozen, lootFrozen) {
   let dx = frozen ? 0 : S.stickX, dy = frozen ? 0 : S.stickY;
-  if (S.stickX || S.stickY || stickPhase(S) === 'turn') S._lastInputAt = now;
+  if (S.stickX || S.stickY || stickPhase(S) === 'turn') S._lastInputAt = Date.now();
   if (!frozen && dx === 0 && dy === 0) {
     if (K['ArrowUp'] || K['w'] || K['W']) dy = -1;
     if (K['ArrowDown'] || K['s'] || K['S']) dy = 1;

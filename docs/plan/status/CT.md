@@ -1,36 +1,37 @@
 card: CT
-branch: claude/plan-ct-2-stick
-prs: #2282 (6540, merged), #2293 (6541, ready: mended for sitting 58, all eight plants)
-state: ready
+branch: claude/plan-ct-2-stick (PR 2) and claude/plan-ct-3-right (PR 3)
+prs: #2282 (6540, merged), #2293 (6541, ready: sitting 58's hold mended), #2308 (6542, draft)
+state: working
 
 ## Done
-- PR 1 (6540, #2282, merged at sitting 57): the three rules, their suites,
-  the phase and ledger rows, mode 5, the switch rows.
-- PR 2 (6541): the left stick in mode 5 (stickDrive: turn, walk, the
-  knob to the drawn radius; the ring on the disc); the frame's step
-  `input` (stickFrame: the loop's stick and keys read moved whole out of
-  legacy, 1531 -> 1513); `mp-twobuttons` part 1 green upright and
-  sideways (real CDP touches; the flick's four touches in one page task).
-- PR 1's mend (sitting 56) and PR 2's (sitting 57: stick-zones §8 and
-  §7b): every plant named proved red by hand (all eight of sitting 57's,
-  thirteen variants: in #2293's words).
+- PR 1 (6540, #2282): merged at sitting 57.
+- PR 2 (6541, #2293): the left stick, step `input`. Sitting 57's eight
+  plants red (stick-zones 8, 7b). Sitting 58's hold mended (part 5): the
+  idle clock is stickFrame's own (Date.now(), the idle judge's; no clock
+  handed in), three minutes of walking played on that clock; the walk's
+  binding followed off the syntax tree (`_in` read only as `_in.dx/_in.dy`,
+  each the whole start of dx/dy; gameLoop reads no stick and hides S from
+  nothing; every reader of the stick in src/ on a closed list). 16 plants
+  red, tried by hand. The card's +44 (item 6, tag 6545) named in the PR's
+  words as the orchestrator's addition.
+- PR 3 (6542, #2308 draft, stacked): the latch wired, the lock, S.stickX/Y
+  one owner (stickAnalog, stickLift; stick-zones 9).
 
 ## Next
-- PR 3 (6542): the right side in mode 5 (Attack as the latch, Jump, the
-  lock, its ends, the move to the next monster).
+- PR 3: mp-twobuttons 2c mended (claude/plan-ct-3-helper, f3ba66dd): one
+  helper run (session_01LccHaiTxWSWL6uNTsEJoZL). Green: PR 2 merged up,
+  main merged, precheck, push, #2308 ready. Red: mend 2c, run again.
+- Then PR 4 (6543), PR 5 (6544), item 6 (6545).
 
 ## Found
 - `manual-combat.test` 1h pinned `?manual=5` as no switch: now `6`.
 - On this box a CDP flick cannot be a swipe: each touch waits behind a
   frame of a few hundred ms (past the swipe's 300 ms), and moves sent with
-  no frame between are coalesced into a tap. The same in mode 4
-  (`tools/qa/mp/mp-twobuttons.mjs` 1f says so).
+  no frame between are coalesced into a tap (mode 4 too; mp-twobuttons 1f).
 
 ## Needs
-- PR 1's mechanical rows outside the card: approved (answer 1).
-- PR 2: card M's guard `tools/guards/frame-steps.test.mjs` (WANT +
-  'input'; its indices read from WANT) and `tools/qa/mp/mp-framesteps.mjs`
-  (WANT + 'input'): approved by the orchestrator part 1, 2026-11-23 (three
-  plants proved red: in the PR's words).
-- The ledgers' machine rows for the moved writers (`src/state/input.js`,
-  `skills.js`, `ui.js`: stickX/Y, _lastInputAt, player; `_IN`, `_turn`).
+- The two OWNED rows (stickX, stickY pinned to `input`, OWNED_LINE + 2 in
+  WL's `tools/guards/state-ledger.test.mjs`: approved by the orchestrator,
+  2026-11-24) land when #2290 is on `main` (merged in before the last push).
+- Approved: PR 1's mechanical rows; PR 2's frame-steps WANT + 'input';
+  the ledgers' machine rows for moved writers (`--write`).
