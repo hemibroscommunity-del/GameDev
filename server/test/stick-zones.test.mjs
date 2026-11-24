@@ -22,6 +22,11 @@
  *      40% walks, the knob drawn out to the drawn radius (never past it);
  *      a lifted thumb is rest; BroTown's handler makes the one call behind
  *      twoButtonsOn, and its release writes rest;
+ *   7b. v2.3.6541 (sitting 57) the thumb's OWN angle sixteen ways round (the
+ *      turn's facing, the walk's way, the knob and the rod), `?turnzone`
+ *      read by stickDrive and the ring (a fresh copy of the module on a
+ *      page with the switch), the handler's raw offset and the ring's gate
+ *      (twoButtonsOn(), never in mode 4) off the syntax tree;
  *   8. v2.3.6541 THE FRAME'S STEP `input`, stickFrame (moved whole out of
  *      gameLoop): the stick read, the gates, the keys, the idle clock (a thumb
  *      held turning is a player), the name tag's facing; one object a page.
@@ -34,10 +39,16 @@
  * thumb walking straight up); `dy = S.stickY` unfrozen -> FAIL 8 twice;
  * `_playerDead` dropped from BroTown's call -> FAIL 8 (the call read off the
  * syntax tree); K['a'] walking right -> FAIL 8; the loot facing taken out ->
- * FAIL 8.
+ * FAIL 8.  And the three it named that no check yet covered (each red, tried
+ * by hand): the turn facing south whatever the thumb's angle, the walk on one
+ * axis -> FAIL 7b; the knob drawn on x only -> FAIL 7 and 7b; BroTown
+ * clamping rawDy before the call -> FAIL 7b (off the syntax tree);
+ * stickDrive's border `STICK_ZONES.TURN` in place of turnShare() -> FAIL 7b
+ * (`?turnzone=50`), the ring's the same -> FAIL 7b; the ring's gate `true`
+ * or `manualMode() >= 4` (the ring in mode 4) -> FAIL 7b.
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
-import { STICK_ZONES, STICK_PHASES, stickRead, stickTravel, facing8, stickSwipe, stickTap, stickRelease, turnShare, stickPhase, stickTo, stickDrive, stickFrame } from '../../src/game/stickZones.js';
+import { STICK_ZONES, STICK_PHASES, stickRead, stickTravel, facing8, stickSwipe, stickTap, stickRelease, turnShare, stickPhase, stickTo, stickDrive, stickFrame, turnRingRadius } from '../../src/game/stickZones.js';
 import { findIn, readSystem } from '../../tools/guards/lib/filesOf.mjs';
 import { babel } from '../../tools/guards/lib/renderTables.mjs';   /* v2.3.6541 (sitting 57's mend): the call read off the syntax tree */
 import { manualMode, manualOn, tapLockOn, twoButtonsOn, setManualCombat, MANUAL } from '../../src/game/manualCombat.js';
@@ -206,6 +217,88 @@ function writesOutside(prop, doorFile, doorFn) {
   check('7. the stick handler makes the one call, behind twoButtonsOn, and returns', findIn('ui', /stickDrive\(/).length === 1
     && findIn('ui', /if \(twoButtonsOn\(\)\) \{ stickDrive\(stateRef\.current, rawDx, rawDy, [^;]*\); return; \}/).length === 1);
   check('7. ...and its release writes rest', findIn('ui', /S\.stickY = 0; stickTo\(S, 'rest'\);/).length === 1);
+}
+
+/* ── 7b. v2.3.6541, the gatekeeper's sitting 57 (three plants that stayed
+   green): the thumb's own angle, `?turnzone`, and the ring only in mode 5 ── */
+{
+  const el = () => ({ style: {} });
+  const STEP = Math.PI / 4;
+  const snap = (a) => { let f = Math.round(a / STEP) * STEP; if (f <= -Math.PI + 1e-9) f = Math.PI; return f; };
+  /* the thumb's own angle: sixteen ways round, a turn faces the nearest of the
+     eight facings, a walk goes the thumb's way, the knob is drawn where the
+     thumb is (a facing, a walk or a knob that ignores the angle is red) */
+  const bad = [];
+  for (const R of [37.5, 45]) {
+    for (let i = 0; i < 16; i++) {
+      const a = -Math.PI + (i + 0.5) * (Math.PI / 8);
+      const S = {}, knob = el(), rod = el();
+      stickDrive(S, Math.cos(a) * 0.2 * R, Math.sin(a) * 0.2 * R, R, knob, rod, '0.9');
+      if (S._stickPhase !== 'turn' || !near(S._targetFacingAngle, snap(a)) || S.stickX !== 0 || S.stickY !== 0) bad.push(['turn', R, i, S._targetFacingAngle]);
+      const m = /translate\(calc\(-50% \+ (-?[0-9.e-]+)px\), calc\(-50% \+ (-?[0-9.e-]+)px\)\)/.exec(knob.style.transform || '');
+      if (!m || Math.abs(+m[1] - Math.cos(a) * 0.2 * R) > 1e-6 || Math.abs(+m[2] - Math.sin(a) * 0.2 * R) > 1e-6) bad.push(['knob', R, i, knob.style.transform]);
+      if (!near(parseFloat(rod.style.transform.slice(7)), a)) bad.push(['rod', R, i, rod.style.transform]);
+      const W = {};
+      stickDrive(W, Math.cos(a) * 0.7 * R, Math.sin(a) * 0.7 * R, R, null, null);
+      if (W._stickPhase !== 'walk' || !near(Math.atan2(W.stickY, W.stickX), a) || W._targetFacingAngle !== undefined) bad.push(['walk', R, i, W.stickX, W.stickY]);
+    }
+  }
+  check('7b. sixteen ways round: a turn faces the thumb\'s nearest facing, a walk goes the thumb\'s way, the knob and the rod drawn at its angle', bad.length === 0, bad.slice(0, 4));
+  /* `?turnzone=50`: the page's border, read by stickDrive and by the ring (a
+     fresh copy of the module, so its once-read border is this page's) */
+  const hadLoc = Object.getOwnPropertyDescriptor(globalThis, 'location');
+  Object.defineProperty(globalThis, 'location', { value: { search: '?turnzone=50' }, configurable: true, writable: true });
+  try {
+    const Z = await import('../../src/game/stickZones.js?turnzone=50');
+    const at = (share) => { const T = {}; Z.stickDrive(T, share * 37.5, 0, 37.5, null, null); return T; };
+    const t40 = at(0.40), t45 = at(0.45), w55 = at(0.55);
+    check('7b. ?turnzone=50: a thumb at 40% and 45% TURNS (the border moved out), at 55% walks', t40._stickPhase === 'turn' && t40.stickX === 0 && t45._stickPhase === 'turn' && w55._stickPhase === 'walk' && w55.stickX > 0, [t40, t45, w55]);
+    check('7b. ?turnzone=50: the ring drawn at half the drawn radius (18.8 px upright, 22.5 sideways)', Z.turnRingRadius(false) === 18.8 && Z.turnRingRadius(true) === 22.5, [Z.turnRingRadius(false), Z.turnRingRadius(true)]);
+  } finally {
+    if (hadLoc) Object.defineProperty(globalThis, 'location', hadLoc); else delete globalThis.location;
+  }
+  check('7b. no address: the ring at 30% (11.3 px upright, 13.5 sideways)', turnRingRadius(false) === 11.3 && turnRingRadius(true) === 13.5, [turnRingRadius(false), turnRingRadius(true)]);
+  /* read off the syntax tree: the handler hands stickDrive the thumb's RAW
+     offset from where it landed (never a clamped or a one-way copy), and the
+     disc draws the ring only when twoButtonsOn() (never in mode 4), at
+     turnRingRadius */
+  const { parse, traverse } = babel();
+  const drives = [], rings = [];
+  const isSub = (e, l, r) => e && e.type === 'BinaryExpression' && e.operator === '-' && e.left.type === 'Identifier' && e.left.name === l && e.right.type === 'Identifier' && e.right.name === r;
+  for (const [file, src] of readSystem('ui', { only: /\.jsx?$/ })) {
+    if (!src.includes('stickDrive(') && !src.includes('data-turnring')) continue;
+    const ast = parse(src, { sourceType: 'module', plugins: ['jsx'], errorRecovery: true });
+    traverse(ast, {
+      CallExpression(path) {
+        const n = path.node;
+        if (n.callee.type !== 'Identifier' || n.callee.name !== 'stickDrive') return;
+        const arg = (k, l, r) => {
+          const a = n.arguments[k];
+          if (!a || a.type !== 'Identifier') return false;
+          const b = path.scope.getBinding(a.name);
+          return !!b && b.constantViolations.length === 0 && b.path.node.type === 'VariableDeclarator' && isSub(b.path.node.init, l, r);
+        };
+        drives.push({ file, raw: arg(1, 'clientX', 'bcx') && arg(2, 'clientY', 'bcy') });
+      },
+      ObjectProperty(path) {
+        const k = path.node.key;
+        if (!((k.type === 'StringLiteral' && k.value === 'data-turnring'))) return;
+        const call = path.findParent((p) => p.isCallExpression());
+        const cond = call && call.parentPath && call.parentPath.isConditionalExpression() && call.parentPath.node.consequent === call.node ? call.parentPath.node : null;
+        const gate = !!cond && cond.test.type === 'CallExpression' && cond.test.callee.type === 'Identifier' && cond.test.callee.name === 'twoButtonsOn' && cond.test.arguments.length === 0;
+        let sized = 0;
+        call.traverse({ CallExpression(q) { if (q.node.callee.type === 'Identifier' && q.node.callee.name === 'turnRingRadius') sized++; } });
+        rings.push({ file, gate, sized });
+      },
+    });
+  }
+  check('7b. the stick handler hands stickDrive the thumb\'s raw offset (clientX - bcx, clientY - bcy, never written again)', drives.length === 1 && drives[0].raw === true, drives);
+  check('7b. the disc draws the turn ring only when twoButtonsOn() (never in mode 4), sized by turnRingRadius', rings.length === 1 && rings[0].gate === true && rings[0].sized === 2, rings);
+  setManualCombat(4);
+  check('7b. ...and twoButtonsOn() is false in mode 4', twoButtonsOn() === false);
+  setManualCombat(5);
+  check('7b. ...true in mode 5', twoButtonsOn() === true);
+  setManualCombat(4);
 }
 
 /* ── 8. the frame's step `input` (stickFrame) ── */

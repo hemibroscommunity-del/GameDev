@@ -1,6 +1,6 @@
 card: CT
 branch: claude/plan-ct-2-stick
-prs: #2282 (6540, merged), #2293 (6541, ready: mended for sitting 58)
+prs: #2282 (6540, merged), #2293 (6541, ready: mended for sitting 58, all eight plants)
 state: ready
 
 ## Done
@@ -11,13 +11,9 @@ state: ready
   `input` (stickFrame: the loop's stick and keys read moved whole out of
   legacy, 1531 -> 1513); `mp-twobuttons` part 1 green upright and
   sideways (real CDP touches; the flick's four touches in one page task).
-- PR 1's mend (the gatekeeper's sitting 56): the negative wrap's check
-  (plant S11 red), the exact edges (B3, B5, L2), the phase rows held to
-  the modules' lists (G2); facing8 gives west as +PI only; latchCheck lets
-  go on a distance that is not a number. Each plant proved red.
-- PR 2's mend (sitting 57): stick-zones §8 holds stickFrame by what it does
-  (Y's idle clock, the freeze on both ways, each key) and BroTown's call off
-  the syntax tree (a corpse never walks): the five plants red.
+- PR 1's mend (sitting 56) and PR 2's (sitting 57: stick-zones §8 and
+  §7b): every plant named proved red by hand (all eight of sitting 57's,
+  thirteen variants: in #2293's words).
 
 ## Next
 - PR 3 (6542): the right side in mode 5 (Attack as the latch, Jump, the
