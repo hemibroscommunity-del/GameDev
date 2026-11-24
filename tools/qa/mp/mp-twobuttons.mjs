@@ -233,9 +233,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
       }
       const hp = await H.readState(P, bind((S, id) => { const m = (S.monsters || []).find((x) => x && String(x.id) === id); return m ? (m.curHp != null ? m.curHp : m.hp) : null; }, target));
       const hurt = typeof hp === 'number' && hp > 2 ? await H.devOp(wsPort, 'hurt', me, { id: target, dmg: Math.floor(hp) - 1 }).catch((e) => ({ err: String(e) })) : { hp };
-      const died = await H.waitFor(P, bind((S, id) => ({ end: S._latchEnd || null, id: S._latchId == null ? null : String(S._latchId),
-        dead: !(S.monsters || []).some((x) => x && String(x.id) === id && x.alive && !(x.curHp <= 0)) }), target), (v) => v.dead && (v.end === 'killed' || (v.id && v.id !== target)),
-        { timeout: 120000, label: 'the fight' }).catch(() => null);
+      /* the monster at 1 hp walks off: the harness keeps you beside it (a hop
+         when it is past 80 px, every two seconds), the latch does the rest */
+      const FIGHT = bind((S, id) => { const m = (S.monsters || []).find((x) => x && String(x.id) === id);
+        return { end: S._latchEnd || null, id: S._latchId == null ? null : String(S._latchId), dead: !(m && m.alive && !(m.curHp <= 0)),
+          mx: m ? m.x : null, my: m ? m.y : null, gap: m ? Math.hypot(m.x - S.player.x, m.y - S.player.y) : null }; }, target);
+      let died = null;
+      for (let k = 0; k < 60 && !died; k++) {
+        const f = await H.readState(P, FIGHT);
+        if (f.dead && (f.end === 'killed' || (f.id && f.id !== target))) { died = f; break; }
+        if (!f.dead && f.gap > 80) await H.hopTo(P, Math.round(f.mx - 45), Math.round(f.my), { tries: 12 });
+        await P.page.waitForTimeout(2000);
+      }
       const l2 = await LATCH(P);
       const why = await H.readState(P, bind((S, id) => { const m = (S.monsters || []).find((x) => x && String(x.id) === id);
         return { wpn: !!(S.rpg && S.rpg.weapon), slot: S.rpg && S.rpg.activeSlot, swim: !!(S._wheelSwim && S._wheelSwim.on), swungAgo: S.swingTimer ? Date.now() - S.swingTimer : null,
