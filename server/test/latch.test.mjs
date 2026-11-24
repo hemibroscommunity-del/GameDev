@@ -17,15 +17,30 @@
  *      end or an empty id, and no write of S._latchPhase in src/ is outside
  *      it (the phase table's guard reads the same off the syntax tree).
  *
+ *   H. THE ONE GATE (v2.3.6542, the gatekeeper's sitting 60): a mouse on a
+ *      touch screen in mode 5, Attack's press latches nothing (null, idle),
+ *      the same press with the touch pointer locks; mode 4 latches nothing;
+ *      and every caller of twoButtonsOn in src/ is read off the syntax tree
+ *      against an ALLOW list (the gate itself; a new site asking it alone,
+ *      or under another name, goes red).
+ *
+ * H's break proof, tried by hand (v2.3.6542): BroTown.jsx's Attack press
+ * back to `twoButtonsOn()` -> FAIL H2; `import { twoButtonsOn as tb }` in
+ * targeting.js -> FAIL H2; latchAttackPress's gate line taken out -> FAIL
+ * H1; twoButtonsLive returning twoButtonsOn() alone -> FAIL H1.
+ *
  * Break proof, tried by hand: `if (next) { ... }` -> `if (false)` in
  * latchCheck -> FAIL 3; `S._latchPhase = 'idle';` in latchClear -> FAIL 4
  * (and the guard's §2).
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
-import { LATCH_PHASES, LATCH_ENDS, latchPhase, latchTo, latchPress, latchCheck, latchClear, latchFrame, latchAttackPress, latchHolds, latchLook, sightNow } from '../../src/game/latch.js';   /* v2.3.6542: + the wiring (card CT PR 3) */
+import { LATCH_PHASES, LATCH_ENDS, latchPhase, latchTo, latchPress, latchCheck, latchClear, latchFrame, latchAttackPress, latchHolds, latchLook, sightNow, twoButtonsLive } from '../../src/game/latch.js';   /* v2.3.6542: + the wiring (card CT PR 3) */
 import { sightRange, SIGHT_PHASES, SIGHT, sightPhase, sightPick, drawnFace } from '../../src/game/sight.js';
 import { STICK_PHASES } from '../../src/game/stickZones.js';   /* v2.3.6540: G2 below */
 import { PHASES } from '../../src/state/phases.js';
+import { setManualCombat } from '../../src/game/manualCombat.js';   /* v2.3.6542: H below */
+import { createRequire } from 'node:module';
+setManualCombat(5);   /* v2.3.6542: the press asks the gate itself: this suite plays mode 5 on a touch screen (no window: no mouse) */
 
 let failures = 0, passes = 0;
 function check(name, cond, detail) {
@@ -260,6 +275,72 @@ for (const [name, list] of [['latch', LATCH_PHASES], ['sight', SIGHT_PHASES], ['
   check('R. the latch keeps its lock only once its ref is the live monster (lockRefPresent before monHoldable, in the keep)',
     /lockRefPresent\(S\) && monHoldable\(lt\.ref\)\) return;/.test(keep), keep.trim().slice(0, 200));
   check('R. lockRefPresent re-points the ref by id (String both sides)', /String\(m\.id\) === String\(lt\.id\)\) \{ lt\.ref = m; return true; \}/.test(tg));
+}
+
+/* ═══ v2.3.6542 (the gatekeeper's sitting 60): H. THE ONE GATE ═══
+   The gate was split: the Attack press asked twoButtonsOn() alone, the frame
+   that ends a latch asked it with !fineInput().  On a touch screen with a
+   mouse a press latched and nothing ended it. */
+{
+  /* H1. the gatekeeper's probe, as behaviour: the device's pointer is a
+     MediaQueryList deviceProfile keeps (live), so a stub one turns the mouse
+     on and off */
+  const mq = { matches: false };
+  if (typeof globalThis.window === 'undefined') globalThis.window = {};
+  globalThis.window.matchMedia = () => mq;
+  const page = () => ({ player: { x: 0, y: 0 }, _renderFacing: 'east', monsters: [{ id: 'g', x: 300, y: 0, alive: true }], currentZone: 'wheel' });
+  setManualCombat(5);
+  mq.matches = true;
+  const M = page();
+  check('H1. mode 5, a mouse on a touch screen: the gate is shut', twoButtonsLive() === false);
+  check('H1. ...and Attack\'s press with a monster in sight latches nothing', latchAttackPress(M) === null && latchPhase(M) === 'idle' && !M._latchId && !M._latchPhase);
+  mq.matches = false;
+  const T = page();
+  check('H1. the touch pointer: the same press locks', twoButtonsLive() === true && latchAttackPress(T) === 'lock' && latchPhase(T) === 'active');
+  setManualCombat(4);
+  const F = page();
+  check('H1. mode 4: the press latches nothing', twoButtonsLive() === false && latchAttackPress(F) === null && latchPhase(F) === 'idle');
+  setManualCombat(5);
+  delete globalThis.window.matchMedia;
+
+  /* H2. every caller of twoButtonsOn in src/, off the syntax tree: an ALLOW
+     list of (file, the function it is called in).  An import of it under
+     another name, or a namespace's .twoButtonsOn, is a caller too. */
+  const ALLOW = new Set(['src/game/latch.js:twoButtonsLive']);
+  let B = null;
+  for (const pkg of ['package.json', 'server/package.json']) {
+    try { const req = createRequire(new URL('../../' + pkg, import.meta.url)); const tr = req('@babel/traverse'); B = { parse: req('@babel/parser').parse, traverse: tr.default || tr }; break; } catch (e) { /* the next */ }
+  }
+  check('H2. @babel/parser and @babel/traverse load (npm install in the root or server/)', !!B);
+  if (B) {
+    const ROOT = new URL('../../', import.meta.url).pathname;
+    const files = [];
+    const walk = (d) => { for (const n of readdirSync(ROOT + d)) { const p = d + '/' + n; if (statSync(ROOT + p).isDirectory()) walk(p); else if (/\.(js|jsx|mjs)$/.test(n)) files.push(p); } };
+    walk('src');
+    const found = [], bad = [];
+    for (const f of files) {
+      const raw = readFileSync(ROOT + f, 'utf8');
+      if (!raw.includes('twoButtonsOn')) continue;
+      const ast = B.parse(raw, { sourceType: 'module', plugins: ['jsx'], errorRecovery: true });
+      const names = new Set(['twoButtonsOn']);   /* its own name always (a call with no import still reads as one), and any alias */
+      B.traverse(ast, {
+        ImportSpecifier(p) { const im = p.node.imported; if (im && (im.name || im.value) === 'twoButtonsOn') { names.add(p.node.local.name); if (p.node.local.name !== 'twoButtonsOn') bad.push(f + ': imported as ' + p.node.local.name); } },
+      });
+      B.traverse(ast, {
+        CallExpression(p) {
+          const c = p.node.callee;
+          const hit = (c.type === 'Identifier' && names.has(c.name)) || (c.type === 'MemberExpression' && !c.computed && c.property && c.property.name === 'twoButtonsOn');
+          if (!hit) return;
+          const fn = p.getFunctionParent();
+          const nm = fn && ((fn.node.id && fn.node.id.name) || (fn.parent && fn.parent.id && fn.parent.id.name) || (fn.parent && fn.parent.key && fn.parent.key.name)) || '(top)';
+          const at = f + ':' + nm;
+          found.push(at);
+          if (!ALLOW.has(at)) bad.push(at + ' (line ' + p.node.loc.start.line + ')');
+        },
+      });
+    }
+    check('H2. every caller of twoButtonsOn in src/ is on the ALLOW list (the sites ask twoButtonsLive)', bad.length === 0 && found.length >= 1, { bad, found });
+  }
 }
 
 console.log('\n' + passes + ' passed, ' + failures + ' failed');

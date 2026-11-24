@@ -1,14 +1,18 @@
 card: CT
 branch: claude/plan-ct-5-words (PR 5, stacked on claude/plan-ct-4-sight)
-prs: #2282 (6540, merged), #2293 (6541, held at 59), #2308 (6542, ready), #2327 (6543, ready), PR 5 (6544, working)
+prs: #2282 (6540, merged), #2293 (6541, merged at 60), #2308 (6542, held at 60: mended), #2327 (6543, ready), PR 5 (6544, working)
 state: working
 
 ## Done
 - PR 1 (6540, #2282): merged at sitting 57.
-- PR 2 (6541, #2293): the left stick. Head bfd443e9 green, frozen (held
-  at 59: the owner is asked).
+- PR 2 (6541, #2293): the left stick. Merged at sitting 60.
 - PR 3 (6542, #2308 ready, head 6bb4d0f0): the latch, the lock, the
   stick's one owner; 2c's sideways fight a SKIP with the box's frame time.
+  Held at 60 (a split gate): mended, tag 6542's commit: ONE gate,
+  latch.js twoButtonsLive (chosen AND a touch pointer), asked by every
+  site and by latchAttackPress itself; latch.test H1 (a mouse on a touch
+  screen in mode 5: the press latches nothing) and H2 (every caller of
+  twoButtonsOn off the syntax tree, an ALLOW list); 4 plants red.
 - PR 4 (6543, #2327 ready, head 08d6735d): the sight line, Block and the
   specials with the sight. mp-twobuttons 48 PASS, 0 FAIL, 1 SKIP (2c).
 - PR 5 (6544, part 10): the Test panel's row "Controls: two sticks / two
@@ -31,8 +35,5 @@ state: working
   (mode 4 too; mp-twobuttons 1f).
 
 ## Needs
-- The two OWNED rows (stickX, stickY pinned to `input`, OWNED_LINE + 2 in
-  WL's `tools/guards/state-ledger.test.mjs`: approved by the orchestrator,
-  2026-11-24) land when #2290 is on `main` (merged in before the last push).
-- Approved: PR 1's mechanical rows; PR 2's frame-steps WANT + 'input'; the
-  ledgers' machine rows for moved writers (`--write`).
+- Approved: the two OWNED rows (stickX, stickY; #2290 is in `main`); PR
+  1's mechanical rows; PR 2's frame-steps WANT; the ledgers' machine rows.

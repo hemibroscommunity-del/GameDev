@@ -40,10 +40,9 @@ import { isPlayerDead, pushDmgPopup } from '@/game/combatHelpers.js'; /* v2.3.22
 import { chosenNear, isLiveClone, isLiveFighter, clonePos } from '@/game/sparTargets.js'; /* v2.3.3267: your sparring clones, monsters to your weapons; v2.3.3268: and the players you chose to attack */
 import { zoneHomes } from '@/data/zones.js';   /* v2.3.3499: the Wheel's far cull, which a lock may not outlive */
 import { keepDuelLock } from '@/game/duelLock.js';   /* v2.3.3713: a player lock follows its peer; an arena match locks on sight */
-import { tapLockOn, mcLockAllowed, twoButtonsOn } from './manualCombat.js';   /* v2.3.4395: manual combat keeps no chosen lock; v2.3.5018: nor the held combat (tapLockOn) */
+import { tapLockOn, mcLockAllowed } from './manualCombat.js';   /* v2.3.4395: manual combat keeps no chosen lock; v2.3.5018: nor the held combat (tapLockOn) */
 import { dropUnsettledDuel } from '@/game/duelPending.js';   /* v2.3.4361: an accept the worker never settled */
-import { latchPhase } from '@/game/latch.js';   /* v2.3.6542: the two buttons' lock is the latch's (card CT PR 3) */
-import { fineInput } from '@/game/deviceProfile.js';   /* v2.3.6542: ...on a touch screen only (a computer's mouse does not change) */
+import { latchPhase, twoButtonsLive } from '@/game/latch.js';   /* v2.3.6542: the two buttons' lock is the latch's (card CT PR 3) */
 import { resetOn } from '@/game/resetOn.js';   /* v2.3.5206: the fight you picked ends at the zone door (card L) */
 
 function monPos(m) {
@@ -668,7 +667,7 @@ export function updateTargeting(S) {
      (game/latch.js latchCheck) are its range and its death, so nothing
      below judges it.  A player's lock (a duel's, a spar's) returned above,
      as in mode 4. */
-  if (twoButtonsOn() && !fineInput()) { latchLock(S); return; }
+  if (twoButtonsLive()) { latchLock(S); return; }
 
   /* A TAPPED lock survives until it dies or you tap again -- range never
      clears it.  (v2.3.2246 §7.9: the range rule owns only the locks it made,
