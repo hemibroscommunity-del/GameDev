@@ -1,18 +1,17 @@
 card: WL
-branch: claude/plan-wl-4-open-hand
-prs: #2286 tag 6520 (ready), #2287 tag 6521 (ready), #2290 tag 6522 (ready), tag 6523 (ready, opened with this push)
-state: ready
+branch: claude/plan-wl-1-mends .. claude/plan-wl-4-open-hand (part 4)
+prs: #2286 tag 6520 (ready), #2287 tag 6521 (ready), #2290 tag 6522 (ready), #2298 tag 6523 (ready)
+state: ready (the chain mended for sitting 57); PR 5 (6524) next
 
 ## Done
-- (6520, #2286, on branch claude/plan-wl-1-mends) Four small true mends,
-  each with its plants red: `phone-death` 4c and 5c, `phase-table`'s
-  `Object.assign` source and spread key, `switch-reader` off the tree,
-  `four-lines` by statements (each line set room for room).
+- (6520, #2286) Four small true mends, each with its plants red:
+  `phone-death` 4c and 5c, `phase-table`'s `Object.assign` source and
+  spread key, `switch-reader` off the tree, `four-lines` by statements
+  (each line set room for room).
 - (6521, #2287) A leaf stays a leaf: `tools/guards/leaves.test.mjs`.
-- (6522, #2290, claude/plan-wl-3-owned) Owned state: `state-ledger` check
-  8, OWNED (443 fields), OWNED_LINE only rises; 8b: 26 of 42 enforced
-  resets outside it (only falls).
-- (6523, claude/plan-wl-4-open-hand) The open hand is counted:
+- (6522, #2290) Owned state: `state-ledger` check 8, OWNED (443 fields),
+  OWNED_LINE only rises; 8b: 26 of 42 enforced resets outside it.
+- (6523, #2298) The open hand is counted:
   `tools/guards/open-hand.test.mjs` (+ `lib/openHand.mjs`, its frozen list
   `lib/openHandKnown.mjs`): 225 code lines in 84 files reach
   `window._gameState`/`_gameFns` off the tree (89 direct in 52 files; 32
@@ -21,9 +20,13 @@ state: ready
 
 ## Next
 - PR 5 (6524), the scoreboard's counters, from `main`.
-- Waiting: CT's #2282 (three DOOR_SUITES rows in phase-table): merge `main`
-  into #2286 once after it lands, keep its rows.
-- This file is on four branches: each later merge takes `main`'s first.
+
+## The chain (part 4, sitting 57)
+- #2286 has `main` merged: sitting 56's renderer lines by statements
+  (rooms of 25): effectsRenderer 9730, entityRenderer 8008. CT's #2282
+  lands on it with no clash, either order (rehearsed).
+- This file clashed add/add on every pair: #2287 holds #2286, #2290
+  #2287, #2298 #2290; merge in that order.
 
 ## Found
 - `tools/dev/state-census.mjs` --json leaves out WHOLE (`Object.assign(S, z)`
