@@ -12,6 +12,9 @@
  *
  *   THE FILES.  The client: every .js and .jsx file under src/.
  *
+ *   v2.3.6520: THE LINES HOLD STATEMENTS, not code lines (the rule is
+ *   below OPTS: countStatements).  Code lines are still measured, as here.
+ *
  *   A CODE LINE is a line of a file that holds at least one token of code.
  *   Read by esbuild (the one parser GitHub's `test` job has: wrangler brings
  *   it), which compiles the file with a source map; a line the map points at
@@ -324,6 +327,94 @@ function measureOutput(code, mapJson, srcText) {
 
 const OPTS = { jsx: 'transform', legalComments: 'none', format: 'esm', target: 'esnext' };
 
+/* ═══ v2.3.6520: STATEMENTS, NOT LINES (card WL; the shape review's item 13) ═══
+   A line that holds a token counted two statements on one line as one: the
+   review's plant 4a (`S.rpg.coins -= ...` put on the same line as the
+   `dyingTo(...)` call) left every line green.  The lines now hold
+   STATEMENTS, read off @babel's syntax tree (the root's or server/'s, as
+   phase-table loads it; GitHub's `test` job has server/'s):
+
+     - every statement node but a block `{ }` and an empty `;` (an `if`, a
+       loop, a `return`, a `throw`, a `break`, a `switch`, a `try`, a
+       declaration of a function or a class, an expression statement...);
+     - a `var`/`let`/`const` counts each of its declarators (`var a = 1,
+       b = 2;` is two);
+     - an expression statement that is a comma list counts each expression
+       (`a(), b();` is two), and a `case` each of its statements;
+     - an arrow whose body is an expression counts that expression as one
+       (`() => go()` does work, as `() => { go(); }` does), and a class's
+       field declaration one;
+     - `export` around a declaration adds nothing (the declaration counts).
+
+   A function's count is every statement from its first token to its last,
+   the functions inside it included (as its lines were); it is named as its
+   lines were (its own name, a method's key, the variable or property it is
+   given to, `(anonymous)` else).  The code lines are still measured (the
+   scoreboard prints them beside the count). */
+let _babel = null;
+function babel() {
+  if (_babel) return _babel;
+  for (const pkg of ['package.json', 'server/package.json']) {
+    try {
+      const req = createRequire(join(ROOT, pkg));
+      const t = req('@babel/traverse');
+      _babel = { parse: req('@babel/parser').parse, traverse: t.default || t };
+      return _babel;
+    } catch { /* the next */ }
+  }
+  throw new Error('@babel/parser and @babel/traverse load from neither the root nor server/ (run `npm install` in server/)');
+}
+const NOT_STATEMENT = new Set(['BlockStatement', 'EmptyStatement', 'VariableDeclaration', 'SwitchCase']);
+const FN_TYPES = new Set(['FunctionDeclaration', 'FunctionExpression', 'ArrowFunctionExpression', 'ObjectMethod', 'ClassMethod', 'ClassPrivateMethod']);
+/* the statements a node is worth on its own (its children are visited apart) */
+function worth(path) {
+  const n = path.node;
+  if (n.type === 'VariableDeclarator') return 1;
+  if (n.type === 'ClassProperty' || n.type === 'ClassPrivateProperty') return 1;
+  if (n.type === 'ArrowFunctionExpression' && n.body.type !== 'BlockStatement') return 1;
+  if (!path.isStatement() || NOT_STATEMENT.has(n.type)) return 0;
+  /* `export function f`, `export const g = ...`: the declaration inside is the statement */
+  if ((n.type === 'ExportNamedDeclaration' || n.type === 'ExportDefaultDeclaration') && n.declaration && n.declaration.type !== 'Identifier' && /Declaration$/.test(n.declaration.type)) return 0;
+  if (n.type === 'ExpressionStatement' && n.expression.type === 'SequenceExpression') return n.expression.expressions.length;
+  return 1;
+}
+function fnNameOf(path) {
+  const n = path.node;
+  if (n.id && n.id.name) return n.id.name;
+  if ((n.type === 'ObjectMethod' || n.type === 'ClassMethod') && !n.computed && n.key) return String(n.key.name ?? n.key.value);
+  if (n.type === 'ClassPrivateMethod' && n.key && n.key.id) return n.key.id.name;
+  const p = path.parent;
+  if (p.type === 'VariableDeclarator' && p.id.type === 'Identifier') return p.id.name;
+  if (p.type === 'AssignmentExpression' && p.right === n) {
+    if (p.left.type === 'Identifier') return p.left.name;
+    if (p.left.type === 'MemberExpression' && !p.left.computed && p.left.property.type === 'Identifier') return p.left.property.name;
+  }
+  if ((p.type === 'ObjectProperty' || p.type === 'ClassProperty') && p.value === n && !p.computed && p.key) return String(p.key.name ?? p.key.value);
+  return '(anonymous)';
+}
+/** One file's statements: { statements, functions: [{ name, statements, from }] } */
+export function countStatements(src, file = 'x.jsx') {
+  const { parse, traverse } = babel();
+  const ast = parse(src, { sourceType: 'module', plugins: ['jsx'], errorRecovery: true, sourceFilename: file });
+  let total = 0;
+  const fns = [];
+  const open = [];   /* the functions the walk is inside: each gets every statement */
+  traverse(ast, {
+    enter(path) {
+      const w = worth(path);
+      if (w) { total += w; for (const f of open) f.statements += w; }
+      if (FN_TYPES.has(path.node.type)) {
+        const f = { name: fnNameOf(path), statements: 0, from: path.node.loc.start.line };
+        /* an expression-bodied arrow's own expression is its one statement */
+        if (path.node.type === 'ArrowFunctionExpression' && path.node.body.type !== 'BlockStatement') f.statements = 1;
+        fns.push(f); open.push(f); path.node._wlOpen = f;
+      }
+    },
+    exit(path) { if (path.node._wlOpen) { open.pop(); delete path.node._wlOpen; } },
+  });
+  return { statements: total, functions: fns };
+}
+
 /** Measure one file's source: its code lines, its functions (by code lines). */
 export function measureSource(src, file = 'x.jsx') {
   const r = esbuild().transformSync(src, { ...OPTS, loader: file.endsWith('.jsx') ? 'jsx' : 'js', sourcemap: 'external', sourcefile: file });
@@ -342,19 +433,25 @@ export function measureClient() {
   });
   const byOut = new Map(out.outputFiles.map((o) => [relative(join(ROOT, '.four-lines-out'), o.path).split(sep).join('/'), o.text]));
   const byFile = Object.create(null);
+  const codeLines = Object.create(null);
   const functions = [];
   const graph = new Map();
   for (const f of files) {
     const o = f.slice(4).replace(/\.jsx?$/, '.js');
     const code = byOut.get(o), map = byOut.get(o + '.map');
     if (code === undefined || map === undefined) throw new Error('esbuild gave no output for ' + f);
-    const m = measureOutput(code, map, readFileSync(join(ROOT, f), 'utf8'));
-    byFile[f] = m.codeLines;
-    for (const fn of m.functions) functions.push({ file: f, name: fn.name, lines: fn.lines, from: fn.from });
+    const text = readFileSync(join(ROOT, f), 'utf8');
+    const m = measureOutput(code, map, text);
+    const st = countStatements(text, f);   /* v2.3.6520: what the lines hold */
+    byFile[f] = st.statements;
+    codeLines[f] = m.codeLines;
+    for (const fn of st.functions) functions.push({ file: f, name: fn.name, statements: fn.statements, from: fn.from });
     graph.set(f, [...new Set(m.imports.map((s) => resolveImport(f, s, known)).filter(Boolean))]);
   }
-  functions.sort((a, b) => b.lines - a.lines || (a.file + a.from < b.file + b.from ? -1 : 1));
-  return { files: byFile, functions, cycles: cycles(graph) };
+  functions.sort((a, b) => b.statements - a.statements || (a.file + a.from < b.file + b.from ? -1 : 1));
+  /* v2.3.6520: `files` and each function's `statements` are what the lines
+     hold; `codeLines` the lines that hold a token, as they were counted */
+  return { files: byFile, codeLines, functions, cycles: cycles(graph) };
 }
 
 /* ═══ v2.3.5201: CARD D'S SCRIPT, ONE RUN A `npm test` (card L PR 1) ═══
@@ -497,44 +594,95 @@ export function stateWritesFromRendering({ live = false } = {}) {
    1732 -> 1724 (card K's #1861: the combat and moving sends through act()).
    v2.3.5376 (the gatekeeper, sitting 19, main 29b1a0d): entityRenderer.js
    8953 -> 8941 (card P's #1868: the full set's test moved into
-   beltHold.js).  v2.3.6268 (the gatekeeper, sitting 56, main 0aec648; the
-   shape review's part 4: never lowered after cards EN and FX, 982 and 445
-   lines of room): entityRenderer.js 8941 -> 7984 and effectsRenderer.js
-   9870 -> 9450, each today's count (7959, 9425) plus 25. */
+   beltHold.js).
+   v2.3.6520 (card WL, at main 0aec648): THE LINES HOLD STATEMENTS (the
+   header's rule above), so every number was set again, room for room (the
+   orchestrator's rule, 2026-11-23): new line = today's statements + the
+   room, the room = floor(old room in code lines x the file's own statements
+   a code line), and never more than the old room's own number, so no line
+   is lowered and none loosened in either measure (the two renderers' rooms
+   are the gatekeeper's to take back).  The
+   generic lines by the whole client's measure (154,347 statements on
+   187,101 code lines): OTHER_FILE 1500 -> 1237, OTHER_FUNCTION 1000 -> 824.
+   Three that hold more statements than their lines said, under the old
+   generic lines and over the new, get lines of their own by the same rule,
+   their room under 1500 / 1000 (PACKED_FILE, and FUNCTION's last row: three
+   NEW rows, the gatekeeper's to lower): bodyRecolor.js 1010 code
+   lines, 1449 statements; hitMaterialFx.js 1332, 1778; initPixiRenderer
+   960, 967.  The old and the new, (line, count) -> (line, count):
+     effectsRenderer.js (9870, 9425) -> (10150, 9705)
+     entityRenderer.js  (8941, 7959) -> (8965, 7983)
+     BroTown.jsx        (8370, 8332) -> (6916, 6885)
+     gameSystems.js     (5622, 5622) -> (2105, 2105)
+     gameDisplay.js     (4268, 4268) -> (3116, 3116)
+     wsClient.js        (3039, 3034) -> (2598, 2594)
+     gameEvents.js      (2639, 2621) -> (2182, 2168)
+     monsterCombat.js   (1785, 1785) -> (1319, 1319)
+     BroTown#BroTown             (7800, 7789) -> (6399, 6390)
+     setupWebSocket              (2839, 2829) -> (2414, 2406)
+     processGameEvent            (2500, 2474) -> (2036, 2015)
+     BroTown#(anonymous)         (2132, 2129) -> (2023, 2021)
+     wsClient#connect            (2055, 2048) -> (1656, 1651)
+     updateMonsterCombat         (1724, 1722) -> (1273, 1272)
+     BroTown#gameLoop            (1583, 1573) -> (1472, 1463)
+     wsClient#onmessage          (1466, 1459) -> (1246, 1241)
+     _updatePlayer               (1369, 1369) -> (1153, 1153)
+     HeroExpanded                (1266, 1264) -> (478, 478)
+     _updateMonsters             (1086, 1086) -> (996, 996)
+     DungeonCreatorPanel         (1060, 1058) -> (229, 229)
+     ExchangePanel               (1029, 1020) -> (270, 268)
+     bodyRecolor.js    (1500 generic, 1010) -> (1939, 1449)
+     hitMaterialFx.js  (1500 generic, 1332) -> (1946, 1778)
+     initPixiRenderer  (1000 generic, 960)  -> (1007, 967)
+   v2.3.6268 (the gatekeeper, sitting 56, main 0aec648; the shape review's
+   part 4): entityRenderer.js 8941 -> 7984 and effectsRenderer.js 9870 ->
+   9450 code lines, each that day's count (7959, 9425) plus 25.  By
+   statements (v2.3.6520, the same rule, merged after it: the room 25 lines
+   is 25 statements in both): effectsRenderer.js 9705 + 25 = 9730,
+   entityRenderer.js 7983 + 25 = 8008 (the table above says the rooms before
+   sitting 56). */
 export const LINES = Object.freeze({
   /* a file's code lines.  These files have a line of their own, at their
      count on the day; every other file under src/ stays at or under
      OTHER_FILE (a new file too) */
   FILE: Object.freeze({
-    'src/rendering/systems/effectsRenderer.js': 9450,
-    'src/rendering/systems/entityRenderer.js': 7984,
-    'src/ui/BroTown.jsx': 8370,
-    'src/data/gameSystems.js': 5622,
-    'src/data/gameDisplay.js': 4268,
-    'src/networking/wsClient.js': 3039,
-    'src/networking/gameEvents.js': 2639,
-    'src/game/monsterCombat.js': 1785,
+    'src/rendering/systems/effectsRenderer.js': 9730,
+    'src/rendering/systems/entityRenderer.js': 8008,
+    'src/ui/BroTown.jsx': 6916,
+    'src/data/gameSystems.js': 2105,
+    'src/data/gameDisplay.js': 3116,
+    'src/networking/wsClient.js': 2598,
+    'src/networking/gameEvents.js': 2182,
+    'src/game/monsterCombat.js': 1319,
   }),
-  OTHER_FILE: 1500,
+  /* v2.3.6520: files under the old generic line that hold more statements
+     than the new one, at their own measure (the note above).  Not "big
+     files" (lib/bigFileSuites.mjs reads FILE alone): a line, not a list */
+  PACKED_FILE: Object.freeze({
+    'src/rendering/bodyRecolor.js': 1939,
+    'src/rendering/hitMaterialFx.js': 1946,
+  }),
+  OTHER_FILE: 1237,
   /* a function's code lines, by `file#name` (the largest of a name, where a
      file has two: `(anonymous)` is every unnamed one); every other function
      stays at or under OTHER_FUNCTION */
   FUNCTION: Object.freeze({
-    'src/ui/BroTown.jsx#BroTown': 7800,
-    'src/networking/wsClient.js#setupWebSocket': 2839,
-    'src/networking/gameEvents.js#processGameEvent': 2500,
-    'src/ui/BroTown.jsx#(anonymous)': 2132,
-    'src/networking/wsClient.js#connect': 2055,
-    'src/game/monsterCombat.js#updateMonsterCombat': 1724,
-    'src/ui/BroTown.jsx#gameLoop': 1583,
-    'src/networking/wsClient.js#onmessage': 1466,
-    'src/rendering/systems/entityRenderer.js#_updatePlayer': 1369,
-    'src/ui/mobile/sheet/HeroExpanded.jsx#HeroExpanded': 1266,
-    'src/rendering/systems/entityRenderer.js#_updateMonsters': 1086,
-    'src/ui/panels/DungeonCreatorPanel.jsx#DungeonCreatorPanel': 1060,
-    'src/ui/panels/buildings/ExchangePanel.jsx#ExchangePanel': 1029,
+    'src/ui/BroTown.jsx#BroTown': 6399,
+    'src/networking/wsClient.js#setupWebSocket': 2414,
+    'src/networking/gameEvents.js#processGameEvent': 2036,
+    'src/ui/BroTown.jsx#(anonymous)': 2023,
+    'src/networking/wsClient.js#connect': 1656,
+    'src/game/monsterCombat.js#updateMonsterCombat': 1273,
+    'src/ui/BroTown.jsx#gameLoop': 1472,
+    'src/networking/wsClient.js#onmessage': 1246,
+    'src/rendering/systems/entityRenderer.js#_updatePlayer': 1153,
+    'src/ui/mobile/sheet/HeroExpanded.jsx#HeroExpanded': 478,
+    'src/rendering/systems/entityRenderer.js#_updateMonsters': 996,
+    'src/ui/panels/DungeonCreatorPanel.jsx#DungeonCreatorPanel': 229,
+    'src/ui/panels/buildings/ExchangePanel.jsx#ExchangePanel': 270,
+    'src/rendering/pixiRenderer.js#initPixiRenderer': 1007,   /* v2.3.6520: under the old generic line, over the new */
   }),
-  OTHER_FUNCTION: 1000,
+  OTHER_FUNCTION: 824,
   /* import cycles under src/: the groups, and the files in them (a file
      that joins a group leaves the groups' count as it was, so the files
      are held too).  The plan said "five today": by the rule above, five,
@@ -552,4 +700,43 @@ export const LINES = Object.freeze({
   /* writes to S from src/rendering/ (card D's count: 92 sets and 22 changes
      inside; the plan said 89) */
   STATE_WRITES_FROM_RENDERING: 114,
+});
+
+/* v2.3.6520 (card WL, after sitting 57's hold): THE CODE LINES STAY HELD TOO.
+   By statements alone, one statement folded over forty lines (an object
+   literal, a long chain) passed: the review's plant in monsterCombat.js
+   went green, where the code-line guard on `main` failed it.  So both
+   measures hold: a file or a function stays at or under its statement line
+   (LINES) AND its code-line line (CODE_LINES).  These are `main`'s own
+   code-line lines on the day the statements came in (sitting 56's two
+   renderer lines included), not set again: they only fall, and only the
+   gatekeeper lowers them, as LINES. */
+export const CODE_LINES = Object.freeze({
+  FILE: Object.freeze({
+    'src/rendering/systems/effectsRenderer.js': 9450,
+    'src/rendering/systems/entityRenderer.js': 7984,
+    'src/ui/BroTown.jsx': 8370,
+    'src/data/gameSystems.js': 5622,
+    'src/data/gameDisplay.js': 4268,
+    'src/networking/wsClient.js': 3039,
+    'src/networking/gameEvents.js': 2639,
+    'src/game/monsterCombat.js': 1785,
+  }),
+  OTHER_FILE: 1500,
+  FUNCTION: Object.freeze({
+    'src/ui/BroTown.jsx#BroTown': 7800,
+    'src/networking/wsClient.js#setupWebSocket': 2839,
+    'src/networking/gameEvents.js#processGameEvent': 2500,
+    'src/ui/BroTown.jsx#(anonymous)': 2132,
+    'src/networking/wsClient.js#connect': 2055,
+    'src/game/monsterCombat.js#updateMonsterCombat': 1724,
+    'src/ui/BroTown.jsx#gameLoop': 1583,
+    'src/networking/wsClient.js#onmessage': 1466,
+    'src/rendering/systems/entityRenderer.js#_updatePlayer': 1369,
+    'src/ui/mobile/sheet/HeroExpanded.jsx#HeroExpanded': 1266,
+    'src/rendering/systems/entityRenderer.js#_updateMonsters': 1086,
+    'src/ui/panels/DungeonCreatorPanel.jsx#DungeonCreatorPanel': 1060,
+    'src/ui/panels/buildings/ExchangePanel.jsx#ExchangePanel': 1029,
+  }),
+  OTHER_FUNCTION: 1000,
 });
