@@ -1,7 +1,7 @@
 card: CT
 branch: claude/plan-ct-9-hold (part 15: tap and hold, stacked on claude/plan-ct-8-freefire)
 prs: part 15 (6548, draft on claude/plan-ct-8-freefire), #2340 (6547, draft on main), #2282 (6540, merged), #2293 (6541, merged at 60), #2308 (6542, held at 60: mended), #2327 (6543, ready), #2330 (6544, draft, main 598cfd38 in), item 6 (6545, draft), item 7 (6546, at the gate)
-state: handed over
+state: ready
 
 ## Done
 - PRs 1-5 (6540-6544) merged or in via #2330; items 6-8 (6545 rim sprint,
