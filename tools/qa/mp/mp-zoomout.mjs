@@ -18,7 +18,7 @@
  *
  * v2.3.3020, the owner: "the framerate looks a bit gritty ... If you need to
  * make things a little more zoomed in to fix that's fine.  I think char 64
- * pixels tall was probably best" -- so VIEW_OUT is 0.77 and the "was" is
+ * pixels tall was probably best" -- so VIEW_OUT was 0.77 (v2.3.6580: 0.79 now, read from the file below) and the "was" is
  * 0.64 (`?zoom=0.64`, today's town in both): the scale x1.203, the view
  * 0.83x across, and the bro 64 CSS px on this phone with the dashboard
  * folded (check 1b), each picture px ~0.91 device px on a 3x phone again.
@@ -92,7 +92,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const got = {};
   /* v2.3.3011: 'was' is the view before this step, 0.8 (v2.3.2997).
      v2.3.3020: back in a little, 0.64 -> 0.77, the town the same in both */
-  const WAS_OUT = 0.64, NOW_OUT = 0.77, STEP = NOW_OUT / WAS_OUT;
+  /* v2.3.6580: the default is 0.79 (the owner's pick); 'now' is whatever the
+     file says, so the next change of the default does not break this check */
+  const NOW_OUT = Number(/VIEW_OUT_DEFAULT: ([0-9.]+),/.exec(readFileSync(join(H.REPO, 'src/game/viewCap.js'), 'utf8'))[1]);
+  const WAS_OUT = 0.64, STEP = NOW_OUT / WAS_OUT;
   for (const [tag, query, K] of [['now', '', 1.15], ['was', `zoom=${WAS_OUT}`, 1.15]]) {
     const P = await H.newPlayer(browser, { name: tag === 'now' ? 'Wideview' : 'Oldview', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel', query });
     const errors = [];
@@ -156,8 +159,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
      dashboard folded -- and so each picture px about one device px on a 3x
      phone (1.5 x the scale), where 0.64 had it at three quarters */
   const dpp = (a) => +(1.5 * a.arrival.scale).toFixed(3);
-  rec.ok(`...the bro ${now.arrival.bodyCss} CSS px tall, the owner's 64 (each picture px ${dpp(now)} device px on a 3x phone, ${dpp(was)} before)`,
-    now.arrival.bodyCss >= 63 && now.arrival.bodyCss <= 65.5 && dpp(now) >= 0.88, { bodyCss: now.arrival.bodyCss, dpp: dpp(now), was: dpp(was) });
+  rec.ok(`...the bro ${now.arrival.bodyCss} CSS px tall, the owner's 64 at 0.77, x NOW_OUT/0.77 since v2.3.6580 (each picture px ${dpp(now)} device px on a 3x phone, ${dpp(was)} before)`,
+    now.arrival.bodyCss >= 63 * (NOW_OUT / 0.77) && now.arrival.bodyCss <= 65.5 * (NOW_OUT / 0.77) && dpp(now) >= 0.88, { bodyCss: now.arrival.bodyCss, dpp: dpp(now), was: dpp(was) });
   /* 2. the buildings */
   /* v2.3.3283: three on the arrival's screen, not four: since the town was laid
      roomier (v2.3.3022) and its square grew (v2.3.3031) the Town Hall, the

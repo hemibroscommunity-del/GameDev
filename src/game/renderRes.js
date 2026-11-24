@@ -138,7 +138,7 @@ function urlBudget() {
    that file imports this one, so it cannot be imported back here */
 function viewOut() {
   if (_viewOut !== null) return _viewOut;
-  _viewOut = VIEW_CAP.VIEW_OUT_REF;
+  _viewOut = VIEW_CAP.VIEW_OUT_DEFAULT;   /* v2.3.6580: was VIEW_OUT_REF, equal to the default until the default moved to 0.79 */
   try {
     const m = /^([0-9.]+)$/.exec(swValue('zoom') || '');
     const k = m ? Number(m[1]) : NaN;
