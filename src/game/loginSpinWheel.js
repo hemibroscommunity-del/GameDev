@@ -102,6 +102,28 @@ export const loginSpinBus = {
 /* QA handle (states.mjs, mp-loginspin): the very call the host makes. */
 try { if (typeof window !== 'undefined') window.__btLoginSpinBus = loginSpinBus; } catch (e) { /* probe only */ }
 
+/* ═══ v2.3.6560 (card LS): THE WHEEL OPENS ONLY FROM ITS BUTTON ═══
+ * The owner, 2026-11-24: "the daily spin popup wouldn't leave me alone.  Can
+ * you disable the immediate pop up feature when logging in for that and just
+ * leave it as a button in the top right?"  The window used to open by itself
+ * on every poll a spin was ready (close() leaves `avail` alone, v2.3.4345, so
+ * a window closed without a spin came back a second later).  Now it never
+ * opens by itself: the top bar's button (ZoneHeader, glowing while `avail`)
+ * is the way in.  The off-ramp, `?loginspin=1`, brings the offer at login
+ * back for one phone, and even there AT MOST ONCE a mount: closed without a
+ * spin, it waits for the button.  `?loginspin=0` (the harness's) keeps its
+ * meaning: never by itself.  The host still asks the worker once a mount
+ * (`loginspin_ask`): the button reads `avail` from that answer.
+ * `state` the bus's ({avail, open}); `switchValue` swValue('loginspin') (null
+ * when the address does not name it); `offeredOnce` whether this mount has
+ * already opened it by itself. */
+export const LOGIN_SPIN_OFFER_VALUE = '1';
+export function spinOffersItself(state, switchValue, offeredOnce) {
+  if (switchValue !== LOGIN_SPIN_OFFER_VALUE) return false;   /* the default, `=0` and every other word: the button only */
+  if (offeredOnce) return false;                             /* once a mount, never again by itself */
+  return !!(state && state.avail && !state.open);
+}
+
 /** The words under a disabled SPIN / YES: the wheel only turns on safe ground. */
 export const LOGIN_SPIN_UNSAFE_WORDS = 'Spin in a safe area';
 
