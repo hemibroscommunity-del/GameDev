@@ -187,19 +187,9 @@ export const AXES = Object.freeze({
     Object.freeze({ knob: 'crowd', to: 2 }),
     Object.freeze({ knob: 'rate', to: 1 }),
   ]),
-  /* v2.3.6503 (card PH PR 4; DECIDED FOR THE OWNER WHILE AWAY, the
-     orchestrator, 2026-11-24): THE SHINE FIRST, then the rate.  The owner's
-     Speed test at 1.5 sharpness drew 60 with everything on, so the metal's
-     shine stays on by default, and is the first thing a phone that falls
-     behind gives up -- before its rate halves.  The rest stays the owner's
-     order (the rate before the pixels, call 16).  `?shine=0` never shines,
-     `?shine=1` always (ADDRESS_PINS: the ladder passes it); `?ladderpass=0`
-     all the passes off the ladder, as before.  A kept rung keeps the shine
-     with the rate (an axis's first n: CHIP_KEPT in framePacer.js); a try up
-     gives the rate back first. */
   chip: Object.freeze([
-    Object.freeze({ knob: 'shine', to: 1 }),
     Object.freeze({ knob: 'rate', to: 1 }),
+    Object.freeze({ knob: 'shine', to: 1 }),
     Object.freeze({ knob: 'shadows', to: 1 }),
     Object.freeze({ knob: 'water', to: 1 }),
   ]),
@@ -274,7 +264,8 @@ export const ADDRESS_PINS = Object.freeze([
   Object.freeze({ knob: 'look', value: 'baked', addr: 'lookpalette=0', why: 'every look baked' }),
   Object.freeze({ knob: 'look', value: 'palette', addr: 'lookpalette=1', why: 'the look palette asked for (QA: even on Windows)' }),
   Object.freeze({ knob: 'water', value: 'still', addr: 'nowaves', why: 'the sea still' }),
-  /* v2.3.6503 (card PH PR 4): the shine is the ladder's first rung now; the owner's two ways to hold it still */
+  /* v2.3.6503 (card PH PR 4): the owner's two ways to hold the shine still (the ladder's second chip rung otherwise;
+     on by default: decided for the owner while away, the orchestrator, 2026-11-24) */
   Object.freeze({ knob: 'shine', value: 'off', addr: 'shine=0', why: 'the metal never shines on this phone' }),
   Object.freeze({ knob: 'shine', value: 'on', addr: 'shine=1', why: 'the metal always shines: the ladder never takes it' }),
   Object.freeze({ knob: 'rate', value: null, addr: 'pace', why: 'the pacer off (`?pace=0`): the rate is read by nothing' }),

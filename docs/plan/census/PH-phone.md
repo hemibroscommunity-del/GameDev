@@ -185,3 +185,20 @@ it 7 points of 120 for fewer, longer stretches.
 
 The margin's size, swept (the census's runs plus the cooling and cool phones): 5% left the 60/1.6 see-saw (11 and 12
 changes); 8% ended it everywhere; 12% and 16% held the cool 120 at 120 for only 54% and 18% of the hour.  8% chosen.
+
+## The shine's place on the ladder: the question to ask the owner again (PR 4, 6503; the model's guess, the test box)
+
+Asked by the orchestrator (part 6) and answered (A): rate first, shine second, as today -- the order of the chip's rungs
+stays the owner's (card PH: asked again only with the phone's own numbers). The shine stays ON by default (decided for
+the owner while away: their yes was to "shine off" at 28 frames a second, before their card at 1.5 drew 60 with
+everything on); `?shine=0|1` holds it off or on. The model's two answers, on the 60 phone 5% too slow when hot (§24's
+model; the shine's saving there, 14% of the chip's time, is the suite's GUESS, not a phone's number):
+
+- rate first (shipped): a steady 30 most of the hour, 60 held 4% (heat settling in 3 minutes) / 14% (10 minutes),
+  0 rate changes in the second half hour, the shine on throughout.
+- shine first: the shine dropped at about 3 minutes; the phone then sits at the edge of 60: 60 held 38% / 50% of the
+  hour, but uneven (10 s windows alternating 60 and 40) and cycling 60 to 30 every 3 to 5 / 6 to 10 minutes: 30 to 68
+  changes in the second half hour. Hotter phones and 120 screens: as rate first, but the shine off all hour.
+
+To ask the owner with the phone's own numbers: a Speed test whose "No metal shine" row is not slower than "Everything
+on" (the card at 1.5 cannot say: every OFF row read slower).

@@ -121,6 +121,8 @@ The off-ramps: a switch in the address pins its knob (to a step, or to the lane'
 | `look` | `baked` | `?lookpalette=0` | every look baked |
 | `look` | `palette` | `?lookpalette=1` | the look palette asked for (QA: even on Windows) |
 | `water` | `still` | `?nowaves` | the sea still |
+| `shine` | `off` | `?shine=0` | the metal never shines on this phone |
+| `shine` | `on` | `?shine=1` | the metal always shines: the ladder never takes it |
 | `rate` | - | `?pace` | the pacer off (`?pace=0`): the rate is read by nothing |
 | `crowd` | - | `?crowd` | a crowd cap of its own (`?crowd=K`): the knob is read by nothing |
 

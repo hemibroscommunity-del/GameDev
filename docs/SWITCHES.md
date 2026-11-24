@@ -526,7 +526,7 @@ How many there are: `node tools/guards/switches.test.mjs` prints the count, and 
 | `?sheen` | page | switch | v2.3.2736 | 2026-09-24 (v2.3.2887) | =1, =0, on or off | logic |  | no | Turns the sheen on gear on or off. |
 | `?sheenpass` | page | switch | v2.3.3453 | 2026-10-18 | present | chip |  | no | The sheen is drawn without its batch. |
 | `?shieldretry` | page | switch | v2.3.4431 | 2026-11-10 | =0 | logic | `?retrylooks` | no | Shield sheets that failed are not asked for again. |
-| `?shine` | page | switch | v2.3.6503 | 2026-11-24 | =0 or =1 | chip |  | no | The metal never shines (=0), or always shines (=1), on this phone: the governor's ladder no longer takes the shine first when the phone falls behind. |
+| `?shine` | page | switch | v2.3.6503 | 2026-11-24 | =0 or =1 | chip |  | no | The metal never shines (=0), or always shines (=1), on this phone: the governor's ladder no longer takes it (its second chip rung, after the rate). |
 | `?shotimage` | page | switch | v2.3.5982 | 2026-11-18 | =0 | memory |  | no | The monsters' thrown goo and fire are drawn from their two canvases, kept in the page as before, not from images of them. |
 | `?slimesplat` | page | switch | v2.3.4127 | off | =0 or =1 | logic |  | no | The slime's splat turned off (=0) or on (=1) for this phone. |
 | `?slimewalk` | page | switch | v2.3.5256 | 2026-11-14 | =0, off, false | memory |  | no | The slimes' sheets load behind the first loading screen and are kept, as before, not as a slime comes near. |
