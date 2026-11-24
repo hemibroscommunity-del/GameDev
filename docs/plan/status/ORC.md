@@ -1,31 +1,32 @@
 card: ORC
 branch: claude/plan-orc
-prs: none open (#2275 merged; this notes branch never has a PR)
+prs: none open (this notes branch never has a PR)
 state: working
-part 2 (session_01LccHakncEEzQHS5F2Wh3Ga) handed over 2026-11-24 01:05 UTC at 289k of memory; part 3 reads this and docs/plan/finish.md (on main now).
+part 3 (session_01LccHai8C7VrfNzbCiF6C2k) hands over 2026-11-24 about 01:45 UTC, BEFORE sitting 57's merge (its memory would cross 250k in the merge); part 4 reads this and docs/plan/finish.md. PART 4, YOUR FIRST ACT: one send_message to part 3 saying "part 4 started" with your id (the owner was asked to start you; part 3 starts one itself at about 02:00 UTC if it hears nothing, and two orchestrators must not run); it is the only message you ever send it.
 
-## Sitting 56: MERGED 00:43-00:58 UTC (main b2cdd55a): #2275, #2284, #2276, #2277, #2278, #2280, #2292. Worker deployed once (e2b4ff00), success.
+## Sitting 57: RUNNING since 01:06 UTC, gatekeeper session_01LccHahbA4NKM4W2gfwhETx (strong, high). Its list comes to the orchestrator: TELL IT THE NEW ID FIRST.
+Queue as sent (17): #2273 (06cd9091), #2279 (316dab3f), #2281 (36729df8), #2289 (b4cbd29e), #2282 then #2293, #2283 (b5ba8bb8) then #2295 (f7ef9ed; base main now; `test` was running at 01:30), #2285, #2286, #2287, #2290, #2288 then #2294 (f191ced6) then #2296 (8c9a45da), #2291 (490d110f). If room: #2298 (WL PR 4), #2299 (BK PR 3, d14032fb, on #2289). Not in it: #2297 (a draft).
+Merge only its list, in its order (finish.md part 7; the start message's way: rehearse in a scratch worktree, tree = the rehearsal's, a haiku lane reads each PR's checks, merge_pull_request `merge` with expectedHeadSha, its notes PR last).
+After 57 merges, TELL: WHO (#2283 in: merge main, open 6481 "shape bump: ECON_V", then 6482; #2279 in: the report.js call), BK (merge main once into #2299 if it waited), DG, CT, PH, WL (the new main), then the owner in plain words.
 
-## Sessions (strong, high) at 01:00 UTC; used_tokens from the 00:58 sweep
-- CK  part 3 session_01LccHanDgcojfUMPpPn87N2 (191k): #2288 (6421), #2294 (6422, on #2288, deploys) ready; building PR 4 (6423); PR 5 waits on the owner's words
-- DG  part 3 session_01LccHanED8EaLracuMeAGGR (new): #2283 (6440, b5ba8bb8), #2295 (6441, on #2283) ready, both deploy; building PR 3 (6442)
-- BK  part 3 session_01LccHaie7SxqWb9if8mSTuX (new): #2281 (36729df8), #2289 (7bd22833) ready, both deploy; building PR 3 (6462: the 1.5 bar + claims-gain's time)
-- WHO part 3 session_01LccHajq4XpNZ9Jy3EqctCz (290k: expect a hand-over): #2285 ready (deploys); 6481 built on claude/plan-who-2-sitting, no PR; building 6482
-- PH  part 2 session_01LccHaja67ykEakkDuTo7u5 (264k: expect a hand-over): #2279 (316dab3f, deploys), #2291 (6501) ready; PR 3 stacked, runs with a helper; PR 4 waits call 1; PRs 5, 6 free now
-- WL  part 3 session_01LccHakJNqjKYa3xDvhNxBe (212k): #2286 (deploys), #2287 ready; #2290: a push is DUE taking S.stickX/Y out of OWNED (441): sitting 57 waits for its new head; building 6523
-- CT  part 3 session_01LccHai1bVEjSVXUpBurWA5 (new): #2282, #2293 (after #2282) ready; building PR 3 (6542, also gives stickX/Y one owner)
-- LF  done. Old parts told to unsubscribe and stop.
+## Sessions (strong, high); every one was told part 3's id: tell each the new one
+- CK  part 3 session_01LccHanDgcojfUMPpPn87N2 (about 150k): #2288, #2294, #2296 ready; card DONE but PR 5 (waits call 2, the owner's own words)
+- DG  part 3 session_01LccHanED8EaLracuMeAGGR: #2283, #2295 ready; PR 3 (6442) built, its push is due; PRs 4 to 6 to build
+- BK  part 3 session_01LccHaie7SxqWb9if8mSTuX: #2281, #2289, #2299 ready (no push to #2299 until 57 has merged); building PR 4 (6463), the last
+- WHO part 4 session_01LccHahezkhX8pJRQSedVFF (new 01:22): #2285 ready; 6481 and 6482 built, no PR, wait for the word that #2283 merged
+- PH  part 3 session_01LccHai7CL7LxQeF4eEbKc8 (new 01:04): #2279, #2291 ready; #2297 a draft (lines from CI's read); PR 4 waits call 1; PRs 5, 6 free
+- WL  part 4 session_01LccHajbxzLqNe1hfoBPtSb (new 01:11): pushing #2286, #2287, #2290, #2298 as a chain (each holds the one before); its new heads are DUE to the orchestrator and Z; PR 5 (6524) stacked on #2298, base main; PR 6 after
+- CT  part 3 session_01LccHai1bVEjSVXUpBurWA5: #2282, #2293 ready; building PR 3 (6542); PRs 4, 5 after
+- Old parts (PH 2, WL 3, WHO 3, ORC 1 and 2) told to unsubscribe and stop: never message them.
 
-## TO DO FIRST: start sitting 57 (a NEW Z session, strong, high) when WL sends #2290's new head
-Queue: #2273 (06cd9091, deploys), #2279, #2281, #2289, #2282 then #2293, #2283 then #2295, #2285, #2286 (after #2282; may need main merged), #2287, #2290, #2288 then #2294, #2291. Server PRs together. All but #2285-#2295 new are re-pushed heads: reviewed fresh.
-After 57 merges, TELL: WHO (#2283 in: merge main, open 6481 "shape bump: ECON_V"; #2279 in: the report.js call), WL (#2282 in: merge main into #2286), DG (#2295's base to main), CT and BK (the new main).
+## Decided by part 3 (each to be named in its PR's words)
+- WHO: admin.js KEPT_OUT, ONE row for `play_trace:`; the trace stays ONE 96 KB row (`cut: 'size'` accepted; a second row is a new put, the owner's); one movement.js call so test-mode moves count on the sitting's card, in 6481, no put.
+- WL: PR 5 stacked on #2298. BK: start PR 4 from main; no reach or combat rule changes until call 5 is answered. Stacked PRs take base `main` (card Z step 5b); a card's branches hold the one before so status files do not clash add/add.
 
-## Decided (each named in its PR's words)
-- CK: #2284 with the 120 s line unmet; PR 3 per-suite, not phase-table (WL's). PH: lines = highest + max(scatter, 1.0 MB), heap 40.0, buffers 24.8. WL: OWNED = one-writer fields. WHO: migrations.js, gold.js (ECON_V, sitGold), movement.js, combat.js, hitproof.js, index.js traceNote, gathering.js, cooking.js; NOT report.js until #2279 merges. BK PR 3: no reach or combat rule changes (call 5 is the owner's); one line in gatekeeper.mjs.
-- Decided for the owner while away (TOLD 00:00 UTC): the memory alarm at 120 MB, test box, ?memalarm=0 (#2291).
+## The owner (back 01:31 UTC, on a phone)
+- Asked which model for the orchestrator: answered (keep the top model at high; see the chat). Asked how much is left: 35 card PRs, 1 merged, 17 in review, 4 built, 13 to build.
+- NEW REQUEST: "the sprint button should be moved to the left joystick too". It belongs to card CT (mode 5, the trial), as one more PR at the card's end, never a new session in BroTown.jsx. ASKED ONE QUESTION (how: push to the rim, or a button by the stick); the answer goes to CT part 3 as an addition to its card (tag 6545).
+- Open calls: 1 (five minutes on the phone) -> PH; 2 (.github/, own words) -> CK; 5 (the cheat margin: sword 1.42 to 1.92, freeswing 1.75, staff 2.97, harvest 1.57; asked 01:15) -> BK. Call 3 decided while away: 120 MB, `?memalarm=0` (#2291). Calls 4, 6, 7, 8 not asked. finish.md part 9's "about 1.55" is the median: a documents fix, not urgent.
 
-## Waits for the owner (silent since 22:33 UTC)
-- call 1 (five minutes on the phone) -> PH; call 2 (.github/, own words) -> CK; call 5 (the sword's reach) once BK's PR 3 has the six seeds' numbers; calls 4, 6, 7, 8 not asked.
-
-## The week (from Monday 21:00 UTC): $262.75 at 00:58 over 25 sessions, about $83 an hour; one week about $2,700, no new card past $2,170.
-- A fresh card session burns 250k in about 45 minutes ($5 to $15); get_session can report 0 used_tokens for a new one.
+## The week (from Monday 21:00 UTC): $262.75 at 00:58 over 25 sessions, about $83 an hour; part 3 cost $4.37 in its first 30 minutes; no sweep was run by part 3 (its 02:33 one is cancelled: set your own). One week about $2,700; no new card past $2,170.
+- Sittings: 56 and 57 are both on 2026-11-24 UTC; "at most two a day" puts sitting 58 on 11-25 unless the owner says otherwise.
