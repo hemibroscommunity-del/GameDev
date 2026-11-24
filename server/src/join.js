@@ -32,7 +32,7 @@ import { questLoad } from './queststate.js';   /* v2.3.5284: quest state's door 
 import { xpSet } from './xp.js';   /* v2.3.5289: experience and levels' door (card R PR 10) */
 import { tidyCharName } from './charname.js';   /* v2.3.5622: a name with no record held to the rule (the sitting 19 review) */
 import { actorSocket, actorOff, stintNext } from './actor.js';   /* v2.3.6480: the actor, made once at the join (card WHO PR 1) */
-import { sitOpen, sitOff } from './sitting.js';   /* v2.3.6481: the sitting's card, opened or carried on (card WHO PR 2) */
+import { sitOpen, sitOff, sitForget } from './sitting.js';   /* v2.3.6481: the sitting's card, opened or carried on (card WHO PR 2) */
 import { lookColor, lookAvatar } from './lookform.js';   /* v2.3.5733 (card RV's S2, the join's half): a look's colour and avatar held to their forms */
 
 /* ═══ v2.3.1627: the JOIN DATA ALLOWLIST ═══
@@ -1109,6 +1109,7 @@ export const joinMethods = {
        of its own); `sitting: false` opens nothing. */
     let _sitStint = null;
     const _sitJoin = (ps) => {
+      sitForget(this, ps);   /* v2.3.6481 (sitting 59): a card this join does not take counts nothing (sitting.js) */
       if (!ps || typeof ps !== 'object' || sitOff(this)) return null;
       if (!ps._econ || typeof ps._econ !== 'object') ps._econ = econClean(ps._econ);
       if (ps._econ.v !== ECON.V) return null;

@@ -1,6 +1,6 @@
 card: WHO
 branch: claude/plan-who-2-sitting (6481, stacked on claude/plan-who-1-actor, #2285); claude/plan-who-3-trace (6482, stacked on it, opens next)
-prs: #2285 6480 (mended again, for sitting 59), 6481 (open, READY, on #2285's branch), 6482 (built, opens next, stacked on 6481)
+prs: #2285 6480 (held at sitting 59, frozen), #2316 6481 (held at sitting 59: its BUG mended here), #2317 6482 (held, frozen but for this mend merged up); the other holds on claude/plan-who-mend59 (next)
 state: working
 
 ## Done
@@ -25,6 +25,7 @@ state: working
 - Test mode judges no move, so the sitting's card (6481) counts no active second from a test-mode character's moves (only its hit claims): the trace keeps its own active clock. Fixed in 6481 (the orchestrator's yes, 2026-11-24): movement.js counts a test-mode move (sitting.test §10).
 - The cook's start in shadow sees no spent plan (test mode never spends one), so a second result on one plan is not counted as would-refuse.
 
+- Sitting 59's BUG (mended on #2316's branch, v2.3.6481): sitting.js open(): only the card the record's LATEST join took counts (room._sitLive, a WeakMap; sitForget at every join): joined with `sitting: false`, the flag thrown on mid-sitting, a week-old card is no longer reopened (sitting.test §7b, 7 checks; red with the old open() and with join.js's sitForget removed).
 ## Needs
 - #2285: sitting 59 (the orchestrator has its head).
 - report.js's one call (soft, build, seen, drawn) after #2279 (card PH) merges: in 6482 or a small PR after it (the orchestrator's word).

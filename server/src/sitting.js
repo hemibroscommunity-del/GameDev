@@ -45,7 +45,10 @@
  * not a socket).  At a join (sitOpen): an open card touched less than
  * SIT.GAP_MS ago goes on, with the same `stint` (the actor is made with it:
  * actor.js actorSocket); an older one is closed (onto `sh`) and a new one
- * opened.  SIT.GAP_MS is the anti-bot's break, five quiet minutes
+ * opened.  Only the card the record's LATEST join took counts (v2.3.6481,
+ * sitting 59: a join with `sitting: false` takes none, so the flag thrown
+ * on mid-sitting never reopens a week-old card; open(), sitForget).
+ * SIT.GAP_MS is the anti-bot's break, five quiet minutes
  * (botsig.js BOTSIG.BREAK_MS; sitting.test holds the two equal: this file
  * imports nothing, so the doors that hand it facts can import it).
  *
@@ -150,10 +153,31 @@ export function sitCleanInto(out, raw) {
   return out;
 }
 
-/* the open card of a live record, or null */
-function open(rec) {
+/* v2.3.6481 (sitting 59's bug): the card each live record's LATEST join
+   opened or carried on, in this room (a WeakMap: record -> card).  A record
+   can hold an open card its join did not take -- joined with `sitting: false`,
+   or a newer `_econ` -- and the flag thrown back on mid-sitting then counted
+   moves into a card a week old, never closed.  Only the card in this map
+   counts; any other waits for the next join, which closes it (sitOpen). */
+function liveMap(room) {
+  if (!room || typeof room !== 'object') return null;
+  if (!(room._sitLive instanceof WeakMap)) room._sitLive = new WeakMap();
+  return room._sitLive;
+}
+
+/** At every join, before the card is opened: the record's card counts no
+ *  more until sitOpen takes one (join.js; also when it opens nothing). */
+export function sitForget(room, rec) {
+  const m = liveMap(room);
+  if (m && rec && typeof rec === 'object') m.delete(rec);
+}
+
+/* the open card of a live record that this room's join took, or null */
+function open(room, rec) {
   const e = rec && rec._econ;
-  return e && typeof e === 'object' && Array.isArray(e.s) && e.s.length >= SIT.LEN ? e.s : null;
+  const s = e && typeof e === 'object' && Array.isArray(e.s) && e.s.length >= SIT.LEN ? e.s : null;
+  const m = s && liveMap(room);
+  return m && m.get(rec) === s ? s : null;
 }
 
 /** A touch at `now`: the gap since the last one (the longest kept), active
@@ -175,6 +199,7 @@ function touch(s, now, active) {
  *  its `v`).  Returns the sitting's stint, or null (`sitting: false`, no
  *  record): the actor then takes one of its own. */
 export function sitOpen(room, rec, session, now, stintNew) {
+  sitForget(room, rec);   /* v2.3.6481: the card the last join took counts no more unless this one takes it */
   if (sitOff(room) || !rec || !rec._econ || typeof rec._econ !== 'object') return null;
   const e = rec._econ;
   const t = Math.floor(fin(now) ? now : Date.now());
@@ -184,6 +209,7 @@ export function sitOpen(room, rec, session, now, stintNew) {
     touch(cur, t, false);
     if (asn) cur[C.n] = Math.floor(asn);   /* the network the sitting is on now */
     e.s = cur;
+    liveMap(room).set(rec, cur);   /* v2.3.6481: this join's card (open) */
     return cur[C.t];
   }
   if (cur) {
@@ -193,20 +219,21 @@ export function sitOpen(room, rec, session, now, stintNew) {
   }
   const begun = typeof stintNew === 'function' ? stintNew(t) : t;   /* actor.js stintNext: the id is made there, once */
   e.s = sitBlank(begun, asn);
+  liveMap(room).set(rec, e.s);   /* v2.3.6481: this join's card (open) */
   return e.s[C.t];
 }
 
 /** A touch with no activity (the leave): the gap to a reconnect counts. */
 export function sitTouch(room, rec, now) {
   if (sitOff(room)) return;
-  const s = open(rec);
+  const s = open(room, rec);
   if (s) touch(s, fin(now) ? now : Date.now(), false);
 }
 
 /** A judged move; `over` when the budget could not cover it. */
 export function sitMove(room, rec, now, over) {
   if (sitOff(room)) return;
-  const s = open(rec);
+  const s = open(room, rec);
   if (!s) return;
   s[C.mv]++;
   if (over) s[C.mo]++;
@@ -217,7 +244,7 @@ export function sitMove(room, rec, now, over) {
  *  (SIT.REFUSALS); another word counts nothing. */
 export function sitHit(room, rec, what, now) {
   if (sitOff(room)) return;
-  const s = open(rec);
+  const s = open(room, rec);
   if (!s) return;
   if (what === 'claim') { s[C.hc]++; touch(s, fin(now) ? now : Date.now(), true); return; }
   if (what === 'landed') { s[C.hl]++; return; }
@@ -228,7 +255,7 @@ export function sitHit(room, rec, what, now) {
 /** Gold through the door: its road's class and the purse's difference. */
 export function sitGold(room, rec, cls, d) {
   if (sitOff(room) || !fin(d) || !d) return;
-  const s = open(rec);
+  const s = open(room, rec);
   if (!s) return;
   const i = SIT.CLASSES.indexOf(cls);
   if (i >= 0) s[C.gd][i] = num(s[C.gd][i] + d);
@@ -237,7 +264,7 @@ export function sitGold(room, rec, cls, d) {
 /** The report's facts for the card (report.js, card A: it writes no field). */
 export function sitReport(room, rec, facts) {
   if (sitOff(room) || !facts || typeof facts !== 'object') return;
-  const s = open(rec);
+  const s = open(room, rec);
   if (!s) return;
   if (facts.soft === 0 || facts.soft === 1) s[C.sf] = facts.soft;
   if (typeof facts.build === 'string' && facts.build) s[C.b] = facts.build.replace(/[^\x20-\x7e]/g, '').slice(0, SIT.BUILD_MAX);
