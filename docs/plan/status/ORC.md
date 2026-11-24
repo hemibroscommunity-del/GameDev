@@ -2,31 +2,36 @@ card: ORC
 branch: claude/plan-orc
 prs: none open (this notes branch never has a PR)
 state: working
-part 3 (session_01LccHai8C7VrfNzbCiF6C2k) hands over 2026-11-24 about 01:45 UTC, BEFORE sitting 57's merge (its memory would cross 250k in the merge); part 4 reads this and docs/plan/finish.md. Part 3 started part 4 itself at 01:53 UTC (the owner, asked at 01:33 to start it, had not answered): never message part 3.
+part 4 (session_01LccHahqYWSLxVUrw1fLzd3) hands over 2026-11-24 about 02:55 UTC at about 215k of memory; part 5 reads this and docs/plan/finish.md. Never message parts 1 to 4. TELL every running session below the new id first.
 
-## Sitting 57: RUNNING since 01:06 UTC, gatekeeper session_01LccHahbA4NKM4W2gfwhETx (strong, high). Its list comes to the orchestrator: TELL IT THE NEW ID FIRST.
-Queue as sent (17): #2273 (06cd9091), #2279 (316dab3f), #2281 (36729df8), #2289 (b4cbd29e), #2282 then #2293, #2283 (b5ba8bb8) then #2295 (f7ef9ed; base main now; `test` was running at 01:30), #2285, #2286, #2287, #2290, #2288 then #2294 (f191ced6) then #2296 (8c9a45da), #2291 (490d110f). If room: #2298 (WL PR 4), #2299 (BK PR 3, d14032fb, on #2289). Not in it: #2297 (a draft).
-Merge only its list, in its order (finish.md part 7; the start message's way: rehearse in a scratch worktree, tree = the rehearsal's, a haiku lane reads each PR's checks, merge_pull_request `merge` with expectedHeadSha, its notes PR last).
-After 57 merges, TELL: WHO (#2283 in: merge main, open 6481 "shape bump: ECON_V", then 6482; #2279 in: the report.js call), BK (merge main once into #2299 if it waited), DG, CT, PH, WL (the new main), then the owner in plain words.
+## Sitting 57: MERGED 02:14 UTC (#2288, #2294, #2296, #2281, #2289, #2282, notes #2304); main b966af81. The holds' words: docs/plan/census/review-z57.md on main. Its gatekeeper (session_01LccHahbA4NKM4W2gfwhETx) was told it may stop.
+## Sitting 58: 2026-11-25 UTC (two a day; the owner was told they may say "run another round today"). A NEW gatekeeper session (strong, high). Queue so far, every re-push reviewed fresh:
+- CK #2305 (6425, 69c7b1e8) THEN #2307 (6424, `.github/`, 4261a46b; the owner's own words quoted in its body)
+- BK #2299 (3c4322c8), #2301 (f40b578f), and 6465 when it comes. WHO #2285 (dcf8ca12, mended). CT #2293 (305bb3a4, mended), PR 3 (6542) coming
+- DG #2283 (9b9aee9f), #2295 (148af59f: CI mends only, its three planted lines still to mend), #2300 (4b23905c)
+- PH #2279, #2291 (held, being mended), #2297, #2306 (a draft until green). WL #2286, #2287, #2290, #2298 (held, being mended), #2302, #2303. LS's one PR (6560)
+- #2273 (RR, card LF) is HELD and NO running session owns it: FIND card LF's session (a haiku lane, by title) or start a part for it (the middle model, high): wsClient `if (_td) _td.carried = true;` stays green; thaw-carried §6 is regexes over text.
+After 58 merges, TELL: WHO when #2283 is in (open 6481, then 6482) and when #2279 is in (the report.js call); every session the new main; the owner in plain words.
 
-## Sessions (strong, high); every one was told part 3's id: tell each the new one
-- CK  part 3 session_01LccHanDgcojfUMPpPn87N2 (about 150k): #2288, #2294, #2296 ready; card DONE but PR 5 (waits call 2, the owner's own words)
-- DG  part 3 session_01LccHanED8EaLracuMeAGGR: caretaker only: #2295's CI went RED at 01:47 (gold-door slow, heap-forget 4,167 B against 4,096); it pushes fixes to #2283, #2295, #2300 and told Z to hold #2283 and #2295 until green (WHO's 6481 waits on #2283) (subscribed to #2283, #2295, #2300; #2300 = PR 3, tests only, for sitting 58, asked to retarget to main). DG part 4 (new 01:36, session_01LccHajiyuv8speuDQTioEV): builds PR 4 (6443) from claude/dg-books (answered: it merges REFUSING, `wireform: 'count'` / `false` the flag's other states, counted on v1 and v2 first), then 5, 6
-- BK  part 3 session_01LccHaie7SxqWb9if8mSTuX: #2281, #2289, #2299 ready (no push to #2299 until 57 has merged); PR 4 = #2301 (edb00915, from main, for sitting 58: merge main once into #2299 and #2301 after 57 lands, on the orchestrator's word); all four PRs written
-- WHO part 4 session_01LccHahezkhX8pJRQSedVFF (new 01:22): #2285 ready; 6481 and 6482 built, no PR, wait for the word that #2283 merged
-- PH  part 3 session_01LccHai7CL7LxQeF4eEbKc8 (new 01:04): #2279, #2291 ready; #2297 a draft (lines from CI's read); PR 4 waits call 1; PRs 5, 6 free
-- WL  part 4 session_01LccHajbxzLqNe1hfoBPtSb (new 01:11): chain pushed 01:40, each holds the one before: #2286 b407ef82, #2287 f9e86568, #2290 67752c2d, #2298 200611b2 (Z has them); PR 5 = #2302 (d54fcbcb, on #2298, for sitting 58, told to mark it ready); told to stack PR 6 (6525) on it
-- CT  part 3 session_01LccHai1bVEjSVXUpBurWA5: #2282, #2293 ready; building PR 3 (6542); PRs 4, 5 after
-- Old parts (PH 2, WL 3, WHO 3, ORC 1 and 2) told to unsubscribe and stop: never message them.
+## Sessions (strong, high unless said)
+- CK  part 3 session_01LccHanDgcojfUMPpPn87N2: holds; the card is DONE once #2305 and #2307 merge
+- DG  part 3 session_01LccHanED8EaLracuMeAGGR: mends #2283, #2295, #2300, tells the heads when green. DG part 4 session_01LccHajiyuv8speuDQTioEV: builds PR 4 (6443), merges claude/dg-books once before its last push, then 5, 6
+- BK  part 4 session_01LccHajLr9A1dTtu6jVmRir (new 02:43): one PR, 6465 (Z's two Founds: the weapon listing's restart, piecesHeld by ids)
+- WHO part 4 session_01LccHahezkhX8pJRQSedVFF: 6481 and 6482 built, not pushed, wait for #2283; report.js waits for #2279
+- PH  part 4 session_01LccHajdAuhmwzihWdn6F7x (new 02:24): mends #2279 and #2291 up the chain, then PR 6; PR 4 waits for call 1's comparisons; it HAS the owner's Speed test table
+- WL  part 4 session_01LccHajbxzLqNe1hfoBPtSb: mends the chain's holds, one push a PR, then tells six heads
+- CT  part 3 session_01LccHai1bVEjSVXUpBurWA5: at about 330k; finishes PR 3 then hands over: START CT part 4 (its Next: #2293's greens the mend did not cover (mode 5's raw angle, `?turnzone` ignored, the ring in mode 4), PRs 4, 5, then item 6)
+- LS  session_01LccHahoqJuxxQDjafEQf1Q (new 02:40): card LS, one PR 6560 (the card is in its first message; block 6560 to 6579)
+- Stopped, never message: BK 3, PH 3, and every older part.
 
-## Decided by part 3 (each to be named in its PR's words)
-- WHO: admin.js KEPT_OUT, ONE row for `play_trace:`; the trace stays ONE 96 KB row (`cut: 'size'` accepted; a second row is a new put, the owner's); one movement.js call so test-mode moves count on the sitting's card, in 6481, no put.
-- WL: PR 5 stacked on #2298. BK: start PR 4 from main; no reach or combat rule changes until call 5 is answered. Stacked PRs take base `main` (card Z step 5b); a card's branches hold the one before so status files do not clash add/add.
+## Decided by part 4 (each named in its PR's words)
+- PH: two new files (tools/dev/heap-trend.mjs, tools/guards/heap-trend.test.mjs). CK: 6425 (precheck's cap back to 20 min). BK: 6465, tests only.
+- CT item 6 (6545), the owner's request: sprint from the left stick in mode 5, a HOLD, on at share >= 1.25 (past the disc's edge), off below 1.05, no button, `?rimsprint=0` gives the button back; no server change. In CT.md on #2293's branch.
+- Card LS (the owner's request): the login wheel never opens by itself; `?loginspin=1` brings the offer back, once a mount.
 
-## The owner (back 01:31 UTC, on a phone)
-- Asked which model for the orchestrator: answered (keep the top model at high; see the chat). Asked how much is left: 35 card PRs, 1 merged, 17 in review, 4 built, 13 to build.
-- NEW REQUEST: "the sprint button should be moved to the left joystick too". It belongs to card CT (mode 5, the trial), as one more PR at the card's end, never a new session in BroTown.jsx. ASKED ONE QUESTION (how: push to the rim, or a button by the stick); the answer goes to CT part 3 as an addition to its card (tag 6545).
-- Open calls: 1 (five minutes on the phone) -> PH; 2 (.github/, own words) -> CK; 5 (the cheat margin: sword 1.42 to 1.92, freeswing 1.75, staff 2.97, harvest 1.57; asked 01:15) -> BK. Call 3 decided while away: 120 MB, `?memalarm=0` (#2291). Calls 4, 6, 7, 8 not asked. finish.md part 9's "about 1.55" is the median: a documents fix, not urgent.
+## The owner (on a phone; last wrote about 02:37 UTC)
+- ANSWERED: call 2 YES ("Yes to GitHub check settings. Do whatever works best." -> #2307). "Go recommended" (typed to part 3) = sprint option 1, and call 5: the sword stays, the rows over 1.5 stay KNOWN (true worst 1.92, typical 1.4 to 1.6).
+- Call 1: the Speed test table is in (28 frames a second as played; 35 ms of a frame is the graphics chip; lower resolution 37, no shine 36, all off 45). "Last setting felt smoothest" is NOT clear: ASKED which (`?govern=0`, `?groundsend=0`, or the table's last row); the answer goes to PH part 4. PH will bring a question about the default look (resolution, shine): the owner's call.
+- Told: `brotown.net/?loginspin=0` stops the popup today. Read to them: the two "decided while away" (120 MB `?memalarm=0` #2291; `?thawjudge=0` #2273), both held. Calls 4, 6, 7, 8 not asked.
 
-## The week (from Monday 21:00 UTC): $262.75 at 00:58 over 25 sessions, about $83 an hour; part 3 cost $4.37 in its first 30 minutes; no sweep was run by part 3 (its 02:33 one is cancelled: set your own). One week about $2,700; no new card past $2,170.
-- Sittings: 56 and 57 are both on 2026-11-24 UTC; "at most two a day" puts sitting 58 on 11-25 unless the owner says otherwise.
+## The week (from Monday 21:00 UTC): NOT summed by part 4 (its 03:25 sweep is cancelled: set your own, and sum first). $262.75 at 00:58, about $83 an hour, so about $420 by 02:55 (a guess); part 4 cost about $8. One week about $2,700; no new card past $2,170.
