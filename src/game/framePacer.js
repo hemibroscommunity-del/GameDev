@@ -353,7 +353,12 @@ let _samples = null, _busyIn = null;
    stops it as before (the count is read only while the governor judges).
    THE OFF-RAMP `?memalarm=0`: the two old lines, frozen as they were
    (MEM_LINES_OLD), on this phone. */
-export const MEM_ALARM = Object.freeze({ MB: 0 });   /* MB: see PH-phone.md -- set with the owner's yes (card PH PR 2) */
+/* READ: the game's own total at its highest, ON THE TEST BOX (2026-11-23): mp-membudget 106.4 (the third trip, home
+   again); a 10-bot fight at the Flame Fields 104.9 (the chip 75.7, art 11.7, sound 17.5); 30 bots could not be read
+   there (the page stopped answering).  MB: 13% over it, half an iPhone's ~250 MB page, and 21 MB before the old
+   trigger could fire.  Decided for the owner while away (call 3; the planning session, 2026-11-23, tag 5058):
+   `?memalarm=0` the old lines.  The phone's own count waits on the field report's (card PH PR 1). */
+export const MEM_ALARM = Object.freeze({ READ: 106.4, MB: 120 });
 export const MEM_LINES_OLD = Object.freeze({ artCache: 79.3, gpu: 109.3 });   /* v2.3.6501: the old trigger, frozen (v2.3.5981, v2.3.6202: the memory check's lines then) */
 export const MEM_READ_MS = 5000;
 /* v2.3.5681 (the gatekeeper's sitting 27): the wait between memory rungs,

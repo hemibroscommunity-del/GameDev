@@ -29,13 +29,17 @@ highest: 106.4 (run 1, trip 3 home again); at a fight 98.4.
 
 - alone at the Flame Fields: chip 71.1, art 11.2.
 - 10 bots: chip 71.6, art 11.6, sound 17.5 -> the game's own total 100.7.
-- 30 bots: NOT READ (the run was stopped at the hand-over). The next
-  session reads it: `BT_NO_TRACE=1 BT_CF_PLACES=fight BT_CF_STEPS=10,30
-  node tools/qa/mp/run.mjs crowdfight` (about 30 minutes; a helper's).
+- 30 bots: CANNOT BE READ on the test box. Part 2's helper ran
+  `BT_NO_TRACE=1 BT_CF_PLACES=fight BT_CF_STEPS=10,30 node tools/qa/mp/run.mjs crowdfight`
+  (1018 s): 10 bots read again as chip 75.7, art 11.7, sound 17.5 (total 104.9),
+  heap 40.5; at 30 the page answered nothing for 15 minutes (SKIP, its thread
+  waiting on the graphics process).
 
 ## The memory alarm's level (PR 2, 6501)
 
-Waits for the owner's yes (finish.md part 9, call 3) and the 30-bot
-reading: "just above what the game reads in a crowded fight" =
-MEM_ALARM.READ (that reading) and MEM_ALARM.MB a little over it
-(frame-pacer.test 23a: over READ, at most 1.25 x READ, under 200).
+MEM_ALARM = { READ: 106.4, MB: 120 }, ON THE TEST BOX: READ the game's own
+highest total (mp-membudget, trip 3 home again; the 10-bot fight 104.9), MB 13%
+over it. Decided for the owner while away (call 3 unanswered since 22:33 UTC;
+the planning session, 2026-11-23, README tag 5058), behind `?memalarm=0`. The
+phone's own count waits on the field report (PR 1). If the owner answers
+before it merges, their words win.
