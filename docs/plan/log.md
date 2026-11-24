@@ -8,6 +8,14 @@ here. Sittings 1 to 55 are in the plan's own notes and in
 
 | Sitting | Step | Merged | The box waits for |
 |---|---|---|---|
+| 57 | 8.1 | sitting 56: LF's #2276 (the ground rule), #2277 (quietphone), #2280 (the band's keys, narrow): card LF's lines | RR's #2273 (held: a gap judged carried is green); deskkeys 8f (card CT) |
+| 57 | 4.4, 4.5 | sitting 56: BK's #2278 (the sum plays what it sums); listed at 57: #2281, #2289 | card BK: the `store_list` row's weapon, pieces by id, #2299 |
+| 57 | 4.1 | nothing merged | DG's #2283 (passed, then held at DG's word: `heap-forget` §4), #2295 (held: its `test` red), #2300 |
+| 57 | 5.4b | listed at 57: CT's #2282 (the rules) | CT's #2293 (held: the input read's Y and death gates) |
+| 57 | 5.2b, 5.3 | nothing merged | WL's #2286, #2287, #2298 (held); #2290 (passed, but holds #2286 and #2287) |
+| 57 | 10.1, 11.2 | nothing merged | WHO's #2285 (held: test play booked with play) |
+| 57 | 2.3 | nothing merged | PH's #2279, #2291 (held) |
+| 57 | (no box) | sitting 56: DIR's #2275 (the direction), CK's #2284 (switches-thrown on a PR); listed at 57: CK's #2288, #2294, #2296 | card CK's last lines |
 | 56 | 3.1 | ticked at sitting 54 (HB2's #2261 merged at 53: `debtOf('ours')` empty on `main` 18061bea); landed here (tag 6268) | nothing: done |
 | 56 | 8.1 | sitting 53: RR's #2265, #2267, #2258, #2260; sitting 55: RR's #2269 (the slow checks), #2270 (cuelevels), #2264 (deskkeys, 8f open) | RR's #2273 (the rejoin loop: `mp-comeback` 5b red twice, being mended); deskkeys 8f (card CT's verdict) |
 | 56 | (no box) | sitting 55: HB2's #2271 (the gear tab's reads), #2272 (the World map's labels), EN's #2274 (off-screen townsfolk not posed): cards HB2 and EN done | HB2's 6291 and 6292 (card LF) |
