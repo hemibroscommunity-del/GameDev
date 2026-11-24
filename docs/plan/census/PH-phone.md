@@ -223,3 +223,15 @@ costing a rebuild. A card whose "off" rows are slower should say so in plain wor
 
 (v2.3.6503, part 6: the "FIRST rung" in the paragraph above was WITHDRAWN by the orchestrator, part 6, 05:39 UTC:
  rate first, shine second, as today; the shine stays ON by default; see "The shine's place on the ladder" below.)
+
+## PR 4 (6503): mp-membudget's heap at 1.5, the test box, 2026-11-24 (part 7)
+
+Helpers' runs (the real build, one each): PR 6 alone (db7d930) heap 39.2, all 12 pass; PR 4 (4ef985e) 41.5, FAIL
+(line 40); PR 4 with `?govcool=0&beathold=0` 41.0, FAIL; PR 4 with `?phoneres=0` 39.3, all 12 pass. So the 1.5
+(PHONE_RES) owns about 2 MB of heap on the test box, not the governor. Buffers 24.8 at their 24.8 line.
+
+The hunt (names kept: `vite build --minify false`, `QA_MB_SNAP=5`, the third fight; one run each, here): 1.5 read
+42.3, `?phoneres=0` 40.9. The snapshots differ by 1.32 MB: compiled code +1.00, arrays +0.27, objects +0.12; no
+holder or constructor over 0.25 MB, nothing kept twice. In the fight's same window the 1.5 page swung 24 times, the
+other 10: a quarter of the pixels draws faster on the box's software renderer, more of the game runs, and more of it
+is compiled (docs/specs/heap-trim-2026-11-13.md: compiled code grows as more runs; not trimmable). No line raised.
