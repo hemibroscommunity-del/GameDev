@@ -1,40 +1,42 @@
-/* ═══ v2.3.6547: THE FREE ARROW AND THE SWORD THAT STAYS (card CT item 8; src/game/freeAttack.js) ═══
+/* ═══ v2.3.6547: THE FREE ARROW AND THE PRESS THAT STAYS (card CT item 8; src/game/freeAttack.js) ═══
  *
  * The two buttons (`?manual=5`).  The owner, 2026-11-24: "I want arrows to be
  * able to shoot whenever the line of site is aimed at" and "I want to change
  * the melee behavior so that it doesn't jump to every monster".  Played on the
- * module itself, and its two calls read off the syntax tree:
+ * module itself, and its calls read off the syntax tree:
  *
- *   1. THE SWITCHES: `?freefire=0` and `?meleestay=0` throw them (the row's
- *      one form, as `?rimsprint`'s); absent, `=1`, or the name inside a
- *      longer one do not;
+ *   1. THE SWITCH: `?freefire=0` throws it (the row's one form, as
+ *      `?rimsprint`'s); absent, `=1`, or the name inside a longer one do not;
  *   2. THE GATE'S RULE (freeArrow): an arrow with nothing on its line only for
  *      Attack's waiting tap, in the two buttons, with the switch on: every
  *      other of the eight, and a truthy stand-in for any of the three, is no;
  *   3. THE GATE'S CALL (freeArrowGo): in mode 5 a waiting tap is a yes and is
  *      counted (S._freeShots); no tap, mode 4, or `?freefire=0`: no, uncounted;
- *   4. THE LUNGE'S RULE (latchLunge): only with the stay switched off, the two
- *      buttons, the latch active, a sword, the latch's lock written;
- *   5. THE LUNGE'S CALL (latchLungeGo): the stay on (the default) never asks the
- *      dash; `?meleestay=0` asks it and returns its true, a refusal or a throw
- *      is no; a bow's latch, an idle latch or no lock never asks;
+ *   4. THE PRESS (twoButtonPress), played: a sword and a monster 240 px ahead
+ *      locks it and moves NOTHING (the player untouched, no dash, nothing
+ *      written but the latch's and the sight's notes and the held attack);
+ *      again lets go; nothing in sight is the tap's one attack; mode 4 nothing;
+ *   5. THE PRESS'S ROAD, off the syntax tree: it calls only the latch's press
+ *      and the tap it is handed (the orchestrator, 2026-11-24: "so a later
+ *      part cannot wire the dash to Attack unseen");
  *   6. THE TWO CALLS, off the syntax tree (found by system, filesOf.mjs): the
  *      monsters' loop's bow gate, its `!_sightOn && !_mcFire` branch, is
  *      `_mayLoose = freeArrowGo(S, _tapAtkNow)` (no: the arrow held back as
- *      before), and the screens ask latchLungeGo(S, maybeSwordDash) once,
- *      inside the latch frame's `_lw !== null` branch.
+ *      before), and the screens' Attack press in the two buttons is the one
+ *      call `twoButtonPress(Sb, Date.now(), requestTapAttack); return;`.
  *
  * A guard under tools/guards (server/test/run.mjs runs it; nothing deploys).
  *
  * Break proof, tried by hand (v2.3.6547): freeArrow's `tapNow === true`
- * dropped -> FAIL 2; `stay === false` -> `!stay` -> FAIL 4 (undefined);
- * the gate's `_mayLoose = freeArrowGo(...)` back to `false` -> FAIL 6a;
- * latchLungeGo's call moved out of the `_lw !== null` branch -> FAIL 6b.
+ * dropped -> FAIL 2; the gate's `_mayLoose = freeArrowGo(...)` back to `false`
+ * -> FAIL 6a; `maybeSwordDash(S)` added to twoButtonPress -> FAIL 5; the
+ * screens' branch gaining a call beside it -> FAIL 6b; `S.player.x += 1` in
+ * twoButtonPress -> FAIL 4b.
  */
+import { readFileSync } from 'node:fs';
 import { readSystem } from './lib/filesOf.mjs';
 import { createRequire } from 'node:module';
-import { freeFireOn, meleeStayOn, freeArrow, freeArrowGo, latchLunge, latchLungeGo } from '../../src/game/freeAttack.js';
-import { latchPress, latchClear } from '../../src/game/latch.js';
+import { freeFireOn, freeArrow, freeArrowGo, twoButtonPress } from '../../src/game/freeAttack.js';
 import { setManualCombat } from '../../src/game/manualCombat.js';
 
 let failures = 0, passes = 0;
@@ -44,7 +46,7 @@ const check = (name, ok, detail) => {
 };
 
 /* 1. the switches */
-for (const [fn, name] of [[freeFireOn, 'freefire'], [meleeStayOn, 'meleestay']]) {
+for (const [fn, name] of [[freeFireOn, 'freefire']]) {
   check(`1. ${name}: on with no address, '', '?${name}=1', '?x${name}=0'`, fn('') === true && fn(`?${name}=1`) === true && fn(`?x${name}=0`) === true && fn('?manual=5') === true);
   check(`1. ${name}: off with =0 (alone and beside another), the row's one form`, fn(`?${name}=0`) === false && fn(`?manual=5&${name}=0`) === false);
 }
@@ -77,38 +79,50 @@ for (const [fn, name] of [[freeFireOn, 'freefire'], [meleeStayOn, 'meleestay']])
   setManualCombat(5);
 }
 
-/* 4. the lunge's rule */
+/* 4. THE PRESS (twoButtonPress): played with a sword, a monster 240 px ahead */
 {
-  const yes = ['active', 'melee', true, true, false];
-  check('4. latchLunge: the stay off, the two buttons, active, a sword, locked: yes', latchLunge(...yes) === true);
-  const bad = [
-    ['idle', 'melee', true, true, false], ['active', 'ranged', true, true, false], ['active', 'staff', true, true, false],
-    ['active', 'melee', false, true, false], ['active', 'melee', true, false, false], ['active', 'melee', true, true, true],
-    ['active', 'melee', true, true, undefined], ['active', 'melee', 1, true, false], ['active', 'melee', true, 1, false], ['active', 'melee', true, true, 0],
-  ];
-  const wrong = bad.filter((a) => latchLunge(...a) !== false);
-  check('4. latchLunge: every other is no (idle, a bow, a staff, no lock, mode off, the stay on or unsaid, truthy stand-ins)', wrong.length === 0, wrong);
+  setManualCombat(5);
+  const page = (slot, mons) => ({ player: { x: 100, y: 100 }, _renderFacing: 'east', monsters: mons, currentZone: 'wheel', rpg: { activeSlot: slot } });
+  const mon = () => ({ id: 'm1', x: 340, y: 100, alive: true, curHp: 40 });
+  const taps = [];
+  const tap = (S, now) => { taps.push(now); };
+  const S = page('melee', [mon()]);
+  const before = JSON.stringify(S.player);
+  const r1 = twoButtonPress(S, 1000, tap);
+  check('4a. a sword, a monster in sight 240 px ahead: the press locks (\'lock\', the latch active on it, the held attack on), no tap',
+    r1 === 'lock' && S._latchPhase === 'active' && S._latchId === 'm1' && S.autoAttack === true && taps.length === 0, { r1, ph: S._latchPhase, id: S._latchId, auto: S.autoAttack });
+  /* the road moves nothing: the body, its speed, no dash, no lunge, no ability */
+  const moved = JSON.stringify(S.player) !== before;
+  const extra = Object.keys(S).filter((k) => !['player', '_renderFacing', 'monsters', 'currentZone', 'rpg', 'autoAttack'].includes(k) && !/^_(latch|sight)/.test(k));
+  check('4b. ...and nothing moves the body: the player untouched, no dash (S._bashDash), nothing written but the latch\'s and the sight\'s notes and the held attack',
+    !moved && S._bashDash === undefined && extra.length === 0, { moved, extra });
+  const r2 = twoButtonPress(S, 1100, tap);
+  check('4c. again: let go (\'unlock\', idle, the held attack off)', r2 === 'unlock' && S._latchPhase === 'idle' && S.autoAttack === false, { r2 });
+  const E = page('ranged', []);
+  const r3 = twoButtonPress(E, 1200, tap);
+  check('4d. nothing in sight: the tap\'s one attack the way the body faces (handed the state and the time), the latch idle', r3 === 'once' && taps.length === 1 && taps[0] === 1200 && E._latchPhase !== 'active' && E.autoAttack === undefined, { r3, taps });
+  check('4e. nothing in sight and no tap handed: no throw', twoButtonPress(page('ranged', []), 1300) === 'once');
+  setManualCombat(4);
+  const F = page('melee', [mon()]);
+  check('4f. mode 4: the press does nothing (null), no tap, no latch', twoButtonPress(F, 1400, tap) === null && taps.length === 1 && F._latchPhase === undefined && F.autoAttack === undefined);
+  setManualCombat(5);
 }
 
-/* 5. the lunge's call */
+/* 5. THE PRESS'S ROAD, off the syntax tree: twoButtonPress calls only the
+   latch's press and the tap it is handed (a dash, a cast, a walk wired to
+   Attack would be a new callee here) */
 {
-  setManualCombat(5);
-  let asked = 0;
-  const dash = (r) => () => { asked++; if (r === 'throw') throw new Error('no'); return r; };
-  const mk = (slot) => { const S = { rpg: { activeSlot: slot } }; latchPress(S, 'm1'); S.lockedTarget = { type: 'monster', id: 'm1', ref: { id: 'm1' }, latch: true }; return S; };
-  check('5. latchLungeGo: the stay on (the default): the dash never asked', latchLungeGo(mk('melee'), dash(true)) === false && asked === 0, { asked });
-  globalThis.location = { search: '?manual=5&meleestay=0' };
-  check('5. latchLungeGo: ?meleestay=0: the dash asked, its true returned', latchLungeGo(mk('melee'), dash(true)) === true && asked === 1, { asked });
-  check('5. latchLungeGo: ?meleestay=0: a refusal (false), a truthy non-true, a throw: no', latchLungeGo(mk('melee'), dash(false)) === false && latchLungeGo(mk('melee'), dash(1)) === false && latchLungeGo(mk('melee'), dash('throw')) === false && asked === 4, { asked });
-  asked = 0;
-  const idle = mk('melee'); latchClear(idle, 'press');
-  const noLock = mk('melee'); noLock.lockedTarget = null;
-  const notLatch = mk('melee'); notLatch.lockedTarget = { type: 'monster', id: 'm1', ref: { id: 'm1' } };
-  check('5. latchLungeGo: ?meleestay=0 but a bow, an idle latch, no lock, a lock not the latch\'s, no dash: never asked', latchLungeGo(mk('ranged'), dash(true)) === false && latchLungeGo(idle, dash(true)) === false && latchLungeGo(noLock, dash(true)) === false && latchLungeGo(notLatch, dash(true)) === false && latchLungeGo(mk('melee'), null) === false && latchLungeGo(null, dash(true)) === false && asked === 0, { asked });
-  setManualCombat(4);
-  check('5. latchLungeGo: ?meleestay=0 in mode 4: never asked', latchLungeGo(mk('melee'), dash(true)) === false && asked === 0, { asked });
-  delete globalThis.location;
-  setManualCombat(5);
+  const src = readFileSync(new URL('../../src/game/freeAttack.js', import.meta.url), 'utf8');
+  let B5 = null;
+  for (const pkg of ['package.json', 'server/package.json']) {
+    try { const req = createRequire(new URL('../../' + pkg, import.meta.url)); const tr = req('@babel/traverse'); B5 = { parse: req('@babel/parser').parse, traverse: tr.default || tr }; break; } catch (e) { /* the next */ }
+  }
+  if (B5) {
+    const ast = B5.parse(src, { sourceType: 'module' });
+    const callees = [];
+    B5.traverse(ast, { FunctionDeclaration(p) { if (p.node.id.name !== 'twoButtonPress') return; p.traverse({ CallExpression(q) { const c = q.node.callee; callees.push(c.type === 'Identifier' ? c.name : c.type); } }); } });
+    check('5. twoButtonPress calls only latchAttackPress and the tap handed in', callees.length === 2 && callees.includes('latchAttackPress') && callees.includes('tap'), callees);
+  } else check('5. @babel/parser loads', false);
 }
 
 /* 6. the two calls, off the syntax tree (found by system: the monsters' loop
@@ -139,11 +153,11 @@ for (const [fn, name] of [[freeFireOn, 'freefire'], [meleeStayOn, 'meleestay']])
     const gElse = gIf && gIf.parentPath && gIf.parentPath.isIfStatement() ? gen(gIf.parentPath.node.test) : null;
     check('6a. the monsters\' loop: ONE call, `_mayLoose = freeArrowGo(S, _tapAtkNow)` in the bow gate\'s `!_sightOn && !_mcFire`, the else of the special\'s branch',
       g.length === 1 && !!gAs && gAs.isAssignmentExpression() && gen(gAs.node) === '_mayLoose = freeArrowGo(S, _tapAtkNow)' && gTest === '!_sightOn && !_mcFire' && gElse === '_sightOn && S._bowSpecialQueued', { n: g.length, as: gAs && gen(gAs.node), gTest, gElse });
-    /* 6b: the frame's lunge */
-    const l = calls('ui', 'latchLungeGo');
+    /* 6b: Attack's press in the two buttons: ONE call, the whole branch */
+    const l = calls('ui', 'twoButtonPress');
     const lIf = l.length === 1 ? l[0].findParent((p) => p.isIfStatement()) : null;
-    check('6b. the screens: ONE call, latchLungeGo(S, maybeSwordDash), inside the latch frame\'s `_lw !== null`',
-      l.length === 1 && gen(l[0].node) === 'latchLungeGo(S, maybeSwordDash)' && !!lIf && gen(lIf.node.test) === '_lw !== null', { n: l.length, call: l[0] && gen(l[0].node), test: lIf && gen(lIf.node.test) });
+    check('6b. the screens: ONE call, `if (twoButtonsLive()) { twoButtonPress(Sb, Date.now(), requestTapAttack); return; }` (the press\'s whole road; a dash beside it would show)',
+      l.length === 1 && !!lIf && gen(lIf.node.test) === 'twoButtonsLive()' && gen(lIf.node.consequent) === '{ twoButtonPress(Sb, Date.now(), requestTapAttack); return; }', { n: l.length, test: lIf && gen(lIf.node.test), body: lIf && gen(lIf.node.consequent) });
   }
 }
 

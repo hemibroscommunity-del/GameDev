@@ -27,35 +27,29 @@
  *
  * THE SWORD THAT STAYS.  The owner, the same day: "I want to change the melee
  * behavior so that it doesn't jump to every monster. Instead you must press an
- * attack charge button to get that behavior."  In the two buttons Attack's
- * press with a sword locks (the latch) and swings WHERE THE BODY STANDS:
- * nothing walks, steps or dashes the body to the monster, the left stick alone
- * moves it, and a swing that cannot reach misses.  That is the latch's press
- * as built (it returns before mode 4's handleRBtnPress, whose last line is the
- * opening lunge, abilities.js maybeSwordDash); production `main` between
- * #2293 (mode 5's stick) and #2330 (the latch) ran mode 5's Attack as mode
- * 4's press, the lunge at every press, which is what the owner felt.  The
- * rule here is the off-ramp: `?meleestay=0` lets the sword dash lunge at the
- * latch's locked monster whenever it is ready (its own cooldown and reach,
- * maybeSwordDash untouched), the frame asking latchLungeGo.  The dash's own
- * button (Charge) is a later part's.
+ * attack charge button to get that behavior."  Attack's press in the two
+ * buttons is twoButtonPress, below, and its road is the latch's press and the
+ * tap's one attack: with a sword it locks (the latch) and swings WHERE THE
+ * BODY STANDS; nothing walks, steps or dashes the body to the monster, the
+ * left stick alone moves it, and a swing that cannot reach misses.  That was
+ * already so when the owner spoke (card CT item 8's reproduction: 0 px); what
+ * they felt was production `main` between #2293 (mode 5's stick) and #2330
+ * (the latch), which ran mode 5's Attack as mode 4's press, whose last line
+ * is the opening lunge (abilities.js maybeSwordDash).  The press is a module
+ * so a later change cannot wire the dash to it unseen: the guard
+ * (tools/guards/free-attack.test.mjs) plays it and reads its road.  The dash
+ * gets its own button (Charge) in a later part.
  *
- * Two imports, switches.js and latch.js (the one gate, twoButtonsLive): node
+ * Two imports, switches.js and latch.js (the one gate and the latch's press): node
  * tests it (tools/guards/free-attack.test.mjs).
  */
 import { readerFor, sw } from './switches.js';
-import { twoButtonsLive, latchPhase } from './latch.js';   /* the two buttons' one gate, and the latch's phase */
+import { twoButtonsLive, latchAttackPress } from './latch.js';   /* the two buttons' one gate, and the latch's press */
 
 /** The free arrow for this page: on unless `?freefire=0`.  `search` is for
  *  tests. */
 export function freeFireOn(search) {
   return !(typeof search === 'string' ? readerFor(search).sw('freefire') : sw('freefire'));
-}
-
-/** The sword stays for this page: on unless `?meleestay=0`.  `search` is
- *  for tests. */
-export function meleeStayOn(search) {
-  return !(typeof search === 'string' ? readerFor(search).sw('meleestay') : sw('meleestay'));
 }
 
 /** The bow's gate: may this frame's arrow loose with nothing on its line?
@@ -75,21 +69,18 @@ export function freeArrowGo(S, tapNow) {
   return true;
 }
 
-/** May the sword dash lunge at the latch's lock this frame?  Only with the
- *  stay switched OFF (`stay` false): `live` the two buttons, `phase` the
- *  latch's ('active'), `slot` the hand's ('melee'), `locked` the latch's lock
- *  written (targeting.js: S.lockedTarget, `latch: true`).  Each exactly so. */
-export function latchLunge(phase, slot, locked, live, stay) {
-  return stay === false && live === true && phase === 'active' && slot === 'melee' && locked === true;
-}
-
-/** The frame's one call (BroTown, the step `input`, after latchFrame):
- *  latchLunge on this page, then `dash` (abilities.js maybeSwordDash, whose
- *  own rules -- its cooldown, the shield down, a living target in reach --
- *  stay its own).  True when it lunged. */
-export function latchLungeGo(S, dash) {
-  if (!S || typeof S !== 'object' || typeof dash !== 'function') return false;
-  const lt = S.lockedTarget;
-  if (!latchLunge(latchPhase(S), S.rpg ? S.rpg.activeSlot : null, !!(lt && lt.latch && lt.ref), twoButtonsLive(), meleeStayOn())) return false;
-  try { return dash(S) === true; } catch (e) { return false; }
+/** ATTACK'S PRESS in the two buttons (BroTown's disc, its one call): the
+ *  latch's press (latch.js latchAttackPress: a monster sighted locks it, a
+ *  press while locked lets go), and with nothing sighted the tap's one attack
+ *  the way the body faces (`tap`: tapJump.js requestTapAttack, handed in;
+ *  with a bow it is the free arrow above).  The held attack (S.autoAttack)
+ *  is the lock's.  Nothing else: no walk, no step, no dash.  Returns the
+ *  press ('lock' | 'unlock' | 'once'), or null off the two buttons (nothing
+ *  done). */
+export function twoButtonPress(S, now, tap) {
+  const lp = latchAttackPress(S);
+  if (lp === null) return null;
+  if (lp === 'once') { if (typeof tap === 'function') tap(S, now); }
+  else S.autoAttack = lp === 'lock';
+  return lp;
 }

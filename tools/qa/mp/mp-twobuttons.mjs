@@ -41,9 +41,9 @@
  *       tap spent 'empty' (the bow waits for its line, as before);
  *   7d. a free arrow that meets a monster hurts it (the monster hidden from
  *       the page's sight until the free arrow leaves: one in front is
- *       sighted, and the press would lock it);
- *   7e. `?meleestay=0`: a sword, a monster sighted 250 px off, the press locks
- *       and the sword dash lunges at it (today's lunge back).
+ *       sighted, and the press would lock it).
+ *   (No switch for the stay: the orchestrator, 2026-11-24, nothing to give
+ *   back; the press's road is held by tools/guards/free-attack.test.mjs.)
  *
  * PART 2 (PR 3, tag 6542): THE RIGHT SIDE -- Attack, a latch
  *   (the character first let past the Mayor's gate, tut_1: a new one is
@@ -802,30 +802,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
         } else rec.ok(`7d. ${label}: the monster (guard)`, false, mon7);
       } else rec.ok(`7d. ${label}: a monster with room (guard)`, false, null);
       await P.page.evaluate(() => cancelAnimationFrame(window.__ctShotR));
-      /* 7e: `?meleestay=0`: today's lunge back -- while Attack holds a lock with a
-         sword the sword dash goes at it (abilities.js maybeSwordDash, its own
-         cooldown and reach) */
+      /* the sword back in hand for part 3 */
       const p7EqS = await H.equipWeapon(P, 'greatsword', 'weapon', 'melee').catch((e) => ({ ok: false, why: String(e) }));
-      const mon8 = await H.readState(P, bind(PICK, { dMin: 60, dMax: 420, maxD: 3000 }));
-      if (p7EqS && p7EqS.ok && mon8) {
-        await H.hopTo(P, Math.round(mon8.x - 250 * Math.cos(mon8.a)), Math.round(mon8.y - 250 * Math.sin(mon8.a)), { p7Tries: 60 });
-        await P.page.waitForTimeout(1000);
-        const nr8 = await H.readState(P, bind((S, id) => { const m = (S.monsters || []).find((x) => x && String(x.id) === id); return m ? { a: Math.atan2(m.y - S.player.y, m.x - S.player.x), d: Math.hypot(m.x - S.player.x, m.y - S.player.y), px: S.player.x, py: S.player.y } : null; }, mon8.id));
-        if (nr8) await p7TurnTo(nr8.a);
-        const sighted8 = await H.waitFor(P, (S) => S._sightPhase || 'none', (v) => v === 'sighted', { timeout: 6000, label: 'sighted' }).catch(() => null);
-        await P.page.evaluate(() => { const u = new URL(location.href); u.searchParams.set('meleestay', '0'); history.replaceState(history.state, '', u.toString()); });
-        await DASHWATCH(P);
-        const p8 = await H.readState(P, (S) => ({ x: S.player.x, y: S.player.y }));
-        await press();
-        const d8 = await H.waitFor(P, () => (window.__ctDash || []).length, (n) => n > 0, { timeout: 6000, label: 'the lunge' }).catch(() => null);
-        await P.page.waitForTimeout(1200);
-        const q8 = await H.readState(P, (S) => ({ x: S.player.x, y: S.player.y, phase: S._latchPhase || 'idle', dash: (window.__ctDash || []).slice(0, 3), cd: window.__btAbilityStatus ? window.__btAbilityStatus('sworddash').cdLeft : null }));
-        const toward8 = nr8 ? (q8.x - p8.x) * Math.cos(nr8.a) + (q8.y - p8.y) * Math.sin(nr8.a) : 0;
-        rec.ok(`7e. ${label}: \`?meleestay=0\`: the locked press lunges (the sword dash: ${(q8.dash || []).map((x) => x.kind).join(',') || 'none'}), its cooldown ${q8.cd}), the body ${Math.round(toward8)} px toward the monster (sighted ${!!sighted8})`,
-          !!sighted8 && (q8.dash.some((x) => x.kind === 'sworddash') || q8.cd > 0) && toward8 > 40, { nr8, p8, q8, toward8, d8 });
-        if (q8.phase === 'active') await press();
-        await P.page.evaluate(() => { const u = new URL(location.href); u.searchParams.delete('meleestay'); history.replaceState(history.state, '', u.toString()); });
-      } else rec.ok(`7e. ${label}: a sword and a monster with room (guard)`, false, { p7EqS, mon8 });
+      rec.ok(`7. ${label}: the sword back in hand (guard)`, !!(p7EqS && p7EqS.ok), p7EqS);
 
       /* ── PART 3: the sight line, and Block and the specials ── */
       /* the kit's shield lands in the stash: worn the bag's way (the UI

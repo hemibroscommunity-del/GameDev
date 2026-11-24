@@ -97,7 +97,8 @@ the switch table.
   reach misses (item 8, the owner: *"I want to change the melee behavior so
   that it doesn't jump to every monster. Instead you must press an attack
   charge button to get that behavior."*; the Charge button is a later
-  item's; `?meleestay=0` lets the sword dash lunge at the lock).
+  item's; no switch: the press already moved nothing, and its road is
+  game/freeAttack.js twoButtonPress, held by its guard).
 - **Each job of the old right side has a home.** The specials and Block are
   their buttons (no flick in this mode). A staff's bolt and a bow's arrow
   fly at the locked target (nothing is steered by the finger in this mode).

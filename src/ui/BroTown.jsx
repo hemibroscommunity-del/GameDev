@@ -462,7 +462,7 @@ import { laneKnob } from '@/game/drawLanes.js';   /* v2.3.5233 (card O PR 13): t
 function _stepCapMs() { try { const v = Number(laneKnob('step')); return v > 0 ? v : 50; } catch (e) { return 50; } }
 import { framePaceOn, makeFramePacer, noteDrawn, whenDrawn, beforeDraw, runBeforeDraw } from '@/game/framePacer.js';   /* v2.3.4400: a steady rate on a screen the game cannot keep up with */
 import { makeFrameSteps } from '@/game/frameSteps.js';   /* v2.3.5340: the frame as named steps (grand plan 5.4, card M) */
-import { stickDrive, stickFrame, stickAnalog, stickLift } from '@/game/stickZones.js'; import { sprintTiredSay } from './panels/SprintButton.jsx';   /* v2.3.6545: the rim's sprint refused for stamina says what the button said (card CT item 6) */ import { latchFrame, latchAttackPress, latchHolds, latchLook, twoButtonsLive } from '@/game/latch.js'; import { latchLungeGo } from '@/game/freeAttack.js';   /* v2.3.6547 (card CT item 8) */   /* v2.3.6541: the two buttons' left stick (`?manual=5`, card CT PR 2), and the frame's step `input`; v2.3.6542: their Attack, a latch (PR 3) */
+import { stickDrive, stickFrame, stickAnalog, stickLift } from '@/game/stickZones.js'; import { sprintTiredSay } from './panels/SprintButton.jsx';   /* v2.3.6545: the rim's sprint refused for stamina says what the button said (card CT item 6) */ import { latchFrame, latchHolds, latchLook, twoButtonsLive } from '@/game/latch.js'; import { twoButtonPress } from '@/game/freeAttack.js';   /* v2.3.6547: Attack's press in the two buttons (card CT item 8) */   /* v2.3.6541: the two buttons' left stick (`?manual=5`, card CT PR 2), and the frame's step `input`; v2.3.6542: their Attack, a latch (PR 3) */
 import { sw, swHas, pageAddress } from '@/game/switches.js';   /* v2.3.5340: the page's one reader of its switches (`?framesteps=0`); v2.3.5342: every read of the address */
 import { accTrack } from '@/game/accuracy.js';   /* v2.3.4545: the shot counts that ride the track */
 import { noteMade } from '@/debug/madeLog.js';   /* v2.3.4400: a job between frames says its name and its time */
@@ -5361,7 +5361,7 @@ export var BroTown = function BroTown(_ref0) {
           S._dashStrike = null;
         }
         /* v2.3.6541: the step `input` (game/frameSteps.js): the stick and the keys read, the idle clock, the name tag's facing, moved whole to game/stickZones.js stickFrame (card CT PR 2; sitting 58: its idle clock its own, the walk read only through _in) */
-        if (_steps) _steps.to(0, 2); var _in = stickFrame(S, K, _realStunned || _playerDead || _playerLootFrozen, _playerLootFrozen); var _lw = twoButtonsLive() ? latchFrame(S, Date.now(), _playerDead, S.rpg && S.rpg.activeSlot, S.rpg ? (S.rpg.activeSlot === 'staff' ? mcStaffRangeMult : mcBowRangeMult)(S.rpg) : 1) : null; if (_lw !== null) { S.autoAttack = _lw; latchLungeGo(S, maybeSwordDash); } if (_steps) _steps.to(2, 0);   /* v2.3.6542: + the two buttons' sight and latch (game/latch.js latchFrame: the held attack is the latch's; card CT PR 3); v2.3.6547: + the sword stays unless `?meleestay=0` (game/freeAttack.js latchLungeGo; item 8) */
+        if (_steps) _steps.to(0, 2); var _in = stickFrame(S, K, _realStunned || _playerDead || _playerLootFrozen, _playerLootFrozen); var _lw = twoButtonsLive() ? latchFrame(S, Date.now(), _playerDead, S.rpg && S.rpg.activeSlot, S.rpg ? (S.rpg.activeSlot === 'staff' ? mcStaffRangeMult : mcBowRangeMult)(S.rpg) : 1) : null; if (_lw !== null) S.autoAttack = _lw; if (_steps) _steps.to(2, 0);   /* v2.3.6542: + the two buttons' sight and latch (game/latch.js latchFrame: the held attack is the latch's; card CT PR 3) */
         var dx = _in.dx, dy = _in.dy;
 
         /* ═══ v2.3.3003: SWIMMING IN THE WHEEL ═══
@@ -11699,7 +11699,7 @@ export var BroTown = function BroTown(_ref0) {
       /* v2.3.2258: the opening lunge REPLACES this press's swing when it
          fires -- both would bill the same thumb twice, and castAbility has
          already set the swing window and the animation. */
-      if (twoButtonsLive()) { var _lp = latchAttackPress(Sb); if (_lp === 'once') requestTapAttack(Sb, Date.now()); else Sb.autoAttack = _lp === 'lock'; return; } if (handleRBtnPress() === true) return;   /* v2.3.6542: the two buttons' Attack is a latch: a press with a monster in sight locks it and attacks until an end, again lets go, with none in sight one attack the way you face (game/latch.js; card CT PR 3) */
+      if (twoButtonsLive()) { twoButtonPress(Sb, Date.now(), requestTapAttack); return; } if (handleRBtnPress() === true) return;   /* v2.3.6542: the two buttons' Attack is a latch: a press with a monster in sight locks it and attacks until an end, again lets go, with none in sight one attack the way you face (game/latch.js; card CT PR 3); v2.3.6547: the press's road is game/freeAttack.js twoButtonPress (nothing on it moves the body: item 8) */
       /* v2.3.4395: manual combat -- the disc's press attacks nothing: a
          stroke across it swings a sword (bM), a flick off it shoots (bE) */
       if (mcSwipes(stateRef.current)) { if (stateRef.current) mcSwipeStart(stateRef.current, bSwipe.st, t.clientX, t.clientY); return; }   /* a staff: the press attacks, as it did */

@@ -172,7 +172,6 @@ const FORMS = {
   'magicburst': '0',
   'manual': '*',
   'mappin': '0',
-  'meleestay': '0',
   'memalarm': '0',
   'movementreset': '0',
   'musicdecode': '',
