@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "be1a8c00eb0718a3e1d039fc8ed1d8e8bcbf0ae3",
+  "tree": "ed208d8e83c50fd8b54b736d48c6fbe5380384de",
+  "committedAt": "2026-11-23T21:44:49-08:00",
+  "subject": "Merge pull request #2305 from hemibroscommunity-del/claude/ck-cap-mend",
+  "files": 8497,
+  "bytes": 963654748,
+  "listingSha256": "fae575ac4f1a75a132fc455587253048cd7b5f378eff38021543aa6e3062f6d2",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

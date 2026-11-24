@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "6f74642fa75599e3f71b4ede59802c5476ed3965",
+  "tree": "29abb1d9c8d640c94a07e4e2e73ee54ebe9e5607",
+  "committedAt": "2026-11-23T21:44:56-08:00",
+  "subject": "Merge pull request #2307 from hemibroscommunity-del/claude/ck-ci-settings",
+  "files": 8497,
+  "bytes": 963656776,
+  "listingSha256": "3143396eea461f5fe8b382ae231c7dad80d1162af7fa1a3446f1fed8f9327cc7",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
