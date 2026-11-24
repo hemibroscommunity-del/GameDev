@@ -1552,6 +1552,53 @@ export const STATES = [
     },
     after: async ({ P }) => { await evalIn(P, () => { const u = new URL(location.href); u.searchParams.delete('autohold'); history.replaceState(history.state, '', u.pathname + u.search + u.hash); window.__btManual.set(4); const S = window._gameState.current; if (S) S.lockedTarget = null; }).catch(() => {}); await wait(P, 300); },
   },
+  /* v2.3.6550 (card CT part 17, the button under the thing; game/contextButton.js,
+     panels/ContextButton.jsx): in the two buttons a brass button stands under
+     the one nearest thing to do -- CHOP under a pine with the axe held, TALK
+     under a townsperson -- and Attack keeps its sword */
+  {
+    id: 'two-buttons-ctx-tree', group: 'Fighting', title: 'The two buttons, beside a tree: CHOP under it',
+    about: 'The two-button trial beside a pine with the axe in the bag: a brass CHOP button (the axe\'s picture and the word) stands just under the tree, and the Attack button keeps its sword (the owner: "Attack button always stays attack"). A tap on CHOP starts the chop; during it the same button wears the beat (CHOP), and the strokes are made on it. The same at an ore vein (MINE), a fishing spot (FISH) and a campfire (COOK). ?ctxbuttons=0 gives the old Attack, which turned into the harvest button.',
+    views: ['portrait', 'landscape'],
+    settle: 800,
+    run: async ({ P, wsPort, myId }) => {
+      await evalIn(P, () => { window.__btManual.set(5); });
+      await H.leaveNpc(P, 'mayor_bro').catch(() => {});
+      await H.grant(wsPort, myId, 'item', { invKey: 'woodcutting_axe', count: 1 }).catch(() => {});
+      await wait(P, 800);
+      const t = await evalIn(P, () => {
+        const S = window._gameState.current, p = S.player;
+        const n = (S.gatherNodes || []).filter((q) => q && q.nodeType === 'tree' && q.alive !== false)
+          .sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y))[0];
+        return n ? { x: n.x, y: n.y } : null;
+      });
+      if (!t) return 'no tree near';
+      for (const dx of [34, -34]) {
+        await H.hopTo(P, Math.round(t.x + dx), Math.round(t.y), { tries: 40 });
+        await wait(P, 900);
+        if (await evalIn(P, () => { const b = document.querySelector('.bt-ctx-btn'); return !!b && b.getAttribute('data-show') === '1'; })) return undefined;
+      }
+      return 'no CHOP button beside the tree';
+    },
+    after: async ({ P }) => { await evalIn(P, () => { window.__btManual.set(4); }).catch(() => {}); await wait(P, 400); },
+  },
+  {
+    id: 'two-buttons-ctx-talk', group: 'Fighting', title: 'The two buttons, beside a townsperson: TALK under him',
+    about: 'The two-button trial standing beside Mayor Bro (within 120 px): a brass TALK button stands under his feet. Nothing opens by itself; a tap on TALK talks to him, exactly as a tap on him does (which still works). Only the nearest one thing gets a button.',
+    views: ['portrait', 'landscape'],
+    settle: 800,
+    run: async ({ P }) => {
+      await evalIn(P, () => { window.__btManual.set(5); });
+      await H.leaveNpc(P, 'mayor_bro').catch(() => {});
+      await evalIn(P, () => {
+        const S = window._gameState.current;
+        const m = (S.npcs || []).find((n) => /mayor/i.test(n.name || n.id || ''));
+        if (m) { S.player.x = m.x + 60; S.player.y = m.y + 40; }
+      });
+      await wait(P, 1200);
+    },
+    after: async ({ P }) => { await evalIn(P, () => { window.__btManual.set(4); }).catch(() => {}); await wait(P, 400); },
+  },
   {
     /* v2.3.3817: the death card, staged (a real death's is mp-deathcard's),
        then let go */

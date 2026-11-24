@@ -147,6 +147,7 @@ const FORMS = {
   'held': '0',
   'hemiface': '1',
   'holdauto': '0',
+  'ctxbuttons': '0',
   'hudbars': '0',
   'iconretry': '0',
   'jumpbtn': '0',

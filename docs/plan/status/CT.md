@@ -1,6 +1,6 @@
 card: CT
-branch: claude/plan-ct-9-hold (part 15: tap and hold, stacked on claude/plan-ct-8-freefire)
-prs: part 15 (6548, draft on claude/plan-ct-8-freefire, PR to come), #2340 (6547, draft on main), #2282 (6540, merged), #2293 (6541, merged at 60), #2308 (6542, held at 60: mended), #2327 (6543, ready), #2330 (6544, draft, main 598cfd38 in), item 6 (6545, draft), item 7 (6546, at the gate)
+branch: claude/plan-ct-11-context (part 17: the button under the thing, stacked on claude/plan-ct-9-hold)
+prs: part 17 (6550, draft on claude/plan-ct-9-hold, PR to come), part 15 (6548, draft on claude/plan-ct-8-freefire, PR to come), #2340 (6547, draft on main), #2282 (6540, merged), #2293 (6541, merged at 60), #2308 (6542, held at 60: mended), #2327 (6543, ready), #2330 (6544, draft, main 598cfd38 in), item 6 (6545, draft), item 7 (6546, at the gate)
 state: working
 
 ## Done
@@ -12,6 +12,16 @@ state: working
   everything go (no hop). The latch's phases idle/active/auto (one field,
   latchTo; S.autoAttack from latchHolds). `?holdauto=0` the old press.
   latch.js + freeAttack.js; latch.test 6, free-attack 4-5 (no server/src).
+
+- Part 17 (6550, working): in mode 5 Attack always attacks (its word, its
+  sword, its press, beside a node and during a harvest); ONE brass button
+  under the one nearest thing: CHOP/MINE/FISH/COOK under a node on today's
+  harvest condition (S._btnHarvest), the beat's word and the strokes on it
+  during the work (ExtractionSwipeLayer's anchor), TALK under a townsperson
+  within 120 px with no fight. `?ctxbuttons=0` the old Attack.
+  game/contextButton.js (the rule), panels/ContextButton.jsx (one DOM button
+  moved by transform), guards/context-button.test (35 mutants, none left),
+  mp-contextbuttons (new). No server file.
 
 ## Next
 - Part 15: mp-twobuttons 2a-2d to the new rule; the helper's run of #2340.

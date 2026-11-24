@@ -1,0 +1,185 @@
+/* ═══ v2.3.6550: THE BUTTON UNDER THE THING (card CT part 17; src/game/contextButton.js) ═══
+ *
+ * The two buttons (`?manual=5`).  The owner, 2026-11-24: "contextual buttons
+ * like mining fishing or interacting with npc should appear below the item
+ * instead of having a dual purpose attack button. Attack button always stays
+ * attack".  Played on the module itself, and the screens' calls read off the
+ * syntax tree:
+ *
+ *   1. THE SWITCH: `?ctxbuttons=0` throws it; absent, `=1`, a longer name not;
+ *   2. THE PICK (ctxPick): nothing unless live, shown, no panel, the bro up;
+ *      a harvest under way is the beat under its node (each skill's word,
+ *      WAIT in the wind-up), before anything else; a node exactly on today's
+ *      condition (S._btnHarvest and S._nearNode) with its word, a kind
+ *      Attack never worked offered nothing; a townsperson within 120 (not
+ *      121), alive, in a talking zone and not in a fight; the nearer of the
+ *      two wins, either way;
+ *   3. THE PLACE (ctxScreen): under the thing's feet (a townsperson's 14
+ *      world px lower), the canvas's place added, the world's scale, its
+ *      drawn place first, on whole device pixels;
+ *   4. THE TAP (ctxTap): a tree, a vein, a spot start their skill; a fire
+ *      cooks; a townsperson talks; a beat or nothing does nothing;
+ *   5. THE HARVEST'S NODE (ctxExtractionNode): its reference, its id, the fire;
+ *   6. THE SCREENS, off the syntax tree: Attack's press gates BOTH harvest
+ *      branches on `!_ctxPress` (`_ctxPress = ctxButtonsLive()`); its stamp
+ *      reads `_ex = _ctxOn ? null : S._extraction` and `_harvestCtx =
+ *      S._btnHarvest && !_ctxOn` (today's condition kept whole in
+ *      S._btnHarvest); ONE frame call; the gesture's anchor prefers the
+ *      button while it shows.
+ *
+ * A guard under tools/guards (server/test/run.mjs runs it; nothing deploys).
+ *
+ * Mutants (v2.3.6550): 35 of the module's added lines, played by a script
+ * (each line changed alone, the suite run): every one red -- among them the
+ * reach's `<=` to `<` (2d), `dd < bestD` to `<=` (2g's tie), the `!o.busy`,
+ * `S._uiBusy`, hp and `shown` gates dropped (2a, 2e), only 'ready' a beat
+ * (2b), the foot's 14 to 0 (3b), the rounding dropped (3c), renderX ignored
+ * (3d), a pixel ratio below 0 (3e), the cook and talk branches dropped (4b),
+ * a vein-only `mining` widened (2a), the reach 121 (2d), the switch's name
+ * (1).  By hand on the screens: `!_ctxPress` dropped from either press
+ * branch (6a), `_ex = S._extraction` and `_harvestCtx = S._btnHarvest`
+ * (6b), the anchor's order swapped (6d).  Survivors: none.
+ */
+import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import { ctxButtonsOn, ctxPick, ctxScreen, ctxTap, ctxExtractionNode, ctxSkillOf, CTX_TALK_REACH, CTX_BELOW_CSS, CTX_NPC_FOOT } from '../../src/game/contextButton.js';
+
+let failures = 0, passes = 0;
+const check = (name, ok, detail) => {
+  if (ok) { passes++; console.log('  ok   ' + name); }
+  else { failures++; console.log('  FAIL ' + name + (detail !== undefined ? '  ' + JSON.stringify(detail) : '')); }
+};
+
+/* 1. the switch */
+check('1. ctxbuttons: on with no address, \'\', =1, a longer name', ctxButtonsOn('') === true && ctxButtonsOn('?ctxbuttons=1') === true && ctxButtonsOn('?xctxbuttons=0') === true && ctxButtonsOn('?manual=5') === true);
+check('1. ctxbuttons: off with =0, alone and beside another', ctxButtonsOn('?ctxbuttons=0') === false && ctxButtonsOn('?manual=5&ctxbuttons=0') === false);
+
+const O = { live: true, busy: false, npcsHere: true, shown: true };
+const tree = { id: 't1', nodeType: 'tree', x: 140, y: 100, alive: true };
+const vein = { id: 'v1', nodeType: 'oreVein', x: 100, y: 160, alive: true };
+const spot = { id: 'f1', nodeType: 'fishSpot', x: 60, y: 100, alive: true };
+const fire = { id: 'cf', x: 100, y: 40 };
+const base = (over) => Object.assign({ player: { x: 100, y: 100 }, rpg: { hp: 50 }, npcs: [], gatherNodes: [tree, vein, spot] }, over || {});
+
+/* 2. the pick */
+{
+  const S = base({ _btnHarvest: true, _nearNode: tree });
+  const p = ctxPick(S, O);
+  check('2a. a tree on today\'s condition: CHOP under it, woodcutting', !!p && p.kind === 'node' && p.thing === tree && p.word === 'CHOP' && p.skill === 'woodcutting', p && { k: p.kind, w: p.word });
+  check('2a. nothing when not live, not shown, a panel up, the bro down, no player',
+    ctxPick(S, Object.assign({}, O, { live: false })) === null && ctxPick(S, Object.assign({}, O, { shown: false })) === null
+    && ctxPick(base({ _btnHarvest: true, _nearNode: tree, _uiBusy: true }), O) === null
+    && ctxPick(base({ _btnHarvest: true, _nearNode: tree, rpg: { hp: 0 } }), O) === null
+    && ctxPick(base({ _btnHarvest: true, _nearNode: tree, player: null }), O) === null && ctxPick(S, null) === null);
+  check('2a. not today\'s condition (S._btnHarvest false, or no node): nothing', ctxPick(base({ _btnHarvest: false, _nearNode: tree }), O) === null && ctxPick(base({ _btnHarvest: true, _nearNode: null }), O) === null);
+  const w = (n, f) => { const q = ctxPick(base({ _btnHarvest: true, _nearNode: n, _campfire: f }), O); return q && q.word + '/' + q.skill; };
+  check('2a. the words: MINE/mining, FISH/fishing, COOK/cooking (the fire), and a kind Attack never worked: none',
+    w(vein) === 'MINE/mining' && w(spot) === 'FISH/fishing' && w(fire, fire) === 'COOK/cooking' && w({ nodeType: 'campfire', x: 100, y: 100 }) === 'COOK/cooking' && w({ nodeType: 'herb', x: 100, y: 100 }) === null,
+    [w(vein), w(spot), w(fire, fire), w({ nodeType: 'herb', x: 100, y: 100 })]);
+  /* the beat */
+  const ex = (skill, status, over) => base(Object.assign({ _extraction: Object.assign({ skill, status, nodeRef: tree }, over || {}), _btnHarvest: true, _nearNode: vein, npcs: [{ name: 'Mo', x: 101, y: 100 }] }, {}));
+  const beats = ['mining', 'woodcutting', 'fishing', 'cooking'].map((k) => ctxPick(ex(k, 'ready'), O).word).join(',');
+  check('2b. a harvest under way: the beat under ITS node, before a nearer node or townsperson: PUMP, CHOP, REEL, FLIP; WAIT in the wind-up',
+    beats === 'PUMP,CHOP,REEL,FLIP' && ctxPick(ex('mining', 'waiting'), O).word === 'WAIT' && ctxPick(ex('mining', 'ready'), O).kind === 'beat' && ctxPick(ex('mining', 'ready'), O).thing === tree, beats);
+  check('2b. only \'ready\' is the beat: any other status (none set, a strange one) WAITs', ctxPick(ex('mining', undefined), O).word === 'WAIT' && ctxPick(ex('mining', 'done'), O).word === 'WAIT');
+  check('2b. a beat\'s node not found: nothing; an unknown skill ready: GO', ctxPick(ex('mining', 'ready', { nodeRef: null, nodeId: 'gone' }), O) === null && ctxPick(ex('x', 'ready'), O).word === 'GO');
+  check('2b. a beat even with a monster near (busy): the work is under way', ctxPick(ex('mining', 'ready'), Object.assign({}, O, { busy: true })).kind === 'beat');
+  /* talk */
+  const at = (dx, over, o) => ctxPick(base(Object.assign({ npcs: [{ name: 'Mo', x: 100 + dx, y: 100 }] }, over || {})), o || O);
+  check('2c. a townsperson at 120: TALK under him', !!at(CTX_TALK_REACH) && at(CTX_TALK_REACH).kind === 'talk' && at(CTX_TALK_REACH).word === 'TALK' && at(CTX_TALK_REACH).thing.name === 'Mo');
+  check('2d. at 121: nothing (CTX_TALK_REACH is 120)', CTX_TALK_REACH === 120 && at(121) === null);
+  check('2e. in a fight (a lock or a monster near), out of a talking zone, or him down: no TALK',
+    at(50, null, Object.assign({}, O, { busy: true })) === null && at(50, null, Object.assign({}, O, { npcsHere: false })) === null
+    && ctxPick(base({ npcs: [{ name: 'Mo', x: 150, y: 100, alive: false }] }), O) === null && ctxPick(base({ npcs: null }), O) === null);
+  const two = ctxPick(base({ npcs: [{ name: 'Far', x: 200, y: 100 }, { name: 'Near', x: 160, y: 100 }, null] }), O);
+  check('2f. two townsfolk: the nearer', !!two && two.thing.name === 'Near');
+  const nodeNear = ctxPick(base({ _btnHarvest: true, _nearNode: tree, npcs: [{ name: 'Mo', x: 100, y: 190 }] }), O);
+  const npcNear = ctxPick(base({ _btnHarvest: true, _nearNode: tree, npcs: [{ name: 'Mo', x: 100, y: 130 }] }), O);
+  check('2g. a node at 40 and a townsperson at 90: the node; the townsperson at 30: him (ONE button, the nearer)', nodeNear && nodeNear.kind === 'node' && npcNear && npcNear.kind === 'talk', [nodeNear && nodeNear.kind, npcNear && npcNear.kind]);
+  const tie = ctxPick(base({ _btnHarvest: true, _nearNode: tree, npcs: [{ name: 'Mo', x: 140, y: 100 }] }), O);
+  check('2g. a tie: the node (the work you came for)', tie && tie.kind === 'node');
+}
+
+/* 3. the place */
+{
+  const box = { left: 10, top: 20 };
+  const cam = { x: 50, y: 60 };
+  const n = ctxScreen({ kind: 'node', thing: { x: 150, y: 160 } }, cam, 2, 2, box, 1);
+  check('3a. a node: the canvas\'s corner + (x - camera) * scale, CTX_BELOW_CSS under its feet', !!n && n.x === 10 + 200 && n.y === 20 + 200 + CTX_BELOW_CSS, n);
+  const t = ctxScreen({ kind: 'talk', thing: { x: 150, y: 160 } }, cam, 2, 2, box, 1);
+  check('3b. a townsperson: his feet, 14 world px under his place', !!t && t.y === 20 + (160 + CTX_NPC_FOOT - 60) * 2 + CTX_BELOW_CSS && t.x === n.x, t);
+  const r = ctxScreen({ kind: 'node', thing: { x: 150.4, y: 160.2 } }, cam, 1.1, 1.1, { left: 0, top: 0 }, 3);
+  check('3c. on whole device pixels (dpr 3: a third of a CSS px)', !!r && Math.abs(r.x * 3 - Math.round(r.x * 3)) < 1e-9 && Math.abs(r.y * 3 - Math.round(r.y * 3)) < 1e-9 && Math.abs(r.x - 110.44) < 0.34, r);
+  const d = ctxScreen({ kind: 'talk', thing: { x: 0, y: 0, renderX: 150, renderY: 160 } }, cam, 2, 2, box, 1);
+  check('3d. a townsperson\'s drawn place (renderX, renderY) first', !!d && d.x === t.x && d.y === t.y, d);
+  check('3e. nothing with no pick, camera or box; a scale of 0 or none is 1',
+    ctxScreen(null, cam, 1, 1, box, 1) === null && ctxScreen({ kind: 'node', thing: tree }, null, 1, 1, box, 1) === null && ctxScreen({ kind: 'node', thing: tree }, cam, 1, 1, null, 1) === null
+    && ctxScreen({ kind: 'node', thing: { x: 150, y: 160 } }, cam, 0, undefined, box, 0).x === 110
+    && ctxScreen({ kind: 'node' }, cam, 1, 1, box, 1) === null);
+  const neg = ctxScreen({ kind: 'node', thing: { x: 150.4, y: 160.2 } }, cam, 1, 1, box, -2);
+  check('3e. a pixel ratio below 0 is 1 (whole CSS px)', !!neg && neg.x === Math.round(10 + 100.4) && neg.y === Math.round(20 + 100.2 + CTX_BELOW_CSS), neg);
+  check('3e. a place that is not a number: nothing', ctxScreen({ kind: 'node', thing: { x: NaN, y: 1 } }, cam, 1, 1, box, 1) === null && ctxScreen({ kind: 'node', thing: { x: 1, y: 1 } }, cam, 1, 1, { left: 0, top: Infinity }, 1) === null);
+}
+
+/* 4. the tap */
+{
+  const log = [];
+  const acts = { extract: (n, s) => log.push('x:' + n.id + ':' + s), cook: (f) => log.push('c:' + f.id), talk: (p) => log.push('t:' + p.name) };
+  const res = [
+    ctxTap({ kind: 'node', thing: tree, skill: 'woodcutting' }, acts),
+    ctxTap({ kind: 'node', thing: vein, skill: 'mining' }, acts),
+    ctxTap({ kind: 'node', thing: spot, skill: 'fishing' }, acts),
+  ];
+  check('4a. a tree, a vein, a spot: their skill\'s harvest', res.join() === 'extract,extract,extract' && log.join() === 'x:t1:woodcutting,x:v1:mining,x:f1:fishing', log);
+  log.length = 0;
+  check('4b. a fire cooks; a townsperson talks', ctxTap({ kind: 'node', thing: fire, skill: 'cooking' }, acts) === 'cook' && ctxTap({ kind: 'talk', thing: { name: 'Mo' } }, acts) === 'talk' && log.join() === 'c:cf,t:Mo', log);
+  log.length = 0;
+  check('4c. a beat, nothing, no doors: nothing done', ctxTap({ kind: 'beat', thing: tree, skill: 'mining' }, acts) === null && ctxTap(null, acts) === null && ctxTap({ kind: 'node', thing: tree }, null) === null && ctxTap({ kind: 'node', thing: null, skill: 'mining' }, acts) === null && ctxTap({ kind: 'talk', thing: null }, acts) === null
+    && ctxTap({ kind: 'node', thing: { nodeType: 'herb' }, skill: ctxSkillOf({ nodeType: 'herb' }) }, acts) === null && log.length === 0);
+  check('4d. Attack\'s own press (modes 1-4): ctxSkillOf by nodeType alone, the four kinds it had inline',
+    ['fishSpot', 'tree', 'oreVein', 'campfire', 'herb', undefined].map((t) => ctxSkillOf({ nodeType: t })).join() === 'fishing,woodcutting,mining,cooking,,');
+}
+
+/* 5. the harvest's node */
+{
+  const S = base({ _campfire: fire });
+  check('5. its reference alive; dead: the node of its id; none: the fire for cooking; else none',
+    ctxExtractionNode(S, { nodeRef: tree }) === tree && ctxExtractionNode(S, { nodeRef: { alive: false }, nodeId: 'v1' }) === vein
+    && ctxExtractionNode(S, { skill: 'cooking' }) === fire && ctxExtractionNode(S, { skill: 'mining', nodeId: 'zz' }) === null && ctxExtractionNode(S, null) === null
+    && ctxSkillOf(null) === null);
+}
+
+/* 6. the screens, off the syntax tree */
+{
+  let B = null;
+  for (const pkg of ['package.json', 'server/package.json']) {
+    try { const req = createRequire(new URL('../../' + pkg, import.meta.url)); const tr = req('@babel/traverse'); B = { parse: req('@babel/parser').parse, traverse: tr.default || tr, gen: req('@babel/generator') }; break; } catch (e) { /* the next */ }
+  }
+  check('6. @babel/parser, traverse and generator load (npm install in the root or server/)', !!B);
+  if (B) {
+    const gen = (n) => (B.gen.default || B.gen)(n, { comments: false }).code.replace(/\s+/g, ' ');
+    const src = readFileSync(new URL('../../src/ui/BroTown.jsx', import.meta.url), 'utf8');
+    const ast = B.parse(src, { sourceType: 'module', plugins: ['jsx'], errorRecovery: true });
+    const decl = Object.create(null), ifs = [], frames = [], assigns = [];
+    B.traverse(ast, {
+      VariableDeclarator(p) { if (p.node.id.type === 'Identifier' && ['_ctxPress', '_ctxOn', '_ex', '_harvestCtx'].includes(p.node.id.name) && p.node.init) (decl[p.node.id.name] = decl[p.node.id.name] || []).push(gen(p.node.init)); },
+      IfStatement(p) { const t = gen(p.node.test); if (/_extraction|_btnHarvest/.test(t) && /^Sb /.test(t)) ifs.push(t); },
+      CallExpression(p) { if (p.node.callee.type === 'Identifier' && p.node.callee.name === 'ctxButtonFrame') frames.push(gen(p.node)); },
+      AssignmentExpression(p) { if (gen(p.node.left) === 'S._btnHarvest') assigns.push(gen(p.node.right)); },
+    });
+    check('6a. Attack\'s press: `_ctxPress = ctxButtonsLive()`, and BOTH harvest branches gated on `!_ctxPress`',
+      (decl._ctxPress || []).join() === 'ctxButtonsLive()' && ifs.includes('Sb && Sb._extraction && !_ctxPress') && ifs.includes('Sb && Sb._btnHarvest && Sb._nearNode && !_ctxPress')
+      && !ifs.includes('Sb && Sb._extraction') && !ifs.includes('Sb && Sb._btnHarvest && Sb._nearNode'), { press: decl._ctxPress, ifs });
+    check('6b. Attack\'s stamp: `_ex = _ctxOn ? null : S._extraction`, `_harvestCtx = S._btnHarvest && !_ctxOn`, today\'s condition whole in S._btnHarvest',
+      (decl._ctxOn || []).join() === 'ctxButtonsLive()' && (decl._ex || []).includes('_ctxOn ? null : S._extraction')
+      && (decl._harvestCtx || []).join() === 'S._btnHarvest && !_ctxOn' && assigns.join() === '!!(S._nearNode && !_lockHeld && !_monNear)', { decl, assigns });
+    check('6c. ONE frame call, with the fight, the zone and the controls\' showing',
+      frames.length === 1 && frames[0] === 'ctxButtonFrame(ctxBtnRef.current, S, { live: _ctxOn, busy: !!(_lockHeld || _monNear), npcsHere: _npcZone(S.currentZone), shown: S._rBtnShown !== false })', frames);
+    const esl = readFileSync(new URL('../../src/ui/ExtractionSwipeLayer.jsx', import.meta.url), 'utf8');
+    check('6d. the beat\'s anchor: the button under the node while it shows, else the Attack disc',
+      esl.includes("document.querySelector('.bt-ctx-btn[data-show=\"1\"]') || document.querySelector('.bt-rjoy-base')"));
+  }
+}
+
+console.log('\n' + passes + ' passed, ' + failures + ' failed');
+process.exit(failures ? 1 : 0);
