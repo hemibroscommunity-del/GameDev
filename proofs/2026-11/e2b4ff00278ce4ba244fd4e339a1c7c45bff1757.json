@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "e2b4ff00278ce4ba244fd4e339a1c7c45bff1757",
+  "tree": "56e0bb9b7d9c1481ac1ccdc6065cd0005ca5f057",
+  "committedAt": "2026-11-23T16:44:14-08:00",
+  "subject": "Merge pull request #2278 from hemibroscommunity-del/claude/plan-bk-1-worldsum",
+  "files": 8485,
+  "bytes": 963541109,
+  "listingSha256": "e9056314ed25b4b61abab7b04fe269641b4bc4432f027ee361d4bc117275eb03",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

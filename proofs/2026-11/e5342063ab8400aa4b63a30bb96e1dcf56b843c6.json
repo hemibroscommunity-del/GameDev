@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "e5342063ab8400aa4b63a30bb96e1dcf56b843c6",
+  "tree": "2fe89fccaef04c0303305797f6ffb8268ff1d337",
+  "committedAt": "2026-11-23T16:44:27-08:00",
+  "subject": "Merge pull request #2280 from hemibroscommunity-del/claude/plan-hb2-12-narrowkeys",
+  "files": 8486,
+  "bytes": 963543503,
+  "listingSha256": "b8d790adef1d1b628b1844c1b8751eccd5abbe5b27347f7fbe2846906c8e3302",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
