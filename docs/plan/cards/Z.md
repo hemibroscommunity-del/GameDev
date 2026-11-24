@@ -29,9 +29,18 @@ every time: its memory is the status files and the last list, not itself.
    orchestrator to run it) reads the card's PURPOSE and the diff, then in a
    scratch worktree plants the card's dodges and two of its own (the fault
    written as a tired programmer would: an alias, `Object.assign`, a
-   computed key, a `bind`) and runs the PR's own guard by name. A plant
-   that stays green is a hold, with the planted line. `tools/dev/plants/`
-   has the review's plants and how to run them.
+   computed key, a `bind`) and runs the PR's own guard by name.
+   `tools/dev/plants/` has the review's plants and how to run them.
+   **What holds** (v2.3.6272; the owner, 2026-11-24: *"Yes to both. I want
+   as much work done as you can so this plan can get done. I have other
+   things I want to add to the game but am waiting for this to be
+   finished"*): a red rehearsal or a red `test`; a bug in behaviour (the
+   game, the worker, the wire, money, a login, a save doing the wrong
+   thing); one of the CARD's own dodges still green; a plant an EARLIER
+   sitting's review named, still green on the head listed as its mend. A
+   reviewer's NEW hole in a guard (a plant neither the card nor an earlier
+   review named) is NOT a hold: it goes in the notes as that card's NEXT
+   JOB, one line with the file and the plant, and the PR lands.
 5. **Rehearse.** `node tools/dev/gatekeeper.mjs <branches in order>` (until
    card W's PR 4 is merged, the same by hand): a scratch worktree from
    `origin/main`, each ready branch merged, then
@@ -75,7 +84,7 @@ every time: its memory is the status files and the last list, not itself.
 - **You merge nothing, approve nothing, and comment on no PR.** The list is
   for the owner; a comment would speak for them.
 - **A hold** expires at the next sitting unless that sitting states it
-  again.
+  again. What holds and what is a card's next job: step 4b (v2.3.6272).
 - **A red on `main` that no open PR caused**: name it, and the card whose
   files it is in. If no card owns it, ask the owner to start a session for
   it. You do not fix it.

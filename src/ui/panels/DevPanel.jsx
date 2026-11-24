@@ -336,6 +336,7 @@ const CAP_GATES = [
   'bowPath' /* v2.3.5905 (card K4): the bow's path (server/src/bowshot.js): a claim held to its arrow's line, the relay sent at release -- ON since v2.3.5906, off with `bowpath: false` */,
   'harvestGrade' /* v2.3.5900 (card K4): the harvest's grade judged (server/src/harvestgrade.js): a perfect only after an honest gesture's time, at most 15 in 20 -- ON since v2.3.5906, off with `harvestgrade: false` */,
   'reqid' /* v2.3.5546: a repeat acts once (server/src/reqonce.js): the action door may re-send a request it heard nothing from, with the same id -- lower case, a kill switch (`reqonce`) */,
+  'wireForm' /* v2.3.6443: the wire door holds a named field to its form (server/src/wire/door.js WIRE_FORM) -- lower case, a kill switch (`wireform`) */,
   'accuracy' /* v2.3.4545: shots and hits a weapon (server/src/accuracy.js): the phone numbers its basic shots and the Journey page shows how many hit -- lower case, a kill switch */,
 ];
 /* v2.3.3732: caps that are OFF by default on purpose -- an opt-in, not a job

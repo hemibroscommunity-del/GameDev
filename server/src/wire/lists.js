@@ -89,7 +89,11 @@ export const WATCH_HOOKS = Object.freeze(MADE.WATCH_HOOKS);
    message's type (every `in` and `relay` row), ROUTES by the route row's
    name (`http:<path>` or `http:<path> <METHOD>`).  The door holds each named
    field to its form; a field no row names passes untouched. */
-const trustPairs = (r) => Object.freeze(Object.entries(r.trust || {}).filter(([path]) => path !== 'method'));
+/* v2.3.6443 (card DG PR 4): each pair carries the row's `form` for its
+   field, when the row names one (the wire table's `form` column, in.js:
+   door.js WIRE_FORM), as a third: [path, trust, form] */
+const formOf = (r, path) => (r.form && Object.prototype.hasOwnProperty.call(r.form, path) ? r.form[path] : undefined);
+const trustPairs = (r) => Object.freeze(Object.entries(r.trust || {}).filter(([path]) => path !== 'method').map(([path, trust]) => Object.freeze([path, trust, formOf(r, path)])));
 export function wireDoorRows({ inn = WIRE_IN, relay = WIRE_RELAY, http = WIRE_HTTP } = {}) {
   const SOCKET = new Map(), ROUTES = new Map();
   for (const r of [...inn, ...relay]) SOCKET.set(r.name, [...(SOCKET.get(r.name) || []), ...trustPairs(r)]);
@@ -112,3 +116,4 @@ export function chatLanes({ inn = WIRE_IN, relay = WIRE_RELAY } = {}) {
    exports a CHAT_LANES of its own (the lanes' pace numbers), and the wrong one
    imported would throw `.has is not a function` inside _onMessage */
 export const CHAT_LANE_TYPES = chatLanes();
+

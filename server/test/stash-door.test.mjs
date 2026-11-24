@@ -25,6 +25,13 @@
  *      classFaults); a move is within the same player (`other: 'self'`); an
  *      escrow names a place that holds (ESCROW_PLACES); the door's gear lists
  *      are gearstash.js's;
+ *   2b. (v2.3.6446, sitting 59) THE ALLOW LIST: a stash, or a piece of one,
+ *      appears outside stash.js only in a form the scan knows (a read, a
+ *      test, a copy or a name it follows, an argument of the door's calls, a
+ *      pure global, a function of the same file); handed to a function of
+ *      another file, returned, put into an object or a list written out is a
+ *      write it cannot follow, RED unless a row of HANDED_OUT (which only
+ *      falls; 31 appearances in 24 rows at v2.3.6446);
  *   5. THE CAP IS THE DOOR'S: `_saveRpg` keeps every weapon of a bag over its
  *      cap (never cut at the save), and a weapon by the mail to a full bag is
  *      refused at the door (the mail keeps it), the bag untouched.
@@ -33,6 +40,7 @@
  *   - `ps.weaponStash.push(w);` put back in inbox.js           -> FAIL 2 (a second writer)
  *   - `if (list.length >= stashCap(field, room)) return false;` deleted -> FAIL 1, FAIL 5
  *   - a second `stashTake(ps, 'weaponStash', 0, 'salvage_weapon')` in store.js -> FAIL 3 (two callers; and the wrong file)
+ *   - (v2.3.6446) `tuneFirst(ps.weaponStash)` in gear.js, tuneFirst in gearstash.js writing `list[0].lvl = 99` -> FAIL 2 (handed out; plants-scans.json)
  *
  * A new way to change a stash: a row in STASH_ROADS and one call that names it.
  */
@@ -42,6 +50,8 @@ import { STASH_ROADS, STASH_FIELDS, STASH_SELF, stashGive, stashTake, stashSet, 
 import { GEAR_STASH_FIELDS, gearStashCap } from '../src/gearstash.js';
 import { classFaults, CLASSES, ESCROW_PLACES } from '../src/gold.js';
 import { makeStorage, openRoom, settle, playTour, roomGuard } from './testroom.mjs';
+import { GEAR_PROV_FIELD, GEAR_PROV_FIELDS } from '../src/gearprov.js';
+import { writesOf, doorWrites, doorCalls, where } from '../../tools/guards/lib/writesOf.mjs';   /* v2.3.6441: the scans read the syntax tree (card DG PR 2) */
 
 let failures = 0, passes = 0;
 function check(name, cond, detail) {
@@ -87,81 +97,82 @@ const files = srcFiles();
 const code = Object.create(null);
 for (const f of files) code[f] = strip(readFileSync(new URL(f, SRC_DIR), 'utf8'));
 const lineOf = (s, i) => s.slice(0, i).split('\n').length;
-const NAMES = STASH_FIELDS.join('|');
-/* a write: an assign (not a compare), or a list's own changers */
-const W = '(?:=(?![=>])|\\.(?:push|splice|pop|shift|unshift|sort|reverse|fill|copyWithin)\\s*\\(|\\.length\\s*=(?!=)|\\[[^\\]\\n]*\\]\\s*=(?![=>]))';
-/* the functions (methods and plain ones) a file is cut into, for rule B */
-function chunks(s) {
-  const heads = [...s.matchAll(/^(?: {2}(?:async\s+)?[A-Za-z_$][\w$]*\s*\([^)\n]*\)\s*\{|(?:export\s+)?(?:async\s+)?function\s+[\w$]+\s*\([^)\n]*\)\s*\{)\s*$/gm)].map((m) => m.index);
-  const out = [];
-  for (let i = 0; i < heads.length; i++) out.push([heads[i], i + 1 < heads.length ? heads[i + 1] : s.length]);
-  return out;
-}
-/* the names a function binds to a stash field */
-function stashVars(body) {
-  const v = new Set();
-  for (const m of body.matchAll(/for\s*\(\s*(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s+of\s+(?:GEAR_STASH_FIELDS|STASH_FIELDS)\b/g)) v.add(m[1]);
-  for (const m of body.matchAll(/(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*[^;\n]*(?:GEAR_PROV_FIELD|liveField\(|STASH_FIELDS|Stash['"])/g)) v.add(m[1]);
-  const head = /^[^\n]*\(([^)\n]*)\)/.exec(body);
-  if (head) for (const p of head[1].split(',').map((x) => x.trim())) if (/^(?:field|fld|f)$/.test(p)) v.add(p);
-  return v;
-}
-const TOUCHES = new RegExp('\\b(?:' + NAMES + ')\\b|GEAR_STASH_FIELDS|STASH_FIELDS|GEAR_PROV_FIELD|liveField\\(|isGearField\\(');
-/* What looks like a stash write and is not one, and why.  Matched by file and
-   the text of its line; a stale entry fails. */
+/* v2.3.6441 (card DG PR 2): the scan reads the syntax tree
+   (tools/guards/lib/writesOf.mjs), never a pattern of text: a stash by its
+   name, by a field held in a name (`for (const f of STASH_FIELDS)`,
+   `GEAR_PROV_FIELD.shield`, `liveField(slot)`), through a name that holds one
+   (`const bag = ps.shieldStash`, `const { weaponStash } = ps`, a helper of
+   the file handed it), a list's own changers, `Object.assign(ps, {
+   weaponStash: [...] })` (plants1 STASH-1, STASH-2). */
+const raw = Object.create(null);
+for (const f of files) raw[f] = readFileSync(new URL(f, SRC_DIR), 'utf8');
+const SCAN = {
+  containers: [...STASH_FIELDS],
+  words: { STASH_FIELDS: [...STASH_FIELDS], GEAR_STASH_FIELDS: [...GEAR_STASH_FIELDS], GEAR_PROV_FIELDS: [...GEAR_PROV_FIELDS], GEAR_PROV_FIELD: Object.values(GEAR_PROV_FIELD), 'liveField()': ['armorStash', 'legsStash'] },
+};
+/* What looks like a stash write and is not one, and why: its file, its
+   function, its field, how many writes.  A stale entry fails. */
 const NOT_A_STASH = [];   /* none today: a worn slot (`ps[f] = null` over WORN_WEAPONS) is not bound to a stash field */
-const rawCount = (f, re) => [...code[f].matchAll(re)].length;
+/* v2.3.6441 (the orchestrator's note on the purpose review, sitting 56): a
+   stash ITEM changed in place (`ps.weaponStash[0].lvl = 99`, an item held in
+   a name, a loop over the stash) is a write of the stash.  The places that
+   reshape their own items in place today, each with why; a new one fails.
+   None adds or takes an item: what the stash holds is the door's. */
+const GEAR = 'armorStash|legsStash|shieldStash|gearStash|amuletStash';
+const IN_PLACE = [
+  { file: 'amulet.js', fn: '_stripGems', field: 'weaponStash', n: 7, why: 'the forge\'s gem extraction: the gems taken off an item and its name rebuilt (what the phone predicted), the item kept where it is' },
+  { file: 'gearprov.js', fn: 'visit', field: GEAR, n: 2, why: 'the provenance sweep: a piece whose id was claimed twice loses its id and is marked legacy' },
+  { file: 'gscopper.js', fn: 'oldGreatswordToMetal', field: 'weaponStash', n: 6, why: 'a stored old greatsword given its metal (a migration on a blob, and the mail\'s landing), never weaker' },
+  { file: 'migrations.js', fn: 'fix', field: 'weaponStash', n: 1, why: 'the migrations: a renamed weapon\'s name' },
+  { file: 'revealbag.js', fn: '_revealBagOpen', field: 'weaponStash', n: 1, why: 'the reveal bag: an unrevealed weapon revealed (its flag taken off)' },
+  { file: 'revealbag.js', fn: '_revealBagOnJoin', field: 'armorStash|legsStash|shieldStash|amuletStash|gearStash', n: 1, why: 'the reveal bag at the join: a piece with no id has no secret to keep (its flag taken off)' },
+  { file: 'swordconvert.js', fn: 'swordToGreatsword', field: 'weaponStash', n: 8, why: 'the owner\'s sword conversion (owner call 1): a stored sword made a greatsword in place' },
+];
+/* v2.3.6446 (sitting 59: `tuneFirst(ps.weaponStash)`, tuneFirst in
+   gearstash.js writing `list[0].lvl = 99`, stayed green: the scan followed a
+   stash only within one file).  THE ALLOW LIST (writesOf opts.handout): a
+   stash, or a piece of one (its items are objects), appears outside the door
+   only as a read, a test, a copy or a name the scan follows, an argument of
+   the door's own calls, of a pure global or of a function of the same file;
+   every other appearance -- handed to a function of another file, returned,
+   put into an object or a list written out -- is a write the scan cannot
+   follow, RED unless it is a row below.  The rows only fall: each says why
+   the piece handed out is read there, or copied, never changed. */
+const STASH_DOORS = ['stashGive', 'stashTake', 'stashSet', 'stashCap', 'weaponIdOk', 'weaponIdGive', 'weaponIdsAll'];
+const SCAN_OUT = { ...SCAN, handout: { doors: STASH_DOORS, objects: [...STASH_FIELDS] } };
+const O = (file, fn, field, n, why) => ({ file, fn, field, out: true, n, why });
+const GEARS = 'armorStash|legsStash|shieldStash|amuletStash|gearStash';
+const HANDED_OUT = [
+  O('amulet.js', '_handleAmuletForge', 'weaponStash', 1, 'the forged piece\'s id stamped in the provenance book (_gearProvTouch reads its gid)'),
+  O('gear.js', '_prog3EquipOk', 'weaponStash', 2, 'the equip gate asks whether a piece is an armour-ladder piece and its defence need (isArmourLadderPiece, armorDefReq: reads)'),
+  O('gear.js', '_handleEquipRequest', 'weaponStash', 1, 'a blade still a "?" opened as it is worn (_revealBagOnWear: the reveal bag\'s own flag)'),
+  O('gearstash.js', '_gearStashAdoptOnJoin', 'armorStash|legsStash|shieldStash|gearStash|amuletStash', 3, 'the join\'s stored gear lists resolved against the provenance book (_gearProvResolveList hands back a new list, through stashSet)'),
+  O('gscopper.js', 'gameNamesFor', 'weaponStash', 1, 'a gem set\'s name read (weaponGemName)'),
+  O('gscopper.js', 'oldGreatswordToMetal', 'weaponStash', 1, 'the same name read for the migration\'s rename (weaponGemName; the write is IN_PLACE\'s row)'),
+  O('join.js', '_handleJoin', 'weaponStash', 1, 'the stored weapon bag cleaned (_sanitizeWeaponList hands back new pieces) into stashSet'),
+  O('market.js', '_mktPlaceOrder', 'weaponStash', 1, 'a weapon listed on the market: a clean copy (_sanitizeWeapon)'),
+  O('nomansland.js', '_nmlOnDeath', 'weaponStash', 1, 'No man\'s land\'s death: each weapon lost handed to the mail\'s credit (the stash is emptied through the door: nml_weapons)'),
+  O('nomansland.js', '_nmlOnDeath', GEARS, 1, 'No man\'s land\'s death: a worn piece kept in the list the door sets back (keep.push)'),
+  O('persistence.js', 'capStash', 'amuletStash', 1, 'the echo\'s copy of a gear list, cut at the cap (a new list for the message)'),
+  O('persistence.js', 'keepStash', 'amuletStash', 1, 'the save\'s copy of a gear list, cut at the keep cap (a new list for the record)'),
+  O('persistence.js', '_saveRpg', 'weaponStash', 1, 'the save: a copy of the weapon bag into the stored record'),
+  O('persistence.js', '_sendPlayerState', 'weaponStash', 1, 'the echo: the weapon bag\'s public view (revealPublicList hands back new pieces)'),
+  O('revealbag.js', '_revealBagOpen', 'weaponStash', 3, 'the reveal bag\'s answer: the opened piece handed back to its handler and read for its reveals (_revealsFor)'),
+  O('revealbag.js', '_revealBagOpen', GEARS, 1, 'the reveal bag: the copies of a gear piece gathered to be opened together'),
+  O('revealbag.js', '_revealBagAchv', 'weaponStash', 1, 'an achievement asked of the opened piece (_achvOnPiece reads it)'),
+  O('salvage.js', '_salvageWeaponAt', 'weaponStash', 2, 'the salvage\'s look-up: the weapon read (_isGearNotWeapon) and handed back to its handler, which takes it through the door'),
+  O('shieldgem.js', '_shieldGemPiece', GEARS, 2, 'the shield to gem found (its predicate a function of the file) and handed back to the gem handler'),
+  O('shieldwear.js', 'bag', GEARS, 1, 'the shield list read by the wear handler\'s helper (bagIt gives through the door)'),
+  O('store.js', '_stCreateListing', 'weaponStash', 1, 'a weapon listed in the store: a clean copy (_sanitizeWeapon)'),
+  O('swordconvert.js', 'gameNamesFor', 'weaponStash', 1, 'a gem set\'s name read (weaponGemName)'),
+  O('swordconvert.js', 'swordToGreatsword', 'weaponStash', 1, 'the same name read for the conversion\'s rename (weaponGemName; the write is IN_PLACE\'s row)'),
+  O('trade2.js', '_handleTrade2StageWeapon', 'weaponStash', 1, 'a weapon staged in a trade: a clean copy (_sanitizeWeapon)'),
+];
 {
-  const found = [];
-  const seen = new Set();
-  const note = (f, s, i) => {
-    const ls = s.lastIndexOf('\n', i) + 1, le = s.indexOf('\n', i);
-    const line = s.slice(ls, le < 0 ? s.length : le);
-    const ok = NOT_A_STASH.find((a) => a.file === f && line.includes(a.text));
-    if (ok) { seen.add(ok); return; }
-    found.push(f + ':' + lineOf(s, i) + ' ' + line.trim().slice(0, 110));
-  };
-  /* A: by its name */
-  const A = new RegExp('(?:\\.(?:' + NAMES + ')|\\[\\s*[\'"](?:' + NAMES + ')[\'"]\\s*\\])\\s*' + W, 'g');
-  /* B: by a field held in a name (one bound to a stash field in that
-     function: a loop over the stash fields, a name made from one, a `field`
-     parameter), inside a function that touches a stash */
-  const B = (vars) => new RegExp('(?<![\\w$.])[A-Za-z_$][\\w$]*\\s*\\[\\s*(?:' + [...vars].join('|') + ')\\s*\\]\\s*' + W, 'g');
-  /* C: through a name that holds a stash */
-  const C = new RegExp('(?:const|let|var)\\s+([A-Za-z_$][\\w$]*)\\s*=\\s*[^;\\n]*?(?:\\.(?:' + NAMES + ')|\\[\\s*[A-Za-z_$][\\w$]*\\s*\\])\\s*;', 'g');
-  for (const f of files) {
-    if (f === 'stash.js') continue;
-    const s = code[f];
-    for (const m of s.matchAll(A)) note(f, s, m.index);
-    for (const [a, b] of chunks(s)) {
-      const body = s.slice(a, b);
-      if (!TOUCHES.test(body)) continue;
-      const vars = stashVars(body);
-      if (vars.size) for (const m of body.matchAll(B(vars))) note(f, s, a + m.index);
-      for (const m of body.matchAll(C)) {
-        if (!new RegExp('\\.(?:' + NAMES + ')|\\[').test(m[0]) || !TOUCHES.test(m[0]) && !/\[\s*(?:field|f|fld)\s*\]/.test(m[0])) continue;
-        const v = m[1].replace(/\$/g, '\\$');
-        const re = new RegExp('(?<![\\w$.])(?<!(?:const|let|var)\\s+)' + v + '\\s*' + W, 'g');   /* a name declared again is no write */
-        for (const w of body.slice(m.index + m[0].length).matchAll(re)) note(f, s, a + m.index + m[0].length + w.index);
-      }
-    }
-  }
-  check('2. no stash is written in server/src but through the door (stash.js): by its name, by a field in a name, or through a name that holds one', found.length === 0, found);
-  check('2. ...every NOT_A_STASH entry still exists (a stale one is deleted)', seen.size === NOT_A_STASH.length, NOT_A_STASH.filter((a) => !seen.has(a)).map((a) => a.file + ' ' + a.text));
-  /* the scanner, tried on what it must find (each a break proof that runs every time) */
-  const plant = (txt) => {
-    const s = strip(txt);
-    let n = 0;
-    n += [...s.matchAll(A)].length;
-    for (const [a, b] of chunks(s)) {
-      const body = s.slice(a, b);
-      if (!TOUCHES.test(body)) continue;
-      const vars = stashVars(body);
-      if (vars.size) n += [...body.matchAll(B(vars))].length;
-      for (const m of body.matchAll(C)) { const v = m[1]; n += [...body.slice(m.index + m[0].length).matchAll(new RegExp('(?<![\\w$.])(?<!(?:const|let|var)\\s+)' + v + '\\s*' + W, 'g'))].length; }
-    }
-    return n;
-  };
+  const r = doorWrites(raw, { skip: ['stash.js'], ...SCAN_OUT, listed: [...NOT_A_STASH, ...IN_PLACE, ...HANDED_OUT] });
+  check('2. no stash is written in server/src but through the door (stash.js): by its name, by a field in a name, or through a name that holds one', r.found.length === 0, r.found.map(where));
+  check('2. ...every NOT_A_STASH and IN_PLACE entry still holds its count of writes (a stale one is deleted, a second spelling is one too many)', r.stale.length === 0, r.stale);
+  const plant = (txt) => writesOf(txt, SCAN).length;
   const mustFind = [
     'export const x = {\n  _a(ps, w) {\n    ps.weaponStash.push(w);\n  },\n};',
     'export const x = {\n  _a(ps) {\n    ps.armorStash = [];\n  },\n};',
@@ -170,94 +181,75 @@ const rawCount = (f, re) => [...code[f].matchAll(re)].length;
     'export const x = {\n  _a(ps, p) {\n    const field = GEAR_PROV_FIELD.shield;\n    ps[field].push(p);\n  },\n};',
     'export const x = {\n  _a(ps, p) {\n    const bag = ps.shieldStash;\n    bag.splice(0, 1);\n  },\n};',
     'export const x = {\n  _a(ps) {\n    ps[\'gearStash\'].pop();\n  },\n};',
+    'export const x = {\n  _a(ps, w) {\n    for (const f of STASH_FIELDS) ps[f].push(w);\n  },\n};',
+    'export const x = {\n  _a(ps, slot, p) {\n    const field = liveField(slot);\n    ps[field].unshift(p);\n  },\n};',
+    /* v2.3.6441: the shape review's (plants1 STASH-1, STASH-2) */
+    'export const x = {\n  _a(ps, w) {\n    const { weaponStash } = ps;\n    weaponStash.push(w);\n  },\n};',
+    'export const x = {\n  _a(ps, w) {\n    Object.assign(ps, { weaponStash: [...(ps.weaponStash || []), w] });\n  },\n};',
+    /* v2.3.6441: an item changed in place (the purpose review's note, sitting 56) */
+    'export const x = {\n  _a(ps) {\n    ps.weaponStash[0].lvl = 99;\n  },\n};',
+    'export const x = {\n  _a(ps) {\n    for (const w of ps.weaponStash) w.lvl = 99;\n  },\n};',
   ];
   const missed = mustFind.filter((t) => plant(t) === 0);
   check('2. ...the scanner finds each shape of a second writer (' + mustFind.length + ' planted)', missed.length === 0, missed);
   check('2. ...and reads a compare as no write', plant('export const x = {\n  _a(ps) {\n    if (ps.weaponStash == null) return;\n    return ps.weaponStash.length === 3;\n  },\n};') === 0);
+  /* v2.3.6446 (sitting 59): THE ALLOW LIST -- a stash or a piece of it
+     handed where the scan cannot follow is red; the allowed forms are not */
+  const outs = (t) => writesOf(t, SCAN_OUT).filter((w) => w.out).length;
+  const mustOut = [
+    'export const x = {\n  _a(ps) {\n    tuneFirst(ps.weaponStash);\n  },\n};',                          /* the review's: a function of another file */
+    'export const x = {\n  _a(ps) {\n    this._tune(ps.armorStash[0]);\n  },\n};',                       /* a piece handed to a method of another file */
+    'export const x = {\n  _a(ps) {\n    return ps.weaponStash;\n  },\n};',                               /* handed back */
+    'export const x = {\n  _a(ps) {\n    const o = { list: ps.weaponStash };\n    send(o);\n  },\n};',     /* a property of an object written out */
+    'export const x = {\n  _a(ps) {\n    keep([...ps.weaponStash]);\n  },\n};',                          /* a copy of the list: the same pieces */
+    'export const x = {\n  _a(ps) {\n    for (const [, w] of Object.entries(ps.weaponStash)) fix(w);\n  },\n};',
+    'export const x = {\n  _a(ps) {\n    const w = ps.weaponStash.find((p) => p.lvl > 1);\n    polish(w);\n  },\n};',
+    'export const x = {\n  _a(ps) {\n    ps.weaponStash.forEach(tidy);\n  },\n};',                         /* a callback of another file */
+  ];
+  const missedOut = mustOut.filter((t) => outs(t) === 0);
+  check('2. ...ALLOW LIST: a stash or a piece handed where the scan cannot follow is red (' + mustOut.length + ' planted)', missedOut.length === 0, missedOut);
+  check('2. ...and the allowed forms are not: a read, a length, a test, a door\'s call, a pure global, a function of the file, a field of a piece, a key',
+    outs('export const x = {\n  _a(ps, i) {\n    const n = ps.weaponStash.length;\n    if (!Array.isArray(ps.weaponStash) || ps.weaponStash.includes(null)) return;\n    stashGive(ps, \'weaponStash\', ps.weaponStash[0], \'loot_weapon\', this);\n    log(ps.weaponStash[i].name, JSON.stringify(ps.weaponStash));\n    look(ps.weaponStash);\n    for (const w of ps.weaponStash) say(w.name + w.lvl);\n    return T[ps.weaponStash[0].type];\n  },\n};\nfunction look(l) { return l.length; }') === 0);
 }
 
 /* ══════════ 3. ONE ROW, ONE PLACE ══════════ */
-/* every call, its arguments read to its own closing bracket (strings skipped) */
-function callsIn(s, name) {
-  const out = [];
-  const re = new RegExp('(?<![\\w$])(?:this\\.)?' + name.replace(/\$/g, '\\$') + '\\(', 'g');
-  for (const m of s.matchAll(re)) {
-    const before = s.slice(Math.max(0, m.index - 30), m.index);
-    if (/(?:function|async)\s+$/.test(before) || /^\s*$/.test(before.split('\n').pop()) && /\)\s*\{\s*$/.test(s.slice(m.index, s.indexOf('\n', m.index)))) {
-      /* a definition's head, not a call */
-      if (new RegExp('^\\s*(?:async\\s+)?(?:function\\s+)?' + name + '\\s*\\([^)]*\\)\\s*\\{').test(s.slice(s.lastIndexOf('\n', m.index) + 1))) continue;
-    }
-    let i = m.index + m[0].length, depth = 1, q = null;
-    for (; i < s.length && depth > 0; i++) {
-      const ch = s[i];
-      if (q) { if (ch === '\\') i++; else if (ch === q) q = null; continue; }
-      if (ch === '\'' || ch === '"' || ch === '`') q = ch;
-      else if (ch === '(') depth++;
-      else if (ch === ')') depth--;
-    }
-    const args = s.slice(m.index + m[0].length, i - 1);
-    out.push({ args, line: lineOf(s, m.index), at: m.index });
-  }
-  return out;
-}
 /* the door's own three, and the helpers that hand it their caller's road:
-   [name, verb, the file it is defined in, the argument its road is] */
+   [name, verb, the file it is defined in, the argument its road is].
+   v2.3.6441: every call by any receiver, read off the syntax tree. */
 const DOOR = [['stashGive', 'give'], ['stashTake', 'take'], ['stashSet', 'set']];
 const HELPERS = [['_gearStashLiveAdd', 'give', 'gearstash.js', 3], ['_gearStashLiveTake', 'take', 'gearstash.js', 3], ['bagIt', 'give', 'shieldwear.js', 3]];
-const argsOf = (a) => {
-  const parts = []; let depth = 0, q = null, cur = '';
-  for (let i = 0; i < a.length; i++) {
-    const ch = a[i];
-    if (q) { cur += ch; if (ch === '\\') { cur += a[++i]; } else if (ch === q) q = null; continue; }
-    if (ch === '\'' || ch === '"' || ch === '`') { q = ch; cur += ch; continue; }
-    if ('([{'.includes(ch)) depth++;
-    if (')]}'.includes(ch)) depth--;
-    if (ch === ',' && depth === 0) { parts.push(cur.trim()); cur = ''; continue; }
-    cur += ch;
-  }
-  if (cur.trim()) parts.push(cur.trim());
-  return parts;
-};
 {
   const byRoad = Object.create(null);
   const bad = [];
-  const lit = (x) => { const m = /^'([A-Za-z0-9_]+)'$/.exec(x || ''); return m ? m[1] : null; };
-  const take = (f, c, verb, roadArg) => {
-    const where = f + ':' + c.line;
-    const road = lit(roadArg);
-    if (!road) { bad.push(where + ' names no road as a plain string (' + roadArg + ')'); return; }
-    if (!Object.prototype.hasOwnProperty.call(STASH_ROADS, road)) { bad.push(where + ' names "' + road + '", which STASH_ROADS has not got'); return; }
+  const take = (c, verb, road) => {
+    const w = c.file + ':' + c.line;
+    if (!road || !/^[A-Za-z0-9_]+$/.test(road)) { bad.push(w + ' names no road as a plain string'); return; }
+    if (!Object.prototype.hasOwnProperty.call(STASH_ROADS, road)) { bad.push(w + ' names "' + road + '", which STASH_ROADS has not got'); return; }
     const row = STASH_ROADS[road];
-    if (row.verb !== verb) bad.push(where + ' ' + road + ' is a ' + row.verb + ', called as a ' + verb);
-    if (row.at.split(' ')[0] !== f) bad.push(where + ' ' + road + '\'s row says it is in ' + row.at.split(' ')[0]);
-    (byRoad[road] = byRoad[road] || []).push(where);
+    if (row.verb !== verb) bad.push(w + ' ' + road + ' is a ' + row.verb + ', called as a ' + verb);
+    if (row.at.split(' ')[0] !== c.file) bad.push(w + ' ' + road + '\'s row says it is in ' + row.at.split(' ')[0]);
+    (byRoad[road] = byRoad[road] || []).push(w);
   };
-  for (const f of files) {
-    if (f === 'stash.js') continue;
-    const s = code[f];
-    for (const [name, verb] of DOOR) {
-      for (const c of callsIn(s, name)) {
-        const a = argsOf(c.args);
-        const roadArg = a[3];
-        /* inside a helper, the road is its caller's: the parameter `road` */
-        const inside = HELPERS.find(([h, hv, hf]) => hf === f && hv === verb && chunks(s).some(([a, b]) => c.at > a && c.at < b
-          && new RegExp('^\\s*(?:function\\s+)?' + h + '\\s*\\([^)]*\\broad\\b').test(s.slice(a, s.indexOf('\\n', a)))));
-        if (roadArg === 'road' && inside) continue;
-        take(f, c, verb, roadArg);
-      }
+  const names = [...DOOR.map(([n]) => n), ...HELPERS.map(([h]) => h)];
+  const { calls, odd } = doorCalls(raw, { skip: ['stash.js'], names, road: () => null });
+  check('3. the door and its helpers are called plainly, by name (no bind, .call, apply or a name made of it)', odd.length === 0, odd.map((o) => where(o) + ' (' + o.how + ')'));
+  for (const c of calls) {
+    const door = DOOR.find(([n]) => n === c.name);
+    if (door) {
+      /* inside a helper, the road is its caller's: the parameter `road` */
+      const inside = HELPERS.find(([h, hv, hf]) => hf === c.file && hv === door[1] && c.fn === h);
+      if (inside && c.argSrc[3] === 'road') continue;
+      take(c, door[1], c.args[3]);
+      continue;
     }
-    for (const [h, verb, hf, at] of HELPERS) {
-      for (const c of callsIn(s, h)) {
-        if (f === hf && new RegExp('^\\s*(?:async\\s+)?(?:function\\s+)?' + h + '\\s*\\([^)]*\\)\\s*\\{').test(s.slice(s.lastIndexOf('\n', c.at) + 1))) continue;   /* its definition */
-        take(f, c, verb, argsOf(c.args)[at]);
-      }
-    }
+    const [, verb, , at] = HELPERS.find(([h]) => h === c.name);
+    take(c, verb, c.args[at]);
   }
   check('3. every call names a road the table has, with its verb, from its row\'s file (the helpers\' callers too)', bad.length === 0, bad);
   const none = Object.keys(STASH_ROADS).filter((r) => !byRoad[r]);
   const twice = Object.keys(byRoad).filter((r) => byRoad[r].length > 1).map((r) => r + ': ' + byRoad[r].join(', '));
   check('3. every road has a caller (a row nobody calls is deleted with its feature)', none.length === 0, none);
-  check('3. no road has two callers (a second place is a second row)', twice.length === 0, twice);
+  check('3. no road has two callers, by any receiver (a second place is a second row)', twice.length === 0, twice);
 }
 
 /* ══════════ 4. THE CLASSES ══════════ */
