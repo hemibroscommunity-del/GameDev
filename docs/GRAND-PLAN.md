@@ -375,6 +375,8 @@ devices it waits for: with one player, the table is empty for weeks.
   node model of a heating and cooling phone, two seeds each at 30, 60 and
   120) passes: it steps down, settles, makes no see-saw and comes back.
   Ticked by the gatekeeper, sitting 43 (tag 5032).*
+  *The shape review (2026-11-23): proved on a model that heats by the
+  clock; not confirmed on a phone, until card PH (`docs/plan/log.md`).*
 - [ ] **2.4 [NEXT] Off-ramps become overrides of the ladder**, through one
   reader (pillar 7's table).
   *Begun (card O): #1970 (5232: the lanes' off-ramps, `?sheen`,
@@ -395,7 +397,7 @@ outside the profile.
 
 ### Pillar 3. Never hold the page
 
-- [ ] **3.1 [NOW] The debt list, ours first.** Each row of `KNOWN` is marked
+- [x] **3.1 [NOW] The debt list, ours first.** Each row of `KNOWN` is marked
   ours, the box's or the browser's. Done when no row is ours. The order is
   by size until the table has numbers. Found by the review and first in
   line: a bake worker let go after 20 silent seconds is never started again
@@ -436,6 +438,9 @@ outside the profile.
   `other: R > J` comes off by its own rule in HB2's #2261, on sitting 53's
   list: 3.1 is ticked when it is merged (the gatekeeper, sitting 53, tag
   6267).*
+  *Ticked at sitting 54 (#2261 merged, `debtOf('ours')` empty on `main`).
+  Its record from here: `docs/plan/log.md` (the gatekeeper, sitting 56,
+  tag 6268).*
 - [ ] **3.2 [LATER] One queue for work that is not this frame's**, with
   priorities. It takes nothing while the frames are late or the pacer is
   trying a step up. Work put off (after a fight, at a veil) joins it one a
@@ -496,6 +501,8 @@ play, a number 1.1 can measure.
   *K's #1942 (the room forgets who left: `heapforget`, ON) and #1949 (the
   room's ceiling on messages in, a share of 4000/s a socket; `roomceiling`,
   ON, a cap), merged at sitting 23 (the gatekeeper, sitting 24, tag 5662).*
+  *The shape review (2026-11-23): the wire door's forms and the hostile
+  suite's reach are open until card DG (`docs/plan/log.md`).*
 - [x] **4.1b [NEXT] The send door**: one `_send` (132 places write to a
   socket today), counting bytes by type.
   *Step 1 merged: K's #2006 (5193: one `_send` and `_sendRoom` in
@@ -574,6 +581,8 @@ play, a number 1.1 can measure.
   1.42, bowlabel 1.2, guard 1.37, move 1.17, harvest 1.46, cook 0), the
   honest bots unrefused; each judge off with its `false`. Cards K2 and K4
   done. Ticked by the gatekeeper, sitting 47 (tag 6261).*
+  *The shape review (2026-11-23): what it reaches: the bar gated at 1.98,
+  not 1.5, until card BK (`docs/plan/log.md`).*
 - [x] **4.3 [NEXT] Doors for what is left of value**: experience and
   levels, the stashes, quest state, skill points. A weapon gets an id of its
   own, as gear has.
@@ -619,6 +628,8 @@ play, a number 1.1 can measure.
   §3 holds an unmarked key and an unread prefix. Value leaving by no road
   (the respawn wipe, pile expiry, the bounty sweep) is E's storm, PR 10.
   Ticked by the gatekeeper, sitting 9 (v2.3.5365).*
+  *The shape review (2026-11-23): what it reaches: six systems of the
+  roads, until card BK (`docs/plan/log.md`).*
 - [x] **4.5 [NOW the harness; NEXT the rest] The restart test, finished.**
   It exists (`chaos-restart.test.mjs`) and passes while it lists a known
   loss. One shared room for tests: a batch that commits or does not, a
@@ -639,6 +650,8 @@ play, a number 1.1 can measure.
   room's restart) (the gatekeeper, sitting 12, v2.3.5369).*
   *Both ON by the owner's yes: E's #1852, merged at sitting 16 (the
   gatekeeper, sitting 17, tag 5374).*
+  *The shape review (2026-11-23): what it reaches: six restarts, until
+  card BK (`docs/plan/log.md`).*
 - [ ] **4.7 [NEXT] The way back.** A player's restore made from the registry
   (every record of theirs, not the character alone); a paged export; a
   restore tried in the Cloudflare lab; the storage's size in the day's
@@ -676,10 +689,13 @@ nothing known, and a restore copies nothing.
   tests, doors, switches. An `unsorted` bucket with a falling count, since
   `src/` gains a file every few hours.
   *Merged: #1689 (card B), `docs/SYSTEMS.md` and `tools/guards/lib/systems.mjs`.*
-- [x] **5.2b [NOW] Tests find code by system.** One helper reads "the files
+- [ ] **5.2b [NOW] Tests find code by system.** One helper reads "the files
   of system X"; a suite that names a big file is listed, and the list only
   falls. No file moves before the suites that read it are converted.
   *Merged: #1690 (card B), `tools/guards/lib/filesOf.mjs`.*
+  *Reopened by the shape review (2026-11-23): its count is every suite
+  that reads the page's source by path (237 of 518), not the eight big
+  files' 222 pairs; card WL (`docs/plan/log.md`).*
 - [ ] **5.3 [NEXT] The state ledger.** Step 1 is made by machine: every `S`
   field and every top-of-file variable that holds state, its writers, its
   system; lifetime "the sitting, never reset" until someone says otherwise.
@@ -783,6 +799,11 @@ nothing known, and a restore copies nothing.
   #2131 (BroTown.jsx's 16 reads through the page's one reader) merged
   (the last two at sitting 45); the lines lowered (frame-steps 1531,
   switch-reader 17). Ticked by the gatekeeper, sitting 46 (tag 6260).*
+  *Ticked for the instrument (the shape review, 2026-11-23); the steps'
+  own work is 5.4b.*
+- [ ] **5.4b [NEXT] `legacy` falls.** The frame's `legacy` step gives
+  its work to named steps, the input step first (card CT); done when
+  `legacy` is empty (the shape review, 2026-11-23; `docs/plan/log.md`).
 - [ ] **5.5 [LATER] The two renderers split** along the system map. After
   5.2b. **Tables first** (v2.3.5059): the hand-tuned tables that sit in the
   two files (scales, offsets, anchors: `BODY_DIR_SCALE` is one) leave as
@@ -994,6 +1015,7 @@ nothing known, and a restore copies nothing.
   *Merged: #1669 (card S), `docs/BUDGETS.md`. The loading screen's line is
   left blank, as card S's reading chose: its part 4 names what would measure
   it. No card sets it yet.*
+  *The shape review (2026-11-23): a table; its sums are empty.*
 - [ ] **8.8 [NEXT] Things the owner does not see**: a practice copy of the
   server before real players; every word a player reads in one table; a
   screen for support (lost keys, a wrong flag).
@@ -1119,6 +1141,8 @@ punishes by itself.
   sitting's id made by the server; one request id; the roads' classes.
   *Merged as shapes: #1666 (a section of `docs/SHAPES.md`). No card builds
   them yet; the roads' rows are card E's.*
+  *The shape review (2026-11-23): a shape on paper; no code, until card
+  WHO (`docs/plan/log.md`).*
 - [ ] **10.2 [NEXT] The sitting's card.** About 120 bytes: when, how long,
   active seconds, the longest gap, the network, the build; moves and moves
   over budget; hits claimed, landed, refused by reason; gold by road class;
@@ -1234,6 +1258,8 @@ are cheap now and a rewrite later, and builds no helper feature.
   the login keys: an older worker would honour it as a full login.
   *Merged as a shape: #1666 (a section of `docs/SHAPES.md`). No card builds
   it yet.*
+  *The shape review (2026-11-23): a shape on paper; no code, until card
+  WHO (`docs/plan/log.md`).*
 - [x] **11.3 [NEXT] Ids and repeats.** Whatever can be listed has a server
   id, never a place in a list (the market's `place` takes a position and no
   request id: a retry after a timeout can sell the next sword). Every
