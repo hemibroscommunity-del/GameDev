@@ -1,9 +1,13 @@
 card: DG
 branch: claude/dg-door-guards
-prs: #2283 (PR 1, 6440, ready again: the purpose review's mend)
+prs: #2283 (PR 1, 6440, ready again: sitting 57's CI mend)
 state: ready
 
 ## Done
+- Sitting 57's CI (#2295 red, heap-forget 4,167 B a guest): the guard let
+  go of a record only at a sweep after a full collection (+1 KB a guest,
+  test room only); now a record leaving the room's map is checked once and
+  let go (340 B a guest; plants1 still 17 of 23 red).
 - PR 1 (6440): testroom.mjs arms a guard on every live player's record
   (gold, hp and the life phase, xp and level, the bag, the stashes, quest
   state, build points): a write outside its door is refused and fails the

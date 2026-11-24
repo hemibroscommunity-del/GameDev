@@ -479,7 +479,15 @@ function wrap(v, spec, path) {
 /* ── the record: its guarded fields as accessors; the absent ones on a layer under it ── */
 /* weakly held: a record the room forgets is the heap's to free (heap-forget.test measures it) */
 const GUARDED_SET = new WeakSet();
-const GUARDED_REFS = new Set();   /* WeakRef(record), for the sweep */
+const GUARDED_REFS = new Set();   /* WeakRef(record), for the sweep: the records IN a room's map */
+/* v2.3.6440 (sitting 57's CI: heap-forget's room grew 4,167 B a guest, the
+   line 4,096): a guest's ref stayed in the set until a sweep after a full
+   collection, about 1 KB a guest in the test room (111 B unguarded, 1,150
+   guarded here), and every message swept every record ever guarded.  A
+   record that LEAVES the room's map (a delete, or a record put over it) is
+   checked once there and let go. */
+const REF_OF = new WeakMap();   /* record -> its WeakRef in GUARDED_REFS */
+const hasOwn = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
 const OWN_GETTERS = new WeakMap();   /* record -> Map(field -> getter it must still have) */
 const LAYERS = new WeakSet();
 function ownAccessor(ps, k, spec, value) {
@@ -494,7 +502,9 @@ function ownAccessor(ps, k, spec, value) {
 function guardRecord(ps) {
   if (!GUARD_ON || !ps || typeof ps !== 'object' || GUARDED_SET.has(ps) || TARGET_OF.has(ps)) return ps;
   GUARDED_SET.add(ps);
-  GUARDED_REFS.add(new WeakRef(ps));
+  const ref = new WeakRef(ps);
+  GUARDED_REFS.add(ref);
+  REF_OF.set(ps, ref);
   OWN_GETTERS.set(ps, new Map());
   const absent = [];
   for (const [k, spec] of Object.entries(GUARDED)) {
@@ -531,6 +541,19 @@ function sweep(when) {
   for (const ref of GUARDED_REFS) {
     const ps = ref.deref();
     if (!ps) { GUARDED_REFS.delete(ref); continue; }
+    checkOne(ps, when);
+  }
+}
+/* v2.3.6440: a record leaving the room's map: checked once, then let go */
+function letGo(ps, when) {
+  const ref = ps && typeof ps === 'object' ? REF_OF.get(ps) : null;
+  if (!ref) return;
+  checkOne(ps, when);
+  GUARDED_REFS.delete(ref);
+  REF_OF.delete(ps);
+}
+function checkOne(ps, when) {
+  {
     const m = OWN_GETTERS.get(ps);
     for (const [k, get] of m) {
       const d = Object.getOwnPropertyDescriptor(ps, k);
@@ -572,8 +595,9 @@ if (GUARD_ON) {
     if (!m || typeof m !== 'object') return m;
     for (const k of Object.keys(m)) guardRecord(m[k]);
     return new Proxy(m, {
-      set(t, k, v) { guardRecord(v); return Reflect.set(t, k, v); },
-      defineProperty(t, k, d) { if (d && 'value' in d) guardRecord(d.value); return Reflect.defineProperty(t, k, d); },
+      set(t, k, v) { const old = hasOwn(t, k) ? t[k] : null; if (old !== v) letGo(old, 'as its record was put over'); guardRecord(v); return Reflect.set(t, k, v); },
+      defineProperty(t, k, d) { if (d && 'value' in d) { const old = hasOwn(t, k) ? t[k] : null; if (old !== d.value) letGo(old, 'as its record was put over'); guardRecord(d.value); } return Reflect.defineProperty(t, k, d); },
+      deleteProperty(t, k) { if (hasOwn(t, k)) letGo(t[k], 'as it left the room'); return Reflect.deleteProperty(t, k); },
     });
   };
   Object.defineProperty(GameRoom.prototype, 'playerState', {
