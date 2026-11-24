@@ -75,6 +75,27 @@
  *  14. (v2.3.5222, tried 2026-11-14)
  *      src/debug/report.js addFrames: `const judging = !!(pace && pace.refresh && pace.refresh < 14);` -> FAIL 14.1
  *      src/debug/report.js buildReport: `if (true) r.rung = ...` for `if (takesLanes(_S)) r.rung = ...` -> FAIL 14.3
+ *  15. v2.3.6500, CARD PH's PR 1 (the shape review's item 20): caps.report 4
+ *      takes `up` (the minutes seen), `ride` and `rideGaps` (the board's
+ *      frames) and `ramps` (the address bar's switches, each held to the
+ *      page's one reader); `reportheat: false` back to 3 and the four
+ *      dropped; the done-when: a report from a page 20 minutes up, riding,
+ *      with `?govern=0`, lands in the day's book saying all three.
+ *      (tried 2026-11-23)
+ *      report.js rampsOf: `let thrown = true;` (no reader asked)        -> FAIL 15.2
+ *      report.js swCell: drop the `ramps` loop (the cell blind to them)  -> FAIL 15.3, 15.6
+ *      report.js reportSums: `const heat = !!lanes;` (no switch)        -> FAIL 15.7
+ *      report.js reportSums: drop `rg.every((x, i) => x <= s.gaps[i])`   -> FAIL 15.5
+ *      report.js RIDE_LONG_BIN: 6                                        -> FAIL 15.1
+ *      src/debug/report.js addFrames: `if (a.rideGaps) a.rideGaps[...]++` (every frame the board's) -> FAIL 15.4
+ *      src/debug/report.js rampsOf: drop `if (!has(n)) continue;`        -> FAIL 15.2
+ *      The gatekeeper's sitting 56 (the purpose review): the dodges tried
+ *      THROUGH THE ROOM, 15.8 (tried 2026-11-23; the code held all four,
+ *      only a room check was missing):
+ *      report.js reportSums: the raw ramps, `msg.ramps.filter(string)`    -> FAIL 15.8a
+ *      report.js _reportTake: `heat: true` (the switch ignored)          -> FAIL 15.8b
+ *      report.js reportSums: rideGaps any array of ten (no ints)         -> FAIL 15.8c
+ *      report.js reportSums: `const drawnOk = drawn || 0;` (the claim)   -> FAIL 15.8d
  */
 import { readFileSync } from 'node:fs';
 import { GameRoom } from '../src/index.js';
@@ -87,6 +108,10 @@ import { CLIENT_SAVERS } from '../../src/game/clientOff.js';
 import { HOLD_NAMES as P_HOLDS } from '../../src/debug/holdNames.js';
 import { WHERE as P_WHERE, GAP_EDGES, takesReports, gapBin, whereOf, buildOf, addFrames, blankBins,
   SPEED_STEPS as P_STEPS, SPEED_MODELS, speedCardOf, bookTableText, takesSpeed, queueSpeedCard, takesLanes } from '../../src/debug/report.js';
+import { UP_EDGES, UP_KEYS, RAMP_WORDS, rampsOf, upBucket, RIDE_LONG_BIN } from '../src/report.js';   /* v2.3.6500: card PH PR 1 */
+import { UP_EDGES as P_UP_EDGES, RAMP_WORDS as P_RAMP_WORDS, rampsOf as pRampsOf, upBucket as pUpBucket, takesHeat } from '../../src/debug/report.js';
+import { readerFor } from '../../src/game/switches.js';
+import { SWITCHES } from '../../tools/guards/lib/switches.mjs';
 import { LANE_NAMES, PROGRAM_NAMES, ladderDepth } from '../../src/game/drawLanes.js';   /* v2.3.5221: card O's lanes */
 import { lateOver } from '../../src/game/framePacer.js';   /* v2.3.5222: the pacer's one rule */
 
@@ -229,7 +254,7 @@ const send = async (ws, msg) => { await room.webSocketMessage(ws, JSON.stringify
 const A = await join('bp_rep_a', 'Repo');
 {
   const sync = A.sent.find((m) => m.type === 'state_sync');
-  check('3. a join is told caps.report (3: the Speed test\'s card too, v2.3.5127; card O\'s lanes too, v2.3.5221)', sync && sync.caps && sync.caps.report === 3, sync && sync.caps && sync.caps.report);
+  check('3. a join is told caps.report (3: the Speed test\'s card too, v2.3.5127; card O\'s lanes too, v2.3.5221; 4 card PH\'s heat, board and ramps, v2.3.6500)', sync && sync.caps && sync.caps.report === 4, sync && sync.caps && sync.caps.report);
   const before = A.sent.length;
   await send(A, PHONE());
   const dev = await devPart();
@@ -290,19 +315,30 @@ const A = await join('bp_rep_a', 'Repo');
 /* ── 7. THE BOOK'S ROOM ── */
 {
   const m = PHONE();
-  m.late = [40, 900]; m.split = [100, 20, 30, 40, 5, 60, 900, 700, 200];
+  /* v2.3.6500 (card PH PR 1): a late, a split and a rung the checks take (before, late over the frames drawn and a
+     rung below for longer than the report covered were dropped, so the "full" cell had neither) */
+  m.late = [40, 100]; m.split = [100, 20, 30, 40, 5, 60, 900, 700, 200];
   m.split = m.split.slice(0, 8);
   m.holds = [['body-bake', 115, 'town', 3], ['strip-made', 20, 'ember', 1], ['other: BT_AUDIO$1._fold > foldToMono', 19, 'farm', 0], ['screen-check', 30, 'commons', 0], ['gc', 40, 'frost', 9]];
   m.died = ['killed', 230, 14, 1, 'ember'];
   /* v2.3.5221: card O's two (the governor's rung, two programs failed) */
-  m.drawLane = 'thirty'; m.rung = [5, 120]; m.self = ['sheen', 'shadow'];
-  const r = reportSums(m, { delay: 80, waver: 12, site: 'live', first: true, lanes: true });
+  m.drawLane = 'thirty'; m.rung = [5, 40]; m.self = ['sheen', 'shadow'];
+  /* v2.3.6500: card PH's heat and board (the ramps live in the key) */
+  m.up = 3; m.ride = [40, 3, 80]; m.rideGaps = [0, 0, 0, 0, 0, 0, 0, 0, 0, 100];
+  const r = reportSums(m, { delay: 80, waver: 12, site: 'live', first: true, lanes: true, heat: true });
+  check('7. the full cell carries every field: the late frames, the split, the rung, and card PH\'s heat and board',
+    r && r.sums.late && r.sums.split && r.sums.rung && r.sums.up && r.sums.ride, r && r.sums);
+  /* v2.3.6500: a day's cell sums every report, so the fullest has all four stretches of minutes */
+  for (const k of UP_KEYS) r.sums.up[k] = [99999, 9999999, 999999, 99999];
   const tree = { [r.cell]: r.sums };
   const bytes = bookBytes(tree);
-  const cells = Math.floor(DAYBOOK.PART_BYTES / bytes);
+  const cells = Math.floor((DAYBOOK.PART_BYTES_OF.dev || DAYBOOK.PART_BYTES) / bytes);
   console.log(`     one cell with every field: ${bytes} bytes as the book reckons it; the part holds ${cells} such a day`);
-  /* v2.3.5127 (sitting 4): was 2,392 bytes and 10 cells; the day filled in about six live builds of two devices */
-  check('7. a cell with every field leaves room for at least sixteen cells a day (devices times builds)', cells >= 16, { bytes, cells });
+  /* v2.3.5127 (sitting 4): was 2,392 bytes and 10 cells; the day filled in about six live builds of two devices.
+     v2.3.6500 (card PH PR 1): the floor was sixteen of a cell its own fixture had left without late or rung (1.5 KB;
+     a full one 1.7 KB, fourteen); with the minutes seen and the board the fullest is about 2.4 KB, and the dev
+     part's line 28 KB (all the worst day leaves under 128 KiB: daybook.test 10b): eleven */
+  check('7. the fullest cell (every field, four stretches of minutes, a ride) leaves room for at least eleven cells a day (devices times builds times ramps)', cells >= 11, { bytes, cells });
 }
 
 /* ── 8. THE SPEED TEST'S CARD (v2.3.5125) ── */
@@ -483,7 +519,7 @@ const A = await join('bp_rep_a', 'Repo');
   const cellOf = (r) => r && r.cell;
   /* 13.1 the cap and its switch's name */
   check('13.1 `reportlanes` is a name POST /flags takes', flagNameOk('reportlanes'));
-  check('13.1 caps.report is 3 with nothing thrown', room._reportCap() === 3);
+  check('13.1 caps.report is 4 with nothing thrown (v2.3.6500: card PH\'s heat)', room._reportCap() === 4);
   /* 13.2 thirty and light in their own cells */
   const t = reportSums(lane('thirty'), { lanes: true }), l = reportSums(lane('light'), { lanes: true }), f = reportSums(lane('full'), { lanes: true });
   check('13.2 `thirty` and `light` each make a cell of their own, beside `full`\'s',
@@ -551,6 +587,133 @@ const A = await join('bp_rep_a', 'Repo');
     /import \{ PACE_BREAK_MS, lateOver, useMemCount \} from '\.\.\/game\/framePacer\.js';/.test(ph) && /const lateMs = judging \? lateOver\(pace\.refresh, pace\.every \|\| 1\) : Infinity;/.test(ph) && !/refresh \/ 2/.test(ph));
   check('14.3 the governor\'s `rung` goes to a worker that takes lanes alone: [the most rungs taken, the seconds seen below the row]',
     /if \(takesLanes\(_S\)\) r\.rung = \[_w\(a\.rungMax\), Math\.min\(secs, _w\(a\.belowMs \/ 1000\)\)\];/.test(ph) && /if \(depth > 0\) a\.belowMs \+= seenD;/.test(ph) && blankBins(0).rungMax === 0);
+}
+
+/* ── 15. CARD PH's PR 1: HEAT, THE BOARD, THE RAMPS (v2.3.6500) ── */
+{
+  /* 15.1 the lists */
+  check('15.1 the stretches of minutes are the phone\'s, and both sides cut them alike',
+    same(UP_EDGES, P_UP_EDGES) && UP_KEYS.length === UP_EDGES.length + 1
+      && [0, 4.9, 5, 14.9, 15, 20, 29.9, 30, 200].every((m) => upBucket(m) === pUpBucket(m))
+      && same([0, 4.9, 5, 14.9, 15, 20, 29.9, 30, 200].map(upBucket), [0, 0, 1, 1, 2, 2, 2, 3, 3]), { here: UP_EDGES, phone: P_UP_EDGES });
+  check('15.1 the ramps\' words are the phone\'s', same(RAMP_WORDS, P_RAMP_WORDS));
+  check('15.1 a ride\'s long frame is one past 42 ms: two refreshes of 60 missed (the phone\'s bins)', GAP_EDGES[RIDE_LONG_BIN - 1] === 42 && gapBin(41.9) === RIDE_LONG_BIN - 1 && gapBin(42) === RIDE_LONG_BIN);
+  /* every page switch of the table is thrown by some word of RAMP_WORDS, asked of the one reader: a new row's form
+     in a word not on the list fails here, before its ramp is silently dropped */
+  const pageRows = SWITCHES.filter((r) => r.side !== 'worker').map((r) => r.name.replace(/^\?/, ''));
+  const unthrown = pageRows.filter((n) => !RAMP_WORDS.some((w) => readerFor('?' + n + '=' + w).thrown().includes('?' + n)));
+  check('15.1 every page switch of the table (' + pageRows.length + ') is thrown by a word of RAMP_WORDS (the one reader asked)', pageRows.length > 200 && unthrown.length === 0, unthrown);
+  check('15.1 every key a ramp makes is one the day\'s book takes', pageRows.every((n) => /^[A-Za-z0-9_.:|,+=-]+$/.test(n + '=' + 'false')));
+
+  /* 15.2 the worker's check of the ramps */
+  check('15.2 a ramp is kept where the page\'s reader says the address throws it: `govern=0`, `groundsend=0`, a value\'s `zoom=`',
+    same(rampsOf(['govern=0']), ['govern=0']) && same(rampsOf(['groundsend=0']), ['groundsend=0']) && same(rampsOf(['zoom=']), ['zoom=']));
+  check('15.2 ...and dropped: a name off the table, a word that does not throw it, a dependent its address does not name, free text, `__proto__`',
+    same(rampsOf(['nosuchswitch=0', 'groundsend=1', 'lookarmour=', 'DROP TABLE=0', '__proto__=0', 'govern', '=0', 'zoom=1.5', 7, null]), []));
+  check('15.2 ...sorted, each once, at most RAMPS_MAX read', same(rampsOf(['groundsend=0', 'govern=0', 'govern=0']), ['govern=0', 'groundsend=0'])
+    && rampsOf(new Array(40).fill('govern=0').concat(['groundsend=0'])).length === 1 && REPORT.RAMPS_MAX === 8);
+  const addr = (q) => { const R = readerFor(q); return pRampsOf(R.thrown(), R.swHas, R.swValue); };
+  check('15.2 the phone\'s ramps: what its address writes, as written where a word of the list, else \'\' (a value)',
+    same(addr('?govern=0'), ['govern=0']) && same(addr('?groundsend=0&zoom=1.5'), ['groundsend=0', 'zoom=']) && same(addr(''), []));
+  check('15.2 ...a dependent thrown by what it needs is not sent (the worker could not check it); what it needs is',
+    same(addr('?lookpalette=0'), ['lookpalette=0']), addr('?lookpalette=0'));
+  check('15.2 every ramp the phone makes the worker keeps',
+    ['?govern=0', '?govern=1', '?groundsend=0', '?sfxcache=off', '?bigtown', '?lookpalette=0&groundsend=0'].every((q) => same(rampsOf(addr(q)), addr(q))));
+
+  /* 15.3 the cell's switches part */
+  check('15.3 the ramps join the savers in the cell: one alone names it, with a saver it is many',
+    swCell([], ['govern=0']) === 'govern=0' && swCell(['onecopy'], ['govern=0']) === 'many' && swCell([], []) === 'none' && swCell(['onecopy']) === 'onecopy');
+
+  /* 15.4 the phone's board: only the frames drawn riding are the board's */
+  const frames = (gaps) => { let t = 1000; return gaps.map((g) => { t += g; return { t, totalMs: g, workMs: 4 }; }); };
+  const a = blankBins(0);
+  addFrames(a, frames([16.7, 16.7, 50]), 0, [], { refresh: 1000 / 60, every: 1 }, true);
+  addFrames(a, frames([16.7, 16.7]).map((x) => ({ ...x, t: x.t + 5000 })), 2000, [], { refresh: 1000 / 60, every: 1 }, false);
+  check('15.4 the phone counts the frames drawn riding apart (three of five), with their late and judged',
+    a.drawn === 5 && a.rideGaps.reduce((x, y) => x + y, 0) === 3 && a.rideLate === 1 && a.rideJudged === 3 && a.late === 1 && a.judged === 5, a);
+
+  /* 15.5 the worker's check of a ride */
+  const heatOf = (over, own) => reportSums({ ...PHONE(), late: [5, 105], up: 2, ride: [30, 2, 60], rideGaps: [0, 0, 0, 0, 0, 0, 0, 0, 0, 60], ...(over || {}) }, { lanes: true, heat: true, ...(own || {}) });
+  const ok = heatOf();
+  check('15.5 a report riding 20 minutes in: its `up` row (m15: seen, drawn, late, below) and its board in one row (frames, late, long)',
+    ok && same(ok.sums.up.m15, [46, 105, 5, 0]) && Object.getPrototypeOf(ok.sums.up) === null && same(ok.sums.ride, [1, 30, 60, 2, 60]) && !('rideGaps' in ok.sums), ok && ok.sums);
+  const short = heatOf({ gaps: [0, 0, 0, 50, 0, 0, 0, 0, 0, 55], ride: [30, 0, 2], rideGaps: [0, 0, 0, 1, 0, 0, 0, 0, 0, 1] });
+  check('15.5 ...`long` is the board\'s frames past 42 ms alone', short && same(short.sums.ride, [1, 30, 2, 0, 1]), short && short.sums.ride);
+  check('15.5 ...a board\'s bin over the report\'s, late over judged, judged over its frames, seconds over seen, a fraction: no board (the report counts)',
+    ['rideGaps', 'late', 'judged', 'secs', 'frac'].every((k) => {
+      const o = k === 'rideGaps' ? { rideGaps: [1, 0, 0, 0, 0, 0, 0, 0, 0, 60] } : k === 'late' ? { ride: [30, 9, 6] } : k === 'judged' ? { ride: [30, 0, 61] }
+        : k === 'secs' ? { ride: [47, 2, 60] } : { ride: [30.5, 2, 60] };
+      const r = heatOf(o); return r && !('ride' in r.sums) && r.sums.n === 1;
+    }));
+  check('15.5 an `up` off its four is dropped; the rest counts', !('up' in heatOf({ up: 4 }).sums) && !('up' in heatOf({ up: '2' }).sums) && heatOf({ up: 9 }).sums.n === 1);
+
+  /* 15.6 THE DONE-WHEN, through the room: a page 20 minutes up, riding, with `?govern=0` */
+  const ws = await join('bp_rep_heat', 'Heaty');
+  const sync = ws.sent.find((m) => m.type === 'state_sync');
+  check('15.6 a join is told caps.report 4; the phone sends the four only to 4 (takesHeat)',
+    sync && sync.caps && sync.caps.report === 4 && takesHeat({ _serverCaps: { report: 4 } }) && !takesHeat({ _serverCaps: { report: 3 } }) && !takesHeat(null));
+  const b = blankBins(0);
+  addFrames(b, frames(new Array(100).fill(16.7).concat([50, 50])), 0, [], { refresh: 1000 / 60, every: 1 }, true);
+  const msg = { ...PHONE(), drawn: b.drawn, gaps: b.gaps, late: [b.late, b.judged], split: [0, 0, 0, 0, 0, 0, 0],
+    up: pUpBucket((18 + 22) / 2), ride: [40, b.rideLate, b.rideJudged], rideGaps: b.rideGaps, ramps: addr('?govern=0') };
+  const S = room.sessions.get(ws);
+  clock += REPORT.PACE_MS;
+  const why = room._reportTake(S, msg, clock);
+  const dev = await devPart();
+  const cell = dev && dev['1|' + KEY + '|full|govern=0|5122'];
+  check('15.6 it lands in the day\'s book saying all three: its cell `govern=0`, its minutes (m15) and its board',
+    why === 'ok' && cell && cell.n === 1 && cell.up && cell.up.m15 && cell.up.m15[0] === 46 && cell.up.m15[1] === 102 && cell.up.m15[2] === 2
+      && cell.ride && cell.ride[0] === 1 && cell.ride[1] === 40 && cell.ride[2] === 102 && cell.ride[4] === 2,
+    { why, keys: dev && Object.keys(dev), cell });
+
+  const txt = bookTableText([{ day: '20270101', dev: { ['1|' + KEY + '|full|govern=0|5122']: cell }, speed: {} }]);
+  check('15.6 ...and the Test panel\'s "Copy table" says all three to the owner', /\|full\|govern=0\|5122/.test(txt) && /15\+ min: /.test(txt) && /riding \(1 reports, 40 secs\)/.test(txt), txt);
+  /* 15.7 the kill switch */
+  check('15.7 `reportheat` is a name POST /flags takes', flagNameOk('reportheat'));
+  room._liveFlags = { reportheat: false };
+  const ws2 = await join('bp_rep_noheat', 'Noheat');
+  const sync2 = ws2.sent.find((m) => m.type === 'state_sync');
+  check('15.7 `reportheat: false`: a join is told caps.report 3', sync2 && sync2.caps && sync2.caps.report === 3, sync2 && sync2.caps && sync2.caps.report);
+  const off = reportSums(msg, { lanes: true, heat: room._reportCap() >= 4 });
+  check('15.7 ...and `up`, `ride`, `rideGaps` dropped, the ramps not in the cell, from a report that still comes',
+    off && off.cell === '1|' + KEY + '|full|none|preview' && !('up' in off.sums) && !('ride' in off.sums) && off.sums.n === 1, off);
+  room._liveFlags = { reportlanes: false };
+  check('15.7 `reportlanes: false` is 2 and takes no heat either', room._reportCap() === 2);
+  room._liveFlags = {};
+
+  /* 15.8 v2.3.6500 (the gatekeeper's sitting 56, the purpose review on #2279): the card's dodges and the lane's,
+     each THROUGH THE ROOM (`_reportTake` into the day's book), not a helper alone: a fresh socket a report, and
+     what the book gained read from its `dev` part before and after */
+  let n8 = 0;
+  const through = async (over, flags) => {
+    const before = JSON.parse(JSON.stringify((await devPart()) || {}));
+    room._liveFlags = flags || {};
+    const w = await join('bp_rep_dodge' + (++n8), 'Dodge' + n8);
+    clock += REPORT.PACE_MS;
+    const why = room._reportTake(room.sessions.get(w), { ...msg, ...over }, clock);
+    room._liveFlags = {};
+    const after = (await devPart()) || {};
+    const moved = Object.keys(after).filter((k) => JSON.stringify(after[k]) !== JSON.stringify(before[k]));
+    return { why, moved, was: moved.length === 1 ? before[moved[0]] || null : null, now: moved.length === 1 ? after[moved[0]] : null };
+  };
+  const cellOf = (sw) => '1|' + KEY + '|full|' + sw + '|5122';
+  const t8a = await through({ ramps: ['nosuchswitch=0', 'free.text=0'] });
+  check('15.8a ramps off the switch table (`nosuchswitch=0`, `free.text=0`) sent through the room land in the cell `none`',
+    t8a.why === 'ok' && t8a.moved.length === 1 && t8a.moved[0] === cellOf('none'), t8a.moved);
+  const t8b = await through({}, { reportheat: false });
+  const gained = (x, k) => !!(x.now && x.now[k]) && JSON.stringify(x.now[k]) !== JSON.stringify(x.was && x.was[k]);
+  check('15.8b `reportheat: false`: a report with `?govern=0` sent through the room lands in the cell `none` and adds no `up` and no `ride`',
+    t8b.why === 'ok' && t8b.moved.length === 1 && t8b.moved[0] === cellOf('none') && !gained(t8b, 'up') && !gained(t8b, 'ride'), t8b);
+  /* each bin within the report's own and the ride's counts within its frames, so only the fraction or the sign is wrong */
+  const frac = b.rideGaps.slice(); frac[9] -= 0.5;
+  const neg = b.rideGaps.slice(); neg[0] = -1;
+  const t8c = [await through({ rideGaps: frac, ride: [40, 0, 0] }), await through({ rideGaps: neg, ride: [40, 0, 0] })];
+  check('15.8c a ride\'s gaps with a fraction or a negative sent through the room: the report counts, no `ride`',
+    t8c.every((x) => x.why === 'ok' && x.moved.length === 1 && x.now.n === (x.was ? x.was.n : 0) + 1 && !gained(x, 'ride')), t8c);
+  const t8d = await through({ drawn: b.drawn + 7 });
+  const upWas = t8d.was && t8d.was.up && t8d.was.up.m15 ? t8d.was.up.m15[1] : 0;
+  check('15.8d a `drawn` unlike its gaps\' sum sent through the room: `up` adds the kept gaps\' sum (none kept: 0), never the claim',
+    t8d.why === 'ok' && t8d.moved.length === 1 && t8d.now.up && t8d.now.up.m15 && t8d.now.up.m15[1] - upWas === 0 && !gained(t8d, 'ride'), t8d);
 }
 
 console.log(`\n${passes} passed, ${failures} failed`);
