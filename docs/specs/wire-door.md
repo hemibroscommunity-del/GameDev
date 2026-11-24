@@ -163,6 +163,36 @@ edge cache, 2026-11-17. Both in the outer router (`index.js` `routeHttp`,
   `EDGE_CACHE = "off"` sends every read on. `edge-guard.test`: 15 FAIL on
   main.
 
+## A field's form (v2.3.6443, card DG PR 4)
+
+The review (`docs/plan/census/shape-doors.md`, `tools/dev/plants/judge.mjs`)
+found the door let `bank_deposit` in with `n` as `"5"`, `-5`, `1.5`, `true`,
+`{}`, `[1,2]` and an `id` of 15,000 characters. Now, once a frame has
+passed every check above, each named field is held to its form
+(`door.js` `WIRE_FORM`, `formWhy`): its row's, in the table's `form` column
+(`server/src/wire/README.md`), or its trust's default (a `request` field's
+string at most 8,192 characters, half a frame). A frame the old door
+refused is refused for the same why; `form <field>` is only ever the last
+why. The rows with a form: the bank's two moves (`kind`, `id`, `n`, `opId`),
+the gamble's `wager`, the Ace Flip's `stake`, the jackpot's `amount`,
+`player_attack`'s `dmgBase` and `critChance`, `move`'s `dead` and
+`trade2_cancel`'s `id` (those last four newly named in `trust`: they were
+read but not in the table). Each was written only after reading the page's
+sender (`game/bank.js bankMove` and the rest).
+
+THE SWITCH, `wireform` (`liveops.js` `_wireFormMode`; its row in the switch
+table, `needs: ['wiredoor']`): absent, a frame out of form is refused like
+any other, counted as `<type> form` and by its field in `_wireFormSeen`;
+`'count'`, counted and logged (`[wireform] would refuse`) and let in;
+`false`, no form read: the door of v2.3.5184. The cap is `wireForm` (1
+refusing, 2 counting). The counts are on the owner's overview
+(`GET /api/admin/overview`, `wireDoor`: memory only, since the worker woke).
+
+THE COUNT: `server/test/wire-form-count.mjs`, a preload, opens every room
+of a run in count mode and writes what it would refuse by test file, type
+and field (its header says how to run it). The bank's own checks stay the
+second line: `bank.test` §4 holds them with the forms thrown.
+
 ## The switch
 
 `wiredoor: false` in the live flags (`liveops.js` `_wireDoorOff`; its row in

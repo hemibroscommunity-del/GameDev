@@ -236,9 +236,24 @@ const P = room.playerState.bp_bank_b;
   await refuse('a gathering tool', 'bank_deposit', { kind: 'item', id: 'woodcutting_axe', n: 1, opId: op() }, 'kept');
   await refuse('no opId', 'bank_deposit', { kind: 'gold', n: 1 }, 'bad');
   await refuse('a count of 0', 'bank_deposit', { kind: 'gold', n: 0, opId: op() }, 'bad');
-  await refuse('a fractional count', 'bank_deposit', { kind: 'gold', n: 1.5, opId: op() }, 'bad');
-  await refuse('a negative count', 'bank_withdraw', { kind: 'gold', n: -5, opId: op() }, 'bad');
-  await refuse('an unknown kind', 'bank_deposit', { kind: 'pet', id: 'wood_oak', n: 1, opId: op() }, 'bad');
+  /* v2.3.6443 (card DG PR 4): a count that is no whole number of zero or
+     more, or a kind out of its list, meets the wire door first now (its
+     form, wire/door.js WIRE_FORM): refused there unanswered, nothing moved
+     (an honest page never sends one: game/bank.js bankMove).  The bank's
+     own check is the second line, held here with the forms thrown. */
+  {
+    const n0 = (room._wireFormSeen && room._wireFormSeen['bank_deposit n']) || 0;
+    const c0 = P.coins;
+    await send(room, ws, 'bank_deposit', { kind: 'gold', n: 1.5, opId: op() });
+    check('4: a fractional count is refused at the wire door: unanswered, nothing moved, counted by its field',
+      stateOf(ws) === null && P.coins === c0 && room._wireFormSeen && room._wireFormSeen['bank_deposit n'] === n0 + 1);
+  }
+  const forms0 = room._liveFlags;
+  room._liveFlags = { ...(forms0 || {}), wireform: false };
+  await refuse('a fractional count (the forms thrown)', 'bank_deposit', { kind: 'gold', n: 1.5, opId: op() }, 'bad');
+  await refuse('a negative count (the forms thrown)', 'bank_withdraw', { kind: 'gold', n: -5, opId: op() }, 'bad');
+  await refuse('an unknown kind (the forms thrown)', 'bank_deposit', { kind: 'pet', id: 'wood_oak', n: 1, opId: op() }, 'bad');
+  room._liveFlags = forms0;
   /* a full vault: 48 kinds already in */
   {
     const v = room._bankMap().get('bp_bank_b');

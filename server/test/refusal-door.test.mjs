@@ -228,7 +228,7 @@ const found = Object.create(null);   /* unit -> { key: {kw, line} } */
     { type: 'quest_turn_in', why: 'a goal not met', set: (p) => { p.coins = 0; }, payload: { questId: 'mayor_3' } },
     { type: 'farm_buy', why: 'not enough gold for seeds', set: (p) => { p.coins = 0; }, payload: { item: 'compost', count: 1 } },
     { type: 'arena_sponsor', why: 'no tournament to bet on', set: (p) => { p.coins = 1000; }, payload: { targetId: 'bp_nobody', amount: 100 } },
-    { type: 'bank_withdraw', why: 'away from the bank, more than is banked', set: () => {}, payload: { kind: 'coins', n: 500, opId: 'door-b1' } },
+    { type: 'bank_withdraw', why: 'away from the bank, more than is banked', set: () => {}, payload: { kind: 'gold', n: 500, opId: 'door-b1' } },   /* v2.3.6443: was kind 'coins', no kind the bank or the page knows: the wire door's form (['gold', 'item']) refuses it unanswered now */
     { type: 'trade2_open', why: 'a trade with a player who is not here', set: () => {}, payload: { target: 'bp_nobody_here' } },
     { type: 'quest_accept', why: 'a quest out of its order', set: () => {}, payload: { questId: 'mayor_3' } },
     /* v2.3.4880: the workshop's refusals answer now (the refusal door's lane) */
