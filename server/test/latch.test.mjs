@@ -22,8 +22,8 @@
  * (and the guard's §2).
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
-import { LATCH_PHASES, LATCH_ENDS, latchPhase, latchTo, latchPress, latchCheck, latchClear } from '../../src/game/latch.js';
-import { sightRange, SIGHT_PHASES } from '../../src/game/sight.js';
+import { LATCH_PHASES, LATCH_ENDS, latchPhase, latchTo, latchPress, latchCheck, latchClear, latchFrame, latchAttackPress, latchHolds, latchLook, sightNow } from '../../src/game/latch.js';   /* v2.3.6542: + the wiring (card CT PR 3) */
+import { sightRange, SIGHT_PHASES, SIGHT, sightPhase, sightPick, drawnFace } from '../../src/game/sight.js';
 import { STICK_PHASES } from '../../src/game/stickZones.js';   /* v2.3.6540: G2 below */
 import { PHASES } from '../../src/state/phases.js';
 
@@ -124,6 +124,121 @@ function writesOutside(prop, doorFile, doorFn) {
   const w = writesOutside('_latchPhase', 'src/game/latch.js', 'latchTo');
   check('4. latchTo writes the phase (active, idle)', w.inDoorWrites === 2, w.inDoorWrites);
   check('4. no write of S._latchPhase in src/ outside latchTo', w.outside.length === 0, w.outside);
+}
+
+/* ═══ v2.3.6542: 5. WIRED (card CT PR 3): the frame, the press, the ends, the move ═══
+   A page's state as the step `input` sees it: you at (0, 0) facing east, the
+   monsters in S.monsters.  latchFrame's answer is the held attack
+   (S.autoAttack): true attacking, false let go, null nothing to say. */
+{
+  const mon = (id, x, y = 0, alive = true) => ({ id, x, y, alive });
+  const page = (mons) => ({ player: { x: 0, y: 0 }, _renderFacing: 'east', monsters: mons, currentZone: 'wheel' });
+  let t = 1000;
+  const frame = (S, dead, slot) => latchFrame(S, (t += 50), !!dead, slot || 'melee', 1);
+
+  /* 5a. a whole fight with two presses: sighted, Attack locks, attacks to the end */
+  {
+    const a = mon('a', 300), S = page([a]);
+    check('5a. a monster ahead in range: sighted, the latch idle, nothing said', frame(S) === null && sightPhase(S) === 'sighted' && latchPhase(S) === 'idle');
+    check('5a. Attack pressed: locked on it', latchAttackPress(S) === 'lock' && latchPhase(S) === 'active' && S._latchId === 'a');
+    check('5a. a frame while locked: attacking', frame(S) === true);
+    S._renderFacing = 'west';
+    check('5a. the drawn facing turned away: still locked (the lock is not the cone\'s)', frame(S) === true && S._latchId === 'a');
+    S._renderFacing = 'east';
+    check('5a. Attack again: let go (\'press\'), the next frame idle', latchAttackPress(S) === 'unlock' && S._latchEnd === 'press' && frame(S) === null);
+  }
+  /* 5b. its end at the range's edge: 550 holds, past it lets go, once */
+  {
+    const a = mon('a', 300), S = page([a]);
+    frame(S); latchAttackPress(S);
+    a.x = 550;
+    check('5b. walked out to 550: held', frame(S) === true);
+    a.x = 551;
+    check('5b. at 551: let go (\'range\') -- the held attack false once', frame(S) === false && S._latchEnd === 'range' && latchPhase(S) === 'idle');
+    check('5b. ...then nothing said (no write a frame)', frame(S) === null);
+    a.x = 440; frame(S);
+    check('5b. back in at 440: sighted again, the latch waits for a press', latchPhase(S) === 'idle' && sightPhase(S) === 'sighted');
+  }
+  /* 5c. its death: the lock moves to the nearest other in sight, no new press */
+  {
+    const a = mon('a', 300, 40), b = mon('b', 200, 20), c = mon('c', 400, -10), S = page([a, b, c]);
+    frame(S); latchAttackPress(S);
+    check('5c. three ahead: the one nearest the facing\'s line locked', S._latchId === 'c', S._latchId);
+    c.alive = false;
+    check('5c. it dies: the lock moves to the nearest other in sight (b), still attacking', frame(S) === true && S._latchId === 'b' && latchPhase(S) === 'active');
+    b.curHp = 0;
+    check('5c. at 0 hp it counts as dead: moves to a', frame(S) === true && S._latchId === 'a');
+    S.monsters = [b];
+    check('5c. gone from the list, none other in sight: let go (\'killed\')', frame(S) === false && S._latchEnd === 'killed');
+  }
+  /* 5d. none other IN SIGHT: one behind you does not take the lock */
+  {
+    const a = mon('a', 300), behind = mon('z', -100), S = page([a, behind]);
+    frame(S); latchAttackPress(S); a.alive = false;
+    check('5d. the last ahead dies, one behind: let go, not moved', frame(S) === false && S._latchEnd === 'killed' && S._latchId === null);
+  }
+  /* 5e. your death, a change of place */
+  {
+    const a = mon('a', 300), S = page([a]);
+    frame(S); latchAttackPress(S);
+    check('5e. your death: let go (\'death\'), nothing in sight', frame(S, true) === false && S._latchEnd === 'death' && sightPhase(S) === 'none');
+    frame(S); latchAttackPress(S);
+    S.currentZone = 'dungeon';
+    check('5e. a change of place: let go (\'zone\')', frame(S) === false && S._latchEnd === 'zone');
+    S.currentZone = 'wheel'; frame(S); latchAttackPress(S); S._zoneLoading = true;
+    check('5e. a zone loading: let go (\'zone\')', frame(S) === false && S._latchEnd === 'zone');
+  }
+  /* 5f. a press with nothing in sight NOW: one attack -- never the 400 ms hold's kept id (the gatekeeper's sitting 56) */
+  {
+    const a = mon('a', 300), S = page([a]);
+    frame(S);
+    S._renderFacing = 'west'; frame(S);
+    check('5f. turned away: the sight held a while (its kept id)', sightPhase(S) === 'sighted' && S._sightId === 'a');
+    check('5f. ...and a press there is one attack, not a lock', latchAttackPress(S) === 'once' && latchPhase(S) === 'idle');
+    const E = page([]);
+    check('5f. nothing at all: one attack', latchAttackPress(E) === 'once');
+  }
+  /* 5g. the attack held off and taken up again: the shield, a harvest, a climb, a swim */
+  {
+    const a = mon('a', 300), S = page([a]);
+    frame(S); latchAttackPress(S);
+    for (const [k, v] of [['_shieldUp', true], ['_extraction', {}], ['_climb', {}], ['_wheelSwim', { on: true }]]) {
+      S[k] = v;
+      const off = frame(S) === false && latchHolds(S) === false && latchPhase(S) === 'active';
+      S[k] = k === '_wheelSwim' ? { on: false } : null;
+      check('5g. ' + k + ': the attack held off, the latch kept; then taken up again', off && frame(S) === true && latchHolds(S) === true);
+    }
+    check('5g. idle: latchHolds is false (a lift in any other mode lets go as it did)', latchHolds({}) === false && latchHolds(null) === false);
+  }
+  /* 5h. a bow's range */
+  {
+    const a = mon('a', 600), S = page([a]);
+    check('5h. 600 away: a sword sees nothing, a bow sees it', (frame(S, false, 'melee'), sightPhase(S) === 'none') && (frame(S, false, 'ranged'), sightPhase(S) === 'sighted'));
+    latchAttackPress(S);
+    a.x = 826;
+    check('5h. the bow\'s lock holds to 825, lets go past it', S._latchId === 'a' && (a.x = 825, frame(S, false, 'ranged') === true) && (a.x = 826, frame(S, false, 'ranged') === false));
+  }
+  /* 5i. the drawn facing, and no garbage a frame */
+  {
+    check('5i. the drawn facing: the renderer\'s word, else the turn, else south',
+      drawnFace({ _renderFacing: 'north' }) === -Math.PI / 2 && drawnFace({ _renderFacing: 'west' }) === Math.PI
+      && drawnFace({ _facingAngle: 1 }) === 1 && drawnFace({}) === Math.PI / 2 && drawnFace({ _renderFacing: '__proto__', _facingAngle: 2 }) === 2);
+    const R = sightRange('melee'), me = { x: 0, y: 0 }, L = [mon('a', 100)];
+    check('5i. the pick is one object, reused (no garbage a frame)', sightPick(me, 0, L, R, null) === sightPick(me, 0, L, R, null));
+    const S = page([mon('a', 300)]);
+    check('5i. sightNow reads the page', sightNow(S) && sightNow(S).id === 'a');
+  }
+  /* 5j. the disc wears the phase, written only when it changes */
+  {
+    let writes = 0; const attrs = Object.create(null);
+    const el = { getAttribute: (k) => (k in attrs ? attrs[k] : null), setAttribute: (k, v) => { writes++; attrs[k] = v; } };
+    const S = page([mon('a', 300)]);
+    latchLook(el, S); latchLook(el, S);
+    check('5j. idle: raised (data-latch off), written once', attrs['data-latch'] === 'off' && writes === 1);
+    frame(S); latchAttackPress(S); latchLook(el, S); latchLook(el, S);
+    check('5j. active: pressed in (on), one more write', attrs['data-latch'] === 'on' && writes === 2);
+    check('5j. no element: nothing', latchLook(null, S) === false);
+  }
 }
 
 /* v2.3.6540 (the gatekeeper's sitting 56, G2): the phase table's states are the modules' own lists */

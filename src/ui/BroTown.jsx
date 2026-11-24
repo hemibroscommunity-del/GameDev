@@ -462,7 +462,7 @@ import { laneKnob } from '@/game/drawLanes.js';   /* v2.3.5233 (card O PR 13): t
 function _stepCapMs() { try { const v = Number(laneKnob('step')); return v > 0 ? v : 50; } catch (e) { return 50; } }
 import { framePaceOn, makeFramePacer, noteDrawn, whenDrawn, beforeDraw, runBeforeDraw } from '@/game/framePacer.js';   /* v2.3.4400: a steady rate on a screen the game cannot keep up with */
 import { makeFrameSteps } from '@/game/frameSteps.js';   /* v2.3.5340: the frame as named steps (grand plan 5.4, card M) */
-import { stickDrive, stickFrame, stickTo } from '@/game/stickZones.js';   /* v2.3.6541: the two buttons' left stick (`?manual=5`, card CT PR 2), and the frame's step `input` */
+import { stickDrive, stickFrame, stickTo } from '@/game/stickZones.js'; import { latchFrame, latchAttackPress, latchHolds, latchLook } from '@/game/latch.js';   /* v2.3.6541: the two buttons' left stick (`?manual=5`, card CT PR 2), and the frame's step `input`; v2.3.6542: their Attack, a latch (PR 3) */
 import { sw, swHas, pageAddress } from '@/game/switches.js';   /* v2.3.5340: the page's one reader of its switches (`?framesteps=0`); v2.3.5342: every read of the address */
 import { accTrack } from '@/game/accuracy.js';   /* v2.3.4545: the shot counts that ride the track */
 import { noteMade } from '@/debug/madeLog.js';   /* v2.3.4400: a job between frames says its name and its time */
@@ -474,7 +474,7 @@ import { climbBegin, climbSteer, climbSpeed, climbTick, riseSolidAt } from '@/ga
 import { tickJump, landJump } from '@/game/jumpActions.js';   /* v2.3.3017: jumping (X on a keyboard; v2.3.3105: a tap on the right stick -- v2.3.3712: no longer, so triggerJump is the button's alone) */
 import { rightTapBusy, tapFreeMaxMs, tapActIcon, attackingNow, tapPending, settleTapPress, requestTapAttack } from '@/game/tapJump.js';   /* v2.3.3105: a tap jumps only when nothing else wants it; v2.3.3145: and is not an attack until it is one; v2.3.3712: it attacks once now, never jumps */
 import { twoButtonsOn, manualOn, tapLockOn, mcSwipes, mcPressIdle, mcBowSling, mcShotAngle, mcSwipeStart, mcSwipeMove, mcSwipeEnd, mcWasQuick, mcAssist, mcAskShot, mcAbort, mcMeleeAsk, mcSwingWaiting, mcSwingDone, mcReadyIn, mcTakeArmed, mcArmToggle, mcArmed, mcShoots } from '@/game/manualCombat.js';   /* v2.3.4395: manual combat (`?manual=1`): every attack is a swipe, no chosen lock */
-import { BOW_RANGE_PX as MC_BOW_RANGE_PX, bowRangeMult as mcBowRangeMult } from '@/data/gameSystems.js';   /* v2.3.4395: how far a quick flick's help reaches */
+import { BOW_RANGE_PX as MC_BOW_RANGE_PX, bowRangeMult as mcBowRangeMult, staffRangeMult as mcStaffRangeMult } from '@/data/gameSystems.js';   /* v2.3.4395: how far a quick flick's help reaches */
 import { lockShotPoint as mcShotPoint } from '@/game/combatHelpers.js';
 import { interactKind } from '@/game/desktopControls.js';   /* v2.3.3105: what E (and now a tap on the right stick) does here; v2.3.4105: talkBeforeDoor retired (E never talks) */
 import { jumpAirborne, overLow, jumpLatched, jumpLatch, landedOver, flipBoost } from '@/game/jump.js';         /* v2.3.3017: ...and the low things it clears; v2.3.3499: a crossing once begun stays begun */
@@ -5361,7 +5361,7 @@ export var BroTown = function BroTown(_ref0) {
           S._dashStrike = null;
         }
         /* v2.3.6541: the step `input` (game/frameSteps.js): the stick and the keys read, the idle clock, the name tag's facing, moved whole to game/stickZones.js stickFrame (card CT PR 2) */
-        if (_steps) _steps.to(0, 2); var _in = stickFrame(S, K, _realStunned || _playerDead || _playerLootFrozen, _playerLootFrozen, Date.now()); if (_steps) _steps.to(2, 0);
+        if (_steps) _steps.to(0, 2); var _in = stickFrame(S, K, _realStunned || _playerDead || _playerLootFrozen, _playerLootFrozen, Date.now()); var _lw = twoButtonsOn() && !fineInput() ? latchFrame(S, Date.now(), _playerDead, S.rpg && S.rpg.activeSlot, S.rpg ? (S.rpg.activeSlot === 'staff' ? mcStaffRangeMult : mcBowRangeMult)(S.rpg) : 1) : null; if (_lw !== null) S.autoAttack = _lw; if (_steps) _steps.to(2, 0);   /* v2.3.6542: + the two buttons' sight and latch (game/latch.js latchFrame: the held attack is the latch's; card CT PR 3) */
         var dx = _in.dx, dy = _in.dy;
 
         /* ═══ v2.3.3003: SWIMMING IN THE WHEEL ═══
@@ -6468,12 +6468,12 @@ export var BroTown = function BroTown(_ref0) {
              transparent border reads as a stick socket, which is what it is in
              that state.  A painted-and-LIT one that then declines your thumb
              would be a discoverability trap. */
-          var _rHeld = !!rJoyActive.current;
+          var _rHeld = !!rJoyActive.current; var _tbOn = twoButtonsOn() && !fineInput();   /* v2.3.6542: on a touch screen, the two buttons' Attack is always on screen and pressable (card CT PR 3) */
           var _rCtx = (S._rBtnLiveUntil || 0) > _now2;
           var _rPressCtx = (S._rBtnPressUntil || 0) > _now2;
           var _rRecent = (S._rJoyLiveUntil || 0) > _now2;
-          var _rOn = _rCtx || _rHeld || _rRecent || discHeld('R') || _tapFree;   /* v2.3.3105: the tap's picture (JUMP, talk, a door) at rest; v2.3.3712: the weapon for the JUMP */
-          var _rPressable = _rPressCtx || discHeld('R');
+          var _rOn = _tbOn || _rCtx || _rHeld || _rRecent || discHeld('R') || _tapFree;   /* v2.3.3105: the tap's picture (JUMP, talk, a door) at rest; v2.3.3712: the weapon for the JUMP */
+          var _rPressable = _tbOn || _rPressCtx || discHeld('R');
           var _rLitCtx = _rCtx || discHeld('R');
           /* Two facts, ANDed, because either one alone can get stuck: the
              flag is cleared by handleJoystickEnd (bound to touchend AND
@@ -6699,7 +6699,7 @@ export var BroTown = function BroTown(_ref0) {
              Normal, not the grey, or the coach would ring a button that looks
              switched off. */
           var _stWant = _ghost ? 'ghost' : (!_rLitCtx ? 'idle' : (_hot ? 'hot' : 'lit'));
-          if (_rd && _rd.getAttribute('data-rstate') !== _stWant) _rd.setAttribute('data-rstate', _stWant);
+          if (_rd && _rd.getAttribute('data-rstate') !== _stWant) _rd.setAttribute('data-rstate', _stWant); if (_rd && _tbOn) latchLook(_rd, S);   /* v2.3.6542: the two buttons' Attack wears the latch (data-latch: game.css's bevel) */
           /* The sheet's Pressed: a thumb on this side (the same fact the 0.92
              step of the opacity ladder reads). */
           var _prWant = rJoyActive.current ? '1' : null;
@@ -10525,7 +10525,7 @@ export var BroTown = function BroTown(_ref0) {
        button gone from under it, a slide on to the shield) attacks nothing */
     if (manualOn()) mcAbort(S);
     staffGatherAbort(S, typeof by === 'string' ? by : undefined);   /* v2.3.4803: likewise a staff's gather (its own lift has blasted already); v2.3.4799: a thumb's lift only its own press's (`by`), the other thumb's gather kept */
-    S.autoAttack = false;
+    S.autoAttack = latchHolds(S);   /* v2.3.6542: false, unless the two buttons' Attack is latched (game/latch.js: the thumb lifts, the fight goes on) */
     setAutoAttack(false);
     S._aiming = false;
     /* v2.3.2260: measured from the RELEASE, for the same reason as the left
@@ -11388,7 +11388,7 @@ export var BroTown = function BroTown(_ref0) {
       /* v2.3.3105: a tap that BEGAN with a job on this side (a monster in the
          perimeter, a resource in reach, a lock) is never a jump, even if the
          job is gone by the release (game/tapJump.js). */
-      rts.busy = rightTapBusy(stateRef.current, rts.startAt);
+      rts.busy = rightTapBusy(stateRef.current, rts.startAt); if (twoButtonsOn()) return;   /* v2.3.6542: in the two buttons this half is the world's taps only (a door, a townsperson): no held attack, no aim, no flick (card CT PR 3) */
       /* ═══ v2.3.3105: ...AND WITH NO JOB, A PRESS WAITS TO SEE IF IT IS A TAP ═══
          The owner: "it needs priority near props instead of attack. If players
          want to attack props they can still hold the right joystick towards it
@@ -11459,7 +11459,7 @@ export var BroTown = function BroTown(_ref0) {
            roll into S._aimAngle and S._lastAimAngle -- the way the body turned
            and the bow aimed from then on -- switched the attack on, and still
            jumped.  The knob follows; the aim waits for a drag. */
-        if (!rts2.moved && tapPending(stateRef.current, Date.now())) rKnobFollow(t.clientX, t.clientY, rts2.startX, rts2.startY);
+        if (twoButtonsOn()) { /* v2.3.6542: nothing aims */ } else if (!rts2.moved && tapPending(stateRef.current, Date.now())) rKnobFollow(t.clientX, t.clientY, rts2.startX, rts2.startY);
         else rJoyAim(t.clientX, t.clientY, rts2.startX, rts2.startY);
       }
     };
@@ -11513,7 +11513,7 @@ export var BroTown = function BroTown(_ref0) {
          and specialAttack prefers a locked target over both.  Returning early
          keeps a flick out of the self-tap and tap-forward branches below --
          they are for a still thumb, and this one was moving. */
-      if (rts3.moved) {
+      if (rts3.moved && !twoButtonsOn()) {   /* v2.3.6542: no flick in the two buttons */
         var _rfx = rts3.lx || rts3.startX, _rfy = rts3.ly || rts3.startY;
         var _rft = rts3.lt || rts3.startAt;
         var _rdx = t.clientX - _rfx, _rdy = t.clientY - _rfy;
@@ -11615,7 +11615,7 @@ export var BroTown = function BroTown(_ref0) {
                loop as a press of the disc is (game/tapJump.js
                requestTapAttack); the JUMP button and Space jump (X until v2.3.3844). */
             /* v2.3.4395: manual combat -- a tap attacks nothing: a swipe does */
-            try { if (!mcSwipes(_tjS) && !_sfEnd) requestTapAttack(_tjS, endT); } catch (err) { /* an attack is never worth a broken tap */ }   /* v2.3.4803: a staff's tap is its spark (the lift's, above) */
+            try { if (!mcSwipes(_tjS) && !_sfEnd && !twoButtonsOn()) requestTapAttack(_tjS, endT); }   /* v2.3.6542: in the two buttons the attack is Attack's, never the world's tap */ catch (err) { /* an attack is never worth a broken tap */ }   /* v2.3.4803: a staff's tap is its spark (the lift's, above) */
           }
         }
       }
@@ -11709,7 +11709,7 @@ export var BroTown = function BroTown(_ref0) {
       /* v2.3.2258: the opening lunge REPLACES this press's swing when it
          fires -- both would bill the same thumb twice, and castAbility has
          already set the swing window and the animation. */
-      if (handleRBtnPress() === true) return;
+      if (twoButtonsOn()) { var _lp = latchAttackPress(Sb); if (_lp === 'once') requestTapAttack(Sb, Date.now()); else Sb.autoAttack = _lp === 'lock'; return; } if (handleRBtnPress() === true) return;   /* v2.3.6542: the two buttons' Attack is a latch: a press with a monster in sight locks it and attacks until an end, again lets go, with none in sight one attack the way you face (game/latch.js; card CT PR 3) */
       /* v2.3.4395: manual combat -- the disc's press attacks nothing: a
          stroke across it swings a sword (bM), a flick off it shoots (bE) */
       if (mcSwipes(stateRef.current)) { if (stateRef.current) mcSwipeStart(stateRef.current, bSwipe.st, t.clientX, t.clientY); return; }   /* a staff: the press attacks, as it did */
@@ -11717,7 +11717,7 @@ export var BroTown = function BroTown(_ref0) {
       doSwing();
     };
     var bM = function bM(e) {
-      if (bTouchId.current === null) return;
+      if (bTouchId.current === null || twoButtonsOn()) return;   /* v2.3.6542: the two buttons' Attack is a button: a drag on it aims nothing, slides to nothing (card CT PR 3) */
       var t = findT(e.touches, bTouchId.current);
       if (t) {
         e.preventDefault();
@@ -11861,8 +11861,8 @@ export var BroTown = function BroTown(_ref0) {
       var totalDist = Math.sqrt(totalDx * totalDx + totalDy * totalDy);
       var totalDur = Date.now() - bSwipe.st;
       var totalSpd = totalDist / Math.max(totalDur, 1);
-      var isFlick = (spd > 0.15 && dist > 8 && dur < 400)
-        || (totalSpd > 0.2 && totalDist > 15 && totalDur < 500);
+      var isFlick = !twoButtonsOn() && ((spd > 0.15 && dist > 8 && dur < 400)
+        || (totalSpd > 0.2 && totalDist > 15 && totalDur < 500));   /* v2.3.6542: no flick in the two buttons (the specials are their buttons) */
       /* v2.3.4395: manual combat -- a flick off the disc is a bow's or a
          staff's shot, the way it went (mcFlickEnd writes the aim: the disc
          does not), and no special is flicked */

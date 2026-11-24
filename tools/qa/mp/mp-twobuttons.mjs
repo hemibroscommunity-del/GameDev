@@ -20,6 +20,25 @@
  *       its four touches sent to the zone's listeners in one task: see 1f);
  *   1g. no page errors.
  *
+ * PART 2 (PR 3, tag 6542): THE RIGHT SIDE -- Attack, a latch
+ *   2a. a real monster of the Wheel, the body turned toward it by the stick
+ *       (a 20% turn): SIGHTED (game/sight.js);
+ *   2b. ONE press of Attack (the disc, at its centre) and the lift: the
+ *       latch active, the monster locked (targeting.js: the latch's lock),
+ *       the held attack on with no thumb down, the disc pressed in
+ *       (data-latch on);
+ *   2c. the fight plays itself to the monster's death (the worker brings it
+ *       near its floor first, /dev/hurt, so a test box's few frames a second
+ *       finish it): the latch's end 'killed', or the lock moved to the next;
+ *   2d. the SECOND press (the lock moved on to the next) lets go, or the
+ *       kill with none other in sight let go by itself: the latch idle, the
+ *       held attack off, the disc raised (data-latch off);
+ *   2e. a tap on the world's right half attacks nothing (Attack is the
+ *       attack);
+ *   2f. the mode off (`?manual=4`, today's default): the right half is the
+ *       held attack again (held: on; lifted: off), no data-latch;
+ *   2g. no page errors.
+ *
  * Today's stick with the mode off is played by mp-sprint (the thumb and the
  * button together) and mp-heldcombat (the default, mode 4).
  */
@@ -27,6 +46,8 @@ import * as H from './harness.mjs';
 export const lane = 'full';
 
 const UPRIGHT = { width: 390, height: 844 };
+/* v2.3.6542: H.readState passes the page's S alone: an argument goes into the function's text */
+const bind = (fn, arg) => ({ toString: () => `(S) => (${fn.toString()})(S, ${JSON.stringify(arg)})` });
 const SIDEWAYS = { width: 844, height: 390 };
 
 /* the left disc's drawn box and the turn ring's */
@@ -130,8 +151,107 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const f = await H.readState(P, (S) => ({ flash: S._dodgeFlash || 0, stamina: S.rpg && S.rpg.stamina }));
       rec.ok(`1f. ${label}: a fast flick is the dodge roll (the swipe judged first)`, f.flash >= before, { before, ...f });
       await P.page.waitForTimeout(800);
+
+      /* ── PART 2: the right side ── */
+      const me = await H.readState(P, (S) => S.myId);
+      await H.devOp(wsPort, 'vitals', me, { heal: true, god: true, godMinutes: 8 });
+      const mon0 = await H.readState(P, (S) => {
+        const P0 = S.player; let best = null;
+        for (const m of S.monsters || []) {
+          if (!m || !m.alive || !(m.curHp > 0 || m.curHp == null)) continue;
+          const d = Math.hypot(m.x - P0.x, m.y - P0.y);
+          if (!best || d < best.d) best = { id: String(m.id), x: m.x, y: m.y, d };
+        }
+        return best;
+      });
+      rec.ok(`2. ${label}: a real monster of the Wheel (guard)`, !!mon0, mon0);
+      if (!mon0) continue;
+      await H.hopTo(P, Math.round(mon0.x - 170), Math.round(mon0.y), { tries: 90 });
+      await P.page.waitForTimeout(1200);
+      const near = await H.readState(P, bind((S, id) => { const m = (S.monsters || []).find((x) => x && String(x.id) === id); return m ? { mx: m.x, my: m.y, px: S.player.x, py: S.player.y } : null; }, mon0.id));
+      /* 2a: turn toward it with the stick, 20% of the drawn radius */
+      const ang = near ? Math.atan2(near.my - near.py, near.mx - near.px) : 0;
+      await touch('touchStart', [c]);
+      await P.page.waitForTimeout(80);
+      await touch('touchMove', [{ x: c.x + 0.2 * R * Math.cos(ang), y: c.y + 0.2 * R * Math.sin(ang), id: 1 }]);
+      await P.page.waitForTimeout(600);
+      await touch('touchEnd', [{ x: c.x + 0.2 * R * Math.cos(ang), y: c.y + 0.2 * R * Math.sin(ang), id: 1 }]);
+      const seen = await H.waitFor(P, (S) => ({ phase: S._sightPhase || 'none', id: S._sightId == null ? null : String(S._sightId) }),
+        (v) => v.phase === 'sighted' && v.id != null, { timeout: 15000, label: 'sighted' }).catch(() => null);
+      rec.ok(`2a. ${label}: turned toward a monster (${near ? Math.round(Math.hypot(near.mx - near.px, near.my - near.py)) : '?'} px), it is sighted`, !!seen, { seen, near });
+      if (!seen) continue;
+      const target = seen.id;
+
+      /* 2b: ONE press of Attack, at the disc's centre, and the lift */
+      const RD = await P.page.evaluate(() => { const el = document.querySelector('.bt-rjoy-base'); if (!el) return null; const b = el.getBoundingClientRect(); return { x: b.left + b.width / 2, y: b.top + b.height / 2, w: b.width }; });
+      rec.ok(`2b. ${label}: Attack is on screen (${RD && Math.round(RD.w)} px)`, !!RD && RD.w > 20, RD);
+      if (!RD) continue;
+      const press = async () => { await touch('touchStart', [{ x: RD.x, y: RD.y, id: 2 }]); await P.page.waitForTimeout(120); await touch('touchEnd', [{ x: RD.x, y: RD.y, id: 2 }]); await P.page.waitForTimeout(400); };
+      const LATCH = (P) => H.readState(P, (S) => {
+        const el = document.querySelector('.bt-rjoy-base');
+        const lt = S.lockedTarget;
+        return { phase: S._latchPhase || 'idle', id: S._latchId == null ? null : String(S._latchId), end: S._latchEnd || null,
+          lock: lt && lt.ref ? String(lt.id) : null, latchLock: !!(lt && lt.latch), auto: !!S.autoAttack,
+          look: el ? el.getAttribute('data-latch') : null, taps: S._tapAttacks || 0 };
+      });
+      await press();
+      const b1 = await H.waitFor(P, (S) => !!(S.lockedTarget && S.lockedTarget.latch), (v) => v, { timeout: 8000, label: 'the latch\'s lock' }).catch(() => null);
+      const l1 = await LATCH(P);
+      rec.ok(`2b. ${label}: one press: the latch active on it, locked, attacking with no thumb down, the disc pressed in (${l1.phase}, ${l1.lock}, ${l1.look})`,
+        !!b1 && l1.phase === 'active' && l1.id === target && l1.lock === target && l1.latchLock && l1.auto && l1.look === 'on', l1);
+
+      /* 2c: the fight to its death (brought near its floor by the worker) */
+      const hp = await H.readState(P, bind((S, id) => { const m = (S.monsters || []).find((x) => x && String(x.id) === id); return m ? (m.curHp != null ? m.curHp : m.hp) : null; }, target));
+      if (typeof hp === 'number' && hp > 2) await H.devOp(wsPort, 'hurt', me, { id: target, dmg: Math.floor(hp) - 1 }).catch(() => null);
+      const died = await H.waitFor(P, bind((S, id) => ({ end: S._latchEnd || null, id: S._latchId == null ? null : String(S._latchId),
+        dead: !(S.monsters || []).some((x) => x && String(x.id) === id && x.alive && !(x.curHp <= 0)) }), target), (v) => v.dead && (v.end === 'killed' || (v.id && v.id !== target)),
+        { timeout: 120000, label: 'the fight' }).catch(() => null);
+      const l2 = await LATCH(P);
+      rec.ok(`2c. ${label}: the fight played to its death with no press (the end: ${l2.end || 'moved to ' + l2.id})`, !!died, { died, l2 });
+
+      /* 2d: the second press lets go (when the lock moved on to the next);
+         a kill with none other in sight let go by itself ('killed') */
+      const lockMoved = l2.phase === 'active';
+      if (lockMoved) await press();
+      else await P.page.waitForTimeout(400);
+      const l3 = await LATCH(P);
+      rec.ok(`2d. ${label}: ${lockMoved ? 'the second press lets go' : 'the kill let go by itself'}: idle (${l3.end}), the held attack off, the disc raised (${l3.look})`,
+        l3.phase === 'idle' && l3.end === (lockMoved ? 'press' : 'killed') && !l3.auto && l3.look === 'off' && !l3.latchLock, l3);
+
+      /* 2e: a tap on the world's right half attacks nothing */
+      const tz = await P.page.evaluate(() => { const el = document.querySelector('[data-joyzone="R"]'); if (!el) return null; const b = el.getBoundingClientRect(); return { x: b.left + b.width * 0.5, y: b.top + b.height * 0.35 }; });
+      const tapsBefore = (await LATCH(P)).taps;
+      if (tz) { await touch('touchStart', [{ x: tz.x, y: tz.y, id: 3 }]); await P.page.waitForTimeout(60); await touch('touchEnd', [{ x: tz.x, y: tz.y, id: 3 }]); await P.page.waitForTimeout(800); }
+      const l4 = await LATCH(P);
+      rec.ok(`2e. ${label}: a tap on the world's right half attacks nothing`, !!tz && l4.taps === tapsBefore && !l4.auto && l4.phase === 'idle', { tz, tapsBefore, l4 });
     }
-    rec.ok('1g. no page errors', errs.length === 0, errs.slice(0, 4));
+
+    /* 2f: the mode off -- today's default, the held attack on the right half */
+    {
+      const Q = await H.newPlayer(browser, { name: 'Fourbro', wsPort, webPort, viewport: UPRIGHT, touch: true, dpr: 3, world: 'wheel', query: 'manual=4' });
+      players.push(Q);
+      Q.page.on('pageerror', (e) => errs.push('mode 4: ' + String((e && e.message) || e).slice(0, 200)));
+      await H.enterWorld(Q);
+      const inQ = await H.waitFor(Q, (S) => ({ zone: S.currentZone, loading: !!S._zoneLoading }), (v) => v.zone === 'wheel' && !v.loading, { timeout: 150000, label: 'in the Wheel' }).catch(() => null);
+      if (inQ) {
+        await Q.page.waitForTimeout(2000);
+        const cq = await Q.ctx.newCDPSession(Q.page);
+        const tq = (type, pts) => cq.send('Input.dispatchTouchEvent', { type, touchPoints: pts });
+        const z = await Q.page.evaluate(() => { const el = document.querySelector('[data-joyzone="R"]'); if (!el) return null; const b = el.getBoundingClientRect(); return { x: b.left + b.width * 0.5, y: b.top + b.height * 0.4 }; });
+        let held = null, after = null;
+        if (z) {
+          await tq('touchStart', [{ x: z.x, y: z.y, id: 4 }]);
+          for (let k = 1; k <= 4; k++) { await tq('touchMove', [{ x: z.x - 10 * k, y: z.y, id: 4 }]); await Q.page.waitForTimeout(60); }
+          held = await H.waitFor(Q, (S) => !!S.autoAttack, (v) => v, { timeout: 6000, label: 'held' }).catch(() => null);
+          await tq('touchEnd', [{ x: z.x - 40, y: z.y, id: 4 }]);
+          await Q.page.waitForTimeout(500);
+          after = await H.readState(Q, (S) => ({ auto: !!S.autoAttack, mode: window.__btManual.mode(), look: (document.querySelector('.bt-rjoy-base') || { getAttribute: () => null }).getAttribute('data-latch') }));
+        }
+        rec.ok(`2f. the mode off (mode ${after && after.mode}): the right half is the held attack again (held: ${!!held}; lifted: ${after && after.auto}), no data-latch`,
+          !!z && !!held && after && !after.auto && after.mode === 4 && after.look === null, { z, held, after });
+      } else rec.ok('2f. the mode off: in the Wheel (guard)', false, inQ);
+    }
+    rec.ok('1g/2g. no page errors', errs.length === 0, errs.slice(0, 4));
   } finally {
     for (const P of players) await P.ctx.close().catch(() => {});
   }

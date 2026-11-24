@@ -76,22 +76,38 @@ export function angleOff(a, b) {
 /** Pick the monster in sight.  `me` {x, y}; `face` the drawn facing,
  *  radians; `mons` [{ id, x, y, alive }]; `range` sightRange's; `cur` the id
  *  sighted now (or null).  Returns { id, d, off } or null. */
+const _PICK = { id: null, d: 0, off: 0 };   /* v2.3.6542: ONE object, reused: the pick runs every frame once wired (the gatekeeper's sitting 56: no garbage a frame).  Read it before the next call. */
 export function sightPick(me, face, mons, range, cur) {
   if (!me || typeof face !== 'number' || !isFinite(face) || !Array.isArray(mons) || !range) return null;
   const cone = (SIGHT.CONE_DEG * Math.PI) / 180;
   const hold = (SIGHT.CONE_HOLD_DEG * Math.PI) / 180;
   let best = null;
   for (const m of mons) {
-    if (!m || !m.alive || !isFinite(m.x) || !isFinite(m.y)) continue;
+    if (!m || !m.alive || (typeof m.curHp === 'number' && m.curHp <= 0) || !isFinite(m.x) || !isFinite(m.y)) continue;   /* v2.3.6542: a monster at 0 hp is dying, not in sight (targeting.js monLive's test) */
     const dx = m.x - me.x, dy = m.y - me.y;
     const d = Math.hypot(dx, dy);
     const off = d > 0 ? angleOff(Math.atan2(dy, dx), face) : 0;
     const kept = cur != null && m.id === cur;
     if (d > (kept ? range.out : range.in)) continue;
     if (off > (kept ? hold : cone)) continue;
-    if (!best || off < best.off - 1e-9 || (Math.abs(off - best.off) <= 1e-9 && d < best.d)) best = { id: m.id, d, off };
+    if (!best || off < best.off - 1e-9 || (Math.abs(off - best.off) <= 1e-9 && d < best.d)) { best = _PICK; best.id = m.id; best.d = d; best.off = off; }
   }
   return best;
+}
+
+/* v2.3.6542: the eight facings the renderer draws (render.js SECTORS, its
+   published S._renderFacing), as angles: 0 east, PI/2 south (the world's y
+   runs down) */
+export const FACE_ANGLE = Object.freeze({
+  east: 0, southeast: Math.PI / 4, south: Math.PI / 2, southwest: 3 * Math.PI / 4,
+  west: Math.PI, northwest: -3 * Math.PI / 4, north: -Math.PI / 2, northeast: -Math.PI / 4,
+});
+/** v2.3.6542: the DRAWN facing, radians: the renderer's last (S._renderFacing),
+ *  else the body's turn (S._facingAngle), else south. */
+export function drawnFace(S) {
+  const a = S && FACE_ANGLE[S._renderFacing];
+  if (typeof a === 'number') return a;
+  return S && typeof S._facingAngle === 'number' && isFinite(S._facingAngle) ? S._facingAngle : Math.PI / 2;
 }
 
 /** The sight's phase on this phone: 'none' when nothing has written it. */

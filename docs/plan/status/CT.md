@@ -1,25 +1,22 @@
 card: CT
-branch: claude/plan-ct-2-stick
-prs: #2282 (6540, ready), PR 2 (6541, ready)
-state: ready
+branch: claude/plan-ct-3-right
+prs: #2282 (6540, ready), #2293 (6541, ready), PR 3 (6542, working)
+state: working
 
 ## Done
-- PR 1 (6540, #2282): the three rules (stickZones, sight, latch), their
-  suites, the phase rows, the ledger rows, mode 5 in manualMode, the
-  switch rows.
-- PR 2 (6541): the left stick in mode 5 (stickDrive: turn, walk, the
-  knob to the drawn radius; the ring on the disc); the frame's step
-  `input` (stickFrame: the loop's stick and keys read moved whole out of
-  legacy, 1531 -> 1513); `mp-twobuttons` part 1 green upright and
-  sideways (real CDP touches; the flick's four touches in one page task).
-- PR 1's mend (the gatekeeper's sitting 56): the negative wrap's check
-  (plant S11 red), the exact edges (B3, B5, L2), the phase rows held to
-  the modules' lists (G2); facing8 gives west as +PI only; latchCheck lets
-  go on a distance that is not a number. Each plant proved red.
+- PR 1 (6540, #2282): stickZones, sight, latch, their suites, the phase and
+  ledger rows, mode 5, the switch rows; mended at sitting 56 (plants red).
+- PR 2 (6541, #2293): the left stick in mode 5 (turn, walk, the ring); the
+  frame's step `input` (1531 -> 1513 in legacy); `mp-twobuttons` part 1.
+- PR 3 (6542, stacked on 6541): the right side in mode 5. latch.js wired
+  (latchFrame in the step `input`, latchAttackPress, latchHolds, latchLook:
+  the disc's bevel, game.css); targeting.js locks the latch's monster and
+  nothing else (touch only); the right half the world's taps only; no flick;
+  BroTown 15911 -> 15911 (calls on existing lines).
 
 ## Next
-- PR 3 (6542): the right side in mode 5 (Attack as the latch, Jump, the
-  lock, its ends, the move to the next monster).
+- PR 3: `mp-twobuttons` part 2 upright and sideways, `mp-heldcombat`,
+  `playable`, `memory-budget`; then open READY.
 
 ## Found
 - `manual-combat.test` 1h pinned `?manual=5` as no switch: now `6`.
