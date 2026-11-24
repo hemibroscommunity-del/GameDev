@@ -94,6 +94,15 @@
  *      governor compares what the screen sees, drawLanes.js knobSeen): 10
  *      near, the rate first; 20, the 15-step then the rate; 40, both crowd
  *      steps then the rate; cooled with 10 near, back in one try.
+ *  24. v2.3.6503 (card PH PR 4): THE GOVERNOR ON A PHONE THAT HEATS WITH ITS
+ *      WORK (the review's model, tools/dev/plants/govsim.mjs, here as the
+ *      suite's own): at 60 and 120, five heats, each settling in 3 and 10
+ *      minutes -- at most two rate changes in the second half hour; the
+ *      higher rate for no less of the hour than the phone drawing every
+ *      refresh it can; the screen's beat read right (a hot phone's missed
+ *      frames never a slower screen); a phone that cools comes back; a cool
+ *      one is never stepped; the two off-ramps (`?govcool=0`, `?beathold=0`)
+ *      are today's, and fail the same phones (24d).
  *
  * BREAK PROOF (rule 8), tried by hand 2026-11-14:
  *  13. framePacer.js makeGovernor down(): `upWait = Math.min(UP_WAIT_MAX_MS, upWait * 2)`
@@ -122,6 +131,11 @@
  *                                  -> FAIL 22a (crowd, crowd, rate: the rate at 27 s), 22b, 22c (3 tries up)
  *  20. verdict() without `if (switchedOff()) { rest(ts, false); return; }` -> FAIL 20a, 20b, 20d, 20e (a step taken, a rung kept)
  *      ...rest() with `const to = row;` (the pixels in play) -> FAIL 20d
+ *  24. (v2.3.6503, card PH PR 4; tried by hand 2026-11-24)
+ *      cooledFrom() as `return true;` (no margin, the pacer's and the governor's) -> FAIL 24a (60/1.6: 10 changes) and 24g
+ *      ...the governor's `if (coolOn && !cooledFrom(hotWork, workNow)) return;` taken out -> FAIL 24a (60/1.6: 10 changes)
+ *      ...the pacer's rate try without `&& cooledFrom(hotRate, heat())` -> FAIL 24a (a fast screen's own see-saw)
+ *      keptBeat() as `return r;` (every reading believed) -> FAIL 24c (a hot 120 read as a 60), 24h, 24j
  */
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -1003,6 +1017,119 @@ _liveKnobs(null);   /* v2.3.5224: from here, today's live knobs */
   check('23f. the walking armour\'s sheets and frames (gearNumbers.js) keep a share of their caps and trim when told',
     /const sheetCap = \(\) => Math\.max\(1, Math\.round\(SHEET_CAP \* _share\(\)\)\);/.test(gn) && /const frameCap = \(\) => Math\.max\(1, Math\.round\(FRAME_CAP \* _share\(\)\)\);/.test(gn)
     && /onKnob\('caches', \(\) => \{ trimSheets\(\); trimFrames\(\); \}\)/.test(gn));
+  _resetLanes();
+}
+
+/* 24. v2.3.6503 (card PH PR 4): THE GOVERNOR ON A PHONE THAT HEATS WITH ITS WORK.  The review's model
+   (tools/dev/plants/govsim.mjs, the shape review's item 19): §13's phone, with ONE change -- the heat is a STATE
+   the phone's own work drives (less drawn, cooler), not a function of the clock -- at 60 and 120, counted from the
+   frames really drawn.  Today's governor (main b966af81) see-sawed on a 60 screen 5% too slow when hot: 10 to 14
+   rate changes in the second half hour; and the pacer read a hot phone's missed frames as a SLOWER SCREEN (a hot
+   120 as a 60 for 68 to 90% of the hour; a hot 60 as a 30, the owner's lane `thirty`).  The mends: a try up only
+   once the game's own work a frame has fallen COOL_MARGIN below the last step down's (both the ladder's and a fast
+   screen's own rate), and the screen's beat held (keptBeat).  Readings: docs/plan/census/PH-phone.md. */
+{
+  const { COOL_MARGIN, cooledFrom, keptBeat, beatHoldOn, govCoolOn, _tabShown } = await import('../../src/game/framePacer.js');
+  _resetLanes(); _liveKnobs(null); _resetClientOff(); holdLadder(false); useFrameSamples(null, null);
+  const memStore = () => { let v = null; return { get: () => (v ? JSON.parse(JSON.stringify(v)) : null), set: (x) => { v = JSON.parse(JSON.stringify(x)); } }; };
+  const EFFECT = { shine: [1, 0.86], shadows: [1, 0.8], water: [1, 0.9], pixels: [1, 0.78, 0.56] };   /* §13's own */
+  /* base: { work, chip } ms a frame cool; hot: the factor at full heat (or hotAt(t)); tau: the heat's time to settle.
+     opts: cool, beatHold (the switches), gov false (the governor off, the pacer its own), pace false (every refresh
+     the phone can: no pacer, no governor) */
+  const heatRun = ({ b, base, hot, hotAt = null, tau, mins = 60, seed = 7, cool = true, beatHold = true, gov = true, pace = true }) => {
+    _resetLanes(); _liveKnobs(null);
+    const live = new Set(liveKnobs());
+    const eff = (k, r) => (live.has(k) && EFFECT[k] ? EFFECT[k][KNOBS[k].steps.indexOf(knobAt('full', k, r))] : 1);
+    const G = makeGovernor({ on: gov, store: memStore(), cool });
+    const P = makeFramePacer({ gov: G, beatHold });
+    const ring = [];
+    useFrameSamples((fromT, fn) => { let i = ring.length; while (i > 0 && ring[i - 1].t > fromT) i--; for (let j = i; j < ring.length; j++) fn(ring[j]); return ring.length ? ring[ring.length - 1].t : fromT; }, null);
+    const r = rng(seed);
+    const ms = mins * 60000, nominal = base.work + base.chip, WIN = 10000, win = [];
+    let T = 0, k = 0, prevT = null, prevWork = 0, lastT = 0, misMs = 0;
+    while (k * b < ms) {
+      const t = k * b;
+      let did = 0;
+      if (!pace || P.take(t, t >= 2000)) {
+        if (prevT != null) { ring.push({ t, totalMs: t - prevT, workMs: prevWork }); if (ring.length > 600) ring.shift(); }
+        const u = r();
+        const m = (1 + ((hotAt ? hotAt(t) : hot) - 1) * T) * (u < 0.7 ? 0.85 + 0.2 * r() : u < 0.95 ? 1.05 + 0.3 * r() : 1.35 + 0.35 * r());
+        const rg = ladderRung();
+        const chip = base.chip * eff('shine', rg) * eff('shadows', rg) * eff('water', rg) * eff('pixels', rg);
+        prevWork = base.work * m; prevT = t;
+        k += Math.max(1, Math.ceil((base.work + chip) * m / b - 1e-9));
+        did = base.work + chip;
+        const w = Math.floor(t / WIN); win[w] = win[w] || { n: 0 }; win[w].n++;
+      } else k += 1;
+      const now = k * b, dt = now - lastT;
+      T += (Math.min(1.3, (did / dt) / (nominal / b)) - T) * Math.min(1, dt / tau);
+      const rd = P.read();
+      if (pace && rd.refresh && Math.abs(rd.refresh - b) > 2) misMs += dt;
+      lastT = now;
+    }
+    useFrameSamples(null, null);
+    const snap = (f) => [120, 60, 40, 30, 24, 20].reduce((a, x) => (Math.abs(x - f) < Math.abs(a - f) ? x : a), 120);
+    const rates = win.map((w) => snap((w ? w.n : 0) / (WIN / 1000)));
+    const half = Math.floor(rates.length / 2);
+    let chg2 = 0; for (let i = half + 1; i < rates.length; i++) if (rates[i] !== rates[i - 1]) chg2++;
+    const top = Math.round(1000 / b);
+    const shareAt = (from, to) => Math.round(100 * rates.slice(from, to).filter((x) => x === top).length / Math.max(1, rates.slice(from, to).length));
+    const out = { hz: top, hot: hotAt ? 'turns' : hot, tauS: tau / 1000, chg2, top: shareAt(0), top2: shareAt(half), mis: Math.round(100 * misMs / ms), steps: G.read().stepsN, changes: P.read().changes };
+    _resetLanes();
+    return out;
+  };
+  const B60M = { b: B60, base: { work: 5, chip: 6 } }, B120M = { b: B120, base: { work: 2.6, chip: 3.4 } };
+  /* the census's runs: a 60 screen 5% too slow when hot (1.6), §13's own (2.1), very hot (3.2); a 120 screen the
+     owner's (2.4: "Prefer Page Rendering Updates near 60fps" off) and §13's own (5.4); each heat settling in 3 and 10 minutes */
+  const RUNS = [];
+  for (const [M, hot] of [[B60M, 1.6], [B60M, 2.1], [B60M, 3.2], [B120M, 2.4], [B120M, 5.4]]) for (const tau of [180000, 600000]) RUNS.push({ ...M, hot, tau });
+  const mended = RUNS.map((R) => ({ R, x: heatRun(R), free: heatRun({ ...R, gov: false, pace: false }), old: heatRun({ ...R, cool: false, beatHold: false }) }));
+  if (process.env.FP_SAY) console.log(JSON.stringify(mended.map(({ x, free, old }) => ({ x, free: free.top, old: [old.chg2, old.top, old.mis] }))));
+  const say = (L) => L.map(({ x }) => `${x.hz}/${x.hot}/${x.tauS}s: ${x.chg2} changes, top ${x.top}%, misread ${x.mis}%`);
+  check('24a. a phone that heats with its work SETTLES: at most two rate changes in the second half hour, at 60 and 120, every heat (today\'s: 10 and 14 at 60/1.6)',
+    mended.every(({ x }) => x.chg2 <= 2), say(mended));
+  check('24b. ...and holds the higher rate for the share of the time its phone can: no less than drawing every refresh it can, with no pacer and no governor (3 points\' slack)',
+    mended.every(({ x, free }) => x.top >= free.top - 3), mended.map(({ x, free }) => `${x.hz}/${x.hot}/${x.tauS}s: ${x.top}% (free ${free.top}%)`));
+  check('24c. the pacer reads the screen it is on: a hot phone\'s missed frames are never a slower screen (misread at most 1% of the hour; today\'s up to 90%)',
+    mended.every(({ x }) => x.mis <= 1), say(mended));
+  /* THE BREAK PROOF, in the suite: the same phones with both switches thrown are today's governor and pacer */
+  check('24d. THE BREAK PROOF: today\'s (`?govcool=0` and `?beathold=0`) fails 24a and 24c on the same phones -- the see-saw at 60/1.6 (8 or more changes), the hot 120 read as a 60',
+    mended.filter(({ R }) => R.b === B60 && R.hot === 1.6).every(({ old }) => old.chg2 >= 8) && mended.filter(({ R }) => R.b === B120 && R.hot === 2.4).every(({ old }) => old.mis >= 50),
+    mended.map(({ old }) => `${old.hz}/${old.hot}/${old.tauS}s: ${old.chg2} changes, misread ${old.mis}%`));
+  /* COMES BACK: the margin is the work's, so a phone that cools (a fight over, the scene lighter) tries again; a cool one is never stepped */
+  const back = [
+    heatRun({ ...B60M, hot: 2.1, hotAt: (t) => (t < 1200000 ? 2.1 : 1.15), tau: 180000 }),
+    heatRun({ ...B60M, hot: 1.6, hotAt: (t) => (t < 1200000 ? 1.6 : 1.2), tau: 600000 }),
+    heatRun({ ...B120M, hot: 5.4, hotAt: (t) => (t < 1200000 ? 5.4 : 1.2), tau: 180000 }),
+  ];
+  check('24e. ...and COMES BACK: a phone hot for 20 minutes, then cooler, holds the higher rate most of the second half hour (60: 95%, 120: 70%)',
+    back.every((x) => x.top2 >= (x.hz === 60 ? 95 : 70)), back.map((x) => `${x.hz}/${x.tauS}s: ${x.top2}% of the second half, ${x.chg2} changes`));
+  const coolP = [heatRun({ ...B60M, hot: 1.2, tau: 180000 }), heatRun({ ...B120M, hot: 1.2, tau: 180000 })];
+  check('24f. a cool phone: a 60 never stepped; a 120 at its edge (1.2) at 120 four fifths of the hour, its long cycle the phone\'s own heat',
+    coolP[0].top === 100 && coolP[0].steps === 0 && coolP[1].top >= 80, coolP.map((x) => `${x.hz}: top ${x.top}%, ${x.chg2} changes, ${x.steps} rungs`));
+  /* the rules themselves */
+  check('24g. cooledFrom: a try up only COOL_MARGIN below the step down\'s work a frame; unknown on either side, yes',
+    COOL_MARGIN > 0 && COOL_MARGIN < 0.2 && cooledFrom(10, 10 * (1 - COOL_MARGIN)) && !cooledFrom(10, 10 * (1 - COOL_MARGIN) + 0.01) && cooledFrom(null, 5) && cooledFrom(10, null));
+  check('24h. keptBeat: a reading twice or three times the held one is missed frames (held); a faster one, the first one, or one no whole number of times it (another screen) is believed',
+    keptBeat(B120, B60) === B120 && keptBeat(B120, 25) === B120 && keptBeat(B60, 33.4) === B60 && keptBeat(null, B60) === B60 && keptBeat(B60, B120) === B120
+    && keptBeat(B60, 1000 / 144) === 1000 / 144 && keptBeat(1000 / 144, B60) === B60 && keptBeat(B60, 16.9) === 16.9);
+  check('24i. the two off-ramps: `?beathold=0` and `?govcool=0`, each alone', beatHoldOn('') && !beatHoldOn('?beathold=0') && govCoolOn('') && !govCoolOn('?govcool=0') && beatHoldOn('?govcool=0') && govCoolOn('?beathold=0'));
+  /* a tab's return reads the beat afresh: Low Power Mode is turned on in the Settings, which hides the page */
+  {
+    _resetLanes();
+    const P = makeFramePacer({ gov: makeGovernor({ on: false, store: memStore() }) });
+    let t = 0;
+    for (let i = 0; i < 400; i++) { P.take(t); t += B60; }
+    const was = P.read().refresh;
+    for (let i = 0; i < 400; i++) { P.take(t); t += 2 * B60; }
+    const held = P.read().refresh;
+    const near = (a, b2) => a != null && Math.abs(a - b2) <= 0.35;
+    check('24j. a 60 screen whose page then draws every second refresh is still a 60 screen (no tab hidden: missed frames)', near(was, B60) && near(held, B60), { was, held });
+    _tabHid(); _tabShown(); t += 5000;
+    for (let i = 0; i < 400; i++) { P.take(t); t += 2 * B60; }
+    const after = P.read().refresh;
+    check('24j. ...and after a tab\'s return the beat is read afresh: a screen really slowed (Low Power Mode, turned on in the Settings) is believed', near(after, 2 * B60), { after });
+  }
   _resetLanes();
 }
 

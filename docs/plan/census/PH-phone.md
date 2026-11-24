@@ -95,6 +95,33 @@ As said, word for word (in the orchestrator's part 5 session):
   screen) was read wrong on a phone that drew 45: the pacer's or the report's reading of the screen's rate
   (`src/game/framePacer.js`, `drawLanes.js` first). If PR 4's governor leans on it, PR 4 mends it or stops trusting it.
 
+## The owner's Speed test at 1.5, 2026-11-24 05:01 UTC (PR 4, 6503), as passed on by the orchestrator (part 6)
+
+On the owner's iPhone (14 Pro or Pro Max), the card's head: "drawn 645 x 1106 px (lowered to 1.5x) ... lane full".
+Frames a second / slowest frame (ms), word for word as the card printed them:
+
+| row | frames/s | slowest ms |
+|---|---|---|
+| Everything on | 60 | 18 |
+| No shadows (and no shine) | 58 | 20 |
+| No metal shine | 48 | 24 |
+| Metal shine the old way | 46 | 25 |
+| Three drawing programs | 52 | 23 |
+| Shadows the old way | 45 | 26 |
+| Still water | 47 | 24 |
+| Lower resolution (2x, not 3x) | 47 | 25 |
+| All of those off | 51 | 24 |
+
+The card's foot: "game's own work 3.1 ms a frame ... nothing is holding the frame rate back here."
+The owner: "Low power mode was not on during test". The orchestrator's reading: 60 with everything on at 1.5, so the
+metal's shine stays on by default (decided for the owner while away).
+
+What the card cannot say (Found, PR 4; the Speed test is `src/game/speedTest.js`, not this card's file): every row that
+turns something OFF reads SLOWER than "Everything on", yet the card prints savings computed from them ("saves 14
+frames"); the rows are not a measure of what each thing costs (the phone warming as the rows run is the likeliest
+reading, untested). It has no row at 1.5 or 1 (the sharpness the owner chose by eye), and at the 1.5 default its
+"Lower resolution (2x, not 3x)" row changes nothing.
+
 ## mp-skateboard, slowed, the test box, 2026-11-24 (PR 6, 6505)
 
 | run | throttle | test | result |
@@ -129,3 +156,32 @@ hour, and 60 held 4 to 15% of the time. And `mis`: a hot phone's missed frames a
 read as 60 for 68 to 90% of the hour at 2.4). That is the owner's lane `thirty` on a phone drawing 45 with Low Power
 Mode off (above): the governor leans on the pacer's refresh reading, so it is PR 4's to mend or stop trusting
 (`framePacer.js`'s refresh estimate; the lane from `drawLanes.js`).
+
+## PR 4 (6503): the mended governor in the same model (frame-pacer.test §24, node, the test box, 2026-11-24)
+
+The model is govsim.mjs's, now the suite's own (§24).  The mends: a try up only once the game's own work a frame has
+fallen 8% (COOL_MARGIN) below the last step down's, for the ladder and a fast screen's own rate (`?govcool=0` today's);
+the screen's beat held (a reading two or three times the held one is missed frames; read afresh at a tab's return;
+`?beathold=0` today's).  Rate first on the chip axis (today's order).  `chg2` and `mis` as above; `free`: the share at
+the higher rate drawing every refresh it can (no pacer, no governor).
+
+| screen | hot | tau | higher rate share (free) | chg2 (today's) | mis (today's) |
+|---|---|---|---|---|---|
+| 60 | 1.6 | 180 s | 4% (4%) | 0 (10) | 0% (0%) |
+| 60 | 1.6 | 600 s | 14% (15%) | 0 (14) | 0% (0%) |
+| 60 | 2.1 | 180 s | 2% (2%) | 0 (0) | 0% (0%) |
+| 60 | 2.1 | 600 s | 7% (7%) | 0 (0) | 0% (0%) |
+| 60 | 3.2 | 180 s | 1% (1%) | 0 (0) | 0% (69%) |
+| 60 | 3.2 | 600 s | 3% (3%) | 0 (0) | 0% (66%) |
+| 120 | 2.4 | 180 s | 1% (2%) | 0 (0) | 0% (90%) |
+| 120 | 2.4 | 600 s | 4% (6%) | 0 (0) | 0% (68%) |
+| 120 | 5.4 | 180 s | 0% (1%) | 0 (8) | 0% (1%) |
+| 120 | 5.4 | 600 s | 1% (2%) | 0 (4) | 0% (4%) |
+
+A phone that cools (hot for 20 minutes, then cooler): back at the higher rate within seconds of cooling (60: 2.1 to
+1.15, the rate given back at 1202 s; today's took 7 tries before it).  A cool 120 at its edge (1.2): 120 for 87% of the
+hour (today's 94%), its drops to 60 four in a half hour (today's six), each one the phone's own heat: the margin costs
+it 7 points of 120 for fewer, longer stretches.
+
+The margin's size, swept (the census's runs plus the cooling and cool phones): 5% left the 60/1.6 see-saw (11 and 12
+changes); 8% ended it everywhere; 12% and 16% held the cool 120 at 120 for only 54% and 18% of the hour.  8% chosen.
