@@ -113,6 +113,39 @@ const feel = (P) => P.page.evaluate(() => {
   return { on: !!r.on, why: r.why || null, spd: typeof r.spd === 'number' ? +r.spd.toFixed(4) : null, push: r.push, clk: r.clk || 0,
     x: S.player.x, y: S.player.y, snd: window.__btRideSound ? window.__btRideSound.state() : null };
 });
+/* ── v2.3.6505 (card PH PR 6; TRAPS 177 and 200, the test first): THE GAME'S CLOCK FOR THE WHOLE PAGE ──
+   Green alone, and nine red at BT_QA_CPU_THROTTLE=4 on main b966af81 (4, 5, 5b, 5c, 8, 10 twice, 11): every one a
+   wait sized by the wall's clock for a page drawing 60 frames a second -- "off within 6 s", "heard within 10 s",
+   "silent 0.4 s after" -- read on a page drawing a few.  The board's `clk` (above) runs only while you ride; this one
+   runs always: the game's own step summed, frame by frame (the steady step's `_dtScale`, what everything is moved
+   by), read from the frame's step log (BroTown.jsx `__btStepLog`, mp-steadystep's probe), so "0.4 s after" means 0.4 s
+   of the game, on any box.  A wait is until its thing is so, up to a cap of the GAME's ms (and a wall's backstop,
+   long, for a page that stops drawing at all). */
+const clockOn = (P) => P.page.evaluate(() => {
+  window.__btStepLog = { ms: 0, push() { const S = window._gameState && window._gameState.current; this.ms += (S && S._dtScale > 0 ? S._dtScale : 1) * 16.667; return 0; } };
+});
+const gameMs = (P) => P.page.evaluate(() => (window.__btStepLog && window.__btStepLog.ms) || 0).catch(() => 0);
+const WALL_BACKSTOP_MS = 180000;
+/* wait `ms` of the game's clock */
+async function waitGame(P, ms) {
+  const g0 = await gameMs(P);
+  for (const w0 = Date.now(); Date.now() - w0 < WALL_BACKSTOP_MS;) {
+    if ((await gameMs(P)) - g0 >= ms) return true;
+    await P.page.waitForTimeout(40);
+  }
+  return false;
+}
+/* H.waitFor's way, its cap the game's ms: the value once `pred` holds, null at the cap */
+async function untilG(P, fn, pred, { ms = 5000, every = 100 } = {}) {
+  const g0 = await gameMs(P);
+  for (const w0 = Date.now(); Date.now() - w0 < WALL_BACKSTOP_MS;) {
+    const v = await H.readState(P, fn).catch(() => undefined);
+    if (v !== undefined && pred(v)) return v;
+    if ((await gameMs(P)) - g0 >= ms) return null;
+    await P.page.waitForTimeout(every);
+  }
+  return null;
+}
 /* the worker's own count of moves it had to follow past its bound
    (movement.js _moveBudgetInfo): an honest move is never one */
 const followedBy = async (wsPort) => {

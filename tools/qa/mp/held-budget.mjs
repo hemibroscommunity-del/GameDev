@@ -92,6 +92,15 @@ export const KNOWN = {
      the main tour's `town`, three runs, 9.4 / 17.9 / 10.0 ms the longest, 34 holds.  Now the reader's worker numbers
      the strip for its row (stripRows.js; a colour variant retinted there first) and the page only checks the rows and
      makes the texture.  The sample (`town`, `lands` x3): 6.1 / 12.4 / 4.5 ms the longest, 11 holds in all (the 12.4: 9 ms of it the row's upload to this box's software chip; one hold just past the general line is the judge's noise) (docs/specs/held-sweep.md, "Card H") */
+  /* v2.3.6505 (card PH PR 6): 'server-message' ON the list, a NEW named debt (not a line raised).  The gate's held
+     sample (stand, town, ride: tools/dev/gatekeeper.mjs's `heldsample`) on main b966af81, on the test box,
+     2026-11-24: 16.5 ms over the general 12 at `town`, twice in one run, unlisted, so every sitting would read red.
+     A gate red at every sitting teaches everyone to read past it (orchestrator part 5's call); listed, it goes red
+     only for what is new.  Seen before and listed only (census/HB-holds.md row 15: 33.0 ms at `lands`; SB-ride.md
+     row 13: 19.6 on the board).  Not card PH's to fix: it is the message's own size and the work handed on */
+  'server-message': { ms: 17, whose: 'ours',
+    why: "a message from the worker worked through in one piece on the page (wsClient.js ws.onmessage and what it hands on: processGameEvent, the strip readers' replies): 16.5 ms twice at the gate sample's `town` on main b966af81, on the test box (2026-11-24); 33.0 once at the sweep's `lands` before (census/HB-holds.md row 15)",
+    next: "split what one message makes the page do (the tick's per-entity work handed on a frame at a time), or send less in one message (the worker's message size, HB-holds row 15); then the row comes off" },
   'the frame itself': { ms: 70, whose: 'box',
     why: "one frame's own code on this box, which plays a quarter of a second of game in each (it draws four a second): every monster, bubble and name plate that changed in that time is done in one frame",
     next: 'mp-phoneframe is the measure of a frame at a phone\'s rate; here the line only stops it growing',
