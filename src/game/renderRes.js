@@ -138,12 +138,12 @@ let _phone = false;   /* v2.3.5140: the class, kept with the size (noteCanvasCss
 let _viewOut = null;  /* v2.3.5140: ?zoom=, read once, as worldViewport's VIEW_OUT */
 let _pixF = 1;        /* v2.3.5225: the ladder's share of the pixels drawn (laneKnob('pixels')) */
 let _pixOff = null;   /* v2.3.5225: ?ladderpix=0, read once */
-let _phoneResOn = null; /* v2.3.6503: ?phoneres=0 off, read once */
 
-/* v2.3.6503: a phone at PHONE_RES, unless ?phoneres=0 */
+/* v2.3.6503: a phone at PHONE_RES, unless ?phoneres=0.  Read through the page's one
+   reader each time (it keeps its own copy per address), never a copy of our own here: a
+   new module row is a row in the state ledger (state-ledger 4), and a test's reset kept it */
 function phoneResOn() {
-  if (_phoneResOn === null) { try { _phoneResOn = !sw('phoneres'); } catch (e) { _phoneResOn = true; } }
-  return _phoneResOn;
+  try { return !sw('phoneres'); } catch (e) { return true; }
 }
 
 /* v2.3.5232: each value as written, through the page's one reader; the
@@ -321,5 +321,4 @@ try {
 export function _resetRenderRes() {
   _url = null; _live = 0; _cssW = 0; _cssH = 0; _budgetOn = null; _viewOut = null; _urlBudget = null; _phone = false;
   _pixOff = null; readPixels();   /* v2.3.5225 */
-  _phoneResOn = null;   /* v2.3.6503 */
 }

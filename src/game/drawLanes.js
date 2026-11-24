@@ -266,8 +266,8 @@ export const ADDRESS_PINS = Object.freeze([
   Object.freeze({ knob: 'water', value: 'still', addr: 'nowaves', why: 'the sea still' }),
   /* v2.3.6503 (card PH PR 4): the owner's two ways to hold the shine still (the ladder's second chip rung otherwise;
      on by default: decided for the owner while away, the orchestrator, 2026-11-24) */
-  Object.freeze({ knob: 'shine', value: 'off', addr: 'shine=0', why: 'the metal never shines on this phone' }),
-  Object.freeze({ knob: 'shine', value: 'on', addr: 'shine=1', why: 'the metal always shines: the ladder never takes it' }),
+  Object.freeze({ knob: 'shine', value: 'off', addr: 'shine=0', why: KNOBS.shine.say[1] }),   /* v2.3.6503: the knob's own words (no new word written in place: player-words) */
+  Object.freeze({ knob: 'shine', value: 'on', addr: 'shine=1', why: KNOBS.shine.say[0] }),
   Object.freeze({ knob: 'rate', value: null, addr: 'pace', why: 'the pacer off (`?pace=0`): the rate is read by nothing' }),
   Object.freeze({ knob: 'crowd', value: null, addr: 'crowd', why: 'a crowd cap of its own (`?crowd=K`): the knob is read by nothing' }),
 ]);
