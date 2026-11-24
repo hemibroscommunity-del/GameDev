@@ -27,8 +27,10 @@
  *       latch active, the monster locked (targeting.js: the latch's lock),
  *       the held attack on with no thumb down, the disc pressed in
  *       (data-latch on);
- *   2c. the stick walks you in while locked (the gap falls; the rest by the
- *       harness's hop: this box's few frames, a held attack's half walk),
+ *   2c. the stick walks you in while locked (the body walks toward it: a
+ *       Wheel monster wanders; the rest by the harness's hop, and in the
+ *       fight a keeper inside the page holds you beside it: this box's few
+ *       frames, a held attack's half walk),
  *       then the fight plays itself to
  *       the monster's death (the worker brings it
  *       near its floor first, /dev/hurt, so a test box's few frames a second
@@ -210,7 +212,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       /* 2c: walk in with the stick (real touches, 70%, re-aimed each half
          second; the lock turns the body to it), then the fight to its death
          (brought near its floor by the worker) */
-      const GAP = (P) => H.readState(P, bind((S, id) => { const m = (S.monsters || []).find((x) => x && String(x.id) === id); return m ? { d: Math.hypot(m.x - S.player.x, m.y - S.player.y), a: Math.atan2(m.y - S.player.y, m.x - S.player.x) } : null; }, target));
+      const GAP = (P) => H.readState(P, bind((S, id) => { const m = (S.monsters || []).find((x) => x && String(x.id) === id); return m ? { d: Math.hypot(m.x - S.player.x, m.y - S.player.y), a: Math.atan2(m.y - S.player.y, m.x - S.player.x), px: S.player.x, py: S.player.y } : null; }, target));
       let g = await GAP(P);
       const gPress = g;
       if (g && g.d > 90) {
@@ -224,7 +226,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
         await touch('touchEnd', [{ x: c.x, y: c.y, id: 1 }]);
       }
       const g0 = await GAP(P);
-      rec.ok(`2c. ${label}: the stick walks you in while locked (${g ? Math.round(g.d) : '?'} px, nearer than at the press), the lock held`, !!g && (g.d <= 90 || g.d < gPress.d - 20) && (await LATCH(P)).phase === 'active', { gPress, g });
+      /* v2.3.6542: what the STICK did, the body's walk toward the monster
+         (along the line at the press), not the gap: a Wheel monster wanders,
+         and one walking off faster than a held attack's halved walk grew the
+         gap with the stick walking you in all the same (the helper's run:
+         341 -> 372 px upright, 238 -> 329 sideways) */
+      const toward = g && gPress ? (g.px - gPress.px) * Math.cos(gPress.a) + (g.py - gPress.py) * Math.sin(gPress.a) : 0;
+      rec.ok(`2c. ${label}: the stick walks you in while locked (${Math.round(toward)} px toward it; the gap ${g ? Math.round(g.d) : '?'} px), the lock held`, !!g && (g.d <= 90 || toward > 20) && (await LATCH(P)).phase === 'active', { gPress, g, toward });
       /* this box draws a few frames a second and a held attack halves the
          walk (mode 4's rule, kept): the rest of the way by the harness's hop */
       if (g0 && g0.d > 90) {
@@ -234,36 +242,29 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const hp = await H.readState(P, bind((S, id) => { const m = (S.monsters || []).find((x) => x && String(x.id) === id); return m ? (m.curHp != null ? m.curHp : m.hp) : null; }, target));
       const hurt = typeof hp === 'number' && hp > 2 ? await H.devOp(wsPort, 'hurt', me, { id: target, dmg: Math.floor(hp) - 1 }).catch((e) => ({ err: String(e) })) : { hp };
       /* the monster at 1 hp walks off: the harness keeps you beside it, the
-         latch does the rest.  v2.3.6542: every second a chase to within 30 px
-         of where the monster IS (read again on each 100 px hop, as hopTo's
-         own steps and gap); a hop toward where it WAS fell behind a monster
-         walking off (2c sideways: 329 px, the sword swinging at air) */
-      const chase = async () => {
-        for (let i = 0; i < 12; i++) {
-          const d = await P.page.evaluate((id) => {
-            const S = window._gameState.current; const m = (S.monsters || []).find((x) => x && String(x.id) === id);
-            if (!m || !m.alive) return 0;
-            const dx = m.x - S.player.x, dy = m.y - S.player.y, d = Math.hypot(dx, dy);
-            if (d <= 30) return d;
-            const k = Math.min(100, d - 25);
-            S.player.x += (dx / d) * k; S.player.y += (dy / d) * k;
-            return d - k;
-          }, target).catch(() => 0);
-          if (d <= 30) return d;
-          await P.page.waitForTimeout(260);   /* > the 198ms solo move gap (hopTo's) */
-        }
-        return null;
-      };
+         latch does the rest.  v2.3.6542: the keeping runs INSIDE the page, on
+         its own clock (glideTo's way): every 100 ms the body steps up to
+         40 px toward where the monster IS, to within 30 px (400 px/s, under
+         the worker's 500 px/s move budget), until it dies or 90 s pass.  A
+         hop by evaluate from here (one round trip a 100 px step, 1-3 s on
+         this box) fell behind a monster walking off: 282 px both ways, the
+         sword swinging at air (the helper's run) */
+      await P.page.evaluate((id) => {
+        const until = Date.now() + 90000;
+        const t = setInterval(() => {
+          const S = window._gameState && window._gameState.current;
+          const m = S && (S.monsters || []).find((x) => x && String(x.id) === id);
+          if (!S || !m || !m.alive || m.curHp <= 0 || Date.now() > until) { clearInterval(t); return; }
+          const dx = m.x - S.player.x, dy = m.y - S.player.y, d = Math.hypot(dx, dy);
+          if (d <= 30) return;
+          const k = Math.min(40, d - 25);
+          S.player.x += (dx / d) * k; S.player.y += (dy / d) * k;
+        }, 100);
+      }, target);
       const FIGHT = bind((S, id) => { const m = (S.monsters || []).find((x) => x && String(x.id) === id);
         return { end: S._latchEnd || null, id: S._latchId == null ? null : String(S._latchId), dead: !(m && m.alive && !(m.curHp <= 0)),
-          mx: m ? m.x : null, my: m ? m.y : null, gap: m ? Math.hypot(m.x - S.player.x, m.y - S.player.y) : null }; }, target);
-      let died = null;
-      for (let k = 0; k < 90 && !died; k++) {
-        const f = await H.readState(P, FIGHT);
-        if (f.dead && (f.end === 'killed' || (f.id && f.id !== target))) { died = f; break; }
-        if (!f.dead && f.gap > 30) await chase();
-        await P.page.waitForTimeout(1000);
-      }
+          gap: m ? Math.round(Math.hypot(m.x - S.player.x, m.y - S.player.y)) : null }; }, target);
+      const died = await H.waitFor(P, FIGHT, (f) => f.dead && (f.end === 'killed' || (f.id && f.id !== target)), { timeout: 95000, label: 'the fight to its death' }).catch(() => null);
       const l2 = await LATCH(P);
       const why = await H.readState(P, bind((S, id) => { const m = (S.monsters || []).find((x) => x && String(x.id) === id);
         return { wpn: !!(S.rpg && S.rpg.weapon), slot: S.rpg && S.rpg.activeSlot, swim: !!(S._wheelSwim && S._wheelSwim.on), swungAgo: S.swingTimer ? Date.now() - S.swingTimer : null,
