@@ -1,34 +1,39 @@
 card: DG
-branch: claude/dg-books (PR 3), on claude/dg-scans (PR 2); PR 1 merged (a98fff04)
-prs: #2283 (PR 1, 6440, merged), #2295 (PR 2, 6441, ready: sitting 58's mend), #2300 (PR 3, 6442, tests only)
-state: ready
+branch: claude/dg-mend59 (sitting 59's mend, 6446, base claude/dg-gaps), on dg-gaps (6), dg-reach (5), dg-wireform (4), dg-books (3), dg-scans (2)
+prs: #2283 (PR 1, 6440, merged), #2295 (PR 2, 6441), #2300 (PR 3, 6442), #2310 (PR 4, 6443), #2312 (PR 5, 6444), #2313 (PR 6, 6445): all ready (heads frozen); the mend: one draft PR, 6446
+state: working
 
 ## Done
-- Sitting 58's hold on #2295 (review-z58.md), the CLASS mended: the scans
-  DENY BY DEFAULT.  writesOf follows a container or its item through every
-  binding (list and nested patterns, a rest, a number key, a parameter's,
-  loop's or callback's pattern, a copy, a member it is put into, a function
-  that hands it back, an object holding it) and reports a binding it cannot
-  follow as a write ('cannot follow'); action-door §7 the same for a
-  channel and a fetch.  Both plants and six of mine RED, in real files.
-- Sitting 57's hold on #2295: its three plants red.
-- PR 2 (6441): one scanner (tools/guards/lib/writesOf.mjs) for every door
-  test; door plants of plants1-4 red by the scan alone, but SEND-2 (PR 6).
-- PR 3 (6442): gold-door §10 and bag-door §10 run every road on a blank
-  record and carried ones: the books moved exactly what the purse or bag
-  moved (mint, burn) or nothing (move, escrow); shape-books plant 1 red.
-- PR 1 (6440, #2283): the running room refuses; merged.
+- Sitting 59's mend (6446, claude/dg-mend59): the class, as allow lists in
+  the tree and a mutation pass in the room; plants6.json 35 of 35 RED
+  (docs/plan/census/dg-mend59.md).
+- PR 6 (6445, #2313): done.  wire-gaps.test: the relay is the made list;
+  the router's default case opens with its two gates; nothing before the
+  routes' door answers; every path index.js compares has a row.  send-door
+  counts UTF-8 bytes; sendOutside imported in origin.js alone.  13 plants red.
+- PR 5 (6444, #2312): wire-hostile watches what is read off each message
+  after the door (test room only): every named field read or in
+  NOT_REACHED with why (104, only falls); no unnamed read; no listing of a
+  message's keys.  8 plants red.
+- PR 4 (6443, #2310): a named field held to its form (door.js WIRE_FORM);
+  `wireform` absent refuses, 'count' counts, false the old door; cap
+  wireForm; judge.mjs refuses every plant; playable and mp-bank green.
+- PR 2 (6441, #2295): one scanner (writesOf.mjs) for every door suite.
+- PR 3 (6442, #2300): the books moved what the purse or bag moved.
 
 ## Next
-- Sitting 59: #2295, #2300 together.
-- PR 4 (6443): on claude/dg-books.
-- testroom §7 tries four fields (Z's Found): a later PR of the card.
+- Sitting 59: #2295, #2300, #2310 (behaviour, its own line), #2312, #2313.
+- The owner, in the morning: may #2295 to #2313 land with this mend on top.
 
 ## Found
-- none (the wider reads found no second writer in server/src or src/)
+- relay.js `_relayBytesDrop` sizes a relay by `JSON.stringify(msg).length`
+  (characters, not bytes): behaviour, not fixed here.
+- wire-hostile TREE_UNNAMED (13): fields handlers read that no row names
+  (`ride` data, `player_attack` element, `dungeon_start`'s 11 top-level
+  config fields): naming them puts them under the door's forms (behaviour),
+  the rows' own change.
+- `WIRE_HOSTILE_DOOR=off` fails wire-hostile check 2 the same way on
+  e2de46fd (2 cases against 19): older than the mend.
 
 ## Needs
-- none
-
-## Note
-- A Map's `.get(k)` is no element of the container (session-door).
+- none (the orchestrator: mark #2313 ready once all five are green)

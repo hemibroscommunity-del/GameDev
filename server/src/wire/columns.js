@@ -11,10 +11,13 @@
 
 export const WIRE_COLUMNS = Object.freeze({
   /* the order a row writes its columns in; a row may leave out only the OPTIONAL ones */
-  ORDER: Object.freeze(['name', 'dir', 'at', 'wayIn', 'envelope', 'phase', 'mayStart', 'doesWhat', 'reqId', 'trust', 'absent', 'bad', 'answer', 'privileged', 'fight', 'placed', 'muted', 'pace', 'watch', 'flag', 'note']),
+  ORDER: Object.freeze(['name', 'dir', 'at', 'wayIn', 'envelope', 'phase', 'mayStart', 'doesWhat', 'reqId', 'trust', 'form', 'absent', 'bad', 'answer', 'privileged', 'fight', 'placed', 'muted', 'pace', 'watch', 'flag', 'note']),
   /* v2.3.5181: the machine's columns (SHAPES part 5's second table), each
      written only where it says something, then `note` */
-  OPTIONAL: Object.freeze(['privileged', 'fight', 'placed', 'muted', 'pace', 'watch', 'flag', 'note']),
+  /* v2.3.6443 (card DG PR 4): `form`, a field of `trust` held to more than
+     its trust's default (wire/door.js WIRE_FORM; README.md beside this file);
+     wire-form.test §5 holds its values */
+  OPTIONAL: Object.freeze(['form', 'privileged', 'fight', 'placed', 'muted', 'pace', 'watch', 'flag', 'note']),
 
   /* which way it travels: a relay is one row for both ways */
   dir: Object.freeze(['in', 'out', 'relay']),

@@ -1,39 +1,31 @@
 card: Z
-branch: claude/plan-z-sitting-59
-prs: BK #2301 #2309 (listed); this PR (tag 6271), the last line
+branch: claude/plan-z-sitting-60
+prs: 17 listed (LF 1, WHO 2, WL 7, CT 1, DG 6); this PR (tag 6272), the last line
 state: ready
 
 ## Done
-- `census/review-z59.md`: 23 PRs checked against their cards at their heads
-  (the orchestrator's queue of 07:25), each read by a purpose lane (top
-  model, plants). Sitting 58's 47 planted lines all RED now; 2 listed, 21
-  held or waiting on a held PR, each with its new planted line. Rehearsed
-  on `main` 43541e5f, the list in order: tree 26e6a925
-  (26e6a925447c6b34e6fe4071e243d7c9d3f9aeb3): precheck 0 FAIL (179 s),
-  every switch thrown once (89, 2420 suite runs, 853 s), claims-gain
-  --whole (621 s), build, questline 187 passed. One merge base each, step
-  by step; both bases `main`.
+- `census/review-z60.md`: the orchestrator's 28 PRs, every head and `test`
+  checked (all as given, all green). 59's frozen heads sorted by the
+  owner's rule of 2026-11-24 (finish.md part 8, card Z 4b); what was new
+  read by six purpose lanes (top model, plants). Rehearsed on `main`
+  45579dba, the list in order: tree ae498b55
+  (ae498b55c1158f349836a59017c0c34e2c0def21): precheck, every switch
+  thrown, claims-gain --whole, build, questline 187: all green.
 ## The list: merge in this order, "Create a merge commit", in one go
-1 #2301 (BK 6463; DEPLOYS)  2 #2309 (BK 6465; DEPLOYS)
-3 Z (6271, a draft: mark it ready first).
-## Held / To 60
-- Held, each a plant green in the PR's own guard (review-z59): #2273 (no
-  uncarried gap of 5 to 12 s played), #2285 (test mode taken once), #2316
-  (a week-old card reopened: a bug), #2317 (six shadows off), #2286 (a
-  URL's text; a frozen spread), #2287 (a spread copy; a method),
-  #2298 (`debugBus.getState`; importsOf's file order), #2279 (riding
-  forced; nine report lines), #2306 (the rise from `.slice(-1)`), #2314
-  (draft; the sample filtered out), #2293 (a later write to `dx`/`dy`),
-  #2295 (`S[k].send`; a stash helper; `s.id`), #2310 (an array form;
-  `wireform: true` counts), #2312 (a gated read; `msg.length`), #2313
-  (draft; new head e2de46fd at 08:14 not reviewed).
-- Waiting on a held PR under them (own part passed): #2290, #2302, #2303
-  (WL), #2291, #2297 (PH), #2300 (DG).
+1 #2321 (LF; draft)  2 #2285 (WHO)  3 #2316 (WHO; base who-1)
+4 #2286 5 #2287 6 #2290 7 #2298 8 #2302 9 #2303 (WL)  10 #2322 (WL; draft,
+base wl-6)  11 #2293 (CT)  12 #2295 13 #2300 14 #2310 15 #2312 (DG)
+16 #2313 (DG; draft)  17 #2324 (DG; draft, base dg-gaps). Every one DEPLOYS.
+18 Z (6272, a draft: mark it ready first).
+## Held / To 61
+- #2273, #2320 (LF): red with WL's #2286 (`four-lines`: wsClient.js 2599
+  over its new line 2598). #2317 (WHO): red with DG's #2313 (`wire-gaps`
+  2b: `traceNote` not a taker). #2308 (CT): a bug (the Attack press and
+  `latchFrame` ask different gates). PH #2279 to #2323: #2323 leaves three
+  of 59's worker `report` plants green; #2318 a bug (a chip-caused step
+  never climbs back) and a card dodge green (the doubled wait).
+- To 61: WHO's mend #2325 (came after the lane and the rehearsal began).
 ## Found
-- elemental2.test.mjs:187 flaky (about 1 in 1,700; no card). frame-pacer
-  23g a text pattern (card O). held-budget and memory-budget lines can
-  rise silently. `window.debug.getState()` uncounted (WL). The box had no
-  `node_modules` at the start.
+- The debts of 58 to 60: `docs/plan/debts.md` (the owner's line).
 ## Needs
-- Nothing from the owner for this list. The orchestrator: #2291's body
-  does not name `renderRes.js` nor its second suite as approved.
+- Nothing from the owner for this list.

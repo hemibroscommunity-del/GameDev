@@ -72,19 +72,44 @@
  * census is set by it in this PR (225 -> 227 lines, 84 -> 85 files):
  * debugBus.js 4 -> 5 (its `getState` put in the debug bus's object) and
  * lazyPanel.js 1 (its `import(url)` of a panel by a path it cannot read).
+ * v2.3.6526, sitting 59's hold (the class, not the spellings): two more
+ * checks.
+ *   5. THE ORDER: the walk to a fixed point re-read only a file whose
+ *      written import named a changed file, so `src/game/aaHand.js` with
+ *      `import(DIR + 'common.js')`, sorted before common.js, was read once,
+ *      too early, and never again (src/a/ green, src/z/ red).  The graph is
+ *      now walked until no export changes, whatever the order, then every
+ *      file is read against the final exports (a walk that does not settle
+ *      throws).  Check 5 reads the real files in the reverse order and asks
+ *      for the same census and edges; check 3 plays the reviewer's three
+ *      files in all six orders.
+ *   6. THE GETTER'S IMPORTERS, AN ALLOW LIST: a file whose exports bear the
+ *      hand (a getter, a hand, an object or class holding one: debugBus's
+ *      `{ getState }`) may be imported without a row only by a named import
+ *      of names that bear nothing; every other edge into it, and every
+ *      `import()` of a path the guard cannot read, is a row of IMPORTERS
+ *      (lib/openHandKnown.mjs, by file, only falls: 37 rows, 37 edges).  So
+ *      a new importer is red in ANY form, whatever happens after the
+ *      import.  Check 3 plays sitting 59's three (`debugBus.getState()` from
+ *      a new file, `{ getState = () => null } = await import(..)`, `const
+ *      loading = import(..)` then `.then(C => C.getState())`) and card WL's
+ *      own (a class's static getter, an array of getters, `import('@/zz' +
+ *      'HandA.js')`, a middle file's default object): each red.
  *
  *   node tools/guards/open-hand.test.mjs            the verdict
- *   node tools/guards/open-hand.test.mjs --write    lowers the list to what is
- *                                                   found; it never adds a row
+ *   node tools/guards/open-hand.test.mjs --write    lowers the lists (KNOWN and
+ *                                                   IMPORTERS) to what is found;
+ *                                                   it never adds a row
  *
  * Run from the repository's root (cd server && npm test runs it with every
- * other guard and suite).  About five seconds (babel's scopes on ~85 files).
+ * other guard and suite).  About twenty seconds (babel's scopes, read to a fixed
+ * point, twice: the second in the reverse order).
  */
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { ROOT } from './lib/systems.mjs';
 import { loadBabel, openHandCensus, realSources, renderKnown, KNOWN_PATH } from './lib/openHand.mjs';
-import { KNOWN, LINE, FILES_LINE } from './lib/openHandKnown.mjs';
+import { KNOWN, LINE, FILES_LINE, IMPORTERS } from './lib/openHandKnown.mjs';
 
 let failed = 0;
 const ok = (m) => console.log('ok   ' + m);
@@ -117,11 +142,57 @@ if (total > LINE) bad(`2 ${total} code lines reach the open hand, over the line 
 else if (files > FILES_LINE) bad(`2 ${files} files reach the open hand, over the line ${FILES_LINE}`);
 else ok(`2 ${total} of ${LINE} lines, ${files} of ${FILES_LINE} files${total < LINE || files < FILES_LINE ? ' -- room: run --write to lower the list' : ''}`);
 
+/* ── 6. v2.3.6526 (sitting 59): the getter's importers, an ALLOW list ──
+   A file whose exports bear the hand (a getter, a hand, an object or class
+   holding one) may be imported without a row in ONE form: a named import of
+   names that bear nothing.  Every other edge into it (a bearing name, the
+   default when it bears, a namespace, `export * from`, any `import()` of it)
+   and every `import()` of a path the guard cannot read is a row of IMPORTERS
+   (by file; it only falls): a new importer in any form is red, a new file
+   included, whatever the guard can or cannot follow after the import. */
+const edges = census.edges;
+const imp = Object.create(null);
+for (const [rel, es] of edges) imp[rel] = es.length;
+{
+  let over6 = 0, n6 = 0;
+  for (const rel of Object.keys(imp).sort()) {
+    n6 += imp[rel];
+    const row = IMPORTERS[rel] || 0;
+    if (imp[rel] > row) {
+      over6++;
+      bad(`6 ${rel}: ${imp[rel]} edge(s) into a file that bears the hand, its row ${row ? 'allows ' + row : 'is none (a new importer)'}: ${edges.get(rel).map((e) => e.line + ' ' + e.how + ' (' + e.to + ')').join(', ')}`);
+    }
+  }
+  const line6 = Object.values(IMPORTERS).reduce((a, b) => a + b, 0);
+  if (!over6) ok(`6 the getter's importers: ${n6} edge(s) in ${Object.keys(imp).length} files, the list ${line6} in ${Object.keys(IMPORTERS).length} rows (by file; it only falls)`);
+}
+
+/* ── 5. v2.3.6526 (sitting 59's ORDER bug): the walk does not hang on the
+   files' order.  The real files read in the reverse order give the same
+   census and the same edges, file by file. */
+{
+  const rev = new Map([...realSources(ROOT)].reverse());
+  const r = openHandCensus(babel, rev);
+  const diff = [];
+  for (const rel of new Set([...census.keys(), ...r.keys()])) {
+    const a = census.has(rel) ? census.get(rel).size : 0, b = r.has(rel) ? r.get(rel).size : 0;
+    if (a !== b) diff.push(`${rel} ${a} vs ${b}`);
+  }
+  for (const rel of new Set([...edges.keys(), ...r.edges.keys()])) {
+    const a = edges.has(rel) ? edges.get(rel).length : 0, b = r.edges.has(rel) ? r.edges.get(rel).length : 0;
+    if (a !== b) diff.push(`${rel} edges ${a} vs ${b}`);
+  }
+  if (diff.length) bad(`5 the census hangs on the files' order (sorted vs reversed): ${diff.slice(0, 8).join('; ')}`);
+  else ok(`5 the census and the edges are the same in the reverse order (${census.size} files, ${[...edges.values()].reduce((t, e) => t + e.length, 0)} edges)`);
+}
+
 if (process.argv.includes('--write')) {
   const rows = {};
   for (const k of Object.keys(KNOWN)) if (found[k]) rows[k] = Math.min(KNOWN[k], found[k]);
   const sum = Object.values(rows).reduce((a, b) => a + b, 0);
-  writeFileSync(join(ROOT, KNOWN_PATH), renderKnown(rows, Math.min(LINE, sum), Math.min(FILES_LINE, Object.keys(rows).length)));
+  const impRows = {};
+  for (const k of Object.keys(IMPORTERS)) if (imp[k]) impRows[k] = Math.min(IMPORTERS[k], imp[k]);
+  writeFileSync(join(ROOT, KNOWN_PATH), renderKnown(rows, Math.min(LINE, sum), Math.min(FILES_LINE, Object.keys(rows).length), impRows));
   console.log(`wrote ${KNOWN_PATH}: ${sum} lines, ${Object.keys(rows).length} files (it never adds a row)`);
 }
 
@@ -214,6 +285,43 @@ let ACROSS_N = 0;
     if (!(r.has(C3) && r.get(C3).size >= 1)) { missed++; bad(`3 the plant "${name}" adds no reach in the reader`); }
   }
   ACROSS_N = ACROSS.length + 4;
+  /* v2.3.6526: sitting 59's (each green before) and card WL's own three (not designed for): a
+     reach in the importer, or an edge into a file that bears the hand (check 6), either is red */
+  const caught = (r, rel) => (r.has(rel) && r.get(rel).size >= 1) || (r.edges.has(rel) && r.edges.get(rel).length >= 1);
+  const HELD = [
+    ['an object holding the getter (debugBus.getState())', "const getState = () => window._gameState.current;\nexport const debugBus = { getState };",
+      "import { debugBus } from '@/zzHandA.js';\nexport const p = () => debugBus.getState().rpg;"],
+    ['a destructure with a default, of await import()', GET,
+      "export async function p() {\n  const { getState = () => null } = await import('@/zzHandA.js');\n  return getState().rpg;\n}"],
+    ['import() kept, then .then(C => C.getState())', GET,
+      "const loading = import('@/zzHandA.js');\nexport const p = () => loading.then((C) => C.getState());"],
+    /* card WL's own */
+    ['a class with a static getter', 'export class Bus { static get S() { return window._gameState.current; } }',
+      "import { Bus } from '@/zzHandA.js';\nexport const p = () => Bus.S.rpg;"],
+    ['an array of getters', 'const g = () => window._gameState;\nexport const GETS = [g];',
+      "import { GETS } from '@/zzHandA.js';\nexport const p = () => GETS[0]().current;"],
+    ['import() of a path that adds up', GET, "export const p = () => import('@/zz' + 'HandA.js').then((C) => C.getState());"],
+  ];
+  for (const [name, a, b] of HELD) {
+    const r = two(a, b);
+    if (!caught(r, B)) { missed++; bad(`3 the plant "${name}" adds no reach and no edge in the importer`); }
+  }
+  /* a middle file hands it on under its default: the reader's import is an edge */
+  {
+    const r = openHandCensus(babel, new Map([[A, GET], [M, "import { getState } from '@/zzHandA.js';\nexport default { getState };"],
+      [C3, "import Mid from './zzHandM.js';\nexport const p = () => Mid.getState().rpg;"]]));
+    if (!caught(r, C3)) { missed++; bad('3 the plant "a default object of a middle file holding the getter" adds no reach and no edge in the reader'); }
+  }
+  /* sitting 59's ORDER bug: a file sorted before the getter's, reaching it by a path that adds up,
+     in every order of the three files */
+  {
+    const files = [['src/game/aaHand.js', "const DIR = '../ui/zzdash/';\nexport const p = () => import(DIR + 'common.js').then((C) => C.getState().rpg);"],
+      ['src/ui/zzdash/common.js', GET], ['src/zzz.js', 'export const z = 1;']];
+    const perms = [[0, 1, 2], [0, 2, 1], [1, 0, 2], [1, 2, 0], [2, 0, 1], [2, 1, 0]];
+    const seen = perms.map((o) => { const r = openHandCensus(babel, new Map(o.map((i) => files[i]))); return caught(r, 'src/game/aaHand.js'); });
+    if (!seen.every(Boolean)) { missed++; bad(`3 the order plant (aaHand.js before the getter's file) is caught in ${seen.filter(Boolean).length} of 6 orders`); }
+  }
+  ACROSS_N += HELD.length + 2;
 }
 if (!missed) ok(`3 every plant (${PLANTS.length + 2 + ACROSS_N}) adds a reach`);
 

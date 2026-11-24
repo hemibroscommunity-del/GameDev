@@ -1,6 +1,6 @@
 card: WHO
-branch: claude/plan-who-1-actor (#2285, 6480, mended again for sitting 59); claude/plan-who-2-sitting (6481) and claude/plan-who-3-trace (6482, stacked on it): committed in this session, not pushed yet
-prs: #2285 6480 (mended again, for sitting 59), 6481 (built; #2283 merged: opening, stacked on #2285), 6482 (built, stacked on 6481)
+branch: claude/plan-who-2-sitting (6481, stacked on claude/plan-who-1-actor, #2285); claude/plan-who-3-trace (6482, stacked on it, opens next)
+prs: #2285 6480 (held at sitting 59, frozen), #2316 6481 (held at sitting 59: its BUG mended here), #2317 6482 (held, frozen but for this mend merged up); the other holds on claude/plan-who-mend59 (next)
 state: working
 
 ## Done
@@ -11,7 +11,7 @@ state: working
 
 ## Next (part 4, from 2026-11-24)
 - The orchestrator's three answers (2026-11-24): 1 YES admin.js KEPT_OUT's one `play_trace:` row (already on 6482); 2 the trace stays ONE row of 96 KB, `cut: 'size'` accepted, nothing more built; 3 YES the movement.js test-mode call (in 6481, committed, not pushed).
-- 6481: #2283 merged (sitting 58, main 045a8b1a): merge `main` once, precheck, push, open READY ("shape bump: ECON_V" first; the yeses: movement.js (two judged calls and the test-mode one), combat.js + hitproof.js, gold.js econGold; migrations.js econClean; report.js NOT, card PH's).
+- 6481: #2283 merged (sitting 58, main 045a8b1a): #2285's branch (with main) merged in, precheck, pushed, opened READY on claude/plan-who-1-actor ("shape bump: ECON_V" first; the yeses: movement.js (two judged calls and the test-mode one), combat.js + hitproof.js, gold.js econGold; migrations.js econClean; report.js NOT, card PH's).
 - 6482: merge 6481 in, precheck, push, open READY on claude/plan-who-2-sitting ("stacked on 6481" at the top; the files outside the card with their lines; admin.js KEPT_OUT, the orchestrator's yes; answer 2 named; not shadowed: botfp, botsig, the quests' order, lastplace, the roll window).
 - Then report.js's one sitReport call after #2279 (card PH), on the orchestrator's word.
 
@@ -25,6 +25,7 @@ state: working
 - Test mode judges no move, so the sitting's card (6481) counts no active second from a test-mode character's moves (only its hit claims): the trace keeps its own active clock. Fixed in 6481 (the orchestrator's yes, 2026-11-24): movement.js counts a test-mode move (sitting.test §10).
 - The cook's start in shadow sees no spent plan (test mode never spends one), so a second result on one plan is not counted as would-refuse.
 
+- Sitting 59's BUG (mended on #2316's branch, v2.3.6481): sitting.js open(): only the card the record's LATEST join took counts (room._sitLive, a WeakMap; sitForget at every join): joined with `sitting: false`, the flag thrown on mid-sitting, a week-old card is no longer reopened (sitting.test §7b, 7 checks; red with the old open() and with join.js's sitForget removed).
 ## Needs
 - #2285: sitting 59 (the orchestrator has its head).
 - report.js's one call (soft, build, seen, drawn) after #2279 (card PH) merges: in 6482 or a small PR after it (the orchestrator's word).
