@@ -9,6 +9,11 @@ state: ready
   refuses, 'count' counts, false the old door; cap wireForm.  Counted:
   whole suite + storm + bot lab, every case hostile or explained; judge.mjs
   refuses every plant; playable and mp-bank green.
+- Sitting 58's hold on #2310 (review-z58.md): wire-form §4b plays, in
+  the running room, the old door's four refusals (body, key, reqId, number)
+  in every mode: refused, no handler, counted under the old why; the
+  review's plant (count's `why = ''` out of the form branch) RED.  §5 pins
+  the table's forms row by row (a dropped or loosened form RED).
 - Sitting 58's hold on #2295 (review-z58.md): the scans DENY BY DEFAULT
   (writesOf and action-door §7 follow a binding through every form; one
   they cannot follow is red).  Both plants and six of mine RED.
@@ -18,19 +23,18 @@ state: ready
 - PR 3 (6442, #2300): gold-door §10 and bag-door §10 run every road on
   blank and carried records: the books moved exactly what the purse or bag
   moved.  shape-books plant 1 red; PAY2-1 red by PR 2's scan.
-- PR 1 (6440, #2283): the running room refuses; merged.
 
 ## Next
-- Sitting 59: #2295, #2300, #2310 (#2310 a line of its own: behaviour).
-- testroom §7 tries four fields (Z's Found): a later PR of the card.
+- Sitting 59: #2295, #2300, #2310 (#2310 a line of its own: behaviour);
+  testroom §7's four fields (Z's Found): a later PR of the card.
 
 ## Found
-- none (no real second writer)
+- Sitting 58's: a row dropped from testroom.mjs GUARDED goes unseen (PR 1's
+  file, merged): pin it to the doors' own lists, a later PR of the card.
 
 ## Needs
 - none
 
 ## Note
-- PR 6's `sessions.clear()` / rebuilt `sessions` and `ws.send` through
-  `bind` landed in PR 2 (they are the session and send doors' scans).
+- PR 6's `sessions.clear()`, rebuilt `sessions`, `ws.send` bind: in PR 2.
 - PR 4's files outside the card: its PR's words list them, with why.
