@@ -19,11 +19,11 @@ state: ready
   one owner; 2c's sideways fight a SKIP with the box's frame time.
 
 ## Next
-- PR 4 (6543, draft PR on claude/plan-ct-3-right; part 9). mp-twobuttons
-  run 3: 31 pass, 7 red, the test's choice of monster (another of the
-  pack locked or in sight). Mended: PICK, a monster AND its side, the path
-  480 px from any other (a new sighting is at 440; run 4's 650 asked too
-  much: 506 near BroTown). Run 5 by a helper. PR 5, item 6: fresh parts.
+- PR 4 (6543, #2327 draft on claude/plan-ct-3-right; part 9). Runs 3-4:
+  the test's choice of monster (PICK: a monster AND its side, the path 480
+  px from any other). Run 5 (helper, 9af138bb): 46 pass, 2 red, 1 SKIP:
+  3c/3d sideways, a frame every 767 ms, 545 px 5 inside the held 550: now
+  520. Run 6 by a helper. CI green on 9af138bb. PR 5, item 6: fresh parts.
 
 ## Found
 - `manual-combat.test` 1h pinned `?manual=5` as no switch: now `6`.

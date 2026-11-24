@@ -59,8 +59,8 @@
  *       Jump only (no Block, no Special, no Whirlwind) and no line drawn;
  *   3b. walked in to 435 px (inside the sword's 440): sighted, the line
  *       drawn to that monster, Block and Special on screen around Attack;
- *   3c. walked back and forth between 435 and 545 px (inside the 550 the
- *       sight is held to) six times: the buttons and the phase never
+ *   3c. walked back and forth between 435 and 520 px (past the 440 a new
+ *       sighting needs, inside the 550 the sight is held to) six times: the buttons and the phase never
  *       changed (no flicker at the edge);
  *   3d. out to 700 px: the phase gone, the line gone, Block and Special gone,
  *       each in ONE change (came once, went once over the whole walk);
@@ -517,12 +517,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const q1 = await EDGE(P);
       rec.ok(`3b. ${label}: walked in to ${q1.at} px: sighted, the line drawn to it (${q1.line && q1.line.len} px), Block and Special around Attack`,
         !!s1 && q1.phase === 'sighted' && q1.id === mon3.id && !!q1.line && q1.line.drawn && q1.line.id === mon3.id && Math.abs(q1.line.len - 435) < 60 && q1.block && q1.special && q1.attack && q1.jump, q1);
-      /* 3c: back and forth across the edge, inside the held 550 */
+      /* 3c: back and forth across the edge, inside the held 550.  v2.3.6543:
+         out to 520, not 545 (the helper's run on 9af138bb, sideways: a frame
+         every 767 ms, and the monster's wander past 550 on ONE frame is more
+         than the 0.4 s hold there; 545 left it 5 px, 520 leaves 30, still 80
+         past the 440 a new sighting needs) */
       const mid = await P.page.evaluate(() => ({ p: window._ctEdge.phase.length, d: window._ctEdge.dom.length }));
-      for (let k = 0; k < 6; k++) { await walkTo(545, 300); await walkTo(435, 300); }
+      for (let k = 0; k < 6; k++) { await walkTo(520, 300); await walkTo(435, 300); }
       const q2 = await EDGE(P);
       const w2 = await P.page.evaluate(() => ({ phase: window._ctEdge.phase.slice(-6), dom: window._ctEdge.dom.slice(-6) }));
-      rec.ok(`3c. ${label}: back and forth between 435 and 545 px six times: no change of the phase (${q2.phases - mid.p}) or the buttons (${q2.doms - mid.d}), still sighted with the line`,
+      rec.ok(`3c. ${label}: back and forth between 435 and 520 px six times: no change of the phase (${q2.phases - mid.p}) or the buttons (${q2.doms - mid.d}), still sighted with the line`,
         q2.phases === mid.p && q2.doms === mid.d && q2.phase === 'sighted' && q2.block && q2.special && q2.line && q2.line.drawn && !q2.lost, { q2, w2 });
       /* 3d: out */
       await walkTo(700, 0);
