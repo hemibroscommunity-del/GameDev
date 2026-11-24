@@ -34,16 +34,75 @@
  *   5. v2.3.5085: A MAILBOX MERGED AT 200 counts each merged payout by its
  *      own class (inbox.js keeps the minted part beside the entry).
  *
+ *   6. v2.3.6460 (card BK PR 1): THE SUM PLAYS WHAT IT SUMS.  §1 now plays
+ *      the General Store, the Auction House (goods, a weapon, a piece of
+ *      armour; an offer raised, a bid, a cancel), the jackpot and its draw, a
+ *      duel through duel.js and the arena through gladiator.js (both were
+ *      made by hand here), goods dropped and taken back, a weapon staged in
+ *      the trade window, the old gift trade, weapons, armour and shields worn
+ *      and taken off, and No man's land's player kill -- through the real
+ *      handlers.  The suite writes down every road the handlers ran (the
+ *      roads that ran, below the imports), and fails a `move` or `escrow`
+ *      road that never ran and is not on UNPLAYED, a list that only falls.
+ *
  * BREAK PROOF (rule 8), tried by hand: `WORLD_SUM_PLANT=1 node
  * test/world-sum.test.mjs` plants §2's vault double pay INTO §1's world,
- * and §1 fails ("unexplained gold 50").
+ * and §1 fails ("unexplained gold 50").  v2.3.6460: the review's plants 2 and
+ * 3 (docs/plan/census/shape-books.md: the Auction House's listing taking one
+ * less, store.js `bagTake(..., qty - 1, 'ah_listing')`; the General Store's
+ * order one gold less, market.js `_goldTake(ps, p - 1, 'market_order')`)
+ * were green here and are red: "slime_gel 1" and "unexplained gold 3".  A new
+ * escrow row in GOLD_ROADS that nothing plays fails "the roads".
  */
-import { GameRoom } from '../src/index.js';
-import { STORAGE_MARKS } from '../src/storagemarks.js';
-import { bagGive } from '../src/bag.js';
-import { BANK } from '../src/bank.js';
+import { register } from 'node:module';
+import { AsyncLocalStorage } from 'node:async_hooks';
+/* ═══ v2.3.6460 (card BK PR 1): THE ROADS THAT RAN ═══
+ * Before the worker loads, a module hook stands a thin twin in front of the
+ * bag's and the stashes' doors (bag.js, stash.js: every importer, the
+ * worker's own files too, is handed the twin); each of their verbs calls the
+ * real one, then writes down the road it named.  The gold door is the room's
+ * own method, wrapped on the room (world() below).  No file of the worker
+ * changes.  A road is written down only when it ran INSIDE a real handler
+ * (a message to the room, or one of the room's own handlers called as the
+ * game calls it: `played(...)`), with everything that handler started after
+ * it (an await, a timer): a door the test calls by hand is not a road the
+ * scenario played. */
+const handling = new AsyncLocalStorage();
+const RAN = { gold: new Set(), bag: new Set(), stash: new Set() };
+globalThis.__roadsRan = (kind, road) => { if (handling.getStore()) RAN[kind].add(road); };
+const played = (fn) => handling.run(true, fn);
+register('data:text/javascript,' + encodeURIComponent(`
+const VERBS = { bag: ['bagGive', 'bagTake', 'bagSet'], stash: ['stashGive', 'stashTake', 'stashSet'] };
+export async function resolve(spec, ctx, next) {
+  const r = await next(spec, ctx);
+  const m = /\\/server\\/src\\/(bag|stash)\\.js$/.exec(r.url);
+  if (!m) return r;
+  const real = JSON.stringify(r.url + '?door');
+  const src = 'import * as D from ' + real + '; export * from ' + real + ';\\n'
+    + VERBS[m[1]].map((f) => 'export function ' + f + '(...a) { const v = D.' + f + '(...a); globalThis.__roadsRan(' + JSON.stringify(m[1]) + ', a[3]); return v; }').join('\\n');
+  return { url: 'data:text/javascript,' + encodeURIComponent(src), format: 'module', shortCircuit: true };
+}`));
+const { GameRoom } = await import('../src/index.js');
+const { STORAGE_MARKS } = await import('../src/storagemarks.js');
+const { bagGive, BAG_ROADS } = await import('../src/bag.js');
+const { BANK } = await import('../src/bank.js');
+const { GOLD_ROADS } = await import('../src/gold.js');
+const { STASH_ROADS } = await import('../src/stash.js');
 /* v2.3.5091: the sum moved out whole (the storm judges with it too); v2.3.5093: into the worker (src/worldsum.js), the live walk's one sum */
-import { READERS, count, unexplained } from '../src/worldsum.js';
+const { READERS, count, unexplained } = await import('../src/worldsum.js');
+/* the room: the gold door's three verbs write down their road; a message to
+   it is a handler (and so is its alarm) */
+function ranRoom(room) {
+  for (const f of ['_goldGive', '_goldTake', '_goldSet']) {
+    const door = room[f];
+    room[f] = function (rec, n, road, ...rest) { const v = door.call(this, rec, n, road, ...rest); globalThis.__roadsRan('gold', road); return v; };
+  }
+  for (const f of ['webSocketMessage', 'fetch', 'alarm']) {
+    const h = room[f];
+    if (typeof h === 'function') room[f] = function (...a) { return played(() => h.apply(this, a)); };
+  }
+  return room;
+}
 
 let failures = 0, passes = 0;
 function check(name, cond, detail) {
@@ -99,10 +158,12 @@ async function world() {
   /* v2.3.5085 (the gatekeeper's sitting 8): A comes with counts on file, so
      the join's line (join.js: `_econ` back before any door runs) is held --
      with every seeded count 0, deleting it changed nothing here */
-  state._store.set('rpg:bp_ws_a', rec(1000, { wood_oak: 10, fish_minnow: 20, 'slime-remnants': 10 }, { v: 1, g: { m: 500, b: 120 }, i: { wood_oak: { m: 3, b: 1 } } }));
+  state._store.set('rpg:bp_ws_a', { ...rec(1000, { wood_oak: 10, fish_minnow: 20, 'slime-remnants': 10, slime_gel: 12 }, { v: 1, g: { m: 500, b: 120 }, i: { wood_oak: { m: 3, b: 1 } } }),
+    /* v2.3.6460: weapons to sell, list, stage and wear (the join gives each its id) */
+    weaponStash: [0, 1, 2, 3, 4].map((i) => ({ name: 'Axe ' + i, type: 'axe', tierMult: 1, dmg: 5 })) });
   state._store.set('rpg:bp_ws_b', rec(800, { ore_iron_ore: 6 }));
   state._store.set('rpg:bp_ws_d', rec(50, {}));
-  const room = new GameRoom(state, mockEnv);
+  const room = ranRoom(new GameRoom(state, mockEnv));
   room._liveFlags = {};
   const ws = {};
   for (const n of ['a', 'b']) {
@@ -115,14 +176,18 @@ async function world() {
   await settle();
   return { room, state, ws, A: room.playerState.bp_ws_a, B: room.playerState.bp_ws_b };
 }
+/* v2.3.6460: a fallen player stands up again by the room's own respawn (the tick's), the clock past its time */
+const respawn = (room, ps) => { if (ps.dying) { NOW = Math.max(NOW, (ps.respawnAt || 0) + 1); played(() => room._tickPlayerRespawn()); } };
 const send = async (room, w, type, payload) => { await room.webSocketMessage(w, JSON.stringify({ type, payload: payload || {} })); await settle(); };
 
 /* ══════════════════════════ 1. THE SCENARIO ══════════════════════════ */
+let PLAYED = null;
 {
   const { room, state, ws, A, B } = await world();
   check('1. the room holds A and B, D is away', !!A && !!B && !room.playerState.bp_ws_d && A.coins === 1000);
   const start = count(room, state);
   check('1. at the start, every record is marked and every marked value record has a reader', start.unmarked.length === 0 && start.noReader.length === 0, { unmarked: start.unmarked, noReader: start.noReader });
+  for (const k of Object.keys(RAN)) RAN[k].clear();
   const steps = [];
   const note = (what) => { const u = unexplained(start, count(room, state)); steps.push([what, u.gold, Object.keys(u.goods).length ? u.goods : 0]); };
 
@@ -170,6 +235,78 @@ const send = async (room, w, type, payload) => { await room.webSocketMessage(w, 
     check('1. the trade settled: 200 gold and 5 fish to B, 2 ore to A', B.inventory.fish_minnow === 5 && A.inventory.ore_iron_ore === 2 && A.coins === a0 - 200 && B.coins === b0 + 200, { a: A.coins - a0, b: B.coins - b0, fish: B.inventory.fish_minnow, ore: A.inventory.ore_iron_ore });
     note('trade');
   }
+  /* v2.3.6460 (card BK PR 1): THE GENERAL STORE, through its own route
+     (market.js, /api/market/place and /cancel): A's weapon offered (held in
+     its order), B's buy order crossing it (B's gold held, then paid on);
+     a second buy order resting, then cancelled (its gold back by the mail);
+     a storage that refuses the order's put hands the gold and the weapon
+     straight back (market_unwind, market_back) */
+  {
+    const route = (method, path, body, query) => room.fetch(new Request('https://x' + path + (query ? '?' + query : ''),
+      { method, headers: { 'Content-Type': 'application/json' }, ...(body ? { body: JSON.stringify(body) } : {}) })).then((r) => r.json());
+    const order = (pid, type, price, extra) => ({ type, category: 'weapon', subtype: 'axe', tierKey: 'mythic', price, playerId: pid, ...(extra || {}) });
+    const a0 = A.coins, b0 = B.coins, w0 = A.weaponStash.length;
+    const sold = await route('POST', '/api/market/place', order('bp_ws_a', 'sell', 300, { stashIndex: 0 }));
+    const bought = await route('POST', '/api/market/place', order('bp_ws_b', 'buy', 320));
+    await settle();
+    check('1. the General Store: A\'s axe offered at 300, B\'s order at 320 crossed it (B paid 300, A got 300, the axe is B\'s)',
+      sold.ok !== false && bought.matched === true && A.coins === a0 + 300 && B.coins === b0 - 300 && A.weaponStash.length === w0 - 1 && (B.weaponStash || []).length === 1,
+      { sold, bought, a: A.coins - a0, b: B.coins - b0, wa: A.weaponStash.length, wb: (B.weaponStash || []).length });
+    note('market crossed');
+    const rest = await route('POST', '/api/market/place', order('bp_ws_b', 'buy', 90));
+    const id = rest && (rest.order && rest.order.id || rest.id);
+    check('1. ...a buy order of 90 rests, its gold held', !!id && B.coins === b0 - 390, rest);
+    note('market order resting');
+    await route('DELETE', '/api/market/cancel', null, 'id=' + id + '&playerId=bp_ws_b');
+    await settle();
+    check('1. ...and cancelled: its 90 back', B.coins === b0 - 300, B.coins - b0);
+    note('market order cancelled');
+    const realPut = state.storage.put;
+    state.storage.put = async (k, v) => { if (typeof k === 'string' && k.startsWith('mkt_order:')) throw new Error('storage full'); return realPut.call(state.storage, k, v); };
+    await route('POST', '/api/market/place', order('bp_ws_b', 'buy', 70));
+    await route('POST', '/api/market/place', order('bp_ws_a', 'sell', 500, { stashIndex: 0 }));
+    state.storage.put = realPut;
+    await settle();
+    check('1. ...a storage that refuses the order: the gold and the weapon handed straight back', B.coins === b0 - 300 && A.weaponStash.length === w0 - 1, { b: B.coins - b0, wa: A.weaponStash.length });
+    note('market unwound');
+  }
+  /* v2.3.6460: THE AUCTION HOUSE, through its own routes and messages
+     (store.js, storeoffer.js): goods listed (held in the listing) and bought
+     (the gold held, then paid on); a weapon listed; an offer made, raised (the
+     first one handed back in the same write) and taken; a bid, then the
+     listing cancelled (the goods and the bid back) */
+  {
+    const route = (method, path, body, query) => room.fetch(new Request('https://x' + path + (query ? '?' + query : ''),
+      { method, headers: { 'Content-Type': 'application/json' }, ...(body ? { body: JSON.stringify(body) } : {}) })).then((r) => r.json());
+    const a0 = A.coins, b0 = B.coins;
+    const l1 = await route('POST', '/api/store/list', { playerId: 'bp_ws_a', kind: 'item', invKey: 'slime_gel', qty: 4, price: 50 });
+    check('1. the Auction House: A listed 4 gel (held in the listing)', !!(l1 && l1.listing) && A.inventory.slime_gel === 8, { l1, gel: A.inventory.slime_gel });
+    note('ah listed');
+    const b1 = await route('POST', '/api/store/buy', { listingId: l1.listing.id, playerId: 'bp_ws_b' });
+    await settle();
+    check('1. ...B bought it: the gel is B\'s, 50 moved', !!(b1 && b1.bought) && B.inventory.slime_gel === 4 && B.coins === b0 - 50, { b1, gel: B.inventory.slime_gel, b: B.coins - b0 });
+    note('ah bought');
+    const l2 = await route('POST', '/api/store/list', { playerId: 'bp_ws_a', kind: 'weapon', stashIndex: 0, price: 100 });
+    check('1. ...A listed a weapon', !!(l2 && l2.listing), l2);
+    note('ah weapon listed');
+    room._soBuckets = null;
+    await send(room, ws.b, 'store_offer', { listingId: l2.listing.id, gold: 40 });
+    room._soBuckets = null;
+    await send(room, ws.b, 'store_offer', { listingId: l2.listing.id, gold: 60 });
+    check('1. ...B offered 40, then raised to 60 (60 held)', B.coins === b0 - 50 - 60, B.coins - b0);
+    note('ah offer raised');
+    await send(room, ws.a, 'store_offer_reply', { listingId: l2.listing.id, buyerId: 'bp_ws_b', reply: 'yes' });
+    await settle();
+    check('1. ...and A took it: the weapon is B\'s, A has the 60 (and the gel\'s 50)', (B.weaponStash || []).length === 2 && A.coins === a0 + 50 + 60, { wb: (B.weaponStash || []).length, a: A.coins - a0 });
+    note('ah offer taken');
+    const l3 = await route('POST', '/api/store/list', { playerId: 'bp_ws_a', kind: 'item', invKey: 'slime_gel', qty: 3, price: 200 });
+    const bid = await route('POST', '/api/store/bid', { listingId: l3.listing.id, playerId: 'bp_ws_b', amount: 90 });
+    note('ah bid');
+    await route('DELETE', '/api/store/cancel', null, 'id=' + l3.listing.id + '&playerId=bp_ws_a');
+    await settle();
+    check('1. ...a bid of 90, then the listing cancelled: the gel and the bid back', !!bid && A.inventory.slime_gel === 8 && B.coins === b0 - 110, { bid, gel: A.inventory.slime_gel, b: B.coins - b0 });
+    note('ah cancelled');
+  }
   /* the mail: a grant to D, who is away (a mint waiting), D comes in and it
      lands; a daily quest's gold lands on B at once (a mint); a duel's pot,
      its escrow on file, lands on A (an escrow paid on) */
@@ -185,38 +322,167 @@ const send = async (room, w, type, payload) => { await room.webSocketMessage(w, 
     note('grant landed');
     await room._creditPlayer('bp_ws_b', { opId: 'dq:bp_ws_b:20270115:0', source: 'daily', kind: 'gold', payload: { amount: 40 }, note: 'a daily quest' });
     note('daily quest');
-    /* the duel's start, as duel.js makes it: both stakes and the escrow's
-       record in one run (_escrowDebitGoldTogether) */
-    const staked = await room._escrowDebitGoldTogether(
-      [{ id: 'bp_ws_a', amount: 30, opId: 'duel:d1:a' }, { id: 'bp_ws_b', amount: 30, opId: 'duel:d1:b' }],
-      [['duelEscrow:d1', { a: 'bp_ws_a', b: 'bp_ws_b', wager: 30, startedAt: NOW }]]);
-    check('1. a duel\'s two stakes went into its escrow together', !!staked && staked.ok && !!state._store.get('duelEscrow:d1'), staked);
-    note('duel staked');
-    await room._creditPlayer('bp_ws_a', { opId: 'duelpot:d1', source: 'duel', kind: 'gold', payload: { amount: 60 }, note: 'duel won' });
-    await state.storage.delete('duelEscrow:d1');
-    note('duel pot');
     /* goods by the mail: a quest's item, the bag full (a mint) */
     await room._creditPlayer('bp_ws_b', { opId: 'questitem:bp_ws_b:q1:fish_minnow#1', source: 'quest', kind: 'item', payload: { invKey: 'fish_minnow', count: 3 }, note: 'a quest item' });
     note('quest item by the mail');
-    /* the champion's prize: three entries held (escrow), and the house's
-       gold on top (a mint), in ONE payout that says the house's part */
+  }
+  /* v2.3.6460 (card BK PR 1): A DUEL, through duel.js (it was made by hand
+     here): B challenges with a stake of 30, A accepts (both stakes into its
+     escrow in one run), B falls, the pot lands on A */
+  {
+    for (const p of [A, B]) { p.z = 'town'; p.x = 0; p.y = 0; p.dead = false; p.dying = false; p.hp = p.maxHp || 100; }
+    const a0 = A.coins, b0 = B.coins;
+    await send(room, ws.b, 'duel_wager_request', { target: 'bp_ws_a', wager: 30 });
+    await send(room, ws.a, 'duel_accept', { target: 'bp_ws_b', wager: 30 });
+    const duel = room._duelFor && room._duelFor('bp_ws_a');
+    check('1. a duel: both stakes went into its escrow together (duel.js)', !!duel && A.coins === a0 - 30 && B.coins === b0 - 30 && [...state._store.keys()].some((k) => k.startsWith('duelEscrow:')), { duel: !!duel, a: A.coins - a0, b: B.coins - b0 });
+    note('duel staked');
+    B.hp = 0;
+    played(() => room._handlePlayerDeath(B, 'bp_ws_b', 'pvp:bp_ws_a'));
+    await new Promise((r) => setTimeout(r, 25));
+    check('1. ...B fell: the pot (60) is A\'s, the escrow gone', A.coins === a0 + 30 && ![...state._store.keys()].some((k) => k.startsWith('duelEscrow:')), { a: A.coins - a0 });
+    note('duel pot');
+    respawn(room, B);
+  }
+  /* v2.3.6460: THE ARENA, through gladiator.js (its entries were made by
+     hand here): A and B enter by the route (each entry held), D, watching,
+     backs A (the stake held), B falls, the champion's prize (the entries and
+     the house's part, one payout) and the stake settle */
+  {
     const D = room.playerState.bp_ws_d;
-    for (const [id, ps] of [['bp_ws_a', A], ['bp_ws_b', B], ['bp_ws_d', D]]) {
-      room._goldTake(ps, 100, 'arena_entry');
-      state._store.set('arena_entry:t9:' + id, { wager: 100, paidAt: NOW, n: 1 });
-    }
+    for (const p of [A, B, D]) { p.z = 'town'; p.x = 0; p.y = 0; p.dead = false; p.dying = false; p.hp = p.maxHp || 100; }
+    room._arenaHouse = { hour: 0, used: 0 };
+    const join = (pid, name) => room.fetch(new Request('https://x/api/arena/join', { method: 'POST', body: JSON.stringify({ playerId: pid, playerName: name }) })).then((r) => r.json());
+    const a0 = A.coins, d0 = D.coins;
+    const ja = await join('bp_ws_a', 'A'), jb = await join('bp_ws_b', 'B');
+    check('1. the arena: A and B entered, each entry held', !!(ja && ja.ok !== false && jb && jb.ok !== false) && A.coins === a0 - 100 && [...state._store.keys()].filter((k) => k.startsWith('arena_entry:')).length === 2, { ja, jb });
     note('arena entries');
-    await room._creditPlayer('bp_ws_d', { opId: 'arenapot:t9', source: 'arena', kind: 'gold', payload: { amount: 500, house: 200 }, note: 'Gladiator Arena champion' });
-    for (const id of ['bp_ws_a', 'bp_ws_b', 'bp_ws_d']) await state.storage.delete('arena_entry:t9:' + id);
-    check('1. the champion was paid 500: 300 from the entries, 200 the house\'s', D.coins === 125 - 100 + 500, D.coins);
+    room._arena.gatherDeadline = NOW - 1;
+    played(() => room._arenaLazyTick(NOW));
+    await new Promise((r) => setTimeout(r, 25));
+    await send(room, ws.d, 'arena_sponsor', { targetId: 'bp_ws_a', amount: 100 });
+    check('1. ...D backed A with 100 (held)', D.coins === d0 - 100 && [...state._store.keys()].some((k) => k.startsWith('arena_stake:')), { d: D.coins - d0, sent: ws.d.sent.filter((m) => /arena_stake/.test(m.type)).slice(-1) });
+    note('arena stake');
+    B.hp = 0;
+    played(() => room._handlePlayerDeath(B, 'bp_ws_b', 'pvp:bp_ws_a'));
+    await new Promise((r) => setTimeout(r, 30));
+    check('1. ...B fell: A the champion, paid; the entries and the stake settled', A.coins > a0 && ![...state._store.keys()].some((k) => k.startsWith('arena_entry:') || k.startsWith('arena_stake:')), { a: A.coins - a0, d: D.coins - d0, left: [...state._store.keys()].filter((k) => /^arena_/.test(k)) });
     note('arena prize');
+    respawn(room, B);
+    room._arena = null; room._arenaClearAt = 0;
+  }
+  /* v2.3.6460 (card BK PR 1): goods dropped on the ground (itemdrop.js: a
+     pile of the dropper's own) and taken back; a weapon staged in the trade
+     window (held in it) and traded; a weapon worn and put away (the stashes'
+     moves within one player); the old gift trade, opened by its switch */
+  {
+    const c = room._wheelT().WHEEL_CENTRE;
+    for (const p of [A, B]) { p.z = 'wheel'; p.x = c[0]; p.y = c[1] + 288; p.dead = false; p.dying = false; }
+    const w0 = A.inventory.wood_oak;
+    A._dropAt = 0;
+    await room.webSocketMessage(ws.a, JSON.stringify({ type: 'item_drop', key: 'wood_oak', qty: 2 }));
+    await settle();
+    const r = ws.a.sent.filter((m) => m.type === 'item_drop_result').pop();
+    const lootId = r && (r.lootId || (r.payload && r.payload.lootId));
+    check('1. A dropped 2 oak on the ground (a pile of A\'s own)', !!lootId && A.inventory.wood_oak === w0 - 2, { r, wood: A.inventory.wood_oak });
+    note('item dropped');
+    await send(room, ws.a, 'loot_pickup', { lootId, zone: 'wheel' });
+    check('1. ...and took it back', A.inventory.wood_oak === w0, A.inventory.wood_oak);
+    note('item taken back');
+    for (const p of [A, B]) { p.z = 'town'; p.x = 0; p.y = 0; }
+    const wa = A.weaponStash.length, wb = (B.weaponStash || []).length;
+    room._paceTake = () => true;
+    await send(room, ws.a, 'trade2_open', { target: 'bp_ws_b' });
+    await send(room, ws.b, 'trade2_open', { target: 'bp_ws_a' });
+    await send(room, ws.a, 'trade2_stage_weapon', { stashIdx: 0 });
+    check('1. the trade window: A staged a weapon (held in the window)', A.weaponStash.length === wa - 1 && [...state._store.keys()].some((k) => k.startsWith('trade2wpn:')), A.weaponStash.length);
+    note('weapon staged');
+    await send(room, ws.a, 'trade2_ready', { ready: true });
+    await send(room, ws.b, 'trade2_ready', { ready: true });
+    for (const s2 of (room._trades2 || new Map()).values()) s2.changedAt = Date.now() - 999999;
+    await send(room, ws.a, 'trade2_confirm');
+    await send(room, ws.b, 'trade2_confirm');
+    check('1. ...and traded: the weapon is B\'s', (B.weaponStash || []).length === wb + 1 && ![...state._store.keys()].some((k) => k.startsWith('trade2wpn:')), { wb: (B.weaponStash || []).length, last: ws.a.sent.filter((m) => m.type === 'trade2_state').slice(-1).map((m) => m.payload.reason || m.payload.state) });
+    note('weapon traded');
+    delete A.prog3;
+    await send(room, ws.a, 'equip_request', { stashIdx: 0, slot: 'weapon' });
+    const worn = A.weapon && A.weapon.gid;
+    await send(room, ws.a, 'unequip_request', { slot: 'weapon' });
+    check('1. A wore a weapon and put it away again', !!worn && A.weaponStash.some((w) => w && w.gid === worn), { worn, stash: A.weaponStash.map((w) => w && w.gid) });
+    note('weapon worn and put away');
+    room._liveFlags.giftclosed = false;
+    const a0 = A.coins, b0 = B.coins, f0 = B.inventory.wood_oak || 0;
+    await send(room, ws.a, 'trade_offer', { target: 'bp_ws_b', fromName: 'A', offer: { _gold: 30, wood_oak: 1 } });
+    await send(room, ws.b, 'trade_accept', { target: 'bp_ws_a' });
+    delete room._liveFlags.giftclosed;
+    check('1. the old gift trade: 30 gold and an oak from A to B', A.coins === a0 - 30 && B.coins === b0 + 30 && (B.inventory.wood_oak || 0) === f0 + 1, { a: A.coins - a0, b: B.coins - b0, wood: (B.inventory.wood_oak || 0) - f0 });
+    note('gift trade');
+  }
+  /* v2.3.6460: GEAR, worn and taken off and sold.  Two weapons in turn in
+     the hand (the second swapped for the first); two armour pieces put on in
+     turn and taken off; a shield on and off; a piece listed at the Auction
+     House (held in the listing) and bought (by the mail).  The pieces come as
+     the game's own grants do (the owner's kit: devtools.js), so each carries
+     its receipt */
+  {
+    delete A.prog3;
+    await send(room, ws.a, 'equip_request', { stashIdx: 0, slot: 'weapon' });
+    const first = A.weapon && A.weapon.gid;
+    await send(room, ws.a, 'equip_request', { stashIdx: 0, slot: 'weapon' });
+    const second = A.weapon && A.weapon.gid;
+    await send(room, ws.a, 'unequip_request', { slot: 'weapon' });
+    check('1. A took a second weapon up in place of the first, then put it away', !!first && !!second && first !== second && !A.weapon, { first, second, hand: A.weapon && A.weapon.gid });
+    note('weapons swapped');
+    const pieces = [1, 2].map((i) => room._gearProvRecord('bp_ws_a', 'armor', { name: 'Iron Torso ' + i, gearBase: 'iron', mat: 'iron', tierMult: 2.0 }, 'test'));
+    for (const pc of pieces) A.armorStash = [...(A.armorStash || []), { ...pc }];
+    await send(room, ws.a, 'stats_update', { armorRef: pieces[0].gid });
+    await send(room, ws.a, 'stats_update', { armorRef: pieces[1].gid });
+    const wore = A.armor && A.armor.gid;
+    await send(room, ws.a, 'unequip_request', { slot: 'armor' });
+    check('1. A put on one torso, then the other, then took it off', wore === pieces[1].gid && !(A.armor && A.armor.gid), { wore, now: A.armor });
+    note('armour worn');
+    /* a granted shield goes on the arm when the arm is empty (quests.js) */
+    const grant = () => { played(() => room._grantQuestItem(A, { kind: 'shield', gearBase: 'wood', tierMult: 1.0, name: 'Pine Shield' }, 'bp_ws_a')); return A.shield && A.shield.gid; };
+    const sh = grant();
+    await send(room, ws.a, 'shield_wear', { none: true });
+    const off = !(A.shield && A.shield.gid);
+    const other = grant();
+    await send(room, ws.a, 'shield_wear', { gid: sh });
+    const swapped = A.shield && A.shield.gid;
+    await send(room, ws.a, 'shield_wear', { none: true });
+    check('1. A took a shield off, was given another, swapped back to the first, and took it off', !!sh && off && !!other && other !== sh && swapped === sh && !(A.shield && A.shield.gid), { sh, off, other, swapped });
+    note('shield worn');
+    const route = (method, path, body) => room.fetch(new Request('https://x' + path, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })).then((r) => r.json());
+    const lg = await route('POST', '/api/store/list', { playerId: 'bp_ws_a', kind: 'gear', field: 'armorStash', gid: pieces[0].gid, price: 250 });
+    check('1. A listed a torso at the Auction House (held in the listing)', !!(lg && lg.listing) && !(A.armorStash || []).some((x) => x && x.gid === pieces[0].gid), lg);
+    note('gear listed');
+    const bg = await route('POST', '/api/store/buy', { listingId: lg.listing.id, playerId: 'bp_ws_b' });
+    await settle();
+    check('1. ...B bought it (by the mail)', !!(bg && bg.bought) && (B.armorStash || []).some((x) => x && x.gid === pieces[0].gid), { bg, b: (B.armorStash || []).map((x) => x && x.gid) });
+    note('gear bought');
+  }
+  /* v2.3.6460: THE JACKPOT (cadence.js): A and B buy tickets (the pool held
+     in its draw), and the week after, the next ticket draws the old pool
+     (the winner paid by the mail) */
+  {
+    const a0 = A.coins, b0 = B.coins;
+    await send(room, ws.a, 'jackpot_deposit', { amount: 100 });
+    await send(room, ws.b, 'jackpot_deposit', { amount: 50 });
+    const d1 = state._store.get('jackpot:draw');
+    check('1. the jackpot: A and B bought tickets, the pool holds 150', !!d1 && d1.pool === 150 && A.coins === a0 - 100 && B.coins === b0 - 50, d1);
+    note('jackpot tickets');
+    NOW += 8 * 24 * 3600 * 1000;
+    await send(room, ws.a, 'jackpot_deposit', { amount: 50 });
+    const d2 = state._store.get('jackpot:draw');
+    check('1. ...a week on, the old pool drawn (paid to its winner), the new pool 50', !!d2 && d2.pool === 50 && (A.coins + B.coins) === a0 + b0 - 50, { d2, a: A.coins - a0, b: B.coins - b0 });
+    note('jackpot drawn');
   }
   /* a death outside town: the bag to the pile on the ground (escrow), B takes it (escrow) */
   {
     const c = room._wheelT().WHEEL_CENTRE;
     A.z = 'wheel'; A.x = c[0] + 4000; A.y = c[1] + 4000;
     NOW += 60000;
-    room._handlePlayerDeath(A, 'bp_ws_a', 'monster');
+    played(() => room._handlePlayerDeath(A, 'bp_ws_a', 'monster'));   /* v2.3.6460: the game's own handler, as a monster's blow calls it */
     await settle();
     const pile = (room.loot[A.z] || []).find((p) => p.isDeathDrop && !p.inventoryClaimed);
     check('1. A died: the bag went to a pile on the ground', !!pile && (pile.deathItems || []).length > 0, pile && pile.deathItems);
@@ -224,10 +490,29 @@ const send = async (room, w, type, payload) => { await room.webSocketMessage(w, 
     NOW += (room.DEATH_OWNER_ONLY_MS || 60000) + 1000;
     B.z = A.z; B.x = pile.x; B.y = pile.y; B.dead = false; B.dying = false; B.hp = 100;
     const sessB = [...room.sessions.values()].find((x) => x.id === 'bp_ws_b');
-    room._handleLootPickup(sessB, { lootId: pile.lootId, zone: pile.zone });
+    played(() => room._handleLootPickup(sessB, { lootId: pile.lootId, zone: pile.zone }));
     await settle();
     check('1. B took the pile whole', pile.inventoryClaimed === true, pile.inventoryClaimed);
     note('pickup');
+  }
+  /* v2.3.6460 (card BK PR 1): NO MAN'S LAND, a red skull killed by the
+     player it attacked (nomansland.js, from the room's own death): the purse,
+     the weapon bag and what is worn to the killer's mail.  Its state (the red
+     skull, B's last blow) is set as §4 sets it: the blow itself is the fight's */
+  {
+    const c = room._wheelT().WHEEL_CENTRE;
+    respawn(room, A);
+    A.z = 'wheel'; A.x = c[0] + 4000; A.y = c[1] + 4000;
+    if (A.weaponStash && A.weaponStash.length) await send(room, ws.a, 'equip_request', { stashIdx: 0, slot: 'weapon' });
+    room._nmlState(A).red = 60000;   /* the room's own shape of the state */
+    A._nmlLastHitBy = 'bp_ws_b'; A._nmlLastHitAt = NOW;
+    const a0 = A.coins;
+    A.hp = 0;
+    played(() => room._handlePlayerDeath(A, 'bp_ws_a', 'pvp:bp_ws_b'));
+    await settle();
+    check('1. No man\'s land: A, a red skull, killed by B: the purse goes to B\'s mail', a0 > 0 && A.coins === 0, { a0, a: A.coins });
+    note('nml kill');
+    respawn(room, A);
   }
   /* saves and a leave: what is written must say what memory said */
   {
@@ -240,6 +525,7 @@ const send = async (room, w, type, payload) => { await room.webSocketMessage(w, 
   }
   if (process.env.WORLD_SUM_PLANT === '1') { room._goldGive(A, 50, 'bank_withdraw'); note('PLANTED: a vault paid out twice'); }
   const end = count(room, state);
+  PLAYED = { gold: [...RAN.gold], bag: [...RAN.bag], stash: [...RAN.stash] };
   const u = unexplained(start, end);
   const bad = steps.filter(([, g, s]) => g !== 0 || s !== 0);
   check('1. after every step, unexplained gold 0 and every bag key 0', bad.length === 0, bad);
@@ -380,6 +666,67 @@ for (const [what, plant, wantGold, wantGoods] of [
   check('stash: the sum counts every stash the door writes, the weapon bag included (by id)', !!m && JSON.stringify(JSON.parse(m[1].replace(/'/g, '"'))) === JSON.stringify(STASH_FIELDS), m && m[1]);
 }
 
+/* ══════════ v2.3.6460 (card BK PR 1): THE SUM PLAYS WHAT IT SUMS ══════════
+   The sum sees a road that moves or holds value only if the scenario runs it:
+   a road booked one short (the Auction House's listing taking one less, the
+   General Store's order one gold less) left this suite green while §1 played
+   six systems (docs/plan/census/shape-books.md, plants 2 and 3).  So every
+   `move` and `escrow` road of the three doors (gold.js GOLD_ROADS, bag.js
+   BAG_ROADS, stash.js STASH_ROADS) must have RUN in §1, inside a real
+   handler (the roads that ran, at the top), or be on UNPLAYED with why.
+   UNPLAYED is a list that only falls: a road on it that runs fails until it
+   is taken off, and its length is a line (UNPLAYED_MOST) a new road raises
+   only in plain sight.  A mint or a burn is explained by construction (the
+   door books what it moves), so it is not held here: a door that books
+   other than it moves is the doors' own tests' (card DG). */
+const UNPLAYED = Object.freeze({
+  gold: {
+    threat_levy: 'shut on the live game: the threat levy runs only with OPEN_PVP (false; threat.js, valuepause.test §4)',
+    escrow_debit_stored: 'a payer who is away: every route that takes it asks for a live session first (httpauth.js), so only a leave in the middle of a request reaches it',
+  },
+  bag: {
+    escrow_item: 'the Auction House\'s old two-write listing, run only with `ahonewrite: false` (store.js)',
+    escrow_item_stored: 'the same, for a seller who is away',
+  },
+  stash: {
+    quest_wood: 'a quest weapon traded up to a better wood (quests.js _questTradeApply): a quest line to play first, a later PR',
+    forge_swap: 'a weapon forged while one is in the hand (gear.js): the smith\'s level and bars first, a later PR',
+    gear_migrate: 'a stored record from before the gear lists, made lists (gearstash.js): runs only on that old shape',
+  },
+});
+const UNPLAYED_MOST = 7;
+{
+  const DOORS = { gold: GOLD_ROADS, bag: BAG_ROADS, stash: STASH_ROADS };
+  const held = (r) => r && (r.class === 'move' || r.class === 'escrow');
+  const missing = [], stale = [], wrong = [];
+  let listed = 0, roads = 0;
+  for (const [door, table] of Object.entries(DOORS)) {
+    const ran = new Set(PLAYED ? PLAYED[door] : []);
+    for (const [road, row] of Object.entries(table)) {
+      if (!held(row)) continue;
+      roads++;
+      if (!ran.has(road) && !Object.prototype.hasOwnProperty.call(UNPLAYED[door], road)) missing.push(door + ' ' + road + ' (' + row.at + ')');
+    }
+    for (const road of Object.keys(UNPLAYED[door])) {
+      listed++;
+      if (!held(table[road])) wrong.push(door + ' ' + road);
+      else if (ran.has(road)) stale.push(door + ' ' + road);
+    }
+  }
+  check(`the roads: every move or escrow road (${roads}) ran in §1 through a real handler, or is on UNPLAYED with its reason`, !!PLAYED && missing.length === 0, missing);
+  check('the roads: UNPLAYED only falls -- a road on it that now runs is taken off', stale.length === 0, stale);
+  check('the roads: UNPLAYED names only move or escrow roads of the doors', wrong.length === 0, wrong);
+  check(`the roads: UNPLAYED holds ${listed}, at most its line ${UNPLAYED_MOST} (a line that only falls)`, listed <= UNPLAYED_MOST, listed);
+  if (listed < UNPLAYED_MOST) console.log(`NOTE UNPLAYED holds ${listed}: lower UNPLAYED_MOST to it`);
+  /* the record itself: a door the test calls by hand is not written down */
+  const w = await world();
+  const before = RAN.gold.size;
+  RAN.gold.clear();
+  w.room._goldGive(w.A, 1, 'tonic_refund');
+  const byHand = RAN.gold.has('tonic_refund');
+  played(() => w.room._goldGive(w.A, 1, 'tonic_refund'));
+  check('the roads: a door called by hand is not counted as played; the same call inside a handler is', !byHand && RAN.gold.has('tonic_refund'), { byHand, before });
+}
 Math.random = realRandom;
 console.log(`\n${passes} passed, ${failures} failed`);
 if (failures) process.exit(1);
