@@ -69,15 +69,17 @@ async function fourLines() {
   }
   return _fourLines;
 }
+/* v2.3.6520 (card WL): the four lines hold statements now (two statements
+   on one line count two); the code lines are printed beside them */
 async function longestClientFunction() {
   const { m, LINES } = await fourLines();
   const f = m.functions[0];
-  return { say: String(f.lines), note: `code lines: ${f.file.slice(4)} ${f.name}; the line ${LINES.FUNCTION[f.file + '#' + f.name] ?? LINES.OTHER_FUNCTION}` };
+  return { say: String(f.statements), note: `statements: ${f.file.slice(4)} ${f.name}; the line ${LINES.FUNCTION[f.file + '#' + f.name] ?? LINES.OTHER_FUNCTION}` };
 }
 async function largestFileCodeLines() {
   const { m, LINES } = await fourLines();
   const [f, n] = Object.entries(m.files).sort((a, b) => b[1] - a[1])[0];
-  return { say: String(n), note: `${f.slice(4)}; the line ${LINES.FILE[f] ?? LINES.OTHER_FILE}` };
+  return { say: String(n), note: `statements, ${m.codeLines[f]} code lines; ${f.slice(4)}; the line ${LINES.FILE[f] ?? (LINES.PACKED_FILE || {})[f] ?? LINES.OTHER_FILE}` };
 }
 
 /* part 3's rows, in its order, in its words */

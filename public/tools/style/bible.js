@@ -102,6 +102,20 @@ export const HD_STYLE = [
    details scattered on top, never from busy tiles. */
 export const QUIET_GROUND = 'The texture is quiet and clean: broad, smooth areas of the base tones, with small accents covering no more than about a tenth of the area, and no noise, speckle or grain. Nothing bigger than a pebble or a flower, and no objects, paths or water.';
 
+/* ═══ v2.3.6292: GROUND IS WHAT YOU STEP OVER, SEEN AS THE BUILDINGS ARE ═══
+   The owner, 2026-11-20, on the town square: "shouldn't there be no objects on
+   these swatches? Like no rocks? A different layer for objects should work
+   better."  A rock painted into a swatch is walked through, casts no shadow
+   (lightfx/shadows.js casts from what stands up), repeats every tile, and
+   cannot be lit as a shape; the Object Studio and the placing make those.  So
+   every GROUND picture (the built surfaces too: QUIET_SURFACE only limited
+   their area) holds only what a foot steps over.  And the ground prompts said
+   "seen from directly above" while HD_STYLE says three-quarter: the swatches
+   drew flat stones from overhead beside buildings seen from the front (the
+   owner: "It's the wrong perspective").  GROUND_VIEW is the buildings' view. */
+export const GROUND_VIEW = 'seen from a steep three-quarter top-down angle, the same view as the game\'s buildings, with no perspective';
+export const WALK_OVER = 'Only flat detail a person would step over: pebbles no bigger than a hand, small flat stones set into the ground, fine cracks and dips. Nothing that stands up: no rocks, boulders, logs, plants taller than an ankle, or objects of any kind; the game places those as objects of their own. Seen at this angle, each pebble or stone shows a lit top, a thin darker lower edge and a small shade where it meets the ground.';
+
 /* ═══ v2.3.2944: GROUND HAS NO DIRECTION ═══
    Owner, on the first Main Street swatch in the game: "It's tiling wagon
    trails sideways and it doesn't look good.  Any specific detail that would

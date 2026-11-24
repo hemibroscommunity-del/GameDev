@@ -20,6 +20,18 @@ every time: its memory is the status files and the last list, not itself.
    tag is the card's, its "done when" is met, its status file is true.
 4. **Review** with `/repo-review`, in full, each ready PR that changes
    `server/` or `src/`. A PR of documents or tools gets step 3 only.
+4b. **The purpose review** (v2.3.6400; `docs/plan/finish.md` part 8: in 50
+   sittings the rehearsal found no failing test, while a review on the top
+   model found 44 of 47 planted faults passing the doors' own tests). For
+   each ready PR that adds or changes a guard, or changes `server/src`, the
+   wire, money, logins or combat: a lane on the top model (the Agent tool
+   with its `model` set to the top one; if this session cannot start one, ask the
+   orchestrator to run it) reads the card's PURPOSE and the diff, then in a
+   scratch worktree plants the card's dodges and two of its own (the fault
+   written as a tired programmer would: an alias, `Object.assign`, a
+   computed key, a `bind`) and runs the PR's own guard by name. A plant
+   that stays green is a hold, with the planted line. `tools/dev/plants/`
+   has the review's plants and how to run them.
 5. **Rehearse.** `node tools/dev/gatekeeper.mjs <branches in order>` (until
    card W's PR 4 is merged, the same by hand): a scratch worktree from
    `origin/main`, each ready branch merged, then
@@ -49,6 +61,14 @@ every time: its memory is the status files and the last list, not itself.
    for one that is only on the list. Lower a size line the merged work
    earned (pillar 5). Make a census strict when part 5's rule 3 allows.
    These go in your own PR, which is the last line of your list.
+   - **A tick means the purpose is met** (v2.3.6400): a step whose "done
+     when" was a table that only describes is ticked as a table, in those
+     words.
+   - **A sitting's notes go in `docs/plan/log.md`**, one line a step a
+     sitting (the newest first), not in `docs/GRAND-PLAN.md`: the plan grew
+     16% in 42 hours from them, and every session that opens it pays. The
+     plan keeps the box and, where it helps, one line saying "its record:
+     `docs/plan/log.md`".
 
 ## Readings chosen for you
 
@@ -68,3 +88,14 @@ every time: its memory is the status files and the last list, not itself.
   is right.
 - Your own PR is documents only and is not rehearsed; its `test` check is
   its gate.
+- **At most two sittings a day** (v2.3.6400): a sitting starts when four PRs
+  are ready or one is urgent. Wait on a long command once (in the
+  background, its end wakes you): never look at a running rehearsal again
+  and again, each look reads your whole memory (`docs/plan/finish.md` part
+  6).
+- **The rehearsal's extras, as their cards land**: every switch thrown once
+  (card CK), `claims-gain`'s six seeds (card BK), the held-page sample and
+  `main`'s heap into `docs/plan/baseline.md` (card PH).
+- **The first sitting after 2026-11-23**: sitting 54's notes
+  (`claude/plan-z-sitting-54`: 3.1's tick, its review), card DIR's PR, and
+  the boxes of `docs/plan/census/shape-review.md` part 4.
