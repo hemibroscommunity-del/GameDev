@@ -23,6 +23,18 @@
  *   2. delete a row from sources.json                                  -> FAIL 1 and 4
  *   3. change one hex digit of a row's sha256                          -> FAIL 3
  *
+ * v2.3.6421 (card CK PR 2): it hashed all 393 MB on every run.  Now a file
+ * whose git id is main's, and whose row is main's (sources.json as main
+ * holds it), was checked when main took it: its size is read, never its
+ * bytes (tools/guards/lib/sinceMain.mjs).  Every other file is hashed: one
+ * changed on the branch, in the working tree, or whose row changed.  Where
+ * no main is found, and in the gatekeeper's rehearsal (BT_ASSETS_WHOLE=1,
+ * once a sitting), every file is hashed, as before.
+ * BREAK PROOF (rule 8), 2026-11-23, each by hand:
+ *   4. one byte of an assets/ picture changed, its size the same
+ *      (not committed; then committed on a branch)                    -> FAIL 3
+ *   5. 3 again, with only that row changed against main               -> FAIL 3
+ *
  * Run from the repository's root: node tools/guards/asset-sources.test.mjs
  * (cd server && npm test runs it with every other guard and suite).
  */
@@ -30,7 +42,9 @@ import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
+import { statSync } from 'node:fs';
 import { ROOT } from './lib/fourLines.mjs';
+import { mainBase, idsAt, idsNow, textAt } from './lib/sinceMain.mjs';
 
 const SOURCES = 'tools/assets/sources.json';
 let failed = 0;
@@ -61,16 +75,29 @@ const present = tracked.filter((p) => existsSync(join(ROOT, p)));
 
 /* ── 3. every row matches its file, byte for byte ── */
 {
+  /* v2.3.6421: by git's ids against main (the header); the rest hashed */
+  const { base, how } = mainBase();
+  const was = base && idsAt(base, 'assets');
+  const ids = base && idsNow('assets');
+  const mainText = base && textAt(base, SOURCES);
+  const mainRows = new Map(mainText ? JSON.parse(mainText).rows.map((r) => [r.path, r]) : []);
+  const trusted = (p, r) => {
+    if (!was || !ids || !mainText) return false;
+    const m = mainRows.get(p);
+    return !!(ids.get(p) && ids.get(p) === was.get(p) && m && m.bytes === r.bytes && m.sha256 === r.sha256);
+  };
   const changed = [];
-  let bytes = 0;
+  let bytes = 0, hashed = 0, byId = 0;
   for (const p of present) {
     const r = rows.get(p);
     if (!r) continue;
+    if (trusted(p, r) && statSync(join(ROOT, p)).size === r.bytes) { byId++; bytes += r.bytes; continue; }
     const buf = readFileSync(join(ROOT, p));
     bytes += buf.length;
+    hashed += buf.length;
     if (buf.length !== r.bytes || createHash('sha256').update(buf).digest('hex') !== r.sha256) changed.push(p);
   }
-  check(`3: every row's bytes and SHA-256 match its file (${(bytes / 1048576).toFixed(1)} MB hashed)` + MEND, changed.length === 0, changed);
+  check(`3: every row's bytes and SHA-256 match its file (${(bytes / 1048576).toFixed(1)} MB: ${byId} files main's by git's id, ${(hashed / 1048576).toFixed(1)} MB hashed; ${how})` + MEND, changed.length === 0, changed);
 }
 
 /* ── 4. the file's own totals ── */

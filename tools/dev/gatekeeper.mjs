@@ -13,6 +13,10 @@
  *   2. merges each branch into it (origin/<branch>; a branch only this
  *      machine has is used and SAID to be local);
  *   3. runs, in the merged tree:   node tools/dev/precheck.mjs
+ *                                    (v2.3.6421: with BT_ASSETS_WHOLE=1,
+ *                                    the asset guards hash every file,
+ *                                    once a sitting; a PR hashes only
+ *                                    what is not main's by git's ids)
  *                                  node tools/guards/switches-thrown.test.mjs --whole
  *                                    (v2.3.6420: every switch born since
  *                                    5301 thrown, once a sitting; a PR
@@ -75,7 +79,15 @@ const STEPS = [
      after it (BT_THROWN_BY_GATEKEEPER), which throws the WHOLE set once a
      sitting: on a PR it throws only what the PR can break and a few chosen by
      the commit (tools/guards/switches-thrown.test.mjs, its header). */
-  { id: 'precheck', say: 'node tools/dev/precheck.mjs', cmd: 'node', argv: ['tools/dev/precheck.mjs'], mins: 70, env: { BT_THROWN_BY_GATEKEEPER: '1' } },
+  /* v2.3.6423 (card CK PR 4): so precheck here is its other checks and the
+     rest of the suite (capped at 10 min there): the whole of it took 151 s
+     on a session's box, 2026-11-24 (`BT_THROWN_BY_GATEKEEPER=1
+     BT_ASSETS_WHOLE=1 node tools/dev/precheck.mjs`).  25 minutes is above
+     the sum of every cap precheck holds (the rest 10, its other checks'
+     4 + 2 + 7 x 1), so a precheck stopped here is still a hang, never a
+     slow box's honest run; it was 70, when precheck ran the slow guard
+     itself. */
+  { id: 'precheck', say: 'node tools/dev/precheck.mjs', cmd: 'node', argv: ['tools/dev/precheck.mjs'], mins: 25, env: { BT_THROWN_BY_GATEKEEPER: '1', BT_ASSETS_WHOLE: '1' } },
   { id: 'thrown', say: 'node tools/guards/switches-thrown.test.mjs --whole', cmd: 'node', argv: ['tools/guards/switches-thrown.test.mjs', '--whole'], mins: 40, withPrecheck: true },
   { id: 'build', say: 'npm run build', cmd: 'npm', argv: ['run', 'build'], mins: 15 },
   { id: 'questline', say: 'node tools/qa/mp/run.mjs questline', cmd: 'node', argv: ['tools/qa/mp/run.mjs', 'questline'], mins: 40 },

@@ -291,6 +291,7 @@ const FORMS = {
   'treenumbers': '0',
   'trial': '',
   'trialhud': '',
+  'turnzone': '*',
   'uploadicons': '0',
   'veildoor': '0',
   'warmonce': '0',
