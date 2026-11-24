@@ -63,7 +63,9 @@
  *       sighting needs, inside the 550 the sight is held to) six times: the buttons and the phase never
  *       changed (no flicker at the edge);
  *   3d. out to 700 px: the phase gone, the line gone, Block and Special gone,
- *       each in ONE change (came once, went once over the whole walk);
+ *       each in ONE change (came once, went once over the whole walk; v2.3.6544:
+ *       each button counted on its own, and 3c a SKIP with the frame time where
+ *       this page draws a frame wider than the sight's 400 ms hold: TRAPS 200);
  *   3e. the mode off (part 2f's page, mode 4): with a shield and a sword
  *       Block comes by today's rule (a monster within reach), no sight
  *       line, the resolver not asked to hide it.
@@ -539,7 +541,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
          40 px a 100 ms (400 px/s: the worker's move budget is 500) */
       await P.page.evaluate((id) => {
         const FACE = { east: 0, southeast: Math.PI / 4, south: Math.PI / 2, southwest: 3 * Math.PI / 4, west: Math.PI, northwest: -3 * Math.PI / 4, north: -Math.PI / 2, northeast: -Math.PI / 4 };
-        const w = window._ctEdge = { want: 700, at: 700, real: null, phase: [], dom: [], ticks: 0, lost: false, last: Date.now() };
+        const w = window._ctEdge = { want: 700, at: 700, real: null, phase: [], dom: [], ticks: 0, lost: false, last: Date.now(), gaps: [], fOn: true };
+        /* v2.3.6544: the renderer's clock (TRAPS 200): the gap between animation frames, so 3c can tell a page that cannot hold the sight from a sight that does not */
+        let fLast = 0;
+        const fr = (ts) => { if (fLast && w.gaps.length < 2000) w.gaps.push(ts - fLast); fLast = ts; if (w.fOn) requestAnimationFrame(fr); };
+        requestAnimationFrame(fr);
         const shown = () => ({ block: !!document.querySelector('[data-shield]'), special: !!document.querySelector('[data-special]'), ability: !!document.querySelector('[data-ability]') });
         let was = JSON.stringify(shown());
         w.dom.push({ t: Date.now(), v: JSON.parse(was) });
@@ -607,22 +613,42 @@ export async function run({ browser, wsPort, webPort, rec }) {
          every 767 ms, and the monster's wander past 550 on ONE frame is more
          than the 0.4 s hold there; 545 left it 5 px, 520 leaves 30, still 80
          past the 440 a new sighting needs) */
-      const mid = await P.page.evaluate(() => ({ p: window._ctEdge.phase.length, d: window._ctEdge.dom.length }));
+      const mid = await P.page.evaluate(() => ({ p: window._ctEdge.phase.length, d: window._ctEdge.dom.length, g: window._ctEdge.gaps.length }));
       for (let k = 0; k < 6; k++) { await walkTo(520, 300); await walkTo(435, 300); }
       const q2 = await EDGE(P);
-      const w2 = await P.page.evaluate(() => ({ phase: window._ctEdge.phase.slice(-6), dom: window._ctEdge.dom.slice(-6) }));
-      rec.ok(`3c. ${label}: back and forth between 435 and 520 px six times: no change of the phase (${q2.phases - mid.p}) or the buttons (${q2.doms - mid.d}), still sighted with the line`,
-        q2.phases === mid.p && q2.doms === mid.d && q2.phase === 'sighted' && q2.block && q2.special && q2.line && q2.line.drawn && !q2.lost, { q2, w2 });
+      const w2 = await P.page.evaluate((g0) => { const gs = window._ctEdge.gaps.slice(g0).sort((a, b) => a - b); return { phase: window._ctEdge.phase.slice(-6), dom: window._ctEdge.dom.slice(-6), frameMs: gs.length ? Math.round(gs[gs.length >> 1]) : null, frames: gs.length }; }, mid.g);
+      const name3c = `3c. ${label}: back and forth between 435 and 520 px six times: no change of the phase (${q2.phases - mid.p}) or the buttons (${q2.doms - mid.d}), still sighted with the line`;
+      const edgeHeld = q2.phases === mid.p && q2.doms === mid.d && q2.phase === 'sighted' && q2.block && q2.special && q2.line && q2.line.drawn && !q2.lost;
+      /* v2.3.6544 (TRAPS 200): the sight holds 400 ms past its last sighting (sight.js SIGHT.HOLD_MS), counted on the
+         game's own clock and stepped once a frame.  A page that draws a frame wider than that (this box sideways: 767
+         to 1117 ms) drops the sight on ONE frame that misses (the monster's wander past the held 550 between two
+         frames), where a phone at 30 to 60 fps holds through a dozen.  The helper's run on PR 5 and #2327's run 5
+         were that: the game's record (each change's gap, facing and angle) shows no flap on a page that can hold.
+         So: a SKIP with the frame time there, never a red; on a page whose frames fit inside the hold, the strict check. */
+      const HOLD_MS = 400;
+      if (!edgeHeld && !q2.lost && w2.frameMs != null && w2.frameMs >= HOLD_MS) {
+        rec.skip(name3c, `this page drew a frame every ${w2.frameMs} ms (its median over the walk, ${w2.frames} frames), wider than the sight's ${HOLD_MS} ms hold, so one frame's miss is past the hold; the changes: ${JSON.stringify(w2.phase)}`);
+      } else {
+        rec.ok(name3c, edgeHeld, { q2, w2 });
+      }
+      const after3c = { p: q2.phases, d: q2.doms };
       /* 3d: out */
       await walkTo(700, 0);
       await H.waitFor(P, (S) => S._sightPhase || 'none', (v) => v === 'none', { timeout: 15000, label: 'lost at 700' }).catch(() => null);
       await H.waitFor(P, () => !document.querySelector('[data-shield]') && !document.querySelector('[data-special]'), (v) => v, { timeout: 8000, label: 'Block and Special gone' }).catch(() => null);
       await P.page.waitForTimeout(600);
       const q3 = await EDGE(P);
-      const w3 = await P.page.evaluate(() => { const w = window._ctEdge; clearInterval(window.__ctEdgeT); w.mo.disconnect(); return { phase: w.phase, dom: w.dom }; });
-      const domFlips = q3.doms - marks.d;
-      rec.ok(`3d. ${label}: out to ${q3.at} px: the phase, the line, Block and Special gone, each in one change (the phase ${q3.phases - marks.p} changes, the buttons ${domFlips} over the whole walk: in, out)`,
-        q3.phase === 'none' && q3.line && !q3.line.drawn && !q3.block && !q3.special && q3.phases - marks.p === 2 && domFlips <= 2 && domFlips >= 1, { q3, w3 });
+      const w3 = await P.page.evaluate(() => { const w = window._ctEdge; clearInterval(window.__ctEdgeT); w.mo.disconnect(); w.fOn = false; return { phase: w.phase, dom: w.dom }; });
+      /* v2.3.6544: each button's own comings and goings, not the screen's: Block and Special come in their own renders
+         (the run on PR 5 upright: Block, then Special 620 ms later, a frame every 450 ms), which is two changes of
+         the screen and one coming of each.  From before 3b: in once, out once each; if 3c was a SKIP (a page that
+         cannot hold), from after 3c: out once each. */
+      const strict = q2.phases === mid.p;
+      const from = strict ? marks : after3c;
+      const flips = (k) => { let n = 0; for (let j = Math.max(1, from.d); j < w3.dom.length; j++) if (w3.dom[j].v[k] !== w3.dom[j - 1].v[k]) n++; return n; };
+      const fb = flips('block'), fs = flips('special'), fa = flips('ability'), want = strict ? 2 : 1;
+      rec.ok(`3d. ${label}: out to ${q3.at} px: the phase, the line, Block and Special gone, each in one change (${strict ? 'over the whole walk: in, out' : 'after the edge'}: the phase ${q3.phases - from.p} changes, Block ${fb}, Special ${fs}, Whirlwind ${fa})`,
+        q3.phase === 'none' && q3.line && !q3.line.drawn && !q3.block && !q3.special && q3.phases - from.p === want && fb === want && fs === want, { q3, w3 });
     }
 
     /* 2f: the mode off -- today's default, the held attack on the right half */

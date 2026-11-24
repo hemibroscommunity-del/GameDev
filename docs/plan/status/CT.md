@@ -1,39 +1,33 @@
 card: CT
 branch: claude/plan-ct-5-words (PR 5, stacked on claude/plan-ct-4-sight)
-prs: #2282 (6540, merged), #2293 (6541, merged at 60), #2308 (6542, held at 60: mended), #2327 (6543, ready), PR 5 (6544, working)
+prs: #2282 (6540, merged), #2293 (6541, merged at 60), #2308 (6542, held at 60: mended), #2327 (6543, ready), #2330 (6544, draft, main 598cfd38 in)
 state: ready
 
 ## Done
 - PR 1 (6540, #2282): merged at sitting 57.
 - PR 2 (6541, #2293): the left stick. Merged at sitting 60.
-- PR 3 (6542, #2308 ready, head 6bb4d0f0): the latch, the lock, the
-  stick's one owner; 2c's sideways fight a SKIP with the box's frame time.
-  Held at 60 (a split gate): mended, tag 6542's commit: ONE gate,
-  latch.js twoButtonsLive (chosen AND a touch pointer), asked by every
-  site and by latchAttackPress itself; latch.test H1 (a mouse on a touch
-  screen in mode 5: the press latches nothing) and H2 (every caller of
-  twoButtonsOn off the syntax tree, an ALLOW list); 4 plants red.
+- PR 3 (6542, #2308): the latch, the lock, the stick's one owner; held
+  at 60, mended: ONE gate, latch.js twoButtonsLive (latch.test H1, H2).
 - PR 4 (6543, #2327 ready, head 08d6735d): the sight line, Block and the
   specials with the sight. mp-twobuttons 48 PASS, 0 FAIL, 1 SKIP (2c).
-- PR 5 (6544, part 10): the Test panel's row "Controls: two sticks / two
-  buttons" (manualCombat twoButtonsChoose: the same key as `?manual=5`, the
-  page loads again into it); the tour's and the coach's words for the
-  mode (say tables controlsTutorial, new questCoach); honest-trouble.md
-  section D (the latched fight to each signal of aim or press rhythm; no
-  line moves; `rooted` margin #4 wider); the words by the one gate, the
-  row on H2's ALLOW list (5 calls). Node: two-buttons-choose (15
-  checks; 5 plants red, 2 equivalent survivors listed). Phone:
-  mp-twobuttons part 4 (4a-4c: the row tapped both ways, the words).
+- PR 5 (6544, #2330): the Test panel's row "Controls: two sticks / two
+  buttons"; the tour's and coach's words; honest-trouble.md D; node
+  two-buttons-choose; mp-twobuttons part 4.
+- PR 5 on main 598cfd38 (part 11): the leaf only draws (sightStream);
+  its line from the state, record and __btSightLine in
+  rendering/sightLineDraw.js (leaves guard); the row reads pageAddress,
+  twoButtonsChoose(on, search) gives `?...` (switch-reader 3).
 
 ## Next
-- PR 5 open (draft); the orchestrator told; hand-over (memory past 250k).
+- Item 6 (6545, sprint from the left stick): a fresh part.
 
 ## Found
 - `manual-combat.test` 1h pinned `?manual=5` as no switch: now `6`.
 - This box: a CDP flick waits behind a slow frame (mp-twobuttons 1f).
-- mp-twobuttons on PR 5 (helper, after the mend): 49 PASS, 2 FAIL, 1 SKIP:
-  4a-4c pass; 3c/3d SIDEWAYS red again (the phase changed twice at the
-  edge, a frame every 767 ms), as run 5 on #2327: PR 4's check to judge.
+- 3c/3d sideways was the TEST: the sight holds 400 ms, stepped once a
+  frame; this box draws one every 767-1117 ms, so one missed frame drops
+  it. 3c: a SKIP with the frame time when frames are wider than the hold
+  (TRAPS 200); 3d counts each button (Block, then Special a render later).
 
 ## Needs
 - Approved: the two OWNED rows (stickX, stickY; #2290 is in `main`); PR
