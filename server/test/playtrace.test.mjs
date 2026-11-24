@@ -21,6 +21,9 @@
  *      needs): nothing recorded, no row, the cap `playtrace` not advertised.
  *   7. THE MESSAGE PATH: a session not recording makes nothing at traceNote
  *      (no `_trace`), and traceNote never throws into the switch.
+ *  7c. A TAKER (v2.3.6484, sitting 60's hold: wire-gaps 2b names it in
+ *      TAKERS): traceNote keeps a COPY of the message, never changes it,
+ *      sends nothing.
  *   8. THE SHADOW AGREES WITH THE REAL CHECK (v2.3.6483, sitting 59's mend):
  *      a normal character and a test-mode one in one room, the same moves,
  *      hits, strikes and cooks at the same clock times; what the room
@@ -308,6 +311,32 @@ for (const flags of [{ playtrace: false }, { sitting: false }]) {
   const bad = { playerState: { s: { _trace: { get ev() { throw new Error('x'); } } } } };
   try { traceNote(bad, { id: 's' }, { type: 'move', x: 1, y: 1 }, 0); traceNote(null, null, null); traceNote(room, { id: 'nobody' }, null); } catch (e) { threw = true; }
   check('7. traceNote never throws into the message switch', !threw);
+}
+/* v2.3.6484 (sitting 60's hold, wire-gaps 2b): traceNote is handed the
+   phone's message as it came (the recording IS the message), so it is a
+   TAKER and holds to one: it keeps a COPY (a later change to the message
+   is not in the recording), never changes the message (the handlers after
+   it read it as it came), and sends nothing (no socket, no broadcast). */
+{
+  const sent = [];
+  const ps = { x: 0, y: 0 };
+  ps._trace = { sid: 1, t0: 0, act: 0, at: 0, pid: 'p', start: null, ev: [], bytes: 0, prev: null, prevKey: null, prevT: -1e9, startT: null,
+    kinds: Object.create(null), wr: Object.create(null), wt: [] };
+  const spy = (n) => (...a) => { sent.push(n); };
+  const room = { playerState: { s: ps }, _liveFlags: null, _send: spy('_send'), broadcast: spy('broadcast'), broadcastExcept: spy('broadcastExcept'),
+    broadcastToZone: spy('broadcastToZone'), eventBuffer: { push: spy('eventBuffer.push') } };
+  const ws = { send: spy('ws.send') };
+  const mv = { type: 'move', x: 5, y: 6, z: 'wheel', d: 'down', bag: { a: [1, 2] } };
+  const ck = { type: 'cook_request', item: 'fish', n: { k: 1 } };
+  const before = JSON.stringify([mv, ck]);
+  traceNote(room, { id: 's', ws }, mv, 1000);
+  traceNote(room, { id: 's', ws }, ck, 2000);
+  check('7c. traceNote never changes the message it is handed', JSON.stringify([mv, ck]) === before, [mv, ck]);
+  check('7c. ...both kept', ps._trace.ev.length === 2, ps._trace.ev);
+  mv.bag.a.push(3); mv.x = 99; ck.n.k = 7; ck.item = 'rock';
+  const kept = JSON.stringify(ps._trace.ev);
+  check('7c. ...the recording holds a COPY (a later change to the message is not in it)', !/99|rock|"k":7|\[1,2,3\]/.test(kept) && /"x":5/.test(kept) && /fish/.test(kept), kept);
+  check('7c. ...and sends nothing', sent.length === 0, sent);
 }
 
 /* ══════════ v2.3.6483 (sitting 59's mend): a NORMAL character and a TEST-MODE one, side by side ══════════

@@ -29,6 +29,12 @@
  *      nothing into it; the next join closes it whole and opens a new one;
  *      a join that opens nothing (sitOpen off, or a body taken over with
  *      the flag off: join.js's sitForget) leaves the earlier card uncounted.
+ *  7c. THROWN OFF AND ON, ONE SOCKET, NO REJOIN (sitting 60's review,
+ *      v2.3.6484): a sitting counting, the flag thrown off through the
+ *      live flags' route, a week, thrown on (cleared, or set true): its card
+ *      counts nothing more (no week-long gap, no moves), the next join
+ *      closes it whole; set on while on, or off while off, the card the
+ *      join took goes on counting (liveops.js -> sitting.js sitFlagSet).
  *   8. A NEWER `_econ` (a rolled-back worker) is left whole: no card.
  *   9. THE ROOM'S OWN PATHS: judged moves and moves over the budget
  *      (movement.js), hits claimed, landed and refused by reason (combat.js,
@@ -361,6 +367,56 @@ const live = (room, pid) => room.playerState[pid];
   for (let i = 0; i < 3; i++) { clock.advance(1000); await mv4(ps4.x + 20, ps4.y); }
   check('7b. ...then the body taken over with the flag off, thrown on: its card counts nothing more', ps4 === ps3 && ps4._econ.s === card3 && sitRead(card3).mv === n4 && n4 === n3, { kept: ps4 === ps3, same: ps4._econ.s === card3, mv: sitRead(ps4._econ.s).mv, n4, n3 });
   await close(room, ws4);
+}
+
+/* ══════════ 7c. THROWN OFF AND ON, ONE SOCKET, NO REJOIN (sitting 60's review) ══════════ */
+for (const how of ['clear', 'true']) {
+  const pid = 'bp_sit_flip_' + how;
+  const st = makeStorage(seed([pid], 50));
+  const room = await openRoom(st);
+  room._adminLog = async () => {};
+  const flag = (method, value) => room._liveopsRoutes(
+    new Request('http://x/flags' + (method === 'DELETE' ? '?name=sitting' : ''), method === 'DELETE' ? { method } : { method, body: JSON.stringify({ name: 'sitting', value }) }),
+    new URL('http://x/flags' + (method === 'DELETE' ? '?name=sitting' : '')), '/flags', (o) => o);
+  const ws = fakeWs('flip' + how);
+  await join(room, ws, pid, { loginTaken: true }); await settle();
+  if (room.tickInterval) { clearInterval(room.tickInterval); room.tickInterval = null; }
+  const ps = live(room, pid);
+  const mv = (x, y) => room.webSocketMessage(ws, JSON.stringify({ type: 'move', x, y, z: ps.z }));
+  for (let i = 0; i < 3; i++) { clock.advance(1000); await mv(ps.x + 20, ps.y); }
+  const card = ps._econ.s;
+  check(`7c (${how}). the sitting counts before the switch`, card && sitRead(card).mv === 3, card && sitRead(card));
+  /* set on while on: nothing forgotten */
+  await flag('POST', true);
+  clock.advance(1000); await mv(ps.x + 20, ps.y);
+  check(`7c (${how}). \`sitting: true\` set while on: the card goes on counting`, ps._econ.s === card && sitRead(card).mv === 4, sitRead(card));
+  if (how === 'clear') await flag('DELETE');
+  const u0 = card[SIT.COL.u], g0 = card[SIT.COL.g], a0 = card[SIT.COL.a];
+  await flag('POST', false);
+  check(`7c (${how}). thrown off through the route`, sitOff(room) === true);
+  clock.advance(7 * 86400e3);
+  await mv(ps.x + 20, ps.y);
+  await flag('POST', false);   /* off while off: nothing new */
+  if (how === 'clear') await flag('DELETE'); else await flag('POST', true);
+  check(`7c (${how}). thrown back on, the same socket, no rejoin`, sitOff(room) === false && live(room, pid) === ps);
+  for (let i = 0; i < 3; i++) { clock.advance(1000); await mv(ps.x + 20, ps.y); }
+  sitHit(room, ps, 'claim', clock.now()); sitTouch(room, ps, clock.now());
+  const r = sitRead(card);
+  check(`7c (${how}). ...the card counts nothing more: no move, no hit`, ps._econ.s === card && r.mv === 4 && r.hc === 0, r);
+  check(`7c (${how}). ...no week-long gap, its last touch and active time unmoved`, card[SIT.COL.g] === g0 && g0 < 300 && card[SIT.COL.u] === u0 && card[SIT.COL.a] === a0, { g: card[SIT.COL.g], g0, u: card[SIT.COL.u] - u0, a: card[SIT.COL.a] - a0 });
+  await close(room, ws);
+  clock.advance(1000);
+  const ws2 = fakeWs('flip2' + how);
+  await join(room, ws2, pid, { loginTaken: true }); await settle();
+  if (room.tickInterval) { clearInterval(room.tickInterval); room.tickInterval = null; }
+  const ps2 = live(room, pid);
+  const sh = ps2._econ.sh || [];
+  /* closed as its last save left it (a count after the last save is not kept: WHO's status, Found) */
+  check(`7c (${how}). the next join closes it (no week-long gap) and opens a new one`, sh.length === 1 && sh[0][SIT.COL.t] === card[SIT.COL.t] && sh[0][SIT.COL.g] < 300 && ps2._econ.s && ps2._econ.s[SIT.COL.t] !== card[SIT.COL.t], { sh, s: ps2._econ.s });
+  const mv2 = (x, y) => room.webSocketMessage(ws2, JSON.stringify({ type: 'move', x, y, z: ps2.z }));
+  for (let i = 0; i < 2; i++) { clock.advance(1000); await mv2(ps2.x + 20, ps2.y); }
+  check(`7c (${how}). ...which counts`, sitRead(ps2._econ.s).mv === 2, sitRead(ps2._econ.s));
+  await close(room, ws2);
 }
 
 /* ══════════ 8. A NEWER `_econ` ══════════ */

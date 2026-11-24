@@ -108,6 +108,7 @@ import { setGearStashCap, GEAR_STASH_CAP, GEAR_STASH_CAP_LEGACY, WEAPON_STASH_CA
 import { setBagOneSum, setBagBook, setBagEcon } from './bag.js';   /* v2.3.4900: the bag door's step 2 switch; v2.3.5085: + its book */
 import { bookAdd, bookSoFar, bookDay } from './daybook.js';   /* v2.3.5085; v2.3.5093: + a day as it stands */
 import { worldCtx, worldAdd } from './worldsum.js';   /* v2.3.5093: the world's one sum, in the day's snapshot */
+import { sitFlagSet } from './sitting.js';   /* v2.3.6484: `sitting: false` set, the cards the joins took count no more (card WHO; sitting 60) */
 import { STORAGE_MARKS } from './storagemarks.js';   /* v2.3.5093: which records hold gold */
 
 /* ═══ v2.3.5093: THE WORLD'S SUM IN THE DAY'S SNAPSHOT (grand plan step 10.4, card E PR 12) ═══
@@ -644,6 +645,7 @@ export const liveopsMethods = {
       if (name.startsWith('off_') && typeof this._clientOffChanged === 'function') this._clientOffChanged();
       if (name === 'disable_bigbags' || name === 'bagonesum' || name === 'econ') this._syncBagCaps();   /* v2.3.4224; v2.3.4900: + the bag door's one sum; v2.3.5085: + the counting's switch */
       if (name === 'freeswing' && typeof this._freeSwingFlagChanged === 'function') this._freeSwingFlagChanged();   /* v2.3.4520: the free-swing trial, every phone told (freeswing.js) */
+      if (name === 'sitting') sitFlagSet(this);   /* v2.3.6484: thrown off, no card goes on counting on the same socket (sitting.js) */
       if ((name === 'bowdraw' || name === 'staffgather') && typeof this._drawGatherFlagChanged === 'function') this._drawGatherFlagChanged();   /* v2.3.4799: the bow's draw and the staff's gather, every phone told (drawgather.js) */
       return json({ ok: true, flags });
     }
