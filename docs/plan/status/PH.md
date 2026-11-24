@@ -1,7 +1,7 @@
 card: PH
 branch: claude/plan-ph-6-debtgate (stacked on claude/plan-ph-5-heaptrend)
 prs: #2279 (PR 1, 6500, DEPLOYS), #2291 (PR 2, 6501), #2297 (PR 3, 6502), #2306 (PR 5, 6504): test green, heads sent; PR 6 (6505: this branch)
-state: working (part 5: PR 6's last piece, the skateboard proof runs; then merge origin/main, precheck, push, open)
+state: working (orchestrator now part 6, session_01LccHanKxudynkwdrcZewcK, from 04:30 UTC; part 5: PR 6's last piece, the skateboard proof runs; then merge origin/main, precheck, push, open)
 
 ## Done
 - PR 1 (6500) #2279: heat, the board, the ramps; sitting 57 mended (15.8c/e/f).
