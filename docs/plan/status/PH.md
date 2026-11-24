@@ -1,7 +1,7 @@
 card: PH
 branch: claude/plan-ph-4-governor (stacked on claude/plan-ph-6-debtgate, #2314)
 prs: #2279 (PR 1, 6500, DEPLOYS), #2291 (6501), #2297 (6502), #2306 (6504): test green, heads sent; #2314 (PR 6, 6505, draft, head 72accffe); PR 4 (6503): this branch, no PR
-state: working, part 6 (PR 4 in code; one question to the orchestrator part 6, session_01LccHanKxudynkwdrcZewcK: the shine's place)
+state: stopped, part 6 handed over (memory past 250k; orchestrator part 7, session_01LccHaiJdAe8MAz1LJHMztf). This branch (PR 4) pushed as a BACKUP, no PR, precheck NOT run on it.
 
 ## Done
 - PR 1 (6500) #2279: heat, the board, the ramps; sitting 57 mended.
@@ -24,9 +24,15 @@ state: working, part 6 (PR 4 in code; one question to the orchestrator part 6, s
   frame-pacer.test §24 (the heat model; break proof 24d and four by hand);
   a phone at 1.5 (renderRes.js PHONE_RES; never lower; `?phoneres=0`;
   render-res §7); `?shine=0|1` pins (ladder-passes §7); census readings.
-  Waits on: the shine's place (first rung, as the orchestrator said, or
-  second as today: the model's numbers sent 2026-11-24). Then: the whole
-  server suite, precheck, `playable` + `memory-budget` by a helper, PR.
+  The shine's place: (A) rate first, shine second, as today (orchestrator
+  part 6, 05:39); shine on by default; the comparison in census/PH-phone.md.
+  Files outside the card approved by part 6's 05:51 message (name it in
+  the PR's words). PR words drafted (part 6's scratchpad, lost: rewrite).
+  Left for the next part: precheck, the whole server suite; membudget on
+  PR 4 (test box) read heap 41.4 > 40 and buffers 24.9 > 24.8: run
+  claude/plan-ph-6-debtgate without PR 4 to see whether they are PR 4's;
+  questline's run was not read. Then merge the stack up (#2297, #2306,
+  #2314 after #2279 and #2291's sitting-58 mends) and open PR 4.
 
 ## Found
 - maskedEvict.js's header: old words. buffers 24.3 on CI vs 24.8: trim owed.
